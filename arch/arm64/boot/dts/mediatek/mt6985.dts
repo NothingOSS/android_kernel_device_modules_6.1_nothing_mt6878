@@ -10,6 +10,7 @@
 #include <dt-bindings/pinctrl/mt6985-pinfunc.h>
 #include <dt-bindings/gce/mt6985-gce.h>
 #include <dt-bindings/memory/mt6985-larb-port.h>
+#include <dt-bindings/iio/mt635x-auxadc.h>
 
 / {
 	model = "MT6985";
@@ -2900,6 +2901,10 @@
 				#phy-cells = <1>;
 			};
 		};
+
+		spmi: spmi {
+			compatible = "mediatek,mt6985-spmi";
+		};
 	};
 
 	scp: scp@1c700000 {
@@ -3154,4 +3159,95 @@
 		pmu_dsu_support = <1>;
 		pmu_dsu_type = <11>;
 	};
+};
+
+#include "mediatek/mt6363.dtsi"
+#include "mediatek/mt6373.dtsi"
+
+&mt6363_vbuck2 {
+	regulator-always-on;
+};
+
+&mt6363_vbuck4 {
+	regulator-always-on;
+};
+
+&mt6363_vbuck5 {
+	regulator-always-on;
+};
+
+&mt6363_vbuck6 {
+	regulator-always-on;
+};
+
+&mt6363_vsram_digrf {
+	regulator-always-on;
+};
+
+&mt6363_vsram_modem {
+	regulator-always-on;
+};
+
+&mt6363_vsram_cpub {
+	regulator-always-on;
+};
+
+&mt6363_vsram_cpum {
+	regulator-always-on;
+};
+
+&mt6363_vsram_cpul {
+	regulator-always-on;
+};
+
+&mt6363_vemc {
+	regulator-always-on;
+};
+
+&mt6363_vcn15 {
+	regulator-always-on;
+};
+
+&mt6363_vufs18 {
+	regulator-always-on;
+};
+
+&mt6363_vm18 {
+	regulator-always-on;
+};
+
+&mt6363_vufs12 {
+	regulator-always-on;
+};
+
+&mt6363_vrf12 {
+	regulator-always-on;
+};
+
+&mt6373_vbuck2 {
+	regulator-always-on;
+};
+
+&mt6373_vbuck4 {
+	regulator-always-on;
+};
+
+&mt6373_vbuck5 {
+	regulator-always-on;
+};
+
+&mt6373_vbuck6 {
+	regulator-always-on;
+};
+
+&mt6373_vbuck7 {
+	regulator-always-on;
+};
+
+&mt6373_vtp {
+	regulator-always-on;
+};
+
+&mt6373_vsram_digrf_aif {
+	regulator-always-on;
 };
