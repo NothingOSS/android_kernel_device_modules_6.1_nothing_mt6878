@@ -3,6 +3,7 @@
  * xhci-dbgcap.h - xHCI debug capability support
  *
  * Copyright (C) 2017 Intel Corporation
+ * Copyright (C) 2022 MediaTek Inc.
  *
  * Author: Lu Baolu <baolu.lu@linux.intel.com>
  */

@@ -3,6 +3,7 @@
  * XHCI extended capability handling
  *
  * Copyright (c) 2017 Hans de Goede <hdegoede@redhat.com>
+ * Copyright (C) 2022 MediaTek Inc.
  */
 
 #include <linux/platform_device.h>

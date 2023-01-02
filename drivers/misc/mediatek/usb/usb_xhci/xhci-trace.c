@@ -3,6 +3,7 @@
  * xHCI host controller driver
  *
  * Copyright (C) 2013 Xenia Ragiadakou
+ * Copyright (C) 2022 MediaTek Inc.
  *
  * Author: Xenia Ragiadakou
  * Email : burzalodowa@gmail.com
