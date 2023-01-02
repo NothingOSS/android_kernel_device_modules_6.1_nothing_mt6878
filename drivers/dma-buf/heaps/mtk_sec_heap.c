@@ -300,7 +300,7 @@ static int region_base_free(struct secure_heap_region *sec_heap, struct mtk_sec_
 	}
 
 	if (atomic64_sub_return(buffer->len, &sec_heap->total_size) < 0)
-		pr_warn("%s warn!, total memory overflow, 0x%lx!!\n", __func__,
+		pr_warn("%s warn!, total memory overflow, 0x%llx!!\n", __func__,
 			atomic64_read(&sec_heap->total_size));
 
 	if (!atomic64_read(&sec_heap->total_size)) {
@@ -323,7 +323,7 @@ static int region_base_free(struct secure_heap_region *sec_heap, struct mtk_sec_
 		mutex_unlock(&sec_heap->heap_lock);
 	}
 
-	pr_debug("%s done, [%s] size:0x%lx, total_size:0x%lx\n",
+	pr_debug("%s done, [%s] size:0x%lx, total_size:0x%llx\n",
 		__func__, dma_heap_get_name(buffer->heap), buffer->len,
 		atomic64_read(&sec_heap->total_size));
 	return ret;
@@ -361,10 +361,10 @@ static int page_base_free(struct secure_heap_page *sec_heap, struct mtk_sec_heap
 	}
 
 	if (atomic64_sub_return(buffer->len, &sec_heap->total_size) < 0)
-		pr_warn("%s, total memory overflow, 0x%lx!!\n", __func__,
+		pr_warn("%s, total memory overflow, 0x%llx!!\n", __func__,
 			atomic64_read(&sec_heap->total_size));
 
-	pr_debug("%s done, [%s] size:0x%lx, total_size:0x%lx\n",
+	pr_debug("%s done, [%s] size:0x%lx, total_size:0x%llx\n",
 		__func__, dma_heap_get_name(buffer->heap), buffer->len,
 		atomic64_read(&sec_heap->total_size));
 
@@ -748,7 +748,7 @@ static struct sg_table *mtk_sec_heap_region_map_dma_buf(struct dma_buf_attachmen
 			return ERR_PTR(ret);
 		}
 		pr_debug("%s reserve_iommu-dev(%s) dma_map_sgtable done, iova:0x%lx, id:(%d,%d)\n",
-			__func__, dev_name(attachment->dev), sg_dma_address(table->sgl),
+			__func__, dev_name(attachment->dev), (unsigned long)sg_dma_address(table->sgl),
 			tab_id, dom_id);
 		goto map_done;
 	}
@@ -927,7 +927,7 @@ static int region_base_alloc(struct secure_heap_region *sec_heap,
 		return -ENOMEM;
 	}
 	if (!sec_handle) {
-		pr_err("%s alloc security memory failed, req_size:0x%lx, total_size 0x%lx\n",
+		pr_err("%s alloc security memory failed, req_size:0x%lx, total_size 0x%llx\n",
 			__func__, req_sz, atomic64_read(&sec_heap->total_size));
 		return -ENOMEM;
 	}
@@ -964,7 +964,7 @@ static int region_base_alloc(struct secure_heap_region *sec_heap,
 
 	atomic64_add(buffer->len, &sec_heap->total_size);
 
-	pr_debug("%s done: [%s], req_size:0x%lx, align_sz:0x%lx, handle:0x%llx, pa:0x%lx, total_sz:0x%lx\n",
+	pr_debug("%s done: [%s], req_size:0x%lx, align_sz:0x%lx, handle:0x%llx, pa:0x%llx, total_sz:0x%llx\n",
 		__func__, dma_heap_get_name(buffer->heap), req_sz, buffer->len,
 		buffer->sec_handle, phy_addr, atomic64_read(&sec_heap->total_size));
 
@@ -1017,7 +1017,7 @@ static int page_base_alloc(struct secure_heap_page *sec_heap, struct mtk_sec_hea
 	buffer->ssheap = ssheap;
 	atomic64_add(buffer->len, &sec_heap->total_size);
 
-	pr_debug("%s done: [%s], req_size:0x%lx(0x%lx), align_sz:0x%lx, nent:%u--%lu, align:0x%lx, total_sz:0x%lx\n",
+	pr_debug("%s done: [%s], req_size:0x%lx(0x%lx), align_sz:0x%lx, nent:%u--%lu, align:0x%lx, total_sz:0x%llx\n",
 		__func__, dma_heap_get_name(sec_heap->heap), buffer->ssheap->req_size, req_sz,
 		buffer->len, buffer->ssheap->table->orig_nents, buffer->ssheap->elems,
 		buffer->ssheap->alignment, atomic64_read(&sec_heap->total_size));
@@ -1181,7 +1181,7 @@ static int sec_buf_priv_dump(const struct dma_buf *dmabuf,
 	struct mtk_sec_heap_buffer *buf = dmabuf->priv;
 	u64 sec_handle = 0;
 
-	dmabuf_dump(s, "\t\tbuf_priv: uncached:%d alloc_pid:%d(%s)tid:%d(%s) alloc_time:%luus\n",
+	dmabuf_dump(s, "\t\tbuf_priv: uncached:%d alloc_pid:%d(%s)tid:%d(%s) alloc_time:%lluus\n",
 		    !!buf->uncached,
 		    buf->pid, buf->pid_name,
 		    buf->tid, buf->tid_name,
@@ -1219,7 +1219,7 @@ static int sec_buf_priv_dump(const struct dma_buf *dmabuf,
 
 			dmabuf_dump(s,
 				    "\t\tbuf_priv: tab:%-2u dom:%-2u map:%d iova:0x%-12lx %s attr:0x%-4lx dir:%-2d dev:%s\n",
-				    i, j, mapped, iova,
+				    i, j, mapped, (unsigned long)iova,
 				    region_buf ? tmp_str : "",
 				    buf->dev_info[i][j].map_attrs,
 				    buf->dev_info[i][j].direction,

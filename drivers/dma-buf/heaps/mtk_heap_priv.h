@@ -99,7 +99,7 @@ void dmabuf_release_check(const struct dma_buf *dmabuf)
 			device_name = dev_name(attach_obj->dev);
 			dmabuf_dump(NULL,
 				    "attach[%d]: iova:0x%-12lx attr:%-4lx dir:%-2d dev:%s\n",
-				    attach_cnt, iova,
+				    attach_cnt, (unsigned long)iova,
 				    attach_obj->dma_map_attrs,
 				    attach_obj->dir,
 				    device_name);

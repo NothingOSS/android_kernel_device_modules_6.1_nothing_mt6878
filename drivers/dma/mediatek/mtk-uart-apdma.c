@@ -284,7 +284,7 @@ void mtk_uart_apdma_data_dump(struct dma_chan *chan)
 
 		ns = do_div(endtime, 1000000000);
 		dev_info(c->vc.chan.device->dev,
-			"[%s] [%s] [begin %5lu.%06lu] [%s time %5lu.%06lu] total=%llu,idx=%d,\n"
+			"[%s] [%s] [begin %5lu.%06lu] [%s time %5lu.%06llu] total=%llu,idx=%d,\n"
 			"wpt=0x%x,rpt=0x%x,len=%d,poll_cnt_rx=%d,vff_dbg=0x%x,copy_wpt=0x%x,\n"
 			"irq_handler cpu:%d, pid:%d, comm:%s\n",
 			__func__, c->dir == DMA_DEV_TO_MEM ? "dma_rx" : "dma_tx",

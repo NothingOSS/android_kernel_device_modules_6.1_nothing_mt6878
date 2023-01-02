@@ -653,7 +653,7 @@ static void mtk_mm_heap_dma_buf_release(struct dma_buf *dmabuf)
 	deferred_free(&buffer->deferred_free, system_heap_buf_free, npages);
 
 	if (atomic64_sub_return(buf_len, &dma_heap_normal_total) < 0) {
-		pr_info("warn: %s, total memory underflow, 0x%lx!!, reset as 0\n",
+		pr_info("warn: %s, total memory underflow, 0x%llx!!, reset as 0\n",
 			__func__, atomic64_read(&dma_heap_normal_total));
 		atomic64_set(&dma_heap_normal_total, 0);
 	}
@@ -689,7 +689,7 @@ static void system_heap_dma_buf_release(struct dma_buf *dmabuf)
 	kfree(buffer);
 
 	if (atomic64_sub_return(buf_len, &dma_heap_normal_total) < 0) {
-		pr_info("warn: %s, total memory underflow, 0x%lx!!, reset as 0\n",
+		pr_info("warn: %s, total memory underflow, 0x%llx!!, reset as 0\n",
 			__func__, atomic64_read(&dma_heap_normal_total));
 		atomic64_set(&dma_heap_normal_total, 0);
 	}
@@ -1075,7 +1075,7 @@ static int system_buf_priv_dump(const struct dma_buf *dmabuf,
 	int i = 0, j = 0;
 	struct system_heap_buffer *buf = dmabuf->priv;
 
-	dmabuf_dump(s, "\tbuf_priv: uncached:%d alloc_pid:%d(%s)tid:%d(%s) alloc_time:%luus\n",
+	dmabuf_dump(s, "\tbuf_priv: uncached:%d alloc_pid:%d(%s)tid:%d(%s) alloc_time:%lluus\n",
 		    !!buf->uncached,
 		    buf->pid, buf->pid_name,
 		    buf->tid, buf->tid_name,
@@ -1096,7 +1096,7 @@ static int system_buf_priv_dump(const struct dma_buf *dmabuf,
 			dmabuf_dump(s,
 				    "\tbuf_priv: tab:%-2d dom:%-2d map:%d iova:0x%-12lx attr:0x%-4lx dir:%-2d dev:%s\n",
 				    i, j, mapped,
-				    sg_dma_address(sgt->sgl),
+				    (unsigned long)sg_dma_address(sgt->sgl),
 				    buf->dev_info[i][j].map_attrs,
 				    buf->dev_info[i][j].direction,
 				    dev_name(dev));
