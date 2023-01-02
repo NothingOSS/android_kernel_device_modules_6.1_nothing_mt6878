@@ -9,6 +9,7 @@ mtk_charger_framework-objs := mtk_charger.o mtk_charger_intf.o mtk_basic_charger
 mtk_pd_charging-objs := mtk_pd.o mtk_pd_hal.o
 obj-$(CONFIG_BATTERY_MT6359P) += mt6359p_battery.o
 mt6359p_battery-objs := mtk_battery_coulomb_service.o mtk_battery.o mtk_battery_algo.o mt6359p-gauge.o mtk_battery_daemon.o
+obj-$(CONFIG_DEVICE_MODULES_CHARGER_MT6360) += mt6360_charger.o
 obj-$(CONFIG_DEVICE_MODULES_CHARGER_MT6360)	+= mt6360_pmu_chg.o
 obj-$(CONFIG_CHARGER_MT6362)	+= mt6362-chg.o
 obj-$(CONFIG_CHARGER_MT6375)	+= mt6375-charger.o
