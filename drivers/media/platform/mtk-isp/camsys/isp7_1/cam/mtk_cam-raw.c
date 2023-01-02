@@ -924,7 +924,7 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 		 */
 		pipeline->sensor_mode_update = ctrl->val;
 		dev_info(dev, "%s:pipe(%d):streaming(%d), sensor_mode_update(%d)\n",
-			 __func__, pipeline->id, pipeline->subdev.entity.pipe->stream_count,
+			 __func__, pipeline->id, pipeline->subdev.entity.pipe->streaming_count,
 			 pipeline->sensor_mode_update);
 		break;
 	case V4L2_CID_MTK_CAM_TG_FLASH_CFG:
@@ -935,7 +935,7 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 
 		dev_dbg(dev,
 			"%s:pipe(%d):streaming(%d), feature_pending(0x%x), feature_active(0x%x)\n",
-			__func__, pipeline->id, pipeline->subdev.entity.pipe->stream_count,
+			__func__, pipeline->id, pipeline->subdev.entity.pipe->streaming_count,
 			pipeline->feature_pending, pipeline->feature_active);
 		ret = 0;
 		break;
@@ -946,7 +946,7 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 		dev_dbg(dev,
 			"%s:pipe(%d):streaming(%d), hw_mode(0x%x)\n",
 			__func__, pipeline->id,
-			pipeline->subdev.entity.pipe->stream_count,
+			pipeline->subdev.entity.pipe->streaming_count,
 			pipeline->hw_mode_pending);
 
 		ret = 0;

@@ -6796,11 +6796,11 @@ void mtk_cam_stop_ctx(struct mtk_cam_ctx *ctx, struct media_entity *entity)
 					dev_info(cam->dev,
 						 "failed to streamoff %s:%d\n",
 						 sd->name, ret);
-				sd->entity.stream_count = 0;
+				sd->entity.pipe->streaming_count = 0;
 				sd->entity.pipe = NULL;
 			} else if (sd->entity.function ==
 						MEDIA_ENT_F_CAM_SENSOR) {
-				sd->entity.stream_count = 0;
+				sd->entity.pipe->streaming_count = 0;
 				sd->entity.pipe = NULL;
 			}
 		}

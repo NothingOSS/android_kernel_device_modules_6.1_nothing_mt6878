@@ -1071,7 +1071,7 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 		 */
 		pipeline->sensor_mode_update = ctrl->val;
 		dev_info(dev, "%s:pipe(%d):streaming(%d), sensor_mode_update(%d)\n",
-			 __func__, pipeline->id, pipeline->subdev.entity.pipe->stream_count,
+			 __func__, pipeline->id, pipeline->subdev.entity.pipe->streaming_count,
 			 pipeline->sensor_mode_update);
 		break;
 	case V4L2_CID_MTK_CAM_CAMSYS_VF_RESET:
@@ -1096,7 +1096,7 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 
 		dev_dbg(dev,
 			"%s:pipe(%d):streaming(%d), hw_mode(0x%x)\n",
-			__func__, pipeline->id, pipeline->subdev.entity.pipe->stream_count,
+			__func__, pipeline->id, pipeline->subdev.entity.pipe->streaming_count,
 			pipeline->hw_mode_pending);
 
 		ret = 0;

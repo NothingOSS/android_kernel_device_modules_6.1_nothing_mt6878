@@ -746,10 +746,10 @@ void mtk_cam_req_seninf_change(struct mtk_cam_request *req)
 
 			mtk_cam_apply_pending_dev_config(req_stream_data);
 			m_pipe = req_stream_data->seninf_new->entity.pipe;
-			req_stream_data->seninf_new->entity.pipe->stream_count++;
+			req_stream_data->seninf_new->entity.pipe->streaming_count++;
 			req_stream_data->seninf_new->entity.pipe =
 				req_stream_data->seninf_old->entity.pipe;
-			req_stream_data->seninf_old->entity.pipe->stream_count--;
+			req_stream_data->seninf_old->entity.pipe->streaming_count--;
 			req_stream_data->seninf_old->entity.pipe = m_pipe;
 
 			dev_info(cam->dev,
