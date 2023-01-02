@@ -20,7 +20,6 @@
 
 enum {
 	TYPE_CPC,
-	TYPE_RATIO,
 
 	NF_TYPE_PROFILE_MAX
 };
@@ -28,7 +27,6 @@ enum {
 struct mtk_lp_sysfs_handle lpm_entry_cpuidle_profile;
 
 struct MTK_CPUIDLE_NODE profile_cpc;
-struct MTK_CPUIDLE_NODE profile_ratio;
 
 static ssize_t lpm_cpuidle_profile_read(char *ToUserBuf,
 					    size_t sz, void *priv)
@@ -43,10 +41,6 @@ static ssize_t lpm_cpuidle_profile_read(char *ToUserBuf,
 	switch (node->type) {
 	case TYPE_CPC:
 		mtk_cpc_prof_lat_dump(&p, &sz);
-		break;
-
-	case TYPE_RATIO:
-		mtk_cpuidle_prof_ratio_dump(&p, &sz);
 		break;
 
 	default:
@@ -74,12 +68,6 @@ static ssize_t lpm_cpuidle_profile_write(char *FromUserBuf,
 	case TYPE_CPC:
 		parm ? mtk_cpc_prof_start() : mtk_cpc_prof_stop();
 		break;
-
-	case TYPE_RATIO:
-		parm ? mtk_cpuidle_prof_ratio_start() :
-				mtk_cpuidle_prof_ratio_stop();
-		break;
-
 	default:
 		pr_info("unknown command\n");
 		break;
@@ -100,12 +88,4 @@ void lpm_cpuidle_profile_init(void)
 					&profile_cpc.op,
 					&lpm_entry_cpuidle_profile,
 					&profile_cpc.handle);
-
-	LPM_CPUIDLE_PROFILE_NODE_INIT(profile_ratio, "ratio",
-				    TYPE_RATIO);
-	mtk_cpuidle_sysfs_sub_entry_node_add(profile_ratio.name,
-					MTK_CPUIDLE_SYS_FS_MODE,
-					&profile_ratio.op,
-					&lpm_entry_cpuidle_profile,
-					&profile_ratio.handle);
 }

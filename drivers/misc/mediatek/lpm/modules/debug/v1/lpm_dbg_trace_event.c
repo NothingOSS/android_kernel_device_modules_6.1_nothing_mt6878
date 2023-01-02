@@ -7,9 +7,8 @@
 #include <linux/io.h>
 
 #include <lpm_trace_event/lpm_trace_event.h>
+#include <lpm_dbg_trace_event.h>
 #include <mtk_spm_sysfs.h>
-#include <spm_reg.h>
-
 
 #define plat_mmio_read(offset)	__raw_readl(spm_base + offset)
 
@@ -17,55 +16,31 @@ void __iomem *spm_base;
 struct timer_list spm_resource_req_timer;
 u32 spm_resource_req_timer_is_enabled;
 u32 spm_resource_req_timer_ms;
+static struct subsys_req *lpm_subsys_req = NULL;
 
 static void spm_resource_req_timer_fn(struct timer_list *data)
 {
-	u32 req_sta_0, req_sta_1, req_sta_2;
-	u32 req_sta_4, req_sta_5, req_sta_6;
-	u32 src_req;
-	u32 md = 0, conn = 0, scp = 0, adsp = 0;
-	u32 ufs = 0, msdc = 0, disp = 0, apu = 0;
-	u32 spm = 0;
+        unsigned int i = 0;
+        u32 req[SUBSYS_REQ_MAX] = {0};
 
-	if (!spm_base)
-		return;
+        for (i = SUBSYS_REQ_MD; i < SUBSYS_REQ_MAX; i++) {
+		req[i] = !!(plat_mmio_read(lpm_subsys_req[i].req_addr1) &
+				lpm_subsys_req[i].req_mask1);
+	if (lpm_subsys_req[i].req_addr2)
+		req[i] |= !!(plat_mmio_read(lpm_subsys_req[i].req_addr2) &
+				lpm_subsys_req[i].req_mask2);
+        }
 
-	req_sta_0 = plat_mmio_read(SPM_REQ_STA_0);
-	req_sta_1 = plat_mmio_read(SPM_REQ_STA_1);
-	req_sta_2 = plat_mmio_read(SPM_REQ_STA_2);
-	req_sta_4 = plat_mmio_read(SPM_REQ_STA_4);
-	req_sta_5 = plat_mmio_read(SPM_REQ_STA_5);
-	req_sta_6 = plat_mmio_read(SPM_REQ_STA_6);
-
-	if (req_sta_4 & 0x1F)
-		md = 1;
-	if ((req_sta_2 & 0xF) || (req_sta_1 & (0x7 << 29)))
-		conn = 1;
-	if (req_sta_2 & (0xF << 9))
-		disp = 1;
-
-	if (req_sta_5 & (0x1F << 3))
-		scp = 1;
-	if (req_sta_0 & (0x1F << 10))
-		adsp = 1;
-	if (req_sta_5 & (0x1F << 27))
-		ufs = 1;
-	if (req_sta_4 & (0x3FF << 15))
-		msdc = 1;
-
-	if (req_sta_0 & (0x1F << 5))
-		apu = 1;
-
-	src_req = plat_mmio_read(SPM_SRC_REQ);
-	if (src_req & 0x63E)
-		spm = 1;
-
-	trace_SPM__resource_req_0(
-		md, conn,
-		scp, adsp,
-		ufs, msdc,
-		disp, apu,
-		spm);
+        trace_SPM__resource_req_0(
+                req[SUBSYS_REQ_MD],
+                req[SUBSYS_REQ_CONN],
+                req[SUBSYS_REQ_SCP],
+                req[SUBSYS_REQ_ADSP],
+                req[SUBSYS_REQ_UFS],
+                req[SUBSYS_REQ_MSDC],
+                req[SUBSYS_REQ_DISP],
+                req[SUBSYS_REQ_APU],
+                req[SUBSYS_REQ_SPM]);
 
 	spm_resource_req_timer.expires = jiffies +
 		msecs_to_jiffies(spm_resource_req_timer_ms);
@@ -131,7 +106,7 @@ static const struct mtk_lp_sysfs_op spm_resource_req_timer_enable_fops = {
 	.fs_write = set_spm_resource_req_timer_enable,
 };
 
-int __init lpm_trace_init(void)
+int lpm_trace_event_init(struct subsys_req *plat_subsys_req)
 {
 	struct device_node *node = NULL;
 
@@ -142,14 +117,16 @@ int __init lpm_trace_init(void)
 		of_node_put(node);
 	}
 
+	lpm_subsys_req = plat_subsys_req;
 	mtk_spm_sysfs_root_entry_create();
 	mtk_spm_sysfs_entry_node_add("spm_dump_res_req_enable", 0444
 			, &spm_resource_req_timer_enable_fops, NULL);
 
 	return 0;
 }
+EXPORT_SYMBOL(lpm_trace_event_init);
 
-void __exit lpm_trace_deinit(void)
+void lpm_trace_event_deinit(void)
 {
 }
-
+EXPORT_SYMBOL(lpm_trace_event_deinit);

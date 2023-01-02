@@ -32,14 +32,11 @@
 
 DEFINE_SPINLOCK(__lpm_sys_sync_lock);
 
-typedef int (*state_enter)(struct cpuidle_device *dev,
-			   struct cpuidle_driver *drv, int idx);
 typedef int (*s2idle_enter)(struct cpuidle_device *dev,
 			   struct cpuidle_driver *drv, int idx);
 
 
 struct lpm_state_enter_fp {
-	state_enter state;
 	s2idle_enter s2idle;
 };
 
@@ -76,7 +73,6 @@ struct lpm_models {
 static DEFINE_PER_CPU(struct lpm_models, lpm_mods);
 
 struct lpm_states_enter {
-	state_enter cpuidle[CPUIDLE_STATE_MAX];
 	s2idle_enter s2idle[CPUIDLE_STATE_MAX];
 };
 static DEFINE_PER_CPU(struct lpm_states_enter, lpm_cstate);
@@ -96,7 +92,6 @@ static DEFINE_PER_CPU(struct lpm_states_enter, lpm_cstate);
 		(idx < CPUIDLE_STATE_MAX)
 
 enum lpm_state_type {
-	lpm_state_cpuidle,
 	lpm_state_s2idle,
 };
 
@@ -112,12 +107,6 @@ static int lpm_s2idle_state_enter(struct cpuidle_device *dev,
 	ret = lpm_state_enter(lpm_state_s2idle, dev, drv, idx);
 	lpm_smc_cpu_pm_lp(SUSPEND_SRC, MT_LPM_SMC_ACT_CLR, smp_processor_id(), 0);
 	return ret;
-}
-
-static int lpm_cpuidle_state_enter(struct cpuidle_device *dev,
-			   struct cpuidle_driver *drv, int idx)
-{
-	return lpm_state_enter(lpm_state_cpuidle, dev, drv, idx);
 }
 
 static int lpm_cpuidle_state_percpu_set(int cpu, struct lpm_module_reg *p)
@@ -144,10 +133,6 @@ static int lpm_cpuidle_state_percpu_set(int cpu, struct lpm_module_reg *p)
 		}
 
 		ptr = &per_cpu(lpm_cstate, cpu);
-		if (fp->state) {
-			ptr->cpuidle[idx] = drv->states[idx].enter;
-			drv->states[idx].enter = fp->state;
-		}
 		if (fp->s2idle) {
 			ptr->s2idle[idx] = drv->states[idx].enter_s2idle;
 			drv->states[idx].enter_s2idle = fp->s2idle;
@@ -406,8 +391,6 @@ static int lpm_state_enter(int type, struct cpuidle_device *dev,
 	idx = ret ? 0 : idx;
 	if (type == lpm_state_s2idle)
 		ret = cstate->s2idle[idx](dev, drv, idx);
-	else
-		ret = cstate->cpuidle[idx](dev, drv, idx);
 	lpm_cpuidle_resume(drv, idx, ret);
 
 	return ret;
@@ -602,7 +585,6 @@ static int __init lpm_init(void)
 	struct lpm_module_reg reg = {
 		.magic = LPM_MODULE_MAGIC,
 		.type = LPM_CPUIDLE_DRIVER,
-		.data.fp.state = lpm_cpuidle_state_enter,
 		.data.fp.s2idle = lpm_s2idle_state_enter
 	};
 

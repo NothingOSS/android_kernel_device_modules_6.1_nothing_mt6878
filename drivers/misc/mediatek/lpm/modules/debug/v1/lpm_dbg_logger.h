@@ -6,8 +6,9 @@
 #ifndef __LPM_DBG_LOGGER_H__
 #define __LPM_DBG_LOGGER_H__
 
-int lpm_logger_init(void);
+extern void __iomem *lpm_spm_base;
 
+int lpm_logger_init(void);
 void lpm_logger_deinit(void);
 
 #endif

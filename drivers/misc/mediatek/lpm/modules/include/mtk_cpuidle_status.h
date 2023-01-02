@@ -69,13 +69,6 @@ bool mtk_cpuidle_get_stress_status(void);
 void mtk_cpuidle_set_stress_time(unsigned int val);
 unsigned int mtk_cpuidle_get_stress_time(void);
 
-void mtk_cpuidle_prof_ratio_start(void);
-void mtk_cpuidle_prof_ratio_stop(void);
-void mtk_cpuidle_prof_ratio_dump(char **ToUserBuf, size_t *size);
-
-void mtk_cpuidle_ctrl_log_en(bool enable);
-bool mtk_cpuidle_ctrl_log_sta_get(void);
-
 void mtk_cpuidle_state_enable(bool en);
 long mtk_cpuidle_state_enabled(void);
 
