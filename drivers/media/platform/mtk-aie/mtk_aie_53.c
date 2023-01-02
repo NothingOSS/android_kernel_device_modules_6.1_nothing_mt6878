@@ -1445,7 +1445,7 @@ static int mtk_aie_probe(struct platform_device *pdev)
 	}
 
 	fd->fdvt_clt = cmdq_mbox_create(dev, 0);
-	dev_info(dev, "cmdq fd->fdvt_clt:%x\n", fd->fdvt_clt);
+	dev_info(dev, "cmdq fd->fdvt_clt:%lx\n", (unsigned long)fd->fdvt_clt);
 	if (!fd->fdvt_clt)
 		dev_info(dev, "cmdq mbox create fail\n");
 	else

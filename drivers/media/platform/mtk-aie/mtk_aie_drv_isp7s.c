@@ -366,7 +366,7 @@ static int FDVT_M4U_TranslationFault_callback(int port,
 							   dma_addr_t mva,
 							   void *data)
 {
-	pr_info("[FDVT_M4U]fault call port=%d, mva=0x%x", port, mva);
+	pr_info("[FDVT_M4U]fault call port=%d, mva=0x%pad", port, &mva);
 
 	switch (port) {
 #if CHECK_SERVICE_IF_0
@@ -402,18 +402,18 @@ static void aie_fdvt_dump_reg(struct mtk_aie_dev *fd)
 	int i = 0;
 
 	if (fd->aie_cfg->sel_mode == FLDMODE) {
-		dev_info(fd->dev, "Blink Addr: %lx\n", fd->dma_para->fld_blink_weight_pa);
+		dev_info(fd->dev, "Blink Addr: %pad\n", &fd->dma_para->fld_blink_weight_pa);
 		for (i = 0; i < 15; i++) {
-			dev_info(fd->dev, "[%d]CV Addr: %lx\n", i, fd->dma_para->fld_cv_pa[i]);
-			dev_info(fd->dev, "[%d]LEAFNODE Addr: %lu\n", i,
-						fd->dma_para->fld_leafnode_pa[i]);
-			dev_info(fd->dev, "[%d]FP Addr: %lx\n", i, fd->dma_para->fld_fp_pa[i]);
-			dev_info(fd->dev, "[%d]Tree02 Addr: %lx\n", i,
-						fd->dma_para->fld_tree02_pa[i]);
+			dev_info(fd->dev, "[%d]CV Addr: %pad\n", i, &fd->dma_para->fld_cv_pa[i]);
+			dev_info(fd->dev, "[%d]LEAFNODE Addr: %pad\n", i,
+						&fd->dma_para->fld_leafnode_pa[i]);
+			dev_info(fd->dev, "[%d]FP Addr: %pad\n", i, &fd->dma_para->fld_fp_pa[i]);
+			dev_info(fd->dev, "[%d]Tree02 Addr: %pad\n", i,
+						&fd->dma_para->fld_tree02_pa[i]);
 			//dev_info(fd->dev, "[%d]Tree03 Addr: %x\n", i,
 			//			fd->dma_para->fld_tree13_pa[i]);
 		}
-		dev_info(fd->dev, "OUT Addr: %lx\n", fd->dma_para->fld_output_pa);
+		dev_info(fd->dev, "OUT Addr: %pad\n", &fd->dma_para->fld_output_pa);
 
 		dev_info(fd->dev, "[0x%08X %08X]\n", (unsigned int)AIE_START_REG,
 					(unsigned int)readl(fd->fd_base + AIE_START_REG));
@@ -641,24 +641,24 @@ static void aie_fdvt_dump_reg(struct mtk_aie_dev *fd)
 		dev_info(fd->dev, "[0x%08X %08X]\n", (unsigned int)FDVT_KERNEL_BASE_ADR_1,
 			(unsigned int)readl(fd->fd_base + FDVT_KERNEL_BASE_ADR_1));
 		dev_info(fd->dev,
-			"fdmode_fdvt_yuv2rgb_config:	0x%x, fdmode_fdvt_yuv2rgb_config_size:	%d",
-			fd->base_para->fd_yuv2rgb_cfg_va, fd->fd_yuv2rgb_cfg_size);
+			"fdmode_fdvt_yuv2rgb_config:	0x%lx, fdmode_fdvt_yuv2rgb_config_size:	%d",
+			(unsigned long)fd->base_para->fd_yuv2rgb_cfg_va, fd->fd_yuv2rgb_cfg_size);
 		FDVT_DumpDRAMOut(fd, (u32 *)fd->base_para->fd_yuv2rgb_cfg_va,
 								fd->fd_yuv2rgb_cfg_size);
 
 
 		if (fd->attr_para->w_idx == 0) {
 			dev_info(fd->dev,
-				"attr_yuv2rgb_config:	0x%x, attr_yuv2rgb_cfg_aligned_size:	%d",
-				fd->base_para->attr_yuv2rgb_cfg_va[MAX_ENQUE_FRAME_NUM - 1],
+				"attr_yuv2rgb_config:	0x%lx, attr_yuv2rgb_cfg_aligned_size:	%d",
+				(unsigned long)fd->base_para->attr_yuv2rgb_cfg_va[MAX_ENQUE_FRAME_NUM - 1],
 				fd->attr_yuv2rgb_cfg_data_size);
 			FDVT_DumpDRAMOut(fd,
 				(u32 *)fd->base_para->attr_yuv2rgb_cfg_va[MAX_ENQUE_FRAME_NUM - 1],
 				fd->attr_yuv2rgb_cfg_data_size);
 		} else {
 			dev_info(fd->dev,
-				"attr_yuv2rgb_config:	0x%x, attr_yuv2rgb_cfg_aligned_size:	%d",
-				fd->base_para->attr_yuv2rgb_cfg_va[fd->attr_para->w_idx - 1],
+				"attr_yuv2rgb_config:	0x%lx, attr_yuv2rgb_cfg_aligned_size:	%d",
+				(unsigned long)fd->base_para->attr_yuv2rgb_cfg_va[fd->attr_para->w_idx - 1],
 				fd->attr_yuv2rgb_cfg_data_size);
 			FDVT_DumpDRAMOut(fd,
 				(u32 *)fd->base_para->attr_yuv2rgb_cfg_va[fd->attr_para->w_idx - 1],
@@ -666,15 +666,15 @@ static void aie_fdvt_dump_reg(struct mtk_aie_dev *fd)
 	}
 
 		dev_info(fd->dev,
-			"fdmode_fdvt_rs_config:	  0x%x, fdmode_fdvt_rs_config_size:	 %d",
-			fd->base_para->fd_rs_cfg_va, fd->fd_rs_cfg_size);
+			"fdmode_fdvt_rs_config:	  0x%lx, fdmode_fdvt_rs_config_size:	 %d",
+			(unsigned long)fd->base_para->fd_rs_cfg_va, fd->fd_rs_cfg_size);
 		FDVT_DumpDRAMOut(fd, (u32 *)fd->base_para->fd_rs_cfg_va, fd->fd_rs_cfg_size);
 
 		loop_num = (unsigned int)readl(fd->fd_base + FDVT_DEBUG_INFO_0) & 0xFF;
 
 		dev_info(fd->dev,
-			"fdmode_fdvt_fd_config:	0x%x, fdmode_fdvt_fd_config_size:	%d",
-			(unsigned int *)fd->base_para->fd_fd_cfg_va,
+			"fdmode_fdvt_fd_config:	0x%lx, fdmode_fdvt_fd_config_size:	%d",
+			(unsigned long)fd->base_para->fd_fd_cfg_va,
 			((fd->fd_fd_cfg_aligned_size)/87) * loop_num);
 		FDVT_DumpDRAMOut(fd,
 			(u32 *)fd->base_para->fd_fd_cfg_va
@@ -804,8 +804,8 @@ static void aie_fdvt_dump_reg(struct mtk_aie_dev *fd)
 			dev_info(fd->dev, "[FDVT_DMA_DEBUG_DATA_WDMA_2_2]: 0x%08X %08X\n",
 			  FDVT_DMA_DEBUG_DATA_WDMA_2_2,
 			  (unsigned int)readl(fd->fd_base + FDVT_DMA_DEBUG_DATA_WDMA_2_2));
-			dev_info(fd->dev, "[FDVT_DMA_DEBUG_DATA_WDMA_2_3]: 0x%08X %08X\n",
-			  (fd->fd_base + FDVT_DMA_DEBUG_DATA_WDMA_2_3),
+			dev_info(fd->dev, "[FDVT_DMA_DEBUG_DATA_WDMA_2_3]: 0x%08lX %08X\n",
+			  ((unsigned long)fd->fd_base + FDVT_DMA_DEBUG_DATA_WDMA_2_3),
 			  (unsigned int)readl(fd->fd_base + FDVT_DMA_DEBUG_DATA_WDMA_2_3));
 
 			dev_info(fd->dev, "[FDVT_DMA_DEBUG_DATA_WDMA_3_0]: 0x%08X %08X\n",
