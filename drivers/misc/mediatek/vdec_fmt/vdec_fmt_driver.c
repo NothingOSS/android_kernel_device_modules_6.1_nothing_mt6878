@@ -1223,6 +1223,7 @@ static int vdec_fmt_probe(struct platform_device *pdev)
 		return -1;
 	}
 	fmt->fmtLarb = &larbdev->dev;
+	device_link_add(fmt->dev, fmt->fmtLarb, DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
 	fmt_debug(0, "get larb from node");
 
 	for (i = 0; i < FMT_PORT_NUM; i++) {

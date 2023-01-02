@@ -44,9 +44,9 @@ int32_t fmt_clock_on(struct mtk_vdec_fmt *fmt)
 	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_VFMT);
 	cmdq_mbox_enable(fmt->clt_fmt[0]->chan);
 	if (fmt->fmtLarb) {
-		ret = mtk_smi_larb_get(fmt->fmtLarb);
+		ret = pm_runtime_resume_and_get(fmt->fmtLarb);
 		if (ret) {
-			fmt_debug(0, "mtk_smi_larb_get failed %d",
+			fmt_debug(0, "pm_runtime_resume_and_get failed %d",
 				ret);
 			return ret;
 		}
@@ -72,7 +72,7 @@ int32_t fmt_clock_off(struct mtk_vdec_fmt *fmt)
 	if (fmt->clk_VDEC)
 		clk_disable_unprepare(fmt->clk_VDEC);
 	if (fmt->fmtLarb)
-		mtk_smi_larb_put(fmt->fmtLarb);
+		pm_runtime_put_sync(fmt->fmtLarb);
 	cmdq_mbox_disable(fmt->clt_fmt[0]->chan);
 	atomic_set(&fmt->fmt_error, 0);
 	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_VFMT);
