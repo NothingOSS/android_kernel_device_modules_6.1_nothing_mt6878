@@ -5984,9 +5984,8 @@
 			event_ir_mml_ready = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_IR_MML_READY>;
 			event_ir_disp_ready = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_IR_DISP_READY>;
 			event_ir_mml_stop = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_MML_STOP>;
-			// TODO: wait for disp inline rotate
-			//event_ir_eof = /bits/ 16
-			// <CMDQ_EVENT_MMSYS_DISP_RDMA0_TARGET_LINE_ENG_EVENT>;
+			event_ir_eof = /bits/ 16
+					<CMDQ_EVENT_DISPSYS_DISP_DSI0_TARGET_LINE_ENG_EVENT>;
 			event_racing_pipe0 = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_PIPE0>;
 			event_racing_pipe1 = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_PIPE1>;
 			event_racing_pipe1_next = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_PIPE1_NEXT>;
@@ -7743,7 +7742,8 @@
 			"disp_token_disp_va_end0",
 			"disp_token_disp_va_start2",
 			"disp_token_disp_va_end2",
-			"disp_gpio_te1";
+			"disp_gpio_te1",
+			"disp_dsi0_targetline0";
 
 		gce-events =
 			<&gce CMDQ_EVENT_OVLSYS_STREAM_DONE_ENG_EVENT_0>,
@@ -7775,7 +7775,8 @@
 			<&gce CMDQ_SYNC_TOKEN_DISP_VA_END>,
 			<&gce CMDQ_SYNC_TOKEN_DISP_VA_START>,
 			<&gce CMDQ_SYNC_TOKEN_DISP_VA_END>,
-			<&gce CMDQ_EVENT_GCE_EVENT_DSI1_TE_I>;
+			<&gce CMDQ_EVENT_GCE_EVENT_DSI1_TE_I>,
+			<&gce CMDQ_EVENT_DISPSYS_DISP_DSI0_TARGET_LINE_ENG_EVENT>;
 
 		helper-name = "MTK_DRM_OPT_STAGE",
 			"MTK_DRM_OPT_USE_CMDQ",
