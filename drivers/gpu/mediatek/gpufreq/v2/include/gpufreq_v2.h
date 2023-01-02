@@ -109,10 +109,9 @@ enum gpufreq_config_target {
 	CONFIG_DYN_SRAM_GPU     = 9,
 	CONFIG_DYN_SRAM_STACK   = 10,
 	CONFIG_IPS              = 11,
-	CONFIG_OCL_TIMESTAMP    = 12,
-	CONFIG_FAKE_MTCMOS_CTRL = 13,
-	CONFIG_MCUETM_CLK       = 14,
-	CONFIG_PTP3             = 15,
+	CONFIG_FAKE_MTCMOS_CTRL = 12,
+	CONFIG_MCUETM_CLK       = 13,
+	CONFIG_PTP3             = 14,
 };
 
 enum gpufreq_config_value {
@@ -425,7 +424,6 @@ unsigned int gpufreq_get_power_state(void);
 unsigned int gpufreq_get_dvfs_state(void);
 unsigned int gpufreq_get_shader_present(void);
 unsigned int gpufreq_get_segment_id(void);
-void gpufreq_set_ocl_timestamp(void);
 void gpufreq_dump_infra_status(void);
 unsigned int gpufreq_get_cur_freq(enum gpufreq_target target);
 unsigned int gpufreq_get_cur_volt(enum gpufreq_target target);

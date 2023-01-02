@@ -64,7 +64,6 @@ static unsigned int __gpufreq_custom_init_enable(void);
 static unsigned int __gpufreq_dvfs_enable(void);
 static void __gpufreq_set_dvfs_state(unsigned int set, unsigned int state);
 static void __gpufreq_fake_mtcmos_control(unsigned int mode);
-static void __gpufreq_set_ocl_timestamp(void);
 static void __gpufreq_set_margin_mode(unsigned int mode);
 static void __gpufreq_set_gpm_mode(unsigned int version, unsigned int mode);
 static void __gpufreq_set_ips_mode(unsigned int mode);
@@ -151,6 +150,7 @@ static void __gpufreq_check_bus_idle(void);
 static void __gpufreq_aoc_config(enum gpufreq_power_state power);
 static void __gpufreq_hwdcm_config(void);
 static void __gpufreq_acp_config(void);
+static void __gpufreq_ocl_timestamp_config(void);
 static void __gpufreq_gpm1_config(void);
 static void __gpufreq_transaction_config(void);
 static void __gpufreq_axuser_priority_config(void);
@@ -1401,9 +1401,6 @@ void __gpufreq_set_mfgsys_config(enum gpufreq_config_target target, enum gpufreq
 	case CONFIG_IPS:
 		__gpufreq_set_ips_mode(val);
 		break;
-	case CONFIG_OCL_TIMESTAMP:
-		__gpufreq_set_ocl_timestamp();
-		break;
 	case CONFIG_FAKE_MTCMOS_CTRL:
 		__gpufreq_fake_mtcmos_control(val);
 		break;
@@ -1974,13 +1971,6 @@ static void __gpufreq_fake_mtcmos_control(unsigned int mode)
 #else
 	GPUFREQ_UNREFERENCED(mode);
 #endif /* GPUFREQ_PDCA_ENABLE */
-}
-
-static void __gpufreq_set_ocl_timestamp(void)
-{
-	/* MFG_TIMESTAMP 0x13FBF130 [0] top_tsvalueb_en = 1'b1 */
-	/* MFG_TIMESTAMP 0x13FBF130 [1] timer_sel = 1'b1 */
-	writel(GENMASK(1, 0), MFG_TIMESTAMP);
 }
 
 /* API: apply/restore Vaging to working table of STACK */
@@ -3515,6 +3505,13 @@ static void __gpufreq_acp_config(void)
 	writel((readl(NTH_APU_ACP_GALS_SLV_CTRL) | GENMASK(27, 25)), NTH_APU_ACP_GALS_SLV_CTRL);
 	writel((readl(NTH_APU_EMI1_GALS_SLV_CTRL) | GENMASK(27, 25)), NTH_APU_EMI1_GALS_SLV_CTRL);
 #endif /* GPUFREQ_ACP_ENABLE */
+}
+
+static void __gpufreq_ocl_timestamp_config(void)
+{
+	/* MFG_TIMESTAMP 0x13FBF130 [0] top_tsvalueb_en = 1'b1 */
+	/* MFG_TIMESTAMP 0x13FBF130 [1] timer_sel = 1'b1 */
+	writel(GENMASK(1, 0), MFG_TIMESTAMP);
 }
 
 /* GPM1.0: di/dt reduction by slowing down speed of frequency scaling up or down */

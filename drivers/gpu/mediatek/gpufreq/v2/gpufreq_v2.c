@@ -236,19 +236,6 @@ unsigned int gpufreq_get_segment_id(void)
 EXPORT_SYMBOL(gpufreq_get_segment_id);
 
 /***********************************************************************************
- * Function Name      : gpufreq_set_ocl_timestamp
- * Inputs             : -
- * Outputs            : -
- * Returns            : -
- * Description        : Set timestamp for clGetEventProfilingInfo
- ***********************************************************************************/
-void gpufreq_set_ocl_timestamp(void)
-{
-	gpufreq_set_mfgsys_config(CONFIG_OCL_TIMESTAMP, FEAT_ENABLE);
-}
-EXPORT_SYMBOL(gpufreq_set_ocl_timestamp);
-
-/***********************************************************************************
  * Function Name      : gpufreq_dump_infra_status
  * Inputs             : -
  * Outputs            : -
