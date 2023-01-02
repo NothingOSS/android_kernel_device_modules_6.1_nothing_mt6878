@@ -10,53 +10,6 @@
 
 #include "pinctrl-paris.h"
 
-#define MTK_PULL_PU_PD_TYPE		BIT(0)
-#define MTK_PULL_PULLSEL_TYPE		BIT(1)
-#define MTK_PULL_PUPD_R1R0_TYPE		BIT(2)
-/* MTK_PULL_RSEL_TYPE can select resistance and can be
- * turned on/off itself. But it can't be selected pull up/down
- */
-#define MTK_PULL_RSEL_TYPE		BIT(3)
-/* MTK_PULL_PU_PD_RSEL_TYPE is a type which is controlled by
- * MTK_PULL_PU_PD_TYPE and MTK_PULL_RSEL_TYPE.
- */
-#define MTK_PULL_PU_PD_RSEL_TYPE	(MTK_PULL_PU_PD_TYPE \
-					| MTK_PULL_RSEL_TYPE)
-#define MTK_PULL_TYPE_MASK	(MTK_PULL_PU_PD_TYPE |\
-				 MTK_PULL_PULLSEL_TYPE |\
-				 MTK_PULL_PUPD_R1R0_TYPE |\
-				 MTK_PULL_RSEL_TYPE)
-
-#define PIN_RSEL(_s_pin, _e_pin, _rsel_index, _up_resl, _down_rsel) {	\
-		.s_pin = _s_pin,					\
-		.e_pin = _e_pin,					\
-		.rsel_index = _rsel_index,				\
-		.up_rsel = _up_resl,					\
-		.down_rsel = _down_rsel,				\
-	}
-
-/**
- * struct mtk_pin_rsel - the structure that provides bias resistance selection.
- * @s_pin:		the start pin within the rsel range
- * @e_pin:		the end pin within the rsel range
- * @rsel_index:	the rsel bias resistance index
- * @up_rsel:	the pullup rsel bias resistance value
- * @down_rsel:	the pulldown rsel bias resistance value
- */
-struct mtk_pin_rsel {
-	u16 s_pin;
-	u16 e_pin;
-	u16 rsel_index;
-	u32 up_rsel;
-	u32 down_rsel;
-};
-
-struct mtk_eint_hw {
-	u8		port_mask;
-	u8		ports;
-	unsigned int	ap_num;
-	unsigned int	db_cnt;
-};
 
 static const struct mtk_pin_desc mtk_pins_mt8188[] = {
 

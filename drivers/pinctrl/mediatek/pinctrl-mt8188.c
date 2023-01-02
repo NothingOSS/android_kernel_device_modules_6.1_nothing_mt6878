@@ -1627,8 +1627,8 @@ static const struct mtk_pin_soc mt8188_data = {
 	.nbase_names	= ARRAY_SIZE(mt8188_pinctrl_register_base_name),
 	.bias_set_combo	= mtk_pinconf_bias_set_combo,
 	.pull_type = mt8188_pull_type,
-	/*.pin_rsel = mt8188_pin_rsel_val_range,*/
-	/*.npin_rsel = ARRAY_SIZE(mt8188_pin_rsel_val_range),*/
+	.pin_rsel = mt8188_pin_rsel_val_range,
+	.npin_rsel = ARRAY_SIZE(mt8188_pin_rsel_val_range),
 	.bias_get_combo	= mtk_pinconf_bias_get_combo,
 	.drive_set	= mtk_pinconf_drive_set_rev1,
 	.drive_get	= mtk_pinconf_drive_get_rev1,
@@ -1655,12 +1655,6 @@ static struct platform_driver mt8188_pinctrl_driver = {
 	.probe = mt8188_pinctrl_probe,
 };
 
-static int __init mt8188_pinctrl_init(void)
-{
-	return platform_driver_register(&mt8188_pinctrl_driver);
-}
-
-arch_initcall(mt8188_pinctrl_init);
-
+module_platform_driver(mt8188_pinctrl_driver);
 MODULE_LICENSE("GPL v2");
-MODULE_DESCRIPTION("MediaTek MT8188 Pinctrl Driver");
+
