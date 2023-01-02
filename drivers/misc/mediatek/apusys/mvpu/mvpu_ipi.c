@@ -136,8 +136,8 @@ static int mvpu_rpmsg_tx_probe(struct rpmsg_device *rpdev)
 {
 	struct device *dev = &rpdev->dev;
 
-	dev_info(dev, "%s: name=%s, src=%d\n", __func__,
-			rpdev->id.name, rpdev->src);
+	dev_info(dev, "%s: name=%s, src=%d\n",
+		__func__, rpdev->id.name, rpdev->src);
 
 	mvpu_tx_rpm_dev.ept = rpdev->ept;
 	mvpu_tx_rpm_dev.rpdev = rpdev;
@@ -149,8 +149,8 @@ static int mvpu_rpmsg_rx_probe(struct rpmsg_device *rpdev)
 {
 	struct device *dev = &rpdev->dev;
 
-	dev_info(dev, "%s: name=%s, src=%d\n", __func__,
-			rpdev->id.name, rpdev->src);
+	dev_info(dev, "%s: name=%s, src=%d\n",
+		 __func__, rpdev->id.name, rpdev->src);
 
 	mvpu_rx_rpm_dev.ept = rpdev->ept;
 	mvpu_rx_rpm_dev.rpdev = rpdev;
