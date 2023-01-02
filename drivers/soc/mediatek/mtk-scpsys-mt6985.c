@@ -883,8 +883,6 @@ static const struct scp_domain_data scp_domain_mt6985_spm_data[] = {
 	[MT6985_POWER_DOMAIN_VDE_VCORE0] = {
 		.name = "vde_vcore0",
 		.ctl_offs = 0xFA0,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
 				MT6985_TOP_AXI_PROT_EN_MMSYS1_VDE_VCORE0),
@@ -898,8 +896,6 @@ static const struct scp_domain_data scp_domain_mt6985_spm_data[] = {
 	[MT6985_POWER_DOMAIN_VDE_VCORE1] = {
 		.name = "vde_vcore1",
 		.ctl_offs = 0xFA4,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
 				MT6985_TOP_AXI_PROT_EN_MMSYS1_VDE_VCORE1),
