@@ -4379,16 +4379,14 @@ void mtk_cam_update_sensor(struct mtk_cam_ctx *ctx, struct v4l2_subdev *sensor)
 struct v4l2_subdev *mtk_cam_find_sensor(struct mtk_cam_ctx *ctx,
 					struct media_entity *entity)
 {
-	struct media_graph *graph;
 	struct v4l2_subdev *sensor = NULL;
 	struct mtk_cam_device *cam = ctx->cam;
-
-	graph = &ctx->pipeline.graph;
-	media_graph_walk_start(graph, entity);
+	struct media_pipeline_pad *ppad;
 
 	mutex_lock(&cam->v4l2_dev.mdev->graph_mutex);
 
-	while ((entity = media_graph_walk_next(graph))) {
+	list_for_each_entry(ppad, &ctx->pipeline.pads, list) {
+		entity = ppad->pad->entity;
 		dev_dbg(cam->dev, "linked entity: %s\n", entity->name);
 		sensor = NULL;
 

@@ -6546,10 +6546,10 @@ struct mtk_cam_ctx *mtk_cam_start_ctx(struct mtk_cam_device *cam,
 				      struct mtk_cam_video_device *node)
 {
 	struct mtk_cam_ctx *ctx = node->ctx;
-	struct media_graph *graph;
 	struct v4l2_subdev **target_sd;
 	int ret, i, is_first_ctx;
 	struct media_entity *entity = &node->vdev.entity;
+	struct media_pipeline_pad *ppad;
 
 	dev_info(cam->dev, "%s:ctx(%d): triggered by %s\n",
 		 __func__, ctx->stream_id, entity->name);
@@ -6674,11 +6674,10 @@ struct mtk_cam_ctx *mtk_cam_start_ctx(struct mtk_cam_device *cam,
 	}
 
 	/* traverse to update used subdevs & number of nodes */
-	graph = &ctx->pipeline.graph;
-	media_graph_walk_start(graph, entity);
 
 	i = 0;
-	while ((entity = media_graph_walk_next(graph))) {
+	list_for_each_entry(ppad, &ctx->pipeline.pads, list) {
+		entity = ppad->pad->entity;
 		dev_dbg(cam->dev, "linked entity %s\n", entity->name);
 
 		target_sd = NULL;
