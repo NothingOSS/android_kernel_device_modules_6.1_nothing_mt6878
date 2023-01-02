@@ -218,7 +218,7 @@ void _gate_ic_Power_on(void)
 		gate_client->pinctrl = devm_gpiod_get(gate_client->dev, "gate-power",
 				   GPIOD_OUT_HIGH);
 		if (IS_ERR(gate_client->pinctrl)) {
-			pr_info("ERROR!! Failed to get gpio: %d\n",
+			pr_info("ERROR!! Failed to get gpio: %ld\n",
 				PTR_ERR(gate_client->pinctrl));
 			return;
 		}
@@ -246,7 +246,7 @@ void _gate_ic_Power_off(void)
 		gate_client->pinctrl = devm_gpiod_get(gate_client->dev, "gate-power",
 				   GPIOD_OUT_HIGH);
 		if (IS_ERR(gate_client->pinctrl)) {
-			pr_info("ERROR!! Failed to get gpio: %d\n",
+			pr_info("ERROR!! Failed to get gpio: %ld\n",
 				PTR_ERR(gate_client->pinctrl));
 			return;
 		}
