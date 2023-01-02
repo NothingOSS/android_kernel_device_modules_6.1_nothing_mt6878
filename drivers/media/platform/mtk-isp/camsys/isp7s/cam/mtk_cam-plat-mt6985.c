@@ -88,7 +88,7 @@ static int set_meta_stats_info(int ipi_id, void *addr)
 
 static const struct plat_v4l2_data mt6985_v4l2_data = {
 	.raw_pipeline_num = 3,
-	.camsv_pipeline_num = 0,
+	.camsv_pipeline_num = 16,
 	.mraw_pipeline_num = 0,
 
 	.meta_major = MTK_CAM_META_VERSION_MAJOR,
