@@ -94,7 +94,7 @@ static void cmdq_test_mbox_cb_destroy(struct cmdq_cb_data data)
 		cmdq_err("pkt:%p err:%d", pkt, data.err);
 	cmdq_dump_pkt(pkt, 0, true);
 	cmdq_pkt_destroy(pkt);
-	cmdq_msg("%s: pkt:%#lx", __func__, pkt);
+	cmdq_msg("%s: pkt:%#lx", __func__, (unsigned long)pkt);
 }
 
 static void cmdq_test_mbox_cb_dump(struct cmdq_cb_data data)
@@ -1058,7 +1058,7 @@ static void cmdq_test_mbox_prebuilt_instr_ext_table(struct cmdq_test *test,
 	u64 *inst[6];
 	s32 mark[6], i;
 
-	cmdq_msg("%s: mod:%hu event:%hu pa0:%#lx pa1:%#lx pas:%#lx",
+	cmdq_msg("%s: mod:%hu event:%hu pa0:%#x pa1:%#x pas:%#x",
 		__func__, r.mod, event, pa0, pa1, pas);
 
 	pkt = cmdq_pkt_create(test->clt);

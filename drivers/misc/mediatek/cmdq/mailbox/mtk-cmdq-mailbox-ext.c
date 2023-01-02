@@ -164,7 +164,7 @@ int cmdq_hw_trace_set(const char *val, const struct kernel_param *kp)
 
 	ret = kstrtouint(val, 0, (u32 *)(void *)&bit);
 	cmdq_msg("%s: bit:%#x enable:%d dump:%d hwid:%#x ret:%d",
-		__func__, bit, bit.enable, bit.dump, bit.hwid, ret);
+		__func__, *((unsigned int *)&bit), bit.enable, bit.dump, bit.hwid, ret);
 
 	if (ret)
 		return ret;
