@@ -8411,7 +8411,7 @@
 //		<&dispsys_config_clk CLK_DISPSYS_CONFIG_DSI_CLK>,
 //		<&mipi_tx_config0>;
 		clock-names = "engine", "digital", "hs";
-//		phys = <&mipi_tx_config0>;
+		phys = <&mipi_tx_config0>;
 		phy-names = "dphy";
 	};
 
