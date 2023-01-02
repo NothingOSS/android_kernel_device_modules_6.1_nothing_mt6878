@@ -1161,7 +1161,8 @@ static void __apu_aoc_init(void)
 	pr_info("AOC init %s %d ++\n", __func__, __LINE__);
 
 	/* 1. Manually disable Buck els enable @SOC, vapu_ext_buck_iso */
-	//apu_clearl((0x1 << 4), papw->regs[sys_spm] + 0xF30);
+	if (papw->env == AO)
+		apu_clearl((0x1 << 4), papw->regs[sys_spm] + 0xF80);
 
 	/*
 	 * 2. Vsram AO clock enable
