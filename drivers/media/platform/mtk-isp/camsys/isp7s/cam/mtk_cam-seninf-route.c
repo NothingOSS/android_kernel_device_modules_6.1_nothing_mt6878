@@ -659,7 +659,7 @@ int mtk_cam_seninf_is_vc_enabled(struct seninf_ctx *ctx, struct seninf_vc *vc)
 	if (vc->out_pad != PAD_SRC_RAW0 &&
 		vc->out_pad != PAD_SRC_RAW1 &&
 		vc->out_pad != PAD_SRC_RAW2) {
-		if (media_entity_remote_pad(&ctx->pads[vc->out_pad]))
+		if (media_pad_remote_pad_first(&ctx->pads[vc->out_pad]))
 			return 1;
 		else
 			return 0;
@@ -671,7 +671,7 @@ int mtk_cam_seninf_is_vc_enabled(struct seninf_ctx *ctx, struct seninf_vc *vc)
 		if ((out_pad == PAD_SRC_RAW0 ||
 			 out_pad == PAD_SRC_RAW1 ||
 			 out_pad == PAD_SRC_RAW2) &&
-			media_entity_remote_pad(&ctx->pads[out_pad]))
+			media_pad_remote_pad_first(&ctx->pads[out_pad]))
 			return 1;
 	}
 
@@ -692,7 +692,7 @@ int mtk_cam_seninf_is_di_enabled(struct seninf_ctx *ctx, u8 ch, u8 dt)
 			if (ctx->is_test_streamon)
 				return 1;
 #endif
-			if (media_entity_remote_pad(&ctx->pads[vc->out_pad]))
+			if (media_pad_remote_pad_first(&ctx->pads[vc->out_pad]))
 				return 1;
 			return 0;
 		}

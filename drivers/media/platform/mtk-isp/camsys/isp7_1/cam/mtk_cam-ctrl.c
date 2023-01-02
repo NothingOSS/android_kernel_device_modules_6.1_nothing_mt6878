@@ -6037,12 +6037,12 @@ void mtk_cam_extisp_handle_sv_tstamp(struct mtk_cam_ctx *ctx,
 	/* but hw incompl. case will miss it , so check here */
 	if (stream_data->timestamp == 0 &&
 		stream_data->sv_frame_params.sensor_meta_tstamp[0] > stream_data->timestamp) {
-		dev_info(ctx->cam->dev, "[%s] fix ts:ctx:%d req:%d(ns) s_data:%lld < meta:%lld\n",
+		dev_info(ctx->cam->dev, "[%s] fix ts:ctx:%d req:%d(ns) s_data:%lld \n",
 		__func__, ctx->stream_id, stream_data->timestamp,
 		stream_data->sv_frame_params.sensor_meta_tstamp[0]);
 		stream_data->timestamp = stream_data->sv_frame_params.sensor_meta_tstamp[0];
 	}
-	dev_dbg(ctx->cam->dev, "[%s] req:%d(ns)0/1:%lld/%lld,0/1/2:%lld/%lld/%lld\n",
+	dev_dbg(ctx->cam->dev, "[%s] %d req:%d(ns)0/1:%lld/%lld,0/1/2:%lld/%lld/%lld\n",
 		__func__, ctx->stream_id,
 		stream_data->frame_seq_no,
 		stream_data->sv_frame_params.sensor_img_tstamp[0],
