@@ -311,7 +311,7 @@ int tmem_ffa_page_alloc(enum MTEE_MCHUNKS_ID mchunk_id,
 	tmem_do_gettimeofday(&ffa_start_time);
 	ret = ffa_ops->memory_lend(sp_partition_dev, &ffa_args);
 	if (ret) {
-		pr_info("page-based, Failed to FF-A send the memory, ret=%d\n", ret);
+		pr_info("page-based, failed to FF-A send the memory, ret=%d\n", ret);
 		mutex_unlock(&tmem_block_mutex);
 		return TMEM_KPOOL_FFA_PAGE_FAILED;
 	}
@@ -340,7 +340,8 @@ int tmem_ffa_page_free(u64 handle)
 	tmem_do_gettimeofday(&ffa_start_time);
 	ret = ffa_ops->memory_reclaim(handle, PAGED_BASED_FFA_FLAGS);
 	if (ret) {
-		pr_info("page-based, Failed to FF-A reclaim the memory, ret=%d\n", ret);
+		pr_info("page-based, handle=0x%llx failed to FF-A reclaim, ret=%d\n",
+			handle, ret);
 		mutex_unlock(&tmem_block_mutex);
 		return TMEM_KPOOL_FFA_PAGE_FAILED;
 	}
@@ -409,7 +410,7 @@ int tmem_ffa_region_alloc(enum MTEE_MCHUNKS_ID mchunk_id,
 	tmem_do_gettimeofday(&ffa_start_time);
 	ret = ffa_ops->memory_lend(sp_partition_dev, &ffa_args);
 	if (ret) {
-		pr_info("region-based, Failed to FF-A send the memory, ret=%d\n", ret);
+		pr_info("region-based, failed to FF-A send the memory, ret=%d\n", ret);
 		goto out1;
 	}
 	tmem_do_gettimeofday(&ffa_end_time);
@@ -465,7 +466,8 @@ int tmem_ffa_region_free(enum MTEE_MCHUNKS_ID mchunk_id, u64 handle)
 	tmem_do_gettimeofday(&ffa_start_time);
 	ret = ffa_ops->memory_reclaim(handle, 0);
 	if (ret) {
-		pr_info("region-based, Failed to FF-A reclaim the memory, ret=%d\n", ret);
+		pr_info("region-based, handle=0x%llx failed to FF-A reclaim, ret=%d\n",
+			handle, ret);
 		mutex_unlock(&tmem_block_mutex);
 		return TMEM_KPOOL_FFA_PAGE_FAILED;
 	}
