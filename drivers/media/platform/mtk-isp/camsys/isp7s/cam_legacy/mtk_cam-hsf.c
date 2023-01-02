@@ -62,7 +62,7 @@ struct dma_buf *mtk_cam_dmabuf_alloc(struct mtk_cam_ctx *ctx, unsigned int size)
 		dev_info(cam->dev, "region-based hsf buffer allocation fail\n");
 		return NULL;
 	}
-	dev_info(cam->dev, "%s done dbuf = 0x%x\n", __func__, dbuf);
+	dev_info(cam->dev, "%s done dbuf = 0x%lx\n", __func__, (unsigned long)dbuf);
 	return dbuf;
 }
 
@@ -140,7 +140,7 @@ static unsigned int get_ccu_device(struct mtk_cam_hsf_ctrl *handle_inst)
 	rproc_np = of_find_node_by_phandle(handle);
 	if (rproc_np) {
 		handle_inst->ccu_pdev = of_find_device_by_node(rproc_np);
-		pr_info("handle_inst.ccu_pdev = 0x%x\n", handle_inst->ccu_pdev);
+		pr_info("handle_inst.ccu_pdev = 0x%lx\n", (unsigned long)handle_inst->ccu_pdev);
 		if (!handle_inst->ccu_pdev) {
 			pr_info("error: failed to find ccu rproc pdev\n");
 			handle_inst->ccu_pdev = NULL;
@@ -281,7 +281,7 @@ void ccu_hsf_config(struct mtk_cam_ctx *ctx, unsigned int En)
 	pData.enable_raw = share_buf->enable_raw;
 	pData.Hsf_en = En;
 
-	pr_info("tg = %d  chunk_iova = 0x%lx  pData.Hsf_en = 0x%x\n",
+	pr_info("tg = %d  chunk_iova = 0x%llx  pData.Hsf_en = 0x%x\n",
 		pData.tg_idx, pData.chunk_iova, pData.Hsf_en);
 	ret = mtk_ccu_rproc_ipc_send(
 		hsf_config->ccu_pdev,
@@ -356,10 +356,10 @@ void ccu_apply_cq(struct mtk_raw_device *dev, dma_addr_t cq_addr,
 	pData.sub_cq_offset = sub_cq_offset;
 	pData.ipc_status = 0;
 
-	pr_info("CCU trigger CQ. tg:%d cq_src:0x%lx cq_dst:0x%lx cq_addr = 0x%lx init_value = %d\n",
+	pr_info("CCU trigger CQ. tg:%d cq_src:0x%llx cq_dst:0x%llx cq_addr = 0x%llx init_value = %d\n",
 		pData.tg, pData.src_addr, pData.dst_addr, cq_addr, pData.init_value);
 #ifdef USING_CCU
-	pr_info("ccu_pdev = 0x%x\n", hsf_config->ccu_pdev);
+	pr_info("ccu_pdev = 0x%lx\n", (unsigned long)hsf_config->ccu_pdev);
 	ret = mtk_ccu_rproc_ipc_send(
 		hsf_config->ccu_pdev,
 		MTK_CCU_FEATURE_CAMSYS,
@@ -375,10 +375,10 @@ void ccu_apply_cq(struct mtk_raw_device *dev, dma_addr_t cq_addr,
 #endif
 
 	if (ret != 0)
-		pr_info("error: CCU trigger CQ failure. tg:%d cq_src:0x%x cq_dst:0x%x cq_size:%d\n",
+		pr_info("error: CCU trigger CQ failure. tg:%d cq_src:0x%llx cq_dst:0x%llx cq_size:%d\n",
 		pData.tg, pData.src_addr, pData.dst_addr, pData.cq_size);
 	else
-		pr_info("after CCU trigger CQ. tg:%d cq_src:0x%x cq_dst:0x%x initial_value = %d\n",
+		pr_info("after CCU trigger CQ. tg:%d cq_src:0x%llx cq_dst:0x%llx initial_value = %d\n",
 		pData.tg, pData.src_addr, pData.dst_addr, pData.init_value);
 	if (pData.ipc_status != 0)
 		pr_info("error:CCU trrigger CQ Sensor initial fail 0x%x\n",
@@ -528,7 +528,7 @@ int mtk_cam_hsf_config(struct mtk_cam_ctx *ctx, unsigned int raw_id)
 		return -1;
 	}
 	share_buf->cq_dst_iova = dma_map_cq->dma_addr;
-	dev_info(cam->dev, "dma_map_cq->dma_addr:0x%lx dma_map_cq->hsf_handle:0x%lx\n",
+	dev_info(cam->dev, "dma_map_cq->dma_addr:0x%llx dma_map_cq->hsf_handle:0x%x\n",
 		dma_map_cq->dma_addr, dma_map_cq->hsf_handle);
 	//TEST: secure map to ccu devcie.
 	dma_map_chk->dbuf = mtk_cam_dmabuf_alloc(ctx, CQ_BUF_SIZE);
@@ -543,7 +543,7 @@ int mtk_cam_hsf_config(struct mtk_cam_ctx *ctx, unsigned int raw_id)
 		return -1;
 	}
 
-	dev_info(cam->dev, "dma_map_chk->dma_addr:0x%lx dma_map_chk->hsf_handle:0x%lx\n",
+	dev_info(cam->dev, "dma_map_chk->dma_addr:0x%llx dma_map_chk->hsf_handle:0x%x\n",
 		dma_map_chk->dma_addr, dma_map_chk->hsf_handle);
 	share_buf->chunk_hsfhandle = dma_map_chk->hsf_handle;
 	share_buf->chunk_iova =  dma_map_chk->dma_addr;

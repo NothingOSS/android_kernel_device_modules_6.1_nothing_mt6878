@@ -1593,7 +1593,7 @@ int mtk_cam_sv_enquehwbuf(
 		CAMSVCENTRAL_FBC0_TAG_SHIFT * tag_idx,
 		CAMSVCENTRAL_FBC0_TAG1, RCNT_INC_TAG1, 1);
 
-	dev_info(dev->dev, "[%s] iova:0x%x, seq:%d\n", __func__, ba, seq_no);
+	dev_info(dev->dev, "[%s] iova:0x%llx, seq:%d\n", __func__, ba, seq_no);
 
 	return ret;
 }

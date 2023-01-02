@@ -772,7 +772,7 @@ bool finish_img_buf(struct mtk_cam_request_stream_data *req_stream_data)
 			mtk_cam_img_working_buf_put(buf_entry);
 			ctx->processing_img_buffer_list.cnt--;
 			result = true;
-			dev_dbg(ctx->cam->dev, "[%s] iova:0x%x\n",
+			dev_dbg(ctx->cam->dev, "[%s] iova:0x%llx\n",
 				__func__, buf_entry->img_buffer.iova);
 		}
 	}
@@ -841,7 +841,7 @@ static int update_scen_param(struct mtk_cam_ctx *ctx,
 		config_param->w_cac_table.iova = ctx->generic_buf.iova;
 		config_param->w_cac_table.size = ctx->generic_buf.size;
 
-		dev_dbg(dev, "generic buf: iova(0x%8x) size(%d)\n",
+		dev_dbg(dev, "generic buf: iova(0x%8llx) size(%d)\n",
 				  config_param->w_cac_table.iova,
 				  config_param->w_cac_table.size);
 
@@ -990,7 +990,7 @@ int mtk_cam_get_timestamp(struct mtk_cam_ctx *ctx,
 		((u64) (*(fho_va + i*16)) + ((u64)(*(fho_va + i*16 + 1)) << 32))
 		/1000;
 		dev_dbg(ctx->cam->dev,
-			"timestamp TS:momo %ld us boot %ld us, LSB:%d MSB:%d\n",
+			"timestamp TS:momo %lld us boot %lld us, LSB:%d MSB:%d\n",
 			*(pTimestamp + i*2), *(pTimestamp + i*2 + 1),
 			*(fho_va + i*16), *(fho_va + i*16 + 1));
 	}
@@ -1108,7 +1108,7 @@ STOP_SCAN:
 				__func__, req->req.debug_str, ctx->stream_id, pipe_id,
 				dequeued_frame_seq_no, s_data->frame_seq_no, req->done_status,
 				req->pipe_used, ctx->streaming_pipe, ctx->cam->streaming_pipe,
-				del_job, vaddr,
+				del_job, (unsigned long long)vaddr,
 				req->raw_pipe_data[pipe_id].res.sensor_res.width,
 				req->raw_pipe_data[pipe_id].res.sensor_res.height,
 				ae_data.OBC_R1_Sum[0], ae_data.OBC_R1_Sum[1],
@@ -1137,7 +1137,7 @@ STOP_SCAN:
 				__func__, req->req.debug_str, ctx->stream_id, pipe_id,
 				dequeued_frame_seq_no, s_data->frame_seq_no, req->done_status,
 				req->pipe_used, ctx->streaming_pipe, ctx->cam->streaming_pipe,
-				del_job, vaddr);
+				del_job, (unsigned long long)vaddr);
 
 		spin_unlock(&req->done_status_lock);
 
@@ -1617,7 +1617,7 @@ static void config_img_in_fmt_mstream(struct mtk_cam_device *cam,
 			in_fmt->fmt.stride[0] =
 				cfg_fmt->fmt.pix_mp.plane_fmt[0].bytesperline;
 			dev_dbg(cam->dev,
-				"[m-stream] ctx: %d dma_port:%d size=%dx%d, stride:%d, fmt:0x%x (0x%x/0x%x)\n",
+				"[m-stream] ctx: %d dma_port:%d size=%dx%d, stride:%d, fmt:0x%x (0x%llx/0x%llx)\n",
 				ctx->stream_id, input_node, in_fmt->fmt.s.w,
 				in_fmt->fmt.s.h, in_fmt->fmt.stride[0],
 				in_fmt->fmt.format, in_fmt->buf[0].iova,
@@ -1636,7 +1636,7 @@ static void config_img_in_fmt_mstream(struct mtk_cam_device *cam,
 		in_fmt->fmt.stride[0] =
 			cfg_fmt->fmt.pix_mp.plane_fmt[0].bytesperline;
 		dev_dbg(cam->dev,
-			"[m-stream] ctx: %d dma_port:%d size=%dx%d, stride:%d, fmt:0x%x (0x%x/0x%x)\n",
+			"[m-stream] ctx: %d dma_port:%d size=%dx%d, stride:%d, fmt:0x%x (0x%llx/0x%llx)\n",
 			ctx->stream_id, input_node, in_fmt->fmt.s.w,
 			in_fmt->fmt.s.h, in_fmt->fmt.stride[0],
 			in_fmt->fmt.format, in_fmt->buf[0].iova,
@@ -1815,7 +1815,7 @@ static void config_img_in_fmt_stagger(struct mtk_cam_device *cam,
 		}
 
 		dev_dbg(cam->dev,
-		"[stagger-%d] ctx: %d dma_port:%d size=%dx%d, stride:%d, fmt:0x%x (iova:0x%x)\n",
+		"[stagger-%d] ctx: %d dma_port:%d size=%dx%d, stride:%d, fmt:0x%x (iova:0x%llx)\n",
 		rawi_idx, s_data->ctx->stream_id, input_node, in_fmt->fmt.s.w,
 		in_fmt->fmt.s.h, in_fmt->fmt.stride[0], in_fmt->fmt.format,
 		in_fmt->buf[0].iova);
@@ -1863,7 +1863,7 @@ config_img_in_fmt_time_shared(struct mtk_cam_device *cam,
 	in_fmt->buf[0].iova = buf_entry->img_buffer.iova;
 	in_fmt->buf[0].size = cfg_fmt->fmt.pix_mp.plane_fmt[0].sizeimage;
 	dev_info(cam->dev,
-	"[%s:%d] ctx:%d dma_port:%d size=%dx%d %d, stride:%d, fmt:0x%x (iova:0x%x)\n",
+	"[%s:%d] ctx:%d dma_port:%d size=%dx%d %d, stride:%d, fmt:0x%x (iova:0x%llx)\n",
 	__func__, req->frame_seq_no, ctx->stream_id, input_node, in_fmt->fmt.s.w,
 	in_fmt->fmt.s.h, in_fmt->buf[0].size, in_fmt->fmt.stride[0],
 	in_fmt->fmt.format, in_fmt->buf[0].iova);
@@ -2203,7 +2203,7 @@ static void check_stagger_buffer(struct mtk_cam_device *cam,
 			}
 		}
 		dev_dbg(cam->dev,
-			"[%s:%d] ctx:%d dma_port:%d size=%dx%d, stride:%d, fmt:0x%x (in/out:0x%x/0x%x)\n",
+			"[%s:%d] ctx:%d dma_port:%d size=%dx%d, stride:%d, fmt:0x%x (in/out:0x%llx/0x%llx)\n",
 			__func__, s_data->frame_seq_no, ctx->stream_id,
 			input_node, in_fmt->fmt.s.w, in_fmt->fmt.s.h,
 			in_fmt->fmt.stride[0], in_fmt->fmt.format,
@@ -2292,7 +2292,7 @@ static void check_timeshared_buffer(struct mtk_cam_device *cam,
 		in_fmt->buf[0].iova = buf_entry->img_buffer.iova;
 	}
 	dev_dbg(cam->dev,
-		"[%s:%d] ctx:%d dma_port:%d size=%dx%d, stride:%d, fmt:0x%x (iova:0x%x)\n",
+		"[%s:%d] ctx:%d dma_port:%d size=%dx%d, stride:%d, fmt:0x%x (iova:0x%llx)\n",
 		__func__, req->frame_seq_no, ctx->stream_id, input_node,
 		in_fmt->fmt.s.w, in_fmt->fmt.s.h, in_fmt->fmt.stride[0],
 		in_fmt->fmt.format, in_fmt->buf[0].iova);
@@ -2507,7 +2507,7 @@ static void check_mstream_buffer(struct mtk_cam_device *cam,
 			MTKCAM_IPI_HW_PATH_MSTREAM;
 
 			dev_dbg(cam->dev,
-				"%s: mstream (m2m %d) ne_se ne imgo:0x%x se rawi:0x%x\n",
+				"%s: mstream (m2m %d) ne_se ne imgo:0x%llx se rawi:0x%llx\n",
 				__func__, is_m2m, out_fmt->buf[0][0].iova,
 				in_fmt->buf[0].iova);
 		} else {
@@ -2517,7 +2517,7 @@ static void check_mstream_buffer(struct mtk_cam_device *cam,
 			MTKCAM_IPI_HW_PATH_MSTREAM;
 
 			dev_dbg(cam->dev,
-				"%s: mstream (m2m %d) se_ne se imgo:0x%x ne rawi:0x%x\n",
+				"%s: mstream (m2m %d) se_ne se imgo:0x%llx ne rawi:0x%llx\n",
 				__func__, is_m2m, out_fmt->buf[0][0].iova,
 				in_fmt->buf[0].iova);
 		}
@@ -3111,7 +3111,7 @@ int mtk_cam_fill_img_buf(struct mtkcam_ipi_img_output *img_out,
 							   / 2;
 				img_out->buf[0][0].size += sizeof(struct UfbcBufferHeader);
 
-				pr_debug("plane:%d stride:%d plane_size:%d addr:0x%x\n",
+				pr_debug("plane:%d stride:%d plane_size:%d addr:0x%llx\n",
 					0, img_out->fmt.stride[0], img_out->buf[0][0].size,
 					img_out->buf[0][0].iova);
 			} else if (is_raw_ufo(pixelformat)) {
@@ -3123,7 +3123,7 @@ int mtk_cam_fill_img_buf(struct mtkcam_ipi_img_output *img_out,
 				img_out->buf[0][0].size += ALIGN((aligned_width / 64), 8) * height;
 				img_out->buf[0][0].size += sizeof(struct UfbcBufferHeader);
 
-				pr_debug("plane:%d stride:%d plane_size:%d addr:0x%x\n",
+				pr_debug("plane:%d stride:%d plane_size:%d addr:0x%llx\n",
 					0, img_out->fmt.stride[0], img_out->buf[0][0].size,
 					img_out->buf[0][0].iova);
 			} else if (is_4_plane_rgb(pixelformat)) {
@@ -3169,7 +3169,7 @@ int mtk_cam_fill_img_buf(struct mtkcam_ipi_img_output *img_out,
 					img_out->buf[0][i].iova = daddr +
 						img_out->buf[0][i].size
 						* (dma_addr_t)rgb_4p_size[i];
-					pr_debug("plane:%d stride:%d plane_size:%d addr:0x%x\n",
+					pr_debug("plane:%d stride:%d plane_size:%d addr:0x%llx\n",
 						i, img_out->fmt.stride[i], img_out->buf[0][i].size,
 						img_out->buf[0][i].iova);
 				}
@@ -3184,7 +3184,7 @@ int mtk_cam_fill_img_buf(struct mtkcam_ipi_img_output *img_out,
 					img_out->buf[0][i].size = img_out->fmt.stride[i]
 						* DIV_ROUND_UP(height, vdiv);
 					addr_offset += img_out->buf[0][i].size;
-					pr_debug("plane:%d stride:%d plane_size:%d addr:0x%x\n",
+					pr_debug("plane:%d stride:%d plane_size:%d addr:0x%llx\n",
 						i, img_out->fmt.stride[i], img_out->buf[0][i].size,
 						img_out->buf[0][i].iova);
 				}
@@ -3211,7 +3211,7 @@ int mtk_cam_fill_img_buf(struct mtkcam_ipi_img_output *img_out,
 				img_out->buf[0][i].size = img_out->fmt.stride[i]
 					* DIV_ROUND_UP(height, vdiv);
 				addr_offset += img_out->buf[0][i].size;
-				pr_debug("stride:%d plane_size:%d addr:0x%x\n",
+				pr_debug("stride:%d plane_size:%d addr:0x%llx\n",
 					img_out->fmt.stride[i], img_out->buf[0][i].size,
 					img_out->buf[0][i].iova);
 			}
@@ -3289,7 +3289,7 @@ void mtk_cam_mstream_buf_update(struct mtk_cam_request *req,
 					frame_param->img_outs[desc_id].buf[0][0].size =
 						f->fmt.pix_mp.plane_fmt[0].sizeimage;
 
-					pr_debug("mstream ne_se m2m ne imgo:0x%x size:%d se imgo:0x%x size:%d\n",
+					pr_debug("mstream ne_se m2m ne imgo:0x%llx size:%d se imgo:0x%llx size:%d\n",
 					mstream_frame_param->img_outs[desc_id].buf[0][0].iova,
 					mstream_frame_param->img_outs[desc_id].buf[0][0].size,
 					frame_param->img_outs[desc_id].buf[0][0].iova,
@@ -3308,7 +3308,7 @@ void mtk_cam_mstream_buf_update(struct mtk_cam_request *req,
 						MTKCAM_IPI_RAW_RAWI_2].buf[0].size =
 						f->fmt.pix_mp.plane_fmt[i].sizeimage;
 
-					pr_debug("mstream ne_se m2m se rawi2:0x%x size:%d\n",
+					pr_debug("mstream ne_se m2m se rawi2:0x%llx size:%d\n",
 						frame_param->img_ins[in_node -
 						MTKCAM_IPI_RAW_RAWI_2].
 						buf[0].iova, frame_param->img_ins[in_node -
@@ -3324,7 +3324,7 @@ void mtk_cam_mstream_buf_update(struct mtk_cam_request *req,
 						MTKCAM_IPI_RAW_RAWI_2].buf[0].size =
 						f->fmt.pix_mp.plane_fmt[0].sizeimage;
 
-					pr_debug("mstream ne_se m2m ne rawi2:0x%x size:%d\n",
+					pr_debug("mstream ne_se m2m ne rawi2:0x%llx size:%d\n",
 						mstream_frame_param->img_ins[
 						in_node -
 						MTKCAM_IPI_RAW_RAWI_2].buf[0].iova,
@@ -3345,7 +3345,7 @@ void mtk_cam_mstream_buf_update(struct mtk_cam_request *req,
 						MTKCAM_IPI_RAW_RAWI_2].buf[0].size =
 						f->fmt.pix_mp.plane_fmt[i].sizeimage;
 
-					pr_debug("mstream ne_se m2m se rawi6:0x%x size:%d\n",
+					pr_debug("mstream ne_se m2m se rawi6:0x%llx size:%d\n",
 						frame_param->img_ins[in_node -
 						MTKCAM_IPI_RAW_RAWI_2].
 						buf[0].iova, frame_param->img_ins[in_node -
@@ -3372,7 +3372,7 @@ void mtk_cam_mstream_buf_update(struct mtk_cam_request *req,
 					frame_param->img_outs[desc_id].buf[0][0].size =
 						f->fmt.pix_mp.plane_fmt[i].sizeimage;
 
-					pr_debug("mstream se_ne m2m se imgo:0x%x size:%d ne imgo:0x%x size:%d\n",
+					pr_debug("mstream se_ne m2m se imgo:0x%llx size:%d ne imgo:0x%llx size:%d\n",
 					mstream_frame_param->img_outs[desc_id].buf[0][0].iova,
 					mstream_frame_param->img_outs[desc_id].buf[0][0].size,
 					frame_param->img_outs[desc_id].buf[0][0].iova,
@@ -3391,7 +3391,7 @@ void mtk_cam_mstream_buf_update(struct mtk_cam_request *req,
 						MTKCAM_IPI_RAW_RAWI_2].buf[0].size =
 						f->fmt.pix_mp.plane_fmt[i].sizeimage;
 
-					pr_debug("mstream se_ne m2m ne rawi2:0x%x size:%d\n",
+					pr_debug("mstream se_ne m2m ne rawi2:0x%llx size:%d\n",
 						frame_param->img_ins[in_node -
 						MTKCAM_IPI_RAW_RAWI_2].buf[0].iova,
 						frame_param->img_ins[in_node -
@@ -3407,7 +3407,7 @@ void mtk_cam_mstream_buf_update(struct mtk_cam_request *req,
 						MTKCAM_IPI_RAW_RAWI_2].buf[0].size =
 						f->fmt.pix_mp.plane_fmt[i].sizeimage;
 
-					pr_debug("mstream se_ne m2m se rawi2:0x%x size:%d\n",
+					pr_debug("mstream se_ne m2m se rawi2:0x%llx size:%d\n",
 						mstream_frame_param->img_ins[
 						in_node - MTKCAM_IPI_RAW_RAWI_2].buf[0].iova,
 						mstream_frame_param->img_ins[in_node -
@@ -3426,7 +3426,7 @@ void mtk_cam_mstream_buf_update(struct mtk_cam_request *req,
 						MTKCAM_IPI_RAW_RAWI_2].buf[0].size =
 						f->fmt.pix_mp.plane_fmt[i].sizeimage;
 
-					pr_debug("mstream se_ne m2m ne rawi6:0x%x size:%d\n",
+					pr_debug("mstream se_ne m2m ne rawi6:0x%llx size:%d\n",
 						frame_param->img_ins[in_node -
 						MTKCAM_IPI_RAW_RAWI_2].buf[0].iova,
 						frame_param->img_ins[in_node -
@@ -3452,7 +3452,7 @@ void mtk_cam_mstream_buf_update(struct mtk_cam_request *req,
 				mstream_frame_param->img_outs[desc_id].buf[0][0].size =
 					f->fmt.pix_mp.plane_fmt[i].sizeimage;
 
-				pr_debug("mstream ne_se ne imgo:0x%x size:%d\n",
+				pr_debug("mstream ne_se ne imgo:0x%llx size:%d\n",
 				mstream_frame_param->img_outs[desc_id].buf[0][0].iova,
 				mstream_frame_param->img_outs[desc_id].buf[0][0].size);
 			} else if (i == 1) { // then SE
@@ -3469,7 +3469,7 @@ void mtk_cam_mstream_buf_update(struct mtk_cam_request *req,
 					buf->daddr + f->fmt.pix_mp.plane_fmt[i].sizeimage;
 				frame_param->img_outs[desc_id].buf[0][0].size =
 					f->fmt.pix_mp.plane_fmt[i].sizeimage;
-				pr_debug("mstream ne_se se rawi:0x%x size:%d, imgo:0x%x size:%d\n",
+				pr_debug("mstream ne_se se rawi:0x%llx size:%d, imgo:0x%llx size:%d\n",
 					frame_param->img_ins[in_node -
 					MTKCAM_IPI_RAW_RAWI_2].buf[0].iova,
 					frame_param->img_ins[in_node -
@@ -3483,7 +3483,7 @@ void mtk_cam_mstream_buf_update(struct mtk_cam_request *req,
 					buf->daddr + f->fmt.pix_mp.plane_fmt[i].sizeimage;
 				mstream_frame_param->img_outs[desc_id].buf[0][0].size =
 					f->fmt.pix_mp.plane_fmt[i].sizeimage;
-				pr_debug("mstream se_ne se imgo:0x%x size:%d\n",
+				pr_debug("mstream se_ne se imgo:0x%llx size:%d\n",
 				mstream_frame_param->img_outs[desc_id].buf[0][0].iova,
 				mstream_frame_param->img_outs[desc_id].buf[0][0].size);
 			} else if (i == 1) { // then NE
@@ -3500,7 +3500,7 @@ void mtk_cam_mstream_buf_update(struct mtk_cam_request *req,
 					buf->daddr;
 				frame_param->img_outs[desc_id].buf[0][0].size =
 					f->fmt.pix_mp.plane_fmt[i].sizeimage;
-				pr_debug("mstream se_ne ne rawi:0x%x size:%d, imgo:0x%x size:%d\n",
+				pr_debug("mstream se_ne ne rawi:0x%llx size:%d, imgo:0x%llx size:%d\n",
 					frame_param->img_ins[in_node -
 					MTKCAM_IPI_RAW_RAWI_2].buf[0].iova,
 					frame_param->img_ins[in_node -
@@ -3807,7 +3807,7 @@ static int mtk_cam_config_raw_img_out_imgo(struct mtk_cam_request_stream_data *s
 				img_out_w->buf[0][0].iova);
 
 		dev_dbg(cam->dev,
-			 "%s:imgo iova 0x%x imgo_w iova 0x%x size %d\n",
+			 "%s:imgo iova 0x%llx imgo_w iova 0x%llx size %d\n",
 			 __func__, img_out->buf[0][0].iova, img_out_w->buf[0][0].iova,
 			 cfg_fmt->fmt.pix_mp.plane_fmt[0].sizeimage);
 	}
@@ -4247,7 +4247,7 @@ mtk_cam_config_raw_img_in_ipui(struct mtk_cam_request_stream_data *s_data,
 					"%s: allocate slb fail\n", __func__);
 			} else {
 				dev_info(cam->dev,
-					"%s: slb buffer base(0x%x), size(%ld)",
+					"%s: slb buffer base(0x%lx), size(%ld)",
 					__func__, (uintptr_t)slb.paddr, slb.size);
 				ctx->slb_addr = slb.paddr;
 				ctx->slb_size = slb.size;
@@ -5788,7 +5788,7 @@ void mstream_seamless_buf_update(struct mtk_cam_ctx *ctx,
 		// NE as normal 1 exposure flow, get iova from frame_param
 		mstream_frame_param->img_outs[desc_id].buf[0][0].iova =
 				frame_param->img_outs[desc_id].buf[0][0].iova;
-		pr_debug("%s mstream ne_se ne imgo:0x%x\n",
+		pr_debug("%s mstream ne_se ne imgo:0x%llx\n",
 			__func__,
 			mstream_frame_param->img_outs[desc_id].buf[0][0].iova);
 
@@ -5802,7 +5802,7 @@ void mstream_seamless_buf_update(struct mtk_cam_ctx *ctx,
 			main_stream_size;
 		frame_param->img_outs[desc_id].buf[0][0].size =
 			main_stream_size;
-		pr_debug("%s mstream ne_se se rawi:0x%x imgo:0x%x size:%d\n",
+		pr_debug("%s mstream ne_se se rawi:0x%llx imgo:0x%llx size:%d\n",
 			__func__,
 			frame_param->img_ins[in_node - MTKCAM_IPI_RAW_RAWI_2].buf[0].iova,
 			frame_param->img_outs[desc_id].buf[0][0].iova,
@@ -5815,7 +5815,7 @@ void mstream_seamless_buf_update(struct mtk_cam_ctx *ctx,
 			main_stream_size;
 		mstream_frame_param->img_outs[desc_id].buf[0][0].size =
 			main_stream_size;
-		pr_debug("%s mstream se_ne se imgo:0x%x size:%d\n",
+		pr_debug("%s mstream se_ne se imgo:0x%llx size:%d\n",
 			__func__,
 			mstream_frame_param->img_outs[desc_id].buf[0][0].iova,
 			mstream_frame_param->img_outs[desc_id].buf[0][0].size);
@@ -5827,7 +5827,7 @@ void mstream_seamless_buf_update(struct mtk_cam_ctx *ctx,
 			.size = main_stream_size;
 		// out = NE out, already configured in normal single exposure
 
-		pr_debug("%s mstream se_ne ne rawi:0x%x imgo:0x%x size:%d\n",
+		pr_debug("%s mstream se_ne ne rawi:0x%llx imgo:0x%llx size:%d\n",
 			__func__,
 			frame_param->img_ins[in_node - MTKCAM_IPI_RAW_RAWI_2].buf[0].iova,
 			frame_param->img_outs[desc_id].buf[0][0].iova,
@@ -5855,7 +5855,7 @@ void mstream_seamless_buf_update(struct mtk_cam_ctx *ctx,
 		frame_param->img_ins[in_node - MTKCAM_IPI_RAW_RAWI_2].buf[0]
 			.size = 0;
 
-		pr_debug("%s normal imgo:0x%x\n", __func__,
+		pr_debug("%s normal imgo:0x%llx\n", __func__,
 			frame_param->img_outs[desc_id].buf[0][0].iova);
 	}
 }
@@ -6713,7 +6713,7 @@ static void isp_tx_frame_worker(struct work_struct *work)
 	    mtk_cam_scen_is_mstream(scen) ||
 	    mtk_cam_scen_is_mstream_m2m(scen) ||
 		mtk_cam_scen_is_odt(scen))
-		dev_dbg(cam->dev, "[%s:vhdr-req:%d] ctx:%d type:%d (ipi)hwscene:%d/expN:%d/prev_expN:%d, imgo:0x%x\n",
+		dev_dbg(cam->dev, "[%s:vhdr-req:%d] ctx:%d type:%d (ipi)hwscene:%d/expN:%d/prev_expN:%d, imgo:0x%llx\n",
 			__func__, req_stream_data->frame_seq_no, ctx->stream_id,
 			req_stream_data->feature.switch_feature_type,
 			req_stream_data->frame_params.raw_param.hardware_scenario,
@@ -7388,7 +7388,7 @@ isp_composer_hw_config(struct mtk_cam_device *cam,
 
 	/* For debug dump file */
 	memcpy(&ctx->config_params, config_param, sizeof(*config_param));
-	dev_dbg(cam->dev, "%s:ctx(%d): save config_param to ctx, sz:%d\n",
+	dev_dbg(cam->dev, "%s:ctx(%d): save config_param to ctx, sz:%ld\n",
 		__func__, ctx->stream_id, sizeof(*config_param));
 }
 
@@ -7538,7 +7538,7 @@ void mtk_cam_apply_pending_dev_config(struct mtk_cam_request_stream_data *s_data
 		sizeof(struct mtk_camsv_tag_info) * MAX_SV_HW_TAGS);
 
 	dev_info(ctx->cam->dev,
-		"%s:%s:pipe(%d):seq(%d):scen_active(%d), hw_mode(0x%x), enabled_raw(0x%x)\n",
+		"%s:%s:pipe(%d):seq(%d):scen_active(%d), hw_mode(0x%llx), enabled_raw(0x%x)\n",
 		__func__, debug_str, ctx->stream_id, s_data->frame_seq_no,
 		ctx->pipe->scen_active.id,
 		ctx->pipe->hw_mode, ctx->pipe->enabled_raw);
@@ -9123,7 +9123,7 @@ int mtk_cam_ctx_stream_on(struct mtk_cam_ctx *ctx)
 		ret = v4l2_subdev_call(ctx->pipe_subdevs[i], video,
 				       s_stream, 1);
 		if (ret) {
-			dev_info(cam->dev, "failed to stream on %d: %d\n",
+			dev_info(cam->dev, "failed to stream on %s: %d\n",
 				 ctx->pipe_subdevs[i]->name, ret);
 			goto fail_pipe_off;
 		}
@@ -9585,7 +9585,7 @@ int mtk_cam_ctx_stream_off(struct mtk_cam_ctx *ctx)
 		ret = v4l2_subdev_call(ctx->pipe_subdevs[i], video,
 				       s_stream, 0);
 		if (ret) {
-			dev_info(cam->dev, "failed to stream off %d: %d\n",
+			dev_info(cam->dev, "failed to stream off %s: %d\n",
 				 ctx->pipe_subdevs[i]->name, ret);
 			return -EPERM;
 		}
@@ -10028,7 +10028,7 @@ static void mtk_cam_ctx_watchdog_worker(struct work_struct *work)
 		if (timeout) {
 			if (is_raw_subdev(pipe_id)) {
 				dev_info(ctx->cam->dev,
-					"%s:ctx/pipe_id(%d/%d): timeout, VF(%d) raw vsync count(%d) sof count(%d) raw overrun_debug_dump_cnt(%d) watchdog count(%d) start dump (+%lldms)\n",
+					"%s:ctx/pipe_id(%d/%d): timeout, VF(%d) raw vsync count(%lld) sof count(%d) raw overrun_debug_dump_cnt(%d) watchdog count(%lld) start dump (+%lldms)\n",
 					__func__, ctx->stream_id, pipe_id, vf_en,
 					raw->vsync_count, sof_count, raw->overrun_debug_dump_cnt,
 					watchdog_cnt, watchdog_data->watchdog_time_diff_ns/1000000);
@@ -10037,7 +10037,7 @@ static void mtk_cam_ctx_watchdog_worker(struct work_struct *work)
 					dev_info(ctx->cam->dev, "abnormal vsync\n");
 			} else {
 				dev_info(ctx->cam->dev,
-					"%s:ctx/pipe_id(%d/%d): timeout, VF(%d) raw vsync count(%d) sof count(%d) watchdog count(%d) start dump (+%lldms)\n",
+					"%s:ctx/pipe_id(%d/%d): timeout, VF(%d) raw vsync count(%lld) sof count(%d) watchdog count(%lld) start dump (+%lldms)\n",
 					__func__, ctx->stream_id, pipe_id, vf_en,
 					last_vsync_count, sof_count,
 					watchdog_cnt, watchdog_data->watchdog_time_diff_ns/1000000);
@@ -10061,7 +10061,7 @@ static void mtk_cam_ctx_watchdog_worker(struct work_struct *work)
 				int_en = readl_relaxed(raw->base + REG_CTL_RAW_INT_EN);
 				if (raw->vsync_count == 0) {
 					dev_info(ctx->cam->dev,
-						"vsync count(%d), VF(%d), INT_EN(0x%x)\n",
+						"vsync count(%lld), VF(%d), INT_EN(0x%x)\n",
 						raw->vsync_count,
 						atomic_read(&raw->vf_en),
 						int_en);
@@ -10090,7 +10090,7 @@ static void mtk_cam_ctx_watchdog_worker(struct work_struct *work)
 					}
 				} else if (atomic_read(&raw->vf_en) == 0) {
 					dev_info(ctx->cam->dev,
-						"vsync count(%d), frame inner index(%d) INT_EN(0x%x)\n",
+						"vsync count(%lld), frame inner index(%d) INT_EN(0x%x)\n",
 						raw->vsync_count,
 						readl_relaxed(
 							raw->base_inner + REG_FRAME_SEQ_NUM),
@@ -10150,7 +10150,7 @@ static void mtk_cam_ctx_watchdog_worker(struct work_struct *work)
 			}
 		} else {
 			dev_info(ctx->cam->dev,
-				"%s:ctx/pipe_id(%d/%d): not timeout, for long exp watchdog count(%d) (+%lldms)\n",
+				"%s:ctx/pipe_id(%d/%d): not timeout, for long exp watchdog count(%lld) (+%lldms)\n",
 				__func__, ctx->stream_id, pipe_id, watchdog_cnt,
 				watchdog_data->watchdog_time_diff_ns/1000000);
 		}
@@ -10276,7 +10276,7 @@ GET_DEV_FAILED:
 	timer_expires_ms = MTK_CAM_CTX_WATCHDOG_INTERVAL - cost_time_ms;
 	ctx->watchdog_timer.expires = jiffies +
 				msecs_to_jiffies(timer_expires_ms);
-	dev_dbg(ctx->cam->dev, "%s:check ctx(%d): dog_cnt(%d), dog_time:%dms\n",
+	dev_dbg(ctx->cam->dev, "%s:check ctx(%d): dog_cnt(%d), dog_time:%lldms\n",
 				__func__, ctx->stream_id, watchdog_cnt,
 				timer_expires_ms);
 	add_timer(&ctx->watchdog_timer);
@@ -10836,7 +10836,7 @@ static int mtk_cam_probe(struct platform_device *pdev)
 	if (!cam_dev->cmdq_clt)
 		pr_info("probe cmdq_mbox_create fail\n");
 	else
-		pr_info("probe cmdq_mbox_create: client: %d\n", cam_dev->cmdq_clt);
+		pr_info("probe cmdq_mbox_create: client: %lx\n", (unsigned long)cam_dev->cmdq_clt);
 
 	cam_dev->adl_base = ioremap(0x1a0f0000, 0x1900);
 	cam_dev->mraw_base = ioremap(0x1a170000, 0x1000);

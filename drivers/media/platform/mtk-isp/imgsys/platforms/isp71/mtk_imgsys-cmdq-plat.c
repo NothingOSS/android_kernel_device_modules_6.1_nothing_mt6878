@@ -71,7 +71,7 @@ void imgsys_cmdq_init_plat71(struct mtk_imgsys_dev *imgsys_dev, const int nr_img
 	struct device *dev = imgsys_dev->dev;
 	u32 idx = 0;
 
-	pr_info("%s: +, dev(0x%x), num(%d)\n", __func__, dev, nr_imgsys_dev);
+	pr_info("%s: +, dev(0x%lx), num(%d)\n", __func__, (unsigned long)dev, nr_imgsys_dev);
 
 	/* Only first user has to do init work queue */
 	if (nr_imgsys_dev == 1) {
@@ -101,7 +101,7 @@ void imgsys_cmdq_init_plat71(struct mtk_imgsys_dev *imgsys_dev, const int nr_img
 		/* request thread by index (in dts) 0 */
 		for (idx = 0; idx < IMGSYS_NOR_THD; idx++) {
 			imgsys_clt[idx] = cmdq_mbox_create(dev, idx);
-			pr_info("%s: cmdq_mbox_create(%d, 0x%x)\n", __func__, idx, imgsys_clt[idx]);
+			pr_info("%s: cmdq_mbox_create(%d, 0x%lx)\n", __func__, idx, (unsigned long)imgsys_clt[idx]);
 		}
 		#if IMGSYS_SECURE_ENABLE
 		/* request for imgsys secure gce thread */
@@ -197,8 +197,8 @@ void imgsys_cmdq_streamoff_plat71(struct mtk_imgsys_dev *imgsys_dev)
 	for (idx = 0; idx < IMGSYS_NOR_THD; idx++) {
 		cmdq_mbox_stop(imgsys_clt[idx]);
 		dev_dbg(imgsys_dev->dev,
-			"%s: calling cmdq_mbox_stop(%d, 0x%x)\n",
-			__func__, idx, imgsys_clt[idx]);
+			"%s: calling cmdq_mbox_stop(%d, 0x%lx)\n",
+			__func__, idx, (unsigned long)imgsys_clt[idx]);
 	}
 	#endif
 	#if IMGSYS_SECURE_ENABLE
@@ -231,7 +231,7 @@ static void imgsys_cmdq_cmd_dump_plat71(struct swfrm_info_t *frm_info, u32 frm_i
 	cmd_ofst = sizeof(struct GCERecoder);
 
 	pr_info(
-	"%s: +, req fd/no(%d/%d) frame no(%d) frm(%d/%d), cmd_oft(0x%x/0x%x), cmd_len(%d), num(%d), sz_per_cmd(%d), frm_blk(%d), hw_comb(0x%x)\n",
+	"%s: +, req fd/no(%d/%d) frame no(%d) frm(%d/%d), cmd_oft(0x%x/0x%x), cmd_len(%d), num(%d), sz_per_cmd(%lu), frm_blk(%d), hw_comb(0x%x)\n",
 		__func__, frm_info->request_fd, frm_info->request_no, frm_info->frame_no,
 		frm_idx, frm_info->total_frmnum, cmd_buf->cmd_offset, cmd_ofst,
 		cmd_buf->curr_length, cmd_num, sizeof(struct Command), cmd_buf->frame_block,
@@ -250,17 +250,17 @@ static void imgsys_cmdq_cmd_dump_plat71(struct swfrm_info_t *frm_info, u32 frm_i
 		switch (cmd[cmd_idx].opcode) {
 		case IMGSYS_CMD_READ:
 			pr_info(
-			"%s: READ with source(0x%08lx) target(0x%08lx) mask(0x%08x)\n", __func__,
+			"%s: READ with source(0x%08x) target(0x%08x) mask(0x%08x)\n", __func__,
 				cmd[cmd_idx].u.source, cmd[cmd_idx].u.target, cmd[cmd_idx].u.mask);
 			break;
 		case IMGSYS_CMD_WRITE:
 			pr_debug(
-			"%s: WRITE with addr(0x%08lx) value(0x%08x) mask(0x%08x)\n", __func__,
+			"%s: WRITE with addr(0x%08x) value(0x%08x) mask(0x%08x)\n", __func__,
 				cmd[cmd_idx].u.address, cmd[cmd_idx].u.value, cmd[cmd_idx].u.mask);
 			break;
 		case IMGSYS_CMD_POLL:
 			pr_info(
-			"%s: POLL with addr(0x%08lx) value(0x%08x) mask(0x%08x)\n", __func__,
+			"%s: POLL with addr(0x%08x) value(0x%08x) mask(0x%08x)\n", __func__,
 				cmd[cmd_idx].u.address, cmd[cmd_idx].u.value, cmd[cmd_idx].u.mask);
 			break;
 		case IMGSYS_CMD_WAIT:
@@ -322,7 +322,7 @@ static void imgsys_cmdq_cb_work_plat71(struct work_struct *work)
 	imgsys_dev = cb_param->imgsys_dev;
 
 	dev_dbg(imgsys_dev->dev,
-		"%s: cb(%p) gid(%d) in block(%d/%d) for frm(%d/%d) lst(%d/%d/%d) task(%d/%d/%d) ofst(%x/%x/%x/%x/%x)\n",
+		"%s: cb(%p) gid(%d) in block(%d/%d) for frm(%d/%d) lst(%d/%d/%d) task(%d/%d/%d) ofst(%lx/%lx/%lx/%lx/%lx)\n",
 		__func__, cb_param, cb_param->group_id,
 		cb_param->blk_idx,  cb_param->blk_num,
 		cb_param->frm_idx, cb_param->frm_num,
@@ -391,11 +391,11 @@ static void imgsys_cmdq_cb_work_plat71(struct work_struct *work)
 
 	if (cb_param->err != 0)
 		pr_info(
-			"%s: [ERROR] cb(%p) req fd/no(%d/%d) frame no(%d) error(%d) gid(%d) clt(0x%x) hw_comb(0x%x) for frm(%d/%d) blk(%d/%d) lst(%d/%d) earlycb(%d) ofst(0x%x) task(%d/%d/%d) ofst(%x/%x/%x/%x/%x)",
+			"%s: [ERROR] cb(%p) req fd/no(%d/%d) frame no(%d) error(%d) gid(%d) clt(0x%lx) hw_comb(0x%x) for frm(%d/%d) blk(%d/%d) lst(%d/%d) earlycb(%d) ofst(0x%lx) task(%d/%d/%d) ofst(%lx/%lx/%lx/%lx/%lx)",
 			__func__, cb_param, cb_param->req_fd,
 			cb_param->req_no, cb_param->frm_no,
 			cb_param->err, cb_param->group_id,
-			cb_param->clt, cb_param->hw_comb,
+			(unsigned long)cb_param->clt, cb_param->hw_comb,
 			cb_param->frm_idx, cb_param->frm_num,
 			cb_param->blk_idx, cb_param->blk_num,
 			cb_param->isBlkLast, cb_param->isFrmLast,
@@ -589,7 +589,7 @@ void imgsys_cmdq_task_cb_plat71(struct cmdq_cb_data data)
 				break;
 		if (err_idx >= cb_param->task_cnt) {
 			pr_info(
-				"%s: [ERROR] can't find task in task list! cb(%p) error(%d) for %d frm(%d/%d) blk(%d/%d) ofst(0x%x) erridx(%d/%d) task(%d/%d/%d) ofst(%x/%x/%x/%x/%x)",
+				"%s: [ERROR] can't find task in task list! cb(%p) error(%d) for %d frm(%d/%d) blk(%d/%d) ofst(0x%lx) erridx(%d/%d) task(%d/%d/%d) ofst(%lx/%lx/%lx/%lx/%lx)",
 				__func__, cb_param, cb_param->err, cb_param->group_id,
 				cb_param->frm_idx, cb_param->frm_num,
 				cb_param->blk_idx, cb_param->blk_num,
@@ -602,11 +602,11 @@ void imgsys_cmdq_task_cb_plat71(struct cmdq_cb_data data)
 		}
 		real_frm_idx = cb_param->frm_idx - (cb_param->task_cnt - 1) + err_idx;
 		pr_info(
-			"%s: [ERROR] cb(%p) req fd/no(%d/%d) frame no(%d) error(%d) gid(%d) clt(0x%x) hw_comb(0x%x) for frm(%d/%d) blk(%d/%d) lst(%d/%d/%d) earlycb(%d) ofst(0x%x) erridx(%d/%d) task(%d/%d/%d) ofst(%x/%x/%x/%x/%x)",
+			"%s: [ERROR] cb(%p) req fd/no(%d/%d) frame no(%d) error(%d) gid(%d) clt(0x%lx) hw_comb(0x%x) for frm(%d/%d) blk(%d/%d) lst(%d/%d/%d) earlycb(%d) ofst(0x%lx) erridx(%d/%d) task(%d/%d/%d) ofst(%lx/%lx/%lx/%lx/%lx)",
 			__func__, cb_param, cb_param->req_fd,
 			cb_param->req_no, cb_param->frm_no,
 			cb_param->err, cb_param->group_id,
-			cb_param->clt, cb_param->hw_comb,
+			(unsigned long)cb_param->clt, cb_param->hw_comb,
 			cb_param->frm_idx, cb_param->frm_num,
 			cb_param->blk_idx, cb_param->blk_num,
 			cb_param->isBlkLast, cb_param->isFrmLast, cb_param->isTaskLast,
@@ -750,7 +750,7 @@ int imgsys_cmdq_task_aee_cb_plat71(struct cmdq_cb_data data)
 			break;
 	if (err_idx >= cb_param->task_cnt) {
 		pr_info(
-			"%s: [ERROR] can't find task in task list! cb(%p) error(%d) for %d frm(%d/%d) blk(%d/%d) ofst(0x%x) erridx(%d/%d) task(%d/%d/%d) ofst(%x/%x/%x/%x/%x)",
+			"%s: [ERROR] can't find task in task list! cb(%p) error(%d) for %d frm(%d/%d) blk(%d/%d) ofst(0x%lx) erridx(%d/%d) task(%d/%d/%d) ofst(%lx/%lx/%lx/%lx/%lx)",
 			__func__, cb_param, cb_param->err, cb_param->group_id,
 			cb_param->frm_idx, cb_param->frm_num,
 			cb_param->blk_idx, cb_param->blk_num,
@@ -763,11 +763,11 @@ int imgsys_cmdq_task_aee_cb_plat71(struct cmdq_cb_data data)
 	}
 	real_frm_idx = cb_param->frm_idx - (cb_param->task_cnt - 1) + err_idx;
 	pr_info(
-		"%s: [ERROR] cb(%p) req fd/no(%d/%d) frame no(%d) error(%d) gid(%d) clt(0x%x) hw_comb(0x%x) for frm(%d/%d) blk(%d/%d) lst(%d/%d/%d) earlycb(%d) ofst(0x%x) erridx(%d/%d) task(%d/%d/%d) ofst(%x/%x/%x/%x/%x)",
+		"%s: [ERROR] cb(%p) req fd/no(%d/%d) frame no(%d) error(%d) gid(%d) clt(0x%lx) hw_comb(0x%x) for frm(%d/%d) blk(%d/%d) lst(%d/%d/%d) earlycb(%d) ofst(0x%lx) erridx(%d/%d) task(%d/%d/%d) ofst(%lx/%lx/%lx/%lx/%lx)",
 		__func__, cb_param, cb_param->req_fd,
 		cb_param->req_no, cb_param->frm_no,
 		cb_param->err, cb_param->group_id,
-		cb_param->clt, cb_param->hw_comb,
+		(unsigned long)cb_param->clt, cb_param->hw_comb,
 		cb_param->frm_idx, cb_param->frm_num,
 		cb_param->blk_idx, cb_param->blk_num,
 		cb_param->isBlkLast, cb_param->isFrmLast, cb_param->isTaskLast,
@@ -988,8 +988,8 @@ int imgsys_cmdq_sendtask_plat71(struct mtk_imgsys_dev *imgsys_dev,
 					if (hw_comb & 0x1) {
 						clt = imgsys_clt[thd_idx];
 						pr_debug(
-						"%s: chosen mbox thread (%d, 0x%x) for frm(%d/%d)\n",
-						__func__, thd_idx, clt, frm_idx, frm_num);
+						"%s: chosen mbox thread (%d, 0x%lx) for frm(%d/%d)\n",
+						__func__, thd_idx, (unsigned long)clt, frm_idx, frm_num);
 						break;
 					}
 					hw_comb = hw_comb>>1;
@@ -1030,11 +1030,11 @@ int imgsys_cmdq_sendtask_plat71(struct mtk_imgsys_dev *imgsys_dev,
 		}
 
 		dev_dbg(imgsys_dev->dev,
-		"%s: req fd/no(%d/%d) frame no(%d) frm(%d/%d) cmd_oft(0x%x/0x%x), cmd_len(%d), num(%d), sz_per_cmd(%d), frm_blk(%d), hw_comb(0x%x), sync_id(%d), gce_thd(%d), gce_clt(0x%x)\n",
+		"%s: req fd/no(%d/%d) frame no(%d) frm(%d/%d) cmd_oft(0x%x/0x%x), cmd_len(%d), num(%d), sz_per_cmd(%lu), frm_blk(%d), hw_comb(0x%x), sync_id(%d), gce_thd(%d), gce_clt(0x%lx)\n",
 			__func__, frm_info->request_fd, frm_info->request_no, frm_info->frame_no,
 			frm_idx, frm_num, cmd_buf->cmd_offset, cmd_ofst, cmd_buf->curr_length,
 			cmd_num, sizeof(struct Command), cmd_buf->frame_block,
-			frm_info->user_info[frm_idx].hw_comb, frm_info->sync_id, thd_idx, clt);
+			frm_info->user_info[frm_idx].hw_comb, frm_info->sync_id, thd_idx, (unsigned long)clt);
 
 		cmd_idx = 0;
 		for (blk_idx = 0; blk_idx < blk_num; blk_idx++) {
@@ -1049,8 +1049,8 @@ int imgsys_cmdq_sendtask_plat71(struct mtk_imgsys_dev *imgsys_dev,
 					return -1;
 				}
 				pr_debug(
-					"%s: cmdq_pkt_create success(0x%x) in block(%d) for frm(%d/%d)\n",
-					__func__, pkt, blk_idx, frm_idx, frm_num);
+					"%s: cmdq_pkt_create success(0x%lx) in block(%d) for frm(%d/%d)\n",
+					__func__, (unsigned long)pkt, blk_idx, frm_idx, frm_num);
 				/* Reset pkt timestamp num */
 				pkt_ts_num = 0;
 
@@ -1159,7 +1159,7 @@ int imgsys_cmdq_sendtask_plat71(struct mtk_imgsys_dev *imgsys_dev,
 				}
 
 				dev_dbg(imgsys_dev->dev,
-					"%s: cb(%p) gid(%d) in block(%d/%d) for frm(%d/%d) lst(%d/%d/%d) task(%d/%d/%d) ofst(%x/%x/%x/%x/%x)\n",
+					"%s: cb(%p) gid(%d) in block(%d/%d) for frm(%d/%d) lst(%d/%d/%d) task(%d/%d/%d) ofst(%lx/%lx/%lx/%lx/%lx)\n",
 					__func__, cb_param, cb_param->group_id,
 					cb_param->blk_idx,  cb_param->blk_num,
 					cb_param->frm_idx, cb_param->frm_num,
@@ -1235,7 +1235,7 @@ int imgsys_cmdq_parser_plat71(struct swfrm_info_t *frm_info, struct cmdq_pkt *pk
 		switch (cmd->opcode) {
 		case IMGSYS_CMD_READ:
 			pr_debug(
-				"%s: READ with source(0x%08lx) target(0x%08lx) mask(0x%08x)\n",
+				"%s: READ with source(0x%08x) target(0x%08x) mask(0x%08x)\n",
 				__func__, cmd->u.source, cmd->u.target, cmd->u.mask);
 			if (imgsys_wpe_bwlog_enable_plat71()) {
 				cmdq_pkt_mem_move(pkt, NULL, (dma_addr_t)cmd->u.source,
@@ -1248,14 +1248,14 @@ int imgsys_cmdq_parser_plat71(struct swfrm_info_t *frm_info, struct cmdq_pkt *pk
 			break;
 		case IMGSYS_CMD_WRITE:
 			pr_debug(
-				"%s: WRITE with addr(0x%08lx) value(0x%08x) mask(0x%08x)\n",
+				"%s: WRITE with addr(0x%08x) value(0x%08x) mask(0x%08x)\n",
 				__func__, cmd->u.address, cmd->u.value, cmd->u.mask);
 			cmdq_pkt_write(pkt, NULL, (dma_addr_t)cmd->u.address,
 					cmd->u.value, cmd->u.mask);
 			break;
 		case IMGSYS_CMD_POLL:
 			pr_debug(
-				"%s: POLL with addr(0x%08lx) value(0x%08x) mask(0x%08x) thd(%d)\n",
+				"%s: POLL with addr(0x%08x) value(0x%08x) mask(0x%08x) thd(%d)\n",
 				__func__, cmd->u.address, cmd->u.value, cmd->u.mask, thd_idx);
 			/* cmdq_pkt_poll(pkt, NULL, cmd->u.value, cmd->u.address, */
 			/* cmd->u.mask, CMDQ_GPR_R15); */
@@ -1320,7 +1320,7 @@ int imgsys_cmdq_parser_plat71(struct swfrm_info_t *frm_info, struct cmdq_pkt *pk
 			break;
 		case IMGSYS_CMD_TIME:
 			pr_debug(
-				"%s: TIME with addr(0x%08lx) num(0x%08x)\n",
+				"%s: TIME with addr(0x%08llx) num(0x%08x)\n",
 				__func__, dma_pa, *num);
 			if (imgsys_cmdq_ts_enable_plat71()) {
 				cmdq_pkt_write_indriect(pkt, NULL, dma_pa + (4*(*num)),
@@ -1387,10 +1387,10 @@ void imgsys_cmdq_setevent_plat71(u64 u_id)
 
 	if (event_val == 0) {
 		cmdq_set_event(imgsys_clt[0]->chan, imgsys_event[event_id].event);
-		pr_debug("%s: SetEvent success with (u_id/event_id/event_val)=(%d/%d/%d)!\n",
+		pr_debug("%s: SetEvent success with (u_id/event_id/event_val)=(%lld/%d/%d)!\n",
 			__func__, u_id, event_id, event_val);
 	} else {
-		pr_info("%s: [ERROR]SetEvent fail with (u_id/event_id/event_val)=(%d/%d/%d)!\n",
+		pr_info("%s: [ERROR]SetEvent fail with (u_id/event_id/event_val)=(%lld/%d/%d)!\n",
 			__func__, u_id, event_id, event_val);
 	}
 }
@@ -1574,7 +1574,7 @@ void mtk_imgsys_mmqos_init_plat71(struct mtk_imgsys_dev *imgsys_dev)
 		qos_info->qos_path[idx].path =
 			of_mtk_icc_get(qos_info->dev, qos_info->qos_path[idx].dts_name);
 		qos_info->qos_path[idx].bw = 0;
-		dev_info(qos_info->dev, "[%s] idx=%d, path=%p, name=%s, bw=%d\n",
+		dev_info(qos_info->dev, "[%s] idx=%d, path=%p, name=%s, bw=%lld\n",
 			__func__, idx,
 			qos_info->qos_path[idx].path,
 			qos_info->qos_path[idx].dts_name,
@@ -1594,7 +1594,7 @@ void mtk_imgsys_mmqos_uninit_plat71(struct mtk_imgsys_dev *imgsys_dev)
 			dev_dbg(qos_info->dev, "[%s] path of idx(%d) is NULL\n", __func__, idx);
 			continue;
 		}
-		dev_dbg(qos_info->dev, "[%s] idx=%d, path=%p, bw=%d\n",
+		dev_dbg(qos_info->dev, "[%s] idx=%d, path=%p, bw=%lld\n",
 			__func__, idx,
 			qos_info->qos_path[idx].path,
 			qos_info->qos_path[idx].bw);
@@ -1695,7 +1695,7 @@ void mtk_imgsys_mmqos_set_by_scen_plat71(struct mtk_imgsys_dev *imgsys_dev,
 	if (is_stream_off == 0 && isSet == 1) {
 		if (imgsys_qos_dbg_enable_plat71())
 			dev_info(qos_info->dev,
-				 "imgsys_qos: frame_no:%d req_cnt:%d fps:%d vss:%d\n",
+				 "imgsys_qos: frame_no:%d req_cnt:%lu fps:%d vss:%d\n",
 				 frm_info->frame_no, qos_info->req_cnt,
 				 fps, dvfs_info->vss_task_cnt);
 
@@ -1717,7 +1717,7 @@ void mtk_imgsys_mmqos_set_by_scen_plat71(struct mtk_imgsys_dev *imgsys_dev,
 			bw_final[3] = (bw_final[3] * imgsys_qos_factor)/10;
 			if (imgsys_qos_dbg_enable_plat71())
 				dev_info(qos_info->dev,
-					"imgsys_qos: frame_no:%d-sc0_r-%d sc0_w-%d, sc1_r-%d sc0_w-%d\n",
+					"imgsys_qos: frame_no:%d-sc0_r-%llu sc0_w-%llu, sc1_r-%llu sc0_w-%llu\n",
 					frm_info->frame_no,
 					bw_final[0], bw_final[1], bw_final[2], bw_final[3]);
 
@@ -1774,7 +1774,7 @@ void mtk_imgsys_mmqos_set_by_scen_plat71(struct mtk_imgsys_dev *imgsys_dev,
 
 					if (imgsys_qos_dbg_enable_plat71())
 						dev_info(qos_info->dev,
-							 "imgsys_qos: frame_no:%d-sc0_r-%d sc0_w-%d, sc1_r-%d sc0_w-%d\n",
+							 "imgsys_qos: frame_no:%d-sc0_r-%llu sc0_w-%llu, sc1_r-%llu sc0_w-%llu\n",
 							 frm_info->frame_no,
 							 bw_final[0], bw_final[1],
 							 bw_final[2], bw_final[3]);
@@ -1954,7 +1954,7 @@ void mtk_imgsys_mmdvfs_mmqos_cal_plat71(struct mtk_imgsys_dev *imgsys_dev,
 
 	if (imgsys_dvfs_dbg_enable_plat71())
 		dev_info(qos_info->dev,
-		"[%s] isSet(%d) fps(%d/%d) batchNum(%d) bw_exe(%d) vss(%d) smvr(%d) freq(%lld/%lld) local_pix_sz(%lld/%lld/%lld/%lld) global_pix_sz(%lld/%lld/%lld/%lld)\n",
+		"[%s] isSet(%d) fps(%d/%d) batchNum(%d) bw_exe(%d) vss(%d) smvr(%d) freq(%lu/%lu) local_pix_sz(%lu/%lu/%lu/%lu) global_pix_sz(%lu/%lu/%lu/%lu)\n",
 		__func__, isSet, fps, frm_info->fps, batch_num, bw_exe,
 		dvfs_info->vss_task_cnt, dvfs_info->smvr_task_cnt, freq, dvfs_info->freq,
 		pixel_size[0], pixel_size[1], pixel_size[2], pixel_max,

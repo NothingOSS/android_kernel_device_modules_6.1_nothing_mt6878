@@ -408,7 +408,7 @@ void imgsys_wpe_updatecq(struct mtk_imgsys_dev *imgsys_dev,
 		dtable->addr_msb = (iova_addr >> 32) & 0xF;
 		//
 		pr_debug(
-			"%s: buf_fd(0x%08x) buf_ofst(0x%08x) buf_iova(0x%llx) des_ofst(0x%08x) cq_kva(0x%08lx) dtable(0x%x/0x%x/0x%x)\n",
+			"%s: buf_fd(0x%08x) buf_ofst(0x%08x) buf_iova(0x%llx) des_ofst(0x%08x) cq_kva(0x%p) dtable(0x%x/0x%x/0x%x)\n",
 			__func__, user_info->priv[i].buf_fd, user_info->priv[i].buf_offset,
 			iova_addr, user_info->priv[i].desc_offset, cq_desc, dtable->empty, dtable->addr, dtable->addr_msb);
 	}

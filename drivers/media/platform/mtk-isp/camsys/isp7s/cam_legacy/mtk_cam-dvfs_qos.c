@@ -196,7 +196,7 @@ int mtk_cam_dvfs_get_clkidx(struct mtk_cam_device *cam, u64 freq_cur, bool debug
 	}
 
 	if (debug)
-		dev_dbg(cam->dev, "[%s] get clk=%d, idx=%d",
+		dev_dbg(cam->dev, "[%s] get clk=%lld, idx=%d",
 			__func__, freq_cur, clklv_idx);
 
 	return clklv_idx;
@@ -420,7 +420,7 @@ static void __mtk_cam_qos_bw_calc(struct mtk_cam_ctx *ctx, struct mtk_raw_device
 		sd_fmt.pad = PAD_SRC_RAW0;
 		v4l2_subdev_call(ctx->seninf, pad, get_fmt, NULL, &sd_fmt);
 		height = sd_fmt.format.height;
-		dev_info(cam->dev, "[%s] FPS:%lu/%lu:%lu, H:%lu, VB:%lu\n",
+		dev_info(cam->dev, "[%s] FPS:%u/%u:%lu, H:%lu, VB:%lu\n",
 			 __func__, fi.interval.denominator, fi.interval.numerator,
 			 fps, height, vblank);
 		if (mtk_cam_scen_is_ext_isp(&ctx->pipe->scen_active)) {
@@ -1102,7 +1102,7 @@ void mtk_cam_qos_sv_bw_calc(struct mtk_cam_ctx *ctx,
 			sd_fmt.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 			sd_fmt.pad = PAD_SRC_RAW0;
 			v4l2_subdev_call(ctx->seninf, pad, get_fmt, NULL, &sd_fmt);
-			dev_dbg(cam->dev, "[%s] FPS:%lu/%lu:%lu, W:%lu, H:%lu, VB:%lu\n",
+			dev_dbg(cam->dev, "[%s] FPS:%u/%u:%lu, W:%u, H:%u, VB:%lu\n",
 				__func__, fi.interval.denominator, fi.interval.numerator,
 				fps, sd_fmt.format.width, sd_fmt.format.height, vblank);
 		}
@@ -1246,7 +1246,7 @@ void mtk_cam_qos_mraw_bw_calc(struct mtk_cam_ctx *ctx,
 			sd_fmt.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 			sd_fmt.pad = PAD_SRC_RAW0;
 			v4l2_subdev_call(ctx->seninf, pad, get_fmt, NULL, &sd_fmt);
-			dev_info(cam->dev, "[%s] FPS:%lu/%lu:%lu, W/H:%lu/%lu, VB:%lu\n",
+			dev_info(cam->dev, "[%s] FPS:%u/%u:%lu, W/H:%u/%u, VB:%lu\n",
 				__func__, fi.interval.denominator, fi.interval.numerator,
 				fps, sd_fmt.format.width, sd_fmt.format.height, vblank);
 		}

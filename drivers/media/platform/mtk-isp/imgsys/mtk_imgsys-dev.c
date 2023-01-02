@@ -178,7 +178,7 @@ void mtk_imgsys_pipe_remove_job(struct mtk_imgsys_request *req)
 	dev_dbg(req->imgsys_pipe->imgsys_dev->dev,
 		"%s:%s:req->id(%d),num of running jobs(%d) entry(0x%lx)\n", __func__,
 		req->imgsys_pipe->desc->name, req->id,
-		req->imgsys_pipe->num_jobs, entry);
+		req->imgsys_pipe->num_jobs, (unsigned long)entry);
 }
 
 void mtk_imgsys_pipe_debug_job(struct mtk_imgsys_pipe *pipe,
@@ -265,7 +265,7 @@ void mtk_imgsys_pipe_job_finish(struct mtk_imgsys_request *req,
 #endif
 	if (req->req.state != MEDIA_REQUEST_STATE_QUEUED) {
 		dev_info(pipe->imgsys_dev->dev, "%s: req %d 0x%lx flushed in state(%d)", __func__,
-					req->tstate.req_fd, &req->req, req->req.state);
+					req->tstate.req_fd, (unsigned long)&req->req, req->req.state);
 		goto done;
 	}
 
@@ -610,8 +610,8 @@ u64 mtk_imgsys_get_iova(struct dma_buf *dma_buf, s32 ionFd,
 	}
 
 	if (IS_ERR(dma_buf)) {
-		dev_dbg(imgsys_dev->dev, "%s: dma_buf 0x%xlx",
-							__func__, dma_buf);
+		dev_dbg(imgsys_dev->dev, "%s: dma_buf 0x%lx",
+						__func__, (unsigned long)dma_buf);
 		return 0;
 	}
 
@@ -631,7 +631,7 @@ u64 mtk_imgsys_get_iova(struct dma_buf *dma_buf, s32 ionFd,
 
 	dev_dbg(imgsys_dev->dev,
 		"%s - sg_dma_address : ionFd(%d)-dma_addr:%lx\n",
-		__func__, ionFd, dma_addr);
+		__func__, ionFd, (unsigned long)dma_addr);
 
 	//add dma_buf_info_list to req for GCECB put it back
 	//add dmainfo to ionmaplist
@@ -645,7 +645,7 @@ u64 mtk_imgsys_get_iova(struct dma_buf *dma_buf, s32 ionFd,
 		ion->attach = attach;
 		ion->sgt = sgt;
 		pr_debug("mtk_imgsys_dma_buf_iova_get_info:dma_buf:%lx,attach:%lx,sgt:%lx\n",
-				ion->dma_buf, ion->attach, ion->sgt);
+			(unsigned long)ion->dma_buf, (unsigned long)ion->attach, (unsigned long)ion->sgt);
 
 		// add data to list head
 		spin_lock(&dev_buf->iova_map_table.lock);
@@ -693,7 +693,7 @@ void *get_kva(struct mtk_imgsys_dev_buffer *buf, struct iosys_map *imap)
 	}
 	dmabuf = dma_buf_get(buf->vbb.vb2_buf.planes[0].m.fd);
 	if (IS_ERR(dmabuf)) {
-		pr_info("dmabuf %lx", dmabuf);
+		pr_info("dmabuf %lx", (unsigned long)dmabuf);
 		goto ERROR_PUT;
 	}
 
@@ -799,7 +799,7 @@ static void mtk_imgsys_desc_fill_dmabuf(struct mtk_imgsys_pipe *pipe,
 			if (IS_ERR(dbuf)) {
 				plane->reserved[0] = 0;
 				plane->reserved[1] = 0;
-				pr_info("%s: dma_buf:%lx fd:%d", __func__, dbuf,
+				pr_info("%s: dma_buf:%lx fd:%d", __func__, (unsigned long)dbuf,
 									plane->m.dma_buf.fd);
 				continue;
 			}
@@ -839,7 +839,7 @@ static void mtk_imgsys_kva_cache(struct mtk_imgsys_dev_buffer *dev_buf)
 			"%s : fd(%d), find kva(0x%lx), offset(0x%x) -> (0x%lx)\n",
 				__func__, dev_buf->vbb.vb2_buf.planes[0].m.fd,
 				buf_va_info->kva, dev_buf->dataofst,
-				dev_buf->va_daddr[0]);
+				(unsigned long)dev_buf->va_daddr[0]);
 	} else {
 		mutex_unlock(&(fd_kva_info_list.mymutex));
 		dev_buf->va_daddr[0] = (u64)get_kva(dev_buf, &map);
@@ -863,7 +863,7 @@ static void mtk_imgsys_kva_cache(struct mtk_imgsys_dev_buffer *dev_buf)
 		pr_info(
 			"%s : fd(%d), base kva(0x%lx), offset(0x%x), dma_buf_putkva(%p)\n",
 				__func__, dev_buf->vbb.vb2_buf.planes[0].m.fd,
-				dev_buf->va_daddr[0],
+				(unsigned long)dev_buf->va_daddr[0],
 				dev_buf->dataofst, dev_buf->dma_buf_putkva);
 
 		dev_buf->va_daddr[0] += dev_buf->dataofst;
@@ -885,8 +885,8 @@ static void mtk_imgsys_desc_iova(struct mtk_imgsys_pipe *pipe,
 
 			dmabuf = (struct dma_buf *)fparams->bufs[i].buf.planes[j].reserved[0];
 			if (IS_ERR_OR_NULL(dmabuf)) {
-				pr_info("%s bad dmabuf(0x%llx)", __func__,
-									dmabuf);
+				pr_info("%s bad dmabuf(0x%lx)", __func__,
+								(unsigned long)dmabuf);
 				continue;
 			}
 			fparams->bufs[i].buf.planes[j].reserved[0] =

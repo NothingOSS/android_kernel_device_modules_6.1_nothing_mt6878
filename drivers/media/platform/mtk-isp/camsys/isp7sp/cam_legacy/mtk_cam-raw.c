@@ -451,7 +451,7 @@ static s64 mtk_cam_calc_pure_m2m_pixelrate(s64 width, s64 height,
 	prate = width * height * fps_d * PURE_M2M_PROCESS_MARGIN_N;
 	do_div(prate, fps_n * PURE_M2M_PROCESS_MARGIN_D);
 
-	pr_info("%s:width:%d height:%d interval:%d/%d prate:%lld\n",
+	pr_info("%s:width:%lld height:%lld interval:%d/%d prate:%lld\n",
 		__func__, width, height, fps_n, fps_d, prate);
 	return prate;
 }
@@ -789,7 +789,7 @@ static int mtk_raw_set_res_ctrl(struct device *dev, struct v4l2_ctrl *ctrl,
 	pipeline = mtk_cam_ctrl_handler_to_raw_pipeline(ctrl->handler);
 
 	if (ctrl->type == V4L2_CTRL_TYPE_INTEGER64)
-		dev_dbg(dev, "%s:pipe(%d):(name:%s, val:%ld)\n", __func__,
+		dev_dbg(dev, "%s:pipe(%d):(name:%s, val:%lld)\n", __func__,
 			pipe_id, ctrl->name, *ctrl->p_new.p_s64);
 	else
 		dev_dbg(dev, "%s:pipe(%d):(name:%s, val:%d)\n", __func__,
@@ -861,8 +861,8 @@ static int set_pd_info(struct mtk_raw_pipeline *pipeline,
 	if (!ret && active_sz < fmt_sz + pd_sz)
 		ret = -EINVAL;
 
-	dev_dbg(dev, "%s: meta (node %d): fmt size %d, pdi size %d; active size %d",
-			__func__, node, fmt_sz, pd_sz, active_sz);
+	dev_dbg(dev, "%s: meta (node %lx): fmt size %d, pdi size %d; active size %d",
+			__func__, (unsigned long)node, fmt_sz, pd_sz, active_sz);
 
 	return ret;
 }
@@ -1096,7 +1096,7 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 		pipeline->hw_mode_pending = *ctrl->p_new.p_s64;
 
 		dev_dbg(dev,
-			"%s:pipe(%d):streaming(%d), hw_mode(0x%x)\n",
+			"%s:pipe(%d):streaming(%d), hw_mode(0x%llx)\n",
 			__func__, pipeline->id,
 			media_entity_is_streaming(&pipeline->subdev.entity),
 			pipeline->hw_mode_pending);
@@ -1525,7 +1525,7 @@ void dbload_force(struct mtk_raw_device *dev)
 	writel_relaxed(val | CTL_DB_LOAD_FORCE, dev->base + REG_CTL_MISC);
 	writel_relaxed(val | CTL_DB_LOAD_FORCE, dev->base_inner + REG_CTL_MISC);
 	wmb(); /* TBC */
-	dev_info(dev->dev, "%s: 0x%x->0x%x\n", __func__,
+	dev_info(dev->dev, "%s: 0x%x->0x%lx\n", __func__,
 		val, val | CTL_DB_LOAD_FORCE);
 }
 
@@ -1606,7 +1606,7 @@ bool is_dma_idle(struct mtk_raw_device *dev)
 			& DC_CAMSV_STAGER_EN) &&
 		 (readl(dev->base + REG_CTL_MOD6_EN) & CAMCTL_RAWI_R2_EN))
 			? true:false;
-		dev_info(dev->dev, "%s: chasing_stat: 0x%llx ret=%d\n",
+		dev_info(dev->dev, "%s: chasing_stat: %d ret=%d\n",
 				__func__, chasing_stat, ret);
 	}
 	if (~raw_rst_stat & RST_STAT_RAWI_R3) {
@@ -1616,7 +1616,7 @@ bool is_dma_idle(struct mtk_raw_device *dev)
 			& DC_CAMSV_STAGER_EN) &&
 		 (readl(dev->base + REG_CTL_MOD6_EN) & CAMCTL_RAWI_R3_EN))
 			? true:false;
-		dev_info(dev->dev, "%s: chasing_stat: 0x%llx, ret=%d\n",
+		dev_info(dev->dev, "%s: chasing_stat: %d, ret=%d\n",
 				__func__, chasing_stat, ret);
 	}
 	if (~raw_rst_stat & RST_STAT_RAWI_R5) {
@@ -1626,7 +1626,7 @@ bool is_dma_idle(struct mtk_raw_device *dev)
 			& DC_CAMSV_STAGER_EN) &&
 		 (readl(dev->base + REG_CTL_MOD6_EN) & CAMCTL_RAWI_R5_EN))
 			? true:false;
-		dev_info(dev->dev, "%s: chasing_stat: 0x%llx, ret=%d\n",
+		dev_info(dev->dev, "%s: chasing_stat: %d, ret=%d\n",
 				__func__, chasing_stat, ret);
 	}
 
@@ -2245,10 +2245,10 @@ static void immediate_stream_off_log(struct mtk_raw_device *dev, char *reg_name,
 	read_val = readl_relaxed(base_inner + offset);
 	read_val_2 = readl_relaxed(base + offset);
 	dev_dbg(dev->dev,
-		"%s:%s: before: r(0x%x), w(0x%x), after:in(0x%llx:0x%x),out(0x%llx:0x%x)\n",
+		"%s:%s: before: r(0x%x), w(0x%x), after:in(0x%lx:0x%x),out(0x%lx:0x%x)\n",
 		__func__, reg_name, cur_val, cfg_val,
-		base_inner + offset, read_val,
-		base + offset, read_val_2);
+		(unsigned long)(base_inner + offset), read_val,
+		(unsigned long)(base + offset), read_val_2);
 }
 
 void immediate_stream_off(struct mtk_raw_device *dev)
@@ -2383,7 +2383,7 @@ void stream_on(struct mtk_raw_device *dev, int on)
 #endif
 		atomic_set(&dev->vf_en, 1);
 		dev_dbg(dev->dev,
-			"%s - CQ_EN:0x%x, CQ_THR0_CTL:0x%8x, TG_VF_CON:0x%8x, SCQ_START_PERIOD:%lld\n",
+			"%s - CQ_EN:0x%x, CQ_THR0_CTL:0x%8x, TG_VF_CON:0x%8x, SCQ_START_PERIOD:%d\n",
 			__func__,
 			readl_relaxed(dev->base + REG_CQ_EN),
 			readl_relaxed(dev->base + REG_CQ_THR0_CTL),
@@ -2497,7 +2497,7 @@ bool mtk_raw_resource_calc(struct mtk_cam_device *cam,
 	/* fake preisp line time from customized prate */
 	if (mtk_cam_scen_is_ext_isp(&res->scen) && pixel_rate > 0) {
 		calc.line_time = 1000000000L * in_w / pixel_rate;
-		dev_info(cam->dev, "preisp:res linetime:%lld, prate:%lld, w:%d\n",
+		dev_info(cam->dev, "preisp:res linetime:%ld, prate:%lld, w:%d\n",
 			calc.line_time, pixel_rate, in_w);
 	} else
 		calc.line_time = 1000000000L
@@ -2520,7 +2520,7 @@ bool mtk_raw_resource_calc(struct mtk_cam_device *cam,
 	stepper.opp_num = cam_dvfs->clklv_num;
 
 	dev_dbg(cam->dev,
-		"Res-start w/h(%d/%d) interval(%d/%d) vb(%d) hw_limit(%d/%d) bin(%d)",
+		"Res-start w/h(%d/%d) interval(%d/%d) vb(%lld) hw_limit(%d/%d) bin(%d)",
 		in_w, in_h, res->interval.numerator, res->interval.denominator,
 		res->vblank, res->hwn_limit_max, res->hwn_limit_min, res->bin_limit);
 
@@ -2550,7 +2550,7 @@ bool mtk_raw_resource_calc(struct mtk_cam_device *cam,
 	mtk_raw_update_debug_param(cam, res);
 
 	dev_info(cam->dev,
-		 "Res-end bin/raw_num/tg_pxlmode/before_raw/opp(%d/%d/%d/%d/%d), vb/hb(%d,%d), clk(%d), out(%dx%d)\n",
+		 "Res-end bin/raw_num/tg_pxlmode/before_raw/opp(%d/%d/%d/%d/%d), clk(%d), vb/hb(%lld,%lld), out(%dx%d)\n",
 		 res->bin_enable, res->raw_num_used, res->tgo_pxl_mode,
 		 res->tgo_pxl_mode_before_raw, res->opp_idx, res->clk_target,
 		 res->vblank, res->hblank, *out_w, *out_h);
@@ -2684,7 +2684,7 @@ static irqreturn_t mtk_irq_raw(int irq, void *data)
 
 	/* Frame skipped */
 	if (dcif_status & DCIF_SKIP_MASK) {
-		dev_dbg(dev, "dcif skip frame 0x%x", dcif_status & DCIF_SKIP_MASK);
+		dev_dbg(dev, "dcif skip frame 0x%lx", dcif_status & DCIF_SKIP_MASK);
 		irq_info.irq_type |= 1 << CAMSYS_IRQ_FRAME_SKIPPED;
 	}
 
@@ -2793,7 +2793,7 @@ static irqreturn_t mtk_thread_irq_raw(int irq, void *data)
 
 		WARN_ON(len != sizeof(irq_info));
 
-		dev_dbg(raw_dev->dev, "ts=%lu irq_type %d, req:%d/%d\n",
+		dev_dbg(raw_dev->dev, "ts=%llu irq_type %d, req:%d/%d\n",
 			irq_info.ts_ns / 1000,
 			irq_info.irq_type,
 			irq_info.frame_idx_inner,
@@ -3628,7 +3628,7 @@ static int mtk_raw_sd_s_stream(struct v4l2_subdev *sd, int enable)
 		}
 	}
 
-	dev_info(raw->cam_dev, "%s:raw-%d: en %d, dev 0x%x dmas 0x%x hw_mode %d\n",
+	dev_info(raw->cam_dev, "%s:raw-%d: en %d, dev 0x%x dmas 0x%lx hw_mode %lld\n",
 		 __func__, pipe->id, enable, pipe->enabled_raw,
 		 pipe->enabled_dmas, ctx->pipe->hw_mode);
 

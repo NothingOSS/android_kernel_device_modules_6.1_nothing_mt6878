@@ -235,7 +235,7 @@ int mtk_cam_img_working_buf_pool_init(struct mtk_cam_ctx *ctx, int buf_num,
 		buf->img_buffer.va = ctx->img_buf_pool.working_img_buf_va + offset;
 		buf->img_buffer.iova = ctx->img_buf_pool.working_img_buf_iova + offset;
 		buf->img_buffer.size = working_buf_size;
-		dev_info(ctx->cam->dev, "%s:ctx(%d):buf(%d), iova(0x%x)\n",
+		dev_info(ctx->cam->dev, "%s:ctx(%d):buf(%d), iova(0x%llx)\n",
 			__func__, ctx->stream_id, i, buf->img_buffer.iova);
 
 		list_add_tail(&buf->list_entry, &ctx->img_buf_pool.cam_freeimglist.list);
@@ -262,7 +262,7 @@ void mtk_cam_img_working_buf_pool_release(struct mtk_cam_ctx *ctx)
 	ctx->img_buf_pool.working_img_buf_size = 0;
 
 	dev_info(ctx->cam->dev,
-		"%s:ctx(%d):img buffers release, mem iova(0x%x), sz(%d)\n",
+		"%s:ctx(%d):img buffers release, mem iova(0x%llx), sz(%d)\n",
 		__func__, ctx->stream_id, smem.iova, smem.len);
 }
 
@@ -279,7 +279,7 @@ void mtk_cam_img_working_buf_put(struct mtk_cam_img_working_buf_entry *buf_entry
 
 	spin_unlock(&ctx->img_buf_pool.cam_freeimglist.lock);
 
-	dev_dbg(ctx->cam->dev, "%s:ctx(%d):iova(0x%x), free cnt(%d)\n",
+	dev_dbg(ctx->cam->dev, "%s:ctx(%d):iova(0x%llx), free cnt(%d)\n",
 		__func__, ctx->stream_id, buf_entry->img_buffer.iova, cnt);
 }
 
@@ -307,7 +307,7 @@ mtk_cam_img_working_buf_get(struct mtk_cam_ctx *ctx)
 
 	spin_unlock(&ctx->img_buf_pool.cam_freeimglist.lock);
 
-	dev_dbg(ctx->cam->dev, "%s:ctx(%d):iova(0x%x), free cnt(%d)\n",
+	dev_dbg(ctx->cam->dev, "%s:ctx(%d):iova(0x%llx), free cnt(%d)\n",
 		__func__, ctx->stream_id, buf_entry->img_buffer.iova, cnt);
 
 	return buf_entry;

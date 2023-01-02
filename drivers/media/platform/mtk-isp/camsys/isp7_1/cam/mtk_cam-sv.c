@@ -1597,7 +1597,7 @@ int mtk_cam_sv_enquehwbuf(
 	CAMSV_WRITE_REG(dev->base + REG_CAMSV_IMGO_BASE_ADDR_MSB, (ba >> 32) & 0xF);
 	reg.Bits.RCNT_INC1 = 1;
 	CAMSV_WRITE_REG(dev->base + REG_CAMSV_TOP_FBC_CNT_SET, reg.Raw);
-	dev_dbg(dev->dev, "[%s] iova:0x%x, seq:%d\n", __func__, ba, seq_no);
+	dev_dbg(dev->dev, "[%s] iova:0x%llx, seq:%d\n", __func__, ba, seq_no);
 
 	return ret;
 }
@@ -2077,10 +2077,10 @@ int mtk_cam_sv_dev_config(
 	cfg_in_param.in_crop.s.h = img_fmt->fmt.pix_mp.height;
 	stride = img_fmt->fmt.pix_mp.plane_fmt[0].bytesperline;
 	if (mtk_cam_is_ext_isp_yuv(ctx)) {
-		dev_info(dev, "yuv pipeline str:%d feature:%d\n",
+		dev_info(dev, "yuv pipeline str:%d feature:%lld\n",
 		stride, ctx->pipe->feature_active);
 	}
-	dev_info(dev, "sink pad code:0x%x camsv's imgo w/h/stride:%d/%d/%d feature:%d\n", mf->code,
+	dev_info(dev, "sink pad code:0x%x camsv's imgo w/h/stride:%d/%d/%d feature:%lld\n", mf->code,
 		cfg_in_param.in_crop.s.w, cfg_in_param.in_crop.s.h,
 		stride, (ctx->used_raw_num) ? ctx->pipe->feature_active : 0);
 	cfg_in_param.raw_pixel_id = mtk_cam_get_sensor_pixel_id(mf->code);

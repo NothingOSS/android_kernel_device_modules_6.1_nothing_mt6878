@@ -284,7 +284,7 @@ void imgsys_debug_dump_routine(struct mtk_imgsys_dev *imgsys_dev,
 	int i = 0;
 
 	dev_info(imgsys_dev->dev,
-			"%s: hw comb set: 0x%lx\n",
+			"%s: hw comb set: 0x%x\n",
 			__func__, hw_comb);
 
 	imgsys_dl_debug_dump(imgsys_dev, hw_comb);

@@ -36,7 +36,7 @@ static int mtk_cam_pm_component_bind(struct device *dev, struct device *master,
 	struct mtk_cam_device *cam_dev = data;
 	struct mtk_larb *larb = &cam_dev->larb;
 
-	dev_info(dev, "%s: dev:0x%x, id=%d\n", __func__, dev, larb_dev->larb_id);
+	dev_info(dev, "%s: dev:0x%lx, id=%d\n", __func__, (unsigned long)dev, larb_dev->larb_id);
 
 	larb_dev->cam = cam_dev;
 	switch (larb_dev->larb_id) {

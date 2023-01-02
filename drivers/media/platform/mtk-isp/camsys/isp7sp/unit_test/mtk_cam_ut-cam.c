@@ -511,7 +511,7 @@ static irqreturn_t mtk_ut_raw_irq(int irq, void *data)
 		event->mask |= EVENT_CQ_MAIN_TRIG_DLY;
 
 	if (status.irq & INT_ST_MASK_CAM_ERR) {
-		dev_info(raw->dev, "int_err: 0x%x\n",
+		dev_info(raw->dev, "int_err: 0x%lx\n",
 			 status.irq & INT_ST_MASK_CAM_ERR);
 
 		if (status.irq & DMA_ERR_ST)
@@ -616,7 +616,7 @@ static int mtk_ut_raw_of_probe(struct platform_device *pdev,
 		dev_info(dev, "failed to map register base\n");
 		return PTR_ERR(raw->base);
 	}
-	dev_dbg(dev, "raw, map_addr=0x%lx\n", raw->base);
+	dev_dbg(dev, "raw, map_addr=0x%lx\n", (unsigned long)raw->base);
 	/* base inner register */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "inner_base");
 	if (!res) {

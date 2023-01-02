@@ -903,7 +903,7 @@ static void mtk_cam_mraw_set_frame_param_dmao(
 		offset = offset + (((pipe->res_config.mraw_dma_size[i] + 15) >> 4) << 4);
 
 
-		dev_dbg(cam->dev, "%s:dmao_id:%d iova:0x%llx stride:0x%x height:0x%x size:%d offset:%d\n",
+		dev_dbg(cam->dev, "%s:dmao_id:%d iova:0x%llx stride:0x%x height:0x%x size:%d offset:%lu\n",
 			__func__, i, mraw_img_outputs->buf[0][0].iova,
 			mraw_img_outputs->fmt.stride[0], mraw_img_outputs->fmt.s.h,
 			pipe->res_config.mraw_dma_size[i], offset);
@@ -2019,7 +2019,7 @@ static void mraw_irq_handle_tg_overrun_err(struct mtk_mraw_device *mraw_dev,
 	mtk_mraw_print_register_status(mraw_dev);
 	irq_status5 = readl_relaxed(mraw_dev->base + REG_MRAW_CTL_INT5_STATUSX);
 	dev_info_ratelimited(mraw_dev->dev,
-			"imgo_overr_status:0x%x, imgbo_overr_status:0x%x, cpio_overr_status:0x%x\n",
+			"imgo_overr_status:0x%lx, imgbo_overr_status:0x%lx, cpio_overr_status:0x%lx\n",
 			irq_status5 & MRAWCTL_IMGO_M1_OTF_OVERFLOW_ST,
 			irq_status5 & MRAWCTL_IMGBO_M1_OTF_OVERFLOW_ST,
 			irq_status5 & MRAWCTL_CPIO_M1_OTF_OVERFLOW_ST);

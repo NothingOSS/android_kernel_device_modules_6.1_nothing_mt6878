@@ -107,17 +107,17 @@ void mtk_cam_tg_flash_setup(struct mtk_raw_device *raw,
 
 	/* TO BE REMOVED */
 	dev_info(raw->dev,
-		 "%s:REG: [0x%llx]0X%x,[0x%llx]0x%x,[0x%llx]0x%x,[0x%llx]0x%x,[0x%llx]0x%x\n",
+		 "%s:REG: [0x%lx]0X%x,[0x%lx]0x%x,[0x%lx]0x%x,[0x%lx]0x%x,[0x%lx]0x%x\n",
 		 __func__,
-		 raw->cam->base + REG_FLASH,
+		 (unsigned long)raw->cam->base + REG_FLASH,
 		 readl_relaxed(raw->cam->base + REG_FLASH),
-		 raw->base + REG_TG_IR_FLASH_CTL,
+		 (unsigned long)raw->base + REG_TG_IR_FLASH_CTL,
 		 readl_relaxed(raw->base + REG_TG_IR_FLASH_CTL),
-		 raw->base + REG_TG_IR_FLASH_OFFSET,
+		 (unsigned long)raw->base + REG_TG_IR_FLASH_OFFSET,
 		 readl_relaxed(raw->base + REG_TG_IR_FLASH_OFFSET),
-		 raw->base + REG_TG_IR_FLASH_HIGH_WIDTH,
+		 (unsigned long)raw->base + REG_TG_IR_FLASH_HIGH_WIDTH,
 		 readl_relaxed(raw->base + REG_TG_IR_FLASH_HIGH_WIDTH),
-		 raw->base + REG_TG_IR_FLASH_LOW_WIDTH,
+		 (unsigned long)raw->base + REG_TG_IR_FLASH_LOW_WIDTH,
 		 readl_relaxed(raw->base + REG_TG_IR_FLASH_LOW_WIDTH));
 }
 

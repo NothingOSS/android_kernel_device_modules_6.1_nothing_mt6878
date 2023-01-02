@@ -474,7 +474,7 @@ void mtk_cam_internal_img_working_buf_pool_release(struct mtk_cam_ctx *ctx)
 	mtk_ccd_put_buffer(ccd, &smem);
 
 	dev_info(ctx->cam->dev,
-		"%s:ctx(%d):img buffers release, mem iova(0x%x), sz(%d)\n",
+		"%s:ctx(%d):img buffers release, mem iova(0x%llx), sz(%d)\n",
 		__func__, ctx->stream_id, smem.iova, smem.len);
 	mtk_cam_img_working_buf_pool_release(ctx);
 
@@ -493,7 +493,7 @@ void mtk_cam_img_working_buf_put(struct mtk_cam_img_working_buf_entry *buf_entry
 
 	spin_unlock(&ctx->img_buf_pool.cam_freeimglist.lock);
 
-	dev_dbg(ctx->cam->dev, "%s:ctx(%d):iova(0x%x), free cnt(%d)\n",
+	dev_dbg(ctx->cam->dev, "%s:ctx(%d):iova(0x%llx), free cnt(%d)\n",
 		__func__, ctx->stream_id, buf_entry->img_buffer.iova, cnt);
 }
 
@@ -521,7 +521,7 @@ mtk_cam_img_working_buf_get(struct mtk_cam_ctx *ctx)
 
 	spin_unlock(&ctx->img_buf_pool.cam_freeimglist.lock);
 
-	dev_dbg(ctx->cam->dev, "%s:ctx(%d):iova(0x%x), free cnt(%d)\n",
+	dev_dbg(ctx->cam->dev, "%s:ctx(%d):iova(0x%llx), free cnt(%d)\n",
 		__func__, ctx->stream_id, buf_entry->img_buffer.iova, cnt);
 
 	return buf_entry;

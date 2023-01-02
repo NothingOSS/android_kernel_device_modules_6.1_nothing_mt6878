@@ -668,7 +668,7 @@ static void mtk_cam_vb2_buf_queue(struct vb2_buffer *vb)
 			img_out->fmt.s.h = node->active_fmt.fmt.pix_mp.height;
 			img_out->fmt.stride[svimg_i] =
 				node->active_fmt.fmt.pix_mp.plane_fmt[0].bytesperline;
-			dev_dbg(dev, "%s:MTK_RAW_MAIN_STREAM_SV(%d) iova(0x%x)w/h/stride=%d/%d/%d\n",
+			dev_dbg(dev, "%s:MTK_RAW_MAIN_STREAM_SV(%d) iova(0x%llx)w/h/stride=%d/%d/%d\n",
 			__func__, svimg_i, sv_frame_params->sensor_svimg_out.buf[0][svimg_i].iova,
 			img_out->fmt.s.w, img_out->fmt.s.h, img_out->fmt.stride[svimg_i]);
 		} else if (node->desc.id == MTK_RAW_META_SV_OUT_0 ||
@@ -683,7 +683,7 @@ static void mtk_cam_vb2_buf_queue(struct vb2_buffer *vb)
 			img_out->fmt.s.h = node->active_fmt.fmt.pix_mp.height;
 			img_out->fmt.stride[svmeta_i] =
 				node->active_fmt.fmt.pix_mp.plane_fmt[0].bytesperline;
-			dev_dbg(dev, "%s:MTK_RAW_META_SV(%d) iova(0x%x) w/h/stride=%d/%d/%d\n",
+			dev_dbg(dev, "%s:MTK_RAW_META_SV(%d) iova(0x%llx) w/h/stride=%d/%d/%d\n",
 			__func__, svmeta_i,
 			sv_frame_params->sensor_svmeta_out.buf[0][svmeta_i].iova,
 			img_out->fmt.s.w, img_out->fmt.s.h, img_out->fmt.stride[svmeta_i]);

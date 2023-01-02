@@ -522,7 +522,7 @@ int isp7sp_allocate_working_buffer(struct mtk_hcp *hcp_dev, unsigned int mode)
 					O_RDWR | O_CLOEXEC,
 					DMA_HEAP_VALID_HEAP_FLAGS);
 				if (IS_ERR(mblock[id].d_buf)) {
-					pr_info("dma_heap_buffer_alloc fail :%lld\n",
+					pr_info("dma_heap_buffer_alloc fail :%ld\n",
 					PTR_ERR(mblock[id].d_buf));
 					return -1;
 				}
@@ -531,7 +531,7 @@ int isp7sp_allocate_working_buffer(struct mtk_hcp *hcp_dev, unsigned int mode)
 					dma_buf_attach(mblock[id].d_buf, hcp_dev->dev);
 				attach = mblock[id].attach;
 				if (IS_ERR(attach)) {
-					pr_info("dma_buf_attach fail :%lld\n",
+					pr_info("dma_buf_attach fail :%ld\n",
 					PTR_ERR(attach));
 					return -1;
 				}
@@ -541,7 +541,7 @@ int isp7sp_allocate_working_buffer(struct mtk_hcp *hcp_dev, unsigned int mode)
 				sgt = mblock[id].sgt;
 				if (IS_ERR(sgt)) {
 					dma_buf_detach(mblock[id].d_buf, attach);
-					pr_info("dma_buf_map_attachment fail sgt:%lld\n",
+					pr_info("dma_buf_map_attachment fail sgt:%ld\n",
 					PTR_ERR(sgt));
 					return -1;
 				}
@@ -583,7 +583,7 @@ int isp7sp_allocate_working_buffer(struct mtk_hcp *hcp_dev, unsigned int mode)
 					mblock[id].size, O_RDWR | O_CLOEXEC,
 					DMA_HEAP_VALID_HEAP_FLAGS);
 				if (IS_ERR(mblock[id].d_buf)) {
-					pr_info("dma_heap_buffer_alloc fail :%lld\n",
+					pr_info("dma_heap_buffer_alloc fail :%ld\n",
 					PTR_ERR(mblock[id].d_buf));
 					return -1;
 				}
@@ -592,7 +592,7 @@ int isp7sp_allocate_working_buffer(struct mtk_hcp *hcp_dev, unsigned int mode)
 				mblock[id].d_buf, hcp_dev->dev);
 				attach = mblock[id].attach;
 				if (IS_ERR(attach)) {
-					pr_info("dma_buf_attach fail :%lld\n",
+					pr_info("dma_buf_attach fail :%ld\n",
 					PTR_ERR(attach));
 					return -1;
 				}
@@ -601,7 +601,7 @@ int isp7sp_allocate_working_buffer(struct mtk_hcp *hcp_dev, unsigned int mode)
 				sgt = mblock[id].sgt;
 				if (IS_ERR(sgt)) {
 					dma_buf_detach(mblock[id].d_buf, attach);
-					pr_info("dma_buf_map_attachment fail sgt:%lld\n",
+					pr_info("dma_buf_map_attachment fail sgt:%ld\n",
 					PTR_ERR(sgt));
 					return -1;
 				}

@@ -1044,7 +1044,7 @@ static bool get_user_by_file(struct file *filp, struct mtk_imgsys_user **user)
 
 		if ((*user)->fh == filp->private_data) {
 			found = true;
-			pr_debug("%s: user(%x) found! id(%d)", __func__, (*user),
+			pr_debug("%s: user(%lx) found! id(%d)", __func__, (unsigned long)(*user),
 				(*user)->id);
 			break;
 		}
@@ -1522,7 +1522,7 @@ static int mtkdip_ioc_add_kva(struct v4l2_subdev *subdev, void *arg)
 		list_add_tail(vlist_link(buf_va_info, struct buf_va_info_t),
 		   &kva_list->mylist);
 		mutex_unlock(&(kva_list->mymutex));
-		pr_debug("%s: fd(%d) size(%llx) cached\n", __func__,
+		pr_debug("%s: fd(%d) size(%lx) cached\n", __func__,
 					fd_info->fds[i], fd_info->fds_size[i]);
 	}
 
@@ -1579,7 +1579,7 @@ static int mtkdip_ioc_del_kva(struct v4l2_subdev *subdev, void *arg)
 		dma_buf_put(dmabuf);
 		vfree(buf_va_info);
 		buf_va_info = NULL;
-		pr_debug("%s: fd(%d) size (%llx) cache invalidated\n", __func__,
+		pr_debug("%s: fd(%d) size (%lx) cache invalidated\n", __func__,
 					fd_info->fds[i], fd_info->fds_size[i]);
 	}
 
@@ -1671,7 +1671,7 @@ static int mtkdip_ioc_add_iova(struct v4l2_subdev *subdev, void *arg)
 		fd_iova->sgt = sgt;
 		dev_dbg(pipe->imgsys_dev->dev,
 				"%s:dma_buf:%lx,attach:%lx,sgt:%lx\n", __func__,
-			fd_iova->dma_buf, fd_iova->attach, fd_iova->sgt);
+			(unsigned long)fd_iova->dma_buf, (unsigned long)fd_iova->attach, (unsigned long)fd_iova->sgt);
 
 		spin_lock(&pipe->iova_cache.lock);
 		list_add_tail(&fd_iova->list_entry, &pipe->iova_cache.list);
@@ -1679,7 +1679,7 @@ static int mtkdip_ioc_add_iova(struct v4l2_subdev *subdev, void *arg)
 		spin_unlock(&pipe->iova_cache.lock);
 		fd_info.fds_size[i] = dmabuf->size;
 		fd_info.fds[i] = kfd[i];
-		pr_debug("%s: fd(%d) size (%llx) cache added\n", __func__,
+		pr_debug("%s: fd(%d) size (%lx) cache added\n", __func__,
 					fd_info.fds[i], fd_info.fds_size[i]);
 
 	}
@@ -1755,7 +1755,7 @@ static int mtkdip_ioc_del_iova(struct v4l2_subdev *subdev, void *arg)
 		dma_buf_put(dmabuf);
 
 		fd_info.fds[i] = kfd[i];
-		pr_debug("%s: fd(%d) size (%llx) cache invalidated\n", __func__,
+		pr_debug("%s: fd(%d) size (%lx) cache invalidated\n", __func__,
 					fd_info.fds[i], fd_info.fds_size[i]);
 
 	}
@@ -1880,7 +1880,7 @@ static int mtkdip_ioc_set_control(struct v4l2_subdev *subdev, void *arg)
 		dev_dbg(pipe->imgsys_dev->dev, "%s:NULL usrptr\n", __func__);
 	}
 
-	pr_info("%s set control:%d, %p\n", __func__, ctrl->id, ctrl->value);
+	pr_info("%s set control:%d, %d\n", __func__, ctrl->id, ctrl->value);
 
 	switch (ctrl->id) {
 	case V4L2_CID_IMGSYS_APU_DC:
@@ -2088,7 +2088,7 @@ int mtk_imgsys_v4l2_fh_release(struct file *filp)
 	struct mtk_imgsys_dev *imgsys_dev = pipe->imgsys_dev;
 	int ret = 0;
 
-	pr_debug("%s: filp(%x)\n", __func__, filp);
+	pr_debug("%s: filp(%lx)\n", __func__, (unsigned long)filp);
 	ret = get_user_by_file(filp, &user);
 	if (ret < 0) {
 		pr_info("%s: cannot find user\n", __func__);

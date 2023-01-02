@@ -2229,7 +2229,7 @@ static void mraw_irq_handle_tg_overrun_err(struct mtk_mraw_device *mraw_dev,
 			 readl_relaxed(mraw_dev->base + REG_MRAW_TG_SEN_GRAB_PXL),
 			 readl_relaxed(mraw_dev->base + REG_MRAW_TG_SEN_GRAB_LIN));
 	dev_info_ratelimited(mraw_dev->dev,
-			"imgo_overr_status:0x%x, imgbo_overr_status:0x%x, cpio_overr_status:0x%x\n",
+			"imgo_overr_status:0x%lx, imgbo_overr_status:0x%lx, cpio_overr_status:0x%lx\n",
 			irq_status5 & MRAWCTL_IMGO_M1_OTF_OVERFLOW_ST,
 			irq_status5 & MRAWCTL_IMGBO_M1_OTF_OVERFLOW_ST,
 			irq_status5 & MRAWCTL_CPIO_M1_OTF_OVERFLOW_ST);

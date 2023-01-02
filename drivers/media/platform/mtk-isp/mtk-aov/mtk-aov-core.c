@@ -350,16 +350,16 @@ int aov_core_send_cmd(struct mtk_aov *aov_dev, uint32_t cmd,
 				struct aov_user user;
 				struct aov_start *start = (struct aov_start *)buf;
 
-				dev_dbg(aov_dev->dev, "%s: init buffer %x, size (%d/%d)\n",
-					__func__, buf, sizeof(struct aov_start),
+				dev_dbg(aov_dev->dev, "%s: init buffer %lx, size (%ld/%ld)\n",
+					__func__, (unsigned long)buf, sizeof(struct aov_start),
 						sizeof(struct aov_event));
 
-				dev_dbg(aov_dev->dev, "%s: copy aov user data %x, %d+\n",
-					__func__, data, sizeof(struct aov_user));
+				dev_dbg(aov_dev->dev, "%s: copy aov user data %lx, %ld+\n",
+					__func__, (unsigned long)data, sizeof(struct aov_user));
 				ret = copy_from_user((void *)&user,
 					(void *)data, sizeof(struct aov_user));
-				dev_dbg(aov_dev->dev, "%s: copy aov user data %x, %d-\n",
-					__func__, data, sizeof(struct aov_user));
+				dev_dbg(aov_dev->dev, "%s: copy aov user data %lx, %ld-\n",
+					__func__, (unsigned long)data, sizeof(struct aov_user));
 				if (ret) {
 					dev_info(aov_dev->dev, "%s: failed to copy aov user data: %d\n",
 						__func__, ret);
@@ -370,12 +370,12 @@ int aov_core_send_cmd(struct mtk_aov *aov_dev, uint32_t cmd,
 
 				if ((user.aaa_size > 0) &&
 					(user.aaa_size <= AOV_MAX_AAA_SIZE)) {
-					dev_dbg(aov_dev->dev, "%s: copy aaa info %x, %d+\n",
-						__func__, user.aaa_info, user.aaa_size);
+					dev_dbg(aov_dev->dev, "%s: copy aaa info %lx, %d+\n",
+						__func__, (unsigned long)user.aaa_info, user.aaa_size);
 					(void)copy_from_user(&(start->aaa_info),
 						user.aaa_info, user.aaa_size);
-					dev_dbg(aov_dev->dev, "%s: copy aaa info %x, %d-\n",
-						__func__, user.aaa_info, user.aaa_size);
+					dev_dbg(aov_dev->dev, "%s: copy aaa info %lx, %d-\n",
+						__func__, (unsigned long)user.aaa_info, user.aaa_size);
 				} else if (user.aaa_size > AOV_MAX_AAA_SIZE) {
 					dev_info(aov_dev->dev, "%s: aaa info size(%d) overflow\n",
 						__func__, user.aaa_size);
@@ -384,12 +384,12 @@ int aov_core_send_cmd(struct mtk_aov *aov_dev, uint32_t cmd,
 
 				if ((user.tuning_size > 0) &&
 					(user.tuning_size <= AOV_MAX_TUNING_SIZE)) {
-					dev_dbg(aov_dev->dev, "%s: copy tuning info %x, %d+\n",
-						__func__, user.tuning_info, user.tuning_size);
+					dev_dbg(aov_dev->dev, "%s: copy tuning info %lx, %d+\n",
+						__func__, (unsigned long)user.tuning_info, user.tuning_size);
 					(void)copy_from_user(&(start->tuning_info),
 						user.tuning_info, user.tuning_size);
-					dev_dbg(aov_dev->dev, "%s: copy tuning info %x, %d-\n",
-						__func__, user.tuning_info, user.tuning_size);
+					dev_dbg(aov_dev->dev, "%s: copy tuning info %lx, %d-\n",
+						__func__, (unsigned long)user.tuning_info, user.tuning_size);
 				} else if (user.tuning_size > AOV_MAX_TUNING_SIZE) {
 					dev_info(aov_dev->dev, "%s: tuning info size(%d) overflow\n",
 						__func__, user.tuning_size);
@@ -459,8 +459,8 @@ int aov_core_send_cmd(struct mtk_aov *aov_dev, uint32_t cmd,
 			} else if (cmd == AOV_SCP_CMD_NOTIFY) {
 				memcpy(buf, (void *)data, sizeof(struct aov_notify));
 			} else {
-				dev_dbg(aov_dev->dev, "%s: data buffer 0x%08x, size %d",
-					__func__, buf, len);
+				dev_dbg(aov_dev->dev, "%s: data buffer 0x%08lx, size %d",
+					__func__, (unsigned long)buf, len);
 				(void)copy_from_user(buf, (void *)data, len);
 			}
 		} else {
@@ -754,7 +754,7 @@ static int scp_state_notify(struct notifier_block *this,
 		(void)aov_aee_record(aov_dev, 0, SCP_STOP);
 		(void)aov_aee_flush(aov_dev);
 
-		dev_info(aov_dev->dev, "%s: receive scp stop event(%d)\n", __func__, event);
+		dev_info(aov_dev->dev, "%s: receive scp stop event(%lu)\n", __func__, event);
 
 		atomic_set(&(core_info->scp_ready), 1);
 
@@ -777,7 +777,7 @@ static int scp_state_notify(struct notifier_block *this,
 	} else if (event == SCP_EVENT_READY) {
 		session = atomic_fetch_add(1, &(core_info->scp_session)) + 1;
 
-		dev_info(aov_dev->dev, "%s: receive scp start event(%d), session(%d)\n",
+		dev_info(aov_dev->dev, "%s: receive scp start event(%lu), session(%d)\n",
 			__func__, event, session);
 
 		ret = send_cmd_internal(core_info, AOV_SCP_CMD_READY, 0, 0, false, false);
@@ -839,8 +839,8 @@ int aov_core_init(struct mtk_aov *aov_dev)
 	core_info->buf_va = (void *)scp_get_reserve_mem_virt(SCP_AOV_MEM_ID);
 	core_info->buf_size = scp_get_reserve_mem_size(SCP_AOV_MEM_ID);
 
-	dev_dbg(aov_dev->dev, "%s: scp buffer pa(0x%x), va(0x%08x), size(0x%x)\n", __func__,
-		core_info->buf_pa, core_info->buf_va, core_info->buf_size);
+	dev_dbg(aov_dev->dev, "%s: scp buffer pa(0x%lx), va(0x%08lx), size(0x%lx)\n", __func__,
+		(unsigned long)core_info->buf_pa, (unsigned long)core_info->buf_va, core_info->buf_size);
 
 	tlsf_init(&(core_info->alloc), core_info->buf_va, core_info->buf_size);
 
@@ -956,9 +956,9 @@ int aov_core_copy(struct mtk_aov *aov_dev, struct aov_dqevent *dequeue)
 			get_user(buffer, (void **)((uintptr_t)dequeue +
 				offsetof(struct aov_dqevent, aie_output)));
 
-			dev_dbg(aov_dev->dev, "%s: copy aie output from(%x) to(%x) size(%d)\n",
-				__func__, ALIGN16(&(event->aie_output[0])),
-				buffer, event->aie_size);
+			dev_dbg(aov_dev->dev, "%s: copy aie output from(%lx) to(%lx) size(%d)\n",
+				__func__, (unsigned long)ALIGN16(&(event->aie_output[0])),
+				(unsigned long)buffer, event->aie_size);
 
 			ret = copy_to_user((void *)buffer,
 				ALIGN16(&(event->aie_output[0])), event->aie_size);
@@ -986,9 +986,9 @@ int aov_core_copy(struct mtk_aov *aov_dev, struct aov_dqevent *dequeue)
 			get_user(buffer, (void **)((uintptr_t)dequeue +
 				offsetof(struct aov_dqevent, apu_output)));
 
-			dev_dbg(aov_dev->dev, "%s: copy apu output from(%x) to(%x) size(%d)\n",
-				__func__, ALIGN16(&(event->apu_output[0])),
-				buffer, event->apu_size);
+			dev_dbg(aov_dev->dev, "%s: copy apu output from(%lx) to(%lx) size(%d)\n",
+				__func__, (unsigned long)ALIGN16(&(event->apu_output[0])),
+				(unsigned long)buffer, event->apu_size);
 
 			ret = copy_to_user((void *)buffer,
 				ALIGN16(&(event->apu_output[0])), event->apu_size);
@@ -1023,9 +1023,9 @@ int aov_core_copy(struct mtk_aov *aov_dev, struct aov_dqevent *dequeue)
 			get_user(buffer, (void **)((uintptr_t)dequeue +
 				offsetof(struct aov_dqevent, yuvo1_output)));
 
-			dev_dbg(aov_dev->dev, "%s: copy yuvo1 output from(%x) to(%x) size(%d)\n",
-					__func__, ALIGN16(&(event->yuvo1_output[0])),
-					buffer, AOV_MAX_YUVO1_OUTPUT);
+			dev_dbg(aov_dev->dev, "%s: copy yuvo1 output from(%lx) to(%lx) size(%d)\n",
+					__func__, (unsigned long)ALIGN16(&(event->yuvo1_output[0])),
+					(unsigned long)buffer, AOV_MAX_YUVO1_OUTPUT);
 
 			ret = copy_to_user((void *)buffer,
 				ALIGN16(&(event->yuvo1_output[0])), AOV_MAX_YUVO1_OUTPUT);
@@ -1053,9 +1053,9 @@ int aov_core_copy(struct mtk_aov *aov_dev, struct aov_dqevent *dequeue)
 			get_user(buffer, (void **)((uintptr_t)dequeue +
 				offsetof(struct aov_dqevent, yuvo2_output)));
 
-			dev_dbg(aov_dev->dev, "%s: copy yuvo1 output from(%x) to(%x) size(%d)\n",
-				__func__, ALIGN16(&(event->yuvo2_output[0])),
-				buffer, AOV_MAX_YUVO2_OUTPUT);
+			dev_dbg(aov_dev->dev, "%s: copy yuvo1 output from(%lx) to(%lx) size(%d)\n",
+				__func__, (unsigned long)ALIGN16(&(event->yuvo2_output[0])),
+				(unsigned long)buffer, AOV_MAX_YUVO2_OUTPUT);
 
 			ret = copy_to_user((void *)buffer,
 				ALIGN16(&(event->yuvo2_output[0])), AOV_MAX_YUVO2_OUTPUT);
@@ -1089,9 +1089,9 @@ int aov_core_copy(struct mtk_aov *aov_dev, struct aov_dqevent *dequeue)
 		get_user(buffer, (void **)((uintptr_t)dequeue +
 			offsetof(struct aov_dqevent, imgo_output)));
 
-		dev_dbg(aov_dev->dev, "%s: copy imgo output from(%x) to(%x) size(%d)\n",
-				__func__, ALIGN16(&(event->imgo_output[0])),
-				buffer, AOV_MAX_IMGO_OUTPUT);
+		dev_dbg(aov_dev->dev, "%s: copy imgo output from(%lx) to(%lx) size(%d)\n",
+				__func__, (unsigned long)ALIGN16(&(event->imgo_output[0])),
+				(unsigned long)buffer, AOV_MAX_IMGO_OUTPUT);
 
 		ret = copy_to_user((void *)buffer,
 			ALIGN16(&(event->imgo_output[0])), AOV_MAX_IMGO_OUTPUT);
@@ -1118,9 +1118,9 @@ int aov_core_copy(struct mtk_aov *aov_dev, struct aov_dqevent *dequeue)
 			get_user(buffer, (void **)((uintptr_t)dequeue +
 				offsetof(struct aov_dqevent, aao_output)));
 
-			dev_dbg(aov_dev->dev, "%s: copy aao output from(%x) to(%x) size(%d)\n",
-				__func__, ALIGN16(&(event->aao_output[0])),
-				buffer, event->aao_size);
+			dev_dbg(aov_dev->dev, "%s: copy aao output from(%lx) to(%lx) size(%d)\n",
+				__func__, (unsigned long)ALIGN16(&(event->aao_output[0])),
+				(unsigned long)buffer, event->aao_size);
 
 			ret = copy_to_user((void *)buffer,
 				ALIGN16(&(event->aao_output[0])), event->aao_size);
@@ -1148,9 +1148,9 @@ int aov_core_copy(struct mtk_aov *aov_dev, struct aov_dqevent *dequeue)
 			get_user(buffer, (void **)((uintptr_t)dequeue +
 				offsetof(struct aov_dqevent, aaho_output)));
 
-			dev_dbg(aov_dev->dev, "%s: copy aaho output from(%x) to(%x) size(%d)\n",
-				__func__, ALIGN16(&(event->aaho_output[0])),
-				buffer, event->aaho_size);
+			dev_dbg(aov_dev->dev, "%s: copy aaho output from(%lx) to(%lx) size(%d)\n",
+				__func__, (unsigned long)ALIGN16(&(event->aaho_output[0])),
+				(unsigned long)buffer, event->aaho_size);
 
 			ret = copy_to_user((void *)buffer,
 				ALIGN16(&(event->aaho_output[0])), event->aaho_size);
@@ -1178,9 +1178,9 @@ int aov_core_copy(struct mtk_aov *aov_dev, struct aov_dqevent *dequeue)
 			get_user(buffer, (void **)((uintptr_t)dequeue +
 				offsetof(struct aov_dqevent, meta_output)));
 
-			dev_dbg(aov_dev->dev, "%s: copy meta output from(%x) to(%x) size(%d)\n",
-				__func__, ALIGN16(&(event->meta_output[0])),
-				buffer, event->meta_size);
+			dev_dbg(aov_dev->dev, "%s: copy meta output from(%lx) to(%lx) size(%d)\n",
+				__func__, (unsigned long)ALIGN16(&(event->meta_output[0])),
+				(unsigned long)buffer, event->meta_size);
 
 			ret = copy_to_user((void *)buffer,
 				ALIGN16(&(event->meta_output[0])), event->meta_size);
@@ -1208,9 +1208,9 @@ int aov_core_copy(struct mtk_aov *aov_dev, struct aov_dqevent *dequeue)
 			get_user(buffer, (void **)((uintptr_t)dequeue +
 				offsetof(struct aov_dqevent, awb_output)));
 
-			dev_dbg(aov_dev->dev, "%s: copy tuning output from(%x) to(%x) size(%d)\n",
-				__func__, ALIGN16(&(event->awb_output[0])),
-				buffer, event->awb_size);
+			dev_dbg(aov_dev->dev, "%s: copy tuning output from(%lx) to(%lx) size(%d)\n",
+				__func__, (unsigned long)ALIGN16(&(event->awb_output[0])),
+				(unsigned long)buffer, event->awb_size);
 
 			ret = copy_to_user((void *)buffer,
 				ALIGN16(&(event->awb_output[0])), event->awb_size);

@@ -512,7 +512,7 @@ void mtk_cam_qos_bw_calc(struct mtk_cam_ctx *ctx, unsigned long raw_dmas, bool f
 		sd_fmt.pad = PAD_SRC_RAW0;
 		v4l2_subdev_call(ctx->seninf, pad, get_fmt, NULL, &sd_fmt);
 		height = sd_fmt.format.height;
-		dev_info(cam->dev, "[%s] FPS:%lu/%lu:%lu, H:%lu, VB:%lu\n",
+		dev_info(cam->dev, "[%s] FPS:%u/%u:%lu, H:%lu, VB:%lu\n",
 			 __func__, fi.interval.denominator, fi.interval.numerator,
 			 fps, height, vblank);
 	}

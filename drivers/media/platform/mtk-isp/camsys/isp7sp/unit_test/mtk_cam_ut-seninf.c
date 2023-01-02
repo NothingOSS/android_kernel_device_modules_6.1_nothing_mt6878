@@ -176,7 +176,7 @@ static int mtk_ut_seninf_of_probe(struct platform_device *pdev,
 		dev_info(dev, "failed to map register base\n");
 		return PTR_ERR(seninf->base);
 	}
-	dev_info(dev, "seninf, map_addr=0x%lx\n", seninf->base);
+	dev_info(dev, "seninf, map_addr=0x%lx\n", (unsigned long)seninf->base);
 
 	clks = of_count_phandle_with_args(pdev->dev.of_node,
 				"clocks", "#clock-cells");

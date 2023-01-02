@@ -470,7 +470,7 @@ static ssize_t mtk_hcp_proc_write(struct file *file, const char __user *buf,
 
 	mutex_unlock(&data->mtx);
 
-	dev_dbg(hcp_dev->dev, "Leaving the WRITE function, len=%d, pos=%u\n",
+	dev_dbg(hcp_dev->dev, "Leaving the WRITE function, len=%ld, pos=%lu\n",
 		len, data->cnt);
 
 	return len;
@@ -724,7 +724,7 @@ static int hcp_send_internal(struct mtk_hcp *hcp_dev,
 
 	if (id >= HCP_MAX_ID || len > sizeof(send_obj.share_data) || buf == NULL) {
 		dev_info(hcp_dev->dev,
-			"%s failed to send hcp message (Invalid arg.), len/sz(%d/%d)\n",
+			"%s failed to send hcp message (Invalid arg.), len/sz(%d/%lu)\n",
 			__func__, len, sizeof(send_obj.share_data));
 		return -EINVAL;
 	}
@@ -874,7 +874,7 @@ int mtk_hcp_set_apu_dc(struct platform_device *pdev,
 				return -1;
 			}
 
-			dev_info(hcp_dev->dev, "%s: SLB buffer base(0x%x), size(%ld)",
+			dev_info(hcp_dev->dev, "%s: SLB buffer base(0x%lx), size(%ld)",
 				__func__, (uintptr_t)slb.paddr, slb.size);
 
 			ctrl.id    = CTRL_ID_SLB_BASE;
@@ -1374,7 +1374,7 @@ int allocate_working_buffer_helper(struct platform_device *pdev)
 					O_RDWR | O_CLOEXEC,
 					DMA_HEAP_VALID_HEAP_FLAGS);
 				if (IS_ERR(mblock[id].d_buf)) {
-					pr_info("dma_heap_buffer_alloc fail :%lld\n",
+					pr_info("dma_heap_buffer_alloc fail :%ld\n",
 					PTR_ERR(mblock[id].d_buf));
 					return -1;
 				}
@@ -1383,7 +1383,7 @@ int allocate_working_buffer_helper(struct platform_device *pdev)
 					dma_buf_attach(mblock[id].d_buf, hcp_dev->dev);
 				attach = mblock[id].attach;
 				if (IS_ERR(attach)) {
-					pr_info("dma_buf_attach fail :%lld\n",
+					pr_info("dma_buf_attach fail :%ld\n",
 					PTR_ERR(attach));
 					return -1;
 				}
@@ -1392,7 +1392,7 @@ int allocate_working_buffer_helper(struct platform_device *pdev)
 				sgt = mblock[id].sgt;
 				if (IS_ERR(sgt)) {
 					dma_buf_detach(mblock[id].d_buf, attach);
-					pr_info("dma_buf_map_attachment fail sgt:%lld\n",
+					pr_info("dma_buf_map_attachment fail sgt:%ld\n",
 					PTR_ERR(sgt));
 					return -1;
 				}

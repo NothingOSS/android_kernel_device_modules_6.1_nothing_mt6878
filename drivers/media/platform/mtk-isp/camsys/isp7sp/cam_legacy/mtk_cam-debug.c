@@ -139,7 +139,7 @@ mtk_cam_debug_dump_all_content(struct mtk_cam_debug_fs *debug_fs,
 	header->payload_size = debug_fs->buf_size -
 			       header->header_size;
 	dev_dbg(dev,
-		"%s:ctx(%d):req_fd(%d),ts(%lu),req(%d),header_sz(%d),payload_offset(%d),payload_sz(%d)",
+		"%s:ctx(%d):req_fd(%d),ts(%llu),req(%d),header_sz(%d),payload_offset(%d),payload_sz(%d)",
 		__func__, header->stream_id, header->request_fd,
 		header->timestamp, header->sequence, header->header_size,
 		header->payload_offset, header->payload_size);
@@ -525,7 +525,7 @@ static ssize_t dbg_ctrl_write(struct file *file, const char __user *data,
 	debug_fs = ctrl->debug_fs;
 	if (count >= 15) {
 		dev_info(ctrl->debug_fs->cam->dev,
-			 "%s:pipe(%d):Invalid cmd sz(%d)\n", __func__,
+			 "%s:pipe(%d):Invalid cmd sz(%lu)\n", __func__,
 			 ctrl->pipe_id, count);
 		goto FAIL;
 	}
@@ -533,7 +533,7 @@ static ssize_t dbg_ctrl_write(struct file *file, const char __user *data,
 	memset(tmp, 0, 16);
 	if (copy_from_user(tmp, data, count)) {
 		dev_info(ctrl->debug_fs->cam->dev,
-			 "%s:pipe(%d):copy_from_user failed, data(%p), sz(%d)\n",
+			 "%s:pipe(%d):copy_from_user failed, data(%p), sz(%lu)\n",
 			 __func__, ctrl->pipe_id, data, count);
 		ret = -EFAULT;
 		goto FAIL;
@@ -647,7 +647,7 @@ static ssize_t dbg_data_read(struct file *file, char __user *user_buf,
 		return 0;
 
 	dev_dbg(debug_fs->cam->dev,
-		"%s:pipe(%d):read buf request: %d bytes\n", __func__,
+		"%s:pipe(%d):read buf request: %lu bytes\n", __func__,
 		ctrl->pipe_id, count);
 	read_count = simple_read_from_buffer(user_buf, count, ppos,
 					     ctrl_block->buf,
@@ -712,7 +712,7 @@ static ssize_t exp_read(struct file *file, char __user *user_buf,
 	if (!mtk_cam_debug_has_exp_dump(debug_fs))
 		return 0;
 
-	dev_dbg(dev, "%s: read buf request: %d bytes\n", __func__, count);
+	dev_dbg(dev, "%s: read buf request: %lu bytes\n", __func__, count);
 	mutex_lock(&debug_fs->exp_dump_buf_lock);
 
 	read_count = simple_read_from_buffer(user_buf, count, ppos,
@@ -1021,7 +1021,7 @@ static void mtk_cam_exceptoin_detect_work(struct work_struct *work)
 		timeout = msecs_to_jiffies(1000 / 30 * 8);
 
 	dev_info(ctx->cam->dev,
-				"%s:ctx(%d):%s:req(%d) sensor frame_time(%ld) ns\n",
+				"%s:ctx(%d):%s:req(%d) sensor frame_time(%lld) ns\n",
 				__func__, ctx->stream_id, req->req.debug_str,
 				s_data->frame_seq_no, frame_time);
 
@@ -1175,7 +1175,7 @@ mtk_cam_debug_detect_dequeue_failed(struct mtk_cam_request_stream_data *s_data,
 			mtk_cam_mstream_mark_incomplete_frame(ctx, s_data);
 
 			dev_info(ctx->cam->dev,
-			 "%s:SOF[ctx:%d-#%d] no p1 done for %d sofs, FBC_CNT %d dump req(%d) state(%d) ts(%lu)\n",
+			 "%s:SOF[ctx:%d-#%d] no p1 done for %d sofs, FBC_CNT %d dump req(%d) state(%d) ts(%llu)\n",
 			 req->req.debug_str, ctx->stream_id,
 			 ctx->dequeued_frame_seq_no,
 			 s_data->no_frame_done_cnt, irq_info->fbc_cnt,
@@ -1220,7 +1220,7 @@ mtk_cam_debug_detect_dequeue_failed(struct mtk_cam_request_stream_data *s_data,
 	if (s_data->no_frame_done_cnt > frame_no_update_limit &&
 		s_data->dbg_work.dump_flags == 0) {
 		dev_info(ctx->cam->dev,
-			 "%s:SOF[ctx:%d-#%d] no p1 done for %d sofs, FBC_CNT %d dump req(%d) state(%d) ts(%lu)\n",
+			 "%s:SOF[ctx:%d-#%d] no p1 done for %d sofs, FBC_CNT %d dump req(%d) state(%d) ts(%llu)\n",
 			 req->req.debug_str, ctx->stream_id,
 			 ctx->dequeued_frame_seq_no,
 			 s_data->no_frame_done_cnt, irq_info->fbc_cnt,
@@ -1231,7 +1231,7 @@ mtk_cam_debug_detect_dequeue_failed(struct mtk_cam_request_stream_data *s_data,
 	} else if (s_data->no_frame_done_cnt > frame_no_update_limit &&
 		s_data->dbg_work.dump_flags != 0)
 		dev_info(ctx->cam->dev,
-			 "%s:SOF[ctx:%d-#%d] no p1 done for %d sofs, s_data->dbg_work.dump_flags(%d) state(%d) ts(%lu)\n",
+			 "%s:SOF[ctx:%d-#%d] no p1 done for %d sofs, s_data->dbg_work.dump_flags(%d) state(%d) ts(%llu)\n",
 			 req->req.debug_str, ctx->stream_id,
 			 ctx->dequeued_frame_seq_no,
 			 s_data->no_frame_done_cnt, s_data->dbg_work.dump_flags,

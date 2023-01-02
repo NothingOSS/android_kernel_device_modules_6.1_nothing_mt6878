@@ -700,9 +700,9 @@ static int get_seninf_ops(struct device *dev, struct seninf_core *core)
 
 			g_seninf_ops = &mtk_csi_phy_3_0;
 
-			dev_info(dev, "%s: mtk_csi_phy_ver = %s i = %d 0x%x ret = %d\n",
+			dev_info(dev, "%s: mtk_csi_phy_ver = %s i = %d 0x%lx ret = %d\n",
 			__func__,
-			csi_phy_versions[i], i, g_seninf_ops, ret);
+			csi_phy_versions[i], i, (unsigned long)g_seninf_ops, ret);
 
 			of_property_read_u32(dev->of_node, "seninf_num",
 				&g_seninf_ops->seninf_num);
@@ -1288,7 +1288,7 @@ static int calc_buffered_pixel_rate(struct device *dev,
 	s64 k;
 
 	if (fps_d == 0 || width == 0 || hblank == 0 || ISP_CLK_LOW == 0) {
-		dev_info(dev, "Prevent divided by 0, fps_d= %d, w= %d, h= %d, ISP_CLK= %d\n",
+		dev_info(dev, "Prevent divided by 0, fps_d= %d, w= %lld, h= %lld, ISP_CLK= %d\n",
 			fps_d, width, hblank, ISP_CLK_LOW);
 		return 0;
 	}
@@ -1306,7 +1306,7 @@ static int calc_buffered_pixel_rate(struct device *dev,
 
 	dev_dbg(
 		dev,
-		"%s: w %d h %d hb %d vb %d fps %d/%d pclk %lld->%lld orig %lld k %lld hbe %d\n",
+		"%s: w %lld h %lld hb %lld vb %lld fps %d/%d pclk %lld->%lld orig %lld k %lld hbe %d\n",
 		__func__, width, height, hblank, vblank,
 		fps_n, fps_d, pclk, buffered_pixel_rate, orig_pixel_rate, k, HW_BUF_EFFECT);
 

@@ -186,12 +186,12 @@ int mtk_imgsys_hw_working_buf_pool_init(struct mtk_imgsys_dev *imgsys_dev)
 	working_buf_paddr = imgsys_dev->working_buf_mem_scp_daddr;
 #endif
 	dev_dbg(imgsys_dev->dev,
-		"%s: working_buf_mem: vaddr(0x%llx), scp_daddr(%pad)\n",
+		"%s: working_buf_mem: vaddr(0x%lx), scp_daddr(%pad)\n",
 		__func__,
-		imgsys_dev->working_buf_mem_vaddr,
+		(unsigned long)imgsys_dev->working_buf_mem_vaddr,
 		&imgsys_dev->working_buf_mem_scp_daddr);
 
-	pr_info("%s: working buffer size 0x%x, pool size should be 0x%x\n",
+	pr_info("%s: working buffer size 0x%lx, pool size should be 0x%lx\n",
 		__func__, DIP_FRM_SZ, (DIP_FRM_SZ * DIP_SUB_FRM_DATA_NUM));
 	for (i = 0; i < DIP_SUB_FRM_DATA_NUM; i++) {
 		struct mtk_imgsys_hw_subframe *buf =
@@ -233,9 +233,9 @@ int mtk_imgsys_hw_working_buf_pool_init(struct mtk_imgsys_dev *imgsys_dev)
 		buf->config_data.vaddr = buf->buffer.vaddr + DIP_COMP_OFFSET;
 
 		dev_dbg(imgsys_dev->dev,
-			"%s: config_data(%d), scp_daddr(%pad), vaddr(0x%llx)\n",
+			"%s: config_data(%d), scp_daddr(%pad), vaddr(0x%lx)\n",
 			__func__, i, &buf->config_data.scp_daddr,
-			buf->config_data.vaddr);
+			(unsigned long)buf->config_data.vaddr);
 
 		/* Frame parameters: 72 ~ 76 KB */
 		buf->frameparam.scp_daddr =
@@ -246,9 +246,9 @@ int mtk_imgsys_hw_working_buf_pool_init(struct mtk_imgsys_dev *imgsys_dev)
 		pr_info("DIP_FRAMEPARAM_SZ:%lu",
 			(unsigned long)sizeof(struct img_ipi_frameparam));
 		dev_dbg(imgsys_dev->dev,
-			"%s: frameparam(%d), scp_daddr(%pad), vaddr(0x%llx)\n",
+			"%s: frameparam(%d), scp_daddr(%pad), vaddr(0x%lx)\n",
 			__func__, i, &buf->frameparam.scp_daddr,
-			buf->frameparam.vaddr);
+			(unsigned long)buf->frameparam.vaddr);
 
 		list_add_tail(&buf->list_entry,
 			      &imgsys_dev->imgsys_freebufferlist.list);
@@ -347,10 +347,10 @@ static void mtk_imgsys_iova_map_tbl_unmap(struct mtk_imgsys_request *req)
 			list_for_each_entry_safe(dmabufiovainfo, temp,
 				&dev_buf->iova_map_table.list, list_entry) {
 				dev_dbg(imgsys_dev->dev,
-					"%s:list put(deleted) ionFd(%d)-dma_addr:%lx\n",
+					"%s:list put(deleted) ionFd(%d)-dma_addr:%pad\n",
 					__func__,
 					dmabufiovainfo->ionfd,
-					dmabufiovainfo->dma_addr);
+					&dmabufiovainfo->dma_addr);
 				//put dmabuf(iova)
 				mtk_imgsys_put_dma_buf(dmabufiovainfo->dma_buf,
 						dmabufiovainfo->attach,
@@ -378,10 +378,10 @@ static void mtk_imgsys_iova_map_tbl_unmap_sd(struct mtk_imgsys_request *req)
 		list_for_each_entry_safe(dmabufiovainfo, temp,
 			&dev_buf->iova_map_table.list, list_entry) {
 			dev_dbg(imgsys_dev->dev,
-				"%s:list put(deleted) ionFd(%d)-dma_addr:%lx\n",
+				"%s:list put(deleted) ionFd(%d)-dma_addr:%pad\n",
 				__func__,
 				dmabufiovainfo->ionfd,
-				dmabufiovainfo->dma_addr);
+				&dmabufiovainfo->dma_addr);
 			//put dmabuf(iova)
 			mtk_imgsys_put_dma_buf(dmabufiovainfo->dma_buf,
 					dmabufiovainfo->attach,
@@ -1651,10 +1651,10 @@ static void imgsys_scp_handler(void *data, unsigned int len, void *priv)
 				continue;
 			}
 			dev_dbg(imgsys_dev->dev,
-				"%s: Own:%s MWFrame:#%d MWReq:#%d ReqFd:%d:[Frm%d-n#%d]0x%x,fencefd:%d\n",
+				"%s: Own:%s MWFrame:#%d MWReq:#%d ReqFd:%d:[Frm%d-n#%d]0x%lx,fencefd:%d\n",
 				__func__, (char *)(&(swfrm_info->frm_owner)),
 				swfrm_info->frame_no, swfrm_info->request_no,
-				swfrm_info->request_fd, i, f_lop_idx, fence_evt->dma_fence,
+				swfrm_info->request_fd, i, f_lop_idx, (unsigned long)fence_evt->dma_fence,
 				fence_evt->fence_fd);//dbg
 		}
 		//K Fence - wait
@@ -1686,10 +1686,10 @@ static void imgsys_scp_handler(void *data, unsigned int len, void *priv)
 				continue;
 			}
 			dev_dbg(imgsys_dev->dev,
-				"%s: Own:%s MWFrame:#%d MWReq:#%d ReqFd:%d:[Frm%d-w#%d]0x%x,fencefd:%d,event:%d\n",
+				"%s: Own:%s MWFrame:#%d MWReq:#%d ReqFd:%d:[Frm%d-w#%d]0x%lx,fencefd:%d,event:%d\n",
 				__func__, (char *)(&(swfrm_info->frm_owner)),
 				swfrm_info->frame_no, swfrm_info->request_no,
-				swfrm_info->request_fd, i, f_lop_idx, fence_evt->dma_fence,
+				swfrm_info->request_fd, i, f_lop_idx, (unsigned long)fence_evt->dma_fence,
 				fence_evt->fence_fd, fence_evt->gce_event);//dbg
 		}
 	}
@@ -1916,9 +1916,9 @@ static void imgsys_composer_workfunc(struct work_struct *work)
 		imgsys_dev->working_buf_mem_size);
 
 		dev_info(imgsys_dev->dev,
-		"ipi.vaddr(0x%llx), reservedwb.addr(0x%llx), reservedwb.size(%d)\n",
-		buf->frameparam.vaddr,
-		imgsys_dev->working_buf_mem_vaddr,
+		"ipi.vaddr(0x%lx), reservedwb.addr(0x%lx), reservedwb.size(%d)\n",
+		(unsigned long)buf->frameparam.vaddr,
+		(unsigned long)imgsys_dev->working_buf_mem_vaddr,
 		imgsys_dev->working_buf_mem_size);
 	}
 
@@ -1954,10 +1954,10 @@ static void imgsys_composer_workfunc(struct work_struct *work)
 		ipi_param.frm_param.offset = (u32)(buf->frameparam.vaddr -
 			mtk_hcp_get_hwid_mem_virt(imgsys_dev->scp_pdev));
 
-	dev_dbg(imgsys_dev->dev, "req-fd:%d, va:0x%llx,sva:0x%llx, offset:%d, fd:%d\n",
+	dev_dbg(imgsys_dev->dev, "req-fd:%d, va:0x%lx,sva:0x%lx, offset:%d, fd:%d\n",
 		req->tstate.req_fd,
-		buf->frameparam.vaddr,
-		mtk_hcp_get_hwid_mem_virt(imgsys_dev->scp_pdev),
+		(unsigned long)buf->frameparam.vaddr,
+		(unsigned long)mtk_hcp_get_hwid_mem_virt(imgsys_dev->scp_pdev),
 		ipi_param.frm_param.offset, ipi_param.frm_param.fd);
 #endif
 
@@ -2524,8 +2524,8 @@ void mtk_imgsys_hw_enqueue(struct mtk_imgsys_dev *imgsys_dev,
 	buf = mtk_imgsys_hw_working_buf_alloc(req->imgsys_pipe->imgsys_dev);
 	if (!buf) {
 		dev_dbg(req->imgsys_pipe->imgsys_dev->dev,
-			"%s:%s:req(0x%llx): no free working buffer available\n",
-			__func__, req->imgsys_pipe->desc->name, req);
+			"%s:%s:req(0x%lx): no free working buffer available\n",
+			__func__, req->imgsys_pipe->desc->name, (unsigned long)req);
 		return;
 	}
 	req->working_buf = buf;

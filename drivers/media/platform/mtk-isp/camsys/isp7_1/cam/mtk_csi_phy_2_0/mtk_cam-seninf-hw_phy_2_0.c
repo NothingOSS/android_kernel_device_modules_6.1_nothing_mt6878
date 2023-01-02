@@ -2535,7 +2535,7 @@ static int mtk_cam_seninf_debug(struct seninf_ctx *ctx)
 	}
 
 	dev_info(ctx->dev,
-		"SENINF_TOP_MUX_CTRL_0(0x%x) SENINF_TOP_MUX_CTRL_1(0x%x) TOP_MUX_CTRL_2(0x%x) TOP_MUX_CTRL_3(0x%x) debug_vb %d debug_ft %d\n",
+		"SENINF_TOP_MUX_CTRL_0(0x%x) SENINF_TOP_MUX_CTRL_1(0x%x) TOP_MUX_CTRL_2(0x%x) TOP_MUX_CTRL_3(0x%x) debug_vb %lu debug_ft %lu\n",
 		SENINF_READ_REG(ctx->reg_if_top, SENINF_TOP_MUX_CTRL_0),
 		SENINF_READ_REG(ctx->reg_if_top, SENINF_TOP_MUX_CTRL_1),
 		SENINF_READ_REG(ctx->reg_if_top, SENINF_TOP_MUX_CTRL_2),
@@ -2612,7 +2612,7 @@ static int mtk_cam_seninf_debug(struct seninf_ctx *ctx)
 		mipi_packet_cnt = SENINF_READ_REG(base_csi,
 					SENINF_CSI2_PACKET_CNT_STATUS);
 		dev_info(ctx->dev,
-			"total_delay %d SENINF%d_PkCnt(0x%x)\n",
+			"total_delay %lu SENINF%d_PkCnt(0x%x)\n",
 			total_delay, ctx->seninfIdx, mipi_packet_cnt);
 
 		while (total_delay <= ((debug_ft * PKT_CNT_CHK_MARGIN) / 100)) {
@@ -2622,7 +2622,7 @@ static int mtk_cam_seninf_debug(struct seninf_ctx *ctx)
 			mipi_packet_cnt = SENINF_READ_REG(base_csi,
 						SENINF_CSI2_PACKET_CNT_STATUS);
 			dev_info(ctx->dev,
-				"total_delay %d SENINF%d_PkCnt(0x%x)\n",
+				"total_delay %lu SENINF%d_PkCnt(0x%x)\n",
 				total_delay, ctx->seninfIdx, mipi_packet_cnt);
 			if (tmp_mipi_packet_cnt != (mipi_packet_cnt & 0xFFFF)) {
 				pkg_cnt_changed = 1;
