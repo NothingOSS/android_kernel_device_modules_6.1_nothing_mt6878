@@ -348,9 +348,11 @@ static struct regname rn[] = {
 	/* DISPSYS_CONFIG register */
 	REGNAME(mm, 0x100, MMSYS_CG_0),
 	REGNAME(mm, 0x110, MMSYS_CG_1),
+	REGNAME(mm, 0x1A0, MMSYS_CG_2),
 	/* DISPSYS1_CONFIG register */
 	REGNAME(mm1, 0x100, MMSYS_CG_0),
 	REGNAME(mm1, 0x110, MMSYS_CG_1),
+	REGNAME(mm1, 0x1A0, MMSYS_CG_2),
 	/* OVLSYS_CONFIG register */
 	REGNAME(ovl, 0x100, OVLSYS_CG_0),
 	/* OVLSYS1_CONFIG register */
@@ -768,9 +770,6 @@ void set_subsys_reg_dump_mt6985(enum chk_sys_id id[])
 	const struct regname *rns = &rn[0];
 	int i, j;
 
-	if (rns == NULL)
-		return;
-
 	for (i = 0; i < ARRAY_SIZE(rn) - 1; i++, rns++) {
 		u32 pg;
 
@@ -797,15 +796,12 @@ void set_subsys_reg_dump_mt6985(enum chk_sys_id id[])
 		reg_dump_valid[i] = true;
 	}
 }
-EXPORT_SYMBOL(set_subsys_reg_dump_mt6985);
+EXPORT_SYMBOL_GPL(set_subsys_reg_dump_mt6985);
 
 void get_subsys_reg_dump_mt6985(void)
 {
 	const struct regname *rns = &rn[0];
 	int i;
-
-	if (rns == NULL)
-		return;
 
 	for (i = 0; i < ARRAY_SIZE(rn) - 1; i++, rns++) {
 		if (reg_dump_valid[i])
@@ -813,16 +809,13 @@ void get_subsys_reg_dump_mt6985(void)
 					rns->name, reg_dump_addr[i], reg_dump_val[i]);
 	}
 }
-EXPORT_SYMBOL(get_subsys_reg_dump_mt6985);
+EXPORT_SYMBOL_GPL(get_subsys_reg_dump_mt6985);
 
 void print_subsys_reg_mt6985(enum chk_sys_id id)
 {
 	struct regbase *rb_dump;
 	const struct regname *rns = &rn[0];
 	int i;
-
-	if (rns == NULL)
-		return;
 
 	if (id >= chk_sys_num || id < 0) {
 		pr_info("wrong id:%d\n", id);
@@ -850,7 +843,7 @@ void print_subsys_reg_mt6985(enum chk_sys_id id)
 			rns->name, PHYSADDR(rns), clk_readl(ADDR(rns)));
 	}
 }
-EXPORT_SYMBOL(print_subsys_reg_mt6985);
+EXPORT_SYMBOL_GPL(print_subsys_reg_mt6985);
 
 #if IS_ENABLED(CONFIG_MTK_DEVAPC)
 static enum chk_sys_id devapc_dump_id[] = {
@@ -892,6 +885,7 @@ static struct devapc_vio_callbacks devapc_vio_handle = {
 #endif
 
 static const char * const off_pll_names[] = {
+	"mainpll2",
 	"univpll2",
 	"mmpll2",
 	"univpll",

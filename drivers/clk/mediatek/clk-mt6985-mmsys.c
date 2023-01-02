@@ -32,6 +32,12 @@ static const struct mtk_gate_regs mm11_cg_regs = {
 	.sta_ofs = 0x110,
 };
 
+static const struct mtk_gate_regs mm12_cg_regs = {
+	.set_ofs = 0x1A0,
+	.clr_ofs = 0x1A0,
+	.sta_ofs = 0x1A0,
+};
+
 #define GATE_MM10(_id, _name, _parent, _shift) {	\
 		.id = _id,				\
 		.name = _name,				\
@@ -48,6 +54,15 @@ static const struct mtk_gate_regs mm11_cg_regs = {
 		.regs = &mm11_cg_regs,			\
 		.shift = _shift,			\
 		.ops = &mtk_clk_gate_ops_setclr,	\
+	}
+
+#define GATE_MM12(_id, _name, _parent, _shift) {	\
+		.id = _id,				\
+		.name = _name,				\
+		.parent_name = _parent,			\
+		.regs = &mm12_cg_regs,			\
+		.shift = _shift,			\
+		.ops = &mtk_clk_gate_ops_no_setclr,	\
 	}
 
 static const struct mtk_gate mm1_clks[] = {
@@ -90,7 +105,7 @@ static const struct mtk_gate mm1_clks[] = {
 			"disp1_ck"/* parent */, 17),
 	GATE_MM10(CLK_MM1_DISP_DLO_ASYNC1, "mm1_disp_dlo_async1",
 			"disp1_ck"/* parent */, 18),
-	GATE_MM10(CLK_MM1_DISP_DP_INTF0, "mm1_dp_clk",
+	GATE_MM10(CLK_MM1_DISP_DP_INTF0, "mm1_disp_dp_intf0",
 			"disp1_ck"/* parent */, 19),
 	GATE_MM10(CLK_MM1_DISP_DSC_WRAP0, "mm1_disp_dsc_wrap0",
 			"disp1_ck"/* parent */, 20),
@@ -133,6 +148,13 @@ static const struct mtk_gate mm1_clks[] = {
 			"disp1_ck"/* parent */, 6),
 	GATE_MM11(CLK_MM1_DISP_Y2R0, "mm1_disp_y2r0",
 			"disp1_ck"/* parent */, 7),
+	/* MM12 */
+	GATE_MM12(CLK_MM1_DSI_CLK, "mm1_dsi_clk",
+			"disp1_ck"/* parent */, 0),
+	GATE_MM12(CLK_MM1_DP_CLK, "mm1_dp_clk",
+			"disp1_ck"/* parent */, 1),
+	GATE_MM12(CLK_MM1_26M_CLK, "mm1_26m_clk",
+			"disp1_ck"/* parent */, 11),
 };
 
 static const struct mtk_clk_desc mm1_mcd = {
@@ -152,6 +174,12 @@ static const struct mtk_gate_regs mm1_cg_regs = {
 	.sta_ofs = 0x110,
 };
 
+static const struct mtk_gate_regs mm2_cg_regs = {
+	.set_ofs = 0x1A0,
+	.clr_ofs = 0x1A0,
+	.sta_ofs = 0x1A0,
+};
+
 #define GATE_MM0(_id, _name, _parent, _shift) {	\
 		.id = _id,				\
 		.name = _name,				\
@@ -168,6 +196,15 @@ static const struct mtk_gate_regs mm1_cg_regs = {
 		.regs = &mm1_cg_regs,			\
 		.shift = _shift,			\
 		.ops = &mtk_clk_gate_ops_setclr,	\
+	}
+
+#define GATE_MM2(_id, _name, _parent, _shift) {	\
+		.id = _id,				\
+		.name = _name,				\
+		.parent_name = _parent,			\
+		.regs = &mm2_cg_regs,			\
+		.shift = _shift,			\
+		.ops = &mtk_clk_gate_ops_no_setclr,	\
 	}
 
 static const struct mtk_gate mm_clks[] = {
@@ -210,7 +247,7 @@ static const struct mtk_gate mm_clks[] = {
 			"disp0_ck"/* parent */, 17),
 	GATE_MM0(CLK_MM_DISP_DLO_ASYNC1, "mm_disp_dlo_async1",
 			"disp0_ck"/* parent */, 18),
-	GATE_MM0(CLK_MM_DISP_DP_INTF0, "mm_dp_clk",
+	GATE_MM0(CLK_MM_DISP_DP_INTF0, "mm_disp_dp_intf0",
 			"disp0_ck"/* parent */, 19),
 	GATE_MM0(CLK_MM_DISP_DSC_WRAP0, "mm_disp_dsc_wrap0",
 			"disp0_ck"/* parent */, 20),
@@ -253,6 +290,13 @@ static const struct mtk_gate mm_clks[] = {
 			"disp0_ck"/* parent */, 6),
 	GATE_MM1(CLK_MM_DISP_Y2R0, "mm_disp_y2r0",
 			"disp0_ck"/* parent */, 7),
+	/* MM2 */
+	GATE_MM2(CLK_MM_DSI_CLK, "mm_dsi_clk",
+			"disp0_ck"/* parent */, 0),
+	GATE_MM2(CLK_MM_DP_CLK, "mm_dp_clk",
+			"disp0_ck"/* parent */, 1),
+	GATE_MM2(CLK_MM_26M_CLK, "mm_26m_clk",
+			"disp0_ck"/* parent */, 11),
 };
 
 static const struct mtk_clk_desc mm_mcd = {

@@ -139,6 +139,7 @@ const char * const *get_mt6985_all_clk_names(void)
 		"ifrao_fbist2fpc",
 		"ifrao_dpmaif_main",
 		"ifrao_dpmaif_26m_set",
+		"ifrao_ap_i3c",
 
 		/* apmixedsys */
 		"mainpll2",
@@ -344,7 +345,7 @@ const char * const *get_mt6985_all_clk_names(void)
 		"mm_disp_dli_async5",
 		"mm_disp_dlo_async0",
 		"mm_disp_dlo_async1",
-		"mm_dp_clk",
+		"mm_disp_dp_intf0",
 		"mm_disp_dsc_wrap0",
 		"mm_clk0",
 		"mm_disp_gamma0",
@@ -365,6 +366,9 @@ const char * const *get_mt6985_all_clk_names(void)
 		"mm_disp_wdma1",
 		"mm_smi_sub_comm0",
 		"mm_disp_y2r0",
+		"mm_dsi_clk",
+		"mm_dp_clk",
+		"mm_26m_clk",
 
 		/* dispsys1_config */
 		"mm1_config",
@@ -386,7 +390,7 @@ const char * const *get_mt6985_all_clk_names(void)
 		"mm1_disp_dli_async5",
 		"mm1_disp_dlo_async0",
 		"mm1_disp_dlo_async1",
-		"mm1_dp_clk",
+		"mm1_disp_dp_intf0",
 		"mm1_disp_dsc_wrap0",
 		"mm1_clk0",
 		"mm1_disp_gamma0",
@@ -407,6 +411,9 @@ const char * const *get_mt6985_all_clk_names(void)
 		"mm1_disp_wdma1",
 		"mm1_smi_sub_comm0",
 		"mm1_disp_y2r0",
+		"mm1_dsi_clk",
+		"mm1_dp_clk",
+		"mm1_26m_clk",
 
 		/* ovlsys_config */
 		"ovl_config",

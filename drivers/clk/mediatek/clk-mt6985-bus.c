@@ -44,6 +44,8 @@ static const struct mtk_gate ifrao_clks[] = {
 			"dpmaif_main_ck"/* parent */, 22),
 	GATE_IFRAO(CLK_IFRAO_RG_MMW_DPMAIF26M_CK, "ifrao_dpmaif_26m_set",
 			"f26m_ck"/* parent */, 25),
+	GATE_IFRAO(CLK_IFRAO_RG_AP_I3C, "ifrao_ap_i3c",
+			"i2c_ck"/* parent */, 27),
 };
 
 static const struct mtk_clk_desc ifrao_mcd = {

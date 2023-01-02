@@ -840,9 +840,9 @@ static int mt6985_get_fmeter_id(enum FMETER_ID fid)
 	if (fid == FID_DISP_PWM)
 		return FM_DISP_PWM_CK;
 	else if (fid == FID_ULPOSC1)
-		return FM_ULPOSC_MON_VCROE_CK;
+		return FM_OSC_CK;
 	else if (fid == FID_ULPOSC2)
-		return FM_ULPOSC2_MON_V_VCORE_CK;
+		return FM_OSC_2;
 
 	return FID_NULL;
 }

@@ -22,8 +22,8 @@
 
 /* bringup config */
 #define MT_CCF_BRINGUP		1
-#define MT_CCF_PLL_DISABLE	1
-#define MT_CCF_MUX_DISABLE	1
+#define MT_CCF_PLL_DISABLE	0
+#define MT_CCF_MUX_DISABLE	0
 
 /* Regular Number Definition */
 #define INV_OFS	-1
@@ -671,6 +671,8 @@ static const struct mtk_fixed_factor top_divs[] = {
 			"ccusys_sel", 1, 1),
 	FACTOR(CLK_TOP_CAMTM, "camtm_ck",
 			"camtm_sel", 1, 1),
+	FACTOR(CLK_TOP_I2C_PSEUDO, "i2c_pseudo_ck",
+			"ifrao_ap_i3c", 1, 1),
 };
 
 static const char * const vlp_scp_parents[] = {
@@ -2976,7 +2978,7 @@ static const struct mtk_pll_data cci_plls[] = {
 static const struct mtk_pll_data apmixed_plls[] = {
 	PLL(CLK_APMIXED_MAINPLL2, "mainpll2", MAINPLL2_CON0/*base*/,
 		MAINPLL2_CON0, 0xff000000, 0/*en*/,
-		MAINPLL2_CON3/*pwr*/, HAVE_RST_BAR | PLL_AO, BIT(23)/*rstb*/,
+		MAINPLL2_CON3/*pwr*/, HAVE_RST_BAR, BIT(23)/*rstb*/,
 		MAINPLL2_CON1, 24/*pd*/,
 		0, 0, 0/*tuner*/,
 		MAINPLL2_CON1, 0, 22/*pcw*/),
@@ -3342,7 +3344,7 @@ void mt6985_pll_force_off(void)
 	for (i = 0; i < PLL_SYS_NUM; i++)
 		pll_force_off_internal(plls_data[i], plls_base[i]);
 }
-EXPORT_SYMBOL(mt6985_pll_force_off);
+EXPORT_SYMBOL_GPL(mt6985_pll_force_off);
 
 static const struct of_device_id of_match_clk_mt6985[] = {
 	{

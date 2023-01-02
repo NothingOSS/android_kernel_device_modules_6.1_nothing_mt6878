@@ -68,21 +68,21 @@ static const struct mtk_gate_regs scp_iic_cg_regs = {
 
 static const struct mtk_gate scp_iic_clks[] = {
 	GATE_SCP_IIC(CLK_SCP_IIC_I2C0, "scp_iic_i2c0",
-			"ulposc_ck"/* parent */, 0),
+			"i2c_pseudo_ck"/* parent */, 0),
 	GATE_SCP_IIC(CLK_SCP_IIC_I2C1, "scp_iic_i2c1",
-			"ulposc_ck"/* parent */, 1),
+			"i2c_pseudo_ck"/* parent */, 1),
 	GATE_SCP_IIC(CLK_SCP_IIC_I2C2, "scp_iic_i2c2",
-			"ulposc_ck"/* parent */, 2),
+			"i2c_pseudo_ck"/* parent */, 2),
 	GATE_SCP_IIC(CLK_SCP_IIC_I2C3, "scp_iic_i2c3",
-			"ulposc_ck"/* parent */, 3),
+			"i2c_pseudo_ck"/* parent */, 3),
 	GATE_SCP_IIC(CLK_SCP_IIC_I2C4, "scp_iic_i2c4",
-			"ulposc_ck"/* parent */, 4),
+			"i2c_pseudo_ck"/* parent */, 4),
 	GATE_SCP_IIC(CLK_SCP_IIC_I2C5, "scp_iic_i2c5",
-			"ulposc_ck"/* parent */, 5),
+			"i2c_pseudo_ck"/* parent */, 5),
 	GATE_SCP_IIC(CLK_SCP_IIC_I2C6, "scp_iic_i2c6",
-			"ulposc_ck"/* parent */, 6),
+			"i2c_pseudo_ck"/* parent */, 6),
 	GATE_SCP_IIC(CLK_SCP_IIC_I2C7, "scp_iic_i2c7",
-			"ulposc_ck"/* parent */, 7),
+			"i2c_pseudo_ck"/* parent */, 7),
 };
 
 static const struct mtk_clk_desc scp_iic_mcd = {
