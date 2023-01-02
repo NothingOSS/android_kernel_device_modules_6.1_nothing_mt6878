@@ -421,7 +421,7 @@ static bool __check_pll_off(const char * const *name)
 			for (; *bypass_name != NULL; bypass_name++)
 				if (!strcmp(*bypass_name, *name)) {
 					bypass_name_is_equal = true;
-					pr_notice("clk-chk bypass %s\n", bypass_name);
+					pr_notice("clk-chk bypass %s\n", (char*)bypass_name);
 					continue;
 				}
 			if (bypass_name_is_equal)
