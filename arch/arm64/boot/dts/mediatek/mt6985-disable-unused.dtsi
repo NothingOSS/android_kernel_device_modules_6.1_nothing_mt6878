@@ -780,7 +780,6 @@
 			<&topckgen_clk CLK_TOP_MMINFRA_SEL>,
 			<&topckgen_clk CLK_TOP_MMUP_SEL>,
 			<&topckgen_clk CLK_TOP_DSP_SEL>,
-			<&topckgen_clk CLK_TOP_IPU_IF_SEL>,
 			<&topckgen_clk CLK_TOP_MFG_REF_SEL>,
 			<&topckgen_clk CLK_TOP_MFGSC_REF_SEL>,
 			<&topckgen_clk CLK_TOP_UART_SEL>,
@@ -1074,6 +1073,11 @@
 	disable-unused-pd-mm_proc_dormant {
 		compatible = "mediatek,scpsys-disable-unused";
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_MM_PROC_DORMANT>;
+	};
+
+	disable-unused-pd-dp_tx {
+		compatible = "mediatek,scpsys-disable-unused";
+		power-domains = <&scpsys MT6985_POWER_DOMAIN_DP_TX>;
 	};
 
 	disable-unused-pd-csi_rx {

@@ -18,7 +18,6 @@
 			<&topckgen_clk CLK_TOP_MMINFRA_SEL>,
 			<&topckgen_clk CLK_TOP_MMUP_SEL>,
 			<&topckgen_clk CLK_TOP_DSP_SEL>,
-			<&topckgen_clk CLK_TOP_IPU_IF_SEL>,
 			<&topckgen_clk CLK_TOP_MFG_REF_SEL>,
 			<&topckgen_clk CLK_TOP_MFGSC_REF_SEL>,
 			<&topckgen_clk CLK_TOP_UART_SEL>,
@@ -612,8 +611,7 @@
 			<&ssr_top_clk CLK_SSR_TOP_RG_RW_SSR_RNG>,
 			<&ssr_top_clk CLK_SSR_TOP_RQ_RW_SSR_DMA>,
 			<&ssr_top_clk CLK_SSR_TOP_RQ_RW_SSR_KDF>,
-			<&ssr_top_clk CLK_SSR_TOP_RQ_RW_SSR_PKA>,
-			<&mfg_top_config_clk CLK_MFGCFG_BG3D>;
+			<&ssr_top_clk CLK_SSR_TOP_RQ_RW_SSR_PKA>;
 	};
 
 	bring-up-pd-mfg1 {
@@ -864,6 +862,11 @@
 	bring-up-pd-mm_proc_dormant {
 		compatible = "mediatek,scpsys-bring-up";
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_MM_PROC_DORMANT>;
+	};
+
+	bring-up-pd-dp_tx {
+		compatible = "mediatek,scpsys-bring-up";
+		power-domains = <&scpsys MT6985_POWER_DOMAIN_DP_TX>;
 	};
 
 	bring-up-pd-csi_rx {
