@@ -664,11 +664,6 @@
 		power-domains = <&gpusys MT6985_POWER_DOMAIN_MFG10>;
 	};
 
-	bring-up-pd-mfg11 {
-		compatible = "mediatek,scpsys-bring-up";
-		power-domains = <&gpusys MT6985_POWER_DOMAIN_MFG11>;
-	};
-
 	bring-up-pd-mfg12 {
 		compatible = "mediatek,scpsys-bring-up";
 		power-domains = <&gpusys MT6985_POWER_DOMAIN_MFG12>;
@@ -677,36 +672,6 @@
 	bring-up-pd-mfg13 {
 		compatible = "mediatek,scpsys-bring-up";
 		power-domains = <&gpusys MT6985_POWER_DOMAIN_MFG13>;
-	};
-
-	bring-up-pd-mfg14 {
-		compatible = "mediatek,scpsys-bring-up";
-		power-domains = <&gpusys MT6985_POWER_DOMAIN_MFG14>;
-	};
-
-	bring-up-pd-mfg15 {
-		compatible = "mediatek,scpsys-bring-up";
-		power-domains = <&gpusys MT6985_POWER_DOMAIN_MFG15>;
-	};
-
-	bring-up-pd-mfg16 {
-		compatible = "mediatek,scpsys-bring-up";
-		power-domains = <&gpusys MT6985_POWER_DOMAIN_MFG16>;
-	};
-
-	bring-up-pd-mfg17 {
-		compatible = "mediatek,scpsys-bring-up";
-		power-domains = <&gpusys MT6985_POWER_DOMAIN_MFG17>;
-	};
-
-	bring-up-pd-mfg18 {
-		compatible = "mediatek,scpsys-bring-up";
-		power-domains = <&gpusys MT6985_POWER_DOMAIN_MFG18>;
-	};
-
-	bring-up-pd-mfg19 {
-		compatible = "mediatek,scpsys-bring-up";
-		power-domains = <&gpusys MT6985_POWER_DOMAIN_MFG19>;
 	};
 
 	bring-up-pd-ufs0_shutdown {
