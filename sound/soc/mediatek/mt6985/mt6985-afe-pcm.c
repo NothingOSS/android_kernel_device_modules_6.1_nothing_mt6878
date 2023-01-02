@@ -3746,24 +3746,18 @@ static ssize_t mt6985_debug_read_reg(char *buffer, int size, struct mtk_base_afe
 			       i, afe->memif[i].irq_usage);
 	}
 #if !defined(CONFIG_FPGA_EARLY_PORTING)
-	regmap_read(afe_priv->topckgen, CLK_CFG_8, &value);
+	regmap_read(afe_priv->topckgen, CLK_CFG_7, &value);
 	n += scnprintf(buffer + n, size - n,
-		       "CLK_CFG_8 = 0x%x\n", value);
-	regmap_read(afe_priv->topckgen, CLK_CFG_9, &value);
+		       "CLK_CFG_7 = 0x%x\n", value);
+	regmap_read(afe_priv->topckgen, CLK_CFG_11, &value);
 	n += scnprintf(buffer + n, size - n,
-		       "CLK_CFG_9 = 0x%x\n", value);
+		       "CLK_CFG_11 = 0x%x\n", value);
 	regmap_read(afe_priv->topckgen, CLK_CFG_13, &value);
 	n += scnprintf(buffer + n, size - n,
 		       "CLK_CFG_13 = 0x%x\n", value);
 	regmap_read(afe_priv->topckgen, CLK_CFG_14, &value);
 	n += scnprintf(buffer + n, size - n,
 		       "CLK_CFG_14 = 0x%x\n", value);
-	regmap_read(afe_priv->topckgen, CLK_CFG_15, &value);
-	n += scnprintf(buffer + n, size - n,
-		       "CLK_CFG_15 = 0x%x\n", value);
-	regmap_read(afe_priv->topckgen, CLK_CFG_16, &value);
-	n += scnprintf(buffer + n, size - n,
-		       "CLK_CFG_16 = 0x%x\n", value);
 	regmap_read(afe_priv->topckgen, CLK_AUDDIV_0, &value);
 	n += scnprintf(buffer + n, size - n,
 		       "CLK_AUDDIV_0 = 0x%x\n", value);
