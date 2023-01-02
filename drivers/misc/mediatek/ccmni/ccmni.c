@@ -942,13 +942,11 @@ static inline int ccmni_inst_init(struct ccmni_instance *ccmni, struct net_devic
 		//ccmni->timer->function = ccmni_napi_poll_timeout;
 		//ccmni->timer->data = (unsigned long)ccmni;
 		timer_setup(ccmni->timer, ccmni_napi_poll_timeout, 0);
-		netif_napi_add(dev, ccmni->napi, ccmni_napi_poll,
-			ccmni_ctl_blk->ccci_ops->napi_poll_weigh);
+		netif_napi_add(dev, ccmni->napi, ccmni_napi_poll);
 	}
 #ifdef ENABLE_WQ_GRO
 	if (dev)
-		netif_napi_add(dev, ccmni->napi, ccmni_napi_poll,
-			ccmni_ctl_blk->ccci_ops->napi_poll_weigh);
+		netif_napi_add(dev, ccmni->napi, ccmni_napi_poll);
 #endif
 
 	atomic_set(&ccmni->usage, 0);
