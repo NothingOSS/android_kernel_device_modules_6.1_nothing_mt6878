@@ -75,7 +75,6 @@
 #include "slbc_ops.h"
 #include <linux/syscalls.h>
 #define CLKBUF_COMMON_H
-#include <mtk_clkbuf_ctl.h>
 
 #define DRIVER_NAME "mediatek"
 #define DRIVER_DESC "Mediatek SoC DRM"

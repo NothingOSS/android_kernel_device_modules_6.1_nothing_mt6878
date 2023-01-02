@@ -1,44 +1,26 @@
+#
+# Copyright (C) 2015 MediaTek Inc.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
 MFD_TOP = $(DEVICE_MODULES_PATH)/drivers/mfd
-
-#Old GKI
-ifneq (,$(filter y m, $(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)))
-    ccflags-y += -D UFS_CLKBUF_SUPPORT=1
-else
-    ccflags-y += -D UFS_CLKBUF_SUPPORT=0
-endif
-
 ccflags-y += -I$(MFD_TOP)/
 
-obj-$(CONFIG_MTK_CLK_BUFFER) += clkbuf.o
-
-clkbuf-$(CONFIG_MTK_CLK_BUFFER) +=  src/mtk-clkbuf-ctl.o \
-    src/mtk-clkbuf-hw.o
-
-obj-$(CONFIG_MTK_CLK_BUFFER) += clkbuf-pmic.o
-
-clkbuf-pmic-$(CONFIG_MTK_CLK_BUFFER) +=  src/mtk-clkbuf-pmic.o
-
-# New GKI
-# common clkbuf driver
-# Built-in common clkbuf kernel
-obj-$(CONFIG_MTK_CLKBUF) += clkbuf.o
-
-ifneq ($(CONFIG_MTK_CLKBUF_V1),)
-	clkbuf-y += v1/src/mtk_clkbuf_common.o
-	ccflags-y += -I$(srctree)/$(src)/v1/inc
-endif
-
-clkbuf-$(CONFIG_MTK_CLKBUF_V1) += v1/src/mtk_clkbuf_ctl.o
-clkbuf-$(CONFIG_MTK_CLKBUF_V1) += v1/src/mtk-clkbuf-pmif.o
-clkbuf-$(CONFIG_MTK_CLKBUF_V1) += v1/src/mtk-clkbuf-dcxo.o
-clkbuf-$(CONFIG_MTK_SRCLKEN_RC_V1) += v1/src/mtk-srclken-rc-hw.o
-clkbuf-$(CONFIG_MTK_SRCLKEN_RC_V1) += v1/src/mtk-srclken-rc-hw-v1.o
-ccflags-$(CONFIG_MTK_SRCLKEN_RC_V1) += -D SRCLKEN_RC_SUPPORT
-
-# .ko PMIC platform code for clkbuf kernel
-obj-$(CONFIG_MTK_CLKBUF) += mt6359p-clkbuf.o
-obj-$(CONFIG_MTK_CLKBUF) += mt6685-clkbuf.o
-obj-$(CONFIG_MTK_CLKBUF) += mt6366-clkbuf.o
-mt6359p-clkbuf-$(CONFIG_MTK_CLKBUF_V1) += v1/src/mtk-clkbuf-dcxo-6359p.o
-mt6685-clkbuf-$(CONFIG_MTK_CLKBUF_V1) += v1/src/mtk-clkbuf-dcxo-6685.o
-mt6366-clkbuf-$(CONFIG_MTK_CLKBUF_V1) += v1/src/mtk-clkbuf-dcxo-6366.o
+obj-$(CONFIG_MTK_CLKBUF_CTRL) += clkbuf.o
+clkbuf-y += src/clkbuf-ctrl.o
+clkbuf-y += src/clkbuf-pmic.o
+clkbuf-y += src/srclken.o
+clkbuf-y += src/clkbuf-pmif.o
+clkbuf-y += src/platform-hdlr.o
+clkbuf-y += src/clkbuf-debug.o
+#platform data files
+clkbuf-y += src/dcxo-6685.o
+clkbuf-y += src/pmif-data-v1.o
+clkbuf-y += src/src-data-v1.o

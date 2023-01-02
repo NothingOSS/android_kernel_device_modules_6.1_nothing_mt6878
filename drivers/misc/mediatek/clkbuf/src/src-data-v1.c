@@ -1,84 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+// SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2020 MediaTek Inc.
- * Author: ren-ting.wang <ren-ting.wang@mediatek.com>
+ * Copyright (c) 2022 MediaTek Inc.
+ * Author: Kuan-Hsin Lee <Kuan-Hsin.Lee@mediatek.com>
  */
-
-#ifndef SRCLKEN_RC_HW_V1_H
-#define SRCLKEN_RC_HW_V1_H
-
-#include "mtk_clkbuf_common.h"
-
-enum RC_CFG_ENUM {
-	RC_CFG_REG,
-	CENTRAL_CFG1,
-	CENTRAL_CFG2,
-	CENTRAL_CFG3,
-	CENTRAL_CFG4,
-	RC_PMRC_ADDR,
-	SUBSYS_INF,
-	RC_CFG_NON_BC_MAX,
-	CENTRAL_CFG5 = RC_CFG_NON_BC_MAX,
-	CENTRAL_CFG6,
-	MT_CMD_M_CFG0,
-	MT_CMD_M_CFG1,
-	MT_CMD_P_CFG0,
-	MT_CMD_P_CFG1,
-	MT_CMD_CFG0,
-	RC_CFG_MAX,
-};
-
-enum RC_STA_ENUM {
-	CMD_STA,
-	SPI_STA,
-	FSM_STA,
-	POPI_STA,
-	RC_STA_NON_BC_MAX,
-	SPMI_P_STA = RC_STA_NON_BC_MAX,
-	RC_STA_MAX,
-};
-
-struct srclken_rc_cfg {
-	struct base_hw hw;
-	struct reg_t _rc_cfg_reg;
-	struct reg_t _central_cfg1;
-	struct reg_t _central_cfg2;
-	struct reg_t _central_cfg3;
-	struct reg_t _central_cfg4;
-	struct reg_t _rc_pmrc_en_addr;
-	struct reg_t _subsys_inf_cfg;
-	struct reg_t _m00_cfg;
-//#if IS_ENABLED(CONFIG_SRCLKEN_RC_BROADCAST)
-	struct reg_t _central_cfg5;
-	struct reg_t _central_cfg6;
-	struct reg_t _mt_m_cfg0;
-	struct reg_t _mt_m_cfg1;
-	struct reg_t _mt_p_cfg0;
-	struct reg_t _mt_p_cfg1;
-	struct reg_t _mt_cfg0;
-//#endif /* IS_ENALBED(CONFIG_SRCLKEN_RC_BROADCAST) */
-};
-
-struct srclken_rc_sta {
-	struct base_hw hw;
-	struct reg_t _cmd_sta_0;
-	struct reg_t _cmd_sta_1;
-	struct reg_t _spi_sta;
-	struct reg_t _fsm_sta;
-	struct reg_t _popi_sta;
-	struct reg_t _m00_sta;
-	struct reg_t _trace_lsb;
-	struct reg_t _trace_msb;
-	struct reg_t _timer_lsb;
-	struct reg_t _timer_msb;
-//#if IS_ENABLED(CONFIG_SRCLKEN_RC_BROADCAST)
-	struct reg_t _spmi_p_sta;
-	struct reg_t _trace_p_msb;
-	struct reg_t _trace_p_lsb;
-	struct reg_t _timer_p_msb;
-	struct reg_t _timer_p_lsb;
-//#endif /* IS_ENABLED(CONFIG_SRCLKEN_RC_BROADCAST) */
-};
+#include <linux/types.h>
+#include "clkbuf-util.h"
+#include "srclken.h"
 
 #define SRCLKEN_RC_CFG			(0x0)
 #define REG_CENTRAL_CFG1		(0x4)
@@ -88,10 +15,10 @@ struct srclken_rc_sta {
 #define REG_CENTRAL_CFG3		(0x1C)
 #define M00_SRCLKEN_CFG			(0x20)
 
-//#if !IS_ENABLED(CONFIG_SRCLKEN_RC_BROADCAST)
+#if IS_ENABLED(CONFIG_SRCLKEN_RC_LEGACY)
 #define REG_CENTRAL_CFG4		(0x58)
-//#else /* IS_ENABLED(CONFIG_SRCLKEN_RC_BROADCAST) */
-#define BC_REG_CENTRAL_CFG4		(0x5C)
+#else /* IS_ENABLED(CONFIG_SRCLKEN_RC_BROADCAST) */
+#define REG_CENTRAL_CFG4		(0x5C)
 #define REG_CENTRAL_CFG5		(0x70)
 #define REG_CENTRAL_CFG6		(0x74)
 #define RCEN_MT_M_CFG_0			(0x78)
@@ -99,7 +26,7 @@ struct srclken_rc_sta {
 #define RCEN_MT_P_CFG_0			(0x80)
 #define RCEN_MT_P_CFG_1			(0x84)
 #define RCEN_MT_CFG_0			(0x88)
-//#endif /* !IS_ENABLED(CONFIG_SRCLKEN_RC_BROADCAST) */
+#endif /* !IS_ENABLED(CONFIG_SRCLKEN_RC_BROADCAST) */
 #define SUBSYS_INF_CFG			(0xBC)
 
 #define FSM_STA_0			(0x0)
@@ -108,29 +35,29 @@ struct srclken_rc_sta {
 #define SPI_STA_0			(0xC)
 #define PIPO_STA_0			(0x10)
 #define M00_REQ_STA			(0x14)
-//#if !IS_ENABLED(CONFIG_SRCLKEN_RC_BROADCAST)
+#if IS_ENABLED(CONFIG_SRCLKEN_RC_LEGACY)
 #define TRACE_0_LSB			(0x50)
 #define TRACE_0_MSB			(0x54)
 #define TIMER_0_LSB			(0x98)
 #define TIMER_0_MSB			(0x9C)
-//#else /* IS_ENABLED(CONFIG_SRCLKEN_RC_BROADCAST) */
+#else /* IS_ENABLED(CONFIG_SRCLKEN_RC_BROADCAST) */
 #define SPMI_P_STA_0			(0x50)
 #define TIMER_P_0_LSB			(0x84)
 #define TIMER_P_0_MSB			(0x88)
-#define BC_TRACE_0_LSB			(0x600)
-#define BC_TRACE_0_MSB			(0x604)
-#define BC_TIMER_0_LSB			(0x640)
-#define BC_TIMER_0_MSB			(0x644)
+#define TRACE_0_LSB			(0x600)
+#define TRACE_0_MSB			(0x604)
+#define TIMER_0_LSB			(0x640)
+#define TIMER_0_MSB			(0x644)
 #define TRACE_P_0_LSB			(0x6C8)
 #define TRACE_P_0_MSB			(0x6D0)
-//#endif /* !IS_ENABLED(CONFIG_SRCLKEN_RC_BROADCAST) */
+#endif /* !IS_ENABLED(CONFIG_SRCLKEN_RC_BROADCAST) */
 
 /* CFG */
 #define DCXO_SETTLE_PERIOD_ADDR		(REG_CENTRAL_CFG1)
 #define DCXO_SETTLE_PERIOD_MASK		(0x3FF)
 #define DCXO_SETTLE_PERIOD_SHIFT	(22)
 #define NON_DCXO_SETTLE_PERIOD_ADDR	(REG_CENTRAL_CFG1)
-#define NON_DCXO_SETTLE_PERIOD_MASK	(0x7FF)
+#define NON_DCXO_SETTLE_PERIOD_MASK	(0x3FF)
 #define NON_DCXO_SETTLE_PERIOD_SHIFT	(12)
 #define ULPOSC_SETTLE_PERIOD_ADDR	(REG_CENTRAL_CFG1)
 #define ULPOSC_SETTLE_PERIOD_MASK	(0xF)
@@ -171,6 +98,7 @@ struct srclken_rc_sta {
 #define SW_FPM_EN_ADDR			(M00_SRCLKEN_CFG)
 #define SW_FPM_EN_MASK			(0x1)
 #define SW_FPM_EN_SHIFT			(4)
+#define SW_RC_REQ_ADDR			(M00_SRCLKEN_CFG)
 #define SW_RC_REQ_MASK			(0x3)
 #define SW_RC_REQ_SHIFT			(4)
 #define SW_SRCLKEN_RC_EN_ADDR		(M00_SRCLKEN_CFG)
@@ -290,7 +218,7 @@ struct srclken_rc_sta {
 #define CMD_ARB_TARGET_SHIFT		(16)
 #define CUR_PMIC_DCXO_MODE_ADDR		(CMD_STA_0)
 #define CUR_PMIC_DCXO_MODE_MASK		(0x7)
-#define CUR_PMIC_DCXO_MODE_SHIFT	(13)
+#define CUR_PMIC_DCXO_MODE_SHIFT	(14)
 #define CUR_PMIC_RC_EN_ADDR		(CMD_STA_0)
 #define CUR_PMIC_RC_EN_MASK		(0x1FFF)
 #define CUR_PMIC_RC_EN_SHIFT		(0)
@@ -466,4 +394,51 @@ struct srclken_rc_sta {
 #define SPMI_P_CMD_REQ_MASK		(0x1)
 #define SPMI_P_CMD_REQ_SHIFT		(0)
 
-#endif /* SRCLKEN_RC_HW_V1_H */
+#define V1_STA_BASE_FROM_CODA_BEFORE_IOREMAP	(0x100)
+
+struct srclken_rc_cfg rc_cfg = {
+	SET_REG(rc_cfg_reg, SRCLKEN_RC_CFG, 0xFFFFFFFF, 0)
+	SET_REG(central_cfg1, REG_CENTRAL_CFG1, 0xFFFFFFFF, 0)
+	SET_REG(central_cfg2, REG_CENTRAL_CFG2, 0xFFFFFFFF, 0)
+	SET_REG(central_cfg3, REG_CENTRAL_CFG3, 0xFFFFFFFF, 0)
+	SET_REG(central_cfg4, REG_CENTRAL_CFG4, 0xFFFFFFFF, 0)
+	SET_REG(rc_pmrc_en_addr, PMIC_RCEN_ADDR_REG, 0xFFFFFFFF, 0)
+	SET_REG(subsys_inf_cfg, SUBSYS_INF_CFG, 0xFFFFFFFF, 0)
+	SET_REG(m00_cfg, M00_SRCLKEN_CFG, 0xFFFFFFFF, 0)
+	SET_REG(central_cfg5, REG_CENTRAL_CFG5, 0xFFFFFFFF, 0)
+	SET_REG(central_cfg6, REG_CENTRAL_CFG6, 0xFFFFFFFF, 0)
+	SET_REG(mt_m_cfg0, RCEN_MT_M_CFG_0, 0xFFFFFFFF, 0)
+	SET_REG(mt_m_cfg1, RCEN_MT_M_CFG_1, 0xFFFFFFFF, 0)
+	SET_REG(mt_p_cfg0, RCEN_MT_P_CFG_0, 0xFFFFFFFF, 0)
+	SET_REG(mt_p_cfg1, RCEN_MT_P_CFG_1, 0xFFFFFFFF, 0)
+	SET_REG(mt_cfg0, RCEN_MT_CFG_0, 0xFFFFFFFF, 0)
+	/*must porting following platform data if subsys req supported*/
+	SET_REG_BY_NAME(sw_srclken_rc_en, SW_SRCLKEN_RC_EN)
+	SET_REG_BY_NAME(sw_rc_req, SW_RC_REQ)
+	SET_REG_BY_NAME(sw_fpm_en, SW_FPM_EN)
+	SET_REG_BY_NAME(sw_bblpm_en, SW_BBLPM_EN)
+};
+
+struct srclken_rc_sta rc_sta = {
+	SET_REG(cmd_sta_0, CMD_STA_0, 0xFFFFFFFF, 0)
+	SET_REG(cmd_sta_1, CMD_STA_1, 0xFFFFFFFF, 0)
+	SET_REG(spi_sta, SPI_STA_0, 0xFFFFFFFF, 0)
+	SET_REG(fsm_sta, FSM_STA_0, 0xFFFFFFFF, 0)
+	SET_REG(popi_sta, PIPO_STA_0, 0xFFFFFFFF, 0)
+	SET_REG(m00_sta, M00_REQ_STA, 0xFFFFFFFF, 0)
+	SET_REG(trace_lsb, TRACE_0_LSB, 0xFFFFFFFF, 0)
+	SET_REG(trace_msb, TRACE_0_MSB, 0xFFFFFFFF, 0)
+	SET_REG(timer_lsb, TIMER_0_LSB, 0xFFFFFFFF, 0)
+	SET_REG(timer_msb, TIMER_0_MSB, 0xFFFFFFFF, 0)
+	SET_REG(spmi_p_sta, SPMI_P_STA_0, 0xFFFFFFFF, 0)
+	SET_REG(trace_p_msb, TRACE_P_0_LSB, 0xFFFFFFFF, 0)
+	SET_REG(trace_p_lsb, TRACE_P_0_MSB, 0xFFFFFFFF, 0)
+	SET_REG(timer_p_msb, TIMER_P_0_LSB, 0xFFFFFFFF, 0)
+	SET_REG(timer_p_lsb, TIMER_P_0_MSB, 0xFFFFFFFF, 0)
+	.sta_base_ofs = V1_STA_BASE_FROM_CODA_BEFORE_IOREMAP,
+};
+
+struct plat_rcdata rc_data_v1 = {
+	.cfg = &rc_cfg,
+	.sta = &rc_sta,
+};

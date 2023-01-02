@@ -32,7 +32,7 @@
 //#include <trace/hooks/traps.h>
 
 #include "../pci.h"
-#include "../../misc/mediatek/clkbuf/v1/inc/mtk_clkbuf_ctl.h"
+#include "../../misc/mediatek/clkbuf/src/clkbuf-ctrl.h"
 
 u32 mtk_pcie_dump_link_info(int port);
 
@@ -450,7 +450,7 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 		mtk_pcie_mt6985_fixup();
 
 		/* Software enable BBCK2 */
-		clk_buf_voter_ctrl_by_id(7, SW_FPM);
+		clkbuf_srclken_ctrl("RC_FPM_REQ", 7);
 	}
 
 	/* Mask all INTx interrupts */
@@ -1130,7 +1130,7 @@ static void mtk_pcie_power_down(struct mtk_pcie_port *port)
 	}
 
 	/* BBCK2 is controlled by itself hardware mode */
-	clk_buf_voter_ctrl_by_id(7, HW);
+	clkbuf_srclken_ctrl("RC_NONE_REQ", 7);
 }
 
 static int mtk_pcie_setup(struct mtk_pcie_port *port)
@@ -1654,7 +1654,7 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 		}
 
 		/* BBCK2 is controlled by itself hardware mode */
-		clk_buf_voter_ctrl_by_id(7, HW);
+		clkbuf_srclken_ctrl("RC_NONE_REQ", 7);
 		/* srclken rc request state */
 		dev_info(port->dev, "PCIe0 Modem HW MODE BIT=%#x, srclken rc state=%#x\n",
 			 readl_relaxed(port->pextpcfg + PEXTP_RSV_0),
@@ -1689,7 +1689,7 @@ static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 
 	if (port->suspend_mode == LINK_STATE_L12) {
 		/* Software enable BBCK2 */
-		clk_buf_voter_ctrl_by_id(7, SW_FPM);
+		clkbuf_srclken_ctrl("RC_FPM_REQ", 7);
 
 		if (port->port_num == 0) {
 			err = mtk_pcie_hw_control_vote(0, false, 0);

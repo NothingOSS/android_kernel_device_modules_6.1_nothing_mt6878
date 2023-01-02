@@ -1,61 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+// SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2020 MediaTek Inc.
- * Author: ren-ting.wang <ren-ting.wang@mediatek.com>
+ * Copyright (c) 2022 MediaTek Inc.
+ * Author: Kuan-Hsin Lee <Kuan-Hsin.Lee@mediatek.com>
  */
+#include <linux/types.h>
+#include "clkbuf-util.h"
+#include "clkbuf-pmif.h"
 
-#ifndef CLKBUF_PMIF_H
-#define CLKBUF_PMIF_H
-
-#include "mtk_clkbuf_common.h"
-
-enum PMIF_INF {
-	PMIF_CONN_INF,
-	PMIF_NFC_INF,
-	PMIF_RC_INF,
-	PMIF_INF_MAX,
-};
-
-struct pmif_hw {
-	struct base_hw hw;
-	struct reg_t _conn_inf_en;
-	struct reg_t _nfc_inf_en;
-	struct reg_t _rc_inf_en;
-	struct reg_t _conn_clr_addr;
-	struct reg_t _conn_set_addr;
-	struct reg_t _conn_clr_cmd;
-	struct reg_t _conn_set_cmd;
-	struct reg_t _nfc_clr_addr;
-	struct reg_t _nfc_set_addr;
-	struct reg_t _nfc_clr_cmd;
-	struct reg_t _nfc_set_cmd;
-	struct reg_t _mode_ctrl;
-	struct reg_t _slp_ctrl;
-};
-
-struct clkbuf_pmif_hw {
-	struct mutex lock;
-	struct pmif_hw **pmif;
-	struct xo_buf_ctl_t conn_inf_ctl;
-	struct xo_buf_ctl_t nfc_inf_ctl;
-	u32 pmif_num;
-	u8 xo_conn_id;
-	u8 xo_nfc_id;
-	bool conn_inf_init;
-	bool nfc_inf_init;
-	bool rc_inf_init;
-	bool rc_enable;
-};
-
-int __clk_buf_pmif_rc_inf_store(const char *cmd);
-
-int clkbuf_pmif_hw_init(struct platform_device *pdev);
-int clkbuf_pmif_post_init(void);
-int clkbuf_pmif_get_inf_en(enum PMIF_INF inf, u32 *en);
-int clkbuf_pmif_get_inf_data(enum PMIF_INF inf, u32 *clr_addr, u32 *set_addr,
-		u32 *clr_cmd, u32 *set_cmd);
-int clkbuf_pmif_get_misc_reg(u32 *mode_ctl, u32 *sleep_ctl, u32 pmif_idx);
-u32 clkbuf_pmif_get_pmif_cnt(void);
 
 /* PMIF V1 */
 #define RC_INF_EN_V1_ADDR		(0x24)
@@ -146,11 +97,42 @@ u32 clkbuf_pmif_get_pmif_cnt(void);
 #define MODE_CTRL_V2_MASK		(0xFFFFFFFF)
 #define MODE_CTRL_V2_SHIFT		(0)
 
-enum CLKBUF_PMIF_VERSION {
-	CLKBUF_PMIF_NONE,
-	CLKBUF_PMIF_VERSION_1,
-	CLKBUF_PMIF_VERSION_2,
-	CLKBUF_PMIF_VER_MAX,
+struct pmif_m pmif_m_v1 = {
+	SET_REG_BY_NAME(conn_inf_en, CONN_INF_EN_V1)
+	SET_REG_BY_NAME(nfc_inf_en, NFC_INF_EN_V1)
+	SET_REG_BY_NAME(rc_inf_en, RC_INF_EN_V1)
+	SET_REG_BY_NAME(conn_clr_addr, CONN_CLR_CMD_DEST_V1)
+	SET_REG_BY_NAME(conn_set_addr, CONN_SET_CMD_DEST_V1)
+	SET_REG_BY_NAME(conn_clr_cmd, CONN_CLR_CMD_V1)
+	SET_REG_BY_NAME(conn_set_cmd, CONN_SET_CMD_V1)
+	SET_REG_BY_NAME(nfc_clr_addr, NFC_CLR_CMD_DEST_V1)
+	SET_REG_BY_NAME(nfc_set_addr, NFC_SET_CMD_DEST_V1)
+	SET_REG_BY_NAME(nfc_clr_cmd, NFC_CLR_CMD_V1)
+	SET_REG_BY_NAME(nfc_set_cmd, NFC_SET_CMD_V1)
+	SET_REG_BY_NAME(mode_ctrl, MODE_CTRL_V1)
+	SET_REG_BY_NAME(slp_ctrl, SLP_PROTECT_V1)
 };
 
-#endif /* CLKBUF_PMIF_H */
+struct pmif_m pmif_m_v2 = {
+	SET_REG_BY_NAME(conn_inf_en, CONN_INF_EN_V2)
+	SET_REG_BY_NAME(nfc_inf_en, NFC_INF_EN_V2)
+	SET_REG_BY_NAME(rc_inf_en, RC_INF_EN_V2)
+	SET_REG_BY_NAME(conn_clr_addr, CONN_CLR_CMD_DEST_V2)
+	SET_REG_BY_NAME(conn_set_addr, CONN_SET_CMD_DEST_V2)
+	SET_REG_BY_NAME(conn_clr_cmd, CONN_CLR_CMD_V2)
+	SET_REG_BY_NAME(conn_set_cmd, CONN_SET_CMD_V2)
+	SET_REG_BY_NAME(nfc_clr_addr, NFC_CLR_CMD_DEST_V2)
+	SET_REG_BY_NAME(nfc_set_addr, NFC_SET_CMD_DEST_V2)
+	SET_REG_BY_NAME(nfc_clr_cmd, NFC_CLR_CMD_V2)
+	SET_REG_BY_NAME(nfc_set_cmd, NFC_SET_CMD_V2)
+	SET_REG_BY_NAME(mode_ctrl, MODE_CTRL_V2)
+	SET_REG_BY_NAME(slp_ctrl, SLP_PROTECT_V2)
+};
+
+struct plat_pmifdata pmif_data_v1 = {
+	.pmif_m = &pmif_m_v1,
+};
+
+struct plat_pmifdata pmif_data_v2 = {
+	.pmif_m = &pmif_m_v2,
+};

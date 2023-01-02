@@ -12,19 +12,10 @@
 #include <linux/regmap.h>
 #include <linux/spmi.h>
 
-#define MT6685_DCXO_BASE 0x780
-#define MT6685_DCXO_SIZE 0x75
-
-static const struct resource mt6685_dcxo_resources[] = {
-	DEFINE_RES_MEM(MT6685_DCXO_BASE, MT6685_DCXO_SIZE),
-};
-
 static const struct mfd_cell mt6685_devs[] = {
 	{
-		.name = "mt6685-clock_buffer",
-		.num_resources = ARRAY_SIZE(mt6685_dcxo_resources),
-		.resources = mt6685_dcxo_resources,
-		.of_compatible = "mediatek,clock_buffer",
+		.name = "mt6685-clkbuf",
+		.of_compatible = "mediatek,mt6685-clkbuf",
 	}, {
 		.name = "mt6685-rtc",
 		.of_compatible = "mediatek,mt6685-rtc",
