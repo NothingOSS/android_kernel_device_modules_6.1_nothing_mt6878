@@ -1221,7 +1221,7 @@ static int set_test_model(struct seninf_ctx *ctx, char enable)
 
 			g_seninf_ops->_set_test_model(ctx,
 					vc[i]->dest[0].mux, vc[i]->dest[0].cam, vc[i]->pixel_mode,
-					vc_dt_filter, i, vc[i]->vc, vc[i]->dt);
+					vc_dt_filter, i, vc[i]->vc, vc[i]->dt, vc[i]->vc);
 
 			if (vc[i]->out_pad == PAD_SRC_PDAF0)
 				mdelay(40);
@@ -1672,21 +1672,7 @@ static int seninf_csi_s_stream(struct v4l2_subdev *sd, int enable)
 		//update_sensor_frame_desc(ctx);
 #endif
 
-		ret = v4l2_subdev_call(ctx->sensor_sd, video, s_stream, 1);
-		if (ret) {
-			dev_info(ctx->dev, "sensor stream-on fail,ret(%d)\n", ret);
-			return  ret;
-		}
-#ifdef SENINF_UT_DUMP
-		g_seninf_ops->_debug(ctx);
-#endif
-
 	} else {
-		ret = v4l2_subdev_call(ctx->sensor_sd, video, s_stream, 0);
-		if (ret) {
-			dev_info(ctx->dev, "sensor stream-off fail,ret(%d)\n", ret);
-			return ret;
-		}
 #ifdef SENSOR_SECURE_MTEE_SUPPORT
 		if (ctx->is_secure == 1) {
 			dev_info(ctx->dev, "sensor kernel ca_free");
@@ -1708,6 +1694,25 @@ static int seninf_csi_s_stream(struct v4l2_subdev *sd, int enable)
 
 	ctx->csi_streaming = enable;
 	return 0;
+}
+
+static int stream_sensor(struct seninf_ctx *ctx, bool enable)
+{
+	int ret;
+
+	ret = v4l2_subdev_call(ctx->sensor_sd, video, s_stream, enable);
+	if (ret) {
+		dev_info(ctx->dev, "%s sensor stream-%s fail,ret(%d)\n",
+			 __func__,
+			 enable ? "on" : "off",
+			 ret);
+	} else {
+#ifdef SENINF_UT_DUMP
+		g_seninf_ops->_debug(ctx);
+#endif
+	}
+
+	return ret;
 }
 
 static int seninf_s_stream(struct v4l2_subdev *sd, int enable)
@@ -1737,6 +1742,8 @@ static int seninf_s_stream(struct v4l2_subdev *sd, int enable)
 		if (!pad_inited) {
 			dev_info(ctx->dev,
 				 "[%s] pad_inited(%d)\n", __func__, pad_inited);
+			// stream on sensor while csi streamed
+			stream_sensor(ctx, enable);
 			return 0;
 		}
 	}
@@ -1775,6 +1782,9 @@ static int seninf_s_stream(struct v4l2_subdev *sd, int enable)
 		mtk_cam_seninf_s_stream_mux(ctx);
 		// notify_fsync_listen_target(ctx);
 	}
+
+	// stream on sensor after mux set
+	stream_sensor(ctx, enable);
 
 	ctx->streaming = enable;
 	notify_fsync_listen_target_with_kthread(ctx, 2);
