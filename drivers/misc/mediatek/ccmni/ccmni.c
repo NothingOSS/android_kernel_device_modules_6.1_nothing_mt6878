@@ -1483,15 +1483,15 @@ static void ccmni_dump(int ccmni_idx, unsigned int flag)
 		 * packets is count by qdisc in net device layer
 		 */
 		netdev_info(dev,
-			"%s(%d,%d), rx=(%ld,%ld,%d), tx=(%ld,%d,%lld), txq_len=(%d,%d), tx_drop=(%ld,%d,%d), rx_drop=(%ld,%ld), tx_busy=(%ld,%ld), sta=(0x%lx,0x%x,0x%lx,0x%lx)\n",
+			"%s(%d,%d), rx=(%ld,%ld,%d), tx=(%ld,%llu,%lld), txq_len=(%d,%d), tx_drop=(%ld,%d,%d), rx_drop=(%ld,%llu), tx_busy=(%ld,%ld), sta=(0x%lx,0x%x,0x%lx,0x%lx)\n",
 				  dev->name,
 				  atomic_read(&ccmni->usage),
 				  atomic_read(&ccmni_tmp->usage),
 			      dev->stats.rx_packets,
 				  dev->stats.rx_bytes,
 				  ccmni->rx_gro_cnt,
-			      dev->stats.tx_packets, qdisc->bstats.packets,
-				  ack_qdisc->bstats.packets,
+			      dev->stats.tx_packets, u64_stats_read(&qdisc->bstats.packets),
+				  u64_stats_read(&ack_qdisc->bstats.packets),
 			      qdisc->q.qlen, ack_qdisc->q.qlen,
 			      dev->stats.tx_dropped, qdisc->qstats.drops,
 				  ack_qdisc->qstats.drops,
@@ -1502,7 +1502,7 @@ static void ccmni_dump(int ccmni_idx, unsigned int flag)
 				  ack_queue->state);
 	} else
 		netdev_info(dev,
-			"%s(%d,%d), rx=(%ld,%ld,%d), tx=(%ld,%ld), txq_len=%d, tx_drop=(%ld,%d), rx_drop=(%ld,%ld), tx_busy=(%ld,%ld), sta=(0x%lx,0x%x,0x%lx)\n",
+			"%s(%d,%d), rx=(%ld,%ld,%d), tx=(%ld,%ld), txq_len=%d, tx_drop=(%ld,%d), rx_drop=(%ld,%llu), tx_busy=(%ld,%ld), sta=(0x%lx,0x%x,0x%lx)\n",
 			      dev->name, atomic_read(&ccmni->usage),
 				  atomic_read(&ccmni_tmp->usage),
 			      dev->stats.rx_packets, dev->stats.rx_bytes,
