@@ -661,6 +661,7 @@ static int vdec_set_param(unsigned long h_vdec,
 		break;
 	case SET_PARAM_PUT_FB:
 		vcu_dec_set_param(&inst->vcu, (unsigned int)type, in, 0);
+		break;
 	case SET_PARAM_UFO_MODE:
 		break;
 	case SET_PARAM_CRC_PATH:
