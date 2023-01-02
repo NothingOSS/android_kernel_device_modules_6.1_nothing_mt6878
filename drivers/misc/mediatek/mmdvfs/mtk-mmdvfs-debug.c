@@ -385,7 +385,7 @@ static int mmdvfs_debug_set_ftrace(const char *val,
 	u32 ver = 0, ena = 0;
 	int ret;
 
-	ret = sscanf(val, "%hhu %hhu", &ver, &ena);
+	ret = sscanf(val, "%u %u", &ver, &ena);
 	if (ret != 2) {
 		MMDVFS_DBG("failed:%d ver:%hhu ena:%hhu", ret, ver, ena);
 		return -EINVAL;
@@ -504,7 +504,7 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	/* MMDVFS_DBG_VER1 */
 	reg = devm_regulator_get(g_mmdvfs->dev, "dvfsrc-vcore");
 	if (IS_ERR_OR_NULL(reg)) {
-		MMDVFS_DBG("devm_regulator_get failed:%d", PTR_ERR(reg));
+		MMDVFS_DBG("devm_regulator_get failed:%ld", PTR_ERR(reg));
 		return PTR_ERR(reg);
 	}
 	g_mmdvfs->reg = reg;
@@ -554,14 +554,14 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	/* regulator */
 	reg = devm_regulator_get(g_mmdvfs->dev, "vcore");
 	if (IS_ERR_OR_NULL(reg)) {
-		MMDVFS_DBG("devm_regulator_get vcore failed:%d", PTR_ERR(reg));
+		MMDVFS_DBG("devm_regulator_get vcore failed:%ld", PTR_ERR(reg));
 		return PTR_ERR(reg);
 	}
 	g_mmdvfs->reg_vcore = reg;
 
 	reg = devm_regulator_get(g_mmdvfs->dev, "vmm-pmic");
 	if (IS_ERR_OR_NULL(reg)) {
-		MMDVFS_DBG("devm_regulator_get vmm-pmic failed:%d", PTR_ERR(reg));
+		MMDVFS_DBG("devm_regulator_get vmm-pmic failed:%ld", PTR_ERR(reg));
 		return PTR_ERR(reg);
 	}
 	g_mmdvfs->reg_vmm = reg;
