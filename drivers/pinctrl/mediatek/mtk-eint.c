@@ -189,7 +189,7 @@ static void mtk_eint_mask(struct irq_data *d)
 	u32 mask = BIT(index & 0x1f);
 
 	if (!reg) {
-		dev_err(eint->dev, "%s invalid eint_num %d\n",
+		dev_err(eint->dev, "%s invalid eint_num %lu\n",
 			__func__, d->hwirq);
 		return;
 	}
@@ -209,7 +209,7 @@ static void mtk_eint_unmask(struct irq_data *d)
 	u32 mask = BIT(index & 0x1f);
 
 	if (!reg) {
-		dev_err(eint->dev, "%s invalid eint_num %d\n",
+		dev_err(eint->dev, "%s invalid eint_num %lu\n",
 			__func__, d->hwirq);
 		return;
 	}
@@ -237,7 +237,7 @@ void mt6983_eint_ack(struct irq_data *d)
 	unsigned int bit = BIT(index & 0x1f);
 
 	if (!ack_reg) {
-		dev_err(eint->dev, "%s invalid eint_num %d\n",
+		dev_err(eint->dev, "%s invalid eint_num %lu\n",
 			__func__, d->hwirq);
 		return;
 	}
@@ -270,7 +270,7 @@ static void mtk_eint_ack(struct irq_data *d)
 					  &instance, &index);
 		bit = BIT(index & 0x1f);
 		if (!reg) {
-			dev_err(eint->dev, "%s invalid eint_num %d\n",
+			dev_err(eint->dev, "%s invalid eint_num %lu\n",
 				__func__, d->hwirq);
 			return;
 		}
@@ -357,7 +357,7 @@ static int mtk_eint_set_type(struct irq_data *d, unsigned int type)
 					  &instance, &index);
 
 	if (!reg) {
-		dev_err(eint->dev, "%s invalid eint_num %d\n",
+		dev_err(eint->dev, "%s invalid eint_num %lu\n",
 			__func__, d->hwirq);
 		return 0;
 	}
@@ -380,7 +380,7 @@ static int mtk_eint_irq_set_wake(struct irq_data *d, unsigned int on)
 						&instance, &index);
 
 	if (!reg) {
-		dev_err(eint->dev, "%s invalid eint_num %d\n",
+		dev_err(eint->dev, "%s invalid eint_num %lu\n",
 			__func__, d->hwirq);
 		return 0;
 	}
@@ -636,7 +636,7 @@ int mtk_eint_set_debounce(struct mtk_eint *eint, unsigned long eint_num,
 				  &instance, &index);
 
 	if (!reg) {
-		dev_err(eint->dev, "%s invalid eint_num %d\n",
+		dev_err(eint->dev, "%s invalid eint_num %lu\n",
 			__func__, eint_num);
 		return 0;
 	}
