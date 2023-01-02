@@ -167,7 +167,7 @@ static int vkms_modeset_init(struct vkms_device *vkmsdev)
 	dev->mode_config.max_height = YRES_MAX;
 
 	dev->mode_config.helper_private = &vkms_mode_config_helpers;
-	dev->mode_config.fb_modifiers_not_supported = true;
+	dev->mode_config.fb_modifiers_not_supported = false;
 
 	return vkms_output_init(vkmsdev, 0);
 }
