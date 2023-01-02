@@ -1665,6 +1665,7 @@ static long aed_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		unsigned long end = 0, length = 0;
 		unsigned char *stack;
 		int copied;
+		MA_STATE(mas, 0, 0, 0);
 
 		pr_info("Get direct unwind backtrace stack");
 
@@ -1689,16 +1690,13 @@ static long aed_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 		start = stack_raw.sp;
 		down_read(&task->mm->mmap_lock);
-		vma = task->mm->mmap;
-		while (vma) {
+		mas.tree = &task->mm->mm_mt;
+		mas_for_each(&mas, vma, ULONG_MAX) {
 			if (vma->vm_start <= start &&
 				vma->vm_end >= start) {
 				end = vma->vm_end;
 				break;
 			}
-			vma = vma->vm_next;
-			if (vma == task->mm->mmap)
-				break;
 		}
 		up_read(&task->mm->mmap_lock);
 
@@ -1755,6 +1753,9 @@ static long aed_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		unsigned char *stack;
 		int copied;
 		struct mm_struct *rms_mm;
+		MA_STATE(mas1, 0, 0, 0);
+		MA_STATE(mas2, 0, 0, 0);
+
 
 		pr_info("Get direct unwind backtrace info");
 
@@ -1818,10 +1819,11 @@ static long aed_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			memset(maps, 0, MaxMapsSize);
 
 			mmap_read_lock(rms_mm);
-			vma = rms_mm->mmap;
-			while (vma && (mapcount < rms_mm->map_count)) {
+			mas1.tree = &rms_mm->mm_mt;
+			mas_for_each(&mas1, vma, ULONG_MAX) {
+				if(mapcount >= rms_mm->map_count)
+					break;
 				show_map_vma(maps, &mapsLength, vma);
-				vma = vma->vm_next;
 				mapcount++;
 			}
 
@@ -1834,16 +1836,13 @@ static long aed_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			else //K64+U64
 				start = (ulong)user_ret->user_regs.sp;
 #endif
-			vma = rms_mm->mmap;
-			while (vma) {
+			mas2.tree = &rms_mm->mm_mt;
+			mas_for_each(&mas2, vma, ULONG_MAX) {
 				if (vma->vm_start <= start &&
 					vma->vm_end >= start) {
 					end = vma->vm_end;
 					break;
 				}
-				vma = vma->vm_next;
-				if (vma == rms_mm->mmap)
-					break;
 			}
 
 			mmap_read_unlock(rms_mm);
