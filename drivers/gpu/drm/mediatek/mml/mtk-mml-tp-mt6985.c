@@ -72,6 +72,8 @@ enum topology_scenario {
 	PATH_MML_2OUT_P1,
 	PATH_MML_2IN_2OUT_P0,
 	PATH_MML_2IN_2OUT_P1,
+	PATH_MML_APUPQ_DD0,
+	PATH_MML_APUPQ_DD1,
 	PATH_MML_MAX
 };
 
@@ -276,6 +278,34 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_WROT1,},
 		{MML_WROT3,},
 	},
+	[PATH_MML_APUPQ_DD0] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RDMA0, MML_DLI0_SEL,},
+		{MML_DLI0_SEL, MML_HDR0,},
+		{MML_HDR0, MML_AAL0,},
+		{MML_AAL0, MML_RSZ0,},
+		{MML_RSZ0, MML_TDSHP0,},
+		{MML_TDSHP0, MML_COLOR0,},
+		{MML_COLOR0, MML_PQ0_SOUT,},
+		{MML_PQ0_SOUT, MML_DLO0_SOUT,},
+		{MML_DLO0_SOUT, MML_DLO0,},
+		{MML_DLO0,},
+	},
+	[PATH_MML_APUPQ_DD1] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RDMA1, MML_DLI1_SEL,},
+		{MML_DLI1_SEL, MML_HDR1,},
+		{MML_HDR1, MML_AAL1,},
+		{MML_AAL1, MML_RSZ1,},
+		{MML_RSZ1, MML_TDSHP1,},
+		{MML_TDSHP1, MML_COLOR1,},
+		{MML_COLOR1, MML_PQ1_SOUT,},
+		{MML_PQ1_SOUT, MML_DLO1_SOUT,},
+		{MML_DLO1_SOUT, MML_DLO1,},
+		{MML_DLO1,},
+	},
 };
 
 enum cmdq_clt_usage {
@@ -299,6 +329,8 @@ static const u8 clt_dispatch[PATH_MML_MAX] = {
 	[PATH_MML_2OUT_P1] = MML_CLT_PIPE1,
 	[PATH_MML_2IN_2OUT_P0] = MML_CLT_PIPE0,
 	[PATH_MML_2IN_2OUT_P1] = MML_CLT_PIPE1,
+	[PATH_MML_APUPQ_DD0] = MML_CLT_PIPE0,
+	[PATH_MML_APUPQ_DD1] = MML_CLT_PIPE1,
 };
 
 /* mux sof group of mmlsys mout/sel */
@@ -328,6 +360,8 @@ static const u8 grp_dispatch[PATH_MML_MAX] = {
 	[PATH_MML_2OUT_P1] = MUX_SOF_GRP2,
 	[PATH_MML_2IN_2OUT_P0] = MUX_SOF_GRP1,
 	[PATH_MML_2IN_2OUT_P1] = MUX_SOF_GRP2,
+	[PATH_MML_APUPQ_DD0] = MUX_SOF_GRP1,
+	[PATH_MML_APUPQ_DD1] = MUX_SOF_GRP2,
 };
 
 /* reset bit to each engine,
@@ -618,6 +652,10 @@ static void tp_select_path(struct mml_topology_cache *cache,
 		scene[0] = PATH_MML_NOPQ_P0;
 		scene[1] = PATH_MML_NOPQ_P1;
 		goto done;
+	} else if (cfg->info.mode == MML_MODE_APUDC) {
+		scene[0] = PATH_MML_APUPQ_DD0;
+		scene[1] = PATH_MML_APUPQ_DD1;
+		goto done;
 	}
 
 	en_rsz = tp_need_resize(&cfg->info);
@@ -753,6 +791,11 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 	if (info->mode == MML_MODE_MML_DECOUPLE ||
 		info->mode == MML_MODE_MDP_DECOUPLE)
 		goto decouple_user;
+
+	if (info->mode == MML_MODE_APUDC &&
+		info->src.width == 1920 && info->src.height == 1080) {
+		goto decouple_user;
+	}
 
 	/* TODO: should REMOVE after inlinerot resize ready */
 	if (unlikely(!mml_racing_rsz) && tp_need_resize(info))
