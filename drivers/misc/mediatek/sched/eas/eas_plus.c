@@ -2,6 +2,7 @@
 /*
  * Copyright (c) 2019 MediaTek Inc.
  */
+#include <linux/cpuidle.h>
 #include <linux/module.h>
 #include <sched/sched.h>
 #include <sugov/cpufreq.h>
