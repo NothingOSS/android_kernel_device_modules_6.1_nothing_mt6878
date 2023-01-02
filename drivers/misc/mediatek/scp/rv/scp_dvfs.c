@@ -297,7 +297,7 @@ static int scp_set_scp2spm_vol(unsigned int spm_opp)
 		spm_opp, 0, 0, 0, 0, 0, &res);
 
 	if (res.a0)
-		pr_notice("[%s] smc call failed with error: %d\n",
+		pr_notice("[%s] smc call failed with error: %lu\n",
 		__func__, res.a0);
 	return res.a0;
 }

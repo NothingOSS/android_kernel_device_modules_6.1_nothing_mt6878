@@ -177,7 +177,7 @@ void ccci_notify_atf_set_scpmem(void)
 
 	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, SCP_CLK_SET_DONE,
 		0, 0, 0, 0, 0, 0, &res);
-	CCCI_NORMAL_LOG(MD_SYS1, FSM, "%s [done] res = 0x%llX\n", __func__, res.a0);
+	CCCI_NORMAL_LOG(MD_SYS1, FSM, "%s [done] res = 0x%lX\n", __func__, res.a0);
 }
 static void ccci_scp_md_state_sync_work(struct work_struct *work)
 {
