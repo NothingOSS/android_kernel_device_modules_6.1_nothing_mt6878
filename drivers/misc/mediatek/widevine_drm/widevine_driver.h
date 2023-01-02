@@ -19,7 +19,7 @@ extern int wv_dbg_level;
 
 struct WV_FD_TO_SEC_HANDLE {
 	int share_fd;
-	uint32_t sec_handle;
+	uint64_t sec_handle;
 };
 
 #define WV_DEVNAME "drm_wv"

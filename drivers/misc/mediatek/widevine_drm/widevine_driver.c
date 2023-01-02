@@ -47,7 +47,7 @@ int wv_release(struct inode *inode, struct file *filep)
 static long wv_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;
-	uint32_t sec_handle = 0;
+	uint64_t sec_handle = 0;
 	struct WV_FD_TO_SEC_HANDLE in_out_param;
 	struct dma_buf *dmabuf = NULL;
 
