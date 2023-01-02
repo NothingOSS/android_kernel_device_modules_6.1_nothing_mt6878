@@ -468,10 +468,10 @@ static int mtk_emicen_addr2dram_v1(unsigned long addr,
 	hash = global_emi_cen->hash;
 	chn_hash_lsb = s6s->chn_hash_lsb;
 
-	tmp = (test_bit(8, &addr) & test_bit(0, &disph)) ? 1 : 0;
-	tmp ^= (test_bit(9, &addr) & test_bit(1, &disph)) ? 1 : 0;
-	tmp ^= (test_bit(10, &addr) & test_bit(2, &disph)) ? 1 : 0;
-	tmp ^= (test_bit(11, &addr) & test_bit(3, &disph)) ? 1 : 0;
+	tmp = (test_bit(8, &addr) && test_bit(0, &disph)) ? 1 : 0;
+	tmp ^= (test_bit(9, &addr) && test_bit(1, &disph)) ? 1 : 0;
+	tmp ^= (test_bit(10, &addr) && test_bit(2, &disph)) ? 1 : 0;
+	tmp ^= (test_bit(11, &addr) && test_bit(3, &disph)) ? 1 : 0;
 	map->emi = tmp;
 
 	saddr = addr;
@@ -870,12 +870,12 @@ static inline unsigned int use_a2d_magic_v2(unsigned long addr,
 	unsigned int ret;
 
 	ret = test_bit(bit, &addr) ? 1 : 0;
-	ret ^= (test_bit(16, &addr) & test_bit(0, &magic)) ? 1 : 0;
-	ret ^= (test_bit(17, &addr) & test_bit(1, &magic)) ? 1 : 0;
-	ret ^= (test_bit(18, &addr) & test_bit(2, &magic)) ? 1 : 0;
-	ret ^= (test_bit(19, &addr) & test_bit(3, &magic)) ? 1 : 0;
-	ret ^= (test_bit(20, &addr) & test_bit(4, &magic)) ? 1 : 0;
-	ret ^= (test_bit(21, &addr) & test_bit(5, &magic)) ? 1 : 0;
+	ret ^= (test_bit(16, &addr) && test_bit(0, &magic)) ? 1 : 0;
+	ret ^= (test_bit(17, &addr) && test_bit(1, &magic)) ? 1 : 0;
+	ret ^= (test_bit(18, &addr) && test_bit(2, &magic)) ? 1 : 0;
+	ret ^= (test_bit(19, &addr) && test_bit(3, &magic)) ? 1 : 0;
+	ret ^= (test_bit(20, &addr) && test_bit(4, &magic)) ? 1 : 0;
+	ret ^= (test_bit(21, &addr) && test_bit(5, &magic)) ? 1 : 0;
 
 	return ret;
 }
