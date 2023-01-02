@@ -22,6 +22,7 @@
 #include <linux/tick.h>
 #include <linux/time.h>
 #include <linux/vmalloc.h>
+#include <scsi/scsi_cmnd.h>
 #include <scsi/scsi_proto.h>
 #include "mtk_blocktag.h"
 #include "blocktag-ufs.h"

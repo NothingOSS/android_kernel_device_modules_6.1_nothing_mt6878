@@ -8,7 +8,6 @@
 
 #define DEBUG 1
 
-#include <linux/major.h>
 #include <linux/memblock.h>
 #include <linux/module.h>
 #include <linux/proc_fs.h>
@@ -20,6 +19,7 @@
 #include <linux/vmstat.h>
 #include <trace/events/block.h>
 #include <trace/events/writeback.h>
+#include <uapi/linux/major.h>
 
 #define BLOCKIO_MIN_VER	"3.09"
 

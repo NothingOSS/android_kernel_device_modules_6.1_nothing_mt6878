@@ -10,7 +10,7 @@
 #include <linux/mmc/core.h>
 #include <linux/proc_fs.h>
 #include <linux/sched.h>
-#include "ufshcd.h"
+#include <ufs/ufshcd.h>
 #include "ufs-mediatek.h"
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
