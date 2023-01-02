@@ -6827,7 +6827,7 @@
 				<7 0 6>,
 				<8 0 1>,
 				<9 0 4>,
-				<10 0 9>;
+				<10 0 3>;
 			send_name_table =
 				"IPI_ID_FAST_DVFS_EVENT",
 				"IPI_ID_GPUFREQ",
@@ -6853,7 +6853,7 @@
 				<7 0 6 1>,
 				<8 0 4 0>,
 				<9 0 1 1>,
-				<10 0 9 1>;
+				<10 0 3 1>;
 			recv_name_table =
 				"IPI_ID_FAST_DVFS_EVENT",
 				"IPI_ID_GPUFREQ",
