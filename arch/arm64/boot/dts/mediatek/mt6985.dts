@@ -1876,9 +1876,12 @@
 			reg = <0 0x11f00000 0 0x1000>,
 				<0 0x11300200 0 0x80>;
 			interrupts = <GIC_SPI 186 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&clk10m>, <&clk10m>;
+			clocks = <&imp_iic_wrap_n_clk CLK_IMPN_I2C0>,
+				<&pericfg_ao_clk CLK_PERAO_DMA_B>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			scl-gpio-id = <78>;
+			sda-gpio-id = <79>;
 		};
 
 		i2c1: i2c@11d00000 {
@@ -1886,9 +1889,12 @@
 			reg = <0 0x11d00000 0 0x1000>,
 				<0 0x11300280 0 0x80>;
 			interrupts = <GIC_SPI 187 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&clk10m>, <&clk10m>;
+			clocks = <&imp_iic_wrap_s_clk CLK_IMPS_I2C1>,
+				<&pericfg_ao_clk CLK_PERAO_DMA_B>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			scl-gpio-id = <173>;
+			sda-gpio-id = <174>;
 		};
 
 		i2c2: i2c@11d01000 {
@@ -1896,9 +1902,12 @@
 			reg = <0 0x11d01000 0 0x1000>,
 				<0 0x11300300 0 0x180>;
 			interrupts = <GIC_SPI 188 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&clk10m>, <&clk10m>;
+			clocks = <&imp_iic_wrap_s_clk CLK_IMPS_I2C2>,
+				<&pericfg_ao_clk CLK_PERAO_DMA_B>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			scl-gpio-id = <185>;
+			sda-gpio-id = <186>;
 		};
 
 		i2c3: i2c@11d02000 {
@@ -1906,9 +1915,12 @@
 			reg = <0 0x11d02000 0 0x1000>,
 				<0 0x11300480 0 0x80>;
 			interrupts = <GIC_SPI 189 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&clk10m>, <&clk10m>;
+			clocks = <&imp_iic_wrap_s_clk CLK_IMPS_I2C3>,
+				<&pericfg_ao_clk CLK_PERAO_DMA_B>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			scl-gpio-id = <175>;
+			sda-gpio-id = <176>;
 		};
 
 		i2c4: i2c@11d03000 {
@@ -1916,9 +1928,12 @@
 			reg = <0 0x11d03000 0 0x1000>,
 				<0 0x11300500 0 0x180>;
 			interrupts = <GIC_SPI 190 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&clk10m>, <&clk10m>;
+			clocks = <&imp_iic_wrap_s_clk CLK_IMPS_I2C4>,
+				<&pericfg_ao_clk CLK_PERAO_DMA_B>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			scl-gpio-id = <183>;
+			sda-gpio-id = <184>;
 		};
 
 		i2c5: i2c@11280000 {
@@ -1926,9 +1941,12 @@
 			reg = <0 0x11280000 0 0x1000>,
 				<0 0x11300680 0 0x80>;
 			interrupts = <GIC_SPI 191 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&clk10m>, <&clk10m>;
+			clocks = <&imp_iic_wrap_c_clk CLK_IMPC_I2C5>,
+				<&pericfg_ao_clk CLK_PERAO_DMA_B>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			scl-gpio-id = <82>;
+			sda-gpio-id = <83>;
 		};
 
 		i2c6: i2c@11f01000 {
@@ -1936,9 +1954,12 @@
 			reg = <0 0x11f01000 0 0x1000>,
 				<0 0x11300700 0 0x80>;
 			interrupts = <GIC_SPI 192 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&clk10m>, <&clk10m>;
+			clocks = <&imp_iic_wrap_n_clk CLK_IMPN_I2C6>,
+				<&pericfg_ao_clk CLK_PERAO_DMA_B>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			scl-gpio-id = <80>;
+			sda-gpio-id = <81>;
 		};
 
 		i2c7: i2c@11d04000 {
@@ -1946,9 +1967,12 @@
 			reg = <0 0x11d04000 0 0x1000>,
 				<0 0x11300780 0 0x180>;
 			interrupts = <GIC_SPI 193 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&clk10m>, <&clk10m>;
+			clocks = <&imp_iic_wrap_s_clk CLK_IMPS_I2C7>,
+				<&pericfg_ao_clk CLK_PERAO_DMA_B>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			scl-gpio-id = <181>;
+			sda-gpio-id = <182>;
 		};
 
 		i2c8: i2c@11d05000 {
@@ -1956,9 +1980,12 @@
 			reg = <0 0x11d05000 0 0x1000>,
 				<0 0x11300900 0 0x180>;
 			interrupts = <GIC_SPI 194 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&clk10m>, <&clk10m>;
+			clocks = <&imp_iic_wrap_s_clk CLK_IMPS_I2C8>,
+				<&pericfg_ao_clk CLK_PERAO_DMA_B>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			scl-gpio-id = <179>;
+			sda-gpio-id = <180>;
 		};
 
 		i2c9: i2c@11d06000 {
@@ -1966,9 +1993,12 @@
 			reg = <0 0x11d06000 0 0x1000>,
 				<0 0x11300a80 0 0x180>;
 			interrupts = <GIC_SPI 195 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&clk10m>, <&clk10m>;
+			clocks = <&imp_iic_wrap_s_clk CLK_IMPS_I2C9>,
+				<&pericfg_ao_clk CLK_PERAO_DMA_B>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			scl-gpio-id = <177>;
+			sda-gpio-id = <178>;
 		};
 
 		i2c10: i2c@11f02000 {
@@ -1976,9 +2006,12 @@
 			reg = <0 0x11f02000 0 0x1000>,
 				<0 0x11300c00 0 0x80>;
 			interrupts = <GIC_SPI 196 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&clk10m>, <&clk10m>;
+			clocks = <&imp_iic_wrap_n_clk CLK_IMPN_I2C10>,
+				<&pericfg_ao_clk CLK_PERAO_DMA_B>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			scl-gpio-id = <72>;
+			sda-gpio-id = <73>;
 		};
 
 		i2c11: i2c@11f03000 {
@@ -1986,9 +2019,12 @@
 			reg = <0 0x11f03000 0 0x1000>,
 				<0 0x11300c80 0 0x80>;
 			interrupts = <GIC_SPI 197 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&clk10m>, <&clk10m>;
+			clocks = <&imp_iic_wrap_n_clk CLK_IMPN_I2C11>,
+				<&pericfg_ao_clk CLK_PERAO_DMA_B>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			scl-gpio-id = <70>;
+			sda-gpio-id = <71>;
 		};
 
 		i2c12: i2c@11f04000 {
@@ -1996,9 +2032,12 @@
 			reg = <0 0x11f04000 0 0x1000>,
 				<0 0x11300d00 0 0x180>;
 			interrupts = <GIC_SPI 198 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&clk10m>, <&clk10m>;
+			clocks = <&imp_iic_wrap_n_clk CLK_IMPN_I2C12>,
+				<&pericfg_ao_clk CLK_PERAO_DMA_B>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			scl-gpio-id = <135>;
+			sda-gpio-id = <136>;
 		};
 
 		i2c13: i2c@11f05000 {
@@ -2006,9 +2045,12 @@
 			reg = <0 0x11f05000 0 0x1000>,
 				<0 0x11300e80 0 0x180>;
 			interrupts = <GIC_SPI 199 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&clk10m>, <&clk10m>;
+			clocks = <&imp_iic_wrap_n_clk CLK_IMPN_I2C13>,
+				<&pericfg_ao_clk CLK_PERAO_DMA_B>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			scl-gpio-id = <137>;
+			sda-gpio-id = <138>;
 		};
 
 		scp_i2c1: i2c@1c7b1000 {
@@ -2016,12 +2058,15 @@
 			reg = <0 0x1c7b1000 0 0x1000>,
 				<0 0x1c753180 0 0x100>;
 			interrupts = <GIC_SPI 722 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&clk10m>, <&clk10m>;
+			clocks = <&scp_iic_clk CLK_SCP_IIC_I2C1>,
+				<&pericfg_ao_clk CLK_PERAO_DMA_B>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
 			clk_src_in_hz = <130000000>;
 			ch_offset_i2c = <0x200>;
 			ch_offset_dma = <0x80>;
+			scl-gpio-id = <49>;
+			sda-gpio-id = <50>;
 		};
 
 		dfd@13600000 {
