@@ -2150,7 +2150,7 @@
 				<GIC_SPI 748 IRQ_TYPE_LEVEL_HIGH 0>, /* adsp irq */
 				<GIC_SPI 456 IRQ_TYPE_LEVEL_HIGH 0>, /* mminfra irq */
 				<GIC_SPI 864 IRQ_TYPE_LEVEL_HIGH 0>, /* mmup irq */
-				<GIC_SPI 590 IRQ_TYPE_LEVEL_HIGH 0>; /* gpu irq */
+				<GIC_SPI 591 IRQ_TYPE_LEVEL_HIGH 0>; /* gpu irq */
 		};
 
 		bus_dbg@10208000 {
