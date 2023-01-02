@@ -551,14 +551,14 @@ int apu_power_on_off(struct platform_device *pdev, u32 id, u32 on, u32 off)
 	dev = apu->dev;
 	hw_ops = &apu->platdata->ops;
 
-	dev_info(dev, "%s: enter, id(%u), on(%u), off(%u)\n", __func__, id, on, off);
-	ktime_get_ts64(&ts);
-
 	if ((apu->platdata->flags & F_BYPASS_PM_RUNTIME) == 0 ||
 		!hw_ops->power_on_off) {
-		dev_info(dev, "%s: not support\n", __func__);
+		/* dev_info(dev, "%s: not support\n", __func__); */
 		return -EOPNOTSUPP;
 	}
+
+	dev_info(dev, "%s: enter, id(%u), on(%u), off(%u)\n", __func__, id, on, off);
+	ktime_get_ts64(&ts);
 
 	ipi = &apu->ipi_desc[id];
 	spin_lock(&apu->usage_cnt_lock);
