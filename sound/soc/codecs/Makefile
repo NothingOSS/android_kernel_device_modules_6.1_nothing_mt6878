@@ -14,7 +14,6 @@ snd-soc-mt6351-objs := mt6351.o
 snd-soc-mt6358-objs := mt6358.o
 snd-soc-mt6359-objs := mt6359.o
 snd-soc-mt6359-accdet-objs := mt6359-accdet.o
-snd-soc-mt6660-objs := mt6660.o
 snd-soc-mt6368-objs := mt6368.o
 snd-soc-mt6359p-accdet-objs := mt6359p-accdet.o
 snd-soc-hdmi-codec-objs := hdmi-codec.o

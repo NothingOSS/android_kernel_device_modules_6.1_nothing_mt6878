@@ -3,7 +3,7 @@
 # USB Host Controller Drivers
 #
 
-config DEVICE_MODULES_USB_XHCI_MTK
+config USB_XHCI_MTK
 	tristate "xHCI support for MediaTek SoCs"
 	select MFD_SYSCON
 	help

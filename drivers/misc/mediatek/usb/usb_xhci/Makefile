@@ -17,4 +17,4 @@ ifneq ($(CONFIG_DEBUG_FS),)
 	xhci-mtk-hcd-v2-y		+= xhci-debugfs.o
 endif
 
-obj-$(CONFIG_DEVICE_MODULES_USB_XHCI_MTK) += xhci-mtk-hcd-v2.o
+obj-$(CONFIG_USB_XHCI_MTK) += xhci-mtk-hcd-v2.o
