@@ -98,3 +98,11 @@ config VIDEO_MTK_ISP_IMGSYS_CMDQ
 	    driver and gce driver. messages can include R/W registers,
 	    wait gce events, and notification that are needed for a
 	    working camera session.
+
+config VIDEO_MTK_ISP_IMGSYS_7SP
+	tristate "Mediatek imgsys processing function"
+	help
+	    imgsys driver controls post-processing on the streaming images
+	    and/or statistics for better image qualities
+	    such as noise reduction, edge enhencement,
+	    and motion estimation, etc.
