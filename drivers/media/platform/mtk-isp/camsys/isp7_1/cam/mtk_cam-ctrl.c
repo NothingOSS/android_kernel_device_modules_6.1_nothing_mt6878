@@ -703,7 +703,7 @@ fail_switch_stop:
 
 void mtk_cam_req_seninf_change(struct mtk_cam_request *req)
 {
-	struct media_pipeline *m_pipe;
+	//struct media_pipeline *m_pipe;
 	struct mtk_cam_ctx *ctx;
 	struct mtk_cam_device *cam =
 		container_of(req->req.mdev, struct mtk_cam_device, media_dev);
@@ -745,12 +745,12 @@ void mtk_cam_req_seninf_change(struct mtk_cam_request *req)
 			}
 
 			mtk_cam_apply_pending_dev_config(req_stream_data);
-			m_pipe = req_stream_data->seninf_new->entity.pipe;
-			req_stream_data->seninf_new->entity.pipe->streaming_count++;
-			req_stream_data->seninf_new->entity.pipe =
-				req_stream_data->seninf_old->entity.pipe;
-			req_stream_data->seninf_old->entity.pipe->streaming_count--;
-			req_stream_data->seninf_old->entity.pipe = m_pipe;
+			//m_pipe = req_stream_data->seninf_new->entity.pipe;
+			//req_stream_data->seninf_new->entity.pipe->streaming_count++;
+			//req_stream_data->seninf_new->entity.pipe =
+			//	req_stream_data->seninf_old->entity.pipe;
+			//req_stream_data->seninf_old->entity.pipe->streaming_count--;
+			//req_stream_data->seninf_old->entity.pipe = m_pipe;
 
 			dev_info(cam->dev,
 				 "%s: pipe(%d):seninf(%s):seninf_set_camtg, pad(%d) camtg(%d)",
