@@ -818,7 +818,7 @@ void md_dump_reg(struct ccci_modem *md)
 	buf_addr = res.a1;
 	buf_size = res.a2;
 	CCCI_NORMAL_LOG(-1, TAG,
-		"[%s][MD_REG_DUMP_START] flag_1=0x%llx, flag_2=0x%llx, flag_3=0x%llx, flag_4=0x%llx\n",
+		"[%s][MD_REG_DUMP_START] flag_1=0x%lx, flag_2=0x%lx, flag_3=0x%lx, flag_4=0x%lx\n",
 		__func__, res.a0, res.a1, res.a2, res.a3);
 	/* go kernel debug red dump,fix me,we need make it more compatible later */
 	if ((res.a0 & 0xffff0000) != 0) {
@@ -855,7 +855,7 @@ void md_dump_reg(struct ccci_modem *md)
 		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_DEBUG_DUMP,
 			MD_REG_DUMP_STAGE, 0, 0, 0, 0, 0, &res);
 		CCCI_DEBUG_LOG(-1, TAG,
-			"[%s][MD_REG_DUMP_STAGE] flag_0=0x%llx, flag_1=0x%llx, flag_2=0x%llx, flag_3=0x%llx\n",
+			"[%s][MD_REG_DUMP_STAGE] flag_0=0x%lx, flag_1=0x%lx, flag_2=0x%lx, flag_3=0x%lx\n",
 			__func__, res.a0, res.a1, res.a2, res.a3);
 		switch (res.a2) {
 		case DUMP_FINISHED: /* go through */

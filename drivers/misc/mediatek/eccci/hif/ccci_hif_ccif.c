@@ -1815,7 +1815,7 @@ static int ccif_resume_noirq(struct device *dev)
 	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_CLOCK_REQUEST,
 		MD_WAKEUP_AP_SRC, WAKE_SRC_HIF_CCIF0, 0, 0, 0, 0, &res);
 	CCCI_NORMAL_LOG(-1, TAG,
-		"[%s] flag_1=0x%llx, flag_2=0x%llx, flag_3=0x%llx, flag_4=0x%llx\n",
+		"[%s] flag_1=0x%lx, flag_2=0x%lx, flag_3=0x%lx, flag_4=0x%lx\n",
 		__func__, res.a0, res.a1, res.a2, res.a3);
 	if (!res.a0 && res.a1 == WAKE_SRC_HIF_CCIF0) {
 		ccif_ch = ccif_read32(ccif_ctrl->ccif_ap_base, APCCIF_RCHNUM);

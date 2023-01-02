@@ -2894,7 +2894,7 @@ static void dpmaif_traffic_monitor_func(struct timer_list *t)
 			dpmaif_ctl->tx_tfc_pkgs[3]);
 
 		CCCI_NORMAL_LOG(0, TAG,
-			"dpmaif-txq pos: w/r/rel=(%d,%d,%d)(%d,%d,%d)(%d,%d,%d)(%d,%d,%d), tx_busy=%d,%d,%d,%d, last_isr=%lx,%lx,%lx,%lx\n",
+			"dpmaif-txq pos: w/r/rel=(%d,%d,%d)(%d,%d,%d)(%d,%d,%d)(%d,%d,%d), tx_busy=%d,%d,%d,%d, last_isr=%llx,%llx,%llx,%llx\n",
 			atomic_read(&dpmaif_ctl->txq[0].drb_wr_idx),
 			atomic_read(&dpmaif_ctl->txq[0].drb_rd_idx),
 			atomic_read(&dpmaif_ctl->txq[0].drb_rel_rd_idx),
@@ -3119,7 +3119,7 @@ static int dpmaif_resume_noirq(struct device *dev)
 			WAKE_SRC_HIF_DPMAIF, 0, 0, 0, 0, &res);
 
 	CCCI_NORMAL_LOG(-1, TAG,
-		"[%s] flag_1=0x%llx, flag_2=0x%llx, flag_3=0x%llx, flag_4=0x%llx\n",
+		"[%s] flag_1=0x%lx, flag_2=0x%lx, flag_3=0x%lx, flag_4=0x%lx\n",
 		__func__, res.a0, res.a1, res.a2, res.a3);
 
 	if ((!res.a0) && (res.a1 == WAKE_SRC_HIF_DPMAIF))

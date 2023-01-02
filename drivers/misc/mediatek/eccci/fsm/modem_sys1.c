@@ -60,7 +60,7 @@ bool spm_is_md1_sleep(void)
 		MD_GET_SLEEP_MODE, 0, 0, 0, 0, 0, &res);
 
 	CCCI_NORMAL_LOG(-1, TAG,
-		"[%s] flag_1=%llx, flag_2=%llx, flag_3=%llx, flag_4=%llx\n",
+		"[%s] flag_1=%lx, flag_2=%lx, flag_3=%lx, flag_4=%lx\n",
 		__func__, res.a0, res.a1, res.a2, res.a3);
 	if (res.a0 == 0)
 		return res.a1; /* 1-md is sleep, 0 - is not */

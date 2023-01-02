@@ -3033,7 +3033,7 @@ static int ccci_cldma_hif_init(struct platform_device *pdev,
 	md_ctrl->plat_val.offset_epof_md1 = 7*1024+0x234;
 
 	CCCI_NORMAL_LOG(0, TAG,
-		"[%s]: md_gen: %d; infra_ao_base: %p; offset_epof_md1: %lld\n",
+		"[%s]: md_gen: %d; infra_ao_base: %p; offset_epof_md1: %lu\n",
 		__func__,
 		md_ctrl->plat_val.md_gen,
 		md_ctrl->plat_val.infra_ao_base,
@@ -3264,7 +3264,7 @@ static int __init ccci_cldma_init(void)
 static void __exit ccci_cldma_exit(void)
 {
 	CCCI_NORMAL_LOG(-1, TAG,
-		"[%S] CLDMA driver is exit.", __func__);
+		"[%s] CLDMA driver is exit.", __func__);
 }
 
 module_init(ccci_cldma_init);
