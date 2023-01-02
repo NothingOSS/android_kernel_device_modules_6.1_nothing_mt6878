@@ -18,16 +18,18 @@ define fixup-kernel-cmd-file
 if [ -e $(1) ]; then cp $(1) $(1).bak; sed -e 's/\\\\\\\\/\\\\/g' < $(1).bak > $(1); rm -f $(1).bak; fi
 endef
 
-  KERNEL_DIR := $(KERNEL_ENV_PATH)
   mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
-  current_dir := $(notdir $(patsubst %/,%,$(dir $(mkfile_path))))
+  KERNEL_DIR := $(KERNEL_ENV_PATH)
+  REL_ACK_DIR := $(LINUX_KERNEL_VERSION)
+  REL_KERNEL_DIR := $(shell bash $(dir $(mkfile_path))scripts/get_rel_path.sh $(KERNEL_DIR) $(KERNEL_ROOT_DIR)/kernel)
+  REL_KERNEL_DIR_FROM_ACK := $(shell bash $(dir $(mkfile_path))scripts/get_rel_path.sh $(KERNEL_DIR) $(KERNEL_ROOT_DIR)/kernel/$(REL_ACK_DIR))
 ifndef KERNEL_BUILD_VARIANT
   KERNEL_BUILD_VARIANT := $(TARGET_BUILD_VARIANT)
 endif
 
   ifeq ($(wildcard $(TARGET_PREBUILT_KERNEL)),)
-    KERNEL_OUT ?= $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/$(LINUX_KERNEL_VERSION)
-    REL_KERNEL_OUT := $(shell ./$(current_dir)/scripts/get_rel_path.sh $(patsubst %/,%,$(dir $(KERNEL_OUT))) $(KERNEL_ROOT_DIR)/kernel)
+    KERNEL_OUT ?= $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/$(REL_ACK_DIR)
+    REL_KERNEL_OUT := $(shell bash $(dir $(mkfile_path))scripts/get_rel_path.sh $(patsubst %/,%,$(dir $(KERNEL_OUT))) $(KERNEL_ROOT_DIR)/kernel)
     KERNEL_ROOT_OUT := $(if $(filter /% ~%,$(KERNEL_OUT)),,$(KERNEL_ROOT_DIR)/)$(KERNEL_OUT)
     KERNEL_GKI_CONFIG :=
     ifeq (yes,$(strip $(BUILD_KERNEL)))
@@ -40,15 +42,12 @@ endif
       else
         KERNEL_ZIMAGE_OUT := $(KERNEL_OUT)/arch/$(KERNEL_TARGET_ARCH)/boot/Image.$(MTK_KERNEL_COMPRESS_FORMAT)
       endif
-      ifeq (user,$(strip $(KERNEL_BUILD_VARIANT)))
-        ifdef MTK_GKI_PREBUILTS_DIR
-            KERNEL_ZIMAGE_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/Image.$(MTK_KERNEL_COMPRESS_FORMAT)
-            KERNEL_GKI_CONFIG := GKI_PREBUILTS_DIR=../$(MTK_GKI_PREBUILTS_DIR)
-        else
-          ifdef MTK_GKI_BUILD_CONFIG
-            KERNEL_ZIMAGE_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/gki_kernel/dist/Image.$(MTK_KERNEL_COMPRESS_FORMAT)
-            KERNEL_GKI_CONFIG := GKI_BUILD_CONFIG=$(MTK_GKI_BUILD_CONFIG)
-          endif
+
+      ifdef MTK_GKI_PREBUILTS_DIR
+          KERNEL_ZIMAGE_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/Image.$(MTK_KERNEL_COMPRESS_FORMAT)
+      else
+        ifdef MTK_GKI_BUILD_CONFIG
+          KERNEL_ZIMAGE_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/dist/Image.$(MTK_KERNEL_COMPRESS_FORMAT)
         endif
       endif
     else
@@ -64,11 +63,14 @@ endif
     ifneq ($(strip $(TARGET_NO_KERNEL)),true)
     INSTALLED_KERNEL_TARGET := $(PRODUCT_OUT)/kernel
     endif
-    TARGET_KERNEL_CONFIG := $(KERNEL_OUT)/.config
     GEN_KERNEL_BUILD_CONFIG := $(patsubst %/,%,$(dir $(KERNEL_OUT)))/build.config
     REL_GEN_KERNEL_BUILD_CONFIG := $(REL_KERNEL_OUT)/$(notdir $(GEN_KERNEL_BUILD_CONFIG))
     GEN_MTK_SETUP_ENV_SH := $(patsubst %/,%,$(dir $(KERNEL_OUT)))/mtk_setup_env.sh
-    KERNEL_CONFIG_FILE := $(KERNEL_DIR)/arch/$(KERNEL_TARGET_ARCH)/configs/$(word 1,$(KERNEL_DEFCONFIG))
+    ifneq (gki_defconfig,$(strip $(KERNEL_DEFCONFIG)))
+      KERNEL_CONFIG_FILE := $(KERNEL_DIR)/arch/$(KERNEL_TARGET_ARCH)/configs/$(word 1,$(KERNEL_DEFCONFIG))
+    else
+      KERNEL_CONFIG_FILE := kernel/$(REL_ACK_DIR)/arch/$(KERNEL_TARGET_ARCH)/configs/$(KERNEL_DEFCONFIG)
+    endif
 
   else
     BUILT_KERNEL_TARGET := $(TARGET_PREBUILT_KERNEL)
