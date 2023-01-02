@@ -19,7 +19,7 @@
 
 char ccd_firmware[100] = {0};
 
-DECLARE_BUILTIN_FIRMWARE("remoteproc_scp", ccd_firmware);
+//DECLARE_BUILTIN_FIRMWARE("remoteproc_scp", ccd_firmware);
 
 struct platform_device *ccd_get_pdev(struct platform_device *pdev)
 {
