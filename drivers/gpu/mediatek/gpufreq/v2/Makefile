@@ -41,10 +41,10 @@ mtk_gpufreq_mt6886-y := \
 	gpuppm.o \
 	gpufreq_mt6886.o \
 
-mtk_gpufreq_mt6983-y := \
-	gpufreq_history_mt6983.o \
+mtk_gpufreq_mt6897-y := \
+	gpufreq_history_mt6897.o \
 	gpuppm.o \
-	gpufreq_mt6983.o
+	gpufreq_mt6897.o \
 
 mtk_gpufreq_mt6985-y := \
 	gpufreq_history_mt6985.o \
@@ -57,9 +57,9 @@ ifneq ($(wildcard $(srctree)/$(src)/gpufreq_history_mt6886.c),)
 obj-$(CONFIG_MTK_GPU_MT6886_SUPPORT) += mtk_gpufreq_mt6886.o
 endif
 endif
-ifneq ($(wildcard $(srctree)/$(src)/gpufreq_mt6983.c),)
-ifneq ($(wildcard $(srctree)/$(src)/gpufreq_history_mt6983.c),)
-obj-$(CONFIG_MTK_GPU_MT6983_SUPPORT) += mtk_gpufreq_mt6983.o
+ifneq ($(wildcard $(srctree)/$(src)/gpufreq_mt6897.c),)
+ifneq ($(wildcard $(srctree)/$(src)/gpufreq_history_mt6897.c),)
+obj-$(CONFIG_MTK_GPU_MT6897_SUPPORT) += mtk_gpufreq_mt6897.o
 endif
 endif
 ifneq ($(wildcard $(srctree)/$(src)/gpufreq_mt6985.c),)
