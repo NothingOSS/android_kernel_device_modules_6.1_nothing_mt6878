@@ -33,6 +33,8 @@ enum smc_rcx_pwr_op {
 	SMC_RCX_PWR_WAKEUP_RPC,
 	SMC_RCX_PWR_CG_EN,
 	SMC_RCX_PWR_HW_SEMA,
+	SMC_HW_SEMA_PWR_CTL_LOCK,
+	SMC_HW_SEMA_PWR_CTL_UNLOCK,
 };
 
 enum smc_pwr_dump {
@@ -283,6 +285,10 @@ void mt6985_apu_dump_rpc_status(enum t_acx_id id, struct rpc_status_dump *dump);
 #define APU_PCU_BUCK_OFF_DAT0_H		0x00A4
 #define APU_PCU_BUCK_ON_SLE0		0x00C0
 #define VAPU_BUCK_ON_SETTLE_TIME	0x12C
+
+// apu hw sema (in PCU)
+#define APU_PCU_SEMA_CTRL0             0x0200
+#define APU_HW_SEMA_PWR_CTL            APU_PCU_SEMA_CTRL0
 
 int mt6985_all_on(struct platform_device *pdev, struct apu_power *papw);
 void mt6985_all_off(struct platform_device *pdev);

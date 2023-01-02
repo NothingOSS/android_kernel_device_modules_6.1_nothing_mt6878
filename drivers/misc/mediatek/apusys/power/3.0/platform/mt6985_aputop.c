@@ -21,6 +21,7 @@
 #include "apusys_secure.h"
 #include "aputop_rpmsg.h"
 #include "apu_top.h"
+#include "apu_hw_sema.h"
 #include "mt6985_apupwr.h"
 #include "mt6985_apupwr_prot.h"
 
@@ -97,6 +98,104 @@ static uint32_t apusys_pwr_smc_call(struct device *dev, uint32_t smc_id,
 				smc_id, res.a0);
 	return res.a0;
 }
+
+/*
+ * APU_PCU_SEMA_CTRL
+ * [15:00]      SEMA_KEY_SET    Each bit corresponds to different user.
+ * [31:16]      SEMA_KEY_CLR    Each bit corresponds to different user.
+ *
+ * ctl:
+ *      0x1 - acquire hw semaphore
+ *      0x0 - release hw semaphore
+ */
+static int apu_hw_sema_ctl(struct device *dev, uint32_t sema_offset,
+		uint8_t usr_bit, uint8_t ctl, int32_t timeout)
+{
+	static uint16_t timeout_cnt_max;
+	uint16_t timeout_cnt = 0;
+	uint8_t ctl_bit = 0;
+	int smc_op;
+
+	if (ctl == 0x1) {
+		// acquire is set
+		ctl_bit = usr_bit;
+		smc_op = SMC_HW_SEMA_PWR_CTL_LOCK;
+
+	} else if (ctl == 0x0) {
+		// release is clear
+		ctl_bit = usr_bit + 16;
+		smc_op = SMC_HW_SEMA_PWR_CTL_UNLOCK;
+
+	} else {
+		return -1;
+	}
+
+	pr_info("%s ++ usr_bit:%d ctl:%d (0x%08x = 0x%08x)\n",
+			__func__, usr_bit, ctl,
+			apupw.regs[apu_pcu] + sema_offset,
+			apu_readl(apupw.regs[apu_pcu] + sema_offset));
+
+	apusys_pwr_smc_call(dev,
+			MTK_APUSYS_KERNEL_OP_APUSYS_PWR_RCX,
+			smc_op);
+	udelay(1);
+
+	while ((apu_readl(apupw.regs[apu_pcu] + sema_offset) & BIT(ctl_bit))
+			>> ctl_bit != ctl) {
+
+		if (timeout >= 0 && timeout_cnt++ >= timeout) {
+			pr_info(
+			"%s timeout usr_bit:%d ctl:%d rnd:%d (0x%08x = 0x%08x)\n",
+				__func__, usr_bit, ctl, timeout_cnt,
+				apupw.regs[apu_pcu] + sema_offset,
+				apu_readl(apupw.regs[apu_pcu] + sema_offset));
+
+			return -1;
+		}
+
+		if (ctl == 0x1) {
+			apusys_pwr_smc_call(dev,
+					MTK_APUSYS_KERNEL_OP_APUSYS_PWR_RCX,
+					smc_op);
+		}
+
+		udelay(1);
+	}
+
+	if (timeout_cnt > timeout_cnt_max)
+		timeout_cnt_max = timeout_cnt;
+
+	pr_info("%s -- usr_bit:%d ctl:%d (0x%08x = 0x%08x) mx:%d\n",
+			__func__, usr_bit, ctl,
+			apupw.regs[apu_pcu] + sema_offset,
+			apu_readl(apupw.regs[apu_pcu] + sema_offset),
+			timeout_cnt_max);
+	return 0;
+}
+
+/*
+ * APU_PCU_SEMA_READ
+ * [15:00]      SEMA_KEY_SET    Each bit corresponds to different user.
+ */
+uint32_t apu_boot_host(void)
+{
+	uint32_t host = 0;
+	uint32_t sema_offset = APU_HW_SEMA_PWR_CTL;
+
+	host = apu_readl(apupw.regs[apu_pcu] + sema_offset) & 0x0000FFFF;
+
+	if (host == BIT(SYS_APMCU))
+		return SYS_APMCU;
+	else if  (host == BIT(SYS_APU))
+		return SYS_APU;
+	else if  (host == BIT(SYS_SCP_LP))
+		return SYS_SCP_LP;
+	else if  (host == BIT(SYS_SCP_NP))
+		return SYS_SCP_NP;
+	else
+		return SYS_MAX;
+}
+EXPORT_SYMBOL(apu_boot_host);
 
 static void aputop_dump_pwr_reg(struct device *dev)
 {
@@ -236,6 +335,9 @@ static int mt6985_apu_top_on(struct device *dev)
 
 	pr_info("%s +\n", __func__);
 
+	// acquire hw sema
+	apu_hw_sema_ctl(dev, APU_HW_SEMA_PWR_CTL, SYS_APMCU, 1, -1);
+
 	ret = __apu_wake_rpc_rcx(dev);
 	if (ret) {
 		pr_info("%s fail to wakeup RPC, ret %d\n", __func__, ret);
@@ -295,6 +397,9 @@ static int mt6985_apu_top_off(struct device *dev)
 		apupw_aee_warn("APUSYS_POWER", "APUSYS_POWER_SLEEP_TIMEOUT");
 		return -1;
 	}
+
+	// release hw sema
+	apu_hw_sema_ctl(dev, APU_HW_SEMA_PWR_CTL, SYS_APMCU, 0, -1);
 
 	pr_info("%s -\n", __func__);
 	return 0;
