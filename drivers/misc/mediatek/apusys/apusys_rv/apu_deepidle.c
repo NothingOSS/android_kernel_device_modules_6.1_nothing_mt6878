@@ -112,7 +112,8 @@ int apu_deepidle_power_on_aputop(struct mtk_apu *apu)
 	uint32_t wait_ms = 10000;
 	int retry = 0;
 	int ret;
-	u64 t;
+	u64 t, timertick;
+	unsigned long flags;
 
 	if (pm_runtime_suspended(apu->dev)) {
 
@@ -126,7 +127,17 @@ int apu_deepidle_power_on_aputop(struct mtk_apu *apu)
 				 ioread32(apu->md32_sysctrl + 0x838),
 				 ioread32(apu->md32_sysctrl + 0x840));
 
+		spin_lock_irqsave(&apu->reg_lock, flags);
 		apu->conf_buf->time_offset = sched_clock();
+		timertick = arch_timer_read_counter();
+		spin_unlock_irqrestore(&apu->reg_lock, flags);
+
+		/* Calculate time diff for warm boot */
+		apu->conf_buf->time_diff =
+			(timertick * 1000 / 13) - apu->conf_buf->time_offset;
+		apu->conf_buf->time_diff_cycle =
+			timertick - (apu->conf_buf->time_offset * 13 / 1000);
+
 		ret = hw_ops->power_on(apu);
 
 		if (ret == 0)

@@ -82,6 +82,8 @@ struct config_v1 {
 	u32 ramdump_type;
 	u32 ramdump_module;
 	u64 time_offset;
+	u64 time_diff;
+	u64 time_diff_cycle;
 	/* system related config end */
 
 	/* entry table */

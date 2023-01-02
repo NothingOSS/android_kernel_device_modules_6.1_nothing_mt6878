@@ -53,6 +53,7 @@ int apu_config_setup(struct mtk_apu *apu)
 	struct device *dev = apu->dev;
 	unsigned long flags;
 	int ret;
+	u64 timertick;
 
 	apu->conf_buf = dma_alloc_coherent(apu->dev, CONFIG_SIZE,
 					&apu->conf_da, GFP_KERNEL);
@@ -75,7 +76,14 @@ int apu_config_setup(struct mtk_apu *apu)
 		apu->apu_mbox + MBOX_HOST_CONFIG_ADDR);
 	spin_unlock_irqrestore(&apu->reg_lock, flags);
 
+	spin_lock_irqsave(&apu->reg_lock, flags);
 	apu->conf_buf->time_offset = sched_clock();
+	timertick = arch_timer_read_counter();
+	spin_unlock_irqrestore(&apu->reg_lock, flags);
+
+	/* Calculate time diff for cold boot */
+	apu->conf_buf->time_diff = (timertick * 1000 / 13) - apu->conf_buf->time_offset;
+	apu->conf_buf->time_diff_cycle = timertick - (apu->conf_buf->time_offset * 13 / 1000);
 
 	ret = apu_ipi_config_init(apu);
 	if (ret) {
