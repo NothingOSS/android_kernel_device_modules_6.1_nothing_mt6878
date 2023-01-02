@@ -386,6 +386,7 @@ static int apupw_dbg_loglvl(u8 param, int argc, int *args)
 	switch (args[0]) {
 	case NO_LVL:
 		apupw_dbg.poll_interval = 0;
+		fallthrough;
 	case INFO_LVL:
 	case VERBOSE_LVL:
 		ret = cancel_delayed_work_sync(&pw_info_work);
