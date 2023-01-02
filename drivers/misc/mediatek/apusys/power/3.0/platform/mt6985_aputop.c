@@ -241,6 +241,7 @@ static void aputop_dump_pll_data(void)
 	int ofs_idx;
 	uint32_t phy_addr = 0x0;
 	char buf[256];
+	int ret = 0;
 
 	for (pll_idx = 0 ; pll_idx < base_arr_size ; pll_idx++) {
 
@@ -252,14 +253,18 @@ static void aputop_dump_pll_data(void)
 				pll_base_arr[pll_idx] +
 				pll_offset_arr[ofs_idx];
 
-			snprintf(buf + strlen(buf),
+			ret = snprintf(buf + strlen(buf),
 					sizeof(buf) - strlen(buf),
 					" 0x%08x",
 					apu_readl(apupw.regs[apu_pll] +
 						pll_base_arr[pll_idx] +
 						pll_offset_arr[ofs_idx]));
-
+			if (ret <= 0)
+				break;
 		}
+
+		if (ret <= 0)
+			break;
 
 		pr_info("%s pll_base:0x%08x = %s\n", __func__,
 				apupw.phy_addr[apu_pll] + pll_base_arr[pll_idx],

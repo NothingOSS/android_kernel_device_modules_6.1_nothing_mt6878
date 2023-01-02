@@ -285,6 +285,8 @@ static int aputop_show_curr_status(struct seq_file *s, void *unused)
 	int i;
 
 	pr_info("%s ++\n", __func__);
+
+	memset(&cluster_dump, 0, sizeof(struct rpc_status_dump));
 	memcpy(&info, &curr_info, sizeof(struct apu_pwr_curr_info));
 
 	seq_puts(s, "\n");
