@@ -12,7 +12,8 @@
 #include <linux/ioport.h>
 #include <linux/module.h>
 #include <linux/of.h>
-#include <linux/of_gpio.h>
+#include <linux/gpio.h>
+#include <linux/gpio/consumer.h>
 #include <linux/platform_device.h>
 #include <linux/platform_data/spi-mt65xx.h>
 #include <linux/pm_runtime.h>
@@ -890,7 +891,7 @@ static int mtk_spi_setup(struct spi_device *spi)
 		spi->controller_data = (void *)&mtk_default_chip_info;
 
 	if (mdata->dev_comp->need_pad_sel && spi->cs_gpiod)
-		gpio_direction_output(spi->cs_gpiod, !(spi->mode & SPI_CS_HIGH));
+		gpiod_direction_output(spi->cs_gpiod, !(spi->mode & SPI_CS_HIGH));
 
 	return 0;
 }
@@ -1148,24 +1149,11 @@ static int mtk_spi_probe(struct platform_device *pdev)
 			goto err_put_master;
 		}
 
-		if (!master->cs_gpios && master->num_chipselect > 1) {
+		if (!master->cs_gpiods && master->num_chipselect > 1) {
 			dev_err(&pdev->dev,
-				"cs_gpios not specified and num_chipselect > 1\n");
+				"cs_gpiods not specified and num_chipselect > 1\n");
 			ret = -EINVAL;
 			goto err_put_master;
-		}
-
-		if (master->cs_gpios) {
-			for (i = 0; i < master->num_chipselect; i++) {
-				ret = devm_gpio_request(&pdev->dev,
-							master->cs_gpios[i],
-							dev_name(&pdev->dev));
-				if (ret) {
-					dev_err(&pdev->dev,
-						"can't get CS GPIO %i\n", i);
-					goto err_put_master;
-				}
-			}
 		}
 	}
 
