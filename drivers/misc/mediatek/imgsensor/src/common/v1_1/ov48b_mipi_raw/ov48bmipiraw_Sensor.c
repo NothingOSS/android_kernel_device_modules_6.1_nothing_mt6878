@@ -1863,7 +1863,7 @@ static kal_uint32 seamless_switch(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 	memset(_i2c_data, 0x0, sizeof(_i2c_data));
 	_size_to_write = 0;
 
-	pr_debug("%s %d, %d, %d, %d, %d sizeof(_i2c_data) %d\n", __func__,
+	pr_debug("%s %d, %d, %d, %d, %d sizeof(_i2c_data) %lu\n", __func__,
 		scenario_id, shutter, gain, shutter_2ndframe, gain_2ndframe, sizeof(_i2c_data));
 
 	_length = sizeof(addr_data_pair_seamless_switch_step1_ov48b2q) / sizeof(kal_uint16);
@@ -1984,7 +1984,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			*pScenarios = 0xff;
 			break;
 		}
-		pr_debug("SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS %d %d\n",
+		pr_debug("SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS %llu %u\n",
 			*feature_data, *pScenarios);
 		break;
 	case SENSOR_FEATURE_SEAMLESS_SWITCH:

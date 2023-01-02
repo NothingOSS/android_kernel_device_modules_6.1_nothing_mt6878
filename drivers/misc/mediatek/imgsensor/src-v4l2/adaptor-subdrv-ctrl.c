@@ -628,7 +628,7 @@ void set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
 
 	ctx->frame_length = frame_length ? frame_length : ctx->frame_length;
 	if (exp_cnt > ARRAY_SIZE(ctx->exposure)) {
-		DRV_LOGE(ctx, "invalid exp_cnt:%u>%u\n", exp_cnt, ARRAY_SIZE(ctx->exposure));
+		DRV_LOGE(ctx, "invalid exp_cnt:%u>%lu\n", exp_cnt, ARRAY_SIZE(ctx->exposure));
 		exp_cnt = ARRAY_SIZE(ctx->exposure);
 	}
 	check_current_scenario_id_bound(ctx);
@@ -788,7 +788,7 @@ void set_multi_gain(struct subdrv_ctx *ctx, u32 *gains, u16 exp_cnt)
 	bool gph = !ctx->is_seamless && (ctx->s_ctx.s_gph != NULL);
 
 	if (exp_cnt > ARRAY_SIZE(ctx->ana_gain)) {
-		DRV_LOGE(ctx, "invalid exp_cnt:%u>%u\n", exp_cnt, ARRAY_SIZE(ctx->ana_gain));
+		DRV_LOGE(ctx, "invalid exp_cnt:%u>%lu\n", exp_cnt, ARRAY_SIZE(ctx->ana_gain));
 		exp_cnt = ARRAY_SIZE(ctx->ana_gain);
 	}
 	for (i = 0; i < exp_cnt; i++) {
@@ -865,7 +865,7 @@ void set_multi_dig_gain(struct subdrv_ctx *ctx, u32 *gains, u16 exp_cnt)
 		return;
 
 	if (exp_cnt > ARRAY_SIZE(ctx->dig_gain)) {
-		DRV_LOGE(ctx, "invalid exp_cnt:%u>%u\n", exp_cnt, ARRAY_SIZE(ctx->dig_gain));
+		DRV_LOGE(ctx, "invalid exp_cnt:%u>%lu\n", exp_cnt, ARRAY_SIZE(ctx->dig_gain));
 		exp_cnt = ARRAY_SIZE(ctx->dig_gain);
 	}
 	for (i = 0; i < exp_cnt; i++) {

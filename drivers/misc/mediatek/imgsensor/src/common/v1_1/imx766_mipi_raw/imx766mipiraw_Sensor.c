@@ -5804,9 +5804,9 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		}
 		break;
 	case SENSOR_FEATURE_SET_SEAMLESS_EXTEND_FRAME_LENGTH:
-		pr_debug("extend_frame_len %d\n", *feature_data);
+		pr_debug("extend_frame_len %llu\n", *feature_data);
 		extend_frame_length((MUINT32) *feature_data);
-		pr_debug("extend_frame_len done %d\n", *feature_data);
+		pr_debug("extend_frame_len done %llu\n", *feature_data);
 		break;
 	case SENSOR_FEATURE_SEAMLESS_SWITCH:
 	{
@@ -5851,7 +5851,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			*pScenarios = 0xff;
 			break;
 		}
-		pr_debug("SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS %d %d\n",
+		pr_debug("SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS %llu %d\n",
 			*feature_data, *pScenarios);
 		break;
 	case SENSOR_FEATURE_GET_SENSOR_HDR_CAPACITY:
@@ -5883,7 +5883,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			break;
 		}
 		LOG_INF(
-			"SENSOR_FEATURE_GET_SENSOR_HDR_CAPACITY scenarioId:%llu, HDR:%llu\n",
+			"SENSOR_FEATURE_GET_SENSOR_HDR_CAPACITY scenarioId:%llu, HDR:%u\n",
 			*feature_data, *(MUINT32 *) (uintptr_t) (*(feature_data + 1)));
 		break;
 		/*END OF HDR CMD */

@@ -212,7 +212,7 @@ static void add_sensor_mode(struct adaptor_ctx *ctx,
 	do_div(mode->linetime_in_ns_readout, mode->pclk / 1000);
 
 
-	dev_dbg(ctx->dev, "%s [%d] id %d %dx%d %dx%d px %d fps %d tLine %lld|%lld fintl %u\n",
+	dev_dbg(ctx->dev, "%s [%d] id %d %dx%d %dx%d px %d fps %d tLine %lld|%lld fintl %llu\n",
 		__func__,
 		idx, id, width, height,
 		mode->llp, mode->fll,

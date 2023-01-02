@@ -7111,7 +7111,7 @@ static kal_uint32 seamless_switch(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 	memset(imx686_i2c_data, 0x0, sizeof(imx686_i2c_data));
 	imx686_size_to_write = 0;
 
-	pr_debug("seamless switch %d, %d, %d, %d, %d sizeof(imx686_i2c_data) %d\n",
+	pr_debug("seamless switch %d, %d, %d, %d, %d sizeof(imx686_i2c_data) %lu\n",
 		scenario_id, shutter, gain,
 		shutter_2ndframe, gain_2ndframe,
 		sizeof(imx686_i2c_data));
@@ -8126,7 +8126,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			*pScenarios = 0xff;
 			break;
 		}
-		pr_debug("SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS %d %d\n",
+		pr_debug("SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS %llu %d\n",
 		*feature_data, *pScenarios);
 		break;
 	case SENSOR_FEATURE_GET_SEAMLESS_SYSTEM_DELAY:

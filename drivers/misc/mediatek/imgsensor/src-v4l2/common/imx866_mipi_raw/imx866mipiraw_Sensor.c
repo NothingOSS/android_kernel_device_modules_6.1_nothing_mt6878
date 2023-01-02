@@ -2841,9 +2841,9 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 		}
 		break;
 	case SENSOR_FEATURE_SET_SEAMLESS_EXTEND_FRAME_LENGTH:
-		LOG_DEBUG("extend_frame_len %d\n", *feature_data);
+		LOG_DEBUG("extend_frame_len %llu\n", *feature_data);
 		extend_frame_length(ctx, (MUINT32) *feature_data);
-		LOG_DEBUG("extend_frame_len done %d\n", *feature_data);
+		LOG_DEBUG("extend_frame_len done %llu\n", *feature_data);
 		break;
 	case SENSOR_FEATURE_SEAMLESS_SWITCH:
 	{
@@ -2886,7 +2886,7 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 			*pScenarios = 0xff;
 			break;
 		}
-		LOG_DEBUG("SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS %d %d\n",
+		LOG_DEBUG("SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS %llu %d\n",
 				*feature_data, *pScenarios);
 		break;
 	case SENSOR_FEATURE_GET_SENSOR_HDR_CAPACITY:
@@ -2909,7 +2909,7 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 			break;
 		}
 		LOG_DEBUG(
-			"SENSOR_FEATURE_GET_SENSOR_HDR_CAPACITY, scenarioId:%llu, HDR:%llu\n",
+			"SENSOR_FEATURE_GET_SENSOR_HDR_CAPACITY, scenarioId:%llu, HDR:%u\n",
 			*feature_data, *(MUINT32 *) (uintptr_t) (*(feature_data + 1)));
 		break;
 		/*END OF HDR CMD */

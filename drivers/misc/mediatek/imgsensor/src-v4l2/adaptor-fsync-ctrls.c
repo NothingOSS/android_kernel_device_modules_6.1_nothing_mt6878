@@ -606,7 +606,7 @@ void notify_fsync_mgr_set_extend_framelength(
 
 #if !defined(FORCE_DISABLE_FSYNC_MGR)
 		dev_info(ctx->dev,
-			"%s: sidx:%d, NOTICE: set extend FL:%u(ns), but ctx->fsync_mgr is NULL, return\n",
+			"%s: sidx:%d, NOTICE: set extend FL:%llu(ns), but ctx->fsync_mgr is NULL, return\n",
 			__func__, ctx->idx,
 			ext_fl);
 #endif
@@ -781,7 +781,7 @@ void notify_fsync_mgr_subsample_tag(struct adaptor_ctx *ctx, u64 sub_tag)
 
 #if !defined(FORCE_DISABLE_FSYNC_MGR)
 		dev_info(ctx->dev,
-			"%s: sidx:%d, NOTICE: set subsample tag:%u, but ctx->fsync_mgr is NULL, return\n",
+			"%s: sidx:%d, NOTICE: set subsample tag:%llu, but ctx->fsync_mgr is NULL, return\n",
 			__func__, ctx->idx,
 			sub_tag);
 #endif
@@ -891,7 +891,7 @@ void notify_fsync_mgr_set_shutter(struct adaptor_ctx *ctx,
 
 
 	adaptor_logd(ctx,
-		"sidx:%d, exp(%u, %u/%u/%u/%u/%u, cnt(mode:%u/ae:%u), readout_len:%u, read_margin:%u), margin:%u, min_fl:%u, flk:%u, line_time:%u(ns), readout_time_us:%u(mode_id:%u/height:%u/linetime_readout_ns:%u), set_exp_with_fl(%u, %u/%u), req_id:%d, sof_cnt:%u\n",
+		"sidx:%d, exp(%u, %u/%u/%u/%u/%u, cnt(mode:%u/ae:%u), readout_len:%u, read_margin:%u), margin:%u, min_fl:%u, flk:%u, line_time:%u(ns), readout_time_us:%u(mode_id:%u/height:%u/linetime_readout_ns:%llu), set_exp_with_fl(%u, %u/%u), req_id:%d, sof_cnt:%u\n",
 		ctx->idx,
 		pf_ctrl.shutter_lc,
 		pf_ctrl.hdr_exp.exp_lc[0],

@@ -628,7 +628,7 @@ static void set_shutter(kal_uint32 shutter)
 	spin_lock_irqsave(&imgsensor_drv_lock, flags);
 	imgsensor.shutter = shutter;
 	spin_unlock_irqrestore(&imgsensor_drv_lock, flags);
-	LOG_INF("set shutter = %ld\n", shutter);
+	LOG_INF("set shutter = %u\n", shutter);
 	write_shutter(shutter);
 }
 
@@ -6493,7 +6493,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			*pScenarios = 0xff;
 			break;
 		}
-		pr_debug("SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS %d %d\n",
+		pr_debug("SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS %llu %d\n",
 			*feature_data,
 			*pScenarios);
 		break;

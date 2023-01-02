@@ -3672,7 +3672,7 @@ static int feature_control(struct subdrv_ctx *ctx,
 			break;
 		}
 		DEBUG_LOG(ctx,
-			"GET_OUTPUT_FORMAT_BY_SCENARIO(%u), output_format(%u)\n",
+			"GET_OUTPUT_FORMAT_BY_SCENARIO(%llu), output_format(%llu)\n",
 			(*feature_data), (*(feature_data + 1)));
 		break;
 	case SENSOR_FEATURE_GET_ANA_GAIN_TABLE:
@@ -3689,7 +3689,7 @@ static int feature_control(struct subdrv_ctx *ctx,
 		*(feature_data + 1) = imgsensor_info.min_gain;
 		*(feature_data + 2) = imgsensor_info.max_gain;
 		DEBUG_LOG(ctx,
-			"GET_GAIN_RANGE_BY_SCENARIO(%u), min_gain(%llu), max_gain(%llu)\n",
+			"GET_GAIN_RANGE_BY_SCENARIO(%llu), min_gain(%llu), max_gain(%llu)\n",
 			(*feature_data), (*(feature_data + 1)), (*(feature_data + 2)));
 		break;
 	case SENSOR_FEATURE_GET_BASE_GAIN_ISO_AND_STEP:
@@ -3697,7 +3697,7 @@ static int feature_control(struct subdrv_ctx *ctx,
 		*(feature_data + 1) = imgsensor_info.gain_step;
 		*(feature_data + 2) = imgsensor_info.gain_type;
 		DEBUG_LOG(ctx,
-			"min_gain_iso(%llu), gain_step(%u), gain_type(%u)\n",
+			"min_gain_iso(%llu), gain_step(%llu), gain_type(%llu)\n",
 			(*feature_data + 0), (*(feature_data + 1)),
 			(*(feature_data + 2)));
 		break;
@@ -3732,7 +3732,7 @@ static int feature_control(struct subdrv_ctx *ctx,
 			break;
 		}
 		DEBUG_LOG(ctx,
-			"GET_GAIN_RANGE_BY_SCENARIO(%u), min_shutter(%llu), exposure_step_table(%llu)\n",
+			"GET_GAIN_RANGE_BY_SCENARIO(%llu), min_shutter(%llu), exposure_step_table(%llu)\n",
 			(*feature_data), (*(feature_data + 1)), (*(feature_data + 2)));
 		break;
 	case SENSOR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
@@ -3805,7 +3805,7 @@ static int feature_control(struct subdrv_ctx *ctx,
 			break;
 		}
 		DEBUG_LOG(ctx,
-			"GET_PIXEL_CLOCK_FREQ_BY_SCENARIO(%u), pclk(%llu)\n",
+			"GET_PIXEL_CLOCK_FREQ_BY_SCENARIO(%llu), pclk(%llu)\n",
 			(*feature_data), (*(feature_data + 1)));
 		break;
 	case SENSOR_FEATURE_GET_PERIOD_BY_SCENARIO:
@@ -3892,7 +3892,7 @@ static int feature_control(struct subdrv_ctx *ctx,
 			break;
 		}
 		DEBUG_LOG(ctx,
-			"GET_PERIOD_BY_SCENARIO(%u), framelength(%llu), linelength(%llu)\n",
+			"GET_PERIOD_BY_SCENARIO(%llu), framelength(%llu), linelength(%llu)\n",
 			(*feature_data), (*(feature_data + 1) >> 16),
 			(*(feature_data + 1) & 0xffff));
 		break;
@@ -4146,7 +4146,7 @@ static int feature_control(struct subdrv_ctx *ctx,
 			break;
 		}
 		DEBUG_LOG(ctx,
-			"SENSOR_FEATURE_GET_SENSOR_HDR_CAPACITY, scenarioId(%llu), HDR(%llu)\n",
+			"SENSOR_FEATURE_GET_SENSOR_HDR_CAPACITY, scenarioId(%llu), HDR(%u)\n",
 			*feature_data, *(MUINT32 *) (uintptr_t) (*(feature_data + 1)));
 		break;
 		/* END OF HDR CMD */
@@ -4384,7 +4384,7 @@ static int feature_control(struct subdrv_ctx *ctx,
 			break;
 		}
 		DEBUG_LOG(ctx,
-			"X! GET_MIPI_PIXEL_RATE mode(%u),mipi_pixel_rate(%u)\n",
+			"X! GET_MIPI_PIXEL_RATE mode(%llu),mipi_pixel_rate(%llu)\n",
 			(*feature_data), (*(feature_data + 1)));
 	}
 		break;
