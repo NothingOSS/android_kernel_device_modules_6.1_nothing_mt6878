@@ -67,12 +67,12 @@ static struct perf_domain *find_pd(struct perf_domain *pd, int cpu)
 static inline bool check_faster_idle_balance(struct sched_group *busiest, struct rq *dst_rq)
 {
 
-	int src_cpu = group_first_cpu(busiest);
-	int dst_cpu = cpu_of(dst_rq);
+	//int src_cpu = group_first_cpu(busiest);
+	//int dst_cpu = cpu_of(dst_rq);
 	int cpu;
 
-	if (capacity_orig_of(dst_cpu) <= capacity_orig_of(src_cpu))
-		return false;
+	//if (capacity_orig_of(dst_cpu) <= capacity_orig_of(src_cpu))
+	//	return false;
 
 	for_each_cpu(cpu, sched_group_span(busiest)) {
 		if (cpu_rq(cpu)->misfit_task_load)
@@ -117,7 +117,7 @@ void mtk_find_busiest_group(void *data, struct sched_group *busiest,
 		if (!pd)
 			return;
 
-		src_cpu = group_first_cpu(busiest);
+		//src_cpu = group_first_cpu(busiest);
 
 		/*
 		 *  1.same cluster
@@ -178,6 +178,7 @@ void mtk_cpu_overutilized(void *data, int cpu, int *overutilized)
 int __read_mostly thermal_headroom[NR_CPUS]  ____cacheline_aligned;
 unsigned long next_update_thermal;
 static DEFINE_SPINLOCK(thermal_headroom_lock);
+#if 0
 static void update_thermal_headroom(int this_cpu)
 {
 	int cpu;
@@ -197,7 +198,7 @@ static void update_thermal_headroom(int this_cpu)
 
 	trace_sched_next_update_thermal_headroom(jiffies, next_update_thermal);
 }
-
+#endif
 int sort_thermal_headroom(struct cpumask *cpus, int *cpu_order)
 {
 	int i, j, cpu, cnt = 0;
@@ -405,6 +406,7 @@ int init_sram_info(void)
 
 void mtk_tick_entry(void *data, struct rq *rq)
 {
+#if 0
 	void __iomem *base = sram_base_addr;
 	struct em_perf_domain *pd;
 	int this_cpu, gear_id, opp_idx, offset;
@@ -491,6 +493,7 @@ void mtk_tick_entry(void *data, struct rq *rq)
 		}
 	}
 #endif
+#endif //0
 }
 
 /*
@@ -1163,8 +1166,8 @@ void mtk_pelt_rt_tp(void *data, struct rq *rq)
 void mtk_sched_switch(void *data, struct task_struct *prev,
 		struct task_struct *next, struct rq *rq)
 {
-	if (next->pid == 0)
-		rq->android_vendor_data1[RQ_SBB_ACTIVE] = 0;
+	//if (next->pid == 0)
+	//	rq->android_vendor_data1[RQ_SBB_ACTIVE] = 0;
 }
 #endif
 

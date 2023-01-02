@@ -69,7 +69,7 @@ void set_sbb(int flag, int pid, bool set)
 		p = find_task_by_vpid(pid);
 		if (p) {
 			get_task_struct(p);
-			p->sched_task_group->android_vendor_data1[TG_SBB_FLG] = set;
+			//p->sched_task_group->android_vendor_data1[TG_SBB_FLG] = set;
 			put_task_struct(p);
 		}
 		rcu_read_unlock();
@@ -79,7 +79,7 @@ void set_sbb(int flag, int pid, bool set)
 		p = find_task_by_vpid(pid);
 		if (p) {
 			get_task_struct(p);
-			p->android_vendor_data1[T_SBB_FLG] = set;
+			//p->android_vendor_data1[T_SBB_FLG] = set;
 			put_task_struct(p);
 		}
 		rcu_read_unlock();

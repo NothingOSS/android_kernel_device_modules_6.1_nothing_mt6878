@@ -15,7 +15,7 @@
 #include <linux/seq_file.h>
 #include <linux/timekeeping.h>
 #include <linux/energy_model.h>
-#include <trace/hooks/topology.h>
+#include <linux/sched/topology.h>
 #include <trace/hooks/sched.h>
 #include <sched/sched.h>
 #include "sched_sys_common.h"

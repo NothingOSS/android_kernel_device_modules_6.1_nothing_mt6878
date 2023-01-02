@@ -25,7 +25,7 @@
 #include <linux/sched/clock.h>
 #include <trace/events/power.h>
 #include <trace/hooks/sched.h>
-#include <trace/hooks/topology.h>
+#include <linux/sched/topology.h>
 #include <trace/hooks/cpufreq.h>
 #include <linux/sched/cpufreq.h>
 #include <linux/kthread.h>
@@ -210,7 +210,7 @@ unsigned long mtk_cpu_util(int cpu, struct util_rq *util_rq,
 {
 	unsigned long util_cfs, dl_util, util, irq;
 	unsigned long util_ori;
-	bool sbb_trigger = false;
+	//bool sbb_trigger = false;
 	struct rq *rq = cpu_rq(cpu);
 
 	if (util_rq->base) {
@@ -252,20 +252,20 @@ unsigned long mtk_cpu_util(int cpu, struct util_rq *util_rq,
 	util_ori = util;
 
 	if (type == FREQUENCY_UTIL) {
-		if ((rq->curr->android_vendor_data1[T_SBB_FLG] || is_busy_tick_boost_all() ||
+		/*if ((rq->curr->android_vendor_data1[T_SBB_FLG] || is_busy_tick_boost_all() ||
 				rq->curr->sched_task_group->android_vendor_data1[TG_SBB_FLG]) &&
 				p == (struct task_struct *)UINTPTR_MAX &&
 				rq->android_vendor_data1[RQ_SBB_ACTIVE]) {
 			util = util * rq->android_vendor_data1[RQ_SBB_BOOST_FACTOR];
 			sbb_trigger = true;
-		}
+		}*/
 		if (p == (struct task_struct *)UINTPTR_MAX)
 			p = NULL;
 		util = mtk_uclamp_rq_util_with(rq, util, p, min_cap, max_cap);
-		if (sbb_trigger && trace_sugov_ext_sbb_enabled())
+		/*if (sbb_trigger && trace_sugov_ext_sbb_enabled())
 			trace_sugov_ext_sbb(rq->cpu, rq->curr->pid,
 			rq->android_vendor_data1[RQ_SBB_BOOST_FACTOR], util_ori, util,
-			rq->android_vendor_data1[RQ_SBB_CPU_UTILIZE], get_sbb_active_ratio());
+			rq->android_vendor_data1[RQ_SBB_CPU_UTILIZE], get_sbb_active_ratio());*/
 	}
 
 
@@ -1114,12 +1114,12 @@ static int __init cpufreq_mtk_init(void)
 	//if (ret)
 	//	pr_info("register android_vh_cpufreq_fast_switch failed\n");
 
-	ret = register_trace_android_vh_arch_set_freq_scale(
-			mtk_arch_set_freq_scale, NULL);
-	if (ret)
-		pr_info("register android_vh_arch_set_freq_scale failed\n");
-	else
-		topology_clear_scale_freq_source(SCALE_FREQ_SOURCE_ARCH, cpu_possible_mask);
+	//ret = register_trace_android_vh_arch_set_freq_scale(
+	//		mtk_arch_set_freq_scale, NULL);
+	//if (ret)
+	//	pr_info("register android_vh_arch_set_freq_scale failed\n");
+	//else
+	//	topology_clear_scale_freq_source(SCALE_FREQ_SOURCE_ARCH, cpu_possible_mask);
 #endif
 
 	return cpufreq_register_governor(&mtk_gov);
