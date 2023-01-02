@@ -387,7 +387,7 @@ void log_md_sleep_info(void)
 		log_size += scnprintf(log_buf + log_size,
 		LOG_BUF_SIZE - log_size, "MD/2G/3G/4G/5G_FR1 = ");
 		log_size += scnprintf(log_buf + log_size,
-		LOG_BUF_SIZE - log_size, "%d.%03d/%d.%03d/%d.%03d/%d.%03d/%d.%03d seconds",
+		LOG_BUF_SIZE - log_size, "%llu.%03llu/%llu.%03llu/%llu.%03llu/%llu.%03llu/%llu.%03llu seconds",
 			(after_md_sleep_status.md_sleep_time -
 				before_md_sleep_status.md_sleep_time) / 1000000,
 			(after_md_sleep_status.md_sleep_time -
