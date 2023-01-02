@@ -9600,8 +9600,8 @@
 	dispsys_config: dispsys-config@14000000 {
 		compatible = "mediatek,mt6985-disp";
 		mediatek,mml = <&mmlsys_config>;
-		dispsys_num = <2>;
-		ovlsys_num = <2>;
+		dispsys-num = <2>;
+		ovlsys-num = <2>;
 		reg = <0 0x14000000 0 0x1000>,
 		      <0 0x14200000 0 0x1000>,
 		      <0 0x14400000 0 0x1000>,
@@ -12121,8 +12121,8 @@
 					"mediatek,mt6985-disp-mutex";
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_DIS1_SHUTDOWN>;
 		mediatek,mml = <&mmlsys_config>;
-		dispsys_num = <2>;
-		ovlsys_num = <2>;
+		dispsys-num = <2>;
+		ovlsys-num = <2>;
 		reg = <0 0x14001000 0 0x1000>,
 		      <0 0x14201000 0 0x1000>,
 		      <0 0x14401000 0 0x1000>,
