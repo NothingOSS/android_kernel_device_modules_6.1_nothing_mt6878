@@ -9,7 +9,6 @@
 /**************************************************
  * GPUFREQ Config
  **************************************************/
-#define GPUFREQ_BRINGUP                 (1)
 /* 0 -> power on once then never off and disable DDK power on/off callback */
 #define GPUFREQ_POWER_CTRL_ENABLE       (0)
 /* 0 -> disable DDK runtime active-idle callback */
