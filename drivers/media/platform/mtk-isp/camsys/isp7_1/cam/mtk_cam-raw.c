@@ -681,7 +681,7 @@ static int mtk_cam_raw_set_res_ctrl(struct v4l2_ctrl *ctrl)
 	ret = mtk_cam_raw_res_store(pipeline, res_user, "s_ctrl", true);
 	pipeline->user_res = *res_user;
 
-	if (pipeline->subdev.entity.stream_count) {
+	if (pipeline->subdev.entity.pipe) {
 		/* If the pipeline is streaming, pending the change */
 		dev_dbg(dev, "%s:pipe(%d): pending res calc\n",
 			__func__, pipeline->id);
@@ -924,7 +924,7 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 		 */
 		pipeline->sensor_mode_update = ctrl->val;
 		dev_info(dev, "%s:pipe(%d):streaming(%d), sensor_mode_update(%d)\n",
-			 __func__, pipeline->id, pipeline->subdev.entity.stream_count,
+			 __func__, pipeline->id, pipeline->subdev.entity.pipe->stream_count,
 			 pipeline->sensor_mode_update);
 		break;
 	case V4L2_CID_MTK_CAM_TG_FLASH_CFG:
@@ -935,7 +935,7 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 
 		dev_dbg(dev,
 			"%s:pipe(%d):streaming(%d), feature_pending(0x%x), feature_active(0x%x)\n",
-			__func__, pipeline->id, pipeline->subdev.entity.stream_count,
+			__func__, pipeline->id, pipeline->subdev.entity.pipe->stream_count,
 			pipeline->feature_pending, pipeline->feature_active);
 		ret = 0;
 		break;
@@ -945,7 +945,8 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 
 		dev_dbg(dev,
 			"%s:pipe(%d):streaming(%d), hw_mode(0x%x)\n",
-			__func__, pipeline->id, pipeline->subdev.entity.stream_count,
+			__func__, pipeline->id,
+			pipeline->subdev.entity.pipe->stream_count,
 			pipeline->hw_mode_pending);
 
 		ret = 0;
@@ -4102,7 +4103,7 @@ static int mtk_raw_set_fmt(struct v4l2_subdev *sd,
 		return mtk_raw_try_pad_fmt(sd, state, fmt);
 
 	/* if the pipeline is streaming, pending the change */
-	if (!sd->entity.stream_count)
+	if (!sd->entity.pipe)
 		return mtk_raw_call_set_fmt(sd, state, fmt, false);
 
 	if (v4l2_subdev_format_request_fd(fmt) <= 0)
@@ -4214,7 +4215,7 @@ static int mtk_cam_media_link_setup(struct media_entity *entity,
 		pipe->vdev_nodes[pad - MTK_RAW_SINK_NUM].enabled =
 			!!(flags & MEDIA_LNK_FL_ENABLED);
 
-	if (!entity->stream_count && !(flags & MEDIA_LNK_FL_ENABLED))
+	if (!entity->pipe && !(flags & MEDIA_LNK_FL_ENABLED))
 		memset(pipe->cfg, 0, sizeof(pipe->cfg));
 
 	if (pad == MTK_RAW_SINK && flags & MEDIA_LNK_FL_ENABLED) {

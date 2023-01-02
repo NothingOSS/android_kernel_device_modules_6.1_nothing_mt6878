@@ -750,7 +750,7 @@ static int mtk_cam_raw_set_res_ctrl(struct v4l2_ctrl *ctrl)
 				       "s_ctrl", true);
 
 	/* TODO: check the parameters is valid or not */
-	if (pipeline->subdev.entity.stream_count) {
+	if (pipeline->subdev.entity.pipe) {
 		/* If the pipeline is streaming, pending the change */
 		dev_dbg(dev, "%s:pipe(%d): pending res calc\n",
 				__func__, pipeline->id);
@@ -1047,7 +1047,7 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 		ret = mtk_cam_raw_set_res_ctrl(ctrl);
 		break;
 	case V4L2_CID_MTK_CAM_INTERNAL_MEM_CTRL:
-		if (pipeline->subdev.entity.stream_count) {
+		if (pipeline->subdev.entity.pipe) {
 			dev_info(dev,
 				 "%s:pipe(%d): doesn't allow V4L2_CID_MTK_CAM_INTERNAL_MEM_CTRL during streaming\n",
 				 __func__, pipeline->id);
@@ -1071,7 +1071,7 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 		 */
 		pipeline->sensor_mode_update = ctrl->val;
 		dev_info(dev, "%s:pipe(%d):streaming(%d), sensor_mode_update(%d)\n",
-			 __func__, pipeline->id, pipeline->subdev.entity.stream_count,
+			 __func__, pipeline->id, pipeline->subdev.entity.pipe->stream_count,
 			 pipeline->sensor_mode_update);
 		break;
 	case V4L2_CID_MTK_CAM_CAMSYS_VF_RESET:
@@ -1096,7 +1096,7 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 
 		dev_dbg(dev,
 			"%s:pipe(%d):streaming(%d), hw_mode(0x%x)\n",
-			__func__, pipeline->id, pipeline->subdev.entity.stream_count,
+			__func__, pipeline->id, pipeline->subdev.entity.pipe->stream_count,
 			pipeline->hw_mode_pending);
 
 		ret = 0;
@@ -3836,7 +3836,7 @@ static int mtk_raw_set_pad_selection(struct v4l2_subdev *sd,
 
 	/* if the pipeline is streaming, pending the change */
 	if (sel->which == V4L2_SUBDEV_FORMAT_ACTIVE &&
-	    !sd->entity.stream_count) {
+	    !sd->entity.pipe) {
 		mtk_cam_collect_psel(pipe, sel);
 		return 0;
 	}
@@ -4343,7 +4343,7 @@ static int mtk_raw_set_fmt(struct v4l2_subdev *sd,
 		return mtk_raw_try_pad_fmt(sd, state, fmt);
 
 	/* if the pipeline is streaming, pending the change */
-	if (!sd->entity.stream_count)
+	if (!sd->entity.pipe)
 		return mtk_raw_call_set_fmt(sd, state, fmt, false,
 					    &pipe->user_res.raw_res.scen);
 
@@ -4441,7 +4441,7 @@ static int mtk_cam_media_link_setup(struct media_entity *entity,
 		pipe->vdev_nodes[pad - MTK_RAW_SINK_NUM].enabled =
 			!!(flags & MEDIA_LNK_FL_ENABLED);
 
-	if (!entity->stream_count && !(flags & MEDIA_LNK_FL_ENABLED))
+	if (!entity->pipe && !(flags & MEDIA_LNK_FL_ENABLED))
 		memset(pipe->cfg, 0, sizeof(pipe->cfg));
 
 	if (pad == MTK_RAW_SINK && flags & MEDIA_LNK_FL_ENABLED) {
