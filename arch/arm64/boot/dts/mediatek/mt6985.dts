@@ -5883,9 +5883,9 @@
 					<&gce_m 18 3000 CMDQ_THR_PRIO_2>,
 					<&gce_m 19 3000 CMDQ_THR_PRIO_1>,
 					<&gce_m 22 3000 CMDQ_THR_PRIO_1>,
-					<&gce_m 23 3000 CMDQ_THR_PRIO_1>,
-					<&gce_m_sec 10 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
-					<&gce_m_sec 12 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
+					<&gce_m 23 3000 CMDQ_THR_PRIO_1>;
+					//<&gce_m_sec 10 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
+					//<&gce_m_sec 12 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
 				traw_cq_thread0_frame_done =
 					/bits/ 16 <CMDQ_EVENT_IMG_TRAW0_CQ_THR_DONE_TRAW0_0>;
 				traw_cq_thread1_frame_done =
@@ -6677,14 +6677,14 @@
 			compatible = "mediatek,aie-isp7s";
 			reg = <0 0x15310000 0 0x1000>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
-			mboxes = <&gce_m 20 0 CMDQ_THR_PRIO_1>,
-					<&gce_m_sec 11 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
+			mboxes = <&gce_m 20 0 CMDQ_THR_PRIO_1>;
+					//<&gce_m_sec 11 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
 			mediatek,larb = <&smi_larb12>;
 			mediatek,imgsys_fw = <&imgsys_fw>;
 			mediatek,aov = <&aov>;
 			fdvt_frame_done = <CMDQ_EVENT_IMG_IMGSYS_IPE_FDVT0_DONE>;
-			sw_sync_token_tzmp_aie_wait = <CMDQ_SYNC_TOKEN_TZMP_AIE_WAIT>;
-			sw_sync_token_tzmp_aie_set = <CMDQ_SYNC_TOKEN_TZMP_AIE_SET>;
+			//sw_sync_token_tzmp_aie_wait = <CMDQ_SYNC_TOKEN_TZMP_AIE_WAIT>;
+			//sw_sync_token_tzmp_aie_set = <CMDQ_SYNC_TOKEN_TZMP_AIE_SET>;
 			iommus = <&mdp_iommu M4U_PORT_L12_FDVT_RDA_0>,
 				<&mdp_iommu M4U_PORT_L12_FDVT_WRA_0>;
 			power-domains = <&scpsys MT6985_POWER_DOMAIN_ISP_MAIN>;
