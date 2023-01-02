@@ -100,3 +100,4 @@ struct dma_buf *jpg_dmabuf_alloc(size_t size, size_t align, unsigned int flags)
 	return dbuf;
 }
 
+MODULE_IMPORT_NS(DMA_BUF);

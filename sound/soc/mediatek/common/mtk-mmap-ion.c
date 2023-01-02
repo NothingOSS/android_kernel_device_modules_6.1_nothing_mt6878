@@ -173,5 +173,6 @@ EXPORT_SYMBOL_GPL(mtk_exporter_init);
 
 MODULE_DESCRIPTION("Mediatek Smart Phone PCM Operation");
 MODULE_AUTHOR("Chih-Hao Chang <chih-hao.chang@mediatek.com>");
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL v2");
 

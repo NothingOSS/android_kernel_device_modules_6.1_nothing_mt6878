@@ -1292,4 +1292,5 @@ module_init(cam_mem_Init);
 module_exit(cam_mem_Exit);
 MODULE_DESCRIPTION("Camera Mem driver");
 MODULE_AUTHOR("SW7");
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL");

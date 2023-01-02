@@ -295,4 +295,5 @@ int mtk_ccd_get_buffer_fd(struct mtk_ccd *ccd, void *mem_priv)
 EXPORT_SYMBOL_GPL(mtk_ccd_get_buffer_fd);
 
 MODULE_LICENSE("GPL v2");
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_DESCRIPTION("MediaTek ccd memory interface");

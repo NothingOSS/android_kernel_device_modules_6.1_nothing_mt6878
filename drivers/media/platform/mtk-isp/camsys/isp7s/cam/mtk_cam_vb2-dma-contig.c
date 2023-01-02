@@ -271,4 +271,5 @@ void mtk_cam_vb2_sync_for_cpu(void *buf_priv)
 }
 
 MODULE_DESCRIPTION("DMA-contig memory handling routines for mtk-cam videobuf2");
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL");

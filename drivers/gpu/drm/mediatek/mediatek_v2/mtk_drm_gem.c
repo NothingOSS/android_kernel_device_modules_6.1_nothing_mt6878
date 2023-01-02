@@ -953,3 +953,4 @@ err_handle_create:
 	return ret;
 }
 
+MODULE_IMPORT_NS(DMA_BUF);

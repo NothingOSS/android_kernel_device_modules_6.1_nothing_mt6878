@@ -765,3 +765,4 @@ int mtk_cam_get_internl_buf_num(int user_reserved_exp_num,
 
 	return buf_require;
 }
+MODULE_IMPORT_NS(DMA_BUF);

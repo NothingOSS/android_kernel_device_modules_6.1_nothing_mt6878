@@ -725,3 +725,4 @@ struct tee_mmu *tee_mmu_create_and_init(void)
 
 	return mmu;
 }
+MODULE_IMPORT_NS(DMA_BUF);

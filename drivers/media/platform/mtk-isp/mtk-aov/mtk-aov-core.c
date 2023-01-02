@@ -1389,3 +1389,4 @@ int aov_core_uninit(struct mtk_aov *aov_dev)
 
 	return 0;
 }
+MODULE_IMPORT_NS(DMA_BUF);

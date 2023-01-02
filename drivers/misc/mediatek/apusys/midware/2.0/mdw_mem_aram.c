@@ -301,3 +301,4 @@ free_aram:
 out:
 	return ret;
 }
+MODULE_IMPORT_NS(DMA_BUF);

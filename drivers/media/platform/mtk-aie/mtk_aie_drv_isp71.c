@@ -5370,3 +5370,4 @@ const struct mtk_aie_drv_ops aie_ops_isp71 = {
 	.config_fld_buf_reg = aie_config_fld_buf_reg,
 	.fdvt_dump_reg = aie_fdvt_dump_reg,
 };
+MODULE_IMPORT_NS(DMA_BUF);

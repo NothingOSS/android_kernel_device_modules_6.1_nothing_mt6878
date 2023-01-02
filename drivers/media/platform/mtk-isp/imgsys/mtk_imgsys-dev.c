@@ -1694,3 +1694,4 @@ void mtk_imgsys_pipe_try_enqueue(struct mtk_imgsys_pipe *pipe)
 		__func__, pipe->desc->name, pipe->num_pending_jobs,
 		pipe->num_jobs);
 }
+MODULE_IMPORT_NS(DMA_BUF);

@@ -1599,4 +1599,5 @@ static struct platform_driver mtk_aie_driver = {
 module_platform_driver(mtk_aie_driver);
 MODULE_AUTHOR("Fish Wu <fish.wu@mediatek.com>");
 MODULE_LICENSE("GPL v2");
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_DESCRIPTION("Mediatek AIE driver");

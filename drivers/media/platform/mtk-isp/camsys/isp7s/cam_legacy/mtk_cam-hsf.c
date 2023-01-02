@@ -672,3 +672,4 @@ int mtk_cam_hsf_aid(struct mtk_cam_ctx *ctx, unsigned int enable, unsigned int f
 
 	return 0;
 }
+MODULE_IMPORT_NS(DMA_BUF);

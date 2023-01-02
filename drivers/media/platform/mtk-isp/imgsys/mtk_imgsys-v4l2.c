@@ -3073,5 +3073,6 @@ module_platform_driver(mtk_imgsys_driver);
 
 MODULE_AUTHOR("Frederic Chen <frederic.chen@mediatek.com>");
 MODULE_LICENSE("GPL v2");
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_DESCRIPTION("Mediatek DIP driver");
 

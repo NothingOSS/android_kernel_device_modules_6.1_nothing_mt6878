@@ -1569,4 +1569,5 @@ void mdpsyscon_deinit(void)
 	platform_driver_unregister(&mdpsyscon);
 }
 
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL");

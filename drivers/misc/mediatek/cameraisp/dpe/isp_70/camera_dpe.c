@@ -7484,4 +7484,5 @@ module_init(DPE_Init);
 module_exit(DPE_Exit);
 MODULE_DESCRIPTION("Camera DPE driver");
 MODULE_AUTHOR("MM3SW2");
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL");

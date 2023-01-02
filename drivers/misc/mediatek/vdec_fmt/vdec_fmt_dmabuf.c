@@ -111,3 +111,4 @@ u64 fmt_translate_fd(u64 fd, u32 offset, struct dmabufmap map[], struct device *
 	return iova;
 }
 
+MODULE_IMPORT_NS(DMA_BUF);

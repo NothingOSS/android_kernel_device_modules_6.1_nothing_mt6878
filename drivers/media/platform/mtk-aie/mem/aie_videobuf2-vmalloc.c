@@ -438,4 +438,5 @@ const struct vb2_mem_ops aie_vb2_vmalloc_memops = {
 EXPORT_SYMBOL_GPL(aie_vb2_vmalloc_memops);
 
 MODULE_DESCRIPTION("vmalloc memory handling routines for aie_videobuf2");
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL");

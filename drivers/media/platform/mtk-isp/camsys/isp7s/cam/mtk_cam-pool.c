@@ -366,3 +366,4 @@ int mtk_cam_buffer_pool_alloc(struct mtk_cam_pool *pool,
 
 	return ret;
 }
+MODULE_IMPORT_NS(DMA_BUF);

@@ -750,4 +750,5 @@ int aie_vb2_dma_contig_set_max_seg_size(struct device *dev, unsigned int size)
 EXPORT_SYMBOL_GPL(aie_vb2_dma_contig_set_max_seg_size);
 
 MODULE_DESCRIPTION("AIE DMA-contig memory handling routines for videobuf2");
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL");

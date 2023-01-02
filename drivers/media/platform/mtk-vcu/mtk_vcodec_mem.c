@@ -561,3 +561,4 @@ int mtk_vcu_get_dma_addr(struct device *dev, struct mtk_vcu_queue *vcu_queue,
 					       0);
 }
 
+MODULE_IMPORT_NS(DMA_BUF);

@@ -872,3 +872,4 @@ struct mtk_hcp_data isp71_hcp_data = {
 	.put_gce = isp71_put_gce,
 	.get_hwid_virt = isp71_get_hwid_virt,
 };
+MODULE_IMPORT_NS(DMA_BUF);

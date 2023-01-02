@@ -1001,3 +1001,4 @@ uint64_t apusys_mem_query_iova(uint64_t kva)
 	return iova;
 }
 
+MODULE_IMPORT_NS(DMA_BUF);

@@ -616,3 +616,4 @@ int mtk_cam_hsf_uninit(struct mtk_cam_ctx *ctx)
 }
 
 
+MODULE_IMPORT_NS(DMA_BUF);

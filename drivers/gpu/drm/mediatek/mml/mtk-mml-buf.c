@@ -196,3 +196,4 @@ void mml_buf_invalid(struct mml_file_buf *buf)
 		buf->dma[i].attach->dma_map_attrs |= DMA_ATTR_SKIP_CPU_SYNC;
 	}
 }
+MODULE_IMPORT_NS(DMA_BUF);

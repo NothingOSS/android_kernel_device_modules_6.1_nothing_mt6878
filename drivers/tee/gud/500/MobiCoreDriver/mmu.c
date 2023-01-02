@@ -644,3 +644,4 @@ int tee_mmu_debug_structs(struct kasnprintf_buf *buf, const struct tee_mmu *mmu)
 			  mmu, mmu->user ? "user" : "kernel", mmu->length,
 			  mmu->offset, (void *)mmu->pmd_table.page);
 }
+MODULE_IMPORT_NS(DMA_BUF);

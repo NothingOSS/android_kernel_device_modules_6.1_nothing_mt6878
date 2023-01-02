@@ -726,3 +726,4 @@ int mtk_drm_mmp_cwb_buffer(struct drm_crtc *crtc,
 			   0, 0);
 	return 0;
 }
+MODULE_IMPORT_NS(DMA_BUF);

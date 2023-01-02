@@ -2966,5 +2966,6 @@ static void __exit mtk_vcu_driver_exit(void)
 
 module_exit(mtk_vcu_driver_exit);
 
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("Mediatek Video Communication And Controller Unit driver");

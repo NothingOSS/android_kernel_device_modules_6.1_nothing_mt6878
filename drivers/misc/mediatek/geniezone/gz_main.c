@@ -1174,4 +1174,5 @@ static void __exit gz_main_exit(void)
 
 module_init(gz_main_init);
 module_exit(gz_main_exit);
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL v2");

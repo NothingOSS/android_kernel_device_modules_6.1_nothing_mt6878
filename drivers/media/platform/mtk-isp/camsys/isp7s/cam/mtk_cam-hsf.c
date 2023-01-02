@@ -587,4 +587,5 @@ int mtk_cam_hsf_uninit(struct mtk_cam_ctx *ctx)
 	return 0;
 }
 
+MODULE_IMPORT_NS(DMA_BUF);
 

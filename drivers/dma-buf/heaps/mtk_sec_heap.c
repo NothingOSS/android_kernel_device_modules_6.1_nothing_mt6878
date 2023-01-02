@@ -1471,4 +1471,5 @@ static void __exit mtk_sec_heap_exit(void)
 MODULE_SOFTDEP("pre: apusys");
 module_init(mtk_sec_heap_init);
 module_exit(mtk_sec_heap_exit);
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL v2");
