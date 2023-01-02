@@ -2048,11 +2048,22 @@ static void __gpufreq_get_park_volt(enum gpufreq_opp_direct direct,
 {
 	int i = 0, constraint_num = NUM_CONSTRAINT_IDX;
 
+	/*
+	 * [Springboard Guide]
+	 * [Scale-up]  : find springboard volt that SMALLER than cur_volt
+	 * [Scale-down]: find springboard volt that LARGER than cur_volt
+	 *
+	 * e.g. sb[2].vstack = 0.625V < cur_vstack = 0.65V < sb[1].vstack = 0.675V
+	 * [Scale-up]   use sb[1].vstack_down
+	 * [Scale-down] use sb[2].vstack_up
+	 */
 	if (direct == SCALE_UP) {
 		/* find largest volt which is smaller than cur_volt */
 		for (i = 0; i < constraint_num; i++)
 			if (cur_vstack >= g_springboard[i].vstack)
 				break;
+		/* boundary check */
+		i = i < constraint_num ? i : (constraint_num - 1);
 		*vgpu_park = g_springboard[i].vgpu_up;
 		*vstack_park = g_springboard[i].vstack_up;
 	} else if (direct == SCALE_DOWN) {
@@ -2060,6 +2071,8 @@ static void __gpufreq_get_park_volt(enum gpufreq_opp_direct direct,
 		for (i = constraint_num - 1; i >= 0; i--)
 			if (cur_vstack <= g_springboard[i].vstack)
 				break;
+		/* boundary check */
+		i = i < 0 ? 0 : i;
 		*vgpu_park = g_springboard[i].vgpu_down;
 		*vstack_park = g_springboard[i].vstack_down;
 	}
@@ -4114,83 +4127,6 @@ static void __gpufreq_measure_power(void)
 	g_shared_status->min_power_stack = working_stack[g_stack.min_oppidx].power;
 }
 
-#if GPUFREQ_ASENSOR_ENABLE
-/* API: resume dvfs to free run */
-static void __gpufreq_resume_dvfs(void)
-{
-	GPUFREQ_TRACE_START();
-
-	__gpufreq_power_control(POWER_OFF);
-
-	__gpufreq_set_dvfs_state(false, DVFS_AGING_KEEP);
-
-	GPUFREQ_LOGI("resume DVFS, state: 0x%x", g_dvfs_state);
-
-	GPUFREQ_TRACE_END();
-}
-#endif /* GPUFREQ_ASENSOR_ENABLE */
-
-#if GPUFREQ_ASENSOR_ENABLE
-/* API: pause dvfs to given freq and volt */
-static int __gpufreq_pause_dvfs(void)
-{
-	int ret = GPUFREQ_SUCCESS;
-	unsigned int cur_fgpu = 0, cur_vgpu = 0, target_fgpu = 0, target_vgpu = 0;
-	unsigned int cur_fstack = 0, cur_vstack = 0, target_fstack = 0, target_vstack = 0;
-	unsigned int cur_vsram = 0, target_vsram = 0;
-
-	GPUFREQ_TRACE_START();
-
-	__gpufreq_set_dvfs_state(true, DVFS_AGING_KEEP);
-
-	ret = __gpufreq_power_control(POWER_ON);
-	if (unlikely(ret < 0)) {
-		__gpufreq_set_dvfs_state(false, DVFS_AGING_KEEP);
-		goto done;
-	}
-
-	mutex_lock(&gpufreq_lock);
-
-	/* prepare OPP setting */
-	cur_fgpu = g_gpu.cur_freq;
-	cur_vgpu = g_gpu.cur_volt;
-	cur_fstack = g_stack.cur_freq;
-	cur_vstack = g_stack.cur_volt;
-	cur_vsram = g_stack.cur_vsram;
-
-	target_fstack = GPUFREQ_AGING_KEEP_FSTACK;
-	target_vstack = GPUFREQ_AGING_KEEP_VSTACK;
-	target_fgpu = GPUFREQ_AGING_KEEP_FGPU;
-	target_vgpu = GPUFREQ_AGING_KEEP_VGPU;
-	target_vsram = GPUFREQ_AGING_KEEP_VSRAM;
-
-	GPUFREQ_LOGD(
-		"begin to commit STACK F(%d->%d) V(%d->%d), GPU F(%d->%d) V(%d->%d), VSRAM(%d->%d)",
-		cur_fstack, target_fstack, cur_vstack, target_vstack,
-		cur_fgpu, target_fgpu, cur_vgpu, target_vgpu,
-		cur_vsram, target_vsram);
-
-	ret = __gpufreq_generic_scale(cur_fgpu, target_fgpu, cur_vgpu, target_vgpu,
-		cur_fstack, target_fstack, cur_vstack, target_vstack, cur_vsram, target_vsram);
-	if (ret) {
-		GPUFREQ_LOGE("fail to scale to GPU F(%d) V(%d), STACK F(%d) V(%d), VSRAM(%d)",
-			target_fgpu, target_vgpu, target_fstack, target_vstack, target_vsram);
-		goto done_unlock;
-	}
-
-	GPUFREQ_LOGI("pause DVFS at STACK(%d, %d), GPU(%d, %d), VSRAM(%d), state: 0x%x",
-		target_fstack, target_vstack, target_fgpu, target_vgpu,
-		target_vsram, g_dvfs_state);
-
-done_unlock:
-	mutex_unlock(&gpufreq_lock);
-done:
-	GPUFREQ_TRACE_END();
-
-	return ret;
-}
-#endif /* GPUFREQ_ASENSOR_ENABLE */
-
 /*
  * API: interpolate OPP from signoff idx.
  * step = (large - small) / range
@@ -4276,6 +4212,79 @@ static void __gpufreq_interpolate_volt(enum gpufreq_target target)
 }
 
 #if GPUFREQ_ASENSOR_ENABLE
+/* API: resume dvfs to free run */
+static void __gpufreq_resume_dvfs(void)
+{
+	GPUFREQ_TRACE_START();
+
+	__gpufreq_power_control(POWER_OFF);
+
+	__gpufreq_set_dvfs_state(false, DVFS_AGING_KEEP);
+
+	GPUFREQ_LOGI("resume DVFS, state: 0x%x", g_dvfs_state);
+
+	GPUFREQ_TRACE_END();
+}
+
+/* API: pause dvfs to given freq and volt */
+static int __gpufreq_pause_dvfs(void)
+{
+	int ret = GPUFREQ_SUCCESS;
+	unsigned int cur_fgpu = 0, cur_vgpu = 0, target_fgpu = 0, target_vgpu = 0;
+	unsigned int cur_fstack = 0, cur_vstack = 0, target_fstack = 0, target_vstack = 0;
+	unsigned int cur_vsram = 0, target_vsram = 0;
+
+	GPUFREQ_TRACE_START();
+
+	__gpufreq_set_dvfs_state(true, DVFS_AGING_KEEP);
+
+	ret = __gpufreq_power_control(POWER_ON);
+	if (unlikely(ret < 0)) {
+		__gpufreq_set_dvfs_state(false, DVFS_AGING_KEEP);
+		goto done;
+	}
+
+	mutex_lock(&gpufreq_lock);
+
+	/* prepare OPP setting */
+	cur_fgpu = g_gpu.cur_freq;
+	cur_vgpu = g_gpu.cur_volt;
+	cur_fstack = g_stack.cur_freq;
+	cur_vstack = g_stack.cur_volt;
+	cur_vsram = g_stack.cur_vsram;
+
+	target_fstack = GPUFREQ_AGING_KEEP_FSTACK;
+	target_vstack = GPUFREQ_AGING_KEEP_VSTACK;
+	target_fgpu = GPUFREQ_AGING_KEEP_FGPU;
+	target_vgpu = GPUFREQ_AGING_KEEP_VGPU;
+	target_vsram = GPUFREQ_AGING_KEEP_VSRAM;
+
+	GPUFREQ_LOGD(
+		"begin to commit STACK F(%d->%d) V(%d->%d), GPU F(%d->%d) V(%d->%d), VSRAM(%d->%d)",
+		cur_fstack, target_fstack, cur_vstack, target_vstack,
+		cur_fgpu, target_fgpu, cur_vgpu, target_vgpu,
+		cur_vsram, target_vsram);
+
+	ret = __gpufreq_generic_scale(cur_fgpu, target_fgpu, cur_vgpu, target_vgpu,
+		cur_fstack, target_fstack, cur_vstack, target_vstack, cur_vsram, target_vsram);
+	if (ret) {
+		GPUFREQ_LOGE("fail to scale to GPU F(%d) V(%d), STACK F(%d) V(%d), VSRAM(%d)",
+			target_fgpu, target_vgpu, target_fstack, target_vstack, target_vsram);
+		goto done_unlock;
+	}
+
+	GPUFREQ_LOGI("pause DVFS at STACK(%d, %d), GPU(%d, %d), VSRAM(%d), state: 0x%x",
+		target_fstack, target_vstack, target_fgpu, target_vgpu,
+		target_vsram, g_dvfs_state);
+
+done_unlock:
+	mutex_unlock(&gpufreq_lock);
+done:
+	GPUFREQ_TRACE_END();
+
+	return ret;
+}
+
 /* API: get Aging sensor data from EFUSE, return if success*/
 static unsigned int __gpufreq_asensor_read_efuse(u32 *a_t0_efuse1,
 	u32 *a_t0_efuse2, u32 *a_t0_efuse3, u32 *efuse_error)
@@ -4321,9 +4330,7 @@ static unsigned int __gpufreq_asensor_read_efuse(u32 *a_t0_efuse1,
 
 	return true;
 }
-#endif /* GPUFREQ_ASENSOR_ENABLE */
 
-#if GPUFREQ_ASENSOR_ENABLE
 static void __gpufreq_asensor_read_register(u32 *a_tn_sensor1,
 	u32 *a_tn_sensor2, u32 *a_tn_sensor3)
 {
@@ -4385,9 +4392,7 @@ static void __gpufreq_asensor_read_register(u32 *a_tn_sensor1,
 	GPUFREQ_LOGD("a_tn_sensor1: 0x%08x, a_tn_sensor2: 0x%08x, a_tn_sensor3: 0x%08x",
 		*a_tn_sensor1, *a_tn_sensor2, *a_tn_sensor3);
 }
-#endif /* GPUFREQ_ASENSOR_ENABLE */
 
-#if GPUFREQ_ASENSOR_ENABLE
 static unsigned int __gpufreq_get_aging_table_idx(
 	u32 a_t0_efuse1, u32 a_t0_efuse2, u32 a_t0_efuse3,
 	u32 a_tn_sensor1, u32 a_tn_sensor2, u32 a_tn_sensor3,

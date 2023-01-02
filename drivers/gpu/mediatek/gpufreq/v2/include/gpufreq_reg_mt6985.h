@@ -23,9 +23,11 @@ static inline u32 readl_mfg(const void __iomem *addr)
 		if (likely(i < 100)) {
 			val[i % 2] = readl(addr);
 			val[++i % 2] = readl(addr);
-		} else
+		} else {
 			__gpufreq_abort("read MFG_TOP_CFG (0x%08x)=(0x%08x, 0x%08x) timeout",
 				addr, val[0], val[1]);
+			break;
+		}
 	} while (val[0] != val[1]);
 
 	return val[0];
