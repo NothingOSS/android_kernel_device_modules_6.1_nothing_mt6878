@@ -1559,11 +1559,11 @@ task_err_callback:
 			del_timer(&task->thread->timeout);
 		}
 
-		cmdq_util_aee("CMDQ",
-			"gce:%#lx err:%d task:%p pkt:%p thread:%u task_cnt:%u wait_cookie:%u next_cookie:%u",
+		/*cmdq_util_aee("CMDQ",
+			"gce:%p err:%d task:%p pkt:%p thread:%u task_cnt:%u wait_cookie:%u next_cookie:%u",
 			(unsigned long)cmdq->base_pa, err, task, task->pkt,
 			task->thread->idx, task->thread->task_cnt,
-			task->thread->wait_cookie, task->thread->next_cookie);
+			task->thread->wait_cookie, task->thread->next_cookie);*/
 		spin_unlock_irqrestore(&task->thread->chan->lock, flags);
 		kfree(task);
 	}

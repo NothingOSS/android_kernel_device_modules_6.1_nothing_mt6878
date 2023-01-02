@@ -245,7 +245,7 @@ void ccu_stream_on(struct mtk_raw_device *dev)
 	if (ret != 0)
 		pr_info("error: %s fail%d\n", __func__, pData.tg_idx);
 	else
-		pr_info("%s success\n", __func__, pData.tg_idx);
+		pr_info("%s success %d\n", __func__, pData.tg_idx);
 }
 
 void ccu_hsf_config(struct mtk_cam_ctx *ctx, unsigned int En)
@@ -297,7 +297,7 @@ void ccu_hsf_config(struct mtk_cam_ctx *ctx, unsigned int En)
 	if (ret != 0)
 		pr_info("error: %s fail%d\n", __func__, pData.tg_idx);
 	else
-		pr_info("%s success\n", __func__, pData.tg_idx);
+		pr_info("%s success %d\n", __func__, pData.tg_idx);
 }
 
 

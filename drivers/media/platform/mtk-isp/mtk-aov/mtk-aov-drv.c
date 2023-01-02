@@ -174,7 +174,7 @@ static long mtk_aov_ioctl(struct file *file, unsigned int cmd,
 		return -EINVAL;
 	}
 
-	dev_dbg(aov_dev->dev, "%s ioctl aov driver(cmd)-(%d)\n", __func__, cmd, ret);
+	dev_dbg(aov_dev->dev, "%s ioctl aov driver(%d)-(%d)\n", __func__, cmd, ret);
 
 	return ret;
 }

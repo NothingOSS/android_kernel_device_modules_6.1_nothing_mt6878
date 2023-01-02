@@ -2258,7 +2258,7 @@ void immediate_stream_off(struct mtk_raw_device *dev)
 	atomic_set(&dev->vf_en, 0);
 
 
-	writel_relaxed(~CQ_THR0_EN, dev->base + REG_CQ_THR0_CTL);
+	writel_relaxed((u32)(~CQ_THR0_EN), dev->base + REG_CQ_THR0_CTL);
 	wmb(); /* make sure committed */
 
 	/* Disable Double Buffer */
@@ -2390,7 +2390,7 @@ void stream_on(struct mtk_raw_device *dev, int on)
 	} else {
 		atomic_set(&dev->vf_en, 0);
 		if (!pipe->res_config.enable_hsf_raw) {
-			writel_relaxed(~CQ_THR0_EN, dev->base + REG_CQ_THR0_CTL);
+			writel_relaxed((u32)(~CQ_THR0_EN), dev->base + REG_CQ_THR0_CTL);
 			wmb(); /* TBC */
 
 			cfg_val = readl_relaxed(dev->base + REG_TG_PATH_CFG);
@@ -3988,7 +3988,7 @@ int mtk_raw_set_src_pad_fmt_default(struct v4l2_subdev *sd,
 	if (source_fmt->width > sink_fmt->width) {
 		dev_info(dev,
 			"%s(%d): adjusted: width(%d) over sink (%d)\n",
-			__func__, which, pad, node->desc.name,
+			__func__, which,
 			source_fmt->width, sink_fmt->width);
 		source_fmt->width = sink_fmt->width;
 
@@ -3997,7 +3997,7 @@ int mtk_raw_set_src_pad_fmt_default(struct v4l2_subdev *sd,
 	if (source_fmt->height > sink_fmt->height) {
 		dev_info(dev,
 			"%s(%d): adjusted: width(%d) over sink (%d)\n",
-			__func__, which, pad, node->desc.name,
+			__func__, which,
 			source_fmt->height, sink_fmt->height);
 		source_fmt->height = sink_fmt->height;
 	}
@@ -4005,7 +4005,7 @@ int mtk_raw_set_src_pad_fmt_default(struct v4l2_subdev *sd,
 	if (source_fmt->width > node->desc.frmsizes->stepwise.max_width) {
 		dev_info(dev,
 			"%s(%d): adjusted: width(%d) over max (%d)\n",
-			__func__, which, pad, node->desc.name,
+			__func__, which,
 			source_fmt->width, node->desc.frmsizes->stepwise.max_width);
 		source_fmt->width = node->desc.frmsizes->stepwise.max_width;
 	}
@@ -4013,7 +4013,7 @@ int mtk_raw_set_src_pad_fmt_default(struct v4l2_subdev *sd,
 	if (source_fmt->height > node->desc.frmsizes->stepwise.max_height) {
 		dev_info(dev,
 			"%s(%d): adjusted: height(%d) over max (%d)\n",
-			__func__, which, pad, node->desc.name,
+			__func__, which,
 			source_fmt->height, node->desc.frmsizes->stepwise.max_height);
 	}
 
@@ -4047,7 +4047,7 @@ int mtk_raw_set_src_pad_fmt_rzh1n2(struct v4l2_subdev *sd,
 			source_fmt->width != tmp_fmt->width) {
 			dev_info(dev,
 				"%s(%d): adjusted: rzh1n2to_r3(%d,%d) and rzh1n2to_r1(%d,%d) must have the same sz\n",
-				__func__, which, pad, node->desc.name,
+				__func__, which,
 				source_fmt->width, source_fmt->height,
 				tmp_fmt->width, tmp_fmt->height);
 			source_fmt->width = tmp_fmt->width;
@@ -4191,7 +4191,7 @@ void mtk_raw_set_dcif_rawi_fmt(struct device *dev, struct v4l2_format *img_fmt,
 	img_fmt->fmt.pix_mp.height = height;
 	sink_ipi_fmt = mtk_cam_get_sensor_fmt(code);
 	if (sink_ipi_fmt == MTKCAM_IPI_IMG_FMT_UNKNOWN) {
-		dev_info(dev, "%s: sink_ipi_fmt not found\n");
+		dev_info(dev, "%s: sink_ipi_fmt not found\n", __func__);
 
 		sink_ipi_fmt = MTKCAM_IPI_IMG_FMT_BAYER14;
 	}

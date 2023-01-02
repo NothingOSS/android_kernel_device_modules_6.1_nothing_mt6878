@@ -263,7 +263,7 @@ void mtk_imgsys_hw_working_buf_pool_release(struct mtk_imgsys_dev *imgsys_dev)
 	/* All the buffer should be in the freebufferlist when release */
 	if (imgsys_dev->imgsys_usedbufferlist.cnt)
 		dev_info(imgsys_dev->dev,
-			 "%s: imgsys_usedbufferlist is not empty (%d/%d)\n",
+			 "%s: imgsys_usedbufferlist is not empty (%d)\n",
 			__func__, imgsys_dev->imgsys_usedbufferlist.cnt);
 
 #if MTK_CM4_SUPPORT
@@ -667,7 +667,7 @@ static void imgsys_cmdq_timeout_cb_func(struct cmdq_cb_data data,
 
 	req = (struct mtk_imgsys_request *)(frm_info_cb->req);
 	if (!req) {
-		pr_info("NULL request Address\n", __func__);
+		pr_info("%s NULL request Address\n", __func__);
 		return;
 	}
 	imgsys_dev = req->imgsys_pipe->imgsys_dev;
@@ -784,7 +784,7 @@ static void imgsys_mdp_cb_func(struct cmdq_cb_data data,
 
 	req = (struct mtk_imgsys_request *)(swfrminfo_cb->req);
 	if (!req) {
-		pr_info("NULL request Address\n", __func__);
+		pr_info("%s NULL request Address\n", __func__);
 		return;
 	}
 
@@ -956,7 +956,7 @@ static void imgsys_mdp_cb_func(struct cmdq_cb_data data,
 			}
 
 			dev_info(imgsys_dev->dev,
-			"%s:%s:%d:req fd/no(%d/%d)frame no(%d) timeout, kva(0x%lx)lst(%d)e_cb(%d/%d)sidx(%d)tfrm(%d) -> %d,%d(%d/%d)\n",
+			"%s:%s:%d:req fd/no(%d/%d)frame no(%d) timeout, kva(0x%lx)lst(%d)e_cb(%d)sidx(%d)tfrm(%d) -> %d,%d(%d/%d)\n",
 			__func__, (char *)(&(swfrminfo_cb->frm_owner)), pipe->streaming,
 			swfrminfo_cb->request_fd,
 			swfrminfo_cb->request_no,
@@ -1603,7 +1603,7 @@ static void imgsys_scp_handler(void *data, unsigned int len, void *priv)
 		if (fence_num > KFENCE_MAX) {
 			dev_info(imgsys_dev->dev,
 				"%s: [ERROR][Frm%d-notify]fence number(%d) > %d\n",
-				__func__, fence_num, KFENCE_MAX);
+				__func__, i, fence_num, KFENCE_MAX);
 			fence_num = KFENCE_MAX;
 		}
 		for (f_lop_idx = 0; f_lop_idx < fence_num; f_lop_idx++) {
@@ -1638,7 +1638,7 @@ static void imgsys_scp_handler(void *data, unsigned int len, void *priv)
 		if (fence_num > KFENCE_MAX) {
 			dev_info(imgsys_dev->dev,
 				"%s: [ERROR][Frm%d-wait]fence number(%d) > %d\n",
-				__func__, fence_num, KFENCE_MAX);
+				__func__, i, fence_num, KFENCE_MAX);
 			fence_num = KFENCE_MAX;
 		}
 		for (f_lop_idx = 0; f_lop_idx < fence_num; f_lop_idx++) {
@@ -1880,9 +1880,6 @@ static void imgsys_composer_workfunc(struct work_struct *work)
 		dev_info(imgsys_dev->dev,
 		"%s: wakeup frame_no(%d), DIP_FRM_SZ(%d)\n",
 		__func__, req->img_fparam.frameparam.frame_no,
-		buf->frameparam.vaddr,
-		imgsys_dev->working_buf_mem_vaddr,
-		DIP_FRM_SZ,
 		imgsys_dev->working_buf_mem_size);
 
 		dev_info(imgsys_dev->dev,

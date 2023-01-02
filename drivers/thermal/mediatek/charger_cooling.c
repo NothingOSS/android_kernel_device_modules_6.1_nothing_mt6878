@@ -296,7 +296,7 @@ static int charger_cooling_probe(struct platform_device *pdev)
 	charger_cdev->cdev = cdev;
 
 	platform_set_drvdata(pdev, charger_cdev);
-	dev_info(dev, "register %s done, id=%d\n", charger_cdev->name);
+	dev_info(dev, "register %s done\n", charger_cdev->name);
 
 	return 0;
 }

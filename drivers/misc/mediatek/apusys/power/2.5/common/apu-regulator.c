@@ -337,7 +337,7 @@ static int regulator_apu_enable(struct apu_regulator_gp *rgul_gp)
 			ret = regulator_enable(dst->vdd);
 			if (ret) {
 				argul_err(rgul_gp->dev, "[%s] %s enable fail, ret = %d\n",
-					dst->name, ret);
+					__func__, dst->name, ret);
 				goto out;
 			}
 			dst->enabled = 1;
@@ -353,7 +353,7 @@ static int regulator_apu_enable(struct apu_regulator_gp *rgul_gp)
 			ret = regulator_enable(dst->vdd);
 			if (ret) {
 				argul_err(rgul_gp->dev, "[%s] %s enable fail, ret = %d\n",
-					dst->name, ret);
+					__func__, dst->name, ret);
 				goto out;
 			}
 			dst->enabled = 1;

@@ -895,7 +895,7 @@ static int trusty_poll_create(struct trusty_state *s)
 	s->poll_task = kthread_create(kthread_worker_fn, (void *)&s->poll_worker,
 				      "trusty_poll_task");
 	if (IS_ERR(s->poll_task)) {
-		trusty_info(s->dev, "%s: unable create trusty_poll_worker\n",
+		trusty_info(s->dev, "%s: unable create trusty_poll_worker %d\n",
 			    __func__, s->tee_id);
 		return PTR_ERR(s->poll_task);
 	}

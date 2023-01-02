@@ -943,9 +943,9 @@ static int mt6375_chg_enable_bc12(struct mt6375_chg_data *ddata, bool en)
 			}
 		}
 		if (i == max_wait_cnt)
-			dev_notice(ddata->dev, "CDP timeout\n", __func__);
+			dev_notice(ddata->dev, "%s: CDP timeout\n", __func__);
 		else
-			dev_info(ddata->dev, "CDP free\n", __func__);
+			dev_info(ddata->dev, "%s: CDP free\n", __func__);
 	}
 	ret = mt6375_chg_set_usbsw(ddata, en ? USBSW_CHG : USBSW_USB);
 	if (ret)
@@ -1742,7 +1742,7 @@ static int mt6375_set_pe20_current_pattern(struct charger_device *chgdev,
 	mt_dbg(ddata->dev, "pe20=%d\n", uV);
 	ret = mt6375_chg_field_set(ddata, F_PE20_CODE, U_TO_M(uV));
 	if (ret < 0) {
-		dev_err(ddata->dev, "failed to set pe20 code\n", __func__);
+		dev_info(ddata->dev, "%s: failed to set pe20 code\n", __func__);
 		goto out;
 	}
 	ret = mt6375_run_pe(ddata, true);
@@ -1831,7 +1831,7 @@ static int mt6375_enable_discharge(struct charger_device *chgdev, bool en)
 
 	ret = mt6375_chg_field_set(ddata, F_FORCE_VBUS_SINK, en);
 	if (ret < 0) {
-		dev_err(ddata->dev, "failed to set dischg %d\n", __func__, en);
+		dev_info(ddata->dev, "%s: failed to set dischg %d\n", __func__, en);
 		goto out;
 	}
 

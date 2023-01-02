@@ -273,7 +273,7 @@ static int lpm_init_spm_irq(void)
 	ret = lpm_smc_spm(MT_SPM_SMC_UID_SET_PENDING_IRQ_INIT,
 		 MT_LPM_SMC_ACT_SET, spm_irq_number, 0);
 	if (ret) {
-		pr_info("[name:spm&][SPM] failed to nofity ATF spm irq\n", ret);
+		pr_info("[name:spm&][SPM] failed to nofity ATF spm irq\n");
 		goto FINISHED;
 	}
 

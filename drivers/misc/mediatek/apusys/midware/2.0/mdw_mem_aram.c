@@ -223,7 +223,7 @@ static int mdw_mem_aram_bind(void *session, struct mdw_mem *m)
 	mdw_mem_debug("s(0x%llx) m(0x%llx/%u/%u)\n",
 		(uint64_t)session, (uint64_t)m, m->type, am->sid);
 	if (m->mpriv == session) {
-		mdw_mem_debug("s(0x%llx) don't need bind\n");
+		mdw_mem_debug("s(0x%llx) don't need bind\n", (uint64_t)session);
 		return 0;
 	}
 
@@ -243,7 +243,7 @@ static void mdw_mem_aram_unbind(void *session, struct mdw_mem *m)
 	mdw_mem_debug("s(0x%llx) m(0x%llx/%u/%u)\n",
 		(uint64_t)session, (uint64_t)m, m->type, am->sid);
 	if (m->mpriv == session) {
-		mdw_mem_debug("s(0x%llx) don't need unbind\n");
+		mdw_mem_debug("s(0x%llx) don't need unbind\n", (uint64_t)session);
 		return;
 	}
 

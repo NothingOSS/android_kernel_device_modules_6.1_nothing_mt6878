@@ -12,7 +12,7 @@ static struct kobject *gbe_kobj;
 void gbe_sysfs_create_file(struct kobj_attribute *kobj_attr)
 {
 	if (kobj_attr == NULL || gbe_kobj == NULL) {
-		pr_debug("Failed to create '%s' sysfs file kobj_attr=NULL\n");
+		pr_debug("Failed to create '%s' sysfs file kobj_attr=NULL\n", GBE_SYSFS_DIR_NAME);
 		return;
 	}
 

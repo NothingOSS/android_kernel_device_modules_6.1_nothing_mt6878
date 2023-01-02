@@ -6749,14 +6749,14 @@ void mtk_cam_extisp_handle_raw_tstamp(struct mtk_cam_ctx *ctx,
 		stream_data->timestamp, stream_data->preisp_meta_ts[0]);
 		stream_data->timestamp = stream_data->preisp_meta_ts[0];
 	}
-	dev_dbg(ctx->cam->dev, "[%s] req:%d(ns)0/1:%lld/%lld,0/1/2:%lld/%lld/%lld\n",
+	/*dev_dbg(ctx->cam->dev, "[%s] req:%d(ns)0/1:%lld/%lld,0/1/2:%lld/%lld/%lld\n",
 		__func__, ctx->stream_id,
 		stream_data->frame_seq_no,
 		stream_data->preisp_img_ts[0],
 		stream_data->preisp_img_ts[1],
 		stream_data->preisp_meta_ts[0],
 		stream_data->preisp_meta_ts[1],
-		stream_data->preisp_meta_ts[2]);
+		stream_data->preisp_meta_ts[2]);*/
 }
 void mtk_cam_extisp_vf_reset(struct mtk_raw_pipeline *pipe)
 {

@@ -2574,10 +2574,10 @@ static int mtk_imgsys_res_init(struct platform_device *pdev,
 
 	for (i = 0; i < RUNNER_WQ_NR; i++) {
 		imgsys_dev->mdp_wq[i] =
-			alloc_ordered_workqueue("%s",
+			alloc_ordered_workqueue("%s_%d",
 					__WQ_LEGACY | WQ_MEM_RECLAIM |
 					WQ_FREEZABLE,
-					"imgsys_runner_%d", i);
+					"imgsys_runner", i);
 		if (!imgsys_dev->mdp_wq[i]) {
 			dev_info(imgsys_dev->dev,
 				"%s: unable to alloc imgsys_runner\n", __func__);

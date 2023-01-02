@@ -268,7 +268,7 @@ static ssize_t mtk_aol_geofence_read(struct file *file, char __user *buf,
 
 	pr_info("[%s] msg_id=[%d] size=[%d]", __func__, data_buf->msg_id, data_buf->size);
 	if (copy_to_user(buf, &data_buf->buf[0], data_buf->size)) {
-		pr_info("[%s] failed,because copy_to_user error\n");
+		pr_info("[%s] failed,because copy_to_user error\n", __func__);
 		retval = -EFAULT;
 	} else {
 		retval = data_buf->size;

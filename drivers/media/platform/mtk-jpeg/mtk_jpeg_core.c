@@ -603,7 +603,7 @@ static void mtk_jpeg_prepare_dvfs(struct mtk_jpeg_dev *jpeg)
 	unsigned long freq = 0;
 	int i = 0;
 
-	pr_info("prepare dvfs +\n", ret);
+	pr_info("prepare dvfs +\n");
 	ret = dev_pm_opp_of_add_table(jpeg->dev);
 	if (ret < 0) {
 		pr_info("Failed to get opp table (%d)\n", ret);
@@ -635,7 +635,7 @@ static void mtk_jpeg_prepare_dvfs(struct mtk_jpeg_dev *jpeg)
 		i++;
 		dev_pm_opp_put(opp);
 	}
-	pr_info("prepare dvfs -\n", ret);
+	pr_info("prepare dvfs -\n");
 
 }
 
@@ -718,7 +718,7 @@ static void mtk_jpeg_dvfs_begin(struct mtk_jpeg_ctx *ctx)
 		}
 		pr_info("%s  volt: %d\n", __func__, volt);
 	} else if (jpeg->jpegenc_mmdvfs_clk) {
-		pr_info("%s set mmdvfs clk\n");
+		pr_info("%s set mmdvfs clk\n", __func__);
 		ret = clk_set_rate(jpeg->jpegenc_mmdvfs_clk, active_freq);
 		if (ret) {
 			pr_info("%s Failed to set freq %lu\n",

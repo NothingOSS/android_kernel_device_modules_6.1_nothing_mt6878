@@ -608,7 +608,7 @@ static void seq_stop(struct seq_file *s, void *v)
 			if (v != NULL)
 				kfree(v);
 			else {
-				LOGGER_INFO(" %s free v FAIL!\n", __func__, v);
+				LOGGER_INFO(" %s free v FAIL!\n", __func__);
 				if (pSeqData != NULL) {
 					LOGGER_INFO(
 						"%s free pSeqData = 0x%x\n",

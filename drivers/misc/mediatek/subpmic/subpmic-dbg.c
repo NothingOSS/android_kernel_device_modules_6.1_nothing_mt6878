@@ -85,7 +85,7 @@ static int subpmic_dbg_probe(struct platform_device *pdev)
 	mdi->extdev_desc.io_write = subpmic_dbg_io_write;
 	mdi->extdev = devm_extdev_io_device_register(pdev->dev.parent, &mdi->extdev_desc);
 	if (IS_ERR(mdi->extdev)) {
-		dev_err(&pdev->dev, "failed to register extdev_io device\n", __func__);
+		dev_info(&pdev->dev, "%s: failed to register extdev_io device\n", __func__);
 		return PTR_ERR(mdi->extdev);
 	}
 

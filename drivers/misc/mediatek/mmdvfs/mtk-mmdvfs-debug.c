@@ -260,7 +260,7 @@ static int mmdvfs_v3_debug_thread(void *data)
 	if (va && pa) {
 		ret = mrdump_mini_add_extra_file(va, pa, PAGE_SIZE, "MMDVFS_OPP");
 		if (ret)
-			MMDVFS_DBG("failed:%d va:%#lx pa:pa", ret, va, &pa);
+			MMDVFS_DBG("failed:%d va:%#lx pa:%#lx", ret, va, &pa);
 	}
 
 	if (g_mmdvfs->use_v3_pwr & (1 << PWR_MMDVFS_VCORE))

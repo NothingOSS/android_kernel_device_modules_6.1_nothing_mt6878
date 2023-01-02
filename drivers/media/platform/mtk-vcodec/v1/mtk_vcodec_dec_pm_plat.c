@@ -128,7 +128,7 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 	dev->vdec_tput_cnt = cnt / tp_item_num;
 
 	mtk_v4l2_debug(8, "[VDEC] tput table elements %u, %d per line",
-			cnt, tp_item_num, dev->vdec_tput);
+			tp_item_num, dev->vdec_tput);
 	if (!dev->vdec_tput_cnt) {
 		mtk_v4l2_debug(0, "[VDEC] throughtput table not exist");
 		return false;
@@ -464,7 +464,7 @@ void mtk_vdec_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx)
 			mtk_v4l2_debug(8, "[VDEC] port %d set larb %u bw",
 					i, dev->vdec_port_bw[i].larb);
 		} else {
-			mtk_v4l2_debug(8, "[VDEC] unknown port type %d %d\n",
+			mtk_v4l2_debug(8, "[VDEC] unknown port type %d\n",
 				dev->vdec_port_bw[i].port_type);
 		}
 	}

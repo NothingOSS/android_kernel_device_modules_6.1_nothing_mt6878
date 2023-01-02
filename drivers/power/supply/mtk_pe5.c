@@ -3658,7 +3658,7 @@ static int pe50_init_algo(struct chg_alg_device *alg)
 	}
 	if (pe50_hal_init_hardware(info->alg, desc->support_ta,
 				   desc->support_ta_cnt)) {
-		PE50_ERR("init hw fail\n", __func__);
+		PE50_ERR("%s: init hw fail\n", __func__);
 		goto out;
 	}
 	data->inited = true;

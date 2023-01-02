@@ -1010,8 +1010,8 @@ static int clkbuf_dcxo_dts_init_dct(struct device_node *node)
 	ret = of_property_count_u32_elems(clkbuf_ctl, CLKBUF_DCT_XO_QUANTITY);
 	if (ret != dcxo->xo_num) {
 		pr_notice("xo num not equal\n");
-		pr_notice("xo num in dct\n", ret);
-		pr_notice("xo num in hw driver\n", dcxo->xo_num);
+		pr_notice("xo num in dct %d\n", ret);
+		pr_notice("xo num in hw driver %d\n", dcxo->xo_num);
 		return -EXO_NUM_CONFIG_ERR;
 	}
 

@@ -1281,7 +1281,7 @@ static int mtk_aie_dev_larb_init(struct mtk_aie_dev *fd)
 	link = device_link_add(fd->dev, &pdev->dev,
 					DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
 	if (!link) {
-		dev_info(fd->dev, "unable to link SMI LARB idx %d\n");
+		dev_info(fd->dev, "unable to link SMI LARB idx\n");
 		return -EINVAL;
 	}
 

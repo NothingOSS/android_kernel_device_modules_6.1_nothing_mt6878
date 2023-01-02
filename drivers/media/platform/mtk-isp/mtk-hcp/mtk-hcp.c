@@ -874,7 +874,7 @@ int mtk_hcp_set_apu_dc(struct platform_device *pdev,
 				return -1;
 			}
 
-			dev_info(hcp_dev->dev, "%s: SLB buffer base(0x%x), size(%ld): %x",
+			dev_info(hcp_dev->dev, "%s: SLB buffer base(0x%x), size(%ld)",
 				__func__, (uintptr_t)slb.paddr, slb.size);
 
 			ctrl.id    = CTRL_ID_SLB_BASE;
@@ -1360,7 +1360,7 @@ int allocate_working_buffer_helper(struct platform_device *pdev)
 					PTR_ERR(mblock[id].d_buf));
 					return -1;
 				}
-				//mtk_dma_buf_set_name(mblock[id].d_buf, mblock[id].name);
+				mtk_dma_buf_set_name(mblock[id].d_buf, mblock[id].name);
 				mblock[id].attach =
 					dma_buf_attach(mblock[id].d_buf, hcp_dev->dev);
 				attach = mblock[id].attach;

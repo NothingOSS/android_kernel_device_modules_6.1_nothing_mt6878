@@ -581,7 +581,7 @@ static int rt5133_probe(struct i2c_client *i2c)
 	priv->extdev = devm_extdev_io_device_register(&i2c->dev,
 						      &priv->extdev_desc);
 	if (IS_ERR(priv->extdev)) {
-		dev_err(&i2c->dev, "failed to register extdev_io device\n",
+		dev_info(&i2c->dev, "%s: failed to register extdev_io device\n",
 			__func__);
 		return PTR_ERR(priv->extdev);
 	}

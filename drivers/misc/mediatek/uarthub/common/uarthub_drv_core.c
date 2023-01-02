@@ -3037,8 +3037,7 @@ int uarthub_core_debug_uart_ip_info_loop(void)
 		def_tag, g_dump_loop_dur_ms,
 		((pkt_cnt.dev0 & 0xFF000000) >> 24), ((pkt_cnt.dev1 & 0xFF000000) >> 24),
 		((pkt_cnt.dev2 & 0xFF000000) >> 24), ((pkt_cnt.dev0 & 0xFF00) >> 8),
-		((pkt_cnt.dev1 & 0xFF00) >> 8), ((pkt_cnt.dev2 & 0xFF00) >> 8),
-		dev_sta.dev0, dev_sta.dev1, dev_sta.dev2);
+		((pkt_cnt.dev1 & 0xFF00) >> 8), ((pkt_cnt.dev2 & 0xFF00) >> 8));
 
 	len += snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
 		"___INTFHUB_DEVx_STA=[0x%x-0x%x-0x%x]",

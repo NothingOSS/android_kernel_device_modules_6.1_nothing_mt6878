@@ -184,14 +184,14 @@ int imgsys_wpe_tfault_callback(int port,
 		engine = REG_MAP_E_WPE_LITE;
 		break;
 	default:
-		pr_info("%s: TF port doesn't belongs to WPE.\n\n", __func__, port);
+		pr_info("%s: TF port %d doesn't belongs to WPE.\n\n", __func__, port);
 		return 0;
 	};
 
 	/* iomap registers */
 	wpeRegBA = gWpeRegBA[engine - REG_MAP_E_WPE_EIS];
 	if (!wpeRegBA) {
-		pr_info("%s: WPE_%d, RegBA=0", __func__);
+		pr_info("%s: WPE_%d, RegBA=0", __func__, port);
 		return 1;
 	}
 
@@ -667,7 +667,7 @@ void imgsys_wpe_debug_dump(struct mtk_imgsys_dev *imgsys_dev,
 		wpeBase = WPE_A_BASE + mtk_imgsys_wpe_base_ofst[ofst_idx];
 		wpeRegBA = gWpeRegBA[ofst_idx];
 		if (!wpeRegBA) {
-			dev_info(imgsys_dev->dev, "%s: WPE_%d, RegBA = 0", __func__);
+			dev_info(imgsys_dev->dev, "%s: WPE_%d, RegBA = 0", __func__, ofst_idx);
 			continue;
 		}
 		dev_info(imgsys_dev->dev, "%s: ==== Dump WPE_%d =====",

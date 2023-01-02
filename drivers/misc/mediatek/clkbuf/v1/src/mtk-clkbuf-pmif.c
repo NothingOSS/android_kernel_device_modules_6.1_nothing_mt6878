@@ -386,7 +386,7 @@ static int clkbuf_pmif_reg_init(struct pmif_hw **pmif, struct platform_device *p
 	ret = of_property_read_u32_index(node, PMIF_VERSION_NAME,
 		pmif_idx, &version);
 	if (ret) {
-		pr_notice("clkbuf get pmif no.%d version failed: %d\n", ret);
+		pr_notice("clkbuf get pmif no.%d version failed: %d\n", ret, version);
 		return ret;
 	}
 

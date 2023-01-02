@@ -264,7 +264,7 @@ static int mtk_cam_seninf_disable_all_cammux(struct seninf_ctx *ctx)
 	void *pSeninf_cam_mux = ctx->reg_if_cam_mux;
 
 	SENINF_WRITE_REG(pSeninf_cam_mux, SENINF_CAM_MUX_EN, 0);
-	dev_info(ctx->dev, "%s all cam_mux %d EN 0x%x\n",
+	dev_info(ctx->dev, "%s all cam_mux EN 0x%x\n",
 		__func__,
 		SENINF_READ_REG(pSeninf_cam_mux, SENINF_CAM_MUX_EN));
 

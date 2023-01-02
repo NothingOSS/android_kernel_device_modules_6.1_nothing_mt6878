@@ -641,7 +641,7 @@ static void mtk_cam_del_req_from_running(struct mtk_cam_ctx *ctx,
 		__func__, req->req.debug_str, s_data->frame_seq_no,
 		ctx->stream_id, req->ctx_used, ctx->cam->streaming_ctx,
 		pipe_id, req->pipe_used, ctx->cam->streaming_pipe,
-		req->done_status);
+		req->done_status, req->state);
 
 	atomic_set(&req->state, MTK_CAM_REQ_STATE_COMPLETE);
 	spin_lock(&ctx->cam->running_job_lock);
@@ -809,7 +809,7 @@ int mtk_cam_dequeue_req_frame(struct mtk_cam_ctx *ctx,
 				 "%s:%s:ctx(%d):pipe(%d):seq(%d/%d) dequeue s_data over local buffer cnt(%d)\n",
 				 __func__, req->req.debug_str, ctx->stream_id, pipe_id,
 				 s_data->frame_seq_no, dequeued_frame_seq_no,
-				 s_data->frame_seq_no, s_data_cnt);
+				 s_data_cnt);
 			goto STOP_SCAN;
 		}
 	}
@@ -8008,7 +8008,7 @@ static void mtk_cam_ctx_watchdog_worker(struct work_struct *work)
 	seninf = ctx->seninf;
 	if (!seninf) {
 		dev_info(ctx->cam->dev,
-			 "%s:ctx(%d):stop watchdog task for no seninf ctx:%d\n",
+			 "%s:ctx(%d):stop watchdog task for no seninf ctx:\n",
 			 __func__, ctx->stream_id);
 		complete(&ctx->watchdog_complete);
 		return;
@@ -8075,7 +8075,7 @@ static void mtk_cam_ctx_watchdog_worker(struct work_struct *work)
 	 */
 	if (atomic_read(&watchdog_data->watchdog_dumped)) {
 		dev_info(ctx->cam->dev,
-			"%s:ctx/pipe_id(%d/%d):skip redundant seninf dump for no sof ctx:%d\n",
+			"%s:ctx/pipe_id(%d/%d):skip redundant seninf dump for no sof ctx:\n",
 			__func__, pipe_id, ctx->stream_id);
 	} else {
 		if (timeout) {
@@ -8272,7 +8272,7 @@ static void mtk_ctx_watchdog(struct timer_list *t)
 			 */
 			if (atomic_read(&watchdog_data->watchdog_dumped)) {
 				dev_dbg(ctx->cam->dev,
-					"%s:ctx/pipe_id(%d/%d):skip watchdog worker ctx:%d (worker is ongoing)\n",
+					"%s:ctx/pipe_id(%d/%d):skip watchdog worker ctx: (worker is ongoing)\n",
 					__func__, ctx->stream_id, i);
 			} else if (watchdog_cnt
 				>= atomic_read(&watchdog_data->watchdog_timeout_cnt)) {

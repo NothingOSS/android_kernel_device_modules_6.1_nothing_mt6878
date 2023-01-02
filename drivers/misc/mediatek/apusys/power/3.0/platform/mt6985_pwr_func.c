@@ -374,7 +374,7 @@ static int apu_top_dbg_show(struct seq_file *s, void *unused)
 	else if (cmd == APUTOP_CURR_STATUS)
 		ret = aputop_show_curr_status(s, unused);
 	else
-		pr_info("%s not support this cmd\n", __func__, cmd);
+		pr_info("%s not support this cmd %d\n", __func__, cmd);
 
 	return ret;
 }

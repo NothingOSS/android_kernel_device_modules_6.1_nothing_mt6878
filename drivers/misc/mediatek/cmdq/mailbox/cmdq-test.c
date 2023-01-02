@@ -856,7 +856,7 @@ static void cmdq_access_sub_impl(struct cmdq_test *test,
 	for (i = 0; i < count; i++) {
 		va[0] = pat_init;
 
-		cmdq_msg("%s idx:%d, addr:%#x = %#x ", __func__, i, regs[i]);
+		//cmdq_msg("%s idx:%d, addr:%#x = %#x ", __func__, i, regs[i]);
 		pa_base = regs[i];
 		va_base = ioremap(pa_base, 0x1000);
 		writel(pat, va_base);

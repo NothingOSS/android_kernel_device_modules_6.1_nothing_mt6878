@@ -159,7 +159,7 @@ static int apusys_aov_stop_testcase(struct seq_file *s, struct apusys_aov_ctx *c
 
 	if (recv_msg.ret)
 		dev_info(ctx->dev, "%s ERROR! testcase %u return error %d\n", __func__, testcase,
-			 recv_msg.ret, recv_msg.ret);
+			 recv_msg.ret);
 	else
 		dev_info(ctx->dev, "%s testcase %u done successfully, run %d times, ret %d\n",
 			 __func__, testcase, recv_msg.arg, recv_msg.ret);

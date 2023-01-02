@@ -522,7 +522,7 @@ static int get_md_smem_layout_tbl_from_lk_tag(void)
 	size = sizeof(struct rt_smem_region_lk_fmt) * s_md_nc_smem_item_num;
 	s_md_nc_smem_tbl = kmalloc(size, GFP_KERNEL);
 	if (!s_md_nc_smem_tbl) {
-		pr_info("ccci: %s: alloc nc_smem_tbl memory fail:%d\n", __func__);
+		pr_info("ccci: %s: alloc nc_smem_tbl memory fail\n", __func__);
 		return -1;
 	}
 	ret = mtk_ccci_find_args_val("nc_smem_layout",  (unsigned char *)s_md_nc_smem_tbl, size);
@@ -536,7 +536,7 @@ static int get_md_smem_layout_tbl_from_lk_tag(void)
 	size = sizeof(struct rt_smem_region_lk_fmt) * s_md_c_smem_item_num;
 	s_md_c_smem_tbl = kmalloc(size, GFP_KERNEL);
 	if (!s_md_c_smem_tbl) {
-		pr_info("ccci: %s: alloc c_smem_tbl memory fail:%d\n", __func__);
+		pr_info("ccci: %s: alloc c_smem_tbl memory fail\n", __func__);
 		kfree(s_md_nc_smem_tbl);
 		s_md_nc_smem_tbl = NULL;
 		return -1;

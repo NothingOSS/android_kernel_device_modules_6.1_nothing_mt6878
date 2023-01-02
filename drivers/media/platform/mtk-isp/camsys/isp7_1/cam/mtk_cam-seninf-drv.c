@@ -906,7 +906,7 @@ static int config_hw(struct seninf_ctx *ctx)
 		vc->enable = mtk_cam_seninf_is_vc_enabled(ctx, vc);
 		if (!vc->enable) {
 			dev_info(ctx->dev, "vc[%d] pad %d. skip\n",
-				 i, vc->feature, vc->out_pad);
+				 i, vc->out_pad);
 			continue;
 		}
 
@@ -964,8 +964,7 @@ static int config_hw(struct seninf_ctx *ctx)
 			g_seninf_ops->_cammux(ctx, vc->cam);
 
 			dev_info(ctx->dev, "vc[%d] pad %d intf %d mux %d cam %d\n",
-				 i, vc->out_pad, intf, vc->mux, vc->cam,
-				vc_sel, dt_sel);
+				 i, vc->out_pad, intf, vc->mux, vc->cam);
 
 #ifdef SENSOR_SECURE_MTEE_SUPPORT
 			if (ctx->is_secure == 1) {
@@ -1416,7 +1415,7 @@ static int seninf_link_setup(struct media_entity *entity,
 		if (flags & MEDIA_LNK_FL_ENABLED) {
 			if (!mtk_cam_seninf_get_vc_by_pad(ctx, local->index)) {
 				dev_info(ctx->dev,
-				"%s enable link w/o vc_info pad idex %d\n", local->index);
+				"enable link w/o vc_info pad idex %d\n", local->index);
 			}
 		}
 	} else {

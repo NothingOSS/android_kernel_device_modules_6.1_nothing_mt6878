@@ -382,7 +382,7 @@ static void tmem_region_free(struct dma_buf *dmabuf)
 	buffer = dmabuf->priv;
 	sec_heap = sec_heap_region_get(buffer->heap);
 	if (!sec_heap) {
-		pr_err("%s, can not find secure heap!!\n",
+		pr_info("%s, %s can not find secure heap!!\n",
 			__func__, buffer->heap ? dma_heap_get_name(buffer->heap) : "null ptr");
 		return;
 	}
@@ -407,7 +407,7 @@ static void tmem_page_free(struct dma_buf *dmabuf)
 	buffer = dmabuf->priv;
 	sec_heap = sec_heap_page_get(buffer->heap);
 	if (!sec_heap) {
-		pr_err("%s, can not find secure heap!!\n",
+		pr_info("%s, %s can not find secure heap!!\n",
 			__func__, buffer->heap ? dma_heap_get_name(buffer->heap) : "null ptr");
 		return;
 	}
@@ -1078,7 +1078,7 @@ static struct dma_buf *tmem_page_allocate(struct dma_heap *heap,
 	struct secure_heap_page *sec_heap = sec_heap_page_get(heap);
 
 	if (!sec_heap) {
-		pr_err("%s, can not find secure heap!!\n",
+		pr_info("%s, %s can not find secure heap!!\n",
 			__func__, heap ? dma_heap_get_name(heap) : "null ptr");
 		return ERR_PTR(-EINVAL);
 	}

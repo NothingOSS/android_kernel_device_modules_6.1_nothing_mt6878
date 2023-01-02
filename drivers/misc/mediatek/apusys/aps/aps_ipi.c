@@ -137,7 +137,7 @@ static int aps_rpmsg_tx_probe(struct rpmsg_device *rpdev)
 {
 	struct device *dev = &rpdev->dev;
 
-	dev_info(dev, "%s: name=%s, src=%d\n",
+	dev_info(dev, "%s: name=%s, src=%d\n", __func__,
 			rpdev->id.name, rpdev->src);
 
 	aps_tx_rpm_dev.ept = rpdev->ept;
@@ -150,7 +150,7 @@ static int aps_rpmsg_rx_probe(struct rpmsg_device *rpdev)
 {
 	struct device *dev = &rpdev->dev;
 
-	dev_info(dev, "%s: name=%s, src=%d\n",
+	dev_info(dev, "%s: name=%s, src=%d\n", __func__,
 			rpdev->id.name, rpdev->src);
 
 	aps_rx_rpm_dev.ept = rpdev->ept;

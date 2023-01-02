@@ -163,7 +163,7 @@ int reviser_get_pool_size(uint32_t type, uint32_t *size)
 		ret_size = g_rdv->plat.pool_size[REVSIER_POOL_SLBS];
 		break;
 	default:
-		LOG_ERR("Invalid type\n", type);
+		LOG_ERR("Invalid type %d\n", type);
 		ret = -EINVAL;
 		goto out;
 	}

@@ -438,7 +438,7 @@ void mtk_venc_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx)
 	u32 target_bw = 0;
 
 	dev = ctx->dev;
-	mtk_v4l2_debug(4, "[VENC] ctx:%d");
+	mtk_v4l2_debug(4, "[VENC] ctx:%p", ctx);
 
 	for (i = 0; i < dev->venc_larb_cnt; i++) {
 		target_bw = (dev->venc_larb_bw[i].larb_base_bw / 100)

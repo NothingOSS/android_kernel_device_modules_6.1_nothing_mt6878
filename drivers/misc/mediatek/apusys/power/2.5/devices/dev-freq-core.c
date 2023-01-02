@@ -91,7 +91,7 @@ static int core_devfreq_curFreq(struct device *dev, unsigned long *freq)
 	}
 
 	if (!*freq)
-		advfs_err(dev, "[%s] fail, return %luMHz", TOMHZ(*freq));
+		advfs_err(dev, "[%s] fail, return %luMHz", __func__, TOMHZ(*freq));
 	return 0;
 }
 

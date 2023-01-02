@@ -573,7 +573,7 @@ int core_ctl_set_boost(bool boost)
 			apply_demand(cluster);
 	}
 
-	core_ctl_debug("%s: boost=%d ret=%d ", boost, ret);
+	core_ctl_debug("%s: boost=%d ret=%d ", __func__, boost, ret);
 	return ret;
 }
 EXPORT_SYMBOL(core_ctl_set_boost);
@@ -1852,7 +1852,7 @@ static int ppm_data_init(struct cluster_data *cluster)
 	first_cpu = cluster->first_cpu;
 	policy = cpufreq_cpu_get(first_cpu);
 	if (!policy) {
-		pr_info("%s: cpufreq policy %d is not found for cpu#%d",
+		pr_info("%s: cpufreq policy is not found for cpu#%d",
 				TAG, first_cpu);
 		return -ENOMEM;
 	}
@@ -1875,7 +1875,7 @@ static int ppm_data_init(struct cluster_data *cluster)
 
 	for (i = 0; i < opp_nr; i++) {
 		ps = &pd->table[opp_nr-1-i];
-		ppm_tbl[i].power = em_scale_power(ps->power);
+		//ppm_tbl[i].power = em_scale_power(ps->power);
 		ppm_tbl[i].freq = ps->frequency;
 		ppm_tbl[i].leakage = mtk_get_leakage(first_cpu, i, NORMAL_TEMP);
 		ppm_tbl[i].thermal_leakage = mtk_get_leakage(first_cpu, i, THERMAL_TEMP);

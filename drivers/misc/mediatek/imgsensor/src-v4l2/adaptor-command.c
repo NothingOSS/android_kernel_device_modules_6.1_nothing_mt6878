@@ -28,7 +28,7 @@ static int s_cmd_fsync_sync_frame_start_end(struct adaptor_ctx *ctx, void *arg)
 		ret = -ENOIOCTLCMD;
 		adaptor_logi(ctx,
 			"ERROR: V4L2_CMD_FSYNC_SYNC_FRAME_START_END, idx:%d, input arg is nullptr, return:%d\n",
-			ctx->idx);
+			ctx->idx, ret);
 		return ret;
 	}
 

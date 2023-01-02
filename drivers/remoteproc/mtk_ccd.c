@@ -148,7 +148,7 @@ static ssize_t ccd_debug_read(struct file *filp,
 
 	len = snprintf(buf, sizeof(buf), "ccu_debug_read\n");
 	if (len >= sizeof(buf))
-		pr_info("%s: snprintf fail\n");
+		pr_info("%s: snprintf fail\n", __func__);
 
 	return simple_read_from_buffer(user_buf, count, ppos, buf, len);
 }

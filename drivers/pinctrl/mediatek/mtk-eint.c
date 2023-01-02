@@ -819,7 +819,7 @@ static ssize_t eintc_status_show(struct device_driver *driver, char *buf)
 					"%d ", inst.pin_list[j]);
 
 		len += snprintf(buf + len, PAGE_SIZE - len,
-				"\n", i, inst.pin_list[j]);
+				"\n");
 	}
 
 	return strlen(buf);

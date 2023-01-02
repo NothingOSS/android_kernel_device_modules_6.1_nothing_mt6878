@@ -279,7 +279,7 @@ EXPORT_SYMBOL(apu_power_device_register);
 
 void apu_power_device_unregister(enum DVFS_USER user)
 {
-	pr_debug("[%s] user %d\n", user);
+	pr_debug("[%s] user %d\n", __func__, user);
 }
 EXPORT_SYMBOL(apu_power_device_unregister);
 

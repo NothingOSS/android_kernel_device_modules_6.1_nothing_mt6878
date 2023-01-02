@@ -589,7 +589,7 @@ void imgsys_cmdq_task_cb_plat71(struct cmdq_cb_data data)
 				break;
 		if (err_idx >= cb_param->task_cnt) {
 			pr_info(
-				"%s: [ERROR] can't find task in task list! cb(%p) error(%d) for frm(%d/%d) blk(%d/%d) ofst(0x%x) erridx(%d/%d) task(%d/%d/%d) ofst(%x/%x/%x/%x/%x)",
+				"%s: [ERROR] can't find task in task list! cb(%p) error(%d) for %d frm(%d/%d) blk(%d/%d) ofst(0x%x) erridx(%d/%d) task(%d/%d/%d) ofst(%x/%x/%x/%x/%x)",
 				__func__, cb_param, cb_param->err, cb_param->group_id,
 				cb_param->frm_idx, cb_param->frm_num,
 				cb_param->blk_idx, cb_param->blk_num,
@@ -750,7 +750,7 @@ int imgsys_cmdq_task_aee_cb_plat71(struct cmdq_cb_data data)
 			break;
 	if (err_idx >= cb_param->task_cnt) {
 		pr_info(
-			"%s: [ERROR] can't find task in task list! cb(%p) error(%d) for frm(%d/%d) blk(%d/%d) ofst(0x%x) erridx(%d/%d) task(%d/%d/%d) ofst(%x/%x/%x/%x/%x)",
+			"%s: [ERROR] can't find task in task list! cb(%p) error(%d) for %d frm(%d/%d) blk(%d/%d) ofst(0x%x) erridx(%d/%d) task(%d/%d/%d) ofst(%x/%x/%x/%x/%x)",
 			__func__, cb_param, cb_param->err, cb_param->group_id,
 			cb_param->frm_idx, cb_param->frm_num,
 			cb_param->blk_idx, cb_param->blk_num,
@@ -1001,8 +1001,8 @@ int imgsys_cmdq_sendtask_plat71(struct mtk_imgsys_dev *imgsys_dev,
 					clt = imgsys_clt[thd_idx];
 				} else {
 					pr_info(
-						"%s: [ERROR] group_id(%d) is over max hw num(%d) for frm(%d/%d)!\n",
-						__func__, frm_info->group_id, IMGSYS_NOR_THD,
+						"%s: [ERROR] group_id(%d) %d is over max hw num for frm(%d/%d)!\n",
+						__func__, frm_info->group_id,
 						frm_info->user_info[frm_idx].hw_comb,
 						frm_idx, frm_num);
 					return -1;

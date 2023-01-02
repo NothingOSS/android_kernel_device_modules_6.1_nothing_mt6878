@@ -1278,7 +1278,7 @@ void *ccu_da_to_va(u64 da, int len)
 		}
 	}
 
-	LOG_ERR("failed lookup da(%x) len(%x) to va, offset(%x)", da, offset);
+	LOG_ERR("failed lookup da(%x) len(%x) to va, offset(%x)", da, len, offset);
 	return NULL;
 }
 

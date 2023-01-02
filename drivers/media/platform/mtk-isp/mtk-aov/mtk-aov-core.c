@@ -281,7 +281,7 @@ static int send_cmd_internal(struct aov_core *core_info,
 					if (count++ >= 100) {
 						AOV_TRACE_END();
 						dev_info(aov_dev->dev, "%s: wait cmd(%d) ack failed\n",
-							__func__, cmd_code, count);
+							__func__, cmd_code);
 						return -ERESTARTSYS;
 					}
 
@@ -870,7 +870,7 @@ int aov_core_init(struct mtk_aov *aov_dev)
 		return -ENOMEM;
 	}
 
-	//mtk_dma_buf_set_name(core_info->dma_buf, "AOV Event");
+	mtk_dma_buf_set_name(core_info->dma_buf, "AOV Event");
 
 	ret = dma_buf_vmap(core_info->dma_buf, &(core_info->dma_map));
 	if (ret) {

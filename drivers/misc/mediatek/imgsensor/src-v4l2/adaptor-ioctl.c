@@ -1418,7 +1418,7 @@ static int s_tg(struct adaptor_ctx *ctx, void *arg)
 {
 	int *p_tg = arg;
 
-	dev_info(ctx->dev, "notify frame-sync module of TG\n", *p_tg);
+	dev_info(ctx->dev, "notify frame-sync module of TG %d\n", *p_tg);
 
 	return 0;
 }

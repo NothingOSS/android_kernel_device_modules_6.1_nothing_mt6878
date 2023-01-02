@@ -378,7 +378,7 @@ int conn_pwr_notify_event(enum conn_pwr_drv_type drv, enum conn_pwr_event_type e
 	}
 
 	if (g_event_cb_tbl[drv] == NULL) {
-		pr_info("event cb is not registered.\n", drv);
+		pr_info("event %d cb is not registered.\n", drv);
 		return -2;
 	}
 

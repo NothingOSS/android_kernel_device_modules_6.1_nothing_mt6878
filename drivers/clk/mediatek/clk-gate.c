@@ -273,7 +273,7 @@ hwv_done_fail:
 			i * MTK_WAIT_HWV_DONE_US);
 hwv_prepare_fail:
 	regmap_read(cg->regmap, cg->sta_ofs, &val);
-	pr_err("%s cg unprepare timeout(%dus)(0x%x 0x%x)\n", clk_hw_get_name(hw),
+	pr_info("%s cg unprepare timeout(%dus)(0x%x)\n", clk_hw_get_name(hw),
 			i * MTK_WAIT_HWV_PREPARE_US, val);
 
 	mtk_clk_notify(cg->regmap, cg->hwv_regmap, clk_hw_get_name(hw),

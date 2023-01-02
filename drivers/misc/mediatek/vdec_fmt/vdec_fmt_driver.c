@@ -89,7 +89,7 @@ static void fmt_unlock(u32 id)
 	if (id >= fmt->gce_th_num)
 		return;
 
-	fmt_debug(1, "id %d cur gce_status", id, fmt->gce_status[id]);
+	fmt_debug(1, "id %d cur gce_status %d", id, fmt->gce_status[id]);
 
 	up(&fmt->fmt_sem[id]);
 
@@ -431,7 +431,7 @@ static void fmt_dump_addr_reg(void)
 		fmt_debug(0, "WROT%d(0x%lx) 0x%x (0x%lx) 0x%x (0x%lx) 0x%x (0x%lx) 0x%x",
 		idx, ADDR1(0x50), REG1(0x50), ADDR1(0x54), REG1(0x54),
 		ADDR1(0x58), REG1(0x58), ADDR1(0x5C), REG1(0x5C));
-		fmt_debug(0, "WROT%d(0x%lx) 0x%x (0x%lx)",
+		fmt_debug(0, "WROT%d(0x%lx) 0x%x (0x%lx)) 0x%x",
 		idx, ADDR1(0x68), REG1(0x68), ADDR1(0x6C), REG1(0x6C));
 		fmt_debug(0, "WROT%d(0x%lx) 0x%x (0x%lx) 0x%x (0x%lx) 0x%x (0x%lx) 0x%x",
 		idx, ADDR1(0x70), REG1(0x70), ADDR1(0x74), REG1(0x74),

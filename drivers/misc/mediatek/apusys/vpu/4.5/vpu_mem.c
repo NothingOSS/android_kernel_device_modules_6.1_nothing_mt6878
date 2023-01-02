@@ -307,7 +307,7 @@ vpu_map_sg_to_iova_v2(
 	if (size == 0) {
 		dev_info(dev,
 			"%s: iommu_map_sg: len: %zx, iova: %llx, failed\n",
-			__func__, len, (u64)iova, nents);
+			__func__, len, (u64)iova);
 		goto err;
 	} else if (size != len) {
 		dev_info(dev,

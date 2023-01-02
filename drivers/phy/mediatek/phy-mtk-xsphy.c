@@ -1723,7 +1723,7 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 		if (!device_property_read_u32_array(dev, "mediatek,lpm-parameter",
 			inst->lpm_para, PHY_PLL_PARA_CNT))
 			inst->lpm_quirk = true;
-		dev_dbg(dev, "intr:%d, term_cal, src:%d, vrt:%d, term:%d\n",
+		dev_dbg(dev, "intr:%d, term_cal %d, src:%d, vrt:%d, term:%d\n",
 			inst->efuse_intr, inst->efuse_term_cal, inst->eye_src,
 			inst->eye_vrt, inst->eye_term);
 		dev_dbg(dev, "src_host:%d, vrt_host:%d, term_host:%d\n",
@@ -1961,7 +1961,7 @@ static int mtk_phy_init(struct phy *phy)
 		dev_info(xsphy->dev, "u2_intr:%d term_cal:%d discth:%d\n",
 			inst->efuse_intr, inst->efuse_term_cal, inst->discth);
 		dev_info(xsphy->dev, "rx_sqth:%d\n", inst->rx_sqth);
-		dev_info(xsphy->dev, "pll_fbksel:%d, pll_posdiv\n",
+		dev_info(xsphy->dev, "pll_fbksel:%d, pll_posdiv: %d\n",
 			inst->pll_fbksel, inst->pll_posdiv);
 		break;
 	case PHY_TYPE_USB3:

@@ -96,7 +96,7 @@ void imgsys_dip_set_initial_value(struct mtk_imgsys_dev *imgsys_dev)
 		ary_idx = hw_idx - REG_MAP_E_DIP;
 		gdipRegBA[ary_idx] = of_iomap(imgsys_dev->dev->of_node, hw_idx);
 		if (!gdipRegBA[ary_idx]) {
-			pr_info("%s:unable to iomap dip_%d reg, devnode(%s)\n",
+			pr_info("%s:unable to iomap dip_%d reg \n",
 				__func__, hw_idx);
 			continue;
 		}

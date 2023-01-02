@@ -1054,7 +1054,7 @@ int mtk_cam_dequeue_req_frame(struct mtk_cam_ctx *ctx,
 		deq_s_data[s_data_cnt++] = s_data;
 		if (s_data_cnt >= 18) {
 			dev_info(ctx->cam->dev,
-				 "%s:%s:ctx(%d):pipe(%d):seq(%d/%d) dequeue s_data over local buffer cnt(%d)\n",
+				 "%s:%s:ctx(%d):pipe(%d):seq(%d/%d) dequeue s_data over local buffer cnt(%d/%d)\n",
 				 __func__, req->req.debug_str, ctx->stream_id, pipe_id,
 				 s_data->frame_seq_no, dequeued_frame_seq_no,
 				 s_data->frame_seq_no, s_data_cnt);
@@ -4239,7 +4239,7 @@ mtk_cam_config_raw_img_in_ipui(struct mtk_cam_request_stream_data *s_data,
 					"%s: allocate slb fail\n", __func__);
 			} else {
 				dev_info(cam->dev,
-					"%s: slb buffer base(0x%x), size(%ld): %x",
+					"%s: slb buffer base(0x%x), size(%ld)",
 					__func__, (uintptr_t)slb.paddr, slb.size);
 				ctx->slb_addr = slb.paddr;
 				ctx->slb_size = slb.size;
@@ -5631,7 +5631,7 @@ static int mtk_cam_link_notify(struct media_link *link, u32 flags,
 	subdev = media_entity_to_v4l2_subdev(sink);
 	if (!subdev) {
 		pr_info("%s: can't find the subdev of sink\n",
-			__func__, subdev->name);
+			__func__);
 		return v4l2_pipeline_link_notify(link, flags, notification);
 	}
 	cam = container_of(subdev->v4l2_dev->mdev, struct mtk_cam_device, media_dev);
@@ -9886,14 +9886,14 @@ static void mtk_cam_ctx_watchdog_worker(struct work_struct *work)
 
 	ctx = watchdog_data->ctx;
 	if (!ctx) {
-		pr_info("%s:ctx(%d):stop watchdog task for ctx is null\n",
+		pr_info("%s:ctx:stop watchdog task for ctx is null\n",
 			__func__);
 		return;
 	}
 	seninf = ctx->seninf;
 	if (!seninf) {
 		dev_info(ctx->cam->dev,
-			 "%s:ctx(%d):stop watchdog task for no seninf ctx:%d\n",
+			 "%s:ctx(%d):stop watchdog task for no seninf ctx:\n",
 			 __func__, ctx->stream_id);
 		return;
 	}
@@ -9958,7 +9958,7 @@ static void mtk_cam_ctx_watchdog_worker(struct work_struct *work)
 	 */
 	if (atomic_read(&watchdog_data->watchdog_dumped)) {
 		dev_info(ctx->cam->dev,
-			"%s:ctx/pipe_id(%d/%d):skip redundant seninf dump for no sof ctx:%d\n",
+			"%s:ctx/pipe_id(%d/%d):skip redundant seninf dump for no sof ctx:\n",
 			__func__, pipe_id, ctx->stream_id);
 	} else {
 		if (timeout) {
@@ -10179,7 +10179,7 @@ static void mtk_ctx_watchdog(struct timer_list *t)
 			 */
 			if (atomic_read(&watchdog_data->watchdog_dumped)) {
 				dev_dbg(ctx->cam->dev,
-					"%s:ctx/pipe_id(%d/%d):skip watchdog worker ctx:%d (worker is ongoing)\n",
+					"%s:ctx/pipe_id(%d/%d):skip watchdog worker ctx: (worker is ongoing)\n",
 					__func__, ctx->stream_id, i);
 			} else if (watchdog_cnt
 				>= atomic_read(&watchdog_data->watchdog_timeout_cnt)) {

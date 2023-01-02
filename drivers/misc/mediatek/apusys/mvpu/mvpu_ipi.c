@@ -74,7 +74,7 @@ int mvpu_ipi_recv(int type_0, u64 *val)
 			&mvpu_tx_rpm_dev.ack,
 			msecs_to_jiffies(10)) == 0) {
 		mutex_unlock(&mvpu_ipi_mtx);
-		pr_info("timeout\n", __func__);
+		pr_info("%s: timeout\n", __func__);
 		return -1;
 	}
 
@@ -136,7 +136,7 @@ static int mvpu_rpmsg_tx_probe(struct rpmsg_device *rpdev)
 {
 	struct device *dev = &rpdev->dev;
 
-	dev_info(dev, "%s: name=%s, src=%d\n",
+	dev_info(dev, "%s: name=%s, src=%d\n", __func__,
 			rpdev->id.name, rpdev->src);
 
 	mvpu_tx_rpm_dev.ept = rpdev->ept;
@@ -149,7 +149,7 @@ static int mvpu_rpmsg_rx_probe(struct rpmsg_device *rpdev)
 {
 	struct device *dev = &rpdev->dev;
 
-	dev_info(dev, "%s: name=%s, src=%d\n",
+	dev_info(dev, "%s: name=%s, src=%d\n", __func__,
 			rpdev->id.name, rpdev->src);
 
 	mvpu_rx_rpm_dev.ept = rpdev->ept;

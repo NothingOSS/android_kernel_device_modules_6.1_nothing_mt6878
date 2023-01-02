@@ -2334,7 +2334,7 @@ static bool scp_resource_dump_init(struct platform_device *pdev)
 	ret = of_property_read_u32(pdev->dev.of_node, "scp-resource-reg-dump-cell",
 			&scp_resource_dump_info.regs_cell);
 	if (ret) {
-		pr_notice("[SCP] dump regs cell not defined.\n",
+		pr_notice("[SCP] dump regs cell %d not defined.\n",
 				scp_resource_dump_info.regs_cell);
 		return false;
 	}
@@ -2604,13 +2604,13 @@ static int scp_device_probe(struct platform_device *pdev)
 		scp_mbox_info[i].mbdev = &scp_mboxdev;
 		ret = mtk_mbox_probe(pdev, scp_mbox_info[i].mbdev, i);
 		if (ret < 0 || scp_mboxdev.info_table[i].irq_num < 0) {
-			pr_notice("[SCP] mbox%d probe fail\n", i, ret);
+			pr_notice("[SCP] mbox%d probe fail\n", i);
 			continue;
 		}
 
 		ret = enable_irq_wake(scp_mboxdev.info_table[i].irq_num);
 		if (ret < 0) {
-			pr_notice("[SCP]mbox%d enable irq fail\n", i, ret);
+			pr_notice("[SCP]mbox%d enable irq fail\n", i);
 			continue;
 		}
 		mbox_setup_pin_table(i);

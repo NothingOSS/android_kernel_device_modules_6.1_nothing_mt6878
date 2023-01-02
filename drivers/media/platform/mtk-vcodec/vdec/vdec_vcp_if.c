@@ -703,7 +703,7 @@ int vcp_dec_ipi_handler(void *arg)
 				vdec_vcp_ipi_send(inst, msg, sizeof(*msg), 1);
 				break;
 			case VCU_IPIMSG_DEC_GET_FRAME_BUFFER:
-				mtk_vcodec_err(vcu, "GET_FRAME_BUFFER not support", msg->msg_id);
+				mtk_vcodec_err(vcu, "%d GET_FRAME_BUFFER not support", msg->msg_id);
 				break;
 			default:
 				mtk_vcodec_err(vcu, "invalid msg=%X", msg->msg_id);

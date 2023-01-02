@@ -1127,7 +1127,7 @@ static int pe2_full_event(struct chg_alg_device *alg)
 			if (!chg_en || !chg2_enabled) {
 				/* notify eoc , fix me */
 				pe2->state = PE2_HW_READY;
-				pe2_err("charging done:%d %d\n",
+				pe2_err("%s: charging done:%d %d\n",
 					__func__, chg_en, chg2_enabled);
 				if (alg->is_polling_mode == false)
 					ret_value = 1;

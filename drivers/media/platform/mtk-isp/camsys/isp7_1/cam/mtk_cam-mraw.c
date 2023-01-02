@@ -1613,7 +1613,7 @@ int mtk_cam_mraw_cq_disable(struct mtk_mraw_device *dev)
 {
 	int ret = 0;
 
-	writel_relaxed(~CQ_THR0_EN, dev->base + REG_MRAW_CQ_THR0_CTL);
+	writel_relaxed((u32)(~CQ_THR0_EN), dev->base + REG_MRAW_CQ_THR0_CTL);
 	wmb(); /* TBC */
 
 	return ret;

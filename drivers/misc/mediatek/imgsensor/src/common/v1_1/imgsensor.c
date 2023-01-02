@@ -1927,7 +1927,7 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 
 				if (pData == NULL) {
 					kfree(pFeaturePara);
-					PK_DBG("No color data %d\n");
+					PK_DBG("No color data\n");
 					return -ENOMEM;
 				}
 				memset(pData, 0x0,

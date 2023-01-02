@@ -612,7 +612,7 @@ static int mdw_cmd_link_check(struct mdw_cmd *c)
 			c->links[i].consumer_idx > c->num_subcmds ||
 			!c->links[i].x || !c->links[i].y ||
 			!c->links[i].va) {
-			mdw_drv_err("link(%u) invalid(%u/%u)(%u/%u)(0x%llx)\n",
+			mdw_drv_err("link(%u) invalid(%u/%u)(%u/%u)(0x%llx)\n", i,
 				c->links[i].producer_idx,
 				c->links[i].consumer_idx,
 				c->links[i].x,
@@ -634,7 +634,7 @@ static int mdw_cmd_sc_sanity_check(struct mdw_cmd *c)
 			c->subcmds[i].vlm_ctx_id >= MDW_SUBCMD_MAX ||
 			c->subcmds[i].boost > MDW_BOOST_MAX ||
 			c->subcmds[i].pack_id >= MDW_SUBCMD_MAX) {
-			mdw_drv_err("subcmd(%u) invalid (%u/%u/%u/%u)\n",
+			mdw_drv_err("subcmd(%u) invalid (%u/%u/%u)\n",
 				i, c->subcmds[i].type,
 				c->subcmds[i].boost,
 				c->subcmds[i].pack_id);

@@ -699,7 +699,7 @@ static void mt6363_vs1_vote(struct mtk_base_afe *afe)
 		afe_priv->is_adda_ul_on ||
 		afe_priv->is_vow_enable;
 	if (enable == pre_enable) {
-		dev_dbg(afe->dev, "%s() enable == pre_enable\n",
+		dev_dbg(afe->dev, "%s() enable == pre_enable = %d\n",
 			__func__, enable);
 		return;
 	}

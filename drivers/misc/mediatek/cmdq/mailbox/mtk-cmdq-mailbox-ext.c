@@ -1220,9 +1220,9 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 #endif
 
 	if (atomic_read(&cmdq->usage) == -1)
-		cmdq_util_aee("CMDQ", "%s irq:%d cmdq:%pa suspend:%d usage:%d",
+		/*cmdq_util_aee("CMDQ", "%s irq:%d cmdq:%pa suspend:%d usage:%d",
 			__func__, irq, &cmdq->base_pa, cmdq->suspended,
-			atomic_read(&cmdq->usage));
+			atomic_read(&cmdq->usage));*/
 
 	if (atomic_read(&cmdq->usage) <= 0) {
 		for (i = 0; i < ARRAY_SIZE(cmdq->thread); i++)
@@ -2496,8 +2496,8 @@ void cmdq_mbox_enable(void *chan)
 	if (cmdq->suspended) {
 		cmdq_err("hwid:%u usage:%d suspended:%d not enable",
 			cmdq->hwid, usage, cmdq->suspended);
-		cmdq_util_aee("CMDQ", "hwid:%u usage:%d suspended:%d not enable",
-			cmdq->hwid, usage, cmdq->suspended);
+		/*cmdq_util_aee("CMDQ", "hwid:%u usage:%d suspended:%d not enable",
+			cmdq->hwid, usage, cmdq->suspended);*/
 		WARN_ON(1);
 		mutex_unlock(&cmdq->mbox_mutex);
 		return;
@@ -2510,8 +2510,8 @@ void cmdq_mbox_enable(void *chan)
 	if (i == ARRAY_SIZE(cmdq->thread)) {
 		cmdq_err("hwid:%u usage:%d idx:%d wrong chan:%p",
 			cmdq->hwid, usage, i, chan);
-		cmdq_util_aee("CMDQ", "hwid:%u usage:%d idx:%d wrong chan:%p",
-			cmdq->hwid, usage, i, chan);
+		/*cmdq_util_aee("CMDQ", "hwid:%u usage:%d idx:%d wrong chan:%p",
+			cmdq->hwid, usage, i, chan);*/
 		WARN_ON(1);
 		mutex_unlock(&cmdq->mbox_mutex);
 		return;
@@ -2601,8 +2601,8 @@ void cmdq_mbox_disable(void *chan)
 	if (cmdq->suspended) {
 		cmdq_err("hwid:%u usage:%d suspended:%d not enable",
 			cmdq->hwid, usage, cmdq->suspended);
-		cmdq_util_aee("CMDQ", "hwid:%u usage:%d suspended:%d not enable",
-			cmdq->hwid, usage, cmdq->suspended);
+		/*cmdq_util_aee("CMDQ", "hwid:%u usage:%d suspended:%d not enable",
+			cmdq->hwid, usage, cmdq->suspended);*/
 		WARN_ON(1);
 		mutex_unlock(&cmdq->mbox_mutex);
 		return;
@@ -2615,8 +2615,8 @@ void cmdq_mbox_disable(void *chan)
 	if (i == ARRAY_SIZE(cmdq->thread)) {
 		cmdq_err("hwid:%u usage:%d idx:%d wrong chan:%p",
 			cmdq->hwid, usage, i, chan);
-		cmdq_util_aee("CMDQ", "hwid:%u usage:%d idx:%d wrong chan:%p",
-			cmdq->hwid, usage, i, chan);
+		/*cmdq_util_aee("CMDQ", "hwid:%u usage:%d idx:%d wrong chan:%p",
+			cmdq->hwid, usage, i, chan);*/
 		WARN_ON(1);
 		mutex_unlock(&cmdq->mbox_mutex);
 		return;
@@ -2644,8 +2644,8 @@ void cmdq_mbox_disable(void *chan)
 	if (usage <= 0) {
 		cmdq_err("hwid:%u usage:%d cannot below zero",
 			cmdq->hwid, usage);
-		cmdq_util_aee("CMDQ", "hwid:%u usage:%d cannot below zero",
-			cmdq->hwid, usage);
+		/*cmdq_util_aee("CMDQ", "hwid:%u usage:%d cannot below zero",
+			cmdq->hwid, usage);*/
 		WARN_ON(1);
 	} else if (usage == 1) {
 		unsigned long flags;

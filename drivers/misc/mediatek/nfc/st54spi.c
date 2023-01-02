@@ -878,7 +878,7 @@ static int st54spi_open(struct inode *inode, struct file *filp)
 
 	// Authorize only 1 process to open the device.
 	if (st54spi->users > 0) {
-		dev_info(DEV, "%d: already open\n");
+		dev_info(DEV, "already open\n");
 		mutex_unlock(&device_list_lock);
 		return -EBUSY;
 	}

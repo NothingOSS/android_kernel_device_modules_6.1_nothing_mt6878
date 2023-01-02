@@ -1529,7 +1529,7 @@ static int rt9490_enable_chg_type_det(struct charger_device *chgdev, bool en)
 	struct rt9490_chg_data *data = charger_get_data(chgdev);
 	int attach = en ? ATTACH_TYPE_TYPEC : ATTACH_TYPE_NONE;
 
-	dev_info(data->dev, "%s en=d\n", __func__, en);
+	dev_info(data->dev, "%s en=%d\n", __func__, en);
 	mutex_lock(&data->lock);
 	rt9490_chg_attach_pre_process(data, ATTACH_TRIG_TYPEC, attach);
 	mutex_unlock(&data->lock);

@@ -45,7 +45,7 @@ static int mdw_mem_pool_chunk_add(struct mdw_mem_pool *pool, uint32_t size)
 		task_pid_nr(current), task_tgid_nr(current));
 	if (mdw_mem_set_name(m, buf_name)) {
 		mdw_drv_err("s(0x%llx) m(0x%llx) set name fail, size: %d\n",
-			(uint64_t)pool->mpriv, (uint64_t)m);
+			(uint64_t)pool->mpriv, (uint64_t)m, size);
 	}
 
 	ret = mdw_mem_map(pool->mpriv, m);

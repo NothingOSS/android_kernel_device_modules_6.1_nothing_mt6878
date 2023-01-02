@@ -10365,7 +10365,7 @@ static int mt6338_mtkaif_stress_get(struct snd_kcontrol *kcontrol,
 	dev_info(priv->dev, "%s(), MT6338_AFE_ADDA_UL_SRC_CON0_0 = 0x%x\n",
 		 __func__, value);
 	regmap_read(priv->regmap, MT6338_AFE_ADDA6_UL_SRC_CON0_0, &value);
-	dev_info(priv->dev, "%(), MT6338_AFE_ADDA6_UL_SRC_CON0_0 = 0x%x\n",
+	dev_info(priv->dev, "%s(), MT6338_AFE_ADDA6_UL_SRC_CON0_0 = 0x%x\n",
 		 __func__, value);
 
 	return 0;

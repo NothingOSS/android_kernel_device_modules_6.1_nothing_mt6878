@@ -1358,7 +1358,7 @@ int mtk_vdec_put_fb(struct mtk_vcodec_ctx *ctx, enum mtk_put_buffer_type type, b
 	mtk_v4l2_debug(1, "type = %d", type);
 
 	if (ctx->state < MTK_STATE_HEADER) {
-		mtk_v4l2_err("type = %d state %d no valid", type);
+		mtk_v4l2_err("type = %d state %d no valid", type, ctx->state);
 		return -1;
 	}
 
@@ -2004,7 +2004,7 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 			if (ctx->dev->vdec_dvfs_params.target_freq < VDEC_HIGHEST_FREQ)
 				mtk_vcodec_dec_pw_on(&ctx->dev->pm);
 			if (vdec_if_set_param(ctx, SET_PARAM_MMDVFS, vcp_dvfs_data) != 0) // any ctx
-				mtk_v4l2_err("[VDVFS][%d] alive ipi timeout", __func__, ctx->id);
+				mtk_v4l2_err("%s: [VDVFS][%d] alive ipi timeout", __func__, ctx->id);
 			mtk_vdec_dvfs_sync_vsi_data(ctx);
 			if (ctx->dev->vdec_dvfs_params.target_freq < VDEC_HIGHEST_FREQ)
 				mtk_vcodec_dec_pw_off(&ctx->dev->pm);
@@ -3461,7 +3461,7 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 
 		src_vb2_v4l2 = v4l2_m2m_src_buf_remove(ctx->m2m_ctx);
 		if (!src_vb2_v4l2) {
-			mtk_v4l2_err("[%d]Error!!src_buf is NULL!");
+			mtk_v4l2_err("[%d]Error!!src_buf is NULL!", ctx->id);
 			return;
 		}
 		src_buf = &src_vb2_v4l2->vb2_buf;

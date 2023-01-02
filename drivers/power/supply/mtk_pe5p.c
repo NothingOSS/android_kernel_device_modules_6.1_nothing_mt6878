@@ -3676,7 +3676,7 @@ static int pe5p_init_algo(struct chg_alg_device *alg)
 	}
 	if (pe5p_hal_init_hardware(info->alg, desc->support_ta,
 				   desc->support_ta_cnt)) {
-		PE5P_ERR("init hw fail\n", __func__);
+		PE5P_ERR("%s: init hw fail\n", __func__);
 		goto out;
 	}
 	data->inited = true;

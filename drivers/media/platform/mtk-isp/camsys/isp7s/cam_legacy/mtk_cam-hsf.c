@@ -299,7 +299,7 @@ void ccu_hsf_config(struct mtk_cam_ctx *ctx, unsigned int En)
 	if (ret != 0)
 		pr_info("error: %s fail%d\n", __func__, pData.tg_idx);
 	else
-		pr_info("%s success\n", __func__, pData.tg_idx);
+		pr_info("%s success%d\n", __func__, pData.tg_idx);
 }
 
 
