@@ -177,7 +177,7 @@ static int apu_hw_sema_ctl(struct device *dev, uint32_t sema_offset,
  * APU_PCU_SEMA_READ
  * [15:00]      SEMA_KEY_SET    Each bit corresponds to different user.
  */
-uint32_t apu_boot_host(void)
+static uint32_t plat_apu_boot_host(void)
 {
 	uint32_t host = 0;
 	uint32_t sema_offset = APU_HW_SEMA_PWR_CTL;
@@ -195,7 +195,6 @@ uint32_t apu_boot_host(void)
 	else
 		return SYS_MAX;
 }
-EXPORT_SYMBOL(apu_boot_host);
 
 static void aputop_dump_pwr_reg(struct device *dev)
 {
@@ -478,6 +477,8 @@ static int mt6985_apu_top_func(struct platform_device *pdev,
 	case APUTOP_FUNC_ARE_DUMP2:
 		//TODO
 		break;
+	case APUTOP_FUNC_BOOT_HOST:
+		return plat_apu_boot_host();
 	default:
 		pr_info("%s invalid func_id : %d\n", __func__, aputop->func_id);
 		return -EINVAL;
