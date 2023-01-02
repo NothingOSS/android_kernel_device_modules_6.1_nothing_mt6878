@@ -539,9 +539,9 @@ static void __apu_rpclite_init(enum t_acx_id acx_idx)
 
 	pr_info("%s %d ++\n", __func__, __LINE__);
 
-	rpc_lite_base[0] = apu_acx0_rpc_lite;
-	rpc_lite_base[1] = apu_acx1_rpc_lite;
-	rpc_lite_base[2] = apu_ncx_rpc_lite;
+	rpc_lite_base[ACX0] = apu_acx0_rpc_lite;
+	rpc_lite_base[ACX1] = apu_acx1_rpc_lite;
+	rpc_lite_base[NCX] = apu_ncx_rpc_lite;
 
 	for (ofs_idx = 0 ; ((ofs_idx < ofs_arr_size) && (acx_idx != NCX)); ofs_idx++) {
 		// Memory setting
@@ -563,9 +563,10 @@ static void __apu_rpclite_init_all(void)
 
 	pr_info("%s %d ++\n", __func__, __LINE__);
 
-	rpc_lite_base[0] = apu_acx0_rpc_lite;
-	rpc_lite_base[1] = apu_acx1_rpc_lite;
-	rpc_lite_base[3] = apu_ncx_rpc_lite;
+	rpc_lite_base[ACX0] = apu_acx0_rpc_lite;
+	rpc_lite_base[ACX1] = apu_acx1_rpc_lite;
+	rpc_lite_base[NCX] = apu_ncx_rpc_lite;
+
 	for (acx_idx = 0 ; acx_idx < CLUSTER_NUM ; acx_idx++) {
 		for (ofs_idx = 0 ; ((ofs_idx < ofs_arr_size) && (acx_idx != NCX)); ofs_idx++) {
 			// Memory setting
