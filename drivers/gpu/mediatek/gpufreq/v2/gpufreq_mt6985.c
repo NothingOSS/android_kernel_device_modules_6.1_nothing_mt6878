@@ -26,6 +26,7 @@
 #include <linux/printk.h>
 #include <linux/pm_runtime.h>
 #include <linux/pm_domain.h>
+#include <linux/timekeeping.h>
 
 #include <gpufreq_v2.h>
 #include <gpuppm.h>
@@ -66,6 +67,8 @@ static void __iomem *__gpufreq_of_ioremap(const char *node_name, int idx);
 static int __gpufreq_pause_dvfs(void);
 static void __gpufreq_resume_dvfs(void);
 static void __gpufreq_apply_restore_margin(enum gpufreq_target target, unsigned int mode);
+static void __gpufreq_update_shared_status_opp_table(void);
+static void __gpufreq_update_shared_status_adj_table(void);
 /* dvfs function */
 static void __gpufreq_dvfs_sel_config(enum gpufreq_opp_direct direct, unsigned int volt);
 static void __gpufreq_get_park_volt(enum gpufreq_opp_direct direct,
@@ -206,6 +209,7 @@ static unsigned int g_gpufreq_ready;
 static unsigned int g_stack_sel_reg;
 static unsigned int g_del_sel_reg;
 static enum gpufreq_dvfs_state g_dvfs_state;
+static struct gpufreq_shared_status *g_shared_status;
 static DEFINE_MUTEX(gpufreq_lock);
 
 static struct gpufreq_platform_fp platform_ap_fp = {
@@ -257,6 +261,8 @@ static struct gpufreq_platform_fp platform_ap_fp = {
 	.get_core_num = __gpufreq_get_core_num,
 	.pdca_config = __gpufreq_pdca_config,
 	.fake_mtcmos_control = __gpufreq_fake_mtcmos_control,
+	.update_debug_opp_info = __gpufreq_update_debug_opp_info,
+	.set_shared_status = __gpufreq_set_shared_status,
 };
 
 static struct gpufreq_platform_fp platform_eb_fp = {
@@ -440,6 +446,34 @@ const struct gpufreq_opp_info *__gpufreq_get_signed_table_gpu(void)
 const struct gpufreq_opp_info *__gpufreq_get_signed_table_stack(void)
 {
 	return g_stack.signed_table;
+}
+
+/* API: update debug info to shared memory */
+void __gpufreq_update_debug_opp_info(void)
+{
+	mutex_lock(&gpufreq_lock);
+
+	/* update current status to shared memory */
+	if (__gpufreq_get_power_state()) {
+		g_shared_status->cur_con1_fgpu = __gpufreq_get_real_fgpu();
+		g_shared_status->cur_con1_fstack = __gpufreq_get_real_fstack();
+		g_shared_status->cur_fmeter_fgpu = __gpufreq_get_fmeter_freq(TARGET_GPU);
+		g_shared_status->cur_fmeter_fstack = __gpufreq_get_fmeter_freq(TARGET_STACK);
+		g_shared_status->cur_regulator_vgpu = __gpufreq_get_real_vgpu();
+		g_shared_status->cur_regulator_vstack = __gpufreq_get_real_vstack();
+		g_shared_status->cur_regulator_vsram_gpu = __gpufreq_get_real_vsram();
+		g_shared_status->cur_regulator_vsram_stack = __gpufreq_get_real_vsram();
+	} else {
+		g_shared_status->cur_con1_fgpu = 0;
+		g_shared_status->cur_con1_fstack = 0;
+		g_shared_status->cur_fmeter_fgpu = 0;
+		g_shared_status->cur_fmeter_fstack = 0;
+		g_shared_status->cur_regulator_vgpu = 0;
+		g_shared_status->cur_regulator_vstack = 0;
+		g_shared_status->cur_regulator_vsram_stack = 0;
+	}
+
+	mutex_unlock(&gpufreq_lock);
 }
 
 /* API: get Freq of GPU via OPP index */
@@ -636,6 +670,7 @@ unsigned int __gpufreq_get_dyn_pstack(unsigned int freq, unsigned int volt)
 int __gpufreq_power_control(enum gpufreq_power_state power)
 {
 	int ret = 0;
+	u64 power_time = 0;
 
 	GPUFREQ_TRACE_START("power=%d", power);
 
@@ -760,6 +795,17 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 
 	/* return power count if successfully control power */
 	ret = g_stack.power_count;
+	/* record time of successful power control */
+	power_time = ktime_get_ns();
+
+	/* update current status to shared memory */
+	g_shared_status->dvfs_state = g_dvfs_state;
+	g_shared_status->power_count = g_stack.power_count;
+	g_shared_status->buck_count = g_stack.buck_count;
+	g_shared_status->mtcmos_count = g_stack.mtcmos_count;
+	g_shared_status->cg_count = g_stack.cg_count;
+	g_shared_status->power_time_h = (power_time >> 32) & GENMASK(31, 0);
+	g_shared_status->power_time_l = power_time & GENMASK(31, 0);
 
 done_unlock:
 	GPUFREQ_LOGD("- PWR_STATUS: 0x%08x", MFG_0_19_PWR_STATUS);
@@ -841,8 +887,19 @@ int __gpufreq_generic_commit_stack(int target_oppidx, enum gpufreq_dvfs_state ke
 
 	g_gpu.cur_oppidx = target_oppidx;
 	g_stack.cur_oppidx = target_oppidx;
-
 	__gpufreq_footprint_oppidx(target_oppidx);
+
+	/* update current status to shared memory */
+	g_shared_status->cur_oppidx_gpu = g_gpu.cur_oppidx;
+	g_shared_status->cur_fgpu = g_gpu.cur_freq;
+	g_shared_status->cur_vgpu = g_gpu.cur_volt;
+	g_shared_status->cur_vsram_gpu = g_gpu.cur_vsram;
+	g_shared_status->cur_power_gpu = g_gpu.working_table[g_gpu.cur_oppidx].power;
+	g_shared_status->cur_oppidx_stack = g_stack.cur_oppidx;
+	g_shared_status->cur_fstack = g_stack.cur_freq;
+	g_shared_status->cur_vstack = g_stack.cur_volt;
+	g_shared_status->cur_vsram_stack = g_stack.cur_vsram;
+	g_shared_status->cur_power_stack = g_stack.working_table[g_stack.cur_oppidx].power;
 
 done_unlock:
 	mutex_unlock(&gpufreq_lock);
@@ -1126,6 +1183,9 @@ void __gpufreq_set_margin_mode(unsigned int mode)
 
 	/* update DVFS constraint */
 	__gpufreq_update_springboard();
+
+	/* update current status to shared memory */
+	__gpufreq_update_shared_status_opp_table();
 }
 
 /* API: enable/disable GPM 1.0 */
@@ -1133,6 +1193,9 @@ void __gpufreq_set_gpm_mode(unsigned int version, unsigned int mode)
 {
 	if (version == 1)
 		g_gpm1_enable = mode;
+
+	/* update current status to shared memory */
+	g_shared_status->gpm1_enable = g_gpm1_enable;
 }
 
 /* API: get core_mask table */
@@ -1332,11 +1395,109 @@ void __gpufreq_fake_mtcmos_control(enum gpufreq_power_state power)
 #endif /* GPUFREQ_PDCA_ENABLE */
 }
 
+/* API: init first time shared status */
+void __gpufreq_set_shared_status(struct gpufreq_shared_status *shared_status)
+{
+	mutex_lock(&gpufreq_lock);
+
+	if (shared_status)
+		g_shared_status = shared_status;
+	else
+		__gpufreq_abort("null gpufreq shared status: 0x%llx", shared_status);
+
+	/* update current status to shared memory */
+	g_shared_status->cur_oppidx_gpu = g_gpu.cur_oppidx;
+	g_shared_status->opp_num_gpu = g_gpu.opp_num;
+	g_shared_status->signed_opp_num_gpu = g_gpu.signed_opp_num;
+	g_shared_status->cur_fgpu = g_gpu.cur_freq;
+	g_shared_status->cur_vgpu = g_gpu.cur_volt;
+	g_shared_status->cur_vsram_gpu = g_gpu.cur_vsram;
+	g_shared_status->cur_power_gpu = g_gpu.working_table[g_gpu.cur_oppidx].power;
+	g_shared_status->max_power_gpu = g_gpu.working_table[g_gpu.max_oppidx].power;
+	g_shared_status->min_power_gpu = g_gpu.working_table[g_gpu.min_oppidx].power;
+	g_shared_status->cur_oppidx_stack = g_stack.cur_oppidx;
+	g_shared_status->opp_num_stack = g_stack.opp_num;
+	g_shared_status->signed_opp_num_stack = g_stack.signed_opp_num;
+	g_shared_status->cur_fstack = g_stack.cur_freq;
+	g_shared_status->cur_vstack = g_stack.cur_volt;
+	g_shared_status->cur_vsram_stack = g_stack.cur_vsram;
+	g_shared_status->cur_power_stack = g_stack.working_table[g_stack.cur_oppidx].power;
+	g_shared_status->max_power_stack = g_stack.working_table[g_stack.max_oppidx].power;
+	g_shared_status->min_power_stack = g_stack.working_table[g_stack.min_oppidx].power;
+	g_shared_status->power_count = g_stack.power_count;
+	g_shared_status->buck_count = g_stack.buck_count;
+	g_shared_status->mtcmos_count = g_stack.mtcmos_count;
+	g_shared_status->cg_count = g_stack.cg_count;
+	g_shared_status->power_control = __gpufreq_power_ctrl_enable();
+	g_shared_status->dvfs_state = g_dvfs_state;
+	g_shared_status->shader_present = g_shader_present;
+	g_shared_status->asensor_enable = g_asensor_enable;
+	g_shared_status->aging_load = g_aging_load;
+	g_shared_status->aging_margin = g_aging_margin;
+	g_shared_status->avs_enable = g_avs_enable;
+	g_shared_status->avs_margin = g_avs_margin;
+	g_shared_status->ptp_version = g_ptp_version;
+	g_shared_status->gpm1_enable = g_gpm1_enable;
+	g_shared_status->gpm3_enable = g_gpm3_enable;
+	g_shared_status->dual_buck = true;
+	g_shared_status->segment_id = g_stack.segment_id;
+#if GPUFREQ_ASENSOR_ENABLE
+	g_shared_status->asensor_info = g_asensor_info;
+#endif /* GPUFREQ_ASENSOR_ENABLE */
+	__gpufreq_update_shared_status_opp_table();
+	__gpufreq_update_shared_status_adj_table();
+
+	mutex_unlock(&gpufreq_lock);
+}
+
 /**
  * ===============================================
  * Internal Function Definition
  * ===============================================
  */
+static void __gpufreq_update_shared_status_opp_table(void)
+{
+	unsigned int copy_size = 0;
+
+	/* GPU */
+	/* working table */
+	copy_size = sizeof(struct gpufreq_opp_info) * g_gpu.opp_num;
+	memcpy(g_shared_status->working_table_gpu, g_gpu.working_table, copy_size);
+	/* signed table */
+	copy_size = sizeof(struct gpufreq_opp_info) * g_gpu.signed_opp_num;
+	memcpy(g_shared_status->signed_table_gpu, g_gpu.signed_table, copy_size);
+
+	/* STACK */
+	/* working table */
+	copy_size = sizeof(struct gpufreq_opp_info) * g_stack.opp_num;
+	memcpy(g_shared_status->working_table_stack, g_stack.working_table, copy_size);
+	/* signed table */
+	copy_size = sizeof(struct gpufreq_opp_info) * g_stack.signed_opp_num;
+	memcpy(g_shared_status->signed_table_stack, g_stack.signed_table, copy_size);
+}
+
+static void __gpufreq_update_shared_status_adj_table(void)
+{
+	unsigned int copy_size = 0;
+
+	/* GPU */
+	/* aging table */
+	copy_size = sizeof(struct gpufreq_adj_info) * NUM_GPU_SIGNED_IDX;
+	memcpy(g_shared_status->aging_table_gpu, g_gpu_aging_table[g_aging_table_idx], copy_size);
+	/* avs table */
+	copy_size = sizeof(struct gpufreq_adj_info) * NUM_GPU_SIGNED_IDX;
+	memcpy(g_shared_status->avs_table_gpu, g_gpu_avs_table, copy_size);
+
+	/* STACK */
+	/* aging table */
+	copy_size = sizeof(struct gpufreq_adj_info) * NUM_STACK_SIGNED_IDX;
+	memcpy(g_shared_status->aging_table_stack,
+		g_stack_aging_table[g_aging_table_idx], copy_size);
+	/* avs table */
+	copy_size = sizeof(struct gpufreq_adj_info) * NUM_STACK_SIGNED_IDX;
+	memcpy(g_shared_status->avs_table_stack, g_stack_avs_table, copy_size);
+}
+
 static unsigned int __gpufreq_custom_init_enable(void)
 {
 	return GPUFREQ_CUST_INIT_ENABLE;
@@ -1356,6 +1517,9 @@ static void __gpufreq_set_dvfs_state(unsigned int set, unsigned int state)
 		g_dvfs_state |= state;
 	else
 		g_dvfs_state &= ~state;
+
+	/* update current status to shared memory */
+	g_shared_status->dvfs_state = g_dvfs_state;
 
 	mutex_unlock(&gpufreq_lock);
 }
@@ -1401,7 +1565,7 @@ static void __gpufreq_update_springboard(void)
 	g_springboard[constraint_num - 1].vstack_down = VSTACK_MIN_VOLT;
 
 	for (i = 0; i < constraint_num; i++)
-		GPUFREQ_LOGD(
+		GPUFREQ_LOGI(
 			"[%02d] Vgpu: %6d (Up: %6d, Down: %6d), Vstack: %6d (Up: %6d, Down: %6d)",
 			g_springboard[i].oppidx, g_springboard[i].vgpu,
 			g_springboard[i].vgpu_up, g_springboard[i].vgpu_down,
@@ -1678,8 +1842,19 @@ static int __gpufreq_custom_commit_stack(unsigned int target_freq,
 
 	g_gpu.cur_oppidx = target_oppidx;
 	g_stack.cur_oppidx = target_oppidx;
-
 	__gpufreq_footprint_oppidx(target_oppidx);
+
+	/* update current status to shared memory */
+	g_shared_status->cur_oppidx_gpu = g_gpu.cur_oppidx;
+	g_shared_status->cur_fgpu = g_gpu.cur_freq;
+	g_shared_status->cur_vgpu = g_gpu.cur_volt;
+	g_shared_status->cur_vsram_gpu = g_gpu.cur_vsram;
+	g_shared_status->cur_power_gpu = g_gpu.working_table[g_gpu.cur_oppidx].power;
+	g_shared_status->cur_oppidx_stack = g_stack.cur_oppidx;
+	g_shared_status->cur_fstack = g_stack.cur_freq;
+	g_shared_status->cur_vstack = g_stack.cur_volt;
+	g_shared_status->cur_vsram_stack = g_stack.cur_vsram;
+	g_shared_status->cur_power_stack = g_stack.working_table[g_stack.cur_oppidx].power;
 
 done_unlock:
 	mutex_unlock(&gpufreq_lock);
@@ -3182,6 +3357,14 @@ static void __gpufreq_measure_power(void)
 		GPUFREQ_LOGD("STACK[%02d] power: %d (dynamic: %d, leakage: %d)",
 			i, p_total, p_dynamic, p_leakage);
 	}
+
+	/* update current status to shared memory */
+	g_shared_status->cur_power_gpu = working_gpu[g_gpu.cur_oppidx].power;
+	g_shared_status->max_power_gpu = working_gpu[g_gpu.max_oppidx].power;
+	g_shared_status->min_power_gpu = working_gpu[g_gpu.min_oppidx].power;
+	g_shared_status->cur_power_stack = working_stack[g_stack.cur_oppidx].power;
+	g_shared_status->max_power_stack = working_stack[g_stack.max_oppidx].power;
+	g_shared_status->min_power_stack = working_stack[g_stack.min_oppidx].power;
 }
 
 #if GPUFREQ_ASENSOR_ENABLE
