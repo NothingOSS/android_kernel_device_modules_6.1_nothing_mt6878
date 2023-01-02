@@ -18,7 +18,7 @@
 #include <linux/mm.h>
 #include <linux/slab.h>
 #include <linux/kthread.h>
-#include <trace/hooks/logbuf.h>
+//#include <trace/hooks/logbuf.h>
 #include <printk/printk_ringbuffer.h>
 
 #include "aee.h"
