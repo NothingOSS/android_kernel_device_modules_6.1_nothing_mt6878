@@ -1207,7 +1207,6 @@
 
 	tboard_thermistor1: thermal-ntc1 {
 		compatible = "mediatek,mt6685-tia-ntc";
-		status = "disabled";
 		#thermal-sensor-cells = <0>;
 		reg = <0 0x1c805554 0 0x4>; /* TIA DATA T0 */
 		temperature-lookup-table = <
@@ -1381,7 +1380,6 @@
 
 	tboard_thermistor2: thermal-ntc2 {
 		compatible = "mediatek,mt6685-tia-ntc";
-		status = "disabled";
 		#thermal-sensor-cells = <0>;
 		reg = <0 0x1c805558 0 0x4>; /* TIA DATA T1 */
 		temperature-lookup-table = <
@@ -1555,7 +1553,6 @@
 
 	tboard_thermistor3: thermal-ntc3 {
 		compatible = "mediatek,mt6685-tia-ntc";
-		status = "disabled";
 		#thermal-sensor-cells = <0>;
 		reg = <0 0x1c80555c 0 0x4>; /* TIA DATA T2 */
 		temperature-lookup-table = <
@@ -1729,7 +1726,6 @@
 
 	tboard_thermistor4: thermal-ntc4 {
 		compatible = "generic-adc-thermal";
-		status = "disabled";
 		#thermal-sensor-cells = <0>;
 		io-channels = <&pmic_adc (ADC_PURES_OPEN_MASK | AUXADC_VIN2)>;
 		io-channel-names = "sensor-channel";
@@ -1904,7 +1900,6 @@
 
 	tboard_thermistor5: thermal-ntc5 {
 		compatible = "generic-adc-thermal";
-		status = "disabled";
 		#thermal-sensor-cells = <0>;
 		io-channels = <&pmic_adc (ADC_PURES_OPEN_MASK | AUXADC_VIN3)>;
 		io-channel-names = "sensor-channel";
