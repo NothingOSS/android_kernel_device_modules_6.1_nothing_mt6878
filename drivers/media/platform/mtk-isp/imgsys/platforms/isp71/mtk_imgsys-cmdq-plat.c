@@ -1053,12 +1053,6 @@ int imgsys_cmdq_sendtask_plat71(struct mtk_imgsys_dev *imgsys_dev,
 					__func__, (unsigned long)pkt, blk_idx, frm_idx, frm_num);
 				/* Reset pkt timestamp num */
 				pkt_ts_num = 0;
-
-				/* Assign task priority according to is_time_shared */
-				if (frm_info->user_info[frm_idx].is_time_shared)
-					pkt->priority = IMGSYS_PRI_LOW;
-				else
-					pkt->priority = IMGSYS_PRI_HIGH;
 			}
 
 			IMGSYS_CMDQ_SYSTRACE_BEGIN(
