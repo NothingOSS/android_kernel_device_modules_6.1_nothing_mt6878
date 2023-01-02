@@ -11,5 +11,9 @@
 		regulator-min-microvolt = <2025000>;
 		regulator-max-microvolt = <5200000>;
 		regulator-always-on;
+
+		dbg {
+			compatible = "richtek,rt6160-dbg";
+		};
 	};
 };
