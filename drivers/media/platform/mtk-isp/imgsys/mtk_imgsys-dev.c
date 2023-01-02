@@ -9,6 +9,7 @@
 #include <linux/dma-buf.h>
 #include <linux/dma-direction.h>
 #include <linux/dma-mapping.h>
+#include <linux/hashtable.h>
 #include <linux/platform_device.h>
 #include <media/videobuf2-dma-contig.h>
 #include <media/v4l2-event.h>

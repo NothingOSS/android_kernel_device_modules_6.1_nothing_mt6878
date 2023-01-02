@@ -7,6 +7,7 @@
  *
  */
 
+#include <linux/hashtable.h>
 #include <linux/device.h>
 #include <linux/dma-iommu.h>
 #include <linux/freezer.h>
