@@ -67,7 +67,7 @@ struct srclken_rc_sta {
 struct plat_rcdata {
 	struct srclken_rc_cfg *cfg;
 	struct srclken_rc_sta *sta;
-	/*rc hw type could change to be rc or cfg*/
+	/*rc hw type could change to be sta or cfg*/
 	struct clkbuf_hw hw;
 	spinlock_t *lock;
 };

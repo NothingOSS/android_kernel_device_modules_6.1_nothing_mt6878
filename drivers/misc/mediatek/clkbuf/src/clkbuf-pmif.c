@@ -221,9 +221,17 @@ DUMP_FAIL:
 	return len;
 }
 
+void __spmi_dump_pmif_record(void)
+{
+	spmi_dump_pmif_record_reg();
+}
+
 static struct clkbuf_operation clkbuf_ops_v1 = {
 	.dump_pmif_status = __dump_pmif_status,
 	.set_pmif_inf = __set_pmif_inf,
+#ifdef LOG_6985_SPMI_CMD
+	.spmi_dump_pmif_record = __spmi_dump_pmif_record,
+#endif
 };
 
 static struct clkbuf_hdlr pmif_hdlr_v2 = {

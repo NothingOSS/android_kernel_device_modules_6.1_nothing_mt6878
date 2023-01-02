@@ -69,7 +69,6 @@ static const char *const rc_api_cmd[] = {
 	[RC_NONE_REQ] = "RC_NONE_REQ",
 	[RC_FPM_REQ] = "RC_FPM_REQ",
 	[RC_LPM_REQ] = "RC_LPM_REQ",
-	[RC_BBLPM_REQ] = "RC_BBLPM_REQ",
 };
 
 /* API usage example */
@@ -256,7 +255,7 @@ static int dump_all(struct device *dev)
 	struct clkbuf_hw hw;
 	struct plat_xodata *xopd;
 	struct plat_rcdata *rcpd;
-	int pmic_dump = WAIT_TO_DUMP, rc_dump = WAIT_TO_DUMP;
+	int pmic_dump = WAIT_TO_DUMP, rc_dump = WAIT_TO_DUMP, pmif_dump = WAIT_TO_DUMP;
 	int nums, i, ret = 0;
 	u32 out = 0;
 
@@ -271,7 +270,7 @@ static int dump_all(struct device *dev)
 
 		switch (hw.hw_type) {
 		case PMIC:
-			if (pmic_dump | !(hdlr->ops->get_pmrcen))
+			if ((pmic_dump == DUMP_DONE) | !(hdlr->ops->get_pmrcen))
 				break;
 			xopd = (struct plat_xodata *)hdlr->data;
 			ret = hdlr->ops->get_pmrcen(xopd, &out);
@@ -282,11 +281,17 @@ static int dump_all(struct device *dev)
 			break;
 		case SRCLKEN_STA:
 		case SRCLKEN_CFG:
-			if (rc_dump | !(hdlr->ops->dump_srclken_trace))
+			if ((rc_dump == DUMP_DONE) | !(hdlr->ops->dump_srclken_trace))
 				break;
 			rcpd = (struct plat_rcdata *)hdlr->data;
 			hdlr->ops->dump_srclken_trace(rcpd, 2, 0, NULL);
 			rc_dump = DUMP_DONE;
+			break;
+		case PMIF_M:
+			if ((pmif_dump == DUMP_DONE) | !(hdlr->ops->spmi_dump_pmif_record))
+				break;
+			hdlr->ops->spmi_dump_pmif_record();
+			pmif_dump = DUMP_DONE;
 			break;
 		default:
 			break;
@@ -295,14 +300,21 @@ static int dump_all(struct device *dev)
 	return 0;
 }
 
-static int clk_buf_dev_pm(struct device *dev)
+static int clk_buf_dev_pm_suspend(struct device *dev)
 {
+	CLKBUF_DBG("-suspend\n");
+	return dump_all(dev);
+}
+
+static int clk_buf_dev_pm_resume(struct device *dev)
+{
+	CLKBUF_DBG("-resume\n");
 	return dump_all(dev);
 }
 
 const struct dev_pm_ops clk_buf_suspend_ops = {
-	.suspend_noirq = clk_buf_dev_pm,
-	.resume_noirq = clk_buf_dev_pm,
+	.suspend_noirq = clk_buf_dev_pm_suspend,
+	.resume_noirq = clk_buf_dev_pm_resume,
 };
 
 static struct platform_driver clkbuf_driver = {

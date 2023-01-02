@@ -30,6 +30,7 @@ struct clkbuf_operation {
 	/*pmif call back functions*/
 	ssize_t (*dump_pmif_status)(void *data, char *buf);
 	int (*set_pmif_inf)(void *data, int cmd, int pmif_id, int onoff);
+	void (*spmi_dump_pmif_record)(void);
 };
 
 struct clkbuf_hdlr {
