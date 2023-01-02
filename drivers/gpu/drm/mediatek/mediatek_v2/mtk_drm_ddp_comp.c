@@ -30,7 +30,7 @@
 #include "mtk_drm_mmp.h"
 #include "mtk_dump.h"
 
-#define MTK_SMI_CLK_CTRL
+//#define MTK_SMI_CLK_CTRL
 #ifdef MTK_SMI_CLK_CTRL
 #include <soc/mediatek/smi.h>
 #endif
@@ -839,6 +839,8 @@ static void mtk_ddp_comp_set_larb(struct device *dev, struct device_node *node,
 		if (!comp->larb_dev)
 			return;
 
+		device_link_add(dev, comp->larb_dev, DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
+
 		ret = of_property_read_u32(node, "mediatek,smi-id", &larb_id);
 		if (ret) {
 			dev_err(comp->larb_dev, "read smi-id failed:%d\n", ret);
@@ -886,6 +888,9 @@ static void mtk_ddp_comp_set_larb(struct device *dev, struct device_node *node,
 		of_node_put(larb_args.np);
 
 		larb_devs[i] = &larb_pdev->dev;
+
+		device_link_add(dev, larb_devs[i], DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
+
 		/* MTK_M4U_TO_LARB(M4U_PORT_L21_DISP_OVL0_2L_RDMA1) = 21 */
 		larb_ids[i] = MTK_M4U_TO_LARB(larb_args.args[0]);
 		larb_cons[i] =
@@ -1153,7 +1158,9 @@ void mtk_ddp_comp_pm_disable(struct mtk_ddp_comp *comp)
 static void mtk_ddp_comp_larb_get(struct mtk_ddp_comp *comp,
 	struct device *larb_dev)
 {
+#ifdef MTK_SMI_CLK_CTRL
 	int ret = -1;
+#endif
 
 	if (!larb_dev)
 		return;
@@ -1164,7 +1171,7 @@ static void mtk_ddp_comp_larb_get(struct mtk_ddp_comp *comp,
 	if (ret)
 		DDPPR_ERR("mtk_smi_larb_get failed:%d\n", ret);
 #else
-	pm_runtime_get_sync(comp->dev);
+	pm_runtime_resume_and_get(comp->dev);
 #endif
 }
 
