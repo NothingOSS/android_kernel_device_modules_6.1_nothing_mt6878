@@ -36,7 +36,7 @@
 #include <uapi/linux/sched/types.h>
 #include <linux/highmem.h>
 #include <asm/cacheflush.h>
-#include <linux/android_debug_symbols.h>
+//#include <linux/android_debug_symbols.h>
 #include <linux/debugfs.h>
 
 #include <mt-plat/aee.h>
@@ -885,8 +885,8 @@ void show_thread_info(struct task_struct *p, bool dump_bt)
 		p->tgid);
 
 #if IS_ENABLED(CONFIG_SMP)
-	log_hang_info("%d ", p->cpu);
-	hang_log("%d ", p->cpu);
+	log_hang_info("%d ", task_thread_info(p)->cpu);
+	hang_log("%d ", task_thread_info(p)->cpu);
 #endif
 	log_hang_info("%d ", p->rt_priority ? p->rt_priority : p->normal_prio);
 	hang_log("%d ", p->rt_priority ? p->rt_priority : p->normal_prio);

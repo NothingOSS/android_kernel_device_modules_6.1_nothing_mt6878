@@ -25,7 +25,7 @@
 #include <linux/version.h>
 #include <linux/printk.h>
 #include <linux/init.h>
-#include <linux/android_debug_symbols.h>
+//#include <linux/android_debug_symbols.h>
 
 #define CREATE_TRACE_POINTS
 #include "trace_mmstat.h"
@@ -497,7 +497,7 @@ static int __init trace_mmstat_init(void)
 	INIT_DELAYED_WORK(&mmstat_work, mmstat_work_handler);
 	queue_delayed_work(system_unbound_wq, &mmstat_work, timer_intval);
 
-	mmstat_available_swap_pages = android_debug_symbol(ADS_NR_SWAP_PAGES);
+	//mmstat_available_swap_pages = android_debug_symbol(ADS_NR_SWAP_PAGES);
 	if (IS_ERR(mmstat_available_swap_pages))
 		pr_info("%s: failed to initialize mmstat_available_swap_pages\n", __func__);
 

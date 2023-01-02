@@ -4,7 +4,7 @@
  */
 
 #include <linux/cpumask.h>
-#include <linux/android_debug_symbols.h>
+//#include <linux/android_debug_symbols.h>
 #include "mkp_api.h"
 #include "debug.h"
 
@@ -37,7 +37,7 @@ static int start_protect(void)
 		return -EINVAL;
 
 	/* Try to get __per_cpu_start */
-	p__per_cpu_start = android_debug_symbol(ADS_PER_CPU_START);
+	//p__per_cpu_start = android_debug_symbol(ADS_PER_CPU_START);
 	if (IS_ERR(p__per_cpu_start))
 		return -EFAULT;
 
