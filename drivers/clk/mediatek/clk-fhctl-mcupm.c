@@ -190,7 +190,7 @@ static int mcupm_hopping_v1(void *priv_data, char *domain_name, int fh_id,
 		dump_hw(regs, data);
 
 		/* tr/time via HW */
-		FHDBG("time_ns<%lx>\n", time_ns);
+		FHDBG("time_ns<%llx>\n", time_ns);
 		if (d->reg_tr) {
 			val = readl(d->reg_tr);
 			FHDBG("reg_tr<%x>\n", val);
@@ -303,8 +303,8 @@ static int mcupm_init_v1(struct pll_dts *array, struct match *match)
 	struct hdlr_data_v1 *priv_data, *match_data;
 	struct fh_hdlr *hdlr;
 
-	FHDBG("array<%x>, %s\n",
-			array,
+	FHDBG("array<%lx>, %s\n",
+			(unsigned long)array,
 			array->pll_name);
 
 	if (!ipi_inited) {
