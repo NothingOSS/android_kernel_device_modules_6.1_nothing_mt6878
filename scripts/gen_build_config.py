@@ -136,7 +136,7 @@ def main(**args):
     ext_modules_list = 'EXT_MODULES_TMP=\"%s %s\"' % (ext_modules_list.strip(), ext_modules.strip())
     file_text.append(ext_modules_list)
     file_text.append("# deal with EXT_MODULES")
-    file_text.append("EXT_MODULES=")
+    file_text.append("EXT_MODULES=${DEVICE_MODULES_DIR}")
     file_text.append("for dir in ${EXT_MODULES_TMP}")
     file_text.append("do")
     file_text.append("  if [ -d \"${dir}\" ]; then")
