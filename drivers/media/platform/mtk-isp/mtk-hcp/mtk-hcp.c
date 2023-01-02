@@ -25,7 +25,6 @@
 #include <linux/freezer.h>
 #include <linux/pm_runtime.h>
 #include <linux/slab.h>
-#include <linux/dma-iommu.h>
 #include <linux/dma-mapping.h>
 #include <linux/videodev2.h>
 #include <videobuf2-dma-contig.h>

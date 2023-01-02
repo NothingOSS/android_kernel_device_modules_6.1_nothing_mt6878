@@ -11,7 +11,6 @@
 // kernel header file
 #include <linux/device.h>
 #include <linux/of_address.h>
-#include <linux/dma-iommu.h>
 #include <linux/pm_runtime.h>
 #include <linux/remoteproc.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>

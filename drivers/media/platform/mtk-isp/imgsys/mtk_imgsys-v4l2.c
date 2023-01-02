@@ -20,7 +20,6 @@
 #include <media/v4l2-ioctl.h>
 #include <media/v4l2-subdev.h>
 #include <media/v4l2-event.h>
-#include <linux/dma-iommu.h>
 #include <linux/dma-mapping.h>
 #include "mtk_imgsys_v4l2.h"
 #include "mtk_imgsys-dev.h"
