@@ -8631,9 +8631,12 @@ struct mtk_cam_ctx *mtk_cam_start_ctx(struct mtk_cam_device *cam,
 {
 	struct mtk_cam_ctx *ctx = node->ctx;
 	struct v4l2_subdev **target_sd;
-	int ret, i, is_first_ctx;
+	int ret, i, j, is_first_ctx;
 	struct media_entity *entity = &node->vdev.entity;
 	struct media_pipeline_pad *ppad;
+	struct media_entity *entity_walked[32];
+	int last_entity_walked = 0;
+	bool walked;
 
 	dev_info(cam->dev, "%s:ctx(%d): triggered by %s\n",
 		 __func__, ctx->stream_id, entity->name);
@@ -8775,8 +8778,25 @@ struct mtk_cam_ctx *mtk_cam_start_ctx(struct mtk_cam_device *cam,
 	i = 0;
 
 	list_for_each_entry(ppad, &ctx->pipeline.pads, list) {
+		walked = false;
 		entity = ppad->pad->entity;
-		dev_dbg(cam->dev, "linked entity %s\n", entity->name);
+		dev_dbg(cam->dev, "linked entity %s, pad idx: %d, func: %d\n",
+			entity->name, ppad->pad->index, entity->function);
+
+		for (j = 0; j <= last_entity_walked && j < 32; j++) {
+			if (entity_walked[j] == entity) {
+				walked = true;
+				break;
+			}
+		}
+
+		if (!walked) {
+			last_entity_walked++;
+			entity_walked[last_entity_walked] = entity;
+		} else {
+			/* The owner entity of this pad was already walked */
+			continue;
+		}
 
 		target_sd = NULL;
 
@@ -8805,7 +8825,7 @@ struct mtk_cam_ctx *mtk_cam_start_ctx(struct mtk_cam_device *cam,
 			continue;
 
 		if (*target_sd) {
-			dev_info(cam->dev, "duplicated subdevs!!!\n");
+			dev_info(cam->dev, "duplicated subdevs!!!%s\n", entity->name);
 			goto fail_stop_pipeline;
 		}
 
