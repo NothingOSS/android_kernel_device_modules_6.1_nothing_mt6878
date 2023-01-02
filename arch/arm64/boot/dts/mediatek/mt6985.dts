@@ -5737,7 +5737,8 @@
 				<0 0x11e80000 0 0x1000>,  /* EFUSE */
 				<0 0x13fb9c00 0 0x100>,   /* MFG_CPE_CTRL_MCU */
 				<0 0x13fcf000 0 0x1000>,  /* MFG_CPE_SENSOR0 */
-				<0 0x13fbc000 0 0x1000>;  /* MFG_SECURE */
+				<0 0x13fbc000 0 0x1000>,  /* MFG_SECURE */
+				<0 0x1000d000 0 0x1000>;  /* DRM_DEBUG */
 			reg-names =
 				"mfg_top_config",
 				"mfg_pll",
@@ -5757,7 +5758,8 @@
 				"efuse",
 				"mfg_cpe_ctrl_mcu",
 				"mfg_cpe_sensor0",
-				"mfg_secure";
+				"mfg_secure",
+				"drm_debug";
 			clocks =
 				<&topckgen_clk CLK_TOP_MFG_INT0_SEL>,
 				<&mfgpll_pll_ctrl_clk CLK_MFG_AO_MFGPLL>,
