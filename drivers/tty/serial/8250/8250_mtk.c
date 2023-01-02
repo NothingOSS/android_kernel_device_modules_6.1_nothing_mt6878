@@ -1317,7 +1317,7 @@ mtk8250_set_divisor(struct uart_port *port, unsigned int baud,
 
 static void
 mtk8250_set_termios(struct uart_port *port, struct ktermios *termios,
-			struct ktermios *old)
+			const struct ktermios *old)
 {
 	unsigned short fraction_L_mapping[] = {
 		0, 1, 0x5, 0x15, 0x55, 0x57, 0x57, 0x77, 0x7F, 0xFF, 0xFF
