@@ -492,6 +492,7 @@ static const char * const slave_type_to_str[] = {
 	"SLAVE_TYPE_ADSP",
 	"SLAVE_TYPE_MMINFRA",
 	"SLAVE_TYPE_MMUP",
+	"SLAVE_TYPE_GPU",
 	"WRONG_SLAVE_TYPE",
 };
 
@@ -503,6 +504,7 @@ static int mtk_vio_mask_sta_num[] = {
 	VIO_MASK_STA_NUM_ADSP,
 	VIO_MASK_STA_NUM_MMINFRA,
 	VIO_MASK_STA_NUM_MMUP,
+	VIO_MASK_STA_NUM_GPU,
 };
 
 static struct mtk_devapc_vio_info mt6985_devapc_vio_info = {
