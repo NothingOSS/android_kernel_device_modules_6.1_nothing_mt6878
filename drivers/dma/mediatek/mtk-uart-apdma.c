@@ -634,7 +634,7 @@ static int mtk_uart_apdma_rx_handler(struct mtk_chan *c)
 		sizeof(c->rec_info[idx].irq_cur_comm));
 	c->rec_info[idx].irq_cur_comm[15] = 0;
 #if defined(CONFIG_SMP) && defined(CONFIG_THREAD_INFO_IN_TASK)
-	c->rec_info[idx].irq_cur_cpu = current->cpu;
+	c->rec_info[idx].irq_cur_cpu = task_thread_info(current)->cpu;
 #else
 	c->rec_info[idx].irq_cur_cpu = 0xff;
 #endif

@@ -1068,7 +1068,7 @@ static void mtk8250_dma_rx_complete(void *param)
 			sizeof(rx_record.rec[idx].cur_comm));
 		rx_record.rec[idx].cur_comm[15] = 0;
 #if defined(CONFIG_SMP) && defined(CONFIG_THREAD_INFO_IN_TASK)
-		rx_record.rec[idx].cur_cpu = current->cpu;
+		rx_record.rec[idx].cur_cpu = task_thread_info(current)->cpu;
 #else
 		rx_record.rec[idx].cur_cpu = 0xff;
 #endif
