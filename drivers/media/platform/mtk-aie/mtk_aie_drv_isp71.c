@@ -740,7 +740,7 @@ static unsigned int attr_wdma_aligned_size[attr_loop_num][output_WDMA_WRA_num];
 
 #ifdef FDVT_TF_DUMP
 static int FDVT_M4U_TranslationFault_callback(int port,
-							   unsigned int mva,
+							   dma_addr_t mva,
 							   void *data)
 {
 	pr_info("[FDVT_M4U]fault call port=%d, mva=0x%x", port, mva);
