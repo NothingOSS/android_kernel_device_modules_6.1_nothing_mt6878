@@ -5,7 +5,7 @@
 #ifndef __MCUPM_IPI_TABLE_H__
 #define __MCUPM_IPI_TABLE_H__
 
-#include <mtk_tinysys_ipi.h>
+#include <linux/soc/mediatek/mtk_tinysys_ipi.h>
 #include "mcupm_ipi_id.h"
 
 #define MCUPM_MBOX_TOTAL 8
