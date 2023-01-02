@@ -6049,7 +6049,7 @@
 	scp: scp@1c700000 {
 		compatible = "mediatek,scp";
 		status = "okay";
-		reg = <0 0x1c400000 0 0x200000>, /* tcm */
+		reg = <0 0x1c400000 0 0x300000>, /* tcm */
 		      <0 0x1c724000 0 0x1000>, /* cfg */
 		      <0 0x1c721000 0 0x1000>, /* clk*/
 		      <0 0x1c730000 0 0x1000>, /* cfg core0 */
@@ -6148,6 +6148,7 @@
 		<26 3  9>,/* IPI_OUT_AUDIO_ULTRA_SND_0 */
 		<35 3  2>,/* IPI_OUT_C_SCP_HWVOTER_DEBUG */
 		<39 3  4>,/* IPI_OUT_AOV_SCP */
+		<45 3  1>,/* IPI_OUT_SCP_PM_NOTIFY */
 		<29 4 16>,/* IPI_OUT_SENSOR_CTRL */
 		<31 4  7>;/* IPI_OUT_SENSOR_NOTIFY */
 
@@ -6205,6 +6206,7 @@
 
 		secure_dump = "disable";   /* enable dump via secure world*/
 		secure_dump_size = <0x480000>;
+		scp_pm_notify = "disable";
 
 		scp_aovmem_key = "mediatek,scp_aov_reserved";
 		scp_mem_key = "mediatek,reserve-memory-scp_share";
