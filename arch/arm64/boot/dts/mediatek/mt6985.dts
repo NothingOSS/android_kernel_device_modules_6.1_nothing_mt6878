@@ -2627,9 +2627,37 @@
 			reg = <0 0x10218000 0 0x1000>;
 		};
 
-		emi@10219000 {
-			compatible = "mediatek,emi";
-			reg = <0 0x10219000 0 0x1000>;
+		emicen: emicen@10219000 {
+			compatible = "mediatek,mt6877-emicen",
+				     "mediatek,common-emicen";
+			reg = <0 0x10219000 0 0x1000>,
+				<0 0x1021d000 0 0x1000>;
+			mediatek,emi-reg = <&emichn>;
+			a2d_hash = <1>;
+			a2d_disph = <2>;
+		};
+
+		emichn: emichn@10235000 {
+			compatible = "mediatek,mt6877-emichn",
+				     "mediatek,common-emichn";
+			reg = <0 0x10235000 0 0x1000>,
+				<0 0x10245000 0 0x1000>,
+				<0 0x10255000 0 0x1000>,
+				<0 0x10265000 0 0x1000>;
+		};
+
+		emi-fake-eng@1026c000 {
+			compatible = "mediatek,emi-fake-engine";
+			reg = <0 0x1026c000 0 0x1000>,
+					<0 0x1026d000 0 0x1000>,
+					<0 0x10310000 0 0x1000>,
+					<0 0x10311000 0 0x1000>;
+		};
+
+		emiisu {
+			compatible = "mediatek,mt6983-emiisu",
+					"mediatek,common-emiisu";
+			ctrl_intf = <1>;
 		};
 
 		infra_device_mpu@1021a000 {
@@ -2727,9 +2755,21 @@
 			reg = <0 0x10225000 0 0x1000>;
 		};
 
-		emi_mpu@10226000 {
-			compatible = "mediatek,emi_mpu";
-			reg = <0 0x10226000 0 0x1000>;
+		emimpu: emimpu@10226000 {
+			compatible = "mediatek,mt6983-emimpu";
+			reg = <0 0x10226000 0 0x1000>,
+			      <0 0x10225000 0 0x1000>;
+			mediatek,emi-reg = <&emicen>;
+			interrupts = <GIC_SPI 282 IRQ_TYPE_LEVEL_HIGH 0>;
+			sr_cnt = <48>;
+			aid_cnt = <256>;
+			aid_num_per_set = <32>;
+			dump = <0x1f0 0x1f8 0x1fc>;
+			clear = <0x1f0 0x80000000 1>,
+				<0x160 0xffffffff 16>,
+				<0x200 0x00000003 16>;
+			clear_hp = <0x1fc 0x40000000 1>;
+			clear_md = <0x1fc 0x80000000 1>;
 		};
 
 		infra_dpmaif@1022c000 {
@@ -3042,14 +3082,14 @@
 			reg = <0 0x10341000 0 0x1000>;
 		};
 
-		nemi_slb_apb@10342000 {
-			compatible = "mediatek,nemi_slb_apb";
-			reg = <0 0x10342000 0 0x1000>;
-		};
-
-		semi_slb_apb@10343000 {
-			compatible = "mediatek,semi_slb_apb";
-			reg = <0 0x10343000 0 0x1000>;
+		emislb: emislb@10342000 {
+			compatible = "mediatek,common-emislb";
+			reg = <0 0x10342000 0 0x1000>,
+			      <0 0x10343000 0 0x1000>;
+			mediatek,emimpu-reg = <&emimpu>;
+			interrupts = <GIC_SPI 286 IRQ_TYPE_LEVEL_HIGH 0>;
+			dump = <0xd14 0xd18 0xd1c 0xd20 0xd24>;
+			clear = <0x680 0x80000000 1>;
 		};
 
 		nemi_hre_emi_apb@10344000 {
