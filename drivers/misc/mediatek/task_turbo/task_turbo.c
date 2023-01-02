@@ -17,10 +17,10 @@
 
 #include <trace/hooks/vendor_hooks.h>
 #include <trace/hooks/sched.h>
-#include <trace/hooks/dtask.h>
+//#include <trace/hooks/dtask.h>
 #include <trace/hooks/binder.h>
-#include <trace/hooks/rwsem.h>
-#include <trace/hooks/futex.h>
+//#include <trace/hooks/rwsem.h>
+//#include <trace/hooks/futex.h>
 #include <trace/hooks/fpsimd.h>
 #include <trace/hooks/topology.h>
 #include <trace/hooks/debug.h>
@@ -112,16 +112,20 @@ static unsigned int task_turbo_feats;
 
 static bool is_turbo_task(struct task_struct *p);
 static void set_load_weight(struct task_struct *p, bool update_load);
+#if 0
 static void rwsem_stop_turbo_inherit(struct rw_semaphore *sem);
 static void rwsem_list_add(struct task_struct *task, struct list_head *entry,
 				struct list_head *head);
+#endif
 static bool binder_start_turbo_inherit(struct task_struct *from,
 					struct task_struct *to);
 static void binder_stop_turbo_inherit(struct task_struct *p);
 static inline struct task_struct *rwsem_owner(struct rw_semaphore *sem);
 static inline bool rwsem_test_oflags(struct rw_semaphore *sem, long flags);
 static inline bool is_rwsem_reader_owned(struct rw_semaphore *sem);
+#if 0
 static void rwsem_start_turbo_inherit(struct rw_semaphore *sem);
+#endif
 static bool sub_feat_enable(int type);
 static bool start_turbo_inherit(struct task_struct *task, int type, int cnt);
 static bool stop_turbo_inherit(struct task_struct *task, int type);
@@ -263,6 +267,7 @@ static void probe_android_rvh_setscheduler(void *ignore, struct task_struct *p)
 	}
 }
 
+#if 0
 static void probe_android_vh_rwsem_write_finished(void *ignore, struct rw_semaphore *sem)
 {
 	rwsem_stop_turbo_inherit(sem);
@@ -272,7 +277,9 @@ static void probe_android_vh_rwsem_init(void *ignore, struct rw_semaphore *sem)
 {
 	sem->android_vendor_data1 = 0;
 }
+#endif
 
+#if 0
 static void probe_android_vh_alter_rwsem_list_add(void *ignore, struct rwsem_waiter *waiter,
 							struct rw_semaphore *sem,
 							bool *already_on_list)
@@ -285,6 +292,7 @@ static void probe_android_vh_rwsem_wake(void *ignore, struct rw_semaphore *sem)
 {
 	rwsem_start_turbo_inherit(sem);
 }
+#endif
 
 static void probe_android_vh_binder_transaction_init(void *ignore, struct binder_transaction *t)
 {
@@ -315,6 +323,7 @@ static void probe_android_vh_binder_restore_priority(void *ignore,
 		binder_stop_turbo_inherit(cur);
 }
 
+#if 0
 static void probe_android_vh_alter_futex_plist_add(void *ignore, struct plist_node *q_list,
 						struct plist_head *hb_chain, bool *already_on_hb)
 {
@@ -346,6 +355,7 @@ static void probe_android_vh_alter_futex_plist_add(void *ignore, struct plist_no
 
 	*already_on_hb = false;
 }
+#endif
 
 static void probe_android_rvh_select_task_rq_fair(void *ignore, struct task_struct *p,
 							int prev_cpu, int sd_flag,
@@ -612,6 +622,7 @@ int idle_cpu(int cpu)
 	return 1;
 }
 
+#if 0
 static void rwsem_stop_turbo_inherit(struct rw_semaphore *sem)
 {
 	unsigned long flags;
@@ -626,7 +637,9 @@ static void rwsem_stop_turbo_inherit(struct rw_semaphore *sem)
 	}
 	raw_spin_unlock_irqrestore(&sem->wait_lock, flags);
 }
+#endif
 
+#if 0
 static void rwsem_list_add(struct task_struct *task,
 			   struct list_head *entry,
 			   struct list_head *head)
@@ -653,7 +666,9 @@ static void rwsem_list_add(struct task_struct *task,
 	}
 	list_add_tail(entry, head);
 }
+#endif
 
+#if 0
 static void rwsem_start_turbo_inherit(struct rw_semaphore *sem)
 {
 	bool should_inherit;
@@ -679,6 +694,7 @@ static void rwsem_start_turbo_inherit(struct rw_semaphore *sem)
 		}
 	}
 }
+#endif
 
 static bool start_turbo_inherit(struct task_struct *task,
 				int type,
@@ -1393,40 +1409,40 @@ static int __init init_task_turbo(void)
 		goto failed;
 	}
 
-	ret = register_trace_android_vh_rwsem_init(
-			probe_android_vh_rwsem_init, NULL);
-	if (ret) {
-		ret_erri_line = __LINE__;
-		goto failed;
-	}
+	//ret = register_trace_android_vh_rwsem_init(
+	//		probe_android_vh_rwsem_init, NULL);
+	//if (ret) {
+	//	ret_erri_line = __LINE__;
+	//	goto failed;
+	//}
 
-	ret = register_trace_android_vh_rwsem_wake(
-			probe_android_vh_rwsem_wake, NULL);
-	if (ret) {
-		ret_erri_line = __LINE__;
-		goto failed;
-	}
+	//ret = register_trace_android_vh_rwsem_wake(
+	//		probe_android_vh_rwsem_wake, NULL);
+	//if (ret) {
+	//	ret_erri_line = __LINE__;
+	//	goto failed;
+	//}
 
-	ret = register_trace_android_vh_rwsem_write_finished(
-			probe_android_vh_rwsem_write_finished, NULL);
-	if (ret) {
-		ret_erri_line = __LINE__;
-		goto failed;
-	}
+	//ret = register_trace_android_vh_rwsem_write_finished(
+	//		probe_android_vh_rwsem_write_finished, NULL);
+	//if (ret) {
+	//	ret_erri_line = __LINE__;
+	//	goto failed;
+	//}
 
-	ret = register_trace_android_vh_alter_rwsem_list_add(
-			probe_android_vh_alter_rwsem_list_add, NULL);
-	if (ret) {
-		ret_erri_line = __LINE__;
-		goto failed;
-	}
+	//ret = register_trace_android_vh_alter_rwsem_list_add(
+	//		probe_android_vh_alter_rwsem_list_add, NULL);
+	//if (ret) {
+	//	ret_erri_line = __LINE__;
+	//	goto failed;
+	//}
 
-	ret = register_trace_android_vh_alter_futex_plist_add(
-			probe_android_vh_alter_futex_plist_add, NULL);
-	if (ret) {
-		ret_erri_line = __LINE__;
-		goto failed;
-	}
+	//ret = register_trace_android_vh_alter_futex_plist_add(
+	//		probe_android_vh_alter_futex_plist_add, NULL);
+	//if (ret) {
+	//	ret_erri_line = __LINE__;
+	//	goto failed;
+	//}
 
 	ret = register_trace_android_rvh_select_task_rq_fair(
 			probe_android_rvh_select_task_rq_fair, NULL);
