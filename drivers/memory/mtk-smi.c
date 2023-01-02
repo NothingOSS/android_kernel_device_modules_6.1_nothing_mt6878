@@ -370,9 +370,9 @@ void mtk_smi_check_larb_ref_cnt(struct device *dev)
 			if (larb->larbid == 7)
 				pr_notice("%s VENC:%d JPEG_ENC:%d JPEG_DEC:%d",
 					__func__,
-					larb7_ref_cnt[0],
-					larb7_ref_cnt[1],
-					larb7_ref_cnt[2]);
+					atomic_read(&larb7_ref_cnt[0]),
+					atomic_read(&larb7_ref_cnt[1]),
+					atomic_read(&larb7_ref_cnt[2]));
 		}
 	}
 }
@@ -631,8 +631,8 @@ mtk_smi_larb_bind(struct device *dev, struct device *master, void *data)
 			larb->bank = larb_mmu[i].bank;
 			if (log_level & 1 << log_config_bit)
 				dev_notice(dev,
-					"[SMI]larb%d bind ptr_mmu:0x%x val_mmu_32:0x%x bit32:%u\n",
-					i, larb->mmu, *((unsigned int *)(larb->mmu)),
+					"[SMI]larb%d bind ptr_mmu:0x%lx val_mmu_32:0x%x bit32:%u\n",
+					i, (unsigned long)larb->mmu, *((unsigned int *)(larb->mmu)),
 					larb->bank[i]);
 			return 0;
 		}
@@ -665,8 +665,8 @@ static void mtk_smi_larb_config_port_gen2_general(struct device *dev)
 			writel(reg, larb->base + SMI_LARB_NONSEC_CON(i));
 			if (log_level & 1 << log_config_bit)
 				dev_notice(dev,
-					"[SMI]larb:%d port:%d mmu:%u bit32:%u offset:%#x reg:%#x\n",
-					larb->larbid, i, larb->mmu, larb->bank[i],
+					"[SMI]larb:%d port:%d mmu:%lx it32:%u offset:%#x reg:%#x\n",
+					larb->larbid, i, (unsigned long)larb->mmu, larb->bank[i],
 					SMI_LARB_NONSEC_CON(i), reg);
 		}
 	}
