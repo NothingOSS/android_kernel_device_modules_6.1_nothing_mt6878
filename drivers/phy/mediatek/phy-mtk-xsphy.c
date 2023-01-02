@@ -332,6 +332,8 @@ struct mtk_xsphy {
 	int src_ref_clk; /* MHZ, reference clock for slew rate calibrate */
 	int src_coef;    /* coefficient for slew rate calibrate */
 	struct proc_dir_entry *root;
+	int (*suspend)(struct device *dev);
+	int (*resume)(struct device *dev);
 };
 
 static void u2_phy_props_set(struct mtk_xsphy *xsphy,
@@ -1871,6 +1873,7 @@ static int mtk_phy_set_mode(struct phy *phy, enum phy_mode mode, int submode)
 static int mtk_phy_get_mode(struct mtk_xsphy *xsphy)
 {
 	struct device_node *of_chosen;
+	struct device_node *np = xsphy->dev->of_node;
 	char *bootargs;
 	int mode = XSP_MODE_USB;
 
@@ -1883,13 +1886,54 @@ static int mtk_phy_get_mode(struct mtk_xsphy *xsphy)
 	if (!bootargs)
 		goto done;
 
-	if (strstr(bootargs, XSP_MODE_UART_STR))
+	if (strstr(bootargs, XSP_MODE_UART_STR) &&
+			of_find_node_with_property(np, "usb2uart"))
 		mode = XSP_MODE_UART;
-	else if (strstr(bootargs, XSP_MODE_JTAG_STR))
+	else if (strstr(bootargs, XSP_MODE_JTAG_STR) &&
+			of_find_node_with_property(np, "usb2jtag"))
 		mode = XSP_MODE_JTAG;
 
 done:
 	return mode;
+}
+
+static int mtk_xsphy_uart_suspend(struct device *dev)
+{
+	return 0;
+}
+static int mtk_xsphy_uart_resume(struct device *dev)
+{
+	struct mtk_xsphy *xsphy = dev_get_drvdata(dev);
+	struct xsphy_instance *inst = xsphy->phys[0];
+	void __iomem *pbase = inst->port_base;
+
+	if  (inst->type != PHY_TYPE_USB2)
+		return 0;
+
+	mtk_phy_clear_bits(pbase + XSP_USBPHYACR6, (0x1 << 23));
+
+	mtk_phy_set_bits(pbase + XSP_U2PHYDTM0, (0x1 << 3) | (0x1 << 18));
+
+	mtk_phy_clear_bits(pbase + XSP_U2PHYDTM0, (0x3 << 30));
+
+	mtk_phy_set_bits(pbase + XSP_U2PHYDTM0, (0x1 << 30));
+
+	mtk_phy_clear_bits(pbase + XSP_U2PHYDTM0, (0x1 << 29));
+
+	mtk_phy_set_bits(pbase + XSP_U2PHYDTM0, (0x1 << 26) | (0x1 << 27) | (0x1 << 28));
+
+	mtk_phy_set_bits(pbase + XSP_U2PHYDTM1, (0x1 << 16) | (0x1 << 17) | (0x1 << 18));
+
+	mtk_phy_set_bits(pbase + XSP_USBPHYACR4, (0x1 << 17));
+
+	mtk_phy_clear_bits(pbase + XSP_U2PHYDTM0, (0x3 << 4));
+
+	mtk_phy_set_bits(pbase + XSP_U2PHYDTM0, (0x1 << 2) | (0x1 << 4));
+
+	mtk_phy_set_bits(pbase + XSP_U2PHYDTM0,
+		(0x1 << 17) | (0x1 << 19) | (0x1 << 20) | (0x1 << 21) | (0x1 << 23));
+
+	return 0;
 }
 
 static int mtk_phy_uart_init(struct phy *phy)
@@ -1909,6 +1953,9 @@ static int mtk_phy_uart_init(struct phy *phy)
 		return ret;
 	}
 	udelay(250);
+
+	xsphy->suspend = mtk_xsphy_uart_suspend;
+	xsphy->resume = mtk_xsphy_uart_resume;
 
 	return 0;
 }
@@ -2220,6 +2267,27 @@ put_child:
 	return retval;
 }
 
+static int __maybe_unused mtk_xsphy_suspend(struct device *dev)
+{
+	struct mtk_xsphy *xsphy = dev_get_drvdata(dev);
+
+	if (xsphy->suspend)
+		return xsphy->suspend(dev);
+	return 0;
+}
+static int __maybe_unused mtk_xsphy_resume(struct device *dev)
+{
+	struct mtk_xsphy *xsphy = dev_get_drvdata(dev);
+
+	if (xsphy->resume)
+		return xsphy->resume(dev);
+	return 0;
+}
+static const struct dev_pm_ops mtk_xsphy_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(mtk_xsphy_suspend, mtk_xsphy_resume)
+};
+#define DEV_PM_OPS (IS_ENABLED(CONFIG_PM) ? &mtk_xsphy_pm_ops : NULL)
+
 static int mtk_xsphy_remove(struct platform_device *pdev)
 {
 	struct mtk_xsphy *xsphy = dev_get_drvdata(&pdev->dev);
@@ -2233,6 +2301,7 @@ static struct platform_driver mtk_xsphy_driver = {
 	.remove		= mtk_xsphy_remove,
 	.driver		= {
 		.name	= "mtk-xsphy",
+		.pm = DEV_PM_OPS,
 		.of_match_table = mtk_xsphy_id_table,
 	},
 };
