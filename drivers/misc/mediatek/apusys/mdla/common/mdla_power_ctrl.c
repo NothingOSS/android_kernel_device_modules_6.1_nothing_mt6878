@@ -256,7 +256,7 @@ int mdla_pwr_get_random_boost_val(void)
 	 * Get opp 0 only when boost_val is 100
 	 * Using division of 128 to increase probabiliy of getting opp 0
 	 */
-	val = (get_random_int() & 0x7F) + 1;
+	val = (get_random_u32() & 0x7F) + 1;
 
 	return val > 100 ? 100 : val;
 }
