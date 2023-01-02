@@ -13,6 +13,7 @@
 #include <linux/debugfs.h>
 #include <linux/devfreq.h>
 #include <linux/of_address.h>
+#include <linux/sched/clock.h>
 
 #include "apu_io.h"
 #include "apu_dbg.h"

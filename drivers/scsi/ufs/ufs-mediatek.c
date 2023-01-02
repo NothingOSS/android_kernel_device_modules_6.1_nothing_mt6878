@@ -16,6 +16,7 @@
 #include <linux/pm_qos.h>
 #include <linux/regulator/consumer.h>
 #include <linux/reset.h>
+#include <linux/sched/clock.h>
 #include <linux/tracepoint.h>
 
 #if IS_ENABLED(CONFIG_RPMB)

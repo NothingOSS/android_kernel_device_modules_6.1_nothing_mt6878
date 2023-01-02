@@ -9,6 +9,7 @@
 #define DEBUG 1
 
 #include <linux/sched.h>
+#include <linux/sched/clock.h>
 #include <linux/spinlock.h>
 #include <linux/math64.h>
 
