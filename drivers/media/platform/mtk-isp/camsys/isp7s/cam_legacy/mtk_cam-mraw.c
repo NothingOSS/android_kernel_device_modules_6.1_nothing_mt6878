@@ -349,6 +349,7 @@ static int mtk_mraw_call_set_fmt(struct v4l2_subdev *sd,
 			pipe->res_config.tg_crop.s.h = mf->height;
 			pipe->res_config.tg_fmt = ipi_fmt;
 			pipe->res_config.pixel_mode = 3;
+			pipe->res_config.subsample = 0;
 			atomic_set(&pipe->res_config.is_fmt_change, 1);
 		}
 	}
@@ -630,7 +631,7 @@ void apply_mraw_cq(struct mtk_mraw_device *dev,
 		wmb(); /* TBC */
 		dev_info(dev->dev,
 			"apply 1st mraw%d scq - addr/size = [main] 0x%llx/%d cq_en(0x%x)\n",
-			dev->id, cq_addr, cq_size, readl_relaxed(dev->base + REG_MRAW_CTL_START));
+			dev->id, cq_addr, cq_size, readl_relaxed(dev->base + REG_MRAW_CQ_EN));
 	} else {
 #if USING_MRAW_SCQ
 		writel_relaxed(MRAWCTL_CQ_THR0_START, dev->base + REG_MRAW_CTL_START);
@@ -1069,18 +1070,21 @@ void mtk_cam_mraw_get_mbn_size(struct mtk_cam_device *cam, unsigned int pipe_id,
 	switch (param->mbn_dir) {
 	case MBN_POW_VERTICAL:
 	case MBN_POW_HORIZONTAL:
-		mtk_cam_mraw_set_dense_fmt(cam->dev, width,
-			height, param, imgo_m1);
+		mtk_cam_mraw_set_dense_fmt(
+			cam->mraw.devs[pipe_id - MTKCAM_SUBDEV_MRAW_START],
+			width, height, param, imgo_m1);
 		break;
 	case MBN_POW_SPARSE_CONCATENATION:
-		mtk_cam_mraw_set_concatenation_fmt(cam->dev, width,
-			height, param, imgo_m1);
+		mtk_cam_mraw_set_concatenation_fmt(
+			cam->mraw.devs[pipe_id - MTKCAM_SUBDEV_MRAW_START],
+			width, height, param, imgo_m1);
 		break;
 	case MBN_POW_SPARSE_INTERLEVING:
 		mtk_cam_mraw_set_interleving_fmt(width, height, imgo_m1);
 		break;
 	default:
-		dev_info(cam->dev, "%s:MBN's dir %d %s fail",
+		dev_info(cam->mraw.devs[pipe_id - MTKCAM_SUBDEV_MRAW_START],
+			"%s:MBN's dir %d %s fail",
 			__func__, param->mbn_dir, "unknown idx");
 		return;
 	}
@@ -1098,24 +1102,27 @@ void mtk_cam_mraw_get_cpi_size(struct mtk_cam_device *cam, unsigned int pipe_id,
 	switch (param->cpi_dir) {
 	case CPI_POW_VERTICAL:
 	case CPI_POW_HORIZONTAL:
-		mtk_cam_mraw_set_dense_fmt(cam->dev, width,
-			height, param, cpio_m1);
+		mtk_cam_mraw_set_dense_fmt(
+			cam->mraw.devs[pipe_id - MTKCAM_SUBDEV_MRAW_START],
+			width, height, param, cpio_m1);
 		break;
 	case CPI_POW_SPARSE_CONCATENATION:
-		mtk_cam_mraw_set_concatenation_fmt(cam->dev, width,
-			height, param, cpio_m1);
+		mtk_cam_mraw_set_concatenation_fmt(
+			cam->mraw.devs[pipe_id - MTKCAM_SUBDEV_MRAW_START],
+			width, height, param, cpio_m1);
 		break;
 	case CPI_POW_SPARSE_INTERLEVING:
 		mtk_cam_mraw_set_interleving_fmt(width, height, cpio_m1);
 		break;
 	default:
-		dev_info(cam->dev, "%s:CPI's dir %d %s fail",
+		dev_info(cam->mraw.devs[pipe_id - MTKCAM_SUBDEV_MRAW_START],
+			"%s:CPI's dir %d %s fail",
 			__func__, param->cpi_dir, "unknown idx");
 		return;
 	}
 }
 
-int mtk_cam_mraw_apply_all_buffers(struct mtk_cam_ctx *ctx)
+int mtk_cam_mraw_apply_all_buffers(struct mtk_cam_ctx *ctx, int initial)
 {
 	struct mtk_mraw_working_buf_entry *buf_entry;
 	struct mtk_mraw_device *mraw_dev;
@@ -1146,7 +1153,7 @@ int mtk_cam_mraw_apply_all_buffers(struct mtk_cam_ctx *ctx)
 			apply_mraw_cq(mraw_dev,
 				buf_entry->buffer.iova,
 				buf_entry->mraw_cq_desc_size,
-				buf_entry->mraw_cq_desc_offset, 0);
+				buf_entry->mraw_cq_desc_offset, initial);
 		} else {
 			mtk_ctx_watchdog_stop(ctx, ctx->mraw_pipe[i]->id);
 			if (buf_entry->s_data->pad_fmt_update & (1 << MTK_MRAW_SINK))
@@ -1177,6 +1184,14 @@ static int push_msgfifo(struct mtk_mraw_device *dev,
 	WARN_ON(len != sizeof(*info));
 
 	return 0;
+}
+
+void mraw_reset_by_mraw_top(struct mtk_mraw_device *dev)
+{
+	writel(0, dev->cam->mraw_base + REG_CAMSYS_MRAW_SW_RST);
+	writel(3 << ((dev->id) * 2 + 4), dev->cam->mraw_base + REG_CAMSYS_MRAW_SW_RST);
+	writel(0, dev->cam->mraw_base + REG_CAMSYS_MRAW_SW_RST);
+	wmb(); /* make sure committed */
 }
 
 void mraw_reset(struct mtk_mraw_device *dev)
@@ -1273,17 +1288,6 @@ struct device *mtk_cam_find_mraw_dev(struct mtk_cam_device *cam
 	return NULL;
 }
 
-int mtk_cam_mraw_tg_config(struct mtk_mraw_device *dev,
-	unsigned int pixel_mode)
-{
-	int ret = 0;
-
-	MRAW_WRITE_BITS(dev->base + REG_MRAW_TG_SEN_MODE,
-		MRAW_TG_SEN_MODE, TG_DBL_DATA_BUS, pixel_mode);
-
-	return ret;
-}
-
 int mtk_cam_mraw_top_config(struct mtk_mraw_device *dev)
 {
 	int ret = 0;
@@ -1308,11 +1312,12 @@ int mtk_cam_mraw_top_config(struct mtk_mraw_device *dev)
 	MRAW_WRITE_REG(dev->base + REG_MRAW_CTL_INT_EN, int_en1);
 	MRAW_WRITE_REG(dev->base + REG_MRAW_CTL_INT5_EN, int_en5);
 
-	MRAW_WRITE_BITS(dev->base + REG_MRAW_M_MRAWCTL_MISC,
-		MRAW_CTL_MISC, MRAWCTL_DB_EN, 0);
-
+	/* db load src */
 	MRAW_WRITE_BITS(dev->base + REG_MRAW_M_MRAWCTL_MISC,
 		MRAW_CTL_MISC, MRAWCTL_DB_LOAD_SRC, MRAW_DB_SRC_SOF);
+
+	/* reset sof count */
+	dev->sof_count = 0;
 
 	return ret;
 }
@@ -1420,32 +1425,22 @@ int mtk_cam_mraw_toggle_db(struct mtk_mraw_device *dev)
 	return 0;
 }
 
-int mtk_cam_mraw_cq_disable(struct mtk_mraw_device *dev)
-{
-	int ret = 0;
-
-	writel_relaxed((u32)(~CQ_SUB_THR0_EN), dev->base + REG_MRAW_CQ_SUB_THR0_CTL);
-	wmb(); /* TBC */
-
-	return ret;
-}
-
 int mtk_cam_mraw_top_enable(struct mtk_mraw_device *dev)
 {
 	int ret = 0;
 
-	//  toggle db
+	/* toggle db */
 	mtk_cam_mraw_toggle_db(dev);
 
-	//  toggle tg db
+	/* toggle tg db */
 	mtk_cam_mraw_toggle_tg_db(dev);
 
-	/* Enable CMOS */
+	/* enable cmos */
 	dev_info(dev->dev, "%s: enable CMOS and VF\n", __func__);
 	MRAW_WRITE_BITS(dev->base + REG_MRAW_TG_SEN_MODE,
 		MRAW_TG_SEN_MODE, TG_CMOS_EN, 1);
 
-	/* Enable VF */
+	/* enable vf */
 	if (MRAW_READ_BITS(dev->base + REG_MRAW_TG_SEN_MODE,
 		MRAW_TG_SEN_MODE, TG_CMOS_EN) && atomic_read(&dev->is_enqueued))
 		mtk_cam_mraw_vf_on(dev, 1);
@@ -1478,27 +1473,40 @@ int mtk_cam_mraw_fbc_enable(struct mtk_mraw_device *dev)
 		MRAW_FBC_CPIO_CTL1, FBC_CPIO_FBC_EN, 1);
 
 	MRAW_WRITE_BITS(dev->base + REG_MRAW_FBC_IMGO_CTL1,
-		MRAW_FBC_IMGO_CTL1, FBC_IMGO_FBC_DB_EN, 0);
+		MRAW_FBC_IMGO_CTL1, FBC_IMGO_FBC_DB_EN, 1);
 	MRAW_WRITE_BITS(dev->base + REG_MRAW_FBC_IMGBO_CTL1,
-		MRAW_FBC_IMGBO_CTL1, FBC_IMGBO_FBC_DB_EN, 0);
+		MRAW_FBC_IMGBO_CTL1, FBC_IMGBO_FBC_DB_EN, 1);
 	MRAW_WRITE_BITS(dev->base + REG_MRAW_FBC_CPIO_CTL1,
-		MRAW_FBC_CPIO_CTL1, FBC_CPIO_FBC_DB_EN, 0);
+		MRAW_FBC_CPIO_CTL1, FBC_CPIO_FBC_DB_EN, 1);
 
 
 EXIT:
 	return ret;
 }
 
-int mtk_cam_mraw_cq_config(struct mtk_mraw_device *dev)
+int mtk_cam_mraw_cq_config(struct mtk_mraw_device *dev,
+	unsigned int subsample)
 {
 	int ret = 0;
 #if USING_MRAW_SCQ
 	u32 val;
 
 	val = readl_relaxed(dev->base + REG_MRAW_CQ_EN);
-	val = val & (~CQ_DB_EN);
+	val = val | CQ_DB_EN;
+	if (subsample) {
+		val = val | SCQ_SUBSAMPLE_EN;
+		val = val | CQ_SOF_SEL;
+	} else {
+		val = val & ~SCQ_SUBSAMPLE_EN;
+		val = val & ~CQ_SOF_SEL;
+	}
 	writel_relaxed(val, dev->base + REG_MRAW_CQ_EN);
-	writel_relaxed(0xffffffff, dev->base + REG_MRAW_SCQ_START_PERIOD);
+
+	val = readl_relaxed(dev->base + REG_MRAW_CQ_SUB_EN);
+	val = val | CQ_SUB_DB_EN;
+	writel_relaxed(val, dev->base + REG_MRAW_CQ_SUB_EN);
+
+	writel_relaxed(0xFFFFFFFF, dev->base + REG_MRAW_SCQ_START_PERIOD);
 	wmb(); /* TBC */
 #endif
 	writel_relaxed(CQ_SUB_THR0_MODE_IMMEDIATE | CQ_SUB_THR0_EN,
@@ -1507,12 +1515,11 @@ int mtk_cam_mraw_cq_config(struct mtk_mraw_device *dev)
 		       dev->base + REG_MRAW_CTL_INT6_EN);
 	wmb(); /* TBC */
 
-	dev->sof_count = 0;
-
-	dev_dbg(dev->dev, "%s - REG_CQ_EN:0x%x ,REG_CQ_THR0_CTL:0x%8x\n",
+	dev_dbg(dev->dev, "%s - REG_CQ_EN:0x%x_%x ,REG_CQ_THR0_CTL:0x%8x\n",
 		__func__,
-			readl_relaxed(dev->base + REG_MRAW_CQ_EN),
-			readl_relaxed(dev->base + REG_MRAW_CQ_SUB_THR0_CTL));
+		readl_relaxed(dev->base + REG_MRAW_CQ_EN),
+		readl_relaxed(dev->base + REG_MRAW_CQ_SUB_EN),
+		readl_relaxed(dev->base + REG_MRAW_CQ_SUB_THR0_CTL));
 
 	return ret;
 }
@@ -1535,11 +1542,22 @@ int mtk_cam_mraw_cq_enable(struct mtk_mraw_device *dev)
 				dev->base + REG_MRAW_CQ_EN);
 	wmb(); /* TBC */
 
-	dev_info(dev->dev, "%s - REG_CQ_EN:0x%x ,REG_CQ_THR0_CTL:0x%8x\n",
+	dev_info(dev->dev, "%s - REG_CQ_EN:0x%x_%x ,REG_CQ_THR0_CTL:0x%8x\n",
 		__func__,
-			readl_relaxed(dev->base + REG_MRAW_CQ_EN),
-			readl_relaxed(dev->base + REG_MRAW_CQ_SUB_THR0_CTL));
+		readl_relaxed(dev->base + REG_MRAW_CQ_EN),
+		readl_relaxed(dev->base + REG_MRAW_CQ_SUB_EN),
+		readl_relaxed(dev->base + REG_MRAW_CQ_SUB_THR0_CTL));
 #endif
+	return ret;
+}
+
+int mtk_cam_mraw_cq_disable(struct mtk_mraw_device *dev)
+{
+	int ret = 0;
+
+	writel_relaxed(0, dev->base + REG_MRAW_CQ_SUB_THR0_CTL);
+	wmb(); /* TBC */
+
 	return ret;
 }
 
@@ -1677,12 +1695,11 @@ int mtk_cam_mraw_dev_config(
 	atomic_set(&mraw_dev->is_enqueued, 0);
 	reset_msgfifo(mraw_dev);
 
-	mtk_cam_mraw_tg_config(mraw_dev, ctx->mraw_pipe[idx]->res_config.pixel_mode);
 	mtk_cam_mraw_top_config(mraw_dev);
 	mtk_cam_mraw_dma_config(mraw_dev);
 	mtk_cam_mraw_fbc_config(mraw_dev);
 	mtk_cam_mraw_fbc_enable(mraw_dev);
-	mtk_cam_mraw_cq_config(mraw_dev);
+	mtk_cam_mraw_cq_config(mraw_dev, ctx->mraw_pipe[idx]->res_config.subsample);
 
 	mtk_mraw_register_iommu_tf_callback(mraw_dev);
 
@@ -2392,7 +2409,6 @@ static int mtk_mraw_of_probe(struct platform_device *pdev,
 	}
 	dev_dbg(dev, "mraw, map_addr(inner)=0x%pK\n", mraw->base_inner);
 
-
 	mraw->irq = platform_get_irq(pdev, 0);
 	if (!mraw->irq) {
 		dev_dbg(dev, "failed to get irq\n");
@@ -2566,8 +2582,6 @@ static int mtk_mraw_runtime_resume(struct device *dev)
 	if (ret)
 		return ret;
 
-	enable_irq(mraw_dev->irq);
-
 	dev_dbg(dev, "%s:enable clock\n", __func__);
 	for (i = 0; i < mraw_dev->num_clks; i++) {
 		ret = clk_prepare_enable(mraw_dev->clks[i]);
@@ -2581,7 +2595,10 @@ static int mtk_mraw_runtime_resume(struct device *dev)
 			return ret;
 		}
 	}
-	mraw_reset(mraw_dev);
+	mraw_reset_by_mraw_top(mraw_dev);
+
+	enable_irq(mraw_dev->irq);
+	dev_info(dev, "%s:enable irq\n", __func__);
 
 	return 0;
 }

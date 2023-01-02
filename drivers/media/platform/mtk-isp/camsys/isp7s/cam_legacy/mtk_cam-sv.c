@@ -1358,43 +1358,43 @@ int mtk_cam_sv_dmao_common_config(struct mtk_camsv_device *dev)
 	case CAMSV_0:
 		/* imgo */
 		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON3_IMG, 0x880406AE);
-		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON2_IMG, 0x05580402);
-		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON1_IMG, 0x02AC0156);
+		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON2_IMG, 0x15580402);
+		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON1_IMG, 0x12AC0156);
 		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON4_IMG, 0x81560000);
 		break;
 	case CAMSV_1:
 		/* imgo */
 		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON3_IMG, 0x856A0483);
-		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON2_IMG, 0x039C02B5);
-		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON1_IMG, 0x01CE00E7);
+		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON2_IMG, 0x139C02B5);
+		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON1_IMG, 0x11CE00E7);
 		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON4_IMG, 0x80E70000);
 		break;
 	case CAMSV_2:
 		/* imgo */
 		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON3_IMG, 0x84CE0401);
-		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON2_IMG, 0x03340267);
-		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON1_IMG, 0x019A00CD);
+		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON2_IMG, 0x13340267);
+		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON1_IMG, 0x119A00CD);
 		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON4_IMG, 0x80CD0000);
 		break;
 	case CAMSV_3:
 		/* imgo */
 		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON3_IMG, 0x83000280);
-		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON2_IMG, 0x02000180);
-		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON1_IMG, 0x01000080);
+		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON2_IMG, 0x12000180);
+		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON1_IMG, 0x11000080);
 		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON4_IMG, 0x80800000);
 		break;
 	case CAMSV_4:
 		/* imgo */
 		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON3_IMG, 0x80D800B4);
-		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON2_IMG, 0x0090006C);
-		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON1_IMG, 0x00480024);
+		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON2_IMG, 0x1090006C);
+		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON1_IMG, 0x10480024);
 		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON4_IMG, 0x80240000);
 		break;
 	case CAMSV_5:
 		/* imgo */
 		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON3_IMG, 0x80D800B4);
-		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON2_IMG, 0x0090006C);
-		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON1_IMG, 0x00480024);
+		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON2_IMG, 0x1090006C);
+		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON1_IMG, 0x10480024);
 		CAMSV_WRITE_REG(dev->base_dma + REG_CAMSVDMATOP_CON4_IMG, 0x80240000);
 		break;
 	}
@@ -1560,6 +1560,8 @@ int mtk_cam_sv_central_common_disable(struct mtk_camsv_device *dev)
 
 	sv_reset(dev);
 	CAMSV_WRITE_REG(dev->base + REG_CAMSVCENTRAL_DMA_EN_IMG, 0);
+	CAMSV_WRITE_REG(dev->base + REG_E_CAMSVCENTRAL_DCIF_SET, 0);
+	CAMSV_WRITE_REG(dev->base + REG_E_CAMSVCENTRAL_DCIF_SEL, 0);
 	mtk_cam_sv_toggle_db(dev);
 
 	return ret;
@@ -1667,7 +1669,7 @@ int mtk_cam_sv_frame_no_inner(struct mtk_camsv_device *dev)
 	return readl_relaxed(dev->base_inner + REG_CAMSVCENTRAL_FRAME_SEQ_NO);
 }
 
-int mtk_cam_sv_apply_all_buffers(struct mtk_cam_ctx *ctx)
+int mtk_cam_sv_apply_all_buffers(struct mtk_cam_ctx *ctx, int initial)
 {
 	struct mtk_camsv_working_buf_entry *buf_entry;
 	int i;
@@ -1696,7 +1698,7 @@ int mtk_cam_sv_apply_all_buffers(struct mtk_cam_ctx *ctx)
 				buf_entry->buffer.iova,
 				buf_entry->sv_cq_desc_size,
 				buf_entry->sv_cq_desc_offset,
-				0);
+				initial);
 		if (watchdog_scenario(ctx)) {
 			for (i = 0; i < ctx->used_sv_num; i++) {
 				if (buf_entry->s_data->req->pipe_used &
@@ -1731,11 +1733,14 @@ void apply_camsv_cq(struct mtk_camsv_device *dev,
 	CAMSV_WRITE_BITS(dev->base_scq + REG_CAMSVCQTOP_THR_START,
 		CAMSVCQTOP_THR_START, CAMSVCQTOP_CSR_CQ_THR0_START, 1);
 
-	if (initial)
+	if (initial) {
+		/* enable stagger mode for multiple vsync(s) */
+		CAMSV_WRITE_BITS(dev->base_scq + REG_CAMSVCQ_CQ_EN,
+			CAMSVCQ_CQ_EN, CAMSVCQ_SCQ_STAGGER_MODE, 1);
 		dev_info(dev->dev, "apply 1st camsv scq: addr_msb:0x%x addr_lsb:0x%x size:%d cq_en(0x%x))",
 			cq_addr_msb, cq_addr_lsb, cq_size,
-			readl_relaxed(dev->base_scq + REG_CAMSVCQTOP_THR_START));
-	else
+			readl_relaxed(dev->base_scq + REG_CAMSVCQ_CQ_EN));
+	} else
 		dev_dbg(dev->dev, "apply camsv scq: addr_msb:0x%x addr_lsb:0x%x size:%d",
 			cq_addr_msb, cq_addr_lsb, cq_size);
 }
@@ -1810,9 +1815,9 @@ int mtk_cam_sv_cq_config(struct mtk_camsv_device *camsv_dev)
 	/* camsv todo: db en */
 	CAMSV_WRITE_BITS(camsv_dev->base_scq + REG_CAMSVCQ_CQ_EN,
 		CAMSVCQ_CQ_EN, CAMSVCQ_CQ_DB_EN, 0);
-	/* always enable stagger mode for multiple vsync(s) */
+	/* reset stagger mode */
 	CAMSV_WRITE_BITS(camsv_dev->base_scq + REG_CAMSVCQ_CQ_EN,
-		CAMSVCQ_CQ_EN, CAMSVCQ_SCQ_STAGGER_MODE, 1);
+		CAMSVCQ_CQ_EN, CAMSVCQ_SCQ_STAGGER_MODE, 0);
 	CAMSV_WRITE_BITS(camsv_dev->base_scq + REG_CAMSVCQ_CQ_SUB_THR0_CTL,
 		CAMSVCQ_CQ_SUB_THR0_CTL, CAMSVCQ_CQ_SUB_THR0_MODE, 1);
 	/* camsv todo: start period need to be calculated */
@@ -1917,8 +1922,8 @@ int mtk_cam_call_sv_pipeline_config(
 	cfg_in_param->data_pattern = 0x0;
 	cfg_in_param->in_crop.p.x = 0x0;
 	cfg_in_param->in_crop.p.y = 0x0;
-	cfg_in_param->in_crop.s.w =	img_fmt->fmt.pix_mp.width;
-	cfg_in_param->in_crop.s.h = img_fmt->fmt.pix_mp.height;
+	cfg_in_param->in_crop.s.w =	(mf->width) ? img_fmt->fmt.pix_mp.width : 0;
+	cfg_in_param->in_crop.s.h = (mf->height) ? img_fmt->fmt.pix_mp.height : 0;
 	cfg_in_param->fmt = mtk_cam_get_sensor_fmt(mf->code);
 	cfg_in_param->raw_pixel_id = mtk_cam_get_sensor_pixel_id(mf->code);
 	cfg_in_param->subsample = sub_ratio;
@@ -2377,7 +2382,7 @@ static irqreturn_t mtk_irq_camsv_sof(int irq, void *data)
 	struct mtk_camsys_irq_info irq_info;
 	unsigned int dequeued_imgo_seq_no, dequeued_imgo_seq_no_inner;
 	unsigned int tg_cnt;
-	unsigned int irq_sof_status;
+	unsigned int irq_sof_status, dcif_set, dcif_sel;
 	unsigned int irq_flag = 0;
 	bool wake_thread = 0;
 	unsigned int i;
@@ -2398,12 +2403,16 @@ static irqreturn_t mtk_irq_camsv_sof(int irq, void *data)
 		readl_relaxed(camsv_dev->base_inner + REG_CAMSVCENTRAL_FIRST_TAG);
 	camsv_dev->last_tag =
 		readl_relaxed(camsv_dev->base_inner + REG_CAMSVCENTRAL_LAST_TAG);
+	dcif_set =
+		readl_relaxed(camsv_dev->base_inner + REG_E_CAMSVCENTRAL_DCIF_SET);
+	dcif_sel =
+		readl_relaxed(camsv_dev->base_inner + REG_E_CAMSVCENTRAL_DCIF_SEL);
 	tg_cnt =
 		readl_relaxed(camsv_dev->base + REG_CAMSVCENTRAL_VF_ST_TAG1 +
 				CAMSVCENTRAL_VF_ST_TAG_SHIFT * 3);
 	tg_cnt = (camsv_dev->tg_cnt & 0xffffff00) + ((tg_cnt & 0xff000000) >> 24);
 
-	dev_dbg(camsv_dev->dev, "camsv-%d: sof status:0x%x seq_no:%d_%d group_tags:0x%x_%x_%x_%x first_tag:0x%x last_tag:0x%x VF_ST_TAG4:%d",
+	dev_dbg(camsv_dev->dev, "camsv-%d: sof status:0x%x seq_no:%d_%d group_tags:0x%x_%x_%x_%x first_tag:0x%x last_tag:0x%x dcif:0x%x_%x VF_ST_TAG4:%d",
 		camsv_dev->id, irq_sof_status,
 		dequeued_imgo_seq_no_inner, dequeued_imgo_seq_no,
 		camsv_dev->active_group_info[0],
@@ -2412,6 +2421,8 @@ static irqreturn_t mtk_irq_camsv_sof(int irq, void *data)
 		camsv_dev->active_group_info[3],
 		camsv_dev->first_tag,
 		camsv_dev->last_tag,
+		dcif_set,
+		dcif_sel,
 		tg_cnt);
 
 	irq_info.irq_type = 0;

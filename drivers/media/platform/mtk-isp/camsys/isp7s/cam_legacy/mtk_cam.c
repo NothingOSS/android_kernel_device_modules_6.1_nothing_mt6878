@@ -6219,6 +6219,8 @@ static int isp_composer_handle_ack(struct mtk_cam_device *cam,
 
 		/* mmqos update */
 		mtk_cam_qos_bw_calc(ctx, s_data, true);
+		mtk_cam_qos_sv_bw_calc(ctx, s_data, true);
+		mtk_cam_qos_mraw_bw_calc(ctx, s_data, true);
 
 		if (ctx->sv_dev) {
 			/* may be programmed by raw's scq under dcif case */
@@ -8434,6 +8436,8 @@ int mtk_cam_dev_config(struct mtk_cam_ctx *ctx, bool streaming, bool config_pipe
 			cfg_in_param->subsample;
 		config_param.mraw_input[i].input.in_crop =
 			ctx->mraw_pipe[i]->res_config.tg_crop;
+		ctx->mraw_pipe[i]->res_config.subsample =
+			cfg_in_param->subsample;
 		dev_info(dev, "%s pipe id:%d tg crop width: %d height: %d", __func__,
 			config_param.mraw_input[i].pipe_id,
 			config_param.mraw_input[i].input.in_crop.s.w,
@@ -9559,8 +9563,7 @@ int mtk_cam_ctx_stream_off(struct mtk_cam_ctx *ctx)
 
 fail_stream_off:
 #if CCD_READY
-	if (ctx->used_raw_num)
-		isp_composer_destroy_session_async(ctx);
+	isp_composer_destroy_session_async(ctx);
 #endif
 
 	dev_dbg(cam->dev, "streamed off camsys ctx:%d\n", ctx->stream_id);
@@ -10781,6 +10784,7 @@ static int mtk_cam_probe(struct platform_device *pdev)
 		pr_info("probe cmdq_mbox_create: client: %d\n", cam_dev->cmdq_clt);
 
 	cam_dev->adl_base = ioremap(0x1a0f0000, 0x1900);
+	cam_dev->mraw_base = ioremap(0x1a170000, 0x1000);
 
 	if (!cam_dev->ctxs)
 		return -ENOMEM;

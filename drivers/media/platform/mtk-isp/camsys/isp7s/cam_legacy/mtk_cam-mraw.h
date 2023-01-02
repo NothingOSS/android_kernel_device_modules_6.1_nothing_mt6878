@@ -164,6 +164,7 @@ struct mtk_cam_mraw_resource_config {
 	struct mtkcam_ipi_crop tg_crop;
 	__u32 tg_fmt;
 	__u32 pixel_mode;
+	__u32 subsample;
 	__u32 mraw_dma_size[mraw_dmao_num];
 	atomic_t is_fmt_change;
 	struct mraw_stats_cfg_param stats_cfg_param;
@@ -209,7 +210,6 @@ struct mtk_mraw_device {
 
 	unsigned int sof_count;
 	u64 last_sof_time_ns;
-	unsigned int frame_wait_to_process;
 	struct notifier_block notifier_blk;
 
 	atomic_t is_enqueued;
@@ -237,12 +237,11 @@ void mraw_reset(struct mtk_mraw_device *dev);
 int mtk_cam_mraw_pipeline_config(struct mtk_cam_ctx *ctx, unsigned int idx);
 struct device *mtk_cam_find_mraw_dev(
 	struct mtk_cam_device *cam, unsigned int mraw_mask);
-int mtk_cam_mraw_apply_all_buffers(struct mtk_cam_ctx *ctx);
+int mtk_cam_mraw_apply_all_buffers(struct mtk_cam_ctx *ctx, int initial);
 int mtk_cam_mraw_dev_config(
 	struct mtk_cam_ctx *ctx, unsigned int idx);
 int mtk_cam_mraw_dev_stream_on(struct mtk_cam_ctx *ctx,
 	struct mtk_mraw_device *mraw_dev, unsigned int streaming);
-int mtk_cam_mraw_tg_config(struct mtk_mraw_device *dev, unsigned int pixel_mode);
 int mtk_cam_mraw_top_config(struct mtk_mraw_device *dev);
 int mtk_cam_mraw_dma_config(struct mtk_mraw_device *dev);
 int mtk_cam_mraw_fbc_config(struct mtk_mraw_device *dev);
