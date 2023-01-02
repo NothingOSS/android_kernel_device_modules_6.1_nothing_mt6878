@@ -805,6 +805,7 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 	uint32_t clki;
 	static struct lock_class_key ccu_lock_key;
 	const char *ccu_lock_name = "ccu_lock_class";
+	struct device_link *link;
 #if defined(CCU1_DEVICE)
 	struct device_node *node1;
 	phandle ccu_rproc1_phandle;
@@ -868,7 +869,12 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 		}
 		of_node_put(smi_node);
 
-		mtk_smi_add_device_link(ccu->dev, &smi_pdev->dev);
+		link = device_link_add(ccu->dev, &smi_pdev->dev, DL_FLAG_PM_RUNTIME |
+					DL_FLAG_STATELESS);
+		if (!link) {
+			dev_notice(ccu->dev, "ccu_rproc Unable to link SMI LARB\n");
+			return -ENODEV;
+		}
 	}
 	pm_runtime_enable(ccu->dev);
 
