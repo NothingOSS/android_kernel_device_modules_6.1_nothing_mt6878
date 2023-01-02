@@ -477,19 +477,6 @@ int mtk_smi_larb_ultra_dis(struct device *larbdev, bool is_dis)
 }
 EXPORT_SYMBOL_GPL(mtk_smi_larb_ultra_dis);
 
-void mtk_smi_add_device_link(struct device *dev, struct device *larbdev)
-{
-	struct device_link *link;
-	struct mtk_smi_larb *larb = dev_get_drvdata(larbdev);
-
-	link = device_link_add(dev, larbdev,
-				DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
-	if (!link)
-		dev_notice(dev, "Unable to link SMI LARB%d\n", larb->larbid);
-
-}
-EXPORT_SYMBOL_GPL(mtk_smi_add_device_link);
-
 s32 smi_sysram_enable(struct device *larbdev, const u32 master_id,
 	const bool enable, const char *user)
 {
