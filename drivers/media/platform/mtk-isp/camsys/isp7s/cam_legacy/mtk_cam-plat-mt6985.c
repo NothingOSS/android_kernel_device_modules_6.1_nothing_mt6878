@@ -373,6 +373,8 @@ static const struct plat_v4l2_data mt6985_v4l2_data = {
 	.get_mmqos_port = get_mmqos_port,
 
 	.get_mraw_stats_cfg_param = get_mraw_stats_cfg_param,
+
+	.reserved_camsv_dev_id = 3,
 };
 
 struct camsys_platform_data mt6985_data = {
