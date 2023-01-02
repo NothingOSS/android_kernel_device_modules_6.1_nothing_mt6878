@@ -9243,17 +9243,47 @@
 		mediatek,ccd = <&remoteproc_ccd>;
 	};
 
-	seninf_top: seninf_top@1a010000 {
+	seninf_top: seninf_top@1a00e000 {
 		compatible = "mediatek,seninf-core";
-		reg = <0 0x1a010000 0 0x20000>,
+		reg = <0 0x1a00e000 0 0x20000>,
 			<0 0x11c80000 0 0x20000>;
 		reg-names = "base", "ana-rx";
 		interrupts = <GIC_SPI 502 IRQ_TYPE_LEVEL_HIGH 0>;
 
 		seninf_num = <12>;
 		mux_num = <22>;
-		cam_mux_num = <23>;
-		pref_mux_num = <17>;
+		cam_mux_num = <41>;
+
+		mux-camsv-sat_range = <0 3>;
+		mux-camsv-normal_range = <4 5>;
+		mux-raw_range = <6 17>;
+		mux-uisp_range = <6 17>;
+		mux-pdp_range = <18 21>;
+
+		cammux-camsv-sat_range = <0 31>;
+		cammux-camsv-normal_range = <32 33>;
+		cammux-raw_range = <34 36>;
+		cammux-uisp_range = <34 36>;
+		cammux-pdp_range = <37 40>;
+
+		power-domains = <&scpsys MT6985_POWER_DOMAIN_CAM_MAIN>;
+
+		clocks = /*<&cam_main_r1a_clk CLK_CAM_MAIN_R1A_CAM_MAIN_SENINF_CG_CON>,*/
+			<&topckgen_clk CLK_TOP_SENINF_SEL>,
+			<&topckgen_clk CLK_TOP_SENINF1_SEL>,
+			<&topckgen_clk CLK_TOP_SENINF2_SEL>,
+			<&topckgen_clk CLK_TOP_SENINF3_SEL>,
+			<&topckgen_clk CLK_TOP_SENINF4_SEL>,
+			<&topckgen_clk CLK_TOP_SENINF5_SEL>,
+			<&topckgen_clk CLK_TOP_CAMTM_SEL>;
+		clock-names = /*"clk_cam_seninf",*/
+			 "clk_top_seninf",
+			 "clk_top_seninf1",
+			 "clk_top_seninf2",
+			 "clk_top_seninf3",
+			 "clk_top_seninf4",
+			 "clk_top_seninf5",
+			 "clk_top_camtm";
 	};
 
 	cam_raw_a@1a030000 {
