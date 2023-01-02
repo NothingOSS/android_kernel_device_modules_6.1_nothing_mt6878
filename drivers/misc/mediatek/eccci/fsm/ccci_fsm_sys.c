@@ -89,11 +89,12 @@ static struct attribute *ccci_default_attrs[] = {
 	&ccci_attr_mdee.attr,
 	NULL
 };
+ATTRIBUTE_GROUPS(ccci_default);
 
 static struct kobj_type fsm_ktype = {
 	.release = fsm_obj_release,
 	.sysfs_ops = &fsm_sysfs_ops,
-	.default_attrs = ccci_default_attrs
+	.default_groups = ccci_default_groups,
 };
 
 int fsm_sys_init(void)

@@ -356,11 +356,12 @@ static struct attribute *ccci_default_attrs[] = {
 	&ccci_attr_pincfg.attr,
 	NULL
 };
+ATTRIBUTE_GROUPS(ccci_default);
 
 static struct kobj_type ccci_ktype = {
 	.release = ccci_obj_release,
 	.sysfs_ops = &ccci_sysfs_ops,
-	.default_attrs = ccci_default_attrs
+	.default_groups = ccci_default_groups,
 };
 
 int ccci_sysfs_add_modem(void *kobj, void *ktype,

@@ -1442,11 +1442,12 @@ static const struct sysfs_ops ccci_md_sysfs_ops = {
 static struct attribute *ccci_md_default_attrs[] = {
 	NULL
 };
+ATTRIBUTE_GROUPS(ccci_md_default);
 
 static struct kobj_type ccci_md_ktype = {
 	.release = ccci_md_obj_release,
 	.sysfs_ops = &ccci_md_sysfs_ops,
-	.default_attrs = ccci_md_default_attrs
+	.default_groups = ccci_md_default_groups,
 };
 
 void ccci_sysfs_add_md(void *kobj)
