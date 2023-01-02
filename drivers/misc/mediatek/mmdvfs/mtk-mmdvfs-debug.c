@@ -62,6 +62,9 @@ struct mmdvfs_debug {
 	u8 *fmeter_id;
 	u8 *fmeter_type;
 	struct notifier_block nb;
+
+	/* user & power id mapping*/
+	u8 user_pwr[USER_NUM];
 };
 
 static struct mmdvfs_debug *g_mmdvfs;
@@ -212,6 +215,11 @@ static int mmdvfs_debug_opp_show(struct seq_file *file, void *data)
 			readl(MEM_REC_USR_PWR(j)),
 			readl(MEM_REC_USR_ID(j)), readl(MEM_REC_USR_OPP(j)));
 
+	//user latest request opp
+	seq_puts(file, "user latest request opp\n");
+	for (i = 0; i < USER_NUM; i++)
+		seq_printf(file, "user: %u opp: %u\n", i, readl(MEM_VOTE_OPP_USR(i)));
+
 	// vmm debug
 	seq_printf(file, "VMM Efuse:%#x\n", readl(MEM_VMM_EFUSE));
 	for (j = 0; j < 8; j++)
@@ -332,9 +340,8 @@ static int mmdvfs_v1_dbg_ftrace_thread(void *data)
 
 static int mmdvfs_v3_dbg_ftrace_thread(void *data)
 {
-	static u32 pwr_cnt, usr_cnt;
 	int retry = 0;
-	s32 i, j;
+	s32 i;
 
 	while (!mmdvfs_is_init_done()) {
 		if (++retry > 100) {
@@ -352,51 +359,17 @@ static int mmdvfs_v3_dbg_ftrace_thread(void *data)
 
 	while (!kthread_should_stop()) {
 		// power opp
-		i = readl(MEM_REC_PWR_CNT) % MEM_REC_CNT_MAX;
-		if (pwr_cnt <= i) {
-			for (j = pwr_cnt; j < i; j++)
-				ftrace_pwr_opp_v3(readl(MEM_REC_PWR_ID(j)),
-					readl(MEM_REC_PWR_OPP(j)));
-		} else {
-			for (j = pwr_cnt; j < MEM_REC_CNT_MAX; j++)
-				ftrace_pwr_opp_v3(readl(MEM_REC_PWR_ID(j)),
-					readl(MEM_REC_PWR_OPP(j)));
-			for (j = 0; j < i; j++)
-				ftrace_pwr_opp_v3(readl(MEM_REC_PWR_ID(j)),
-					readl(MEM_REC_PWR_OPP(j)));
-		}
-		pwr_cnt = i;
+		for (i = 0; i <= PWR_MMDVFS_VMM; i++)
+			ftrace_pwr_opp_v3(i, readl(MEM_VOTE_OPP_PWR(i)));
 
 		// user opp
-		i = readl(MEM_REC_USR_CNT) % MEM_REC_CNT_MAX;
-		if (usr_cnt <= i) {
-			for (j = usr_cnt; j < i; j++) {
-				if (readl(MEM_REC_USR_PWR(j)) == PWR_MMDVFS_VCORE)
-					ftrace_user_opp_v3_vcore(readl(MEM_REC_USR_ID(j)),
-						readl(MEM_REC_USR_OPP(j)));
-				if (readl(MEM_REC_USR_PWR(j)) == PWR_MMDVFS_VMM)
-					ftrace_user_opp_v3_vmm(readl(MEM_REC_USR_ID(j)),
-						readl(MEM_REC_USR_OPP(j)));
-			}
-		} else {
-			for (j = usr_cnt; j < MEM_REC_CNT_MAX; j++) {
-				if (readl(MEM_REC_USR_PWR(j)) == PWR_MMDVFS_VCORE)
-					ftrace_user_opp_v3_vcore(readl(MEM_REC_USR_ID(j)),
-						readl(MEM_REC_USR_OPP(j)));
-				if (readl(MEM_REC_USR_PWR(j)) == PWR_MMDVFS_VMM)
-					ftrace_user_opp_v3_vmm(readl(MEM_REC_USR_ID(j)),
-						readl(MEM_REC_USR_OPP(j)));
-			}
-			for (j = 0; j < i; j++) {
-				if (readl(MEM_REC_USR_PWR(j)) == PWR_MMDVFS_VCORE)
-					ftrace_user_opp_v3_vcore(readl(MEM_REC_USR_ID(j)),
-						readl(MEM_REC_USR_OPP(j)));
-				if (readl(MEM_REC_USR_PWR(j)) == PWR_MMDVFS_VMM)
-					ftrace_user_opp_v3_vmm(readl(MEM_REC_USR_ID(j)),
-						readl(MEM_REC_USR_OPP(j)));
-			}
+		for (i = 0; i < USER_NUM; i++) {
+			if (g_mmdvfs->user_pwr[i] == PWR_MMDVFS_VCORE)
+				ftrace_user_opp_v3_vcore(i, readl(MEM_VOTE_OPP_USR(i)));
+			if (g_mmdvfs->user_pwr[i] == PWR_MMDVFS_VMM)
+				ftrace_user_opp_v3_vmm(i, readl(MEM_VOTE_OPP_USR(i)));
 		}
-		usr_cnt = i;
+
 		msleep(20);
 	}
 
@@ -496,10 +469,14 @@ static int mmdvfs_debug_smi_cb(struct notifier_block *nb, unsigned long action, 
 
 static int mmdvfs_debug_probe(struct platform_device *pdev)
 {
+	const char *MMDVFS_CLK_NAMES = "mediatek,mmdvfs-clock-names";
+	const char *MMDVFS_CLKS = "mediatek,mmdvfs-clocks";
+	struct device_node *mmdvfs_clk_node;
+	u8 mmdvfs_clk_num;
 	struct proc_dir_entry *dir, *proc;
 	struct task_struct *kthr;
 	struct regulator *reg;
-	int ret;
+	int i, ret;
 
 	g_mmdvfs = kzalloc(sizeof(*g_mmdvfs), GFP_KERNEL);
 	if (!g_mmdvfs) {
@@ -589,10 +566,48 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	}
 	g_mmdvfs->reg_vmm = reg;
 
+	g_mmdvfs->nb.notifier_call = mmdvfs_debug_smi_cb;
+	mtk_smi_dbg_register_notifier(&g_mmdvfs->nb);
+
+	/* Below code should be in the bottom of probe function */
+
+	/* user & power id mapping*/
+	mmdvfs_clk_node = of_parse_phandle(g_mmdvfs->dev->of_node, "mediatek,mmdvfs-clk", 0);
+	if (!mmdvfs_clk_node) {
+		MMDVFS_DBG("find mmdvfs_clk node failed");
+		return 0;
+	}
+
+	ret = of_property_count_strings(mmdvfs_clk_node, MMDVFS_CLK_NAMES);
+	if (ret <= 0) {
+		MMDVFS_DBG("%s invalid:%d", MMDVFS_CLK_NAMES, ret);
+		return ret;
+	}
+	mmdvfs_clk_num = ret;
+
+	for (i = 0; i < mmdvfs_clk_num; i++) {
+		struct of_phandle_args spec;
+
+		ret = of_parse_phandle_with_args(
+			mmdvfs_clk_node, MMDVFS_CLKS, "#mmdvfs,clock-cells", i, &spec);
+		if (ret) {
+			MMDVFS_DBG("parse %s i:%d failed:%d",
+				MMDVFS_CLKS, i, ret);
+			return ret;
+		}
+
+		g_mmdvfs->user_pwr[spec.args[2]] = spec.args[1];
+	}
+
+	for (i = 0; i < USER_NUM; i++)
+		MMDVFS_DBG(
+			"g_mmdvfs->user_pwr i(user):%d pwr:%hhu",
+			i, g_mmdvfs->user_pwr[i]);
+
 	ret = of_property_count_u8_elems(g_mmdvfs->dev->of_node, "fmeter-id");
 	if (ret < 0) {
 		MMDVFS_DBG("count_elems fmeter-id failed:%d", ret);
-		return ret;
+		return 0;
 	}
 	g_mmdvfs->fmeter_count = ret;
 
@@ -619,9 +634,6 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 		MMDVFS_DBG("read_array fmeter-type failed:%d", ret);
 		return ret;
 	}
-
-	g_mmdvfs->nb.notifier_call = mmdvfs_debug_smi_cb;
-	mtk_smi_dbg_register_notifier(&g_mmdvfs->nb);
 
 	return 0;
 }

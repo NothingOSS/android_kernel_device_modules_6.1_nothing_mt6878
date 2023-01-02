@@ -31,25 +31,6 @@ struct mtk_mmdvfs_clk {
 	struct clk_hw clk_hw;
 };
 
-/* vcp/.../mmdvfs_public.h */
-enum {
-	USER_DISP,
-	USER_DISP_AP,
-	USER_MDP,
-	USER_MML,
-	USER_MMINFRA,
-	USER_VENC,
-	USER_VENC_AP,
-	USER_VDEC,
-	USER_VDEC_AP,
-	USER_IMG,
-	USER_CAM,
-	USER_AOV,
-	USER_VCORE,
-	USER_VMM,
-	USER_NUM
-};
-
 /* vcp/.../mmdvfs_private.h */
 enum {
 	LOG_DEBUG_ON,

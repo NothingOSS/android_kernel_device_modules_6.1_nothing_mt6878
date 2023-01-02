@@ -42,6 +42,25 @@ enum {
 	VMM_USR_NUM
 };
 
+/* vcp/.../mmdvfs_public.h */
+enum {
+	USER_DISP,
+	USER_DISP_AP,
+	USER_MDP,
+	USER_MML,
+	USER_MMINFRA,
+	USER_VENC,
+	USER_VENC_AP,
+	USER_VDEC,
+	USER_VDEC_AP,
+	USER_IMG,
+	USER_CAM,
+	USER_AOV,
+	USER_VCORE,
+	USER_VMM,
+	USER_NUM
+};
+
 #if IS_ENABLED(CONFIG_MTK_MMDVFS)
 int mtk_mmdvfs_get_ipi_status(void);
 int mtk_mmdvfs_enable_vcp(const bool enable, const u8 idx);

@@ -26,7 +26,6 @@
 #include "vcp_status.h"
 
 #include "mtk-mmdvfs-v3-memory.h"
-#include "mtk-mmdvfs-ftrace.h"
 
 #include "../../misc/mediatek/smi/mtk-smi-dbg.h"
 
@@ -313,7 +312,6 @@ static int mtk_mmdvfs_set_rate(struct clk_hw *hw, unsigned long rate, unsigned l
 			break;
 
 	opp = (clk->freq_num - ((i == clk->freq_num) ? (i - 1) : i) - 1);
-	ftrace_user_opp_v3_vmm(clk->user_id, opp);
 	if (log_level & (1 << log_clk_ops))
 		MMDVFS_DBG("user_id:%hhu clk_id:%hhu opp:%hhu rate:%lu opp:%hhu",
 			clk->user_id, clk->clk_id, clk->opp, rate, opp);
