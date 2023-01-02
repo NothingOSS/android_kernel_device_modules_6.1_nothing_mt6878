@@ -447,7 +447,7 @@ static void kwdt_dump_func(void)
 
 	for_each_process_thread(g, t) {
 		if (!strcmp(t->comm, "watchdogd")) {
-			pr_info("watchdogd on CPU %d\n", t->cpu);
+			pr_info("watchdogd on CPU %d\n", task_thread_info(t)->cpu);
 			sched_show_task(t);
 			break;
 		}
