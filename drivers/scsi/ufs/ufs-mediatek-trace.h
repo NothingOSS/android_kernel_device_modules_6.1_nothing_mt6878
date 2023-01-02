@@ -53,7 +53,8 @@ TRACE_EVENT(ufs_mtk_clk_scale,
 #endif
 
 #undef TRACE_INCLUDE_PATH
+#define TRACE_INCLUDE_PATH .
+
 #undef TRACE_INCLUDE_FILE
-#define TRACE_INCLUDE_PATH ../../drivers/scsi/ufs/
 #define TRACE_INCLUDE_FILE ufs-mediatek-trace
 #include <trace/define_trace.h>

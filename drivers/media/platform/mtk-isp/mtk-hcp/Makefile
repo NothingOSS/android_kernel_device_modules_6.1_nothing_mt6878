@@ -16,6 +16,8 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/m4u/2.4
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/m4u/$(MTK_PLATFORM)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-isp/imgsys/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-isp/imgsys
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-isp/mtk-hcp
 ccflags-y += -I$(srctree)/include/media
 
 ifeq ($(CONFIG_MTK_ION),y)

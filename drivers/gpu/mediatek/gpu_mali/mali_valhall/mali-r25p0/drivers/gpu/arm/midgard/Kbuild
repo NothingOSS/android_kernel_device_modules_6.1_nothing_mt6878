@@ -78,10 +78,10 @@ DEFINES += -DMALI_KBASE_BUILD
 DEFINES += -DCONFIG_MALI_DMA_BUF_LEGACY_COMPAT=1
 
 # Use our defines when compiling
-# MTK Add -I$(src)/include to include ddk linux headers
-ccflags-y += $(DEFINES) -I$(KBASE_PATH)   -I$(KBASE_PLATFORM_PATH) -I$(UMP_PATH) -I$(srctree)/include/linux -I$(src)/include
+# MTK Add -I$(srctree)/$(src)/include to include ddk linux headers
+ccflags-y += $(DEFINES) -I$(KBASE_PATH)   -I$(KBASE_PLATFORM_PATH) -I$(UMP_PATH) -I$(srctree)/include/linux -I$(srctree)/$(src)/include
 
-subdir-ccflags-y += $(DEFINES) -I$(KBASE_PATH)   -I$(KBASE_PLATFORM_PATH) -I$(UMP_PATH) -I$(srctree)/include/linux -I$(src)/include
+subdir-ccflags-y += $(DEFINES) -I$(KBASE_PATH)   -I$(KBASE_PLATFORM_PATH) -I$(UMP_PATH) -I$(srctree)/include/linux -I$(srctree)/$(src)/include
 
 ifeq ($(CONFIG_MTK_IOMMU_V2),y)
 	ccflags-y += -I$(srctree)/drivers/staging/android/ion
@@ -190,7 +190,7 @@ mali_kbase-y := $(SRC:.c=.o)
 # Kconfig passes in the name with quotes for in-tree builds - remove them.
 platform_name := $(shell echo $(CONFIG_MALI_PLATFORM_NAME))
 MALI_PLATFORM_DIR := platform/$(platform_name)
-ccflags-y += -I$(src)/$(MALI_PLATFORM_DIR)
+ccflags-y += -I$(srctree)/$(src)/$(MALI_PLATFORM_DIR)
 include $(src)/$(MALI_PLATFORM_DIR)/Kbuild
 include $(src)/platform/mtk_platform_common/Kbuild
 
@@ -227,8 +227,8 @@ include  $(src)/backend/gpu/Kbuild
 mali_kbase-y += $(BACKEND:.c=.o)
 
 
-ccflags-y += -I$(src)/backend/gpu
-subdir-ccflags-y += -I$(src)/backend/gpu
+ccflags-y += -I$(srctree)/$(src)/backend/gpu
+subdir-ccflags-y += -I$(srctree)/$(src)/backend/gpu
 
 # For kutf and mali_kutf_irq_latency_test
 obj-$(CONFIG_MALI_KUTF) += tests/

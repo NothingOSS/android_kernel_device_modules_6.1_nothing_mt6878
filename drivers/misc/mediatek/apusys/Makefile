@@ -27,7 +27,7 @@ obj-$(CONFIG_MTK_APUSYS_SUPPORT) += apusys.o
 
 # common include path
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/geniezone/public/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/geniezone/public/
 
 # core makefile
 apusys-objs += core/apusys_core.o
@@ -159,13 +159,13 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/power/3.0/inc
 obj-$(CONFIG_MTK_APUSYS_SUPPORT) += power/
 
 # mdla
-src=$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys
-ccflags-y += -I$(src)/mdla/
-apusys-objs += $(shell cd $(src) && find mdla -name "*.c" | sed 's/\.c/\.o/g')
+MDLA=$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys
+ccflags-y += -I$(srctree)/$(src)/mdla/
+apusys-objs += $(shell cd $(MDLA) && find mdla -name "*.c" | sed 's/\.c/\.o/g')
 
 # vpu
 VPU = vpu/$(APUSYS_VERSION_VPU)
-ccflags-y += -I$(src)/$(VPU)
+ccflags-y += -I$(srctree)/$(src)/$(VPU)
 ifeq ($(CONFIG_MTK_APUSYS_VPU_DEBUG),y)
 apusys-objs += $(VPU)/vpu_tag.o
 apusys-objs += $(VPU)/vpu_met.o
@@ -204,11 +204,11 @@ ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/apusys_rv/
 subdir-ccflags-y += -DMT6879_APUSYS_RV_PLAT_DATA
 apusys-objs += apusys_rv/2.0/mt6879_plat.o
 endif
-ifneq ($(wildcard $(srctree)/drivers/misc/mediatek/apusys/apusys_rv/2.0/mt6886_plat.c),)
+ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/apusys_rv/2.0/mt6886_plat.c),)
 subdir-ccflags-y += -DMT6886_APUSYS_RV_PLAT_DATA
 apusys-objs += apusys_rv/2.0/mt6886_plat.o
 endif
-ifneq ($(wildcard $(srctree)/drivers/misc/mediatek/apusys/apusys_rv/1.0/mt6893_plat.c),)
+ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/apusys_rv/1.0/mt6893_plat.c),)
 subdir-ccflags-y += -DMT6893_APUSYS_RV_PLAT_DATA
 apusys-objs += apusys_rv/1.0/mt6893_plat.o
 endif
@@ -247,7 +247,7 @@ apusys-objs += mvpu/mvpu_sysfs.o
 apusys-objs += mvpu/mvpu_sec.o
 
 # aps
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/apusys/aps/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/aps/
 apusys-objs += aps/aps_driver.o
 apusys-objs += aps/aps_ipi.o
 apusys-objs += aps/aps_sysfs.o
@@ -257,7 +257,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/hw_logger/
 apusys-objs += hw_logger/hw_logger.o
 
 # aov
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/scp/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include
 apusys-objs += aov/aov_init.o
 apusys-objs += aov/aov_rpmsg.o
 apusys-objs += aov/aov_recovery.o
@@ -266,4 +266,4 @@ apusys-objs += aov/aov_recovery.o
 obj-$(CONFIG_MTK_APUSYS_SUPPORT) += sapu/
 
 # hw_sema
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/apusys/power/3.0/inc/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/power/3.0/inc/

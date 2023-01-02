@@ -20,10 +20,10 @@ ifneq ($(KERNELRELEASE),)
 
     #ifneq ($(CONFIG_MTK_TINYSYS_SCP_SUPPORT),)
     # SCP
-    subdir-ccflags-y += -Werror -I$(srctree)/drivers/misc/mediatek/scp/include
-    subdir-ccflags-y += -Werror -I$(srctree)/drivers/misc/mediatek/connectivity/common/
-    subdir-ccflags-y += -Werror -I$(srctree)/drivers/misc/mediatek/conn_scp/conap_scp
-    subdir-ccflags-y += -Werror -I$(srctree)/drivers/misc/mediatek/conn_scp/aolserv
+    subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include
+    subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/connectivity/common/
+    subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/conn_scp/conap_scp
+    subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/conn_scp/aolserv
 
 	# Aoltest
     ifeq ($(CONFIG_MTK_AOL_DEBUG),y)

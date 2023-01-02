@@ -8,9 +8,9 @@
 obj-y += mali_gpu_ptm_msg.o
 
 ccflags-y += $(DEFINES)
-ccflags-y += -I$(src)
-ccflags-y += -I$(src)/../include
-ccflags-y += -I$(src)/../../include
-ccflags-y += -I$(src)/../../../arbiter
+ccflags-y += -I$(srctree)/$(src)
+ccflags-y += -I$(srctree)/$(src)/../include
+ccflags-y += -I$(srctree)/$(src)/../../include
+ccflags-y += -I$(srctree)/$(src)/../../../arbiter
 subdir-ccflags-y += $(DEFINES)
 

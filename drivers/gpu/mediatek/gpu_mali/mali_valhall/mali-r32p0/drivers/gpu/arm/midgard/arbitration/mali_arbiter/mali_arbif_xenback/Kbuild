@@ -34,5 +34,5 @@ DEFINES = \
 # Use our defines when compiling
 ccflags-y += $(DEFINES)
 subdir-ccflags-y += $(DEFINES)
-ccflags-y += -I$(src)/../../include
-ccflags-y += -I$(src)/../../include/arb_vm_protocol
+ccflags-y += -I$(srctree)/$(src)/../../include
+ccflags-y += -I$(srctree)/$(src)/../../include/arb_vm_protocol

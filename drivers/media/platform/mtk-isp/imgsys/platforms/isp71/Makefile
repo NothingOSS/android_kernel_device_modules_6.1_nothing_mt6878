@@ -5,7 +5,7 @@
 ccflags-$(CONFIG_MTK_AEE_FEATURE) += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat
 ccflags-y += -I$(srctree)/drivers/media/platform/mtk-isp/mtk-hcp/
 ccflags-y += -I$(srctree)/drivers/media/platform/mtk-isp/mtk-ipesys-me/
-ccflags-y += -I$(srctree)/drivers/media/platform/mtk-isp/imgsys/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-isp/imgsys/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/m4u/$(MTK_PLATFORM)
 ccflags-y += -I$(srctree)/drivers/iommu

@@ -12,7 +12,7 @@
 #
 
 ccflags-y += -I$(srctree)/include/linux/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/mcupm/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcupm/include/
 
 obj-${CONFIG_MTK_ET} += mtk_et.o

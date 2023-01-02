@@ -28,8 +28,8 @@ DEFINES = \
 
 # Use our defines when compiling
 ccflags-y += $(DEFINES)
-ccflags-y += -I$(src)/../include
-ccflags-y += -I$(src)/../common
-ccflags-y += -I$(src)/../../include
-ccflags-y += -I$(src)/../../mali_arbiter
+ccflags-y += -I$(srctree)/$(src)/../include
+ccflags-y += -I$(srctree)/$(src)/../common
+ccflags-y += -I$(srctree)/$(src)/../../include
+ccflags-y += -I$(srctree)/$(src)/../../mali_arbiter
 subdir-ccflags-y += $(DEFINES)

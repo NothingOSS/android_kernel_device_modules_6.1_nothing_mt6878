@@ -10,7 +10,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 
-ccflags-y += -I$(src)
+ccflags-y += -I$(srctree)/$(src)
 ccflags-y += -Wno-error
 
 obj-y += xtest_isee_3000.o

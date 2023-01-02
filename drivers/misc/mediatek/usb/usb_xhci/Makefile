@@ -4,9 +4,9 @@
 #
 
 # tell define_trace.h where to find the xhci trace header
-CFLAGS_xhci-trace.o := -I$(src)
+CFLAGS_xhci-trace.o := -I$(srctree)/$(src)
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/usb/usb_offload
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb_offload
 
 xhci-mtk-hcd-v2-y := xhci.o xhci-mem.o xhci-ext-caps.o
 xhci-mtk-hcd-v2-y += xhci-ring.o xhci-hub.o xhci-dbg.o

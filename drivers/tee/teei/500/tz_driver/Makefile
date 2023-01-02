@@ -12,7 +12,7 @@
 
 #include $(srctree)/drivers/misc/mediatek/Makefile.custom
 
-ccflags-y += -I$(src) -I$(src)/include
+ccflags-y += -I$(srctree)/$(src) -I$(srctree)/$(src)/include
 ccflags-y += -I$(srctree)
 teei-objs += teei_client_main.o
 teei-objs += fdrv.o

@@ -66,4 +66,4 @@ ifeq ($(CONFIG_MALI_NO_MALI),y)
 endif
 
 ccflags-y += \
-	-I$(src)/platform/mtk_platform_common/
+	-I$(srctree)/$(src)/platform/mtk_platform_common/

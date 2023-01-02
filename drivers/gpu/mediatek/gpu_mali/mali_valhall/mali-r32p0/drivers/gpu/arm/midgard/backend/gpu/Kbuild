@@ -58,4 +58,4 @@ mali_kbase-$(CONFIG_MALI_NO_MALI) += backend/gpu/mali_kbase_model_linux.o
 mali_kbase-$(CONFIG_MALI_NO_MALI) += backend/gpu/mali_kbase_model_error_generator.o
 
 ccflags-y += \
-	-I$(src)/platform/mtk_platform_common/
+	-I$(srctree)/$(src)/platform/mtk_platform_common/

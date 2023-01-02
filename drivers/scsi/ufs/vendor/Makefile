@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 # Mediatek UFS extended features makefile
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/scsi/ufs/vendor
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/scsi/ufs/
 
 # must after -I$(DEVICE_MODULES_PATH)/drivers/scsi/ufs/

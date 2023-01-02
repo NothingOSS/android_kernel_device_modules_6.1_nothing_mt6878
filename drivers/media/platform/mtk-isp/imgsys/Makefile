@@ -13,7 +13,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu
-ccflags-y += -I$(srctree)/include/soc/mediatek
+ccflags-y += -I$(DEVICE_MODULES_PATH)/include/soc/mediatek
 
 ifneq ($(wildcard $(DEVICE_MODULES_PATH)/include/dt-bindings/memory/mt6983-larb-port.h),)
   subdir-ccflags-y += -DWPE_TF_DUMP_71_1
@@ -23,10 +23,10 @@ else ifneq ($(wildcard $(DEVICE_MODULES_PATH)/include/dt-bindings/memory/mt6879-
 endif
 $(info "imgsys, subdir-ccflags-y = $(subdir-ccflags-y)")
 
-ifneq ($(wildcard $(srctree)/include/dt-bindings/memory/mt6985-larb-port.h),)
+ifneq ($(wildcard $(DEVICE_MODULES_PATH)/include/dt-bindings/memory/mt6985-larb-port.h),)
   subdir-ccflags-y += -DWPE_TF_DUMP_7S_1
   subdir-ccflags-y += -DPQDIP_7S_1
-else ifneq ($(wildcard $(srctree)/include/dt-bindings/memory/mt6886-larb-port.h),)
+else ifneq ($(wildcard $(DEVICE_MODULES_PATH)/include/dt-bindings/memory/mt6886-larb-port.h),)
   subdir-ccflags-y += -DWPE_TF_DUMP_7S_2
 endif
 $(info "imgsys, subdir-ccflags-y = $(subdir-ccflags-y)")

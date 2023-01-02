@@ -17,9 +17,9 @@
 #include <uapi/linux/dma-heap.h>
 #include <linux/scatterlist.h>
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
-#include <aie_mp_fw_7s/config/dma_def.h>
-#include <aie_mp_fw_7s/kernel/dma_def.h>
-#include <aie_mp_fw_7s/all_header.h>
+#include "aie_mp_fw_7s/config/dma_def.h"
+#include "aie_mp_fw_7s/kernel/dma_def.h"
+#include "aie_mp_fw_7s/all_header.h"
 #include "cmdq-sec.h"
 #include "cmdq-sec-iwc-common.h"
 #include "iommu_debug.h"

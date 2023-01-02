@@ -22,8 +22,8 @@
 # *** MTK ***
 include $(src)/Kbuild-mtk-custom-env
 include $(src)/platform/mtk_platform_common/Kbuild
-ccflags-y += -I$(src)/include
-subdir-ccflags-y += -I$(src)/include
+ccflags-y += -I$(srctree)/$(src)/include
+subdir-ccflags-y += -I$(srctree)/$(src)/include
 # ARM Ticket: CAS-173191-P7F4D1
 DEFINES += -DCONFIG_MALI_DMA_BUF_LEGACY_COMPAT=1
 
@@ -199,7 +199,7 @@ mali_kbase-y := $(SRC:.c=.o)
 # Kconfig passes in the name with quotes for in-tree builds - remove them.
 platform_name := $(shell echo $(CONFIG_MALI_PLATFORM_NAME))
 MALI_PLATFORM_DIR := platform/$(platform_name)
-ccflags-y += -I$(src)/$(MALI_PLATFORM_DIR)
+ccflags-y += -I$(srctree)/$(src)/$(MALI_PLATFORM_DIR)
 include $(src)/$(MALI_PLATFORM_DIR)/Kbuild
 include $(src)/platform/mtk_platform_common/Kbuild
 
@@ -245,8 +245,8 @@ include  $(src)/backend/gpu/Kbuild
 mali_kbase-y += $(BACKEND:.c=.o)
 
 
-ccflags-y += -I$(src)/backend/gpu
-subdir-ccflags-y += -I$(src)/backend/gpu
+ccflags-y += -I$(srctree)/$(src)/backend/gpu
+subdir-ccflags-y += -I$(srctree)/$(src)/backend/gpu
 
 # For kutf and mali_kutf_irq_latency_test
 obj-$(CONFIG_MALI_KUTF) += tests/

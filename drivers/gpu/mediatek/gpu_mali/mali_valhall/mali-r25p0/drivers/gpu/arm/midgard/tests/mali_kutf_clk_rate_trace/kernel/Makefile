@@ -24,14 +24,14 @@ ifneq ($(KERNELRELEASE),)
 ccflags-y := \
 	-DMALI_UNIT_TEST=$(MALI_UNIT_TEST) \
 	-DMALI_CUSTOMER_RELEASE=$(MALI_CUSTOMER_RELEASE) \
-	-I$(src)/../../include \
-	-I$(src)/../../../../../../../include \
-	-I$(src)/../../../../ \
-	-I$(src)/../../../ \
-	-I$(src)/../../../backend/gpu \
-	-I$(src)/../../../debug \
-	-I$(src)/../../../debug/backend \
-	-I$(src)/ \
+	-I$(srctree)/$(src)/../../include \
+	-I$(srctree)/$(src)/../../../../../../../include \
+	-I$(srctree)/$(src)/../../../../ \
+	-I$(srctree)/$(src)/../../../ \
+	-I$(srctree)/$(src)/../../../backend/gpu \
+	-I$(srctree)/$(src)/../../../debug \
+	-I$(srctree)/$(src)/../../../debug/backend \
+	-I$(srctree)/$(src)/ \
 	-I$(srctree)/drivers/staging/android \
 	-I$(srctree)/include/linux
 

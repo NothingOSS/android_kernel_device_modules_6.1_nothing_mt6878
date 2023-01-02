@@ -38,7 +38,6 @@ config DEVICE_MODULES_PINCTRL_MT6779
 	tristate "Mediatek MT6779 pin control"
 	depends on OF
 	depends on ARM64 || COMPILE_TEST
-	default ARM64 && ARCH_MEDIATEK
 	select DEVICE_MODULES_PINCTRL_MTK_PARIS
 	help
 	  Say yes here to support pin controller and gpio driver

@@ -11,7 +11,7 @@ subdir-ccflags-y += \
 	-I$(MTK_PM_BUILD_FOLDER)/include/
 
 # mtk_perf_ioctl
-include $(MTK_PM_BUILD_FOLDER)/perf_ioctl/Makefile
+include $(MTK_PM_BUILD_FOLDER)/perf_ioctl/build.mk
 MTK_PERF_IOCTL = $(mtk_perf_ioctl_objs:%.o=perf_ioctl/%.o)
 MTK_PERF_IOCTL_SRC = $(MTK_PERF_IOCTL)
 obj-$(CONFIG_MTK_PERFORMANCE_MODULE) += mtk_perf_ioctl.o

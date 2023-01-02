@@ -19,8 +19,8 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/slbc
-ccflags-y += -I$(srctree)/include/linux/soc/mediatek
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc
+ccflags-y += -I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek
 
 mtk_aov-objs := \
 	mtk-aov-drv.o	\

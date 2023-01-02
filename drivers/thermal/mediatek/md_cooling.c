@@ -14,7 +14,7 @@
 #include <linux/thermal.h>
 #include <linux/types.h>
 #include <mtk_ccci_common.h>
-#include "../thermal_core.h"
+#include "thermal_core.h"
 #include "md_cooling.h"
 #include "thermal_trace.h"
 

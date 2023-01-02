@@ -3,6 +3,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/char/rpmb/drrpmb_gp/public
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/tee/gud/500/MobiCoreDriver/public/
 endif
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/scsi/ufs
+ccflags-y += -I$(srctree)/drivers/scsi/ufs
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/scsi/ufs/vendor
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/mmc/host

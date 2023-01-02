@@ -5,14 +5,14 @@
 
 ### for adsp
 ifneq ($(CONFIG_MTK_AUDIODSP_SUPPORT), )
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/adsp/include
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/audio_ipi/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/adsp/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/audio_ipi/include
 endif
 
-ccflags-y += -I$(srctree)/drivers/clk/mediatek/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek/
 
 ifneq ($(CONFIG_DEVICE_MODULES_USB_XHCI_MTK), )
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/usb/usb_xhci
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb_xhci
 else
 ifneq ($(CONFIG_DEVICE_MODULES_USB_XHCI_MTK), )
 ccflags-y += -I$(srctree)/drivers/usb/host

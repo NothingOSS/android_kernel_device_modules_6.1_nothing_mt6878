@@ -4,35 +4,35 @@ CAM_MODULE := mtk-cam-isp7s
 
 CAMSYS_TRACE_ENABLE = y
 
-subdir-ccflags-y += -I$(srctree)/drivers/media/platform/mtk-isp \
-	     -I$(srctree)/drivers/misc/mediatek/mmdvfs \
-	     -I$(srctree)/drivers/misc/mediatek/smi/ \
-	     -I$(srctree)/drivers/misc/mediatek/include/mt-plat/ \
-	     -I$(srctree)/drivers/misc/mediatek/mtk-interconnect \
-	     -I$(srctree)/drivers/misc/mediatek/imgsensor/src-v4l2/frame-sync/ \
-	     -I$(srctree)/drivers/misc/mediatek/imgsensor/inc/ \
-	     -I$(srctree)/drivers/dma-buf/heaps/ \
-	     -I$(srctree)/drivers/misc/mediatek/iommu/ \
-	     -I$(srctree)/drivers/clk/mediatek/ \
-	     -I$(srctree)/drivers/misc/mediatek/ \
-	     -I$(src)
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-isp \
+	     -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs \
+	     -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/ \
+	     -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/ \
+	     -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect \
+	     -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/imgsensor/src-v4l2/frame-sync/ \
+	     -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/imgsensor/inc/ \
+	     -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/ \
+	     -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/ \
+	     -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek/ \
+	     -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ \
+	     -I$(srctree)/$(src)
 
 
-ifneq ($(wildcard $(srctree)/include/dt-bindings/memory/mt6985-larb-port.h),)
+ifneq ($(wildcard $(DEVICE_MODULES_PATH)/include/dt-bindings/memory/mt6985-larb-port.h),)
   subdir-ccflags-y += -DCAMSYS_TF_DUMP_7S
 endif
 
 # MTEE part
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/geniezone/public
-ccflags-y += -I$(srctree)/drivers/iommu/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/trustzone/m4u/
-ccflags-y += -I$(srctree)/drivers/dma-buf/heaps
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/geniezone/public
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/trustzone/m4u/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps
 # MTEE end
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/geniezone/public
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/geniezone/public
 ccflags-y += -DSENSOR_SECURE_MTEE_SUPPORT
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/tee_gp/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tee_gp/include
 # ccflags-y += -DSECURE_UT
 
 $(CAM_MODULE)-objs := \
@@ -78,7 +78,7 @@ include $(src)/mtk_csi_phy_3_0/sub_drv.mk
 PLATFORM_PATH = $(srctree)/$(src)
 # workaround for external build
 ifneq ($(M),)
-PLATFORM_PATH = $(src)
+PLATFORM_PATH = $(srctree)/$(src)
 endif
 
 # platform data

@@ -22,7 +22,7 @@ $(info "-----------MICROTRUST_TZ_DRIVER_MTK_BOOTPROF=$(MICROTRUST_TZ_DRIVER_MTK_
 $(info "whf src=$(src)")
 
 subdir-ccflags-y  += -I$(srctree)/$(src)/common/include
-#ccflags-y  += -I$(src)/common/include
+#ccflags-y  += -I$(srctree)/$(src)/common/include
 $(info "whf subdir-ccflags-y=$(subdir-ccflags-y)")
 $(info "whf ccflags-y=$(ccflags-y)")
 subdir-ccflags-y  += \

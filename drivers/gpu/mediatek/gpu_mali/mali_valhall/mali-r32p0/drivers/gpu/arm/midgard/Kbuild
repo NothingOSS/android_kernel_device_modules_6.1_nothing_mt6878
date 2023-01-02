@@ -69,8 +69,8 @@ $(info *GPU [mtk-Kbuild] src = $(src))
 $(info *GPU [mtk-Kbuild] srctree = $(srctree))
 include $(src)/Kbuild-mtk-custom-env
 include $(src)/platform/mtk_platform_common/Kbuild
-ccflags-y += -I$(src)/include
-subdir-ccflags-y += -I$(src)/include
+ccflags-y += -I$(srctree)/$(src)/include
+subdir-ccflags-y += -I$(srctree)/$(src)/include
 
 # Driver version string which is returned to userspace via an ioctl
 MALI_RELEASE_NAME ?= '"r32p0-00cet0"'
@@ -133,10 +133,10 @@ endif
 ccflags-y += \
     -I$(srctree)/include/linux \
     -I$(srctree)/drivers/staging/android \
-    -I$(src) \
-    -I$(src)/platform/$(MALI_PLATFORM_DIR) \
-    -I$(src)/../../../base \
-    -I$(src)/../../../../include
+    -I$(srctree)/$(src) \
+    -I$(srctree)/$(src)/platform/$(MALI_PLATFORM_DIR) \
+    -I$(srctree)/$(src)/../../../base \
+    -I$(srctree)/$(src)/../../../../include
 
 subdir-ccflags-y += $(ccflags-y)
 

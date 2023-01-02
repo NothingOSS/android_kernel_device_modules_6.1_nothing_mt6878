@@ -1,6 +1,6 @@
 # common part
-ccflags-y += -I$(srctree)/drivers/dma-buf/heaps
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/geniezone/public
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/geniezone/public
 
 # sapu
 SRC := sapu_init.o

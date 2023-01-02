@@ -18,8 +18,8 @@
 #
 #
 
-ccflags-y += -I$(src)/include
-subdir-ccflags-y += -I$(src)/include
+ccflags-y += -I$(srctree)/$(src)/include
+subdir-ccflags-y += -I$(srctree)/$(src)/include
 
 obj-$(CONFIG_MALI_KUTF) += kutf/
 obj-$(CONFIG_MALI_IRQ_LATENCY) += mali_kutf_irq_test/

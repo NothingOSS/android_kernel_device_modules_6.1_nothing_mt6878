@@ -4,6 +4,7 @@ ccflags-y := -I$(srctree)/drivers/usb/gadget/
 ccflags-y += -I$(srctree)/drivers/usb/gadget/function
 
 ccflags-$(CONFIG_DEVICE_MODULES_USB_MTU3_DEBUG)	+= -DDEBUG
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/usb/mtu3/
 
 # define_trace.h needs to know how to find our header
 CFLAGS_mtu3_trace.o	:= -I$(srctree)/$(src)

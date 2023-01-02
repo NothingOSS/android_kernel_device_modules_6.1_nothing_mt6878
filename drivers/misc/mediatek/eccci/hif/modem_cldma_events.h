@@ -266,7 +266,7 @@ TRACE_EVENT(ccci_skb_rx,
  * But the safest and easiest way to simply make it use the directory
  * that the file is in is to add in the Makefile:
  *
- * CFLAGS_trace-events-sample.o := -I$(src)
+ * CFLAGS_trace-events-sample.o := -I$(srctree)/$(src)
  *
  * This will make sure the current path is part of the include
  * structure for our file so that define_trace.h can find it.

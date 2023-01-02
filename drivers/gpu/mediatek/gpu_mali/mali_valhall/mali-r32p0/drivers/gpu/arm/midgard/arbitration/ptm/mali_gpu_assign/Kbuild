@@ -5,6 +5,6 @@
 #
 
 obj-$(CONFIG_MALI_PARTITION_MANAGER) := mali_gpu_assign.o
-ccflags-y += -I$(src)/../include
-ccflags-y += -I$(src)/../../include
-ccflags-y += -I$(src)/../../../arbiter
+ccflags-y += -I$(srctree)/$(src)/../include
+ccflags-y += -I$(srctree)/$(src)/../../include
+ccflags-y += -I$(srctree)/$(src)/../../../arbiter

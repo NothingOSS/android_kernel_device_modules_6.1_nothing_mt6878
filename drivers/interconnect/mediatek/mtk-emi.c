@@ -15,7 +15,7 @@
 
 #if IS_ENABLED(CONFIG_MTK_DVFSRC_HELPER)
 #define CREATE_TRACE_POINTS
-#include "../internal.h"
+#include "internal.h"
 #include "mtk-dvfsrc-icc-trace.h"
 #endif
 

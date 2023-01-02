@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: GPL-2.0
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/mtk-interconnect/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/cmdq/mailbox/
-ccflags-y += -I$(srctree)/drivers/dma-buf/heaps/
-ccflags-y += -I$(srctree)/drivers/media/platform/mtk-videobuf/
-ccflags-y += -I$(srctree)/drivers/media/platform/mtk-isp/imgsys/
-ccflags-y += -I$(srctree)/drivers/iommu
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/iommu
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-videobuf/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-isp/imgsys/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu
 
-ifneq ($(wildcard $(srctree)/include/dt-bindings/memory/mt6983-larb-port.h),)
+ifneq ($(wildcard $(DEVICE_MODULES_PATH)/include/dt-bindings/memory/mt6983-larb-port.h),)
 	subdir-ccflags-y += -DFDVT_TF_DUMP
 endif
 

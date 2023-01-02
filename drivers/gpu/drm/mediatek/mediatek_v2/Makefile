@@ -105,21 +105,21 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dramc/$(MTK_PLATFORM
              -I$(DEVICE_MODULES_PATH)/drivers/iommu/				\
              -I$(DEVICE_MODULES_PATH)/drivers/devfreq/				\
              -I$(srctree)/drivers/gpu/drm/				\
-             -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/mach/				\
-             -I$(srctree)/drivers/misc/mediatek/include/mt-plat/ \
-             -I$(srctree)/drivers/misc/mediatek/leds/ \
-             -I$(srctree)/drivers/misc/mediatek/leds/$(MTK_PLATFORM) \
-             -I$(srctree)/drivers/misc/mediatek/cmdq/mailbox/        \
-             -I$(srctree)/drivers/misc/mediatek/iommu/		\
-             -I$(srctree)/drivers/misc/mediatek/mtk-interconnect/        \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/mach/				\
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/leds/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/leds/$(MTK_PLATFORM) \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox/        \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/		\
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/        \
              -I$(srctree)/drivers/gpu/drm/mediatek \
-             -I$(srctree)/drivers/misc/mediatek/slbc/ \
-             -I$(srctree)/drivers/misc/mediatek/vcp/rv/ \
-             -I$(srctree)/drivers/misc/mediatek/vcp/include/ \
-             -I$(srctree)/drivers/misc/mediatek/cmdq/mailbox/ \
-             -I$(srctree)/drivers/misc/mediatek/clkbuf/v1/inc/ \
-             -I$(srctree)/drivers/misc/mediatek/tinysys_scmi/ \
-             -I$(srctree)/drivers/dma-buf/heaps/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/rv/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/include/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/clkbuf/v1/inc/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/ \
 
 ccflags-$(CONFIG_MTK_CMDQ_MBOX_EXT) += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox
 

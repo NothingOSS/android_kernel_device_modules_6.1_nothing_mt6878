@@ -17,11 +17,11 @@
 
 ifneq ($(KERNELRELEASE),)
     subdir-ccflags-y += -I$(srctree)/
-    subdir-ccflags-y += -Werror -I$(srctree)/drivers/misc/mediatek/include/mt-plat
+    subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat
     subdir-ccflags-y += -I$(srctree)/drivers/pinctrl/mediatek/
-    subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/uarthub/common
-    subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/uarthub/common/platform/inc
-    subdir-ccflags-y += -I$(srctree)/drivers/gpu/drm/mediatek/mediatek_v2
+    subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/uarthub/common
+    subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/uarthub/common/platform/inc
+    subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2
 
     # Do Nothing, move to standalone repo
     MODULE_NAME := uarthub_drv

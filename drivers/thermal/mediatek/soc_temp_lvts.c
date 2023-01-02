@@ -22,7 +22,7 @@
 #include <linux/string.h>
 #include <linux/iopoll.h>
 #include "soc_temp_lvts.h"
-#include "../thermal_core.h"
+#include "thermal_core.h"
 
 /*==================================================
  * LVTS debug patch
