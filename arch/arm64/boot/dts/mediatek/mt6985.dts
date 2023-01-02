@@ -10,6 +10,7 @@
 #include <dt-bindings/pinctrl/mt6985-pinfunc.h>
 #include <dt-bindings/gce/mt6985-gce.h>
 #include <dt-bindings/memory/mt6985-larb-port.h>
+#include <dt-bindings/spmi/spmi.h>
 #include <dt-bindings/iio/mt635x-auxadc.h>
 #include <dt-bindings/mml/mml-mt6985.h>
 
@@ -427,11 +428,6 @@
 		fhctl@1000ce00 {
 			compatible = "mediatek,fhctl";
 			reg = <0 0x1000ce00 0 0x200>;
-		};
-
-		pwrap@1000d000 {
-			compatible = "mediatek,pwrap";
-			reg = <0 0x1000d000 0 0x1000>;
 		};
 
 		pmsr_apb@1000f000 {
@@ -3434,8 +3430,21 @@
 			};
 		};
 
-		spmi: spmi {
+		spmi: spmi@1c804000 {
 			compatible = "mediatek,mt6985-spmi";
+			reg = <0 0x1c804000 0 0x0008ff>,
+			      <0 0x1c801000 0 0x000100>;
+			reg-names = "pmif", "spmimst";
+			interrupts-extended = <&pio 243 IRQ_TYPE_LEVEL_HIGH>,
+					      <&gic GIC_SPI 468 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupt-names = "rcs_irq", "pmif_irq";
+			interrupt-controller;
+			#interrupt-cells = <1>;
+			irq_event_en = <0x80000000 0x0 0x0 0x0 0x0>;
+			swinf_ch_start = <11>;
+			ap_swinf_no = <2>;
+			#address-cells = <2>;
+			#size-cells = <0>;
 		};
 
 		mmc1: mmc@11240000 {
