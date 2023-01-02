@@ -8,7 +8,7 @@
 #include <linux/dma-mapping.h>
 #include <drm/mediatek_drm.h>
 #include <linux/iommu.h>
-#include <drm/drm_gem_cma_helper.h>
+#include <drm/drm_gem_dma_helper.h>
 #include <drm/drm_prime.h>
 #include <linux/kmemleak.h>
 #include <linux/dma-heap.h>
@@ -35,7 +35,7 @@
 static const struct drm_gem_object_funcs mtk_drm_gem_object_funcs = {
 	.free = mtk_drm_gem_free_object,
 	.get_sg_table = mtk_gem_prime_get_sg_table,
-	.vm_ops = &drm_gem_cma_vm_ops,
+	.vm_ops = &drm_gem_dma_vm_ops,
 };
 
 static struct mtk_drm_gem_obj *mtk_drm_gem_init(struct drm_device *dev,

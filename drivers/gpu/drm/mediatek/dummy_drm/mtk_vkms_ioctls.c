@@ -7,7 +7,7 @@
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_probe_helper.h>
 #include <drm/drm_gem.h>
-#include <drm/drm_gem_cma_helper.h>
+#include <drm/drm_gem_dma_helper.h>
 #include <drm/drm_fourcc.h>
 #include <drm/drm_drv.h>
 #include <drm/drm_vblank.h>
@@ -40,7 +40,7 @@ static const struct drm_gem_object_funcs mtk_drm_gem_object_funcs = {
 	.get_sg_table = mtk_gem_prime_get_sg_table,
 	.vmap = mtk_drm_gem_prime_vmap,
 	.vunmap = mtk_drm_gem_prime_vunmap,
-	.vm_ops = &drm_gem_cma_vm_ops,
+	.vm_ops = &drm_gem_dma_vm_ops,
 };
 
 static struct mtk_drm_gem_obj *mtk_drm_gem_init(struct drm_device *dev,
