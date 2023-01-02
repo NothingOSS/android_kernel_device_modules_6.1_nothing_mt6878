@@ -292,8 +292,6 @@ static u8 engine_reset_bit[MML_ENGINE_TOTAL] = {
 	[MML_RSZ3] = 28,
 	[MML_WROT3] = 29,
 	[MML_DLO1] = 30,
-	[MML_DLI3] = 32,
-	[MML_DLO3] = 34,
 	[MML_BIRSZ0] = 35,
 	[MML_BIRSZ1] = 36,
 };
