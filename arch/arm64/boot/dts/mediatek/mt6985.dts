@@ -4476,7 +4476,7 @@
 	slbc: slbc {
 		compatible = "mediatek,mtk-slbc";
 		reg = <0 0x00113e00 0 0x200>;
-		status = "enable";
+		slbc_enable = <0>;
 		apu = <2097152>;
 	};
 };
