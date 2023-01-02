@@ -1353,6 +1353,7 @@ static int usb_meta_probe(struct platform_device *pdev)
 	}
 	android_usb_driver.gadget_driver = dummy_usb_driver.gadget_driver;
 	usb_composite_unregister(&dummy_usb_driver);
+	android_usb_driver.gadget_driver.is_bound = false;
 
 	android_usb_driver.gadget_driver.function =  (char *) android_usb_driver.name;
 	android_usb_driver.gadget_driver.driver.name = android_usb_driver.name;
