@@ -841,7 +841,7 @@ static void mtk_disp_dither_dts_parse(const struct device_node *np,
 		&g_pure_clr_param->pure_clr[0][0],
 		PURE_CLR_RGB * g_pure_clr_param->pure_clr_num)) {
 		DDPPR_ERR("comp_id: %d, get pure_clr error\n", comp_id);
-		memset(&g_pure_clr_param->pure_clr[0][0],
+		memset(&g_pure_clr_param->pure_clr,
 			0, sizeof(g_pure_clr_param->pure_clr));
 	}
 }
