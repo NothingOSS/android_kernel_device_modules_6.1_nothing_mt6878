@@ -227,7 +227,7 @@ static u32 dvfsrc_get_hifi_rising_ddr_gear(struct mtk_dvfsrc *dvfsrc)
 	u32 val = 0;
 	u32 last;
 
-	switch (dvfsrc->dvd->config->ip_verion) {
+	switch (dvfsrc->dvd->config->ip_version) {
 	case 0:
 		last = dvfsrc_read(dvfsrc, DVFSRC_LAST, 0);
 		val = dvfsrc_read(dvfsrc, DVFSRC_RECORD_0, 0x18 + 0x1C * last);
@@ -254,7 +254,7 @@ static u32 dvfsrc_get_md_bw(struct mtk_dvfsrc *dvfsrc)
 	u32 is_urgent, md_scen;
 	u32 index, shift;
 
-	switch (dvfsrc->dvd->config->ip_verion) {
+	switch (dvfsrc->dvd->config->ip_version) {
 	case 0:
 		val = dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0);
 		is_urgent = (val >> 16) & 0x1;
@@ -298,7 +298,7 @@ static u32 dvfsrc_get_md_rising_ddr_gear(struct mtk_dvfsrc *dvfsrc)
 	u32 val = 0;
 	u32 last;
 
-	switch (dvfsrc->dvd->config->ip_verion) {
+	switch (dvfsrc->dvd->config->ip_version) {
 	case 0:
 		/* DVFSRC_RECORD_0_6 */
 		last = dvfsrc_read(dvfsrc, DVFSRC_LAST, 0);
@@ -326,7 +326,7 @@ static u32 dvfsrc_get_hrt_bw_ddr_gear(struct mtk_dvfsrc *dvfsrc)
 	u32 val = 0;
 	u32 last;
 
-	switch (dvfsrc->dvd->config->ip_verion) {
+	switch (dvfsrc->dvd->config->ip_version) {
 	case 0:
 		/* DVFSRC_RECORD_0_6 */
 		last = dvfsrc_read(dvfsrc, DVFSRC_LAST, 0);
@@ -355,7 +355,7 @@ static u32 dvfsrc_get_md_scen_ddr_gear(struct mtk_dvfsrc *dvfsrc)
 	u32 sta0;
 	u32 val = 0;
 
-	switch (dvfsrc->dvd->config->ip_verion) {
+	switch (dvfsrc->dvd->config->ip_version) {
 	case 0:
 		val = 0;
 	break;
@@ -398,7 +398,7 @@ static u32 dvfsrc_get_md_imp_ddr(struct mtk_dvfsrc *dvfsrc)
 {
 	u32 val = 0;
 
-	switch (dvfsrc->dvd->config->ip_verion) {
+	switch (dvfsrc->dvd->config->ip_version) {
 	case 0:
 		val = 0;
 	break;
@@ -428,7 +428,7 @@ static char *dvfsrc_dump_record(struct mtk_dvfsrc *dvfsrc,
 			"DVFSRC_LAST",
 			dvfsrc_read(dvfsrc, DVFSRC_LAST, 0));
 
-	if (dvfsrc->dvd->config->ip_verion > 0)
+	if (dvfsrc->dvd->config->ip_version > 0)
 		rec_offset = 0x20;
 	else
 		rec_offset = 0x1C;
@@ -443,7 +443,7 @@ static char *dvfsrc_dump_record(struct mtk_dvfsrc *dvfsrc,
 			dvfsrc_read(dvfsrc, DVFSRC_RECORD_0, offset + 0x4),
 			dvfsrc_read(dvfsrc, DVFSRC_RECORD_0, offset + 0x8),
 			dvfsrc_read(dvfsrc, DVFSRC_RECORD_0, offset + 0xC));
-		if (dvfsrc->dvd->config->ip_verion > 0) {
+		if (dvfsrc->dvd->config->ip_version > 0) {
 			p += snprintf(p, buff_end - p,
 			"[%d]%-4s:%08x,%08x,%08x,%08x\n",
 			i,
@@ -510,7 +510,7 @@ static char *dvfsrc_dump_reg(struct mtk_dvfsrc *dvfsrc, char *p, u32 size)
 		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x14),
 		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x18));
 
-	if (dvfsrc->dvd->config->ip_verion > 2) {
+	if (dvfsrc->dvd->config->ip_version > 2) {
 		p += snprintf(p, buff_end - p,
 			"%-12s: %d, %d, %d\n",
 			"SW_BW_7~9",
@@ -546,7 +546,7 @@ static char *dvfsrc_dump_reg(struct mtk_dvfsrc *dvfsrc, char *p, u32 size)
 		dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x14),
 		dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x18));
 
-	if (dvfsrc->dvd->config->ip_verion > 2) {
+	if (dvfsrc->dvd->config->ip_version > 2) {
 		p += snprintf(p, buff_end - p,
 		"%-12s: %08x, %08x, %08x\n",
 		"DEBUG_STA_7",
@@ -761,7 +761,7 @@ static u64 dvfsrc_query_dvfs_time(struct mtk_dvfsrc *dvfsrc)
 }
 
 const struct dvfsrc_config mt6779_dvfsrc_config = {
-	.ip_verion = 0, /*mt6779 series*/
+	.ip_version = 0, /*mt6779 series*/
 	.regs = mt6779_regs,
 	.dump_record = dvfsrc_dump_record,
 	.dump_reg = dvfsrc_dump_reg,
@@ -769,7 +769,7 @@ const struct dvfsrc_config mt6779_dvfsrc_config = {
 };
 
 const struct dvfsrc_config mt6873_dvfsrc_config = {
-	.ip_verion = 2, /*mt6873 series*/
+	.ip_version = 2, /*mt6873 series*/
 	.regs = mt6873_regs,
 	.spm_regs = mt6873_spm_regs,
 	.dump_record = dvfsrc_dump_record,
@@ -781,7 +781,7 @@ const struct dvfsrc_config mt6873_dvfsrc_config = {
 };
 
 const struct dvfsrc_config mt6893_dvfsrc_config = {
-	.ip_verion = 2, /*mt6873 series*/
+	.ip_version = 2, /*mt6873 series*/
 	.regs = mt6873_regs,
 	.spm_regs = mt6893_spm_regs,
 	.dump_record = dvfsrc_dump_record,
@@ -793,7 +793,7 @@ const struct dvfsrc_config mt6893_dvfsrc_config = {
 };
 
 const struct dvfsrc_config mt6877_dvfsrc_config = {
-	.ip_verion = 2, /*mt6873 series*/
+	.ip_version = 2, /*mt6873 series*/
 	.regs = mt6873_regs,
 	.spm_regs = mt6877_spm_regs,
 	.dump_record = dvfsrc_dump_record,
@@ -805,7 +805,7 @@ const struct dvfsrc_config mt6877_dvfsrc_config = {
 };
 
 const struct dvfsrc_config mt6983_dvfsrc_config = {
-	.ip_verion = 3, /*mt6983 series*/
+	.ip_version = 3, /*mt6983 series*/
 	.regs = mt6983_regs,
 	.spm_regs = mt6877_spm_regs,
 	.dump_record = dvfsrc_dump_record,

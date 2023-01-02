@@ -41,7 +41,7 @@ struct dvfsrc_opp_data {
 
 /* debug */
 struct dvfsrc_config {
-	u32 ip_verion;
+	u32 ip_version;
 	const int *regs;
 	const int *spm_regs;
 	char *(*dump_reg)(struct mtk_dvfsrc *dvfsrc, char *p, u32 size);

@@ -11,7 +11,7 @@
 struct mtk_dvfsrc_met;
 
 struct dvfsrc_met_config {
-	u32 ip_verion;
+	u32 ip_version;
 	int (*dvfsrc_get_src_req_num)(void);
 	char **(*dvfsrc_get_src_req_name)(void);
 	unsigned int *(*dvfsrc_get_src_req)(struct mtk_dvfsrc_met *dvfs);
