@@ -19,6 +19,7 @@
 #include <linux/cpu.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
+#include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include "sched_sys_common.h"
 

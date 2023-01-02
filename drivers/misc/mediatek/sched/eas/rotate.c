@@ -17,6 +17,7 @@
 #include <linux/energy_model.h>
 #include <linux/sched/topology.h>
 #include <trace/hooks/sched.h>
+#include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include "sched_sys_common.h"
 #include "eas_plus.h"

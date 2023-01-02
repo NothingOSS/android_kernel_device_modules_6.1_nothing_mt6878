@@ -18,6 +18,7 @@
 #include <linux/slab.h>
 #include <linux/platform_device.h>
 #include <linux/ioctl.h>
+#include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include <linux/cpumask.h>
 #include <linux/mutex.h>

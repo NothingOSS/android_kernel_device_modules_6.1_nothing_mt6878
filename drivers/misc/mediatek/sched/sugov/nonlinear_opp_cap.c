@@ -8,6 +8,7 @@
 #include <linux/cpumask.h>
 #include <linux/percpu.h>
 #include <linux/sort.h>
+#include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include <linux/sched/clock.h>
 #include <linux/energy_model.h>

@@ -15,6 +15,7 @@
 #include <linux/module.h>
 #include <uapi/linux/sched/types.h>
 #include <trace/hooks/sched.h>
+#include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include <linux/sched/clock.h>
 

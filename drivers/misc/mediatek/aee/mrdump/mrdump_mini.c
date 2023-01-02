@@ -34,6 +34,7 @@
 #include <mrdump.h>
 #include <mt-plat/aee.h>
 #include <printk/printk_ringbuffer.h>
+#include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include "mrdump_mini.h"
 #include "mrdump_private.h"

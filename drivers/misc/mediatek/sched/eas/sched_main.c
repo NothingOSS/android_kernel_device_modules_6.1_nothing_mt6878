@@ -17,6 +17,7 @@
 #include <trace/events/task.h>
 #include <trace/hooks/sched.h>
 //#include <trace/hooks/hung_task.h>
+#include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include "common.h"
 #include "eas_plus.h"

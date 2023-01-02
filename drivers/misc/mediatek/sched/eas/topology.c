@@ -7,6 +7,7 @@
 #include <linux/notifier.h>
 #include <linux/pm_qos.h>
 #include <linux/slab.h>
+#include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include <sugov/cpufreq.h>
 

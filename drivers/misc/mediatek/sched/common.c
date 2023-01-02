@@ -3,6 +3,7 @@
  * Copyright (c) 2021 MediaTek Inc.
  */
 #include <linux/module.h>
+#include <linux/sched/cputime.h>
 #include <sched/sched.h>
 
 MODULE_LICENSE("GPL");

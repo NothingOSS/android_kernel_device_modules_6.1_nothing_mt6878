@@ -4,6 +4,7 @@
  */
 #include <linux/cpuidle.h>
 #include <linux/module.h>
+#include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include <sugov/cpufreq.h>
 #include "common.h"

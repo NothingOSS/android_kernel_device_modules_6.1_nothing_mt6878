@@ -1,4 +1,3 @@
-LINUXINCLUDE += -include $(srctree)/kernel/sched/sched.h
 ccflags-y += -I$(srctree)/$(src)              # needed for trace events
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/qos/
 

@@ -6,6 +6,7 @@
 #include <linux/module.h>
 #include <linux/sched.h>
 #include <trace/hooks/sched.h>
+#include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include <linux/sched/clock.h>
 #include "eas/eas_plus.h"

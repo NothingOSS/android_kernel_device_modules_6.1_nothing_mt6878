@@ -12,6 +12,7 @@
  */
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include "cpufreq.h"
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)

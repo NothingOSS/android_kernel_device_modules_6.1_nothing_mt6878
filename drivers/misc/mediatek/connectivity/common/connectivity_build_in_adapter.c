@@ -9,6 +9,7 @@
 #define DFT_TAG "[CONNADP]"
 #include "connectivity_build_in_adapter.h"
 
+#include <linux/sched/cputime.h>
 #include <kernel/sched/sched.h>
 
 /*device tree mode*/

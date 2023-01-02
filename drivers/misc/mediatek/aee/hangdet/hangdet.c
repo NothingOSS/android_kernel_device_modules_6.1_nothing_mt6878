@@ -26,6 +26,7 @@
 #include <linux/spinlock.h>
 #include <linux/suspend.h>
 #include <linux/sysrq.h>
+#include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include <uapi/linux/sched/types.h>
 #if IS_ENABLED(CONFIG_MTK_TICK_BROADCAST_DEBUG)

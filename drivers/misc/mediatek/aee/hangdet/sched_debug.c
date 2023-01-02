@@ -19,6 +19,7 @@
 #include <mt-plat/aee.h>
 #include <mt-plat/mboot_params.h>
 #include <sched/autogroup.h>
+#include <linux/sched/cputime.h>
 #include <sched/sched.h>
 
 /*** *** *** Print sched debug information at aee *** *** ***/

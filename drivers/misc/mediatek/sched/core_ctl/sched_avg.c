@@ -12,6 +12,7 @@
 #include <linux/sched/clock.h>
 #include <trace/hooks/sched.h>
 
+#include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include "sched_avg.h"
 
