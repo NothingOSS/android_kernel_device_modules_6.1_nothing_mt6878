@@ -599,11 +599,11 @@ static int get_ssusb_rscs(struct platform_device *pdev, struct ssusb_mtk *ssusb)
 	int i;
 	int ret;
 
-	ret = of_property_read_u32(node, "plat_type", &ssusb->plat_type);
+	ret = of_property_read_u32(node, "plat-type", &ssusb->plat_type);
 	if (!ret && ssusb->plat_type == PLAT_FPGA) {
 		dev_info(ssusb->dev, "platform is fpga\n");
 
-		of_property_read_u32(node, "fpga_phy",
+		of_property_read_u32(node, "fpga-phy",
 				&ssusb->fpga_phy);
 
 		dev_info(ssusb->dev, "fpga phy is %d\n", ssusb->fpga_phy);
