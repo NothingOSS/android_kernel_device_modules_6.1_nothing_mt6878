@@ -70,6 +70,10 @@ static void __gpufreq_apply_restore_margin(
 	enum gpufreq_target target, enum gpufreq_feat_mode mode);
 static void __gpufreq_update_shared_status_opp_table(void);
 static void __gpufreq_update_shared_status_adj_table(void);
+static void __gpufreq_update_shared_status_init_reg(void);
+static void __gpufreq_update_shared_status_power_reg(void);
+static void __gpufreq_update_shared_status_active_idle_reg(void);
+static void __gpufreq_update_shared_status_dvfs_reg(void);
 #if GPUFREQ_MSSV_TEST_MODE
 static void __gpufreq_mssv_set_stack_sel(unsigned int val);
 static void __gpufreq_mssv_set_del_sel(unsigned int val);
@@ -835,6 +839,8 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 	g_shared_status->mtcmos_count = g_stack.mtcmos_count;
 	g_shared_status->power_time_h = (power_time >> 32) & GENMASK(31, 0);
 	g_shared_status->power_time_l = power_time & GENMASK(31, 0);
+	if (power == POWER_ON)
+		__gpufreq_update_shared_status_power_reg();
 
 	if (power == POWER_ON)
 		__gpufreq_footprint_power_step(0x15);
@@ -907,6 +913,8 @@ int __gpufreq_active_idle_control(enum gpufreq_power_state power, enum gpufreq_l
 	g_shared_status->dvfs_state = g_dvfs_state;
 	g_shared_status->active_count = g_stack.active_count;
 	g_shared_status->cg_count = g_stack.cg_count;
+	if (power == POWER_ON)
+		__gpufreq_update_shared_status_active_idle_reg();
 
 done_unlock:
 	if (lock)
@@ -1000,6 +1008,7 @@ int __gpufreq_generic_commit_stack(int target_oppidx, enum gpufreq_dvfs_state ke
 	g_shared_status->cur_vstack = g_stack.cur_volt;
 	g_shared_status->cur_vsram_stack = g_stack.cur_vsram;
 	g_shared_status->cur_power_stack = g_stack.working_table[g_stack.cur_oppidx].power;
+	__gpufreq_update_shared_status_dvfs_reg();
 
 done_unlock:
 	mutex_unlock(&gpufreq_lock);
@@ -1558,6 +1567,7 @@ void __gpufreq_set_shared_status(struct gpufreq_shared_status *shared_status)
 #endif /* GPUFREQ_ASENSOR_ENABLE */
 	__gpufreq_update_shared_status_opp_table();
 	__gpufreq_update_shared_status_adj_table();
+	__gpufreq_update_shared_status_init_reg();
 
 	mutex_unlock(&gpufreq_lock);
 }
@@ -1700,6 +1710,133 @@ static void __gpufreq_update_shared_status_adj_table(void)
 	/* avs table */
 	copy_size = sizeof(struct gpufreq_adj_info) * NUM_STACK_SIGNED_IDX;
 	memcpy(g_shared_status->avs_table_stack, g_stack_avs_table, copy_size);
+}
+
+static void __gpufreq_update_shared_status_init_reg(void)
+{
+	unsigned int copy_size = 0;
+
+	/* [WARNING] GPU is power off at this moment */
+	g_reg_mfgsys[IDX_EFUSE_PTPOD21_SN].val = readl(EFUSE_PTPOD21_SN);
+	g_reg_mfgsys[IDX_EFUSE_PTPOD22_AVS].val = readl(EFUSE_PTPOD22_AVS);
+	g_reg_mfgsys[IDX_EFUSE_PTPOD23_AVS].val = readl(EFUSE_PTPOD23_AVS);
+	g_reg_mfgsys[IDX_EFUSE_PTPOD24_AVS].val = readl(EFUSE_PTPOD24_AVS);
+	g_reg_mfgsys[IDX_EFUSE_PTPOD25_AVS].val = readl(EFUSE_PTPOD25_AVS);
+	g_reg_mfgsys[IDX_EFUSE_PTPOD26_AVS].val = readl(EFUSE_PTPOD26_AVS);
+	g_reg_mfgsys[IDX_SPM_SPM2GPUPM_CON].val = readl(SPM_SPM2GPUPM_CON);
+
+	copy_size = sizeof(struct gpufreq_reg_info) * NUM_MFGSYS_REG;
+	memcpy(g_shared_status->reg_mfgsys, g_reg_mfgsys, copy_size);
+}
+
+static void __gpufreq_update_shared_status_power_reg(void)
+{
+	unsigned int copy_size = 0;
+
+	/* acquire sema before access MFG_TOP_CFG */
+	__gpufreq_set_semaphore(SEMA_ACQUIRE);
+
+	g_reg_mfgsys[IDX_MFG_CG_CON].val = readl_mfg(MFG_CG_CON);
+	g_reg_mfgsys[IDX_MFG_DCM_CON_0].val = readl_mfg(MFG_DCM_CON_0);
+	g_reg_mfgsys[IDX_MFG_ASYNC_CON].val = readl_mfg(MFG_ASYNC_CON);
+	g_reg_mfgsys[IDX_MFG_GLOBAL_CON].val = readl_mfg(MFG_GLOBAL_CON);
+	g_reg_mfgsys[IDX_MFG_AXCOHERENCE_CON].val = readl_mfg(MFG_AXCOHERENCE_CON);
+	g_reg_mfgsys[IDX_MFG_DUMMY_REG].val = readl_mfg(MFG_DUMMY_REG);
+	g_reg_mfgsys[IDX_MFG_SRAM_FUL_SEL_ULV].val = readl_mfg(MFG_SRAM_FUL_SEL_ULV);
+	g_reg_mfgsys[IDX_MFG_PLL_CON0].val = readl(MFG_PLL_CON0);
+	g_reg_mfgsys[IDX_MFG_PLL_CON1].val = readl(MFG_PLL_CON1);
+	g_reg_mfgsys[IDX_MFGSC_PLL_CON0].val = readl(MFGSC_PLL_CON0);
+	g_reg_mfgsys[IDX_MFGSC_PLL_CON1].val = readl(MFGSC_PLL_CON1);
+	g_reg_mfgsys[IDX_MFG_RPC_AO_CLK_CFG].val = readl(MFG_RPC_AO_CLK_CFG);
+	g_reg_mfgsys[IDX_MFG_RPC_MFG1_PWR_CON].val = readl(MFG_RPC_MFG1_PWR_CON);
+#if !GPUFREQ_PDCA_ENABLE
+	g_reg_mfgsys[IDX_MFG_RPC_MFG2_PWR_CON].val = readl(MFG_RPC_MFG2_PWR_CON);
+	g_reg_mfgsys[IDX_MFG_RPC_MFG3_PWR_CON].val = readl(MFG_RPC_MFG3_PWR_CON);
+	g_reg_mfgsys[IDX_MFG_RPC_MFG4_PWR_CON].val = readl(MFG_RPC_MFG4_PWR_CON);
+	g_reg_mfgsys[IDX_MFG_RPC_MFG5_PWR_CON].val = readl(MFG_RPC_MFG5_PWR_CON);
+	g_reg_mfgsys[IDX_MFG_RPC_MFG6_PWR_CON].val = readl(MFG_RPC_MFG6_PWR_CON);
+	g_reg_mfgsys[IDX_MFG_RPC_MFG7_PWR_CON].val = readl(MFG_RPC_MFG7_PWR_CON);
+	g_reg_mfgsys[IDX_MFG_RPC_MFG8_PWR_CON].val = readl(MFG_RPC_MFG8_PWR_CON);
+	g_reg_mfgsys[IDX_MFG_RPC_MFG9_PWR_CON].val = readl(MFG_RPC_MFG9_PWR_CON);
+	g_reg_mfgsys[IDX_MFG_RPC_MFG10_PWR_CON].val = readl(MFG_RPC_MFG10_PWR_CON);
+	g_reg_mfgsys[IDX_MFG_RPC_MFG11_PWR_CON].val = readl(MFG_RPC_MFG11_PWR_CON);
+	g_reg_mfgsys[IDX_MFG_RPC_MFG12_PWR_CON].val = readl(MFG_RPC_MFG12_PWR_CON);
+	g_reg_mfgsys[IDX_MFG_RPC_MFG13_PWR_CON].val = readl(MFG_RPC_MFG13_PWR_CON);
+	g_reg_mfgsys[IDX_MFG_RPC_MFG14_PWR_CON].val = readl(MFG_RPC_MFG14_PWR_CON);
+	g_reg_mfgsys[IDX_MFG_RPC_MFG15_PWR_CON].val = readl(MFG_RPC_MFG15_PWR_CON);
+	g_reg_mfgsys[IDX_MFG_RPC_MFG16_PWR_CON].val = readl(MFG_RPC_MFG16_PWR_CON);
+	g_reg_mfgsys[IDX_MFG_RPC_MFG17_PWR_CON].val = readl(MFG_RPC_MFG17_PWR_CON);
+	g_reg_mfgsys[IDX_MFG_RPC_MFG18_PWR_CON].val = readl(MFG_RPC_MFG18_PWR_CON);
+	g_reg_mfgsys[IDX_MFG_RPC_MFG19_PWR_CON].val = readl(MFG_RPC_MFG19_PWR_CON);
+#endif /* GPUFREQ_PDCA_ENABLE */
+	g_reg_mfgsys[IDX_MFG_RPC_SLP_PROT_EN_STA].val = readl(MFG_RPC_SLP_PROT_EN_STA);
+	g_reg_mfgsys[IDX_SPM_MFG0_PWR_CON].val = readl(SPM_MFG0_PWR_CON);
+	g_reg_mfgsys[IDX_SPM_SOC_BUCK_ISO_CON].val = readl(SPM_SOC_BUCK_ISO_CON);
+	g_reg_mfgsys[IDX_TOPCK_CLK_CFG_3].val = readl(TOPCK_CLK_CFG_3);
+	g_reg_mfgsys[IDX_TOPCK_CLK_CFG_30].val = readl(TOPCK_CLK_CFG_30);
+	g_reg_mfgsys[IDX_NTH_MFG_EMI1_GALS_SLV_DBG].val = readl(NTH_MFG_EMI1_GALS_SLV_DBG);
+	g_reg_mfgsys[IDX_NTH_MFG_EMI0_GALS_SLV_DBG].val = readl(NTH_MFG_EMI0_GALS_SLV_DBG);
+	g_reg_mfgsys[IDX_STH_MFG_EMI1_GALS_SLV_DBG].val = readl(STH_MFG_EMI1_GALS_SLV_DBG);
+	g_reg_mfgsys[IDX_STH_MFG_EMI0_GALS_SLV_DBG].val = readl(STH_MFG_EMI0_GALS_SLV_DBG);
+	g_reg_mfgsys[IDX_NTH_M6M7_IDLE_BIT_EN_1].val = readl(NTH_M6M7_IDLE_BIT_EN_1);
+	g_reg_mfgsys[IDX_NTH_M6M7_IDLE_BIT_EN_0].val = readl(NTH_M6M7_IDLE_BIT_EN_0);
+	g_reg_mfgsys[IDX_STH_M6M7_IDLE_BIT_EN_1].val = readl(STH_M6M7_IDLE_BIT_EN_1);
+	g_reg_mfgsys[IDX_STH_M6M7_IDLE_BIT_EN_0].val = readl(STH_M6M7_IDLE_BIT_EN_0);
+	g_reg_mfgsys[IDX_IFR_MFGSYS_PROT_EN_STA_0].val = readl(IFR_MFGSYS_PROT_EN_STA_0);
+	g_reg_mfgsys[IDX_IFR_MFGSYS_PROT_EN_W1S_0].val = readl(IFR_MFGSYS_PROT_EN_W1S_0);
+	g_reg_mfgsys[IDX_IFR_MFGSYS_PROT_EN_W1C_0].val = readl(IFR_MFGSYS_PROT_EN_W1C_0);
+	g_reg_mfgsys[IDX_IFR_MFGSYS_PROT_RDY_STA_0].val = readl(IFR_MFGSYS_PROT_RDY_STA_0);
+	g_reg_mfgsys[IDX_NTH_EMI_AO_DEBUG_CTRL0].val = readl(NTH_EMI_AO_DEBUG_CTRL0);
+	g_reg_mfgsys[IDX_STH_EMI_AO_DEBUG_CTRL0].val = readl(STH_EMI_AO_DEBUG_CTRL0);
+	g_reg_mfgsys[IDX_INFRA_AO_BUS0_U_DEBUG_CTRL0].val = readl(INFRA_AO_BUS0_U_DEBUG_CTRL0);
+	g_reg_mfgsys[IDX_INFRA_AO1_BUS1_U_DEBUG_CTRL0].val = readl(INFRA_AO1_BUS1_U_DEBUG_CTRL0);
+
+	copy_size = sizeof(struct gpufreq_reg_info) * NUM_MFGSYS_REG;
+	memcpy(g_shared_status->reg_mfgsys, g_reg_mfgsys, copy_size);
+
+	__gpufreq_set_semaphore(SEMA_RELEASE);
+}
+
+static void __gpufreq_update_shared_status_active_idle_reg(void)
+{
+	unsigned int copy_size = 0;
+
+	/* acquire sema before access MFG_TOP_CFG */
+	__gpufreq_set_semaphore(SEMA_ACQUIRE);
+
+	g_reg_mfgsys[IDX_MFG_PLL_CON0].val = readl(MFG_PLL_CON0);
+	g_reg_mfgsys[IDX_MFG_PLL_CON1].val = readl(MFG_PLL_CON1);
+	g_reg_mfgsys[IDX_MFGSC_PLL_CON0].val = readl(MFGSC_PLL_CON0);
+	g_reg_mfgsys[IDX_MFGSC_PLL_CON1].val = readl(MFGSC_PLL_CON1);
+	g_reg_mfgsys[IDX_TOPCK_CLK_CFG_3].val = readl(TOPCK_CLK_CFG_3);
+	g_reg_mfgsys[IDX_TOPCK_CLK_CFG_30].val = readl(TOPCK_CLK_CFG_30);
+
+	copy_size = sizeof(struct gpufreq_reg_info) * NUM_MFGSYS_REG;
+	memcpy(g_shared_status->reg_mfgsys, g_reg_mfgsys, copy_size);
+
+	__gpufreq_set_semaphore(SEMA_RELEASE);
+}
+
+static void __gpufreq_update_shared_status_dvfs_reg(void)
+{
+	unsigned int copy_size = 0;
+
+	/* acquire sema before access MFG_TOP_CFG */
+	__gpufreq_set_semaphore(SEMA_ACQUIRE);
+
+	g_reg_mfgsys[IDX_MFG_DUMMY_REG].val = readl_mfg(MFG_DUMMY_REG);
+	g_reg_mfgsys[IDX_MFG_SRAM_FUL_SEL_ULV].val = readl_mfg(MFG_SRAM_FUL_SEL_ULV);
+	g_reg_mfgsys[IDX_MFG_PLL_CON0].val = readl(MFG_PLL_CON0);
+	g_reg_mfgsys[IDX_MFG_PLL_CON1].val = readl(MFG_PLL_CON1);
+	g_reg_mfgsys[IDX_MFGSC_PLL_CON0].val = readl(MFGSC_PLL_CON0);
+	g_reg_mfgsys[IDX_MFGSC_PLL_CON1].val = readl(MFGSC_PLL_CON1);
+	g_reg_mfgsys[IDX_TOPCK_CLK_CFG_3].val = readl(TOPCK_CLK_CFG_3);
+	g_reg_mfgsys[IDX_TOPCK_CLK_CFG_30].val = readl(TOPCK_CLK_CFG_30);
+
+	copy_size = sizeof(struct gpufreq_reg_info) * NUM_MFGSYS_REG;
+	memcpy(g_shared_status->reg_mfgsys, g_reg_mfgsys, copy_size);
+
+	__gpufreq_set_semaphore(SEMA_RELEASE);
 }
 
 static unsigned int __gpufreq_custom_init_enable(void)
@@ -2077,6 +2214,7 @@ static int __gpufreq_custom_commit_stack(unsigned int target_freq,
 	g_shared_status->cur_vstack = g_stack.cur_volt;
 	g_shared_status->cur_vsram_stack = g_stack.cur_vsram;
 	g_shared_status->cur_power_stack = g_stack.working_table[g_stack.cur_oppidx].power;
+	__gpufreq_update_shared_status_dvfs_reg();
 
 done_unlock:
 	mutex_unlock(&gpufreq_lock);
