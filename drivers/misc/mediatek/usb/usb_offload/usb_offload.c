@@ -462,7 +462,7 @@ static int info_idx_from_ifnum(unsigned int card_num, int intf_num, bool enable)
 	 * first enable audio stream req for a pcm device
 	 */
 	if (enable && !uadev[card_num].info) {
-		USB_OFFLOAD_INFO("enable:%d, uadev[%d].info:%d\n",
+		USB_OFFLOAD_INFO("enable:%d, uadev[%d].info:%p\n",
 				enable, card_num, uadev[card_num].info);
 		return 0;
 	}
@@ -773,7 +773,7 @@ int send_init_ipi_msg_to_adsp(struct mem_info_xhci *mpu_info)
 	struct ipi_msg_t ipi_msg;
 	uint8_t scene = 0;
 
-	USB_OFFLOAD_INFO("xhci_rsv_addr: 0x%x, xhci_rsv_size: %d, size: %d\n",
+	USB_OFFLOAD_INFO("xhci_rsv_addr: 0x%x, xhci_rsv_size: %d, size: %lu\n",
 			mpu_info->xhci_data_addr,
 			mpu_info->xhci_data_size,
 			sizeof(*mpu_info));
@@ -810,7 +810,7 @@ int send_uas_ipi_msg_to_adsp(struct usb_audio_stream_msg *uas_msg)
 	struct ipi_msg_t ipi_msg;
 	uint8_t task_scene = 0;
 
-	USB_OFFLOAD_INFO("msg: %p, size: %d\n",
+	USB_OFFLOAD_INFO("msg: %p, size: %lu\n",
 			uas_msg, sizeof(*uas_msg));
 
 	if (uas_msg->uainfo.direction == 0)
@@ -1185,8 +1185,8 @@ static int mtk_usb_offload_genpool_free_memory(unsigned char **vaddr,
 
 	/* allocate VA with gen pool */
 	if (*vaddr) {
-		USB_OFFLOAD_MEM_DBG("size: %u, id: %d, vaddr: %p\n",
-				size, mem_id, vaddr);
+		USB_OFFLOAD_MEM_DBG("size: %zu, id: %d, vaddr: %p\n",
+				*size, mem_id, vaddr);
 		gen_pool_free(gen_pool_usb_offload, (unsigned long)*vaddr, *size);
 		*vaddr = NULL;
 		*size = 0;
@@ -1262,7 +1262,7 @@ static struct xhci_device_context_array *xhci_mtk_alloc_dcbaa(struct xhci_hcd *x
 		return NULL;
 	}
 
-	USB_OFFLOAD_MEM_DBG("size of dcbaa: %d\n", sizeof(*xhci_ctx));
+	USB_OFFLOAD_MEM_DBG("size of dcbaa: %lu\n", sizeof(*xhci_ctx));
 	xhci_ctx = (struct xhci_device_context_array *) buf_dcbaa->dma_area;
 	xhci_ctx->dma = buf_dcbaa->dma_addr;
 	USB_OFFLOAD_MEM_DBG("xhci_ctx.dev_context_ptrs:%p xhci_ctx.dma:%llx\n",
@@ -1298,7 +1298,7 @@ static int get_first_avail_buf_ctx_idx(struct xhci_hcd *xhci)
 	unsigned int idx;
 
 	for (idx = 0; idx <= BUF_CTX_SIZE; idx++) {
-		USB_OFFLOAD_MEM_DBG("idx: %d, alloc: %d, DMA area: %p, addr: %llx, bytes: %d\n",
+		USB_OFFLOAD_MEM_DBG("idx: %d, alloc: %d, DMA area: %p, addr: %llx, bytes: %zu\n",
 					idx,
 					buf_ctx[idx].allocated,
 					buf_ctx[idx].dma_area,
@@ -1362,7 +1362,7 @@ static int get_first_avail_buf_seg_idx(void)
 	unsigned int idx;
 
 	for (idx = 0; idx < BUF_SEG_SIZE; idx++) {
-		USB_OFFLOAD_MEM_DBG("seg[%d], alloc: %d, DMA area: %p, addr: %llx, bytes: %d\n",
+		USB_OFFLOAD_MEM_DBG("seg[%d], alloc: %d, DMA area: %p, addr: %llx, bytes: %zu\n",
 				idx,
 				buf_seg[idx].allocated,
 				buf_seg[idx].dma_area,
@@ -1383,7 +1383,7 @@ static void xhci_mtk_usb_offload_segment_free(struct xhci_hcd *xhci,
 
 	if (seg->trbs) {
 		for (idx = 0; idx < BUF_SEG_SIZE; idx++) {
-			USB_OFFLOAD_MEM_DBG("seg[%d], alloc:%d, dma_addr:%llx, dma:%llx, size:%d\n",
+			USB_OFFLOAD_MEM_DBG("seg[%d], alloc:%d, dma_addr:%llx, dma:%llx, size:%zu\n",
 					idx,
 					buf_seg[idx].allocated,
 					buf_seg[idx].dma_addr,
@@ -1457,7 +1457,7 @@ static struct xhci_segment *xhci_mtk_usb_offload_segment_alloc(struct xhci_hcd *
 	seg->trbs = (void *) buf_seg[buf_seg_slot].dma_area;
 	seg->dma = 0;
 	dma = buf_seg[buf_seg_slot].dma_addr;
-	USB_OFFLOAD_MEM_DBG("seg->trbs: %p, dma: %llx, size: %d\n",
+	USB_OFFLOAD_MEM_DBG("seg->trbs: %p, dma: %llx, size: %lu\n",
 			seg->trbs,
 			dma,
 			sizeof(buf_seg[buf_seg_slot]));
@@ -1932,7 +1932,7 @@ static long usb_offload_ioctl(struct file *fp,
 		break;
 	}
 fail:
-	USB_OFFLOAD_INFO("ioctl returning, ret: %d\n", ret);
+	USB_OFFLOAD_INFO("ioctl returning, ret: %ld\n", ret);
 	return ret;
 }
 
