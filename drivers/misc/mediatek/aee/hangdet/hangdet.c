@@ -389,7 +389,8 @@ static void show_irq_count(void)
 	struct task_struct *tsk = cpu_curr(unkick_cpu);
 	u64 preempt_cnt = task_thread_info(tsk)->preempt_count;
 	struct irq_desc *desc;
-	char msg[64];
+	char msg[192];
+	char handler[128];
 	int irq;
 
 	if (unkick_cpumask != (1U << unkick_cpu) ||
@@ -421,19 +422,24 @@ static void show_irq_count(void)
 		if (count == irq_counts[irq])
 			continue;
 
+		memset(handler, 0, sizeof(handler));
+		if (desc->action && desc->action->handler) {
+			scnprintf(handler, sizeof(handler), "irq_handler: %ps\n",
+					desc->action->handler);
+		}
 		if (desc->action && desc->action->name) {
 			const char *irq_name = desc->action->name;
 
 			if (!strcmp(irq_name, "IPI"))
-				scnprintf(msg, sizeof(msg), "%3d:%s%d +%d(%d)\n",
+				scnprintf(msg, sizeof(msg), "%3d:%s%d +%d(%d) %s\n",
 						irq, irq_name, irq_to_ipi_type(irq),
-						count - irq_counts[irq], count);
+						count - irq_counts[irq], count, handler);
 			else
-				scnprintf(msg, sizeof(msg), "%3d:%s +%d(%d)\n",
-						irq, irq_name, count - irq_counts[irq], count);
+				scnprintf(msg, sizeof(msg), "%3d:%s +%d(%d) %s\n",
+						irq, irq_name, count - irq_counts[irq], count, handler);
 		} else {
-			scnprintf(msg, sizeof(msg), "%3d:%s +%d(%d)\n", irq,
-					"NULL", count - irq_counts[irq], count);
+			scnprintf(msg, sizeof(msg), "%3d:%s +%d(%d) %s\n", irq,
+					"NULL", count - irq_counts[irq], count, handler);
 		}
 
 		aee_sram_fiq_log(msg);
