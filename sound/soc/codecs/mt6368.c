@@ -529,6 +529,19 @@ static int dmic_used_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
+
+static int vow_codec_type_get(struct snd_kcontrol *kcontrol,
+			      struct snd_ctl_elem_value *ucontrol)
+{
+	unsigned int codec_type = VOW_SCP_FIFO;
+
+	ucontrol->value.integer.value[0] = codec_type;
+
+	return 0;
+}
+#endif
+
 static int mt6368_snd_soc_put_volsw(struct snd_kcontrol *kcontrol,
 				    struct snd_ctl_elem_value *ucontrol)
 {
@@ -5769,6 +5782,9 @@ static const struct snd_kcontrol_new mt6368_snd_misc_controls[] = {
 	SOC_ENUM_EXT("PMIC_REG_CLEAR", misc_control_enum[0],
 		     NULL, mt6368_rcv_dcc_set),
 	SOC_ENUM_EXT("DMic Used", misc_control_enum[0], dmic_used_get, NULL),
+#if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
+	SOC_ENUM_EXT("VOW codec type", misc_control_enum[0], vow_codec_type_get, NULL),
+#endif
 };
 
 static int mt6368_codec_init_reg(struct snd_soc_component *cmpnt)

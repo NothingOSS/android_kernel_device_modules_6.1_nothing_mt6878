@@ -22698,6 +22698,12 @@ enum {
 	MT6338_DL_GAIN_NORMAL = 0xf74f,
 	/* SA suggest apply -0.3db to audio/speech path */
 };
+
+enum {
+	VOW_SCP_FIFO = 0,
+	VOW_STANDALONE_CODEC = 1
+};
+
 struct dc_trim_data {
 	bool calibrated;
 	int mic_vinp_mv;
