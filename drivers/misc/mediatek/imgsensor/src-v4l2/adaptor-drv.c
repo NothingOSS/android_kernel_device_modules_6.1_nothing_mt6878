@@ -861,8 +861,20 @@ static int imgsensor_g_mbus_config(struct v4l2_subdev *sd, unsigned int pad,
 	config->type = ctx->sensor_info.MIPIsensorType == MIPI_CPHY ?
 		V4L2_MBUS_CSI2_CPHY : V4L2_MBUS_CSI2_DPHY;
 
-	config->bus.mipi_csi2.num_data_lanes =
-		ctx->sensor_info.SensorMIPILaneNumber;
+	switch (ctx->sensor_info.SensorMIPILaneNumber) {
+	case SENSOR_MIPI_1_LANE:
+		config->bus.mipi_csi2.num_data_lanes = 1;
+		break;
+	case SENSOR_MIPI_2_LANE:
+		config->bus.mipi_csi2.num_data_lanes = 2;
+		break;
+	case SENSOR_MIPI_3_LANE:
+		config->bus.mipi_csi2.num_data_lanes = 3;
+		break;
+	case SENSOR_MIPI_4_LANE:
+		config->bus.mipi_csi2.num_data_lanes = 4;
+		break;
+	}
 
 	return 0;
 }

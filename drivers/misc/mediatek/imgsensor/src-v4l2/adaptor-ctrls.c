@@ -941,12 +941,14 @@ static int imgsensor_set_ctrl(struct v4l2_ctrl *ctrl)
 	u32 len;
 	int i;
 
+#ifdef IMGSENSOR_USE_PM_FRAMEWORK
 	/*
 	 * Applying V4L2 control value only happens
 	 * when power is up for streaming
 	 */
 	if (pm_runtime_get_if_in_use(dev) == 0)
 		return 0;
+#endif
 
 	switch (ctrl->id) {
 	case V4L2_CID_UPDATE_SOF_CNT:
@@ -1419,7 +1421,9 @@ static int imgsensor_set_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	}
 
+#ifdef IMGSENSOR_USE_PM_FRAMEWORK
 	pm_runtime_put(dev);
+#endif
 
 	return ret;
 }
