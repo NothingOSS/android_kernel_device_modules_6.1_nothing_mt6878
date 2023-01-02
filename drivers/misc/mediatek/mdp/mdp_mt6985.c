@@ -5,6 +5,7 @@
 
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
+#include <linux/pm_runtime.h>
 
 #include "cmdq_reg.h"
 #include "mdp_common.h"
@@ -1608,7 +1609,7 @@ static void mdp_enable_larb(bool enable, struct device *larb)
 	}
 
 	if (enable) {
-		int ret = mtk_smi_larb_get(larb);
+		int ret = pm_runtime_resume_and_get(larb);
 
 		cmdq_mdp_enable_clock_APB(enable);
 		cmdq_mdp_enable_clock_MDP_MUTEX0(enable);
@@ -1620,7 +1621,7 @@ static void mdp_enable_larb(bool enable, struct device *larb)
 		/* disable, reverse the sequence */
 		cmdq_mdp_enable_clock_MDP_MUTEX0(enable);
 		cmdq_mdp_enable_clock_APB(enable);
-		mtk_smi_larb_put(larb);
+		pm_runtime_put_sync(larb);
 	}
 
 

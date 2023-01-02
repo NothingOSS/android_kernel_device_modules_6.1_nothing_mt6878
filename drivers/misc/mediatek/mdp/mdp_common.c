@@ -2105,7 +2105,10 @@ static int cmdq_mdp_init_larb(struct platform_device *pdev)
 	of_node_put(node);
 
 	mdp_ctx.larb = &larb_pdev->dev;
-
+	if (!device_link_add(&pdev->dev, mdp_ctx.larb, DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS)) {
+		CMDQ_ERR("%s larb device link fail\n", __func__);
+		return -EINVAL;
+	}
 	CMDQ_LOG("%s success\n", __func__);
 
 	return 0;
@@ -2459,9 +2462,9 @@ static void cmdq_mdp_enable_common_clock_virtual(bool enable, u64 engine_flag)
 	}
 
 	if (enable)
-		ret = mtk_smi_larb_get(mdp_ctx.larb);
+		ret = pm_runtime_resume_and_get(mdp_ctx.larb);
 	else
-		mtk_smi_larb_put(mdp_ctx.larb);
+		pm_runtime_put_sync(mdp_ctx.larb);
 
 	if (ret)
 		CMDQ_ERR("%s %s fail ret:%d\n",
