@@ -68,6 +68,7 @@
 #define PROPNAME_SCP_DVFS_CORES        "scp-cores"
 #define PROPNAME_SCP_CORE_ONLINE_MASK  "scp-core-online-mask"
 #define PROPNAME_SCP_VLP_SUPPORT       "vlp-support"
+#define PROPNAME_SCP_FREQVOTER_SUPPORT "scp-voter-support"
 #define PROPNAME_SCP_VLPCK_SUPPORT     "vlpck-support"
 #define PROPNAME_PMIC                  "pmic"
 #define PROPNAME_PMIC_VOW_LP_EN_GEAR   "vow-lp-en-gear"
@@ -497,12 +498,19 @@ uint32_t scp_get_freq(void)
 
 	/*
 	 * calculate scp frequency requirement (debug freq is not included)
-	 * and find max required freq in all enabled cores
+	 * - Only to find the max required freq all enabled cores.
+	 * - The freq of core2 should be caculated seperately.
 	 */
 	for (i = 0; i < SCP_MAX_CORE_NUM ; i++) {
 		if (!is_core_online(i))
 			continue;
 		single_core_sum = sum_required_freq(i);
+
+		if(i == SCP_CORE_2) {
+			/* core2 has its own clock source */
+			sap_expected_freq = single_core_sum;
+			continue;
+		}
 
 		if (single_core_sum > sum) {
 			sum = single_core_sum;
@@ -582,7 +590,7 @@ void scp_init_vcore_request(void)
 		scp_vcore_request(g_dvfs_dev.opp[0].freq);
 }
 
-int scp_request_freq_vcore(void)
+static int scp_request_freq_vcore(void)
 {
 	int timeout = 50;
 	int ret = 0;
@@ -667,7 +675,7 @@ int scp_request_freq_vcore(void)
 	return 0;
 }
 
-int scp_request_freq_vlp(void)
+static int scp_request_freq_vlp(void)
 {
 	int timeout = 50;
 	int ret = 0;
@@ -760,16 +768,115 @@ int scp_request_freq_vlp(void)
 	return 0;
 }
 
+static int scp_request_freq_voter(void)
+{
+	int ret = 0;
+	bool skip_dvfs_core0 = 0;
+	bool skip_dvfs_core2 = 0;
+	int opp_idx;
+
+	if (!g_scp_dvfs_flow_enable) {
+		pr_debug("[%s]: warning: SCP DVFS is OFF\n", __func__);
+		return 0;
+	}
+
+	if (!g_dvfs_dev.freq_voter_support) {
+		pr_notice("[%s]: should not end here: vlp not supported!\n", __func__);
+		return 0;
+	}
+
+	/*
+	 * In order to prevent sending the same freq request from kernel repeatedly,
+	 * we used last_*_expected_freq to record last freq request.
+	 */
+	skip_dvfs_core0 = last_scp_expected_freq == scp_expected_freq;
+	skip_dvfs_core2 = last_sap_expected_freq == sap_expected_freq;
+	if (skip_dvfs_core0 && skip_dvfs_core2) {
+		pr_debug("[%s] Skip DFS\n", __func__);
+		return 0;
+	}
+
+	/* because we are waiting for scp to update register:scp_current_freq
+	 * use wake lock to prevent AP from entering suspend state
+	 */
+	__pm_stay_awake(scp_dvfs_lock);
+
+	/* hold scp wakelock to keep scp sram active, since sending ipi accesses
+	 * mbox which is located in scp sram.
+	 */
+	scp_awake_lock((void *)SCP_A_ID);
+
+	/* Send core0/1 dvfs request to scp core0 */
+	if (!skip_dvfs_core0) {
+		if (g_dvfs_dev.has_pll_opp) {
+			/* Request SPM not to turn off mainpll/26M/infra */
+			scp_resource_req(SCP_REQ_26M |
+					SCP_REQ_INFRA |
+					SCP_REQ_SYSPLL);
+
+			/* turn on PLL if necessary */
+			scp_pll_ctrl_set(PLL_ENABLE, scp_expected_freq);
+		}
+
+		ret = mtk_ipi_send(&scp_ipidev,
+			IPI_OUT_DVFS_SET_FREQ_0,
+			IPI_SEND_WAIT, &scp_expected_freq,
+			PIN_OUT_SIZE_DVFS_SET_FREQ_0, 500);
+		mdelay(2);
+		if (ret)
+			pr_notice("ipi fail: can't set scp_expected_freq(%d)\n", scp_expected_freq);
+		else
+			last_scp_expected_freq = scp_expected_freq;
+
+		if (g_dvfs_dev.has_pll_opp) {
+			/* turn off PLL if necessary */
+			scp_pll_ctrl_set(PLL_DISABLE, scp_expected_freq);
+
+			/* Release SPM resource */
+			opp_idx = scp_get_freq_idx(scp_expected_freq);
+			if (g_dvfs_dev.opp[opp_idx].resource_req)
+				scp_resource_req(g_dvfs_dev.opp[opp_idx].resource_req);
+			else
+				scp_resource_req(SCP_REQ_RELEASE);
+		}
+	}
+
+	/* Send core2 dvfs request to scp core2 */
+	if (!skip_dvfs_core2) {
+		ret = mtk_ipi_send(&scp_ipidev,
+			IPI_OUT_DVFS_SET_FREQ_1, /* TODO: Should modify for Core2 */
+			IPI_SEND_WAIT, &sap_expected_freq,
+			PIN_OUT_SIZE_DVFS_SET_FREQ_1, 500); /* TODO: Should modify for Core2 */
+		mdelay(2);
+		if (ret)
+			pr_notice("ipi fail: can't set sap_expected_freq(%d)\n", sap_expected_freq);
+		else
+			last_sap_expected_freq = sap_expected_freq;
+	}
+
+	/* Release all wakelocks */
+	scp_awake_unlock((void *)SCP_A_ID);
+	__pm_relax(scp_dvfs_lock);
+
+	pr_debug("[%s] request freq, scp=%d, sap=%d\n",
+			__func__, last_scp_expected_freq, last_sap_expected_freq);
+	return 0;
+}
+
 /* scp_request_freq
  * return :<0 means the scp request freq. error
  * return :0  means the request freq. finished
  */
 int scp_request_freq(void)
 {
-	if (g_dvfs_dev.vlp_support)
-		return scp_request_freq_vlp();
-	else
-		return scp_request_freq_vcore();
+	if (g_dvfs_dev.vlp_support) {
+		if (g_dvfs_dev.freq_voter_support)
+			return scp_request_freq_voter();
+		else
+			return scp_request_freq_vlp();
+	}
+
+	return scp_request_freq_vcore();
 }
 
 void wait_scp_dvfs_init_done(void)
@@ -1472,6 +1579,7 @@ void sync_ulposc_cali_data_to_scp(void)
 		 * Reset last_scp_expected_freq to prevent not updating freq in scp reset flow.
 		 */
 		last_scp_expected_freq = 0;
+		last_sap_expected_freq = 0;
 	}
 }
 
@@ -2428,6 +2536,14 @@ static int __init mt_scp_dts_init_dvfs_data(struct device_node *node,
 			pr_notice("Cannot get property opp resource(%d)\n", ret);
 			goto OPP_INIT_FAILED;
 		}
+
+		if((*opp)[i].resource_req != SCP_REQ_RELEASE && !g_dvfs_dev.has_pll_opp) {
+			/* if there is no opp gear using pll at all, we can skip some
+			 * pll control related flow by checking this flag (optional).
+			 */
+			pr_notice("has_pll_opp\n");
+			g_dvfs_dev.has_pll_opp = true;
+		}
 	}
 	return ret;
 
@@ -2541,6 +2657,19 @@ static int __init mt_scp_dts_init(struct platform_device *pdev)
 			pr_notice("[%s]: no vow-lp-enable-gear property, set gear to -1\n",
 				__func__);
 			g_dvfs_dev.vow_lp_en_gear = -1;
+		}
+	}
+
+	/* SCP is able to adjust its frequency inside SCP, if "freq voter" was supported.
+	 * Kernel side DVFS driver only need to notify SCP the frequency it needs via IPI
+     * in this case. Currently freq voter is only support when scp is in vlp domain.
+	 */
+	g_dvfs_dev.freq_voter_support = of_property_read_bool(node, PROPNAME_SCP_FREQVOTER_SUPPORT);
+	if (g_dvfs_dev.freq_voter_support) {
+		pr_notice("[%s]: SCP Voter Support on!\n", __func__);
+		if (!g_dvfs_dev.vlp_support) {
+			pr_notice("[%s]: Only VLP domain SCP can support voter!\n", __func__);
+			WARN_ON(1);
 		}
 	}
 

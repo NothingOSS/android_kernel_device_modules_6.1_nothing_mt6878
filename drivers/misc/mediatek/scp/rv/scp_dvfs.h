@@ -251,6 +251,8 @@ struct scp_dvfs_hw {
 	bool vlpck_support; /* Using 2-phase calibration if vlpck_bypass_phase1 not set */
 	bool vlpck_bypass_phase1;
 	bool vlp_support; /* Moving regulator & PMIC setting into SCP side */
+	bool has_pll_opp;
+	bool freq_voter_support;
 	bool pmic_sshub_en;
 	bool sleep_init_done;
 	bool pre_mux_en;
@@ -276,7 +278,9 @@ extern int scp_dvfs_feature_enable(void);
 
 /* scp dvfs variable*/
 extern unsigned int last_scp_expected_freq;
+extern unsigned int last_sap_expected_freq;
 extern unsigned int scp_expected_freq;
+extern unsigned int sap_expected_freq;
 extern unsigned int scp_current_freq;
 extern spinlock_t scp_awake_spinlock;
 

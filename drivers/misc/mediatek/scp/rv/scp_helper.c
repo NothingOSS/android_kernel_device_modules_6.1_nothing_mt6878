@@ -85,6 +85,8 @@ bool system_shutdown;
 /* scp dvfs variable*/
 unsigned int last_scp_expected_freq;
 unsigned int scp_expected_freq;
+unsigned int last_sap_expected_freq;
+unsigned int sap_expected_freq;
 unsigned int scp_current_freq;
 unsigned int scp_dvfs_cali_ready;
 
@@ -1633,7 +1635,9 @@ static void scp_control_feature(enum feature_id id, bool enable)
 
 	/* send request only when scp is not down */
 	if (scp_ready[SCP_A_ID]) {
-		if (scp_current_freq != scp_expected_freq) {
+		if (scp_current_freq != scp_expected_freq
+			|| sap_expected_freq != last_sap_expected_freq
+		) {
 			/* set scp freq. */
 
 			if (scp_dvfs_feature_enable())
