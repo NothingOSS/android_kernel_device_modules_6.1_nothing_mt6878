@@ -15,7 +15,7 @@
 #define APUSYS_SAPU_IOC_MAGIC 'S'
 #define APUSYS_SAPU_DATAMEM	_IOWR(APUSYS_SAPU_IOC_MAGIC, 1, struct dmArg)
 #define APUSYS_POWER_CONTROL _IOWR(APUSYS_SAPU_IOC_MAGIC, 2, struct PWRarg)
-#define MTEE_SESSION_NAME_LEN 32
+#define MTEE_SESSION_NAME_LEN 64
 
 struct dram_fb_data {
 	struct dma_buf_attachment *dram_fb_attach;
@@ -43,7 +43,7 @@ struct dmArg {
 	int fd;
 	char haSrvName[MTEE_SESSION_NAME_LEN];
 	int command;
-	uint64_t model_hd_ha;
+	uint64_t mem_hd;
 };
 
 struct PWRarg {
@@ -53,7 +53,7 @@ struct PWRarg {
 struct haArg {
 	uint32_t handle;
 	dma_addr_t dma_addr;
-	uint64_t model_hd_ha;
+	uint64_t mem_hd;
 };
 
 

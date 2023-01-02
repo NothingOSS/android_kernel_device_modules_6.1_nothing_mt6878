@@ -328,7 +328,7 @@ long apusys_sapu_internal_ioctl(struct file *filep, unsigned int cmd, void __use
 		ioHaArg.dma_addr = sg_dma_address(dmem_sgt->sgl);
 		// pr_info("dma_addr=%xad\n", ioHaArg.dma_addr);
 
-		ioHaArg.model_hd_ha = ioDmArg.model_hd_ha;
+		ioHaArg.mem_hd = ioDmArg.mem_hd;
 		/* Call to HA with params */
 		ret = sapu_ha_bridge(&ioDmArg, &ioHaArg);
 		if (ret)
