@@ -91,6 +91,12 @@ typedef u64 (*CmdqMdpGetEngineGroupBits) (u32 engine_group);
 
 typedef void (*CmdqMdpEnableCommonClock) (bool enable, u64 engine_flag);
 
+typedef u64 (*CmdqMdpGetEngLarb) (void);
+
+typedef u32 (*CmdqMdpGetLarbCount) (void);
+
+typedef struct device *(*CmdqMdpGetLarbDev) (void);
+
 typedef void (*CmdqCheckHwStatus) (struct cmdqRecStruct *handle);
 
 typedef u64(*CmdqMdpGetSecEngine) (u64 engine_flag);
@@ -174,6 +180,9 @@ struct cmdqMDPFuncStruct {
 	CmdqMdpGetEngineGroupBits getEngineGroupBits;
 	CmdqErrorResetCB errorReset;
 	CmdqMdpEnableCommonClock mdpEnableCommonClock;
+	CmdqMdpGetEngLarb mdpGetEngLarb;
+	CmdqMdpGetLarbDev mdpGetLarbDev;
+	CmdqMdpGetLarbCount mdpGetLarbCount;
 	CmdqBeginTaskCB beginTask;
 	CmdqEndTaskCB endTask;
 	CmdqBeginTaskCB beginISPTask;

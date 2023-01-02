@@ -5,7 +5,6 @@
 
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
-#include <linux/pm_runtime.h>
 
 #include "cmdq_reg.h"
 #include "mdp_common.h"
@@ -1604,45 +1603,24 @@ u64 cmdq_mdp_get_engine_group_bits(u32 engine_group)
 	return gCmdqEngineGroupBits[engine_group];
 }
 
-static void mdp_enable_larb(bool enable, struct device *larb)
+u64 cmdq_mdp_get_eng_larb(void)
 {
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
-	if (!larb) {
-		CMDQ_ERR("%s smi larb not support\n", __func__);
-		return;
-	}
-
-	if (enable) {
-		int ret = pm_runtime_resume_and_get(larb);
-
-		cmdq_mdp_enable_clock_APB(enable);
-		cmdq_mdp_enable_clock_MDP_MUTEX0(enable);
-
-		if (ret)
-			CMDQ_ERR("%s enable fail ret:%d\n",
-				__func__, ret);
-	} else {
-		/* disable, reverse the sequence */
-		cmdq_mdp_enable_clock_MDP_MUTEX0(enable);
-		cmdq_mdp_enable_clock_APB(enable);
-		pm_runtime_put_sync(larb);
-	}
-
-
-	if (gVcpPQReadbackSupport) {
-		if (enable)
-			cmdq_vcp_enable(true);
-		else
-			cmdq_vcp_enable(false);
-	}
-
-#endif
+	return MDP_ENG_LARB2;
 }
 
-static void cmdq_mdp_enable_common_clock(bool enable, u64 engine_flag)
+struct device *cmdq_mdp_get_larb_device(void)
 {
-	if (engine_flag & MDP_ENG_LARB2)
-		mdp_enable_larb(enable, larb2);
+	return larb2;
+}
+
+void cmdq_mdp_enable_APB_MUTEX(bool enable, u64 engineFlag){
+	if (enable) {
+		cmdq_mdp_enable_clock_APB(enable);
+		cmdq_mdp_enable_clock_MDP_MUTEX0(enable);
+	} else {
+		cmdq_mdp_enable_clock_MDP_MUTEX0(enable);
+		cmdq_mdp_enable_clock_APB(enable);
+	}
 }
 
 static void cmdq_mdp_check_hw_status(struct cmdqRecStruct *handle)
@@ -2007,7 +1985,9 @@ void cmdq_mdp_platform_function_setting(void)
 	pFunc->parseErrModByEngFlag = cmdq_mdp_parse_error_module;
 	// pFunc->parseHandleErrModByEngFlag = cmdq_mdp_parse_handle_error_module;
 	pFunc->getEngineGroupBits = cmdq_mdp_get_engine_group_bits;
-	pFunc->mdpEnableCommonClock = cmdq_mdp_enable_common_clock;
+	pFunc->mdpEnableCommonClock = cmdq_mdp_enable_APB_MUTEX;
+	pFunc->mdpGetEngLarb = cmdq_mdp_get_eng_larb;
+	pFunc->mdpGetLarbDev = cmdq_mdp_get_larb_device;
 	pFunc->CheckHwStatus = cmdq_mdp_check_hw_status;
 #ifdef CMDQ_SECURE_PATH_SUPPORT
 	pFunc->mdpGetSecEngine = cmdq_mdp_get_secure_engine;

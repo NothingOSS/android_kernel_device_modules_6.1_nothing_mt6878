@@ -287,13 +287,55 @@ s32 cmdq_mdp_get_smi_usage(void)
 	return atomic_read(&mdp_ctx.mdp_smi_usage);
 }
 
+static void cmdq_mdp_enable_common_clock(bool enable, u64 engine_flag)
+{
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
+	struct device *larb;
+
+	if (!(engine_flag & cmdq_mdp_get_func()->mdpGetEngLarb())) {
+		CMDQ_ERR("%s engine_flag not include MDP_ENG_LARB\n", __func__);
+		return;
+	}
+
+	larb = cmdq_mdp_get_func()->mdpGetLarbDev();
+
+	if (!larb) {
+		CMDQ_ERR("%s smi larb not support\n", __func__);
+		return;
+	}
+
+	if (enable) {
+		int ret = pm_runtime_resume_and_get(larb);
+		cmdq_mdp_get_func()->mdpEnableCommonClock(enable, engine_flag);
+
+		if (ret)
+			CMDQ_ERR("%s enable fail ret:%d\n",
+				__func__, ret);
+	} else {
+		cmdq_mdp_get_func()->mdpEnableCommonClock(enable, engine_flag);
+		pm_runtime_put_sync(larb);
+	}
+
+	if (cmdq_mdp_get_func()->mdpVcpPQReadbackSupport()) {
+		if (enable)
+			cmdq_vcp_enable(enable);
+		else
+			cmdq_vcp_enable(enable);
+	}
+#endif
+}
+
 static void cmdq_mdp_common_clock_enable(u64 engine_flag)
 {
 	s32 smi_ref = atomic_inc_return(&mdp_ctx.mdp_smi_usage);
 
 	CMDQ_LOG_CLOCK("%s MDP SMI clock enable %d, engine_flag:%llx\n",
 		__func__, smi_ref, engine_flag);
-	cmdq_mdp_get_func()->mdpEnableCommonClock(true, engine_flag);
+
+	if (cmdq_mdp_get_func()->mdpGetLarbCount() == 1)
+		cmdq_mdp_enable_common_clock(true, engine_flag);
+	else
+		cmdq_mdp_get_func()->mdpEnableCommonClock(true, engine_flag);
 
 	CMDQ_PROF_MMP(mdp_mmp_get_event()->MDP_clock_smi,
 		MMPROFILE_FLAG_PULSE, smi_ref, 1);
@@ -305,7 +347,11 @@ static void cmdq_mdp_common_clock_disable(u64 engine_flag)
 
 	CMDQ_LOG_CLOCK("%s MDP SMI clock disable %d, engine_flag:%llx\n",
 		__func__, smi_ref, engine_flag);
-	cmdq_mdp_get_func()->mdpEnableCommonClock(false, engine_flag);
+
+	if (cmdq_mdp_get_func()->mdpGetLarbCount() == 1)
+		cmdq_mdp_enable_common_clock(false, engine_flag);
+	else
+		cmdq_mdp_get_func()->mdpEnableCommonClock(false, engine_flag);
 
 	CMDQ_PROF_MMP(mdp_mmp_get_event()->MDP_clock_smi,
 		MMPROFILE_FLAG_PULSE, smi_ref, 0);
@@ -2450,27 +2496,23 @@ long cmdq_mdp_get_module_base_VA_MMSYS_CONFIG(void)
 	return cmdq_mmsys_base;
 }
 
-static void cmdq_mdp_enable_common_clock_virtual(bool enable, u64 engine_flag)
+static void cmdq_mdp_enable_common_clock_virtual(bool enable, u64 engineFlag)
 {
-#ifdef CMDQ_PWR_AWARE
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
-	int ret = 0;
+}
 
-	if (!mdp_ctx.larb) {
-		CMDQ_ERR("%s smi larb not support\n", __func__);
-		return;
-	}
+static u64 cmdq_mdp_get_eng_larb_virtual(void)
+{
+	return 0;
+}
 
-	if (enable)
-		ret = pm_runtime_resume_and_get(mdp_ctx.larb);
-	else
-		pm_runtime_put_sync(mdp_ctx.larb);
+static struct device *cmdq_mdp_get_larb_device_virtual(void)
+{
+	return mdp_ctx.larb;
+}
 
-	if (ret)
-		CMDQ_ERR("%s %s fail ret:%d\n",
-			__func__, enable ? "enable" : "disable", ret);
-#endif	/* CONFIG_DEVICE_MODULES_MTK_SMI */
-#endif	/* CMDQ_PWR_AWARE */
+static u32 cmdq_mdp_get_larb_count_virtual(void)
+{
+	return 1;
 }
 
 /* Common Code */
@@ -3645,6 +3687,9 @@ void cmdq_mdp_virtual_function_setting(void)
 	pFunc->getEngineGroupBits = cmdq_mdp_get_engine_group_bits_virtual;
 	pFunc->errorReset = cmdq_mdp_error_reset_virtual;
 	pFunc->mdpEnableCommonClock = cmdq_mdp_enable_common_clock_virtual;
+	pFunc->mdpGetEngLarb = cmdq_mdp_get_eng_larb_virtual;
+	pFunc->mdpGetLarbDev = cmdq_mdp_get_larb_device_virtual;
+	pFunc->mdpGetLarbCount = cmdq_mdp_get_larb_count_virtual;
 	pFunc->beginTask = cmdq_mdp_begin_task_virtual;
 	pFunc->endTask = cmdq_mdp_end_task_virtual;
 	pFunc->beginISPTask = cmdq_mdp_isp_begin_task_virtual;
