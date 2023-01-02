@@ -1271,7 +1271,7 @@ static int mtk_rtc_probe(struct platform_device *pdev)
 
 	rtc->rtc_dev = devm_rtc_allocate_device(&pdev->dev);
 	if (IS_ERR(rtc->rtc_dev)) {
-		dev_err(&pdev->dev, "Failed devm_rtc_allocate_device: %d\n", rtc->rtc_dev);
+		dev_err(&pdev->dev, "Failed devm_rtc_allocate_device: %p\n", rtc->rtc_dev);
 		return PTR_ERR(rtc->rtc_dev);
 	}
 
