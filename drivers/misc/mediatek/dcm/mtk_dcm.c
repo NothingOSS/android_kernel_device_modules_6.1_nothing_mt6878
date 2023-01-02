@@ -416,7 +416,7 @@ static int __init mtk_dcm_init(void)
 }
 //arch_initcall(mt6779_dcm_init);
 
-static void __init mtk_dcm_exit(void)
+static void mtk_dcm_exit(void)
 {
 }
 module_init(mtk_dcm_init);

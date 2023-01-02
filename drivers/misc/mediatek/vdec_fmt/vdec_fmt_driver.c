@@ -1318,7 +1318,7 @@ static int __init fmt_init(void)
 
 	return 0;
 }
-static void __init fmt_exit(void)
+static void fmt_exit(void)
 {
 	platform_driver_unregister(&vdec_fmt_driver);
 }

@@ -1076,7 +1076,7 @@ static void mpam_reset_partid(void __always_unused *info)
 	mpam_write_partid(DEF_PARTID);
 }
 
-static void __init mpam_proto_exit(void)
+static void mpam_proto_exit(void)
 {
 	if (cpuqos_workq)
 		destroy_workqueue(cpuqos_workq);
