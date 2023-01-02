@@ -3899,6 +3899,7 @@ static ssize_t idletime_proc_set(struct file *file, const char __user *ubuf,
 static ssize_t idletime_proc_get(struct file *file, char __user *ubuf,
 			size_t count, loff_t *ppos)
 {
+#if 0
 	struct drm_crtc *crtc;
 	unsigned long long val;
 	int n = 0;
@@ -3923,6 +3924,9 @@ out:
 		return -EINVAL;
 
 	return simple_read_from_buffer(ubuf, count, ppos, buffer, n);
+#endif
+
+	return 0;
 }
 
 static const struct proc_ops idletime_proc_fops = {
