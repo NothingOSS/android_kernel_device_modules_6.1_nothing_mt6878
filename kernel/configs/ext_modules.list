@@ -1,2 +1,5 @@
 ../vendor/mediatek/kernel_modules/fpsgo_cus
+../vendor/mediatek/kernel_modules/fpsgo_int
 ../vendor/mediatek/kernel_modules/met_drv_v3
+../vendor/mediatek/kernel_modules/met_drv_v3/met_api
+../vendor/mediatek/kernel_modules/met_drv_secure_v3
