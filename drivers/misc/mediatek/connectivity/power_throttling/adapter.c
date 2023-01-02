@@ -390,7 +390,8 @@ int conn_pwr_notify_event(enum conn_pwr_drv_type drv, enum conn_pwr_event_type e
 		pr_info("%s, drv = %d, max_t = %d, rcv_t = %d, ret = %d\n", __func__,
 			drv, d->max_temp, d->recovery_temp, ret);
 	} else {
-		pr_info("invalid. event = %d, data = %x\n", event, data);
+		pr_info("invalid. event = %d, data = %lx\n", event,
+				(unsigned long)data);
 		return -3;
 	}
 	return ret;
