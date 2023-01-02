@@ -608,7 +608,7 @@ static struct sg_table *mtk_sec_heap_page_map_dma_buf(struct dma_buf_attachment 
 			return ERR_PTR(-EINVAL);
 		}
 		a->mapped = true;
-		pr_debug("%s done(has mapped), dev:%s(%s), sec_handle:%u, len:0x%lx, iova:0x%lx, id:(%d,%d)\n",
+		pr_debug("%s done(has mapped), dev:%s(%s), sec_handle:0x%llx, len:0x%lx, iova:0x%lx, id:(%d,%d)\n",
 			__func__, dev_name(buffer->dev_info[tab_id][dom_id].dev),
 			dev_name(attachment->dev), buffer->sec_handle, buffer->len,
 			(unsigned long)sg_dma_address(table->sgl),
@@ -640,7 +640,7 @@ static struct sg_table *mtk_sec_heap_page_map_dma_buf(struct dma_buf_attachment 
 	}
 	a->mapped = true;
 
-	pr_debug("%s done, dev:%s, sec_handle:%u, len:0x%lx, iova:0x%lx, id:(%d,%d)\n",
+	pr_debug("%s done, dev:%s, sec_handle:0x%llx, len:0x%lx, iova:0x%lx, id:(%d,%d)\n",
 		__func__, dev_name(attachment->dev), buffer->sec_handle, buffer->len,
 		(unsigned long)sg_dma_address(table->sgl), tab_id, dom_id);
 	mutex_unlock(&buffer->map_lock);
@@ -724,7 +724,7 @@ static struct sg_table *mtk_sec_heap_region_map_dma_buf(struct dma_buf_attachmen
 			return ERR_PTR(-EINVAL);
 		}
 		a->mapped = true;
-		pr_debug("%s done(has mapped), dev:%s(%s), sec_handle:%u, len:0x%lx, pa:0x%llx, iova:0x%lx, id:(%d,%d)\n",
+		pr_debug("%s done(has mapped), dev:%s(%s), sec_handle:0x%llx, len:0x%lx, pa:0x%llx, iova:0x%lx, id:(%d,%d)\n",
 			__func__, dev_name(buffer->dev_info[tab_id][dom_id].dev),
 			dev_name(attachment->dev), buffer->sec_handle, buffer->len,
 			phy_addr, (unsigned long)sg_dma_address(table->sgl),
@@ -777,7 +777,7 @@ map_done:
 	}
 	a->mapped = true;
 
-	pr_debug("%s done, dev:%s, sec_handle:%u, len:0x%lx(0x%x), pa:0x%llx, iova:0x%lx, id:(%d,%d)\n",
+	pr_debug("%s done, dev:%s, sec_handle:0x%llx, len:0x%lx(0x%x), pa:0x%llx, iova:0x%lx, id:(%d,%d)\n",
 		__func__, dev_name(attachment->dev), buffer->sec_handle, buffer->len,
 		sg_dma_len(table->sgl), phy_addr, (unsigned long)sg_dma_address(table->sgl),
 		tab_id, dom_id);
@@ -1215,7 +1215,7 @@ static int sec_buf_priv_dump(const struct dma_buf *dmabuf,
 
 			if (region_buf) {
 				sec_handle = (dma_addr_t)dmabuf_to_secure_handle(dmabuf);
-				len = scnprintf(tmp_str, 39, "sec_handle:0x%x", sec_handle);
+				len = scnprintf(tmp_str, 39, "sec_handle:0x%llx", sec_handle);
 				if (len >= 0)
 					tmp_str[len] = '\0';/* No need memset */
 			}
