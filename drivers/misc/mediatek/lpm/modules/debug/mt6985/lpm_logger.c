@@ -232,6 +232,10 @@ static int lpm_get_wakeup_status(void)
 	help->wakesrc->req_sta4 = plat_mmio_read(SPM_REQ_STA_4);
 	help->wakesrc->req_sta5 = plat_mmio_read(SPM_REQ_STA_5);
 	help->wakesrc->req_sta6 = plat_mmio_read(SPM_REQ_STA_6);
+	help->wakesrc->req_sta7 = plat_mmio_read(SPM_REQ_STA_7);
+	help->wakesrc->req_sta8 = plat_mmio_read(SPM_REQ_STA_8);
+	help->wakesrc->req_sta9 = plat_mmio_read(SPM_REQ_STA_9);
+	help->wakesrc->req_sta10 = plat_mmio_read(SPM_REQ_STA_10);
 
 	/* get HW CG check status */
 	help->wakesrc->cg_check_sta = plat_mmio_read(SPM_REQ_STA_2);
@@ -343,7 +347,8 @@ static u32 is_blocked_cnt;
 	u32 is_no_blocked = 0;
 	u32 req_sta_0, req_sta_1, req_sta_2;
 	u32 req_sta_3, req_sta_4, req_sta_5;
-	u32 req_sta_6;
+	u32 req_sta_6, req_sta_7, req_sta_8;
+	u32 req_sta_9, req_sta_10;
 	u32 src_req;
 
 	if (is_blocked_cnt >= AVOID_OVERFLOW)
@@ -376,43 +381,48 @@ static u32 is_blocked_cnt;
 	req_sta_4 = plat_mmio_read(SPM_REQ_STA_4);
 	req_sta_5 = plat_mmio_read(SPM_REQ_STA_5);
 	req_sta_6 = plat_mmio_read(SPM_REQ_STA_6);
-	if (req_sta_4 & 0x1F)
+	req_sta_7 = plat_mmio_read(SPM_REQ_STA_7);
+	req_sta_8 = plat_mmio_read(SPM_REQ_STA_8);
+	req_sta_9 = plat_mmio_read(SPM_REQ_STA_9);
+	req_sta_10 = plat_mmio_read(SPM_REQ_STA_10);
+	if (req_sta_6 & (0x1FF << 16))
 		log_size += scnprintf(log_buf + log_size,
 			LOG_BUF_SIZE - log_size, "md ");
-	if ((req_sta_2 & 0xF) || (req_sta_1 & (0x7 << 29)))
+	if (req_sta_3 & (0x1FF << 19))
 		log_size += scnprintf(log_buf + log_size,
 			LOG_BUF_SIZE - log_size, "conn ");
-	if (req_sta_2 & (0xF << 9))
+	if (req_sta_4 & (0x3F << 3))
 		log_size += scnprintf(log_buf + log_size,
 			LOG_BUF_SIZE - log_size, "disp ");
 
-	if (req_sta_5 & (0x1F << 3))
+	if (req_sta_8 & (0xFF << 10))
 		log_size += scnprintf(log_buf + log_size,
 			LOG_BUF_SIZE - log_size, "scp ");
 
-	if (req_sta_0 & (0x1F << 10))
+	if (req_sta_0 & (0xFF << 15))
 		log_size += scnprintf(log_buf + log_size,
 			LOG_BUF_SIZE - log_size, "adsp ");
 
-	if (req_sta_5 & (0x1F << 27))
+	if (req_sta_9 & (0x7F << 22))
 		log_size += scnprintf(log_buf + log_size,
 			LOG_BUF_SIZE - log_size, "ufs ");
 
-	if (req_sta_4 & (0x3FF << 15))
+	if (req_sta_7 & (0x3FFF << 6))
 		log_size += scnprintf(log_buf + log_size,
 			LOG_BUF_SIZE - log_size, "msdc ");
 
-	if (req_sta_0 & (0x1F << 5))
+	if (req_sta_0 & (0x3F << 8))
 		log_size += scnprintf(log_buf + log_size,
 			LOG_BUF_SIZE - log_size, "apu ");
 
-	if (req_sta_3 & 0x7)
+	if (req_sta_5 & (0x1F << 1))
 		log_size += scnprintf(log_buf + log_size,
 			LOG_BUF_SIZE - log_size, "gce ");
 
+	/* FIXME: add other request check? */
 
 	src_req = plat_mmio_read(SPM_SRC_REQ);
-	if (src_req & 0x63E) {
+	if (src_req & 0x18F6) {
 		dump_lp_cond();
 		log_size += scnprintf(log_buf + log_size,
 			LOG_BUF_SIZE - log_size, "spm ");
@@ -628,10 +638,15 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 
 		log_size += scnprintf(log_buf + log_size,
 			  LOG_BUF_OUT_SZ - log_size,
-			  "req_sta =  0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x, cg_check_sta =0x%x, isr = 0x%x, rt_req_sta0 = 0x%x rt_req_sta1 = 0x%x rt_req_sta2 = 0x%x rt_req_sta3 = 0x%x dram_sw_con_3 = 0x%x, ",
-			  wakesrc->req_sta0, wakesrc->req_sta1,
-			  wakesrc->req_sta2, wakesrc->req_sta3,
-			  wakesrc->req_sta4, wakesrc->req_sta5, wakesrc->req_sta6,
+			  "req_sta =  0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x, ",
+			  wakesrc->req_sta0, wakesrc->req_sta1, wakesrc->req_sta2,
+			  wakesrc->req_sta3, wakesrc->req_sta4, wakesrc->req_sta5,
+			  wakesrc->req_sta6, wakesrc->req_sta7, wakesrc->req_sta8,
+			  wakesrc->req_sta9, wakesrc->req_sta10);
+
+		log_size += scnprintf(log_buf + log_size,
+			  LOG_BUF_OUT_SZ - log_size,
+			  "cg_check_sta =0x%x, isr = 0x%x, rt_req_sta0 = 0x%x rt_req_sta1 = 0x%x rt_req_sta2 = 0x%x rt_req_sta3 = 0x%x dram_sw_con_3 = 0x%x, ",
 			  wakesrc->cg_check_sta,
 			  wakesrc->isr, wakesrc->rt_req_sta0,
 			  wakesrc->rt_req_sta1, wakesrc->rt_req_sta2,
@@ -644,12 +659,17 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 				wakesrc->wake_misc,
 				wakesrc->sw_flag0,
 				wakesrc->sw_flag1, wakesrc->b_sw_flag0,
-				wakesrc->b_sw_flag0,
+				wakesrc->b_sw_flag1,
 				wakesrc->src_req);
 
 		log_size += scnprintf(log_buf + log_size,
 				LOG_BUF_OUT_SZ - log_size,
-				" clk_settle = 0x%x, ", wakesrc->clk_settle);
+				"clk_settle = 0x%x, ", wakesrc->clk_settle);
+
+		log_size += scnprintf(log_buf + log_size,
+				LOG_BUF_OUT_SZ - log_size,
+				"debug_spare_5 = 0x%x, debug_spare_6 = 0x%x, ",
+				wakesrc->debug_spare5, wakesrc->debug_spare6);
 
 		if (type == LPM_ISSUER_SUSPEND && lpm_spm_base) {
 			/* calculate 26M off percentage in suspend period */

@@ -45,6 +45,8 @@ struct lpm_spm_wake_status {
 	u32 cg_check_sta;	/* SPM_CG_CHECK_STA */
 	u32 debug_flag;		/* PCM_WDT_LATCH_SPARE_0 */
 	u32 debug_flag1;	/* PCM_WDT_LATCH_SPARE_1 */
+	u32 debug_spare5;	/* PCM_WDT_LATCH_SPARE_5 */
+	u32 debug_spare6;	/* PCM_WDT_LATCH_SPARE_6 */
 	u32 b_sw_flag0;		/* SPM_SW_RSV_7 */
 	u32 b_sw_flag1;		/* SPM_SW_RSV_8 */
 	u32 isr;			/* SPM_IRQ_STA */
