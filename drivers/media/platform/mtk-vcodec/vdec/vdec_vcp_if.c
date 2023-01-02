@@ -137,7 +137,7 @@ static int vdec_vcp_ipi_send(struct vdec_inst *inst, void *msg, int len, bool is
 	}
 
 	while (!is_vcp_ready(VCP_A_ID)) {
-		mtk_v4l2_debug((((timeout % 20) == 10) ? 0 : 4), "[VCP] wait ready %d ms", timeout);
+		mtk_v4l2_debug((((timeout % 20) == 10) ? 0 : 4), "[VCP] wait ready %lu ms", timeout);
 		mdelay(1);
 		timeout++;
 		if (timeout > VCP_SYNC_TIMEOUT_MS) {
@@ -153,7 +153,7 @@ static int vdec_vcp_ipi_send(struct vdec_inst *inst, void *msg, int len, bool is
 	}
 
 	if (len > (sizeof(struct share_obj) - sizeof(int32_t) - sizeof(uint32_t))) {
-		mtk_vcodec_err(inst, "ipi data size wrong %d > %d", len, sizeof(struct share_obj));
+		mtk_vcodec_err(inst, "ipi data size wrong %d > %lu", len, sizeof(struct share_obj));
 		inst->vcu.abort = 1;
 		return -EIO;
 	}
@@ -345,7 +345,7 @@ static void handle_vdec_mem_alloc(struct vdec_vcu_ipi_mem_op *msg)
 		msg->mem.pa = (__u64)vcp_get_reserve_mem_phys(VDEC_MEM_ID);
 		msg->mem.len = (__u64)vcp_get_reserve_mem_size(VDEC_MEM_ID);
 		msg->mem.iova = msg->mem.pa;
-		mtk_v4l2_debug(4, "va 0x%llx pa 0x%llx iova 0x%llx len %d type %d size of %d %d\n",
+		mtk_v4l2_debug(4, "va 0x%llx pa 0x%llx iova 0x%llx len %d type %d size of %lu %lu\n",
 			msg->mem.va, msg->mem.pa, msg->mem.iova, msg->mem.len, msg->mem.type,
 			sizeof(msg->mem), sizeof(*msg));
 	} else {
@@ -556,7 +556,7 @@ int vcp_dec_ipi_handler(void *arg)
 		msg = (struct vdec_vcu_ipi_ack *)obj->share_buf;
 
 		if (msg == NULL || (struct vdec_vcu_inst *)msg->ap_inst_addr == NULL) {
-			mtk_v4l2_err(" msg invalid %lx\n", msg);
+			mtk_v4l2_err(" msg invalid %lx\n", (unsigned long)msg);
 			kfree(mq_node);
 			continue;
 		}
@@ -1226,8 +1226,8 @@ void set_vdec_vcp_data(struct vdec_inst *inst, enum vcp_reserve_mem_id_t id, voi
 	__u64 mem_size = (__u64)vcp_get_reserve_mem_size(id);
 	int string_len = strlen((char *)string);
 
-	mtk_vcodec_debug(inst, "mem_size 0x%llx, string_va 0x%llx, string_pa 0x%llx\n",
-		mem_size, string_va, string_pa);
+	mtk_vcodec_debug(inst, "mem_size 0x%llx, string_va 0x%lx, string_pa 0x%lx\n",
+		mem_size, (unsigned long)string_va, (unsigned long)string_pa);
 	mtk_vcodec_debug(inst, "string: %s\n", (char *)string);
 	mtk_vcodec_debug(inst, "string_len:%d\n", string_len);
 
@@ -1296,10 +1296,10 @@ int vdec_vcp_set_frame_buffer(struct vdec_inst *inst, void *fb)
 			if (pfb->dma_general_buf != 0) {
 				ipi_fb.dma_general_addr = pfb->dma_general_addr;
 				ipi_fb.general_size = pfb->dma_general_buf->size;
-				mtk_vcodec_debug(inst, "FB id=%d dma_addr (%llx,%llx) dma_general_buf %p size %lu dma %lu",
+				mtk_vcodec_debug(inst, "FB id=%d dma_addr (%llx,%llx) dma_general_buf %p size %lu dma %pad",
 					pfb->index, ipi_fb.y_fb_dma, ipi_fb.c_fb_dma,
 					pfb->dma_general_buf, pfb->dma_general_buf->size,
-					pfb->dma_general_addr);
+					&pfb->dma_general_addr);
 			} else {
 				ipi_fb.dma_general_addr = -1;
 				mtk_vcodec_debug(inst, "FB id=%d dma_addr (%llx,%llx) dma_general_buf %p no general buf dmabuf",

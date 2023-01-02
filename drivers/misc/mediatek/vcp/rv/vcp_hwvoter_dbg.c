@@ -59,7 +59,7 @@ static ssize_t vcp_hw_voter_dbg_proc_write(
 	desc[len] = '\0';
 	pr_notice("%s: %s\n", __func__, desc);
 
-	n = sscanf(desc, "%d %d %d %d %d",
+	n = sscanf(desc, "%c %c %c %hu %hu",
 			&ipi_data.type,
 			&ipi_data.op,
 			&ipi_data.clk_category,

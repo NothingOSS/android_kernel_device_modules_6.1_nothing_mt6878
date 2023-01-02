@@ -216,7 +216,8 @@ void vcp_dump_last_regs(int mmup_enable)
 		return;
 
 	out_end = out + 0x400;
-	pr_notice("%s at %d out:0x%08x, out_end:0x%08x\n", __func__, __LINE__, out, out_end);
+	pr_notice("%s at %d out:0x%08lx, out_end:0x%08lx\n", __func__, __LINE__,
+			(unsigned long)out, (unsigned long)out_end);
 	vcp_do_tbufdump(out, out_end);
 	kfree(out);
 }
@@ -656,7 +657,7 @@ static ssize_t vcp_A_dump_show(struct file *filep,
 		memset(vcp_dump.ramdump + offset, 0xff, size);
 		/* log for the first and latest cleanup */
 		if (offset == 0 || size == (vcp_dump.ramdump_length - offset))
-			pr_notice("[VCP] %s ramdump cleaned of:0x%x sz:0x%x\n", __func__,
+			pr_notice("[VCP] %s ramdump cleaned of:0x%llx sz:0x%zu\n", __func__,
 				offset, size);
 
 		//clean the buff after readed

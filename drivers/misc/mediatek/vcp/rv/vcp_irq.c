@@ -40,7 +40,7 @@ void wait_vcp_ready_to_reboot(void)
 	}
 
 	if (retry == 0)
-		pr_notice("[VCP] VCP wakeup timeout c0:0x%x c1:0x%x, Status: 0x%x\n",
+		pr_notice("[VCP] VCP wakeup timeout c0:0x%lx c1:0x%lx, Status: 0x%x\n",
 			c0, c1, readl(R_CORE0_STATUS));
 
 	udelay(10);

@@ -2030,7 +2030,7 @@ void vcp_sys_reset_ws(struct work_struct *ws)
 			0, 0, 0, 0, 0, 0, &res);
 
 		dsb(SY); /* may take lot of time */
-		pr_notice("[VCP] rstn core0 %x core1 %x ret %lu\n",
+		pr_notice("[VCP] rstn core0 %lx core1 %lx ret %lu\n",
 			c0_rstn, c1_rstn, res.a0);
 	} else {
 		/* reset type vcp WDT or CMD*/
@@ -2041,7 +2041,7 @@ void vcp_sys_reset_ws(struct work_struct *ws)
 			1, 0, 0, 0, 0, 0, &res);
 
 		dsb(SY); /* may take lot of time */
-		pr_notice("[VCP] rstn core0 %x core1 %x ret %lu\n",
+		pr_notice("[VCP] rstn core0 %lx core1 %lx ret %lu\n",
 			c0_rstn, c1_rstn, res.a0);
 	}
 

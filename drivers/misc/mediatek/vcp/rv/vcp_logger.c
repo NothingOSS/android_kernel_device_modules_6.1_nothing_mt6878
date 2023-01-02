@@ -1024,8 +1024,9 @@ void vcp_crash_log_move_to_buf(enum vcp_core_id vcp_id)
 		    VCP_A_log_ctl->buff_ofs + w_pos;
 		/* check write address don't over logger reserve memory */
 		if (dram_logger_buf > dram_logger_limit) {
-			pr_debug("[VCP] %s: dram_logger_buf %x oversize reserve mem %x\n",
-			__func__, dram_logger_buf, dram_logger_limit);
+			pr_debug("[VCP] %s: dram_logger_buf %lx oversize reserve mem %lx\n",
+			__func__, (unsigned long)dram_logger_buf,
+			(unsigned long)dram_logger_limit);
 		goto exit;
 		}
 

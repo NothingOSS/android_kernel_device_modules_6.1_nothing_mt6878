@@ -48,7 +48,7 @@ static void handle_enc_init_msg(struct venc_vcu_inst *vcu, void *data)
 	if (vcu == NULL)
 		return;
 
-	mtk_vcodec_debug(vcu, "+ venc_inst = 0x%lx, vcu_inst_addr = 0x%x, id = %d",
+	mtk_vcodec_debug(vcu, "+ venc_inst = 0x%lx, vcu_inst_addr = 0x%llx, id = %d",
 		(uintptr_t)msg->ap_inst_addr, msg->vcu_inst_addr, msg->msg_id);
 
 	vcu->inst_addr = msg->vcu_inst_addr;
@@ -65,7 +65,7 @@ static void handle_query_cap_ack_msg(struct venc_vcu_ipi_query_cap_ack *msg)
 
 	if (vcu == NULL)
 		return;
-	mtk_vcodec_debug(vcu, "+ ap_inst_addr = 0x%lx, vcu_data_addr = 0x%x, id = %d",
+	mtk_vcodec_debug(vcu, "+ ap_inst_addr = 0x%lx, vcu_data_addr = 0x%llx, id = %d",
 		(uintptr_t)msg->ap_inst_addr, msg->vcu_data_addr, msg->id);
 
 	/* mapping vcp address to kernel virtual address */
@@ -125,7 +125,7 @@ static int venc_vcp_ipi_send(struct venc_inst *inst, void *msg, int len, bool is
 	}
 
 	while (!is_vcp_ready(VCP_A_ID)) {
-		mtk_v4l2_debug((((timeout % 20) == 10) ? 0 : 4), "[VCP] wait ready %d ms", timeout);
+		mtk_v4l2_debug((((timeout % 20) == 10) ? 0 : 4), "[VCP] wait ready %lu ms", timeout);
 		mdelay(1);
 		timeout++;
 		if (timeout > VCP_SYNC_TIMEOUT_MS) {
@@ -141,7 +141,7 @@ static int venc_vcp_ipi_send(struct venc_inst *inst, void *msg, int len, bool is
 	}
 
 	if (len > (sizeof(struct share_obj) - sizeof(int32_t) - sizeof(uint32_t))) {
-		mtk_vcodec_err(inst, "ipi data size wrong %d > %d", len, sizeof(struct share_obj));
+		mtk_vcodec_err(inst, "ipi data size wrong %d > %lu", len, sizeof(struct share_obj));
 		inst->vcu_inst.abort = 1;
 		return -EIO;
 	}
@@ -226,7 +226,7 @@ static void handle_venc_mem_alloc(struct venc_vcu_ipi_mem_op *msg)
 		msg->mem.len = (__u64)vcp_get_reserve_mem_size(VENC_MEM_ID);
 		msg->mem.iova = msg->mem.pa;
 
-		mtk_v4l2_debug(4, "va 0x%llx pa 0x%llx iova 0x%llx len %d type %d size of %d %d\n",
+		mtk_v4l2_debug(4, "va 0x%llx pa 0x%llx iova 0x%llx len %d type %d size of %lu %lu\n",
 			msg->mem.va, msg->mem.pa, msg->mem.iova, msg->mem.len, msg->mem.type,
 			sizeof(msg->mem), sizeof(*msg));
 	} else {
@@ -437,7 +437,7 @@ int vcp_enc_ipi_handler(void *arg)
 
 		if (msg == NULL ||
 		   (struct venc_vcu_inst *)(unsigned long)msg->ap_inst_addr == NULL) {
-			mtk_v4l2_err(" msg invalid %lx\n", msg);
+			mtk_v4l2_err(" msg invalid %lx\n", (unsigned long)msg);
 			kfree(mq_node);
 			continue;
 		}
@@ -1003,8 +1003,9 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 			}
 		}
 
-		mtk_v4l2_debug(0, "slbc_request %d, 0x%x, 0x%llx\n",
-			inst->ctx->use_slbc, inst->ctx->slbc_addr, inst->ctx->sram_data.paddr);
+		mtk_v4l2_debug(0, "slbc_request %d, 0x%x, 0x%lx\n",
+			inst->ctx->use_slbc, inst->ctx->slbc_addr,
+			(unsigned long)inst->ctx->sram_data.paddr);
 		mtk_v4l2_debug(0, "slb_cb %d/%d perf %d cnt %d/%d",
 			atomic_read(&mtk_venc_slb_cb.release_slbc),
 			atomic_read(&mtk_venc_slb_cb.request_slbc),
@@ -1366,8 +1367,8 @@ void set_venc_vcp_data(struct venc_inst *inst, enum vcp_reserve_mem_id_t id, voi
 	__u64 mem_size = (__u64)vcp_get_reserve_mem_size(id);
 	int string_len = strlen((char *)string);
 
-	mtk_vcodec_debug(inst, "mem_size 0x%llx, string_va 0x%llx, string_pa 0x%llx\n",
-		mem_size, string_va, string_pa);
+	mtk_vcodec_debug(inst, "mem_size 0x%llx, string_va 0x%lx, string_pa 0x%lx\n",
+		mem_size, (unsigned long)string_va, (unsigned long)string_pa);
 	mtk_vcodec_debug(inst, "string: %s\n", (char *)string);
 	mtk_vcodec_debug(inst, "string_len:%d\n", string_len);
 
