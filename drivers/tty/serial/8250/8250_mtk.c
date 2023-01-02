@@ -177,11 +177,11 @@ enum {
 };
 
 unsigned int uart_reg_buf[LOG_BUF_SIZE];
-
-static struct mtk8250_reg_data peri_wakeup = {0};
 struct mtk8250_info_dump rx_record;
 
+#if IS_ENABLED(CONFIG_MTK_UARTHUB)
 static struct mtk8250_reset_data peri_reset = {0};
+static struct mtk8250_reg_data peri_wakeup = {0};
 
 static void mtk8250_clear_wakeup(void)
 {
@@ -365,6 +365,7 @@ static int mtk8250_polling_tx_fifo_empty(struct tty_struct *tty)
 exit:
 	return ret;
 }
+#endif
 
 #ifdef CONFIG_SERIAL_8250_DMA
 static void mtk8250_save_uart_apdma_reg(struct dma_chan *chan, unsigned int *reg_buf)
@@ -1620,7 +1621,7 @@ static int mtk8250_probe_of(struct platform_device *pdev, struct uart_port *p,
 		return 0;
 	}
 
-		err = of_property_read_u32(pdev->dev.of_node, "uart_line", &uart_line);
+		err = of_property_read_u32(pdev->dev.of_node, "uart-line", &uart_line);
 		if (err < 0) {
 			dev_info(&pdev->dev, "uart_line fail!!!\n");
 		} else {
