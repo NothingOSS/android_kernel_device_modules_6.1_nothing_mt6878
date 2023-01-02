@@ -415,7 +415,7 @@ static const struct scp_domain_data scp_domain_mt6985_spm_data[] = {
 			BUS_PROT_IGN(VLP_TYPE, 0x0214, 0x0218, 0x0210, 0x0220,
 				MT6985_VLP_AXI_PROT_EN_UFS0_2ND),
 		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF,
+		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON,
 	},
 	[MT6985_POWER_DOMAIN_UFS0_PHY_SHUTDOWN] = {
 		.name = "ufs0_phy_shutdown",
@@ -437,7 +437,7 @@ static const struct scp_domain_data scp_domain_mt6985_spm_data[] = {
 			BUS_PROT_IGN(VLP_TYPE, 0x0234, 0x0238, 0x0230, 0x0240,
 				MT6985_VLP_AXI_PROT_EN1_PEXTP_MAC0),
 		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF,
+		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON,
 	},
 	[MT6985_POWER_DOMAIN_PEXTP_MAC1_SHUTDOWN] = {
 		.name = "pextp_mac1_shutdown",
@@ -448,7 +448,7 @@ static const struct scp_domain_data scp_domain_mt6985_spm_data[] = {
 			BUS_PROT_IGN(VLP_TYPE, 0x0234, 0x0238, 0x0230, 0x0240,
 				MT6985_VLP_AXI_PROT_EN1_PEXTP_MAC1),
 		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF,
+		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON,
 	},
 	[MT6985_POWER_DOMAIN_PEXTP_PHY0] = {
 		.name = "pextp_phy0",
@@ -457,7 +457,7 @@ static const struct scp_domain_data scp_domain_mt6985_spm_data[] = {
 			BUS_PROT_IGN(VLP_TYPE, 0x0234, 0x0238, 0x0230, 0x0240,
 				MT6985_VLP_AXI_PROT_EN1_PEXTP_PHY0),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PEXTP_PHY_RTFF,
+		.caps = MTK_SCPD_IS_PWR_CON_ON,
 	},
 	[MT6985_POWER_DOMAIN_PEXTP_PHY1] = {
 		.name = "pextp_phy1",
@@ -466,7 +466,7 @@ static const struct scp_domain_data scp_domain_mt6985_spm_data[] = {
 			BUS_PROT_IGN(VLP_TYPE, 0x0234, 0x0238, 0x0230, 0x0240,
 				MT6985_VLP_AXI_PROT_EN1_PEXTP_PHY1),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PEXTP_PHY_RTFF,
+		.caps = MTK_SCPD_IS_PWR_CON_ON,
 	},
 	[MT6985_POWER_DOMAIN_PEXTP_COMM] = {
 		.name = "pextp_comm",
@@ -760,7 +760,7 @@ static const struct scp_domain_data scp_domain_mt6985_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x104, 0x108, 0x100, 0x10c,
 				MT6985_TOP_AXI_PROT_EN_EMISYS1_DIS0),
 		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF,
+		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON,
 	},
 	[MT6985_POWER_DOMAIN_DIS1_SHUTDOWN] = {
 		.name = "dis1_shutdown",
@@ -775,7 +775,7 @@ static const struct scp_domain_data scp_domain_mt6985_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6985_TOP_AXI_PROT_EN_MMSYS2_DIS1_2ND),
 		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF,
+		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON,
 	},
 	[MT6985_POWER_DOMAIN_OVLSYS_SHUTDOWN] = {
 		.name = "ovlsys_shutdown",
@@ -902,7 +902,7 @@ static const struct scp_domain_data scp_domain_mt6985_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
 				MT6985_TOP_AXI_PROT_EN_MMSYS1_VDE_VCORE0_2ND),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF,
+		.caps = MTK_SCPD_IS_PWR_CON_ON,
 	},
 	[MT6985_POWER_DOMAIN_VDE_VCORE1] = {
 		.name = "vde_vcore1",
@@ -915,7 +915,7 @@ static const struct scp_domain_data scp_domain_mt6985_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
 				MT6985_TOP_AXI_PROT_EN_MMSYS0_VDE_VCORE1),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF,
+		.caps = MTK_SCPD_IS_PWR_CON_ON,
 	},
 };
 
