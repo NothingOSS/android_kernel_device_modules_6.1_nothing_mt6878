@@ -428,8 +428,8 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 	const struct path_node *route)
 {
 	struct mml_path_node *prev[2] = {0};
-	struct mml_path_node *pq_rdma;
-	struct mml_path_node *pq_birsz;
+	struct mml_path_node *pq_rdma = NULL;
+	struct mml_path_node *pq_birsz = NULL;
 	u8 connect_eng[2] = {0};
 	u8 i, tile_idx, out_eng_idx;
 
@@ -554,7 +554,11 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 	for (i = 0; i < path->node_cnt; i++) {
 		if (engine_pq_rdma(path->nodes[i].id)) {
 			path->nodes[i].tile_eng_idx = path->tile_engine_cnt;
-			path->tile_engines[path->tile_engine_cnt] = i;
+			if (path->tile_engine_cnt < MML_MAX_PATH_NODES)
+				path->tile_engines[path->tile_engine_cnt] = i;
+			else
+				mml_err("[topology]RDMA tile_engines idx %d >= MML_MAX_PATH_NODES",
+					path->tile_engine_cnt);
 			if (path->pq_rdma_id)
 				mml_err("[topology]multiple pq rdma engines: was %hhu now %hhu",
 					path->pq_rdma_id,
@@ -562,7 +566,11 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 			path->pq_rdma_id = path->nodes[i].id;
 		} else if (engine_pq_birsz(path->nodes[i].id)) {
 			path->nodes[i].tile_eng_idx = path->tile_engine_cnt + 1;
-			path->tile_engines[path->tile_engine_cnt + 1] = i;
+			if (path->tile_engine_cnt < MML_MAX_PATH_NODES - 1)
+				path->tile_engines[path->tile_engine_cnt + 1] = i;
+			else
+				mml_err("[topology]BIRSZ tile_engines idx %d >= MML_MAX_PATH_NODES",
+					path->tile_engine_cnt + 1);
 		}
 	}
 
