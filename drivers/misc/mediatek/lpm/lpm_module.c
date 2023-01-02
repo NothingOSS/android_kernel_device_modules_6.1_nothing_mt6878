@@ -327,7 +327,7 @@ static int lpm_cpuidle_prepare(struct cpuidle_driver *drv, int index)
 	nb_data.model = lpm;
 	nb_data.issuer = lpm_system.issuer;
 
-	rcu_idle_exit();
+	//rcu_idle_exit();
 
 	spin_lock_irqsave(&lpm_mod_locker, flags);
 
@@ -346,7 +346,7 @@ static int lpm_cpuidle_prepare(struct cpuidle_driver *drv, int index)
 
 	lpm_pm_notify(LPM_NB_PREPARE, &nb_data);
 
-	rcu_idle_enter();
+	//rcu_idle_enter();
 
 	return 0;
 }
@@ -376,7 +376,7 @@ static void lpm_cpuidle_resume(struct cpuidle_driver *drv, int index, int ret)
 
 	model_flags = (lpm) ? lpm->flag : 0;
 
-	rcu_idle_exit();
+	//rcu_idle_exit();
 
 	lpm_pm_notify(LPM_NB_RESUME, &nb_data);
 
@@ -393,7 +393,7 @@ static void lpm_cpuidle_resume(struct cpuidle_driver *drv, int index, int ret)
 
 	spin_unlock_irqrestore(&lpm_mod_locker, flags);
 
-	rcu_idle_enter();
+	//rcu_idle_enter();
 }
 
 static int lpm_state_enter(int type, struct cpuidle_device *dev,
