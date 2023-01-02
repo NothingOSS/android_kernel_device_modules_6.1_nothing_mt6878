@@ -87,6 +87,12 @@ int mtk_vcodec_init_dec_pm(struct mtk_vcodec_dev *mtkdev)
 		pm->larbvdecs[larb_index] = &pdev->dev;
 		mtk_v4l2_debug(2, "larbvdecs[%d] = %p", larb_index, pm->larbvdecs[larb_index]);
 		pdev = mtkdev->plat_dev;
+
+		if (!device_link_add(&pdev->dev, pm->larbvdecs[larb_index],
+					DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS)) {
+			mtk_v4l2_err("%s larb(%d) device link fail\n", __func__, larb_index);
+			return -1;
+		}
 	}
 
 	memset(clks_data, 0x00, sizeof(struct mtk_vdec_clks_data));
@@ -170,7 +176,7 @@ void mtk_vcodec_dec_pw_on(struct mtk_vcodec_pm *pm)
 
 	for (larb_index = 0; larb_index < MTK_VDEC_MAX_LARB_COUNT; larb_index++) {
 		if (pm->larbvdecs[larb_index]) {
-			ret = mtk_smi_larb_get(pm->larbvdecs[larb_index]);
+			ret = pm_runtime_resume_and_get(pm->larbvdecs[larb_index]);
 			if (ret)
 				mtk_v4l2_err("Failed to get vdec larb. index: %d",
 					larb_index);
@@ -184,7 +190,7 @@ void mtk_vcodec_dec_pw_off(struct mtk_vcodec_pm *pm)
 
 	for (larb_index = 0; larb_index < MTK_VDEC_MAX_LARB_COUNT; larb_index++) {
 		if (pm->larbvdecs[larb_index])
-			mtk_smi_larb_put(pm->larbvdecs[larb_index]);
+			pm_runtime_put_sync(pm->larbvdecs[larb_index]);
 	}
 }
 
@@ -604,7 +610,7 @@ void mtk_vcodec_dec_clock_off(struct mtk_vcodec_pm *pm, int hw_id)
 
 	for (larb_index = 0; larb_index < MTK_VDEC_MAX_LARB_COUNT; larb_index++) {
 		if (pm->larbvdecs[larb_index])
-			mtk_smi_larb_put(pm->larbvdecs[larb_index]);
+			pm_runtime_put_sync(pm->larbvdecs[larb_index]);
 	}
 
 #endif

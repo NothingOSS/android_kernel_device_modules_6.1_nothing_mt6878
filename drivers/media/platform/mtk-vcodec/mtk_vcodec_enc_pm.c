@@ -164,6 +164,12 @@ int mtk_vcodec_init_enc_pm(struct mtk_vcodec_dev *mtkdev)
 		pm->larbvencs[larb_index] = &pdev->dev;
 		mtk_v4l2_debug(8, "larbvencs[%d] = %p", larb_index, pm->larbvencs[larb_index]);
 		pdev = mtkdev->plat_dev;
+
+		if (!device_link_add(&pdev->dev, pm->larbvencs[larb_index],
+					DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS)) {
+			mtk_v4l2_err("%s larb(%d) device link fail\n", __func__, larb_index);
+			return -1;
+		}
 	}
 
 	memset(clks_data, 0x00, sizeof(struct mtk_venc_clks_data));
@@ -247,7 +253,7 @@ void mtk_vcodec_enc_clock_on(struct mtk_vcodec_ctx *ctx, int core_id)
 
 	for (larb_index = 0; larb_index < MTK_VENC_MAX_LARB_COUNT; larb_index++) {
 		if (pm->larbvencs[larb_index]) {
-			ret = mtk_smi_larb_get_ex(pm->larbvencs[larb_index], 0);
+			ret = pm_runtime_resume_and_get(pm->larbvencs[larb_index]);
 			if (ret)
 				mtk_v4l2_err("Failed to get venc larb. index: %d, core_id: %d",
 					larb_index, core_id);
@@ -371,7 +377,7 @@ void mtk_vcodec_enc_clock_off(struct mtk_vcodec_ctx *ctx, int core_id)
 		mtk_v4l2_err("invalid core_id %d", core_id);
 	for (larb_index = 0; larb_index < MTK_VENC_MAX_LARB_COUNT; larb_index++) {
 		if (pm->larbvencs[larb_index])
-			mtk_smi_larb_put_ex(pm->larbvencs[larb_index], 0);
+			pm_runtime_put_sync(pm->larbvencs[larb_index]);
 	}
 #endif
 }
