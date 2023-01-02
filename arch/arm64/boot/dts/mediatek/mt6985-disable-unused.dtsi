@@ -97,14 +97,9 @@
 		clocks =
 			<&mminfra_config_clk CLK_MMINFRA_GCE_D>,
 			<&mminfra_config_clk CLK_MMINFRA_GCE_M>,
-			<&mminfra_config_clk CLK_MMINFRA_SMI>;
+			<&mminfra_config_clk CLK_MMINFRA_SMI>,
+			<&mminfra_config_clk CLK_MMINFRA_GCE_26M>;
 			power-domains = <&scpsys MT6985_POWER_DOMAIN_MM_INFRA>;
-	};
-
-	disable-unused-clk-dvfsrc_apb {
-		compatible = "mediatek,clk-disable-unused";
-		clocks =
-			<&dvfsrc_apb_clk CLK_DVFSRC_APB_DVFSRC_EN>;
 	};
 
 	disable-unused-clk-ccu {
@@ -205,6 +200,11 @@
 			<&camsys_main_clk CLK_CAM_MAIN_ADLWR_CON_0>,
 			<&camsys_main_clk CLK_CAM_MAIN_UISP_CON_0>,
 			<&camsys_main_clk CLK_CAM_MAIN_FAKE_ENG_CON_0>,
+			<&camsys_main_clk CLK_CAM_MAIN_CAM2MM0_GALS_CON_0>,
+			<&camsys_main_clk CLK_CAM_MAIN_CAM2MM1_GALS_CON_0>,
+			<&camsys_main_clk CLK_CAM_MAIN_CAM2SYS_GALS_CON_0>,
+			<&camsys_main_clk CLK_CAM_MAIN_CAM2MM2_GALS_CON_0>,
+			<&camsys_main_clk CLK_CAM_MAIN_CCUSYS_CON_0>,
 			<&camsys_main_clk CLK_CAM_MAIN_IPS_CON_0>,
 			<&camsys_main_clk CLK_CAM_MAIN_CAMSV_A_CON_1>,
 			<&camsys_main_clk CLK_CAM_MAIN_CAMSV_B_CON_1>,
@@ -226,6 +226,15 @@
 			<&scp_iic_clk CLK_SCP_IIC_I2C5>,
 			<&scp_iic_clk CLK_SCP_IIC_I2C6>,
 			<&scp_iic_clk CLK_SCP_IIC_I2C7>;
+	};
+
+	disable-unused-clk-scp {
+		compatible = "mediatek,clk-disable-unused";
+		clocks =
+			<&scp_clk CLK_SCP_SET_SPI0>,
+			<&scp_clk CLK_SCP_SET_SPI1>,
+			<&scp_clk CLK_SCP_SET_SPI2>,
+			<&scp_clk CLK_SCP_SET_SPI3>;
 	};
 
 	disable-unused-clk-vencsys_c2 {
@@ -367,6 +376,8 @@
 			<&imgsys_main_clk CLK_IMG_IPE>,
 			<&imgsys_main_clk CLK_IMG_WPE1>,
 			<&imgsys_main_clk CLK_IMG_WPE2>,
+			<&imgsys_main_clk CLK_IMG_SMI_ADL_LARB0>,
+			<&imgsys_main_clk CLK_IMG_ADL0>,
 			<&imgsys_main_clk CLK_IMG_AVS>,
 			<&imgsys_main_clk CLK_IMG_GALS>;
 			power-domains = <&scpsys MT6985_POWER_DOMAIN_ISP_MAIN>;
@@ -528,12 +539,6 @@
 			<&dispsys_config_clk CLK_MM_SMI_SUB_COMM0>,
 			<&dispsys_config_clk CLK_MM_DISP_Y2R0>;
 			power-domains = <&scpsys MT6985_POWER_DOMAIN_DIS0_SHUTDOWN>;
-	};
-
-	disable-unused-clk-mfg {
-		compatible = "mediatek,clk-disable-unused";
-		clocks =
-			<&mfg_top_config_clk CLK_MFGCFG_BG3D>;
 	};
 
 	disable-unused-clk-imp_iic_wrap_n {
@@ -730,31 +735,10 @@
 			power-domains = <&scpsys MT6985_POWER_DOMAIN_SSR>;
 	};
 
-	disable-unused-clk-dpmaif {
-		compatible = "mediatek,clk-disable-unused";
-		clocks =
-			<&nrl2_dpmaif_ap_misc_cfg_bol_clk CLK_DPMA_MAS_BUS_DIS>,
-			<&nrl2_dpmaif_ap_misc_cfg_bol_clk CLK_DPMA_SLV_BUS_DIS>,
-			<&nrl2_dpmaif_ap_misc_cfg_bol_clk CLK_DPMA_SRAM_DIS>,
-			<&nrl2_dpmaif_ap_misc_cfg_bol_clk CLK_DPMA_DL_DIS>,
-			<&nrl2_dpmaif_ap_misc_cfg_bol_clk CLK_DPMA_UL_DIS>,
-			<&nrl2_dpmaif_ap_misc_cfg_bol_clk CLK_DPMA_APB_DIS>,
-			<&nrl2_dpmaif_ap_misc_cfg_bol_clk CLK_DPMA_MAS_BUS>,
-			<&nrl2_dpmaif_ap_misc_cfg_bol_clk CLK_DPMA_SLV_BUS>,
-			<&nrl2_dpmaif_ap_misc_cfg_bol_clk CLK_DPMA_SRAM>,
-			<&nrl2_dpmaif_ap_misc_cfg_bol_clk CLK_DPMA_DL>,
-			<&nrl2_dpmaif_ap_misc_cfg_bol_clk CLK_DPMA_UL>;
-	};
-
-	disable-unused-clk-emi_reg {
-		compatible = "mediatek,clk-disable-unused";
-		clocks =
-			<&emi_reg_clk CLK_EMI_REG_BUS_MON_MODE>;
-	};
-
 	disable-unused-clk-infracfg_ao {
 		compatible = "mediatek,clk-disable-unused";
 		clocks =
+			<&infracfg_ao_clk CLK_IFRAO_CLDMA_BCLK>,
 			<&infracfg_ao_clk CLK_IFRAO_FBIST2FPC>,
 			<&infracfg_ao_clk CLK_IFRAO_DPMAIF_MAIN>,
 			<&infracfg_ao_clk CLK_IFRAO_RG_MMW_DPMAIF26M_CK>;
