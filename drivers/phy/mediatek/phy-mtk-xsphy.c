@@ -55,7 +55,6 @@
 #define XSP_U2FREQ_FMCR0	((SSUSB_SIFSLV_U2FREQ) + 0x00)
 #define P2F_RG_FREQDET_EN	BIT(24)
 #define P2F_RG_CYCLECNT		GENMASK(23, 0)
-#define P2F_RG_CYCLECNT_VAL(x)	((P2F_RG_CYCLECNT) & (x))
 
 #define XSP_U2FREQ_MMONR0  ((SSUSB_SIFSLV_U2FREQ) + 0x0c)
 
@@ -176,7 +175,6 @@
 
 #define SSPXTP_PHYA_GLB_00		((SSPXTP_SIFSLV_PHYA_GLB) + 0x00)
 #define RG_XTP_GLB_BIAS_INTR_CTRL		GENMASK(21, 16)
-#define RG_XTP_GLB_BIAS_INTR_CTRL_VAL(x)	((0x3f & (x)) << 16)
 
 #define SSPXTP_DAIG_LN_TOP_04	((SSPXTP_SIFSLV_DIG_LN_TOP) + 0x04)
 
@@ -232,14 +230,12 @@
 
 #define SSPXTP_PHYA_LN_04	((SSPXTP_SIFSLV_PHYA_LN) + 0x04)
 #define RG_XTP_LN0_TX_IMPSEL		GENMASK(4, 0)
-#define RG_XTP_LN0_TX_IMPSEL_VAL(x)	(0x1f & (x))
 
 #define SSPXTP_PHYA_LN_08	((SSPXTP_SIFSLV_PHYA_LN) + 0x08)
 #define RG_XTP_LN0_TX_RXDET_HZ		BIT(13)
 
 #define SSPXTP_PHYA_LN_14	((SSPXTP_SIFSLV_PHYA_LN) + 0x014)
 #define RG_XTP_LN0_RX_IMPSEL		GENMASK(4, 0)
-#define RG_XTP_LN0_RX_IMPSEL_VAL(x)	(0x1f & (x))
 
 #define SSPXTP_PHYA_LN_30	((SSPXTP_SIFSLV_PHYA_LN) + 0x030)
 #define RG_XTP_LN0_RX_AEQ_ATT		BIT(14)
@@ -1263,8 +1259,8 @@ static void u2_phy_slew_rate_calibrate(struct mtk_xsphy *xsphy,
 	mtk_phy_set_bits(pbase + XSP_U2FREQ_FMMONR1, P2F_RG_FRCK_EN);
 
 	/* set cycle count as 1024 */
-	mtk_phy_update_bits(pbase + XSP_U2FREQ_FMCR0, P2F_RG_CYCLECNT,
-			    P2F_RG_CYCLECNT_VAL(XSP_FM_DET_CYCLE_CNT));
+	mtk_phy_update_field(pbase + XSP_U2FREQ_FMCR0, P2F_RG_CYCLECNT,
+			     XSP_FM_DET_CYCLE_CNT);
 
 	/* enable frequency meter */
 	mtk_phy_set_bits(pbase + XSP_U2FREQ_FMCR0, P2F_RG_FREQDET_EN);
@@ -1295,8 +1291,7 @@ static void u2_phy_slew_rate_calibrate(struct mtk_xsphy *xsphy,
 		xsphy->src_ref_clk, xsphy->src_coef);
 
 	/* set HS slew rate */
-	mtk_phy_update_bits(pbase + XSP_USBPHYACR5, P2A5_RG_HSTX_SRCTRL,
-			    P2A5_RG_HSTX_SRCTRL_VAL(calib_val));
+	mtk_phy_update_field(pbase + XSP_USBPHYACR5, P2A5_RG_HSTX_SRCTRL, calib_val);
 
 	/* disable USB ring oscillator */
 	mtk_phy_clear_bits(pbase + XSP_USBPHYACR5, P2A5_RG_HSTX_SRCAL_EN);
@@ -1740,8 +1735,8 @@ static void u2_phy_props_set(struct mtk_xsphy *xsphy,
 	u32 tmp;
 
 	if (inst->efuse_intr)
-		mtk_phy_update_bits(pbase + XSP_USBPHYA_RESERVE, P2AR_RG_INTR_CAL,
-				    P2AR_RG_INTR_CAL_VAL(inst->efuse_intr));
+		mtk_phy_update_field(pbase + XSP_USBPHYA_RESERVE, P2AR_RG_INTR_CAL,
+				     inst->efuse_intr);
 
 	if (inst->efuse_term_cal) {
 		tmp = readl(pbase + XSP_USBPHYA_RESERVEA);
@@ -1752,16 +1747,16 @@ static void u2_phy_props_set(struct mtk_xsphy *xsphy,
 
 
 	if (inst->eye_src)
-		mtk_phy_update_bits(pbase + XSP_USBPHYACR5, P2A5_RG_HSTX_SRCTRL,
-				    P2A5_RG_HSTX_SRCTRL_VAL(inst->eye_src));
+		mtk_phy_update_field(pbase + XSP_USBPHYACR5, P2A5_RG_HSTX_SRCTRL,
+				     inst->eye_src);
 
 	if (inst->eye_vrt)
-		mtk_phy_update_bits(pbase + XSP_USBPHYACR1, P2A1_RG_VRT_SEL,
-				    P2A1_RG_VRT_SEL_VAL(inst->eye_vrt));
+		mtk_phy_update_field(pbase + XSP_USBPHYACR1, P2A1_RG_VRT_SEL,
+				     inst->eye_vrt);
 
 	if (inst->eye_term)
-		mtk_phy_update_bits(pbase + XSP_USBPHYACR1, P2A1_RG_TERM_SEL,
-				    P2A1_RG_TERM_SEL_VAL(inst->eye_term));
+		mtk_phy_update_field(pbase + XSP_USBPHYACR1, P2A1_RG_TERM_SEL,
+				     inst->eye_term);
 
 	if (inst->discth) {
 		tmp = readl(pbase + XSP_USBPHYACR6);
@@ -1842,19 +1837,16 @@ static void u3_phy_props_set(struct mtk_xsphy *xsphy,
 	u32 tmp;
 
 	if (inst->efuse_intr)
-		mtk_phy_update_bits(xsphy->glb_base + SSPXTP_PHYA_GLB_00,
-				    RG_XTP_GLB_BIAS_INTR_CTRL,
-				    RG_XTP_GLB_BIAS_INTR_CTRL_VAL(inst->efuse_intr));
+		mtk_phy_update_field(xsphy->glb_base + SSPXTP_PHYA_GLB_00,
+				     RG_XTP_GLB_BIAS_INTR_CTRL, inst->efuse_intr);
 
 	if (inst->efuse_tx_imp)
-		mtk_phy_update_bits(pbase + SSPXTP_PHYA_LN_04,
-				    RG_XTP_LN0_TX_IMPSEL,
-				    RG_XTP_LN0_TX_IMPSEL_VAL(inst->efuse_tx_imp));
+		mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_04,
+				     RG_XTP_LN0_TX_IMPSEL, inst->efuse_tx_imp);
 
 	if (inst->efuse_rx_imp)
-		mtk_phy_update_bits(pbase + SSPXTP_PHYA_LN_14,
-				    RG_XTP_LN0_RX_IMPSEL,
-				    RG_XTP_LN0_RX_IMPSEL_VAL(inst->efuse_rx_imp));
+		mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_14,
+				     RG_XTP_LN0_RX_IMPSEL, inst->efuse_rx_imp);
 
 	if (inst->tx_lctxcm1 >= 0) {
 		tmp = readl(pbase + SSPXTP_DAIG_LN_DAIF_00);
