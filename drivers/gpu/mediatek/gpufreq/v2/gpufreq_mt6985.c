@@ -29,6 +29,7 @@
 #include <linux/timekeeping.h>
 
 #include <gpufreq_v2.h>
+#include <gpufreq_mssv.h>
 #include <gpuppm.h>
 #include <gpufreq_common.h>
 #include <gpufreq_mt6985.h>
@@ -69,6 +70,10 @@ static void __gpufreq_apply_restore_margin(
 	enum gpufreq_target target, enum gpufreq_feat_mode mode);
 static void __gpufreq_update_shared_status_opp_table(void);
 static void __gpufreq_update_shared_status_adj_table(void);
+#if GPUFREQ_MSSV_TEST_MODE
+static void __gpufreq_mssv_set_stack_sel(unsigned int val);
+static void __gpufreq_mssv_set_del_sel(unsigned int val);
+#endif /* GPUFREQ_MSSV_TEST_MODE */
 /* dvfs function */
 static void __gpufreq_dvfs_sel_config(enum gpufreq_opp_direct direct, unsigned int volt);
 static void __gpufreq_get_park_volt(enum gpufreq_opp_direct direct,
@@ -203,8 +208,8 @@ static unsigned int g_aging_load;
 static unsigned int g_aging_margin;
 static unsigned int g_avs_enable;
 static unsigned int g_avs_margin;
-static unsigned int g_gpm1_enable;
-static unsigned int g_gpm3_enable;
+static unsigned int g_gpm1_mode;
+static unsigned int g_gpm3_mode;
 static unsigned int g_ptp_version;
 static unsigned int g_dfd_mode;
 static unsigned int g_gpueb_support;
@@ -269,6 +274,7 @@ static struct gpufreq_platform_fp platform_ap_fp = {
 	.fake_mtcmos_control = __gpufreq_fake_mtcmos_control,
 	.update_debug_opp_info = __gpufreq_update_debug_opp_info,
 	.set_shared_status = __gpufreq_set_shared_status,
+	.mssv_commit = __gpufreq_mssv_commit,
 };
 
 static struct gpufreq_platform_fp platform_eb_fp = {
@@ -1065,7 +1071,7 @@ int __gpufreq_fix_custom_freq_volt_stack(unsigned int freq, unsigned int volt)
 
 	max_freq = POSDIV_2_MAX_FREQ;
 	max_volt = VSTACK_MAX_VOLT;
-	min_freq = POSDIV_8_MIN_FREQ;
+	min_freq = POSDIV_16_MIN_FREQ;
 	min_volt = VSTACK_MIN_VOLT;
 
 	if (freq == 0 && volt == 0) {
@@ -1286,10 +1292,10 @@ void __gpufreq_set_margin_mode(enum gpufreq_feat_mode mode)
 void __gpufreq_set_gpm_mode(unsigned int version, enum gpufreq_feat_mode mode)
 {
 	if (version == 1)
-		g_gpm1_enable = mode;
+		g_gpm1_mode = mode;
 
 	/* update current status to shared memory */
-	g_shared_status->gpm1_enable = g_gpm1_enable;
+	g_shared_status->gpm1_mode = g_gpm1_mode;
 }
 
 /* API: enable/disable DFD force dump */
@@ -1539,10 +1545,14 @@ void __gpufreq_set_shared_status(struct gpufreq_shared_status *shared_status)
 	g_shared_status->avs_enable = g_avs_enable;
 	g_shared_status->avs_margin = g_avs_margin;
 	g_shared_status->ptp_version = g_ptp_version;
-	g_shared_status->gpm1_enable = g_gpm1_enable;
-	g_shared_status->gpm3_enable = g_gpm3_enable;
+	g_shared_status->gpm1_mode = g_gpm1_mode;
+	g_shared_status->gpm3_mode = g_gpm3_mode;
 	g_shared_status->dual_buck = true;
 	g_shared_status->segment_id = g_stack.segment_id;
+#if GPUFREQ_MSSV_TEST_MODE
+	g_shared_status->reg_stack_sel.addr = 0x13FBF500;
+	g_shared_status->reg_del_sel.addr = 0x13FBF080;
+#endif /* GPUFREQ_MSSV_TEST_MODE */
 #if GPUFREQ_ASENSOR_ENABLE
 	g_shared_status->asensor_info = g_asensor_info;
 #endif /* GPUFREQ_ASENSOR_ENABLE */
@@ -1550,6 +1560,98 @@ void __gpufreq_set_shared_status(struct gpufreq_shared_status *shared_status)
 	__gpufreq_update_shared_status_adj_table();
 
 	mutex_unlock(&gpufreq_lock);
+}
+
+/* API: MSSV test function */
+int __gpufreq_mssv_commit(unsigned int target, unsigned int val)
+{
+#if GPUFREQ_MSSV_TEST_MODE
+	int ret = GPUFREQ_SUCCESS;
+
+	ret = __gpufreq_power_control(POWER_ON);
+	if (unlikely(ret < 0))
+		goto done;
+
+	mutex_lock(&gpufreq_lock);
+
+	/* acquire sema before access MFG_TOP_CFG */
+	__gpufreq_set_semaphore(SEMA_ACQUIRE);
+
+	switch (target) {
+	case TARGET_MSSV_FGPU:
+		if (val > POSDIV_2_MAX_FREQ || val < POSDIV_16_MIN_FREQ)
+			ret = GPUFREQ_EINVAL;
+		else
+			ret = __gpufreq_freq_scale_gpu(g_gpu.cur_freq, val);
+		break;
+	case TARGET_MSSV_VGPU:
+		if (val > VGPU_MAX_VOLT || val < VGPU_MIN_VOLT)
+			ret = GPUFREQ_EINVAL;
+		else
+			ret = __gpufreq_volt_scale_gpu(g_gpu.cur_volt, val);
+		break;
+	case TARGET_MSSV_FSTACK:
+		if (val > POSDIV_2_MAX_FREQ || val < POSDIV_16_MIN_FREQ)
+			ret = GPUFREQ_EINVAL;
+		else
+			ret = __gpufreq_freq_scale_stack(g_stack.cur_freq, val);
+		break;
+	case TARGET_MSSV_VSTACK:
+		if (val > VSTACK_MAX_VOLT || val < VSTACK_MIN_VOLT)
+			ret = GPUFREQ_EINVAL;
+		else
+			ret = __gpufreq_volt_scale_stack(g_stack.cur_volt, val);
+		break;
+	case TARGET_MSSV_VSRAM:
+		if (val > VSRAM_MAX_VOLT || val < VSRAM_MIN_VOLT)
+			ret = GPUFREQ_EINVAL;
+		else
+			ret = __gpufreq_volt_scale_sram(g_stack.cur_vsram, val);
+		break;
+	case TARGET_MSSV_STACK_SEL:
+		if (val == 1 || val == 0)
+			__gpufreq_mssv_set_stack_sel(val);
+		else
+			ret = GPUFREQ_EINVAL;
+		break;
+	case TARGET_MSSV_DEL_SEL:
+		if (val == 1 || val == 0)
+			__gpufreq_mssv_set_del_sel(val);
+		else
+			ret = GPUFREQ_EINVAL;
+		break;
+	default:
+		ret = GPUFREQ_EINVAL;
+		break;
+	}
+
+	if (unlikely(ret))
+		GPUFREQ_LOGE("invalid MSSV cmd, target: %d, val: %d", target, val);
+	else {
+		g_shared_status->cur_fgpu = g_gpu.cur_freq;
+		g_shared_status->cur_vgpu = g_gpu.cur_volt;
+		g_shared_status->cur_vsram_gpu = g_gpu.cur_vsram;
+		g_shared_status->cur_fstack = g_stack.cur_freq;
+		g_shared_status->cur_vstack = g_stack.cur_volt;
+		g_shared_status->cur_vsram_stack = g_stack.cur_vsram;
+		g_shared_status->reg_stack_sel.val = readl_mfg(MFG_DUMMY_REG);
+		g_shared_status->reg_del_sel.val = readl_mfg(MFG_SRAM_FUL_SEL_ULV);
+	}
+
+	__gpufreq_set_semaphore(SEMA_RELEASE);
+
+	mutex_unlock(&gpufreq_lock);
+
+	__gpufreq_power_control(POWER_OFF);
+
+done:
+	return ret;
+#else
+	GPUFREQ_UNREFERENCED(target);
+	GPUFREQ_UNREFERENCED(val);
+
+	return GPUFREQ_EINVAL;
+#endif /* GPUFREQ_MSSV_TEST_MODE */
 }
 
 /**
@@ -1676,6 +1778,24 @@ static void __gpufreq_update_springboard(void)
 
 	mutex_unlock(&gpufreq_lock);
 };
+
+#if GPUFREQ_MSSV_TEST_MODE
+static void __gpufreq_mssv_set_stack_sel(unsigned int val)
+{
+	if (val == 1)
+		writel(BIT(31), MFG_DUMMY_REG);
+	else if (val == 0)
+		writel(0x0, MFG_DUMMY_REG);
+}
+
+static void __gpufreq_mssv_set_del_sel(unsigned int val)
+{
+	if (val == 1)
+		writel(BIT(0), MFG_SRAM_FUL_SEL_ULV);
+	else if (val == 0)
+		writel(0x0, MFG_SRAM_FUL_SEL_ULV);
+}
+#endif /* GPUFREQ_MSSV_TEST_MODE */
 
 static void __gpufreq_dvfs_sel_config(enum gpufreq_opp_direct direct, unsigned int volt)
 {
@@ -2907,7 +3027,7 @@ static void __gpufreq_gpm1_config(void)
 	/* acquire sema before access MFG_TOP_CFG */
 	__gpufreq_set_semaphore(SEMA_ACQUIRE);
 
-	if (g_gpm1_enable) {
+	if (g_gpm1_mode) {
 		/* MFG_I2M_PROTECTOR_CFG_00 0x13FBFF60 = 0x20300316 */
 		writel(0x20300316, MFG_I2M_PROTECTOR_CFG_00);
 
@@ -3422,6 +3542,11 @@ static int __gpufreq_init_opp_idx(void)
 
 		ret = __gpufreq_generic_commit_stack(target_oppidx, DVFS_FREE);
 	}
+
+#if GPUFREQ_MSSV_TEST_MODE
+	/* disable DVFS when MSSV test */
+	__gpufreq_set_dvfs_state(true, DVFS_MSSV_TEST);
+#endif /* GPUFREQ_MSSV_TEST_MODE */
 
 	GPUFREQ_TRACE_END();
 
@@ -3945,7 +4070,7 @@ static void __gpufreq_compute_avs(void)
 	unsigned int temp_volt = 0, temp_freq = 0, volt_ofs = 0, temp_volt_sn = 0;
 	int i = 0, oppidx = 0, adj_num_gpu = 0, adj_num_stack = 0;
 
-	adj_num_gpu = NUM_STACK_SIGNED_IDX;
+	adj_num_gpu = NUM_GPU_SIGNED_IDX;
 	adj_num_stack = NUM_STACK_SIGNED_IDX;
 
 	/*
@@ -4707,8 +4832,8 @@ static int __gpufreq_init_platform_info(struct platform_device *pdev)
 	/* feature config */
 	g_asensor_enable = GPUFREQ_ASENSOR_ENABLE;
 	g_avs_enable = GPUFREQ_AVS_ENABLE;
-	g_gpm1_enable = GPUFREQ_GPM1_ENABLE;
-	g_gpm3_enable = GPUFREQ_GPM3_ENABLE;
+	g_gpm1_mode = GPUFREQ_GPM1_ENABLE;
+	g_gpm3_mode = GPUFREQ_GPM3_ENABLE;
 	g_dfd_mode = GPUFREQ_DFD_ENABLE;
 	/* ignore return error and use default value if property doesn't exist */
 	of_property_read_u32(gpufreq_dev->of_node, "aging-load", &g_aging_load);
