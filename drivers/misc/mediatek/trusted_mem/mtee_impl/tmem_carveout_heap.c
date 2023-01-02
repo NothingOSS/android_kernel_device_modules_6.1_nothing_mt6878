@@ -65,7 +65,7 @@ static LIST_HEAD(tmem_block_list);
 static DEFINE_MUTEX(tmem_block_mutex);
 
 /* Store the discovered partition data globally. */
-static const struct ffa_dev_ops *ffa_ops;
+static const struct ffa_ops *ffa_ops;
 static ffa_partition_id_t sp_partition_id;
 static struct ffa_device *sp_partition_dev;
 
@@ -309,7 +309,7 @@ int tmem_ffa_page_alloc(enum MTEE_MCHUNKS_ID mchunk_id,
 	ffa_args.sg = sg_tbl->sgl;
 
 	tmem_do_gettimeofday(&ffa_start_time);
-	ret = ffa_ops->memory_lend(sp_partition_dev, &ffa_args);
+	ret = ffa_ops->mem_ops->memory_lend(&ffa_args);
 	if (ret) {
 		pr_info("page-based, failed to FF-A send the memory, ret=%d\n", ret);
 		mutex_unlock(&tmem_block_mutex);
@@ -338,7 +338,7 @@ int tmem_ffa_page_free(u64 handle)
 	mutex_lock(&tmem_block_mutex);
 
 	tmem_do_gettimeofday(&ffa_start_time);
-	ret = ffa_ops->memory_reclaim(handle, PAGED_BASED_FFA_FLAGS);
+	ret = ffa_ops->mem_ops->memory_reclaim(handle, PAGED_BASED_FFA_FLAGS);
 	if (ret) {
 		pr_info("page-based, handle=0x%llx failed to FF-A reclaim, ret=%d\n",
 			handle, ret);
@@ -408,7 +408,7 @@ int tmem_ffa_region_alloc(enum MTEE_MCHUNKS_ID mchunk_id,
 	ffa_args.sg = tmem_sgl;
 
 	tmem_do_gettimeofday(&ffa_start_time);
-	ret = ffa_ops->memory_lend(sp_partition_dev, &ffa_args);
+	ret = ffa_ops->mem_ops->memory_lend(&ffa_args);
 	if (ret) {
 		pr_info("region-based, failed to FF-A send the memory, ret=%d\n", ret);
 		goto out1;
@@ -464,7 +464,7 @@ int tmem_ffa_region_free(enum MTEE_MCHUNKS_ID mchunk_id, u64 handle)
 	mutex_lock(&tmem_block_mutex);
 
 	tmem_do_gettimeofday(&ffa_start_time);
-	ret = ffa_ops->memory_reclaim(handle, 0);
+	ret = ffa_ops->mem_ops->memory_reclaim(handle, 0);
 	if (ret) {
 		pr_info("region-based, handle=0x%llx failed to FF-A reclaim, ret=%d\n",
 			handle, ret);
