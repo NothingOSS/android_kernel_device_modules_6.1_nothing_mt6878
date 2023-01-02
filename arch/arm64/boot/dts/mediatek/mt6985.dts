@@ -3413,6 +3413,23 @@
 		spmi: spmi {
 			compatible = "mediatek,mt6985-spmi";
 		};
+
+		mmc1: mmc@11240000 {
+			compatible = "mediatek,common-mmc-v2";
+			reg = <0 0x11240000 0 0x1000>,
+			      <0 0x11e00000 0 0x1000>;
+			interrupts = <GIC_SPI 166 IRQ_TYPE_LEVEL_HIGH 0>;
+			status = "disabled";
+		};
+
+		mmc2: mmc@11242000 {
+			compatible = "mediatek,common-mmc-v2";
+			reg = <0 0x11242000 0 0x1000>,
+			      <0 0x11b60000 0 0x1000>;
+			interrupts = <GIC_SPI 167 IRQ_TYPE_LEVEL_HIGH 0>;
+			status = "disabled";
+		};
+
 	};
 
 	scp: scp@1c700000 {
@@ -4431,6 +4448,7 @@
 	};
 };
 
+#include "mediatek/cust_mt6985_msdc.dtsi"
 #include "mediatek/mt6363.dtsi"
 #include "mediatek/mt6373.dtsi"
 
