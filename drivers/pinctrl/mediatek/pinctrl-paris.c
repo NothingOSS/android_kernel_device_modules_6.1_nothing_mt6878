@@ -1232,6 +1232,9 @@ static int mt63xx_pmx_set_mux(struct pinctrl_dev *pctldev,
 		return -EINVAL;
 	}
 
+	(void)mt63xx_hw_set_value(hw, grp->pin, PINCTRL_PIN_REG_AD_SWITCH,
+					((function == 1) ? 1 : 0));
+
 	return mt63xx_hw_set_value(hw, grp->pin, PINCTRL_PIN_REG_MODE,
 					function);
 }
@@ -1504,7 +1507,6 @@ static const struct pinmux_ops mt63xx_pmxops = {
 };
 
 static struct pinctrl_desc mtk_desc_mt63xx = {
-	//.name = PINCTRL_PINCTRL_DEV,
 	.name = "mt63xx",
 	.pctlops = &mt63xx_pctlops,
 	.pmxops = &mt63xx_pmxops,
@@ -1575,7 +1577,7 @@ static int mt63xx_gpio_direction_output(struct gpio_chip *chip, unsigned int gpi
 	return pinctrl_gpio_direction_output(chip->base + gpio);
 }
 
-static int mt6373_build_gpiochip(struct mtk_pinctrl *hw, struct device_node *np)
+static int mt63xx_build_gpiochip(struct mtk_pinctrl *hw, struct device_node *np)
 {
 	struct gpio_chip *chip = &hw->chip;
 	int ret;
@@ -1636,7 +1638,7 @@ int mt63xx_pinctrl_probe(struct platform_device *pdev,
 	 *  2. hw->soc->npins and hw->soc->ngrps: added by 1, so that checking
 	 *       valid pin range can always using ">= hw->soc->npins"
 	 *  3. devm_pinctrl_register_and_init(): use actual pin count
-	 *  4. mt6373_build_gpiochip: use hw->soc->pins to register gpiochip
+	 *  4. mt63xx_build_gpiochip: use hw->soc->pins to register gpiochip
 	 *  5. at end of static const struct mtk_pin_desc mtk_pins_mtXXXX[],
 	 *       add a dummy pin declaration:
 	 *       MTK_SIMPLE_PIN(0xFFFFFFFF, "DUMMY", MTK_FUNCTION(0, NULL))
@@ -1671,7 +1673,7 @@ int mt63xx_pinctrl_probe(struct platform_device *pdev,
 		return err;
 
 	/* Build gpiochip should be after pinctrl_enable is done */
-	err = mt6373_build_gpiochip(hw, pdev->dev.of_node);
+	err = mt63xx_build_gpiochip(hw, pdev->dev.of_node);
 	if (err) {
 		dev_notice(&pdev->dev, "Failed to add gpio_chip\n");
 		return err;

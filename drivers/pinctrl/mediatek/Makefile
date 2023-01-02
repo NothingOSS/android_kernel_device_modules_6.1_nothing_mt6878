@@ -31,6 +31,9 @@ endif
 
 # SoC Drivers
 obj-$(CONFIG_DEVICE_MODULES_PINCTRL_MT6779)	+= pinctrl-mt6779.o
+ifneq ($(wildcard $(srctree)/$(src)/pinctrl-mt6363.c),)
+obj-$(CONFIG_PINCTRL_MT6363)	+= pinctrl-mt6363.o
+endif
 ifneq ($(wildcard $(srctree)/$(src)/pinctrl-mt6373.c),)
 obj-$(CONFIG_PINCTRL_MT6373)	+= pinctrl-mt6373.o
 endif

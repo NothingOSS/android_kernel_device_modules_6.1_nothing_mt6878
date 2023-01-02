@@ -249,7 +249,10 @@ static int mtk_gpio_proc_show(struct seq_file *file, void *v)
 	chip = &hw->chip;
 
 	seq_printf(file, "pins base: %d\n", chip->base);
-	seq_puts(file, "PIN: (MODE)(DIR)(DOUT)(DIN)(DRIVE)(SMT)(IES)(PULL_EN)(PULL_SEL)(R1 R0)\n");
+	if (!mt63xx)
+		seq_puts(file, "PIN: (MODE)(DIR)(DOUT)(DIN)(DRIVE)(SMT)(IES)(PULL_EN)(PULL_SEL)(R1 R0)\n");
+	else
+		seq_puts(file, "PIN: (MODE)(DIR)(DOUT)(DIN)(DRIVE)(SMT)(IES)(PULL_EN)(PULL_SEL)\n");
 
 	if (hw->soc->capability_flags & FLAG_GPIO_START_IDX_1)
 		start = 1;

@@ -23,6 +23,17 @@ config DEVICE_MODULES_PINCTRL_MTK_PARIS
 	select OF_GPIO
 	select DEVICE_MODULES_PINCTRL_MTK_V2
 
+config PINCTRL_MT6363
+	tristate "Mediatek MT6363 pin control"
+	depends on OF
+	depends on MFD_MTK_SPMI_PMIC
+	select DEVICE_MODULES_PINCTRL_MTK_PARIS
+	help
+	  This is the pin controller and gpio driver for mediatek
+	  mt6363 chipset. It will enable mediatek common v2,
+	  paris and eint core driver.
+	  Say Y here to enable it.
+
 config PINCTRL_MT6373
 	tristate "Mediatek MT6373 pin control"
 	depends on OF
