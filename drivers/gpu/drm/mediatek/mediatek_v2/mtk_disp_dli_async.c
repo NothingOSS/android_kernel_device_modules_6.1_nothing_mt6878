@@ -200,6 +200,7 @@ static const struct of_device_id mtk_disp_dli_async_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6983-disp-dli-async3",},
 	{.compatible = "mediatek,mt6895-disp-dli-async3",},
 	{.compatible = "mediatek,mt6985-disp-dli-async",},
+	{.compatible = "mediatek,mt6897-disp-dli-async",},
 	{.compatible = "mediatek,mt6886-disp-dli-async3",},
 	{},
 };

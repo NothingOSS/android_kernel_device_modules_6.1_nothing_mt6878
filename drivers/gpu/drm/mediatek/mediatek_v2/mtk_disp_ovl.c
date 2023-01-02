@@ -3760,7 +3760,8 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		unsigned int inten;
 		struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 
-		if (priv->data->mmsys_id == MMSYS_MT6985)
+		if (priv->data->mmsys_id == MMSYS_MT6985 ||
+			priv->data->mmsys_id == MMSYS_MT6897)
 			inten = REG_FLD_VAL(INTEN_FLD_FME_UND_INTEN, 1) |
 					REG_FLD_VAL(INTEN_FLD_FME_CPL_INTEN, 1) |
 					REG_FLD_VAL(INIEN_ROI_TIMING_0, 1);
@@ -4894,6 +4895,37 @@ static const struct mtk_disp_ovl_data mt6985_ovl_driver_data = {
 	.support_pq_selfloop = true, /* pq in out self loop */
 };
 
+static const struct compress_info compr_info_mt6897  = {
+	.name = "AFBC_V1_2_MTK_1",
+	.l_config = &compr_l_config_AFBC_V1_2,
+};
+
+static const struct mtk_disp_ovl_data mt6897_ovl_driver_data = {
+	.addr = DISP_REG_OVL_ADDR_BASE,
+	.el_addr_offset = 0x10,
+	.el_hdr_addr = 0xfb4,
+	.el_hdr_addr_offset = 0x10,
+	.fmt_rgb565_is_0 = true,
+	.fmt_uyvy = 4U << 12,
+	.fmt_yuyv = 5U << 12,
+	//.compr_info = &compr_info_mt6897,
+	.support_shadow = false,
+	.need_bypass_shadow = false,
+	.preultra_th_dc = 0x3c0,
+	.fifo_size = 1024,
+	.issue_req_th_dl = 511,
+	.issue_req_th_dc = 31,
+	.issue_req_th_urg_dl = 255,
+	.issue_req_th_urg_dc = 31,
+	.greq_num_dl = 0xFFFF,
+	.is_support_34bits = true,
+	.aid_sel_mapping = &mtk_ovl_aid_sel_MT6985,
+	.aid_per_layer_setting = true,
+	.mmsys_mapping = &mtk_ovl_mmsys_mapping_MT6985,
+	.source_bpc = 10,
+	.support_pq_selfloop = true, /* pq in out self loop */
+};
+
 static const struct compress_info compr_info_mt6895  = {
 	.name = "AFBC_V1_2_MTK_1",
 	.l_config = &compr_l_config_AFBC_V1_2,
@@ -5119,6 +5151,8 @@ static const struct of_device_id mtk_disp_ovl_driver_dt_match[] = {
 	 .data = &mt6983_ovl_driver_data},
 	{.compatible = "mediatek,mt6985-disp-ovl",
 	 .data = &mt6985_ovl_driver_data},
+	{.compatible = "mediatek,mt6897-disp-ovl",
+	 .data = &mt6897_ovl_driver_data},
 	{.compatible = "mediatek,mt6895-disp-ovl",
 	 .data = &mt6895_ovl_driver_data},
 	{.compatible = "mediatek,mt6886-disp-ovl",

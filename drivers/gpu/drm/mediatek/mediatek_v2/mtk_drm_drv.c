@@ -1846,6 +1846,26 @@ static const enum mtk_ddp_comp_id mt6985_mtk_ovlsys_main_bringup[] = {
 	DDP_COMPONENT_OVLSYS_DLO_ASYNC3,
 };
 
+static const enum mtk_ddp_comp_id mt6897_mtk_ovlsys_main_bringup[] = {
+	DDP_COMPONENT_OVL0_2L,
+	DDP_COMPONENT_OVL1_2L,
+	DDP_COMPONENT_OVL2_2L,
+	DDP_COMPONENT_OVLSYS_DLO_ASYNC3,
+};
+
+static const enum mtk_ddp_comp_id mt6897_mtk_ddp_main[] = {
+	DDP_COMPONENT_OVL0_2L,
+	DDP_COMPONENT_OVL1_2L,
+	DDP_COMPONENT_OVL2_2L,
+	DDP_COMPONENT_OVLSYS_DLO_ASYNC3,
+	DDP_COMPONENT_DLI_ASYNC0,
+	DDP_COMPONENT_PQ0_OUT_CB3,
+	DDP_COMPONENT_PANEL0_COMP_OUT_CB1,
+	DDP_COMPONENT_COMP0_OUT_CB3,
+	DDP_COMPONENT_MERGE0_OUT_CB0,
+	DDP_COMPONENT_DSI0,
+};
+
 static const enum mtk_ddp_comp_id mt6985_mtk_ddp_main_bringup[] = {
 	DDP_COMPONENT_DLI_ASYNC0,
 #ifdef DRM_BYPASS_PQ
@@ -3454,6 +3474,14 @@ static const struct mtk_crtc_path_data mt6985_mtk_discrete_path_data = {
 //	.addon_data_dual = mt6985_addon_discrete_path_dual,
 };
 
+static const struct mtk_crtc_path_data mt6897_mtk_main_path_data = {
+	//.ovl_path[DDP_MAJOR][0] = mt6897_mtk_ovlsys_main_bringup,
+	//.ovl_path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6897_mtk_ovlsys_main_bringup),
+	.path[DDP_MAJOR][0] = mt6897_mtk_ddp_main,
+	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6897_mtk_ddp_main),
+	.path_req_hrt[DDP_MAJOR][0] = true,
+};
+
 static const struct mtk_crtc_path_data mt6895_mtk_main_path_data = {
 	.path[DDP_MAJOR][0] = mt6895_mtk_ddp_main,
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6895_mtk_ddp_main),
@@ -3764,6 +3792,25 @@ const struct mtk_session_mode_tb mt6985_mode_tb[MTK_DRM_SESSION_NUM] = {
 			},
 };
 
+const struct mtk_session_mode_tb mt6897_mode_tb[MTK_DRM_SESSION_NUM] = {
+		[MTK_DRM_SESSION_DL] = {
+				.en = 1,
+				.ddp_mode = {DDP_MAJOR, DDP_MAJOR, DDP_MAJOR},
+		},
+		[MTK_DRM_SESSION_DOUBLE_DL] = {
+				.en = 1,
+				.ddp_mode = {DDP_MAJOR, DDP_MAJOR, DDP_MAJOR},
+		},
+		[MTK_DRM_SESSION_DC_MIRROR] = {
+				.en = 1,
+				.ddp_mode = {DDP_MINOR, DDP_MAJOR, DDP_NO_USE},
+		},
+		[MTK_DRM_SESSION_TRIPLE_DL] = {
+				.en = 1,
+				.ddp_mode = {DDP_MAJOR, DDP_MAJOR, DDP_MAJOR},
+		},
+};
+
 /* mt6886 is the same as mt6895 */
 const struct mtk_session_mode_tb mt6895_mode_tb[MTK_DRM_SESSION_NUM] = {
 		[MTK_DRM_SESSION_DL] = {
@@ -4070,6 +4117,18 @@ static const struct mtk_mmsys_driver_data mt6985_mmsys_driver_data = {
 	.mode_tb = mt6985_mode_tb,
 	.sodi_config = mt6985_mtk_sodi_config,
 	.sodi_apsrc_config = mt6985_mtk_sodi_apsrc_config,
+	.has_smi_limitation = false,
+	.doze_ctrl_pmic = true,
+	.can_compress_rgb565 = false,
+	.bypass_infra_ddr_control = true,
+	.disable_merge_irq = mtk_ddp_disable_merge_irq,
+	.pf_ts_type = IRQ_CMDQ_CB,
+};
+
+static const struct mtk_mmsys_driver_data mt6897_mmsys_driver_data = {
+	.main_path_data = &mt6897_mtk_main_path_data,
+	.mmsys_id = MMSYS_MT6897,
+	.mode_tb = mt6897_mode_tb,
 	.has_smi_limitation = false,
 	.doze_ctrl_pmic = true,
 	.can_compress_rgb565 = false,
@@ -5606,6 +5665,7 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	 */
 	//drm->mode_config.allow_fb_modifiers = true;
 	//drm->mode_config.fb_modifiers_not_supported = true;
+	drm->mode_config.fb_modifiers_not_supported = false;
 
 	/* Use OVL device for all DMA memory allocations */
 	np = private->comp_node[private->data->main_path_data
@@ -6044,6 +6104,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_OVL},
 	{.compatible = "mediatek,mt6985-disp-ovl",
 	 .data = (void *)MTK_DISP_OVL},
+	{.compatible = "mediatek,mt6897-disp-ovl",
+	 .data = (void *)MTK_DISP_OVL},
 	{.compatible = "mediatek,mt6895-disp-ovl",
 	 .data = (void *)MTK_DISP_OVL},
 	{.compatible = "mediatek,mt6886-disp-ovl",
@@ -6094,6 +6156,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_WDMA},
 	{.compatible = "mediatek,mt6985-disp-wdma",
 	 .data = (void *)MTK_DISP_WDMA},
+	//{.compatible = "mediatek,mt6897-disp-wdma",
+	// .data = (void *)MTK_DISP_WDMA},
 	{.compatible = "mediatek,mt6895-disp-wdma",
 	 .data = (void *)MTK_DISP_WDMA},
 	{.compatible = "mediatek,mt6886-disp-wdma",
@@ -6124,6 +6188,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_CHIST},
 	{.compatible = "mediatek,mt6985-disp-chist",
 	 .data = (void *)MTK_DISP_CHIST},
+	//{.compatible = "mediatek,mt6897-disp-chist",
+	// .data = (void *)MTK_DISP_CHIST},
 	{.compatible = "mediatek,mt6895-disp-chist",
 	 .data = (void *)MTK_DISP_CHIST},
 	{.compatible = "mediatek,mt6886-disp-chist",
@@ -6262,6 +6328,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DSI},
 	{.compatible = "mediatek,mt6985-dsi",
 	 .data = (void *)MTK_DSI},
+	{.compatible = "mediatek,mt6897-dsi",
+	 .data = (void *)MTK_DSI},
 	{.compatible = "mediatek,mt6895-dsi",
 	 .data = (void *)MTK_DSI},
 	{.compatible = "mediatek,mt6886-dsi",
@@ -6270,6 +6338,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DP_INTF},
 	{.compatible = "mediatek,mt6985-dp-intf",
 	 .data = (void *)MTK_DP_INTF},
+	//{.compatible = "mediatek,mt6897-dp-intf",
+	// .data = (void *)MTK_DP_INTF},
 	{.compatible = "mediatek,mt6895-dp-intf",
 	 .data = (void *)MTK_DP_INTF},
 	{.compatible = "mediatek,mt6873-dsi",
@@ -6302,6 +6372,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_MUTEX},
 	{.compatible = "mediatek,mt6985-disp-mutex",
 	 .data = (void *)MTK_DISP_MUTEX},
+	{.compatible = "mediatek,mt6897-disp-mutex",
+	 .data = (void *)MTK_DISP_MUTEX},
 	{.compatible = "mediatek,mt6895-disp-mutex",
 	 .data = (void *)MTK_DISP_MUTEX},
 	{.compatible = "mediatek,mt6886-disp-mutex",
@@ -6328,6 +6400,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_PWM},
 	{.compatible = "mediatek,mt6985-disp-pwm0",
 	 .data = (void *)MTK_DISP_PWM},
+	//{.compatible = "mediatek,mt6897-disp-pwm0",
+	// .data = (void *)MTK_DISP_PWM},
 	{.compatible = "mediatek,mt6895-disp-pwm",
 	 .data = (void *)MTK_DISP_PWM},
 	{.compatible = "mediatek,mt6886-disp-pwm",
@@ -6362,12 +6436,16 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_RSZ},
 	{.compatible = "mediatek,mt6985-disp-rsz",
 	 .data = (void *)MTK_DISP_RSZ},
+	//{.compatible = "mediatek,mt6897-disp-rsz",
+	// .data = (void *)MTK_DISP_RSZ},
 	{.compatible = "mediatek,mt6895-disp-rsz",
 	 .data = (void *)MTK_DISP_RSZ},
 	{.compatible = "mediatek,mt6886-disp-rsz",
 	 .data = (void *)MTK_DISP_RSZ},
 	{.compatible = "mediatek,mt6985-disp-mdp-rsz",
 	 .data = (void *)MTK_DISP_MDP_RSZ},
+	//{.compatible = "mediatek,mt6897-disp-mdp-rsz",
+	// .data = (void *)MTK_DISP_MDP_RSZ},
 	{.compatible = "mediatek,mt6779-disp-postmask",
 	 .data = (void *)MTK_DISP_POSTMASK},
 	{.compatible = "mediatek,mt6885-disp-postmask",
@@ -6376,6 +6454,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_POSTMASK},
 	{.compatible = "mediatek,mt6985-disp-postmask",
 	 .data = (void *)MTK_DISP_POSTMASK},
+	//{.compatible = "mediatek,mt6897-disp-postmask",
+	// .data = (void *)MTK_DISP_POSTMASK},
 	{.compatible = "mediatek,mt6895-disp-postmask",
 	 .data = (void *)MTK_DISP_POSTMASK},
 	{.compatible = "mediatek,mt6886-disp-postmask",
@@ -6404,6 +6484,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_SPR},
 	{.compatible = "mediatek,mt6985-disp-spr",
 	 .data = (void *)MTK_DISP_SPR},
+	//{.compatible = "mediatek,mt6897-disp-spr",
+	// .data = (void *)MTK_DISP_SPR},
 	{.compatible = "mediatek,mt6895-disp-spr",
 	 .data = (void *)MTK_DISP_SPR},
 	{.compatible = "mediatek,mt6886-disp-spr",
@@ -6412,12 +6494,16 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_SPR},
 	{.compatible = "mediatek,mt6985-disp-oddmr",
 	 .data = (void *)MTK_DISP_ODDMR},
+	//{.compatible = "mediatek,mt6897-disp-oddmr",
+	// .data = (void *)MTK_DISP_ODDMR},
 	{.compatible = "mediatek,mt6885-disp-dsc",
 	 .data = (void *)MTK_DISP_DSC},
 	{.compatible = "mediatek,mt6983-disp-dsc",
 	 .data = (void *)MTK_DISP_DSC},
 	{.compatible = "mediatek,mt6985-disp-dsc",
 	 .data = (void *)MTK_DISP_DSC},
+	//{.compatible = "mediatek,mt6897-disp-dsc",
+	// .data = (void *)MTK_DISP_DSC},
 	{.compatible = "mediatek,mt6895-disp-dsc",
 	 .data = (void *)MTK_DISP_DSC},
 	{.compatible = "mediatek,mt6886-disp-dsc",
@@ -6436,6 +6522,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_MERGE},
 	{.compatible = "mediatek,mt6985-disp-merge",
 	 .data = (void *)MTK_DISP_MERGE},
+	//{.compatible = "mediatek,mt6897-disp-merge",
+	// .data = (void *)MTK_DISP_MERGE},
 	{.compatible = "mediatek,mt6895-disp-merge",
 	 .data = (void *)MTK_DISP_MERGE},
 	{.compatible = "mediatek,mt6885-dp_tx",
@@ -6505,11 +6593,15 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_DLO_ASYNC},
 	{.compatible = "mediatek,mt6985-disp-dlo-async",
 	 .data = (void *)MTK_DISP_DLO_ASYNC},
+	{.compatible = "mediatek,mt6897-disp-dlo-async",
+	 .data = (void *)MTK_DISP_DLO_ASYNC},
 	{.compatible = "mediatek,mt6983-disp-dli-async3",
 	 .data = (void *)MTK_DISP_DLI_ASYNC},
 	{.compatible = "mediatek,mt6886-disp-dli-async3",
 	 .data = (void *)MTK_DISP_DLI_ASYNC},
 	{.compatible = "mediatek,mt6985-disp-dli-async",
+	 .data = (void *)MTK_DISP_DLI_ASYNC},
+	{.compatible = "mediatek,mt6897-disp-dli-async",
 	 .data = (void *)MTK_DISP_DLI_ASYNC},
 	{.compatible = "mediatek,mt6983-disp-inlinerotate",
 	 .data = (void *)MTK_DISP_INLINE_ROTATE},
@@ -6657,7 +6749,7 @@ static int mtk_drm_probe(struct platform_device *pdev)
 	}
 
 	ret = of_property_read_u32(dev->of_node,
-				"dispsys_num", &dispsys_num);
+				"dispsys-num", &dispsys_num);
 	if (ret) {
 		dev_err(dev,
 			"no dispsys_config dispsys_num %d\n", ret);
@@ -6667,7 +6759,7 @@ static int mtk_drm_probe(struct platform_device *pdev)
 	private->dispsys_num = dispsys_num;
 
 	ret = of_property_read_u32(dev->of_node,
-				"ovlsys_num", &ovlsys_num);
+				"ovlsys-num", &ovlsys_num);
 	private->ovlsys_num = ovlsys_num;
 
 	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -7125,6 +7217,8 @@ static const struct of_device_id mtk_drm_of_ids[] = {
 	 .data = &mt6983_mmsys_driver_data},
 	{.compatible = "mediatek,mt6985-disp",
 	 .data = &mt6985_mmsys_driver_data},
+	{.compatible = "mediatek,mt6897-disp",
+	 .data = &mt6897_mmsys_driver_data},
 	{.compatible = "mediatek,mt6895-disp",
 	 .data = &mt6895_mmsys_driver_data},
 	{.compatible = "mediatek,mt6886-disp",

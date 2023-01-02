@@ -16,6 +16,8 @@
 #define DISP_REG_ADDR_BASE   0x14000000
 #define DISP_REG_ADDR_MASK   0xffffffl
 #define DISP_COMP_REG_ADDR_MASK   0xfffl
+int gce_shift_bit;
+int gce_mminfra;
 
 struct client_priv {
 	struct dma_pool *buf_pool;
@@ -323,7 +325,7 @@ u32 cmdq_pkt_write(struct cmdq_pkt *pkt, struct cmdq_base *clt_base,
 	}
 	if (!va) {
 		va = ioremap(pa, sizeof(va));
-		regs_addr = kzalloc(sizeof(struct repaint_job_t),
+		regs_addr = kzalloc(sizeof(struct regs_addr_record),
 			GFP_KERNEL);
 		if (!IS_ERR_OR_NULL(regs_addr)) {
 			regs_addr->regs = va;
@@ -392,6 +394,40 @@ int cmdq_pkt_wfe(struct cmdq_pkt *pkt, u16 event)
 	return 0;
 }
 //EXPORT_SYMBOL(cmdq_pkt_wfe);
+
+int cmdq_pkt_wait_complete(struct cmdq_pkt *pkt)
+{
+	return 0;
+}
+
+void cmdq_pkt_reuse_buf_va(struct cmdq_pkt *pkt, struct cmdq_reuse *reuse,
+	const u32 count)
+{
+}
+
+u32 cmdq_pkt_write_value_addr_reuse(struct cmdq_pkt *pkt, dma_addr_t addr,
+	u32 value, u32 mask, u64 **curr_buf_va)
+{
+	return 0;
+}
+
+u32 cmdq_pkt_sleep(struct cmdq_pkt *pkt, u32 tick, u16 reg_gpr)
+{
+	return 0;
+}
+
+s32 cmdq_pkt_refinalize(struct cmdq_pkt *pkt)
+{
+	return 0;
+}
+
+void cmdq_mbox_enable(void *chan)
+{
+}
+
+void cmdq_mbox_disable(void *chan)
+{
+}
 
 int cmdq_pkt_wait_no_clear(struct cmdq_pkt *pkt, u16 event)
 {
