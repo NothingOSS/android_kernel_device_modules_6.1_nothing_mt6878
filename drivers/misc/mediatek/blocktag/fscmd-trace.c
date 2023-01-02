@@ -7,6 +7,7 @@
 #include "fake_f2fs.h"
 #include <linux/f2fs_fs.h>
 #include <linux/sched.h>
+#include <linux/sched/clock.h>
 #include <linux/time.h>
 #include <linux/tracepoint.h>
 #include <linux/types.h>

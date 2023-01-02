@@ -3,6 +3,7 @@
  * Copyright (C) 2021 MediaTek Inc.
  */
 
+#include <linux/sched/clock.h>
 #include "blocktag-pm-trace.h"
 
 #define SPREAD_PRINTF(buff, size, evt, fmt, args...) \
