@@ -135,10 +135,10 @@ static void ssheap_ut(const char *buf)
 			pr_info("cmd=%d FAILED\n", ut_cmd);
 		} else {
 			smc_ret = mtee_assign_buffer(info, 0x9);
-			pr_debug("secure buffer ret:%d (0x%x)\n", smc_ret,
+			pr_debug("secure buffer ret:%lu (0x%lx)\n", smc_ret,
 				 smc_ret);
 			smc_ret = mtee_unassign_buffer(info, 0x9);
-			pr_debug("unsecure buffer ret:%d (0x%x)\n", smc_ret,
+			pr_debug("unsecure buffer ret:%lu (0x%lx)\n", smc_ret,
 				 smc_ret);
 			if (ut_dump)
 				dump_buf_info(info);
@@ -157,7 +157,7 @@ static void ssheap_ut(const char *buf)
 			pr_info("cmd=%d FAILED\n", ut_cmd);
 		} else {
 			smc_ret = mtee_assign_buffer(last_info, 0xff);
-			pr_info("secure buffer ret:%d (0x%x)\n", smc_ret,
+			pr_info("secure buffer ret:%lu (0x%lx)\n", smc_ret,
 				smc_ret);
 			if (ut_dump)
 				dump_buf_info(last_info);
@@ -171,7 +171,7 @@ static void ssheap_ut(const char *buf)
 			goto out;
 		}
 		smc_ret = mtee_unassign_buffer(last_info, 0xff);
-		pr_info("unsecure buffer ret:%d (0x%x)\n", smc_ret, smc_ret);
+		pr_info("unsecure buffer ret:%lu (0x%lx)\n", smc_ret, smc_ret);
 
 		ssheap_free_non_contig(last_info);
 		last_info = NULL;
@@ -192,7 +192,7 @@ static ssize_t ssheap_write(struct file *file, const char __user *buffer,
 
 	if (copy_from_user(desc, buffer, count))
 		return 0;
-	pr_info("write count:%d\n", count);
+	pr_info("write count:%lu\n", count);
 	ssheap_ut(desc);
 	return count;
 }

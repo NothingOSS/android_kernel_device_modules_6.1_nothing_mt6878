@@ -314,7 +314,7 @@ int tmem_core_alloc_page(enum TRUSTED_MEM_TYPE mem_type, u32 size,
 	}
 	end = sched_clock();
 	if (end - start > 10000000ULL) {/* unit is ns */
-		pr_info("%s alloc_non_contig len: 0x%lx time: %lld ns\n",
+		pr_info("%s alloc_non_contig len: 0x%x time: %lld ns\n",
 			__func__, size, end - start);
 	}
 
@@ -322,13 +322,13 @@ int tmem_core_alloc_page(enum TRUSTED_MEM_TYPE mem_type, u32 size,
 	start = sched_clock();
 	smc_ret = mtee_assign_buffer(info, mem_type);
 	if (smc_ret) {
-		pr_err("smc_ret:%x assign buffer failed!\n", smc_ret);
+		pr_err("smc_ret:%lx assign buffer failed!\n", smc_ret);
 		ssheap_free_non_contig(info);
 		return TMEM_GENERAL_ERROR;
 	}
 	end = sched_clock();
 	if (end - start > 10000000ULL) {/* unit is ns */
-		pr_info("%s mtee assign buffer len: 0x%lx time: %lld ns\n",
+		pr_info("%s mtee assign buffer len: 0x%x time: %lld ns\n",
 			__func__, size, end - start);
 	}
 #endif
@@ -623,7 +623,7 @@ int tmem_query_gz_handle_to_pa(enum TRUSTED_MEM_TYPE mem_type, u32 alignment,
 	}
 
 	*phy_addr = (uint64_t)p[1].value.a << SECMEM_64BIT_PHYS_SHIFT;
-	pr_info("[%s] handle=0x%x, ok(pa=0x%lx)\n", __func__, *gz_handle, *phy_addr);
+	pr_info("[%s] handle=0x%x, ok(pa=0x%llx)\n", __func__, *gz_handle, *phy_addr);
 
 	KREE_CloseSession(session);
 

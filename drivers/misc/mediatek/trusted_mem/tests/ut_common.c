@@ -332,19 +332,19 @@ mem_alloc_saturation_variant(enum TRUSTED_MEM_TYPE mem_type, u8 *mem_owner,
 				if (is_svp_on_mtee() && is_ffa_enabled()) {
 					tmem_query_ffa_handle_to_pa(g_mem_handle_list[chunk_num],
 						&phy_addr);
-					pr_info("ffa_handle_to_pa: ffa_handle=0x%llx, pa=0x%lx\n",
+					pr_info("ffa_handle_to_pa: ffa_handle=0x%llx, pa=0x%llx\n",
 						g_mem_handle_list[chunk_num], phy_addr);
 				} else if (is_svp_on_mtee()) {
 					tmem_query_gz_handle_to_pa(mem_type, alignment, chunk_size,
 						&ref_count, (u32 *)&g_mem_handle_list[chunk_num],
 						mem_owner, 0, 0, &phy_addr);
-					pr_info("gz_handle_query_pa: gz_handle=0x%llx, pa=0x%lx\n",
+					pr_info("gz_handle_query_pa: gz_handle=0x%llx, pa=0x%llx\n",
 						g_mem_handle_list[chunk_num], phy_addr);
 				} else {
 					tmem_query_sec_handle_to_pa(mem_type, alignment, chunk_size,
 						&ref_count, (u32 *)&g_mem_handle_list[chunk_num],
 						mem_owner, 0, 0, &phy_addr);
-					pr_info("sec_handle_query_pa: sec_handle=0x%llx, pa=0x%lx\n",
+					pr_info("sec_handle_query_pa: sec_handle=0x%llx, pa=0x%llx\n",
 						g_mem_handle_list[chunk_num], phy_addr);
 				}
 			}

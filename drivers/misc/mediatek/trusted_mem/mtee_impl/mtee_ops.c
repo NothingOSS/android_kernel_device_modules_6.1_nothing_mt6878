@@ -268,7 +268,7 @@ static int mtee_mem_reg_add(u64 pa, u32 size, void *peer_data, void *dev_desc)
 		return TMEM_MTEE_APPEND_MEMORY_FAILED;
 	}
 
-	pr_info("[%d] MTEE append reg mem PASS: PA=0x%lx, size=0x%lx\n",
+	pr_info("[%d] MTEE append reg mem PASS: PA=0x%llx, size=0x%x\n",
 				mtee_dev_desc->kern_tmem_type, pa, size);
 
 	if (mtee_dev_desc->notify_remote && mtee_dev_desc->notify_remote_fn) {
@@ -291,7 +291,7 @@ static int mtee_mem_reg_add(u64 pa, u32 size, void *peer_data, void *dev_desc)
 			return TMEM_KPOOL_APPEND_MEMORY_FAILED;
 		}
 
-		pr_info("[%d] tmem_carveout_heap[%d] created PASS: PA=0x%lx, size=0x%lx\n",
+		pr_info("[%d] tmem_carveout_heap[%d] created PASS: PA=0x%llx, size=0x%x\n",
 				mtee_dev_desc->kern_tmem_type, mtee_dev_desc->mtee_chunks_id,
 				pa, size);
 	}

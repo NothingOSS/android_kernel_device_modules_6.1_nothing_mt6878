@@ -350,7 +350,7 @@ int tmem_ffa_page_free(u64 handle)
 
 	mutex_unlock(&tmem_block_mutex);
 
-	pr_info("%s PASS: handle=0x%lx\n", __func__, handle);
+	pr_info("%s PASS: handle=0x%llx\n", __func__, handle);
 	return TMEM_OK;
 }
 
@@ -442,7 +442,7 @@ out2:
 out3:
 	gen_pool_free(tmem_carveout_heap[pool_idx]->pool, paddr, size);
 out4:
-	pr_info("%s fail: size=0x%lx, alignment=0x%lx, gen_pool_avail=0x%lx, pool_idx=%d\n",
+	pr_info("%s fail: size=0x%lx, alignment=0x%lx, gen_pool_avail=0x%lx, pool_idx=%lu\n",
 			__func__, size, alignment,
 			gen_pool_avail(tmem_carveout_heap[pool_idx]->pool), pool_idx);
 	mutex_unlock(&tmem_block_mutex);
@@ -483,13 +483,13 @@ int tmem_ffa_region_free(enum MTEE_MCHUNKS_ID mchunk_id, u64 handle)
 
 			kfree(tmp->sgtbl);
 			kfree(tmp);
-			pr_info("%s PASS: handle=0x%lx\n", __func__, handle);
+			pr_info("%s PASS: handle=0x%llx\n", __func__, handle);
 			return TMEM_OK;
 		}
 	}
 	mutex_unlock(&tmem_block_mutex);
 
-	pr_info("%s fail: handle=0x%lx, idx=0x%lx\n",
+	pr_info("%s fail: handle=0x%llx, idx=0x%lx\n",
 			__func__, handle, pool_idx);
 
 	return TMEM_KPOOL_FREE_CHUNK_FAILED;
@@ -596,7 +596,7 @@ int tmem_register_ffa_module(void)
 		return TMEM_KPOOL_FFA_INIT_FAILED;
 	}
 	sp_partition_id = sp_partition_dev->vm_id;
-	pr_info("%s: sp_partition_dev->vm_id=0x%lx\n", __func__, sp_partition_id);
+	pr_info("%s: sp_partition_dev->vm_id=0x%x\n", __func__, sp_partition_id);
 
 //	ffa_ops = ffa_dev_ops_get(sp_partition_dev);
 	if (ffa_ops == NULL) {

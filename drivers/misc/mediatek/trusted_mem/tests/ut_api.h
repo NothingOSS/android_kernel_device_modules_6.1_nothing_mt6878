@@ -33,9 +33,9 @@ struct ut_params {
 		if (ret_val op ret_got) { \
 			pr_err("'%s' FAILED!\n", msg); \
 			pr_err( \
-				"[ERR]%s:%d unexpected: 0x%x, " \
+				"[ERR]%s:%d unexpected: 0x%llx, " \
 				"expected: 0x%x\n", \
-				__func__, __LINE__, ret_got, ret_val); \
+				__func__, __LINE__, (unsigned long long)ret_got, ret_val); \
 			ut_increase_fail_cnt(); \
 			if (halt) { \
 				ut_set_halt(); \

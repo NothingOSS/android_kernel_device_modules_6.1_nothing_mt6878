@@ -97,7 +97,7 @@ static int hyp_pmm_enable_cma(void)
 
 	ret = (long)smc_res.a0;
 	if (ret <= 0) {
-		pr_err("%s: enable cma failed %llx\n", __func__, smc_res.a0);
+		pr_err("%s: enable cma failed %lx\n", __func__, smc_res.a0);
 		return -EFAULT;
 	}
 
@@ -114,7 +114,7 @@ static int hyp_pmm_disable_cma(void)
 	arm_smccc_smc(HYP_PMM_DISABLE_CMA, cookie, 0, 0, 0, 0, 0, 0, &smc_res);
 
 	if (smc_res.a0 != 0) {
-		pr_err("%s: enable cma failed %llx\n", __func__, smc_res.a0);
+		pr_err("%s: enable cma failed %lx\n", __func__, smc_res.a0);
 		return -EFAULT;
 	}
 
@@ -151,7 +151,7 @@ retry:
 
 	/* get end time */
 	end = sched_clock();
-	pr_info("%s: duration: %d ns (%d ms)\n", __func__, end - start, (end - start) / 1000000);
+	pr_info("%s: duration: %llu ns (%llu ms)\n", __func__, end - start, (end - start) / 1000000);
 
 	if (cma_page == NULL) {
 		pr_warn("%s: cma_alloc failed retry:%d\n", __func__, retry);
@@ -307,7 +307,7 @@ static u64 free_blocks(struct ssheap_buf_info *info)
 		list_del(&block->entry);
 		kfree(block);
 	}
-	pr_debug("free blocks freed_size=0x%lx\n", freed_size);
+	pr_debug("free blocks freed_size=0x%llx\n", freed_size);
 	return freed_size;
 }
 
@@ -401,7 +401,7 @@ struct ssheap_buf_info *ssheap_alloc_non_contig(u32 req_size, u32 prefer_align,
 	}
 
 	if (req_size == 0) {
-		pr_err("Invalid size, size=0x%lx\n", req_size);
+		pr_err("Invalid size, size=0x%x\n", req_size);
 		return NULL;
 	}
 
@@ -568,7 +568,7 @@ unsigned long mtee_assign_buffer(struct ssheap_buf_info *info, uint8_t mem_type)
 	pmm_attr = PGLIST_SET_ATTR(paddr, mem_type);
 	arm_smccc_smc(HYP_PMM_ASSIGN_BUFFER, lower_32_bits(pmm_attr),
 		      upper_32_bits(pmm_attr), count, 0, 0, 0, 0, &smc_res);
-	pr_debug("pmm_msg_page paddr=%pa smc_res.a0=%x\n", &paddr, smc_res.a0);
+	pr_debug("pmm_msg_page paddr=%pa smc_res.a0=%lx\n", &paddr, smc_res.a0);
 
 	return smc_res.a0;
 }
@@ -590,7 +590,7 @@ unsigned long mtee_unassign_buffer(struct ssheap_buf_info *info,
 	// pr_debug("pmm_msg_page paddr=%pa\n", &paddr);
 	arm_smccc_smc(HYP_PMM_UNASSIGN_BUFFER, lower_32_bits(paddr),
 		      upper_32_bits(paddr), count, 0, 0, 0, 0, &smc_res);
-	pr_debug("pmm_msg_page paddr=%pa smc_res.a0=%x\n", &paddr, smc_res.a0);
+	pr_debug("pmm_msg_page paddr=%pa smc_res.a0=%lx\n", &paddr, smc_res.a0);
 	return smc_res.a0;
 }
 
@@ -602,7 +602,7 @@ void ssheap_dump_mem_info(void)
 		&ssheap_phys_size);
 
 	total_allocated_size = atomic64_read(&total_alloced_size);
-	pr_info("%s: total_alloced_size: 0x%x free: 0x%x\n", __func__,
+	pr_info("%s: total_alloced_size: 0x%llx free: 0x%llx\n", __func__,
 		total_allocated_size, ssheap_phys_size - total_allocated_size);
 }
 

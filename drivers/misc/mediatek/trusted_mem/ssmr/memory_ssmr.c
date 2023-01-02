@@ -72,7 +72,7 @@ static void set_svp_reserve_memory(void)
 
 	base = rmem->base;
 	size = rmem->size;
-	pr_info("%s, svp reserved pa base=0x%lx, size=0x%lx\n", __func__, base, size);
+	pr_info("%s, svp reserved pa base=0x%llx, size=0x%llx\n", __func__, base, size);
 
 	feature->use_cache_memory = true;
 	feature->count = size / PAGE_SIZE;
@@ -243,8 +243,8 @@ static int ssmr_reserved_mem_alloc(struct SSMR_Feature *feature, phys_addr_t *pa
 	*pa = feature->phy_addr;
 	*size = feature->req_size;
 
-	pr_info("%s, %s reserved pa base=0x%lx, size=0x%lx\n", __func__,
-			feature->feat_name, *pa, *size);
+	pr_info("%s, %s reserved pa base=0x%pa, size=0x%lx\n", __func__,
+			feature->feat_name, pa, *size);
 
 	return 0;
 }
@@ -304,8 +304,8 @@ static int ssmr_dma_alloc(struct SSMR_Feature *feature, phys_addr_t *pa,
 		if (feature->phy_addr % GRANULARITY_SIZE) {
 			/* pa add 1MB, then pa is 2MB alignment */
 			*pa = *pa + GRANULARITY_SIZE/2;
-			pr_info("%s: feature: %s, adjust 2MB alignment: pa=0x%lx, retry = %d\n",
-				__func__, feature->feat_name, *pa, offline_retry);
+			pr_info("%s: feature: %s, adjust 2MB alignment: pa=0x%pa, retry = %d\n",
+				__func__, feature->feat_name, pa, offline_retry);
 		}
 	}
 
@@ -314,8 +314,8 @@ static int ssmr_dma_alloc(struct SSMR_Feature *feature, phys_addr_t *pa,
 
 	/* check pa must be 2MB alignment */
 	if (*pa % GRANULARITY_SIZE) {
-		pr_info("%s: feature: %s, pa=%pad is not 2MB alignment\n",
-				__func__, feature->feat_name, *pa);
+		pr_info("%s: feature: %s, pa=%pa is not 2MB alignment\n",
+				__func__, feature->feat_name, pa);
 		return -1;
 	}
 
@@ -470,8 +470,8 @@ static int _ssmr_offline_internal(phys_addr_t *pa, unsigned long *size,
 		goto out;
 	}
 	feature->state = SSMR_STATE_OFF;
-	pr_info("%s: feature: %s, pa: 0x%lx, size: 0x%lx\n", __func__,
-		feature->feat_name, *pa, *size);
+	pr_info("%s: feature: %s, pa: 0x%pa, size: 0x%lx\n", __func__,
+		feature->feat_name, pa, *size);
 
 out:
 	pr_info("%s: END: feature: %s, state: %s, retval: %d\n",

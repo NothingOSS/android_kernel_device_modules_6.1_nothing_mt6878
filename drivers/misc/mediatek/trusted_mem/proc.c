@@ -68,7 +68,7 @@ static void trusted_mem_device_chunk_alloc(enum TRUSTED_MEM_TYPE mem_type)
 			mem_type, alignment, min_chunk_sz, &ref_count,
 			&g_common_mem_handle[mem_type], NULL, 0, 0);
 	else
-		pr_info("%d chunk is already allocated, handle:0x%x\n",
+		pr_info("%d chunk is already allocated, handle:0x%llx\n",
 			mem_type, g_common_mem_handle[mem_type]);
 
 	if (ret)
