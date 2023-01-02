@@ -3,7 +3,6 @@
  * xHCI host controller driver
  *
  * Copyright (C) 2008 Intel Corp.
- * Copyright (C) 2022 MediaTek Inc.
  *
  * Author: Sarah Sharp
  * Some code borrowed from the Linux EHCI driver.

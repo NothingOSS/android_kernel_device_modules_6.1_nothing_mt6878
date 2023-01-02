@@ -3,11 +3,11 @@
  * xHCI host controller driver
  *
  * Copyright (C) 2008 Intel Corp.
- * Copyright (C) 2022 MediaTek Inc.
  *
  * Author: Sarah Sharp
  * Some code borrowed from the Linux EHCI driver.
  */
+
 
 #include <linux/slab.h>
 #include <asm/unaligned.h>
@@ -487,7 +487,7 @@ static int xhci_stop_device(struct xhci_hcd *xhci, int slot_id, int suspend)
 
 	trace_xhci_stop_device(virt_dev);
 
-	cmd = xhci_alloc_command_(xhci, true, GFP_NOIO);
+	cmd = xhci_alloc_command(xhci, true, GFP_NOIO);
 	if (!cmd)
 		return -ENOMEM;
 
@@ -497,35 +497,35 @@ static int xhci_stop_device(struct xhci_hcd *xhci, int slot_id, int suspend)
 			struct xhci_ep_ctx *ep_ctx;
 			struct xhci_command *command;
 
-			ep_ctx = xhci_get_ep_ctx__(xhci, virt_dev->out_ctx, i);
+			ep_ctx = xhci_get_ep_ctx(xhci, virt_dev->out_ctx, i);
 
 			/* Check ep is running, required by AMD SNPS 3.1 xHC */
 			if (GET_EP_CTX_STATE(ep_ctx) != EP_STATE_RUNNING)
 				continue;
 
-			command = xhci_alloc_command_(xhci, false, GFP_NOWAIT);
+			command = xhci_alloc_command(xhci, false, GFP_NOWAIT);
 			if (!command) {
 				spin_unlock_irqrestore(&xhci->lock, flags);
 				ret = -ENOMEM;
 				goto cmd_cleanup;
 			}
 
-			ret = xhci_queue_stop_endpoint_(xhci, command, slot_id,
+			ret = xhci_queue_stop_endpoint(xhci, command, slot_id,
 						       i, suspend);
 			if (ret) {
 				spin_unlock_irqrestore(&xhci->lock, flags);
-				xhci_free_command_(xhci, command);
+				xhci_free_command(xhci, command);
 				goto cmd_cleanup;
 			}
 		}
 	}
-	ret = xhci_queue_stop_endpoint_(xhci, cmd, slot_id, 0, suspend);
+	ret = xhci_queue_stop_endpoint(xhci, cmd, slot_id, 0, suspend);
 	if (ret) {
 		spin_unlock_irqrestore(&xhci->lock, flags);
 		goto cmd_cleanup;
 	}
 
-	xhci_ring_cmd_db_(xhci);
+	xhci_ring_cmd_db(xhci);
 	spin_unlock_irqrestore(&xhci->lock, flags);
 
 	/* Wait for last stop endpoint command to finish */
@@ -535,15 +535,10 @@ static int xhci_stop_device(struct xhci_hcd *xhci, int slot_id, int suspend)
 	    cmd->status == COMP_COMMAND_RING_STOPPED) {
 		xhci_warn(xhci, "Timeout while waiting for stop endpoint command\n");
 		ret = -ETIME;
-		goto cmd_cleanup;
 	}
 
-	ret = xhci_vendor_sync_dev_ctx(xhci, slot_id);
-	if (ret)
-		xhci_warn(xhci, "Sync device context failed, ret=%d\n", ret);
-
 cmd_cleanup:
-	xhci_free_command_(xhci, cmd);
+	xhci_free_command(xhci, cmd);
 	return ret;
 }
 
@@ -712,6 +707,7 @@ static int xhci_enter_test_mode(struct xhci_hcd *xhci,
 				u16 test_mode, u16 wIndex, unsigned long *flags)
 	__must_hold(&xhci->lock)
 {
+	struct usb_hcd *usb3_hcd = xhci_get_usb3_hcd(xhci);
 	int i, retval;
 
 	/* Disable all Device Slots */
@@ -732,7 +728,7 @@ static int xhci_enter_test_mode(struct xhci_hcd *xhci,
 	xhci_dbg(xhci, "Disable all port (PP = 0)\n");
 	/* Power off USB3 ports*/
 	for (i = 0; i < xhci->usb3_rhub.num_ports; i++)
-		xhci_set_port_power(xhci, xhci->shared_hcd, i, false, flags);
+		xhci_set_port_power(xhci, usb3_hcd, i, false, flags);
 	/* Power off USB2 ports*/
 	for (i = 0; i < xhci->usb2_rhub.num_ports; i++)
 		xhci_set_port_power(xhci, xhci->main_hcd, i, false, flags);
@@ -901,9 +897,9 @@ static void xhci_del_comp_mod_timer(struct xhci_hcd *xhci, u32 status,
 		xhci->port_status_u0 |= 1 << wIndex;
 		if (xhci->port_status_u0 == all_ports_seen_u0) {
 			del_timer_sync(&xhci->comp_mode_recovery_timer);
-			xhci_dbg_trace_(xhci, trace_xhci_dbg_quirks_,
+			xhci_dbg_trace(xhci, trace_xhci_dbg_quirks,
 				"All USB3 ports have entered U0 already!");
-			xhci_dbg_trace_(xhci, trace_xhci_dbg_quirks_,
+			xhci_dbg_trace(xhci, trace_xhci_dbg_quirks,
 				"Compliance Mode Recovery Timer Deleted.");
 		}
 	}
@@ -1293,10 +1289,6 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 		/* FIXME: What new port features do we need to support? */
 		switch (wValue) {
 		case USB_PORT_FEAT_SUSPEND:
-			if (xhci_vendor_is_streaming(xhci)) {
-				xhci_info(xhci, "%s - USB_OFFLOAD bypass\n", __func__);
-				break;
-			}
 			temp = readl(ports[wIndex]->addr);
 			if ((temp & PORT_PLS_MASK) != XDEV_U0) {
 				/* Resume the port to U0 first */
@@ -1308,7 +1300,7 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			}
 			/* In spec software should not attempt to suspend
 			 * a port unless the port reports that it is in the
-			 * enabled (PED = ????PLS < ???? state.
+			 * enabled (PED = ‘1’,PLS < ‘3’) state.
 			 */
 			temp = readl(ports[wIndex]->addr);
 			if ((temp & PORT_PE) == 0 || (temp & PORT_RESET)
@@ -1551,10 +1543,6 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 		temp = xhci_port_state_to_neutral(temp);
 		switch (wValue) {
 		case USB_PORT_FEAT_SUSPEND:
-			if (xhci_vendor_is_streaming(xhci)) {
-				xhci_info(xhci, "%s - USB_OFFLOAD bypass\n", __func__);
-				break;
-			}
 			temp = readl(ports[wIndex]->addr);
 			xhci_dbg(xhci, "clear USB_PORT_FEAT_SUSPEND\n");
 			xhci_dbg(xhci, "PORTSC %04x\n", temp);
@@ -1660,6 +1648,17 @@ int xhci_hub_status_data(struct usb_hcd *hcd, char *buf)
 
 	status = bus_state->resuming_ports;
 
+	/*
+	 * SS devices are only visible to roothub after link training completes.
+	 * Keep polling roothubs for a grace period after xHC start
+	 */
+	if (xhci->run_graceperiod) {
+		if (time_before(jiffies, xhci->run_graceperiod))
+			status = 1;
+		else
+			xhci->run_graceperiod = 0;
+	}
+
 	mask = PORT_CSC | PORT_PEC | PORT_OCC | PORT_PLC | PORT_WRC | PORT_CEC;
 
 	/* For each port, did anything change?  If so, set that bit in buf. */
@@ -1695,7 +1694,7 @@ int xhci_hub_status_data(struct usb_hcd *hcd, char *buf)
 
 #ifdef CONFIG_PM
 
-int xhci_bus_suspend_(struct usb_hcd *hcd)
+int xhci_bus_suspend(struct usb_hcd *hcd)
 {
 	struct xhci_hcd	*xhci = hcd_to_xhci(hcd);
 	int max_ports, port_index;
@@ -1825,7 +1824,6 @@ retry:
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(xhci_bus_suspend_);
 
 /*
  * Workaround for missing Cold Attach Status (CAS) if device re-plugged in S3.
@@ -1855,7 +1853,7 @@ static bool xhci_port_missing_cas_quirk(struct xhci_port *port)
 	return true;
 }
 
-int xhci_bus_resume_(struct usb_hcd *hcd)
+int xhci_bus_resume(struct usb_hcd *hcd)
 {
 	struct xhci_hcd	*xhci = hcd_to_xhci(hcd);
 	struct xhci_bus_state *bus_state;
@@ -1970,7 +1968,6 @@ int xhci_bus_resume_(struct usb_hcd *hcd)
 	spin_unlock_irqrestore(&xhci->lock, flags);
 	return 0;
 }
-EXPORT_SYMBOL_GPL(xhci_bus_resume_);
 
 unsigned long xhci_get_resuming_ports(struct usb_hcd *hcd)
 {

@@ -3,7 +3,6 @@
  * xHCI host controller driver
  *
  * Copyright (C) 2008 Intel Corp.
- * Copyright (C) 2022 MediaTek Inc.
  *
  * Author: Sarah Sharp
  * Some code borrowed from the Linux EHCI driver.
@@ -14,13 +13,13 @@
 char *xhci_get_slot_state(struct xhci_hcd *xhci,
 		struct xhci_container_ctx *ctx)
 {
-	struct xhci_slot_ctx *slot_ctx = xhci_get_slot_ctx_(xhci, ctx);
+	struct xhci_slot_ctx *slot_ctx = xhci_get_slot_ctx(xhci, ctx);
 	int state = GET_SLOT_STATE(le32_to_cpu(slot_ctx->dev_state));
 
 	return xhci_slot_state_string(state);
 }
 
-void xhci_dbg_trace_(struct xhci_hcd *xhci, void (*trace)(struct va_format *),
+void xhci_dbg_trace(struct xhci_hcd *xhci, void (*trace)(struct va_format *),
 			const char *fmt, ...)
 {
 	struct va_format vaf;
@@ -33,4 +32,4 @@ void xhci_dbg_trace_(struct xhci_hcd *xhci, void (*trace)(struct va_format *),
 	trace(&vaf);
 	va_end(args);
 }
-EXPORT_SYMBOL_GPL(xhci_dbg_trace_);
+EXPORT_SYMBOL_GPL(xhci_dbg_trace);

@@ -3,21 +3,20 @@
  * xHCI host controller driver
  *
  * Copyright (C) 2013 Xenia Ragiadakou
- * Copyright (C) 2022 MediaTek Inc.
  *
  * Author: Xenia Ragiadakou
  * Email : burzalodowa@gmail.com
  */
 
 #undef TRACE_SYSTEM
-#define TRACE_SYSTEM xhci-hcd-v2
+#define TRACE_SYSTEM xhci-hcd
 
 /*
  * The TRACE_SYSTEM_VAR defaults to TRACE_SYSTEM, but must be a
  * legitimate C variable. It is not exported to user space.
  */
 #undef TRACE_SYSTEM_VAR
-#define TRACE_SYSTEM_VAR xhci_hcd_v2
+#define TRACE_SYSTEM_VAR xhci_hcd
 
 #if !defined(__XHCI_TRACE_H) || defined(TRACE_HEADER_MULTI_READ)
 #define __XHCI_TRACE_H
@@ -29,9 +28,9 @@
 DECLARE_EVENT_CLASS(xhci_log_msg,
 	TP_PROTO(struct va_format *vaf),
 	TP_ARGS(vaf),
-	TP_STRUCT__entry(__dynamic_array(char, msg, XHCI_MSG_MAX)),
+	TP_STRUCT__entry(__vstring(msg, vaf->fmt, vaf->va)),
 	TP_fast_assign(
-		vsnprintf(__get_str(msg), XHCI_MSG_MAX, vaf->fmt, *vaf->va);
+		__assign_vstr(msg, vaf->fmt, vaf->va);
 	),
 	TP_printk("%s", __get_str(msg))
 );
@@ -46,7 +45,7 @@ DEFINE_EVENT(xhci_log_msg, xhci_dbg_context_change,
 	TP_ARGS(vaf)
 );
 
-DEFINE_EVENT(xhci_log_msg, xhci_dbg_quirks_,
+DEFINE_EVENT(xhci_log_msg, xhci_dbg_quirks,
 	TP_PROTO(struct va_format *vaf),
 	TP_ARGS(vaf)
 );
@@ -146,7 +145,7 @@ DEFINE_EVENT(xhci_log_trb, xhci_handle_command,
 	TP_ARGS(ring, trb)
 );
 
-DEFINE_EVENT(xhci_log_trb, xhci_handle_transfer_,
+DEFINE_EVENT(xhci_log_trb, xhci_handle_transfer,
 	TP_PROTO(struct xhci_ring *ring, struct xhci_generic_trb *trb),
 	TP_ARGS(ring, trb)
 );
@@ -300,12 +299,12 @@ DECLARE_EVENT_CLASS(xhci_log_urb,
 		)
 );
 
-DEFINE_EVENT(xhci_log_urb, xhci_urb_enqueue_,
+DEFINE_EVENT(xhci_log_urb, xhci_urb_enqueue,
 	TP_PROTO(struct urb *urb),
 	TP_ARGS(urb)
 );
 
-DEFINE_EVENT(xhci_log_urb, xhci_urb_giveback_,
+DEFINE_EVENT(xhci_log_urb, xhci_urb_giveback,
 	TP_PROTO(struct urb *urb),
 	TP_ARGS(urb)
 );
@@ -356,7 +355,7 @@ DEFINE_EVENT(xhci_log_ep_ctx, xhci_handle_cmd_config_ep,
 	TP_ARGS(ctx)
 );
 
-DEFINE_EVENT(xhci_log_ep_ctx, xhci_add_endpoint_,
+DEFINE_EVENT(xhci_log_ep_ctx, xhci_add_endpoint,
 	TP_PROTO(struct xhci_ep_ctx *ctx),
 	TP_ARGS(ctx)
 );
@@ -480,8 +479,8 @@ DECLARE_EVENT_CLASS(xhci_log_ring,
 		__entry->cycle_state = ring->cycle_state;
 		__entry->num_trbs_free = ring->num_trbs_free;
 		__entry->bounce_buf_len = ring->bounce_buf_len;
-		__entry->enq = xhci_trb_virt_to_dma_(ring->enq_seg, ring->enqueue);
-		__entry->deq = xhci_trb_virt_to_dma_(ring->deq_seg, ring->dequeue);
+		__entry->enq = xhci_trb_virt_to_dma(ring->enq_seg, ring->enqueue);
+		__entry->deq = xhci_trb_virt_to_dma(ring->deq_seg, ring->dequeue);
 	),
 	TP_printk("%s %p: enq %pad(%pad) deq %pad(%pad) segs %d stream %d free_trbs %d bounce %d cycle %d",
 			xhci_ring_type_string(__entry->type), __entry->ring,
@@ -495,12 +494,12 @@ DECLARE_EVENT_CLASS(xhci_log_ring,
 		)
 );
 
-DEFINE_EVENT(xhci_log_ring, xhci_ring_alloc_,
+DEFINE_EVENT(xhci_log_ring, xhci_ring_alloc,
 	TP_PROTO(struct xhci_ring *ring),
 	TP_ARGS(ring)
 );
 
-DEFINE_EVENT(xhci_log_ring, xhci_ring_free_,
+DEFINE_EVENT(xhci_log_ring, xhci_ring_free,
 	TP_PROTO(struct xhci_ring *ring),
 	TP_ARGS(ring)
 );

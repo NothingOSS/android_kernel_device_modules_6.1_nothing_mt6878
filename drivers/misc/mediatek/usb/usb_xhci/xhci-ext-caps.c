@@ -3,7 +3,6 @@
  * XHCI extended capability handling
  *
  * Copyright (c) 2017 Hans de Goede <hdegoede@redhat.com>
- * Copyright (C) 2022 MediaTek Inc.
  */
 
 #include <linux/platform_device.h>
@@ -82,7 +81,7 @@ static int xhci_create_intel_xhci_sw_pdev(struct xhci_hcd *xhci, u32 cap_offset)
 	return 0;
 }
 
-int xhci_ext_cap_init_(struct xhci_hcd *xhci)
+int xhci_ext_cap_init(struct xhci_hcd *xhci)
 {
 	void __iomem *base = &xhci->cap_regs->hc_capbase;
 	u32 offset, val;
@@ -108,4 +107,4 @@ int xhci_ext_cap_init_(struct xhci_hcd *xhci)
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(xhci_ext_cap_init_);
+EXPORT_SYMBOL_GPL(xhci_ext_cap_init);

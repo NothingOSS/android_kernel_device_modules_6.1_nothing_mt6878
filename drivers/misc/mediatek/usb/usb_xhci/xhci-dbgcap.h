@@ -3,7 +3,6 @@
  * xhci-dbgcap.h - xHCI debug capability support
  *
  * Copyright (C) 2017 Intel Corporation
- * Copyright (C) 2022 MediaTek Inc.
  *
  * Author: Lu Baolu <baolu.lu@linux.intel.com>
  */
@@ -101,6 +100,7 @@ struct dbc_ep {
 struct dbc_port {
 	struct tty_port			port;
 	spinlock_t			port_lock;	/* port access */
+	int				minor;
 
 	struct list_head		read_pool;
 	struct list_head		read_queue;
@@ -164,9 +164,9 @@ struct dbc_request {
 #define dbc_bulkin_ctx(d)		\
 	((struct xhci_ep_ctx *)((d)->ctx->bytes + DBC_CONTEXT_SIZE * 2))
 #define dbc_bulkout_enq(d)		\
-	xhci_trb_virt_to_dma_((d)->ring_out->enq_seg, (d)->ring_out->enqueue)
+	xhci_trb_virt_to_dma((d)->ring_out->enq_seg, (d)->ring_out->enqueue)
 #define dbc_bulkin_enq(d)		\
-	xhci_trb_virt_to_dma_((d)->ring_in->enq_seg, (d)->ring_in->enqueue)
+	xhci_trb_virt_to_dma((d)->ring_in->enq_seg, (d)->ring_in->enqueue)
 #define dbc_epctx_info2(t, p, b)	\
 	cpu_to_le32(EP_TYPE(t) | MAX_PACKET(p) | MAX_BURST(b))
 #define dbc_ep_dma_direction(d)		\
@@ -195,10 +195,17 @@ static inline struct dbc_ep *get_out_ep(struct xhci_dbc *dbc)
 }
 
 #ifdef CONFIG_USB_XHCI_DBGCAP
-int xhci_dbc_init(struct xhci_hcd *xhci);
-void xhci_dbc_exit(struct xhci_hcd *xhci);
-int xhci_dbc_tty_probe(struct xhci_hcd *xhci);
+int xhci_create_dbc_dev(struct xhci_hcd *xhci);
+void xhci_remove_dbc_dev(struct xhci_hcd *xhci);
+int xhci_dbc_init(void);
+void xhci_dbc_exit(void);
+int dbc_tty_init(void);
+void dbc_tty_exit(void);
+int xhci_dbc_tty_probe(struct device *dev, void __iomem *res, struct xhci_hcd *xhci);
 void xhci_dbc_tty_remove(struct xhci_dbc *dbc);
+struct xhci_dbc *xhci_alloc_dbc(struct device *dev, void __iomem *res,
+				 const struct dbc_driver *driver);
+void xhci_dbc_remove(struct xhci_dbc *dbc);
 struct dbc_request *dbc_alloc_request(struct xhci_dbc *dbc,
 				      unsigned int direction,
 				      gfp_t flags);
@@ -209,15 +216,21 @@ int xhci_dbc_suspend(struct xhci_hcd *xhci);
 int xhci_dbc_resume(struct xhci_hcd *xhci);
 #endif /* CONFIG_PM */
 #else
-static inline int xhci_dbc_init(struct xhci_hcd *xhci)
+static inline int xhci_create_dbc_dev(struct xhci_hcd *xhci)
 {
 	return 0;
 }
 
-static inline void xhci_dbc_exit(struct xhci_hcd *xhci)
+static inline void xhci_remove_dbc_dev(struct xhci_hcd *xhci)
 {
 }
-
+static inline int xhci_dbc_init(void)
+{
+	return 0;
+}
+static inline void xhci_dbc_exit(void)
+{
+}
 static inline int xhci_dbc_suspend(struct xhci_hcd *xhci)
 {
 	return 0;
