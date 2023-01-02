@@ -4,4 +4,5 @@ mcupm-objs += mcupm_plt.o
 mcupm-objs += mcupm_logger.o
 mcupm-objs += mcupm_timesync.o
 
+ccflags-y += -I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcupm/include
