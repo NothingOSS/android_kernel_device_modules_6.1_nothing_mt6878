@@ -4188,7 +4188,9 @@
 					<0 0x15520000 0 0x00100>,	/* 15 IMGSYS_WPE2_DIP1 */
 					<0 0x15620000 0 0x00100>,	/* 16 IMGSYS_WPE3_DIP1 */
 					<0 0x15110000 0 0x00100>,	/* 17 IMGSYS_DIP_TOP */
-					<0 0x15130000 0 0x00100>;	/* 18 IMGSYS_DIP_TOP_NR */
+					<0 0x15130000 0 0x00100>,	/* 18 IMGSYS_DIP_TOP_NR */
+					<0 0x15170000 0 0x00100>,	/* 19 IMGSYS_DIP_TOP_NR2 */
+					<0 0x15710000 0 0x00100>;	/* 20 IMGSYS_TRAW_DIP1 */
 			mediatek,hcp = <&hcp>;
 #if 0
 			mediatek,larbs = <&smi_larb9>,
