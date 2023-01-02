@@ -900,8 +900,8 @@ static int mmdvfs_vcp_init_thread(void *data)
 		writel_relaxed(MAX_OPP, MEM_VOTE_OPP_USR(i));
 
 	mmdvfs_init_done = true;
-	MMDVFS_DBG("iova:%pa pa:%pa va:%#llx init_done:%d",
-		&mmdvfs_memory_iova, &mmdvfs_memory_pa, mmdvfs_memory_va, mmdvfs_init_done);
+	MMDVFS_DBG("iova:%pa pa:%pa va:%lx init_done:%d",
+		&mmdvfs_memory_iova, &mmdvfs_memory_pa, (unsigned long)mmdvfs_memory_va, mmdvfs_init_done);
 
 	vcp_ready_notifier.notifier_call = mmdvfs_vcp_notifier_callback;
 	vcp_A_register_notify_ex(&vcp_ready_notifier);
@@ -1058,7 +1058,7 @@ static int mmdvfs_v3_probe(struct platform_device *pdev)
 
 		clk = clk_register(NULL, &mtk_mmdvfs_clks[i].clk_hw);
 		if (IS_ERR_OR_NULL(clk))
-			MMDVFS_ERR("i:%d clk:%s register failed:%d",
+			MMDVFS_ERR("i:%d clk:%s register failed:%ld",
 				i, mtk_mmdvfs_clks[idx].name, PTR_ERR(clk));
 		else
 			clk_data->clks[i] = clk;
@@ -1076,7 +1076,7 @@ static int mmdvfs_v3_probe(struct platform_device *pdev)
 
 		clk = of_clk_get(node, i);
 		if (IS_ERR_OR_NULL(clk))
-			MMDVFS_DBG("i:%d clk get failed:%d", i, PTR_ERR(clk));
+			MMDVFS_DBG("i:%d clk get failed:%ld", i, PTR_ERR(clk));
 		else
 			mmdvfs_pwr_clk[i] = clk;
 	}

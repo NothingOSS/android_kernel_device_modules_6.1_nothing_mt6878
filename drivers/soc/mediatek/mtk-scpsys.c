@@ -1229,7 +1229,7 @@ static int mtk_pd_get_regmap(struct platform_device *pdev, struct regmap **regma
 {
 	*regmap = syscon_regmap_lookup_by_phandle(pdev->dev.of_node, name);
 	if (PTR_ERR(*regmap) == -ENODEV) {
-		dev_notice(&pdev->dev, "%s regmap is null(%d)\n",
+		dev_notice(&pdev->dev, "%s regmap is null(%ld)\n",
 				name, PTR_ERR(*regmap));
 
 		*regmap = NULL;
