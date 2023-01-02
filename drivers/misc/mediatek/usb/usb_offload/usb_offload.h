@@ -206,6 +206,7 @@ struct usb_audio_dev {
 
 struct usb_offload_dev {
 	struct device *dev;
+	struct xhci_hcd *xhci;
 	u32 intr_num;
 	unsigned long card_slot;
 	unsigned int card_num;
@@ -217,6 +218,9 @@ struct usb_offload_dev {
 	bool rx_streaming;
 	bool adsp_inited;
 	bool connected;
+	bool opened;
+	bool adsp_exception;
+	bool adsp_ready;
 	struct ssusb_offload *ssusb_offload_notify;
 	struct mutex dev_lock;
 };
