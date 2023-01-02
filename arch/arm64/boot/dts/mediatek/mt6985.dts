@@ -3606,7 +3606,7 @@
 			clock-names = "baud", "bus";
 			dmas = <&apdma 0 &apdma 1>;
 			dma-names = "tx", "rx";
-			uart_line = <0>;
+			uart-line = <0>;
 		};
 
 		uart1: serial@11002000 {
@@ -3617,7 +3617,7 @@
 			clock-names = "baud", "bus";
 			dmas = <&apdma 2 &apdma 3>;
 			dma-names = "tx", "rx";
-			uart_line = <1>;
+			uart-line = <1>;
 		};
 
 		uart2: serial@11003000 {
@@ -3628,7 +3628,7 @@
 			clock-names = "baud", "bus";
 			dmas = <&apdma 4 &apdma 5>;
 			dma-names = "tx", "rx";
-			uart_line = <2>;
+			uart-line = <2>;
 		};
 
 		uart3: serial@11004000 {
@@ -3645,7 +3645,7 @@
 			peri-reset = <0x11036000>;
 			peri-reset-set = <0x11036004 0x80000 0x80000>;	/*reg* mask* val*/
 			peri-reset-clr = <0x11036008 0x80000 0x80000>;	/*reg* mask* val*/
-			uart_line = <3>;
+			uart-line = <3>;
 			hub-baud = <12000000>;
 		};
 
