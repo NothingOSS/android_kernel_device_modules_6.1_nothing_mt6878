@@ -39,7 +39,7 @@
 		bootargs = "console=tty0 console=ttyS0,921600n1 root=/dev/ram \
 			swiotlb=noforce \
 			earlycon=mtk8250,mmio32,0x11002000 \
-			initcall_debug=1 cma=64M \
+			initcall_debug=1 cma=64M transparent_hugepage=never \
 			firmware_class.path=/vendor/firmware";
 			kaslr-seed = <0 0>;
 	};
