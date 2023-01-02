@@ -93,3 +93,5 @@ obj-y += drivers/misc/mediatek/
 obj-y += sound/soc/codecs/
 
 obj-y += sound/soc/mediatek/
+
+obj-y += drivers/pci/controller/

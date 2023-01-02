@@ -1,0 +1,8 @@
+config MTK_FIX_SCSI_THREAD_RACING_UPDATE
+    bool "fix the uevent racing issue"
+    help
+      This is a temporary config used for mtk userdebug and eng load to fix
+      the ALPS06494900 uevent racing issue. Once the patch be merged to ACK
+      and pull to our tree, please revert this. This racing issue due to the
+      scsi device init and power on reset uevent both modify the device parent
+      kobject length.
