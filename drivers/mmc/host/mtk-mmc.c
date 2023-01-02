@@ -2163,8 +2163,10 @@ end:
 	return host->card_inserted;
 }
 
-int sdcard_hw_reset(struct mmc_host *mmc)
+//int sdcard_hw_reset(struct mmc_host *mmc)
+int sdcard_hw_reset(struct mmc_card *card)
 {
+	struct mmc_host *mmc = card->host;
 	struct msdc_host *host = mmc_priv(mmc);
 	int ret = 0;
 
@@ -2177,7 +2179,7 @@ int sdcard_hw_reset(struct mmc_host *mmc)
 		return ret;
 	}
 
-	ret = mmc_hw_reset(mmc);
+	ret = mmc_hw_reset(card);
 	if (ret) {
 		if (++host->power_cycle_cnt
 			> MSDC_MAX_POWER_CYCLE_FAIL_CONTINUOUS)
@@ -2240,7 +2242,7 @@ int sdcard_reset_tuning(struct mmc_host *mmc)
 	}
 
 	/* power cycle sdcard */
-	ret = sdcard_hw_reset(mmc);
+	ret = sdcard_hw_reset(mmc->card);
 	if (ret) {
 		ret = -1;
 		goto done;
