@@ -7245,6 +7245,7 @@
 
 	scp_dvfs {
 		compatible = "mediatek,scp_dvfs";
+		scp-dvfs-disable;
 
 		clocks = <&vlp_cksys_clk CLK_VLP_CK_SCP_SEL>,
 			<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
