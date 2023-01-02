@@ -1137,34 +1137,37 @@ static long ccu_ioctl(struct file *flip, unsigned int cmd,
 		buf = dma_buf_get(va);
 		if (IS_ERR(buf)) {
 			LOG_ERR(
-			"[CCU_IOCTL_GET_IOVA] dma_buf_get failed, ret=%d va=%d\n", buf, va);
+			"[CCU_IOCTL_GET_IOVA] dma_buf_get failed, buf=%lx va=%d\n",
+			(unsigned long)buf, va);
 			return false;
 		}
 		LOG_ERR(
-			"[CCU_IOCTL_GET_IOVA] dma_buf_get va=%x\n", buf);
+			"[CCU_IOCTL_GET_IOVA] dma_buf_get va=%lx\n",
+			(unsigned long)buf);
 		ccu_iova[iova_buf_count].dma_buf = buf;
 		ccu_iova[iova_buf_count].attach =
 			dma_buf_attach(ccu_iova[iova_buf_count].dma_buf, g_ccu_device->dev);
 		if (IS_ERR(ccu_iova[iova_buf_count].attach)) {
 			LOG_ERR(
-			"[CCU_IOCTL_GET_IOVA] dma_buf_attach failed, attach=%d va=%x\n",
-			 ccu_iova[iova_buf_count].attach, ccu_iova[iova_buf_count].dma_buf);
+			"[CCU_IOCTL_GET_IOVA] dma_buf_attach failed, attach=%lx va=%lx\n",
+			 (unsigned long)ccu_iova[iova_buf_count].attach,
+			 (unsigned long)ccu_iova[iova_buf_count].dma_buf);
 			goto err_attach;
 		}
 		LOG_ERR(
-			"[CCU_IOCTL_GET_IOVA] dma_buf_attach va=%x\n",
-			ccu_iova[iova_buf_count].attach);
+			"[CCU_IOCTL_GET_IOVA] dma_buf_attach va=%lx\n",
+			(unsigned long)ccu_iova[iova_buf_count].attach);
 		ccu_iova[iova_buf_count].sgt =
 			dma_buf_map_attachment(ccu_iova[iova_buf_count].attach, DMA_BIDIRECTIONAL);
 		if (IS_ERR(ccu_iova[iova_buf_count].sgt)) {
 			LOG_ERR(
-			"[CCU_IOCTL_GET_IOVA] dma_buf_map_attachment failed, sgt=%d va=%d\n",
-			 ccu_iova[iova_buf_count].sgt, DMA_BIDIRECTIONAL);
+			"[CCU_IOCTL_GET_IOVA] dma_buf_map_attachment failed, sgt=%lx dir=%d\n",
+			 (unsigned long)ccu_iova[iova_buf_count].sgt, DMA_BIDIRECTIONAL);
 			goto err_map;
 		}
 		LOG_ERR(
-			"[CCU_IOCTL_GET_IOVA] dma_buf_map_attachment va=%x\n",
-			ccu_iova[iova_buf_count].sgt);
+			"[CCU_IOCTL_GET_IOVA] dma_buf_map_attachment va=%lx\n",
+			(unsigned long)ccu_iova[iova_buf_count].sgt);
 
 		/* return true;*/
 
@@ -1172,7 +1175,7 @@ static long ccu_ioctl(struct file *flip, unsigned int cmd,
 		dma_addr = sg_dma_address(ccu_iova[iova_buf_count].sgt->sgl);
 		iova_buf_count++;
 		LOG_ERR(
-			"[CCU_IOCTL_GET_IOVA] sg_dma_address, ret=%ld\n", dma_addr);
+			"[CCU_IOCTL_GET_IOVA] sg_dma_address, ret=%pad\n", &dma_addr);
 
 		ret = copy_to_user((void *)arg, &dma_addr, sizeof(dma_addr_t));
 		if (ret != 0) {
