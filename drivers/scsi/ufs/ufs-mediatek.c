@@ -2405,8 +2405,10 @@ static int ufs_mtk_pre_pwr_change(struct ufs_hba *hba,
 		ufshcd_dme_set(hba, UIC_ARG_MIB(PA_TXHSADAPTTYPE),
 			PA_NO_ADAPT);
 
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 		ret = ufshcd_uic_change_pwr_mode(hba,
 			FASTAUTO_MODE << 4 | FASTAUTO_MODE);
+#endif
 
 		if (ret) {
 			dev_err(hba->dev, "%s: HSG1B FASTAUTO failed ret=%d\n",
