@@ -492,7 +492,10 @@
 			<&dispsys1_config_clk CLK_MM1_DISP_VDCM0>,
 			<&dispsys1_config_clk CLK_MM1_DISP_WDMA1>,
 			<&dispsys1_config_clk CLK_MM1_SMI_SUB_COMM0>,
-			<&dispsys1_config_clk CLK_MM1_DISP_Y2R0>;
+			<&dispsys1_config_clk CLK_MM1_DISP_Y2R0>,
+			<&dispsys1_config_clk CLK_MM1_DSI_CLK>,
+			<&dispsys1_config_clk CLK_MM1_DP_CLK>,
+			<&dispsys1_config_clk CLK_MM1_26M_CLK>;
 			power-domains = <&scpsys MT6985_POWER_DOMAIN_DIS1_SHUTDOWN>;
 	};
 
@@ -538,7 +541,10 @@
 			<&dispsys_config_clk CLK_MM_DISP_VDCM0>,
 			<&dispsys_config_clk CLK_MM_DISP_WDMA1>,
 			<&dispsys_config_clk CLK_MM_SMI_SUB_COMM0>,
-			<&dispsys_config_clk CLK_MM_DISP_Y2R0>;
+			<&dispsys_config_clk CLK_MM_DISP_Y2R0>,
+			<&dispsys_config_clk CLK_MM_DSI_CLK>,
+			<&dispsys_config_clk CLK_MM_DP_CLK>,
+			<&dispsys_config_clk CLK_MM_26M_CLK>;
 			power-domains = <&scpsys MT6985_POWER_DOMAIN_DIS0_SHUTDOWN>;
 	};
 
@@ -742,7 +748,8 @@
 			<&infracfg_ao_clk CLK_IFRAO_CLDMA_BCLK>,
 			<&infracfg_ao_clk CLK_IFRAO_FBIST2FPC>,
 			<&infracfg_ao_clk CLK_IFRAO_DPMAIF_MAIN>,
-			<&infracfg_ao_clk CLK_IFRAO_RG_MMW_DPMAIF26M_CK>;
+			<&infracfg_ao_clk CLK_IFRAO_RG_MMW_DPMAIF26M_CK>,
+			<&infracfg_ao_clk CLK_IFRAO_RG_AP_I3C>;
 	};
 
 	disable-unused-clk-vlp_cksys {
@@ -949,11 +956,6 @@
 	disable-unused-pd-pextp_phy1 {
 		compatible = "mediatek,scpsys-disable-unused";
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_PEXTP_PHY1>;
-	};
-
-	disable-unused-pd-pextp_comm {
-		compatible = "mediatek,scpsys-disable-unused";
-		power-domains = <&scpsys MT6985_POWER_DOMAIN_PEXTP_COMM>;
 	};
 
 	disable-unused-pd-audio {

@@ -105,6 +105,8 @@
 			<&infracfg_ao_clk CLK_IFRAO_FBIST2FPC>,
 			<&infracfg_ao_clk CLK_IFRAO_DPMAIF_MAIN>,
 			<&infracfg_ao_clk CLK_IFRAO_RG_MMW_DPMAIF26M_CK>,
+			<&infracfg_ao_clk CLK_IFRAO_RG_AP_I3C>,
+			<&apmixedsys_clk CLK_APMIXED_MAINPLL2>,
 			<&apmixedsys_clk CLK_APMIXED_UNIVPLL2>,
 			<&apmixedsys_clk CLK_APMIXED_MMPLL2>,
 			<&apmixedsys_clk CLK_APMIXED_UNIVPLL>,
@@ -515,6 +517,9 @@
 			<&dispsys_config_clk CLK_MM_DISP_WDMA1>,
 			<&dispsys_config_clk CLK_MM_SMI_SUB_COMM0>,
 			<&dispsys_config_clk CLK_MM_DISP_Y2R0>,
+			<&dispsys_config_clk CLK_MM_DSI_CLK>,
+			<&dispsys_config_clk CLK_MM_DP_CLK>,
+			<&dispsys_config_clk CLK_MM_26M_CLK>,
 			<&dispsys1_config_clk CLK_MM1_CONFIG>,
 			<&dispsys1_config_clk CLK_MM1_DISP_MUTEX0>,
 			<&dispsys1_config_clk CLK_MM1_DISP_AAL0>,
@@ -555,6 +560,9 @@
 			<&dispsys1_config_clk CLK_MM1_DISP_WDMA1>,
 			<&dispsys1_config_clk CLK_MM1_SMI_SUB_COMM0>,
 			<&dispsys1_config_clk CLK_MM1_DISP_Y2R0>,
+			<&dispsys1_config_clk CLK_MM1_DSI_CLK>,
+			<&dispsys1_config_clk CLK_MM1_DP_CLK>,
+			<&dispsys1_config_clk CLK_MM1_26M_CLK>,
 			<&ovlsys_config_clk CLK_OVL_CONFIG>,
 			<&ovlsys_config_clk CLK_OVL_DISP_FAKE_ENG0>,
 			<&ovlsys_config_clk CLK_OVL_DISP_FAKE_ENG1>,
@@ -738,11 +746,6 @@
 	bring-up-pd-pextp_phy1 {
 		compatible = "mediatek,scpsys-bring-up";
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_PEXTP_PHY1>;
-	};
-
-	bring-up-pd-pextp_comm {
-		compatible = "mediatek,scpsys-bring-up";
-		power-domains = <&scpsys MT6985_POWER_DOMAIN_PEXTP_COMM>;
 	};
 
 	bring-up-pd-audio {
