@@ -339,7 +339,7 @@ int ged_dmabuf_set_name(int32_t share_fd, char *name)
 
 	int ret = 0;
 
-	ret = mtk_dma_buf_set_name(dmabuf, name);
+	//ret = mtk_dma_buf_set_name(dmabuf, name);
 
 	dma_buf_put(dmabuf);
 

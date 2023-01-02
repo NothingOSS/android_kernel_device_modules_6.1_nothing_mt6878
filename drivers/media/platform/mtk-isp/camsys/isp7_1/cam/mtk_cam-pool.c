@@ -56,8 +56,8 @@ int mtk_cam_working_buf_pool_init(struct mtk_cam_ctx *ctx)
 	/* close fd in userspace driver */
 	dmabuf_fd = mtk_ccd_get_buffer_fd(ccd, mem_priv);
 	dbuf = mtk_ccd_get_buffer_dmabuf(ccd, mem_priv);
-	if (dbuf)
-		mtk_dma_buf_set_name(dbuf, "CAM_MEM_CQ_ID");
+	//if (dbuf)
+	//	mtk_dma_buf_set_name(dbuf, "CAM_MEM_CQ_ID");
 	ctx->buf_pool.working_buf_va = smem.va;
 	ctx->buf_pool.working_buf_iova = smem.iova;
 	ctx->buf_pool.working_buf_fd = dmabuf_fd;
@@ -73,8 +73,8 @@ int mtk_cam_working_buf_pool_init(struct mtk_cam_ctx *ctx)
 	/* close fd in userspace driver */
 	dmabuf_fd = mtk_ccd_get_buffer_fd(ccd, mem_priv);
 	dbuf = mtk_ccd_get_buffer_dmabuf(ccd, mem_priv);
-	if (dbuf)
-		mtk_dma_buf_set_name(dbuf, "CAM_MEM_MSG_ID");
+	//if (dbuf)
+	//	mtk_dma_buf_set_name(dbuf, "CAM_MEM_MSG_ID");
 	ctx->buf_pool.msg_buf_va = smem.va;
 	ctx->buf_pool.msg_buf_fd = dmabuf_fd;
 
@@ -221,8 +221,8 @@ int mtk_cam_img_working_buf_pool_init(struct mtk_cam_ctx *ctx, int buf_num,
 	}
 
 	dbuf = mtk_ccd_get_buffer_dmabuf(ccd, mem_priv);
-	if (dbuf)
-		mtk_dma_buf_set_name(dbuf, "CAM_MEM_IMG_ID");
+	//if (dbuf)
+	//	mtk_dma_buf_set_name(dbuf, "CAM_MEM_IMG_ID");
 	ctx->img_buf_pool.working_img_buf_va = smem.va;
 	ctx->img_buf_pool.working_img_buf_iova = smem.iova;
 

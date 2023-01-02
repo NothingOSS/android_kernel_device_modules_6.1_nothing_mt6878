@@ -870,7 +870,7 @@ int aov_core_init(struct mtk_aov *aov_dev)
 		return -ENOMEM;
 	}
 
-	mtk_dma_buf_set_name(core_info->dma_buf, "AOV Event");
+	//mtk_dma_buf_set_name(core_info->dma_buf, "AOV Event");
 
 	ret = dma_buf_vmap(core_info->dma_buf, &(core_info->dma_map));
 	if (ret) {

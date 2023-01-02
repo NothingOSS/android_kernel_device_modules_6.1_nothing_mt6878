@@ -1193,7 +1193,7 @@ struct dma_buf *aie_imem_sec_alloc(struct mtk_aie_dev *fd, u32 size, bool IsSecu
 		dma_heap_put(dma_heap);
 		return NULL;
 	}
-	mtk_dma_buf_set_name(my_dma_buf, BUFTAG);
+	//mtk_dma_buf_set_name(my_dma_buf, BUFTAG);
 	return my_dma_buf;
 }
 

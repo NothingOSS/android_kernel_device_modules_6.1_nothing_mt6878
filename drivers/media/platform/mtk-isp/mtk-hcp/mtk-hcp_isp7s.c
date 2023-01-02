@@ -520,7 +520,7 @@ int isp7s_allocate_working_buffer(struct mtk_hcp *hcp_dev, unsigned int mode)
 					PTR_ERR(mblock[id].d_buf));
 					return -1;
 				}
-				mtk_dma_buf_set_name(mblock[id].d_buf, mblock[id].name);
+				//mtk_dma_buf_set_name(mblock[id].d_buf, mblock[id].name);
 				mblock[id].attach =
 					dma_buf_attach(mblock[id].d_buf, hcp_dev->dev);
 				attach = mblock[id].attach;
@@ -581,7 +581,7 @@ int isp7s_allocate_working_buffer(struct mtk_hcp *hcp_dev, unsigned int mode)
 					PTR_ERR(mblock[id].d_buf));
 					return -1;
 				}
-				mtk_dma_buf_set_name(mblock[id].d_buf, mblock[id].name);
+				//mtk_dma_buf_set_name(mblock[id].d_buf, mblock[id].name);
 				mblock[id].attach = dma_buf_attach(
 				mblock[id].d_buf, hcp_dev->dev);
 				attach = mblock[id].attach;

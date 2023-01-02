@@ -1310,7 +1310,7 @@ static int _alloc_pool(const char *name,
 	if (!dbuf)
 		return -1;
 
-	mtk_dma_buf_set_name(dbuf, name);
+	//mtk_dma_buf_set_name(dbuf, name);
 
 	ret = mtk_cam_device_buf_init(buf, dbuf, dev, total_size)
 		|| mtk_cam_device_buf_vmap(buf);
