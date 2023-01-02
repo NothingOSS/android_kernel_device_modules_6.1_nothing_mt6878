@@ -552,14 +552,12 @@ void dcm_pcie0_ao_bcrm_pextp_bus_dcm(int on)
 			(0x1 << 2) | \
 			(0x1 << 5) | \
 			(0x1f << 14))
-#define VLP_AO_BCRM_VLP_BUS_DCM_REG0_ON ((0x0 << 1) | \
+#define VLP_AO_BCRM_VLP_BUS_DCM_REG0_ON ((0x1 << 1) | \
 			(0x1 << 2) | \
 			(0x1 << 5) | \
 			(0x0 << 14))
 #define VLP_AO_BCRM_VLP_BUS_DCM_REG0_OFF ((0x1 << 1) | \
-			(0x1 << 2) | \
-			(0x1 << 5) | \
-			(0x0 << 14))
+			(0x1 << 2))
 
 bool dcm_vlp_ao_bcrm_vlp_bus_dcm_is_on(void)
 {
