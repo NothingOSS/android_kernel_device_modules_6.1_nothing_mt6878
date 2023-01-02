@@ -900,7 +900,7 @@ static int mmdvfs_vcp_init_thread(void *data)
 		writel_relaxed(MAX_OPP, MEM_VOTE_OPP_USR(i));
 
 	mmdvfs_init_done = true;
-	MMDVFS_DBG("iova:%pa pa:%pa va:%lx init_done:%d",
+	MMDVFS_DBG("iova:%pa pa:%pa va:%#lx init_done:%d",
 		&mmdvfs_memory_iova, &mmdvfs_memory_pa, (unsigned long)mmdvfs_memory_va, mmdvfs_init_done);
 
 	vcp_ready_notifier.notifier_call = mmdvfs_vcp_notifier_callback;
