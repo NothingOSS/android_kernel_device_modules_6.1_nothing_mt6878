@@ -27,12 +27,7 @@
 #define NCX_LIMIT_OPP_REG       SPARE_DBG_REG18
 #define DEV_OPP_SYNC_REG        SPARE_DBG_REG12
 #define HW_RES_SYNC_REG         SPARE_DBG_REG13
-#define PLAT_CFG_SYNC_REG	SPARE_DBG_REG14
 #define DRV_CFG_SYNC_REG	SPARE_DBG_REG15
-
-#define PWR_FLOW_SYNC_REG	SPARE_DBG_REG16
-
-#define PWR_DBG_REG		SPARE_DBG_REG17
 
 enum {
 	APUPWR_DBG_DEV_CTL = 0,
@@ -116,7 +111,6 @@ ssize_t mt6985_apu_top_dbg_write(
 
 int mt6985_init_remote_data_sync(void __iomem *reg_base);
 int mt6985_drv_cfg_remote_sync(struct aputop_func_param *aputop);
-int mt6985_chip_data_remote_sync(struct plat_cfg_data *plat_cfg);
 int mt6985_apu_top_rpmsg_cb(int cmd, void *data, int len, void *priv, u32 src);
 
 #endif

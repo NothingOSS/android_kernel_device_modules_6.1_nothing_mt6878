@@ -464,20 +464,6 @@ int mt6985_drv_cfg_remote_sync(struct aputop_func_param *aputop)
 	return 0;
 }
 
-int mt6985_chip_data_remote_sync(struct plat_cfg_data *plat_cfg)
-{
-	uint32_t reg_data = 0x0;
-
-	reg_data = (plat_cfg->aging_flag & 0xf)
-		| ((plat_cfg->hw_id & 0xf) << 4)
-		| ((plat_cfg->vsram_vb_en & 0xff) << 8);
-
-	pr_info("%s 0x%08x\n", __func__, reg_data);
-	apu_writel(reg_data, spare_reg_base + PLAT_CFG_SYNC_REG);
-
-	return 0;
-}
-
 int mt6985_init_remote_data_sync(void __iomem *reg_base)
 {
 	int i;
@@ -498,7 +484,6 @@ int mt6985_init_remote_data_sync(void __iomem *reg_base)
 	}
 
 	apu_writel(0x0, spare_reg_base + DRV_CFG_SYNC_REG);
-	apu_writel(0x0, spare_reg_base + PLAT_CFG_SYNC_REG);
 
 	return 0;
 }

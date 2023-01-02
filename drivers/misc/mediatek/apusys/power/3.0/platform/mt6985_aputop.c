@@ -267,18 +267,6 @@ static void aputop_dump_pll_data(void)
 	}
 }
 
-static void aputop_check_pwr_data(void)
-{
-	uint32_t magicNum = 0x11223344;
-	uint32_t clearNum = 0x55667788;
-	uint32_t regValue = 0x0;
-
-	apu_writel(magicNum, apupw.regs[apu_md32_mbox] + PWR_DBG_REG);
-	regValue = apu_readl(apupw.regs[apu_md32_mbox] + PWR_DBG_REG);
-	pr_info("%s mbox_dbg_reg readback = 0x%08x\n", __func__, regValue);
-	apu_writel(clearNum, apupw.regs[apu_md32_mbox] + PWR_DBG_REG);
-}
-
 static int __apu_wake_rpc_rcx(struct device *dev)
 {
 	int ret = 0, val = 0;
@@ -345,7 +333,6 @@ static int mt6985_apu_top_on(struct device *dev)
 		aputop_dump_rpc_data();
 		aputop_dump_pcu_data(dev);
 		aputop_dump_pll_data();
-		aputop_check_pwr_data();
 		if (ret == -EIO)
 			apupw_aee_warn("APUSYS_POWER",
 					"APUSYS_POWER_RPC_CFG_ERR");
@@ -392,7 +379,6 @@ static int mt6985_apu_top_off(struct device *dev)
 		aputop_dump_rpc_data();
 		aputop_dump_pcu_data(dev);
 		aputop_dump_pll_data();
-		aputop_check_pwr_data();
 		apupw_aee_warn("APUSYS_POWER", "APUSYS_POWER_SLEEP_TIMEOUT");
 		return -1;
 	}
@@ -404,31 +390,6 @@ static int mt6985_apu_top_off(struct device *dev)
 	return 0;
 }
 
-
-
-static int init_plat_chip_data(struct platform_device *pdev)
-{
-	struct plat_cfg_data plat_cfg;
-	uint32_t aging_attr = 0x0;
-	uint32_t vsram_vb_attr = 0x0;
-
-	memset(&plat_cfg, 0, sizeof(plat_cfg));
-
-	of_property_read_u32(pdev->dev.of_node, "aging_load", &aging_attr);
-	of_property_read_u32(pdev->dev.of_node, "vsram_vb_en", &vsram_vb_attr);
-
-	plat_cfg.aging_flag = (aging_attr & 0xf);
-	plat_cfg.hw_id = 0x0;
-	plat_cfg.vsram_vb_en = (vsram_vb_attr & 0xf);
-
-	pr_info("%s 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x\n", __func__,
-		aging_attr, plat_cfg.aging_flag,
-		vsram_vb_attr, plat_cfg.vsram_vb_en,
-		plat_cfg.hw_id);
-
-	return mt6985_chip_data_remote_sync(&plat_cfg);
-}
-
 static int mt6985_apu_top_pb(struct platform_device *pdev)
 {
 
@@ -438,7 +399,6 @@ static int mt6985_apu_top_pb(struct platform_device *pdev)
 	if (apupw.env < MP)
 		ret = mt6985_all_on(pdev, &apupw);
 	mt6985_init_remote_data_sync(apupw.regs[apu_md32_mbox]);
-	init_plat_chip_data(pdev);
 	return ret;
 }
 
