@@ -400,7 +400,7 @@ int conn_state_event_handler(struct notifier_block *this,
 			return 0;
 		}
 
-		pr_info("[%s] ========= event =[%d] [%x][%llu]",
+		pr_info("[%s] ========= event =[%lu] [%x][%llu]",
 					__func__, event, info->chip_info, info->emi_phy_addr);
 
 		g_core_ctx.chip_info = info->chip_info;
@@ -408,8 +408,8 @@ int conn_state_event_handler(struct notifier_block *this,
 
 		ret = connsys_scp_platform_data_init(info->chip_info, info->emi_phy_addr);
 		/* check if platform support */
-		pr_info("[%s] chip_info=[%x] addr[%x] ret=[%d]", __func__,
-							info->chip_info, info->emi_phy_addr, ret);
+		pr_info("[%s] chip_info=[%x] addr[%pa] ret=[%d]", __func__,
+							info->chip_info, &info->emi_phy_addr, ret);
 
 		if (ret) {
 			pr_info("[%s] conap not support", __func__);
@@ -425,7 +425,7 @@ int conn_state_event_handler(struct notifier_block *this,
 		return 0;
 	}
 
-	pr_info("[%s] event=[%u] +++ ", __func__, event);
+	pr_info("[%s] event=[%lu] +++ ", __func__, event);
 	if (event == conn_wifi_on) {
 		state.drv_type = CONN_DRV_WIFI;
 		state.drv_en = 1;
