@@ -1341,3 +1341,6 @@ module_exit(mtk_dvfsrc_exit);
 
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("MTK DVFSRC driver");
+MODULE_SOFTDEP("post: mtk-dvfsrc-regulator");
+MODULE_SOFTDEP("post: mtk-dvfsrc-devfreq");
+MODULE_SOFTDEP("post: mtk-emi");
