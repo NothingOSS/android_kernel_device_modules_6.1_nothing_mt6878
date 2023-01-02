@@ -8525,15 +8525,15 @@
 			l2-hash-values = <0xb 0xe 0x0>;
 			physical-memory-group-manager = <&mgm>;
 			interrupts =
-				<GIC_SPI 584 IRQ_TYPE_LEVEL_HIGH 0>,
-				<GIC_SPI 585 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 586 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 585 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 584 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 587 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 588 IRQ_TYPE_LEVEL_HIGH 0>;
 			interrupt-names =
-				"GPU",
-				"MMU",
 				"JOB",
+				"MMU",
+				"GPU",
 				"EVENT",
 				"PWR";
 			system-coherency = <0>;
