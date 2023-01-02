@@ -20,6 +20,7 @@
 #include <linux/reboot.h>
 #include <linux/rtc.h>
 #include <linux/sched/clock.h>
+#include <linux/sched/debug.h>
 #include <linux/sched/signal.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h> /* for SMC ID table */
 #include <linux/spinlock.h>
