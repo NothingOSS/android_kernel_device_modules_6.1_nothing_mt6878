@@ -6514,18 +6514,30 @@
 		};
 
 		mmc1: mmc@11240000 {
-			compatible = "mediatek,common-mmc-v2";
+			compatible = "mediatek,mt6985-mmc";
 			reg = <0 0x11240000 0 0x1000>,
 			      <0 0x11e00000 0 0x1000>;
 			interrupts = <GIC_SPI 166 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&topckgen_clk CLK_TOP_MSDC30_1_SEL>,
+				 <&topckgen_clk CLK_TOP_MSDC_MACRO_SEL>,
+				 <&pericfg_ao_clk CLK_PERAO_MSDC1_F>,
+				 <&pericfg_ao_clk CLK_PERAO_MSDC1_H>,
+				 <&pericfg_ao_clk CLK_PERAO_MSDC1>;
+			clock-names = "source", "macro", "ahb_cg", "axi_cg", "source_cg";
 			status = "disabled";
 		};
 
 		mmc2: mmc@11242000 {
-			compatible = "mediatek,common-mmc-v2";
+			compatible = "mediatek,mt6985-mmc";
 			reg = <0 0x11242000 0 0x1000>,
 			      <0 0x11b60000 0 0x1000>;
 			interrupts = <GIC_SPI 167 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&topckgen_clk CLK_TOP_MSDC30_2_SEL>,
+				 <&topckgen_clk CLK_TOP_MSDC_MACRO_SEL>,
+				 <&pericfg_ao_clk CLK_PERAO_MSDC2_F>,
+				 <&pericfg_ao_clk CLK_PERAO_MSDC2_H>,
+				 <&pericfg_ao_clk CLK_PERAO_MSDC2>;
+			clock-names = "source", "macro", "ahb_cg", "axi_cg", "source_cg";
 			status = "disabled";
 		};
 
