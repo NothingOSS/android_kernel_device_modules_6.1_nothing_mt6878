@@ -1429,6 +1429,8 @@ ssize_t mt63xx_pctrl_show_one_pin(struct mtk_pinctrl *hw,
 	 * Normally, we shall check >= hw->soc->npins.
 	 * However, when pin number starting index is 1, instead of 0,
 	 *  we shall check > hw->soc->npins.
+         * To unify checking rule, hw->soc->npins is added by 1 in probe
+         *  function when starting index is 1.
 	 */
 	if (gpio >= hw->soc->npins)
 		return -EINVAL;
@@ -1450,11 +1452,11 @@ ssize_t mt63xx_pctrl_show_one_pin(struct mtk_pinctrl *hw,
 	if (mt63xx_hw_get_value(hw, gpio, PINCTRL_PIN_REG_DI, &val) >= 0)
 		len += snprintf(buf + len, bufLen - len, "%1d", val);
 	else
-		len += snprintf(buf + len, bufLen - len, "XX");
+		len += snprintf(buf + len, bufLen - len, "X");
 	if (mt63xx_hw_get_value(hw, gpio, PINCTRL_PIN_REG_DRV, &val) >= 0)
 		len += snprintf(buf + len, bufLen - len, "%02d", val);
 	else
-		len += snprintf(buf + len, bufLen - len, "X");
+		len += snprintf(buf + len, bufLen - len, "XX");
 	if (mt63xx_hw_get_value(hw, gpio, PINCTRL_PIN_REG_SMT, &val) >= 0)
 		len += snprintf(buf + len, bufLen - len, "%1d", val);
 	else
@@ -1464,6 +1466,10 @@ ssize_t mt63xx_pctrl_show_one_pin(struct mtk_pinctrl *hw,
 	else
 		len += snprintf(buf + len, bufLen - len, "X");
 	if (mt63xx_hw_get_value(hw, gpio, PINCTRL_PIN_REG_PULLSEL, &val) >= 0)
+		len += snprintf(buf + len, bufLen - len, "%1d", val);
+	else
+		len += snprintf(buf + len, bufLen - len, "X");
+	if (mt63xx_hw_get_value(hw, gpio, PINCTRL_PIN_REG_SR, &val) >= 0)
 		len += snprintf(buf + len, bufLen - len, "%1d", val);
 	else
 		len += snprintf(buf + len, bufLen - len, "X");
