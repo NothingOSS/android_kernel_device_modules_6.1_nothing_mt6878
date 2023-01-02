@@ -377,15 +377,17 @@ int vcu_dec_ipi_handler(void *data, unsigned int len, void *priv)
 		case VCU_IPIMSG_DEC_SLICE_DONE_ISR: {
 			struct vdec_fb *pfb = (struct vdec_fb *)(uintptr_t)msg->payload;
 			struct dma_buf *dbuf = pfb->fb_base[0].dmabuf;
-			struct dma_fence *fence = dma_resv_get_excl_unlocked(dbuf->resv);
+			struct dma_fence *fence;
+			struct dma_resv_iter cursor;
 
-			if (fence) {
+			dma_resv_iter_begin(&cursor, dbuf->resv, false);
+			dma_resv_for_each_fence_unlocked(&cursor, fence) {
 				mtk_vcodec_fence_signal(fence, pfb->slice_done_count);
 				pfb->slice_done_count++;
 				mtk_vcodec_debug(vcu, "slice done count %d\n",
 					pfb->slice_done_count);
-				dma_fence_put(fence);
 			}
+			dma_resv_iter_end(&cursor);
 			break;
 		}
 		default:
