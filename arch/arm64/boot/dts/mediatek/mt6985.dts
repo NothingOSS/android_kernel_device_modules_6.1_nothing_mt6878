@@ -7914,7 +7914,7 @@
 		};
 	};
 };
-
+#include "mediatek/bat_setting/mt6985_battery_prop.dtsi"
 #include "mediatek/mt6985-clkitg.dtsi"
 #include "mediatek/mt6985-disable-unused.dtsi"
 #include "mediatek/trusty.dtsi"
