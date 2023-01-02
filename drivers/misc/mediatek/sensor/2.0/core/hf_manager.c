@@ -1574,7 +1574,7 @@ static int hf_manager_proc_show(struct seq_file *m, void *v)
 
 static int hf_manager_proc_open(struct inode *inode, struct file *filp)
 {
-	return single_open(filp, hf_manager_proc_show, PDE_DATA(inode));
+	return single_open(filp, hf_manager_proc_show, pde_data(inode));
 }
 
 static const struct proc_ops hf_manager_proc_fops = {

@@ -224,7 +224,7 @@ static int xhci_mtk_testmode_show(struct seq_file *s, void *unused)
 
 static int xhci_mtk_testmode_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, xhci_mtk_testmode_show, PDE_DATA(inode));
+	return single_open(file, xhci_mtk_testmode_show, pde_data(inode));
 }
 
 static ssize_t xhci_mtk_testmode_write(struct file *file,  const char __user *ubuf,

@@ -418,7 +418,7 @@ static int proc_sib_show(struct seq_file *s, void *unused)
 
 static int proc_sib_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, proc_sib_show, PDE_DATA(inode));
+	return single_open(file, proc_sib_show, pde_data(inode));
 }
 
 static const struct  proc_ops proc_sib_fops = {
@@ -481,7 +481,7 @@ static int proc_loopback_test_show(struct seq_file *s, void *unused)
 
 static int proc_loopback_test_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, proc_loopback_test_show, PDE_DATA(inode));
+	return single_open(file, proc_loopback_test_show, pde_data(inode));
 }
 
 static const struct  proc_ops proc_loopback_test_fops = {
@@ -509,7 +509,7 @@ static int proc_jtag_show(struct seq_file *s, void *unused)
 
 static int proc_tx_jtag_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, proc_jtag_show, PDE_DATA(inode));
+	return single_open(file, proc_jtag_show, pde_data(inode));
 }
 
 static const struct proc_ops proc_jtag_fops = {
@@ -543,7 +543,7 @@ static int proc_tx_lctxcm1_show(struct seq_file *s, void *unused)
 
 static int proc_tx_lctxcm1_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, proc_tx_lctxcm1_show, PDE_DATA(inode));
+	return single_open(file, proc_tx_lctxcm1_show, pde_data(inode));
 }
 
 static ssize_t proc_tx_lctxcm1_write(struct file *file,
@@ -606,7 +606,7 @@ static int proc_tx_lctxc0_show(struct seq_file *s, void *unused)
 
 static int proc_tx_lctxc0_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, proc_tx_lctxc0_show, PDE_DATA(inode));
+	return single_open(file, proc_tx_lctxc0_show, pde_data(inode));
 }
 
 static ssize_t proc_tx_lctxc0_write(struct file *file,
@@ -668,7 +668,7 @@ static int proc_tx_lctxcp1_show(struct seq_file *s, void *unused)
 
 static int proc_tx_lctxcp1_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, proc_tx_lctxcp1_show, PDE_DATA(inode));
+	return single_open(file, proc_tx_lctxcp1_show, pde_data(inode));
 }
 
 static ssize_t proc_tx_lctxcp1_write(struct file *file,
@@ -819,7 +819,7 @@ static int proc_term_sel_show(struct seq_file *s, void *unused)
 
 static int proc_term_sel_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, proc_term_sel_show, PDE_DATA(inode));
+	return single_open(file, proc_term_sel_show, pde_data(inode));
 }
 
 static ssize_t proc_term_sel_write(struct file *file,
@@ -873,7 +873,7 @@ static int proc_vrt_sel_show(struct seq_file *s, void *unused)
 
 static int proc_vrt_sel_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, proc_vrt_sel_show, PDE_DATA(inode));
+	return single_open(file, proc_vrt_sel_show, pde_data(inode));
 }
 
 static ssize_t proc_vrt_sel_write(struct file *file,
@@ -927,7 +927,7 @@ static int proc_phy_rev6_show(struct seq_file *s, void *unused)
 
 static int proc_phy_rev6_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, proc_phy_rev6_show, PDE_DATA(inode));
+	return single_open(file, proc_phy_rev6_show, pde_data(inode));
 }
 
 static ssize_t proc_phy_rev6_write(struct file *file,
@@ -981,7 +981,7 @@ static int proc_discth_show(struct seq_file *s, void *unused)
 
 static int proc_discth_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, proc_discth_show, PDE_DATA(inode));
+	return single_open(file, proc_discth_show, pde_data(inode));
 }
 
 static ssize_t proc_discth_write(struct file *file,
@@ -1035,7 +1035,7 @@ static int proc_rx_sqth_show(struct seq_file *s, void *unused)
 
 static int proc_rx_sqth_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, proc_rx_sqth_show, PDE_DATA(inode));
+	return single_open(file, proc_rx_sqth_show, pde_data(inode));
 }
 
 static ssize_t proc_rx_sqth_write(struct file *file,

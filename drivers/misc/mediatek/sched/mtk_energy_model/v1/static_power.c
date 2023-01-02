@@ -85,7 +85,7 @@ EXPORT_SYMBOL_GPL(mtk_get_leakage);
 #define PROC_FOPS_RW(name)                                              \
 	static int name ## _proc_open(struct inode *inode, struct file *file)\
 	{                                                                       \
-		return single_open(file, name ## _proc_show, PDE_DATA(inode));  \
+		return single_open(file, name ## _proc_show, pde_data(inode));  \
 	}                                                                       \
 static const struct proc_ops name ## _proc_fops = {             \
 		.proc_open           = name ## _proc_open,                              \
@@ -98,7 +98,7 @@ static const struct proc_ops name ## _proc_fops = {             \
 #define PROC_FOPS_RO(name)                                                     \
 	static int name##_proc_open(struct inode *inode, struct file *file)    \
 	{                                                                      \
-		return single_open(file, name##_proc_show, PDE_DATA(inode));   \
+		return single_open(file, name##_proc_show, pde_data(inode));   \
 	}                                                                      \
 	static const struct proc_ops name##_proc_fops = {               \
 		.proc_open = name##_proc_open,                                      \

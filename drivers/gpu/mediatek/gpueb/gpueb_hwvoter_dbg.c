@@ -97,7 +97,7 @@ static int gpueb_ ## name ## _proc_open(\
 { \
 	return single_open(file, \
 					gpueb_ ## name ## _proc_show, \
-					PDE_DATA(inode)); \
+					pde_data(inode)); \
 } \
 static const struct proc_ops \
 	gpueb_ ## name ## _proc_fops = {\
@@ -115,7 +115,7 @@ static int gpueb_ ## name ## _proc_open(\
 {\
 	return single_open(file, \
 					gpueb_ ## name ## _proc_show, \
-					PDE_DATA(inode)); \
+					pde_data(inode)); \
 } \
 static const struct proc_ops \
 	gpueb_ ## name ## _proc_fops = {\
@@ -132,7 +132,7 @@ static int gpueb_ ## name ## _proc_open(\
 { \
 	return single_open(file, \
 					gpueb_ ## name ## _proc_show, \
-					PDE_DATA(inode)); \
+					pde_data(inode)); \
 } \
 static const struct proc_ops \
 	gpueb_ ## name ## _proc_fops = {\

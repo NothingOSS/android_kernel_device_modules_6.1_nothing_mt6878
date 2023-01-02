@@ -431,7 +431,7 @@ static const struct file_operations static_power_precise_operations = {
 		struct file *file)				\
 	{							\
 		return single_open(file, name ## _proc_show,	\
-			PDE_DATA(inode));			\
+			pde_data(inode));			\
 	}							\
 	static const struct proc_ops name ## _proc_fops = {	\
 		.proc_open		   = name ## _proc_open,		\

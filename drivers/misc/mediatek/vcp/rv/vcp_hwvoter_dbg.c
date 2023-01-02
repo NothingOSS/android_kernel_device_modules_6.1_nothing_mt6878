@@ -93,7 +93,7 @@ static int vcp_ ## name ## _proc_open(\
 { \
 	return single_open(file, \
 					vcp_ ## name ## _proc_show, \
-					PDE_DATA(inode)); \
+					pde_data(inode)); \
 } \
 static const struct proc_ops \
 	vcp_ ## name ## _proc_fops = {\
@@ -111,7 +111,7 @@ static int vcp_ ## name ## _proc_open(\
 {\
 	return single_open(file, \
 					vcp_ ## name ## _proc_show, \
-					PDE_DATA(inode)); \
+					pde_data(inode)); \
 } \
 static const struct proc_ops \
 	vcp_ ## name ## _proc_fops = {\
@@ -128,7 +128,7 @@ static int scp_ ## name ## _proc_open(\
 { \
 	return single_open(file, \
 					vcp_ ## name ## _proc_show, \
-					PDE_DATA(inode)); \
+					pde_data(inode)); \
 } \
 static const struct proc_ops \
 	vcp_ ## name ## _proc_fops = {\

@@ -273,7 +273,7 @@ static ssize_t apu_tags_proc_write(struct file *file, const char *buf,
 	char b[APU_TAG_CMD_SZ];
 	char *cmd, *cur;
 
-	at = PDE_DATA(file->f_inode);
+	at = pde_data(file->f_inode);
 	if (!at)
 		return -EINVAL;
 
@@ -302,7 +302,7 @@ static int apu_tags_proc_show(struct seq_file *s, void *v)
 
 static int apu_tags_proc_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, apu_tags_proc_show, PDE_DATA(inode));
+	return single_open(file, apu_tags_proc_show, pde_data(inode));
 }
 
 static const struct proc_ops apu_tags_proc_fops = {

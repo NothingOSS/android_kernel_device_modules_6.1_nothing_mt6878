@@ -176,7 +176,7 @@ static int mt_mdpm_power_proc_show(struct seq_file *m, void *v)
 #define PROC_FOPS_RW(name)						\
 static int mt_ ## name ## _proc_open(struct inode *inode, struct file *file)\
 {									\
-	return single_open(file, mt_ ## name ## _proc_show, PDE_DATA(inode));\
+	return single_open(file, mt_ ## name ## _proc_show, pde_data(inode));\
 }									\
 static const struct proc_ops mt_ ## name ## _proc_fops = {	\
 	.proc_open		= mt_ ## name ## _proc_open,			\
@@ -189,7 +189,7 @@ static const struct proc_ops mt_ ## name ## _proc_fops = {	\
 #define PROC_FOPS_RO(name)						\
 static int mt_ ## name ## _proc_open(struct inode *inode, struct file *file)\
 {									\
-	return single_open(file, mt_ ## name ## _proc_show, PDE_DATA(inode));\
+	return single_open(file, mt_ ## name ## _proc_show, pde_data(inode));\
 }									\
 static const struct proc_ops mt_ ## name ## _proc_fops = {	\
 	.proc_open		= mt_ ## name ## _proc_open,		\

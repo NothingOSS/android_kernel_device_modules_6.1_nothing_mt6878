@@ -4983,7 +4983,7 @@ DEFINE_PROC_ATTRIBUTE(m4u_debug_fops, m4u_debug_get, m4u_debug_set, "%llu\n");
 		struct file *file)				\
 	{							\
 		return single_open(file, name ## _proc_show,	\
-			PDE_DATA(inode));			\
+			pde_data(inode));			\
 	}							\
 	static const struct proc_ops name = {			\
 		.proc_open		= name ## _proc_open,	\

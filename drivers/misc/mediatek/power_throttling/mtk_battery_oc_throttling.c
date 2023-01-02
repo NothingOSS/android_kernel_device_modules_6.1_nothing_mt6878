@@ -160,7 +160,7 @@ void exec_battery_oc_callback(enum BATTERY_OC_LEVEL_TAG battery_oc_level)
 
 static int battery_oc_throttling_open(struct inode *inode, struct file *fp)
 {
-	fp->private_data = PDE_DATA(inode);
+	fp->private_data = pde_data(inode);
 	return 0;
 }
 

@@ -405,7 +405,7 @@ static int do_gz_log_read(struct gz_log_state *gls,
 static ssize_t gz_log_read(struct file *file, char __user *buf, size_t size,
 			   loff_t *ppos)
 {
-	struct gz_log_state *gls = PDE_DATA(file_inode(file));
+	struct gz_log_state *gls = pde_data(file_inode(file));
 	int ret = 0;
 
 	/* sanity check */
@@ -422,7 +422,7 @@ static ssize_t gz_log_read(struct file *file, char __user *buf, size_t size,
 
 static int gz_log_open(struct inode *inode, struct file *file)
 {
-	struct gz_log_state *gls = PDE_DATA(inode);
+	struct gz_log_state *gls = pde_data(inode);
 	int ret;
 
 	ret = nonseekable_open(inode, file);
@@ -439,7 +439,7 @@ static int gz_log_release(struct inode *inode, struct file *file)
 
 static unsigned int gz_log_poll(struct file *file, poll_table *wait)
 {
-	struct gz_log_state *gls = PDE_DATA(file_inode(file));
+	struct gz_log_state *gls = pde_data(file_inode(file));
 	int mask = 0;
 
 	if (!is_buf_empty(gls))

@@ -1508,7 +1508,7 @@ static ssize_t dma_heap_all_proc_write(struct file *file, const char *buf,
 static ssize_t dma_heap_proc_write(struct file *file, const char *buf,
 				   size_t count, loff_t *data)
 {
-	struct dma_heap *heap = PDE_DATA(file->f_inode);
+	struct dma_heap *heap = pde_data(file->f_inode);
 	char cmdline[DMA_HEAP_CMDLINE_LEN];
 	enum DMA_HEAP_T_CMD cmd = DMABUF_T_END;
 	int ret = 0;
@@ -1618,17 +1618,17 @@ static int heap_stats_proc_show(struct seq_file *s, void *v)
 
 static int dma_heap_proc_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, dma_heap_proc_show, PDE_DATA(inode));
+	return single_open(file, dma_heap_proc_show, pde_data(inode));
 }
 
 static int all_heaps_dump_proc_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, all_heaps_proc_show, PDE_DATA(inode));
+	return single_open(file, all_heaps_proc_show, pde_data(inode));
 }
 
 static int heap_stats_proc_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, heap_stats_proc_show, PDE_DATA(inode));
+	return single_open(file, heap_stats_proc_show, pde_data(inode));
 }
 
 static ssize_t heap_stats_proc_write(struct file *file, const char *buf,
@@ -1656,7 +1656,7 @@ static int heap_stat_pid_proc_show(struct seq_file *s, void *v)
 
 static int heap_stat_pid_proc_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, heap_stat_pid_proc_show, PDE_DATA(inode));
+	return single_open(file, heap_stat_pid_proc_show, pde_data(inode));
 }
 
 static ssize_t heap_stat_pid_proc_write(struct file *file, const char *buf,

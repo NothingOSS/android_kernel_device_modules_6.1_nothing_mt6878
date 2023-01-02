@@ -1114,7 +1114,7 @@ static int mtk_chg_set_cv_show(struct seq_file *m, void *data)
 
 static int mtk_chg_set_cv_open(struct inode *node, struct file *file)
 {
-	return single_open(file, mtk_chg_set_cv_show, PDE_DATA(node));
+	return single_open(file, mtk_chg_set_cv_show, pde_data(node));
 }
 
 static ssize_t mtk_chg_set_cv_write(struct file *file,
@@ -1123,7 +1123,7 @@ static ssize_t mtk_chg_set_cv_write(struct file *file,
 	int len = 0, ret = 0;
 	char desc[32] = {0};
 	unsigned int cv = 0;
-	struct mtk_charger *info = PDE_DATA(file_inode(file));
+	struct mtk_charger *info = pde_data(file_inode(file));
 	struct power_supply *psy = NULL;
 	union  power_supply_propval dynamic_cv;
 
@@ -1181,7 +1181,7 @@ static int mtk_chg_current_cmd_show(struct seq_file *m, void *data)
 
 static int mtk_chg_current_cmd_open(struct inode *node, struct file *file)
 {
-	return single_open(file, mtk_chg_current_cmd_show, PDE_DATA(node));
+	return single_open(file, mtk_chg_current_cmd_show, pde_data(node));
 }
 
 static ssize_t mtk_chg_current_cmd_write(struct file *file,
@@ -1191,7 +1191,7 @@ static ssize_t mtk_chg_current_cmd_write(struct file *file,
 	char desc[32] = {0};
 	int current_unlimited = 0;
 	int cmd_discharging = 0;
-	struct mtk_charger *info = PDE_DATA(file_inode(file));
+	struct mtk_charger *info = pde_data(file_inode(file));
 
 	if (!info)
 		return -EINVAL;
@@ -1248,7 +1248,7 @@ static int mtk_chg_en_power_path_show(struct seq_file *m, void *data)
 
 static int mtk_chg_en_power_path_open(struct inode *node, struct file *file)
 {
-	return single_open(file, mtk_chg_en_power_path_show, PDE_DATA(node));
+	return single_open(file, mtk_chg_en_power_path_show, pde_data(node));
 }
 
 static ssize_t mtk_chg_en_power_path_write(struct file *file,
@@ -1257,7 +1257,7 @@ static ssize_t mtk_chg_en_power_path_write(struct file *file,
 	int len = 0, ret = 0;
 	char desc[32] = {0};
 	unsigned int enable = 0;
-	struct mtk_charger *info = PDE_DATA(file_inode(file));
+	struct mtk_charger *info = pde_data(file_inode(file));
 
 	if (!info)
 		return -EINVAL;
@@ -1302,7 +1302,7 @@ static int mtk_chg_en_safety_timer_show(struct seq_file *m, void *data)
 
 static int mtk_chg_en_safety_timer_open(struct inode *node, struct file *file)
 {
-	return single_open(file, mtk_chg_en_safety_timer_show, PDE_DATA(node));
+	return single_open(file, mtk_chg_en_safety_timer_show, pde_data(node));
 }
 
 static ssize_t mtk_chg_en_safety_timer_write(struct file *file,
@@ -1311,7 +1311,7 @@ static ssize_t mtk_chg_en_safety_timer_write(struct file *file,
 	int len = 0, ret = 0;
 	char desc[32] = {0};
 	unsigned int enable = 0;
-	struct mtk_charger *info = PDE_DATA(file_inode(file));
+	struct mtk_charger *info = pde_data(file_inode(file));
 
 	if (!info)
 		return -EINVAL;

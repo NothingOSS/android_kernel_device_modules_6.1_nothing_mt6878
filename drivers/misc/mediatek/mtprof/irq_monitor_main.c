@@ -1017,7 +1017,7 @@ static int irq_mon_bool_show(struct seq_file *s, void *p)
 
 int irq_mon_bool_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, irq_mon_bool_show, PDE_DATA(inode));
+	return single_open(file, irq_mon_bool_show, pde_data(inode));
 }
 
 static ssize_t irq_mon_bool_write(struct file *filp, const char *ubuf,
@@ -1025,7 +1025,7 @@ static ssize_t irq_mon_bool_write(struct file *filp, const char *ubuf,
 {
 	int ret;
 	bool val;
-	bool *ptr = (bool *)PDE_DATA(file_inode(filp));
+	bool *ptr = (bool *)pde_data(file_inode(filp));
 
 	ret = kstrtobool_from_user(ubuf, count, &val);
 	if (ret)
@@ -1051,7 +1051,7 @@ static ssize_t irq_mon_tracing_set(struct file *filp, const char *ubuf,
 {
 	int ret;
 	bool val;
-	bool *ptr = (bool *)PDE_DATA(file_inode(filp));
+	bool *ptr = (bool *)pde_data(file_inode(filp));
 	struct irq_mon_tracer *tracer =
 		container_of(ptr, struct irq_mon_tracer, tracing);
 
@@ -1104,7 +1104,7 @@ static int irq_mon_uint_show(struct seq_file *s, void *p)
 
 static int irq_mon_uint_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, irq_mon_uint_show, PDE_DATA(inode));
+	return single_open(file, irq_mon_uint_show, pde_data(inode));
 }
 
 static ssize_t irq_mon_uint_write(struct file *filp, const char *ubuf,
@@ -1112,7 +1112,7 @@ static ssize_t irq_mon_uint_write(struct file *filp, const char *ubuf,
 {
 	int ret;
 	unsigned int val;
-	unsigned int *ptr = (unsigned int *)PDE_DATA(file_inode(filp));
+	unsigned int *ptr = (unsigned int *)pde_data(file_inode(filp));
 
 	if (!irq_mon_door)
 		return -EPERM;

@@ -115,7 +115,7 @@ static ssize_t remote_data_read(struct file *filp, char __user *userbuf,
 static ssize_t remote_data_write(struct file *fp, const char __user *userbuf,
 				 size_t count, loff_t *f_pos)
 {
-	unsigned int *v = PDE_DATA(file_inode(fp));
+	unsigned int *v = pde_data(file_inode(fp));
 	int ret;
 	int i;
 	static unsigned int window_len_pre;
@@ -301,7 +301,7 @@ static ssize_t local_ipi_read(struct file *fp, char __user *userbuf,
 static ssize_t local_ipi_write(struct file *fp, const char __user *userbuf,
 			       size_t count, loff_t *f_pos)
 {
-	unsigned int *v = PDE_DATA(file_inode(fp));
+	unsigned int *v = pde_data(file_inode(fp));
 
 	if (v == NULL)
 		return -EFAULT;

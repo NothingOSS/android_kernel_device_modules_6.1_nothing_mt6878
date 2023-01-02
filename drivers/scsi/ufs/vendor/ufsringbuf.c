@@ -806,7 +806,7 @@ static int ufsringbuf_proc_print_show(struct seq_file *file, void *data)
 
 static int ufsringbuf_proc_print_open(struct inode *inode, struct file *file)
 {
-	struct ufsf_feature *ufsf = (struct ufsf_feature *)PDE_DATA(inode);
+	struct ufsf_feature *ufsf = (struct ufsf_feature *)pde_data(inode);
 	struct ufsringbuf_dev *ringbuf = ufsf->ringbuf_dev;
 	struct ufs_hba *hba = ufsf->hba;
 	int transfer_bytes;
@@ -830,7 +830,7 @@ static int ufsringbuf_proc_print_open(struct inode *inode, struct file *file)
 
 	mutex_unlock(&ringbuf->sysfs_lock);
 
-	return ret ? ret : single_open(file, ufsringbuf_proc_print_show, PDE_DATA(inode));
+	return ret ? ret : single_open(file, ufsringbuf_proc_print_show, pde_data(inode));
 }
 
 static const struct proc_ops fops_proc_print = {

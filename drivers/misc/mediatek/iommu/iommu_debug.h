@@ -18,7 +18,7 @@ static int __fops ## _open(struct inode *inode, struct file *file)	  \
 {									  \
 	struct inode local_inode = *inode;				  \
 									  \
-	local_inode.i_private = PDE_DATA(inode);			  \
+	local_inode.i_private = pde_data(inode);			  \
 	__simple_attr_check_format(__fmt, 0ull);			  \
 	return simple_attr_open(&local_inode, file, __get, __set, __fmt); \
 }									  \

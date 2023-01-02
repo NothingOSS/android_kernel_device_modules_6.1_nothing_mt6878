@@ -490,7 +490,7 @@ static int mtk_cam_dump_buf_realloc(struct mtk_cam_dump_buf_ctrl *ctrl,
 static int dbg_ctrl_open(struct inode *inode, struct file *file)
 {
 	struct mtk_cam_debug_fs *debug_fs;
-	struct mtk_cam_dump_buf_ctrl *ctrl = PDE_DATA(inode);
+	struct mtk_cam_dump_buf_ctrl *ctrl = pde_data(inode);
 
 	WARN_ON(!ctrl);
 
@@ -606,7 +606,7 @@ FAIL:
 static int dbg_data_open(struct inode *inode, struct file *file)
 {
 	struct mtk_cam_debug_fs *debug_fs;
-	struct mtk_cam_dump_buf_ctrl *ctrl = PDE_DATA(inode);
+	struct mtk_cam_dump_buf_ctrl *ctrl = pde_data(inode);
 
 	WARN_ON(!ctrl);
 
@@ -663,7 +663,7 @@ static int mtk_cam_debug_has_exp_dump(struct mtk_cam_debug_fs *debug_fs)
 
 static int exp_open(struct inode *inode, struct file *file)
 {
-	struct mtk_cam_debug_fs *debug_fs = PDE_DATA(inode);
+	struct mtk_cam_debug_fs *debug_fs = pde_data(inode);
 
 	WARN_ON(!debug_fs);
 

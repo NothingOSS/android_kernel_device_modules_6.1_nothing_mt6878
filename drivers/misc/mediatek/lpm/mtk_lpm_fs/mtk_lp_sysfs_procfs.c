@@ -84,7 +84,7 @@ static int mtk_lp_sysfs_procfs_open(
 
 	if (error == 0) {
 		((struct seq_file *)filp->private_data)->private
-			= PDE_DATA(inode);
+			= pde_data(inode);
 	}
 	return 0;
 }

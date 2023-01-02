@@ -141,7 +141,7 @@ static int proc_mux_show(struct seq_file *s, void *unused)
 
 static int proc_mux_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, proc_mux_show, PDE_DATA(inode));
+	return single_open(file, proc_mux_show, pde_data(inode));
 }
 
 static ssize_t proc_mux_write(struct file *file,
@@ -283,7 +283,7 @@ static int proc_switch_show(struct seq_file *s, void *unused)
 
 static int proc_switch_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, proc_switch_show, PDE_DATA(inode));
+	return single_open(file, proc_switch_show, pde_data(inode));
 }
 
 static ssize_t proc_switch_write(struct file *file,

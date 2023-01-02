@@ -2476,7 +2476,7 @@ static ssize_t eemg_debug_proc_write(struct file *file,
 	int ret;
 	int enabled = 0;
 	char *buf = (char *) __get_free_page(GFP_USER);
-	struct eemg_det *det = (struct eemg_det *)PDE_DATA(file_inode(file));
+	struct eemg_det *det = (struct eemg_det *)pde_data(file_inode(file));
 
 	FUNC_ENTER(FUNC_LV_HELP);
 
@@ -2554,7 +2554,7 @@ static ssize_t eemg_setmargin_proc_write(struct file *file,
 	int i = 0;
 	int start_oft, end_oft;
 	char *buf = (char *) __get_free_page(GFP_USER);
-	struct eemg_det *det = (struct eemg_det *)PDE_DATA(file_inode(file));
+	struct eemg_det *det = (struct eemg_det *)pde_data(file_inode(file));
 	char *tok;
 	char *cmd_str = NULL;
 
@@ -2853,7 +2853,7 @@ static ssize_t eemg_offset_proc_write(struct file *file,
 	int ret;
 	char *buf = (char *) __get_free_page(GFP_USER);
 	int offset = 0;
-	struct eemg_det *det = (struct eemg_det *)PDE_DATA(file_inode(file));
+	struct eemg_det *det = (struct eemg_det *)pde_data(file_inode(file));
 	unsigned long flags;
 
 	FUNC_ENTER(FUNC_LV_HELP);
@@ -2899,7 +2899,7 @@ out:
 		struct file *file)				\
 	{							\
 		return single_open(file, name ## _proc_show,	\
-			PDE_DATA(inode));			\
+			pde_data(inode));			\
 	}							\
 	static const struct proc_ops name ## _proc_fops = {	\
 		.proc_open		= name ## _proc_open,			\
@@ -2914,7 +2914,7 @@ out:
 		struct file *file)				\
 	{							\
 		return single_open(file, name ## _proc_show,	\
-			PDE_DATA(inode));			\
+			pde_data(inode));			\
 	}							\
 	static const struct proc_ops name ## _proc_fops = {	\
 		.proc_open		= name ## _proc_open,			\

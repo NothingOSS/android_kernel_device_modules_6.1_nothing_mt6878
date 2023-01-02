@@ -156,7 +156,7 @@ static const struct proc_ops dbg_fops = {
 static ssize_t var_read(struct file *fp, char __user *userbuf,
 	size_t count, loff_t *f_pos)
 {
-	unsigned int *v = PDE_DATA(file_inode(fp));
+	unsigned int *v = pde_data(file_inode(fp));
 	int len = 0;
 	char *p = dbgbuf;
 
@@ -170,7 +170,7 @@ static ssize_t var_read(struct file *fp, char __user *userbuf,
 static ssize_t var_write(struct file *fp, const char __user *userbuf,
 	size_t count, loff_t *f_pos)
 {
-	unsigned int *v = PDE_DATA(file_inode(fp));
+	unsigned int *v = pde_data(file_inode(fp));
 
 	if (kstrtou32_from_user(userbuf, count, 10, v))
 		return -EFAULT;

@@ -634,7 +634,7 @@ static ssize_t vpu_proc_mesg_level_write(struct file *filp,
 	if (!filp || !filp->f_inode)
 		goto out;
 
-	vd = (struct vpu_device *) PDE_DATA(filp->f_inode);
+	vd = (struct vpu_device *) pde_data(filp->f_inode);
 	if (!vd)
 		goto out;
 
@@ -896,7 +896,7 @@ static int vpu_proc_## name ##_show(struct seq_file *s, void *unused) \
 static int vpu_proc_## name ##_open(struct inode *inode, struct file *file) \
 { \
 	return single_open(file, vpu_proc_ ## name ## _show, \
-		PDE_DATA(inode)); \
+		pde_data(inode)); \
 } \
 
 #define VPU_PROCFS_DEF(name) \
