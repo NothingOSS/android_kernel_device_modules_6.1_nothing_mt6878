@@ -31,7 +31,7 @@ subdir-ccflags-y  += \
 	-I$(srctree)/$(src)/tz_driver/include
 
 ifneq ($(filter y m, $(CONFIG_MTPROF)),)
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/mtprof/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtprof/
 endif
 
 $(info "=----------------1---------------------------")

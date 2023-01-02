@@ -86,7 +86,7 @@ subdir-ccflags-y += $(DEFINES) -I$(KBASE_PATH)   -I$(KBASE_PLATFORM_PATH) -I$(UM
 ifeq ($(CONFIG_MTK_IOMMU_V2),y)
 	ccflags-y += -I$(srctree)/drivers/staging/android/ion
 	ccflags-y += -I$(srctree)/drivers/iommu
-	ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include
+	ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include
 endif
 
 SRC := \

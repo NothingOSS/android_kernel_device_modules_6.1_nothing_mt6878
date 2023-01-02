@@ -11,11 +11,11 @@
 # GNU General Public License for more details.
 #
 
-#ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/
-#ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/mach/
-#ccflags-y += -I$(srctree)/drivers/misc/mediatek/thermal/$(MTK_PLATFORM)/inc/
-ccflags-y += -I$(srctree)/drivers/gpu/mediatek/gpufreq/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/mdpm/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/power_throttling/
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/mach/
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/$(MTK_PLATFORM)/inc/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdpm/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling/
 
 obj-$(CONFIG_MTK_PBM) += mtk_pbm.o

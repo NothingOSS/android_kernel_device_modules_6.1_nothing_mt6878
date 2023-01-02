@@ -13,28 +13,28 @@
 
 $(info $(MTK_PLATFORM))
 $(info $(platform))
-$(info $(srctree))
+$(info $(DEVICE_MODULES_PATH))
 
 #ion
-ccflags-y += -I$(srctree)/drivers/staging/android/ion \
-             -I$(srctree)/drivers/staging/android/ion/mtk \
-             -I$(srctree)/drivers/iommu/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/staging/android/ion \
+             -I$(DEVICE_MODULES_PATH)/drivers/staging/android/ion/mtk \
+             -I$(DEVICE_MODULES_PATH)/drivers/iommu/
 #for sensorType in ccu_set_sensor_info
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/imgsensor/inc
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/imgsensor/inc
 #
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/m4u/mt6873/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/mach/mt6873/include/mach
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/irq/mt6873/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/mt6873/include
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/mmp/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/ccu/inc/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/ccu/src/isp6s/ccu_ext_interface
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/
-ccflags-y += -I$(srctree)/drivers/i2c/busses/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/mmdvfs/
-ccflags-y += -I$(srctree)/include/dt-bindings/memory/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/m4u/mt6873/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mach/mt6873/include/mach
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/irq/mt6873/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/mt6873/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ccu/inc/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ccu/src/isp6s/ccu_ext_interface
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/i2c/busses/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/include/dt-bindings/memory/
 
 #obj-$(CONFIG_MTK_VPU) += ccu_hw.o
 obj-$(CONFIG_MTK_CCU) += ccu.o

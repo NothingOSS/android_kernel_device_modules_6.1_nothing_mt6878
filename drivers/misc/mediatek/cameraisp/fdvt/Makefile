@@ -1,5 +1,5 @@
 
-MTK_CUSTOM_PATH  := $(srctree)/drivers/misc/mediatek
+MTK_CUSTOM_PATH  := $(DEVICE_MODULES_PATH)/drivers/misc/mediatek
 
 MTKCAM_FDVT_VERSION := 5.1
 MTKCAM_FDVT_PATH := $(MTK_CUSTOM_PATH)/cameraisp/fdvt/5.1

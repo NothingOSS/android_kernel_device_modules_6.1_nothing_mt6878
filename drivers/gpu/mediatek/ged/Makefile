@@ -11,10 +11,10 @@
 # GNU General Public License for more details.
 #
 
-GED_TOP = $(srctree)/drivers/gpu/mediatek/ged
-MTK_TOP = $(srctree)/drivers/misc/mediatek/
-GPU_TOP = $(srctree)/drivers/gpu/mediatek/
-VIDEOX_TOP = $(srctree)/drivers/misc/mediatek/video/$(MTK_PLATFORM)/videox
+GED_TOP = $(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged
+MTK_TOP = $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/
+GPU_TOP = $(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/
+VIDEOX_TOP = $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/video/$(MTK_PLATFORM)/videox
 
 subdir-ccflags-y += -Wno-error
 
@@ -49,28 +49,28 @@ ccflags-y += -DGED_DCS_POLICY
 endif
 
 ccflags-y += \
-		-I$(srctree)/include/ \
+		-I$(DEVICE_MODULES_PATH)/include/ \
 		-I$(MTK_TOP)/include/ \
 		-I$(GED_TOP)/include/ \
 		-I$(GPU_TOP)/hal/ \
 		-I$(GPU_TOP)/ \
-		-I$(srctree)/drivers/misc/mediatek/lcm/inc/ \
-		-I$(srctree)/drivers/gpu/mediatek/gpufreq/ \
-		-I$(srctree)/drivers/gpu/mediatek/gpufreq/v1/include/ \
-		-I$(srctree)/drivers/gpu/mediatek/gpufreq/v2/include/ \
-		-I$(srctree)/drivers/misc/mediatek/performance/fpsgo_v3 \
+		-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/lcm/inc/ \
+		-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/ \
+		-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/v1/include/ \
+		-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/v2/include/ \
+		-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v3 \
 		-I$(VIDEOX_TOP)/ \
-		-I$(srctree)/drivers/gpu/drm/mediatek/mediatek_v2/ \
-		-I$(srctree)/drivers/gpu/mediatek/gpueb/include/ \
-		-I$(srctree)/drivers/dma-buf/heaps/
+		-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/ \
+		-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb/include/ \
+		-I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/
 ccflags-y += \
-		-I$(srctree)/drivers/misc/mediatek/cmdq/v3
-ccflags-y += -I$(srctree)/drivers/gpu/mediatek/gpueb
+		-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/v3
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb
 ccflags-y += \
-		-I$(srctree)/drivers/misc/mediatek/sspm/ \
-		-I$(srctree)/drivers/misc/mediatek/sspm/v2 \
-		-I$(srctree)/drivers/misc/mediatek/qos/ \
-		-I$(srctree)/drivers/gpu/mediatek/gpu_bm/
+		-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/ \
+		-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v2 \
+		-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/qos/ \
+		-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpu_bm/
 
 ifeq ($(CONFIG_DEBUG_FS),y)
 ccflags-y += -DGED_DEBUG_FS

@@ -11,7 +11,7 @@ config MTK_USB_TYPEC
 	  by callback func.
 	  If unsure, say N.
 
-source "drivers/misc/mediatek/typec/tcpc/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/typec/tcpc/Kconfig"
 
-source "drivers/misc/mediatek/typec/mux/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/typec/mux/Kconfig"
 

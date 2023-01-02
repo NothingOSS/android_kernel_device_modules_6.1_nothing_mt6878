@@ -13,9 +13,10 @@
 
 obj-$(CONFIG_MTPROF) = bootprof.o
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
 ccflags-y += -I$(srctree)/include/trace/events
 ccflags-y += -I$(srctree)/include/kernel
+CFLAGS_irq_monitor_main.o := -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtprof
 
 obj-$(CONFIG_MTK_IRQ_MONITOR) += irq_monitor.o
 irq_monitor-y += irq_monitor_main.o irq_monitor_test.o

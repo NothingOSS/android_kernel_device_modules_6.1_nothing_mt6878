@@ -2,9 +2,9 @@
 # Makefile for trusty components
 #
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/geniezone/public
-ccflags-y += -I$(srctree)/arch/arm/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/geniezone/public
+ccflags-y += -I$(DEVICE_MODULES_PATH)/arch/arm/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 
 obj-$(CONFIG_MTK_ENABLE_GENIEZONE) += gz_trusty_mod.o
 gz_trusty_mod-objs += trusty.o smcnr-table.o

@@ -1,10 +1,10 @@
-SSC_BUILD_FOLDER=$(srctree)/drivers/misc/mediatek/ssc
+SSC_BUILD_FOLDER=$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ssc
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/tinysys_scmi/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/
 
 # include gpu header
-ccflags-y += -I${srctree}/drivers/gpu/mediatek/gpufreq/v2/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/v2/include/
 
 ccflags-y += -I$(SSC_BUILD_FOLDER)/inc/
 

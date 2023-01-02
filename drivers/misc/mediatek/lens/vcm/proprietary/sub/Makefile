@@ -15,7 +15,7 @@
 # Makefile for misc devices that really don't fit anywhere else.
 #
 
-MTK_CUSTOM_PATH  := $(srctree)/drivers/misc/mediatek
+MTK_CUSTOM_PATH  := $(DEVICE_MODULES_PATH)/drivers/misc/mediatek
 
 
 subdir-ccflags-y += -I$(MTK_CUSTOM_PATH)/lens/vcm/proprietary/sub/inc

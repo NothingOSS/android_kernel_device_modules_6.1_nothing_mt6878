@@ -9,7 +9,7 @@ sspm_v3-y += sspm_timesync.o
 sspm_v3-$(CONFIG_OF_RESERVED_MEM) += sspm_reservedmem.o
 sspm_v3-$(CONFIG_MTK_EMI) += sspm_emi_mpu.o
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/sspm
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/tinysys_scmi
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v3
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi
 
 #ccflags-y += -DDEBUG

@@ -2,16 +2,16 @@
 
 # MENU Governor Predict(low power) include path
 ifeq ($(CONFIG_MTK_ACAO_SUPPORT),y)
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/mcdi/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/mcdi/include/
 endif
 
 # adsp include path
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/audio_ipi/include
-ccflags-y += -I$(srctree)/sound/soc/mediatek/audio_dsp
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/audio_ipi/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/audio_dsp
 
 # spm include path
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include
 
 # platform driver
 obj-$(CONFIG_SND_SOC_MT6985) += snd-soc-mt6985-afe.o

@@ -1,7 +1,7 @@
 obj-$(CONFIG_MTK_MDDP_SUPPORT) += mddp.o
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/mddp/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mddp/include/
 mddp-y	+= ctrl/mddp_if.o
 mddp-y	+= ctrl/mddp_sm.o
 mddp-y	+= ctrl/mddpwh_sm.o

@@ -11,7 +11,7 @@
 # GNU General Public License for more details.
 #
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
 ccflags-y += -I$(srctree)/include/trace/events
 
 obj-$(CONFIG_MTK_LOCKING_AEE) = locking_aee.o

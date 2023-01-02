@@ -10,5 +10,5 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 #
-ccflags-y += -I$(srctree)/drivers/dma-buf/heaps
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps
 obj-$(CONFIG_MTK_WIDEVINE_DRM) += widevine_driver.o

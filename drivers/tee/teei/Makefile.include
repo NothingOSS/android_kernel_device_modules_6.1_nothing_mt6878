@@ -12,8 +12,8 @@
 
 ifneq ($(filter y m, $(CONFIG_MICROTRUST_TEE_SUPPORT)),)
 VERSION := $(subst ",,$(CONFIG_MICROTRUST_TEE_VERSION))
-ccflags-y += -I$(srctree)/drivers/tee/teei/$(VERSION)/common/include/
-ccflags-y += -I$(srctree)/drivers/tee/teei/$(VERSION)/public/
-ccflags-y += -I$(srctree)/drivers/tee/teei/$(VERSION)/tz_driver/include/
-ccflags-y += -I$(srctree)/drivers/tee/teei/$(VERSION)/tz_driver/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/tee/teei/$(VERSION)/common/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/tee/teei/$(VERSION)/public/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/tee/teei/$(VERSION)/tz_driver/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/tee/teei/$(VERSION)/tz_driver/
 endif

@@ -1,9 +1,9 @@
-LINUXINCLUDE += -include $(srctree)/kernel/sched/sched.h
-ccflags-y += -I$(src)              # needed for trace events
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/qos/
+NUXINCLUDE += -include $(srctree)/kernel/sched/sched.h
+ccflags-y += -I$(srctree)/$(src)              # needed for trace events
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/qos/
 
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
 subdir-ccflags-y += -I$(srctree)/drivers/scsi/ufs
 
 obj-$(CONFIG_MTK_PERF_COMMON) += mtk_perf_common.o

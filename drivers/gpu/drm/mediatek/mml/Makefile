@@ -12,18 +12,18 @@
 # GNU General Public License for more details.
 #
 
-ccflags-y += -I$(srctree)/drivers/gpu/drm/mediatek/mediatek_v2 \
-             -I$(srctree)/drivers/devfreq \
-             -I$(srctree)/drivers/dma-buf/heaps/ \
-             -I$(srctree)/drivers/misc/mediatek/mmdvfs \
-             -I$(srctree)/drivers/misc/mediatek/smi \
-             -I$(srctree)/drivers/misc/mediatek/include \
-             -I$(srctree)/drivers/misc/mediatek/include/mt-plat \
-             -I$(srctree)/drivers/iommu \
-             -I$(srctree)/drivers/misc/mediatek/mtk-interconnect \
-             -I$(srctree)/drivers/misc/mediatek/cmdq/mailbox \
-             -I$(srctree)/drivers/misc/mediatek/slbc \
-             -I$(srctree)/drivers/misc/mediatek/mmp \
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2 \
+             -I$(DEVICE_MODULES_PATH)/drivers/devfreq \
+             -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat \
+             -I$(DEVICE_MODULES_PATH)/drivers/iommu \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp \
              -I$(srctree)/drivers/misc/mediatek/tinysys_scmi
 
 obj-$(CONFIG_MTK_MML_LEGACY) := mtk-mml-legacy.o

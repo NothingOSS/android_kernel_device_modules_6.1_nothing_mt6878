@@ -14,7 +14,7 @@
 # Makefile for the Kinibi core driver
 #
 
-GUD_ROOT_FOLDER := drivers/gud/
+GUD_ROOT_FOLDER := $(DEVICE_MODULES_PATH)/drivers/tee/gud/510
 
 # add our modules to kernel.
 obj-$(CONFIG_TRUSTONIC_TEE_SUPPORT) += mcDrvModule.o

@@ -14,7 +14,7 @@
 # Makefile for the Kinibi core driver
 #
 
-GUD_ROOT_FOLDER := drivers/tee/gud/500
+GUD_ROOT_FOLDER := $(DEVICE_MODULES_PATH)/drivers/tee/gud/500
 
 # add our modules to kernel.
 obj-$(CONFIG_TRUSTONIC_TEE_SUPPORT) += mcDrvModule.o
@@ -54,4 +54,4 @@ ccflags-y += -I$(srctree)/drivers/staging/android/aosp_ion
 endif
 
 # timesync to get boot time
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/timer/timesync/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/timer/timesync/

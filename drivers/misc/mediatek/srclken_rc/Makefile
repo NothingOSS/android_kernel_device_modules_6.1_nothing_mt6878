@@ -1,6 +1,6 @@
-CLKBUF_TOP = $(srctree)/drivers/misc/mediatek/clkbuf/src
+CLKBUF_TOP = $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/clkbuf/src
 
-ccflags-y += -I$(src)/src/ \
+ccflags-y += -I$(srctree)$(src)/src/ \
      -I$(CLKBUF_TOP)/
 
 obj-$(CONFIG_MTK_SRCLKEN_RC) += srclken-spm.o

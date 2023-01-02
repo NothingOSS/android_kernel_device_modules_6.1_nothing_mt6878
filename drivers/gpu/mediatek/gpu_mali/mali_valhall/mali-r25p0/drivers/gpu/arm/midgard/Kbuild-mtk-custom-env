@@ -21,11 +21,11 @@ CONFIG_MALI_DEBUG := y
 
 ccflags-y += -I$(srctree)/include
 ccflags-y += -I$(srctree)/drivers/staging/android
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/gpu/ged/include
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/gpu/gpu_bm
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/sspm/v2/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/gpu/ged/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/gpu/gpu_bm
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v2/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
 ccflags-y += -I$(srctree)/drivers/gpu/mediatek/ged/include
 ccflags-y += -I$(srctree)/drivers/gpu/mediatek/gpu_bm
 ccflags-y += -I$(srctree)/drivers/gpu/mediatek/mt-plat

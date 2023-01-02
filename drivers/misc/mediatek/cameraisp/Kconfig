@@ -20,13 +20,13 @@ config MTK_CAMERA_ISP_PLATFORM
 	  When MTK_PLATFORM is not set, imgsensor
 	  will use the config.
 
-source "drivers/misc/mediatek/cameraisp/src/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/cameraisp/src/Kconfig"
 #source "drivers/misc/mediatek/cameraisp/owe/Kconfig"
-source "drivers/misc/mediatek/cameraisp/rsc/Kconfig"
-source "drivers/misc/mediatek/cameraisp/wpe/Kconfig"
-source "drivers/misc/mediatek/cameraisp/dpe/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/cameraisp/rsc/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/cameraisp/wpe/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/cameraisp/dpe/Kconfig"
 #source "drivers/misc/mediatek/cameraisp/tsf/Kconfig"
-source "drivers/misc/mediatek/cameraisp/mfb/Kconfig"
-source "drivers/misc/mediatek/cameraisp/fdvt/Kconfig"
-source "drivers/misc/mediatek/cameraisp/dip/Kconfig"
-source "drivers/misc/mediatek/cameraisp/pda/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/cameraisp/mfb/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/cameraisp/fdvt/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/cameraisp/dip/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/cameraisp/pda/Kconfig"

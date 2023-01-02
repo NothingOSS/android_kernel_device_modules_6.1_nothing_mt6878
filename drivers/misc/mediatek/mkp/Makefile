@@ -16,11 +16,11 @@ ccflags-y += -DDEMO_MKP
 ccflags-y += -DDEBUG_MKP_ENABLED
 endif
 
-ccflags-y += -I$(src)              # needed for trace events
+ccflags-y += -I$(srctree)/$(src)              # needed for trace events
 ccflags-y += -DTEXT_OFFSET=$(TEXT_OFFSET)
 ccflags-y += -I$(srctree)/arch/arm/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/geniezone/public
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/mkp
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/geniezone/public
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mkp
 ccflags-y += -I$(srctree)/security/selinux/include/
 obj-$(CONFIG_MTK_MKP) += mkp.o
 mkp-$(CONFIG_MTK_MKP) := mkp_main.o

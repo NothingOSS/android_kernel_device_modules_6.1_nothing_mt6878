@@ -13,15 +13,15 @@
 
 # driver code for MDP
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/ \
-             -I$(srctree)/drivers/misc/mediatek/mmdvfs/ \
-             -I$(srctree)/drivers/misc/mediatek/mtk-interconnect/ \
-             -I$(srctree)/drivers/misc/mediatek/include/ \
-             -I$(srctree)/drivers/misc/mediatek/mmp/ \
-             -I$(srctree)/drivers/iommu \
-             -I$(srctree)/drivers/misc/mediatek/iommu/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/iommu \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/cmdq/mailbox/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox/
 
 ifeq ($(strip $(CONFIG_MTK_PQ_COLOR_MODE)),"MDP")
 ccflags-y += -DCMDQ_MDP_COLOR

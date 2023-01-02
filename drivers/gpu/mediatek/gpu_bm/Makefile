@@ -11,10 +11,10 @@
 # See http://www.gnu.org/licenses/gpl-2.0.html for more details.
 #
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/sspm/v2/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/qos/
-ccflags-y += -I$(srctree)/drivers/gpu/mediatek/gpufreq/
-ccflags-y += -I$(srctree)/drivers/gpu/mediatek/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v2/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/qos/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/
 
 ifeq ($(CONFIG_MTK_GPU_SUPPORT),y)
 ccflags-$(CONFIG_MTK_QOS_FRAMEWORK) += -DMTK_QOS_FRAMEWORK

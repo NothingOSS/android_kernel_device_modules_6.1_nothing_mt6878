@@ -10,16 +10,16 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 #
-subdir-ccflags-y += -I$(srctree)/drivers/gpu/drm/mediatek/mediatek_v2/
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/aee/mrdump
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/aee/aed
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/aee
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/mmp/
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/log_store/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/mrdump
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/aed
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/log_store/
 ifdef CONFIG_MTK_ION
-subdir-ccflags-y += -I$(srctree)/drivers/staging/android/ion
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/staging/android/ion
 endif
 
 obj-$(CONFIG_MTK_AEE_FEATURE)	+= aed/

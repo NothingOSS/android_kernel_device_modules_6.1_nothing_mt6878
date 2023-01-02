@@ -3,9 +3,9 @@
 
 MKFILE_PATH := $(lastword $(MAKEFILE_LIST))
 IMGSENSOR_DRIVER_PATH := $(patsubst %/,%,$(dir $(realpath $(MKFILE_PATH))))
-MTK_DRIVER_PATH := $(srctree)/drivers/misc/mediatek
-MTK_ISP_DRIVER_PATH := $(srctree)/drivers/media/platform/mtk-isp
-MTK_CAMSYS_DRIVER_PATH := $(srctree)/drivers/media/platform/mtk-isp/camsys/isp7_1/cam
+MTK_DRIVER_PATH := $(DEVICE_MODULES_PATH)/drivers/misc/mediatek
+MTK_ISP_DRIVER_PATH := $(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-isp
+MTK_CAMSYS_DRIVER_PATH := $(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-isp/camsys/isp7_1/cam
 IMGSENSOR_PROJECT := $(subst ",,$(CONFIG_MTK_IMGSENSOR_PROJECT))
 
 FRAME_SYNC := frame-sync

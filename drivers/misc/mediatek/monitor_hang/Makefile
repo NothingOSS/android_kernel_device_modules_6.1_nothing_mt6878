@@ -11,11 +11,11 @@
 # GNU General Public License for more details.
 #
 
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/aee
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
 ifeq ($(CONFIG_MTK_ION),y)
-subdir-ccflags-y += -I$(srctree)/drivers/staging/android/mtk_ion/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/staging/android/mtk_ion/
 endif
 
 obj-$(CONFIG_MTK_HANG_DETECT) += monitor_hang.o

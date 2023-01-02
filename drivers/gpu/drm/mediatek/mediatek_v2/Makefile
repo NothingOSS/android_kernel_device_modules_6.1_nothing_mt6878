@@ -1,5 +1,7 @@
 subdir-ccflags-y += -Werror
 
+CFLAGS_mtk_layering_rule_base.o := -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2
+
 mediatek-drm-y := mtk_drm_drv.o \
 		  mtk_disp_tdshp.o \
 		  mtk_disp_color.o \
@@ -94,14 +96,14 @@ obj-$(CONFIG_DRM_MEDIATEK) += mtk_aod_scp.o
 
 obj-$(CONFIG_DRM_MEDIATEK) += mtk_disp_sec.o
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/scp/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/dramc/$(MTK_PLATFORM)	\
-             -I$(srctree)/drivers/misc/mediatek/smi/			\
-             -I$(srctree)/drivers/misc/mediatek/mmp/			\
-             -I$(srctree)/drivers/misc/mediatek/mmdvfs/			\
-             -I$(srctree)/drivers/misc/mediatek/pmic/			\
-             -I$(srctree)/drivers/iommu/				\
-             -I$(srctree)/drivers/devfreq/				\
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dramc/$(MTK_PLATFORM)	\
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/			\
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/			\
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs/			\
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pmic/			\
+             -I$(DEVICE_MODULES_PATH)/drivers/iommu/				\
+             -I$(DEVICE_MODULES_PATH)/drivers/devfreq/				\
              -I$(srctree)/drivers/gpu/drm/				\
              -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/mach/				\
              -I$(srctree)/drivers/misc/mediatek/include/mt-plat/ \
@@ -119,12 +121,12 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/dramc/$(MTK_PLATFORM)	\
              -I$(srctree)/drivers/misc/mediatek/tinysys_scmi/ \
              -I$(srctree)/drivers/dma-buf/heaps/ \
 
-ccflags-$(CONFIG_MTK_CMDQ_MBOX_EXT) += -I$(srctree)/drivers/misc/mediatek/cmdq/mailbox
+ccflags-$(CONFIG_MTK_CMDQ_MBOX_EXT) += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox
 
 #ccflags-y += -DDRM_MMPATH
 ccflags-y += -DNOT_SUPPORT_CABC_HW
 ccflags-y += -DDISP_MDP_COLOR_ON
 ccflags-y += -DCCORR_SUPPORT
 
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/

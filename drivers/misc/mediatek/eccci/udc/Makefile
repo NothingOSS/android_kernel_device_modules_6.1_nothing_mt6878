@@ -13,8 +13,8 @@
 
 ifeq ($(CONFIG_MTK_ECCCI_DRIVER), y)
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/udc/udc_lib_inc
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/udc/udc_lib_inc
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 
 obj-$(CONFIG_MTK_ECCCI_DRIVER) += udc.o
 

@@ -3,9 +3,9 @@
 VERSION := v2
 
 # common include path
-ccflags-y += -I$(srctree)/sound/soc/mediatek/common
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/adsp
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/adsp/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/common
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/adsp
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/adsp/include
 
 # target object
 obj-${CONFIG_MTK_ADSP_V2} += adsp-$(VERSION).o

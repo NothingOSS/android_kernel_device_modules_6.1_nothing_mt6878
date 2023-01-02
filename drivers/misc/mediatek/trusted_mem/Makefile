@@ -8,7 +8,7 @@ GCOV_PROFILE := y
 endif
 
 # Modules Feature Options
-include $(srctree)/drivers/misc/mediatek/trusted_mem/Makefile.configs
+include $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem/Makefile.configs
 
 # Force strictly compiler check
 ccflags-y += -Werror
@@ -86,29 +86,29 @@ endif # !CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM
 #==========================================================================
 # Trusted Memory Subsystem Common Headers
 #==========================================================================
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/trusted_mem/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/trusted_mem/public/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/trusted_mem/ssmr
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/trusted_mem/ssheap
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem/public/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem/ssmr
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem/ssheap
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 
 #==========================================================================
 # Other Modules Include Header Paths
 #==========================================================================
 ifneq ($(filter y m,$(CONFIG_MTK_GZ_KREE)),)
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/geniezone/public
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/gz/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/geniezone/public
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/gz/
 endif # !CONFIG_MTK_GZ_KREE
 
 ifneq ($(filter y m,$(CONFIG_TRUSTONIC_TEE_SUPPORT)),)
-ccflags-y += -I$(srctree)/drivers/tee/gud/$(CONFIG_TRUSTONIC_TEE_VERSION)/MobiCoreDriver/public
-ccflags-y += -I$(srctree)/drivers/tee/gud/$(CONFIG_TRUSTONIC_TEE_VERSION)/MobiCoreDriver/public/GP
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/tee/gud/$(CONFIG_TRUSTONIC_TEE_VERSION)/MobiCoreDriver/public
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/tee/gud/$(CONFIG_TRUSTONIC_TEE_VERSION)/MobiCoreDriver/public/GP
 endif # !CONFIG_TRUSTONIC_TEE_SUPPORT
 
 ifneq ($(filter y m,$(CONFIG_MICROTRUST_TEE_SUPPORT)),)
-ccflags-y += -I$(srctree)/drivers/tee/teei/$(CONFIG_MICROTRUST_TEE_VERSION)/common/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/tee/teei/$(CONFIG_MICROTRUST_TEE_VERSION)/common/include
 endif # !CONFIG_MICROTRUST_TEE_SUPPORT
 
 ifneq ($(filter y m,$(CONFIG_BLOWFISH_TEE_SUPPORT)),)
-ccflags-y += -I$(srctree)/drivers/misc/tzdev
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/tzdev
 endif # !CONFIG_BLOWFISH_TEE_SUPPORT

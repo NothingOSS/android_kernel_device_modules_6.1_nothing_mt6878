@@ -27,11 +27,11 @@ endif
 
 ifneq ($(CCCI_OBJ), n)
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/ccci_util
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ccci_util
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 
 ifeq ($(CONFIG_MTK_SECURITY_SW_SUPPORT), y)
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/asf_export_inc
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/masp/asfv2/asf_export_inc
 ccflags-y += -DENABLE_MD_IMG_SECURITY_FEATURE
 endif
 

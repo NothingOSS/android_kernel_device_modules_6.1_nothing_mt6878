@@ -14,37 +14,37 @@
 #
 GZ_SEC_STORAGE_UT := y
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/geniezone/include
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/geniezone/public
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/memory-ssmr
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/trusted_mem/public
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/trusted_mem/ssmr
-ccflags-y += -I$(srctree)/drivers/dma-buf/heaps
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/geniezone/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/geniezone/public
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/memory-ssmr
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem/public
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem/ssmr
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps
 
 $(info ************  drivers/trusty/mtee-kree mk ************)
 
-#ccflags-y := -I$(srctree)/drivers/misc/mediatek/geniezone/public -Werror $(ccflags-y)
+#ccflags-y := -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/geniezone/public -Werror $(ccflags-y)
 
 ifneq ($(filter y m, $(CONFIG_TEE)),)
-  ccflags-y += -I$(srctree)/arch/arm/mach-$(MTK_PLATFORM)/include/trustzone/utils/tlutils
-  ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/trustzone/utils/tlutils
-  ccflags-y += -I$(src)/$(MTK_PLATFORM)
-  ccflags-y += -I$(srctree)/drivers/misc/mediatek/trusted_mem/public
-  ccflags-y += -I$(srctree)/drivers/misc/mediatek/m4u/$(MTK_PLATFORM)
+  ccflags-y += -I$(DEVICE_MODULES_PATH)/arch/arm/mach-$(MTK_PLATFORM)/include/trustzone/utils/tlutils
+  ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/trustzone/utils/tlutils
+  ccflags-y += -I$(srctree)/$(src)/$(MTK_PLATFORM)
+  ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem/public
+  ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/m4u/$(MTK_PLATFORM)
   ifneq ($(filter y m, $(CONFIG_TRUSTONIC_TEE_SUPPORT)),)
-    include $(srctree)/drivers/tee/gud/Makefile.include
+    include $(DEVICE_MODULES_PATH)/drivers/tee/gud/Makefile.include
   else ifneq ($(filter y m, $(CONFIG_MICROTRUST_TEE_SUPPORT)),)
-    include $(srctree)/drivers/tee/teei/Makefile.include
+    include $(DEVICE_MODULES_PATH)/drivers/tee/teei/Makefile.include
   #else ifeq ($(CONFIG_BLOWFISH_TEE_SUPPORT),y)
-  # ccflags-y += -I$(srctree)/drivers/misc/tzdev
+  # ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/tzdev
   else
   endif
 else # Legacy
   ifneq ($(filter y m, $(CONFIG_TRUSTONIC_TEE_SUPPORT)),)
-    ccflags-y += -I$(srctree)/arch/arm/mach-$(MTK_PLATFORM)/include/trustzone/utils/tlutils
-    ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/trustzone/utils/tlutils
-    ccflags-y += -I$(src)/$(MTK_PLATFORM)
-    include $(srctree)/drivers/tee/gud/Makefile.include
+    ccflags-y += -I$(DEVICE_MODULES_PATH)/arch/arm/mach-$(MTK_PLATFORM)/include/trustzone/utils/tlutils
+    ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/trustzone/utils/tlutils
+    ccflags-y += -I$(srctree)/$(src)/$(MTK_PLATFORM)
+    include $(DEVICE_MODULES_PATH)/drivers/tee/gud/Makefile.include
   endif
 endif # !CONFIG_TEE
 

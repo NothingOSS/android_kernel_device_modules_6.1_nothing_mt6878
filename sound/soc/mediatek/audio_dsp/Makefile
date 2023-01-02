@@ -14,12 +14,12 @@
 # MTK Platform Support
 
 # adsp include path
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/audio_ipi/include
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/adsp/include
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/audio_ipi/include
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/adsp/include
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include
 
 # platform include path
-subdir-ccflags-y += -I$(srctree)/sound/soc/mediatek/common
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/common
 
 # object code
 snd-soc-audiodsp-common-objs := audio_buf.o mtk-dsp-dai.o mtk-dsp-pcm.o mtk-dsp-common.o mtk-dsp-platform-driver.o mtk-dsp-mem-control.o

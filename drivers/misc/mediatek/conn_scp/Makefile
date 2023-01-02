@@ -16,7 +16,7 @@
 # kernel build system and can use its language.
 ifneq ($(KERNELRELEASE),)
     subdir-ccflags-y += -I$(srctree)/
-    subdir-ccflags-y += -Werror -I$(srctree)/drivers/misc/mediatek/include/mt-plat
+    subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat
 
     #ifneq ($(CONFIG_MTK_TINYSYS_SCP_SUPPORT),)
     # SCP
@@ -27,7 +27,7 @@ ifneq ($(KERNELRELEASE),)
 
 	# Aoltest
     ifeq ($(CONFIG_MTK_AOL_DEBUG),y)
-        subdir-ccflags-y += -Werror -I$(srctree)/drivers/misc/mediatek/conn_scp/aoltest/
+        subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/conn_scp/aoltest/
     endif
 
     MODULE_NAME := connscp

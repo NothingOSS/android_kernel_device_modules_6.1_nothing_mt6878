@@ -21,20 +21,21 @@ endif
 
 ifneq ($(CCCI_OBJ), n)
 
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/inc/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/ccmni/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/conn_md/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/scp/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/scp/rv/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/memory-amms
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/hif/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/mdpm/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/pbm/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/inc/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ccmni/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/conn_md/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/rv/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/memory-amms
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/hif/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdpm/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pbm/
 
 ifeq ($(CCCI_OBJ), m)
 ccflags-y += -DCCCI_KMODULE_ENABLE
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/udc/udc_lib_inc
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/udc/udc_lib_inc
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/
 
 ifneq ($(CONFIG_MEDIATEK_MT6577_AUXADC), n)
 obj-$(CCCI_OBJ) += ccci_auxadc.o
@@ -46,10 +47,10 @@ ccci_md_all-$(CCCI_OBJ) := ccci_core.o ccci_bm.o ccci_modem.o \
 		hif/ccci_hif.o
 
 # port start
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/port/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/udc
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/udc/udc_lib_inc
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/conn_md/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/port/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/udc
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/udc/udc_lib_inc
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/conn_md/include/
 
 ccci_md_all-$(CCCI_OBJ) += port/port_cfg.o \
 		port/port_char.o \
@@ -65,7 +66,7 @@ ccci_md_all-$(CCCI_OBJ) += port/port_cfg.o \
 		port/ccci_swtp.o
 # port end
 # fsm start
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/fsm/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/fsm/
 ccci_md_all-$(CCCI_OBJ) += fsm/ccci_fsm.o \
 			fsm/ccci_fsm_ioctl.o \
 			fsm/ccci_fsm_monitor.o \
@@ -84,16 +85,16 @@ ccci_md_all-$(CCCI_OBJ) += fsm/ccci_fsm.o \
 # fsm end
 
 # plat start
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/pmic/
-ccflags-y += -I$(srctree)/drivers/clk/mediatek
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pmic/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek
 # security objects
-MASP_CORE_DRIVER_DIR := $(srctree)/drivers/misc/mediatek/drivers/masp
+MASP_CORE_DRIVER_DIR := $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/drivers/masp
 
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/fsm
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/fsm
 obj-$(CCCI_OBJ)	+= fsm/
 
 # ccci_ccif.ko, ccci_dpmaif.ko, ccci_cldma.ko
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/hif
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/hif
 obj-$(CCCI_OBJ)	+= hif/
 
 

@@ -11,20 +11,20 @@
 # GNU General Public License for more details.
 #
 
-$(info $(srctree))
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/mtk-interconnect/
-ccflags-y += -I$(srctree)/drivers/iommu
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/iommu
-ccflags-$(CONFIG_MTK_IOMMU_V2) += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/
+$(info $(DEVICE_MODULES_PATH))
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu
+ccflags-$(CONFIG_MTK_IOMMU_V2) += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/
 
-ifneq ($(wildcard $(srctree)/include/dt-bindings/memory/mt6983-larb-port.h),)
+ifneq ($(wildcard $(DEVICE_MODULES_PATH)/include/dt-bindings/memory/mt6983-larb-port.h),)
 subdir-ccflags-y += -DPDA_TF_DUMP_71_1
-else ifneq ($(wildcard $(srctree)/include/dt-bindings/memory/mt6879-larb-port.h),)
+else ifneq ($(wildcard $(DEVICE_MODULES_PATH)/include/dt-bindings/memory/mt6879-larb-port.h),)
 subdir-ccflags-y += -DPDA_TF_DUMP_71_2
-else ifneq ($(wildcard $(srctree)/include/dt-bindings/memory/mt6895-larb-port.h),)
+else ifneq ($(wildcard $(DEVICE_MODULES_PATH)/include/dt-bindings/memory/mt6895-larb-port.h),)
 subdir-ccflags-y += -DPDA_TF_DUMP_71_3
-else ifneq ($(wildcard $(srctree)/include/dt-bindings/memory/mt6855-larb-port.h),)
+else ifneq ($(wildcard $(DEVICE_MODULES_PATH)/include/dt-bindings/memory/mt6855-larb-port.h),)
 subdir-ccflags-y += -DPDA_TF_DUMP_6s_1
 endif
 

@@ -15,15 +15,15 @@ ifeq ($(CONFIG_MTK_ECCCI_DRIVER), m)
 
 ccflags-y += -DCCCI_KMODULE_ENABLE
 
-#ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/inc
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/port
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/platform
-#ccflags-y += -I$(srctree)/drivers/misc/mediatek/scp/mt6873
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/scp/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/scp/rv/
-#ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/hif/
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/inc
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/port
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/platform
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/mt6873
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/rv/
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/hif/
 
 ccci_fsm_scp-y := ccci_fsm_scp_c.o
 obj-$(CONFIG_MTK_ECCCI_DRIVER) += ccci_fsm_scp.o
@@ -36,14 +36,14 @@ endif
 
 ifeq ($(CONFIG_MTK_ECCCI_DRIVER), y)
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/inc
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/port
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/platform
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/scp/mt6873
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/scp/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/hif/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/inc
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/port
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/platform
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/mt6873
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/hif/
 
 # fsm objects
 obj-$(CONFIG_MTK_ECCCI_DRIVER) := ccci_fsm_all.o

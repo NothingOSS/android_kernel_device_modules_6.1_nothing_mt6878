@@ -11,5 +11,5 @@
 # GNU General Public License for more details.
 #
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/mtk-interconnect/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_COMMON) += mmqos_wrapper.o

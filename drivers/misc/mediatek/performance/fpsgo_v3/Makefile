@@ -3,7 +3,7 @@ ccflags-y += -DCONFIG_MTK_FPSGO_V3
 subdir-ccflags-y += -DCONFIG_MTK_FPSGO_V3
 endif
 
-FPSGO_TOP = $(srctree)/drivers/misc/mediatek/performance/fpsgo_v3/
+FPSGO_TOP = $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v3/
 BASE_TOP = $(FPSGO_TOP)/base
 FBT_TOP = $(FPSGO_TOP)/fbt
 FSTB_TOP = $(FPSGO_TOP)/fstb
@@ -12,32 +12,34 @@ GBE_TOP = $(FPSGO_TOP)/gbe
 
 ccflags-y += \
         -I$(srctree)/include/ \
-        -I$(srctree)/drivers/gpu/drm/mediatek/mediatek_v2/ \
-        -I$(srctree)/drivers/gpu/mediatek/ged/include/ \
+        -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/ \
+        -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include/ \
         -I$(FPSGO_TOP)/mt-plat/ \
+        -I$(FPSGO_TOP)/ \
         -I$(BASE_TOP)/include/ \
         -I$(FBT_TOP)/include/ \
         -I$(FSTB_TOP)/ \
         -I$(COM_TOP)/include/ \
         -I$(srctree)/kernel/ \
-        -I$(srctree)/drivers/misc/mediatek/sched/ \
-        -I$(srctree)/drivers/misc/mediatek/include/mt-plat/ \
-        -I$(srctree)/drivers/thermal/mediatek/ \
+        -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/ \
+        -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/ \
+        -I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek/ \
         -I$(GBE_TOP)/ \
 
 subdir-ccflags-y += \
         -I$(srctree)/include/ \
-        -I$(srctree)/drivers/gpu/drm/mediatek/mediatek_v2/ \
-        -I$(srctree)/drivers/gpu/mediatek/ged/include/ \
+        -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/ \
+        -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include/ \
         -I$(FPSGO_TOP)/mt-plat/ \
+        -I$(FPSGO_TOP)/ \
         -I$(BASE_TOP)/include/ \
         -I$(FBT_TOP)/include/ \
         -I$(FSTB_TOP)/ \
         -I$(COM_TOP)/include/ \
         -I$(srctree)/kernel/ \
-        -I$(srctree)/drivers/misc/mediatek/sched/ \
-        -I$(srctree)/drivers/misc/mediatek/include/mt-plat/ \
-        -I$(srctree)/drivers/thermal/mediatek/ \
+        -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/ \
+        -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/ \
+        -I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek/ \
         -I$(GBE_TOP)/ \
 
 

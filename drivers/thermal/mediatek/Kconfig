@@ -119,6 +119,7 @@ config MTK_THERMAL_INTERFACE
 config MTK_THERMAL_JATM
 	tristate "Mediatek jank aware thermal management driver"
 	depends on MTK_THERMAL_INTERFACE
+	depends on MTK_FPSGO_V3
 	help
 	  This driver provides a algorithm to fine tune:
 	  1. TTJ

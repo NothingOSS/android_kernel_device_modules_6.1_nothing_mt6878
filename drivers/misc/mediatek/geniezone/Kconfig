@@ -102,7 +102,7 @@ config MTK_GZ_SUPPORT_SDSP
 	  smc call into mtee for setup security
 	  realted register.
 
-source "drivers/misc/mediatek/geniezone/gz-trusty/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/geniezone/gz-trusty/Kconfig"
 
 endmenu
 

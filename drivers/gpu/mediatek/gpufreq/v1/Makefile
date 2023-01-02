@@ -11,14 +11,14 @@
 # See http://www.gnu.org/licenses/gpl-2.0.html for more details.
 #
 
-ccflags-y += -I$(srctree)/include/
-ccflags-y += -I$(srctree)/drivers/gpu/mediatek/gpufreq/v1/include/
-ccflags-y += -I$(srctree)/drivers/gpu/mediatek/mt-plat/
-ccflags-y += -I$(srctree)/drivers/gpu/mediatek/ged/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/aee/aed/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/power_throttling/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/v1/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/mt-plat/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/aed/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling/
 
 obj-$(CONFIG_MTK_GPU_SUPPORT) += mtk_gpufreq.o
 

@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-#MTK_TOP = $(srctree)/drivers/misc/mediatek/
+#MTK_TOP = $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/
 #ccflags-y  += -I$(MTK_TOP)/performance/fpsgo_v3/base/include/
 #ccflags-y  += -I$(MTK_TOP)/performance/fpsgo_v3/fstb/
 

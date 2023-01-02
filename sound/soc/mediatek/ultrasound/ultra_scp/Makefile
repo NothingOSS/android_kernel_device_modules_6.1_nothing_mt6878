@@ -3,11 +3,11 @@
 # MTK Platform Support
 
 # include path
-subdir-ccflags-y += -I$(srctree)/sound/soc/mediatek/common/
-subdir-ccflags-y += -I$(srctree)/sound/soc/mediatek/ultrasound/ultra_common
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/common/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/ultrasound/ultra_common
 
 ifneq ($(CONFIG_MTK_TINYSYS_SCP_SUPPORT),)
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/scp/include
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include
 endif
 
 # common code

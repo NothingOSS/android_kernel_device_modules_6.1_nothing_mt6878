@@ -14,12 +14,12 @@
 ifeq ($(CONFIG_MTK_ECCCI_DRIVER), m)
 ccflags-y += -DCCCI_KMODULE_ENABLE
 
-#ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/inc
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/platform
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/mt6873
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include
-#ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/inc
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/platform
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/mt6873
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 
 # ccci_ccif.ko
 
@@ -44,15 +44,15 @@ endif
 
 ifeq ($(CONFIG_MTK_ECCCI_DRIVER), y)
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/inc
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/platform
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/scp/mt6873
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/mt6873
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/conn_md/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/scp/mt6873
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/inc
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/platform
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/mt6873
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/mt6873
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/conn_md/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/mt6873
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 
 
 # hif objects

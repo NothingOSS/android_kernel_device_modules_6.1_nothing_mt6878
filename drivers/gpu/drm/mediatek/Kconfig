@@ -21,13 +21,5 @@ config DRM_MEDIATEK
 	  This driver provides kernel mode setting and
 	  buffer management to userspace.
 
-config DRM_MEDIATEK_HDMI
-	tristate "DRM HDMI Support for Mediatek SoCs"
-	depends on DRM_MEDIATEK
-	select SND_SOC_HDMI_CODEC if SND_SOC
-	select PHY_MTK_HDMI
-	help
-	  DRM/KMS HDMI driver for Mediatek SoCs
-
-source "drivers/gpu/drm/mediatek/mediatek_v2/Kconfig"
-source "drivers/gpu/drm/mediatek/mml/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/gpu/drm/mediatek/mediatek_v2/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/gpu/drm/mediatek/mml/Kconfig"

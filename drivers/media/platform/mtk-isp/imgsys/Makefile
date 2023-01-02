@@ -3,20 +3,21 @@
 # Copyright (C) 2018 MediaTek Inc.
 #
 # export MTK_IMGSYS_VER := $(subst ",,$(CONFIG_MTK_IMGSYS_VER))
-ccflags-y += -I$(srctree)/drivers/media/platform/mtk-isp/mtk-hcp
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/cmdq/mailbox/
-ccflags-y += -I$(srctree)/drivers/media/platform/mtk-isp/imgsys/platforms/
-ccflags-y += -I$(srctree)/drivers/media/platform/mtk-isp/imgsys/platforms/isp71
-ccflags-y += -I$(srctree)/drivers/media/platform/mtk-isp/mtk-ipesys-me/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/mtk-interconnect/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/
-ccflags-y += -I$(srctree)/drivers/iommu
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/iommu
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-isp/mtk-hcp
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-isp/imgsys/platforms/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-isp/imgsys/platforms/isp71
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-isp/imgsys
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-isp/mtk-ipesys-me/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu
 ccflags-y += -I$(srctree)/include/soc/mediatek
 
-ifneq ($(wildcard $(srctree)/include/dt-bindings/memory/mt6983-larb-port.h),)
+ifneq ($(wildcard $(DEVICE_MODULES_PATH)/include/dt-bindings/memory/mt6983-larb-port.h),)
   subdir-ccflags-y += -DWPE_TF_DUMP_71_1
-else ifneq ($(wildcard $(srctree)/include/dt-bindings/memory/mt6879-larb-port.h),)
+else ifneq ($(wildcard $(DEVICE_MODULES_PATH)/include/dt-bindings/memory/mt6879-larb-port.h),)
   subdir-ccflags-y += -DWPE_TF_DUMP_71_2
   subdir-ccflags-y += -DONEPIXEL_MODE
 endif

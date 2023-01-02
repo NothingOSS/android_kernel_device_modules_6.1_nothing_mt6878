@@ -12,14 +12,15 @@
 #
 
 ccflags-y += \
-	-I$(srctree)/drivers/misc/mediatek/include \
-	-I$(srctree)/drivers/misc/mediatek/include/mt-plat \
-	-I$(srctree)/drivers/misc/mediatek/sspm \
-	-I$(srctree)/drivers/misc/mediatek/tinysys_scmi/ \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/ \
 	-I$(srctree)/include \
+	-I$(srctree)/$(src) \
 
 ifeq ($(CONFIG_MTK_L3C_PART),y)
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/l3c_part
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/l3c_part
 endif
 
 ifneq (strip $(CONFIG_MTK_SLBC),)

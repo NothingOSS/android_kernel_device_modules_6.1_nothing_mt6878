@@ -14,10 +14,10 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-FPSGO_TOP = $(srctree)/drivers/misc/mediatek/performance/fpsgo_v3
+FPSGO_TOP = $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v3
 FBT_TOP = $(FPSGO_TOP)/fbt
 COMP_TOP = $(FPSGO_TOP)/composer
-MTK_TOP = $(srctree)/drivers/misc/mediatek
+MTK_TOP = $(DEVICE_MODULES_PATH)/drivers/misc/mediatek
 BASE_TOP = $(FPSGO_TOP)/base
 FSTB_TOP = $(FPSGO_TOP)/fstb
 
@@ -29,7 +29,7 @@ obj-y += \
 	src/mini_top.o
 
 ccflags-y += \
-	-I$(srctree)/include/ \
+	-I$(DEVICE_MODULES_PATH)/include/ \
 	-I$(MTK_TOP)/include/ \
 	-I$(FPSGO_TOP)/base/include/ \
 	-I$(COMP_TOP)/include/ \
@@ -39,4 +39,4 @@ ccflags-y += \
 	-I$(MTK_TOP)/base/power/$(MTK_PLATFORM)/ \
 	-I$(FSTB_TOP)/ \
 	-I$(MTK_TOP)/cm_mgr/ \
-	-I$(srctree)/kernel/
+	-I$(DEVICE_MODULES_PATH)/kernel/

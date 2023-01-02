@@ -3,8 +3,8 @@ GCOV_PROFILE := y
 endif
 
 ccflags-y += \
-	-I$(srctree)/drivers/misc/mediatek/sspm/ \
-	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/ \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/ \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/ \
 
 obj-$(CONFIG_MTK_DVFSRC_HELPER) += mtk-dvfsrc-helper.o
 mtk-dvfsrc-helper-objs += dvfsrc-helper.o dvfsrc-debug-v3.o dvfsrc-sysfs.o

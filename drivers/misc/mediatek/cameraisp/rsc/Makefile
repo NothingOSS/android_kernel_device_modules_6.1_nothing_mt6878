@@ -12,14 +12,14 @@
 #
 
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/mmp/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/cmdq/v3/
-ccflags-y += -I$(srctree)/drivers/staging/android/ion \
-             -I$(srctree)/drivers/staging/android/ion/mtk
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/v3/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/staging/android/ion \
+             -I$(DEVICE_MODULES_PATH)/drivers/staging/android/ion/mtk
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/
 
-ccflags-$(CONFIG_MTK_IOMMU_V2) += -I$(srctree)/drivers/iommu
-ccflags-$(CONFIG_MTK_IOMMU_V2) += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/
+ccflags-$(CONFIG_MTK_IOMMU_V2) += -I$(DEVICE_MODULES_PATH)/drivers/iommu
+ccflags-$(CONFIG_MTK_IOMMU_V2) += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
 
 
 #obj-y += camera_rsc_dummy.c

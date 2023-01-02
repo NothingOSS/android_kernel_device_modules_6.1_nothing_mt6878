@@ -13,8 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-MTK_TOP = $(srctree)/drivers/misc/mediatek/
-FPSGO_TOP = $(srctree)/drivers/misc/mediatek/performance/fpsgo_v3/
+MTK_TOP = $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/
+FPSGO_TOP = $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v3/
 BASE_TOP = $(FPSGO_TOP)/base
 FBT_TOP = $(FPSGO_TOP)/fbt
 FSTB_TOP = $(FPSGO_TOP)/fstb

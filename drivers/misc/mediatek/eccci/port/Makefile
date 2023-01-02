@@ -13,21 +13,21 @@
 
 ifeq ($(CONFIG_MTK_ECCCI_DRIVER), y)
 
-ccflags-y += -I$(srctree)/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/inc
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/port
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/platform
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/conn_md/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/ccmni
-#ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/mt6873
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/mt6873
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/udc
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/udc/udc_lib_inc
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/clkbuf_v1
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/hif
+ccflags-y += -I$(DEVICE_MODULES_PATH)/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/inc
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/port
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/platform
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/conn_md/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ccmni
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/mt6873
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/mt6873
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/udc
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/udc/udc_lib_inc
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/clkbuf_v1
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/hif
 
 # port objects
 obj-$(CONFIG_MTK_ECCCI_DRIVER) := ccci_port.o

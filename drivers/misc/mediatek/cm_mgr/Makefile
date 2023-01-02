@@ -12,17 +12,17 @@
 #
 
 ccflags-y += \
-	-I$(srctree)/drivers/misc/mediatek/cm_mgr/ \
-	-I$(srctree)/drivers/misc/mediatek/dramc/$(MTK_PLATFORM) \
-	-I$(srctree)/drivers/misc/mediatek/include/mt-plat \
-	-I$(srctree)/drivers/misc/mediatek/sspm \
-	-I$(srctree)/drivers/misc/mediatek/tinysys_scmi/ \
-	-I$(srctree)/drivers/misc/mediatek/qos \
-	-I$(srctree)/drivers/gpu/drm/mediatek/mediatek_v2/ \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cm_mgr/ \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dramc/$(MTK_PLATFORM) \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/ \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/qos \
+	-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/ \
 	-I$(srctree)/include \
 
 ifeq ($(CONFIG_MTK_TINYSYS_SSPM_V2),y)
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/sspm/v2
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v2
 endif
 
 obj-${CONFIG_MTK_CM_MGR} += mtk_cm_mgr.o

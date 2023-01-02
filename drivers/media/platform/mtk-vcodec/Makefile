@@ -58,17 +58,17 @@ ifeq ($(CONFIG_VIDEO_MEDIATEK_VCODEC_V2),y)
 endif
 
 subdir-ccflags-y += -Werror
-ccflags-y += -I$(srctree)/drivers/media/platform/mtk-vcu
-ccflags-y += -I$(srctree)/drivers/media/platform/mtk-vcodec
-ccflags-y += -I$(srctree)/drivers/media/platform/mtk-videobuf
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/slbc
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/iommu
-ccflags-y += -I$(srctree)/drivers/iommu
-ccflags-y += -I$(srctree)/arch/arm
-ccflags-y += -I$(srctree)/drivers/staging/android/ion
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/mtk-interconnect
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/vcp/rv
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/vcp/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-vcu
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-vcodec
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-videobuf
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu
+ccflags-y += -I$(DEVICE_MODULES_PATH)/arch/arm
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/staging/android/ion
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/rv
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/include
 
 #endif

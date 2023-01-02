@@ -3,28 +3,28 @@
 # Copyright (c) 2021 MediaTek Inc.
 #
 
-ccflags-y += -I$(srctree)/drivers/iommu \
-             -I$(srctree)/drivers/misc/mediatek/iommu/ \
-             -I$(srctree)/drivers/misc/mediatek/include \
-             -I$(srctree)/drivers/misc/mediatek/mach/$(MTK_PLATFORM)/include \
-             -I$(srctree)/drivers/misc/mediatek/mdp/$(MTK_PLATFORM) \
-             -I$(srctree)/drivers/misc/mediatek/mmp/ \
-             -I$(srctree)/drivers/misc/mediatek/smi/ \
-             -I$(srctree)/drivers/misc/mediatek/vcp/rv/ \
-             -I$(srctree)/drivers/misc/mediatek/vcp/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mach/$(MTK_PLATFORM)/include \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdp/$(MTK_PLATFORM) \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/rv/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/include/
 
 ccflags-$(CONFIG_DEBUG_FS) += -DCONFIG_CMDQ_MMPROFILE_SUPPORT
 
 ifeq ($(CONFIG_MICROTRUST_TEE_SUPPORT),m)
-include $(srctree)/drivers/tee/teei/Makefile.include
+include $(DEVICE_MODULES_PATH)/drivers/tee/teei/Makefile.include
 endif
 
 ifeq ($(CONFIG_TRUSTONIC_TEE_SUPPORT),m)
-include $(srctree)/drivers/tee/gud/Makefile.include
+include $(DEVICE_MODULES_PATH)/drivers/tee/gud/Makefile.include
 endif
 
 ifeq ($(CONFIG_MTK_GZ_TZ_SYSTEM),m)
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/geniezone/public
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/geniezone/public
 ccflags-y += -DCMDQ_SECURE_MTEE_SUPPORT
 
 ccflags-y += -DCMDQ_SECURE_SUPPORT

@@ -1,7 +1,7 @@
 subdir-ccflags-y += -Wall -Werror
-subdir-ccflags-y += -I$(srctree)/drivers/power/supply/
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/rt-regmap/
-subdir-ccflags-y += -I$(srctree)/drivers/mfd/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/power/supply/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/rt-regmap/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/mfd/
 
 obj-$(CONFIG_TCPC_MT6360)		+= tcpc_mt6360.o
 obj-$(CONFIG_TCPC_MT6362)		+= tcpc_mt6362.o

@@ -10,9 +10,9 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 #
-PWM_BUILD_FOLDER=$(srctree)/drivers/misc/mediatek/pwm
+PWM_BUILD_FOLDER=$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pwm
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 ifneq ($(filter y m,$(CONFIG_MTK_PWM)),)
 ccflags-y += -I$(PWM_BUILD_FOLDER)/pwm_v2/include/
 #mtk pwm_v2 source files

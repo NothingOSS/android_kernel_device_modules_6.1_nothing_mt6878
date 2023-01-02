@@ -1,4 +1,4 @@
-MFD_TOP = $(srctree)/drivers/mfd
+MFD_TOP = $(DEVICE_MODULES_PATH)/drivers/mfd
 
 #Old GKI
 ifneq (,$(filter y m, $(CONFIG_SCSI_UFS_MEDIATEK)))
@@ -7,8 +7,7 @@ else
     ccflags-y += -D UFS_CLKBUF_SUPPORT=0
 endif
 
-ccflags-y += -I$(src)/src \
-     -I$(MFD_TOP)/
+ccflags-y += -I$(MFD_TOP)/
 
 obj-$(CONFIG_MTK_CLK_BUFFER) += clkbuf.o
 

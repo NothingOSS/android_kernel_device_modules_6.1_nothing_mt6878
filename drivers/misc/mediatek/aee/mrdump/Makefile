@@ -15,7 +15,7 @@ ifeq ($(CONFIG_MTK_GCOV_KERNEL),y)
 GCOV_PROFILE := y
 endif
 
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/mtprof/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtprof/
 subdir-ccflags-y += -I$(srctree)/kernel/
 subdir-ccflags-y += -I$(srctree)/drivers/staging/android/
 

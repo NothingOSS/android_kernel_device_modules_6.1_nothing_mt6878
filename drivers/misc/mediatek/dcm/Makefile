@@ -1,4 +1,4 @@
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/dcm/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dcm/include/
 
 # Core
 obj-$(CONFIG_MTK_DCM_COMMON)	+= mtk_dcm.o

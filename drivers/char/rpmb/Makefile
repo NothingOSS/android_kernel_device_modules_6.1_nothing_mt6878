@@ -1,10 +1,12 @@
 ifneq ($(findstring $(CONFIG_TRUSTONIC_TEE_SUPPORT), y m),)
-ccflags-y += -I$(srctree)/drivers/char/rpmb/drrpmb_gp/public
-ccflags-y += -I$(srctree)/drivers/tee/gud/500/MobiCoreDriver/public/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/char/rpmb/drrpmb_gp/public
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/tee/gud/500/MobiCoreDriver/public/
 endif
-ccflags-y += -I$(srctree)/drivers/scsi/ufs
-ccflags-y += -I$(srctree)/drivers/scsi/ufs/vendor
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/scsi/ufs
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/scsi/ufs/vendor
 
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/mmc/host
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/mmc/core
 ccflags-y += -I$(srctree)/drivers/mmc/host
 ccflags-y += -I$(srctree)/drivers/mmc/core
 

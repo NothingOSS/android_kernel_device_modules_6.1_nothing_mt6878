@@ -35,7 +35,7 @@ ccflags-y += -I$(GUD_ROOT_FOLDER)/TlcTui/inc \
              -I$(GUD_ROOT_FOLDER)/TlcTui/public
 
 #ifeq ($(CONFIG_MTK_SSMR),y)
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/trusted_mem/ssmr/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem/ssmr/
 #endif
 
 ccflags-y += -DTUI_ENABLE_DISPLAY

@@ -10,4 +10,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 #
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmstat
+
 obj-$(CONFIG_MMSTAT_TRACER) += trace_mmstat.o

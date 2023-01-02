@@ -16,7 +16,7 @@
 # kernel build system and can use its language.
 ifneq ($(KERNELRELEASE),)
 	#subdir-ccflags-y can be used in 2.6.34 in the future
-	subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat
+	subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat
 
 	obj-$(CONFIG_MTK_BTIF) += common/
 	subdir-ccflags-y += -D BTIF_DBG_SUPPORT=0

@@ -8,5 +8,5 @@ config MTK_SENSOR_SUPPORT
 	  with mediatek sensor architecture.
 	  If unsure, say N.
 
-#source "drivers/misc/mediatek/sensor/1.0/Kconfig"
-source "drivers/misc/mediatek/sensor/2.0/Kconfig"
+#source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/sensor/1.0/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/sensor/2.0/Kconfig"

@@ -59,4 +59,4 @@ config MTK_V4L2_IMGSENSOR
 	  To compile this driver as a module, choose M here: the
 	  module wll be called imgsensor.
 
-source "drivers/misc/mediatek/imgsensor/src/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/imgsensor/src/Kconfig"

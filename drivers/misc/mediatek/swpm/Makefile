@@ -1,18 +1,18 @@
-SWPM_BUILD_FOLDER=$(srctree)/drivers/misc/mediatek/swpm
+SWPM_BUILD_FOLDER=$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm
 
 ifeq ($(CONFIG_MTK_TINYSYS_SSPM_V2),y)
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/sspm/v2
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v2
 endif
 
 ifeq ($(CONFIG_MTK_TINYSYS_SSPM_V3),y)
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/sspm/v3
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v3
 endif
 
 ifeq ($(CONFIG_MTK_QOS_FRAMEWORK),m)
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/qos
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/qos
 endif
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 ccflags-y += -I$(SWPM_BUILD_FOLDER)/inc/
 
 subdir-ccflags-y += -I$(SWPM_BUILD_FOLDER)/inc/

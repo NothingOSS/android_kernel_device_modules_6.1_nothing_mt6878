@@ -9,17 +9,17 @@ ccflags-y += -Wformat
 
 
 ### common include path
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/audio_ipi/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/audio_ipi/include
 
 ### for adsp
 #ifeq ($(CONFIG_MTK_AUDIODSP_SUPPORT),y)
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/adsp/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/adsp/include
 #endif
 
 ### for CM4
 ifeq ($(CONFIG_MTK_TINYSYS_SCP_SUPPORT),y)
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/scp/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include
 endif
 
 

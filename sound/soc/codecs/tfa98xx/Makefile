@@ -14,10 +14,10 @@
 # additional debugging
 #TFA_DEBUG=1
 
-subdir-ccflags-y += -I$(srctree)/sound/soc/mediatek/common
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/common
 
 # debugging support (also enables trace_printk)
-ccflags-y += -I$(srctree)/sound/soc/codecs/tfa98xx/inc
+ccflags-y += -I$(DEVICE_MODULES_PATH)/sound/soc/codecs/tfa98xx/inc
 ccflags-y += -DDEBUG -DTFA_NON_DSP_SOLUTION
 ccflags-y += -Werror
 ccflags-y += $(call cc-option,-Wno-date-time,)

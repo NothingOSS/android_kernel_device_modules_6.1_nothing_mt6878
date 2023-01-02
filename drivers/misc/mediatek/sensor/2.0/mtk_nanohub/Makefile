@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/sensor/2.0/core
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/sensor/2.0/mtk_nanohub/nanohub
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/scp/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sensor/2.0/core
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sensor/2.0/mtk_nanohub/nanohub
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include
 
 obj-$(CONFIG_CUSTOM_KERNEL_SENSORHUB) += nanohub.o
 nanohub-objs += mtk_nanohub.o

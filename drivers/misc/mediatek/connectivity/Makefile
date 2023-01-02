@@ -16,14 +16,14 @@
 # kernel build system and can use its language.
 ifneq ($(KERNELRELEASE),)
     subdir-ccflags-y += -I$(srctree)/
-    subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include
-    subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/clkbuf/src
-    subdir-ccflags-y += -Werror -I$(srctree)/drivers/misc/mediatek/include/mt-plat
+    subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include
+    subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/clkbuf/src
+    subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat
     subdir-ccflags-y += -I$(srctree)/drivers/mmc/core
-    subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/eccci/
-    subdir-ccflags-y += -I$(srctree)/drivers/clk/mediatek/
-    subdir-ccflags-y += -I$(srctree)/drivers/pinctrl/mediatek/
-    subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/power_throttling/
+    subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/
+    subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek/
+    subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/pinctrl/mediatek/
+    subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling/
 
     # Do Nothing, move to standalone repo
     MODULE_NAME := connadp
@@ -49,9 +49,9 @@ ifneq ($(KERNELRELEASE),)
         PATH_TO_WLAN_CHR_DRV = vendor/mediatek/kernel_modules/connectivity/wlan/adaptor
         PATH_TO_WLAN_DRV     = vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m
 
-        ABS_PATH_TO_WMT_DRV      = $(srctree)/../$(PATH_TO_WMT_DRV)
-        ABS_PATH_TO_WLAN_CHR_DRV = $(srctree)/../$(PATH_TO_WLAN_CHR_DRV)
-        ABS_PATH_TO_WLAN_DRV     = $(srctree)/../$(PATH_TO_WLAN_DRV)
+        ABS_PATH_TO_WMT_DRV      = $(DEVICE_MODULES_PATH)/../$(PATH_TO_WMT_DRV)
+        ABS_PATH_TO_WLAN_CHR_DRV = $(DEVICE_MODULES_PATH)/../$(PATH_TO_WLAN_CHR_DRV)
+        ABS_PATH_TO_WLAN_DRV     = $(DEVICE_MODULES_PATH)/../$(PATH_TO_WLAN_DRV)
 
         # check wlan driver folder
         ifeq (,$(wildcard $(ABS_PATH_TO_WMT_DRV)))
