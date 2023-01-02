@@ -9022,6 +9022,10 @@
 	};
 	apu_top_3: apu_top_3 {
 		compatible = "mt6985,apu_top_3";
+		vapu-supply = <&mt6319_15_vbuck1>;
+		vsram_core-supply = <&mt6363_vbuck4>;
+		vcore-supply = <&mt6363_vbuck6>;
+		status = "disabled";
 		reg = <0 0x1c000000 0 0x1000>,		// sys_vlp
 			<0 0x1c001000 0 0x1000>,	// sys_spm
 			<0 0x19020000 0 0x1000>,	// apu_rcx
