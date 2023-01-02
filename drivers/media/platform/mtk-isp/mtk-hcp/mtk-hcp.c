@@ -42,6 +42,7 @@
 #include "mtk-hcp-support.h"
 #include "mtk-hcp_isp71.h"
 #include "mtk-hcp_isp7s.h"
+#include "mtk-hcp_isp7sp.h"
 
 
 #ifdef CONFIG_MTK_IOMMU_V2
@@ -1683,6 +1684,7 @@ err_alloc:
 static const struct of_device_id mtk_hcp_match[] = {
 	{.compatible = "mediatek,hcp", .data = (void *)&isp71_hcp_data},
 	{.compatible = "mediatek,hcp7s", .data = (void *)&isp7s_hcp_data},
+	{.compatible = "mediatek,hcp7sp", .data = (void *)&isp7sp_hcp_data},
 	{}
 };
 MODULE_DEVICE_TABLE(of, mtk_hcp_match);
