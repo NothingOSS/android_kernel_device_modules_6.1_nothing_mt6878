@@ -174,7 +174,7 @@ static int init_ctrl_base(struct platform_device *pdev)
 
 	dispsys_base = ioremap(res->start, resource_size(res));
 	if (IS_ERR(dispsys_base)) {
-		dev_notice(dev, "could not ioremap resource for dispsys:%d\n",
+		dev_notice(dev, "could not ioremap resource for dispsys:%ld\n",
 			PTR_ERR(dispsys_base));
 		dispsys_base = NULL;
 	}
