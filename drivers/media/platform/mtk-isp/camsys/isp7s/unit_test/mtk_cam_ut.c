@@ -15,7 +15,7 @@
 #include <linux/iopoll.h>
 #include <linux/irqreturn.h>
 #include <linux/kernel.h>
-#include <linux/mtk_ccd_controls.h>
+#include <uapi/linux/mtk_ccd_controls.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_irq.h>
