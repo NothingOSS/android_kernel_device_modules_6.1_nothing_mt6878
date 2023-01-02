@@ -2024,6 +2024,9 @@ static const struct mtk_device_info mt6985_devices_gpu[] = {
 	{0, 22, 22, "G3D TestBench", true},
 	{0, 23, 23, "mfg_ips_ses ", true},
 	{0, 24, 24, "PTP_THERM_CTRL", true},
+
+	{-1, -1, 25, "DEVICE_APC_GPU_AO", false},
+	{-1, -1, 26, "DEVICE_APC_GPU_PDN", false},
 };
 
 enum DEVAPC_VIO_SLAVE_NUM {
