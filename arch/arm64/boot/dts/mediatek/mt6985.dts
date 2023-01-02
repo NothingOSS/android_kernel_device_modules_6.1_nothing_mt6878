@@ -3666,6 +3666,10 @@
 			aov_log_buf_sz = <0x100000>;
 		};
 
+		apusys_aov {
+			compatible = "mediatek,apusys_aov";
+		};
+
 		i2c0: i2c@11f00000 {
 			compatible = "mediatek,mt6983-i2c";
 			reg = <0 0x11f00000 0 0x1000>,
@@ -7422,6 +7426,7 @@
 		<26 3  9>,/* IPI_OUT_AUDIO_ULTRA_SND_0 */
 		<35 3  2>,/* IPI_OUT_C_SCP_HWVOTER_DEBUG */
 		<39 3  4>,/* IPI_OUT_AOV_SCP */
+		<43 3  4>,/* IPI_OUT_NPU_SCP */
 		<45 3  1>,/* IPI_OUT_SCP_PM_NOTIFY */
 		<29 4 16>,/* IPI_OUT_SENSOR_CTRL */
 		<31 4  7>;/* IPI_OUT_SENSOR_NOTIFY */
@@ -7452,6 +7457,7 @@
 		<27 3  2 0 0 0 0>,/* IPI_IN_AUDIO_ULTRA_SND_ACK_0 */
 		<35 3  4 1 0 0 0>,/* IPI_OUT_C_SCP_HWVOTER_DEBUG */
 		<40 3  4 0 0 0 0>,/* IPI_IN_SCP_AOV */
+		<44 3  4 0 0 0 0>,/* IPI_IN_SCP_NPU */
 		<30 4  2 0 0 0 0>,/* IPI_IN_SENSOR_CTRL */
 		<32 4  7 0 0 0 0>;/* IPI_IN_SENSOR_NOTIFY */
 
