@@ -1320,7 +1320,7 @@ static void ufs_mtk_trace_vh_update_sdev(void *data, struct scsi_device *sdev)
 
 	sdev->broken_fua = 1;
 
-	dev_dbg(hba->dev, "lu %d slave configured", sdev->lun);
+	dev_dbg(hba->dev, "lu %llu slave configured", sdev->lun);
 
 	if (hba->luns_avail == 1) {
 		/* The last LUs */
