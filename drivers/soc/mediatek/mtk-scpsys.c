@@ -22,7 +22,6 @@
 #include <dt-bindings/power/mt2701-power.h>
 #include <dt-bindings/power/mt2712-power.h>
 #include <dt-bindings/power/mt6797-power.h>
-#include <dt-bindings/power/mt6873-power.h>
 #include <dt-bindings/power/mt7622-power.h>
 #include <dt-bindings/power/mt7623a-power.h>
 #include <dt-bindings/power/mt8173-power.h>
@@ -2162,28 +2161,6 @@ static const struct scp_domain_data scp_domain_data_mt8192[] = {
 		.sram_pdn_ack_bits = GENMASK(12, 12),
 		.subsys_clk_prefix = "cam_rawc",
 	},
-	/*
-	 * MT6873 shares most of MT8192's HW IP except modem.
-	 * So 6873 modem append to 8192's power domains.
-	 */
-	[MT6873_POWER_DOMAIN_MD] = {
-		.name = "md",
-		.sta_mask = BIT(0),
-		.ctl_offs = 0x0300,
-		.caps = MTK_SCPD_MD_OPS,
-		.extb_iso_offs = 0x398,
-		.extb_iso_bits = BIT(0) | BIT(1),
-		.bp_table = {
-			BUS_PROT(IFR_TYPE, 0x2a0, 0x2a4, 0x220, 0x228,
-				MT6873_TOP_AXI_PROT_EN_MD),
-			BUS_PROT(IFR_TYPE, 0xb84, 0xb88, 0xb80, 0xb90,
-				MT6873_TOP_AXI_PROT_EN_VDNR_MD),
-		},
-	},
-	[MT6873_POWER_DOMAIN_APU] = {
-		.name = "apu",
-		.caps = MTK_SCPD_APU_OPS,
-	},
 };
 
 static const struct scp_subdomain scp_subdomain_mt8192[] = {
@@ -2235,17 +2212,6 @@ static const struct scp_soc_data mt6797_data = {
 		.pwr_sta_offs = SPM_PWR_STATUS_MT6797,
 		.pwr_sta2nd_offs = SPM_PWR_STATUS_2ND_MT6797
 	},
-};
-
-static const struct scp_soc_data mt6873_data = {
-	.domains = scp_domain_data_mt8192,
-	.num_domains = MT6873_POWER_DOMAIN_NR,
-	.subdomains = scp_subdomain_mt8192,
-	.num_subdomains = ARRAY_SIZE(scp_subdomain_mt8192),
-	.regs = {
-		.pwr_sta_offs = 0x016c,
-		.pwr_sta2nd_offs = 0x0170
-	}
 };
 
 static const struct scp_soc_data mt7622_data = {
@@ -2302,9 +2268,6 @@ static const struct of_device_id of_scpsys_match_tbl[] = {
 	}, {
 		.compatible = "mediatek,mt6797-scpsys",
 		.data = &mt6797_data,
-	}, {
-		.compatible = "mediatek,mt6873-scpsys",
-		.data = &mt6873_data,
 	}, {
 		.compatible = "mediatek,mt7622-scpsys",
 		.data = &mt7622_data,
