@@ -138,7 +138,7 @@ static void __gpufreq_aoc_config(enum gpufreq_power_state power);
 static void __gpufreq_hwdcm_config(void);
 static void __gpufreq_acp_config(void);
 static void __gpufreq_gpm1_config(void);
-static void __gpufreq_dfd_config(enum gpufreq_power_state power);
+static void __gpufreq_dfd_config(void);
 static void __gpufreq_mfg_backup_restore(enum gpufreq_power_state power);
 /* init function */
 static void __gpufreq_interpolate_volt(enum gpufreq_target target);
@@ -743,7 +743,7 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 
 			/* control GPU Clock */
 			ret = __gpufreq_gpu_clock_control(POWER_ON);
-			if (unlikely(ret < 0)) {
+			if (unlikely(ret)) {
 				GPUFREQ_LOGE("fail to enable GPU Clock (%d)", ret);
 				ret = GPUFREQ_EINVAL;
 				goto done_unlock;
@@ -781,7 +781,7 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 			__gpufreq_gpm1_config();
 			__gpufreq_footprint_power_step(0x0B);
 
-			__gpufreq_dfd_config(POWER_ON);
+			__gpufreq_dfd_config();
 			__gpufreq_footprint_power_step(0x0C);
 
 			/* free DVFS when power on */
@@ -796,12 +796,9 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 			g_dvfs_state |= DVFS_POWEROFF;
 			__gpufreq_footprint_power_step(0x0F);
 
-			__gpufreq_dfd_config(POWER_OFF);
-			__gpufreq_footprint_power_step(0x10);
-
 			/* backup MFG registers */
 			__gpufreq_mfg_backup_restore(POWER_OFF);
-			__gpufreq_footprint_power_step(0x11);
+			__gpufreq_footprint_power_step(0x10);
 		}
 
 		/* control clock in active-idle control */
@@ -811,17 +808,17 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 			ret = GPUFREQ_EINVAL;
 			goto done_unlock;
 		}
-		__gpufreq_footprint_power_step(0x12);
+		__gpufreq_footprint_power_step(0x11);
 
 		if (g_stack.power_count == 0) {
 			/* control GPU Clock */
 			ret = __gpufreq_gpu_clock_control(POWER_OFF);
-			if (unlikely(ret < 0)) {
+			if (unlikely(ret)) {
 				GPUFREQ_LOGE("fail to disable GPU Clock (%d)", ret);
 				ret = GPUFREQ_EINVAL;
 				goto done_unlock;
 			}
-			__gpufreq_footprint_power_step(0x13);
+			__gpufreq_footprint_power_step(0x12);
 
 			/* control MTCMOS */
 			ret = __gpufreq_mtcmos_control(POWER_OFF);
@@ -830,7 +827,7 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 				ret = GPUFREQ_EINVAL;
 				goto done_unlock;
 			}
-			__gpufreq_footprint_power_step(0x14);
+			__gpufreq_footprint_power_step(0x13);
 
 			/* control Buck */
 			ret = __gpufreq_buck_control(POWER_OFF);
@@ -839,11 +836,11 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 				ret = GPUFREQ_EINVAL;
 				goto done_unlock;
 			}
-			__gpufreq_footprint_power_step(0x15);
+			__gpufreq_footprint_power_step(0x14);
 
 			/* config AOC before MFG0 power off */
 			__gpufreq_aoc_config(POWER_OFF);
-			__gpufreq_footprint_power_step(0x16);
+			__gpufreq_footprint_power_step(0x15);
 		}
 	}
 
@@ -863,9 +860,9 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 		__gpufreq_update_shared_status_power_reg();
 
 	if (power == POWER_ON)
-		__gpufreq_footprint_power_step(0x17);
+		__gpufreq_footprint_power_step(0x16);
 	else if (power == POWER_OFF)
-		__gpufreq_footprint_power_step(0x18);
+		__gpufreq_footprint_power_step(0x17);
 
 done_unlock:
 	GPUFREQ_LOGD("- PWR_STATUS: 0x%08x", MFG_0_19_PWR_STATUS);
@@ -2050,13 +2047,12 @@ static int __gpufreq_generic_scale(
 	 * [WARNING]
 	 * 1. Assume GPU & STACK OPP table are 1-1 mapping.
 	 * 2. Assume Vgpu's OPP idx always align with Vstack's OPP idx.
-	 * 3. Assume Vgpu always >= Vstack at same OPP idx.
 	 */
 
 	/* scale-up: Vstack -> (Vsram) -> Vgpu -> Freq */
-	if (vstack_new > vstack_old) {
+	if (fstack_new > fstack_old) {
 		/* Volt */
-		while (vstack_new != vstack_old) {
+		while ((vstack_new != vstack_old) || (vgpu_new != vgpu_old)) {
 			/* config DVFS SEL */
 			__gpufreq_dvfs_sel_config(SCALE_UP, vstack_old);
 			/* find reachable volt fitting DVFS constraint via Vstack */
@@ -2065,7 +2061,7 @@ static int __gpufreq_generic_scale(
 			target_vgpu = vgpu_park < vgpu_new ? vgpu_park : vgpu_new;
 			target_vsram = __gpufreq_get_vsram_by_vlogic(target_vgpu);
 
-			/* STACK */
+			/* VSTACK */
 			ret = __gpufreq_volt_scale_stack(vstack_old, target_vstack);
 			if (unlikely(ret))
 				goto done;
@@ -2075,7 +2071,7 @@ static int __gpufreq_generic_scale(
 			if (unlikely(ret))
 				goto done;
 			vsram_old = target_vsram;
-			/* GPU */
+			/* VGPU */
 			ret = __gpufreq_volt_scale_gpu(vgpu_old, target_vgpu);
 			if (unlikely(ret))
 				goto done;
@@ -2091,8 +2087,8 @@ static int __gpufreq_generic_scale(
 		ret = __gpufreq_freq_scale_gpu(fgpu_old, fgpu_new);
 		if (unlikely(ret))
 			goto done;
-	/* scale-down: Freq -> Vgpu -> (Vsram) -> Vstack */
-	} else if (vstack_new < vstack_old) {
+	/* else: Freq -> Vgpu -> (Vsram) -> Vstack */
+	} else {
 		/* Freq */
 		ret = __gpufreq_freq_scale_gpu(fgpu_old, fgpu_new);
 		if (unlikely(ret))
@@ -2102,7 +2098,7 @@ static int __gpufreq_generic_scale(
 			goto done;
 
 		/* Volt */
-		while (vstack_new != vstack_old) {
+		while ((vstack_new != vstack_old) || (vgpu_new != vgpu_old)) {
 			/* config DVFS SEL */
 			__gpufreq_dvfs_sel_config(SCALE_DOWN, vstack_old);
 			/* find reachable volt fitting DVFS constraint via Vstack */
@@ -2111,7 +2107,7 @@ static int __gpufreq_generic_scale(
 			target_vgpu = vgpu_park > vgpu_new ? vgpu_park : vgpu_new;
 			target_vsram = __gpufreq_get_vsram_by_vlogic(target_vgpu);
 
-			/* GPU */
+			/* VGPU */
 			ret = __gpufreq_volt_scale_gpu(vgpu_old, target_vgpu);
 			if (unlikely(ret))
 				goto done;
@@ -2121,7 +2117,7 @@ static int __gpufreq_generic_scale(
 			if (unlikely(ret))
 				goto done;
 			vsram_old = target_vsram;
-			/* STACK */
+			/* VSTACK */
 			ret = __gpufreq_volt_scale_stack(vstack_old, target_vstack);
 			if (unlikely(ret))
 				goto done;
@@ -2129,14 +2125,6 @@ static int __gpufreq_generic_scale(
 		}
 		/* additionally config SEL for Brisket FLL after scaling to target volt */
 		__gpufreq_dvfs_sel_config(SCALE_STAY, vstack_old);
-	/* keep: freq only */
-	} else {
-		ret = __gpufreq_freq_scale_stack(fstack_old, fstack_new);
-		if (unlikely(ret))
-			goto done;
-		ret = __gpufreq_freq_scale_gpu(fgpu_old, fgpu_new);
-		if (unlikely(ret))
-			goto done;
 	}
 
 done:
@@ -2814,11 +2802,9 @@ static void __gpufreq_dump_bringup_status(struct platform_device *pdev)
 		return;
 	}
 
-	GPUFREQ_LOGI("[GPU] MALI_GPU_ID: 0x%08x, SPM_SPM2GPUPM_CON: 0x%08x",
-		readl(MALI_GPU_ID),
-		readl(SPM_SPM2GPUPM_CON));
+	GPUFREQ_LOGI("[SPM] SPM_SPM2GPUPM_CON: 0x%08x", readl(SPM_SPM2GPUPM_CON));
 
-	GPUFREQ_LOGI("[GPU] MFG_0_19_PWR_STATUS: 0x%08x, MFG_RPC_MFG1_PWR_CON: 0x%08x",
+	GPUFREQ_LOGI("[RPC] MFG_0_19_PWR_STATUS: 0x%08x, MFG_RPC_MFG1_PWR_CON: 0x%08x",
 		MFG_0_19_PWR_STATUS,
 		readl(MFG_RPC_MFG1_PWR_CON));
 
@@ -2835,6 +2821,8 @@ static void __gpufreq_dump_bringup_status(struct platform_device *pdev)
 		__gpufreq_get_fmeter_main_fstack(),
 		readl(TOPCK_CLK_CFG_30) & MFGSC_INT1_SEL_MASK,
 		readl(TOPCK_CLK_CFG_3) & MFGSC_REF_SEL_MASK);
+
+	GPUFREQ_LOGI("[GPU] MALI_GPU_ID: 0x%08x", readl(MALI_GPU_ID));
 }
 
 static unsigned int __gpufreq_get_fmeter_freq(enum gpufreq_target target)
@@ -2970,7 +2958,7 @@ static unsigned int __gpufreq_get_real_fgpu(void)
 
 	pcw = mfgpll & (0x3FFFFF);
 
-	posdiv_power = (mfgpll & (0x7 << POSDIV_SHIFT)) >> POSDIV_SHIFT;
+	posdiv_power = (mfgpll & GENMASK(26, 24)) >> POSDIV_SHIFT;
 
 	freq = (((pcw * TO_MHZ_TAIL + ROUNDING_VALUE) * MFGPLL_FIN) >> DDS_SHIFT) /
 		(1 << posdiv_power) * TO_MHZ_HEAD;
@@ -2993,7 +2981,7 @@ static unsigned int __gpufreq_get_real_fstack(void)
 
 	pcw = mfgpll & (0x3FFFFF);
 
-	posdiv_power = (mfgpll & (0x7 << POSDIV_SHIFT)) >> POSDIV_SHIFT;
+	posdiv_power = (mfgpll & GENMASK(26, 24)) >> POSDIV_SHIFT;
 
 	freq = (((pcw * TO_MHZ_TAIL + ROUNDING_VALUE) * MFGPLL_FIN) >> DDS_SHIFT) /
 		(1 << posdiv_power) * TO_MHZ_HEAD;
@@ -3209,13 +3197,13 @@ static void __gpufreq_gpm1_config(void)
 #endif /* GPUFREQ_GPM1_ENABLE */
 }
 
-static void __gpufreq_dfd_config(enum gpufreq_power_state power)
+static void __gpufreq_dfd_config(void)
 {
 #if GPUFREQ_DFD_ENABLE
 	/* acquire sema before access MFG_TOP_CFG */
 	__gpufreq_set_semaphore(SEMA_ACQUIRE);
 
-	if (power == POWER_ON && g_dfd_mode) {
+	if (g_dfd_mode) {
 		if (g_dfd_mode == DFD_FORCE_DUMP)
 			writel(MFG_DEBUGMON_CON_00_ENABLE, MFG_DEBUGMON_CON_00);
 
@@ -3237,25 +3225,9 @@ static void __gpufreq_dfd_config(enum gpufreq_power_state power)
 			udelay(10);
 			writel(0x77000001, DRM_DEBUG_MFG_REG);
 		}
-	} else {
-		writel(MFG_DFD_CON_0_DISABLE, MFG_DFD_CON_0);
-		writel(MFG_DFD_CON_1_DISABLE, MFG_DFD_CON_1);
-		writel(MFG_DFD_CON_2_DISABLE, MFG_DFD_CON_2);
-		writel(MFG_DFD_CON_3_DISABLE, MFG_DFD_CON_3);
-		writel(MFG_DFD_CON_4_DISABLE, MFG_DFD_CON_4);
-		writel(MFG_DFD_CON_5_DISABLE, MFG_DFD_CON_5);
-		writel(MFG_DFD_CON_6_DISABLE, MFG_DFD_CON_6);
-		writel(MFG_DFD_CON_7_DISABLE, MFG_DFD_CON_7);
-		writel(MFG_DFD_CON_8_DISABLE, MFG_DFD_CON_8);
-		writel(MFG_DFD_CON_9_DISABLE, MFG_DFD_CON_9);
-		writel(MFG_DFD_CON_10_DISABLE, MFG_DFD_CON_10);
-		writel(MFG_DFD_CON_11_DISABLE, MFG_DFD_CON_11);
-		writel(MFG_DEBUGMON_CON_00_DISABLE, MFG_DEBUGMON_CON_00);
 	}
 
 	__gpufreq_set_semaphore(SEMA_RELEASE);
-#else
-	GPUFREQ_UNREFERENCED(power);
 #endif /* GPUFREQ_DFD_ENABLE */
 }
 
@@ -4237,9 +4209,9 @@ static unsigned int __gpufreq_compute_avs_volt(u32 val)
 {
 	unsigned int volt = 0;
 
-	volt |= (val & GENMASK(3, 0)) >> 14; /* Get volt[3:0] from efuse[17:14] */
-	volt |= (val & GENMASK(5, 4));       /* Get volt[5:4] from efuse[5:4]   */
-	volt |= (val & GENMASK(7, 6)) << 4;  /* Get volt[7:6] from efuse[3:2]   */
+	volt |= (val & GENMASK(17, 14)) >> 14; /* Get volt[3:0] from efuse[17:14] */
+	volt |= (val & GENMASK(5, 4));         /* Get volt[5:4] from efuse[5:4]   */
+	volt |= (val & GENMASK(3, 2)) << 4;    /* Get volt[7:6] from efuse[3:2]   */
 	/* Volt is stored in efuse with 6.25mV unit */
 	volt *= 625;
 

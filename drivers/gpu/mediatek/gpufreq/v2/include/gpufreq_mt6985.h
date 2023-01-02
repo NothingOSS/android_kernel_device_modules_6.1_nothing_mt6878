@@ -53,15 +53,15 @@
 #define MFGPLL_FIN                      (26)              /* MHz */
 #define MFG_INT0_SEL_MASK               (BIT(16))         /* [16] */
 #define MFGSC_INT1_SEL_MASK             (BIT(17))         /* [17] */
-#define MFG_REF_SEL_MASK                (GENMASK(25, 24)) /* [25:24] */
-#define MFGSC_REF_SEL_MASK              (GENMASK(1, 0))   /* [1:0] */
+#define MFG_REF_SEL_MASK                (GENMASK(17, 16)) /* [17:16] */
+#define MFGSC_REF_SEL_MASK              (GENMASK(25, 24)) /* [25:24] */
 
 /**************************************************
  * Frequency Hopping Setting
  **************************************************/
 #define GPUFREQ_FHCTL_ENABLE            (0)
-#define MFG_PLL_NAME                    "mfgpll"
-#define MFGSC_PLL_NAME                  "mfgscpll"
+#define MFG_PLL_NAME                    "mfg_ao_mfgpll"
+#define MFGSC_PLL_NAME                  "mfgsc_ao_mfgscpll"
 
 /**************************************************
  * MTCMOS Setting
@@ -241,19 +241,6 @@ static const int g_constraint_idx[] = {
 #define MFG_DFD_CON_9_ENABLE            (0x00000000)
 #define MFG_DFD_CON_10_ENABLE           (0x00000000)
 #define MFG_DFD_CON_11_ENABLE           (0x00000000)
-#define MFG_DEBUGMON_CON_00_DISABLE     (0x00000000)
-#define MFG_DFD_CON_0_DISABLE           (0x00000000)
-#define MFG_DFD_CON_1_DISABLE           (0x00000000)
-#define MFG_DFD_CON_2_DISABLE           (0x00000000)
-#define MFG_DFD_CON_3_DISABLE           (0x00000000)
-#define MFG_DFD_CON_4_DISABLE           (0x00000000)
-#define MFG_DFD_CON_5_DISABLE           (0x00000000)
-#define MFG_DFD_CON_6_DISABLE           (0x00000000)
-#define MFG_DFD_CON_7_DISABLE           (0x00000000)
-#define MFG_DFD_CON_8_DISABLE           (0x00000000)
-#define MFG_DFD_CON_9_DISABLE           (0x00000000)
-#define MFG_DFD_CON_10_DISABLE          (0x00000000)
-#define MFG_DFD_CON_11_DISABLE          (0x00000000)
 
 /**************************************************
  * Enumeration
