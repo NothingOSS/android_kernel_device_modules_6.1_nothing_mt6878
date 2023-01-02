@@ -171,6 +171,8 @@ static inline u32 readl_mfg(const void __iomem *addr)
 #define NTH_EMICFG_BASE                 (g_nth_emicfg_base)                   /* 0x1021C000 */
 #define NTH_MFG_EMI1_GALS_SLV_DBG       (NTH_EMICFG_BASE + 0x82C)             /* 0x1021C82C */
 #define NTH_MFG_EMI0_GALS_SLV_DBG       (NTH_EMICFG_BASE + 0x830)             /* 0x1021C830 */
+#define NTH_APU_ACP_GALS_SLV_CTRL       (NTH_EMICFG_BASE + 0x600)             /* 0x1021C600 */
+#define NTH_APU_EMI1_GALS_SLV_CTRL      (NTH_EMICFG_BASE + 0x624)             /* 0x1021C624 */
 
 #define STH_EMICFG_BASE                 (g_sth_emicfg_base)                   /* 0x1021E000 */
 #define STH_MFG_EMI1_GALS_SLV_DBG       (STH_EMICFG_BASE + 0x82C)             /* 0x1021E82C */

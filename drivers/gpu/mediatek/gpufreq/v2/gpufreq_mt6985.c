@@ -3182,39 +3182,37 @@ static void __gpufreq_acp_config(void)
 	/* acquire sema before access MFG_TOP_CFG */
 	__gpufreq_set_semaphore(SEMA_ACQUIRE);
 
+	/* MFG_1TO2AXI_CON_00 0x13FBF8E0 [24:0] mfg_axi1to2_R_dispatch_mode = 0x855 */
+	writel(0x00FFC855, MFG_1TO2AXI_CON_00);
+	/* MFG_1TO2AXI_CON_02 0x13FBF8E8 [24:0] mfg_axi1to2_R_dispatch_mode = 0x855 */
+	writel(0x00FFC855, MFG_1TO2AXI_CON_02);
+	/* MFG_1TO2AXI_CON_04 0x13FBF910 [24:0] mfg_axi1to2_R_dispatch_mode = 0x855 */
+	writel(0x00FFC855, MFG_1TO2AXI_CON_04);
+	/* MFG_1TO2AXI_CON_06 0x13FBF918 [24:0] mfg_axi1to2_R_dispatch_mode = 0x855 */
+	writel(0x00FFC855, MFG_1TO2AXI_CON_06);
+	/* MFG_OUT_1TO2AXI_CON_00 0x13FBF900 [24:0] mfg_axi1to2_R_dispatch_mode = 0x055 */
+	writel(0x00FFC055, MFG_OUT_1TO2AXI_CON_00);
+	/* MFG_OUT_1TO2AXI_CON_02 0x13FBF908 [24:0] mfg_axi1to2_R_dispatch_mode = 0x055 */
+	writel(0x00FFC055, MFG_OUT_1TO2AXI_CON_02);
+	/* MFG_OUT_1TO2AXI_CON_04 0x13FBF920 [24:0] mfg_axi1to2_R_dispatch_mode = 0x055 */
+	writel(0x00FFC055, MFG_OUT_1TO2AXI_CON_04);
+	/* MFG_OUT_1TO2AXI_CON_06 0x13FBF928 [24:0] mfg_axi1to2_R_dispatch_mode = 0x055 */
+	writel(0x00FFC055, MFG_OUT_1TO2AXI_CON_06);
+
 	/* MFG_AXCOHERENCE_CON 0x13FBF168 [0] M0_coherence_enable = 1'b1 */
 	/* MFG_AXCOHERENCE_CON 0x13FBF168 [1] M1_coherence_enable = 1'b1 */
 	/* MFG_AXCOHERENCE_CON 0x13FBF168 [2] M2_coherence_enable = 1'b1 */
 	/* MFG_AXCOHERENCE_CON 0x13FBF168 [3] M3_coherence_enable = 1'b1 */
 	writel((readl_mfg(MFG_AXCOHERENCE_CON) | GENMASK(3, 0)), MFG_AXCOHERENCE_CON);
 
-	/* MFG_1TO2AXI_CON_00 0x13FBF8E0 [24:0] mfg_axi1to2_R_dispatch_mode = 0x855 */
-	writel((readl_mfg(MFG_1TO2AXI_CON_00) | 0x855), MFG_1TO2AXI_CON_00);
-
-	/* MFG_1TO2AXI_CON_02 0x13FBF8E8 [24:0] mfg_axi1to2_R_dispatch_mode = 0x855 */
-	writel((readl_mfg(MFG_1TO2AXI_CON_02) | 0x855), MFG_1TO2AXI_CON_02);
-
-	/* MFG_1TO2AXI_CON_04 0x13FBF910 [24:0] mfg_axi1to2_R_dispatch_mode = 0x855 */
-	writel((readl_mfg(MFG_1TO2AXI_CON_04) | 0x855), MFG_1TO2AXI_CON_04);
-
-	/* MFG_1TO2AXI_CON_06 0x13FBF918 [24:0] mfg_axi1to2_R_dispatch_mode = 0x855 */
-	writel((readl_mfg(MFG_1TO2AXI_CON_06) | 0x855), MFG_1TO2AXI_CON_06);
-
-	/* MFG_OUT_1TO2AXI_CON_00 0x13FBF900 [24:0] mfg_axi1to2_R_dispatch_mode = 0x055 */
-	writel((readl_mfg(MFG_OUT_1TO2AXI_CON_00) | 0x055), MFG_OUT_1TO2AXI_CON_00);
-
-	/* MFG_OUT_1TO2AXI_CON_02 0x13FBF908 [24:0] mfg_axi1to2_R_dispatch_mode = 0x055 */
-	writel((readl_mfg(MFG_OUT_1TO2AXI_CON_02) | 0x055), MFG_OUT_1TO2AXI_CON_02);
-
-	/* MFG_OUT_1TO2AXI_CON_04 0x13FBF920 [24:0] mfg_axi1to2_R_dispatch_mode = 0x055 */
-	writel((readl_mfg(MFG_OUT_1TO2AXI_CON_04) | 0x055), MFG_OUT_1TO2AXI_CON_04);
-
-	/* MFG_OUT_1TO2AXI_CON_06 0x13FBF928 [24:0] mfg_axi1to2_R_dispatch_mode = 0x055 */
-	writel((readl_mfg(MFG_OUT_1TO2AXI_CON_06) | 0x055), MFG_OUT_1TO2AXI_CON_06);
-
 	/* MFG_SECURE_REG 0x13FBCFE0 [30] acp_mpu_enable = 1'b1 */
 	/* MFG_SECURE_REG 0x13FBCFE0 [31] acp_mpu_rule3_disable = 1'b1 */
 	writel((readl_mfg(MFG_SECURE_REG) | GENMASK(31, 30)), MFG_SECURE_REG);
+
+	/* NTH_APU_ACP_GALS_SLV_CTRL  0x1021C600 [27:25] MFG_ACP_AR_MPAM_2_1_0 = 3'b111 */
+	/* NTH_APU_EMI1_GALS_SLV_CTRL 0x1021C624 [27:25] MFG_ACP_AW_MPAM_2_1_0 = 3'b111 */
+	writel((readl(NTH_APU_ACP_GALS_SLV_CTRL) | GENMASK(27, 25)), NTH_APU_ACP_GALS_SLV_CTRL);
+	writel((readl(NTH_APU_EMI1_GALS_SLV_CTRL) | GENMASK(27, 25)), NTH_APU_EMI1_GALS_SLV_CTRL);
 
 	__gpufreq_set_semaphore(SEMA_RELEASE);
 #endif /* GPUFREQ_ACP_ENABLE */
