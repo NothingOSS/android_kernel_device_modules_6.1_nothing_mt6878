@@ -5375,6 +5375,20 @@
 			interrupts = <GIC_SPI 231 IRQ_TYPE_EDGE_FALLING 0>;
 		};
 
+		bt: bt {
+			compatible = "mediatek,bt";
+			pinctrl-names = "bt_combo_gpio_init",
+					"bt_combo_gpio_pre_on",
+					"bt_combo_gpio_on",
+					"bt_rst_on",
+					"bt_rst_off";
+			pinctrl-0 = <&bt_combo_gpio_init>;
+			pinctrl-1 = <&bt_combo_gpio_pre_on>;
+			pinctrl-2 = <&bt_combo_gpio_on>;
+			pinctrl-3 = <&bt_rst_on>;
+			pinctrl-4 = <&bt_rst_off>;
+		};
+
 		wifi: wifi@18000000 {
 			compatible = "mediatek,wifi";
 			reg = <0 0x18000000 0 0x700000>;
@@ -9893,6 +9907,103 @@
 		status = "okay";
 	};
 };
+
+/* BT combo GPIO start */
+&pio {
+	bt_combo_gpio_init: bt_combo_gpio_init {
+		/* BT_UTXD, GPIO226*/
+		pins_cmd1_dat {
+			pinmux = <PINMUX_GPIO226__FUNC_GPIO226>;
+			slew-rate = <0>;
+			bias-pull-down;
+			drive-strength = <0>;
+		};
+		/* BT_URXD, GPIO227*/
+		pins_cmd2_dat {
+			pinmux = <PINMUX_GPIO227__FUNC_GPIO227>;
+			slew-rate = <0>;
+			bias-pull-down;
+			drive-strength = <0>;
+		};
+		/* PCM_CLK, GPIO235*/
+		pins_cmd3_dat {
+			pinmux = <PINMUX_GPIO235__FUNC_GPIO235>;
+			slew-rate = <0>;
+			bias-pull-down;
+			drive-strength = <0>;
+		};
+		/* PCM_SYNC, GPIO236*/
+		pins_cmd4_dat {
+			pinmux = <PINMUX_GPIO236__FUNC_GPIO236>;
+			slew-rate = <0>;
+			bias-pull-down;
+			drive-strength = <0>;
+		};
+		/* PCM_OUT, GPIO237*/
+		pins_cmd5_dat {
+			pinmux = <PINMUX_GPIO237__FUNC_GPIO237>;
+			slew-rate = <0>;
+			bias-pull-down;
+			drive-strength = <0>;
+		};
+		/* PCM_IN, GPIO238*/
+		pins_cmd6_dat {
+			pinmux = <PINMUX_GPIO238__FUNC_GPIO238>;
+			slew-rate = <0>;
+			bias-pull-down;
+			drive-strength = <0>;
+		};
+		/* BT_RST, GPIO240*/
+		pins_cmd7_dat {
+			pinmux = <PINMUX_GPIO240__FUNC_GPIO240>;
+			slew-rate = <0>;
+			bias-pull-down;
+			drive-strength = <0>;
+		};
+	};
+	bt_combo_gpio_pre_on: bt_combo_gpio_pre_on {
+		pins_cmd1_dat {
+			pinmux = <PINMUX_GPIO226__FUNC_PTA_TXD0>;
+			bias-pull-up;
+			output-high;
+		};
+		pins_cmd2_dat {
+			pinmux = <PINMUX_GPIO227__FUNC_PTA_RXD0>;
+			bias-pull-up;
+			input-enable;
+		};
+	};
+	bt_combo_gpio_on: bt_combo_gpio_on {
+		pins_cmd1_dat {
+			pinmux = <PINMUX_GPIO235__FUNC_I2S9_BCK>;
+			output-high;
+		};
+		pins_cmd2_dat {
+			pinmux = <PINMUX_GPIO236__FUNC_I2S9_LRCK>;
+			output-high;
+		};
+		pins_cmd3_dat {
+			pinmux = <PINMUX_GPIO237__FUNC_I2S9_DO>;
+			output-high;
+		};
+		pins_cmd4_dat {
+			pinmux = <PINMUX_GPIO238__FUNC_I2S8_DI>;
+		};
+	};
+	bt_rst_on: bt_rst_on {
+		pins_cmd1_dat {
+			pinmux = <PINMUX_GPIO240__FUNC_GPIO240>;
+			output-high;
+		};
+	};
+	bt_rst_off: bt_rst_off {
+		pins_cmd1_dat {
+			pinmux = <PINMUX_GPIO240__FUNC_GPIO240>;
+			output-low;
+		};
+	};
+};
+/* BT combo GPIO end */
 
 /* WF GPIO start */
 &pio {
