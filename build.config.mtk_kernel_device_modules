@@ -1,6 +1,6 @@
 DEVICE_MODULES_DIR=${KERNEL_DIR}
 # Compile these modules with the GKI kernel
-KERNEL_DIR="kernel-mainline"
+KERNEL_DIR="kernel-6.1"
 # Compute the path of this project relative to KERNEL_DIR
 DEVICE_MODULES_REL_DIR=$(rel_path ${DEVICE_MODULES_DIR} ${KERNEL_DIR})
 # for builtin support
