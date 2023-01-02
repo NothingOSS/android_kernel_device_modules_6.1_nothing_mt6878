@@ -4481,6 +4481,104 @@
 	};
 };
 
+&spmi {
+	mt6319_6: mt6319@6 {
+		compatible = "mediatek,mt6319";
+		reg = <0x6 SPMI_USID>;
+
+		extbuck_debug {
+			compatible = "mediatek,spmi-pmic-debug";
+		};
+		mt6319_6_regulator: mt6319_6_regulator {
+			compatible = "mediatek,mt6315_6-regulator";
+			buck-size = <2>;
+			buck1-modeset-mask = <0x3>;
+
+			mt6319_6_vbuck1: 6_vbuck1 {
+				regulator-compatible = "vbuck1";
+				regulator-name = "6_vbuck1";
+				regulator-min-microvolt = <300000>;
+				regulator-max-microvolt = <1193750>;
+				regulator-enable-ramp-delay = <256>;
+				regulator-allowed-modes = <0 1 2>;
+				regulator-always-on;
+			};
+			mt6319_6_vbuck3: 6_vbuck3 {
+				regulator-compatible = "vbuck3";
+				regulator-name = "6_vbuck3";
+				regulator-min-microvolt = <300000>;
+				regulator-max-microvolt = <1193750>;
+				regulator-enable-ramp-delay = <256>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+		};
+	};
+
+	mt6319_7: mt6319@7 {
+		compatible = "mediatek,mt6319";
+		reg = <0x7 SPMI_USID>;
+
+		extbuck_debug {
+			compatible = "mediatek,spmi-pmic-debug";
+		};
+		mt6319_7_regulator: mt6319_7_regulator {
+			compatible = "mediatek,mt6315_7-regulator";
+			buck-size = <2>;
+			buck1-modeset-mask = <0xB>;
+
+			mt6319_7_vbuck1: 7_vbuck1 {
+				regulator-compatible = "vbuck1";
+				regulator-name = "7_vbuck1";
+				regulator-min-microvolt = <300000>;
+				regulator-max-microvolt = <1193750>;
+				regulator-enable-ramp-delay = <256>;
+				regulator-allowed-modes = <0 1 2>;
+				regulator-always-on;
+			};
+			mt6319_7_vbuck3: 7_vbuck3 {
+				regulator-compatible = "vbuck3";
+				regulator-name = "7_vbuck3";
+				regulator-min-microvolt = <300000>;
+				regulator-max-microvolt = <1193750>;
+				regulator-enable-ramp-delay = <256>;
+				regulator-always-on;
+			};
+		};
+	};
+
+	mt6319_15: mt6319@f {
+		compatible = "mediatek,mt6319";
+		reg = <0xf SPMI_USID>;
+
+		extbuck_debug {
+			compatible = "mediatek,spmi-pmic-debug";
+		};
+		mt6319_15_regulator: mt6319_15_regulator {
+			compatible = "mediatek,mt6315_15-regulator";
+			buck-size = <2>;
+			buck1-modeset-mask = <0xB>;
+
+			mt6319_15_vbuck1: 15_vbuck1 {
+				regulator-compatible = "vbuck1";
+				regulator-name = "15_vbuck1";
+				regulator-min-microvolt = <300000>;
+				regulator-max-microvolt = <1193750>;
+				regulator-enable-ramp-delay = <256>;
+				regulator-allowed-modes = <0 1 2>;
+				regulator-always-on;
+			};
+			mt6319_15_vbuck3: 15_vbuck3 {
+				regulator-compatible = "vbuck3";
+				regulator-name = "15_vbuck3";
+				regulator-min-microvolt = <300000>;
+				regulator-max-microvolt = <1193750>;
+				regulator-enable-ramp-delay = <256>;
+				regulator-always-on;
+			};
+		};
+	};
+};
+
 #include "mediatek/cust_mt6985_msdc.dtsi"
 #include "mediatek/mt6363.dtsi"
 #include "mediatek/mt6373.dtsi"
@@ -4518,6 +4616,10 @@
 };
 
 &mt6363_vsram_cpul {
+	regulator-always-on;
+};
+
+&mt6363_vsram_apu {
 	regulator-always-on;
 };
 
