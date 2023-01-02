@@ -228,6 +228,30 @@ static int slbc_request_cache(struct slbc_data *d)
 	return ret;
 }
 
+static int slbc_request_status(struct slbc_data *d)
+{
+	int ret = 0;
+	int uid = d->uid;
+	int sid;
+	struct slbc_config *config;
+
+	/* slbc_debug_log("%s: TP_BUFFER\n", __func__); */
+
+	if (uid <= UID_ZERO || uid > UID_MAX)
+		d->config = NULL;
+	else {
+		sid = slbc_get_sid_by_uid((enum slbc_uid)uid);
+		if (sid != SID_NOT_FOUND) {
+			d->sid = sid;
+			d->config = &p_config[sid];
+			config = (struct slbc_config *)d->config;
+			ret = _slbc_buffer_status_scmi(d);
+		}
+	}
+
+	return ret;
+}
+
 static int slbc_request_buffer(struct slbc_data *d)
 {
 	int ret = 0;
@@ -304,6 +328,19 @@ static int slbc_request_acp(void *ptr)
 				mtk_l3c_get_part(MTK_L3C_PART_ACP));
 	}
 #endif /* CONFIG_MTK_L3C_PART */
+
+	return ret;
+}
+
+int slbc_status(struct slbc_data *d)
+{
+	int ret = 0;
+
+	if ((d->type) == TP_BUFFER)
+		ret = slbc_request_status(d);
+
+	pr_info("#@# %s(%d) uid 0x%x ret %d\n",
+			__func__, __LINE__, d->uid, ret);
 
 	return ret;
 }
@@ -884,6 +921,7 @@ static int slbc_create_debug_fs(void)
 }
 
 static struct slbc_common_ops common_ops = {
+	.slbc_status = slbc_status,
 	.slbc_request = slbc_request,
 	.slbc_release = slbc_release,
 	.slbc_power_on = slbc_power_on,
