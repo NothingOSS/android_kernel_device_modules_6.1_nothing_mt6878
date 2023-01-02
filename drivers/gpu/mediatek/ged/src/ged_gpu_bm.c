@@ -98,7 +98,7 @@ static void get_rec_addr(void)
 		/* get sysram address (with fastdvfs and power_model) */
 		GED_LOGI("[GPU_QOS] SYSRAM");
 		mtk_sspm_bm_sysram_base_addr = _gpu_bm_of_ioremap();
-		rec_virt_addr = mtk_sspm_bm_sysram_base_addr;
+		rec_virt_addr = (phys_addr_t)mtk_sspm_bm_sysram_base_addr;
 		rec_size = NR_BM_COUNTER;
 	}
 

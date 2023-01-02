@@ -44,7 +44,7 @@ ifeq ($(CONFIG_MTK_GPU_R5P0),y)
     obj-y += $(subst ",,$(CONFIG_MTK_PLATFORM))/
 else ifneq ($(word 1,$(MTK_GPU_VERSION)),)
     obj-y += gpu_$(word 1,$(MTK_GPU_VERSION))/
-else
+else ifneq ($(CONFIG_MTK_PLATFORM),)
     obj-y += $(subst ",,$(CONFIG_MTK_PLATFORM))/
 endif
 endif
