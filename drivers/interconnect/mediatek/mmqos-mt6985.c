@@ -93,6 +93,8 @@ static const struct mtk_node_desc node_descs_mt6985[] = {
 	DEFINE_MNODE(larb38, SLAVE_LARB(38), 0, false, 0x1, MASTER_COMMON_PORT(0, 8)), //virt DISP
 	DEFINE_MNODE(larb39, SLAVE_LARB(39), 0, true, 0x1, MASTER_COMMON_PORT(0, 6)), //virt CCU
 	DEFINE_MNODE(larb40, SLAVE_LARB(40), 0, true, 0x12, MASTER_COMMON_PORT(1, 6)), //virt CCU0
+	DEFINE_MNODE(larb41, SLAVE_LARB(41), 0, false, 0x11, MASTER_COMMON_PORT(1, 8)), //virt DISP
+	DEFINE_MNODE(larb42, SLAVE_LARB(42), 0, false, 0x11, MASTER_COMMON_PORT(1, 8)), //virt DISP
 	/* LARB0 */
 	DEFINE_MNODE(larb0_disp_ovl0_2L_hdr_r,
 		MASTER_LARB_PORT(M4U_PORT_L0_DISP_OVL0_2L_HDR), 7, false, 0x1, SLAVE_LARB(0)),
@@ -965,6 +967,7 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6985 = {
 			SLAVE_LARB(4), SLAVE_LARB(5),
 			SLAVE_LARB(7), SLAVE_LARB(8),
 			SLAVE_LARB(37),},
+	.disp_virt_larbs = { SLAVE_LARB(38), SLAVE_LARB(41), SLAVE_LARB(42) },
 };
 static const struct of_device_id mtk_mmqos_mt6985_of_ids[] = {
 	{

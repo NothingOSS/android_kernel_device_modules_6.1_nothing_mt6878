@@ -19,6 +19,7 @@
 #define MMQOS_COMM_CHANNEL_NUM		(2)
 #define MMQOS_MAX_DUAL_PIPE_LARB_NUM	(2)
 #define MMQOS_MAX_REPORT_LARB_NUM	(9)
+#define MMQOS_MAX_DISP_VIRT_LARB_NUM	(3)
 
 #define RECORD_NUM		(10)
 
@@ -28,6 +29,7 @@ enum mmqos_state_level {
 	BWL_ENABLE = BIT(1),
 	DVFSRC_ENABLE = BIT(2),
 	COMM_OSTDL_ENABLE = BIT(3),
+	DISP_BY_LARB_ENABLE = BIT(4),
 	MMQOS_ENABLE = BIT(0) | BIT(1) | BIT(2),
 };
 
@@ -132,6 +134,7 @@ struct mtk_mmqos_desc {
 	const u8 md_scen;
 	const u32 mmqos_state;
 	const u32 report_bw_larbs[MMQOS_MAX_REPORT_LARB_NUM];
+	const u32 disp_virt_larbs[MMQOS_MAX_DISP_VIRT_LARB_NUM];
 };
 
 #define DEFINE_MNODE(_name, _id, _bw_ratio, _is_write, _channel, _link) {	\

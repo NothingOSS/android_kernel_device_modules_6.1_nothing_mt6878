@@ -100,7 +100,7 @@ struct mtk_mmqos {
 	u32 max_ratio;
 	bool dual_pipe_enable;
 	bool qos_bound; /* Todo: Set qos_bound to true if necessary */
-
+	u32 disp_virt_larbs[MMQOS_MAX_DISP_VIRT_LARB_NUM];
 	struct proc_dir_entry *proc;
 };
 
@@ -413,9 +413,20 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 			break;
 		comm_id = (larb_node->channel >> 4) & 0xf;
 		chnn_id = larb_node->channel & 0xf;
+		if ((mmqos_state & DISP_BY_LARB_ENABLE) == 0
+			&& (src->id == gmmqos->disp_virt_larbs[1] ||
+			src->id == gmmqos->disp_virt_larbs[2])) {
+			if (log_level & 1 << log_bw)
+				pr_notice("ignore larb%d\n", src->id);
+			break;
+		}
 		if (chnn_id) {
 			chnn_id -= 1;
-			if (larb_node->is_write) {
+			if (mmqos_state & DISP_BY_LARB_ENABLE
+				&& src->id == gmmqos->disp_virt_larbs[0]) {
+				if (log_level & 1 << log_bw)
+					pr_notice("ignore larb%d\n", src->id);
+			} else if (larb_node->is_write) {
 				chn_hrt_w_bw[comm_id][chnn_id] -= larb_node->old_peak_bw;
 				chn_srt_w_bw[comm_id][chnn_id] -= larb_node->old_avg_bw;
 				chn_hrt_w_bw[comm_id][chnn_id] += src->peak_bw;
@@ -1064,6 +1075,9 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 		mmqos_state = MMQOS_DISABLE;
 		pr_notice("[mmqos] mmqos init disable: %d", mmqos_state);
 	}
+
+	for (i = 0 ; i < MMQOS_MAX_DISP_VIRT_LARB_NUM ; i++)
+		mmqos->disp_virt_larbs[i] = mmqos_desc->disp_virt_larbs[i];
 
 	/*
 	mmqos->wq = create_singlethread_workqueue("mmqos_work_queue");
