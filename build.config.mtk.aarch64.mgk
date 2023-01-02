@@ -1,0 +1,11 @@
+. ${ROOT_DIR}/${KERNEL_DIR}/build.config.common
+. ${ROOT_DIR}/${KERNEL_DIR}/build.config.aarch64
+
+DEVICE_MODULES_PATH="\$(srctree)/\$(DEVICE_MODULES_REL_DIR)"
+DEVCIE_MODULES_INCLUDE="-I\$(DEVICE_MODULES_PATH)/include"
+
+MAKE_GOALS=
+
+if [ -n "${GKI_DEFCONFIG_FRAGMENT}" ]; then
+source ${GKI_DEFCONFIG_FRAGMENT}
+fi
