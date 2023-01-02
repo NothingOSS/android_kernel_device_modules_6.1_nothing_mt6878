@@ -590,7 +590,7 @@ int tmem_register_ffa_module(void)
 {
 	pr_info("%s:%d (start)\n", __func__, __LINE__);
 
-//	sp_partition_dev = ffa_device_register(&tmem_ffa_device_id[0].uuid, 0x1001);
+//	sp_partition_dev = ffa_device_register(&tmem_ffa_device_id[0].uuid, 0x1);
 	if (sp_partition_dev == NULL) {
 		pr_info("%s: ffa_device_register() failed\n", __func__);
 		return TMEM_KPOOL_FFA_INIT_FAILED;
