@@ -16,7 +16,7 @@
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 #include <linux/soc/mediatek/devapc_public.h>
 #ifdef CONFIG_MTK_SERROR_HOOK
-#include <trace/hooks/traps.h>
+//#include <trace/hooks/traps.h>
 #endif
 #include <../drivers/misc/mediatek/include/mt-plat/aee.h>
 #include "devapc-mtk-multi-ao.h"
@@ -1547,6 +1547,7 @@ static ssize_t set_swp_addr_store(struct device_driver *driver,
 static DRIVER_ATTR_RW(set_swp_addr);
 #endif /* CONFIG_DEVAPC_SWP_SUPPORT */
 
+#if 0
 #ifdef CONFIG_MTK_SERROR_HOOK
 static void devapc_arm64_serror_panic_hook(void *data,
 		struct pt_regs *regs, unsigned int esr)
@@ -1561,6 +1562,7 @@ static void devapc_arm64_serror_panic_hook(void *data,
 			viocb->debug_dump();
 	}
 }
+#endif
 #endif
 
 static int devapc_hre_init(void)
@@ -1706,10 +1708,10 @@ int mtk_devapc_probe(struct platform_device *pdev,
 	pr_info(PFX "driver registered\n");
 
 #ifdef CONFIG_MTK_SERROR_HOOK
-	ret = register_trace_android_rvh_arm64_serror_panic(
-			devapc_arm64_serror_panic_hook, NULL);
-	if (ret)
-		pr_info(PFX "register android_rvh_arm64_serror_panic failed!\n");
+	//ret = register_trace_android_rvh_arm64_serror_panic(
+	//		devapc_arm64_serror_panic_hook, NULL);
+	//if (ret)
+	//	pr_info(PFX "register android_rvh_arm64_serror_panic failed!\n");
 #endif
 
 	if (IS_ERR(node)) {
