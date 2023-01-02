@@ -571,7 +571,7 @@ static int mtk_imgsys_vb2_start_streaming(struct vb2_queue *vq,
 
 
 	if (!pipe->nodes_streaming) {
-		ret = media_pipeline_start(&node->vdev.entity, &pipe->pipeline);
+		ret = media_pipeline_start(&node->vdev.entity.pads[0], &pipe->pipeline);
 		if (ret < 0) {
 			dev_info(pipe->imgsys_dev->dev,
 				"%s:%s: media_pipeline_start failed(%d)\n",
@@ -614,7 +614,7 @@ static int mtk_imgsys_vb2_start_streaming(struct vb2_queue *vq,
 
 fail_stop_pipeline:
 	mutex_unlock(&pipe->lock);
-	media_pipeline_stop(&node->vdev.entity);
+	media_pipeline_stop(&node->vdev.entity.pads[0]);
 
 fail_return_bufs:
 	mtk_imgsys_return_all_buffers(pipe, node, VB2_BUF_STATE_QUEUED);
@@ -654,7 +654,7 @@ static void mtk_imgsys_vb2_stop_streaming(struct vb2_queue *vq)
 	mutex_unlock(&pipe->lock);
 
 	if (!pipe->nodes_streaming)
-		media_pipeline_stop(&node->vdev.entity);
+		media_pipeline_stop(&node->vdev.entity.pads[0]);
 
 	mtk_imgsys_return_all_buffers(pipe, node, VB2_BUF_STATE_ERROR);
 

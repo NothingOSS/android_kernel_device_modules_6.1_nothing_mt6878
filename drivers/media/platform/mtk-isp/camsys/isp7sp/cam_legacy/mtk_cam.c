@@ -8728,7 +8728,7 @@ struct mtk_cam_ctx *mtk_cam_start_ctx(struct mtk_cam_device *cam,
 		goto fail_uninit_composer_wq;
 	}
 
-	ret = media_pipeline_start(entity, &ctx->pipeline);
+	ret = media_pipeline_start(&entity->pads[0], &ctx->pipeline);
 	if (ret) {
 		dev_info(cam->dev,
 			 "%s:pipe(%d):failed in media_pipeline_start:%d\n",
@@ -8785,7 +8785,7 @@ struct mtk_cam_ctx *mtk_cam_start_ctx(struct mtk_cam_device *cam,
 
 fail_stop_pipeline:
 	mutex_unlock(&cam->v4l2_dev.mdev->graph_mutex);
-	media_pipeline_stop(entity);
+	media_pipeline_stop(&entity->pads[0]);
 fail_uninit_frame_done_wq:
 	destroy_workqueue(ctx->frame_done_wq);
 fail_uninit_composer_wq:
@@ -8839,7 +8839,7 @@ void mtk_cam_stop_ctx(struct mtk_cam_ctx *ctx, struct media_entity *entity)
 			mtk_ctx_watchdog_stop(ctx, ctx->mraw_pipe[i]->id);
 	}
 
-	media_pipeline_stop(entity);
+	media_pipeline_stop(&entity->pads[0]);
 
 	/* Consider scenario that stop the ctx while the ctx is not streamed on */
 	if (ctx->session_created) {
