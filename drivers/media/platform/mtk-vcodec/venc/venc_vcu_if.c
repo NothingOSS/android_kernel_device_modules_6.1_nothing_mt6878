@@ -33,7 +33,7 @@ static void handle_query_cap_ack_msg(struct venc_vcu_ipi_query_cap_ack *msg)
 
 	if (vcu == NULL)
 		return;
-	mtk_vcodec_debug(vcu, "+ ap_inst_addr = 0x%lx, vcu_data_addr = 0x%x, id = %d",
+	mtk_vcodec_debug(vcu, "+ ap_inst_addr = 0x%lx, vcu_data_addr = 0x%llx, id = %d",
 		(uintptr_t)msg->ap_inst_addr, msg->vcu_data_addr, msg->id);
 	/* mapping VCU address to kernel virtual address */
 	data = VCU_FPTR(vcu_mapping_dm_addr)(vcu->dev, msg->vcu_data_addr);
@@ -53,7 +53,7 @@ static void handle_query_cap_ack_msg(struct venc_vcu_ipi_query_cap_ack *msg)
 	default:
 		break;
 	}
-	mtk_vcodec_debug(vcu, "- vcu_inst_addr = 0x%x", vcu->inst_addr);
+	mtk_vcodec_debug(vcu, "- vcu_inst_addr = 0x%llx", vcu->inst_addr);
 }
 
 static void handle_enc_waitisr_msg(struct venc_vcu_inst *vcu,
@@ -773,8 +773,8 @@ int vcu_enc_encode(struct venc_vcu_inst *vcu, unsigned int bs_mode,
 				ret_slb);
 			}
 		}
-		mtk_v4l2_debug(0, "slbc_request %d, 0x%x, 0x%llx\n",
-		vcu->ctx->use_slbc, vcu->ctx->slbc_addr, vcu->ctx->sram_data.paddr);
+		mtk_v4l2_debug(0, "slbc_request %d, 0x%x, 0x%lx\n",
+		vcu->ctx->use_slbc, vcu->ctx->slbc_addr, (unsigned long)vcu->ctx->sram_data.paddr);
 		mtk_v4l2_debug(0, "slb_cb %d/%d perf %d cnt %d/%d",
 			atomic_read(&mtk_venc_slb_cb.release_slbc),
 			atomic_read(&mtk_venc_slb_cb.request_slbc),

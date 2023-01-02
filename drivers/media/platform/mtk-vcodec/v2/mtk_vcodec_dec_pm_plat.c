@@ -392,14 +392,14 @@ void set_vdec_opp(struct mtk_vcodec_dev *dev, u32 freq)
 				mtk_v4l2_err("[VDEC] Failed to set mmdvfs rate %lu\n",
 						freq_64);
 			}
-			mtk_v4l2_debug(0, "[VDEC] freq %lu, find_freq %lu", freq, freq_64);
+			mtk_v4l2_debug(0, "[VDEC] freq %u, find_freq %lu", freq, freq_64);
 		} else if (dev->vdec_reg) {
 			ret = regulator_set_voltage(dev->vdec_reg, volt, INT_MAX);
 			if (ret) {
 				mtk_v4l2_err("[VDEC] Failed to set regulator voltage %d\n",
 						volt);
 			}
-			mtk_v4l2_debug(0, "[VDEC] freq %lu, voltage %lu", freq, volt);
+			mtk_v4l2_debug(0, "[VDEC] freq %u, voltage %d", freq, volt);
 		}
 	}
 }
@@ -458,12 +458,12 @@ void mtk_vdec_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx)
 			if (dev->vdec_dvfs_params.target_freq == dev->vdec_dvfs_params.min_freq) {
 				mtk_icc_set_bw(dev->vdec_qos_req[i],
 					MBps_to_icc(0), 0);
-				mtk_v4l2_debug(8, "[VDEC] larb %d bw %lu (min opp, no request) MB/s",
+				mtk_v4l2_debug(8, "[VDEC] larb %d bw %u (min opp, no request) MB/s",
 				dev->vdec_larb_bw[i].larb_id, (u32)target_bw);
 			} else {
 				mtk_icc_set_bw(dev->vdec_qos_req[i],
 					MBps_to_icc((u32)target_bw), 0);
-				mtk_v4l2_debug(8, "[VDEC] larb %d bw %lu MB/s",
+				mtk_v4l2_debug(8, "[VDEC] larb %d bw %u MB/s",
 				dev->vdec_larb_bw[i].larb_id, (u32)target_bw);
 			}
 		} else {
@@ -495,12 +495,12 @@ void mtk_vdec_pmqos_end_inst(struct mtk_vcodec_ctx *ctx)
 			if (dev->vdec_dvfs_params.target_freq == dev->vdec_dvfs_params.min_freq) {
 				mtk_icc_set_bw(dev->vdec_qos_req[i],
 					MBps_to_icc(0), 0);
-				mtk_v4l2_debug(8, "[VDEC] larb %d bw %lu (min opp, no request) MB/s",
+				mtk_v4l2_debug(8, "[VDEC] larb %d bw %u (min opp, no request) MB/s",
 				dev->vdec_larb_bw[i].larb_id, (u32)target_bw);
 			} else {
 				mtk_icc_set_bw(dev->vdec_qos_req[i],
 					MBps_to_icc((u32)target_bw), 0);
-				mtk_v4l2_debug(8, "[VDEC] larb %d bw %lu MB/s",
+				mtk_v4l2_debug(8, "[VDEC] larb %d w %u MB/s",
 				dev->vdec_larb_bw[i].larb_id, (u32)target_bw);
 			}
 		} else {

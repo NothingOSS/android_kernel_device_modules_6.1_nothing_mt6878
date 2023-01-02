@@ -1644,7 +1644,7 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 		mtkbuf->frm_buf.sgt = dma_buf_map_attachment(mtkbuf->frm_buf.buf_att,
 			DMA_TO_DEVICE);
 		if (IS_ERR_OR_NULL(mtkbuf->frm_buf.sgt)) {
-			mtk_v4l2_err("dma_buf_map_attachment fail %d.\n",
+			mtk_v4l2_err("dma_buf_map_attachment fail %p.\n",
 				mtkbuf->frm_buf.sgt);
 			dma_buf_detach(mtkbuf->frm_buf.meta_dma, mtkbuf->frm_buf.buf_att);
 			return -EINVAL;
@@ -1676,7 +1676,7 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 		mtkbuf->frm_buf.qpmap_sgt = dma_buf_map_attachment(mtkbuf->frm_buf.qpmap_dma_att,
 			DMA_TO_DEVICE);
 		if (IS_ERR_OR_NULL(mtkbuf->frm_buf.qpmap_sgt)) {
-			mtk_v4l2_err("dma_buf_map_attachment fail %d.\n",
+			mtk_v4l2_err("dma_buf_map_attachment fail %p.\n",
 				mtkbuf->frm_buf.qpmap_sgt);
 			dma_buf_detach(mtkbuf->frm_buf.qpmap_dma, mtkbuf->frm_buf.qpmap_dma_att);
 			return -EINVAL;
@@ -1715,7 +1715,7 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 			dev);
 		meta_sgt = dma_buf_map_attachment(meta_buf_att, DMA_TO_DEVICE);
 		if (IS_ERR_OR_NULL(meta_sgt)) {
-			mtk_v4l2_err("dma_buf_map_attachment fail %d.\n", meta_sgt);
+			mtk_v4l2_err("dma_buf_map_attachment fail %p.\n", meta_sgt);
 			dma_buf_detach(mtkbuf->frm_buf.metabuffer_dma, meta_buf_att);
 			dma_buf_put(mtkbuf->frm_buf.metabuffer_dma);
 			return -EINVAL;
@@ -1789,7 +1789,7 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 					qpmap_meta_sgt = dma_buf_map_attachment(qpmap_buf_att,
 						DMA_TO_DEVICE);
 					if (IS_ERR_OR_NULL(qpmap_meta_sgt)) {
-						mtk_v4l2_err("dma_buf_map_attachment fail %d.\n",
+						mtk_v4l2_err("dma_buf_map_attachment fail %p.\n",
 							qpmap_meta_sgt);
 						dma_buf_detach(mtkbuf->frm_buf.qpmap_dma,
 							qpmap_buf_att);
@@ -1823,7 +1823,7 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 					sgt = dma_buf_map_attachment(buf_att,
 								DMA_TO_DEVICE);
 					if (IS_ERR_OR_NULL(sgt)) {
-						mtk_v4l2_err("dynamic_params dma_buf_map_attachment fail %d.\n",
+						mtk_v4l2_err("dynamic_params dma_buf_map_attachment fail %p.\n",
 										sgt);
 						dma_buf_detach(mtkbuf->frm_buf.dyparams_dma,
 										buf_att);
@@ -2063,7 +2063,7 @@ static int vb2ops_venc_buf_prepare(struct vb2_buffer *vb)
 			buf_att->dma_map_attrs |= DMA_ATTR_SKIP_CPU_SYNC;
 			sgt = dma_buf_map_attachment(buf_att, DMA_TO_DEVICE);
 			if (IS_ERR_OR_NULL(sgt)) {
-				mtk_v4l2_err("dma_buf_map_attachment fail %d.\n", sgt);
+				mtk_v4l2_err("dma_buf_map_attachment fail %p.\n", sgt);
 				dma_buf_detach(vb->planes[i].dbuf, buf_att);
 				return -EINVAL;
 			}

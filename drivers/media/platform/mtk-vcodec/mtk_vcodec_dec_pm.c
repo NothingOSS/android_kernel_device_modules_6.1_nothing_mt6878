@@ -261,10 +261,10 @@ static void mtk_vdec_hw_break(struct mtk_vcodec_dev *dev, int hw_id)
 			fourcc = v4l2_fourcc('U', 'N', 'K', 'N');
 
 		if (vdec_vld_addr == NULL || vdec_misc_addr == NULL) {
-			mtk_v4l2_debug(4, "VDEC codec:0x%08x(%c%c%c%c) HW break fail since vdec_vld_addr 0x%x vdec_misc_addr 0x%x",
+			mtk_v4l2_debug(4, "VDEC codec:0x%08x(%c%c%c%c) HW break fail since vdec_vld_addr 0x%lx vdec_misc_addr 0x%lx",
 				fourcc, fourcc & 0xFF, (fourcc >> 8) & 0xFF,
 				(fourcc >> 16) & 0xFF, (fourcc >> 24) & 0xFF,
-				vdec_vld_addr, vdec_misc_addr);
+				(unsigned long)vdec_vld_addr, (unsigned long)vdec_misc_addr);
 			return;
 		}
 
@@ -309,7 +309,7 @@ static void mtk_vdec_hw_break(struct mtk_vcodec_dev *dev, int hw_id)
 						offset << 2, offset, value);
 				}
 				if (is_ufo)
-					mtk_v4l2_err("[DEBUG][UFO] 0x%x(%d) = 0x%lx",
+					mtk_v4l2_err("[DEBUG][UFO] 0x%x(%d) = 0x%x",
 						0x08C, 0x08C >> 2, ufo_cg_status);
 
 				if (timeout == 20000)
@@ -347,10 +347,10 @@ static void mtk_vdec_hw_break(struct mtk_vcodec_dev *dev, int hw_id)
 			fourcc = v4l2_fourcc('U', 'N', 'K', 'N');
 
 		if (vdec_lat_vld_addr == NULL || vdec_lat_misc_addr == NULL) {
-			mtk_v4l2_debug(4, "VDEC codec:0x%08x(%c%c%c%c) HW break fail since vdec_lat_vld_addr 0x%x vdec_lat_misc_addr 0x%x",
+			mtk_v4l2_debug(4, "VDEC codec:0x%08x(%c%c%c%c) HW break fail since vdec_lat_vld_addr 0x%lx vdec_lat_misc_addr 0x%lx",
 				fourcc, fourcc & 0xFF, (fourcc >> 8) & 0xFF,
 				(fourcc >> 16) & 0xFF, (fourcc >> 24) & 0xFF,
-				vdec_lat_vld_addr, vdec_lat_misc_addr);
+				(unsigned long)vdec_lat_vld_addr, (unsigned long)vdec_lat_misc_addr);
 			return;
 		}
 

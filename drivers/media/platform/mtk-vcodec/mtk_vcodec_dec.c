@@ -615,7 +615,7 @@ static struct vb2_v4l2_buffer *get_free_buffer(struct mtk_vcodec_ctx *ctx)
 		// real buffer changed in this slot
 		if (free_frame_buffer->fb_base[i].dmabuf != vb->planes[i].dbuf) {
 			new_dma = true;
-			mtk_v4l2_debug(2, "[%d] id=%d is new buffer: old dma_addr[%d] = %llx %p, new dma_addr[%d] = %llx %p",
+			mtk_v4l2_debug(2, "[%d] id=%d is new buffer: old dma_addr[%d] = %lx %p, new dma_addr[%d] = %lx %p",
 				ctx->id, vb->index, i,
 				(unsigned long)free_frame_buffer->fb_base[i].dma_addr,
 				free_frame_buffer->fb_base[i].dmabuf,
@@ -834,19 +834,19 @@ static dma_addr_t create_meta_buffer_info(struct mtk_vcodec_ctx *ctx, int fd)
 		dmabuf,
 		ctx->m2m_ctx->out_q_ctx.q.dev);
 	if (IS_ERR_OR_NULL(buf_att)) {
-		mtk_v4l2_err("attach fail ret %d", PTR_ERR(buf_att));
+		mtk_v4l2_err("attach fail ret %ld", PTR_ERR(buf_att));
 		return 0;
 	}
 	sgt = dma_buf_map_attachment(buf_att, DMA_TO_DEVICE);
 	if (IS_ERR_OR_NULL(sgt)) {
-		mtk_v4l2_err("map attachment fail ret %d", PTR_ERR(sgt));
+		mtk_v4l2_err("map attachment fail ret %ld", PTR_ERR(sgt));
 		dma_buf_detach(dmabuf, buf_att);
 		return 0;
 	}
 	dma_meta_addr  = sg_dma_address(sgt->sgl);
 
-	mtk_v4l2_debug(4, "map new, dmabuf:%p, dma_addr:%p",
-		dmabuf, dma_meta_addr);
+	mtk_v4l2_debug(4, "map new, dmabuf:%p, dma_addr:%pad",
+		dmabuf, &dma_meta_addr);
 	//save va and dmabuf
 	if (dma_meta_addr) {
 		for (i = 0; i < MAX_META_BUF_CNT; ++i) {
@@ -855,8 +855,8 @@ static dma_addr_t create_meta_buffer_info(struct mtk_vcodec_ctx *ctx, int fd)
 				ctx->dma_meta_list[i].dma_meta_addr = dma_meta_addr;
 				ctx->dma_meta_list[i].buf_att = buf_att;
 				ctx->dma_meta_list[i].sgt = sgt;
-				mtk_v4l2_debug(2, "save meta buf dmabuf %p  addr:%p at %d",
-					dmabuf, dma_meta_addr, i);
+				mtk_v4l2_debug(2, "save meta buf dmabuf %p  addr:%pad at %d",
+					dmabuf, &dma_meta_addr, i);
 				break;
 			}
 		}
@@ -880,7 +880,7 @@ static dma_addr_t get_meta_buffer_dma_addr(struct mtk_vcodec_ctx *ctx, int fd)
 		for (i = 0; i < MAX_META_BUF_CNT; ++i) {
 			if (dmabuf == ctx->dma_meta_list[i].dmabuf) {
 				dma_addr = ctx->dma_meta_list[i].dma_meta_addr;
-				mtk_v4l2_debug(4, "reuse dma_addr %p at %d", dma_addr, i);
+				mtk_v4l2_debug(4, "reuse dma_addr %llu at %d", dma_addr, i);
 				break;
 			}
 		}
@@ -891,7 +891,7 @@ static dma_addr_t get_meta_buffer_dma_addr(struct mtk_vcodec_ctx *ctx, int fd)
 		for (i = 0; i < MAX_META_BUF_CNT; ++i) {
 			if (dmabuf == ctx->dma_meta_list[i].dmabuf) {
 				dma_addr = ctx->dma_meta_list[i].dma_meta_addr;
-				mtk_v4l2_debug(4, "reuse dma_addr %p at %d", dma_addr, i);
+				mtk_v4l2_debug(4, "reuse dma_addr %llu at %d", dma_addr, i);
 				break;
 			}
 		}
@@ -924,19 +924,19 @@ static void *create_general_buffer_info(struct mtk_vcodec_ctx *ctx, int fd)
 		dmabuf,
 		ctx->m2m_ctx->out_q_ctx.q.dev);
 	if (IS_ERR_OR_NULL(buf_att)) {
-		mtk_v4l2_err("attach fail ret %d", PTR_ERR(buf_att));
+		mtk_v4l2_err("attach fail ret %ld", PTR_ERR(buf_att));
 		return NULL;
 	}
 	sgt = dma_buf_map_attachment(buf_att, DMA_TO_DEVICE);
 	if (IS_ERR_OR_NULL(sgt)) {
-		mtk_v4l2_err("map attachment fail ret %d", PTR_ERR(sgt));
+		mtk_v4l2_err("map attachment fail ret %ld", PTR_ERR(sgt));
 		dma_buf_detach(dmabuf, buf_att);
 		return NULL;
 	}
 	dma_general_addr  = sg_dma_address(sgt->sgl);
 
-	mtk_v4l2_debug(4, "map new va %p, dmabuf:%p, dma_addr:%p",
-		va, dmabuf, dma_general_addr);
+	mtk_v4l2_debug(4, "map new va %p, dmabuf:%p, dma_addr:%pad",
+		va, dmabuf, &dma_general_addr);
 	//save va and dmabuf
 	if (va) {
 		for (i = 0; i < MAX_GEN_BUF_CNT; ++i) {
@@ -946,8 +946,8 @@ static void *create_general_buffer_info(struct mtk_vcodec_ctx *ctx, int fd)
 				ctx->dma_buf_list[i].dma_general_addr = dma_general_addr;
 				ctx->dma_buf_list[i].buf_att = buf_att;
 				ctx->dma_buf_list[i].sgt = sgt;
-				mtk_v4l2_debug(4, "save general buf va %p dmabuf %p  addr:%p at %d",
-					va, dmabuf, dma_general_addr, i);
+				mtk_v4l2_debug(4, "save general buf va %p dmabuf %p  addr:%pad at %d",
+					va, dmabuf, &dma_general_addr, i);
 				break;
 			}
 		}
@@ -999,7 +999,7 @@ static dma_addr_t get_general_buffer_dma_addr(struct mtk_vcodec_ctx *ctx, int fd
 		for (i = 0; i < MAX_GEN_BUF_CNT; ++i) {
 			if (dmabuf == ctx->dma_buf_list[i].dmabuf) {
 				dma_addr = ctx->dma_buf_list[i].dma_general_addr;
-				mtk_v4l2_debug(4, "reuse dma_addr %p at %d", dma_addr, i);
+				mtk_v4l2_debug(4, "reuse dma_addr %llu at %d", dma_addr, i);
 				break;
 			}
 		}
@@ -1010,7 +1010,7 @@ static dma_addr_t get_general_buffer_dma_addr(struct mtk_vcodec_ctx *ctx, int fd
 		for (i = 0; i < MAX_GEN_BUF_CNT; ++i) {
 			if (dmabuf == ctx->dma_buf_list[i].dmabuf) {
 				dma_addr = ctx->dma_buf_list[i].dma_general_addr;
-				mtk_v4l2_debug(4, "reuse dma_addr %p at %d", dma_addr, i);
+				mtk_v4l2_debug(4, "reuse dma_addr %llu at %d", dma_addr, i);
 				break;
 			}
 		}
@@ -1251,7 +1251,7 @@ static void mtk_vdec_reset_decoder(struct mtk_vcodec_ctx *ctx, bool is_drain,
 				dstbuf = container_of(
 					dst_vb2_v4l2, struct mtk_video_dec_buf, vb);
 				// codec exception handling
-				mtk_v4l2_debug(8, "[%d]num_buffers %d status=%x queue id=%d %p %llx q_cnt %d %d %d %d state %d",
+				mtk_v4l2_debug(8, "[%d]num_buffers %d status=%x queue id=%d %p %lx q_cnt %d %d %d %d state %d",
 					ctx->id, dstq->num_buffers, dstbuf->frame_buffer.status,
 					dstbuf->vb.vb2_buf.index, &dstbuf->frame_buffer,
 					(unsigned long)(&dstbuf->frame_buffer),
@@ -1289,7 +1289,7 @@ static void mtk_vdec_reset_decoder(struct mtk_vcodec_ctx *ctx, bool is_drain,
 			dstq->bufs[i], struct vb2_v4l2_buffer, vb2_buf);
 		dstbuf = container_of(
 			dst_vb2_v4l2, struct mtk_video_dec_buf, vb);
-		mtk_v4l2_debug(4, "[%d]num_buffers %d status=%x queue id=%d %p %llx q_cnt %d %d %d %d",
+		mtk_v4l2_debug(4, "[%d]num_buffers %d status=%x queue id=%d %p %lx q_cnt %d %d %d %d",
 			ctx->id, dstq->num_buffers, dstbuf->frame_buffer.status,
 			dstbuf->vb.vb2_buf.index, &dstbuf->frame_buffer,
 			(unsigned long)(&dstbuf->frame_buffer),
@@ -1625,7 +1625,7 @@ static void mtk_vdec_worker(struct work_struct *work)
 	mtk_vdec_do_gettimeofday(&worktvstart1);
 	ret = vdec_if_decode(ctx, buf, pfb, &src_chg);
 	mtk_vdec_do_gettimeofday(&vputvend);
-	mtk_vcodec_perf_log("vpud:%ld",
+	mtk_vcodec_perf_log("vpud:%lld",
 		(vputvend.tv_sec - worktvstart1.tv_sec) * 1000000 +
 		(vputvend.tv_nsec - worktvstart1.tv_nsec));
 
@@ -1779,7 +1779,7 @@ static void mtk_vdec_worker(struct work_struct *work)
 
 	v4l2_m2m_job_finish(dev->m2m_dev_dec, ctx->m2m_ctx);
 	mtk_vdec_do_gettimeofday(&vputvend);
-	mtk_vcodec_perf_log("worker:%ld",
+	mtk_vcodec_perf_log("worker:%lld",
 		(vputvend.tv_sec - worktvstart.tv_sec) * 1000000 +
 		(vputvend.tv_nsec - worktvstart.tv_nsec));
 
@@ -3315,7 +3315,7 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 			// real buffer changed in this slot
 			if (buf->frame_buffer.fb_base[i].dmabuf != vb->planes[i].dbuf) {
 				new_dma = true;
-				mtk_v4l2_debug(1, "[%d] id=%d get new buffer: old dma_addr[%d] = %llx %p, new dma_addr[%d] = %llx %p",
+				mtk_v4l2_debug(1, "[%d] id=%d get new buffer: old dma_addr[%d] = %lx %p, new dma_addr[%d] = %lx %p",
 					ctx->id, vb->index, i,
 					(unsigned long)buf->frame_buffer.fb_base[i].dma_addr,
 					buf->frame_buffer.fb_base[i].dmabuf,
@@ -3877,7 +3877,7 @@ static void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 		dstbuf = container_of(
 			dst_vb2_v4l2, struct mtk_video_dec_buf, vb);
 		mtk_v4l2_debug((q->bufs[i]->state == VB2_BUF_STATE_ACTIVE) ? 0 : 4,
-			"[%d] dst num_buffers %d q_cnt %d status=%x queue id=%d %p %llx state %d %d %d %d",
+			"[%d] dst num_buffers %d q_cnt %d status=%x queue id=%d %p %lx state %d %d %d %d",
 			ctx->id, q->num_buffers, atomic_read(&q->owned_by_drv_count),
 			dstbuf->frame_buffer.status,
 			dstbuf->vb.vb2_buf.index, &dstbuf->frame_buffer,

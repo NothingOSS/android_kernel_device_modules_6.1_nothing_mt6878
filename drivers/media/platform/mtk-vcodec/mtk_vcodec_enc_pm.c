@@ -115,8 +115,8 @@ void mtk_venc_init_ctx_pm(struct mtk_vcodec_ctx *ctx)
 		atomic_set(&mtk_venc_slb_cb.later_cnt, 0);
 	}
 
-	pr_info("slbc_request %d, 0x%x, 0x%llx, ref %d\n",
-	ctx->use_slbc, ctx->slbc_addr, ctx->sram_data.paddr, ctx->sram_data.ref);
+	pr_info("slbc_request %d, 0x%x, 0x%lx, ref %d\n",
+	ctx->use_slbc, ctx->slbc_addr, (unsigned long)ctx->sram_data.paddr, ctx->sram_data.ref);
 
 	mtk_v4l2_debug(0, "slb_cb %d/%d cnt %d/%d",
 		atomic_read(&mtk_venc_slb_cb.release_slbc),

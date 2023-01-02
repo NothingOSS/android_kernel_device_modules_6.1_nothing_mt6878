@@ -41,7 +41,7 @@ static struct mtk_vcodec_dev *dev_ptr;
 static int mtk_vcodec_vcp_log_write(const char *val, const struct kernel_param *kp)
 {
 	if (!(val == NULL || strlen(val) == 0)) {
-		pr_info("%s, val: %s, len: %d", __func__, val, strlen(val));
+		pr_info("%s, val: %s, len: %lu", __func__, val, strlen(val));
 		mtk_vcodec_set_log(dev_ptr, val, MTK_VCODEC_LOG_INDEX_LOG);
 	}
 	return 0;
@@ -54,7 +54,7 @@ module_param_cb(mtk_vdec_vcp_log, &vcodec_vcp_log_param_ops, &mtk_vdec_vcp_log, 
 static int mtk_vcodec_vcp_property_write(const char *val, const struct kernel_param *kp)
 {
 	if (!(val == NULL || strlen(val) == 0)) {
-		pr_info("%s, val: %s, len: %d", __func__, val, strlen(val));
+		pr_info("%s, val: %s, len: %lu", __func__, val, strlen(val));
 		mtk_vcodec_set_log(dev_ptr, val, MTK_VCODEC_LOG_INDEX_PROP);
 	}
 	return 0;
@@ -473,8 +473,8 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 			ret = PTR_ERR((__force void *)dev->dec_reg_base[reg_index]);
 			goto err_res;
 		}
-		mtk_v4l2_debug(2, "reg[%d] base=0x%x",
-			reg_index, dev->dec_reg_base[reg_index]);
+		mtk_v4l2_debug(2, "reg[%d] base=0x%lx",
+			reg_index, (unsigned long)dev->dec_reg_base[reg_index]);
 	}
 
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);

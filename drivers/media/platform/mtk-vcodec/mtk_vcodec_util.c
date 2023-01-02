@@ -138,7 +138,8 @@ int mtk_vcodec_mem_alloc(struct mtk_vcodec_ctx *data,
 	struct device *dev;
 
 	if (data == NULL || mem == NULL) {
-		mtk_v4l2_err("Invalid arguments, data=0x%x, mem=0x%x", data, mem);
+		mtk_v4l2_err("Invalid arguments, data=0x%lx, mem=0x%lx",
+			(unsigned long)data, (unsigned long)mem);
 		return -EINVAL;
 	}
 	size = mem->size;
@@ -171,7 +172,8 @@ void mtk_vcodec_mem_free(struct mtk_vcodec_ctx *data,
 	struct device *dev;
 
 	if (data == NULL || mem == NULL) {
-		mtk_v4l2_err("Invalid arguments, data=0x%x, mem=0x%x", data, mem);
+		mtk_v4l2_err("Invalid arguments, data=0x%lx, mem=0x%lx",
+			(unsigned long)data, (unsigned long)mem);
 		return;
 	}
 	size = mem->size;
@@ -201,7 +203,8 @@ void mtk_vcodec_set_curr_ctx(struct mtk_vcodec_dev *dev,
 	unsigned long flags;
 
 	if (dev == NULL || hw_id >= MTK_VDEC_HW_NUM) {
-		mtk_v4l2_err("Invalid arguments, dev=0x%x, ctx=0x%x, hw_id=%d", dev, ctx, hw_id);
+		mtk_v4l2_err("Invalid arguments, dev=0x%lx, ctx=0x%lx, hw_id=%d",
+			(unsigned long)dev, (unsigned long)ctx, hw_id);
 		return;
 	}
 
@@ -218,7 +221,7 @@ struct mtk_vcodec_ctx *mtk_vcodec_get_curr_ctx(struct mtk_vcodec_dev *dev,
 	struct mtk_vcodec_ctx *ctx;
 
 	if (!dev || hw_id >= MTK_VDEC_HW_NUM) {
-		mtk_v4l2_err("Invalid arguments, dev=0x%x, hw_id=%d", dev, hw_id);
+		mtk_v4l2_err("Invalid arguments, dev=0x%lx, hw_id=%d", (unsigned long)dev, hw_id);
 		return NULL;
 	}
 
@@ -257,7 +260,7 @@ void mtk_vcodec_init_slice_info(struct mtk_vcodec_ctx *ctx, struct mtk_video_dec
 	struct dma_fence *fence;
 
 	if (ctx == NULL || dst_buf_info == NULL) {
-		mtk_v4l2_err("Invalid arguments, ctx=0x%x, dst_buf_info=0x%x", ctx, dst_buf_info);
+		mtk_v4l2_err("Invalid arguments, ctx=0x%lx, dst_buf_info=0x%lx", (unsigned long)ctx, (unsigned long)dst_buf_info);
 		return;
 	}
 	dst_buf = &dst_buf_info->vb;
@@ -399,7 +402,8 @@ int v4l2_m2m_buf_queue_check(struct v4l2_m2m_ctx *m2m_ctx,
 	struct v4l2_m2m_buffer *b;
 
 	if (vbuf == NULL) {
-		mtk_v4l2_err("Invalid arguments, m2m_ctx=0x%x, vbuf=0x%x", m2m_ctx, vbuf);
+		mtk_v4l2_err("Invalid arguments, m2m_ctx=0x%lx, vbuf=0x%lx",
+			(unsigned long)m2m_ctx, (unsigned long)vbuf);
 		return -1;
 	}
 	b = container_of(vbuf, struct v4l2_m2m_buffer, vb);
@@ -430,7 +434,7 @@ int mtk_dma_sync_sg_range(const struct sg_table *sgt,
 	int ret, i;
 
 	if (sgt == NULL || dev == NULL) {
-		mtk_v4l2_err("sgt 0x%x dev 0x%x size %d invalid", sgt, dev, size);
+		mtk_v4l2_err("sgt or dev is invalid");
 		return -1;
 	}
 	if (size == 0) {
@@ -483,7 +487,7 @@ void v4l_fill_mtk_fmtdesc(struct v4l2_fmtdesc *fmt)
 	const char *descr = NULL;
 
 	if (fmt == NULL) {
-		mtk_v4l2_err("Invalid arguments, fmt=0x%x", fmt);
+		mtk_v4l2_err("Invalid arguments, fmt=0x%lx", (unsigned long)fmt);
 		return;
 	}
 
@@ -576,8 +580,8 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 	__u32 alloc_len;
 
 	if (mem == NULL || dev == NULL || attach == NULL || sgt == NULL) {
-		mtk_v4l2_err("Invalid arguments, mem=0x%x, dev=0x%x, attach=0x%x, sgt=0x%x",
-			mem, dev, attach, sgt);
+		mtk_v4l2_err("Invalid arguments, mem=0x%lx, dev=0x%lx, attach=0x%lx, sgt=0x%lx",
+			(unsigned long)mem, (unsigned long)dev, (unsigned long)attach, (unsigned long)sgt);
 		return -EINVAL;
 	}
 	alloc_len = mem->len;
@@ -655,8 +659,8 @@ int mtk_vcodec_free_mem(struct vcodec_mem_obj *mem, struct device *dev,
 	struct dma_buf_attachment *attach, struct sg_table *sgt)
 {
 	if (mem == NULL || dev == NULL || attach == NULL || sgt == NULL) {
-		mtk_v4l2_err("Invalid arguments, mem=0x%x, dev=0x%x, attach=0x%x, sgt=0x%x",
-			mem, dev, attach, sgt);
+		mtk_v4l2_err("Invalid arguments, mem=0x%lx, dev=0x%lx, attach=0x%lx, sgt=0x%lx",
+			(unsigned long)mem, (unsigned long)dev, (unsigned long)attach, (unsigned long)sgt);
 		return -EINVAL;
 	}
 
@@ -826,7 +830,7 @@ void mtk_vcodec_set_log(struct mtk_vcodec_dev *dev, const char *val,
 	char log[LOG_PROPERTY_SIZE] = {0};
 
 	if (dev == NULL) {
-		mtk_v4l2_err("Invalid arguments, dev=0x%x", dev);
+		mtk_v4l2_err("Invalid arguments, dev=0x%lx", (unsigned long)dev);
 		return;
 	}
 
