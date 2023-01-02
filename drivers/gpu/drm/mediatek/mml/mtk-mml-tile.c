@@ -418,6 +418,7 @@ static s32 calc_tile_loop(struct mml_task *task,
 	enum isp_tile_message result;
 	bool stop;
 	s32 ret;
+	u32 i;
 
 	mml_mmp(tile_calc_frame, MMPROFILE_FLAG_PULSE, pipe, mmp_calc_tile_loop);
 
@@ -441,6 +442,20 @@ static s32 calc_tile_loop(struct mml_task *task,
 		set_tile_config(task, pipe, path, &tiles[tile_cnt], tile_cnt, tile_func);
 		tile_cnt++;
 	}
+
+	mutex_lock(&task->config->hist_div_mutex);
+	for (i = 0; i < path->tile_engine_cnt; i++) {
+		if (!task->config->hist_div[i]) {
+			if (pipe == 0) {
+				task->config->hist_div[i] =
+					tiles[tile_cnt - 1].tile_engines[i].in.xe + 1;
+			} else {
+				task->config->hist_div[i] =
+					tiles[0].tile_engines[i].in.xs;
+			}
+		}
+	}
+	mutex_unlock(&task->config->hist_div_mutex);
 
 	mml_mmp(tile_calc_frame, MMPROFILE_FLAG_PULSE, pipe, mmp_tile_mode_close);
 	result = tile_mode_close(tile_reg_map, tile_func);

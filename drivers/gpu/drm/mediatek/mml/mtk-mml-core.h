@@ -379,6 +379,8 @@ struct mml_frame_config {
 
 	/* tile */
 	struct mml_tile_output *tile_output[MML_PIPE_CNT];
+	u32 hist_div[MML_MAX_PATH_NODES];
+	struct mutex hist_div_mutex;
 	struct timespec64 dvfs_boost_time;
 };
 
