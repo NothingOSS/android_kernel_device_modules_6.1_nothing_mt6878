@@ -261,7 +261,7 @@ void jpeg_drv_hybrid_dec_start_dvfs(unsigned int id)
 		ret = clk_set_rate(gJpegqDev.jpeg_dvfs[id],
 			gJpegqDev.jpeg_freqs[id][gJpegqDev.jpeg_freq_cnt[id]-1]);
 		if (ret) {
-			JPEG_LOG(0, "Failed to set freq %d",
+			JPEG_LOG(0, "Failed to set freq %lu",
 			gJpegqDev.jpeg_freqs[id][gJpegqDev.jpeg_freq_cnt[id]-1]);
 		}
 	}

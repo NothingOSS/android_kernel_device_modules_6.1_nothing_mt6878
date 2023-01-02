@@ -630,7 +630,7 @@ static void mtk_jpeg_prepare_dvfs(struct mtk_jpeg_dev *jpeg)
 	while (!IS_ERR(opp =
 		dev_pm_opp_find_freq_ceil(jpeg->dev, &freq))) {
 		jpeg->freqs[i] = freq;
-	pr_info("i %d freq %d\n", i, freq);
+	pr_info("i %d freq %lu\n", i, freq);
 	freq++;
 		i++;
 		dev_pm_opp_put(opp);
@@ -643,13 +643,13 @@ static void mtk_jpeg_prepare_bw_request(struct mtk_jpeg_dev *jpeg)
 {
 	pr_info("prepare bw request +");
 	jpeg->path_y_rdma = of_mtk_icc_get(jpeg->dev, "path_jpegenc_y_rdma");
-	pr_info("jpeg->path_y_rdma 0x%x", jpeg->path_y_rdma);
+	pr_info("jpeg->path_y_rdma 0x%lx", (unsigned long)jpeg->path_y_rdma);
 	jpeg->path_c_rdma = of_mtk_icc_get(jpeg->dev, "path_jpegenc_c_rmda");
-	pr_info("jpeg->path_c_rdma 0x%x", jpeg->path_c_rdma);
+	pr_info("jpeg->path_c_rdma 0x%lx", (unsigned long)jpeg->path_c_rdma);
 	jpeg->path_qtbl = of_mtk_icc_get(jpeg->dev, "path_jpegenc_q_table");
-	pr_info("jpeg->path_qtbl 0x%x", jpeg->path_qtbl);
+	pr_info("jpeg->path_qtbl 0x%lx", (unsigned long)jpeg->path_qtbl);
 	jpeg->path_bsdma = of_mtk_icc_get(jpeg->dev, "path_jpegenc_bsdma");
-	pr_info("jpeg->path_bsdma 0x%x", jpeg->path_bsdma);
+	pr_info("jpeg->path_bsdma 0x%lx", (unsigned long)jpeg->path_bsdma);
 	pr_info("prepare bw request -");
 
 }
