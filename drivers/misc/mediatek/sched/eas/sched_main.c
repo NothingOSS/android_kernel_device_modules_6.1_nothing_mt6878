@@ -127,6 +127,7 @@ static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct 
 #endif
 }
 
+#if 0
 #if IS_ENABLED(CONFIG_DETECT_HUNG_TASK)
 static void mtk_check_d_tasks(void *data, struct task_struct *p,
 				unsigned long t, bool *need_check)
@@ -162,6 +163,7 @@ static void mtk_check_d_tasks(void *data, struct task_struct *p,
 			p->flags, p->migration_flags, is_migration_disabled(p));
 	}
 }
+#endif
 #endif
 
 static void mtk_sched_trace_init(void)
