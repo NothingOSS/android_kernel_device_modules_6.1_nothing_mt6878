@@ -3726,6 +3726,11 @@
 				compatible = "mediatek,apu-scp-mdw-rpmsg";
 				mtk,rpmsg-name = "apu-scp-mdw-rpmsg";
 			};
+
+			apu_scp_np_recover_rpmsg {
+				compatible = "mediatek,apu-scp-np-recover-rpmsg";
+				mtk,rpmsg-name = "apu-scp-np-recover-rpmsg";
+			};
 		};
 
 		apusys_hw_logger: apusys_hw_logger {
