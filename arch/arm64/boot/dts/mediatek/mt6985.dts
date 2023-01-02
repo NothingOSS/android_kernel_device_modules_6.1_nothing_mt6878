@@ -6205,6 +6205,10 @@
 		token_gpr_set4 = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_4>;
 	};
 
+	connfem: connfem {
+		compatible = "mediatek,mt6985-connfem";
+	};
+
 	swpm: swpm {
 		compatible = "mediatek,mtk-swpm";
 		pmu_boundary_num = <4>;
@@ -7650,6 +7654,7 @@
 #include "mediatek/rt5133.dtsi"
 #include "mediatek/mt6363.dtsi"
 #include "mediatek/mt6373.dtsi"
+#include "mediatek/cust_mt6985_connfem.dtsi"
 
 &rt5133 {
 	interrupts-extended = <&pio 187 0x0>;
