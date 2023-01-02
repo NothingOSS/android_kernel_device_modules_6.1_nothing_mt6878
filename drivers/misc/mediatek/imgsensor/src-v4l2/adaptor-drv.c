@@ -1450,7 +1450,7 @@ free_ctrl:
 	return ret;
 }
 
-static int imgsensor_remove(struct i2c_client *client)
+static void imgsensor_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct adaptor_ctx *ctx = to_ctx(sd);
@@ -1478,7 +1478,6 @@ static int imgsensor_remove(struct i2c_client *client)
 
 	mutex_destroy(&ctx->mutex);
 
-	return 0;
 }
 
 #ifdef IMGSENSOR_USE_PM_FRAMEWORK

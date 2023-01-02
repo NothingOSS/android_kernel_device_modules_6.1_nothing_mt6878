@@ -416,13 +416,12 @@ err:
 	return ret;
 }
 
-static int mt6375_remove(struct i2c_client *client)
+static void mt6375_remove(struct i2c_client *client)
 {
 	struct mt6375_data *ddata = i2c_get_clientdata(client);
 
 	mt6375_del_irq_chip(ddata);
 	mutex_destroy(&ddata->irq_lock);
-	return 0;
 }
 
 static int __maybe_unused mt6375_suspend(struct device *dev)

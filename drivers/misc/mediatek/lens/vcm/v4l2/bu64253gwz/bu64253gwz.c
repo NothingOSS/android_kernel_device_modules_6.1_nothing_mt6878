@@ -392,7 +392,7 @@ err_cleanup:
 	return ret;
 }
 
-static int bu64253gwz_remove(struct i2c_client *client)
+static void bu64253gwz_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct bu64253gwz_device *bu64253gwz = sd_to_bu64253gwz_vcm(sd);
@@ -402,7 +402,6 @@ static int bu64253gwz_remove(struct i2c_client *client)
 	bu64253gwz_subdev_cleanup(bu64253gwz);
 
 	LOG_INF("-\n");
-	return 0;
 }
 
 static const struct i2c_device_id bu64253gwz_id_table[] = {

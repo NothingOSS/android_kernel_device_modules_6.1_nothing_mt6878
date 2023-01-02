@@ -386,7 +386,7 @@ err_cleanup:
 	return ret;
 }
 
-static int dw9800w_remove(struct i2c_client *client)
+static void dw9800w_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct dw9800w_device *dw9800w = sd_to_dw9800w_vcm(sd);
@@ -396,7 +396,6 @@ static int dw9800w_remove(struct i2c_client *client)
 	dw9800w_subdev_cleanup(dw9800w);
 
 	LOG_INF("-\n");
-	return 0;
 }
 
 static const struct i2c_device_id dw9800w_id_table[] = {

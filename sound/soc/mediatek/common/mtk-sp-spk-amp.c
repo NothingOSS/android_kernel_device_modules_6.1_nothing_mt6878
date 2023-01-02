@@ -86,14 +86,13 @@ static int mtk_spk_i2c_probe(struct i2c_client *client,
 	return ret;
 }
 
-static int mtk_spk_i2c_remove(struct i2c_client *client)
+static void mtk_spk_i2c_remove(struct i2c_client *client)
 {
 	dev_info(&client->dev, "%s()\n", __func__);
 
 	if (mtk_spk_list[mtk_spk_type].i2c_remove)
 		mtk_spk_list[mtk_spk_type].i2c_remove(client);
 
-	return 0;
 }
 
 static void mtk_spk_i2c_shutdown(struct i2c_client *client)

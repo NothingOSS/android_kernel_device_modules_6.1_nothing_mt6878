@@ -994,7 +994,7 @@ static int lm3644_probe(struct i2c_client *client,
 	return 0;
 }
 
-static int lm3644_remove(struct i2c_client *client)
+static void lm3644_remove(struct i2c_client *client)
 {
 	struct lm3644_flash *flash = i2c_get_clientdata(client);
 	unsigned int i;
@@ -1009,7 +1009,6 @@ static int lm3644_remove(struct i2c_client *client)
 	pm_runtime_disable(&client->dev);
 
 	pm_runtime_set_suspended(&client->dev);
-	return 0;
 }
 
 static int __maybe_unused lm3644_suspend(struct device *dev)

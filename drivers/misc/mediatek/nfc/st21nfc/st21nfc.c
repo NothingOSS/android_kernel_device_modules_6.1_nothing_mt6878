@@ -1147,7 +1147,7 @@ err_misc_register:
 	return ret;
 }
 
-static int st21nfc_remove(struct i2c_client *client)
+static void st21nfc_remove(struct i2c_client *client)
 {
 	struct st21nfc_device *st21nfc_dev = i2c_get_clientdata(client);
 
@@ -1189,7 +1189,6 @@ static int st21nfc_remove(struct i2c_client *client)
 	mutex_destroy(&st21nfc_dev->irq_dir_mutex);
 	acpi_dev_remove_driver_gpios(ACPI_COMPANION(&client->dev));
 
-	return 0;
 }
 
 static int st21nfc_suspend(struct device *device)

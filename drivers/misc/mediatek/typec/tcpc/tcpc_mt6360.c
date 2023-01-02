@@ -2471,7 +2471,7 @@ err_tcpc_reg:
 	return ret;
 }
 
-static int mt6360_i2c_remove(struct i2c_client *client)
+static void mt6360_i2c_remove(struct i2c_client *client)
 {
 	struct mt6360_chip *chip = i2c_get_clientdata(client);
 
@@ -2488,7 +2488,6 @@ static int mt6360_i2c_remove(struct i2c_client *client)
 #endif /* CONFIG_RT_REGMAP */
 	}
 
-	return 0;
 }
 
 #if CONFIG_PM

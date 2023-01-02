@@ -196,9 +196,8 @@ static int imgsensor_i2c_probe_7(struct i2c_client *client,
 }
 #endif
 
-static int imgsensor_i2c_remove(struct i2c_client *client)
+static void imgsensor_i2c_remove(struct i2c_client *client)
 {
-	return 0;
 }
 
 static struct i2c_driver gi2c_driver[IMGSENSOR_I2C_DEV_MAX_NUM] = {

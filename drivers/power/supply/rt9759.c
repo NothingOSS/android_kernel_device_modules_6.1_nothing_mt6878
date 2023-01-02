@@ -1877,13 +1877,11 @@ static void rt9759_i2c_shutdown(struct i2c_client *client)
 		rt9759_reset_register(chip);
 }
 
-static int rt9759_i2c_remove(struct i2c_client *client)
+static void rt9759_i2c_remove(struct i2c_client *client)
 {
 	struct rt9759_chip *chip = i2c_get_clientdata(client);
 
 	dev_info(&client->dev, "%s\n", __func__);
-	if (!chip)
-		return 0;
 	if (chip->notify_task)
 		kthread_stop(chip->notify_task);
 	charger_device_unregister(chip->chg_dev);
@@ -1894,7 +1892,6 @@ static int rt9759_i2c_remove(struct i2c_client *client)
 	mutex_destroy(&chip->stat_lock);
 	mutex_destroy(&chip->adc_lock);
 	mutex_destroy(&chip->io_lock);
-	return 0;
 }
 
 static int __maybe_unused rt9759_i2c_suspend(struct device *dev)

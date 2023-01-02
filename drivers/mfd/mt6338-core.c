@@ -233,12 +233,11 @@ out:
 	return ret;
 }
 
-static int mt6338_pmic_remove(struct i2c_client *client)
+static void mt6338_pmic_remove(struct i2c_client *client)
 {
 	struct mt6338_pmic_info *mpi = i2c_get_clientdata(client);
 
 	i2c_unregister_device(mpi->i2c);
-	return 0;
 }
 
 static const struct of_device_id __maybe_unused mt6338_pmic_of_id[] = {

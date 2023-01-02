@@ -704,12 +704,11 @@ static int rt9758_charger_probe(struct i2c_client *i2c)
 	return 0;
 }
 
-static int rt9758_charger_remove(struct i2c_client *i2c)
+static void rt9758_charger_remove(struct i2c_client *i2c)
 {
 	struct rt9758_priv *priv = i2c_get_clientdata(i2c);
 
 	charger_device_unregister(priv->chg_dev);
-	return 0;
 }
 
 static const struct of_device_id rt9758_charger_of_match_table[] = {

@@ -337,7 +337,7 @@ err_cleanup:
 	return ret;
 }
 
-static int bu63169_remove(struct i2c_client *client)
+static void bu63169_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct bu63169_device *bu63169 = sd_to_bu63169_ois(sd);
@@ -350,7 +350,6 @@ static int bu63169_remove(struct i2c_client *client)
 		bu63169_power_off(bu63169);
 	pm_runtime_set_suspended(&client->dev);
 
-	return 0;
 }
 
 static int __maybe_unused bu63169_ois_suspend(struct device *dev)

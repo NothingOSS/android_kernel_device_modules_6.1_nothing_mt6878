@@ -636,12 +636,11 @@ static int rt5133_probe(struct i2c_client *i2c)
 	return ret;
 }
 
-static int rt5133_remove(struct i2c_client *i2c)
+static void rt5133_remove(struct i2c_client *i2c)
 {
 	struct rt5133_priv *priv = i2c_get_clientdata(i2c);
 
 	extdev_io_device_unregister(priv->extdev);
-	return 0;
 }
 
 static const struct of_device_id __maybe_unused rt5133_ofid_tbls[] = {

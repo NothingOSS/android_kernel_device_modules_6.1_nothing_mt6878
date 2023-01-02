@@ -1508,7 +1508,7 @@ err_regmap_init:
 	return ret;
 }
 
-static int rt1711_i2c_remove(struct i2c_client *client)
+static void rt1711_i2c_remove(struct i2c_client *client)
 {
 	struct rt1711_chip *chip = i2c_get_clientdata(client);
 
@@ -1517,7 +1517,6 @@ static int rt1711_i2c_remove(struct i2c_client *client)
 		rt1711_regmap_deinit(chip);
 	}
 
-	return 0;
 }
 
 #if CONFIG_PM

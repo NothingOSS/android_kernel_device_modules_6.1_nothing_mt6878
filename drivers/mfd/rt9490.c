@@ -270,12 +270,11 @@ static int rt9490_probe(struct i2c_client *i2c)
 	return 0;
 }
 
-static int rt9490_remove(struct i2c_client *i2c)
+static void rt9490_remove(struct i2c_client *i2c)
 {
 	struct rt9490_data *data = i2c_get_clientdata(i2c);
 
 	rt9490_del_irq_chip(data);
-	return 0;
 }
 
 static int __maybe_unused rt9490_suspend(struct device *dev)

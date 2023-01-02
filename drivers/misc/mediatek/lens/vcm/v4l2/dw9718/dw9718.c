@@ -409,7 +409,7 @@ err_cleanup:
 	return ret;
 }
 
-static int dw9718_remove(struct i2c_client *client)
+static void dw9718_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct dw9718_device *dw9718 = sd_to_dw9718_vcm(sd);
@@ -418,7 +418,6 @@ static int dw9718_remove(struct i2c_client *client)
 
 	dw9718_subdev_cleanup(dw9718);
 
-	return 0;
 }
 
 static const struct i2c_device_id dw9718_id_table[] = {

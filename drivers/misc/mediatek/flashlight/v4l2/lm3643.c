@@ -990,7 +990,7 @@ static int lm3643_probe(struct i2c_client *client,
 	return 0;
 }
 
-static int lm3643_remove(struct i2c_client *client)
+static void lm3643_remove(struct i2c_client *client)
 {
 	struct lm3643_flash *flash = i2c_get_clientdata(client);
 	unsigned int i;
@@ -1002,7 +1002,6 @@ static int lm3643_remove(struct i2c_client *client)
 		media_entity_cleanup(&flash->subdev_led[i].entity);
 	}
 
-	return 0;
 }
 
 static const struct i2c_device_id lm3643_id_table[] = {

@@ -453,7 +453,7 @@ err_cleanup:
 	return ret;
 }
 
-static int dw9800v_remove(struct i2c_client *client)
+static void dw9800v_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct dw9800v_device *dw9800v = sd_to_dw9800v_vcm(sd);
@@ -467,7 +467,6 @@ static int dw9800v_remove(struct i2c_client *client)
 	pm_runtime_set_suspended(&client->dev);
 
 	LOG_INF("-\n");
-	return 0;
 }
 
 static int __maybe_unused dw9800v_vcm_suspend(struct device *dev)

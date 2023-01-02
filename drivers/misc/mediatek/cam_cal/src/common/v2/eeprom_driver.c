@@ -428,16 +428,14 @@ static int eeprom_probe(struct i2c_client *client,
 		return eeprom_driver_register(client, index);
 }
 
-static int eeprom_remove(struct i2c_client *client)
+static void eeprom_remove(struct i2c_client *client)
 {
 	unsigned int index = 0;
 
 	must_log("remove name: %s\n", client->dev.of_node->name);
 
-	if (retrieve_index(client, &index) < 0)
-		return -EINVAL;
-	else
-		return eeprom_driver_unregister(index);
+	if (!(retrieve_index(client, &index) < 0))
+		eeprom_driver_unregister(index);
 }
 
 static const struct of_device_id eeprom_of_match[] = {

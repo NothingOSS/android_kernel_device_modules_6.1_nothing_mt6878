@@ -375,7 +375,7 @@ err_cleanup:
 	return ret;
 }
 
-static int lc898229_remove(struct i2c_client *client)
+static void lc898229_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct lc898229_device *lc898229 = sd_to_lc898229_vcm(sd);
@@ -384,7 +384,6 @@ static int lc898229_remove(struct i2c_client *client)
 
 	lc898229_subdev_cleanup(lc898229);
 
-	return 0;
 }
 
 static const struct i2c_device_id lc898229_id_table[] = {

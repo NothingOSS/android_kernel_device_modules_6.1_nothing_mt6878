@@ -118,13 +118,12 @@ static int mtk_panel_i2c_probe(struct i2c_client *client,
 	return 0;
 }
 
-static int mtk_panel_i2c_remove(struct i2c_client *client)
+static void mtk_panel_i2c_remove(struct i2c_client *client)
 {
 	DDPMSG("%s: name=%s addr=0x%x\n", __func__, client->name,
 		 client->addr);
 	mtk_panel_i2c_client = NULL;
 	i2c_unregister_device(client);
-	return 0;
 }
 
 static const struct of_device_id mtk_panel_i2c_of_match[] = {

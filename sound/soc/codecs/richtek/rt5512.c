@@ -1166,7 +1166,7 @@ probe_fail:
 }
 EXPORT_SYMBOL(rt5512_i2c_probe);
 
-int rt5512_i2c_remove(struct i2c_client *client)
+void rt5512_i2c_remove(struct i2c_client *client)
 {
 	struct rt5512_chip *chip = i2c_get_clientdata(client);
 
@@ -1176,7 +1176,6 @@ int rt5512_i2c_remove(struct i2c_client *client)
 	generic_debugfs_exit(&chip->dbg_info);
 #endif /* GENERIC_DEBUGFS */
 	mutex_destroy(&chip->var_lock);
-	return 0;
 }
 EXPORT_SYMBOL(rt5512_i2c_remove);
 

@@ -382,7 +382,7 @@ err_cleanup:
 	return ret;
 }
 
-static int ak7377a_remove(struct i2c_client *client)
+static void ak7377a_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct ak7377a_device *ak7377a = sd_to_ak7377a_vcm(sd);
@@ -392,7 +392,6 @@ static int ak7377a_remove(struct i2c_client *client)
 	ak7377a_subdev_cleanup(ak7377a);
 
 	LOG_INF("-\n");
-	return 0;
 }
 
 static const struct i2c_device_id ak7377a_id_table[] = {

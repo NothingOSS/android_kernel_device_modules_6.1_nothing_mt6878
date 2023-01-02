@@ -367,7 +367,7 @@ err_cleanup:
 	return ret;
 }
 
-static int gt9772b_remove(struct i2c_client *client)
+static void gt9772b_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct gt9772b_device *gt9772b = sd_to_gt9772b_vcm(sd);
@@ -377,7 +377,6 @@ static int gt9772b_remove(struct i2c_client *client)
 	gt9772b_subdev_cleanup(gt9772b);
 
 	LOG_INF("-\n");
-	return 0;
 }
 
 static const struct i2c_device_id gt9772b_id_table[] = {

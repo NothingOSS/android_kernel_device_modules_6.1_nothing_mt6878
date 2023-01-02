@@ -331,7 +331,7 @@ static int _gate_ic_i2c_probe(struct i2c_client *client,
 	return 0;
 }
 
-static int _gate_ic_i2c_remove(struct i2c_client *client)
+static void _gate_ic_i2c_remove(struct i2c_client *client)
 {
 	struct gate_ic_client *gate_client;
 
@@ -348,7 +348,6 @@ static int _gate_ic_i2c_remove(struct i2c_client *client)
 #ifdef LEDS_BRIGHTNESS_CHANGED
 	mtk_leds_unregister_notifier(&leds_init_notifier);
 #endif
-	return 0;
 }
 
 /*****************************************************************************
