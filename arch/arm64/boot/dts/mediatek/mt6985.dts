@@ -3181,6 +3181,14 @@
 			/* clock-names = "kpd"; */
 		};
 
+		regulator_vibrator: regulator_vibrator {
+			compatible = "regulator-vibrator";
+			label = "vibrator";
+			min-volt = <2800000>;
+			max-volt = <3500000>;
+			vib-supply = <&mt6373_vibr>;
+		};
+
 		disp_iommu_bank1: iommu@1e803000 {
 			compatible = "mediatek,common-disp-iommu-bank1";
 			mediatek,bank-id = <1>;
