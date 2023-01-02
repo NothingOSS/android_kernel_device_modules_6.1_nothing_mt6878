@@ -5354,6 +5354,18 @@
 			};
 		};
 
+		typec_mux_switch: typec_mux_switch {
+			compatible = "mediatek,typec_mux_switch";
+			status = "okay";
+		};
+
+		usb_dp_selector: usb_dp_selector@10005600 {
+			compatible = "mediatek,usb_dp_selector";
+			mediatek,usb_dp_reg = <0x10005600>;
+			mediatek,uds-ver = <2>;
+			status = "okay";
+		};
+
 		spmi: spmi@1c804000 {
 			compatible = "mediatek,mt6985-spmi";
 			reg = <0 0x1c804000 0 0x0008ff>,
@@ -7109,6 +7121,12 @@
 
 	extcon_usb: extcon_usb {
 		compatible = "mediatek,extcon-usb";
+		vbus-supply = <&mt6375_otg_vbus>;
+		vbus-voltage = <5000000>;
+		vbus-current = <1800000>;
+		charger = <&mt6375_chg>;
+		tcpc = "type_c_port0";
+		mediatek,bypss-typec-sink = <1>;
 		port {
 			usb_role: endpoint@0 {
 				remote-endpoint = <&mtu3_drd_switch>;
@@ -7953,6 +7971,15 @@
 		};
 	};
 };
+
+&i2c6 {
+	ps5170: ps5170@28 {
+		compatible = "parade,ps5170";
+		reg = <0x28>;
+		status = "okay";
+	};
+};
+
 #include "mediatek/bat_setting/mt6985_battery_prop.dtsi"
 #include "mediatek/mt6985-clkitg.dtsi"
 #include "mediatek/mt6985-disable-unused.dtsi"
