@@ -985,7 +985,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	return ret;
 }
 
-static int lcm_remove(struct mipi_dsi_device *dsi)
+static void lcm_remove(struct mipi_dsi_device *dsi)
 {
 	struct lcm *ctx = mipi_dsi_get_drvdata(dsi);
 #if defined(CONFIG_MTK_PANEL_EXT)
@@ -999,7 +999,6 @@ static int lcm_remove(struct mipi_dsi_device *dsi)
 	mtk_panel_remove(ext_ctx);
 #endif
 
-	return 0;
 }
 
 static const struct of_device_id lcm_of_match[] = {

@@ -2774,21 +2774,17 @@ static int mtk_drm_lcm_probe(struct mipi_dsi_device *dsi_dev)
 	return ret;
 }
 
-static int mtk_drm_lcm_remove(struct mipi_dsi_device *dsi_dev)
+static void mtk_drm_lcm_remove(struct mipi_dsi_device *dsi_dev)
 {
 	//struct mtk_panel_context *ctx_dsi = mipi_dsi_get_drvdata(dsi_dev);
 
 	DDPMSG("%s+\n", __func__);
 	mipi_dsi_detach(dsi_dev);
 
-	if (IS_ERR_OR_NULL(ctx_dsi))
-		return 0;
-
 	drm_panel_remove(&ctx_dsi->panel);
 	mtk_drm_lcm_dsi_deinit_ctx();
 
 	DDPMSG("%s-\n", __func__);
-	return 0;
 }
 
 static const struct of_device_id mtk_panel_dsi_of_match[] = {
