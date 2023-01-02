@@ -2150,236 +2150,6 @@
 			reg = <0 0x13800000 0 0x200000>;
 		};
 
-		g3d_brisket@13a00000 {
-			compatible = "mediatek,g3d_brisket";
-			reg = <0 0x13a00000 0 0x1ff000>;
-		};
-
-		g3d_mpu@13bff000 {
-			compatible = "mediatek,g3d_mpu";
-			reg = <0 0x13bff000 0 0x1000>;
-		};
-
-		g3d_gpueb@13c00000 {
-			compatible = "mediatek,g3d_gpueb";
-			reg = <0 0x13c00000 0 0x30000>;
-		};
-
-		g3d_gpueb@13c60200 {
-			compatible = "mediatek,g3d_gpueb";
-			reg = <0 0x13c60200 0 0x100>;
-		};
-
-		g3d_gpueb@13c60300 {
-			compatible = "mediatek,g3d_gpueb";
-			reg = <0 0x13c60300 0 0x100>;
-		};
-
-		g3d_gpueb@13c60400 {
-			compatible = "mediatek,g3d_gpueb";
-			reg = <0 0x13c60400 0 0x200>;
-		};
-
-		g3d_gpueb@13c60800 {
-			compatible = "mediatek,g3d_gpueb";
-			reg = <0 0x13c60800 0 0x800>;
-		};
-
-		g3d_gpueb@13c61000 {
-			compatible = "mediatek,g3d_gpueb";
-			reg = <0 0x13c61000 0 0x1000>;
-		};
-
-		g3d_gpueb@13c62000 {
-			compatible = "mediatek,g3d_gpueb";
-			reg = <0 0x13c62000 0 0x100>;
-		};
-
-		dfd@13d00000 {
-			compatible = "mediatek,dfd";
-			reg = <0 0x13d00000 0 0x100000>;
-		};
-
-		dfd@13e00000 {
-			compatible = "mediatek,dfd";
-			reg = <0 0x13e00000 0 0x100000>;
-		};
-
-		dfd@13f00000 {
-			compatible = "mediatek,dfd";
-			reg = <0 0x13f00000 0 0x13000>;
-		};
-
-		g3d_config@13f90000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13f90000 0 0x10000>;
-		};
-
-		g3d_config@13fa0000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fa0000 0 0x400>;
-		};
-
-		g3d_config@13fa0400 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fa0400 0 0x400>;
-		};
-
-		g3d_config@13fa0800 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fa0800 0 0x400>;
-		};
-
-		g3d_config@13fa0c00 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fa0c00 0 0x400>;
-		};
-
-		g3d_config@13fb6000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fb6000 0 0x1000>;
-		};
-
-		g3d_config@13fb7000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fb7000 0 0x1000>;
-		};
-
-		g3d_config@13fb8000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fb8000 0 0x1000>;
-		};
-
-		g3d_config@13fb9c00 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fb9c00 0 0x100>;
-		};
-
-		g3d_config@13fbb000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fbb000 0 0x1000>;
-		};
-
-		g3d_dvfs@13fbc000 {
-			compatible = "mediatek,g3d_dvfs";
-			reg = <0 0x13fbc000 0 0x1000>;
-		};
-
-		g3d_config@13fbd000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fbd000 0 0x1000>;
-		};
-
-		g3d_config@13fbf000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fbf000 0 0x1000>;
-		};
-
-		g3d_config@13fc5000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fc5000 0 0x1000>;
-		};
-
-		g3d_config@13fc6000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fc6000 0 0x1000>;
-		};
-
-		g3d_config@13fc7000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fc7000 0 0x1000>;
-		};
-
-		g3d_config@13fc8000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fc8000 0 0x1000>;
-		};
-
-		g3d_config@13fc9000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fc9000 0 0x1000>;
-		};
-
-		g3d_config@13fca000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fca000 0 0x1000>;
-		};
-
-		g3d_config@13fcb000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fcb000 0 0x1000>;
-		};
-
-		g3d_config@13fcc000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fcc000 0 0x1000>;
-		};
-
-		g3d_config@13fcd000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fcd000 0 0x1000>;
-		};
-
-		g3d_config@13fce000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fce000 0 0x1000>;
-		};
-
-		g3d_config@13fcf000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fcf000 0 0x1000>;
-		};
-
-		g3d_config@13fd8000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fd8000 0 0x1000>;
-		};
-
-		g3d_config@13fd9000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fd9000 0 0x1000>;
-		};
-
-		g3d_config@13fda000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fda000 0 0x1000>;
-		};
-
-		g3d_config@13fdb000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fdb000 0 0x1000>;
-		};
-
-		g3d_config@13fdc000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fdc000 0 0x1000>;
-		};
-
-		g3d_config@13fdd000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fdd000 0 0x1000>;
-		};
-
-		g3d_config@13fde000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fde000 0 0x1000>;
-		};
-
-		g3d_config@13fdf000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fdf000 0 0x1000>;
-		};
-
-		g3d_config@13fe0000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13fe0000 0 0x100>;
-		};
-
-		g3d_config@13ff0000 {
-			compatible = "mediatek,g3d_config";
-			reg = <0 0x13ff0000 0 0x1000>;
-		};
-
 		disp_aal0@14002000 {
 			compatible = "mediatek,disp_aal0";
 			reg = <0 0x14002000 0 0x1000>;
@@ -4084,6 +3854,356 @@
 			mediatek,ufs-qos;
 		};
 
+		mgm: mgm {
+			compatible = "arm,physical-memory-group-manager";
+		};
+
+		gpu_protected_memory_allocator: protected-memory-allocator {
+			compatible = "arm,protected-memory-allocator";
+			reg = <0 0x13c40000 0 0x22000>;
+			reg-names = "gpueb_base";
+			gpr_offset = <0x1FD1C>;
+			gpr_id = <6>;
+			gmpu_table_size = <0x00400000>;
+			protected_reserve_size = <0x1000000>;
+		};
+
+		mali: mali@13000000 {
+			compatible = "mediatek,mali", "arm,mali-valhall";
+			reg = <0 0x13000000 0 0x480000>;
+			physical-memory-group-manager = <&mgm>;
+			interrupts =
+				<GIC_SPI 584 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 585 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 586 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 587 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 588 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupt-names =
+				"GPU",
+				"MMU",
+				"JOB",
+				"EVENT",
+				"PWR";
+			protected-memory-allocator = <&gpu_protected_memory_allocator>;
+			operating-points-v2 = <&gpu_mali_opp>;
+			#cooling-cells = <2>;
+			ged-supply = <&ged>;
+		};
+
+		gpu_mali_opp: opp-table0 {
+			compatible = "operating-points-v2";
+			opp00 {
+				opp-hz = /bits/ 64 <981000000>;
+				opp-microvolt = <800000>;
+			};
+			opp01 {
+				opp-hz = /bits/ 64 <965000000>;
+				opp-microvolt = <793750>;
+			};
+			opp02 {
+				opp-hz = /bits/ 64 <949000000>;
+				opp-microvolt = <787500>;
+			};
+			opp03 {
+				opp-hz = /bits/ 64 <934000000>;
+				opp-microvolt = <781250>;
+			};
+			opp04 {
+				opp-hz = /bits/ 64 <918000000>;
+				opp-microvolt = <775000>;
+			};
+			opp05 {
+				opp-hz = /bits/ 64 <903000000>;
+				opp-microvolt = <768750>;
+			};
+			opp06 {
+				opp-hz = /bits/ 64 <887000000>;
+				opp-microvolt = <762500>;
+			};
+			opp07 {
+				opp-hz = /bits/ 64 <872000000>;
+				opp-microvolt = <756250>;
+			};
+			opp08 {
+				opp-hz = /bits/ 64 <856000000>;
+				opp-microvolt = <750000>;
+			};
+			opp09 {
+				opp-hz = /bits/ 64 <841000000>;
+				opp-microvolt = <743750>;
+			};
+			opp10 {
+				opp-hz = /bits/ 64 <825000000>;
+				opp-microvolt = <737500>;
+			};
+			opp11 {
+				opp-hz = /bits/ 64 <809000000>;
+				opp-microvolt = <731250>;
+			};
+			opp12 {
+				opp-hz = /bits/ 64 <794000000>;
+				opp-microvolt = <725000>;
+			};
+			opp13 {
+				opp-hz = /bits/ 64 <778000000>;
+				opp-microvolt = <718750>;
+			};
+			opp14 {
+				opp-hz = /bits/ 64 <763000000>;
+				opp-microvolt = <712500>;
+			};
+			opp15 {
+				opp-hz = /bits/ 64 <747000000>;
+				opp-microvolt = <706250>;
+			};
+			opp16 {
+				opp-hz = /bits/ 64 <732000000>;
+				opp-microvolt = <700000>;
+			};
+			opp17 {
+				opp-hz = /bits/ 64 <716000000>;
+				opp-microvolt = <693750>;
+			};
+			opp18 {
+				opp-hz = /bits/ 64 <701000000>;
+				opp-microvolt = <687500>;
+			};
+			opp19 {
+				opp-hz = /bits/ 64 <685000000>;
+				opp-microvolt = <681250>;
+			};
+			opp20 {
+				opp-hz = /bits/ 64 <670000000>;
+				opp-microvolt = <675000>;
+			};
+			opp21 {
+				opp-hz = /bits/ 64 <652000000>;
+				opp-microvolt = <668750>;
+			};
+			opp22 {
+				opp-hz = /bits/ 64 <635000000>;
+				opp-microvolt = <662500>;
+			};
+			opp23 {
+				opp-hz = /bits/ 64 <617000000>;
+				opp-microvolt = <656250>;
+			};
+			opp24 {
+				opp-hz = /bits/ 64 <600000000>;
+				opp-microvolt = <650000>;
+			};
+			opp25 {
+				opp-hz = /bits/ 64 <582000000>;
+				opp-microvolt = <643750>;
+			};
+			opp26 {
+				opp-hz = /bits/ 64 <565000000>;
+				opp-microvolt = <637500>;
+			};
+			opp27 {
+				opp-hz = /bits/ 64 <547000000>;
+				opp-microvolt = <631250>;
+			};
+			opp28 {
+				opp-hz = /bits/ 64 <530000000>;
+				opp-microvolt = <625000>;
+			};
+			opp29 {
+				opp-hz = /bits/ 64 <512000000>;
+				opp-microvolt = <618750>;
+			};
+			opp30 {
+				opp-hz = /bits/ 64 <495000000>;
+				opp-microvolt = <612500>;
+			};
+			opp31 {
+				opp-hz = /bits/ 64 <477000000>;
+				opp-microvolt = <606250>;
+			};
+			opp32 {
+				opp-hz = /bits/ 64 <460000000>;
+				opp-microvolt = <600000>;
+			};
+			opp33 {
+				opp-hz = /bits/ 64 <442000000>;
+				opp-microvolt = <593750>;
+			};
+			opp34 {
+				opp-hz = /bits/ 64 <425000000>;
+				opp-microvolt = <587500>;
+			};
+			opp35 {
+				opp-hz = /bits/ 64 <407000000>;
+				opp-microvolt = <581250>;
+			};
+			opp36 {
+				opp-hz = /bits/ 64 <390000000>;
+				opp-microvolt = <575000>;
+			};
+			opp37 {
+				opp-hz = /bits/ 64 <376000000>;
+				opp-microvolt = <568750>;
+			};
+			opp38 {
+				opp-hz = /bits/ 64 <362000000>;
+				opp-microvolt = <562500>;
+			};
+			opp39 {
+				opp-hz = /bits/ 64 <348000000>;
+				opp-microvolt = <556250>;
+			};
+			opp40 {
+				opp-hz = /bits/ 64 <334000000>;
+				opp-microvolt = <550000>;
+			};
+			opp41 {
+				opp-hz = /bits/ 64 <320000000>;
+				opp-microvolt = <543750>;
+			};
+			opp42 {
+				opp-hz = /bits/ 64 <307000000>;
+				opp-microvolt = <537500>;
+			};
+			opp43 {
+				opp-hz = /bits/ 64 <293000000>;
+				opp-microvolt = <531250>;
+			};
+			opp44 {
+				opp-hz = /bits/ 64 <279000000>;
+				opp-microvolt = <525000>;
+			};
+			opp45 {
+				opp-hz = /bits/ 64 <265000000>;
+				opp-microvolt = <518750>;
+			};
+			opp46 {
+				opp-hz = /bits/ 64 <251000000>;
+				opp-microvolt = <512500>;
+			};
+			opp47 {
+				opp-hz = /bits/ 64 <237000000>;
+				opp-microvolt = <506250>;
+			};
+			opp48 {
+				opp-hz = /bits/ 64 <224000000>;
+				opp-microvolt = <500000>;
+			};
+		};
+
+		gpufreq: gpufreq {
+			compatible = "mediatek,gpufreq";
+			reg =
+				<0 0x13fbf000 0 0x1000>,  /* MFG_TOP_CONFIG */
+				<0 0x13fa0000 0 0x400>,   /* MFG_PLL */
+				<0 0x13fa0c00 0 0x400>,   /* MFGSC_PLL */
+				<0 0x13f90000 0 0x10000>, /* MFG_RPC */
+				<0 0x1c001000 0 0x1000>,  /* SLEEP */
+				<0 0x10000000 0 0x1000>,  /* TOPCKGEN */
+				<0 0x1021c000 0 0x1000>,  /* NTH_EMICFG */
+				<0 0x1021e000 0 0x1000>,  /* STH_EMICFG */
+				<0 0x10270000 0 0x1000>,  /* NTH_EMICFG_AO_MEM */
+				<0 0x1030e000 0 0x1000>,  /* STH_EMICFG_AO_MEM */
+				<0 0x1002c000 0 0x1000>,  /* IFRBUS_AO */
+				<0 0x10023000 0 0x1000>,  /* INFRA_AO_DEBUG_CTRL */
+				<0 0x1002b000 0 0x1000>,  /* INFRA_AO1_DEBUG_CTRL */
+				<0 0x10042000 0 0x1000>,  /* NTH_EMI_AO_DEBUG_CTRL */
+				<0 0x10028000 0 0x1000>,  /* STH_EMI_AO_DEBUG_CTRL */
+				<0 0x11e80000 0 0x1000>,  /* EFUSE */
+				<0 0x13fb9c00 0 0x100>,   /* MFG_CPE_CTRL_MCU */
+				<0 0x13fcf000 0 0x1000>,  /* MFG_CPE_SENSOR0 */
+				<0 0x13fbc000 0 0x1000>;  /* MFG_SECURE */
+			reg-names =
+				"mfg_top_config",
+				"mfg_pll",
+				"mfgsc_pll",
+				"mfg_rpc",
+				"sleep",
+				"topckgen",
+				"nth_emicfg",
+				"sth_emicfg",
+				"nth_emicfg_ao_mem",
+				"sth_emicfg_ao_mem",
+				"ifrbus_ao",
+				"infra_ao_debug_ctrl",
+				"infra_ao1_debug_ctrl",
+				"nth_emi_ao_debug_ctrl",
+				"sth_emi_ao_debug_ctrl",
+				"efuse",
+				"mfg_cpe_ctrl_mcu",
+				"mfg_cpe_sensor0",
+				"mfg_secure";
+			clocks =
+				<&topckgen_clk CLK_TOP_MFG_INT0_SEL>,
+				<&mfgpll_pll_ctrl_clk CLK_MFG_AO_MFGPLL>,
+				<&topckgen_clk CLK_TOP_MFG_REF_SEL>,
+				<&topckgen_clk CLK_TOP_MFG1_INT1_SEL>,
+				<&mfgscpll_pll_ctrl_clk CLK_MFGSC_AO_MFGSCPLL>,
+				<&topckgen_clk CLK_TOP_MFGSC_REF_SEL>;
+			clock-names =
+				"clk_mux",
+				"clk_main_parent",
+				"clk_sub_parent",
+				"clk_sc_mux",
+				"clk_sc_main_parent",
+				"clk_sc_sub_parent";
+			power-domains =
+				<&gpusys MT6985_POWER_DOMAIN_MFG1>,
+				<&gpusys MT6985_POWER_DOMAIN_MFG2>,
+				<&gpusys MT6985_POWER_DOMAIN_MFG3>,
+				<&gpusys MT6985_POWER_DOMAIN_MFG4>,
+				<&gpusys MT6985_POWER_DOMAIN_MFG5>,
+				<&gpusys MT6985_POWER_DOMAIN_MFG6>,
+				<&gpusys MT6985_POWER_DOMAIN_MFG7>,
+				<&gpusys MT6985_POWER_DOMAIN_MFG8>,
+				<&gpusys MT6985_POWER_DOMAIN_MFG9>,
+				<&gpusys MT6985_POWER_DOMAIN_MFG10>,
+				<&gpusys MT6985_POWER_DOMAIN_MFG11>,
+				<&gpusys MT6985_POWER_DOMAIN_MFG12>,
+				<&gpusys MT6985_POWER_DOMAIN_MFG13>,
+				<&gpusys MT6985_POWER_DOMAIN_MFG14>,
+				<&gpusys MT6985_POWER_DOMAIN_MFG15>,
+				<&gpusys MT6985_POWER_DOMAIN_MFG16>,
+				<&gpusys MT6985_POWER_DOMAIN_MFG17>,
+				<&gpusys MT6985_POWER_DOMAIN_MFG18>,
+				<&gpusys MT6985_POWER_DOMAIN_MFG19>;
+			power-domain-names =
+				"pd_mfg1",
+				"pd_mfg2",
+				"pd_mfg3",
+				"pd_mfg4",
+				"pd_mfg5",
+				"pd_mfg6",
+				"pd_mfg7",
+				"pd_mfg8",
+				"pd_mfg9",
+				"pd_mfg10",
+				"pd_mfg11",
+				"pd_mfg12",
+				"pd_mfg13",
+				"pd_mfg14",
+				"pd_mfg15",
+				"pd_mfg16",
+				"pd_mfg17",
+				"pd_mfg18",
+				"pd_mfg19";
+			vgpu-supply = <&mt6373_vbuck4>;
+			vstack-supply = <&mt6373_vbuck2>;
+			vsram-supply = <&mt6373_vsram_digrf_aif>;
+			// fhctl-supply = <&fhctl>; /* TBD */
+			gpufreq_wrapper-supply = <&gpufreq_wrapper>;
+		};
+
+		gpufreq_wrapper: gpufreq_wrapper {
+			compatible = "mediatek,gpufreq_wrapper";
+			gpufreq-version = <2>;
+			dual-buck = <0>;
+			gpueb-support = <0>;
+		};
+
+		ged: ged {
+			compatible = "mediatek,ged";
+			gpufreq-supply = <&gpufreq>;
+		};
 	};
 
 	scp: scp@1c700000 {
