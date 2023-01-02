@@ -125,36 +125,28 @@ def main(**args):
 
     file_text.append("POST_DEFCONFIG_CMDS='if ! cmp -s ${OUT_DIR}/.config.timestamp ${OUT_DIR}/.config; then rm -f ${OUT_DIR}/.config.timestamp; else mv -f ${OUT_DIR}/.config.timestamp ${OUT_DIR}/.config; fi'\n")
 
-    has_fpsgo = False
-    has_met = False
-    ext_modules_list = []
+    ext_modules_list = ''
     ext_modules_file = '%s/kernel/configs/ext_modules.list' % (abs_kernel_dir)
     if os.path.exists(ext_modules_file):
         file_handle = open(ext_modules_file, 'r')
         for line in file_handle.readlines():
             line_strip = line.strip()
-            if "fpsgo" in line_strip:
-                has_fpsgo = True
-            elif "met_drv" in line_strip:
-                has_met = True
-            else:
-                ext_modules_list.append(line_strip)
+            ext_modules_list = '%s %s' % (ext_modules_list, line_strip)
         file_handle.close()
-    if len(ext_modules_list) > 0:
-        file_text.append('EXT_MODULES+=\"%s\"' % (' '.join(ext_modules_list)))
-    if has_fpsgo:
-        file_text.append("""
-if [ -d "../vendor/mediatek/kernel_modules/fpsgo_int" ]; then
-EXT_MODULES+=" ../vendor/mediatek/kernel_modules/fpsgo_int"
-else
-EXT_MODULES+=" ../vendor/mediatek/kernel_modules/fpsgo_cus"
-fi""")
-    if has_met:
-        file_text.append("EXT_MODULES+=\" ../vendor/mediatek/kernel_modules/met_drv_v3\"")
-        file_text.append("""if [ -d "../vendor/mediatek/kernel_modules/met_drv_secure_v3" ]; then
-EXT_MODULES+=" ../vendor/mediatek/kernel_modules/met_drv_secure_v3"
-fi""")
-        file_text.append("EXT_MODULES+=\" ../vendor/mediatek/kernel_modules/met_drv_v3/met_api\"")
+    ext_modules_list = 'EXT_MODULES_TMP=\"%s %s\"' % (ext_modules_list.strip(), ext_modules.strip())
+    file_text.append(ext_modules_list)
+    file_text.append("# deal with EXT_MODULES")
+    file_text.append("EXT_MODULES=")
+    file_text.append("for dir in ${EXT_MODULES_TMP}")
+    file_text.append("do")
+    file_text.append("  if [ -d \"${dir}\" ]; then")
+    file_text.append("    EXT_MODULES=\"${EXT_MODULES} ${dir}\"")
+    file_text.append("  else")
+    file_text.append("    echo \"WARNING: remove ${dir} from EXT_MODULES, as this dir does not exist!\"")
+    file_text.append("  fi")
+    file_text.append("done")
+    file_text.append("EXT_MODULES=${EXT_MODULES}")
+    file_text.append("echo \"EXT_MODULES=${EXT_MODULES}\"")
 
     file_text.append("DIST_CMDS='cp -p ${OUT_DIR}/.config ${DIST_DIR}'\n")
 
