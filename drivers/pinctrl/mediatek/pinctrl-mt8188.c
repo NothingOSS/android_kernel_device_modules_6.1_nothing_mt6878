@@ -1637,13 +1637,13 @@ static const struct mtk_pin_soc mt8188_data = {
 };
 
 static const struct of_device_id mt8188_pinctrl_of_match[] = {
-	{ .compatible = "mediatek,mt8188-pinctrl", .data = &mt8188_data },
+	{ .compatible = "mediatek,mt8188-pinctrl", },
 	{ }
 };
 
 static int mt8188_pinctrl_probe(struct platform_device *pdev)
 {
-	return mtk_paris_pinctrl_probe(pdev);
+	return mtk_paris_pinctrl_probe(pdev, &mt8188_data);
 }
 
 static struct platform_driver mt8188_pinctrl_driver = {
