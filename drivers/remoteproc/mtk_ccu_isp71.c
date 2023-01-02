@@ -93,8 +93,8 @@ mtk_ccu_allocate_mem(struct device *dev, struct mtk_ccu_mem_handle *memHandle)
 		return -EINVAL;
 	}
 
-	dev_info(dev, "success: size(%x), va(%lx), mva(%lx)\n",
-	memHandle->meminfo.size, memHandle->meminfo.va, memHandle->meminfo.mva);
+	dev_info(dev, "success: size(%x), va(%lx), mva(%pad)\n",
+	memHandle->meminfo.size, (unsigned long)memHandle->meminfo.va, &memHandle->meminfo.mva);
 
 	return 0;
 }
@@ -370,12 +370,12 @@ static int mtk_ccu_start(struct rproc *rproc)
 	mtk_icc_set_bw(ccu->path_ccug, MBps_to_icc(30), MBps_to_icc(30));
 #endif
 
-	LOG_DBG("LogBuf_mva[0](0x%lx)(0x%x << 8)\n",
-		ccu->log_info[0].mva, readl(ccu_base + MTK_CCU_SPARE_REG02));
-	LOG_DBG("LogBuf_mva[1](0x%lx)(0x%x << 8)\n",
-		ccu->log_info[1].mva, readl(ccu_base + MTK_CCU_SPARE_REG03));
-	LOG_DBG("LogBuf_mva[2](0x%lx)(0x%x << 8)\n",
-		ccu->log_info[2].mva, readl(ccu_base + MTK_CCU_SPARE_REG07));
+	LOG_DBG("LogBuf_mva[0](0x%pad)(0x%x << 8)\n",
+		&ccu->log_info[0].mva, readl(ccu_base + MTK_CCU_SPARE_REG02));
+	LOG_DBG("LogBuf_mva[1](0x%pad)(0x%x << 8)\n",
+		&ccu->log_info[1].mva, readl(ccu_base + MTK_CCU_SPARE_REG03));
+	LOG_DBG("LogBuf_mva[2](0x%pad)(0x%x << 8)\n",
+		&ccu->log_info[2].mva, readl(ccu_base + MTK_CCU_SPARE_REG07));
 	ccu->g_LogBufIdx = 0;
 
 	spin_lock(&ccu->ccu_poweron_lock);
@@ -429,7 +429,7 @@ void *mtk_ccu_da_to_va(struct rproc *rproc, u64 da, size_t len, bool *is_iomem)
 	}
 #endif
 
-	dev_err(dev, "failed lookup da(0x%x) len(0x%x) to va, offset(%x)\n",
+	dev_err(dev, "failed lookup da(0x%llx) len(0x%zx) to va, offset(%x)\n",
 		da, len, offset);
 	return NULL;
 }
@@ -480,7 +480,7 @@ static int mtk_ccu_stop(struct rproc *rproc)
 		0, 0, 0, 0, 0, 0, &res);
 #endif
 	if (res.a0 != 0)
-		dev_err(ccu->dev, "stop CCU failed (%d).\n", res.a0);
+		dev_err(ccu->dev, "stop CCU failed (%lu).\n", res.a0);
 	else
 		LOG_DBG("stop CCU OK\n");
 #else
@@ -835,21 +835,21 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 	phy_size = ccu->ccu_hw_size;
 	ccu->ccu_base = devm_ioremap(dev, phy_addr, phy_size);
 	LOG_DBG("ccu_base pa: 0x%x, size: 0x%x\n", phy_addr, phy_size);
-	LOG_DBG("ccu_base va: 0x%lx\n", (uint64_t)ccu->ccu_base);
+	LOG_DBG("ccu_base va: 0x%llx\n", (uint64_t)ccu->ccu_base);
 
 	/*remap dmem_base*/
 	phy_addr = (ccu->ccu_hw_base & MTK_CCU_BASE_MASK) + ccu->ccu_sram_offset;
 	phy_size = ccu->ccu_sram_size;
 	ccu->dmem_base = devm_ioremap(dev, phy_addr, phy_size);
 	LOG_DBG("dmem_base pa: 0x%x, size: 0x%x\n", phy_addr, phy_size);
-	LOG_DBG("dmem_base va: 0x%lx\n", (uint64_t)ccu->dmem_base);
+	LOG_DBG("dmem_base va: 0x%llx\n", (uint64_t)ccu->dmem_base);
 
 	/*remap pmem_base*/
 	phy_addr = ccu->ccu_hw_base & MTK_CCU_BASE_MASK;
 	phy_size = ccu->ccu_sram_size;
 	ccu->pmem_base = devm_ioremap(dev, phy_addr, phy_size);
 	LOG_DBG("pmem_base pa: 0x%x, size: 0x%x\n", phy_addr, phy_size);
-	LOG_DBG("pmem_base va: 0x%lx\n", (uint64_t)ccu->pmem_base);
+	LOG_DBG("pmem_base va: 0x%llx\n", (uint64_t)ccu->pmem_base);
 
 	if (!ccu->ccu_fpga) {
 	/* get Clock control from device tree.  */

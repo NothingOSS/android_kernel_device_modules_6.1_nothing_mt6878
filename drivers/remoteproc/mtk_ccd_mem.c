@@ -242,7 +242,7 @@ int mtk_ccd_put_buffer(struct mtk_ccd *ccd,
 			if (mem_buff_data->va == va &&
 				mem_buff_data->len == ccd_buffer->size) {
 				dev_info(ccd_memory->dev,
-					"Free buff = %d iova = %pad va = %p, queue_num = %d, f_count = %d\n",
+					"Free buff = %d iova = %pad va = %p, queue_num = %d, f_count = %ld\n",
 					 buffer, &mem_buff_data->iova,
 					 mem_buff_data->va,
 					 num_buffers, atomic_long_read(&buf->dbuf->file->f_count));
