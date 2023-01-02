@@ -5600,10 +5600,6 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 				goto err_component_unbind;
 		}
 	}
-	/* TODO: allow_fb_modifiers = 1 and format_modifiers = null make drm_warn_on.
-	 * so we set allow_fb_modifiers = 1 after mtk_plane_init
-	 */
-	drm->mode_config.allow_fb_modifiers = true;
 
 	/* Use OVL device for all DMA memory allocations */
 	np = private->comp_node[private->data->main_path_data
