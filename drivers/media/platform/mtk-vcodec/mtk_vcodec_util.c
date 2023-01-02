@@ -268,7 +268,7 @@ void mtk_vcodec_init_slice_info(struct mtk_vcodec_ctx *ctx, struct mtk_video_dec
 	fence = mtk_vcodec_create_fence(ctx->dec_params.slice_count);
 	if (fence) {
 		dma_resv_lock(dbuf->resv, NULL);
-		dma_resv_add_excl_fence(dbuf->resv, fence);
+		dma_resv_add_fence(dbuf->resv, fence, DMA_RESV_USAGE_KERNEL);
 		dma_resv_unlock(dbuf->resv);
 		dma_fence_put(fence); // make dbuf->resv the only owner
 	}
