@@ -59,7 +59,7 @@ static int __fh_ctrl_cmd_hdlr(struct pll_dts *array,
 			hdlr->ops->hopping(hdlr->data,
 					array->domain,
 					array->fh_id,
-					arg, 0);
+					arg, -1);
 		break;
 	case FH_DBG_CMD_SSC_ENABLE:
 		if (array->perms & PERM_DBG_SSC)
@@ -178,15 +178,14 @@ static int fh_ctrl_proc_read(struct seq_file *m, void *v)
 	seq_printf(m, "====== FHCTL CTRL, has_perms<%d>, comp<%s>======\n",
 			has_perms, array->comp);
 
-	seq_puts(m, "[Name pll-id fh-id perms ssc-rate]");
+	seq_puts(m, "[Name fh-id perms ssc-rate]");
 	seq_puts(m, "[domain method]");
 	seq_puts(m, "[Hdlr]");
 	seq_puts(m, "\n");
 
 	for (i = 0; i < num_pll; i++, array++) {
-		seq_printf(m, "<%s,%d,%d,%x,%d>,<%s,%s>,<%lx>\n",
-				array->pll_name,
-				array->pll_id, array->fh_id,
+		seq_printf(m, "<%s,%d,%x,%d>,<%s,%s>,<%lx>\n",
+				array->pll_name, array->fh_id,
 				array->perms, array->ssc_rate,
 				array->domain, array->method,
 				(unsigned long)array->hdlr);
@@ -260,7 +259,7 @@ static int fh_dumpregs_read(struct seq_file *m, void *v)
 		struct fh_pll_domain *domain;
 		struct fh_pll_regs *regs;
 		struct fh_pll_data *data;
-		int fh_id,  pll_id;
+		int fh_id;
 		char *pll_name;
 		int ssc_rate;
 		unsigned int dds_max, dds_min;
@@ -269,7 +268,6 @@ static int fh_dumpregs_read(struct seq_file *m, void *v)
 			continue;
 
 		fh_id = array->fh_id;
-		pll_id = array->pll_id;
 		pll_name = array->pll_name;
 		domain = get_fh_domain(array->domain);
 		regs = &domain->regs[fh_id];
@@ -278,8 +276,8 @@ static int fh_dumpregs_read(struct seq_file *m, void *v)
 		ssc_rate = __sample_dds(regs, data,
 				&dds_max, &dds_min);
 
-		seq_printf(m, "PLL_ID:%d FH_ID:%d NAME:%s",
-			pll_id, fh_id, pll_name);
+		seq_printf(m, "FH_ID:%d NAME:%s",
+			fh_id, pll_name);
 		seq_printf(m, " PCW:%x SSC_RATE:%d\n",
 			readl(regs->reg_con_pcw) & data->dds_mask,
 			ssc_rate);
@@ -301,6 +299,9 @@ static int fh_dumpregs_read(struct seq_file *m, void *v)
 		seq_printf(m,
 			"dds_max:0x%08x dds_mix:0x%08x ssc(1/1000):%d\n\n",
 			dds_max, dds_min, ssc_rate);
+
+		if (regs->reg_hp_en_set)
+			seq_puts(m, "Support hp_en/rst_con/clk_con SET/CLR register!\n");
 	}
 	return 0;
 }

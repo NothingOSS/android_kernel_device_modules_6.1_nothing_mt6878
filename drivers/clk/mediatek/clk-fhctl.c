@@ -37,7 +37,7 @@ static struct pll_dts *_array;
 static void set_dts_array(struct pll_dts *array) {_array = array; }
 static struct pll_dts *get_dts_array(void) {return _array; }
 
-static bool _mtk_fh_set_rate(const char *pll_name, unsigned long dds, int postdiv)
+static bool mtk_fh_set_rate(const char *pll_name, unsigned long dds, int postdiv)
 {
 	int i;
 	struct fh_hdlr *hdlr = NULL;
@@ -59,14 +59,9 @@ static bool _mtk_fh_set_rate(const char *pll_name, unsigned long dds, int postdi
 		hdlr->ops->hopping(hdlr->data,
 				array->domain,
 				array->fh_id,
-				dds, 9999);
+				dds, postdiv);
 		return true;
 	}
-	FHDBG("pll_name<%s> fh_id<%d> hdlr<%lx> perms<%x>",
-			array->pll_name,
-			array->fh_id,
-			(unsigned long)hdlr,
-			array->perms);
 	return false;
 }
 
@@ -109,7 +104,7 @@ static struct pll_dts *parse_dt(struct platform_device *pdev)
 		num = 0;
 		FHDBG("---------------------\n");
 		for_each_child_of_node(map, of_pll) {
-			int fh_id, pll_id;
+			int fh_id;
 			int perms, ssc_rate;
 
 			if (pll_idx >= num_pll) {
@@ -124,14 +119,12 @@ static struct pll_dts *parse_dt(struct platform_device *pdev)
 			ssc_rate = 0;
 
 			of_property_read_u32(of_pll, "fh-id", &fh_id);
-			of_property_read_u32(of_pll, "pll-id", &pll_id);
 			of_property_read_u32(of_pll, "perms", &perms);
 			of_property_read_u32(of_pll, "ssc-rate", &ssc_rate);
 			array[pll_idx].num_pll = num_pll;
 			array[pll_idx].comp = (char *)match->compatible;
 			array[pll_idx].pll_name = (char *)of_pll->name;
 			array[pll_idx].fh_id = fh_id;
-			array[pll_idx].pll_id = pll_id;
 			array[pll_idx].perms = perms;
 			array[pll_idx].ssc_rate = ssc_rate;
 			array[pll_idx].domain = domain;
@@ -163,7 +156,7 @@ static int fh_plt_drv_probe(struct platform_device *pdev)
 
 	FHDBG("in\n");
 
-	mtk_fh_set_rate = _mtk_fh_set_rate;
+	register_fh_set_rate(mtk_fh_set_rate);
 
 	/* convert dt to data */
 	array = parse_dt(pdev);
@@ -214,15 +207,7 @@ static void fh_plt_drv_shutdown(struct platform_device *pdev)
 }
 
 static const struct of_device_id fh_of_match[] = {
-	{ .compatible = "mediatek,mt6853-fhctl"},
-	{ .compatible = "mediatek,mt6855-fhctl"},
-	{ .compatible = "mediatek,mt6877-fhctl"},
-	{ .compatible = "mediatek,mt6873-fhctl"},
-	{ .compatible = "mediatek,mt6879-fhctl"},
-	{ .compatible = "mediatek,mt6885-fhctl"},
-	{ .compatible = "mediatek,mt6886-fhctl"},
-	{ .compatible = "mediatek,mt6895-fhctl"},
-	{ .compatible = "mediatek,mt6983-fhctl"},
+	{ .compatible = "mediatek,mt6897-fhctl"},
 	{ .compatible = "mediatek,mt6985-fhctl"},
 	{}
 };

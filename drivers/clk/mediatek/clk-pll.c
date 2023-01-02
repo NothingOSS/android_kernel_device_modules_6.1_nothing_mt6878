@@ -62,8 +62,19 @@ struct mtk_clk_pll {
 	struct regmap	*hwv_regmap;
 };
 
-bool (*mtk_fh_set_rate)(const char *name, unsigned long dds, int postdiv) = NULL;
-EXPORT_SYMBOL(mtk_fh_set_rate);
+static bool (*mtk_fh_set_rate)(const char *name, unsigned long dds, int postdiv) = NULL;
+
+int register_fh_set_rate(bool (*fh_set_rate)(const char *name, unsigned long dds, int postdiv)){
+
+	if(!fh_set_rate) {
+		pr_err("register_fh_set_rate fail\n");
+		return -EINVAL;
+        } else
+		mtk_fh_set_rate = fh_set_rate;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(register_fh_set_rate);
 
 static inline struct mtk_clk_pll *to_mtk_clk_pll(struct clk_hw *hw)
 {

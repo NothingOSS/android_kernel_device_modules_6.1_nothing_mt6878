@@ -24,6 +24,15 @@ do { \
 	val = ((tv & (field)) >> (ffs(field) - 1)); \
 } while (0)
 
+#define fh_set_clr_field(reg, field, val) \
+do { \
+	void __iomem **setclr_reg = (val) ? (&reg) + 1 : (&reg) + 2; \
+	if (*setclr_reg == NULL) \
+		fh_set_field(reg, field, val); \
+	else \
+		fh_set_field(setclr_reg, field, 1); \
+} while (0)
+
 #define FHDBG(fmt, args...) pr_notice("[FHCTL], <%s(), %d> " fmt, __func__, __LINE__, ## args)
 #define FHDBG_LIMIT(FREQ, fmt, args...) do {\
 	static DEFINE_RATELIMIT_STATE(ratelimit, HZ, FREQ);\

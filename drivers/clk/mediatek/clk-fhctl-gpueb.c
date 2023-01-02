@@ -383,106 +383,40 @@ static struct fh_operation gpueb_ops_v1 = {
 	.ssc_disable = gpueb_ssc_disable_v1,
 };
 
-/*mt6983 begin*/
-static struct id_map map_6983[] = {
+/*mt6985 begin*/
+static struct id_map map_6985[] = {
 	{"gpu0", 1000},
 	{"gpu2", 3000},
 	{"gpu3", 4000},
 	{}
 };
 
-struct hdlr_data_v1 hdlr_data_6983_gpueb = {
+struct hdlr_data_v1 hdlr_data_6985_gpueb = {
 	.reg_tr = NULL,
-	.map = map_6983,
+	.map = map_6985,
 };
-static struct fh_hdlr gpueb_hdlr_6983 = {
+static struct fh_hdlr gpueb_hdlr_6985 = {
 	.ops = &gpueb_ops_v1,
-	.data = &hdlr_data_6983_gpueb,
+	.data = &hdlr_data_6985_gpueb,
 };
-static struct match mt6983_match = {
-	.name = "mediatek,mt6983-fhctl",
-	.hdlr = &gpueb_hdlr_6983,
-	.init = &gpueb_init_v1,
-};
-/*mt6983 end*/
 
-/*mt6985 begin*/
 static struct match mt6985_match = {
 	.name = "mediatek,mt6985-fhctl",
-	.hdlr = &gpueb_hdlr_6983,
+	.hdlr = &gpueb_hdlr_6985,
 	.init = &gpueb_init_v1,
 };
 /*mt6985 end*/
 
-/*mt6895 begin*/
-static struct match mt6895_match = {
-	.name = "mediatek,mt6895-fhctl",
-	.hdlr = &gpueb_hdlr_6983,
+/*mt6897 begin*/
+static struct match mt6897_match = {
+	.name = "mediatek,mt6897-fhctl",
+	.hdlr = &gpueb_hdlr_6985,
 	.init = &gpueb_init_v1,
 };
-/*mt6895 end*/
-
-/*mt6886 begin*/
-static struct id_map map_6886[] = {
-	{"gpu0", 1000},
-	{"gpu2", 3000},
-	{"gpu3", 4000},
-	{}
-};
-
-struct hdlr_data_v1 hdlr_data_6886_gpueb = {
-	.reg_tr = NULL,
-	.map = map_6886,
-};
-static struct fh_hdlr gpueb_hdlr_6886 = {
-	.ops = &gpueb_ops_v1,
-	.data = &hdlr_data_6886_gpueb,
-};
-static struct match mt6886_match = {
-	.name = "mediatek,mt6886-fhctl",
-	.hdlr = &gpueb_hdlr_6886,
-	.init = &gpueb_init_v1,
-};
-/*mt6886 end*/
-
-/*mt6879 begin*/
-struct hdlr_data_v1 hdlr_data_6879_gpueb = {
-	.reg_tr = NULL,
-	.map = NULL,
-};
-static struct fh_hdlr gpueb_hdlr_6879 = {
-	.ops = &gpueb_ops_v1,
-	.data = &hdlr_data_6879_gpueb,
-};
-static struct match mt6879_match = {
-	.name = "mediatek,mt6879-fhctl",
-	.hdlr = &gpueb_hdlr_6879,
-	.init = &gpueb_init_v1,
-};
-/*mt6879 end*/
-
-/*mt6855 begin*/
-struct hdlr_data_v1 hdlr_data_6855_gpueb = {
-	.reg_tr = NULL,
-	.map = NULL,
-};
-static struct fh_hdlr gpueb_hdlr_6855 = {
-	.ops = &gpueb_ops_v1,
-	.data = &hdlr_data_6855_gpueb,
-};
-static struct match mt6855_match = {
-	.name = "mediatek,mt6855-fhctl",
-	.hdlr = &gpueb_hdlr_6855,
-	.init = &gpueb_init_v1,
-};
-/*mt6855 end*/
+/*mt6897 end*/
 
 static struct match *matches[] = {
-	&mt6855_match,
-	&mt6879_match,
-	&mt6886_match,
-	&mt6895_match,
-	&mt6983_match,
+	&mt6897_match,
 	&mt6985_match,
 	NULL,
 };

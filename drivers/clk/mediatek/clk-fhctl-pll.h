@@ -12,6 +12,8 @@
 struct fh_pll_data {
 	char *name;
 	unsigned int dds_mask;
+	unsigned int postdiv_mask;
+	unsigned int postdiv_offset;
 	unsigned int slope0_value;
 	unsigned int slope1_value;
 	unsigned int sfstrx_en;
@@ -29,9 +31,16 @@ struct fh_pll_data {
 struct fh_pll_offset {
 	int offset_fhctl;
 	int offset_con_pcw;
+	int offset_con_postdiv;
 	int offset_hp_en;
+	int offset_hp_en_set;
+	int offset_hp_en_clr;
 	int offset_clk_con;
+	int offset_clk_con_set;
+	int offset_clk_con_clr;
 	int offset_rst_con;
+	int offset_rst_con_set;
+	int offset_rst_con_clr;
 	int offset_slope0;
 	int offset_slope1;
 	int offset_cfg;
@@ -41,9 +50,16 @@ struct fh_pll_offset {
 	int offset_mon;
 };
 struct fh_pll_regs {
+	/* Do keep EN -> EN_SET -> EN_CLR structure order */
 	void __iomem *reg_hp_en;
+	void __iomem *reg_hp_en_set;
+	void __iomem *reg_hp_en_clr;
 	void __iomem *reg_clk_con;
+	void __iomem *reg_clk_con_set;
+	void __iomem *reg_clk_con_clr;
 	void __iomem *reg_rst_con;
+	void __iomem *reg_rst_con_set;
+	void __iomem *reg_rst_con_clr;
 	void __iomem *reg_slope0;
 	void __iomem *reg_slope1;
 	void __iomem *reg_cfg;
@@ -52,6 +68,7 @@ struct fh_pll_regs {
 	void __iomem *reg_dvfs;
 	void __iomem *reg_mon;
 	void __iomem *reg_con_pcw;
+	void __iomem *reg_con_postdiv;
 };
 struct fh_pll_domain {
 	char *name;

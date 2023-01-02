@@ -365,141 +365,31 @@ static struct fh_operation mcupm_ops_v1 = {
 	.ssc_disable = mcupm_ssc_disable_v1,
 };
 
-struct hdlr_data_v1 hdlr_data_6853 = {
-	.reg_tr = (void __iomem *)(0xC8 + 0x4),
-};
-static struct fh_hdlr mcupm_hdlr_6853 = {
-	.ops = &mcupm_ops_v1,
-	.data = &hdlr_data_6853,
-};
-static struct match mt6853_match = {
-	.name = "mediatek,mt6853-fhctl",
-	.hdlr = &mcupm_hdlr_6853,
-	.init = &mcupm_init_v1,
-};
-
-struct hdlr_data_v1 hdlr_data_6855 = {
-	.reg_tr = (void __iomem *)(0x90), /* MEMPL Up/Down Limit */
-};
-static struct fh_hdlr mcupm_hdlr_6855 = {
-	.ops = &mcupm_ops_v1,
-	.data = &hdlr_data_6855,
-};
-static struct match mt6855_match = {
-	.name = "mediatek,mt6855-fhctl",
-	.hdlr = &mcupm_hdlr_6855,
-	.init = &mcupm_init_v1,
-};
-
-struct hdlr_data_v1 hdlr_data_6879 = {
-	.reg_tr = (void __iomem *)(0x90), /* MEMPL Up/Down Limit */
-};
-static struct fh_hdlr mcupm_hdlr_6879 = {
-	.ops = &mcupm_ops_v1,
-	.data = &hdlr_data_6879,
-};
-static struct match mt6879_match = {
-	.name = "mediatek,mt6879-fhctl",
-	.hdlr = &mcupm_hdlr_6879,
-	.init = &mcupm_init_v1,
-};
-
-struct hdlr_data_v1 hdlr_data_6877 = {
-	.reg_tr = (void __iomem *)(0x90), /* MEMPL Up/Down Limit */
-};
-static struct fh_hdlr mcupm_hdlr_6877 = {
-	.ops = &mcupm_ops_v1,
-	.data = &hdlr_data_6877,
-};
-static struct match mt6877_match = {
-	.name = "mediatek,mt6877-fhctl",
-	.hdlr = &mcupm_hdlr_6877,
-	.init = &mcupm_init_v1,
-};
-
-struct hdlr_data_v1 hdlr_data_6873 = {
-	.reg_tr = NULL,
-};
-static struct fh_hdlr mcupm_hdlr_6873 = {
-	.ops = &mcupm_ops_v1,
-	.data = &hdlr_data_6873,
-};
-static struct match mt6873_match = {
-	.name = "mediatek,mt6873-fhctl",
-	.hdlr = &mcupm_hdlr_6873,
-	.init = &mcupm_init_v1,
-};
-
-struct hdlr_data_v1 hdlr_data_6885 = {
-	.reg_tr = NULL,
-};
-static struct fh_hdlr mcupm_hdlr_6885 = {
-	.ops = &mcupm_ops_v1,
-	.data = &hdlr_data_6885,
-};
-static struct match mt6885_match = {
-	.name = "mediatek,mt6885-fhctl",
-	.hdlr = &mcupm_hdlr_6885,
-	.init = &mcupm_init_v1,
-};
-
-struct hdlr_data_v1 hdlr_data_6895 = {
-	.reg_tr = (void __iomem *)(0x90), /* MEMPL Up/Down Limit */
-};
-static struct fh_hdlr mcupm_hdlr_6895 = {
-	.ops = &mcupm_ops_v1,
-	.data = &hdlr_data_6895,
-};
-static struct match mt6895_match = {
-	.name = "mediatek,mt6895-fhctl",
-	.hdlr = &mcupm_hdlr_6895,
-	.init = &mcupm_init_v1,
-};
-
-static struct id_map map_6886[] = {
+/*mt6897 begin*/
+static struct id_map map_6897[] = {
 	{"mcu0", 1000},
 	{"mcu1", 2000},
 	{"mcu2", 3000},
 	{"mcu3", 4000},
+	{"mcu4", 5000},
 	{}
 };
-
-struct hdlr_data_v1 hdlr_data_6886 = {
+struct hdlr_data_v1 hdlr_data_6897 = {
 	.reg_tr = NULL,
-	.map = map_6886,
+	.map = map_6897,
 };
-static struct fh_hdlr mcupm_hdlr_6886 = {
+static struct fh_hdlr mcupm_hdlr_6897 = {
 	.ops = &mcupm_ops_v1,
-	.data = &hdlr_data_6886,
+	.data = &hdlr_data_6897,
 };
-static struct match mt6886_match = {
-	.name = "mediatek,mt6886-fhctl",
-	.hdlr = &mcupm_hdlr_6886,
+static struct match mt6897_match = {
+	.name = "mediatek,mt6897-fhctl",
+	.hdlr = &mcupm_hdlr_6897,
 	.init = &mcupm_init_v1,
 };
+/*mt6897 end*/
 
-static struct id_map map_6983[] = {
-	{"mcu0", 1000},
-	{"mcu1", 2000},
-	{"mcu2", 3000},
-	{"mcu3", 4000},
-	{}
-};
-
-struct hdlr_data_v1 hdlr_data_6983 = {
-	.reg_tr = NULL,
-	.map = map_6983,
-};
-static struct fh_hdlr mcupm_hdlr_6983 = {
-	.ops = &mcupm_ops_v1,
-	.data = &hdlr_data_6983,
-};
-static struct match mt6983_match = {
-	.name = "mediatek,mt6983-fhctl",
-	.hdlr = &mcupm_hdlr_6983,
-	.init = &mcupm_init_v1,
-};
-
+/*mt6985 begin*/
 static struct id_map map_6985[] = {
 	{"mcu0", 1000},
 	{"mcu1", 2000},
@@ -521,17 +411,10 @@ static struct match mt6985_match = {
 	.hdlr = &mcupm_hdlr_6985,
 	.init = &mcupm_init_v1,
 };
+/*mt6985 end*/
 
 static struct match *matches[] = {
-	&mt6853_match,
-	&mt6855_match,
-	&mt6879_match,
-	&mt6877_match,
-	&mt6873_match,
-	&mt6885_match,
-	&mt6886_match,
-	&mt6895_match,
-	&mt6983_match,
+	&mt6897_match,
 	&mt6985_match,
 	NULL,
 };

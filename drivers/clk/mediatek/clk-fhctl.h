@@ -26,7 +26,6 @@ struct pll_dts {
 	char *method;
 	char *pll_name;
 	int fh_id;
-	int pll_id;
 	int perms;
 	int ssc_rate;
 	void __iomem *fhctl_base;

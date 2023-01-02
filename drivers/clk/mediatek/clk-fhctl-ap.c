@@ -71,9 +71,8 @@ static int __ssc_v1(struct fh_pll_regs *regs,
 
 		writel(updnlmt_val, regs->reg_updnlmt);
 
-		/* Switch to FHCTL_CORE controller - Original design */
-		fh_set_field(regs->reg_hp_en, BIT(fh_id),
-				1);
+		/* Switch to FHCTL_CORE controller */
+		fh_set_clr_field(regs->reg_hp_en, BIT(fh_id), 1);
 
 		/* Enable SSC */
 		fh_set_field(regs->reg_cfg, data->frddsx_en, 1);
@@ -86,8 +85,7 @@ static int __ssc_v1(struct fh_pll_regs *regs,
 		fh_set_field(regs->reg_cfg, data->fhctlx_en, 0);
 
 		/* Switch to APMIXEDSYS control */
-		fh_set_field(regs->reg_hp_en, BIT(fh_id),
-				0);
+		fh_set_clr_field(regs->reg_hp_en, BIT(fh_id), 0);
 
 		/* Wait for DDS to be stable */
 		udelay(30);
@@ -96,7 +94,7 @@ static int __ssc_v1(struct fh_pll_regs *regs,
 	return 0;
 }
 
-static int ap_hopping_v1(void *priv_data, char *domain_name, int fh_id,
+static int __hopping_hw_flow_v1(void *priv_data, char *domain_name, int fh_id,
 		unsigned int new_dds, int postdiv)
 {
 	struct fh_pll_domain *domain;
@@ -107,11 +105,7 @@ static int ap_hopping_v1(void *priv_data, char *domain_name, int fh_id,
 	int ret = 0;
 	unsigned int con_pcw_tmp;
 	struct hdlr_data_v1 *d = (struct hdlr_data_v1 *)priv_data;
-	spinlock_t *lock = d->lock;
 	struct pll_dts *array = d->array;
-	unsigned long flags = 0;
-
-	spin_lock_irqsave(lock, flags);
 
 	domain = d->domain;
 	regs = &domain->regs[fh_id];
@@ -138,8 +132,7 @@ static int ap_hopping_v1(void *priv_data, char *domain_name, int fh_id,
 	writel(data->slope1_value, regs->reg_slope1);
 
 	/* 3. switch to hopping control */
-	fh_set_field(regs->reg_hp_en, BIT(fh_id),
-						1);
+	fh_set_clr_field(regs->reg_hp_en, BIT(fh_id), 1);
 
 	/* 4. set DFS DDS */
 	writel((new_dds) | (data->dvfs_tri), regs->reg_dvfs);
@@ -167,13 +160,93 @@ static int ap_hopping_v1(void *priv_data, char *domain_name, int fh_id,
 	writel(con_pcw_tmp, regs->reg_con_pcw);
 
 	/* 6. switch to APMIXEDSYS control */
-	fh_set_field(regs->reg_hp_en, BIT(fh_id),
-				0);
+	fh_set_clr_field(regs->reg_hp_en, BIT(fh_id), 0);
 
 	if (array->ssc_rate)
 		__ssc_v1(regs, data, fh_id, array->ssc_rate);
 
+	return ret;
+}
+
+static unsigned int __get_postdiv(struct fh_pll_regs *regs,
+	struct fh_pll_data *data)
+{
+	// If design change extend this table, please extend it. (But this should not happens)
+	// For i <= 4, postdiv_pow[i] = 2^i. For i > 4, postdiv_pow[i] = 1.
+	// Using array for idx->postdiv_pow mapping has better performance than pow(2, i)+if_cond.
+	static unsigned int postdiv_pow[8] = {1,2,4,8,16,1,1,1};
+	unsigned int regval;
+
+	regval = (readl(regs->reg_con_postdiv) & data->postdiv_mask)
+		>> data->postdiv_offset;
+
+	FHDBG("Get current postdiv : %x\n", regval);
+
+	return postdiv_pow[regval];
+}
+
+static void __set_postdiv(struct fh_pll_regs *regs,
+	struct fh_pll_data *data, int postdiv)
+{
+	unsigned int temp;
+
+	temp = (readl(regs->reg_con_postdiv)) & ~(data->postdiv_mask);
+	temp |= (ffs(postdiv) - 1) << data->postdiv_offset;
+
+	FHDBG("Set target postdiv : %x\n", temp);
+
+	writel(temp, regs->reg_con_postdiv);
+}
+
+static int ap_hopping_v1(void *priv_data, char *domain_name, int fh_id,
+		unsigned int new_dds, int postdiv)
+{
+	struct fh_pll_domain *domain;
+	struct fh_pll_regs *regs;
+	struct fh_pll_data *data;
+	int ret = 0;
+	struct hdlr_data_v1 *d = (struct hdlr_data_v1 *)priv_data;
+	spinlock_t *lock = d->lock;
+	unsigned long flags = 0;
+	unsigned int cur_postdiv;
+
+	FHDBG("fh_id:%d, new_dds:0x%x, postdiv:%d\n", fh_id, new_dds, postdiv);
+
+	//data preparation
+	domain = d->domain;
+	regs = &domain->regs[fh_id];
+	data = &domain->data[fh_id];
+
+	//pre-hopping check
+	//	If cur postdiv < target postdiv, change it before DDS
+	if (postdiv != -1) {
+		cur_postdiv = __get_postdiv(regs, data);
+		if (postdiv > cur_postdiv) {
+			FHDBG("set pos b4 fhctl: current_postdiv %x, postdiv(target) %x\n",
+				cur_postdiv, postdiv);
+			__set_postdiv(regs, data, postdiv);
+		}
+	}
+
+	//hopping
+	spin_lock_irqsave(lock, flags);
+
+	ret = __hopping_hw_flow_v1(priv_data, domain_name, fh_id,
+		new_dds, postdiv);
+
 	spin_unlock_irqrestore(lock, flags);
+
+
+	//post-hopping check
+	//	If cur postdiv < target postdiv, change it after DDS
+	if (postdiv != -1) {
+		if (postdiv < cur_postdiv) {
+			FHDBG("set pos af fhctl: current_postdiv %x, postdiv(target) %x\n",
+				cur_postdiv, postdiv);
+			__set_postdiv(regs, data, postdiv);
+		}
+	}
+
 	return ret;
 }
 
@@ -242,7 +315,6 @@ static int ap_init_v1(struct pll_dts *array, struct match *match)
 	int fh_id = array->fh_id;
 	struct fh_pll_regs *regs;
 	struct fh_pll_data *data;
-	int mask = BIT(fh_id);
 
 	FHDBG("array<%lx>,%s %s, id<%d>\n",
 			(unsigned long)array,
@@ -266,9 +338,10 @@ static int ap_init_v1(struct pll_dts *array, struct match *match)
 	regs = &domain->regs[fh_id];
 	data = &domain->data[fh_id];
 
-	fh_set_field(regs->reg_clk_con, mask, 1);
-	fh_set_field(regs->reg_rst_con, mask, 0);
-	fh_set_field(regs->reg_rst_con, mask, 1);
+	fh_set_clr_field(regs->reg_clk_con, BIT(fh_id), 1);
+	fh_set_clr_field(regs->reg_rst_con, BIT(fh_id), 0);
+	fh_set_clr_field(regs->reg_rst_con, BIT(fh_id), 1);
+
 	writel(0x0, regs->reg_cfg);
 	writel(0x0, regs->reg_updnlmt);
 	writel(0x0, regs->reg_dds);
@@ -302,48 +375,8 @@ static struct fh_operation ap_ops_v1 = {
 static struct fh_hdlr ap_hdlr_v1 = {
 	.ops = &ap_ops_v1,
 };
-static struct match mt6853_match = {
-	.name = "mediatek,mt6853-fhctl",
-	.hdlr = &ap_hdlr_v1,
-	.init = &ap_init_v1,
-};
-static struct match mt6855_match = {
-	.name = "mediatek,mt6855-fhctl",
-	.hdlr = &ap_hdlr_v1,
-	.init = &ap_init_v1,
-};
-static struct match mt6879_match = {
-	.name = "mediatek,mt6879-fhctl",
-	.hdlr = &ap_hdlr_v1,
-	.init = &ap_init_v1,
-};
-static struct match mt6877_match = {
-	.name = "mediatek,mt6877-fhctl",
-	.hdlr = &ap_hdlr_v1,
-	.init = &ap_init_v1,
-};
-static struct match mt6873_match = {
-	.name = "mediatek,mt6873-fhctl",
-	.hdlr = &ap_hdlr_v1,
-	.init = &ap_init_v1,
-};
-static struct match mt6885_match = {
-	.name = "mediatek,mt6885-fhctl",
-	.hdlr = &ap_hdlr_v1,
-	.init = &ap_init_v1,
-};
-static struct match mt6886_match = {
-	.name = "mediatek,mt6886-fhctl",
-	.hdlr = &ap_hdlr_v1,
-	.init = &ap_init_v1,
-};
-static struct match mt6895_match = {
-	.name = "mediatek,mt6895-fhctl",
-	.hdlr = &ap_hdlr_v1,
-	.init = &ap_init_v1,
-};
-static struct match mt6983_match = {
-	.name = "mediatek,mt6983-fhctl",
+static struct match mt6897_match = {
+	.name = "mediatek,mt6897-fhctl",
 	.hdlr = &ap_hdlr_v1,
 	.init = &ap_init_v1,
 };
@@ -353,15 +386,7 @@ static struct match mt6985_match = {
 	.init = &ap_init_v1,
 };
 static struct match *matches[] = {
-	&mt6853_match,
-	&mt6855_match,
-	&mt6879_match,
-	&mt6877_match,
-	&mt6873_match,
-	&mt6885_match,
-	&mt6886_match,
-	&mt6895_match,
-	&mt6983_match,
+	&mt6897_match,
 	&mt6985_match,
 	NULL,
 };
