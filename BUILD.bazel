@@ -8,7 +8,7 @@ package(
 load(":mgk.bzl", "define_mgk")
 
 
-mgk_64_kmainline_kleaf_modules = [
+mgk_64_k61_kleaf_modules = [
     # keep sorted
     "//vendor/mediatek/kernel_modules/connectivity/common:wmt_drv",
     "//vendor/mediatek/kernel_modules/connectivity/connfem:connfem",
@@ -28,7 +28,7 @@ mgk_64_kmainline_kleaf_modules = [
 ]
 
 
-mgk_64_kmainline_common_modules = [
+mgk_64_k61_common_modules = [
     # keep sorted
     "drivers/base/regmap/regmap-spmi.ko",
     "drivers/iio/buffer/industrialio-triggered-buffer.ko",
@@ -51,7 +51,7 @@ mgk_64_kmainline_common_modules = [
 ]
 
 
-mgk_64_kmainline_device_modules = [
+mgk_64_k61_device_modules = [
     # keep sorted
     "drivers/char/hw_random/sec-rng.ko",
     "drivers/char/rpmb/rpmb-mtk.ko",
@@ -587,7 +587,7 @@ mgk_64_kmainline_device_modules = [
 ]
 
 
-mgk_64_kmainline_device_eng_modules = [
+mgk_64_k61_device_eng_modules = [
     # keep sorted
     "drivers/misc/mediatek/cpufreq_v1/cpuhvfs.ko",
     "drivers/misc/mediatek/locking/locking_aee.ko",
@@ -597,7 +597,7 @@ mgk_64_kmainline_device_eng_modules = [
 ]
 
 
-mgk_64_kmainline_device_userdebug_modules = [
+mgk_64_k61_device_userdebug_modules = [
     "drivers/misc/mediatek/cpufreq_v1/cpuhvfs.ko",
     "drivers/misc/mediatek/mtprof/irq_monitor.ko",
     "drivers/misc/mediatek/sched/mtk_core_ctl.ko",
@@ -605,16 +605,16 @@ mgk_64_kmainline_device_userdebug_modules = [
 ]
 
 
-mgk_64_kmainline_device_user_modules = [
+mgk_64_k61_device_user_modules = [
 ]
 
 
 define_mgk(
-    name = "mgk_64_kmainline",
-    kleaf_modules = mgk_64_kmainline_kleaf_modules,
-    common_modules = mgk_64_kmainline_common_modules,
-    device_modules = mgk_64_kmainline_device_modules,
-    device_eng_modules = mgk_64_kmainline_device_eng_modules,
-    device_userdebug_modules = mgk_64_kmainline_device_userdebug_modules,
-    device_user_modules = mgk_64_kmainline_device_user_modules,
+    name = "mgk_64_k61",
+    kleaf_modules = mgk_64_k61_kleaf_modules,
+    common_modules = mgk_64_k61_common_modules,
+    device_modules = mgk_64_k61_device_modules,
+    device_eng_modules = mgk_64_k61_device_eng_modules,
+    device_userdebug_modules = mgk_64_k61_device_userdebug_modules,
+    device_user_modules = mgk_64_k61_device_user_modules,
 )

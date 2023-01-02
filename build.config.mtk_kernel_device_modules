@@ -18,7 +18,7 @@ FILES="
 "
 
 EXT_MODULES+="
-kernel_device_modules-mainline
+kernel_device_modules-6.1
 ../vendor/mediatek/kernel_modules/connectivity/common
 ../vendor/mediatek/kernel_modules/connectivity/conninfra
 ../vendor/mediatek/kernel_modules/connectivity/connfem

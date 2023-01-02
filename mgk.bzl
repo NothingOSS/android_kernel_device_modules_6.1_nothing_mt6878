@@ -11,9 +11,9 @@ load(
 )
 
 
-common_kernel_dir = "common-mainline"
-device_kernel_dir = "kernel-mainline"
-device_modules_dir = "kernel_device_modules-mainline"
+common_kernel_dir = "common-6.1"
+device_kernel_dir = "kernel-6.1"
+device_modules_dir = "kernel_device_modules-6.1"
 
 
 def define_mgk(
