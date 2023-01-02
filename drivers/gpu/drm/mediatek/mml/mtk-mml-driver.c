@@ -569,6 +569,7 @@ s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev)
 	struct platform_device *larb_pdev;
 	struct of_phandle_args larb_args;
 	struct resource res;
+	struct device_link *link;
 
 	/* parse larb node and port from dts */
 	if (of_parse_phandle_with_fixed_args(dev->of_node, "mediatek,larb",
@@ -588,6 +589,13 @@ s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev)
 	}
 	/* larb dev for smi api */
 	comp->larb_dev = &larb_pdev->dev;
+
+	link = device_link_add(dev, comp->larb_dev,
+		DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
+	if (WARN_ON(!link)) {
+		mml_log("%s smi larb device link fail", __func__);
+		return -EPROBE_DEFER;
+	}
 
 	/* also do mmqos and mmdvfs since dma component do init here */
 #ifndef MML_FPGA
@@ -621,7 +629,7 @@ s32 mml_comp_pw_enable(struct mml_comp *comp)
 	}
 
 #ifndef MML_FPGA
-	ret = mtk_smi_larb_get(comp->larb_dev);
+	ret = pm_runtime_resume_and_get(comp->larb_dev);
 	if (ret)
 		mml_err("%s enable fail ret:%d", __func__, ret);
 #endif
@@ -646,7 +654,7 @@ s32 mml_comp_pw_disable(struct mml_comp *comp)
 	}
 
 #ifndef MML_FPGA
-	mtk_smi_larb_put(comp->larb_dev);
+	pm_runtime_put_sync(comp->larb_dev);
 #endif
 
 	return 0;
