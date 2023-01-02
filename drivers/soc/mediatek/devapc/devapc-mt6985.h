@@ -680,6 +680,16 @@ static const struct mtk_device_info mt6985_devices_infra[] = {
 	{-1, -1, 433, "Decode_error", true},
 	{-1, -1, 434, "Decode_error", true},
 	{-1, -1, 435, "Decode_error", true},
+
+	{-1, -1, 436, "NA", false},
+	{-1, -1, 437, "NA", false},
+	{-1, -1, 438, "NA", false},
+	{-1, -1, 439, "North EMI", false},
+	{-1, -1, 440, "North EMI MPU", false},
+	{-1, -1, 441, "South EMI", false},
+	{-1, -1, 442, "South EMI MPU", false},
+	{-1, -1, 443, "DEVICE_APC_INFRA_AO", false},
+	{-1, -1, 444, "DEVICE_APC_INFRA_PDN", false},
 };
 
 static const struct mtk_device_info mt6985_devices_infra1[] = {
@@ -1060,6 +1070,51 @@ static const struct mtk_device_info mt6985_devices_vlp[] = {
 	{0, 62, 64, "DPSW_CTRL_APB_S", true},
 	{0, 63, 65, "DPSW_CENTRAL_CTRL_APB_S", true},
 	{0, 64, 66, "IPS_APB_S", true},
+
+	{-1, -1, 67, "OOB_way_en", true},
+	{-1, -1, 68, "OOB_way_en", true},
+	{-1, -1, 69, "OOB_way_en", true},
+
+	{-1, -1, 70, "OOB_way_en", true},
+	{-1, -1, 71, "OOB_way_en", true},
+	{-1, -1, 72, "OOB_way_en", true},
+	{-1, -1, 73, "OOB_way_en", true},
+	{-1, -1, 74, "OOB_way_en", true},
+	{-1, -1, 75, "OOB_way_en", true},
+	{-1, -1, 76, "OOB_way_en", true},
+	{-1, -1, 77, "OOB_way_en", true},
+	{-1, -1, 78, "OOB_way_en", true},
+	{-1, -1, 79, "OOB_way_en", true},
+
+	{-1, -1, 80, "OOB_way_en", true},
+	{-1, -1, 81, "OOB_way_en", true},
+	{-1, -1, 82, "OOB_way_en", true},
+	{-1, -1, 83, "OOB_way_en", true},
+	{-1, -1, 84, "OOB_way_en", true},
+	{-1, -1, 85, "OOB_way_en", true},
+	{-1, -1, 86, "OOB_way_en", true},
+	{-1, -1, 87, "OOB_way_en", true},
+	{-1, -1, 88, "OOB_way_en", true},
+	{-1, -1, 89, "OOB_way_en", true},
+
+	{-1, -1, 90, "OOB_way_en", true},
+	{-1, -1, 91, "OOB_way_en", true},
+	{-1, -1, 92, "OOB_way_en", true},
+	{-1, -1, 93, "OOB_way_en", true},
+	{-1, -1, 94, "OOB_way_en", true},
+	{-1, -1, 95, "OOB_way_en", true},
+	{-1, -1, 96, "OOB_way_en", true},
+	{-1, -1, 97, "OOB_way_en", true},
+	{-1, -1, 98, "OOB_way_en", true},
+	{-1, -1, 99, "OOB_way_en", true},
+
+	{-1, -1, 100, "OOB_way_en", true},
+
+	{-1, -1, 101, "Decode_error", true},
+
+	{-1, -1, 102, "PMIF1", false},
+	{-1, -1, 103, "DEVICE_APC_VLP_AO", false},
+	{-1, -1, 104, "DEVICE_APC_VLP_PDN", false},
 };
 
 static const struct mtk_device_info mt6985_devices_adsp[] = {
@@ -1111,6 +1166,55 @@ static const struct mtk_device_info mt6985_devices_adsp[] = {
 	{0, 37, 38, "K_BCRM_S", true},
 	{0, 38, 39, "BCRM_S", true},
 	{0, 39, 40, "DAPC_AO_S", true},
+
+	{-1, -1, 41, "OOB_way_en", true},
+	{-1, -1, 42, "OOB_way_en", true},
+	{-1, -1, 43, "OOB_way_en", true},
+	{-1, -1, 44, "OOB_way_en", true},
+	{-1, -1, 45, "OOB_way_en", true},
+	{-1, -1, 46, "OOB_way_en", true},
+	{-1, -1, 47, "OOB_way_en", true},
+	{-1, -1, 48, "OOB_way_en", true},
+	{-1, -1, 49, "OOB_way_en", true},
+
+	{-1, -1, 50, "OOB_way_en", true},
+	{-1, -1, 51, "OOB_way_en", true},
+	{-1, -1, 52, "OOB_way_en", true},
+	{-1, -1, 53, "OOB_way_en", true},
+	{-1, -1, 54, "OOB_way_en", true},
+	{-1, -1, 55, "OOB_way_en", true},
+	{-1, -1, 56, "OOB_way_en", true},
+	{-1, -1, 57, "OOB_way_en", true},
+	{-1, -1, 58, "OOB_way_en", true},
+	{-1, -1, 59, "OOB_way_en", true},
+
+	{-1, -1, 60, "OOB_way_en", true},
+	{-1, -1, 61, "OOB_way_en", true},
+	{-1, -1, 62, "OOB_way_en", true},
+	{-1, -1, 63, "OOB_way_en", true},
+	{-1, -1, 64, "OOB_way_en", true},
+	{-1, -1, 65, "OOB_way_en", true},
+	{-1, -1, 66, "OOB_way_en", true},
+	{-1, -1, 67, "OOB_way_en", true},
+	{-1, -1, 68, "OOB_way_en", true},
+	{-1, -1, 69, "OOB_way_en", true},
+
+	{-1, -1, 70, "OOB_way_en", true},
+	{-1, -1, 71, "OOB_way_en", true},
+	{-1, -1, 72, "OOB_way_en", true},
+	{-1, -1, 73, "OOB_way_en", true},
+	{-1, -1, 74, "OOB_way_en", true},
+	{-1, -1, 75, "OOB_way_en", true},
+	{-1, -1, 76, "OOB_way_en", true},
+	{-1, -1, 77, "OOB_way_en", true},
+	{-1, -1, 78, "OOB_way_en", true},
+
+	{-1, -1, 79, "Decode_error", true},
+	{-1, -1, 80, "Decode_error", true},
+	{-1, -1, 81, "Decode_error", true},
+
+	{-1, -1, 82, "DEVICE_APC_AO_AUD_BUS_AO_PD", false},
+	{-1, -1, 83, "DEVICE_APC_AUD_BUS_AO_PDN", false},
 };
 
 static const struct mtk_device_info mt6985_devices_mminfra[] = {
@@ -1686,6 +1790,45 @@ static const struct mtk_device_info mt6985_devices_mminfra[] = {
 	{1, 217, 485, "DAPC_AO_S", true},
 	{1, 218, 486, "BCRM_AO_S", true},
 	{1, 219, 487, "DEBUG_CTL_AO_S", true},
+
+	{-1, -1, 488, "OOB_way_en", true},
+	{-1, -1, 489, "OOB_way_en", true},
+
+	{-1, -1, 490, "OOB_way_en", true},
+	{-1, -1, 491, "OOB_way_en", true},
+	{-1, -1, 492, "OOB_way_en", true},
+	{-1, -1, 493, "OOB_way_en", true},
+	{-1, -1, 494, "OOB_way_en", true},
+	{-1, -1, 495, "OOB_way_en", true},
+	{-1, -1, 496, "OOB_way_en", true},
+	{-1, -1, 497, "OOB_way_en", true},
+	{-1, -1, 498, "OOB_way_en", true},
+	{-1, -1, 499, "OOB_way_en", true},
+
+	{-1, -1, 500, "OOB_way_en", true},
+	{-1, -1, 501, "OOB_way_en", true},
+	{-1, -1, 502, "OOB_way_en", true},
+	{-1, -1, 503, "OOB_way_en", true},
+	{-1, -1, 504, "OOB_way_en", true},
+	{-1, -1, 505, "OOB_way_en", true},
+	{-1, -1, 506, "OOB_way_en", true},
+	{-1, -1, 507, "OOB_way_en", true},
+	{-1, -1, 508, "OOB_way_en", true},
+	{-1, -1, 509, "OOB_way_en", true},
+
+	{-1, -1, 510, "OOB_way_en", true},
+	{-1, -1, 511, "OOB_way_en", true},
+
+	{-1, -1, 512, "Decode_error", true},
+	{-1, -1, 513, "Decode_error", true},
+	{-1, -1, 514, "Decode_error", true},
+	{-1, -1, 515, "Decode_error", true},
+	{-1, -1, 516, "Decode_error", true},
+
+	{-1, -1, 517, "GCE_D", false},
+	{-1, -1, 518, "GCE_M", false},
+	{-1, -1, 519, "DEVICE_APC_MM_AO", false},
+	{-1, -1, 520, "DEVICE_APC_MM_PDN", false},
 };
 
 static const struct mtk_device_info mt6985_devices_mmup[] = {
@@ -1719,6 +1862,41 @@ static const struct mtk_device_info mt6985_devices_mmup[] = {
 	{0, 21, 21, "p_mbox4", true},
 	{0, 22, 22, "pslv_rsv00", true},
 	{0, 23, 23, "pslv_rsv01", true},
+
+	{-1, -1, 24, "OOB_way_en", true},
+	{-1, -1, 25, "OOB_way_en", true},
+	{-1, -1, 26, "OOB_way_en", true},
+	{-1, -1, 27, "OOB_way_en", true},
+	{-1, -1, 28, "OOB_way_en", true},
+	{-1, -1, 29, "OOB_way_en", true},
+
+	{-1, -1, 30, "OOB_way_en", true},
+	{-1, -1, 31, "OOB_way_en", true},
+	{-1, -1, 32, "OOB_way_en", true},
+	{-1, -1, 33, "OOB_way_en", true},
+	{-1, -1, 34, "OOB_way_en", true},
+	{-1, -1, 35, "OOB_way_en", true},
+	{-1, -1, 36, "OOB_way_en", true},
+	{-1, -1, 37, "OOB_way_en", true},
+	{-1, -1, 38, "OOB_way_en", true},
+	{-1, -1, 39, "OOB_way_en", true},
+
+	{-1, -1, 40, "OOB_way_en", true},
+	{-1, -1, 41, "OOB_way_en", true},
+	{-1, -1, 42, "OOB_way_en", true},
+	{-1, -1, 43, "OOB_way_en", true},
+	{-1, -1, 44, "OOB_way_en", true},
+	{-1, -1, 45, "OOB_way_en", true},
+	{-1, -1, 46, "OOB_way_en", true},
+	{-1, -1, 47, "OOB_way_en", true},
+	{-1, -1, 48, "OOB_way_en", true},
+	{-1, -1, 49, "OOB_way_en", true},
+
+	{-1, -1, 50, "Decode_error", true},
+	{-1, -1, 51, "Decode_error", true},
+
+	{-1, -1, 52, "DEVICE_APC_MMUP_AO", false},
+	{-1, -1, 53, "DEVICE_APC_MMUP_PDN", false},
 };
 
 static const struct mtk_device_info mt6985_devices_gpu[] = {
