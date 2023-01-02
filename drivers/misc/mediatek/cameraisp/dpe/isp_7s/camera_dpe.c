@@ -2756,10 +2756,10 @@ if (pDpeConfig->Dpe_engineSelect == MODE_DVS_DVP_BOTH) {
 	} else
 		LOG_ERR("No DVS Ext Output Buffer!\n");
 
-	memcpy(&pConfigToKernel->DVS_ME_00,
+	memcpy(&pConfigToKernel->TuningBuf_ME,
 	&pDpeConfig->Dpe_DVSSettings.TuningBuf_ME,
 	sizeof(pDpeConfig->Dpe_DVSSettings.TuningBuf_ME));
-	memcpy(&pConfigToKernel->DVS_OCC_PQ_0,
+	memcpy(&pConfigToKernel->TuningBuf_OCC,
 	&pDpeConfig->Dpe_DVSSettings.TuningBuf_OCC,
 	sizeof(pDpeConfig->Dpe_DVSSettings.TuningBuf_OCC));
 
@@ -3021,11 +3021,11 @@ void DPE_Config_DVP(struct DPE_Config *pDpeConfig,
 
 			LOG_INF("DVP_EXT_SRC_20_ASF_DV0 = %llx\n",
 			pConfigToKernel->DVP_EXT_SRC_20_ASF_DV0);
-}
+	}
 	LOG_INF("pDpeConfig->Dpe_RegDump =%x\n", pDpeConfig->Dpe_RegDump);
 
 	pConfigToKernel->DVP_CTRL_ATPG = 0x80000000;
-	memcpy(&pConfigToKernel->DVP_CORE_00,
+	memcpy(&pConfigToKernel->TuningBuf_CORE,
 	&pDpeConfig->Dpe_DVPSettings.TuningBuf_CORE,
 	sizeof(pDpeConfig->Dpe_DVPSettings.TuningBuf_CORE));
 }
