@@ -33,6 +33,10 @@
 #define SPM_SW_RST_CON                 (SPM_BASE + 0x040)
 #define SPM_SW_RST_CON_SET             (SPM_BASE + 0x044)
 #define SPM_SW_RST_CON_CLR             (SPM_BASE + 0x048)
+#define R_SEC_READ_MASK                (SPM_BASE + 0x050)
+#define R_ONE_TIME_LOCK_L              (SPM_BASE + 0x054)
+#define R_ONE_TIME_LOCK_M              (SPM_BASE + 0x058)
+#define R_ONE_TIME_LOCK_H              (SPM_BASE + 0x05C)
 #define SSPM_CLK_CON                   (SPM_BASE + 0x084)
 #define SCP_CLK_CON                    (SPM_BASE + 0x088)
 #define SPM_SWINT                      (SPM_BASE + 0x090)
@@ -86,6 +90,7 @@
 #define SPM_DPM_P2P_STA                (SPM_BASE + 0x2A0)
 #define SPM_DPM_P2P_CON                (SPM_BASE + 0x2A4)
 #define SPM_DPM_INTF_STA               (SPM_BASE + 0x2A8)
+#define SPM_DPM_WB_CON                 (SPM_BASE + 0x2AC)
 #define SPM_PWRAP_CON                  (SPM_BASE + 0x300)
 #define SPM_PWRAP_CON_STA              (SPM_BASE + 0x304)
 #define SPM_PMIC_SPMI_CON              (SPM_BASE + 0x308)
@@ -121,6 +126,9 @@
 #define SPM_DVFS_OPP                   (SPM_BASE + 0x394)
 #define SPM_ULTRA_REQ                  (SPM_BASE + 0x398)
 #define SPM_DVFS_CON                   (SPM_BASE + 0x39C)
+#define SPM_SRAMRC_CON                 (SPM_BASE + 0x3A0)
+#define SPM_SRCLKENRC_CON              (SPM_BASE + 0x3A4)
+#define SPM_DPSW_CON                   (SPM_BASE + 0x3A8)
 #define ULPOSC_CON                     (SPM_BASE + 0x400)
 #define AP_MDSRC_REQ                   (SPM_BASE + 0x404)
 #define SPM2MD_SWITCH_CTRL             (SPM_BASE + 0x408)
@@ -129,30 +137,39 @@
 #define SPM2APU_CON                    (SPM_BASE + 0x414)
 #define SPM2EFUSE_CON                  (SPM_BASE + 0x418)
 #define SPM2DFD_CON                    (SPM_BASE + 0x41C)
-#define REG_MODULE_SW_CG_DDREN_REQ_MASK_0 (SPM_BASE + 0x4A0)
-#define REG_MODULE_SW_CG_DDREN_REQ_MASK_1 (SPM_BASE + 0x4A4)
-#define REG_MODULE_SW_CG_DDREN_REQ_MASK_2 (SPM_BASE + 0x4A8)
-#define REG_MODULE_SW_CG_DDREN_REQ_MASK_3 (SPM_BASE + 0x4AC)
-#define REG_MODULE_SW_CG_VRF18_REQ_MASK_0 (SPM_BASE + 0x4B0)
-#define REG_MODULE_SW_CG_VRF18_REQ_MASK_1 (SPM_BASE + 0x4B4)
-#define REG_MODULE_SW_CG_VRF18_REQ_MASK_2 (SPM_BASE + 0x4B8)
-#define REG_MODULE_SW_CG_VRF18_REQ_MASK_3 (SPM_BASE + 0x4BC)
-#define REG_MODULE_SW_CG_F26M_REQ_MASK_0 (SPM_BASE + 0x4C0)
-#define REG_MODULE_SW_CG_F26M_REQ_MASK_1 (SPM_BASE + 0x4C4)
-#define REG_MODULE_SW_CG_F26M_REQ_MASK_2 (SPM_BASE + 0x4C8)
-#define REG_MODULE_SW_CG_F26M_REQ_MASK_3 (SPM_BASE + 0x4CC)
-#define REG_MODULE_SW_CG_VCORE_REQ_MASK_0 (SPM_BASE + 0x4D0)
-#define REG_MODULE_SW_CG_VCORE_REQ_MASK_1 (SPM_BASE + 0x4D4)
-#define REG_MODULE_SW_CG_VCORE_REQ_MASK_2 (SPM_BASE + 0x4D8)
-#define REG_MODULE_SW_CG_VCORE_REQ_MASK_3 (SPM_BASE + 0x4DC)
-#define REG_PWR_STATUS_DDREN_REQ_MASK  (SPM_BASE + 0x4E0)
-#define REG_PWR_STATUS_VRF18_REQ_MASK  (SPM_BASE + 0x4E4)
-#define REG_PWR_STATUS_F26M_REQ_MASK   (SPM_BASE + 0x4E8)
-#define REG_PWR_STATUS_VCORE_REQ_MASK  (SPM_BASE + 0x4EC)
-#define REG_MODULE_BUSY_DDREN_REQ_MASK (SPM_BASE + 0x4F0)
-#define REG_MODULE_BUSY_VRF18_REQ_MASK (SPM_BASE + 0x4F4)
-#define REG_MODULE_BUSY_F26M_REQ_MASK  (SPM_BASE + 0x4F8)
-#define REG_MODULE_BUSY_VCORE_REQ_MASK (SPM_BASE + 0x4FC)
+#define RSV_PLL_CON                    (SPM_BASE + 0x420)
+#define EMI_SLB_CON                    (SPM_BASE + 0x424)
+#define REG_MODULE_SW_CG_DDREN_REQ_MASK_0 (SPM_BASE + 0x470)
+#define REG_MODULE_SW_CG_DDREN_REQ_MASK_1 (SPM_BASE + 0x474)
+#define REG_MODULE_SW_CG_DDREN_REQ_MASK_2 (SPM_BASE + 0x478)
+#define REG_MODULE_SW_CG_DDREN_REQ_MASK_3 (SPM_BASE + 0x47C)
+#define REG_MODULE_SW_CG_VRF18_REQ_MASK_0 (SPM_BASE + 0x480)
+#define REG_MODULE_SW_CG_VRF18_REQ_MASK_1 (SPM_BASE + 0x484)
+#define REG_MODULE_SW_CG_VRF18_REQ_MASK_2 (SPM_BASE + 0x488)
+#define REG_MODULE_SW_CG_VRF18_REQ_MASK_3 (SPM_BASE + 0x48C)
+#define REG_MODULE_SW_CG_F26M_REQ_MASK_0 (SPM_BASE + 0x490)
+#define REG_MODULE_SW_CG_F26M_REQ_MASK_1 (SPM_BASE + 0x494)
+#define REG_MODULE_SW_CG_F26M_REQ_MASK_2 (SPM_BASE + 0x498)
+#define REG_MODULE_SW_CG_F26M_REQ_MASK_3 (SPM_BASE + 0x49C)
+#define REG_MODULE_SW_CG_VCORE_REQ_MASK_0 (SPM_BASE + 0x4A0)
+#define REG_MODULE_SW_CG_VCORE_REQ_MASK_1 (SPM_BASE + 0x4A4)
+#define REG_MODULE_SW_CG_VCORE_REQ_MASK_2 (SPM_BASE + 0x4A8)
+#define REG_MODULE_SW_CG_VCORE_REQ_MASK_3 (SPM_BASE + 0x4AC)
+#define REG_PWR_STATUS_DDREN_REQ_MASK  (SPM_BASE + 0x4B0)
+#define REG_PWR_STATUS_VRF18_REQ_MASK  (SPM_BASE + 0x4B4)
+#define REG_PWR_STATUS_F26M_REQ_MASK   (SPM_BASE + 0x4B8)
+#define REG_PWR_STATUS_PMIC_REQ_MASK   (SPM_BASE + 0x4BC)
+#define REG_PWR_STATUS_VCORE_REQ_MASK  (SPM_BASE + 0x4C0)
+#define REG_PWR_STATUS_MSB_DDREN_REQ_MASK (SPM_BASE + 0x4C4)
+#define REG_PWR_STATUS_MSB_VRF18_REQ_MASK (SPM_BASE + 0x4C8)
+#define REG_PWR_STATUS_MSB_F26M_REQ_MASK (SPM_BASE + 0x4CC)
+#define REG_PWR_STATUS_MSB_PMIC_REQ_MASK (SPM_BASE + 0x4D0)
+#define REG_PWR_STATUS_MSB_VCORE_REQ_MASK (SPM_BASE + 0x4D4)
+#define REG_MODULE_BUSY_DDREN_REQ_MASK (SPM_BASE + 0x4D8)
+#define REG_MODULE_BUSY_VRF18_REQ_MASK (SPM_BASE + 0x4DC)
+#define REG_MODULE_BUSY_F26M_REQ_MASK  (SPM_BASE + 0x4E0)
+#define REG_MODULE_BUSY_PMIC_REQ_MASK  (SPM_BASE + 0x4E4)
+#define REG_MODULE_BUSY_VCORE_REQ_MASK (SPM_BASE + 0x4E8)
 #define SYS_TIMER_CON                  (SPM_BASE + 0x500)
 #define SYS_TIMER_VALUE_L              (SPM_BASE + 0x504)
 #define SYS_TIMER_VALUE_H              (SPM_BASE + 0x508)
@@ -248,6 +265,9 @@
 #define SSPM2SPM_MAILBOX_3             (SPM_BASE + 0x6E8)
 #define SPM2SCP_MAILBOX                (SPM_BASE + 0x6EC)
 #define SCP2SPM_MAILBOX                (SPM_BASE + 0x6F0)
+#define SCP_AOV_BUS_CON                (SPM_BASE + 0x6F4)
+#define VCORE_RTFF_CTRL_MASK           (SPM_BASE + 0x6F8)
+#define SPM_SRAM_SRCLKENO_MASK         (SPM_BASE + 0x6FC)
 #define SPM_WAKEUP_STA                 (SPM_BASE + 0x800)
 #define SPM_WAKEUP_EXT_STA             (SPM_BASE + 0x804)
 #define SPM_WAKEUP_EVENT_MASK          (SPM_BASE + 0x808)
@@ -262,29 +282,41 @@
 #define SPM_SRC_MASK_4                 (SPM_BASE + 0x82C)
 #define SPM_SRC_MASK_5                 (SPM_BASE + 0x830)
 #define SPM_SRC_MASK_6                 (SPM_BASE + 0x834)
-#define SPM_REQ_STA_0                  (SPM_BASE + 0x838)
-#define SPM_REQ_STA_1                  (SPM_BASE + 0x83C)
-#define SPM_REQ_STA_2                  (SPM_BASE + 0x840)
-#define SPM_REQ_STA_3                  (SPM_BASE + 0x844)
-#define SPM_REQ_STA_4                  (SPM_BASE + 0x848)
-#define SPM_REQ_STA_5                  (SPM_BASE + 0x84C)
-#define SPM_REQ_STA_6                  (SPM_BASE + 0x850)
-#define SPM_IPC_WAKEUP_REQ             (SPM_BASE + 0x854)
-#define IPC_WAKEUP_REQ_MASK_STA        (SPM_BASE + 0x858)
-#define SPM_EVENT_CON_MISC             (SPM_BASE + 0x85C)
-#define DDREN_DBC_CON                  (SPM_BASE + 0x860)
-#define SPM_RESOURCE_ACK_CON_0         (SPM_BASE + 0x864)
-#define SPM_RESOURCE_ACK_CON_1         (SPM_BASE + 0x868)
-#define SPM_RESOURCE_ACK_MASK_0        (SPM_BASE + 0x86C)
-#define SPM_RESOURCE_ACK_MASK_1        (SPM_BASE + 0x870)
-#define SPM_RESOURCE_ACK_MASK_2        (SPM_BASE + 0x874)
-#define SPM_EVENT_COUNTER_CLEAR        (SPM_BASE + 0x878)
-#define SPM_SRCCLKENA_EVENT_COUNT_STA  (SPM_BASE + 0x87C)
-#define SPM_INFRA_EVENT_COUNT_STA      (SPM_BASE + 0x880)
-#define SPM_APSRC_EVENT_COUNT_STA      (SPM_BASE + 0x884)
-#define SPM_VRF18_EVENT_COUNT_STA      (SPM_BASE + 0x888)
-#define SPM_DDREN_EVENT_COUNT_STA      (SPM_BASE + 0x88C)
-#define SPM_VCORE_EVENT_COUNT_STA      (SPM_BASE + 0x890)
+#define SPM_SRC_MASK_7                 (SPM_BASE + 0x838)
+#define SPM_SRC_MASK_8                 (SPM_BASE + 0x83C)
+#define SPM_SRC_MASK_9                 (SPM_BASE + 0x840)
+#define SPM_SRC_MASK_10                (SPM_BASE + 0x844)
+#define SPM_REQ_STA_0                  (SPM_BASE + 0x848)
+#define SPM_REQ_STA_1                  (SPM_BASE + 0x84C)
+#define SPM_REQ_STA_2                  (SPM_BASE + 0x850)
+#define SPM_REQ_STA_3                  (SPM_BASE + 0x854)
+#define SPM_REQ_STA_4                  (SPM_BASE + 0x858)
+#define SPM_REQ_STA_5                  (SPM_BASE + 0x85C)
+#define SPM_REQ_STA_6                  (SPM_BASE + 0x860)
+#define SPM_REQ_STA_7                  (SPM_BASE + 0x864)
+#define SPM_REQ_STA_8                  (SPM_BASE + 0x868)
+#define SPM_REQ_STA_9                  (SPM_BASE + 0x86C)
+#define SPM_REQ_STA_10                 (SPM_BASE + 0x870)
+#define SPM_IPC_WAKEUP_REQ             (SPM_BASE + 0x874)
+#define IPC_WAKEUP_REQ_MASK_STA        (SPM_BASE + 0x878)
+#define SPM_EVENT_CON_MISC             (SPM_BASE + 0x87C)
+#define DDREN_DBC_CON                  (SPM_BASE + 0x880)
+#define SPM_RESOURCE_ACK_CON_0         (SPM_BASE + 0x884)
+#define SPM_RESOURCE_ACK_CON_1         (SPM_BASE + 0x888)
+#define SPM_RESOURCE_ACK_MASK_0        (SPM_BASE + 0x88C)
+#define SPM_RESOURCE_ACK_MASK_1        (SPM_BASE + 0x890)
+#define SPM_RESOURCE_ACK_MASK_2        (SPM_BASE + 0x894)
+#define SPM_RESOURCE_ACK_MASK_3        (SPM_BASE + 0x898)
+#define SPM_RESOURCE_ACK_MASK_4        (SPM_BASE + 0x89C)
+#define SPM_EVENT_COUNTER_CLEAR        (SPM_BASE + 0x8A0)
+#define SPM_SRCCLKENA_EVENT_COUNT_STA  (SPM_BASE + 0x8A4)
+#define SPM_PMIC_EVENT_COUNT_STA       (SPM_BASE + 0x8A8)
+#define SPM_INFRA_EVENT_COUNT_STA      (SPM_BASE + 0x8AC)
+#define SPM_EMI_EVENT_COUNT_STA        (SPM_BASE + 0x8B0)
+#define SPM_APSRC_EVENT_COUNT_STA      (SPM_BASE + 0x8B4)
+#define SPM_VRF18_EVENT_COUNT_STA      (SPM_BASE + 0x8B8)
+#define SPM_DDREN_EVENT_COUNT_STA      (SPM_BASE + 0x8BC)
+#define SPM_VCORE_EVENT_COUNT_STA      (SPM_BASE + 0x8C0)
 #define PCM_WDT_LATCH_0                (SPM_BASE + 0x900)
 #define PCM_WDT_LATCH_1                (SPM_BASE + 0x904)
 #define PCM_WDT_LATCH_2                (SPM_BASE + 0x908)
@@ -345,46 +377,58 @@
 #define IFR_PWR_CON                    (SPM_BASE + 0xE08)
 #define PERI_PWR_CON                   (SPM_BASE + 0xE0C)
 #define UFS0_PWR_CON                   (SPM_BASE + 0xE10)
-#define AUDIO_PWR_CON                  (SPM_BASE + 0xE14)
-#define ADSP_TOP_PWR_CON               (SPM_BASE + 0xE18)
-#define ADSP_INFRA_PWR_CON             (SPM_BASE + 0xE1C)
-#define ADSP_AO_PWR_CON                (SPM_BASE + 0xE20)
-#define ISP_MAIN_PWR_CON               (SPM_BASE + 0xE24)
-#define ISP_DIP1_PWR_CON               (SPM_BASE + 0xE28)
-#define ISP_IPE_PWR_CON                (SPM_BASE + 0xE2C)
-#define ISP_VCORE_PWR_CON              (SPM_BASE + 0xE30)
-#define VDE0_PWR_CON                   (SPM_BASE + 0xE34)
-#define VDE1_PWR_CON                   (SPM_BASE + 0xE38)
-#define VEN0_PWR_CON                   (SPM_BASE + 0xE3C)
-#define VEN1_PWR_CON                   (SPM_BASE + 0xE40)
-#define CAM_MAIN_PWR_CON               (SPM_BASE + 0xE44)
-#define CAM_MRAW_PWR_CON               (SPM_BASE + 0xE48)
-#define CAM_SUBA_PWR_CON               (SPM_BASE + 0xE4C)
-#define CAM_SUBB_PWR_CON               (SPM_BASE + 0xE50)
-#define CAM_SUBC_PWR_CON               (SPM_BASE + 0xE54)
-#define CAM_VCORE_PWR_CON              (SPM_BASE + 0xE58)
-#define MDP0_PWR_CON                   (SPM_BASE + 0xE5C)
-#define MDP1_PWR_CON                   (SPM_BASE + 0xE60)
-#define DIS0_PWR_CON                   (SPM_BASE + 0xE64)
-#define DIS1_PWR_CON                   (SPM_BASE + 0xE68)
-#define MM_INFRA_PWR_CON               (SPM_BASE + 0xE6C)
-#define MM_PROC_PWR_CON                (SPM_BASE + 0xE70)
-#define DP_TX_PWR_CON                  (SPM_BASE + 0xE74)
-#define SCP_PWR_CON                    (SPM_BASE + 0xE78)
-#define DPYD0_PWR_CON                  (SPM_BASE + 0xE7C)
-#define DPYD1_PWR_CON                  (SPM_BASE + 0xE80)
-#define DPYD2_PWR_CON                  (SPM_BASE + 0xE84)
-#define DPYD3_PWR_CON                  (SPM_BASE + 0xE88)
-#define DPYA0_PWR_CON                  (SPM_BASE + 0xE8C)
-#define DPYA1_PWR_CON                  (SPM_BASE + 0xE90)
-#define DPYA2_PWR_CON                  (SPM_BASE + 0xE94)
-#define DPYA3_PWR_CON                  (SPM_BASE + 0xE98)
-#define DPM0_PWR_CON                   (SPM_BASE + 0xE9C)
-#define DPM1_PWR_CON                   (SPM_BASE + 0xEA0)
-#define DPM2_PWR_CON                   (SPM_BASE + 0xEA4)
-#define DPM3_PWR_CON                   (SPM_BASE + 0xEA8)
-#define EMI0_PWR_CON                   (SPM_BASE + 0xEAC)
-#define EMI1_PWR_CON                   (SPM_BASE + 0xEB0)
+#define UFS0_PHY_PWR_CON               (SPM_BASE + 0xE14)
+#define PEXTP_MAC0_PWR_CON             (SPM_BASE + 0xE18)
+#define PEXTP_MAC1_PWR_CON             (SPM_BASE + 0xE1C)
+#define PEXTP_PHY0_PWR_CON             (SPM_BASE + 0xE20)
+#define PEXTP_PHY1_PWR_CON             (SPM_BASE + 0xE24)
+#define PEXTP_COMM_PWR_CON             (SPM_BASE + 0xE28)
+#define AUDIO_PWR_CON                  (SPM_BASE + 0xE2C)
+#define ADSP_TOP_PWR_CON               (SPM_BASE + 0xE30)
+#define ADSP_INFRA_PWR_CON             (SPM_BASE + 0xE34)
+#define ADSP_AO_PWR_CON                (SPM_BASE + 0xE38)
+#define ISP_MAIN_PWR_CON               (SPM_BASE + 0xE3C)
+#define ISP_DIP1_PWR_CON               (SPM_BASE + 0xE40)
+#define ISP_IPE_PWR_CON                (SPM_BASE + 0xE44)
+#define ISP_VCORE_PWR_CON              (SPM_BASE + 0xE48)
+#define VDE0_PWR_CON                   (SPM_BASE + 0xE4C)
+#define VDE1_PWR_CON                   (SPM_BASE + 0xE50)
+#define VEN0_PWR_CON                   (SPM_BASE + 0xE54)
+#define VEN1_PWR_CON                   (SPM_BASE + 0xE58)
+#define VEN2_PWR_CON                   (SPM_BASE + 0xE5C)
+#define CAM_MAIN_PWR_CON               (SPM_BASE + 0xE60)
+#define CAM_MRAW_PWR_CON               (SPM_BASE + 0xE64)
+#define CAM_SUBA_PWR_CON               (SPM_BASE + 0xE68)
+#define CAM_SUBB_PWR_CON               (SPM_BASE + 0xE6C)
+#define CAM_SUBC_PWR_CON               (SPM_BASE + 0xE70)
+#define CAM_VCORE_PWR_CON              (SPM_BASE + 0xE74)
+#define MDP0_PWR_CON                   (SPM_BASE + 0xE78)
+#define MDP1_PWR_CON                   (SPM_BASE + 0xE7C)
+#define DIS0_PWR_CON                   (SPM_BASE + 0xE80)
+#define DIS1_PWR_CON                   (SPM_BASE + 0xE84)
+#define OVLSYS_PWR_CON                 (SPM_BASE + 0xE88)
+#define OVLSYS1_PWR_CON                (SPM_BASE + 0xE8C)
+#define MM_INFRA_PWR_CON               (SPM_BASE + 0xE90)
+#define MM_PROC_PWR_CON                (SPM_BASE + 0xE94)
+#define DP_TX_PWR_CON                  (SPM_BASE + 0xE98)
+#define SCP_PWR_CON                    (SPM_BASE + 0xE9C)
+#define DPYD0_PWR_CON                  (SPM_BASE + 0xEA0)
+#define DPYD1_PWR_CON                  (SPM_BASE + 0xEA4)
+#define DPYD2_PWR_CON                  (SPM_BASE + 0xEA8)
+#define DPYD3_PWR_CON                  (SPM_BASE + 0xEAC)
+#define DPYA0_PWR_CON                  (SPM_BASE + 0xEB0)
+#define DPYA1_PWR_CON                  (SPM_BASE + 0xEB4)
+#define DPYA2_PWR_CON                  (SPM_BASE + 0xEB8)
+#define DPYA3_PWR_CON                  (SPM_BASE + 0xEBC)
+#define DPM0_PWR_CON                   (SPM_BASE + 0xEC0)
+#define DPM1_PWR_CON                   (SPM_BASE + 0xEC4)
+#define DPM2_PWR_CON                   (SPM_BASE + 0xEC8)
+#define DPM3_PWR_CON                   (SPM_BASE + 0xECC)
+#define EMI0_PWR_CON                   (SPM_BASE + 0xED0)
+#define EMI1_PWR_CON                   (SPM_BASE + 0xED4)
+#define CSI_RX_PWR_CON                 (SPM_BASE + 0xED8)
+#define SSRSYS_PWR_CON                 (SPM_BASE + 0xEDC)
+#define DXCC_PWR_CON                   (SPM_BASE + 0xEE0)
 #define MCUPM_PWR_CON                  (SPM_BASE + 0xEB4)
 #define MFG0_PWR_CON                   (SPM_BASE + 0xEB8)
 #define MFG1_PWR_CON                   (SPM_BASE + 0xEBC)
@@ -404,36 +448,48 @@
 #define MFG15_PWR_CON                  (SPM_BASE + 0xEF4)
 #define MFG16_PWR_CON                  (SPM_BASE + 0xEF8)
 #define MFG17_PWR_CON                  (SPM_BASE + 0xEFC)
-#define MFG18_PWR_CON                  (SPM_BASE + 0xF00)
-#define EFUSE_SRAM_CON                 (SPM_BASE + 0xF04)
-#define EMI_HRE_SRAM_CON               (SPM_BASE + 0xF08)
-#define EMI_SLB_SRAM_CON               (SPM_BASE + 0xF0C)
-#define INFRA_HRE_SRAM_CON             (SPM_BASE + 0xF10)
-#define INFRA_SLEEP_SRAM_CON           (SPM_BASE + 0xF14)
-#define MM_HRE_SRAM_CON                (SPM_BASE + 0xF18)
-#define SPM_SRAM_CON                   (SPM_BASE + 0xF1C)
-#define SSPM_SRAM_CON                  (SPM_BASE + 0xF20)
-#define UFS_PDN_SRAM_CON               (SPM_BASE + 0xF24)
-#define CPU_BUCK_ISO_CON               (SPM_BASE + 0xF28)
-#define MD_BUCK_ISO_CON                (SPM_BASE + 0xF2C)
-#define SOC_BUCK_ISO_CON               (SPM_BASE + 0xF30)
-#define PWR_STATUS                     (SPM_BASE + 0xF34)
-#define PWR_STATUS_2ND                 (SPM_BASE + 0xF38)
-#define XPU_PWR_STATUS                 (SPM_BASE + 0xF3C)
-#define XPU_PWR_STATUS_2ND             (SPM_BASE + 0xF40)
-#define DFD_SOC_PWR_LATCH              (SPM_BASE + 0xF44)
-#define SPM_TWAM_CON                   (SPM_BASE + 0xF80)
-#define SPM_TWAM_WINDOW_LEN            (SPM_BASE + 0xF84)
-#define SPM_TWAM_IDLE_SEL              (SPM_BASE + 0xF88)
-#define SPM_TWAM_LAST_STA_0            (SPM_BASE + 0xF8C)
-#define SPM_TWAM_LAST_STA_1            (SPM_BASE + 0xF90)
-#define SPM_TWAM_LAST_STA_2            (SPM_BASE + 0xF94)
-#define SPM_TWAM_LAST_STA_3            (SPM_BASE + 0xF98)
-#define SPM_TWAM_CURR_STA_0            (SPM_BASE + 0xF9C)
-#define SPM_TWAM_CURR_STA_1            (SPM_BASE + 0xFA0)
-#define SPM_TWAM_CURR_STA_2            (SPM_BASE + 0xFA4)
-#define SPM_TWAM_CURR_STA_3            (SPM_BASE + 0xFA8)
-#define SPM_TWAM_TIMER_OUT             (SPM_BASE + 0xFAC)
+#define MFG18_PWR_CON                  (SPM_BASE + 0xF30)
+#define MFG19_PWR_CON                  (SPM_BASE + 0xF34)
+#define ADSP_HRE_SRAM_CON              (SPM_BASE + 0xF38)
+#define DXCC_PDN_SRAM_CON              (SPM_BASE + 0xF3C)
+#define EFUSE_SRAM_CON                 (SPM_BASE + 0xF40)
+#define EMI_HRE_SRAM_CON               (SPM_BASE + 0xF44)
+#define EMI_SLB_SRAM_CON               (SPM_BASE + 0xF4C)
+#define EMI_SLB_SRAM_ACK               (SPM_BASE + 0xF50)
+#define INFRA_HRE_SRAM_CON             (SPM_BASE + 0xF54)
+#define INFRA_SLEEP_SRAM_CON           (SPM_BASE + 0xF58)
+#define PERI_SLEEP_SRAM_CON            (SPM_BASE + 0xF5C)
+#define MM_HRE_SRAM_CON                (SPM_BASE + 0xF60)
+#define SPM_SRAM_CON                   (SPM_BASE + 0xF64)
+#define SSPM_SRAM_CON                  (SPM_BASE + 0xF68)
+#define UFS_SLEEP_SRAM_CON             (SPM_BASE + 0xF6C)
+#define CPU_BUCK_ISO_CON               (SPM_BASE + 0xF70)
+#define MD_BUCK_ISO_CON                (SPM_BASE + 0xF74)
+#define SOC_BUCK_ISO_CON               (SPM_BASE + 0xF78)
+#define SOC_BUCK_ISO_CON_SET           (SPM_BASE + 0xF7C)
+#define SOC_BUCK_ISO_CON_CLR           (SPM_BASE + 0xF80)
+#define PWR_STATUS                     (SPM_BASE + 0xF84)
+#define PWR_STATUS_2ND                 (SPM_BASE + 0xF88)
+#define PWR_STATUS_MSB                 (SPM_BASE + 0xF8C)
+#define PWR_STATUS_MSB_2ND             (SPM_BASE + 0xF90)
+#define XPU_PWR_STATUS                 (SPM_BASE + 0xF94)
+#define XPU_PWR_STATUS_2ND             (SPM_BASE + 0xF98)
+#define DFD_SOC_PWR_LATCH              (SPM_BASE + 0xF9C)
+#define VDE_VCORE0_PWR_CON             (SPM_BASE + 0xFA0)
+#define VDE_VCORE1_PWR_CON             (SPM_BASE + 0xFA4)
+#define SUBSYS_PM_BYPASS               (SPM_BASE + 0xFA8)
+#define SPM_TWAM_CON                   (SPM_BASE + 0xFB0)
+#define SPM_TWAM_WINDOW_LEN            (SPM_BASE + 0xFB4)
+#define SPM_TWAM_IDLE_SEL              (SPM_BASE + 0xFB8)
+#define SPM_TWAM_LAST_STA_0            (SPM_BASE + 0xFBC)
+#define SPM_TWAM_LAST_STA_1            (SPM_BASE + 0xFC0)
+#define SPM_TWAM_LAST_STA_2            (SPM_BASE + 0xFC4)
+#define SPM_TWAM_LAST_STA_3            (SPM_BASE + 0xFC8)
+#define SPM_TWAM_CURR_STA_0            (SPM_BASE + 0xFCC)
+#define SPM_TWAM_CURR_STA_1            (SPM_BASE + 0xFD0)
+#define SPM_TWAM_CURR_STA_2            (SPM_BASE + 0xFD4)
+#define SPM_TWAM_CURR_STA_3            (SPM_BASE + 0xFD8)
+#define SPM_TWAM_TIMER_OUT             (SPM_BASE + 0xFDC)
 
 /* POWERON_CONFIG_EN (0x1C001000+0x000) */
 #define BCLK_CG_EN_LSB                      (1U << 0)       /* 1b */
@@ -466,6 +522,7 @@
 #define REG_SRAM_ISO_ACTIVE_LSB             (1U << 0)       /* 8b */
 #define REG_SRAM_SLP2ISO_TIME_LSB           (1U << 8)       /* 8b */
 #define REG_SPM_SRAM_CTRL_MUX_LSB           (1U << 16)      /* 1b */
+#define REG_SRAM_SLEEP_TIME_LSB             (1U << 24)      /* 8b */
 /* SPM_CLK_CON (0x1C001000+0x024) */
 #define REG_SPM_LOCK_INFRA_DCM_LSB          (1U << 0)       /* 1b */
 #define REG_CXO32K_REMOVE_EN_LSB            (1U << 1)       /* 1b */
@@ -484,6 +541,14 @@
 /* SPM_SW_RST_CON_CLR (0x1C001000+0x048) */
 #define SPM_SW_RST_CON_CLR_LSB              (1U << 0)       /* 16b */
 #define SPM_SW_RST_CON_CLR_PROJECT_CODE_LSB (1U << 16)      /* 16b */
+/* R_SEC_READ_MASK (0x1C001000+0x050) */
+#define SPM_SEC_READ_MASK_LSB               (1U << 0)       /* 1b */
+/* R_ONE_TIME_LOCK_L (0x1C001000+0x054) */
+#define SPM_ONE_TIME_LOCK_L_LSB             (1U << 0)       /* 32b */
+/* R_ONE_TIME_LOCK_M (0x1C001000+0x058) */
+#define SPM_ONE_TIME_LOCK_M_LSB             (1U << 0)       /* 32b */
+/* R_ONE_TIME_LOCK_H (0x1C001000+0x05C) */
+#define SPM_ONE_TIME_LOCK_H_LSB             (1U << 0)       /* 32b */
 /* SSPM_CLK_CON (0x1C001000+0x084) */
 #define REG_SSPM_26M_CK_SEL_LSB             (1U << 0)       /* 1b */
 #define REG_SSPM_DCM_EN_LSB                 (1U << 1)       /* 1b */
@@ -539,6 +604,8 @@
 /* SPM_CK_STA (0x1C001000+0x164) */
 #define PCM_CK_SEL_O_LSB                    (1U << 0)       /* 4b */
 #define EXT_SRC_STA_LSB                     (1U << 4)       /* 3b */
+#define CK_SLEEP_EN_LSB                     (1U << 8)       /* 1b */
+#define SPM_SRAM_CTRL_CK_SEL_LSB            (1U << 9)       /* 1b */
 /* MD32PCM_STA (0x1C001000+0x190) */
 #define MD32PCM_HALT_LSB                    (1U << 0)       /* 1b */
 #define MD32PCM_GATED_LSB                   (1U << 1)       /* 1b */
@@ -655,6 +722,8 @@
 #define SC_HW_S1_REQ_LSB                    (1U << 0)       /* 1b */
 #define REG_HW_S1_ACK_MASK_LSB              (1U << 4)       /* 4b */
 #define SC_HW_S1_ACK_LSB                    (1U << 8)       /* 4b */
+/* SPM_DPM_WB_CON (0x1C001000+0x2AC) */
+#define REG_DPM_WB_EN_LSB                   (1U << 0)       /* 1b */
 /* SPM_PWRAP_CON (0x1C001000+0x300) */
 #define SPM_PWRAP_CON_LSB                   (1U << 0)       /* 32b */
 /* SPM_PWRAP_CON_STA (0x1C001000+0x304) */
@@ -741,6 +810,18 @@
 #define DVFSRC_WAKEUP_EVENT_MASK_LSB        (1U << 6)       /* 1b */
 #define SPM2RC_EVENT_ABORT_LSB              (1U << 7)       /* 1b */
 #define DVFSRC_LEVEL_ACK_LSB                (1U << 8)       /* 1b */
+/* SPM_SRAMRC_CON (0x1C001000+0x3A0) */
+#define VSRAM_GEAR_REQ_LSB                  (1U << 0)       /* 1b */
+#define VSRAM_GEAR_RDY_LSB                  (1U << 4)       /* 1b */
+#define VSRAM_VAL_LEVEL_LSB                 (1U << 16)      /* 9b */
+/* SPM_SRCLKENRC_CON (0x1C001000+0x3A4) */
+#define SPM_PMIF_VALID_LSB                  (1U << 0)       /* 1b */
+#define SPM_PMIF_ACK_LSB                    (1U << 4)       /* 1b */
+/* SPM_DPSW_CON (0x1C001000+0x3A8) */
+#define DPSW_VLOGIC_REQ_LSB                 (1U << 0)       /* 1b */
+#define DPSW_VLOGIC_ISO_LSB                 (1U << 4)       /* 1b */
+#define DPSW_VLOGIC_ACK_LSB                 (1U << 8)       /* 1b */
+#define DPSW_VSRAM_ACK_LSB                  (1U << 12)      /* 1b */
 /* ULPOSC_CON (0x1C001000+0x400) */
 #define ULPOSC_EN_LSB                       (1U << 0)       /* 1b */
 #define ULPOSC_RST_LSB                      (1U << 1)       /* 1b */
@@ -769,59 +850,84 @@
 #define APU_ARE_REQ_LSB                     (1U << 4)       /* 1b */
 #define APU_ARE_ACK_LSB                     (1U << 8)       /* 1b */
 #define APU_ACTIVE_STATE_LSB                (1U << 9)       /* 1b */
+#define APU_AOV_WAKEUP_LSB                  (1U << 16)      /* 1b */
 /* SPM2EFUSE_CON (0x1C001000+0x418) */
 #define AOC_EFUSE_EN_LSB                    (1U << 0)       /* 1b */
 #define AOC_EFUSE_RESTORE_RDY_LSB           (1U << 1)       /* 1b */
 /* SPM2DFD_CON (0x1C001000+0x41C) */
 #define DFD_SOC_MTCMOS_ACK_LSB              (1U << 0)       /* 1b */
 #define DFD_SOC_MTCMOS_REQ_LSB              (1U << 1)       /* 1b */
-/* REG_MODULE_SW_CG_DDREN_REQ_MASK_0 (0x1C001000+0x4A0) */
+/* RSV_PLL_CON (0x1C001000+0x420) */
+#define SC_UNIVPLL_EN_LSB                   (1U << 0)       /* 1b */
+#define SC_MMPLL_EN_LSB                     (1U << 1)       /* 1b */
+#define SC_RSV_PLL_EN_LSB                   (1U << 2)       /* 14b */
+#define APU_26M_CLK_EN_LSB                  (1U << 16)      /* 1b */
+#define IFR_26M_CLK_EN_LSB                  (1U << 17)      /* 1b */
+#define VLP_26M2ULPOSC_EN_LSB               (1U << 18)      /* 1b */
+#define SC_RSV_CLK_EN_LSB                   (1U << 20)      /* 12b */
+/* EMI_SLB_CON (0x1C001000+0x424) */
+#define EMI_SLB_MODE_MASK_LSB               (1U << 0)       /* 1b */
+/* REG_MODULE_SW_CG_DDREN_REQ_MASK_0 (0x1C001000+0x470) */
 #define REG_MODULE_SW_CG_DDREN_REQ_MASK_0_LSB (1U << 0)       /* 32b */
-/* REG_MODULE_SW_CG_DDREN_REQ_MASK_1 (0x1C001000+0x4A4) */
+/* REG_MODULE_SW_CG_DDREN_REQ_MASK_1 (0x1C001000+0x474) */
 #define REG_MODULE_SW_CG_DDREN_REQ_MASK_1_LSB (1U << 0)       /* 32b */
-/* REG_MODULE_SW_CG_DDREN_REQ_MASK_2 (0x1C001000+0x4A8) */
+/* REG_MODULE_SW_CG_DDREN_REQ_MASK_2 (0x1C001000+0x478) */
 #define REG_MODULE_SW_CG_DDREN_REQ_MASK_2_LSB (1U << 0)       /* 32b */
-/* REG_MODULE_SW_CG_DDREN_REQ_MASK_3 (0x1C001000+0x4AC) */
+/* REG_MODULE_SW_CG_DDREN_REQ_MASK_3 (0x1C001000+0x47C) */
 #define REG_MODULE_SW_CG_DDREN_REQ_MASK_3_LSB (1U << 0)       /* 32b */
-/* REG_MODULE_SW_CG_VRF18_REQ_MASK_0 (0x1C001000+0x4B0) */
+/* REG_MODULE_SW_CG_VRF18_REQ_MASK_0 (0x1C001000+0x480) */
 #define REG_MODULE_SW_CG_VRF18_REQ_MASK_0_LSB (1U << 0)       /* 32b */
-/* REG_MODULE_SW_CG_VRF18_REQ_MASK_1 (0x1C001000+0x4B4) */
+/* REG_MODULE_SW_CG_VRF18_REQ_MASK_1 (0x1C001000+0x484) */
 #define REG_MODULE_SW_CG_VRF18_REQ_MASK_1_LSB (1U << 0)       /* 32b */
-/* REG_MODULE_SW_CG_VRF18_REQ_MASK_2 (0x1C001000+0x4B8) */
+/* REG_MODULE_SW_CG_VRF18_REQ_MASK_2 (0x1C001000+0x488) */
 #define REG_MODULE_SW_CG_VRF18_REQ_MASK_2_LSB (1U << 0)       /* 32b */
-/* REG_MODULE_SW_CG_VRF18_REQ_MASK_3 (0x1C001000+0x4BC) */
+/* REG_MODULE_SW_CG_VRF18_REQ_MASK_3 (0x1C001000+0x48C) */
 #define REG_MODULE_SW_CG_VRF18_REQ_MASK_3_LSB (1U << 0)       /* 32b */
-/* REG_MODULE_SW_CG_F26M_REQ_MASK_0 (0x1C001000+0x4C0) */
+/* REG_MODULE_SW_CG_F26M_REQ_MASK_0 (0x1C001000+0x490) */
 #define REG_MODULE_SW_CG_F26M_REQ_MASK_0_LSB (1U << 0)       /* 32b */
-/* REG_MODULE_SW_CG_F26M_REQ_MASK_1 (0x1C001000+0x4C4) */
+/* REG_MODULE_SW_CG_F26M_REQ_MASK_1 (0x1C001000+0x494) */
 #define REG_MODULE_SW_CG_F26M_REQ_MASK_1_LSB (1U << 0)       /* 32b */
-/* REG_MODULE_SW_CG_F26M_REQ_MASK_2 (0x1C001000+0x4C8) */
+/* REG_MODULE_SW_CG_F26M_REQ_MASK_2 (0x1C001000+0x498) */
 #define REG_MODULE_SW_CG_F26M_REQ_MASK_2_LSB (1U << 0)       /* 32b */
-/* REG_MODULE_SW_CG_F26M_REQ_MASK_3 (0x1C001000+0x4CC) */
+/* REG_MODULE_SW_CG_F26M_REQ_MASK_3 (0x1C001000+0x49C) */
 #define REG_MODULE_SW_CG_F26M_REQ_MASK_3_LSB (1U << 0)       /* 32b */
-/* REG_MODULE_SW_CG_VCORE_REQ_MASK_0 (0x1C001000+0x4D0) */
+/* REG_MODULE_SW_CG_VCORE_REQ_MASK_0 (0x1C001000+0x4A0) */
 #define REG_MODULE_SW_CG_VCORE_REQ_MASK_0_LSB (1U << 0)       /* 32b */
-/* REG_MODULE_SW_CG_VCORE_REQ_MASK_1 (0x1C001000+0x4D4) */
+/* REG_MODULE_SW_CG_VCORE_REQ_MASK_1 (0x1C001000+0x4A4) */
 #define REG_MODULE_SW_CG_VCORE_REQ_MASK_1_LSB (1U << 0)       /* 32b */
-/* REG_MODULE_SW_CG_VCORE_REQ_MASK_2 (0x1C001000+0x4D8) */
+/* REG_MODULE_SW_CG_VCORE_REQ_MASK_2 (0x1C001000+0x4A8) */
 #define REG_MODULE_SW_CG_VCORE_REQ_MASK_2_LSB (1U << 0)       /* 32b */
-/* REG_MODULE_SW_CG_VCORE_REQ_MASK_3 (0x1C001000+0x4DC) */
+/* REG_MODULE_SW_CG_VCORE_REQ_MASK_3 (0x1C001000+0x4AC) */
 #define REG_MODULE_SW_CG_VCORE_REQ_MASK_3_LSB (1U << 0)       /* 32b */
-/* REG_PWR_STATUS_DDREN_REQ_MASK (0x1C001000+0x4E0) */
+/* REG_PWR_STATUS_DDREN_REQ_MASK (0x1C001000+0x4B0) */
 #define REG_PWR_STATUS_DDREN_REQ_MASK_LSB   (1U << 0)       /* 32b */
-/* REG_PWR_STATUS_VRF18_REQ_MASK (0x1C001000+0x4E4) */
+/* REG_PWR_STATUS_VRF18_REQ_MASK (0x1C001000+0x4B4) */
 #define REG_PWR_STATUS_VRF18_REQ_MASK_LSB   (1U << 0)       /* 32b */
-/* REG_PWR_STATUS_F26M_REQ_MASK (0x1C001000+0x4E8) */
+/* REG_PWR_STATUS_F26M_REQ_MASK (0x1C001000+0x4B8) */
 #define REG_PWR_STATUS_F26M_REQ_MASK_LSB    (1U << 0)       /* 32b */
-/* REG_PWR_STATUS_VCORE_REQ_MASK (0x1C001000+0x4EC) */
+/* REG_PWR_STATUS_PMIC_REQ_MASK (0x1C001000+0x4BC) */
+#define REG_PWR_STATUS_PMIC_REQ_MASK_LSB    (1U << 0)       /* 32b */
+/* REG_PWR_STATUS_VCORE_REQ_MASK (0x1C001000+0x4C0) */
 #define REG_PWR_STATUS_VCORE_REQ_MASK_LSB   (1U << 0)       /* 32b */
-/* REG_MODULE_BUSY_DDREN_REQ_MASK (0x1C001000+0x4F0) */
+/* REG_PWR_STATUS_MSB_DDREN_REQ_MASK (0x1C001000+0x4C4) */
+#define REG_PWR_STATUS_MSB_DDREN_REQ_MASK_LSB (1U << 0)       /* 32b */
+/* REG_PWR_STATUS_MSB_VRF18_REQ_MASK (0x1C001000+0x4C8) */
+#define REG_PWR_STATUS_MSB_VRF18_REQ_MASK_LSB (1U << 0)       /* 32b */
+/* REG_PWR_STATUS_MSB_F26M_REQ_MASK (0x1C001000+0x4CC) */
+#define REG_PWR_STATUS_MSB_F26M_REQ_MASK_LSB (1U << 0)       /* 32b */
+/* REG_PWR_STATUS_MSB_PMIC_REQ_MASK (0x1C001000+0x4D0) */
+#define REG_PWR_STATUS_MSB_PMIC_REQ_MASK_LSB (1U << 0)       /* 32b */
+/* REG_PWR_STATUS_MSB_VCORE_REQ_MASK (0x1C001000+0x4D4) */
+#define REG_PWR_STATUS_MSB_VCORE_REQ_MASK_LSB (1U << 0)       /* 32b */
+/* REG_MODULE_BUSY_DDREN_REQ_MASK (0x1C001000+0x4D8) */
 #define REG_MODULE_BUSY_DDREN_REQ_MASK_LSB  (1U << 0)       /* 32b */
-/* REG_MODULE_BUSY_VRF18_REQ_MASK (0x1C001000+0x4F4) */
+/* REG_MODULE_BUSY_VRF18_REQ_MASK (0x1C001000+0x4DC) */
 #define REG_MODULE_BUSY_VRF18_REQ_MASK_LSB  (1U << 0)       /* 32b */
-/* REG_MODULE_BUSY_F26M_REQ_MASK (0x1C001000+0x4F8) */
+/* REG_MODULE_BUSY_F26M_REQ_MASK (0x1C001000+0x4E0) */
 #define REG_MODULE_BUSY_F26M_REQ_MASK_LSB   (1U << 0)       /* 32b */
-/* REG_MODULE_BUSY_VCORE_REQ_MASK (0x1C001000+0x4FC) */
+/* REG_MODULE_BUSY_PMIC_REQ_MASK (0x1C001000+0x4E4) */
+#define REG_MODULE_BUSY_PMIC_REQ_MASK_LSB   (1U << 0)       /* 32b */
+/* REG_MODULE_BUSY_VCORE_REQ_MASK (0x1C001000+0x4E8) */
 #define REG_MODULE_BUSY_VCORE_REQ_MASK_LSB  (1U << 0)       /* 32b */
 /* SYS_TIMER_CON (0x1C001000+0x500) */
 #define SYS_TIMER_START_EN_LSB              (1U << 0)       /* 1b */
@@ -1035,6 +1141,13 @@
 #define SPM_SCP_MAILBOX_LSB                 (1U << 0)       /* 32b */
 /* SCP2SPM_MAILBOX (0x1C001000+0x6F0) */
 #define SCP_SPM_MAILBOX_LSB                 (1U << 0)       /* 32b */
+/* SCP_AOV_BUS_CON (0x1C001000+0x6F4) */
+#define SCP_AOV_BUS_REQ_LSB                 (1U << 0)       /* 1b */
+#define SCP_AOV_BUS_ACK_LSB                 (1U << 8)       /* 1b */
+/* VCORE_RTFF_CTRL_MASK (0x1C001000+0x6F8) */
+#define VCORE_RTFF_CTRL_MASK_LSB            (1U << 0)       /* 32b */
+/* SPM_SRAM_SRCLKENO_MASK (0x1C001000+0x6FC) */
+#define SPM_SRAM_SRCLKENO_MASK_LSB          (1U << 0)       /* 1b */
 /* SPM_WAKEUP_STA (0x1C001000+0x800) */
 #define SPM_WAKEUP_EVENT_L_LSB              (1U << 0)       /* 32b */
 /* SPM_WAKEUP_EXT_STA (0x1C001000+0x804) */
@@ -1052,313 +1165,493 @@
 #define REG_SPM_APSRC_REQ_LSB               (1U << 1)       /* 1b */
 #define REG_SPM_DDREN_REQ_LSB               (1U << 2)       /* 1b */
 #define REG_SPM_DVFS_REQ_LSB                (1U << 3)       /* 1b */
-#define REG_SPM_F26M_REQ_LSB                (1U << 4)       /* 1b */
-#define REG_SPM_INFRA_REQ_LSB               (1U << 5)       /* 1b */
-#define REG_SPM_SCP_MAILBOX_REQ_LSB         (1U << 6)       /* 1b */
-#define REG_SPM_SSPM_MAILBOX_REQ_LSB        (1U << 7)       /* 1b */
-#define REG_SPM_SW_MAILBOX_REQ_LSB          (1U << 8)       /* 1b */
-#define REG_SPM_VCORE_REQ_LSB               (1U << 9)       /* 1b */
-#define REG_SPM_VRF18_REQ_LSB               (1U << 10)      /* 1b */
+#define REG_SPM_EMI_REQ_LSB                 (1U << 4)       /* 1b */
+#define REG_SPM_F26M_REQ_LSB                (1U << 5)       /* 1b */
+#define REG_SPM_INFRA_REQ_LSB               (1U << 6)       /* 1b */
+#define REG_SPM_PMIC_REQ_LSB                (1U << 7)       /* 1b */
+#define REG_SPM_SCP_MAILBOX_REQ_LSB         (1U << 8)       /* 1b */
+#define REG_SPM_SSPM_MAILBOX_REQ_LSB        (1U << 9)       /* 1b */
+#define REG_SPM_SW_MAILBOX_REQ_LSB          (1U << 10)      /* 1b */
+#define REG_SPM_VCORE_REQ_LSB               (1U << 11)      /* 1b */
+#define REG_SPM_VRF18_REQ_LSB               (1U << 12)      /* 1b */
 #define ADSP_MAILBOX_STATE_LSB              (1U << 16)      /* 1b */
 #define APSRC_STATE_LSB                     (1U << 17)      /* 1b */
 #define DDREN_STATE_LSB                     (1U << 18)      /* 1b */
 #define DVFS_STATE_LSB                      (1U << 19)      /* 1b */
-#define F26M_STATE_LSB                      (1U << 20)      /* 1b */
-#define INFRA_STATE_LSB                     (1U << 21)      /* 1b */
-#define SCP_MAILBOX_STATE_LSB               (1U << 22)      /* 1b */
-#define SSPM_MAILBOX_STATE_LSB              (1U << 23)      /* 1b */
-#define SW_MAILBOX_STATE_LSB                (1U << 24)      /* 1b */
-#define VCORE_STATE_LSB                     (1U << 25)      /* 1b */
-#define VRF18_STATE_LSB                     (1U << 26)      /* 1b */
+#define EMI_STATE_LSB                       (1U << 20)      /* 1b */
+#define F26M_STATE_LSB                      (1U << 21)      /* 1b */
+#define INFRA_STATE_LSB                     (1U << 22)      /* 1b */
+#define PMIC_STATE_LSB                      (1U << 23)      /* 1b */
+#define SCP_MAILBOX_STATE_LSB               (1U << 24)      /* 1b */
+#define SSPM_MAILBOX_STATE_LSB              (1U << 25)      /* 1b */
+#define SW_MAILBOX_STATE_LSB                (1U << 26)      /* 1b */
+#define VCORE_STATE_LSB                     (1U << 27)      /* 1b */
+#define VRF18_STATE_LSB                     (1U << 28)      /* 1b */
 /* SPM_SRC_MASK_0 (0x1C001000+0x81C) */
 #define REG_AFE_APSRC_REQ_MASK_B_LSB        (1U << 0)       /* 1b */
 #define REG_AFE_DDREN_REQ_MASK_B_LSB        (1U << 1)       /* 1b */
-#define REG_AFE_INFRA_REQ_MASK_B_LSB        (1U << 2)       /* 1b */
-#define REG_AFE_SRCCLKENA_MASK_B_LSB        (1U << 3)       /* 1b */
-#define REG_AFE_VRF18_REQ_MASK_B_LSB        (1U << 4)       /* 1b */
-#define REG_APU_APSRC_REQ_MASK_B_LSB        (1U << 5)       /* 1b */
-#define REG_APU_DDREN_REQ_MASK_B_LSB        (1U << 6)       /* 1b */
-#define REG_APU_INFRA_REQ_MASK_B_LSB        (1U << 7)       /* 1b */
-#define REG_APU_SRCCLKENA_MASK_B_LSB        (1U << 8)       /* 1b */
-#define REG_APU_VRF18_REQ_MASK_B_LSB        (1U << 9)       /* 1b */
-#define REG_AUDIO_DSP_APSRC_REQ_MASK_B_LSB  (1U << 10)      /* 1b */
-#define REG_AUDIO_DSP_DDREN_REQ_MASK_B_LSB  (1U << 11)      /* 1b */
-#define REG_AUDIO_DSP_INFRA_REQ_MASK_B_LSB  (1U << 12)      /* 1b */
-#define REG_AUDIO_DSP_SRCCLKENA_MASK_B_LSB  (1U << 13)      /* 1b */
-#define REG_AUDIO_DSP_VRF18_REQ_MASK_B_LSB  (1U << 14)      /* 1b */
-#define REG_CAM_APSRC_REQ_MASK_B_LSB        (1U << 15)      /* 1b */
-#define REG_CAM_DDREN_REQ_MASK_B_LSB        (1U << 16)      /* 1b */
-#define REG_CCIF_APSRC_REQ_MASK_B_LSB       (1U << 17)      /* 12b */
+#define REG_AFE_EMI_REQ_MASK_B_LSB          (1U << 2)       /* 1b */
+#define REG_AFE_INFRA_REQ_MASK_B_LSB        (1U << 3)       /* 1b */
+#define REG_AFE_PMIC_REQ_MASK_B_LSB         (1U << 4)       /* 1b */
+#define REG_AFE_SRCCLKENA_MASK_B_LSB        (1U << 5)       /* 1b */
+#define REG_AFE_VCORE_REQ_MASK_B_LSB        (1U << 6)       /* 1b */
+#define REG_AFE_VRF18_REQ_MASK_B_LSB        (1U << 7)       /* 1b */
+#define REG_APU_APSRC_REQ_MASK_B_LSB        (1U << 8)       /* 1b */
+#define REG_APU_DDREN_REQ_MASK_B_LSB        (1U << 9)       /* 1b */
+#define REG_APU_EMI_REQ_MASK_B_LSB          (1U << 10)      /* 1b */
+#define REG_APU_INFRA_REQ_MASK_B_LSB        (1U << 11)      /* 1b */
+#define REG_APU_PMIC_REQ_MASK_B_LSB         (1U << 12)      /* 1b */
+#define REG_APU_SRCCLKENA_MASK_B_LSB        (1U << 13)      /* 1b */
+#define REG_APU_VRF18_REQ_MASK_B_LSB        (1U << 14)      /* 1b */
+#define REG_AUDIO_DSP_APSRC_REQ_MASK_B_LSB  (1U << 15)      /* 1b */
+#define REG_AUDIO_DSP_DDREN_REQ_MASK_B_LSB  (1U << 16)      /* 1b */
+#define REG_AUDIO_DSP_EMI_REQ_MASK_B_LSB    (1U << 17)      /* 1b */
+#define REG_AUDIO_DSP_INFRA_REQ_MASK_B_LSB  (1U << 18)      /* 1b */
+#define REG_AUDIO_DSP_PMIC_REQ_MASK_B_LSB   (1U << 19)      /* 1b */
+#define REG_AUDIO_DSP_SRCCLKENA_MASK_B_LSB  (1U << 20)      /* 1b */
+#define REG_AUDIO_DSP_VCORE_REQ_MASK_B_LSB  (1U << 21)      /* 1b */
+#define REG_AUDIO_DSP_VRF18_REQ_MASK_B_LSB  (1U << 22)      /* 1b */
+#define REG_CAM_APSRC_REQ_MASK_B_LSB        (1U << 23)      /* 1b */
+#define REG_CAM_DDREN_REQ_MASK_B_LSB        (1U << 24)      /* 1b */
+#define REG_CAM_EMI_REQ_MASK_B_LSB          (1U << 25)      /* 1b */
 /* SPM_SRC_MASK_1 (0x1C001000+0x820) */
-#define REG_CCIF_INFRA_REQ_MASK_B_LSB       (1U << 0)       /* 12b */
-#define REG_CCIF_SRCCLKENA_MASK_B_LSB       (1U << 12)      /* 12b */
-#define REG_CG_CHECK_APSRC_REQ_MASK_B_LSB   (1U << 24)      /* 1b */
-#define REG_CG_CHECK_DDREN_REQ_MASK_B_LSB   (1U << 25)      /* 1b */
-#define REG_CG_CHECK_SRCCLKENA_MASK_B_LSB   (1U << 26)      /* 1b */
-#define REG_CG_CHECK_VCORE_REQ_MASK_B_LSB   (1U << 27)      /* 1b */
-#define REG_CG_CHECK_VRF18_REQ_MASK_B_LSB   (1U << 28)      /* 1b */
-#define REG_CONN_APSRC_REQ_MASK_B_LSB       (1U << 29)      /* 1b */
-#define REG_CONN_DDREN_REQ_MASK_B_LSB       (1U << 30)      /* 1b */
-#define REG_CONN_INFRA_REQ_MASK_B_LSB       (1U << 31)      /* 1b */
+#define REG_CCIF_APSRC_REQ_MASK_B_LSB       (1U << 0)       /* 12b */
+#define REG_CCIF_EMI_REQ_MASK_B_LSB         (1U << 12)      /* 12b */
 /* SPM_SRC_MASK_2 (0x1C001000+0x824) */
-#define REG_CONN_SRCCLKENA_MASK_B_LSB       (1U << 0)       /* 1b */
-#define REG_CONN_SRCCLKENB_MASK_B_LSB       (1U << 1)       /* 1b */
-#define REG_CONN_VCORE_REQ_MASK_B_LSB       (1U << 2)       /* 1b */
-#define REG_CONN_VRF18_REQ_MASK_B_LSB       (1U << 3)       /* 1b */
-#define REG_MCUPM_APSRC_REQ_MASK_B_LSB      (1U << 4)       /* 1b */
-#define REG_MCUPM_DDREN_REQ_MASK_B_LSB      (1U << 5)       /* 1b */
-#define REG_MCUPM_INFRA_REQ_MASK_B_LSB      (1U << 6)       /* 1b */
-#define REG_MCUPM_SRCCLKENA_MASK_B_LSB      (1U << 7)       /* 1b */
-#define REG_MCUPM_VRF18_REQ_MASK_B_LSB      (1U << 8)       /* 1b */
-#define REG_DISP0_APSRC_REQ_MASK_B_LSB      (1U << 9)       /* 1b */
-#define REG_DISP0_DDREN_REQ_MASK_B_LSB      (1U << 10)      /* 1b */
-#define REG_DISP1_APSRC_REQ_MASK_B_LSB      (1U << 11)      /* 1b */
-#define REG_DISP1_DDREN_REQ_MASK_B_LSB      (1U << 12)      /* 1b */
-#define REG_DPM_APSRC_REQ_MASK_B_LSB        (1U << 13)      /* 4b */
+#define REG_CCIF_INFRA_REQ_MASK_B_LSB       (1U << 0)       /* 12b */
+#define REG_CCIF_PMIC_REQ_MASK_B_LSB        (1U << 12)      /* 12b */
+/* SPM_SRC_MASK_3 (0x1C001000+0x828) */
+#define REG_CCIF_SRCCLKENA_MASK_B_LSB       (1U << 0)       /* 12b */
+#define REG_CG_CHECK_APSRC_REQ_MASK_B_LSB   (1U << 12)      /* 1b */
+#define REG_CG_CHECK_DDREN_REQ_MASK_B_LSB   (1U << 13)      /* 1b */
+#define REG_CG_CHECK_EMI_REQ_MASK_B_LSB     (1U << 14)      /* 1b */
+#define REG_CG_CHECK_PMIC_REQ_MASK_B_LSB    (1U << 15)      /* 1b */
+#define REG_CG_CHECK_SRCCLKENA_MASK_B_LSB   (1U << 16)      /* 1b */
+#define REG_CG_CHECK_VCORE_REQ_MASK_B_LSB   (1U << 17)      /* 1b */
+#define REG_CG_CHECK_VRF18_REQ_MASK_B_LSB   (1U << 18)      /* 1b */
+#define REG_CONN_APSRC_REQ_MASK_B_LSB       (1U << 19)      /* 1b */
+#define REG_CONN_DDREN_REQ_MASK_B_LSB       (1U << 20)      /* 1b */
+#define REG_CONN_EMI_REQ_MASK_B_LSB         (1U << 21)      /* 1b */
+#define REG_CONN_INFRA_REQ_MASK_B_LSB       (1U << 22)      /* 1b */
+#define REG_CONN_PMIC_REQ_MASK_B_LSB        (1U << 23)      /* 1b */
+#define REG_CONN_SRCCLKENA_MASK_B_LSB       (1U << 24)      /* 1b */
+#define REG_CONN_SRCCLKENB_MASK_B_LSB       (1U << 25)      /* 1b */
+#define REG_CONN_VCORE_REQ_MASK_B_LSB       (1U << 26)      /* 1b */
+#define REG_CONN_VRF18_REQ_MASK_B_LSB       (1U << 27)      /* 1b */
+#define REG_MCUPM_APSRC_REQ_MASK_B_LSB      (1U << 28)      /* 1b */
+#define REG_MCUPM_DDREN_REQ_MASK_B_LSB      (1U << 29)      /* 1b */
+#define REG_MCUPM_EMI_REQ_MASK_B_LSB        (1U << 30)      /* 1b */
+#define REG_MCUPM_INFRA_REQ_MASK_B_LSB      (1U << 31)      /* 1b */
+/* SPM_SRC_MASK_4 (0x1C001000+0x82C) */
+#define REG_MCUPM_PMIC_REQ_MASK_B_LSB       (1U << 0)       /* 1b */
+#define REG_MCUPM_SRCCLKENA_MASK_B_LSB      (1U << 1)       /* 1b */
+#define REG_MCUPM_VRF18_REQ_MASK_B_LSB      (1U << 2)       /* 1b */
+#define REG_DISP0_APSRC_REQ_MASK_B_LSB      (1U << 3)       /* 1b */
+#define REG_DISP0_DDREN_REQ_MASK_B_LSB      (1U << 4)       /* 1b */
+#define REG_DISP0_EMI_REQ_MASK_B_LSB        (1U << 5)       /* 1b */
+#define REG_DISP1_APSRC_REQ_MASK_B_LSB      (1U << 6)       /* 1b */
+#define REG_DISP1_DDREN_REQ_MASK_B_LSB      (1U << 7)       /* 1b */
+#define REG_DISP1_EMI_REQ_MASK_B_LSB        (1U << 8)       /* 1b */
+#define REG_DPM_APSRC_REQ_MASK_B_LSB        (1U << 9)       /* 4b */
+#define REG_DPM_EMI_REQ_MASK_B_LSB          (1U << 13)      /* 4b */
 #define REG_DPM_INFRA_REQ_MASK_B_LSB        (1U << 17)      /* 4b */
 #define REG_DPM_VRF18_REQ_MASK_B_LSB        (1U << 21)      /* 4b */
 #define REG_DPMAIF_APSRC_REQ_MASK_B_LSB     (1U << 25)      /* 1b */
 #define REG_DPMAIF_DDREN_REQ_MASK_B_LSB     (1U << 26)      /* 1b */
-#define REG_DPMAIF_INFRA_REQ_MASK_B_LSB     (1U << 27)      /* 1b */
-#define REG_DPMAIF_SRCCLKENA_MASK_B_LSB     (1U << 28)      /* 1b */
-#define REG_DPMAIF_VRF18_REQ_MASK_B_LSB     (1U << 29)      /* 1b */
-#define REG_DVFSRC_LEVEL_REQ_MASK_B_LSB     (1U << 30)      /* 1b */
-#define REG_GCE_APSRC_REQ_MASK_B_LSB        (1U << 31)      /* 1b */
-/* SPM_SRC_MASK_3 (0x1C001000+0x828) */
-#define REG_GCE_DDREN_REQ_MASK_B_LSB        (1U << 0)       /* 1b */
-#define REG_GCE_INFRA_REQ_MASK_B_LSB        (1U << 1)       /* 1b */
-#define REG_GCE_VRF18_REQ_MASK_B_LSB        (1U << 2)       /* 1b */
-#define REG_GPUEB_APSRC_REQ_MASK_B_LSB      (1U << 3)       /* 1b */
-#define REG_GPUEB_DDREN_REQ_MASK_B_LSB      (1U << 4)       /* 1b */
-#define REG_GPUEB_INFRA_REQ_MASK_B_LSB      (1U << 5)       /* 1b */
-#define REG_GPUEB_SRCCLKENA_MASK_B_LSB      (1U << 6)       /* 1b */
-#define REG_GPUEB_VRF18_REQ_MASK_B_LSB      (1U << 7)       /* 1b */
-#define REG_IMG_APSRC_REQ_MASK_B_LSB        (1U << 8)       /* 1b */
-#define REG_IMG_DDREN_REQ_MASK_B_LSB        (1U << 9)       /* 1b */
-#define REG_INFRASYS_APSRC_REQ_MASK_B_LSB   (1U << 10)      /* 1b */
-#define REG_INFRASYS_DDREN_REQ_MASK_B_LSB   (1U << 11)      /* 1b */
-#define REG_IPIC_INFRA_REQ_MASK_B_LSB       (1U << 12)      /* 1b */
-#define REG_IPIC_VRF18_REQ_MASK_B_LSB       (1U << 13)      /* 1b */
-#define REG_MCUSYS_APSRC_REQ_MASK_B_LSB     (1U << 14)      /* 8b */
-#define REG_MCUSYS_DDREN_REQ_MASK_B_LSB     (1U << 22)      /* 8b */
-#define REG_MD_APSRC_REQ_MASK_B_LSB         (1U << 30)      /* 1b */
-#define REG_MD_DDREN_REQ_MASK_B_LSB         (1U << 31)      /* 1b */
-/* SPM_SRC_MASK_4 (0x1C001000+0x82C) */
-#define REG_MD_INFRA_REQ_MASK_B_LSB         (1U << 0)       /* 1b */
-#define REG_MD_SRCCLKENA_MASK_B_LSB         (1U << 1)       /* 1b */
-#define REG_MD_SRCCLKENA1_MASK_B_LSB        (1U << 2)       /* 1b */
-#define REG_MD_VCORE_REQ_MASK_B_LSB         (1U << 3)       /* 1b */
-#define REG_MD_VRF18_REQ_MASK_B_LSB         (1U << 4)       /* 1b */
-#define REG_MDP_APSRC_REQ_MASK_B_LSB        (1U << 5)       /* 1b */
-#define REG_MDP_DDREN_REQ_MASK_B_LSB        (1U << 6)       /* 1b */
-#define REG_MM_PROC_APSRC_REQ_MASK_B_LSB    (1U << 7)       /* 1b */
-#define REG_MM_PROC_DDREN_REQ_MASK_B_LSB    (1U << 8)       /* 1b */
-#define REG_MM_PROC_INFRA_REQ_MASK_B_LSB    (1U << 9)       /* 1b */
-#define REG_MM_PROC_SRCCLKENA_MASK_B_LSB    (1U << 10)      /* 1b */
-#define REG_MM_PROC_VRF18_REQ_MASK_B_LSB    (1U << 11)      /* 1b */
-#define REG_MMSYS_APSRC_REQ_MASK_B_LSB      (1U << 12)      /* 1b */
-#define REG_MMSYS_DDREN_REQ_MASK_B_LSB      (1U << 13)      /* 1b */
-#define REG_MMSYS_VRF18_REQ_MASK_B_LSB      (1U << 14)      /* 1b */
-#define REG_MSDC1_APSRC_REQ_MASK_B_LSB      (1U << 15)      /* 1b */
-#define REG_MSDC1_DDREN_REQ_MASK_B_LSB      (1U << 16)      /* 1b */
-#define REG_MSDC1_INFRA_REQ_MASK_B_LSB      (1U << 17)      /* 1b */
-#define REG_MSDC1_SRCCLKENA_MASK_B_LSB      (1U << 18)      /* 1b */
-#define REG_MSDC1_VRF18_REQ_MASK_B_LSB      (1U << 19)      /* 1b */
-#define REG_MSDC2_APSRC_REQ_MASK_B_LSB      (1U << 20)      /* 1b */
-#define REG_MSDC2_DDREN_REQ_MASK_B_LSB      (1U << 21)      /* 1b */
-#define REG_MSDC2_INFRA_REQ_MASK_B_LSB      (1U << 22)      /* 1b */
-#define REG_MSDC2_SRCCLKENA_MASK_B_LSB      (1U << 23)      /* 1b */
-#define REG_MSDC2_VRF18_REQ_MASK_B_LSB      (1U << 24)      /* 1b */
-#define REG_PCIE0_APSRC_REQ_MASK_B_LSB      (1U << 25)      /* 1b */
-#define REG_PCIE0_DDREN_REQ_MASK_B_LSB      (1U << 26)      /* 1b */
-#define REG_PCIE0_INFRA_REQ_MASK_B_LSB      (1U << 27)      /* 1b */
-#define REG_PCIE0_SRCCLKENA_MASK_B_LSB      (1U << 28)      /* 1b */
-#define REG_PCIE0_VRF18_REQ_MASK_B_LSB      (1U << 29)      /* 1b */
-#define REG_PCIE1_APSRC_REQ_MASK_B_LSB      (1U << 30)      /* 1b */
-#define REG_PCIE1_DDREN_REQ_MASK_B_LSB      (1U << 31)      /* 1b */
+#define REG_DPMAIF_EMI_REQ_MASK_B_LSB       (1U << 27)      /* 1b */
+#define REG_DPMAIF_INFRA_REQ_MASK_B_LSB     (1U << 28)      /* 1b */
+#define REG_DPMAIF_PMIC_REQ_MASK_B_LSB      (1U << 29)      /* 1b */
+#define REG_DPMAIF_SRCCLKENA_MASK_B_LSB     (1U << 30)      /* 1b */
+#define REG_DPMAIF_VRF18_REQ_MASK_B_LSB     (1U << 31)      /* 1b */
 /* SPM_SRC_MASK_5 (0x1C001000+0x830) */
-#define REG_PCIE1_INFRA_REQ_MASK_B_LSB      (1U << 0)       /* 1b */
-#define REG_PCIE1_SRCCLKENA_MASK_B_LSB      (1U << 1)       /* 1b */
-#define REG_PCIE1_VRF18_REQ_MASK_B_LSB      (1U << 2)       /* 1b */
-#define REG_SCP_APSRC_REQ_MASK_B_LSB        (1U << 3)       /* 1b */
-#define REG_SCP_DDREN_REQ_MASK_B_LSB        (1U << 4)       /* 1b */
-#define REG_SCP_INFRA_REQ_MASK_B_LSB        (1U << 5)       /* 1b */
-#define REG_SCP_SRCCLKENA_MASK_B_LSB        (1U << 6)       /* 1b */
-#define REG_SCP_VRF18_REQ_MASK_B_LSB        (1U << 7)       /* 1b */
-#define REG_SRCCLKENI_INFRA_REQ_MASK_B_LSB  (1U << 8)       /* 2b */
-#define REG_SRCCLKENI_SRCCLKENA_MASK_B_LSB  (1U << 10)      /* 2b */
-#define REG_SSPM_APSRC_REQ_MASK_B_LSB       (1U << 12)      /* 1b */
-#define REG_SSPM_DDREN_REQ_MASK_B_LSB       (1U << 13)      /* 1b */
-#define REG_SSPM_INFRA_REQ_MASK_B_LSB       (1U << 14)      /* 1b */
-#define REG_SSPM_SRCCLKENA_MASK_B_LSB       (1U << 15)      /* 1b */
-#define REG_SSPM_VRF18_REQ_MASK_B_LSB       (1U << 16)      /* 1b */
-#define REG_SSUSB0_APSRC_REQ_MASK_B_LSB     (1U << 17)      /* 1b */
-#define REG_SSUSB0_DDREN_REQ_MASK_B_LSB     (1U << 18)      /* 1b */
-#define REG_SSUSB0_INFRA_REQ_MASK_B_LSB     (1U << 19)      /* 1b */
-#define REG_SSUSB0_SRCCLKENA_MASK_B_LSB     (1U << 20)      /* 1b */
-#define REG_SSUSB0_VRF18_REQ_MASK_B_LSB     (1U << 21)      /* 1b */
-#define REG_SSUSB1_APSRC_REQ_MASK_B_LSB     (1U << 22)      /* 1b */
-#define REG_SSUSB1_DDREN_REQ_MASK_B_LSB     (1U << 23)      /* 1b */
-#define REG_SSUSB1_INFRA_REQ_MASK_B_LSB     (1U << 24)      /* 1b */
-#define REG_SSUSB1_SRCCLKENA_MASK_B_LSB     (1U << 25)      /* 1b */
-#define REG_SSUSB1_VRF18_REQ_MASK_B_LSB     (1U << 26)      /* 1b */
-#define REG_UFS_APSRC_REQ_MASK_B_LSB        (1U << 27)      /* 1b */
-#define REG_UFS_DDREN_REQ_MASK_B_LSB        (1U << 28)      /* 1b */
-#define REG_UFS_INFRA_REQ_MASK_B_LSB        (1U << 29)      /* 1b */
-#define REG_UFS_SRCCLKENA_MASK_B_LSB        (1U << 30)      /* 1b */
-#define REG_UFS_VRF18_REQ_MASK_B_LSB        (1U << 31)      /* 1b */
+#define REG_DVFSRC_LEVEL_REQ_MASK_B_LSB     (1U << 0)       /* 1b */
+#define REG_GCE_APSRC_REQ_MASK_B_LSB        (1U << 1)       /* 1b */
+#define REG_GCE_DDREN_REQ_MASK_B_LSB        (1U << 2)       /* 1b */
+#define REG_GCE_EMI_REQ_MASK_B_LSB          (1U << 3)       /* 1b */
+#define REG_GCE_INFRA_REQ_MASK_B_LSB        (1U << 4)       /* 1b */
+#define REG_GCE_VRF18_REQ_MASK_B_LSB        (1U << 5)       /* 1b */
+#define REG_GPUEB_APSRC_REQ_MASK_B_LSB      (1U << 6)       /* 1b */
+#define REG_GPUEB_DDREN_REQ_MASK_B_LSB      (1U << 7)       /* 1b */
+#define REG_GPUEB_EMI_REQ_MASK_B_LSB        (1U << 8)       /* 1b */
+#define REG_GPUEB_INFRA_REQ_MASK_B_LSB      (1U << 9)       /* 1b */
+#define REG_GPUEB_PMIC_REQ_MASK_B_LSB       (1U << 10)      /* 1b */
+#define REG_GPUEB_SRCCLKENA_MASK_B_LSB      (1U << 11)      /* 1b */
+#define REG_GPUEB_VRF18_REQ_MASK_B_LSB      (1U << 12)      /* 1b */
+#define REG_IMG_APSRC_REQ_MASK_B_LSB        (1U << 13)      /* 1b */
+#define REG_IMG_DDREN_REQ_MASK_B_LSB        (1U << 14)      /* 1b */
+#define REG_IMG_EMI_REQ_MASK_B_LSB          (1U << 15)      /* 1b */
+#define REG_INFRASYS_APSRC_REQ_MASK_B_LSB   (1U << 16)      /* 1b */
+#define REG_INFRASYS_DDREN_REQ_MASK_B_LSB   (1U << 17)      /* 1b */
+#define REG_INFRASYS_EMI_REQ_MASK_B_LSB     (1U << 18)      /* 1b */
+#define REG_EMISYS_APSRC_REQ_MASK_B_LSB     (1U << 19)      /* 1b */
+#define REG_EMISYS_DDREN_REQ_MASK_B_LSB     (1U << 20)      /* 1b */
+#define REG_EMISYS_EMI_REQ_MASK_B_LSB       (1U << 21)      /* 1b */
+#define REG_IPIC_INFRA_REQ_MASK_B_LSB       (1U << 22)      /* 1b */
+#define REG_IPIC_VRF18_REQ_MASK_B_LSB       (1U << 23)      /* 1b */
+#define REG_MCUSYS_APSRC_REQ_MASK_B_LSB     (1U << 24)      /* 8b */
 /* SPM_SRC_MASK_6 (0x1C001000+0x834) */
-#define REG_VDEC_APSRC_REQ_MASK_B_LSB       (1U << 0)       /* 1b */
-#define REG_VDEC_DDREN_REQ_MASK_B_LSB       (1U << 1)       /* 1b */
-#define REG_VENC_APSRC_REQ_MASK_B_LSB       (1U << 2)       /* 1b */
-#define REG_VENC_DDREN_REQ_MASK_B_LSB       (1U << 3)       /* 1b */
-/* SPM_REQ_STA_0 (0x1C001000+0x838) */
+#define REG_MCUSYS_DDREN_REQ_MASK_B_LSB     (1U << 0)       /* 8b */
+#define REG_MCUSYS_EMI_REQ_MASK_B_LSB       (1U << 8)       /* 8b */
+#define REG_MD_APSRC_REQ_MASK_B_LSB         (1U << 16)      /* 1b */
+#define REG_MD_DDREN_REQ_MASK_B_LSB         (1U << 17)      /* 1b */
+#define REG_MD_EMI_REQ_MASK_B_LSB           (1U << 18)      /* 1b */
+#define REG_MD_INFRA_REQ_MASK_B_LSB         (1U << 19)      /* 1b */
+#define REG_MD_PMIC_REQ_MASK_B_LSB          (1U << 20)      /* 1b */
+#define REG_MD_SRCCLKENA_MASK_B_LSB         (1U << 21)      /* 1b */
+#define REG_MD_SRCCLKENA1_MASK_B_LSB        (1U << 22)      /* 1b */
+#define REG_MD_VCORE_REQ_MASK_B_LSB         (1U << 23)      /* 1b */
+#define REG_MD_VRF18_REQ_MASK_B_LSB         (1U << 24)      /* 1b */
+#define REG_MDP0_APSRC_REQ_MASK_B_LSB       (1U << 25)      /* 1b */
+#define REG_MDP0_DDREN_REQ_MASK_B_LSB       (1U << 26)      /* 1b */
+#define REG_MDP0_EMI_REQ_MASK_B_LSB         (1U << 27)      /* 1b */
+#define REG_MDP1_APSRC_REQ_MASK_B_LSB       (1U << 28)      /* 1b */
+#define REG_MDP1_DDREN_REQ_MASK_B_LSB       (1U << 29)      /* 1b */
+#define REG_MDP1_EMI_REQ_MASK_B_LSB         (1U << 30)      /* 1b */
+#define REG_MM_PROC_APSRC_REQ_MASK_B_LSB    (1U << 31)      /* 1b */
+/* SPM_SRC_MASK_7 (0x1C001000+0x838) */
+#define REG_MM_PROC_DDREN_REQ_MASK_B_LSB    (1U << 0)       /* 1b */
+#define REG_MM_PROC_EMI_REQ_MASK_B_LSB      (1U << 1)       /* 1b */
+#define REG_MM_PROC_INFRA_REQ_MASK_B_LSB    (1U << 2)       /* 1b */
+#define REG_MM_PROC_PMIC_REQ_MASK_B_LSB     (1U << 3)       /* 1b */
+#define REG_MM_PROC_SRCCLKENA_MASK_B_LSB    (1U << 4)       /* 1b */
+#define REG_MM_PROC_VRF18_REQ_MASK_B_LSB    (1U << 5)       /* 1b */
+#define REG_MSDC1_APSRC_REQ_MASK_B_LSB      (1U << 6)       /* 1b */
+#define REG_MSDC1_DDREN_REQ_MASK_B_LSB      (1U << 7)       /* 1b */
+#define REG_MSDC1_EMI_REQ_MASK_B_LSB        (1U << 8)       /* 1b */
+#define REG_MSDC1_INFRA_REQ_MASK_B_LSB      (1U << 9)       /* 1b */
+#define REG_MSDC1_PMIC_REQ_MASK_B_LSB       (1U << 10)      /* 1b */
+#define REG_MSDC1_SRCCLKENA_MASK_B_LSB      (1U << 11)      /* 1b */
+#define REG_MSDC1_VRF18_REQ_MASK_B_LSB      (1U << 12)      /* 1b */
+#define REG_MSDC2_APSRC_REQ_MASK_B_LSB      (1U << 13)      /* 1b */
+#define REG_MSDC2_DDREN_REQ_MASK_B_LSB      (1U << 14)      /* 1b */
+#define REG_MSDC2_EMI_REQ_MASK_B_LSB        (1U << 15)      /* 1b */
+#define REG_MSDC2_INFRA_REQ_MASK_B_LSB      (1U << 16)      /* 1b */
+#define REG_MSDC2_PMIC_REQ_MASK_B_LSB       (1U << 17)      /* 1b */
+#define REG_MSDC2_SRCCLKENA_MASK_B_LSB      (1U << 18)      /* 1b */
+#define REG_MSDC2_VRF18_REQ_MASK_B_LSB      (1U << 19)      /* 1b */
+#define REG_OVL0_APSRC_REQ_MASK_B_LSB       (1U << 20)      /* 1b */
+#define REG_OVL0_DDREN_REQ_MASK_B_LSB       (1U << 21)      /* 1b */
+#define REG_OVL0_EMI_REQ_MASK_B_LSB         (1U << 22)      /* 1b */
+#define REG_OVL1_APSRC_REQ_MASK_B_LSB       (1U << 23)      /* 1b */
+#define REG_OVL1_DDREN_REQ_MASK_B_LSB       (1U << 24)      /* 1b */
+#define REG_OVL1_EMI_REQ_MASK_B_LSB         (1U << 25)      /* 1b */
+#define REG_PCIE0_APSRC_REQ_MASK_B_LSB      (1U << 26)      /* 1b */
+#define REG_PCIE0_DDREN_REQ_MASK_B_LSB      (1U << 27)      /* 1b */
+#define REG_PCIE0_EMI_REQ_MASK_B_LSB        (1U << 28)      /* 1b */
+#define REG_PCIE0_INFRA_REQ_MASK_B_LSB      (1U << 29)      /* 1b */
+#define REG_PCIE0_PMIC_REQ_MASK_B_LSB       (1U << 30)      /* 1b */
+#define REG_PCIE0_SRCCLKENA_MASK_B_LSB      (1U << 31)      /* 1b */
+/* SPM_SRC_MASK_8 (0x1C001000+0x83C) */
+#define REG_PCIE0_VCORE_REQ_MASK_B_LSB      (1U << 0)       /* 1b */
+#define REG_PCIE0_VRF18_REQ_MASK_B_LSB      (1U << 1)       /* 1b */
+#define REG_PCIE1_APSRC_REQ_MASK_B_LSB      (1U << 2)       /* 1b */
+#define REG_PCIE1_DDREN_REQ_MASK_B_LSB      (1U << 3)       /* 1b */
+#define REG_PCIE1_EMI_REQ_MASK_B_LSB        (1U << 4)       /* 1b */
+#define REG_PCIE1_INFRA_REQ_MASK_B_LSB      (1U << 5)       /* 1b */
+#define REG_PCIE1_PMIC_REQ_MASK_B_LSB       (1U << 6)       /* 1b */
+#define REG_PCIE1_SRCCLKENA_MASK_B_LSB      (1U << 7)       /* 1b */
+#define REG_PCIE1_VCORE_REQ_MASK_B_LSB      (1U << 8)       /* 1b */
+#define REG_PCIE1_VRF18_REQ_MASK_B_LSB      (1U << 9)       /* 1b */
+#define REG_SCP_APSRC_REQ_MASK_B_LSB        (1U << 10)      /* 1b */
+#define REG_SCP_DDREN_REQ_MASK_B_LSB        (1U << 11)      /* 1b */
+#define REG_SCP_EMI_REQ_MASK_B_LSB          (1U << 12)      /* 1b */
+#define REG_SCP_INFRA_REQ_MASK_B_LSB        (1U << 13)      /* 1b */
+#define REG_SCP_PMIC_REQ_MASK_B_LSB         (1U << 14)      /* 1b */
+#define REG_SCP_SRCCLKENA_MASK_B_LSB        (1U << 15)      /* 1b */
+#define REG_SCP_VCORE_REQ_MASK_B_LSB        (1U << 16)      /* 1b */
+#define REG_SCP_VRF18_REQ_MASK_B_LSB        (1U << 17)      /* 1b */
+#define REG_SRCCLKENI_INFRA_REQ_MASK_B_LSB  (1U << 18)      /* 2b */
+#define REG_SRCCLKENI_PMIC_REQ_MASK_B_LSB   (1U << 20)      /* 2b */
+#define REG_SRCCLKENI_SRCCLKENA_MASK_B_LSB  (1U << 22)      /* 2b */
+#define REG_SSPM_APSRC_REQ_MASK_B_LSB       (1U << 24)      /* 1b */
+#define REG_SSPM_DDREN_REQ_MASK_B_LSB       (1U << 25)      /* 1b */
+#define REG_SSPM_EMI_REQ_MASK_B_LSB         (1U << 26)      /* 1b */
+#define REG_SSPM_INFRA_REQ_MASK_B_LSB       (1U << 27)      /* 1b */
+#define REG_SSPM_PMIC_REQ_MASK_B_LSB        (1U << 28)      /* 1b */
+#define REG_SSPM_SRCCLKENA_MASK_B_LSB       (1U << 29)      /* 1b */
+#define REG_SSPM_VRF18_REQ_MASK_B_LSB       (1U << 30)      /* 1b */
+#define REG_SSR_INFRA_REQ_MASK_B_LSB        (1U << 31)      /* 1b */
+/* SPM_SRC_MASK_9 (0x1C001000+0x840) */
+#define REG_SSR_PMIC_REQ_MASK_B_LSB         (1U << 0)       /* 1b */
+#define REG_SSR_SRCCLKENA_MASK_B_LSB        (1U << 1)       /* 1b */
+#define REG_SSR_VRF18_REQ_MASK_B_LSB        (1U << 2)       /* 1b */
+#define REG_SSUSB0_APSRC_REQ_MASK_B_LSB     (1U << 3)       /* 1b */
+#define REG_SSUSB0_DDREN_REQ_MASK_B_LSB     (1U << 4)       /* 1b */
+#define REG_SSUSB0_EMI_REQ_MASK_B_LSB       (1U << 5)       /* 1b */
+#define REG_SSUSB0_INFRA_REQ_MASK_B_LSB     (1U << 6)       /* 1b */
+#define REG_SSUSB0_PMIC_REQ_MASK_B_LSB      (1U << 7)       /* 1b */
+#define REG_SSUSB0_SRCCLKENA_MASK_B_LSB     (1U << 8)       /* 1b */
+#define REG_SSUSB0_VRF18_REQ_MASK_B_LSB     (1U << 9)       /* 1b */
+#define REG_SSUSB1_APSRC_REQ_MASK_B_LSB     (1U << 10)      /* 1b */
+#define REG_SSUSB1_DDREN_REQ_MASK_B_LSB     (1U << 11)      /* 1b */
+#define REG_SSUSB1_EMI_REQ_MASK_B_LSB       (1U << 12)      /* 1b */
+#define REG_SSUSB1_INFRA_REQ_MASK_B_LSB     (1U << 13)      /* 1b */
+#define REG_SSUSB1_PMIC_REQ_MASK_B_LSB      (1U << 14)      /* 1b */
+#define REG_SSUSB1_SRCCLKENA_MASK_B_LSB     (1U << 15)      /* 1b */
+#define REG_SSUSB1_VRF18_REQ_MASK_B_LSB     (1U << 16)      /* 1b */
+#define REG_UART_HUB_INFRA_REQ_MASK_B_LSB   (1U << 17)      /* 1b */
+#define REG_UART_HUB_PMIC_REQ_MASK_B_LSB    (1U << 18)      /* 1b */
+#define REG_UART_HUB_SRCCLKENA_MASK_B_LSB   (1U << 19)      /* 1b */
+#define REG_UART_HUB_VCORE_REQ_MASK_B_LSB   (1U << 20)      /* 1b */
+#define REG_UART_HUB_VRF18_REQ_MASK_B_LSB   (1U << 21)      /* 1b */
+#define REG_UFS_APSRC_REQ_MASK_B_LSB        (1U << 22)      /* 1b */
+#define REG_UFS_DDREN_REQ_MASK_B_LSB        (1U << 23)      /* 1b */
+#define REG_UFS_EMI_REQ_MASK_B_LSB          (1U << 24)      /* 1b */
+#define REG_UFS_INFRA_REQ_MASK_B_LSB        (1U << 25)      /* 1b */
+#define REG_UFS_PMIC_REQ_MASK_B_LSB         (1U << 26)      /* 1b */
+#define REG_UFS_SRCCLKENA_MASK_B_LSB        (1U << 27)      /* 1b */
+#define REG_UFS_VRF18_REQ_MASK_B_LSB        (1U << 28)      /* 1b */
+#define REG_VDEC_APSRC_REQ_MASK_B_LSB       (1U << 29)      /* 1b */
+#define REG_VDEC_DDREN_REQ_MASK_B_LSB       (1U << 30)      /* 1b */
+#define REG_VDEC_EMI_REQ_MASK_B_LSB         (1U << 31)      /* 1b */
+/* SPM_SRC_MASK_10 (0x1C001000+0x844) */
+#define REG_VENC_APSRC_REQ_MASK_B_LSB       (1U << 0)       /* 1b */
+#define REG_VENC_DDREN_REQ_MASK_B_LSB       (1U << 1)       /* 1b */
+#define REG_VENC_EMI_REQ_MASK_B_LSB         (1U << 2)       /* 1b */
+#define REG_VENC1_APSRC_REQ_MASK_B_LSB      (1U << 3)       /* 1b */
+#define REG_VENC1_DDREN_REQ_MASK_B_LSB      (1U << 4)       /* 1b */
+#define REG_VENC1_EMI_REQ_MASK_B_LSB        (1U << 5)       /* 1b */
+#define REG_VENC2_APSRC_REQ_MASK_B_LSB      (1U << 6)       /* 1b */
+#define REG_VENC2_DDREN_REQ_MASK_B_LSB      (1U << 7)       /* 1b */
+#define REG_VENC2_EMI_REQ_MASK_B_LSB        (1U << 8)       /* 1b */
+#define REG_MCU_APSRC_REQ_MASK_B_LSB        (1U << 9)       /* 1b */
+#define REG_MCU_DDREN_REQ_MASK_B_LSB        (1U << 10)      /* 1b */
+#define REG_MCU_EMI_REQ_MASK_B_LSB          (1U << 11)      /* 1b */
+/* SPM_REQ_STA_0 (0x1C001000+0x848) */
 #define AFE_APSRC_REQ_LSB                   (1U << 0)       /* 1b */
 #define AFE_DDREN_REQ_LSB                   (1U << 1)       /* 1b */
-#define AFE_INFRA_REQ_LSB                   (1U << 2)       /* 1b */
-#define AFE_SRCCLKENA_LSB                   (1U << 3)       /* 1b */
-#define AFE_VRF18_REQ_LSB                   (1U << 4)       /* 1b */
-#define APU_APSRC_REQ_LSB                   (1U << 5)       /* 1b */
-#define APU_DDREN_REQ_LSB                   (1U << 6)       /* 1b */
-#define APU_INFRA_REQ_LSB                   (1U << 7)       /* 1b */
-#define APU_SRCCLKENA_LSB                   (1U << 8)       /* 1b */
-#define APU_VRF18_REQ_LSB                   (1U << 9)       /* 1b */
-#define AUDIO_DSP_APSRC_REQ_LSB             (1U << 10)      /* 1b */
-#define AUDIO_DSP_DDREN_REQ_LSB             (1U << 11)      /* 1b */
-#define AUDIO_DSP_INFRA_REQ_LSB             (1U << 12)      /* 1b */
-#define AUDIO_DSP_SRCCLKENA_LSB             (1U << 13)      /* 1b */
-#define AUDIO_DSP_VRF18_REQ_LSB             (1U << 14)      /* 1b */
-#define CAM_APSRC_REQ_LSB                   (1U << 15)      /* 1b */
-#define CAM_DDREN_REQ_LSB                   (1U << 16)      /* 1b */
-#define CCIF_APSRC_REQ_LSB                  (1U << 17)      /* 12b */
-/* SPM_REQ_STA_1 (0x1C001000+0x83C) */
+#define AFE_EMI_REQ_LSB                     (1U << 2)       /* 1b */
+#define AFE_INFRA_REQ_LSB                   (1U << 3)       /* 1b */
+#define AFE_PMIC_REQ_LSB                    (1U << 4)       /* 1b */
+#define AFE_SRCCLKENA_LSB                   (1U << 5)       /* 1b */
+#define AFE_VCORE_REQ_LSB                   (1U << 6)       /* 1b */
+#define AFE_VRF18_REQ_LSB                   (1U << 7)       /* 1b */
+#define APU_APSRC_REQ_LSB                   (1U << 8)       /* 1b */
+#define APU_DDREN_REQ_LSB                   (1U << 9)       /* 1b */
+#define APU_EMI_REQ_LSB                     (1U << 10)      /* 1b */
+#define APU_INFRA_REQ_LSB                   (1U << 11)      /* 1b */
+#define APU_PMIC_REQ_LSB                    (1U << 12)      /* 1b */
+#define APU_SRCCLKENA_LSB                   (1U << 13)      /* 1b */
+#define APU_VRF18_REQ_LSB                   (1U << 14)      /* 1b */
+#define AUDIO_DSP_APSRC_REQ_LSB             (1U << 15)      /* 1b */
+#define AUDIO_DSP_DDREN_REQ_LSB             (1U << 16)      /* 1b */
+#define AUDIO_DSP_EMI_REQ_LSB               (1U << 17)      /* 1b */
+#define AUDIO_DSP_INFRA_REQ_LSB             (1U << 18)      /* 1b */
+#define AUDIO_DSP_PMIC_REQ_LSB              (1U << 19)      /* 1b */
+#define AUDIO_DSP_SRCCLKENA_LSB             (1U << 20)      /* 1b */
+#define AUDIO_DSP_VCORE_REQ_LSB             (1U << 21)      /* 1b */
+#define AUDIO_DSP_VRF18_REQ_LSB             (1U << 22)      /* 1b */
+#define CAM_APSRC_REQ_LSB                   (1U << 23)      /* 1b */
+#define CAM_DDREN_REQ_LSB                   (1U << 24)      /* 1b */
+#define CAM_EMI_REQ_LSB                     (1U << 25)      /* 1b */
+/* SPM_REQ_STA_1 (0x1C001000+0x84C) */
+#define CCIF_APSRC_REQ_LSB                  (1U << 0)       /* 12b */
+#define CCIF_EMI_REQ_LSB                    (1U << 12)      /* 12b */
+/* SPM_REQ_STA_2 (0x1C001000+0x850) */
 #define CCIF_INFRA_REQ_LSB                  (1U << 0)       /* 12b */
-#define CCIF_SRCCLKENA_LSB                  (1U << 12)      /* 12b */
-#define CG_CHECK_APSRC_REQ_LSB              (1U << 24)      /* 1b */
-#define CG_CHECK_DDREN_REQ_LSB              (1U << 25)      /* 1b */
-#define CG_CHECK_SRCCLKENA_LSB              (1U << 26)      /* 1b */
-#define CG_CHECK_VCORE_REQ_LSB              (1U << 27)      /* 1b */
-#define CG_CHECK_VRF18_REQ_LSB              (1U << 28)      /* 1b */
-#define CONN_APSRC_REQ_LSB                  (1U << 29)      /* 1b */
-#define CONN_DDREN_REQ_LSB                  (1U << 30)      /* 1b */
-#define CONN_INFRA_REQ_LSB                  (1U << 31)      /* 1b */
-/* SPM_REQ_STA_2 (0x1C001000+0x840) */
-#define CONN_SRCCLKENA_LSB                  (1U << 0)       /* 1b */
-#define CONN_SRCCLKENB_LSB                  (1U << 1)       /* 1b */
-#define CONN_VCORE_REQ_LSB                  (1U << 2)       /* 1b */
-#define CONN_VRF18_REQ_LSB                  (1U << 3)       /* 1b */
-#define MCUPM_APSRC_REQ_LSB                 (1U << 4)       /* 1b */
-#define MCUPM_DDREN_REQ_LSB                 (1U << 5)       /* 1b */
-#define MCUPM_INFRA_REQ_LSB                 (1U << 6)       /* 1b */
-#define MCUPM_SRCCLKENA_LSB                 (1U << 7)       /* 1b */
-#define MCUPM_VRF18_REQ_LSB                 (1U << 8)       /* 1b */
-#define DISP0_APSRC_REQ_LSB                 (1U << 9)       /* 1b */
-#define DISP0_DDREN_REQ_LSB                 (1U << 10)      /* 1b */
-#define DISP1_APSRC_REQ_LSB                 (1U << 11)      /* 1b */
-#define DISP1_DDREN_REQ_LSB                 (1U << 12)      /* 1b */
-#define DPM_APSRC_REQ_LSB                   (1U << 13)      /* 4b */
+#define CCIF_PMIC_REQ_LSB                   (1U << 12)      /* 12b */
+/* SPM_REQ_STA_3 (0x1C001000+0x854) */
+#define CCIF_SRCCLKENA_LSB                  (1U << 0)       /* 12b */
+#define CG_CHECK_APSRC_REQ_LSB              (1U << 12)      /* 1b */
+#define CG_CHECK_DDREN_REQ_LSB              (1U << 13)      /* 1b */
+#define CG_CHECK_EMI_REQ_LSB                (1U << 14)      /* 1b */
+#define CG_CHECK_PMIC_REQ_LSB               (1U << 15)      /* 1b */
+#define CG_CHECK_SRCCLKENA_LSB              (1U << 16)      /* 1b */
+#define CG_CHECK_VCORE_REQ_LSB              (1U << 17)      /* 1b */
+#define CG_CHECK_VRF18_REQ_LSB              (1U << 18)      /* 1b */
+#define CONN_APSRC_REQ_LSB                  (1U << 19)      /* 1b */
+#define CONN_DDREN_REQ_LSB                  (1U << 20)      /* 1b */
+#define CONN_EMI_REQ_LSB                    (1U << 21)      /* 1b */
+#define CONN_INFRA_REQ_LSB                  (1U << 22)      /* 1b */
+#define CONN_PMIC_REQ_LSB                   (1U << 23)      /* 1b */
+#define CONN_SRCCLKENA_LSB                  (1U << 24)      /* 1b */
+#define CONN_SRCCLKENB_LSB                  (1U << 25)      /* 1b */
+#define CONN_VCORE_REQ_LSB                  (1U << 26)      /* 1b */
+#define CONN_VRF18_REQ_LSB                  (1U << 27)      /* 1b */
+#define MCUPM_APSRC_REQ_LSB                 (1U << 28)      /* 1b */
+#define MCUPM_DDREN_REQ_LSB                 (1U << 29)      /* 1b */
+#define MCUPM_EMI_REQ_LSB                   (1U << 30)      /* 1b */
+#define MCUPM_INFRA_REQ_LSB                 (1U << 31)      /* 1b */
+/* SPM_REQ_STA_4 (0x1C001000+0x858) */
+#define MCUPM_PMIC_REQ_LSB                  (1U << 0)       /* 1b */
+#define MCUPM_SRCCLKENA_LSB                 (1U << 1)       /* 1b */
+#define MCUPM_VRF18_REQ_LSB                 (1U << 2)       /* 1b */
+#define DISP0_APSRC_REQ_LSB                 (1U << 3)       /* 1b */
+#define DISP0_DDREN_REQ_LSB                 (1U << 4)       /* 1b */
+#define DISP0_EMI_REQ_LSB                   (1U << 5)       /* 1b */
+#define DISP1_APSRC_REQ_LSB                 (1U << 6)       /* 1b */
+#define DISP1_DDREN_REQ_LSB                 (1U << 7)       /* 1b */
+#define DISP1_EMI_REQ_LSB                   (1U << 8)       /* 1b */
+#define DPM_APSRC_REQ_LSB                   (1U << 9)       /* 4b */
+#define DPM_EMI_REQ_LSB                     (1U << 13)      /* 4b */
 #define DPM_INFRA_REQ_LSB                   (1U << 17)      /* 4b */
 #define DPM_VRF18_REQ_LSB                   (1U << 21)      /* 4b */
 #define DPMAIF_APSRC_REQ_LSB                (1U << 25)      /* 1b */
 #define DPMAIF_DDREN_REQ_LSB                (1U << 26)      /* 1b */
-#define DPMAIF_INFRA_REQ_LSB                (1U << 27)      /* 1b */
-#define DPMAIF_SRCCLKENA_LSB                (1U << 28)      /* 1b */
-#define DPMAIF_VRF18_REQ_LSB                (1U << 29)      /* 1b */
-#define DVFSRC_LEVEL_REQ_LSB                (1U << 30)      /* 1b */
-#define GCE_APSRC_REQ_LSB                   (1U << 31)      /* 1b */
-/* SPM_REQ_STA_3 (0x1C001000+0x844) */
-#define GCE_DDREN_REQ_LSB                   (1U << 0)       /* 1b */
-#define GCE_INFRA_REQ_LSB                   (1U << 1)       /* 1b */
-#define GCE_VRF18_REQ_LSB                   (1U << 2)       /* 1b */
-#define GPUEB_APSRC_REQ_LSB                 (1U << 3)       /* 1b */
-#define GPUEB_DDREN_REQ_LSB                 (1U << 4)       /* 1b */
-#define GPUEB_INFRA_REQ_LSB                 (1U << 5)       /* 1b */
-#define GPUEB_SRCCLKENA_LSB                 (1U << 6)       /* 1b */
-#define GPUEB_VRF18_REQ_LSB                 (1U << 7)       /* 1b */
-#define IMG_APSRC_REQ_LSB                   (1U << 8)       /* 1b */
-#define IMG_DDREN_REQ_LSB                   (1U << 9)       /* 1b */
-#define INFRASYS_APSRC_REQ_LSB              (1U << 10)      /* 1b */
-#define INFRASYS_DDREN_REQ_LSB              (1U << 11)      /* 1b */
-#define IPIC_INFRA_REQ_LSB                  (1U << 12)      /* 1b */
-#define IPIC_VRF18_REQ_LSB                  (1U << 13)      /* 1b */
-#define MCUSYS_APSRC_REQ_LSB                (1U << 14)      /* 8b */
-#define MCUSYS_DDREN_REQ_LSB                (1U << 22)      /* 8b */
-#define MD_APSRC_REQ_LSB                    (1U << 30)      /* 1b */
-#define MD_DDREN_REQ_LSB                    (1U << 31)      /* 1b */
-/* SPM_REQ_STA_4 (0x1C001000+0x848) */
-#define MD_INFRA_REQ_LSB                    (1U << 0)       /* 1b */
-#define MD_SRCCLKENA_LSB                    (1U << 1)       /* 1b */
-#define MD_SRCCLKENA1_LSB                   (1U << 2)       /* 1b */
-#define MD_VCORE_REQ_LSB                    (1U << 3)       /* 1b */
-#define MD_VRF18_REQ_LSB                    (1U << 4)       /* 1b */
-#define MDP_APSRC_REQ_LSB                   (1U << 5)       /* 1b */
-#define MDP_DDREN_REQ_LSB                   (1U << 6)       /* 1b */
-#define MM_PROC_APSRC_REQ_LSB               (1U << 7)       /* 1b */
-#define MM_PROC_DDREN_REQ_LSB               (1U << 8)       /* 1b */
-#define MM_PROC_INFRA_REQ_LSB               (1U << 9)       /* 1b */
-#define MM_PROC_SRCCLKENA_LSB               (1U << 10)      /* 1b */
-#define MM_PROC_VRF18_REQ_LSB               (1U << 11)      /* 1b */
-#define MMSYS_APSRC_REQ_LSB                 (1U << 12)      /* 1b */
-#define MMSYS_DDREN_REQ_LSB                 (1U << 13)      /* 1b */
-#define MMSYS_VRF18_REQ_LSB                 (1U << 14)      /* 1b */
-#define MSDC1_APSRC_REQ_LSB                 (1U << 15)      /* 1b */
-#define MSDC1_DDREN_REQ_LSB                 (1U << 16)      /* 1b */
-#define MSDC1_INFRA_REQ_LSB                 (1U << 17)      /* 1b */
-#define MSDC1_SRCCLKENA_LSB                 (1U << 18)      /* 1b */
-#define MSDC1_VRF18_REQ_LSB                 (1U << 19)      /* 1b */
-#define MSDC2_APSRC_REQ_LSB                 (1U << 20)      /* 1b */
-#define MSDC2_DDREN_REQ_LSB                 (1U << 21)      /* 1b */
-#define MSDC2_INFRA_REQ_LSB                 (1U << 22)      /* 1b */
-#define MSDC2_SRCCLKENA_LSB                 (1U << 23)      /* 1b */
-#define MSDC2_VRF18_REQ_LSB                 (1U << 24)      /* 1b */
-#define PCIE0_APSRC_REQ_LSB                 (1U << 25)      /* 1b */
-#define PCIE0_DDREN_REQ_LSB                 (1U << 26)      /* 1b */
-#define PCIE0_INFRA_REQ_LSB                 (1U << 27)      /* 1b */
-#define PCIE0_SRCCLKENA_LSB                 (1U << 28)      /* 1b */
-#define PCIE0_VRF18_REQ_LSB                 (1U << 29)      /* 1b */
-#define PCIE1_APSRC_REQ_LSB                 (1U << 30)      /* 1b */
-#define PCIE1_DDREN_REQ_LSB                 (1U << 31)      /* 1b */
-/* SPM_REQ_STA_5 (0x1C001000+0x84C) */
-#define PCIE1_INFRA_REQ_LSB                 (1U << 0)       /* 1b */
-#define PCIE1_SRCCLKENA_LSB                 (1U << 1)       /* 1b */
-#define PCIE1_VRF18_REQ_LSB                 (1U << 2)       /* 1b */
-#define SCP_APSRC_REQ_LSB                   (1U << 3)       /* 1b */
-#define SCP_DDREN_REQ_LSB                   (1U << 4)       /* 1b */
-#define SCP_INFRA_REQ_LSB                   (1U << 5)       /* 1b */
-#define SCP_SRCCLKENA_LSB                   (1U << 6)       /* 1b */
-#define SCP_VRF18_REQ_LSB                   (1U << 7)       /* 1b */
-#define SRCCLKENI_INFRA_REQ_LSB             (1U << 8)       /* 2b */
-#define SRCCLKENI_SRCCLKENA_LSB             (1U << 10)      /* 2b */
-#define SSPM_APSRC_REQ_LSB                  (1U << 12)      /* 1b */
-#define SSPM_DDREN_REQ_LSB                  (1U << 13)      /* 1b */
-#define SSPM_INFRA_REQ_LSB                  (1U << 14)      /* 1b */
-#define SSPM_SRCCLKENA_LSB                  (1U << 15)      /* 1b */
-#define SSPM_VRF18_REQ_LSB                  (1U << 16)      /* 1b */
-#define SSUSB0_APSRC_REQ_LSB                (1U << 17)      /* 1b */
-#define SSUSB0_DDREN_REQ_LSB                (1U << 18)      /* 1b */
-#define SSUSB0_INFRA_REQ_LSB                (1U << 19)      /* 1b */
-#define SSUSB0_SRCCLKENA_LSB                (1U << 20)      /* 1b */
-#define SSUSB0_VRF18_REQ_LSB                (1U << 21)      /* 1b */
-#define SSUSB1_APSRC_REQ_LSB                (1U << 22)      /* 1b */
-#define SSUSB1_DDREN_REQ_LSB                (1U << 23)      /* 1b */
-#define SSUSB1_INFRA_REQ_LSB                (1U << 24)      /* 1b */
-#define SSUSB1_SRCCLKENA_LSB                (1U << 25)      /* 1b */
-#define SSUSB1_VRF18_REQ_LSB                (1U << 26)      /* 1b */
-#define UFS_APSRC_REQ_LSB                   (1U << 27)      /* 1b */
-#define UFS_DDREN_REQ_LSB                   (1U << 28)      /* 1b */
-#define UFS_INFRA_REQ_LSB                   (1U << 29)      /* 1b */
-#define UFS_SRCCLKENA_LSB                   (1U << 30)      /* 1b */
-#define UFS_VRF18_REQ_LSB                   (1U << 31)      /* 1b */
-/* SPM_REQ_STA_6 (0x1C001000+0x850) */
-#define VDEC_APSRC_REQ_LSB                  (1U << 0)       /* 1b */
-#define VDEC_DDREN_REQ_LSB                  (1U << 1)       /* 1b */
-#define VENC_APSRC_REQ_LSB                  (1U << 2)       /* 1b */
-#define VENC_DDREN_REQ_LSB                  (1U << 3)       /* 1b */
-/* SPM_IPC_WAKEUP_REQ (0x1C001000+0x854) */
+#define DPMAIF_EMI_REQ_LSB                  (1U << 27)      /* 1b */
+#define DPMAIF_INFRA_REQ_LSB                (1U << 28)      /* 1b */
+#define DPMAIF_PMIC_REQ_LSB                 (1U << 29)      /* 1b */
+#define DPMAIF_SRCCLKENA_LSB                (1U << 30)      /* 1b */
+#define DPMAIF_VRF18_REQ_LSB                (1U << 31)      /* 1b */
+/* SPM_REQ_STA_5 (0x1C001000+0x85C) */
+#define DVFSRC_LEVEL_REQ_LSB                (1U << 0)       /* 1b */
+#define GCE_APSRC_REQ_LSB                   (1U << 1)       /* 1b */
+#define GCE_DDREN_REQ_LSB                   (1U << 2)       /* 1b */
+#define GCE_EMI_REQ_LSB                     (1U << 3)       /* 1b */
+#define GCE_INFRA_REQ_LSB                   (1U << 4)       /* 1b */
+#define GCE_VRF18_REQ_LSB                   (1U << 5)       /* 1b */
+#define GPUEB_APSRC_REQ_LSB                 (1U << 6)       /* 1b */
+#define GPUEB_DDREN_REQ_LSB                 (1U << 7)       /* 1b */
+#define GPUEB_EMI_REQ_LSB                   (1U << 8)       /* 1b */
+#define GPUEB_INFRA_REQ_LSB                 (1U << 9)       /* 1b */
+#define GPUEB_PMIC_REQ_LSB                  (1U << 10)      /* 1b */
+#define GPUEB_SRCCLKENA_LSB                 (1U << 11)      /* 1b */
+#define GPUEB_VRF18_REQ_LSB                 (1U << 12)      /* 1b */
+#define IMG_APSRC_REQ_LSB                   (1U << 13)      /* 1b */
+#define IMG_DDREN_REQ_LSB                   (1U << 14)      /* 1b */
+#define IMG_EMI_REQ_LSB                     (1U << 15)      /* 1b */
+#define INFRASYS_APSRC_REQ_LSB              (1U << 16)      /* 1b */
+#define INFRASYS_DDREN_REQ_LSB              (1U << 17)      /* 1b */
+#define INFRASYS_EMI_REQ_LSB                (1U << 18)      /* 1b */
+#define EMISYS_APSRC_REQ_LSB                (1U << 19)      /* 1b */
+#define EMISYS_DDREN_REQ_LSB                (1U << 20)      /* 1b */
+#define EMISYS_EMI_REQ_LSB                  (1U << 21)      /* 1b */
+#define IPIC_INFRA_REQ_LSB                  (1U << 22)      /* 1b */
+#define IPIC_VRF18_REQ_LSB                  (1U << 23)      /* 1b */
+#define MCUSYS_APSRC_REQ_LSB                (1U << 24)      /* 8b */
+/* SPM_REQ_STA_6 (0x1C001000+0x860) */
+#define MCUSYS_DDREN_REQ_LSB                (1U << 0)       /* 8b */
+#define MCUSYS_EMI_REQ_LSB                  (1U << 8)       /* 8b */
+#define MD_APSRC_REQ_LSB                    (1U << 16)      /* 1b */
+#define MD_DDREN_REQ_LSB                    (1U << 17)      /* 1b */
+#define MD_EMI_REQ_LSB                      (1U << 18)      /* 1b */
+#define MD_INFRA_REQ_LSB                    (1U << 19)      /* 1b */
+#define MD_PMIC_REQ_LSB                     (1U << 20)      /* 1b */
+#define MD_SRCCLKENA_LSB                    (1U << 21)      /* 1b */
+#define MD_SRCCLKENA1_LSB                   (1U << 22)      /* 1b */
+#define MD_VCORE_REQ_LSB                    (1U << 23)      /* 1b */
+#define MD_VRF18_REQ_LSB                    (1U << 24)      /* 1b */
+#define MDP0_APSRC_REQ_LSB                  (1U << 25)      /* 1b */
+#define MDP0_DDREN_REQ_LSB                  (1U << 26)      /* 1b */
+#define MDP0_EMI_REQ_LSB                    (1U << 27)      /* 1b */
+#define MDP1_APSRC_REQ_LSB                  (1U << 28)      /* 1b */
+#define MDP1_DDREN_REQ_LSB                  (1U << 29)      /* 1b */
+#define MDP1_EMI_REQ_LSB                    (1U << 30)      /* 1b */
+#define MM_PROC_APSRC_REQ_LSB               (1U << 31)      /* 1b */
+/* SPM_REQ_STA_7 (0x1C001000+0x864) */
+#define MM_PROC_DDREN_REQ_LSB               (1U << 0)       /* 1b */
+#define MM_PROC_EMI_REQ_LSB                 (1U << 1)       /* 1b */
+#define MM_PROC_INFRA_REQ_LSB               (1U << 2)       /* 1b */
+#define MM_PROC_PMIC_REQ_LSB                (1U << 3)       /* 1b */
+#define MM_PROC_SRCCLKENA_LSB               (1U << 4)       /* 1b */
+#define MM_PROC_VRF18_REQ_LSB               (1U << 5)       /* 1b */
+#define MSDC1_APSRC_REQ_LSB                 (1U << 6)       /* 1b */
+#define MSDC1_DDREN_REQ_LSB                 (1U << 7)       /* 1b */
+#define MSDC1_EMI_REQ_LSB                   (1U << 8)       /* 1b */
+#define MSDC1_INFRA_REQ_LSB                 (1U << 9)       /* 1b */
+#define MSDC1_PMIC_REQ_LSB                  (1U << 10)      /* 1b */
+#define MSDC1_SRCCLKENA_LSB                 (1U << 11)      /* 1b */
+#define MSDC1_VRF18_REQ_LSB                 (1U << 12)      /* 1b */
+#define MSDC2_APSRC_REQ_LSB                 (1U << 13)      /* 1b */
+#define MSDC2_DDREN_REQ_LSB                 (1U << 14)      /* 1b */
+#define MSDC2_EMI_REQ_LSB                   (1U << 15)      /* 1b */
+#define MSDC2_INFRA_REQ_LSB                 (1U << 16)      /* 1b */
+#define MSDC2_PMIC_REQ_LSB                  (1U << 17)      /* 1b */
+#define MSDC2_SRCCLKENA_LSB                 (1U << 18)      /* 1b */
+#define MSDC2_VRF18_REQ_LSB                 (1U << 19)      /* 1b */
+#define OVL0_APSRC_REQ_LSB                  (1U << 20)      /* 1b */
+#define OVL0_DDREN_REQ_LSB                  (1U << 21)      /* 1b */
+#define OVL0_EMI_REQ_LSB                    (1U << 22)      /* 1b */
+#define OVL1_APSRC_REQ_LSB                  (1U << 23)      /* 1b */
+#define OVL1_DDREN_REQ_LSB                  (1U << 24)      /* 1b */
+#define OVL1_EMI_REQ_LSB                    (1U << 25)      /* 1b */
+#define PCIE0_APSRC_REQ_LSB                 (1U << 26)      /* 1b */
+#define PCIE0_DDREN_REQ_LSB                 (1U << 27)      /* 1b */
+#define PCIE0_EMI_REQ_LSB                   (1U << 28)      /* 1b */
+#define PCIE0_INFRA_REQ_LSB                 (1U << 29)      /* 1b */
+#define PCIE0_PMIC_REQ_LSB                  (1U << 30)      /* 1b */
+#define PCIE0_SRCCLKENA_LSB                 (1U << 31)      /* 1b */
+/* SPM_REQ_STA_8 (0x1C001000+0x868) */
+#define PCIE0_VCORE_REQ_LSB                 (1U << 0)       /* 1b */
+#define PCIE0_VRF18_REQ_LSB                 (1U << 1)       /* 1b */
+#define PCIE1_APSRC_REQ_LSB                 (1U << 2)       /* 1b */
+#define PCIE1_DDREN_REQ_LSB                 (1U << 3)       /* 1b */
+#define PCIE1_EMI_REQ_LSB                   (1U << 4)       /* 1b */
+#define PCIE1_INFRA_REQ_LSB                 (1U << 5)       /* 1b */
+#define PCIE1_PMIC_REQ_LSB                  (1U << 6)       /* 1b */
+#define PCIE1_SRCCLKENA_LSB                 (1U << 7)       /* 1b */
+#define PCIE1_VCORE_REQ_LSB                 (1U << 8)       /* 1b */
+#define PCIE1_VRF18_REQ_LSB                 (1U << 9)       /* 1b */
+#define SCP_APSRC_REQ_LSB                   (1U << 10)      /* 1b */
+#define SCP_DDREN_REQ_LSB                   (1U << 11)      /* 1b */
+#define SCP_EMI_REQ_LSB                     (1U << 12)      /* 1b */
+#define SCP_INFRA_REQ_LSB                   (1U << 13)      /* 1b */
+#define SCP_PMIC_REQ_LSB                    (1U << 14)      /* 1b */
+#define SCP_SRCCLKENA_LSB                   (1U << 15)      /* 1b */
+#define SCP_VCORE_REQ_LSB                   (1U << 16)      /* 1b */
+#define SCP_VRF18_REQ_LSB                   (1U << 17)      /* 1b */
+#define SRCCLKENI_INFRA_REQ_LSB             (1U << 18)      /* 2b */
+#define SRCCLKENI_PMIC_REQ_LSB              (1U << 20)      /* 2b */
+#define SRCCLKENI_SRCCLKENA_LSB             (1U << 22)      /* 2b */
+#define SSPM_APSRC_REQ_LSB                  (1U << 24)      /* 1b */
+#define SSPM_DDREN_REQ_LSB                  (1U << 25)      /* 1b */
+#define SSPM_EMI_REQ_LSB                    (1U << 26)      /* 1b */
+#define SSPM_INFRA_REQ_LSB                  (1U << 27)      /* 1b */
+#define SSPM_PMIC_REQ_LSB                   (1U << 28)      /* 1b */
+#define SSPM_SRCCLKENA_LSB                  (1U << 29)      /* 1b */
+#define SSPM_VRF18_REQ_LSB                  (1U << 30)      /* 1b */
+#define SSR_INFRA_REQ_LSB                   (1U << 31)      /* 1b */
+/* SPM_REQ_STA_9 (0x1C001000+0x86C) */
+#define SSR_PMIC_REQ_LSB                    (1U << 0)       /* 1b */
+#define SSR_SRCCLKENA_LSB                   (1U << 1)       /* 1b */
+#define SSR_VRF18_REQ_LSB                   (1U << 2)       /* 1b */
+#define SSUSB0_APSRC_REQ_LSB                (1U << 3)       /* 1b */
+#define SSUSB0_DDREN_REQ_LSB                (1U << 4)       /* 1b */
+#define SSUSB0_EMI_REQ_LSB                  (1U << 5)       /* 1b */
+#define SSUSB0_INFRA_REQ_LSB                (1U << 6)       /* 1b */
+#define SSUSB0_PMIC_REQ_LSB                 (1U << 7)       /* 1b */
+#define SSUSB0_SRCCLKENA_LSB                (1U << 8)       /* 1b */
+#define SSUSB0_VRF18_REQ_LSB                (1U << 9)       /* 1b */
+#define SSUSB1_APSRC_REQ_LSB                (1U << 10)      /* 1b */
+#define SSUSB1_DDREN_REQ_LSB                (1U << 11)      /* 1b */
+#define SSUSB1_EMI_REQ_LSB                  (1U << 12)      /* 1b */
+#define SSUSB1_INFRA_REQ_LSB                (1U << 13)      /* 1b */
+#define SSUSB1_PMIC_REQ_LSB                 (1U << 14)      /* 1b */
+#define SSUSB1_SRCCLKENA_LSB                (1U << 15)      /* 1b */
+#define SSUSB1_VRF18_REQ_LSB                (1U << 16)      /* 1b */
+#define UART_HUB_INFRA_REQ_LSB              (1U << 17)      /* 1b */
+#define UART_HUB_PMIC_REQ_LSB               (1U << 18)      /* 1b */
+#define UART_HUB_SRCCLKENA_LSB              (1U << 19)      /* 1b */
+#define UART_HUB_VCORE_REQ_LSB              (1U << 20)      /* 1b */
+#define UART_HUB_VRF18_REQ_LSB              (1U << 21)      /* 1b */
+#define UFS_APSRC_REQ_LSB                   (1U << 22)      /* 1b */
+#define UFS_DDREN_REQ_LSB                   (1U << 23)      /* 1b */
+#define UFS_EMI_REQ_LSB                     (1U << 24)      /* 1b */
+#define UFS_INFRA_REQ_LSB                   (1U << 25)      /* 1b */
+#define UFS_PMIC_REQ_LSB                    (1U << 26)      /* 1b */
+#define UFS_SRCCLKENA_LSB                   (1U << 27)      /* 1b */
+#define UFS_VRF18_REQ_LSB                   (1U << 28)      /* 1b */
+#define VDEC_APSRC_REQ_LSB                  (1U << 29)      /* 1b */
+#define VDEC_DDREN_REQ_LSB                  (1U << 30)      /* 1b */
+#define VDEC_EMI_REQ_LSB                    (1U << 31)      /* 1b */
+/* SPM_REQ_STA_10 (0x1C001000+0x870) */
+#define VENC_APSRC_REQ_LSB                  (1U << 0)       /* 1b */
+#define VENC_DDREN_REQ_LSB                  (1U << 1)       /* 1b */
+#define VENC_EMI_REQ_LSB                    (1U << 2)       /* 1b */
+#define VENC1_APSRC_REQ_LSB                 (1U << 3)       /* 1b */
+#define VENC1_DDREN_REQ_LSB                 (1U << 4)       /* 1b */
+#define VENC1_EMI_REQ_LSB                   (1U << 5)       /* 1b */
+#define VENC2_APSRC_REQ_LSB                 (1U << 6)       /* 1b */
+#define VENC2_DDREN_REQ_LSB                 (1U << 7)       /* 1b */
+#define VENC2_EMI_REQ_LSB                   (1U << 8)       /* 1b */
+#define MCU_APSRC_REQ_LSB                   (1U << 9)       /* 1b */
+#define MCU_DDREN_REQ_LSB                   (1U << 10)      /* 1b */
+#define MCU_EMI_REQ_LSB                     (1U << 11)      /* 1b */
+/* SPM_IPC_WAKEUP_REQ (0x1C001000+0x874) */
 #define SPM2SSPM_WAKEUP_LSB                 (1U << 0)       /* 1b */
 #define SPM2SCP_WAKEUP_LSB                  (1U << 1)       /* 1b */
 #define SPM2ADSP_WAKEUP_LSB                 (1U << 2)       /* 1b */
-/* IPC_WAKEUP_REQ_MASK_STA (0x1C001000+0x858) */
+/* IPC_WAKEUP_REQ_MASK_STA (0x1C001000+0x878) */
 #define REG_SW2SPM_WAKEUP_MASK_B_LSB        (1U << 0)       /* 4b */
 #define REG_SSPM2SPM_WAKEUP_MASK_B_LSB      (1U << 4)       /* 1b */
 #define REG_SCP2SPM_WAKEUP_MASK_B_LSB       (1U << 5)       /* 1b */
@@ -1366,126 +1659,181 @@
 #define SSPM2SPM_WAKEUP_LSB                 (1U << 20)      /* 1b */
 #define SCP2SPM_WAKEUP_LSB                  (1U << 21)      /* 1b */
 #define ADSP2SPM_WAKEUP_LSB                 (1U << 22)      /* 1b */
-/* SPM_EVENT_CON_MISC (0x1C001000+0x85C) */
+/* SPM_EVENT_CON_MISC (0x1C001000+0x87C) */
 #define REG_SRCCLKEN_FAST_RESP_LSB          (1U << 0)       /* 1b */
 #define REG_CSYSPWRUP_ACK_MASK_LSB          (1U << 1)       /* 1b */
-/* DDREN_DBC_CON (0x1C001000+0x860) */
+/* DDREN_DBC_CON (0x1C001000+0x880) */
 #define REG_DDREN_DBC_LEN_LSB               (1U << 0)       /* 10b */
 #define REG_DDREN_DBC_EN_LSB                (1U << 16)      /* 1b */
-/* SPM_RESOURCE_ACK_CON_0 (0x1C001000+0x864) */
+/* SPM_RESOURCE_ACK_CON_0 (0x1C001000+0x884) */
 #define SPM_SRCCLKENA_ACK_WAIT_CYCLE_LSB    (1U << 0)       /* 8b */
-#define SPM_INFRA_ACK_WAIT_CYCLE_LSB        (1U << 8)       /* 8b */
-#define SPM_APSRC_ACK_WAIT_CYCLE_LSB        (1U << 16)      /* 8b */
-#define SPM_VRF18_ACK_WAIT_CYCLE_LSB        (1U << 24)      /* 8b */
-/* SPM_RESOURCE_ACK_CON_1 (0x1C001000+0x868) */
-#define SPM_DDREN_ACK_WAIT_CYCLE_LSB        (1U << 0)       /* 8b */
-#define SPM_VCORE_ACK_WAIT_CYCLE_LSB        (1U << 8)       /* 8b */
-/* SPM_RESOURCE_ACK_MASK_0 (0x1C001000+0x86C) */
+#define SPM_PMIC_ACK_WAIT_CYCLE_LSB         (1U << 8)       /* 8b */
+#define SPM_INFRA_ACK_WAIT_CYCLE_LSB        (1U << 16)      /* 8b */
+#define SPM_EMI_ACK_WAIT_CYCLE_LSB          (1U << 24)      /* 8b */
+/* SPM_RESOURCE_ACK_CON_1 (0x1C001000+0x888) */
+#define SPM_APSRC_ACK_WAIT_CYCLE_LSB        (1U << 0)       /* 8b */
+#define SPM_VRF18_ACK_WAIT_CYCLE_LSB        (1U << 8)       /* 8b */
+#define SPM_DDREN_ACK_WAIT_CYCLE_LSB        (1U << 16)      /* 8b */
+#define SPM_VCORE_ACK_WAIT_CYCLE_LSB        (1U << 24)      /* 8b */
+/* SPM_RESOURCE_ACK_MASK_0 (0x1C001000+0x88C) */
 #define REG_AFE_APSRC_ACK_MASK_LSB          (1U << 0)       /* 1b */
 #define REG_AFE_DDREN_ACK_MASK_LSB          (1U << 1)       /* 1b */
-#define REG_AFE_INFRA_ACK_MASK_LSB          (1U << 2)       /* 1b */
-#define REG_AFE_SRCCLKENA_ACK_MASK_LSB      (1U << 3)       /* 1b */
-#define REG_AFE_VRF18_ACK_MASK_LSB          (1U << 4)       /* 1b */
-#define REG_APU_APSRC_ACK_MASK_LSB          (1U << 5)       /* 1b */
-#define REG_APU_DDREN_ACK_MASK_LSB          (1U << 6)       /* 1b */
-#define REG_APU_INFRA_ACK_MASK_LSB          (1U << 7)       /* 1b */
-#define REG_APU_SRCCLKENA_ACK_MASK_LSB      (1U << 8)       /* 1b */
-#define REG_APU_VRF18_ACK_MASK_LSB          (1U << 9)       /* 1b */
-#define REG_AUDIO_DSP_APSRC_ACK_MASK_LSB    (1U << 10)      /* 1b */
-#define REG_AUDIO_DSP_DDREN_ACK_MASK_LSB    (1U << 11)      /* 1b */
-#define REG_AUDIO_DSP_INFRA_ACK_MASK_LSB    (1U << 12)      /* 1b */
-#define REG_AUDIO_DSP_SRCCLKENA_ACK_MASK_LSB (1U << 13)      /* 1b */
-#define REG_AUDIO_DSP_VRF18_ACK_MASK_LSB    (1U << 14)      /* 1b */
-#define REG_CONN_APSRC_ACK_MASK_LSB         (1U << 15)      /* 1b */
-#define REG_CONN_DDREN_ACK_MASK_LSB         (1U << 16)      /* 1b */
-#define REG_CONN_INFRA_ACK_MASK_LSB         (1U << 17)      /* 1b */
-#define REG_CONN_SRCCLKENA_ACK_MASK_LSB     (1U << 18)      /* 1b */
-#define REG_CONN_VCORE_ACK_MASK_LSB         (1U << 19)      /* 1b */
-#define REG_CONN_VRF18_ACK_MASK_LSB         (1U << 20)      /* 1b */
-#define REG_MCUPM_APSRC_ACK_MASK_LSB        (1U << 21)      /* 1b */
-#define REG_MCUPM_DDREN_ACK_MASK_LSB        (1U << 22)      /* 1b */
-#define REG_MCUPM_INFRA_ACK_MASK_LSB        (1U << 23)      /* 1b */
-#define REG_MCUPM_SRCCLKENA_ACK_MASK_LSB    (1U << 24)      /* 1b */
-#define REG_MCUPM_VRF18_ACK_MASK_LSB        (1U << 25)      /* 1b */
-#define REG_GCE_APSRC_ACK_MASK_LSB          (1U << 26)      /* 1b */
-#define REG_GCE_DDREN_ACK_MASK_LSB          (1U << 27)      /* 1b */
-#define REG_GCE_INFRA_ACK_MASK_LSB          (1U << 28)      /* 1b */
-#define REG_GCE_VRF18_ACK_MASK_LSB          (1U << 29)      /* 1b */
-#define REG_GPUEB_APSRC_ACK_MASK_LSB        (1U << 30)      /* 1b */
-#define REG_GPUEB_DDREN_ACK_MASK_LSB        (1U << 31)      /* 1b */
-/* SPM_RESOURCE_ACK_MASK_1 (0x1C001000+0x870) */
-#define REG_GPUEB_INFRA_ACK_MASK_LSB        (1U << 0)       /* 1b */
-#define REG_GPUEB_SRCCLKENA_ACK_MASK_LSB    (1U << 1)       /* 1b */
-#define REG_GPUEB_VRF18_ACK_MASK_LSB        (1U << 2)       /* 1b */
-#define REG_MD_APSRC_ACK_MASK_LSB           (1U << 3)       /* 1b */
-#define REG_MD_DDREN_ACK_MASK_LSB           (1U << 4)       /* 1b */
-#define REG_MD_INFRA_ACK_MASK_LSB           (1U << 5)       /* 1b */
-#define REG_MD_SRCCLKENA_ACK_MASK_LSB       (1U << 6)       /* 1b */
-#define REG_MD_VCORE_ACK_MASK_LSB           (1U << 7)       /* 1b */
-#define REG_MD_VRF18_ACK_MASK_LSB           (1U << 8)       /* 1b */
-#define REG_MDP_APSRC_ACK_MASK_LSB          (1U << 9)       /* 1b */
-#define REG_MDP_DDREN_ACK_MASK_LSB          (1U << 10)      /* 1b */
-#define REG_MM_PROC_APSRC_ACK_MASK_LSB      (1U << 11)      /* 1b */
-#define REG_MM_PROC_DDREN_ACK_MASK_LSB      (1U << 12)      /* 1b */
-#define REG_MM_PROC_INFRA_ACK_MASK_LSB      (1U << 13)      /* 1b */
-#define REG_MM_PROC_SRCCLKENA_ACK_MASK_LSB  (1U << 14)      /* 1b */
-#define REG_MM_PROC_VRF18_ACK_MASK_LSB      (1U << 15)      /* 1b */
-#define REG_PCIE0_APSRC_ACK_MASK_LSB        (1U << 16)      /* 1b */
-#define REG_PCIE0_DDREN_ACK_MASK_LSB        (1U << 17)      /* 1b */
-#define REG_PCIE0_INFRA_ACK_MASK_LSB        (1U << 18)      /* 1b */
-#define REG_PCIE0_SRCCLKENA_ACK_MASK_LSB    (1U << 19)      /* 1b */
-#define REG_PCIE0_VRF18_ACK_MASK_LSB        (1U << 20)      /* 1b */
-#define REG_PCIE1_APSRC_ACK_MASK_LSB        (1U << 21)      /* 1b */
-#define REG_PCIE1_DDREN_ACK_MASK_LSB        (1U << 22)      /* 1b */
-#define REG_PCIE1_INFRA_ACK_MASK_LSB        (1U << 23)      /* 1b */
-#define REG_PCIE1_SRCCLKENA_ACK_MASK_LSB    (1U << 24)      /* 1b */
-#define REG_PCIE1_VRF18_ACK_MASK_LSB        (1U << 25)      /* 1b */
-#define REG_SCP_APSRC_ACK_MASK_LSB          (1U << 26)      /* 1b */
-#define REG_SCP_DDREN_ACK_MASK_LSB          (1U << 27)      /* 1b */
-#define REG_SCP_INFRA_ACK_MASK_LSB          (1U << 28)      /* 1b */
-#define REG_SCP_SRCCLKENA_ACK_MASK_LSB      (1U << 29)      /* 1b */
+#define REG_AFE_EMI_ACK_MASK_LSB            (1U << 2)       /* 1b */
+#define REG_AFE_INFRA_ACK_MASK_LSB          (1U << 3)       /* 1b */
+#define REG_AFE_PMIC_ACK_MASK_LSB           (1U << 4)       /* 1b */
+#define REG_AFE_SRCCLKENA_ACK_MASK_LSB      (1U << 5)       /* 1b */
+#define REG_AFE_VCORE_ACK_MASK_LSB          (1U << 6)       /* 1b */
+#define REG_AFE_VRF18_ACK_MASK_LSB          (1U << 7)       /* 1b */
+#define REG_APU_APSRC_ACK_MASK_LSB          (1U << 8)       /* 1b */
+#define REG_APU_DDREN_ACK_MASK_LSB          (1U << 9)       /* 1b */
+#define REG_APU_EMI_ACK_MASK_LSB            (1U << 10)      /* 1b */
+#define REG_APU_INFRA_ACK_MASK_LSB          (1U << 11)      /* 1b */
+#define REG_APU_PMIC_ACK_MASK_LSB           (1U << 12)      /* 1b */
+#define REG_APU_SRCCLKENA_ACK_MASK_LSB      (1U << 13)      /* 1b */
+#define REG_APU_VRF18_ACK_MASK_LSB          (1U << 14)      /* 1b */
+#define REG_AUDIO_DSP_APSRC_ACK_MASK_LSB    (1U << 15)      /* 1b */
+#define REG_AUDIO_DSP_DDREN_ACK_MASK_LSB    (1U << 16)      /* 1b */
+#define REG_AUDIO_DSP_EMI_ACK_MASK_LSB      (1U << 17)      /* 1b */
+#define REG_AUDIO_DSP_INFRA_ACK_MASK_LSB    (1U << 18)      /* 1b */
+#define REG_AUDIO_DSP_PMIC_ACK_MASK_LSB     (1U << 19)      /* 1b */
+#define REG_AUDIO_DSP_SRCCLKENA_ACK_MASK_LSB (1U << 20)      /* 1b */
+#define REG_AUDIO_DSP_VCORE_ACK_MASK_LSB    (1U << 21)      /* 1b */
+#define REG_AUDIO_DSP_VRF18_ACK_MASK_LSB    (1U << 22)      /* 1b */
+#define REG_CONN_APSRC_ACK_MASK_LSB         (1U << 23)      /* 1b */
+#define REG_CONN_DDREN_ACK_MASK_LSB         (1U << 24)      /* 1b */
+#define REG_CONN_EMI_ACK_MASK_LSB           (1U << 25)      /* 1b */
+#define REG_CONN_INFRA_ACK_MASK_LSB         (1U << 26)      /* 1b */
+#define REG_CONN_PMIC_ACK_MASK_LSB          (1U << 27)      /* 1b */
+#define REG_CONN_SRCCLKENA_ACK_MASK_LSB     (1U << 28)      /* 1b */
+#define REG_CONN_VCORE_ACK_MASK_LSB         (1U << 29)      /* 1b */
+#define REG_CONN_VRF18_ACK_MASK_LSB         (1U << 30)      /* 1b */
+#define REG_MCUPM_APSRC_ACK_MASK_LSB        (1U << 31)      /* 1b */
+/* SPM_RESOURCE_ACK_MASK_1 (0x1C001000+0x890) */
+#define REG_MCUPM_DDREN_ACK_MASK_LSB        (1U << 0)       /* 1b */
+#define REG_MCUPM_EMI_ACK_MASK_LSB          (1U << 1)       /* 1b */
+#define REG_MCUPM_INFRA_ACK_MASK_LSB        (1U << 2)       /* 1b */
+#define REG_MCUPM_PMIC_ACK_MASK_LSB         (1U << 3)       /* 1b */
+#define REG_MCUPM_SRCCLKENA_ACK_MASK_LSB    (1U << 4)       /* 1b */
+#define REG_MCUPM_VRF18_ACK_MASK_LSB        (1U << 5)       /* 1b */
+#define REG_GCE_APSRC_ACK_MASK_LSB          (1U << 6)       /* 1b */
+#define REG_GCE_DDREN_ACK_MASK_LSB          (1U << 7)       /* 1b */
+#define REG_GCE_EMI_ACK_MASK_LSB            (1U << 8)       /* 1b */
+#define REG_GCE_INFRA_ACK_MASK_LSB          (1U << 9)       /* 1b */
+#define REG_GCE_VRF18_ACK_MASK_LSB          (1U << 10)      /* 1b */
+#define REG_GPUEB_APSRC_ACK_MASK_LSB        (1U << 11)      /* 1b */
+#define REG_GPUEB_DDREN_ACK_MASK_LSB        (1U << 12)      /* 1b */
+#define REG_GPUEB_EMI_ACK_MASK_LSB          (1U << 13)      /* 1b */
+#define REG_GPUEB_INFRA_ACK_MASK_LSB        (1U << 14)      /* 1b */
+#define REG_GPUEB_PMIC_ACK_MASK_LSB         (1U << 15)      /* 1b */
+#define REG_GPUEB_SRCCLKENA_ACK_MASK_LSB    (1U << 16)      /* 1b */
+#define REG_GPUEB_VRF18_ACK_MASK_LSB        (1U << 17)      /* 1b */
+#define REG_MD_APSRC_ACK_MASK_LSB           (1U << 18)      /* 1b */
+#define REG_MD_DDREN_ACK_MASK_LSB           (1U << 19)      /* 1b */
+#define REG_MD_EMI_ACK_MASK_LSB             (1U << 20)      /* 1b */
+#define REG_MD_INFRA_ACK_MASK_LSB           (1U << 21)      /* 1b */
+#define REG_MD_PMIC_ACK_MASK_LSB            (1U << 22)      /* 1b */
+#define REG_MD_SRCCLKENA_ACK_MASK_LSB       (1U << 23)      /* 1b */
+#define REG_MD_VCORE_ACK_MASK_LSB           (1U << 24)      /* 1b */
+#define REG_MD_VRF18_ACK_MASK_LSB           (1U << 25)      /* 1b */
+/* SPM_RESOURCE_ACK_MASK_2 (0x1C001000+0x894) */
+#define REG_MM_PROC_APSRC_ACK_MASK_LSB      (1U << 0)       /* 1b */
+#define REG_MM_PROC_DDREN_ACK_MASK_LSB      (1U << 1)       /* 1b */
+#define REG_MM_PROC_EMI_ACK_MASK_LSB        (1U << 2)       /* 1b */
+#define REG_MM_PROC_INFRA_ACK_MASK_LSB      (1U << 3)       /* 1b */
+#define REG_MM_PROC_PMIC_ACK_MASK_LSB       (1U << 4)       /* 1b */
+#define REG_MM_PROC_SRCCLKENA_ACK_MASK_LSB  (1U << 5)       /* 1b */
+#define REG_MM_PROC_VRF18_ACK_MASK_LSB      (1U << 6)       /* 1b */
+#define REG_PCIE0_APSRC_ACK_MASK_LSB        (1U << 7)       /* 1b */
+#define REG_PCIE0_DDREN_ACK_MASK_LSB        (1U << 8)       /* 1b */
+#define REG_PCIE0_EMI_ACK_MASK_LSB          (1U << 9)       /* 1b */
+#define REG_PCIE0_INFRA_ACK_MASK_LSB        (1U << 10)      /* 1b */
+#define REG_PCIE0_PMIC_ACK_MASK_LSB         (1U << 11)      /* 1b */
+#define REG_PCIE0_SRCCLKENA_ACK_MASK_LSB    (1U << 12)      /* 1b */
+#define REG_PCIE0_VCORE_ACK_MASK_LSB        (1U << 13)      /* 1b */
+#define REG_PCIE0_VRF18_ACK_MASK_LSB        (1U << 14)      /* 1b */
+#define REG_PCIE1_APSRC_ACK_MASK_LSB        (1U << 15)      /* 1b */
+#define REG_PCIE1_DDREN_ACK_MASK_LSB        (1U << 16)      /* 1b */
+#define REG_PCIE1_EMI_ACK_MASK_LSB          (1U << 17)      /* 1b */
+#define REG_PCIE1_INFRA_ACK_MASK_LSB        (1U << 18)      /* 1b */
+#define REG_PCIE1_PMIC_ACK_MASK_LSB         (1U << 19)      /* 1b */
+#define REG_PCIE1_SRCCLKENA_ACK_MASK_LSB    (1U << 20)      /* 1b */
+#define REG_PCIE1_VCORE_ACK_MASK_LSB        (1U << 21)      /* 1b */
+#define REG_PCIE1_VRF18_ACK_MASK_LSB        (1U << 22)      /* 1b */
+#define REG_SCP_APSRC_ACK_MASK_LSB          (1U << 23)      /* 1b */
+#define REG_SCP_DDREN_ACK_MASK_LSB          (1U << 24)      /* 1b */
+#define REG_SCP_EMI_ACK_MASK_LSB            (1U << 25)      /* 1b */
+#define REG_SCP_INFRA_ACK_MASK_LSB          (1U << 26)      /* 1b */
+#define REG_SCP_PMIC_ACK_MASK_LSB           (1U << 27)      /* 1b */
+#define REG_SCP_SRCCLKENA_ACK_MASK_LSB      (1U << 28)      /* 1b */
+#define REG_SCP_VCORE_ACK_MASK_LSB          (1U << 29)      /* 1b */
 #define REG_SCP_VRF18_ACK_MASK_LSB          (1U << 30)      /* 1b */
 #define REG_SSPM_APSRC_ACK_MASK_LSB         (1U << 31)      /* 1b */
-/* SPM_RESOURCE_ACK_MASK_2 (0x1C001000+0x874) */
+/* SPM_RESOURCE_ACK_MASK_3 (0x1C001000+0x898) */
 #define REG_SSPM_DDREN_ACK_MASK_LSB         (1U << 0)       /* 1b */
-#define REG_SSPM_INFRA_ACK_MASK_LSB         (1U << 1)       /* 1b */
-#define REG_SSPM_SRCCLKENA_ACK_MASK_LSB     (1U << 2)       /* 1b */
-#define REG_SSPM_VRF18_ACK_MASK_LSB         (1U << 3)       /* 1b */
-#define REG_SSUSB0_APSRC_ACK_MASK_LSB       (1U << 4)       /* 1b */
-#define REG_SSUSB0_DDREN_ACK_MASK_LSB       (1U << 5)       /* 1b */
-#define REG_SSUSB0_INFRA_ACK_MASK_LSB       (1U << 6)       /* 1b */
-#define REG_SSUSB0_SRCCLKENA_ACK_MASK_LSB   (1U << 7)       /* 1b */
-#define REG_SSUSB0_VRF18_ACK_MASK_LSB       (1U << 8)       /* 1b */
-#define REG_SSUSB1_APSRC_ACK_MASK_LSB       (1U << 9)       /* 1b */
-#define REG_SSUSB1_DDREN_ACK_MASK_LSB       (1U << 10)      /* 1b */
-#define REG_SSUSB1_INFRA_ACK_MASK_LSB       (1U << 11)      /* 1b */
-#define REG_SSUSB1_SRCCLKENA_ACK_MASK_LSB   (1U << 12)      /* 1b */
-#define REG_SSUSB1_VRF18_ACK_MASK_LSB       (1U << 13)      /* 1b */
-#define REG_UFS_APSRC_ACK_MASK_LSB          (1U << 14)      /* 1b */
-#define REG_UFS_DDREN_ACK_MASK_LSB          (1U << 15)      /* 1b */
-#define REG_UFS_INFRA_ACK_MASK_LSB          (1U << 16)      /* 1b */
-#define REG_UFS_SRCCLKENA_ACK_MASK_LSB      (1U << 17)      /* 1b */
-#define REG_UFS_VRF18_ACK_MASK_LSB          (1U << 18)      /* 1b */
-/* SPM_EVENT_COUNTER_CLEAR (0x1C001000+0x878) */
+#define REG_SSPM_EMI_ACK_MASK_LSB           (1U << 1)       /* 1b */
+#define REG_SSPM_INFRA_ACK_MASK_LSB         (1U << 2)       /* 1b */
+#define REG_SSPM_PMIC_ACK_MASK_LSB          (1U << 3)       /* 1b */
+#define REG_SSPM_SRCCLKENA_ACK_MASK_LSB     (1U << 4)       /* 1b */
+#define REG_SSPM_VRF18_ACK_MASK_LSB         (1U << 5)       /* 1b */
+#define REG_SSR_INFRA_ACK_MASK_LSB          (1U << 6)       /* 1b */
+#define REG_SSR_PMIC_ACK_MASK_LSB           (1U << 7)       /* 1b */
+#define REG_SSR_SRCCLKENA_ACK_MASK_LSB      (1U << 8)       /* 1b */
+#define REG_SSR_VRF18_ACK_MASK_LSB          (1U << 9)       /* 1b */
+#define REG_SSUSB0_APSRC_ACK_MASK_LSB       (1U << 10)      /* 1b */
+#define REG_SSUSB0_DDREN_ACK_MASK_LSB       (1U << 11)      /* 1b */
+#define REG_SSUSB0_EMI_ACK_MASK_LSB         (1U << 12)      /* 1b */
+#define REG_SSUSB0_INFRA_ACK_MASK_LSB       (1U << 13)      /* 1b */
+#define REG_SSUSB0_PMIC_ACK_MASK_LSB        (1U << 14)      /* 1b */
+#define REG_SSUSB0_SRCCLKENA_ACK_MASK_LSB   (1U << 15)      /* 1b */
+#define REG_SSUSB0_VRF18_ACK_MASK_LSB       (1U << 16)      /* 1b */
+#define REG_SSUSB1_APSRC_ACK_MASK_LSB       (1U << 17)      /* 1b */
+#define REG_SSUSB1_DDREN_ACK_MASK_LSB       (1U << 18)      /* 1b */
+#define REG_SSUSB1_EMI_ACK_MASK_LSB         (1U << 19)      /* 1b */
+#define REG_SSUSB1_INFRA_ACK_MASK_LSB       (1U << 20)      /* 1b */
+#define REG_SSUSB1_PMIC_ACK_MASK_LSB        (1U << 21)      /* 1b */
+#define REG_SSUSB1_SRCCLKENA_ACK_MASK_LSB   (1U << 22)      /* 1b */
+#define REG_SSUSB1_VRF18_ACK_MASK_LSB       (1U << 23)      /* 1b */
+#define REG_UART_HUB_INFRA_ACK_MASK_LSB     (1U << 24)      /* 1b */
+#define REG_UART_HUB_PMIC_ACK_MASK_LSB      (1U << 25)      /* 1b */
+#define REG_UART_HUB_SRCCLKENA_ACK_MASK_LSB (1U << 26)      /* 1b */
+#define REG_UART_HUB_VCORE_ACK_MASK_LSB     (1U << 27)      /* 1b */
+#define REG_UART_HUB_VRF18_ACK_MASK_LSB     (1U << 28)      /* 1b */
+#define REG_UFS_APSRC_ACK_MASK_LSB          (1U << 29)      /* 1b */
+#define REG_UFS_DDREN_ACK_MASK_LSB          (1U << 30)      /* 1b */
+#define REG_UFS_EMI_ACK_MASK_LSB            (1U << 31)      /* 1b */
+/* SPM_RESOURCE_ACK_MASK_4 (0x1C001000+0x89C) */
+#define REG_UFS_INFRA_ACK_MASK_LSB          (1U << 0)       /* 1b */
+#define REG_UFS_PMIC_ACK_MASK_LSB           (1U << 1)       /* 1b */
+#define REG_UFS_SRCCLKENA_ACK_MASK_LSB      (1U << 2)       /* 1b */
+#define REG_UFS_VRF18_ACK_MASK_LSB          (1U << 3)       /* 1b */
+#define REG_MCU_APSRC_ACK_MASK_LSB          (1U << 4)       /* 1b */
+#define REG_MCU_DDREN_ACK_MASK_LSB          (1U << 5)       /* 1b */
+#define REG_MCU_EMI_ACK_MASK_LSB            (1U << 6)       /* 1b */
+/* SPM_EVENT_COUNTER_CLEAR (0x1C001000+0x8A0) */
 #define REG_SPM_EVENT_COUNTER_CLR_LSB       (1U << 0)       /* 1b */
-/* SPM_SRCCLKENA_EVENT_COUNT_STA (0x1C001000+0x87C) */
+/* SPM_SRCCLKENA_EVENT_COUNT_STA (0x1C001000+0x8A4) */
 #define SPM_SRCCLKENA_SLEEP_COUNT_LSB       (1U << 0)       /* 16b */
 #define SPM_SRCCLKENA_WAKE_COUNT_LSB        (1U << 16)      /* 16b */
-/* SPM_INFRA_EVENT_COUNT_STA (0x1C001000+0x880) */
+/* SPM_PMIC_EVENT_COUNT_STA (0x1C001000+0x8A8) */
+#define SPM_PMIC_SLEEP_COUNT_LSB            (1U << 0)       /* 16b */
+#define SPM_PMIC_WAKE_COUNT_LSB             (1U << 16)      /* 16b */
+/* SPM_INFRA_EVENT_COUNT_STA (0x1C001000+0x8AC) */
 #define SPM_INFRA_SLEEP_COUNT_LSB           (1U << 0)       /* 16b */
 #define SPM_INFRA_WAKE_COUNT_LSB            (1U << 16)      /* 16b */
-/* SPM_APSRC_EVENT_COUNT_STA (0x1C001000+0x884) */
+/* SPM_EMI_EVENT_COUNT_STA (0x1C001000+0x8B0) */
+#define SPM_EMI_SLEEP_COUNT_LSB             (1U << 0)       /* 16b */
+#define SPM_EMI_WAKE_COUNT_LSB              (1U << 16)      /* 16b */
+/* SPM_APSRC_EVENT_COUNT_STA (0x1C001000+0x8B4) */
 #define SPM_APSRC_SLEEP_COUNT_LSB           (1U << 0)       /* 16b */
 #define SPM_APSRC_WAKE_COUNT_LSB            (1U << 16)      /* 16b */
-/* SPM_VRF18_EVENT_COUNT_STA (0x1C001000+0x888) */
+/* SPM_VRF18_EVENT_COUNT_STA (0x1C001000+0x8B8) */
 #define SPM_VRF18_SLEEP_COUNT_LSB           (1U << 0)       /* 16b */
 #define SPM_VRF18_WAKE_COUNT_LSB            (1U << 16)      /* 16b */
-/* SPM_DDREN_EVENT_COUNT_STA (0x1C001000+0x88C) */
+/* SPM_DDREN_EVENT_COUNT_STA (0x1C001000+0x8BC) */
 #define SPM_DDREN_SLEEP_COUNT_LSB           (1U << 0)       /* 16b */
 #define SPM_DDREN_WAKE_COUNT_LSB            (1U << 16)      /* 16b */
-/* SPM_VCORE_EVENT_COUNT_STA (0x1C001000+0x890) */
+/* SPM_VCORE_EVENT_COUNT_STA (0x1C001000+0x8C0) */
 #define SPM_VCORE_SLEEP_COUNT_LSB           (1U << 0)       /* 16b */
-#define SPM_VCORE_WAKE_COUNT_LSB            (1U << 16)      /* 16b */
 /* PCM_WDT_LATCH_0 (0x1C001000+0x900) */
 #define PCM_WDT_LATCH_0_LSB                 (1U << 0)       /* 32b */
 /* PCM_WDT_LATCH_1 (0x1C001000+0x904) */
@@ -1658,6 +2006,9 @@
 #define MD1_PWR_ON_LSB                      (1U << 2)       /* 1b */
 #define MD1_PWR_ON_2ND_LSB                  (1U << 3)       /* 1b */
 #define MD1_PWR_CLK_DIS_LSB                 (1U << 4)       /* 1b */
+#define MD1_RTFF_SAVE_LSB                   (1U << 24)      /* 1b */
+#define MD1_RTFF_NRESTORE_LSB               (1U << 25)      /* 1b */
+#define MD1_RTFF_CLK_DIS_LSB                (1U << 28)      /* 1b */
 #define SC_MD1_PWR_ACK_LSB                  (1U << 30)      /* 1b */
 #define SC_MD1_PWR_ACK_2ND_LSB              (1U << 31)      /* 1b */
 /* CONN_PWR_CON (0x1C001000+0xE04) */
@@ -1666,6 +2017,9 @@
 #define CONN_PWR_ON_LSB                     (1U << 2)       /* 1b */
 #define CONN_PWR_ON_2ND_LSB                 (1U << 3)       /* 1b */
 #define CONN_PWR_CLK_DIS_LSB                (1U << 4)       /* 1b */
+#define CONN_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define CONN_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define CONN_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_CONN_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_CONN_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
 /* IFR_PWR_CON (0x1C001000+0xE08) */
@@ -1680,6 +2034,9 @@
 #define IFR_SRAM_SLEEP_B_LSB                (1U << 9)       /* 1b */
 #define SC_IFR_SRAM_PDN_ACK_LSB             (1U << 12)      /* 1b */
 #define SC_IFR_SRAM_SLEEP_B_ACK_LSB         (1U << 13)      /* 1b */
+#define IFR_RTFF_SAVE_LSB                   (1U << 24)      /* 1b */
+#define IFR_RTFF_NRESTORE_LSB               (1U << 25)      /* 1b */
+#define IFR_RTFF_CLK_DIS_LSB                (1U << 28)      /* 1b */
 #define SC_IFR_PWR_ACK_LSB                  (1U << 30)      /* 1b */
 #define SC_IFR_PWR_ACK_2ND_LSB              (1U << 31)      /* 1b */
 /* PERI_PWR_CON (0x1C001000+0xE0C) */
@@ -1694,6 +2051,9 @@
 #define PERI_SRAM_SLEEP_B_LSB               (1U << 9)       /* 1b */
 #define SC_PERI_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
 #define SC_PERI_SRAM_SLEEP_B_ACK_LSB        (1U << 13)      /* 1b */
+#define PERI_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define PERI_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define PERI_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_PERI_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_PERI_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
 /* UFS0_PWR_CON (0x1C001000+0xE10) */
@@ -1708,9 +2068,96 @@
 #define UFS0_SRAM_SLEEP_B_LSB               (1U << 9)       /* 1b */
 #define SC_UFS0_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
 #define SC_UFS0_SRAM_SLEEP_B_ACK_LSB        (1U << 13)      /* 1b */
+#define UFS0_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define UFS0_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define UFS0_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_UFS0_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_UFS0_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* AUDIO_PWR_CON (0x1C001000+0xE14) */
+/* UFS0_PHY_PWR_CON (0x1C001000+0xE14) */
+#define UFS0_PHY_PWR_RST_B_LSB              (1U << 0)       /* 1b */
+#define UFS0_PHY_PWR_ISO_LSB                (1U << 1)       /* 1b */
+#define UFS0_PHY_PWR_ON_LSB                 (1U << 2)       /* 1b */
+#define UFS0_PHY_PWR_ON_2ND_LSB             (1U << 3)       /* 1b */
+#define UFS0_PHY_PWR_CLK_DIS_LSB            (1U << 4)       /* 1b */
+#define UFS0_PHY_SRAM_CKISO_LSB             (1U << 5)       /* 1b */
+#define UFS0_PHY_SRAM_ISOINT_B_LSB          (1U << 6)       /* 1b */
+#define UFS0_PHY_SRAM_PDN_LSB               (1U << 8)       /* 1b */
+#define UFS0_PHY_SRAM_SLEEP_B_LSB           (1U << 9)       /* 1b */
+#define SC_UFS0_PHY_SRAM_PDN_ACK_LSB        (1U << 12)      /* 1b */
+#define SC_UFS0_PHY_SRAM_SLEEP_B_ACK_LSB    (1U << 13)      /* 1b */
+#define UFS0_PHY_RTFF_SAVE_LSB              (1U << 24)      /* 1b */
+#define UFS0_PHY_RTFF_NRESTORE_LSB          (1U << 25)      /* 1b */
+#define UFS0_PHY_RTFF_CLK_DIS_LSB           (1U << 28)      /* 1b */
+#define SC_UFS0_PHY_PWR_ACK_LSB             (1U << 30)      /* 1b */
+#define SC_UFS0_PHY_PWR_ACK_2ND_LSB         (1U << 31)      /* 1b */
+/* PEXTP_MAC0_PWR_CON (0x1C001000+0xE18) */
+#define PEXTP_MAC0_PWR_RST_B_LSB            (1U << 0)       /* 1b */
+#define PEXTP_MAC0_PWR_ISO_LSB              (1U << 1)       /* 1b */
+#define PEXTP_MAC0_PWR_ON_LSB               (1U << 2)       /* 1b */
+#define PEXTP_MAC0_PWR_ON_2ND_LSB           (1U << 3)       /* 1b */
+#define PEXTP_MAC0_PWR_CLK_DIS_LSB          (1U << 4)       /* 1b */
+#define PEXTP_MAC0_SRAM_CKISO_LSB           (1U << 5)       /* 1b */
+#define PEXTP_MAC0_SRAM_ISOINT_B_LSB        (1U << 6)       /* 1b */
+#define PEXTP_MAC0_SRAM_PDN_LSB             (1U << 8)       /* 1b */
+#define PEXTP_MAC0_SRAM_SLEEP_B_LSB         (1U << 9)       /* 1b */
+#define SC_PEXTP_MAC0_SRAM_PDN_ACK_LSB      (1U << 12)      /* 1b */
+#define SC_PEXTP_MAC0_SRAM_SLEEP_B_ACK_LSB  (1U << 13)      /* 1b */
+#define PEXTP_MAC0_RTFF_SAVE_LSB            (1U << 24)      /* 1b */
+#define PEXTP_MAC0_RTFF_NRESTORE_LSB        (1U << 25)      /* 1b */
+#define PEXTP_MAC0_RTFF_CLK_DIS_LSB         (1U << 28)      /* 1b */
+#define SC_PEXTP_MAC0_PWR_ACK_LSB           (1U << 30)      /* 1b */
+#define SC_PEXTP_MAC0_PWR_ACK_2ND_LSB       (1U << 31)      /* 1b */
+/* PEXTP_MAC1_PWR_CON (0x1C001000+0xE1C) */
+#define PEXTP_MAC1_PWR_RST_B_LSB            (1U << 0)       /* 1b */
+#define PEXTP_MAC1_PWR_ISO_LSB              (1U << 1)       /* 1b */
+#define PEXTP_MAC1_PWR_ON_LSB               (1U << 2)       /* 1b */
+#define PEXTP_MAC1_PWR_ON_2ND_LSB           (1U << 3)       /* 1b */
+#define PEXTP_MAC1_PWR_CLK_DIS_LSB          (1U << 4)       /* 1b */
+#define PEXTP_MAC1_SRAM_CKISO_LSB           (1U << 5)       /* 1b */
+#define PEXTP_MAC1_SRAM_ISOINT_B_LSB        (1U << 6)       /* 1b */
+#define PEXTP_MAC1_SRAM_PDN_LSB             (1U << 8)       /* 1b */
+#define PEXTP_MAC1_SRAM_SLEEP_B_LSB         (1U << 9)       /* 1b */
+#define SC_PEXTP_MAC1_SRAM_PDN_ACK_LSB      (1U << 12)      /* 1b */
+#define SC_PEXTP_MAC1_SRAM_SLEEP_B_ACK_LSB  (1U << 13)      /* 1b */
+#define PEXTP_MAC1_RTFF_SAVE_LSB            (1U << 24)      /* 1b */
+#define PEXTP_MAC1_RTFF_NRESTORE_LSB        (1U << 25)      /* 1b */
+#define PEXTP_MAC1_RTFF_CLK_DIS_LSB         (1U << 28)      /* 1b */
+#define SC_PEXTP_MAC1_PWR_ACK_LSB           (1U << 30)      /* 1b */
+#define SC_PEXTP_MAC1_PWR_ACK_2ND_LSB       (1U << 31)      /* 1b */
+/* PEXTP_PHY0_PWR_CON (0x1C001000+0xE20) */
+#define PEXTP_PHY0_PWR_RST_B_LSB            (1U << 0)       /* 1b */
+#define PEXTP_PHY0_PWR_ISO_LSB              (1U << 1)       /* 1b */
+#define PEXTP_PHY0_PWR_ON_LSB               (1U << 2)       /* 1b */
+#define PEXTP_PHY0_PWR_ON_2ND_LSB           (1U << 3)       /* 1b */
+#define PEXTP_PHY0_PWR_CLK_DIS_LSB          (1U << 4)       /* 1b */
+#define PEXTP_PHY0_RTFF_SAVE_LSB            (1U << 24)      /* 1b */
+#define PEXTP_PHY0_RTFF_NRESTORE_LSB        (1U << 25)      /* 1b */
+#define PEXTP_PHY0_RTFF_CLK_DIS_LSB         (1U << 28)      /* 1b */
+#define SC_PEXTP_PHY0_PWR_ACK_LSB           (1U << 30)      /* 1b */
+#define SC_PEXTP_PHY0_PWR_ACK_2ND_LSB       (1U << 31)      /* 1b */
+/* PEXTP_PHY1_PWR_CON (0x1C001000+0xE24) */
+#define PEXTP_PHY1_PWR_RST_B_LSB            (1U << 0)       /* 1b */
+#define PEXTP_PHY1_PWR_ISO_LSB              (1U << 1)       /* 1b */
+#define PEXTP_PHY1_PWR_ON_LSB               (1U << 2)       /* 1b */
+#define PEXTP_PHY1_PWR_ON_2ND_LSB           (1U << 3)       /* 1b */
+#define PEXTP_PHY1_PWR_CLK_DIS_LSB          (1U << 4)       /* 1b */
+#define PEXTP_PHY1_RTFF_SAVE_LSB            (1U << 24)      /* 1b */
+#define PEXTP_PHY1_RTFF_NRESTORE_LSB        (1U << 25)      /* 1b */
+#define PEXTP_PHY1_RTFF_CLK_DIS_LSB         (1U << 28)      /* 1b */
+#define SC_PEXTP_PHY1_PWR_ACK_LSB           (1U << 30)      /* 1b */
+#define SC_PEXTP_PHY1_PWR_ACK_2ND_LSB       (1U << 31)      /* 1b */
+/* PEXTP_COMM_PWR_CON (0x1C001000+0xE28) */
+#define PEXTP_COMM_PWR_RST_B_LSB            (1U << 0)       /* 1b */
+#define PEXTP_COMM_PWR_ISO_LSB              (1U << 1)       /* 1b */
+#define PEXTP_COMM_PWR_ON_LSB               (1U << 2)       /* 1b */
+#define PEXTP_COMM_PWR_ON_2ND_LSB           (1U << 3)       /* 1b */
+#define PEXTP_COMM_PWR_CLK_DIS_LSB          (1U << 4)       /* 1b */
+#define PEXTP_COMM_RTFF_SAVE_LSB            (1U << 24)      /* 1b */
+#define PEXTP_COMM_RTFF_NRESTORE_LSB        (1U << 25)      /* 1b */
+#define PEXTP_COMM_RTFF_CLK_DIS_LSB         (1U << 28)      /* 1b */
+#define SC_PEXTP_COMM_PWR_ACK_LSB           (1U << 30)      /* 1b */
+#define SC_PEXTP_COMM_PWR_ACK_2ND_LSB       (1U << 31)      /* 1b */
+/* AUDIO_PWR_CON (0x1C001000+0xE2C) */
 #define AUDIO_PWR_RST_B_LSB                 (1U << 0)       /* 1b */
 #define AUDIO_PWR_ISO_LSB                   (1U << 1)       /* 1b */
 #define AUDIO_PWR_ON_LSB                    (1U << 2)       /* 1b */
@@ -1718,9 +2165,12 @@
 #define AUDIO_PWR_CLK_DIS_LSB               (1U << 4)       /* 1b */
 #define AUDIO_SRAM_PDN_LSB                  (1U << 8)       /* 1b */
 #define SC_AUDIO_SRAM_PDN_ACK_LSB           (1U << 12)      /* 1b */
+#define AUDIO_RTFF_SAVE_LSB                 (1U << 24)      /* 1b */
+#define AUDIO_RTFF_NRESTORE_LSB             (1U << 25)      /* 1b */
+#define AUDIO_RTFF_CLK_DIS_LSB              (1U << 28)      /* 1b */
 #define SC_AUDIO_PWR_ACK_LSB                (1U << 30)      /* 1b */
 #define SC_AUDIO_PWR_ACK_2ND_LSB            (1U << 31)      /* 1b */
-/* ADSP_TOP_PWR_CON (0x1C001000+0xE18) */
+/* ADSP_TOP_PWR_CON (0x1C001000+0xE30) */
 #define ADSP_TOP_PWR_RST_B_LSB              (1U << 0)       /* 1b */
 #define ADSP_TOP_PWR_ISO_LSB                (1U << 1)       /* 1b */
 #define ADSP_TOP_PWR_ON_LSB                 (1U << 2)       /* 1b */
@@ -1732,25 +2182,34 @@
 #define ADSP_TOP_SRAM_SLEEP_B_LSB           (1U << 9)       /* 1b */
 #define SC_ADSP_TOP_SRAM_PDN_ACK_LSB        (1U << 12)      /* 1b */
 #define SC_ADSP_TOP_SRAM_SLEEP_B_ACK_LSB    (1U << 13)      /* 1b */
+#define ADSP_TOP_RTFF_SAVE_LSB              (1U << 24)      /* 1b */
+#define ADSP_TOP_RTFF_NRESTORE_LSB          (1U << 25)      /* 1b */
+#define ADSP_TOP_RTFF_CLK_DIS_LSB           (1U << 28)      /* 1b */
 #define SC_ADSP_TOP_PWR_ACK_LSB             (1U << 30)      /* 1b */
 #define SC_ADSP_TOP_PWR_ACK_2ND_LSB         (1U << 31)      /* 1b */
-/* ADSP_INFRA_PWR_CON (0x1C001000+0xE1C) */
+/* ADSP_INFRA_PWR_CON (0x1C001000+0xE34) */
 #define ADSP_INFRA_PWR_RST_B_LSB            (1U << 0)       /* 1b */
 #define ADSP_INFRA_PWR_ISO_LSB              (1U << 1)       /* 1b */
 #define ADSP_INFRA_PWR_ON_LSB               (1U << 2)       /* 1b */
 #define ADSP_INFRA_PWR_ON_2ND_LSB           (1U << 3)       /* 1b */
 #define ADSP_INFRA_PWR_CLK_DIS_LSB          (1U << 4)       /* 1b */
+#define ADSP_INFRA_RTFF_SAVE_LSB            (1U << 24)      /* 1b */
+#define ADSP_INFRA_RTFF_NRESTORE_LSB        (1U << 25)      /* 1b */
+#define ADSP_INFRA_RTFF_CLK_DIS_LSB         (1U << 28)      /* 1b */
 #define SC_ADSP_INFRA_PWR_ACK_LSB           (1U << 30)      /* 1b */
 #define SC_ADSP_INFRA_PWR_ACK_2ND_LSB       (1U << 31)      /* 1b */
-/* ADSP_AO_PWR_CON (0x1C001000+0xE20) */
+/* ADSP_AO_PWR_CON (0x1C001000+0xE38) */
 #define ADSP_AO_PWR_RST_B_LSB               (1U << 0)       /* 1b */
 #define ADSP_AO_PWR_ISO_LSB                 (1U << 1)       /* 1b */
 #define ADSP_AO_PWR_ON_LSB                  (1U << 2)       /* 1b */
 #define ADSP_AO_PWR_ON_2ND_LSB              (1U << 3)       /* 1b */
 #define ADSP_AO_PWR_CLK_DIS_LSB             (1U << 4)       /* 1b */
+#define ADSP_AO_RTFF_SAVE_LSB               (1U << 24)      /* 1b */
+#define ADSP_AO_RTFF_NRESTORE_LSB           (1U << 25)      /* 1b */
+#define ADSP_AO_RTFF_CLK_DIS_LSB            (1U << 28)      /* 1b */
 #define SC_ADSP_AO_PWR_ACK_LSB              (1U << 30)      /* 1b */
 #define SC_ADSP_AO_PWR_ACK_2ND_LSB          (1U << 31)      /* 1b */
-/* ISP_MAIN_PWR_CON (0x1C001000+0xE24) */
+/* ISP_MAIN_PWR_CON (0x1C001000+0xE3C) */
 #define ISP_MAIN_PWR_RST_B_LSB              (1U << 0)       /* 1b */
 #define ISP_MAIN_PWR_ISO_LSB                (1U << 1)       /* 1b */
 #define ISP_MAIN_PWR_ON_LSB                 (1U << 2)       /* 1b */
@@ -1758,9 +2217,12 @@
 #define ISP_MAIN_PWR_CLK_DIS_LSB            (1U << 4)       /* 1b */
 #define ISP_MAIN_SRAM_PDN_LSB               (1U << 8)       /* 1b */
 #define SC_ISP_MAIN_SRAM_PDN_ACK_LSB        (1U << 12)      /* 1b */
+#define ISP_MAIN_RTFF_SAVE_LSB              (1U << 24)      /* 1b */
+#define ISP_MAIN_RTFF_NRESTORE_LSB          (1U << 25)      /* 1b */
+#define ISP_MAIN_RTFF_CLK_DIS_LSB           (1U << 28)      /* 1b */
 #define SC_ISP_MAIN_PWR_ACK_LSB             (1U << 30)      /* 1b */
 #define SC_ISP_MAIN_PWR_ACK_2ND_LSB         (1U << 31)      /* 1b */
-/* ISP_DIP1_PWR_CON (0x1C001000+0xE28) */
+/* ISP_DIP1_PWR_CON (0x1C001000+0xE40) */
 #define ISP_DIP1_PWR_RST_B_LSB              (1U << 0)       /* 1b */
 #define ISP_DIP1_PWR_ISO_LSB                (1U << 1)       /* 1b */
 #define ISP_DIP1_PWR_ON_LSB                 (1U << 2)       /* 1b */
@@ -1768,9 +2230,12 @@
 #define ISP_DIP1_PWR_CLK_DIS_LSB            (1U << 4)       /* 1b */
 #define ISP_DIP1_SRAM_PDN_LSB               (1U << 8)       /* 1b */
 #define SC_ISP_DIP1_SRAM_PDN_ACK_LSB        (1U << 12)      /* 1b */
+#define ISP_DIP1_RTFF_SAVE_LSB              (1U << 24)      /* 1b */
+#define ISP_DIP1_RTFF_NRESTORE_LSB          (1U << 25)      /* 1b */
+#define ISP_DIP1_RTFF_CLK_DIS_LSB           (1U << 28)      /* 1b */
 #define SC_ISP_DIP1_PWR_ACK_LSB             (1U << 30)      /* 1b */
 #define SC_ISP_DIP1_PWR_ACK_2ND_LSB         (1U << 31)      /* 1b */
-/* ISP_IPE_PWR_CON (0x1C001000+0xE2C) */
+/* ISP_IPE_PWR_CON (0x1C001000+0xE44) */
 #define ISP_IPE_PWR_RST_B_LSB               (1U << 0)       /* 1b */
 #define ISP_IPE_PWR_ISO_LSB                 (1U << 1)       /* 1b */
 #define ISP_IPE_PWR_ON_LSB                  (1U << 2)       /* 1b */
@@ -1778,17 +2243,23 @@
 #define ISP_IPE_PWR_CLK_DIS_LSB             (1U << 4)       /* 1b */
 #define ISP_IPE_SRAM_PDN_LSB                (1U << 8)       /* 1b */
 #define SC_ISP_IPE_SRAM_PDN_ACK_LSB         (1U << 12)      /* 1b */
+#define ISP_IPE_RTFF_SAVE_LSB               (1U << 24)      /* 1b */
+#define ISP_IPE_RTFF_NRESTORE_LSB           (1U << 25)      /* 1b */
+#define ISP_IPE_RTFF_CLK_DIS_LSB            (1U << 28)      /* 1b */
 #define SC_ISP_IPE_PWR_ACK_LSB              (1U << 30)      /* 1b */
 #define SC_ISP_IPE_PWR_ACK_2ND_LSB          (1U << 31)      /* 1b */
-/* ISP_VCORE_PWR_CON (0x1C001000+0xE30) */
+/* ISP_VCORE_PWR_CON (0x1C001000+0xE48) */
 #define ISP_VCORE_PWR_RST_B_LSB             (1U << 0)       /* 1b */
 #define ISP_VCORE_PWR_ISO_LSB               (1U << 1)       /* 1b */
 #define ISP_VCORE_PWR_ON_LSB                (1U << 2)       /* 1b */
 #define ISP_VCORE_PWR_ON_2ND_LSB            (1U << 3)       /* 1b */
 #define ISP_VCORE_PWR_CLK_DIS_LSB           (1U << 4)       /* 1b */
+#define ISP_VCORE_RTFF_SAVE_LSB             (1U << 24)      /* 1b */
+#define ISP_VCORE_RTFF_NRESTORE_LSB         (1U << 25)      /* 1b */
+#define ISP_VCORE_RTFF_CLK_DIS_LSB          (1U << 28)      /* 1b */
 #define SC_ISP_VCORE_PWR_ACK_LSB            (1U << 30)      /* 1b */
 #define SC_ISP_VCORE_PWR_ACK_2ND_LSB        (1U << 31)      /* 1b */
-/* VDE0_PWR_CON (0x1C001000+0xE34) */
+/* VDE0_PWR_CON (0x1C001000+0xE4C) */
 #define VDE0_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define VDE0_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define VDE0_PWR_ON_LSB                     (1U << 2)       /* 1b */
@@ -1796,9 +2267,12 @@
 #define VDE0_PWR_CLK_DIS_LSB                (1U << 4)       /* 1b */
 #define VDE0_SRAM_PDN_LSB                   (1U << 8)       /* 1b */
 #define SC_VDE0_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
+#define VDE0_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define VDE0_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define VDE0_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_VDE0_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_VDE0_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* VDE1_PWR_CON (0x1C001000+0xE38) */
+/* VDE1_PWR_CON (0x1C001000+0xE50) */
 #define VDE1_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define VDE1_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define VDE1_PWR_ON_LSB                     (1U << 2)       /* 1b */
@@ -1806,9 +2280,12 @@
 #define VDE1_PWR_CLK_DIS_LSB                (1U << 4)       /* 1b */
 #define VDE1_SRAM_PDN_LSB                   (1U << 8)       /* 1b */
 #define SC_VDE1_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
+#define VDE1_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define VDE1_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define VDE1_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_VDE1_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_VDE1_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* VEN0_PWR_CON (0x1C001000+0xE3C) */
+/* VEN0_PWR_CON (0x1C001000+0xE54) */
 #define VEN0_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define VEN0_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define VEN0_PWR_ON_LSB                     (1U << 2)       /* 1b */
@@ -1816,9 +2293,12 @@
 #define VEN0_PWR_CLK_DIS_LSB                (1U << 4)       /* 1b */
 #define VEN0_SRAM_PDN_LSB                   (1U << 8)       /* 1b */
 #define SC_VEN0_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
+#define VEN0_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define VEN0_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define VEN0_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_VEN0_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_VEN0_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* VEN1_PWR_CON (0x1C001000+0xE40) */
+/* VEN1_PWR_CON (0x1C001000+0xE58) */
 #define VEN1_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define VEN1_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define VEN1_PWR_ON_LSB                     (1U << 2)       /* 1b */
@@ -1826,9 +2306,25 @@
 #define VEN1_PWR_CLK_DIS_LSB                (1U << 4)       /* 1b */
 #define VEN1_SRAM_PDN_LSB                   (1U << 8)       /* 1b */
 #define SC_VEN1_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
+#define VEN1_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define VEN1_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define VEN1_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_VEN1_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_VEN1_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* CAM_MAIN_PWR_CON (0x1C001000+0xE44) */
+/* VEN2_PWR_CON (0x1C001000+0xE5C) */
+#define VEN2_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
+#define VEN2_PWR_ISO_LSB                    (1U << 1)       /* 1b */
+#define VEN2_PWR_ON_LSB                     (1U << 2)       /* 1b */
+#define VEN2_PWR_ON_2ND_LSB                 (1U << 3)       /* 1b */
+#define VEN2_PWR_CLK_DIS_LSB                (1U << 4)       /* 1b */
+#define VEN2_SRAM_PDN_LSB                   (1U << 8)       /* 1b */
+#define SC_VEN2_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
+#define VEN2_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define VEN2_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define VEN2_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
+#define SC_VEN2_PWR_ACK_LSB                 (1U << 30)      /* 1b */
+#define SC_VEN2_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
+/* CAM_MAIN_PWR_CON (0x1C001000+0xE60) */
 #define CAM_MAIN_PWR_RST_B_LSB              (1U << 0)       /* 1b */
 #define CAM_MAIN_PWR_ISO_LSB                (1U << 1)       /* 1b */
 #define CAM_MAIN_PWR_ON_LSB                 (1U << 2)       /* 1b */
@@ -1836,9 +2332,12 @@
 #define CAM_MAIN_PWR_CLK_DIS_LSB            (1U << 4)       /* 1b */
 #define CAM_MAIN_SRAM_PDN_LSB               (1U << 8)       /* 1b */
 #define SC_CAM_MAIN_SRAM_PDN_ACK_LSB        (1U << 12)      /* 1b */
+#define CAM_MAIN_RTFF_SAVE_LSB              (1U << 24)      /* 1b */
+#define CAM_MAIN_RTFF_NRESTORE_LSB          (1U << 25)      /* 1b */
+#define CAM_MAIN_RTFF_CLK_DIS_LSB           (1U << 28)      /* 1b */
 #define SC_CAM_MAIN_PWR_ACK_LSB             (1U << 30)      /* 1b */
 #define SC_CAM_MAIN_PWR_ACK_2ND_LSB         (1U << 31)      /* 1b */
-/* CAM_MRAW_PWR_CON (0x1C001000+0xE48) */
+/* CAM_MRAW_PWR_CON (0x1C001000+0xE64) */
 #define CAM_MRAW_PWR_RST_B_LSB              (1U << 0)       /* 1b */
 #define CAM_MRAW_PWR_ISO_LSB                (1U << 1)       /* 1b */
 #define CAM_MRAW_PWR_ON_LSB                 (1U << 2)       /* 1b */
@@ -1846,9 +2345,12 @@
 #define CAM_MRAW_PWR_CLK_DIS_LSB            (1U << 4)       /* 1b */
 #define CAM_MRAW_SRAM_PDN_LSB               (1U << 8)       /* 1b */
 #define SC_CAM_MRAW_SRAM_PDN_ACK_LSB        (1U << 12)      /* 1b */
+#define CAM_MRAW_RTFF_SAVE_LSB              (1U << 24)      /* 1b */
+#define CAM_MRAW_RTFF_NRESTORE_LSB          (1U << 25)      /* 1b */
+#define CAM_MRAW_RTFF_CLK_DIS_LSB           (1U << 28)      /* 1b */
 #define SC_CAM_MRAW_PWR_ACK_LSB             (1U << 30)      /* 1b */
 #define SC_CAM_MRAW_PWR_ACK_2ND_LSB         (1U << 31)      /* 1b */
-/* CAM_SUBA_PWR_CON (0x1C001000+0xE4C) */
+/* CAM_SUBA_PWR_CON (0x1C001000+0xE68) */
 #define CAM_SUBA_PWR_RST_B_LSB              (1U << 0)       /* 1b */
 #define CAM_SUBA_PWR_ISO_LSB                (1U << 1)       /* 1b */
 #define CAM_SUBA_PWR_ON_LSB                 (1U << 2)       /* 1b */
@@ -1856,9 +2358,12 @@
 #define CAM_SUBA_PWR_CLK_DIS_LSB            (1U << 4)       /* 1b */
 #define CAM_SUBA_SRAM_PDN_LSB               (1U << 8)       /* 1b */
 #define SC_CAM_SUBA_SRAM_PDN_ACK_LSB        (1U << 12)      /* 1b */
+#define CAM_SUBA_RTFF_SAVE_LSB              (1U << 24)      /* 1b */
+#define CAM_SUBA_RTFF_NRESTORE_LSB          (1U << 25)      /* 1b */
+#define CAM_SUBA_RTFF_CLK_DIS_LSB           (1U << 28)      /* 1b */
 #define SC_CAM_SUBA_PWR_ACK_LSB             (1U << 30)      /* 1b */
 #define SC_CAM_SUBA_PWR_ACK_2ND_LSB         (1U << 31)      /* 1b */
-/* CAM_SUBB_PWR_CON (0x1C001000+0xE50) */
+/* CAM_SUBB_PWR_CON (0x1C001000+0xE6C) */
 #define CAM_SUBB_PWR_RST_B_LSB              (1U << 0)       /* 1b */
 #define CAM_SUBB_PWR_ISO_LSB                (1U << 1)       /* 1b */
 #define CAM_SUBB_PWR_ON_LSB                 (1U << 2)       /* 1b */
@@ -1866,9 +2371,12 @@
 #define CAM_SUBB_PWR_CLK_DIS_LSB            (1U << 4)       /* 1b */
 #define CAM_SUBB_SRAM_PDN_LSB               (1U << 8)       /* 1b */
 #define SC_CAM_SUBB_SRAM_PDN_ACK_LSB        (1U << 12)      /* 1b */
+#define CAM_SUBB_RTFF_SAVE_LSB              (1U << 24)      /* 1b */
+#define CAM_SUBB_RTFF_NRESTORE_LSB          (1U << 25)      /* 1b */
+#define CAM_SUBB_RTFF_CLK_DIS_LSB           (1U << 28)      /* 1b */
 #define SC_CAM_SUBB_PWR_ACK_LSB             (1U << 30)      /* 1b */
 #define SC_CAM_SUBB_PWR_ACK_2ND_LSB         (1U << 31)      /* 1b */
-/* CAM_SUBC_PWR_CON (0x1C001000+0xE54) */
+/* CAM_SUBC_PWR_CON (0x1C001000+0xE70) */
 #define CAM_SUBC_PWR_RST_B_LSB              (1U << 0)       /* 1b */
 #define CAM_SUBC_PWR_ISO_LSB                (1U << 1)       /* 1b */
 #define CAM_SUBC_PWR_ON_LSB                 (1U << 2)       /* 1b */
@@ -1876,57 +2384,125 @@
 #define CAM_SUBC_PWR_CLK_DIS_LSB            (1U << 4)       /* 1b */
 #define CAM_SUBC_SRAM_PDN_LSB               (1U << 8)       /* 1b */
 #define SC_CAM_SUBC_SRAM_PDN_ACK_LSB        (1U << 12)      /* 1b */
+#define CAM_SUBC_RTFF_SAVE_LSB              (1U << 24)      /* 1b */
+#define CAM_SUBC_RTFF_NRESTORE_LSB          (1U << 25)      /* 1b */
+#define CAM_SUBC_RTFF_CLK_DIS_LSB           (1U << 28)      /* 1b */
 #define SC_CAM_SUBC_PWR_ACK_LSB             (1U << 30)      /* 1b */
 #define SC_CAM_SUBC_PWR_ACK_2ND_LSB         (1U << 31)      /* 1b */
-/* CAM_VCORE_PWR_CON (0x1C001000+0xE58) */
+/* CAM_VCORE_PWR_CON (0x1C001000+0xE74) */
 #define CAM_VCORE_PWR_RST_B_LSB             (1U << 0)       /* 1b */
 #define CAM_VCORE_PWR_ISO_LSB               (1U << 1)       /* 1b */
 #define CAM_VCORE_PWR_ON_LSB                (1U << 2)       /* 1b */
 #define CAM_VCORE_PWR_ON_2ND_LSB            (1U << 3)       /* 1b */
 #define CAM_VCORE_PWR_CLK_DIS_LSB           (1U << 4)       /* 1b */
+#define CAM_VCORE_RTFF_SAVE_LSB             (1U << 24)      /* 1b */
+#define CAM_VCORE_RTFF_NRESTORE_LSB         (1U << 25)      /* 1b */
+#define CAM_VCORE_RTFF_CLK_DIS_LSB          (1U << 28)      /* 1b */
 #define SC_CAM_VCORE_PWR_ACK_LSB            (1U << 30)      /* 1b */
 #define SC_CAM_VCORE_PWR_ACK_2ND_LSB        (1U << 31)      /* 1b */
-/* MDP0_PWR_CON (0x1C001000+0xE5C) */
+/* MDP0_PWR_CON (0x1C001000+0xE78) */
 #define MDP0_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define MDP0_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define MDP0_PWR_ON_LSB                     (1U << 2)       /* 1b */
 #define MDP0_PWR_ON_2ND_LSB                 (1U << 3)       /* 1b */
 #define MDP0_PWR_CLK_DIS_LSB                (1U << 4)       /* 1b */
+#define MDP0_SRAM_CKISO_LSB                 (1U << 5)       /* 1b */
+#define MDP0_SRAM_ISOINT_B_LSB              (1U << 6)       /* 1b */
 #define MDP0_SRAM_PDN_LSB                   (1U << 8)       /* 1b */
+#define MDP0_SRAM_SLEEP_B_LSB               (1U << 9)       /* 1b */
 #define SC_MDP0_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
+#define SC_MDP0_SRAM_SLEEP_B_ACK_LSB        (1U << 13)      /* 1b */
+#define MDP0_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define MDP0_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define MDP0_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_MDP0_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_MDP0_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* MDP1_PWR_CON (0x1C001000+0xE60) */
+/* MDP1_PWR_CON (0x1C001000+0xE7C) */
 #define MDP1_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define MDP1_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define MDP1_PWR_ON_LSB                     (1U << 2)       /* 1b */
 #define MDP1_PWR_ON_2ND_LSB                 (1U << 3)       /* 1b */
 #define MDP1_PWR_CLK_DIS_LSB                (1U << 4)       /* 1b */
+#define MDP1_SRAM_CKISO_LSB                 (1U << 5)       /* 1b */
+#define MDP1_SRAM_ISOINT_B_LSB              (1U << 6)       /* 1b */
 #define MDP1_SRAM_PDN_LSB                   (1U << 8)       /* 1b */
+#define MDP1_SRAM_SLEEP_B_LSB               (1U << 9)       /* 1b */
 #define SC_MDP1_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
+#define SC_MDP1_SRAM_SLEEP_B_ACK_LSB        (1U << 13)      /* 1b */
+#define MDP1_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define MDP1_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define MDP1_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_MDP1_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_MDP1_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* DIS0_PWR_CON (0x1C001000+0xE64) */
+/* DIS0_PWR_CON (0x1C001000+0xE80) */
 #define DIS0_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define DIS0_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define DIS0_PWR_ON_LSB                     (1U << 2)       /* 1b */
 #define DIS0_PWR_ON_2ND_LSB                 (1U << 3)       /* 1b */
 #define DIS0_PWR_CLK_DIS_LSB                (1U << 4)       /* 1b */
+#define DIS0_SRAM_CKISO_LSB                 (1U << 5)       /* 1b */
+#define DIS0_SRAM_ISOINT_B_LSB              (1U << 6)       /* 1b */
 #define DIS0_SRAM_PDN_LSB                   (1U << 8)       /* 1b */
+#define DIS0_SRAM_SLEEP_B_LSB               (1U << 9)       /* 1b */
 #define SC_DIS0_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
+#define SC_DIS0_SRAM_SLEEP_B_ACK_LSB        (1U << 13)      /* 1b */
+#define DIS0_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define DIS0_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define DIS0_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_DIS0_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_DIS0_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* DIS1_PWR_CON (0x1C001000+0xE68) */
+/* DIS1_PWR_CON (0x1C001000+0xE84) */
 #define DIS1_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define DIS1_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define DIS1_PWR_ON_LSB                     (1U << 2)       /* 1b */
 #define DIS1_PWR_ON_2ND_LSB                 (1U << 3)       /* 1b */
 #define DIS1_PWR_CLK_DIS_LSB                (1U << 4)       /* 1b */
+#define DIS1_SRAM_CKISO_LSB                 (1U << 5)       /* 1b */
+#define DIS1_SRAM_ISOINT_B_LSB              (1U << 6)       /* 1b */
 #define DIS1_SRAM_PDN_LSB                   (1U << 8)       /* 1b */
+#define DIS1_SRAM_SLEEP_B_LSB               (1U << 9)       /* 1b */
 #define SC_DIS1_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
+#define SC_DIS1_SRAM_SLEEP_B_ACK_LSB        (1U << 13)      /* 1b */
+#define DIS1_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define DIS1_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define DIS1_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_DIS1_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_DIS1_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* MM_INFRA_PWR_CON (0x1C001000+0xE6C) */
+/* OVLSYS_PWR_CON (0x1C001000+0xE88) */
+#define OVLSYS_PWR_RST_B_LSB                (1U << 0)       /* 1b */
+#define OVLSYS_PWR_ISO_LSB                  (1U << 1)       /* 1b */
+#define OVLSYS_PWR_ON_LSB                   (1U << 2)       /* 1b */
+#define OVLSYS_PWR_ON_2ND_LSB               (1U << 3)       /* 1b */
+#define OVLSYS_PWR_CLK_DIS_LSB              (1U << 4)       /* 1b */
+#define OVLSYS_SRAM_CKISO_LSB               (1U << 5)       /* 1b */
+#define OVLSYS_SRAM_ISOINT_B_LSB            (1U << 6)       /* 1b */
+#define OVLSYS_SRAM_PDN_LSB                 (1U << 8)       /* 1b */
+#define OVLSYS_SRAM_SLEEP_B_LSB             (1U << 9)       /* 1b */
+#define SC_OVLSYS_SRAM_PDN_ACK_LSB          (1U << 12)      /* 1b */
+#define SC_OVLSYS_SRAM_SLEEP_B_ACK_LSB      (1U << 13)      /* 1b */
+#define OVLSYS_RTFF_SAVE_LSB                (1U << 24)      /* 1b */
+#define OVLSYS_RTFF_NRESTORE_LSB            (1U << 25)      /* 1b */
+#define OVLSYS_RTFF_CLK_DIS_LSB             (1U << 28)      /* 1b */
+#define SC_OVLSYS_PWR_ACK_LSB               (1U << 30)      /* 1b */
+#define SC_OVLSYS_PWR_ACK_2ND_LSB           (1U << 31)      /* 1b */
+/* OVLSYS1_PWR_CON (0x1C001000+0xE8C) */
+#define OVLSYS1_PWR_RST_B_LSB               (1U << 0)       /* 1b */
+#define OVLSYS1_PWR_ISO_LSB                 (1U << 1)       /* 1b */
+#define OVLSYS1_PWR_ON_LSB                  (1U << 2)       /* 1b */
+#define OVLSYS1_PWR_ON_2ND_LSB              (1U << 3)       /* 1b */
+#define OVLSYS1_PWR_CLK_DIS_LSB             (1U << 4)       /* 1b */
+#define OVLSYS1_SRAM_CKISO_LSB              (1U << 5)       /* 1b */
+#define OVLSYS1_SRAM_ISOINT_B_LSB           (1U << 6)       /* 1b */
+#define OVLSYS1_SRAM_PDN_LSB                (1U << 8)       /* 1b */
+#define OVLSYS1_SRAM_SLEEP_B_LSB            (1U << 9)       /* 1b */
+#define SC_OVLSYS1_SRAM_PDN_ACK_LSB         (1U << 12)      /* 1b */
+#define SC_OVLSYS1_SRAM_SLEEP_B_ACK_LSB     (1U << 13)      /* 1b */
+#define OVLSYS1_RTFF_SAVE_LSB               (1U << 24)      /* 1b */
+#define OVLSYS1_RTFF_NRESTORE_LSB           (1U << 25)      /* 1b */
+#define OVLSYS1_RTFF_CLK_DIS_LSB            (1U << 28)      /* 1b */
+#define SC_OVLSYS1_PWR_ACK_LSB              (1U << 30)      /* 1b */
+#define SC_OVLSYS1_PWR_ACK_2ND_LSB          (1U << 31)      /* 1b */
+/* MM_INFRA_PWR_CON (0x1C001000+0xE90) */
 #define MM_INFRA_PWR_RST_B_LSB              (1U << 0)       /* 1b */
 #define MM_INFRA_PWR_ISO_LSB                (1U << 1)       /* 1b */
 #define MM_INFRA_PWR_ON_LSB                 (1U << 2)       /* 1b */
@@ -1934,9 +2510,12 @@
 #define MM_INFRA_PWR_CLK_DIS_LSB            (1U << 4)       /* 1b */
 #define MM_INFRA_SRAM_PDN_LSB               (1U << 8)       /* 1b */
 #define SC_MM_INFRA_SRAM_PDN_ACK_LSB        (1U << 12)      /* 1b */
+#define MM_INFRA_RTFF_SAVE_LSB              (1U << 24)      /* 1b */
+#define MM_INFRA_RTFF_NRESTORE_LSB          (1U << 25)      /* 1b */
+#define MM_INFRA_RTFF_CLK_DIS_LSB           (1U << 28)      /* 1b */
 #define SC_MM_INFRA_PWR_ACK_LSB             (1U << 30)      /* 1b */
 #define SC_MM_INFRA_PWR_ACK_2ND_LSB         (1U << 31)      /* 1b */
-/* MM_PROC_PWR_CON (0x1C001000+0xE70) */
+/* MM_PROC_PWR_CON (0x1C001000+0xE94) */
 #define MM_PROC_PWR_RST_B_LSB               (1U << 0)       /* 1b */
 #define MM_PROC_PWR_ISO_LSB                 (1U << 1)       /* 1b */
 #define MM_PROC_PWR_ON_LSB                  (1U << 2)       /* 1b */
@@ -1948,9 +2527,12 @@
 #define MM_PROC_SRAM_SLEEP_B_LSB            (1U << 9)       /* 1b */
 #define SC_MM_PROC_SRAM_PDN_ACK_LSB         (1U << 12)      /* 1b */
 #define SC_MM_PROC_SRAM_SLEEP_B_ACK_LSB     (1U << 13)      /* 1b */
+#define MM_PROC_RTFF_SAVE_LSB               (1U << 24)      /* 1b */
+#define MM_PROC_RTFF_NRESTORE_LSB           (1U << 25)      /* 1b */
+#define MM_PROC_RTFF_CLK_DIS_LSB            (1U << 28)      /* 1b */
 #define SC_MM_PROC_PWR_ACK_LSB              (1U << 30)      /* 1b */
 #define SC_MM_PROC_PWR_ACK_2ND_LSB          (1U << 31)      /* 1b */
-/* DP_TX_PWR_CON (0x1C001000+0xE74) */
+/* DP_TX_PWR_CON (0x1C001000+0xE98) */
 #define DP_TX_PWR_RST_B_LSB                 (1U << 0)       /* 1b */
 #define DP_TX_PWR_ISO_LSB                   (1U << 1)       /* 1b */
 #define DP_TX_PWR_ON_LSB                    (1U << 2)       /* 1b */
@@ -1958,9 +2540,12 @@
 #define DP_TX_PWR_CLK_DIS_LSB               (1U << 4)       /* 1b */
 #define DP_TX_SRAM_PDN_LSB                  (1U << 8)       /* 1b */
 #define SC_DP_TX_SRAM_PDN_ACK_LSB           (1U << 12)      /* 1b */
+#define DP_TX_RTFF_SAVE_LSB                 (1U << 24)      /* 1b */
+#define DP_TX_RTFF_NRESTORE_LSB             (1U << 25)      /* 1b */
+#define DP_TX_RTFF_CLK_DIS_LSB              (1U << 28)      /* 1b */
 #define SC_DP_TX_PWR_ACK_LSB                (1U << 30)      /* 1b */
 #define SC_DP_TX_PWR_ACK_2ND_LSB            (1U << 31)      /* 1b */
-/* SCP_PWR_CON (0x1C001000+0xE78) */
+/* SCP_PWR_CON (0x1C001000+0xE9C) */
 #define SCP_PWR_RST_B_LSB                   (1U << 0)       /* 1b */
 #define SCP_PWR_ISO_LSB                     (1U << 1)       /* 1b */
 #define SCP_PWR_ON_LSB                      (1U << 2)       /* 1b */
@@ -1972,9 +2557,12 @@
 #define SCP_SRAM_SLEEP_B_LSB                (1U << 9)       /* 1b */
 #define SC_SCP_SRAM_PDN_ACK_LSB             (1U << 12)      /* 1b */
 #define SC_SCP_SRAM_SLEEP_B_ACK_LSB         (1U << 13)      /* 1b */
+#define SCP_RTFF_SAVE_LSB                   (1U << 24)      /* 1b */
+#define SCP_RTFF_NRESTORE_LSB               (1U << 25)      /* 1b */
+#define SCP_RTFF_CLK_DIS_LSB                (1U << 28)      /* 1b */
 #define SC_SCP_PWR_ACK_LSB                  (1U << 30)      /* 1b */
 #define SC_SCP_PWR_ACK_2ND_LSB              (1U << 31)      /* 1b */
-/* DPYD0_PWR_CON (0x1C001000+0xE7C) */
+/* DPYD0_PWR_CON (0x1C001000+0xEA0) */
 #define DPYD0_PWR_RST_B_LSB                 (1U << 0)       /* 1b */
 #define DPYD0_PWR_ISO_LSB                   (1U << 1)       /* 1b */
 #define DPYD0_PWR_ON_LSB                    (1U << 2)       /* 1b */
@@ -1986,9 +2574,12 @@
 #define DPYD0_SRAM_SLEEP_B_LSB              (1U << 9)       /* 1b */
 #define SC_DPYD0_SRAM_PDN_ACK_LSB           (1U << 12)      /* 1b */
 #define SC_DPYD0_SRAM_SLEEP_B_ACK_LSB       (1U << 13)      /* 1b */
+#define DPYD0_RTFF_SAVE_LSB                 (1U << 24)      /* 1b */
+#define DPYD0_RTFF_NRESTORE_LSB             (1U << 25)      /* 1b */
+#define DPYD0_RTFF_CLK_DIS_LSB              (1U << 28)      /* 1b */
 #define SC_DPYD0_PWR_ACK_LSB                (1U << 30)      /* 1b */
 #define SC_DPYD0_PWR_ACK_2ND_LSB            (1U << 31)      /* 1b */
-/* DPYD1_PWR_CON (0x1C001000+0xE80) */
+/* DPYD1_PWR_CON (0x1C001000+0xEA4) */
 #define DPYD1_PWR_RST_B_LSB                 (1U << 0)       /* 1b */
 #define DPYD1_PWR_ISO_LSB                   (1U << 1)       /* 1b */
 #define DPYD1_PWR_ON_LSB                    (1U << 2)       /* 1b */
@@ -2000,9 +2591,12 @@
 #define DPYD1_SRAM_SLEEP_B_LSB              (1U << 9)       /* 1b */
 #define SC_DPYD1_SRAM_PDN_ACK_LSB           (1U << 12)      /* 1b */
 #define SC_DPYD1_SRAM_SLEEP_B_ACK_LSB       (1U << 13)      /* 1b */
+#define DPYD1_RTFF_SAVE_LSB                 (1U << 24)      /* 1b */
+#define DPYD1_RTFF_NRESTORE_LSB             (1U << 25)      /* 1b */
+#define DPYD1_RTFF_CLK_DIS_LSB              (1U << 28)      /* 1b */
 #define SC_DPYD1_PWR_ACK_LSB                (1U << 30)      /* 1b */
 #define SC_DPYD1_PWR_ACK_2ND_LSB            (1U << 31)      /* 1b */
-/* DPYD2_PWR_CON (0x1C001000+0xE84) */
+/* DPYD2_PWR_CON (0x1C001000+0xEA8) */
 #define DPYD2_PWR_RST_B_LSB                 (1U << 0)       /* 1b */
 #define DPYD2_PWR_ISO_LSB                   (1U << 1)       /* 1b */
 #define DPYD2_PWR_ON_LSB                    (1U << 2)       /* 1b */
@@ -2014,9 +2608,12 @@
 #define DPYD2_SRAM_SLEEP_B_LSB              (1U << 9)       /* 1b */
 #define SC_DPYD2_SRAM_PDN_ACK_LSB           (1U << 12)      /* 1b */
 #define SC_DPYD2_SRAM_SLEEP_B_ACK_LSB       (1U << 13)      /* 1b */
+#define DPYD2_RTFF_SAVE_LSB                 (1U << 24)      /* 1b */
+#define DPYD2_RTFF_NRESTORE_LSB             (1U << 25)      /* 1b */
+#define DPYD2_RTFF_CLK_DIS_LSB              (1U << 28)      /* 1b */
 #define SC_DPYD2_PWR_ACK_LSB                (1U << 30)      /* 1b */
 #define SC_DPYD2_PWR_ACK_2ND_LSB            (1U << 31)      /* 1b */
-/* DPYD3_PWR_CON (0x1C001000+0xE88) */
+/* DPYD3_PWR_CON (0x1C001000+0xEAC) */
 #define DPYD3_PWR_RST_B_LSB                 (1U << 0)       /* 1b */
 #define DPYD3_PWR_ISO_LSB                   (1U << 1)       /* 1b */
 #define DPYD3_PWR_ON_LSB                    (1U << 2)       /* 1b */
@@ -2028,41 +2625,56 @@
 #define DPYD3_SRAM_SLEEP_B_LSB              (1U << 9)       /* 1b */
 #define SC_DPYD3_SRAM_PDN_ACK_LSB           (1U << 12)      /* 1b */
 #define SC_DPYD3_SRAM_SLEEP_B_ACK_LSB       (1U << 13)      /* 1b */
+#define DPYD3_RTFF_SAVE_LSB                 (1U << 24)      /* 1b */
+#define DPYD3_RTFF_NRESTORE_LSB             (1U << 25)      /* 1b */
+#define DPYD3_RTFF_CLK_DIS_LSB              (1U << 28)      /* 1b */
 #define SC_DPYD3_PWR_ACK_LSB                (1U << 30)      /* 1b */
 #define SC_DPYD3_PWR_ACK_2ND_LSB            (1U << 31)      /* 1b */
-/* DPYA0_PWR_CON (0x1C001000+0xE8C) */
+/* DPYA0_PWR_CON (0x1C001000+0xEB0) */
 #define DPYA0_PWR_RST_B_LSB                 (1U << 0)       /* 1b */
 #define DPYA0_PWR_ISO_LSB                   (1U << 1)       /* 1b */
 #define DPYA0_PWR_ON_LSB                    (1U << 2)       /* 1b */
 #define DPYA0_PWR_ON_2ND_LSB                (1U << 3)       /* 1b */
 #define DPYA0_PWR_CLK_DIS_LSB               (1U << 4)       /* 1b */
+#define DPYA0_RTFF_SAVE_LSB                 (1U << 24)      /* 1b */
+#define DPYA0_RTFF_NRESTORE_LSB             (1U << 25)      /* 1b */
+#define DPYA0_RTFF_CLK_DIS_LSB              (1U << 28)      /* 1b */
 #define SC_DPYA0_PWR_ACK_LSB                (1U << 30)      /* 1b */
 #define SC_DPYA0_PWR_ACK_2ND_LSB            (1U << 31)      /* 1b */
-/* DPYA1_PWR_CON (0x1C001000+0xE90) */
+/* DPYA1_PWR_CON (0x1C001000+0xEB4) */
 #define DPYA1_PWR_RST_B_LSB                 (1U << 0)       /* 1b */
 #define DPYA1_PWR_ISO_LSB                   (1U << 1)       /* 1b */
 #define DPYA1_PWR_ON_LSB                    (1U << 2)       /* 1b */
 #define DPYA1_PWR_ON_2ND_LSB                (1U << 3)       /* 1b */
 #define DPYA1_PWR_CLK_DIS_LSB               (1U << 4)       /* 1b */
+#define DPYA1_RTFF_SAVE_LSB                 (1U << 24)      /* 1b */
+#define DPYA1_RTFF_NRESTORE_LSB             (1U << 25)      /* 1b */
+#define DPYA1_RTFF_CLK_DIS_LSB              (1U << 28)      /* 1b */
 #define SC_DPYA1_PWR_ACK_LSB                (1U << 30)      /* 1b */
 #define SC_DPYA1_PWR_ACK_2ND_LSB            (1U << 31)      /* 1b */
-/* DPYA2_PWR_CON (0x1C001000+0xE94) */
+/* DPYA2_PWR_CON (0x1C001000+0xEB8) */
 #define DPYA2_PWR_RST_B_LSB                 (1U << 0)       /* 1b */
 #define DPYA2_PWR_ISO_LSB                   (1U << 1)       /* 1b */
 #define DPYA2_PWR_ON_LSB                    (1U << 2)       /* 1b */
 #define DPYA2_PWR_ON_2ND_LSB                (1U << 3)       /* 1b */
 #define DPYA2_PWR_CLK_DIS_LSB               (1U << 4)       /* 1b */
+#define DPYA2_RTFF_SAVE_LSB                 (1U << 24)      /* 1b */
+#define DPYA2_RTFF_NRESTORE_LSB             (1U << 25)      /* 1b */
+#define DPYA2_RTFF_CLK_DIS_LSB              (1U << 28)      /* 1b */
 #define SC_DPYA2_PWR_ACK_LSB                (1U << 30)      /* 1b */
 #define SC_DPYA2_PWR_ACK_2ND_LSB            (1U << 31)      /* 1b */
-/* DPYA3_PWR_CON (0x1C001000+0xE98) */
+/* DPYA3_PWR_CON (0x1C001000+0xEBC) */
 #define DPYA3_PWR_RST_B_LSB                 (1U << 0)       /* 1b */
 #define DPYA3_PWR_ISO_LSB                   (1U << 1)       /* 1b */
 #define DPYA3_PWR_ON_LSB                    (1U << 2)       /* 1b */
 #define DPYA3_PWR_ON_2ND_LSB                (1U << 3)       /* 1b */
 #define DPYA3_PWR_CLK_DIS_LSB               (1U << 4)       /* 1b */
+#define DPYA3_RTFF_SAVE_LSB                 (1U << 24)      /* 1b */
+#define DPYA3_RTFF_NRESTORE_LSB             (1U << 25)      /* 1b */
+#define DPYA3_RTFF_CLK_DIS_LSB              (1U << 28)      /* 1b */
 #define SC_DPYA3_PWR_ACK_LSB                (1U << 30)      /* 1b */
 #define SC_DPYA3_PWR_ACK_2ND_LSB            (1U << 31)      /* 1b */
-/* DPM0_PWR_CON (0x1C001000+0xE9C) */
+/* DPM0_PWR_CON (0x1C001000+0xEC0) */
 #define DPM0_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define DPM0_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define DPM0_PWR_ON_LSB                     (1U << 2)       /* 1b */
@@ -2074,9 +2686,12 @@
 #define DPM0_SRAM_SLEEP_B_LSB               (1U << 9)       /* 1b */
 #define SC_DPM0_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
 #define SC_DPM0_SRAM_SLEEP_B_ACK_LSB        (1U << 13)      /* 1b */
+#define DPM0_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define DPM0_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define DPM0_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_DPM0_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_DPM0_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* DPM1_PWR_CON (0x1C001000+0xEA0) */
+/* DPM1_PWR_CON (0x1C001000+0xEC4) */
 #define DPM1_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define DPM1_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define DPM1_PWR_ON_LSB                     (1U << 2)       /* 1b */
@@ -2088,9 +2703,12 @@
 #define DPM1_SRAM_SLEEP_B_LSB               (1U << 9)       /* 1b */
 #define SC_DPM1_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
 #define SC_DPM1_SRAM_SLEEP_B_ACK_LSB        (1U << 13)      /* 1b */
+#define DPM1_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define DPM1_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define DPM1_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_DPM1_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_DPM1_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* DPM2_PWR_CON (0x1C001000+0xEA4) */
+/* DPM2_PWR_CON (0x1C001000+0xEC8) */
 #define DPM2_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define DPM2_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define DPM2_PWR_ON_LSB                     (1U << 2)       /* 1b */
@@ -2102,9 +2720,12 @@
 #define DPM2_SRAM_SLEEP_B_LSB               (1U << 9)       /* 1b */
 #define SC_DPM2_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
 #define SC_DPM2_SRAM_SLEEP_B_ACK_LSB        (1U << 13)      /* 1b */
+#define DPM2_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define DPM2_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define DPM2_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_DPM2_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_DPM2_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* DPM3_PWR_CON (0x1C001000+0xEA8) */
+/* DPM3_PWR_CON (0x1C001000+0xECC) */
 #define DPM3_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define DPM3_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define DPM3_PWR_ON_LSB                     (1U << 2)       /* 1b */
@@ -2116,9 +2737,12 @@
 #define DPM3_SRAM_SLEEP_B_LSB               (1U << 9)       /* 1b */
 #define SC_DPM3_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
 #define SC_DPM3_SRAM_SLEEP_B_ACK_LSB        (1U << 13)      /* 1b */
+#define DPM3_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define DPM3_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define DPM3_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_DPM3_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_DPM3_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* EMI0_PWR_CON (0x1C001000+0xEAC) */
+/* EMI0_PWR_CON (0x1C001000+0xED0) */
 #define EMI0_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define EMI0_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define EMI0_PWR_ON_LSB                     (1U << 2)       /* 1b */
@@ -2130,9 +2754,12 @@
 #define EMI0_SRAM_SLEEP_B_LSB               (1U << 9)       /* 1b */
 #define SC_EMI0_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
 #define SC_EMI0_SRAM_SLEEP_B_ACK_LSB        (1U << 13)      /* 1b */
+#define EMI0_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define EMI0_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define EMI0_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_EMI0_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_EMI0_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* EMI1_PWR_CON (0x1C001000+0xEB0) */
+/* EMI1_PWR_CON (0x1C001000+0xED4) */
 #define EMI1_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define EMI1_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define EMI1_PWR_ON_LSB                     (1U << 2)       /* 1b */
@@ -2144,9 +2771,53 @@
 #define EMI1_SRAM_SLEEP_B_LSB               (1U << 9)       /* 1b */
 #define SC_EMI1_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
 #define SC_EMI1_SRAM_SLEEP_B_ACK_LSB        (1U << 13)      /* 1b */
+#define EMI1_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define EMI1_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define EMI1_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_EMI1_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_EMI1_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* MCUPM_PWR_CON (0x1C001000+0xEB4) */
+/* CSI_RX_PWR_CON (0x1C001000+0xED8) */
+#define CSI_RX_PWR_RST_B_LSB                (1U << 0)       /* 1b */
+#define CSI_RX_PWR_ISO_LSB                  (1U << 1)       /* 1b */
+#define CSI_RX_PWR_ON_LSB                   (1U << 2)       /* 1b */
+#define CSI_RX_PWR_ON_2ND_LSB               (1U << 3)       /* 1b */
+#define CSI_RX_PWR_CLK_DIS_LSB              (1U << 4)       /* 1b */
+#define CSI_RX_RTFF_SAVE_LSB                (1U << 24)      /* 1b */
+#define CSI_RX_RTFF_NRESTORE_LSB            (1U << 25)      /* 1b */
+#define CSI_RX_RTFF_CLK_DIS_LSB             (1U << 28)      /* 1b */
+#define SC_CSI_RX_PWR_ACK_LSB               (1U << 30)      /* 1b */
+#define SC_CSI_RX_PWR_ACK_2ND_LSB           (1U << 31)      /* 1b */
+/* SSRSYS_PWR_CON (0x1C001000+0xEDC) */
+#define SSRSYS_PWR_RST_B_LSB                (1U << 0)       /* 1b */
+#define SSRSYS_PWR_ISO_LSB                  (1U << 1)       /* 1b */
+#define SSRSYS_PWR_ON_LSB                   (1U << 2)       /* 1b */
+#define SSRSYS_PWR_ON_2ND_LSB               (1U << 3)       /* 1b */
+#define SSRSYS_PWR_CLK_DIS_LSB              (1U << 4)       /* 1b */
+#define SSRSYS_SRAM_PDN_LSB                 (1U << 8)       /* 1b */
+#define SC_SSRSYS_SRAM_PDN_ACK_LSB          (1U << 12)      /* 1b */
+#define SSRSYS_RTFF_SAVE_LSB                (1U << 24)      /* 1b */
+#define SSRSYS_RTFF_NRESTORE_LSB            (1U << 25)      /* 1b */
+#define SSRSYS_RTFF_CLK_DIS_LSB             (1U << 28)      /* 1b */
+#define SC_SSRSYS_PWR_ACK_LSB               (1U << 30)      /* 1b */
+#define SC_SSRSYS_PWR_ACK_2ND_LSB           (1U << 31)      /* 1b */
+/* DXCC_PWR_CON (0x1C001000+0xEE0) */
+#define DXCC_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
+#define DXCC_PWR_ISO_LSB                    (1U << 1)       /* 1b */
+#define DXCC_PWR_ON_LSB                     (1U << 2)       /* 1b */
+#define DXCC_PWR_ON_2ND_LSB                 (1U << 3)       /* 1b */
+#define DXCC_PWR_CLK_DIS_LSB                (1U << 4)       /* 1b */
+#define DXCC_SRAM_CKISO_LSB                 (1U << 5)       /* 1b */
+#define DXCC_SRAM_ISOINT_B_LSB              (1U << 6)       /* 1b */
+#define DXCC_SRAM_PDN_LSB                   (1U << 8)       /* 1b */
+#define DXCC_SRAM_SLEEP_B_LSB               (1U << 9)       /* 1b */
+#define SC_DXCC_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
+#define SC_DXCC_SRAM_SLEEP_B_ACK_LSB        (1U << 13)      /* 1b */
+#define DXCC_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define DXCC_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define DXCC_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
+#define SC_DXCC_PWR_ACK_LSB                 (1U << 30)      /* 1b */
+#define SC_DXCC_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
+/* MCUPM_PWR_CON (0x1C001000+0xEE4) */
 #define MCUPM_PWR_RST_B_LSB                 (1U << 0)       /* 1b */
 #define MCUPM_PWR_ISO_LSB                   (1U << 1)       /* 1b */
 #define MCUPM_PWR_ON_LSB                    (1U << 2)       /* 1b */
@@ -2158,9 +2829,12 @@
 #define MCUPM_SRAM_SLEEP_B_LSB              (1U << 9)       /* 1b */
 #define SC_MCUPM_SRAM_PDN_ACK_LSB           (1U << 12)      /* 1b */
 #define SC_MCUPM_SRAM_SLEEP_B_ACK_LSB       (1U << 13)      /* 1b */
+#define MCUPM_RTFF_SAVE_LSB                 (1U << 24)      /* 1b */
+#define MCUPM_RTFF_NRESTORE_LSB             (1U << 25)      /* 1b */
+#define MCUPM_RTFF_CLK_DIS_LSB              (1U << 28)      /* 1b */
 #define SC_MCUPM_PWR_ACK_LSB                (1U << 30)      /* 1b */
 #define SC_MCUPM_PWR_ACK_2ND_LSB            (1U << 31)      /* 1b */
-/* MFG0_PWR_CON (0x1C001000+0xEB8) */
+/* MFG0_PWR_CON (0x1C001000+0xEE8) */
 #define MFG0_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define MFG0_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define MFG0_PWR_ON_LSB                     (1U << 2)       /* 1b */
@@ -2172,9 +2846,12 @@
 #define MFG0_SRAM_SLEEP_B_LSB               (1U << 9)       /* 1b */
 #define SC_MFG0_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
 #define SC_MFG0_SRAM_SLEEP_B_ACK_LSB        (1U << 13)      /* 1b */
+#define MFG0_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define MFG0_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define MFG0_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_MFG0_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_MFG0_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* MFG1_PWR_CON (0x1C001000+0xEBC) */
+/* MFG1_PWR_CON (0x1C001000+0xEEC) */
 #define MFG1_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define MFG1_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define MFG1_PWR_ON_LSB                     (1U << 2)       /* 1b */
@@ -2182,9 +2859,12 @@
 #define MFG1_PWR_CLK_DIS_LSB                (1U << 4)       /* 1b */
 #define MFG1_SRAM_PDN_LSB                   (1U << 8)       /* 1b */
 #define SC_MFG1_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
+#define MFG1_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define MFG1_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define MFG1_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_MFG1_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_MFG1_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* MFG2_PWR_CON (0x1C001000+0xEC0) */
+/* MFG2_PWR_CON (0x1C001000+0xEF0) */
 #define MFG2_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define MFG2_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define MFG2_PWR_ON_LSB                     (1U << 2)       /* 1b */
@@ -2192,9 +2872,12 @@
 #define MFG2_PWR_CLK_DIS_LSB                (1U << 4)       /* 1b */
 #define MFG2_SRAM_PDN_LSB                   (1U << 8)       /* 1b */
 #define SC_MFG2_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
+#define MFG2_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define MFG2_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define MFG2_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_MFG2_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_MFG2_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* MFG3_PWR_CON (0x1C001000+0xEC4) */
+/* MFG3_PWR_CON (0x1C001000+0xEF4) */
 #define MFG3_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define MFG3_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define MFG3_PWR_ON_LSB                     (1U << 2)       /* 1b */
@@ -2202,9 +2885,12 @@
 #define MFG3_PWR_CLK_DIS_LSB                (1U << 4)       /* 1b */
 #define MFG3_SRAM_PDN_LSB                   (1U << 8)       /* 1b */
 #define SC_MFG3_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
+#define MFG3_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define MFG3_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define MFG3_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_MFG3_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_MFG3_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* MFG4_PWR_CON (0x1C001000+0xEC8) */
+/* MFG4_PWR_CON (0x1C001000+0xEF8) */
 #define MFG4_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define MFG4_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define MFG4_PWR_ON_LSB                     (1U << 2)       /* 1b */
@@ -2212,9 +2898,12 @@
 #define MFG4_PWR_CLK_DIS_LSB                (1U << 4)       /* 1b */
 #define MFG4_SRAM_PDN_LSB                   (1U << 8)       /* 1b */
 #define SC_MFG4_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
+#define MFG4_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define MFG4_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define MFG4_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_MFG4_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_MFG4_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* MFG5_PWR_CON (0x1C001000+0xECC) */
+/* MFG5_PWR_CON (0x1C001000+0xEFC) */
 #define MFG5_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define MFG5_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define MFG5_PWR_ON_LSB                     (1U << 2)       /* 1b */
@@ -2222,9 +2911,12 @@
 #define MFG5_PWR_CLK_DIS_LSB                (1U << 4)       /* 1b */
 #define MFG5_SRAM_PDN_LSB                   (1U << 8)       /* 1b */
 #define SC_MFG5_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
+#define MFG5_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define MFG5_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define MFG5_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_MFG5_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_MFG5_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* MFG6_PWR_CON (0x1C001000+0xED0) */
+/* MFG6_PWR_CON (0x1C001000+0xF00) */
 #define MFG6_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define MFG6_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define MFG6_PWR_ON_LSB                     (1U << 2)       /* 1b */
@@ -2232,9 +2924,12 @@
 #define MFG6_PWR_CLK_DIS_LSB                (1U << 4)       /* 1b */
 #define MFG6_SRAM_PDN_LSB                   (1U << 8)       /* 1b */
 #define SC_MFG6_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
+#define MFG6_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define MFG6_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define MFG6_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_MFG6_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_MFG6_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* MFG7_PWR_CON (0x1C001000+0xED4) */
+/* MFG7_PWR_CON (0x1C001000+0xF04) */
 #define MFG7_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define MFG7_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define MFG7_PWR_ON_LSB                     (1U << 2)       /* 1b */
@@ -2242,9 +2937,12 @@
 #define MFG7_PWR_CLK_DIS_LSB                (1U << 4)       /* 1b */
 #define MFG7_SRAM_PDN_LSB                   (1U << 8)       /* 1b */
 #define SC_MFG7_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
+#define MFG7_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define MFG7_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define MFG7_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_MFG7_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_MFG7_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* MFG8_PWR_CON (0x1C001000+0xED8) */
+/* MFG8_PWR_CON (0x1C001000+0xF08) */
 #define MFG8_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define MFG8_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define MFG8_PWR_ON_LSB                     (1U << 2)       /* 1b */
@@ -2252,9 +2950,12 @@
 #define MFG8_PWR_CLK_DIS_LSB                (1U << 4)       /* 1b */
 #define MFG8_SRAM_PDN_LSB                   (1U << 8)       /* 1b */
 #define SC_MFG8_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
+#define MFG8_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define MFG8_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define MFG8_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_MFG8_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_MFG8_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* MFG9_PWR_CON (0x1C001000+0xEDC) */
+/* MFG9_PWR_CON (0x1C001000+0xF0C) */
 #define MFG9_PWR_RST_B_LSB                  (1U << 0)       /* 1b */
 #define MFG9_PWR_ISO_LSB                    (1U << 1)       /* 1b */
 #define MFG9_PWR_ON_LSB                     (1U << 2)       /* 1b */
@@ -2262,9 +2963,12 @@
 #define MFG9_PWR_CLK_DIS_LSB                (1U << 4)       /* 1b */
 #define MFG9_SRAM_PDN_LSB                   (1U << 8)       /* 1b */
 #define SC_MFG9_SRAM_PDN_ACK_LSB            (1U << 12)      /* 1b */
+#define MFG9_RTFF_SAVE_LSB                  (1U << 24)      /* 1b */
+#define MFG9_RTFF_NRESTORE_LSB              (1U << 25)      /* 1b */
+#define MFG9_RTFF_CLK_DIS_LSB               (1U << 28)      /* 1b */
 #define SC_MFG9_PWR_ACK_LSB                 (1U << 30)      /* 1b */
 #define SC_MFG9_PWR_ACK_2ND_LSB             (1U << 31)      /* 1b */
-/* MFG10_PWR_CON (0x1C001000+0xEE0) */
+/* MFG10_PWR_CON (0x1C001000+0xF10) */
 #define MFG10_PWR_RST_B_LSB                 (1U << 0)       /* 1b */
 #define MFG10_PWR_ISO_LSB                   (1U << 1)       /* 1b */
 #define MFG10_PWR_ON_LSB                    (1U << 2)       /* 1b */
@@ -2272,9 +2976,12 @@
 #define MFG10_PWR_CLK_DIS_LSB               (1U << 4)       /* 1b */
 #define MFG10_SRAM_PDN_LSB                  (1U << 8)       /* 1b */
 #define SC_MFG10_SRAM_PDN_ACK_LSB           (1U << 12)      /* 1b */
+#define MFG10_RTFF_SAVE_LSB                 (1U << 24)      /* 1b */
+#define MFG10_RTFF_NRESTORE_LSB             (1U << 25)      /* 1b */
+#define MFG10_RTFF_CLK_DIS_LSB              (1U << 28)      /* 1b */
 #define SC_MFG10_PWR_ACK_LSB                (1U << 30)      /* 1b */
 #define SC_MFG10_PWR_ACK_2ND_LSB            (1U << 31)      /* 1b */
-/* MFG11_PWR_CON (0x1C001000+0xEE4) */
+/* MFG11_PWR_CON (0x1C001000+0xF14) */
 #define MFG11_PWR_RST_B_LSB                 (1U << 0)       /* 1b */
 #define MFG11_PWR_ISO_LSB                   (1U << 1)       /* 1b */
 #define MFG11_PWR_ON_LSB                    (1U << 2)       /* 1b */
@@ -2282,9 +2989,12 @@
 #define MFG11_PWR_CLK_DIS_LSB               (1U << 4)       /* 1b */
 #define MFG11_SRAM_PDN_LSB                  (1U << 8)       /* 1b */
 #define SC_MFG11_SRAM_PDN_ACK_LSB           (1U << 12)      /* 1b */
+#define MFG11_RTFF_SAVE_LSB                 (1U << 24)      /* 1b */
+#define MFG11_RTFF_NRESTORE_LSB             (1U << 25)      /* 1b */
+#define MFG11_RTFF_CLK_DIS_LSB              (1U << 28)      /* 1b */
 #define SC_MFG11_PWR_ACK_LSB                (1U << 30)      /* 1b */
 #define SC_MFG11_PWR_ACK_2ND_LSB            (1U << 31)      /* 1b */
-/* MFG12_PWR_CON (0x1C001000+0xEE8) */
+/* MFG12_PWR_CON (0x1C001000+0xF18) */
 #define MFG12_PWR_RST_B_LSB                 (1U << 0)       /* 1b */
 #define MFG12_PWR_ISO_LSB                   (1U << 1)       /* 1b */
 #define MFG12_PWR_ON_LSB                    (1U << 2)       /* 1b */
@@ -2292,9 +3002,12 @@
 #define MFG12_PWR_CLK_DIS_LSB               (1U << 4)       /* 1b */
 #define MFG12_SRAM_PDN_LSB                  (1U << 8)       /* 1b */
 #define SC_MFG12_SRAM_PDN_ACK_LSB           (1U << 12)      /* 1b */
+#define MFG12_RTFF_SAVE_LSB                 (1U << 24)      /* 1b */
+#define MFG12_RTFF_NRESTORE_LSB             (1U << 25)      /* 1b */
+#define MFG12_RTFF_CLK_DIS_LSB              (1U << 28)      /* 1b */
 #define SC_MFG12_PWR_ACK_LSB                (1U << 30)      /* 1b */
 #define SC_MFG12_PWR_ACK_2ND_LSB            (1U << 31)      /* 1b */
-/* MFG13_PWR_CON (0x1C001000+0xEEC) */
+/* MFG13_PWR_CON (0x1C001000+0xF1C) */
 #define MFG13_PWR_RST_B_LSB                 (1U << 0)       /* 1b */
 #define MFG13_PWR_ISO_LSB                   (1U << 1)       /* 1b */
 #define MFG13_PWR_ON_LSB                    (1U << 2)       /* 1b */
@@ -2302,9 +3015,12 @@
 #define MFG13_PWR_CLK_DIS_LSB               (1U << 4)       /* 1b */
 #define MFG13_SRAM_PDN_LSB                  (1U << 8)       /* 1b */
 #define SC_MFG13_SRAM_PDN_ACK_LSB           (1U << 12)      /* 1b */
+#define MFG13_RTFF_SAVE_LSB                 (1U << 24)      /* 1b */
+#define MFG13_RTFF_NRESTORE_LSB             (1U << 25)      /* 1b */
+#define MFG13_RTFF_CLK_DIS_LSB              (1U << 28)      /* 1b */
 #define SC_MFG13_PWR_ACK_LSB                (1U << 30)      /* 1b */
 #define SC_MFG13_PWR_ACK_2ND_LSB            (1U << 31)      /* 1b */
-/* MFG14_PWR_CON (0x1C001000+0xEF0) */
+/* MFG14_PWR_CON (0x1C001000+0xF20) */
 #define MFG14_PWR_RST_B_LSB                 (1U << 0)       /* 1b */
 #define MFG14_PWR_ISO_LSB                   (1U << 1)       /* 1b */
 #define MFG14_PWR_ON_LSB                    (1U << 2)       /* 1b */
@@ -2312,9 +3028,12 @@
 #define MFG14_PWR_CLK_DIS_LSB               (1U << 4)       /* 1b */
 #define MFG14_SRAM_PDN_LSB                  (1U << 8)       /* 1b */
 #define SC_MFG14_SRAM_PDN_ACK_LSB           (1U << 12)      /* 1b */
+#define MFG14_RTFF_SAVE_LSB                 (1U << 24)      /* 1b */
+#define MFG14_RTFF_NRESTORE_LSB             (1U << 25)      /* 1b */
+#define MFG14_RTFF_CLK_DIS_LSB              (1U << 28)      /* 1b */
 #define SC_MFG14_PWR_ACK_LSB                (1U << 30)      /* 1b */
 #define SC_MFG14_PWR_ACK_2ND_LSB            (1U << 31)      /* 1b */
-/* MFG15_PWR_CON (0x1C001000+0xEF4) */
+/* MFG15_PWR_CON (0x1C001000+0xF24) */
 #define MFG15_PWR_RST_B_LSB                 (1U << 0)       /* 1b */
 #define MFG15_PWR_ISO_LSB                   (1U << 1)       /* 1b */
 #define MFG15_PWR_ON_LSB                    (1U << 2)       /* 1b */
@@ -2322,9 +3041,12 @@
 #define MFG15_PWR_CLK_DIS_LSB               (1U << 4)       /* 1b */
 #define MFG15_SRAM_PDN_LSB                  (1U << 8)       /* 1b */
 #define SC_MFG15_SRAM_PDN_ACK_LSB           (1U << 12)      /* 1b */
+#define MFG15_RTFF_SAVE_LSB                 (1U << 24)      /* 1b */
+#define MFG15_RTFF_NRESTORE_LSB             (1U << 25)      /* 1b */
+#define MFG15_RTFF_CLK_DIS_LSB              (1U << 28)      /* 1b */
 #define SC_MFG15_PWR_ACK_LSB                (1U << 30)      /* 1b */
 #define SC_MFG15_PWR_ACK_2ND_LSB            (1U << 31)      /* 1b */
-/* MFG16_PWR_CON (0x1C001000+0xEF8) */
+/* MFG16_PWR_CON (0x1C001000+0xF28) */
 #define MFG16_PWR_RST_B_LSB                 (1U << 0)       /* 1b */
 #define MFG16_PWR_ISO_LSB                   (1U << 1)       /* 1b */
 #define MFG16_PWR_ON_LSB                    (1U << 2)       /* 1b */
@@ -2332,9 +3054,12 @@
 #define MFG16_PWR_CLK_DIS_LSB               (1U << 4)       /* 1b */
 #define MFG16_SRAM_PDN_LSB                  (1U << 8)       /* 1b */
 #define SC_MFG16_SRAM_PDN_ACK_LSB           (1U << 12)      /* 1b */
+#define MFG16_RTFF_SAVE_LSB                 (1U << 24)      /* 1b */
+#define MFG16_RTFF_NRESTORE_LSB             (1U << 25)      /* 1b */
+#define MFG16_RTFF_CLK_DIS_LSB              (1U << 28)      /* 1b */
 #define SC_MFG16_PWR_ACK_LSB                (1U << 30)      /* 1b */
 #define SC_MFG16_PWR_ACK_2ND_LSB            (1U << 31)      /* 1b */
-/* MFG17_PWR_CON (0x1C001000+0xEFC) */
+/* MFG17_PWR_CON (0x1C001000+0xF2C) */
 #define MFG17_PWR_RST_B_LSB                 (1U << 0)       /* 1b */
 #define MFG17_PWR_ISO_LSB                   (1U << 1)       /* 1b */
 #define MFG17_PWR_ON_LSB                    (1U << 2)       /* 1b */
@@ -2342,9 +3067,12 @@
 #define MFG17_PWR_CLK_DIS_LSB               (1U << 4)       /* 1b */
 #define MFG17_SRAM_PDN_LSB                  (1U << 8)       /* 1b */
 #define SC_MFG17_SRAM_PDN_ACK_LSB           (1U << 12)      /* 1b */
+#define MFG17_RTFF_SAVE_LSB                 (1U << 24)      /* 1b */
+#define MFG17_RTFF_NRESTORE_LSB             (1U << 25)      /* 1b */
+#define MFG17_RTFF_CLK_DIS_LSB              (1U << 28)      /* 1b */
 #define SC_MFG17_PWR_ACK_LSB                (1U << 30)      /* 1b */
 #define SC_MFG17_PWR_ACK_2ND_LSB            (1U << 31)      /* 1b */
-/* MFG18_PWR_CON (0x1C001000+0xF00) */
+/* MFG18_PWR_CON (0x1C001000+0xF30) */
 #define MFG18_PWR_RST_B_LSB                 (1U << 0)       /* 1b */
 #define MFG18_PWR_ISO_LSB                   (1U << 1)       /* 1b */
 #define MFG18_PWR_ON_LSB                    (1U << 2)       /* 1b */
@@ -2352,52 +3080,90 @@
 #define MFG18_PWR_CLK_DIS_LSB               (1U << 4)       /* 1b */
 #define MFG18_SRAM_PDN_LSB                  (1U << 8)       /* 1b */
 #define SC_MFG18_SRAM_PDN_ACK_LSB           (1U << 12)      /* 1b */
+#define MFG18_RTFF_SAVE_LSB                 (1U << 24)      /* 1b */
+#define MFG18_RTFF_NRESTORE_LSB             (1U << 25)      /* 1b */
+#define MFG18_RTFF_CLK_DIS_LSB              (1U << 28)      /* 1b */
 #define SC_MFG18_PWR_ACK_LSB                (1U << 30)      /* 1b */
 #define SC_MFG18_PWR_ACK_2ND_LSB            (1U << 31)      /* 1b */
-/* EFUSE_SRAM_CON (0x1C001000+0xF04) */
+/* MFG19_PWR_CON (0x1C001000+0xF34) */
+#define MFG19_PWR_RST_B_LSB                 (1U << 0)       /* 1b */
+#define MFG19_PWR_ISO_LSB                   (1U << 1)       /* 1b */
+#define MFG19_PWR_ON_LSB                    (1U << 2)       /* 1b */
+#define MFG19_PWR_ON_2ND_LSB                (1U << 3)       /* 1b */
+#define MFG19_PWR_CLK_DIS_LSB               (1U << 4)       /* 1b */
+#define MFG19_SRAM_PDN_LSB                  (1U << 8)       /* 1b */
+#define SC_MFG19_SRAM_PDN_ACK_LSB           (1U << 12)      /* 1b */
+#define MFG19_RTFF_SAVE_LSB                 (1U << 24)      /* 1b */
+#define MFG19_RTFF_NRESTORE_LSB             (1U << 25)      /* 1b */
+#define MFG19_RTFF_CLK_DIS_LSB              (1U << 28)      /* 1b */
+#define SC_MFG19_PWR_ACK_LSB                (1U << 30)      /* 1b */
+#define SC_MFG19_PWR_ACK_2ND_LSB            (1U << 31)      /* 1b */
+/* ADSP_HRE_SRAM_CON (0x1C001000+0xF38) */
+#define ADSP_HRE_SRAM_CKISO_LSB             (1U << 0)       /* 1b */
+#define ADSP_HRE_SRAM_ISOINT_B_LSB          (1U << 1)       /* 1b */
+#define ADSP_HRE_SRAM_SLEEP_B_LSB           (1U << 4)       /* 3b */
+#define ADSP_HRE_SRAM_PDN_LSB               (1U << 16)      /* 3b */
+/* DXCC_PDN_SRAM_CON (0x1C001000+0xF3C) */
+#define DXCC_PDN_SRAM_PDN_LSB               (1U << 0)       /* 1b */
+#define SC_DXCC_PDN_SRAM_PDN_ACK_LSB        (1U << 8)       /* 1b */
+/* EFUSE_SRAM_CON (0x1C001000+0xF40) */
 #define EFUSE_SRAM_CKISO_LSB                (1U << 0)       /* 1b */
 #define EFUSE_SRAM_ISOINT_B_LSB             (1U << 1)       /* 1b */
 #define EFUSE_SRAM_SLEEP_B_LSB              (1U << 4)       /* 1b */
 #define EFUSE_SRAM_PDN_LSB                  (1U << 16)      /* 1b */
-/* EMI_HRE_SRAM_CON (0x1C001000+0xF08) */
+/* EMI_HRE_SRAM_CON (0x1C001000+0xF44) */
 #define EMI_HRE_SRAM_CKISO_LSB              (1U << 0)       /* 1b */
 #define EMI_HRE_SRAM_ISOINT_B_LSB           (1U << 1)       /* 1b */
 #define EMI_HRE_SRAM_SLEEP_B_LSB            (1U << 4)       /* 8b */
 #define EMI_HRE_SRAM_PDN_LSB                (1U << 16)      /* 8b */
-/* EMI_SLB_SRAM_CON (0x1C001000+0xF0C) */
+/* EMI_SLB_SRAM_CON (0x1C001000+0xF4C) */
 #define EMI_SLB_SRAM_PDN_LSB                (1U << 0)       /* 12b */
-#define SC_EMI_SLB_SRAM_PDN_ACK_LSB         (1U << 16)      /* 12b */
-/* INFRA_HRE_SRAM_CON (0x1C001000+0xF10) */
+#define EMI_SLB_SRAM_SLEEP_B_LSB            (1U << 16)      /* 12b */
+/* EMI_SLB_SRAM_ACK (0x1C001000+0xF50) */
+#define SC_EMI_SLB_SRAM_PDN_ACK_LSB         (1U << 0)       /* 12b */
+#define SC_EMI_SLB_SRAM_SLEEP_B_ACK_LSB     (1U << 16)      /* 12b */
+/* INFRA_HRE_SRAM_CON (0x1C001000+0xF54) */
 #define INFRA_HRE_SRAM_CKISO_LSB            (1U << 0)       /* 1b */
-#define INFRA_HRE_SRAM_ISOINT_B_LSB         (1U << 1)       /* 1b */
+#define INFRA_HRE_SRAM_ISOINT_B_LSB         (1U << 1)       /* 2b */
 #define INFRA_HRE_SRAM_SLEEP_B_LSB          (1U << 4)       /* 6b */
 #define INFRA_HRE_SRAM_PDN_LSB              (1U << 16)      /* 6b */
-/* INFRA_SLEEP_SRAM_CON (0x1C001000+0xF14) */
+/* INFRA_SLEEP_SRAM_CON (0x1C001000+0xF58) */
 #define INFRA_SLEEP_SRAM_CKISO_LSB          (1U << 0)       /* 1b */
 #define INFRA_SLEEP_SRAM_ISOINT_B_LSB       (1U << 1)       /* 2b */
 #define INFRA_SLEEP_SRAM_SLEEP_B_LSB        (1U << 4)       /* 2b */
 #define INFRA_SLEEP_SRAM_PDN_LSB            (1U << 8)       /* 2b */
 #define SC_INFRA_SLEEP_SRAM_PDN_ACK_LSB     (1U << 16)      /* 2b */
 #define SC_INFRA_SLEEP_SRAM_SLEEP_B_ACK_LSB (1U << 18)      /* 2b */
-/* MM_HRE_SRAM_CON (0x1C001000+0xF18) */
+/* PERI_SLEEP_SRAM_CON (0x1C001000+0xF5C) */
+#define PERI_SLEEP_SRAM_CKISO_LSB           (1U << 0)       /* 1b */
+#define PERI_SLEEP_SRAM_ISOINT_B_LSB        (1U << 1)       /* 1b */
+#define PERI_SLEEP_SRAM_SLEEP_B_LSB         (1U << 4)       /* 1b */
+#define PERI_SLEEP_SRAM_PDN_LSB             (1U << 8)       /* 1b */
+#define SC_PERI_SLEEP_SRAM_PDN_ACK_LSB      (1U << 16)      /* 1b */
+#define SC_PERI_SLEEP_SRAM_SLEEP_B_ACK_LSB  (1U << 17)      /* 1b */
+/* MM_HRE_SRAM_CON (0x1C001000+0xF60) */
 #define MM_HRE_SRAM_CKISO_LSB               (1U << 0)       /* 1b */
 #define MM_HRE_SRAM_ISOINT_B_LSB            (1U << 1)       /* 3b */
 #define MM_HRE_SRAM_SLEEP_B_LSB             (1U << 4)       /* 3b */
 #define MM_HRE_SRAM_PDN_LSB                 (1U << 16)      /* 3b */
-/* SPM_SRAM_CON (0x1C001000+0xF1C) */
+/* SPM_SRAM_CON (0x1C001000+0xF64) */
 #define SPM_SRAM_CKISO_LSB                  (1U << 0)       /* 1b */
 #define REG_SPM_SRAM_ISOINT_B_LSB           (1U << 1)       /* 1b */
 #define REG_SPM_SRAM_SLEEP_B_LSB            (1U << 4)       /* 2b */
 #define SPM_SRAM_PDN_LSB                    (1U << 16)      /* 2b */
-/* SSPM_SRAM_CON (0x1C001000+0xF20) */
+/* SSPM_SRAM_CON (0x1C001000+0xF68) */
 #define SSPM_SRAM_CKISO_LSB                 (1U << 0)       /* 1b */
 #define SSPM_SRAM_ISOINT_B_LSB              (1U << 1)       /* 1b */
 #define SSPM_SRAM_SLEEP_B_LSB               (1U << 4)       /* 1b */
 #define SSPM_SRAM_PDN_LSB                   (1U << 16)      /* 1b */
-/* UFS_PDN_SRAM_CON (0x1C001000+0xF24) */
-#define UFS_PDN_SRAM_PDN_LSB                (1U << 0)       /* 1b */
-#define SC_UFS_PDN_SRAM_PDN_ACK_LSB         (1U << 8)       /* 1b */
-/* CPU_BUCK_ISO_CON (0x1C001000+0xF28) */
+/* UFS_SLEEP_SRAM_CON (0x1C001000+0xF6C) */
+#define UFS_SLEEP_SRAM_CKISO_LSB            (1U << 0)       /* 1b */
+#define UFS_SLEEP_SRAM_ISOINT_B_LSB         (1U << 1)       /* 1b */
+#define UFS_SLEEP_SRAM_SLEEP_B_LSB          (1U << 4)       /* 1b */
+#define UFS_SLEEP_SRAM_PDN_LSB              (1U << 8)       /* 1b */
+#define SC_UFS_SLEEP_SRAM_PDN_ACK_LSB       (1U << 16)      /* 1b */
+#define SC_UFS_SLEEP_SRAM_SLEEP_B_ACK_LSB   (1U << 17)      /* 1b */
+/* CPU_BUCK_ISO_CON (0x1C001000+0xF70) */
 #define MCUSYS_VPROC_EXT_OFF_LSB            (1U << 0)       /* 1b */
 #define MP0_VPROC_EXT_OFF_LSB               (1U << 1)       /* 1b */
 #define MP0_VPROC_EXT_OFF_CPU0_LSB          (1U << 2)       /* 1b */
@@ -2409,7 +3175,7 @@
 #define MP0_VPROC_EXT_OFF_CPU6_LSB          (1U << 8)       /* 1b */
 #define MP0_VPROC_EXT_OFF_CPU7_LSB          (1U << 9)       /* 1b */
 #define MP0_VSRAM_EXT_OFF_LSB               (1U << 10)      /* 1b */
-/* MD_BUCK_ISO_CON (0x1C001000+0xF2C) */
+/* MD_BUCK_ISO_CON (0x1C001000+0xF74) */
 #define VMD_EXT_BUCK_ISO_LSB                (1U << 0)       /* 1b */
 #define AOC_VMD_SRAM_ISO_DIN_LSB            (1U << 1)       /* 1b */
 #define AOC_VMD_SRAM_LATCH_ENB_LSB          (1U << 2)       /* 1b */
@@ -2418,7 +3184,7 @@
 #define AOC_VMODEM_SRAM_ISO_DIN_LSB         (1U << 5)       /* 1b */
 #define AOC_VMODEM_SRAM_LATCH_ENB_LSB       (1U << 6)       /* 1b */
 #define AOC_VMODEM_ANA_ISO_LSB              (1U << 7)       /* 1b */
-/* SOC_BUCK_ISO_CON (0x1C001000+0xF30) */
+/* SOC_BUCK_ISO_CON (0x1C001000+0xF78) */
 #define VADSP_EXT_BUCK_ISO_LSB              (1U << 0)       /* 1b */
 #define AOC_VADSP_SRAM_ISO_DIN_LSB          (1U << 1)       /* 1b */
 #define AOC_VADSP_SRAM_LATCH_ENB_LSB        (1U << 2)       /* 1b */
@@ -2435,21 +3201,131 @@
 #define AOC_VGPUTOP_SRAM_ISO_DIN_LSB        (1U << 13)      /* 1b */
 #define AOC_VGPUTOP_SRAM_LATCH_ENB_LSB      (1U << 14)      /* 1b */
 #define AOC_VGPUTOP_ANA_ISO_LSB             (1U << 15)      /* 1b */
-#define VMM_EXT_BUCK_ISO_LSB                (1U << 16)      /* 1b */
-#define AOC_VMM_SRAM_ISO_DIN_LSB            (1U << 17)      /* 1b */
-#define AOC_VMM_SRAM_LATCH_ENB_LSB          (1U << 18)      /* 1b */
-#define AOC_VMM_ANA_ISO_LSB                 (1U << 19)      /* 1b */
-/* PWR_STATUS (0x1C001000+0xF34) */
+#define VSTACK_EXT_BUCK_ISO_LSB             (1U << 16)      /* 1b */
+#define AOC_VSTACK_SRAM_ISO_DIN_LSB         (1U << 17)      /* 1b */
+#define AOC_VSTACK_SRAM_LATCH_ENB_LSB       (1U << 18)      /* 1b */
+#define AOC_VSTACK_ANA_ISO_LSB              (1U << 19)      /* 1b */
+#define VMM_EXT_BUCK_ISO_LSB                (1U << 20)      /* 1b */
+#define AOC_VMM_SRAM_ISO_DIN_LSB            (1U << 21)      /* 1b */
+#define AOC_VMM_SRAM_LATCH_ENB_LSB          (1U << 22)      /* 1b */
+#define AOC_VMM_ANA_ISO_LSB                 (1U << 23)      /* 1b */
+#define SCP_EXT_BUCK_ISO_LSB                (1U << 24)      /* 1b */
+#define AOC_SCP_SRAM_ISO_DIN_LSB            (1U << 25)      /* 1b */
+#define AOC_SCP_SRAM_LATCH_ENB_LSB          (1U << 26)      /* 1b */
+#define AOC_SCP_ANA_ISO_LSB                 (1U << 27)      /* 1b */
+#define DXCC_EXT_BUCK_ISO_LSB               (1U << 28)      /* 1b */
+#define AOC_DXCC_SRAM_ISO_DIN_LSB           (1U << 29)      /* 1b */
+#define AOC_DXCC_SRAM_LATCH_ENB_LSB         (1U << 30)      /* 1b */
+#define AOC_DXCC_ANA_ISO_LSB                (1U << 31)      /* 1b */
+/* SOC_BUCK_ISO_CON_SET (0x1C001000+0xF7C) */
+#define SOC_BUCK_ISO_CON_SET_VADSP_EXT_BUCK_ISO_LSB (1U << 0)       /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_VADSP_SRAM_ISO_DIN_LSB (1U << 1)       /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_VADSP_SRAM_LATCH_ENB_LSB (1U << 2)       /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_VADSP_ANA_ISO_LSB (1U << 3)       /* 1b */
+#define SOC_BUCK_ISO_CON_SET_VAPU_EXT_BUCK_ISO_LSB (1U << 4)       /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_VAPU_SRAM_ISO_DIN_LSB (1U << 5)       /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_VAPU_SRAM_LATCH_ENB_LSB (1U << 6)       /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_VAPU_ANA_ISO_LSB (1U << 7)       /* 1b */
+#define SOC_BUCK_ISO_CON_SET_VGPU_EXT_BUCK_ISO_LSB (1U << 8)       /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_VGPU_SRAM_ISO_DIN_LSB (1U << 9)       /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_VGPU_SRAM_LATCH_ENB_LSB (1U << 10)      /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_VGPU_ANA_ISO_LSB (1U << 11)      /* 1b */
+#define SOC_BUCK_ISO_CON_SET_VGPUTOP_EXT_BUCK_ISO_LSB (1U << 12)      /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_VGPUTOP_SRAM_ISO_DIN_LSB (1U << 13)      /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_VGPUTOP_SRAM_LATCH_ENB_LSB (1U << 14)      /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_VGPUTOP_ANA_ISO_LSB (1U << 15)      /* 1b */
+#define SOC_BUCK_ISO_CON_SET_VSTACK_EXT_BUCK_ISO_LSB (1U << 16)      /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_VSTACK_SRAM_ISO_DIN_LSB (1U << 17)      /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_VSTACK_SRAM_LATCH_ENB_LSB (1U << 18)      /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_VSTACK_ANA_ISO_LSB (1U << 19)      /* 1b */
+#define SOC_BUCK_ISO_CON_SET_VMM_EXT_BUCK_ISO_LSB (1U << 20)      /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_VMM_SRAM_ISO_DIN_LSB (1U << 21)      /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_VMM_SRAM_LATCH_ENB_LSB (1U << 22)      /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_VMM_ANA_ISO_LSB (1U << 23)      /* 1b */
+#define SOC_BUCK_ISO_CON_SET_SCP_EXT_BUCK_ISO_LSB (1U << 24)      /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_SCP_SRAM_ISO_DIN_LSB (1U << 25)      /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_SCP_SRAM_LATCH_ENB_LSB (1U << 26)      /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_SCP_ANA_ISO_LSB (1U << 27)      /* 1b */
+#define SOC_BUCK_ISO_CON_SET_DXCC_EXT_BUCK_ISO_LSB (1U << 28)      /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_DXCC_SRAM_ISO_DIN_LSB (1U << 29)      /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_DXCC_SRAM_LATCH_ENB_LSB (1U << 30)      /* 1b */
+#define SOC_BUCK_ISO_CON_SET_AOC_DXCC_ANA_ISO_LSB (1U << 31)      /* 1b */
+/* SOC_BUCK_ISO_CON_CLR (0x1C001000+0xF80) */
+#define SOC_BUCK_ISO_CON_CLR_VADSP_EXT_BUCK_ISO_LSB (1U << 0)       /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_VADSP_SRAM_ISO_DIN_LSB (1U << 1)       /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_VADSP_SRAM_LATCH_ENB_LSB (1U << 2)       /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_VADSP_ANA_ISO_LSB (1U << 3)       /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_VAPU_EXT_BUCK_ISO_LSB (1U << 4)       /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_VAPU_SRAM_ISO_DIN_LSB (1U << 5)       /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_VAPU_SRAM_LATCH_ENB_LSB (1U << 6)       /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_VAPU_ANA_ISO_LSB (1U << 7)       /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_VGPU_EXT_BUCK_ISO_LSB (1U << 8)       /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_VGPU_SRAM_ISO_DIN_LSB (1U << 9)       /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_VGPU_SRAM_LATCH_ENB_LSB (1U << 10)      /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_VGPU_ANA_ISO_LSB (1U << 11)      /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_VGPUTOP_EXT_BUCK_ISO_LSB (1U << 12)      /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_VGPUTOP_SRAM_ISO_DIN_LSB (1U << 13)      /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_VGPUTOP_SRAM_LATCH_ENB_LSB (1U << 14)      /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_VGPUTOP_ANA_ISO_LSB (1U << 15)      /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_VSTACK_EXT_BUCK_ISO_LSB (1U << 16)      /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_VSTACK_SRAM_ISO_DIN_LSB (1U << 17)      /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_VSTACK_SRAM_LATCH_ENB_LSB (1U << 18)      /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_VSTACK_ANA_ISO_LSB (1U << 19)      /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_VMM_EXT_BUCK_ISO_LSB (1U << 20)      /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_VMM_SRAM_ISO_DIN_LSB (1U << 21)      /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_VMM_SRAM_LATCH_ENB_LSB (1U << 22)      /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_VMM_ANA_ISO_LSB (1U << 23)      /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_SCP_EXT_BUCK_ISO_LSB (1U << 24)      /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_SCP_SRAM_ISO_DIN_LSB (1U << 25)      /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_SCP_SRAM_LATCH_ENB_LSB (1U << 26)      /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_SCP_ANA_ISO_LSB (1U << 27)      /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_DXCC_EXT_BUCK_ISO_LSB (1U << 28)      /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_DXCC_SRAM_ISO_DIN_LSB (1U << 29)      /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_DXCC_SRAM_LATCH_ENB_LSB (1U << 30)      /* 1b */
+#define SOC_BUCK_ISO_CON_CLR_AOC_DXCC_ANA_ISO_LSB (1U << 31)      /* 1b */
+/* PWR_STATUS (0x1C001000+0xF84) */
 #define PWR_STATUS_LSB                      (1U << 0)       /* 32b */
-/* PWR_STATUS_2ND (0x1C001000+0xF38) */
+/* PWR_STATUS_2ND (0x1C001000+0xF88) */
 #define PWR_STATUS_2ND_LSB                  (1U << 0)       /* 32b */
-/* XPU_PWR_STATUS (0x1C001000+0xF3C) */
+/* PWR_STATUS_MSB (0x1C001000+0xF8C) */
+#define PWR_STATUS_MSB_LSB                  (1U << 0)       /* 32b */
+/* PWR_STATUS_MSB_2ND (0x1C001000+0xF90) */
+#define PWR_STATUS_MSB_2ND_LSB              (1U << 0)       /* 32b */
+/* XPU_PWR_STATUS (0x1C001000+0xF94) */
 #define XPU_PWR_STATUS_LSB                  (1U << 0)       /* 32b */
-/* XPU_PWR_STATUS_2ND (0x1C001000+0xF40) */
+/* XPU_PWR_STATUS_2ND (0x1C001000+0xF98) */
 #define XPU_PWR_STATUS_2ND_LSB              (1U << 0)       /* 32b */
-/* DFD_SOC_PWR_LATCH (0x1C001000+0xF44) */
+/* DFD_SOC_PWR_LATCH (0x1C001000+0xF9C) */
 #define DFD_SOC_PWR_LATCH_LSB               (1U << 0)       /* 32b */
-/* SPM_TWAM_CON (0x1C001000+0xF80) */
+/* VDE_VCORE0_PWR_CON (0x1C001000+0xFA0) */
+#define VDE_VCORE0_PWR_RST_B_LSB            (1U << 0)       /* 1b */
+#define VDE_VCORE0_PWR_ISO_LSB              (1U << 1)       /* 1b */
+#define VDE_VCORE0_PWR_ON_LSB               (1U << 2)       /* 1b */
+#define VDE_VCORE0_PWR_ON_2ND_LSB           (1U << 3)       /* 1b */
+#define VDE_VCORE0_PWR_CLK_DIS_LSB          (1U << 4)       /* 1b */
+#define VDE_VCORE0_SRAM_PDN_LSB             (1U << 8)       /* 1b */
+#define SC_VDE_VCORE0_SRAM_PDN_ACK_LSB      (1U << 12)      /* 1b */
+#define VDE_VCORE0_RTFF_SAVE_LSB            (1U << 24)      /* 1b */
+#define VDE_VCORE0_RTFF_NRESTORE_LSB        (1U << 25)      /* 1b */
+#define VDE_VCORE0_RTFF_CLK_DIS_LSB         (1U << 28)      /* 1b */
+#define SC_VDE_VCORE0_PWR_ACK_LSB           (1U << 30)      /* 1b */
+#define SC_VDE_VCORE0_PWR_ACK_2ND_LSB       (1U << 31)      /* 1b */
+/* VDE_VCORE1_PWR_CON (0x1C001000+0xFA4) */
+#define VDE_VCORE1_PWR_RST_B_LSB            (1U << 0)       /* 1b */
+#define VDE_VCORE1_PWR_ISO_LSB              (1U << 1)       /* 1b */
+#define VDE_VCORE1_PWR_ON_LSB               (1U << 2)       /* 1b */
+#define VDE_VCORE1_PWR_ON_2ND_LSB           (1U << 3)       /* 1b */
+#define VDE_VCORE1_PWR_CLK_DIS_LSB          (1U << 4)       /* 1b */
+#define VDE_VCORE1_SRAM_PDN_LSB             (1U << 8)       /* 1b */
+#define SC_VDE_VCORE1_SRAM_PDN_ACK_LSB      (1U << 12)      /* 1b */
+#define VDE_VCORE1_RTFF_SAVE_LSB            (1U << 24)      /* 1b */
+#define VDE_VCORE1_RTFF_NRESTORE_LSB        (1U << 25)      /* 1b */
+#define VDE_VCORE1_RTFF_CLK_DIS_LSB         (1U << 28)      /* 1b */
+#define SC_VDE_VCORE1_PWR_ACK_LSB           (1U << 30)      /* 1b */
+#define SC_VDE_VCORE1_PWR_ACK_2ND_LSB       (1U << 31)      /* 1b */
+/* SUBSYS_PM_BYPASS (0x1C001000+0xFA8) */
+#define PM_BYPASS_MODE_LSB                  (1U << 0)       /* 16b */
+/* SPM_TWAM_CON (0x1C001000+0xFB0) */
 #define REG_TWAM_ENABLE_LSB                 (1U << 0)       /* 1b */
 #define REG_TWAM_SPEED_MODE_EN_LSB          (1U << 1)       /* 1b */
 #define SPM_TWAM_EVENT_CLEAR_LSB            (1U << 2)       /* 1b */
@@ -2460,30 +3336,30 @@
 #define REG_TWAM_MON_TYPE_3_LSB             (1U << 10)      /* 2b */
 #define REG_TWAM_IRQ_CLEAR_LSB              (1U << 16)      /* 1b */
 #define TWAM_IRQ_LSB                        (1U << 24)      /* 1b */
-/* SPM_TWAM_WINDOW_LEN (0x1C001000+0xF84) */
+/* SPM_TWAM_WINDOW_LEN (0x1C001000+0xFB4) */
 #define REG_TWAM_WINDOW_LEN_LSB             (1U << 0)       /* 32b */
-/* SPM_TWAM_IDLE_SEL (0x1C001000+0xF88) */
+/* SPM_TWAM_IDLE_SEL (0x1C001000+0xFB8) */
 #define REG_TWAM_SIG_SEL_0_LSB              (1U << 0)       /* 7b */
 #define REG_TWAM_SIG_SEL_1_LSB              (1U << 8)       /* 7b */
 #define REG_TWAM_SIG_SEL_2_LSB              (1U << 16)      /* 7b */
 #define REG_TWAM_SIG_SEL_3_LSB              (1U << 24)      /* 7b */
-/* SPM_TWAM_LAST_STA_0 (0x1C001000+0xF8C) */
+/* SPM_TWAM_LAST_STA_0 (0x1C001000+0xFBC) */
 #define TWAM_LAST_IDLE_CNT_0_LSB            (1U << 0)       /* 32b */
-/* SPM_TWAM_LAST_STA_1 (0x1C001000+0xF90) */
+/* SPM_TWAM_LAST_STA_1 (0x1C001000+0xFC0) */
 #define TWAM_LAST_IDLE_CNT_1_LSB            (1U << 0)       /* 32b */
-/* SPM_TWAM_LAST_STA_2 (0x1C001000+0xF94) */
+/* SPM_TWAM_LAST_STA_2 (0x1C001000+0xFC4) */
 #define TWAM_LAST_IDLE_CNT_2_LSB            (1U << 0)       /* 32b */
-/* SPM_TWAM_LAST_STA_3 (0x1C001000+0xF98) */
+/* SPM_TWAM_LAST_STA_3 (0x1C001000+0xFC8) */
 #define TWAM_LAST_IDLE_CNT_3_LSB            (1U << 0)       /* 32b */
-/* SPM_TWAM_CURR_STA_0 (0x1C001000+0xF9C) */
+/* SPM_TWAM_CURR_STA_0 (0x1C001000+0xFCC) */
 #define TWAM_CURRENT_IDLE_CNT_0_LSB         (1U << 0)       /* 32b */
-/* SPM_TWAM_CURR_STA_1 (0x1C001000+0xFA0) */
+/* SPM_TWAM_CURR_STA_1 (0x1C001000+0xFD0) */
 #define TWAM_CURRENT_IDLE_CNT_1_LSB         (1U << 0)       /* 32b */
-/* SPM_TWAM_CURR_STA_2 (0x1C001000+0xFA4) */
+/* SPM_TWAM_CURR_STA_2 (0x1C001000+0xFD4) */
 #define TWAM_CURRENT_IDLE_CNT_2_LSB         (1U << 0)       /* 32b */
-/* SPM_TWAM_CURR_STA_3 (0x1C001000+0xFA8) */
+/* SPM_TWAM_CURR_STA_3 (0x1C001000+0xFD8) */
 #define TWAM_CURRENT_IDLE_CNT_3_LSB         (1U << 0)       /* 32b */
-/* SPM_TWAM_TIMER_OUT (0x1C001000+0xFAC) */
+/* SPM_TWAM_TIMER_OUT (0x1C001000+0xFDC) */
 #define TWAM_TIMER_LSB                      (1U << 0)       /* 32b */
 
 #define SPM_PROJECT_CODE	0xb16
