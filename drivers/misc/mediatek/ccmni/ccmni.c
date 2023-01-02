@@ -1444,6 +1444,7 @@ static void ccmni_dump(int ccmni_idx, unsigned int flag)
 	struct netdev_queue *ack_queue = NULL;
 	struct Qdisc *qdisc = NULL;
 	struct Qdisc *ack_qdisc = NULL;
+	struct rtnl_link_stats64 rtnls;
 
 	if (ccmni_idx < 0) {
 		pr_err("%s : invalid ccmni index = %d\n",
@@ -1470,6 +1471,7 @@ static void ccmni_dump(int ccmni_idx, unsigned int flag)
 	ccmni = (struct ccmni_instance *)netdev_priv(dev);
 	dev_queue = netdev_get_tx_queue(dev, 0);
 	netdev_info(dev, "to:clr(%lu:%lu)\r\n", timeout_flush_num, clear_flush_num);
+	dev_get_stats(dev, &rtnls);
 	if (ctlb->ccci_ops->md_ability & MODEM_CAP_CCMNI_MQ) {
 		ack_queue = netdev_get_tx_queue(dev, CCMNI_TXQ_FAST);
 		qdisc = dev_queue->qdisc;
@@ -1494,7 +1496,7 @@ static void ccmni_dump(int ccmni_idx, unsigned int flag)
 			      dev->stats.tx_dropped, qdisc->qstats.drops,
 				  ack_qdisc->qstats.drops,
 			      dev->stats.rx_dropped,
-				  atomic_long_read(&dev->rx_dropped),
+				  rtnls.rx_dropped,
 			      ccmni->tx_busy_cnt[0], ccmni->tx_busy_cnt[1],
 			      dev->state, dev->flags, dev_queue->state,
 				  ack_queue->state);
@@ -1509,7 +1511,7 @@ static void ccmni_dump(int ccmni_idx, unsigned int flag)
 			      dev->qdisc->q.qlen, dev->stats.tx_dropped,
 				  dev->qdisc->qstats.drops,
 			      dev->stats.rx_dropped,
-				  atomic_long_read(&dev->rx_dropped),
+				  rtnls.rx_dropped,
 				  ccmni->tx_busy_cnt[0],
 			      ccmni->tx_busy_cnt[1], dev->state, dev->flags,
 				  dev_queue->state);
