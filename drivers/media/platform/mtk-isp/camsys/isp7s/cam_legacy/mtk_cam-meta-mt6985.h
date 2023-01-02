@@ -85,10 +85,10 @@ struct mtk_cam_uapi_ae_hist_cfg {
  *           default non-HDR scenario ratio=1000
  */
 struct mtk_cam_uapi_ae_param {
-	struct mtk_cam_uapi_ae_hist_cfg pixel_hist_win_cfg_le[6];
-	struct mtk_cam_uapi_ae_hist_cfg pixel_hist_win_cfg_se[6];
-	struct mtk_cam_uapi_ae_hist_cfg roi_hist_cfg_le[4];
-	struct mtk_cam_uapi_ae_hist_cfg roi_hist_cfg_se[4];
+	struct mtk_cam_uapi_ae_hist_cfg pixel_hist_win_cfg_le[4];
+	struct mtk_cam_uapi_ae_hist_cfg pixel_hist_win_cfg_se[4];
+	struct mtk_cam_uapi_ae_hist_cfg roi_hist_cfg_le[2];
+	struct mtk_cam_uapi_ae_hist_cfg roi_hist_cfg_se[2];
 	__u8  aai_r1_enable;
 	__u8  aai_roi_map[MTK_CAM_UAPI_ROI_MAP_BLK_NUM];
 	__u32 hdr_ratio; /* base 1 x= 1000 */
@@ -129,7 +129,8 @@ struct mtk_cam_uapi_ae_param {
  *  @pregain_r:                unit module compensation gain for R color
  *  @pregain_g:                unit module compensation gain for G color
  *  @pregain_b:                unit module compensation gain for B color
- *  @valid_datawidth:          valid bits of statistic data
+ *  @nonlinear_valid_datawidth:AWB max data width for nonlinear stat. (average)
+ *  @linear_valid_datawidth:   AWB max data width for nonlinear stat. (sum)
  *  @hdr_support_en:           support HDR mode
  *  @stat_mode:                Output format select <1>sum mode <0>average mode
  *  @error_ratio:              Programmable error pixel count by AWB window size
@@ -168,7 +169,8 @@ struct mtk_cam_uapi_awb_param {
 	__u32 pregain_r;
 	__u32 pregain_g;
 	__u32 pregain_b;
-	__u32 valid_datawidth;
+	__u32 nonlinear_valid_datawidth;
+	__u32 linear_valid_datawidth;
 	__u32 hdr_support_en;
 	__u32 stat_mode;
 	__u32 format_shift;
@@ -189,8 +191,6 @@ struct mtk_cam_uapi_awb_param {
 	__s32 awbxv_win_l[MTK_CAM_UAPI_AWB_MAX_LIGHT_AREA_NUM];
 	__s32 awbxv_win_d[MTK_CAM_UAPI_AWB_MAX_LIGHT_AREA_NUM];
 	__s32 awbxv_win_u[MTK_CAM_UAPI_AWB_MAX_LIGHT_AREA_NUM];
-	__u32 csc_ccm[9];
-	__u32 acc;
 	__u32 med_region[4];
 	__u32 low_region[4];
 	__u32 pregain2_r;
@@ -491,7 +491,7 @@ struct mtk_cam_uapi_meta_mraw_stats_0 {
  * Common stuff for all statistics
  */
 
-#define MTK_CAM_UAPI_MAX_CORE_NUM (2)
+#define MTK_CAM_UAPI_MAX_CORE_NUM (3)
 
 /**
  * struct mtk_cam_uapi_pipeline_config - pipeline configuration
@@ -604,7 +604,7 @@ struct mtk_cam_uapi_flk_stats {
  *  T S F
  */
 
-#define MTK_CAM_UAPI_TSFSO_SIZE (48 * 36 * 2 * 3 * 4)
+#define MTK_CAM_UAPI_TSFSO_SIZE (40 * 30 * 3 * 4)
 
 /**
  * struct mtk_cam_uapi_tsf_stats - TSF statistic data
@@ -616,6 +616,7 @@ struct mtk_cam_uapi_flk_stats {
  */
 struct mtk_cam_uapi_tsf_stats {
 	struct mtk_cam_uapi_meta_hw_buf tsfo_r1_buf;
+	struct mtk_cam_uapi_meta_hw_buf tsfo_r2_buf;
 };
 
 /**
@@ -736,7 +737,7 @@ struct mtk_cam_uapi_meta_raw_stats_cfg {
 	struct mtk_cam_uapi_wb_param wb_param;
 	struct mtk_cam_uapi_pde_param pde_param;
 
-	__u8 bytes[1024 * 96];
+	__u8 bytes[97632];
 };
 
 struct mtk_cam_uapi_meta_raw_stats_w_cfg {
@@ -757,7 +758,7 @@ struct mtk_cam_uapi_meta_raw_stats_w_cfg {
 	struct mtk_cam_uapi_wb_param wb_param;
 	struct mtk_cam_uapi_pde_param pde_param;
 
-	__u8 bytes[1024 * 96];
+	__u8 bytes[45908];
 };
 
 struct mtk_cam_uapi_meta_raw_stats_rgbw_cfg {
@@ -840,7 +841,7 @@ struct mtk_cam_uapi_meta_camsv_stats_0 {
 };
 
 #define MTK_CAM_META_VERSION_MAJOR 1
-#define MTK_CAM_META_VERSION_MINOR 0
+#define MTK_CAM_META_VERSION_MINOR 2
 #define MTK_CAM_META_PLATFORM_NAME "isp7s"
 #define MTK_CAM_META_CHIP_NAME "mt6985"
 
