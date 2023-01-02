@@ -90,6 +90,13 @@ struct fence_event {
 	int gce_event;
 } __packed;
 
+struct private_data {
+	int8_t need_update_desc;
+	uint32_t buf_fd;
+	uint32_t buf_offset;
+	uint32_t desc_offset;
+} __packed;
+
 struct img_swfrm_info {
 	uint32_t hw_comb;
 	int sw_ridx;
@@ -107,6 +114,7 @@ struct img_swfrm_info {
 	struct fence_event wait_fence_list[KFENCE_MAX];
 	int notify_fence_num;
 	struct fence_event notify_fence_list[KFENCE_MAX];
+	struct private_data priv[2];
 } __packed;
 
 struct img_addr {
