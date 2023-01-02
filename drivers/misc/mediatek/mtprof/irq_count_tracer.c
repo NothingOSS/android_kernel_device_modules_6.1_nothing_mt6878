@@ -145,30 +145,88 @@ static unsigned int irq_mon_irqs_cpu(unsigned int irq, int cpu)
 #define irq_mon_irqs_cpu(irq, cpu) kstat_irqs_cpu(irq, cpu)
 #endif
 
-#define MAX_IRQ_NUM 1024
+#define REC_NUM 4
 
+/* per cpu */
 struct irq_count_stat {
 	int enabled;
 	unsigned long long t_start;
 	unsigned long long t_end;
-	unsigned int count[MAX_IRQ_NUM];
 };
 
 static struct irq_count_stat __percpu *irq_count_data;
 static struct hrtimer __percpu *irq_count_tracer_hrtimer;
 
-struct irq_count_all {
-	spinlock_t lock; /* protect this struct */
-	unsigned long long ts;
-	unsigned long long te;
-	unsigned int num[MAX_IRQ_NUM];
-	unsigned int diff[MAX_IRQ_NUM];
-	bool warn[MAX_IRQ_NUM];
+/* per irq and per record */
+struct irq_count_rec {
+	unsigned int num;
+	unsigned int diff;
+	bool warn;
 };
 
-#define REC_NUM 4
+/* per irq */
+struct irq_count_desc {
+	unsigned int __percpu *count;
+	struct irq_count_rec rec[REC_NUM];
+};
+
+/* per record */
+struct irq_count_all {
+	spinlock_t lock; /* protect this struct and desc->rec[REC_NUM] */
+	unsigned long long ts;
+	unsigned long long te;
+};
+
 static struct irq_count_all irq_cpus[REC_NUM];
 static unsigned int rec_indx;
+static DEFINE_XARRAY(irqs_desc_xa);
+
+static struct irq_count_desc *irq_count_desc_lookup(int irq)
+{
+	return xa_load(&irqs_desc_xa, irq);
+}
+
+static struct irq_count_desc *irq_count_desc_alloc(int irq)
+{
+	struct irq_count_desc *desc;
+	void *entry;
+
+	desc = kzalloc(sizeof(*desc), GFP_ATOMIC);
+	if (!desc)
+		return NULL;
+	desc->count = alloc_percpu_gfp(unsigned int, GFP_ATOMIC);
+	if (!desc->count) {
+		kfree(desc);
+		return NULL;
+	}
+	entry = xa_store(&irqs_desc_xa, irq, desc, GFP_ATOMIC);
+	if (xa_is_err(entry)) {
+		free_percpu(desc->count);
+		kfree(desc);
+		return NULL;
+	}
+	return desc;
+}
+
+static unsigned int irq_count_irqs_cpu(int irq, int cpu)
+{
+	struct irq_count_desc *desc;
+
+	desc = irq_count_desc_lookup(irq);
+	return (desc && desc->count) ? *per_cpu_ptr(desc->count, cpu) : 0;
+}
+
+static void irq_count_save_irqs_cpu(int irq, unsigned int irqs, int cpu)
+{
+	struct irq_count_desc *desc;
+
+	desc = irq_count_desc_lookup(irq);
+	if (!desc)
+		desc = irq_count_desc_alloc(irq);
+
+	if (desc)
+		*per_cpu_ptr(desc->count, cpu) = irqs;
+}
 
 static void __show_irq_count_info(unsigned int output)
 {
@@ -192,23 +250,24 @@ static void __show_irq_count_info(unsigned int output)
 			    sec_high(now), sec_low(now),
 			    msec_high(now - prev));
 
-		for (irq = 0; irq < min_t(int, nr_irqs, MAX_IRQ_NUM); irq++) {
-			unsigned int count;
+		for_each_irq_nr(irq) {
+			unsigned int count, prev_count;
 			const char *irq_name;
 
 			count = irq_mon_irqs_cpu(irq, cpu);
 			if (!count)
 				continue;
+			prev_count = irq_count_irqs_cpu(irq, cpu);
 
 			irq_name = irq_to_name(irq);
 			if (irq_name && !strcmp(irq_name, "IPI"))
 				irq_mon_msg(output, "    %d:%s%d +%d(%d)",
 					    irq, irq_name, irq_to_ipi_type(irq),
-					    count - irq_cnt->count[irq], count);
+					    count - prev_count, count);
 			else
 				irq_mon_msg(output, "    %d:%s +%d(%d)",
 					    irq, irq_name ? irq_name : "NULL",
-					    count - irq_cnt->count[irq], count);
+					    count - prev_count, count);
 		}
 		irq_mon_msg(output, "");
 	}
@@ -242,6 +301,7 @@ enum hrtimer_restart irq_count_tracer_hrtimer_fn(struct hrtimer *hrtimer)
 	if (cpu == 0) {
 		unsigned int pre_idx;
 		unsigned int pre_num;
+		struct irq_count_desc *desc;
 
 		spin_lock(&irq_cpus[rec_indx].lock);
 
@@ -249,12 +309,21 @@ enum hrtimer_restart irq_count_tracer_hrtimer_fn(struct hrtimer *hrtimer)
 		irq_cpus[rec_indx].ts = irq_cpus[pre_idx].te;
 		irq_cpus[rec_indx].te = sched_clock();
 
-		for (irq = 0; irq < min_t(int, nr_irqs, MAX_IRQ_NUM); irq++) {
+		for_each_irq_nr(irq) {
 			irq_num = irq_mon_irqs(irq);
-			pre_num = irq_cpus[pre_idx].num[irq];
-			irq_cpus[rec_indx].num[irq] = irq_num;
-			irq_cpus[rec_indx].diff[irq] = irq_num - pre_num;
-			irq_cpus[rec_indx].warn[irq] = 0;
+			desc = irq_count_desc_lookup(irq);
+			if (!desc) {
+				/* Don't alloc memory if no irqs ever */
+				if (!irq_num)
+					continue;
+				desc = irq_count_desc_alloc(irq);
+				if (!desc)
+					continue;
+			}
+			pre_num = desc->rec[pre_idx].num;
+			desc->rec[rec_indx].num = irq_num;
+			desc->rec[rec_indx].diff = irq_num - pre_num;
+			desc->rec[rec_indx].warn = 0;
 		}
 
 		spin_unlock(&irq_cpus[rec_indx].lock);
@@ -263,14 +332,13 @@ enum hrtimer_restart irq_count_tracer_hrtimer_fn(struct hrtimer *hrtimer)
 
 		if (0)
 			show_irq_count_info(TO_BOTH);
-
 	}
 
 	irq_cnt->t_start = irq_cnt->t_end;
 	irq_cnt->t_end = sched_clock();
 	t_diff = irq_cnt->t_end - irq_cnt->t_start;
 
-	for (irq = 0; irq < min_t(int, nr_irqs, MAX_IRQ_NUM); irq++) {
+	for_each_irq_nr(irq) {
 		const char *tmp_irq_name = NULL;
 		char irq_name[64];
 		char irq_handler_addr[20];
@@ -278,13 +346,13 @@ enum hrtimer_restart irq_count_tracer_hrtimer_fn(struct hrtimer *hrtimer)
 		const void *irq_handler = NULL;
 
 		irq_num = irq_mon_irqs_cpu(irq, cpu);
-		count = irq_num - irq_cnt->count[irq];
+		count = irq_num - irq_count_irqs_cpu(irq, cpu);
 
 		/* The irq is not triggered in this period */
 		if (count == 0)
 			continue;
 
-		irq_cnt->count[irq] = irq_num;
+		irq_count_save_irqs_cpu(irq, irq_num, cpu);
 		/* The irq count is decreased */
 		if (unlikely(count > UINT_MAX / 2))
 			continue;
@@ -324,14 +392,17 @@ enum hrtimer_restart irq_count_tracer_hrtimer_fn(struct hrtimer *hrtimer)
 
 		for (i = 0; i < REC_NUM; i++) {
 			char msg[MAX_MSG_LEN];
+			struct irq_count_desc *desc;
 
 			spin_lock(&irq_cpus[i].lock);
 
-			if (irq_cpus[i].warn[irq] || !irq_cpus[i].diff[irq]) {
+			desc = irq_count_desc_lookup(irq);
+
+			if (desc->rec[i].warn || !desc->rec[i].diff) {
 				spin_unlock(&irq_cpus[i].lock);
 				continue;
 			}
-			irq_cpus[i].warn[irq] = 1;
+			desc->rec[i].warn = 1;
 
 			t_diff_ms = irq_cpus[i].te - irq_cpus[i].ts;
 			do_div(t_diff_ms, 1000000);
@@ -339,7 +410,7 @@ enum hrtimer_restart irq_count_tracer_hrtimer_fn(struct hrtimer *hrtimer)
 			scnprintf(msg, sizeof(msg),
 				  "irq: %d [<%s>]%s, %s count +%d in %lld ms, from %lld.%06lu to %lld.%06lu on all CPU",
 				  irq, irq_handler_addr, irq_handler_name, irq_name,
-				  irq_cpus[i].diff[irq], t_diff_ms,
+				  desc->rec[i].diff, t_diff_ms,
 				  sec_high(irq_cpus[i].ts),
 				  sec_low(irq_cpus[i].ts),
 				  sec_high(irq_cpus[i].te),
@@ -434,22 +505,57 @@ static void irq_count_tracer_work(struct work_struct *work)
 	} while (!done);
 }
 
+static void irq_count_rec_init(void)
+{
+	int i, irq;
+	unsigned int irq_num;
+	struct irq_count_desc *desc;
+
+	for (i = 0; i < REC_NUM; i++)
+		spin_lock_init(&irq_cpus[i].lock);
+
+	WARN_ON(!rec_indx);
+
+	/* Initialize first record. no race before the tracer start */
+	/* Disable preemption to get more precise values */
+	preempt_disable();
+	irq_cpus[rec_indx].ts = 0;
+	irq_cpus[rec_indx].te = sched_clock();
+
+	for_each_irq_nr(irq) {
+		irq_num = irq_mon_irqs(irq);
+		if (!irq_num)
+			continue;
+		desc = irq_count_desc_alloc(irq);
+		if (!desc)
+			continue;
+		desc->rec[rec_indx].num = irq_num;
+		desc->rec[rec_indx].diff = irq_num;
+		desc->rec[rec_indx].warn = 0;
+	}
+	preempt_enable();
+
+	rec_indx = (rec_indx == REC_NUM - 1) ? 0 : rec_indx + 1;
+}
+
 extern bool b_count_tracer_default_enabled;
 static DECLARE_WORK(tracer_work, irq_count_tracer_work);
 int irq_count_tracer_init(void)
 {
-	int i;
-
 	irq_count_data = alloc_percpu(struct irq_count_stat);
-	irq_count_tracer_hrtimer = alloc_percpu(struct hrtimer);
 	if (!irq_count_data) {
 		pr_info("Failed to alloc irq_count_data\n");
 		return -ENOMEM;
 	}
 
-	for (i = 0; i < REC_NUM; i++)
-		spin_lock_init(&irq_cpus[i].lock);
+	irq_count_tracer_hrtimer = alloc_percpu(struct hrtimer);
+	if (!irq_count_tracer_hrtimer) {
+		free_percpu(irq_count_data);
+		pr_info("Failed to alloc irq_count_tracer_hrtimer\n");
+		return -ENOMEM;
+	}
 
+	irq_count_rec_init();
 	if (b_count_tracer_default_enabled) {
 		irq_count_tracer = 1;
 		schedule_work(&tracer_work);
@@ -459,8 +565,16 @@ int irq_count_tracer_init(void)
 
 void irq_count_tracer_exit(void)
 {
+	struct irq_count_desc *desc;
+	unsigned long index;
+
 	free_percpu(irq_count_data);
 	free_percpu(irq_count_tracer_hrtimer);
+	xa_for_each(&irqs_desc_xa, index, desc) {
+		free_percpu(desc->count);
+		kfree(desc);
+	}
+	xa_destroy(&irqs_desc_xa);
 }
 
 /* Must holding lock*/
