@@ -553,7 +553,7 @@ int tmem_register_ffa_module(void)
 {
 	pr_info("%s:%d (start)\n", __func__, __LINE__);
 
-	sp_partition_dev = ffa_device_register(&tmem_ffa_device_id[0].uuid, 0x1001);
+//	sp_partition_dev = ffa_device_register(&tmem_ffa_device_id[0].uuid, 0x1001);
 	if (sp_partition_dev == NULL) {
 		pr_info("%s: ffa_device_register() failed\n", __func__);
 		return TMEM_KPOOL_FFA_INIT_FAILED;
@@ -561,7 +561,7 @@ int tmem_register_ffa_module(void)
 	sp_partition_id = sp_partition_dev->vm_id;
 	pr_info("%s: sp_partition_dev->vm_id=0x%lx\n", __func__, sp_partition_id);
 
-	ffa_ops = ffa_dev_ops_get(sp_partition_dev);
+//	ffa_ops = ffa_dev_ops_get(sp_partition_dev);
 	if (ffa_ops == NULL) {
 		pr_info("%s: failed to obtain FFA ops\n", __func__);
 		return TMEM_KPOOL_FFA_INIT_FAILED;
