@@ -197,6 +197,8 @@ struct mtk_apu {
 
 	uint32_t md32_tcm_sz;
 	uint32_t up_code_buf_sz;
+	/* APUMMU HW logger buf address */
+	dma_addr_t apummu_hwlog_buf_da;
 };
 
 #define CONFIG_SIZE (round_up(sizeof(struct config_v1), PAGE_SIZE))
@@ -236,6 +238,7 @@ extern const struct mtk_apu_platdata mt6879_platdata;
 extern const struct mtk_apu_platdata mt6886_platdata;
 extern const struct mtk_apu_platdata mt6893_platdata;
 extern const struct mtk_apu_platdata mt6895_platdata;
+extern const struct mtk_apu_platdata mt6897_platdata;
 extern const struct mtk_apu_platdata mt6983_platdata;
 extern const struct mtk_apu_platdata mt6985_platdata;
 extern const struct mtk_apu_platdata mt8188_platdata;
