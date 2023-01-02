@@ -61,13 +61,14 @@
 static unsigned int __gpufreq_custom_init_enable(void);
 static unsigned int __gpufreq_dvfs_enable(void);
 static void __gpufreq_set_dvfs_state(unsigned int set, unsigned int state);
+static void __gpufreq_set_margin_mode(unsigned int val);
+static void __gpufreq_set_gpm_mode(unsigned int version, unsigned int val);
+static void __gpufreq_apply_restore_margin(enum gpufreq_target target, unsigned int val);
 static void __gpufreq_dump_bringup_status(struct platform_device *pdev);
 static void __gpufreq_measure_power(void);
 static void __iomem *__gpufreq_of_ioremap(const char *node_name, int idx);
 static int __gpufreq_pause_dvfs(void);
 static void __gpufreq_resume_dvfs(void);
-static void __gpufreq_apply_restore_margin(
-	enum gpufreq_target target, enum gpufreq_feat_mode mode);
 static void __gpufreq_update_shared_status_opp_table(void);
 static void __gpufreq_update_shared_status_adj_table(void);
 static void __gpufreq_update_shared_status_init_reg(void);
@@ -274,9 +275,7 @@ static struct gpufreq_platform_fp platform_ap_fp = {
 	.set_timestamp = __gpufreq_set_timestamp,
 	.check_bus_idle = __gpufreq_check_bus_idle,
 	.dump_infra_status = __gpufreq_dump_infra_status,
-	.set_margin_mode = __gpufreq_set_margin_mode,
-	.set_gpm_mode = __gpufreq_set_gpm_mode,
-	.set_dfd_mode = __gpufreq_set_dfd_mode,
+	.set_mfgsys_config = __gpufreq_set_mfgsys_config,
 	.get_core_mask_table = __gpufreq_get_core_mask_table,
 	.get_core_num = __gpufreq_get_core_num,
 	.pdca_config = __gpufreq_pdca_config,
@@ -473,35 +472,6 @@ const struct gpufreq_opp_info *__gpufreq_get_signed_table_gpu(void)
 const struct gpufreq_opp_info *__gpufreq_get_signed_table_stack(void)
 {
 	return g_stack.signed_table;
-}
-
-/* API: update debug info to shared memory */
-void __gpufreq_update_debug_opp_info(void)
-{
-	mutex_lock(&gpufreq_lock);
-
-	/* update current status to shared memory */
-	if (__gpufreq_get_power_state()) {
-		g_shared_status->cur_con1_fgpu = __gpufreq_get_real_fgpu();
-		g_shared_status->cur_con1_fstack = __gpufreq_get_real_fstack();
-		g_shared_status->cur_fmeter_fgpu = __gpufreq_get_fmeter_freq(TARGET_GPU);
-		g_shared_status->cur_fmeter_fstack = __gpufreq_get_fmeter_freq(TARGET_STACK);
-		g_shared_status->cur_regulator_vgpu = __gpufreq_get_real_vgpu();
-		g_shared_status->cur_regulator_vstack = __gpufreq_get_real_vstack();
-		g_shared_status->cur_regulator_vsram_gpu = __gpufreq_get_real_vsram();
-		g_shared_status->cur_regulator_vsram_stack = __gpufreq_get_real_vsram();
-	} else {
-		g_shared_status->cur_con1_fgpu = 0;
-		g_shared_status->cur_con1_fstack = 0;
-		g_shared_status->cur_fmeter_fgpu = 0;
-		g_shared_status->cur_fmeter_fstack = 0;
-		g_shared_status->cur_regulator_vgpu = 0;
-		g_shared_status->cur_regulator_vstack = 0;
-		g_shared_status->cur_regulator_vsram_stack = 0;
-	}
-	g_shared_status->mfg_pwr_status = MFG_0_19_PWR_STATUS;
-
-	mutex_unlock(&gpufreq_lock);
 }
 
 /* API: get Freq of GPU via OPP index */
@@ -1279,37 +1249,59 @@ int __gpufreq_get_low_batt_idx(int low_batt_level)
 #endif /* GPUFREQ_LOW_BATT_ENABLE && CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING */
 }
 
-/* API: apply/restore Vaging to working table of STACK */
-void __gpufreq_set_margin_mode(enum gpufreq_feat_mode mode)
+/* API: update debug info to shared memory */
+void __gpufreq_update_debug_opp_info(void)
 {
-	/* update volt margin */
-	__gpufreq_apply_restore_margin(TARGET_GPU, mode);
-	__gpufreq_apply_restore_margin(TARGET_STACK, mode);
-
-	/* update power info to working table */
-	__gpufreq_measure_power();
-
-	/* update DVFS constraint */
-	__gpufreq_update_springboard();
+	mutex_lock(&gpufreq_lock);
 
 	/* update current status to shared memory */
-	__gpufreq_update_shared_status_opp_table();
+	if (__gpufreq_get_power_state()) {
+		g_shared_status->cur_con1_fgpu = __gpufreq_get_real_fgpu();
+		g_shared_status->cur_con1_fstack = __gpufreq_get_real_fstack();
+		g_shared_status->cur_fmeter_fgpu = __gpufreq_get_fmeter_freq(TARGET_GPU);
+		g_shared_status->cur_fmeter_fstack = __gpufreq_get_fmeter_freq(TARGET_STACK);
+		g_shared_status->cur_regulator_vgpu = __gpufreq_get_real_vgpu();
+		g_shared_status->cur_regulator_vstack = __gpufreq_get_real_vstack();
+		g_shared_status->cur_regulator_vsram_gpu = __gpufreq_get_real_vsram();
+		g_shared_status->cur_regulator_vsram_stack = __gpufreq_get_real_vsram();
+	} else {
+		g_shared_status->cur_con1_fgpu = 0;
+		g_shared_status->cur_con1_fstack = 0;
+		g_shared_status->cur_fmeter_fgpu = 0;
+		g_shared_status->cur_fmeter_fstack = 0;
+		g_shared_status->cur_regulator_vgpu = 0;
+		g_shared_status->cur_regulator_vstack = 0;
+		g_shared_status->cur_regulator_vsram_stack = 0;
+	}
+	g_shared_status->mfg_pwr_status = MFG_0_19_PWR_STATUS;
+
+	mutex_unlock(&gpufreq_lock);
 }
 
-/* API: enable/disable GPM 1.0 */
-void __gpufreq_set_gpm_mode(unsigned int version, enum gpufreq_feat_mode mode)
+/* API: general interface to set MFGSYS config */
+void __gpufreq_set_mfgsys_config(enum gpufreq_config_target target, enum gpufreq_config_value val)
 {
-	if (version == 1)
-		g_gpm1_mode = mode;
+	mutex_lock(&gpufreq_lock);
 
-	/* update current status to shared memory */
-	g_shared_status->gpm1_mode = g_gpm1_mode;
-}
+	switch (target) {
+	case CONFIG_STRESS_TEST:
+		gpuppm_set_stress_test(val);
+		break;
+	case CONFIG_MARGIN:
+		__gpufreq_set_margin_mode(val);
+		break;
+	case CONFIG_GPM1:
+		__gpufreq_set_gpm_mode(1, val);
+		break;
+	case CONFIG_DFD:
+		g_dfd_mode = val;
+		break;
+	default:
+		GPUFREQ_LOGE("invalid config target: %d", target);
+		break;
+	}
 
-/* API: enable/disable DFD force dump */
-void __gpufreq_set_dfd_mode(enum gpufreq_feat_mode mode)
-{
-	g_dfd_mode = mode;
+	mutex_unlock(&gpufreq_lock);
 }
 
 /* API: get core_mask table */
@@ -1555,6 +1547,7 @@ void __gpufreq_set_shared_status(struct gpufreq_shared_status *shared_status)
 	g_shared_status->gpm3_mode = g_gpm3_mode;
 	g_shared_status->dual_buck = true;
 	g_shared_status->segment_id = g_stack.segment_id;
+	g_shared_status->test_mode = true;
 #if GPUFREQ_MSSV_TEST_MODE
 	g_shared_status->reg_stack_sel.addr = 0x13FBF500;
 	g_shared_status->reg_del_sel.addr = 0x13FBF080;
@@ -1870,14 +1863,79 @@ static void __gpufreq_set_dvfs_state(unsigned int set, unsigned int state)
 	mutex_unlock(&gpufreq_lock);
 }
 
+/* API: apply/restore Vaging to working table of STACK */
+static void __gpufreq_set_margin_mode(unsigned int val)
+{
+	/* update volt margin */
+	__gpufreq_apply_restore_margin(TARGET_GPU, val);
+	__gpufreq_apply_restore_margin(TARGET_STACK, val);
+
+	/* update power info to working table */
+	__gpufreq_measure_power();
+
+	/* update DVFS constraint */
+	__gpufreq_update_springboard();
+
+	/* update current status to shared memory */
+	__gpufreq_update_shared_status_opp_table();
+}
+
+/* API: enable/disable GPM 1.0 */
+static void __gpufreq_set_gpm_mode(unsigned int version, unsigned int val)
+{
+	if (version == 1)
+		g_gpm1_mode = val;
+
+	/* update current status to shared memory */
+	g_shared_status->gpm1_mode = g_gpm1_mode;
+}
+
+/* API: apply (enable) / restore (disable) margin */
+static void __gpufreq_apply_restore_margin(enum gpufreq_target target, unsigned int val)
+{
+	struct gpufreq_opp_info *working_table = NULL;
+	struct gpufreq_opp_info *signed_table = NULL;
+	int working_opp_num = 0, signed_opp_num = 0, segment_upbound = 0, i = 0;
+
+	if (target == TARGET_STACK) {
+		working_table = g_stack.working_table;
+		signed_table = g_stack.signed_table;
+		working_opp_num = g_stack.opp_num;
+		signed_opp_num = g_stack.signed_opp_num;
+		segment_upbound = g_stack.segment_upbound;
+	} else {
+		working_table = g_gpu.working_table;
+		signed_table = g_gpu.signed_table;
+		working_opp_num = g_gpu.opp_num;
+		signed_opp_num = g_gpu.signed_opp_num;
+		segment_upbound = g_gpu.segment_upbound;
+	}
+
+	/* update margin to signed table */
+	for (i = 0; i < signed_opp_num; i++) {
+		if (val == FEAT_DISABLE)
+			signed_table[i].volt += signed_table[i].margin;
+		else if (val == FEAT_ENABLE)
+			signed_table[i].volt -= signed_table[i].margin;
+		signed_table[i].vsram = __gpufreq_get_vsram_by_vlogic(signed_table[i].volt);
+	}
+
+	for (i = 0; i < working_opp_num; i++) {
+		working_table[i].volt = signed_table[segment_upbound + i].volt;
+		working_table[i].vsram = signed_table[segment_upbound + i].vsram;
+
+		GPUFREQ_LOGD("Margin mode: %d, %s[%d] Volt: %d, Vsram: %d",
+			val, target == TARGET_STACK ? "STACK" : "GPU",
+			i, working_table[i].volt, working_table[i].vsram);
+	}
+}
+
 /* API: update DVFS constraint springboard */
 static void __gpufreq_update_springboard(void)
 {
 	struct gpufreq_opp_info *signed_gpu = NULL;
 	struct gpufreq_opp_info *signed_stack = NULL;
 	int i = 0, constraint_num = 0, oppidx = 0;
-
-	mutex_lock(&gpufreq_lock);
 
 	signed_gpu = g_gpu.signed_table;
 	signed_stack = g_stack.signed_table;
@@ -1917,8 +1975,6 @@ static void __gpufreq_update_springboard(void)
 			g_springboard[i].vgpu_up, g_springboard[i].vgpu_down,
 			g_springboard[i].vstack, g_springboard[i].vstack_up,
 			g_springboard[i].vstack_down);
-
-	mutex_unlock(&gpufreq_lock);
 };
 
 #if GPUFREQ_MSSV_TEST_MODE
@@ -4006,50 +4062,6 @@ static int __gpufreq_init_opp_idx(void)
 	GPUFREQ_TRACE_END();
 
 	return ret;
-}
-
-/* API: mode=true: apply marign, mode=false: restore margin */
-static void __gpufreq_apply_restore_margin(enum gpufreq_target target, enum gpufreq_feat_mode mode)
-{
-	struct gpufreq_opp_info *working_table = NULL;
-	struct gpufreq_opp_info *signed_table = NULL;
-	int working_opp_num = 0, signed_opp_num = 0, segment_upbound = 0, i = 0;
-
-	if (target == TARGET_STACK) {
-		working_table = g_stack.working_table;
-		signed_table = g_stack.signed_table;
-		working_opp_num = g_stack.opp_num;
-		signed_opp_num = g_stack.signed_opp_num;
-		segment_upbound = g_stack.segment_upbound;
-	} else {
-		working_table = g_gpu.working_table;
-		signed_table = g_gpu.signed_table;
-		working_opp_num = g_gpu.opp_num;
-		signed_opp_num = g_gpu.signed_opp_num;
-		segment_upbound = g_gpu.segment_upbound;
-	}
-
-	mutex_lock(&gpufreq_lock);
-
-	/* update margin to signed table */
-	for (i = 0; i < signed_opp_num; i++) {
-		if (mode == FEAT_DISABLE)
-			signed_table[i].volt += signed_table[i].margin;
-		else if (mode == FEAT_ENABLE)
-			signed_table[i].volt -= signed_table[i].margin;
-		signed_table[i].vsram = __gpufreq_get_vsram_by_vlogic(signed_table[i].volt);
-	}
-
-	for (i = 0; i < working_opp_num; i++) {
-		working_table[i].volt = signed_table[segment_upbound + i].volt;
-		working_table[i].vsram = signed_table[segment_upbound + i].vsram;
-
-		GPUFREQ_LOGD("Margin mode: %d, %s[%d] Volt: %d, Vsram: %d",
-			mode, target == TARGET_STACK ? "STACK" : "GPU",
-			i, working_table[i].volt, working_table[i].vsram);
-	}
-
-	mutex_unlock(&gpufreq_lock);
 }
 
 /* API: calculate power of every OPP in working table */
