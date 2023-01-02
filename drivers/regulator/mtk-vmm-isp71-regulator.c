@@ -110,7 +110,7 @@ static int fix_force_step(const char *val, const struct kernel_param *kp)
 
 	opp_table = &drv_data->opp_table;
 	if (new_force_step >= opp_table->opp_num) {
-		ISP_LOGE("Force level(%d) is out of range\n",
+		ISP_LOGE("Force level(%llu) is out of range\n",
 				new_force_step);
 		ret = -EINVAL;
 		goto out;
@@ -128,7 +128,7 @@ static int fix_force_step(const char *val, const struct kernel_param *kp)
 		DVFS_VOLTAGE_UPDATE,
 		(void *)&dvfs_ipi, sizeof(struct dvfs_ipc_info));
 	if (ret) {
-		ISP_LOGE("mtk_ccu_rproc_ipc_send(DVFS_VOLTAGE_UPDATE) fail(%lu)\n",
+		ISP_LOGE("mtk_ccu_rproc_ipc_send(DVFS_VOLTAGE_UPDATE) fail(%llu)\n",
 				arch_timer_read_counter());
 		WARN_ON(1);
 		goto Unlock_Mutex;
@@ -198,7 +198,7 @@ static int show_setting(char *buf, const struct kernel_param *kp)
 		DVFS_CCU_QUERY_VB,
 		(void *)&vb_info, sizeof(struct dvfs_ipc_vb));
 	if (ret) {
-		ISP_LOGE("mtk_ccu_rproc_ipc_send(DVFS_CCU_QUERY_VB) fail(%lu)\n",
+		ISP_LOGE("mtk_ccu_rproc_ipc_send(DVFS_CCU_QUERY_VB) fail(%llu)\n",
 				arch_timer_read_counter());
 	} else {
 		if (drv_data->en_vb)
@@ -298,7 +298,7 @@ static int force_opp_level(void *data, u64 val)
 	struct dvfs_table *opp_table;
 	int ret;
 
-	ISP_LOGI("Force opp level(%d)", val);
+	ISP_LOGI("Force opp level(%llu)", val);
 
 	if (IS_ERR(dbg_data)) {
 		ISP_LOGE("dbg_data is NULL\n");
@@ -566,7 +566,7 @@ static int ccu_set_voltage(struct regulator_dev *rdev,
 		DVFS_VOLTAGE_UPDATE,
 		(void *)&dvfs_ipi, sizeof(struct dvfs_ipc_info));
 	if (ret) {
-		ISP_LOGE("mtk_ccu_rproc_ipc_send(DVFS_VOLTAGE_UPDATE) fail(%lu)\n",
+		ISP_LOGE("mtk_ccu_rproc_ipc_send(DVFS_VOLTAGE_UPDATE) fail(%llu)\n",
 				arch_timer_read_counter());
 		WARN_ON(1);
 		goto Unlock_Mutex;
@@ -693,7 +693,7 @@ static void vmm_init_opp_table(struct dvfs_driver_data *data)
 	}
 	opp_table->opp_num = clk_num;
 	for (i = 0; i < opp_table->opp_num; i++) {
-		ISP_LOGD("Opp table: idx=%d, clk=%d volt=%d\n",
+		ISP_LOGD("Opp table: idx=%d, clk=%lu volt=%d\n",
 				i, opp_table->frequency[i], opp_table->voltage[i]);
 	}
 }
