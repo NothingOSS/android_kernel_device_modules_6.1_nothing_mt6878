@@ -10019,7 +10019,7 @@
 
 &mt6685_mfd {
 	mt6685_clock_buffer: mt6685_clock_buffer {
-		mediatek,xo-buf-support = <1 1 0 1 0> /* BBCK */,
+		mediatek,xo-buf-support = <1 1 1 1 0> /* BBCK */,
 					<1 1 0> /* RFCK1 */,
 					<1 1 0> /* RFCK2 */,
 					<0 0> /* CONCK */;
