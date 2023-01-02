@@ -30,6 +30,7 @@
 #define GPUFREQ_PDCA_ENABLE             (0)
 #define GPUFREQ_GPM1_ENABLE             (0)
 #define GPUFREQ_GPM3_ENABLE             (0)
+#define GPUFREQ_DFD_ENABLE              (0)
 #define GPUFREQ_AVS_ENABLE              (0)
 #define GPUFREQ_ASENSOR_ENABLE          (0)
 
@@ -223,6 +224,36 @@ static const int g_constraint_idx[] = {
 	CONSTRAINT_OPP_2,
 	CONSTRAINT_OPP_3,
 };
+
+/**************************************************
+ * DFD Setting
+ **************************************************/
+#define MFG_DEBUGMON_CON_00_ENABLE      (0xFFFFFFFF)
+#define MFG_DFD_CON_0_ENABLE            (0x0F101100)
+#define MFG_DFD_CON_1_ENABLE            (0x00000100)
+#define MFG_DFD_CON_2_ENABLE            (0x00000000)
+#define MFG_DFD_CON_3_ENABLE            (0x0010001F)
+#define MFG_DFD_CON_4_ENABLE            (0x00000000)
+#define MFG_DFD_CON_5_ENABLE            (0x00000000)
+#define MFG_DFD_CON_6_ENABLE            (0x00000000)
+#define MFG_DFD_CON_7_ENABLE            (0x00000000)
+#define MFG_DFD_CON_8_ENABLE            (0x00000000)
+#define MFG_DFD_CON_9_ENABLE            (0x00000000)
+#define MFG_DFD_CON_10_ENABLE           (0x00000000)
+#define MFG_DFD_CON_11_ENABLE           (0x00000000)
+#define MFG_DEBUGMON_CON_00_DISABLE     (0x00000000)
+#define MFG_DFD_CON_0_DISABLE           (0x00000000)
+#define MFG_DFD_CON_1_DISABLE           (0x00000000)
+#define MFG_DFD_CON_2_DISABLE           (0x00000000)
+#define MFG_DFD_CON_3_DISABLE           (0x00000000)
+#define MFG_DFD_CON_4_DISABLE           (0x00000000)
+#define MFG_DFD_CON_5_DISABLE           (0x00000000)
+#define MFG_DFD_CON_6_DISABLE           (0x00000000)
+#define MFG_DFD_CON_7_DISABLE           (0x00000000)
+#define MFG_DFD_CON_8_DISABLE           (0x00000000)
+#define MFG_DFD_CON_9_DISABLE           (0x00000000)
+#define MFG_DFD_CON_10_DISABLE          (0x00000000)
+#define MFG_DFD_CON_11_DISABLE          (0x00000000)
 
 /**************************************************
  * Enumeration

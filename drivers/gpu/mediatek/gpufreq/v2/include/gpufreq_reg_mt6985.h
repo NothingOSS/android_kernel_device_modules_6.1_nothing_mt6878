@@ -91,6 +91,19 @@ static inline u32 readl_mfg(const void __iomem *addr)
 #define MFG_DEBUG_SEL                   (MFG_TOP_CFG_BASE + 0x170)            /* 0x13FBF170 */
 #define MFG_DEBUG_TOP                   (MFG_TOP_CFG_BASE + 0x178)            /* 0x13FBF178 */
 #define MFG_TIMESTAMP                   (MFG_TOP_CFG_BASE + 0x130)            /* 0x13FBF130 */
+#define MFG_DEBUGMON_CON_00             (MFG_TOP_CFG_BASE + 0x8F8)            /* 0x13FBF8F8 */
+#define MFG_DFD_CON_0                   (MFG_TOP_CFG_BASE + 0xA00)            /* 0x13FBFA00 */
+#define MFG_DFD_CON_1                   (MFG_TOP_CFG_BASE + 0xA04)            /* 0x13FBFA04 */
+#define MFG_DFD_CON_2                   (MFG_TOP_CFG_BASE + 0xA08)            /* 0x13FBFA08 */
+#define MFG_DFD_CON_3                   (MFG_TOP_CFG_BASE + 0xA0C)            /* 0x13FBFA0C */
+#define MFG_DFD_CON_4                   (MFG_TOP_CFG_BASE + 0xA10)            /* 0x13FBFA10 */
+#define MFG_DFD_CON_5                   (MFG_TOP_CFG_BASE + 0xA14)            /* 0x13FBFA14 */
+#define MFG_DFD_CON_6                   (MFG_TOP_CFG_BASE + 0xA18)            /* 0x13FBFA18 */
+#define MFG_DFD_CON_7                   (MFG_TOP_CFG_BASE + 0xA1C)            /* 0x13FBFA1C */
+#define MFG_DFD_CON_8                   (MFG_TOP_CFG_BASE + 0xA20)            /* 0x13FBFA20 */
+#define MFG_DFD_CON_9                   (MFG_TOP_CFG_BASE + 0xA24)            /* 0x13FBFA24 */
+#define MFG_DFD_CON_10                  (MFG_TOP_CFG_BASE + 0xA28)            /* 0x13FBFA28 */
+#define MFG_DFD_CON_11                  (MFG_TOP_CFG_BASE + 0xA2C)            /* 0x13FBFA2C */
 
 #define MFG_PLL_BASE                    (g_mfg_pll_base)                      /* 0x13FA0000 */
 #define MFG_PLL_CON0                    (MFG_PLL_BASE + 0x008)                /* 0x13FA0008 */
@@ -200,5 +213,8 @@ static inline u32 readl_mfg(const void __iomem *addr)
 
 #define MFG_SECURE_BASE                 (g_mfg_secure_base)                   /* 0x13FBC000 */
 #define MFG_SECURE_REG                  (MFG_SECURE_BASE + 0xFE0)             /* 0x13FBCFE0 */
+
+#define DRM_DEBUG_BASE                  (g_drm_debug_base)                    /* 0x1000D000 */
+#define DRM_DEBUG_MFG_REG               (DRM_DEBUG_BASE + 0x060)              /* 0x1000D060 */
 
 #endif /* __GPUFREQ_REG_MT6985_H__ */
