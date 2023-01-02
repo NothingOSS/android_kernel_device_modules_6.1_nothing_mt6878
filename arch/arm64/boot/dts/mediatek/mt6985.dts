@@ -6876,6 +6876,13 @@
 			interrupts = <231 IRQ_TYPE_EDGE_FALLING>;
 		};
 
+		clkbuf_ctrl: clkbuf-ctrl {
+			compatible = "mediatek,mt6985-clkbuf";
+			pmic = <&mt6685_clkbuf>;
+			srclken-rc = <&srclken_rc>;
+			pmif = <&spmi>;
+		};
+
 		bt: bt {
 			compatible = "mediatek,bt";
 			sleep-en = <1>;
@@ -8931,24 +8938,72 @@
 
 		srclken_rc: srclken-rc@1c00d000 {
 			compatible = "mediatek,srclken-rc";
-			reg = <0 0x1c00d000 0 0x100>,
-				<0 0x1c00d100 0 0x700>;
-			mediatek,subsys-ctl = "suspend", "md1", "md2",
-					"md3", "rf", "mmwave",
-					"gps", "pcie", "rsv",
-					"mcu", "co-ant", "nfc",
-					"spm", "ufs";
-			suspend-ctl = "XO_BBCK1";
-			md1-ctl = "XO_RFCK2A";
-			gps-ctl = "XO_RFCK2B";
-			mcu-ctl = "XO_BBCK2";
-			pcie_ctl = "XO_BBCK2";
-			nfc-ctl = "XO_BBCK4";
-			ufs-ctl = "XO_RFCK1B";
+			 reg = <0 0x1c00d000 0 0x100>,
+			       <0 0x1c00d100 0 0x700>;
 
-			mediatek,srclken-rc-broadcast;
-			mediatek,enable;
+			suspend-1 {
+				xo-buf = "XO-BBCK1";
+				perms = <0x0>;
+				sub-id = <0>;
+			};
+			md1-1 {
+				xo-buf = "XO-RFCK1A";
+				sub-id = <1>;
+			};
+			md1-2 {
+				xo-buf = "XO-RFCK2A";
+				sub-id = <1>;
+			};
+			md2 {
+				sub-id = <2>;
+			};
+			md3 {
+				sub-id = <3>;
+			};
+			mdrf {
+				sub-id = <4>;
+			};
+			mmw {
+				sub-id = <5>;
+			};
+			gps-1 {
+				xo-buf = "XO-BBCK2";
+				sub-id = <6>;
+			};
+			gps-2 {
+				xo-buf = "XO-RFCK2B";
+				sub-id = <6>;
+			};
+			pcie {
+				perms = <0x3ffff>;
+				xo-buf = "XO-BBCK2";
+				sub-id = <7>;
+			};
+			empty {
+				perms = <0x0>;
+				sub-id = <8>;
+			};
+			mcu {
+				xo-buf = "XO-BBCK2";
+				sub-id = <9>;
+			};
+			co-ant {
+				sub-id = <10>;
+			};
+			nfc {
+				xo-buf = "XO-BBCK4";
+				sub-id = <11>;
+			};
+			suspend-2 {
+				sub-id = <12>;
+			};
+			ufs {
+				xo-buf = "XO-RFCK1B";
+				sub-id = <13>;
+			};
 		};
+
+
 	};
 
 	scp: scp@1c700000 {
@@ -15246,46 +15301,9 @@ FLL0_out,FLL1_out,FLL2_out,FLL4_out,FLL5_out,FLL6_out";
 			};
 		};
 	};
-
-	clock_buffer_ctrl: clock_buffer_ctrl {
-		compatible = "mediatek,clock_buffer_ctrl";
-		mediatek,xo-buf-hwbblpm-mask = <1 0 0 0 0>,
-					<0 0 0>,
-					<0 0 0>,
-					<0 0>;
-		mediatek,xo-buf-hwbblpm-bypass = <0 0 0 0 0>,
-					<0 0 0>,
-					<0 0 0>,
-					<0 0>;
-		mediatek,xo-bbck4 = <0>;
-
-		mediatek,enable;
-
-		pmif = <&spmi 0>;
-		pmif_version = <2>;
-		srclken_rc = <&srclken_rc>;
-		// consys = <&consys>;
-		// pcie = <&pcie_ckm_xtal_ck>;
-	};
 };
 
 #include "mediatek/mt6685.dtsi"
-
-&mt6685_mfd {
-	mt6685_clock_buffer: mt6685_clock_buffer {
-		mediatek,xo-buf-support = <1 1 1 1 0> /* BBCK */,
-					<1 1 0> /* RFCK1 */,
-					<1 1 0> /* RFCK2 */,
-					<0 0> /* CONCK */;
-		mediatek,bblpm-support;
-		mediatek,xo-voter-support;
-		mediatek,dcxo-spmi-rw;
-		mediatek,pmrc-en-support;
-		clkbuf_ctl = <&clock_buffer_ctrl>;
-
-		mediatek,enable;
-	};
-};
 
 &mt6685_rtc {
 	status = "okay";
