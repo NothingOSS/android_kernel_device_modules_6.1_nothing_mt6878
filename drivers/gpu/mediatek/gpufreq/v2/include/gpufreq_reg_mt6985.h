@@ -146,6 +146,8 @@ static inline u32 readl_mfg(const void __iomem *addr)
 #define MFG_RPC_MFG17_PWR_CON           (MFG_RPC_BASE + 0x10DC)               /* 0x13F910DC */
 #define MFG_RPC_MFG18_PWR_CON           (MFG_RPC_BASE + 0x10E0)               /* 0x13F910E0 */
 #define MFG_RPC_MFG19_PWR_CON           (MFG_RPC_BASE + 0x10E4)               /* 0x13F910E4 */
+#define MFG_RPC_SLP_PROT_EN_SET         (MFG_RPC_BASE + 0x1040)               /* 0x13F91040 */
+#define MFG_RPC_SLP_PROT_EN_CLR         (MFG_RPC_BASE + 0x1044)               /* 0x13F91044 */
 #define MFG_RPC_SLP_PROT_EN_STA         (MFG_RPC_BASE + 0x1048)               /* 0x13F91048 */
 #define MFG_RPC_MFGIPS_PWR_CON          (MFG_RPC_BASE + 0x10FC)               /* 0x13F910FC */
 
