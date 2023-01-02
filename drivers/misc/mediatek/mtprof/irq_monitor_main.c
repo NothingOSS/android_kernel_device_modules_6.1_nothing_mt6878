@@ -72,6 +72,7 @@ struct irq_mon_tracer {
 	unsigned int th3_ms;          /* aee */
 	unsigned int aee_limit;
 	unsigned int aee_debounce_ms;
+	struct trace_stat __percpu *stat;
 };
 
 #define OVERRIDE_TH1_MS 50
@@ -219,7 +220,7 @@ static void irq_mon_dump_stack_trace(unsigned int out, struct preemptirq_stat *p
 	}
 }
 
-/* irq: 1 = irq, 0 = preempt*/
+/* irq: 1 = irq, 0 = preempt */
 static void check_preemptirq_stat(struct preemptirq_stat *pi_stat, int irq)
 {
 	struct irq_mon_tracer *tracer =
@@ -260,11 +261,6 @@ static void check_preemptirq_stat(struct preemptirq_stat *pi_stat, int irq)
 		dump_stack();
 }
 
-static struct trace_stat __percpu *irq_trace_stat;
-static struct trace_stat __percpu *softirq_trace_stat;
-static struct trace_stat __percpu *ipi_trace_stat;
-static struct trace_stat __percpu *hrtimer_trace_stat;
-
 /* reference kernel/irq/internals.h */
 #if IS_ENABLED(CONFIG_SPARSE_IRQ)
 # define IRQ_BITMAP_BITS	(NR_IRQS + 8196)
@@ -294,10 +290,14 @@ static void __show_irq_handle_info(unsigned int out)
 
 	for_each_possible_cpu(cpu) {
 		irq_mon_msg(out, "CPU: %d", cpu);
-		show_irq_handle(out, "irq handler", per_cpu_ptr(irq_trace_stat, cpu));
-		show_irq_handle(out, "softirq", per_cpu_ptr(softirq_trace_stat, cpu));
-		show_irq_handle(out, "IPI", per_cpu_ptr(ipi_trace_stat, cpu));
-		show_irq_handle(out, "hrtimer", per_cpu_ptr(hrtimer_trace_stat, cpu));
+		show_irq_handle(out, "irq handler",
+				per_cpu_ptr(irq_handler_tracer.stat, cpu));
+		show_irq_handle(out, "softirq",
+				per_cpu_ptr(softirq_tracer.stat, cpu));
+		show_irq_handle(out, "IPI",
+				per_cpu_ptr(ipi_tracer.stat, cpu));
+		show_irq_handle(out, "hrtimer",
+				per_cpu_ptr(hrtimer_expire_tracer.stat, cpu));
 		irq_mon_msg(out, "");
 	}
 }
@@ -315,41 +315,51 @@ void mt_aee_dump_irq_info(void)
 }
 EXPORT_SYMBOL_GPL(mt_aee_dump_irq_info);
 
-/* probe functions */
-
-static void probe_irq_handler_entry(void *ignore,
-		int irq, struct irqaction *action)
+static void trace_stat_start(struct irq_mon_tracer *tracer)
 {
-	unsigned long long ts;
-	struct irq_mon_tracer *tracer = &irq_handler_tracer;
+	struct trace_stat *stat = raw_cpu_ptr(tracer->stat);
 
 	if (!tracer->tracing)
 		return;
-	if (__this_cpu_cmpxchg(irq_trace_stat->tracing, 0, 1))
+	if (xchg(&stat->tracing, 1))
 		return;
 
-	ts = sched_clock();
-	this_cpu_write(irq_trace_stat->start_timestamp, ts);
-	this_cpu_write(irq_trace_stat->end_timestamp, 0);
+	stat->start_timestamp = sched_clock();
+	stat->end_timestamp = 0;
 }
 
-static void probe_irq_handler_exit(void *ignore,
-		int irq, struct irqaction *action, int ret)
+static int trace_stat_end(struct irq_mon_tracer *tracer)
 {
-	struct trace_stat *trace_stat = raw_cpu_ptr(irq_trace_stat);
-	struct irq_mon_tracer *tracer = &irq_handler_tracer;
-	unsigned long long ts, duration;
-	unsigned int out;
+	struct trace_stat *stat = raw_cpu_ptr(tracer->stat);
 
 	if (!tracer->tracing)
-		return;
-	if (!__this_cpu_read(irq_trace_stat->tracing))
-		return;
+		return 0;
+	if (!stat->tracing)
+		return 0;
 
-	ts = sched_clock();
-	trace_stat->end_timestamp = ts;
+	stat->end_timestamp = sched_clock();
+	return 1;
+}
 
-	duration = stat_dur(trace_stat);
+/* probe functions */
+
+static void probe_irq_handler_entry(void *ignore, int irq,
+				    struct irqaction *action)
+{
+	trace_stat_start(&irq_handler_tracer);
+}
+
+static void probe_irq_handler_exit(void *ignore, int irq,
+				   struct irqaction *action, int ret)
+{
+	struct irq_mon_tracer *tracer = &irq_handler_tracer;
+	struct trace_stat *stat = raw_cpu_ptr(tracer->stat);
+	unsigned long long duration;
+	unsigned int out;
+
+	if (!trace_stat_end(tracer))
+		return;
+	duration = stat_dur(stat);
 	out = check_threshold(duration, tracer);
 	if (out) {
 		char msg[MAX_MSG_LEN];
@@ -360,8 +370,8 @@ static void probe_irq_handler_exit(void *ignore,
 			  "irq: %d [<%px>]%pS, duration %llu ms, from %llu ns to %llu ns on CPU:%d",
 			  irq, (void *)action->handler, (void *)action->handler,
 			  msec_high(duration),
-			  trace_stat->start_timestamp,
-			  trace_stat->end_timestamp,
+			  stat->start_timestamp,
+			  stat->end_timestamp,
 			  raw_smp_processor_id());
 
 		irq_mon_msg(out, msg);
@@ -412,97 +422,65 @@ static void probe_irq_handler_exit(void *ignore,
 		}
 	}
 
-	this_cpu_write(irq_trace_stat->tracing, 0);
+	stat->tracing = 0;
 }
 
 static void probe_softirq_entry(void *ignore, unsigned int vec_nr)
 {
-	unsigned long long ts;
-	struct irq_mon_tracer *tracer = &softirq_tracer;
-
-	if (!tracer->tracing)
-		return;
-	if (__this_cpu_cmpxchg(softirq_trace_stat->tracing, 0, 1))
-		return;
-
-	ts = sched_clock();
-	this_cpu_write(softirq_trace_stat->start_timestamp, ts);
-	this_cpu_write(softirq_trace_stat->end_timestamp, 0);
+	trace_stat_start(&softirq_tracer);
 }
 
 static void probe_softirq_exit(void *ignore, unsigned int vec_nr)
 {
-	struct trace_stat *trace_stat = raw_cpu_ptr(softirq_trace_stat);
 	struct irq_mon_tracer *tracer = &softirq_tracer;
-	unsigned long long ts, duration;
+	struct trace_stat *stat = raw_cpu_ptr(tracer->stat);
+	unsigned long long duration;
 	unsigned int out;
 
-	if (!tracer->tracing)
+	if (!trace_stat_end(tracer))
 		return;
-	if (!__this_cpu_read(softirq_trace_stat->tracing))
-		return;
-
-	ts = sched_clock();
-	trace_stat->end_timestamp = ts;
-
-	duration = stat_dur(trace_stat);
+	duration = stat_dur(stat);
 	out = check_threshold(duration, tracer);
 	if (out) {
 		irq_mon_msg(out,
 			    "softirq: %u %s, duration %llu ms, from %llu ns to %llu ns on CPU:%d",
 			    vec_nr, softirq_to_name[vec_nr],
 			    msec_high(duration),
-			    trace_stat->start_timestamp,
-			    trace_stat->end_timestamp,
+			    stat->start_timestamp,
+			    stat->end_timestamp,
 			    raw_smp_processor_id());
 	}
 
-	this_cpu_write(softirq_trace_stat->tracing, 0);
+	stat->tracing = 0;
 }
 
 static void probe_ipi_entry(void *ignore, const char *reason)
 {
-	unsigned long long ts;
-	struct irq_mon_tracer *tracer = &ipi_tracer;
-
-	if (!tracer->tracing)
-		return;
-	if (__this_cpu_cmpxchg(ipi_trace_stat->tracing, 0, 1))
-		return;
-
-	ts = sched_clock();
-	this_cpu_write(ipi_trace_stat->start_timestamp, ts);
-	this_cpu_write(ipi_trace_stat->end_timestamp, 0);
+	trace_stat_start(&ipi_tracer);
 }
 
 
 static void probe_ipi_exit(void *ignore, const char *reason)
 {
-	struct trace_stat *trace_stat = raw_cpu_ptr(ipi_trace_stat);
 	struct irq_mon_tracer *tracer = &ipi_tracer;
-	unsigned long long ts, duration;
+	struct trace_stat *stat = raw_cpu_ptr(tracer->stat);
+	unsigned long long duration;
 	unsigned int out;
 
-	if (!tracer->tracing)
+	if (!trace_stat_end(tracer))
 		return;
-	if (!__this_cpu_read(ipi_trace_stat->tracing))
-		return;
-
-	ts = sched_clock();
-	trace_stat->end_timestamp = ts;
-
-	duration = stat_dur(trace_stat);
+	duration = stat_dur(stat);
 	out = check_threshold(duration, tracer);
 	if (out) {
 		irq_mon_msg(out, "ipi: %s, duration %llu ms, from %llu ns to %llu ns on CPU:%d",
 			    reason,
 			    msec_high(duration),
-			    trace_stat->start_timestamp,
-			    trace_stat->end_timestamp,
+			    stat->start_timestamp,
+			    stat->end_timestamp,
 			    raw_smp_processor_id());
 	}
 
-	this_cpu_write(ipi_trace_stat->tracing, 0);
+	stat->tracing = 0;
 }
 
 static void probe_irq_disable(void *ignore,
@@ -598,38 +576,22 @@ static void probe_preempt_enable(void *ignore,
 static void probe_hrtimer_expire_entry(void *ignore,
 				       struct hrtimer *hrtimer, ktime_t *now)
 {
-	unsigned long long ts;
-	struct irq_mon_tracer *tracer = &hrtimer_expire_tracer;
-
-	if (!tracer->tracing)
-		return;
-	if (__this_cpu_cmpxchg(hrtimer_trace_stat->tracing, 0, 1))
-		return;
-
-	ts = sched_clock();
-	this_cpu_write(hrtimer_trace_stat->start_timestamp, ts);
-	this_cpu_write(hrtimer_trace_stat->end_timestamp, 0);
+	trace_stat_start(&hrtimer_expire_tracer);
 }
 
 /* ignore irq_count_tracer_fn hrtimer long */
 extern enum hrtimer_restart irq_count_tracer_hrtimer_fn(struct hrtimer *hrtimer);
 static void probe_hrtimer_expire_exit(void *ignore, struct hrtimer *hrtimer)
 {
-	struct trace_stat *trace_stat = raw_cpu_ptr(hrtimer_trace_stat);
 	struct irq_mon_tracer *tracer = &hrtimer_expire_tracer;
-	unsigned long long ts, duration;
+	struct trace_stat *stat = raw_cpu_ptr(tracer->stat);
+	unsigned long long duration;
 	unsigned int out;
 	static bool ever_dump;
 
-	if (!tracer->tracing)
+	if (!trace_stat_end(tracer))
 		return;
-	if (!__this_cpu_read(hrtimer_trace_stat->tracing))
-		return;
-
-	ts = sched_clock();
-	trace_stat->end_timestamp = ts;
-
-	duration = stat_dur(trace_stat);
+	duration = stat_dur(stat);
 	out = check_threshold(duration, tracer);
 	if (out) {
 		char msg[MAX_MSG_LEN];
@@ -638,8 +600,8 @@ static void probe_hrtimer_expire_exit(void *ignore, struct hrtimer *hrtimer)
 			  "hrtimer: [<%px>]%pS, duration %llu ms, from %llu ns to %llu ns on CPU:%d",
 			  (void *)hrtimer->function, (void *)hrtimer->function,
 			  msec_high(duration),
-			  trace_stat->start_timestamp,
-			  trace_stat->end_timestamp,
+			  stat->start_timestamp,
+			  stat->end_timestamp,
 			  raw_smp_processor_id());
 
 		irq_mon_msg(out, msg);
@@ -665,7 +627,7 @@ static void probe_hrtimer_expire_exit(void *ignore, struct hrtimer *hrtimer)
 		}
 	}
 
-	this_cpu_write(hrtimer_trace_stat->tracing, 0);
+	stat->tracing = 0;
 }
 
 /* tracepoints */
@@ -904,7 +866,6 @@ static int irq_mon_tracer_probe(struct irq_mon_tracer *tracer)
 static int irq_mon_tracer_unprobe(struct irq_mon_tracer *tracer)
 {
 	struct irq_mon_tracepoint *t;
-	struct trace_stat *t_stat = NULL;
 	struct preemptirq_stat *p_stat = NULL;
 	int cpu;
 
@@ -924,22 +885,14 @@ static int irq_mon_tracer_unprobe(struct irq_mon_tracer *tracer)
 	 * clear trace_stat or preemptirq_stat. no data race here
 	 * because all probes are unregistered
 	 */
-	if (tracer == &irq_handler_tracer)
-		t_stat = irq_trace_stat;
-	else if (tracer == &softirq_tracer)
-		t_stat = softirq_trace_stat;
-	else if (tracer == &ipi_tracer)
-		t_stat = ipi_trace_stat;
-	else if (tracer == &irq_off_tracer)
+	if (tracer == &irq_off_tracer)
 		p_stat = irq_pi_stat;
 	else if (tracer == &preempt_off_tracer)
 		p_stat = preempt_pi_stat;
-	else if (tracer == &hrtimer_expire_tracer)
-		t_stat = hrtimer_trace_stat;
 
-	if (t_stat) {
+	if (tracer->stat) {
 		for_each_possible_cpu(cpu) {
-			per_cpu(t_stat->tracing, cpu) = 0;
+			per_cpu(tracer->stat->tracing, cpu) = 0;
 		}
 	} else if (p_stat) {
 		for_each_possible_cpu(cpu) {
@@ -1184,24 +1137,24 @@ static int __init irq_monitor_init(void)
 		pr_info("Failed to alloc preempt_pi_stat\n");
 		return -ENOMEM;
 	}
-	irq_trace_stat = alloc_percpu(struct trace_stat);
-	if (!irq_trace_stat) {
-		pr_info("Failed to alloc irq_trace_stat\n");
+	irq_handler_tracer.stat = alloc_percpu(struct trace_stat);
+	if (!irq_handler_tracer.stat) {
+		pr_info("Failed to alloc irq_handler_tracer stat\n");
 		return -ENOMEM;
 	}
-	softirq_trace_stat = alloc_percpu(struct trace_stat);
-	if (!softirq_trace_stat) {
-		pr_info("Failed to alloc softirq_trace_stat\n");
+	softirq_tracer.stat = alloc_percpu(struct trace_stat);
+	if (!softirq_tracer.stat) {
+		pr_info("Failed to alloc softirq_tracer stat\n");
 		return -ENOMEM;
 	}
-	ipi_trace_stat = alloc_percpu(struct trace_stat);
-	if (!ipi_trace_stat) {
-		pr_info("Failed to alloc ipi_trace_stat\n");
+	ipi_tracer.stat = alloc_percpu(struct trace_stat);
+	if (!ipi_tracer.stat) {
+		pr_info("Failed to alloc ipi_tracer stat\n");
 		return -ENOMEM;
 	}
-	hrtimer_trace_stat = alloc_percpu(struct trace_stat);
-	if (!hrtimer_trace_stat) {
-		pr_info("Failed to alloc hrtimer_trace_stat\n");
+	hrtimer_expire_tracer.stat = alloc_percpu(struct trace_stat);
+	if (!hrtimer_expire_tracer.stat) {
+		pr_info("Failed to alloc hrtimer_expire_tracer stat\n");
 		return -ENOMEM;
 	}
 
@@ -1248,10 +1201,10 @@ static void __exit irq_monitor_exit(void)
 
 	free_percpu(irq_pi_stat);
 	free_percpu(preempt_pi_stat);
-	free_percpu(irq_trace_stat);
-	free_percpu(softirq_trace_stat);
-	free_percpu(ipi_trace_stat);
-	free_percpu(hrtimer_trace_stat);
+	free_percpu(irq_handler_tracer.stat);
+	free_percpu(softirq_tracer.stat);
+	free_percpu(ipi_tracer.stat);
+	free_percpu(hrtimer_expire_tracer.stat);
 }
 
 MODULE_DESCRIPTION("MEDIATEK IRQ MONITOR");
