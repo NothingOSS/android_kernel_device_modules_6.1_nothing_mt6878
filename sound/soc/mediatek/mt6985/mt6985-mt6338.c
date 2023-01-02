@@ -371,7 +371,7 @@ static int mt6985_i2s_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
+#if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT) && !defined(SKIP_SB)
 static const struct snd_pcm_hardware mt6985_mt6338_vow_hardware = {
 	.info = (SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
 		 SNDRV_PCM_INFO_MMAP_VALID),
@@ -683,20 +683,20 @@ SND_SOC_DAILINK_DEFS(hostless_src_aaudio,
 	DAILINK_COMP_ARRAY(COMP_CPU("Hostless SRC AAudio DAI")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
-#if IS_ENABLED(CONFIG_SND_SOC_MTK_BTCVSD)
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_BTCVSD) && !defined(SKIP_SB)
 SND_SOC_DAILINK_DEFS(btcvsd,
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("18830000.mtk-btcvsd-snd")));
 #endif
-#if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
+#if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT) && !defined(SKIP_SB)
 SND_SOC_DAILINK_DEFS(vow,
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_CODEC(DEVICE_MT6338_NAME,
 				      "mt6338-snd-codec-vow")),
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
 #endif
-#if IS_ENABLED(CONFIG_MTK_ULTRASND_PROXIMITY)
+#if IS_ENABLED(CONFIG_MTK_ULTRASND_PROXIMITY) && !defined(SKIP_SB)
 SND_SOC_DAILINK_DEFS(ultra,
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
@@ -1338,7 +1338,7 @@ static struct snd_soc_dai_link mt6985_mt6338_dai_links[] = {
 		SND_SOC_DAILINK_REG(hostless_src_aaudio),
 	},
 	/* BTCVSD */
-#if IS_ENABLED(CONFIG_SND_SOC_MTK_BTCVSD)
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_BTCVSD) && !defined(SKIP_SB)
 	{
 		.name = "BTCVSD",
 		.stream_name = "BTCVSD",
@@ -1346,7 +1346,7 @@ static struct snd_soc_dai_link mt6985_mt6338_dai_links[] = {
 	},
 #endif
 	/* VoW */
-#if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
+#if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT) && !defined(SKIP_SB)
 	{
 		.name = "VOW_Capture",
 		.stream_name = "VOW_Capture",
@@ -1355,7 +1355,7 @@ static struct snd_soc_dai_link mt6985_mt6338_dai_links[] = {
 		SND_SOC_DAILINK_REG(vow),
 	},
 #endif
-#if IS_ENABLED(CONFIG_MTK_ULTRASND_PROXIMITY)
+#if IS_ENABLED(CONFIG_MTK_ULTRASND_PROXIMITY) && !defined(SKIP_SB)
 	{
 		.name = "SCP_ULTRA_Playback",
 		.stream_name = "SCP_ULTRA_Playback",

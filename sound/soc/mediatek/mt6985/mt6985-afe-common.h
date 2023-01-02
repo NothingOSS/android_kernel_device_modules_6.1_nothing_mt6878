@@ -14,7 +14,7 @@
 #include <mt-plat/aee.h>
 #include "mt6985-reg.h"
 #include "../common/mtk-base-afe.h"
-
+#define SKIP_SB
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #define AUDIO_AEE(message) \
 	(aee_kernel_exception_api(__FILE__, \
