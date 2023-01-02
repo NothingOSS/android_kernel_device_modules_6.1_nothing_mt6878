@@ -20,6 +20,7 @@
 
 #include "charger_class.h"
 #include "mtk_charger.h"
+#include "mtk_chg_type_det.h"
 
 static bool dbg_log_en = true;
 module_param(dbg_log_en, bool, 0644);
@@ -86,17 +87,6 @@ enum {
 	RT9490_STAT_IEOC,
 	RT9490_STAT_BACKGROUND_CHARGE,
 	RT9490_STAT_CHARGE_DONE,
-};
-
-/* map with mtk_chg_type_det.c */
-enum attach_type {
-	ATTACH_TYPE_NONE,
-	ATTACH_TYPE_PWR_RDY,
-	ATTACH_TYPE_TYPEC,
-	ATTACH_TYPE_PD,
-	ATTACH_TYPE_PD_SDP,
-	ATTACH_TYPE_PD_DCP,
-	ATTACH_TYPE_PD_NONSTD,
 };
 
 enum rt9490_fields {

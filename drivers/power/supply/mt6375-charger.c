@@ -24,6 +24,7 @@
 
 #include "charger_class.h"
 #include "mtk_charger.h"
+#include "mtk_chg_type_det.h"
 
 static bool dbg_log_en;
 module_param(dbg_log_en, bool, 0644);
@@ -190,17 +191,6 @@ enum mt6375_adc_chan {
 	ADC_CHAN_USBDP,
 	ADC_CHAN_USBDM,
 	ADC_CHAN_MAX,
-};
-
-/* map with mtk_chg_type_det.c */
-enum attach_type {
-	ATTACH_TYPE_NONE,
-	ATTACH_TYPE_PWR_RDY,
-	ATTACH_TYPE_TYPEC,
-	ATTACH_TYPE_PD,
-	ATTACH_TYPE_PD_SDP,
-	ATTACH_TYPE_PD_DCP,
-	ATTACH_TYPE_PD_NONSTD,
 };
 
 enum mt6375_attach_trigger {
@@ -2232,9 +2222,15 @@ static irqreturn_t mt6375_fl_bc12_dn_handler(int irq, void *data)
 
 	mt_dbg(ddata->dev, "++\n");
 	mutex_lock(&ddata->attach_lock);
-	ddata->bc12_dn = true;
 	attach = atomic_read(&ddata->attach);
+	ddata->bc12_dn = (attach == ATTACH_TYPE_NONE) ? false : true;
 	mutex_unlock(&ddata->attach_lock);
+
+	if (!ddata->bc12_dn) {
+		dev_notice(ddata->dev, "%s attach=%d, bc12_dn=%d",
+			   __func__, attach, ddata->bc12_dn);
+		return IRQ_HANDLED;
+	}
 
 	if (attach < ATTACH_TYPE_PD && !queue_work(ddata->wq, &ddata->bc12_work))
 		dev_notice(ddata->dev, "%s bc12 work already queued\n", __func__);

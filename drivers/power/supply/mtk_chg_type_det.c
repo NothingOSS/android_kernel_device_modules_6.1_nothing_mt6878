@@ -16,6 +16,8 @@
 #include <linux/delay.h>
 #include <tcpm.h>
 
+#include "mtk_chg_type_det.h"
+
 #define MTK_CTD_DRV_VERSION	"1.0.0_MTK"
 
 struct mtk_ctd_info {
@@ -43,18 +45,6 @@ enum {
 	MTK_CTD_BY_SUBPMIC,
 	MTK_CTD_BY_MAINPMIC,
 	MTK_CTD_BY_EXTCHG,
-};
-
-#define FAST_CHG_WATT 7500000 /* mW */
-/* map with charger.c */
-enum attach_type {
-	ATTACH_TYPE_NONE,
-	ATTACH_TYPE_PWR_RDY,
-	ATTACH_TYPE_TYPEC,
-	ATTACH_TYPE_PD,
-	ATTACH_TYPE_PD_SDP,
-	ATTACH_TYPE_PD_DCP,
-	ATTACH_TYPE_PD_NONSTD,
 };
 
 static int mtk_ext_get_charger_type(struct mtk_ctd_info *mci, int attach)
