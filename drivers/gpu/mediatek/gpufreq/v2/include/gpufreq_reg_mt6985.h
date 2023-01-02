@@ -30,11 +30,6 @@ static inline u32 readl_mfg(const void __iomem *addr)
 
 	return val[0];
 }
-#define REGOP(_addr, _val) \
-	{                                  \
-		.addr = _addr,                 \
-		.val = _val,                   \
-	}
 
 /**************************************************
  * GPUFREQ Register Definition
@@ -182,6 +177,14 @@ static inline u32 readl_mfg(const void __iomem *addr)
 #define IFR_MFGSYS_PROT_EN_W1S_0        (IFRBUS_AO_BASE + 0x1A4)              /* 0x1002C1A4 */
 #define IFR_MFGSYS_PROT_EN_W1C_0        (IFRBUS_AO_BASE + 0x1A8)              /* 0x1002C1A8 */
 #define IFR_MFGSYS_PROT_RDY_STA_0       (IFRBUS_AO_BASE + 0x1AC)              /* 0x1002C1AC */
+#define IFR_EMISYS_PROTECT_EN_STA_0     (IFRBUS_AO_BASE + 0x100)              /* 0x1002C100 */
+#define IFR_EMISYS_PROTECT_EN_W1S_0     (IFRBUS_AO_BASE + 0x104)              /* 0x1002C104 */
+#define IFR_EMISYS_PROTECT_EN_W1C_0     (IFRBUS_AO_BASE + 0x108)              /* 0x1002C108 */
+#define IFR_EMISYS_PROTECT_RDY_STA_0    (IFRBUS_AO_BASE + 0x10C)              /* 0x1002C10C */
+#define IFR_EMISYS_PROTECT_EN_STA_1     (IFRBUS_AO_BASE + 0x120)              /* 0x1002C120 */
+#define IFR_EMISYS_PROTECT_EN_W1S_1     (IFRBUS_AO_BASE + 0x124)              /* 0x1002C124 */
+#define IFR_EMISYS_PROTECT_EN_W1C_1     (IFRBUS_AO_BASE + 0x128)              /* 0x1002C128 */
+#define IFR_EMISYS_PROTECT_RDY_STA_1    (IFRBUS_AO_BASE + 0x12C)              /* 0x1002C12C */
 
 #define INFRA_AO_DEBUG_CTRL_BASE        (g_infra_ao_debug_ctrl)               /* 0x10023000 */
 #define INFRA_AO_BUS0_U_DEBUG_CTRL0     (INFRA_AO_DEBUG_CTRL_BASE + 0x000)    /* 0x10023000 */
@@ -278,9 +281,9 @@ enum gpufreq_reg_info_idx {
 	IDX_STH_M6M7_IDLE_BIT_EN_1       = 49,
 	IDX_STH_M6M7_IDLE_BIT_EN_0       = 50,
 	IDX_IFR_MFGSYS_PROT_EN_STA_0     = 51,
-	IDX_IFR_MFGSYS_PROT_EN_W1S_0     = 52,
-	IDX_IFR_MFGSYS_PROT_EN_W1C_0     = 53,
-	IDX_IFR_MFGSYS_PROT_RDY_STA_0    = 54,
+	IDX_IFR_MFGSYS_PROT_RDY_STA_0    = 52,
+	IDX_IFR_EMISYS_PROTECT_EN_STA_0  = 53,
+	IDX_IFR_EMISYS_PROTECT_EN_STA_1  = 54,
 	IDX_NTH_EMI_AO_DEBUG_CTRL0       = 55,
 	IDX_STH_EMI_AO_DEBUG_CTRL0       = 56,
 	IDX_INFRA_AO_BUS0_U_DEBUG_CTRL0  = 57,
@@ -341,9 +344,9 @@ static struct gpufreq_reg_info g_reg_mfgsys[] = {
 	REGOP(0x1030E228, 0), /* 49 */
 	REGOP(0x1030E22C, 0), /* 50 */
 	REGOP(0x1002C1A0, 0), /* 51 */
-	REGOP(0x1002C1A4, 0), /* 52 */
-	REGOP(0x1002C1A8, 0), /* 53 */
-	REGOP(0x1002C1AC, 0), /* 54 */
+	REGOP(0x1002C1AC, 0), /* 52 */
+	REGOP(0x1002C100, 0), /* 53 */
+	REGOP(0x1002C120, 0), /* 54 */
 	REGOP(0x10042000, 0), /* 55 */
 	REGOP(0x10028000, 0), /* 56 */
 	REGOP(0x10023000, 0), /* 57 */

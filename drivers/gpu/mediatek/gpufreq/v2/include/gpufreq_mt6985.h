@@ -341,16 +341,6 @@ struct gpufreq_volt_sb {
 /**************************************************
  * GPU Platform OPP Table Definition
  **************************************************/
-#define GPUOP(_freq, _volt, _vsram, _posdiv, _margin, _power) \
-	{                                  \
-		.freq = _freq,                 \
-		.volt = _volt,                 \
-		.vsram = _vsram,               \
-		.posdiv = _posdiv,             \
-		.margin = _margin,             \
-		.power = _power                \
-	}
-
 #define GPU_SIGNED_OPP_0                (0)
 #define GPU_SIGNED_OPP_1                (28)
 #define GPU_SIGNED_OPP_2                (36)
@@ -482,14 +472,6 @@ static struct gpufreq_opp_info g_stack_default_opp_table[] = {
 /**************************************************
  * OPP Adjustment
  **************************************************/
-#define ADJOP(_oppidx, _freq, _volt, _vsram) \
-	{                                  \
-		.oppidx = _oppidx,             \
-		.freq = _freq,                 \
-		.volt = _volt,                 \
-		.vsram = _vsram,               \
-	}
-
 static struct gpufreq_adj_info g_gpu_avs_table[NUM_GPU_SIGNED_IDX] = {
 #if GPUFREQ_AVS_ENABLE
 	ADJOP(GPU_SIGNED_OPP_0, 0, 0, 0),
