@@ -723,7 +723,7 @@ static void mtk_btag_seq_main_info(char **buff, unsigned long *size,
 			BLOCKIO_AEE_BUFFER_SIZE);
 	used_mem += BLOCKIO_AEE_BUFFER_SIZE;
 
-	SPREAD_PRINTF(buff, size, seq, "earaio control unit: %d bytes\n",
+	SPREAD_PRINTF(buff, size, seq, "earaio control unit: %lu bytes\n",
 			sizeof(struct mtk_btag_earaio_control));
 	used_mem += sizeof(struct mtk_btag_earaio_control);
 
