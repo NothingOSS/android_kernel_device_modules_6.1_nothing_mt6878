@@ -529,7 +529,7 @@ static inline unsigned int drv3_dl_get_lro0_wridx(void)
 	return widx;
 }
 
-static inline drv3_dl_get_lro1_wridx(void)
+static inline unsigned int drv3_dl_get_lro1_wridx(void)
 {
 	unsigned int widx;
 

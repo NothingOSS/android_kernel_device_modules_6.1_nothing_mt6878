@@ -105,7 +105,7 @@ int mt6985_set_cm(struct mtk_base_afe *afe, int id, unsigned int rate,
 }
 EXPORT_SYMBOL_GPL(mt6985_set_cm);
 
-mt6985_enable_cm_bypass(struct mtk_base_afe *afe, int id, bool en1, bool en2)
+int mt6985_enable_cm_bypass(struct mtk_base_afe *afe, int id, bool en1, bool en2)
 {
 	int cm_reg = 0;
 	int cm_on1_mask = 0, cm_on2_mask = 0;
