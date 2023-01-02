@@ -27,6 +27,7 @@
 #include <linux/of_address.h>
 #include <linux/syscore_ops.h>
 #include <linux/dma-mapping.h>
+#include <net/gro.h>
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #include <mt-plat/aee.h>
 #endif
