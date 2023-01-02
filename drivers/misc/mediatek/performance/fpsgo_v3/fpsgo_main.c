@@ -7,6 +7,7 @@
 #include <linux/unistd.h>
 #include <linux/module.h>
 #include <linux/sched.h>
+#include <linux/sched/clock.h>
 #include <linux/cpufreq.h>
 #include <linux/topology.h>
 #include <linux/arch_topology.h>
