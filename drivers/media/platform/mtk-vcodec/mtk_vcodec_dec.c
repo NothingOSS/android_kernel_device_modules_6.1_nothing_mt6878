@@ -4728,5 +4728,6 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 	return ret;
 }
 
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL v2");
 

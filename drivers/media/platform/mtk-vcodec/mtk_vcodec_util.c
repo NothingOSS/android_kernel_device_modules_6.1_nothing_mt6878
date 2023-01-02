@@ -881,6 +881,6 @@ void mtk_vcodec_set_log(struct mtk_vcodec_dev *dev, const char *val,
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_set_log);
 
-
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL v2");
 

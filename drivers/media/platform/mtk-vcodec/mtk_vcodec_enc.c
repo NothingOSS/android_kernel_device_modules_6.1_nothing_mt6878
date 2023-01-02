@@ -3834,5 +3834,7 @@ void mtk_vcodec_enc_release(struct mtk_vcodec_ctx *ctx)
 	if (ret)
 		mtk_v4l2_err("venc_if_deinit failed=%d", ret);
 }
+
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL v2");
 
