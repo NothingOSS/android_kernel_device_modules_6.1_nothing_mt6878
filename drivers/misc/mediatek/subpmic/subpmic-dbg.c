@@ -11,8 +11,6 @@
 #include "generic_debugfs.h"
 #include <linux/extdev_io_class.h>
 
-#define MT6360_DATA 1
-#define MT6375_DATA 2
 struct subpmic_dbg_info {
 	struct device *dev;
 	struct extdev_desc extdev_desc;
@@ -122,9 +120,15 @@ static const struct subpmic_data mt6375_data = {
 	.name = "MT6375",
 };
 
+static const struct subpmic_data rt6160_data = {
+	.bus = "I2C",
+	.name = "RT6160",
+};
+
 static const struct of_device_id __maybe_unused subpmic_dbg_of_id[] = {
 	{ .compatible = "mediatek,mt6360-dbg", .data = &mt6360_data},
 	{ .compatible = "mediatek,mt6375-dbg", .data = &mt6375_data},
+	{ .compatible = "richtek,rt6160-dbg", .data = &rt6160_data},
 	{ }
 };
 MODULE_DEVICE_TABLE(of, subpmic_dbg_of_id);
@@ -132,6 +136,7 @@ MODULE_DEVICE_TABLE(of, subpmic_dbg_of_id);
 static const struct platform_device_id subpmic_dbg_id[] = {
 	{ "mt6360_dbg", (kernel_ulong_t)&mt6360_data},
 	{ "mt6375_dbg", (kernel_ulong_t)&mt6375_data},
+	{ "rt6160_dbg", (kernel_ulong_t)&rt6160_data},
 	{ }
 };
 MODULE_DEVICE_TABLE(platform, subpmic_dbg_id);
