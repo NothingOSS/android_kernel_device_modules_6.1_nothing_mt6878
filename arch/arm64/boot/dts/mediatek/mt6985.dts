@@ -491,8 +491,32 @@
 		};
 
 		devapc@10207000 {
-			compatible = "mediatek,devapc";
-			reg = <0 0x10207000 0 0x1000>;
+			compatible = "mediatek,mt6985-devapc";
+			reg = <0 0x10207000 0 0x1000>, /* infra pd */
+				<0 0x10274000 0 0x1000>, /* infra1 pd */
+				<0 0x11020000 0 0x1000>, /* peri pd */
+				<0 0x1c01c000 0 0x1000>, /* vlp pd */
+				<0 0x1e019000 0 0x1000>, /* adsp pd */
+				<0 0x1e826000 0 0x1000>, /* mminfra pd */
+				<0 0x1eca4000 0 0x1000>, /* mmup pd */
+				<0 0x13fa2000 0 0x1000>, /* gpu pd */
+				<0 0x10030000 0 0x1000>, /* infra ao */
+				<0 0x1103c000 0 0x1000>, /* peri ao */
+				<0 0x1c018000 0 0x1000>, /* vlp ao */
+				<0 0x1e01c000 0 0x1000>, /* adsp ao */
+				<0 0x1e820000 0 0x1000>, /* mminfra ao */
+				<0 0x1eca0000 0 0x1000>, /* mmup ao */
+				<0 0x13fa1000 0 0x1000>, /* gpu ao */
+				<0 0x1020e000 0 0x1000>, /* infracfg */
+				<0 0x10033000 0 0x1000>, /* swp */
+				<0 0x0010c000 0 0x1000>; /* sramrom */
+			interrupts = <GIC_SPI 280 IRQ_TYPE_LEVEL_HIGH 0>, /* infra irq */
+				<GIC_SPI 128 IRQ_TYPE_LEVEL_HIGH 0>, /* peri irq */
+				<GIC_SPI 867 IRQ_TYPE_LEVEL_HIGH 0>, /* vlp irq */
+				<GIC_SPI 748 IRQ_TYPE_LEVEL_HIGH 0>, /* adsp irq */
+				<GIC_SPI 456 IRQ_TYPE_LEVEL_HIGH 0>, /* mminfra irq */
+				<GIC_SPI 864 IRQ_TYPE_LEVEL_HIGH 0>, /* mmup irq */
+				<GIC_SPI 590 IRQ_TYPE_LEVEL_HIGH 0>; /* gpu irq */
 		};
 
 		bus_dbg@10208000 {
