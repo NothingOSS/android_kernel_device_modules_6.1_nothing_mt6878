@@ -1382,7 +1382,7 @@ static int usb_meta_probe(struct platform_device *pdev)
 	android_usb_driver.gadget_driver.udc_name = meta_udc_name;
 	pr_info("%s: udc_name='%s'", __func__, android_usb_driver.gadget_driver.udc_name);
 
-	err = usb_gadget_probe_driver(&android_usb_driver.gadget_driver);
+	err = usb_gadget_register_driver(&android_usb_driver.gadget_driver);
 	if (err) {
 		pr_info("%s: failed to probe driver %d\n",
 				__func__, err);
