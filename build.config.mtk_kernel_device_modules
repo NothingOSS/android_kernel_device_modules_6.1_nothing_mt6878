@@ -3,6 +3,8 @@ DEVICE_MODULES_DIR=${KERNEL_DIR}
 KERNEL_DIR="kernel-mainline"
 # Compute the path of this project relative to KERNEL_DIR
 DEVICE_MODULES_REL_DIR=$(rel_path ${DEVICE_MODULES_DIR} ${KERNEL_DIR})
+# for builtin support
+GKI_DEVICE_MODULES_REL_DIR=${DEVICE_MODULES_REL_DIR}
 KCONFIG_EXT_PREFIX=${DEVICE_MODULES_DIR}
 
 . ${ROOT_DIR}/${DEVICE_MODULES_DIR}/build.config.mtk.aarch64.mgk

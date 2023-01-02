@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: GPL-2.0
+
+subdir-ccflags-y = $(DEVCIE_MODULES_INCLUDE)
+
+obj-$(CONFIG_DEVICE_MODULES_ALLOW_BUILTIN) += ../$(DEVICE_MODULES_REL_DIR)/drivers/tty/serial/8250/
+obj-$(CONFIG_DEVICE_MODULES_ALLOW_BUILTIN) += ../$(DEVICE_MODULES_REL_DIR)/drivers/dma/mediatek/
