@@ -3195,6 +3195,34 @@
 			iommus = <&disp_iommu M4U_PORT_L0_DISP_FAKE0>;
 		};
 
+		connv3: connv3@18000000 {
+			compatible = "mediatek,mt6985-connv3";
+			/* BT, WIFI, GPS, FM */
+			radio-support = "wifi", "bt", "md";
+		};
+
+		consys: consys@18000000 {
+			compatible = "mediatek,mt6985-consys";
+			reg = <0 0x18011000 0 0x138>, /* 0 conn_cfg*/
+				<0 0x18060000 0 0xc08>,/* 1 conn_host_csr_top */
+				<0 0x18050000 0 0x2000>, /* 2 conn_infra_sysram */
+				<0 0x1804b000 0 0x414>, /* 3 conn_infra_bus_cr */
+				<0 0x18000000 0 0x480>, /* 4 conn_infra_rgu_on */
+				<0 0x18003000 0 0x204>, /* 5 conn_wt_slp_ctl_reg */
+				<0 0x18001000 0 0x658>, /* 6 conn_infra_cfg_on */
+				<0 0x1800e000 0 0x124>, /* 7 conn_infra_bus_cr_on */
+				<0 0x1804d000 0 0x41c>, /* 8 conn_infra_off_debug_ctrl_ao */
+				<0 0x18012000 0 0xbc>, /* 9 conn_infra_clkgen_top */
+				<0 0x18042000 0 0x324>, /* 10 conn_rf_spi_mst_reg */
+				<0 0x1002c000 0 0xb04>, /* 11 ifrbus_ao_reg */
+				<0 0x1c001000 0 0xfe0>, /* 12 spm */
+				<0 0x18070000 0 0x8004>, /* 13 conn_semaphore */
+				<0 0x18041000 0 0x140>, /* 14 conn_afe_ctl */
+				<0 0x1c00d000 0 0x7ec>; /* 15 SRCLKENRC */
+			radio-support = "gps", "mawd";
+			power-domains = <&scpsys MT6985_POWER_DOMAIN_CONN>;
+		};
+
 		apu_iommu0_bank1: iommu@19011000 {
 			compatible = "mediatek,common-apu-iommu0-bank1";
 			mediatek,bank-id = <1>;
