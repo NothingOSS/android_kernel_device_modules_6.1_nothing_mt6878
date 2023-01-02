@@ -1,6 +1,6 @@
 config MTK_VIDEO_LM3643
 	tristate "LM3643 dual flash driver support"
-	depends on I2C && VIDEO_V4L2 && MEDIA_CONTROLLER
+	depends on I2C && VIDEO_DEV && MEDIA_CONTROLLER
 	depends on MEDIA_CAMERA_SUPPORT
 	select REGMAP_I2C
 	help
@@ -13,7 +13,7 @@ config MTK_VIDEO_LM3643
 
 config MTK_VIDEO_LM3644
 	tristate "LM3644 dual flash driver support"
-	depends on I2C && VIDEO_V4L2 && MEDIA_CONTROLLER
+	depends on I2C && VIDEO_DEV && MEDIA_CONTROLLER
 	depends on MEDIA_CAMERA_SUPPORT
 	select REGMAP_I2C
 	help
@@ -26,7 +26,7 @@ config MTK_VIDEO_LM3644
 
 config MTK_VIDEO_SY7806
 	tristate "SY7806 dual flash driver support"
-	depends on I2C && VIDEO_V4L2 && MEDIA_CONTROLLER
+	depends on I2C && VIDEO_DEV && MEDIA_CONTROLLER
 	depends on MEDIA_CAMERA_SUPPORT
 	select REGMAP_I2C
 	help

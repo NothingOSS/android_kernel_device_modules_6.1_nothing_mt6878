@@ -8,7 +8,7 @@ if V4L_PLATFORM_DRIVERS
 config DEVICE_MODULES_VIDEO_MEDIATEK_JPEG
 	tristate "Mediatek JPEG Codec driver"
 	depends on MTK_IOMMU_V1 || DEVICE_MODULES_MTK_IOMMU || COMPILE_TEST
-	depends on VIDEO_DEV && VIDEO_V4L2
+	depends on VIDEO_DEV
 	depends on ARCH_MEDIATEK || COMPILE_TEST
 	depends on DEVICE_MODULES_MTK_SMI || (COMPILE_TEST && DEVICE_MODULES_MTK_SMI=n)
 	select VIDEOBUF2_DMA_CONTIG
@@ -82,7 +82,7 @@ config DEVICE_MODULES_VIDEO_MEDIATEK_VCODEC_SCP
 
 config MTK_CAMSYS_VEND_HOOK
 	bool "Support Mediatek CAMSYS vnedor hook"
-	depends on VIDEO_V4L2
+	depends on VIDEO_DEV
 	help
 	  If it is enabled, CAMSYS will have vendor hook
 
