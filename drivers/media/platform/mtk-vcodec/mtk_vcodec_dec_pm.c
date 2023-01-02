@@ -430,7 +430,7 @@ void mtk_vcodec_dec_clock_on(struct mtk_vcodec_pm *pm, int hw_id)
 
 	for (larb_index = 0; larb_index < MTK_VDEC_MAX_LARB_COUNT; larb_index++) {
 		if (pm->larbvdecs[larb_index]) {
-			ret = mtk_smi_larb_get(pm->larbvdecs[larb_index]);
+			ret = pm_runtime_resume_and_get(pm->larbvdecs[larb_index]);
 			if (ret)
 				mtk_v4l2_err("Failed to get vdec larb. index: %d, hw_id: %d",
 					larb_index, hw_id);
