@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause */
 /*
  * Copyright (c) 2022 MediaTek Inc.
  * Author: Dennis-YC Hsieh <dennis-yc.hsieh@mediatek.com>
@@ -34,20 +34,18 @@
 #define MML_TDSHP1		23
 #define MML_COLOR0		24
 #define MML_COLOR1		25
-#define MML_TDSHP0_SEL		26
-#define MML_TDSHP1_SEL		27
-#define MML_PQ0_SOUT		28
-#define MML_PQ1_SOUT		29
-#define MML_DLO0_SOUT		30
-#define MML_DLO1_SOUT		31
-#define MML_WROT0		32
-#define MML_WROT1		33
-#define MML_WROT2		34
-#define MML_WROT3		35
-#define MML_DLO0		36
-#define MML_DLO1		37
-#define MML_DLO3		38
-#define MML_ENGINE_TOTAL	39
+#define MML_PQ0_SOUT		26
+#define MML_PQ1_SOUT		27
+#define MML_DLO0_SOUT		28
+#define MML_DLO1_SOUT		29
+#define MML_WROT0		30
+#define MML_WROT1		31
+#define MML_WROT2		32
+#define MML_WROT3		33
+#define MML_DLO0		34
+#define MML_DLO1		35
+#define MML_DLO3		36
+#define MML_ENGINE_TOTAL	37
 
 /* MML component types. See mtk-mml-sys.c */
 #define MML_CT_SYS		1
