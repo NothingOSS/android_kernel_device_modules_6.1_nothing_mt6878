@@ -360,6 +360,8 @@ static void mrdump_mini_build_task_info(struct pt_regs *regs)
 			MRDUMP_MINI_HEADER_SIZE);
 	/* Current panic user tasks */
 	sz = 0;
+	sz += snprintf(symbol, sizeof(symbol), "cpu:%d\n",
+			raw_smp_processor_id());
 	do {
 		if (!tsk) {
 			pr_notice("No tsk info\n");
