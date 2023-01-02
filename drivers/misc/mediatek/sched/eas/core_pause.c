@@ -516,7 +516,7 @@ void hook_rvh_get_nohz_timer_target(void __always_unused *data,
 
 	*done = true;
 
-	if (housekeeping_cpu(*cpu, HK_FLAG_TIMER) && !cpu_paused(*cpu)) {
+	if (housekeeping_cpu(*cpu, HK_TYPE_TIMER) && !cpu_paused(*cpu)) {
 		/*
 		 * Use available_idle_cpu() instead of idle_cpu().
 		 * Need to pay attention to the difference between
@@ -528,7 +528,7 @@ void hook_rvh_get_nohz_timer_target(void __always_unused *data,
 		default_cpu = *cpu;
 	}
 
-	hk_mask = housekeeping_cpumask(HK_FLAG_TIMER);
+	hk_mask = housekeeping_cpumask(HK_TYPE_TIMER);
 
 	rcu_read_lock();
 	pd = rcu_dereference(rd->pd);
@@ -606,7 +606,7 @@ void hook_rvh_find_new_ilb(void *data, struct cpumask *nohz_idle_cpus_mask, int 
 	int cpu;
 	const struct cpumask *hk_mask;
 
-	hk_mask = housekeeping_cpumask(HK_FLAG_MISC);
+	hk_mask = housekeeping_cpumask(HK_TYPE_MISC);
 
 	for_each_cpu_and(cpu, nohz_idle_cpus_mask, hk_mask) {
 
