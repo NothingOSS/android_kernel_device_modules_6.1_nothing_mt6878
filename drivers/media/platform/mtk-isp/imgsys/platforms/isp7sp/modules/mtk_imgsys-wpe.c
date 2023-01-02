@@ -12,8 +12,8 @@
 #include <linux/remoteproc.h>
 
 #include "iommu_debug.h"
-#ifdef WPE_TF_DUMP_7S_1
-#include <dt-bindings/memory/mt6985-larb-port.h>
+#ifdef WPE_TF_DUMP_7SP_1
+#include <dt-bindings/memory/mt6897-larb-port.h>
 #endif
 
 #define M4U_PORT_DUMMY_EIS  (0)
@@ -38,114 +38,106 @@ const unsigned int mtk_imgsys_wpe_base_ofst[] = {0x0, 0x300000, 0x400000};
 #define CQ_THRX_CTL	(CQ_THRX_CTL_EN | CQ_THRX_CTL_MODE)
 
 // register ofst
-#define WPE_REG_DBG_SET     (0x48)
-#define WPE_REG_DBG_PORT    (0x4C)
-#define WPE_REG_CQ_THR0_CTL (0xB08)
-#define WPE_REG_CQ_THR1_CTL (0xB18)
-#define WPE_REG_DEC_CTL1    (0x784)
-#define WPE_REG_MERGE_DBG_SET     (0x840)
-#define WPE_REG_MERGE_DBG_PORT    (0x844)
+#define WPE_REG_DBG_SET     (0x3C)
+#define WPE_REG_DBG_PORT    (0x40)
+#define WPE_REG_CQ_THR0_CTL (0xC08)
+#define WPE_REG_CQ_THR1_CTL (0xC18)
+#define WPE_REG_DEC_CTL1    (0xFC0)
 
 const struct mtk_imgsys_init_array
 			mtk_imgsys_wpe_init_ary[] = {
-	{0x0018, 0x80000000}, /* WPE_TOP_CTL_INT_EN, en w-clr */
-	{0x0024, 0xFFFFFFFF}, /* WPE_TOP_CTL_INT_STATUSX, w-clr */
-	{0x00D4, 0x80000000}, /* WPE_TOP_CQ_IRQ_EN, en w-clr */
-	{0x00DC, 0xFFFFFFFF}, /* WPE_TOP_CQ_IRQ_STX, w-clr */
-	{0x00E0, 0x80000000}, /* WPE_TOP_CQ_IRQ_EN2, en w-clr */
-	{0x00E8, 0xFFFFFFFF}, /* WPE_TOP_CQ_IRQ_STX2, w-clr */
-	{0x00EC, 0x80000000}, /* WPE_TOP_CQ_IRQ_EN3, en w-clr */
-	{0x00F4, 0xFFFFFFFF}, /* WPE_TOP_CQ_IRQ_STX3, w-clr */
-	{0x011C, 0x10000080}, /* VECI_CON, fifo size 0x80 */
-	{0x0120, 0x00800080}, /* VECI_CON2, disable ultra  */
-	{0x0124, 0x002A001A}, /* VECI_CON3, set pre-ultra */
-	{0x015C, 0x10000080}, /* VEC2I_CON, fifo size 0x80 */
-	{0x0160, 0x00800080}, /* VEC2I_CON2, disable ultra */
-	{0x0164, 0x002A001A}, /* VEC2I_CON3, set pre-ultra */
-	{0x019C, 0x10000040}, /* VEC3I_CON, fifo size 0x40 */
-	{0x01A0, 0x00400040}, /* VEC3I_CON2, disable ultra */
-	{0x01A4, 0x00400040}, /* VEC3I_CON3, disable pre-ultra */
-	{0x0204, 0x00000002}, /* WPE_CACHE_RWCTL_CTL */
-	{0x025C, 0x02000200}, /* WPE_CACHE_CACHI_CON2_0 */
-	{0x0260, 0x00AA006A}, /* WPE_CACHE_CACHI_CON3_0 */
-	{0x0328, 0x10000080}, /* WPEO_CON, fifo size 0x80 */
-	{0x0320, 0x00800080}, /* WPEO_CON2, disable ultra */
-	{0x0324, 0x002A001A}, /* WPEO_CON3, set pre-ultra */
-	{0x035C, 0x10000040}, /* WPEO2_CON, fifo size 0x40 */
-	{0x0360, 0x00400040}, /* WPEO2_CON2, disable ultra */
-	{0x0364, 0x0015000D}, /* WPEO2_CON3, set pre-ultra */
-	{0x039C, 0x10000040}, /* MSKO_CON, fifo size 0x40*/
-	{0x03A0, 0x00400040}, /* MSKO_CON2, disable ultra */
-	{0x03A4, 0x0015000D}, /* MSKO_CON3, set pre-ultra */
-	{0x03D4, 0x80000000}, /* WPE_DMA_DMA_ERR_CTRL */
-	{0x0830, 0x00700070}, /* WPE_MERGE_MERGE_FIFO_SIZE */
-	{0x0B08, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR0_CTL */
-	{0x0B18, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR1_CTL */
-	{0x0B28, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR2_CTL */
-	{0x0B38, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR3_CTL */
-	{0x0B48, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR4_CTL */
-	{0x0B58, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR5_CTL */
-	{0x0B68, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR6_CTL */
-	{0x0B78, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR7_CTL */
-	{0x0B88, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR8_CTL */
-	{0x0B98, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR9_CTL */
-	{0x0BA8, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR10_CTL */
-	{0x0BB8, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR11_CTL */
-	{0x0BC8, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR12_CTL */
-	{0x0BD8, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR13_CTL */
-	{0x0BE8, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR14_CTL */
+	{0x0014, 0x80000000}, /* WPE_TOP_CTL_INT_EN, en w-clr */
+	{0x001C, 0xFFFFFFFF}, /* WPE_TOP_CTL_INT_STATUSX, w-clr */
+	{0x00C8, 0x80000000}, /* WPE_TOP_CQ_IRQ_EN, en w-clr */
+	{0x00D8, 0xFFFFFFFF}, /* WPE_TOP_CQ_IRQ_STX, w-clr */
+	{0x00E0, 0xFFFFFFFF}, /* WPE_TOP_CQ_IRQ_STX2, w-clr */
+	{0x00E8, 0xFFFFFFFF}, /* WPE_TOP_CQ_IRQ_STX3, w-clr */
+	{0x0660, 0x10000040}, /* VECI_CON, fifo size 0x40 */
+	{0x0664, 0x10400040}, /* VECI_CON2, set pre-ultra */
+	{0x0668, 0x00400040}, /* VECI_CON3, disable ultra */
+	{0x06E0, 0x10000040}, /* VEC2I_CON, fifo size 0x40 */
+	{0x06E4, 0x10400040}, /* VEC2I_CON2, set pre-ultra */
+	{0x06E8, 0x00400040}, /* VEC2I_CON3, disable ultra */
+	{0x0760, 0x10000040}, /* VEC3I_CON, fifo size 0x40 */
+	{0x0764, 0x10400040}, /* VEC3I_CON2, set pre-ultra */
+	{0x0768, 0x00400040}, /* VEC3I_CON3, disable ultra */
+	{0x0B04, 0x00000002}, /* WPE_CACHE_RWCTL_CTL */
+	{0x0B48, 0x00400040}, /* WPE_CACHE_CACHI_CON2_0 */
+	{0x0B4C, 0x00400040}, /* WPE_CACHE_CACHI_CON3_0 */
+	{0x07E0, 0x10000040}, /* WPEO_CON, fifo size 0x40 */
+	{0x07E4, 0x10400040}, /* WPEO_CON2, set pre-ultra */
+	{0x07E8, 0x00400040}, /* WPEO_CON3, disable ultra */
+	{0x08A0, 0x10000040}, /* WPEO2_CON, fifo size 0x40 */
+	{0x08A4, 0x10400040}, /* WPEO2_CON2, set pre-ultra */
+	{0x08A8, 0x00400040}, /* WPEO2_CON3, disable ultra */
+	{0x0960, 0x10000040}, /* MSKO_CON, fifo size 0x40 */
+	{0x0964, 0x10400040}, /* MSKO_CON2, set pre-ultra */
+	{0x0968, 0x00400040}, /* MSKO_CON3, disable ultra */
+	{0x0E60, 0x80000000}, /* WPE_DMA_DMA_ERR_CTRL */
+	{0x0C08, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR0_CTL */
+	{0x0C18, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR1_CTL */
+	{0x0C28, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR2_CTL */
+	{0x0C38, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR3_CTL */
+	{0x0C48, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR4_CTL */
+	{0x0C58, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR5_CTL */
+	{0x0C68, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR6_CTL */
+	{0x0C78, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR7_CTL */
+	{0x0C88, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR8_CTL */
+	{0x0C98, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR9_CTL */
+	{0x0CA8, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR10_CTL */
+	{0x0CB8, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR11_CTL */
+	{0x0CC8, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR12_CTL */
+	{0x0CD8, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR13_CTL */
+	{0x0CE8, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR14_CTL */
 };
 #define WPE_INIT_ARRAY_COUNT  ARRAY_SIZE(mtk_imgsys_wpe_init_ary)
 
 
 const struct mtk_imgsys_init_array
 			mtk_imgsys_wpe_init_ary_2p[] = {
-	{0x0018, 0x80000000}, /* WPE_TOP_CTL_INT_EN, en w-clr */
-	{0x0024, 0xFFFFFFFF}, /* WPE_TOP_CTL_INT_STATUSX, w-clr */
-	{0x00D4, 0x80000000}, /* WPE_TOP_CQ_IRQ_EN, en w-clr */
-	{0x00DC, 0xFFFFFFFF}, /* WPE_TOP_CQ_IRQ_STX, w-clr */
-	{0x00E0, 0x80000000}, /* WPE_TOP_CQ_IRQ_EN2, en w-clr */
-	{0x00E8, 0xFFFFFFFF}, /* WPE_TOP_CQ_IRQ_STX2, w-clr */
-	{0x00EC, 0x80000000}, /* WPE_TOP_CQ_IRQ_EN3, en w-clr */
-	{0x00F4, 0xFFFFFFFF}, /* WPE_TOP_CQ_IRQ_STX3, w-clr */
-	{0x011C, 0x10000080}, /* VECI_CON, fifo size 0x80 */
-	{0x0120, 0x00800080}, /* VECI_CON2, disable ultra  */
-	{0x0124, 0x00550045}, /* VECI_CON3, set pre-ultra */
-	{0x015C, 0x10000080}, /* VEC2I_CON, fifo size 0x80 */
-	{0x0160, 0x00800080}, /* VEC2I_CON2, disable ultra */
-	{0x0164, 0x00550045}, /* VEC2I_CON3, set pre-ultra */
-	{0x019C, 0x10000040}, /* VEC3I_CON, fifo size 0x40 */
-	{0x01A0, 0x00400040}, /* VEC3I_CON2, disable ultra */
-	{0x01A4, 0x00400040}, /* VEC3I_CON3, disable pre-ultra */
-	{0x0204, 0x00000002}, /* WPE_CACHE_RWCTL_CTL */
-	{0x025C, 0x02000200}, /* WPE_CACHE_CACHI_CON2_0 */
-	{0x0260, 0x01550115}, /* WPE_CACHE_CACHI_CON3_0 */
-	{0x0328, 0x10000080}, /* WPEO_CON, fifo size 0x80 */
-	{0x0320, 0x00800080}, /* WPEO_CON2, disable ultra */
-	{0x0324, 0x00550045}, /* WPEO_CON3, set pre-ultra */
-	{0x035C, 0x10000040}, /* WPEO2_CON, fifo size 0x40 */
-	{0x0360, 0x00400040}, /* WPEO2_CON2, disable ultra */
-	{0x0364, 0x002A0022}, /* WPEO2_CON3, set pre-ultra */
-	{0x039C, 0x10000040}, /* MSKO_CON, fifo size 0x40*/
-	{0x03A0, 0x00400040}, /* MSKO_CON2, disable ultra */
-	{0x03A4, 0x002A0022}, /* MSKO_CON3, set pre-ultra */
-	{0x03D4, 0x80000000}, /* WPE_DMA_DMA_ERR_CTRL */
-	{0x0830, 0x00700070}, /* WPE_MERGE_MERGE_FIFO_SIZE */
-	{0x0B08, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR0_CTL */
-	{0x0B18, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR1_CTL */
-	{0x0B28, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR2_CTL */
-	{0x0B38, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR3_CTL */
-	{0x0B48, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR4_CTL */
-	{0x0B58, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR5_CTL */
-	{0x0B68, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR6_CTL */
-	{0x0B78, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR7_CTL */
-	{0x0B88, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR8_CTL */
-	{0x0B98, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR9_CTL */
-	{0x0BA8, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR10_CTL */
-	{0x0BB8, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR11_CTL */
-	{0x0BC8, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR12_CTL */
-	{0x0BD8, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR13_CTL */
-	{0x0BE8, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR14_CTL */
+	{0x0014, 0x80000000}, /* WPE_TOP_CTL_INT_EN, en w-clr */
+	{0x001C, 0xFFFFFFFF}, /* WPE_TOP_CTL_INT_STATUSX, w-clr */
+	{0x00C8, 0x80000000}, /* WPE_TOP_CQ_IRQ_EN, en w-clr */
+	{0x00D8, 0xFFFFFFFF}, /* WPE_TOP_CQ_IRQ_STX, w-clr */
+	{0x00E0, 0xFFFFFFFF}, /* WPE_TOP_CQ_IRQ_STX2, w-clr */
+	{0x00E8, 0xFFFFFFFF}, /* WPE_TOP_CQ_IRQ_STX3, w-clr */
+	{0x0660, 0x10000040}, /* VECI_CON, fifo size 0x40 */
+	{0x0664, 0x10400040}, /* VECI_CON2, set pre-ultra */
+	{0x0668, 0x00400040}, /* VECI_CON3, disable ultra */
+	{0x06E0, 0x10000040}, /* VEC2I_CON, fifo size 0x40 */
+	{0x06E4, 0x10400040}, /* VEC2I_CON2, set pre-ultra */
+	{0x06E8, 0x00400040}, /* VEC2I_CON3, disable ultra */
+	{0x0760, 0x10000040}, /* VEC3I_CON, fifo size 0x40 */
+	{0x0764, 0x10400040}, /* VEC3I_CON2, set pre-ultra */
+	{0x0768, 0x00400040}, /* VEC3I_CON3, disable ultra */
+	{0x0B04, 0x00000002}, /* WPE_CACHE_RWCTL_CTL */
+	{0x0B48, 0x00400040}, /* WPE_CACHE_CACHI_CON2_0 */
+	{0x0B4C, 0x00400040}, /* WPE_CACHE_CACHI_CON3_0 */
+	{0x07E0, 0x10000040}, /* WPEO_CON, fifo size 0x40 */
+	{0x07E4, 0x10400040}, /* WPEO_CON2, set pre-ultra */
+	{0x07E8, 0x00400040}, /* WPEO_CON3, disable ultra */
+	{0x08A0, 0x10000040}, /* WPEO2_CON, fifo size 0x40 */
+	{0x08A4, 0x10400040}, /* WPEO2_CON2, set pre-ultra */
+	{0x08A8, 0x00400040}, /* WPEO2_CON3, disable ultra */
+	{0x0960, 0x10000040}, /* MSKO_CON, fifo size 0x40 */
+	{0x0964, 0x10400040}, /* MSKO_CON2, set pre-ultra */
+	{0x0968, 0x00400040}, /* MSKO_CON3, disable ultra */
+	{0x0E60, 0x80000000}, /* WPE_DMA_DMA_ERR_CTRL */
+	{0x0C08, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR0_CTL */
+	{0x0C18, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR1_CTL */
+	{0x0C28, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR2_CTL */
+	{0x0C38, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR3_CTL */
+	{0x0C48, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR4_CTL */
+	{0x0C58, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR5_CTL */
+	{0x0C68, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR6_CTL */
+	{0x0C78, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR7_CTL */
+	{0x0C88, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR8_CTL */
+	{0x0C98, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR9_CTL */
+	{0x0CA8, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR10_CTL */
+	{0x0CB8, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR11_CTL */
+	{0x0CC8, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR12_CTL */
+	{0x0CD8, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR13_CTL */
+	{0x0CE8, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR14_CTL */
 };
 #define WPE_INIT_ARRAY_COUNT_2P  ARRAY_SIZE(mtk_imgsys_wpe_init_ary_2p)
 
@@ -154,21 +146,16 @@ struct imgsys_reg_range {
 	uint32_t end;
 };
 const struct imgsys_reg_range wpe_regs[] = {
-	{0x0000, 0x0164}, /* TOP,VECI,VEC2I */
-	{0x0200, 0x027C}, /* CACHE */
-	{0x0300, 0x032C}, /* WPEO */
-	{0x0340, 0x0368}, /* WPEO2 */
-	{0x0380, 0x03A8}, /* MSKO */
-	{0x03C0, 0x0408}, /* DMA */
-	{0x0440, 0x0458}, /* TDRI */
-	{0x04C0, 0x0508}, /* VGEN */
-	{0x0540, 0x05DC}, /* PSP */
-	{0x0600, 0x0620}, /* C24,C02 */
-	{0x0640, 0x0654}, /* DL CROP */
-	{0x0680, 0x0694}, /* DMA CROP */
-	{0x06C0, 0x07B4}, /* DEC,PAK */
-	{0x07C0, 0x084C}, /* TOP2 */
-	{0x0B00, 0x0C34}, /* DIPCQ_W1 */
+	{0x0000, 0x0724}, /* TOP,VECI,VEC2I */
+	{0x07C0, 0x085C}, /* WPEO */
+	{0x0880, 0x091C}, /* WPEO2 */
+	{0x0940, 0x09DC}, /* MSKO */
+	{0x0A00, 0x0A5C}, /* VGEN */
+	{0x0B00, 0x0B5C}, /* CACHE */
+	{0x0C00, 0x0C24}, /* CQ */
+	{0x0E60, 0x0E84}, /* DMA */
+	{0x0F00, 0x0FC4}, /* DEC */
+
 };
 #define WPE_REG_ARRAY_COUNT	ARRAY_SIZE(wpe_regs)
 
@@ -191,7 +178,7 @@ int imgsys_wpe_tfault_callback(int port,
 	pr_debug("%s: +\n", __func__);
 
 	switch (port) {
-#ifdef WPE_TF_DUMP_7S_1
+#ifdef WPE_TF_DUMP_7SP_1
 	case M4U_PORT_L11_WPE_RDMA_0:
 	case M4U_PORT_L11_WPE_RDMA_1:
 	case M4U_PORT_L11_WPE_RDMA_4P_0:
@@ -203,7 +190,7 @@ int imgsys_wpe_tfault_callback(int port,
 #endif
 		engine = REG_MAP_E_WPE_EIS;
 		break;
-#ifdef WPE_TF_DUMP_7S_1
+#ifdef WPE_TF_DUMP_7SP_1
 	case M4U_PORT_L22_WPE_RDMA_0:
 	case M4U_PORT_L22_WPE_RDMA_1:
 	case M4U_PORT_L22_WPE_RDMA_4P_0:
@@ -215,7 +202,7 @@ int imgsys_wpe_tfault_callback(int port,
 #endif
 		engine = REG_MAP_E_WPE_TNR;
 		break;
-#ifdef WPE_TF_DUMP_7S_1
+#ifdef WPE_TF_DUMP_7SP_1
 	case M4U_PORT_L23_WPE_RDMA_0:
 	case M4U_PORT_L23_WPE_RDMA_1:
 	case M4U_PORT_L23_WPE_RDMA_4P_0:
@@ -254,18 +241,7 @@ int imgsys_wpe_tfault_callback(int port,
 				(unsigned int)ioread32((void *)(wpeRegBA + i + 0xC)));
 		}
 	}
-#ifdef WPE_TF_DUMP_7S_1
-	for (j = 0; j < WPE_REG_ARRAY_COUNT; j++) {
-		for (i = wpe_regs[j].str; i <= wpe_regs[j].end; i += 0x10) {
-			pr_info("%s: [0x%08X] 0x%08X 0x%08X 0x%08X 0x%08X", __func__,
-				(unsigned int)(wpeBase + i + 0x1000),
-				(unsigned int)ioread32((void *)(wpeRegBA + i + 0x1000)),
-				(unsigned int)ioread32((void *)(wpeRegBA + i + 0x1000 + 0x4)),
-				(unsigned int)ioread32((void *)(wpeRegBA + i + 0x1000 + 0x8)),
-				(unsigned int)ioread32((void *)(wpeRegBA + i + 0x1000 + 0xC)));
-		}
-	}
-#endif
+
 	return 1;
 }
 
@@ -286,67 +262,7 @@ void imgsys_wpe_set_initial_value(struct mtk_imgsys_dev *imgsys_dev)
 			continue;
 		}
 	}
-#ifndef CONFIG_FPGA_EARLY_PORTING
-#ifdef WPE_TF_DUMP_7S_1
-	//wpe_eis
-	mtk_iommu_register_fault_callback(M4U_PORT_L11_WPE_RDMA_0,
-			(mtk_iommu_fault_callback_t)imgsys_wpe_tfault_callback,
-			NULL, false);
-	mtk_iommu_register_fault_callback(M4U_PORT_L11_WPE_RDMA_1,
-			(mtk_iommu_fault_callback_t)imgsys_wpe_tfault_callback,
-			NULL, false);
-	mtk_iommu_register_fault_callback(M4U_PORT_L11_WPE_RDMA_4P_0,
-			(mtk_iommu_fault_callback_t)imgsys_wpe_tfault_callback,
-			NULL, false);
-	mtk_iommu_register_fault_callback(M4U_PORT_L11_WPE_RDMA_4P_1,
-			(mtk_iommu_fault_callback_t)imgsys_wpe_tfault_callback,
-			NULL, 0);
-	mtk_iommu_register_fault_callback(M4U_PORT_L11_WPE_WDMA_0,
-			(mtk_iommu_fault_callback_t)imgsys_wpe_tfault_callback,
-			NULL, 0);
-	mtk_iommu_register_fault_callback(M4U_PORT_L11_WPE_WDMA_4P_0,
-			(mtk_iommu_fault_callback_t)imgsys_wpe_tfault_callback,
-			NULL, 0);
-	//wpe_tnr
-	mtk_iommu_register_fault_callback(M4U_PORT_L22_WPE_RDMA_0,
-			(mtk_iommu_fault_callback_t)imgsys_wpe_tfault_callback,
-			NULL, false);
-	mtk_iommu_register_fault_callback(M4U_PORT_L22_WPE_RDMA_1,
-			(mtk_iommu_fault_callback_t)imgsys_wpe_tfault_callback,
-			NULL, false);
-	mtk_iommu_register_fault_callback(M4U_PORT_L22_WPE_RDMA_4P_0,
-			(mtk_iommu_fault_callback_t)imgsys_wpe_tfault_callback,
-			NULL, false);
-	mtk_iommu_register_fault_callback(M4U_PORT_L22_WPE_RDMA_4P_1,
-			(mtk_iommu_fault_callback_t)imgsys_wpe_tfault_callback,
-			NULL, false);
-	mtk_iommu_register_fault_callback(M4U_PORT_L22_WPE_WDMA_0,
-			(mtk_iommu_fault_callback_t)imgsys_wpe_tfault_callback,
-			NULL, false);
-	mtk_iommu_register_fault_callback(M4U_PORT_L22_WPE_WDMA_4P_0,
-			(mtk_iommu_fault_callback_t)imgsys_wpe_tfault_callback,
-			NULL, false);
-	//wpe_lite
-	mtk_iommu_register_fault_callback(M4U_PORT_L23_WPE_RDMA_0,
-			(mtk_iommu_fault_callback_t)imgsys_wpe_tfault_callback,
-			NULL, false);
-	mtk_iommu_register_fault_callback(M4U_PORT_L23_WPE_RDMA_1,
-			(mtk_iommu_fault_callback_t)imgsys_wpe_tfault_callback,
-			NULL, false);
-	mtk_iommu_register_fault_callback(M4U_PORT_L23_WPE_RDMA_4P_0,
-			(mtk_iommu_fault_callback_t)imgsys_wpe_tfault_callback,
-			NULL, false);
-	mtk_iommu_register_fault_callback(M4U_PORT_L23_WPE_RDMA_4P_1,
-			(mtk_iommu_fault_callback_t)imgsys_wpe_tfault_callback,
-			NULL, false);
-	mtk_iommu_register_fault_callback(M4U_PORT_L23_WPE_WDMA_0,
-			(mtk_iommu_fault_callback_t)imgsys_wpe_tfault_callback,
-			NULL, false);
-	mtk_iommu_register_fault_callback(M4U_PORT_L23_WPE_WDMA_4P_0,
-			(mtk_iommu_fault_callback_t)imgsys_wpe_tfault_callback,
-			NULL, false);
-#endif
-#endif
+
 	dev_info(imgsys_dev->dev, "%s: -\n", __func__);
 }
 
@@ -442,27 +358,6 @@ void imgsys_wpe_debug_ufo_dump(struct mtk_imgsys_dev *imgsys_dev,
 		  debug_value[i*5+3], debug_value[i*5+4]);
 	}
 
-#ifdef WPE_TF_DUMP_7S_1
-	writel((0xB<<12), (wpeRegBA + 0x1000 + WPE_REG_DBG_SET));
-	sel_value = (unsigned int)ioread32((void *)(wpeRegBA + 0x1000 + WPE_REG_DBG_SET));
-	for (i = 0; i < 55; i++) {
-		writel((i + 0xC00), (wpeRegBA + 0x1000 + WPE_REG_DEC_CTL1));
-		debug_value[i] =
-		 (unsigned int)ioread32((void *)(wpeRegBA + 0x1000 + WPE_REG_DBG_PORT));
-	}
-
-	dev_info(imgsys_dev->dev,
-	  "%s: [r][0x%x]dbg_sel: 0x%X, [0x%x]dec_ctrl1 [0x%x]ufo_st",
-	  __func__, WPE_REG_DBG_SET, sel_value, WPE_REG_DEC_CTL1, WPE_REG_DBG_PORT);
-
-	for (i = 0; i <= 10; i++) {
-		dev_info(imgsys_dev->dev,
-		  "%s: [0x%x] 0x%08X 0x%08X 0x%08X 0x%08X 0x%08X",
-		  __func__, (unsigned int)(0x1C00+i*5),
-		  debug_value[i*5+0], debug_value[i*5+1], debug_value[i*5+2],
-		  debug_value[i*5+3], debug_value[i*5+4]);
-	}
-#endif
 }
 
 void imgsys_wpe_debug_dl_dump(struct mtk_imgsys_dev *imgsys_dev,
@@ -525,16 +420,6 @@ void imgsys_wpe_debug_module_dump(struct mtk_imgsys_dev *imgsys_dev,
 	unsigned int i = 0;
 	unsigned int debug_value[4] = {0x0};
 	unsigned int sel_value[4] = {0x0};
-
-	//merge
-	writel(0x1, (wpeRegBA + WPE_REG_MERGE_DBG_SET + ofst));
-	sel_value[0] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_MERGE_DBG_SET + ofst));
-	debug_value[0] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_MERGE_DBG_PORT + ofst));
-
-	dev_info(imgsys_dev->dev,
-		"%s:[0x%x]merge_dbg_sel,[0x%x]merge_dbg_port, merge[0x%x]0x%x",
-		__func__, (WPE_REG_MERGE_DBG_SET + ofst), (WPE_REG_MERGE_DBG_PORT + ofst),
-		sel_value[0], debug_value[0]);
 
 	//cache
 for (i = 0; i <= 3; i += 2) {
@@ -771,41 +656,12 @@ void imgsys_wpe_debug_cq_dump(struct mtk_imgsys_dev *imgsys_dev,
 	debug_value[4] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DBG_PORT));
 
 	dev_info(imgsys_dev->dev,
-		"%s: [l][0x%x]dbg_sel,[0x%x]cq_st[0x%x]0x%x, dma_dbg[0x%x]0x%x, dma_req[0x%x]0x%x, dma_rdy[0x%x]0x%x, dma_valid[0x%x]0x%x",
+		"%s: [0x%x]dbg_sel,[0x%x]cq_st[0x%x]0x%x, dma_dbg[0x%x]0x%x, dma_req[0x%x]0x%x, dma_rdy[0x%x]0x%x, dma_valid[0x%x]0x%x",
 		__func__, WPE_REG_DBG_SET, WPE_REG_DBG_PORT,
 		sel_value[0], debug_value[0], sel_value[1], debug_value[1],
 		sel_value[2], debug_value[2], sel_value[3], debug_value[3],
 		sel_value[4], debug_value[4]);
 
-#ifdef WPE_TF_DUMP_7S_1
-	//line & pix cnt
-	writel((dbg_sel_value | 0x0), (wpeRegBA + 0x1000 + WPE_REG_DBG_SET));
-	sel_value[0] = (unsigned int)ioread32((void *)(wpeRegBA + 0x1000 + WPE_REG_DBG_SET));
-	debug_value[0] = (unsigned int)ioread32((void *)(wpeRegBA + 0x1000 + WPE_REG_DBG_PORT));
-
-	writel((dbg_sel_value | 0x1), (wpeRegBA + 0x1000 + WPE_REG_DBG_SET));
-	sel_value[1] = (unsigned int)ioread32((void *)(wpeRegBA + 0x1000 + WPE_REG_DBG_SET));
-	debug_value[1] = (unsigned int)ioread32((void *)(wpeRegBA + 0x1000 + WPE_REG_DBG_PORT));
-
-	writel((dbg_sel_value | 0x2), (wpeRegBA + 0x1000 + WPE_REG_DBG_SET));
-	sel_value[2] = (unsigned int)ioread32((void *)(wpeRegBA + 0x1000 + WPE_REG_DBG_SET));
-	debug_value[2] = (unsigned int)ioread32((void *)(wpeRegBA + 0x1000 + WPE_REG_DBG_PORT));
-
-	writel((dbg_sel_value | 0x3), (wpeRegBA + 0x1000 + WPE_REG_DBG_SET));
-	sel_value[3] = (unsigned int)ioread32((void *)(wpeRegBA + 0x1000 + WPE_REG_DBG_SET));
-	debug_value[3] = (unsigned int)ioread32((void *)(wpeRegBA + 0x1000 + WPE_REG_DBG_PORT));
-
-	writel((dbg_sel_value | 0x4), (wpeRegBA + 0x1000 + WPE_REG_DBG_SET));
-	sel_value[4] = (unsigned int)ioread32((void *)(wpeRegBA + 0x1000 + WPE_REG_DBG_SET));
-	debug_value[4] = (unsigned int)ioread32((void *)(wpeRegBA + 0x1000 + WPE_REG_DBG_PORT));
-
-	dev_info(imgsys_dev->dev,
-		"%s: [r][0x%x]dbg_sel,[0x%x]cq_st[0x%x]0x%x, dma_dbg[0x%x]0x%x, dma_req[0x%x]0x%x, dma_rdy[0x%x]0x%x, dma_valid[0x%x]0x%x",
-		__func__, WPE_REG_DBG_SET, WPE_REG_DBG_PORT,
-		sel_value[0], debug_value[0], sel_value[1], debug_value[1],
-		sel_value[2], debug_value[2], sel_value[3], debug_value[3],
-		sel_value[4], debug_value[4]);
-#endif
 }
 
 
@@ -859,9 +715,6 @@ void imgsys_wpe_debug_dump(struct mtk_imgsys_dev *imgsys_dev,
 
 		imgsys_wpe_debug_cq_dump(imgsys_dev, wpeRegBA);
 		imgsys_wpe_debug_module_dump(imgsys_dev, wpeRegBA, 0);
-#ifdef WPE_TF_DUMP_7S_1
-		imgsys_wpe_debug_module_dump(imgsys_dev, wpeRegBA, 0x1000);
-#endif
 
 		//
 		for (j = 0; j < WPE_REG_ARRAY_COUNT; j++) {
@@ -875,23 +728,11 @@ void imgsys_wpe_debug_dump(struct mtk_imgsys_dev *imgsys_dev,
 				(unsigned int)ioread32((void *)(wpeRegBA + i + 0xC)));
 			}
 		}
-#ifdef WPE_TF_DUMP_7S_1
-		for (j = 0; j < WPE_REG_ARRAY_COUNT; j++) {
-			for (i = wpe_regs[j].str; i <= wpe_regs[j].end; i += 0x10) {
-				dev_info(imgsys_dev->dev,
-					"%s: [0x%08X] 0x%08X 0x%08X 0x%08X 0x%08X", __func__,
-				(unsigned int)(wpeBase + i + 0x1000),
-				(unsigned int)ioread32((void *)(wpeRegBA + i + 0x1000)),
-				(unsigned int)ioread32((void *)(wpeRegBA + i + 0x1000 + 0x4)),
-				(unsigned int)ioread32((void *)(wpeRegBA + i + 0x1000 + 0x8)),
-				(unsigned int)ioread32((void *)(wpeRegBA + i + 0x1000 + 0xC)));
-			}
-		}
-#endif
+
 		//UFO
 		if (ctl_en & 0x400) {
 			imgsys_wpe_debug_ufo_dump(imgsys_dev, wpeRegBA);
-			imgsys_wpe_debug_ufo_dump(imgsys_dev, wpeRegBA); //twice
+			imgsys_wpe_debug_ufo_dump(imgsys_dev, wpeRegBA);
 		}
 
 	}
