@@ -299,9 +299,18 @@
 #define FM_VLPCK_NUM				23
 
 enum fm_sys_id {
-	FM_GPU_PLL_CTRL = 0,
-	FM_APU_PLL_CTRL = 1,
-	FM_SYS_NUM = 2,
+	FM_TOPCKGEN = 0,
+	FM_APMIXED = 1,
+	FM_VLP_CKSYS = 2,
+	FM_MFGPLL = 3,
+	FM_GPUEBPLL = 4,
+	FM_MFGSCPLL = 5,
+	FM_CCIPLL = 6,
+	FM_ARMPLL_LL = 7,
+	FM_ARMPLL_BL = 8,
+	FM_ARMPLL_B = 9,
+	FM_PTPPLL = 10,
+	FM_SYS_NUM = 11,
 };
 
 #endif /* _CLK_MT6985_FMETER_H */
