@@ -68,6 +68,11 @@ enum tcpc_vconn_supply_mode {
 	TCPC_VCONN_SUPPLY_NR,
 };
 
+enum tcpc_polarity {
+	TCPC_POLARITY_CC1,
+	TCPC_POLARITY_CC2,
+};
+
 /* Power role */
 #define PD_ROLE_SINK   0
 #define PD_ROLE_SOURCE 1
@@ -141,7 +146,8 @@ enum {
 	TCP_NOTIFY_TYPEC_OTP,
 	TCP_NOTIFY_PLUG_OUT,
 	TCP_NOTIFY_WD0_STATE,
-	TCP_NOTIFY_MISC_END = TCP_NOTIFY_WD0_STATE,
+	TCP_NOTIFY_VBUS_SHORT_CC,
+	TCP_NOTIFY_MISC_END = TCP_NOTIFY_VBUS_SHORT_CC,
 };
 
 struct tcp_ny_pd_state {
@@ -322,6 +328,11 @@ struct tcp_ny_wd0_state {
 	bool wd0;
 };
 
+struct tcp_ny_vbus_short_cc {
+	bool short_status;
+	u8 short_cc;
+};
+
 struct tcp_notify {
 	union {
 		struct tcp_ny_enable_state en_state;
@@ -343,6 +354,7 @@ struct tcp_notify {
 		struct tcp_ny_cable_type cable_type;
 		struct tcp_ny_typec_otp typec_otp;
 		struct tcp_ny_wd0_state wd0_state;
+		struct tcp_ny_vbus_short_cc vsc_status;
 	};
 };
 

@@ -73,6 +73,10 @@ int tcpci_init_alert_mask(struct tcpc_device *tcpc);
 int tcpci_get_cc(struct tcpc_device *tcpc);
 int tcpci_set_cc(struct tcpc_device *tcpc, int pull);
 int tcpci_set_otp_fwen(struct tcpc_device *tcpc, bool en);
+int tcpci_set_vbus_short_cc_en(struct tcpc_device *tcpc, bool cc1, bool cc2);
+int tcpci_notify_vbus_short_cc_status(struct tcpc_device *tcpc,
+				      bool vsc_status, bool short_cc);
+
 static inline int __tcpci_set_cc(struct tcpc_device *tcpc, int pull)
 {
 	PD_BUG_ON(tcpc->ops->set_cc == NULL);

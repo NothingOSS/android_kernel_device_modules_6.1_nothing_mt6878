@@ -475,6 +475,29 @@ int tcpci_set_cc_hidet(struct tcpc_device *tcpc, bool en)
 }
 EXPORT_SYMBOL(tcpci_set_cc_hidet);
 
+int tcpci_set_vbus_short_cc_en(struct tcpc_device *tcpc, bool cc1, bool cc2)
+{
+	int rv = 0;
+
+	if (tcpc->ops->set_vbus_short_cc_en)
+		rv = tcpc->ops->set_vbus_short_cc_en(tcpc, cc1, cc2);
+
+	return rv;
+}
+EXPORT_SYMBOL(tcpci_set_vbus_short_cc_en);
+
+int tcpci_notify_vbus_short_cc_status(struct tcpc_device *tcpc, bool vsc_status, bool short_cc)
+{
+	struct tcp_notify tcp_noti;
+
+	tcp_noti.vsc_status.short_status = vsc_status;
+	tcp_noti.vsc_status.short_cc = short_cc;
+	TCPC_DBG("notify_vbus_short_cc: %d\n", vsc_status);
+	return tcpc_check_notify_time(tcpc, &tcp_noti, TCP_NOTIFY_IDX_MISC,
+					TCP_NOTIFY_VBUS_SHORT_CC);
+}
+EXPORT_SYMBOL(tcpci_notify_vbus_short_cc_status);
+
 int tcpci_notify_wd0_state(struct tcpc_device *tcpc, bool wd0_state)
 {
 	struct tcp_notify tcp_noti;

@@ -545,6 +545,8 @@ static inline void typec_unattached_src_and_drp_entry(struct tcpc_device *tcpc)
 	TYPEC_NEW_STATE(typec_unattached_src);
 	tcpci_set_cc(tcpc, TYPEC_CC_RP);
 	tcpc_enable_timer(tcpc, TYPEC_TIMER_DRP_SRC_TOGGLE);
+	if (tcpc->typec_vbus_to_cc_en && tcpc->tcpc_flags & TCPC_FLAGS_VBUS_SHORT_CC)
+		tcpci_set_vbus_short_cc_en(tcpc, false, false);
 }
 
 static inline void typec_unattached_snk_and_drp_entry(struct tcpc_device *tcpc)
@@ -553,6 +555,8 @@ static inline void typec_unattached_snk_and_drp_entry(struct tcpc_device *tcpc)
 	tcpci_set_auto_dischg_discnt(tcpc, false);
 	tcpci_set_cc(tcpc, TYPEC_CC_DRP);
 	typec_enable_low_power_mode(tcpc, TYPEC_CC_DRP);
+	if (tcpc->typec_vbus_to_cc_en && tcpc->tcpc_flags & TCPC_FLAGS_VBUS_SHORT_CC)
+		tcpci_set_vbus_short_cc_en(tcpc, false, false);
 }
 
 static inline void typec_unattached_cc_entry(struct tcpc_device *tcpc)
@@ -760,6 +764,12 @@ static inline void typec_sink_attached_entry(struct tcpc_device *tcpc)
 	tcpci_set_auto_dischg_discnt(tcpc, true);
 	tcpci_report_power_control(tcpc, true);
 	tcpci_sink_vbus(tcpc, TCP_VBUS_CTRL_TYPEC, TCPC_VBUS_SINK_5V, -1);
+	if (!tcpc->typec_vbus_to_cc_en && tcpc->tcpc_flags & TCPC_FLAGS_VBUS_SHORT_CC) {
+		if (tcpc->typec_polarity == TCPC_POLARITY_CC1)
+			tcpci_set_vbus_short_cc_en(tcpc, true, false);
+		else
+			tcpci_set_vbus_short_cc_en(tcpc, false, true);
+	}
 }
 
 static inline void typec_custom_src_attached_entry(
@@ -779,6 +789,8 @@ static inline void typec_custom_src_attached_entry(
 
 	tcpci_report_power_control(tcpc, true);
 	tcpci_sink_vbus(tcpc, TCP_VBUS_CTRL_TYPEC, TCPC_VBUS_SINK_5V, -1);
+	if (!tcpc->typec_vbus_to_cc_en && tcpc->tcpc_flags & TCPC_FLAGS_VBUS_SHORT_CC)
+		tcpci_set_vbus_short_cc_en(tcpc, true, true);
 #endif	/* CONFIG_TYPEC_CAP_CUSTOM_SRC */
 }
 

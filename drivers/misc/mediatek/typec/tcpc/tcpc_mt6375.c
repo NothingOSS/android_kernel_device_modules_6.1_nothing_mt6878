@@ -25,6 +25,7 @@
 #define MT6375_DBGINFO_EN	1
 #define MT6375_WD1_EN	1
 #define MT6375_WD2_EN	1
+#define CC_SHORT_DEBOUNCE 100
 
 #define MT6375_INFO(fmt, ...) \
 	do { \
@@ -87,6 +88,7 @@
 #define MT6375_REG_HILOCTRL9	(0xC8)
 #define MT6375_REG_HILOCTRL10	(0xC9)
 #define MT6375_REG_SHIELDCTRL1	(0xCA)
+#define MT6375_REG_FRS_CTRL2	(0xCC)
 #define MT6375_REG_TYPECOTPCTRL	(0xCD)
 #define MT6375_REG_WD12MODECTRL	(0xD0)
 #define MT6375_REG_WD1PATHEN	(0xD1)
@@ -155,6 +157,10 @@
 	 MT6375_MSK_VCON_UVP | MT6375_MSK_VCON_SHTGND)
 /* MT6375_REG_MTINT3: 0x9A */
 #define MT6375_MSK_CTD		BIT(4)
+#define MT6375_MSK_VBUS_TO_CC1	BIT(6)
+#define MT6375_MSK_VBUS_TO_CC2	BIT(7)
+#define MT6375_MSK_VBUS_TO_CC \
+	(MT6375_MSK_VBUS_TO_CC1 | MT6375_MSK_VBUS_TO_CC2)
 /* MT6375_REG_MTINT4: 0x9B */
 #define MT6375_MSK_FOD_DONE	BIT(0)
 #define MT6375_MSK_FOD_OV	BIT(1)
@@ -200,6 +206,11 @@
 #define MT6375_MSK_OPEN40MS_EN	BIT(4)
 #define MT6375_MSK_RPDET_MANUAL	BIT(6)
 #define MT6375_MSK_RPDET_AUTO	BIT(7)
+/* MT6375_REG_FRS_CTRL2: 0xCC */
+#define MT6375_MSK_CMPEN_VBUS_TO_CC1	BIT(0)
+#define MT6375_MSK_CMPEN_VBUS_TO_CC2	BIT(1)
+#define MT6375_MSK_CMPEN_VBUS_TO_CC \
+	(MT6375_MSK_CMPEN_VBUS_TO_CC1 | MT6375_MSK_CMPEN_VBUS_TO_CC2)
 /* MT6375_REG_TYPECOTPCTRL: 0xCD */
 #define MT6375_MSK_TYPECOTP_FWEN	BIT(2)
 /* MT6375_REG_WD12MODECTRL: 0xD0 */
@@ -261,6 +272,8 @@ struct mt6375_tcpc_data {
 	u16 curr_irq_mask;
 	bool wd0_state;
 	bool wd0_enable;
+	bool vsc_status;
+	u8 short_cc;
 	u8 wd0_tsleep;
 	u8 wd0_tdet;
 
@@ -276,6 +289,7 @@ struct mt6375_tcpc_data {
 
 	struct alarm hidet_debtimer;
 	struct delayed_work hidet_dwork;
+	struct delayed_work cc_short_dwork;
 };
 
 enum mt6375_vend_int {
@@ -581,6 +595,9 @@ static int mt6375_init_vend_mask(struct mt6375_tcpc_data *ddata)
 	if (ddata->tcpc->tcpc_flags & TCPC_FLAGS_CABLE_TYPE_DETECTION)
 		mask[MT6375_VEND_INT3] |= MT6375_MSK_CTD;
 
+	if (ddata->tcpc->tcpc_flags & TCPC_FLAGS_VBUS_SHORT_CC)
+		mask[MT6375_VEND_INT3] |= MT6375_MSK_VBUS_TO_CC;
+
 	if (ddata->tcpc->tcpc_flags & TCPC_FLAGS_FOREIGN_OBJECT_DETECTION)
 		mask[MT6375_VEND_INT4] |= MT6375_MSK_FOD_DONE |
 					  MT6375_MSK_FOD_OV |
@@ -683,6 +700,27 @@ static int mt6375_enable_typec_otp_fwen(struct tcpc_device *tcpc, bool en)
 		(ddata, MT6375_REG_TYPECOTPCTRL, MT6375_MSK_TYPECOTP_FWEN);
 }
 
+static int mt6375_enable_vbus_short_cc(struct tcpc_device *tcpc, bool cc1, bool cc2)
+{
+	struct mt6375_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
+	int ret = 0;
+	u8 val = 0;
+
+	TYPEC_DBG("%s cc1: %d, cc2: %d\n", __func__, cc1, cc2);
+	mt6375_update_bits(ddata, MT6375_REG_MTINT3, 0xc0, 0xc0);
+
+	val = (cc1 ? MT6375_MSK_CMPEN_VBUS_TO_CC1 : 0) |
+		(cc2 ? MT6375_MSK_CMPEN_VBUS_TO_CC2 : 0);
+
+	ret = regmap_update_bits(ddata->rmap, MT6375_REG_FRS_CTRL2,
+				 MT6375_MSK_CMPEN_VBUS_TO_CC, val);
+	if (ret < 0)
+		return ret;
+
+	tcpc->typec_vbus_to_cc_en = (cc1 | cc2);
+	return 0;
+}
+
 static int mt6375_hidet_is_plugout(struct mt6375_tcpc_data *ddata, bool *out)
 {
 	int ret;
@@ -694,6 +732,30 @@ static int mt6375_hidet_is_plugout(struct mt6375_tcpc_data *ddata, bool *out)
 	data &= MT6375_MSK_HIDET_CC;
 	*out = (data == MT6375_MSK_HIDET_CC) ? true : false;
 	return 0;
+}
+
+static void mt6375_cc_short_dwork_handler(struct work_struct *work)
+{
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct mt6375_tcpc_data *ddata = container_of(dwork,
+						      struct mt6375_tcpc_data,
+						      cc_short_dwork);
+	bool local_vsc_status;
+	int ret;
+	u8 data;
+
+	ret = mt6375_read8(ddata, MT6375_REG_MTST3, &data);
+	if (ret < 0) {
+		MT6375_DBGINFO("Read MT6375_REG_MTST3 fail.\n");
+		return;
+	}
+	local_vsc_status = (data & MT6375_MSK_VBUS_TO_CC) ? true : false;
+	if (local_vsc_status != ddata->vsc_status) {
+		ddata->vsc_status = local_vsc_status;
+		tcpci_notify_vbus_short_cc_status(ddata->tcpc,
+						  ddata->vsc_status,
+						  ddata->short_cc);
+	}
 }
 
 static void mt6375_enable_hidet_debtimer(struct mt6375_tcpc_data *ddata,
@@ -1345,7 +1407,7 @@ static int mt6375_set_cc_toggling(struct mt6375_tcpc_data *ddata, int rp_lvl)
 						 TYPEC_CC_RD);
 	struct tcpc_desc *desc = ddata->desc;
 
-	pr_info("Toggle: %s\n", __func__);
+	TYPEC_INFO("Toggle: %s\n", __func__);
 	ret = mt6375_write8(ddata, TCPC_V10_REG_ROLE_CTRL, data);
 	if (ret < 0)
 		return ret;
@@ -1373,6 +1435,22 @@ static int mt6375_set_cc_toggling(struct mt6375_tcpc_data *ddata, int rp_lvl)
 		else
 			mt6375_enable_wd_polling(ddata, true);
 	}
+	return 0;
+}
+
+static int mt6375_vbus_to_cc1_irq_handler(struct mt6375_tcpc_data *ddata)
+{
+	ddata->short_cc = 0;
+	mod_delayed_work(system_wq, &ddata->cc_short_dwork,
+			 msecs_to_jiffies(CC_SHORT_DEBOUNCE));
+	return 0;
+}
+
+static int mt6375_vbus_to_cc2_irq_handler(struct mt6375_tcpc_data *ddata)
+{
+	ddata->short_cc = 1;
+	mod_delayed_work(system_wq, &ddata->cc_short_dwork,
+			 msecs_to_jiffies(CC_SHORT_DEBOUNCE));
 	return 0;
 }
 
@@ -2183,6 +2261,8 @@ static struct irq_mapping_tbl mt6375_vend_irq_mapping_tbl[] = {
 	MT6375_IRQ_MAPPING(31, fod_dischgf),
 
 	MT6375_IRQ_MAPPING(20, ctd),
+	MT6375_IRQ_MAPPING(22, vbus_to_cc1),
+	MT6375_IRQ_MAPPING(23, vbus_to_cc2),
 };
 
 static int mt6375_alert_vendor_defined_handler(struct tcpc_device *tcpc)
@@ -2309,6 +2389,7 @@ static struct tcpc_ops mt6375_tcpc_ops = {
 
 	.set_floating_ground = mt6375_set_floating_ground,
 	.set_otp_fwen = mt6375_enable_typec_otp_fwen,
+	.set_vbus_short_cc_en = mt6375_enable_vbus_short_cc,
 };
 
 static void mt6375_irq_work_handler(struct kthread_work *work)
@@ -2444,6 +2525,8 @@ static int mt6375_register_tcpcdev(struct mt6375_tcpc_data *ddata)
 		ddata->tcpc->tcpc_flags |= TCPC_FLAGS_TYPEC_OTP;
 	if (desc->en_floatgnd)
 		ddata->tcpc->tcpc_flags |= TCPC_FLAGS_FLOATING_GROUND;
+	if (desc->en_vbus_short_cc)
+		ddata->tcpc->tcpc_flags |= TCPC_FLAGS_VBUS_SHORT_CC;
 
 	if (ddata->tcpc->tcpc_flags & TCPC_FLAGS_PD_REV30)
 		dev_info(ddata->dev, "%s PD REV30\n", __func__);
@@ -2470,6 +2553,7 @@ static int mt6375_parse_dt(struct mt6375_tcpc_data *ddata)
 		{ "tcpc,en_fod", &desc->en_fod },
 		{ "tcpc,en_typec_otp", &desc->en_typec_otp },
 		{ "tcpc,en_floatgnd", &desc->en_floatgnd },
+		{ "tcpc,en-vbus-short-cc", &desc->en_vbus_short_cc },
 	};
 	const struct {
 		const char *name;
@@ -2627,6 +2711,7 @@ static int mt6375_tcpc_probe(struct platform_device *pdev)
 	atomic_set(&ddata->wd_protect_retry, CONFIG_WD_PROTECT_RETRY_COUNT);
 	INIT_DELAYED_WORK(&ddata->wd_poll_dwork, mt6375_wd_poll_dwork_handler);
 	INIT_DELAYED_WORK(&ddata->hidet_dwork, mt6375_hidet_dwork_handler);
+	INIT_DELAYED_WORK(&ddata->cc_short_dwork, mt6375_cc_short_dwork_handler);
 	alarm_init(&ddata->hidet_debtimer, ALARM_REALTIME,
 		   mt6375_hidet_debtimer_handler);
 

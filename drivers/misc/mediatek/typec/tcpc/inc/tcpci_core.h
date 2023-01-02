@@ -96,6 +96,7 @@ struct tcpc_desc {
 	bool en_fod;
 	bool en_typec_otp;
 	bool en_floatgnd;
+	bool en_vbus_short_cc;
 	u32 wd_sbu_calib_init;
 	u32 wd_sbu_pl_bound;
 	u32 wd_sbu_pl_lbound_c2c;
@@ -184,6 +185,7 @@ struct tcpc_desc {
 #define TCPC_FLAGS_FLOATING_GROUND		(1<<15)
 #define TCPC_FLAGS_SBU_POLLING			(1<<16)
 #define TCPC_FLAGS_WD_POLLING_ONLY		(1<<17)
+#define TCPC_FLAGS_VBUS_SHORT_CC		(1<<18)
 
 #define TYPEC_CC_PULL(rp_lvl, res)	((rp_lvl & 0x03) << 3 | (res & 0x07))
 
@@ -255,6 +257,7 @@ struct tcpc_ops {
 	int (*set_floating_ground)(struct tcpc_device *tcpc, bool en);
 
 	int (*set_otp_fwen)(struct tcpc_device *tcpc, bool en);
+	int (*set_vbus_short_cc_en)(struct tcpc_device *tcpc, bool cc1, bool cc2);
 
 #if CONFIG_TCPC_LOW_POWER_MODE
 	int (*is_low_power_mode)(struct tcpc_device *tcpc);
@@ -527,6 +530,7 @@ struct tcpc_device {
 	bool typec_otp;
 	struct completion alert_done;
 	long long alert_max_access_time;
+	bool typec_vbus_to_cc_en;
 };
 
 #define to_tcpc_device(obj) container_of(obj, struct tcpc_device, dev)

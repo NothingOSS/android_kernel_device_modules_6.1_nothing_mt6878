@@ -89,6 +89,13 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 #endif /* CONFIG_WATER_DETECTION */
 
 	switch (event) {
+	case TCP_NOTIFY_VBUS_SHORT_CC:
+		if (noti->vsc_status.short_status) {
+			dev_info(rpmd->dev, "enter short status, short_cc = %s\n",
+				 noti->vsc_status.short_cc == TCPC_POLARITY_CC1 ? "CC1" : "CC2");
+		} else
+			dev_info(rpmd->dev, "exit short status\n");
+		break;
 	case TCP_NOTIFY_SINK_VBUS:
 		break;
 	case TCP_NOTIFY_SOURCE_VBUS:
