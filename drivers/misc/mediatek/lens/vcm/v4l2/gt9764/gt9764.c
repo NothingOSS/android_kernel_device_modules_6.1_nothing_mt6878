@@ -352,9 +352,9 @@ static int gt9764_probe(struct i2c_client *client)
 	gt9764->sd.entity.function = MEDIA_ENT_F_LENS;
 #endif
 
-	ret = v4l2_async_register_subdev(&gt9764->sd);
+	/*ret = v4l2_async_register_subdev(&gt9764->sd);
 	if (ret < 0)
-		goto err_cleanup;
+		goto err_cleanup;*/
 
 	LOG_INF("-\n");
 

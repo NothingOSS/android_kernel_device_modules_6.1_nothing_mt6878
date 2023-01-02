@@ -354,9 +354,9 @@ static int gt9772a_probe(struct i2c_client *client)
 	gt9772a->sd.entity.function = MEDIA_ENT_F_LENS;
 #endif
 
-	ret = v4l2_async_register_subdev(&gt9772a->sd);
-	if (ret < 0)
-		goto err_cleanup;
+	//ret = v4l2_async_register_subdev(&gt9772a->sd);
+	//if (ret < 0)
+	//	goto err_cleanup;
 
 	LOG_INF("-\n");
 

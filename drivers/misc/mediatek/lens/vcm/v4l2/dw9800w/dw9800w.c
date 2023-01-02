@@ -373,9 +373,9 @@ static int dw9800w_probe(struct i2c_client *client)
 	dw9800w->sd.entity.function = MEDIA_ENT_F_LENS;
 #endif
 
-	ret = v4l2_async_register_subdev(&dw9800w->sd);
+	/*ret = v4l2_async_register_subdev(&dw9800w->sd);
 	if (ret < 0)
-		goto err_cleanup;
+		goto err_cleanup;*/
 
 	LOG_INF("-\n");
 

@@ -369,9 +369,9 @@ static int ak7377a_probe(struct i2c_client *client)
 	ak7377a->sd.entity.function = MEDIA_ENT_F_LENS;
 #endif
 
-	ret = v4l2_async_register_subdev(&ak7377a->sd);
-	if (ret < 0)
-		goto err_cleanup;
+	//ret = v4l2_async_register_subdev(&ak7377a->sd);
+	//if (ret < 0)
+	//	goto err_cleanup;
 
 	LOG_INF("-\n");
 
