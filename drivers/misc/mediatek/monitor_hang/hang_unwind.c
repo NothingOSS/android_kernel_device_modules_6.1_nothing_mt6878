@@ -4,6 +4,7 @@
  */
 #ifdef __aarch64__
 #include <asm/pointer_auth.h>
+#include <asm/stacktrace/common.h>
 #endif
 #include <asm/stacktrace.h>
 #include "hang_unwind.h"
@@ -12,7 +13,7 @@
 unsigned int hang_kernel_trace(struct task_struct *tsk,
 					unsigned long *store, unsigned int size)
 {
-	struct stackframe frame;
+	struct unwind_state frame;
 	struct stack_info info;
 	unsigned long fp;
 	unsigned int store_len = 1;

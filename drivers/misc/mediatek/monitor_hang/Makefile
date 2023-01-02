@@ -18,5 +18,8 @@ ifeq ($(CONFIG_MTK_ION),y)
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/staging/android/mtk_ion/
 endif
 
+subdir-ccflags-y += -I$(srctree)/arch/arm64/include/
+subdir-ccflags-y += -I$(srctree)/include/
+
 obj-$(CONFIG_MTK_HANG_DETECT) += monitor_hang.o
 monitor_hang-objs += hang_detect.o hang_unwind.o
