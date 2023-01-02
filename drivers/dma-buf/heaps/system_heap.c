@@ -1007,7 +1007,7 @@ static struct dma_buf *mtk_mm_heap_allocate(struct dma_heap *heap,
 	return system_heap_do_allocate(heap, len, fd_flags, heap_flags, false,
 				       &mtk_mm_heap_buf_ops);
 }
-
+/*
 static long system_get_pool_size(struct dma_heap *heap)
 {
 	int i;
@@ -1021,11 +1021,11 @@ static long system_get_pool_size(struct dma_heap *heap)
 	}
 
 	return num_pages << PAGE_SHIFT;
-}
+}*/
 
 static const struct dma_heap_ops system_heap_ops = {
 	.allocate = system_heap_allocate,
-	.get_pool_size = system_get_pool_size,
+	//.get_pool_size = system_get_pool_size,
 };
 
 static const struct dma_heap_ops mtk_mm_heap_ops = {
@@ -1268,4 +1268,5 @@ hang_dump_cb hang_dump_proc;
 EXPORT_SYMBOL_GPL(hang_dump_proc);
 
 module_init(system_heap_create);
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL v2");
