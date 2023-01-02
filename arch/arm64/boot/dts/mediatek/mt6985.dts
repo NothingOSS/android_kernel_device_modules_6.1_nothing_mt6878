@@ -4004,6 +4004,7 @@
 			clocks = <&topckgen_clk CLK_TOP_USB_TOP_1P>,
 				<&topckgen_clk CLK_TOP_USB_XHCI_1P>,
 				<&pericfg_ao_clk CLK_PERAO_SSUSB1_FRMCNT>;
+			clock-names = "sys_ck", "host_ck", "frmcnt_ck";
 			#address-cells = <2>;
 			#size-cells = <2>;
 			ranges;
