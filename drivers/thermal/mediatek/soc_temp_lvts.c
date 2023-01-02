@@ -689,7 +689,7 @@ void lvts_wait_for_all_sensing_point_idle(struct lvts_data *lvts_data)
 			break;
 
 		if ((cnt + 1) % 10 == 0) {
-			dev_info(dev, "Cnt= %d LVTS TC %d, LVTSMSRCTL1[10,7,0] = %d,%d,%d, LVTSMSRCTL1[10:0] = 0x%x\n",
+			dev_info(dev, "Cnt= %d LVTS TC %d, LVTSMSRCTL1[10,7,0] = %lu,%lu,%lu, LVTSMSRCTL1[10:0] = 0x%lx\n",
 				cnt + 1, (temp >> 16),
 				((temp & BIT(2)) >> 2),
 				((temp & BIT(1)) >> 1),

@@ -220,7 +220,7 @@ RETRY:
 
 	if (!r_ntc) {
 		dev_err(ntc_info->dev,
-			"r_ntc is 0! v_in/pullup_r/pullup_v=%d/%d/%d\n",
+			"r_ntc is 0! v_in/pullup_r/pullup_v=%llu/%d/%d\n",
 			v_in, adc_data->pullup_r[r_type],
 			adc_data->pullup_v[r_type]);
 		*temp = THERMAL_TEMP_INVALID;
@@ -228,7 +228,7 @@ RETRY:
 		*temp = board_ntc_r_to_temp(ntc_info, r_ntc);
 	}
 
-	dev_dbg_ratelimited(ntc_info->dev, "val=0x%x, v_in/r_type/r_ntc/t=%d/%d/%d/%d\n",
+	dev_dbg_ratelimited(ntc_info->dev, "val=0x%x, v_in/r_type/r_ntc/t=%llu/%d/%d/%d\n",
 		val, v_in, r_type, r_ntc, *temp);
 
 	return 0;

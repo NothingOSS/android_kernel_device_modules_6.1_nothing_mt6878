@@ -177,7 +177,7 @@ static void thermal_info_work(struct work_struct *work)
 			stat->cur_tput =
 				(diff / (cur_time.tv_sec - pre_time)) >> 7;
 
-			pr_debug("[%s] %d:time/tx/tput=%lu/%lu/%luKb/s\n",
+			pr_debug("[%s] %d:time/tx/tput=%llu/%lu/%luKb/s\n",
 				__func__, i, cur_time.tv_sec,
 				stat->cur_tx_bytes, stat->cur_tput);
 			stat->pre_tx_bytes = stat->cur_tx_bytes;
@@ -185,7 +185,7 @@ static void thermal_info_work(struct work_struct *work)
 	}
 
 	trace_data->last_update_time = cur_time.tv_sec;
-	pr_debug("[%s] pre_time=%lu, tv_sec=%lu\n", __func__,
+	pr_debug("[%s] pre_time=%lu, tv_sec=%llu\n", __func__,
 				pre_time, cur_time.tv_sec);
 
 	trace_network_tput(trace_data->stats[0].cur_tput,
