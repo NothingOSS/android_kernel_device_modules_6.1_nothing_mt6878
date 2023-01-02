@@ -643,6 +643,8 @@ static void cmdq_mdp_lock_thread(struct cmdqRecStruct *handle)
 	else
 		cmdq_sec_mbox_enable(((struct cmdq_client *) handle->pkt->cl)->chan);
 #endif
+	if (handle->pkt_rb)
+		cmdq_mbox_enable(((struct cmdq_client *) handle->pkt_rb->cl)->chan);
 
 	CMDQ_PROF_END(current->pid, __func__);
 }
@@ -748,6 +750,8 @@ static void cmdq_mdp_handle_stop(struct cmdqRecStruct *handle)
 	else
 		cmdq_sec_mbox_disable(((struct cmdq_client *)handle->pkt->cl)->chan);
 #endif
+	if (handle->pkt_rb)
+		cmdq_mbox_disable(((struct cmdq_client *) handle->pkt_rb->cl)->chan);
 
 	cmdq_mdp_common_clock_disable(handle->engineFlag);
 
@@ -2122,21 +2126,21 @@ static int cmdq_mdp_init_pq_readback(struct platform_device *pdev)
 
 #if defined(CMDQ_SECURE_PATH_SUPPORT)
 	ret = of_property_read_u16(pdev->dev.of_node,
-		"pq_rb_thread_id", &rb_thread_id);
+		"pq-rb-thread-id", &rb_thread_id);
 	if (ret != 0)
-		CMDQ_MSG("pq_rb_thread_id is not defined\n");
+		CMDQ_MSG("pq-rb-thread-id is not defined\n");
 	mdp_ctx.pq_readback.rb_thread_id = rb_thread_id;
 
 	ret = of_property_read_u16(pdev->dev.of_node,
-		"pq_rb_event_lock", &rb_event_lock);
+		"pq-rb-event-lock", &rb_event_lock);
 	if (ret != 0)
-		CMDQ_MSG("pq_rb_event_lock is not defined\n");
+		CMDQ_MSG("pq-rb-event-lock is not defined\n");
 	mdp_ctx.pq_readback.rb_event_lock = rb_event_lock;
 
 	ret = of_property_read_u16(pdev->dev.of_node,
-		"pq_rb_event_unlock", &rb_event_unlock);
+		"pq-rb-event-unlock", &rb_event_unlock);
 	if (ret != 0)
-		CMDQ_MSG("pq_rb_event_unlock is not defined\n");
+		CMDQ_MSG("pq-rb-event-unlock is not defined\n");
 	mdp_ctx.pq_readback.rb_event_unlock = rb_event_unlock;
 #endif
 

@@ -4828,7 +4828,7 @@ unsigned long cmdq_get_tracing_mark(void)
 
 noinline int tracing_mark_write(char *fmt, ...)
 {
-#if IS_ENABLED(CONFIG_MTK_FTRACER)
+#if IS_ENABLED(CONFIG_MTK_FTRACER) && IS_ENABLED(CONFIG_MTK_MDP_DEBUG)
 	char buf[TRACE_MSG_LEN];
 	va_list args;
 	int len;
