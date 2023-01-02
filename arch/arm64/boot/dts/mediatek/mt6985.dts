@@ -142,6 +142,9 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0000>;
 			enable-method = "psci";
+		//	cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
+		//				&system_mem &system_pll &system_bus
+		//				&s2idle>;
 		};
 
 		//cpu1: cpu@001 {
@@ -149,6 +152,9 @@
 		//	compatible = "arm,cortex-a55";
 		//	reg = <0x0100>;
 		//	enable-method = "psci";
+		//	cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
+		//				&system_mem &system_pll &system_bus
+		//				&s2idle>;
 		//};
 
 		//cpu2: cpu@002 {
@@ -156,6 +162,9 @@
 		//	compatible = "arm,cortex-a55";
 		//	reg = <0x0200>;
 		//	enable-method = "psci";
+		//	cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
+		//				&system_mem &system_pll &system_bus
+		//				&s2idle>;
 		//};
 
 		//cpu3: cpu@003 {
@@ -163,6 +172,9 @@
 		//	compatible = "arm,cortex-a55";
 		//	reg = <0x0300>;
 		//	enable-method = "psci";
+		//	cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
+		//				&system_mem &system_pll &system_bus
+		//				&s2idle>;
 		//};
 
 		//cpu4: cpu@100 {
@@ -170,6 +182,9 @@
 		//	compatible = "arm,cortex-a78";
 		//	reg = <0x0400>;
 		//	enable-method = "psci";
+		//	cpu-idle-states = <&cpuoff_b &clusteroff_m &mcusysoff
+		//				&system_mem &system_pll &system_bus
+		//				&s2idle>;
 		//};
 
 		//cpu5: cpu@101 {
@@ -177,6 +192,9 @@
 		//	compatible = "arm,cortex-a78";
 		//	reg = <0x0500>;
 		//	enable-method = "psci";
+		//	cpu-idle-states = <&cpuoff_b &clusteroff_m &mcusysoff
+		//				&system_mem &system_pll &system_bus
+		//				&s2idle>;
 		//};
 
 		//cpu6: cpu@102 {
@@ -184,6 +202,9 @@
 		//	compatible = "arm,cortex-a78";
 		//	reg = <0x0600>;
 		//	enable-method = "psci";
+		//	cpu-idle-states = <&cpuoff_b &clusteroff_m &mcusysoff
+		//				&system_mem &system_pll &system_bus
+		//				&s2idle>;
 		//};
 
 		//cpu7: cpu@200 {
@@ -191,6 +212,9 @@
 		//	compatible = "arm,cortex-a78";
 		//	reg = <0x0700>;
 		//	enable-method = "psci";
+		//	cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff
+		//				&system_mem &system_pll &system_bus
+		//				&s2idle>;
 		//};
 
 		//cpu-map {
@@ -231,6 +255,90 @@
 		//		};
 		//		doe_dvfs_cl2: doe {
 		//		};
+		//	};
+		//};
+
+		//idle-states {
+		//	entry-method = "arm,psci";
+		//	cpuoff_l: cpuoff_l {
+		//		compatible = "arm,idle-state";
+		//		arm,psci-suspend-param = <0x00010001>;
+		//		local-timer-stop;
+		//		entry-latency-us = <50>;
+		//		exit-latency-us = <100>;
+		//		min-residency-us = <1600>;
+		//	};
+		//	cpuoff_b: cpuoff_b {
+		//		compatible = "arm,idle-state";
+		//		arm,psci-suspend-param = <0x00010002>;
+		//		local-timer-stop;
+		//		entry-latency-us = <120>;
+		//		exit-latency-us = <240>;
+		//		min-residency-us = <4800>;
+		//	};
+		//	clusteroff_l: clusteroff_l {
+		//		compatible = "arm,idle-state";
+		//		arm,psci-suspend-param = <0x01010101>;
+		//		local-timer-stop;
+		//		entry-latency-us = <160>;
+		//		exit-latency-us = <340>;
+		//		min-residency-us = <12200>;
+		//	};
+		//	clusteroff_m: clusteroff_m {
+		//		compatible = "arm,idle-state";
+		//		arm,psci-suspend-param = <0x01010101>;
+		//		local-timer-stop;
+		//		entry-latency-us = <165>;
+		//		exit-latency-us = <260>;
+		//		min-residency-us = <13800>;
+		//	};
+		//	clusteroff_b: clusteroff_b {
+		//		compatible = "arm,idle-state";
+		//		arm,psci-suspend-param = <0x01010102>;
+		//		local-timer-stop;
+		//		entry-latency-us = <80>;
+		//		exit-latency-us = <160>;
+		//		min-residency-us = <11900>;
+		//	};
+		//	mcusysoff: mcusysoff {
+		//		compatible = "arm,idle-state";
+		//		arm,psci-suspend-param = <0x01010701>;
+		//		local-timer-stop;
+		//		entry-latency-us = <640>;
+		//		exit-latency-us = <1400>;
+		//		min-residency-us = <13200>;
+		//	};
+		//	system_mem: system_mem {
+		//		compatible = "arm,idle-state";
+		//		arm,psci-suspend-param = <0x01010f01>;
+		//		local-timer-stop;
+		//		entry-latency-us = <640>;
+		//		exit-latency-us = <1800>;
+		//		min-residency-us = <13200>;
+		//	};
+		//	system_pll: system_pll {
+		//		compatible = "arm,idle-state";
+		//		arm,psci-suspend-param = <0x01010f02>;
+		//		local-timer-stop;
+		//		entry-latency-us = <640>;
+		//		exit-latency-us = <1850>;
+		//		min-residency-us = <13200>;
+		//	};
+		//	system_bus: system_bus {
+		//		compatible = "arm,idle-state";
+		//		arm,psci-suspend-param = <0x01010f03>;
+		//		local-timer-stop;
+		//		entry-latency-us = <640>;
+		//		exit-latency-us = <2800>;
+		//		min-residency-us = <13200>;
+		//	};
+		//	s2idle: s2idle {
+		//		compatible = "arm,idle-state";
+		//		arm,psci-suspend-param = <0x01011f01>;
+		//		local-timer-stop;
+		//		entry-latency-us = <10000>;
+		//		exit-latency-us = <10000>;
+		//		min-residency-us = <4294967295>;
 		//	};
 		//};
 	};
