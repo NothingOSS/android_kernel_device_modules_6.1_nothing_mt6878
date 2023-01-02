@@ -70,6 +70,8 @@ enum topology_scenario {
 	PATH_MML_PQ_P3,
 	PATH_MML_2OUT_P0,
 	PATH_MML_2OUT_P1,
+	PATH_MML_2IN_2OUT_P0,
+	PATH_MML_2IN_2OUT_P1,
 	PATH_MML_MAX
 };
 
@@ -84,6 +86,31 @@ static inline bool engine_wrot(u32 id)
 {
 	return id == MML_WROT0 || id == MML_WROT1 ||
 		id == MML_WROT2 || id == MML_WROT3;
+}
+
+/* check if engine is input region pq rdma engine */
+static inline bool engine_pq_rdma(u32 id)
+{
+	return id == MML_RDMA2 || id == MML_RDMA3;
+}
+
+/* check if engine is input region pq birsz engine */
+static inline bool engine_pq_birsz(u32 id)
+{
+	return id == MML_BIRSZ0 || id == MML_BIRSZ1;
+}
+
+/* check if engine is region pq engine */
+static inline bool engine_region_pq(u32 id)
+{
+	return id == MML_RDMA2 || id == MML_RDMA3 ||
+		id == MML_BIRSZ0 || id == MML_BIRSZ1;
+}
+
+/* check if engine is tdshp engine */
+static inline bool engine_tdshp(u32 id)
+{
+	return id == MML_TDSHP0 || id == MML_TDSHP1;
 }
 
 static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
@@ -215,6 +242,40 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_WROT1,},
 		{MML_WROT3,},
 	},
+	[PATH_MML_2IN_2OUT_P0] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RDMA2,},
+		{MML_BIRSZ0,},
+		{MML_RDMA0, MML_DLI0_SEL,},
+		{MML_DLI0_SEL, MML_HDR0, MML_RSZ2},
+		{MML_HDR0, MML_AAL0,},
+		{MML_AAL0, MML_RSZ0,},
+		{MML_RSZ0, MML_TDSHP0,},
+		{MML_TDSHP0, MML_COLOR0,},
+		{MML_COLOR0, MML_DLO0_SOUT,},
+		{MML_DLO0_SOUT, MML_WROT0,},
+		{MML_RSZ2, MML_WROT2,},
+		{MML_WROT0,},
+		{MML_WROT2,},
+	},
+	[PATH_MML_2IN_2OUT_P1] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RDMA3,},
+		{MML_BIRSZ1,},
+		{MML_RDMA1, MML_DLI1_SEL,},
+		{MML_DLI1_SEL, MML_HDR1, MML_RSZ3},
+		{MML_HDR1, MML_AAL1,},
+		{MML_AAL1, MML_RSZ1,},
+		{MML_RSZ1, MML_TDSHP1,},
+		{MML_TDSHP1, MML_COLOR1,},
+		{MML_COLOR1, MML_DLO1_SOUT,},
+		{MML_DLO1_SOUT, MML_WROT1,},
+		{MML_RSZ3, MML_WROT3,},
+		{MML_WROT1,},
+		{MML_WROT3,},
+	},
 };
 
 enum cmdq_clt_usage {
@@ -236,6 +297,8 @@ static const u8 clt_dispatch[PATH_MML_MAX] = {
 	[PATH_MML_PQ_P3] = MML_CLT_PIPE1,
 	[PATH_MML_2OUT_P0] = MML_CLT_PIPE0,
 	[PATH_MML_2OUT_P1] = MML_CLT_PIPE1,
+	[PATH_MML_2IN_2OUT_P0] = MML_CLT_PIPE0,
+	[PATH_MML_2IN_2OUT_P1] = MML_CLT_PIPE1,
 };
 
 /* mux sof group of mmlsys mout/sel */
@@ -263,6 +326,8 @@ static const u8 grp_dispatch[PATH_MML_MAX] = {
 	[PATH_MML_PQ_P3] = MUX_SOF_GRP2,
 	[PATH_MML_2OUT_P0] = MUX_SOF_GRP1,
 	[PATH_MML_2OUT_P1] = MUX_SOF_GRP2,
+	[PATH_MML_2IN_2OUT_P0] = MUX_SOF_GRP1,
+	[PATH_MML_2IN_2OUT_P1] = MUX_SOF_GRP2,
 };
 
 /* reset bit to each engine,
@@ -303,9 +368,9 @@ static void tp_dump_path(const struct mml_topology_path *path)
 
 	for (i = 0; i < path->node_cnt; i++) {
 		mml_log(
-			"[topology]engine %u (%p) prev %p next %p %p comp %p tile idx %u out %u",
+			"[topology]engine %u (%p) prev %p %p next %p %p comp %p tile idx %u out %u",
 			path->nodes[i].id, &path->nodes[i],
-			path->nodes[i].prev,
+			path->nodes[i].prev[0], path->nodes[i].prev[1],
 			path->nodes[i].next[0], path->nodes[i].next[1],
 			path->nodes[i].comp,
 			path->nodes[i].tile_eng_idx,
@@ -329,6 +394,8 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 	const struct path_node *route)
 {
 	struct mml_path_node *prev[2] = {0};
+	struct mml_path_node *pq_rdma;
+	struct mml_path_node *pq_birsz;
 	u8 connect_eng[2] = {0};
 	u8 i, tile_idx, out_eng_idx;
 
@@ -359,6 +426,19 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 			path->mutex = path->nodes[i].comp;
 			path->mutex_idx = i;
 			continue;
+		} else if (engine_pq_rdma(eng)) {
+			pq_rdma = &path->nodes[i];
+			continue;
+		} else if (engine_pq_birsz(eng)) {
+			pq_birsz = &path->nodes[i];
+			continue;
+		} else if (engine_tdshp(eng)) {
+			if (pq_rdma && pq_birsz) {
+				pq_birsz->prev[0] = pq_rdma;
+				pq_rdma->next[0] = pq_birsz;
+				pq_birsz->next[0] = &path->nodes[i];
+				path->nodes[i].prev[1] = pq_birsz;
+			}
 		}
 
 		if (eng == MML_RDMA0)
@@ -378,7 +458,7 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 			/* connect out 0 */
 			prev[0]->next[0] = &path->nodes[i];
 			/* replace current out 0 to this engine */
-			path->nodes[i].prev = prev[0];
+			path->nodes[i].prev[0] = prev[0];
 			prev[0] = &path->nodes[i];
 			connect_eng[0] = next0;
 			path->nodes[i].out_idx = 0;
@@ -397,7 +477,7 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 			else
 				prev[1]->next[1] = &path->nodes[i];
 			/* replace current out 1 to this engine */
-			path->nodes[i].prev = prev[1];
+			path->nodes[i].prev[0] = prev[1];
 			prev[1] = &path->nodes[i];
 			connect_eng[1] = next0;
 			path->nodes[i].out_idx = 1;
@@ -426,7 +506,8 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 	/* collect tile engines */
 	tile_idx = 0;
 	for (i = 0; i < path->node_cnt; i++) {
-		if (!path->nodes[i].prev && !path->nodes[i].next[0]) {
+		if ((!path->nodes[i].prev[0] && !path->nodes[i].next[0]) ||
+		    engine_region_pq(path->nodes[i].id)) {
 			path->nodes[i].tile_eng_idx = ~0;
 			continue;
 		}
@@ -434,6 +515,22 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 		path->tile_engines[tile_idx++] = i;
 	}
 	path->tile_engine_cnt = tile_idx;
+
+	/* scan region pq in engines */
+	for (i = 0; i < path->node_cnt; i++) {
+		if (engine_pq_rdma(path->nodes[i].id)) {
+			path->nodes[i].tile_eng_idx = path->tile_engine_cnt;
+			path->tile_engines[path->tile_engine_cnt] = i;
+			if (path->pq_rdma_id)
+				mml_err("[topology]multiple pq rdma engines: was %hhu now %hhu",
+					path->pq_rdma_id,
+					path->nodes[i].id);
+			path->pq_rdma_id = path->nodes[i].id;
+		} else if (engine_pq_birsz(path->nodes[i].id)) {
+			path->nodes[i].tile_eng_idx = path->tile_engine_cnt + 1;
+			path->tile_engines[path->tile_engine_cnt + 1] = i;
+		}
+	}
 
 	/* scan out engines */
 	for (i = 0; i < path->node_cnt; i++) {
@@ -547,8 +644,13 @@ static void tp_select_path(struct mml_topology_cache *cache,
 		scene[0] = PATH_MML_NOPQ_P0;
 		scene[1] = PATH_MML_NOPQ_P1;
 	} else if (cfg->info.dest_cnt == 2) {
-		scene[0] = PATH_MML_2OUT_P0;
-		scene[1] = PATH_MML_2OUT_P1;
+		if (cfg->info.dest[0].pq_config.en_region_pq) {
+			scene[0] = PATH_MML_2IN_2OUT_P0;
+			scene[1] = PATH_MML_2IN_2OUT_P1;
+		} else {
+			scene[0] = PATH_MML_2OUT_P0;
+			scene[1] = PATH_MML_2OUT_P1;
+		}
 	} else if (mml_force_rsz == 2) {
 		scene[0] = PATH_MML_PQ_P2;
 		scene[1] = PATH_MML_PQ_P3;
@@ -666,7 +768,7 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 		info->dest[0].pq_config.en_hdr ||
 		info->dest[0].pq_config.en_ccorr ||
 		info->dest[0].pq_config.en_dre ||
-		info->dest[0].pq_config.hfg_en)
+		info->dest[0].pq_config.en_region_pq)
 		goto decouple;
 
 	/* racing only support 1 out */
