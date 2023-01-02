@@ -1360,7 +1360,7 @@ static void gt9896s_pdev_release(struct device *dev)
 #define BOOT_UPDATE_FIRMWARE_NAME novatek_firmware
 char novatek_firmware[25];
 
-static int gt9896s_spi_remove(struct spi_device *spi)
+static void gt9896s_spi_remove(struct spi_device *spi)
 {
 	if (gt9896s_pdev) {
 		platform_device_unregister(gt9896s_pdev);
@@ -1369,7 +1369,6 @@ static int gt9896s_spi_remove(struct spi_device *spi)
 	}
 
 	ts_info("GT9896S SPI");
-	return 0;
 }
 
 

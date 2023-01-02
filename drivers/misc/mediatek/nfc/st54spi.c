@@ -1376,7 +1376,7 @@ static int st54spi_probe(struct spi_device *spi)
 	return status;
 }
 
-static int st54spi_remove(struct spi_device *spi)
+static void st54spi_remove(struct spi_device *spi)
 {
 	struct st54spi_data *st54spi = spi_get_drvdata(spi);
 
@@ -1403,7 +1403,6 @@ static int st54spi_remove(struct spi_device *spi)
 
 	mutex_unlock(&device_list_lock);
 
-	return 0;
 }
 
 static struct spi_driver st54spi_spi_driver = {
