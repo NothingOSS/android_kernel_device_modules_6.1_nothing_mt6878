@@ -7,5 +7,3 @@
 
 obj-$(CONFIG_DEVICE_MODULES_USB_MTU3)		+= mtu3/
 
-obj-$(CONFIG_USB_PCI)		+= host/
-obj-$(CONFIG_USB_XHCI_HCD)	+= host/
