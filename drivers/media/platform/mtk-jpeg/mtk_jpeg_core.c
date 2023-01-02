@@ -1245,7 +1245,7 @@ static void mtk_jpeg_clk_on(struct mtk_jpeg_dev *jpeg)
 {
 	int ret;
 
-	ret = mtk_smi_larb_get_ex(jpeg->larb, 1);
+	ret = pm_runtime_resume_and_get(jpeg->larb);
 	if (ret)
 		dev_err(jpeg->dev, "mtk_smi_larb_get larbvdec fail %d\n", ret);
 
@@ -1259,7 +1259,7 @@ static void mtk_jpeg_clk_off(struct mtk_jpeg_dev *jpeg)
 {
 	clk_bulk_disable_unprepare(jpeg->variant->num_clks,
 				   jpeg->variant->clks);
-	mtk_smi_larb_put_ex(jpeg->larb, 1);
+	pm_runtime_put_sync(jpeg->larb);
 }
 
 static irqreturn_t mtk_jpeg_enc_done(struct mtk_jpeg_dev *jpeg)
@@ -1504,6 +1504,11 @@ static int mtk_jpeg_clk_init(struct mtk_jpeg_dev *jpeg)
 	of_node_put(node);
 
 	jpeg->larb = &pdev->dev;
+
+	if (!device_link_add(jpeg->dev, jpeg->larb, DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS)) {
+		pr_info("%s larb device link fail\n", __func__);
+		return -EINVAL;
+	}
 
 	ret = devm_clk_bulk_get(jpeg->dev, jpeg->variant->num_clks,
 				jpeg->variant->clks);
