@@ -178,6 +178,84 @@
 			output-high;
 		};
 	};
+	camera_pins_cam0_mclk1_off: camera_pins_cam0_mclk1_off {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO196__FUNC_GPIO196>;
+			drive-strength = <1>;
+		};
+	};
+	camera_pins_cam0_mclk1_2ma: camera_pins_cam0_mclk1_2ma {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO196__FUNC_CMMCLK0>;
+			drive-strength = <0>;
+		};
+	};
+	camera_pins_cam0_mclk1_4ma: camera_pins_cam0_mclk1_4ma {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO196__FUNC_CMMCLK0>;
+			drive-strength = <1>;
+		};
+	};
+	camera_pins_cam0_mclk1_6ma: camera_pins_cam0_mclk1_6ma {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO196__FUNC_CMMCLK0>;
+			drive-strength = <2>;
+		};
+	};
+	camera_pins_cam0_mclk1_8ma: camera_pins_cam0_mclk1_8ma {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO196__FUNC_CMMCLK0>;
+			drive-strength = <3>;
+		};
+	};
+	camera_pins_cam0_rst1_0: cam0@2 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO14__FUNC_GPIO14>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	camera_pins_cam0_rst1_1: cam0@3 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO14__FUNC_GPIO14>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	camera_pins_cam0_ponv_0: cam0@4 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO15__FUNC_GPIO15>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	camera_pins_cam0_ponv_1: cam0@5 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO15__FUNC_GPIO15>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	camera_pins_cam0_scl_ap: cam0@6 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO183__FUNC_SCL4>;
+		};
+	};
+	camera_pins_cam0_scl_scp: cam0@7 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO183__FUNC_SCP_SCL7>;
+		};
+	};
+	camera_pins_cam0_sda_ap: cam0@8 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO184__FUNC_SDA4>;
+		};
+	};
+	camera_pins_cam0_sda_scp: cam0@9 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO184__FUNC_SCP_SDA7>;
+		};
+	};
 	camera_pins_cam1_mclk_off: camera_pins_cam1_mclk_off {
 		pins_cmd_dat {
 			pinmux = <PINMUX_GPIO209__FUNC_GPIO209>;
@@ -460,7 +538,20 @@
 				"mclk_6mA",
 				"mclk_8mA",
 				"rst_low",
-				"rst_high";
+				"rst_high",
+				"mclk1_off",
+				"mclk1_2mA",
+				"mclk1_4mA",
+				"mclk1_6mA",
+				"mclk1_8mA",
+				"rst1_low",
+				"rst1_high",
+				"ponv_low",
+				"ponv_high",
+				"scl_ap",
+				"scl_scp",
+				"sda_ap",
+				"sda_scp";
 		pinctrl-0 = <&camera_pins_cam0_mclk_off>;
 		pinctrl-1 = <&camera_pins_cam0_mclk_2ma>;
 		pinctrl-2 = <&camera_pins_cam0_mclk_4ma>;
@@ -468,12 +559,26 @@
 		pinctrl-4 = <&camera_pins_cam0_mclk_8ma>;
 		pinctrl-5 = <&camera_pins_cam0_rst_0>;
 		pinctrl-6 = <&camera_pins_cam0_rst_1>;
+		pinctrl-7 = <&camera_pins_cam0_mclk1_off>;
+		pinctrl-8 = <&camera_pins_cam0_mclk1_2ma>;
+		pinctrl-9 = <&camera_pins_cam0_mclk1_4ma>;
+		pinctrl-10 = <&camera_pins_cam0_mclk1_6ma>;
+		pinctrl-11 = <&camera_pins_cam0_mclk1_8ma>;
+		pinctrl-12 = <&camera_pins_cam0_rst1_0>;
+		pinctrl-13 = <&camera_pins_cam0_rst1_1>;
+		pinctrl-14 = <&camera_pins_cam0_ponv_0>;
+		pinctrl-15 = <&camera_pins_cam0_ponv_1>;
+		pinctrl-16 = <&camera_pins_cam0_scl_ap>;
+		pinctrl-17 = <&camera_pins_cam0_scl_scp>;
+		pinctrl-18 = <&camera_pins_cam0_sda_ap>;
+		pinctrl-19 = <&camera_pins_cam0_sda_scp>;
 
 		avdd-supply = <&rt5133_gpio2>;
 		dvdd-supply = <&rt5133_ldo7>;
 		dovdd-supply = <&rt5133_ldo1>;
 		afvdd-supply = <&rt5133_gpio1>;
 		avdd1-supply = <&rt5133_ldo5>;
+		dvdd1-supply = <&rt5133_ldo8>;
 
 		clocks = <&topckgen_clk CLK_TOP_UNIVPLL2_192M_D32>,
 			<&topckgen_clk CLK_TOP_UNIVPLL2_192M_D16>,
@@ -482,8 +587,9 @@
 			<&topckgen_clk CLK_TOP_UNIVPLL2_192M_D8>,
 			<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
 			<&topckgen_clk CLK_TOP_UNIVPLL2_D6_D8>,
-			<&topckgen_clk CLK_TOP_CAMTG4_SEL>;
-		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
+			<&topckgen_clk CLK_TOP_CAMTG4_SEL>,
+			<&topckgen_clk CLK_TOP_CAMTG_SEL>;
+		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk", "mclk1";
 
 		status = "okay";
 
@@ -558,6 +664,12 @@
 				"imx499_mipi_raw";
 		reg = <0x1a>;
 		#thermal-sensor-cells = <0>;
+
+		/* reindex sensor if match sensor list */
+		reindex-match = "ov48b_mipi_raw",
+				"imx519_mipi_raw",
+				"imx499_mipi_raw";
+		reindex-to = <0>;
 
 		pinctrl-names = "mclk_off",
 				"mclk_2mA",
