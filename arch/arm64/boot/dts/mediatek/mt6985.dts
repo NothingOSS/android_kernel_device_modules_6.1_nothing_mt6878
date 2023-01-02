@@ -4164,6 +4164,12 @@
 			reg = <0 0x1460b000 0 0x1000>;
 		};
 
+		aov: aov@0 {
+			compatible = "mediatek,aov";
+			status = "okay";
+			op_mode = <0>;
+		};
+
 		hcp: hcp@0 {
 			compatible = "mediatek,hcp7s";
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
