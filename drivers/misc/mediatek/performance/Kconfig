@@ -17,6 +17,7 @@ config MTK_PERFORMANCE_MODULE
 
 config MTK_FRS
 	tristate "Mediatek Frame Rate Smoother"
+	depends on MTK_FPSGO_V3
 	help
 	  Support Frame Rate Smoother kernel intergface. It will adjustment
 	  target fps by thermal.
