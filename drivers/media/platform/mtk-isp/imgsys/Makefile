@@ -85,6 +85,7 @@ mtk_imgsys_cmdq-objs := \
 mtk_imgsys-cmdq.o \
 mtk_imgsys-trace.o \
 platforms/isp71/mtk_imgsys-cmdq-plat.o \
-platforms/isp7s/mtk_imgsys-cmdq-plat.o
+platforms/isp7s/mtk_imgsys-cmdq-plat.o \
+platforms/isp7sp/mtk_imgsys-cmdq-plat.o
 
 obj-$(CONFIG_VIDEO_MTK_ISP_IMGSYS_CMDQ) += mtk_imgsys_cmdq.o

@@ -18,6 +18,7 @@
 //#include "mtk-interconnect.h"
 #include "platforms/isp71/mtk_imgsys-cmdq-plat_def.h"
 #include "platforms/isp7s/mtk_imgsys-cmdq-plat_def.h"
+#include "platforms/isp7sp/mtk_imgsys-cmdq-plat_def.h"
 
 static struct mtk_imgcmdq_dev *imgsys_cmdq_dev;
 
@@ -150,10 +151,12 @@ static void module_uninit(struct kref *kref)
 	if (IS_ERR_OR_NULL(dvfs_info->mmdvfs_clk))
 		dev_dbg(dvfs_info->dev,
 			"%s: [ERROR] mmdvfs_clk is null\n", __func__);
+#if DVFS_QOS_READY
 	else {
 		mtk_mmdvfs_enable_ccu(false, CCU_PWR_USR_IMG);
 		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_IMG);
 	}
+#endif
 }
 
 void mtk_imgsys_mod_put(struct mtk_imgsys_dev *imgsys_dev)
@@ -283,7 +286,7 @@ struct platform_device *mtk_imgsys_cmdq_get_plat_dev(struct platform_device *pde
 
 	dev_dbg(&pdev->dev, "- E. imgsys cmdq get platform device.\n");
 
-	cmdq_node = of_parse_phandle(dev->of_node, "mediatek,imgsys_cmdq", 0);
+	cmdq_node = of_parse_phandle(dev->of_node, "mediatek,imgsys-cmdq", 0);
 	if (cmdq_node == NULL) {
 		dev_info(&pdev->dev, "%s can't get imgsys cmdq node.\n", __func__);
 		return NULL;
@@ -333,6 +336,7 @@ static int mtk_imgsys_cmdq_remove(struct platform_device *pdev)
 static const struct of_device_id mtk_imgsys_cmdq_of_match[] = {
 	{.compatible = "mediatek,imgsys-cmdq-71", .data = (void *)&imgsys_cmdq_data_71},
 	{.compatible = "mediatek,imgsys-cmdq-7s", .data = (void *)&imgsys_cmdq_data_7s},
+	{.compatible = "mediatek,imgsys-cmdq-7sp", .data = (void *)&imgsys_cmdq_data_7sp},
 	{}
 };
 MODULE_DEVICE_TABLE(of, mtk_imgsys_cmdq_of_match);

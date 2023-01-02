@@ -6,10 +6,10 @@
  *
  */
 
-#ifndef _MTK_IMGSYS_CMDQ_PLAT7S_DEF_H_
-#define _MTK_IMGSYS_CMDQ_PLAT7S_DEF_H_
+#ifndef _MTK_IMGSYS_CMDQ_PLAT7SP_DEF_H_
+#define _MTK_IMGSYS_CMDQ_PLAT7SP_DEF_H_
 
-extern struct imgsys_cmdq_cust_data imgsys_cmdq_data_7s;
+extern struct imgsys_cmdq_cust_data imgsys_cmdq_data_7sp;
 
-#endif /* _MTK_IMGSYS_CMDQ_PLAT7S_DEF_H_ */
+#endif /* _MTK_IMGSYS_CMDQ_PLAT7SP_DEF_H_ */
 
