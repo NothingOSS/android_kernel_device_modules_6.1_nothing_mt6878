@@ -17,39 +17,37 @@
 #define MML_RDMA3		6
 #define MML_DLI0		7
 #define MML_DLI1		8
-#define MML_DLI2		9
-#define MML_DLI3		10
-#define MML_DLI0_SEL		11
-#define MML_DLI1_SEL		12
-#define MML_HDR0		13
-#define MML_HDR1		14
-#define MML_AAL0		15
-#define MML_AAL1		16
-#define MML_RSZ0		17
-#define MML_RSZ1		18
-#define MML_RSZ2		19
-#define MML_RSZ3		20
-#define MML_BIRSZ0		21
-#define MML_BIRSZ1		22
-#define MML_TDSHP0		23
-#define MML_TDSHP1		24
-#define MML_COLOR0		25
-#define MML_COLOR1		26
-#define MML_TDSHP0_SEL		27
-#define MML_TDSHP1_SEL		28
-#define MML_PQ0_SOUT		29
-#define MML_PQ1_SOUT		30
-#define MML_DLO0_SOUT		31
-#define MML_DLO1_SOUT		32
-#define MML_WROT0		33
-#define MML_WROT1		34
-#define MML_WROT2		35
-#define MML_WROT3		36
-#define MML_DLO0		37
-#define MML_DLO1		38
-#define MML_DLO2		39
-#define MML_DLO3		40
-#define MML_ENGINE_TOTAL	41
+#define MML_DLI3		9
+#define MML_DLI0_SEL		10
+#define MML_DLI1_SEL		11
+#define MML_HDR0		12
+#define MML_HDR1		13
+#define MML_AAL0		14
+#define MML_AAL1		15
+#define MML_RSZ0		16
+#define MML_RSZ1		17
+#define MML_RSZ2		18
+#define MML_RSZ3		19
+#define MML_BIRSZ0		20
+#define MML_BIRSZ1		21
+#define MML_TDSHP0		22
+#define MML_TDSHP1		23
+#define MML_COLOR0		24
+#define MML_COLOR1		25
+#define MML_TDSHP0_SEL		26
+#define MML_TDSHP1_SEL		27
+#define MML_PQ0_SOUT		28
+#define MML_PQ1_SOUT		29
+#define MML_DLO0_SOUT		30
+#define MML_DLO1_SOUT		31
+#define MML_WROT0		32
+#define MML_WROT1		33
+#define MML_WROT2		34
+#define MML_WROT3		35
+#define MML_DLO0		36
+#define MML_DLO1		37
+#define MML_DLO3		38
+#define MML_ENGINE_TOTAL	39
 
 /* MML component types. See mtk-mml-sys.c */
 #define MML_CT_SYS		1
@@ -98,6 +96,19 @@
 #define MML_DLI_ASYNC0_STATUS1	0x244
 #define MML_DLI_ASYNC1_STATUS0	0x248
 #define MML_DLI_ASYNC1_STATUS1	0x24c
+#define MML_DL_IN_RELAY2_SIZE	0x250
+#define MML_DL_IN_RELAY3_SIZE   0x254
+#define MML_DL_OUT_RELAY2_SIZE  0x258
+#define MML_DL_OUT_RELAY3_SIZE  0x25c
+#define MML_DLO_ASYNC2_STATUS0  0x260
+#define MML_DLO_ASYNC2_STATUS1  0x264
+#define MML_DLO_ASYNC3_STATUS0  0x268
+#define MML_DLO_ASYNC3_STATUS1  0x26c
+#define MML_DLI_ASYNC2_STATUS0  0x270
+#define MML_DLI_ASYNC2_STATUS1  0x274
+#define MML_DLI_ASYNC3_STATUS0  0x278
+#define MML_DLI_ASYNC3_STATUS1  0x27c
+
 /* MML MUX registers in mt6985 */
 #define MML_DLI0_SEL_IN		0xf14
 #define MML_DLI1_SEL_IN		0xf18
@@ -135,7 +146,16 @@
 #define MML_MOUT_MASK1		0xfd4
 #define MML_MOUT_MASK2		0xfd8
 /* MML AID for secure */
-#define MML_AID_SEL		0x524
+#define MML_RDMA0_AIDSEL	0x500
+#define MML_RDMA1_AIDSEL	0x504
+#define MML_WROT0_AIDSEL	0x508
+#define MML_WROT1_AIDSEL	0x50C
+#define MML_WROT2_AIDSEL	0x510
+#define MML_WROT3_AIDSEL	0x514
+#define MML_FAKE0_AIDSEL	0x518
+#define MML_RDMA2_AIDSEL	0x51C
+#define MML_RDMA3_AIDSEL	0x520
+
 /* MMLSys debug valid/ready */
 #define MML_DL_VALID0		0xfe0
 #define MML_DL_VALID1		0xfe4
@@ -145,7 +165,6 @@
 #define MML_DL_READY1		0xff4
 #define MML_DL_READY2		0xff8
 #define MML_DL_READY3		0xfdc
-
 
 /* MML SYS mux types. See mtk-mml-sys.c */
 #define MML_MUX_MOUT		1
