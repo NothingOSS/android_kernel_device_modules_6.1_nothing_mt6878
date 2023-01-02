@@ -1095,7 +1095,7 @@ static void mtk8250_dma_rx_complete(void *param)
 		if (total <= UART_DUMP_BUF_LEN)
 			memcpy(rx_record.rec[idx].rec_buf + cnt, ptr, total - cnt);
 		else
-			pr_info("[%s] total = %d, cnt = %d, exceeds buf size:%d\n",
+			pr_info("[%s] total = %d, cnt = %d, exceeds buf size:%lu\n",
 				__func__, total, cnt, UART_DUMP_BUF_LEN);
 	}
 #endif
