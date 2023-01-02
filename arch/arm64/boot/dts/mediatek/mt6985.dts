@@ -6573,6 +6573,7 @@
 
 			mediatek,ufs-disable-ah8;
 			mediatek,ufs-qos;
+			mediatek,ufs-pmc-via-fastauto;
 		};
 
 		mgm: mgm {
