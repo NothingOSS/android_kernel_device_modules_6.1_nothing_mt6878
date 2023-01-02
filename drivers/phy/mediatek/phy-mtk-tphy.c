@@ -54,18 +54,15 @@
 #define PA0_USB20_PLL_PREDIV		GENMASK(7, 6)
 #define PA0_RG_USB20_INTR_EN		BIT(5)
 #define PA0_RG_USB20_BGR_DIV		GENMASK(3, 2)
-#define PA0_RG_USB20_BGR_DIV_VAL(x)	((0x3 & (x)) << 2)
 #define PA0_RG_USB20_BGR_DIV_MASK	(0x3)
 #define PA0_RG_USB20_BGR_DIV_OFET	(2)
 
 #define U3P_USBPHYACR1		0x004
 #define PA1_RG_INTR_CAL		GENMASK(23, 19)
 #define PA1_RG_VRT_SEL			GENMASK(14, 12)
-#define PA1_RG_VRT_SEL_VAL(x)	((0x7 & (x)) << 12)
 #define PA1_RG_VRT_SEL_MASK	(0x7)
 #define PA1_RG_VRT_SEL_OFST	(12)
 #define PA1_RG_TERM_SEL		GENMASK(10, 8)
-#define PA1_RG_TERM_SEL_VAL(x)	((0x7 & (x)) << 8)
 #define PA1_RG_TERM_SEL_MASK	(0x7)
 #define PA1_RG_TERM_SEL_OFST	(8)
 
@@ -73,7 +70,6 @@
 #define PA2_RG_U2PLL_BW			GENMASK(21, 19)
 #define PA2_RG_SIF_U2PLL_FORCE_EN	BIT(18)
 #define PA2_RG_USB20_PLL_BW		GENMASK(21, 19)
-#define PA2_RG_USB20_PLL_BW_VAL(x)	((0x7 & (x)) << 19)
 #define PA2_RG_USB20_PLL_BW_MASK	(0x7)
 #define PA2_RG_USB20_PLL_BW_OFET	(19)
 
@@ -89,18 +85,15 @@
 #define PA6_RG_U2_PHY_REV6_MASK	(0x3)
 #define PA6_RG_U2_PHY_REV6_OFET	(30)
 #define PA6_RG_U2_PHY_REV4		BIT(28)
-#define PA6_RG_U2_PHY_REV4_VAL(x)	((0x1 & (x)) << 28)
 #define PA6_RG_U2_PHY_REV4_MASK	(0x1)
 #define PA6_RG_U2_PHY_REV4_OFET	(28)
 #define PA6_RG_U2_PHY_REV1		BIT(25)
 #define PA6_RG_U2_BC11_SW_EN		BIT(23)
 #define PA6_RG_U2_OTG_VBUSCMP_EN	BIT(20)
 #define PA6_RG_U2_DISCTH		GENMASK(7, 4)
-#define PA6_RG_U2_DISCTH_VAL(x)	((0xf & (x)) << 4)
 #define PA6_RG_U2_DISCTH_MASK	(0xf)
 #define PA6_RG_U2_DISCTH_OFET	(4)
 #define PA6_RG_U2_SQTH		GENMASK(3, 0)
-#define PA6_RG_U2_SQTH_VAL(x)	(0xf & (x))
 #define PA6_RG_U2_SQTH_MASK	(0xf)
 #define PA6_RG_U2_SQTH_OFET	(0)
 
@@ -204,7 +197,6 @@
 
 #define U3P_U3_PHYA_DA_REG7	0x114
 #define P3A_RG_PLL_BP_PE2H		GENMASK(19, 16)
-#define P3A_RG_PLL_BP_PE2H_VAL(x)	((0xf & (x)) << 16)
 
 #define U3P_U3_PHYA_DA_REG20	0x13c
 #define P3A_RG_PLL_DELTA1_PE2H		GENMASK(31, 16)
@@ -755,7 +747,7 @@ static ssize_t proc_term_sel_write(struct file *file,
 	struct u2phy_banks *u2_banks = &instance->u2_banks;
 	void __iomem *com = u2_banks->com;
 	char buf[20];
-	u32 tmp, val;
+	u32 val;
 
 	memset(buf, 0x00, sizeof(buf));
 	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
@@ -764,10 +756,7 @@ static ssize_t proc_term_sel_write(struct file *file,
 	if (kstrtouint(buf, 2, &val))
 		return -EINVAL;
 
-	tmp = readl(com + U3P_USBPHYACR1);
-	tmp &= ~PA1_RG_TERM_SEL;
-	tmp |= PA1_RG_TERM_SEL_VAL(val);
-	writel(tmp, com + U3P_USBPHYACR1);
+	mtk_phy_update_field(com + U3P_USBPHYACR1, PA1_RG_TERM_SEL, val);
 
 	return count;
 }
@@ -811,7 +800,7 @@ static ssize_t proc_vrt_sel_write(struct file *file,
 	struct u2phy_banks *u2_banks = &instance->u2_banks;
 	void __iomem *com = u2_banks->com;
 	char buf[20];
-	u32 tmp, val;
+	u32 val;
 
 	memset(buf, 0x00, sizeof(buf));
 	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
@@ -820,10 +809,7 @@ static ssize_t proc_vrt_sel_write(struct file *file,
 	if (kstrtouint(buf, 2, &val))
 		return -EINVAL;
 
-	tmp = readl(com + U3P_USBPHYACR1);
-	tmp &= ~PA1_RG_VRT_SEL;
-	tmp |= PA1_RG_VRT_SEL_VAL(val);
-	writel(tmp, com + U3P_USBPHYACR1);
+	mtk_phy_update_field(com + U3P_USBPHYACR1, PA1_RG_VRT_SEL, val);
 
 	return count;
 }
@@ -867,7 +853,7 @@ static ssize_t proc_phy_rev4_write(struct file *file,
 	struct u2phy_banks *u2_banks = &instance->u2_banks;
 	void __iomem *com = u2_banks->com;
 	char buf[20];
-	u32 tmp, val;
+	u32 val;
 
 	memset(buf, 0x00, sizeof(buf));
 	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
@@ -876,10 +862,7 @@ static ssize_t proc_phy_rev4_write(struct file *file,
 	if (kstrtouint(buf, 2, &val))
 		return -EINVAL;
 
-	tmp = readl(com + U3P_USBPHYACR6);
-	tmp &= ~PA6_RG_U2_PHY_REV4;
-	tmp |= PA6_RG_U2_PHY_REV4_VAL(val);
-	writel(tmp, com + U3P_USBPHYACR6);
+	mtk_phy_update_field(com + U3P_USBPHYACR6, PA6_RG_U2_PHY_REV4, val);
 
 	return count;
 }
@@ -923,7 +906,7 @@ static ssize_t proc_phy_rev6_write(struct file *file,
 	struct u2phy_banks *u2_banks = &instance->u2_banks;
 	void __iomem *com = u2_banks->com;
 	char buf[20];
-	u32 tmp, val;
+	u32 val;
 
 	memset(buf, 0x00, sizeof(buf));
 	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
@@ -932,10 +915,7 @@ static ssize_t proc_phy_rev6_write(struct file *file,
 	if (kstrtouint(buf, 2, &val))
 		return -EINVAL;
 
-	tmp = readl(com + U3P_USBPHYACR6);
-	tmp &= ~PA6_RG_U2_PHY_REV6;
-	tmp |= PA6_RG_U2_PHY_REV6_VAL(val);
-	writel(tmp, com + U3P_USBPHYACR6);
+	mtk_phy_update_field(com + U3P_USBPHYACR6, PA6_RG_U2_PHY_REV6, val);
 
 	return count;
 }
@@ -979,7 +959,7 @@ static ssize_t proc_discth_write(struct file *file,
 	struct u2phy_banks *u2_banks = &instance->u2_banks;
 	void __iomem *com = u2_banks->com;
 	char buf[20];
-	u32 tmp, val;
+	u32 val;
 
 	memset(buf, 0x00, sizeof(buf));
 	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
@@ -988,10 +968,7 @@ static ssize_t proc_discth_write(struct file *file,
 	if (kstrtouint(buf, 2, &val))
 		return -EINVAL;
 
-	tmp = readl(com + U3P_USBPHYACR6);
-	tmp &= ~PA6_RG_U2_DISCTH;
-	tmp |= PA6_RG_U2_DISCTH_VAL(val);
-	writel(tmp, com + U3P_USBPHYACR6);
+	mtk_phy_update_field(com + U3P_USBPHYACR6, PA6_RG_U2_DISCTH, val);
 
 	return count;
 }
@@ -1035,7 +1012,7 @@ static ssize_t proc_rx_sqth_write(struct file *file,
 	struct u2phy_banks *u2_banks = &instance->u2_banks;
 	void __iomem *com = u2_banks->com;
 	char buf[20];
-	u32 tmp, val;
+	u32 val;
 
 	memset(buf, 0x00, sizeof(buf));
 	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
@@ -1044,10 +1021,7 @@ static ssize_t proc_rx_sqth_write(struct file *file,
 	if (kstrtouint(buf, 2, &val))
 		return -EINVAL;
 
-	tmp = readl(com + U3P_USBPHYACR6);
-	tmp &= ~PA6_RG_U2_SQTH;
-	tmp |= PA6_RG_U2_SQTH_VAL(val);
-	writel(tmp, com + U3P_USBPHYACR6);
+	mtk_phy_update_field(com + U3P_USBPHYACR6, PA6_RG_U2_SQTH, val);
 
 	return count;
 }
@@ -1241,14 +1215,11 @@ static void u3_phy_instance_init(struct mtk_tphy *tphy,
 	struct mtk_phy_instance *instance)
 {
 	struct u3phy_banks *u3_banks = &instance->u3_banks;
-	u32 tmp;
 	void __iomem *phya = u3_banks->phya;
 	void __iomem *phyd = u3_banks->phyd;
 
 	/* ssusb power on */
-	tmp = readl(u3_banks->phya + U3P_U3_PHYA_REG1);
-	tmp |= RG_SSUSB_VA_ON;
-	writel(tmp, u3_banks->phya + U3P_U3_PHYA_REG1);
+	mtk_phy_set_bits(phya + U3P_U3_PHYA_REG1, RG_SSUSB_VA_ON);
 
 	/* gating PCIe Analog XTAL clock */
 	mtk_phy_set_bits(u3_banks->spllc + U3P_SPLLC_XTALCTL3,
@@ -1346,49 +1317,28 @@ static void u2_phy_instance_power_on(struct mtk_tphy *tphy,
 	struct u2phy_banks *u2_banks = &instance->u2_banks;
 	void __iomem *com = u2_banks->com;
 	u32 index = instance->index;
-	u32 tmp;
 
-	tmp = readl(com + U3P_U2PHYDTM0);
-	tmp |= P2C_FORCE_SUSPENDM;
-	writel(tmp, com + U3P_U2PHYDTM0);
+	mtk_phy_set_bits(com + U3P_U2PHYDTM0, P2C_FORCE_SUSPENDM);
 
-	tmp = readl(com + U3P_U2PHYDTM0);
-	tmp &= ~P2C_RG_SUSPENDM;
-	writel(tmp, com + U3P_U2PHYDTM0);
+	mtk_phy_clear_bits(com + U3P_U2PHYDTM0, P2C_RG_SUSPENDM);
 
-	tmp = readl(com + U3P_U2PHYDTM0);
-	tmp |= P2C_RG_SUSPENDM;
-	writel(tmp, com + U3P_U2PHYDTM0);
+	mtk_phy_set_bits(com + U3P_U2PHYDTM0, P2C_RG_SUSPENDM);
 
 	udelay(30);
 
-	tmp = readl(com + U3P_U2PHYDTM0);
-	tmp &= ~P2C_FORCE_SUSPENDM;
-	writel(tmp, com + U3P_U2PHYDTM0);
+	mtk_phy_clear_bits(com + U3P_U2PHYDTM0, P2C_FORCE_SUSPENDM);
 
-	tmp = readl(com + U3P_U2PHYDTM0);
-	tmp &= ~P2C_RG_SUSPENDM;
-	writel(tmp, com + U3P_U2PHYDTM0);
+	mtk_phy_clear_bits(com + U3P_U2PHYDTM0, P2C_RG_SUSPENDM);
 
-	tmp = readl(com + U3P_U2PHYDTM0);
-	tmp &= ~(P2C_FORCE_UART_EN);
-	writel(tmp, com + U3P_U2PHYDTM0);
+	mtk_phy_clear_bits(com + U3P_U2PHYDTM0, P2C_FORCE_UART_EN);
 
-	tmp = readl(com + U3P_U2PHYDTM1);
-	tmp &= ~P2C_RG_UART_EN;
-	writel(tmp, com + U3P_U2PHYDTM1);
+	mtk_phy_clear_bits(com + U3P_U2PHYDTM1, P2C_RG_UART_EN);
 
-	tmp = readl(com + U3P_U2PHYACR4);
-	tmp &= ~P2C_U2_GPIO_CTR_MSK;
-	writel(tmp, com + U3P_U2PHYACR4);
+	mtk_phy_clear_bits(com + U3P_U2PHYACR4, P2C_U2_GPIO_CTR_MSK);
 
-	tmp = readl(com + U3P_U2PHYDTM0);
-	tmp &= ~P2C_FORCE_SUSPENDM;
-	writel(tmp, com + U3P_U2PHYDTM0);
+	mtk_phy_clear_bits(com + U3P_U2PHYDTM0, P2C_FORCE_SUSPENDM);
 
-	tmp = readl(com + U3P_USBPHYACR6);
-	tmp &= ~PA6_RG_U2_BC11_SW_EN;
-	writel(tmp, com + U3P_USBPHYACR6);
+	mtk_phy_clear_bits(com + U3P_USBPHYACR6, PA6_RG_U2_BC11_SW_EN);
 
 	/* OTG Enable */
 	mtk_phy_set_bits(com + U3P_USBPHYACR6, PA6_RG_U2_OTG_VBUSCMP_EN);
@@ -1397,10 +1347,7 @@ static void u2_phy_instance_power_on(struct mtk_tphy *tphy,
 
 	mtk_phy_clear_bits(com + U3P_U2PHYDTM1, P2C_RG_SESSEND);
 
-	tmp = readl(com + U3P_USBPHYACR6);
-	tmp &= ~PA6_RG_U2_PHY_REV6;
-	tmp |= PA6_RG_U2_PHY_REV6_VAL(1);
-	writel(tmp, com + U3P_USBPHYACR6);
+	mtk_phy_update_field(com + U3P_USBPHYACR6, PA6_RG_U2_PHY_REV6, 1);
 
 	udelay(800);
 
@@ -1418,23 +1365,14 @@ static void u2_phy_instance_power_off(struct mtk_tphy *tphy,
 	struct u2phy_banks *u2_banks = &instance->u2_banks;
 	void __iomem *com = u2_banks->com;
 	u32 index = instance->index;
-	u32 tmp;
 
-	tmp = readl(com + U3P_U2PHYDTM0);
-	tmp &= ~(P2C_FORCE_UART_EN);
-	writel(tmp, com + U3P_U2PHYDTM0);
+	mtk_phy_clear_bits(com + U3P_U2PHYDTM0, P2C_FORCE_UART_EN);
 
-	tmp = readl(com + U3P_U2PHYDTM1);
-	tmp &= ~P2C_RG_UART_EN;
-	writel(tmp, com + U3P_U2PHYDTM1);
+	mtk_phy_clear_bits(com + U3P_U2PHYDTM1, P2C_RG_UART_EN);
 
-	tmp = readl(com + U3P_U2PHYACR4);
-	tmp &= ~P2C_U2_GPIO_CTR_MSK;
-	writel(tmp, com + U3P_U2PHYACR4);
+	mtk_phy_clear_bits(com + U3P_U2PHYACR4, P2C_U2_GPIO_CTR_MSK);
 
-	tmp = readl(com + U3P_USBPHYACR6);
-	tmp &= ~PA6_RG_U2_BC11_SW_EN;
-	writel(tmp, com + U3P_USBPHYACR6);
+	mtk_phy_clear_bits(com + U3P_USBPHYACR6, PA6_RG_U2_BC11_SW_EN);
 
 	/* OTG Disable */
 	mtk_phy_clear_bits(com + U3P_USBPHYACR6, PA6_RG_U2_OTG_VBUSCMP_EN);
@@ -1443,26 +1381,18 @@ static void u2_phy_instance_power_off(struct mtk_tphy *tphy,
 
 	mtk_phy_set_bits(com + U3P_U2PHYDTM1, P2C_RG_SESSEND);
 
-	tmp = readl(com + U3P_U2PHYDTM0);
-	tmp |= P2C_RG_SUSPENDM | P2C_FORCE_SUSPENDM;
-	writel(tmp, com + U3P_U2PHYDTM0);
+	mtk_phy_set_bits(com + U3P_U2PHYDTM0,  P2C_RG_SUSPENDM | P2C_FORCE_SUSPENDM);
 
 	mdelay(2);
 
-	tmp = readl(com + U3P_U2PHYDTM0);
-	tmp &= ~P2C_RG_DATAIN;
-	tmp |= (P2C_RG_XCVRSEL_VAL(1) | P2C_DTM0_PART_MASK);
-	writel(tmp, com + U3P_U2PHYDTM0);
+	mtk_phy_clear_bits(com + U3P_U2PHYDTM0, P2C_RG_DATAIN);
+	mtk_phy_set_bits(com + U3P_U2PHYDTM0, (P2C_RG_XCVRSEL_VAL(1) | P2C_DTM0_PART_MASK));
 
-	tmp = readl(com + U3P_USBPHYACR6);
-	tmp |= PA6_RG_U2_PHY_REV6_VAL(1);
-	writel(tmp, com + U3P_USBPHYACR6);
+	mtk_phy_set_bits(com + U3P_USBPHYACR6, PA6_RG_U2_PHY_REV6_VAL(1));
 
 	udelay(800);
 
-	tmp = readl(com + U3P_U2PHYDTM0);
-	tmp &= ~P2C_RG_SUSPENDM;
-	writel(tmp, com + U3P_U2PHYDTM0);
+	mtk_phy_clear_bits(com + U3P_U2PHYDTM0, P2C_RG_SUSPENDM);
 
 	udelay(1);
 
@@ -1520,52 +1450,42 @@ static void u2_phy_instance_set_mode(struct mtk_tphy *tphy,
 	} else {
 		switch (submode) {
 		case PHY_MODE_BC11_SW_SET:
-			tmp = readl(u2_banks->com + U3P_USBPHYACR6);
-			tmp |= PA6_RG_U2_BC11_SW_EN;
-			writel(tmp, u2_banks->com + U3P_USBPHYACR6);
+			mtk_phy_set_bits(u2_banks->com + U3P_USBPHYACR6,
+					 PA6_RG_U2_BC11_SW_EN);
 			break;
 		case PHY_MODE_BC11_SW_CLR:
-			tmp = readl(u2_banks->com + U3P_USBPHYACR6);
-			tmp &= ~PA6_RG_U2_BC11_SW_EN;
-			writel(tmp, u2_banks->com + U3P_USBPHYACR6);
+			mtk_phy_clear_bits(u2_banks->com + U3P_USBPHYACR6,
+					   PA6_RG_U2_BC11_SW_EN);
 			break;
 		case PHY_MODE_DPDMPULLDOWN_SET:
-			tmp = readl(u2_banks->com + U3P_U2PHYDTM0);
-			tmp |= P2C_RG_DPPULLDOWN | P2C_RG_DMPULLDOWN;
-			writel(tmp, u2_banks->com + U3P_U2PHYDTM0);
+			mtk_phy_set_bits(u2_banks->com + U3P_U2PHYDTM0,
+					 P2C_RG_DPPULLDOWN | P2C_RG_DMPULLDOWN);
 
-			tmp = readl(u2_banks->com + U3P_USBPHYACR6);
-			tmp &= ~PA6_RG_U2_PHY_REV1;
-			writel(tmp, u2_banks->com + U3P_USBPHYACR6);
+			mtk_phy_clear_bits(u2_banks->com + U3P_USBPHYACR6,
+					   PA6_RG_U2_PHY_REV1);
 
-			tmp = readl(u2_banks->com + U3P_USBPHYACR6);
-			tmp &= ~PA6_RG_U2_BC11_SW_EN;
-			writel(tmp, u2_banks->com + U3P_USBPHYACR6);
+			mtk_phy_clear_bits(u2_banks->com + U3P_USBPHYACR6,
+					   PA6_RG_U2_BC11_SW_EN);
 			break;
 		case PHY_MODE_DPDMPULLDOWN_CLR:
-			tmp = readl(u2_banks->com + U3P_U2PHYDTM0);
-			tmp &= ~(P2C_RG_DPPULLDOWN | P2C_RG_DMPULLDOWN);
-			writel(tmp, u2_banks->com + U3P_U2PHYDTM0);
+			mtk_phy_clear_bits(u2_banks->com + U3P_U2PHYDTM0,
+					   (P2C_RG_DPPULLDOWN | P2C_RG_DMPULLDOWN));
 
-			tmp = readl(u2_banks->com + U3P_USBPHYACR6);
-			tmp |= PA6_RG_U2_PHY_REV1;
-			writel(tmp, u2_banks->com + U3P_USBPHYACR6);
+			mtk_phy_set_bits(u2_banks->com + U3P_USBPHYACR6,
+					 PA6_RG_U2_PHY_REV1);
 
-			tmp = readl(u2_banks->com + U3P_USBPHYACR6);
-			tmp |= PA6_RG_U2_BC11_SW_EN;
-			writel(tmp, u2_banks->com + U3P_USBPHYACR6);
+			mtk_phy_set_bits(u2_banks->com + U3P_USBPHYACR6,
+					 PA6_RG_U2_BC11_SW_EN);
 			break;
 		case PHY_MODE_DPPULLUP_SET:
-			tmp = readl(u2_banks->com + U3P_U2PHYACR3);
-			tmp |= P2C_RG_USB20_PUPD_BIST_EN |
-				P2C_RG_USB20_EN_PU_DP;
-			writel(tmp, u2_banks->com + U3P_U2PHYACR3);
+			mtk_phy_set_bits(u2_banks->com + U3P_U2PHYACR3,
+					  P2C_RG_USB20_PUPD_BIST_EN |
+					  P2C_RG_USB20_EN_PU_DP);
 			break;
 		case PHY_MODE_DPPULLUP_CLR:
-			tmp = readl(u2_banks->com + U3P_U2PHYACR3);
-			tmp &= ~(P2C_RG_USB20_PUPD_BIST_EN |
-				P2C_RG_USB20_EN_PU_DP);
-			writel(tmp, u2_banks->com + U3P_U2PHYACR3);
+			mtk_phy_clear_bits(u2_banks->com + U3P_U2PHYACR3,
+					   P2C_RG_USB20_PUPD_BIST_EN |
+					   P2C_RG_USB20_EN_PU_DP);
 			break;
 		default:
 			return;
@@ -1578,15 +1498,12 @@ static void u3_phy_instance_power_on(struct mtk_tphy *tphy,
 {
 	struct u3phy_banks *bank = &instance->u3_banks;
 	u32 index = instance->index;
-	u32 tmp;
 
-	tmp = readl(bank->chip + U3P_U3_CHIP_GPIO_CTLD);
-	tmp &= ~(P3C_FORCE_IP_SW_RST | P3C_REG_IP_SW_RST);
-	writel(tmp, bank->chip + U3P_U3_CHIP_GPIO_CTLD);
+	mtk_phy_clear_bits(bank->chip + U3P_U3_CHIP_GPIO_CTLD,
+			   P3C_FORCE_IP_SW_RST | P3C_REG_IP_SW_RST);
 
-	tmp = readl(bank->chip + U3P_U3_CHIP_GPIO_CTLE);
-	tmp &= ~(P3C_RG_SWRST_U3_PHYD_FORCE_EN | P3C_RG_SWRST_U3_PHYD);
-	writel(tmp, bank->chip + U3P_U3_CHIP_GPIO_CTLE);
+	mtk_phy_clear_bits(bank->chip + U3P_U3_CHIP_GPIO_CTLE,
+			   P3C_RG_SWRST_U3_PHYD_FORCE_EN | P3C_RG_SWRST_U3_PHYD);
 
 	dev_info(tphy->dev, "%s(%d)\n", __func__, index);
 }
@@ -1596,15 +1513,12 @@ static void u3_phy_instance_power_off(struct mtk_tphy *tphy,
 {
 	struct u3phy_banks *bank = &instance->u3_banks;
 	u32 index = instance->index;
-	u32 tmp;
 
-	tmp = readl(bank->chip + U3P_U3_CHIP_GPIO_CTLD);
-	tmp |= P3C_FORCE_IP_SW_RST | P3C_REG_IP_SW_RST;
-	writel(tmp, bank->chip + U3P_U3_CHIP_GPIO_CTLD);
+	mtk_phy_set_bits(bank->chip + U3P_U3_CHIP_GPIO_CTLD,
+			 P3C_FORCE_IP_SW_RST | P3C_REG_IP_SW_RST);
 
-	tmp = readl(bank->chip + U3P_U3_CHIP_GPIO_CTLE);
-	tmp |= P3C_RG_SWRST_U3_PHYD_FORCE_EN | P3C_RG_SWRST_U3_PHYD;
-	writel(tmp, bank->chip + U3P_U3_CHIP_GPIO_CTLE);
+	mtk_phy_set_bits(bank->chip + U3P_U3_CHIP_GPIO_CTLE,
+			 P3C_RG_SWRST_U3_PHYD_FORCE_EN | P3C_RG_SWRST_U3_PHYD);
 
 	dev_info(tphy->dev, "%s(%d)\n", __func__, index);
 }
@@ -1829,7 +1743,6 @@ static void u2_phy_props_set(struct mtk_tphy *tphy,
 	struct u2phy_banks *u2_banks = &instance->u2_banks;
 	void __iomem *com = u2_banks->com;
 	struct device *dev = &instance->phy->dev;
-	u32 tmp;
 
 	dev_info(dev, "bc12:%d, src:%d, vrt:%d, term:%d, intr:%d\n",
 		instance->bc12_en, instance->eye_src,
@@ -1871,40 +1784,25 @@ static void u2_phy_props_set(struct mtk_tphy *tphy,
 		mtk_phy_update_field(com + U3P_USBPHYACR6, PA6_RG_U2_PRE_EMP,
 				     instance->pre_emphasis);
 
-	if (instance->rx_sqth) {
-		tmp = readl(com + U3P_USBPHYACR6);
-		tmp &= ~PA6_RG_U2_SQTH;
-		tmp |= PA6_RG_U2_SQTH_VAL(instance->rx_sqth);
-		writel(tmp, com + U3P_USBPHYACR6);
-	}
+	if (instance->rx_sqth)
+		mtk_phy_update_field(com + U3P_USBPHYACR6, PA6_RG_U2_SQTH,
+				     instance->rx_sqth);
 
-	if (instance->rev4) {
-		tmp = readl(com + U3P_USBPHYACR6);
-		tmp &= ~PA6_RG_U2_PHY_REV4;
-		tmp |= PA6_RG_U2_PHY_REV4_VAL(instance->rev4);
-		writel(tmp, com + U3P_USBPHYACR6);
-	}
+	if (instance->rev4)
+		mtk_phy_update_field(com + U3P_USBPHYACR6, PA6_RG_U2_PHY_REV4,
+				     instance->rev4);
 
-	if (instance->rev6) {
-		tmp = readl(com + U3P_USBPHYACR6);
-		tmp &= ~PA6_RG_U2_PHY_REV6;
-		tmp |= PA6_RG_U2_PHY_REV6_VAL(instance->rev6);
-		writel(tmp, com + U3P_USBPHYACR6);
-	}
+	if (instance->rev6)
+		mtk_phy_update_field(com + U3P_USBPHYACR6, PA6_RG_U2_PHY_REV6,
+				     instance->rev6);
 
-	if (instance->pll_bw) {
-		tmp = readl(com + U3P_USBPHYACR2);
-		tmp &= ~PA2_RG_USB20_PLL_BW;
-		tmp |= PA2_RG_USB20_PLL_BW_VAL(instance->pll_bw);
-		writel(tmp, com + U3P_USBPHYACR2);
-	}
+	if (instance->pll_bw)
+		mtk_phy_update_field(com + U3P_USBPHYACR2, PA2_RG_USB20_PLL_BW,
+				     instance->pll_bw);
 
-	if (instance->bgr_div) {
-		tmp = readl(com + U3P_USBPHYACR0);
-		tmp &= ~PA0_RG_USB20_BGR_DIV;
-		tmp |= PA0_RG_USB20_BGR_DIV_VAL(instance->bgr_div);
-		writel(tmp, com + U3P_USBPHYACR0);
-	}
+	if (instance->bgr_div)
+		mtk_phy_update_field(com + U3P_USBPHYACR0, PA0_RG_USB20_BGR_DIV,
+				    instance->bgr_div);
 }
 
 /* type switch for usb3/pcie/sgmii/sata */
