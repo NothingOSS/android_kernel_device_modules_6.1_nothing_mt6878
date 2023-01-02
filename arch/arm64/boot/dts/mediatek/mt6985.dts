@@ -5819,7 +5819,7 @@
 				<0 0x10028000 0 0x1000>,  /* STH_EMI_AO_DEBUG_CTRL */
 				<0 0x11e80000 0 0x1000>,  /* EFUSE */
 				<0 0x13fb9c00 0 0x100>,   /* MFG_CPE_CTRL_MCU */
-				<0 0x13fcf000 0 0x1000>,  /* MFG_CPE_SENSOR0 */
+				<0 0x13fb6000 0 0x1000>,  /* MFG_CPE_SENSOR */
 				<0 0x13fbc000 0 0x1000>,  /* MFG_SECURE */
 				<0 0x1000d000 0 0x1000>;  /* DRM_DEBUG */
 			reg-names =
@@ -5840,7 +5840,7 @@
 				"sth_emi_ao_debug_ctrl",
 				"efuse",
 				"mfg_cpe_ctrl_mcu",
-				"mfg_cpe_sensor0",
+				"mfg_cpe_sensor",
 				"mfg_secure",
 				"drm_debug";
 			clocks =
