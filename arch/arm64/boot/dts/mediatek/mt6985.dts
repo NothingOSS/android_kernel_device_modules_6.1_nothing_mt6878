@@ -686,13 +686,13 @@
 
 	apmixedsys_clk: syscon@1000c000 {
 		compatible = "mediatek,mt6985-apmixedsys", "syscon";
-		reg = <0 0x1000C000 0 0x1000>;
+		reg = <0 0x1000c000 0 0x1000>;
 		#clock-cells = <1>;
 	};
 
 	ifr_bus: syscon@1002c000 {
 		compatible = "mediatek,mt6985-ifr_bus", "syscon";
-		reg = <0 0x1002C000 0 0x1000>;
+		reg = <0 0x1002c000 0 0x1000>;
 	};
 
 	ssr_top_clk: syscon@10400000 {
@@ -777,19 +777,19 @@
 
 	imp_iic_wrap_s_clk: syscon@11d07000 {
 		compatible = "mediatek,mt6985-imp_iic_wrap_s", "syscon";
-		reg = <0 0x11D07000 0 0x1000>;
+		reg = <0 0x11d07000 0 0x1000>;
 		#clock-cells = <1>;
 	};
 
 	imp_iic_wrap_n_clk: syscon@11f06000 {
 		compatible = "mediatek,mt6985-imp_iic_wrap_n", "syscon";
-		reg = <0 0x11F06000 0 0x1000>;
+		reg = <0 0x11f06000 0 0x1000>;
 		#clock-cells = <1>;
 	};
 
 	gpusys: power-controller@13f91000 {
 		compatible = "mediatek,mt6985-gpusys", "syscon";
-		reg = <0 0x13F91000 0 0x1000>;
+		reg = <0 0x13f91000 0 0x1000>;
 		#power-domain-cells = <1>;
 		ifr_bus = <&ifr_bus>;
 		ufscfg_ao_bus = <&ufscfg_ao_clk>;
@@ -934,17 +934,17 @@
 
 	cam_sub0_bus: syscon@1a005000 {
 		compatible = "mediatek,mt6985-cam_sub0_bus", "syscon";
-		reg = <0 0x1A005000 0 0x1000>;
+		reg = <0 0x1a005000 0 0x1000>;
 	};
 
 	cam_sub2_bus: syscon@1a006000 {
 		compatible = "mediatek,mt6985-cam_sub2_bus", "syscon";
-		reg = <0 0x1A006000 0 0x1000>;
+		reg = <0 0x1a006000 0 0x1000>;
 	};
 
 	cam_sub1_bus: syscon@1a007000 {
 		compatible = "mediatek,mt6985-cam_sub1_bus", "syscon";
-		reg = <0 0x1A007000 0 0x1000>;
+		reg = <0 0x1a007000 0 0x1000>;
 	};
 
 	touch: touch {
@@ -953,7 +953,7 @@
 
 	scpsys: power-controller@1c001000 {
 		compatible = "mediatek,mt6985-scpsys", "syscon";
-		reg = <0 0x1C001000 0 0x1000>;
+		reg = <0 0x1c001000 0 0x1000>;
 		#power-domain-cells = <1>;
 		ifr_bus = <&ifr_bus>;
 		ufscfg_ao_bus = <&ufscfg_ao_clk>;
@@ -989,7 +989,7 @@
 
 	vlpcfg_bus: syscon@1c00c000 {
 		compatible = "mediatek,mt6985-vlpcfg_bus", "syscon";
-		reg = <0 0x1C00C000 0 0x1000>;
+		reg = <0 0x1c00c000 0 0x1000>;
 	};
 
 	systimer: systimer@1C011000 {
@@ -1002,19 +1002,19 @@
 
 	vlp_cksys_clk: syscon@1c013000 {
 		compatible = "mediatek,mt6985-vlp_cksys", "syscon";
-		reg = <0 0x1C013000 0 0x1000>;
+		reg = <0 0x1c013000 0 0x1000>;
 		#clock-cells = <1>;
 	};
 
 	scp_clk: syscon@1c721000 {
 		compatible = "mediatek,mt6985-scp", "syscon";
-		reg = <0 0x1C721000 0 0x1000>;
+		reg = <0 0x1c721000 0 0x1000>;
 		#clock-cells = <1>;
 	};
 
 	scp_iic_clk: syscon@1c7b8000 {
 		compatible = "mediatek,mt6985-scp_iic", "syscon";
-		reg = <0 0x1C7B8000 0 0x1000>;
+		reg = <0 0x1c7b8000 0 0x1000>;
 		#clock-cells = <1>;
 	};
 

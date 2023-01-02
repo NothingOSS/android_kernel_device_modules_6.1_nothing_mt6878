@@ -351,6 +351,7 @@
 			<&camsys_main_clk CLK_CAM_MAIN_CAM_SUBC_CON_0>,
 			<&camsys_main_clk CLK_CAM_MAIN_CAM_MRAW_CON_0>,
 			<&camsys_main_clk CLK_CAM_MAIN_CAMTG_CON_0>,
+			<&camsys_main_clk CLK_CAM_MAIN_SENINF_CON_0>,
 			<&camsys_main_clk CLK_CAM_MAIN_CAMSV_TOP_CON_0>,
 			<&camsys_main_clk CLK_CAM_MAIN_ADLRD_CON_0>,
 			<&camsys_main_clk CLK_CAM_MAIN_ADLWR_CON_0>,
