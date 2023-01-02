@@ -5344,8 +5344,246 @@
 		interrupt-names = "LVSYS_R", "LVSYS_F";
 		status = "disabled";
 	};
+
+	smart_pa: smart_pa {
+	};
+
+	afe: mt6985-afe-pcm@11050000 {
+		compatible = "mediatek,mt6985-sound";
+		reg = <0 0x11050000 0 0x2000>;
+		interrupts = <GIC_SPI 257 IRQ_TYPE_LEVEL_HIGH 0>;
+		//topckgen = <&topckgen_clk>;
+		//apmixedsys = <&apmixedsys_clk>;
+		//infracfg = <&infracfg_ao_clk>;
+		//power-domains = <&scpsys MT6985_POWER_DOMAIN_AUDIO>;
+#if 0
+		clocks = <&afe_clk CLK_AFE_AFE>,
+			<&afe_clk CLK_AFE_DAC>,
+			<&afe_clk CLK_AFE_DAC_PREDIS>,
+			<&afe_clk CLK_AFE_ADC>,
+			<&afe_clk CLK_AFE_ADDA6_ADC>,
+			<&afe_clk CLK_AFE_22M>,
+			<&afe_clk CLK_AFE_24M>
+			<&afe_clk CLK_AFE_APLL_TUNER>,
+			<&afe_clk CLK_AFE_APLL2_TUNER>,
+			<&afe_clk CLK_AFE_TDM>,
+			<&afe_clk CLK_AFE_TML>,
+			<&afe_clk CLK_AFE_NLE>,
+			<&afe_clk CLK_AFE_DAC_HIRES>,
+			<&afe_clk CLK_AFE_ADC_HIRES>,
+			<&afe_clk CLK_AFE_ADC_HIRES_TML>,
+			<&afe_clk CLK_AFE_ADDA6_ADC_HIRES>,
+			<&afe_clk CLK_AFE_3RD_DAC>,
+			<&afe_clk CLK_AFE_3RD_DAC_PREDIS>,
+			<&afe_clk CLK_AFE_3RD_DAC_TML>,
+			<&afe_clk CLK_AFE_3RD_DAC_HIRES>,
+			<&topckgen_clk CLK_TOP_AUDIO_SEL>,
+			<&topckgen_clk CLK_TOP_AUD_INTBUS_SEL>,
+			<&topckgen_clk CLK_TOP_MAINPLL_D4_D4>,
+			<&topckgen_clk CLK_TOP_AUD_1_SEL>,
+			<&topckgen_clk CLK_TOP_APLL1>,
+			<&topckgen_clk CLK_TOP_AUD_2_SEL>,
+			<&topckgen_clk CLK_TOP_APLL2>,
+			<&topckgen_clk CLK_TOP_AUD_ENGEN1_SEL>,
+			<&topckgen_clk CLK_TOP_APLL1_D4>,
+			<&topckgen_clk CLK_TOP_AUD_ENGEN2_SEL>,
+			<&topckgen_clk CLK_TOP_APLL2_D4>,
+			<&topckgen_clk CLK_TOP_APLL_I2S0_MCK_SEL>,
+			<&topckgen_clk CLK_TOP_APLL_I2S1_MCK_SEL>,
+			<&topckgen_clk CLK_TOP_APLL_I2S2_MCK_SEL>,
+			<&topckgen_clk CLK_TOP_APLL_I2S3_MCK_SEL>,
+			<&topckgen_clk CLK_TOP_APLL_I2S4_MCK_SEL>,
+			<&topckgen_clk CLK_TOP_APLL_I2S5_MCK_SEL>,
+			<&topckgen_clk CLK_TOP_APLL_I2S6_MCK_SEL>,
+			<&topckgen_clk CLK_TOP_APLL_I2S7_MCK_SEL>,
+			<&topckgen_clk CLK_TOP_APLL_I2S8_MCK_SEL>,
+			<&topckgen_clk CLK_TOP_APLL_I2S9_MCK_SEL>,
+			<&topckgen_clk CLK_TOP_APLL12_CK_DIV0>,
+			<&topckgen_clk CLK_TOP_APLL12_CK_DIV1>,
+			<&topckgen_clk CLK_TOP_APLL12_CK_DIV2>,
+			<&topckgen_clk CLK_TOP_APLL12_CK_DIV3>,
+			<&topckgen_clk CLK_TOP_APLL12_CK_DIV4>,
+			<&topckgen_clk CLK_TOP_APLL12_CK_DIVB>,
+			<&topckgen_clk CLK_TOP_APLL12_CK_DIV5>,
+			<&topckgen_clk CLK_TOP_APLL12_CK_DIV6>,
+			<&topckgen_clk CLK_TOP_APLL12_CK_DIV7>,
+			<&topckgen_clk CLK_TOP_APLL12_CK_DIV8>,
+			<&topckgen_clk CLK_TOP_APLL12_CK_DIV9>,
+			<&topckgen_clk CLK_TOP_AUDIO_H_SEL>,
+			<&topckgen_clk CLK_TOP_TCK_26M_MX9>;
+
+		clock-names = "aud_afe_clk",
+			"aud_dac_clk",
+			"aud_dac_predis_clk",
+			"aud_adc_clk",
+			"aud_adda6_adc_clk",
+			"aud_apll22m_clk",
+			"aud_apll24m_clk",
+			"aud_apll1_tuner_clk",
+			"aud_apll2_tuner_clk",
+			"aud_tdm_clk",
+			"aud_tml_clk",
+			"aud_nle",
+			"aud_dac_hires_clk",
+			"aud_adc_hires_clk",
+			"aud_adc_hires_tml",
+			"aud_adda6_adc_hires_clk",
+			"aud_3rd_dac_clk",
+			"aud_3rd_dac_predis_clk",
+			"aud_3rd_dac_tml",
+			"aud_3rd_dac_hires_clk",
+			"top_mux_audio",
+			"top_mux_audio_int",
+			"top_mainpll_d4_d4",
+			"top_mux_aud_1",
+			"top_apll1_ck",
+			"top_mux_aud_2",
+			"top_apll2_ck",
+			"top_mux_aud_eng1",
+			"top_apll1_d4",
+			"top_mux_aud_eng2",
+			"top_apll2_d4",
+			"top_i2s0_m_sel",
+			"top_i2s1_m_sel",
+			"top_i2s2_m_sel",
+			"top_i2s3_m_sel",
+			"top_i2s4_m_sel",
+			"top_i2s5_m_sel",
+			"top_i2s6_m_sel",
+			"top_i2s7_m_sel",
+			"top_i2s8_m_sel",
+			"top_i2s9_m_sel",
+			"top_apll12_div0",
+			"top_apll12_div1",
+			"top_apll12_div2",
+			"top_apll12_div3",
+			"top_apll12_div4",
+			"top_apll12_divb",
+			"top_apll12_div5",
+			"top_apll12_div6",
+			"top_apll12_div7",
+			"top_apll12_div8",
+			"top_apll12_div9",
+			"top_mux_audio_h",
+			"top_clk26m_clk";
+
+		pinctrl-names = "aud_clk_mosi_off",
+				"aud_clk_mosi_on",
+				"aud_dat_mosi_off",
+				"aud_dat_mosi_on",
+				"aud_dat_mosi_ch34_off",
+				"aud_dat_mosi_ch34_on",
+				"aud_dat_miso0_off",
+				"aud_dat_miso0_on",
+				"aud_dat_miso2_off",
+				"aud_dat_miso2_on",
+				"vow_dat_miso_off",
+				"vow_dat_miso_on",
+				"vow_clk_miso_off",
+				"vow_clk_miso_on",
+				"aud_gpio_i2s0_off",
+				"aud_gpio_i2s0_on",
+				"aud_gpio_i2s3_off",
+				"aud_gpio_i2s3_on";
+		pinctrl-0 = <&aud_clk_mosi_off>;
+		pinctrl-1 = <&aud_clk_mosi_on>;
+		pinctrl-2 = <&aud_dat_mosi_off>;
+		pinctrl-3 = <&aud_dat_mosi_on>;
+		pinctrl-4 = <&aud_dat_mosi_ch34_off>;
+		pinctrl-5 = <&aud_dat_mosi_ch34_on>;
+		pinctrl-6 = <&aud_dat_miso0_off>;
+		pinctrl-7 = <&aud_dat_miso0_on>;
+		pinctrl-8 = <&aud_dat_miso2_off>;
+		pinctrl-9 = <&aud_dat_miso2_on>;
+		pinctrl-10 = <&vow_dat_miso_off>;
+		pinctrl-11 = <&vow_dat_miso_on>;
+		pinctrl-12 = <&vow_clk_miso_off>;
+		pinctrl-13 = <&vow_clk_miso_on>;
+		pinctrl-14 = <&aud_gpio_i2s0_off>;
+		pinctrl-15 = <&aud_gpio_i2s0_on>;
+		pinctrl-16 = <&aud_gpio_i2s3_off>;
+		pinctrl-17 = <&aud_gpio_i2s3_on>;
+#endif
+	};
+
+	audio_sram@11052000 {
+		compatible = "mediatek,audio_sram";
+		reg = <0 0x11052000 0 0x18000>;
+		prefer_mode = <0>;
+		mode_size = <0x12000 0x18000>;
+		block_size = <0x1000>;
+	};
+
+	sound: sound {
+		compatible = "mediatek,mt6985-mt6338-sound";
+		//mediatek,headset-codec = <&mt6338_accdet>;
+		mediatek,platform = <&afe>;
+	};
 };
 
+&scp_i2c1{
+	clock-frequency = <1000000>;
+	mt6338_pmic: mt6338_pmic@6b {
+		status = "okay";
+		compatible = "mediatek,mt6338_pmic";
+		reg = <0x6b>;
+		mt6338_sound: mt6338_sound {
+			compatible = "mediatek,mt6338-sound";
+			mediatek,dmic-mode = <0>;
+			mediatek,mic-type-0 = <3>;
+			mediatek,mic-type-1 = <3>;
+			mediatek,mic-type-2 = <3>;
+			io-channels = <&mt6338_auxadc AUXADC_HPOFS_CAL>;
+			io-channel-names = "pmic_hpofs_cal";
+			nvmem = <&mt6338_efuse>;
+			nvmem-names = "pmic-hp-efuse";
+		};
+		mt6338_efuse: mt6338_efuse {
+			compatible = "mediatek,mt6338-efuse";
+			#address-cells = <1>;
+			#size-cells = <1>;
+		};
+		mt6338_auxadc: mt6338-auxadc {
+			compatible = "mediatek,mt6338-auxadc";
+			#io-channel-cells = <1>;
+
+			chip_temp {
+				channel = <AUXADC_CHIP_TEMP>;
+			};
+			accdet {
+				channel = <AUXADC_ACCDET>;
+			};
+			hpofs_cal {
+				channel = <AUXADC_HPOFS_CAL>;
+				avg-num = <256>;
+			};
+		};
+		mt6338_accdet: mt6338_accdet {
+			compatible = "mediatek,mt6338-accdet";
+			accdet-name = "mt6338-accdet";
+			accdet-mic-vol = <8>;
+			accdet-plugout-debounce = <1>;
+			accdet-mic-mode = <2>;
+			eint_use_ext_res = <0>;
+			headset-mode-setting = <0x500 0x500 1 0x1f0
+						0x800 0x800 0x20 0x44
+						0x4 0x1
+						0x5 0x3 0x3 0x5 0xe>;
+			headset-use-ap-eint = <0>;
+			headset-eint-num = <0>;
+			headset-eint-trig-mode = <1>;
+			headset-key-mode = <0>;
+			headset-three-key-threshold = <0 80 220 400>;
+			headset-three-key-threshold-CDD = <0 121 192 600>;
+			headset-four-key-threshold = <0 58 121 192 400>;
+			io-channels = <&mt6338_auxadc AUXADC_ACCDET>;
+			io-channel-names = "pmic_accdet";
+			nvmem = <&mt6338_efuse>;
+			nvmem-names = "mt63xx-accdet-efuse";
+			status = "okay";
+		};
+	};
+};
 &spmi {
 	mt6319_6: mt6319@6 {
 		compatible = "mediatek,mt6319";
