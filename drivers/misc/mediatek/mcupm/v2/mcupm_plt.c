@@ -112,7 +112,7 @@ int mcupm_plt_module_init(void)
 		last_ofs = plt_ctl->size;
 
 
-		pr_info("MCUPM: %s(): after plt, ofs=0x%x plt_ctl size=0x%x\n", __func__,
+		pr_info("MCUPM: %s(): after plt, ofs=0x%x plt_ctl size=0x%lx\n", __func__,
 			last_ofs, sizeof(*plt_ctl));
 
 #if MCUPM_LOGGER_SUPPORT
