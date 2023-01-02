@@ -22,6 +22,7 @@
 #include <linux/timer.h>
 #include <linux/delay.h>
 #include <linux/iommu.h>
+#include <linux/pm_runtime.h>
 #include <linux/proc_fs.h>
 #include <linux/sysfs.h>
 #include <linux/spinlock.h>
@@ -109,8 +110,12 @@ static struct hw_logger_seq_data g_log_lm;
 
 static struct workqueue_struct *apusys_hwlog_wq;
 static struct work_struct apusys_hwlog_task;
+static struct delayed_work apusys_mtklog_task;
+
 static unsigned int wq_w_ofs, wq_r_ofs, wq_t_size;
 static wait_queue_head_t apusys_hwlog_wait;
+
+#define MTKLOG_WAKEUP_MS (1000)
 
 static struct mtk_apu *g_apu;
 
@@ -604,6 +609,13 @@ static void apu_logtop_copy_buf_wq(struct work_struct *work)
 	HWLOGR_DBG("out\n");
 }
 
+static void apu_logtop_mtklog_wq(struct work_struct *work)
+{
+	HWLOGR_DBG("in\n");
+
+	wake_up_all(&apusys_hwlog_wait);
+}
+
 int hw_logger_copy_buf(void)
 {
 	int ret = 0;
@@ -621,6 +633,15 @@ int hw_logger_copy_buf(void)
 out:
 	/* return copied size */
 	return ret;
+}
+
+int hw_logger_power_on(void)
+{
+	HWLOGR_DBG("in\n");
+
+	wake_up_all(&apusys_hwlog_wait);
+
+	return 0;
 }
 
 int hw_logger_deep_idle_enter_pre(void)
@@ -971,6 +992,9 @@ static void *seq_startl(struct seq_file *s, loff_t *pos)
 	if (!pSData)
 		return NULL;
 
+	/* force flush last hw buffer */
+	hw_logger_copy_buf();
+
 	if (s->file &&
 		s->file->f_flags & O_NONBLOCK) {
 		pSData->nonblock = true;
@@ -1003,15 +1027,7 @@ static void *seq_startl(struct seq_file *s, loff_t *pos)
 	spin_unlock_irqrestore(&hw_logger_spinlock, flags);
 
 	/* for ctrl-c to force exit the loop */
-	do {
-		/* force flush last hw buffer */
-		hw_logger_copy_buf();
-
-		spin_lock_irqsave(&hw_logger_spinlock, flags);
-		w_ptr = __loc_log_w_ofs;
-		ov_flg = __loc_log_ov_flg;
-		spin_unlock_irqrestore(&hw_logger_spinlock, flags);
-
+	while (!signal_pending(current) && w_ptr == r_ptr) {
 		if (w_ptr != r_ptr)
 			break;
 		 /* return if file is open as non blocking mode */
@@ -1022,7 +1038,15 @@ static void *seq_startl(struct seq_file *s, loff_t *pos)
 			return NULL;
 		}
 		usleep_range(10000, 15000);
-	} while (!signal_pending(current) && w_ptr == r_ptr);
+
+		/* force flush last hw buffer */
+		hw_logger_copy_buf();
+
+		spin_lock_irqsave(&hw_logger_spinlock, flags);
+		w_ptr = __loc_log_w_ofs;
+		ov_flg = __loc_log_ov_flg;
+		spin_unlock_irqrestore(&hw_logger_spinlock, flags);
+	};
 
 	HWLOGR_DBG("w_ptr = %d, r_ptr = %d, ov_flg = %d, *pos = %d\n",
 		w_ptr, r_ptr, ov_flg, (unsigned int)*pos);
@@ -1158,6 +1182,8 @@ static unsigned int seq_poll(struct file *file, poll_table *wait)
 {
 	unsigned int ret = 0;
 
+	HWLOGR_DBG("in");
+
 	if (!(file->f_mode & FMODE_READ))
 		return ret;
 
@@ -1169,6 +1195,15 @@ static unsigned int seq_poll(struct file *file, poll_table *wait)
 	if (g_log_lm.r_ptr !=
 		__loc_log_w_ofs)
 		ret = POLLIN | POLLRDNORM;
+
+	if (!pm_runtime_suspended(g_apu->dev)) {
+		cancel_delayed_work_sync(&apusys_mtklog_task);
+		queue_delayed_work(apusys_hwlog_wq,
+			&apusys_mtklog_task,
+			msecs_to_jiffies(MTKLOG_WAKEUP_MS));
+	}
+
+	HWLOGR_DBG("out (%d)\n", ret);
 
 	return ret;
 }
@@ -1533,6 +1568,7 @@ static int hw_logger_probe(struct platform_device *pdev)
 	/* Used for deep idle enter */
 	apusys_hwlog_wq = create_workqueue(APUSYS_HWLOG_WQ_NAME);
 	INIT_WORK(&apusys_hwlog_task, apu_logtop_copy_buf_wq);
+	INIT_DELAYED_WORK(&apusys_mtklog_task, apu_logtop_mtklog_wq);
 
 	HWLOGR_INFO("end\n");
 

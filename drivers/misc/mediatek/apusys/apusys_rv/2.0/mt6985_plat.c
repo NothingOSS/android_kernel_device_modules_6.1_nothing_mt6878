@@ -23,6 +23,7 @@
 #include "../apu_config.h"
 #include "../apu_hw.h"
 #include "../apu_excep.h"
+#include "hw_logger.h"
 
 
 /* for IPI IRQ affinity tuning*/
@@ -496,6 +497,7 @@ iommu_get_error:
 	queue_delayed_work(apu_workq,
 			   &timeout_work,
 			   msecs_to_jiffies(APU_PWROFF_TIMEOUT_MS));
+	hw_logger_power_on();
 
 	return 0;
 
