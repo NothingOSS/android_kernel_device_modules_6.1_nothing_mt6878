@@ -375,7 +375,7 @@ static int mtk_camsv_set_fmt(struct v4l2_subdev *sd,
 		return mtk_camsv_call_set_fmt(sd, state, fmt);
 
 	/* if the pipeline is streaming, pending the change */
-	if (!sd->entity.pipe)
+	if (!media_entity_is_streaming(&sd->entity))
 		return mtk_camsv_call_set_fmt(sd, state, fmt);
 
 	if (v4l2_subdev_format_request_fd(fmt) <= 0)

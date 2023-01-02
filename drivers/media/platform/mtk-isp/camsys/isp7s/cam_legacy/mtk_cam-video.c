@@ -275,7 +275,7 @@ static int mtk_cam_vb2_start_streaming(struct vb2_queue *vq,
 		goto fail_return_buffer;
 	}
 
-	if (!entity->pipe) {
+	if (!media_entity_is_streaming(entity)) {
 		ctx = mtk_cam_start_ctx(cam, node);
 		if (!ctx) {
 			ret = -ENOLINK;

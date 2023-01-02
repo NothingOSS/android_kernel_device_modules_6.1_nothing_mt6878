@@ -399,7 +399,7 @@ static int mtk_mraw_set_fmt(struct v4l2_subdev *sd,
 		return mtk_mraw_call_set_fmt(sd, state, fmt);
 
 	/* if the pipeline is streaming, pending the change */
-	if (!sd->entity.pipe) {
+	if (!media_entity_is_streaming(&sd->entity)) {
 		pipe->res_config.is_initial = 1;
 		return mtk_mraw_call_set_fmt(sd, state, fmt);
 	}
