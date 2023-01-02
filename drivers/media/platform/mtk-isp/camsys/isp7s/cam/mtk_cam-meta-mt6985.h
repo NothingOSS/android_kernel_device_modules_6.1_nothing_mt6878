@@ -491,7 +491,7 @@ struct mtk_cam_uapi_meta_mraw_stats_0 {
  * Common stuff for all statistics
  */
 
-#define MTK_CAM_UAPI_MAX_CORE_NUM (2)
+#define MTK_CAM_UAPI_MAX_CORE_NUM (3)
 
 /**
  * struct mtk_cam_uapi_pipeline_config - pipeline configuration
@@ -604,7 +604,7 @@ struct mtk_cam_uapi_flk_stats {
  *  T S F
  */
 
-#define MTK_CAM_UAPI_TSFSO_SIZE (48 * 36 * 2 * 3 * 4)
+#define MTK_CAM_UAPI_TSFSO_SIZE (40 * 30 * 3 * 4)
 
 /**
  * struct mtk_cam_uapi_tsf_stats - TSF statistic data
@@ -616,6 +616,7 @@ struct mtk_cam_uapi_flk_stats {
  */
 struct mtk_cam_uapi_tsf_stats {
 	struct mtk_cam_uapi_meta_hw_buf tsfo_r1_buf;
+	struct mtk_cam_uapi_meta_hw_buf tsfo_r2_buf;
 };
 
 /**
@@ -840,7 +841,7 @@ struct mtk_cam_uapi_meta_camsv_stats_0 {
 };
 
 #define MTK_CAM_META_VERSION_MAJOR 1
-#define MTK_CAM_META_VERSION_MINOR 1
+#define MTK_CAM_META_VERSION_MINOR 2
 #define MTK_CAM_META_PLATFORM_NAME "isp7s"
 #define MTK_CAM_META_CHIP_NAME "mt6985"
 
