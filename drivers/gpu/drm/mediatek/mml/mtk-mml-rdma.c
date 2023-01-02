@@ -2300,6 +2300,10 @@ const struct of_device_id mml_rdma_driver_dt_match[] = {
 		.compatible = "mediatek,mt6886-mml_rdma",
 		.data = &mt6886_rdma_data,
 	},
+	{
+		.compatible = "mediatek,mt6897-mml_rdma",
+		.data = &mt6985_rdma_data,
+	},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mml_rdma_driver_dt_match);

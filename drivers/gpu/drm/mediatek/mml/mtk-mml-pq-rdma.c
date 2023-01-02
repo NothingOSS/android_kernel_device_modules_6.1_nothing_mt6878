@@ -1205,6 +1205,10 @@ const struct of_device_id mml_pq_rdma_driver_dt_match[] = {
 		.compatible = "mediatek,mt6985-mml_pq_rdma",
 		.data = &mt6985_pq_rdma_data
 	},
+	{
+		.compatible = "mediatek,mt6897-mml_pq_rdma",
+		.data = &mt6985_pq_rdma_data
+	},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mml_pq_rdma_driver_dt_match);

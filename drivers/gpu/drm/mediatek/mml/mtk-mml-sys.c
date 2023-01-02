@@ -1834,6 +1834,10 @@ const struct of_device_id mtk_mml_of_ids[] = {
 		.compatible = "mediatek,mt6886-mml",
 		.data = &mt6886_mml_data,
 	},
+	{
+		.compatible = "mediatek,mt6897-mml",
+		.data = &mt6985_mml_data,
+	},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_mml_of_ids);

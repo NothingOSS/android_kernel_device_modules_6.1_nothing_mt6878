@@ -36,6 +36,9 @@ struct fg_data {
 static const struct fg_data mt6893_fg_data = {
 };
 
+static const struct fg_data mt6897_fg_data = {
+};
+
 struct mml_comp_fg {
 	struct mml_comp comp;
 	const struct fg_data *data;
@@ -262,6 +265,10 @@ const struct of_device_id mml_fg_driver_dt_match[] = {
 	{
 		.compatible = "mediatek,mt6893-mml_fg",
 		.data = &mt6893_fg_data
+	},
+	{
+		.compatible = "mediatek,mt6897-mml_fg",
+		.data = &mt6897_fg_data
 	},
 	{},
 };

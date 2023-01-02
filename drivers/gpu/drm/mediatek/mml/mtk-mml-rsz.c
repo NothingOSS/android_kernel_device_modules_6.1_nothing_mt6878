@@ -756,6 +756,14 @@ const struct of_device_id mml_rsz_driver_dt_match[] = {
 		.compatible = "mediatek,mt6886-mml_rsz",
 		.data = &mt6895_rsz0_data,
 	},
+	{
+		.compatible = "mediatek,mt6897-mml_rsz",
+		.data = &mt6985_rsz_data,
+	},
+	{
+		.compatible = "mediatek,mt6897-mml_rsz2",
+		.data = &mt6985_rsz2_data,
+	},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mml_rsz_driver_dt_match);

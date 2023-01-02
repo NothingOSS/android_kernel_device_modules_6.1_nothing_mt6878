@@ -935,6 +935,10 @@ const struct of_device_id mml_tdshp_driver_dt_match[] = {
 		.compatible = "mediatek,mt6886-mml_tdshp",
 		.data = &mt6886_tdshp_data
 	},
+	{
+		.compatible = "mediatek,mt6897-mml_tdshp",
+		.data = &mt6985_tdshp_data
+	},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mml_tdshp_driver_dt_match);

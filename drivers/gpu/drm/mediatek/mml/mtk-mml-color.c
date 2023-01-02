@@ -517,6 +517,10 @@ const struct of_device_id mml_color_driver_dt_match[] = {
 		.compatible = "mediatek,mt6886-mml_color",
 		.data = &mt6886_color_data,
 	},
+	{
+		.compatible = "mediatek,mt6897-mml_color",
+		.data = &mt6985_color_data,
+	},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mml_color_driver_dt_match);
