@@ -116,12 +116,14 @@ struct slbc_data {
 	void __iomem *paddr;
 	void __iomem *vaddr;
 	void __iomem *emi_paddr;
-	unsigned int sid;
-	unsigned int slot_used;
-	void *config;
-	int ref;
-	int pwr_ref;
-	struct slbc_data *private;
+	struct_group(sid_group,
+		unsigned int sid;
+		unsigned int slot_used;
+		void *config;
+		int ref;
+		int pwr_ref;
+		struct slbc_data *private;
+	);
 };
 
 #define ui_to_slbc_data(d, ui) \
