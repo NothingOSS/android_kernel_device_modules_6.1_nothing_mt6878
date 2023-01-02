@@ -1520,8 +1520,8 @@ static int mtk_iommu_domain_finalise(struct mtk_iommu_domain *dom,
 		.iommu_dev = data->dev,
 	};
 
-	if (MTK_IOMMU_HAS_FLAG(data->plat_data, PGTABLE_PA_35_EN))
-		dom->cfg.quirks |= IO_PGTABLE_QUIRK_ARM_MTK_TTBR_EXT;
+	/* if (MTK_IOMMU_HAS_FLAG(data->plat_data, PGTABLE_PA_35_EN))
+		dom->cfg.quirks |= IO_PGTABLE_QUIRK_ARM_MTK_TTBR_EXT; */
 
 	if (MTK_IOMMU_HAS_FLAG(data->plat_data, HAS_4GB_MODE))
 		dom->cfg.oas = data->enable_4GB ? 33 : 32;
@@ -1542,9 +1542,10 @@ static int mtk_iommu_domain_finalise(struct mtk_iommu_domain *dom,
 		dev_err(data->dev, "Failed to alloc io pgtable\n");
 		return -EINVAL;
 	}
-	dom->ttbr = dom->cfg.quirks & IO_PGTABLE_QUIRK_ARM_MTK_TTBR_EXT ?
+	/* dom->ttbr = dom->cfg.quirks & IO_PGTABLE_QUIRK_ARM_MTK_TTBR_EXT ?
 		    dom->cfg.arm_v7s_cfg.ttbr :
-		    dom->cfg.arm_v7s_cfg.ttbr & MMU_PT_ADDR_MASK;
+		    dom->cfg.arm_v7s_cfg.ttbr & MMU_PT_ADDR_MASK; */
+	dom->ttbr = dom->cfg.arm_v7s_cfg.ttbr & MMU_PT_ADDR_MASK;
 
 	/* Update our support page sizes bitmap */
 	dom->domain.pgsize_bitmap = dom->cfg.pgsize_bitmap;
