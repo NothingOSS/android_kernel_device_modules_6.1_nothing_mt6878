@@ -16,7 +16,7 @@
 #include <trace/events/sched.h>
 #include <trace/events/task.h>
 #include <trace/hooks/sched.h>
-#include <trace/hooks/hung_task.h>
+//#include <trace/hooks/hung_task.h>
 #include <sched/sched.h>
 #include "common.h"
 #include "eas_plus.h"
@@ -382,22 +382,22 @@ static int __init mtk_scheduler_init(void)
 		pr_info("register trace_android_rvh_cpu_overutilized failed\n");
 
 
-	ret = register_trace_android_rvh_tick_entry(
-			mtk_tick_entry, NULL);
-	if (ret)
-		pr_info("register android_rvh_tick_entry failed\n");
+	//ret = register_trace_android_rvh_tick_entry(
+	//		mtk_tick_entry, NULL);
+	//if (ret)
+	//	pr_info("register android_rvh_tick_entry failed\n");
 
 
-	ret = register_trace_android_vh_set_wake_flags(
-			mtk_set_wake_flags, NULL);
-	if (ret)
-		pr_info("register android_vh_set_wake_flags failed\n");
+	//ret = register_trace_android_vh_set_wake_flags(
+	//		mtk_set_wake_flags, NULL);
+	//if (ret)
+	//	pr_info("register android_vh_set_wake_flags failed\n");
 
 
-	ret = register_trace_android_rvh_update_cpu_capacity(
-			mtk_update_cpu_capacity, NULL);
-	if (ret)
-		pr_info("register android_rvh_update_cpu_capacity failed\n");
+	//ret = register_trace_android_rvh_update_cpu_capacity(
+	//		mtk_update_cpu_capacity, NULL);
+	//if (ret)
+	//	pr_info("register android_rvh_update_cpu_capacity failed\n");
 
 	ret = register_trace_pelt_rt_tp(mtk_pelt_rt_tp, NULL);
 	if (ret)
@@ -433,14 +433,14 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("scheduler: register scheduler_tick hooks failed, returned %d\n", ret);
 
-	ret = register_trace_android_rvh_after_enqueue_task(mtk_hook_after_enqueue_task, NULL);
-	if (ret)
-		pr_info("register android_rvh_after_enqueue_task failed, returned %d\n", ret);
+	//ret = register_trace_android_rvh_after_enqueue_task(mtk_hook_after_enqueue_task, NULL);
+	//if (ret)
+	//	pr_info("register android_rvh_after_enqueue_task failed, returned %d\n", ret);
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_BIG_TASK_ROTATE)
-	ret = register_trace_android_rvh_new_task_stats(rotat_task_stats, NULL);
-	if (ret)
-		pr_info("register android_rvh_new_task_stats failed, returned %d\n", ret);
+	//ret = register_trace_android_rvh_new_task_stats(rotat_task_stats, NULL);
+	//if (ret)
+	//	pr_info("register android_rvh_new_task_stats failed, returned %d\n", ret);
 
 	ret = register_trace_task_newtask(rotat_task_newtask, NULL);
 	if (ret)
@@ -457,9 +457,9 @@ static int __init mtk_scheduler_init(void)
 
 
 #if IS_ENABLED(CONFIG_DETECT_HUNG_TASK)
-	ret = register_trace_android_vh_check_uninterruptible_tasks(mtk_check_d_tasks, NULL);
-	if (ret)
-		pr_info("register mtk_check_d_tasks hooks failed, returned %d\n", ret);
+	//ret = register_trace_android_vh_check_uninterruptible_tasks(mtk_check_d_tasks, NULL);
+	//if (ret)
+	//	pr_info("register mtk_check_d_tasks hooks failed, returned %d\n", ret);
 #endif
 
 	sched_asym_cpucapacity_init();
