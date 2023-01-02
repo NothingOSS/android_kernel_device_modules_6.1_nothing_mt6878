@@ -265,8 +265,13 @@ static struct trace_stat __percpu *softirq_trace_stat;
 static struct trace_stat __percpu *ipi_trace_stat;
 static struct trace_stat __percpu *hrtimer_trace_stat;
 
-#define MAX_IRQ_NUM 1024
-static int irq_aee_state[MAX_IRQ_NUM];
+/* reference kernel/irq/internals.h */
+#if IS_ENABLED(CONFIG_SPARSE_IRQ)
+# define IRQ_BITMAP_BITS	(NR_IRQS + 8196)
+#else
+# define IRQ_BITMAP_BITS	NR_IRQS
+#endif
+static DECLARE_BITMAP(irq_aee_state, IRQ_BITMAP_BITS);
 
 #define stat_dur(stat) (stat->end_timestamp - stat->start_timestamp)
 
@@ -364,39 +369,40 @@ static void probe_irq_handler_exit(void *ignore,
 		scnprintf(handler_name, sizeof(handler_name), "%pS", (void *)action->handler);
 		if (!strncmp(handler_name, "mtk_syst_handler", strlen("mtk_syst_handler")))
 			/* skip mtk_syst_handler, let hrtimer handle it. */
-			irq_aee_state[irq] = 1;
+			set_bit(irq, irq_aee_state);
 
 		if (!irq_name)
 			irq_name = "NULL";
 
 		if (!strcmp(irq_name, "IPI") && irq_to_ipi_type(irq) == 4) // IPI_TIMER
 			/* skip ipi timer handler, let hrtimer handle it. */
-			irq_aee_state[irq] = 1;
+			set_bit(irq, irq_aee_state);
 
 		if (!strcmp(irq_name, "arch_timer"))
 			/* skip arch_timer aee, let hrtimer handle it. */
-			irq_aee_state[irq] = 1;
+			set_bit(irq, irq_aee_state);
 
 		if (!strcmp(irq_name, "emimpu"))
 			/* skip debug irq. */
-			irq_aee_state[irq] = 1;
+			set_bit(irq, irq_aee_state);
 
 		if (!strcmp(irq_name, "ttyS0"))
 			/* skip uart irq. */
-			irq_aee_state[irq] = 1;
+			set_bit(irq, irq_aee_state);
 
 		if (!strcmp(irq_name, "ufshcd") && raw_smp_processor_id())
 			/* skip ufshcd aee if CPU!=0 */
 			out &= ~TO_AEE;
 
-		if ((out & TO_AEE) && tracer->aee_limit && !irq_aee_state[irq]) {
+		if ((out & TO_AEE) && tracer->aee_limit &&
+		    !test_bit(irq, irq_aee_state)) {
 			if (!irq_mon_aee_debounce_check(true)) {
 				/* debounce period, skip */
 				irq_mon_msg(TO_FTRACE, "irq handler aee skip in debounce period");
 			} else {
 				char module[100];
 
-				irq_aee_state[irq] = 1;
+				set_bit(irq, irq_aee_state);
 				scnprintf(module, sizeof(module), "IRQ LONG:%d, %pS, %llu ms"
 					, irq, (void *)action->handler, msec_high(duration));
 				aee_kernel_warning_api(__FILE__, __LINE__,
