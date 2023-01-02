@@ -4,6 +4,8 @@
  */
 
 /dts-v1/;
+#include <dt-bindings/clock/mt6985-clk.h>
+#include <dt-bindings/power/mt6985-power.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/phy/phy.h>
@@ -316,12 +318,414 @@
 		clock-frequency = <13000000>;
 	};
 
+	clk_ao: clk_ao {
+		compatible = "simple-bus";
+	};
+
+	clkitg: clkitg {
+		compatible = "simple-bus";
+	};
+
+	disable_unused: disable_unused {
+		compatible = "simple-bus";
+	};
+
 	clocks {
+		clk32k: clk32k {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <32000>;
+		};
+		clk26m: clk26m {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <26000000>;
+		};
+		clk13m: clk13m {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <13000000>;
+		};
+		ulposc: ulposc {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <588000000>;
+		};
 		clk10m: clk10m {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
 			clock-frequency = <10000000>;
 		};
+	};
+
+	topckgen_clk: syscon@10000000 {
+		compatible = "mediatek,mt6985-topckgen", "syscon";
+		reg = <0 0x10000000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	infracfg_ao_clk: syscon@10001000 {
+		compatible = "mediatek,mt6985-infracfg_ao", "syscon";
+		reg = <0 0x10001000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	apmixedsys_clk: syscon@1000C000 {
+		compatible = "mediatek,mt6985-apmixedsys", "syscon";
+		reg = <0 0x1000C000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	ifr_bus: syscon@1002C000 {
+		compatible = "mediatek,mt6985-ifr_bus", "syscon";
+		reg = <0 0x1002C000 0 0x1000>;
+	};
+
+	emi_reg_clk: syscon@10219000 {
+		compatible = "mediatek,mt6985-emi_reg", "syscon";
+		reg = <0 0x10219000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	nrl2_dpmaif_ap_misc_cfg_bol_clk: syscon@1022d400 {
+		compatible = "mediatek,mt6985-dpmaif", "syscon";
+		reg = <0 0x1022d400 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	ssr_top_clk: syscon@10400000 {
+		compatible = "mediatek,mt6985-ssr_top", "syscon";
+		reg = <0 0x10400000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	pericfg_ao_clk: syscon@11036000 {
+		compatible = "mediatek,mt6985-pericfg_ao", "syscon";
+		reg = <0 0x11036000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	afe_clk: syscon@11050000 {
+		compatible = "mediatek,mt6985-audiosys", "syscon";
+		reg = <0 0x11050000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	ssusb_sifslv_ippc_clk: syscon@11203e00 {
+		compatible = "mediatek,mt6985-ssusb_sifslv_ippc", "syscon";
+		reg = <0 0x11203e00 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	ssusb_sifslv_ippc_p1_clk: syscon@11213e00 {
+		compatible = "mediatek,mt6985-ssusb_sifslv_ippc_p1", "syscon";
+		reg = <0 0x11213e00 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	imp_iic_wrap_c_clk: syscon@11281000 {
+		compatible = "mediatek,mt6985-imp_iic_wrap_c", "syscon";
+		reg = <0 0x11281000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	ufscfg_ao_clk: syscon@112b8000 {
+		compatible = "mediatek,mt6985-ufscfg_ao", "syscon";
+		reg = <0 0x112b8000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	ufscfg_pdn_clk: syscon@112bb000 {
+		compatible = "mediatek,mt6985-ufscfg_pdn", "syscon";
+		reg = <0 0x112bb000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	pextpcfg_ao_clk: syscon@112e0000 {
+		compatible = "mediatek,mt6985-pextpcfg_ao", "syscon";
+		reg = <0 0x112e0000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	imp_iic_wrap_s_clk: syscon@11D07000 {
+		compatible = "mediatek,mt6985-imp_iic_wrap_s", "syscon";
+		reg = <0 0x11D07000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	imp_iic_wrap_n_clk: syscon@11F06000 {
+		compatible = "mediatek,mt6985-imp_iic_wrap_n", "syscon";
+		reg = <0 0x11F06000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	gpusys: power-controller@13F91000 {
+		compatible = "mediatek,mt6985-gpusys", "syscon";
+		reg = <0 0x13F91000 0 0x1000>;
+		#power-domain-cells = <1>;
+		ifr_bus = <&ifr_bus>;
+		ufscfg_ao_bus = <&ufscfg_ao_clk>;
+		vlpcfg = <&vlpcfg_bus>;
+	};
+
+	mfgpll_pll_ctrl_clk: syscon@13fa0000 {
+		compatible = "mediatek,mt6985-mfgpll_pll_ctrl", "syscon";
+		reg = <0 0x13fa0000 0 0x400>;
+		#clock-cells = <1>;
+	};
+
+	gpuebpll_pll_ctrl_clk: syscon@13fa0800 {
+		compatible = "mediatek,mt6985-gpuebpll_pll_ctrl", "syscon";
+		reg = <0 0x13fa0800 0 0x400>;
+		#clock-cells = <1>;
+	};
+
+	mfgscpll_pll_ctrl_clk: syscon@13fa0c00 {
+		compatible = "mediatek,mt6985-mfgscpll_pll_ctrl", "syscon";
+		reg = <0 0x13fa0c00 0 0x400>;
+		#clock-cells = <1>;
+	};
+
+	mfg_top_config_clk: syscon@13fbf000 {
+		compatible = "mediatek,mt6985-mfg", "syscon";
+		reg = <0 0x13fbf000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	dispsys_config_clk: syscon@14000000 {
+		compatible = "mediatek,mt6985-mmsys0", "syscon";
+		reg = <0 0x14000000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	dispsys1_config_clk: syscon@14200000 {
+		compatible = "mediatek,mt6985-mmsys1", "syscon";
+		reg = <0 0x14200000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	ovlsys_config_clk: syscon@14400000 {
+		compatible = "mediatek,mt6985-ovlsys_config", "syscon";
+		reg = <0 0x14400000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	ovlsys1_config_clk: syscon@14600000 {
+		compatible = "mediatek,mt6985-ovlsys1_config", "syscon";
+		reg = <0 0x14600000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	imgsys_main_clk: syscon@15000000 {
+		compatible = "mediatek,mt6985-imgsys_main", "syscon";
+		reg = <0 0x15000000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	dip_top_dip1_clk: syscon@15110000 {
+		compatible = "mediatek,mt6985-dip_top_dip1", "syscon";
+		reg = <0 0x15110000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	dip_nr1_dip1_clk: syscon@15130000 {
+		compatible = "mediatek,mt6985-dip_nr1_dip1", "syscon";
+		reg = <0 0x15130000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	dip_nr2_dip1_clk: syscon@15170000 {
+		compatible = "mediatek,mt6985-dip_nr2_dip1", "syscon";
+		reg = <0 0x15170000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	wpe1_dip1_clk: syscon@15220000 {
+		compatible = "mediatek,mt6985-wpe1_dip1", "syscon";
+		reg = <0 0x15220000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	wpe2_dip1_clk: syscon@15520000 {
+		compatible = "mediatek,mt6985-wpe2_dip1", "syscon";
+		reg = <0 0x15520000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	wpe3_dip1_clk: syscon@15620000 {
+		compatible = "mediatek,mt6985-wpe3_dip1", "syscon";
+		reg = <0 0x15620000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	traw_dip1_clk: syscon@15710000 {
+		compatible = "mediatek,mt6985-traw_dip1", "syscon";
+		reg = <0 0x15710000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	vdec_soc_gcon_base_clk: syscon@1600f000 {
+		compatible = "mediatek,mt6985-vdecsys_soc", "syscon";
+		reg = <0 0x1600f000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	vdec_gcon_base_clk: syscon@1602f000 {
+		compatible = "mediatek,mt6985-vdecsys", "syscon";
+		reg = <0 0x1602f000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	venc_gcon_clk: syscon@17000000 {
+		compatible = "mediatek,mt6985-vencsys", "syscon";
+		reg = <0 0x17000000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	venc_gcon_core1_clk: syscon@17800000 {
+		compatible = "mediatek,mt6985-vencsys_c1", "syscon";
+		reg = <0 0x17800000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	venc_gcon_core2_clk: syscon@17c00000 {
+		compatible = "mediatek,mt6985-vencsys_c2", "syscon";
+		reg = <0 0x17c00000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	scpsys: power-controller@1C001000 {
+		compatible = "mediatek,mt6985-scpsys", "syscon";
+		reg = <0 0x1C001000 0 0x1000>;
+		#power-domain-cells = <1>;
+		ifr_bus = <&ifr_bus>;
+		ufscfg_ao_bus = <&ufscfg_ao_clk>;
+		vlpcfg = <&vlpcfg_bus>;
+	};
+
+	vlpcfg_bus: syscon@1C00C000 {
+		compatible = "mediatek,mt6985-vlpcfg_bus", "syscon";
+		reg = <0 0x1C00C000 0 0x1000>;
+	};
+
+	vlp_cksys_clk: syscon@1C013000 {
+		compatible = "mediatek,mt6985-vlp_cksys", "syscon";
+		reg = <0 0x1C013000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	scp_iic_clk: syscon@1C7B8000 {
+		compatible = "mediatek,mt6985-scp_iic", "syscon";
+		reg = <0 0x1C7B8000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	camsys_main_clk: syscon@1a000000 {
+		compatible = "mediatek,mt6985-camsys_main", "syscon";
+		reg = <0 0x1a000000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	camsys_rawa_clk: syscon@1a04f000 {
+		compatible = "mediatek,mt6985-camsys_rawa", "syscon";
+		reg = <0 0x1a04f000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	camsys_yuva_clk: syscon@1a06f000 {
+		compatible = "mediatek,mt6985-camsys_yuva", "syscon";
+		reg = <0 0x1a06f000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	camsys_rawb_clk: syscon@1a08f000 {
+		compatible = "mediatek,mt6985-camsys_rawb", "syscon";
+		reg = <0 0x1a08f000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	camsys_yuvb_clk: syscon@1a0af000 {
+		compatible = "mediatek,mt6985-camsys_yuvb", "syscon";
+		reg = <0 0x1a0af000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	camsys_rawc_clk: syscon@1a0cf000 {
+		compatible = "mediatek,mt6985-camsys_rawc", "syscon";
+		reg = <0 0x1a0cf000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	camsys_yuvc_clk: syscon@1a0ef000 {
+		compatible = "mediatek,mt6985-camsys_yuvc", "syscon";
+		reg = <0 0x1a0ef000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	camsys_mraw_clk: syscon@1a170000 {
+		compatible = "mediatek,mt6985-camsys_mraw", "syscon";
+		reg = <0 0x1a170000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	ccu_main_clk: syscon@1b200000 {
+		compatible = "mediatek,mt6985-ccu", "syscon";
+		reg = <0 0x1b200000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	dvfsrc_apb_clk: syscon@1c00f000 {
+		compatible = "mediatek,mt6985-dvfsrc_apb", "syscon";
+		reg = <0 0x1c00f000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	mminfra_config_clk: syscon@1e800000 {
+		compatible = "mediatek,mt6985-mminfra_config", "syscon";
+		reg = <0 0x1e800000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	mdpsys_config_clk: syscon@1f000000 {
+		compatible = "mediatek,mt6985-mdpsys", "syscon";
+		reg = <0 0x1f000000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	mdpsys1_config_clk: syscon@1f800000 {
+		compatible = "mediatek,mt6985-mdpsys1", "syscon";
+		reg = <0 0x1f800000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	ccipll_pll_ctrl_clk: syscon@c030000 {
+		compatible = "mediatek,mt6985-ccipll_pll_ctrl", "syscon";
+		reg = <0 0xc030000 0 0x400>;
+		#clock-cells = <1>;
+	};
+
+	armpll_ll_pll_ctrl_clk: syscon@c030400 {
+		compatible = "mediatek,mt6985-armpll_ll_pll_ctrl", "syscon";
+		reg = <0 0xc030400 0 0x400>;
+		#clock-cells = <1>;
+	};
+
+	armpll_bl_pll_ctrl_clk: syscon@c030800 {
+		compatible = "mediatek,mt6985-armpll_bl_pll_ctrl", "syscon";
+		reg = <0 0xc030800 0 0x400>;
+		#clock-cells = <1>;
+	};
+
+	armpll_b_pll_ctrl_clk: syscon@c030c00 {
+		compatible = "mediatek,mt6985-armpll_b_pll_ctrl", "syscon";
+		reg = <0 0xc030c00 0 0x400>;
+		#clock-cells = <1>;
+	};
+
+	ptppll_pll_ctrl_clk: syscon@c034000 {
+		compatible = "mediatek,mt6985-ptppll_pll_ctrl", "syscon";
+		reg = <0 0xc034000 0 0x1000>;
+		#clock-cells = <1>;
 	};
 
 	soc {
@@ -4777,4 +5181,6 @@
 	regulator-always-on;
 };
 
+#include "mediatek/mt6985-clkitg.dtsi"
+#include "mediatek/mt6985-disable-unused.dtsi"
 #include "mediatek/trusty.dtsi"
