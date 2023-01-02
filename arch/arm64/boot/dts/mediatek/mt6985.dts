@@ -5350,8 +5350,7 @@
 			pinctrl-5 = <&connsys_pin_pmic_en_clr>;
 			pinctrl-6 = <&connsys_pin_pmic_faultb_default>;
 
-			interrupt-parent = <&pio>;
-			interrupts = <231 IRQ_TYPE_EDGE_FALLING>;
+			interrupts = <GIC_SPI 231 IRQ_TYPE_EDGE_FALLING 0>;
 		};
 
 		bt: bt {
@@ -11755,7 +11754,7 @@ cpuqos_mode,dnth0,dnth1,upth0,upth1";
 		pins_cmd_dat {
 			pinmux = <PINMUX_GPIO231__FUNC_GPIO231>;
 			input-enable;
-			bias-pull-up;
+			bias-pull-high;
 		};
 	};
 };
