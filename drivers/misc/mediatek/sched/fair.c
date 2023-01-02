@@ -2,6 +2,7 @@
 /*
  * Copyright (c) 2021 MediaTek Inc.
  */
+#include <linux/cpuidle.h>
 #include <linux/module.h>
 #include <linux/sched.h>
 #include <trace/hooks/sched.h>
