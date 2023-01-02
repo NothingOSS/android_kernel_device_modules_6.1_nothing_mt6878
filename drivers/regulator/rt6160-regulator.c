@@ -7,6 +7,7 @@
 #include <linux/i2c.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/of_platform.h>
 #include <linux/property.h>
 #include <linux/regmap.h>
 #include <linux/regulator/driver.h>
@@ -314,6 +315,12 @@ static int rt6160_probe(struct i2c_client *i2c)
 	if (IS_ERR(rdev)) {
 		dev_err(&i2c->dev, "Failed to register regulator\n");
 		return PTR_ERR(rdev);
+	}
+
+	ret = devm_of_platform_populate(&i2c->dev);
+	if (ret) {
+		dev_notice(&i2c->dev, "Failed to add platform device\n");
+		return ret;
 	}
 
 	return 0;
