@@ -13,8 +13,8 @@
 #include <linux/skbuff.h>	/* netlink */
 #include <linux/socket.h>	/* netlink */
 #include <net/sock.h>		/* netlink */
-#include "mtk_battery_daemon.h"
 #include "mtk_battery.h"
+#include "mtk_battery_daemon.h"
 
 #if IS_ENABLED(CONFIG_PMIC_LBAT_SERVICE)
 #include <pmic_lbat_service.h>
@@ -1643,6 +1643,58 @@ void exec_BAT_EC(int cmd, int param)
 			bm_err(
 				"exe_BAT_EC cmd %d,sleep_current_avg =%d\n",
 				cmd, param);
+		}
+		break;
+	case 804:
+		{
+			wakeup_fg_algo(gm, FG_INTR_FG_TIME);
+			wakeup_fg_algo(gm, FG_INTR_BAT_INT1_HT);
+			wakeup_fg_algo(gm, FG_INTR_BAT_INT1_LT);
+			wakeup_fg_algo(gm, FG_INTR_BAT_INT2_HT);
+			wakeup_fg_algo(gm, FG_INTR_BAT_INT2_LT);
+			wakeup_fg_algo(gm, FG_INTR_BAT_TIME_INT);
+			wakeup_fg_algo(gm, FG_INTR_IAVG);
+			wakeup_fg_algo(gm, FG_INTR_VBAT2_L);
+			wakeup_fg_algo(gm, FG_INTR_VBAT2_H);
+			wakeup_fg_algo(gm, FG_INTR_BAT_INT1_CHECK);
+			wakeup_fg_algo(gm, FG_INTR_BAT_INT2_CHECK);
+			wakeup_fg_algo(gm, FG_INTR_BAT_TMP_HT);
+			wakeup_fg_algo(gm, FG_INTR_BAT_TMP_LT);
+			wakeup_fg_algo(gm, FG_INTR_BAT_TMP_C_HT);
+			wakeup_fg_algo(gm, FG_INTR_BAT_TMP_C_LT);
+			wakeup_fg_algo(gm, FG_INTR_FG_ZCV);
+			gauge_set_nag_en(gm, 1);
+
+			sw_vbat_h_irq_handler(gm);
+			sw_vbat_l_irq_handler(gm);
+			sw_check_bat_plugout(gm);
+			nafg_irq_handler(gm);
+			fg_sw_bat_cycle_accu(gm);
+			battery_update(gm);
+			bm_err("exe_BAT_EC cmd %d for SET\n", cmd);
+		}
+		break;
+	case 805:
+		{
+			gm->algo.active = true;
+			battery_algo_init(gm);
+			wakeup_fg_algo(gm, FG_INTR_FG_TIME);
+			wakeup_fg_algo(gm, FG_INTR_BAT_INT1_HT);
+			wakeup_fg_algo(gm, FG_INTR_BAT_INT1_LT);
+			wakeup_fg_algo(gm, FG_INTR_BAT_INT2_HT);
+			wakeup_fg_algo(gm, FG_INTR_BAT_INT2_LT);
+			wakeup_fg_algo(gm, FG_INTR_BAT_TIME_INT);
+			wakeup_fg_algo(gm, FG_INTR_IAVG);
+			wakeup_fg_algo(gm, FG_INTR_VBAT2_L);
+			wakeup_fg_algo(gm, FG_INTR_VBAT2_H);
+			wakeup_fg_algo(gm, FG_INTR_BAT_INT1_CHECK);
+			wakeup_fg_algo(gm, FG_INTR_BAT_INT2_CHECK);
+			wakeup_fg_algo(gm, FG_INTR_BAT_TMP_HT);
+			wakeup_fg_algo(gm, FG_INTR_BAT_TMP_LT);
+			wakeup_fg_algo(gm, FG_INTR_BAT_TMP_C_HT);
+			wakeup_fg_algo(gm, FG_INTR_BAT_TMP_C_LT);
+			bm_err("exe_BAT_EC cmd %d for SET\n", cmd);
+			battery_update(gm);
 		}
 		break;
 	case 806:

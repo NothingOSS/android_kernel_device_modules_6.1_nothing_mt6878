@@ -29,6 +29,12 @@ extern int wakeup_fg_daemon(unsigned int flow_state, int cmd, int para1);
 
 extern void mtk_battery_netlink_handler(struct sk_buff *skb);
 
+static int sw_vbat_h_irq_handler(struct mtk_battery *gm);
+static int sw_vbat_l_irq_handler(struct mtk_battery *gm);
+static int nafg_irq_handler(struct mtk_battery *gm);
+void sw_check_bat_plugout(struct mtk_battery *gm);
+void fg_sw_bat_cycle_accu(struct mtk_battery *gm);
+
 #define DATA_SIZE 2048
 struct fgd_cmd_param_t_4 {
 	//unsigned int type;
