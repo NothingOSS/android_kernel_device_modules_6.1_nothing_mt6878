@@ -218,6 +218,8 @@ static inline u32 readl_mfg(const void __iomem *addr)
 #define EFUSE_PTPOD24_AVS               (EFUSE_BASE + 0x5E0)                  /* 0x11E805E0 */
 #define EFUSE_PTPOD25_AVS               (EFUSE_BASE + 0x5E4)                  /* 0x11E805E4 */
 #define EFUSE_PTPOD26_AVS               (EFUSE_BASE + 0x5E8)                  /* 0x11E805E8 */
+#define EFUSE_FAB_INFO5                 (EFUSE_BASE + 0x7B4)                  /* 0x11E807B4 */
+#define EFUSE_FAB_INFO7                 (EFUSE_BASE + 0x7BC)                  /* 0x11E807BC */
 
 #define MFG_CPE_CTRL_MCU_BASE           (g_mfg_cpe_ctrl_mcu_base)             /* 0x13FB9C00 */
 #define MFG_CPE_CTRL_MCU_REG_CPEMONCTL  (MFG_CPE_CTRL_MCU_BASE + 0x000)       /* 0x13FB9C00 */
@@ -282,22 +284,24 @@ enum gpufreq_reg_info_idx {
 	IDX_EFUSE_PTPOD24_AVS            = 40,
 	IDX_EFUSE_PTPOD25_AVS            = 41,
 	IDX_EFUSE_PTPOD26_AVS            = 42,
-	IDX_NTH_MFG_EMI1_GALS_SLV_DBG    = 43,
-	IDX_NTH_MFG_EMI0_GALS_SLV_DBG    = 44,
-	IDX_STH_MFG_EMI1_GALS_SLV_DBG    = 45,
-	IDX_STH_MFG_EMI0_GALS_SLV_DBG    = 46,
-	IDX_NTH_M6M7_IDLE_BIT_EN_1       = 47,
-	IDX_NTH_M6M7_IDLE_BIT_EN_0       = 48,
-	IDX_STH_M6M7_IDLE_BIT_EN_1       = 49,
-	IDX_STH_M6M7_IDLE_BIT_EN_0       = 50,
-	IDX_IFR_MFGSYS_PROT_EN_STA_0     = 51,
-	IDX_IFR_MFGSYS_PROT_RDY_STA_0    = 52,
-	IDX_IFR_EMISYS_PROTECT_EN_STA_0  = 53,
-	IDX_IFR_EMISYS_PROTECT_EN_STA_1  = 54,
-	IDX_NTH_EMI_AO_DEBUG_CTRL0       = 55,
-	IDX_STH_EMI_AO_DEBUG_CTRL0       = 56,
-	IDX_INFRA_AO_BUS0_U_DEBUG_CTRL0  = 57,
-	IDX_INFRA_AO1_BUS1_U_DEBUG_CTRL0 = 58,
+	IDX_EFUSE_FAB_INFO5              = 43,
+	IDX_EFUSE_FAB_INFO7              = 44,
+	IDX_NTH_MFG_EMI1_GALS_SLV_DBG    = 45,
+	IDX_NTH_MFG_EMI0_GALS_SLV_DBG    = 46,
+	IDX_STH_MFG_EMI1_GALS_SLV_DBG    = 47,
+	IDX_STH_MFG_EMI0_GALS_SLV_DBG    = 48,
+	IDX_NTH_M6M7_IDLE_BIT_EN_1       = 49,
+	IDX_NTH_M6M7_IDLE_BIT_EN_0       = 50,
+	IDX_STH_M6M7_IDLE_BIT_EN_1       = 51,
+	IDX_STH_M6M7_IDLE_BIT_EN_0       = 52,
+	IDX_IFR_MFGSYS_PROT_EN_STA_0     = 53,
+	IDX_IFR_MFGSYS_PROT_RDY_STA_0    = 54,
+	IDX_IFR_EMISYS_PROTECT_EN_STA_0  = 55,
+	IDX_IFR_EMISYS_PROTECT_EN_STA_1  = 56,
+	IDX_NTH_EMI_AO_DEBUG_CTRL0       = 57,
+	IDX_STH_EMI_AO_DEBUG_CTRL0       = 58,
+	IDX_INFRA_AO_BUS0_U_DEBUG_CTRL0  = 59,
+	IDX_INFRA_AO1_BUS1_U_DEBUG_CTRL0 = 60,
 };
 
 #define NUM_MFGSYS_REG                  ARRAY_SIZE(g_reg_mfgsys)
@@ -345,22 +349,24 @@ static struct gpufreq_reg_info g_reg_mfgsys[] = {
 	REGOP(0x11E805E0, 0), /* 40 */
 	REGOP(0x11E805E4, 0), /* 41 */
 	REGOP(0x11E805E8, 0), /* 42 */
-	REGOP(0x1021C82C, 0), /* 43 */
-	REGOP(0x1021C830, 0), /* 44 */
-	REGOP(0x1021E82C, 0), /* 45 */
-	REGOP(0x1021E830, 0), /* 46 */
-	REGOP(0x10270228, 0), /* 47 */
-	REGOP(0x1027022C, 0), /* 48 */
-	REGOP(0x1030E228, 0), /* 49 */
-	REGOP(0x1030E22C, 0), /* 50 */
-	REGOP(0x1002C1A0, 0), /* 51 */
-	REGOP(0x1002C1AC, 0), /* 52 */
-	REGOP(0x1002C100, 0), /* 53 */
-	REGOP(0x1002C120, 0), /* 54 */
-	REGOP(0x10042000, 0), /* 55 */
-	REGOP(0x10028000, 0), /* 56 */
-	REGOP(0x10023000, 0), /* 57 */
-	REGOP(0x1002B000, 0), /* 58 */
+	REGOP(0x11E807B4, 0), /* 43 */
+	REGOP(0x11E807BC, 0), /* 44 */
+	REGOP(0x1021C82C, 0), /* 45 */
+	REGOP(0x1021C830, 0), /* 46 */
+	REGOP(0x1021E82C, 0), /* 47 */
+	REGOP(0x1021E830, 0), /* 48 */
+	REGOP(0x10270228, 0), /* 49 */
+	REGOP(0x1027022C, 0), /* 50 */
+	REGOP(0x1030E228, 0), /* 51 */
+	REGOP(0x1030E22C, 0), /* 52 */
+	REGOP(0x1002C1A0, 0), /* 53 */
+	REGOP(0x1002C1AC, 0), /* 54 */
+	REGOP(0x1002C100, 0), /* 55 */
+	REGOP(0x1002C120, 0), /* 56 */
+	REGOP(0x10042000, 0), /* 57 */
+	REGOP(0x10028000, 0), /* 58 */
+	REGOP(0x10023000, 0), /* 59 */
+	REGOP(0x1002B000, 0), /* 60 */
 };
 
 #endif /* __GPUFREQ_REG_MT6985_H__ */

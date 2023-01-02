@@ -499,6 +499,7 @@ void __gpufreq_update_debug_opp_info(void)
 		g_shared_status->cur_regulator_vstack = 0;
 		g_shared_status->cur_regulator_vsram_stack = 0;
 	}
+	g_shared_status->mfg_pwr_status = MFG_0_19_PWR_STATUS;
 
 	mutex_unlock(&gpufreq_lock);
 }
@@ -646,15 +647,15 @@ unsigned int __gpufreq_get_lkg_pgpu(unsigned int volt)
 {
 	GPUFREQ_UNREFERENCED(volt);
 
-	return GPU_LEAKAGE_POWER;
+	return GPU_LKG_POWER;
 }
 
 /* API: get dynamic Power of GPU */
 unsigned int __gpufreq_get_dyn_pgpu(unsigned int freq, unsigned int volt)
 {
-	unsigned int p_dynamic = GPU_ACT_REF_POWER;
-	unsigned int ref_freq = GPU_ACT_REF_FREQ;
-	unsigned int ref_volt = GPU_ACT_REF_VOLT;
+	unsigned int p_dynamic = GPU_DYN_REF_POWER;
+	unsigned int ref_freq = GPU_DYN_REF_FREQ;
+	unsigned int ref_volt = GPU_DYN_REF_VOLT;
 
 	p_dynamic = p_dynamic *
 		((freq * 100) / ref_freq) *
@@ -670,15 +671,15 @@ unsigned int __gpufreq_get_lkg_pstack(unsigned int volt)
 {
 	GPUFREQ_UNREFERENCED(volt);
 
-	return STACK_LEAKAGE_POWER;
+	return STACK_LKG_POWER;
 }
 
 /* API: get dynamic Power of STACK */
 unsigned int __gpufreq_get_dyn_pstack(unsigned int freq, unsigned int volt)
 {
-	unsigned int p_dynamic = STACK_ACT_REF_POWER;
-	unsigned int ref_freq = STACK_ACT_REF_FREQ;
-	unsigned int ref_volt = STACK_ACT_REF_VOLT;
+	unsigned int p_dynamic = STACK_DYN_REF_POWER;
+	unsigned int ref_freq = STACK_DYN_REF_FREQ;
+	unsigned int ref_volt = STACK_DYN_REF_VOLT;
 
 	p_dynamic = p_dynamic *
 		((freq * 100) / ref_freq) *

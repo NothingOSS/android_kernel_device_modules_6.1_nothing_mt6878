@@ -152,16 +152,14 @@ struct gpufreq_core_mask_info g_core_mask_table[] = {
 };
 
 /**************************************************
- * Reference Power Setting
+ * Dynamic Power Setting
  **************************************************/
-#define GPU_ACT_REF_POWER               (826)           /* mW  */
-#define GPU_ACT_REF_FREQ                (1000000)       /* KHz */
-#define GPU_ACT_REF_VOLT                (90000)         /* mV x 100 */
-#define GPU_LEAKAGE_POWER               (30)
-#define STACK_ACT_REF_POWER             (4329)          /* mW  */
-#define STACK_ACT_REF_FREQ              (981000)        /* KHz */
-#define STACK_ACT_REF_VOLT              (80000)         /* mV x 100 */
-#define STACK_LEAKAGE_POWER             (30)
+#define GPU_DYN_REF_POWER               (826)           /* mW  */
+#define GPU_DYN_REF_FREQ                (1000000)       /* KHz */
+#define GPU_DYN_REF_VOLT                (90000)         /* mV x 100 */
+#define STACK_DYN_REF_POWER             (4329)          /* mW  */
+#define STACK_DYN_REF_FREQ              (981000)        /* KHz */
+#define STACK_DYN_REF_VOLT              (80000)         /* mV x 100 */
 
 /**************************************************
  * PMIC Setting
@@ -244,6 +242,12 @@ static const int g_constraint_idx[] = {
 #define MFG_DFD_CON_9_ENABLE            (0x00000000)
 #define MFG_DFD_CON_10_ENABLE           (0x00000000)
 #define MFG_DFD_CON_11_ENABLE           (0x00000000)
+
+/**************************************************
+ * Leakage Power Setting
+ **************************************************/
+#define GPU_LKG_POWER                   (30)
+#define STACK_LKG_POWER                 (30)
 
 /**************************************************
  * Enumeration
@@ -329,6 +333,10 @@ struct gpufreq_status {
 	unsigned int cur_freq;
 	unsigned int cur_volt;
 	unsigned int cur_vsram;
+	unsigned int lkg_rt_info;
+	unsigned int lkg_ht_info;
+	unsigned int lkg_rt_info_sram;
+	unsigned int lkg_ht_info_sram;
 };
 
 struct gpufreq_volt_sb {
