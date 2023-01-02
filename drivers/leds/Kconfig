@@ -2,7 +2,7 @@
 
 if NEW_LEDS
 
-config LEDS_MT6360
+config DEVICE_MODULES_LEDS_MT6360
 	tristate "LED Support for Mediatek MT6360 PMIC"
 	depends on LEDS_CLASS_FLASH && OF
 	depends on V4L2_FLASH_LED_CLASS || !V4L2_FLASH_LED_CLASS
