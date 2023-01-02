@@ -16,6 +16,7 @@
 #include <linux/sysfs.h>
 #include <linux/wait.h>
 #include <linux/ktime.h>
+#include <linux/ctype.h>
 #include "mtk_gauge.h"
 
 
@@ -39,6 +40,7 @@
 #define	PROP_AVERAGE_CURRENT_TIMEOUT 5
 #define	PROP_BATTERY_VOLTAGE_TIMEOUT 5
 #define	PROP_BATTERY_TEMPERATURE_ADC_TIMEOUT 10
+#define MAX_PROP_NAME_LEN 50
 
 #define BMLOG_DEFAULT_LEVEL BMLOG_DEBUG_LEVEL
 
