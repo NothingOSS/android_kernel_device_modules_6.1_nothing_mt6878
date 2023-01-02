@@ -485,7 +485,7 @@ static s32 comp_init(struct platform_device *pdev, struct mml_comp *comp,
 			}
 			comp->clks[i] = of_clk_get_by_name(node, clkname);
 			if (IS_ERR(comp->clks[i])) {
-				dev_err(dev, "failed to get clk %s in %s err %d\n",
+				dev_err(dev, "failed to get clk %s in %s err %ld\n",
 					clkname, node->full_name,
 					PTR_ERR(comp->clks[i]));
 			} else {
@@ -552,7 +552,7 @@ s32 mml_subcomp_init(struct platform_device *comp_pdev,
 	if (!of_mml_read_comp_name_index(node, subcomponent, &comp->name)) {
 		ret = snprintf(name, sizeof(name), "%s-clock-names", comp->name);
 		if (ret >= sizeof(name)) {
-			dev_err(dev, "len:%d over name size:%d",
+			dev_err(dev, "len:%d over name size:%lu",
 				ret, sizeof(name));
 			name[sizeof(name) - 1] = '\0';
 		}

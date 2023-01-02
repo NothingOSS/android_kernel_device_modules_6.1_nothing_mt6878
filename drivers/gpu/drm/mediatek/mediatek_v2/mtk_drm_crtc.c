@@ -314,21 +314,21 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 			mmsys_config_dump_reg_mt6983(mtk_crtc->side_config_regs);
 		break;
 	case MMSYS_MT6985:
-		DDPDUMP("== DISP pipe-0 OVLSYS_CONFIG REGS:0x%x ==\n",
-					mtk_crtc->ovlsys0_regs_pa);
+		DDPDUMP("== DISP pipe-0 OVLSYS_CONFIG REGS:0x%pa ==\n",
+					&mtk_crtc->ovlsys0_regs_pa);
 		ovlsys_config_dump_reg_mt6985(mtk_crtc->ovlsys0_regs);
 		if (mtk_crtc->ovlsys1_regs) {
-			DDPDUMP("== DISP pipe-1 OVLSYS_CONFIG REGS:0x%x ==\n",
-				mtk_crtc->ovlsys1_regs_pa);
+			DDPDUMP("== DISP pipe-1 OVLSYS_CONFIG REGS:0x%pa ==\n",
+				&mtk_crtc->ovlsys1_regs_pa);
 			ovlsys_config_dump_reg_mt6985(mtk_crtc->ovlsys1_regs);
 		}
 
-		DDPDUMP("== DISP pipe-0 MMSYS_CONFIG REGS:0x%x ==\n",
-					mtk_crtc->config_regs_pa);
+		DDPDUMP("== DISP pipe-0 MMSYS_CONFIG REGS:0x%pa ==\n",
+					&mtk_crtc->config_regs_pa);
 		mmsys_config_dump_reg_mt6985(mtk_crtc->config_regs);
 		if (mtk_crtc->side_config_regs) {
-			DDPDUMP("== DISP pipe-1 MMSYS_CONFIG REGS:0x%x ==\n",
-				mtk_crtc->side_config_regs_pa);
+			DDPDUMP("== DISP pipe-1 MMSYS_CONFIG REGS:0x%pa ==\n",
+				&mtk_crtc->side_config_regs_pa);
 			mmsys_config_dump_reg_mt6985(mtk_crtc->side_config_regs);
 		}
 		if (mtk_crtc->is_dual_pipe) {
@@ -341,12 +341,12 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 		break;
 	case MMSYS_MT6895:
 	case MMSYS_MT6886:
-		DDPDUMP("== DISP pipe0 MMSYS_CONFIG REGS:0x%x ==\n",
-					mtk_crtc->config_regs_pa);
+		DDPDUMP("== DISP pipe0 MMSYS_CONFIG REGS:0x%pa ==\n",
+					&mtk_crtc->config_regs_pa);
 		mmsys_config_dump_reg_mt6895(mtk_crtc->config_regs);
 		if (mtk_crtc->side_config_regs) {
-			DDPDUMP("== DISP pipe1 MMSYS_CONFIG REGS:0x%x ==\n",
-				mtk_crtc->side_config_regs_pa);
+			DDPDUMP("== DISP pipe1 MMSYS_CONFIG REGS:0x%pa ==\n",
+				&mtk_crtc->side_config_regs_pa);
 			mmsys_config_dump_reg_mt6895(mtk_crtc->side_config_regs);
 		}
 		break;
@@ -435,21 +435,21 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 			mtk_dump_reg(comp);
 		break;
 	case MMSYS_MT6985:
-		DDPDUMP("== DISP pipe-0 OVLSYS_CONFIG REGS:0x%x ==\n",
-					mtk_crtc->ovlsys0_regs_pa);
+		DDPDUMP("== DISP pipe-0 OVLSYS_CONFIG REGS:0x%pa ==\n",
+					&mtk_crtc->ovlsys0_regs_pa);
 		ovlsys_config_dump_reg_mt6985(mtk_crtc->ovlsys0_regs);
 		if (mtk_crtc->ovlsys1_regs) {
-			DDPDUMP("== DISP pipe-1 OVLSYS_CONFIG REGS:0x%x ==\n",
-				mtk_crtc->ovlsys1_regs_pa);
+			DDPDUMP("== DISP pipe-1 OVLSYS_CONFIG REGS:0x%pa ==\n",
+				&mtk_crtc->ovlsys1_regs_pa);
 			ovlsys_config_dump_reg_mt6985(mtk_crtc->ovlsys1_regs);
 		}
 
-		DDPDUMP("== DISP pipe-0 MMSYS_CONFIG REGS:0x%x ==\n",
-					mtk_crtc->config_regs_pa);
+		DDPDUMP("== DISP pipe-0 MMSYS_CONFIG REGS:0x%pa ==\n",
+					&mtk_crtc->config_regs_pa);
 		mmsys_config_dump_reg_mt6985(mtk_crtc->config_regs);
 		if (mtk_crtc->side_config_regs) {
-			DDPDUMP("== DISP pipe-1 MMSYS_CONFIG REGS:0x%x ==\n",
-				mtk_crtc->side_config_regs_pa);
+			DDPDUMP("== DISP pipe-1 MMSYS_CONFIG REGS:0x%pa ==\n",
+				&mtk_crtc->side_config_regs_pa);
 			mmsys_config_dump_reg_mt6985(mtk_crtc->side_config_regs);
 		}
 
@@ -458,12 +458,12 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 		break;
 	case MMSYS_MT6895:
 	case MMSYS_MT6886:
-		DDPDUMP("== DISP pipe0 MMSYS_CONFIG REGS:0x%x ==\n",
-					mtk_crtc->config_regs_pa);
+		DDPDUMP("== DISP pipe0 MMSYS_CONFIG REGS:0x%pa ==\n",
+					&mtk_crtc->config_regs_pa);
 		mmsys_config_dump_reg_mt6895(mtk_crtc->config_regs);
 		if (mtk_crtc->side_config_regs) {
-			DDPDUMP("== DISP pipe1 MMSYS_CONFIG REGS:0x%x ==\n",
-				mtk_crtc->side_config_regs_pa);
+			DDPDUMP("== DISP pipe1 MMSYS_CONFIG REGS:0x%pa ==\n",
+				&mtk_crtc->side_config_regs_pa);
 			mmsys_config_dump_reg_mt6895(mtk_crtc->side_config_regs);
 		}
 		mutex_dump_reg_mt6895(mtk_crtc->mutex[0]);
@@ -642,21 +642,21 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 		}
 		break;
 	case MMSYS_MT6985:
-		DDPDUMP("== DUMP OVLSYS pipe-0 ANALYSIS:0x%x ==\n",
-			mtk_crtc->ovlsys0_regs_pa);
+		DDPDUMP("== DUMP OVLSYS pipe-0 ANALYSIS:0x%pa ==\n",
+			&mtk_crtc->ovlsys0_regs_pa);
 		ovlsys_config_dump_analysis_mt6985(mtk_crtc->ovlsys0_regs);
 		if (mtk_crtc->ovlsys1_regs) {
-			DDPDUMP("== DUMP OVLSYS pipe-1 ANALYSIS:0x%x ==\n",
-				mtk_crtc->ovlsys1_regs_pa);
+			DDPDUMP("== DUMP OVLSYS pipe-1 ANALYSIS:0x%pa ==\n",
+				&mtk_crtc->ovlsys1_regs_pa);
 			ovlsys_config_dump_analysis_mt6985(mtk_crtc->ovlsys1_regs);
 		}
 
-		DDPDUMP("== DUMP DISP pipe-0 ANALYSIS:0x%x ==\n",
-			mtk_crtc->config_regs_pa);
+		DDPDUMP("== DUMP DISP pipe-0 ANALYSIS:0x%pa ==\n",
+			&mtk_crtc->config_regs_pa);
 		mmsys_config_dump_analysis_mt6985(mtk_crtc->config_regs);
 		if (mtk_crtc->side_config_regs) {
-			DDPDUMP("== DUMP DISP pipe-1 ANALYSIS:0x%x ==\n",
-				mtk_crtc->side_config_regs_pa);
+			DDPDUMP("== DUMP DISP pipe-1 ANALYSIS:0x%pa ==\n",
+				&mtk_crtc->side_config_regs_pa);
 			mmsys_config_dump_analysis_mt6985(mtk_crtc->side_config_regs);
 		}
 
@@ -670,12 +670,12 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 		break;
 	case MMSYS_MT6895:
 	case MMSYS_MT6886:
-		DDPDUMP("== DUMP DISP pipe0 ANALYSIS:0x%x ==\n",
-			mtk_crtc->config_regs_pa);
+		DDPDUMP("== DUMP DISP pipe0 ANALYSIS:0x%pa ==\n",
+			&mtk_crtc->config_regs_pa);
 		mmsys_config_dump_analysis_mt6895(mtk_crtc->config_regs);
 		if (mtk_crtc->side_config_regs) {
-			DDPDUMP("== DUMP DISP pipe1 ANALYSIS:0x%x ==\n",
-				mtk_crtc->side_config_regs_pa);
+			DDPDUMP("== DUMP DISP pipe1 ANALYSIS:0x%pa ==\n",
+				&mtk_crtc->side_config_regs_pa);
 			mmsys_config_dump_analysis_mt6895(mtk_crtc->side_config_regs);
 		}
 		if (mtk_crtc->is_dual_pipe) {
@@ -783,21 +783,21 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 		}
 		break;
 	case MMSYS_MT6985:
-		DDPDUMP("== DUMP OVLSYS pipe-0 ANALYSIS:0x%x ==\n",
-			mtk_crtc->ovlsys0_regs_pa);
+		DDPDUMP("== DUMP OVLSYS pipe-0 ANALYSIS:0x%pa ==\n",
+			&mtk_crtc->ovlsys0_regs_pa);
 		ovlsys_config_dump_analysis_mt6985(mtk_crtc->ovlsys0_regs);
 		if (mtk_crtc->ovlsys1_regs) {
-			DDPDUMP("== DUMP OVLSYS pipe-1 ANALYSIS:0x%x ==\n",
-				mtk_crtc->ovlsys1_regs_pa);
+			DDPDUMP("== DUMP OVLSYS pipe-1 ANALYSIS:0x%pa ==\n",
+				&mtk_crtc->ovlsys1_regs_pa);
 			ovlsys_config_dump_analysis_mt6985(mtk_crtc->ovlsys1_regs);
 		}
 
-		DDPDUMP("== DUMP DISP pipe-0 ANALYSIS:0x%x ==\n",
-			mtk_crtc->config_regs_pa);
+		DDPDUMP("== DUMP DISP pipe-0 ANALYSIS:0x%pa ==\n",
+			&mtk_crtc->config_regs_pa);
 		mmsys_config_dump_analysis_mt6985(mtk_crtc->config_regs);
 		if (mtk_crtc->side_config_regs) {
-			DDPDUMP("== DUMP DISP pipe-1 ANALYSIS:0x%x ==\n",
-				mtk_crtc->side_config_regs_pa);
+			DDPDUMP("== DUMP DISP pipe-1 ANALYSIS:0x%pa ==\n",
+				&mtk_crtc->side_config_regs_pa);
 			mmsys_config_dump_analysis_mt6985(mtk_crtc->side_config_regs);
 		}
 
@@ -813,12 +813,12 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 		break;
 	case MMSYS_MT6895:
 	case MMSYS_MT6886:
-		DDPDUMP("== DUMP DISP pipe0 ANALYSIS:0x%x ==\n",
-			mtk_crtc->config_regs_pa);
+		DDPDUMP("== DUMP DISP pipe0 ANALYSIS:0x%pa ==\n",
+			&mtk_crtc->config_regs_pa);
 		mmsys_config_dump_analysis_mt6895(mtk_crtc->config_regs);
 		if (mtk_crtc->side_config_regs) {
-			DDPDUMP("== DUMP DISP pipe1 ANALYSIS:0x%x ==\n",
-				mtk_crtc->side_config_regs_pa);
+			DDPDUMP("== DUMP DISP pipe1 ANALYSIS:0x%pa ==\n",
+				&mtk_crtc->side_config_regs_pa);
 			mmsys_config_dump_analysis_mt6895(mtk_crtc->side_config_regs);
 		}
 		mutex_dump_analysis_mt6895(mtk_crtc->mutex[0]);
@@ -5142,8 +5142,8 @@ void mtk_crtc_pkt_create(struct cmdq_pkt **cmdq_handle, struct drm_crtc *crtc,
 {
 	*cmdq_handle = cmdq_pkt_create(cl);
 	if (IS_ERR_OR_NULL(*cmdq_handle)) {
-		DDPPR_ERR("%s create handle fail, %x\n",
-				__func__, *cmdq_handle);
+		DDPPR_ERR("%s create handle fail, %lx\n",
+				__func__, (unsigned long)*cmdq_handle);
 		return;
 	}
 
@@ -5577,7 +5577,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_prework(struct drm_crtc *crtc,
 				display_compress_ratio_table[index].active = 1;
 		}
 
-		DDPDBG("BWM: frame idx:%d alloc_id:%lu plane_index:%u enable:%u\n",
+		DDPDBG("BWM: frame idx:%d alloc_id:%llu plane_index:%u enable:%u\n",
 				frame_idx, plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID],
 				plane_index, plane_state->pending.enable);
 		DDPDBG("BWM: fn:%u index:%d fbt_layer_id:%d fbt_head:%d fbt_tail:%d\n",
@@ -5872,7 +5872,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(unsigned int frame_idx)
 	DDPDBG("BWMT===== Item     Frame    Key     avg    peak     valid    active=====\n");
 	for (i = 0; i < 60; i++) {
 		if (normal_layer_compress_ratio_tb[i].key_value)
-			DDPDBG("BWMT===== %4d     %u     %lu     %u    %u     %u    %u =====\n", i,
+			DDPDBG("BWMT===== %4d     %u     %llu     %u    %u     %u    %u =====\n", i,
 				normal_layer_compress_ratio_tb[i].frame_idx,
 				normal_layer_compress_ratio_tb[i].key_value,
 				normal_layer_compress_ratio_tb[i].average_ratio,
@@ -5885,7 +5885,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(unsigned int frame_idx)
 	DDPDBG("BWMT===== Item     Frame    Key     avg    peak     valid    active=====\n");
 	for (i = 0; i < 5; i++) {
 		if (fbt_layer_compress_ratio_tb[i].key_value)
-			DDPDBG("BWMT===== %4d     %u     %lu     %u    %u     %u    %u =====\n", i,
+			DDPDBG("BWMT===== %4d     %u     %llu     %u    %u     %u    %u =====\n", i,
 				fbt_layer_compress_ratio_tb[i].frame_idx,
 				fbt_layer_compress_ratio_tb[i].key_value,
 				fbt_layer_compress_ratio_tb[i].average_ratio,
@@ -5897,7 +5897,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(unsigned int frame_idx)
 	DDPDBG("BWMT===== Item     Frame    Key     avg    peak     valid    active=====\n");
 	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
 		if (unchanged_compress_ratio_table[i].key_value)
-			DDPDBG("BWMT===== %4d     %u     %lu     %u    %u     %u    %u =====\n", i,
+			DDPDBG("BWMT===== %4d     %u     %llu     %u    %u     %u    %u =====\n", i,
 				unchanged_compress_ratio_table[i].frame_idx,
 				unchanged_compress_ratio_table[i].key_value,
 				unchanged_compress_ratio_table[i].average_ratio,
@@ -6150,8 +6150,9 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 		return;
 	}
 
-	DDPINFO("crtc_state:0x%llx, atomic_state:%x, crtc:%x, pf:%u\n",
-		(u64)crtc_state, atomic_state, crtc, cb_data->pres_fence_idx);
+	DDPINFO("crtc_state:0x%llx, atomic_state:%lx, crtc:%lx, pf:%u\n",
+		(u64)crtc_state, (unsigned long)atomic_state,
+		(unsigned long)crtc, cb_data->pres_fence_idx);
 
 	session_id = mtk_get_session_id(crtc);
 
@@ -7511,7 +7512,7 @@ long mtk_crtc_wait_status(struct drm_crtc *crtc, bool status, long timeout)
 	ret = wait_event_interruptible_timeout(mtk_crtc->crtc_status_wq,
 				 mtk_crtc->enabled == status, timeout);
 	if (!ret)
-		DDPPR_ERR("wait %s fail, ret=%d\n", __func__, ret);
+		DDPPR_ERR("wait %s fail, ret=%ld\n", __func__, ret);
 
 	return ret;
 }
@@ -9815,7 +9816,7 @@ static void msync_add_frame_time(struct mtk_drm_crtc *mtk_crtc,
 		fps = drm_mode_vrefresh(mode);
 		time_diff = msync_dy->record[msync_dy->record_index].time -
 			msync_dy->record[last_msync_idx].time;
-		DDPDBG("[Msync] min fps:%f, fps:%d, time_diff:%d\n", MSYNC_MIN_FPS, fps, time_diff);
+		DDPDBG("[Msync] min fps:%f, fps:%d, time_diff:%llu\n", MSYNC_MIN_FPS, fps, time_diff);
 		if (1000 * 1000 * 1000 / MSYNC_MIN_FPS < time_diff) {
 			msync_dy->record[msync_dy->record_index].low_frame = true;
 			DDPDBG("[Msync] low_frame = true\n");
@@ -12033,10 +12034,10 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 				mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_VFP_PERIOD]);
 		cb_data->msync2_enable = 1;
 
-		DDPDBG("[Msync]cmdq pkt size = %d\n", cmdq_handle->cmd_buf_size);
+		DDPDBG("[Msync]cmdq pkt size = %lu\n", cmdq_handle->cmd_buf_size);
 		if (cmdq_handle->cmd_buf_size >= 4096) {
 			/*ToDo: if larger than 4096 need consider change pages*/
-			DDPPR_ERR("[Msync]cmdq pkt size = %d\n", cmdq_handle->cmd_buf_size);
+			DDPPR_ERR("[Msync]cmdq pkt size = %lu\n", cmdq_handle->cmd_buf_size);
 		}
 	}
 
@@ -12756,7 +12757,7 @@ static int mtk_drm_cwb_copy_buf(struct drm_crtc *crtc,
 		tmp->meta.timestamp = cwb_info->buffer[buf_idx].timestamp;
 		memcpy(tmp->data.image, (void *)addr_va, size);
 	}
-	DDPMSG("[capture] copy buf from 0x%x, (w,h)=(%d,%d), ts:%llu done\n",
+	DDPMSG("[capture] copy buf from 0x%lx, (w,h)=(%d,%d), ts:%llu done\n",
 			addr_va, width, height, time);
 
 	return 0;

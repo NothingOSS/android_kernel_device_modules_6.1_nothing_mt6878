@@ -466,7 +466,7 @@ int mtk_mipi_tx_dump(struct phy *phy)
 		return 0;
 	}
 
-	DDPDUMP("== MIPI REGS:0x%x ==\n", mipi_tx->regs_pa);
+	DDPDUMP("== MIPI REGS:0x%pa ==\n", &mipi_tx->regs_pa);
 	for (k = 0; k < 0x6A0; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
 			readl(mipi_tx->regs + k),
@@ -1224,7 +1224,7 @@ static unsigned int _dsi_get_pcw_mt6983(unsigned long data_rate,
 	else if (data_rate >= 510)
 		div3 = 3;
 	else {
-		DDPPR_ERR("invalid data rate %u\n", data_rate);
+		DDPPR_ERR("invalid data rate %lu\n", data_rate);
 		return -EINVAL;
 	}
 
@@ -3690,11 +3690,11 @@ static void backup_mipitx_impedance_mt6886(struct mtk_mipi_tx *mipi_tx)
 				MIPITX_D2N_RT_DEM_CODE_MT6886 + j * 0x100);
 	}
 	for (i = 0; i < 5; i++) {
-		DDPMSG("[0x%08x 0x%08x 0x%08x 0x%08x]:0x%08x 0x%08x 0x%08x 0x%08x\n",
-			mipi_tx->regs + MIPITX_D2P_RTCODE0_MT6886 + i * 0x100,
-			mipi_tx->regs + MIPITX_D2N_RTCODE0_MT6886 + i * 0x100,
-			mipi_tx->regs + MIPITX_D2P_RT_DEM_CODE_MT6886 + i * 0x100,
-			mipi_tx->regs + MIPITX_D2N_RT_DEM_CODE_MT6886 + i * 0x100,
+		DDPMSG("[0x%08lx 0x%08lx 0x%08lx 0x%08lx]:0x%08x 0x%08x 0x%08x 0x%08x\n",
+			(unsigned long)mipi_tx->regs + MIPITX_D2P_RTCODE0_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs + MIPITX_D2N_RTCODE0_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs + MIPITX_D2P_RT_DEM_CODE_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs + MIPITX_D2N_RT_DEM_CODE_MT6886 + i * 0x100,
 			readl((mipi_tx->regs + MIPITX_D2P_RTCODE0_MT6886 + i * 0x100)),
 			readl((mipi_tx->regs + MIPITX_D2N_RTCODE0_MT6886 + i * 0x100)),
 			readl((mipi_tx->regs + MIPITX_D2P_RT_DEM_CODE_MT6886 + i * 0x100)),
@@ -3879,11 +3879,11 @@ static void refill_mipitx_impedance_mt6886(struct mtk_mipi_tx *mipi_tx)
 				MIPITX_D2N_RT_DEM_CODE_MT6886 + j * 0x100);
 	}
 	for (i = 0; i < 5; i++) {
-		DDPDBG("[0x%08x 0x%08x 0x%08x 0x%08x]:0x%08x 0x%08x 0x%08x 0x%08x\n",
-			mipi_tx->regs + MIPITX_D2P_RTCODE0_MT6886 + i * 0x100,
-			mipi_tx->regs + MIPITX_D2N_RTCODE0_MT6886 + i * 0x100,
-			mipi_tx->regs + MIPITX_D2P_RT_DEM_CODE_MT6886 + i * 0x100,
-			mipi_tx->regs + MIPITX_D2N_RT_DEM_CODE_MT6886 + i * 0x100,
+		DDPDBG("[0x%08lx 0x%08lx 0x%08lx 0x%08lx]:0x%08x 0x%08x 0x%08x 0x%08x\n",
+			(unsigned long)mipi_tx->regs + MIPITX_D2P_RTCODE0_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs + MIPITX_D2N_RTCODE0_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs + MIPITX_D2P_RT_DEM_CODE_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs + MIPITX_D2N_RT_DEM_CODE_MT6886 + i * 0x100,
 			readl((mipi_tx->regs + MIPITX_D2P_RTCODE0_MT6886 + i * 0x100)),
 			readl((mipi_tx->regs + MIPITX_D2N_RTCODE0_MT6886 + i * 0x100)),
 			readl((mipi_tx->regs + MIPITX_D2P_RT_DEM_CODE_MT6886 + i * 0x100)),

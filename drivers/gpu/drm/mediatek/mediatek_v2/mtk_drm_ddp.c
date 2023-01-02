@@ -15705,7 +15705,7 @@ void mutex_ovlsys_dump_reg_mt6985(struct mtk_disp_mutex *mutex)
 	int cnt = 0;
 
 REDUMP:
-	DDPDUMP("== OVLSYS-%d MUTEX REGS:0x%x ==\n", cnt, regs_pa);
+	DDPDUMP("== OVLSYS-%d MUTEX REGS:0x%pa ==\n", cnt, &regs_pa);
 	DDPDUMP("0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x\n",
 		0x0, readl_relaxed(module_base + 0x0), 0x4,
 		readl_relaxed(module_base + 0x4), 0x8,
@@ -15753,7 +15753,7 @@ void mutex_dump_reg_mt6985(struct mtk_disp_mutex *mutex)
 	int cnt = 0;
 
 REDUMP:
-	DDPDUMP("== DISP-%d MUTEX REGS:0x%x ==\n", cnt, regs_pa);
+	DDPDUMP("== DISP-%d MUTEX REGS:0x%pa ==\n", cnt, &regs_pa);
 	DDPDUMP("0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x\n",
 		0x0, readl_relaxed(module_base + 0x0), 0x4,
 		readl_relaxed(module_base + 0x4), 0x8,
@@ -15801,7 +15801,7 @@ void mutex_dump_reg_mt6895(struct mtk_disp_mutex *mutex)
 	int cnt = 0;
 
 REDUMP:
-	DDPDUMP("== DISP%d MUTEX REGS:0x%x ==\n", cnt, ddp->regs_pa);
+	DDPDUMP("== DISP%d MUTEX REGS:0x%pa ==\n", cnt, &ddp->regs_pa);
 	DDPDUMP("0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x\n",
 		0x0, readl_relaxed(module_base + 0x0), 0x4,
 		readl_relaxed(module_base + 0x4), 0x8,
@@ -16063,7 +16063,7 @@ void mutex_ovlsys_dump_analysis_mt6985(struct mtk_disp_mutex *mutex)
 	unsigned int val;
 
 REDUMP:
-	DDPDUMP("== DISP%d OVLSYS Mutex Analysis:0x%x ==\n", cnt, regs_pa);
+	DDPDUMP("== DISP%d OVLSYS Mutex Analysis:0x%pa ==\n", cnt, &regs_pa);
 	for (i = 0; i < 5; i++) {
 		unsigned int mod0, mod1;
 
@@ -16142,7 +16142,7 @@ void mutex_dump_analysis_mt6985(struct mtk_disp_mutex *mutex)
 	unsigned int val;
 
 REDUMP:
-	DDPDUMP("== DISP%d Mutex Analysis:0x%x ==\n", cnt, regs_pa);
+	DDPDUMP("== DISP%d Mutex Analysis:0x%pa ==\n", cnt, &regs_pa);
 	for (i = 0; i < 5; i++) {
 		unsigned int mod0, mod1;
 
@@ -16221,7 +16221,7 @@ void mutex_dump_analysis_mt6895(struct mtk_disp_mutex *mutex)
 	unsigned int val;
 
 REDUMP:
-	DDPDUMP("== DISP%d Mutex Analysis:0x%x ==\n", cnt, ddp->regs_pa);
+	DDPDUMP("== DISP%d Mutex Analysis:0x%pa ==\n", cnt, &ddp->regs_pa);
 	for (i = 0; i < 5; i++) {
 		unsigned int mod0, mod1;
 

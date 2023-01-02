@@ -1446,7 +1446,7 @@ int mtk_wdma_dump(struct mtk_ddp_comp *comp)
 		return 0;
 	}
 
-	DDPDUMP("== %s REGS:0x%x ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
+	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 
 	if (comp->mtk_crtc && comp->mtk_crtc->sec_on) {
 		DDPDUMP("Skip dump secure wdma!\n");
@@ -1555,7 +1555,7 @@ int mtk_wdma_analysis(struct mtk_ddp_comp *comp)
 		return 0;
 	}
 
-	DDPDUMP("== DISP %s ANALYSIS:0x%x ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
+	DDPDUMP("== DISP %s ANALYSIS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 
 	if (comp->mtk_crtc && comp->mtk_crtc->sec_on) {
 		DDPDUMP("Skip dump secure wdma!\n");
@@ -1569,7 +1569,7 @@ int mtk_wdma_analysis(struct mtk_ddp_comp *comp)
 		(readl(baddr + DISP_REG_WDMA_CLIP_COORD) >> 16) & 0x3fff,
 		readl(baddr + DISP_REG_WDMA_CLIP_SIZE) & 0x3fff,
 		(readl(baddr + DISP_REG_WDMA_CLIP_SIZE) >> 16) & 0x3fff);
-	DDPDUMP("pitch=(W=%d,UV=%d),addr=(0x%x,0x%x,0x%x),cfg=0x%x\n",
+	DDPDUMP("pitch=(W=%d,UV=%d),addr=(0x%llx,0x%llx,0x%llx),cfg=0x%x\n",
 		readl(baddr + DISP_REG_WDMA_DST_WIN_BYTE),
 		readl(baddr + DISP_REG_WDMA_DST_UV_PITCH),
 		read_dst_addr(comp, 0),

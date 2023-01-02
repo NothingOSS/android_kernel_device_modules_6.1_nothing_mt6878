@@ -1653,7 +1653,7 @@ void mtk_ovl_get_ovl_csc_data(struct drm_crtc *crtc,
 			DDPINFO("Cannot get ovl_csc_config: SET_BRIGHTNESS, blob: %d!\n",
 										blob_id);
 			if (blob1)
-				DDPINFO("size of blob1->data is %d\n", blob1->length);
+				DDPINFO("size of blob1->data is %lu\n", blob1->length);
 		}
 
 		if (blob1)
@@ -1672,7 +1672,7 @@ void mtk_ovl_get_ovl_csc_data(struct drm_crtc *crtc,
 			DDPINFO("Cannot get ovl_csc_config: SET_COLORTRANSFORM, blob: %d!\n",
 										blob_id);
 			if (blob2)
-				DDPINFO("size of blob2->data is %d\n", blob2->length);
+				DDPINFO("size of blob2->data is %lu\n", blob2->length);
 		}
 		if (blob2)
 			drm_property_blob_put(blob2);
@@ -2513,7 +2513,7 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 				}
 			}
 
-			DDPINFO("BWM:frame idx:%u alloc id:%lu key:%lu lye_idx:%u bw:%llu(%llu)\n",
+			DDPINFO("BWM:frame idx:%u alloc id:%lu key:%llu lye_idx:%u bw:%llu(%llu)\n",
 					frame_idx, alloc_id, key, idx, temp_bw, temp_bw_old);
 		}
 
@@ -4075,7 +4075,7 @@ int mtk_ovl_dump(struct mtk_ddp_comp *comp)
 	if (comp->blank_mode)
 		return 0;
 
-	DDPDUMP("== %s REGS:0x%x ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
+	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 	if (mtk_ddp_comp_helper_get_opt(comp,
 					MTK_DRM_OPT_REG_PARSER_RAW_DUMP)) {
 		unsigned int i = 0;
@@ -4381,7 +4381,7 @@ int mtk_ovl_analysis(struct mtk_ddp_comp *comp)
 	path_con = readl(DISP_REG_OVL_DATAPATH_CON + baddr);
 	pq_out_size = readl(DISP_REG_OVL_PQ_OUT_SIZE + baddr);
 
-	DDPDUMP("== %s ANALYSIS:0x%x ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
+	DDPDUMP("== %s ANALYSIS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 	DDPDUMP("ovl_en=%d,layer_en(%d,%d,%d,%d),bg(%dx%d)\n",
 		readl(DISP_REG_OVL_EN + baddr) & 0x1, src_con & 0x1,
 		(src_con >> 1) & 0x1, (src_con >> 2) & 0x1,

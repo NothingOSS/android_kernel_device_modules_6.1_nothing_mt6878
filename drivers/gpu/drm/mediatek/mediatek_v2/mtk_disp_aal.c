@@ -3339,8 +3339,8 @@ static void mtk_aal_prepare(struct mtk_ddp_comp *comp)
 		atomic_set(&g_aal1_data->is_clock_on, 1);
 		atomic_set(&g_aal1_first_frame, 1);
 	}
-	AALFLOW_LOG("[aal_data, g_aal_data] addr[%x, %x] val[%d, %d]\n",
-			&aal_data->is_clock_on, &g_aal_data->is_clock_on,
+	AALFLOW_LOG("[aal_data, g_aal_data] addr[%lx, %lx] val[%d, %d]\n",
+			(unsigned long)&aal_data->is_clock_on, (unsigned long)&g_aal_data->is_clock_on,
 			atomic_read(&aal_data->is_clock_on),
 			atomic_read(&g_aal_data->is_clock_on));
 
@@ -3485,7 +3485,7 @@ void mtk_aal_dump(struct mtk_ddp_comp *comp)
 		return;
 	}
 
-	DDPDUMP("== %s REGS:0x%x ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
+	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 	mtk_cust_dump_reg(baddr, 0x0, 0x20, 0x30, 0x4D8);
 	mtk_cust_dump_reg(baddr, 0x24, 0x28, 0x200, 0x10);
 }

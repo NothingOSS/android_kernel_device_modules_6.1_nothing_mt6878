@@ -1402,7 +1402,7 @@ static int dl_comp_init(struct device *dev, struct mml_sys *sys,
 
 	ret = snprintf(name, sizeof(name), "%s-dl-relay", comp->name);
 	if (ret >= sizeof(name)) {
-		dev_err(dev, "len:%d over name size:%d", ret, sizeof(name));
+		dev_err(dev, "len:%d over name size:%lu", ret, sizeof(name));
 		name[sizeof(name) - 1] = '\0';
 	}
 	ret = of_property_read_u16(node, name, &offset);
@@ -1714,7 +1714,7 @@ static int probe(struct platform_device *pdev)
 
 	priv = mml_sys_create(pdev, &mml_comp_ops);
 	if (IS_ERR(priv)) {
-		dev_err(&pdev->dev, "failed to init mml sys: %d\n",
+		dev_err(&pdev->dev, "failed to init mml sys: %ld\n",
 			PTR_ERR(priv));
 		return PTR_ERR(priv);
 	}

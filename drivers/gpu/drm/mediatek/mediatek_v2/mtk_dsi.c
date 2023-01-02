@@ -1584,7 +1584,7 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 	}
 
 	DDPINFO(
-		"%s,mode=0x%x,valid_theshold=0x%x,width=%d,height=%d,ps_wc:%d,rw_times=%d,lp_perline_en=%d\n",
+		"%s,mode=0x%lx,valid_theshold=0x%x,width=%d,height=%d,ps_wc:%d,rw_times=%d,lp_perline_en=%d\n",
 		__func__, dsi->mode_flags & MIPI_DSI_MODE_VIDEO, tmp,
 		width, height, ps_wc, rw_times, ext->params->lp_perline_en);
 
@@ -3568,7 +3568,7 @@ int mtk_dsi_dump(struct mtk_ddp_comp *comp)
 	reg_val = (readl(dsi->regs + 0x16C)) & 0x3fffff;
 	DDPDUMP("state9 LINE_COUNTER(cmd mode):%u\n", reg_val);
 
-	DDPDUMP("== %s REGS:0x%x ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
+	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 	for (k = 0; k < 0x200; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
 			readl(dsi->regs + k),
@@ -3811,7 +3811,7 @@ int mtk_dsi_analysis(struct mtk_ddp_comp *comp)
 		return 0;
 	}
 
-	DDPDUMP("== %s ANALYSIS:0x%x ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
+	DDPDUMP("== %s ANALYSIS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		struct mtk_dsi *dsi = container_of(comp, struct mtk_dsi, ddp_comp);
 
@@ -4416,7 +4416,7 @@ static void mtk_dump_u8_array(u8 *buf, unsigned int size)
 
 static void mtk_dsi_ddic_cmd_dump(struct mipi_dsi_msg *msg)
 {
-	DDPMSG("%s, %d, ch:%u,flag:0x%x,type:0x%x,tx:%u,rx:%u\n",
+	DDPMSG("%s, %d, ch:%u,flag:0x%x,type:0x%x,tx:%lu,rx:%lu\n",
 		__func__, __LINE__, msg->channel, msg->flags,
 		msg->type, msg->tx_len, msg->rx_len);
 	mtk_dump_u8_array((u8 *)msg->tx_buf, msg->tx_len);
@@ -5320,7 +5320,7 @@ int mtk_dsi_ddic_handler_write_by_gce(struct mtk_dsi *dsi,
 
 	if (msg->tx_len <= 0 ||
 		IS_ERR_OR_NULL(msg->tx_buf)) {
-		DDPPR_ERR("%s, %d, invalid tx buf, %u\n",
+		DDPPR_ERR("%s, %d, invalid tx buf, %lu\n",
 			__func__, __LINE__, msg->tx_len);
 		return -EINVAL;
 	}
@@ -5545,7 +5545,7 @@ static int mtk_dsi_ddic_handler_grp_write_by_gce(struct mtk_dsi *dsi,
 		if (msg->tx_len <= 0 ||
 			IS_ERR_OR_NULL(msg->tx_buf) ||
 			msg->rx_len > 0) {
-			DDPPR_ERR("%s, %d, invalid tx buf:%u, not support rx pack:%u\n",
+			DDPPR_ERR("%s, %d, invalid tx buf:%lu, not support rx pack:%lu\n",
 				__func__, __LINE__, msg->tx_len, msg->rx_len);
 			mtk_dsi_ddic_cmd_dump(msg);
 			ret = -EINVAL;
@@ -5620,7 +5620,7 @@ static void _mtk_mipi_dsi_read_gce(struct mtk_dsi *dsi,
 	if (msg->tx_len <= 0 || msg->tx_len > 2 ||
 		IS_ERR_OR_NULL(msg->tx_buf) ||
 		msg->rx_len <= 0 || IS_ERR_OR_NULL(msg->rx_buf)) {
-		DDPPR_ERR("%s: invalid tx_buf:%u, rx_buf:%u\n",
+		DDPPR_ERR("%s: invalid tx_buf:%lu, rx_buf:%lu\n",
 			__func__, msg->tx_len, msg->rx_len);
 		return;
 	}
@@ -5997,14 +5997,14 @@ int mtk_dsi_ddic_handler_read_by_gce(struct mtk_dsi *dsi,
 
 	if (msg->tx_len <= 0 ||
 		IS_ERR_OR_NULL(msg->tx_buf)) {
-		DDPPR_ERR("%s, %d, invalid tx buf, %u\n",
+		DDPPR_ERR("%s, %d, invalid tx buf, %lu\n",
 			__func__, __LINE__, msg->tx_len);
 		return -EINVAL;
 	}
 
 	if (msg->rx_len <= 0 ||
 		IS_ERR_OR_NULL(msg->rx_buf)) {
-		DDPPR_ERR("%s, %d, invalid rx buf, %u\n",
+		DDPPR_ERR("%s, %d, invalid rx buf, %lu\n",
 			__func__, __LINE__, msg->rx_len);
 		return -EINVAL;
 	}
@@ -8611,7 +8611,8 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			| REG_FLD_VAL(VFP_EARLY_STOP_FLD_REG_MIN_NL, dsi->vm.vfront_porch);
 
 		}
-		DDPDBG("[Msync] VFP_EARLYSTOP = 0x%x, handle = 0x%x\n", value, handle);
+		DDPDBG("[Msync] VFP_EARLYSTOP = 0x%x, handle = 0x%lx\n", value,
+				(unsigned long)handle);
 
 		if (handle)
 			cmdq_pkt_write(handle, comp->cmdq_base,

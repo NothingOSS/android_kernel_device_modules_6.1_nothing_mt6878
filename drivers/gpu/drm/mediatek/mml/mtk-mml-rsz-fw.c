@@ -144,7 +144,7 @@ static void rsz_config(struct rsz_fw_in *in, struct rsz_fw_out *out,
 		prec = 1 << RSZ_6TAP_STEPCOUNTER_BIT;
 		max_nm = 1;
 
-		mml_msg("%s m_m1_zoom[%llu]  n_m1_zoom[%u] prec[%u] offset[%u]",
+		mml_msg("%s m_m1_zoom[%llu]  n_m1_zoom[%lld] prec[%u] offset[%lld]",
 			__func__, m_m1_zoom, n_m1_zoom, prec, offset);
 
 		coeff_step = (u64)(((u64)(m_m1_zoom -
@@ -165,7 +165,7 @@ static void rsz_config(struct rsz_fw_in *in, struct rsz_fw_out *out,
 		max_nm = 64;
 
 		/* determination of coef_step */
-		mml_msg("%s m_m1_zoom[%llu]  n_m1_zoom[%u] prec[%u] offset[%u]",
+		mml_msg("%s m_m1_zoom[%llu]  n_m1_zoom[%lld] prec[%u] offset[%lld]",
 			__func__, m_m1_zoom, n_m1_zoom, prec, offset);
 
 		n_y  = crz_tar_width_d;

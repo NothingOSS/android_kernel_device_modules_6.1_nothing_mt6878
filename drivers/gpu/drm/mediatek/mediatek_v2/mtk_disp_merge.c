@@ -240,7 +240,7 @@ void mtk_merge_dump(struct mtk_ddp_comp *comp)
 		return;
 	}
 
-	DDPDUMP("== DISP %s REGS:0x%x ==\n", mtk_dump_comp_str(comp), comp->regs);
+	DDPDUMP("== DISP %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs);
 	for (i = 0; i < 1; i++) {
 		DDPDUMP("0x%03X: 0x%08x 0x%08x 0x%08x 0x%08x\n", i * 0x10,
 			readl(baddr + i * 0x10), readl(baddr + i * 0x10 + 0x4),
@@ -274,7 +274,7 @@ int mtk_merge_analysis(struct mtk_ddp_comp *comp)
 	dbg0 = readl(baddr + DISP_REG_MERGE_DGB0);
 	dbg1 = readl(baddr + DISP_REG_MERGE_DGB1);
 
-	DDPDUMP("== DISP %s ANALYSIS %x ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
+	DDPDUMP("== DISP %s ANALYSIS %pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 
 	ret = snprintf(msg, LEN,
 		"en:%d,swap:%d,dcm_dis:%d,width_L:%d,width_R:%d,h:%d,pix_cnt:%d,line_cnt:%d\n",

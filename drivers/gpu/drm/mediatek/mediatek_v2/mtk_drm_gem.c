@@ -800,7 +800,8 @@ void print_mml_frame_info(struct mml_frame_info info)
 			info.dest[i].pq_config.en_color, info.dest[i].pq_config.en_hdr,
 			info.dest[i].pq_config.en_ccorr, info.dest[i].pq_config.en_dre);
 		DDPMSG("rotate:%d, flip:%d, pq_config.en:%d\n",
-			info.dest[i].rotate, info.dest[i].flip, info.dest[i].pq_config);
+			info.dest[i].rotate, info.dest[i].flip,
+			info.dest[i].pq_config.en);
 	}
 	DDPMSG("mode:%d, layer_id:%d\n", info.mode, info.layer_id);
 	DDPMSG("====  frame_info e ====\n");

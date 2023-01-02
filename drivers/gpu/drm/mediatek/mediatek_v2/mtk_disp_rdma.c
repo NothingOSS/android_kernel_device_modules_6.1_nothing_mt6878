@@ -1187,7 +1187,7 @@ int mtk_rdma_dump(struct mtk_ddp_comp *comp)
 		return 0;
 	}
 
-	DDPDUMP("== %s REGS:0x%x ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
+	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 	if (mtk_ddp_comp_helper_get_opt(comp,
 					MTK_DRM_OPT_REG_PARSER_RAW_DUMP)) {
 		unsigned int i = 0;
@@ -1324,7 +1324,7 @@ int mtk_rdma_analysis(struct mtk_ddp_comp *comp)
 	bg1 = readl(baddr + DISP_REG_RDMA_BG_CON_1);
 	fifo = readl(baddr + DISP_REG_RDMA_FIFO_CON);
 	global_ctrl = readl(DISP_REG_RDMA_GLOBAL_CON + baddr);
-	DDPDUMP("== %s ANALYSIS:0x%x ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
+	DDPDUMP("== %s ANALYSIS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 	DDPDUMP("en=%d,mode:%s,smi_busy:%d,10bit:%d\n",
 		REG_FLD_VAL_GET(GLOBAL_CON_FLD_ENGINE_EN, global_ctrl),
 		REG_FLD_VAL_GET(GLOBAL_CON_FLD_MODE_SEL, global_ctrl)
@@ -1332,7 +1332,7 @@ int mtk_rdma_analysis(struct mtk_ddp_comp *comp)
 		REG_FLD_VAL_GET(GLOBAL_CON_FLD_SMI_BUSY, global_ctrl),
 		REG_FLD_VAL_GET(GLOBAL_CON_FLD_PIXEL_10_BIT, global_ctrl));
 
-	DDPDUMP("wh(%dx%d),pitch=%d,addr=0x%x\n",
+	DDPDUMP("wh(%dx%d),pitch=%d,addr=0x%llx\n",
 		readl(DISP_REG_RDMA_SIZE_CON_0 + baddr) & 0xfff,
 		readl(DISP_REG_RDMA_SIZE_CON_1 + baddr) & 0xfffff,
 		readl(DISP_REG_RDMA_MEM_SRC_PITCH + baddr),

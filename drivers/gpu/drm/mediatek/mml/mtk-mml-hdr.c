@@ -692,13 +692,13 @@ static void hdr_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 		cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
 	}
 
-	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%08x] pkt[%p]",
+	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%pad] pkt[%p]",
 		__func__, task->job.jobid, comp->id, task->pq_task->hdr_hist[pipe]->va,
-		task->pq_task->hdr_hist[pipe]->pa, pkt);
+		&task->pq_task->hdr_hist[pipe]->pa, pkt);
 
-	mml_pq_rb_msg("%s end job_id[%d] condi:offset[%u] inst[%p], begin:offset[%u] pa[%08x]",
+	mml_pq_rb_msg("%s end job_id[%d] condi:offset[%u] inst[%p], begin:offset[%u] pa[%pad]",
 		__func__, task->job.jobid, hdr_frm->condi_offset, condi_inst,
-		hdr_frm->begin_offset, begin_pa);
+		hdr_frm->begin_offset, &begin_pa);
 }
 
 
@@ -848,13 +848,13 @@ static s32 hdr_config_repost(struct mml_comp *comp, struct mml_task *task,
 
 		*condi_inst = (u32)CMDQ_REG_SHIFT_ADDR(begin_pa);
 
-		mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%08x] pkt[%p] ",
+		mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%pad] pkt[%p] ",
 			__func__, task->job.jobid, comp->id, task->pq_task->hdr_hist[pipe]->va,
-			task->pq_task->hdr_hist[pipe]->pa, pkt);
+			&task->pq_task->hdr_hist[pipe]->pa, pkt);
 
-		mml_pq_rb_msg("%s end job_id[%d]condi:offset[%u]inst[%p],begin:offset[%u]pa[%08x]",
+		mml_pq_rb_msg("%s end job_id[%d]condi:offset[%u]inst[%p],begin:offset[%u]pa[%pad]",
 			__func__, task->job.jobid, hdr_frm->condi_offset, condi_inst,
-			hdr_frm->begin_offset, begin_pa);
+			hdr_frm->begin_offset, &begin_pa);
 	}
 
 comp_config_put:
@@ -1005,10 +1005,10 @@ static void hdr_task_done_readback(struct mml_comp *comp, struct mml_task *task,
 
 	offset = vcp ? task->pq_task->hdr_hist[pipe]->va_offset : 0;
 
-	mml_pq_msg("%s job_id[%d] id[%d] pipe[%d] en_hdr[%d] va[%p] pa[%08x]",
+	mml_pq_msg("%s job_id[%d] id[%d] pipe[%d] en_hdr[%d] va[%p] pa[%pad]",
 		__func__, task->job.jobid, comp->id, ccfg->pipe,
 		dest->pq_config.en_hdr, task->pq_task->hdr_hist[pipe]->va,
-		task->pq_task->hdr_hist[pipe]->pa);
+		&task->pq_task->hdr_hist[pipe]->pa);
 
 	mml_pq_rb_msg("%s job_id[%d] hist[0~4]={%08x, %08x, %08x, %08x, %08x} hist[57]=[%08x]",
 		__func__, task->job.jobid,
@@ -1263,12 +1263,12 @@ static s32 dbg_get(char *buf, const struct kernel_param *kp)
 			struct mml_comp *comp = &dbg_probed_components[i]->comp;
 
 			length += snprintf(buf + length, PAGE_SIZE - length,
-				"  - [%d] mml comp_id: %d.%d @%08x name: %s bound: %d\n", i,
-				comp->id, comp->sub_idx, comp->base_pa,
+				"  - [%d] mml comp_id: %d.%d @%pa name: %s bound: %d\n", i,
+				comp->id, comp->sub_idx, &comp->base_pa,
 				comp->name ? comp->name : "(null)", comp->bound);
 			length += snprintf(buf + length, PAGE_SIZE - length,
-				"  -         larb_port: %d @%08x pw: %d clk: %d\n",
-				comp->larb_port, comp->larb_base,
+				"  -         larb_port: %d @%pa pw: %d clk: %d\n",
+				comp->larb_port, &comp->larb_base,
 				comp->pw_cnt, comp->clk_cnt);
 			length += snprintf(buf + length, PAGE_SIZE - length,
 				"  -     ddp comp_id: %d bound: %d\n",

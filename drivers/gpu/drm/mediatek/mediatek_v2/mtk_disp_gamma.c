@@ -980,8 +980,8 @@ void mtk_gamma_regdump(void)
 	void __iomem  *baddr = default_comp->regs;
 	int k;
 
-	DDPDUMP("== %s REGS:0x%x ==\n", mtk_dump_comp_str(default_comp),
-			default_comp->regs_pa);
+	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(default_comp),
+			&default_comp->regs_pa);
 	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(default_comp));
 	for (k = 0; k <= 0xff0; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
@@ -993,8 +993,8 @@ void mtk_gamma_regdump(void)
 	DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(default_comp));
 	if (default_comp->mtk_crtc->is_dual_pipe && default_comp1) {
 		baddr = default_comp1->regs;
-		DDPDUMP("== %s REGS:0x%x ==\n", mtk_dump_comp_str(default_comp1),
-				default_comp1->regs_pa);
+		DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(default_comp1),
+				&default_comp1->regs_pa);
 		DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(default_comp1));
 		for (k = 0; k <= 0xff0; k += 16) {
 			DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,

@@ -2245,7 +2245,7 @@ static int probe(struct platform_device *pdev)
 	priv->smi_larb_con = priv->comp.larb_base +
 		SMI_LARB_NON_SEC_CON + priv->comp.larb_port * 4;
 	mutex_init(&priv->sram_mutex);
-	mml_log("comp(rdma) %u smi larb con %#lx", priv->comp.id, priv->smi_larb_con);
+	mml_log("comp(rdma) %u smi larb con %pa", priv->comp.id, &priv->smi_larb_con);
 
 	if (of_property_read_u16(dev->of_node, "event-frame-done",
 				 &priv->event_eof))
@@ -2353,8 +2353,8 @@ static s32 dbg_get(char *buf, const struct kernel_param *kp)
 			struct mml_comp *comp = &dbg_probed_components[i]->comp;
 
 			length += snprintf(buf + length, PAGE_SIZE - length,
-				"  - [%d] mml comp_id: %d.%d @%08x name: %s bound: %d\n", i,
-				comp->id, comp->sub_idx, comp->base_pa,
+				"  - [%d] mml comp_id: %d.%d @%pa name: %s bound: %d\n", i,
+				comp->id, comp->sub_idx, &comp->base_pa,
 				comp->name ? comp->name : "(null)", comp->bound);
 			length += snprintf(buf + length, PAGE_SIZE - length,
 				"  -         larb_port: %d @%llx pw: %d clk: %d\n",

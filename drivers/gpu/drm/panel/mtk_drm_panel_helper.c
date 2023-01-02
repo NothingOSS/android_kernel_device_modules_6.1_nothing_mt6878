@@ -411,7 +411,7 @@ static int parse_lcm_ops_func_cmd(struct mtk_lcm_ops_data *lcm_op, u8 *dts,
 		LCM_KZALLOC(lcm_op->param.buf_runtime_data.id,
 			lcm_op->param.buf_runtime_data.id_len + 1, GFP_KERNEL);
 		if (lcm_op->param.buf_runtime_data.id == NULL) {
-			DDPPR_ERR("%s,%d: failed to allocate id, %u\n",
+			DDPPR_ERR("%s,%d: failed to allocate id, %lu\n",
 				__func__, __LINE__, lcm_op->param.buf_runtime_data.id_len);
 			return -ENOMEM;
 		}
@@ -427,7 +427,7 @@ static int parse_lcm_ops_func_cmd(struct mtk_lcm_ops_data *lcm_op, u8 *dts,
 		LCM_KZALLOC(lcm_op->param.buf_runtime_data.data,
 			lcm_op->param.buf_runtime_data.data_len + 1, GFP_KERNEL);
 		if (lcm_op->param.buf_runtime_data.data == NULL) {
-			DDPPR_ERR("%s,%d: failed to allocate data, %u\n",
+			DDPPR_ERR("%s,%d: failed to allocate data, %lu\n",
 				__func__, __LINE__, lcm_op->param.buf_runtime_data.data_len);
 			return -ENOMEM;
 		}
@@ -805,7 +805,7 @@ int parse_lcm_common_ops_func(struct device_node *np,
 			__func__, __LINE__, func, ret);
 	DDPDUMP("%s, %d, func:%s-%u,list:%s-%u\n",
 		__func__, __LINE__,
-		func, ret, *list_name, *list_len);
+		func, ret, list_name, *list_len);
 
 	return 0;
 }
@@ -1270,10 +1270,10 @@ static void dump_lcm_ops_func_cmd(struct mtk_lcm_ops_data *lcm_op,
 				lcm_op->param.buf_con_data.data_len, "   data");
 		break;
 	case MTK_LCM_CMD_TYPE_WRITE_BUFFER_RUNTIME_INPUT:
-		DDPDUMP("[%s-%u]:%s,%s, dts:%u,id_cnt:%u,data_cnt:%u,flag:0x%x\n",
+		DDPDUMP("[%s-%u]:%s,%s, dts:%u,id_cnt:%lu,data_cnt:%lu,flag:0x%x\n",
 			owner, id, func_name, type_name,
 			lcm_op->size, lcm_op->param.buf_runtime_data.id_len,
-			(unsigned int)lcm_op->param.buf_runtime_data.data_len,
+			lcm_op->param.buf_runtime_data.data_len,
 			lcm_op->param.buf_runtime_data.flag);
 		mtk_lcm_dump_u8_array(lcm_op->param.buf_runtime_data.id,
 				lcm_op->param.buf_runtime_data.id_len, "   data");
@@ -1290,7 +1290,7 @@ static void dump_lcm_ops_func_cmd(struct mtk_lcm_ops_data *lcm_op,
 					lcm_op->param.cmd_data.tx_len, "   data");
 		break;
 	case MTK_LCM_CMD_TYPE_READ_BUFFER:
-		DDPDUMP("[%s-%u]:%s,%s,dts:%u,cnt:%u,startid:%u,rx:%u,flag:0x%x\n",
+		DDPDUMP("[%s-%u]:%s,%s,dts:%u,cnt:%u,startid:%u,rx:%lu,flag:0x%x\n",
 			owner, id, func_name, type_name, lcm_op->size,
 			(unsigned int)lcm_op->param.cmd_data.tx_len,
 			lcm_op->param.cmd_data.rx_off,
@@ -1557,7 +1557,7 @@ static int mtk_lcm_update_runtime_input(
 			op->param.buf_runtime_data.name);
 	if (index < 0 || size <= 0 ||
 	    IS_ERR_OR_NULL(data)) {
-		DDPPR_ERR("%s, %d, input:%u invalid id:%d, size:%u or data\n",
+		DDPPR_ERR("%s, %d, input:%u invalid id:%d, size:%lu or data\n",
 			__func__, __LINE__,
 			op->param.buf_runtime_data.name,
 			index, size);
@@ -1565,7 +1565,7 @@ static int mtk_lcm_update_runtime_input(
 	}
 
 	if (count <= 0 || count > size) {
-		DDPPR_ERR("%s:invalid func:%u of count:%u\n",
+		DDPPR_ERR("%s:invalid func:%u of count:%lu\n",
 			__func__, op->type, count);
 		return -EINVAL;
 	}
@@ -1574,7 +1574,7 @@ static int mtk_lcm_update_runtime_input(
 	for (i = 0; i < count; i++) {
 		id = op->param.buf_runtime_data.id[i];
 		if (id >= size) {
-			DDPPR_ERR("%s:invalid id:%u of table:%u\n",
+			DDPPR_ERR("%s:invalid id:%u of table:%lu\n",
 				__func__, id, size);
 			return -EINVAL;
 		}
@@ -1613,7 +1613,7 @@ static int mtk_lcm_create_operation_group(struct mtk_panel_para_table *group,
 			size = op->param.buf_data.data_len;
 			if (IS_ERR_OR_NULL(op->param.buf_data.data) ||
 			    size <= 0 || size > ARRAY_SIZE(group[id].para_list)) {
-				DDPPR_ERR("%s,%d, len:%u, array size:%u\n",
+				DDPPR_ERR("%s,%d, len:%lu, array size:%lu\n",
 					__func__, __LINE__, size,
 					ARRAY_SIZE(group[id].para_list));
 				return -EINVAL;
@@ -1642,7 +1642,7 @@ static int mtk_lcm_create_operation_group(struct mtk_panel_para_table *group,
 					op->param.buf_con_data.condition,
 					*(u8 *)input->condition[index].data);
 				if (size > ARRAY_SIZE(group[id].para_list)) {
-					DDPPR_ERR("%s, %d, invalid size, %u\n",
+					DDPPR_ERR("%s, %d, invalid size, %lu\n",
 						__func__, __LINE__, size);
 					return -EINVAL;
 				}
@@ -1654,7 +1654,7 @@ static int mtk_lcm_create_operation_group(struct mtk_panel_para_table *group,
 		case MTK_LCM_CMD_TYPE_WRITE_BUFFER_RUNTIME_INPUT:
 			size = op->param.buf_runtime_data.data_len;
 			if (size > ARRAY_SIZE(group[id].para_list)) {
-				DDPPR_ERR("%s, %d, invalid size, %u\n",
+				DDPPR_ERR("%s, %d, invalid size, %lu\n",
 					__func__, __LINE__, size);
 				return -EINVAL;
 			}
@@ -1858,20 +1858,20 @@ static int mtk_lcm_init_ddic_msg(struct mipi_dsi_msg *msg, unsigned int cmd,
 				msg->type = MIPI_DSI_GENERIC_READ_REQUEST_2_PARAM;
 				break;
 			default:
-				DDPPR_ERR("%s, %d, invalid read type, rx:%u, tx:%u\n",
+				DDPPR_ERR("%s, %d, invalid read type, rx:%lu, tx:%lu\n",
 						__func__, __LINE__, msg->rx_len, msg->tx_len);
 				ret = -EINVAL;
 				break;
 			}
 		}
 	} else if (msg->tx_buf == NULL) {
-		DDPPR_ERR("%s, %d, invalid write buffer, rx:%u, tx:%u\n",
+		DDPPR_ERR("%s, %d, invalid write buffer, rx:%lu, tx:%lu\n",
 			__func__, __LINE__, msg->rx_len, msg->tx_len);
 		ret = -EINVAL;
 	} else if (*((unsigned char *)msg->tx_buf) < 0xB0) {
 		switch (msg->tx_len) {
 		case 0:
-			DDPPR_ERR("%s, %d, invalid dcs type, rx:%u, tx:%u\n",
+			DDPPR_ERR("%s, %d, invalid dcs type, rx:%lu, tx:%lu\n",
 				__func__, __LINE__, msg->rx_len, msg->tx_len);
 			ret = -EINVAL;
 			break;

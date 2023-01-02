@@ -499,7 +499,7 @@ mtk_oddmr_load_buffer(struct drm_crtc *crtc,
 		DDPMSG("%s gem create fail\n", __func__);
 		return NULL;
 	}
-	DDPMSG("%s gem create %p iommu %llx size %u\n", __func__, gem->kvaddr, gem->dma_addr, size);
+	DDPMSG("%s gem create %p iommu %llx size %lu\n", __func__, gem->kvaddr, gem->dma_addr, size);
 	if ((addr != NULL) && (!secu))
 		memcpy(gem->kvaddr, addr, size);
 
@@ -1431,7 +1431,7 @@ int mtk_oddmr_analysis(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_oddmr *oddmr_priv = comp_to_oddmr(comp);
 
-	DDPDUMP("== %s ANALYSIS:0x%x ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
+	DDPDUMP("== %s ANALYSIS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 	DDPDUMP("od_support %d dmr_support %d\n", is_oddmr_od_support, is_oddmr_dmr_support);
 	DDPDUMP("od_en %d, dmr_en %d, od_state %d, dmr_state %d\n",
 			oddmr_priv->od_enable,
@@ -1462,7 +1462,7 @@ void mtk_oddmr_dump(struct mtk_ddp_comp *comp)
 
 	if (g_oddmr_dump_en == false)
 		return;
-	DDPDUMP("== %s REGS:0x%x ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
+	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 	DDPDUMP("-- Start dump oddmr registers --\n");
 	mbaddr = baddr;
 	DDPDUMP("ODDMR_TOP: 0x%p\n", mbaddr);

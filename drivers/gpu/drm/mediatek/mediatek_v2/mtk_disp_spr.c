@@ -1205,7 +1205,7 @@ void mtk_spr_dump(struct mtk_ddp_comp *comp)
 	else
 		num = 0x350;
 
-	DDPDUMP("== %s REGS:0x%x ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
+	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 	for (i = 0; i < num; i += 16) {
 		DDPDUMP("0x%x: 0x%08x 0x%08x 0x%08x 0x%08x\n", i,
 			readl(baddr + i), readl(baddr + i + 0x4),
@@ -1233,7 +1233,7 @@ int mtk_spr_analysis(struct mtk_ddp_comp *comp)
 		return 0;
 	}
 
-	DDPDUMP("== %s ANALYSIS:0x%x ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
+	DDPDUMP("== %s ANALYSIS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 	DDPDUMP("en=%d, spr_bypass=%d\n",
 		DISP_REG_GET_FIELD(CON_FLD_SPR_EN,
 			baddr + DISP_REG_SPR_EN),

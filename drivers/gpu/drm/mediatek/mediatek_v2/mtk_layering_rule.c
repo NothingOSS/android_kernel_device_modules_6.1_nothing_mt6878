@@ -804,7 +804,7 @@ static int layering_get_valid_hrt(struct drm_crtc *crtc,
 		dvfs_bw = 200;
 	}
 
-	DDPINFO("disp %u get avail HRT BW:%u : %llu %llu\n",
+	DDPINFO("disp %u get avail HRT BW:%llu : %llu %llu\n",
 		disp_idx, avail_bw, dvfs_bw, tmp);
 
 	return dvfs_bw;

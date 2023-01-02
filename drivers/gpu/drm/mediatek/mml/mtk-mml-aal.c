@@ -633,8 +633,9 @@ static s32 aal_config_tile(struct mml_comp *comp, struct mml_task *task,
 	aal_hist_left_start =
 		(tile->out.xs > aal_frm->out_hist_xs) ? tile->out.xs : aal_frm->out_hist_xs;
 
-	mml_pq_msg("%s jobid[%d] engine_id[%d] idx[%d] pipe[%d] pkt[%08x]",
-		__func__, task->job.jobid, comp->id, idx, ccfg->pipe, pkt);
+	mml_pq_msg("%s jobid[%d] engine_id[%d] idx[%d] pipe[%d] pkt[%08lx]",
+		__func__, task->job.jobid, comp->id, idx, ccfg->pipe,
+		(unsigned long)pkt);
 
 	mml_pq_msg("%s %d: %d: %d: [input] [xs, xe] = [%d, %d], [ys, ye] = [%d, %d]",
 		__func__, task->job.jobid, comp->id, idx, tile->in.xs,

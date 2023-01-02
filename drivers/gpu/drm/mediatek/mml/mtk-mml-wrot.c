@@ -2446,8 +2446,8 @@ static int probe(struct platform_device *pdev)
 	if (ret)
 		dev_err(dev, "Failed to add component: %d\n", ret);
 
-	mml_log("wrot%d (%u) smi larb con %#lx event eof %hu sync %hu/%hu/%hu",
-		priv->idx, priv->comp.id, priv->smi_larb_con,
+	mml_log("wrot%d (%u) smi larb con %pa event eof %hu sync %hu/%hu/%hu",
+		priv->idx, priv->comp.id, &priv->smi_larb_con,
 		priv->event_eof,
 		priv->event_bufa,
 		priv->event_bufb,
@@ -2544,8 +2544,8 @@ static s32 dbg_get(char *buf, const struct kernel_param *kp)
 			struct mml_comp *comp = &dbg_probed_components[i]->comp;
 
 			length += snprintf(buf + length, PAGE_SIZE - length,
-				"  - [%d] mml comp_id: %d.%d @%08x name: %s bound: %d\n", i,
-				comp->id, comp->sub_idx, comp->base_pa,
+				"  - [%d] mml comp_id: %d.%d @%pa name: %s bound: %d\n", i,
+				comp->id, comp->sub_idx, &comp->base_pa,
 				comp->name ? comp->name : "(null)", comp->bound);
 			length += snprintf(buf + length, PAGE_SIZE - length,
 				"  -         larb_port: %d @%llx pw: %d clk: %d\n",

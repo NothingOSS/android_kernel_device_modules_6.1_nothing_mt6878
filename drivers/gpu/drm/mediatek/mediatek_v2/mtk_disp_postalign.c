@@ -79,7 +79,7 @@ void mtk_postalign_dump(struct mtk_ddp_comp *comp)
 		return;
 	}
 
-	DDPDUMP("== %s REGS:0x%x ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
+	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 }
 
 int mtk_postalign_analysis(struct mtk_ddp_comp *comp)
@@ -94,7 +94,7 @@ int mtk_postalign_analysis(struct mtk_ddp_comp *comp)
 		return 0;
 	}
 
-	DDPDUMP("== %s ANALYSIS:0x%x ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
+	DDPDUMP("== %s ANALYSIS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 	return 0;
 }
 

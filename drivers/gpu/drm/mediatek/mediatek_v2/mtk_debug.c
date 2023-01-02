@@ -991,8 +991,8 @@ static void set_cwb_info_buffer(struct drm_crtc *crtc, int format)
 	cwb_info->buffer[0].fb  =
 		mtk_drm_framebuffer_create(
 		crtc->dev, &mode, &mtk_gem->base);
-	DDPMSG("[capture] b[0].addr_mva:0x%x, addr_va:0x%llx\n",
-			cwb_info->buffer[0].addr_mva,
+	DDPMSG("[capture] b[0].addr_mva:0x%pad, addr_va:0x%llx\n",
+			&cwb_info->buffer[0].addr_mva,
 			cwb_info->buffer[0].addr_va);
 
 	mtk_gem = mtk_drm_gem_create(
@@ -1003,8 +1003,8 @@ static void set_cwb_info_buffer(struct drm_crtc *crtc, int format)
 	cwb_info->buffer[1].fb  =
 		mtk_drm_framebuffer_create(
 		crtc->dev, &mode, &mtk_gem->base);
-	DDPMSG("[capture] b[1].addr_mva:0x%x, addr_va:0x%llx\n",
-			cwb_info->buffer[1].addr_mva,
+	DDPMSG("[capture] b[1].addr_mva:0x%pad, addr_va:0x%llx\n",
+			&cwb_info->buffer[1].addr_mva,
 			cwb_info->buffer[1].addr_va);
 }
 
@@ -1576,8 +1576,8 @@ int mtk_dprec_mmp_dump_cwb_buffer(struct drm_crtc *crtc,
 static void user_copy_done_function(void *buffer,
 	enum CWB_BUFFER_TYPE type)
 {
-	DDPMSG("[capture] I get buffer:0x%x, type:%d\n",
-			buffer, type);
+	DDPMSG("[capture] I get buffer:0x%lx, type:%d\n",
+			(unsigned long)buffer, type);
 	complete(&cwb_cmp);
 }
 
@@ -1842,8 +1842,8 @@ bool mtk_drm_set_cwb_user_buf(void *user_buffer, enum CWB_BUFFER_TYPE type)
 	cwb_info->type = type;
 	cwb_info->user_buffer = user_buffer;
 	DDP_MUTEX_UNLOCK(&mtk_crtc->cwb_lock, __func__, __LINE__);
-	DDPMSG("[capture] User set buffer:0x%x, type:%d\n",
-			user_buffer, type);
+	DDPMSG("[capture] User set buffer:0x%lx, type:%d\n",
+			(unsigned long)user_buffer, type);
 
 	return true;
 }
@@ -2087,9 +2087,9 @@ static void mtk_get_panels_info(void)
 	mtk_ddp_comp_io_cmd(output_comp, NULL, GET_ALL_CONNECTOR_PANEL_NAME, panel_ctx);
 
 	for (i = 0 ; i < panel_ctx->connector_cnt ; ++i)
-		DDPMSG("%s get connector_id %d, panel_name %s, panel_id %u\n", __func__,
+		DDPMSG("%s get connector_id %d, panel_name %s, panel_id %lu\n", __func__,
 				panel_ctx->connector_obj_id[i], panel_ctx->panel_name[i],
-				panel_ctx->panel_id);
+				(unsigned long)panel_ctx->panel_id);
 
 out0:
 	for (i = 0 ; i < panel_ctx->connector_cnt ; ++i)
@@ -2124,7 +2124,7 @@ int mtk_drm_add_cb_data(struct cb_data_store *cb_data, unsigned int crtc_id)
 		return -1;
 	}
 
-	DDPINFO("%s id %d data0x%08x\n", __func__, crtc_id, cb_data->data.data);
+	DDPINFO("%s id %d data0x%08lx\n", __func__, crtc_id, (unsigned long)cb_data->data.data);
 	list_add_tail(&cb_data->link, &cb_data_list[crtc_id]);
 	spin_unlock_irqrestore(&cb_data_clock_lock, flags);
 
@@ -2166,7 +2166,8 @@ void mtk_drm_del_cb_data(struct cmdq_cb_data data, unsigned int crtc_id)
 	list_for_each_entry(tmp_cb_data, &cb_data_list[crtc_id], link) {
 		if (!memcmp(&tmp_cb_data->data, &data,
 				sizeof(struct cmdq_cb_data))) {
-			DDPINFO("%s id %d data0x%08x\n", __func__, crtc_id, data.data);
+			DDPINFO("%s id %d data0x%08lx\n", __func__, crtc_id,
+					(unsigned long)data.data);
 			list_del_init(&tmp_cb_data->link);
 			break;
 		}
@@ -2691,7 +2692,7 @@ static void process_dbg_opt(const char *opt)
 			if ((normal_layer_compress_ratio_tb[i].key_value) &&
 					(normal_layer_compress_ratio_tb[i].average_ratio != 0) &&
 					(normal_layer_compress_ratio_tb[i].peak_ratio != 0))
-				DDPINFO("BWMT===== %4d   %u   %lu   %u   %u   %u   %u =====\n", i,
+				DDPINFO("BWMT===== %4d   %u   %llu   %u   %u   %u   %u =====\n", i,
 					normal_layer_compress_ratio_tb[i].frame_idx,
 					normal_layer_compress_ratio_tb[i].key_value,
 					normal_layer_compress_ratio_tb[i].average_ratio,
@@ -2705,7 +2706,7 @@ static void process_dbg_opt(const char *opt)
 			if ((fbt_layer_compress_ratio_tb[i].key_value) &&
 					(fbt_layer_compress_ratio_tb[i].average_ratio != 0) &&
 					(fbt_layer_compress_ratio_tb[i].peak_ratio != 0))
-				DDPINFO("BWMT===== %4d   %u   %lu   %u   %u   %u   %u =====\n", i,
+				DDPINFO("BWMT===== %4d   %u   %llu   %u   %u   %u   %u =====\n", i,
 					fbt_layer_compress_ratio_tb[i].frame_idx,
 					fbt_layer_compress_ratio_tb[i].key_value,
 					fbt_layer_compress_ratio_tb[i].average_ratio,
@@ -2719,7 +2720,7 @@ static void process_dbg_opt(const char *opt)
 			if ((unchanged_compress_ratio_table[i].key_value) &&
 					(unchanged_compress_ratio_table[i].average_ratio != 0) &&
 					(unchanged_compress_ratio_table[i].peak_ratio != 0))
-				DDPINFO("BWMT===== %4d   %u   %lu   %u   %u   %u   %u =====\n", i,
+				DDPINFO("BWMT===== %4d   %u   %llu   %u   %u   %u   %u =====\n", i,
 					unchanged_compress_ratio_table[i].frame_idx,
 					unchanged_compress_ratio_table[i].key_value,
 					unchanged_compress_ratio_table[i].average_ratio,
@@ -2860,7 +2861,7 @@ static void process_dbg_opt(const char *opt)
 		u8 val4, val5, val6;
 		unsigned int cmd_num, ret;
 
-		ret = sscanf(opt, "ddic_page_switch:%d,%x,%x,%x,%x,%x,%x,%x\n",
+		ret = sscanf(opt, "ddic_page_switch:%d,%c,%c,%c,%c,%c,%c,%c\n",
 				&cmd_num, &addr, &val1, &val2, &val3,
 				&val4, &val5, &val6);
 
@@ -2878,7 +2879,7 @@ static void process_dbg_opt(const char *opt)
 		u8 addr;
 		unsigned int ret;
 
-		ret = sscanf(opt, "read_cm:%x\n", &addr);
+		ret = sscanf(opt, "read_cm:%c\n", &addr);
 		if (ret != 1) {
 			DDPPR_ERR("%d error to parse cmd %s\n",
 				__LINE__, opt);
@@ -3980,7 +3981,7 @@ int disp_met_stop_set(void *data, u64 val)
 	DDPMSG("    1: underrun\n");
 	DDPMSG("    2: oddmr err\n");
 	DDPMSG("    3: others\n");
-	DDPMSG("%s: update met stop condition from:%u to %lu\n",
+	DDPMSG("%s: update met stop condition from:%u to %llu\n",
 		__func__, disp_met_condition, val);
 
 	disp_met_condition = val;
@@ -4018,7 +4019,7 @@ static int disp_met_stop_get(void *data, u64 *val)
 		break;
 	}
 
-	DDPMSG("%s: met stop at condition:%u:%lu\n",
+	DDPMSG("%s: met stop at condition:%u:%llu\n",
 		__func__, disp_met_condition, *val);
 	return 0;
 }

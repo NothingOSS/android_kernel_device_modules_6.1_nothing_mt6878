@@ -704,7 +704,7 @@ void mtk_dsc_dump(struct mtk_ddp_comp *comp)
 		return;
 	}
 
-	DDPDUMP("== %s REGS:0x%x ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
+	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 
 	DDPDUMP("(0x000)DSC_START=0x%x\n", readl(baddr + DISP_REG_DSC_CON));
 	DDPDUMP("(0x020)DSC_SLICE_WIDTH=%d\n",
@@ -732,7 +732,7 @@ int mtk_dsc_analysis(struct mtk_ddp_comp *comp)
 		return 0;
 	}
 
-	DDPDUMP("== %s ANALYSIS:0x%x ==\n", mtk_dump_comp_str(comp), comp->regs);
+	DDPDUMP("== %s ANALYSIS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs);
 	DDPDUMP("en=%d, pic_w=%d, pic_h=%d, slice_w=%d, bypass=%d\n",
 	DISP_REG_GET_FIELD(CON_FLD_DSC_EN,
 		baddr + DISP_REG_DSC_CON),

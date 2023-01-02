@@ -621,7 +621,7 @@ static void check_gles_change(struct debug_gles_range *dbg_gles, const int line,
 			      "(%d:%d,%d)", line, dbg_gles->head, dbg_gles->tail);
 	}
 	if (print && dbg_gles->written)
-		DDPINFO("%s:%s\n", __func__, &dbg_gles->msg);
+		DDPINFO("%s:%s\n", __func__, dbg_gles->msg);
 }
 
 static void dump_disp_trace(struct drm_mtk_layering_info *disp_info)
@@ -1666,7 +1666,7 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 			MAX_FRAME_RATIO_NUMBER;
 		int i = 0;
 
-		DDPDBG("BWM: line:%d fbt layer frame_idx:%u key:%lu\n",
+		DDPDBG("BWM: line:%d fbt layer frame_idx:%u key:%llu\n",
 				__LINE__, frame_idx, key_value);
 #ifdef HRT_DEBUG_LEVEL1
 		print_bwm_table();
@@ -1678,7 +1678,7 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 					(fbt_layer_compress_ratio_tb[i].peak_ratio <= 1000)) {
 				weight *= fbt_layer_compress_ratio_tb[i].peak_ratio;
 				do_div(weight, 1000);
-				DDPDBG("BWM: fbt layer frame_idx:%u key:%lu\n",
+				DDPDBG("BWM: fbt layer frame_idx:%u key:%llu\n",
 					frame_idx, key_value);
 				DDPDBG("BWM: ratio:%u weight:%d\n",
 					fbt_layer_compress_ratio_tb[i].peak_ratio, weight);
@@ -1695,7 +1695,7 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 			MAX_FRAME_RATIO_NUMBER;
 		int i = 0;
 
-		DDPDBG("BWM: line:%d fbt layer frame_idx:%u key:%lu\n",
+		DDPDBG("BWM: line:%d fbt layer frame_idx:%u key:%llu\n",
 				__LINE__, frame_idx, key_value);
 #ifdef HRT_DEBUG_LEVEL1
 		print_bwm_table();
@@ -1710,7 +1710,7 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 				else
 					weight *= unchanged_compress_ratio_table[i].peak_ratio;
 				do_div(weight, 1000);
-				DDPDBG("BWM: unchanged f_idx:%u alloc_id:%lu ratio:%u weight:%d\n",
+				DDPDBG("BWM: unchanged f_idx:%u alloc_id:%llu ratio:%u weight:%d\n",
 					frame_idx, layer_info->buffer_alloc_id,
 					unchanged_compress_ratio_table[i].peak_ratio, weight);
 				layer_info->layer_caps |= MTK_DISP_UNCHANGED_RATIO_VALID;
@@ -1727,7 +1727,7 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 				else
 					weight *= normal_layer_compress_ratio_tb[i].peak_ratio;
 				do_div(weight, 1000);
-				DDPDBG("BWM:f_idx:%u alloc_id:%lu key:%lu ratio:%u weight:%d\n",
+				DDPDBG("BWM:f_idx:%u alloc_id:%llu key:%llu ratio:%u weight:%d\n",
 					frame_idx, layer_info->buffer_alloc_id, key_value,
 					normal_layer_compress_ratio_tb[i].peak_ratio, weight);
 				layer_info->layer_caps |= MTK_DISP_UNCHANGED_RATIO_VALID;
@@ -3785,7 +3785,7 @@ static void register_slbc_cb(struct drm_device *dev, struct mtk_drm_crtc *mtk_cr
 
 	/* mt6886 share sram with other modules, need register cb for this*/
 	if (private->data->mmsys_id == MMSYS_MT6886) {
-		DDPMSG("%s ddd dev:0x%x\n", __func__, dev);
+		DDPMSG("%s ddd dev:0x%lx\n", __func__, (unsigned long)dev);
 		d.uid = UID_DISP;
 		d.type = TP_BUFFER;
 		d.user_cb_data = mtk_crtc;

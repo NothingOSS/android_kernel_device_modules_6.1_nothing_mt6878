@@ -896,7 +896,7 @@ static void mtk_ddp_comp_set_larb(struct device *dev, struct device_node *node,
 		larb_cons[i] =
 			res.start + MTK_M4U_TO_PORT(larb_args.args[0]) * 4 + SMI_LARB_NON_SEC_CON;
 
-		DDPMSG("i=%d 0x%x\n", i, larb_cons[i]);
+		DDPMSG("i=%d 0x%pa\n", i, &larb_cons[i]);
 		DDPMSG("%s: %s need larb device, smi-id:%d\n",
 			__func__, mtk_dump_comp_str(comp), larb_ids[i]);
 	}

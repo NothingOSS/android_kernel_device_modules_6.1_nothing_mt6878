@@ -193,7 +193,7 @@ int rt4831a_backlight_event(struct notifier_block *nb, unsigned long event,
 		break;
 	}
 
-	DDPDBG("%s-- event:0x%x, brightness:0x%x, backlight status:0x%x\n",
+	DDPDBG("%s-- event:0x%lx, brightness:0x%x, backlight status:0x%x\n",
 		__func__, event, led_conf->cdev.brightness,
 		atomic_read(&ctx_rt4831a.backlight_status));
 	return NOTIFY_DONE;
@@ -214,8 +214,8 @@ static int rt4831a_reset(int on)
 		return PTR_ERR(ctx_rt4831a.reset_gpio);
 	}
 	gpiod_set_value(ctx_rt4831a.reset_gpio, on);
-	DDPINFO("%s, gpio:0x%x, on:%d\n",
-		__func__, ctx_rt4831a.reset_gpio, on);
+	DDPINFO("%s, gpio:0x%lx, on:%d\n",
+		__func__, (unsigned long)ctx_rt4831a.reset_gpio, on);
 	devm_gpiod_put(ctx_rt4831a.dev, ctx_rt4831a.reset_gpio);
 
 	return 0;

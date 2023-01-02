@@ -2490,7 +2490,7 @@ void dump_lcm_params_dsi(struct mtk_lcm_params_dsi *params,
 	DDPDUMP("phy:%u,lanes:%u,density:%u,format:%u\n",
 		params->phy_type, params->lanes,
 		params->density, params->format);
-	DDPDUMP("default_flag:0x%lx, doze_on_flag:0x%lx, doze_off_flag:0x%lx\n",
+	DDPDUMP("default_flag:0x%llx, doze_on_flag:0x%llx, doze_off_flag:0x%llx\n",
 		params->mode_flags, params->mode_flags_doze_on,
 		params->mode_flags_doze_off);
 

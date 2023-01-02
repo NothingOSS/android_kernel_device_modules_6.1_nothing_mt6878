@@ -94,7 +94,7 @@ int mtk_panel_dsi_dcs_write(struct mipi_dsi_device *dsi_dev,
 
 	ret = mipi_dsi_dcs_write(dsi_dev, cmd, data, len);
 	if (ret < 0) {
-		dev_err(ctx_dsi->dev, "error %d write dcs cmd:(%#x)\n",
+		dev_err(ctx_dsi->dev, "error %ld write dcs cmd:(%#x)\n",
 			ret, cmd);
 		atomic_set(&ctx_dsi->error, ret);
 	}
@@ -114,7 +114,7 @@ int mtk_panel_dsi_dcs_read(struct mipi_dsi_device *dsi_dev,
 	ret = mipi_dsi_dcs_read(dsi_dev, cmd, data, len);
 	if (ret < 0) {
 		dev_err(ctx_dsi->dev,
-			"error %d reading dcs cmd:(0x%x)\n", ret, cmd);
+			"error %ld reading dcs cmd:(0x%x)\n", ret, cmd);
 		atomic_set(&ctx_dsi->error, ret);
 	}
 
@@ -134,7 +134,7 @@ int mtk_panel_dsi_dcs_read_buffer(struct mipi_dsi_device *dsi_dev,
 	ret = mipi_dsi_generic_read(dsi_dev, data_in,
 			len_in, data_out, len_out);
 	if (ret < 0) {
-		dev_err(ctx_dsi->dev, "error %d reading buffer seq:(%p)\n",
+		dev_err(ctx_dsi->dev, "error %ld reading buffer seq:(%p)\n",
 			ret, data_in);
 		atomic_set(&ctx_dsi->error, ret);
 	}

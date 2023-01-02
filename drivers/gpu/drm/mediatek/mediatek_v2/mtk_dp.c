@@ -243,7 +243,7 @@ bool mdrv_DPTx_AuxWrite_Bytes(struct mtk_dp *mtk_dp, u8 ubCmd,
 			return true;
 	} while (ubRetryLimit > 0);
 
-	DPTXERR("Aux Write Fail: cmd = %d, addr = 0x%x, len = %d\n",
+	DPTXERR("Aux Write Fail: cmd = %d, addr = 0x%x, len = %lu\n",
 		ubCmd, usDPCDADDR, ubLength);
 
 	return false;
@@ -282,10 +282,10 @@ bool mdrv_DPTx_AuxWrite_DPCD(struct mtk_dp *mtk_dp, u8 ubCmd,
 				pData);
 
 	if (mtk_dp_debug_get()) {
-		DPTXDBG("Aux write cmd = %d, addr = 0x%x, len = %d, %s\n",
+		DPTXDBG("Aux write cmd = %d, addr = 0x%x, len = %lu, %s\n",
 			ubCmd, usDPCDADDR, ubLength, bRet ? "Success" : "Fail");
 		for (loop = 0; loop < ubLength; loop++)
-			DPTXDBG("DPCD%x:0x%x", usDPCDADDR + loop, pData[loop]);
+			DPTXDBG("DPCD%lx:0x%x", usDPCDADDR + loop, pData[loop]);
 	}
 
 	return bRet;
@@ -317,7 +317,7 @@ bool mdrv_DPTx_AuxRead_Bytes(struct mtk_dp *mtk_dp, u8 ubCmd,
 		ubRetryLimit--;
 	} while (ubRetryLimit > 0);
 
-	DPTXERR("Aux Read Fail: cmd = %d, addr = 0x%x, len = %d\n",
+	DPTXERR("Aux Read Fail: cmd = %d, addr = 0x%x, len = %lu\n",
 		ubCmd, usDPCDADDR, ubLength);
 
 	return false;
@@ -358,10 +358,10 @@ bool mdrv_DPTx_AuxRead_DPCD(struct mtk_dp *mtk_dp, u8 ubCmd,
 				pRxBuf);
 
 	if (mtk_dp_debug_get()) {
-		DPTXDBG("Aux Read cmd = %d, addr = 0x%x, len = %d, %s\n",
+		DPTXDBG("Aux Read cmd = %d, addr = 0x%x, len = %lu, %s\n",
 			ubCmd, usDPCDADDR, ubLength, bRet ? "Success" : "Fail");
 		for (loop = 0; loop < ubLength; loop++)
-			DPTXDBG("DPCD%x:0x%x", usDPCDADDR + loop, pRxBuf[loop]);
+			DPTXDBG("DPCD%lx:0x%x", usDPCDADDR + loop, pRxBuf[loop]);
 	}
 
 	return bRet;
@@ -466,7 +466,7 @@ void mdrv_DPTx_SetSDP_DownCntinit(struct mtk_dp *mtk_dp,
 		break;
 	}
 
-	DPTXMSG("PixRateKhz = %d SDP_DC_Init = %x\n",
+	DPTXMSG("PixRateKhz = %lu SDP_DC_Init = %x\n",
 		mtk_dp->info.DPTX_OUTBL.PixRateKhz, SDP_Down_Cnt_Init);
 
 	mhal_DPTx_SetSDP_DownCntinit(mtk_dp, SDP_Down_Cnt_Init);
@@ -3732,7 +3732,7 @@ static ssize_t mtk_dp_aux_transfer(struct drm_dp_aux *mtk_aux,
 static void mtk_dp_aux_init(struct mtk_dp *mtk_dp)
 {
 	drm_dp_aux_init(&mtk_dp->aux);
-	DPTXMSG("aux hw_mutex = 0x%x\n", &mtk_dp->aux.hw_mutex);
+	DPTXMSG("aux hw_mutex = 0x%lx\n", (unsigned long)&mtk_dp->aux.hw_mutex);
 
 	mtk_dp->aux.name = kasprintf(GFP_KERNEL, "DPDDC-MTK");
 	mtk_dp->aux.transfer = mtk_dp_aux_transfer;
@@ -3745,7 +3745,7 @@ void mtk_dp_test(unsigned int status)
 		return;
 	}
 
-	DPTXMSG("g_mtk_dp = 0x%x\n", g_mtk_dp);
+	DPTXMSG("g_mtk_dp = 0x%lx\n", (unsigned long)g_mtk_dp);
 	mhal_DPTx_SWInterruptEnable(g_mtk_dp, true);
 	mhal_DPTx_SWInterruptSet(g_mtk_dp, status);
 }

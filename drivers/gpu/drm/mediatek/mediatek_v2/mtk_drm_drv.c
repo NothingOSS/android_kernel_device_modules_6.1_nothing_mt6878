@@ -1188,7 +1188,8 @@ void mtk_free_mml_submit(struct mml_submit *temp)
 
 	for (i = 0; i < MML_MAX_PLANES && i < temp->buffer.src.cnt; ++i) {
 		if (temp->buffer.src.use_dma &&	temp->buffer.src.dmabuf[i]) {
-			DDPINFO("%s dmabuf:0x%x\n", __func__, temp->buffer.src.dmabuf[i]);
+			DDPINFO("%s dmabuf:0x%lx\n", __func__,
+					(unsigned long)temp->buffer.src.dmabuf[i]);
 			dma_buf_put(temp->buffer.src.dmabuf[i]);
 		}
 	}
@@ -1339,11 +1340,11 @@ static bool _mtk_atomic_mml_plane(struct drm_device *dev,
 
 	submit_kernel->info.act_time = line_time * submit_pq->info.dest[0].data.height;
 
-	DDPINFO("fps=%d vtotal=%d line_time=%d dst_h=%d act_time=%d dma=0x%x src_fmt=%#010x ",
+	DDPINFO("fps=%d vtotal=%d line_time=%d dst_h=%d act_time=%d dma=0x%lx src_fmt=%#010x ",
 			fps, vtotal, line_time,
 			submit_pq->info.dest[0].data.height,
 			submit_kernel->info.act_time,
-			submit_kernel->buffer.src.dmabuf[0],
+			(unsigned long)submit_kernel->buffer.src.dmabuf[0],
 			submit_kernel->info.src.format);
 	DDPINFO("plane=%d\n", submit_kernel->buffer.src.cnt);
 
@@ -5362,10 +5363,10 @@ void mtk_drm_wait_mml_submit_done(struct mtk_mml_cb_para *cb_para)
 {
 	int ret = 0;
 
-	DDPINFO("%s+ 0x%x 0x%x, 0x%x\n", __func__,
-		cb_para,
-		&(cb_para->mml_job_submit_wq),
-		&(cb_para->mml_job_submit_done));
+	DDPINFO("%s+ 0x%lx 0x%lx, 0x%lx\n", __func__,
+		(unsigned long)cb_para,
+		(unsigned long)&(cb_para->mml_job_submit_wq),
+		(unsigned long)&(cb_para->mml_job_submit_done));
 	ret = wait_event_interruptible(
 		cb_para->mml_job_submit_wq,
 		atomic_read(&cb_para->mml_job_submit_done));
@@ -5409,7 +5410,7 @@ struct mml_drm_ctx *mtk_drm_get_mml_drm_ctx(struct drm_device *dev,
 		goto err_handle_mtk_drm_get_mml_drm_ctx;
 	}
 	priv->mml_ctx = mml_ctx;
-	DDPMSG("%s 2 0x%x", __func__, priv->mml_ctx);
+	DDPMSG("%s 2 0x%lx", __func__, (unsigned long)priv->mml_ctx);
 
 	if (drm_crtc_index(crtc) == 0) {
 		struct mtk_ddp_comp *output_comp = NULL;
@@ -6779,9 +6780,9 @@ SKIP_OVLSYS_CONFIG:
 			if (IS_ERR(private->infra_regs))
 				DDPPR_ERR("%s: infra_ao_base of_iomap failed\n", __func__);
 			else
-				DDPMSG("%s, infra_regs:0x%p, infra_regs_pa:0x%lx\n",
+				DDPMSG("%s, infra_regs:0x%p, infra_regs_pa:0x%pa\n",
 					__func__, (void *)private->infra_regs,
-					private->infra_regs_pa);
+					&private->infra_regs_pa);
 		}
 		of_node_put(infra_node);
 	}

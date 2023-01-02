@@ -51,7 +51,7 @@
 		char tag[MML_PQ_LINK_MAX]; \
 		int len = snprintf(tag, MML_PQ_LINK_MAX, "CRDISPATCH_KEY:%s", module); \
 		if (len >= LINK_MAX) \
-			pr_debug("%s %s len:%d over max:%d\n", \
+			pr_debug("%s %d len:%d over max:%d\n", \
 				__func__, __LINE__, len, MML_PQ_LINK_MAX); \
 			mml_pq_aee(fmt, ##args); \
 			aee_kernel_warning_api(__FILE__, __LINE__, \

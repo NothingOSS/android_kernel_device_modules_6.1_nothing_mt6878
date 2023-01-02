@@ -24,7 +24,7 @@ int mtk_drm_set_lease_info_ioctl(struct drm_device *dev, void *data,
 	int *fd = data;
 
 	if (PTR_ERR_OR_ZERO(fd)) {
-		DDPPR_ERR("%s invalid input fd %x\n", __func__, fd);
+		DDPPR_ERR("%s invalid input fd %lx\n", __func__, (unsigned long)fd);
 		return -EINVAL;
 	}
 
@@ -50,7 +50,7 @@ int mtk_drm_get_lease_info_ioctl(struct drm_device *dev, void *data,
 	int fd;
 
 	if (PTR_ERR_OR_ZERO(ret_fd)) {
-		DDPPR_ERR("%s invalid input fd %x\n", __func__, ret_fd);
+		DDPPR_ERR("%s invalid input fd %lx\n", __func__, (unsigned long)ret_fd);
 		return -EINVAL;
 	}
 

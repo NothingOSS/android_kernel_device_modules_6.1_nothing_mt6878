@@ -552,9 +552,9 @@ static void tdshp_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 	}
 
 
-	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%08x] pkt[%p]",
+	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%pad] pkt[%p]",
 		__func__, task->job.jobid, comp->id, task->pq_task->tdshp_hist[pipe]->va,
-		task->pq_task->tdshp_hist[pipe]->pa, pkt);
+		&task->pq_task->tdshp_hist[pipe]->pa, pkt);
 }
 
 
@@ -676,9 +676,9 @@ static void tdshp_task_done_readback(struct mml_comp *comp, struct mml_task *tas
 	u32 offset = 0, i = 0;
 
 	mml_pq_trace_ex_begin("%s comp[%d]", __func__, comp->id);
-	mml_pq_msg("%s clarity_readback[%d] id[%d] en_sharp[%d] tdshp_hist[%x]", __func__,
+	mml_pq_msg("%s clarity_readback[%d] id[%d] en_sharp[%d] tdshp_hist[%lx]", __func__,
 			tdshp_frm->is_clarity_need_readback, comp->id,
-			dest->pq_config.en_sharp, &(task->pq_task->tdshp_hist[pipe]));
+			dest->pq_config.en_sharp, (unsigned long)&(task->pq_task->tdshp_hist[pipe]));
 
 	if (((!dest->pq_config.en_sharp || !dest->pq_config.en_dre) &&
 		!dest->pq_config.en_dc) || !task->pq_task->tdshp_hist[pipe])
@@ -987,12 +987,12 @@ static s32 dbg_get(char *buf, const struct kernel_param *kp)
 			struct mml_comp *comp = &dbg_probed_components[i]->comp;
 
 			length += snprintf(buf + length, PAGE_SIZE - length,
-				"  - [%d] mml comp_id: %d.%d @%08x name: %s bound: %d\n", i,
-				comp->id, comp->sub_idx, comp->base_pa,
+				"  - [%d] mml comp_id: %d.%d @%pa name: %s bound: %d\n", i,
+				comp->id, comp->sub_idx, &comp->base_pa,
 				comp->name ? comp->name : "(null)", comp->bound);
 			length += snprintf(buf + length, PAGE_SIZE - length,
-				"  -         larb_port: %d @%08x pw: %d clk: %d\n",
-				comp->larb_port, comp->larb_base,
+				"  -         larb_port: %d @%pa pw: %d clk: %d\n",
+				comp->larb_port, &comp->larb_base,
 				comp->pw_cnt, comp->clk_cnt);
 			length += snprintf(buf + length, PAGE_SIZE - length,
 				"  -     ddp comp_id: %d bound: %d\n",
