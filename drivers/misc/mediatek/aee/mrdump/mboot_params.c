@@ -666,7 +666,7 @@ static int __init mboot_params_early_init(void)
 		} else if (sram.def_type == MBOOT_PARAMS_DEF_DRAM) {
 			start = mboot_params_reserve_memory();
 			size = MBOOT_PARAMS_DRAM_SIZE;
-			pr_info("mboot_params: using dram:0x%llx(0x%llx)\n",
+			pr_info("mboot_params: using dram:0x%x(0x%x)\n",
 				start, size);
 			bufp = remap_lowmem(start, size);
 		} else {

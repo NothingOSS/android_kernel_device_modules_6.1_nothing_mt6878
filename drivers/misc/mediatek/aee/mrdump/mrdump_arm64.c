@@ -121,8 +121,8 @@ void mrdump_arch_show_regs(const struct pt_regs *regs)
 	print_pstate(regs);
 
 	if (!user_mode(regs)) {
-		pr_info("pc : [0x%lx] %pS\n", regs->pc, (void *)regs->pc);
-		pr_info("lr : [0x%lx] %pS\n", lr, (void *)lr);
+		pr_info("pc : [0x%lx] %pS\n", (unsigned long)regs->pc, (void *)regs->pc);
+		pr_info("lr : [0x%lx] %pS\n", (unsigned long)lr, (void *)lr);
 	} else {
 		pr_info("pc : %016llx\n", regs->pc);
 		pr_info("lr : %016llx\n", lr);

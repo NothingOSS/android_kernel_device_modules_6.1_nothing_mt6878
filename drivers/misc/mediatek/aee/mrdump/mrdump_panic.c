@@ -412,7 +412,7 @@ static int __init mrdump_panic_init(void)
 
 	memset(kinfo_vaddr, 0, sizeof(struct kernel_all_info));
 	rmem->priv = kinfo_vaddr;
-	pr_info("[mrdump] rmem->priv = %llx\n", rmem->priv);
+	pr_info("[mrdump] rmem->priv = %lx\n", (unsigned long)rmem->priv);
 
 
 	mrdump_cblock_init(&mparams);

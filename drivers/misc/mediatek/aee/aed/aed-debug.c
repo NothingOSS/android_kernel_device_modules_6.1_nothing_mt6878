@@ -689,7 +689,7 @@ static ssize_t proc_generate_platform_write(struct file *file,
 		return -ENOMEM;
 	}
 
-	pr_info("trigger time: %lx\n", arch_timer_read_counter());
+	pr_info("trigger time: %llx\n", arch_timer_read_counter());
 	if (test_value[0] == 0x72656164 && i == 2) {
 		pr_info("read 0x%x value:", test_value[1]);
 		test_value[2] = readl(base);
@@ -702,7 +702,7 @@ static ssize_t proc_generate_platform_write(struct file *file,
 		test_value[1] = 0;
 		test_value[2] = 0;
 	}
-	pr_info("trigger time: %lx\n", arch_timer_read_counter());
+	pr_info("trigger time: %llx\n", arch_timer_read_counter());
 
 	iounmap(base);
 	return size;
