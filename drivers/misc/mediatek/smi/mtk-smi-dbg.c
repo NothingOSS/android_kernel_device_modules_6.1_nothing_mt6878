@@ -1234,7 +1234,7 @@ int smi_ut_dump_get(char *buf, const struct kernel_param *kp)
 	for (i = 0; i < ARRAY_SIZE(smi->larb); i++) {
 		if (!smi->larb[i].dev)
 			continue;
-		ret = mtk_smi_larb_get(smi->larb[i].dev);
+		ret = pm_runtime_resume_and_get(smi->larb[i].dev);
 		if (ret < 0)
 			dev_notice(smi->larb[i].dev, "smi_larb%d get fail:%d\n", i, ret);
 	}
@@ -1244,7 +1244,7 @@ int smi_ut_dump_get(char *buf, const struct kernel_param *kp)
 	for (i = 0; i < ARRAY_SIZE(smi->larb); i++) {
 		if (!smi->larb[i].dev)
 			continue;
-		mtk_smi_larb_put(smi->larb[i].dev);
+		pm_runtime_put_sync(smi->larb[i].dev);
 	}
 
 	return 0;
@@ -1266,7 +1266,7 @@ int smi_get_larb_dump(const char *val, const struct kernel_param *kp)
 		pr_notice("SMI get larb dump failed: %d\n", result);
 		return result;
 	}
-	ret = mtk_smi_larb_get(smi->larb[larb_id].dev);
+	ret = pm_runtime_resume_and_get(smi->larb[larb_id].dev);
 	if (ret < 0)
 		dev_notice(smi->larb[larb_id].dev, "smi_larb%d get fail:%d\n", larb_id, ret);
 
@@ -1291,7 +1291,7 @@ int smi_put_larb(const char *val, const struct kernel_param *kp)
 		pr_notice("SMI put larb failed: %d\n", result);
 		return result;
 	}
-	mtk_smi_larb_put(smi->larb[larb_id].dev);
+	pm_runtime_put_sync(smi->larb[larb_id].dev);
 
 	return 0;
 }
@@ -1501,7 +1501,7 @@ int smi_larb_force_all_on(char *buf, const struct kernel_param *kp)
 	for (i = 0; i < ARRAY_SIZE(smi->larb); i++) {
 		if (!smi->larb[i].dev)
 			continue;
-		ret = mtk_smi_larb_get(smi->larb[i].dev);
+		ret = pm_runtime_resume_and_get(smi->larb[i].dev);
 		if (ret < 0)
 			dev_notice(smi->larb[i].dev, "smi_larb%d get fail:%d\n", i, ret);
 	}
@@ -1525,7 +1525,7 @@ int smi_larb_force_all_put(char *buf, const struct kernel_param *kp)
 		for (i = 0; i < ARRAY_SIZE(smi->larb); i++) {
 			if (!smi->larb[i].dev)
 				continue;
-			mtk_smi_larb_put(smi->larb[i].dev);
+			pm_runtime_put_sync(smi->larb[i].dev);
 		}
 		smi_force_on = 0;
 		pr_notice("[smi] larb force all put\n");

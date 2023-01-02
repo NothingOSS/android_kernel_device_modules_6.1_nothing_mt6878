@@ -26,20 +26,8 @@ struct mtk_smi_larb_iommu {
 	unsigned int   mmu;
 	unsigned char  bank[64];
 };
-/*
- * mtk_smi_larb_get: Enable the power domain and clocks for this local arbiter.
- *                   It also initialize some basic setting(like iommu).
- * mtk_smi_larb_put: Disable the power domain and clocks for this local arbiter.
- * Both should be called in non-atomic context.
- *
- * Returns 0 if successful, negative on failure.
- */
 int mtk_smi_driver_register_notifier(struct notifier_block *nb);
 int mtk_smi_driver_unregister_notifier(struct notifier_block *nb);
-int mtk_smi_larb_get(struct device *larbdev);
-void mtk_smi_larb_put(struct device *larbdev);
-int mtk_smi_larb_get_ex(struct device *larbdev, int user);
-void mtk_smi_larb_put_ex(struct device *larbdev, int user);
 void mtk_smi_common_bw_set(struct device *dev, const u32 port, const u32 val);
 void mtk_smi_common_ostdl_set(struct device *dev, const u32 port, bool is_write, const u32 val);
 void mtk_smi_larb_bw_set(struct device *dev, const u32 port, const u32 val);
@@ -66,20 +54,6 @@ static inline int mtk_smi_driver_unregister_notifier(struct notifier_block *nb)
 {
 	return 0;
 }
-
-static inline int mtk_smi_larb_get(struct device *larbdev)
-{
-	return 0;
-}
-
-static inline void mtk_smi_larb_put(struct device *larbdev) { }
-
-static inline int mtk_smi_larb_get_ex(struct device *larbdev, int user)
-{
-	return 0;
-}
-
-static inline void mtk_smi_larb_put_ex(struct device *larbdev, int user) { }
 
 static inline void
 mtk_smi_common_bw_set(struct device *dev, const u32 port, const u32 val) { }
