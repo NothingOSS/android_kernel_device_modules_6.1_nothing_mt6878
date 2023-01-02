@@ -374,8 +374,8 @@ static void dumpIonBufferList(struct ION_BUFFER_LIST *ion_buf_list,
 		second = entry->timestamp;
 		nano_second = do_div(second, 1000000000);
 
-		LOG_NOTICE("%3d/%3d:memID(%3d);P:0x%lx;S:0x%zx;RC(%d);user(%s);T(%llu.%llu)\n",
-			i, list_length, entry->memID, entry->dmaAddr, entry->dmaBuf->size,
+		LOG_NOTICE("%3d/%3d:memID(%3d);P:0x%lx;S:0x%zx;RC(%u);user(%s);T(%llu.%llu)\n",
+			i, list_length, entry->memID, (unsigned long)entry->dmaAddr, entry->dmaBuf->size,
 			entry->refCnt, entry->username, second, nano_second);
 		i++;
 	}
@@ -413,7 +413,7 @@ static void dumpAllBufferList(void)
 
 			total_size += entry->dmaBuf->size;
 
-			LOG_NOTICE("#%03d   %3d   0x%09lx  0x%07zx     %2d   %-32s %llu.%llu\n",
+			LOG_NOTICE("#%03d   %3d   0x%09llx  0x%07zx     %2d   %-32s %llu.%llu\n",
 				i,
 				entry->memID,
 				entry->dmaAddr, entry->dmaBuf->size,
@@ -564,7 +564,7 @@ static long cam_mem_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Pa
 			IonNode.dma_pa = mmu.dmaAddr = dmaPa;
 
 			if (unlikely((found_dmaPa != dmaPa) && (found_dmaPa != 0))) {
-				LOG_NOTICE("memID(%d)P(0x%lx)S(0x%zx): 1 fd with multi iova:\n",
+				LOG_NOTICE("memID(%d)P(0x%llx)S(0x%zx): 1 fd with multi iova:\n",
 					IonNode.memID, dmaPa, mmu.dmaBuf->size);
 				mutex_lock(&cam_mem_ion_mutex[bucketID]);
 				dumpIonBufferList(&g_ion_buf_list[bucketID], 100, true);
@@ -673,7 +673,7 @@ static long cam_mem_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Pa
 			mutex_unlock(&cam_mem_ion_mutex[bucketID]);
 
 			if (unlikely(!foundFD)) {
-				LOG_NOTICE("Warning: unmap: memID(%d); PA(0x%lx);"
+				LOG_NOTICE("Warning: unmap: memID(%d); PA(0x%llx);"
 					" (%s) not found.\n",
 					IonNode.memID, IonNode.dma_pa,
 					IonNode.username);
@@ -754,7 +754,7 @@ static long cam_mem_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Pa
 				LOG_NOTICE("GET_PA: never mapped for memID(%d),name(%s)\n",
 					IonNode.memID, IonNode.username);
 			} else
-				LOG_NOTICE("GET_PA: memID(%d) get pa(0x%lx), name(%s)\n",
+				LOG_NOTICE("GET_PA: memID(%d) get pa(0x%llx), name(%s)\n",
 					IonNode.memID, IonNode.dma_pa, IonNode.username);
 
 			mutex_unlock(&cam_mem_ion_mutex[bucketID]);
@@ -986,7 +986,7 @@ static int cam_mem_buf_list_read(struct seq_file *m, void *v)
 
 			total_size += entry->dmaBuf->size;
 
-			seq_printf(m, "#%03d   %3d   0x%09lx  0x%07zx     %2d   %-32s %llu.%llu\n",
+			seq_printf(m, "#%03d   %3d   0x%09llx  0x%07zx     %2d   %-32s %llu.%llu\n",
 				i,
 				entry->memID,
 				entry->dmaAddr, entry->dmaBuf->size,

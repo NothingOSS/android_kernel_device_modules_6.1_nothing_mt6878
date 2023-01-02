@@ -250,8 +250,8 @@ static unsigned int do_2a_gain_s5k3m5sx(struct EEPROM_DRV_FD_DATA *pdata,
 
 		debug_log("======================AWB CAM_CAL==================\n");
 		debug_log("AWB Calibration @5100K\n");
-		debug_log("[CalGain] = 0x%x\n", CalGain);
-		debug_log("[FacGain] = 0x%x\n", FacGain);
+		debug_log("[CalGain] = 0x%llx\n", CalGain);
+		debug_log("[FacGain] = 0x%llx\n", FacGain);
 		debug_log("[rCalGain.u4R] = %d\n", pCamCalData->Single2A.S2aAwb.rUnitGainu4R);
 		debug_log("[rCalGain.u4G] = %d\n", pCamCalData->Single2A.S2aAwb.rUnitGainu4G);
 		debug_log("[rCalGain.u4B] = %d\n", pCamCalData->Single2A.S2aAwb.rUnitGainu4B);
@@ -357,8 +357,8 @@ static unsigned int do_2a_gain_s5k3m5sx(struct EEPROM_DRV_FD_DATA *pdata,
 			"There are something wrong on EEPROM, plz contact module vendor!!\n");
 
 		debug_log("AWB Calibration @3100K\n");
-		debug_log("[CalGain] = 0x%x\n", CalGain);
-		debug_log("[FacGain] = 0x%x\n", FacGain);
+		debug_log("[CalGain] = 0x%llx\n", CalGain);
+		debug_log("[FacGain] = 0x%llx\n", FacGain);
 		debug_log("[rCalGain.u4R] = %d\n", pCamCalData->Single2A.S2aAwb.rUnitGainu4R_low);
 		debug_log("[rCalGain.u4G] = %d\n", pCamCalData->Single2A.S2aAwb.rUnitGainu4G_low);
 		debug_log("[rCalGain.u4B] = %d\n", pCamCalData->Single2A.S2aAwb.rUnitGainu4B_low);
@@ -464,8 +464,8 @@ static unsigned int do_2a_gain_s5k3m5sx(struct EEPROM_DRV_FD_DATA *pdata,
 			"There are something wrong on EEPROM, plz contact module vendor!!\n");
 
 		debug_log("AWB Calibration @4000K\n");
-		debug_log("[CalGain] = 0x%x\n", CalGain);
-		debug_log("[FacGain] = 0x%x\n", FacGain);
+		debug_log("[CalGain] = 0x%llx\n", CalGain);
+		debug_log("[FacGain] = 0x%llx\n", FacGain);
 		debug_log("[rCalGain.u4R] = %d\n", pCamCalData->Single2A.S2aAwb.rUnitGainu4R_mid);
 		debug_log("[rCalGain.u4G] = %d\n", pCamCalData->Single2A.S2aAwb.rUnitGainu4G_mid);
 		debug_log("[rCalGain.u4B] = %d\n", pCamCalData->Single2A.S2aAwb.rUnitGainu4B_mid);
