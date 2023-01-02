@@ -724,6 +724,24 @@ static irqreturn_t drv3_isr(int irq, void *data)
 		CCCI_NOTICE_LOG(0, TAG, "[%s] wake up by MD0 HIF L2(%x/%x)(%x/%x)!\n",
 			__func__, L2TISAR0, L2TIMR0, L2RISAR0, L2RIMR0);
 
+	/* check UL&DL mask status register */
+	if (((L2TIMR0 & AP_UL_L2INTR_Msk_Check) != AP_UL_L2INTR_Msk_Check) ||
+		((L2RIMR0 & AP_DL_L2INTR_Msk_Check) != AP_DL_L2INTR_Msk_Check)) {
+		/* if has error bit, set mask */
+		DPMA_WRITE_AO_UL(NRL2_DPMAIF_AO_UL_AP_L2TIMSR0, ~(AP_UL_L2INTR_En_Msk));
+		/* use msk to clear dummy interrupt */
+		DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_UL_L2TISAR0, ~(AP_UL_L2INTR_En_Msk));
+
+		/* if has error bit, set mask */
+		DPMA_WRITE_AO_UL(NRL2_DPMAIF_AO_UL_APDL_L2TIMSR0, ~(AP_DL_L2INTR_En_Msk));
+		/* use msk to clear dummy interrupt */
+		DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_DL_L2TISAR0, ~(AP_DL_L2INTR_En_Msk));
+		CCCI_NORMAL_LOG(0, TAG, "[%s]mask:dl=0x%x(0x%x) ul=0x%x(0x%x)\n",
+			__func__,
+			DPMA_READ_AO_UL(NRL2_DPMAIF_AO_UL_APDL_L2TIMR0), L2RIMR0,
+			DPMA_READ_AO_UL(NRL2_DPMAIF_AO_UL_AP_L2TIMR0), L2TIMR0);
+	}
+
 	/* TX interrupt */
 	if (L2TISAR0) {
 		L2TISAR0 &= ~(L2TIMR0);
@@ -1172,17 +1190,30 @@ static int drv3_suspend_noirq(struct device *dev)
 {
 	g_backup_dl_isr = drv3_get_dl_interrupt_mask();
 	g_backup_ul_isr = DPMA_READ_AO_UL(NRL2_DPMAIF_AO_UL_AP_L2TIMR0);
+
+	CCCI_NORMAL_LOG(0, TAG, "[%s]mask:dl=0x%x ul=0x%x,power down=%u\n",
+		__func__, g_backup_dl_isr, g_backup_ul_isr, ops.drv_check_power_down());
+
 	return 0;
 }
 
 static int drv3_resume_noirq(struct device *dev)
 {
-	DPMA_WRITE_AO_UL(NRL2_DPMAIF_AO_UL_AP_L2TIMSR0, g_backup_ul_isr);
-	DPMA_WRITE_AO_UL(NRL2_DPMAIF_AO_UL_APDL_L2TIMSR0, g_backup_dl_isr);
-
+	/* DL set mask */
+	DPMA_WRITE_AO_UL(NRL2_DPMAIF_AO_UL_APDL_L2TIMSR0, ~(AP_DL_L2INTR_En_Msk));
 	/* use msk to clear dummy interrupt */
-	DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_DL_L2TISAR0, g_backup_dl_isr);
-	DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_UL_L2TISAR0, g_backup_ul_isr);
+	DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_DL_L2TISAR0, ~(AP_DL_L2INTR_En_Msk));
+
+	/* UL set mask */
+	DPMA_WRITE_AO_UL(NRL2_DPMAIF_AO_UL_AP_L2TIMSR0, ~(AP_UL_L2INTR_En_Msk));
+	/* use msk to clear dummy interrupt */
+	DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_UL_L2TISAR0, ~(AP_UL_L2INTR_En_Msk));
+
+	CCCI_NORMAL_LOG(0, TAG, "[%s]mask:dl=0x%x ul=0x%x\n",
+		__func__,
+		DPMA_READ_AO_UL(NRL2_DPMAIF_AO_UL_APDL_L2TIMR0),
+		DPMA_READ_AO_UL(NRL2_DPMAIF_AO_UL_AP_L2TIMR0));
+
 	return 0;
 }
 
@@ -1197,7 +1228,7 @@ static void drv3_dump_register(int buf_type)
 	ccci_util_mem_dump(buf_type,
 		dpmaif_ctl->pd_ul_base + NRL2_DPMAIF_UL_ADD_DESC, len);
 
-	if (g_plat_inf == 6985) {
+	if (g_plat_inf == 6985 || g_plat_inf == 6835) {
 		len = DPMAIF_AO_UL_CHNL3_STA_6985 - DPMAIF_AO_UL_CHNL0_STA_6985 + 4;
 		CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 			"dump AP DPMAIF Tx ao; ao_ul_base register -> (start addr: 0x%llX, len: %d):\n",
@@ -1392,7 +1423,7 @@ static void drv3_hw_reset_v1(void)
 	/* DPMAIF HW reset */
 	CCCI_DEBUG_LOG(0, TAG, "%s:rst dpmaif\n", __func__);
 	/* reset dpmaif hw: PD Domain */
-	if (g_plat_inf == 6985)
+	if (g_plat_inf == 6985 || g_plat_inf == 6835)
 		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF50, 1<<14);
 	else
 		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF50, 1<<22);
@@ -1404,7 +1435,10 @@ static void drv3_hw_reset_v1(void)
 	udelay(500);
 
 	/* reset dpmaif hw: AO Domain */
-	ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x130, 1<<0);
+	if (g_plat_inf == 6835)
+		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x130, 1<<11);
+	else
+		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x130, 1<<0);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG, "[%s]-%d write 0x130 ret=%d\n",
 			__func__, __LINE__, ret);
@@ -1416,7 +1450,10 @@ static void drv3_hw_reset_v1(void)
 	udelay(500);
 
 	/* reset dpmaif clr */
-	ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x134, 1<<0);
+	if (g_plat_inf == 6835)
+		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x134, 1<<11);
+	else
+		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x134, 1<<0);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG, "[%s]-%d write 0x134 ret=%d\n",
 			__func__, __LINE__, ret);
@@ -1429,7 +1466,7 @@ static void drv3_hw_reset_v1(void)
 	udelay(500);
 
 	/* reset dpmaif clr */
-	if (g_plat_inf == 6985)
+	if (g_plat_inf == 6985 || g_plat_inf == 6835)
 		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF54, 1<<14);
 	else
 		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF54, 1<<22);
@@ -1651,7 +1688,7 @@ int ccci_dpmaif_drv3_init(void)
 	else
 		ops.drv_dl_get_wridx = &drv3_dl_get_wridx;
 
-	if (g_plat_inf == 6985) {
+	if (g_plat_inf == 6985 || g_plat_inf == 6835) {
 		ops.drv_ul_get_rwidx = &drv3_ul_get_rwidx_6985;
 		ops.drv_ul_get_rdidx = &drv3_ul_get_rdidx_6985;
 	} else {
