@@ -370,7 +370,7 @@ static int mmdvfs_v3_dbg_ftrace_thread(void *data)
 				ftrace_user_opp_v3_vmm(i, readl(MEM_VOTE_OPP_USR(i)));
 		}
 
-		msleep(20);
+		msleep(1);
 	}
 
 	ftrace_v3_ena = false;
