@@ -11,6 +11,7 @@
 #include <dt-bindings/gce/mt6985-gce.h>
 #include <dt-bindings/memory/mt6985-larb-port.h>
 #include <dt-bindings/iio/mt635x-auxadc.h>
+#include <dt-bindings/mml/mml-mt6985.h>
 
 / {
 	model = "MT6985";
@@ -84,6 +85,26 @@
 		intf0 = &disp_dp_intf0;
 		intf1 = &disp1_dp_intf0;
 		mutex0 = &disp_mutex0;
+		mml_rdma0 = &mml_rdma0;
+		mml_rdma1 = &mml_rdma1;
+		mml_rdma2 = &mml_rdma2;
+		mml_rdma3 = &mml_rdma3;
+		mml_hdr0 = &mml_hdr0;
+		mml_hdr1 = &mml_hdr1;
+		mml_aal0 = &mml_aal0;
+		mml_aal1 = &mml_aal1;
+		mml_rsz0 = &mml_rsz0;
+		mml_rsz1 = &mml_rsz1;
+		mml_rsz2 = &mml_rsz2;
+		mml_rsz3 = &mml_rsz3;
+		mml_tdshp0 = &mml_tdshp0;
+		mml_tdshp1 = &mml_tdshp1;
+		mml_color0 = &mml_color0;
+		mml_color1 = &mml_color1;
+		mml_wrot0 = &mml_wrot0;
+		mml_wrot1 = &mml_wrot1;
+		mml_wrot2 = &mml_wrot2;
+		mml_wrot3 = &mml_wrot3;
 	};
 
 	/* chosen */
@@ -2141,7 +2162,7 @@
 			interrupts = <GIC_SPI 395 IRQ_TYPE_NONE>;
 		};
 
-		inlinerot0@1440b000 {
+		inlinerot0: inlinerot@1440b000 {
 			compatible = "mediatek,inlinerot0";
 			reg = <0 0x1440b000 0 0x1000>;
 		};
@@ -2228,7 +2249,7 @@
 			reg = <0 0x1460a000 0 0x1000>;
 		};
 
-		inlinerot0@1460b000 {
+		inlinerot1: inlinerot@1460b000 {
 			compatible = "mediatek,inlinerot0";
 			reg = <0 0x1460b000 0 0x1000>;
 		};
@@ -2732,119 +2753,461 @@
 			reg = <0 0x1f019000 0 0x1000>;
 		};
 
-		mdpsys_config@1f800000 {
-			compatible = "mediatek,mdpsys_config";
+		mmlsys_config: mmlsys_config@1f800000 {
+			compatible = "mediatek,mt6985-mml";
 			reg = <0 0x1f800000 0 0x1000>;
+			/* as mml device */
+			comp-count = <MML_ENGINE_TOTAL>;
+			topology = "mt6985";
+			mboxes = <&gce 16 400 CMDQ_THR_PRIO_1>,
+				<&gce 17 500 CMDQ_THR_PRIO_1>,
+				<&gce 18 400 CMDQ_THR_PRIO_1>,
+				<&gce 19 500 CMDQ_THR_PRIO_1>;
+			/* as mmlsys */
+			comp-ids = <MML_MMLSYS>,
+				<MML_DLI0>, <MML_DLI1>, <MML_DLI3>,
+				<MML_DLI0_SEL>, <MML_DLI1_SEL>,
+				<MML_TDSHP0_SEL>, <MML_TDSHP1_SEL>, <MML_PQ0_SOUT>, <MML_PQ1_SOUT>,
+				<MML_DLO0_SOUT>, <MML_DLO1_SOUT>,
+				<MML_DLO0>, <MML_DLO1>, <MML_DLO3>;
+			comp-types = <MML_CT_SYS>,
+				<MML_CT_DL_IN>, <MML_CT_DL_IN>, <MML_CT_DL_IN>,
+				<MML_CT_PATH>, <MML_CT_PATH>,
+				<MML_CT_PATH>, <MML_CT_PATH>, <MML_CT_PATH>, <MML_CT_PATH>,
+				<MML_CT_PATH>, <MML_CT_PATH>,
+				<MML_CT_DL_OUT>, <MML_CT_DL_OUT>, <MML_CT_DL_OUT>;
+			comp-names = "mmlsys",
+				"dli0", "dli1", "dli3",
+				"dli0_sel", "dli1_sel",
+				"thshp0_sel", "thshp1_sel", "pq0_sout", "pq1_sout",
+				"dl0_sout", "dl1_sout",
+				"dlo0", "dlo1", "dlo3";
+			mmlsys-clock-names = "apb_bus";
+			dli0-clock-names = "dli0";
+			dli1-clock-names = "dli1";
+			dli2-clock-names = "dli2";
+			dli3-clock-names = "dli3";
+			dlo0-clock-names = "dlo0";
+			dlo1-clock-names = "dlo1";
+			dlo2-clock-names = "dlo2";
+			dlo3-clock-names = "dlo3";
+			/* as sys component */
+			mux-pins = /bits/ 16 <
+				0 MML_DLI0_SEL   MML_HDR0      MML_MUX_MOUT MML_RDMA0_MOUT_EN
+				1 MML_DLI0_SEL   MML_DLO0_SOUT MML_MUX_MOUT MML_RDMA0_MOUT_EN
+				/* 2 MML_DLI0_SEL   MML_HDR1      MML_MUX_MOUT MML_RDMA0_MOUT_EN */
+				3 MML_DLI0_SEL   MML_RSZ2       MML_MUX_MOUT MML_RDMA0_MOUT_EN
+				0 MML_DLI1_SEL   MML_HDR1       MML_MUX_MOUT MML_RDMA1_MOUT_EN
+				1 MML_DLI1_SEL   MML_DLO1_SOUT  MML_MUX_MOUT MML_RDMA1_MOUT_EN
+				/* 2 MML_DLI1_SEL   MML_HDR0       MML_MUX_MOUT MML_RDMA1_MOUT_EN */
+				3 MML_DLI1_SEL   MML_RSZ3       MML_MUX_MOUT MML_RDMA1_MOUT_EN
+				0 MML_DLI0_SEL   MML_HDR0       MML_MUX_SLIN MML_PQ0_SEL_IN
+				/* 1 MML_DLI1_SEL   MML_HDR0       MML_MUX_SLIN MML_PQ0_SEL_IN */
+				0 MML_DLI1_SEL   MML_HDR1       MML_MUX_SLIN MML_PQ1_SEL_IN
+				/* 1 MML_DLI0_SEL    MML_HDR1      MML_MUX_SLIN MML_PQ1_SEL_IN */
+				0 MML_DLI0_SEL   MML_DLO0_SOUT  MML_MUX_SLIN MML_WROT0_SEL_IN
+				1 MML_PQ0_SOUT   MML_DLO0_SOUT  MML_MUX_SLIN MML_WROT0_SEL_IN
+				/* 2 MML_PQ1_SOUT    MML_DLO0_SOUT MML_MUX_SLIN MML_WROT0_SEL_IN */
+				0 MML_DLI1_SEL   MML_DLO1_SOUT  MML_MUX_SLIN MML_WROT1_SEL_IN
+				1 MML_PQ1_SOUT   MML_DLO1_SOUT  MML_MUX_SLIN MML_WROT1_SEL_IN
+				/* 2 MML_PQ0_SOUT  MML_DLO1_SOUT   MML_MUX_SLIN MML_WROT1_SEL_IN */
+				0 MML_TDSHP0_SEL MML_DLO0_SOUT  MML_MUX_SOUT MML_PQ0_SOUT_SEL
+				/* 1 MML_TDSHP0_SEL  MML_DLO1_SOUT MML_MUX_SOUT MML_PQ0_SOUT_SEL */
+				0 MML_TDSHP1_SEL MML_DLO1_SOUT  MML_MUX_SOUT MML_PQ1_SOUT_SEL
+				/* 1 MML_TDSHP1_SEL  MML_DLO0_SOUT MML_MUX_SOUT MML_PQ1_SOUT_SEL */
+				0 MML_DLO0_SOUT  MML_WROT0      MML_MUX_SOUT MML_DLO0_SOUT_SEL
+				1 MML_DLO0_SOUT  MML_DLO0       MML_MUX_SOUT MML_DLO0_SOUT_SEL
+				/* 2 MML_DLO0_SOUT  MML_DLO2       MML_MUX_SOUT MML_DLO0_SOUT_SEL */
+				0 MML_DLO1_SOUT  MML_WROT1      MML_MUX_SOUT MML_DLO1_SOUT_SEL
+				1 MML_DLO1_SOUT  MML_DLO1       MML_MUX_SOUT MML_DLO1_SOUT_SEL
+				2 MML_DLO1_SOUT  MML_DLO3       MML_MUX_SOUT MML_DLO1_SOUT_SEL
+				0 MML_RDMA0      MML_WROT0      MML_MUX_MOUT MML_BYP0_MOUT_EN
+				1 MML_RDMA0      MML_RSZ2       MML_MUX_MOUT MML_BYP0_MOUT_EN
+				2 MML_RDMA0      MML_DLI0_SEL   MML_MUX_MOUT MML_BYP0_MOUT_EN
+				0 MML_RDMA1      MML_WROT1      MML_MUX_MOUT MML_BYP1_MOUT_EN
+				1 MML_RDMA1      MML_RSZ3       MML_MUX_MOUT MML_BYP1_MOUT_EN
+				2 MML_RDMA1      MML_DLI1_SEL   MML_MUX_MOUT MML_BYP1_MOUT_EN
+				0 MML_RDMA0      MML_WROT0      MML_MUX_SLIN MML_BYP0_SEL_IN
+				1 MML_DLO0_SOUT  MML_WROT0      MML_MUX_SLIN MML_BYP0_SEL_IN
+				0 MML_RDMA1      MML_WROT1      MML_MUX_SLIN MML_BYP1_SEL_IN
+				1 MML_DLO1_SOUT  MML_WROT1      MML_MUX_SLIN MML_BYP1_SEL_IN
+				0 MML_DLI0_SEL   MML_RSZ2       MML_MUX_SLIN MML_RSZ2_SEL_IN
+				1 MML_RDMA0      MML_RSZ2       MML_MUX_SLIN MML_RSZ2_SEL_IN
+				/* 2 IMG_DL0        MML_RSZ2       MML_MUX_SLIN MML_RSZ2_SEL_IN */
+				/* 3 IMG_DL1        MML_RSZ2       MML_MUX_SLIN MML_RSZ2_SEL_IN */
+				4 MML_AAL0       MML_RSZ2       MML_MUX_SLIN MML_RSZ2_SEL_IN
+				0 MML_DLI1_SEL   MML_RSZ3       MML_MUX_SLIN MML_RSZ3_SEL_IN
+				1 MML_RDMA1      MML_RSZ3       MML_MUX_SLIN MML_RSZ3_SEL_IN
+				/* 2 IMG_DL1        MML_RSZ2       MML_MUX_SLIN MML_RSZ2_SEL_IN */
+				/* 3 IMG_DL0        MML_RSZ2       MML_MUX_SLIN MML_RSZ2_SEL_IN */
+				4 MML_AAL1       MML_RSZ2       MML_MUX_SLIN MML_RSZ2_SEL_IN
+				0 MML_HDR0       MML_AAL0       MML_MUX_SOUT MML_HDR0_SOUT_SEL
+				1 MML_HDR0       MML_COLOR0     MML_MUX_SOUT MML_HDR0_SOUT_SEL
+				0 MML_HDR1       MML_AAL1       MML_MUX_SOUT MML_HDR1_SOUT_SEL
+				1 MML_HDR1       MML_COLOR1     MML_MUX_SOUT MML_HDR1_SOUT_SEL
+				0 MML_HDR0       MML_AAL0       MML_MUX_SLIN MML_AAL0_SEL_IN
+				1 MML_COLOR0     MML_AAL0       MML_MUX_SLIN MML_AAL0_SEL_IN
+				0 MML_HDR1       MML_AAL1       MML_MUX_SLIN MML_AAL1_SEL_IN
+				1 MML_COLOR1     MML_AAL1       MML_MUX_SLIN MML_AAL1_SEL_IN
+				0 MML_COLOR0     MML_PQ0_SOUT   MML_MUX_SOUT MML_TDSHP0_SOUT_SEL
+				1 MML_TDSHP0     MML_PQ0_SOUT   MML_MUX_SOUT MML_TDSHP0_SOUT_SEL
+				0 MML_COLOR1     MML_PQ1_SOUT   MML_MUX_SOUT MML_TDSHP1_SOUT_SEL
+				1 MML_TDSHP1     MML_PQ1_SOUT   MML_MUX_SOUT MML_TDSHP1_SOUT_SEL
+				0 MML_TDSHP0     MML_COLOR0     MML_MUX_SLIN MML_COLOR0_SEL_IN
+				1 MML_HDR0       MML_COLOR0     MML_MUX_SLIN MML_COLOR0_SEL_IN
+				0 MML_TDSHP1     MML_COLOR1     MML_MUX_SLIN MML_COLOR1_SEL_IN
+				1 MML_HDR1       MML_COLOR1     MML_MUX_SLIN MML_COLOR1_SEL_IN
+				0 MML_COLOR0     MML_TDSHP0_SEL MML_MUX_SOUT MML_COLOR0_SOUT_SEL
+				0 MML_COLOR0     MML_AAL0       MML_MUX_SOUT MML_COLOR0_SOUT_SEL
+				1 MML_COLOR0     MML_TDSHP1_SEL MML_MUX_SOUT MML_COLOR1_SOUT_SEL
+				1 MML_COLOR0     MML_AAL1       MML_MUX_SOUT MML_COLOR1_SOUT_SEL
+				0 MML_COLOR0     MML_TDSHP0_SEL MML_MUX_SLIN MML_TDSHP0_SEL_IN
+				1 MML_TDSHP0     MML_TDSHP0_SEL MML_MUX_SLIN MML_TDSHP0_SEL_IN
+				0 MML_COLOR1     MML_TDSHP1_SEL MML_MUX_SLIN MML_TDSHP1_SEL_IN
+				1 MML_TDSHP1     MML_TDSHP1_SEL MML_MUX_SLIN MML_TDSHP1_SEL_IN
+				0 MML_AAL0       MML_RSZ0       MML_MUX_MOUT MML_AAL0_MOUT_EN
+				1 MML_AAL0       MML_RSZ2       MML_MUX_MOUT MML_AAL0_MOUT_EN
+				0 MML_AAL1       MML_RSZ1       MML_MUX_MOUT MML_AAL1_MOUT_EN
+				1 MML_AAL1       MML_RSZ3       MML_MUX_MOUT MML_AAL1_MOUT_EN>;
+			dbg-reg-names =
+				"MMLSYS_MISC", "CG_CON0", "CG_SET0", "CG_CLR0",
+				"SW0_RST_B", "SW1_RST_B", "MOUT_RST",
+				"EVENT_GCED_EN", "IN_LINE_READY_SEL", "SMI_LARB_GREQ",
+				"BYPASS_MUX_SHADOW",
+				"DLI0_SEL_IN", "DLI1_SEL_IN",
+				"RDMA0_MOUT_EN", "RDMA1_MOUT_EN",
+				"PQ0_SEL_IN", "PQ1_SEL_IN",
+				"WROT0_SEL_IN", "WROT1_SEL_IN",
+				"PQ0_SOUT_SEL", "PQ1_SOUT_SEL",
+				"DLO0_SOUT_SEL", "DLO1_SOUT_SEL",
+				"BYP0_MOUT_EN", "BYP1_MOUT_EN",
+				"BYP0_SEL_IN", "BYP1_SEL_IN",
+				"RSZ2_SEL_IN", "RSZ3_SEL_IN",
+				"MOUT_MASK0", "MOUT_MASK1", "MOUT_MASK2",
+				"DL_IN_RELAY0_SIZE", "DL_IN_RELAY1_SIZE",
+				"DL_OUT_RELAY0_SIZE", "DL_OUT_RELAY1_SIZE",
+				"DLI_ASYNC0_STATUS0", "DLI_ASYNC0_STATUS1",
+				"DLI_ASYNC1_STATUS0", "DLI_ASYNC1_STATUS1",
+				"DLO_ASYNC0_STATUS0", "DLO_ASYNC0_STATUS1",
+				"DLO_ASYNC1_STATUS0", "DLO_ASYNC1_STATUS1",
+				"DLI_ASYNC3_STATUS0", "DLI_ASYNC3_STATUS1",
+				"DLO_ASYNC3_STATUS0", "DLO_ASYNC3_STATUS1",
+				"DL_VALID0", "DL_VALID1", "DL_VALID2", "DL_VALID3",
+				"DL_READY0", "DL_READY1", "DL_READY2", "DL_READY3",
+				"RDMA0_AIDSEL", "RDMA1_AIDSEL",
+				"WROT0_AIDSEL", "WROT1_AIDSEL";
+			dbg-reg-offsets =
+				<MMLSYS_MISC>, <MML_CG_CON0>, <MML_CG_SET0>, <MML_CG_CLR0>,
+				<MML_SW0_RST_B>, <MML_SW1_RST_B>, <MML_MOUT_RST>,
+				<MML_EVENT_GCED_EN>, <MML_IN_LINE_READY_SEL>, <MML_SMI_LARB_GREQ>,
+				<MML_BYPASS_MUX_SHADOW>,
+				<MML_DLI0_SEL_IN>, <MML_DLI1_SEL_IN>,
+				<MML_RDMA0_MOUT_EN>, <MML_RDMA1_MOUT_EN>,
+				<MML_PQ0_SEL_IN>, <MML_PQ1_SEL_IN>,
+				<MML_WROT0_SEL_IN>, <MML_WROT1_SEL_IN>,
+				<MML_PQ0_SOUT_SEL>, <MML_PQ1_SOUT_SEL>,
+				<MML_DLO0_SOUT_SEL>, <MML_DLO1_SOUT_SEL>,
+				<MML_BYP0_MOUT_EN>, <MML_BYP1_MOUT_EN>,
+				<MML_BYP0_SEL_IN>, <MML_BYP1_SEL_IN>,
+				<MML_RSZ2_SEL_IN>, <MML_RSZ3_SEL_IN>,
+				<MML_MOUT_MASK0>, <MML_MOUT_MASK1>, <MML_MOUT_MASK2>,
+				<MML_DL_IN_RELAY0_SIZE>, <MML_DL_IN_RELAY1_SIZE>,
+				<MML_DL_OUT_RELAY0_SIZE>, <MML_DL_OUT_RELAY1_SIZE>,
+				<MML_DLI_ASYNC0_STATUS0>, <MML_DLI_ASYNC0_STATUS1>,
+				<MML_DLI_ASYNC1_STATUS0>, <MML_DLI_ASYNC1_STATUS1>,
+				<MML_DLO_ASYNC0_STATUS0>, <MML_DLO_ASYNC0_STATUS1>,
+				<MML_DLO_ASYNC1_STATUS0>, <MML_DLO_ASYNC1_STATUS1>,
+				<MML_DLI_ASYNC3_STATUS0>, <MML_DLI_ASYNC3_STATUS1>,
+				<MML_DLO_ASYNC3_STATUS0>, <MML_DLO_ASYNC3_STATUS1>,
+				<MML_DL_VALID0>, <MML_DL_VALID1>, <MML_DL_VALID2>, <MML_DL_VALID3>,
+				<MML_DL_READY0>, <MML_DL_READY1>, <MML_DL_READY2>, <MML_DL_READY3>,
+				<MML_RDMA0_AIDSEL>, <MML_RDMA1_AIDSEL>,
+				<MML_WROT0_AIDSEL>, <MML_WROT1_AIDSEL>;
+			aid-sel-engine = <
+				MML_RDMA0 MML_RDMA0_AIDSEL
+				MML_RDMA1 MML_RDMA1_AIDSEL
+				MML_RDMA2 MML_RDMA2_AIDSEL
+				MML_RDMA3 MML_RDMA3_AIDSEL
+				MML_WROT0 MML_WROT0_AIDSEL
+				MML_WROT1 MML_WROT1_AIDSEL
+				MML_WROT2 MML_WROT2_AIDSEL
+				MML_WROT3 MML_WROT3_AIDSEL>;
+			event_ir_mml_ready = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_IR_MML_READY>;
+			event_ir_disp_ready = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_IR_DISP_READY>;
+			event_ir_mml_stop = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_MML_STOP>;
+			// TODO: wait for disp inline rotate
+			//event_ir_eof = /bits/ 16
+			// <CMDQ_EVENT_MMSYS_DISP_RDMA0_TARGET_LINE_ENG_EVENT>;
+			event_racing_pipe0 = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_PIPE0>;
+			event_racing_pipe1 = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_PIPE1>;
+			event_racing_pipe1_next = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_PIPE1_NEXT>;
+			/* sys register offset */
+			ready-sel = /bits/ 16 <MML_IN_LINE_READY_SEL>;
+			/* as dl component */
+			dli0-dl-relay = /bits/ 16 <MML_DL_IN_RELAY0_SIZE>;
+			dli1-dl-relay = /bits/ 16 <MML_DL_IN_RELAY1_SIZE>;
+			dlo0-dl-relay = /bits/ 16 <MML_DL_OUT_RELAY0_SIZE>;
+			dlo1-dl-relay = /bits/ 16 <MML_DL_OUT_RELAY1_SIZE>;
+			dli2-dl-relay = /bits/ 16 <MML_DL_IN_RELAY2_SIZE>;
+			dli3-dl-relay = /bits/ 16 <MML_DL_IN_RELAY3_SIZE>;
+			dlo2-dl-relay = /bits/ 16 <MML_DL_OUT_RELAY2_SIZE>;
+			dlo3-dl-relay = /bits/ 16 <MML_DL_OUT_RELAY3_SIZE>;
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_DISP_FAKE0)>;
 		};
 
-		mdp_mutex0@1f801000 {
-			compatible = "mediatek,mdp_mutex0";
+		mml-test {
+			compatible = "mediatek,mml-test";
+			mediatek,mml = <&mmlsys_config>;
+		};
+
+		mml_mutex0@1f801000 {
+			compatible = "mediatek,mt6985-mml_mutex";
 			reg = <0 0x1f801000 0 0x1000>;
+			comp-ids = <MML_MUTEX>;
+			comp-names = "mutex0";
+			mutex-comps = "rdma0", "rdma1", "hdr0", "hdr1", "aal0", "aal1",
+				"rsz0", "rsz1", "tdshp0", "tdshp1", "color0", "color1",
+				"wrot0", "wrot1", "rdma2", "rdma3",
+				"dli_async0", "dli_async1", "dlo_async0", "dlo_async1",
+				"rsz2", "rsz3", "wrot2", "wrot3",
+				"dli_async3", "dlo_async3",
+				"birsz0", "birsz1";
+			rdma0 = <MML_RDMA0 0 0>;
+			rdma1 = <MML_RDMA1 0 1>;
+			hdr0 = <MML_HDR0 0 2>;
+			hdr1 = <MML_HDR1 0 3>;
+			aal0 = <MML_AAL0 0 4>;
+			aal1 = <MML_AAL1 0 5>;
+			rsz0 = <MML_RSZ0 0 6>;
+			rsz1 = <MML_RSZ1 0 7>;
+			tdshp0 = <MML_TDSHP0 0 8>;
+			tdshp1 = <MML_TDSHP1 0 9>;
+			color0 = <MML_COLOR0 0 10>;
+			color1 = <MML_COLOR1 0 11>;
+			wrot0 = <MML_WROT0 0 12>;
+			wrot1 = <MML_WROT1 0 13>;
+			rdma2 = <MML_RDMA2 0 14>;
+			rdma3 = <MML_RDMA3 0 15>;
+			dli_async0 = <MML_DLI0 0 16>;
+			dli_async1 = <MML_DLI1 0 17>;
+			dlo_async0 = <MML_DLO0 0 18>;
+			dlo_async1 = <MML_DLO1 0 19>;
+			rsz2 = <MML_RSZ2 0 20>;
+			rsz3 = <MML_RSZ3 0 21>;
+			wrot2 = <MML_WROT2 0 22>;
+			wrot3 = <MML_WROT3 0 23>;
+			dli_async3 = <MML_DLI3 0 25>;
+			dlo_async3 = <MML_DLO3 0 27>;
+			birsz0 = <MML_BIRSZ0 0 28>;
+			birsz1 = <MML_BIRSZ1 0 29>;
+			mutex-ids = <MML_RDMA0 0 MML_RDMA1 1 MML_DLI0 2 MML_DLI1 3>;
 		};
 
-		smi_larb0@1f802000 {
+		smi_larb3: smi_larb3@1f802000 {
 			compatible = "mediatek,smi_larb0";
 			reg = <0 0x1f802000 0 0x1000>;
 		};
 
-		mdp_rdma0@1f803000 {
-			compatible = "mediatek,mdp_rdma0";
+		mml_rdma0: mml_rdma0@1f803000 {
+			compatible = "mediatek,mt6985-mml_rdma";
 			reg = <0 0x1f803000 0 0x1000>;
+			comp-ids = <MML_RDMA0>;
+			comp-names = "rdma0";
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_MDP_RDMA0)>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			iommus = <&mdp_iommu M4U_PORT_L3_MDP_RDMA0>;
+			event_sw_rst_done = /bits/ 16
+				<CMDQ_EVENT_MMLSYS1_MDP_RDMA0_SW_RST_DONE_ENG_EVENT>;
+			event_frame_done = /bits/ 16
+				<CMDQ_EVENT_MMLSYS1_MDP_RDMA0_FRAME_DONE>;
 		};
 
-		mdp_rdma1@1f804000 {
-			compatible = "mediatek,mdp_rdma1";
+		mml_rdma1: mml_rdma1@1f804000 {
+			compatible = "mediatek,mt6985-mml_rdma";
 			reg = <0 0x1f804000 0 0x1000>;
+			comp-ids = <MML_RDMA1>;
+			comp-names = "rdma1";
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_MDP_RDMA1)>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			iommus = <&mdp_iommu M4U_PORT_L3_MDP_RDMA1>;
+			event_sw_rst_done = /bits/ 16
+				<CMDQ_EVENT_MMLSYS1_MDP_RDMA1_SW_RST_DONE_ENG_EVENT>;
+			event_frame_done = /bits/ 16
+				<CMDQ_EVENT_MMLSYS1_MDP_RDMA1_FRAME_DONE>;
 		};
 
-		mdp_hdr0@1f805000 {
-			compatible = "mediatek,mdp_hdr0";
+		mml_hdr0: mml_hdr0@1f805000 {
+			compatible = "mediatek,mt6985-mml_hdr";
 			reg = <0 0x1f805000 0 0x1000>;
+			comp-ids = <MML_HDR0>;
+			comp-names = "hdr0";
 		};
 
-		mdp_hdr1@1f806000 {
-			compatible = "mediatek,mdp_hdr1";
+		mml_hdr1: mml_hdr1@1f806000 {
+			compatible = "mediatek,mt6985-mml_hdr";
 			reg = <0 0x1f806000 0 0x1000>;
+			comp-ids = <MML_HDR1>;
+			comp-names = "hdr1";
 		};
 
-		mdp_aal0@1f807000 {
-			compatible = "mediatek,mdp_aal0";
+		mml_aal0: mml_aal0@1f807000 {
+			compatible = "mediatek,mt6985-mml_aal";
 			reg = <0 0x1f807000 0 0x1000>;
+			comp-ids = <MML_AAL0>;
+			comp-names = "aal0";
+			gpr_poll = /bits/ 8 <GCE_GPR_R08>;
+			sram_curve_base = /bits/ 32 <4608>;
+			sram_his_base = /bits/ 32 <1536>;
 		};
 
-		mdp_aal1@1f808000 {
-			compatible = "mediatek,mdp_aal1";
+		mml_aal1: mml_aal1@1f808000 {
+			compatible = "mediatek,mt6985-mml_aal";
 			reg = <0 0x1f808000 0 0x1000>;
+			comp-ids = <MML_AAL1>;
+			comp-names = "aal1";
+			gpr_poll = /bits/ 8 <GCE_GPR_R09>;
+			sram_curve_base = /bits/ 32 <4608>;
+			sram_his_base = /bits/ 32 <1536>;
 		};
 
-		mdp_rsz0@1f809000 {
-			compatible = "mediatek,mdp_rsz0";
+		mml_rsz0: mml_rsz0@1f809000 {
+			compatible = "mediatek,mt6985-mml_rsz";
 			reg = <0 0x1f809000 0 0x1000>;
+			comp-ids = <MML_RSZ0>;
+			comp-names = "rsz0";
 		};
 
-		mdp_rsz1@1f80a000 {
-			compatible = "mediatek,mdp_rsz1";
+		mml_rsz1: mml_rsz1@1f80a000 {
+			compatible = "mediatek,mt6985-mml_rsz";
 			reg = <0 0x1f80a000 0 0x1000>;
+			comp-ids = <MML_RSZ1>;
+			comp-names = "rsz1";
 		};
 
-		mdp_tdshp0@1f80b000 {
-			compatible = "mediatek,mdp_tdshp0";
+		mml_tdshp0: mml_tdshp0@1f80b000 {
+			compatible = "mediatek,mt6985-mml_tdshp";
 			reg = <0 0x1f80b000 0 0x1000>;
+			comp-ids = <MML_TDSHP0>;
+			comp-names = "tdshp0";
 		};
 
-		mdp_tdshp1@1f80c000 {
-			compatible = "mediatek,mdp_tdshp1";
+		mml_tdshp1: mml_tdshp1@1f80c000 {
+			compatible = "mediatek,mt6985-mml_tdshp";
 			reg = <0 0x1f80c000 0 0x1000>;
+			comp-ids = <MML_TDSHP1>;
+			comp-names = "tdshp1";
 		};
 
-		mdp_color0@1f80d000 {
-			compatible = "mediatek,mdp_color0";
+		mml_color0: mml_color0@1f80d000 {
+			compatible = "mediatek,mt6985-mml_color";
 			reg = <0 0x1f80d000 0 0x1000>;
+			comp-ids = <MML_COLOR0>;
+			comp-names = "color0";
 		};
 
-		mdp_color1@1f80e000 {
-			compatible = "mediatek,mdp_color1";
+		mml_color1: mml_color1@1f80e000 {
+			compatible = "mediatek,mt6985-mml_color";
 			reg = <0 0x1f80e000 0 0x1000>;
+			comp-ids = <MML_COLOR1>;
+			comp-names = "color1";
 		};
 
-		mdp_wrot0@1f80f000 {
-			compatible = "mediatek,mdp_wrot0";
+		mml_wrot0: mml_wrot0@1f80f000 {
+			compatible = "mediatek,mt6985-mml_wrot";
 			reg = <0 0x1f80f000 0 0x1000>;
+			comp-ids = <MML_WROT0>;
+			comp-names = "wrot0";
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_MDP_WROT0)>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			iommus = <&mdp_iommu M4U_PORT_L3_MDP_WROT0>;
+			event_sw_rst_done = /bits/ 16
+				<CMDQ_EVENT_MMLSYS1_MDP_WROT0_SW_RST_DONE_ENG_EVENT>;
+			event_frame_done = /bits/ 16
+				<CMDQ_EVENT_MMLSYS1_MDP_WROT0_FRAME_DONE>;
+			event_bufa = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_BUFA>;
+			event_bufb = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_BUFB>;
+			event_buf_next = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_BUF_NEXT>;
+			inlinerot = <&inlinerot0>, <&inlinerot1>;
 		};
 
-		mdp_wrot1@1f810000 {
-			compatible = "mediatek,mdp_wrot1";
+		mml_wrot1: mml_wrot1@1f810000 {
+			compatible = "mediatek,mt6985-mml_wrot";
 			reg = <0 0x1f810000 0 0x1000>;
+			comp-ids = <MML_WROT1>;
+			comp-names = "wrot1";
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_MDP_WROT1)>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			iommus = <&mdp_iommu M4U_PORT_L3_MDP_WROT1>;
+			event_sw_rst_done = /bits/ 16
+				<CMDQ_EVENT_MMLSYS1_MDP_WROT1_SW_RST_DONE_ENG_EVENT>;
+			event_frame_done = /bits/ 16
+				<CMDQ_EVENT_MMLSYS1_MDP_WROT1_FRAME_DONE>;
+			event_bufa = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_BUFA>;
+			event_bufb = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_BUFB>;
+			event_buf_next = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_BUF_NEXT>;
+			inlinerot = <&inlinerot0>, <&inlinerot1>;
 		};
 
-		mdp_rdma2@1f811000 {
-			compatible = "mediatek,mdp_rdma2";
+		mml_rdma2: mml_rdma2@1f811000 {
+			compatible = "mediatek,mt6985-mml_rdma";
 			reg = <0 0x1f811000 0 0x1000>;
+			comp-ids = <MML_RDMA2>;
+			comp-names = "rdma2";
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_MDP_RDMA2)>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			iommus = <&mdp_iommu M4U_PORT_L3_MDP_RDMA2>;
 		};
 
-		mdp_rdma3@1f812000 {
-			compatible = "mediatek,mdp_rdma3";
+		mml_rdma3: mml_rdma3@1f812000 {
+			compatible = "mediatek,mt6985-mml_rdma";
 			reg = <0 0x1f812000 0 0x1000>;
+			comp-ids = <MML_RDMA3>;
+			comp-names = "rdma3";
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_MDP_RDMA3)>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			iommus = <&mdp_iommu M4U_PORT_L3_MDP_RDMA3>;
 		};
 
-		mdp_rsz2@1f813000 {
-			compatible = "mediatek,mdp_rsz2";
+		mml_rsz2: mml_rsz2@1f813000 {
+			compatible = "mediatek,mt6985-mml_rsz";
 			reg = <0 0x1f813000 0 0x1000>;
+			comp-ids = <MML_RSZ2>;
+			comp-names = "rsz2";
 		};
 
-		mdp_rsz3@1f814000 {
-			compatible = "mediatek,mdp_rsz3";
+		mml_rsz3: mml_rsz3@1f814000 {
+			compatible = "mediatek,mt6985-mml_rsz";
 			reg = <0 0x1f814000 0 0x1000>;
+			comp-ids = <MML_RSZ3>;
+			comp-names = "rsz3";
 		};
 
-		mdp_wrot2@1f815000 {
-			compatible = "mediatek,mdp_wrot2";
+		mml_wrot2: mml_wrot2@1f815000 {
+			compatible = "mediatek,mt6985-mml_wrot";
 			reg = <0 0x1f815000 0 0x1000>;
+			comp-ids = <MML_WROT2>;
+			comp-names = "wrot2";
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_MDP_WDMA2)>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			iommus = <&mdp_iommu M4U_PORT_L3_MDP_WDMA2>;
+			event_sw_rst_done = /bits/ 16
+				<CMDQ_EVENT_MMLSYS1_MDP_WROT2_SW_RST_DONE_ENG_EVENT>;
+			event_frame_done = /bits/ 16
+				<CMDQ_EVENT_MMLSYS1_MDP_WROT2_FRAME_DONE>;
 		};
 
-		mdp_wrot3@1f816000 {
-			compatible = "mediatek,mdp_wrot3";
+		mml_wrot3: mml_wrot3@1f816000 {
+			compatible = "mediatek,mt6985-mml_wrot";
 			reg = <0 0x1f816000 0 0x1000>;
+			comp-ids = <MML_WROT3>;
+			comp-names = "wrot3";
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_MDP_WDMA3)>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			iommus = <&mdp_iommu M4U_PORT_L3_MDP_WDMA3>;
+			event_sw_rst_done = /bits/ 16
+				<CMDQ_EVENT_MMLSYS1_MDP_WROT3_SW_RST_DONE_ENG_EVENT>;
+			event_frame_done = /bits/ 16
+				<CMDQ_EVENT_MMLSYS1_MDP_WROT3_FRAME_DONE>;
 		};
 
 		hre_top_mdpsys@1f817000 {
@@ -2852,14 +3215,18 @@
 			reg = <0 0x1f817000 0 0x1000>;
 		};
 
-		mdp_birsz0@1f818000 {
-			compatible = "mediatek,mdp_birsz0";
+		mml_birsz0: mml_birsz0@1f818000 {
+			compatible = "mediatek,mt6985-mml_birsz";
 			reg = <0 0x1f818000 0 0x1000>;
+			comp-ids = <MML_BIRSZ0>;
+			comp-names = "birsz0";
 		};
 
-		mdp_birsz1@1f819000 {
-			compatible = "mediatek,mdp_birsz1";
+		mml_birsz1: mml_birsz1@1f819000 {
+			compatible = "mediatek,mt6985-mml_birsz";
 			reg = <0 0x1f819000 0 0x1000>;
+			comp-ids = <MML_BIRSZ1>;
+			comp-names = "birsz1";
 		};
 
 		odm: odm {
