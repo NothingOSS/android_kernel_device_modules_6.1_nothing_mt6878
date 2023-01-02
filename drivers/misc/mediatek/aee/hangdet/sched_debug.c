@@ -345,6 +345,7 @@ static void print_rq_at_AEE(struct seq_file *m, struct rq *rq, int rq_cpu)
 static void print_cfs_group_stats_at_AEE(struct seq_file *m,
 		int cpu, struct task_group *tg)
 {
+#if 0
 	struct sched_entity *se = tg->se[cpu];
 
 #define P(F)		SEQ_printf_at_AEE(m, "  .%-30s: %lld\n",	#F, (long long)F)
@@ -382,6 +383,7 @@ static void print_cfs_group_stats_at_AEE(struct seq_file *m,
 #endif
 #undef PN
 #undef P
+#endif //0
 }
 #endif
 
@@ -403,8 +405,8 @@ void print_cfs_rq_at_AEE(struct seq_file *m, int cpu, struct cfs_rq *cfs_rq)
 	SEQ_printf_at_AEE(m, "\n");
 	SEQ_printf_at_AEE(m, "cfs_rq[%d]:\n", cpu);
 #endif
-	SEQ_printf_at_AEE(m, "  .%-30s: %lu\n", "exec_clock",
-			SPLIT_NS(cfs_rq->exec_clock));
+	//SEQ_printf_at_AEE(m, "  .%-30s: %lu\n", "exec_clock",
+	//		SPLIT_NS(cfs_rq->exec_clock));
 
 #if NO_EXPORT
 	locked = raw_spin_trylock_n_irqsave(&rq->lock,
@@ -511,8 +513,8 @@ void print_rt_rq_at_AEE(struct seq_file *m, int cpu, struct rt_rq *rt_rq)
 #endif
 
 	P(rt_throttled);
-	PN(rt_time);
-	PN(rt_runtime);
+	//PN(rt_time);
+	//PN(rt_runtime);
 
 #undef PN
 #undef PU
@@ -622,11 +624,11 @@ do { \
 	P(nr_running);
 	P(nr_switches);
 	P(nr_uninterruptible);
-	PN(next_balance);
+	//PN(next_balance);
 	SEQ_printf_at_AEE(m, "  .%-30s: %ld\n",
 			"curr->pid", (long)(task_pid_nr(rq->curr)));
-	PN(clock);
-	PN(clock_task);
+	//PN(clock);
+	//PN(clock_task);
 #undef P
 #undef PN
 
@@ -684,9 +686,9 @@ static void sched_debug_header_at_AEE(struct seq_file *m)
 	SEQ_printf_at_AEE(m, "%-40s: %lld\n", #x, (long long)(x))
 #define PN(x) \
 	SEQ_printf_at_AEE(m, "%-40s: %lu\n", #x, SPLIT_NS(x))
-	PN(ktime);
-	PN(sched_clk);
-	PN(cpu_clk);
+	//PN(ktime);
+	//PN(sched_clk);
+	//PN(cpu_clk);
 	P(jiffies);
 #if IS_ENABLED(CONFIG_HAVE_UNSTABLE_SCHED_CLOCK)
 	P(sched_clock_stable());
