@@ -18,6 +18,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/pm.h>
 #include <linux/regulator/consumer.h>
+#include <linux/regulator/driver.h>
 
 #include "apusys_secure.h"
 #include "aputop_rpmsg.h"
@@ -307,11 +308,9 @@ static uint32_t ce_pwr_off_sz = sizeof(ce_pwr_off);
 static struct apu_power *papw;
 
 /* regulator id */
+static struct regulator *vapu_reg_id;
 static struct regulator *vcore_reg_id;
 static struct regulator *vsram_reg_id;
-
-/* apu_top preclk */
-static struct clk *clk_top_dsp_sel;		/* CONN */
 
 static void aputop_dump_pwr_reg(struct device *dev)
 {
@@ -400,6 +399,15 @@ static int init_plat_pwr_res(struct platform_device *pdev)
 	int ret_clk = 0, ret = 0;
 
 	pr_info("%s %d ++\n", __func__, __LINE__);
+
+
+	// vapu Buck
+	vapu_reg_id = regulator_get(&pdev->dev, "vapu");
+	if (!vapu_reg_id) {
+		pr_info("regulator_get vapu_reg_id failed\n");
+		return -ENOENT;
+	}
+
 	// vcore
 	vcore_reg_id = regulator_get(&pdev->dev, "vcore");
 	if (!vcore_reg_id) {
@@ -414,27 +422,28 @@ static int init_plat_pwr_res(struct platform_device *pdev)
 		return -ENOENT;
 	}
 
-	// devm_clk_get , not real prepare_clk
-	PREPARE_CLK(clk_top_dsp_sel);
-	if (ret_clk < 0)
-		return ret_clk;
+	// enable vapu buck
+	ret = regulator_enable(vapu_reg_id);
+	if (ret < 0) {
+		pr_info("%s fail enable vapu : %d\n", __func__, ret);
+		return -1;
+	}
 
-	ENABLE_CLK(clk_top_dsp_sel);
-	pr_info("%s %d %s = %dMhz --\n", __func__, __LINE__,
-		    __clk_get_name(clk_top_dsp_sel), clk_get_rate(clk_top_dsp_sel)/1000000);
-
-
+	pr_info("%s %d vapu = %d(uv, %s) --\n",
+			__func__, __LINE__,
+			regulator_get_voltage(vapu_reg_id),
+		    regulator_is_enabled(vapu_reg_id) ? "enabled" : "disabled");
 	return 0;
 }
 
 static void destroy_plat_pwr_res(void)
 {
-	DISABLE_CLK(clk_top_dsp_sel);
-	UNPREPARE_CLK(clk_top_dsp_sel);
 	regulator_put(vcore_reg_id);
 	regulator_put(vsram_reg_id);
+	regulator_put(vapu_reg_id);
 	vcore_reg_id = NULL;
 	vsram_reg_id = NULL;
+	vapu_reg_id = NULL;
 }
 
 static void __apu_pll_init(void)
@@ -1086,7 +1095,6 @@ int mt6985_all_on(struct platform_device *pdev, struct apu_power *g_papw)
 {
 
 	papw = g_papw;
-
 	if (papw->env == AO)
 		init_plat_pwr_res(pdev);
 
