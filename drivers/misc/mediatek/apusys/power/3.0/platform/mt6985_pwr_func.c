@@ -335,10 +335,11 @@ static int aputop_show_curr_status(struct seq_file *s, void *unused)
 	}
 
 	for (i = 0 ; i < BUCK_NUM ; i++) {
-		seq_printf(s, "%s : opp %d , %d(uV)\n",
-				buck_name[i],
-				info.buck_opp[i],
-				info.buck_volt[i]);
+		if (info.buck_volt[i])
+			seq_printf(s, "%s : opp %d , %d(uV)\n",
+					buck_name[i],
+					info.buck_opp[i],
+					info.buck_volt[i]);
 	}
 
 	for (i = 0 ; i < CLUSTER_NUM ; i++) {
