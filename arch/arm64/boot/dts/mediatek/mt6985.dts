@@ -7498,11 +7498,12 @@
 		compatible = "mediatek,mt6985-gps";
 		reg = <0 0x18000000 0 0x100000>,
 			<0 0x18c00000 0 0x100000>,
+			<0 0x18d00000 0 0x100000>,
 			<0 0x1c000000 0 0x4>,
 			<0 0x1c805028 0 0x4>,
 			<0 0x1c805030 0 0x4>,
 			<0 0x1c8050cc 0 0x28>;
-		reg-names = "conn_infra_base", "conn_gps_base",
+		reg-names = "conn_infra_base", "conn_gps_base", "conn_dyn_base",
 			"status_dummy_cr", "tia2_gps_on", "tia2_gps_rc_sel",
 			"tia2_gps_debug";
 		interrupts = <GIC_SPI 604 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -7511,7 +7512,11 @@
 			<GIC_SPI 607 IRQ_TYPE_LEVEL_HIGH 0>,
 			<GIC_SPI 608 IRQ_TYPE_LEVEL_HIGH 0>,
 			<GIC_SPI 609 IRQ_TYPE_LEVEL_HIGH 0>,
-			<GIC_SPI 610 IRQ_TYPE_LEVEL_HIGH 0>;
+			<GIC_SPI 610 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 614 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 611 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 613 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 612 IRQ_TYPE_LEVEL_HIGH 0>;
 		emi-connac-ver = <2>;
 		emi-addr = <0>;
 		emi-size = <0x100000>;
