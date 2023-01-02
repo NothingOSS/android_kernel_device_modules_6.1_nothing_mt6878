@@ -29,7 +29,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/reset.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
-#include <trace/hooks/traps.h>
+//#include <trace/hooks/traps.h>
 
 #include "../pci.h"
 #include "../../misc/mediatek/clkbuf/v1/inc/mtk_clkbuf_ctl.h"
