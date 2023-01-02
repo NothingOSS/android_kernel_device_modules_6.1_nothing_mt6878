@@ -93,9 +93,9 @@ print_task_at_AEE(struct seq_file *m, struct rq *rq, struct task_struct *p)
 		SEQ_printf_at_AEE(m, "%5d ", p->prio);
 
 		SEQ_printf_at_AEE(m, "%9lld.%06ld %9lld.%06ld %9lld.%06ld ",
-			SPLIT_NS(p->se.statistics.wait_sum),
+			SPLIT_NS(p->stats.wait_sum),
 			SPLIT_NS(p->se.sum_exec_runtime),
-			SPLIT_NS(p->se.statistics.sum_sleep_runtime));
+			SPLIT_NS(p->stats.sum_sleep_runtime));
 
 		SEQ_printf_at_AEE(m, "%s\n", task_group_path(task_group(p)));
 
@@ -109,9 +109,9 @@ print_task_at_AEE(struct seq_file *m, struct rq *rq, struct task_struct *p)
 		SEQ_printf_at_AEE(m, "%5d ", p->prio);
 
 		SEQ_printf_at_AEE(m, "%9lld.%06ld %9lld.%06ld %9lld.%06ld ",
-			SPLIT_NS(p->se.statistics.wait_sum),
+			SPLIT_NS(p->stats.wait_sum),
 			SPLIT_NS(p->se.sum_exec_runtime),
-			SPLIT_NS(p->se.statistics.sum_sleep_runtime));
+			SPLIT_NS(p->stats.sum_sleep_runtime));
 #endif
 #if IS_ENABLED(CONFIG_NUMA_BALANCING)
 		SEQ_printf_at_AEE(m, " %d %d",
@@ -128,9 +128,9 @@ print_task_at_AEE(struct seq_file *m, struct rq *rq, struct task_struct *p)
 		SEQ_printf_at_AEE(m, "%5d ", p->prio);
 
 		SEQ_printf_at_AEE(m, "%9lld.%06ld %9lld.%06ld %9lld.%06ld ",
-			SPLIT_NS(p->se.statistics.wait_sum),
+			SPLIT_NS(p->stats.wait_sum),
 			SPLIT_NS(p->se.sum_exec_runtime),
-			SPLIT_NS(p->se.statistics.sum_sleep_runtime));
+			SPLIT_NS(p->stats.sum_sleep_runtime));
 
 		SEQ_printf_at_AEE(m, "%s\n", task_group_path(task_group(p)));
 #else
@@ -142,9 +142,9 @@ print_task_at_AEE(struct seq_file *m, struct rq *rq, struct task_struct *p)
 		SEQ_printf_at_AEE(m, "%5d ", p->prio);
 
 		SEQ_printf_at_AEE(m, "%9lld.%06ld %9lld.%06ld %9lld.%06ld ",
-			SPLIT_NS(p->se.statistics.wait_sum),
+			SPLIT_NS(p->stats.wait_sum),
 			SPLIT_NS(p->se.sum_exec_runtime),
-			SPLIT_NS(p->se.statistics.sum_sleep_runtime));
+			SPLIT_NS(p->stats.sum_sleep_runtime));
 #endif
 #if IS_ENABLED(CONFIG_NUMA_BALANCING)
 		SEQ_printf_at_AEE(m, " %d %d",
