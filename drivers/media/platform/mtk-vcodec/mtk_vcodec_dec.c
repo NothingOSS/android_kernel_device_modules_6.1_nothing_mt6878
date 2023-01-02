@@ -904,7 +904,7 @@ static dma_addr_t get_meta_buffer_dma_addr(struct mtk_vcodec_ctx *ctx, int fd)
 }
 static void *create_general_buffer_info(struct mtk_vcodec_ctx *ctx, int fd)
 {
-	struct dma_buf_map map;
+	struct iosys_map map;
 	void *va = NULL;
 	int i = 0;
 	struct dma_buf *dmabuf = NULL;
@@ -1194,8 +1194,8 @@ static void mtk_vdec_reset_decoder(struct mtk_vcodec_ctx *ctx, bool is_drain,
 
 	for (i = 0; i < MAX_GEN_BUF_CNT; ++i) {
 		if (ctx->dma_buf_list[i].va && ctx->dma_buf_list[i].dmabuf) {
-			struct dma_buf_map map =
-				DMA_BUF_MAP_INIT_VADDR(ctx->dma_buf_list[i].va);
+			struct iosys_map map =
+				IOSYS_MAP_INIT_VADDR(ctx->dma_buf_list[i].va);
 			struct dma_buf *dmabuf = ctx->dma_buf_list[i].dmabuf;
 			struct dma_buf_attachment *buf_att = ctx->dma_buf_list[i].buf_att;
 			struct sg_table *sgt = ctx->dma_buf_list[i].sgt;

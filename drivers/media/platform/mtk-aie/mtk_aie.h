@@ -870,7 +870,7 @@ struct aie_fd_dma_para {
 struct imem_buf_info {
 	void *va;
 	dma_addr_t pa;
-	struct dma_buf_map map;
+	struct iosys_map map;
 	unsigned int size;
 	struct dma_buf *dmabuf;
 	struct dma_buf_attachment *attach;
@@ -1055,7 +1055,7 @@ struct mtk_aie_dev {
 	/*DMA Buffer*/
 	struct dma_buf *dmabuf;
 	unsigned long long kva;
-	struct dma_buf_map map;
+	struct iosys_map map;
 	int map_count;
 
 	struct aie_para *base_para;

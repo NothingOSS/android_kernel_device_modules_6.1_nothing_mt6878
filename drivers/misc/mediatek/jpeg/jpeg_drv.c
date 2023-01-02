@@ -71,7 +71,7 @@ static int jpeg_drv_hybrid_dec_start(unsigned int data[],
 	u64 ibuf_iova, obuf_iova;
 	int ret;
 	void *ptr;
-	struct dma_buf_map map;
+	struct iosys_map map;
 	unsigned int node_id;
 
 	JPEG_LOG(1, "+ id:%d", id);

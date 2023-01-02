@@ -316,7 +316,7 @@ fail_detach:
 
 static void mtk_cam_device_buf_uninit(struct mtk_cam_device_buf *buf)
 {
-	struct dma_buf_map map = DMA_BUF_MAP_INIT_VADDR(buf->vaddr);
+	struct iosys_map map = IOSYS_MAP_INIT_VADDR(buf->vaddr);
 
 	WARN_ON(!buf->dbuf || !buf->size);
 	if (buf->dma_sgt) {

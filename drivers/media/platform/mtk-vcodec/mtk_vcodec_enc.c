@@ -1693,7 +1693,7 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 		struct dma_buf_attachment *meta_buf_att;
 		struct sg_table *meta_sgt;
 		struct metadata_info *meta_info;
-		struct dma_buf_map meta_map;
+		struct iosys_map meta_map;
 		void *meta_va = NULL;
 		int ret;
 		int index = 0;

@@ -19,8 +19,8 @@ void jpg_dmabuf_free_iova(struct dma_buf *dbuf,
 int jpg_dmabuf_fd(struct dma_buf *dbuf);
 struct dma_buf *jpg_dmabuf_get(int fd);
 void jpg_dmabuf_put(struct dma_buf *dbuf);
-int jpg_dmabuf_vmap(struct dma_buf *dbuf, struct dma_buf_map *map);
-void jpg_dmabuf_vunmap(struct dma_buf *dbuf, struct dma_buf_map *map);
+int jpg_dmabuf_vmap(struct dma_buf *dbuf, struct iosys_map *map);
+void jpg_dmabuf_vunmap(struct dma_buf *dbuf, struct iosys_map *map);
 struct dma_buf *jpg_dmabuf_alloc(size_t size, size_t align, unsigned int flags);
 
 #endif /*__JPEG_DMA_BUF_H__*/

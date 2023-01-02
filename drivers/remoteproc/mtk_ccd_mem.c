@@ -33,7 +33,7 @@ struct mtk_ccd_buf {
 	struct sg_table *dma_sgt;
 	struct dma_buf *dbuf;
 	struct dma_buf_attachment *db_attach;
-	struct dma_buf_map map;
+	struct iosys_map map;
 };
 
 static struct mtk_ccd_buf *mtk_ccd_buf_alloc(
@@ -41,8 +41,7 @@ static struct mtk_ccd_buf *mtk_ccd_buf_alloc(
 {
 	struct mtk_ccd_buf *buf;
 	struct dma_heap *dma_heap;
-	struct dma_buf_map map;
-	memset(&map, 0, sizeof(map));
+	struct iosys_map map = {}; 
 
 	buf = kzalloc(sizeof(*buf), GFP_KERNEL);
 	if (!buf)

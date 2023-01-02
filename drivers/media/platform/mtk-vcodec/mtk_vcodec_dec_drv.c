@@ -244,8 +244,8 @@ static int fops_vcodec_release(struct file *file)
 #endif
 	for (i = 0; i < MAX_GEN_BUF_CNT; ++i) {
 		if (ctx->dma_buf_list[i].va && ctx->dma_buf_list[i].dmabuf) {
-			struct dma_buf_map map =
-				DMA_BUF_MAP_INIT_VADDR(ctx->dma_buf_list[i].va);
+			struct iosys_map map =
+				IOSYS_MAP_INIT_VADDR(ctx->dma_buf_list[i].va);
 			struct dma_buf *dmabuf = ctx->dma_buf_list[i].dmabuf;
 			struct dma_buf_attachment *buf_att = ctx->dma_buf_list[i].buf_att;
 			struct sg_table *sgt = ctx->dma_buf_list[i].sgt;

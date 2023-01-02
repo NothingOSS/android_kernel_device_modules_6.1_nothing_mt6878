@@ -306,11 +306,11 @@ static void vb2_vmalloc_dmabuf_ops_release(struct dma_buf *dbuf)
 	aie_vb2_vmalloc_put(dbuf->priv);
 }
 
-static int vb2_vmalloc_dmabuf_ops_vmap(struct dma_buf *dbuf, struct dma_buf_map *map)
+static int vb2_vmalloc_dmabuf_ops_vmap(struct dma_buf *dbuf, struct iosys_map *map)
 {
 	struct vb2_vmalloc_buf *buf = dbuf->priv;
 
-	dma_buf_map_set_vaddr(map, buf->vaddr);
+	iosys_map_set_vaddr(map, buf->vaddr);
 
 	return 0;
 }
@@ -366,7 +366,7 @@ static struct dma_buf *aie_vb2_vmalloc_get_dmabuf(struct vb2_buffer *vb,
 static int aie_vb2_vmalloc_map_dmabuf(void *mem_priv)
 {
 	struct vb2_vmalloc_buf *buf = mem_priv;
-	struct dma_buf_map map;
+	struct iosys_map map;
 	int ret;
 
 	ret = dma_buf_vmap(buf->dbuf, &map);
@@ -380,7 +380,7 @@ static int aie_vb2_vmalloc_map_dmabuf(void *mem_priv)
 static void aie_vb2_vmalloc_unmap_dmabuf(void *mem_priv)
 {
 	struct vb2_vmalloc_buf *buf = mem_priv;
-	struct dma_buf_map map = DMA_BUF_MAP_INIT_VADDR(buf->vaddr);
+	struct iosys_map map = IOSYS_MAP_INIT_VADDR(buf->vaddr);
 
 	dma_buf_vunmap(buf->dbuf, &map);
 	buf->vaddr = NULL;
@@ -389,7 +389,7 @@ static void aie_vb2_vmalloc_unmap_dmabuf(void *mem_priv)
 static void aie_vb2_vmalloc_detach_dmabuf(void *mem_priv)
 {
 	struct vb2_vmalloc_buf *buf = mem_priv;
-	struct dma_buf_map map = DMA_BUF_MAP_INIT_VADDR(buf->vaddr);
+	struct iosys_map map = IOSYS_MAP_INIT_VADDR(buf->vaddr);
 
 	if (buf->vaddr)
 		dma_buf_vunmap(buf->dbuf, &map);

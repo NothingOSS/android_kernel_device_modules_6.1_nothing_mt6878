@@ -267,7 +267,7 @@ struct mtk_drm_gem_obj *mtk_drm_gem_create_from_heap(struct drm_device *dev,
 	struct dma_buf *dma_buf;
 	struct dma_buf_attachment *attach;
 	struct sg_table *sgt;
-	struct dma_buf_map map = {};
+	struct iosys_map map = {};
 	int ret;
 
 	mtk_gem = mtk_drm_gem_init(dev, size);

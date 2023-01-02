@@ -68,12 +68,12 @@ void jpg_dmabuf_put(struct dma_buf *dbuf)
 	dma_buf_put(dbuf);
 }
 
-int jpg_dmabuf_vmap(struct dma_buf *dbuf, struct dma_buf_map *map)
+int jpg_dmabuf_vmap(struct dma_buf *dbuf, struct iosys_map *map)
 {
 	return dma_buf_vmap(dbuf, map);
 }
 
-void jpg_dmabuf_vunmap(struct dma_buf *dbuf, struct dma_buf_map *map)
+void jpg_dmabuf_vunmap(struct dma_buf *dbuf, struct iosys_map *map)
 {
 	dma_buf_vunmap(dbuf, map);
 }

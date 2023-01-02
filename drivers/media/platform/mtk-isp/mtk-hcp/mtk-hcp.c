@@ -1331,7 +1331,7 @@ int allocate_working_buffer_helper(struct platform_device *pdev)
 	struct dma_buf_attachment *attach = NULL;
 	struct mtk_hcp *hcp_dev = platform_get_drvdata(pdev);
 	struct dma_heap *pdma_heap = NULL;
-	struct dma_buf_map map = {0};
+	struct iosys_map map = {0};
 	int ret = 0;
 
 	mblock = hcp_dev->data->mblock;

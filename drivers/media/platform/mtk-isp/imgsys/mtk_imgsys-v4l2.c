@@ -1446,7 +1446,7 @@ static int mtkdip_ioc_add_kva(struct v4l2_subdev *subdev, void *arg)
 	struct dma_buf_attachment *attach;
 	struct sg_table *sgt;
 	dma_addr_t dma_addr;
-	struct dma_buf_map map;
+	struct iosys_map map;
 	int ret = 0;
 	int i;
 

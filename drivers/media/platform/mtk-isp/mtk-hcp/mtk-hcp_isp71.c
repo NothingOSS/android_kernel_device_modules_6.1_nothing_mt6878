@@ -486,7 +486,7 @@ int isp71_allocate_working_buffer(struct mtk_hcp *hcp_dev, unsigned int mode)
 	struct sg_table *sgt = NULL;
 	struct dma_buf_attachment *attach = NULL;
 	struct dma_heap *pdma_heap = NULL;
-	struct dma_buf_map map = {0};
+	struct iosys_map map = {0};
 	int ret = 0;
 
 	if (mode)

@@ -74,7 +74,7 @@ static void *vb2_dc_cookie(void *buf_priv)
 static void *vb2_dc_vaddr(void *buf_priv)
 {
 	struct vb2_dc_buf *buf = buf_priv;
-	struct dma_buf_map map;
+	struct iosys_map map;
 	int ret;
 
 	if (!buf->vaddr && buf->db_attach) {
@@ -339,13 +339,13 @@ static void vb2_dc_dmabuf_ops_release(struct dma_buf *dbuf)
 }
 
 static int vb2_dc_dmabuf_ops_vmap(struct dma_buf *dbuf,
-		struct dma_buf_map *map)
+		struct iosys_map *map)
 {
 	struct vb2_dc_buf *buf = dbuf->priv;
 
 	map->vaddr = buf->vaddr;
 
-	if (dma_buf_map_is_null(map))
+	if (iosys_map_is_null(map))
 		return -ENOMEM;
 
 	return 0;

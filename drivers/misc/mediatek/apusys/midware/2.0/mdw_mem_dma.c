@@ -240,7 +240,7 @@ static void mdw_dmabuf_unmap_dma(struct dma_buf_attachment *attach,
 	dma_unmap_sgtable(attach->dev, sgt, dir, attr);
 }
 
-static int mdw_dmabuf_vmap(struct dma_buf *dbuf, struct dma_buf_map *dbuf_map)
+static int mdw_dmabuf_vmap(struct dma_buf *dbuf, struct iosys_map *dbuf_map)
 {
 	struct mdw_mem_dma *mdbuf = dbuf->priv;
 

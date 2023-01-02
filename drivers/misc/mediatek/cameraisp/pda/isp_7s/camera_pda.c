@@ -358,7 +358,7 @@ static int Get_Input_Addr_From_DMABUF(struct PDA_Data_t *pda_PdaConfig)
 	// buffer address
 	unsigned int *g_buf_LI_va;
 	unsigned int *g_buf_LT_va;
-	struct dma_buf_map map_i, map_t;
+	struct iosys_map map_i, map_t;
 #endif
 
 	ret = pda_get_dma_buffer(&g_image_mmu, pda_PdaConfig->FD_L_Image);
@@ -655,7 +655,7 @@ static int Get_Output_Addr_From_DMABUF(struct PDA_Data_t *pda_PdaConfig)
 #ifdef FOR_DEBUG_VA_DATA
 	// buffer address
 	unsigned int *g_buf_Out_va;
-	struct dma_buf_map map_o;
+	struct iosys_map map_o;
 #endif
 
 	// Output buffer

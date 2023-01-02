@@ -1708,7 +1708,7 @@ static int mml_test_create_src(struct dma_heap *heap, struct mml_ut *cur_case,
 	struct mml_buffer *buf)
 {
 	void *va;
-	struct dma_buf_map map = {0};
+	struct iosys_map map = {0};
 	int ret;
 
 	if (mml_test_alloc_frame(heap, buf, cur_case->cfg_src_format,
@@ -1747,7 +1747,7 @@ static int mml_test_create_dest(struct dma_heap *heap, struct mml_ut *cur_case,
 	struct mml_buffer *buf)
 {
 	u64 *va;
-	struct dma_buf_map map = {0};
+	struct iosys_map map = {0};
 	u32 i;
 	int ret;
 

@@ -52,7 +52,7 @@ struct aov_core {
 	struct aov_start *aov_start;
 
 	struct dma_buf *dma_buf;
-	struct dma_buf_map dma_map;
+	struct iosys_map dma_map;
 	struct buffer *event_data;
 	struct list_head event_list;
 	spinlock_t event_lock;

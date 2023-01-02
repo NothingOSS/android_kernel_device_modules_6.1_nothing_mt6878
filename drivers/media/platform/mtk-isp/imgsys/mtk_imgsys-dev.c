@@ -677,10 +677,10 @@ void mtk_imgsys_put_dma_buf(struct dma_buf *dma_buf,
 	}
 }
 
-void *get_kva(struct mtk_imgsys_dev_buffer *buf, struct dma_buf_map *imap)
+void *get_kva(struct mtk_imgsys_dev_buffer *buf, struct iosys_map *imap)
 {
 	struct dma_buf *dmabuf;
-	struct dma_buf_map map;
+	struct iosys_map map;
 	struct header_desc *desc;
 	int ret = 0;
 
@@ -821,7 +821,7 @@ static void mtk_imgsys_kva_cache(struct mtk_imgsys_dev_buffer *dev_buf)
 	struct list_head *ptr = NULL;
 	bool find = false;
 	struct buf_va_info_t *buf_va_info;
-	struct dma_buf_map map;
+	struct iosys_map map;
 
 	mutex_lock(&(fd_kva_info_list.mymutex));
 	list_for_each(ptr, &(fd_kva_info_list.mylist)) {

@@ -408,7 +408,7 @@ int mtk_drm_check_fmt(unsigned int fmt, struct mmp_metadata_bitmap_t *bitmap)
 	}
 }
 
-void *mtk_drm_buffer_map_kernel(struct drm_framebuffer *fb, struct dma_buf_map *map)
+void *mtk_drm_buffer_map_kernel(struct drm_framebuffer *fb, struct iosys_map *map)
 {
 	struct drm_gem_object *gem_obj = NULL;
 	struct dma_buf *dmabuf = NULL;
@@ -443,7 +443,7 @@ void *mtk_drm_buffer_map_kernel(struct drm_framebuffer *fb, struct dma_buf_map *
 	return dma_va;
 }
 
-int mtk_drm_buffer_unmap_kernel(struct drm_framebuffer *fb, struct dma_buf_map *map)
+int mtk_drm_buffer_unmap_kernel(struct drm_framebuffer *fb, struct iosys_map *map)
 {
 	struct drm_gem_object *gem_obj;
 	struct dma_buf *dmabuf;
@@ -468,7 +468,7 @@ int mtk_drm_mmp_ovl_layer(struct mtk_plane_state *state,
 	unsigned int fmt = pending->format;
 	int raw = 0;
 	int yuv = 0;
-	struct dma_buf_map map = {0};
+	struct iosys_map map = {0};
 	void *dma_va;
 
 	if (crtc_idx >= MMP_CRTC_NUM) {
@@ -618,7 +618,7 @@ int mtk_drm_mmp_wdma_buffer(struct drm_crtc *crtc,
 	struct mmp_metadata_t meta;
 	unsigned int fmt = wb_fb->format->format;
 	int ret, raw = 0, yuv = 0;
-	struct dma_buf_map map = {0};
+	struct iosys_map map = {0};
 	void *dma_va;
 
 	memset(&bitmap, 0, sizeof(struct mmp_metadata_bitmap_t));

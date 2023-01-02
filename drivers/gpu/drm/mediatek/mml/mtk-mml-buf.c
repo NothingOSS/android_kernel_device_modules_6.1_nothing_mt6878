@@ -120,7 +120,7 @@ int mml_buf_iova_get(struct device *dev, struct mml_file_buf *buf)
 int mml_buf_va_get(struct mml_file_buf *buf)
 {
 	u32 i;
-	struct dma_buf_map map = {0};
+	struct iosys_map map = {0};
 	int ret = 0;
 
 	for (i = 0; i < buf->cnt; i++) {
@@ -150,7 +150,7 @@ inline static void dmabuf_iova_free(struct mml_dma_buf *dma)
 void mml_buf_put(struct mml_file_buf *buf)
 {
 	u8 i;
-	struct dma_buf_map map = {0};
+	struct iosys_map map = {0};
 
 	for (i = 0; i < buf->cnt; i++) {
 		if (!buf->dma[i].dmabuf)

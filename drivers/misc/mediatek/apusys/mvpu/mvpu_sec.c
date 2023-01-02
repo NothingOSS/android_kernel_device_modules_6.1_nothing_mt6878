@@ -519,7 +519,7 @@ int update_hash_pool(void *session,
 	void *buf_kva;
 	bool copy_to_pool = true;
 	int ret_dma_buf_vmap = 0;
-	struct dma_buf_map sys_map;
+	struct iosys_map sys_map;
 
 	if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_DBG)
 		pr_info("[MVPU][Sec] %s\n", __func__);
@@ -1121,7 +1121,7 @@ int replace_mem(uint32_t session_id,
 	uint32_t *rp_buf_new_base;
 	uint32_t *rp_buf_new_offset;
 	int ret_dma_buf_vmap = 0;
-	struct dma_buf_map sys_map;
+	struct iosys_map sys_map;
 
 	if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_DBG)
 		pr_info("[MVPU][Sec] %s\n", __func__);
@@ -1283,7 +1283,7 @@ int replace_kerarg(void *session,
 	uint32_t target_dst_ofst = 0;
 	int i;
 	int ret_dma_buf_vmap = 0;
-	struct dma_buf_map sys_map;
+	struct iosys_map sys_map;
 
 	if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_DBG)
 		pr_info("[MVPU][Sec] %s\n", __func__);
