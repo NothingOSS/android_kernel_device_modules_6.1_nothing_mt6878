@@ -20,6 +20,9 @@
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 #include <mt-plat/mrdump.h>
 #endif
+#if IS_ENABLED(CONFIG_MTK_EMI)
+#include <soc/mediatek/emi.h>
+#endif
 
 #include "adsp_reg.h"
 #include "adsp_core.h"
@@ -35,6 +38,24 @@
 static char *adsp_ke_buffer;
 static struct adsp_exception_control excep_ctrl;
 static bool suppress_test_ee;
+
+static u32 copy_from_iomem(void *dest, size_t destsize, const void *src,
+			   size_t srcsize, u32 offset, size_t request)
+{
+	/* if request == -1, offset == 0, copy full srcsize */
+	if (offset + request > srcsize)
+		request = srcsize - offset;
+
+	/* if destsize == -1, don't check the request size */
+	if (!src || !dest || destsize < request) {
+		pr_warn("%s, buffer null or not enough space", __func__);
+		return 0;
+	}
+
+	memcpy_fromio(dest, src + offset, request);
+
+	return request;
+}
 
 static u32 copy_from_buffer(void *dest, size_t destsize, const void *src,
 			    size_t srcsize, u32 offset, size_t request)
@@ -105,16 +126,16 @@ static u32 dump_adsp_internal_memory(void *buf, size_t size, struct adsp_priv *p
 	adsp_latch_dump_region(true);
 
 	n += write_mem_header(buf + n, size - n, "cfg", adspsys->cfg_size);
-	n += copy_from_buffer(buf + n, size - n, adspsys->cfg, adspsys->cfg_size, 0, -1);
+	n += copy_from_iomem(buf + n, size - n, adspsys->cfg, adspsys->cfg_size, 0, -1);
 
 	n += write_mem_header(buf + n, size - n, "cfg2", adspsys->cfg2_size);
-	n += copy_from_buffer(buf + n, size - n, adspsys->cfg2, adspsys->cfg2_size, 0, -1);
+	n += copy_from_iomem(buf + n, size - n, adspsys->cfg2, adspsys->cfg2_size, 0, -1);
 
 	n += write_mem_header(buf + n, size - n, "itcm", pdata->itcm_size);
-	n += copy_from_buffer(buf + n, size - n, pdata->itcm, pdata->itcm_size, 0, -1);
+	n += copy_from_iomem(buf + n, size - n, pdata->itcm, pdata->itcm_size, 0, -1);
 
 	n += write_mem_header(buf + n, size - n, "dtcm", pdata->dtcm_size);
-	n += copy_from_buffer(buf + n, size - n, pdata->dtcm, pdata->dtcm_size, 0, -1);
+	n += copy_from_iomem(buf + n, size - n, pdata->dtcm, pdata->dtcm_size, 0, -1);
 
 	adsp_latch_dump_region(false);
 	adsp_disable_clock();
@@ -167,9 +188,11 @@ static int dump_buffer(struct adsp_exception_control *ctrl, int coredump_id)
 	n += dump_adsp_shared_memory(buf + n, total - n, ADSP_A_LOGGER_MEM_ID, "log_a");
 	n += dump_adsp_shared_memory(buf + n, total - n, ADSP_B_LOGGER_MEM_ID, "log_b");
 
+	mutex_lock(&ctrl->lock);
 	reinit_completion(&ctrl->done);
 	ctrl->buf_backup = buf;
 	ctrl->buf_size = total;
+	mutex_unlock(&ctrl->lock);
 
 	pr_debug("%s, vmalloc size %u, buffer %p, dump_size %u",
 		 __func__, total, buf, n);
@@ -349,12 +372,19 @@ void adsp_aed_worker(struct work_struct *ws)
 		if (ret == 0)
 			break;
 
+#if IS_ENABLED(CONFIG_MTK_EMI)
+		if (retry == 0)
+			mtk_emidbg_dump();
+#endif
 		/* reset fail & retry */
 		pr_info("%s, reset retry.... (%d)", __func__, retry);
 		msleep(20);
 	}
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 	if (ret) {
+#if IS_ENABLED(CONFIG_MTK_EMI)
+		mtk_emidbg_dump();
+#endif
 		pr_info("%s, adsp dead, wait dump dead body", __func__);
 		if (is_infrabus_timeout())
 			BUG(); /* reboot for bus dump */
@@ -403,6 +433,9 @@ int init_adsp_exception_control(struct device *dev,
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 	mrdump_set_extra_dump(AEE_EXTRA_FILE_ADSP, get_adsp_misc_buffer);
 #endif
+
+	mutex_init(&ctrl->lock);
+
 	ctrl->waitq = waitq;
 	ctrl->workq = workq;
 	ctrl->buf_backup = NULL;
@@ -453,17 +486,17 @@ void get_adsp_aee_buffer(unsigned long *vaddr, unsigned long *size)
 
 	pdata = get_adsp_core_by_id(ADSP_A_ID);
 	if (pdata) {
-		n += copy_from_buffer(buf + n, len - n,
+		n += copy_from_iomem(buf + n, len - n,
 					adspsys->cfg, adspsys->cfg_size, 0, -1);
-		n += copy_from_buffer(buf + n, len - n,
+		n += copy_from_iomem(buf + n, len - n,
 					adspsys->cfg2, adspsys->cfg2_size, 0, -1);
-		n += copy_from_buffer(buf + n, len - n,
+		n += copy_from_iomem(buf + n, len - n,
 					pdata->dtcm, pdata->dtcm_size, 0, -1);
 	}
 
 	pdata = get_adsp_core_by_id(ADSP_B_ID);
 	if (pdata) {
-		n += copy_from_buffer(buf + n, len - n,
+		n += copy_from_iomem(buf + n, len - n,
 					pdata->dtcm, pdata->dtcm_size, 0, -1);
 	}
 	adsp_latch_dump_region(false);
@@ -488,6 +521,7 @@ static ssize_t adsp_dump_show(struct file *filep, struct kobject *kobj,
 	ssize_t n = 0;
 	struct adsp_exception_control *ctrl = &excep_ctrl;
 
+	mutex_lock(&ctrl->lock);
 	if (ctrl->buf_backup) {
 		n = copy_from_buffer(buf, -1, ctrl->buf_backup,
 			ctrl->buf_size, offset, size);
@@ -501,6 +535,7 @@ static ssize_t adsp_dump_show(struct file *filep, struct kobject *kobj,
 			complete(&ctrl->done);
 		}
 	}
+	mutex_unlock(&ctrl->lock);
 
 	return n;
 }
