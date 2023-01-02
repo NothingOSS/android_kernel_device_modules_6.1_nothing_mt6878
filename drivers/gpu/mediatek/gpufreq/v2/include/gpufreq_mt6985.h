@@ -35,6 +35,7 @@
 #define GPUFREQ_AVS_ENABLE              (0)
 #define GPUFREQ_ASENSOR_ENABLE          (0)
 #define GPUFREQ_SELF_CTRL_MTCMOS        (0)
+#define GPUFREQ_SHARED_STATUS_REG       (0)
 
 /**************************************************
  * Clock Setting

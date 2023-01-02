@@ -1710,6 +1710,7 @@ static void __gpufreq_update_shared_status_adj_table(void)
 
 static void __gpufreq_update_shared_status_init_reg(void)
 {
+#if GPUFREQ_SHARED_STATUS_REG
 	unsigned int copy_size = 0;
 
 	/* [WARNING] GPU is power off at this moment */
@@ -1723,10 +1724,12 @@ static void __gpufreq_update_shared_status_init_reg(void)
 
 	copy_size = sizeof(struct gpufreq_reg_info) * NUM_MFGSYS_REG;
 	memcpy(g_shared_status->reg_mfgsys, g_reg_mfgsys, copy_size);
+#endif /* GPUFREQ_SHARED_STATUS_REG */
 }
 
 static void __gpufreq_update_shared_status_power_reg(void)
 {
+#if GPUFREQ_SHARED_STATUS_REG
 	unsigned int copy_size = 0;
 
 	/* acquire sema before access MFG_TOP_CFG */
@@ -1791,10 +1794,12 @@ static void __gpufreq_update_shared_status_power_reg(void)
 	memcpy(g_shared_status->reg_mfgsys, g_reg_mfgsys, copy_size);
 
 	__gpufreq_set_semaphore(SEMA_RELEASE);
+#endif /* GPUFREQ_SHARED_STATUS_REG */
 }
 
 static void __gpufreq_update_shared_status_active_idle_reg(void)
 {
+#if GPUFREQ_SHARED_STATUS_REG
 	unsigned int copy_size = 0;
 
 	/* acquire sema before access MFG_TOP_CFG */
@@ -1811,10 +1816,12 @@ static void __gpufreq_update_shared_status_active_idle_reg(void)
 	memcpy(g_shared_status->reg_mfgsys, g_reg_mfgsys, copy_size);
 
 	__gpufreq_set_semaphore(SEMA_RELEASE);
+#endif /* GPUFREQ_SHARED_STATUS_REG */
 }
 
 static void __gpufreq_update_shared_status_dvfs_reg(void)
 {
+#if GPUFREQ_SHARED_STATUS_REG
 	unsigned int copy_size = 0;
 
 	/* acquire sema before access MFG_TOP_CFG */
@@ -1833,6 +1840,7 @@ static void __gpufreq_update_shared_status_dvfs_reg(void)
 	memcpy(g_shared_status->reg_mfgsys, g_reg_mfgsys, copy_size);
 
 	__gpufreq_set_semaphore(SEMA_RELEASE);
+#endif /* GPUFREQ_SHARED_STATUS_REG */
 }
 
 static unsigned int __gpufreq_custom_init_enable(void)
