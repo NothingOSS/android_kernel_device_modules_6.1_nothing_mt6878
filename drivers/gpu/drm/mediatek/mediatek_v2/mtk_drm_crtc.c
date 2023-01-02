@@ -7872,9 +7872,8 @@ void mtk_crtc_init_plane_setting(struct mtk_drm_crtc *mtk_crtc)
 
 	/*constant color layer*/
 	pending->addr = 0;
-	pending->prop_val[PLANE_PROP_PLANE_ALPHA] = 0xFF;
 	pending->prop_val[PLANE_PROP_COMPRESS] = 0;
-	pending->prop_val[PLANE_PROP_ALPHA_CON] = 0;
+	plane->state->alpha = DRM_BLEND_ALPHA_OPAQUE;
 
 	plane_state->comp_state.lye_id = 0;
 	plane_state->comp_state.ext_lye_id = 0;
@@ -11623,8 +11622,7 @@ static void mtk_drm_crtc_enable_fake_layer(struct drm_crtc *crtc,
 		else
 			pending->enable = false;
 
-		pending->prop_val[PLANE_PROP_ALPHA_CON] = 0x1;
-		pending->prop_val[PLANE_PROP_PLANE_ALPHA] = 0xFF;
+		plane->state->alpha = DRM_BLEND_ALPHA_OPAQUE;
 		pending->prop_val[PLANE_PROP_COMPRESS] = 0;
 
 		layer_num = mtk_ovl_layer_num(

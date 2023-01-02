@@ -3,6 +3,8 @@
  * Copyright (c) 2021 MediaTek Inc.
  */
 
+#include <drm/drm_blend.h>
+#include <drm/drm_framebuffer.h>
 #include <linux/clk.h>
 #include <linux/component.h>
 #include <linux/of_device.h>
@@ -1270,7 +1272,8 @@ static unsigned int ovl_fmt_convert(struct mtk_disp_ovl *ovl, unsigned int fmt,
 	case DRM_FORMAT_RGBX8888:
 	case DRM_FORMAT_RGBA8888:
 		if (modifier & MTK_FMT_PREMULTIPLIED)
-			return OVL_CON_CLRFMT_ARGB8888 | OVL_CON_CLRFMT_MAN;
+			return OVL_CON_CLRFMT_ARGB8888 | OVL_CON_CLRFMT_MAN |
+				OVL_CON_BYTE_SWAP | OVL_CON_RGB_SWAP;
 		else
 			return OVL_CON_CLRFMT_ARGB8888;
 	case DRM_FORMAT_BGRX8888:
@@ -1283,8 +1286,7 @@ static unsigned int ovl_fmt_convert(struct mtk_disp_ovl *ovl, unsigned int fmt,
 	case DRM_FORMAT_XRGB8888:
 	case DRM_FORMAT_ARGB8888:
 		if (modifier & MTK_FMT_PREMULTIPLIED)
-			return OVL_CON_CLRFMT_ARGB8888 | OVL_CON_BYTE_SWAP |
-			       OVL_CON_CLRFMT_MAN | OVL_CON_RGB_SWAP;
+			return OVL_CON_CLRFMT_ARGB8888 | OVL_CON_CLRFMT_MAN;
 		else
 			return OVL_CON_CLRFMT_RGBA8888;
 	case DRM_FORMAT_XBGR8888:
@@ -2136,7 +2138,7 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 	unsigned int con;
 	unsigned int lye_idx = 0, ext_lye_idx = 0;
 	unsigned int alpha;
-	unsigned int alpha_con;
+	unsigned int alpha_con = 1;
 	unsigned int value = 0, mask = 0, fmt_ex = 0;
 	unsigned long long temp_bw;
 	unsigned int dim_color;
@@ -2148,6 +2150,9 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 	struct mtk_drm_private *priv;
 	unsigned long crtc_idx;
 	int i = 0;
+	unsigned int disp_reg_ovl_pitch = 0;
+	unsigned int pixel_blend_mode = DRM_MODE_BLEND_PIXEL_NONE;
+	unsigned int modifier = 0;
 
 	/* OVL comp might not attach to CRTC in layer_config(), need to check */
 	if (unlikely(!comp->mtk_crtc)) {
@@ -2205,14 +2210,22 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 
 	mtk_ovl_color_manage(comp, idx, state, handle);
 
-	alpha_con = (unsigned int)pending->prop_val[PLANE_PROP_ALPHA_CON];
-	alpha = 0xFF & pending->prop_val[PLANE_PROP_PLANE_ALPHA];
-	if (alpha == 0xFF &&
-	    (fmt == DRM_FORMAT_RGBX8888 || fmt == DRM_FORMAT_BGRX8888 ||
-	     fmt == DRM_FORMAT_XRGB8888 || fmt == DRM_FORMAT_XBGR8888))
-		alpha_con = 0;
+	alpha = 0xFF & (state->base.alpha >> 8);
 
-	con = ovl_fmt_convert(ovl, fmt, state->pending.modifier,
+	DDPINFO("Blending: state->base.alpha =0x%x, alpha = 0x%x\n", state->base.alpha, alpha);
+	if (state->base.fb) {
+		if (state->base.fb->format->has_alpha) {
+			pixel_blend_mode = state->base.pixel_blend_mode;
+			DDPINFO("Blending:real alpha exist X mode(%x)\n", fmt);
+		}
+		DDPINFO("Blending: has_alpha %d pixel_blend_mode=0x%x\n",
+			state->base.fb->format->has_alpha, state->base.pixel_blend_mode);
+	}
+
+	if (pixel_blend_mode == DRM_MODE_BLEND_PREMULTI)
+		modifier |= MTK_FMT_PREMULTIPLIED;
+
+	con = ovl_fmt_convert(ovl, fmt, modifier,
 			pending->prop_val[PLANE_PROP_COMPRESS]);
 	con |= (alpha_con << 8) | alpha;
 
@@ -2268,6 +2281,9 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DISP_REG_OVL_EL0_CLR(id),
 			       dim_color, ~0);
+
+		disp_reg_ovl_pitch = DISP_REG_OVL_EL_PITCH(id);
+
 		/* ext layer is the same as attached phy layer */
 		if (!IS_ERR(comp->qos_req_other)) {
 			int val = (lye_idx % 2);
@@ -2324,6 +2340,9 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DISP_REG_OVL_L0_CLR(lye_idx),
 			       dim_color, ~0);
+
+		disp_reg_ovl_pitch = DISP_REG_OVL_PITCH(lye_idx);
+
 		/*
 		 * layer0 --> larb0, layer1 --> larb1
 		 * layer2 --> larb0, layer3 --> larb1
@@ -2344,6 +2363,21 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		(unsigned long)pending->addr,
 		(unsigned int)pending->prop_val[PLANE_PROP_COMPRESS], con, mask,
 		pending->mml_mode);
+
+	DDPINFO("alpha= 0x%x, con=0x%x, blend = 0x%x, reg_ovl_pitch=0x%x\n",
+		alpha,
+		alpha_con,
+		pixel_blend_mode,
+		disp_reg_ovl_pitch);
+
+	if (pixel_blend_mode == DRM_MODE_BLEND_PIXEL_NONE)
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + disp_reg_ovl_pitch,
+			1 << 28, 1 << 28);
+	else
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + disp_reg_ovl_pitch,
+			0 << 28, 1 << 28);
 
 	if (pending->enable) {
 		struct drm_crtc *crtc;

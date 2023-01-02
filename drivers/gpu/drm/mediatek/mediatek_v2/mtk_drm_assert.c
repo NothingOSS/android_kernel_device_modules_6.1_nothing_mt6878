@@ -250,8 +250,7 @@ static struct mtk_plane_state *drm_set_dal_plane_state(struct drm_crtc *crtc,
 	plane_state->pending.enable = !!enable;
 	plane_state->pending.is_sec = false;
 
-	pending->prop_val[PLANE_PROP_ALPHA_CON] = 0x1;
-	pending->prop_val[PLANE_PROP_PLANE_ALPHA] = 0x80;
+	plane->state->alpha = ((0x80 << 8) | 0xFF);
 	pending->prop_val[PLANE_PROP_COMPRESS] = 0;
 
 	plane_state->comp_state.comp_id = ovl_comp->id;
