@@ -1023,10 +1023,12 @@ static int __init hangdet_init(void)
 	if (!toprgu_base)
 		pr_debug("toprgu iomap failed\n");
 	else {
-		int err;
+		int err1, err2;
 
-		err = of_property_read_u32(np_toprgu, "apwdt_en", &apwdt_en);
-		if (err < 0)
+		err1 = of_property_read_u32(np_toprgu, "apwdt_en", &apwdt_en);
+		/* apwdt_en causes warning and build error in the end */
+		err2 = of_property_read_u32(np_toprgu, "apwdten", &apwdt_en);
+		if (err1 < 0 && err2 < 0)
 			apwdt_en = 1;
 
 		pr_info("apwdt %s\n", apwdt_en ? "enabled" : "disabled");
