@@ -1595,13 +1595,13 @@ static const struct mtk_pin_soc mt6985_data = {
 };
 
 static const struct of_device_id mt6985_pinctrl_of_match[] = {
-	{ .compatible = "mediatek,mt6985-pinctrl", },
+	{ .compatible = "mediatek,mt6985-pinctrl", .data = &mt6985_data },
 	{ }
 };
 
 static int mt6985_pinctrl_probe(struct platform_device *pdev)
 {
-	return mtk_paris_pinctrl_probe(pdev, &mt6985_data);
+	return mtk_paris_pinctrl_probe(pdev);
 }
 
 static struct platform_driver mt6985_pinctrl_driver = {

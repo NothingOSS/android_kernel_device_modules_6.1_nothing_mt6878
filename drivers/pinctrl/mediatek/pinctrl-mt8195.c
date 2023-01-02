@@ -819,13 +819,13 @@ static const struct mtk_pin_soc mt8195_data = {
 };
 
 static const struct of_device_id mt8195_pinctrl_of_match[] = {
-	{ .compatible = "mediatek,mt8195-pinctrl", },
+	{ .compatible = "mediatek,mt8195-pinctrl", .data = &mt8195_data },
 	{ }
 };
 
 static int mt8195_pinctrl_probe(struct platform_device *pdev)
 {
-	return mtk_paris_pinctrl_probe(pdev, &mt8195_data);
+	return mtk_paris_pinctrl_probe(pdev);
 }
 
 static struct platform_driver mt8195_pinctrl_driver = {
