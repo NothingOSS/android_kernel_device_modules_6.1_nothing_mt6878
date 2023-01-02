@@ -2980,13 +2980,13 @@
 			compatible = "mediatek,mt6985-iommu-debug";
 		};
 
-		mtk_dmaheap_debug0: dmaheap_test0 {
-			compatible = "mediatek,dmabufheap-iommu0";
+		mtk_dmabufheap_debug0: dmaheap_test0 {
+			compatible = "mediatek, mtk_dmabufheap, iommu0";
 			iommus = <&disp_iommu M4U_PORT_L0_DISP_FAKE0>;
 		};
 
-		mtk_dmaheap_debug1: dmaheap_test1 {
-			compatible = "mediatek,dmabufheap-iommu1";
+		mtk_dmabufheap_debug1: dmaheap_test1 {
+			compatible = "mediatek, mtk_dmabufheap, iommu1";
 			iommus = <&disp_iommu M4U_PORT_L1_DISP_FAKE1>;
 		};
 
