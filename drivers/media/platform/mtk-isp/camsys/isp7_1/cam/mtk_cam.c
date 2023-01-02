@@ -6535,7 +6535,7 @@ struct mtk_cam_ctx *mtk_cam_find_ctx(struct mtk_cam_device *cam,
 	unsigned int i;
 
 	for (i = 0;  i < cam->max_stream_num; i++) {
-		if (entity->pipe == &cam->ctxs[i].pipeline)
+		if (media_entity_pipeline(entity) == &cam->ctxs[i].pipeline)
 			return &cam->ctxs[i];
 	}
 

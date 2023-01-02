@@ -1050,7 +1050,7 @@ static int isp_composer_handler(struct rpmsg_device *rpdev, void *data,
 
 static int mtk_cam_in_ctx(struct mtk_cam_ctx *ctx, struct media_entity *entity)
 {
-	return entity->pipe == &ctx->pipeline;
+	return media_entity_pipeline(entity) == &ctx->pipeline;
 }
 
 struct mtk_cam_ctx *mtk_cam_find_ctx(struct mtk_cam_device *cam,
@@ -1059,7 +1059,7 @@ struct mtk_cam_ctx *mtk_cam_find_ctx(struct mtk_cam_device *cam,
 	unsigned int i;
 
 	for (i = 0;  i < cam->max_stream_num; i++) {
-		if (entity->pipe == &cam->ctxs[i].pipeline)
+		if (media_entity_pipeline(entity) == &cam->ctxs[i].pipeline)
 			return &cam->ctxs[i];
 	}
 
