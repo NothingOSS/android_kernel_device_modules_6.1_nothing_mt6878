@@ -105,9 +105,8 @@ static long usip_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 	case SET_USIP_ADSP_PHONE_CALL_ENH_CONFIG:
 		if (copy_from_user(&(usip.adsp_phone_call_enh_config), (void __user *)arg,
 			sizeof(usip.adsp_phone_call_enh_config))) {
-			pr_info("%s(), Fail copy CALL_ENH_CONFIG from user Ptr: %x",
-				__func__,
-				arg);
+			pr_info("%s(), Fail copy CALL_ENH_CONFIG from user Ptr: %lx",
+				__func__, arg);
 			ret = -1;
 		}
 		pr_info("%s(): in SET_USIP_ADSP_PHONE_CALL_ENH_CONFIG: %d",
@@ -263,7 +262,7 @@ static void usip_send_emi_info_to_dsp_ble(void)
 	usip_emi_info[0] = usip.addr_phy + offset;
 	usip_emi_info[1] = EMI_TABLE[SP_EMI_ADSP_USIP_PHONECALL][SP_EMI_SIZE] +
 			EMI_TABLE[SP_EMI_ADSP_USIP_SMARTPA][SP_EMI_SIZE];
-	pr_debug("%s(), usip_emi_info[0] 0x%x, usip_emi_info[1] 0x%x\n",
+	pr_debug("%s(), usip_emi_info[0] 0x%llx, usip_emi_info[1] 0x%llx\n",
 		__func__, usip_emi_info[0], usip_emi_info[1]);
 
 	ipi_msg.magic      = IPI_MSG_MAGIC_NUMBER;

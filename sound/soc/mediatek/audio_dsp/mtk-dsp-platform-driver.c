@@ -247,7 +247,7 @@ static int ktv_status_get(struct snd_kcontrol *kcontrol,
 			  struct snd_ctl_elem_value *ucontrol)
 {
 	ucontrol->value.integer.value[0] = ktv_status;
-	pr_debug("%s() ktv_status = %ld\n", __func__, ktv_status);
+	pr_debug("%s() ktv_status = %d\n", __func__, ktv_status);
 	return 0;
 }
 
@@ -1294,7 +1294,7 @@ static int mtk_dsp_pcm_copy(struct snd_soc_component *component,
 
 	if (bytes == 0) {
 		pr_info(
-			"error %s channel = %d pos = %lu count = %lu bytes = %d\n",
+			"error %s channel = %d pos = %lu count = %lu bytes = %lu\n",
 			__func__, channel, pos, bytes, bytes);
 		return -1;
 	}

@@ -76,10 +76,10 @@ int mtk_scp_ultra_allocate_mem(struct snd_pcm_substream *substream,
 #endif
 
 	dev_info(scp_ultra->dev,
-		"%s(), ultra VA:0x%p,PA:0x%lx,size:%d,using_sram=0\n",
+		"%s(), ultra VA:0x%p,PA:0x%pad,size:%lu,using_sram=0\n",
 		__func__,
 		dma_buf->area,
-		dma_buf->addr,
+		&dma_buf->addr,
 		dma_buf->bytes);
 	return 0;
 }

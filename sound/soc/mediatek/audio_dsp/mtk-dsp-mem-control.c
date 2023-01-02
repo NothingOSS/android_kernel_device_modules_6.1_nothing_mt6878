@@ -464,7 +464,7 @@ static void mtk_adsp_genpool_dump_chunk(struct gen_pool *pool,
 
 	pr_debug("phys_addr=0x%llx bits=", chunk->phys_addr);
 	for (i = 0; i < nlongs; i++)
-		pr_debug("%03d: 0x%llx ", i, chunk->bits[i]);
+		pr_debug("%03d: 0x%lx ", i, chunk->bits[i]);
 }
 
 static int mtk_adsp_genpool_dump_all(void)
@@ -904,7 +904,7 @@ int init_mtk_adsp_dram_segment(void)
 		ret = gen_pool_add_virt(dsp_dram_pool[i],
 					dram->va_addr, dram->phy_addr, dram->size, -1);
 
-		pr_info("%s ret(%d) add chunk va/sz=(%p, %zu), pool total(%zu)\n",
+		pr_info("%s ret(%d) add chunk va/sz=(%p, %llu), pool total(%zu)\n",
 			__func__, ret, dram->vir_addr, dram->size,
 			gen_pool_size(dsp_dram_pool[i]));
 

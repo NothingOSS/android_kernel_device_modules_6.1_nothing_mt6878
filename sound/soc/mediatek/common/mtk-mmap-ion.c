@@ -88,7 +88,7 @@ static int mtk_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 	ret = remap_pfn_range(vma, vma->vm_start, virt_to_pfn(vaddr),
 				size, vma->vm_page_prot);
 
-	dev_info(dmabuf_dev, "%s(), ret %d, %p, %p, size %ld %ld\n",
+	dev_info(dmabuf_dev, "%s(), ret %d, %p, %lx, size %ld %ld\n",
 		__func__, ret, vaddr, vma->vm_start, size, dmabuf->size);
 
 	return ret;

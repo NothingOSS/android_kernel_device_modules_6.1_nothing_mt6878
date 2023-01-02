@@ -288,12 +288,12 @@ static int mtk_btcvsd_mblock_init(struct tfa_mblock_t *mblock_info)
 	/* remap reserved memory as cacheale */
 	mblock_info->base_vaddr = ioremap(mblock_info->base_paddr, mblock_info->total_size);
 	if (IS_ERR(mblock_info->base_vaddr)) {
-		pr_notice("%s Fail to remap audio mblock vaddr:%d\n",
+		pr_notice("%s Fail to remap audio mblock vaddr:%ld\n",
 			 __func__, PTR_ERR(mblock_info->base_vaddr));
 		return -EFAULT;
 	}
-	pr_info(" %s(-) mblock_virtual_base:0x%llx, size:0x%llx\n",
-		__func__, mblock_info->base_vaddr, mblock_info->total_size);
+	pr_info(" %s(-) mblock_virtual_base:0x%lx, size:0x%llx\n",
+		__func__, (unsigned long)mblock_info->base_vaddr, mblock_info->total_size);
 
 	return 0;
 }
@@ -782,7 +782,7 @@ irq_handler_exit:
 		*bt->bt_reg_ctl |= BT_CVSD_TX_UNDERFLOW;
 		*bt->bt_reg_ctl &= ~BT_CVSD_CLEAR;
 	}
-	dev_warn(bt->dev, "%s(), irq_handler_exit, bt_reg_ctl = 0x%lx\n",
+	dev_warn(bt->dev, "%s(), irq_handler_exit, bt_reg_ctl = 0x%x\n",
 		 __func__, *bt->bt_reg_ctl);
 
 	return IRQ_HANDLED;
