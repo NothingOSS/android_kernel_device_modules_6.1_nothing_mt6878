@@ -21,12 +21,7 @@ kernel_device_modules-mainline
 ../vendor/mediatek/kernel_modules/connectivity/conninfra
 ../vendor/mediatek/kernel_modules/connectivity/connfem
 ../vendor/mediatek/kernel_modules/connectivity/gps/gps_stp
-../vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v010
-../vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v030
-../vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v050
-../vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v051
-../vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v060
-../vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v061
+../vendor/mediatek/kernel_modules/connectivity/gps/data_link
 ../vendor/mediatek/kernel_modules/connectivity/gps/gps_pwr
 ../vendor/mediatek/kernel_modules/connectivity/gps/gps_scp
 ../vendor/mediatek/kernel_modules/gpu

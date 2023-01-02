@@ -260,17 +260,17 @@ def _mgk_build_config_impl(ctx):
     if has_fpsgo:
         ext_content.append("""
 if [ -d "vendor/mediatek/kernel_modules/fpsgo_int" ]; then
-EXT_MODULES+="vendor/mediatek/kernel_modules/fpsgo_int"
+EXT_MODULES+=" vendor/mediatek/kernel_modules/fpsgo_int"
 else
-EXT_MODULES+="vendor/mediatek/kernel_modules/fpsgo_cus"
+EXT_MODULES+=" vendor/mediatek/kernel_modules/fpsgo_cus"
 fi""")
     if has_met:
         ext_content.append("")
-        ext_content.append("EXT_MODULES+=\"vendor/mediatek/kernel_modules/met_drv_v3\"")
+        ext_content.append("EXT_MODULES+=\" vendor/mediatek/kernel_modules/met_drv_v3\"")
         ext_content.append("""if [ -d "vendor/mediatek/kernel_modules/met_drv_secure_v3" ]; then
-EXT_MODULES+="vendor/mediatek/kernel_modules/met_drv_secure_v3"
+EXT_MODULES+=" vendor/mediatek/kernel_modules/met_drv_secure_v3"
 fi""")
-        ext_content.append("EXT_MODULES+=\"vendor/mediatek/kernel_modules/met_drv_v3/met_api\"")
+        ext_content.append("EXT_MODULES+=\" vendor/mediatek/kernel_modules/met_drv_v3/met_api\"")
     content = []
     content.append("DEVICE_MODULES_DIR={}".format(ctx.attr.device_modules_dir))
     content.append("KERNEL_DIR={}".format(ctx.attr.kernel_dir))
