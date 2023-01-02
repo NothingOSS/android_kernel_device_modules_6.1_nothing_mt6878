@@ -12,6 +12,7 @@
 #include <dt-bindings/pinctrl/mt6985-pinfunc.h>
 #include <dt-bindings/gce/mt6985-gce.h>
 #include <dt-bindings/memory/mt6985-larb-port.h>
+#include <dt-bindings/soc/mediatek,boot-mode.h>
 #include <dt-bindings/spmi/spmi.h>
 #include <dt-bindings/iio/mt635x-auxadc.h>
 #include <dt-bindings/mml/mml-mt6985.h>
@@ -647,9 +648,38 @@
 		vlpcfg = <&vlpcfg_bus>;
 	};
 
+	watchdog: watchdog@1C007000 {
+		compatible = "mediatek,mt6985-wdt",
+			      "mediatek,mt6589-wdt",
+			      "syscon", "simple-mfd";
+		reg = <0 0x1c007000 0 0x100>;
+		apwdt_en = <0>;
+		reboot-mode {
+			compatible = "syscon-reboot-mode";
+			offset = <0x24>;
+			mask = <0xf>;
+			mode-charger = <BOOT_CHARGER>;
+			mode-recovery = <BOOT_RECOVERY>;
+			mode-bootloader = <BOOT_BOOTLOADER>;
+			mode-dm-verity-dev-corrupt = <BOOT_DM_VERITY>;
+			mode-kpoc = <BOOT_KPOC>;
+			mode-ddr-reserve = <BOOT_DDR_RSVD>;
+			mode-meta = <BOOT_META>;
+			mode-rpmbpk = <BOOT_RPMBPK>;
+		};
+	};
+
 	vlpcfg_bus: syscon@1C00C000 {
 		compatible = "mediatek,mt6985-vlpcfg_bus", "syscon";
 		reg = <0 0x1C00C000 0 0x1000>;
+	};
+
+	systimer: systimer@1C011000 {
+		compatible = "mediatek,mt6985-timer",
+			      "mediatek,mt6765-timer";
+			reg = <0 0x1c011000 0 0x1000>;
+			interrupts = <GIC_SPI 330 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&clk13m>;
 	};
 
 	vlp_cksys_clk: syscon@1C013000 {
