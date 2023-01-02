@@ -13,6 +13,7 @@
 #include <linux/suspend.h>
 #include <soc/mediatek/mmdvfs_v3.h>
 #include <soc/mediatek/smi.h>
+#include <linux/pm_runtime.h>
 #include <linux/rpmsg.h>
 #include <linux/rpmsg/mtk_rpmsg.h>
 #include <linux/iommu.h>
@@ -60,7 +61,7 @@ static DEFINE_MUTEX(mmdvfs_ccu_pwr_mutex);
 static struct rproc *ccu_rproc;
 static struct platform_device *ccu_pdev;
 
-static struct device *vmm_larb_dev;
+static struct device *mmdvfs_v3_dev;
 static int vmm_power;
 static DEFINE_MUTEX(mmdvfs_vmm_pwr_mutex);
 static int last_vote_step[PWR_MMDVFS_NUM];
@@ -486,13 +487,13 @@ static int mtk_mmdvfs_enable_vmm(const bool enable)
 {
 	int ret = 0;
 
-	if (!vmm_larb_dev)
+	if (!mmdvfs_v3_dev)
 		return 0;
 
 	mutex_lock(&mmdvfs_vmm_pwr_mutex);
 	if (enable) {
 		if (!vmm_power) {
-			ret = mtk_smi_larb_get(vmm_larb_dev);
+			ret = pm_runtime_resume_and_get(mmdvfs_v3_dev);
 			if (ret)
 				goto enable_vmm_end;
 		}
@@ -503,7 +504,7 @@ static int mtk_mmdvfs_enable_vmm(const bool enable)
 			goto enable_vmm_end;
 		}
 		if (vmm_power == 1)
-			mtk_smi_larb_put(vmm_larb_dev);
+			pm_runtime_put_sync(mmdvfs_v3_dev);
 		vmm_power -= 1;
 	}
 
@@ -976,6 +977,7 @@ static int mmdvfs_v3_probe(struct platform_device *pdev)
 	struct task_struct *kthr_vcp, *kthr_ccu;
 	struct device_node *larbnode;
 	struct platform_device *larbdev;
+	unsigned int dl_flags = DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS;
 	struct clk *clk;
 	int i, ret;
 
@@ -1089,11 +1091,15 @@ static int mmdvfs_v3_probe(struct platform_device *pdev)
 	if (of_property_read_bool(node, "mmdvfs-free-run"))
 		mmdvfs_free_run = true;
 
+	mmdvfs_v3_dev = &pdev->dev;
 	larbnode = of_parse_phandle(pdev->dev.of_node, "mediatek,larbs", 0);
 	if (larbnode) {
 		larbdev = of_find_device_by_node(larbnode);
-		if (larbdev)
-			vmm_larb_dev = &larbdev->dev;
+		if (!device_link_add(mmdvfs_v3_dev, &larbdev->dev, dl_flags)) {
+			MMDVFS_ERR("add larbdev device link failed");
+			return -EINVAL;
+		}
+		pm_runtime_enable(mmdvfs_v3_dev);
 		of_node_put(larbnode);
 	}
 
