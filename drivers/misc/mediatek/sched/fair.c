@@ -1009,7 +1009,7 @@ static struct task_struct *detach_a_hint_task(struct rq *src_rq, int dst_cpu)
 		if (!cpumask_test_cpu(dst_cpu, p->cpus_ptr))
 			continue;
 
-		if (task_running(src_rq, p))
+		if (task_on_cpu(src_rq, p))
 			continue;
 
 		task_util = uclamp_task_util(p);
@@ -1075,7 +1075,7 @@ static int mtk_active_load_balance_cpu_stop(void *data)
 
 	if (task_cpu(target_task) != busiest_cpu ||
 		(!cpumask_test_cpu(target_cpu, target_task->cpus_ptr)) ||
-		task_running(busiest_rq, target_task) ||
+		task_on_cpu(busiest_rq, target_task) ||
 		target_rq == busiest_rq)
 		goto out_unlock;
 
