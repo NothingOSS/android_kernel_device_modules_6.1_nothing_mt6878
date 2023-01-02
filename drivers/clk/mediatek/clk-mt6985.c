@@ -152,7 +152,6 @@
 #define TOP_MUX_MMINFRA_SHIFT			10
 #define TOP_MUX_MMUP_SHIFT			11
 #define TOP_MUX_DSP_SHIFT			12
-#define TOP_MUX_IPU_IF_SHIFT			13
 #define TOP_MUX_MFG_REF_SHIFT			14
 #define TOP_MUX_MFGSC_REF_SHIFT			15
 #define TOP_MUX_UART_SHIFT			24
@@ -193,7 +192,6 @@
 #define TOP_MUX_MCU_ACP_SHIFT			11
 #define TOP_MUX_SFLASH_SHIFT			12
 #define TOP_MUX_MCU_L3GIC_SHIFT			13
-#define TOP_MUX_MCU_INFRA_SHIFT			14
 #define TOP_MUX_IPSEAST_SHIFT			15
 #define TOP_MUX_IPSSOUTH_SHIFT			16
 #define TOP_MUX_IPSWEST_SHIFT			17
@@ -575,6 +573,8 @@ static const struct mtk_fixed_factor top_divs[] = {
 			"univpll", 1, 416),
 	FACTOR(CLK_TOP_F26M, "f26m_ck",
 			"clk26m", 1, 1),
+	FACTOR(CLK_TOP_AXI, "axi_ck",
+			"axi_sel", 1, 1),
 	FACTOR(CLK_TOP_P_FAXI, "peri_faxi_ck",
 			"peri_faxi_sel", 1, 1),
 	FACTOR(CLK_TOP_DISP0, "disp0_ck",
@@ -1195,17 +1195,6 @@ static const char * const dsp_parents[] = {
 	"univpll_d5"
 };
 
-static const char * const ipu_if_parents[] = {
-	"tck_26m_mx9_ck",
-	"univpll_d6_d2",
-	"univpll_d5_d2",
-	"mainpll_d4_d2",
-	"mainpll_d6",
-	"univpll_d5",
-	"univpll_d4",
-	"mmpll_d4"
-};
-
 static const char * const mfg_ref_parents[] = {
 	"tck_26m_mx9_ck",
 	"univpll_d6",
@@ -1540,14 +1529,6 @@ static const char * const mcu_l3gic_parents[] = {
 	"mainpll_d5_d2",
 	"mainpll_d6_d2",
 	"osc_d8"
-};
-
-static const char * const mcu_infra_parents[] = {
-	"tck_26m_mx9_ck",
-	"mainpll_d7_d2",
-	"mainpll_d5_d2",
-	"mainpll_d4_d2",
-	"mainpll_d6"
 };
 
 static const char * const ipseast_parents[] = {
@@ -2085,10 +2066,6 @@ static const struct mtk_mux top_muxes[] = {
 		dsp_parents/* parent */, CLK_CFG_3, CLK_CFG_3_SET,
 		CLK_CFG_3_CLR/* set parent */, 0/* lsb */, 3/* width */,
 		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_DSP_SHIFT/* upd shift */),
-	MUX_CLR_SET_UPD(CLK_TOP_IPU_IF_SEL/* dts */, "ipu_if_sel",
-		ipu_if_parents/* parent */, CLK_CFG_3, CLK_CFG_3_SET,
-		CLK_CFG_3_CLR/* set parent */, 8/* lsb */, 3/* width */,
-		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_IPU_IF_SHIFT/* upd shift */),
 	MUX_CLR_SET_UPD(CLK_TOP_MFG_REF_SEL/* dts */, "mfg_ref_sel",
 		mfg_ref_parents/* parent */, CLK_CFG_3, CLK_CFG_3_SET,
 		CLK_CFG_3_CLR/* set parent */, 16/* lsb */, 2/* width */,
@@ -2261,10 +2238,6 @@ static const struct mtk_mux top_muxes[] = {
 		CLK_CFG_18_CLR/* set parent */, 24/* lsb */, 3/* width */,
 		CLK_CFG_UPDATE2/* upd ofs */, TOP_MUX_MCU_L3GIC_SHIFT/* upd shift */),
 	/* CLK_CFG_19 */
-	MUX_CLR_SET_UPD(CLK_TOP_MCU_INFRA_SEL/* dts */, "mcu_infra_sel",
-		mcu_infra_parents/* parent */, CLK_CFG_19, CLK_CFG_19_SET,
-		CLK_CFG_19_CLR/* set parent */, 0/* lsb */, 3/* width */,
-		CLK_CFG_UPDATE2/* upd ofs */, TOP_MUX_MCU_INFRA_SHIFT/* upd shift */),
 	MUX_CLR_SET_UPD(CLK_TOP_IPSEAST_SEL/* dts */, "ipseast_sel",
 		ipseast_parents/* parent */, CLK_CFG_19, CLK_CFG_19_SET,
 		CLK_CFG_19_CLR/* set parent */, 8/* lsb */, 3/* width */,
@@ -2471,11 +2444,6 @@ static const struct mtk_mux top_muxes[] = {
 		CLK_CFG_3_CLR/* set parent */, 0/* lsb */, 3/* width */,
 		7/* pdn */, CLK_CFG_UPDATE/* upd ofs */,
 		TOP_MUX_DSP_SHIFT/* upd shift */),
-	MUX_GATE_CLR_SET_UPD(CLK_TOP_IPU_IF_SEL/* dts */, "ipu_if_sel",
-		ipu_if_parents/* parent */, CLK_CFG_3, CLK_CFG_3_SET,
-		CLK_CFG_3_CLR/* set parent */, 8/* lsb */, 3/* width */,
-		15/* pdn */, CLK_CFG_UPDATE/* upd ofs */,
-		TOP_MUX_IPU_IF_SHIFT/* upd shift */),
 	MUX_GATE_CLR_SET_UPD(CLK_TOP_MFG_REF_SEL/* dts */, "mfg_ref_sel",
 		mfg_ref_parents/* parent */, CLK_CFG_3, CLK_CFG_3_SET,
 		CLK_CFG_3_CLR/* set parent */, 16/* lsb */, 2/* width */,
@@ -2677,10 +2645,6 @@ static const struct mtk_mux top_muxes[] = {
 		CLK_CFG_18_CLR/* set parent */, 24/* lsb */, 3/* width */,
 		CLK_CFG_UPDATE2/* upd ofs */, TOP_MUX_MCU_L3GIC_SHIFT/* upd shift */),
 	/* CLK_CFG_19 */
-	MUX_CLR_SET_UPD(CLK_TOP_MCU_INFRA_SEL/* dts */, "mcu_infra_sel",
-		mcu_infra_parents/* parent */, CLK_CFG_19, CLK_CFG_19_SET,
-		CLK_CFG_19_CLR/* set parent */, 0/* lsb */, 3/* width */,
-		CLK_CFG_UPDATE2/* upd ofs */, TOP_MUX_MCU_INFRA_SHIFT/* upd shift */),
 	MUX_GATE_CLR_SET_UPD(CLK_TOP_IPSEAST_SEL/* dts */, "ipseast_sel",
 		ipseast_parents/* parent */, CLK_CFG_19, CLK_CFG_19_SET,
 		CLK_CFG_19_CLR/* set parent */, 8/* lsb */, 3/* width */,

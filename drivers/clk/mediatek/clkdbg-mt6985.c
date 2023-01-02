@@ -34,7 +34,6 @@ const char * const *get_mt6985_all_clk_names(void)
 		"mminfra_sel",
 		"mmup_sel",
 		"dsp_sel",
-		"ipu_if_sel",
 		"mfg_ref_sel",
 		"mfgsc_ref_sel",
 		"uart_sel",
@@ -75,7 +74,6 @@ const char * const *get_mt6985_all_clk_names(void)
 		"mcu_acp_sel",
 		"sflash_sel",
 		"mcu_l3gic_sel",
-		"mcu_infra_sel",
 		"ipseast_sel",
 		"ipssouth_sel",
 		"ipswest_sel",
@@ -325,9 +323,6 @@ const char * const *get_mt6985_all_clk_names(void)
 
 		/* mfgscpll_pll_ctrl */
 		"mfgsc_ao_mfgscpll",
-
-		/* mfg_top_config */
-		"mfgcfg_bg3d",
 
 		/* dispsys_config */
 		"mm_config",

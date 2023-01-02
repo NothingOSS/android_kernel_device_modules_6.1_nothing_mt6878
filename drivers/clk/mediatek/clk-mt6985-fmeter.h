@@ -23,7 +23,6 @@
 #define FM_MMINFRA_CK				11
 #define FM_MMUP_CK				12
 #define FM_DSP_CK				13
-#define FM_IPU_IF_CK				14
 #define FM_MFG_REF_CK				15
 #define FM_MFGSC_REF_CK				16
 #define FM_CAMTG_CK				17
@@ -85,7 +84,6 @@
 #define FM_MCU_ACP_CK				74
 #define FM_SFLASH_CK				75
 #define FM_MCU_L3GIC_CK				76
-#define FM_MCU_INFRA_CK				77
 #define FM_IPSEAST_CK				78
 #define FM_IPSSOUTH_CK				79
 #define FM_IPSWEST_CK				80
@@ -187,7 +185,6 @@
 #define FM_MMINFRA_CK_2				11
 #define FM_MMUP_CK_2				12
 #define FM_DSP_CK_2				13
-#define FM_IPU_IF_CK_2				14
 #define FM_MFG_REF_CK_2				15
 #define FM_MFGSC_REF_CK_2			16
 #define FM_CAMTG_CK_2				17
@@ -249,7 +246,6 @@
 #define FM_MCU_ACP_CK_2				74
 #define FM_SFLASH_CK_2				75
 #define FM_MCU_L3GIC_CK_2			76
-#define FM_MCU_INFRA_CK_2			77
 #define FM_IPSEAST_CK_2				78
 #define FM_IPSSOUTH_CK_2			79
 #define FM_IPSWEST_CK_2				80
