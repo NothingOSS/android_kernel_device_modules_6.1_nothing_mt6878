@@ -26,6 +26,7 @@
 #include <linux/etherdevice.h>
 #include <linux/ip.h>
 #include <linux/tcp.h>
+#include <linux/if_arp.h>
 #include <linux/ipv6.h>
 #include <net/ipv6.h>
 #include <net/sch_generic.h>
@@ -362,10 +363,7 @@ static inline int ccmni_forward_rx(struct ccmni_instance *ccmni,
 			skb->ip_summed = CHECKSUM_NONE;
 			skb_set_mac_header(skb, -ETH_HLEN);
 
-			if (!in_interrupt())
-				netif_rx_ni(skb);
-			else
-				netif_rx(skb);
+			netif_rx(skb);
 			return NETDEV_TX_OK;
 		}
 	}
@@ -1007,7 +1005,7 @@ static inline void ccmni_dev_init(struct net_device *dev)
 	dev->addr_len = 0;        /* hasn't ethernet header */
 	dev->priv_destructor = free_netdev;
 	dev->netdev_ops = &ccmni_netdev_ops;
-	random_ether_addr((u8 *) dev->dev_addr);
+	eth_random_addr((u8 *) dev->dev_addr);
 }
 
 #ifdef CCCI_CCMNI_MODULE
@@ -1244,13 +1242,10 @@ static int ccmni_rx_callback(int ccmni_idx, struct sk_buff *skb,
 			ccmni_gro_flush(ccmni);
 			spin_unlock_bh(ccmni->spinlock);
 		} else {
-			netif_rx_ni(skb);
+			netif_rx(skb);
 		}
 #else
-		if (!in_interrupt())
-			netif_rx_ni(skb);
-		else
-			netif_rx(skb);
+		netif_rx(skb);
 #endif
 	}
 	dev->stats.rx_packets++;
