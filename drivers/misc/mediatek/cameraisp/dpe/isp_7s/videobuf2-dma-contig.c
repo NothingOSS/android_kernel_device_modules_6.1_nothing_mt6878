@@ -122,10 +122,10 @@ void vb2_dc_put(void *buf_priv)
 {
 	struct vb2_dc_buf *buf = buf_priv;
 
-	pr_debug("kernel_dpebuf refcount before = %d\n", buf->refcount);
+	pr_debug("kernel_dpebuf refcount before = %u\n", refcount_read(&buf->refcount));
 	if (!refcount_dec_and_test(&buf->refcount))
 		return;
-	pr_debug("kernel_dpebuf refcount after = %d\n", buf->refcount);
+	pr_debug("kernel_dpebuf refcount after = %u\n", refcount_read(&buf->refcount));
 	if (buf->sgt_base) {
 		sg_free_table(buf->sgt_base);
 		kfree(buf->sgt_base);
@@ -639,8 +639,8 @@ int vb2_dc_map_dmabuf(void *mem_priv)
 	buf->dma_sgt = sgt;
 	buf->vaddr = NULL;
 
-	pr_debug("[iommu_iova] [0x%lX]\n", buf->dma_addr);
-	pr_debug("[iommu_pa] [0x%lX]\n", iommu_pa);
+	pr_debug("[iommu_iova] [0x%llX]\n", buf->dma_addr);
+	pr_debug("[iommu_pa] [0x%llX]\n", iommu_pa);
 	return 0;
 }
 
