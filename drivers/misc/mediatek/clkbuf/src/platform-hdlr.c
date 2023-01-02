@@ -144,7 +144,7 @@ static int mtxxxx_init(struct clkbuf_dts *array, struct match_platform *match)
 
 	hdlr = array->hdlr;
 
-	CLKBUF_DBG("array<%x> type: %d\n", array, array->hw.hw_type);
+	CLKBUF_DBG("array<%lx> type: %d\n", (unsigned long)array, array->hw.hw_type);
 
 	switch (array->hw.hw_type) {
 	case PMIC:
@@ -165,8 +165,8 @@ static int mtxxxx_init(struct clkbuf_dts *array, struct match_platform *match)
 	case PMIF_P:
 		break;
 	default:
-		CLKBUF_DBG("not handle array[%d]: hw_type %d\n",
-			   array, array->hw.hw_type);
+		CLKBUF_DBG("not handle array[%lx]: hw_type %d\n",
+			   (unsigned long)array, array->hw.hw_type);
 		break;
 	}
 

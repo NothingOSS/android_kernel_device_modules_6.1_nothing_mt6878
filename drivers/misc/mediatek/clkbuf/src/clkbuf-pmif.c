@@ -106,7 +106,7 @@ static int pmif_init_v1(struct clkbuf_dts *array, struct match_pmif *match)
 	struct plat_pmifdata *pd;
 	static DEFINE_SPINLOCK(lock);
 
-	CLKBUF_DBG("array<%x>,%s %d, id<%d>\n", array, array->pmif_name,
+	CLKBUF_DBG("array<%lx>,%s %d, id<%d>\n", (unsigned long)array, array->pmif_name,
 		   array->hw.hw_type, array->pmif_id);
 
 	pd = (struct plat_pmifdata *)(hdlr->data);

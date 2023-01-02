@@ -93,7 +93,7 @@ static int pmic_init_v1(struct clkbuf_dts *array, struct match_pmic *match)
 	int xo_id = array->xo_id;
 	static DEFINE_SPINLOCK(lock);
 
-	CLKBUF_DBG("array<%x>,%s %d, id<%d>\n", array, array->xo_name,
+	CLKBUF_DBG("array<%lx>,%s %d, id<%d>\n", (unsigned long)array, array->xo_name,
 		   array->hw.hw_type, array->xo_id);
 
 	pd = (struct plat_xodata *)(hdlr->data);

@@ -233,8 +233,8 @@ static int clkbuf_probe(struct platform_device *pdev)
 		struct clkbuf_hdlr *hdlr = array->hdlr;
 
 		if (!hdlr) {
-			CLKBUF_DBG("array<%x>, index: %d, type:%d, nums:%d, perms:<%x>\n",
-				array, i, array->hw.hw_type, array->nums, array->perms);
+			CLKBUF_DBG("array<%lx>, index: %d, type:%d, nums:%d, perms:<%x>\n",
+				(unsigned long)array, i, array->hw.hw_type, array->nums, array->perms);
 
 			return -1;
 		}

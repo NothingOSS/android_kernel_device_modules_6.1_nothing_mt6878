@@ -179,7 +179,7 @@ static int srclken_init_v1(struct clkbuf_dts *array,
 	int ret = 0;
 	static DEFINE_SPINLOCK(lock);
 
-	CLKBUF_DBG("array<%x>,%s %d, id<%d>\n", array, array->subsys_name,
+	CLKBUF_DBG("array<%lx>,%s %d, id<%d>\n", (unsigned long)array, array->subsys_name,
 		   array->hw.hw_type, array->sub_id);
 
 	pd = (struct plat_rcdata *)(hdlr->data);
