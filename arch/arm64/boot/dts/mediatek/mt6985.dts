@@ -3725,6 +3725,8 @@
 		};
 
 		fhctl: fhctl@1000ce00 {
+			mcupm-supply = <&mcupm>;
+			gpueb-supply = <&gpueb>;
 			compatible = "mediatek,mt6985-fhctl";
 			reg = <0 0x1000ce00 0 0x200>, //AP FHCTL base
 				  <0 0x1000c000 0 0xe00>, //APMIX base
@@ -3750,39 +3752,30 @@
 				method = "fhctl-ap";
 				mainpll2 {
 					fh-id = <0>;
-					pll-id = <CLK_APMIXED_MAINPLL2>;
 				};
 				mmpll2 {
 					fh-id = <1>;
-					pll-id = <CLK_APMIXED_MMPLL2>;
 				};
 				mpll {
 					fh-id = <4>;
-					pll-id = <CLK_APMIXED_MPLL>;
 				};
 				mmpll {
 					fh-id = <5>;
-					pll-id = <CLK_APMIXED_MMPLL>;
 				};
 				mainpll {
 					fh-id = <6>;
-					pll-id = <CLK_APMIXED_MAINPLL>;
 				};
 				msdcpll {
 					fh-id = <7>;
-					pll-id = <CLK_APMIXED_MSDCPLL>;
 				};
 				adsppll {
 					fh-id = <8>;
-					pll-id = <CLK_APMIXED_ADSPPLL>;
 				};
 				imgpll {
 					fh-id = <9>;
-					pll-id = <CLK_APMIXED_IMGPLL>;
 				};
 				tvdpll {
 					fh-id = <10>;
-					pll-id = <CLK_APMIXED_TVDPLL>;
 				};
 			};
 
@@ -3791,7 +3784,6 @@
 				method = "fhctl-gpueb";
 				mfg_ao_mfgpll {
 					fh-id = <0>;
-					pll-id = <CLK_MFG_AO_MFGPLL>;
 				};
 			};
 
@@ -3800,7 +3792,6 @@
 				method = "fhctl-gpueb";
 				mfgsc_ao_mfgscpll {
 					fh-id = <0>;
-					pll-id = <CLK_MFGSC_AO_MFGSCPLL>;
 				};
 			};
 
@@ -3809,7 +3800,6 @@
 				method = "fhctl-mcupm";
 				buspll {
 					fh-id = <0>;
-					pll-id = <999>;
 					perms = <0x18>;
 				};
 			};
@@ -3818,7 +3808,6 @@
 				method = "fhctl-mcupm";
 				cpu0pll {
 					fh-id = <0>;
-					pll-id = <999>;
 					perms = <0x1C>;
 				};
 			};
@@ -3827,7 +3816,6 @@
 				method = "fhctl-mcupm";
 				cpu1pll {
 					fh-id = <0>;
-					pll-id = <999>;
 					perms = <0x1C>;
 				};
 			};
@@ -3836,7 +3824,6 @@
 				method = "fhctl-mcupm";
 				cpu2pll {
 					fh-id = <0>;
-					pll-id = <999>;
 					perms = <0x1C>;
 				};
 			};
@@ -3845,7 +3832,6 @@
 				method = "fhctl-mcupm";
 				ptppll {
 					fh-id = <0>;
-					pll-id = <999>;
 					perms = <0x1C>;
 				};
 			};
