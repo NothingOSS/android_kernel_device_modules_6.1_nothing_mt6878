@@ -49,15 +49,6 @@ config DEVICE_MODULES_MMC_CQHCI
 
 	  If unsure, say N.
 
-config DEVICE_MODULES_MMC_CRYPTO
-	bool
-	depends on DEVICE_MODULES_MMC_CQHCI
-	help
-	  This is silent Kconfig symbol that selectd by mmc cqhci.
-	  If you have a controller with this interface, say Y here.
-
-	  If unsure, say N.
-
 config MMC_AUTOK
 	tristate "MediaTek SD/MMC Card Auto Calibration support"
 	help

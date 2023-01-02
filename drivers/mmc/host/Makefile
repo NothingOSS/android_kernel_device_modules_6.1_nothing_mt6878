@@ -15,4 +15,4 @@ obj-$(CONFIG_MMC_MTK_PRO)		+= mtk-mmc.o
 obj-$(CONFIG_DEVICE_MODULES_MMC_DEBUG)			+= mtk-mmc-dbg.o
 obj-$(CONFIG_DEVICE_MODULES_MMC_CQHCI)			+= cqhci.o
 cqhci-y					+= cqhci-core.o
-cqhci-$(CONFIG_DEVICE_MODULES_MMC_CRYPTO)		+= cqhci-crypto.o
+cqhci-$(CONFIG_MMC_CRYPTO)		+= cqhci-crypto.o
