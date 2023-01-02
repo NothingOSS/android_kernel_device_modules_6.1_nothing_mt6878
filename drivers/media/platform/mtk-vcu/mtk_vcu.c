@@ -438,7 +438,7 @@ static void remove_all_iova_node(struct mtk_vcu *vcu)
 		dma_buf_unmap_attachment(curr_node->buf_att, curr_node->sgt, DMA_TO_DEVICE);
 		dma_buf_detach(display_dma_buf, curr_node->buf_att);
 
-		vcu_dbg_log("[VCU] free node with mapped_iova:x%lx wdma_dma_buf_addr:0x%lx",
+		vcu_dbg_log("[VCU] free node with mapped_iova:x%llx wdma_dma_buf_addr:0x%lx",
 			curr_node->mapped_iova, curr_node->wdma_dma_buf_addr);
 		kfree(curr_node);
 	}
@@ -462,7 +462,7 @@ static void add_new_iova_node(
 
 	mutex_lock(&iova_node_list.node_iova_lock);
 
-	vcu_dbg_log("%s wdma_dam_buf_addr:0x%lx", __func__, in_wdma_dam_buf_addr);
+	vcu_dbg_log("%s wdma_dam_buf_addr:0x%llx", __func__, in_wdma_dam_buf_addr);
 
 	curr_node->mapped_iova = in_mapped_iova;
 	curr_node->wdma_dma_buf_addr = in_wdma_dam_buf_addr;
@@ -499,7 +499,7 @@ static dma_addr_t find_iova_node_by_dam_buf(uintptr_t in_wdma_dma_buf_addr)
 
 	while (curr_node != NULL) {
 		if (curr_node->wdma_dma_buf_addr == in_wdma_dma_buf_addr) {
-			vcu_dbg_log("This dma_buf 0x%lx has been mapped, iova is 0x%lx",
+			vcu_dbg_log("This dma_buf 0x%lx has been mapped, iova is 0x%llx",
 				in_wdma_dma_buf_addr, curr_node->mapped_iova);
 			ret = curr_node->mapped_iova;
 			break;
@@ -902,7 +902,7 @@ static int vcu_check_reg_base(struct mtk_vcu *vcu, u64 addr, u64 length)
 		if (addr >= (u64)vcu->map_base[i].base &&
 			addr + length <= (u64)vcu->map_base[i].base + vcu->map_base[i].len)
 			return 0;
-	pr_info("%s addr %x length %x not found!\n", __func__, addr, length);
+	pr_info("%s addr %llx length %llx not found!\n", __func__, addr, length);
 
 	return -EINVAL;
 }
@@ -920,13 +920,13 @@ static void vcu_set_gce_cmd(struct cmdq_pkt *pkt,
 		if (vcu_check_reg_base(vcu, addr, 4) == 0)
 			cmdq_pkt_read_addr(pkt, addr, CMDQ_THR_SPR_IDX1);
 		else
-			pr_info("[VCU] CMD_READ wrong addr: 0x%x\n", addr);
+			pr_info("[VCU] CMD_READ wrong addr: 0x%llx\n", addr);
 	break;
 	case CMD_WRITE:
 		if (vcu_check_reg_base(vcu, addr, 4) == 0)
 			cmdq_pkt_write(pkt, vcu->clt_base, addr, data, mask);
 		else
-			pr_info("[VCU] CMD_WRITE wrong addr: 0x%x 0x%x 0x%x\n",
+			pr_info("[VCU] CMD_WRITE wrong addr: 0x%llx 0x%llx 0x%x\n",
 				addr, data, mask);
 	break;
 #if defined(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT)
@@ -952,7 +952,7 @@ static void vcu_set_gce_cmd(struct cmdq_pkt *pkt,
 		if (vcu_check_reg_base(vcu, addr, 4) == 0)
 			cmdq_pkt_poll_addr(pkt, data, addr, mask, gpr);
 		else
-			pr_info("[VCU] CMD_POLL_REG wrong addr: 0x%x 0x%x 0x%x\n",
+			pr_info("[VCU] CMD_POLL_REG wrong addr: 0x%llx 0x%llx 0x%x\n",
 				addr, data, mask);
 	break;
 	case CMD_WAIT_EVENT:
@@ -1346,7 +1346,7 @@ static long vcu_get_disp_mapped_iova(struct mtk_vcu *vcu, unsigned long arg)
 	sgt = dma_buf_map_attachment(buf_att, DMA_FROM_DEVICE);
 	vcu_dbg_log("%s %d", __func__, __LINE__);
 	mapped_iova = sg_dma_address(sgt->sgl);
-	vcu_dbg_log("[VCU] mapped_iova=0x%lx", mapped_iova);
+	vcu_dbg_log("[VCU] mapped_iova=0x%llx", mapped_iova);
 
 	// add this mapped iova in list
 	add_new_iova_node(wdma_dma_buf_addr, mapped_iova, buf_att, sgt);
@@ -1415,7 +1415,7 @@ int vcu_set_codec_ctx(struct platform_device *pdev,
 	struct mtk_vcu *vcu;
 
 	if (IS_ERR_OR_NULL(pdev) || type >= VCU_CODEC_MAX) {
-		pr_info("[VCU] %s: Invalid pdev %p type %d\n", __func__, pdev, type);
+		pr_info("[VCU] %s: Invalid pdev %p type %lu\n", __func__, pdev, type);
 		return -EINVAL;
 	}
 	vcu = platform_get_drvdata(pdev);
@@ -1437,7 +1437,7 @@ int vcu_clear_codec_ctx(struct platform_device *pdev,
 	struct mtk_vcu *vcu;
 
 	if (IS_ERR_OR_NULL(pdev) || type >= VCU_CODEC_MAX) {
-		pr_info("[VCU] %s: Invalid pdev %p type %d\n", __func__, pdev, type);
+		pr_info("[VCU] %s: Invalid pdev %p type %lu\n", __func__, pdev, type);
 		return -EINVAL;
 	}
 	vcu = platform_get_drvdata(pdev);
@@ -1914,7 +1914,7 @@ static int mtk_vcu_mmap(struct file *file, struct vm_area_struct *vma)
 		ret = mtk_vcu_set_buffer(vcu_queue, &mem_buff_data,
 			src_vb, dst_vb);
 		if (!IS_ERR_OR_NULL(ret)) {
-			vcu_dbg_log("[VCU] mtk_vcu_buf_vm_mmap mem_priv %lx iova %llx\n",
+			vcu_dbg_log("[VCU] mtk_vcu_buf_vm_mmap mem_priv %lx iova %lx\n",
 				 (unsigned long)ret, pa_start);
 
 			vma->vm_ops = &mtk_vcu_buf_vm_ops;
