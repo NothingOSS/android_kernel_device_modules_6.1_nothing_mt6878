@@ -31,7 +31,7 @@
 #include <linux/iommu.h>
 #include <linux/dma-mapping.h>
 
-#include <trace/hooks/audio_usboffload.h>
+//#include <trace/hooks/audio_usboffload.h>
 
 #include "clk-mtk.h"
 
@@ -85,7 +85,7 @@ static struct usb_audio_dev uadev[SNDRV_CARDS];
 static struct usb_offload_dev *uodev;
 static struct snd_usb_audio *usb_chip[SNDRV_CARDS];
 
-static void uaudio_disconnect_cb(struct snd_usb_audio *chip);
+//static void uaudio_disconnect_cb(struct snd_usb_audio *chip);
 
 static struct snd_usb_substream *find_snd_usb_substream(unsigned int card_num,
 	unsigned int pcm_idx, unsigned int direction, struct snd_usb_audio
@@ -147,6 +147,7 @@ err:
 	return subs;
 }
 
+#if 0
 static void sound_usb_connect(void *data, struct usb_interface *intf, struct snd_usb_audio *chip)
 {
 	USB_OFFLOAD_INFO("index=%d\n", chip->index);
@@ -188,12 +189,13 @@ static void sound_usb_disconnect(void *data, struct usb_interface *intf)
 		if (chip->index >= 0)
 			usb_chip[chip->index] = NULL;
 }
+#endif
 
 static int sound_usb_trace_init(void)
 {
-	WARN_ON(register_trace_android_vh_audio_usb_offload_connect(sound_usb_connect, NULL));
-	WARN_ON(register_trace_android_rvh_audio_usb_offload_disconnect(
-		sound_usb_disconnect, NULL));
+	//WARN_ON(register_trace_android_vh_audio_usb_offload_connect(sound_usb_connect, NULL));
+	//WARN_ON(register_trace_android_rvh_audio_usb_offload_disconnect(
+	//	sound_usb_disconnect, NULL));
 
 	return 0;
 }
@@ -386,6 +388,7 @@ int send_disconnect_ipi_msg_to_adsp(void)
 	return send_result;
 }
 
+#if 0
 static void uaudio_disconnect_cb(struct snd_usb_audio *chip)
 {
 	int ret;
@@ -431,6 +434,7 @@ done:
 
 	USB_OFFLOAD_INFO("done\n");
 }
+#endif
 
 static void uaudio_dev_release(struct kref *kref)
 {
