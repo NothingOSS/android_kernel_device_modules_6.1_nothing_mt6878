@@ -3307,30 +3307,28 @@
 				<&gce 19 500 CMDQ_THR_PRIO_1>;
 			/* as mmlsys */
 			comp-ids = <MML_MMLSYS>,
-				<MML_DLI0>, <MML_DLI1>, <MML_DLI3>,
+				<MML_DLI0>, <MML_DLI1>,
 				<MML_DLI0_SEL>, <MML_DLI1_SEL>,
 				<MML_PQ0_SOUT>, <MML_PQ1_SOUT>,
 				<MML_DLO0_SOUT>, <MML_DLO1_SOUT>,
-				<MML_DLO0>, <MML_DLO1>, <MML_DLO3>;
+				<MML_DLO0>, <MML_DLO1>;
 			comp-types = <MML_CT_SYS>,
-				<MML_CT_DL_IN>, <MML_CT_DL_IN>, <MML_CT_DL_IN>,
+				<MML_CT_DL_IN>, <MML_CT_DL_IN>,
 				<MML_CT_PATH>, <MML_CT_PATH>,
 				<MML_CT_PATH>, <MML_CT_PATH>,
 				<MML_CT_PATH>, <MML_CT_PATH>,
-				<MML_CT_DL_OUT>, <MML_CT_DL_OUT>, <MML_CT_DL_OUT>;
+				<MML_CT_DL_OUT>, <MML_CT_DL_OUT>;
 			comp-names = "mmlsys",
-				"dli0", "dli1", "dli3",
+				"dli0", "dli1",
 				"dli0_sel", "dli1_sel",
-				"thshp0_sel", "thshp1_sel", "pq0_sout", "pq1_sout",
+				"pq0_sout", "pq1_sout",
 				"dl0_sout", "dl1_sout",
-				"dlo0", "dlo1", "dlo3";
+				"dlo0", "dlo1";
 			mmlsys-clock-names = "apb_bus";
 			dli0-clock-names = "dli0";
 			dli1-clock-names = "dli1";
-			dli3-clock-names = "dli3";
 			dlo0-clock-names = "dlo0";
 			dlo1-clock-names = "dlo1";
-			dlo3-clock-names = "dlo3";
 			/* as sys component */
 			mux-pins = /bits/ 16 <
 				0 MML_RDMA0      MML_DLI0_SEL  MML_MUX_SLIN MML_DLI0_SEL_IN
@@ -3340,7 +3338,7 @@
 				/* 4 MML_ISP0       MML_DLI0_SEL  MML_MUX_SLIN MML_DLI0_SEL_IN */
 				0 MML_RDMA1      MML_DLI1_SEL  MML_MUX_SLIN MML_DLI1_SEL_IN
 				1 MML_DLI1       MML_DLI1_SEL  MML_MUX_SLIN MML_DLI1_SEL_IN
-				2 MML_DLI3       MML_DLI1_SEL  MML_MUX_SLIN MML_DLI1_SEL_IN
+				/* 2 MML_DLI3       MML_DLI1_SEL  MML_MUX_SLIN MML_DLI1_SEL_IN */
 				/* 3 MML_ISP3       MML_DLI1_SEL  MML_MUX_SLIN MML_DLI1_SEL_IN */
 				/* 4 MML_ISP0       MML_DLI1_SEL  MML_MUX_SLIN MML_DLI1_SEL_IN */
 				0 MML_DLI0_SEL   MML_HDR0      MML_MUX_MOUT MML_RDMA0_MOUT_EN
@@ -3370,7 +3368,7 @@
 				/* 2 MML_DLO0_SOUT  MML_DLO2       MML_MUX_SOUT MML_DLO0_SOUT_SEL */
 				0 MML_DLO1_SOUT  MML_WROT1      MML_MUX_SOUT MML_DLO1_SOUT_SEL
 				1 MML_DLO1_SOUT  MML_DLO1       MML_MUX_SOUT MML_DLO1_SOUT_SEL
-				2 MML_DLO1_SOUT  MML_DLO3       MML_MUX_SOUT MML_DLO1_SOUT_SEL
+				/* 2 MML_DLO1_SOUT  MML_DLO3       MML_MUX_SOUT MML_DLO1_SOUT_SEL */
 				0 MML_RDMA0      MML_WROT0      MML_MUX_MOUT MML_BYP0_MOUT_EN
 				1 MML_RDMA0      MML_RSZ2       MML_MUX_MOUT MML_BYP0_MOUT_EN
 				2 MML_RDMA0      MML_DLI0_SEL   MML_MUX_MOUT MML_BYP0_MOUT_EN
@@ -3512,10 +3510,6 @@
 			dli1-dl-relay = /bits/ 16 <MML_DL_IN_RELAY1_SIZE>;
 			dlo0-dl-relay = /bits/ 16 <MML_DL_OUT_RELAY0_SIZE>;
 			dlo1-dl-relay = /bits/ 16 <MML_DL_OUT_RELAY1_SIZE>;
-			dli2-dl-relay = /bits/ 16 <MML_DL_IN_RELAY2_SIZE>;
-			dli3-dl-relay = /bits/ 16 <MML_DL_IN_RELAY3_SIZE>;
-			dlo2-dl-relay = /bits/ 16 <MML_DL_OUT_RELAY2_SIZE>;
-			dlo3-dl-relay = /bits/ 16 <MML_DL_OUT_RELAY3_SIZE>;
 			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_DISP_FAKE0)>;
 		};
 
@@ -3534,7 +3528,6 @@
 				"wrot0", "wrot1", "rdma2", "rdma3",
 				"dli_async0", "dli_async1", "dlo_async0", "dlo_async1",
 				"rsz2", "rsz3", "wrot2", "wrot3",
-				"dli_async3", "dlo_async3",
 				"birsz0", "birsz1";
 			rdma0 = <MML_RDMA0 0 0>;
 			rdma1 = <MML_RDMA1 0 1>;
@@ -3560,8 +3553,6 @@
 			rsz3 = <MML_RSZ3 0 21>;
 			wrot2 = <MML_WROT2 0 22>;
 			wrot3 = <MML_WROT3 0 23>;
-			dli_async3 = <MML_DLI3 0 25>;
-			dlo_async3 = <MML_DLO3 0 27>;
 			birsz0 = <MML_BIRSZ0 0 28>;
 			birsz1 = <MML_BIRSZ1 0 29>;
 			mutex-ids = <MML_RDMA0 0 MML_RDMA1 1 MML_DLI0 2 MML_DLI1 3>;
