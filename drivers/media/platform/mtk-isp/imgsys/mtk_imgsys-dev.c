@@ -27,8 +27,8 @@ unsigned int nodes_num;
 
 #define	MTK_IMGSYS_VIDEO_NODE_SIGDEV_NORM_OUT	(nodes_num - 1)
 #define	MTK_IMGSYS_VIDEO_NODE_SIGDEV_OUT	    (nodes_num - 2)
-#define	MTK_IMGSYS_VIDEO_NODE_CTRLMETA_OUT	    (nodes_num - 3)
-#define	MTK_IMGSYS_VIDEO_NODE_TUNING_OUT	    (nodes_num - 4)
+#define	MTK_IMGSYS_VIDEO_NODE_CTRLMETA_OUT	    (nodes_num - 4)
+#define	MTK_IMGSYS_VIDEO_NODE_TUNING_OUT	    (nodes_num - 5)
 
 int mtk_imgsys_pipe_init(struct mtk_imgsys_dev *imgsys_dev,
 				struct mtk_imgsys_pipe *pipe,

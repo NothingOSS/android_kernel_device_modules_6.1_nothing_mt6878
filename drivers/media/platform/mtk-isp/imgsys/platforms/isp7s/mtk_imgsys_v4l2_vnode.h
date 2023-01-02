@@ -148,6 +148,20 @@ queues_setting[MTK_IMGSYS_VIDEO_NODE_ID_TOTAL_NUM] = {
 		.frmsizeenum = &dip_in_frmsizeenum,
 		.description = "Control meta data for flow control",
 	},
+	[MTK_IMGSYS_VIDEO_NODE_ID_CTRLMETA_FROM_USER_OUT] = {
+		.id = MTK_IMGSYS_VIDEO_NODE_ID_CTRLMETA_FROM_USER_OUT,
+		.name = "CtrlMetaFromUser",
+		.cap = V4L2_CAP_META_OUTPUT | V4L2_CAP_STREAMING,
+		.buf_type = V4L2_BUF_TYPE_META_OUTPUT,
+		.smem_alloc = 0, //meta:1
+		.flags = 0,
+		.fmts = fw_param_fmts,
+		.num_fmts = ARRAY_SIZE(fw_param_fmts),
+		.default_fmt_idx = 2, //1,
+		.dma_port = 0,
+		.frmsizeenum = &dip_in_frmsizeenum,
+		.description = "Control meta data from user for flow control",
+	},
 	[MTK_IMGSYS_VIDEO_NODE_ID_SIGDEV_OUT] = {
 		.id = MTK_IMGSYS_VIDEO_NODE_ID_SIGDEV_OUT,
 		.name = "Single Device",
