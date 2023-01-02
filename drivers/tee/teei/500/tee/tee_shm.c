@@ -281,7 +281,7 @@ struct tee_shm *isee_shm_alloc(struct tee_context *ctx, size_t size, u32 flags)
 
 	shm = isee_shm_alloc_noid(ctx, size, flags);
 	if (IS_ERR(shm)) {
-		IMSG_ERROR("Failed to alloc shm %lld\n", PTR_ERR(shm));
+		IMSG_ERROR("Failed to alloc shm %ld\n", PTR_ERR(shm));
 		return shm;
 	}
 

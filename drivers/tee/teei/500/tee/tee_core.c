@@ -918,7 +918,7 @@ static int tee_ioctl_shm_id(struct tee_context *ctx, unsigned long uaddr)
 	mutex_unlock(&teedev->mutex);
 
 	if (shm_found == 0) {
-		IMSG_ERROR("Failed to find the shm with uaddr = %llx\n", uaddr);
+		IMSG_ERROR("Failed to find the shm with uaddr = %lx\n", uaddr);
 		return -EINVAL;
 	}
 
