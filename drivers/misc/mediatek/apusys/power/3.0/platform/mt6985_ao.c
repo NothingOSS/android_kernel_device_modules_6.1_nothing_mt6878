@@ -312,6 +312,16 @@ static struct regulator *vapu_reg_id;
 static struct regulator *vcore_reg_id;
 static struct regulator *vsram_reg_id;
 
+static void _apu_w_are(int entry, ulong reg, ulong data)
+{
+	ulong are_entry_addr;
+
+	/* (address of entry) = register */
+	are_entry_addr = (ulong)papw->regs[apu_are] + 4 * ARE_ENTRY(entry);
+	apu_writel(reg, (void __iomem *)are_entry_addr);
+	apu_writel(data, (void __iomem *)(are_entry_addr + 4));
+}
+
 static void aputop_dump_pwr_reg(struct device *dev)
 {
 	char buf[32];
@@ -396,11 +406,9 @@ static void dump_rpc_lite_reg(int line)
 
 static int init_plat_pwr_res(struct platform_device *pdev)
 {
-	int ret_clk = 0, ret = 0;
+	int ret = 0;
 
 	pr_info("%s %d ++\n", __func__, __LINE__);
-
-
 	// vapu Buck
 	vapu_reg_id = regulator_get(&pdev->dev, "vapu");
 	if (!vapu_reg_id) {
@@ -446,14 +454,145 @@ static void destroy_plat_pwr_res(void)
 	vapu_reg_id = NULL;
 }
 
+static void get_pll_pcw(uint32_t clk_rate, uint32_t *r1, uint32_t *r2)
+{
+	unsigned int fvco = clk_rate;
+	unsigned int pcw_val;
+	unsigned int postdiv_val = 1;
+	unsigned int postdiv_reg = 0;
+
+	while (fvco <= 1500) {
+		postdiv_val = postdiv_val << 1;
+		postdiv_reg = postdiv_reg + 1;
+		fvco = fvco << 1;
+	}
+
+	pcw_val = (fvco * 1 << 14) / 26;
+
+	if (postdiv_reg == 0) { //Fvco * 2 with post_divider = 2
+		pcw_val = pcw_val * 2;
+		postdiv_val = postdiv_val << 1;
+		postdiv_reg = postdiv_reg + 1;
+	} //Post divider is 1 is not available
+
+	*r1 = postdiv_reg;
+	*r2 = pcw_val;
+}
+
 static void __apu_pll_init(void)
 {
-	pr_info("PLL init %s %d --\n", __func__, __LINE__);
-	print_hex_dump(KERN_ERR, "UP ACC_CONFIG", DUMP_PREFIX_OFFSET, 16, 4,
-		       papw->regs[apu_pll] + UP_PLL_BASE, 0x10, true);
-	print_hex_dump(KERN_ERR, "MNOC ACC_CONFIG", DUMP_PREFIX_OFFSET, 16, 4,
-		       papw->regs[apu_pll] + MNOC_PLL_BASE, 0x10, true);
+	// need to 1-1 in order mapping to these two array
+	uint32_t pll_base[] = {MNOC_PLL_BASE, UP_PLL_BASE,
+					MDLA_PLL_BASE, MVPU_PLL_BASE,
+					APS_PLL_BASE,};
+	int32_t pll_freq_out[] = {400, 400, 400, 400, 400}; // MHz
+	uint32_t pcw_val, posdiv_val;
+	int pll_arr_size = ARRAY_SIZE(pll_base);
+	int pll_idx, are_idx;
 
+	// Step4. Initial PLL setting
+	pr_info("PLL init %s %d --\n", __func__, __LINE__);
+
+	/* Turn on RCX_AO ARE */
+	apu_writel(1 << 21, papw->regs[apu_are]);
+
+	are_idx = PLL_ENTRY_BEGIN;
+	for (pll_idx = 0 ; pll_idx < pll_arr_size ; pll_idx++) {
+		// PCW value always from hopping function: ofs 0x300
+		_apu_w_are(are_idx++,
+			   (ulong)papw->regs[apu_pll] + pll_base[pll_idx] + PLL1CPLL_FHCTL_HP_EN,
+			   0x1 << 0);
+
+		// Hopping function reset release: ofs 0x30C
+		_apu_w_are(are_idx++,
+			   (ulong)papw->regs[apu_pll] + pll_base[pll_idx] + PLL1CPLL_FHCTL_RST_CON,
+			   0x1 << 0);
+
+		// Hopping function clock enable: ofs 0x308
+		_apu_w_are(are_idx++,
+			   (ulong)papw->regs[apu_pll] + pll_base[pll_idx] + PLL1CPLL_FHCTL_CLK_CON,
+			   0x1 << 0);
+
+		// Hopping function enable: ofs 0x314
+		_apu_w_are(are_idx++,
+			   (ulong)papw->regs[apu_pll] + pll_base[pll_idx] + PLL1CPLL_FHCTL0_CFG,
+			   (0x1 << 0) | (0x1 << 2));
+
+		posdiv_val = 0;
+		pcw_val = 0;
+		get_pll_pcw(pll_freq_out[pll_idx], &posdiv_val, &pcw_val);
+
+		// POSTDIV: ofs 0x20C , [26:24] RG_PLL_POSDIV
+		// 3'b000: /1 , 3'b001: /2 , 3'b010: /4
+		// 3'b011: /8 , 3'b100: /16
+		_apu_w_are(are_idx++,
+			   (ulong)papw->regs[apu_pll] + pll_base[pll_idx] + PLL1C_PLL1_CON1,
+			   ((0x1 << 31) | (posdiv_val << 24) | pcw_val));
+
+		// PCW register: ofs 0x31C
+		// [31] FHCTL0_PLL_TGL_ORG
+		// [21:0] FHCTL0_PLL_ORG set to PCW value
+		_apu_w_are(are_idx++,
+			   (ulong)papw->regs[apu_pll] + pll_base[pll_idx] + PLL1CPLL_FHCTL0_DDS,
+			   ((0x1 << 31) | pcw_val));
+	}
+}
+
+/* Cost 18 ARE entries, ARDCM(8) + ACC(4+6=10) */
+static void __apu_acc_init(void)
+{
+	uint32_t top_acc[] = {MNOC_ACC_BASE, UP_ACC_BASE};
+	uint32_t eng_acc[] = {MDLA_ACC_BASE, MVPU_ACC_BASE,
+									APS_ACC_BASE,};
+	int top_acc_arr_size = ARRAY_SIZE(top_acc);
+	int eng_acc_arr_size = ARRAY_SIZE(eng_acc);
+	int acc_idx;
+
+	int are_idx = ACC_ENTRY_BEGIN;
+	// Step6. Initial ACC setting (@ACC)
+
+	for (acc_idx = 0 ; acc_idx < top_acc_arr_size ; acc_idx++) {
+		// DCM_EN/DBC_EN
+		_apu_w_are(are_idx++,
+			   (ulong)papw->regs[apu_acc] + top_acc[acc_idx]  + APU_ARDCM_CTRL1,
+			   0x00000006);
+		// APB_DCM_EN/APB_DBC_EN/APB_IDLE_FSEL_UPD_EN
+		_apu_w_are(are_idx++,
+			   (ulong)papw->regs[apu_acc] + top_acc[acc_idx]  + APU_ARDCM_CTRL0,
+			   0x00000016);
+		// IDLE_FSEL/DBC_CNT
+		_apu_w_are(are_idx++,
+			   (ulong)papw->regs[apu_acc] + top_acc[acc_idx]  + APU_ARDCM_CTRL1,
+			   0x07F0F000);
+		// APB_LOAD_TOG
+		_apu_w_are(are_idx++,
+			   (ulong)papw->regs[apu_acc] + top_acc[acc_idx]  + APU_ARDCM_CTRL0,
+			   0x00000020);
+
+		// CGEN_SOC
+		_apu_w_are(are_idx++,
+			   (ulong)papw->regs[apu_acc] + top_acc[acc_idx]  + APU_ACC_CONFG_CLR0,
+			   0x00000004);
+		// HW_CTRL_EN
+		_apu_w_are(are_idx++,
+			   (ulong)papw->regs[apu_acc] + top_acc[acc_idx] + APU_ACC_CONFG_SET0,
+			   0x00008000);
+	}
+
+	for (acc_idx = 0 ; acc_idx < eng_acc_arr_size ; acc_idx++) {
+		// CGEN_SOC
+		_apu_w_are(are_idx++,
+			   (ulong)papw->regs[apu_acc] + eng_acc[acc_idx]  + APU_ACC_CONFG_CLR0,
+			   0x00000004);
+		// HW_CTRL_EN
+		_apu_w_are(are_idx++,
+			   (ulong)papw->regs[apu_acc] + eng_acc[acc_idx] + APU_ACC_CONFG_SET0,
+			   0x00008000);
+		// CLK_REQ_SW_EN
+		_apu_w_are(are_idx++,
+			   (ulong)papw->regs[apu_acc] + eng_acc[acc_idx] + APU_ACC_AUTO_CTRL_SET0,
+			   0x00000100);
+	}
 }
 
 static void __apu_buck_off_cfg(void)
@@ -1086,7 +1225,10 @@ static int init_hw_setting(struct device *dev)
 		}
 	}
 	__apu_are_init(dev);
-	__apu_pll_init();
+	if (papw->env != FPGA) {
+		__apu_pll_init();
+		__apu_acc_init();
+	}
 	__apu_buck_off_cfg();
 	return 0;
 }
@@ -1196,6 +1338,4 @@ void mt6985_all_off(struct platform_device *pdev)
 		destroy_plat_pwr_res();
 		aputop_dump_pwr_reg(&pdev->dev);
 	}
-
-
 }

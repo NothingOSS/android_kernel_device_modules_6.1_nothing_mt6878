@@ -128,17 +128,16 @@ static void aputop_dump_pcu_data(struct device *dev)
 			SMC_PWR_DUMP_PCU);
 }
 
-
 static void aputop_dump_pll_data(void)
 {
 	// need to 1-1 in order mapping with array in __apu_pll_init func
 	uint32_t pll_base_arr[] = {MNOC_PLL_BASE, UP_PLL_BASE};
 	uint32_t pll_offset_arr[] = {
-				PLL1UPLL_FHCTL_HP_EN, PLL1UPLL_FHCTL_RST_CON,
-				PLL1UPLL_FHCTL_CLK_CON, PLL1UPLL_FHCTL0_CFG,
-				PLL1U_PLL1_CON1, PLL1UPLL_FHCTL0_DDS};
-	int base_arr_size = sizeof(pll_base_arr) / sizeof(uint32_t);
-	int offset_arr_size = sizeof(pll_offset_arr) / sizeof(uint32_t);
+				PLL1CPLL_FHCTL_HP_EN, PLL1CPLL_FHCTL_RST_CON,
+				PLL1CPLL_FHCTL_CLK_CON, PLL1CPLL_FHCTL0_CFG,
+				PLL1C_PLL1_CON1, PLL1CPLL_FHCTL0_DDS};
+	int base_arr_size = ARRAY_SIZE(pll_base_arr);
+	int offset_arr_size = ARRAY_SIZE(pll_offset_arr);
 	int pll_idx;
 	int ofs_idx;
 	uint32_t phy_addr = 0x0;

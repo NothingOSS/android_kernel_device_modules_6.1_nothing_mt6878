@@ -119,6 +119,23 @@ struct rpc_status_dump {
 	uint32_t vcore_reg_status;	// rpc_lite bypss this
 };
 
+/*
+ * Only for Apusys 6.0 PLL/ACC initialize
+ * and need to sync with LK2 setting
+ */
+enum rcx_ao_range {
+RCX_AO_BEGIN = 0,
+	PLL_ENTRY_BEGIN = 0, //5(pll)*6(steps) = 30
+	PLL_ENTRY_END = 29,
+	ACC_ENTRY_BEGIN = 30, //21 ARE entries, ARDCM(8) + ACC(4+9=13)
+	ACC_ENTRY_END = 50,
+RCX_AO_END = 50,
+};
+
+/* SW ARE entry i = (HW are entry i) + (HW are entry i+1) */
+#define ARE_ENTRIES(x, y) ((((y) - (x)) + 1) * 2)
+#define ARE_ENTRY(x) (((x) * 2) + 16)
+
 void mt6985_apu_dump_rpc_status(enum t_acx_id id, struct rpc_status_dump *dump);
 
 /* RPC offset define */
@@ -144,27 +161,42 @@ void mt6985_apu_dump_rpc_status(enum t_acx_id id, struct rpc_status_dump *dump);
 #define MVPU_PLL_BASE       0x400 // 0x190F3400
 #define MNOC_PLL_BASE       0x800 // 0x190F3800
 #define UP_PLL_BASE         0xC00 // 0x190F3C00
-#define NVE_PLL_BASE		0x1000 // 0x190F4000
+#define APS_PLL_BASE		0x1000 // 0x190F4000
 
-#define PLL1U_PLL1_CON1		0x20C
-#define PLL1UPLL_FHCTL_HP_EN	0x300
-#define PLL1UPLL_FHCTL_CLK_CON	0x308
-#define PLL1UPLL_FHCTL_RST_CON	0x30C
-#define PLL1UPLL_FHCTL0_CFG	0x314
-#define PLL1UPLL_FHCTL0_DDS	0x31C
+/* APU ACCGRP offset define */
+#define APU_ACCGRP_0_BASE         0x000  // mdla:0x190F3000
+#define APU_ACCGRP_1_BASE         0x400  // vmpu:0x190F3400
+#define APU_ACCGRP_2_BASE         0x800  // mnoc:0x190F3800
+#define APU_ACCGRP_3_BASE         0xC00  // up:0x190F3C00
+#define APU_ACCGRP_4_BASE         0x1000 // nve:0x190F4000
 
+#define MDLA_ACC_BASE       APU_ACCGRP_0_BASE
+#define MVPU_ACC_BASE       APU_ACCGRP_1_BASE
+#define MNOC_ACC_BASE       APU_ACCGRP_2_BASE
+#define UP_ACC_BASE         APU_ACCGRP_3_BASE
+#define APS_ACC_BASE        APU_ACCGRP_4_BASE
 
-/* ACC offset define */
-#define APU_ACC_CONFG_SET0      0x0000
-#define APU_ACC_CONFG_CLR0      0x0010
-#define APU_ACC_FM_CONFG_SET    0x0020
-#define APU_ACC_FM_CONFG_CLR    0x0024
-#define APU_ACC_FM_SEL          0x0028
-#define APU_ACC_FM_CNT          0x002C
-#define APU_ACC_AUTO_CONFG0     0x0080
-#define APU_ACC_AUTO_CTRL_SET0  0x0084
-#define APU_ACC_AUTO_CTRL_CLR0  0x0088
-#define APU_ACC_AUTO_STATUS0    0x008C
+// ACC offset
+#define APU_ACC_CONFG_SET0        0x000
+#define APU_ACC_CONFG_CLR0        0x010
+#define APU_ACC_FM_CONFG_SET      0x020
+#define APU_ACC_FM_CONFG_CLR      0x024
+#define APU_ACC_FM_SEL            0x028
+#define APU_ACC_FM_CNT            0x02C
+#define APU_ACC_AUTO_CONFG0       0x080
+#define APU_ACC_AUTO_CTRL_SET0    0x084
+#define APU_ACC_AUTO_CTRL_CLR0    0x088
+#define APU_ACC_AUTO_STATUS0      0x08C
+#define APU_ARDCM_CTRL0           0x100
+#define APU_ARDCM_CTRL1           0x104
+
+// APU PLL1C offset
+#define PLL1C_PLL1_CON1           0x20C
+#define PLL1CPLL_FHCTL_HP_EN      0x300
+#define PLL1CPLL_FHCTL_CLK_CON    0x308
+#define PLL1CPLL_FHCTL_RST_CON    0x30C
+#define PLL1CPLL_FHCTL0_CFG       0x314
+#define PLL1CPLL_FHCTL0_DDS       0x31C
 
 /* ARE offset define */
 #define APU_ARE_INI_CTRL        0x0000
