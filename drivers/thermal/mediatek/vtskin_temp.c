@@ -14,9 +14,9 @@
 #include <linux/thermal.h>
 #include "vtskin_temp.h"
 
-static int vtskin_get_temp(void *data, int *temp)
+static int vtskin_get_temp(struct thermal_zone_device *tz, int *temp)
 {
-	struct vtskin_temp_tz *skin_tz = (struct vtskin_temp_tz *)data;
+	struct vtskin_temp_tz *skin_tz = (struct vtskin_temp_tz *)tz->devdata;
 	struct vtskin_data *skin_data = skin_tz->skin_data;
 	struct vtskin_tz_param *skin_param = skin_data->params;
 	struct thermal_zone_device *tzd;
@@ -69,7 +69,7 @@ static int vtskin_get_temp(void *data, int *temp)
 	return 0;
 }
 
-static const struct thermal_zone_of_device_ops vtskin_ops = {
+static const struct thermal_zone_device_ops vtskin_ops = {
 	.get_temp = vtskin_get_temp,
 };
 
@@ -103,7 +103,7 @@ static int vtskin_probe(struct platform_device *pdev)
 		skin_tz->id = i;
 		skin_tz->skin_data = skin_data;
 
-		tzdev = devm_thermal_zone_of_sensor_register(dev, skin_tz->id,
+		tzdev = devm_thermal_of_zone_register(dev, skin_tz->id,
 				skin_tz, &vtskin_ops);
 
 		if (IS_ERR(tzdev)) {

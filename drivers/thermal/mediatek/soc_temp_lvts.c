@@ -219,9 +219,9 @@ static int lvts_read_tc_temperature(struct lvts_data *lvts_data, unsigned int tz
 	return THERMAL_TEMP_INVALID;
 }
 
-static int soc_temp_lvts_read_temp(void *data, int *temperature)
+static int soc_temp_lvts_read_temp(struct thermal_zone_device *tz, int *temperature)
 {
-	struct soc_temp_tz *lvts_tz = (struct soc_temp_tz *) data;
+	struct soc_temp_tz *lvts_tz = (struct soc_temp_tz *)tz->devdata;
 	struct lvts_data *lvts_data = lvts_tz->lvts_data;
 
 	if (lvts_tz->id == 0)
@@ -960,9 +960,10 @@ static void update_all_tc_hw_reboot_point(struct lvts_data *lvts_data,
 		tc[i].hw_reboot_trip_point = trip_point;
 }
 
-static int soc_temp_lvts_set_trip_temp(void *data, int trip, int temp)
+static int soc_temp_lvts_set_trip_temp(struct thermal_zone_device *tz,
+		int trip, int temp)
 {
-	struct soc_temp_tz *lvts_tz = (struct soc_temp_tz *) data;
+	struct soc_temp_tz *lvts_tz = (struct soc_temp_tz *)tz->devdata;
 	struct lvts_data *lvts_data = lvts_tz->lvts_data;
 	const struct thermal_trip *trip_points;
 
@@ -979,7 +980,7 @@ static int soc_temp_lvts_set_trip_temp(void *data, int trip, int temp)
 	return 0;
 }
 
-static const struct thermal_zone_of_device_ops soc_temp_lvts_ops = {
+static const struct thermal_zone_device_ops soc_temp_lvts_ops = {
 	.get_temp = soc_temp_lvts_read_temp,
 	.set_trip_temp = soc_temp_lvts_set_trip_temp,
 };
@@ -1555,7 +1556,7 @@ static int lvts_register_thermal_zone(int id, struct lvts_data *lvts_data,
 	lvts_tz->id = id;
 	lvts_tz->lvts_data = lvts_data;
 
-	*tzdev = devm_thermal_zone_of_sensor_register(dev, lvts_tz->id,
+	*tzdev = devm_thermal_of_zone_register(dev, lvts_tz->id,
 			lvts_tz, &soc_temp_lvts_ops);
 
 	if (IS_ERR(*tzdev)) {

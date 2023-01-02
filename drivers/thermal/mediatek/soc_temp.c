@@ -463,7 +463,7 @@ static int soc_thermal_read_temp(void *data, int *temperature)
 	return 0;
 }
 
-static const struct thermal_zone_of_device_ops soc_thermal_ops = {
+static const struct thermal_zone_device_ops soc_thermal_ops = {
 	.get_temp = soc_thermal_read_temp,
 };
 
@@ -749,7 +749,7 @@ static int soc_thermal_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, mt);
 
-	tzdev = devm_thermal_zone_of_sensor_register(&pdev->dev, 0, mt,
+	tzdev = devm_thermal_of_zone_register(&pdev->dev, 0, mt,
 						     &soc_thermal_ops);
 	if (IS_ERR(tzdev)) {
 		ret = PTR_ERR(tzdev);

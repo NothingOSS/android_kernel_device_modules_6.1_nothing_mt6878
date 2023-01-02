@@ -89,14 +89,14 @@ static const struct of_device_id gof_device_id_7[] = {
 
 #endif
 
-static int imgsensor_get_temp(void *data, int *temperature)
+static int imgsensor_get_temp(struct thermal_zone_device *tz, int *temperature)
 {
 	u32 ret;
 	u8 valid;
 	s32 temp;
 
 	ret = Get_Camera_Temperature(
-		(enum CAMERA_DUAL_CAMERA_SENSOR_ENUM)data,
+		(enum CAMERA_DUAL_CAMERA_SENSOR_ENUM)tz->devdata,
 		&valid, &temp);
 
 	if (ret != IMGSENSOR_RETURN_SUCCESS ||
@@ -110,7 +110,7 @@ static int imgsensor_get_temp(void *data, int *temperature)
 	return 0;
 }
 
-static const struct thermal_zone_of_device_ops imgsensor_tz_ops = {
+static const struct thermal_zone_device_ops imgsensor_tz_ops = {
 	.get_temp = imgsensor_get_temp,
 };
 
@@ -118,7 +118,7 @@ static int imgsensor_i2c_probe_0(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
 	gi2c.inst[IMGSENSOR_I2C_DEV_0].pi2c_client = client;
-	devm_thermal_zone_of_sensor_register(&client->dev, 0,
+	devm_thermal_of_zone_register(&client->dev, 0,
 		(void *)DUAL_CAMERA_MAIN_SENSOR, &imgsensor_tz_ops);
 	return 0;
 }
@@ -127,7 +127,7 @@ static int imgsensor_i2c_probe_1(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
 	gi2c.inst[IMGSENSOR_I2C_DEV_1].pi2c_client = client;
-	devm_thermal_zone_of_sensor_register(&client->dev, 0,
+	devm_thermal_of_zone_register(&client->dev, 0,
 		(void *)DUAL_CAMERA_SUB_SENSOR, &imgsensor_tz_ops);
 	return 0;
 }
@@ -136,7 +136,7 @@ static int imgsensor_i2c_probe_2(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
 	gi2c.inst[IMGSENSOR_I2C_DEV_2].pi2c_client = client;
-	devm_thermal_zone_of_sensor_register(&client->dev, 0,
+	devm_thermal_of_zone_register(&client->dev, 0,
 		(void *)DUAL_CAMERA_MAIN_2_SENSOR, &imgsensor_tz_ops);
 	return 0;
 }
@@ -146,7 +146,7 @@ static int imgsensor_i2c_probe_3(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
 	gi2c.inst[IMGSENSOR_I2C_DEV_3].pi2c_client = client;
-	devm_thermal_zone_of_sensor_register(&client->dev, 0,
+	devm_thermal_of_zone_register(&client->dev, 0,
 		(void *)DUAL_CAMERA_SUB_2_SENSOR, &imgsensor_tz_ops);
 	return 0;
 }
@@ -157,7 +157,7 @@ static int imgsensor_i2c_probe_4(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
 	gi2c.inst[IMGSENSOR_I2C_DEV_4].pi2c_client = client;
-	devm_thermal_zone_of_sensor_register(&client->dev, 0,
+	devm_thermal_of_zone_register(&client->dev, 0,
 		(void *)DUAL_CAMERA_MAIN_3_SENSOR, &imgsensor_tz_ops);
 	return 0;
 }
@@ -168,7 +168,7 @@ static int imgsensor_i2c_probe_5(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
 	gi2c.inst[IMGSENSOR_I2C_DEV_5].pi2c_client = client;
-	devm_thermal_zone_of_sensor_register(&client->dev, 0,
+	devm_thermal_of_zone_register(&client->dev, 0,
 		(void *)DUAL_CAMERA_SUB_3_SENSOR, &imgsensor_tz_ops);
 	return 0;
 }
@@ -179,7 +179,7 @@ static int imgsensor_i2c_probe_6(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
 	gi2c.inst[IMGSENSOR_I2C_DEV_6].pi2c_client = client;
-	devm_thermal_zone_of_sensor_register(&client->dev, 0,
+	devm_thermal_of_zone_register(&client->dev, 0,
 		(void *)DUAL_CAMERA_MAIN_4_SENSOR, &imgsensor_tz_ops);
 	return 0;
 }
@@ -190,7 +190,7 @@ static int imgsensor_i2c_probe_7(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
 	gi2c.inst[IMGSENSOR_I2C_DEV_7].pi2c_client = client;
-	devm_thermal_zone_of_sensor_register(&client->dev, 0,
+	devm_thermal_of_zone_register(&client->dev, 0,
 		(void *)DUAL_CAMERA_SUB_4_SENSOR, &imgsensor_tz_ops);
 	return 0;
 }

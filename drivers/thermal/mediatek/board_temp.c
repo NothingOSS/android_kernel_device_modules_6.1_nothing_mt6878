@@ -162,9 +162,9 @@ static unsigned int calculate_r_ntc(unsigned long long v_in,
 	return r_ntc;
 }
 
-static int board_ntc_get_temp(void *data, int *temp)
+static int board_ntc_get_temp(struct thermal_zone_device *tz, int *temp)
 {
-	struct board_ntc_info *ntc_info = (struct board_ntc_info *)data;
+	struct board_ntc_info *ntc_info = (struct board_ntc_info *)tz->devdata;
 	struct pmic_auxadc_data *adc_data = ntc_info->adc_data;
 	struct tia_data *tia_param = ntc_info->adc_data->tia_param;
 	unsigned int val, r_type, r_ntc, dbg_reg, en_reg, count = 0;
@@ -234,7 +234,7 @@ RETRY:
 	return 0;
 }
 
-static const struct thermal_zone_of_device_ops board_ntc_ops = {
+static const struct thermal_zone_device_ops board_ntc_ops = {
 	.get_temp = board_ntc_get_temp,
 };
 
@@ -360,7 +360,7 @@ static int board_ntc_probe(struct platform_device *pdev)
 	if (!IS_ERR(tia_reg))
 		ntc_info->dbg_reg = tia_reg;
 
-	tz_dev = devm_thermal_zone_of_sensor_register(
+	tz_dev = devm_thermal_of_zone_register(
 			&pdev->dev, 0, ntc_info, &board_ntc_ops);
 	if (IS_ERR(tz_dev)) {
 		ret = PTR_ERR(tz_dev);

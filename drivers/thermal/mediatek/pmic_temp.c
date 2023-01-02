@@ -102,11 +102,11 @@ static void pmic_get_temp_convert_params(struct pmic_temp_info *data)
 	}
 }
 
-static int pmic_get_temp(void *data, int *temp)
+static int pmic_get_temp(struct thermal_zone_device *tz, int *temp)
 {
 	int val = 0;
 	int ret;
-	struct pmic_temp_tz *pmic_tz = (struct pmic_temp_tz *)data;
+	struct pmic_temp_tz *pmic_tz = (struct pmic_temp_tz *)tz->devdata;
 	struct pmic_temp_info *temp_info = pmic_tz->pmic_tz_info;
 	struct pmic_tz_data *tz_data = temp_info->efuse_data;
 	struct pmic_tz_cali_data *cali_data = tz_data->cali_data;
@@ -124,7 +124,7 @@ static int pmic_get_temp(void *data, int *temp)
 	return 0;
 }
 
-static const struct thermal_zone_of_device_ops pmic_temp_ops = {
+static const struct thermal_zone_device_ops pmic_temp_ops = {
 	.get_temp = pmic_get_temp,
 };
 static int pmic_temp_parse_iio_channel(struct device *dev,
@@ -162,7 +162,7 @@ static int pmic_register_thermal_zones(struct pmic_temp_info *pmic_info)
 
 		pmic_tz->tz_id = i;
 		pmic_tz->pmic_tz_info = pmic_info;
-		tzdev = devm_thermal_zone_of_sensor_register(dev, pmic_tz->tz_id,
+		tzdev = devm_thermal_of_zone_register(dev, pmic_tz->tz_id,
 				pmic_tz, &pmic_temp_ops);
 
 		if (IS_ERR(tzdev)) {

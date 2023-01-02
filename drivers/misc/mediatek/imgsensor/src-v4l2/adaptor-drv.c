@@ -1006,9 +1006,9 @@ static const struct v4l2_subdev_internal_ops imgsensor_internal_ops = {
 	.close = imgsensor_close,
 };
 
-static int imgsensor_get_temp(void *data, int *temperature)
+static int imgsensor_get_temp(struct thermal_zone_device *tz, int *temperature)
 {
-	struct adaptor_ctx *ctx = data;
+	struct adaptor_ctx *ctx = tz->devdata;
 
 #ifdef IMGSENSOR_USE_PM_FRAMEWORK
 	if (pm_runtime_get_if_in_use(ctx->dev) == 0) {
@@ -1030,7 +1030,7 @@ static int imgsensor_get_temp(void *data, int *temperature)
 	return 0;
 }
 
-static const struct thermal_zone_of_device_ops imgsensor_tz_ops = {
+static const struct thermal_zone_device_ops imgsensor_tz_ops = {
 	.get_temp = imgsensor_get_temp,
 };
 
@@ -1413,7 +1413,7 @@ static int imgsensor_probe(struct i2c_client *client)
 	if (ctx->subdrv->ops->get_temp) {
 		struct thermal_zone_device *tzdev;
 
-		tzdev = devm_thermal_zone_of_sensor_register(
+		tzdev = devm_thermal_of_zone_register(
 			       dev, 0, ctx, &imgsensor_tz_ops);
 		if (IS_ERR(tzdev))
 			dev_info(dev, "failed to register thermal zone\n");
