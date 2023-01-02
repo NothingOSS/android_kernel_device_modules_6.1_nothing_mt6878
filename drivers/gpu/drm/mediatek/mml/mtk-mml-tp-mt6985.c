@@ -53,7 +53,7 @@ module_param(mml_path_mode, int, 0644);
 int mml_racing;
 module_param(mml_racing, int, 0644);
 
-int mml_racing_rsz;
+int mml_racing_rsz = 1;
 module_param(mml_racing_rsz, int, 0644);
 
 enum topology_scenario {
@@ -288,9 +288,7 @@ static u8 engine_reset_bit[MML_ENGINE_TOTAL] = {
 	[MML_RSZ3] = 28,
 	[MML_WROT3] = 29,
 	[MML_DLO1] = 30,
-	[MML_DLI2] = 31,
 	[MML_DLI3] = 32,
-	[MML_DLO2] = 33,
 	[MML_DLO3] = 34,
 	[MML_BIRSZ0] = 35,
 	[MML_BIRSZ1] = 36,
@@ -714,7 +712,7 @@ static struct cmdq_client *get_racing_clt(struct mml_topology_cache *cache, u32 
 	return cache->paths[PATH_MML_NOPQ_P0 + pipe].clt;
 }
 
-static const struct mml_topology_ops tp_ops_mt6983 = {
+static const struct mml_topology_ops tp_ops_mt6985 = {
 	.query_mode = tp_query_mode,
 	.init_cache = tp_init_cache,
 	.select = tp_select,
@@ -723,7 +721,7 @@ static const struct mml_topology_ops tp_ops_mt6983 = {
 
 static __init int mml_topology_ip_init(void)
 {
-	return mml_topology_register_ip(TOPOLOGY_PLATFORM, &tp_ops_mt6983);
+	return mml_topology_register_ip(TOPOLOGY_PLATFORM, &tp_ops_mt6985);
 }
 module_init(mml_topology_ip_init);
 
