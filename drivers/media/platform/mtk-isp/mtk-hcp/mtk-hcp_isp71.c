@@ -860,6 +860,12 @@ static int isp71_get_gce(void)
 	return 0;
 }
 
+void *isp71_get_wpe_virt(void)
+{
+	return mb[WPE_MEM_C_ID].start_virt;
+}
+EXPORT_SYMBOL(isp71_get_wpe_virt);
+
 struct mtk_hcp_data isp71_hcp_data = {
 	.mblock = isp71_reserve_mblock,
 	.block_num = ARRAY_SIZE(isp71_reserve_mblock),
@@ -871,5 +877,6 @@ struct mtk_hcp_data isp71_hcp_data = {
 	.get_gce = isp71_get_gce,
 	.put_gce = isp71_put_gce,
 	.get_hwid_virt = isp71_get_hwid_virt,
+	.get_wpe_virt = isp71_get_wpe_virt,
 };
 MODULE_IMPORT_NS(DMA_BUF);

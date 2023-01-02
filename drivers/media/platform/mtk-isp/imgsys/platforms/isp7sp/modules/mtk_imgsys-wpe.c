@@ -21,6 +21,7 @@
 #define M4U_PORT_DUMMY_LITE (2)
 
 #include "mtk_imgsys-wpe.h"
+#include "mtk-hcp.h"
 
 #define WPE_A_BASE        (0x15200000)
 const unsigned int mtk_imgsys_wpe_base_ofst[] = {0x0, 0x300000, 0x400000};
@@ -170,6 +171,12 @@ const struct imgsys_reg_range wpe_regs[] = {
 	{0x0B00, 0x0C34}, /* DIPCQ_W1 */
 };
 #define WPE_REG_ARRAY_COUNT	ARRAY_SIZE(wpe_regs)
+
+struct mtk_imgsys_wpe_dtable {
+	uint32_t empty;
+	uint32_t addr;
+	uint32_t addr_msb;
+};
 
 void __iomem *gWpeRegBA[WPE_HW_NUM] = {0L};
 
@@ -369,6 +376,44 @@ void imgsys_wpe_set_hw_initial_value(struct mtk_imgsys_dev *imgsys_dev)
 	}
 
 	dev_dbg(imgsys_dev->dev, "%s: -\n", __func__);
+}
+
+void imgsys_wpe_updatecq(struct mtk_imgsys_dev *imgsys_dev,
+			struct img_swfrm_info *user_info, int req_fd)
+{
+	unsigned int i;
+	u64 iova_addr = 0;
+	struct mtk_imgsys_req_fd_info *fd_info = NULL;
+	struct dma_buf *dbuf = NULL;
+	struct mtk_imgsys_request *req = NULL;
+	struct mtk_imgsys_dev_buffer *dev_b = 0;
+	u64 *cq_desc = NULL;
+	struct mtk_imgsys_wpe_dtable *dtable = NULL;
+
+	for (i = 0; i <= 1; i++) {
+		if (!user_info->priv[i].need_update_desc)
+			continue;
+
+		dbuf = dma_buf_get(user_info->priv[i].buf_fd);
+		fd_info = &imgsys_dev->req_fd_cache.info_array[req_fd];
+		req = (struct mtk_imgsys_request *) fd_info->req_addr_va;
+		dev_b = req->buf_map[imgsys_dev->is_singledev_mode(req)];
+		iova_addr = imgsys_dev->imgsys_get_iova(dbuf,
+					user_info->priv[i].buf_fd,
+					imgsys_dev, dev_b) + user_info->priv[i].buf_offset;
+
+		cq_desc = (u64 *)((void *)(mtk_hcp_get_wpe_mem_virt(imgsys_dev->scp_pdev) +
+					user_info->priv[i].desc_offset));
+
+		dtable = (struct mtk_imgsys_wpe_dtable *)cq_desc;
+		dtable->addr = iova_addr & 0xFFFFFFFF;
+		dtable->addr_msb = (iova_addr >> 32) & 0xF;
+		//
+		pr_debug(
+			"%s: buf_fd(0x%08x) buf_ofst(0x%08x) buf_iova(0x%llx) des_ofst(0x%08x) cq_kva(0x%08lx) dtable(0x%x/0x%x/0x%x)\n",
+			__func__, user_info->priv[i].buf_fd, user_info->priv[i].buf_offset,
+			iova_addr, user_info->priv[i].desc_offset, cq_desc, dtable->empty, dtable->addr, dtable->addr_msb);
+	}
 }
 
 void imgsys_wpe_debug_ufo_dump(struct mtk_imgsys_dev *imgsys_dev,
@@ -867,3 +912,4 @@ void imgsys_wpe_uninit(struct mtk_imgsys_dev *imgsys_dev)
 
 	pr_debug("%s: -\n", __func__);
 }
+MODULE_IMPORT_NS(DMA_BUF);

@@ -192,6 +192,7 @@ int mtk_hcp_allocate_working_buffer(struct platform_device *pdev, unsigned int m
 int mtk_hcp_release_working_buffer(struct platform_device *pdev);
 
 void *mtk_hcp_get_gce_mem_virt(struct platform_device *pdev);
+void *mtk_hcp_get_wpe_mem_virt(struct platform_device *pdev);
 void *mtk_hcp_get_hwid_mem_virt(struct platform_device *pdev);
 int mtk_hcp_get_init_info(struct platform_device *pdev, struct img_init_info *info);
 
@@ -352,6 +353,7 @@ struct mtk_hcp_data {
 	int (*get_gce)(void);
 	int (*put_gce)(void);
 	void* (*get_hwid_virt)(void);
+	void* (*get_wpe_virt)(void);
 };
 
 #define HCP_RESERVED_MEM  (1)

@@ -877,7 +877,11 @@ int imgsys_cmdq_sendtask_plat71(struct mtk_imgsys_dev *imgsys_dev,
 				void (*cmdq_cb)(struct cmdq_cb_data data,
 					uint32_t subfidx, bool isLastTaskInReq),
 				void (*cmdq_err_cb)(struct cmdq_cb_data data,
-					uint32_t fail_subfidx, bool isHWhang, uint32_t hangEvent))
+					uint32_t fail_subfidx, bool isHWhang, uint32_t hangEvent),
+				u64 (*imgsys_get_iova)(struct dma_buf *dma_buf, s32 ionFd,
+					struct mtk_imgsys_dev *imgsys_dev,
+					struct mtk_imgsys_dev_buffer *dev_buf),
+				int (*is_singledev_mode)(struct mtk_imgsys_request *req))
 {
 	struct cmdq_client *clt = NULL;
 	struct cmdq_pkt *pkt = NULL;
@@ -2090,7 +2094,6 @@ struct imgsys_cmdq_cust_data imgsys_cmdq_data_71 = {
 	.cmdq_streamon = imgsys_cmdq_streamon_plat71,
 	.cmdq_streamoff = imgsys_cmdq_streamoff_plat71,
 	.cmdq_sendtask = imgsys_cmdq_sendtask_plat71,
-	.cmdq_parser = imgsys_cmdq_parser_plat71,
 	.cmdq_sec_sendtask = imgsys_cmdq_sec_sendtask_plat71,
 	.cmdq_sec_cmd = imgsys_cmdq_sec_cmd_plat71,
 	.cmdq_clearevent = imgsys_cmdq_clearevent_plat71,

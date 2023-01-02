@@ -576,7 +576,7 @@ bool is_desc_fmt(const struct mtk_imgsys_dev_format *dev_fmt)
 
 	return !std_fmt;
 }
-static u64 mtk_imgsys_get_iova(struct dma_buf *dma_buf, s32 ionFd,
+u64 mtk_imgsys_get_iova(struct dma_buf *dma_buf, s32 ionFd,
 				struct mtk_imgsys_dev *imgsys_dev,
 				struct mtk_imgsys_dev_buffer *dev_buf)
 {
@@ -1225,7 +1225,9 @@ void mtk_imgsys_desc_map_iova(struct mtk_imgsys_request *req)
 
 void mtk_imgsys_sd_desc_map_iova(struct mtk_imgsys_request *req)
 {
+#ifndef MTK_IOVA_SINK2KERNEL
 	unsigned int i;
+#endif
 	struct mtk_imgsys_pipe *pipe = req->imgsys_pipe;
 	struct mtk_imgsys_dev_buffer *buf_sd;
 	struct img_ipi_frameparam *dip_param = req->working_buf->frameparam.vaddr;
@@ -1258,6 +1260,7 @@ void mtk_imgsys_sd_desc_map_iova(struct mtk_imgsys_request *req)
 		break;
 	}
 
+#ifndef MTK_IOVA_SINK2KERNEL
 	for (i = 0; i < IMG_MAX_HW_DMAS; i++) {
 
 		if (desc_sd)
@@ -1275,6 +1278,7 @@ void mtk_imgsys_sd_desc_map_iova(struct mtk_imgsys_request *req)
 
 		mtk_imgsys_desc_set_skip(pipe, i, src, dst, 1, buf_sd);
 	}
+#endif
 
 	/* tuning */
 	if (desc_sd)
@@ -1648,6 +1652,7 @@ void mtk_imgsys_singledevice_ipi_params_config(struct mtk_imgsys_request *req)
 			ctrl_meta,
 			buf_in, 1);
 
+#ifndef MTK_IOVA_SINK2KERNEL
 	for (i = 0; i < IMG_MAX_HW_DMAS; i++) {
 
 		if (singledevice_desc_dma)
@@ -1659,6 +1664,7 @@ void mtk_imgsys_singledevice_ipi_params_config(struct mtk_imgsys_request *req)
 				(void *)&singledevice_desc_norm->dmas[i],
 				buf_in, isMENode);
 	}
+#endif
 }
 
 void mtk_imgsys_pipe_try_enqueue(struct mtk_imgsys_pipe *pipe)

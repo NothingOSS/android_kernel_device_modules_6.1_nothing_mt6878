@@ -2492,6 +2492,11 @@ static int mtk_imgsys_dev_v4l2_init(struct mtk_imgsys_dev *imgsys_dev)
 		goto err_release_pipe;
 	}
 
+#ifdef MTK_IOVA_SINK2KERNEL
+	imgsys_dev->imgsys_get_iova = mtk_imgsys_get_iova;
+	imgsys_dev->is_singledev_mode = is_singledev_mode;
+#endif
+
 	return 0;
 
 err_release_pipe:

@@ -1015,10 +1015,19 @@ int imgsys_cmdq_sendtask_plat7s(struct mtk_imgsys_dev *imgsys_dev,
 					uint32_t uinfo_idx, bool isLastTaskInReq),
 				void (*cmdq_err_cb)(struct cmdq_cb_data data,
 					uint32_t fail_uinfo_idx, bool isHWhang,
-					uint32_t hangEvent));
-int imgsys_cmdq_parser_plat7s(struct swfrm_info_t *frm_info, struct cmdq_pkt *pkt,
+					uint32_t hangEvent),
+				u64 (*imgsys_get_iova)(struct dma_buf *dma_buf, s32 ionFd,
+					struct mtk_imgsys_dev *imgsys_dev,
+					struct mtk_imgsys_dev_buffer *dev_buf),
+				int (*is_singledev_mode)(struct mtk_imgsys_request *req));
+int imgsys_cmdq_parser_plat7s(struct mtk_imgsys_dev *imgsys_dev,
+				struct swfrm_info_t *frm_info, struct cmdq_pkt *pkt,
 				struct Command *cmd, u32 hw_comb,
-				dma_addr_t dma_pa, uint32_t *num, u32 thd_idx);
+				dma_addr_t dma_pa, uint32_t *num, u32 thd_idx,
+				u64 (*imgsys_get_iova)(struct dma_buf *dma_buf, s32 ionFd,
+					struct mtk_imgsys_dev *imgsys_dev,
+					struct mtk_imgsys_dev_buffer *dev_buf),
+				int (*is_singledev_mode)(struct mtk_imgsys_request *req));
 int imgsys_cmdq_sec_sendtask_plat7s(struct mtk_imgsys_dev *imgsys_dev);
 void imgsys_cmdq_sec_cmd_plat7s(struct cmdq_pkt *pkt);
 void imgsys_cmdq_clearevent_plat7s(int event_id);

@@ -81,6 +81,13 @@ obj-${CONFIG_VIDEO_MTK_ISP_IMGSYS_7SP} += mtk_imgsys_isp7sp.o
 #  imgsys-cmdq
 #
 
+#ifeq ($(CONFIG_VIDEO_MTK_ISP_IMGSYS_7SP),m)
+#  subdir-ccflags-y += -DMTK_IOVA_SINK2KERNEL
+ifeq ($(CONFIG_VIDEO_MTK_ISP_IMGSYS_7S),m)
+  subdir-ccflags-y += -DMTK_IOVA_SINK2KERNEL
+endif
+$(info "imgsys cmdq, subdir-ccflags-y = $(subdir-ccflags-y)")
+
 mtk_imgsys_cmdq-objs := \
 mtk_imgsys-cmdq.o \
 mtk_imgsys-trace.o \

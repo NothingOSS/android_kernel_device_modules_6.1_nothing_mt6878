@@ -120,6 +120,7 @@ enum mtk_imgsys_cmd {
 	IMGSYS_CMD_MOVE,
 	IMGSYS_CMD_READ,
 	IMGSYS_CMD_WRITE,
+	IMGSYS_CMD_WRITE_FD,
 	IMGSYS_CMD_POLL,
 	IMGSYS_CMD_WAIT,
 	IMGSYS_CMD_UPDATE,
@@ -178,6 +179,15 @@ struct Command {
 			uint32_t value;
 		} __packed;
 
+		// For write_fd (update dma address)
+		struct {
+			pseudo_gce_cmd_addr_t dma_addr;
+			uint8_t dma_addr_msb_ofst;
+			uint16_t fd;
+			uint32_t ofst;
+			uint8_t right_shift;
+		} __packed;
+
 		// For wait and update event
 		struct {
 			uint32_t event;
@@ -196,7 +206,11 @@ int imgsys_cmdq_sendtask(struct mtk_imgsys_dev *imgsys_dev,
 					uint32_t uinfo_idx, bool isLastTaskInReq),
 				void (*cmdq_err_cb)(struct cmdq_cb_data data,
 					uint32_t fail_uinfo_idx, bool isHWhang,
-					uint32_t hangEvent));
+					uint32_t hangEvent),
+				u64 (*imgsys_get_iova)(struct dma_buf *dma_buf, s32 ionFd,
+					struct mtk_imgsys_dev *imgsys_dev,
+					struct mtk_imgsys_dev_buffer *dev_buf),
+				int (*is_singledev_mode)(struct mtk_imgsys_request *req));
 /*int imgsys_cmdq_parser(struct swfrm_info_t *frm_info, struct cmdq_pkt *pkt,
 				struct Command *cmd, u32 hw_comb,
 				dma_addr_t dma_pa, uint32_t *num, u32 thd_idx);
@@ -260,10 +274,11 @@ struct imgsys_cmdq_cust_data {
 			void (*cmdq_cb)(struct cmdq_cb_data data,
 			uint32_t uinfo_idx, bool isLastTaskInReq),
 			void (*cmdq_err_cb)(struct cmdq_cb_data data,
-			uint32_t fail_uinfo_idx, bool isHWhang, uint32_t hangEvent));
-	int (*cmdq_parser)(struct swfrm_info_t *frm_info, struct cmdq_pkt *pkt,
-			struct Command *cmd, u32 hw_comb,
-			dma_addr_t dma_pa, uint32_t *num, u32 thd_idx);
+			uint32_t fail_uinfo_idx, bool isHWhang, uint32_t hangEvent),
+			u64 (*imgsys_get_iova)(struct dma_buf *dma_buf, s32 ionFd,
+				struct mtk_imgsys_dev *imgsys_dev,
+				struct mtk_imgsys_dev_buffer *dev_buf),
+			int (*is_singledev_mode)(struct mtk_imgsys_request *req));
 	int (*cmdq_sec_sendtask)(struct mtk_imgsys_dev *imgsys_dev);
 	void (*cmdq_sec_cmd)(struct cmdq_pkt *pkt);
 	void (*cmdq_clearevent)(int event_id);

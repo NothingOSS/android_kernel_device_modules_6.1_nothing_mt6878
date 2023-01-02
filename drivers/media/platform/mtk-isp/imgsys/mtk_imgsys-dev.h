@@ -62,6 +62,7 @@
 #define MTK_IMGSYS_LOG_LENGTH			256
 
 
+#define MTK_REQ_FD_CACHE_ARRAY_MAX		65536
 
 enum imgsys_user_state {
 	DIP_STATE_INIT	= 0,
@@ -87,6 +88,16 @@ struct mtk_imgsys_dev_format {
 	u32 flags;
 	u32 buffer_size;
 	u8 pass_1_align;
+};
+
+struct mtk_imgsys_req_fd_info {
+	u64	handle;
+	u64	req_addr_va;
+};
+
+struct mtk_imgsys_req_fd_list {
+	struct mtk_imgsys_req_fd_info info_array[MTK_REQ_FD_CACHE_ARRAY_MAX];
+	struct mutex lock;
 };
 
 // desc added {
@@ -349,6 +360,13 @@ struct mtk_imgsys_dev {
 	debug_dump dump;
 	atomic_t imgsys_user_cnt;
 	struct kref init_kref;
+	struct mtk_imgsys_req_fd_list req_fd_cache;
+#ifdef MTK_IOVA_SINK2KERNEL
+	u64 (*imgsys_get_iova)(struct dma_buf *dma_buf, s32 ionFd,
+		struct mtk_imgsys_dev *imgsys_dev,
+		struct mtk_imgsys_dev_buffer *dev_buf);
+	int (*is_singledev_mode)(struct mtk_imgsys_request *req);
+#endif
 };
 
 /* contained in struct mtk_imgsys_user's done_list */
@@ -544,6 +562,10 @@ bool is_desc_mode(struct mtk_imgsys_request *req);
 int is_singledev_mode(struct mtk_imgsys_request *req);
 
 bool mtk_imgsys_is_smvr(struct mtk_imgsys_request *req);
+
+u64 mtk_imgsys_get_iova(struct dma_buf *dma_buf, s32 ionFd,
+				struct mtk_imgsys_dev *imgsys_dev,
+				struct mtk_imgsys_dev_buffer *dev_buf);
 
 bool is_desc_fmt(const struct mtk_imgsys_dev_format *dev_fmt);
 

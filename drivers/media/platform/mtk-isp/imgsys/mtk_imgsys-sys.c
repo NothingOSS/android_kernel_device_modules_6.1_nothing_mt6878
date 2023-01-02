@@ -25,6 +25,7 @@
 #include "mtk_imgsys-module.h"
 #include "mtk_imgsys-trace.h"
 #include "mtk-hcp_kernelfence.h"
+#include "mtk_imgsys-engine.h"
 
 #if MTK_CM4_SUPPORT
 #include <linux/remoteproc/mtk_scp.h>
@@ -1378,6 +1379,7 @@ static void imgsys_runner_func(void *data)
 	struct swfrm_info_t *frm_info;
 	int swfrm_cnt, stime;
 	int ret;
+	unsigned int subfidx;
 
 	req->tstate.time_runnerStart = ktime_get_boottime_ns()/1000;
 	swfrm_cnt = atomic_read(&req->swfrm_cnt);
@@ -1388,6 +1390,16 @@ static void imgsys_runner_func(void *data)
 	frm_info->is_sent = true;
 	if (frm_info->is_lastfrm)
 		*(req->req_stat) = *(req->req_stat) + 1;
+
+#ifdef MTK_IOVA_SINK2KERNEL
+	for (subfidx = 0 ; subfidx < frm_info->total_frmnum ; subfidx++) {
+		//for (i = 0; i < (imgsys_dev->num_mods); i++)
+		if (imgsys_dev->modules[/*i*/IMGSYS_MOD_WPE].updatecq) {
+			imgsys_dev->modules[IMGSYS_MOD_WPE].updatecq(imgsys_dev,
+				&frm_info->user_info[subfidx], frm_info->request_fd);
+		}
+	}
+#endif
 	/*
 	 * Call MDP/GCE API to do HW excecution
 	 * Pass the framejob to MDP driver
@@ -1402,7 +1414,7 @@ static void imgsys_runner_func(void *data)
 
 	mtk_hcp_get_gce_buffer(imgsys_dev->scp_pdev);
 	ret = imgsys_cmdq_sendtask(imgsys_dev, frm_info, imgsys_mdp_cb_func,
-		imgsys_cmdq_timeout_cb_func);
+		imgsys_cmdq_timeout_cb_func, mtk_imgsys_get_iova, is_singledev_mode);
 	IMGSYS_SYSTRACE_END();
 	req->tstate.time_cmqret = ktime_get_boottime_ns()/1000;
 	req->tstate.time_sendtask +=
@@ -1445,6 +1457,10 @@ static void imgsys_scp_handler(void *data, unsigned int len, void *priv)
 	bool reqfd_find = false;
 	int f_lop_idx = 0, fence_num = 0;
 	struct fence_event *fence_evt = NULL;
+#ifdef MTK_IOVA_SINK2KERNEL
+    struct mtk_imgsys_req_fd_list *fd_list = &imgsys_dev->req_fd_cache;
+	u32	req_fd = 0;
+#endif
 
 	if (!data) {
 		WARN_ONCE(!data, "%s: failed due to NULL data\n", __func__);
@@ -1541,7 +1557,12 @@ static void imgsys_scp_handler(void *data, unsigned int len, void *priv)
 
 #endif
 	time_local_reddonescpStart = ktime_get_boottime_ns()/1000;
+#ifndef MTK_IOVA_SINK2KERNEL
 	job_id = swfrm_info->handle;
+#else
+	req_fd = (u32) swfrm_info->request_fd;
+	job_id = fd_list->info_array[req_fd].handle;
+#endif
 	pipe_id = mtk_imgsys_pipe_get_pipe_from_job_id(job_id);
 	pipe = mtk_imgsys_dev_get_pipe(imgsys_dev, pipe_id);
 	if (!pipe) {
@@ -1551,7 +1572,11 @@ static void imgsys_scp_handler(void *data, unsigned int len, void *priv)
 		return;
 	}
 
+#ifndef MTK_IOVA_SINK2KERNEL
 	req = (struct mtk_imgsys_request *) swfrm_info->req_vaddr;
+#else
+	req = (struct mtk_imgsys_request *)fd_list->info_array[req_fd].req_addr_va;
+#endif
 	if (!req) {
 		WARN_ONCE(!req, "%s: frame_no(%d) is lost\n", __func__, job_id);
 		return;
@@ -1731,9 +1756,15 @@ static void imgsys_scp_handler(void *data, unsigned int len, void *priv)
 	gwork->req = req;
 	gwork->req_sbuf_kva = (void *)swfrm_info;
 	gwork->work.run = imgsys_runner_func;
+#ifdef MTK_IOVA_SINK2KERNEL
+	if (swfrm_info->is_lastfrm)
+		*(req->req_stat) = *(req->req_stat) + 1;
+	imgsys_runner_func((void *)(&gwork->work));
+#else
 	imgsys_queue_add(&imgsys_dev->runnerque, &gwork->work);
 	if (swfrm_info->is_lastfrm)
 		*(req->req_stat) = *(req->req_stat) + 1;
+#endif
 
 	IMGSYS_SYSTRACE_END();
 
@@ -1817,8 +1848,11 @@ static void imgsys_composer_workfunc(struct work_struct *work)
 	struct mtk_imgsys_dev *imgsys_dev = req->imgsys_pipe->imgsys_dev;
 	struct img_ipi_param ipi_param;
 	struct mtk_imgsys_hw_subframe *buf;
-	int ret;
+	int ret = 0;
 	u32 index, frame_no;
+#ifdef MTK_IOVA_SINK2KERNEL
+	struct mtk_imgsys_req_fd_list *fd_list = &imgsys_dev->req_fd_cache;
+#endif
 
 	IMGSYS_SYSTRACE_BEGIN("ReqFd:%d\n", req->tstate.req_fd);
 
@@ -1889,8 +1923,20 @@ static void imgsys_composer_workfunc(struct work_struct *work)
 	}
 
 	ipi_param.usage = IMG_IPI_FRAME;
+#ifdef MTK_IOVA_SINK2KERNEL
+	mutex_lock(&fd_list->lock);
+	if ((req->tstate.req_fd > 0) &&
+		(req->tstate.req_fd < MTK_REQ_FD_CACHE_ARRAY_MAX)) {
+		fd_list->info_array[req->tstate.req_fd].handle = req->id;
+		fd_list->info_array[req->tstate.req_fd].req_addr_va = (u64)req;
+	}
+	mutex_unlock(&fd_list->lock);
+	ipi_param.req_addr_va = 0; //tmp for hcp debug flow
+#else
 	ipi_param.frm_param.handle = req->id;
 	ipi_param.req_addr_va = (u64)req;
+#endif
+
 	/* FOR DESC and SIGDEV */
 	imgsys_set_smvr(req, &ipi_param);
 
@@ -1920,9 +1966,11 @@ static void imgsys_composer_workfunc(struct work_struct *work)
 
 	req->tstate.time_ipisendStart = ktime_get_boottime_ns()/1000;
 
+#ifndef MTK_IOVA_SINK2KERNEL
 	ret = imgsys_send(imgsys_dev->scp_pdev, HCP_DIP_FRAME_ID,
 		&ipi_param, sizeof(ipi_param),
 		req->tstate.req_fd, 0);
+#endif
 
 	index = req->img_fparam.frameparam.index;
 	frame_no = req->img_fparam.frameparam.frame_no;
@@ -2199,6 +2247,11 @@ static int mtk_imgsys_hw_connect(struct mtk_imgsys_dev *imgsys_dev)
 		goto err_power_off;
 	}
 
+	//FD cache
+	memset(imgsys_dev->req_fd_cache.info_array, 0,
+		sizeof(imgsys_dev->req_fd_cache.info_array));
+	mutex_init(&imgsys_dev->req_fd_cache.lock);
+
 	ret = gce_work_pool_init(imgsys_dev);
 	if (ret) {
 		dev_info(imgsys_dev->dev, "%s: gce work pool allocate failed %d\n",
@@ -2295,6 +2348,7 @@ static void mtk_imgsys_hw_disconnect(struct mtk_imgsys_dev *imgsys_dev)
 
 	mtk_hcp_purge_msg(imgsys_dev->scp_pdev);
 
+	mutex_destroy(&imgsys_dev->req_fd_cache.lock);
 	gce_work_pool_uninit(imgsys_dev);
 
 	if (!imgsys_quick_onoff_enable()) {
@@ -2496,9 +2550,12 @@ void mtk_imgsys_hw_enqueue(struct mtk_imgsys_dev *imgsys_dev,
 	req->tstate.time_composingEnd = ktime_get_boottime_ns()/1000;
 
 	INIT_WORK(&req->iova_work, iova_worker);
+#ifdef MTK_IOVA_SINK2KERNEL
+	iova_worker(&req->iova_work);
+#else
 	queue_work(req->imgsys_pipe->imgsys_dev->enqueue_wq,
 			&req->iova_work);
-
+#endif
 	IMGSYS_SYSTRACE_END();
 }
 

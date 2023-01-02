@@ -18,4 +18,7 @@ void imgsys_wpe_set_hw_initial_value(struct mtk_imgsys_dev *imgsys_dev);
 void imgsys_wpe_debug_dump(struct mtk_imgsys_dev *imgsys_dev,
 							unsigned int engine);
 void imgsys_wpe_uninit(struct mtk_imgsys_dev *imgsys_dev);
+void imgsys_wpe_updatecq(struct mtk_imgsys_dev *imgsys_dev,
+			struct img_swfrm_info *user_info, int req_fd);
+
 #endif /* _MTK_IMGSYS_WPE_H_ */

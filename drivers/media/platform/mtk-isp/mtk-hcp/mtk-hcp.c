@@ -993,6 +993,24 @@ void *mtk_hcp_get_gce_mem_virt(struct platform_device *pdev)
 }
 EXPORT_SYMBOL(mtk_hcp_get_gce_mem_virt);
 
+void*mtk_hcp_get_wpe_mem_virt(struct platform_device *pdev)
+{
+	struct mtk_hcp *hcp_dev = platform_get_drvdata(pdev);
+	void *buffer = NULL;
+
+	if (!hcp_dev->data->get_wpe_virt) {
+		dev_info(&pdev->dev, "%s: not supported\n", __func__);
+		return NULL;
+	}
+
+	buffer = hcp_dev->data->get_wpe_virt();
+	if (!buffer)
+		dev_info(&pdev->dev, "%s: wpe cq buffer is null\n", __func__);
+
+	return buffer;
+}
+EXPORT_SYMBOL(mtk_hcp_get_wpe_mem_virt);
+
 int mtk_hcp_get_gce_buffer(struct platform_device *pdev)
 {
 	struct mtk_hcp *hcp_dev = platform_get_drvdata(pdev);

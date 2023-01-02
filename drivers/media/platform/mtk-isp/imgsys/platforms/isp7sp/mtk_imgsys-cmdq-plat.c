@@ -261,6 +261,16 @@ static void imgsys_cmdq_cmd_dump_plat7sp(struct swfrm_info_t *frm_info, u32 frm_
 			"%s: WRITE with addr(0x%08lx) value(0x%08x) mask(0x%08x)\n", __func__,
 				cmd[cmd_idx].u.address, cmd[cmd_idx].u.value, cmd[cmd_idx].u.mask);
 			break;
+#ifdef MTK_IOVA_SINK2KERNEL
+		case IMGSYS_CMD_WRITE_FD:
+			pr_debug(
+			"%s: WRITE_FD with addr(0x%08lx) msb_ofst(0x%08lx) fd(0x%08x) ofst(0x%08x) rshift(%d)\n",
+				__func__, cmd[cmd_idx].u.dma_addr,
+				cmd[cmd_idx].u.dma_addr_msb_ofst,
+				cmd[cmd_idx].u.fd, cmd[cmd_idx].u.ofst,
+				cmd[cmd_idx].u.right_shift);
+			break;
+#endif
 		case IMGSYS_CMD_POLL:
 			pr_info(
 			"%s: POLL with addr(0x%08lx) value(0x%08x) mask(0x%08x)\n", __func__,
@@ -1293,7 +1303,11 @@ int imgsys_cmdq_sendtask_plat7sp(struct mtk_imgsys_dev *imgsys_dev,
 				void (*cmdq_cb)(struct cmdq_cb_data data,
 					uint32_t subfidx, bool isLastTaskInReq),
 				void (*cmdq_err_cb)(struct cmdq_cb_data data,
-					uint32_t fail_subfidx, bool isHWhang, uint32_t hangEvent))
+					uint32_t fail_subfidx, bool isHWhang, uint32_t hangEvent),
+				u64 (*imgsys_get_iova)(struct dma_buf *dma_buf, s32 ionFd,
+					struct mtk_imgsys_dev *imgsys_dev,
+					struct mtk_imgsys_dev_buffer *dev_buf),
+				int (*is_singledev_mode)(struct mtk_imgsys_request *req))
 {
 	struct cmdq_client *clt = NULL;
 	struct cmdq_pkt *pkt = NULL;
@@ -1491,8 +1505,10 @@ int imgsys_cmdq_sendtask_plat7sp(struct mtk_imgsys_dev *imgsys_dev,
 				imgsys_cmdq_sec_cmd_plat7sp(pkt);
 			#endif
 
-			ret = imgsys_cmdq_parser_plat7sp(frm_info, pkt, &cmd[cmd_idx], hw_comb,
-				(pkt_ts_pa + 4 * pkt_ts_ofst), &pkt_ts_num, thd_idx);
+			ret = imgsys_cmdq_parser_plat7sp(imgsys_dev, frm_info, pkt,
+				&cmd[cmd_idx], hw_comb,
+				(pkt_ts_pa + 4 * pkt_ts_ofst), &pkt_ts_num, thd_idx,
+				imgsys_get_iova, is_singledev_mode);
 			if (ret < 0) {
 				pr_info(
 					"%s: [ERROR] parsing idx(%d) with cmd(%d) in block(%d) for frm(%d/%d) fail\n",
@@ -1644,14 +1660,26 @@ sendtask_done:
 	return ret;
 }
 
-int imgsys_cmdq_parser_plat7sp(struct swfrm_info_t *frm_info, struct cmdq_pkt *pkt,
-						struct Command *cmd, u32 hw_comb,
-						dma_addr_t dma_pa, uint32_t *num, u32 thd_idx)
+int imgsys_cmdq_parser_plat7sp(struct mtk_imgsys_dev *imgsys_dev,
+					struct swfrm_info_t *frm_info, struct cmdq_pkt *pkt,
+					struct Command *cmd, u32 hw_comb,
+					dma_addr_t dma_pa, uint32_t *num, u32 thd_idx,
+					u64 (*imgsys_get_iova)(struct dma_buf *dma_buf, s32 ionFd,
+						struct mtk_imgsys_dev *imgsys_dev,
+						struct mtk_imgsys_dev_buffer *dev_buf),
+					int (*is_singledev_mode)(struct mtk_imgsys_request *req))
 {
 	bool stop = 0;
 	int count = 0;
 	int req_fd = 0, req_no = 0, frm_no = 0;
 	u32 event = 0;
+#ifdef MTK_IOVA_SINK2KERNEL
+	u64 iova_addr = 0;
+	struct mtk_imgsys_req_fd_info *fd_info = NULL;
+	struct dma_buf *dbuf = NULL;
+	struct mtk_imgsys_request *req = NULL;
+	struct mtk_imgsys_dev_buffer *dev_b = 0;
+#endif
 
 	req_fd = frm_info->request_fd;
 	req_no = frm_info->request_no;
@@ -1681,6 +1709,41 @@ int imgsys_cmdq_parser_plat7sp(struct swfrm_info_t *frm_info, struct cmdq_pkt *p
 			cmdq_pkt_write(pkt, NULL, (dma_addr_t)cmd->u.address,
 					cmd->u.value, cmd->u.mask);
 			break;
+#ifdef MTK_IOVA_SINK2KERNEL
+		case IMGSYS_CMD_WRITE_FD:
+			pr_debug(
+				"%s: WRITE_FD with addr(0x%08lx) msb_ofst(0x%08lx) fd(0x%08x) ofst(0x%08x) rshift(%d)\n",
+				__func__, cmd->u.dma_addr, cmd->u.dma_addr_msb_ofst,
+				cmd->u.fd, cmd->u.ofst, cmd->u.right_shift);
+			if (cmd->u.fd <= 0) {
+				pr_info("%s: [ERROR] WRITE_FD with FD(%d)!\n", __func__, cmd->u.fd);
+				return -1;
+			}
+			//
+			dbuf = dma_buf_get(cmd->u.fd);
+			fd_info = &imgsys_dev->req_fd_cache.info_array[req_fd];
+			req = (struct mtk_imgsys_request *) fd_info->req_addr_va;
+			dev_b = req->buf_map[is_singledev_mode(req)];
+			iova_addr = imgsys_get_iova(dbuf, cmd->u.fd, imgsys_dev, dev_b) +
+						cmd->u.ofst;
+			//
+			pr_debug(
+				"%s: WRITE_FD with addr(0x%08lx) value(0x%08x)\n",
+				__func__, cmd->u.dma_addr, (iova_addr >> cmd->u.right_shift));
+			cmdq_pkt_write(pkt, NULL, cmd->u.dma_addr,
+				(iova_addr >> cmd->u.right_shift), 0xFFFFFFFF);
+
+			if (cmd->u.dma_addr_msb_ofst) {
+				pr_debug(
+					"%s: WRITE_FD with addr(0x%08lx) value(0x%08x)\n",
+					__func__, cmd->u.dma_addr, (iova_addr>>32));
+				cmdq_pkt_write(pkt, NULL,
+					(cmd->u.dma_addr + cmd->u.dma_addr_msb_ofst),
+					(iova_addr>>32), 0xFFFFFFFF);
+			}
+
+			break;
+#endif
 		case IMGSYS_CMD_POLL:
 			pr_debug(
 				"%s: POLL with addr(0x%08lx) value(0x%08x) mask(0x%08x) thd(%d)\n",
@@ -2740,7 +2803,6 @@ struct imgsys_cmdq_cust_data imgsys_cmdq_data_7sp = {
 	.cmdq_streamon = imgsys_cmdq_streamon_plat7sp,
 	.cmdq_streamoff = imgsys_cmdq_streamoff_plat7sp,
 	.cmdq_sendtask = imgsys_cmdq_sendtask_plat7sp,
-	.cmdq_parser = imgsys_cmdq_parser_plat7sp,
 	.cmdq_sec_sendtask = imgsys_cmdq_sec_sendtask_plat7sp,
 	.cmdq_sec_cmd = imgsys_cmdq_sec_cmd_plat7sp,
 	.cmdq_clearevent = imgsys_cmdq_clearevent_plat7sp,
@@ -2764,4 +2826,4 @@ struct imgsys_cmdq_cust_data imgsys_cmdq_data_7sp = {
 	.dvfs_dbg_en = imgsys_dvfs_dbg_enable_plat7sp,
 	.quick_onoff_en = imgsys_quick_onoff_enable_plat7sp,
 };
-
+MODULE_IMPORT_NS(DMA_BUF);

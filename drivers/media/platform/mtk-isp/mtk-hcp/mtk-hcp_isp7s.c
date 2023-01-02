@@ -471,6 +471,12 @@ void *isp7s_get_gce_virt(void)
 }
 EXPORT_SYMBOL(isp7s_get_gce_virt);
 
+void *isp7s_get_wpe_virt(void)
+{
+	return mb[WPE_MEM_C_ID].start_virt;
+}
+EXPORT_SYMBOL(isp7s_get_wpe_virt);
+
 void *isp7s_get_hwid_virt(void)
 {
 	return mb[DIP_MEM_FOR_HW_ID].start_virt;
@@ -873,5 +879,6 @@ struct mtk_hcp_data isp7s_hcp_data = {
 	.get_gce = isp7s_get_gce,
 	.put_gce = isp7s_put_gce,
 	.get_hwid_virt = isp7s_get_hwid_virt,
+	.get_wpe_virt = isp7s_get_wpe_virt,
 };
 MODULE_IMPORT_NS(DMA_BUF);
