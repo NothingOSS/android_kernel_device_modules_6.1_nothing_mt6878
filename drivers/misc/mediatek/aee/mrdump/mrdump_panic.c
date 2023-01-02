@@ -156,8 +156,8 @@ static void mrdump_cblock_update(enum AEE_REBOOT_MODE reboot_mode,
 
 		if (cpu >= 0 && cpu < nr_cpu_ids) {
 			/* null regs, no register dump */
-			//if (regs)
-			//	elf_core_copy_kernel_regs(reg, regs);
+			if (regs)
+				elf_core_copy_regs(reg, regs);
 			mrdump_save_control_register(creg);
 		}
 		msg_count = strlen(msg);
