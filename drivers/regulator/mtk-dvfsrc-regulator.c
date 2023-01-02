@@ -13,10 +13,9 @@
 #include <linux/regulator/of_regulator.h>
 #include <linux/soc/mediatek/mtk_dvfsrc.h>
 
-#if IS_ENABLED(CONFIG_MTK_DVFSRC_HELPER)
-#define CREATE_TRACE_POINTS
+#if IS_ENABLED(CONFIG_MTK_DVFSRC)
 #include "internal.h"
-#include "mtk-dvfsrc-regulator-trace.h"
+#include <trace/events/mtk_qos_trace.h>
 #endif
 
 #define DVFSRC_ID_VCORE		0
@@ -64,7 +63,7 @@ static inline struct device *to_dvfsrc_dev(struct regulator_dev *rdev)
 	return rdev_get_dev(rdev)->parent;
 }
 
-#if IS_ENABLED(CONFIG_MTK_DVFSRC_HELPER)
+#if IS_ENABLED(CONFIG_MTK_DVFSRC)
 static int regulator_trace_consumers(struct regulator_dev *rdev, int qos_class)
 {
 	struct regulator *regulator;
@@ -89,7 +88,7 @@ static int dvfsrc_set_voltage_sel(struct regulator_dev *rdev,
 		mtk_dvfsrc_send_request(dvfsrc_dev,
 					MTK_DVFSRC_CMD_VCORE_REQUEST,
 					selector);
-#if IS_ENABLED(CONFIG_MTK_DVFSRC_HELPER)
+#if IS_ENABLED(CONFIG_MTK_DVFSRC)
 		regulator_trace_consumers(rdev, 20);
 #endif
 	}
