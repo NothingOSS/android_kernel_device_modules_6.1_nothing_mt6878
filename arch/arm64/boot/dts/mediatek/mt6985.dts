@@ -2442,7 +2442,7 @@
 				<0 0x10033000 0 0x1000>, /* swp */
 				<0 0x0010c000 0 0x1000>; /* sramrom */
 			interrupts = <GIC_SPI 280 IRQ_TYPE_LEVEL_HIGH 0>, /* infra irq */
-				<GIC_SPI 128 IRQ_TYPE_LEVEL_HIGH 0>, /* peri irq */
+				<GIC_SPI 128 IRQ_TYPE_EDGE_RISING 0>, /* peri irq */
 				<GIC_SPI 867 IRQ_TYPE_LEVEL_HIGH 0>, /* vlp irq */
 				<GIC_SPI 748 IRQ_TYPE_LEVEL_HIGH 0>, /* adsp irq */
 				<GIC_SPI 456 IRQ_TYPE_LEVEL_HIGH 0>, /* mminfra irq */
