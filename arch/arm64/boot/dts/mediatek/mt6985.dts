@@ -2106,9 +2106,6 @@
 		dsi_te:dsi_te {
 		};
 
-		rt5133_eint:rt5133_eint {
-		};
-
 		ap_ccif0@10209000 {
 			compatible = "mediatek,ap_ccif0";
 			reg = <0 0x10209000 0 0x1000>;
@@ -7534,8 +7531,14 @@
 };
 
 #include "mediatek/cust_mt6985_msdc.dtsi"
+#include "mediatek/rt5133.dtsi"
 #include "mediatek/mt6363.dtsi"
 #include "mediatek/mt6373.dtsi"
+
+&rt5133 {
+	interrupts-extended = <&pio 187 0x0>;
+	enable-gpio = <&pio 188 0x0>;
+};
 
 &mt6363_vbuck2 {
 	regulator-always-on;
