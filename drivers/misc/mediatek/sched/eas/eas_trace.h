@@ -10,6 +10,7 @@
 #include <linux/string.h>
 #include <linux/types.h>
 #include <linux/tracepoint.h>
+#include <linux/sched/clock.h>
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_BIG_TASK_ROTATE)
 /*

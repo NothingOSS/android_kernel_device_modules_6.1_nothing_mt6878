@@ -7,6 +7,7 @@
 #include <linux/sched.h>
 #include <trace/hooks/sched.h>
 #include <sched/sched.h>
+#include <linux/sched/clock.h>
 #include "eas/eas_plus.h"
 #include "sugov/cpufreq.h"
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)

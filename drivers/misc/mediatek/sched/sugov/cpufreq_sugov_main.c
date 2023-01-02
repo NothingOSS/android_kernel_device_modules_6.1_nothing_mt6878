@@ -22,6 +22,7 @@
 #include "common.h"
 #include <linux/tick.h>
 #include <linux/sched/cpufreq.h>
+#include <linux/sched/clock.h>
 #include <trace/events/power.h>
 #include <trace/hooks/sched.h>
 #include <trace/hooks/topology.h>

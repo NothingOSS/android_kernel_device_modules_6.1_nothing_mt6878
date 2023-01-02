@@ -9,6 +9,7 @@
 #include <linux/percpu.h>
 #include <linux/sort.h>
 #include <sched/sched.h>
+#include <linux/sched/clock.h>
 #include <linux/energy_model.h>
 #include "common.h"
 #include "cpufreq.h"
