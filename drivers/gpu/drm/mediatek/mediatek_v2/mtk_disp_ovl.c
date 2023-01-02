@@ -503,6 +503,7 @@ struct mtk_disp_ovl {
 	struct mtk_ddp_comp ddp_comp;
 	const struct mtk_disp_ovl_data *data;
 	unsigned int underflow_cnt;
+	bool ovl_dis;
 	int bg_w, bg_h;
 	struct clk *fbdc_clk;
 	struct mtk_ovl_backup_info backup_info[MAX_LAYER_NUM];
@@ -2206,6 +2207,16 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		DDPINFO("%s: DRM_FORMAT_RGB332 not support, so skip it\n", __func__);
 	}
 
+	if (ovl->ovl_dis == true && pending->enable == true) {
+		if (mtk_crtc_is_frame_trigger_mode(crtc))
+			pending->enable = false;
+
+		DDPPR_ERR("%s, %s, idx:%d, lye_idx:%d, ext_idx:%d, en:%d\n",
+			__func__, mtk_dump_comp_str_id(comp->id), idx, lye_idx,
+			ext_lye_idx, pending->enable);
+		ovl->ovl_dis = false;
+	}
+
 	if (!pending->enable)
 		mtk_ovl_layer_off(comp, lye_idx, ext_lye_idx, handle);
 
@@ -2357,10 +2368,10 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		}
 	}
 
-	DDPINFO("%s+ id %s, idx:%d, lye_idx:%d, ext_idx:%d, enable:%d, fmt:0x%x\n",
+	DDPINFO("%s id %s, idx:%d, lye_idx:%d, ext_idx:%d, en:%d, fmt:0x%x\n",
 		__func__, mtk_dump_comp_str_id(comp->id), idx, lye_idx, ext_lye_idx,
 		pending->enable, pending->format);
-	DDPINFO("addr 0x%lx, compr %d, con 0x%x, mask 0x%x, mml_mode %d\n",
+	DDPINFO("addr 0x%lx, compr %d, con 0x%x, mask 0x%x, mml %d\n",
 		(unsigned long)pending->addr,
 		(unsigned int)pending->prop_val[PLANE_PROP_COMPRESS], con, mask,
 		pending->mml_mode);
@@ -2799,6 +2810,7 @@ static bool compr_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 	/* input config */
 	struct mtk_plane_pending_state *pending = &state->pending;
 	dma_addr_t addr = pending->addr;
+	bool enable = pending->enable;
 	unsigned int pitch = pending->pitch & 0xffff;
 	unsigned int vpitch = (unsigned int)pending->prop_val[PLANE_PROP_VPITCH];
 	unsigned int src_x = pending->src_x, src_y = pending->src_y;
@@ -2824,7 +2836,6 @@ static bool compr_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 	unsigned int src_buf_tile_num = 0;
 	unsigned int buf_size = 0;
 	unsigned int buf_total_size = 0;
-
 
 	/* variable to config into register */
 	unsigned int lx_fbdc_en;
@@ -3088,6 +3099,13 @@ static bool compr_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				       comp->regs_pa + DISP_REG_OVL_SRC_SIZE(lye_idx), lx_src_size,
 				       ~0);
+
+		if (ovl->ovl_dis == false && enable == 1 && compress == 1 &&
+			((lx_src_size&0xffff) * (lx_src_size>>16) == 0)) {
+			DDPPR_ERR("%s, %s, idx=%d, en=%d, size:0x%08x\n", __func__,
+				mtk_dump_comp_str_id(comp->id), lye_idx, enable, lx_src_size);
+			ovl->ovl_dis = true;
+		}
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_OVL_CLIP(lye_idx),
