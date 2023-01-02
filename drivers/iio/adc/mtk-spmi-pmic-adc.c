@@ -517,7 +517,7 @@ static int auxadc_init_imix_r(struct pmic_adc_device *adc_dev,
 	adc_dev->isink_load = devm_regulator_get_exclusive(adc_dev->dev, "isink_load");
 	if (IS_ERR(adc_dev->isink_load)) {
 		dev_err(adc_dev->dev, "Failed to get isink_load regulator, ret=%d\n",
-			PTR_ERR(adc_dev->isink_load));
+			(int)PTR_ERR(adc_dev->isink_load));
 		return PTR_ERR(adc_dev->isink_load);
 	}
 

@@ -370,7 +370,7 @@ static void auxadc_irq_sync_unlock(struct irq_data *data)
 
 	ret = regmap_write(priv->regmap, reg, bits);
 	if (ret)
-		dev_err(priv->dev, "Failed to set/clr irq con %d\n", data->hwirq);
+		dev_err(priv->dev, "Failed to set/clr irq con %d\n", (int)data->hwirq);
 
 	mutex_unlock(&priv->irq_lock);
 }
@@ -932,7 +932,7 @@ static int mt6375_auxadc_probe(struct platform_device *pdev)
 	priv->isink_load = devm_regulator_get_exclusive(&pdev->dev, "isink_load");
 	if (IS_ERR(priv->isink_load)) {
 		dev_err(&pdev->dev, "Failed to get isink_load regulator [%d]\n",
-			PTR_ERR(priv->isink_load));
+			(int)PTR_ERR(priv->isink_load));
 		return PTR_ERR(priv->isink_load);
 	}
 
