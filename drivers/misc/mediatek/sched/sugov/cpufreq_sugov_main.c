@@ -29,6 +29,7 @@
 #include <trace/hooks/cpufreq.h>
 #include <linux/sched/cpufreq.h>
 #include <linux/kthread.h>
+#include <uapi/linux/sched/types.h>
 #include <thermal_interface.h>
 
 #define CREATE_TRACE_POINTS

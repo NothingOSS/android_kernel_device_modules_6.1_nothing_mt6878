@@ -14,6 +14,7 @@
 #include <trace/events/power.h>
 #include <linux/tracepoint.h>
 #include <linux/kallsyms.h>
+#include <uapi/linux/sched/types.h>
 
 #include "mt-plat/fpsgo_common.h"
 #include "fpsgo_base.h"

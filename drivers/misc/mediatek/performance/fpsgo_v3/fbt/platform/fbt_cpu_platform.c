@@ -9,6 +9,7 @@
 #include <linux/cpumask.h>
 #include <linux/interconnect.h>
 #include <linux/platform_device.h>
+#include <uapi/linux/sched/types.h>
 #include "dvfsrc-exp.h"
 #include "fpsgo_base.h"
 
