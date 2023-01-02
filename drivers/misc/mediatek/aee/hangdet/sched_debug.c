@@ -7,6 +7,7 @@
 #include <linux/init.h>
 #include <linux/percpu.h>
 #include <linux/sched/signal.h>
+#include <linux/sched/clock.h>
 #include <linux/string.h>
 #include <linux/workqueue.h>
 

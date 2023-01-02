@@ -14,6 +14,7 @@
 #include <linux/platform_device.h>
 #include <linux/proc_fs.h>
 #include <linux/regulator/consumer.h>
+#include <linux/sched/clock.h>
 #include <linux/soc/mediatek/mtk_mmdvfs.h>
 #include <soc/mediatek/mmdvfs_v3.h>
 #include <mt-plat/mrdump.h>
