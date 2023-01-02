@@ -368,7 +368,6 @@ static int mt6985_apu_top_off(struct device *dev)
 		return 0;
 
 	pr_info("%s +\n", __func__);
-	mt6985_pwr_flow_remote_sync(1); // tell remote side I am ready to off
 
 	// blocking until sleep success or timeout, delay 50 us per round
 	ret = readl_relaxed_poll_timeout_atomic(

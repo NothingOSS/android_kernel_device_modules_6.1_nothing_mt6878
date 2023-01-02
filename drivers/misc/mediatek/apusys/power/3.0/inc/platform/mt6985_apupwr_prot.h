@@ -118,6 +118,5 @@ int mt6985_init_remote_data_sync(void __iomem *reg_base);
 int mt6985_drv_cfg_remote_sync(struct aputop_func_param *aputop);
 int mt6985_chip_data_remote_sync(struct plat_cfg_data *plat_cfg);
 int mt6985_apu_top_rpmsg_cb(int cmd, void *data, int len, void *priv, u32 src);
-int mt6985_pwr_flow_remote_sync(uint32_t cfg);
 
 #endif
