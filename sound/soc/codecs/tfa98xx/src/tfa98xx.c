@@ -13,6 +13,7 @@
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
+#include <linux/gpio.h>
 #include <linux/of_gpio.h>
 #include <linux/delay.h>
 #include <linux/device.h>
@@ -3209,10 +3210,10 @@ int tfa98xx_i2c_remove(struct i2c_client *i2c)
 
 	snd_soc_unregister_component(&i2c->dev);
 
-	if (gpio_is_valid(tfa98xx->irq_gpio))
-		devm_gpio_free(&i2c->dev, tfa98xx->irq_gpio);
-	if (gpio_is_valid(tfa98xx->reset_gpio))
-		devm_gpio_free(&i2c->dev, tfa98xx->reset_gpio);
+	//if (gpio_is_valid(tfa98xx->irq_gpio))
+	//	devm_gpio_free(&i2c->dev, tfa98xx->irq_gpio);
+	//if (gpio_is_valid(tfa98xx->reset_gpio))
+	//	devm_gpio_free(&i2c->dev, tfa98xx->reset_gpio);
 
 	mutex_lock(&tfa98xx_mutex);
 	list_del(&tfa98xx->list);

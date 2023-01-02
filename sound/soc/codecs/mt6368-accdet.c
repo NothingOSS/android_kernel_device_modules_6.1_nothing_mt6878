@@ -2997,8 +2997,7 @@ int mt6368_accdet_init(struct snd_soc_component *component,
 				    SND_JACK_HEADSET |
 				    SND_JACK_LINEOUT |
 				    SND_JACK_MECHANICAL,
-				    &accdet->jack,
-				    NULL, 0);
+				    &accdet->jack);
 	if (ret) {
 		pr_info("Property 'mediatek,soc-accdet' missing/invalid\n");
 		return ret;
