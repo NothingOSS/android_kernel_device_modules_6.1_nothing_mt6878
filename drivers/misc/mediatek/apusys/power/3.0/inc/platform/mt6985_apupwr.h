@@ -82,18 +82,18 @@ enum apupw_reg {
 	apu_rcx,
 	apu_vcore,
 	apu_md32_mbox,
-	apu_rpc,
+	apu_rpc, /* 5 */
 	apu_pcu,
 	apu_ao_ctl,
 	apu_pll,
 	apu_acc,
-	apu_are,
+	apu_are, /* 0xa */
 	apu_acx0,
-	apu_acx0_rpc_lite,
+	apu_acx0_rpc_lite, /* 0xc */
 	apu_acx1,
-	apu_acx1_rpc_lite,
+	apu_acx1_rpc_lite, /* 0xe */
 	apu_ncx,
-	apu_ncx_rpc_lite,
+	apu_ncx_rpc_lite, /* 0x10 */
 	APUPW_MAX_REGS,
 };
 
@@ -131,12 +131,14 @@ RCX_AO_BEGIN = 0,
 	PLL_ENTRY_END = 29,
 	ACC_ENTRY_BEGIN = 30, //21 ARE entries, ARDCM(8) + ACC(4+9=13)
 	ACC_ENTRY_END = 50,
-RCX_AO_END = 50,
+	MBX_DBG = 51,
+RCX_AO_END = 51,
 };
 
 /* SW ARE entry i = (HW are entry i) + (HW are entry i+1) */
 #define ARE_ENTRIES(x, y) ((((y) - (x)) + 1) * 2)
 #define ARE_ENTRY(x) (((x) * 2) + 16)
+#define ARE_RCX_AO_CONFIG    0x0008
 
 void mt6985_apu_dump_rpc_status(enum t_acx_id id, struct rpc_status_dump *dump);
 

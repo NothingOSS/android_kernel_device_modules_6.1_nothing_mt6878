@@ -36,7 +36,7 @@ static const char *reg_name[APUPW_MAX_REGS] = {
 };
 
 static struct apu_power apupw = {
-	.env = AO,
+	.env = MP,
 	.rcx = RPC_HW,
 };
 
@@ -322,7 +322,7 @@ static int mt6985_apu_top_on(struct device *dev)
 {
 	int ret = 0;
 
-	if (apupw.env != MP)
+	if (apupw.env < MP)
 		return 0;
 
 	pr_info("%s +\n", __func__);
@@ -350,16 +350,46 @@ static int mt6985_apu_top_on(struct device *dev)
 	return 0;
 }
 
+#if APMCU_REQ_RPC_SLEEP
+// backup solution : send request for RPC sleep from APMCU
+static int __apu_sleep_rpc_rcx(struct device *dev)
+{
+	// REG_WAKEUP_CLR
+	pr_info("%s step1. set REG_WAKEUP_CLR\n", __func__);
+	apu_writel(0x1 << 12, apupw.regs[apu_rpc] + APU_RPC_TOP_CON);
+	udelay(10);
+
+	// mask RPC IRQ and bypass WFI
+	pr_info("%s step2. mask RPC IRQ and bypass WFI\n", __func__);
+	apu_setl(1 << 7, apupw.regs[apu_rpc] + APU_RPC_TOP_SEL);
+	udelay(10);
+
+	pr_info("%s step3. raise up sleep request.\n", __func__);
+	apu_writel(1, apupw.regs[apu_rpc] + APU_RPC_TOP_CON);
+	udelay(100);
+
+	dev_info(dev, "%s RCX APU_RPC_INTF_PWR_RDY 0x%x = 0x%x\n",
+			__func__,
+			(u32)(apupw.phy_addr[apu_rpc] + APU_RPC_INTF_PWR_RDY),
+			readl(apupw.regs[apu_rpc] + APU_RPC_INTF_PWR_RDY));
+
+	return 0;
+}
+#endif
+
 static int mt6985_apu_top_off(struct device *dev)
 {
 	int ret = 0, val = 0;
 	int rpc_timeout_val = 500000; // 500 ms
 
-	if (apupw.env != MP)
+	if (apupw.env < MP)
 		return 0;
 
 	pr_info("%s +\n", __func__);
 
+#if APMCU_REQ_RPC_SLEEP
+	__apu_sleep_rpc_rcx(dev);
+#endif
 	// blocking until sleep success or timeout, delay 50 us per round
 	ret = readl_relaxed_poll_timeout_atomic(
 			(apupw.regs[apu_rpc] + APU_RPC_INTF_PWR_RDY),
