@@ -5341,10 +5341,6 @@
 	regulator-always-on;
 };
 
-&mt6373_vtp {
-	regulator-always-on;
-};
-
 &mt6373_vsram_digrf_aif {
 	regulator-always-on;
 };
