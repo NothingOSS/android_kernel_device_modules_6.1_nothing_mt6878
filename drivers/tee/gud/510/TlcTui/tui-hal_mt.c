@@ -210,7 +210,7 @@ uint32_t hal_tui_alloc(
 {
 	uint32_t ret = TUI_DCI_ERR_INTERNAL_ERROR;
 	uint64_t pa = 0;
-	u32 sec_handle = 0;
+	u64 sec_handle = 0;
 	struct dma_heap *dma_heap;
 
 	if (!allocbuffer) {

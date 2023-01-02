@@ -51,13 +51,14 @@ int trusted_mem_api_alloc_zero(enum TRUSTED_MEM_REQ_TYPE mem_type,
 int trusted_mem_api_unref(enum TRUSTED_MEM_REQ_TYPE mem_type, u64 sec_handle,
 			  uint8_t *owner, uint32_t id, struct ssheap_buf_info *buf_info);
 int trusted_mem_api_query_pa(enum TRUSTED_MEM_REQ_TYPE mem_type, u32 alignment,
-			      u32 size, u32 *refcount, u32 *gz_handle,
+			      u32 size, u32 *refcount, u64 *handle,
 			      u8 *owner, u32 id, u32 clean, uint64_t *phy_addr);
 bool trusted_mem_api_get_region_info(enum TRUSTED_MEM_REQ_TYPE mem_type,
 				     u64 *pa, u32 *size);
 enum TRUSTED_MEM_REQ_TYPE trusted_mem_api_get_page_replace(
 				  enum TRUSTED_MEM_REQ_TYPE mem_type);
 int trusted_mem_ffa_query_pa(u64 *handle, uint64_t *phy_addr);
+bool trusted_mem_is_ffa_enabled(void);
 #endif
 
 #endif /* end of TRUSTED_MEM_API_H */
