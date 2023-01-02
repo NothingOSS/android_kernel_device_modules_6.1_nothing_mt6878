@@ -17,7 +17,7 @@ endif
 
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtprof/
 subdir-ccflags-y += -I$(srctree)/kernel/
-subdir-ccflags-y += -I$(srctree)/drivers/staging/android/
+subdir-ccflags-y += -I$(srctree)/drivers/android/
 
 ccflags-y += -DTEXT_OFFSET=$(TEXT_OFFSET)
 obj-$(CONFIG_MTK_AEE_IPANIC)	+= mrdump.o
