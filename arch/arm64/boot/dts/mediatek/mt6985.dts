@@ -6442,8 +6442,11 @@
 		compatible = "mediatek,mt6985-disp";
 //		mediatek,mml = <&mmlsys_config>;
 		dispsys_num = <2>;
+		ovlsys_num = <2>;
 		reg = <0 0x14000000 0 0x1000>,
-		      <0 0x14200000 0 0x1000>;
+		      <0 0x14200000 0 0x1000>,
+		      <0 0x14400000 0 0x1000>,
+		      <0 0x14600000 0 0x1000>;
 		dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&disp_iommu M4U_PORT_L0_DISP_OVL1_2L_RDMA1>;
 //		mediatek,larb = <&smi_larb0>;
