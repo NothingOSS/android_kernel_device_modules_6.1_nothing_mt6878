@@ -7,7 +7,7 @@
 #define __MTK_DISP_TDSHP_H__
 
 #include <linux/uaccess.h>
-#include <drm/mediatek_drm.h>
+#include <uapi/drm/mediatek_drm.h>
 
 #include <linux/clk.h>
 #include <linux/component.h>

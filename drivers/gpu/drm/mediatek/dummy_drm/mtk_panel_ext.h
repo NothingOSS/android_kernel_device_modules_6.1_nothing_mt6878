@@ -8,7 +8,7 @@
 
 #include <drm/drm_panel.h>
 #include <drm/drm_modes.h>
-#include <drm/mediatek_drm.h>
+#include <uapi/drm/mediatek_drm.h>
 
 #define RT_MAX_NUM 10
 #define ESD_CHECK_NUM 3

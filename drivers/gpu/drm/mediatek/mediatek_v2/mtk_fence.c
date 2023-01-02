@@ -13,7 +13,7 @@
 #include <linux/sched/clock.h>
 #include <linux/sync_file.h>
 
-#include <drm/mediatek_drm.h>
+#include <uapi/drm/mediatek_drm.h>
 
 #include "mtk_sync.h"
 #include "mtk_fence.h"

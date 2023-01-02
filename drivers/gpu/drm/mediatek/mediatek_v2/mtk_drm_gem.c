@@ -6,7 +6,7 @@
 #include <drm/drm_gem.h>
 #include <linux/dma-buf.h>
 #include <linux/dma-mapping.h>
-#include <drm/mediatek_drm.h>
+#include <uapi/drm/mediatek_drm.h>
 #include <linux/iommu.h>
 #include <drm/drm_gem_dma_helper.h>
 #include <drm/drm_prime.h>

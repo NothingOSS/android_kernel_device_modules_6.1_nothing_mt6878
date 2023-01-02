@@ -9,7 +9,7 @@
 #include <drm/drm_mipi_dsi.h>
 #include <drm/drm_panel.h>
 #include <drm/drm_modes.h>
-#include <drm/mediatek_drm.h>
+#include <uapi/drm/mediatek_drm.h>
 #ifndef DRM_CMDQ_DISABLE
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
 #else

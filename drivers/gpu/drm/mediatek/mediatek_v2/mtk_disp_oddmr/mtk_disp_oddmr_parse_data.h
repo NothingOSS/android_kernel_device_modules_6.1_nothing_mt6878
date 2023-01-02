@@ -21,7 +21,7 @@ struct mtk_oddmr_panelid {
 #else
 #include <linux/types.h>
 #include <linux/uaccess.h>
-#include <drm/mediatek_drm.h>
+#include <uapi/drm/mediatek_drm.h>
 #include "mtk_disp_oddmr.h"
 #endif
 /***************** file parsing ******************/

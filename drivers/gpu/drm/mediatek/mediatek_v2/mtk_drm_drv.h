@@ -7,7 +7,7 @@
 #define MTK_DRM_DRV_H
 
 #include <drm/drm_fb_helper.h>
-#include <drm/mediatek_drm.h>
+#include <uapi/drm/mediatek_drm.h>
 #include <linux/types.h>
 #include <linux/io.h>
 #include <drm/drm_atomic.h>

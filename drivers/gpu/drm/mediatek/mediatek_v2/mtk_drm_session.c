@@ -5,7 +5,7 @@
 
 #include <drm/drm_gem.h>
 #include <linux/dma-buf.h>
-#include <drm/mediatek_drm.h>
+#include <uapi/drm/mediatek_drm.h>
 
 #include "mtk_drm_drv.h"
 #include "mtk_drm_session.h"

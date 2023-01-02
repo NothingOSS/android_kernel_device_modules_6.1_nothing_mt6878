@@ -6,7 +6,7 @@
 #define __MTK_DISP_CHIST_H__
 
 #include <linux/uaccess.h>
-#include <drm/mediatek_drm.h>
+#include <uapi/drm/mediatek_drm.h>
 
 struct mtk_disp_chist_data {
 	bool support_shadow;

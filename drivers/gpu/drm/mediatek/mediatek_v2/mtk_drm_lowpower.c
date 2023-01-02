@@ -9,7 +9,7 @@
 #include <linux/sched.h>
 #include <linux/sched/clock.h>
 #include <linux/delay.h>
-#include <drm/mediatek_drm.h>
+#include <uapi/drm/mediatek_drm.h>
 #include <drm/drm_vblank.h>
 #include "mtk_drm_lowpower.h"
 #include "mtk_drm_crtc.h"

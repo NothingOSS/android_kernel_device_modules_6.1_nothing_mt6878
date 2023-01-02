@@ -7,7 +7,7 @@
 #define __MTK_DISP_GAMMA_H__
 
 #include <linux/uaccess.h>
-#include <drm/mediatek_drm.h>
+#include <uapi/drm/mediatek_drm.h>
 
 
 #define GAMMA_ENTRY(r10, g10, b10) (((r10) << 20) | ((g10) << 10) | (b10))

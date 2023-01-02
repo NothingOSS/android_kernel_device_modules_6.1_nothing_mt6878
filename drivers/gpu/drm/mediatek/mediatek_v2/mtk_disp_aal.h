@@ -7,7 +7,7 @@
 #define __MTK_DISP_AAL_H__
 
 #include <linux/uaccess.h>
-#include <drm/mediatek_drm.h>
+#include <uapi/drm/mediatek_drm.h>
 
 #define AAL_SERVICE_FORCE_UPDATE 0x1
 /*******************************/

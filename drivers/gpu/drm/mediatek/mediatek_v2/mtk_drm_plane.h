@@ -8,7 +8,7 @@
 
 #include <drm/drm_crtc.h>
 #include <linux/types.h>
-#include <drm/mediatek_drm.h>
+#include <uapi/drm/mediatek_drm.h>
 #include "../mml/mtk-mml.h"
 
 #define MAKE_DISP_FORMAT_ID(id, bpp) (((id) << 8) | (bpp))

@@ -6,7 +6,7 @@
 #ifndef __MTK_DISP_ODDMR_H__
 #define __MTK_DISP_ODDMR_H__
 #include <linux/uaccess.h>
-#include <drm/mediatek_drm.h>
+#include <uapi/drm/mediatek_drm.h>
 #include <linux/clk.h>
 #include <linux/component.h>
 #include <linux/of_device.h>

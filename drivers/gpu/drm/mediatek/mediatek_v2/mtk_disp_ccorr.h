@@ -6,7 +6,7 @@
 #ifndef __MTK_DISP_CCORR_H__
 #define __MTK_DISP_CCORR_H__
 
-#include <drm/mediatek_drm.h>
+#include <uapi/drm/mediatek_drm.h>
 
 struct mtk_disp_ccorr_data {
 	bool support_shadow;
