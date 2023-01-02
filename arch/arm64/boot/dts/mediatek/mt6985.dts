@@ -2204,8 +2204,7 @@
 					<0 0x11301180 0 0x80>;
 				interrupts =    <GIC_SPI 228 IRQ_TYPE_LEVEL_HIGH 0>,
 						<GIC_SPI 229 IRQ_TYPE_LEVEL_HIGH 0>,
-						<GIC_SPI 230 IRQ_TYPE_LEVEL_HIGH 0>,
-						<GIC_SPI 231 IRQ_TYPE_LEVEL_HIGH 0>;
+						<GIC_SPI 230 IRQ_TYPE_LEVEL_HIGH 0>;
 				clocks = <&pericfg_ao_clk CLK_PERAO_DMA_B>;
 				clock-names = "apdma";
 				dma-requests = <4>;
@@ -5322,10 +5321,20 @@
 			radio-support = "wifi", "bt", "md";
 			pinctrl-names = "connsys_pin_ext32k_en_default",
 					"connsys_pin_ext32k_en_set",
-					"connsys_pin_ext32k_en_clr";
+					"connsys_pin_ext32k_en_clr",
+					"connsys_pin_pmic_en_default",
+					"connsys_pin_pmic_en_set",
+					"connsys_pin_pmic_en_clr",
+					"connsys_pin_pmic_faultb_default";
 			pinctrl-0 = <&connsys_pin_ext32_en_default>;
 			pinctrl-1 = <&connsys_pin_ext32_en_set>;
 			pinctrl-2 = <&connsys_pin_ext32_en_clr>;
+			pinctrl-3 = <&connsys_pin_pmic_en_default>;
+			pinctrl-4 = <&connsys_pin_pmic_en_set>;
+			pinctrl-5 = <&connsys_pin_pmic_en_clr>;
+			pinctrl-6 = <&connsys_pin_pmic_faultb_default>;
+
+			interrupts = <GIC_SPI 231 IRQ_TYPE_EDGE_FALLING 0>;
 		};
 
 		wifi: wifi@18000000 {
@@ -10009,6 +10018,7 @@
 			bias-disable;
 		};
 	};
+
 	connsys_pin_ext32_en_default: connsys_pin_ext32_en_default {
 		pins_cmd_data {
 			pinmux = <PINMUX_GPIO159__FUNC_GPIO159>;
@@ -10025,6 +10035,32 @@
 		pins_cmd_data {
 			pinmux = <PINMUX_GPIO159__FUNC_GPIO159>;
 			output-low;
+		};
+	};
+
+	connsys_pin_pmic_en_default: connsys_pin_pmic_en_default {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO241__FUNC_GPIO241>;
+			output-low;
+		};
+	};
+	connsys_pin_pmic_en_set: connsys_pin_pmic_en_set {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO241__FUNC_GPIO241>;
+			output-high;
+		};
+	};
+	connsys_pin_pmic_en_clr: connsys_pin_pmic_en_clr {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO241__FUNC_GPIO241>;
+			output-low;
+		};
+	};
+	connsys_pin_pmic_faultb_default: connsys_pin_pmic_faultb_default {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO231__FUNC_GPIO231>;
+			input-enable;
+			bias-pull-high;
 		};
 	};
 };
