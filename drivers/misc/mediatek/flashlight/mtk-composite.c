@@ -147,7 +147,7 @@ mtk_get_pdata(struct platform_device *pdev,
 		pr_info("rem name %s, full_name %s\n",
 				rem->name, rem->full_name);
 		pfdev->dnode[i] = rem;
-		pfdev->asd[i] = __v4l2_async_notifier_add_fwnode_subdev(notifier,
+		pfdev->asd[i] = __v4l2_async_nf_add_fwnode(notifier,
 				of_fwnode_handle(pfdev->dnode[i]),
 				sizeof(struct v4l2_async_subdev));
 	}
@@ -229,12 +229,12 @@ static int mtk_composite_probe(struct platform_device *dev)
 	}
 	platform_set_drvdata(dev, pfdev);
 
-	v4l2_async_notifier_init(&pfdev->notifier);
+	v4l2_async_nf_init(&pfdev->notifier);
 
 	mtk_get_pdata(dev, pfdev);
 	pfdev->notifier.ops = &fl_async_notify_ops;
 
-	rc = v4l2_async_notifier_register(&pfdev->v4l2_dev, &pfdev->notifier);
+	rc = v4l2_async_nf_register(&pfdev->v4l2_dev, &pfdev->notifier);
 	if (rc) {
 		pr_info("Error registering async notifier\n");
 		rc = -EINVAL;
@@ -256,8 +256,8 @@ static int mtk_composite_remove(struct platform_device *dev)
 {
 	struct mtk_composite_v4l2_device *pfdev = platform_get_drvdata(dev);
 
-	v4l2_async_notifier_unregister(&pfdev->notifier);
-	v4l2_async_notifier_cleanup(&pfdev->notifier);
+	v4l2_async_nf_unregister(&pfdev->notifier);
+	v4l2_async_nf_cleanup(&pfdev->notifier);
 	mtk_composite_unregister_entities(pfdev);
 
 	return 0;

@@ -1458,14 +1458,7 @@ static int get_mbus_config(struct seninf_ctx *ctx, struct v4l2_subdev *sd)
 
 	ctx->is_cphy = cfg.type == V4L2_MBUS_CSI2_CPHY;
 
-	if (cfg.flags & V4L2_MBUS_CSI2_1_LANE)
-		ctx->num_data_lanes = 1;
-	else if (cfg.flags & V4L2_MBUS_CSI2_2_LANE)
-		ctx->num_data_lanes = 2;
-	else if (cfg.flags & V4L2_MBUS_CSI2_3_LANE)
-		ctx->num_data_lanes = 3;
-	else if (cfg.flags & V4L2_MBUS_CSI2_4_LANE)
-		ctx->num_data_lanes = 4;
+	ctx->num_data_lanes = cfg.bus.mipi_csi2.num_data_lanes;
 
 #if AOV_GET_PARAM
 	if (!(core->aov_sensor_id < 0) &&
@@ -2373,14 +2366,14 @@ static int register_subdev(struct seninf_ctx *ctx, struct v4l2_device *v4l2_dev)
 		return ret;
 	}
 
-	v4l2_async_notifier_init(notifier);
-	ret = v4l2_async_notifier_parse_fwnode_endpoints
+	v4l2_async_nf_init(notifier);
+	ret = v4l2_async_nf_parse_fwnode_endpoints
 		(dev, notifier, sizeof(struct v4l2_async_subdev), NULL);
 	if (ret < 0)
 		dev_info(dev, "no endpoint\n");
 
 	notifier->ops = &seninf_async_ops;
-	ret = v4l2_async_notifier_register(v4l2_dev, notifier);
+	ret = v4l2_async_nf_register(v4l2_dev, notifier);
 	if (ret < 0) {
 		dev_info(dev, "failed to register notifier\n");
 		goto err_unregister_subdev;
@@ -2390,7 +2383,7 @@ static int register_subdev(struct seninf_ctx *ctx, struct v4l2_device *v4l2_dev)
 
 err_unregister_subdev:
 	v4l2_device_unregister_subdev(sd);
-	v4l2_async_notifier_cleanup(notifier);
+	v4l2_async_nf_cleanup(notifier);
 
 	return ret;
 }
@@ -2399,8 +2392,8 @@ static void unregister_subdev(struct seninf_ctx *ctx)
 {
 	struct v4l2_subdev *sd = &ctx->subdev;
 
-	v4l2_async_notifier_unregister(&ctx->notifier);
-	v4l2_async_notifier_cleanup(&ctx->notifier);
+	v4l2_async_nf_unregister(&ctx->notifier);
+	v4l2_async_nf_cleanup(&ctx->notifier);
 	v4l2_device_unregister_subdev(sd);
 	media_entity_cleanup(&sd->entity);
 }
