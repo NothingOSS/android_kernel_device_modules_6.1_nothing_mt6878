@@ -5658,6 +5658,15 @@
 				<0 0x1c00d000 0 0x7ec>; /* 15 SRCLKENRC */
 			radio-support = "gps", "mawd";
 			power-domains = <&scpsys MT6985_POWER_DOMAIN_CONN>;
+			emi-addr = <0>;
+			emi-size = <0>;
+			ro-emi-size = <0x470000>;
+			rw-emi-size = <0xe0000>;
+			shared-emi-size = <0x140000>;
+			mnl-mpe-emi-size = <0x280000>;
+			scp-shm-size = <0x96000>;
+			emi-alignment = <0x100000>;
+			emi-max-addr = <0xffffffff>;
 		};
 
 		apu_iommu0_bank1: iommu@19011000 {
