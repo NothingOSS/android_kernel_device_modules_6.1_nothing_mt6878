@@ -15,6 +15,7 @@
 #include <linux/proc_fs.h>
 #include <linux/regulator/consumer.h>
 #include <linux/soc/mediatek/mtk_mmdvfs.h>
+#include <linux/sched/clock.h>
 #include <soc/mediatek/smi.h>
 #include <soc/mediatek/dramc.h>
 #include "mtk_iommu.h"

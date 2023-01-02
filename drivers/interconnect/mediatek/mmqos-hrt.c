@@ -6,6 +6,7 @@
 #include <linux/kthread.h>
 #include <linux/module.h>
 #include <linux/regulator/consumer.h>
+#include <linux/sched/clock.h>
 #include <soc/mediatek/mmdvfs_v3.h>
 #include "mmqos-mtk.h"
 #include "mtk-mmdvfs-debug.h"
