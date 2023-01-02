@@ -134,7 +134,7 @@ static unsigned int mtk_cpufreq_hw_fast_switch(struct cpufreq_policy *policy,
 	if (policy->cached_target_freq == target_freq)
 		index = policy->cached_resolved_idx;
 	else
-		index = cpufreq_table_find_index_dl(policy, target_freq);
+		index = cpufreq_table_find_index_dl(policy, target_freq, false);
 
 	if (!freq_scaling_disabled) {
 		writel_relaxed(target_freq, c->reg_bases[REG_FREQ_PERF_STATE]);
