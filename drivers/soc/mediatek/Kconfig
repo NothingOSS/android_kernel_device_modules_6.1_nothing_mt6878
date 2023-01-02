@@ -8,7 +8,6 @@ menu "MediaTek SoC drivers"
 config MTK_DVFSRC
 	tristate "MediaTek DVFSRC Support"
 	depends on ARCH_MEDIATEK
-	select MTK_INFRACFG
 	select PM_GENERIC_DOMAINS if PM
 	depends on DEVICE_MODULES_MTK_SCPSYS
 	help
