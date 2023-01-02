@@ -30,8 +30,8 @@
 #define MML_MAX_SYS_COMPONENTS	16
 #define MML_MAX_SYS_MUX_PINS	88
 #define MML_MAX_SYS_DL_RELAYS	7
-#define MML_MAX_SYS_DBG_REGS	75
-#define MML_MAX_AID_COMPS	8
+#define MML_MAX_SYS_DBG_REGS	78
+#define MML_MAX_AID_COMPS	10
 
 int mml_ir_loop = 1;
 module_param(mml_ir_loop, int, 0644);
@@ -670,6 +670,7 @@ static const struct mml_comp_debug_ops sys_debug_ops = {
 	.reset = &sys_reset,
 };
 
+#ifndef MML_FPGA
 static s32 mml_comp_clk_aid_enable(struct mml_comp *comp)
 {
 	struct mml_sys *sys = comp_to_sys(comp);
@@ -716,7 +717,6 @@ static s32 mml_sys_comp_clk_disable(struct mml_comp *comp)
 	return 0;
 }
 
-#ifndef MML_FPGA
 static const struct mml_comp_hw_ops sys_hw_ops_aid = {
 	.clk_enable = &mml_sys_comp_clk_enable,
 	.clk_disable = &mml_sys_comp_clk_disable,

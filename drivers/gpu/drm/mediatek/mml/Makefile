@@ -94,3 +94,8 @@ endif
 ifeq ($(strip $(CONFIG_MTK_MML_DEBUG)),y)
 mtk-mml-objs += mtk-mml-test.o
 endif
+
+# for FPGA early porting
+ifeq ($(strip $(CONFIG_FPGA_EARLY_PORTING)),y)
+ccflags-y += -DMML_FPGA
+endif
