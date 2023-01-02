@@ -188,7 +188,7 @@ static int mtk_ccu_mb_rx(struct mtk_ccu *ccu,
 		ccu->mb->queue[next].msg_id,
 		ccu->mb->queue[next].in_data_ptr);
 		ret = rear - front + 1;
-#if IS_ENABLED(CONFIG_MTK_CCU_DEBUG)
+#if 0 //IS_ENABLED(CONFIG_MTK_CCU_DEBUG)
 		LOG_DBG_IPI("fs[%d,%d,%d,%d,%d],sc[%d,%d,%d,%d,%d],cam[%d,%d,%d,%d,%d]\n",
 			ccu->rproc->bootcnt[0][0].counter, ccu->rproc->bootcnt[0][1].counter,
 			ccu->rproc->bootcnt[0][2].counter, ccu->rproc->bootcnt[0][3].counter,
