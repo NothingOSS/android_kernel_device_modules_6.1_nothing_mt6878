@@ -102,13 +102,14 @@ static struct slbc_config p_config[] = {
 	SLBC_ENTRY(UID_SH_APU, 2, 0, 0, 0, 0x0, 0x03f, 0),
 	SLBC_ENTRY(UID_MML, 3, 0, 0, 0, 0x0, 0x030, 0),
 	SLBC_ENTRY(UID_HIFI3, 4, 0, 0, 0, 0x0, 0x800, 0),
-	SLBC_ENTRY(UID_AINR, 5, 0, 0, 0, 0x0, 0x03c, 0),
+	SLBC_ENTRY(UID_AINR, 5, 0, 0, 0, 0x0, 0x03f, 0),
 	SLBC_ENTRY(UID_DISP, 6, 0, 0, 0, 0x0, 0x030, 0),
 	SLBC_ENTRY(UID_AOV_DC, 7, 0, 0, 0, 0x0, 0x007, 0),
 	SLBC_ENTRY(UID_AOV_APU, 8, 0, 0, 0, 0x0, 0x038, 0),
 	SLBC_ENTRY(UID_AISR_APU, 9, 0, 0, 0, 0x0, 0x004, 0),
 	SLBC_ENTRY(UID_AISR_MML, 10, 0, 0, 0, 0x0, 0x004, 0),
 	SLBC_ENTRY(UID_SH_P1, 11, 0, 0, 0, 0x0, 0x03f, 0),
+	SLBC_ENTRY(UID_SMT, 12, 0, 0, 0, 0x0, 0x03f, 0),
 };
 
 u32 slbc_sram_read(u32 offset)
@@ -903,12 +904,9 @@ static struct slbc_ipi_ops ipi_ops = {
 
 static int slbc_probe(struct platform_device *pdev)
 {
-	struct device_node *node;
+	struct device_node *node = pdev->dev.of_node;
 	struct device *dev = &pdev->dev;
 	int ret = 0;
-#ifdef ENABLE_SLBC
-	const char *buf;
-#endif /* ENABLE_SLBC */
 	struct cpuidle_driver *drv = cpuidle_get_driver();
 	/* struct resource *res; */
 	uint32_t reg[4] = {0, 0, 0, 0};
@@ -925,21 +923,15 @@ static int slbc_probe(struct platform_device *pdev)
 
 	slbc->dev = dev;
 
-	node = of_find_compatible_node(NULL, NULL,
-			"mediatek,mtk-slbc");
 #ifdef ENABLE_SLBC
 	if (node) {
-		ret = of_property_read_string(node,
-				"status", (const char **)&buf);
-
-		if (ret == 0) {
-			if (!strcmp(buf, "enable"))
-				slbc_enable = 1;
-			else
-				slbc_enable = 0;
-		}
-		pr_info("#@# %s(%d) slbc_enable %d\n", __func__, __LINE__,
-				slbc_enable);
+		ret = of_property_read_u32(node,
+				"slbc_enable", &slbc_enable);
+		if (ret)
+			pr_info("failed to get slbc_enable from dts\n");
+		else
+			pr_info("#@# %s(%d) slbc_enable %d\n", __func__, __LINE__,
+					slbc_enable);
 	} else
 		pr_info("find slbc node failed\n");
 #else
@@ -1050,32 +1042,17 @@ static struct platform_driver slbc_pdrv = {
 	},
 };
 
-struct platform_device slbc_pdev = {
-	.name = "slbc",
-	.id = -1,
-};
-
-int __init slbc_module_init(void)
+static int __init slbc_module_init(void)
 {
-	int r;
-
-	/* register platform device/driver */
-	r = platform_device_register(&slbc_pdev);
-	if (r) {
-		pr_info("Failed to register platform device.\n");
-		return -EINVAL;
-	}
-
-	r = platform_driver_register(&slbc_pdrv);
-	if (r) {
-		pr_info("fail to register slbc driver @ %s()\n", __func__);
-		return -EINVAL;
-	}
-
-	return 0;
+	return platform_driver_register(&slbc_pdrv);
 }
+module_init(slbc_module_init);
 
-late_initcall(slbc_module_init);
+static void __exit slbc_module_exit(void)
+{
+	platform_driver_unregister(&slbc_pdrv);
+}
+module_exit(slbc_module_exit);
 
 MODULE_SOFTDEP("pre: tinysys-scmi.ko");
 MODULE_DESCRIPTION("SLBC Driver mt6985 v0.1");
