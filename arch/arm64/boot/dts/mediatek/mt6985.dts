@@ -4813,8 +4813,8 @@
 //		clocks = <&dispsys_config_clk CLK_DISPSYS_CONFIG_DISP_OVL0>;
 //		mediatek,larb = <&smi_larb0>;
 		mediatek,smi-id = <0>;
-		iommus = <&disp_iommu M4U_PORT_L0_DISP_OVL0_2L_RDMA0>,
-			 <&disp_iommu M4U_PORT_L0_DISP_OVL0_2L_HDR>;
+//		iommus = <&disp_iommu M4U_PORT_L0_DISP_OVL0_2L_RDMA0>,
+//			 <&disp_iommu M4U_PORT_L0_DISP_OVL0_2L_HDR>;
 	};
 
 	disp_ovl1_2l: disp_ovl1@14403000 {
@@ -5318,7 +5318,8 @@
 					"mediatek,mt6985-disp-mutex";
 //		power-domains = <&scpsys MT6985_POWER_DOMAIN_DIS1>;
 //		mediatek,mml = <&mmlsys_config>;
-		dispsys_num = <4>;
+		dispsys_num = <2>;
+		ovlsys_num = <2>;
 		reg = <0 0x14001000 0 0x1000>,
 		      <0 0x14201000 0 0x1000>,
 		      <0 0x14401000 0 0x1000>,
