@@ -327,7 +327,8 @@ static int __mtk_clk_mux_set_parent_lock(struct clk_hw *hw, u8 index, bool setcl
 			mtk_hwv_pll_off(qs_hw);
 		}
 	} else
-		regmap_update_bits(mux->regmap, mux->data->mux_ofs, mask,
+		regmap_update_bits(mux->regmap, mux->data->mux_ofs,
+			mask << mux->data->mux_shift,
 			index << mux->data->mux_shift);
 
 	if (mux->lock)
