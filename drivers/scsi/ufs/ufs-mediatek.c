@@ -1552,6 +1552,7 @@ retry:
 static int ufs_mtk_rpmb_cmd_seq(struct device *dev,
 			       struct rpmb_cmd *cmds, u32 ncmds, u8 region)
 {
+#if 0
 	unsigned long flags;
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 	struct ufs_mtk_host *host;
@@ -1602,6 +1603,9 @@ static int ufs_mtk_rpmb_cmd_seq(struct device *dev,
 
 	scsi_device_put(sdev);
 	return ret;
+#else
+	return 0;
+#endif
 }
 
 static struct rpmb_ops ufs_mtk_rpmb_dev_ops = {
@@ -1656,8 +1660,8 @@ static void ufs_mtk_rpmb_add(void *data, async_cookie_t cookie)
 
 	ufs_mtk_rpmb_dev_ops.reliable_wr_cnt = rw_size;
 
-	if (unlikely(scsi_device_get(hba->sdev_rpmb)))
-		goto out;
+	//if (unlikely(scsi_device_get(hba->sdev_rpmb)))
+	//	goto out;
 
 	rdev = rpmb_dev_register(hba->dev, &ufs_mtk_rpmb_dev_ops);
 	if (IS_ERR(rdev)) {
@@ -1678,7 +1682,7 @@ static void ufs_mtk_rpmb_add(void *data, async_cookie_t cookie)
 	sema_init(&host->rpmb_sem, 1);
 
 out_put_dev:
-	scsi_device_put(hba->sdev_rpmb);
+	//scsi_device_put(hba->sdev_rpmb);
 
 out:
 	return;
@@ -2375,8 +2379,8 @@ static int ufs_mtk_pre_pwr_change(struct ufs_hba *hba,
 	int ret;
 
 	ufshcd_init_pwr_dev_param(&host_cap);
-	host_cap.hs_rx_gear = UFS_HS_G5;
-	host_cap.hs_tx_gear = UFS_HS_G5;
+	//host_cap.hs_rx_gear = UFS_HS_G5;
+	//host_cap.hs_tx_gear = UFS_HS_G5;
 
 	ret = ufshcd_get_pwr_dev_param(&host_cap,
 				       dev_max_params,
