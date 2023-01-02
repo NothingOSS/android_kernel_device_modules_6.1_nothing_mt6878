@@ -65,8 +65,9 @@ static LIST_HEAD(tmem_block_list);
 static DEFINE_MUTEX(tmem_block_mutex);
 
 /* Store the discovered partition data globally. */
-static const struct ffa_ops *tmem_ffa_ops;
-static struct ffa_device *tmem_ffa_dev;
+static const struct ffa_ops *ffa_ops;
+static ffa_partition_id_t sp_partition_id;
+static struct ffa_device *sp_partition_dev;
 
 static struct timespec64 ffa_start_time;
 static struct timespec64 ffa_end_time;
@@ -291,7 +292,7 @@ int tmem_ffa_page_alloc(enum MTEE_MCHUNKS_ID mchunk_id,
 	struct ffa_mem_region_attributes mem_region_attrs[ATTRS_NUM];
 	int ret;
 
-	if (tmem_ffa_dev == NULL) {
+	if (sp_partition_dev == NULL) {
 		pr_info("%s: ffa_device_register() failed\n", __func__);
 		return TMEM_KPOOL_FFA_INIT_FAILED;
 	}
@@ -308,7 +309,7 @@ int tmem_ffa_page_alloc(enum MTEE_MCHUNKS_ID mchunk_id,
 	ffa_args.sg = sg_tbl->sgl;
 
 	tmem_do_gettimeofday(&ffa_start_time);
-	ret = tmem_ffa_ops->mem_ops->memory_lend(&ffa_args);
+	ret = ffa_ops->mem_ops->memory_lend(&ffa_args);
 	if (ret) {
 		pr_info("page-based, failed to FF-A send the memory, ret=%d\n", ret);
 		mutex_unlock(&tmem_block_mutex);
@@ -329,7 +330,7 @@ int tmem_ffa_page_free(u64 handle)
 {
 	int ret;
 
-	if (tmem_ffa_dev == NULL) {
+	if (sp_partition_dev == NULL) {
 		pr_info("%s: ffa_device_register() failed\n", __func__);
 		return TMEM_KPOOL_FFA_INIT_FAILED;
 	}
@@ -337,7 +338,7 @@ int tmem_ffa_page_free(u64 handle)
 	mutex_lock(&tmem_block_mutex);
 
 	tmem_do_gettimeofday(&ffa_start_time);
-	ret = tmem_ffa_ops->mem_ops->memory_reclaim(handle, PAGED_BASED_FFA_FLAGS);
+	ret = ffa_ops->mem_ops->memory_reclaim(handle, PAGED_BASED_FFA_FLAGS);
 	if (ret) {
 		pr_info("page-based, handle=0x%llx failed to FF-A reclaim, ret=%d\n",
 			handle, ret);
@@ -368,7 +369,7 @@ int tmem_ffa_region_alloc(enum MTEE_MCHUNKS_ID mchunk_id,
 	struct scatterlist *tmem_sgl;
 	int ret;
 
-	if (tmem_ffa_dev == NULL) {
+	if (sp_partition_dev == NULL) {
 		pr_info("%s: ffa_device_register() failed\n", __func__);
 		return TMEM_KPOOL_FFA_INIT_FAILED;
 	}
@@ -407,7 +408,7 @@ int tmem_ffa_region_alloc(enum MTEE_MCHUNKS_ID mchunk_id,
 	ffa_args.sg = tmem_sgl;
 
 	tmem_do_gettimeofday(&ffa_start_time);
-	ret = tmem_ffa_ops->mem_ops->memory_lend(&ffa_args);
+	ret = ffa_ops->mem_ops->memory_lend(&ffa_args);
 	if (ret) {
 		pr_info("region-based, failed to FF-A send the memory, ret=%d\n", ret);
 		goto out1;
@@ -455,7 +456,7 @@ int tmem_ffa_region_free(enum MTEE_MCHUNKS_ID mchunk_id, u64 handle)
 	unsigned long pool_idx = mchunk_id;
 	int ret;
 
-	if (tmem_ffa_dev == NULL) {
+	if (sp_partition_dev == NULL) {
 		pr_info("%s: ffa_device_register() failed\n", __func__);
 		return TMEM_KPOOL_FFA_INIT_FAILED;
 	}
@@ -463,7 +464,7 @@ int tmem_ffa_region_free(enum MTEE_MCHUNKS_ID mchunk_id, u64 handle)
 	mutex_lock(&tmem_block_mutex);
 
 	tmem_do_gettimeofday(&ffa_start_time);
-	ret = tmem_ffa_ops->mem_ops->memory_reclaim(handle, 0);
+	ret = ffa_ops->mem_ops->memory_reclaim(handle, 0);
 	if (ret) {
 		pr_info("region-based, handle=0x%llx failed to FF-A reclaim, ret=%d\n",
 			handle, ret);
@@ -585,37 +586,21 @@ static const struct ffa_device_id tmem_ffa_device_id[] = {
 	{}
 };
 
-static int tmem_ffa_probe(struct ffa_device *ffa_dev)
-{
-	pr_info("%s:%d (start)\n", __func__, __LINE__);
-	tmem_ffa_dev = ffa_dev;
-	tmem_ffa_ops = ffa_dev->ops;
-	pr_info("%s:%d (end)\n", __func__, __LINE__);
-
-	return 0;
-}
-
-static void tmem_ffa_remove(struct ffa_device *ffa_dev)
-{
-    (void)ffa_dev;
-}
-
-static struct ffa_driver tmem_ffa_driver = {
-    .name = "tmem_ffa",
-    .probe = tmem_ffa_probe,
-    .remove = tmem_ffa_remove,
-    .id_table = tmem_ffa_device_id,
-};
-
 int tmem_register_ffa_module(void)
 {
-	int ret;
-
 	pr_info("%s:%d (start)\n", __func__, __LINE__);
 
-	ret = ffa_register(&tmem_ffa_driver);
-	if (ret) {
-		pr_info("%s: failed to get FFA-ops\n", __func__);
+//	sp_partition_dev = ffa_device_register(&tmem_ffa_device_id[0].uuid, 0x1);
+	if (sp_partition_dev == NULL) {
+		pr_info("%s: ffa_device_register() failed\n", __func__);
+		return TMEM_KPOOL_FFA_INIT_FAILED;
+	}
+	sp_partition_id = sp_partition_dev->vm_id;
+	pr_info("%s: sp_partition_dev->vm_id=0x%lx\n", __func__, sp_partition_id);
+
+//	ffa_ops = ffa_dev_ops_get(sp_partition_dev);
+	if (ffa_ops == NULL) {
+		pr_info("%s: failed to obtain FFA ops\n", __func__);
 		return TMEM_KPOOL_FFA_INIT_FAILED;
 	}
 
