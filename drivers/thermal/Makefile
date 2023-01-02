@@ -3,4 +3,4 @@
 # Makefile for sensor chip drivers.
 #
 
-obj-$(CONFIG_MTK_THERMAL)	+= mediatek/
+obj-$(CONFIG_DEVICE_MODULES_MTK_THERMAL)	+= mediatek/

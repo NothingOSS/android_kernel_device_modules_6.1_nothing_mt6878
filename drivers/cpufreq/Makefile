@@ -3,4 +3,4 @@
 
 ##################################################################################
 # ARM SoC drivers
-obj-$(CONFIG_ARM_MEDIATEK_CPUFREQ_HW)	+= mediatek-cpufreq-hw.o
+obj-$(CONFIG_DEVICE_MODULES_ARM_MEDIATEK_CPUFREQ_HW)	+= mediatek-cpufreq-hw.o

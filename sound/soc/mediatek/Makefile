@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0
-obj-$(CONFIG_SND_SOC_MEDIATEK) += common/
+obj-$(CONFIG_DEVICE_MODULES_SND_SOC_MEDIATEK) += common/
 ifneq ($(wildcard $(srctree)/$(src)/mt6853/Makefile),)
 obj-$(CONFIG_SND_SOC_MT6853) += mt6853/
 endif

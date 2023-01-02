@@ -1,4 +1,4 @@
-config DMABUF_HEAPS_SYSTEM
+config DEVICE_MODULES_DMABUF_HEAPS_SYSTEM
 	tristate "DMA-BUF System Heap"
 	depends on DMABUF_HEAPS && DMABUF_HEAPS_DEFERRED_FREE && DMABUF_HEAPS_PAGE_POOL
 	help
@@ -7,7 +7,7 @@ config DMABUF_HEAPS_SYSTEM
 
 config DMABUF_HEAPS_DEBUG
 	tristate "DMA-BUF debug Heap"
-	depends on DMABUF_HEAPS_SYSTEM
+	depends on DEVICE_MODULES_DMABUF_HEAPS_SYSTEM
 	help
 	  Choose this option to enable the mtk debug heap.
 	  This debug tool can be use to dump dmabuf usage for users

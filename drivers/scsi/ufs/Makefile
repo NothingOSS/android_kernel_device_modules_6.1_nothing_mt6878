@@ -6,5 +6,5 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/scsi/ufs/vendor
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/scsi/ufs/
 ccflags-y += -I$(srctree)/drivers/scsi/ufs/
 
-obj-$(CONFIG_SCSI_UFS_MEDIATEK) += vendor/
+obj-$(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK) += vendor/
 obj-$(CONFIG_SCSI_UFS_MEDIATEK_DBG) += ufs-mediatek-dbg.o

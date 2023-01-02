@@ -3,5 +3,5 @@
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/include/soc/mediatek
-obj-$(CONFIG_MTK_SMI) += mtk-smi-dbg.o
+obj-$(CONFIG_DEVICE_MODULES_MTK_SMI) += mtk-smi-dbg.o
 

@@ -79,7 +79,7 @@ obj-y += mtk_dp_hdcp1x.o \
 endif
 
 #ifeq ($(CONFIG_TRUSTONIC_TEE_SUPPORT),m)
-#obj-$(CONFIG_DRM_MEDIATEK) += ca/
+#obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += ca/
 #ccflags-y += -DDPTX_HDCP_ENABLE
 #mediatek-drm-y += mtk_dp_hdcp1x.o \
 #	mtk_dp_hdcp2.o
@@ -87,14 +87,14 @@ endif
 
 mediatek-drm-$(CONFIG_DRM_FBDEV_EMULATION) += mtk_drm_fbdev.o
 
-obj-$(CONFIG_DRM_MEDIATEK) += mediatek-drm.o
-obj-$(CONFIG_DRM_MEDIATEK) += mtk_sync.o
+obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += mediatek-drm.o
+obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += mtk_sync.o
 
-obj-$(CONFIG_DRM_MEDIATEK) += mtk_panel_ext.o
-obj-$(CONFIG_DRM_MEDIATEK) += mtk_disp_notify.o
-obj-$(CONFIG_DRM_MEDIATEK) += mtk_aod_scp.o
+obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += mtk_panel_ext.o
+obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += mtk_disp_notify.o
+obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += mtk_aod_scp.o
 
-obj-$(CONFIG_DRM_MEDIATEK) += mtk_disp_sec.o
+obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += mtk_disp_sec.o
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dramc/$(MTK_PLATFORM)	\

@@ -1,4 +1,4 @@
-config MTK_THERMAL
+config DEVICE_MODULES_MTK_THERMAL
 	tristate "Mediatek thermal drivers"
 	depends on THERMAL_OF
 	help
@@ -7,7 +7,7 @@ config MTK_THERMAL
 	  get temperature information from thermal sensors or
 	  turn on throttle mechaisms for thermal mitigation.
 
-if MTK_THERMAL
+if DEVICE_MODULES_MTK_THERMAL
 
 config MTK_SOC_THERMAL
 	tristate "Temperature sensor driver for mediatek SoCs"
@@ -24,7 +24,7 @@ config MTK_SOC_THERMAL_LVTS
         tristate "LVTS (Low voltage thermal sensor) driver for Mediatek SoCs"
         depends on HAS_IOMEM
         depends on NVMEM
-        depends on RESET_TI_SYSCON
+        depends on DEVICE_MODULES_RESET_TI_SYSCON
         help
           Enable this option if you want to get SoC temperature
           information for Mediatek platforms. This driver

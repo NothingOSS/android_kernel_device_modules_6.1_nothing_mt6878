@@ -20,7 +20,7 @@
 
 #include "usb_boost.h"
 #include "xhci-trace.h"
-#if IS_ENABLED(CONFIG_USB_MTU3)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_MTU3)
 #include "mtu3.h"
 #include "mtu3_trace.h"
 #endif
@@ -92,7 +92,7 @@ enum {
 	USB_TYPE_RNDIS,
 };
 
-#if IS_ENABLED(CONFIG_USB_MTU3)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_MTU3)
 #define MAX_EP_NUM 32
 /* ep0 + in ep + out ep */
 static int boost_ep[MAX_EP_NUM * 2 + 1];
@@ -653,7 +653,7 @@ static int create_sys_fs(void)
 
 }
 
-#if IS_ENABLED(CONFIG_USB_MTU3)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_MTU3)
 static struct usb_descriptor_header **
 get_function_descriptors(struct usb_function *f,
 		     enum usb_device_speed speed)
@@ -832,7 +832,7 @@ void xhci_urb_giveback_dbg(void *unused, struct urb *urb)
 
 static int xhci_trace_init(void)
 {
-#if IS_ENABLED(CONFIG_USB_XHCI_MTK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_XHCI_MTK)
 	WARN_ON(register_trace_xhci_urb_giveback_(xhci_urb_giveback_dbg, NULL));
 #endif
 	return 0;
@@ -874,7 +874,7 @@ int usb_boost_init(void)
 
 	xhci_trace_init();
 
-#if IS_ENABLED(CONFIG_USB_MTU3)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_MTU3)
 	mtu3_trace_init();
 #endif
 

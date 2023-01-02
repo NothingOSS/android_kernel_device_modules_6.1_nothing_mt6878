@@ -24,7 +24,7 @@
 #include "modem_sys.h"
 #include "ccci_auxadc.h"
 
-#if IS_ENABLED(CONFIG_MTK_DEVAPC)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 #include <linux/soc/mediatek/devapc_public.h>
 #endif
 
@@ -1630,7 +1630,7 @@ struct ccci_fsm_ctl *fsm_get_entity(void)
 }
 EXPORT_SYMBOL(fsm_get_entity);
 
-#if IS_ENABLED(CONFIG_MTK_DEVAPC)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 void dump_md_info_in_devapc(struct ccci_modem *md)
 {
 	unsigned char ccif_sram[CCCI_EE_SIZE_CCIF_SRAM] = { 0 };
@@ -1778,7 +1778,7 @@ int ccci_fsm_init(void)
 	fsm_monitor_init(&ctl->monitor_ctl);
 	fsm_sys_init();
 
-#if IS_ENABLED(CONFIG_MTK_DEVAPC)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 	register_devapc_vio_callback(&devapc_md_vio_handle);
 #endif
 	ccci_fsm_entries = ctl;

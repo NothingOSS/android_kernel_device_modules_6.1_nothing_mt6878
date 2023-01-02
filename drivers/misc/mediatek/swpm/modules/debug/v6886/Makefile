@@ -17,7 +17,7 @@ ifeq ($(CONFIG_MTK_QOS_FRAMEWORK),m)
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/qos
 endif
 
-ifeq ($(CONFIG_MTK_THERMAL),y)
+ifeq ($(CONFIG_DEVICE_MODULES_MTK_THERMAL),y)
 ccflags-y += -I$(srctree)/drivers/thermal/mediatek/
 endif
 

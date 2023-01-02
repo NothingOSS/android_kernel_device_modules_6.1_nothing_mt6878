@@ -25,7 +25,7 @@ config INTERCONNECT_MTK_MMQOS_COMMON
 config INTERCONNECT_MTK_MMQOS_MT6873
 	tristate "Mediatek MT6873 MMQoS interconnect driver"
 	depends on INTERCONNECT_MTK
-	depends on MTK_SMI
+	depends on DEVICE_MODULES_MTK_SMI
 	select INTERCONNECT_MTK_MMQOS_COMMON
 	help
 	  Support MT6873 multimedia QoS.
@@ -33,7 +33,7 @@ config INTERCONNECT_MTK_MMQOS_MT6873
 config INTERCONNECT_MTK_MMQOS_MT6853
 	tristate "Mediatek MT6853 MMQoS interconnect driver"
 	depends on INTERCONNECT_MTK
-	depends on MTK_SMI
+	depends on DEVICE_MODULES_MTK_SMI
 	select INTERCONNECT_MTK_MMQOS_COMMON
 	help
 	  Support MT6853 multimedia QoS.
@@ -41,7 +41,7 @@ config INTERCONNECT_MTK_MMQOS_MT6853
 config INTERCONNECT_MTK_MMQOS_MT6886
 	tristate "Mediatek MT6886 MMQoS interconnect driver"
 	depends on INTERCONNECT_MTK
-	depends on MTK_SMI
+	depends on DEVICE_MODULES_MTK_SMI
 	select INTERCONNECT_MTK_MMQOS_COMMON
 	help
 	  Support MT6886 for multimedia QoS in Mediatek's SoCs.
@@ -53,7 +53,7 @@ config INTERCONNECT_MTK_MMQOS_MT6886
 config INTERCONNECT_MTK_MMQOS_MT6983
 	tristate "Mediatek MT6983 MMQoS interconnect driver"
 	depends on INTERCONNECT_MTK
-	depends on MTK_SMI
+	depends on DEVICE_MODULES_MTK_SMI
 	select INTERCONNECT_MTK_MMQOS_COMMON
 	help
 	  Support MT6983 multimedia QoS.
@@ -61,7 +61,7 @@ config INTERCONNECT_MTK_MMQOS_MT6983
 config INTERCONNECT_MTK_MMQOS_MT6985
 	tristate "Mediatek MT6985 MMQoS interconnect driver"
 	depends on INTERCONNECT_MTK
-	depends on MTK_SMI
+	depends on DEVICE_MODULES_MTK_SMI
 	select INTERCONNECT_MTK_MMQOS_COMMON
 	help
 	  Support MT6985 multimedia QoS.

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0
 
-config USB_XHCI_MTK
+config DEVICE_MODULES_USB_XHCI_MTK
 	tristate "xHCI support for MediaTek SoCs"
 	select MFD_SYSCON
 	depends on (MIPS && SOC_MT7621) || ARCH_MEDIATEK || COMPILE_TEST

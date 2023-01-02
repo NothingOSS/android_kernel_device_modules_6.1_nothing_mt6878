@@ -30,7 +30,7 @@ menuconfig WATCHDOG
 
 if WATCHDOG
 
-config MEDIATEK_WATCHDOG
+config DEVICE_MODULES_MEDIATEK_WATCHDOG
 	tristate "Mediatek SoCs watchdog support"
 	depends on ARCH_MEDIATEK || COMPILE_TEST
 	select WATCHDOG_CORE

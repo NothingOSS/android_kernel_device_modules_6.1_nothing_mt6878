@@ -582,7 +582,7 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 
 	dev->vdec_buf_wq = create_singlethread_workqueue("vdec_buf_dump");
 	INIT_WORK(&dev->vdec_buf_work, mtk_vdec_uP_TF_dump_handler);
-#if IS_ENABLED(CONFIG_MTK_IOMMU)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_IOMMU)
 	dev->io_domain = iommu_get_domain_for_dev(&pdev->dev);
 	if (dev->io_domain == NULL) {
 		mtk_v4l2_err("Failed to get io_domain\n");

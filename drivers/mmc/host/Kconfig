@@ -5,7 +5,7 @@
 
 comment "MMC/SD/SDIO Host Controller Drivers"
 
-config MMC_DEBUG
+config DEVICE_MODULES_MMC_DEBUG
     tristate "MMC host drivers debugging"
     depends on MMC != n
     help
@@ -14,7 +14,7 @@ config MMC_DEBUG
       added host drivers please don't invent their private macro for
       debugging.
 
-config MMC_MTK
+config DEVICE_MODULES_MMC_MTK
 	tristate "MediaTek SD/MMC Card Interface support"
 	depends on HAS_DMA
 	depends on COMMON_CLK
@@ -28,7 +28,7 @@ config MMC_MTK
 
 config MMC_MTK_PRO
 	tristate "MediaTek SD/MMC Card Proprietary Interface support"
-	depends on !MMC_MTK
+	depends on !DEVICE_MODULES_MMC_MTK
 	help
 	  This selects the MediaTek(R) Secure digital and Multimedia card
 	  Interface. If you have a machine with a integrated SD/MMC card

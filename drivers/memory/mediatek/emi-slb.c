@@ -141,7 +141,7 @@ static irqreturn_t emislb_violation_irq(int irq, void *dev_id)
 	}
 
 	if (nr_vio && !slb->in_msg_dump && msg_len) {
-#if IS_ENABLED(CONFIG_MTK_SMI)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 		mtk_smi_dbg_hang_detect("emimpu_violation");
 #endif
 		pr_info("%s: %s", __func__, slb->vio_msg);

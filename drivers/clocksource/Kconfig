@@ -2,7 +2,7 @@
 menu "Clock Source drivers"
 	depends on GENERIC_CLOCKEVENTS
 
-config MTK_TIMER
+config DEVICE_MODULES_MTK_TIMER
 	tristate "Mediatek timer driver"
 	depends on HAS_IOMEM
 	select TIMER_OF

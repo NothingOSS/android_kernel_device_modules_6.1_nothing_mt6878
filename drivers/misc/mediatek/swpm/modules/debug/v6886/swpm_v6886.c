@@ -19,7 +19,7 @@
 #include <sspm_reservedmem.h>
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_THERMAL)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_THERMAL)
 #include <thermal_interface.h>
 #endif
 

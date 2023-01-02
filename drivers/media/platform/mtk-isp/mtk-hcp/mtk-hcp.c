@@ -47,7 +47,7 @@
 
 #ifdef CONFIG_MTK_IOMMU_V2
 #include "mtk_iommu_ext.h"
-#elif defined(CONFIG_MTK_IOMMU)
+#elif defined(CONFIG_DEVICE_MODULES_MTK_IOMMU)
 #include "mach/mt_iommu.h"
 #elif defined(CONFIG_MTK_M4U)
 #include "m4u.h"

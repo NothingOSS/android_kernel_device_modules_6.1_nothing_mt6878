@@ -20,11 +20,11 @@
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #include <mt-plat/aee.h>
 #endif
-#if IS_ENABLED(CONFIG_MTK_SMI)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 #include <soc/mediatek/smi.h>
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_DEVAPC)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 #include <linux/soc/mediatek/devapc_public.h>
 #endif
 
@@ -439,7 +439,7 @@ static irqreturn_t mminfra_irq_handler(int irq, void *data)
 		aee_kernel_warning("mminfra", "MMInfra bus timeout\n");
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_SMI)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 		mtk_smi_dbg_hang_detect("mminfra irq");
 #endif
 		aee_dump = true;
@@ -450,7 +450,7 @@ static irqreturn_t mminfra_irq_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-#if IS_ENABLED(CONFIG_MTK_DEVAPC)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 static bool mminfra_devapc_power_cb(void)
 {
 	return is_mminfra_power_on();
@@ -564,7 +564,7 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 		pr_notice("%s: init-clk-on enable clk\n", __func__);
 	}
 
-#if IS_ENABLED(CONFIG_MTK_DEVAPC)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 	register_devapc_power_callback(&devapc_power_handle);
 #endif
 

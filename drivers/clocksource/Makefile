@@ -2,4 +2,4 @@
 
 ccflags-y += -I$(srctree)/drivers/clocksource
 
-obj-$(CONFIG_MTK_TIMER)		+= timer-mediatek.o
+obj-$(CONFIG_DEVICE_MODULES_MTK_TIMER)		+= timer-mediatek.o

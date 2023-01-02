@@ -110,7 +110,7 @@ config CHARGER_RT9758
 
 config BATTERY_MT6359P
 	tristate "MT6359P fuel gauge support"
-	depends on MFD_MT6397
+	depends on DEVICE_MODULES_MFD_MT6397
 	default m
 	help
 	  Say Y to enable support for MT6359P battery driver.
@@ -118,9 +118,9 @@ config BATTERY_MT6359P
 	  battery information , It issues interrupt when trigger
 	  threshold is met.
 
-config CHARGER_MT6360
+config DEVICE_MODULES_CHARGER_MT6360
 	tristate "Mediatek MT6360 Charger Driver"
-	depends on MFD_MT6360
+	depends on DEVICE_MODULES_MFD_MT6360
 	depends on MTK_USB_TYPEC
 	depends on REGULATOR
 	select LINEAR_RANGES

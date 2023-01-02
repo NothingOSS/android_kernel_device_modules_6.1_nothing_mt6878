@@ -25,7 +25,7 @@ menuconfig REGULATOR
 
 if REGULATOR
 
-config REGULATOR_MT6315
+config DEVICE_MODULES_REGULATOR_MT6315
 	tristate "MediaTek MT6315 PMIC"
 	depends on SPMI
 	select REGMAP_SPMI
@@ -37,16 +37,16 @@ config REGULATOR_MT6315
 
 config REGULATOR_MT6359P
 	tristate "MediaTek MT6359P PMIC"
-	depends on MFD_MT6397
+	depends on DEVICE_MODULES_MFD_MT6397
 	help
 	  Say y here to select this option to enable the power regulator of
 	  MediaTek MT6359P PMIC.
 	  This driver supports the control of different power rails of device
 	  through regulator interface.
 
-config REGULATOR_MT6360
+config DEVICE_MODULES_REGULATOR_MT6360
 	tristate "MT6360 SubPMIC Regulator"
-	depends on MFD_MT6360
+	depends on DEVICE_MODULES_MFD_MT6360
 	help
 	  Say Y here to enable MT6360 regulator support.
 	  This is support MT6360 PMIC/LDO part include
@@ -111,7 +111,7 @@ config REGULATOR_MT6373
 	  The driver can also be build as a module.
 	  If so, the module will be called mt6373_regulator
 
-config REGULATOR_MTK_DVFSRC
+config DEVICE_MODULES_REGULATOR_MTK_DVFSRC
 	tristate "MediaTek DVFSRC regulator driver"
 	depends on MTK_DVFSRC
 	help
@@ -146,7 +146,7 @@ config REGULATOR_RT5133
 	  GPIO cannot be used to drive output high. It need to pay more
 	  attention on the usage.
 
-config REGULATOR_RT6160
+config DEVICE_MODULES_REGULATOR_RT6160
 	tristate "Richtek RT6160 BuckBoost voltage regulator"
 	depends on I2C
 	select REGMAP_I2C

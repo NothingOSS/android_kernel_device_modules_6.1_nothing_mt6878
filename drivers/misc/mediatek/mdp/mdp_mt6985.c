@@ -1601,7 +1601,7 @@ u64 cmdq_mdp_get_engine_group_bits(u32 engine_group)
 
 static void mdp_enable_larb(bool enable, struct device *larb)
 {
-#if IS_ENABLED(CONFIG_MTK_SMI)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 	if (!larb) {
 		CMDQ_ERR("%s smi larb not support\n", __func__);
 		return;

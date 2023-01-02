@@ -9,5 +9,5 @@ ccflags-y += -I$(srctree)/drivers/usb/host
 
 xhci-mtk-hcd-y := xhci-mtk.o xhci-mtk-sch.o
 
-obj-$(CONFIG_USB_XHCI_MTK)	+= xhci-mtk-hcd.o
+obj-$(CONFIG_DEVICE_MODULES_USB_XHCI_MTK)	+= xhci-mtk-hcd.o
 

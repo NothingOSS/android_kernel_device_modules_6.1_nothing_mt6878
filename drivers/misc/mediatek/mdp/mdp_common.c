@@ -2446,7 +2446,7 @@ long cmdq_mdp_get_module_base_VA_MMSYS_CONFIG(void)
 static void cmdq_mdp_enable_common_clock_virtual(bool enable, u64 engine_flag)
 {
 #ifdef CMDQ_PWR_AWARE
-#if IS_ENABLED(CONFIG_MTK_SMI)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 	int ret = 0;
 
 	if (!mdp_ctx.larb) {
@@ -2462,7 +2462,7 @@ static void cmdq_mdp_enable_common_clock_virtual(bool enable, u64 engine_flag)
 	if (ret)
 		CMDQ_ERR("%s %s fail ret:%d\n",
 			__func__, enable ? "enable" : "disable", ret);
-#endif	/* CONFIG_MTK_SMI */
+#endif	/* CONFIG_DEVICE_MODULES_MTK_SMI */
 #endif	/* CMDQ_PWR_AWARE */
 }
 

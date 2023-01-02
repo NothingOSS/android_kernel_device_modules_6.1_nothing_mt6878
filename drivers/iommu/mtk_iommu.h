@@ -201,7 +201,7 @@ static inline void mtk_iommu_unbind(struct device *dev)
 	component_unbind_all(dev, &data->larb_imu);
 }
 
-#if IS_ENABLED(CONFIG_MTK_IOMMU)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_IOMMU)
 
 int dev_is_normal_region(struct device *dev);
 

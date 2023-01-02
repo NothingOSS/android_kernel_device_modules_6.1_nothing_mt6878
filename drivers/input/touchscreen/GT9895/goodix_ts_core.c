@@ -31,7 +31,7 @@
 
 #include "goodix_ts_core.h"
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 #include "mtk_panel_ext.h"
 static struct goodix_ts_core *ts_core;
 #endif
@@ -1825,7 +1825,7 @@ int goodix_ts_esd_init(struct goodix_ts_core *cd)
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 static int goodix_ts_power_on_reinit(void)
 {
 	struct goodix_ts_hw_ops *hw_ops;
@@ -2036,7 +2036,7 @@ out:
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 /**
  * goodix_ts_disp_notifier_callback - mtk display notifier callback
  * Called by kernel during framebuffer blanck/unblank phrase
@@ -2084,7 +2084,7 @@ static int goodix_ts_disp_notifier_callback(struct notifier_block *nb,
 
 
 #if IS_ENABLED(CONFIG_PM)
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK) && !IS_ENABLED(CONFIG_HAS_EARLYSUSPEND)
+#if !IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) && !IS_ENABLED(CONFIG_HAS_EARLYSUSPEND)
 /**
  * goodix_ts_pm_suspend - PM suspend function
  * Called by kernel during system suspend phrase
@@ -2160,7 +2160,7 @@ int goodix_ts_stage2_init(struct goodix_ts_core *cd)
 	}
 	ts_info("success register irq");
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	cd->disp_notifier.notifier_call = goodix_ts_disp_notifier_callback;
 	if (mtk_disp_notifier_register("Touch", &cd->disp_notifier))
 		ts_err("Failed to register disp notifier client:%d", ret);
@@ -2321,7 +2321,7 @@ static int goodix_ts_probe(struct platform_device *pdev)
 	struct goodix_bus_interface *bus_interface;
 	int ret;
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 		void **ret_disp = NULL;
 #endif
 
@@ -2409,7 +2409,7 @@ static int goodix_ts_probe(struct platform_device *pdev)
 		goto err_out;
 	}
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 		ts_info("TP power_on reset!\n");
 		ts_core = core_data;
 		if (mtk_panel_tch_handle_init()) {
@@ -2455,7 +2455,7 @@ static int goodix_ts_remove(struct platform_device *pdev)
 
 	if (core_data->init_stage >= CORE_INIT_STAGE2) {
 		hw_ops->irq_enable(core_data, false);
-	#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+	#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 		if (disp_notify_reg_flag) {
 			if (mtk_disp_notifier_unregister(&ts_core->disp_notifier))
 				ts_info("Error occurred when unregister disp_notifier");
@@ -2480,7 +2480,7 @@ static int goodix_ts_remove(struct platform_device *pdev)
 
 #if IS_ENABLED(CONFIG_PM)
 static const struct dev_pm_ops dev_pm_ops = {
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK) && !IS_ENABLED(CONFIG_HAS_EARLYSUSPEND)
+#if !IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) && !IS_ENABLED(CONFIG_HAS_EARLYSUSPEND)
 	.suspend = goodix_ts_pm_suspend,
 	.resume = goodix_ts_pm_resume,
 #endif

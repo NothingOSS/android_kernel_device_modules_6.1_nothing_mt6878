@@ -3,4 +3,4 @@
 # Makefile for the WatchDog device drivers.
 #
 
-obj-$(CONFIG_MEDIATEK_WATCHDOG) += mtk_wdt.o
+obj-$(CONFIG_DEVICE_MODULES_MEDIATEK_WATCHDOG) += mtk_wdt.o

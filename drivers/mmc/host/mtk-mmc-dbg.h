@@ -6,7 +6,7 @@
 #ifndef _MTK_DBG_H_
 #define _MTK_DBG_H_
 
-#if IS_ENABLED(CONFIG_MMC_DEBUG)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_DEBUG)
 #include <linux/mmc/host.h>
 #include <linux/seq_file.h>
 

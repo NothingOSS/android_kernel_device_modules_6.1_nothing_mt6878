@@ -10,7 +10,7 @@
 #ifndef _MTU3_DR_H_
 #define _MTU3_DR_H_
 
-#if IS_ENABLED(CONFIG_USB_MTU3_HOST) || IS_ENABLED(CONFIG_USB_MTU3_DUAL_ROLE)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_MTU3_HOST) || IS_ENABLED(CONFIG_DEVICE_MODULES_USB_MTU3_DUAL_ROLE)
 
 int ssusb_host_init(struct ssusb_mtk *ssusb, struct device_node *parent_dn);
 void ssusb_host_exit(struct ssusb_mtk *ssusb);
@@ -66,7 +66,7 @@ static inline void ssusb_wakeup_set(struct ssusb_mtk *ssusb, bool enable)
 #endif
 
 
-#if IS_ENABLED(CONFIG_USB_MTU3_GADGET) || IS_ENABLED(CONFIG_USB_MTU3_DUAL_ROLE)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_MTU3_GADGET) || IS_ENABLED(CONFIG_DEVICE_MODULES_USB_MTU3_DUAL_ROLE)
 int ssusb_gadget_init(struct ssusb_mtk *ssusb);
 void ssusb_gadget_exit(struct ssusb_mtk *ssusb);
 int ssusb_gadget_suspend(struct ssusb_mtk *ssusb, pm_message_t msg);
@@ -102,7 +102,7 @@ static inline bool ssusb_gadget_ip_sleep_check(struct ssusb_mtk *ssusb)
 #endif
 
 
-#if IS_ENABLED(CONFIG_USB_MTU3_DUAL_ROLE)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_MTU3_DUAL_ROLE)
 int ssusb_otg_switch_init(struct ssusb_mtk *ssusb);
 void ssusb_otg_switch_exit(struct ssusb_mtk *ssusb);
 void ssusb_mode_switch(struct ssusb_mtk *ssusb, int to_host);

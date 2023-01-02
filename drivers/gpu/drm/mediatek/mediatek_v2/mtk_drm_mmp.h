@@ -156,7 +156,7 @@ int mtk_drm_mmp_cwb_buffer(struct drm_crtc *crtc,
 	void *buffer, unsigned int buf_idx);
 
 /* print mmp log for DRM_MMP_Events */
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 #define DRM_MMP_MARK(event, v1, v2)                                            \
 	mmprofile_log_ex(get_drm_mmp_events()->event,                  \
 			 MMPROFILE_FLAG_PULSE, v1, v2)

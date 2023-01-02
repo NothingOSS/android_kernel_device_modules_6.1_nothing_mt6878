@@ -34,7 +34,7 @@
 #include <linux/arm-smccc.h>
 #include <asm/barrier.h>
 #include <soc/mediatek/smi.h>
-#if IS_ENABLED(CONFIG_MTK_SMI)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 #include <../misc/mediatek/smi/mtk-smi-dbg.h>
 #endif
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
@@ -2890,7 +2890,7 @@ skip_smi:
 			pr_info("%s notifier err, dev:%s\n", __func__, dev_name(dev));
 	}
 
-#if IS_ENABLED(CONFIG_MTK_SMI)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 	if (data->plat_data->iommu_type == MM_IOMMU) {
 		if (register_dbg_notifier != 1) {
 			mtk_smi_dbg_register_notifier(&mtk_iommu_dbg_hang_nb);

@@ -12,7 +12,7 @@ config MEDIATEK_MT6338_AUXADC
 
 config MEDIATEK_MT635X_AUXADC
 	tristate "MediaTek MT635X PMIC AUXADC Support"
-	depends on MFD_MT6397
+	depends on DEVICE_MODULES_MFD_MT6397
 	help
 	  Say yes here to enable support for MediaTek MT635X PMIC AUXADC.
 	  The driver supports multiple channels read.
@@ -54,7 +54,7 @@ config MEDIATEK_MT6375_AUXADC
 	  The driver can also be build as a module.
 	  If so, the module will be called mt6375-auxadc.
 
-config MEDIATEK_MT6577_AUXADC
+config DEVICE_MODULES_MEDIATEK_MT6577_AUXADC
 	tristate "MediaTek AUXADC driver"
 	depends on ARCH_MEDIATEK || COMPILE_TEST
 	depends on HAS_IOMEM

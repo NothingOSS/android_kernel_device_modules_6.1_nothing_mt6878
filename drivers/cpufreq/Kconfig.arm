@@ -3,7 +3,7 @@
 # ARM CPU Frequency scaling drivers
 #
 
-config ARM_MEDIATEK_CPUFREQ_HW
+config DEVICE_MODULES_ARM_MEDIATEK_CPUFREQ_HW
 	tristate "MediaTek CPUFreq HW driver"
 	depends on ARCH_MEDIATEK || COMPILE_TEST
 	default m

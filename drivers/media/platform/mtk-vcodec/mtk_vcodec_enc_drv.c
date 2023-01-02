@@ -510,7 +510,7 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 		goto err_enc_reg;
 	}
 
-#if IS_ENABLED(CONFIG_MTK_IOMMU)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_IOMMU)
 	dev->io_domain = iommu_get_domain_for_dev(&pdev->dev);
 	if (dev->io_domain == NULL) {
 		mtk_v4l2_err("Failed to get io_domain\n");
@@ -538,7 +538,7 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	mtk_v4l2_debug(0, "encoder registered as /dev/video%d",
 				   vfd_enc->num);
 
-#if IS_ENABLED(CONFIG_MTK_IOMMU)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_IOMMU)
 	mtk_venc_translation_fault_callback_setting(dev);
 #endif
 

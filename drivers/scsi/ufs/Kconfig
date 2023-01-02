@@ -32,11 +32,11 @@
 # any damages of any kind arising from your use or distribution of
 # this program.
 
-config SCSI_UFS_MEDIATEK
+config DEVICE_MODULES_SCSI_UFS_MEDIATEK
 	tristate "Mediatek specific hooks to UFS controller platform driver"
 	depends on SCSI_UFSHCD_PLATFORM && ARCH_MEDIATEK
-	select PHY_MTK_UFS
-	select RESET_TI_SYSCON
+	select DEVICE_MODULES_PHY_MTK_UFS
+	select DEVICE_MODULES_RESET_TI_SYSCON
 	help
 	  This selects the Mediatek specific additions to UFSHCD platform driver.
 	  UFS host on Mediatek needs some vendor specific configuration before
@@ -49,7 +49,7 @@ config SCSI_UFS_MEDIATEK
 
 config SCSI_UFS_MEDIATEK_DBG
 	tristate "Debugging facility for MediaTek UFS platforms"
-	depends on SCSI_UFS_MEDIATEK
+	depends on DEVICE_MODULES_SCSI_UFS_MEDIATEK
 	help
 	  This selects the debugging facility for Mediatek UFS platforms.
 	  Provide UFS command history and connection to MediaTek Block IO

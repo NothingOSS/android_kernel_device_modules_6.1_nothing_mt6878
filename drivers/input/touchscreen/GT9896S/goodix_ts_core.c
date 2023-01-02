@@ -27,7 +27,7 @@
 #include <linux/of_irq.h>
 #include <uapi/linux/sched/types.h>
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 #include "mtk_panel_ext.h"
 static struct gt9896s_ts_core *ts_core;
 #endif
@@ -1804,7 +1804,7 @@ int gt9896s_ts_esd_init(struct gt9896s_ts_core *core)
 
 	return 0;
 }
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 static int gt9896s_ts_power_on_reinit(void)
 {
 	int r;
@@ -2008,7 +2008,7 @@ out:
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 /**
  * gt9896s_ts_disp_notifier_callback - mtk display notifier callback
  * Called by kernel during framebuffer blanck/unblank phrase
@@ -2050,7 +2050,7 @@ static int gt9896s_ts_disp_notifier_callback(struct notifier_block *nb,
 }
 #endif
 #ifdef CONFIG_PM
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if !IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 /**
  * gt9896s_ts_pm_suspend - PM suspend function
  * Called by kernel during system suspend phrase
@@ -2159,7 +2159,7 @@ int gt9896s_ts_stage2_init(struct gt9896s_ts_core *core_data)
 	}
 	ts_info("success register irq");
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	core_data->disp_notifier.notifier_call = gt9896s_ts_disp_notifier_callback;
 	if (mtk_disp_notifier_register("Touch", &core_data->disp_notifier))
 		ts_err("Failed to register disp notifier client:%d", r);
@@ -2197,7 +2197,7 @@ static int gt9896s_ts_probe(struct platform_device *pdev)
 	struct gt9896s_ts_device *ts_device;
 
 	int r;
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	void **ret = NULL;
 #endif
 	ts_info("%s IN", __func__);
@@ -2261,7 +2261,7 @@ static int gt9896s_ts_probe(struct platform_device *pdev)
 		goto err;
 	}
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	ts_info("TP power_on reset!\n");
 	ts_core = core_data;
 	if (mtk_panel_tch_handle_init()) {
@@ -2334,7 +2334,7 @@ static int gt9896s_ts_remove(struct platform_device *pdev)
 
 #ifdef CONFIG_PM
 static const struct dev_pm_ops dev_pm_ops = {
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if !IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	.suspend = gt9896s_ts_pm_suspend,
 	.resume = gt9896s_ts_pm_resume,
 #endif

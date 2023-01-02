@@ -9,7 +9,7 @@
  * para. 1: function name;
  * para. 2: module name;
  */
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 MD_RF_NOTIFY(0, mtk_disp_mipi_ccci_callback, "MIPI_CLK")
 MD_RF_NOTIFY(1, mtk_disp_osc_ccci_callback, "LCM_OSC")
 #endif

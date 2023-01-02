@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0
 
-config PCIE_MEDIATEK_GEN3
+config DEVICE_MODULES_PCIE_MEDIATEK_GEN3
 	tristate "MediaTek Gen3 PCIe controller"
 	depends on ARCH_MEDIATEK || COMPILE_TEST
 	depends on PCI_MSI_IRQ_DOMAIN

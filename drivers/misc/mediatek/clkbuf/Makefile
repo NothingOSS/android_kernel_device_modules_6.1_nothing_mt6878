@@ -1,7 +1,7 @@
 MFD_TOP = $(DEVICE_MODULES_PATH)/drivers/mfd
 
 #Old GKI
-ifneq (,$(filter y m, $(CONFIG_SCSI_UFS_MEDIATEK)))
+ifneq (,$(filter y m, $(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)))
     ccflags-y += -D UFS_CLKBUF_SUPPORT=1
 else
     ccflags-y += -D UFS_CLKBUF_SUPPORT=0

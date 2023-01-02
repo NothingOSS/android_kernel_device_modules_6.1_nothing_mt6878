@@ -4,4 +4,4 @@
 #
 
 obj-$(CONFIG_KEYBOARD_MTK_KPD)		+= mtk-kpd.o
-obj-$(CONFIG_KEYBOARD_MTK_PMIC)		+= mtk-pmic-keys.o
+obj-$(CONFIG_DEVICE_MODULES_KEYBOARD_MTK_PMIC)		+= mtk-pmic-keys.o

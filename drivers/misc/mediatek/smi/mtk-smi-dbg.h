@@ -14,7 +14,7 @@ enum smi_mon_id {
 	SMI_BW_IMGSYS,
 };
 
-#if IS_ENABLED(CONFIG_MTK_SMI)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 
 int mtk_smi_dbg_register_notifier(struct notifier_block *nb);
 int mtk_smi_dbg_unregister_notifier(struct notifier_block *nb);
@@ -58,7 +58,7 @@ static inline s32 smi_monitor_stop(struct device *dev, u32 common_id,
 	return 0;
 }
 
-#endif /* CONFIG_MTK_SMI */
+#endif /* CONFIG_DEVICE_MODULES_MTK_SMI */
 
 #endif /* __MTK_SMI_DEBUG_H */
 

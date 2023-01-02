@@ -10,7 +10,7 @@ config MTK_DVFSRC
 	depends on ARCH_MEDIATEK
 	select MTK_INFRACFG
 	select PM_GENERIC_DOMAINS if PM
-	depends on MTK_SCPSYS
+	depends on DEVICE_MODULES_MTK_SCPSYS
 	help
 	  Say yes here to add support for the MediaTek DVFSRC (dynamic voltage
 	  and frequency scaling resource collector) found
@@ -19,7 +19,7 @@ config MTK_DVFSRC
 	  system and turn into the decision of minimum Vcore voltage
 	  and minimum DRAM frequency to fulfill those requests.
 
-config MTK_DEVAPC
+config DEVICE_MODULES_MTK_DEVAPC
 	tristate "Mediatek Device APC Support"
 	help
 	  Say yes here to enable support for Mediatek Device APC driver.
@@ -28,7 +28,7 @@ config MTK_DEVAPC
 	  The violation information is logged for further analysis or
 	  countermeasures.
 
-config MTK_PMIC_WRAP
+config DEVICE_MODULES_MTK_PMIC_WRAP
 	tristate "MediaTek PMIC Wrapper Support"
 	depends on RESET_CONTROLLER
 	select REGMAP
@@ -37,7 +37,7 @@ config MTK_PMIC_WRAP
 	  on different MediaTek SoCs. The PMIC wrapper is a proprietary
 	  hardware to connect the PMIC.
 
-config MTK_SCPSYS
+config DEVICE_MODULES_MTK_SCPSYS
 	tristate "MediaTek SCPSYS Support"
 	default ARCH_MEDIATEK
 	select REGMAP
@@ -46,7 +46,7 @@ config MTK_SCPSYS
 	  Say yes here to add support for the MediaTek SCPSYS power domain
 	  driver.
 
-config MTK_SCPSYS_PM_DOMAINS
+config DEVICE_MODULES_MTK_SCPSYS_PM_DOMAINS
 	tristate "MediaTek SCPSYS generic power domain"
 	default ARCH_MEDIATEK
 	depends on PM
@@ -58,7 +58,7 @@ config MTK_SCPSYS_PM_DOMAINS
 	  Control Processor System (SCPSYS) has several power management related
 	  tasks in the system.
 
-config MTK_MMSYS
+config DEVICE_MODULES_MTK_MMSYS
 	tristate "MediaTek MMSYS Support"
 	default ARCH_MEDIATEK
 	depends on HAS_IOMEM
@@ -69,7 +69,7 @@ config MTK_MMSYS
 config MTK_MMDVFS
 	tristate "MediaTek MMDVFS Support"
 	depends on ARCH_MEDIATEK || COMPILE_TEST
-	depends on REGULATOR_MTK_DVFSRC
+	depends on DEVICE_MODULES_REGULATOR_MTK_DVFSRC
 	help
 	  Say yes here to add support for the MediaTek Multimedia DVFS (MMDVFS)
 	  driver. The MMDVFS is used to set clk for Mediatek multimedia hardwares

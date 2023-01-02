@@ -29,7 +29,7 @@ menuconfig PWM
 
 if PWM
 
-config PWM_MTK_DISP
+config DEVICE_MODULES_PWM_MTK_DISP
 	tristate "MediaTek display PWM driver"
 	depends on ARCH_MEDIATEK || COMPILE_TEST
 	depends on HAS_IOMEM

@@ -40,7 +40,7 @@
 #include <net/net_namespace.h>
 #include <linux/netlink.h>
 
-#if IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
 #include <linux/platform_device.h>
 #include "ufs-mediatek.h"
 #endif
@@ -480,7 +480,7 @@ static int nl_rpmb_cmd_req(const struct rpmb_data *rpmbd)
 }
 #endif
 
-#if IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
 static int rpmb_req_get_wc_ufs(u8 *keybytes, u32 *wc, u8 *frame)
 {
 	struct rpmb_data rpmbdata;
@@ -2359,7 +2359,7 @@ static int rpmb_gp_listenDci(void *arg)
 			mc_ret = rpmb_gp_execute_emmc(cmdId);
 		else
 #endif
-#if IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
 			mc_ret = rpmb_gp_execute_ufs(cmdId);
 #endif
 		/* Notify the STH*/
@@ -2482,7 +2482,7 @@ static int rpmb_open(struct inode *pinode, struct file *pfile)
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
 static long rpmb_ioctl_ufs(struct file *pfile, unsigned int cmd, unsigned long arg)
 {
 	int err = 0;
@@ -2761,7 +2761,7 @@ static int rpmb_create_netlink(void)
 }
 #endif
 
-#if IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
 static const struct file_operations rpmb_fops_ufs = {
 	.owner = THIS_MODULE,
 	.open = rpmb_open,
@@ -2855,7 +2855,7 @@ static int __init rpmb_init(void)
 		cdev_init(&rpmb_cdev, &rpmb_fops_emmc);
 	else
 #endif
-#if IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
 		cdev_init(&rpmb_cdev, &rpmb_fops_ufs);
 #else
 		return -EFAULT;

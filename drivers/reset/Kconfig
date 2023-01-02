@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 if RESET_CONTROLLER
 
-config RESET_TI_SYSCON
+config DEVICE_MODULES_RESET_TI_SYSCON
 	tristate "TI SYSCON Reset Driver"
 	depends on HAS_IOMEM
 	select MFD_SYSCON

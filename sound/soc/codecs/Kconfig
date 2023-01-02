@@ -2,15 +2,15 @@
 
 menu "CODEC drivers"
 
-config SND_SOC_ALL_CODECS
+config DEVICE_MODULES_SND_SOC_ALL_CODECS
 	tristate "Build all ASoC CODEC drivers"
 	depends on COMPILE_TEST
-	imply SND_SOC_MT6351
-	imply SND_SOC_MT6358
-	imply SND_SOC_MT6359
+	imply DEVICE_MODULES_SND_SOC_MT6351
+	imply DEVICE_MODULES_SND_SOC_MT6358
+	imply DEVICE_MODULES_SND_SOC_MT6359
 	imply SND_SOC_MT6359P
 	imply SND_SOC_MT6368
-	imply SND_SOC_HDMI_CODEC
+	imply DEVICE_MODULES_SND_SOC_HDMI_CODEC
 	imply SND_SOC_RT5512
 	imply SND_SOC_TFA9874
 	help
@@ -24,7 +24,7 @@ config SND_SOC_ALL_CODECS
 
 	  If unsure select "N".
 
-config SND_SOC_HDMI_CODEC
+config DEVICE_MODULES_SND_SOC_HDMI_CODEC
 	tristate
 	select SND_PCM_ELD
 	select SND_PCM_IEC958
@@ -66,25 +66,25 @@ config SND_SOC_MT6338_ACCDET
 	  detection mechanism. Select N if you don't
 	  have jack on board.
 
-config SND_SOC_MT6351
+config DEVICE_MODULES_SND_SOC_MT6351
 	tristate "MediaTek MT6351 Codec"
 
-config SND_SOC_MT6358
+config DEVICE_MODULES_SND_SOC_MT6358
 	tristate "MediaTek MT6358 Codec"
 	help
 	  Enable support for the platform which uses MT6358 as
 	  external codec device.
 
-config SND_SOC_MT6359
+config DEVICE_MODULES_SND_SOC_MT6359
 	tristate "MediaTek MT6359 Codec"
-	depends on MTK_PMIC_WRAP
+	depends on DEVICE_MODULES_MTK_PMIC_WRAP
 	help
 	  Enable support for the platform which uses MT6359 as
 	  external codec device.
 
-config SND_SOC_MT6359_ACCDET
+config DEVICE_MODULES_SND_SOC_MT6359_ACCDET
 	tristate "MediaTek MT6359 ACCDET driver"
-	depends on MTK_PMIC_WRAP
+	depends on DEVICE_MODULES_MTK_PMIC_WRAP
 	help
 	  ACCDET means Accessory Detection technology, MediaTek develop it
 	  for ASoC codec soc-jack detection mechanism.

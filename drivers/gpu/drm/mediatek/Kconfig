@@ -1,18 +1,18 @@
 # SPDX-License-Identifier: GPL-2.0-only
-config DRM_MEDIATEK
+config DEVICE_MODULES_DRM_MEDIATEK
 	tristate "DRM Support for Mediatek SoCs"
 	depends on DRM
 	depends on ARCH_MEDIATEK || (ARM && COMPILE_TEST)
 	depends on COMMON_CLK
 	depends on HAVE_ARM_SMCCC
 	depends on OF
-	depends on MTK_MMSYS
+	depends on DEVICE_MODULES_MTK_MMSYS
 	select DRM_GEM_CMA_HELPER
 	select DRM_KMS_HELPER
 	select DRM_MIPI_DSI
 	select DRM_PANEL
 	select MEMORY
-	select MTK_SMI
+	select DEVICE_MODULES_MTK_SMI
 	select PHY_MTK_MIPI_DSI
 	select VIDEOMODE_HELPERS
 	help

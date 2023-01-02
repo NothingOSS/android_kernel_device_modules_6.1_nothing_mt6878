@@ -16,7 +16,7 @@ struct mtk_smi_lock {
 
 extern struct mtk_smi_lock smi_lock;
 
-#if IS_ENABLED(CONFIG_MTK_SMI)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 
 #define MTK_SMI_MMU_EN(port)	BIT(port)
 #define TRIGGER_SMI_HANG_DETECT	(0xff)

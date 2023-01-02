@@ -485,7 +485,7 @@ int mtk_build_eint(struct mtk_pinctrl *hw, struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
 
-	if (!IS_ENABLED(CONFIG_EINT_MTK))
+	if (!IS_ENABLED(CONFIG_DEVICE_MODULES_EINT_MTK))
 		return 0;
 
 	if (!of_property_read_bool(np, "interrupt-controller"))

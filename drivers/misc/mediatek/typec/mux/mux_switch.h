@@ -12,7 +12,7 @@ struct typec_mux *mtk_typec_mux_register(struct device *dev,
 			const struct typec_mux_desc *desc);
 void mtk_typec_mux_unregister(struct typec_mux *mux);
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 extern void mtk_dp_SWInterruptSet(int bstatus);
 extern void mtk_dp_aux_swap_enable(bool enable);
 extern void mtk_dp_set_pin_assign(u8 type);

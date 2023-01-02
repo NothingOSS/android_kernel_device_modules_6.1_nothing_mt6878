@@ -2,4 +2,4 @@
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu
 
-obj-$(CONFIG_MTK_IOMMU) += mtk_iommu.o
+obj-$(CONFIG_DEVICE_MODULES_MTK_IOMMU) += mtk_iommu.o

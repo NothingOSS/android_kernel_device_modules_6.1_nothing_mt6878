@@ -794,7 +794,7 @@ static void __exit fpsgo_exit(void)
 	if (kfpsgo_tsk)
 		kthread_stop(kfpsgo_tsk);
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	drm_unregister_fps_chg_callback(dfrc_fps_limit_cb);
 #endif
 	fbt_cpu_exit();
@@ -872,7 +872,7 @@ fail_reg_cpu_frequency_entry:
 	fpsgo_get_fstb_active_fp = fpsgo_get_fstb_active;
 	fpsgo_wait_fstb_active_fp = fpsgo_wait_fstb_active;
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	drm_register_fps_chg_callback(dfrc_fps_limit_cb);
 #endif
 

@@ -6,7 +6,7 @@
 menu "I2C Hardware Bus support"
 	depends on HAS_IOMEM
 
-config I2C_MT65XX
+config DEVICE_MODULES_I2C_MT65XX
 	tristate "MediaTek I2C adapter"
 	depends on ARCH_MEDIATEK || COMPILE_TEST
 	help

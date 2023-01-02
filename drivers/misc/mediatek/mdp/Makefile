@@ -34,7 +34,7 @@ ccflags-y += -DMET_USER_EVENT_SUPPORT
 ccflags-y += -DCMDQ_AEE_READY
 
 # iommu callback support
-ifeq ($(strip $(CONFIG_MTK_IOMMU)),y)
+ifeq ($(strip $(CONFIG_DEVICE_MODULES_MTK_IOMMU)),y)
 #ccflags-y += -DMDP_IOMMU_DEBUG
 endif
 

@@ -1,4 +1,4 @@
-config MTK_DEVAPC
+config DEVICE_MODULES_MTK_DEVAPC
 	tristate "Mediatek Device APC Support"
 	help
 	  Device APC is a kernel driver controlling internal device security.
@@ -24,7 +24,7 @@ config MTK_SERROR_HOOK
 
 config DEVAPC_MT6853
 	tristate "Mediatek MT6853 Device APC driver"
-	select MTK_DEVAPC
+	select DEVICE_MODULES_MTK_DEVAPC
 	select DEVAPC_ARCH_MULTI
 	help
 	  Say yes here to enable support Mediatek MT6853
@@ -34,7 +34,7 @@ config DEVAPC_MT6853
 
 config DEVAPC_MT6873
 	tristate "Mediatek MT6873 Device APC driver"
-	select MTK_DEVAPC
+	select DEVICE_MODULES_MTK_DEVAPC
 	select DEVAPC_ARCH_MULTI
 	help
 	  Say yes here to enable support Mediatek MT6873
@@ -44,7 +44,7 @@ config DEVAPC_MT6873
 
 config DEVAPC_MT6879
 	tristate "Mediatek MT6879 Device APC driver"
-	select MTK_DEVAPC
+	select DEVICE_MODULES_MTK_DEVAPC
 	select DEVAPC_ARCH_MULTI
 	help
 	  Say yes here to enable support Mediatek MT6879
@@ -54,7 +54,7 @@ config DEVAPC_MT6879
 
 config DEVAPC_MT6886
 	tristate "Mediatek MT6886 Device APC driver"
-	select MTK_DEVAPC
+	select DEVICE_MODULES_MTK_DEVAPC
 	select DEVAPC_ARCH_MULTI
 	help
 	  Say yes here to enable support Mediatek MT6886
@@ -64,7 +64,7 @@ config DEVAPC_MT6886
 
 config DEVAPC_MT6893
 	tristate "Mediatek MT6893 Device APC driver"
-	select MTK_DEVAPC
+	select DEVICE_MODULES_MTK_DEVAPC
 	select DEVAPC_ARCH_MULTI
 	help
 	  Say yes here to enable support Mediatek MT6893
@@ -74,7 +74,7 @@ config DEVAPC_MT6893
 
 config DEVAPC_MT6895
 	tristate "Mediatek MT6895 Device APC driver"
-	select MTK_DEVAPC
+	select DEVICE_MODULES_MTK_DEVAPC
 	select DEVAPC_ARCH_MULTI
 	help
 	  Say yes here to enable support Mediatek MT6895
@@ -84,7 +84,7 @@ config DEVAPC_MT6895
 
 config DEVAPC_MT6983
 	tristate "Mediatek MT6983 Device APC driver"
-	select MTK_DEVAPC
+	select DEVICE_MODULES_MTK_DEVAPC
 	select DEVAPC_ARCH_MULTI
 	help
 	  Say yes here to enable support Mediatek MT6983
@@ -94,7 +94,7 @@ config DEVAPC_MT6983
 
 config DEVAPC_MT6985
 	tristate "Mediatek MT6985 Device APC driver"
-	select MTK_DEVAPC
+	select DEVICE_MODULES_MTK_DEVAPC
 	select DEVAPC_ARCH_MULTI
 	help
 	  Say yes here to enable support Mediatek MT6985

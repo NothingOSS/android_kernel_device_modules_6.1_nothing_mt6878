@@ -40,7 +40,7 @@
 #include "cmdq-sec.h"
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_IOMMU)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_IOMMU)
 #include <linux/iommu.h>
 #endif
 #include "mtk_vcodec_mem.h"
@@ -1828,7 +1828,7 @@ static int mtk_vcu_mmap(struct file *file, struct vm_area_struct *vma)
 	unsigned long pa_start = vma->vm_pgoff << PAGE_SHIFT;
 	unsigned long pa_start_base = pa_start;
 	unsigned long pa_end = pa_start + length;
-#if IS_ENABLED(CONFIG_MTK_IOMMU)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_IOMMU)
 	unsigned long start = vma->vm_start;
 	unsigned long pos = 0;
 #endif
@@ -1921,7 +1921,7 @@ static int mtk_vcu_mmap(struct file *file, struct vm_area_struct *vma)
 			vma->vm_private_data = ret;
 			vma->vm_file = file;
 		}
-#if IS_ENABLED(CONFIG_MTK_IOMMU)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_IOMMU)
 		while (length > 0) {
 			vma->vm_pgoff = iommu_iova_to_phys(io_domain,
 				(pa_start + pos));
@@ -2541,7 +2541,7 @@ static int mtk_vcu_probe(struct platform_device *pdev)
 	}
 	vcu_mtkdev[vcuid] = vcu;
 
-#if IS_ENABLED(CONFIG_MTK_IOMMU)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_IOMMU)
 	vcu_mtkdev[vcuid]->io_domain = iommu_get_domain_for_dev(dev);
 	if (vcu_mtkdev[vcuid]->io_domain == NULL) {
 		dev_info(dev,
@@ -2877,7 +2877,7 @@ static int mtk_vcu_io_probe(struct platform_device *pdev)
 	}
 	vcu_mtkdev[vcuid] = vcu;
 
-#if IS_ENABLED(CONFIG_MTK_IOMMU)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_IOMMU)
 	vcu_mtkdev[vcuid]->io_domain_enc = iommu_get_domain_for_dev(dev);
 	if (vcu_mtkdev[vcuid]->io_domain_enc == NULL) {
 		dev_info(dev,

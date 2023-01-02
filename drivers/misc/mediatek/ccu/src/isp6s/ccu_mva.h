@@ -10,7 +10,7 @@
 #if defined(CONFIG_MTK_IOMMU_V2)
 #include "mtk_iommu.h"
 #include "mach/pseudo_m4u.h"
-#elif defined(CONFIG_MTK_IOMMU)
+#elif defined(CONFIG_DEVICE_MODULES_MTK_IOMMU)
 #include "mtk_iommu.h"
 #include <dt-bindings/memory/mt6873-larb-port.h>
 #else
