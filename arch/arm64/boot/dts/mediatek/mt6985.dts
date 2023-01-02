@@ -5203,6 +5203,18 @@
 			/* reserved for overlay by odm */
 		};
 
+		uarthub: uarthub@11005000 {
+			compatible = "mediatek,uarthub";
+			reg = <0 0x11005000 0 0x500>; /*uarthub base*/
+				/*uarthub irq*/
+			interrupts = <GIC_SPI 236 IRQ_TYPE_LEVEL_HIGH 0>;
+			max_dev = <3>;
+			gpio = <0x100054C0 0x7 0x2>, /*UARTHUB UART TX*/
+				<0x100054C0 0x70 0x20>; /*UARTHUB UART RX*/
+			clocks = <&apmixedsys_clk CLK_APMIXED_UNIVPLL>;
+			clock-names = "univpll";
+		};
+
 		ssusb: usb0@11201000 {
 			compatible = "mediatek,mtu3";
 			reg = <0 0x11201000 0 0x2e00>,
