@@ -166,7 +166,7 @@ static int mtxxxx_init(struct clkbuf_dts *array, struct match_platform *match)
 		break;
 	default:
 		CLKBUF_DBG("not handle array[%d]: hw_type %d\n",
-			   array->hw.hw_type);
+			   array, array->hw.hw_type);
 		break;
 	}
 
