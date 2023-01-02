@@ -55,8 +55,10 @@ static struct DIPDmaDebugInfo g_DMANrDbgIfo[] = {
 	{"VIPI", DIP_ULC_RDMA_DEBUG, 0},
 	{"VIPBI", DIP_ULC_RDMA_DEBUG, 1},
 	{"VIPCI", DIP_ULC_RDMA_DEBUG, 2},
+	{"SMTI_D4", DIP_ULC_RDMA_DEBUG, 3},
 	{"SMTI_D5", DIP_ULC_RDMA_DEBUG, 4},
 	{"SMTI_D6", DIP_ULC_RDMA_DEBUG, 5},
+	{"SMTCI_D4", DIP_ULC_RDMA_DEBUG, 7},
 	{"SMTCI_D5", DIP_ULC_RDMA_DEBUG, 8},
 	{"SMTCI_D6", DIP_ULC_RDMA_DEBUG, 9},
 	{"EECSI", DIP_ULC_RDMA_DEBUG, 11},
@@ -72,8 +74,10 @@ static struct DIPDmaDebugInfo g_DMANrDbgIfo[] = {
 	{"FEO", DIP_ULC_WDMA_DEBUG, 21},
 	{"IMG2O", DIP_ULC_WDMA_DEBUG, 22},
 	{"IMG2BO", DIP_ULC_WDMA_DEBUG, 23},
+	{"SMTO_D4", DIP_ULC_WDMA_DEBUG, 24},
 	{"SMTO_D5", DIP_ULC_WDMA_DEBUG, 25},
 	{"SMTO_D6", DIP_ULC_WDMA_DEBUG, 26},
+	{"SMTCO_D4", DIP_ULC_WDMA_DEBUG, 28},
 	{"SMTCO_D5", DIP_ULC_WDMA_DEBUG, 29},
 	{"SMTCO_D6", DIP_ULC_WDMA_DEBUG, 30},
 	{"CSMCSO", DIP_ULC_WDMA_DEBUG, 37},
@@ -544,6 +548,27 @@ static void imgsys_dip_dump_pcrpd16(struct mtk_imgsys_dev *a_pDev,
 
 }
 
+static void imgsys_dip_dump_smtd4(struct mtk_imgsys_dev *a_pDev,
+				void __iomem *a_pRegBA,
+				unsigned int a_DdbSel,
+				unsigned int a_DbgOut)
+{
+	unsigned int DbgCmd = 0;
+	unsigned int DbgData = 0;
+	unsigned int Idx = 0;
+	unsigned int CmdOft = 0x20000;
+
+	pr_info("dump smt_d4 debug\n");
+
+	/* smt_d4 debug */
+	DbgCmd = 0x18601;
+	for (Idx = 0; Idx < 0x3; Idx++) {
+		DbgData = ExeDbgCmd(a_pDev, a_pRegBA, a_DdbSel, a_DbgOut, DbgCmd);
+		DbgCmd += CmdOft;
+	}
+
+}
+
 void imgsys_dip_debug_dump(struct mtk_imgsys_dev *imgsys_dev,
 							unsigned int engine)
 {
@@ -746,6 +771,8 @@ void imgsys_dip_debug_dump(struct mtk_imgsys_dev *imgsys_dev,
 	imgsys_dip_dump_smtd9(imgsys_dev, dipRegBA, CtlDdbSel, CtlDbgOut);
 	/* PCRP_D16 debug data */
 	imgsys_dip_dump_pcrpd16(imgsys_dev, dipRegBA, CtlDdbSel, CtlDbgOut);
+	/* SMT_D4 debug data */
+	imgsys_dip_dump_smtd4(imgsys_dev, dipRegBA, CtlDdbSel, CtlDbgOut);
 
 	pr_info("%s: -\n", __func__);
 
