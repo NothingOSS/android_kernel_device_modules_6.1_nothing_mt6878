@@ -511,6 +511,10 @@ static int mtk_gpio_init_procfs(void)
 	gid = make_kgid(&init_user_ns, 1001);
 
 	mtk_gpio_debug_root = proc_mkdir("mtk_gpio", NULL);
+	if (!mtk_gpio_debug_root) {
+		pr_notice("[pinctrl]error create mtk_gpio\n");
+		return -1;
+	}
 
 	do {
 		gdesc = gpio_to_desc(pin);
@@ -539,13 +543,8 @@ static int mtk_gpio_init_procfs(void)
 					S_IFREG | 0444, mtk_gpio_debug_root,
 					&mtk_gpio_fops, hw);
 
-			if (proc_entry) {
+			if (proc_entry)
 				proc_set_user(proc_entry, uid, gid);
-			} else {
-				pr_notice("[pinctrl]error create mtk_gpio\n");
-				return -1;
-			}
-
 		}
 
 		pin = gdesc->gdev->chip->base - 1;
@@ -559,7 +558,15 @@ static int __init pinctrl_mtk_debug_v2_init(void)
 	return mtk_gpio_init_procfs();
 }
 
+
+static void __exit pinctrl_mtk_debug_v2_exit(void)
+{
+	if (mtk_gpio_debug_root)
+		remove_proc_subtree("mtk_gpio", NULL);
+}
+
 late_initcall(pinctrl_mtk_debug_v2_init);
+module_exit(pinctrl_mtk_debug_v2_exit);
 
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("MediaTek Pinctrl DEBUG Driver");
