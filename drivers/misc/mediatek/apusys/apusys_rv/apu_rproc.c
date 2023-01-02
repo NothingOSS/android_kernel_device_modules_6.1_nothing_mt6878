@@ -30,6 +30,7 @@
 #include "apu_ce_excep.h"
 #include "apusys_core.h"
 #include "apu_regdump.h"
+#include "apusys_rv_tag.h"
 
 
 struct mtk_apu *g_apu_struct;
@@ -389,29 +390,34 @@ static int apu_probe(struct platform_device *pdev)
 			apu->apu_aee_coredump_mem_base;
 	}
 
-	apu_drv_debug("before pm_runtime_enable\n");
-	pm_runtime_enable(&pdev->dev);
+	if ((data->flags & F_BYPASS_PM_RUNTIME) == 0) {
+		apu_drv_debug("before pm_runtime_enable\n");
+		pm_runtime_enable(&pdev->dev);
 
-	/*
-	 * CAUTION !
-	 * this line will cause rpm refcnt of apu_top +2
-	 * apusys_rv -> iommu0 -> apu_top
-	 * apusys_rv -> iommu1 -> apu_top
-	 */
-	pm_runtime_get_sync(&pdev->dev);
+		/*
+		 * CAUTION !
+		 * this line will cause rpm refcnt of apu_top +2
+		 * apusys_rv -> iommu0 -> apu_top
+		 * apusys_rv -> iommu1 -> apu_top
+		 */
+		pm_runtime_get_sync(&pdev->dev);
+	}
 
 	if (data->flags & F_AUTO_BOOT) {
 		ret = hw_ops->power_init(apu);
 		if (ret) {
-			pm_runtime_put_sync(&pdev->dev);
+			if ((data->flags & F_BYPASS_PM_RUNTIME) == 0)
+				pm_runtime_put_sync(&pdev->dev);
 			goto out_free_rproc;
 		}
 	}
 
 	if (!hw_ops->apu_memmap_init) {
-		pm_runtime_put_sync(&pdev->dev);
-		if (data->flags & F_AUTO_BOOT)
-			pm_runtime_put_sync(apu->power_dev);
+		if ((data->flags & F_BYPASS_PM_RUNTIME) == 0) {
+			pm_runtime_put_sync(&pdev->dev);
+			if (data->flags & F_AUTO_BOOT)
+				pm_runtime_put_sync(apu->power_dev);
+		}
 		WARN_ON(1);
 		goto out_free_rproc;
 	}
@@ -419,6 +425,12 @@ static int apu_probe(struct platform_device *pdev)
 	ret = hw_ops->apu_memmap_init(apu);
 	if (ret)
 		goto remove_apu_memmap;
+
+	if (data->flags & F_APUSYS_RV_TAG_SUPPORT) {
+		ret = apusys_rv_init_drv_tags(apu);
+		if (ret)
+			goto remove_apu_memmap;
+	}
 
 	ret = apu_mem_init(apu);
 	if (ret)
@@ -471,6 +483,12 @@ static int apu_probe(struct platform_device *pdev)
 	if (data->flags & F_PRELOAD_FIRMWARE)
 		rproc->state = RPROC_DETACHED;
 
+	if (hw_ops->init) {
+		ret = hw_ops->init(apu);
+		if (ret)
+			goto remove_apu_excep;
+	}
+
 	ret = rproc_add(rproc);
 	if (ret < 0) {
 		dev_info(dev, "boot fail ret:%d\n", ret);
@@ -481,21 +499,13 @@ static int apu_probe(struct platform_device *pdev)
 	if ((data->flags & F_PRELOAD_FIRMWARE) && (data->flags & F_AUTO_BOOT))
 		rproc->state = RPROC_DETACHED;
 
-	if (hw_ops->init) {
-		ret = hw_ops->init(apu);
-		if (ret)
-			goto del_rproc;
+	if ((data->flags & F_BYPASS_PM_RUNTIME) == 0) {
+		pm_runtime_put_sync(&pdev->dev);
+		if (data->flags & F_AUTO_BOOT)
+			pm_runtime_put_sync(apu->power_dev);
 	}
 
-	pm_runtime_put_sync(&pdev->dev);
-	if (data->flags & F_AUTO_BOOT)
-		pm_runtime_put_sync(apu->power_dev);
-
 	return 0;
-
-del_rproc:
-	rproc_del(rproc);
-
 
 remove_apu_excep:
 	apu_excep_remove(pdev, apu);
@@ -531,9 +541,11 @@ remove_apu_mem:
 	apu_mem_remove(apu);
 
 remove_apu_memmap:
-	pm_runtime_put_sync(&pdev->dev);
-	if (data->flags & F_AUTO_BOOT)
-		pm_runtime_put_sync(apu->power_dev);
+	if ((data->flags & F_BYPASS_PM_RUNTIME) == 0) {
+		pm_runtime_put_sync(&pdev->dev);
+		if (data->flags & F_AUTO_BOOT)
+			pm_runtime_put_sync(apu->power_dev);
+	}
 	if (!hw_ops->apu_memmap_remove) {
 		WARN_ON(1);
 		return -EINVAL;
@@ -567,6 +579,8 @@ static int apu_remove(struct platform_device *pdev)
 	apu_coredump_remove(apu);
 	apu_config_remove(apu);
 	apu_mem_remove(apu);
+	if (apu->platdata->flags & F_APUSYS_RV_TAG_SUPPORT)
+		apusys_rv_exit_drv_tags(apu);
 	if (!hw_ops->apu_memmap_remove) {
 		WARN_ON(1);
 		return -EINVAL;
@@ -599,6 +613,9 @@ const struct mtk_apu_platdata mt6983_platdata;
 #ifndef MT6985_APUSYS_RV_PLAT_DATA
 const struct mtk_apu_platdata mt6985_platdata;
 #endif
+#ifndef MT6989_APUSYS_RV_PLAT_DATA
+const struct mtk_apu_platdata mt6989_platdata;
+#endif
 #ifndef MT8188_APUSYS_RV_PLAT_DATA
 const struct mtk_apu_platdata mt8188_platdata;
 #endif
@@ -611,6 +628,7 @@ static const struct of_device_id mtk_apu_of_match[] = {
 	{ .compatible = "mediatek,mt6897-apusys_rv", .data = &mt6897_platdata},
 	{ .compatible = "mediatek,mt6983-apusys_rv", .data = &mt6983_platdata},
 	{ .compatible = "mediatek,mt6985-apusys_rv", .data = &mt6985_platdata},
+	{ .compatible = "mediatek,mt6989-apusys_rv", .data = &mt6989_platdata},
 	{ .compatible = "mediatek,mt8188-apusys_rv", .data = &mt8188_platdata},
 	{},
 };

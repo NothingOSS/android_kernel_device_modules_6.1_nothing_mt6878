@@ -163,10 +163,19 @@ static int mtk_apu_rpmsg_trysend(struct rpmsg_endpoint *ept,
 					  len, 0);
 }
 
+static int mtk_apu_rpmsg_set_signals(struct rpmsg_endpoint *ept, void *data, int on, u32 off)
+{
+	struct mtk_apu_rpmsg_rproc_subdev *mtk_subdev =
+		to_mtk_apu_rpmsg_endpoint(ept)->mtk_subdev;
+
+	return mtk_subdev->info->power_on_off(mtk_subdev->pdev, ept->addr, on, off);
+}
+
 static const struct rpmsg_endpoint_ops mtk_apu_rpmsg_endpoint_ops = {
 	.destroy_ept = mtk_apu_rpmsg_destroy_ept,
 	.send = mtk_apu_rpmsg_send,
 	.trysend = mtk_apu_rpmsg_trysend,
+	.sendto = mtk_apu_rpmsg_set_signals,
 };
 
 static void mtk_apu_rpmsg_release_device(struct device *dev)

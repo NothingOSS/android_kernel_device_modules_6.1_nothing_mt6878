@@ -114,6 +114,29 @@ static int ce_fw_sram_sqopen(struct inode *inode, struct file *file)
 	return single_open(file, ce_fw_sram_show, NULL);
 }
 
+static int debug_info_dump_seq_show(struct seq_file *s, void *v)
+{
+	struct mtk_apu *apu = NULL;
+	struct mtk_apu_hw_ops *hw_ops;
+
+	apu = (struct mtk_apu *) platform_get_drvdata(g_apu_pdev);
+	if (!apu)
+		return -EINVAL;
+	hw_ops = &apu->platdata->ops;
+
+	if (hw_ops->debug_info_dump)
+		hw_ops->debug_info_dump(apu, s);
+	else
+		seq_puts(s, "debug_info_dump not support\n");
+
+	return 0;
+}
+
+static int debug_info_dump_sqopen(struct inode *inode, struct file *file)
+{
+	return single_open(file, debug_info_dump_seq_show, NULL);
+}
+
 static const struct proc_ops coredump_file_ops = {
 	.proc_open		= coredump_sqopen,
 	.proc_read		= seq_read,
@@ -137,6 +160,13 @@ static const struct proc_ops regdump_file_ops = {
 
 static const struct proc_ops ce_fw_sram_file_ops = {
 	.proc_open		= ce_fw_sram_sqopen,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release	= single_release
+};
+
+static const struct proc_ops debug_info_dump_file_ops = {
+	.proc_open		= debug_info_dump_sqopen,
 	.proc_read		= seq_read,
 	.proc_lseek		= seq_lseek,
 	.proc_release	= single_release
@@ -229,7 +259,6 @@ static void apu_mrdump_register(struct mtk_apu *apu)
 
 	ce_fw_sram_len = (size_t) size;
 	ce_fw_sram_base = (void *) base_va;
-
 }
 #else
 static void apu_mrdump_register(struct mtk_apu *apu)
@@ -244,6 +273,7 @@ int apu_procfs_init(struct platform_device *pdev)
 	struct proc_dir_entry *xfile_seqlog;
 	struct proc_dir_entry *regdump_seqlog;
 	struct proc_dir_entry *ce_fw_sram_seqlog;
+	struct proc_dir_entry *debug_info_dump_seqlog;
 
 	struct mtk_apu *apu = (struct mtk_apu *) platform_get_drvdata(pdev);
 
@@ -294,6 +324,15 @@ int apu_procfs_init(struct platform_device *pdev)
 
 	apu_regdump_init(pdev);
 
+	debug_info_dump_seqlog = proc_create("apusys_rv_debug_info_dump", 0440,
+		procfs_root, &debug_info_dump_file_ops);
+	ret = IS_ERR_OR_NULL(debug_info_dump_seqlog);
+	if (ret) {
+		dev_info(&pdev->dev, "(%d)failed to create apusys_rv node(apusys_rv_debug_info_dump)\n",
+			ret);
+		goto out;
+	}
+
 	apu_mrdump_register(apu);
 out:
 	return ret;
@@ -302,6 +341,7 @@ out:
 void apu_procfs_remove(struct platform_device *pdev)
 {
 	remove_proc_entry("apusys_ce_fw_sram", procfs_root);
+	remove_proc_entry("apusys_rv_debug_info_dump", procfs_root);
 	remove_proc_entry("apusys_regdump", procfs_root);
 	remove_proc_entry("apusys_rv_xfile", procfs_root);
 	remove_proc_entry("apusys_rv_coredump", procfs_root);

@@ -40,10 +40,21 @@ void apu_mbox_read_outbox(struct mtk_apu *apu, struct apu_mbox_hdr *hdr)
 	}
 }
 
+static void apu_mbox_read_inbox(struct mtk_apu *apu, struct apu_mbox_hdr *hdr)
+{
+	unsigned int i, val;
+
+	for (i = 0; i < APU_MBOX_HDR_SLOTS; i++) {
+		val = ioread32(_INBOX(apu) + i * APU_MBOX_SLOT_SIZE);
+		((unsigned int *)hdr)[i] = val;
+	}
+}
+
 int apu_mbox_wait_inbox(struct mtk_apu *apu)
 {
 	unsigned long timeout;
 	unsigned char irq, mask;
+	struct apu_mbox_hdr hdr;
 
 	timeout = jiffies + msecs_to_jiffies(WAIT_INBOX_TMO_MS);
 	do {
@@ -62,8 +73,11 @@ int apu_mbox_wait_inbox(struct mtk_apu *apu)
 	if (!(irq & ~mask))
 		return 0;
 
-	dev_info(apu->dev, "timeout. irq = 0x%x, mask = 0x%x\n",
-		irq, mask);
+	apu_mbox_read_inbox(apu, &hdr);
+
+	dev_info(apu->dev,
+		"%s: timeout. irq = 0x%x, mask = 0x%x, id = %u, len = %u, serial_no = %u, csum = 0x%x\n",
+		__func__, irq, mask, hdr.id, hdr.len, hdr.serial_no, hdr.csum);
 	return -EBUSY;
 }
 

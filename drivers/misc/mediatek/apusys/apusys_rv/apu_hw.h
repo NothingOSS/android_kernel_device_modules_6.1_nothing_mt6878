@@ -31,5 +31,12 @@
 
 /* apu_mbox register definition */
 #define MBOX_HOST_CONFIG_ADDR (0x48)
+#define MBOX_WKUP_CFG (0x80)
+#define APU_SEMA_CTRL0 (0x800)
+#define APU_SEMA_DATA0 (0x840)
+#define APU_SEMA_MPU_CTRL00 (0x880)
+#define APU_SEMA_CTRL1 (0x900)
+#define APU_SEMA_DATA1 (0x940)
+#define APU_SEMA_MPU_CTRL1 (0x980)
 
 #endif /* APU_HW_H_ */

@@ -127,6 +127,11 @@ static const struct {
 		.direction = IPI_HOST_INITIATE,
 		.ack = IPI_WITH_ACK,
 	},
+	[APU_IPI_UT] = { // 21
+		.name = "apu-ipi-ut-rpmsg",
+		.direction = IPI_HOST_INITIATE,
+		.ack = IPI_WITH_ACK,
+	},
 };
 
 

@@ -23,10 +23,6 @@
 #include "hw_logger.h"
 #include "apu_regdump.h"
 
-#if IS_ENABLED(CONFIG_DEBUG_FS)
-int apu_keep_awake;
-#endif
-
 /* cmd */
 enum {
 	DPIDLE_CMD_LOCK_IPI = 0x5a00,
@@ -288,6 +284,11 @@ static void apu_deepidle_work_func(struct work_struct *work)
 static void apu_deepidle_ipi_handler(void *data, unsigned int len, void *priv)
 {
 	struct mtk_apu *apu = (struct mtk_apu *)priv;
+
+	if (len > sizeof(recv_msg)) {
+		dev_info(apu->dev, "%s: len(%u) > %lu\n", __func__, len, sizeof(recv_msg));
+		return;
+	}
 
 	memcpy(&recv_msg, data, len);
 

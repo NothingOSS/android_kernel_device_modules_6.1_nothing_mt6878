@@ -29,14 +29,21 @@ struct mtk_apu_hw_ops {
 	int (*power_init)(struct mtk_apu *apu);
 	int (*power_on)(struct mtk_apu *apu);
 	int (*power_off)(struct mtk_apu *apu);
+	/* for fast on/off, only exist if F_BYPASS_PM_RUNTIME set */
+	int (*power_on_off)(struct mtk_apu *apu, u32 id, u32 on, u32 off);
+	void (*wake_lock)(struct mtk_apu *apu, uint32_t id);
+	void (*wake_unlock)(struct mtk_apu *apu, uint32_t id);
+	void (*debug_info_dump)(struct mtk_apu *apu, struct seq_file *s);
 
 	/* ipi related ops */
+	int (*ipi_send_pre)(struct mtk_apu *apu, uint32_t id, bool is_host_initiated);
 	int (*ipi_send_post)(struct mtk_apu *apu);
 
 	/* irq affinity tuning */
 	int (*irq_affin_init)(struct mtk_apu *apu);
 	int (*irq_affin_set)(struct mtk_apu *apu);
 	int (*irq_affin_unset)(struct mtk_apu *apu);
+	int (*irq_affin_clear)(struct mtk_apu *apu);
 };
 
 #define F_PRELOAD_FIRMWARE	BIT(0)
@@ -46,6 +53,9 @@ struct mtk_apu_hw_ops {
 #define F_SECURE_COREDUMP	BIT(4)
 #define F_DEBUG_LOG_ON		BIT(5)
 #define F_CE_EXCEPTION_ON	BIT(6)
+#define F_BYPASS_PM_RUNTIME		BIT(7)
+#define F_APU_IPI_UT_SUPPORT	BIT(8)
+#define F_APUSYS_RV_TAG_SUPPORT	BIT(9)
 
 struct mtk_apu_platdata {
 	uint32_t flags;
@@ -148,6 +158,7 @@ struct mtk_apu {
 	int ce_exp_irq_number;
 	int mbox0_irq_number;
 	spinlock_t reg_lock;
+	spinlock_t wakelock_spinlock;
 
 	struct apusys_secure_info_t *apusys_sec_info;
 	struct apusys_aee_coredump_info_t *apusys_aee_coredump_info;
@@ -169,6 +180,7 @@ struct mtk_apu {
 
 	/* to prevent multiple ipi_send run concurrently */
 	struct mutex send_lock;
+	struct mutex power_lock;
 	spinlock_t usage_cnt_lock;
 	struct apu_ipi_desc ipi_desc[APU_IPI_MAX];
 	u32 ipi_id;
@@ -176,7 +188,8 @@ struct mtk_apu {
 	bool ipi_inbound_locked;
 	bool bypass_pwr_off_chk;
 	wait_queue_head_t ack_wq; /* for waiting for ipi ack */
-	struct timespec64 intr_ts;
+	struct timespec64 intr_ts_begin;
+	struct timespec64 intr_ts_end;
 	struct apu_mbox_hdr hdr;
 
 	/* ipi share buffer */
@@ -197,8 +210,12 @@ struct mtk_apu {
 
 	uint32_t md32_tcm_sz;
 	uint32_t up_code_buf_sz;
-	/* APUMMU HW logger buf address */
 	dma_addr_t apummu_hwlog_buf_da;
+
+	uint32_t local_pwr_ref_cnt;
+	uint32_t wake_lock_ref_cnt;
+	uint32_t ipi_pwr_ref_cnt[APU_IPI_MAX];
+	uint32_t ipi_wake_lock_ref_cnt[APU_IPI_MAX];
 };
 
 #define CONFIG_SIZE (round_up(sizeof(struct config_v1), PAGE_SIZE))
@@ -241,6 +258,7 @@ extern const struct mtk_apu_platdata mt6895_platdata;
 extern const struct mtk_apu_platdata mt6897_platdata;
 extern const struct mtk_apu_platdata mt6983_platdata;
 extern const struct mtk_apu_platdata mt6985_platdata;
+extern const struct mtk_apu_platdata mt6989_platdata;
 extern const struct mtk_apu_platdata mt8188_platdata;
 
 extern int reviser_set_init_info(struct mtk_apu *apu);

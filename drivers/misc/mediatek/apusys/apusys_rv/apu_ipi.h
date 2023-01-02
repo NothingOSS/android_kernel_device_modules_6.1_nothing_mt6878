@@ -36,6 +36,7 @@ enum {
 	APU_IPI_SAPU_LOCK,
 	APU_IPI_SCP_MIDDLEWARE,
 	APU_IPI_SCP_NP_RECOVER,
+	APU_IPI_UT,
 	APU_IPI_MAX,
 };
 
@@ -71,6 +72,7 @@ int apu_ipi_register(struct mtk_apu *apu, u32 id,
 void apu_ipi_unregister(struct mtk_apu *apu, u32 id);
 int apu_ipi_send(struct mtk_apu *apu, u32 id, void *data, u32 len,
 		 u32 wait_ms);
+int apu_power_on_off(struct platform_device *pdev, u32 id, u32 on, u32 off);
 int apu_ipi_lock(struct mtk_apu *apu);
 void apu_ipi_unlock(struct mtk_apu *apu);
 int apu_ipi_affin_enable(void);

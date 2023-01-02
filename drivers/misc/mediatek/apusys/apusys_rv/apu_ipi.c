@@ -12,6 +12,7 @@
 #include <linux/kernel.h>
 #include <linux/ratelimit.h>
 #include <linux/pm_runtime.h>
+#include <linux/rpmsg.h>
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 #include <linux/debugfs.h>
@@ -24,6 +25,8 @@
 #include "apu_mbox.h"
 #include "apu_ipi_config.h"
 #include "apu_excep.h"
+#define CREATE_TRACE_POINTS
+#include "apusys_rv_events.h"
 
 static struct lock_class_key ipi_lock_key[APU_IPI_MAX];
 
@@ -35,6 +38,8 @@ unsigned int temp_buf[APU_SHARE_BUFFER_SIZE / 4];
 static struct mutex affin_lock;
 static unsigned int affin_depth;
 static struct mtk_apu *g_apu;
+
+static int current_ipi_handler_id;
 
 static inline void dump_msg_buf(struct mtk_apu *apu, void *data, uint32_t len)
 {
@@ -132,9 +137,18 @@ int apu_ipi_send(struct mtk_apu *apu, u32 id, void *data, u32 len,
 	ipi = &apu->ipi_desc[id];
 	hw_ops = &apu->platdata->ops;
 
-	if (!pm_runtime_enabled(dev)) {
-		dev_info(dev, "%s: rpm disabled, ipi=%d\n", __func__, id);
-		return -EBUSY;
+	if ((apu->platdata->flags & F_BYPASS_PM_RUNTIME) == 0)
+		if (!pm_runtime_enabled(dev)) {
+			dev_info(dev, "%s: rpm disabled, ipi=%d\n", __func__, id);
+			return -EBUSY;
+		}
+
+	if ((apu->platdata->flags & F_BYPASS_PM_RUNTIME) &&
+		ipi_attrs[id].direction == IPI_HOST_INITIATE &&
+		apu->ipi_pwr_ref_cnt[id] == 0) {
+		dev_info(dev, "%s: host initiated ipi(%d) not power on\n",
+			__func__, id);
+		return -EINVAL;
 	}
 
 	mutex_lock(&apu->send_lock);
@@ -153,11 +167,13 @@ int apu_ipi_send(struct mtk_apu *apu, u32 id, void *data, u32 len,
 	/* re-init inbox mask everytime for aoc */
 	apu_mbox_inbox_init(apu);
 
-	ret = apu_deepidle_power_on_aputop(apu);
-	if (ret) {
-		dev_info(dev, "apu_deepidle_power_on_aputop failed\n");
-		mutex_unlock(&apu->send_lock);
-		return -ESHUTDOWN;
+	if ((apu->platdata->flags & F_BYPASS_PM_RUNTIME) == 0) {
+		ret = apu_deepidle_power_on_aputop(apu);
+		if (ret) {
+			dev_info(dev, "apu_deepidle_power_on_aputop failed\n");
+			mutex_unlock(&apu->send_lock);
+			return -ESHUTDOWN;
+		}
 	}
 
 	ret = apu_mbox_wait_inbox(apu);
@@ -175,6 +191,10 @@ int apu_ipi_send(struct mtk_apu *apu, u32 id, void *data, u32 len,
 	hdr.len = len;
 	hdr.csum = calculate_csum(data, len);
 	hdr.serial_no = tx_serial_no++;
+
+	if (hw_ops->ipi_send_pre)
+		hw_ops->ipi_send_pre(apu, id,
+			ipi_attrs[id].direction == IPI_HOST_INITIATE);
 
 	apu_mbox_write_inbox(apu, &hdr);
 
@@ -213,6 +233,9 @@ unlock_mutex:
 		 "%s: ipi_id=%d, len=%d, csum=%x, serial_no=%d, elapse=%lld\n",
 		 __func__, id, len, hdr.csum, hdr.serial_no,
 		 timespec64_to_ns(&ts));
+
+	if (apu->platdata->flags & F_APUSYS_RV_TAG_SUPPORT)
+		trace_apusys_rv_ipi_send(id, len, hdr.serial_no, hdr.csum, timespec64_to_ns(&ts));
 
 	return ret;
 }
@@ -327,20 +350,37 @@ static int apu_init_ipi_top_handler(void *data, unsigned int len, void *priv)
 	return IRQ_HANDLED;
 }
 
+static void apu_init_ipi_bottom_handler(void *data, unsigned int len, void *priv)
+{
+	struct mtk_apu *apu = priv;
+	int ret;
+
+	strscpy(apu->run.fw_ver, data, APU_FW_VER_LEN);
+
+	/* remain for driver to know whether cold boot success or not */
+	apu->run.signaled = 1;
+	wake_up_interruptible(&apu->run.wq);
+
+	ret = apu_power_on_off(apu->pdev, APU_IPI_INIT, 0, 1);
+	if (ret)
+		dev_info(apu->dev, "%s: call apu_power_on_off fail(%d)\n", __func__, ret);
+}
+
 static irqreturn_t apu_ipi_handler(int irq, void *priv)
 {
-	struct timespec64 ts, te, tl;
+	struct timespec64 ts, te, t_elapse, tl;
 	struct mtk_apu *apu = priv;
 	struct device *dev = apu->dev;
 	ipi_handler_t handler;
 	u32 id, len;
+	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
 
 	id = apu->hdr.id;
 	len = apu->hdr.len;
 
 	/* get the latency of threaded irq */
 	ktime_get_ts64(&ts);
-	tl = timespec64_sub(ts, apu->intr_ts);
+	tl = timespec64_sub(ts, apu->intr_ts_end);
 
 	mutex_lock(&apu->ipi_desc[id].lock);
 
@@ -351,7 +391,9 @@ static irqreturn_t apu_ipi_handler(int irq, void *priv)
 		goto out;
 	}
 
+	current_ipi_handler_id = id;
 	handler(temp_buf, len, apu->ipi_desc[id].priv);
+	current_ipi_handler_id = -1;
 
 	ipi_usage_cnt_update(apu, id, -1);
 
@@ -362,13 +404,22 @@ static irqreturn_t apu_ipi_handler(int irq, void *priv)
 
 out:
 	ktime_get_ts64(&te);
-	ts = timespec64_sub(te, ts);
+	t_elapse = timespec64_sub(te, ts);
 
 	apu_info_ratelimited(dev,
 		 "%s: ipi_id=%d, len=%d, csum=%x, serial_no=%d, latency=%lld, elapse=%lld\n",
 		 __func__, id, len, apu->hdr.csum, apu->hdr.serial_no,
 		 timespec64_to_ns(&tl),
-		 timespec64_to_ns(&ts));
+		 timespec64_to_ns(&t_elapse));
+
+	if (apu->platdata->flags & F_APUSYS_RV_TAG_SUPPORT)
+		trace_apusys_rv_ipi_handle(id, len, apu->hdr.serial_no, apu->hdr.csum,
+			timespec64_to_ns(&apu->intr_ts_begin), timespec64_to_ns(&ts),
+			timespec64_to_ns(&tl), timespec64_to_ns(&t_elapse));
+
+	if (hw_ops->wake_unlock && ipi_attrs[id].direction == IPI_APU_INITIATE
+		&& ipi_attrs[id].ack == IPI_WITH_ACK)
+		hw_ops->wake_unlock(apu, id);
 
 	return IRQ_HANDLED;
 }
@@ -383,6 +434,7 @@ irqreturn_t apu_ipi_int_handler(int irq, void *priv)
 	uint32_t status;
 	ipi_top_handler_t top_handler;
 	int ret;
+	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
 
 	status = ioread32(apu->apu_mbox + 0xc4);
 	if (status != ((1 << APU_MBOX_HDR_SLOTS) - 1)) {
@@ -390,17 +442,19 @@ irqreturn_t apu_ipi_int_handler(int irq, void *priv)
 		return IRQ_HANDLED;
 	}
 
+	ktime_get_ts64(&apu->intr_ts_begin);
+
 	apu_mbox_read_outbox(apu, &apu->hdr);
 	id = apu->hdr.id;
 	len = apu->hdr.len;
 
 	if (id >= APU_IPI_MAX) {
-		dev_info(dev, "no such IPI id = %d", id);
+		dev_info(dev, "no such IPI id = %d\n", id);
 		finish = true;
 	}
 
 	if (len > APU_SHARE_BUFFER_SIZE) {
-		dev_info(dev, "IPI message too long(len %d, max %d)",
+		dev_info(dev, "IPI message too long(len %d, max %d)\n",
 			len, APU_SHARE_BUFFER_SIZE);
 		finish = true;
 	}
@@ -417,6 +471,10 @@ irqreturn_t apu_ipi_int_handler(int irq, void *priv)
 	if (finish)
 		goto done;
 
+	if (hw_ops->wake_lock && ipi_attrs[id].direction == IPI_APU_INITIATE
+		&& ipi_attrs[id].ack == IPI_WITH_ACK)
+		hw_ops->wake_lock(apu, id);
+
 	memcpy_fromio(temp_buf, &recv_obj->share_buf, len);
 
 	/* ack after data copied */
@@ -428,6 +486,8 @@ irqreturn_t apu_ipi_int_handler(int irq, void *priv)
 			apu->hdr.csum, calc_csum);
 		dump_msg_buf(apu, temp_buf, apu->hdr.len);
 		apusys_rv_aee_warn("APUSYS_RV", "IPI rx csum error");
+		/* todo: confirm if csum error need to bypass IPI handling */
+		goto done;
 	}
 
 	/* excute top handler if exist */
@@ -438,7 +498,7 @@ irqreturn_t apu_ipi_int_handler(int irq, void *priv)
 			return IRQ_HANDLED;
 	}
 
-	ktime_get_ts64(&apu->intr_ts);
+	ktime_get_ts64(&apu->intr_ts_end);
 
 	return IRQ_WAKE_THREAD;
 
@@ -471,11 +531,66 @@ static void apu_unregister_ipi(struct platform_device *pdev, u32 id)
 	apu_ipi_unregister(apu, id);
 }
 
+int apu_power_on_off(struct platform_device *pdev, u32 id, u32 on, u32 off)
+{
+	int ret;
+	struct mtk_apu *apu = platform_get_drvdata(pdev);
+	struct device *dev;
+	struct mtk_apu_hw_ops *hw_ops;
+	struct apu_ipi_desc *ipi;
+	struct timespec64 ts, te;
+
+	if (!apu)
+		return -EINVAL;
+
+	if (id >= APU_IPI_MAX) {
+		dev_info(dev, "%s: invalid ipi id = %d", __func__, id);
+		return -EINVAL;
+	}
+
+	dev = apu->dev;
+	hw_ops = &apu->platdata->ops;
+
+	dev_info(dev, "%s: enter, id(%u), on(%u), off(%u)\n", __func__, id, on, off);
+	ktime_get_ts64(&ts);
+
+	if ((apu->platdata->flags & F_BYPASS_PM_RUNTIME) == 0 ||
+		!hw_ops->power_on_off) {
+		dev_info(dev, "%s: not support\n", __func__);
+		return -EOPNOTSUPP;
+	}
+
+	ipi = &apu->ipi_desc[id];
+	spin_lock(&apu->usage_cnt_lock);
+	if (off == 1 && ipi_attrs[id].direction == IPI_HOST_INITIATE &&
+		(ipi->usage_cnt != 0 && apu->ipi_pwr_ref_cnt[id] <= 1) &&
+		!(ipi->usage_cnt == 1 && current_ipi_handler_id == id &&
+			apu->ipi_pwr_ref_cnt[id] == 1)) {
+		dev_info(dev, "%s: power off fail, ipi(%d) usage cnt(%d) not zero!\n",
+			__func__, id, ipi->usage_cnt);
+		spin_unlock(&apu->usage_cnt_lock);
+		apusys_rv_aee_warn("APUSYS_RV", "apu_power_on_off fail");
+		return -EINVAL;
+	}
+	spin_unlock(&apu->usage_cnt_lock);
+
+	ret = hw_ops->power_on_off(apu, id, on, off);
+
+	ktime_get_ts64(&te);
+	ts = timespec64_sub(te, ts);
+
+	if (apu->platdata->flags & F_APUSYS_RV_TAG_SUPPORT)
+		trace_apusys_rv_pwr_ctrl(id, on, off, timespec64_to_ns(&ts));
+
+	return ret;
+}
+
 static struct mtk_apu_rpmsg_info mtk_apu_rpmsg_info = {
 	.send_ipi = apu_send_ipi,
 	.register_ipi = apu_register_ipi,
 	.unregister_ipi = apu_unregister_ipi,
 	.ns_ipi_id = APU_IPI_NS_SERVICE,
+	.power_on_off = apu_power_on_off,
 };
 
 static void apu_add_rpmsg_subdev(struct mtk_apu *apu)
@@ -537,9 +652,157 @@ int apu_ipi_config_init(struct mtk_apu *apu)
 	return 0;
 }
 
+int apu_ipi_affin_enable(void)
+{
+	struct mtk_apu *apu = g_apu;
+	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
+	int ret = 0;
+
+	mutex_lock(&affin_lock);
+
+	if (affin_depth == 0)
+		ret = hw_ops->irq_affin_set(apu);
+
+	affin_depth++;
+
+	mutex_unlock(&affin_lock);
+
+	return ret;
+}
+
+int apu_ipi_affin_disable(void)
+{
+	struct mtk_apu *apu = g_apu;
+	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
+	int ret = 0;
+
+	mutex_lock(&affin_lock);
+
+	affin_depth--;
+
+	if (affin_depth == 0)
+		ret = hw_ops->irq_affin_unset(apu);
+
+	mutex_unlock(&affin_lock);
+
+	return ret;
+}
+
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 
-extern int apu_keep_awake;
+struct apu_ipi_ut_ipi_data {
+	uint32_t val;
+};
+
+struct apu_ipi_ut_rpmsg_device {
+	struct rpmsg_endpoint *ept;
+	struct rpmsg_device *rpdev;
+	struct completion ack;
+};
+
+static struct apu_ipi_ut_rpmsg_device apu_ipi_ut_rpm_dev;
+static struct mutex apu_ipi_ut_mtx;
+
+static int apu_ipi_ut_send(uint32_t val)
+{
+	int ret = 0;
+	struct apu_ipi_ut_ipi_data data;
+
+	if (!apu_ipi_ut_rpm_dev.ept) {
+		pr_info("%s: apu_ipi_ut_rpm_dev.ept == NULL\n", __func__);
+		return -1;
+	}
+
+	mutex_lock(&apu_ipi_ut_mtx);
+
+	data.val = val;
+	pr_info("%s: data.val = %d\n", __func__, data.val);
+
+	/* power on */
+	ret = rpmsg_sendto(apu_ipi_ut_rpm_dev.ept, NULL, 1, 0);
+	if (ret && ret != -EOPNOTSUPP) {
+		pr_info("%s: rpmsg_sendto(power on) fail(%d)\n", __func__, ret);
+		goto out;
+	}
+
+	ret = rpmsg_send(apu_ipi_ut_rpm_dev.ept, &data, sizeof(data));
+	if (ret) {
+		pr_info("%s: rpmsg_send fail(%d)\n", __func__, ret);
+		/* power off to restore ref cnt */
+		ret = rpmsg_sendto(apu_ipi_ut_rpm_dev.ept, NULL, 0, 1);
+		if (ret && ret != -EOPNOTSUPP)
+			pr_info("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret);
+		goto out;
+	}
+
+	/* wait for receiving ack to ensure uP clear irq status done */
+	ret = wait_for_completion_timeout(
+			&apu_ipi_ut_rpm_dev.ack, msecs_to_jiffies(100));
+	if (ret == 0) {
+		pr_info("%s: wait for completion timeout\n", __func__);
+		ret = -1;
+	} else {
+		ret = 0;
+	}
+
+
+out:
+	mutex_unlock(&apu_ipi_ut_mtx);
+
+	return ret;
+}
+
+static int apu_ipi_ut_rpmsg_probe(struct rpmsg_device *rpdev)
+{
+	pr_info("%s: name=%s, src=%d\n",
+			__func__, rpdev->id.name, rpdev->src);
+
+	apu_ipi_ut_rpm_dev.ept = rpdev->ept;
+	apu_ipi_ut_rpm_dev.rpdev = rpdev;
+
+	pr_info("%s: rpdev->ept = %p\n", __func__, rpdev->ept);
+
+	return 0;
+}
+
+static int apu_ipi_ut_rpmsg_cb(struct rpmsg_device *rpdev, void *data,
+		int len, void *priv, u32 src)
+{
+	int ret;
+	struct apu_ipi_ut_ipi_data *d = data;
+
+	pr_info("%s: data = %d\n", __func__, d->val);
+	complete(&apu_ipi_ut_rpm_dev.ack);
+
+	/* power off */
+	ret = rpmsg_sendto(apu_ipi_ut_rpm_dev.ept, NULL, 0, 1);
+	if (ret && ret != -EOPNOTSUPP)
+		pr_info("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret);
+
+	return 0;
+}
+
+static void apu_ipi_ut_rpmsg_remove(struct rpmsg_device *rpdev)
+{
+}
+
+static const struct of_device_id apu_ipi_ut_rpmsg_of_match[] = {
+	{ .compatible = "mediatek,apu-ipi-ut-rpmsg", },
+	{ },
+};
+
+static struct rpmsg_driver apu_ipi_ut_rpmsg_driver = {
+	.drv = {
+		.name = "apu-ipi-ut-rpmsg",
+		.owner = THIS_MODULE,
+		.of_match_table = apu_ipi_ut_rpmsg_of_match,
+	},
+	.probe = apu_ipi_ut_rpmsg_probe,
+	.callback = apu_ipi_ut_rpmsg_cb,
+	.remove = apu_ipi_ut_rpmsg_remove,
+};
+
+int apu_ipi_ut_val;
 
 #define APU_IPI_DNAME	"apu_ipi"
 #define APU_IPI_FNAME	"ipi_dbg"
@@ -547,7 +810,7 @@ static struct dentry *ipi_dbg_root, *ipi_dbg_file;
 
 static int apu_ipi_dbg_show(struct seq_file *s, void *unused)
 {
-	seq_printf(s, "keep_awake = %d\n", apu_keep_awake);
+	seq_printf(s, "apu_ipi_ut_val = %d\n", apu_ipi_ut_val);
 
 	return 0;
 }
@@ -558,15 +821,15 @@ static int apu_ipi_dbg_open(struct inode *inode, struct file *file)
 }
 
 enum {
-	CMD_KEEP_AWAKE = 0,
+	CMD_UT = 0,
 };
 
-static void apu_ipi_dbg_set_params(int cmd, unsigned int *args,
-				   int cnt)
+static void apu_ipi_dbg_exec_cmd(int cmd, unsigned int *args)
 {
 	switch (cmd) {
-	case CMD_KEEP_AWAKE:
-		apu_keep_awake = args[0];
+	case CMD_UT:
+		apu_ipi_ut_val = args[0];
+		apu_ipi_ut_send(args[0]);
 		break;
 	default:
 		pr_info("%s: unknown cmd %d\n", __func__, cmd);
@@ -597,8 +860,8 @@ static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 	ptr = tmp;
 
 	token = strsep(&ptr, " ");
-	if (strcmp(token, "keep_awake") == 0) {
-		cmd = CMD_KEEP_AWAKE;
+	if (strcmp(token, "ut") == 0) {
+		cmd = CMD_UT;
 	} else {
 		ret = -EINVAL;
 		pr_info("%s: unknown ipi dbg cmd: %s\n", __func__, token);
@@ -614,7 +877,7 @@ static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 		}
 	}
 
-	apu_ipi_dbg_set_params(cmd, args, i);
+	apu_ipi_dbg_exec_cmd(cmd, args);
 	ret = count;
 
 out:
@@ -658,54 +921,35 @@ static void apu_ipi_dbg_exit(void)
 	debugfs_remove_recursive(ipi_dbg_root);
 }
 
+static int apu_ipi_ut_init(struct mtk_apu *apu)
+{
+	int ret;
+
+	init_completion(&apu_ipi_ut_rpm_dev.ack);
+	mutex_init(&apu_ipi_ut_mtx);
+
+	dev_info(apu->dev, "%s: register rpmsg...\n", __func__);
+	ret = register_rpmsg_driver(&apu_ipi_ut_rpmsg_driver);
+	if (ret) {
+		dev_info(apu->dev, "failed to register apu ipi ut rpmsg driver\n");
+		return ret;
+	}
+
+	apu_ipi_dbg_init();
+
+	return 0;
+}
+
+static void apu_ipi_ut_exit(void)
+{
+	unregister_rpmsg_driver(&apu_ipi_ut_rpmsg_driver);
+}
 #else
 static int apu_ipi_dbg_init(void) { return 0; }
 static void apu_ipi_dbg_exit(void) { }
-#endif
-
-int apu_ipi_affin_enable(void)
-{
-	struct mtk_apu *apu = g_apu;
-	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
-	int ret = 0;
-
-	mutex_lock(&affin_lock);
-
-	if (affin_depth == 0)
-		ret = hw_ops->irq_affin_set(apu);
-
-	affin_depth++;
-
-	mutex_unlock(&affin_lock);
-
-	return ret;
-}
-
-int apu_ipi_affin_disable(void)
-{
-	struct mtk_apu *apu = g_apu;
-	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
-	int ret = 0;
-
-	mutex_lock(&affin_lock);
-
-	affin_depth--;
-
-	if (affin_depth == 0)
-		ret = hw_ops->irq_affin_unset(apu);
-
-	mutex_unlock(&affin_lock);
-
-	return ret;
-}
-
-void apu_ipi_remove(struct mtk_apu *apu)
-{
-	apu_ipi_dbg_exit();
-	apu_mbox_hw_exit(apu);
-	apu_remove_rpmsg_subdev(apu);
-	apu_ipi_unregister(apu, APU_IPI_INIT);
-}
+static int apu_ipi_ut_init(struct mtk_apu *apu) { return 0; }
+static void apu_ipi_ut_exit(void) { }
+#endif /* IS_ENABLED(CONFIG_DEBUG_FS) */
 
 int apu_ipi_init(struct platform_device *pdev, struct mtk_apu *apu)
 {
@@ -717,7 +961,11 @@ int apu_ipi_init(struct platform_device *pdev, struct mtk_apu *apu)
 	rx_serial_no = 0;
 
 	mutex_init(&apu->send_lock);
+	mutex_init(&apu->power_lock);
 	spin_lock_init(&apu->usage_cnt_lock);
+
+	if (apu->platdata->flags & F_APU_IPI_UT_SUPPORT)
+		apu_ipi_ut_init(apu);
 
 	mutex_init(&affin_lock);
 	affin_depth = 0;
@@ -728,17 +976,32 @@ int apu_ipi_init(struct platform_device *pdev, struct mtk_apu *apu)
 		lockdep_set_class_and_name(&apu->ipi_desc[i].lock,
 					   &ipi_lock_key[i],
 					   ipi_attrs[i].name);
+		apu->ipi_pwr_ref_cnt[i] = 0;
 	}
+
+	/* for cold boot(already power on by apu_top.ko) */
+	apu->ipi_pwr_ref_cnt[0] = 1;
+	apu->local_pwr_ref_cnt = 1;
+	current_ipi_handler_id = -1;
 
 	init_waitqueue_head(&apu->run.wq);
 	init_waitqueue_head(&apu->ack_wq);
 
 	/* APU initialization IPI register */
-	ret = apu_ipi_register(apu, APU_IPI_INIT, apu_init_ipi_top_handler, NULL, apu);
-	if (ret) {
-		dev_info(dev, "failed to register ipi for init, ret=%d\n",
-			ret);
-		return ret;
+	if ((apu->platdata->flags & F_BYPASS_PM_RUNTIME) == 0) {
+		ret = apu_ipi_register(apu, APU_IPI_INIT, apu_init_ipi_top_handler, NULL, apu);
+		if (ret) {
+			dev_info(dev, "failed to register apu_init_ipi_top_handler for init, ret=%d\n",
+				ret);
+			return ret;
+		}
+	} else {
+		ret = apu_ipi_register(apu, APU_IPI_INIT, NULL, apu_init_ipi_bottom_handler, apu);
+		if (ret) {
+			dev_info(dev, "failed to register apu_init_ipi_bottom_handler for init, ret=%d\n",
+				ret);
+			return ret;
+		}
 	}
 
 	/* add rpmsg subdev */
@@ -762,8 +1025,6 @@ int apu_ipi_init(struct platform_device *pdev, struct mtk_apu *apu)
 
 	apu_mbox_hw_init(apu);
 
-	apu_ipi_dbg_init();
-
 	return 0;
 
 remove_rpmsg_subdev:
@@ -771,4 +1032,18 @@ remove_rpmsg_subdev:
 	apu_ipi_unregister(apu, APU_IPI_INIT);
 
 	return ret;
+}
+
+void apu_ipi_remove(struct mtk_apu *apu)
+{
+	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
+
+	apu_ipi_dbg_exit();
+	apu_mbox_hw_exit(apu);
+	apu_remove_rpmsg_subdev(apu);
+	apu_ipi_unregister(apu, APU_IPI_INIT);
+	if (hw_ops->irq_affin_clear(apu))
+		hw_ops->irq_affin_clear(apu);
+	if (apu->platdata->flags & F_APU_IPI_UT_SUPPORT)
+		apu_ipi_ut_exit();
 }

@@ -32,6 +32,8 @@
 #include "apusys_core.h"
 #include "sw_logger.h"
 
+#define APUSYS_RV_DEBUG_INFO_DUMP (1)
+
 #define SW_LOGGER_DEV_NAME "apu_sw_logger"
 #define BYPASS_IOMMU (0)
 
@@ -78,6 +80,8 @@ struct sw_logger_seq_data {
 	uint32_t overflow_flg;
 	int i;
 	int is_finished;
+	int is_debug_info_dump;
+	int is_debug_info_dump_finished;
 	char *data;
 };
 
@@ -179,9 +183,14 @@ static int sw_logger_buf_alloc(struct device *dev)
 
 static void apu_sw_log_level_ipi_handler(void *data, unsigned int len, void *priv)
 {
+	int ret;
 	unsigned int log_level = *(unsigned int *)data;
 
 	LOGGER_INFO("log_level = 0x%x (%d)\n", log_level, len);
+
+	ret = apu_power_on_off(g_apu->pdev, APU_IPI_LOG_LEVEL, 0, 1);
+	if (ret && ret != -EOPNOTSUPP)
+		LOGGER_ERR("apu_power_on_off fail(%d)\n", ret);
 }
 
 int sw_logger_config_init(struct mtk_apu *apu)
@@ -283,6 +292,12 @@ static ssize_t set_debuglv(struct file *flip,
 	LOGGER_INFO("set uP debug lv = 0x%x\n", input);
 
 	sw_ipi_loglv_data.level = input;
+
+	ret = apu_power_on_off(g_apu->pdev, APU_IPI_LOG_LEVEL, 1, 0);
+	if (ret && ret != -EOPNOTSUPP) {
+		LOGGER_ERR("apu_power_on_off fail(%d)\n", ret);
+		goto out;
+	}
 
 	ret = apu_ipi_send(g_apu, APU_IPI_LOG_LEVEL,
 			&sw_ipi_loglv_data, sizeof(sw_ipi_loglv_data), 1000);
@@ -410,8 +425,18 @@ static void *seq_start(struct seq_file *s, loff_t *pos)
 	LOGGER_INFO("w_ptr = %d, r_ptr = %d, overflow_flg = %d\n",
 		w_ptr, r_ptr, overflow_flg);
 
+	if (APUSYS_RV_DEBUG_INFO_DUMP && pSeqData != NULL &&
+		pSeqData->is_debug_info_dump && !pSeqData->is_debug_info_dump_finished)
+		return pSeqData;
+
 	if (w_ptr == r_ptr && overflow_flg == 0) {
 		g_log_r_ptr = U32_MAX;
+
+		if (APUSYS_RV_DEBUG_INFO_DUMP && pSeqData != NULL &&
+			pSeqData->is_debug_info_dump == 1 &&
+			pSeqData->is_debug_info_dump_finished == 0)
+			return pSeqData;
+
 		return NULL;
 	}
 
@@ -427,6 +452,8 @@ static void *seq_start(struct seq_file *s, loff_t *pos)
 			else
 				pSeqData->i = w_ptr;
 			pSeqData->is_finished = 0;
+			pSeqData->is_debug_info_dump = 0;
+			pSeqData->is_debug_info_dump_finished = 0;
 		}
 	}
 	LOGGER_INFO("%s v = 0x%lx\n", __func__, (unsigned long)pSeqData);
@@ -535,9 +562,11 @@ static void *seq_next(struct seq_file *s, void *v, loff_t *pos)
 		__func__, pSData->w_ptr, pSData->r_ptr, pSData->i,
 		pSData->overflow_flg);
 
+	if (APUSYS_RV_DEBUG_INFO_DUMP && pSeqData->is_debug_info_dump)
+		return NULL;
+
 	pSData->i = (pSData->i + LOG_LINE_MAX_LENS) % APU_LOG_SIZE;
 	g_log_r_ptr = pSData->i;
-
 	/* prevent kernel warning */
 	*pos = pSData->i;
 
@@ -592,11 +621,13 @@ static void *seq_next_lock(struct seq_file *s, void *v, loff_t *pos)
 static void seq_stop(struct seq_file *s, void *v)
 {
 	unsigned long flags;
+	struct mtk_apu_hw_ops *hw_ops;
 
 	LOGGER_INFO("%s v = 0x%lx\n", __func__, (unsigned long)v);
 
 	if (pSeqData != NULL) {
 		if (pSeqData->is_finished == 1) {
+
 			spin_lock_irqsave(&sw_logger_spinlock, flags);
 			iowrite32(pSeqData->i, LOG_R_PTR);
 			/* fixme: assume next overflow won't happen
@@ -604,6 +635,14 @@ static void seq_stop(struct seq_file *s, void *v)
 			 */
 			iowrite32(0, LOG_OV_FLG);
 			spin_unlock_irqrestore(&sw_logger_spinlock, flags);
+
+			if (APUSYS_RV_DEBUG_INFO_DUMP && g_apu) {
+				hw_ops = &g_apu->platdata->ops;
+				if (hw_ops->debug_info_dump && pSeqData->is_debug_info_dump == 0) {
+					pSeqData->is_debug_info_dump = 1;
+					return;
+				}
+			}
 
 			if (v != NULL)
 				kfree(v);
@@ -638,6 +677,7 @@ static void seq_stopl(struct seq_file *s, void *v)
 static int seq_show(struct seq_file *s, void *v)
 {
 	struct sw_logger_seq_data *pSData = v;
+	struct mtk_apu_hw_ops *hw_ops;
 #ifdef SW_LOGGER_DEBUG
 	unsigned int i;
 #else
@@ -645,6 +685,20 @@ static int seq_show(struct seq_file *s, void *v)
 #endif
 
 	LOGGER_INFO("%s +\n", __func__);
+
+	if (APUSYS_RV_DEBUG_INFO_DUMP && pSeqData->is_debug_info_dump) {
+		if (g_apu) {
+			hw_ops = &g_apu->platdata->ops;
+			if (hw_ops->debug_info_dump) {
+				pr_info("%s: is_debug_info_dump = %d, is_debug_info_dump_finished = %d\n",
+					__func__, pSeqData->is_debug_info_dump,
+					pSeqData->is_debug_info_dump_finished);
+				hw_ops->debug_info_dump(g_apu, s);
+			}
+			pSeqData->is_debug_info_dump_finished = 1;
+		}
+		return 0;
+	}
 
 #ifdef SW_LOGGER_DEBUG
 	if ((sw_log_buf[pSData->i] == 0xA5) &&

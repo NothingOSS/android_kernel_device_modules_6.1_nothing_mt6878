@@ -37,6 +37,8 @@
 
 #include <linux/sched/signal.h>
 
+#define APUSYS_RV_DEBUG_INFO_DUMP (1)
+
 /* debug log level */
 static unsigned char g_hw_logger_log_lv = DBG_LOG_INFO;
 
@@ -98,6 +100,8 @@ struct hw_logger_seq_data {
 	unsigned int r_ptr;
 	unsigned int ov_flg;
 	unsigned int not_rd_sz;
+	int is_debug_info_dump;
+	int is_debug_info_dump_finished;
 	bool nonblock;
 };
 
@@ -311,9 +315,13 @@ static void set_r_ptr(unsigned long long r_ptr)
 
 static void apu_hw_log_level_ipi_handler(void *data, unsigned int len, void *priv)
 {
+	int ret;
 	unsigned int log_level = *(unsigned int *)data;
 
 	HWLOGR_INFO("log_level = 0x%x (%d)\n", log_level, len);
+	ret = apu_power_on_off(g_apu->pdev, APU_IPI_LOG_LEVEL, 0, 1);
+	if (ret && ret != -EOPNOTSUPP)
+		HWLOGR_ERR("apu_power_on_off fail(%d)\n", ret);
 }
 
 int hw_logger_config_init(struct mtk_apu *apu)
@@ -778,6 +786,12 @@ static ssize_t set_debuglv(struct file *flip,
 
 	hw_ipi_loglv_data.level = input;
 
+	ret = apu_power_on_off(g_apu->pdev, APU_IPI_LOG_LEVEL, 1, 0);
+	if (ret && ret != -EOPNOTSUPP) {
+		HWLOGR_ERR("apu_power_on_off fail(%d)\n", ret);
+		goto out;
+	}
+
 	ret = apu_ipi_send(g_apu, APU_IPI_LOG_LEVEL,
 			&hw_ipi_loglv_data, sizeof(hw_ipi_loglv_data), 1000);
 	if (ret)
@@ -954,9 +968,13 @@ static void *seq_start(struct seq_file *s, loff_t *pos)
 		w_ptr, r_ptr, ov_flg, (unsigned int)*pos);
 
 	if (w_ptr == r_ptr) {
-		spin_lock_irqsave(&hw_logger_spinlock, flags);
-		g_log.r_ptr = U32_MAX;
-		spin_unlock_irqrestore(&hw_logger_spinlock, flags);
+		if (!APUSYS_RV_DEBUG_INFO_DUMP || s->size == PAGE_SIZE) {
+			spin_lock_irqsave(&hw_logger_spinlock, flags);
+			g_log.r_ptr = U32_MAX;
+			spin_unlock_irqrestore(&hw_logger_spinlock, flags);
+		} else {
+			s->size = PAGE_SIZE;
+		}
 		return NULL;
 	}
 
@@ -1076,11 +1094,20 @@ static void *seq_next(struct seq_file *s, void *v, loff_t *pos)
 {
 	struct hw_logger_seq_data *pSData = v;
 	unsigned long flags;
+	struct mtk_apu_hw_ops *hw_ops;
 
 	HWLOGR_DBG(
 		"w_ptr = %d, r_ptr = %d, ov_flg = %d, *pos = %d\n",
 		pSData->w_ptr, pSData->r_ptr,
 		pSData->ov_flg, (unsigned int)*pos);
+
+	if (APUSYS_RV_DEBUG_INFO_DUMP && pSData->is_debug_info_dump_finished) {
+		/* just prevent warning */
+		*pos = *pos + 1;
+		HWLOGR_DBG("%s: is_debug_info_dump = %d, is_debug_info_dump_finished = %d\n",
+			__func__, pSData->is_debug_info_dump, pSData->is_debug_info_dump_finished);
+		goto out;
+	}
 
 	pSData->r_ptr = (pSData->r_ptr + HWLOG_LINE_MAX_LENS) % LOCAL_LOG_SIZE;
 	spin_lock_irqsave(&hw_logger_spinlock, flags);
@@ -1097,6 +1124,15 @@ static void *seq_next(struct seq_file *s, void *v, loff_t *pos)
 		g_log.w_ptr, g_log.r_ptr,
 		g_log_l.ov_flg);
 
+	if (APUSYS_RV_DEBUG_INFO_DUMP && g_apu) {
+		hw_ops = &g_apu->platdata->ops;
+		if (hw_ops->debug_info_dump && pSData->is_debug_info_dump == 0) {
+			pSData->is_debug_info_dump = 1;
+			return pSData;
+		}
+	}
+
+out:
 	kfree(pSData);
 	return NULL;
 }
@@ -1152,11 +1188,55 @@ static int seq_show(struct seq_file *s, void *v)
 {
 	struct hw_logger_seq_data *pSData = v;
 	static unsigned int prevIsBinary;
+	struct mtk_apu_hw_ops *hw_ops;
+	char *buf;
+	size_t offs = s->count;
 
 #ifdef HW_LOG_DEBUG
 	HWLOGR_DBG("(%04d)(%d) %s", pSData->r_ptr,
 		(int)strlen(local_log_buf + pSData->r_ptr), local_log_buf + pSData->r_ptr);
 #endif
+
+	if (APUSYS_RV_DEBUG_INFO_DUMP && pSData->is_debug_info_dump) {
+		if (g_apu) {
+			hw_ops = &g_apu->platdata->ops;
+			if (hw_ops->debug_info_dump) {
+				HWLOGR_DBG(
+					"%s: is_debug_info_dump = %d, is_debug_info_dump_finished = %d\n",
+					__func__, pSData->is_debug_info_dump,
+					pSData->is_debug_info_dump_finished);
+				hw_ops->debug_info_dump(g_apu, s);
+			}
+		}
+		if (seq_has_overflowed(s)) {
+			pr_info("%s: seq_has_overflowed\n", __func__);
+			/* need to allocate more buffer */
+			buf = kvmalloc(s->size <<= 1, GFP_KERNEL_ACCOUNT);
+			if (!buf)
+				return -ENOMEM;
+			memcpy(buf, s->buf, offs);
+
+			kvfree(s->buf);
+			/* restore original count before calling debug_info_dump */
+			s->count = offs;
+			s->buf = buf;
+
+			if (g_apu) {
+				hw_ops = &g_apu->platdata->ops;
+				if (hw_ops->debug_info_dump) {
+					HWLOGR_DBG(
+						"%s: is_debug_info_dump = %d, is_debug_info_dump_finished = %d\n",
+						__func__, pSData->is_debug_info_dump,
+						pSData->is_debug_info_dump_finished);
+					hw_ops->debug_info_dump(g_apu, s);
+				}
+			}
+
+		}
+
+		pSData->is_debug_info_dump_finished = 1;
+		return 0;
+	}
 
 	if ((local_log_buf[pSData->r_ptr] == 0xA5) &&
 		(local_log_buf[pSData->r_ptr+1] == 0xA5)) {

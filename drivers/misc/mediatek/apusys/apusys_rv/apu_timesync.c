@@ -28,9 +28,18 @@ static void apu_timesync_work_func(struct work_struct *work)
 static void apu_timesync_handler(void *data, u32 len, void *priv)
 {
 	struct mtk_apu *apu = (struct mtk_apu *)priv;
+	int ret;
 
 	dev_info(apu->dev, "%s timesync request received\n", __func__);
-	queue_work(apu_ts_workq, &apu->timesync_work);
+	if ((apu->platdata->flags & F_BYPASS_PM_RUNTIME) == 0)
+		queue_work(apu_ts_workq, &apu->timesync_work);
+	else {
+		timesync_stamp = sched_clock();
+		ret = apu_ipi_send(apu, APU_IPI_TIMESYNC, &timesync_stamp,
+			sizeof(u64), 0);
+		if (ret)
+			dev_info(apu->dev, "%s: apu_ipi_send fail(%d)\n", __func__, ret);
+	}
 }
 
 int apu_timesync_init(struct mtk_apu *apu)

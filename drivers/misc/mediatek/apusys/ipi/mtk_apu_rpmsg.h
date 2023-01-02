@@ -23,10 +23,14 @@ typedef int (*ipi_top_handler_t)(void *data, unsigned int len, void *priv);
  */
 struct mtk_apu_rpmsg_info {
 	int (*register_ipi)(struct platform_device *pdev, u32 id,
-			    ipi_handler_t handler, void *priv);
+				ipi_handler_t handler, void *priv);
 	void (*unregister_ipi)(struct platform_device *pdev, u32 id);
 	int (*send_ipi)(struct platform_device *pdev, u32 id,
 			void *buf, unsigned int len, unsigned int wait);
+
+	int (*power_on_off)(struct platform_device *pdev, u32 id,
+		u32 on, u32 off);
+
 	int ns_ipi_id;
 };
 

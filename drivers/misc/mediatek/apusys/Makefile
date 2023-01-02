@@ -201,6 +201,7 @@ apusys-objs += apusys_rv/apu_timesync.o
 apusys-objs += apusys_rv/apu_deepidle.o
 apusys-objs += apusys_rv/apu_regdump.o
 apusys-objs += apusys_rv/apu_debug.o
+apusys-objs += apusys_rv/apusys_rv_tag.o
 ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/apusys_rv/2.0/mt6879_plat.c),)
 subdir-ccflags-y += -DMT6879_APUSYS_RV_PLAT_DATA
 apusys-objs += apusys_rv/2.0/mt6879_plat.o
@@ -232,6 +233,10 @@ endif
 ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/apusys_rv/2.0/mt8188_plat.c),)
 subdir-ccflags-y += -DMT8188_APUSYS_RV_PLAT_DATA
 apusys-objs += apusys_rv/2.0/mt8188_plat.o
+endif
+ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/apusys_rv/3.0/mt6989_plat.c),)
+subdir-ccflags-y += -DMT6989_APUSYS_RV_PLAT_DATA
+apusys-objs += apusys_rv/3.0/mt6989_plat.o
 endif
 
 # ipi
