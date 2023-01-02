@@ -1059,6 +1059,24 @@
 		md1_sim2_hot_plug_eint:MD1_SIM2_HOT_PLUG_EINT {
 		};
 
+		touch:touch {
+		};
+
+		mrdump_ext_rst:mrdump_ext_rst {
+		};
+
+		smart_pa:smart_pa {
+		};
+
+		subpmic_pmu_eint:subpmic_pmu_eint {
+		};
+
+		dsi_te:dsi_te {
+		};
+
+		rt5133_eint:rt5133_eint {
+		};
+
 		ap_ccif0@10209000 {
 			compatible = "mediatek,ap_ccif0";
 			reg = <0 0x10209000 0 0x1000>;
