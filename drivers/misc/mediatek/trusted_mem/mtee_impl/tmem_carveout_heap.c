@@ -18,10 +18,12 @@
 #include <linux/slab.h>
 #include <linux/scatterlist.h>
 #include <linux/uaccess.h>
+#include <linux/time.h>
 #include <linux/proc_fs.h>
 
 #include "public/mtee_regions.h"
 #include "private/tmem_error.h"
+#include "private/tmem_utils.h"
 #include "ssmr/memory_ssmr.h"
 
 typedef u16 ffa_partition_id_t;
@@ -66,6 +68,26 @@ static DEFINE_MUTEX(tmem_block_mutex);
 static const struct ffa_dev_ops *ffa_ops;
 static ffa_partition_id_t sp_partition_id;
 static struct ffa_device *sp_partition_dev;
+
+static struct timespec64 ffa_start_time;
+static struct timespec64 ffa_end_time;
+
+static u32 ffa_get_spend_nsec(void)
+{
+	struct timespec64 *start_time = &ffa_start_time;
+	struct timespec64 *end_time = &ffa_end_time;
+
+	return GET_TIME_DIFF_NSEC_P(start_time, end_time);
+}
+
+static void tmem_do_gettimeofday(struct timespec64 *tv)
+{
+	struct timespec64 now;
+
+	ktime_get_real_ts64(&now);
+	tv->tv_sec = now.tv_sec;
+	tv->tv_nsec = now.tv_nsec;
+}
 
 /* bit[31]=1 is do retrieve_req in EL2 */
 #define PAGED_BASED_FFA_FLAGS 0x80000000
@@ -286,12 +308,15 @@ int tmem_ffa_page_alloc(enum MTEE_MCHUNKS_ID mchunk_id,
 	ffa_args.g_handle = 0;
 	ffa_args.sg = sg_tbl->sgl;
 
+	tmem_do_gettimeofday(&ffa_start_time);
 	ret = ffa_ops->memory_lend(sp_partition_dev, &ffa_args);
 	if (ret) {
 		pr_info("page-based, Failed to FF-A send the memory, ret=%d\n", ret);
 		mutex_unlock(&tmem_block_mutex);
 		return TMEM_KPOOL_FFA_PAGE_FAILED;
 	}
+	tmem_do_gettimeofday(&ffa_end_time);
+	pr_debug("%s FF-A flow spend time: %d ns\n", __func__, ffa_get_spend_nsec());
 
 	*handle = ffa_args.g_handle;
 
@@ -312,12 +337,15 @@ int tmem_ffa_page_free(u64 handle)
 
 	mutex_lock(&tmem_block_mutex);
 
+	tmem_do_gettimeofday(&ffa_start_time);
 	ret = ffa_ops->memory_reclaim(handle, PAGED_BASED_FFA_FLAGS);
 	if (ret) {
 		pr_info("page-based, Failed to FF-A reclaim the memory, ret=%d\n", ret);
 		mutex_unlock(&tmem_block_mutex);
 		return TMEM_KPOOL_FFA_PAGE_FAILED;
 	}
+	tmem_do_gettimeofday(&ffa_end_time);
+	pr_debug("%s FF-A flow spend time: %d ns\n", __func__, ffa_get_spend_nsec());
 
 	mutex_unlock(&tmem_block_mutex);
 
@@ -378,11 +406,14 @@ int tmem_ffa_region_alloc(enum MTEE_MCHUNKS_ID mchunk_id,
 	ffa_args.g_handle = 0;
 	ffa_args.sg = tmem_sgl;
 
+	tmem_do_gettimeofday(&ffa_start_time);
 	ret = ffa_ops->memory_lend(sp_partition_dev, &ffa_args);
 	if (ret) {
 		pr_info("region-based, Failed to FF-A send the memory, ret=%d\n", ret);
 		goto out1;
 	}
+	tmem_do_gettimeofday(&ffa_end_time);
+	pr_debug("%s FF-A flow spend time: %d ns\n", __func__, ffa_get_spend_nsec());
 
 	entry = kmalloc(sizeof(*entry), GFP_ATOMIC);
 	if (!entry)
@@ -400,6 +431,7 @@ int tmem_ffa_region_alloc(enum MTEE_MCHUNKS_ID mchunk_id,
 
 	pr_info("%s PASS: handle=0x%llx, paddr=0x%llx, size=0x%lx, alignment=0x%lx\n",
 			__func__, *handle, paddr, size, alignment);
+
 	return TMEM_OK;
 
 out1:
@@ -430,12 +462,15 @@ int tmem_ffa_region_free(enum MTEE_MCHUNKS_ID mchunk_id, u64 handle)
 
 	mutex_lock(&tmem_block_mutex);
 
+	tmem_do_gettimeofday(&ffa_start_time);
 	ret = ffa_ops->memory_reclaim(handle, 0);
 	if (ret) {
 		pr_info("region-based, Failed to FF-A reclaim the memory, ret=%d\n", ret);
 		mutex_unlock(&tmem_block_mutex);
 		return TMEM_KPOOL_FFA_PAGE_FAILED;
 	}
+	tmem_do_gettimeofday(&ffa_end_time);
+	pr_debug("%s FF-A flow spend time: %d ns\n", __func__, ffa_get_spend_nsec());
 
 	list_for_each_entry(tmp, &tmem_block_list, head) {
 		if (tmp->handle == handle) {
