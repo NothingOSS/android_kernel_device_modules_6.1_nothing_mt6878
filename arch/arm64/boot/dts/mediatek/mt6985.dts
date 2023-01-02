@@ -11136,16 +11136,16 @@
 /* BT combo GPIO start */
 &pio {
 	bt_combo_gpio_init: bt_combo_gpio_init {
-		/* BT_UTXD, GPIO226*/
+		/* BT_UTXD, GPIO224*/
 		pins_cmd1_dat {
-			pinmux = <PINMUX_GPIO226__FUNC_GPIO226>;
+			pinmux = <PINMUX_GPIO224__FUNC_GPIO224>;
 			slew-rate = <0>;
 			bias-pull-down;
 			drive-strength = <0>;
 		};
-		/* BT_URXD, GPIO227*/
+		/* BT_URXD, GPIO225*/
 		pins_cmd2_dat {
-			pinmux = <PINMUX_GPIO227__FUNC_GPIO227>;
+			pinmux = <PINMUX_GPIO225__FUNC_GPIO225>;
 			slew-rate = <0>;
 			bias-pull-down;
 			drive-strength = <0>;
@@ -11188,12 +11188,12 @@
 	};
 	bt_combo_gpio_pre_on: bt_combo_gpio_pre_on {
 		pins_cmd1_dat {
-			pinmux = <PINMUX_GPIO226__FUNC_PTA_TXD0>;
+			pinmux = <PINMUX_GPIO224__FUNC_UARTHUB_UART_TX>;
 			bias-pull-up;
 			output-high;
 		};
 		pins_cmd2_dat {
-			pinmux = <PINMUX_GPIO227__FUNC_PTA_RXD0>;
+			pinmux = <PINMUX_GPIO225__FUNC_UARTHUB_UART_RX>;
 			bias-pull-up;
 			input-enable;
 		};
