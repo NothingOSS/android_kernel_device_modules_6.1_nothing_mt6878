@@ -4029,3 +4029,5 @@
 &mt6373_vsram_digrf_aif {
 	regulator-always-on;
 };
+
+#include "mediatek/trusty.dtsi"
