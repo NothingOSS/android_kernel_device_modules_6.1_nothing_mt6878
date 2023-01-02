@@ -335,7 +335,7 @@ static int mtk_per_cpuidle_state_param(void *pData)
 			break;
 	}
 
-	do_exit(0);
+	//do_exit(0);
 	return 0;
 }
 void mtk_cpuidle_state_enable(bool en)

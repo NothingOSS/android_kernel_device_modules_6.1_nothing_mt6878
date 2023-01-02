@@ -69,7 +69,8 @@ static DEFINE_MUTEX(fpsgo_render_lock);
 
 long long fpsgo_task_sched_runtime(struct task_struct *p)
 {
-	return task_sched_runtime(p);
+	//return task_sched_runtime(p);
+	return 0;
 }
 
 long fpsgo_sched_setaffinity(pid_t pid, const struct cpumask *in_mask)

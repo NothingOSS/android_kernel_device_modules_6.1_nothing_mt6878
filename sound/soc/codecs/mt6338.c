@@ -9571,7 +9571,7 @@ static int dc_trim_thread(void *arg)
 #if IS_ENABLED(CONFIG_SND_SOC_MT6338_ACCDET)
 	mt6338_accdet_late_init(0);
 #endif
-	do_exit(0);
+	//do_exit(0);
 
 	return 0;
 }

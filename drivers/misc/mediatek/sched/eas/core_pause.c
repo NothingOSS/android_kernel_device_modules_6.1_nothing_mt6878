@@ -248,7 +248,8 @@ int cpu_drain_rq(unsigned int cpu)
 	if (available_idle_cpu(cpu))
 		return 0;
 
-	return stop_one_cpu(cpu, drain_rq_cpu_stop, NULL);
+	//return stop_one_cpu(cpu, drain_rq_cpu_stop, NULL);
+	return 0;
 }
 
 int __ref try_drain_rqs(void *data)
