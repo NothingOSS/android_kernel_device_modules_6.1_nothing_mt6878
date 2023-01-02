@@ -112,6 +112,23 @@ struct mtk_ut_yuv_device {
 	 -EINVAL);\
 }
 
+struct mtk_ut_rms_device {
+	struct device *dev;
+	unsigned int id;
+	void __iomem *base;
+	unsigned int num_clks;
+	struct clk **clks;
+
+	struct engine_ops ops;
+};
+
+#define CALL_RMS_OPS(dev, op, ...) \
+{\
+	struct mtk_ut_rms_device *drvdata = dev_get_drvdata(dev);\
+	((dev && drvdata->ops.op) ? drvdata->ops.op(dev, ##__VA_ARGS__) : \
+	 -EINVAL);\
+}
+
 struct mtk_ut_camsv_device {
 	struct device *dev;
 	unsigned int id;
@@ -168,6 +185,7 @@ static inline int seninf_cammux_raw(struct device *dev, int raw_idx)
 
 extern struct platform_driver mtk_ut_raw_driver;
 extern struct platform_driver mtk_ut_yuv_driver;
+extern struct platform_driver mtk_ut_rms_driver;
 extern struct platform_driver mtk_ut_camsv_driver;
 extern struct platform_driver mtk_ut_seninf_driver;
 #define WITH_LARB_DRIVER 1

@@ -114,12 +114,14 @@ struct mtk_cam_ut {
 
 	int num_raw;
 	int num_yuv;
+	int num_rms;
 	int num_larb;
 	int num_camsv;
 
 	struct device *seninf;
 	struct device **raw;
 	struct device **yuv;
+	struct device **rms;
 	struct device **larb;
 	struct device **camsv;
 

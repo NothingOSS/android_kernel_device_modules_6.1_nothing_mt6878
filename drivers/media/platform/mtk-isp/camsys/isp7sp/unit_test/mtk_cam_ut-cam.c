@@ -1213,6 +1213,211 @@ struct platform_driver mtk_ut_yuv_driver = {
 	}
 };
 
+/* RMS part driver */
+static void ut_rms_set_ops(struct device *dev)
+{
+	struct mtk_ut_rms_device *drvdata = dev_get_drvdata(dev);
+
+	drvdata->ops.reset = NULL;
+	drvdata->ops.s_stream = NULL;
+	drvdata->ops.apply_cq = NULL;
+	drvdata->ops.initialize = NULL;
+}
+
+static int mtk_ut_rms_component_bind(struct device *dev,
+				     struct device *master, void *data)
+{
+	struct mtk_ut_yuv_device *drvdata = dev_get_drvdata(dev);
+	struct mtk_cam_ut *ut = data;
+
+	//dev_info(dev, "%s\n", __func__);
+
+	if (!data) {
+		dev_info(dev, "no master data\n");
+		return -1;
+	}
+
+	if (!ut->yuv) {
+		dev_info(dev, "no yuv arr, num of yuv %d\n", ut->num_yuv);
+		return -1;
+	}
+	ut->yuv[drvdata->id] = dev;
+
+	return 0;
+}
+
+static void mtk_ut_rms_component_unbind(struct device *dev,
+					struct device *master, void *data)
+{
+	struct mtk_ut_rms_device *drvdata = dev_get_drvdata(dev);
+	struct mtk_cam_ut *ut = data;
+
+	//dev_dbg(dev, "%s\n", __func__);
+	ut->rms[drvdata->id] = NULL;
+}
+
+static const struct component_ops mtk_ut_rms_component_ops = {
+	.bind = mtk_ut_rms_component_bind,
+	.unbind = mtk_ut_rms_component_unbind,
+};
+
+
+static int mtk_ut_rms_of_probe(struct platform_device *pdev,
+			    struct mtk_ut_rms_device *drvdata)
+{
+	struct device *dev = &pdev->dev;
+	struct resource *res;
+	int ret;
+
+	ret = of_property_read_u32(dev->of_node, "mediatek,cam-id",
+				   &drvdata->id);
+	dev_info(dev, "id = %d\n", drvdata->id);
+	if (ret) {
+		dev_info(dev, "missing camid property\n");
+		return ret;
+	}
+
+	/* base outer register */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "base");
+	if (!res) {
+		dev_info(dev, "failed to get mem\n");
+		return -ENODEV;
+	}
+
+	drvdata->base = devm_ioremap_resource(dev, res);
+	if (IS_ERR(drvdata->base)) {
+		dev_info(dev, "failed to map register base\n");
+		return PTR_ERR(drvdata->base);
+	}
+
+	drvdata->num_clks = 0;
+	dev_info(dev, "clk_num:%d\n", drvdata->num_clks);
+
+	return 0;
+}
+
+
+static int mtk_ut_rms_probe(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	struct mtk_ut_rms_device *drvdata;
+	int ret;
+
+	dev_info(dev, "%s\n", __func__);
+
+	drvdata = devm_kzalloc(dev, sizeof(*drvdata), GFP_KERNEL);
+	if (!drvdata)
+		return -ENOMEM;
+
+	drvdata->dev = dev;
+	dev_set_drvdata(dev, drvdata);
+
+	ret = mtk_ut_rms_of_probe(pdev, drvdata);
+	if (ret)
+		return ret;
+
+	ut_rms_set_ops(dev);
+
+	//pm_runtime_enable(dev);
+
+	ret = component_add(dev, &mtk_ut_rms_component_ops);
+	if (ret)
+		return ret;
+
+	dev_info(dev, "%s: success\n", __func__);
+	return 0;
+}
+
+static int mtk_ut_rms_remove(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	struct mtk_ut_raw_device *drvdata = dev_get_drvdata(dev);
+	int i;
+
+	//dev_info(dev, "%s\n", __func__);
+
+	//pm_runtime_disable(dev);
+
+	component_del(dev, &mtk_ut_rms_component_ops);
+
+	for (i = 0; i < drvdata->num_clks; i++)
+		clk_put(drvdata->clks[i]);
+
+	return 0;
+}
+
+
+static int mtk_ut_rms_pm_suspend(struct device *dev)
+{
+	int ret = 0;
+
+	dev_dbg(dev, "- %s\n", __func__);
+
+	return ret;
+}
+
+static int mtk_ut_rms_pm_resume(struct device *dev)
+{
+	int ret = 0;
+
+	dev_dbg(dev, "- %s\n", __func__);
+
+	return ret;
+}
+
+static int mtk_ut_rms_runtime_suspend(struct device *dev)
+{
+	struct mtk_ut_rms_device *raw = dev_get_drvdata(dev);
+	int i;
+
+	for (i = 0; i < raw->num_clks; i++)
+		clk_disable_unprepare(raw->clks[i]);
+	return 0;
+}
+
+static int mtk_ut_rms_runtime_resume(struct device *dev)
+{
+	struct mtk_ut_yuv_device *raw = dev_get_drvdata(dev);
+	int i, ret;
+
+	for (i = 0; i < raw->num_clks; i++) {
+		ret = clk_prepare_enable(raw->clks[i]);
+		if (ret) {
+			dev_info(dev, "enable failed at clk #%d, ret = %d\n",
+				 i, ret);
+			i--;
+			while (i >= 0)
+				clk_disable_unprepare(raw->clks[i--]);
+
+			return ret;
+		}
+	}
+	return 0;
+}
+
+
+static const struct dev_pm_ops mtk_ut_rms_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(mtk_ut_rms_pm_suspend, mtk_ut_rms_pm_resume)
+	SET_RUNTIME_PM_OPS(mtk_ut_rms_runtime_suspend, mtk_ut_rms_runtime_resume,
+			   NULL)
+};
+
+static const struct of_device_id mtk_ut_rms_of_ids[] = {
+	{.compatible = "mediatek,cam-rms",},
+	{}
+};
+MODULE_DEVICE_TABLE(of, mtk_ut_rms_of_ids);
+
+struct platform_driver mtk_ut_rms_driver = {
+	.probe   = mtk_ut_rms_probe,
+	.remove  = mtk_ut_rms_remove,
+	.driver  = {
+		.name  = "mtk-cam ut-rms",
+		.of_match_table = of_match_ptr(mtk_ut_rms_of_ids),
+		.pm     = &mtk_ut_rms_pm_ops,
+	}
+};
+
 #if WITH_LARB_DRIVER
 static int mtk_ut_larb_component_bind(struct device *dev,
 				      struct device *master,

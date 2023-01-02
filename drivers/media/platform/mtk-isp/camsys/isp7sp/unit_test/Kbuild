@@ -1,7 +1,9 @@
-ccflags-y += -I$(srctree)/drivers/media/platform/mtk-isp \
-	     -I$(srctree)/drivers/media/platform/mtk-isp/camsys/isp7sp \
-		 -I$(srctree)/drivers/rpmsg/ \
-		 -I$(srctree)/drivers/remoteproc/
+# SPDX-License-Identifier: GPL-2.0-only
+
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-isp \
+	     -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-isp/camsys/isp7sp \
+		 -I$(DEVICE_MODULES_PATH)/drivers/rpmsg/ \
+		 -I$(DEVICE_MODULES_PATH)/drivers/remoteproc/
 
 cam-ut-objs := mtk_cam_ut-cam.o \
 	       mtk_cam_ut-seninf.o \

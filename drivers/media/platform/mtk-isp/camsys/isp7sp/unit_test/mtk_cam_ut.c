@@ -63,7 +63,7 @@ static int apply_next_req(struct mtk_cam_ut *ut)
 	if (!ut->with_testmdl) {
 		spin_lock_irqsave(&ut->spinlock_irq, flags);
 		if (!ut->m2m_available) {
-			dev_info(ut->dev, "%s: m2m not avialable\n");
+			dev_info(ut->dev, "%s: m2m not avialable\n", __func__);
 			spin_unlock_irqrestore(&ut->spinlock_irq, flags);
 			return 0;
 		}
@@ -519,6 +519,7 @@ static int set_test_mdl(struct mtk_cam_ut *ut,
 #endif
 	case MTKCAM_IPI_HW_PATH_OTF_RGBW:
 		width *= 2;
+        break;
 	default:
 		if (ut->with_testmdl == 1) {
 			CALL_SENINF_OPS(seninf, set_size,
@@ -1037,6 +1038,9 @@ static struct component_match *mtk_cam_match_add(struct device *dev)
 
 	ut->num_yuv = add_match_by_driver(dev, &match, &mtk_ut_yuv_driver);
 	dev_info(dev, "# of yuv: %d\n", ut->num_yuv);
+
+	ut->num_rms = add_match_by_driver(dev, &match, &mtk_ut_rms_driver);
+	dev_info(dev, "# of rms: %d\n", ut->num_rms);
 #if WITH_CAMSV_DRIVER
 	ut->num_camsv = add_match_by_driver(dev, &match, &mtk_ut_camsv_driver);
 	dev_info(dev, "# of camsv: %d\n", ut->num_camsv);
@@ -1178,6 +1182,12 @@ static int register_sub_drivers(struct device *dev)
 		dev_info(dev, "%s register yuv driver fail\n", __func__);
 		goto REGISTER_YUV_FAIL;
 	}
+
+    ret = platform_driver_register(&mtk_ut_rms_driver);
+	if (ret) {
+		dev_info(dev, "%s register rms driver fail\n", __func__);
+		goto REGISTER_RMS_FAIL;
+	}
 #if WITH_CAMSV_DRIVER
 	ret = platform_driver_register(&mtk_ut_camsv_driver);
 	if (ret) {
@@ -1214,8 +1224,11 @@ REGISTER_SENINF_FAIL:
 	platform_driver_unregister(&mtk_ut_camsv_driver);
 #if WITH_CAMSV_DRIVER
 REGISTER_CAMSV_FAIL:
-	platform_driver_unregister(&mtk_ut_yuv_driver);
+	platform_driver_unregister(&mtk_ut_rms_driver);
 #endif
+REGISTER_RMS_FAIL:
+	platform_driver_unregister(&mtk_ut_yuv_driver);
+
 REGISTER_YUV_FAIL:
 	platform_driver_unregister(&mtk_ut_raw_driver);
 
@@ -1355,8 +1368,7 @@ static const struct dev_pm_ops mtk_cam_pm_ops = {
 };
 
 static const struct of_device_id cam_ut_driver_dt_match[] = {
-	{ .compatible = "mediatek,mt6985-camisp", },
-	{ .compatible = "mediatek,mt6886-camisp", },
+	{ .compatible = "mediatek,mt6897-camisp", },
 	{}
 };
 MODULE_DEVICE_TABLE(of, cam_ut_driver_dt_match);
