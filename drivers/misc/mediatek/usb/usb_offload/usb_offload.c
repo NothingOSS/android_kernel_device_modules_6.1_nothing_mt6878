@@ -42,7 +42,7 @@
 #include "pcm.h"
 #include "power.h"
 #endif
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_XHCI_MTK) || IS_ENABLED(CONFIG_DEVICE_MODULES_USB_XHCI_MTK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_XHCI_MTK)
 #include "xhci.h"
 #include "xhci-mtk.h"
 #endif
