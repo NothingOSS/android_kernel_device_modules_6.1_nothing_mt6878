@@ -105,7 +105,7 @@ static inline int moveAF(unsigned long a_u4Position)
 {
 	int ret = 0;
 
-	LOG_INF("move to :%d\n", moveAF);
+	LOG_INF("move to :moveAF\n");
 
 	if (s4AF_WriteReg((unsigned short)a_u4Position) == 0) {
 		g_u4CurrPosition = a_u4Position;
