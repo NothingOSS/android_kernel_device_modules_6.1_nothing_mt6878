@@ -5,6 +5,9 @@
 
 #include <drm/drm_atomic.h>
 #include <drm/drm_atomic_helper.h>
+#include <drm/drm_blend.h>
+#include <drm/drm_framebuffer.h>
+#include <drm/drm_plane.h>
 #include <drm/drm_plane_helper.h>
 #include <drm/drm_fourcc.h>
 #include <linux/mailbox_controller.h>
@@ -195,7 +198,7 @@ mtk_plane_duplicate_state(struct drm_plane *plane)
 			__func__, __LINE__,
 			state->base.plane, plane, plane->base.id, plane->name);
 		for (i = 0; i < PLANE_PROP_MAX; i++) {
-			DDPMSG("%s:%d,%d,name[%s],property->base.id",
+			DDPMSG("%s:%d,%d,name[%s],property->base.id %d",
 				__func__, __LINE__, i,
 				mtk_plane->plane_property[i]->name,
 				mtk_plane->plane_property[i]->base.id);

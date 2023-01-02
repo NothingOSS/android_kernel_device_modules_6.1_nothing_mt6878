@@ -16,6 +16,7 @@
 #endif
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_fb_helper.h>
+#include <drm/drm_fourcc.h>
 #include <drm/drm_gem.h>
 #include <drm/mediatek_drm.h>
 #include <drm/drm_modes.h>

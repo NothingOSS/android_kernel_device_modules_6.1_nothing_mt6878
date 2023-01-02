@@ -18348,7 +18348,7 @@ static int mtk_ddp_probe(struct platform_device *pdev)
 				"dispsys_num", &dispsys_num);
 	if (ret) {
 		dev_err(dev,
-			"no mutex dispsys_num\n", ret);
+			"no mutex dispsys_num %d\n", ret);
 		dispsys_num = 1;
 	}
 

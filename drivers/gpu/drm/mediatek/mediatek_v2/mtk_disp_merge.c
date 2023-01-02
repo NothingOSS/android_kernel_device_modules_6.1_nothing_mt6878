@@ -274,7 +274,7 @@ int mtk_merge_analysis(struct mtk_ddp_comp *comp)
 	dbg0 = readl(baddr + DISP_REG_MERGE_DGB0);
 	dbg1 = readl(baddr + DISP_REG_MERGE_DGB1);
 
-	DDPDUMP("== DISP %s ANALYSIS ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
+	DDPDUMP("== DISP %s ANALYSIS %x ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
 
 	ret = snprintf(msg, LEN,
 		"en:%d,swap:%d,dcm_dis:%d,width_L:%d,width_R:%d,h:%d,pix_cnt:%d,line_cnt:%d\n",
@@ -285,7 +285,6 @@ int mtk_merge_analysis(struct mtk_ddp_comp *comp)
 		REG_FLD_VAL_GET(FLD_IN_WIDHT_R, width),
 		REG_FLD_VAL_GET(FLD_IN_HEIGHT, height),
 		REG_FLD_VAL_GET(FLD_PIXEL_CNT, dbg0),
-		REG_FLD_VAL_GET(FLD_MERGE_STATE, dbg0),
 		REG_FLD_VAL_GET(FLD_LINE_CNT, dbg1));
 
 	if (ret >= 0)

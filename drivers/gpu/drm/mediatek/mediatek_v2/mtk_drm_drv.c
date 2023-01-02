@@ -9,6 +9,7 @@
 #include <drm/drm_gem.h>
 #include <drm/drm_gem_cma_helper.h>
 #include <drm/drm_fourcc.h>
+#include <drm/drm_framebuffer.h>
 #include <drm/drm_drv.h>
 #include <drm/drm_vblank.h>
 #include <linux/delay.h>
@@ -5599,6 +5600,11 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 				goto err_component_unbind;
 		}
 	}
+	/* TODO: allow_fb_modifiers = 1 and format_modifiers = null make drm_warn_on.
+	 * so we set allow_fb_modifiers = 1 after mtk_plane_init
+	 */
+	//drm->mode_config.allow_fb_modifiers = true;
+	//drm->mode_config.fb_modifiers_not_supported = true;
 
 	/* Use OVL device for all DMA memory allocations */
 	np = private->comp_node[private->data->main_path_data
@@ -6653,7 +6659,7 @@ static int mtk_drm_probe(struct platform_device *pdev)
 				"dispsys_num", &dispsys_num);
 	if (ret) {
 		dev_err(dev,
-			"no dispsys_config dispsys_num\n", ret);
+			"no dispsys_config dispsys_num %d\n", ret);
 		dispsys_num = 1;
 	}
 
@@ -7057,7 +7063,7 @@ static int mtk_drm_sys_suspend(struct device *dev)
 	if (wake_state == false)
 		goto OUT;
 
-	DDPMSG("%s\n");
+	//DDPMSG("%s\n");
 	drm_kms_helper_poll_disable(drm);
 
 	private->suspend_state = drm_atomic_helper_suspend(drm);

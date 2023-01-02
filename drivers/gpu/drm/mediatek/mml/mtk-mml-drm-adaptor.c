@@ -1206,13 +1206,13 @@ static struct mml_drm_ctx *drm_ctx_create(struct mml_dev *mml,
 	ctx->mml = mml;
 	ctx->task_ops = &drm_task_ops;
 	ctx->cfg_ops = &drm_config_ops;
-	ctx->wq_destroy = alloc_ordered_workqueue("mml_destroy", 0, 0);
+	ctx->wq_destroy = alloc_ordered_workqueue("mml_destroy", 0);
 	ctx->disp_dual = disp->dual;
 	ctx->disp_vdo = disp->vdo_mode;
 	ctx->submit_cb = disp->submit_cb;
 	ctx->panel_pixel = MML_DEFAULT_PANEL_PX;
-	ctx->wq_config[0] = alloc_ordered_workqueue("mml_work0", WORK_CPU_UNBOUND | WQ_HIGHPRI, 0);
-	ctx->wq_config[1] = alloc_ordered_workqueue("mml_work1", WORK_CPU_UNBOUND | WQ_HIGHPRI, 0);
+	ctx->wq_config[0] = alloc_ordered_workqueue("mml_work0", WORK_CPU_UNBOUND | WQ_HIGHPRI);
+	ctx->wq_config[1] = alloc_ordered_workqueue("mml_work1", WORK_CPU_UNBOUND | WQ_HIGHPRI);
 
 #ifndef MML_FPGA
 	ctx->timeline = mtk_sync_timeline_create("mml_timeline");

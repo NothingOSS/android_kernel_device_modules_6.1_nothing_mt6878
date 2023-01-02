@@ -470,7 +470,7 @@ static void mtk_disp_tdshp_bypass(struct mtk_ddp_comp *comp, int bypass,
 	struct cmdq_pkt *handle)
 {
 	pr_notice("%s, comp_id: %d, bypass: %d\n",
-			__func__, index_of_tdshp(comp->id));
+			__func__, index_of_tdshp(comp->id), bypass);
 
 	if (bypass == 1) {
 		cmdq_pkt_write(handle, comp->cmdq_base,

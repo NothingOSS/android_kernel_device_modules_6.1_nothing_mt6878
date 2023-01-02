@@ -5,6 +5,8 @@
 
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_crtc_helper.h>
+#include <drm/drm_edid.h>
+#include <drm/drm_framebuffer.h>
 #include <drm/drm_writeback.h>
 #include <drm/drm_probe_helper.h>
 
@@ -146,7 +148,7 @@ int mtk_wb_connector_init(struct drm_device *drm_dev,
 	ret = drm_writeback_connector_init(
 		drm_dev, wb_connector, &mtk_wb_connector_funcs,
 		&mtk_wb_encoder_helper_funcs, wb_output_formats,
-		(int)ARRAY_SIZE(wb_output_formats));
+		(int)ARRAY_SIZE(wb_output_formats), 0);
 	if (ret != 0)
 		return ret;
 

@@ -201,7 +201,7 @@ static void simple_dump_ops_table(const char *owner, char func)
 				&simple_panel_cust, "cust_pre_prepare");
 
 end:
-	DDPDUMP("========================\n", __func__);
+	DDPDUMP("========================\n");
 }
 
 static int simple_execute_ops(struct mtk_lcm_ops_data *op,

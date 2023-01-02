@@ -854,8 +854,8 @@ struct mml_dle_ctx *mml_dle_ctx_create(struct mml_dev *mml)
 	ctx->mml = mml;
 	ctx->task_ops = &dle_task_ops;
 	ctx->cfg_ops = &dle_config_ops;
-	ctx->wq_destroy = alloc_ordered_workqueue("mml_destroy_dl", 0, 0);
-	ctx->wq_config = alloc_ordered_workqueue("mml_work_dl", WORK_CPU_UNBOUND | WQ_HIGHPRI, 0);
+	ctx->wq_destroy = alloc_ordered_workqueue("mml_destroy_dl", 0);
+	ctx->wq_config = alloc_ordered_workqueue("mml_work_dl", WORK_CPU_UNBOUND | WQ_HIGHPRI);
 
 	return ctx;
 }

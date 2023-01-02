@@ -7,7 +7,7 @@
 #define __DRTX_TYPE_H__
 #include "mtk_drm_ddp_comp.h"
 #include <drm/drm_device.h>
-#include <drm/dp/drm_dp_helper.h>
+#include <drm/display/drm_dp_helper.h>
 #include "drm/mediatek_drm.h"
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_crtc_helper.h>

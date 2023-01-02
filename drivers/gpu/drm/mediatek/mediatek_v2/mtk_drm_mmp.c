@@ -5,6 +5,7 @@
 
 #include <drm/drm_crtc.h>
 #include <drm/drm_fourcc.h>
+#include <drm/drm_framebuffer.h>
 #include <linux/dma-buf.h>
 #include "mtk_drm_drv.h"
 #include "mtk_drm_mmp.h"
@@ -472,7 +473,7 @@ int mtk_drm_mmp_ovl_layer(struct mtk_plane_state *state,
 	void *dma_va;
 
 	if (crtc_idx >= MMP_CRTC_NUM) {
-		DDPINFO("Invalid crtc id\n", __func__);
+		DDPINFO("%s: Invalid crtc id\n", __func__);
 		return -1;
 	}
 	if (!mtk_drm_helper_get_opt(private->helper_opt,
@@ -563,7 +564,7 @@ int mtk_drm_mmp_ovl_layer(struct mtk_plane_state *state,
 
 		dma_va = mtk_drm_buffer_map_kernel(state->base.fb, &map);
 		if (!dma_va) {
-			DDPINFO("[MMP]dma_va is null\n", __func__);
+			DDPINFO("%s: [MMP]dma_va is null\n", __func__);
 			goto end;
 		}
 		bitmap.p_data = dma_va;
@@ -589,7 +590,7 @@ int mtk_drm_mmp_ovl_layer(struct mtk_plane_state *state,
 		meta.size = pending->pitch * pending->height;
 		dma_va = mtk_drm_buffer_map_kernel(state->base.fb, &map);
 		if (!dma_va) {
-			DDPINFO("[MMP]dma_va is null\n", __func__);
+			DDPINFO("%s: [MMP]dma_va is null\n", __func__);
 			goto end;
 		}
 		meta.p_data = dma_va;
@@ -632,7 +633,7 @@ int mtk_drm_mmp_wdma_buffer(struct drm_crtc *crtc,
 	CRTC_MMP_EVENT_START(crtc_idx, wbBmpDump, 0, 0);
 	dma_va = mtk_drm_buffer_map_kernel(wb_fb, &map);
 	if (!dma_va) {
-		DDPINFO("[MMP]dma_va is null\n", __func__);
+		DDPINFO("%s: [MMP]dma_va is null\n", __func__);
 		goto end;
 	}
 	bitmap.p_data = dma_va;

@@ -1224,7 +1224,7 @@ static unsigned int _dsi_get_pcw_mt6983(unsigned long data_rate,
 	else if (data_rate >= 510)
 		div3 = 3;
 	else {
-		DDPPR_ERR("invalid data rate %u\n");
+		DDPPR_ERR("invalid data rate %u\n", data_rate);
 		return -EINVAL;
 	}
 

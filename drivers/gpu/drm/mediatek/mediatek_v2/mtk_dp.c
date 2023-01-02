@@ -29,7 +29,7 @@
 #include <drm/drm_crtc.h>
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_edid.h>
-#include <drm/dp/drm_dp_helper.h>
+#include <drm/display/drm_dp_helper.h>
 #include <drm/mediatek_drm.h>
 #include <drm/drm_probe_helper.h>
 #include <drm/drm_modes.h>
@@ -950,7 +950,7 @@ bool mdrv_DPTx_Video_PG_AutoTest(struct mtk_dp *mtk_dp)//, BYTE ubDPCD_201)
 	DPTXMSG("req.test_v_start = %d\n", cts_req.test_v_start);
 	DPTXMSG("req.test_hsync_polarity = %d\n",
 		cts_req.test_hsync_polarity);
-	DPTXMSG("req.test_hsync_width = d\n",
+	DPTXMSG("req.test_hsync_width = %d\n",
 		cts_req.test_hsync_width);
 	DPTXMSG("req.test_vsync_polarity = %d\n",
 		cts_req.test_vsync_polarity);
@@ -3320,7 +3320,7 @@ struct edid *mtk_dp_handle_edid(struct mtk_dp *mtk_dp)
 		if (IS_ERR(mtk_dp->edid))
 			return NULL;
 
-		DPTXMSG("%s, duplicate edid from mtk_dp->edid!\n");
+		DPTXMSG("%s, duplicate edid from mtk_dp->edid!\n", __func__);
 		return drm_edid_duplicate(mtk_dp->edid);
 	}
 

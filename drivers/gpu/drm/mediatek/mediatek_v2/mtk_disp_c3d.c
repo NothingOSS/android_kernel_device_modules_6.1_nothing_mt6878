@@ -270,7 +270,7 @@ static bool disp_c3d_write_sram(struct mtk_ddp_comp *comp, int cmd_type)
 		cmdq_handle = c3d1_sram_pkt;
 
 	if (!cmdq_handle) {
-		DDPMSG("%s: cmdq handle is null.\n");
+		DDPMSG("%s: cmdq handle is null.\n", __func__);
 		return false;
 	}
 

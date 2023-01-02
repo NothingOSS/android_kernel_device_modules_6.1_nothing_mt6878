@@ -349,7 +349,7 @@ int mtk_sync_share_fence_create(struct sync_timeline *obj,
 		return err;
 	}
 
-	err = dma_resv_reserve_shared(resv, 1);
+	err = dma_resv_reserve_fences(resv, 1);
 	dma_fence_put(&pt->base);
 	if (unlikely(err))
 		return err;

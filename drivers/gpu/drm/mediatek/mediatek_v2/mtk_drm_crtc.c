@@ -6,10 +6,11 @@
 #include <asm/barrier.h>
 #include <drm/drm_atomic.h>
 #include <drm/drm_atomic_helper.h>
+#include <drm/drm_blend.h>
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_fourcc.h>
+#include <drm/drm_framebuffer.h>
 #include <drm/drm_plane_helper.h>
-#include <drm/drm_fourcc.h>
 #include <linux/clk.h>
 #include <linux/pm_runtime.h>
 #include <linux/mailbox_controller.h>
@@ -2857,7 +2858,7 @@ _mtk_crtc_wb_addon_module_connect(
 
 			DDPFENCE("S+/PL12/e1/id%d/mva0x%08llx/size0x%08lx\n",
 				(unsigned int)state->prop_val[CRTC_PROP_OUTPUT_FENCE_IDX],
-				mtk_fb_get_dma(fb), mtk_fb_get_size(fb), mtk_drm_fb_is_secure(fb));
+				mtk_fb_get_dma(fb), mtk_fb_get_size(fb));
 
 			if (mtk_crtc->is_dual_pipe) {
 				int w = crtc->state->adjusted_mode.hdisplay;
@@ -11048,7 +11049,7 @@ void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 				if (comp)
 					plane_state->comp_state.comp_id = comp->id;
 				else
-					DDPPR_ERR("%s NULL comp_id error\n", __func__, __LINE__);
+					DDPPR_ERR("%s,%d NULL comp_id error\n", __func__, __LINE__);
 			}
 
 			mtk_drm_layer_dispatch_to_dual_pipe(priv->data->mmsys_id, plane_state,
@@ -13097,7 +13098,7 @@ static int disp_mutex_dispatch(struct mtk_drm_private *priv, struct mtk_drm_crtc
 	}
 
 	if (unlikely(i >= 10)) {
-		DDPPR_ERR("%s can't allocate proper disp_mutex\n");
+		DDPPR_ERR("%s can't allocate proper disp_mutex\n", __func__);
 		return -ENOSPC;
 	}
 
@@ -14532,7 +14533,7 @@ void mtk_need_vds_path_switch(struct drm_crtc *crtc)
 	int comp_nr = 0;
 
 	if (!(priv && mtk_crtc && (index >= 0))) {
-		DDPPR_ERR("%s:%d:Error Invalid params\n");
+		DDPPR_ERR("%s:Error Invalid params\n", __func__);
 		return;
 	}
 
@@ -14943,7 +14944,7 @@ void mtk_crtc_connect_path_between_component(struct drm_crtc *crtc,
 			temp_comp = mtk_crtc_get_comp(crtc, mtk_crtc->ddp_mode, i, j - 1);
 
 			if (!temp_comp || prev_id > DDP_COMPONENT_ID_MAX) {
-				DDPPR_ERR("%s, temp_comp is NULL or invalid prev_id\n",
+				DDPPR_ERR("%s, temp_comp is NULL or invalid prev_id %d\n",
 						__func__, prev_id);
 				break;
 			}

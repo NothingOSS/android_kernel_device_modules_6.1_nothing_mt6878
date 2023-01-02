@@ -1965,7 +1965,7 @@ static int mtk_lcm_init_ddic_packet(struct mtk_lcm_dsi_cmd_packet *packet,
 
 			if (IS_ERR_OR_NULL(input) ||
 				IS_ERR_OR_NULL(input->data)) {
-				DDPPR_ERR("%s: err input\n", __func__, __LINE__);
+				DDPPR_ERR("%s, %d: err input\n", __func__, __LINE__);
 				ret = -EINVAL;
 				break;
 			}
@@ -2012,7 +2012,7 @@ static int mtk_lcm_init_ddic_packet(struct mtk_lcm_dsi_cmd_packet *packet,
 
 			if (IS_ERR_OR_NULL(input) ||
 				IS_ERR_OR_NULL(input->data)) {
-				DDPPR_ERR("%s: err input\n", __func__, __LINE__);
+				DDPPR_ERR("%s, %d: err input\n", __func__, __LINE__);
 				ret = -EINVAL;
 				break;
 			}
@@ -2082,7 +2082,7 @@ static int mtk_lcm_init_ddic_packet(struct mtk_lcm_dsi_cmd_packet *packet,
 		{
 			if (IS_ERR_OR_NULL(input) ||
 				IS_ERR_OR_NULL(input->condition)) {
-				DDPPR_ERR("%s: err input\n", __func__, __LINE__);
+				DDPPR_ERR("%s, %d: err input\n", __func__, __LINE__);
 				ret = -EINVAL;
 				break;
 			}
@@ -2351,7 +2351,7 @@ int mtk_execute_func_ddic_cmd(void *dev,
 
 		if (IS_ERR_OR_NULL(input) ||
 		    IS_ERR_OR_NULL(input->data)) {
-			DDPMSG("%s: err input\n", __func__, __LINE__);
+			DDPMSG("%s, %d: err input\n", __func__, __LINE__);
 			return -EINVAL;
 		}
 

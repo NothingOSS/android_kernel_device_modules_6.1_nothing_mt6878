@@ -2345,7 +2345,7 @@ static int mtk_oddmr_dmr_table_lookup(struct mtk_disp_oddmr *priv,
 				return table_idx;
 		}
 	}
-	DDPPR_ERR("%s table not found, %u,%u,%u Hz\n",
+	DDPPR_ERR("%s table not found, %u,%u,%u Hz\n", __func__,
 			new_timing->hdisplay, new_timing->vdisplay, new_timing->vrefresh);
 	return -EFAULT;
 }
@@ -2910,7 +2910,7 @@ static int mtk_oddmr_user_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 		struct mtk_oddmr_od_tuning_sram *tuning_data = data;
 
 		if (tuning_data == NULL) {
-			ODDMRFLOW_LOG("tuning data is NULL\n", cmd);
+			ODDMRFLOW_LOG("%d tuning data is NULL\n", cmd);
 			return -EFAULT;
 		}
 		mtk_oddmr_od_tuning_write_sram_dual(comp, handle, tuning_data);

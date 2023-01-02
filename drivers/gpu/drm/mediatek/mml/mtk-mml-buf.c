@@ -33,7 +33,7 @@ s32 mml_buf_get_fd(struct mml_file_buf *buf, int32_t *fd, u32 cnt, const char *n
 
 		buf->dma[i].dmabuf = dmabuf;
 #ifndef MML_FPGA
-		//mtk_dma_buf_set_name(dmabuf, name);
+		mtk_dma_buf_set_name(dmabuf, name);
 #endif
 	}
 	return 0;
@@ -50,7 +50,7 @@ void mml_buf_get(struct mml_file_buf *buf, void **dmabufs, u32 cnt, const char *
 		get_dma_buf(dmabufs[i]);
 		buf->dma[i].dmabuf = dmabufs[i];
 #ifndef MML_FPGA
-		//mtk_dma_buf_set_name(dmabufs[i], name);
+		mtk_dma_buf_set_name(dmabufs[i], name);
 #endif
 	}
 }
@@ -108,7 +108,7 @@ int mml_buf_iova_get(struct device *dev, struct mml_file_buf *buf)
 		}
 		ret = dmabuf_to_iova(dev, &buf->dma[i]);
 		if (ret < 0) {
-			mml_aee("mml", "get iova from dma_buf failed");
+			//mml_aee("mml", "get iova from dma_buf failed");
 			return ret;
 		}
 	}
@@ -138,7 +138,7 @@ int mml_buf_va_get(struct mml_file_buf *buf)
 inline static void dmabuf_iova_free(struct mml_dma_buf *dma)
 {
 #ifndef MML_FPGA
-	//mtk_dma_buf_set_name(dma->dmabuf, NULL);
+	mtk_dma_buf_set_name(dma->dmabuf, NULL);
 #endif
 	dma_buf_unmap_attachment(dma->attach, dma->sgt, DMA_FROM_DEVICE);
 	dma_buf_detach(dma->dmabuf, dma->attach);

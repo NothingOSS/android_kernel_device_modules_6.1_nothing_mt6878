@@ -551,7 +551,7 @@ static void dump_pq_param(struct mml_pq_param *pq_param)
 	mml_pq_dump(" scenario=%u", pq_param->scenario);
 	mml_pq_dump(" layer_id=%u disp_id=%d",
 		pq_param->layer_id, pq_param->disp_id);
-	mml_pq_dump(" src_gamut=%u dst_gamut",
+	mml_pq_dump(" src_gamut=%u dst_gamut=%u",
 		pq_param->src_gamut, pq_param->dst_gamut);
 	mml_pq_dump(" video_mode=%u", pq_param->src_hdr_video_mode);
 	mml_pq_dump(" user=%u", pq_param->user_info);
@@ -2208,7 +2208,7 @@ static bool ut_inited;
 static struct list_head ut_mml_tasks;
 static u32 ut_task_cnt;
 
-static void ut_init()
+static void ut_init(void)
 {
 	if (ut_inited)
 		return;

@@ -1799,7 +1799,7 @@ void mml_core_init_config(struct mml_frame_config *cfg)
 	INIT_LIST_HEAD(&cfg->done_tasks);
 	mutex_init(&cfg->pipe_mutex);
 	/* create work_thread 0, wait thread */
-	cfg->wq_done = alloc_ordered_workqueue("mml_done", WORK_CPU_UNBOUND | WQ_HIGHPRI, 0);
+	cfg->wq_done = alloc_ordered_workqueue("mml_done", WORK_CPU_UNBOUND | WQ_HIGHPRI);
 }
 
 void mml_core_deinit_config(struct mml_frame_config *cfg)
