@@ -4,6 +4,7 @@
  */
 
 #include <linux/dma-mapping.h>
+#include <linux/slab.h>
 #include <apu.h>
 #include <apu_excep.h>
 
@@ -21,23 +22,35 @@ int apu_coredump_init(struct mtk_apu *apu)
 {
 	struct device *dev = apu->dev;
 	int ret = 0;
+	uint32_t coredump_size = apu->up_code_buf_sz + REG_SIZE +
+		TBUF_SIZE + CACHE_DUMP_SIZE;
 
 	if (apu->platdata->flags & F_SECURE_COREDUMP)
 		return 0;
 
+	apu->coredump = kzalloc(sizeof(struct apu_coredump), GFP_KERNEL);
+	if (!apu->coredump)
+		return -ENOMEM;
+
 	apu->coredump_buf = dma_alloc_coherent(
-		apu->dev, COREDUMP_SIZE,
+		apu->dev, coredump_size,
 			&apu->coredump_da, GFP_KERNEL);
 	if (apu->coredump_buf == NULL || apu->coredump_da == 0) {
 		dev_info(dev, "%s: dma_alloc_coherent fail\n", __func__);
 		return -ENOMEM;
 	}
 
+	apu->coredump->tcmdump = (char *) apu->coredump_buf;
+	apu->coredump->ramdump = (char *) ((void *)apu->coredump->tcmdump + apu->md32_tcm_sz);
+	apu->coredump->regdump = (char *) ((void *)apu->coredump->tcmdump + apu->up_code_buf_sz);
+	apu->coredump->tbufdump = (char *) ((void *)apu->coredump->regdump + REG_SIZE);
+	apu->coredump->cachedump = (uint32_t *) ((void *)apu->coredump->tbufdump + TBUF_SIZE);
+
 	dev_info(dev, "%s: apu->coredump_buf = 0x%llx, apu->coredump_da = 0x%llx\n",
 		__func__, (uint64_t) apu->coredump_buf,
 		(uint64_t) apu->coredump_da);
 
-	memset(apu->coredump_buf, 0, sizeof(struct apu_coredump));
+	memset(apu->coredump_buf, 0, coredump_size);
 
 	apu_setup_dump(apu, apu->coredump_da);
 
@@ -46,7 +59,12 @@ int apu_coredump_init(struct mtk_apu *apu)
 
 void apu_coredump_remove(struct mtk_apu *apu)
 {
-	if ((apu->platdata->flags & F_SECURE_COREDUMP) == 0)
+	uint32_t coredump_size = apu->up_code_buf_sz + REG_SIZE +
+		TBUF_SIZE + CACHE_DUMP_SIZE;
+
+	if ((apu->platdata->flags & F_SECURE_COREDUMP) == 0) {
 		dma_free_coherent(
-			apu->dev, COREDUMP_SIZE, apu->coredump_buf, apu->coredump_da);
+			apu->dev, coredump_size, apu->coredump_buf, apu->coredump_da);
+		kfree(apu->coredump);
+	}
 }

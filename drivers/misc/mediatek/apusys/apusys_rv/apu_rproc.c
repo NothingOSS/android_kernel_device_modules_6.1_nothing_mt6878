@@ -39,11 +39,11 @@ static void *apu_da_to_va(struct rproc *rproc, u64 da, size_t len, bool *is_iome
 	void *ptr = NULL;
 	struct mtk_apu *apu = (struct mtk_apu *)rproc->priv;
 
-	if (da < DRAM_OFFSET + CODE_BUF_SIZE) {
+	if (da < DRAM_OFFSET + apu->up_code_buf_sz) {
 		ptr = apu->code_buf + (da - DRAM_OFFSET);
 		dev_info(apu->dev, "%s: (DRAM): da = 0x%llx, len = 0x%x\n",
 			__func__, da, len);
-	} else if (da >= TCM_OFFSET && da < TCM_OFFSET + TCM_SIZE) {
+	} else if (da >= TCM_OFFSET && da < TCM_OFFSET + apu->md32_tcm_sz) {
 		ptr = apu->md32_tcm + (da - TCM_OFFSET);
 		dev_info(apu->dev, "%s: (TCM): da = 0x%llx, len = 0x%x\n",
 			__func__, da, len);
@@ -161,10 +161,10 @@ static void apu_dram_boot_remove(struct mtk_apu *apu)
 			iommu_unmap(domain, APU_SEC_FW_IOVA, apu->apusys_sec_mem_size);
 	} else if ((apu->platdata->flags & F_BYPASS_IOMMU) == 0)
 		if (domain != NULL)
-			iommu_unmap(domain, iova, CODE_BUF_SIZE);
+			iommu_unmap(domain, iova, apu->up_code_buf_sz);
 
 	if ((apu->platdata->flags & F_PRELOAD_FIRMWARE) == 0)
-		dma_free_coherent(apu->dev, CODE_BUF_SIZE, apu->code_buf, apu->code_da);
+		dma_free_coherent(apu->dev, apu->up_code_buf_sz, apu->code_buf, apu->code_da);
 }
 
 static int apu_dram_boot_init(struct mtk_apu *apu)
@@ -208,13 +208,13 @@ static int apu_dram_boot_init(struct mtk_apu *apu)
 	}
 
 	/* Allocate code buffer */
-	apu->code_buf = dma_alloc_coherent(apu->dev, CODE_BUF_SIZE,
+	apu->code_buf = dma_alloc_coherent(apu->dev, apu->up_code_buf_sz,
 					&apu->code_da, GFP_KERNEL);
 	if (apu->code_buf == NULL || apu->code_da == 0) {
 		dev_info(dev, "%s: dma_alloc_coherent fail\n", __func__);
 		return -ENOMEM;
 	}
-	memset(apu->code_buf, 0, CODE_BUF_SIZE);
+	memset(apu->code_buf, 0, apu->up_code_buf_sz);
 
 	boundary = (u32) upper_32_bits(apu->code_da);
 	iova = CODE_BUF_DA | ((u64) boundary << 32);
@@ -225,7 +225,7 @@ static int apu_dram_boot_init(struct mtk_apu *apu)
 		sgt.sgl = NULL;
 		/* Convert IOVA to sgtable */
 		ret = dma_get_sgtable(apu->dev, &sgt, apu->code_buf,
-			apu->code_da, CODE_BUF_SIZE);
+			apu->code_da, apu->up_code_buf_sz);
 		if (ret < 0 || sgt.sgl == NULL) {
 			dev_info(dev, "get sgtable fail\n");
 			return -EINVAL;
@@ -239,11 +239,11 @@ static int apu_dram_boot_init(struct mtk_apu *apu)
 		dev_info(dev, "%s: sgt.nents = %d, sgt.orig_nents = %d\n",
 			__func__, sgt.nents, sgt.orig_nents);
 		dev_info(dev, "%s: map_sg_sz = %d\n", __func__, map_sg_sz);
-		if (map_sg_sz != CODE_BUF_SIZE)
+		if (map_sg_sz != apu->up_code_buf_sz)
 			dev_info(dev, "%s: iommu_map_sg fail(%d)\n", __func__, ret);
 
 		pa = iommu_iova_to_phys(domain,
-			iova + CODE_BUF_SIZE - SZ_4K);
+			iova + apu->up_code_buf_sz - SZ_4K);
 		dev_info(dev, "%s: pa = 0x%llx\n",
 			__func__, (uint64_t) pa);
 		if (!pa) // pa should not be null
@@ -319,6 +319,20 @@ static int apu_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, apu);
 	spin_lock_init(&apu->reg_lock);
 
+	ret = of_property_read_u32(np, "up-code-buf-sz",
+						   &up_code_buf_sz);
+	if (ret) {
+		/* fall back */
+		ret = of_property_read_u32(np, "up_code_buf_sz",
+					   &up_code_buf_sz);
+		if (ret) {
+			dev_info(dev, "parsing up_code_buf_sz error: %d\n", ret);
+			ret = -EINVAL;
+			goto out_free_rproc;
+		}
+	}
+	apu->up_code_buf_sz = up_code_buf_sz;
+
 	if (apu->platdata->flags & F_PRELOAD_FIRMWARE) {
 		/* prevent MPU violation when F_SECURE_BOOT is enabled */
 		if ((apu->platdata->flags & F_SECURE_BOOT) == 0) {
@@ -338,19 +352,6 @@ static int apu_probe(struct platform_device *pdev)
 				apu->apusys_sec_mem_size);
 			apu->apu_sec_mem_base = memremap(apu->apusys_sec_mem_start,
 				apu->apusys_sec_mem_size, MEMREMAP_WC);
-
-			ret = of_property_read_u32(np, "up-code-buf-sz",
-						   &up_code_buf_sz);
-			if (ret) {
-				/* fall back */
-				ret = of_property_read_u32(np, "up_code_buf_sz",
-							   &up_code_buf_sz);
-				if (ret) {
-					dev_info(dev, "parsing up_code_buf_sz error: %d\n", ret);
-					ret = -EINVAL;
-					goto out_free_rproc;
-				}
-			}
 
 			apu->apusys_sec_info = (struct apusys_secure_info_t *)
 				(apu->apu_sec_mem_base + up_code_buf_sz);

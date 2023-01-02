@@ -210,20 +210,14 @@ static struct apu_coredump_work_struct apu_coredump_work;
 
 static void apu_do_tcmdump(struct mtk_apu *apu)
 {
-	struct apu_coredump *coredump =
-		(struct apu_coredump *) apu->coredump_buf;
-
-	memcpy(coredump->tcmdump, (char *) apu->md32_tcm, TCM_SIZE);
+	memcpy(apu->coredump->tcmdump, (char *) apu->md32_tcm, apu->md32_tcm_sz);
 }
 
 static void apu_do_ramdump(struct mtk_apu *apu)
 {
-	struct apu_coredump *coredump =
-		(struct apu_coredump *) apu->coredump_buf;
-
-	/* first 128kB is only for bootstrap */
-	memcpy(coredump->ramdump,
-		(char *) apu->code_buf + DRAM_DUMP_OFFSET, DRAM_DUMP_SIZE);
+	memcpy(apu->coredump->ramdump,
+		(char *) apu->code_buf + apu->md32_tcm_sz,
+		apu->up_code_buf_sz - apu->md32_tcm_sz);
 }
 
 static void dbg_apb_dw(struct mtk_apu *apu, uint32_t dbg_reg, uint32_t val)
@@ -301,8 +295,6 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 	struct mtk_apu *apu = apu_coredump_work->apu;
 	struct device *dev = apu->dev;
 	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
-	struct apu_coredump *coredump =
-		(struct apu_coredump *) apu->coredump_buf;
 	uint32_t pc, lr, sp;
 	uint32_t reg_dump[REG_SIZE/sizeof(uint32_t)];
 	uint32_t tbuf_dump[TBUF_SIZE/sizeof(uint32_t)];
@@ -310,6 +302,7 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 	uint32_t status, data, timeout;
 	uint32_t val;
 	uint32_t *ptr;
+	uint32_t up_code_buf_sz, md32_tcm_sz;
 
 	/* bypass AP coredump flow if wdt timeout
 	 * is triggered by uP exception
@@ -396,7 +389,7 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 						TBUF_DBG_DAT3 - j*4);
 			}
 		}
-		memcpy(coredump->tbufdump, tbuf_dump, sizeof(tbuf_dump));
+		memcpy(apu->coredump->tbufdump, tbuf_dump, sizeof(tbuf_dump));
 
 		spin_lock_irqsave(&apu->reg_lock, flags);
 
@@ -450,10 +443,12 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 		}
 
 		if ((status & 0x1) == 0x1) { /* Read Cache Data */
-			dbg_apb_dw(apu, DBG_ADDR_REG_INSTR, DRAM_DUMP_OFFSET);
-			ptr = (uint32_t *) coredump->ramdump;
+			dbg_apb_dw(apu, DBG_ADDR_REG_INSTR, apu->md32_tcm_sz);
+			ptr = (uint32_t *) apu->coredump->ramdump;
+			up_code_buf_sz = apu->up_code_buf_sz;
+			md32_tcm_sz = apu->md32_tcm_sz;
 			/* read one word per loop */
-			for (i = 0; i < DRAM_DUMP_SIZE/sizeof(uint32_t); i++) {
+			for (i=0; i < (up_code_buf_sz - md32_tcm_sz)/sizeof(uint32_t); i++) {
 				dbg_apb_iw(apu, DBG_READ_DM);
 				data = dbg_apb_dr(apu, DBG_DATA_REG_INSTR);
 				ptr[i] = data;
@@ -473,7 +468,7 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 		}
 		hw_ops->rv_cachedump(apu);
 
-		memcpy(coredump->regdump, reg_dump, sizeof(reg_dump));
+		memcpy(apu->coredump->regdump, reg_dump, sizeof(reg_dump));
 
 		dsb(SY); /* may take lots of time */
 	}

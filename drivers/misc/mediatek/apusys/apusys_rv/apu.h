@@ -107,6 +107,14 @@ struct apusys_aee_coredump_info_t {
 	unsigned int mvpu_sec_xfile_sz;
 };
 
+struct apu_coredump {
+	char *tcmdump;
+	char *ramdump;
+	char *regdump;
+	char *tbufdump;
+	uint32_t *cachedump;
+} __packed;
+
 struct mtk_apu {
 	struct rproc *rproc;
 	struct platform_device *pdev;
@@ -122,6 +130,7 @@ struct mtk_apu {
 	void *apu_sec_mem_base;
 	void *apu_aee_coredump_mem_base;
 	void *coredump_buf;
+	struct apu_coredump *coredump;
 	dma_addr_t coredump_da;
 	int wdt_irq_number;
 	int mbox0_irq_number;
@@ -172,30 +181,19 @@ struct mtk_apu {
 	struct mtk_apu_platdata	*platdata;
 	struct device *power_dev;
 	struct device *apu_iommu0, *apu_iommu1;
+
+	uint32_t md32_tcm_sz;
+	uint32_t up_code_buf_sz;
 };
 
-#define TCM_SIZE (128UL * 1024UL)
-#define CODE_BUF_SIZE (1024UL * 1024UL)
-/* first 128kB is only for bootstrap */
-#define DRAM_DUMP_SIZE (CODE_BUF_SIZE - TCM_SIZE)
 #define CONFIG_SIZE (round_up(sizeof(struct config_v1), PAGE_SIZE))
 #define REG_SIZE (4UL * 151UL)
 #define TBUF_SIZE (4UL * 32UL)
 #define CACHE_DUMP_SIZE (37UL * 1024UL)
 #define DRAM_OFFSET (0x00000UL)
-#define DRAM_DUMP_OFFSET (TCM_SIZE)
 #define TCM_OFFSET (0x1d000000UL)
 #define CODE_BUF_DA (DRAM_OFFSET)
 #define APU_SEC_FW_IOVA (0x200000UL)
-
-struct apu_coredump {
-	char tcmdump[TCM_SIZE];
-	char ramdump[DRAM_DUMP_SIZE];
-	char regdump[REG_SIZE];
-	char tbufdump[TBUF_SIZE];
-	uint32_t cachedump[CACHE_DUMP_SIZE/sizeof(uint32_t)];
-} __packed;
-#define COREDUMP_SIZE       (round_up(sizeof(struct apu_coredump), PAGE_SIZE))
 
 int apu_mem_init(struct mtk_apu *apu);
 void apu_mem_remove(struct mtk_apu *apu);

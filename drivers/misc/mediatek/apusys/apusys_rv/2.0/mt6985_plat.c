@@ -755,6 +755,7 @@ static int mt6985_apu_memmap_init(struct mtk_apu *apu)
 		dev_info(dev, "%s: md32_tcm remap base fail\n", __func__);
 		return -ENOMEM;
 	}
+	apu->md32_tcm_sz = res->end - res->start + 1;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "md32_cache_dump");
 	if (res == NULL) {
@@ -790,7 +791,7 @@ static void mt6985_rv_cachedump(struct mtk_apu *apu)
 	unsigned long flags;
 
 	struct apu_coredump *coredump =
-		(struct apu_coredump *) apu->coredump_buf;
+		(struct apu_coredump *) apu->coredump;
 
 	spin_lock_irqsave(&apu->reg_lock, flags);
 	/* set APU_UP_SYS_DBG_EN for cache dump enable through normal APB */

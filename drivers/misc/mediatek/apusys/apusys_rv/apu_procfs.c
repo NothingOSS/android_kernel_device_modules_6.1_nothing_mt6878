@@ -132,17 +132,19 @@ static void apu_mrdump_register(struct mtk_apu *apu)
 	unsigned long base_va = 0;
 	unsigned long base_pa = 0;
 	unsigned long size = 0;
+	uint32_t coredump_size = apu->up_code_buf_sz + REG_SIZE +
+		TBUF_SIZE + CACHE_DUMP_SIZE;
 
 	if (apu->platdata->flags & F_SECURE_COREDUMP) {
 		base_pa = apu->apusys_aee_coredump_mem_start +
 			apu->apusys_aee_coredump_info->up_coredump_ofs;
 		base_va = (unsigned long) apu->apu_aee_coredump_mem_base +
 			apu->apusys_aee_coredump_info->up_coredump_ofs;
-		size = sizeof(struct apu_coredump);
+		size = coredump_size;
 	} else {
 		base_pa = __pa_nodebug(apu->coredump_buf);
 		base_va = (unsigned long) apu->coredump_buf;
-		size = sizeof(struct apu_coredump);
+		size = coredump_size;
 	}
 	ret = mrdump_mini_add_extra_file(base_va, base_pa, size,
 		"APUSYS_COREDUMP");
