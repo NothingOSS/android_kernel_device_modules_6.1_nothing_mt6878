@@ -70,8 +70,8 @@ static int look_up_cpu(struct device *cpu_dev)
 
 
 static int __maybe_unused
-mtk_cpufreq_get_cpu_power(unsigned long *power, unsigned long *KHz,
-		struct device *cpu_dev)
+mtk_cpufreq_get_cpu_power(struct device *cpu_dev, unsigned long *uW,
+		unsigned long *KHz)
 {
 	int cpu = look_up_cpu(cpu_dev);
 	struct cpufreq_mtk *c = mtk_freq_domain_map[cpu];
@@ -84,7 +84,7 @@ mtk_cpufreq_get_cpu_power(unsigned long *power, unsigned long *KHz,
 	i--;
 
 	*KHz = c->table[i].frequency;
-	*power = readl_relaxed(c->reg_bases[REG_EM_POWER_TBL] +
+	*uW = readl_relaxed(c->reg_bases[REG_EM_POWER_TBL] +
 			    i * LUT_ROW_SIZE) / 1000;
 
 	return 0;
