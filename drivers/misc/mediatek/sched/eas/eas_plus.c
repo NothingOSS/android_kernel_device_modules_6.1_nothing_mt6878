@@ -49,11 +49,6 @@ bool task_may_not_preempt(struct task_struct *task, int cpu)
 		(task == cpu_ksoftirqd ||
 		 task_thread_info(task)->preempt_count & SOFTIRQ_MASK));
 }
-#else
-bool task_may_not_preempt(struct task_struct *task, int cpu)
-{
-	return false;
-}
 #endif /* CONFIG_RT_SOFTINT_OPTIMIZATION */
 
 static struct perf_domain *find_pd(struct perf_domain *pd, int cpu)
@@ -413,7 +408,6 @@ void mtk_tick_entry(void *data, struct rq *rq)
 	struct em_perf_domain *pd;
 	int this_cpu, gear_id, opp_idx, offset;
 	unsigned int freq_thermal;
-	unsigned long max_capacity, capacity;
 	u32 opp_ceiling;
 	u64 idle_time, wall_time, cpu_utilize;
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
@@ -480,10 +474,7 @@ void mtk_tick_entry(void *data, struct rq *rq)
 	opp_idx = pd->nr_perf_states - opp_ceiling - 1;
 	freq_thermal = pd->table[opp_idx].frequency;
 
-	max_capacity = arch_scale_cpu_capacity(this_cpu);
-	capacity = freq_thermal * max_capacity;
-	capacity /= pd->table[pd->nr_perf_states-1].frequency;
-	arch_set_thermal_pressure(to_cpumask(pd->cpus), max_capacity - capacity);
+	arch_update_thermal_pressure(to_cpumask(pd->cpus), freq_thermal);
 
 	trace_sched_frequency_limits(this_cpu, freq_thermal);
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
