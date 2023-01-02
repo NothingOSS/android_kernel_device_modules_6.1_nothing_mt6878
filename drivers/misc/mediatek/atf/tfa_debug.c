@@ -139,7 +139,7 @@ static int generic_open(struct inode *inode, struct file *file)
 		GFP_KERNEL);
 	if (IS_ERR(inst_p)) {
 		file->private_data = NULL;
-		pr_notice("Fail to kmalloc:%d\n", PTR_ERR(inst_p));
+		pr_notice("Fail to kmalloc:%ld\n", PTR_ERR(inst_p));
 		return -ENOMEM;
 	}
 	init_waitqueue_head(&inst_p->waitq);
@@ -171,7 +171,7 @@ static int raw_open(struct inode *inode, struct file *file)
 
 static int raw_release(struct inode *node, struct file *file)
 {
-	pr_info("%s:vaddr:0x%llx\n", __func__, file->private_data);
+	pr_info("%s:vaddr:0x%lx\n", __func__, (unsigned long)file->private_data);
 	if (file->private_data) {
 		struct tfa_debug_instance *inst_p = file->private_data;
 
@@ -262,7 +262,7 @@ static int getc_for_read(struct file *file, char *p)
 		return -1;
 	body = inst_p->vaddr;
 	if (inst_p->read_offset >= inst_p->debug_buf_size) {
-		pr_notice("%s read offset is invalid, :%u\n",
+		pr_notice("%s read offset is invalid, :%lu\n",
 			__func__, inst_p->read_offset);
 		inst_p->read_offset = 0;
 	}
@@ -418,11 +418,11 @@ static int lookup_reserved_memory(void)
 	/* remap reserved memory as non-cacheable */
 	info.vaddr = ioremap(info.debug_buf_paddr, info.total_size);
 	if (IS_ERR(info.vaddr)) {
-		pr_notice("Fail to remap debug buf vaddr:%d\n",
+		pr_notice("Fail to remap debug buf vaddr:%ld\n",
 			PTR_ERR(info.vaddr));
 		return -ENOMEM;
 	}
-	pr_info("debug buf vaddr:0x%llx\n", info.vaddr);
+	pr_info("debug buf vaddr:0x%llx\n", (unsigned long long)info.vaddr);
 	return 0;
 }
 
