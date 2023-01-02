@@ -6520,7 +6520,7 @@
 				 <&pericfg_ao_clk CLK_PERAO_MSDC1_F>,
 				 <&pericfg_ao_clk CLK_PERAO_MSDC1_H>,
 				 <&pericfg_ao_clk CLK_PERAO_MSDC1>;
-			clock-names = "source", "macro", "ahb_cg", "axi_cg", "source_cg";
+			clock-names = "source", "macro", "axi_cg", "hclk", "source_cg";
 			status = "disabled";
 		};
 
@@ -6534,7 +6534,7 @@
 				 <&pericfg_ao_clk CLK_PERAO_MSDC2_F>,
 				 <&pericfg_ao_clk CLK_PERAO_MSDC2_H>,
 				 <&pericfg_ao_clk CLK_PERAO_MSDC2>;
-			clock-names = "source", "macro", "ahb_cg", "axi_cg", "source_cg";
+			clock-names = "source", "macro", "axi_cg", "hclk", "source_cg";
 			status = "disabled";
 		};
 
