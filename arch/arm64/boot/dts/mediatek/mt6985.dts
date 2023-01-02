@@ -1120,6 +1120,61 @@
 		#clock-cells = <1>;
 	};
 
+	efuse: efuse@11e80000 {
+			compatible = "mediatek,devinfo";
+			efuse_segment: segment@78 {
+				reg = <0x78 0x4>;
+			};
+
+			u2_phy_data: u2_phy_data {
+				reg = <0x1b0 0x4>;
+			};
+
+			lvts_e_data1: data1 {
+				reg = <0x1d4 0xc>;
+			};
+
+			lvts_e_data2: data2 {
+				reg = <0x2f8 0x50>;
+			};
+
+			lvts_e_data3: data3 {
+				reg = <0x2d4 0x14>;
+			};
+
+			cpu_version: cpu_data {
+				reg = <0x234 0x4>;
+			};
+
+			csi_efuse0: csi_data0 {
+				reg = <0x1b8 0x4>;
+			};
+
+			csi_efuse1: csi_data1 {
+				reg = <0x1bc 0x4>;
+			};
+
+			csi_efuse2: csi_data2 {
+				reg = <0x1c0 0x4>;
+			};
+
+			csi_efuse3: csi_data3 {
+				reg = <0x1c4 0x4>;
+			};
+
+			csi_efuse4: csi_data4 {
+				reg = <0x1c8 0x4>;
+			};
+
+			csi_efuse5: csi_data5 {
+				reg = <0x1cc 0x4>;
+			};
+
+			lkginfo: lkg {
+				reg = <0x218 0x18>;
+			};
+	};
+
 	tboard_thermistor1: thermal-ntc1 {
 		compatible = "mediatek,mt6685-tia-ntc";
 		status = "disabled";
