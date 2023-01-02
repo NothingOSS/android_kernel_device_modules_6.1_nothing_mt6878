@@ -9430,6 +9430,78 @@
 		};
 	};
 
+	mmdvfs-debug {
+		compatible = "mediatek,mmdvfs-debug";
+		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+		disp-dev = <&dispsys_config>;
+		force-step0 = <1>; /* 0:opp0,  1:opp1, ... */
+		release-step0 = <0>; /* 0:disable,  1:enable */
+		//clocks = <&mmdvfs_clk CLK_MMDVFS_VCORE>, <&mmdvfs_clk CLK_MMDVFS_VMM>;
+		//clock-names = "vcore", "vmm";
+	};
+
+	mmdvfs {
+		compatible = "mediatek,mmdvfs";
+		operating-points-v2 = <&opp_table_disp>;
+		mediatek,support_mux = "disp0", "disp1", "disp2", "disp3",
+			"mminfra", "mdp0", "mdp1";
+		mediatek,mux_disp0 = "TOP_MMPLL_D6_D2",
+			"TOP_MAINPLL_D6", "TOP_MMPLL_D6",
+			"TOP_UNIVPLL_D4", "TOP_MAINPLL_D3";
+		mediatek,mux_disp1 = "TOP_MMPLL_D6_D2",
+			"TOP_MAINPLL_D6", "TOP_MMPLL_D6",
+			"TOP_UNIVPLL_D4", "TOP_MAINPLL_D3";
+		mediatek,mux_disp2 = "TOP_MMPLL_D6_D2",
+			"TOP_MAINPLL_D6", "TOP_MMPLL_D6",
+			"TOP_UNIVPLL_D4", "TOP_MAINPLL_D3";
+		mediatek,mux_disp3 = "TOP_MMPLL_D6_D2",
+			"TOP_MAINPLL_D6", "TOP_MMPLL_D6",
+			"TOP_UNIVPLL_D4", "TOP_MAINPLL_D3";
+		mediatek,mux_mminfra = "TOP_MAINPLL_D5_D2",
+			"TOP_MMPLL_D4_D2", "TOP_MMPLL_D6",
+			"TOP_UNIVPLL_D4", "TOP_MAINPLL_D3";
+		mediatek,mux_mdp0 = "TOP_UNIVPLL_D5_D2",
+			"TOP_MAINPLL_D6", "TOP_MMPLL_D6",
+			"TOP_UNIVPLL_D4", "TOP_MAINPLL_D3";
+		mediatek,mux_mdp1 = "TOP_UNIVPLL_D5_D2",
+			"TOP_MAINPLL_D6", "TOP_MMPLL_D6",
+			"TOP_UNIVPLL_D4", "TOP_MAINPLL_D3";
+
+		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+
+		clocks = <&topckgen_clk CLK_TOP_DISP0_SEL>,	/* 0 */
+			<&topckgen_clk CLK_TOP_DISP1_SEL>,	/* 1 */
+			<&topckgen_clk CLK_TOP_OVL0_SEL>,	/* 2 */
+			<&topckgen_clk CLK_TOP_OVL1_SEL>,	/* 3 */
+			<&topckgen_clk CLK_TOP_MMINFRA_SEL>,	/* 4 */
+			<&topckgen_clk CLK_TOP_MDP0_SEL>,	/* 5 */
+			<&topckgen_clk CLK_TOP_MDP1_SEL>,	/* 6 */
+			<&topckgen_clk CLK_TOP_MMPLL_D6_D2>,	/* 7 */
+			<&topckgen_clk CLK_TOP_MAINPLL_D6>,	/* 8 */
+			<&topckgen_clk CLK_TOP_MMPLL_D6>,	/* 9 */
+			<&topckgen_clk CLK_TOP_UNIVPLL_D4>,	/* 10 */
+			<&topckgen_clk CLK_TOP_MAINPLL_D3>,	/* 11 */
+			<&topckgen_clk CLK_TOP_MAINPLL_D5_D2>,	/* 12 */
+			<&topckgen_clk CLK_TOP_MMPLL_D4_D2>,	/* 13 */
+			<&topckgen_clk CLK_TOP_UNIVPLL_D5_D2>;	/* 14 */
+
+		clock-names = "disp0",		/* 0 */
+			"disp1",		/* 1 */
+			"disp2",		/* 2 */
+			"disp3",		/* 3 */
+			"mminfra",		/* 4 */
+			"mdp0",			/* 5 */
+			"mdp1",			/* 6 */
+			"TOP_MMPLL_D6_D2",	/* 7 */
+			"TOP_MAINPLL_D6",	/* 8 */
+			"TOP_MMPLL_D6",		/* 9 */
+			"TOP_UNIVPLL_D4",	/* 10 */
+			"TOP_MAINPLL_D3",	/* 11 */
+			"TOP_MAINPLL_D5_D2",	/* 12 */
+			"TOP_MMPLL_D4_D2",	/* 13 */
+			"TOP_UNIVPLL_D5_D2";	/* 14 */
+	};
+
 	slbc: slbc {
 		compatible = "mediatek,mtk-slbc";
 		reg = <0 0x00113e00 0 0x200>;
