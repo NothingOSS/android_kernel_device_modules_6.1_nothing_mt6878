@@ -617,6 +617,11 @@
 	};
 
 	clocks {
+		clk_null: clk_null {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <0>;
+		};
 		clk32k: clk32k {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
