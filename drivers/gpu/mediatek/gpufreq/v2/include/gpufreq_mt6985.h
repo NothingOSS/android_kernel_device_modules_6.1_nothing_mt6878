@@ -30,6 +30,7 @@
 #define GPUFREQ_PDCA_ENABLE             (0)
 #define GPUFREQ_GPM1_ENABLE             (0)
 #define GPUFREQ_GPM3_ENABLE             (0)
+#define GPUFREQ_MERGER_ENABLE           (0)
 #define GPUFREQ_DFD_ENABLE              (0)
 #define GPUFREQ_AVS_ENABLE              (0)
 #define GPUFREQ_ASENSOR_ENABLE          (0)

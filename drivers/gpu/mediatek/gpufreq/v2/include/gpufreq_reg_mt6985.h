@@ -104,6 +104,14 @@ static inline u32 readl_mfg(const void __iomem *addr)
 #define MFG_DFD_CON_9                   (MFG_TOP_CFG_BASE + 0xA24)            /* 0x13FBFA24 */
 #define MFG_DFD_CON_10                  (MFG_TOP_CFG_BASE + 0xA28)            /* 0x13FBFA28 */
 #define MFG_DFD_CON_11                  (MFG_TOP_CFG_BASE + 0xA2C)            /* 0x13FBFA2C */
+#define MFG_MERGE_R_CON_00              (MFG_TOP_CFG_BASE + 0x8A0)            /* 0x13FBF8A0 */
+#define MFG_MERGE_R_CON_02              (MFG_TOP_CFG_BASE + 0x8A8)            /* 0x13FBF8A8 */
+#define MFG_MERGE_R_CON_04              (MFG_TOP_CFG_BASE + 0x8C0)            /* 0x13FBF8C0 */
+#define MFG_MERGE_R_CON_06              (MFG_TOP_CFG_BASE + 0x8C8)            /* 0x13FBF8C8 */
+#define MFG_MERGE_W_CON_00              (MFG_TOP_CFG_BASE + 0x8B0)            /* 0x13FBF8B0 */
+#define MFG_MERGE_W_CON_02              (MFG_TOP_CFG_BASE + 0x8B8)            /* 0x13FBF8B8 */
+#define MFG_MERGE_W_CON_04              (MFG_TOP_CFG_BASE + 0x8D0)            /* 0x13FBF8D0 */
+#define MFG_MERGE_W_CON_06              (MFG_TOP_CFG_BASE + 0x8D8)            /* 0x13FBF8D8 */
 
 #define MFG_PLL_BASE                    (g_mfg_pll_base)                      /* 0x13FA0000 */
 #define MFG_PLL_CON0                    (MFG_PLL_BASE + 0x008)                /* 0x13FA0008 */

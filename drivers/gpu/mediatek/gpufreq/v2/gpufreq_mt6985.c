@@ -137,6 +137,7 @@ static void __gpufreq_aoc_config(enum gpufreq_power_state power);
 static void __gpufreq_hwdcm_config(void);
 static void __gpufreq_acp_config(void);
 static void __gpufreq_gpm1_config(void);
+static void __gpufreq_transaction_config(void);
 static void __gpufreq_dfd_config(void);
 static void __gpufreq_mfg_backup_restore(enum gpufreq_power_state power);
 /* init function */
@@ -767,22 +768,27 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 		__gpufreq_gpm1_config();
 		__gpufreq_footprint_power_step(0x0A);
 
-		__gpufreq_dfd_config();
+		/* config AXI transaction */
+		__gpufreq_transaction_config();
 		__gpufreq_footprint_power_step(0x0B);
+
+		/* config DFD */
+		__gpufreq_dfd_config();
+		__gpufreq_footprint_power_step(0x0C);
 
 		/* free DVFS when power on */
 		g_dvfs_state &= ~DVFS_POWEROFF;
-		__gpufreq_footprint_power_step(0x0C);
-	} else if (power == POWER_OFF && g_stack.power_count == 0) {
 		__gpufreq_footprint_power_step(0x0D);
+	} else if (power == POWER_OFF && g_stack.power_count == 0) {
+		__gpufreq_footprint_power_step(0x0E);
 
 		/* freeze DVFS when power off */
 		g_dvfs_state |= DVFS_POWEROFF;
-		__gpufreq_footprint_power_step(0x0E);
+		__gpufreq_footprint_power_step(0x0F);
 
 		/* backup MFG registers */
 		__gpufreq_mfg_backup_restore(POWER_OFF);
-		__gpufreq_footprint_power_step(0x0F);
+		__gpufreq_footprint_power_step(0x10);
 
 		/* disable Clock */
 		ret = __gpufreq_clock_control(POWER_OFF);
@@ -791,7 +797,7 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 			ret = GPUFREQ_EINVAL;
 			goto done_unlock;
 		}
-		__gpufreq_footprint_power_step(0x10);
+		__gpufreq_footprint_power_step(0x11);
 
 		/* disable MTCMOS */
 		ret = __gpufreq_mtcmos_control(POWER_OFF);
@@ -800,7 +806,7 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 			ret = GPUFREQ_EINVAL;
 			goto done_unlock;
 		}
-		__gpufreq_footprint_power_step(0x11);
+		__gpufreq_footprint_power_step(0x12);
 
 		/* disable Buck */
 		ret = __gpufreq_buck_control(POWER_OFF);
@@ -809,11 +815,11 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 			ret = GPUFREQ_EINVAL;
 			goto done_unlock;
 		}
-		__gpufreq_footprint_power_step(0x12);
+		__gpufreq_footprint_power_step(0x13);
 
 		/* config AOC before MFG0 power off */
 		__gpufreq_aoc_config(POWER_OFF);
-		__gpufreq_footprint_power_step(0x13);
+		__gpufreq_footprint_power_step(0x14);
 	}
 
 	/* return power count if successfully control power */
@@ -834,9 +840,9 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 		__gpufreq_update_shared_status_power_reg();
 
 	if (power == POWER_ON)
-		__gpufreq_footprint_power_step(0x14);
-	else if (power == POWER_OFF)
 		__gpufreq_footprint_power_step(0x15);
+	else if (power == POWER_OFF)
+		__gpufreq_footprint_power_step(0x16);
 
 done_unlock:
 	GPUFREQ_LOGD("- PWR_STATUS: 0x%08x", MFG_0_19_PWR_STATUS);
@@ -3159,6 +3165,29 @@ static void __gpufreq_gpm1_config(void)
 
 	__gpufreq_set_semaphore(SEMA_RELEASE);
 #endif /* GPUFREQ_GPM1_ENABLE */
+}
+
+/* Merge GPU transaction to maximize DRAM efficiency */
+static void __gpufreq_transaction_config(void)
+{
+#if GPUFREQ_MERGER_ENABLE
+	/* acquire sema before access MFG_TOP_CFG */
+	__gpufreq_set_semaphore(SEMA_ACQUIRE);
+
+	/* Merge AXI READ to window size 8T */
+	writel(0x0808FF81, MFG_MERGE_R_CON_00);
+	writel(0x0808FF81, MFG_MERGE_R_CON_02);
+	writel(0x0808FF81, MFG_MERGE_R_CON_04);
+	writel(0x0808FF81, MFG_MERGE_R_CON_06);
+
+	/* Merge AXI WRITE to window size 64T */
+	writel(0x4040FF81, MFG_MERGE_W_CON_00);
+	writel(0x4040FF81, MFG_MERGE_W_CON_02);
+	writel(0x4040FF81, MFG_MERGE_W_CON_04);
+	writel(0x4040FF81, MFG_MERGE_W_CON_06);
+
+	__gpufreq_set_semaphore(SEMA_RELEASE);
+#endif /* GPUFREQ_MERGER_ENABLE */
 }
 
 static void __gpufreq_dfd_config(void)
