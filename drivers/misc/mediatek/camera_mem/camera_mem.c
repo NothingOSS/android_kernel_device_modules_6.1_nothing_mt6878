@@ -23,6 +23,7 @@
 #include <linux/fs.h>
 #include <soc/mediatek/smi.h>
 #include <linux/proc_fs.h>
+#include <linux/pm_runtime.h>
 #include <linux/seq_file.h>
 #include <linux/suspend.h>
 
@@ -130,7 +131,7 @@ static inline void smi_larbs_get(void)
 
 	for (i = 0; i < g_larb_num; i++) {
 		if (cam_mem_dev.larbs[i]) {
-			ret = mtk_smi_larb_get(cam_mem_dev.larbs[i]);
+			ret = pm_runtime_resume_and_get(cam_mem_dev.larbs[i]);
 			if (ret) {
 				LOG_NOTICE("mtk_smi_larb_get larbs[%d] fail %d\n", i, ret);
 			} else {
@@ -155,7 +156,7 @@ static inline void smi_larbs_put(void)
 
 	for (i = 0; i < g_larb_num; i++) {
 		if (cam_mem_dev.larbs[g_larb_num - 1 - i]) {
-			mtk_smi_larb_put(cam_mem_dev.larbs[g_larb_num - 1 - i]);
+			pm_runtime_put_sync(cam_mem_dev.larbs[g_larb_num - 1 - i]);
 			spin_lock(&(CamMemInfo.SpinLock_Larb));
 			G_u4EnableLarbCount--;
 			spin_unlock(&(CamMemInfo.SpinLock_Larb));
