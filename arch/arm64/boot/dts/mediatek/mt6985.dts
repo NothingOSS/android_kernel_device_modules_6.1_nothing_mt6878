@@ -873,6 +873,10 @@
 			#interrupt-cells = <2>;
 		};
 
+		mtkfb: mtkfb@0 {
+			compatible = "mediatek,mtkfb";
+		};
+
 		apmixed@1000c000 {
 			compatible = "mediatek,apmixed";
 			reg = <0 0x1000c000 0 0xe00>;
