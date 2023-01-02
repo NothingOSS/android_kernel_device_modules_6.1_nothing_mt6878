@@ -24,24 +24,9 @@
 #define CREATE_TRACE_POINTS
 #include "irq_monitor_trace.h"
 
-#if IS_ENABLED(CONFIG_MTK_AEE_HANGDET)
 #include <mt-plat/mrdump.h>
-#else
-#define kwdt_regist_irq_info(x) do {} while (0)
-#endif
-
-#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 #include <mt-plat/mboot_params.h>
-#else
-#define aee_sram_fiq_log(msg) do {} while (0)
-#endif
-
-#if IS_ENABLED(CONFIG_MTK_AEE_AED)
 #include <mt-plat/aee.h>
-#else
-#undef aee_kernel_warning_api
-#define aee_kernel_warning_api(file, line, db_opt, module, msg...) do {} while (0)
-#endif
 
 #ifdef MODULE
 /* reference kernel/softirq.c */
