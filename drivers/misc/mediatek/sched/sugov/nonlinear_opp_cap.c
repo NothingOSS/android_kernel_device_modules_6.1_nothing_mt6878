@@ -470,7 +470,8 @@ static int init_util_freq_opp_mapping_table(void)
 
 			if (policy)
 				pd_info->freq_opp_map_legacy[j] =
-				cpufreq_table_find_index_dl(policy, pd_info->table[opp].freq);
+				cpufreq_table_find_index_dl(policy,
+						pd_info->table[opp].freq, false);
 
 			curr_freq -= pd_info->DFreq;
 		}
@@ -478,7 +479,9 @@ static int init_util_freq_opp_mapping_table(void)
 		pd_info->freq_opp_map[pd_info->nr_freq_opp_map - 1] = opp + 1;
 		if (policy) {
 			pd_info->freq_opp_map_legacy[pd_info->nr_freq_opp_map - 1] =
-				cpufreq_table_find_index_dl(policy, pd_info->table[opp + 1].freq);
+				cpufreq_table_find_index_dl(policy,
+						pd_info->table[opp + 1].freq,
+						false);
 			cpufreq_cpu_put(policy);
 		}
 	}
