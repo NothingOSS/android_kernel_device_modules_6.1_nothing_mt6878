@@ -9,6 +9,7 @@
 #include <linux/sched/signal.h>
 #include <linux/sched/clock.h>
 #include <linux/string.h>
+#include <linux/utsname.h>
 #include <linux/workqueue.h>
 
 #include <asm/sections.h>
@@ -17,6 +18,7 @@
 
 #include <mt-plat/aee.h>
 #include <mt-plat/mboot_params.h>
+#include <sched/autogroup.h>
 #include <sched/sched.h>
 
 /*** *** *** Print sched debug information at aee *** *** ***/
