@@ -945,9 +945,11 @@ static int dump_native_maps(pid_t pid, struct task_struct *current_task)
 	char *path_p = NULL;
 	struct path base_path;
 	unsigned long long pgoff = 0;
+	MA_STATE(mas, 0, 0, 0);
 
 	if (!current_task)
 		return -ESRCH;
+	mas.tree = &current_task->mm->mm_mt;
 	user_ret = task_pt_regs(current_task);
 
 	if (!user_mode(user_ret)) {
@@ -963,10 +965,11 @@ static int dump_native_maps(pid_t pid, struct task_struct *current_task)
 	}
 
 	mmap_read_lock(current_task->mm);
-	vma = current_task->mm->mmap;
 	log_hang_info("Dump native maps files:\n");
 	hang_log("Dump native maps files:\n");
-	while (vma && (mapcount < current_task->mm->map_count)) {
+	mas_for_each(&mas, vma, ULONG_MAX) {
+		if (mapcount >= current_task->mm->map_count)
+			break;
 		file = vma->vm_file;
 		flags = vma->vm_flags;
 		pgoff = ((loff_t)vma->vm_pgoff) << PAGE_SHIFT;
@@ -1027,7 +1030,6 @@ static int dump_native_maps(pid_t pid, struct task_struct *current_task)
 					flags & VM_MAYSHARE ? 's' : 'p', pgoff, name);
 			}
 		}
-		vma = vma->vm_next;
 		mapcount++;
 	}
 	mmap_read_unlock(current_task->mm);
@@ -1043,9 +1045,11 @@ static int dump_native_info_by_tid(pid_t tid,
 	unsigned long userstack_start = 0;
 	unsigned long userstack_end = 0, length = 0;
 	int ret = -1;
+	MA_STATE(mas, 0, 0, 0);
 
 	if (!current_task)
 		return -ESRCH;
+	mas.tree = &current_task->mm->mm_mt;
 	user_ret = task_pt_regs(current_task);
 
 	if (!user_mode(user_ret)) {
@@ -1088,16 +1092,12 @@ static int dump_native_info_by_tid(pid_t tid,
 		(long)(user_ret->ARM_r1), (long)(user_ret->ARM_r0));
 
 	userstack_start = (unsigned long)user_ret->ARM_sp;
-	vma = current_task->mm->mmap;
-	while (vma) {
+	mas_for_each(&mas, vma, ULONG_MAX) {
 		if (vma->vm_start <= userstack_start &&
 			vma->vm_end >= userstack_start) {
 			userstack_end = vma->vm_end;
 			break;
 		}
-		vma = vma->vm_next;
-		if (vma == current_task->mm->mmap)
-			break;
 	}
 
 	if (!userstack_end) {
@@ -1190,16 +1190,12 @@ static int dump_native_info_by_tid(pid_t tid,
 			(long)(user_ret->user_regs.regs[1]),
 			(long)(user_ret->user_regs.regs[0]));
 		userstack_start = (unsigned long)user_ret->user_regs.regs[13];
-		vma = current_task->mm->mmap;
-		while (vma) {
+		mas_for_each(&mas, vma, ULONG_MAX) {
 			if (vma->vm_start <= userstack_start &&
 				vma->vm_end >= userstack_start) {
 				userstack_end = vma->vm_end;
 				break;
 			}
-			vma = vma->vm_next;
-			if (vma == current_task->mm->mmap)
-				break;
 		}
 
 		if (!userstack_end) {
@@ -1251,16 +1247,12 @@ static int dump_native_info_by_tid(pid_t tid,
 		}
 	} else {		/*K64+U64 */
 		userstack_start = (unsigned long)user_ret->user_regs.sp;
-		vma = current_task->mm->mmap;
-		while (vma) {
+		mas_for_each(&mas, vma, ULONG_MAX) {
 			if (vma->vm_start <= userstack_start &&
 					vma->vm_end >= userstack_start) {
 				userstack_end = vma->vm_end;
 				break;
 			}
-			vma = vma->vm_next;
-			if (vma == current_task->mm->mmap)
-				break;
 		}
 
 		if (!userstack_end) {
