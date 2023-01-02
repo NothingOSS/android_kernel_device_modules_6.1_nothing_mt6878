@@ -5361,7 +5361,8 @@
 				<0 0x1c001000 0 0xfe0>, /* 12 spm */
 				<0 0x18070000 0 0x8004>, /* 13 conn_semaphore */
 				<0 0x18041000 0 0x140>, /* 14 conn_afe_ctl */
-				<0 0x1c00d000 0 0x7ec>; /* 15 SRCLKENRC */
+				<0 0x1c00d000 0 0x7ec>, /* 15 SRCLKENRC */
+				<0 0x18023000 0 0x1000>; /* 16 conn_dbg_ctl */
 			radio-support = "gps", "mawd";
 			power-domains = <&scpsys MT6985_POWER_DOMAIN_CONN>;
 			emi-addr = <0>;
