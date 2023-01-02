@@ -2951,4 +2951,11 @@
 		token_user0 = /bits/ 16 <CMDQ_SYNC_TOKEN_USER_0>;
 		token_gpr_set4 = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_4>;
 	};
+
+	swpm: swpm {
+		compatible = "mediatek,mtk-swpm";
+		pmu_boundary_num = <4>;
+		pmu_dsu_support = <1>;
+		pmu_dsu_type = <11>;
+	};
 };
