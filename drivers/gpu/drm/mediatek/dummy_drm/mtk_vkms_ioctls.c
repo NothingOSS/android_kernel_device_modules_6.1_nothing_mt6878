@@ -157,7 +157,7 @@ int mtk_drm_gem_dumb_create(struct drm_file *file_priv, struct drm_device *dev,
 
 	args->pitch = DIV_ROUND_UP(args->width * args->bpp, 8);
 	args->size = (__u64)args->pitch * (__u64)args->height;
-	DDPINFO("[TEST_drm]pitch:%d, width:%d, bpp:%d, height:%d, size:%ld\n",
+	DDPINFO("[TEST_drm]pitch:%d, width:%d, bpp:%d, height:%d, size:%llu\n",
 		args->pitch, args->width, args->height, args->bpp, args->size);
 
 	mtk_gem = mtk_drm_gem_create(dev, args->size, false);
@@ -794,7 +794,7 @@ int mtk_drm_gem_prime_handle_to_fd(struct drm_device *dev,
 	struct sg_table *sgt;
 #endif
 	ret = drm_gem_prime_handle_to_fd(dev, file_priv, handle, flags, prime_fd);
-	DDPDBG("%s(%d), ret %llu,prime_fd :%d\n", __func__, __LINE__, ret, *prime_fd);
+	DDPDBG("%s(%d), ret %d, prime_fd :%d\n", __func__, __LINE__, ret, *prime_fd);
 
 	//ret = drm_gem_prime_fd_to_handle(dev,file_priv,*prime_fd,&handle);
 	//DDPDBG("%s(%d), ret %llu\n", __func__,__LINE__, ret);

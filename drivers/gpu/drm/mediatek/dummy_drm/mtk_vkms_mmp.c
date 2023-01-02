@@ -358,8 +358,8 @@ void *mtk_drm_buffer_map_kernel(struct drm_framebuffer *fb, struct iosys_map *ma
 	if (!mtk_gem->dma_addr)
 		DDPINFO("%s, [MMP]dma_addr is null\n", __func__);
 	else
-		DDPINFO("[TEST_drm]%s:%d,mtk_gem->dma_addr is %p\n", __func__, __LINE__,
-			mtk_gem->dma_addr);
+		DDPINFO("[TEST_drm]%s:%d,mtk_gem->dma_addr is %pad\n", __func__, __LINE__,
+			&mtk_gem->dma_addr);
 
 	dmabuf = gem_obj->dma_buf;
 	if (!dmabuf) {
