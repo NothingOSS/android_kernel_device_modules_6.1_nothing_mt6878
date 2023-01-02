@@ -3318,6 +3318,7 @@
 				<0 0x11fe0000 0 0x1000>,
 				<0 0x1c01e000 0 0x1000>;
 			reg-name = "eint-e", "eint-s", "eint-n", "eint-c";
+			interrupts = <GIC_SPI 309 IRQ_TYPE_LEVEL_HIGH 0>;
 			mediatek,instance-num = <4>;
 			mediatek,total-pin-number = <254>;
 			mediatek,pins = <0 2 0 0>,<1 2 1 0>,<2 2 2 0>,<3 2 3 0>,
