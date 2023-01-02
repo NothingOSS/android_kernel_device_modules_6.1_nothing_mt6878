@@ -122,7 +122,7 @@
 	chosen: chosen {
 		bootargs = "console=tty0 root=/dev/ram \
 			swiotlb=noforce \
-			8250.nr_uarts=4 \
+			8250.nr_uarts=2 \
 			initcall_debug=1 cma=64M transparent_hugepage=never \
 			allow_mismatched_32bit_el0 \
 			firmware_class.path=/vendor/firmware";
@@ -1826,7 +1826,7 @@
 						<GIC_SPI 229 IRQ_TYPE_LEVEL_HIGH 0>,
 						<GIC_SPI 230 IRQ_TYPE_LEVEL_HIGH 0>,
 						<GIC_SPI 231 IRQ_TYPE_LEVEL_HIGH 0>;
-				clocks = <&clk10m>;
+				clocks = <&pericfg_ao_clk CLK_PERAO_DMA_B>;
 				clock-names = "apdma";
 				dma-requests = <4>;
 				#dma-cells = <1>;
@@ -1836,18 +1836,20 @@
 			compatible = "mediatek,mt6577-uart";
 			reg = <0 0x11001000 0 0x1000>;
 			interrupts = <GIC_SPI 250 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&clk10m>;
-			clock-names = "baud";
+			clocks = <&clk26m>, <&pericfg_ao_clk CLK_PERAO_UART0>;
+			clock-names = "baud", "bus";
 			dmas = <&apdma 0 &apdma 1>;
+			dma-names = "tx", "rx";
 		};
 
 		uart1: serial@11002000 {
 			compatible = "mediatek,mt6577-uart";
 			reg = <0 0x11002000 0 0x1000>;
 			interrupts = <GIC_SPI 251 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&clk10m>;
-			clock-names = "baud";
+			clocks = <&clk26m>, <&pericfg_ao_clk CLK_PERAO_UART1>;
+			clock-names = "baud", "bus";
 			dmas = <&apdma 2 &apdma 3>;
+			dma-names = "tx", "rx";
 		};
 
 		mtk_leds: mtk_leds {
