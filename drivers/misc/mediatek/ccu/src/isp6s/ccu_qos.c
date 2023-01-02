@@ -8,7 +8,7 @@
 #include "ccu_hw.h"
 #ifdef CONFIG_MTK_QOS_SUPPORT_ENABLE
 #include <mmdvfs_pmqos.h>
-#include "mt6873-larb-port.h"
+// #include "mt6873-larb-port.h"
 static struct plist_head ccu_request_list;
 static struct mm_qos_request pccu_i_request;
 static struct mm_qos_request pccu_g_request;

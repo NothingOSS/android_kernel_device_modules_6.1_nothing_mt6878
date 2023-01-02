@@ -24,9 +24,9 @@
 
 #ifdef CONFIG_MTK_IOMMU_V2
 #include "mtk_iommu.h"
-#include <dt-bindings/memory/mt6873-larb-port.h>
+// #include <dt-bindings/memory/mt6873-larb-port.h>
 #else
-#include <dt-bindings/memory/mt6873-larb-port.h>
+// #include <dt-bindings/memory/mt6873-larb-port.h>
 #endif
 
 #include <linux/io.h> /*for mb();*/
