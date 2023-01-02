@@ -6,28 +6,23 @@
 #ifndef __SCP_DVFS_H__
 #define __SCP_DVFS_H__
 
-#define PLL_ENABLE			(1)
-#define PLL_DISABLE			(0)
+#define PLL_DISABLE             (0)
+#define PLL_ENABLE              (1)
+#define MAX_SUPPORTED_PLL_NUM   (9)
+#define CLK_26M                 (26)
 
-#define CLK_26M				(26)
+#define REG_MAX_MASK            (0xFFFFFFFF)
+#define SCP_ULPOSC_SEL_CORE     (0x4)
+#define SCP_ULPOSC_SEL_PERI     (0x8)
 
-#define CALI_CONFIG_ELEM_CNT		(3)
-#define OPP_ELEM_CNT			(7)
-
-#define REG_MAX_MASK			(0xFFFFFFFF)
-#define SCP_ULPOSC_SEL_CORE		(0x4)
-#define SCP_ULPOSC_SEL_PERI		(0x8)
-
-#define CAL_EXT_BITS		(2)
-#define CAL_MIN_VAL_EXT		(0)
-#define CAL_MAX_VAL_EXT		(0x2)
-#define CAL_BITS			(7)
-#define CAL_MIN_VAL			(0)
-#define CAL_MAX_VAL			(0x7F)
-#define CALI_MIS_RATE			(40)
-#define CALI_DIV_VAL			(512)
-
-#define MAX_SUPPORTED_PLL_NUM 9
+#define CAL_EXT_BITS            (2)
+#define CAL_MIN_VAL_EXT         (0)
+#define CAL_MAX_VAL_EXT         (0x2)
+#define CAL_BITS                (7)
+#define CAL_MIN_VAL             (0)
+#define CAL_MAX_VAL             (0x7F)
+#define CALI_MIS_RATE           (40)
+#define CALI_DIV_VAL            (512)
 
 #define REG_DEFINE_WITH_INIT(reg, offset, mask, shift, init, set_clr)	\
 	._##reg = {							\
@@ -63,11 +58,13 @@ enum scp_dvfs_err_enum {
 	ESCP_DVFS_DVS_SHOULD_BE_BYPASSED,
 };
 
+/* SMC Code Command Table */
 enum scp_cmd_type {
 	VCORE_ACQUIRE,
 	RESOURCE_REQ,
 	ULPOSC2_TURN_ON,
 	ULPOSC2_TURN_OFF,
+	SCP2SPM_VOL_SET,
 };
 
 enum scp_req_r {
