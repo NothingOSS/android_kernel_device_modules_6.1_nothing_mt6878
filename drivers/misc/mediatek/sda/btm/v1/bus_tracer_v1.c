@@ -387,7 +387,7 @@ static ssize_t tracer_dbgfs_etb_read(struct file *file, char __user *buf, size_t
 		depth = CIRC_CNT(etb_wp, etb_rp, readl(plt->etb_base + ETB_DEPTH) << 2);
 
 	pr_notice("%s:%d:[ETB] etb read siez=%ld\n", __func__, __LINE__, (unsigned long)size);
-	pr_notice("%s:%d:[ETB] depth = 0x%lx bytes\n", __func__, __LINE__, depth);
+	pr_notice("%s:%d:[ETB] depth = 0x%x bytes\n", __func__, __LINE__, depth);
 	if (depth == 0) {
 		/* enable ETB after dump */
 		writel(0x1, plt->etb_base + ETB_CTRL);
@@ -417,7 +417,7 @@ static ssize_t tracer_dbgfs_etb_read(struct file *file, char __user *buf, size_t
 	}
 	ret = copy_to_user(buf, (void *)etb_data, depth);
 	if (ret)
-		pr_notice("%s:%d:[ETB] copy_to_user fail=%lx.\n", __func__, __LINE__, ret);
+		pr_notice("%s:%d:[ETB] copy_to_user fail=%x.\n", __func__, __LINE__, ret);
 	kfree(etb_data);
 
 	/* enable ETB after dump */

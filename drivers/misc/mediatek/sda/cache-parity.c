@@ -888,7 +888,7 @@ static int cache_parity_probe(struct platform_device *pdev)
 			"version", cache_parity.ver,
 			"nr_irq", cache_parity.nr_irq,
 			"arm_dsu_ecc_hwirq", cache_parity.arm_dsu_ecc_hwirq,
-			"nr_err", cache_parity.nr_err);
+			"nr_err", atomic_read(&cache_parity.nr_err));
 
 	return ret;
 }
