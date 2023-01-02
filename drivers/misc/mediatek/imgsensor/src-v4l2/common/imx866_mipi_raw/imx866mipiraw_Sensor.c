@@ -3195,6 +3195,7 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 				= IMGSENSOR_NORMAL_BAYER;
 			break;
 		}
+		break;
 	default:
 		break;
 	}

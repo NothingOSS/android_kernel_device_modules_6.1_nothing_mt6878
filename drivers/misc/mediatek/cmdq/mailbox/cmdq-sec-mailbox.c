@@ -806,6 +806,7 @@ static s32 cmdq_sec_session_init(struct cmdq_sec_context *context)
 		if (err)
 			break;
 		context->state = IWC_CONTEXT_INITED;
+		fallthrough;
 	case IWC_CONTEXT_INITED:
 #ifdef CMDQ_GP_SUPPORT
 		if (!context->iwc_msg) {
@@ -847,6 +848,7 @@ static s32 cmdq_sec_session_init(struct cmdq_sec_context *context)
 #endif
 
 		context->state = IWC_WSM_ALLOCATED;
+		break;
 	case IWC_WSM_ALLOCATED:
 #ifdef CMDQ_GP_SUPPORT
 		err = cmdq_sec_open_session(&context->tee, context->iwc_msg);
@@ -854,6 +856,7 @@ static s32 cmdq_sec_session_init(struct cmdq_sec_context *context)
 			break;
 #endif
 		context->state = IWC_SES_OPENED;
+		break;
 	default:
 		break;
 	}

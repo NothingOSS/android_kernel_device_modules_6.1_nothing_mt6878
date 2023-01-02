@@ -3787,6 +3787,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			// #endif
 			break;
 		}
+		break;
 	default:
 		break;
 	}

@@ -1392,6 +1392,7 @@ static void cal_image_pix_mp(unsigned int node_id,
 	case MTKCAM_IPI_IMG_FMT_FG_BAYER10_3P_PACKED:
 	case MTKCAM_IPI_IMG_FMT_FG_BAYER12_3P_PACKED:
 		mtk_cam_fill_pixfmt_mp(mp, mp->pixelformat, width, height);
+		break;
 	default:
 		break;
 	}

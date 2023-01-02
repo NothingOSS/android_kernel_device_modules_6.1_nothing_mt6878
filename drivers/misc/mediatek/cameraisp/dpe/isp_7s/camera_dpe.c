@@ -5656,6 +5656,7 @@ static long DPE_ioctl_compat(struct file *filp, unsigned int cmd,
 			return ret;
 			#endif
 		}
+		fallthrough;
 	case COMPAT_DPE_WRITE_REGISTER:
 		{
 			#ifdef alloc_user_space
@@ -5678,6 +5679,7 @@ static long DPE_ioctl_compat(struct file *filp, unsigned int cmd,
 			return ret;
 			#endif
 		}
+		fallthrough;
 	case COMPAT_DPE_ENQUE_REQ:
 		{
 			#ifdef alloc_user_space
@@ -5705,6 +5707,7 @@ static long DPE_ioctl_compat(struct file *filp, unsigned int cmd,
 			return ret;
 		#endif
 		}
+		fallthrough;
 	case COMPAT_DPE_DEQUE_REQ:
 		{
 			#ifdef alloc_user_space
@@ -5732,6 +5735,7 @@ static long DPE_ioctl_compat(struct file *filp, unsigned int cmd,
 			return ret;
 			#endif
 		}
+		fallthrough;
 	case DPE_WAIT_IRQ:
 	case DPE_CLEAR_IRQ:	/* structure (no pointer) */
 	case DPE_ENQNUE_NUM:

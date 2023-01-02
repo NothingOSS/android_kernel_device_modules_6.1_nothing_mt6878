@@ -240,6 +240,7 @@ static u32 dvfsrc_get_hifi_rising_ddr_gear(struct mtk_dvfsrc *dvfsrc)
 	case 3:
 		val = dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x20);
 		val = (val >> 4) & 0xF;
+	break;
 	default:
 	break;
 	}

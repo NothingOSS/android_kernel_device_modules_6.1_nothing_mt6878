@@ -599,7 +599,7 @@ static inline void typec_unattached_cc_entry(struct tcpc_device *tcpc)
 			typec_unattached_src_and_drp_entry(tcpc);
 			break;
 		}
-		/* pass through */
+		fallthrough;
 	default:
 		switch (tcpc->typec_state) {
 		case typec_attachwait_snk:

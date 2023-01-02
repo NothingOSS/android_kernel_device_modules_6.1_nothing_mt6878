@@ -300,7 +300,7 @@ static void mdee_info_dump_v5(struct ccci_fsm_ee *mdee)
 		 * the former EE info will be printed out
 		 */
 		db_opt |= (unsigned int)DB_OPT_FTRACE;
-		/* fall through */
+		fallthrough;
 	case MD_EE_CASE_WDT:
 		strncpy(ex_info, mdee_more_inf_str[dumper->more_info],
 			EE_BUF_LEN_UMOLY);

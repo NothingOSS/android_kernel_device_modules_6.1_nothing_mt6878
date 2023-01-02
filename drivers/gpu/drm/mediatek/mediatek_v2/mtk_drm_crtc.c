@@ -9683,6 +9683,7 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 			mtk_ddp_comp_addon_config(comp, 0, 0, NULL, cmdq_handle);
 			mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, id[i], false, cmdq_handle, 0);
 		}
+		fallthrough;
 	case MML_IR_RACING:
 		mml_drm_racing_config_sync(mml_ctx, cmdq_handle);
 		break;

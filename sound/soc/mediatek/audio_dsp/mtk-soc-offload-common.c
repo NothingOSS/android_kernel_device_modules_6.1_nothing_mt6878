@@ -651,6 +651,7 @@ static void offloadservice_ipicmd_received(struct ipi_msg_t *ipi_msg)
 			afe_offload_codec_info.codec_samplerate = ipi_msg->param2;
 			pr_info("%s sample_rate[%u]\n", __func__, ipi_msg->param2);
 		}
+		break;
 	default:
 		break;
 	}

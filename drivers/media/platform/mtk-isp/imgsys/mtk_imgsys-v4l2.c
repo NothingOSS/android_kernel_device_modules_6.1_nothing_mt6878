@@ -1886,6 +1886,7 @@ static int mtkdip_ioc_set_control(struct v4l2_subdev *subdev, void *arg)
 	case V4L2_CID_IMGSYS_APU_DC:
 		ret = mtk_hcp_set_apu_dc(pipe->imgsys_dev->scp_pdev,
 			ctrl->value, sizeof(ctrl->value));
+		break;
 	default:
 	  pr_info("%s: non-supported ctrl id(%x)\n", __func__, ctrl->id);
 		break;

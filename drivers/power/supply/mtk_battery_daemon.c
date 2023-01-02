@@ -3748,6 +3748,7 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 	{
 		bm_err("[K]FG_DAEMON_CMD_SEND_VERSION_CONTROL\n");
 	}
+	fallthrough;
 	case FG_DAEMON_CMD_SEND_CUSTOM_TABLE:
 	{
 		fg_daemon_send_data(gm, msg->fgd_cmd,

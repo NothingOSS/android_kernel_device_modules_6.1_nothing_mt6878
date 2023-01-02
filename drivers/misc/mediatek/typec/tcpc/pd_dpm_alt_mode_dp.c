@@ -613,6 +613,7 @@ bool dp_dfp_u_notify_dp_status_update(struct pd_port *pd_port, bool ack)
 	switch (dp_data->dfp_u_state) {
 	case DP_DFP_U_OPERATION:
 		oper_mode = true;
+		fallthrough;
 	case DP_DFP_U_STATUS_UPDATE:
 		break;
 

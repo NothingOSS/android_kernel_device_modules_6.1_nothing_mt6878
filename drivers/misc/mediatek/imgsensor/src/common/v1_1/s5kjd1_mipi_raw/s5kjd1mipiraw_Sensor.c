@@ -6292,14 +6292,16 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			switch (*(feature_data + 1)) {
 			case HDR_RAW_STAGGER_3EXP:
 				*(feature_data + 2) = MSDK_SCENARIO_ID_CUSTOM1;
+				break;
 			default:
-					break;
+				break;
 			}
 		}
 		if (*feature_data == MSDK_SCENARIO_ID_VIDEO_PREVIEW) {
 			switch (*(feature_data + 1)) {
 			case HDR_RAW_STAGGER_3EXP:
 				*(feature_data + 2) = MSDK_SCENARIO_ID_CUSTOM2;
+				break;
 			default:
 				break;
 			}
@@ -6308,6 +6310,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			switch (*(feature_data + 1)) {
 			case HDR_NONE:
 				*(feature_data + 2) = MSDK_SCENARIO_ID_CAMERA_PREVIEW;
+				break;
 			default:
 				break;
 			}
@@ -6316,6 +6319,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			switch (*(feature_data + 1)) {
 			case HDR_NONE:
 				*(feature_data + 2) = MSDK_SCENARIO_ID_VIDEO_PREVIEW;
+				break;
 			default:
 				break;
 			}

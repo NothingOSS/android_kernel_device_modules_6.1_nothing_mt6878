@@ -408,6 +408,7 @@ static void teec_post_process_operation(struct TEEC_Operation *operation,
 		case TEEC_MEMREF_PARTIAL_INOUT:
 			teec_post_process_partial(param_type,
 				&operation->params[n].memref, params + n);
+			break;
 		default:
 			break;
 		}

@@ -460,17 +460,17 @@ static int mdee_pl_core_parse(struct debug_info_t *debug_info,
 		debug_info->name = "INVALID";
 		break;
 	case MD_EX_CC_INVALID_EXCEPTION:
-		/* Fall through */
+		fallthrough;
 	case MD_EX_CC_PCORE_EXCEPTION:
-		/* Fall through */
+		fallthrough;
 	case MD_EX_CC_L1CORE_EXCEPTION:
-		/* Fall through */
+		fallthrough;
 	case MD_EX_CC_CS_EXCEPTION:
-		/* Fall through */
+		fallthrough;
 	case MD_EX_CC_MD32_EXCEPTION:
-		/* Fall through */
+		fallthrough;
 	case MD_EX_CC_C2K_EXCEPTION:
-		/* Fall through */
+		fallthrough;
 	case MD_EX_CC_ARM7_EXCEPTION:
 		/*
 		 * md1:(MCU_PCORE)
@@ -480,19 +480,19 @@ static int mdee_pl_core_parse(struct debug_info_t *debug_info,
 		 */
 		ee_type = ee_type - MD_EX_CC_INVALID_EXCEPTION
 					+ MD_EX_PL_FATALE_TOTAL;
-		/* Fall through */
+		fallthrough;
 	case MD_EX_PL_UNDEF:
-		/* Fall through */
+		fallthrough;
 	case MD_EX_PL_SWI:
-		/* Fall through */
+		fallthrough;
 	case MD_EX_PL_PREF_ABT:
-		/* Fall through */
+		fallthrough;
 	case MD_EX_PL_DATA_ABT:
-		/* Fall through */
+		fallthrough;
 	case MD_EX_PL_STACKACCESS:
-		/* Fall through */
+		fallthrough;
 	case MD_EX_PL_FATALERR_TASK:
-		/* Fall through */
+		fallthrough;
 	case MD_EX_PL_FATALERR_BUF:
 		/* all offender is zero,
 		 * goto from tail of function, reparser.
@@ -527,9 +527,9 @@ static int mdee_pl_core_parse(struct debug_info_t *debug_info,
 			debug_info->fatal_error.ExStr = "";
 		break;
 	case MD_EX_PL_ASSERT_FAIL:
-		/* Fall through */
+		fallthrough;
 	case MD_EX_PL_ASSERT_DUMP:
-		/* Fall through */
+		fallthrough;
 	case MD_EX_PL_ASSERT_NATIVE:
 		debug_info->type = MD_EX_DUMP_ASSERT;/* = MD_EX_TYPE_ASSERT; */
 		debug_info->name = "ASSERT";
@@ -651,7 +651,7 @@ static int mdee_md32_core_parse(struct debug_info_t *debug_info,
 	}
 	switch (ee_type) {
 	case CMIF_MD32_EX_ASSERT_LINE:
-		/* Fall through */
+		fallthrough;
 	case CMIF_MD32_EX_ASSERT_EXT:
 		debug_info->type = MD_EX_DUMP_ASSERT;
 		ee_case = MD_EX_TYPE_ASSERT;
@@ -670,7 +670,7 @@ static int mdee_md32_core_parse(struct debug_info_t *debug_info,
 		    ex_md32LogInfo->except_content.assert.ex_code[2];
 		break;
 	case CMIF_MD32_EX_FATAL_ERROR:
-		/* Fall through */
+		fallthrough;
 	case CMIF_MD32_EX_FATAL_ERROR_EXT:
 		debug_info->type = MD_EX_DUMP_2P_EX;
 		ee_case = MD_EX_TYPE_FATALERR_TASK;
@@ -682,7 +682,7 @@ static int mdee_md32_core_parse(struct debug_info_t *debug_info,
 		    ex_md32LogInfo->except_content.fatalerr.ex_code[1];
 		break;
 	case CS_EXCEPTION_CTI_EVENT:
-		/* Fall through */
+		fallthrough;
 	case CS_EXCEPTION_UNKNOWN:
 	default:
 		debug_info->name = "UNKNOWN Exception";
@@ -780,9 +780,9 @@ static void mdee_info_prepare_v2(struct ccci_fsm_ee *mdee)
 			ee_case = mdee_pl_core_parse(debug_info, ex_PLloginfo);
 			break;
 		case MD_CS_ICC:
-			/* Fall through */
+			fallthrough;
 		case MD_CS_IMC:
-			/* Fall through */
+			fallthrough;
 		case MD_CS_MPC:
 			ex_csLogInfo =
 			    (struct ex_cs_log *) ((char *)ex_overview +
@@ -790,9 +790,9 @@ static void mdee_info_prepare_v2(struct ccci_fsm_ee *mdee)
 			ee_case = mdee_cs_core_parse(debug_info, ex_csLogInfo);
 			break;
 		case MD_MD32_DFE:
-			/* Fall through */
+			fallthrough;
 		case MD_MD32_BRP:
-			/* Fall through */
+			fallthrough;
 		case MD_MD32_RAKE:
 			ex_md32LogInfo =
 				(struct ex_md32_log *) ((char *)ex_overview +
