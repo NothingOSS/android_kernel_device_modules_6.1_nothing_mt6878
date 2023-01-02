@@ -577,16 +577,16 @@ void sched_pause_init(void)
 
 	sched_setscheduler_nocheck(pause_drain_thread, SCHED_FIFO, &param);
 
-	register_trace_android_rvh_is_cpu_allowed(hook_rvh_is_cpus_allowed, NULL);
-	register_trace_android_rvh_set_cpus_allowed_by_task(
-				hook_rvh_set_cpus_allowed_by_task, NULL);
-	register_trace_android_rvh_rto_next_cpu(
-				hook_rvh_rto_next_cpu, NULL);
-	register_trace_android_rvh_get_nohz_timer_target(
-				hook_rvh_get_nohz_timer_target,	NULL);
+	//register_trace_android_rvh_is_cpu_allowed(hook_rvh_is_cpus_allowed, NULL);
+	//register_trace_android_rvh_set_cpus_allowed_by_task(
+	//			hook_rvh_set_cpus_allowed_by_task, NULL);
+	//register_trace_android_rvh_rto_next_cpu(
+	//			hook_rvh_rto_next_cpu, NULL);
+	//register_trace_android_rvh_get_nohz_timer_target(
+	//			hook_rvh_get_nohz_timer_target,	NULL);
 	register_trace_android_rvh_can_migrate_task(hook_rvh_can_migrate_task, NULL);
 	register_trace_android_rvh_find_busiest_queue(hook_rvh_find_busiest_queue, NULL);
-	register_trace_android_rvh_find_new_ilb(hook_rvh_find_new_ilb, NULL);
+	//register_trace_android_rvh_find_new_ilb(hook_rvh_find_new_ilb, NULL);
 }
 
 static ssize_t show_sched_core_pause_info(struct kobject *kobj,
