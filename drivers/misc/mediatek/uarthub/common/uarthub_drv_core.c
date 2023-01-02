@@ -48,7 +48,7 @@ static int g_univpll_clk_ref_count;
 struct mutex g_lock_univpll_clk;
 struct mutex g_lock_dump_log;
 
-#define DBG_LOG_LEN 1024
+#define DBG_LOG_LEN 512
 
 #define CLK_CTRL_UNIVPLL_REQ 1
 #define INIT_UARTHUB_DEFAULT 0
