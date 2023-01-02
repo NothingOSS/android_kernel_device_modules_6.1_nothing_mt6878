@@ -12444,6 +12444,7 @@
 		vmm-pmic-supply = <&mt6319_6_vbuck3>;
 		fmeter-id = /bits/ 8 <5 6 7 8 9 10 11 58 57 58 69 70 71>;
 		fmeter-type = /bits/ 8 <2 2 2 2 2 2 2 2 5 5 5 5 5>;
+		mediatek,mmdvfs-clk = <&mmdvfs_clk>;
 	};
 
 	mmdvfs-v3-start {
