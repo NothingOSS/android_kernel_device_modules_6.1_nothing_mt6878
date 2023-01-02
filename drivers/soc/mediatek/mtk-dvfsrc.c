@@ -22,6 +22,9 @@
 #define DVFSRC_FORCE_OPP_SUPPORT
 #define DVFSRC_DEBUG_ENHANCE
 #define DVFSRC_PROPERTY_ENABLE
+#define CREATE_TRACE_POINTS
+#include <trace/events/mtk_qos_trace.h>
+EXPORT_TRACEPOINT_SYMBOL_GPL(mtk_pm_qos_update_request);
 /* End */
 
 #define DVFSRC_IDLE     0x00
