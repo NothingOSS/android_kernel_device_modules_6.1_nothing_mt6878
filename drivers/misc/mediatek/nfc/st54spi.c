@@ -204,7 +204,7 @@ static ssize_t st54spi_read(struct file *filp, char __user *buf, size_t count,
 	st54spi = filp->private_data;
 
 	if (debug_enabled)
-		dev_info(DEV, "st54spi Read: %d bytes\n", count);
+		dev_info(DEV, "st54spi Read: %zd bytes\n", count);
 
 	mutex_lock(&st54spi->buf_lock);
 	status = st54spi_sync_read(st54spi, count);
@@ -220,7 +220,7 @@ static ssize_t st54spi_read(struct file *filp, char __user *buf, size_t count,
 	mutex_unlock(&st54spi->buf_lock);
 
 	if (debug_enabled)
-		dev_info(DEV, "st54spi Read: status: %d\n", status);
+		dev_info(DEV, "st54spi Read: status: %zd\n", status);
 
 	return status;
 }
@@ -240,7 +240,7 @@ static ssize_t st54spi_write(struct file *filp, const char __user *buf,
 	st54spi = filp->private_data;
 
 	if (debug_enabled)
-		dev_info(DEV, "st54spi Write: %d bytes\n", count);
+		dev_info(DEV, "st54spi Write: %zu bytes\n", count);
 
 	mutex_lock(&st54spi->buf_lock);
 	missing = copy_from_user(st54spi->tx_buffer, buf, count);
@@ -251,7 +251,7 @@ static ssize_t st54spi_write(struct file *filp, const char __user *buf,
 	mutex_unlock(&st54spi->buf_lock);
 
 	if (debug_enabled)
-		dev_info(DEV, "st54spi Write: status: %d\n", status);
+		dev_info(DEV, "st54spi Write: status: %zd\n", status);
 
 	return status;
 }
@@ -1081,7 +1081,7 @@ static int st54spi_parse_dt(struct device *dev, struct st54spi_data *pdata)
 #ifdef ST54H_SUPPORTED
 		pdata->pctrl = devm_pinctrl_get(dev);
 		if (IS_ERR(pdata->pctrl)) {
-			dev_info(dev, "%s: Unable to allocate pinctrl: %d\n",
+			dev_info(dev, "%s: Unable to allocate pinctrl: %ld\n",
 				__FILE__, PTR_ERR(pdata->pctrl));
 			return -EINVAL;
 		}
@@ -1091,7 +1091,7 @@ static int st54spi_parse_dt(struct device *dev, struct st54spi_data *pdata)
 
 		if (IS_ERR(pdata->pctrl_mode_spi_csb)) {
 			dev_info(dev,
-				"%s: Unable to find pinctrl_nfc_spi_csb: %d\n",
+				"%s: Unable to find pinctrl_nfc_spi_csb: %ld\n",
 				__FILE__, PTR_ERR(pdata->pctrl_mode_spi_csb));
 			return -EINVAL;
 		}
@@ -1101,7 +1101,7 @@ static int st54spi_parse_dt(struct device *dev, struct st54spi_data *pdata)
 
 		if (IS_ERR(pdata->pctrl_mode_spi_clk)) {
 			dev_info(dev,
-				"%s: Unable to find pinctrl_nfc_spi_clk: %d\n",
+				"%s: Unable to find pinctrl_nfc_spi_clk: %ld\n",
 				__FILE__, PTR_ERR(pdata->pctrl_mode_spi_clk));
 			return -EINVAL;
 		}
@@ -1111,7 +1111,7 @@ static int st54spi_parse_dt(struct device *dev, struct st54spi_data *pdata)
 
 		if (IS_ERR(pdata->pctrl_mode_spi_mi)) {
 			dev_info(dev,
-				"%s: Unable to find pinctrl_nfc_spi_mi: %d\n",
+				"%s: Unable to find pinctrl_nfc_spi_mi: %ld\n",
 				__FILE__, PTR_ERR(pdata->pctrl_mode_spi_mi));
 			return -EINVAL;
 		}
@@ -1121,7 +1121,7 @@ static int st54spi_parse_dt(struct device *dev, struct st54spi_data *pdata)
 
 		if (IS_ERR(pdata->pctrl_mode_spi_mo)) {
 			dev_info(dev,
-				"%s: Unable to find pinctrl_nfc_spi_mo: %d\n",
+				"%s: Unable to find pinctrl_nfc_spi_mo: %ld\n",
 				__FILE__, PTR_ERR(pdata->pctrl_mode_spi_mo));
 			return -EINVAL;
 		}
@@ -1132,7 +1132,7 @@ static int st54spi_parse_dt(struct device *dev, struct st54spi_data *pdata)
 
 		if (IS_ERR(pdata->pctrl_mode_spi_csb_idle)) {
 			dev_info(dev,
-				"%s: Unable to find pinctrl_nfc_spi_csb_idle: %d\n",
+				"%s: Unable to find pinctrl_nfc_spi_csb_idle: %ld\n",
 				__FILE__,
 				PTR_ERR(pdata->pctrl_mode_spi_csb_idle));
 			return -EINVAL;
@@ -1143,7 +1143,7 @@ static int st54spi_parse_dt(struct device *dev, struct st54spi_data *pdata)
 
 		if (IS_ERR(pdata->pctrl_mode_spi_clk_idle)) {
 			dev_info(dev,
-				"%s: Unable to find pinctrl_nfc_spi_clk_idle: %d\n",
+				"%s: Unable to find pinctrl_nfc_spi_clk_idle: %ld\n",
 				__FILE__,
 				PTR_ERR(pdata->pctrl_mode_spi_clk_idle));
 			return -EINVAL;
@@ -1154,7 +1154,7 @@ static int st54spi_parse_dt(struct device *dev, struct st54spi_data *pdata)
 
 		if (IS_ERR(pdata->pctrl_mode_spi_mi_idle)) {
 			dev_info(dev,
-				"%s: Unable to find pinctrl_nfc_spi_mi_idle: %d\n",
+				"%s: Unable to find pinctrl_nfc_spi_mi_idle: %ld\n",
 				__FILE__,
 				PTR_ERR(pdata->pctrl_mode_spi_mi_idle));
 			return -EINVAL;
@@ -1165,7 +1165,7 @@ static int st54spi_parse_dt(struct device *dev, struct st54spi_data *pdata)
 
 		if (IS_ERR(pdata->pctrl_mode_spi_mo_idle)) {
 			dev_info(dev,
-				"%s: Unable to find pinctrl_nfc_spi_mo_idle: %d\n",
+				"%s: Unable to find pinctrl_nfc_spi_mo_idle: %ld\n",
 				__FILE__,
 				PTR_ERR(pdata->pctrl_mode_spi_mo_idle));
 			return -EINVAL;
