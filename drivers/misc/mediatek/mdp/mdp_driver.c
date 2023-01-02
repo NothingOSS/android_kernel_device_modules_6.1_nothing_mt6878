@@ -239,7 +239,7 @@ void cmdq_driver_dump_readback(dma_addr_t *addrs, u32 count, u32 *values)
 
 	i = 0;
 	while (i < count) {
-		ret = snprintf(buf, sizeof(buf), "%#lx:", addrs[i]);
+		ret = snprintf(buf, sizeof(buf), "%pa:", &addrs[i]);
 		if (ret < 0)
 			CMDQ_ERR("%s snprintf failed!!!\n", __func__);
 		else
