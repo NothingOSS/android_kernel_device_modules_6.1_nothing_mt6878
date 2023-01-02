@@ -543,13 +543,6 @@ int tmem_carveout_destroy(int idx)
 	return TMEM_OK;
 }
 
-int tmem_carveout_init(void)
-{
-	pr_info("%s:%d\n", __func__, __LINE__);
-
-	return TMEM_OK;
-}
-
 int tmem_query_ffa_handle_to_pa(u64 handle, uint64_t *phy_addr)
 {
 	struct tmem_block *tmp;

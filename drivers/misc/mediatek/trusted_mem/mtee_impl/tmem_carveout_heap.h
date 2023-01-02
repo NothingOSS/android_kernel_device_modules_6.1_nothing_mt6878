@@ -8,7 +8,6 @@
 
 #include <linux/scatterlist.h>
 
-int tmem_carveout_init(void);
 int tmem_carveout_create(int idx, phys_addr_t heap_base, size_t heap_size);
 int tmem_carveout_destroy(int idx);
 int tmem_register_ffa_module(void);
