@@ -7,7 +7,7 @@
 #ifndef __LPM_SPM_COMM_H__
 #define __LPM_SPM_COMM_H__
 
-#include <lpm_dbg_common_v1.h>
+#include <lpm_dbg_common_v2.h>
 #include <lpm_pcm_def.h>
 
 struct lpm_spm_wake_status {

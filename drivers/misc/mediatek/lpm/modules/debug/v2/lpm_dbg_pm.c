@@ -13,7 +13,7 @@
 #include <linux/delay.h>
 
 #include <lpm.h>
-#include <lpm_dbg_common_v1.h>
+#include <lpm_dbg_common_v2.h>
 
 
 static int lpm_dbg_probe(struct platform_device *pdev)
@@ -26,8 +26,6 @@ int kernel_suspend_only;
 static int lpm_dbg_suspend_noirq(struct device *dev)
 {
 	int ret = 0;
-
-	ret = spm_common_dbg_dump();
 
 	if (kernel_suspend_only == 1) {
 		pr_info("[LPM] kernel suspend only ....\n");

@@ -27,8 +27,65 @@ static unsigned long long mtk_lpm_last_cpuidle_dis;
 static unsigned int timer_interval = 10 * 1000;
 static struct task_struct *stress_tsk[NR_CPUS];
 
+/* CPU off state : core, cluster and mcusys */
+#define CPU_OFF_MAX_LV  (3)
+
+/* all core idle profiling */
+struct all_cpu_idle_data {
+	unsigned long long last_ns;
+	unsigned long long dur_ns;
+	unsigned int cnt;
+	unsigned int bp; /* basis points : 0.01% */
+};
+
+struct all_cpu_idle {
+	unsigned long long start_us;
+	struct all_cpu_idle_data lv[CPU_OFF_MAX_LV];
+};
+
+static struct all_cpu_idle all_core_off;
+
+/* idle ratio profiling */
+struct mtk_cpuidle_ratio {
+	unsigned long long start_us;
+	unsigned long long idle_time_ns[CPUIDLE_STATE_MAX];
+	unsigned int bp[CPUIDLE_STATE_MAX];
+};
+
+/* idle latency profiling */
+struct mtk_cpuidle_prof {
+	unsigned int cnt;
+	unsigned int max;
+	union {
+		u64 avg;
+		u64 sum;
+	};
+};
+
+/* idle information */
+struct mtk_cpuidle_info {
+	u64 enter_time_ns;
+	int idle_index;
+	int cnt[CPUIDLE_STATE_MAX];
+};
+
+/* mtk cpu idle status */
+struct mtk_cpuidle_device {
+	struct mtk_cpuidle_ratio ratio;
+	struct mtk_cpuidle_info info;
+	struct mtk_cpuidle_prof prof;
+	struct hrtimer timer;
+	int cpu;
+	int state_count;
+	bool tmr_running;
+};
+
+static DEFINE_PER_CPU(struct mtk_cpuidle_device, mtk_cpuidle_dev);
+
 /* mtk cpu idle configuration */
 struct mtk_cpuidle_control {
+	bool prof_en;
+	bool log_en;
 	bool stress_en;
 };
 
@@ -92,6 +149,147 @@ void mtk_cpuidle_set_stress_time(unsigned int val)
 unsigned int mtk_cpuidle_get_stress_time(void)
 {
 	return timer_interval;
+}
+
+void mtk_cpuidle_ctrl_log_en(bool enable)
+{
+	mtk_cpupm_block();
+	mtk_cpuidle_ctrl.log_en = enable;
+	mtk_cpupm_allow();
+}
+
+bool mtk_cpuidle_ctrl_log_sta_get(void)
+{
+	return mtk_cpuidle_ctrl.log_en;
+}
+
+static void _mtk_cpuidle_prof_ratio_start(void *data)
+{
+	int i, cpu;
+	struct mtk_cpuidle_device *mtk_idle;
+
+	cpu = get_cpu();
+	mtk_idle = &per_cpu(mtk_cpuidle_dev, cpu);
+	put_cpu();
+
+	if (unlikely(!mtk_idle))
+		return;
+
+	mtk_idle->ratio.start_us = div64_u64(sched_clock(), 1000);
+
+	for (i = 0; i < mtk_idle->state_count; i++)
+		mtk_idle->ratio.idle_time_ns[i] = 0;
+}
+
+void mtk_cpuidle_prof_ratio_start(void)
+{
+	int i;
+
+	if (mtk_cpuidle_ctrl.prof_en)
+		return;
+
+	mtk_cpupm_block();
+
+	for (i = 0; i < CPU_OFF_MAX_LV; i++) {
+		all_core_off.lv[i].dur_ns = 0;
+		all_core_off.lv[i].cnt = 0;
+	}
+
+	all_core_off.start_us = div64_u64(sched_clock(), 1000);
+
+	on_each_cpu(_mtk_cpuidle_prof_ratio_start, NULL, 1);
+
+	mtk_cpuidle_ctrl.prof_en = true;
+
+	mtk_cpupm_allow();
+}
+
+static void _mtk_cpuidle_prof_ratio_stop(void *stop_time)
+{
+	int i, cpu;
+	uint64_t dur_us;
+	struct mtk_cpuidle_device *mtk_idle;
+
+	cpu = get_cpu();
+	mtk_idle = &per_cpu(mtk_cpuidle_dev, cpu);
+	put_cpu();
+
+	if (unlikely(!mtk_idle))
+		return;
+
+	dur_us = div64_u64(sched_clock(), 1000) -
+				mtk_idle->ratio.start_us;
+
+	for (i = 0; i < mtk_idle->state_count; i++)
+		mtk_idle->ratio.bp[i] = (unsigned int)div64_u64(
+				mtk_idle->ratio.idle_time_ns[i] * 10,
+				dur_us);
+}
+
+void mtk_cpuidle_prof_ratio_stop(void)
+{
+	int i;
+	uint64_t time_us;
+
+	if (!mtk_cpuidle_ctrl.prof_en)
+		return;
+
+	mtk_cpupm_block();
+
+	on_each_cpu(_mtk_cpuidle_prof_ratio_stop, NULL, 1);
+
+	mtk_cpuidle_ctrl.prof_en = false;
+
+	time_us = div64_u64(sched_clock(), 1000) - all_core_off.start_us;
+
+	for (i = 0; i < CPU_OFF_MAX_LV; i++)
+		all_core_off.lv[i].bp = (unsigned int)div64_u64(
+			all_core_off.lv[i].dur_ns * 10, time_us);
+
+	mtk_cpupm_allow();
+}
+
+void mtk_cpuidle_prof_ratio_dump(char **ToUserBuf, size_t *size)
+{
+	char *p = *ToUserBuf;
+	size_t sz = *size;
+	int i, cpu;
+	struct mtk_cpuidle_device *mtk_idle;
+
+	mtk_dbg_cpuidle_log("%6s%12s%12s%12s%12s\n",
+			"",
+			"cpu_off",
+			"cluster_off",
+			"mcusys_off",
+			"s2idle");
+
+	for_each_possible_cpu(cpu) {
+		mtk_idle = &per_cpu(mtk_cpuidle_dev, cpu);
+
+		if (!mtk_idle)
+			continue;
+
+		mtk_dbg_cpuidle_log("cpu%d: ", cpu);
+		for (i = 1; i < mtk_idle->state_count; i++) {
+			mtk_dbg_cpuidle_log("%5s%3u.%02u%%",
+				"",
+				mtk_idle->ratio.bp[i] / 100,
+				mtk_idle->ratio.bp[i] % 100);
+
+		}
+		mtk_dbg_cpuidle_log("\n");
+	}
+
+	mtk_dbg_cpuidle_log("All core off ratio :\n");
+
+	for (i = 0; i < CPU_OFF_MAX_LV; i++)
+		mtk_dbg_cpuidle_log("\t C_%d = %3u.%02u%%\n",
+				i + 1,
+				all_core_off.lv[i].bp / 100,
+				all_core_off.lv[i].bp % 100);
+
+	*ToUserBuf = p;
+	*size = sz;
 }
 
 #define MTK_CPUIDLE_STATE_EN_GET	(0)
@@ -187,15 +385,126 @@ long mtk_cpuidle_state_enabled(void)
 	return state_info.val;
 }
 
+
+static enum hrtimer_restart mtk_cpuidle_hrtimer_func(struct hrtimer *timer)
+{
+	return HRTIMER_NORESTART;
+}
+
+static void mtk_cpuidle_set_last_off_ts(int idx)
+{
+	int i;
+	uint64_t curr_ns = sched_clock();
+
+	if (!idx)
+		return;
+
+	if (idx > CPU_OFF_MAX_LV)
+		idx = CPU_OFF_MAX_LV;
+
+	for (i = 0; i < idx; i++) {
+
+		all_core_off.lv[i].cnt++;
+
+		if (all_core_off.lv[i].cnt == num_online_cpus())
+			all_core_off.lv[i].last_ns = curr_ns;
+	}
+}
+
+static void mtk_cpuidle_save_idle_time(int idx)
+{
+	int i;
+	uint64_t curr_ns = sched_clock();
+
+	if (!idx)
+		return;
+
+	if (idx > CPU_OFF_MAX_LV)
+		idx = CPU_OFF_MAX_LV;
+
+	for (i = 0; i < idx; i++) {
+
+		if (all_core_off.lv[i].cnt == num_online_cpus())
+			all_core_off.lv[i].dur_ns += (curr_ns
+						- all_core_off.lv[i].last_ns);
+
+		all_core_off.lv[i].cnt--;
+	}
+}
+
+static int mtk_cpuidle_status_update(struct notifier_block *nb,
+			unsigned long action, void *data)
+{
+	struct mtk_cpuidle_device *mtk_idle;
+	struct lpm_nb_data *nb_data = (struct lpm_nb_data *)data;
+
+	if (action & LPM_NB_BEFORE_REFLECT) {
+
+		/* prevent race conditions by mtk_lp_mod_locker */
+		if (mtk_cpuidle_ctrl.prof_en)
+			mtk_cpuidle_save_idle_time(nb_data->index);
+	} else if (action & LPM_NB_RESUME) {
+		mtk_idle = &per_cpu(mtk_cpuidle_dev, nb_data->cpu);
+		mtk_idle->info.idle_index = -1;
+		mtk_idle->info.cnt[nb_data->index]++;
+		if (mtk_cpuidle_ctrl.prof_en)
+			mtk_idle->ratio.idle_time_ns[nb_data->index] +=
+				(sched_clock() - mtk_idle->info.enter_time_ns);
+
+	} else if (action & LPM_NB_AFTER_PROMPT) {
+
+		/* prevent race conditions by mtk_lp_mod_locker */
+		if (mtk_cpuidle_ctrl.prof_en)
+			mtk_cpuidle_set_last_off_ts(nb_data->index);
+
+	} else if (action & LPM_NB_PREPARE) {
+		mtk_idle = &per_cpu(mtk_cpuidle_dev, nb_data->cpu);
+		mtk_idle->info.idle_index = nb_data->index;
+		mtk_idle->info.enter_time_ns = sched_clock();
+	}
+	return NOTIFY_OK;
+}
+
+struct notifier_block mtk_cpuidle_status_nb = {
+	.notifier_call = mtk_cpuidle_status_update,
+};
+
+static void mtk_cpuidle_init_per_cpu(void *info)
+{
+	struct mtk_cpuidle_device *mtk_idle;
+	int cpu;
+
+	cpu = get_cpu();
+
+	mtk_idle = &per_cpu(mtk_cpuidle_dev, cpu);
+
+	put_cpu();
+
+	hrtimer_init(&mtk_idle->timer,
+		CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+
+	mtk_idle->cpu = cpu;
+	mtk_idle->timer.function = mtk_cpuidle_hrtimer_func;
+	mtk_idle->state_count = mtk_cpupm_get_idle_state_count(cpu);
+}
+
 int mtk_cpuidle_status_init(void)
 {
+	mtk_cpuidle_ctrl.prof_en = false;
+	mtk_cpuidle_ctrl.log_en = true;
 	mtk_cpuidle_ctrl.stress_en = false;
 
+	mtk_cpupm_block();
+	on_each_cpu(mtk_cpuidle_init_per_cpu, NULL, 0);
+	mtk_cpupm_allow();
+
+	lpm_notifier_register(&mtk_cpuidle_status_nb);
 	return 0;
 }
 EXPORT_SYMBOL(mtk_cpuidle_status_init);
 
 void mtk_cpuidle_status_exit(void)
 {
+	lpm_notifier_unregister(&mtk_cpuidle_status_nb);
 }
 EXPORT_SYMBOL(mtk_cpuidle_status_exit);

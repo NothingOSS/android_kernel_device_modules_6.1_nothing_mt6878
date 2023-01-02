@@ -8,7 +8,7 @@
 #include <linux/spinlock.h>
 #include <linux/slab.h>
 
-#include <lpm_dbg_common_v1.h>
+#include <lpm_dbg_common_v2.h>
 #include <lpm_module.h>
 #include <lpm_resource_constraint_v1.h>
 
@@ -188,7 +188,7 @@ static ssize_t lpm_dbg_trace_comm_show(char *ToUserBuf,
 	return len;
 }
 
-int lpm_dbg_init(void)
+int lpm_trace_fs_init(void)
 {
 	mtk_lpm_sysfs_root_entry_create();
 	mtk_lpm_sysfs_sub_entry_add("trace", 0644, NULL,
@@ -222,9 +222,9 @@ int lpm_dbg_init(void)
 				&lpm_trace_node_suspend.handle);
 	return 0;
 }
-EXPORT_SYMBOL(lpm_dbg_init);
+EXPORT_SYMBOL(lpm_trace_fs_init);
 
-int lpm_dbg_deinit(void)
+int lpm_trace_fs_deinit(void)
 {
 	mtk_lpm_sysfs_entry_node_remove(&lpm_trace_node_suspend.handle);
 	mtk_lpm_sysfs_entry_node_remove(&lpm_trace_node_lp.handle);
@@ -232,4 +232,4 @@ int lpm_dbg_deinit(void)
 	mtk_lpm_sysfs_entry_node_remove(&lpm_entry_trace);
 	return 0;
 }
-EXPORT_SYMBOL(lpm_dbg_deinit);
+EXPORT_SYMBOL(lpm_trace_fs_deinit);

@@ -17,7 +17,7 @@
 #include <lpm.h>
 #include <lpm_module.h>
 #include <lpm_spm_comm.h>
-#include <lpm_dbg_common_v1.h>
+#include <lpm_dbg_common_v2.h>
 #include <lpm_dbg_fs_common.h>
 #include <lpm_dbg_trace_event.h>
 #include <lpm_dbg_logger.h>

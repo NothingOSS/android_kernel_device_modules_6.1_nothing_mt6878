@@ -24,7 +24,6 @@
 enum {
 	TYPE_ARMPLL_MODE,
 	TYPE_BUCK_MODE,
-	TYPE_LOG_EN,
 	TYPE_NOTIFY_CM,
 	TYPE_STRESS_EN,
 	TYPE_STRESS_TIME,
@@ -36,7 +35,6 @@ struct mtk_lp_sysfs_handle lpm_entry_cpuidle_control;
 
 struct MTK_CPUIDLE_NODE armpll_mode;
 struct MTK_CPUIDLE_NODE buck_mode;
-struct MTK_CPUIDLE_NODE log_enable;
 struct MTK_CPUIDLE_NODE notify_cm;
 struct MTK_CPUIDLE_NODE stress_enable;
 struct MTK_CPUIDLE_NODE stress_time;
@@ -45,7 +43,6 @@ struct MTK_CPUIDLE_NODE stress_timer;
 static const char *node_stress_name[NF_TYPE_CONTROL_MAX] = {
 	[TYPE_ARMPLL_MODE]	= "armpll_mode",
 	[TYPE_BUCK_MODE]	= "buck_mode",
-	[TYPE_LOG_EN]		= "log",
 	[TYPE_STRESS_EN]	= "stress",
 	[TYPE_STRESS_TIME]	= "stress_time",
 };
@@ -53,7 +50,6 @@ static const char *node_stress_name[NF_TYPE_CONTROL_MAX] = {
 static const char *node_stress_param[NF_TYPE_CONTROL_MAX] = {
 	[TYPE_ARMPLL_MODE]	= "[mode]",
 	[TYPE_BUCK_MODE]	= "[mode]",
-	[TYPE_LOG_EN]		= "[0|1]",
 	[TYPE_STRESS_EN]	= "[0|1]",
 	[TYPE_STRESS_TIME]	= "[us]",
 };
@@ -111,12 +107,6 @@ static ssize_t lpm_cpuidle_control_read(char *ToUserBuf,
 
 		mtk_dbg_cpuidle_log("Vproc/Vproc_sram buck mode : %s\n",
 			buck_table[mode].str);
-		break;
-
-	case TYPE_LOG_EN:
-		mtk_dbg_cpuidle_log("CPU idle log : %s\n",
-			mtk_cpuidle_ctrl_log_sta_get() ?
-			"Enable" : "Disable");
 		break;
 
 	case TYPE_NOTIFY_CM:
@@ -199,10 +189,6 @@ static ssize_t lpm_cpuidle_control_write(char *FromUserBuf,
 					BUCK_MODE_CTRL, parm);
 		break;
 
-	case TYPE_LOG_EN:
-		mtk_cpuidle_ctrl_log_en(!!parm);
-		break;
-
 	case TYPE_NOTIFY_CM:
 		pr_info("Read Only : Not support dynamic control\n");
 		break;
@@ -244,14 +230,6 @@ void lpm_cpuidle_control_init(void)
 					&buck_mode.op,
 					&lpm_entry_cpuidle_control,
 					&buck_mode.handle);
-
-	LPM_CPUIDLE_CONTROL_NODE_INIT(log_enable, "log",
-				    TYPE_LOG_EN);
-	mtk_cpuidle_sysfs_sub_entry_node_add(log_enable.name,
-					MTK_CPUIDLE_SYS_FS_MODE,
-					&log_enable.op,
-					&lpm_entry_cpuidle_control,
-					&log_enable.handle);
 
 	LPM_CPUIDLE_CONTROL_NODE_INIT(notify_cm, "notify_cm",
 				    TYPE_NOTIFY_CM);

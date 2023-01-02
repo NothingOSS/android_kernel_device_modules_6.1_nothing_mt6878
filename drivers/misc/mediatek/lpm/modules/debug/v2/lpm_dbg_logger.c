@@ -19,7 +19,7 @@
 #include <lpm.h>
 #include <mtk_lpm_sysfs.h>
 #include <mtk_cpupm_dbg.h>
-#include <lpm_dbg_common_v1.h>
+#include <lpm_dbg_common_v2.h>
 #include <lpm_timer.h>
 #include <lpm_module.h>
 #include <lpm_dbg_syssram_v1.h>
@@ -168,10 +168,16 @@ static int lpm_log_timer_func(unsigned long long dur, void *priv)
 	struct lpm_logger_fired_info *info = &lpm_logger_fired;
 	static unsigned int mcusys_cnt_prev, mcusys_cnt_cur;
 	char wakeup_sources[MAX_SUSPEND_ABORT_LEN];
+	unsigned int j = 0, k = 0, l = 0;
+	unsigned long smc_fired = lpm_smc_cpu_pm_lp(CPU_PM_RECORD_CTRL,
+			MT_LPM_SMC_ACT_GET, 0, 0);
+	unsigned long name_val = 0;
+	#define STATE_NAME_LEN         (16)
+	char state_name[STATE_NAME_LEN] = {0};
 
-	if (timer->fired != info->fired) {
-		if (issuer.log_type >= LOG_SUCCEESS &&
-				info->mcusys_cnt_chk == 1) {
+	issuer.log_type = LOG_SUCCEESS;
+	if (timer->fired != smc_fired) {
+		if (info->mcusys_cnt_chk == 1) {
 			mcusys_cnt_cur =
 			mtk_cpupm_syssram_read(SYSRAM_MCUPM_MCUSYS_COUNTER);
 
@@ -181,42 +187,32 @@ static int lpm_log_timer_func(unsigned long long dur, void *priv)
 			mcusys_cnt_prev = mcusys_cnt_cur;
 		}
 
+		memset(state_name, 0x0, sizeof(state_name));
+		for (j = 0; j < 2; j++) {
+			name_val = lpm_smc_cpu_pm_lp(
+				CPU_PM_RECORD_CTRL,
+				MT_LPM_SMC_ACT_GET, 1, 0);
+			for (k = STATE_NAME_LEN/2 * j, l = 0;
+				k < (STATE_NAME_LEN/2 * (j+1)) && l < STATE_NAME_LEN/2;
+				++k, ++l) {
+				state_name[k] = ((name_val >> (l<<3)) & 0xFF);
+				if (state_name[k] == 0x0)
+					break;
+			}
+		}
+		state_name[k] = '\0';
 		issuer.log(LPM_ISSUER_CPUIDLE,
-			info->state_name[info->fired_index], (void *)&issuer);
+				state_name, (void *)&issuer);
 	} else {
-		pr_info("[name:spm&][SPM] %s didn't enter low power scenario\n",
-			info->state_name && info->state_name[info->fired_index] ?
-			info->state_name[info->fired_index] :
-			"LPM");
+		pr_info("[name:spm&][SPM] mcusys was not off\n");
 	}
 
 	pm_get_active_wakeup_sources(wakeup_sources, MAX_SUSPEND_ABORT_LEN);
 	pr_info("[name:spm&] %s\n", wakeup_sources);
 
-	timer->fired = info->fired;
+	timer->fired = smc_fired;
 	return 0;
 }
-
-static int lpm_logger_nb_func(struct notifier_block *nb,
-			unsigned long action, void *data)
-{
-	struct lpm_nb_data *nb_data = (struct lpm_nb_data *)data;
-	struct lpm_logger_fired_info *info = &lpm_logger_fired;
-	unsigned long tar_state = (1 << nb_data->index);
-
-	if (nb_data && (action == LPM_NB_BEFORE_REFLECT)
-		&& (tar_state & (info->logger_en_state))) {
-		issuer.log_type = nb_data->ret;
-		info->fired++;
-		info->fired_index = nb_data->index;
-	}
-
-	return NOTIFY_OK;
-}
-
-struct notifier_block lpm_logger_nb = {
-	.notifier_call = lpm_logger_nb_func,
-};
 
 static ssize_t lpm_logger_debugfs_read(char *ToUserBuf,
 					size_t sz, void *priv)
@@ -507,7 +503,6 @@ int lpm_logger_init(void)
 	if (node)
 		of_node_put(node);
 
-	lpm_notifier_register(&lpm_logger_nb);
 	lpm_notifier_register(&lpm_idle_save_sleep_info_nb);
 
 	lpm_log_timer.tm.timeout = lpm_log_timer_func;

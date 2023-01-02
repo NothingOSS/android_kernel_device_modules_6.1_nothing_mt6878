@@ -1,7 +1,7 @@
 
 LPM_MODULES_FOLDER=$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/lpm/modules/
 
-MTK_LPM_DBG_VERSION = v1
+MTK_LPM_DBG_VERSION = v2
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/lpm/inc/lpm_trace_event/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/lpm/modules/include/

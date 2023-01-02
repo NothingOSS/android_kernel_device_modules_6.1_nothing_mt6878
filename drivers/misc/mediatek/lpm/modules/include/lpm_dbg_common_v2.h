@@ -160,7 +160,6 @@ void spm_cond_deinit(void);
 int lpm_dbg_common_fs_init(void);
 void lpm_dbg_common_fs_exit(void);
 
-int spm_common_dbg_dump(void);
 int lpm_dbg_pm_init(void);
 void lpm_dbg_pm_exit(void);
 

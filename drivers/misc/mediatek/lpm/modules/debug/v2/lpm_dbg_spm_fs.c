@@ -9,7 +9,7 @@
 #include <linux/of_device.h>
 #include <linux/spinlock.h>
 
-#include <lpm_dbg_common_v1.h>
+#include <lpm_dbg_common_v2.h>
 #include <lpm_module.h>
 #include <mtk_idle_sysfs.h>
 #include <mtk_suspend_sysfs.h>
