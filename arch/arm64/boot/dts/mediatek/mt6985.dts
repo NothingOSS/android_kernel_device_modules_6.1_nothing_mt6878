@@ -31,7 +31,7 @@
 		i2c12 = &i2c12;
 		i2c13 = &i2c13;
 		scp_i2c1 = &scp_i2c1;
-	}
+	};
 
 	/* chosen */
 	chosen: chosen {
