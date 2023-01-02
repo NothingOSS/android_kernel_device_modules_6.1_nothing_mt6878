@@ -179,7 +179,6 @@ static struct class *driver_class;
 static dev_t teei_client_device_no;
 static struct cdev teei_client_cdev;
 
-DEFINE_KTHREAD_WORKER(ut_fastcall_worker);
 
 
 static struct tz_driver_state *tz_drv_state;

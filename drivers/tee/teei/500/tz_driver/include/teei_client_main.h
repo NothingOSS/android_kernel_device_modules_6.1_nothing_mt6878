@@ -47,7 +47,6 @@ extern unsigned long boot_soter_flag;
 extern int keymaster_call_flag;
 extern struct completion boot_decryto_lock;
 extern struct task_struct *teei_switch_task;
-extern struct kthread_worker ut_fastcall_worker;
 extern unsigned long spi_ready_flag;
 extern struct list_head g_block_link;
 
