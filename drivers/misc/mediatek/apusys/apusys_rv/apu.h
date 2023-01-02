@@ -45,6 +45,7 @@ struct mtk_apu_hw_ops {
 #define F_SECURE_BOOT		BIT(3)
 #define F_SECURE_COREDUMP	BIT(4)
 #define F_DEBUG_LOG_ON		BIT(5)
+#define F_CE_EXCEPTION_ON	BIT(6)
 
 struct mtk_apu_platdata {
 	uint32_t flags;
@@ -83,6 +84,10 @@ struct apusys_secure_info_t {
 	unsigned int mvpu_coredump_sz;
 	unsigned int mvpu_sec_coredump_ofs;
 	unsigned int mvpu_sec_coredump_sz;
+
+	unsigned int ce_bin_ofs;
+	unsigned int ce_bin_sz;
+
 };
 
 struct apusys_aee_coredump_info_t {
@@ -105,6 +110,12 @@ struct apusys_aee_coredump_info_t {
 	unsigned int mvpu_xfile_sz;
 	unsigned int mvpu_sec_xfile_ofs;
 	unsigned int mvpu_sec_xfile_sz;
+
+	unsigned int ce_bin_ofs;
+	unsigned int ce_bin_sz;
+	unsigned int are_sram_ofs;
+	unsigned int are_sram_sz;
+
 };
 
 struct apu_coredump {
@@ -130,9 +141,11 @@ struct mtk_apu {
 	void *apu_sec_mem_base;
 	void *apu_aee_coredump_mem_base;
 	void *coredump_buf;
+	void *are_reg_base;
 	struct apu_coredump *coredump;
 	dma_addr_t coredump_da;
 	int wdt_irq_number;
+	int ce_exp_irq_number;
 	int mbox0_irq_number;
 	spinlock_t reg_lock;
 

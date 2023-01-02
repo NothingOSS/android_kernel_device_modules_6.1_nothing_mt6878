@@ -21,8 +21,8 @@
 
 static struct platform_device *g_apu_pdev;
 static struct proc_dir_entry *procfs_root;
-static size_t coredump_len, xfile_len;
-static void *coredump_base, *xfile_base;
+static size_t coredump_len, xfile_len, ce_fw_sram_len;
+static void *coredump_base, *xfile_base, *ce_fw_sram_base;
 
 static int coredump_seq_show(struct seq_file *s, void *v)
 {
@@ -82,6 +82,13 @@ static int regdump_seq_show(struct seq_file *s, void *v)
 	return 0;
 }
 
+static int ce_fw_sram_show(struct seq_file *s, void *v)
+{
+	seq_write(s, ce_fw_sram_base, ce_fw_sram_len);
+
+	return 0;
+}
+
 static int coredump_sqopen(struct inode *inode, struct file *file)
 {
 	return single_open(file, coredump_seq_show, NULL);
@@ -102,6 +109,11 @@ static int regdump_sqopen(struct inode *inode, struct file *file)
 	return single_open(file, regdump_seq_show, NULL);
 }
 
+static int ce_fw_sram_sqopen(struct inode *inode, struct file *file)
+{
+	return single_open(file, ce_fw_sram_show, NULL);
+}
+
 static const struct proc_ops coredump_file_ops = {
 	.proc_open		= coredump_sqopen,
 	.proc_read		= seq_read,
@@ -118,6 +130,13 @@ static const struct proc_ops xfile_file_ops = {
 
 static const struct proc_ops regdump_file_ops = {
 	.proc_open		= regdump_sqopen,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release	= single_release
+};
+
+static const struct proc_ops ce_fw_sram_file_ops = {
+	.proc_open		= ce_fw_sram_sqopen,
 	.proc_read		= seq_read,
 	.proc_lseek		= seq_lseek,
 	.proc_release	= single_release
@@ -193,6 +212,24 @@ static void apu_mrdump_register(struct mtk_apu *apu)
 			dev_info(dev, "%s: APUSYS_REGDUMP add fail(%d)\n",
 				__func__, ret);
 	}
+
+	//CE FW + CE sram start addr & total size
+	base_pa = apu->apusys_aee_coredump_mem_start +
+			apu->apusys_aee_coredump_info->ce_bin_ofs;
+	base_va = (unsigned long) apu->apu_aee_coredump_mem_base +
+			apu->apusys_aee_coredump_info->ce_bin_ofs;
+
+	size = apu->apusys_aee_coredump_info->ce_bin_sz + apu->apusys_aee_coredump_info->are_sram_sz;
+	dev_info(dev, "%s: ce_bin_sz + are_sram_sz = 0x%lx\n", __func__, size);
+
+	ret = mrdump_mini_add_extra_file(base_va, base_pa, size, "APUSYS_CE_FW_SRAM");
+	if (ret)
+		dev_info(dev, "%s: APUSYS_CE_FW_SRAM add fail(%d)\n",
+			__func__, ret);
+
+	ce_fw_sram_len = (size_t) size;
+	ce_fw_sram_base = (void *) base_va;
+
 }
 #else
 static void apu_mrdump_register(struct mtk_apu *apu)
@@ -206,6 +243,8 @@ int apu_procfs_init(struct platform_device *pdev)
 	struct proc_dir_entry *coredump_seqlog;
 	struct proc_dir_entry *xfile_seqlog;
 	struct proc_dir_entry *regdump_seqlog;
+	struct proc_dir_entry *ce_fw_sram_seqlog;
+
 	struct mtk_apu *apu = (struct mtk_apu *) platform_get_drvdata(pdev);
 
 	g_apu_pdev = pdev;
@@ -243,6 +282,16 @@ int apu_procfs_init(struct platform_device *pdev)
 			ret);
 		goto out;
 	}
+
+	ce_fw_sram_seqlog = proc_create("apusys_ce_fw_sram", 0444,
+		procfs_root, &ce_fw_sram_file_ops);
+	ret = IS_ERR_OR_NULL(ce_fw_sram_seqlog);
+	if (ret) {
+		dev_info(&pdev->dev, "(%d)failed to create apusys_rv node(apusys_ce_fw_sram)\n",
+			ret);
+		goto out;
+	}
+
 	apu_regdump_init(pdev);
 
 	apu_mrdump_register(apu);
@@ -252,6 +301,7 @@ out:
 
 void apu_procfs_remove(struct platform_device *pdev)
 {
+	remove_proc_entry("apusys_ce_fw_sram", procfs_root);
 	remove_proc_entry("apusys_regdump", procfs_root);
 	remove_proc_entry("apusys_rv_xfile", procfs_root);
 	remove_proc_entry("apusys_rv_coredump", procfs_root);

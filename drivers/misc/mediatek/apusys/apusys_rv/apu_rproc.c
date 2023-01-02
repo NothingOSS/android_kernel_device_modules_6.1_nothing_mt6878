@@ -27,6 +27,7 @@
 #include "apu_debug.h"
 #include "apu_excep.h"
 #include "apu_config.h"
+#include "apu_ce_excep.h"
 #include "apusys_core.h"
 #include "apu_regdump.h"
 
@@ -461,6 +462,12 @@ static int apu_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto remove_apu_excep;
 
+	if (data->flags & F_CE_EXCEPTION_ON) {
+		ret = apu_ce_excep_init(pdev, apu);
+		if (ret < 0)
+			goto remove_apu_ce_excep;
+	}
+
 	if (data->flags & F_PRELOAD_FIRMWARE)
 		rproc->state = RPROC_DETACHED;
 
@@ -492,6 +499,9 @@ del_rproc:
 
 remove_apu_excep:
 	apu_excep_remove(pdev, apu);
+
+remove_apu_ce_excep:
+	apu_ce_excep_remove(pdev, apu);
 
 remove_apu_procfs:
 	apu_procfs_remove(pdev);
