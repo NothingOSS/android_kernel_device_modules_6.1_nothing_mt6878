@@ -100,6 +100,9 @@ static const struct plat_v4l2_data mt6985_v4l2_data = {
 	.meta_stats2_size = RAW_STATS_2_SIZE,
 	.meta_sv_ext_size = SV_STATS_0_SIZE,
 
+	.timestamp_buffer_ofst = offsetof(struct mtk_cam_uapi_meta_raw_stats_0,
+					  timestamp),
+
 	.set_meta_stats_info = set_meta_stats_info,
 };
 
