@@ -357,18 +357,20 @@ int __srclken_subsys_ctrl(void *data, int cmd, int sub_id, int perms)
 		break;
 
 	case RC_NONE_REQ: //HW RC control
-	default:
 		val &= (~(sw_rc_req.mask << sw_rc_req.shift));
 		val &= (~(sw_srclken_rc_en.mask << sw_srclken_rc_en.shift));
+
 		break;
+	default:
+		goto REQ_FAIL;
 	}
 
 	ret = write_with_ofs(&hw, &m00_cfg, val, sub_id * 4);
 
-	spin_unlock_irqrestore(lock, flags);
-
 	if (ret)
 		goto REQ_FAIL;
+
+	spin_unlock_irqrestore(lock, flags);
 
 	/*wait for xo hw behavior*/
 	udelay(400);
@@ -376,6 +378,7 @@ int __srclken_subsys_ctrl(void *data, int cmd, int sub_id, int perms)
 	return ret;
 
 REQ_FAIL:
+	spin_unlock_irqrestore(lock, flags);
 	return cmd & perms;
 }
 

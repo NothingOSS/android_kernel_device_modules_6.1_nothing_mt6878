@@ -12,12 +12,13 @@
 
 #define RC_HW_TRACE_MAX_DUMP 8
 
+#define RC_MAX_REQ (sizeof(rc_api_cmd)\
+	/ sizeof(const char *))
 enum SRCLKEN_RC_REQ {
 	RC_NONE_REQ = 0x0001,
 	RC_FPM_REQ = 0x0002,
 	RC_LPM_REQ = 0x0004,
 	RC_BBLPM_REQ = 0x0008,
-	RC_MAX_REQ = RC_BBLPM_REQ,
 };
 
 struct srclken_rc_cfg {

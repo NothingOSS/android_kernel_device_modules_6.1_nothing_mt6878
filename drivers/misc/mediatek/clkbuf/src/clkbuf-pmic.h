@@ -9,13 +9,14 @@
 #include "clkbuf-util.h"
 #include "clkbuf-ctrl.h"
 
+#define MAX_XO_CMD (sizeof(xo_api_cmd)\
+	/ sizeof(const char *))
 enum CLKBUF_DBG_CMD_ID {
 	SET_XO_MODE = 0x0001,
 	SET_XO_EN_M = 0x0002,
 	SET_XO_IMPEDANCE = 0x0004,
 	SET_XO_DESENSE = 0x0008,
 	SET_XO_VOTER = 0x0010,
-	MAX_XO_CMD = SET_XO_VOTER,
 };
 
 struct xo_buf_t {

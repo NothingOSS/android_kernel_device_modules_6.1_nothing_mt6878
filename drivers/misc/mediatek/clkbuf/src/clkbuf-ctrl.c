@@ -88,7 +88,7 @@ int clkbuf_srclken_ctrl(char *cmd, int sub_id)
 
 	nums = array->nums;
 
-	for (cmd_idx = 1; cmd_idx <= MAX_XO_CMD; cmd_idx = 1 << cmd_idx) {
+	for (cmd_idx = 1; cmd_idx < RC_MAX_REQ; cmd_idx <<=1) {
 		if (!strcmp(rc_api_cmd[cmd_idx], cmd)) {
 			/*loop all object---step1*/
 			for (i = 0; i < nums; i++, array++) {
@@ -138,7 +138,7 @@ int clkbuf_xo_ctrl(char *cmd, int xo_id, u32 input)
 
 	nums = array->nums;
 
-	for (cmd_idx = 1; cmd_idx <= MAX_XO_CMD; cmd_idx = 1 << cmd_idx) {
+	for (cmd_idx = 1; cmd_idx < MAX_XO_CMD; cmd_idx <<=1) {
 		if (!strcmp(xo_api_cmd[cmd_idx], cmd)) {
 			/*loop all object---step1*/
 			for (i = 0; i < nums; i++, array++) {

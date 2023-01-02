@@ -213,33 +213,29 @@ static ssize_t subsys_req_store(struct kobject *kobj,
 	nums = array->nums;
 
 	if (sscanf(buf, "%x %d", &cmd, &sub_id) == 2) {
-		if (cmd < RC_NONE_REQ || cmd > RC_MAX_REQ)
-			return -EINVAL;
-	}
+		CLKBUF_DBG("subsys_req, input cmd: %x, sub_id: %d\n", cmd, sub_id);
 
-	CLKBUF_DBG("subsys_req, input cmd: %x, sub_id: %d\n", cmd, sub_id);
+		for (i = 0; i < nums; i++, array++) {
+			hdlr = array->hdlr;
+			hw = array->hw;
 
-	for (i = 0; i < nums; i++, array++) {
-		hdlr = array->hdlr;
+			if (!IS_RC_HW(hw.hw_type))
+				continue;
 
-		hw = array->hw;
+			if (array->sub_id == sub_id) {
+				if (!hdlr->ops->srclken_subsys_ctrl)
+					return -EINVAL;
 
-		if (!IS_RC_HW(hw.hw_type))
-			continue;
+				pd = (struct plat_rcdata *)hdlr->data; //need IS_RC_HW b4
+				ret = hdlr->ops->srclken_subsys_ctrl(
+					pd, cmd, array->sub_id, array->perms);
+				if (ret) {
+					CLKBUF_DBG("Error code: %x\n", ret);
+					break;
+				}
 
-		if (array->sub_id == sub_id) {
-			if (!hdlr->ops->srclken_subsys_ctrl)
-				return -EINVAL;
-
-			pd = (struct plat_rcdata *)hdlr->data; //need IS_RC_HW b4
-			ret = hdlr->ops->srclken_subsys_ctrl(
-				pd, cmd, array->sub_id, array->perms);
-			if (ret) {
-				CLKBUF_DBG("Error code: %x\n", ret);
-				break;
+				return count;
 			}
-
-			return count;
 		}
 	}
 
