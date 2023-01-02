@@ -42,8 +42,8 @@ static ssize_t mcupm_alive_show(struct device *kobj,
 		sizeof(struct mcupm_ipi_data_s) / MCUPM_MBOX_SLOT_SIZE,
 		2000);
 
-	return snprintf(buf, PAGE_SIZE, "%s RES_MEM(%d) SKIP_LOG(%d) MBOX%d\n",
-			mcupm_plt_ackdata ? "Alive" : "Dead", has_reserved_memory, skip_logger, CH_S_PLATFORM);
+	return snprintf(buf, PAGE_SIZE, "%s RES_MEM(%d) SKIP_LOG(%d)\n",
+			mcupm_plt_ackdata ? "Alive" : "Dead", has_reserved_memory, skip_logger);
 }
 DEVICE_ATTR_RO(mcupm_alive);
 

@@ -13,17 +13,12 @@
 #define CH_S_FHCTL	2
 #define CH_S_MCDI	3
 #define CH_S_SUSPEND	4
-#define CH_IPIR_C_MET   5
-#define CH_IPIS_C_MET   6
+#define CH_IPIR_C_MET      5
+#define CH_IPIS_C_MET      6
 #define CH_S_EEMSN      7
-#define CH_S_8          8
-#define CH_S_9          9
-#define CH_S_10         10
-#define CH_S_11         11
-#define CH_S_12         12
-#define CH_S_13         13
-#define CH_S_14         14
-#define CH_S_15         15
+
+#define MCUPM_IPI_COUNT	    8
+
 
 extern struct mtk_mbox_device mcupm_mboxdev;
 extern struct mtk_ipi_device mcupm_ipidev;

@@ -105,7 +105,6 @@ struct mcupm_ipi_data_s {
 };
 extern bool has_reserved_memory;
 extern bool skip_logger;
-extern int mbox_total_number;
 
 extern ssize_t mcupm_log_read(char __user *data, size_t len);
 extern unsigned int mcupm_log_poll(void);
