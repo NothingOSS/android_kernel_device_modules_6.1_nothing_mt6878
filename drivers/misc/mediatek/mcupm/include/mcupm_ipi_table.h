@@ -8,7 +8,7 @@
 #include <linux/soc/mediatek/mtk_tinysys_ipi.h>
 #include "mcupm_ipi_id.h"
 
-#define MCUPM_MBOX_TOTAL 8
+#define MCUPM_MBOX_TOTAL 16
 
 /*share memory start address defination*/
 #define SMEM_SIZE_80B			0x00000014      //80 Bytes
@@ -24,47 +24,87 @@
 #define PIN_S_OFFSET_FHCTL		0
 #define PIN_S_OFFSET_MCDI		0
 #define PIN_S_OFFSET_SUSPEND		0
-#define PIN_S_OFFSET_SMET       0
-#define PIN_S_OFFSET_RMET       0
-#define PIN_S_OFFSET_EEMSN       0
+#define PIN_S_OFFSET_SMET               0
+#define PIN_S_OFFSET_RMET               0
+#define PIN_S_OFFSET_EEMSN              0
+#define PIN_S_OFFSET_8                  0
+#define PIN_S_OFFSET_9                  0
+#define PIN_S_OFFSET_10                 0
+#define PIN_S_OFFSET_11                 0
+#define PIN_S_OFFSET_12                 0
+#define PIN_S_OFFSET_13                 0
+#define PIN_S_OFFSET_14                 0
+#define PIN_S_OFFSET_15                 0
 
-#define PIN_S_MSG_SIZE_PLATFORM		4	//uint 4 byts
-#define PIN_S_MSG_SIZE_CPU_DVFS		4	//uint 4 byts
-#define PIN_S_MSG_SIZE_FHCTL		9	//uint 4 byts
-#define PIN_S_MSG_SIZE_MCDI		3	//uint 4 byts
-#define PIN_S_MSG_SIZE_SUSPEND		3	//uint 4 byts
-#define PIN_S_MSG_SIZE_SMET         4   //unit 4 bytes
-#define PIN_S_MSG_SIZE_RMET         1   //unit 4 bytes
-#define PIN_S_MSG_SIZE_EEMSN     4 //unit 4 bytes
+#define PIN_S_MSG_SIZE_PLATFORM         4       //uint 4 bytes
+#define PIN_S_MSG_SIZE_CPU_DVFS         4       //uint 4 bytes
+#define PIN_S_MSG_SIZE_FHCTL            9       //uint 4 bytes
+#define PIN_S_MSG_SIZE_MCDI             3       //uint 4 bytes
+#define PIN_S_MSG_SIZE_SUSPEND          3       //uint 4 bytes
+#define PIN_S_MSG_SIZE_SMET             4       //unit 4 bytes
+#define PIN_S_MSG_SIZE_RMET             1       //unit 4 bytes
+#define PIN_S_MSG_SIZE_EEMSN            4       //unit 4 bytes
+#define PIN_S_MSG_SIZE_8                4       //unit 4 bytes
+#define PIN_S_MSG_SIZE_9                4       //unit 4 bytes
+#define PIN_S_MSG_SIZE_10               4       //unit 4 bytes
+#define PIN_S_MSG_SIZE_11               4       //unit 4 bytes
+#define PIN_S_MSG_SIZE_12               4       //unit 4 bytes
+#define PIN_S_MSG_SIZE_13               4       //unit 4 bytes
+#define PIN_S_MSG_SIZE_14               4       //unit 4 bytes
+#define PIN_S_MSG_SIZE_15               4       //unit 4 bytes
 
 /* definition of slot size for send PINs */
-#define PIN_S_SIZE_PLATFORM	PIN_S_SIZE
-#define PIN_S_SIZE_CPU_DVFS	PIN_S_SIZE
-#define PIN_S_SIZE_FHCTL	PIN_S_SIZE
-#define PIN_S_SIZE_MCDI	PIN_S_SIZE
-#define PIN_S_SIZE_SUSPEND	PIN_S_SIZE
-#define PIN_S_SIZE_SMET     PIN_S_SIZE
-#define PIN_S_SIZE_RMET     PIN_S_SIZE
-#define PIN_S_SIZE_EEMSN	PIN_S_SIZE
+#define PIN_S_SIZE_PLATFORM     PIN_S_SIZE
+#define PIN_S_SIZE_CPU_DVFS     PIN_S_SIZE
+#define PIN_S_SIZE_FHCTL        PIN_S_SIZE
+#define PIN_S_SIZE_MCDI         PIN_S_SIZE
+#define PIN_S_SIZE_SUSPEND      PIN_S_SIZE
+#define PIN_S_SIZE_SMET         PIN_S_SIZE
+#define PIN_S_SIZE_RMET         PIN_S_SIZE
+#define PIN_S_SIZE_EEMSN        PIN_S_SIZE
+#define PIN_S_SIZE_8            PIN_S_SIZE
+#define PIN_S_SIZE_9            PIN_S_SIZE
+#define PIN_S_SIZE_10           PIN_S_SIZE
+#define PIN_S_SIZE_11           PIN_S_SIZE
+#define PIN_S_SIZE_12           PIN_S_SIZE
+#define PIN_S_SIZE_13           PIN_S_SIZE
+#define PIN_S_SIZE_14           PIN_S_SIZE
+#define PIN_S_SIZE_15           PIN_S_SIZE
 
-#define PIN_R_MSG_SIZE_PLATFORM	1	//uint 4 byts
-#define PIN_R_MSG_SIZE_CPU_DVFS	4	//uint 4 byts
-#define PIN_R_MSG_SIZE_FHCTL	1	//uint 4 byts
-#define PIN_R_MSG_SIZE_MCDI	1	//uint 4 byts
-#define PIN_R_MSG_SIZE_SUSPEND	1	//uint 4 byts
-#define PIN_R_MSG_SIZE_SMET     1   //uint 4 byts
-#define PIN_R_MSG_SIZE_RMET     4   //uint 4 byts
-#define PIN_R_MSG_SIZE_EEMSN     1 //unit 4 bytes
+#define PIN_R_MSG_SIZE_PLATFORM 1       //uint 4 bytes
+#define PIN_R_MSG_SIZE_CPU_DVFS 4       //uint 4 bytes
+#define PIN_R_MSG_SIZE_FHCTL    1       //uint 4 bytes
+#define PIN_R_MSG_SIZE_MCDI     1       //uint 4 bytes
+#define PIN_R_MSG_SIZE_SUSPEND  1       //uint 4 bytes
+#define PIN_R_MSG_SIZE_SMET     1       //uint 4 bytes
+#define PIN_R_MSG_SIZE_RMET     4       //uint 4 bytes
+#define PIN_R_MSG_SIZE_EEMSN    1       //unit 4 bytes
+#define PIN_R_MSG_SIZE_8        1       //unit 4 bytes
+#define PIN_R_MSG_SIZE_9        1       //unit 4 bytes
+#define PIN_R_MSG_SIZE_10       1       //unit 4 bytes
+#define PIN_R_MSG_SIZE_11       1       //unit 4 bytes
+#define PIN_R_MSG_SIZE_12       1       //unit 4 bytes
+#define PIN_R_MSG_SIZE_13       1       //unit 4 bytes
+#define PIN_R_MSG_SIZE_14       1       //unit 4 bytes
+#define PIN_R_MSG_SIZE_15       1       //unit 4 bytes
 
 /* definition of slot size for received PINs */
-#define PIN_R_SIZE_PLATFORM	PIN_R_SIZE
-#define PIN_R_SIZE_CPU_DVFS	PIN_R_SIZE
-#define PIN_R_SIZE_FHCTL	PIN_R_SIZE
-#define PIN_R_SIZE_MCDI	PIN_R_SIZE
-#define PIN_R_SIZE_SUSPEND	PIN_R_SIZE
-#define PIN_R_SIZE_SMET     PIN_R_SIZE
-#define PIN_R_SIZE_RMET     PIN_R_SIZE
-#define PIN_R_SIZE_EEMSN	PIN_R_SIZE
+#define PIN_R_SIZE_PLATFORM     PIN_R_SIZE
+#define PIN_R_SIZE_CPU_DVFS     PIN_R_SIZE
+#define PIN_R_SIZE_FHCTL        PIN_R_SIZE
+#define PIN_R_SIZE_MCDI         PIN_R_SIZE
+#define PIN_R_SIZE_SUSPEND      PIN_R_SIZE
+#define PIN_R_SIZE_SMET         PIN_R_SIZE
+#define PIN_R_SIZE_RMET         PIN_R_SIZE
+#define PIN_R_SIZE_EEMSN        PIN_R_SIZE
+#define PIN_R_SIZE_8            PIN_R_SIZE
+#define PIN_R_SIZE_9            PIN_R_SIZE
+#define PIN_R_SIZE_10           PIN_R_SIZE
+#define PIN_R_SIZE_11           PIN_R_SIZE
+#define PIN_R_SIZE_12           PIN_R_SIZE
+#define PIN_R_SIZE_13           PIN_R_SIZE
+#define PIN_R_SIZE_14           PIN_R_SIZE
+#define PIN_R_SIZE_15           PIN_R_SIZE
 
 /* definition of slot offset for received PINs */
 #define PIN_R_OFFSET_PLATFORM	(PIN_S_OFFSET_PLATFORM + PIN_S_SIZE_PLATFORM)
@@ -75,6 +115,14 @@
 #define PIN_R_OFFSET_SMET       (PIN_S_OFFSET_SMET + PIN_S_SIZE_SMET)
 #define PIN_R_OFFSET_RMET       (PIN_S_OFFSET_RMET + PIN_S_SIZE_RMET)
 #define PIN_R_OFFSET_EEMSN      (PIN_S_OFFSET_EEMSN + PIN_S_SIZE_EEMSN)
+#define PIN_R_OFFSET_8          (PIN_S_OFFSET_8 + PIN_S_SIZE_8)
+#define PIN_R_OFFSET_9          (PIN_S_OFFSET_9 + PIN_S_SIZE_9)
+#define PIN_R_OFFSET_10         (PIN_S_OFFSET_10 + PIN_S_SIZE_10)
+#define PIN_R_OFFSET_11         (PIN_S_OFFSET_11 + PIN_S_SIZE_11)
+#define PIN_R_OFFSET_12         (PIN_S_OFFSET_12 + PIN_S_SIZE_12)
+#define PIN_R_OFFSET_13         (PIN_S_OFFSET_13 + PIN_S_SIZE_13)
+#define PIN_R_OFFSET_14         (PIN_S_OFFSET_14 + PIN_S_SIZE_14)
+#define PIN_R_OFFSET_15         (PIN_S_OFFSET_15 + PIN_S_SIZE_15)
 
 extern struct mtk_ipi_device mcupm_ipidev;
 
@@ -111,6 +159,22 @@ struct mtk_mbox_info mcupm_mbox_table[MCUPM_MBOX_TOTAL] = {
 		{ { { __ARCH_SPIN_LOCK_UNLOCKED } } }, {0, 0, 0} },
 	{0, 0, 7, MBOX_TABLE_SIZE, MBOX_OPT_SMEM, 1, 0, 0, 0, 0, 0, 0, 0,
 		{ { { __ARCH_SPIN_LOCK_UNLOCKED } } }, {0, 0, 0} },
+	{0, 0, 8, MBOX_TABLE_SIZE, MBOX_OPT_SMEM, 1, 0, 0, 0, 0, 0, 0, 0,
+                { { { __ARCH_SPIN_LOCK_UNLOCKED } } }, {0, 0, 0} },
+	{0, 0, 9, MBOX_TABLE_SIZE, MBOX_OPT_SMEM, 1, 0, 0, 0, 0, 0, 0, 0,
+                { { { __ARCH_SPIN_LOCK_UNLOCKED } } }, {0, 0, 0} },
+	{0, 0, 10, MBOX_TABLE_SIZE, MBOX_OPT_SMEM, 1, 0, 0, 0, 0, 0, 0, 0,
+                { { { __ARCH_SPIN_LOCK_UNLOCKED } } }, {0, 0, 0} },
+	{0, 0, 11, MBOX_TABLE_SIZE, MBOX_OPT_SMEM, 1, 0, 0, 0, 0, 0, 0, 0,
+                { { { __ARCH_SPIN_LOCK_UNLOCKED } } }, {0, 0, 0} },
+	{0, 0, 12, MBOX_TABLE_SIZE, MBOX_OPT_SMEM, 1, 0, 0, 0, 0, 0, 0, 0,
+                { { { __ARCH_SPIN_LOCK_UNLOCKED } } }, {0, 0, 0} },
+	{0, 0, 13, MBOX_TABLE_SIZE, MBOX_OPT_SMEM, 1, 0, 0, 0, 0, 0, 0, 0,
+                { { { __ARCH_SPIN_LOCK_UNLOCKED } } }, {0, 0, 0} },
+	{0, 0, 14, MBOX_TABLE_SIZE, MBOX_OPT_SMEM, 1, 0, 0, 0, 0, 0, 0, 0,
+                { { { __ARCH_SPIN_LOCK_UNLOCKED } } }, {0, 0, 0} },
+	{0, 0, 15, MBOX_TABLE_SIZE, MBOX_OPT_SMEM, 1, 0, 0, 0, 0, 0, 0, 0,
+                { { { __ARCH_SPIN_LOCK_UNLOCKED } } }, {0, 0, 0} },
 };
 
 /*
@@ -152,6 +216,30 @@ struct mtk_mbox_pin_send mcupm_mbox_pin_send[] = {
 	{7, PIN_S_OFFSET_EEMSN, 1, 0, PIN_S_MSG_SIZE_EEMSN,
 		7, CH_S_EEMSN,
 		{ { 0 } }, { 0 }, { { { __ARCH_SPIN_LOCK_UNLOCKED } } } },
+	{8, PIN_S_OFFSET_8, 1, 0, PIN_S_MSG_SIZE_8,
+                8, CH_S_8,
+                { { 0 } }, { 0 }, { { { __ARCH_SPIN_LOCK_UNLOCKED } } } },
+	{9, PIN_S_OFFSET_9, 1, 0, PIN_S_MSG_SIZE_9,
+                9, CH_S_9,
+                { { 0 } }, { 0 }, { { { __ARCH_SPIN_LOCK_UNLOCKED } } } },
+	{10, PIN_S_OFFSET_10, 1, 0, PIN_S_MSG_SIZE_10,
+                10, CH_S_10,
+                { { 0 } }, { 0 }, { { { __ARCH_SPIN_LOCK_UNLOCKED } } } },
+	{11, PIN_S_OFFSET_11, 1, 0, PIN_S_MSG_SIZE_11,
+                11, CH_S_11,
+                { { 0 } }, { 0 }, { { { __ARCH_SPIN_LOCK_UNLOCKED } } } },
+	{12, PIN_S_OFFSET_12, 1, 0, PIN_S_MSG_SIZE_12,
+                12, CH_S_12,
+                { { 0 } }, { 0 }, { { { __ARCH_SPIN_LOCK_UNLOCKED } } } },
+	{13, PIN_S_OFFSET_13, 1, 0, PIN_S_MSG_SIZE_13,
+                13, CH_S_13,
+                { { 0 } }, { 0 }, { { { __ARCH_SPIN_LOCK_UNLOCKED } } } },
+	{14, PIN_S_OFFSET_14, 1, 0, PIN_S_MSG_SIZE_14,
+                14, CH_S_14,
+                { { 0 } }, { 0 }, { { { __ARCH_SPIN_LOCK_UNLOCKED } } } },
+	{15, PIN_S_OFFSET_15, 1, 0, PIN_S_MSG_SIZE_15,
+                15, CH_S_15,
+                { { 0 } }, { 0 }, { { { __ARCH_SPIN_LOCK_UNLOCKED } } } },
 };
 
 /*
@@ -213,6 +301,46 @@ struct mtk_mbox_pin_recv mcupm_mbox_pin_recv[] = {
 		CH_S_EEMSN, { 0 }, 0, 0, 0,
 		{ { { __ARCH_SPIN_LOCK_UNLOCKED } } },
 		{0, 0, 0, 0, 0, 0} },
+	{8, PIN_R_OFFSET_8, 0, 0, 1, 0,
+                PIN_R_MSG_SIZE_8, 8,
+                CH_S_8, { 0 }, 0, 0, 0,
+                { { { __ARCH_SPIN_LOCK_UNLOCKED } } },
+                {0, 0, 0, 0, 0, 0} },
+	{9, PIN_R_OFFSET_9, 0, 0, 1, 0,
+                PIN_R_MSG_SIZE_9, 9,
+                CH_S_9, { 0 }, 0, 0, 0,
+                { { { __ARCH_SPIN_LOCK_UNLOCKED } } },
+                {0, 0, 0, 0, 0, 0} },
+	{10, PIN_R_OFFSET_10, 0, 0, 1, 0,
+                PIN_R_MSG_SIZE_10, 10,
+                CH_S_10, { 0 }, 0, 0, 0,
+                { { { __ARCH_SPIN_LOCK_UNLOCKED } } },
+                {0, 0, 0, 0, 0, 0} },
+	{11, PIN_R_OFFSET_11, 0, 0, 1, 0,
+                PIN_R_MSG_SIZE_11, 11,
+                CH_S_11, { 0 }, 0, 0, 0,
+                { { { __ARCH_SPIN_LOCK_UNLOCKED } } },
+                {0, 0, 0, 0, 0, 0} },
+	{12, PIN_R_OFFSET_12, 0, 0, 1, 0,
+                PIN_R_MSG_SIZE_12, 12,
+                CH_S_12, { 0 }, 0, 0, 0,
+                { { { __ARCH_SPIN_LOCK_UNLOCKED } } },
+                {0, 0, 0, 0, 0, 0} },
+	{13, PIN_R_OFFSET_13, 0, 0, 1, 0,
+                PIN_R_MSG_SIZE_13, 13,
+                CH_S_13, { 0 }, 0, 0, 0,
+                { { { __ARCH_SPIN_LOCK_UNLOCKED } } },
+                {0, 0, 0, 0, 0, 0} },
+	{14, PIN_R_OFFSET_14, 0, 0, 1, 0,
+                PIN_R_MSG_SIZE_14, 14,
+                CH_S_14, { 0 }, 0, 0, 0,
+                { { { __ARCH_SPIN_LOCK_UNLOCKED } } },
+                {0, 0, 0, 0, 0, 0} },
+	{15, PIN_R_OFFSET_15, 0, 0, 1, 0,
+                PIN_R_MSG_SIZE_15, 15,
+                CH_S_15, { 0 }, 0, 0, 0,
+                { { { __ARCH_SPIN_LOCK_UNLOCKED } } },
+                {0, 0, 0, 0, 0, 0} },
 };
 
 #define MCUPM_TOTAL_SEND_PIN     (sizeof(mcupm_mbox_pin_send) \

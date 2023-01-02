@@ -22,6 +22,7 @@
 bool has_reserved_memory;
 bool skip_logger;
 #endif
+int mbox_total_number;
 
 #if IS_ENABLED(CONFIG_MTK_CPUQOS_V3)
 #define	CPUQOS_IPI	0
@@ -48,13 +49,14 @@ static int mtk_ipi_init(struct platform_device *pdev)
 	char name[32];
 
 	mcupm_mbox_table[i].mbdev = &mcupm_mboxdev;
+	mcupm_mbox_table[i].mbdev->count = mbox_total_number;
 	ret = mtk_mbox_probe(pdev, mcupm_mbox_table[i].mbdev, i);
 	if (ret) {
 		pr_debug("[MCUPM] mbox(0) probe fail on mbox-0, ret %d\n", ret);
 		return ret;
 	}
 
-	for (i = 1; i < MCUPM_MBOX_TOTAL; i++) {
+	for (i = 1; i < mbox_total_number; i++) {
 		mcupm_mbox_table[i].mbdev = &mcupm_mboxdev;
 		snprintf(name, sizeof(name), "mbox%d_base", i);
 		res = platform_get_resource_byname(pdev,
@@ -79,7 +81,7 @@ static int mtk_ipi_init(struct platform_device *pdev)
 
 	pr_debug("[MCUPM] ipi register\n");
 	ret = mtk_ipi_device_register(&mcupm_ipidev, pdev, &mcupm_mboxdev,
-				      MCUPM_IPI_COUNT);
+				      mbox_total_number);
 	if (ret) {
 		pr_debug("[MCUPM] ipi_dev_register fail, ret %d\n", ret);
 		return ret;
@@ -491,13 +493,16 @@ static int mcupm_device_probe(struct platform_device *pdev)
 
 	mcupm_pdev = pdev;
 
-	pr_debug("[MCUPM] mbox probe\n");
 
 	if (of_property_read_bool(dev->of_node, "skip-logger"))
 		skip_logger = true;
 	else
 		skip_logger = false;
 
+	if (of_property_read_bool(dev->of_node, "mbox-extend-on"))
+		mbox_total_number = 16;
+	else
+		mbox_total_number = 8;
 #ifdef CONFIG_OF_RESERVED_MEM
 #if defined(MODULE)
 	if (mcupm_map_memory_region()) {
@@ -519,7 +524,7 @@ static int mcupm_device_probe(struct platform_device *pdev)
 	}
 
 	/* Initialize spin_lock for MCUPM HELPER for internal use. */
-	for (i = 0; i < MCUPM_MBOX_TOTAL; i++)
+	for (i = 0; i < mbox_total_number; i++)
 		spin_lock_init(&mcupm_mbox_lock[i]);
 
 	pr_info("MCUPM is ready to service IPI\n");
