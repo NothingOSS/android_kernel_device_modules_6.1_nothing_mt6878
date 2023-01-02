@@ -2891,18 +2891,12 @@ skip_smi:
 		data->hw_list = data->plat_data->hw_list;
 	}
 
-	if (!iommu_present(&platform_bus_type)) {
-		ret = bus_set_iommu(&platform_bus_type, &mtk_iommu_ops);
-		if (ret)
-			goto out_list_del;
-	}
-
 	if (data->plat_data->iommu_type == MM_IOMMU &&
 	    !MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_EN_PRE)) {
 		ret = component_master_add_with_match(dev, &mtk_iommu_com_ops,
 						      match);
 		if (ret)
-			goto out_bus_set_null;
+			goto out_list_del;
 	}
 
 	/* register the notifier for power domain just for mm_iommu */
@@ -2947,8 +2941,6 @@ skip_smi:
 		(unsigned long)data->hw_list);
 	return ret;
 
-out_bus_set_null:
-	bus_set_iommu(&platform_bus_type, NULL);
 out_list_del:
 	list_del(&data->list);
 	iommu_device_unregister(&data->iommu);
@@ -2967,9 +2959,6 @@ static int mtk_iommu_remove(struct platform_device *pdev)
 
 	iommu_device_sysfs_remove(&data->iommu);
 	iommu_device_unregister(&data->iommu);
-
-	if (iommu_present(&platform_bus_type))
-		bus_set_iommu(&platform_bus_type, NULL);
 
 	if (MTK_IOMMU_HAS_FLAG(data->plat_data, HAS_BCLK))
 		clk_disable_unprepare(data->bclk);
