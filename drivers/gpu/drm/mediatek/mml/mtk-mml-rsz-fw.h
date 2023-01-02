@@ -54,14 +54,8 @@ struct rsz_cal_param {
 	u32 yuv_422_t_yuv_444;
 	s32 hori_luma_int_ofst;
 	s32 hori_luma_sub_ofst;
-	s32 hori_chroma_int_ofst;
-	s32 hori_chroma_sub_ofst;
 	s32 vert_luma_int_ofst;
 	s32 vert_luma_sub_ofst;
-	s32 vert_chroma_int_ofst;
-	s32 vert_chroma_sub_ofst;
-	bool hori_en;
-	bool vert_en;
 	bool int_wclr_en;
 	bool tap_adapt_en;
 	s32 tap_adapt_slope;

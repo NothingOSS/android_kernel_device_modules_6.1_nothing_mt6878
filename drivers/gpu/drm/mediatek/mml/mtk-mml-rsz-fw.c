@@ -6,13 +6,13 @@
 #include "mtk-mml-rsz-fw.h"
 #include "DpTileScaler.h"
 
-#define RSZ_ACCU_STEPCOUNTER_BIT (20)
-#define RSZ_6TAP_STEPCOUNTER_BIT (15)
-#define RSZ_PREC_SHIFT (20)
-#define RSZ_RATIO_SHIFT (10)
-#define RSZ_MOVE_TO_INT (25)
-#define RSZ_ALG_TH0 (1)
-#define RSZ_ALG_TH1 (24)
+#define RSZ_ACCU_STEPCOUNTER_BIT 20
+#define RSZ_6TAP_STEPCOUNTER_BIT 15
+#define RSZ_PREC_SHIFT 20
+#define RSZ_RATIO_SHIFT 10
+#define RSZ_MOVE_TO_INT 25
+#define RSZ_ALG_TH0 1
+#define RSZ_ALG_TH1 24
 #define CLIP(val, min, max) ((val >= max) ? max : ((val <= min) ? min : val))
 
 static void rsz_init(struct rsz_fw_out *out,
@@ -40,20 +40,20 @@ static void rsz_init(struct rsz_fw_out *out,
 }
 
 static void rsz_config_ctrl_regs(struct rsz_fw_in *in,
-	struct rsz_cal_param *cal_param)
+	struct rsz_fw_out *out, struct rsz_cal_param *cal_param)
 {
 	if (in->in_width == in->out_width &&
 	    in->crop.r.width == in->out_width &&
 	    !cal_param->yuv_422_t_yuv_444)
-		cal_param->hori_en = 0;
+		out->hori_scale = 0;
 	else
-		cal_param->hori_en = 1;
+		out->hori_scale = 1;
 
 	if (in->in_height == in->out_height &&
 	    in->crop.r.height == in->out_height)
-		cal_param->vert_en = 0;
+		out->vert_scale = 0;
 	else
-		cal_param->vert_en = 1;
+		out->vert_scale = 1;
 
 	cal_param->tap_adapt_en = 1;
 }
@@ -64,7 +64,6 @@ static void rsz_config(struct rsz_fw_in *in, struct rsz_fw_out *out,
 	s32 prec = 0, max_nm = 0;
 	s32 shift = 0, shift_uv = 0, coeff_index_approx_ini = 0;
 	s32 coeff_index_approx_uv_ini = 0;
-	s32 crz_src_height_d = 0, crz_src_width_d = 0;
 	s32 crz_tar_height_d = 0, crz_tar_width_d = 0;
 	s32 n_m1 = 0, n_y = 0;
 	s64 m_m1 = 0, m_m1_zoom = 0, n_m1_zoom = 0;
@@ -95,13 +94,9 @@ static void rsz_config(struct rsz_fw_in *in, struct rsz_fw_out *out,
 	/* Load the parameters needed for resizer configuration */
 	if (is_hor) { // horizontal scaling
 		if (crop_width < dst_width) { //2nd pass
-			crz_src_height_d = dst_height;
-			crz_src_width_d  = src_width;
 			crz_tar_height_d = dst_height;
 			crz_tar_width_d  = dst_width;
 		} else { // 1st pass
-			crz_src_height_d = src_height;
-			crz_src_width_d  = src_width;
 			crz_tar_height_d = src_height;
 			crz_tar_width_d  = dst_width;
 		}
@@ -117,13 +112,9 @@ static void rsz_config(struct rsz_fw_in *in, struct rsz_fw_out *out,
 			((u64)crop_subpix_x << RSZ_PREC_SHIFT) / 1048576;
 	} else { // vertical scaling
 		if (crop_width < dst_width) { //1st pass
-			crz_src_height_d = src_height;
-			crz_src_width_d  = src_width;
 			crz_tar_height_d = dst_height;
 			crz_tar_width_d  = src_width;
 		} else { //2nd pass
-			crz_src_height_d = src_height;
-			crz_src_width_d  = dst_width;
 			crz_tar_height_d = dst_height;
 			crz_tar_width_d  = dst_width;
 		}
@@ -229,34 +220,20 @@ static void rsz_config(struct rsz_fw_in *in, struct rsz_fw_out *out,
 		out->hori_step = coeff_step;
 		cal_param->hori_luma_int_ofst = shift;
 		cal_param->hori_luma_sub_ofst = coeff_index_approx_ini;
-		cal_param->hori_chroma_int_ofst = shift_uv;
-		cal_param->hori_chroma_sub_ofst = coeff_index_approx_uv_ini;
 		cal_param->hori_trunc_bit = coeff_rs;
 		out->precision_x = max_nm * prec;
-
-		if ((src_width == dst_width) && (crop_width == dst_width))
-			out->hori_scale = 0;
-		else
-			out->hori_scale = 1;
 	} else { //for vertical
 		out->vert_step = coeff_step;
 		cal_param->vert_trunc_bit = coeff_rs;
 		cal_param->vert_luma_int_ofst = shift;
 		cal_param->vert_luma_sub_ofst = coeff_index_approx_ini;
-		cal_param->vert_chroma_int_ofst = shift_uv;
-		cal_param->vert_chroma_sub_ofst = coeff_index_approx_uv_ini;
 		out->precision_y = max_nm * prec;
 
-		if ((src_height == dst_height) & (crop_height == dst_height))
-			out->vert_scale = 0;
+		if (crop_width < dst_width)
+			out->vert_first = 1;
 		else
-			out->vert_scale = 1;
+			out->vert_first = 0;
 	}
-
-	if (crop_width < dst_width)
-		out->vert_first = 1;
-	else
-		out->vert_first = 0;
 }
 
 static u32 rsz_tbl_sel(u32 alg, u32 step)
@@ -312,35 +289,16 @@ static void rsz_auto_align(struct rsz_fw_in *in, struct rsz_fw_out *out,
 				((crop_subpix_width) >> 5)) -
 				(s32)(out->hori_step * (dst_width - 1))) / 2);
 
-			cal_param->hori_chroma_sub_ofst +=
-				(((s32) (prec*(crop_width - 1) +
-				((crop_subpix_width) >> 5)) -
-				(s32)(out->hori_step * (dst_width - 1))) / 2);
-
-			/* compensate the offset between Y and UV */
-			if (cal_param->yuv_422_t_yuv_444)
-				cal_param->hori_chroma_sub_ofst -= (prec / 4);
-
 			/* hardware requirement: always positive subpixel offset */
 			if (cal_param->hori_luma_sub_ofst < 0) {
 				cal_param->hori_luma_int_ofst--;
 				cal_param->hori_luma_sub_ofst = prec +
 					cal_param->hori_luma_sub_ofst;
 			}
-			if (cal_param->hori_chroma_sub_ofst < 0) {
-				cal_param->hori_chroma_int_ofst--;
-				cal_param->hori_chroma_sub_ofst = prec +
-					cal_param->hori_chroma_sub_ofst;
-			}
 			if (cal_param->hori_luma_sub_ofst >= prec) {
 				cal_param->hori_luma_int_ofst++;
 				cal_param->hori_luma_sub_ofst =
 					cal_param->hori_luma_sub_ofst - prec;
-			}
-			if (cal_param->hori_chroma_sub_ofst >= prec) {
-				cal_param->hori_chroma_int_ofst++;
-				cal_param->hori_chroma_sub_ofst =
-					cal_param->hori_chroma_sub_ofst - prec;
 			}
 		}
 		if (alg == 2) {
@@ -352,12 +310,9 @@ static void rsz_auto_align(struct rsz_fw_in *in, struct rsz_fw_out *out,
 
 			if (crop_width == dst_width) { //1x
 				cal_param->hori_luma_int_ofst += 0;
-				cal_param->hori_chroma_int_ofst += 0;
 				cal_param->hori_luma_sub_ofst += 0;
-				cal_param->hori_chroma_sub_ofst += 0;
 			} else { // <1x
 				cal_param->hori_luma_int_ofst += 0;
-				cal_param->hori_chroma_int_ofst += 0;
 
 				offset = (((s32)((crop_width-1) * out->hori_step) +
 					(s32)((s64)((s64)(
@@ -366,8 +321,6 @@ static void rsz_auto_align(struct rsz_fw_in *in, struct rsz_fw_out *out,
 					(s32)((dst_width - 1) * max_nm * prec)) / 2);
 
 				cal_param->hori_luma_sub_ofst += offset;
-				cal_param->hori_chroma_sub_ofst =
-					cal_param->hori_luma_sub_ofst;
 			}
 			/* hardware requirement: always positive subpixel offset */
 			if (cal_param->hori_luma_sub_ofst < 0) {
@@ -376,22 +329,10 @@ static void rsz_auto_align(struct rsz_fw_in *in, struct rsz_fw_out *out,
 					max_nm * prec +
 					cal_param->hori_luma_sub_ofst;
 			}
-			if (cal_param->hori_chroma_sub_ofst < 0) {
-				cal_param->hori_chroma_int_ofst--;
-				cal_param->hori_chroma_sub_ofst =
-					max_nm * prec +
-					cal_param->hori_chroma_sub_ofst;
-			}
 			if (cal_param->hori_luma_sub_ofst >= max_nm * prec) {
 				cal_param->hori_luma_int_ofst++;
 				cal_param->hori_luma_sub_ofst =
 					cal_param->hori_luma_sub_ofst -
-					max_nm * prec;
-			}
-			if (cal_param->hori_chroma_sub_ofst >= max_nm * prec) {
-				cal_param->hori_chroma_int_ofst++;
-				cal_param->hori_chroma_sub_ofst =
-					cal_param->hori_chroma_sub_ofst -
 					max_nm * prec;
 			}
 		}
@@ -408,17 +349,6 @@ static void rsz_auto_align(struct rsz_fw_in *in, struct rsz_fw_out *out,
 				((crop_subpix_height) >> 5)) -
 				(s32)(out->vert_step *
 				(dst_height - 1))) / 2);
-
-			cal_param->vert_chroma_sub_ofst +=
-				(((s32)(prec * (crop_height - 1) +
-				((crop_subpix_height) >> 5)) -
-				(s32)(out->vert_step *
-				(dst_height - 1))) / 2);
-
-			/* compensate the offset between Y and UV */
-			if (cal_param->yuv_422_t_yuv_444)
-				cal_param->vert_chroma_sub_ofst -= (prec / 4);
-
 			/* hardware requirement: always positive subpixel offset */
 			if (cal_param->vert_luma_sub_ofst < 0) {
 				cal_param->vert_luma_int_ofst--;
@@ -426,22 +356,10 @@ static void rsz_auto_align(struct rsz_fw_in *in, struct rsz_fw_out *out,
 					cal_param->vert_luma_sub_ofst;
 			}
 
-			if (cal_param->vert_chroma_sub_ofst < 0) {
-				cal_param->vert_chroma_int_ofst--;
-				cal_param->vert_chroma_sub_ofst = prec +
-					cal_param->vert_chroma_sub_ofst;
-			}
-
 			if (cal_param->vert_luma_sub_ofst >= prec) {
 				cal_param->vert_luma_int_ofst++;
 				cal_param->vert_luma_sub_ofst =
 					cal_param->vert_luma_sub_ofst - prec;
-			}
-
-			if (cal_param->vert_chroma_sub_ofst >= prec) {
-				cal_param->vert_chroma_int_ofst++;
-				cal_param->vert_chroma_sub_ofst =
-					cal_param->vert_chroma_sub_ofst - prec;
 			}
 		}
 		/* Auto subpixel shift for fun_255.c */
@@ -452,12 +370,9 @@ static void rsz_auto_align(struct rsz_fw_in *in, struct rsz_fw_out *out,
 			 */
 			if (crop_height == dst_height) { //1x
 				cal_param->vert_luma_int_ofst += 0;
-				cal_param->vert_chroma_int_ofst += 0;
 				cal_param->vert_luma_sub_ofst += 0;
-				cal_param->vert_chroma_sub_ofst += 0;
 			} else { // <1x
 				cal_param->vert_luma_int_ofst += 0;
-				cal_param->vert_chroma_int_ofst += 0;
 				offset = ((s32)((crop_height - 1) *
 					out->vert_step) +
 					(s32)((s64)((s64)((s64)(crop_subpix_height <<
@@ -468,8 +383,6 @@ static void rsz_auto_align(struct rsz_fw_in *in, struct rsz_fw_out *out,
 					// offset in the unit of (pixel*coeff_step)
 
 				cal_param->vert_luma_sub_ofst += offset;
-				cal_param->vert_chroma_sub_ofst =
-					cal_param->vert_luma_sub_ofst;
 			}
 			// ---------------------------------------------------
 			// hardware requirement: always positive subpixel offset
@@ -479,24 +392,10 @@ static void rsz_auto_align(struct rsz_fw_in *in, struct rsz_fw_out *out,
 					max_nm*prec +
 					cal_param->vert_luma_sub_ofst;
 			}
-
-			if (cal_param->vert_chroma_sub_ofst < 0) {
-				cal_param->vert_chroma_int_ofst--;
-				cal_param->vert_chroma_sub_ofst = max_nm *
-					prec + cal_param->vert_chroma_sub_ofst;
-			}
-
 			if (cal_param->vert_luma_sub_ofst >= max_nm * prec) {
 				cal_param->vert_luma_int_ofst++;
 				cal_param->vert_luma_sub_ofst =
 					cal_param->vert_luma_sub_ofst -
-					max_nm * prec;
-			}
-
-			if (cal_param->vert_chroma_sub_ofst >= max_nm * prec) {
-				cal_param->vert_chroma_int_ofst++;
-				cal_param->vert_chroma_sub_ofst =
-					cal_param->vert_chroma_sub_ofst -
 					max_nm * prec;
 			}
 		}
@@ -516,24 +415,12 @@ static void rsz_ofst_check(struct rsz_fw_out *out,
 			cal_param->hori_luma_sub_ofst =
 				cal_param->hori_luma_sub_ofst % step_size_6tap;
 		}
-		if (cal_param->hori_chroma_sub_ofst >= step_size_6tap) {
-			cal_param->hori_chroma_int_ofst +=
-				cal_param->hori_chroma_sub_ofst / step_size_6tap;
-			cal_param->hori_chroma_sub_ofst =
-				cal_param->hori_chroma_sub_ofst % step_size_6tap;
-		}
 	} else {
 		if (cal_param->hori_luma_sub_ofst >= step_size_acc) {
 			cal_param->hori_luma_int_ofst +=
 				cal_param->hori_luma_sub_ofst / step_size_acc;
 			cal_param->hori_luma_sub_ofst =
 				cal_param->hori_luma_sub_ofst % step_size_acc;
-		}
-		if (cal_param->hori_chroma_sub_ofst >= step_size_acc) {
-			cal_param->hori_chroma_int_ofst +=
-				cal_param->hori_chroma_sub_ofst / step_size_acc;
-			cal_param->hori_chroma_sub_ofst =
-				cal_param->hori_chroma_sub_ofst % step_size_acc;
 		}
 	}
 
@@ -544,24 +431,12 @@ static void rsz_ofst_check(struct rsz_fw_out *out,
 			cal_param->vert_luma_sub_ofst =
 				cal_param->vert_luma_sub_ofst % step_size_6tap;
 		}
-		if (cal_param->vert_chroma_sub_ofst >= step_size_6tap) {
-			cal_param->vert_chroma_int_ofst +=
-				cal_param->vert_chroma_sub_ofst / step_size_6tap;
-			cal_param->vert_chroma_sub_ofst =
-				cal_param->vert_chroma_sub_ofst % step_size_6tap;
-		}
 	} else {
 		if (cal_param->vert_luma_sub_ofst >= step_size_acc) {
 			cal_param->vert_luma_int_ofst +=
 				cal_param->vert_luma_sub_ofst / step_size_acc;
 			cal_param->vert_luma_sub_ofst =
 				cal_param->vert_luma_sub_ofst % step_size_acc;
-		}
-		if (cal_param->vert_chroma_sub_ofst >= step_size_acc) {
-			cal_param->vert_chroma_int_ofst +=
-				cal_param->vert_chroma_sub_ofst / step_size_acc;
-			cal_param->vert_chroma_sub_ofst =
-				cal_param->vert_chroma_sub_ofst % step_size_acc;
 		}
 	}
 }
@@ -578,45 +453,40 @@ static void rsz_auto_coef_trunc(struct rsz_fw_in *in, struct rsz_fw_out *out,
 	cal_param->hori_chroma_cubic_trunc_bit = 0;
 	out->vert_cubic_trunc = 0;
 
-	if (out->vert_algo == 2) {
+	if (out->vert_algo == 2 && hori_ratio > 512) {
+		out->vert_cubic_trunc = 1;
 		if (in->power_saving) {
-			if (hori_ratio > 512) {
-				out->vert_cubic_trunc = 1;
-				if (vert_ratio > 512 && vert_ratio <= 1024) {
-					cal_param->vert_luma_cubic_trunc_bit = 2;
-					cal_param->vert_chroma_cubic_trunc_bit = 0;
-				} else if (vert_ratio > 256 && vert_ratio <= 512) {
-					cal_param->vert_luma_cubic_trunc_bit = 3;
-					cal_param->vert_chroma_cubic_trunc_bit = 1;
-				} else if (vert_ratio > 128 && vert_ratio <= 256) {
-					cal_param->vert_luma_cubic_trunc_bit = 4;
-					cal_param->vert_chroma_cubic_trunc_bit = 2;
-				} else if (vert_ratio > 64 && vert_ratio <= 128) {
-					cal_param->vert_luma_cubic_trunc_bit = 5;
-					cal_param->vert_chroma_cubic_trunc_bit = 3;
-				} else if (vert_ratio >= 32 && vert_ratio <= 64) {
-					cal_param->vert_luma_cubic_trunc_bit = 6;
-					cal_param->vert_chroma_cubic_trunc_bit = 4;
-				}
+			if (vert_ratio > 512 && vert_ratio <= 1024) {
+				cal_param->vert_luma_cubic_trunc_bit = 2;
+				cal_param->vert_chroma_cubic_trunc_bit = 0;
+			} else if (vert_ratio > 256 && vert_ratio <= 512) {
+				cal_param->vert_luma_cubic_trunc_bit = 3;
+				cal_param->vert_chroma_cubic_trunc_bit = 1;
+			} else if (vert_ratio > 128 && vert_ratio <= 256) {
+				cal_param->vert_luma_cubic_trunc_bit = 4;
+				cal_param->vert_chroma_cubic_trunc_bit = 2;
+			} else if (vert_ratio > 64 && vert_ratio <= 128) {
+				cal_param->vert_luma_cubic_trunc_bit = 5;
+				cal_param->vert_chroma_cubic_trunc_bit = 3;
+			} else if (vert_ratio >= 32 && vert_ratio <= 64) {
+				cal_param->vert_luma_cubic_trunc_bit = 6;
+				cal_param->vert_chroma_cubic_trunc_bit = 4;
 			}
 		} else {
-			if (hori_ratio > 512) {
-				out->vert_cubic_trunc = 1;
-				if (vert_ratio > 512 && vert_ratio <= 1024) {
-					cal_param->vert_luma_cubic_trunc_bit = 4;
-					cal_param->vert_chroma_cubic_trunc_bit = 2;
-				} else if (vert_ratio > 256 && vert_ratio <= 512) {
-					cal_param->vert_luma_cubic_trunc_bit = 5;
-					cal_param->vert_chroma_cubic_trunc_bit = 3;
-				} else if (vert_ratio > 128 && vert_ratio <= 256) {
-					cal_param->vert_luma_cubic_trunc_bit = 6;
-					cal_param->vert_chroma_cubic_trunc_bit = 4;
-				} else if (vert_ratio > 64 && vert_ratio <= 128) {
-					cal_param->vert_luma_cubic_trunc_bit = 7;
-					cal_param->vert_chroma_cubic_trunc_bit = 5;
-				} else if (vert_ratio >= 32 && vert_ratio <= 64) {
-					out->vert_algo = 1;
-				}
+			if (vert_ratio > 512 && vert_ratio <= 1024) {
+				cal_param->vert_luma_cubic_trunc_bit = 4;
+				cal_param->vert_chroma_cubic_trunc_bit = 2;
+			} else if (vert_ratio > 256 && vert_ratio <= 512) {
+				cal_param->vert_luma_cubic_trunc_bit = 5;
+				cal_param->vert_chroma_cubic_trunc_bit = 3;
+			} else if (vert_ratio > 128 && vert_ratio <= 256) {
+				cal_param->vert_luma_cubic_trunc_bit = 6;
+				cal_param->vert_chroma_cubic_trunc_bit = 4;
+			} else if (vert_ratio > 64 && vert_ratio <= 128) {
+				cal_param->vert_luma_cubic_trunc_bit = 7;
+				cal_param->vert_chroma_cubic_trunc_bit = 5;
+			} else if (vert_ratio >= 32 && vert_ratio <= 64) {
+				out->vert_algo = 1;
 			}
 		}
 	}
@@ -726,11 +596,11 @@ void rsz_fw(struct rsz_fw_in *in, struct rsz_fw_out *out, bool en_ur)
 	out->vert_cubic_trunc = 0;
 	cal_param.yuv_422_t_yuv_444 = 0;
 
-	rsz_config_ctrl_regs(in, &cal_param);
+	rsz_config_ctrl_regs(in, out, &cal_param);
 	rsz_config(in, out, true, &cal_param);
 	rsz_config(in, out, false, &cal_param);
 
-	if (cal_param.hori_en == 0 || cal_param.vert_en == 0 ||
+	if (out->hori_scale == 0 || out->vert_scale == 0 ||
 	   out->vert_first == 0 ||
 	   out->vert_algo != 0 || out->hori_algo != 0) {
 		cal_param.tap_adapt_en = 0;
@@ -785,14 +655,14 @@ void rsz_fw(struct rsz_fw_in *in, struct rsz_fw_out *out, bool en_ur)
 	}
 
 	/* always enable hor and ver */
-	cal_param.hori_en = 1;
-	cal_param.vert_en = 1;
+	out->hori_scale = 1;
+	out->vert_scale = 1;
 	/* Scaling size is 1, need to bound input */
 	if (in->crop.r.width == in->out_width)
 		out->vert_first = 1;
 
-	out->con1 = cal_param.hori_en |
-		    cal_param.vert_en << 1 |
+	out->con1 = out->hori_scale |
+		    out->vert_scale << 1 |
 		    out->vert_first << 4 |
 		    out->hori_algo << 5 |
 		    out->vert_algo << 7 |
