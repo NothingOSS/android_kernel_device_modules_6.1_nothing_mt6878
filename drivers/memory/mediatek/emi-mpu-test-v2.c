@@ -128,7 +128,7 @@ static ssize_t emimpu_ctrl_show(struct device_driver *driver, char *buf)
 	end = emimpu_read_protection(MTK_EMIMPU_READ_EA, sr_num, 0);
 	enable_val = emimpu_read_protection(MTK_EMIMPU_READ_ENABLE, sr_num, 0);
 
-	pr_info("%s: emimpu_ctrl sr_num: %d, 0x%x, 0x%x\n",
+	pr_info("%s: emimpu_ctrl sr_num: %d, 0x%llx, 0x%llx\n",
 		__func__, sr_num, start, end);
 	ret = snprintf(buf + ret, PAGE_SIZE - ret,
 			"SR:%u -> 0x%llx to 0x%llx; %s\n",
