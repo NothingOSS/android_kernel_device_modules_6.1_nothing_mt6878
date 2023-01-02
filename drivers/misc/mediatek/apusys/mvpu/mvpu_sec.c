@@ -648,7 +648,7 @@ int update_hash_pool(void *session,
 									sec_chk_addr[cnt]);
 					if (buf_kva == NULL) {
 						pr_info("[MVPU][Sec] apusys_mem_query_kva_by_sess fail (session: 0x%llx, sec_chk_addr[%3d]: 0x%08x)\n",
-								session, cnt, sec_chk_addr[cnt]);
+								(unsigned long long)session, cnt, sec_chk_addr[cnt]);
 						return -ENOMEM;
 					}
 
@@ -678,7 +678,7 @@ int update_hash_pool(void *session,
 									sec_chk_addr[cnt]);
 					if (buf_kva == NULL) {
 						pr_info("[MVPU][Sec] apusys_mem_query_kva_by_sess fail (session: 0x%llx, sec_chk_addr[%3d]: 0x%08x)\n",
-								session, cnt, sec_chk_addr[cnt]);
+								(unsigned long long)session, cnt, sec_chk_addr[cnt]);
 						return -ENOMEM;
 					}
 
@@ -726,7 +726,7 @@ int update_hash_pool(void *session,
 				buf_ofst += buf_size;
 
 				if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_ALL) {
-					pr_info("[MVPU][Sec] buf[%3d]: copy 0x%llx to 0x%llx\n",
+					pr_info("[MVPU][Sec] buf[%3d]: copy 0x%lx to 0x%lx\n",
 						cnt,
 						(uintptr_t)buf_kva,
 						(uintptr_t)cp_buff);
@@ -944,7 +944,7 @@ int replace_img_knl(void *session,
 		if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_ALL) {
 			pr_info("[MVPU][Sec] DRV rp cnt %03d, replace *[0x%llx + 0x%08x] from 0x%08x to [0x%08x + 0x%08x]\n",
 					cnt,
-					target_buf_old_base[cnt],
+					(unsigned long long)target_buf_old_base[cnt],
 					target_buf_old_offset[cnt],
 					*((uint32_t *)buf_ptr),
 					sec_chk_addr[target_buf_new_map[cnt]],
@@ -1205,7 +1205,7 @@ int replace_mem(uint32_t session_id,
 					(rp_buf_old_base[cnt] == 0) ?
 						((uintptr_t)kreg_kva):(rp_buf_old_base[cnt]),
 #else
-					rp_buf_old_base[cnt],
+					(unsigned long long)rp_buf_old_base[cnt],
 #endif
 					rp_buf_old_offset[cnt],
 					*((uint32_t *)buf_ptr),
@@ -1321,12 +1321,12 @@ int replace_kerarg(void *session,
 								+ kerarg_offset[cnt]);
 
 		if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_DBG) {
-			pr_info("[MVPU][Sec] kerarg cnt %03d, set kerarg[%03d][0x%llx] from buf[%03d][0x%llx] offset 0x%08x with 0x%x bytes\n",
+			pr_info("[MVPU][Sec] kerarg cnt %03d, set kerarg[%03d][0x%lx] from buf[%03d][0x%lx] offset 0x%08x with 0x%x bytes\n",
 					cnt,
 					kerarg_buf_id[cnt],
-					pool_ptr_base + target_pool_ofst,
+					(unsigned long)pool_ptr_base + target_pool_ofst,
 					kerarg_buf_id[cnt],
-					sec_chk_addr_kva,
+					(unsigned long)sec_chk_addr_kva,
 					kerarg_offset[cnt],
 					kerarg_size[cnt]);
 
@@ -1603,7 +1603,7 @@ int region_mpu_set(uint32_t session_id,
 					*MVPU_MPU_SIZE;
 		} else {
 			if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_DBG)
-				pr_info("[MVPU][IMG] [MPU][WARN] set fake image region: 0x%08x\n",
+				pr_info("[MVPU][IMG] [MPU][WARN] set fake image region: 0x%08llx\n",
 					mvpu_algo_iova + MVPU_MPU_SIZE);
 			mpu_seg[buf_io_cnt + IMG_END_SFT] = mvpu_algo_iova + MVPU_MPU_SIZE;
 		}
@@ -1886,8 +1886,8 @@ int check_iova(void *session,
 
 		desc_ptr = (uint32_t *)apusys_mem_query_kva_by_sess(session, chk_base);
 		if (desc_ptr == NULL) {
-			pr_info("[MVPU][Sec] apusys_mem_query_kva_by_sess fail (session: 0x%llx, chk_base: 0x%08x)\n",
-					session, chk_base);
+			pr_info("[MVPU][Sec] apusys_mem_query_kva_by_sess fail (session: 0x%lx, chk_base: 0x%08x)\n",
+					(unsigned long)session, chk_base);
 			ret = -ENOMEM;
 			goto END;
 		}
@@ -2039,15 +2039,15 @@ int mvpu_load_img(struct device *dev)
 
 	if (dma_mapping_error(dev, mvpu_algo_iova)) {
 		if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_DBG) {
-			pr_info("[MVPU][WARN] get mvpu_algo_iova error: 0x%08x, VA: 0x%llx\n",
-					mvpu_algo_iova, mvpu_algo_img);
+			pr_info("[MVPU][WARN] get mvpu_algo_iova error: 0x%08llx, VA: 0x%lx\n",
+					mvpu_algo_iova, (unsigned long)mvpu_algo_img);
 		} else {
-			pr_info("[MVPU][WARN] get mvpu_algo_iova error: 0x%08x\n",
+			pr_info("[MVPU][WARN] get mvpu_algo_iova error: 0x%08llx\n",
 					mvpu_algo_iova);
 		}
 	} else {
 		if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_DBG)
-			pr_info("[MVPU][SEC] get mvpu_algo_iova: 0x%08x\n",
+			pr_info("[MVPU][SEC] get mvpu_algo_iova: 0x%08llx\n",
 					mvpu_algo_iova);
 	}
 

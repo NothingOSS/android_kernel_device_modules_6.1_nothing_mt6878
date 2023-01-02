@@ -495,7 +495,7 @@ static int vpu_init_algo_info(struct vpu_device *vd,
 		if (algo->entry_off)
 			head->preload = 1;
 
-		vpu_drv_debug("%s: vpu%d algo(0x%lX): %s, va: 0x%08X, len: 0x%X, entry: 0x%X\n",
+		vpu_drv_debug("%s: vpu%d algo(0x%lX): %s, va: 0x%08llX, len: 0x%X, entry: 0x%X\n",
 			__func__, vd->id,
 			(unsigned long)algo,
 			algo->name, algo->mva, algo->len,
@@ -1257,7 +1257,7 @@ int vpu_dev_set_debug(struct vpu_device *vd)
 		vpu_reg_read(vd, xtensa_info19),
 		vpu_reg_read(vd, xtensa_info21),
 		vpu_reg_read(vd, xtensa_info23));
-	vpu_cmd_debug("%s: vpu%d: timestamp: %.2lu:%.2lu:%.2lu:%.6lu\n",
+	vpu_cmd_debug("%s: vpu%d: timestamp: %.2lld:%.2lld:%.2lld:%.6lu\n",
 		__func__, vd->id,
 		(now.tv_sec / 3600) % (24),
 		(now.tv_sec / 60) % (60),

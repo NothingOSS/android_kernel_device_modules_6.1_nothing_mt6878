@@ -69,7 +69,7 @@ static int core_devfreq_target(struct device *dev,
 			goto out;
 	}
 	apupw_dbg_pwr_tag_update(ad, *rate, volt);
-	advfs_info(dev, "[%s] rate %luMhz volt %dmV\n",
+	advfs_info(dev, "[%s] rate %luMhz volt %lumV\n",
 			__func__, TOMHZ(*rate), TOMV(volt));
 
 out:

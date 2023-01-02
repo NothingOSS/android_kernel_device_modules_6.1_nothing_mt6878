@@ -92,7 +92,7 @@ uint32_t apu_bmap_alloc(struct apu_bmap *ab, unsigned int size,
 	if (given_addr) {
 		start = given_addr - ab->start;
 		if (!is_au_align(ab, start)) {
-			mdw_drv_warn("%s: %s: size: 0x%x, given addr: 0x%x, start 0x%x is un-aligned to AU 0x%x\n",
+			mdw_drv_warn("%s: %s: size: 0x%x, given addr: 0x%x, start 0x%lx is un-aligned to AU 0x%x\n",
 				__func__, ab->name, size, addr, start, ab->au);
 			return 0;
 		}
@@ -106,7 +106,7 @@ uint32_t apu_bmap_alloc(struct apu_bmap *ab, unsigned int size,
 		nr, ab->align_mask);
 
 	if (offset >= ab->nbits) {
-		mdw_drv_warn("%s: %s: Out of memory: size: 0x%x, given addr: 0x%x, offset: %d, nbits: %d\n",
+		mdw_drv_warn("%s: %s: Out of memory: size: 0x%x, given addr: 0x%x, offset: %lu, nbits: %lu\n",
 			__func__, ab->name, size, addr, offset, ab->nbits);
 		goto out;
 	}
@@ -146,14 +146,14 @@ void apu_bmap_free(struct apu_bmap *ab, uint32_t addr, unsigned int size)
 		__func__, ab->name, addr, size, nr);
 
 	if (!is_au_align(ab, offset)) {
-		mdw_drv_warn("%s: %s: addr 0x%x, offset 0x%x is un-aligned to AU 0x%x\n",
+		mdw_drv_warn("%s: %s: addr 0x%x, offset 0x%lu is un-aligned to AU 0x%x\n",
 			__func__, ab->name, addr, offset, ab->au);
 		return;
 	}
 
 	offset = offset / ab->au;
 	if (offset >= ab->nbits) {
-		mdw_drv_warn("%s: %s: addr 0x%x, offset-bit %d is out of limit %d\n",
+		mdw_drv_warn("%s: %s: addr 0x%x, offset-bit %lu is out of limit %lu\n",
 			__func__, ab->name, addr, offset, ab->nbits);
 		return;
 	}

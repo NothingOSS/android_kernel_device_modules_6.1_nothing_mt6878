@@ -338,7 +338,7 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 
 	/* check size */
 	if (m->size > m->dbuf->size) {
-		mdw_drv_err("m(0x%llx/0x%llx/%d/0x%llx) size not match(%u/%u)\n",
+		mdw_drv_err("m(0x%llx/0x%llx/%d/0x%llx) size not match(%u/%lu)\n",
 			(uint64_t)m->mpriv, (uint64_t)m, m->handle, (uint64_t)m->dbuf,
 			m->size, m->dbuf->size);
 		ret = -EINVAL;
@@ -739,7 +739,7 @@ out:
 	mutex_unlock(&mpriv->mtx);
 	mutex_unlock(&mpriv->mdev->mctl_mtx);
 	if (ret || !m)
-		mdw_drv_err("handle(%llu) m(%p) ret(%d)\n", handle, m, ret);
+		mdw_drv_err("handle(%d) m(%p) ret(%d)\n", handle, m, ret);
 
 	return ret;
 }
@@ -768,7 +768,7 @@ out:
 	mutex_unlock(&mpriv->mtx);
 	mutex_unlock(&mpriv->mdev->mctl_mtx);
 	if (ret)
-		mdw_drv_err("handle(%llu) ret(%d)\n", handle, ret);
+		mdw_drv_err("handle(%d) ret(%d)\n", handle, ret);
 
 	return ret;
 }

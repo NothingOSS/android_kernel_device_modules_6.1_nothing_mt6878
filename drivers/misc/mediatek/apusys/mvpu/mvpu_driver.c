@@ -144,7 +144,7 @@ static int mvpu_validation(void *hnd)
 	if ((cmdbuf[MVPU_CMD_INFO_IDX].size != sizeof(struct mvpu_request)) &&
 		(cmdbuf[MVPU_CMD_INFO_IDX].size != MVPU_CMD_LITE_SIZE_0) &&
 		(cmdbuf[MVPU_CMD_INFO_IDX].size != MVPU_CMD_LITE_SIZE_1)) {
-		pr_info("[MVPU][Sec] [ERROR] get wrong cmdbuf size: 0x%x, should be 0x%x\n",
+		pr_info("[MVPU][Sec] [ERROR] get wrong cmdbuf size: 0x%x, should be 0x%lx\n",
 				cmdbuf[MVPU_CMD_INFO_IDX].size,
 				sizeof(struct mvpu_request));
 		ret = -1;
@@ -244,8 +244,8 @@ static int mvpu_validation(void *hnd)
 	if (mem_use_iova(mvpu_req->pmu_buff)) {
 		if (apusys_mem_validate_by_cmd(session, cmd_hnd->cmd,
 				(uint64_t)mvpu_req->pmu_buff, mvpu_req->buff_size) != 0) {
-			pr_info("[MVPU][Sec] pmu_buff 0x%llx integrity checked FAIL\n",
-						mvpu_req->pmu_buff);
+			pr_info("[MVPU][Sec] pmu_buff 0x%lx integrity checked FAIL\n",
+						(unsigned long)mvpu_req->pmu_buff);
 			ret = -EINVAL;
 			goto END_WITH_MUTEX;
 		}

@@ -356,7 +356,7 @@ static int mdw_rv_dev_handshake(struct mdw_rv_dev *mrdev)
 	memcpy(mrdev->dev_mask, &msg.h.basic.dev_bmp, sizeof(mrdev->dev_mask));
 	memcpy(mrdev->mem_mask, &msg.h.basic.mem_bmp, sizeof(mrdev->mem_mask));
 	mrdev->rv_version = msg.h.basic.version;
-	mdw_drv_warn("apusys: rv infos(%u)(0x%x/0x%llx)(0x%x/0x%llx)\n",
+	mdw_drv_warn("apusys: rv infos(%u)(0x%lx/0x%llx)(0x%lx/0x%llx)\n",
 		mrdev->rv_version, mrdev->dev_mask[0],
 		msg.h.basic.dev_bmp, mrdev->mem_mask[0], msg.h.basic.mem_bmp);
 

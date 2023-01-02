@@ -171,7 +171,7 @@ static int _reviser_copy_pgt(struct pgt_tcm *dst, struct pgt_tcm *src, unsigned 
 	}
 
 	size = BITS_TO_LONGS(nbits);
-	LOG_DBG_RVR_TBL("size %x\n", size);
+	LOG_DBG_RVR_TBL("size %lx\n", size);
 
 	//dst->pgt[0] = src->pgt[0];
 	if (size)
@@ -1078,7 +1078,7 @@ int reviser_table_set_remap(void *drvinfo, unsigned long ctx)
 
 	if (g_ctx_pgt[ctx].vlm.sys_num + g_rmp_valid > g_rmp_nbits) {
 
-		LOG_ERR("sys_num (%lu) g_rmp_valid(%lu) is large than Max [%lu]\n",
+		LOG_ERR("sys_num (%u) g_rmp_valid(%lu) is large than Max [%lu]\n",
 				g_ctx_pgt[ctx].vlm.sys_num,
 				g_rmp_valid, g_rmp_nbits);
 		goto free_mutex;
@@ -1144,7 +1144,7 @@ int reviser_table_clear_remap(void *drvinfo, unsigned long ctx)
 	mutex_lock(&rdv->lock.mutex_ctx_pgt);
 
 	if (g_rmp_valid < g_ctx_pgt[ctx].vlm.sys_num) {
-		LOG_ERR("Clear fail(%u)[%lu][%u]\n",
+		LOG_ERR("Clear fail(%lu)[%lu][%u]\n",
 				g_rmp_valid, ctx,
 				g_ctx_pgt[ctx].vlm.sys_num);
 		goto free_mutex;

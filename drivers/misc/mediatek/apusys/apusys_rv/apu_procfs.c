@@ -164,7 +164,7 @@ static void apu_mrdump_register(struct mtk_apu *apu)
 			size = 0;
 		} else {
 			size = apu->apusys_aee_coredump_info->up_xfile_sz;
-			dev_info(dev, "%s: up_xfile_sz = 0x%x\n", __func__, size);
+			dev_info(dev, "%s: up_xfile_sz = 0x%lx\n", __func__, size);
 		}
 		ret = mrdump_mini_add_extra_file(base_va, base_pa, size,
 			"APUSYS_RV_XFILE");

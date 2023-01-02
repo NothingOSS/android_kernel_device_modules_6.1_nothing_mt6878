@@ -25,7 +25,7 @@ int mdw_hs_ioctl(struct mdw_fpriv *mpriv, void *data)
 		memcpy(&args->out.basic.mem_bitmask,
 			mdev->mem_mask, sizeof(mdev->mem_mask));
 		args->out.basic.meta_size = MDW_DEV_META_SIZE;
-		mdw_flw_debug("version(%u) dev mask(0x%llx) mem mask(0x%llx)\n",
+		mdw_flw_debug("version(%llu) dev mask(0x%llx) mem mask(0x%llx)\n",
 			args->out.basic.version,
 			args->out.basic.dev_bitmask,
 			args->out.basic.mem_bitmask);

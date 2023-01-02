@@ -374,7 +374,7 @@ static uint64_t mdw_fence_ctx_alloc(struct mdw_device *mdev)
 		ctx = mdev->base_fence_ctx + idx;
 	}
 	mutex_unlock(&mdev->f_mtx);
-	mdw_cmd_debug("alloc fence ctx(%llu) idx(%d) base(%llu)\n",
+	mdw_cmd_debug("alloc fence ctx(%llu) idx(%llu) base(%llu)\n",
 		ctx, idx, mdev->base_fence_ctx);
 
 	return ctx;
@@ -565,7 +565,7 @@ static int mdw_cmd_sanity_check(struct mdw_cmd *c)
 
 	if (c->exec_infos->size != sizeof(struct mdw_cmd_exec_info) +
 		c->num_subcmds * sizeof(struct mdw_subcmd_exec_info)) {
-		mdw_drv_err("s(0x%llx)cmd invalid(0x%llx/0x%llx) einfo(%u/%u)\n",
+		mdw_drv_err("s(0x%llx)cmd invalid(0x%llx/0x%llx) einfo(%u/%lu)\n",
 			(uint64_t)c->mpriv, c->uid, c->kid,
 			c->exec_infos->size,
 			sizeof(struct mdw_cmd_exec_info) +
@@ -612,7 +612,7 @@ static int mdw_cmd_link_check(struct mdw_cmd *c)
 			c->links[i].consumer_idx > c->num_subcmds ||
 			!c->links[i].x || !c->links[i].y ||
 			!c->links[i].va) {
-			mdw_drv_err("link(%u) invalid(%u/%u)(%u/%u)(0x%llx)\n", i,
+			mdw_drv_err("link(%u) invalid(%u/%u)(%llu/%llu)(0x%llx)\n", i,
 				c->links[i].producer_idx,
 				c->links[i].consumer_idx,
 				c->links[i].x,
@@ -958,7 +958,7 @@ static int mdw_cmd_ioctl_del(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 	c = (struct mdw_cmd *)idr_find(&mpriv->cmds, in->id);
 	if (!c) {
 		ret = -EINVAL;
-		mdw_drv_warn("can't find id(%d)\n", in->id);
+		mdw_drv_warn("can't find id(%lld)\n", in->id);
 	} else {
 		if (c != idr_remove(&mpriv->cmds, c->id))
 			mdw_drv_warn("remove cmd idr conflict(0x%llx/%d)\n", c->kid, c->id);

@@ -179,7 +179,7 @@ int reviser_remote_rx_cb(void *data, int len)
 	uint32_t *ptr;
 
 	if (len != sizeof(struct reviser_msg)) {
-		LOG_ERR("invalid len %d / %d\n", len, sizeof(struct reviser_msg));
+		LOG_ERR("invalid len %d / %lu\n", len, sizeof(struct reviser_msg));
 		return -EINVAL;
 	}
 

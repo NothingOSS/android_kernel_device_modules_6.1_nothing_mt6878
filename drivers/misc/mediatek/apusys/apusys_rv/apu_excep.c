@@ -277,10 +277,10 @@ static uint32_t apusys_rv_smc_call(struct device *dev, uint32_t smc_id,
 	arm_smccc_smc(MTK_SIP_APUSYS_CONTROL, smc_id,
 				a2, 0, 0, 0, 0, 0, &res);
 	if (smc_id == MTK_APUSYS_KERNEL_OP_APUSYS_RV_DBG_APB_ATTACH)
-		dev_info(dev, "%s: smc call return(0x%x)\n",
+		dev_info(dev, "%s: smc call return(0x%lx)\n",
 			__func__, res.a0);
 	else if (((int) res.a0) < 0)
-		dev_info(dev, "%s: smc call %d return error(%d)\n",
+		dev_info(dev, "%s: smc call %d return error(%ld)\n",
 			__func__, smc_id, res.a0);
 
 	return res.a0;

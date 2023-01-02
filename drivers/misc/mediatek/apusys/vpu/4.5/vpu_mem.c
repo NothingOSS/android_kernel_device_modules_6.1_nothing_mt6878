@@ -49,7 +49,7 @@ static void vpu_iova_show(struct seq_file *s)
 		seq_puts(s, "[");
 		vpu_seq_time(s, i->time);
 		seq_printf(s,
-			"] iova: %llx, addr: %x, size %x, bin: %x, m.pa: %x, m.len: %x\n",
+			"] iova: %llx, addr: %x, size %x, bin: %x, m.pa: %llx, m.len: %x\n",
 			i->iova, i->addr, i->size, i->bin,
 			i->m.pa, i->m.length);
 	}
@@ -79,7 +79,7 @@ static void vpu_mem_exit_v1(void)
 		t = i->time;
 		nsec = do_div(t, 1000000000);
 		pr_info(
-			"%s: [%lu.%06lu] iova: %llx, addr: %x, size %x, bin: %x, m.pa: %x, m.len: %x\n",
+			"%s: [%lu.%06lu] iova: %llx, addr: %x, size %x, bin: %x, m.pa: %llx, m.len: %x\n",
 			__func__, (unsigned long)t, (unsigned long)nsec/1000,
 			i->iova, i->addr, i->size, i->bin,
 			i->m.pa, i->m.length);

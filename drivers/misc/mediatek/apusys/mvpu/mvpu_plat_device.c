@@ -155,8 +155,8 @@ int mvpu_config_init(struct mtk_apu *apu)
 					return -ENOMEM;
 				}
 
-				pr_info("core 0 itcm kernel va = 0x%llx, core 0 itcm iova = 0x%llx\n",
-					addr0, mvpu_da_itcm);
+				pr_info("core 0 itcm kernel va = 0x%lx, core 0 itcm iova = 0x%llx\n",
+					(unsigned long)addr0, mvpu_da_itcm);
 
 				memset(addr0, 0, PREEMPT_ITCM_BUFFER);
 
@@ -174,8 +174,8 @@ int mvpu_config_init(struct mtk_apu *apu)
 					return -ENOMEM;
 				}
 
-				pr_info("core 0 L1 kernel va = 0x%llx, core 0 L1 iova = 0x%llx\n",
-					addr1, mvpu_da_l1);
+				pr_info("core 0 L1 kernel va = 0x%lx, core 0 L1 iova = 0x%llx\n",
+					(unsigned long)addr1, mvpu_da_l1);
 
 				memset(addr1, 0, PREEMPT_L1_BUFFER);
 
@@ -192,8 +192,8 @@ int mvpu_config_init(struct mtk_apu *apu)
 					return -ENOMEM;
 				}
 
-				pr_info("addr0 = 0x%llx, mvpu_da_itcm = 0x%llx\n",
-					addr0, mvpu_da_itcm);
+				pr_info("addr0 = 0x%lx, mvpu_da_itcm = 0x%llx\n",
+					(unsigned long)addr0, mvpu_da_itcm);
 
 				memset(addr0, 0, PREEMPT_ITCM_BUFFER);
 
@@ -210,8 +210,8 @@ int mvpu_config_init(struct mtk_apu *apu)
 					return -ENOMEM;
 				}
 
-				pr_info("addr0 = 0x%llx, mvpu_da_itcm = 0x%llx\n",
-					addr1, mvpu_da_l1);
+				pr_info("addr0 = 0x%lx, mvpu_da_itcm = 0x%llx\n",
+					(unsigned long)addr1, mvpu_da_l1);
 
 				memset(addr1, 0, PREEMPT_L1_BUFFER);
 

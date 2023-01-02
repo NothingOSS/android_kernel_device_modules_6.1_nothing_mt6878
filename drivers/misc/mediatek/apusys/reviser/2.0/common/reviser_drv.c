@@ -256,7 +256,7 @@ static int reviser_get_addr(struct platform_device *pdev, void **reg, int num,
 		*size = 0;
 		*reg = NULL;
 		dev_info(&pdev->dev,
-			"(num = %d) at 0x%08lx map 0x%08lx base:0x%08lx size:0x%08lx\n",
+			"(num = %d) at 0x%08lx map 0x%08lx base:0x%08x size:0x%08x\n",
 			num, (unsigned long __force)res->start,
 			(unsigned long __force)res->end, *base, *size);
 		return -ENOMEM;
@@ -272,7 +272,7 @@ static int reviser_get_addr(struct platform_device *pdev, void **reg, int num,
 	*base = res->start;
 	*size = res->end - res->start + 1;
 	dev_info(&pdev->dev,
-		"(num = %d) at 0x%08lx map 0x%08lx base:0x%08lx size:0x%08lx\n",
+		"(num = %d) at 0x%08lx map 0x%08lx base:0x%08x size:0x%08x\n",
 		num, (unsigned long __force)res->start,
 		(unsigned long __force)res->end, *base, *size);
 	return 0;

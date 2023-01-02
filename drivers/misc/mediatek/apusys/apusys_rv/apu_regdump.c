@@ -19,7 +19,7 @@ static uint32_t apusys_rv_smc_call(struct device *dev, uint32_t smc_id,
 	arm_smccc_smc(MTK_SIP_APUSYS_CONTROL, smc_id,
 				a2, 0, 0, 0, 0, 0, &res);
 	if (((int) res.a0) < 0)
-		dev_info(dev, "%s: smc call %d return error(%d)\n",
+		dev_info(dev, "%s: smc call %d return error(%ld)\n",
 			__func__,
 			smc_id, res.a0);
 

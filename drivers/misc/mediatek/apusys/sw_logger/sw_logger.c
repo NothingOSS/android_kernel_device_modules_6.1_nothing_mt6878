@@ -311,8 +311,8 @@ static ssize_t show_debugAttr(struct file *filp, char __user *buffer,
 
 	if (sw_log_buf) {
 		len += scnprintf(buf + len, sizeof(buf) - len,
-						"sw_log_buf = 0x%llx\n",
-						sw_log_buf);
+						"sw_log_buf = 0x%lx\n",
+						(unsigned long)sw_log_buf);
 
 		spin_lock_irqsave(&sw_logger_spinlock, flags);
 		len += scnprintf(buf + len, sizeof(buf) - len,
@@ -429,7 +429,7 @@ static void *seq_start(struct seq_file *s, loff_t *pos)
 			pSeqData->is_finished = 0;
 		}
 	}
-	LOGGER_INFO("%s v = 0x%x\n", __func__, pSeqData);
+	LOGGER_INFO("%s v = 0x%lx\n", __func__, (unsigned long)pSeqData);
 
 	return pSeqData;
 }
@@ -513,7 +513,7 @@ static void *seq_startl(struct seq_file *s, loff_t *pos)
 		return NULL;
 	}
 
-	LOGGER_INFO("%s v = 0x%x\n", __func__, pSeqData_lock);
+	LOGGER_INFO("%s v = 0x%lx\n", __func__, (unsigned long)pSeqData_lock);
 
 	return pSeqData_lock;
 }
@@ -593,7 +593,7 @@ static void seq_stop(struct seq_file *s, void *v)
 {
 	unsigned long flags;
 
-	LOGGER_INFO("%s v = 0x%x\n", __func__, v);
+	LOGGER_INFO("%s v = 0x%lx\n", __func__, (unsigned long)v);
 
 	if (pSeqData != NULL) {
 		if (pSeqData->is_finished == 1) {
@@ -611,13 +611,13 @@ static void seq_stop(struct seq_file *s, void *v)
 				LOGGER_INFO(" %s free v FAIL!\n", __func__);
 				if (pSeqData != NULL) {
 					LOGGER_INFO(
-						"%s free pSeqData = 0x%x\n",
-						__func__, pSeqData);
+						"%s free pSeqData = 0x%lx\n",
+						__func__, (unsigned long)pSeqData);
 					kfree(pSeqData);
 				} else
 					LOGGER_ERR(
-						"%s free pSeqData = 0x%x FAIL!\n",
-						__func__, pSeqData);
+						"%s free pSeqData = 0x%lx FAIL!\n",
+						__func__, (unsigned long)pSeqData);
 			}
 			pSeqData = NULL;
 		}
@@ -629,7 +629,7 @@ static void seq_stop(struct seq_file *s, void *v)
  */
 static void seq_stopl(struct seq_file *s, void *v)
 {
-	LOGGER_INFO("%s v = 0x%x\n", __func__, v);
+	LOGGER_INFO("%s v = 0x%lx\n", __func__, (unsigned long)v);
 }
 
 /**

@@ -315,7 +315,7 @@ static int _clk_apu_no_fhctl_set_rate(struct apu_clk_gp *aclk, unsigned long rat
 	if (apupw_dbg_get_loglvl() >= VERBOSE_LVL)
 		clk_apu_show_clk_info(aclk->top_mux, true);
 
-	aclk_info(aclk->dev, "[%s] final rate %dMhz\n", __func__, TOMHZ(rate));
+	aclk_info(aclk->dev, "[%s] final rate %luMhz\n", __func__, TOMHZ(rate));
 
 out:
 	return ret;
@@ -327,7 +327,7 @@ void clk_apu_show_clk_info(struct apu_clk *dst, bool only_active)
 	struct clk_hw *parent, *cur_parent, *mux_hw;
 
 	for (i = 0; i < dst->clk_num; i++) {
-		aclk_info(dst->dev, "[%d] clk \"%s\" rate %uMhz\n",
+		aclk_info(dst->dev, "[%d] clk \"%s\" rate %luMhz\n",
 			  i, dst->clks[i].id,
 			  TOMHZ(clk_get_rate(dst->clks[i].clk)));
 		mux_hw = __clk_get_hw(dst->clks[i].clk);
@@ -341,14 +341,14 @@ void clk_apu_show_clk_info(struct apu_clk *dst, bool only_active)
 				continue;
 			if (cur_parent == parent) {
 				aclk_info(dst->dev,
-					  "\t parent %d [%s] rate %dMhz (*)\n",
+					  "\t parent %d [%s] rate %luMhz (*)\n",
 					  j, clk_hw_get_name(parent),
 					  TOMHZ(clk_hw_get_rate(parent)));
 			} else {
 				if (only_active)
 					continue;
 				aclk_info(dst->dev,
-					  "\t parent %d [%s] rate %dMhz\n",
+					  "\t parent %d [%s] rate %luMhz\n",
 					  j, clk_hw_get_name(parent),
 					  TOMHZ(clk_hw_get_rate(parent)));
 			}

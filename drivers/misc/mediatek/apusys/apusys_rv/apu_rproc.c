@@ -41,11 +41,11 @@ static void *apu_da_to_va(struct rproc *rproc, u64 da, size_t len, bool *is_iome
 
 	if (da < DRAM_OFFSET + apu->up_code_buf_sz) {
 		ptr = apu->code_buf + (da - DRAM_OFFSET);
-		dev_info(apu->dev, "%s: (DRAM): da = 0x%llx, len = 0x%x\n",
+		dev_info(apu->dev, "%s: (DRAM): da = 0x%llx, len = 0x%lx\n",
 			__func__, da, len);
 	} else if (da >= TCM_OFFSET && da < TCM_OFFSET + apu->md32_tcm_sz) {
 		ptr = apu->md32_tcm + (da - TCM_OFFSET);
-		dev_info(apu->dev, "%s: (TCM): da = 0x%llx, len = 0x%x\n",
+		dev_info(apu->dev, "%s: (TCM): da = 0x%llx, len = 0x%lx\n",
 			__func__, da, len);
 	}
 	return ptr;

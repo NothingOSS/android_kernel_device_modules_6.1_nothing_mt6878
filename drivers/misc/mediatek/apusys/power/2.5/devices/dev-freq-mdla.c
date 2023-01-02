@@ -74,7 +74,7 @@ static int devfreq_target(struct device *dev, unsigned long *rate,
 	apupw_dbg_pwr_tag_update(ad, *rate, volt);
 
 	if (regul_ops)
-		advfs_info(dev, "[%s] rate %luMhz volt %dmV\n",
+		advfs_info(dev, "[%s] rate %luMhz volt %lumV\n",
 				__func__, TOMHZ(*rate), TOMV(volt));
 	else
 		advfs_info(dev, "[%s] rate %luMhz\n", __func__, TOMHZ(*rate));

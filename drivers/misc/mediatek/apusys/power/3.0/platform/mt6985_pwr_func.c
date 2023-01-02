@@ -475,7 +475,7 @@ int mt6985_apu_top_rpmsg_cb(int cmd, void *data, int len, void *priv, u32 src)
 			memcpy(&curr_info,
 				(struct apu_pwr_curr_info *)data, len);
 		} else {
-			pr_info("%s invalid size : %d/%d\n",
+			pr_info("%s invalid size : %d/%lu\n",
 					__func__, len, sizeof(curr_info));
 			ret = -EINVAL;
 		}
@@ -521,8 +521,8 @@ int mt6985_init_remote_data_sync(void __iomem *reg_base)
 				sizeof(struct device_opp_limit));
 		reg_offset = opp_limit_tbl[i].opp_lmt_reg;
 #if LOCAL_DBG
-		pr_info("%s spare_reg_base:0x%08x, offset:0x%08x\n",
-				__func__, spare_reg_base, reg_offset);
+		pr_info("%s spare_reg_base:0x%08lx, offset:0x%08x\n",
+				__func__, (unsigned long)spare_reg_base, reg_offset);
 #endif
 		apu_writel(0xffffffff, spare_reg_base + reg_offset);
 	}

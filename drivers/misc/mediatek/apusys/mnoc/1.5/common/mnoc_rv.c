@@ -96,7 +96,7 @@ static int mnoc_rpmsg_probe(struct rpmsg_device *rpdev)
 		mnoc_rpmsg_cb, &eRdev, chinfo);
 
 
-	LOG_INF("Done, eRdev.ept = 0x%x\n", eRdev.ept);
+	LOG_INF("Done, eRdev.ept = 0x%p\n", eRdev.ept);
 
 	return ret;
 }

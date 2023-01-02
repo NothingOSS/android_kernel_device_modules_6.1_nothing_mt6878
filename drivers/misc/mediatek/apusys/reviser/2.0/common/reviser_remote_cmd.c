@@ -881,7 +881,7 @@ int reviser_remote_import_mem(void *drvinfo, uint64_t session, uint32_t sid)
 
 	mem_op = REVISER_MEM_IMPORT;
 
-	LOG_INFO("session %x free sid %x\n", session, sid);
+	LOG_INFO("session %llx free sid %x\n", session, sid);
 
 	RVR_RPMSG_write(&mem_op, req.data, sizeof(mem_op), widx);
 	RVR_RPMSG_write(&session, req.data, sizeof(session), widx);
@@ -941,7 +941,7 @@ int reviser_remote_unimport_mem(void *drvinfo, uint64_t session, uint32_t sid)
 
 	mem_op = REVISER_MEM_UNIMPORT;
 
-	LOG_INFO("session %x free sid %x\n", session, sid);
+	LOG_INFO("session %llx free sid %x\n", session, sid);
 
 	RVR_RPMSG_write(&mem_op, req.data, sizeof(mem_op), widx);
 	RVR_RPMSG_write(&session, req.data, sizeof(session), widx);

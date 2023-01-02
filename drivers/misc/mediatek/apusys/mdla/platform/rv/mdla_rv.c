@@ -78,10 +78,10 @@ DEFINE_IPI_DBGFS_ATTRIBUTE(C13,            MDLA_IPI_PMU_COUNT,     13, "0x%llx\n
 DEFINE_IPI_DBGFS_ATTRIBUTE(C14,            MDLA_IPI_PMU_COUNT,     14, "0x%llx\n");
 DEFINE_IPI_DBGFS_ATTRIBUTE(C15,            MDLA_IPI_PMU_COUNT,     15, "0x%llx\n");
 DEFINE_IPI_DBGFS_ATTRIBUTE(preempt_times,  MDLA_IPI_PREEMPT_CNT,    0, "%llu\n");
-DEFINE_IPI_DBGFS_ATTRIBUTE(force_pwr_on,   MDLA_IPI_FORCE_PWR_ON,   0, "%d\n");
-DEFINE_IPI_DBGFS_ATTRIBUTE(profiling,      MDLA_IPI_PROFILE_EN,     0, "%d\n");
-DEFINE_IPI_DBGFS_ATTRIBUTE(dump_cmdbuf_en, MDLA_IPI_DUMP_CMDBUF_EN, 0, "%d\n");
-DEFINE_IPI_DBGFS_ATTRIBUTE(info,           MDLA_IPI_INFO,           0, "%d\n");
+DEFINE_IPI_DBGFS_ATTRIBUTE(force_pwr_on,   MDLA_IPI_FORCE_PWR_ON,   0, "%llu\n");
+DEFINE_IPI_DBGFS_ATTRIBUTE(profiling,      MDLA_IPI_PROFILE_EN,     0, "%llu\n");
+DEFINE_IPI_DBGFS_ATTRIBUTE(dump_cmdbuf_en, MDLA_IPI_DUMP_CMDBUF_EN, 0, "%llu\n");
+DEFINE_IPI_DBGFS_ATTRIBUTE(info,           MDLA_IPI_INFO,           0, "%llu\n");
 DEFINE_IPI_DBGFS_ATTRIBUTE(dbg_brk,        MDLA_IPI_HALT_STA,       0, "0x%llx\n");
 
 struct mdla_dbgfs_ipi_file {

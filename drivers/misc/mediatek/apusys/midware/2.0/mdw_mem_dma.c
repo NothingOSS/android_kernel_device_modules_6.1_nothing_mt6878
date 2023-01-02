@@ -42,7 +42,7 @@ struct mdw_mem_dma {
 };
 
 #define mdw_mem_dma_show(d) \
-	mdw_mem_debug("mem(0x%llx/%d/0x%llx/0x%x/0x%llx/0x%x/%d/%d)(%d)\n", \
+	mdw_mem_debug("mem(0x%llx/%d/0x%llx/0x%x/0x%llx/0x%x/%d/%ld)(%d)\n", \
 	(uint64_t) d->mmem, d->mmem->handle, (uint64_t)d->mmem->vaddr, d->mmem->size, \
 	d->dma_addr, d->dma_size, d->mmem->need_handle, \
 	file_count(d->mmem->dbuf->file), task_pid_nr(current))
@@ -87,12 +87,12 @@ static int mdw_mem_dma_allocate_sgt(const char *buf,
 		- ((unsigned long)buf / PAGE_SIZE);
 	pages = kvmalloc(nr_pages * sizeof(struct page *), GFP_KERNEL);
 
-	mdw_mem_debug("mdw buf: 0x%llx, len: 0x%lx, nr_pages: %d\n",
-		buf, len, nr_pages);
+	mdw_mem_debug("mdw buf: 0x%lx, len: 0x%lx, nr_pages: %d\n",
+		(unsigned long)buf, len, nr_pages);
 
 	if (!pages) {
-		mdw_drv_err("No Page 0x%llx, len: 0x%lx, nr_pages: %d\n",
-				buf, len, nr_pages);
+		mdw_drv_err("No Page 0x%lx, len: 0x%lx, nr_pages: %d\n",
+				(unsigned long)buf, len, nr_pages);
 		return -ENOMEM;
 	}
 
@@ -129,8 +129,8 @@ static int mdw_mem_dma_allocate_sgt(const char *buf,
 
 	*vaddr = va;
 
-	mdw_mem_debug("buf: 0x%llx, len: 0x%lx, sgt: 0x%llx nr_pages: %d va 0x%llx\n",
-		buf, len, sgt, nr_pages, va);
+	mdw_mem_debug("buf: 0x%lx, len: 0x%lx, sgt: 0x%lx nr_pages: %d va 0x%lx\n",
+		(unsigned long)buf, len, (unsigned long)sgt, nr_pages, (unsigned long)va);
 
 	return 0;
 }
@@ -385,12 +385,12 @@ int mdw_mem_dma_alloc(struct mdw_mem *mem)
 	if (mem->flags & F_MDW_MEM_HIGHADDR) {
 		dev = mdw_mem_rsc_get_dev(APUSYS_MEMORY_DATA);
 		if (dev)
-			mdw_mem_debug("data %x dev %s\n",
+			mdw_mem_debug("data %llx dev %s\n",
 				mem->flags, dev_name(dev));
 	} else {
 		dev = mdw_mem_rsc_get_dev(APUSYS_MEMORY_CODE);
 		if (dev)
-			mdw_mem_debug("code %x dev %s\n",
+			mdw_mem_debug("code %llx dev %s\n",
 				mem->flags, dev_name(dev));
 	}
 	if (mem->flags & F_MDW_MEM_CACHEABLE)

@@ -92,7 +92,7 @@ static int mdw_drv_open(struct inode *inode, struct file *filp)
 		goto out;
 
 	mdw_dev_session_create(mpriv);
-	mdw_flw_debug("mpriv(0x%llx)\n", mpriv);
+	mdw_flw_debug("mpriv(0x%lx)\n", (unsigned long)mpriv);
 
 out:
 	return ret;

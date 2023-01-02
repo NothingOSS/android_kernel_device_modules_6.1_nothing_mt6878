@@ -104,7 +104,7 @@ static int agov_get_target_freq(struct devfreq *df, unsigned long *freq)
 		apu_dump_list(gov_data);
 		apupw_dbg_dvfs_tag_update(APUGOV_PASSIVE_PE, apu_dev_name(ad->dev),
 			apu_dev_name(req->dev), (u32)req->value, TOMHZ(*freq));
-		advfs_info(ad->dev, "[%s] %s vote opp/freq %d/%u\n", __func__,
+		advfs_info(ad->dev, "[%s] %s vote opp/freq %d/%lu\n", __func__,
 			   apu_dev_name(req->dev), req->value, TOMHZ(*freq));
 	}
 	return 0;

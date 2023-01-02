@@ -54,7 +54,7 @@ static void _regulator_apu_settle_time(struct apu_regulator *reg,
 	ramp_delay = DIV_ROUND_UP(abs(new_uV - old_uV), settle_rate);
 	ramp_delay += reg->cstr.settling_time;
 delay:
-	argul_info(reg->dev, "[%s] wait %s %d->%d diff:%d slew %lu(uv/us) %dus\n",
+	argul_info(reg->dev, "[%s] wait %s %d->%d diff:%d slew %u(uv/us) %dus\n",
 		"APUSYS_SETTLE_TIME_TEST", reg->name, TOMV(old_uV), TOMV(new_uV),
 		(new_uV - old_uV), settle_rate, ramp_delay);
 	udelay(ramp_delay);
@@ -106,7 +106,7 @@ static void apu_mdla_restore_default_opp(struct work_struct *work)
 	mutex_lock_nested(&ad->df->lock, ((struct apu_gov_data *)(ad->df->data))->depth);
 	if (round_Mhz(clk_ops->get_rate(ad->aclk), rate)) {
 		regulator_set_voltage(dst->vdd, volt, volt);
-		argul_info(ad->dev, "[%s] set voltage to %d\n", __func__, volt);
+		argul_info(ad->dev, "[%s] set voltage to %lu\n", __func__, volt);
 	}
 	mutex_unlock(&ad->df->lock);
 }
@@ -142,7 +142,7 @@ static int apu_vsram_mdla_constrain(struct notifier_block *nb,
 
 	if (diff < 0) {
 		/* the voltage of vsram ALWAYS bigger then vmdla */
-		WARN_ONCE(1, "[%s] pre_min/cur %d/%d\n",
+		WARN_ONCE(1, "[%s] pre_min/cur %lu/%d\n",
 			mdla_reg->name, pre_volt->min_uV, cur_volt);
 		ret = -EINVAL;
 		goto unlock;

@@ -90,9 +90,9 @@ static int init_reg_base(struct platform_device *pdev)
 			return -ENOMEM;
 		}
 
-		pr_info("%s: %s remap base 0x%x to 0x%x\n",
+		pr_info("%s: %s remap base 0x%lx to 0x%lx\n",
 				__func__, reg_name[idx],
-				res->start, apupw.regs[idx]);
+				(unsigned long)res->start, (unsigned long)apupw.regs[idx]);
 
 		apupw.phy_addr[idx] = res->start;
 	}
@@ -108,7 +108,7 @@ static uint32_t apusys_pwr_smc_call(struct device *dev, uint32_t smc_id,
 	arm_smccc_smc(MTK_SIP_APUSYS_CONTROL, smc_id,
 			a2, 0, 0, 0, 0, 0, &res);
 	if (((int) res.a0) < 0)
-		dev_info(dev, "%s: smc call %d return error(%d)\n",
+		dev_info(dev, "%s: smc call %d return error(%lu)\n",
 				__func__,
 				smc_id, res.a0);
 	return res.a0;
@@ -146,9 +146,9 @@ static int apu_hw_sema_ctl(struct device *dev, uint32_t sema_offset,
 	}
 
 	if (log_lvl)
-		pr_info("%s ++ usr_bit:%d ctl:%d (0x%08x = 0x%08x)\n",
+		pr_info("%s ++ usr_bit:%d ctl:%d (0x%08lx = 0x%08x)\n",
 				__func__, usr_bit, ctl,
-				apupw.regs[apu_pcu] + sema_offset,
+				(unsigned long)apupw.regs[apu_pcu] + sema_offset,
 				apu_readl(apupw.regs[apu_pcu] + sema_offset));
 
 	apusys_pwr_smc_call(dev,
@@ -161,9 +161,9 @@ static int apu_hw_sema_ctl(struct device *dev, uint32_t sema_offset,
 
 		if (timeout >= 0 && timeout_cnt++ >= timeout) {
 			pr_info(
-			"%s timeout usr_bit:%d ctl:%d rnd:%d (0x%08x = 0x%08x)\n",
+			"%s timeout usr_bit:%d ctl:%d rnd:%d (0x%08lx = 0x%08x)\n",
 				__func__, usr_bit, ctl, timeout_cnt,
-				apupw.regs[apu_pcu] + sema_offset,
+				(unsigned long)apupw.regs[apu_pcu] + sema_offset,
 				apu_readl(apupw.regs[apu_pcu] + sema_offset));
 
 			return -1;
@@ -182,9 +182,9 @@ static int apu_hw_sema_ctl(struct device *dev, uint32_t sema_offset,
 		timeout_cnt_max = timeout_cnt;
 
 	if (log_lvl)
-		pr_info("%s -- usr_bit:%d ctl:%d (0x%08x = 0x%08x) mx:%d\n",
+		pr_info("%s -- usr_bit:%d ctl:%d (0x%08lx = 0x%08x) mx:%d\n",
 				__func__, usr_bit, ctl,
-				apupw.regs[apu_pcu] + sema_offset,
+				(unsigned long)apupw.regs[apu_pcu] + sema_offset,
 				apu_readl(apupw.regs[apu_pcu] + sema_offset),
 				timeout_cnt_max);
 	return 0;

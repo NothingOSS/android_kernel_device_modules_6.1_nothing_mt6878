@@ -150,11 +150,11 @@ int reviser_mem_free(struct device *dev, struct reviser_mem *mem, bool fix)
 		if (!__reviser_free_iova(dev, mem->size, mem->iova)) {
 			sg_free_table(&mem->sgt);
 			ret = 0;
-			LOG_INFO("mem free (0x%x/%d/0x%llx)\n",
+			LOG_INFO("mem free (0x%llx/%d/0x%llx)\n",
 					mem->iova, mem->size, mem->kva);
 		} else {
 			ret = -1;
-			LOG_INFO("mem free fail(0x%x/%d/0x%llx)\n",
+			LOG_INFO("mem free fail(0x%llx/%d/0x%llx)\n",
 					mem->iova, mem->size, mem->kva);
 		}
 	} else {
@@ -202,7 +202,7 @@ int reviser_mem_alloc(struct device *dev, struct reviser_mem *mem, bool fix)
 		kva = dma_alloc_coherent(dev, mem->size,
 					&iova, GFP_KERNEL);
 		if (!kva) {
-			LOG_ERR("dma_alloc_coherent fail (0x%llx)\n", mem->size);
+			LOG_ERR("dma_alloc_coherent fail (0x%x)\n", mem->size);
 			goto out;
 		}
 	}
@@ -218,7 +218,7 @@ int reviser_mem_alloc(struct device *dev, struct reviser_mem *mem, bool fix)
 	mem->kva = (uint64_t)kva;
 	mem->iova = (uint64_t)iova;
 
-	LOG_INFO("mem(0x%x/%d/0x%llx)\n",
+	LOG_INFO("mem(0x%llx/%d/0x%llx)\n",
 			mem->iova, mem->size, mem->kva);
 
 	goto out;

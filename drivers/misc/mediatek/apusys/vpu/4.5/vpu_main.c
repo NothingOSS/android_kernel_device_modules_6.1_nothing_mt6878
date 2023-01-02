@@ -256,7 +256,7 @@ int vpu_send_cmd_rt(int op, void *hnd, struct apusys_device *adev)
 		vpu_trace_begin("vpu_%d|%s|cmd execute kid: 0x%08llx",
 			vd->id, __func__, cmd->kid);
 		vpu_cmd_debug("%s: vpu%d: EXECUTE, kva: %p kid: 0x%llx subcmd_idx: 0x%x\n",
-			__func__, vd->id, (unsigned long)cmd->cmdbufs[0].kva,
+			__func__, vd->id, (void *)cmd->cmdbufs[0].kva,
 			cmd->kid, cmd->subcmd_idx);
 		/* overwrite vpu_req->boost from apusys_cmd */
 		req->power_param.boost_value = cmd->boost;
@@ -318,7 +318,7 @@ int vpu_send_cmd(int op, void *hnd, struct apusys_device *adev)
 		vpu_trace_begin("vpu_%d|%s|cmd execute kid: 0x%08llx",
 			vd->id, __func__, cmd->kid);
 		vpu_cmd_debug("%s: vpu%d: EXECUTE, kva: %p kid: 0x%llx subcmd_idx: 0x%x\n",
-			__func__, vd->id, (unsigned long)cmd->cmdbufs[0].kva,
+			__func__, vd->id, (void *)cmd->cmdbufs[0].kva,
 			cmd->kid, cmd->subcmd_idx);
 		req->prio = 0;
 		/* overwrite vpu_req->boost from apusys_cmd */
