@@ -13,7 +13,7 @@
 #include <linux/seq_file.h>
 #include <linux/energy_model.h>
 #include <linux/topology.h>
-#include <trace/hooks/topology.h>
+#include <linux/sched/topology.h>
 #include <trace/events/sched.h>
 #include <trace/hooks/sched.h>
 #include <linux/cpu.h>
