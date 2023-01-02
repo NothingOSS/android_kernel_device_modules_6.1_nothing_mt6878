@@ -1113,7 +1113,7 @@ void __gpufreq_dump_infra_status(void)
 	GPUFREQ_LOGI("[Regulator] Vgpu: %d, Vstack: %d, Vsram: %d",
 		__gpufreq_get_real_vgpu(), __gpufreq_get_real_vstack(),
 		__gpufreq_get_real_vsram());
-	GPUFREQ_LOGI("[Clk] MFG_PLL: %d, MFG_SEL: 0x%x, MFGSC_PLL: %d, MFGSC_SEL: 0x%x",
+	GPUFREQ_LOGI("[Clk] MFG_PLL: %d, MFG_SEL: 0x%lx, MFGSC_PLL: %d, MFGSC_SEL: 0x%lx",
 		__gpufreq_get_real_fgpu(), readl(TOPCK_CLK_CFG_30) & MFG_INT0_SEL_MASK,
 		__gpufreq_get_real_fstack(), readl(TOPCK_CLK_CFG_30) & MFGSC_INT1_SEL_MASK);
 
@@ -3124,18 +3124,18 @@ static void __gpufreq_dump_bringup_status(struct platform_device *pdev)
 
 	GPUFREQ_LOGI("[SPM] SPM_SPM2GPUPM_CON: 0x%08x", readl(SPM_SPM2GPUPM_CON));
 
-	GPUFREQ_LOGI("[RPC] MFG_0_19_PWR_STATUS: 0x%08x, MFG_RPC_MFG1_PWR_CON: 0x%08x",
+	GPUFREQ_LOGI("[RPC] MFG_0_19_PWR_STATUS: 0x%08lx, MFG_RPC_MFG1_PWR_CON: 0x%08x",
 		MFG_0_19_PWR_STATUS,
 		readl(MFG_RPC_MFG1_PWR_CON));
 
-	GPUFREQ_LOGI("[TOP] CON0: 0x%08x, CON1: %d, FMETER: %d, SEL: 0x%08x, REF_SEL: 0x%08x",
+	GPUFREQ_LOGI("[TOP] CON0: 0x%08x, CON1: %d, FMETER: %d, SEL: 0x%08lx, REF_SEL: 0x%08lx",
 		readl(MFG_PLL_CON0),
 		__gpufreq_get_real_fgpu(),
 		__gpufreq_get_fmeter_main_fgpu(),
 		readl(TOPCK_CLK_CFG_30) & MFG_INT0_SEL_MASK,
 		readl(TOPCK_CLK_CFG_3) & MFG_REF_SEL_MASK);
 
-	GPUFREQ_LOGI("[STK] CON0: 0x%08x, CON1: %d, FMETER: %d, SEL: 0x%08x, REF_SEL: 0x%08x",
+	GPUFREQ_LOGI("[STK] CON0: 0x%08x, CON1: %d, FMETER: %d, SEL: 0x%08lx, REF_SEL: 0x%08lx",
 		readl(MFGSC_PLL_CON0),
 		__gpufreq_get_real_fstack(),
 		__gpufreq_get_fmeter_main_fstack(),

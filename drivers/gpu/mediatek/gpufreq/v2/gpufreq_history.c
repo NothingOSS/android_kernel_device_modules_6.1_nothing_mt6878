@@ -99,7 +99,7 @@ int gpufreq_history_init(void)
 		return GPUFREQ_ENOMEM;
 	}
 
-	GPUFREQ_LOGI("MFGSYS history base: 0x%08x", g_history_base);
+	GPUFREQ_LOGI("MFGSYS history base: 0x%08lx", (unsigned long)g_history_base);
 
 	return GPUFREQ_SUCCESS;
 }

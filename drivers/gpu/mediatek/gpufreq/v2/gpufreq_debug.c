@@ -1015,7 +1015,7 @@ void gpufreq_debug_init(unsigned int dual_buck, unsigned int gpueb_support,
 	if (shared_status)
 		g_shared_status = shared_status;
 	else {
-		GPUFREQ_LOGE("null gpufreq shared status: 0x%llx", shared_status);
+		GPUFREQ_LOGE("null gpufreq shared status: 0x%llx", (unsigned long long)shared_status);
 		BUG_ON(1);
 	}
 

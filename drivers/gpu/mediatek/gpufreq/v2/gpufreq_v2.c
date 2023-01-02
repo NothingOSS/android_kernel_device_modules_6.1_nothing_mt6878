@@ -1410,7 +1410,7 @@ static int gpufreq_validate_target(unsigned int *target)
 static void gpufreq_dump_dvfs_status(void)
 {
 	if (g_shared_status) {
-		GPUFREQ_LOGI("== [GPUFREQ DVFS STATUS: 0x%llx] ==", g_shared_status);
+		GPUFREQ_LOGI("== [GPUFREQ DVFS STATUS: 0x%llx] ==", (unsigned long long)g_shared_status);
 		GPUFREQ_LOGI("GPU[%d] Freq: %d, Volt: %d, Vsram: %d",
 			g_shared_status->cur_oppidx_gpu, g_shared_status->cur_fgpu,
 			g_shared_status->cur_vgpu, g_shared_status->cur_vsram_gpu);
@@ -1619,7 +1619,7 @@ static int gpufreq_shared_memory_init(void)
 	memset((void *)gpufreq_mem_va, 0, gpufreq_mem_size);
 
 	GPUFREQ_LOGI("shared status memory: 0x%llx (phy_addr: 0x%llx, size: 0x%x)",
-		g_shared_status, g_shared_mem_pa, g_shared_mem_size);
+		(unsigned long long)g_shared_status, g_shared_mem_pa, g_shared_mem_size);
 
 done:
 	return ret;
