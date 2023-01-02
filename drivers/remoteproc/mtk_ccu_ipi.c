@@ -188,7 +188,7 @@ static int mtk_ccu_mb_rx(struct mtk_ccu *ccu,
 		ccu->mb->queue[next].msg_id,
 		ccu->mb->queue[next].in_data_ptr);
 		ret = rear - front + 1;
-#if 0 //IS_ENABLED(CONFIG_MTK_CCU_DEBUG)
+#if IS_ENABLED(CONFIG_MTK_CCU_DEBUG)
 		LOG_DBG_IPI("fs[%d,%d,%d,%d,%d],sc[%d,%d,%d,%d,%d],cam[%d,%d,%d,%d,%d]\n",
 			ccu->rproc->bootcnt[0][0].counter, ccu->rproc->bootcnt[0][1].counter,
 			ccu->rproc->bootcnt[0][2].counter, ccu->rproc->bootcnt[0][3].counter,
@@ -312,11 +312,14 @@ void mtk_ccu_rproc_ipc_init(struct mtk_ccu *ccu)
 {
 	uint8_t *dmbase = (uint8_t *)ccu->dmem_base;
 	uint8_t *ctrlbase = (uint8_t *)ccu->ccu_base;
+	uint32_t trig_reg_offset;
 	struct shared_buf_map *sb_map_ptr =
 		(struct shared_buf_map *)(dmbase + MTK_CCU_SHARED_BUF_OFFSET);
 
+	trig_reg_offset = (ccu->ccu_version == CCU_VER_ISP7SP) ?
+		MTK_CCU_INT_TRG_ISP7SP : MTK_CCU_INT_TRG;
 	ccu->ccu_ipc.ccuIntTrigPtr =
-		(uint32_t *)(ctrlbase + MTK_CCU_INT_TRG);
+		(uint32_t *)(ctrlbase + trig_reg_offset);
 	ccu->ccu_ipc.ccuIpcPtr =
 		(struct ap2ccu_ipc *)(dmbase + sb_map_ptr->ipc_base_offset);
 	ccu->ccu_ipc.ipcDataPtr = dmbase + sb_map_ptr->ipc_data_base_offset;
