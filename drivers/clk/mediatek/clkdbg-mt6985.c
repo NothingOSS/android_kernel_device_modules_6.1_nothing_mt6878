@@ -609,6 +609,7 @@ const char * const *get_mt6985_all_clk_names(void)
 		"cam_m_cam_subc_con_0",
 		"cam_m_cam_mraw_con_0",
 		"cam_m_camtg_con_0",
+		"cam_m_seninf_con_0",
 		"cam_m_camsv_con_0",
 		"cam_m_adlrd_con_0",
 		"cam_m_adlwr_con_0",

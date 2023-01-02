@@ -72,6 +72,8 @@ static const struct mtk_gate cam_m_clks[] = {
 			"cam_ck"/* parent */, 8),
 	GATE_CAM_M0(CLK_CAM_MAIN_CAMTG_CON_0, "cam_m_camtg_con_0",
 			"camtm_ck"/* parent */, 9),
+	GATE_CAM_M0(CLK_CAM_MAIN_SENINF_CON_0, "cam_m_seninf_con_0",
+			"cam_ck"/* parent */, 10),
 	GATE_CAM_M0(CLK_CAM_MAIN_CAMSV_TOP_CON_0, "cam_m_camsv_con_0",
 			"cam_ck"/* parent */, 11),
 	GATE_CAM_M0(CLK_CAM_MAIN_ADLRD_CON_0, "cam_m_adlrd_con_0",

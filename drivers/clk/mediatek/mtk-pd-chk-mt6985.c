@@ -77,6 +77,7 @@ struct pd_check_swcg camsys_main_swcgs[] = {
 	SWCG("cam_m_cam_subc_con_0"),
 	SWCG("cam_m_cam_mraw_con_0"),
 	SWCG("cam_m_camtg_con_0"),
+	SWCG("cam_m_seninf_con_0"),
 	SWCG("cam_m_camsv_con_0"),
 	SWCG("cam_m_adlrd_con_0"),
 	SWCG("cam_m_adlwr_con_0"),
