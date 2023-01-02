@@ -169,7 +169,7 @@ static void rsz_config(struct rsz_fw_in *in, struct rsz_fw_out *out,
 			__func__, m_m1_zoom, n_m1_zoom, prec, offset);
 
 		n_y  = crz_tar_width_d;
-		if (n_m1_zoom == (m_m1_zoom >> RSZ_PREC_SHIFT))
+		if ((n_m1_zoom << RSZ_PREC_SHIFT) == m_m1_zoom)
 			coeff_step = max_nm * prec;
 		else {
 			coeff_step = ((u64)(((u64)(((u64)(n_m1_zoom - 1) * max_nm) <<
@@ -179,7 +179,7 @@ static void rsz_config(struct rsz_fw_in *in, struct rsz_fw_out *out,
 		}
 
 		/* determination of the initial position of the step counter */
-		if ((offset >> RSZ_PREC_SHIFT) == 0) {
+		if (offset == 0) {
 			shift = 0; // integer offset defined in the output domain
 			shift_uv = 0;
 

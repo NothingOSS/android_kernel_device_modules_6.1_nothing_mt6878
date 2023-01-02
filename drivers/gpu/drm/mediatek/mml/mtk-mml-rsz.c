@@ -188,7 +188,10 @@ static s32 rsz_prepare(struct mml_comp *comp, struct mml_task *task,
 {
 	struct mml_frame_config *cfg = task->config;
 	const struct mml_frame_data *src = &cfg->info.src;
-	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
+	const struct mml_frame_dest *dest =
+		&cfg->info.dest[ccfg->node->out_idx];
+	const struct mml_frame_size *frame_out =
+		&cfg->frame_out[ccfg->node->out_idx];
 	struct rsz_frame_data *rsz_frm;
 	struct mml_comp_rsz *rsz = comp_to_rsz(comp);
 	s32 ret = 0;
@@ -209,18 +212,9 @@ static s32 rsz_prepare(struct mml_comp *comp, struct mml_task *task,
 		if (mml_rsz_fw_comb) {
 			fw_in.in_width = dest->crop.r.width;
 			fw_in.in_height = dest->crop.r.height;
-
-			if (dest->rotate == MML_ROT_90 ||
-			    dest->rotate == MML_ROT_270) {
-				fw_in.out_width = dest->compose.height;
-				fw_in.out_height = dest->compose.width;
-			} else {
-				fw_in.out_width = dest->compose.width;
-				fw_in.out_height = dest->compose.height;
-			}
-
-			memcpy(&fw_in.crop, &dest->crop,
-				sizeof(struct mml_crop));
+			fw_in.out_width = frame_out->width;
+			fw_in.out_height = frame_out->height;
+			fw_in.crop = dest->crop;
 
 			if (MML_FMT_10BIT(src->format) ||
 			    MML_FMT_10BIT(dest->data.format))
