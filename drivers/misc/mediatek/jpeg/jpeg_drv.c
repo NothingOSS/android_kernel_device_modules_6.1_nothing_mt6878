@@ -301,9 +301,9 @@ void jpeg_drv_hybrid_dec_power_on(int id)
 	if (!dec_hwlocked[(id+1)%HW_CORE_NUMBER]/*&& !dec_hwlocked[(id+2)%HW_CORE_NUM]*/) {
 		if (gJpegqDev.jpegLarb[0]) {
 			JPEG_LOG(1, "power on larb7");
-			ret = mtk_smi_larb_get_ex(gJpegqDev.jpegLarb[0], 2);
+			ret = pm_runtime_resume_and_get(gJpegqDev.jpegLarb[0]);
 			if (ret)
-				JPEG_LOG(0, "mtk_smi_larb_get_ex failed %d",
+				JPEG_LOG(0, "pm_runtime_resume_and_get failed %d",
 					ret);
 		}
 		ret = clk_prepare_enable(gJpegqDev.jpegClk.clk_venc_jpgDec);
@@ -319,9 +319,9 @@ void jpeg_drv_hybrid_dec_power_on(int id)
 	if (id == 2) {
 		if (gJpegqDev.jpegLarb[1]) {
 			JPEG_LOG(1, "power on larb8");
-			ret = mtk_smi_larb_get_ex(gJpegqDev.jpegLarb[1], 2);
+			ret = pm_runtime_resume_and_get(gJpegqDev.jpegLarb[1]);
 			if (ret)
-				JPEG_LOG(0, "mtk_smi_larb_get_ex failed %d",
+				JPEG_LOG(0, "pm_runtime_resume_and_get failed %d",
 					ret);
 		}
 		ret = clk_prepare_enable(gJpegqDev.jpegClk.clk_venc_c1_jpgDec);
@@ -341,7 +341,7 @@ void jpeg_drv_hybrid_dec_power_off(int id)
 		jpeg_drv_hybrid_dec_end_dvfs(1);
 		clk_disable_unprepare(gJpegqDev.jpegClk.clk_venc_c1_jpgDec);
 		if (gJpegqDev.jpegLarb[1])
-			mtk_smi_larb_put_ex(gJpegqDev.jpegLarb[1], 2);
+			pm_runtime_put_sync(gJpegqDev.jpegLarb[1]);
 	} else
 		jpeg_drv_hybrid_dec_end_dvfs(0);
 
@@ -349,7 +349,7 @@ void jpeg_drv_hybrid_dec_power_off(int id)
 		clk_disable_unprepare(gJpegqDev.jpegClk.clk_venc_jpgDec);
 		clk_disable_unprepare(gJpegqDev.jpegClk.clk_venc_jpgDec_c1);
 		if (gJpegqDev.jpegLarb[0])
-			mtk_smi_larb_put_ex(gJpegqDev.jpegLarb[0], 2);
+			pm_runtime_put_sync(gJpegqDev.jpegLarb[0]);
 	}
 
 	JPEG_LOG(1, "JPEG Hybrid Decoder Power Off %d", id);
@@ -921,6 +921,12 @@ static int jpeg_probe(struct platform_device *pdev)
 	}
 	gJpegqDev.jpegLarb[node_index] = &larbdev->dev;
 	JPEG_LOG(0, "get larb from node %d", node_index);
+
+	if (!device_link_add(gJpegqDev.pDev[node_index], gJpegqDev.jpegLarb[node_index],
+		DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS)) {
+		JPEG_LOG(0, "larb device link fail");
+		return -1;
+	}
 
 	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(34));
 	if (ret) {
