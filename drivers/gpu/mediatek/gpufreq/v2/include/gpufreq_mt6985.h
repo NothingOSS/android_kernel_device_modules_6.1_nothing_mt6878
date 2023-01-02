@@ -10,10 +10,10 @@
  * GPUFREQ Config
  **************************************************/
 #define GPUFREQ_BRINGUP                 (1)
-/*
- * 0 -> power on once then never off and disable DDK power on/off callback
- */
+/* 0 -> power on once then never off and disable DDK power on/off callback */
 #define GPUFREQ_POWER_CTRL_ENABLE       (0)
+/* 0 -> disable DDK runtime active-idle callback */
+#define GPUFREQ_ACTIVE_IDLE_CTRL_ENABLE (0)
 /*
  * (DVFS_ENABLE, CUST_INIT)
  * (1, 1) -> DVFS enable and init to CUST_INIT_OPPIDX
@@ -327,6 +327,7 @@ struct gpufreq_status {
 	int mtcmos_count;
 	int cg_count;
 	int power_count;
+	int active_count;
 	unsigned int segment_id;
 	int signed_opp_num;
 	int segment_upbound;

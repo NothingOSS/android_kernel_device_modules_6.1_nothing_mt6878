@@ -218,6 +218,7 @@ static DEFINE_MUTEX(gpufreq_lock);
 static struct gpufreq_platform_fp platform_ap_fp = {
 	.bringup = __gpufreq_bringup,
 	.power_ctrl_enable = __gpufreq_power_ctrl_enable,
+	.active_idle_ctrl_enable = __gpufreq_active_idle_ctrl_enable,
 	.get_power_state = __gpufreq_get_power_state,
 	.get_dvfs_state = __gpufreq_get_dvfs_state,
 	.get_shader_present = __gpufreq_get_shader_present,
@@ -236,6 +237,7 @@ static struct gpufreq_platform_fp platform_ap_fp = {
 	.get_lkg_pgpu = __gpufreq_get_lkg_pgpu,
 	.get_dyn_pgpu = __gpufreq_get_dyn_pgpu,
 	.power_control = __gpufreq_power_control,
+	.active_idle_control = __gpufreq_active_idle_control,
 	.fix_target_oppidx_gpu = __gpufreq_fix_target_oppidx_gpu,
 	.fix_custom_freq_volt_gpu = __gpufreq_fix_custom_freq_volt_gpu,
 	.get_cur_fstack = __gpufreq_get_cur_fstack,
@@ -299,10 +301,16 @@ unsigned int __gpufreq_power_ctrl_enable(void)
 	return GPUFREQ_POWER_CTRL_ENABLE;
 }
 
+/* API: get ACTIVE_IDLE_CTRL status */
+unsigned int __gpufreq_active_idle_ctrl_enable(void)
+{
+	return GPUFREQ_ACTIVE_IDLE_CTRL_ENABLE && GPUFREQ_POWER_CTRL_ENABLE;
+}
+
 /* API: get power state (on/off) */
 unsigned int __gpufreq_get_power_state(void)
 {
-	if (g_stack.power_count > 0)
+	if ((g_stack.power_count > 0) && (g_stack.active_count > 0))
 		return POWER_ON;
 	else
 		return POWER_OFF;
@@ -681,10 +689,10 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 	mutex_lock(&gpufreq_lock);
 
 	GPUFREQ_LOGD("+ PWR_STATUS: 0x%08x", MFG_0_19_PWR_STATUS);
-	GPUFREQ_LOGD("switch power: %s (Power: %d, Buck: %d, MTCMOS: %d, CG: %d)",
+	GPUFREQ_LOGD("switch power: %s (Power: %d, Active: %d, Buck: %d, MTCMOS: %d, CG: %d)",
 		power ? "On" : "Off",
-		g_stack.power_count, g_stack.buck_count,
-		g_stack.mtcmos_count, g_stack.cg_count);
+		g_stack.power_count, g_stack.active_count,
+		g_stack.buck_count, g_stack.mtcmos_count, g_stack.cg_count);
 
 	if (power == POWER_ON) {
 		g_gpu.power_count++;
@@ -695,110 +703,118 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 	}
 	__gpufreq_footprint_power_count(g_stack.power_count);
 
-	if (power == POWER_ON && g_stack.power_count == 1) {
+	if (power == POWER_ON) {
 		__gpufreq_footprint_power_step(0x01);
 
-		/* config AOC after MFG0 power on */
-		__gpufreq_aoc_config(POWER_ON);
-		__gpufreq_footprint_power_step(0x02);
+		if (g_stack.power_count == 1) {
+			/* config AOC after MFG0 power on */
+			__gpufreq_aoc_config(POWER_ON);
+			__gpufreq_footprint_power_step(0x02);
 
-		/* control Buck */
-		ret = __gpufreq_buck_control(POWER_ON);
-		if (unlikely(ret)) {
-			GPUFREQ_LOGE("fail to Buck On (%d)", ret);
-			ret = GPUFREQ_EINVAL;
-			goto done_unlock;
+			/* control Buck */
+			ret = __gpufreq_buck_control(POWER_ON);
+			if (unlikely(ret)) {
+				GPUFREQ_LOGE("fail to Buck On (%d)", ret);
+				ret = GPUFREQ_EINVAL;
+				goto done_unlock;
+			}
+			__gpufreq_footprint_power_step(0x03);
+
+			/* control MTCMOS */
+			ret = __gpufreq_mtcmos_control(POWER_ON);
+			if (unlikely(ret < 0)) {
+				GPUFREQ_LOGE("fail to MTCMOS On (%d)", ret);
+				ret = GPUFREQ_EINVAL;
+				goto done_unlock;
+			}
+			__gpufreq_footprint_power_step(0x04);
 		}
-		__gpufreq_footprint_power_step(0x03);
 
-		/* control MTCMOS */
-		ret = __gpufreq_mtcmos_control(POWER_ON);
+		/* control clock in active-idle control */
+		ret = __gpufreq_active_idle_control(POWER_ON, NO_LOCK_PROT);
 		if (unlikely(ret < 0)) {
-			GPUFREQ_LOGE("fail to MTCMOS On (%d)", ret);
-			ret = GPUFREQ_EINVAL;
-			goto done_unlock;
-		}
-		__gpufreq_footprint_power_step(0x04);
-
-		/* control clock */
-		ret = __gpufreq_clock_control(POWER_ON);
-		if (unlikely(ret)) {
-			GPUFREQ_LOGE("fail to Clock On (%d)", ret);
+			GPUFREQ_LOGE("fail to Active (%d)", ret);
 			ret = GPUFREQ_EINVAL;
 			goto done_unlock;
 		}
 		__gpufreq_footprint_power_step(0x05);
 
-		/* restore MFG registers */
-		__gpufreq_mfg_backup_restore(POWER_ON);
-		__gpufreq_footprint_power_step(0x06);
+		if (g_stack.power_count == 1) {
+			/* restore MFG registers */
+			__gpufreq_mfg_backup_restore(POWER_ON);
+			__gpufreq_footprint_power_step(0x06);
 
-		/* set PDCA register when power on and let GPU DDK control MTCMOS */
-		__gpufreq_pdca_config(POWER_ON);
-		__gpufreq_footprint_power_step(0x07);
+			/* set PDCA register when power on and let GPU DDK control MTCMOS */
+			__gpufreq_pdca_config(POWER_ON);
+			__gpufreq_footprint_power_step(0x07);
 
-		/* config ACP */
-		__gpufreq_acp_config();
-		__gpufreq_footprint_power_step(0x08);
+			/* config ACP */
+			__gpufreq_acp_config();
+			__gpufreq_footprint_power_step(0x08);
 
-		/* config HWDCM */
-		__gpufreq_hwdcm_config();
-		__gpufreq_footprint_power_step(0x09);
+			/* config HWDCM */
+			__gpufreq_hwdcm_config();
+			__gpufreq_footprint_power_step(0x09);
 
-		/* config GPM 1.0 */
-		__gpufreq_gpm1_config();
-		__gpufreq_footprint_power_step(0x0A);
+			/* config GPM 1.0 */
+			__gpufreq_gpm1_config();
+			__gpufreq_footprint_power_step(0x0A);
 
-		__gpufreq_dfd_config(POWER_ON);
-		__gpufreq_footprint_power_step(0x0B);
+			__gpufreq_dfd_config(POWER_ON);
+			__gpufreq_footprint_power_step(0x0B);
 
-		/* free DVFS when power on */
-		g_dvfs_state &= ~DVFS_POWEROFF;
-		__gpufreq_footprint_power_step(0x0C);
-	} else if (power == POWER_OFF && g_stack.power_count == 0) {
+			/* free DVFS when power on */
+			g_dvfs_state &= ~DVFS_POWEROFF;
+			__gpufreq_footprint_power_step(0x0C);
+		}
+	} else if (power == POWER_OFF) {
 		__gpufreq_footprint_power_step(0x0D);
 
-		/* freeze DVFS when power off */
-		g_dvfs_state |= DVFS_POWEROFF;
-		__gpufreq_footprint_power_step(0x0E);
+		if (g_stack.power_count == 0) {
+			/* freeze DVFS when power off */
+			g_dvfs_state |= DVFS_POWEROFF;
+			__gpufreq_footprint_power_step(0x0E);
 
-		__gpufreq_dfd_config(POWER_OFF);
-		__gpufreq_footprint_power_step(0x0F);
+			__gpufreq_dfd_config(POWER_OFF);
+			__gpufreq_footprint_power_step(0x0F);
 
-		/* backup MFG registers */
-		__gpufreq_mfg_backup_restore(POWER_OFF);
-		__gpufreq_footprint_power_step(0x10);
+			/* backup MFG registers */
+			__gpufreq_mfg_backup_restore(POWER_OFF);
+			__gpufreq_footprint_power_step(0x10);
+		}
 
-		/* control clock */
-		ret = __gpufreq_clock_control(POWER_OFF);
-		if (unlikely(ret)) {
-			GPUFREQ_LOGE("fail to Clock Off (%d)", ret);
+		/* control clock in active-idle control */
+		ret = __gpufreq_active_idle_control(POWER_OFF, NO_LOCK_PROT);
+		if (unlikely(ret < 0)) {
+			GPUFREQ_LOGE("fail to Idle (%d)", ret);
 			ret = GPUFREQ_EINVAL;
 			goto done_unlock;
 		}
 		__gpufreq_footprint_power_step(0x11);
 
-		/* control MTCMOS */
-		ret = __gpufreq_mtcmos_control(POWER_OFF);
-		if (unlikely(ret < 0)) {
-			GPUFREQ_LOGE("fail to MTCMOS Off (%d)", ret);
-			ret = GPUFREQ_EINVAL;
-			goto done_unlock;
-		}
-		__gpufreq_footprint_power_step(0x12);
+		if (g_stack.power_count == 0) {
+			/* control MTCMOS */
+			ret = __gpufreq_mtcmos_control(POWER_OFF);
+			if (unlikely(ret < 0)) {
+				GPUFREQ_LOGE("fail to MTCMOS Off (%d)", ret);
+				ret = GPUFREQ_EINVAL;
+				goto done_unlock;
+			}
+			__gpufreq_footprint_power_step(0x12);
 
-		/* control Buck */
-		ret = __gpufreq_buck_control(POWER_OFF);
-		if (unlikely(ret)) {
-			GPUFREQ_LOGE("fail to Buck Off (%d)", ret);
-			ret = GPUFREQ_EINVAL;
-			goto done_unlock;
-		}
-		__gpufreq_footprint_power_step(0x13);
+			/* control Buck */
+			ret = __gpufreq_buck_control(POWER_OFF);
+			if (unlikely(ret)) {
+				GPUFREQ_LOGE("fail to Buck Off (%d)", ret);
+				ret = GPUFREQ_EINVAL;
+				goto done_unlock;
+			}
+			__gpufreq_footprint_power_step(0x13);
 
-		/* config AOC before MFG0 power off */
-		__gpufreq_aoc_config(POWER_OFF);
-		__gpufreq_footprint_power_step(0x14);
+			/* config AOC before MFG0 power off */
+			__gpufreq_aoc_config(POWER_OFF);
+			__gpufreq_footprint_power_step(0x14);
+		}
 	}
 
 	/* return power count if successfully control power */
@@ -811,14 +827,84 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 	g_shared_status->power_count = g_stack.power_count;
 	g_shared_status->buck_count = g_stack.buck_count;
 	g_shared_status->mtcmos_count = g_stack.mtcmos_count;
-	g_shared_status->cg_count = g_stack.cg_count;
 	g_shared_status->power_time_h = (power_time >> 32) & GENMASK(31, 0);
 	g_shared_status->power_time_l = power_time & GENMASK(31, 0);
+
+	if (power == POWER_ON)
+		__gpufreq_footprint_power_step(0x15);
+	else if (power == POWER_OFF)
+		__gpufreq_footprint_power_step(0x16);
 
 done_unlock:
 	GPUFREQ_LOGD("- PWR_STATUS: 0x%08x", MFG_0_19_PWR_STATUS);
 
 	mutex_unlock(&gpufreq_lock);
+
+	GPUFREQ_TRACE_END();
+
+	return ret;
+}
+
+/*
+ * API: control runtime active-idle state of GPU
+ * return active_count if success
+ * return GPUFREQ_EINVAL if failure
+ */
+int __gpufreq_active_idle_control(enum gpufreq_power_state power, enum gpufreq_lock_mode lock)
+{
+	int ret = 0;
+
+	GPUFREQ_TRACE_START("power=%d", power);
+
+	if (lock)
+		mutex_lock(&gpufreq_lock);
+
+	GPUFREQ_LOGD("switch runtime state: %s (Active: %d, CG: %d)",
+		power ? "Active" : "Idle", g_stack.active_count, g_stack.cg_count);
+
+	if (power == POWER_ON) {
+		g_gpu.active_count++;
+		g_stack.active_count++;
+	} else {
+		g_gpu.active_count--;
+		g_stack.active_count--;
+	}
+
+	if (power == POWER_ON && g_stack.active_count == 1) {
+		/* control clock */
+		ret = __gpufreq_clock_control(POWER_ON);
+		if (unlikely(ret)) {
+			GPUFREQ_LOGE("fail to Clock On (%d)", ret);
+			ret = GPUFREQ_EINVAL;
+			goto done_unlock;
+		}
+
+		/* free DVFS when active */
+		g_dvfs_state &= ~DVFS_IDLE;
+	} else if (power == POWER_OFF && g_stack.active_count == 0) {
+		/* freeze DVFS when idle */
+		g_dvfs_state |= DVFS_IDLE;
+
+		/* control clock */
+		ret = __gpufreq_clock_control(POWER_OFF);
+		if (unlikely(ret)) {
+			GPUFREQ_LOGE("fail to Clock Off (%d)", ret);
+			ret = GPUFREQ_EINVAL;
+			goto done_unlock;
+		}
+	}
+
+	/* return active count if successfully control runtime state */
+	ret = g_stack.active_count;
+
+	/* update current status to shared memory */
+	g_shared_status->dvfs_state = g_dvfs_state;
+	g_shared_status->active_count = g_stack.active_count;
+	g_shared_status->cg_count = g_stack.cg_count;
+
+done_unlock:
+	if (lock)
+		mutex_unlock(&gpufreq_lock);
 
 	GPUFREQ_TRACE_END();
 
@@ -1442,7 +1528,9 @@ void __gpufreq_set_shared_status(struct gpufreq_shared_status *shared_status)
 	g_shared_status->buck_count = g_stack.buck_count;
 	g_shared_status->mtcmos_count = g_stack.mtcmos_count;
 	g_shared_status->cg_count = g_stack.cg_count;
+	g_shared_status->active_count = g_stack.active_count;
 	g_shared_status->power_control = __gpufreq_power_ctrl_enable();
+	g_shared_status->active_idle_control = __gpufreq_active_idle_ctrl_enable();
 	g_shared_status->dvfs_state = g_dvfs_state;
 	g_shared_status->shader_present = g_shader_present;
 	g_shared_status->asensor_enable = g_asensor_enable;
