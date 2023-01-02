@@ -349,7 +349,7 @@ static int mt_printk_ctrl_show(struct seq_file *m, void *v)
 
 #define CPU_INDEX (100000)
 #define UART_INDEX (1000000)
-static void mt_printk_logbuf(void *data, struct printk_ringbuffer *rb,
+static void __maybe_unused mt_printk_logbuf(void *data, struct printk_ringbuffer *rb,
 	struct printk_record *r)
 {
 	if (r->info->caller_id  & 0x80000000) {
@@ -446,7 +446,7 @@ static int __init mt_printk_ctrl_init(void)
 		return -ENOMEM;
 
 #if !IS_ENABLED(CONFIG_MTK_PRINTK_DEBUG)
-	register_trace_android_vh_logbuf(mt_printk_logbuf, NULL);
+	//register_trace_android_vh_logbuf(mt_printk_logbuf, NULL);
 #endif
 
 #if IS_ENABLED(CONFIG_LOG_TOO_MUCH_WARNING)
@@ -471,7 +471,7 @@ static void __exit mt_printk_ctrl_exit(void)
 		proc_remove(entry);
 
 #if !IS_ENABLED(CONFIG_MTK_PRINTK_DEBUG)
-	unregister_trace_android_vh_logbuf(mt_printk_logbuf, NULL);
+	//unregister_trace_android_vh_logbuf(mt_printk_logbuf, NULL);
 #endif
 
 #if IS_ENABLED(CONFIG_LOG_TOO_MUCH_WARNING)
