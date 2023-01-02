@@ -2080,6 +2080,10 @@
 			reg = <0 0x10209000 0 0x1000>, /*AP_CCIF_BASE*/
 			      <0 0x1020a000 0 0x1000>; /*MD_CCIF_BASE*/
 			mediatek,sram_size = <512>;
+			/* ccif hw reset version */
+			mediatek,ccif_hw_reset_ver = <1>;
+			/* ccif hw reset bit */
+			mediatek,ccif_hw_reset_bit = <18>;
 			/* DTS/GIC_ID: CCIF0 289/321; CCIF0 290/322 */
 			interrupts = <GIC_SPI 289 IRQ_TYPE_LEVEL_HIGH 0>,
 				     <GIC_SPI 290 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -2101,25 +2105,25 @@
 			compatible = "mediatek,mddriver";
 			/* bit0~3: CLDMA|CCIF|DPMAIF */
 			mediatek,mdhif_type = <6>;
-			mediatek,md_id = <0>;
 			mediatek,ap_plat_info = <6985>;
 			mediatek,md_generation = <6298>;
 			/* 0x44: epon offset; */
 			/* 0x06: once a value[1] exist, means in l2sram */
 			/* value[1] not exist means in mddbgsys. the value(6) has no meaningful */
 			mediatek,offset_epon_md1 = <0x44 0x06>;
-			mediatek,cldma_capability = <14>; //???
+			mediatek,cldma_capability = <14>;
 			/* bit0:srcclkena|bit1:srclken_o1_on|bit2:revert_sequencer */
-			mediatek,power_flow_config = <0x2>;
+			mediatek,power_flow_config = <0x4>;
 			/* srclken_o1 set value |= 1<<14 */
-			mediatek,srclken_o1 = <0x4000>;
+			mediatek,srclken_o1 = <0>;
+			reg = <0 0x0d124000 0 0x2000>; /* l2sram base address */
 			/* DTS/GIC_ID: MDWDT 304/336; CCIF0 289/321; CCIF0 290/322 */
 			interrupts = <GIC_SPI 304 IRQ_TYPE_LEVEL_HIGH  0>,
 				     <GIC_SPI 289 IRQ_TYPE_LEVEL_HIGH  0>,
 				     <GIC_SPI 290 IRQ_TYPE_LEVEL_HIGH  0>;
-//			power-domains = <&scpsys MT6855_POWER_DOMAIN_MD>;
-//			ccci-infracfg = <&infracfg_ao_clk>;
-//			ccci-topckgen = <&topckgen_clk>;
+			power-domains = <&scpsys MT6985_POWER_DOMAIN_MD>;
+			ccci-infracfg = <&infracfg_ao_clk>;
+			ccci-topckgen = <&topckgen_clk>;
 			/* ccci_spmsleep = <&sleep>; */
 		};
 
@@ -2142,9 +2146,6 @@
 
 		gpio_usage_mapping:gpio {
 			compatible = "mediatek,gpio_usage_mapping";
-		};
-		radio_md_cfg:radio_md_cfg {
-			compatible = "mediatek,radio_md_cfg";
 		};
 
 		md1_sim1_hot_plug_eint:MD1_SIM1_HOT_PLUG_EINT {
