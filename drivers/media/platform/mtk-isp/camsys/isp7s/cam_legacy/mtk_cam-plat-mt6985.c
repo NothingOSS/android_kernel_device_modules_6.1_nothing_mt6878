@@ -98,7 +98,9 @@ static int set_sv_meta_stats_info(
 	case MTKCAM_IPI_CAMSV_MAIN_OUT:
 		size = stride * height;
 		sv_stats0 = (struct mtk_cam_uapi_meta_camsv_stats_0 *)addr;
-		offset = sizeof(*sv_stats0);
+		/* calculate offset for 16-alignment limitation */
+		offset = ((((dma_addr_t)sv_stats0 + SV_STATS_0_SIZE + 15) >> 4) << 4)
+			- (dma_addr_t)sv_stats0;
 		set_payload(&sv_stats0->pd_stats.pdo_buf, size, &offset);
 		sv_stats0->pd_stats_enabled = 1;
 		sv_stats0->pd_stats.stats_src.width = width;
