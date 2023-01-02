@@ -5692,6 +5692,12 @@
 			compatible = "mediatek,mt6985-connv3";
 			/* BT, WIFI, GPS, FM */
 			radio-support = "wifi", "bt", "md";
+			pinctrl-names = "connsys_pin_ext32k_en_default",
+					"connsys_pin_ext32k_en_set",
+					"connsys_pin_ext32k_en_clr";
+			pinctrl-0 = <&connsys_pin_ext32_en_default>;
+			pinctrl-1 = <&connsys_pin_ext32_en_set>;
+			pinctrl-2 = <&connsys_pin_ext32_en_clr>;
 		};
 
 		wifi: wifi@18000000 {
@@ -10269,6 +10275,24 @@
 			pinmux = <PINMUX_GPIO24__FUNC_I2S3_DO>;
 			input-schmitt-enable;
 			bias-disable;
+		};
+	};
+	connsys_pin_ext32_en_default: connsys_pin_ext32_en_default {
+		pins_cmd_data {
+			pinmux = <PINMUX_GPIO159__FUNC_GPIO159>;
+			output-low;
+		};
+	};
+	connsys_pin_ext32_en_set: connsys_pin_ext32_en_set {
+		pins_cmd_data {
+			pinmux = <PINMUX_GPIO159__FUNC_GPIO159>;
+			output-high;
+		};
+	};
+	connsys_pin_ext32_en_clr: connsys_pin_ext32_en_clr {
+		pins_cmd_data {
+			pinmux = <PINMUX_GPIO159__FUNC_GPIO159>;
+			output-low;
 		};
 	};
 };
