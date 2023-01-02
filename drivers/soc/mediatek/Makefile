@@ -4,6 +4,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/rv/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs/
+ccflags-y += -I$(srctree)/drivers/soc/mediatek/
 obj-$(CONFIG_MTK_CMDQ) += mtk-cmdq-helper.o
 obj-$(CONFIG_MTK_DVFSRC) += mtk-dvfsrc.o mtk-dvfsrc-start.o
 obj-$(CONFIG_MTK_IPI) += mtk_tinysys_ipi.o
@@ -22,6 +23,7 @@ endif
 ifneq ($(wildcard $(srctree)/$(src)/mt8188-pm-domains.h),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS_PM_DOMAINS) += mtk-pm-domains.o
 endif
+obj-$(CONFIG_DEVICE_MODULES_MTK_MMSYS) += mtk-mmsys.o
 obj-$(CONFIG_DEVICE_MODULES_MTK_DEVAPC) += devapc/
 obj-$(CONFIG_MTK_DEVMPU) += devmpu/
 obj-$(CONFIG_MTK_MMDVFS) += mtk-mmdvfs.o mtk-mmdvfs-v3.o
