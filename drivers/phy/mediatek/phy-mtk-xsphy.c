@@ -43,11 +43,8 @@
 
 #define XSP_MISC_REG0		((SSUSB_SIFSLV_MISC) + 0x00)
 #define MR0_RG_MISC_TIMER_1US		GENMASK(15, 8)
-#define MR0_RG_MISC_TIMER_1US_VAL(x)	((0xff & (x)) << 8)
 #define MR0_RG_MISC_STABLE_TIME		GENMASK(23, 16)
-#define MR0_RG_MISC_STABLE_TIME_VAL(x)	((0xff & (x)) << 16)
 #define MR0_RG_MISC_BANDGAP_STABLE_TIME		GENMASK(31, 24)
-#define MR0_RG_MISC_BANDGAP_STABLE_TIME_VAL(x)	((0xff & (x)) << 24)
 
 #define XSP_MISC_REG1		((SSUSB_SIFSLV_MISC) + 0x04)
 #define MR1_RG_MISC_PLL_STABLE_SEL	BIT(16)
@@ -64,16 +61,13 @@
 
 #define XSP_USBPHYACR0	((SSUSB_SIFSLV_U2PHY_COM) + 0x00)
 #define P2A0_RG_USB20_TX_PH_ROT_SEL		GENMASK(26, 24)
-#define P2A0_RG_USB20_TX_PH_ROT_SEL_VAL(x)	((0x7 & (x)) << 24)
 #define P2A0_RG_INTR_EN	BIT(5)
 
 #define XSP_USBPHYACR1		((SSUSB_SIFSLV_U2PHY_COM) + 0x04)
 #define P2A1_RG_VRT_SEL			GENMASK(14, 12)
-#define P2A1_RG_VRT_SEL_VAL(x)	((0x7 & (x)) << 12)
 #define P2A1_RG_VRT_SEL_MASK	(0x7)
 #define P2A1_RG_VRT_SEL_OFST	(12)
 #define P2A1_RG_TERM_SEL		GENMASK(10, 8)
-#define P2A1_RG_TERM_SEL_VAL(x)	((0x7 & (x)) << 8)
 #define P2A1_RG_TERM_SEL_MASK	(0x7)
 #define P2A1_RG_TERM_SEL_OFST	(8)
 
@@ -82,7 +76,6 @@
 #define XSP_USBPHYACR5		((SSUSB_SIFSLV_U2PHY_COM) + 0x014)
 #define P2A5_RG_HSTX_SRCAL_EN	BIT(15)
 #define P2A5_RG_HSTX_SRCTRL		GENMASK(14, 12)
-#define P2A5_RG_HSTX_SRCTRL_VAL(x)	((0x7 & (x)) << 12)
 
 #define XSP_USBPHYACR6		((SSUSB_SIFSLV_U2PHY_COM) + 0x018)
 #define P2A6_RG_U2_PHY_REV6		GENMASK(31, 30)
@@ -93,11 +86,9 @@
 #define P2A6_RG_BC11_SW_EN	BIT(23)
 #define P2A6_RG_OTG_VBUSCMP_EN	BIT(20)
 #define P2A6_RG_U2_DISCTH		GENMASK(7, 4)
-#define P2A6_RG_U2_DISCTH_VAL(x)	((0xf & (x)) << 4)
 #define P2A6_RG_U2_DISCTH_MASK	(0xf)
 #define P2A6_RG_U2_DISCTH_OFET	(4)
 #define P2A6_RG_U2_SQTH			GENMASK(3, 0)
-#define P2A6_RG_U2_SQTH_VAL(x)		(0xf & (x))
 #define P2A6_RG_U2_SQTH_MASK		(0xf)
 #define P2A6_RG_U2_SQTH_OFET		(0)
 
@@ -113,23 +104,18 @@
 
 #define XSP_USBPHYA_RESERVE	((SSUSB_SIFSLV_U2PHY_COM) + 0x030)
 #define P2AR_RG_INTR_CAL		GENMASK(29, 24)
-#define P2AR_RG_INTR_CAL_VAL(x)		((0x3f & (x)) << 24)
 
 #define XSP_USBPHYA_RESERVEA	((SSUSB_SIFSLV_U2PHY_COM) + 0x034)
 #define P2ARA_RG_TERM_CAL		GENMASK(11, 8)
-#define P2ARA_RG_TERM_CAL_VAL(x)	((0xf & (x)) << 8)
 
 #define XSP_U2PHYA_RESERVE0	((SSUSB_SIFSLV_U2PHY_COM) + 0x040)
 #define P2A2R0_RG_PLL_FBKSEL         BIT(31)
-#define P2A2R0_RG_PLL_FBKSEL_VAL(x)	((0x1 & (x)) << 31)
 
 #define XSP_U2PHYA_RESERVE1	((SSUSB_SIFSLV_U2PHY_COM) + 0x044)
 #define P2A2R1_RG_PLL_POSDIV    GENMASK(2, 0)
-#define P2A2R1_RG_PLL_POSDIV_VAL(x)	(0x7 & (x))
 
 #define XSP_U2PHYDCR1		((SSUSB_SIFSLV_U2PHY_COM) + 0x064)
 #define P2C_RG_USB20_SW_PLLMODE	GENMASK(19, 18)
-#define P2C_RG_USB20_SW_PLLMODE_VAL(x)	((0x3 & (x)) << 18)
 
 #define XSP_U2PHYDTM0		((SSUSB_SIFSLV_U2PHY_COM) + 0x068)
 #define P2D_FORCE_UART_EN		BIT(26)
@@ -140,7 +126,6 @@
 #define P2D_FORCE_SUSPENDM		BIT(18)
 #define P2D_FORCE_TERMSEL		BIT(17)
 #define P2D_RG_DATAIN			GENMASK(13, 10)
-#define P2D_RG_DATAIN_VAL(x)		((0xf & (x)) << 10)
 #define P2D_RG_DMPULLDOWN		BIT(7)
 #define P2D_RG_DPPULLDOWN		BIT(6)
 #define P2D_RG_XCVRSEL			GENMASK(5, 4)
@@ -167,11 +152,9 @@
 
 #define SSPXTP_DIG_GLB_28		((SSPXTP_SIFSLV_DIG_GLB) + 0x028)
 #define RG_XTP_DAIF_GLB_TXPLL_IR		GENMASK(17, 13)
-#define RG_XTP_DAIF_GLB_TXPLL_IR_VAL(x)	((0x1f & (x)) << 13)
 
 #define SSPXTP_DIG_GLB_38		((SSPXTP_SIFSLV_DIG_GLB) + 0x038)
 #define RG_XTP_DAIF_GLB_SPLL_IR		GENMASK(17, 13)
-#define RG_XTP_DAIF_GLB_SPLL_IR_VAL(x)	((0x1f & (x)) << 13)
 
 #define SSPXTP_PHYA_GLB_00		((SSPXTP_SIFSLV_PHYA_GLB) + 0x00)
 #define RG_XTP_GLB_BIAS_INTR_CTRL		GENMASK(21, 16)
@@ -204,29 +187,23 @@
 
 #define SSPXTP_DAIG_LN_DAIF_08	((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x008)
 #define RG_XTP0_DAIF_LN_TX_LCTXCM1		GENMASK(12, 7)
-#define RG_XTP0_DAIF_LN_TX_LCTXCM1_VAL(x)	((0x3f & (x)) << 7)
 #define RG_XTP0_DAIF_LN_TX_LCTXCM1_MASK		(0x3f)
 #define RG_XTP0_DAIF_LN_TX_LCTXCM1_OFST		(7)
 #define RG_XTP0_DAIF_LN_TX_LCTXC0		GENMASK(18, 13)
-#define RG_XTP0_DAIF_LN_TX_LCTXC0_VAL(x)	((0x3f & (x)) << 13)
 #define RG_XTP0_DAIF_LN_TX_LCTXC0_MASK		(0x3f)
 #define RG_XTP0_DAIF_LN_TX_LCTXC0_OFST		(13)
 #define RG_XTP0_DAIF_LN_TX_LCTXCP1		GENMASK(24, 19)
-#define RG_XTP0_DAIF_LN_TX_LCTXCP1_VAL(x)	((0x3f & (x)) << 19)
 #define RG_XTP0_DAIF_LN_TX_LCTXCP1_MASK		(0x3f)
 #define RG_XTP0_DAIF_LN_TX_LCTXCP1_OFST		(19)
 
 #define SSPXTP_DAIG_LN_DAIF_14	((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x014)
 #define RG_XTP0_DAIF_LN_RX_AEQ_ATT		GENMASK(20, 18)
-#define RG_XTP0_DAIF_LN_RX_AEQ_ATT_VAL(x)	((0x7 & (x)) << 18)
 
 #define SSPXTP_DAIG_LN_DAIF_20	((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x020)
 #define RG_XTP0_DAIF_LN_G1_RX_SGDT_HF		GENMASK(23, 22)
-#define RG_XTP0_DAIF_LN_G1_RX_SGDT_HF_VAL(x)	((0x3 & (x)) << 22)
 
 #define SSPXTP_DAIG_LN_DAIF_2C	((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x02C)
 #define RG_XTP0_DAIF_LN_G2_RX_SGDT_HF		GENMASK(23, 22)
-#define RG_XTP0_DAIF_LN_G2_RX_SGDT_HF_VAL(x)	((0x3 & (x)) << 22)
 
 #define SSPXTP_PHYA_LN_04	((SSPXTP_SIFSLV_PHYA_LN) + 0x04)
 #define RG_XTP_LN0_TX_IMPSEL		GENMASK(4, 0)
@@ -550,7 +527,7 @@ static ssize_t proc_tx_lctxcm1_write(struct file *file,
 	struct xsphy_instance *inst = s->private;
 	void __iomem *pbase = inst->port_base;
 	char buf[20];
-	u32 tmp, val;
+	u32 val;
 
 	memset(buf, 0x00, sizeof(buf));
 	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
@@ -559,14 +536,9 @@ static ssize_t proc_tx_lctxcm1_write(struct file *file,
 	if (kstrtouint(buf, 10, &val))
 		return -EINVAL;
 
-	tmp = readl(pbase + SSPXTP_DAIG_LN_DAIF_00);
-	tmp |= RG_XTP0_DAIF_FRC_LN_TX_LCTXCM1;
-	writel(tmp, pbase + SSPXTP_DAIG_LN_DAIF_00);
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_00, RG_XTP0_DAIF_FRC_LN_TX_LCTXCM1);
 
-	tmp = readl(pbase + SSPXTP_DAIG_LN_DAIF_08);
-	tmp &= ~RG_XTP0_DAIF_LN_TX_LCTXCM1;
-	tmp |= RG_XTP0_DAIF_LN_TX_LCTXCM1_VAL(val);
-	writel(tmp, pbase + SSPXTP_DAIG_LN_DAIF_08);
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_08, RG_XTP0_DAIF_LN_TX_LCTXCM1, val);
 
 	return count;
 }
@@ -613,7 +585,7 @@ static ssize_t proc_tx_lctxc0_write(struct file *file,
 	struct xsphy_instance *inst = s->private;
 	void __iomem *pbase = inst->port_base;
 	char buf[20];
-	u32 tmp, val;
+	u32 val;
 
 	memset(buf, 0x00, sizeof(buf));
 	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
@@ -622,14 +594,9 @@ static ssize_t proc_tx_lctxc0_write(struct file *file,
 	if (kstrtouint(buf, 10, &val))
 		return -EINVAL;
 
-	tmp = readl(pbase + SSPXTP_DAIG_LN_DAIF_00);
-	tmp |= RG_XTP0_DAIF_FRC_LN_TX_LCTXC0;
-	writel(tmp, pbase + SSPXTP_DAIG_LN_DAIF_00);
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_00, RG_XTP0_DAIF_FRC_LN_TX_LCTXC0);
 
-	tmp = readl(pbase + SSPXTP_DAIG_LN_DAIF_08);
-	tmp &= ~RG_XTP0_DAIF_LN_TX_LCTXC0;
-	tmp |= RG_XTP0_DAIF_LN_TX_LCTXC0_VAL(val);
-	writel(tmp, pbase + SSPXTP_DAIG_LN_DAIF_08);
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_08, RG_XTP0_DAIF_LN_TX_LCTXC0, val);
 
 	return count;
 }
@@ -675,7 +642,7 @@ static ssize_t proc_tx_lctxcp1_write(struct file *file,
 	struct xsphy_instance *inst = s->private;
 	void __iomem *pbase = inst->port_base;
 	char buf[20];
-	u32 tmp, val;
+	u32 val;
 
 	memset(buf, 0x00, sizeof(buf));
 	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
@@ -684,14 +651,9 @@ static ssize_t proc_tx_lctxcp1_write(struct file *file,
 	if (kstrtouint(buf, 10, &val))
 		return -EINVAL;
 
-	tmp = readl(pbase + SSPXTP_DAIG_LN_DAIF_00);
-	tmp |= RG_XTP0_DAIF_FRC_LN_TX_LCTXCP1;
-	writel(tmp, pbase + SSPXTP_DAIG_LN_DAIF_00);
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_00, RG_XTP0_DAIF_FRC_LN_TX_LCTXCP1);
 
-	tmp = readl(pbase + SSPXTP_DAIG_LN_DAIF_08);
-	tmp &= ~RG_XTP0_DAIF_LN_TX_LCTXCP1;
-	tmp |= RG_XTP0_DAIF_LN_TX_LCTXCP1_VAL(val);
-	writel(tmp, pbase + SSPXTP_DAIG_LN_DAIF_08);
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_08, RG_XTP0_DAIF_LN_TX_LCTXCP1, val);
 
 	return count;
 }
@@ -826,7 +788,7 @@ static ssize_t proc_term_sel_write(struct file *file,
 	struct xsphy_instance *inst = s->private;
 	void __iomem *pbase = inst->port_base;
 	char buf[20];
-	u32 tmp, val;
+	u32 val;
 
 	memset(buf, 0x00, sizeof(buf));
 	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
@@ -835,10 +797,7 @@ static ssize_t proc_term_sel_write(struct file *file,
 	if (kstrtouint(buf, 2, &val))
 		return -EINVAL;
 
-	tmp = readl(pbase + XSP_USBPHYACR1);
-	tmp &= ~P2A1_RG_TERM_SEL;
-	tmp |= P2A1_RG_TERM_SEL_VAL(val);
-	writel(tmp, pbase + XSP_USBPHYACR1);
+	mtk_phy_update_field(pbase + XSP_USBPHYACR1, P2A1_RG_TERM_SEL, val);
 
 	return count;
 }
@@ -880,7 +839,7 @@ static ssize_t proc_vrt_sel_write(struct file *file,
 	struct xsphy_instance *inst = s->private;
 	void __iomem *pbase = inst->port_base;
 	char buf[20];
-	u32 tmp, val;
+	u32 val;
 
 	memset(buf, 0x00, sizeof(buf));
 	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
@@ -889,10 +848,7 @@ static ssize_t proc_vrt_sel_write(struct file *file,
 	if (kstrtouint(buf, 2, &val))
 		return -EINVAL;
 
-	tmp = readl(pbase + XSP_USBPHYACR1);
-	tmp &= ~P2A1_RG_VRT_SEL;
-	tmp |= P2A1_RG_VRT_SEL_VAL(val);
-	writel(tmp, pbase + XSP_USBPHYACR1);
+	mtk_phy_update_field(pbase + XSP_USBPHYACR1, P2A1_RG_VRT_SEL, val);
 
 	return count;
 }
@@ -934,7 +890,7 @@ static ssize_t proc_phy_rev6_write(struct file *file,
 	struct xsphy_instance *inst = s->private;
 	void __iomem *pbase = inst->port_base;
 	char buf[20];
-	u32 tmp, val;
+	u32 val;
 
 	memset(buf, 0x00, sizeof(buf));
 	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
@@ -943,10 +899,7 @@ static ssize_t proc_phy_rev6_write(struct file *file,
 	if (kstrtouint(buf, 2, &val))
 		return -EINVAL;
 
-	tmp = readl(pbase + XSP_USBPHYACR6);
-	tmp &= ~P2A6_RG_U2_PHY_REV6;
-	tmp |= P2A6_RG_U2_PHY_REV6_VAL(val);
-	writel(tmp, pbase + XSP_USBPHYACR6);
+	mtk_phy_update_field(pbase + XSP_USBPHYACR6, P2A6_RG_U2_PHY_REV6, val);
 
 	return count;
 }
@@ -988,7 +941,7 @@ static ssize_t proc_discth_write(struct file *file,
 	struct xsphy_instance *inst = s->private;
 	void __iomem *pbase = inst->port_base;
 	char buf[20];
-	u32 tmp, val;
+	u32 val;
 
 	memset(buf, 0x00, sizeof(buf));
 	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
@@ -997,10 +950,7 @@ static ssize_t proc_discth_write(struct file *file,
 	if (kstrtouint(buf, 2, &val))
 		return -EINVAL;
 
-	tmp = readl(pbase + XSP_USBPHYACR6);
-	tmp &= ~P2A6_RG_U2_DISCTH;
-	tmp |= P2A6_RG_U2_DISCTH_VAL(val);
-	writel(tmp, pbase + XSP_USBPHYACR6);
+	mtk_phy_update_field(pbase + XSP_USBPHYACR6, P2A6_RG_U2_DISCTH, val);
 
 	return count;
 }
@@ -1042,7 +992,7 @@ static ssize_t proc_rx_sqth_write(struct file *file,
 	struct xsphy_instance *inst = s->private;
 	void __iomem *pbase = inst->port_base;
 	char buf[20];
-	u32 tmp, val;
+	u32 val;
 
 	memset(buf, 0x00, sizeof(buf));
 	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
@@ -1050,10 +1000,8 @@ static ssize_t proc_rx_sqth_write(struct file *file,
 
 	if (kstrtouint(buf, 2, &val))
 		return -EINVAL;
-	tmp = readl(pbase + XSP_USBPHYACR6);
-	tmp &= ~P2A6_RG_U2_SQTH;
-	tmp |= P2A6_RG_U2_SQTH_VAL(val);
-	writel(tmp, pbase + XSP_USBPHYACR6);
+
+	mtk_phy_update_field(pbase + XSP_USBPHYACR6, P2A6_RG_U2_SQTH, val);
 
 	return count;
 }
@@ -1176,51 +1124,29 @@ static void u3_phy_instance_power_on(struct mtk_xsphy *xsphy,
 				     struct xsphy_instance *inst)
 {
 	void __iomem *pbase = inst->port_base;
-	u32 tmp;
 
 	/* clear hz mode */
-	tmp = readl(pbase + SSPXTP_PHYA_LN_08);
-	tmp &= ~RG_XTP_LN0_TX_RXDET_HZ;
-	writel(tmp, pbase + SSPXTP_PHYA_LN_08);
+	mtk_phy_clear_bits(pbase + SSPXTP_PHYA_LN_08, RG_XTP_LN0_TX_RXDET_HZ);
 
 	/* DA_XTP_GLB_TXPLL_IR[4:0], 5'b00100 */
-	tmp = readl(xsphy->glb_base + SSPXTP_DIG_GLB_28);
-	tmp &= ~RG_XTP_DAIF_GLB_TXPLL_IR;
-	tmp |= RG_XTP_DAIF_GLB_TXPLL_IR_VAL(0x4);
-	writel(tmp, xsphy->glb_base + SSPXTP_DIG_GLB_28);
+	mtk_phy_update_field(xsphy->glb_base + SSPXTP_DIG_GLB_28, RG_XTP_DAIF_GLB_TXPLL_IR, 0x4);
 
 	/* DA_XTP_GLB_SPLL_IR[4:0], 5'b00100 */
-	tmp = readl(xsphy->glb_base + SSPXTP_DIG_GLB_38);
-	tmp &= ~RG_XTP_DAIF_GLB_SPLL_IR;
-	tmp |= RG_XTP_DAIF_GLB_SPLL_IR_VAL(0x4);
-	writel(tmp, xsphy->glb_base + SSPXTP_DIG_GLB_38);
+	mtk_phy_update_field(xsphy->glb_base + SSPXTP_DIG_GLB_38, RG_XTP_DAIF_GLB_SPLL_IR, 0x4);
 
 	/* DA_XTP_LN0_RX_SGDT_HF[1:0], 2'b10 */
-	tmp = readl(pbase + SSPXTP_DAIG_LN_DAIF_20);
-	tmp &= ~RG_XTP0_DAIF_LN_G1_RX_SGDT_HF;
-	tmp |= RG_XTP0_DAIF_LN_G1_RX_SGDT_HF_VAL(0x2);
-	writel(tmp, pbase + SSPXTP_DAIG_LN_DAIF_20);
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_20, RG_XTP0_DAIF_LN_G1_RX_SGDT_HF, 0x2);
 
-	tmp = readl(pbase + SSPXTP_DAIG_LN_DAIF_2C);
-	tmp &= ~RG_XTP0_DAIF_LN_G2_RX_SGDT_HF;
-	tmp |= RG_XTP0_DAIF_LN_G2_RX_SGDT_HF_VAL(0x2);
-	writel(tmp, pbase + SSPXTP_DAIG_LN_DAIF_2C);
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_2C, RG_XTP0_DAIF_LN_G2_RX_SGDT_HF, 0x2);
 
 	/* DA_XTP_LN0_RX_AEQ_OFORCE[10], 1'b1 */
-	tmp = readl(pbase + SSPXTP_PHYA_LN_30);
-	tmp |= RG_XTP_LN0_RX_AEQ_ATT;
-	writel(tmp, pbase + SSPXTP_PHYA_LN_30);
+	mtk_phy_set_bits(pbase + SSPXTP_PHYA_LN_30, RG_XTP_LN0_RX_AEQ_ATT);
 
 	/* rg_sspxtp0_datf_ln_rx_aeq_att[2:0], 3'b111 */
-	tmp = readl(pbase + SSPXTP_DAIG_LN_DAIF_14);
-	tmp &= ~RG_XTP0_DAIF_LN_RX_AEQ_ATT;
-	tmp |= RG_XTP0_DAIF_LN_RX_AEQ_ATT_VAL(0x7);
-	writel(tmp, pbase + SSPXTP_DAIG_LN_DAIF_14);
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_14, RG_XTP0_DAIF_LN_RX_AEQ_ATT, 0x7);
 
 	/* rg_sspxtp0_datf_frc_ln_rx_aeq_att, 1'b1 */
-	tmp = readl(pbase + SSPXTP_DAIG_LN_DAIF_04);
-	tmp |= RG_XTP0_DAIF_FRC_LN_RX_AEQ_ATT;
-	writel(tmp, pbase + SSPXTP_DAIG_LN_DAIF_04);
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_04, RG_XTP0_DAIF_FRC_LN_RX_AEQ_ATT);
 
 	dev_info(xsphy->dev, "%s(%d)\n", __func__, inst->index);
 }
@@ -1229,12 +1155,9 @@ static void u3_phy_instance_power_off(struct mtk_xsphy *xsphy,
 				      struct xsphy_instance *inst)
 {
 	void __iomem *pbase = inst->port_base;
-	u32 tmp;
 
 	/* enable hz mode */
-	tmp = readl(pbase + SSPXTP_PHYA_LN_08);
-	tmp |= RG_XTP_LN0_TX_RXDET_HZ;
-	writel(tmp, pbase + SSPXTP_PHYA_LN_08);
+	mtk_phy_set_bits(pbase + SSPXTP_PHYA_LN_08, RG_XTP_LN0_TX_RXDET_HZ);
 
 	dev_info(xsphy->dev, "%s(%d)\n", __func__, inst->index);
 }
@@ -1302,42 +1225,27 @@ static void u2_phy_lpm_pll_set(struct mtk_xsphy *xsphy,
 {
 	void __iomem *pbase = inst->port_base;
 	u32 index = inst->index;
-	u32 tmp;
 
 	if (!inst->lpm_quirk)
 		return;
 
 	/* enable SW PLL mode */
-	tmp = readl(pbase + XSP_U2PHYDCR1);
-	tmp &= ~P2C_RG_USB20_SW_PLLMODE;
-	tmp |= P2C_RG_USB20_SW_PLLMODE_VAL(0x1);
-	writel(tmp, pbase + XSP_U2PHYDCR1);
+	mtk_phy_update_field(pbase + XSP_U2PHYDCR1, P2C_RG_USB20_SW_PLLMODE, 0x1);
 
 	/* enable HW count PLL time */
-	tmp = readl(pbase + XSP_MISC_REG1);
-	tmp |= MR1_RG_MISC_PLL_STABLE_SEL;
-	writel(tmp, pbase + XSP_MISC_REG1);
+	mtk_phy_set_bits(pbase + XSP_MISC_REG1, MR1_RG_MISC_PLL_STABLE_SEL);
 
 	/* set 1us time count value */
-	tmp = readl(pbase + XSP_MISC_REG0);
-	tmp &= ~MR0_RG_MISC_TIMER_1US;
-	tmp |= MR0_RG_MISC_TIMER_1US_VAL
-		(inst->lpm_para[PHY_PLL_TIMER_COUNT]);
-	writel(tmp, pbase + XSP_MISC_REG0);
+	mtk_phy_update_field(pbase + XSP_MISC_REG0, MR0_RG_MISC_TIMER_1US,
+			    inst->lpm_para[PHY_PLL_TIMER_COUNT]);
 
 	/*set pll stable time*/
-	tmp = readl(pbase + XSP_MISC_REG0);
-	tmp &= ~MR0_RG_MISC_STABLE_TIME;
-	tmp |= MR0_RG_MISC_STABLE_TIME_VAL
-		(inst->lpm_para[PHY_PLL_STABLE_TIME]);
-	writel(tmp, pbase + XSP_MISC_REG0);
+	mtk_phy_update_field(pbase + XSP_MISC_REG0, MR0_RG_MISC_STABLE_TIME,
+			    inst->lpm_para[PHY_PLL_STABLE_TIME]);
 
 	/* set pll bandgap stable time */
-	tmp = readl(pbase + XSP_MISC_REG0);
-	tmp &= ~MR0_RG_MISC_BANDGAP_STABLE_TIME;
-	tmp |= MR0_RG_MISC_BANDGAP_STABLE_TIME_VAL
-		(inst->lpm_para[PHY_PLL_BANDGAP_TIME]);
-	writel(tmp, pbase + XSP_MISC_REG0);
+	mtk_phy_update_field(pbase + XSP_MISC_REG0, MR0_RG_MISC_BANDGAP_STABLE_TIME,
+			    inst->lpm_para[PHY_PLL_BANDGAP_TIME]);
 
 	dev_info(xsphy->dev, "%s(%d)\n", __func__, index);
 }
@@ -1358,53 +1266,31 @@ static void u2_phy_instance_power_on(struct mtk_xsphy *xsphy,
 {
 	void __iomem *pbase = inst->port_base;
 	u32 index = inst->index;
-	u32 tmp;
 
-	tmp = readl(pbase + XSP_U2PHYDTM0);
-	tmp |= P2D_FORCE_SUSPENDM;
-	writel(tmp, pbase + XSP_U2PHYDTM0);
+	mtk_phy_set_bits(pbase + XSP_U2PHYDTM0, P2D_FORCE_SUSPENDM);
 
-	tmp = readl(pbase + XSP_U2PHYDTM0);
-	tmp &= ~P2D_RG_SUSPENDM;
-	writel(tmp, pbase + XSP_U2PHYDTM0);
+	mtk_phy_clear_bits(pbase + XSP_U2PHYDTM0, P2D_RG_SUSPENDM);
 
-	tmp = readl(pbase + XSP_U2PHYDTM0);
-	tmp |= P2D_RG_SUSPENDM;
-	writel(tmp, pbase + XSP_U2PHYDTM0);
+	mtk_phy_set_bits(pbase + XSP_U2PHYDTM0, P2D_RG_SUSPENDM);
 
 	udelay(30);
 
-	tmp = readl(pbase + XSP_U2PHYDTM0);
-	tmp &= ~P2D_FORCE_SUSPENDM;
-	writel(tmp, pbase + XSP_U2PHYDTM0);
+	mtk_phy_clear_bits(pbase + XSP_U2PHYDTM0, P2D_FORCE_SUSPENDM);
 
-	tmp = readl(pbase + XSP_U2PHYDTM0);
-	tmp &= ~P2D_RG_SUSPENDM;
-	writel(tmp, pbase + XSP_U2PHYDTM0);
+	mtk_phy_clear_bits(pbase + XSP_U2PHYDTM0, P2D_RG_SUSPENDM);
 
-	tmp = readl(pbase + XSP_U2PHYDTM0);
-	tmp &= ~(P2D_FORCE_UART_EN);
-	writel(tmp, pbase + XSP_U2PHYDTM0);
+	mtk_phy_clear_bits(pbase + XSP_U2PHYDTM0, P2D_FORCE_UART_EN);
 
-	tmp = readl(pbase + XSP_U2PHYDTM1);
-	tmp &= ~P2D_RG_UART_EN;
-	writel(tmp, pbase + XSP_U2PHYDTM1);
+	mtk_phy_clear_bits(pbase + XSP_U2PHYDTM1, P2D_RG_UART_EN);
 
-	tmp = readl(pbase + XSP_USBPHYACR4);
-	tmp &= ~P2A4_U2_GPIO_CTR_MSK;
-	writel(tmp, pbase + XSP_USBPHYACR4);
+	mtk_phy_clear_bits(pbase + XSP_USBPHYACR4, P2A4_U2_GPIO_CTR_MSK);
 
-	tmp = readl(pbase + XSP_U2PHYDTM0);
-	tmp &= ~P2D_FORCE_SUSPENDM;
-	writel(tmp, pbase + XSP_U2PHYDTM0);
+	mtk_phy_clear_bits(pbase + XSP_U2PHYDTM0, P2D_FORCE_SUSPENDM);
 
-	tmp = readl(pbase + XSP_U2PHYDTM0);
-	tmp &= ~(P2D_RG_XCVRSEL | P2D_RG_DATAIN | P2D_DTM0_PART_MASK);
-	writel(tmp, pbase + XSP_U2PHYDTM0);
+	mtk_phy_clear_bits(pbase + XSP_U2PHYDTM0,
+			   (P2D_RG_XCVRSEL | P2D_RG_DATAIN | P2D_DTM0_PART_MASK));
 
-	tmp = readl(pbase + XSP_USBPHYACR6);
-	tmp &= ~P2A6_RG_BC11_SW_EN;
-	writel(tmp, pbase + XSP_USBPHYACR6);
+	mtk_phy_clear_bits(pbase + XSP_USBPHYACR6, P2A6_RG_BC11_SW_EN);
 
 	mtk_phy_set_bits(pbase + XSP_USBPHYACR6, P2A6_RG_OTG_VBUSCMP_EN);
 
@@ -1412,14 +1298,11 @@ static void u2_phy_instance_power_on(struct mtk_xsphy *xsphy,
 			    P2D_RG_VBUSVALID | P2D_RG_AVALID | P2D_RG_SESSEND,
 			    P2D_RG_VBUSVALID | P2D_RG_AVALID);
 
-	tmp = readl(pbase + XSP_USBPHYACR0);
-	tmp &= ~(P2A0_RG_USB20_TX_PH_ROT_SEL);
-	writel(tmp, pbase + XSP_USBPHYACR0);
+	mtk_phy_clear_bits(pbase + XSP_USBPHYACR0, P2A0_RG_USB20_TX_PH_ROT_SEL);
 
-	tmp = readl(pbase + XSP_USBPHYACR6);
-	tmp &= ~(P2A6_RG_U2_PHY_REV6 | P2A6_RG_U2_PHY_REV1);
-	tmp |= P2A6_RG_U2_PHY_REV6_VAL(1);
-	writel(tmp, pbase + XSP_USBPHYACR6);
+	mtk_phy_clear_bits(pbase + XSP_USBPHYACR6,
+			   (P2A6_RG_U2_PHY_REV6 | P2A6_RG_U2_PHY_REV1));
+	mtk_phy_set_bits(pbase + XSP_USBPHYACR6, P2A6_RG_U2_PHY_REV6_VAL(1));
 
 	udelay(800);
 
@@ -1434,23 +1317,14 @@ static void u2_phy_instance_power_off(struct mtk_xsphy *xsphy,
 	void __iomem *pbase = inst->port_base;
 	u32 index = inst->index;
 	enum phy_mode mode = inst->phy->attrs.mode;
-	u32 tmp;
 
-	tmp = readl(pbase + XSP_U2PHYDTM0);
-	tmp &= ~(P2D_FORCE_UART_EN);
-	writel(tmp, pbase + XSP_U2PHYDTM0);
+	mtk_phy_clear_bits(pbase + XSP_U2PHYDTM0, P2D_FORCE_UART_EN);
 
-	tmp = readl(pbase + XSP_U2PHYDTM1);
-	tmp &= ~P2D_RG_UART_EN;
-	writel(tmp, pbase + XSP_U2PHYDTM1);
+	mtk_phy_clear_bits(pbase + XSP_U2PHYDTM1, P2D_RG_UART_EN);
 
-	tmp = readl(pbase + XSP_USBPHYACR4);
-	tmp &= ~P2A4_U2_GPIO_CTR_MSK;
-	writel(tmp, pbase + XSP_USBPHYACR4);
+	mtk_phy_clear_bits(pbase + XSP_USBPHYACR4, P2A4_U2_GPIO_CTR_MSK);
 
-	tmp = readl(pbase + XSP_USBPHYACR6);
-	tmp &= ~P2A6_RG_BC11_SW_EN;
-	writel(tmp, pbase + XSP_USBPHYACR6);
+	mtk_phy_clear_bits(pbase + XSP_USBPHYACR6, P2A6_RG_BC11_SW_EN);
 
 	mtk_phy_clear_bits(pbase + XSP_USBPHYACR6, P2A6_RG_OTG_VBUSCMP_EN);
 
@@ -1458,41 +1332,27 @@ static void u2_phy_instance_power_off(struct mtk_xsphy *xsphy,
 			    P2D_RG_VBUSVALID | P2D_RG_AVALID | P2D_RG_SESSEND,
 			    P2D_RG_SESSEND);
 
-	tmp = readl(pbase + XSP_U2PHYDTM0);
-	tmp |= P2D_RG_SUSPENDM | P2D_FORCE_SUSPENDM;
-	writel(tmp, pbase + XSP_U2PHYDTM0);
+	mtk_phy_set_bits(pbase + XSP_U2PHYDTM0, (P2D_RG_SUSPENDM | P2D_FORCE_SUSPENDM));
 
 	mdelay(2);
 
-	tmp = readl(pbase + XSP_U2PHYDTM0);
-	tmp &= ~P2D_RG_DATAIN;
-	tmp |= (P2D_RG_XCVRSEL_VAL(1) | P2D_DTM0_PART_MASK);
-	writel(tmp, pbase + XSP_U2PHYDTM0);
+	mtk_phy_clear_bits(pbase + XSP_U2PHYDTM0, P2D_RG_DATAIN);
+	mtk_phy_set_bits(pbase + XSP_U2PHYDTM0, (P2D_RG_XCVRSEL_VAL(1) | P2D_DTM0_PART_MASK));
 
-	tmp = readl(pbase + XSP_USBPHYACR6);
-	tmp |= P2A6_RG_U2_PHY_REV6_VAL(1);
-	writel(tmp, pbase + XSP_USBPHYACR6);
+	mtk_phy_set_bits(pbase + XSP_USBPHYACR6, P2A6_RG_U2_PHY_REV6_VAL(1));
 
-	if (mode == PHY_MODE_INVALID) {
-		tmp = readl(pbase + XSP_USBPHYACR6);
-		tmp |= P2A6_RG_U2_PHY_REV1;
-		writel(tmp, pbase + XSP_USBPHYACR6);
-	}
+	if (mode == PHY_MODE_INVALID)
+		mtk_phy_set_bits(pbase + XSP_USBPHYACR6, P2A6_RG_U2_PHY_REV1);
 
 	udelay(800);
 
-	tmp = readl(pbase + XSP_U2PHYDTM0);
-	tmp &= ~P2D_RG_SUSPENDM;
-	writel(tmp, pbase + XSP_U2PHYDTM0);
+	mtk_phy_clear_bits(pbase + XSP_U2PHYDTM0, P2D_RG_SUSPENDM);
 
 	udelay(1);
 
 	/* set BC11_SW_EN to enter L2 power off mode */
-	if (mode == PHY_MODE_INVALID) {
-		tmp = readl(inst->port_base + XSP_USBPHYACR6);
-		tmp |= P2A6_RG_BC11_SW_EN;
-		writel(tmp, inst->port_base + XSP_USBPHYACR6);
-	}
+	if (mode == PHY_MODE_INVALID)
+		mtk_phy_set_bits(inst->port_base + XSP_USBPHYACR6, P2A6_RG_BC11_SW_EN);
 
 	dev_info(xsphy->dev, "%s(%d)\n", __func__, index);
 }
@@ -1529,55 +1389,44 @@ static void u2_phy_instance_set_mode(struct mtk_xsphy *xsphy,
 	} else {
 		switch (submode) {
 		case PHY_MODE_BC11_SW_SET:
-			tmp = readl(inst->port_base + XSP_USBPHYACR6);
-			tmp |= P2A6_RG_BC11_SW_EN;
-			writel(tmp, inst->port_base + XSP_USBPHYACR6);
+			mtk_phy_set_bits(inst->port_base + XSP_USBPHYACR6,
+					 P2A6_RG_BC11_SW_EN);
 			break;
 		case PHY_MODE_BC11_SW_CLR:
 			/* dont' need to switch back to usb when phy off */
-			if (inst->phy->power_count > 0) {
-				tmp = readl(inst->port_base + XSP_USBPHYACR6);
-				tmp &= ~P2A6_RG_BC11_SW_EN;
-				writel(tmp, inst->port_base + XSP_USBPHYACR6);
-			}
+			if (inst->phy->power_count > 0)
+				mtk_phy_clear_bits(inst->port_base + XSP_USBPHYACR6,
+						   P2A6_RG_BC11_SW_EN);
 			break;
 		case PHY_MODE_DPDMPULLDOWN_SET:
-			tmp = readl(inst->port_base + XSP_U2PHYDTM0);
-			tmp |= P2D_RG_DPPULLDOWN | P2D_RG_DMPULLDOWN;
-			writel(tmp, inst->port_base + XSP_U2PHYDTM0);
+			mtk_phy_set_bits(inst->port_base + XSP_U2PHYDTM0,
+					 (P2D_RG_DPPULLDOWN | P2D_RG_DMPULLDOWN));
 
-			tmp = readl(inst->port_base + XSP_USBPHYACR6);
-			tmp &= ~P2A6_RG_U2_PHY_REV1;
-			writel(tmp, inst->port_base + XSP_USBPHYACR6);
+			mtk_phy_clear_bits(inst->port_base + XSP_USBPHYACR6,
+					   P2A6_RG_U2_PHY_REV1);
 
-			tmp = readl(inst->port_base + XSP_USBPHYACR6);
-			tmp |= P2A6_RG_BC11_SW_EN;
-			writel(tmp, inst->port_base + XSP_USBPHYACR6);
+			mtk_phy_set_bits(inst->port_base + XSP_USBPHYACR6,
+					 P2A6_RG_BC11_SW_EN);
 			break;
 		case PHY_MODE_DPDMPULLDOWN_CLR:
-			tmp = readl(inst->port_base + XSP_U2PHYDTM0);
-			tmp &= ~(P2D_RG_DPPULLDOWN | P2D_RG_DMPULLDOWN);
-			writel(tmp, inst->port_base + XSP_U2PHYDTM0);
+			mtk_phy_clear_bits(inst->port_base + XSP_U2PHYDTM0,
+					   (P2D_RG_DPPULLDOWN | P2D_RG_DMPULLDOWN));
 
-			tmp = readl(inst->port_base + XSP_USBPHYACR6);
-			tmp |= P2A6_RG_U2_PHY_REV1;
-			writel(tmp, inst->port_base + XSP_USBPHYACR6);
+			mtk_phy_set_bits(inst->port_base + XSP_USBPHYACR6,
+					 P2A6_RG_U2_PHY_REV1);
 
-			tmp = readl(inst->port_base + XSP_USBPHYACR6);
-			tmp &= ~P2A6_RG_BC11_SW_EN;
-			writel(tmp, inst->port_base + XSP_USBPHYACR6);
+			mtk_phy_clear_bits(inst->port_base + XSP_USBPHYACR6,
+					   P2A6_RG_BC11_SW_EN);
 			break;
 		case PHY_MODE_DPPULLUP_SET:
-			tmp = readl(inst->port_base + XSP_USBPHYACR3);
-			tmp |= P2A3_RG_USB20_PUPD_BIST_EN |
-				P2A3_RG_USB20_EN_PU_DP;
-			writel(tmp, inst->port_base + XSP_USBPHYACR3);
+			mtk_phy_set_bits(inst->port_base + XSP_USBPHYACR3,
+					 (P2A3_RG_USB20_PUPD_BIST_EN |
+					 P2A3_RG_USB20_EN_PU_DP));
 			break;
 		case PHY_MODE_DPPULLUP_CLR:
-			tmp = readl(inst->port_base + XSP_USBPHYACR3);
-			tmp &= ~(P2A3_RG_USB20_PUPD_BIST_EN |
-				P2A3_RG_USB20_EN_PU_DP);
-			writel(tmp, inst->port_base + XSP_USBPHYACR3);
+			mtk_phy_clear_bits(inst->port_base + XSP_USBPHYACR3,
+					   (P2A3_RG_USB20_PUPD_BIST_EN |
+					   P2A3_RG_USB20_EN_PU_DP));
 			break;
 		default:
 			return;
@@ -1732,19 +1581,14 @@ static void u2_phy_props_set(struct mtk_xsphy *xsphy,
 			     struct xsphy_instance *inst)
 {
 	void __iomem *pbase = inst->port_base;
-	u32 tmp;
 
 	if (inst->efuse_intr)
 		mtk_phy_update_field(pbase + XSP_USBPHYA_RESERVE, P2AR_RG_INTR_CAL,
 				     inst->efuse_intr);
 
-	if (inst->efuse_term_cal) {
-		tmp = readl(pbase + XSP_USBPHYA_RESERVEA);
-		tmp &= ~P2ARA_RG_TERM_CAL;
-		tmp |= P2ARA_RG_TERM_CAL_VAL(inst->efuse_term_cal);
-		writel(tmp, pbase + XSP_USBPHYA_RESERVEA);
-	}
-
+	if (inst->efuse_term_cal)
+		mtk_phy_update_field(pbase + XSP_USBPHYA_RESERVEA, P2ARA_RG_TERM_CAL,
+				     inst->efuse_term_cal);
 
 	if (inst->eye_src)
 		mtk_phy_update_field(pbase + XSP_USBPHYACR5, P2A5_RG_HSTX_SRCTRL,
@@ -1758,40 +1602,25 @@ static void u2_phy_props_set(struct mtk_xsphy *xsphy,
 		mtk_phy_update_field(pbase + XSP_USBPHYACR1, P2A1_RG_TERM_SEL,
 				     inst->eye_term);
 
-	if (inst->discth) {
-		tmp = readl(pbase + XSP_USBPHYACR6);
-		tmp &= ~P2A6_RG_U2_DISCTH;
-		tmp |= P2A6_RG_U2_DISCTH_VAL(inst->discth);
-		writel(tmp, pbase + XSP_USBPHYACR6);
-	}
+	if (inst->discth)
+		mtk_phy_update_field(pbase + XSP_USBPHYACR6, P2A6_RG_U2_DISCTH,
+				    inst->discth);
 
-	if (inst->rx_sqth) {
-		tmp = readl(pbase + XSP_USBPHYACR6);
-		tmp &= ~P2A6_RG_U2_SQTH;
-		tmp |= P2A6_RG_U2_SQTH_VAL(inst->rx_sqth);
-		writel(tmp, pbase + XSP_USBPHYACR6);
-	}
+	if (inst->rx_sqth)
+		mtk_phy_update_field(pbase + XSP_USBPHYACR6, P2A6_RG_U2_SQTH,
+				    inst->rx_sqth);
 
-	if (inst->rev6) {
-		tmp = readl(pbase + XSP_USBPHYACR6);
-		tmp &= ~P2A6_RG_U2_PHY_REV6;
-		tmp |= P2A6_RG_U2_PHY_REV6_VAL(inst->rev6);
-		writel(tmp, pbase + XSP_USBPHYACR6);
-	}
+	if (inst->rev6)
+		mtk_phy_update_field(pbase + XSP_USBPHYACR6, P2A6_RG_U2_PHY_REV6,
+				     inst->rev6);
 
-	if (inst->pll_fbksel >= 0) {
-		tmp = readl(pbase + XSP_U2PHYA_RESERVE0);
-		tmp &= ~P2A2R0_RG_PLL_FBKSEL;
-		tmp |= P2A2R0_RG_PLL_FBKSEL_VAL(inst->pll_fbksel);
-		writel(tmp, pbase + XSP_U2PHYA_RESERVE0);
-	}
+	if (inst->pll_fbksel >= 0)
+		mtk_phy_update_field(pbase + XSP_U2PHYA_RESERVE0, P2A2R0_RG_PLL_FBKSEL,
+				     inst->pll_fbksel);
 
-	if (inst->pll_posdiv >= 0) {
-		tmp = readl(pbase + XSP_U2PHYA_RESERVE1);
-		tmp &= ~P2A2R1_RG_PLL_POSDIV;
-		tmp |= P2A2R1_RG_PLL_POSDIV_VAL(inst->pll_posdiv);
-		writel(tmp, pbase + XSP_U2PHYA_RESERVE1);
-	}
+	if (inst->pll_posdiv >= 0)
+		mtk_phy_update_field(pbase + XSP_U2PHYA_RESERVE1, P2A2R1_RG_PLL_POSDIV,
+				     inst->pll_posdiv);
 
 }
 
@@ -1799,42 +1628,28 @@ static void u2_phy_host_props_set(struct mtk_xsphy *xsphy,
 			     struct xsphy_instance *inst)
 {
 	void __iomem *pbase = inst->port_base;
-	u32 tmp;
 
-	if (inst->eye_src_host) {
-		tmp = readl(pbase + XSP_USBPHYACR5);
-		tmp &= ~P2A5_RG_HSTX_SRCTRL;
-		tmp |= P2A5_RG_HSTX_SRCTRL_VAL(inst->eye_src_host);
-		writel(tmp, pbase + XSP_USBPHYACR5);
-	}
+	if (inst->eye_src_host)
+		mtk_phy_update_field(pbase + XSP_USBPHYACR5, P2A5_RG_HSTX_SRCTRL,
+				     inst->eye_src_host);
 
-	if (inst->eye_vrt_host) {
-		tmp = readl(pbase + XSP_USBPHYACR1);
-		tmp &= ~P2A1_RG_VRT_SEL;
-		tmp |= P2A1_RG_VRT_SEL_VAL(inst->eye_vrt_host);
-		writel(tmp, pbase + XSP_USBPHYACR1);
-	}
+	if (inst->eye_vrt_host)
+		mtk_phy_update_field(pbase + XSP_USBPHYACR1, P2A1_RG_VRT_SEL,
+				     inst->eye_vrt_host);
 
-	if (inst->eye_term_host) {
-		tmp = readl(pbase + XSP_USBPHYACR1);
-		tmp &= ~P2A1_RG_TERM_SEL;
-		tmp |= P2A1_RG_TERM_SEL_VAL(inst->eye_term_host);
-		writel(tmp, pbase + XSP_USBPHYACR1);
-	}
+	if (inst->eye_term_host)
+		mtk_phy_update_field(pbase + XSP_USBPHYACR1, P2A1_RG_TERM_SEL,
+				     inst->eye_term_host);
 
-	if (inst->rev6_host) {
-		tmp = readl(pbase + XSP_USBPHYACR6);
-		tmp &= ~P2A6_RG_U2_PHY_REV6;
-		tmp |= P2A6_RG_U2_PHY_REV6_VAL(inst->rev6_host);
-		writel(tmp, pbase + XSP_USBPHYACR6);
-	}
+	if (inst->rev6_host)
+		mtk_phy_update_field(pbase + XSP_USBPHYACR6, P2A6_RG_U2_PHY_REV6,
+				    inst->rev6_host);
 }
 
 static void u3_phy_props_set(struct mtk_xsphy *xsphy,
 			     struct xsphy_instance *inst)
 {
 	void __iomem *pbase = inst->port_base;
-	u32 tmp;
 
 	if (inst->efuse_intr)
 		mtk_phy_update_field(xsphy->glb_base + SSPXTP_PHYA_GLB_00,
@@ -1849,36 +1664,27 @@ static void u3_phy_props_set(struct mtk_xsphy *xsphy,
 				     RG_XTP_LN0_RX_IMPSEL, inst->efuse_rx_imp);
 
 	if (inst->tx_lctxcm1 >= 0) {
-		tmp = readl(pbase + SSPXTP_DAIG_LN_DAIF_00);
-		tmp |= RG_XTP0_DAIF_FRC_LN_TX_LCTXCM1;
-		writel(tmp, pbase + SSPXTP_DAIG_LN_DAIF_00);
+		mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_00,
+				 RG_XTP0_DAIF_FRC_LN_TX_LCTXCM1);
 
-		tmp = readl(pbase + SSPXTP_DAIG_LN_DAIF_08);
-		tmp &= ~RG_XTP0_DAIF_LN_TX_LCTXCM1;
-		tmp |= RG_XTP0_DAIF_LN_TX_LCTXCM1_VAL(inst->tx_lctxcm1);
-		writel(tmp, pbase + SSPXTP_DAIG_LN_DAIF_08);
+		mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_08,
+				    RG_XTP0_DAIF_LN_TX_LCTXCM1, inst->tx_lctxcm1);
 	}
 
 	if (inst->tx_lctxc0 >= 0) {
-		tmp = readl(pbase + SSPXTP_DAIG_LN_DAIF_00);
-		tmp |= RG_XTP0_DAIF_FRC_LN_TX_LCTXC0;
-		writel(tmp, pbase + SSPXTP_DAIG_LN_DAIF_00);
+		mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_00,
+				 RG_XTP0_DAIF_FRC_LN_TX_LCTXC0);
 
-		tmp = readl(pbase + SSPXTP_DAIG_LN_DAIF_08);
-		tmp &= ~RG_XTP0_DAIF_LN_TX_LCTXC0;
-		tmp |= RG_XTP0_DAIF_LN_TX_LCTXC0_VAL(inst->tx_lctxc0);
-		writel(tmp, pbase + SSPXTP_DAIG_LN_DAIF_08);
+		mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_08,
+				    RG_XTP0_DAIF_LN_TX_LCTXC0, inst->tx_lctxc0);
 	}
 
 	if (inst->tx_lctxcp1 >= 0) {
-		tmp = readl(pbase + SSPXTP_DAIG_LN_DAIF_00);
-		tmp |= RG_XTP0_DAIF_FRC_LN_TX_LCTXCP1;
-		writel(tmp, pbase + SSPXTP_DAIG_LN_DAIF_00);
+		mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_00,
+				 RG_XTP0_DAIF_FRC_LN_TX_LCTXCP1);
 
-		tmp = readl(pbase + SSPXTP_DAIG_LN_DAIF_08);
-		tmp &= ~RG_XTP0_DAIF_LN_TX_LCTXCP1;
-		tmp |= RG_XTP0_DAIF_LN_TX_LCTXCP1_VAL(inst->tx_lctxcp1);
-		writel(tmp, pbase + SSPXTP_DAIG_LN_DAIF_08);
+		mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_08,
+				    RG_XTP0_DAIF_LN_TX_LCTXCP1, inst->tx_lctxcp1);
 	}
 }
 
@@ -2083,21 +1889,13 @@ static int mtk_phy_jtag_init(struct phy *phy)
 		return ret;
 	}
 
-	tmp = readl(pbase + XSP_USBPHYACR4);
-	tmp |= 0xf300;
-	writel(tmp, pbase + XSP_USBPHYACR4);
+	mtk_phy_set_bits(pbase + XSP_USBPHYACR4, 0xf300);
 
-	tmp = readl(pbase + XSP_USBPHYACR6);
-	tmp &= 0xf67ffff;
-	writel(tmp, pbase + XSP_USBPHYACR6);
+	mtk_phy_clear_bits(pbase + XSP_USBPHYACR6, ~(0xf67ffff));
 
-	tmp = readl(pbase + XSP_USBPHYACR0);
-	tmp |= 0x1;
-	writel(tmp, pbase + XSP_USBPHYACR0);
+	mtk_phy_set_bits(pbase + XSP_USBPHYACR0, 0x1);
 
-	tmp = readl(pbase + XSP_USBPHYACR2);
-	tmp &= 0xfffdffff;
-	writel(tmp, pbase + XSP_USBPHYACR2);
+	mtk_phy_clear_bits(pbase + XSP_USBPHYACR2, ~(0xfffdffff));
 
 	udelay(100);
 
