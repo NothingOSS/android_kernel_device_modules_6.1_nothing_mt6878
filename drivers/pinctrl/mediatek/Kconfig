@@ -106,7 +106,7 @@ config PINCTRL_MT6985
 	  paris and eint core driver.
 	  Say Y here to enable it.
 
-config PINCTRL_MT8188
+config DEVICE_MODULES_PINCTRL_MT8188
 	tristate "Mediatek MT8188 pin control"
 	depends on OF
 	depends on ARM64 || COMPILE_TEST
