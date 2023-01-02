@@ -3490,6 +3490,38 @@ void mtk_aal_dump(struct mtk_ddp_comp *comp)
 	mtk_cust_dump_reg(baddr, 0x24, 0x28, 0x200, 0x10);
 }
 
+void mtk_aal_regdump(void)
+{
+	void __iomem  *baddr = default_comp->regs;
+	int k;
+
+	DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(default_comp),
+			default_comp->regs_pa);
+	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(default_comp));
+	for (k = 0; k <= 0x580; k += 16) {
+		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
+			readl(baddr + k),
+			readl(baddr + k + 0x4),
+			readl(baddr + k + 0x8),
+			readl(baddr + k + 0xc));
+	}
+	DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(default_comp));
+	if (isDualPQ && aal1_default_comp) {
+		baddr = aal1_default_comp->regs;
+		DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(aal1_default_comp),
+				aal1_default_comp->regs_pa);
+		DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(aal1_default_comp));
+		for (k = 0; k <= 0x580; k += 16) {
+			DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
+				readl(baddr + k),
+				readl(baddr + k + 0x4),
+				readl(baddr + k + 0x8),
+				readl(baddr + k + 0xc));
+		}
+		DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(aal1_default_comp));
+	}
+}
+
 void disp_aal_on_end_of_frame(struct mtk_ddp_comp *comp)
 {
 	//For 120Hz rotation issue

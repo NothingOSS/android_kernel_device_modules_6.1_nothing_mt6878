@@ -670,6 +670,38 @@ void mtk_disp_tdshp_dump(struct mtk_ddp_comp *comp)
 	mtk_cust_dump_reg(baddr, 0x664, 0x668, 0x66C, 0x670);
 }
 
+void mtk_disp_tdshp_regdump(void)
+{
+	void __iomem *baddr = default_comp->regs;
+	int k;
+
+	DDPDUMP("== %s REGS:0x%x ==\n", mtk_dump_comp_str(default_comp),
+			default_comp->regs_pa);
+	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(default_comp));
+	for (k = 0; k <= 0x67c; k += 16) {
+		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
+			readl(baddr + k),
+			readl(baddr + k + 0x4),
+			readl(baddr + k + 0x8),
+			readl(baddr + k + 0xc));
+	}
+	DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(default_comp));
+	if (default_comp->mtk_crtc->is_dual_pipe && tdshp1_default_comp) {
+		baddr = tdshp1_default_comp->regs;
+		DDPDUMP("== %s REGS:0x%x ==\n", mtk_dump_comp_str(tdshp1_default_comp),
+				tdshp1_default_comp->regs_pa);
+		DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(tdshp1_default_comp));
+		for (k = 0; k <= 0x67c; k += 16) {
+			DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
+				readl(baddr + k),
+				readl(baddr + k + 0x4),
+				readl(baddr + k + 0x8),
+				readl(baddr + k + 0xc));
+		}
+		DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(tdshp1_default_comp));
+	}
+}
+
 static int mtk_disp_tdshp_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;

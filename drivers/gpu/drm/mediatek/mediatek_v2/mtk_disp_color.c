@@ -34,6 +34,7 @@ static struct DISP_PQ_PARAM g_Color_Param[DISP_COLOR_TOTAL];
 
 // It's a work around for no comp assigned in functions.
 static struct mtk_ddp_comp *default_comp;
+static struct mtk_ddp_comp *default_comp1;
 
 int ncs_tuning_mode;
 
@@ -3578,6 +3579,38 @@ void mtk_color_dump(struct mtk_ddp_comp *comp)
 	mtk_serial_dump_reg(baddr, 0xC50, 2);
 }
 
+void mtk_color_regdump(void)
+{
+	void __iomem *baddr = default_comp->regs;
+	int k;
+
+	DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(default_comp),
+			default_comp->regs_pa);
+	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(default_comp));
+	for (k = 0x400; k <= 0xd5c; k += 16) {
+		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
+			readl(baddr + k),
+			readl(baddr + k + 0x4),
+			readl(baddr + k + 0x8),
+			readl(baddr + k + 0xc));
+	}
+	DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(default_comp));
+	if (default_comp->mtk_crtc->is_dual_pipe && default_comp1) {
+		baddr = default_comp1->regs;
+		DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(default_comp1),
+				default_comp1->regs_pa);
+		DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(default_comp1));
+		for (k = 0x400; k <= 0xd5c; k += 16) {
+			DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
+				readl(baddr + k),
+				readl(baddr + k + 0x4),
+				readl(baddr + k + 0x8),
+				readl(baddr + k + 0xc));
+		}
+		DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(default_comp1));
+	}
+}
+
 static int mtk_disp_color_bind(struct device *dev, struct device *master,
 			       void *data)
 {
@@ -3636,6 +3669,8 @@ static int mtk_disp_color_probe(struct platform_device *pdev)
 
 	if (!default_comp)
 		default_comp = &priv->ddp_comp;
+	if (comp_id == DDP_COMPONENT_COLOR1)
+		default_comp1 = &priv->ddp_comp;
 
 	priv->data = of_device_get_match_data(dev);
 
