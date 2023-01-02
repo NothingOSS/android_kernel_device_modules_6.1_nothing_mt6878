@@ -1206,6 +1206,7 @@ struct eth_dev *mtk_gether_setup_name(struct usb_gadget *g,
 	struct net_device	*net;
 	int			status;
 	static unsigned char a[6] = {0x06, 0x16, 0x26, 0x36, 0x46, 0x56};
+	u8                      addr[ETH_ALEN];
 
 	net = alloc_etherdev(sizeof(*dev));
 	if (!net)
@@ -1229,9 +1230,10 @@ struct eth_dev *mtk_gether_setup_name(struct usb_gadget *g,
 	dev->qmult = qmult;
 	snprintf(net->name, sizeof(net->name), "%s%%d", netname);
 
-	if (get_ether_addr(dev_addr, net->dev_addr))
+	if (get_ether_addr(dev_addr, addr))
 		dev_info(&g->dev,
 			"using random %s ethernet address\n", "self");
+	eth_hw_addr_set(net, addr);
 
 	ether_addr_copy(dev->host_mac, a);
 	pr_debug("%s, rndis: %x:%x:%x:%x:%x:%x\n", __func__,
