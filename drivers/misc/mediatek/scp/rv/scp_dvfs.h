@@ -8,9 +8,10 @@
 
 #define PLL_DISABLE             (0)
 #define PLL_ENABLE              (1)
-#define MAX_SUPPORTED_PLL_NUM   (9)
+#define MAX_SUPPORTED_PLL_NUM   (10)
 #define CLK_26M                 (26)
 
+#define CORE_ONLINE_MSK         (0x1)
 #define REG_MAX_MASK            (0xFFFFFFFF)
 #define SCP_ULPOSC_SEL_CORE     (0x4)
 #define SCP_ULPOSC_SEL_PERI     (0x8)
@@ -39,7 +40,15 @@
 enum scp_core_enum {
 	SCP_CORE_0,
 	SCP_CORE_1,
+	SCP_CORE_2,
 	SCP_MAX_CORE_NUM,
+};
+
+enum scp_core_mask_enum {
+	SCP_CORE_0_ONLINE_MASK = BIT(SCP_CORE_0),
+	SCP_CORE_1_ONLINE_MASK = BIT(SCP_CORE_1),
+	SCP_CORE_2_ONLINE_MASK = BIT(SCP_CORE_2),
+	SCP_ALL_CORE_ONLINE_MASK = BIT(SCP_MAX_CORE_NUM) - 1,
 };
 
 enum scp_dvfs_err_enum {
@@ -249,6 +258,7 @@ struct scp_dvfs_hw {
 	int vow_lp_en_gear;
 	int cur_dbg_core;
 	u32 core_nums;
+	u32 core_online_msk;
 	unsigned int secure_access_scp;
 	bool bypass_pmic_rg_access;
 };

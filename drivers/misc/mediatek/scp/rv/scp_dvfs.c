@@ -66,6 +66,7 @@
 /* DTS Property Names */
 #define PROPNAME_SCP_DVFS_DISABLE      "scp-dvfs-disable"
 #define PROPNAME_SCP_DVFS_CORES        "scp-cores"
+#define PROPNAME_SCP_CORE_ONLINE_MASK  "scp-core-online-mask"
 #define PROPNAME_SCP_VLP_SUPPORT       "vlp-support"
 #define PROPNAME_SCP_VLPCK_SUPPORT     "vlpck-support"
 #define PROPNAME_PMIC                  "pmic"
@@ -150,14 +151,14 @@ const char *scp_dvfs_hw_chip_ver[MAX_SCP_DVFS_CHIP_HW] __initconst = {
 struct ulposc_cali_regs cali_regs[MAX_ULPOSC_VERSION] __initdata = {
 	[ULPOSC_VER_1] = {
 		REG_DEFINE(con0, 0x2C0, REG_MAX_MASK, 0)
-		REG_DEFINE(cali, 0x2C0, GENMASK(CAL_BITS, 0), 0)
+		REG_DEFINE(cali, 0x2C0, GENMASK(CAL_BITS - 1, 0), 0)
 		REG_DEFINE(con1, 0x2C4, REG_MAX_MASK, 0)
 		REG_DEFINE(con2, 0x2C8, REG_MAX_MASK, 0)
 	},
 	[ULPOSC_VER_2] = { /* Suppose VLP_CKSYS is from 0x1C013000 */
 		REG_DEFINE(con0, 0x210, REG_MAX_MASK, 0)
-		REG_DEFINE(cali_ext, 0x210, GENMASK(CAL_EXT_BITS, 0), 7)
-		REG_DEFINE_WITH_INIT(cali, 0x210, GENMASK(CAL_BITS, 0), 0, 0x40, 0)
+		REG_DEFINE(cali_ext, 0x210, GENMASK(CAL_EXT_BITS - 1, 0), 7)
+		REG_DEFINE_WITH_INIT(cali, 0x210, GENMASK(CAL_BITS - 1, 0), 0, 0x40, 0)
 		REG_DEFINE(con1, 0x214, REG_MAX_MASK, 0)
 		REG_DEFINE(con2, 0x218, REG_MAX_MASK, 0)
 	},
@@ -231,6 +232,11 @@ struct scp_pmic_regs scp_pmic_hw_regs[MAX_SCP_DVFS_CHIP_HW] = {
 	},
 };
 
+static bool is_core_online(uint32_t core_id)
+{
+	return (CORE_ONLINE_MSK << core_id) & g_dvfs_dev.core_online_msk;
+}
+
 static void slp_ipi_init(void)
 {
 	int ret;
@@ -242,7 +248,7 @@ static void slp_ipi_init(void)
 		WARN_ON(1);
 	}
 
-	if (g_dvfs_dev.core_nums == 2) {
+	if (is_core_online(SCP_CORE_1)) {
 		ret = mtk_ipi_register(&scp_ipidev, IPI_OUT_C_SLEEP_1,
 			NULL, NULL, &scp_ipi_ackdata1);
 		if (ret)
@@ -435,7 +441,7 @@ static uint32_t sum_required_freq(uint32_t core_id)
 	uint32_t i = 0;
 	uint32_t sum = 0;
 
-	if (core_id >= g_dvfs_dev.core_nums) {
+	if (!is_core_online(core_id)) {
 		pr_notice("[%s]: ERROR: core_id is invalid: %u\n",
 				__func__, core_id);
 		WARN_ON(1);
@@ -485,24 +491,23 @@ static uint32_t _mt_scp_dvfs_set_test_freq(uint32_t sum)
 uint32_t scp_get_freq(void)
 {
 	uint32_t i;
-	uint32_t sum_core0 = 0;
-	uint32_t sum_core1 = 0;
+	uint32_t single_core_sum = 0;
 	uint32_t sum = 0;
 	uint32_t return_freq = 0;
 
 	/*
 	 * calculate scp frequency requirement (debug freq is not included)
+	 * and find max required freq in all enabled cores
 	 */
-	sum_core0 += sum_required_freq(SCPSYS_CORE0);
-	if (g_dvfs_dev.core_nums > SCPSYS_CORE1)
-		sum_core1 = sum_required_freq(SCPSYS_CORE1);
+	for (i = 0; i < SCP_MAX_CORE_NUM ; i++) {
+		if (!is_core_online(i))
+			continue;
+		single_core_sum = sum_required_freq(i);
 
-	if (sum_core0 > sum_core1) {
-		sum = sum_core0;
-		feature_table[VCORE_TEST_FEATURE_ID].sys_id = SCPSYS_CORE0;
-	} else {
-		sum = sum_core1;
-		feature_table[VCORE_TEST_FEATURE_ID].sys_id = SCPSYS_CORE1;
+		if (single_core_sum > sum) {
+			sum = single_core_sum;
+			feature_table[VCORE_TEST_FEATURE_ID].sys_id = i;
+		}
 	}
 
 	/*
@@ -1178,7 +1183,8 @@ static ssize_t mt_scp_dvfs_sleep_proc_write(
 		}
 	} else if (!strcmp(cmd, "dbg_core")) {
 		dbg_core = (enum scp_core_enum) slp_cmd;
-		if (dbg_core < SCP_MAX_CORE_NUM && dbg_core < g_dvfs_dev.core_nums)
+		/* IPI/Mbox of Core2 is not implemented. */
+		if (is_core_online(dbg_core) && (dbg_core != SCP_CORE_2))
 			g_dvfs_dev.cur_dbg_core = dbg_core;
 	} else {
 		pr_notice("[%s]: invalid command: %s\n", __func__, cmd);
@@ -2146,13 +2152,14 @@ static int mt_scp_dump_sleep_count(void)
 		goto FINISH;
 	}
 
-	if (g_dvfs_dev.core_nums < 2) {
+	/* if no enable core1 */
+	if (!is_core_online(SCP_CORE_1)) {
 		pr_notice("[SCP] [%s:%d] - scp_sleep_cnt_0 = %d\n",
 			__func__, __LINE__, scp_ipi_ackdata0);
 		goto FINISH;
 	}
 
-	/* if there are 2 cores */
+	/* if there are core0 & core1 */
 	ret = mtk_ipi_send_compl(&scp_ipidev, IPI_OUT_C_SLEEP_1,
 		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_1, 500);
 	if (ret != IPI_ACTION_DONE) {
@@ -2547,12 +2554,18 @@ static int __init mt_scp_dts_init(struct platform_device *pdev)
 		g_dvfs_dev.vlpck_bypass_phase1 = false;
 	}
 
-	ret = of_property_read_u32(node, PROPNAME_SCP_DVFS_CORES,
-		&g_dvfs_dev.core_nums);
-	if (ret || g_dvfs_dev.core_nums > SCP_MAX_CORE_NUM) {
-		pr_notice("[%s]: find invalid core numbers, set to 1\n",
-			__func__);
-		g_dvfs_dev.core_nums = 1;
+	/* Either PROPNAME_SCP_DVFS_CORES or PROPNAME_SCP_CORE_ONLINE_MASK should be given */
+	ret = of_property_read_u32(node, PROPNAME_SCP_DVFS_CORES, &g_dvfs_dev.core_nums);
+	if (!ret && (g_dvfs_dev.core_nums == 1 || g_dvfs_dev.core_nums == 2)) {
+		g_dvfs_dev.core_online_msk = BIT(g_dvfs_dev.core_nums) - 1;
+	}
+	ret = of_property_read_u32(node, PROPNAME_SCP_CORE_ONLINE_MASK,
+		&g_dvfs_dev.core_online_msk);
+	if(!g_dvfs_dev.core_online_msk) {
+		pr_notice("[%s]: find invalid core mask: %u, set to 0x1\n",
+			__func__, g_dvfs_dev.core_online_msk);
+		g_dvfs_dev.core_online_msk = SCP_CORE_0_ONLINE_MASK;
+		WARN_ON(1);
 	}
 
 	if (g_dvfs_dev.vlp_support)
