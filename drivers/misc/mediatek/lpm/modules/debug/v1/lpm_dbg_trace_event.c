@@ -24,11 +24,12 @@ static void spm_resource_req_timer_fn(struct timer_list *data)
         u32 req[SUBSYS_REQ_MAX] = {0};
 
         for (i = SUBSYS_REQ_MD; i < SUBSYS_REQ_MAX; i++) {
-		req[i] = !!(plat_mmio_read(lpm_subsys_req[i].req_addr1) &
-				lpm_subsys_req[i].req_mask1);
-	if (lpm_subsys_req[i].req_addr2)
-		req[i] |= !!(plat_mmio_read(lpm_subsys_req[i].req_addr2) &
-				lpm_subsys_req[i].req_mask2);
+            if (lpm_subsys_req[i].req_addr1)
+                req[i] = !!(plat_mmio_read(lpm_subsys_req[i].req_addr1) &
+                        lpm_subsys_req[i].req_mask1);
+            if (lpm_subsys_req[i].req_addr2)
+                req[i] |= !!(plat_mmio_read(lpm_subsys_req[i].req_addr2) &
+                        lpm_subsys_req[i].req_mask2);
         }
 
         trace_SPM__resource_req_0(
