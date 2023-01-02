@@ -12,8 +12,9 @@
 #include <linux/mfd/mt6359p/registers.h>
 #include <linux/mfd/mt6397/core.h>
 #include <linux/module.h>
-#include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/of.h>
+#include <linux/property.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 
@@ -309,8 +310,8 @@ err:
 	return ret;
 }
 
-static int mt635x_auxadc_of_xlate(struct iio_dev *indio_dev,
-				  const struct of_phandle_args *iiospec)
+static int mt635x_auxadc_fwnode_xlate(struct iio_dev *indio_dev,
+				  const struct fwnode_reference_args *iiospec)
 {
 	int i;
 
@@ -324,7 +325,7 @@ static int mt635x_auxadc_of_xlate(struct iio_dev *indio_dev,
 
 static const struct iio_info mt635x_auxadc_info = {
 	.read_raw = &mt635x_auxadc_read_raw,
-	.of_xlate = &mt635x_auxadc_of_xlate,
+	.fwnode_xlate = &mt635x_auxadc_fwnode_xlate,
 };
 
 static int auxadc_init_imix_r(struct mt635x_auxadc_device *adc_dev,

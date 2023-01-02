@@ -9,6 +9,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/property.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 
@@ -258,8 +259,8 @@ err:
 	return ret;
 }
 
-static int mt6338_auxadc_of_xlate(struct iio_dev *indio_dev,
-				  const struct of_phandle_args *iiospec)
+static int mt6338_auxadc_fwnode_xlate(struct iio_dev *indio_dev,
+				  const struct fwnode_reference_args *iiospec)
 {
 	int i;
 
@@ -273,7 +274,7 @@ static int mt6338_auxadc_of_xlate(struct iio_dev *indio_dev,
 
 static const struct iio_info mt6338_auxadc_info = {
 	.read_raw = &mt6338_auxadc_read_raw,
-	.of_xlate = &mt6338_auxadc_of_xlate,
+	.fwnode_xlate = &mt6338_auxadc_fwnode_xlate,
 };
 
 static int auxadc_get_data_from_dt(struct mt6338_auxadc_device *adc_dev,

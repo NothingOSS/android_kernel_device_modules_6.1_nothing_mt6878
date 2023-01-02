@@ -14,6 +14,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/property.h>
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
 #include <linux/regmap.h>
@@ -386,8 +387,8 @@ err:
 	return ret;
 }
 
-static int pmic_adc_of_xlate(struct iio_dev *indio_dev,
-			     const struct of_phandle_args *iiospec)
+static int pmic_adc_fwnode_xlate(struct iio_dev *indio_dev,
+			     const struct fwnode_reference_args *iiospec)
 {
 	int i;
 	int channel = DT_CHANNEL_CONVERT(iiospec->args[0]);
@@ -404,7 +405,7 @@ static int pmic_adc_of_xlate(struct iio_dev *indio_dev,
 
 static const struct iio_info pmic_adc_info = {
 	.read_raw = &pmic_adc_read_raw,
-	.of_xlate = &pmic_adc_of_xlate,
+	.fwnode_xlate = &pmic_adc_fwnode_xlate,
 };
 
 static int auxadc_get_uisoc(void)
