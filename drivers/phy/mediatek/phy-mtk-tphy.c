@@ -87,6 +87,8 @@
 #define PA5_RG_U2_HS_100U_U3_EN	BIT(11)
 
 #define U3P_USBPHYACR6		0x018
+#define PA6_RG_U2_PRE_EMP		GENMASK(31, 30)
+#define PA6_RG_U2_PRE_EMP_VAL(x)	((0x3 & (x)) << 30)
 #define PA6_RG_U2_PHY_REV6		GENMASK(31, 30)
 #define PA6_RG_U2_PHY_REV6_VAL(x)	((0x3 & (x)) << 30)
 #define PA6_RG_U2_PHY_REV6_MASK	(0x3)
@@ -443,6 +445,7 @@ struct mtk_phy_instance {
 	int eye_term;
 	int intr;
 	int discth;
+	int pre_emphasis;
 	int rx_sqth;
 	int rev4;
 	int rev6;
@@ -1855,6 +1858,8 @@ static void phy_parse_property(struct mtk_tphy *tphy,
 				 &instance->intr);
 	device_property_read_u32(dev, "mediatek,discth",
 				 &instance->discth);
+	device_property_read_u32(dev, "mediatek,pre-emphasis",
+				 &instance->pre_emphasis);
 	device_property_read_u32(dev, "mediatek,rx-sqth",
 				 &instance->rx_sqth);
 	device_property_read_u32(dev, "mediatek,rev4",
@@ -1869,6 +1874,7 @@ static void phy_parse_property(struct mtk_tphy *tphy,
 		instance->bc12_en, instance->eye_src,
 		instance->eye_vrt, instance->eye_term,
 		instance->intr, instance->discth);
+	dev_dbg(dev, "pre-emp:%d\n", instance->pre_emphasis);
 	dev_dbg(dev, "rx_sqth:%d\n", instance->rx_sqth);
 	dev_dbg(dev, "rev4:%d, rev6:%d\n", instance->rev4, instance->rev6);
 	dev_dbg(dev, "pll-bw:%d, bgr-div:%d\n", instance->pll_bw, instance->bgr_div);
@@ -1912,6 +1918,10 @@ static void u2_phy_props_set(struct mtk_tphy *tphy,
 	if (instance->discth)
 		mtk_phy_update_bits(com + U3P_USBPHYACR6, PA6_RG_U2_DISCTH,
 				    PA6_RG_U2_DISCTH_VAL(instance->discth));
+
+	if (instance->pre_emphasis)
+		mtk_phy_update_bits(com + U3P_USBPHYACR6, PA6_RG_U2_PRE_EMP,
+				    PA6_RG_U2_PRE_EMP_VAL(instance->pre_emphasis));
 
 	if (instance->rx_sqth) {
 		tmp = readl(com + U3P_USBPHYACR6);
