@@ -281,7 +281,7 @@ static void gauge_irq_sync_unlock(struct irq_data *data)
 
 	ret = regmap_write(priv->regmap, reg, bits);
 	if (ret)
-		dev_err(priv->dev, "Failed to set/clr irq con %d\n", data->hwirq);
+		dev_err(priv->dev, "Failed to set/clr irq con %lu\n", data->hwirq);
 
 	mutex_unlock(&priv->irq_lock);
 }

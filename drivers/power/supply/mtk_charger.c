@@ -533,7 +533,7 @@ static void mtk_charger_start_timer(struct mtk_charger *info)
 	info->endtime = end_time;
 	ktime = ktime_set(info->endtime.tv_sec, info->endtime.tv_nsec);
 
-	chr_err("%s: alarm timer start:%d, %ld %ld\n", __func__, ret,
+	chr_err("%s: alarm timer start:%d, %lld %ld\n", __func__, ret,
 		info->endtime.tv_sec, info->endtime.tv_nsec);
 	alarm_start(&info->charger_timer, ktime);
 }
@@ -1837,7 +1837,7 @@ static ssize_t sc_ibat_limit_store(
 		if (val < 0) {
 			chr_err(
 				"[smartcharging ibat limit] val is %ld ??\n",
-				(int)val);
+				val);
 			val = 0;
 		}
 
@@ -3353,7 +3353,7 @@ int notify_adapter_event(struct notifier_block *notifier,
 int chg_alg_event(struct notifier_block *notifier,
 			unsigned long event, void *data)
 {
-	chr_err("%s: evt:%d\n", __func__, event);
+	chr_err("%s: evt:%lu\n", __func__, event);
 
 	return NOTIFY_DONE;
 }

@@ -266,7 +266,7 @@ void fg_daemon_send_data(struct mtk_battery *gm,
 
 				gm->algo.active = true;
 				battery_algo_init(gm);
-				bm_err("[%s]: %d %d,%d %d,%d %d,%d %d, enable Kernel mode Gauge\n",
+				bm_err("[%s]: %d %d,%d %d,%d %zu,%d %zu, enable Kernel mode Gauge\n",
 					__func__,
 					gm->fg_version.daemon_cmds, FG_DAEMON_CMD_FROM_USER_NUMBER,
 					gm->fg_version.kernel_cmds, FG_KERNEL_CMD_FROM_USER_NUMBER,
@@ -1710,8 +1710,9 @@ void exec_BAT_EC(int cmd, int param)
 			bm_err("[%s_Error] exe_BAT_EC cmd %d. show all gauge i2c fail conuter\n",
 				reg_type_name, cmd);
 			prop_control = &gm->prop_control;
-			bm_err("[%s_Error] Binder last counter: %d, period: %d", reg_type_name,
-				prop_control->last_binder_counter, prop_control->last_period);
+			bm_err("[%s_Error] Binder last counter: %d, period: %lld", reg_type_name,
+				prop_control->last_binder_counter,
+				prop_control->last_period.tv_sec);
 			for (i = 0; i < GAUGE_PROP_MAX; i++) {
 				gp_number_to_name(gp_name, i);
 				bm_err("[%s_Error] %s, fail_counter: %d\n",
@@ -2421,7 +2422,7 @@ static ssize_t BAT_HEALTH_store(
 
 	gm = get_mtk_battery();
 
-	bm_err("%s, size =%d, str=%s\n", __func__, size, buf);
+	bm_err("%s, size =%zu, str=%s\n", __func__, size, buf);
 
 	if (size < 90 || size > 350) {
 		bm_err("%s error, size mismatch\n", __func__);
@@ -2473,7 +2474,7 @@ static ssize_t BAT_HEALTH_store(
 		for (i = 0; i < 3; i++)
 			gm->bh_data.times[i].tv_sec = value[i+43];
 
-	bm_err("%s count=%d,serial=%d,source=%d,42:%d, value43:[%d, %ld],value45[%d %ld]\n",
+	bm_err("%s count=%d,serial=%d,source=%d,42:%d, value43:[%d, %lld],value45[%d %lld]\n",
 		__func__,
 		count, gm->bh_data.data[0], gm->bh_data.data[1],
 		gm->bh_data.data[42],
@@ -3563,7 +3564,7 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 			dtime = ktime_sub(ctime, gm->uisoc_oldtime);
 			diff_time = ktime_to_timespec64(dtime);
 
-			bm_err("[K]FG_DAEMON_CMD_SET_KERNEL_UISOC = %d %d GM3:%d old:%d diff=%ld\n",
+			bm_err("[K]FG_DAEMON_CMD_SET_KERNEL_UISOC = %d %d GM3:%d old:%d diff=%lld\n",
 				daemon_ui_soc, gm->ui_soc,
 				gm->disableGM30, old_uisoc, diff_time.tv_sec);
 			gm->uisoc_oldtime = ctime;
@@ -4913,7 +4914,7 @@ void fg_update_sw_iavg(struct mtk_battery *gm)
 	dtime = ktime_sub(ctime, gm->sw_iavg_time);
 	diff = ktime_to_timespec64(dtime);
 
-	bm_debug("[%s]diff time:%ld\n",
+	bm_debug("[%s]diff time:%lld\n",
 		__func__,
 		diff.tv_sec);
 	if (diff.tv_sec >= 60) {
@@ -4930,7 +4931,7 @@ void fg_update_sw_iavg(struct mtk_battery *gm)
 			if (version < GAUGE_HW_V2000)
 				wakeup_fg_algo(gm, FG_INTR_IAVG);
 		}
-		bm_debug("[%s]time:%ld car:%d %d iavg:%d ht:%d lt:%d gap:%d\n",
+		bm_debug("[%s]time:%lld car:%d %d iavg:%d ht:%d lt:%d gap:%d\n",
 			__func__,
 			diff.tv_sec, fg_coulomb, gm->sw_iavg_car, gm->sw_iavg,
 			gm->sw_iavg_ht, gm->sw_iavg_lt, gm->sw_iavg_gap);

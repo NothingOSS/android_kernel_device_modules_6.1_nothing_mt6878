@@ -1193,7 +1193,7 @@ int force_get_tbat_internal(struct mtk_battery *gm)
 
 			tmp_time = ktime_to_timespec64(dtime);
 
-			bm_trace("[%s] current:%d,%d,%d,%d,%d,%d pre:%d,%d,%d,%d,%d,%d time:%d\n",
+			bm_trace("[%s] current:%d,%d,%d,%d,%d,%d pre:%d,%d,%d,%d,%d,%d time:%llu\n",
 				__func__,
 				bat_temperature_volt_temp, bat_temperature_volt,
 				fg_current_state, fg_current_temp,
@@ -2923,7 +2923,7 @@ static int uisoc_set(struct mtk_battery *gm,
 
 		tmp_time = ktime_to_timespec64(diff);
 
-		bm_debug("[%s] FG_DAEMON_CMD_SET_KERNEL_UISOC = %d %d GM3:%d old:%d diff=%ld\n",
+		bm_debug("[%s] FG_DAEMON_CMD_SET_KERNEL_UISOC = %d %d GM3:%d old:%d diff=%lld\n",
 			__func__,
 			daemon_ui_soc, gm->ui_soc,
 			gm->disableGM30, old_uisoc, tmp_time.tv_sec);
@@ -3211,7 +3211,7 @@ static void fg_drv_update_hw_status(struct mtk_battery *gm)
 	gm->tbat = force_get_tbat_internal(gm);
 	fg_update_porp_control(prop_control);
 
-	bm_err("car[%d,%ld,%ld,%ld,%ld] tmp:%d soc:%d uisoc:%d vbat:%d ibat:%d baton:%d algo:%d gm3:%d %d %d %d %d %d, get_prop:%d %d %d %d %d %ld %d, boot:%d\n",
+	bm_err("car[%d,%ld,%ld,%ld,%ld] tmp:%d soc:%d uisoc:%d vbat:%d ibat:%d baton:%d algo:%d gm3:%d %d %d %d %d %d, get_prop:%lld %d %d %d %lld %ld %lld, boot:%d\n",
 		gauge_get_int_property(GAUGE_PROP_COULOMB),
 		gm->coulomb_plus.end, gm->coulomb_minus.end,
 		gm->uisoc_plus.end, gm->uisoc_minus.end,
@@ -3237,7 +3237,7 @@ static void fg_drv_update_hw_status(struct mtk_battery *gm)
 		regmap_type = gauge_get_int_property(GAUGE_PROP_REGMAP_TYPE);
 		reg_type_to_name(reg_type_name, regmap_type);
 
-		bm_err("[%s_Error] get %s hang over 3 sec, time:%d\n",
+		bm_err("[%s_Error] get %s hang over 3 sec, time:%lld\n",
 			reg_type_name, gp_name, prop_control->last_diff_time.tv_sec);
 		if (!gm->disableGM30)
 			WARN_ON(1);
@@ -3246,8 +3246,8 @@ static void fg_drv_update_hw_status(struct mtk_battery *gm)
 		regmap_type = gauge_get_int_property(GAUGE_PROP_REGMAP_TYPE);
 		reg_type_to_name(reg_type_name, regmap_type);
 
-		bm_err("[%s_Error] Binder last counter: %d, period: %d", reg_type_name,
-			prop_control->last_binder_counter, prop_control->last_period);
+		bm_err("[%s_Error] Binder last counter: %d, period: %lld", reg_type_name,
+			prop_control->last_binder_counter, prop_control->last_period.tv_sec);
 		for (i = 0; i < GAUGE_PROP_MAX; i++) {
 			gp_number_to_name(gp_name, i);
 			bm_err("[%s_Error] %s, fail_counter: %d\n",
@@ -4030,7 +4030,7 @@ int fg_check_lk_swocv(struct device *dev,
 		if (prop == NULL) {
 			bm_err("fg_swocv_v prop == NULL, len=%d\n", len);
 		} else {
-			snprintf(temp, (len + 1), "%s", prop);
+			snprintf(temp, (len + 1), "%s", (char *)prop);
 			if (kstrtoint(temp, 10, &gm->ptim_lk_v))
 				return -EINVAL;
 
@@ -4044,7 +4044,7 @@ int fg_check_lk_swocv(struct device *dev,
 		if (prop == NULL) {
 			bm_err("fg_swocv_i prop == NULL, len=%d\n", len);
 		} else {
-			snprintf(temp, (len + 1), "%s", prop);
+			snprintf(temp, (len + 1), "%s", (char *)prop);
 			if (kstrtoint(temp, 10, &gm->ptim_lk_i))
 				return -EINVAL;
 
@@ -4057,7 +4057,7 @@ int fg_check_lk_swocv(struct device *dev,
 		if (prop == NULL) {
 			bm_err("shutdown_time prop == NULL, len=%d\n", len);
 		} else {
-			snprintf(temp, (len + 1), "%s", prop);
+			snprintf(temp, (len + 1), "%s", (char *)prop);
 			if (kstrtoint(temp, 10, &gm->pl_shutdown_time))
 				return -EINVAL;
 
