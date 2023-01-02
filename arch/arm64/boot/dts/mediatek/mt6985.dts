@@ -3417,8 +3417,8 @@
 						0 0 0 0 0 0 0 0 0 0 0 0 0 0
 						0 0 0 0 0 0 0 0 0 0 0 0 0 0
 						0 0 0>;
-			/* clocks = <&clk26m>; */
-			/* clock-names = "kpd"; */
+			clocks = <&clk26m>;
+			clock-names = "kpd";
 		};
 
 		regulator_vibrator: regulator_vibrator {
