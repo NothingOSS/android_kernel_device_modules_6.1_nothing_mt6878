@@ -18,6 +18,7 @@
 #include <linux/device.h>
 #include <linux/jiffies.h>
 #include <linux/sched.h>
+#include <linux/sched/mm.h>
 #include <linux/workqueue.h>
 #include <linux/err.h>
 #include <linux/mm.h>
