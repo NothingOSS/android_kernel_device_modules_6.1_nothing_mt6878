@@ -235,7 +235,7 @@ static unsigned long get_volt_by_freq(struct device *dev, unsigned long freq)
 		opp = dev_pm_opp_find_freq_floor(dev, &freq);
 
 	if (IS_ERR(opp)) {
-		dev_notice(dev, "%s failed(%d) freq=%lu\n",
+		dev_notice(dev, "%s failed(%ld) freq=%lu\n",
 			__func__, PTR_ERR(opp), freq);
 		return 0;
 	}
@@ -295,7 +295,7 @@ static void set_comm_icc_bw(struct common_node *comm_node)
 					}
 				}
 				dev_notice(comm_node->comm_dev,
-					"comm(%d) max_bw=%u smi_clk=%u volt=%u\n",
+					"comm(%d) max_bw=%u smi_clk=%lu volt=%u\n",
 					comm_id, max_bw, smi_clk, volt);
 			}
 			if (IS_ERR_OR_NULL(comm_node->comm_reg)) {
@@ -311,7 +311,7 @@ static void set_comm_icc_bw(struct common_node *comm_node)
 			} else if (regulator_set_voltage(comm_node->comm_reg,
 					volt, INT_MAX))
 				dev_notice(comm_node->comm_dev,
-					"regulator_set_voltage failed volt=%lu\n", volt);
+					"regulator_set_voltage failed volt=%u\n", volt);
 			comm_node->volt = volt;
 
 		}
@@ -499,7 +499,7 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 		if (port_id != VIRT_COMM_PORT_ID)
 			chnn_id = comm_port_node->channel - 1;
 		if (log_level & 1 << log_bw)
-			pr_notice("%s comm %d port %d chnn %d larb %d %d %d latest %d %d chn %d %d %d %d\n",
+			pr_notice("%s comm %d port %d chnn %d larb %d %d %d latest %d %llu chn %d %d %d %d\n",
 				__func__,
 				comm_id, port_id, chnn_id, LARB_ID(src->id),
 				icc_to_MBps(src->avg_bw),
@@ -672,7 +672,7 @@ static void comm_port_bw_dump(struct seq_file *file, u32 comm_id, u32 port_id, u
 		comm_port_bw_rec->l_peak_bw[comm_id][port_id][i] == 0)
 		return;
 
-	seq_printf(file, "[%5lu.%06lu] comm%d port%d larb%2d %8d %8d %8d %8d\n",
+	seq_printf(file, "[%5llu.%06llu] comm%d port%d larb%2d %8d %8d %8d %8d\n",
 		(u64)ts, rem_nsec / 1000,
 		comm_id, port_id,
 		comm_port_bw_rec->larb_id[comm_id][port_id][i],
@@ -689,7 +689,7 @@ static void chn_bw_dump(struct seq_file *file, u32 comm_id, u32 chnn_id, u32 i)
 
 	ts = chn_bw_rec->time[comm_id][chnn_id][i];
 	rem_nsec = do_div(ts, 1000000000);
-	seq_printf(file, "[%5lu.%06lu] comm%d_%d %8d %8d %8d %8d\n",
+	seq_printf(file, "[%5llu.%06llu] comm%d_%d %8d %8d %8d %8d\n",
 		(u64)ts, rem_nsec / 1000,
 		comm_id, chnn_id,
 		icc_to_MBps(chn_bw_rec->srt_r_bw[comm_id][chnn_id][i]),
@@ -705,7 +705,7 @@ static void hrt_bw_dump(struct seq_file *file, u32 i)
 
 	ts = g_hrt->hrt_rec.time[i];
 	rem_nsec = do_div(ts, 1000000000);
-	seq_printf(file, "[%5lu.%06lu]     %8d %8d %8d\n",
+	seq_printf(file, "[%5llu.%06llu]     %8d %8d %8d\n",
 		(u64)ts, rem_nsec / 1000,
 		g_hrt->hrt_rec.avail_hrt[i],
 		g_hrt->hrt_rec.cam_max_hrt[i],
@@ -719,7 +719,7 @@ static void cam_hrt_bw_dump(struct seq_file *file, u32 i)
 
 	ts = g_hrt->cam_hrt_rec.time[i];
 	rem_nsec = do_div(ts, 1000000000);
-	seq_printf(file, "[%5lu.%06lu]     %17d\n",
+	seq_printf(file, "[%5llu.%06llu]     %17d\n",
 		(u64)ts, rem_nsec / 1000,
 		g_hrt->cam_hrt_rec.cam_max_hrt[i]);
 }

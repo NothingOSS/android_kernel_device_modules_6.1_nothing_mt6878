@@ -142,7 +142,7 @@ void mm_qos_update_all_request(struct list_head *owner_list)
 		if (!req->updated)
 			continue;
 		comp_bw = get_comp_value(req->bw_value, req->comp_type);
-		pr_notice("%s: set data_bw=%d peak_bw=%d\n",
+		pr_notice("%s: set data_bw=%llu peak_bw=%d\n",
 			__func__, comp_bw, req->hrt_value);
 		mtk_icc_set_bw(req->icc_path,
 			(req->bw_value == MTK_MMQOS_MAX_BW)
