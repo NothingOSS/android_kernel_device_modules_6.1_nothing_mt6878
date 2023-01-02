@@ -71,7 +71,7 @@ TRACE_EVENT(sched_leakage,
 		__entry->sum_cap = sum_cap;
 		),
 
-	TP_printk("cpu=%d opp=%d temp=%lu lkg=%lu sum_lkg=%lu, sum_cap=%lu",
+	TP_printk("cpu=%d opp=%d temp=%u lkg=%lu sum_lkg=%lu, sum_cap=%lu",
 		__entry->cpu,
 		__entry->opp,
 		__entry->temp,
@@ -144,7 +144,7 @@ TRACE_EVENT(sched_calc_pwr_eff,
 		__entry->pwr_eff        = pwr_eff;
 		),
 
-	TP_printk("cpu=%d cpu_util=%lu opp=%d cap=%lu dyn_pwr_eff=%lu static_pwr_eff=%lu pwr_eff=%u",
+	TP_printk("cpu=%d cpu_util=%lu opp=%d cap=%lu dyn_pwr_eff=%lu static_pwr_eff=%lu pwr_eff=%lu",
 		__entry->cpu,
 		__entry->cpu_util,
 		__entry->opp,
@@ -234,7 +234,7 @@ TRACE_EVENT(sched_frequency_limits,
 		__entry->freq_thermal = freq_thermal;
 		),
 
-	TP_printk("cpu=%d thermal=%lu",
+	TP_printk("cpu=%d thermal=%d",
 		__entry->cpu_id, __entry->freq_thermal)
 );
 
@@ -551,7 +551,7 @@ TRACE_EVENT(sched_set_cpus_allowed,
 		__entry->pause_cpus = cpumask_bits(pause_cpus)[0];
 	),
 
-	TP_printk("p=%d, dest_cpu=%d, k=%d, new_mask=0x%lx, valid=0x%lx, pause=0x%lx",
+	TP_printk("p=%d, dest_cpu=%d, k=%d, new_mask=0x%x, valid=0x%x, pause=0x%x",
 		  __entry->pid, __entry->dest_cpu, __entry->kthread,
 		  __entry->new_mask, __entry->valid_mask,
 		  __entry->pause_cpus)
@@ -581,7 +581,7 @@ TRACE_EVENT(sched_find_lowest_rq,
 	),
 
 	TP_printk(
-		"pid=%4d policy=0x%08x target=%d avail_lowest_mask=0x%lx lowest_mask=0x%lx",
+		"pid=%4d policy=0x%08x target=%d avail_lowest_mask=0x%x lowest_mask=0x%x",
 		__entry->pid,
 		__entry->policy,
 		__entry->target_cpu,

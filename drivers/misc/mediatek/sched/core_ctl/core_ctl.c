@@ -754,7 +754,7 @@ static ssize_t store_offline_throttle_ms(struct cluster_data *state,
 static ssize_t show_offline_throttle_ms(const struct cluster_data *state,
 		char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "%u\n", state->offline_throttle_ms);
+	return snprintf(buf, PAGE_SIZE, "%lld\n", state->offline_throttle_ms);
 }
 
 static ssize_t store_up_thres(struct cluster_data *state,

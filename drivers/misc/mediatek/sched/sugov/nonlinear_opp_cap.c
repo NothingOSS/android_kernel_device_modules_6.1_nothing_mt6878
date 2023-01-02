@@ -502,19 +502,20 @@ static int init_capacity_table(void)
 	for (i = 0; i < pd_count; i++) {
 		pd_info = &pd_capacity_tbl[i];
 		if (!cpumask_equal(&pd_info->cpus, mtk_em_pd_ptr[i].cpumask)) {
-			pr_info("cpumask mismatch, pd=%x, em=%x\n", pd_info->cpus,
-				*mtk_em_pd_ptr[i].cpumask);
+			pr_info("cpumask mismatch, pd=%*pb, em=%*pb\n",
+				cpumask_pr_args(&pd_info->cpus),
+				cpumask_pr_args(mtk_em_pd_ptr[i].cpumask));
 				return -1;
 		}
 		pd_info->table = mtk_em_pd_ptr[i].table;
 		for_each_cpu(j, &pd_info->cpus) {
 			per_cpu(gear_id, j) = i;
 			if (per_cpu(cpu_scale, j) != pd_info->table[0].capacity) {
-				pr_info("capacity err: cpu=%d, cpu_scale=%d, pd_info_cap=%d\n",
+				pr_info("capacity err: cpu=%d, cpu_scale=%lu, pd_info_cap=%d\n",
 					j, per_cpu(cpu_scale, j), pd_info->table[0].capacity);
 				per_cpu(cpu_scale, j) = pd_info->table[0].capacity;
 			} else {
-				pr_info("capacity match: cpu=%d, cpu_scale=%d, pd_info_cap=%d\n",
+				pr_info("capacity match: cpu=%d, cpu_scale=%lu, pd_info_cap=%d\n",
 					j, per_cpu(cpu_scale, j), pd_info->table[0].capacity);
 			}
 		}
@@ -732,7 +733,7 @@ static int pd_capacity_tbl_show(struct seq_file *m, void *v)
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 		seq_printf(m, "nr_caps: %d\n", pd->nr_perf_states);
 		for (j = 0; j < pd->nr_perf_states; j++)
-			seq_printf(m, "%3d: %4lu, %7lu\n", j,
+			seq_printf(m, "%3d: %4u, %7u\n", j,
 				mtk_em_pd_ptr_public[i].table[j].capacity,
 				mtk_em_pd_ptr_public[i].table[j].freq);
 		if (is_gearless_support())
