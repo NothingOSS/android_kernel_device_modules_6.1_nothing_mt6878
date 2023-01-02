@@ -1086,7 +1086,7 @@ static void mtk_iommu_tlb_flush_range_sync(unsigned long iova, size_t size,
 		ret = readl_poll_timeout_atomic(data->base + REG_MMU_CPE_DONE,
 						tmp, tmp != 0, 10, 1000);
 		if (ret) {
-			pr_warn("Partial TLB flush timed out, (%d, %d), iova:0x%llx,0x%zx\n",
+			pr_warn("Partial TLB flush timed out, (%d, %d), iova:0x%lx,0x%zx\n",
 				data->plat_data->iommu_type, data->plat_data->iommu_id,
 				iova, size);
 			if (MTK_IOMMU_HAS_FLAG(data->plat_data, TLB_SYNC_EN))
@@ -1127,7 +1127,7 @@ static void mtk_iommu_dump_iova(struct mtk_iommu_data *data,
 			hw_pa[NS_TAB] = mtee_iova_to_phys(iova_tmp,
 						data->plat_data->tab_id,
 						sr_info, hw_pa, pg_type, lvl);
-		pr_err("error, type2_en:%d, index:%d, lvl:%u, pg_type:0x%x, falut_iova:0x%lx, fault_pa:0x%llx ~ 0x%llx\n",
+		pr_err("error, type2_en:%d, index:%d, lvl:%u, pg_type:0x%x, falut_iova:0x%llx, fault_pa:0x%llx ~ 0x%llx\n",
 			hypmmu_type2_en, i, lvl[NS_TAB], pg_type[NS_TAB], iova_tmp,
 			(u64)fake_pa, hw_pa[NS_TAB]);
 		if (!fake_pa && i > 0)
@@ -1253,7 +1253,7 @@ static void mtk_iommu_isr_other(struct mtk_iommu_data *data,
 			fault_iova |= (u64)va_33_32 << 32;
 		}
 
-		dev_warn(dev, "L2 table walk fault: iova=0x%lx, layer=%d\n",
+		dev_warn(dev, "L2 table walk fault: iova=0x%llx, layer=%d\n",
 			 fault_iova, layer);
 	}
 
@@ -1797,7 +1797,7 @@ static size_t mtk_iommu_unmap(struct iommu_domain *domain,
 	iommu_iotlb_gather_add_range(gather, iova, size);
 	ret = dom->iop->unmap(dom->iop, iova, size, gather);
 	if (!ret) {
-		pr_info("%s fail:%d, iommu:(%d,%d) tab_id:%d, iova:0x%lx end:0x%lx size:0x%zx\n",
+		pr_info("%s fail:%lu, iommu:(%d,%d) tab_id:%d, iova:0x%lx end:0x%lx size:0x%zx\n",
 			__func__, ret, dom->data->plat_data->iommu_type,
 			dom->data->plat_data->iommu_id, dom->tab_id, iova,
 			(iova + size - 1), size);
