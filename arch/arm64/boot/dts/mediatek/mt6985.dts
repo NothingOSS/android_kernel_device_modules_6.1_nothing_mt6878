@@ -6075,6 +6075,65 @@
 			     <0x100000>; /* dram */
 	};
 
+	scp_clk_ctrl: scp_clk_ctrl@1c721000 {
+		compatible = "mediatek,scp_clk_ctrl", "syscon";
+		reg = <0 0x1c721000 0 0x1000>; /* scp clk */
+	};
+
+	scp_dvfs {
+		compatible = "mediatek,scp_dvfs";
+
+		clocks = <&vlp_cksys_clk CLK_VLP_CK_SCP_SEL>,
+			<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
+			<&topckgen_clk CLK_TOP_UNIVPLL_D4>, /* 624M */
+			<&topckgen_clk CLK_TOP_UNIVPLL_D3>,
+			<&topckgen_clk CLK_TOP_MAINPLL_D3>, /* 728M */
+			<&topckgen_clk CLK_TOP_UNIVPLL_D6>,
+			<&topckgen_clk CLK_TOP_APLL1>,
+			<&topckgen_clk CLK_TOP_MAINPLL_D4>,
+			<&topckgen_clk CLK_TOP_MAINPLL_D7>,
+			<&topckgen_clk CLK_TOP_OSC_D20>;
+
+		clock-names = "clk_mux",
+			"clk_pll_0",
+			"clk_pll_1",
+			"clk_pll_2",
+			"clk_pll_3",
+			"clk_pll_4",
+			"clk_pll_5",
+			"clk_pll_6",
+			"clk_pll_7",
+			"clk_pll_8";
+
+		scp-cores = <2>;
+		vlp-support;
+		vlpck-support;
+
+		dvfs-opp =
+		/* vscp		vsram	dvfsrc_opp	spm_vcore	freq mux resource */
+		< 575000	750000	0xff		0xfff		300  0	0x0>,
+		< 650000	750000	0xff		0xfff		500  0	0x0>,
+		< 750000	750000	0xff		0xfff		700  0	0x0>;
+
+		do-ulposc-cali;
+		fmeter_clksys = <&vlp_cksys_clk>;
+		ulposc_clksys = <&vlp_cksys_clk>;
+		scp_clk_ctrl = <&scp_clk_ctrl>;
+		scp-clk-hw-ver = "v1";
+		ulposc-cali-ver = "v2";
+		ulposc-cali-num = <4>;
+		ulposc-cali-target = <300 500 620 700>;
+		ulposc-cali-config =
+			/* con0		con1	con2 */
+			<0x02e292c0	0x2400	0xc>,
+			<0x050a92c0	0x2400	0xc>,
+			<0x064a92c0	0x2400	0xc>,
+			<0x071292c0	0x2400	0xc>;
+		clk-dbg-ver = "v2";
+		ccf-fmeter-support;
+		scp_dvfs_flag = "disable"; /* turn on/off SCP DVFS */
+	};
+
 	gce: gce@1e980000 {
 		compatible = "mediatek,mt6985-gce";
 		reg = <0 0x1e980000 0 0x4000>;
