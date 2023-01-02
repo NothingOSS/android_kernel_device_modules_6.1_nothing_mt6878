@@ -4,6 +4,7 @@
 #
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/char/rpmb/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/scsi/ufs/
 ccflags-y += -I$(srctree)/drivers/scsi/ufs/
 ccflags-y += -I$(srctree)/drivers/mmc/host
 

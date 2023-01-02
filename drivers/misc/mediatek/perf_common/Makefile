@@ -4,6 +4,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/qos/
 
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/scsi/ufs
 subdir-ccflags-y += -I$(srctree)/drivers/scsi/ufs
 
 obj-$(CONFIG_MTK_PERF_COMMON) += mtk_perf_common.o

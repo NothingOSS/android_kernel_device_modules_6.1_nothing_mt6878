@@ -6,7 +6,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb_xhci
 else
 ccflags-y += -I$(srctree)/drivers/usb/host
 endif
-ccflags-y += -I$(srctree)/drivers/usb/mtu3
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/usb/mtu3
 
 obj-$(CONFIG_MTK_USB_BOOST) += usb_boost.o
 
