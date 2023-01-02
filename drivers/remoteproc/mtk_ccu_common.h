@@ -11,8 +11,7 @@
 #include <linux/remoteproc/mtk_ccu.h>
 #include <linux/spinlock.h>
 
-#define CCU_LDVT	(1)
-// #define SECURE_CCU
+#define SECURE_CCU
 /*
  * devm_request_threaded_irq() may return -EINTR and retry fails too.
  * so can not request_irq/free_irq at ccu boot/shutdown.
@@ -91,8 +90,6 @@ struct mtk_ccu_buffer {
 	uint32_t offset;
 	dma_addr_t mva;
 	char *va;
-	u64 ktime;
-	uint32_t gtick;
 };
 
 struct mtk_ccu_ipc_data {
@@ -145,10 +142,8 @@ struct mtk_ccu {
 	void __iomem *dmem_base;
 	void __iomem *pmem_base;
 	void __iomem *ddrmem_base;
-#if (CCU_LDVT)
-	void __iomem *camsys_base;
-	void __iomem *mraw_base;
-	void __iomem *ccumain_base;
+#ifdef CCU_RAW_CAMSV_UT
+	void __iomem *cam_base;
 #endif
 	unsigned int irq_num;
 	struct icc_path *path_ccug;
@@ -172,13 +167,12 @@ struct mtk_ccu {
 	bool poweron;
 	bool disirq;
 	bool bWaitCond;
+	bool ccu_fpga;
 	int g_LogBufIdx;
 	int log_level;
 	int log_taglevel;
 	uint32_t ipc_tout_fid;
 	uint32_t ipc_tout_mid;
-	u64 ktime;
-	uint32_t gtick;
 };
 
 struct mtk_ccu_clk_name {

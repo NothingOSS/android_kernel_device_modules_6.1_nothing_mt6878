@@ -35,10 +35,8 @@
 #include "mtk-interconnect.h"
 #include "remoteproc_internal.h"
 
-#if (!CCU_LDVT)
 #define CCU_SET_MMQOS
 /* #define CCU1_DEVICE */
-#endif
 #define MTK_CCU_MB_RX_TIMEOUT_SPEC    1000  /* 10ms */
 #define ERROR_DESC_LEN	80
 
@@ -70,17 +68,15 @@ struct mtk_ccu_clk_name ccu_clk_name_isp7s[] = {
 	{true, "CAM_CG"},
 	{false, ""}};
 
-#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC) && (!CCU_LDVT)
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 static struct mtk_ccu *dev_ccu;
 #endif
 static int mtk_ccu_probe(struct platform_device *dev);
 static int mtk_ccu_remove(struct platform_device *dev);
 static int mtk_ccu_read_platform_info_from_dt(struct device_node
 	*node, struct mtk_ccu *ccu);
-#if (!CCU_LDVT)
 static int mtk_ccu_get_power(struct device *dev);
 static void mtk_ccu_put_power(struct device *dev);
-#endif
 
 static int
 mtk_ccu_allocate_mem(struct device *dev, struct mtk_ccu_mem_handle *memHandle)
@@ -170,9 +166,7 @@ int mtk_ccu_sw_hw_reset(struct mtk_ccu *ccu)
 		if (duration > 1000) {
 			dev_err(ccu->dev,
 			"polling CCU halt, timeout: (0x%08x)\n", ccu_status);
-#if (!CCU_LDVT)
 			mtk_smi_dbg_hang_detect("CCU");
-#endif
 			break;
 		}
 		udelay(10);
@@ -205,24 +199,6 @@ struct platform_device *mtk_ccu_get_pdev(struct platform_device *pdev)
 	return ccu_pdev;
 }
 EXPORT_SYMBOL_GPL(mtk_ccu_get_pdev);
-
-#if (CCU_LDVT)
-#define VSYNCS_MAX    4
-#define VSYNCS_CHANNELS	9
-
-struct vsync_time {
-    uint32_t tg;
-    uint32_t vsyncs;
-    uint32_t timestamps[VSYNCS_MAX];
-};
-
-struct vsync_rec {
-    uint32_t tgs;
-    uint32_t cur_tick;
-    uint32_t tick_factor;
-    struct vsync_time recs[VSYNCS_CHANNELS];
-};
-#endif
 
 static int mtk_ccu_run(struct mtk_ccu *ccu)
 {
@@ -316,44 +292,11 @@ static int mtk_ccu_run(struct mtk_ccu *ccu)
 
 	LOG_DBG("-\n");
 
-#if 0 // (CCU_LDVT)
-#if 1 	/* test CCU ISR */
-	{
-		struct vsync_rec rec;
-		int rc;
-
-		rec.tgs = 7;
-		rec.recs[0].tg = 1;
-		rec.recs[1].tg = 2;
-		rec.recs[2].tg = 3;
-		rec.recs[3].tg = 5;
-		rec.recs[4].tg = 13;
-		rec.recs[5].tg = 21;
-		rec.recs[6].tg = 29;
-		rc = mtk_ccu_rproc_ipc_send(ccu->pdev, 5, 2, &rec, sizeof(struct vsync_rec));
-		LOG_DBG("ipc_send, rc %d, tick 0x%08x factor %d\n", rc, rec.cur_tick, rec.tick_factor);
-	}
-#endif
-#if 1  /* test CCU task */
-	LOG_DBG("wait CCU callback\n");
-	timeout = 100;
-	while ((readl(ccu_base + MTK_CCU_SPARE_REG31) <= 0) && (timeout >= 0)) {
-		mdelay(10);
-		--timeout;
-	}
-	LOG_DBG("CCU callback count %d\n", readl(ccu_base + MTK_CCU_SPARE_REG31));
-#endif
-#if 1 	/* test CCU task */
-	mdelay(100);	// not accuate
-	LOG_DBG("CCU task count %d\n", readl(ccu_base + MTK_CCU_SPARE_REG30));
-#endif
-#endif
 	return 0;
 }
 
 static int mtk_ccu_clk_prepare(struct mtk_ccu *ccu)
 {
-#if (!CCU_LDVT)
 	int ret;
 	int i = 0;
 	struct device *dev = ccu->dev;
@@ -393,19 +336,10 @@ ERROR_poweroff_ccu:
 	mtk_ccu_put_power(dev);
 
 	return ret;
-#else /* CCU_LDVT */
-	LOG_DBG("Clock on CCU\n");
-	writel(~0, ccu->camsys_base + 8);
-	writel(~0, ccu->mraw_base + 8);
-	writel(~0, ccu->ccumain_base + 8);
-
-	return 0;
-#endif
 }
 
 static void mtk_ccu_clk_unprepare(struct mtk_ccu *ccu)
 {
-#if (!CCU_LDVT)
 	int i;
 
 	LOG_DBG("Clock off CCU(%d)\n", ccu->clock_num);
@@ -414,12 +348,6 @@ static void mtk_ccu_clk_unprepare(struct mtk_ccu *ccu)
 	mtk_ccu_put_power(ccu->dev);
 #if defined(CCU1_DEVICE)
 	mtk_ccu_put_power(&ccu->pdev1->dev);
-#endif
-#else /* CCU_LDVT */
-	LOG_DBG("Clock off CCU\n");
-	writel(~0, ccu->camsys_base + 4);
-	writel(~0, ccu->mraw_base + 4);
-	writel(~0, ccu->ccumain_base + 4);
 #endif
 }
 
@@ -456,7 +384,6 @@ static int mtk_ccu_start(struct rproc *rproc)
 
 	ccu->disirq = false;
 
-#if (!CCU_LDVT)
 #ifdef REQUEST_IRQ_IN_INIT
 	enable_irq(ccu->irq_num);
 #else
@@ -466,7 +393,6 @@ static int mtk_ccu_start(struct rproc *rproc)
 		dev_err(ccu->dev, "fail to request ccu irq(%d, %d)!\n", ccu->irq_num, rc);
 		return -ENODEV;
 	}
-#endif
 #endif
 
 	/*1. Set CCU run*/
@@ -482,13 +408,13 @@ void *mtk_ccu_da_to_va(struct rproc *rproc, u64 da, size_t len, bool *is_iomem)
 	struct mtk_ccu_mem_info *bin_mem = mtk_ccu_get_meminfo(ccu, MTK_CCU_DDR);
 #endif
 
-	if (da < ccu->ccu_sram_offset) {
+	if (da < MTK_CCU_CORE_DMEM_BASE) {
 		offset = da;
-		if (offset >= 0 && (offset + len) <= ccu->ccu_sram_size)
+		if (offset >= 0 && (offset + len) < MTK_CCU_PMEM_SIZE)
 			return ccu->pmem_base + offset;
 	} else if (da < MTK_CCU_CACHE_BASE) {
-		offset = da - ccu->ccu_sram_offset;
-		if (offset >= 0 && (offset + len) <= ccu->ccu_sram_size)
+		offset = da - MTK_CCU_CORE_DMEM_BASE;
+		if (offset >= 0 && (offset + len) < MTK_CCU_DMEM_SIZE)
 			return ccu->dmem_base + offset;
 	}
 #if !defined(SECURE_CCU)
@@ -498,7 +424,7 @@ void *mtk_ccu_da_to_va(struct rproc *rproc, u64 da, size_t len, bool *is_iomem)
 			dev_err(dev, "get binary memory info failed\n");
 			return NULL;
 		}
-		if (offset >= 0 && (offset + len) <= MTK_CCU_CACHE_SIZE)
+		if (offset >= 0 && (offset + len) < MTK_CCU_CACHE_SIZE)
 			return bin_mem->va + offset;
 	}
 #endif
@@ -578,7 +504,6 @@ static int mtk_ccu_stop(struct rproc *rproc)
 	mtk_icc_set_bw(ccu->path_ccug, MBps_to_icc(0), MBps_to_icc(0));
 #endif
 
-#if (!CCU_LDVT)
 #ifdef REQUEST_IRQ_IN_INIT
 	spin_lock(&ccu->ccu_irq_lock);
 	if (ccu->disirq) {
@@ -589,7 +514,6 @@ static int mtk_ccu_stop(struct rproc *rproc)
 		spin_unlock(&ccu->ccu_irq_lock);
 #else
 	devm_free_irq(ccu->dev, ccu->irq_num, ccu);
-#endif
 #endif
 
 	spin_lock(&ccu->ccu_poweron_lock);
@@ -616,9 +540,7 @@ ccu_elf_load_segments(struct rproc *rproc, const struct firmware *fw)
 	bool is_iomem;
 
 	/* 1. Halt CCU HW before load binary */
-	writel(((ccu->ccu_version == CCU_VER_ISP7SP)) ? 
-		MTK_CCU_HW_RESET_BIT_ISP7SP : MTK_CCU_HW_RESET_BIT,
-		ccu_base + MTK_CCU_REG_RESET);
+	writel(MTK_CCU_HW_RESET_BIT, ccu_base + MTK_CCU_REG_RESET);
 	udelay(10);
 
 	/* 2. Polling CCU HW status until ready */
@@ -691,13 +613,12 @@ ccu_elf_load_segments(struct rproc *rproc, const struct firmware *fw)
 static int mtk_ccu_load(struct rproc *rproc, const struct firmware *fw)
 {
 	struct mtk_ccu *ccu = rproc->priv;
-	int ret;
-#if defined(SECURE_CCU)
+	int ret, rc, i;
 	unsigned int clks;
+#if defined(SECURE_CCU)
 	struct arm_smccc_res res;
-	int rc, i;
-	char error_desc[ERROR_DESC_LEN];
 #endif
+	char error_desc[ERROR_DESC_LEN];
 
 	/*1. prepare CCU's clks & power*/
 	ret = mtk_ccu_clk_prepare(ccu);
@@ -753,7 +674,7 @@ static int mtk_ccu_load(struct rproc *rproc, const struct firmware *fw)
 	ret = ccu_elf_load_segments(rproc, fw);
 	if (ret) {
 		mtk_ccu_deallocate_mem(ccu->dev, &ccu->buffer_handle[MTK_CCU_DDR]);
-		goto ccu_load_err;
+		got ccu_load_err;
 	}
 #endif
 	return ret;
@@ -824,7 +745,7 @@ mtk_ccu_sanity_check(struct rproc *rproc, const struct firmware *fw)
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC) && (!CCU_LDVT)
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 void get_ccu_mrdump_buffer(unsigned long *vaddr, unsigned long *size)
 {
 
@@ -876,23 +797,17 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 	struct device_node *node = dev->of_node;
 	struct mtk_ccu *ccu;
 	struct rproc *rproc;
-#if (!CCU_LDVT)
 	struct device_node *smi_node;
 	struct platform_device *smi_pdev;
-	uint32_t clki;
-#endif
 	int ret = 0;
 	uint32_t phy_addr;
 	uint32_t phy_size;
+	uint32_t clki;
 	static struct lock_class_key ccu_lock_key;
 	const char *ccu_lock_name = "ccu_lock_class";
 #if defined(CCU1_DEVICE)
 	struct device_node *node1;
 	phandle ccu_rproc1_phandle;
-#endif
-
-#if (CCU_LDVT)
-	LOG_DBG("%s started\n", __func__);
 #endif
 
 	rproc = rproc_alloc(dev, node->name, &ccu_ops,
@@ -935,30 +850,7 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 	LOG_DBG("pmem_base pa: 0x%x, size: 0x%x\n", phy_addr, phy_size);
 	LOG_DBG("pmem_base va: 0x%lx\n", (uint64_t)ccu->pmem_base);
 
-#if (CCU_LDVT)
-	/*remap cam_base*/
-	phy_addr = 0x1A000000;
-	phy_size = 0x1000;
-	ccu->camsys_base = devm_ioremap(dev, phy_addr, phy_size);
-	LOG_DBG("camsys_base pa: 0x%x, size: 0x%x\n", phy_addr, phy_size);
-	LOG_DBG("camsys_base va: 0x%lx\n", (uint64_t)ccu->camsys_base);
-
-	/*remap mraw_base*/
-	phy_addr = 0x1A170000;
-	phy_size = 0x1000;
-	ccu->mraw_base = devm_ioremap(dev, phy_addr, phy_size);
-	LOG_DBG("mraw_base pa: 0x%x, size: 0x%x\n", phy_addr, phy_size);
-	LOG_DBG("mraw_base va: 0x%lx\n", (uint64_t)ccu->mraw_base);
-
-	/*remap ccumain_base*/
-	phy_addr = 0x1B200000;
-	phy_size = 0x1000;
-	ccu->ccumain_base = devm_ioremap(dev, phy_addr, phy_size);
-	LOG_DBG("ccumain_base pa: 0x%x, size: 0x%x\n", phy_addr, phy_size);
-	LOG_DBG("ccumain_base va: 0x%lx\n", (uint64_t)ccu->ccumain_base);
-#endif
-
-#if (!CCU_LDVT)
+	if (!ccu->ccu_fpga) {
 	/* get Clock control from device tree.  */
 	/*
 	 * SMI definition is usually not ready at bring-up stage of new platform.
@@ -1025,11 +917,7 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 
 	/* get irq from device irq*/
 	ccu->irq_num = irq_of_parse_and_map(node, 0);
-#else /* CCU_LDVT */
-	ccu->clock_num = 0;
-	/* mt6985:(516,59), mt6886:(505,80), mt6897:(516,59) */
-	ccu->irq_num = 59;
-#endif
+	}
 	LOG_DBG("ccu_probe irq_num: %d\n", ccu->irq_num);
 
 	/*prepare mutex & log's waitqueuehead*/
@@ -1039,7 +927,8 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 	spin_lock_init(&ccu->ccu_irq_lock);
 	init_waitqueue_head(&ccu->WaitQueueHead);
 
-#if defined(REQUEST_IRQ_IN_INIT) && (!CCU_LDVT)
+#ifdef REQUEST_IRQ_IN_INIT
+	if (!ccu->ccu_fpga) {
 	ccu->disirq = true;
 	ret = devm_request_threaded_irq(ccu->dev, ccu->irq_num, NULL,
 		mtk_ccu_isr_handler, IRQF_ONESHOT, "ccu_rproc", ccu);
@@ -1054,6 +943,7 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 		disable_irq(ccu->irq_num);
 	} else
 		spin_unlock(&ccu->ccu_irq_lock);
+	}
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_CCU_DEBUG)
@@ -1063,9 +953,8 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 		dev_err(ccu->dev, "failed to regist char dev");
 #endif
 
-#if (!CCU_LDVT)
+	if (!ccu->ccu_fpga)
 	dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
-#endif
 
 	ccu->ext_buf.meminfo.size = MTK_CCU_DRAM_LOG_BUF_SIZE * 4;
 	ccu->ext_buf.meminfo.cached = false;
@@ -1078,7 +967,8 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 	mtk_ccu_set_log_memory_address(ccu);
 	rproc->auto_boot = false;
 
-#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC) && (!CCU_LDVT)
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+	if (!ccu->ccu_fpga) {
 	ccu->mrdump_buf = kmalloc(MTK_CCU_MRDUMP_BUF_SIZE, GFP_ATOMIC);
 	if (!ccu->mrdump_buf) {
 		mtk_ccu_deallocate_mem(ccu->dev, &ccu->ext_buf);
@@ -1087,6 +977,7 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 
 	dev_ccu = ccu;
 	mrdump_set_extra_dump(AEE_EXTRA_FILE_CCU, get_ccu_mrdump_buffer);
+	}
 #endif
 
 	ret = rproc_add(rproc);
@@ -1102,19 +993,17 @@ static int mtk_ccu_remove(struct platform_device *pdev)
 	 * With mrdump, remove CCU module will cause access violation
 	 * at KE/SystemAPI.
 	 */
-#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC) && (!CCU_LDVT)
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 	mrdump_set_extra_dump(AEE_EXTRA_FILE_CCU, NULL);
 	kfree(ccu->mrdump_buf);
 #endif
 	mtk_ccu_deallocate_mem(ccu->dev, &ccu->ext_buf);
-#if defined(REQUEST_IRQ_IN_INIT) && (!CCU_LDVT)
+#ifdef REQUEST_IRQ_IN_INIT
 	devm_free_irq(ccu->dev, ccu->irq_num, ccu);
 #endif
 	rproc_del(ccu->rproc);
 	rproc_free(ccu->rproc);
-#if (!CCU_LDVT)
 	pm_runtime_disable(ccu->dev);
-#endif
 #if IS_ENABLED(CONFIG_MTK_CCU_DEBUG)
 	mtk_ccu_unreg_chardev(ccu);
 #endif
@@ -1124,13 +1013,19 @@ static int mtk_ccu_remove(struct platform_device *pdev)
 static int mtk_ccu_read_platform_info_from_dt(struct device_node
 		*node, struct mtk_ccu *ccu)
 {
-#if (!CCU_LDVT)
 	uint32_t reg[4] = {0, 0, 0, 0};
 	int ret = 0;
 
 	ret = of_property_read_u32_array(node, "reg", reg, 4);
-	if (ret < 0)
-		return ret;
+	if (ret < 0) {
+		ccu->ccu_hw_base = 0x1b080000;
+		ccu->ccu_hw_size = 0x9000;
+		ccu->ccu_version = CCU_VER_ISP7SP;
+		ccu->ccu_sram_size = 0x10000;
+		ccu->ccu_sram_offset = 0x40000;
+		ccu->ccu_fpga = true;
+		return 0;
+	}
 
 	ccu->ccu_hw_base = reg[1];
 	ccu->ccu_hw_size = reg[3];
@@ -1142,16 +1037,8 @@ static int mtk_ccu_read_platform_info_from_dt(struct device_node
 	ccu->ccu_sram_size = (ret < 0) ? MTK_CCU_PMEM_SIZE : reg[0];
 
 	ret = of_property_read_u32(node, "ccu_sramOffset", reg);
-	ccu->ccu_sram_offset = (ret < 0) ? 
-		((ccu->ccu_version == CCU_VER_ISP7SP) ? 
-		MTK_CCU_CORE_DMEM_BASE_ISP7SP : MTK_CCU_CORE_DMEM_BASE) : reg[0];
-#else
-	ccu->ccu_hw_base = 0x1b080000;
-	ccu->ccu_hw_size = 0x9000;
-	ccu->ccu_version = CCU_VER_ISP7SP;
-	ccu->ccu_sram_size = 0x10000;
-	ccu->ccu_sram_offset = 0x40000;
-#endif
+	ccu->ccu_sram_offset = (ret < 0) ? MTK_CCU_PMEM_SIZE : reg[0];
+
 	return 0;
 }
 
@@ -1175,7 +1062,6 @@ static int mtk_ccu1_remove(struct platform_device *pdev)
 }
 #endif
 
-#if (!CCU_LDVT)
 static int mtk_ccu_get_power(struct device *dev)
 {
 	int ret = pm_runtime_get_sync(dev);
@@ -1193,7 +1079,6 @@ static void mtk_ccu_put_power(struct device *dev)
 	if (ret != 0)
 		dev_err(dev, "pm_runtime_put_sync failed %d", ret);
 }
-#endif
 
 static const struct of_device_id mtk_ccu_of_ids[] = {
 	{.compatible = "mediatek,ccu_rproc", },
