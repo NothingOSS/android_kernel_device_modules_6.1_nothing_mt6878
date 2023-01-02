@@ -7,6 +7,7 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/phy/phy.h>
+#include <dt-bindings/pinctrl/mt6985-pinfunc.h>
 #include <dt-bindings/gce/mt6985-gce.h>
 #include <dt-bindings/memory/mt6985-larb-port.h>
 
@@ -233,9 +234,42 @@
 			#clock-cells = <1>;
 		};
 
-		gpio@10005000 {
+		gpio: gpio@10005000 {
 			compatible = "mediatek,gpio";
 			reg = <0 0x10005000 0 0x1000>;
+		};
+
+		pio: pinctrl {
+			compatible = "mediatek,mt6985-pinctrl";
+			reg = <0 0x10005000 0 0x1000>,
+			      <0 0x11b20000 0 0x1000>,
+			      <0 0x11c00000 0 0x1000>,
+			      <0 0x11d30000 0 0x1000>,
+			      <0 0x11d40000 0 0x1000>,
+			      <0 0x11d50000 0 0x1000>,
+			      <0 0x11d80000 0 0x1000>,
+			      <0 0x11d90000 0 0x1000>,
+			      <0 0x11f10000 0 0x1000>,
+			      <0 0x11f20000 0 0x1000>,
+			      <0 0x11f30000 0 0x1000>,
+			      <0 0x11f40000 0 0x1000>;
+			reg-names = "gpio",
+				    "iocfg_rt",
+				    "iocfg_rm",
+				    "iocfg_bl",
+				    "iocfg_bm",
+				    "iocfg_br",
+				    "iocfg_brr",
+				    "iocfg_lb",
+				    "iocfg_tr",
+				    "iocfg_tm",
+				    "iocfg_tl",
+				    "iocfg_lt";
+			gpio-controller;
+			#gpio-cells = <2>;
+			gpio-ranges = <&pio 0 0 242>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
 		};
 
 		apmixed@1000c000 {
