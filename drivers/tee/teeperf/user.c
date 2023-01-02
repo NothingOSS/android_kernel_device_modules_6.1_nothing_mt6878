@@ -30,7 +30,7 @@ static void teeperf_set_cpu_to_high_freq(int target_cpu, u32 high_freq,
 
 	down_write(&policy->rwsem);
 	max_index = 0;
-	min_index = cpufreq_table_find_index_dl(policy, 0);
+	min_index = cpufreq_table_find_index_dl(policy, 0, false);
 	if (high_freq) {
 		/* set min_freq to selected freq */
 		index = max_index + freq_level_index;
