@@ -8418,10 +8418,10 @@
 		compatible = "mediatek,mt6985-sound";
 		reg = <0 0x11050000 0 0x2000>;
 		interrupts = <GIC_SPI 257 IRQ_TYPE_LEVEL_HIGH 0>;
-		//topckgen = <&topckgen_clk>;
-		//apmixedsys = <&apmixedsys_clk>;
-		//infracfg = <&infracfg_ao_clk>;
-		//power-domains = <&scpsys MT6985_POWER_DOMAIN_AUDIO>;
+		topckgen = <&topckgen_clk>;
+		apmixedsys = <&apmixedsys_clk>;
+		infracfg = <&infracfg_ao_clk>;
+		power-domains = <&scpsys MT6985_POWER_DOMAIN_AUDIO>;
 #if 0
 		clocks = <&afe_clk CLK_AFE_AFE>,
 			<&afe_clk CLK_AFE_DAC>,
