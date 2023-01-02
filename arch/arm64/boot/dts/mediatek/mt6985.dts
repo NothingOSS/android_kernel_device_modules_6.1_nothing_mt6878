@@ -7672,6 +7672,12 @@
 		b13b14-status-addr = <0x1c000008>;
 	};
 
+	sleep@1c001000 {
+		compatible = "mediatek,sleep";
+		reg = <0 0x1c001000 0 0x1000>;
+		interrupts = <GIC_SPI 351 IRQ_TYPE_LEVEL_HIGH 0>;
+	};
+
 	mtk_lpm: mtk_lpm {
 		compatible = "mediatek,mtk-lpm";
 		#address-cells = <2>;
