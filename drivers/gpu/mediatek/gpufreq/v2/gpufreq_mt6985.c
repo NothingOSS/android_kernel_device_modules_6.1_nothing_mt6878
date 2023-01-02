@@ -194,7 +194,7 @@ static void __iomem *g_nth_emi_ao_debug_ctrl;
 static void __iomem *g_sth_emi_ao_debug_ctrl;
 static void __iomem *g_efuse_base;
 static void __iomem *g_mfg_cpe_ctrl_mcu_base;
-static void __iomem *g_mfg_cpe_sensor0_base;
+static void __iomem *g_mfg_cpe_sensor_base;
 static void __iomem *g_mfg_secure_base;
 static void __iomem *g_drm_debug_base;
 static void __iomem *g_mali_base;
@@ -1940,17 +1940,17 @@ static void __gpufreq_update_springboard(void)
 static void __gpufreq_mssv_set_stack_sel(unsigned int val)
 {
 	if (val == 1)
-		writel(BIT(31), MFG_DUMMY_REG);
+		writel((readl_mfg(MFG_DUMMY_REG) | BIT(31)), MFG_DUMMY_REG);
 	else if (val == 0)
-		writel(0x0, MFG_DUMMY_REG);
+		writel((readl_mfg(MFG_DUMMY_REG) & ~BIT(31)), MFG_DUMMY_REG);
 }
 
 static void __gpufreq_mssv_set_del_sel(unsigned int val)
 {
 	if (val == 1)
-		writel(BIT(0), MFG_SRAM_FUL_SEL_ULV);
+		writel((readl_mfg(MFG_SRAM_FUL_SEL_ULV) | BIT(0)), MFG_SRAM_FUL_SEL_ULV);
 	else if (val == 0)
-		writel(0x0, MFG_SRAM_FUL_SEL_ULV);
+		writel((readl_mfg(MFG_SRAM_FUL_SEL_ULV) & ~BIT(0)), MFG_SRAM_FUL_SEL_ULV);
 }
 #endif /* GPUFREQ_MSSV_TEST_MODE */
 
@@ -1977,21 +1977,21 @@ static void __gpufreq_dvfs_sel_config(enum gpufreq_opp_direct direct, unsigned i
 	/* high volt use SEL=0 */
 	if (direct == SCALE_UP) {
 		if (volt == stack_sel_volt)
-			writel(0x0, MFG_DUMMY_REG);
+			writel((readl_mfg(MFG_DUMMY_REG) & ~BIT(31)), MFG_DUMMY_REG);
 		else if (volt == del_sel_volt)
-			writel(0x0, MFG_SRAM_FUL_SEL_ULV);
+			writel((readl_mfg(MFG_SRAM_FUL_SEL_ULV) & ~BIT(0)), MFG_SRAM_FUL_SEL_ULV);
 	/* low volt use SEL=1 */
 	} else if (direct == SCALE_DOWN) {
 		if (volt == stack_sel_volt)
-			writel(BIT(31), MFG_DUMMY_REG);
+			writel((readl_mfg(MFG_DUMMY_REG) | BIT(31)), MFG_DUMMY_REG);
 		else if (volt == del_sel_volt)
-			writel(BIT(0), MFG_SRAM_FUL_SEL_ULV);
+			writel((readl_mfg(MFG_SRAM_FUL_SEL_ULV) | BIT(0)), MFG_SRAM_FUL_SEL_ULV);
 	/* Brisket FLL favor SEL=0 at critical volt */
 	} else if (direct == SCALE_STAY) {
 		if (volt == stack_sel_volt)
-			writel(0x0, MFG_DUMMY_REG);
+			writel((readl_mfg(MFG_DUMMY_REG) & ~BIT(31)), MFG_DUMMY_REG);
 		else if (volt == del_sel_volt)
-			writel(0x0, MFG_SRAM_FUL_SEL_ULV);
+			writel((readl_mfg(MFG_SRAM_FUL_SEL_ULV) & ~BIT(0)), MFG_SRAM_FUL_SEL_ULV);
 	}
 
 	GPUFREQ_LOGD("Vstack: %d (%s) MFG_DUMMY_REG: 0x%08x, MFG_SRAM_FUL_SEL_ULV: 0x%08x",
@@ -3267,17 +3267,17 @@ static void __gpufreq_mfg_backup_restore(enum gpufreq_power_state power)
 	/* restore */
 	if (power == POWER_ON) {
 		if (g_stack_sel_reg)
-			/* MFG_DUMMY_REG 0x13FBF500 */
-			writel(g_stack_sel_reg, MFG_DUMMY_REG);
+			/* MFG_DUMMY_REG 0x13FBF500 [31] */
+			writel((readl_mfg(MFG_DUMMY_REG) | BIT(31)), MFG_DUMMY_REG);
 		if (g_del_sel_reg)
-			/* MFG_SRAM_FUL_SEL_ULV 0x13FBF080 */
-			writel(g_del_sel_reg, MFG_SRAM_FUL_SEL_ULV);
+			/* MFG_SRAM_FUL_SEL_ULV 0x13FBF080 [0] */
+			writel((readl_mfg(MFG_SRAM_FUL_SEL_ULV) | BIT(0)), MFG_SRAM_FUL_SEL_ULV);
 	/* backup */
 	} else {
-		/* MFG_DUMMY_REG 0x13FBF500 */
-		g_stack_sel_reg = readl_mfg(MFG_DUMMY_REG);
-		/* MFG_SRAM_FUL_SEL_ULV 0x13FBF080 */
-		g_del_sel_reg = readl_mfg(MFG_SRAM_FUL_SEL_ULV);
+		/* MFG_DUMMY_REG 0x13FBF500 [31] */
+		g_stack_sel_reg = readl_mfg(MFG_DUMMY_REG) & BIT(31);
+		/* MFG_SRAM_FUL_SEL_ULV 0x13FBF080 [0] */
+		g_del_sel_reg = readl_mfg(MFG_SRAM_FUL_SEL_ULV) & BIT(0);
 	}
 
 	__gpufreq_set_semaphore(SEMA_RELEASE);
@@ -4071,9 +4071,9 @@ static void __gpufreq_asensor_read_register(u32 *a_tn_sensor1,
 	}
 
 	/* Read sensor data */
-	/* ASENSORDATA2 0x13FCF008 */
+	/* ASENSORDATA2 0x13FB6008 */
 	aging_data1 = readl(MFG_CPE_SENSOR_C0ASENSORDATA2);
-	/* ASENSORDATA3 0x13FCF00C */
+	/* ASENSORDATA3 0x13FB600C */
 	aging_data2 = readl(MFG_CPE_SENSOR_C0ASENSORDATA3);
 
 	GPUFREQ_LOGD("aging_data1: 0x%08x, aging_data2: 0x%08x", aging_data1, aging_data2);
@@ -4082,16 +4082,19 @@ static void __gpufreq_asensor_read_register(u32 *a_tn_sensor1,
 	/* MFG_CPE_CTRL_MCU_REG_CPEINTSTS 0x13FB9C28 = 0xFFFFFFFF */
 	writel(0xFFFFFFFF, MFG_CPE_CTRL_MCU_REG_CPEINTSTS);
 
-	/* A_TN_LVT_CNT 0x13FCF008 [31:16] */
+	/* A_TN_LVT_CNT 0x13FB6008 [31:16] */
 	*a_tn_sensor1 = (aging_data1 & GENMASK(31, 16)) >> 16;
-	/* A_TN_ULVT_CNT 0x13FCF00C [15:0] */
+	/* A_TN_ULVT_CNT 0x13FB600C [15:0] */
 	*a_tn_sensor2 = aging_data2 & GENMASK(15, 0);
-	/* A_TN_LVTLL_CNT 0x13FCF00C [31:16] */
+	/* A_TN_LVTLL_CNT 0x13FB600C [31:16] */
 	*a_tn_sensor3 = (aging_data2 & GENMASK(31, 16)) >> 16;
+	/* 0x13FB6008 [15:0] */
+	*a_tn_sensor4 = aging_data1 & GENMASK(15, 0);
 
 	g_asensor_info.a_tn_sensor1 = *a_tn_sensor1;
 	g_asensor_info.a_tn_sensor2 = *a_tn_sensor2;
 	g_asensor_info.a_tn_sensor3 = *a_tn_sensor3;
+	g_asensor_info.a_tn_sensor4 = *a_tn_sensor4;
 
 	GPUFREQ_LOGD("a_tn_sensor1: 0x%08x, a_tn_sensor2: 0x%08x, a_tn_sensor3: 0x%08x",
 		*a_tn_sensor1, *a_tn_sensor2, *a_tn_sensor3);
@@ -5230,14 +5233,14 @@ static int __gpufreq_init_platform_info(struct platform_device *pdev)
 		goto done;
 	}
 
-	/* 0x13FCF000 */
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mfg_cpe_sensor0");
+	/* 0x13FB6000 */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mfg_cpe_sensor");
 	if (unlikely(!res)) {
 		GPUFREQ_LOGE("fail to get resource MFG_CPE_SENSOR0");
 		goto done;
 	}
-	g_mfg_cpe_sensor0_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
-	if (unlikely(!g_mfg_cpe_sensor0_base)) {
+	g_mfg_cpe_sensor_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
+	if (unlikely(!g_mfg_cpe_sensor_base)) {
 		GPUFREQ_LOGE("fail to ioremap MFG_CPE_SENSOR0: 0x%llx", res->start);
 		goto done;
 	}

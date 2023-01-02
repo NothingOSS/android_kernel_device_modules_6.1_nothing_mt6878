@@ -212,9 +212,9 @@ static inline u32 readl_mfg(const void __iomem *addr)
 #define MFG_CPE_CTRL_MCU_REG_CPEIRQSTS  (MFG_CPE_CTRL_MCU_BASE + 0x010)       /* 0x13FB9C10 */
 #define MFG_CPE_CTRL_MCU_REG_CPEINTSTS  (MFG_CPE_CTRL_MCU_BASE + 0x028)       /* 0x13FB9C28 */
 
-#define MFG_CPE_SENSOR0_BASE            (g_mfg_cpe_sensor0_base)              /* 0x13FCF000 */
-#define MFG_CPE_SENSOR_C0ASENSORDATA2   (MFG_CPE_SENSOR0_BASE + 0x008)        /* 0x13FCF008 */
-#define MFG_CPE_SENSOR_C0ASENSORDATA3   (MFG_CPE_SENSOR0_BASE + 0x00C)        /* 0x13FCF00C */
+#define MFG_CPE_SENSOR_BASE             (g_mfg_cpe_sensor_base)               /* 0x13FB6000 */
+#define MFG_CPE_SENSOR_C0ASENSORDATA2   (MFG_CPE_SENSOR_BASE + 0x008)         /* 0x13FB6008 */
+#define MFG_CPE_SENSOR_C0ASENSORDATA3   (MFG_CPE_SENSOR_BASE + 0x00C)         /* 0x13FB600C */
 
 #define MFG_SECURE_BASE                 (g_mfg_secure_base)                   /* 0x13FBC000 */
 #define MFG_SECURE_REG                  (MFG_SECURE_BASE + 0xFE0)             /* 0x13FBCFE0 */
