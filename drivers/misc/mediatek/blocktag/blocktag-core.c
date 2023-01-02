@@ -8,6 +8,7 @@
 
 #define DEBUG 1
 
+#include <linux/major.h>
 #include <linux/memblock.h>
 #include <linux/module.h>
 #include <linux/proc_fs.h>
