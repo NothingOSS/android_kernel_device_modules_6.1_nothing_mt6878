@@ -396,7 +396,9 @@ static struct mtk_btag_vops mtk_btag_ufs_vops = {
 
 int mtk_btag_ufs_init(struct ufs_mtk_host *host)
 {
+#if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
 	struct ufs_hba_private *hba_priv;
+#endif
 	struct mtk_blocktag *btag;
 	int max_queue = 1;
 
@@ -409,9 +411,11 @@ int mtk_btag_ufs_init(struct ufs_mtk_host *host)
 	if (host->boot_device)
 		mtk_btag_ufs_vops.boot_device = true;
 
+#if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
 	hba_priv = (struct ufs_hba_private *)host->hba->android_vendor_data1;
 	if (hba_priv->is_mcq_enabled)
 		max_queue = hba_priv->mcq_nr_hw_queue;
+#endif
 
 	ufs_mtk_btag_wq = alloc_workqueue("ufs_mtk_btag", WQ_FREEZABLE, 1);
 	INIT_WORK(&ufs_mtk_btag_worker, mtk_btag_ufs_work);

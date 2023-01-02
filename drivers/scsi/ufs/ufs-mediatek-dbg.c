@@ -18,7 +18,7 @@
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 #include <mt-plat/mrdump.h>
 #endif
-#include "ufshcd.h"
+//#include "ufshcd.h"
 #include "ufs-mediatek.h"
 #include "ufs-mediatek-dbg.h"
 
@@ -75,14 +75,16 @@ static void ufs_mtk_dbg_print_info(char **buff, unsigned long *size,
 {
 	struct ufs_mtk_host *host;
 	struct ufs_hba *hba = ufshba;
+#if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
 	struct ufs_hba_private *hba_priv;
 	int i;
+#endif
 
 	if (!hba)
 		return;
-
+#if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
 	hba_priv = (struct ufs_hba_private *)hba->android_vendor_data1;
-
+#endif
 	host = ufshcd_get_variant(hba);
 
 	/* Host state */
@@ -158,9 +160,10 @@ static void ufs_mtk_dbg_print_info(char **buff, unsigned long *size,
 	/* Device info */
 	SPREAD_PRINTF(buff, size, m,
 		      "Device vendor=%.8s, model=%.16s, rev=%.4s\n",
-		      hba->sdev_ufs_device->vendor,
-		      hba->sdev_ufs_device->model, hba->sdev_ufs_device->rev);
+		      hba->ufs_device_wlun->vendor,
+		      hba->ufs_device_wlun->model, hba->ufs_device_wlun->rev);
 
+#if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
 	if (hba_priv->is_mcq_enabled) {
 		SPREAD_PRINTF(buff, size, m,
 				  "MCQ enable: yes\n");
@@ -173,6 +176,7 @@ static void ufs_mtk_dbg_print_info(char **buff, unsigned long *size,
 		SPREAD_PRINTF(buff, size, m,
 				  "MCQ enable: no\n");
 	}
+#endif
 
 	/* Error history */
 	ufs_mtk_dbg_print_err_hist(buff, size, m,

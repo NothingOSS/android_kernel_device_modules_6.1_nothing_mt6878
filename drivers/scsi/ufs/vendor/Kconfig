@@ -91,6 +91,14 @@ config UFSRINGBUF_POC
 
 config UFS_MEDIATEK_INTERNAL
 	bool "Mediatek UFS Internal Features"
+	depends on SCSI_UFSHCD
 	help
 	  UFS features or code block that is kept available internally
 	  and should not be upstreamed.
+
+config UFS_MEDIATEK_MCQ
+	bool "Mediatek Proprietary MCQ Support"
+	depends on SCSI_UFSHCD && SCSI_UFS_MEDIATEK
+	help
+	  Enable on platform that implemented MediaTek non-standard MCQ.
+	  This require Kernel support on mcq vendor hook like in kernel 5.15.

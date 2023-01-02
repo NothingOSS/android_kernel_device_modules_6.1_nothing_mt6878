@@ -9,6 +9,8 @@
 #include <linux/arm-smccc.h>
 #include <linux/bitfield.h>
 #include <linux/cpumask.h>
+#include <linux/clk.h>
+#include <linux/delay.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/phy/phy.h>
@@ -18,6 +20,8 @@
 #include <linux/reset.h>
 #include <linux/sched/clock.h>
 #include <linux/tracepoint.h>
+#include <scsi/scsi_proto.h>
+#include <scsi/scsi_dbg.h>
 
 #if IS_ENABLED(CONFIG_RPMB)
 #include <asm/unaligned.h>
@@ -29,11 +33,11 @@
 #include <mt-plat/mtk_blocktag.h>
 #endif
 
-#include "ufshcd.h"
+#include <ufs/ufshcd.h>
 #include "ufshcd-crypto.h"
 #include "ufshcd-pltfrm.h"
-#include "ufs_quirks.h"
-#include "unipro.h"
+#include <ufs/ufs_quirks.h>
+#include <ufs/unipro.h>
 #include "ufs-mediatek.h"
 #include "ufs-mediatek-sip.h"
 
@@ -369,6 +373,7 @@ static void ufs_mtk_auto_hibern8_disable(struct ufs_hba *hba);
 #include "ufs-mediatek-trace.h"
 #undef CREATE_TRACE_POINTS
 
+#if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
 static struct ufs_dev_fix ufs_mtk_dev_fixups[] = {
 	UFS_FIX(UFS_ANY_VENDOR, UFS_ANY_MODEL,
 		UFS_DEVICE_QUIRK_DELAY_BEFORE_LPM |
@@ -377,6 +382,7 @@ static struct ufs_dev_fix ufs_mtk_dev_fixups[] = {
 		UFS_DEVICE_QUIRK_SUPPORT_EXTENDED_FEATURES),
 	END_FIX
 };
+#endif
 
 static const struct of_device_id ufs_mtk_of_match[] = {
 	{ .compatible = "mediatek,mt8183-ufshci" },
@@ -1234,6 +1240,7 @@ static void ufs_mtk_trace_vh_send_command(void *data, struct ufs_hba *hba, struc
 static void ufs_mtk_get_outstanding_reqs(struct ufs_hba *hba,
 				unsigned long **outstanding_reqs, int *nr_tag)
 {
+#if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
 	struct ufs_hba_private *hba_priv =
 			(struct ufs_hba_private *)hba->android_vendor_data1;
 
@@ -1244,6 +1251,10 @@ static void ufs_mtk_get_outstanding_reqs(struct ufs_hba *hba,
 		*outstanding_reqs = &hba->outstanding_reqs;
 		*nr_tag = hba->nutrs;
 	}
+#else
+	*outstanding_reqs = &hba->outstanding_reqs;
+	*nr_tag = hba->nutrs;
+#endif
 }
 #endif
 
@@ -1313,7 +1324,7 @@ static void ufs_mtk_trace_vh_update_sdev(void *data, struct scsi_device *sdev)
 
 	if (hba->luns_avail == 1) {
 		/* The last LUs */
-		dev_info(hba->dev, "%s: LUNs ready");
+		dev_info(hba->dev, "%s: LUNs ready", __func__);
 		complete(&host->luns_added);
 	}
 }
@@ -1636,7 +1647,7 @@ static void ufs_mtk_rpmb_add(void *data, async_cookie_t cookie)
 
 	err = wait_for_completion_timeout(&host->luns_added, 10 * HZ);
 	if (err == 0) {
-		dev_warn(hba->dev, "%s: LUNs not ready before timeout. RPMB init failed");
+		dev_info(hba->dev, "%s: LUNs not ready before timeout. RPMB init failed", __func__);
 		goto out;
 	}
 
@@ -2224,6 +2235,7 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	/* Initialize host capability */
 	ufs_mtk_init_host_caps(hba);
 
+#if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
 	/* MCQ init */
 	err = ufs_mtk_mcq_alloc_priv(hba);
 	if (err)
@@ -2235,6 +2247,7 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	if (err)
 		goto out;
 
+#endif
 	err = ufs_mtk_bind_mphy(hba);
 	if (err)
 		goto out_variant_clear;
@@ -3160,7 +3173,7 @@ static int ufs_mtk_suspend_check(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 		goto out;
 
 	list_for_each_entry(link,
-		&hba->sdev_ufs_device->sdev_gendev.links.consumers,
+		&hba->ufs_device_wlun->sdev_gendev.links.consumers,
 		s_node) {
 
 		/* If consumer is active, stop supplier enter suspend. */
@@ -3276,6 +3289,7 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 
 	ufshcd_dump_regs(hba, REG_UFS_EXTREG, 0x4, "Ext Reg ");
 
+#if IS_ENABLED(CONFIG_CONFIG_UFS_MEDIATEK_MCQ)
 	/* Dump ufshci register 0x100 ~ 0x160 */
 	ufshcd_dump_regs(hba, REG_UFS_CCAP,
 			 REG_UFS_MMIO_OPT_CTRL_0 - REG_UFS_CCAP + 4,
@@ -3295,6 +3309,8 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 	ufshcd_dump_regs(hba, REG_UFS_MCQ_BASE,
 			 MCQ_ADDR(REG_UFS_CQ_TAIL, 7) - REG_UFS_MCQ_BASE + 4,
 			 "UFSHCI (0x320): ");
+
+#endif
 
 	/* Dump ufshci register 0x2200 ~ 0x22AC */
 	ufshcd_dump_regs(hba, REG_UFS_MPHYCTRL,
@@ -3365,7 +3381,7 @@ static void ufs_mtk_fixup_dev_quirks(struct ufs_hba *hba)
 	struct ufs_dev_info *dev_info = &hba->dev_info;
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
-	ufshcd_fixup_dev_quirks(hba, ufs_mtk_dev_fixups);
+	//ufshcd_fixup_dev_quirks(hba, ufs_mtk_dev_fixups);
 
 	if (STR_PRFX_EQUAL("H9HQ15AFAMBDAR", dev_info->model))
 		host->caps |= UFS_MTK_CAP_BROKEN_VCC | UFS_MTK_CAP_FORCE_VSx_LPM;
@@ -3503,7 +3519,7 @@ void ufs_mtk_setup_task_mgmt(struct ufs_hba *hba, int tag, u8 tm_function)
 
 static void ufs_mtk_config_scaling_param(struct ufs_hba *hba,
 					struct devfreq_dev_profile *profile,
-					void *data)
+					struct devfreq_simple_ondemand_data *data)
 {
 	/* customize clk scaling parms */
 	hba->clk_scaling.min_gear = UFS_HS_G4;
@@ -3691,9 +3707,12 @@ skip_reset:
 	}
 
 skip_phy:
+
+#if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
 	/* Get IRQ */
 	ufs_mtk_mcq_get_irq(pdev);
 	ufs_mtk_mcq_install_tracepoints();
+#endif
 
 	/* perform generic probe */
 	err = ufshcd_pltfrm_init(pdev, &ufs_hba_mtk_vops);
@@ -3707,7 +3726,9 @@ skip_phy:
 	if (hba && hba->irq)
 		irq_set_affinity_hint(hba->irq, get_cpu_mask(3));
 
+#if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
 	ufs_mtk_mcq_set_irq_affinity(hba);
+#endif
 
 	/*
 	 * Because the default power setting of VSx (the upper layer of

@@ -10,9 +10,9 @@
 #include <linux/pm_qos.h>
 #include <linux/of_device.h>
 
-#include "ufs.h"
-#include "ufshci.h"
-#include "ufshcd.h"
+#include <ufs/ufs.h>
+#include <ufs/ufshci.h>
+#include <ufs/ufshcd.h>
 
 #ifdef CONFIG_UFSFEATURE
 #include "ufsfeature.h"
@@ -383,6 +383,7 @@ struct ufs_hba_private {
 	bool is_mcq_enabled;
 };
 
+#if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
 int ufs_mtk_mcq_alloc_priv(struct ufs_hba *hba);
 void ufs_mtk_mcq_host_dts(struct ufs_hba *hba);
 void ufs_mtk_mcq_get_irq(struct platform_device *pdev);
@@ -390,6 +391,8 @@ void ufs_mtk_mcq_request_irq(struct ufs_hba *hba);
 void ufs_mtk_mcq_set_irq_affinity(struct ufs_hba *hba);
 int ufs_mtk_mcq_memory_alloc(struct ufs_hba *hba);
 int ufs_mtk_mcq_install_tracepoints(void);
+#endif
+
 
 /*
  *  IOCTL opcode for ufs queries has the following opcode after
