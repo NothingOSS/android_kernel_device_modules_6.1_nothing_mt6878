@@ -44,7 +44,7 @@ static int mt6685_spmi_probe(struct spmi_device *sdev)
 
 	regmap = devm_regmap_init_spmi_ext(sdev, &spmi_regmap_config);
 	if (IS_ERR(regmap)) {
-		pr_info("Failed to init mt6685 regmap: %d\n", PTR_ERR(regmap));
+		pr_info("Failed to init mt6685 regmap: %ld\n", PTR_ERR(regmap));
 		return PTR_ERR(regmap);
 	}
 

@@ -190,7 +190,7 @@ static void mt6375_irq_sync_unlock(struct irq_data *data)
 	ret = regmap_write(ddata->rmap, MT6375_REG_CHG_MSK0 + idx,
 			   ddata->mask_buf[idx]);
 	if (ret)
-		dev_err(ddata->dev, "failed to mask/unmask irq %d\n",
+		dev_err(ddata->dev, "failed to mask/unmask irq %lu\n",
 			    data->hwirq);
 	mutex_unlock(&ddata->irq_lock);
 }
