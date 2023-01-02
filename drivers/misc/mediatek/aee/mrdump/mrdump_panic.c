@@ -226,15 +226,19 @@ int mrdump_common_die(int reboot_reason, const char *msg,
 		aee_rr_rec_fiq_step(AEE_FIQ_STEP_COMMON_DIE_START);
 		mrdump_cblock_update(reboot_reason, regs, msg);
 		mrdump_mini_ke_cpu_regs(regs);
+		fallthrough;
 	case AEE_FIQ_STEP_COMMON_DIE_LOCK:
 		aee_rr_rec_fiq_step(AEE_FIQ_STEP_COMMON_DIE_LOCK);
 		/* release locks after set up cblock */
 		aee_reinit_die_lock();
+		fallthrough;
 	case AEE_FIQ_STEP_COMMON_DIE_KASLR:
 		aee_rr_rec_fiq_step(AEE_FIQ_STEP_COMMON_DIE_KASLR);
 		show_kaslr();
+		fallthrough;
 	case AEE_FIQ_STEP_COMMON_DIE_SCP:
 		aee_rr_rec_fiq_step(AEE_FIQ_STEP_COMMON_DIE_SCP);
+		fallthrough;
 	case AEE_FIQ_STEP_COMMON_DIE_TRACE:
 		aee_rr_rec_fiq_step(AEE_FIQ_STEP_COMMON_DIE_TRACE);
 		switch (reboot_reason) {
@@ -253,14 +257,18 @@ int mrdump_common_die(int reboot_reason, const char *msg,
 		}
 		if (p_show_task_info && !strcmp(current->comm, "llkd"))
 			p_show_task_info();
+		fallthrough;
 	case AEE_FIQ_STEP_COMMON_DIE_EMISC:
 		aee_rr_rec_fiq_step(AEE_FIQ_STEP_COMMON_DIE_EMISC);
 		mrdump_mini_add_extra_misc();
 		check_last_ko();
+		fallthrough;
 	case AEE_FIQ_STEP_COMMON_DIE_CS:
 		aee_rr_rec_fiq_step(AEE_FIQ_STEP_COMMON_DIE_CS);
+		fallthrough;
 	case AEE_FIQ_STEP_COMMON_DIE_DONE:
 		aee_rr_rec_fiq_step(AEE_FIQ_STEP_COMMON_DIE_DONE);
+		fallthrough;
 	default:
 		aee_nested_printf("num_die-%d, last_step-%d, next_step-%d\n",
 				  num_die, last_step, next_step);
