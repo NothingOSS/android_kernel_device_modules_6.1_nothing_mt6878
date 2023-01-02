@@ -735,7 +735,7 @@ static int vow_service_GetParameter(unsigned long arg)
 		     vowserv.vow_info_apuser[2],
 		     vowserv.vow_info_apuser[3]);
 	VOWDRV_DEBUG(
-	"vow get parameter: return size addr 0x%lx, uuid %d, data 0x%lx\n",
+	"vow get parameter: return size addr 0x%lx, uuid %lu, data 0x%lx\n",
 		     vowserv.vow_info_apuser[4],
 		     vowserv.vow_info_apuser[5],
 		     vowserv.vow_info_apuser[6]);
