@@ -3730,7 +3730,7 @@
 			apu_iommu1 = <&apu_iommu1>;
 
 			dma-ranges = <0x0 0x0 0x0 0x0 0x1 0x0>;
-			iommus = <&apu_iommu0 M4U_PORT_L41_APU_CODE>;
+			iommus = <&apu_iommu0 M4U_PORT_L40_APU_CODE>;
 
 			interrupts = <GIC_SPI 615 IRQ_TYPE_LEVEL_HIGH 0>,
 					<GIC_SPI 685 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -3822,7 +3822,7 @@
 			interrupts = <GIC_SPI 664 IRQ_TYPE_LEVEL_HIGH 0>;
 			interrupt-names = "apu_logtop";
 			dma-ranges = <0x0 0x0 0x0 0x0 0x1 0x0>;
-			iommus = <&apu_iommu1 M4U_PORT_L41_APU_CODE>;
+			iommus = <&apu_iommu1 M4U_PORT_L40_APU_CODE>;
 
 			aov_log_buf_sz = <0x100000>;
 		};
