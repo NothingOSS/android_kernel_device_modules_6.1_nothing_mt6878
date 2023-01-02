@@ -502,6 +502,7 @@ int vcp_enc_ipi_handler(void *arg)
 				vcu->failure = VENC_IPI_MSG_STATUS_FAIL;
 			else
 				vcu->ctx->state = MTK_STATE_INIT;
+			fallthrough;
 		case VCU_IPIMSG_ENC_SET_PARAM_DONE:
 		case VCU_IPIMSG_ENC_ENCODE_DONE:
 		case VCU_IPIMSG_ENC_DEINIT_DONE:
