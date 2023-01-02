@@ -185,7 +185,7 @@ static void ufs_mtk_transfer_req_compl_handler(struct ufs_hba *hba,
 		/* Mark completed command as NULL in LRB */
 		lrbp->cmd = NULL;
 		/* Do not touch lrbp after scsi done */
-		cmd->scsi_done(cmd);
+		scsi_done(cmd);
 		ufshcd_release(hba);
 		update_scaling = true;
 	} else if (lrbp->command_type == UTP_CMD_TYPE_DEV_MANAGE ||
