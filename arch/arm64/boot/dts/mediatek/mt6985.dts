@@ -3937,6 +3937,13 @@
 //		clocks = <&dispsys_config_clk CLK_DISPSYS_CONFIG_DISP_MUTEX>,
 //			 <&dispsys1_config_clk CLK_DISPSYS1_CONFIG_DISP_MUTEX>;
 	};
+
+	slbc: slbc {
+		compatible = "mediatek,mtk-slbc";
+		reg = <0 0x00113e00 0 0x200>;
+		status = "enable";
+		apu = <2097152>;
+	};
 };
 
 #include "mediatek/mt6363.dtsi"
