@@ -2126,8 +2126,8 @@ static int mtk_phy_jtag_init(struct phy *phy)
 	reg_base = syscon_node_to_regmap(args.np);
 	of_node_put(args.np);
 
-	dev_info(xsphy->dev, "base - reg:0x%x, version:%d\n",
-			reg_base, jtag_vers);
+	dev_info(xsphy->dev, "base - reg:0x%lx, version:%d\n",
+			(unsigned long)reg_base, jtag_vers);
 
 	ret = clk_prepare_enable(inst->ref_clk);
 	if (ret) {
