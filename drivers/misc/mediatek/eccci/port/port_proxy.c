@@ -2040,7 +2040,7 @@ int modem_dcd_state(void)
 	c2k_ctl_msg.option = 0;
 
 	ret = ccci_port_send_msg_to_md(CCCI_SYSTEM_TX,
-			C2K_PPP_LINE_STATUS,
+			C2K_PPP_LINE_STATUS, // md user is: stun wu
 			(u32) (*((u32 *)&c2k_ctl_msg)), 1);
 
 	CCCI_NORMAL_LOG(0, TAG,

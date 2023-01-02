@@ -16,6 +16,7 @@
 /* Rx queue only has this one port */
 #define PORT_F_RX_EXCLUSIVE	(1<<3)
 /* Check whether need remove ccci header while recv skb*/
+/* the same as PORT_F_WITH_CHAR_NODE, just different name? */
 #define PORT_F_ADJUST_HEADER	(1<<4)
 /* Enable port channel traffic*/
 #define PORT_F_CH_TRAFFIC	(1<<5)

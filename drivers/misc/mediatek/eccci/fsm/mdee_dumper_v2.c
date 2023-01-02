@@ -215,6 +215,11 @@ static void mdee_output_debug_info_to_buf(struct ccci_fsm_ee *mdee,
 	}
 }
 
+static int Is_MD_EMI_voilation(void)
+{
+	return 1;
+}
+
 static void mdee_info_dump_v2(struct ccci_fsm_ee *mdee)
 {
 	char *ex_info;		/*[EE_BUF_LEN] = ""; */

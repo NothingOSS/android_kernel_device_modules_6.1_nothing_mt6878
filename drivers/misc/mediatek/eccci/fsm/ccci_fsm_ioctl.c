@@ -22,8 +22,9 @@
 #include "modem_sys.h"
 #include "md_sys1_platform.h"
 
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 extern atomic_t pw_off_disable_dapc_ke;
-
+#endif
 signed int __weak battery_get_bat_voltage(void)
 {
 	pr_debug("[ccci/dummy] %s is not supported!\n", __func__);
@@ -641,7 +642,9 @@ long ccci_fsm_ioctl(unsigned int cmd, unsigned long arg)
 				current->comm);
 		inject_md_status_event(MD_STA_EV_RILD_POWEROFF_START,
 				current->comm);
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 		atomic_set(&pw_off_disable_dapc_ke, 1);
+#endif
 		break;
 	case CCCI_IOC_SET_EFUN:
 		if (copy_from_user(&data, (void __user *)arg,

@@ -343,6 +343,4 @@ struct mdee_dumper_v2 {
 	unsigned char ex_pl_info[MD_HS1_FAIL_DUMP_SIZE];
 };
 
-extern int Is_MD_EMI_voilation(void);
-
 #endif	/* __MDEE_DUMPER_V2_H__ */

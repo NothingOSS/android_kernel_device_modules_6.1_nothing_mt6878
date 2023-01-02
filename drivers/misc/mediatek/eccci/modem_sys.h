@@ -81,20 +81,20 @@ struct ccci_modem_ops {
 		unsigned char qno, enum DIRECTION dir);
 	int (*send_runtime_data)(struct ccci_modem *md, unsigned int tx_ch,
 		unsigned int txqno, int skb_from_pool);
-	int (*ee_handshake)(struct ccci_modem *md, int timeout);
+	//int (*ee_handshake)(struct ccci_modem *md, int timeout);
 	int (*force_assert)(struct ccci_modem *md, enum MD_COMM_TYPE type);
 	int (*dump_info)(struct ccci_modem *md, enum MODEM_DUMP_FLAG flag,
 		void *buff, int length);
-	int (*ee_callback)(struct ccci_modem *md, enum MODEM_EE_FLAG flag);
-	int (*send_ccb_tx_notify)(struct ccci_modem *md, int core_id);
+	//int (*ee_callback)(struct ccci_modem *md, enum MODEM_EE_FLAG flag);
+	//int (*send_ccb_tx_notify)(struct ccci_modem *md, int core_id);
 	int (*reset_pccif)(struct ccci_modem *md);
 };
 
 struct md_sys1_info {
 		int channel_id;		/* CCIF channel */
-		atomic_t ccif_irq_enabled;
-		unsigned int ap_ccif_irq_id;
-		unsigned long ap_ccif_irq_flags;
+		//atomic_t ccif_irq_enabled;
+		//unsigned int ap_ccif_irq_id;
+		//unsigned long ap_ccif_irq_flags;
 
 		void __iomem *md_global_con0;
 
@@ -203,8 +203,10 @@ extern int mrdump_mini_add_extra_file(unsigned long vaddr, unsigned long paddr,
 #if IS_ENABLED(CONFIG_MTK_IRQ_DBG)
 extern void mt_irq_dump_status(unsigned int irq);
 #endif
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 extern atomic_t en_flight_timeout;
 extern atomic_t md_dapc_ke_occurred;
+#endif
 
 int ccci_md_start(void);
 int ccci_md_soft_start(unsigned int sim_mode);
@@ -216,7 +218,7 @@ int ccci_md_stop(unsigned int stop_type);
 int ccci_md_soft_stop(unsigned int sim_mode);
 //int ccci_md_force_assert(enum MD_FORCE_ASSERT_TYPE type,
 //	char *param, int len);
-void ccci_md_exception_handshake(int timeout);
+//void ccci_md_exception_handshake(int timeout);
 //int ccci_md_send_ccb_tx_notify(int core_id);
 int ccci_md_pre_start(void);
 int ccci_md_post_start(void);

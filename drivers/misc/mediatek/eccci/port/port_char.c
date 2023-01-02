@@ -65,6 +65,34 @@ static const struct file_operations char_dev_fops = {
 	.poll = &port_char_dev_poll,/*use port char self API*/
 	.mmap = &port_dev_mmap,
 };
+
+static void port_char_md_state_notify(struct port_t *port, unsigned int state)
+{
+	struct sk_buff *skb = NULL;
+	unsigned long flags;
+
+	switch (state) {
+	case GATED:
+		/* when MD is stopped, the skb list of ccci_fs should be clean */
+		if (port->rx_ch == CCCI_FS_RX)
+			CCCI_NORMAL_LOG(0, FSM, "[%s]cccifs + GATED\n", __func__);
+		else
+			CCCI_NORMAL_LOG(0, FSM, "[%s]%d + GATED\n", __func__,
+					port->rx_ch);
+
+		if (port->flags & PORT_F_CLEAN) {
+			spin_lock_irqsave(&port->rx_skb_list.lock, flags);
+			while ((skb = __skb_dequeue(&port->rx_skb_list)) != NULL)
+				ccci_free_skb(skb);
+			spin_unlock_irqrestore(&port->rx_skb_list.lock, flags);
+		}
+
+		break;
+	default:
+		break;
+	};
+}
+
 static int port_char_init(struct port_t *port)
 {
 	struct cdev *dev = NULL;
@@ -91,18 +119,12 @@ static int port_char_init(struct port_t *port)
 		port->flags |= PORT_F_ADJUST_HEADER;
 	}
 
-	if (port->rx_ch == CCCI_UART2_RX ||
-		port->rx_ch == CCCI_C2K_AT ||
-		port->rx_ch == CCCI_C2K_AT2 ||
-		port->rx_ch == CCCI_C2K_AT3 ||
-		port->rx_ch == CCCI_C2K_AT4 ||
-		port->rx_ch == CCCI_C2K_AT5 ||
-		port->rx_ch == CCCI_C2K_AT6 ||
-		port->rx_ch == CCCI_C2K_AT7 ||
-		port->rx_ch == CCCI_C2K_AT8)
-		port->flags |= PORT_F_CH_TRAFFIC;
-	else if (port->rx_ch == CCCI_FS_RX)
-		port->flags |= (PORT_F_CH_TRAFFIC | PORT_F_DUMP_RAW_DATA);
+	if (port->rx_ch == CCCI_FS_RX) {
+		/* if more port need, move to common place. */
+		CCCI_NORMAL_LOG(0, CHAR,
+			"ccci_fs add modem state receiver\n");
+		port->ops->md_state_notify = port_char_md_state_notify;
+	}
 
 	return ret;
 }

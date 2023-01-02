@@ -24,24 +24,10 @@
 #include "modem_sys.h"
 #include "ccci_auxadc.h"
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
-#include <linux/soc/mediatek/devapc_public.h>
-#endif
-
-atomic_t pw_off_disable_dapc_ke;
-atomic_t md_dapc_ke_occurred;
-atomic_t en_flight_timeout;
 struct ccci_fsm_ctl *ccci_fsm_entries;
-
-static void fsm_finish_command(struct ccci_fsm_ctl *ctl,
-	struct ccci_fsm_command *cmd, int result);
-static void fsm_finish_event(struct ccci_fsm_ctl *ctl,
-	struct ccci_fsm_event *event);
 
 static int needforcestop;
 static int hs2_done;
-static int s_is_normal_mdee;
-static int s_devapc_dump_counter;
 
 static void (*s_md_state_cb)(enum MD_STATE old_state,
 				enum MD_STATE new_state);
@@ -66,6 +52,152 @@ int mtk_ccci_register_md_state_cb(
 }
 EXPORT_SYMBOL(mtk_ccci_register_md_state_cb);
 
+int fsm_append_command(struct ccci_fsm_ctl *ctl,
+	enum CCCI_FSM_COMMAND cmd_id, unsigned int flag)
+{
+	struct ccci_fsm_command *cmd = NULL;
+	int result = 0;
+	unsigned long flags;
+	int ret;
+
+	if (cmd_id <= CCCI_COMMAND_INVALID
+			|| cmd_id >= CCCI_COMMAND_MAX) {
+		CCCI_ERROR_LOG(0, FSM,
+			"invalid command %d\n", cmd_id);
+		return -CCCI_ERR_INVALID_PARAM;
+	}
+	cmd = kmalloc(sizeof(struct ccci_fsm_command),
+		(in_irq() || in_softirq()
+		|| irqs_disabled()) ? GFP_ATOMIC : GFP_KERNEL);
+	if (!cmd) {
+		CCCI_ERROR_LOG(0, FSM,
+			"fail to alloc command %d\n", cmd_id);
+		return -CCCI_ERR_GET_MEM_FAIL;
+	}
+	INIT_LIST_HEAD(&cmd->entry);
+	init_waitqueue_head(&cmd->complete_wq);
+	cmd->cmd_id = cmd_id;
+	cmd->complete = 0;
+	if (in_irq() || irqs_disabled())
+		flag &= ~FSM_CMD_FLAG_WAIT_FOR_COMPLETE;
+	cmd->flag = flag;
+
+	spin_lock_irqsave(&ctl->command_lock, flags);
+	list_add_tail(&cmd->entry, &ctl->command_queue);
+	spin_unlock_irqrestore(&ctl->command_lock, flags);
+	if (!in_irq())
+		CCCI_NORMAL_LOG(0, FSM,
+			"command %d is appended %x from %ps\n",
+			cmd_id, flag,
+			__builtin_return_address(0));
+	/* after this line, only dereference cmd
+	 * when "wait-for-complete"
+	 */
+	wake_up(&ctl->command_wq);
+	if (flag & FSM_CMD_FLAG_WAIT_FOR_COMPLETE) {
+		while (1) {
+			ret = wait_event_interruptible(cmd->complete_wq,
+				cmd->complete != 0);
+			if (ret == -ERESTARTSYS)
+				continue;
+			if (cmd->complete != 1)
+				result = -1;
+			spin_lock_irqsave(&ctl->cmd_complete_lock, flags);
+			kfree(cmd);
+			spin_unlock_irqrestore(&ctl->cmd_complete_lock, flags);
+			break;
+		}
+	}
+	return result;
+}
+
+static void fsm_finish_command(struct ccci_fsm_ctl *ctl,
+	struct ccci_fsm_command *cmd, int result)
+{
+	unsigned long flags;
+
+	CCCI_NORMAL_LOG(0, FSM,
+		"command %d is completed %d by %ps\n",
+		cmd->cmd_id, result,
+		__builtin_return_address(0));
+	if (cmd->flag & FSM_CMD_FLAG_WAIT_FOR_COMPLETE) {
+		spin_lock_irqsave(&ctl->cmd_complete_lock, flags);
+		cmd->complete = result;
+		/* do not dereference cmd after this line */
+		wake_up_all(&cmd->complete_wq);
+		/* after cmd in list,
+		 * processing thread may see it
+		 * without being waked up,
+		 * so spinlock is needed
+		 */
+		spin_unlock_irqrestore(&ctl->cmd_complete_lock, flags);
+	} else {
+		/* no one is waiting for this cmd, free to free */
+		kfree(cmd);
+	}
+}
+
+static void fsm_command_pre(enum CCCI_FSM_COMMAND cmd_id)
+{
+	fsm_ee_cmd_init(cmd_id);
+}
+
+static void fsm_command_post(enum CCCI_FSM_COMMAND cmd_id)
+{
+	fsm_ee_cmd_deinit(cmd_id);
+}
+
+int fsm_append_event(struct ccci_fsm_ctl *ctl, enum CCCI_FSM_EVENT event_id,
+	unsigned char *data, unsigned int length)
+{
+	struct ccci_fsm_event *event = NULL;
+	unsigned long flags;
+
+	if (event_id <= CCCI_EVENT_INVALID || event_id >= CCCI_EVENT_MAX) {
+		CCCI_ERROR_LOG(0, FSM, "invalid event %d\n", event_id);
+		return -CCCI_ERR_INVALID_PARAM;
+	}
+	if (event_id == CCCI_EVENT_FS_IN) {
+		atomic_set(&(ctl->fs_ongoing), 1);
+		return 0;
+	} else if (event_id == CCCI_EVENT_FS_OUT) {
+		atomic_set(&(ctl->fs_ongoing), 0);
+		return 0;
+	}
+	event = kmalloc(sizeof(struct ccci_fsm_event) + length,
+		in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
+	if (!event) {
+		CCCI_ERROR_LOG(0, FSM,
+			"fail to alloc event%d\n", event_id);
+		return -CCCI_ERR_GET_MEM_FAIL;
+	}
+	INIT_LIST_HEAD(&event->entry);
+	event->event_id = event_id;
+	event->length = length;
+	if (data && length)
+		memcpy(event->data, data, length);
+
+	spin_lock_irqsave(&ctl->event_lock, flags);
+	list_add_tail(&event->entry, &ctl->event_queue);
+	spin_unlock_irqrestore(&ctl->event_lock, flags);
+	/* do not derefence event after here */
+	CCCI_NORMAL_LOG(0, FSM,
+		"event %d is appended from %ps\n", event_id,
+		__builtin_return_address(0));
+	return 0;
+}
+
+/* must be called within protection of event_lock */
+void fsm_finish_event(struct ccci_fsm_ctl *ctl,
+	struct ccci_fsm_event *event)
+{
+	list_del(&event->entry);
+	CCCI_NORMAL_LOG(0, FSM,
+		"event %d is completed by %ps\n", event->event_id,
+		__builtin_return_address(0));
+	kfree(event);
+}
+
 int force_md_stop(struct ccci_fsm_monitor *monitor_ctl)
 {
 	int ret = -1;
@@ -78,27 +210,8 @@ int force_md_stop(struct ccci_fsm_monitor *monitor_ctl)
 		return -1;
 	}
 	ret = fsm_append_command(ctl, CCCI_COMMAND_STOP, 0);
-	CCCI_NORMAL_LOG(0, FSM,
-			"force md stop\n");
+	CCCI_NORMAL_LOG(0, FSM, "force md stop\n");
 	return ret;
-}
-
-unsigned long __weak BAT_Get_Battery_Voltage(int polling_mode)
-{
-	pr_debug("[ccci/dummy] %s is not supported!\n", __func__);
-	return 0;
-}
-
-void mdee_set_ex_time_str(unsigned int type, char *str)
-{
-	struct ccci_fsm_ctl *ctl = ccci_fsm_entries;
-
-	if (ctl == NULL) {
-		CCCI_ERROR_LOG(0, FSM,
-			"%s:ccci_fsm_entries is null\n", __func__);
-		return;
-	}
-	mdee_set_ex_start_str(&ctl->ee_ctl, type, str);
 }
 
 static struct ccci_fsm_command *fsm_check_for_ee(struct ccci_fsm_ctl *ctl,
@@ -128,14 +241,12 @@ static inline int fsm_broadcast_state(struct ccci_fsm_ctl *ctl,
 	enum MD_STATE old_state;
 
 	if (unlikely(ctl->md_state != BOOT_WAITING_FOR_HS2 && state == READY)) {
-		CCCI_NORMAL_LOG(0, FSM,
-		"ignore HS2 when md_state=%d\n",
-		ctl->md_state);
+		CCCI_NORMAL_LOG(0, FSM, "ignore HS2 when md_state=%d\n",
+			ctl->md_state);
 		return 0;
 	}
 
-	CCCI_NORMAL_LOG(0, FSM,
-			"md_state change from %d to %d\n",
+	CCCI_NORMAL_LOG(0, FSM, "md_state change from %d to %d\n",
 			ctl->md_state, state);
 
 	old_state = ctl->md_state;
@@ -146,6 +257,7 @@ static inline int fsm_broadcast_state(struct ccci_fsm_ctl *ctl,
 	 */
 	ccci_port_md_status_notify(state);
 	ccci_hif_state_notification(state);
+	/* kernel md state receiver: 1. scp; 2. ; 3. poller */
 #ifdef CCCI_KMODULE_ENABLE
 #ifdef FEATURE_SCP_CCCI_SUPPORT
 	if (ctl->scp_ctl) {
@@ -162,8 +274,7 @@ static inline int fsm_broadcast_state(struct ccci_fsm_ctl *ctl,
 		CCCI_NORMAL_LOG(0, FSM, "ccci scp not ready %d\n", state);
 #endif
 #endif
-	if (old_state != state &&
-		s_md_state_cb != NULL)
+	if (old_state != state && s_md_state_cb != NULL)
 		s_md_state_cb(old_state, state);
 
 	return 0;
@@ -200,27 +311,11 @@ static void fsm_routine_zombie(struct ccci_fsm_ctl *ctl)
 	spin_unlock_irqrestore(&ctl->event_lock, flags);
 }
 
-int ccci_fsm_is_normal_mdee(void)
-{
-	return s_is_normal_mdee;
-}
-
-int ccci_fsm_increase_devapc_dump_counter(void)
-{
-	return (++ s_devapc_dump_counter);
-}
-
 /* cmd is not NULL only when reason is ordinary EE */
 static void fsm_routine_exception(struct ccci_fsm_ctl *ctl,
 	struct ccci_fsm_command *cmd, enum CCCI_EE_REASON reason)
 {
-	int count = 0, ex_got = 0;
-	int rec_ok_got = 0, pass_got = 0;
-	struct ccci_fsm_event *event = NULL;
-	unsigned long flags;
-
-	CCCI_NORMAL_LOG(0, FSM,
-		"exception %d, from %ps\n",
+	CCCI_NORMAL_LOG(0, FSM, "exception %d, from %ps\n",
 		reason, __builtin_return_address(0));
 	fsm_monitor_send_message(CCCI_MD_MSG_EXCEPTION, 0);
 	/* 1. state sanity check */
@@ -240,25 +335,21 @@ static void fsm_routine_exception(struct ccci_fsm_ctl *ctl,
 	/* 2. check EE reason */
 	switch (reason) {
 	case EXCEPTION_HS1_TIMEOUT:
-		CCCI_ERROR_LOG(0, FSM,
-			"MD_BOOT_HS1_FAIL!\n");
+		CCCI_ERROR_LOG(0, FSM, "MD_BOOT_HS1_FAIL!\n");
 		fsm_md_bootup_timeout_handler(&ctl->ee_ctl);
 		break;
 	case EXCEPTION_HS2_TIMEOUT:
-		CCCI_ERROR_LOG(0, FSM,
-			"MD_BOOT_HS2_FAIL!\n");
+		CCCI_ERROR_LOG(0, FSM, "MD_BOOT_HS2_FAIL!\n");
 		fsm_md_bootup_timeout_handler(&ctl->ee_ctl);
 		break;
 	case EXCEPTION_MD_NO_RESPONSE:
-		CCCI_ERROR_LOG(0, FSM,
-			"MD_NO_RESPONSE!\n");
+		CCCI_ERROR_LOG(0, FSM, "MD_NO_RESPONSE!\n");
 		fsm_broadcast_state(ctl, EXCEPTION);
 		fsm_md_no_response_handler(&ctl->ee_ctl);
 		break;
 	case EXCEPTION_WDT:
 		fsm_broadcast_state(ctl, EXCEPTION);
-		CCCI_ERROR_LOG(0, FSM,
-			"MD_WDT!\n");
+		CCCI_ERROR_LOG(0, FSM, "MD_WDT!\n");
 		fsm_md_wdt_handler(&ctl->ee_ctl);
 		break;
 	case EXCEPTION_EE:
@@ -266,54 +357,7 @@ static void fsm_routine_exception(struct ccci_fsm_ctl *ctl,
 			s_dpmaif_debug_push_data_to_stack();
 
 		fsm_broadcast_state(ctl, EXCEPTION);
-		/* no need to implement another
-		 * event polling in EE_CTRL,
-		 * so we do it here
-		 */
-		ccci_md_exception_handshake(MD_EX_CCIF_TIMEOUT);
-#ifdef ENABLE_EMIMPU_CB
-		mtk_clear_md_violation();
-#endif
-		count = 0;
-		while (count < MD_EX_REC_OK_TIMEOUT/EVENT_POLL_INTEVAL) {
-			spin_lock_irqsave(&ctl->event_lock, flags);
-			if (!list_empty(&ctl->event_queue)) {
-				event = list_first_entry(&ctl->event_queue,
-					struct ccci_fsm_event, entry);
-				if (event->event_id == CCCI_EVENT_MD_EX) {
-					ex_got = 1;
-					fsm_finish_event(ctl, event);
-				} else if (event->event_id ==
-						CCCI_EVENT_MD_EX_REC_OK) {
-					rec_ok_got = 1;
-					fsm_finish_event(ctl, event);
-				}
-			}
-			spin_unlock_irqrestore(&ctl->event_lock, flags);
-			if (rec_ok_got)
-				break;
-			count++;
-			msleep(EVENT_POLL_INTEVAL);
-		}
-		fsm_md_exception_stage(&ctl->ee_ctl, 1);
-		count = 0;
-		while (count < MD_EX_PASS_TIMEOUT/EVENT_POLL_INTEVAL) {
-			spin_lock_irqsave(&ctl->event_lock, flags);
-			if (!list_empty(&ctl->event_queue)) {
-				event = list_first_entry(&ctl->event_queue,
-					struct ccci_fsm_event, entry);
-				if (event->event_id == CCCI_EVENT_MD_EX_PASS) {
-					pass_got = 1;
-					fsm_finish_event(ctl, event);
-				}
-			}
-			spin_unlock_irqrestore(&ctl->event_lock, flags);
-			if (pass_got)
-				break;
-			count++;
-			msleep(EVENT_POLL_INTEVAL);
-		}
-		fsm_md_exception_stage(&ctl->ee_ctl, 2);
+		fsm_md_normal_ee_handler(ctl);
 		break;
 	default:
 		break;
@@ -1162,9 +1206,7 @@ static void fsm_routine_start(struct ccci_fsm_ctl *ctl,
 	ctl->last_state = ctl->curr_state;
 	ctl->curr_state = CCCI_FSM_STARTING;
 	__pm_stay_awake(ctl->wakelock);
-	atomic_set(&pw_off_disable_dapc_ke, 0);
-	atomic_set(&md_dapc_ke_occurred, 0);
-	atomic_set(&en_flight_timeout, 0);
+
 	/* 2. poll for critical users exit */
 	while (count < BOOT_TIMEOUT/EVENT_POLL_INTEVAL && !needforcestop) {
 		if (ccci_port_check_critical_user() == 0 ||
@@ -1246,8 +1288,7 @@ static void fsm_routine_start(struct ccci_fsm_ctl *ctl,
 		}
 		spin_unlock_irqrestore(&ctl->event_lock, flags);
 		if (fsm_check_for_ee(ctl, 0)) {
-			CCCI_ERROR_LOG(0, FSM,
-				"early exception detected\n");
+			CCCI_ERROR_LOG(0, FSM, "early exception detected\n");
 			goto fail_ee;
 		}
 		if (hs2_got)
@@ -1296,8 +1337,6 @@ static void fsm_routine_stop(struct ccci_fsm_ctl *ctl,
 	struct ccci_fsm_event *event = NULL;
 	struct ccci_fsm_event *next = NULL;
 	struct ccci_fsm_command *ee_cmd = NULL;
-	struct port_t *port = NULL;
-	struct sk_buff *skb = NULL;
 	unsigned long flags;
 
 	/* 1. state sanity check */
@@ -1313,14 +1352,9 @@ static void fsm_routine_stop(struct ccci_fsm_ctl *ctl,
 	ctl->last_state = ctl->curr_state;
 	ctl->curr_state = CCCI_FSM_STOPPING;
 
-	atomic_set(&pw_off_disable_dapc_ke, 1);
 	/* 2. pre-stop: polling MD for infinit sleep mode */
-	ccci_md_pre_stop(
-	cmd->flag & FSM_CMD_FLAG_FLIGHT_MODE
-	?
-	MD_FLIGHT_MODE_ENTER
-	:
-	MD_FLIGHT_MODE_NONE);
+	ccci_md_pre_stop(cmd->flag & FSM_CMD_FLAG_FLIGHT_MODE ?
+		MD_FLIGHT_MODE_ENTER : MD_FLIGHT_MODE_NONE);
 	/* 3. check for EE */
 	ee_cmd = fsm_check_for_ee(ctl, 1);
 	if (ee_cmd) {
@@ -1333,18 +1367,12 @@ static void fsm_routine_stop(struct ccci_fsm_ctl *ctl,
 	ctl->poller_ctl.poller_state = FSM_POLLER_RECEIVED_RESPONSE;
 	wake_up(&ctl->poller_ctl.status_rx_wq);
 	/* 4. hardware stop */
-	ccci_md_stop(
-	cmd->flag & FSM_CMD_FLAG_FLIGHT_MODE
-	?
-	MD_FLIGHT_MODE_ENTER
-	:
-	MD_FLIGHT_MODE_NONE);
+	ccci_md_stop(cmd->flag & FSM_CMD_FLAG_FLIGHT_MODE ?
+		MD_FLIGHT_MODE_ENTER : MD_FLIGHT_MODE_NONE);
 	/* 5. clear event queue */
 	spin_lock_irqsave(&ctl->event_lock, flags);
-	list_for_each_entry_safe(event, next,
-		&ctl->event_queue, entry) {
-		CCCI_NORMAL_LOG(0, FSM,
-			"drop event %d after stop\n",
+	list_for_each_entry_safe(event, next, &ctl->event_queue, entry) {
+		CCCI_NORMAL_LOG(0, FSM, "drop event %d after stop\n",
 			event->event_id);
 		fsm_finish_event(ctl, event);
 	}
@@ -1353,27 +1381,11 @@ static void fsm_routine_stop(struct ccci_fsm_ctl *ctl,
 	/* 6. always end in stopped state */
 success:
 	needforcestop = 0;
-	/* when MD is stopped, the skb list of ccci_fs should be clean */
-	port = port_get_by_channel(CCCI_FS_RX);
-	if (port == NULL) {
-		CCCI_ERROR_LOG(0, FSM, "port_get_by_channel fail");
-		return;
-	}
 
-	if (port->flags & PORT_F_CLEAN) {
-		spin_lock_irqsave(&port->rx_skb_list.lock, flags);
-		while ((skb = __skb_dequeue(&port->rx_skb_list)) != NULL)
-			ccci_free_skb(skb);
-		spin_unlock_irqrestore(&port->rx_skb_list.lock, flags);
-	}
 	ctl->last_state = ctl->curr_state;
 	ctl->curr_state = CCCI_FSM_GATED;
 	fsm_broadcast_state(ctl, GATED);
 	fsm_finish_command(ctl, cmd, 1);
-	if (atomic_read(&md_dapc_ke_occurred) && atomic_read(&en_flight_timeout)) {
-		CCCI_ERROR_LOG(0, FSM, "md_dapc_ke_occurred and en_flight_timeout, bug_on\n");
-		BUG_ON(1);
-	}
 }
 
 static int ccci_md_epon_set(void)
@@ -1429,6 +1441,7 @@ static int fsm_main_thread(void *data)
 {
 	struct ccci_fsm_ctl *ctl = (struct ccci_fsm_ctl *)data;
 	struct ccci_fsm_command *cmd = NULL;
+	enum CCCI_FSM_COMMAND cmd_id;
 	unsigned long flags;
 	int ret;
 
@@ -1447,9 +1460,8 @@ static int fsm_main_thread(void *data)
 		spin_unlock_irqrestore(&ctl->command_lock, flags);
 
 		CCCI_NORMAL_LOG(0, FSM, "command process\n");
-
-		s_is_normal_mdee = 0;
-		s_devapc_dump_counter = 0;
+		cmd_id = cmd->cmd_id;
+		fsm_command_pre(cmd_id);
 
 		switch (cmd->cmd_id) {
 		case CCCI_COMMAND_START:
@@ -1462,7 +1474,6 @@ static int fsm_main_thread(void *data)
 			fsm_routine_wdt(ctl, cmd);
 			break;
 		case CCCI_COMMAND_EE:
-			s_is_normal_mdee = 1;
 			fsm_routine_exception(ctl, cmd, EXCEPTION_EE);
 			break;
 		case CCCI_COMMAND_MD_HANG:
@@ -1474,145 +1485,10 @@ static int fsm_main_thread(void *data)
 			fsm_routine_zombie(ctl);
 			break;
 		};
+
+		fsm_command_post(cmd_id);
 	}
 	return 0;
-}
-
-
-int fsm_append_command(struct ccci_fsm_ctl *ctl,
-	enum CCCI_FSM_COMMAND cmd_id, unsigned int flag)
-{
-	struct ccci_fsm_command *cmd = NULL;
-	int result = 0;
-	unsigned long flags;
-	int ret;
-
-	if (cmd_id <= CCCI_COMMAND_INVALID
-			|| cmd_id >= CCCI_COMMAND_MAX) {
-		CCCI_ERROR_LOG(0, FSM,
-			"invalid command %d\n", cmd_id);
-		return -CCCI_ERR_INVALID_PARAM;
-	}
-	cmd = kmalloc(sizeof(struct ccci_fsm_command),
-		(in_irq() || in_softirq()
-		|| irqs_disabled()) ? GFP_ATOMIC : GFP_KERNEL);
-	if (!cmd) {
-		CCCI_ERROR_LOG(0, FSM,
-			"fail to alloc command %d\n", cmd_id);
-		return -CCCI_ERR_GET_MEM_FAIL;
-	}
-	INIT_LIST_HEAD(&cmd->entry);
-	init_waitqueue_head(&cmd->complete_wq);
-	cmd->cmd_id = cmd_id;
-	cmd->complete = 0;
-	if (in_irq() || irqs_disabled())
-		flag &= ~FSM_CMD_FLAG_WAIT_FOR_COMPLETE;
-	cmd->flag = flag;
-
-	spin_lock_irqsave(&ctl->command_lock, flags);
-	list_add_tail(&cmd->entry, &ctl->command_queue);
-	spin_unlock_irqrestore(&ctl->command_lock, flags);
-	if (!in_irq())
-		CCCI_NORMAL_LOG(0, FSM,
-			"command %d is appended %x from %ps\n",
-			cmd_id, flag,
-			__builtin_return_address(0));
-	/* after this line, only dereference cmd
-	 * when "wait-for-complete"
-	 */
-	wake_up(&ctl->command_wq);
-	if (flag & FSM_CMD_FLAG_WAIT_FOR_COMPLETE) {
-		while (1) {
-			ret = wait_event_interruptible(cmd->complete_wq,
-				cmd->complete != 0);
-			if (ret == -ERESTARTSYS)
-				continue;
-			if (cmd->complete != 1)
-				result = -1;
-			spin_lock_irqsave(&ctl->cmd_complete_lock, flags);
-			kfree(cmd);
-			spin_unlock_irqrestore(&ctl->cmd_complete_lock, flags);
-			break;
-		}
-	}
-	return result;
-}
-
-static void fsm_finish_command(struct ccci_fsm_ctl *ctl,
-	struct ccci_fsm_command *cmd, int result)
-{
-	unsigned long flags;
-
-	CCCI_NORMAL_LOG(0, FSM,
-		"command %d is completed %d by %ps\n",
-		cmd->cmd_id, result,
-		__builtin_return_address(0));
-	if (cmd->flag & FSM_CMD_FLAG_WAIT_FOR_COMPLETE) {
-		spin_lock_irqsave(&ctl->cmd_complete_lock, flags);
-		cmd->complete = result;
-		/* do not dereference cmd after this line */
-		wake_up_all(&cmd->complete_wq);
-		/* after cmd in list,
-		 * processing thread may see it
-		 * without being waked up,
-		 * so spinlock is needed
-		 */
-		spin_unlock_irqrestore(&ctl->cmd_complete_lock, flags);
-	} else {
-		/* no one is waiting for this cmd, free to free */
-		kfree(cmd);
-	}
-}
-
-int fsm_append_event(struct ccci_fsm_ctl *ctl, enum CCCI_FSM_EVENT event_id,
-	unsigned char *data, unsigned int length)
-{
-	struct ccci_fsm_event *event = NULL;
-	unsigned long flags;
-
-	if (event_id <= CCCI_EVENT_INVALID || event_id >= CCCI_EVENT_MAX) {
-		CCCI_ERROR_LOG(0, FSM, "invalid event %d\n", event_id);
-		return -CCCI_ERR_INVALID_PARAM;
-	}
-	if (event_id == CCCI_EVENT_FS_IN) {
-		atomic_set(&(ctl->fs_ongoing), 1);
-		return 0;
-	} else if (event_id == CCCI_EVENT_FS_OUT) {
-		atomic_set(&(ctl->fs_ongoing), 0);
-		return 0;
-	}
-	event = kmalloc(sizeof(struct ccci_fsm_event) + length,
-		in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
-	if (!event) {
-		CCCI_ERROR_LOG(0, FSM,
-			"fail to alloc event%d\n", event_id);
-		return -CCCI_ERR_GET_MEM_FAIL;
-	}
-	INIT_LIST_HEAD(&event->entry);
-	event->event_id = event_id;
-	event->length = length;
-	if (data && length)
-		memcpy(event->data, data, length);
-
-	spin_lock_irqsave(&ctl->event_lock, flags);
-	list_add_tail(&event->entry, &ctl->event_queue);
-	spin_unlock_irqrestore(&ctl->event_lock, flags);
-	/* do not derefence event after here */
-	CCCI_NORMAL_LOG(0, FSM,
-		"event %d is appended from %ps\n", event_id,
-		__builtin_return_address(0));
-	return 0;
-}
-
-/* must be called within protection of event_lock */
-static void fsm_finish_event(struct ccci_fsm_ctl *ctl,
-	struct ccci_fsm_event *event)
-{
-	list_del(&event->entry);
-	CCCI_NORMAL_LOG(0, FSM,
-		"event %d is completed by %ps\n", event->event_id,
-		__builtin_return_address(0));
-	kfree(event);
 }
 
 struct ccci_fsm_ctl *fsm_get_entity_by_device_number(dev_t dev_n)
@@ -1628,106 +1504,7 @@ struct ccci_fsm_ctl *fsm_get_entity(void)
 {
 	return ccci_fsm_entries;
 }
-EXPORT_SYMBOL(fsm_get_entity);
-
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
-void dump_md_info_in_devapc(struct ccci_modem *md)
-{
-	unsigned char ccif_sram[CCCI_EE_SIZE_CCIF_SRAM] = { 0 };
-	struct ccci_smem_region *mdccci_dbg =
-		ccci_md_get_smem_by_user_id(SMEM_USER_RAW_MDCCCI_DBG);
-	struct ccci_smem_region *mdss_dbg =
-		ccci_md_get_smem_by_user_id(SMEM_USER_RAW_MDSS_DBG);
-
-	// DUMP_FLAG_CCIF_REG
-	CCCI_MEM_LOG_TAG(0, FSM, "Dump CCIF REG\n");
-	ccci_hif_dump_status(CCIF_HIF_ID, DUMP_FLAG_CCIF_REG, NULL, -1);
-
-	// DUMP_FLAG_CCIF
-	ccci_hif_dump_status(1 << CCIF_HIF_ID, DUMP_FLAG_CCIF, ccif_sram,
-			sizeof(ccif_sram));
-
-	// DUMP_FLAG_QUEUE_0_1
-	ccci_hif_dump_status(md->hif_flag, DUMP_FLAG_QUEUE_0_1, NULL, 0);
-
-	// DUMP_FLAG_REG
-	if (md->hw_info->plat_ptr->debug_reg)
-		md->hw_info->plat_ptr->debug_reg(md, false);
-
-	// DUMP_MD_BOOTUP_STATUS
-	if (md->hw_info->plat_ptr->get_md_bootup_status)
-		md->hw_info->plat_ptr->get_md_bootup_status(NULL, 0);
-
-	// MD_DBG_DUMP_SMEM
-	CCCI_MEM_LOG_TAG(0, FSM, "Dump MD EX log\n");
-	ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP, mdccci_dbg->base_ap_view_vir,
-			mdccci_dbg->size);
-	CCCI_MEM_LOG_TAG(0, FSM, "Dump mdss_dbg log\n");
-	ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP, mdss_dbg->base_ap_view_vir,
-			mdss_dbg->size);
-	CCCI_MEM_LOG_TAG(0, FSM, "Dump mdl2sram log\n");
-	if (md->hw_info->md_l2sram_base) {
-		md_cd_lock_modem_clock_src(1);
-		ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP, md->hw_info->md_l2sram_base,
-			md->hw_info->md_l2sram_size);
-		md_cd_lock_modem_clock_src(0);
-	}
-}
-
-void ccci_dump_md_in_devapc(char *user_info)
-{
-	struct ccci_modem *md = NULL;
-
-	CCCI_NORMAL_LOG(0, FSM, "%s called by %s\n", __func__, user_info);
-	md = ccci_get_modem();
-	if (md != NULL) {
-		CCCI_NORMAL_LOG(0, FSM, "%s dump start\n", __func__);
-		dump_md_info_in_devapc(md);
-	} else
-		CCCI_NORMAL_LOG(0, FSM, "%s error, md is NULL!\n", __func__);
-	CCCI_NORMAL_LOG(0, FSM, "%s exit\n", __func__);
-}
-
-static enum devapc_cb_status devapc_dump_adv_cb(uint32_t vio_addr)
-{
-	int count;
-
-	CCCI_NORMAL_LOG(0, FSM,
-		"[%s] vio_addr: 0x%x; is normal mdee: %d\n",
-		__func__, vio_addr, ccci_fsm_is_normal_mdee());
-
-	if (ccci_fsm_get_md_state() == EXCEPTION &&
-		ccci_fsm_is_normal_mdee()) {
-		count = ccci_fsm_increase_devapc_dump_counter();
-
-		CCCI_NORMAL_LOG(0, FSM,
-			"[%s] count: %d\n", __func__, count);
-
-		if (count == 1)
-			ccci_dump_md_in_devapc((char *)__func__);
-
-		return DEVAPC_NOT_KE;
-
-	} else {
-		atomic_set(&md_dapc_ke_occurred, 1);
-		ccci_dump_md_in_devapc((char *)__func__);
-
-		/*
-		 * debug patch
-		 * during stop modem, if devapc occurred, don't trigger KE
-		 */
-		if (atomic_read(&pw_off_disable_dapc_ke))
-			return DEVAPC_NOT_KE;
-		else
-			return DEVAPC_OK;
-	}
-}
-
-static struct devapc_vio_callbacks devapc_md_vio_handle = {
-	.id = INFRA_SUBSYS_MD,
-	.debug_dump_adv = devapc_dump_adv_cb,
-};
-#endif
+EXPORT_SYMBOL(fsm_get_entity); /* TODO: maybe no need export */
 
 int ccci_fsm_init(void)
 {
@@ -1778,9 +1555,6 @@ int ccci_fsm_init(void)
 	fsm_monitor_init(&ctl->monitor_ctl);
 	fsm_sys_init();
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
-	register_devapc_vio_callback(&devapc_md_vio_handle);
-#endif
 	ccci_fsm_entries = ctl;
 	return 0;
 }

@@ -7,6 +7,7 @@
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
+#include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_fdt.h>
 #include <linux/of_irq.h>
@@ -263,10 +264,6 @@ static void md_cd_dump_debug_register(struct ccci_modem *md, bool isr_skip_dump)
 	md_cd_lock_modem_clock_src(0);
 
 	atomic_set(&reg_dump_ongoing, 0);
-}
-
-static void md_cd_check_emi_state(struct ccci_modem *md, int polling)
-{
 }
 
 static void md1_pmic_setting_init(struct platform_device *plat_dev)
@@ -710,8 +707,11 @@ static int md_start_platform(struct ccci_modem *md)
 
 	if ((md->per_md_data.config.setting&MD_SETTING_FIRST_BOOT) == 0)
 		return 0;
-
+	md_cd_io_remap_md_side_register(md);
 	md1_pmic_setting_init(md->plat_dev);
+
+	if (md_cd_plat_val_ptr.md_gen < 6295)
+		return 0;
 
 	while (timeout > 0) {
 		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG, MD_CHECK_DONE,
@@ -1115,11 +1115,11 @@ static struct ccci_plat_ops md_cd_plat_ptr = {
 	.md_dump_reg = &md_dump_register_6873,
 	//.cldma_hw_rst = &md_cldma_hw_reset,
 	//.set_clk_cg = &ccci_set_clk_cg,
-	.remap_md_reg = &md_cd_io_remap_md_side_register,
+	//.remap_md_reg = &md_cd_io_remap_md_side_register,
 	.lock_modem_clock_src = &md_cd_lock_modem_clock_src,
 	.get_md_bootup_status = &md_cd_get_md_bootup_status,
 	.debug_reg = &md_cd_dump_debug_register,
-	.check_emi_state = &md_cd_check_emi_state,
+	//.check_emi_state = &md_cd_check_emi_state,
 	.soft_power_off = &md_cd_soft_power_off,
 	.soft_power_on = &md_cd_soft_power_on,
 	.start_platform = &md_start_platform,
@@ -1185,16 +1185,15 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 
 	hw_info->md_wdt_irq_id =
 	 irq_of_parse_and_map(dev_ptr->dev.of_node, 0);
-	hw_info->ap_ccif_irq1_id =
-	 irq_of_parse_and_map(dev_ptr->dev.of_node, 2);
+	//hw_info->ap_ccif_irq1_id =
+	// irq_of_parse_and_map(dev_ptr->dev.of_node, 2);
 
 	/* Device tree using none flag to register irq,
 	 * sensitivity has set at "irq_of_parse_and_map"
 	 */
-	hw_info->ap_ccif_irq1_flags = IRQF_TRIGGER_NONE;
 	hw_info->md_wdt_irq_flags = IRQF_TRIGGER_NONE;
 
-	hw_info->sram_size = CCIF_SRAM_SIZE;
+	//hw_info->sram_size = CCIF_SRAM_SIZE;
 	ret = of_property_read_u32(dev_ptr->dev.of_node,
 		"mediatek,md-generation", &md_cd_plat_val_ptr.md_gen);
 	if (ret < 0) {
@@ -1279,11 +1278,13 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 			"%s:srclken_o1_bit=0x%x\n",
 			__func__, md_cd_plat_val_ptr.srclken_o1_bit);
 
-	if (hw_info->ap_ccif_irq1_id == 0 ||
+	if (/*hw_info->ap_ccif_irq1_id == 0 ||*/
 		hw_info->md_wdt_irq_id == 0) {
 		CCCI_ERROR_LOG(0, TAG,
-			"ccif_irq1:%d, md_wdt_irq:%d\n",
-			hw_info->ap_ccif_irq1_id, hw_info->md_wdt_irq_id);
+			"md_wdt_irq:%d\n", hw_info->md_wdt_irq_id);
+		//CCCI_ERROR_LOG(0, TAG,
+		//	"ccif_irq1:%d, md_wdt_irq:%d\n",
+		//	hw_info->ap_ccif_irq1_id, hw_info->md_wdt_irq_id);
 		return -1;
 	}
 
@@ -1303,9 +1304,12 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 		"dev_major:%d,minor_base:%d,capability:%d\n",
 		dev_cfg->major, dev_cfg->minor_base, dev_cfg->capability);
 
+	//CCCI_DEBUG_LOG(0, TAG,
+	//	"ccif_irq1:%d,md_wdt_irq:%d\n",
+	//	hw_info->ap_ccif_irq1_id, hw_info->md_wdt_irq_id);
 	CCCI_DEBUG_LOG(0, TAG,
-		"ccif_irq1:%d,md_wdt_irq:%d\n",
-		hw_info->ap_ccif_irq1_id, hw_info->md_wdt_irq_id);
+		"md_wdt_irq:%d\n", hw_info->md_wdt_irq_id);
+
 
 #ifdef USING_PM_RUNTIME
 	pm_runtime_enable(&dev_ptr->dev);
@@ -1386,14 +1390,12 @@ static int ccci_modem_pm_restore_noirq(struct device *device)
 	return 0;
 }
 
-#include <linux/module.h>
-#include <linux/platform_device.h>
-
 static int ccci_modem_probe(struct platform_device *plat_dev)
 {
 	struct ccci_dev_cfg dev_cfg;
 	int ret;
 	struct md_hw_info *md_hw;
+	unsigned long long time_total = sched_clock();
 
 	/* Allocate modem hardware info structure memory */
 	md_hw = kzalloc(sizeof(struct md_hw_info), GFP_KERNEL);
@@ -1416,6 +1418,12 @@ static int ccci_modem_probe(struct platform_device *plat_dev)
 	if (ret < 0) {
 		kfree(md_hw);
 	}
+	time_total = sched_clock() - time_total;
+	CCCI_NORMAL_LOG(-1, TAG, "%s cost: %llu\n", __func__, time_total);
+	ccci_dump_write(CCCI_DUMP_MD_INIT,
+		CCCI_DUMP_TIME_FLAG | CCCI_DUMP_ANDROID_TIME_FLAG,
+		"%s cost: %llu\n", __func__, time_total);
+
 	return ret;
 }
 

@@ -15,6 +15,7 @@
 #include "mt-plat/mtk_ccci_common.h"
 #include "ccci_fsm.h"
 #include "port_smem.h"
+#include "ccci_hif.h"
 
 #define TAG SMEM
 
@@ -114,14 +115,28 @@ struct ccci_ccb_config ccb_configs[] = {
 unsigned int ccb_configs_len =
 			sizeof(ccb_configs)/sizeof(struct ccci_ccb_config);
 
+static int ccci_md_send_ccb_tx_notify(int core_id)
+{
+	/* CCCI_NORMAL_LOG(0, TAG,
+	 * "ccb tx notify to core %d\n", core_id);
+	 */
+	switch (core_id) {
+	case P_CORE:
+		ccci_hif_send_data(CCIF_HIF_ID, AP_MD_CCB_WAKEUP);
+		break;
+	case VOLTE_CORE:
+	default:
+		break;
+	}
+	return 0;
+}
+
 static enum hrtimer_restart smem_tx_timer_func(struct hrtimer *timer)
 {
 	struct ccci_smem_port *smem_port =
 		container_of(timer, struct ccci_smem_port, notify_timer);
 
 	ccci_md_send_ccb_tx_notify(smem_port->core_id);
-	//if (smem_port->core_id = P_CORE)
-	//maybe we can use ccci_hif_send_data(CCIF_HIF_ID, AP_MD_CCB_WAKEUP);
 	return HRTIMER_NORESTART;
 }
 

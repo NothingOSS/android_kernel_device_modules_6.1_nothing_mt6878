@@ -105,20 +105,6 @@ void ccci_md_add_log_history(struct ccci_hif_traffic *tinfo,
 		enum DIRECTION dir, int queue_index,
 		struct ccci_header *msg, int is_dropped);
 
-#ifndef CCCI_KMODULE_ENABLE
-static inline void *ccci_hif_get_by_id(unsigned char hif_id)
-{
-	if (hif_id >= CCCI_HIF_NUM) {
-		CCCI_ERROR_LOG(-1, CORE,
-		"%s  hif_id = %u\n", __func__, hif_id);
-		return NULL;
-	} else
-		return ccci_hif[hif_id];
-}
-#else
-extern void *ccci_hif_get_by_id(unsigned char hif_id);
-#endif
-
 static inline void ccci_hif_queue_status_notify(int hif_id,
 	int qno, int dir, int state)
 {

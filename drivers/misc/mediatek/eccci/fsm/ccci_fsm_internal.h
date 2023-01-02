@@ -289,11 +289,13 @@ do { \
 #define ccci_read8(b, a)                ioread8((void __iomem *)((b)+(a)))
 
 /************ APIs ************/
+extern void md_cd_lock_modem_clock_src(int locked);
 
 int fsm_append_command(struct ccci_fsm_ctl *ctl,
 	enum CCCI_FSM_COMMAND cmd_id, unsigned int flag);
 int fsm_append_event(struct ccci_fsm_ctl *ctl, enum CCCI_FSM_EVENT event_id,
 	unsigned char *data, unsigned int length);
+void fsm_finish_event(struct ccci_fsm_ctl *ctl, struct ccci_fsm_event *event);
 
 #ifndef CCCI_KMODULE_ENABLE
 int fsm_scp_init(struct ccci_fsm_scp *scp_ctl);
@@ -316,6 +318,9 @@ void fsm_md_wdt_handler(struct ccci_fsm_ee *ee_ctl);
 void fsm_md_no_response_handler(struct ccci_fsm_ee *ee_ctl);
 void fsm_md_exception_stage(struct ccci_fsm_ee *ee_ctl, int stage);
 void fsm_ee_message_handler(struct ccci_fsm_ee *ee_ctl, struct sk_buff *skb);
+void fsm_md_normal_ee_handler(struct ccci_fsm_ctl *ctl);
+void fsm_ee_cmd_init(enum CCCI_FSM_COMMAND cmd_id);
+void fsm_ee_cmd_deinit(enum CCCI_FSM_COMMAND cmd_id);
 int fsm_check_ee_done(struct ccci_fsm_ee *ee_ctl, int timeout);
 int force_md_stop(struct ccci_fsm_monitor *monitor_ctl);
 struct ccci_fsm_ctl *fsm_get_entity(void);

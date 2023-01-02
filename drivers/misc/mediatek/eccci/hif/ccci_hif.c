@@ -430,6 +430,11 @@ void ccci_hif_md_exception(unsigned int hif_flag, unsigned char stage)
 		if (hif_flag & (1<<CLDMA_HIF_ID))
 			ccci_hif_all_q_reset(1 << CLDMA_HIF_ID);
 		break;
+	case HIF_EX_STOP_EE_NOTIFY:
+		if ((hif_flag & (1<<CCIF_HIF_ID)) && ccci_hif[CCIF_HIF_ID]
+			&& ccci_hif_op[CCIF_HIF_ID]->stop_for_ee)
+			ccci_hif_op[CCIF_HIF_ID]->stop_for_ee(CCIF_HIF_ID);
+		break;
 	default:
 		break;
 	};
@@ -511,16 +516,3 @@ void ccci_hif_register(unsigned char hif_id, void *hif_per_data,
 	}
 }
 EXPORT_SYMBOL(ccci_hif_register);
-
-#ifdef CCCI_KMODULE_ENABLE
-void *ccci_hif_get_by_id(unsigned char hif_id)
-{
-	if (hif_id >= CCCI_HIF_NUM) {
-		CCCI_ERROR_LOG(-1, CORE,
-		"%s  hif_id = %u\n", __func__, hif_id);
-		return NULL;
-	} else
-		return ccci_hif[hif_id];
-}
-EXPORT_SYMBOL(ccci_hif_get_by_id);
-#endif

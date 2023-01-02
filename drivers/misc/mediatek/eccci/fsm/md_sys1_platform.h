@@ -63,14 +63,10 @@ struct ccci_clk_node {
 
 struct ccci_plat_ops {
 	void (*md_dump_reg)(void);
-	//void (*cldma_hw_rst)(void);
-	//void (*set_clk_cg)(struct ccci_modem *md, unsigned int on);
-	int (*remap_md_reg)(struct ccci_modem *md);
 	void (*lock_modem_clock_src)(int locked);
 	void (*get_md_bootup_status)(unsigned int *buff, int length);
 	void (*debug_reg)(struct ccci_modem *md, bool isr_skip_dump);
 	int (*pccif_send)(struct ccci_modem *md, int channel_id);
-	void (*check_emi_state)(struct ccci_modem *md, int polling);
 	int (*soft_power_off)(struct ccci_modem *md, unsigned int mode);
 	int (*soft_power_on)(struct ccci_modem *md, unsigned int mode);
 	int (*start_platform)(struct ccci_modem *md);
@@ -82,17 +78,15 @@ struct ccci_plat_ops {
 
 struct md_hw_info {
 	/* HW info - Register Address */
-	unsigned int sram_size;
+	//unsigned int sram_size;
 
 	/* HW info - Interrutpt ID */
-	unsigned int ap_ccif_irq1_id;
 	unsigned int md_wdt_irq_id;
 	unsigned int md_epon_offset;
 	void __iomem *md_l2sram_base;
 	unsigned int md_l2sram_size;
 
 	/* HW info - Interrupt flags */
-	unsigned long ap_ccif_irq1_flags;
 	unsigned long md_wdt_irq_flags;
 	void *hif_hw_info;
 	/*HW info - plat*/
@@ -116,7 +110,6 @@ void md_dump_register_6873(void);
 #if IS_ENABLED(CONFIG_MTK_EMI)
 extern void mtk_emidbg_dump(void);
 #endif
-int Is_MD_EMI_voilation(void);
 
 #define MD_IN_DEBUG(md) (0)
 

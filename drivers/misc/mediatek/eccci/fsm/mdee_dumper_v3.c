@@ -70,8 +70,7 @@ static void ccci_aed_v3(struct ccci_fsm_ee *mdee, unsigned int dump_flag,
 		ex_log_addr = mdss_dbg->base_ap_view_vir;
 		ex_log_len = mdss_dbg->size;
 		ccci_md_dump_info(DUMP_FLAG_CCIF_REG | DUMP_FLAG_CCIF,
-			mdss_dbg->base_ap_view_vir + CCCI_EE_OFFSET_CCIF_SRAM,
-			CCCI_EE_SIZE_CCIF_SRAM);
+			NULL, 0);
 	}
 	if (dump_flag & CCCI_AED_DUMP_EX_MEM) {
 		ex_log_addr = mdss_dbg->base_ap_view_vir;

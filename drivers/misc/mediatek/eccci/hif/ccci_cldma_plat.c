@@ -137,10 +137,10 @@ void cldma_plat_set_clk_cg(unsigned int on)
 				CCCI_ERROR_LOG(0, TAG,
 					"%s: on=%d,ret=%d\n",
 					__func__, on, ret);
-			ccci_hif_set_devapc_flag(1);
+			//ccci_hif_set_devapc_flag(1); //mtk09077: remove, i think should not set
 
 		} else {
-			ccci_hif_set_devapc_flag(0);
+			//ccci_hif_set_devapc_flag(0); //mtk09077: remove, i think should not set
 			clk_disable_unprepare(cldma_clk_table[idx].clk_ref);
 		}
 	}

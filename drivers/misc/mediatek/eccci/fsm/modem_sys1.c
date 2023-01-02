@@ -70,26 +70,6 @@ bool spm_is_md1_sleep(void)
 
 #endif
 
-void ccif_enable_irq(struct ccci_modem *md)
-{
-	struct md_sys1_info *md_info = (struct md_sys1_info *)md->private_data;
-
-	if (atomic_cmpxchg(&md_info->ccif_irq_enabled, 0, 1) == 0) {
-		enable_irq(md_info->ap_ccif_irq_id);
-		CCCI_NORMAL_LOG(0, TAG, "enable ccif irq\n");
-	}
-}
-
-void ccif_disable_irq(struct ccci_modem *md)
-{
-	struct md_sys1_info *md_info = (struct md_sys1_info *)md->private_data;
-
-	if (atomic_cmpxchg(&md_info->ccif_irq_enabled, 1, 0) == 1) {
-		disable_irq_nosync(md_info->ap_ccif_irq_id);
-		/*CCCI_NORMAL_LOG(0, TAG, "disable ccif irq\n");*/
-	}
-}
-
 void wdt_enable_irq(struct ccci_modem *md)
 {
 	if (atomic_cmpxchg(&md->wdt_enabled, 0, 1) == 0) {
@@ -116,128 +96,12 @@ static irqreturn_t md_cd_wdt_isr(int irq, void *data)
 
 	//CCCI_ERROR_LOG(0, TAG, "MD WDT IRQ\n");
 	//ccci_event_log("md: MD WDT IRQ\n");
-	ccif_disable_irq(md);
+	ccci_hif_md_exception((1<<CCIF_HIF_ID), HIF_EX_STOP_EE_NOTIFY);
 	wdt_disable_irq(md);
 	ccci_fsm_recv_md_interrupt(MD_IRQ_WDT);
 
 	return IRQ_HANDLED;
 }
-
-static void md_cd_exception(struct ccci_modem *md, enum HIF_EX_STAGE stage)
-{
-	struct ccci_smem_region *mdccci_dbg =
-		ccci_md_get_smem_by_user_id(SMEM_USER_RAW_MDCCCI_DBG);
-
-	CCCI_ERROR_LOG(0, TAG, "MD exception HIF %d\n", stage);
-	ccci_event_log("md:MD exception HIF %d\n", stage);
-	/* in exception mode, MD won't sleep, so we do not
-	 * need to request MD resource first
-	 */
-	switch (stage) {
-	case HIF_EX_INIT:
-		if (*((int *)(mdccci_dbg->base_ap_view_vir +
-			CCCI_SMEM_OFFSET_SEQERR)) != 0) {
-			CCCI_ERROR_LOG(0, TAG, "MD found wrong sequence number\n");
-		}
-		ccci_hif_md_exception(md->hif_flag, stage);
-		/* Rx dispatch does NOT depend on queue index
-		 * in port structure, so it still can find right port.
-		 */
-		ccci_hif_send_data(CCIF_HIF_ID, H2D_EXCEPTION_ACK);
-		break;
-	case HIF_EX_INIT_DONE:
-		break;
-	case HIF_EX_CLEARQ_DONE:
-		/* give DHL some time to flush data */
-		msleep(2000);
-		ccci_hif_md_exception(md->hif_flag, stage);
-		/* tell MD to reset CLDMA */
-		ccci_hif_send_data(CCIF_HIF_ID, H2D_EXCEPTION_CLEARQ_ACK);
-		CCCI_NORMAL_LOG(0, TAG, "send clearq_ack to MD\n");
-		break;
-	case HIF_EX_ALLQ_RESET:
-		md->per_md_data.is_in_ee_dump = 1;
-		ccci_hif_md_exception(md->hif_flag, stage);
-		break;
-	default:
-		break;
-	};
-}
-
-static void polling_ready(struct ccci_modem *md, int step)
-{
-	int cnt = 500; /*MD timeout is 10s*/
-	int time_once = 10;
-	struct md_sys1_info *md_info =
-		(struct md_sys1_info *)md->private_data;
-
-#ifdef CCCI_EE_HS_POLLING_TIME
-	cnt = CCCI_EE_HS_POLLING_TIME / time_once;
-#endif
-	while (cnt > 0) {
-		if (md_info->channel_id & (1 << step)) {
-			CCCI_DEBUG_LOG(0, TAG,
-				"poll RCHNUM %d\n", md_info->channel_id);
-			return;
-		}
-		msleep(time_once);
-		cnt--;
-	}
-	CCCI_ERROR_LOG(0, TAG,
-		"poll EE HS timeout, RCHNUM %d\n", md_info->channel_id);
-}
-
-static int md_cd_ee_handshake(struct ccci_modem *md, int timeout)
-{
-	/* seems sometime MD send D2H_EXCEPTION_INIT_DONE and
-	 * D2H_EXCEPTION_CLEARQ_DONE together
-	 */
-	/*polling_ready(md_ctrl, D2H_EXCEPTION_INIT);*/
-	md_cd_exception(md, HIF_EX_INIT);
-	polling_ready(md, D2H_EXCEPTION_INIT_DONE);
-	md_cd_exception(md, HIF_EX_INIT_DONE);
-
-	polling_ready(md, D2H_EXCEPTION_CLEARQ_DONE);
-	md_cd_exception(md, HIF_EX_CLEARQ_DONE);
-
-	polling_ready(md, D2H_EXCEPTION_ALLQ_RESET);
-	md_cd_exception(md, HIF_EX_ALLQ_RESET);
-
-	return 0;
-}
-
-int md_fsm_exp_info(unsigned int channel_id)
-{
-	struct ccci_modem *md;
-	struct md_sys1_info *md_info;
-
-	md = ccci_get_modem();
-	if (!md)
-		return 0;
-
-	md_info = (struct md_sys1_info *)md->private_data;
-	if (channel_id & (1 << D2H_EXCEPTION_INIT)) {
-		ccci_fsm_recv_md_interrupt(MD_IRQ_CCIF_EX);
-		md_info->channel_id = channel_id & ~(1 << D2H_EXCEPTION_INIT);
-		return 0;
-	}
-
-	if (channel_id & (1<<AP_MD_PEER_WAKEUP)) {
-		__pm_wakeup_event(md_info->peer_wake_lock,
-			jiffies_to_msecs(HZ));
-		channel_id &= ~(1 << AP_MD_PEER_WAKEUP);
-	}
-
-	if (channel_id & (1<<AP_MD_SEQ_ERROR)) {
-		CCCI_ERROR_LOG(0, TAG, "MD check seq fail\n");
-		md->ops->dump_info(md, DUMP_FLAG_CCIF, NULL, 0);
-		channel_id &= ~(1 << AP_MD_SEQ_ERROR);
-	}
-
-	md_info->channel_id |= channel_id;
-	return 0;
-}
-EXPORT_SYMBOL(md_fsm_exp_info);
 
 static inline int md_sys1_sw_init(struct ccci_modem *md)
 {
@@ -272,59 +136,12 @@ static int md_cd_init(struct ccci_modem *md)
 	return 0;
 }
 
-/* Please delete this function once it can be deleted. */
-static int ccci_md_hif_start(struct ccci_modem *md, int stage)
-{
-	switch (stage) {
-	case 1:
-		/*enable clk: cldma*/
-		//if (md->hw_info->plat_ptr->set_clk_cg)
-		//	md->hw_info->plat_ptr->set_clk_cg(md, 1);
-
-		//ccci_hif_set_clk_cg(1 << CLDMA_HIF_ID, 1);
-
-		//if (md->hif_flag & (1 << CLDMA_HIF_ID)) {
-			/* 2. clearring buffer, just in case */
-			//ccci_hif_clear_all_queue(1 << CLDMA_HIF_ID, OUT);
-			//ccci_hif_clear_all_queue(1 << CLDMA_HIF_ID, IN);
-			//if (md->hw_info->plat_ptr->cldma_hw_rst)
-			//	md->hw_info->plat_ptr->cldma_hw_rst();
-			//ccci_hif_hw_reset(1 << CLDMA_HIF_ID);
-		//}
-		break;
-
-	case 2:
-		if (md->hif_flag & (1 << CCIF_HIF_ID))
-			ccif_enable_irq(md);
-		//if (md->hif_flag & (1 << CLDMA_HIF_ID)) {
-			/* 8. start CLDMA */
-			//ccci_hif_start(CLDMA_HIF_ID);
-		//}
-		break;
-	default:
-		break;
-	}
-	return 0;
-}
-
 static int md_cd_start(struct ccci_modem *md)
 {
 	int ret = 0;
 
 	if (md->per_md_data.config.setting & MD_SETTING_FIRST_BOOT) {
-		if (md->hw_info->plat_ptr->remap_md_reg)
-			ret = md->hw_info->plat_ptr->remap_md_reg(md);
-		if (ret < 0) {
-			CCCI_BOOTUP_LOG(0, TAG,
-				"remap fail %d\n", ret);
-			goto out;
-		}
 		md_sys1_sw_init(md);
-
-		//ccci_hif_late_init(md->hif_flag);
-		/* init security, as security depends on dummy_char,
-		 * which is ready very late.
-		 */
 		if (md->hw_info->plat_ptr->start_platform) {
 			ret = md->hw_info->plat_ptr->start_platform(md);
 			if (ret) {
@@ -349,7 +166,6 @@ static int md_cd_start(struct ccci_modem *md)
 	} else
 		CCCI_BOOTUP_LOG(0, TAG, "partition read success\n");
 
-	ccci_md_hif_start(md, 1);
 	/* 4. power on modem, do NOT touch MD register before this */
 	if (md->hw_info->plat_ptr->power_on) {
 		ret = md->hw_info->plat_ptr->power_on(md);
@@ -371,7 +187,6 @@ static int md_cd_start(struct ccci_modem *md)
 	if (md->hw_info->plat_ptr->let_md_go)
 		md->hw_info->plat_ptr->let_md_go(md);
 	wdt_enable_irq(md);
-	ccci_md_hif_start(md, 2);
 
 	md->per_md_data.is_in_ee_dump = 0;
 	md->is_force_asserted = 0;
@@ -386,7 +201,11 @@ static int md_cd_start(struct ccci_modem *md)
 
 static int check_power_off_en(struct ccci_modem *md)
 {
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 	int smem_val = 1;
+#else
+	int smem_val = 0;
+#endif
 /*
 	struct ccci_smem_region *mdss_dbg =
 		ccci_md_get_smem_by_user_id(SMEM_USER_RAW_MDSS_DBG);
@@ -417,15 +236,8 @@ static int md_cd_soft_stop(struct ccci_modem *md, unsigned int mode)
 	return md->hw_info->plat_ptr->soft_power_off(md, mode);
 }
 
-void __weak md1_sleep_timeout_proc(void)
+void md1_sleep_timeout_proc(struct ccci_modem *md)
 {
-	CCCI_DEBUG_LOG(-1, TAG, "No %s\n", __func__);
-}
-
-static void debug_in_flight_mode(struct ccci_modem *md)
-{
-	int count = 0;
-	int en_power_check = check_power_off_en(md);
 	struct ccci_smem_region *mdccci_dbg =
 		ccci_md_get_smem_by_user_id(SMEM_USER_RAW_MDCCCI_DBG);
 	struct ccci_smem_region *mdss_dbg =
@@ -433,51 +245,59 @@ static void debug_in_flight_mode(struct ccci_modem *md)
 	struct ccci_per_md *per_md_data = ccci_get_per_md_data();
 	int md_dbg_dump_flag = per_md_data->md_dbg_dump_flag;
 
-	count = 5;
+	int en_power_check = check_power_off_en(md);
+
+	if (en_power_check
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
+		&& atomic_read(&md_dapc_ke_occurred)
+#endif
+		) {
+		CCCI_NORMAL_LOG(0, TAG,
+			"MD is not in sleep mode, dump md status!\n");
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
+		atomic_set(&en_flight_timeout, 1);
+#endif
+		CCCI_MEM_LOG_TAG(0, TAG, "Dump MD EX log\n");
+		if (md_dbg_dump_flag & (1 << MD_DBG_DUMP_SMEM)) {
+			ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
+				mdccci_dbg->base_ap_view_vir,
+				mdccci_dbg->size);
+			ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
+				mdss_dbg->base_ap_view_vir, mdss_dbg->size);
+		}
+		if (md->hw_info->plat_ptr->debug_reg)
+			md->hw_info->plat_ptr->debug_reg(md, true);
+
+		CCCI_MEM_LOG_TAG(0, TAG, "MD not in sleep, dump mdl2sram\n");
+		if (md->hw_info->md_l2sram_base) {
+			md->hw_info->plat_ptr->lock_modem_clock_src(1);
+			ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
+				md->hw_info->md_l2sram_base,
+				md->hw_info->md_l2sram_size);
+			md->hw_info->plat_ptr->lock_modem_clock_src(0);
+		}
+
+/*
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+		aed_md_exception_api(
+		mdss_dbg->base_ap_view_vir,
+		mdss_dbg->size, NULL, 0,
+		"After AP send EPOF, MD didn't go to sleep in 4 seconds.",
+		DB_OPT_DEFAULT);
+#endif
+*/
+	}
+
+}
+
+static void debug_in_flight_mode(struct ccci_modem *md)
+{
+	int count = 5;
+
 	while (spm_is_md1_sleep() == 0) {
 		count--;
 		if (count == 0) {
-			if (en_power_check && atomic_read(&md_dapc_ke_occurred)) {
-				CCCI_NORMAL_LOG(0, TAG,
-				"MD is not in sleep mode, dump md status!\n");
-				atomic_set(&en_flight_timeout, 1);
-				CCCI_MEM_LOG_TAG(0, TAG,
-				"Dump MD EX log\n");
-				if (md_dbg_dump_flag &
-					(1 << MD_DBG_DUMP_SMEM)) {
-					ccci_util_mem_dump(
-					CCCI_DUMP_MEM_DUMP,
-					mdccci_dbg->base_ap_view_vir,
-					mdccci_dbg->size);
-					ccci_util_mem_dump(
-					CCCI_DUMP_MEM_DUMP,
-					mdss_dbg->base_ap_view_vir,
-					mdss_dbg->size);
-				}
-				if (md->hw_info->plat_ptr->debug_reg)
-					md->hw_info->plat_ptr->debug_reg(md, true);
-
-				CCCI_MEM_LOG_TAG(0, TAG, "MD not in sleep, dump mdl2sram\n");
-				if (md->hw_info->md_l2sram_base) {
-					md_cd_lock_modem_clock_src(1);
-					ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
-						md->hw_info->md_l2sram_base,
-						md->hw_info->md_l2sram_size);
-					md_cd_lock_modem_clock_src(0);
-				}
-
-	/* cldma_dump_register(CLDMA_HIF_ID);*/
-/*
-#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-				aed_md_exception_api(
-				mdss_dbg->base_ap_view_vir,
-				mdss_dbg->size, NULL, 0,
-				"After AP send EPOF, MD didn't go to sleep in 4 seconds.",
-				DB_OPT_DEFAULT);
-#endif
-*/
-			} else
-				md1_sleep_timeout_proc();
+			md1_sleep_timeout_proc(md);
 			break;
 		}
 		msleep(1000);
@@ -548,19 +368,13 @@ static int md_cd_stop(struct ccci_modem *md, unsigned int stop_type)
 
 	CCCI_NORMAL_LOG(0, TAG,
 		"modem is power off, stop_type=%d\n", stop_type);
-	ccif_disable_irq(md);
-	/* Check EMI before */
-	if (md->hw_info->plat_ptr->check_emi_state)
-		md->hw_info->plat_ptr->check_emi_state(md, 1);
+	ccci_hif_md_exception((1<<CCIF_HIF_ID), HIF_EX_STOP_EE_NOTIFY);
 
 	/* power off MD */
 	if (md->hw_info->plat_ptr->power_off)
 		ret = md->hw_info->plat_ptr->power_off(md,
 			stop_type == MD_FLIGHT_MODE_ENTER ? 100 : 0);
 	CCCI_NORMAL_LOG(0, TAG, "modem is power off done, %d\n", ret);
-	/* Check EMI after */
-	if (md->hw_info->plat_ptr->check_emi_state)
-		md->hw_info->plat_ptr->check_emi_state(md, 0);
 
 	return 0;
 }
@@ -990,31 +804,6 @@ static int md_cd_dump_info(struct ccci_modem *md,
 	return length;
 }
 
-static int md_cd_ee_callback(struct ccci_modem *md, enum MODEM_EE_FLAG flag)
-{
-	if (flag & EE_FLAG_ENABLE_WDT)
-		wdt_enable_irq(md);
-	if (flag & EE_FLAG_DISABLE_WDT)
-		wdt_disable_irq(md);
-	return 0;
-}
-
-static int md_cd_send_ccb_tx_notify(struct ccci_modem *md, int core_id)
-{
-	/* CCCI_NORMAL_LOG(0, TAG,
-	 * "ccb tx notify to core %d\n", core_id);
-	 */
-	switch (core_id) {
-	case P_CORE:
-		ccci_hif_send_data(CCIF_HIF_ID, AP_MD_CCB_WAKEUP);
-		break;
-	case VOLTE_CORE:
-	default:
-		break;
-	}
-	return 0;
-}
-
 static struct ccci_modem_ops md_cd_ops = {
 	.init = &md_cd_init,
 	.start = &md_cd_start,
@@ -1023,11 +812,11 @@ static struct ccci_modem_ops md_cd_ops = {
 	.soft_stop = &md_cd_soft_stop,
 	.pre_stop = &md_cd_pre_stop,
 	.send_runtime_data = &md_cd_send_runtime_data_v2,
-	.ee_handshake = &md_cd_ee_handshake,
+	//.ee_handshake = &md_cd_ee_handshake,
 	.force_assert = &md_cd_force_assert,
 	.dump_info = &md_cd_dump_info,
-	.ee_callback = &md_cd_ee_callback,
-	.send_ccb_tx_notify = &md_cd_send_ccb_tx_notify,
+	//.ee_callback = &md_cd_ee_callback,
+	//.send_ccb_tx_notify = &md_cd_send_ccb_tx_notify,
 };
 int ccci_md_pre_stop(unsigned int stop_type)
 {
@@ -1104,21 +893,6 @@ void ccci_md_dump_info(enum MODEM_DUMP_FLAG flag, void *buff, int length)
 	else
 		CCCI_ERROR_LOG(0, TAG, "invalid md!!\n");
 }
-//EXPORT_SYMBOL(ccci_md_dump_info);
-
-void ccci_md_exception_handshake(int timeout)
-{
-	struct ccci_modem *md = ccci_get_modem();
-
-	md->ops->ee_handshake(md, timeout);
-}
-
-int ccci_md_send_ccb_tx_notify(int core_id)
-{
-	struct ccci_modem *md = ccci_get_modem();
-
-	return md->ops->send_ccb_tx_notify(md, core_id);
-}
 
 int ccci_md_force_assert(enum MD_FORCE_ASSERT_TYPE type,
 	char *param, int len)
@@ -1182,7 +956,7 @@ static ssize_t md_cd_dump_show(struct ccci_modem *md, char *buf)
 	int count = 0;
 
 	count = scnprintf(buf, 256,
-		"support: ccif cldma register smem image layout\n");
+		"support: ccif cldma register smem fsm_1 layout\n");
 	return count;
 }
 
@@ -1246,9 +1020,9 @@ static ssize_t md_cd_parameter_show(struct ccci_modem *md, char *buf)
 {
 	int count = 0;
 
-	count += snprintf(buf + count, 128,
+	count += scnprintf(buf + count, 128,
 		"PACKET_HISTORY_DEPTH=%d\n", PACKET_HISTORY_DEPTH);
-	count += snprintf(buf + count, 128, "BD_NUM=%ld\n", MAX_BD_NUM);
+	count += scnprintf(buf + count, 128, "BD_NUM=%ld\n", MAX_BD_NUM);
 
 	return count;
 }
@@ -1475,7 +1249,7 @@ int ccci_md_register(struct ccci_modem *md)
 	return 0;
 }
 
-static u64 cldma_dmamask = DMA_BIT_MASK(36);
+static u64 mddriver_dmamask = DMA_BIT_MASK(36);
 
 int ccci_modem_init_common(struct platform_device *plat_dev,
 	struct ccci_dev_cfg *dev_cfg, struct md_hw_info *md_hw)
@@ -1496,8 +1270,8 @@ int ccci_modem_init_common(struct platform_device *plat_dev,
 	md->hw_info = md_hw;
 
 	md->plat_dev = plat_dev;
-	md->plat_dev->dev.dma_mask = &cldma_dmamask;
-	md->plat_dev->dev.coherent_dma_mask = cldma_dmamask;
+	md->plat_dev->dev.dma_mask = &mddriver_dmamask;
+	md->plat_dev->dev.coherent_dma_mask = mddriver_dmamask;
 	md->ops = &md_cd_ops;
 	CCCI_INIT_LOG(0, TAG,
 		"%s:md=%p,md->private_data=%p\n", __func__,
@@ -1530,9 +1304,9 @@ int ccci_modem_init_common(struct platform_device *plat_dev,
 		return -1;
 	}
 	/* Copy HW info */
-	md_info->ap_ccif_irq_id = md_hw->ap_ccif_irq1_id;
+	//mtk09077: md_info->ap_ccif_irq_id = md_hw->ap_ccif_irq1_id;
 	md_info->channel_id = 0;
-	atomic_set(&md_info->ccif_irq_enabled, 1);
+	//atomic_set(&md_info->ccif_irq_enabled, 1);
 
 	md->md_wdt_irq_id = md_hw->md_wdt_irq_id;
 	atomic_set(&md->reset_on_going, 1);
@@ -1555,9 +1329,3 @@ int ccci_modem_init_common(struct platform_device *plat_dev,
 	return 0;
 }
 EXPORT_SYMBOL(ccci_modem_init_common);
-
-int Is_MD_EMI_voilation(void)
-{
-	return 1;
-}
-

@@ -226,6 +226,7 @@ enum HIF_EX_STAGE {
 	HIF_EX_CLEARQ_DONE, /* interrupt */
 	HIF_EX_CLEARQ_ACK, /* AP->MD */
 	HIF_EX_ALLQ_RESET, /* polling */
+	HIF_EX_STOP_EE_NOTIFY,
 };
 
 enum {
@@ -332,7 +333,7 @@ enum {
 
 int ccci_md_force_assert(enum MD_FORCE_ASSERT_TYPE type,
 	char *param, int len);
-int ccci_md_send_ccb_tx_notify(int core_id);
+//int ccci_md_send_ccb_tx_notify(int core_id);
 
 struct ccci_modem_cfg {
 	unsigned int load_type;

@@ -25,6 +25,7 @@
 void ccci_scp_md_state_sync(int md_state);
 
 struct ccci_fsm_scp ccci_scp_ctl = {
+	/* 1. maybe can add on parameter named md_state */
 	.md_state_sync = &ccci_scp_md_state_sync,
 };
 
@@ -35,6 +36,7 @@ static struct ccci_clk_node scp_clk_table[] = {
 
 void ccci_scp_md_state_sync(int md_state)
 {
+	/* 2. maybe can record the md_state to ccci_scp_ctl.md_state */
 	schedule_work(&ccci_scp_ctl.scp_md_state_sync_work);
 }
 
@@ -189,6 +191,7 @@ static void ccci_scp_md_state_sync_work(struct work_struct *work)
 		return;
 	}
 
+	/* 3. maybe can replace the ctl->md_state to ccci_scp_ctl.md_state */
 	switch (ctl->md_state) {
 	case READY:
 		while (count < SCP_BOOT_TIMEOUT/EVENT_POLL_INTEVAL) {

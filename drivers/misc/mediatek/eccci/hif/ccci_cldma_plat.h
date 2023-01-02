@@ -19,8 +19,6 @@
 #include "ccci_bm.h"
 #include "ccci_hif_internal.h"
 
-
-
 struct ccci_cldma_plat_ops {
 	void (*hw_reset)(void);
 	void (*set_clk_cg)(unsigned int on);
@@ -30,16 +28,11 @@ struct ccci_cldma_plat_ops {
 
 #define CLDMA_CLOCK_COUNT 1
 
-
-
 extern void cldma_plat_hw_reset(void);
 extern void cldma_plat_set_clk_cg(unsigned int on);
 extern int cldma_plat_suspend(void);
 extern void cldma_plat_resume(void);
 
-extern void ccci_hif_set_devapc_flag(unsigned int value);
-
-
-
+//extern void ccci_hif_set_devapc_flag(unsigned int value); //maybe wrong op
 
 #endif				/* __MODEM_CD_PLAT_H__ */

@@ -43,12 +43,7 @@ void ccif_write32(void *b, unsigned long a, unsigned int v);
 
 
 /*AP to MD*/
-#define H2D_EXCEPTION_ACK        (RINGQ_EXP_BASE+1)
-#define H2D_EXCEPTION_CLEARQ_ACK (RINGQ_EXP_BASE+2)
-#define H2D_FORCE_MD_ASSERT      (RINGQ_EXP_BASE+3)
-#define H2D_MPU_FORCE_ASSERT     (RINGQ_EXP_BASE+4)
-
-#define H2D_SRAM    (RINGQ_SRAM)
+/* HWQ 0~7 */
 #define H2D_RINGQ0  (RINGQ_BASE+0)
 #define H2D_RINGQ1  (RINGQ_BASE+1)
 #define H2D_RINGQ2  (RINGQ_BASE+2)
@@ -57,16 +52,16 @@ void ccif_write32(void *b, unsigned long a, unsigned int v);
 #define H2D_RINGQ5  (RINGQ_BASE+5)
 #define H2D_RINGQ6  (RINGQ_BASE+6)
 #define H2D_RINGQ7  (RINGQ_BASE+7)
+/* HWQ 15 */
+#define H2D_SRAM    (RINGQ_SRAM)
+/* HWQ 16~19 */
+#define H2D_EXCEPTION_ACK        (RINGQ_EXP_BASE+1)
+#define H2D_EXCEPTION_CLEARQ_ACK (RINGQ_EXP_BASE+2)
+#define H2D_FORCE_MD_ASSERT      (RINGQ_EXP_BASE+3)
+#define H2D_MPU_FORCE_ASSERT     (RINGQ_EXP_BASE+4)
 
 /*MD to AP*/
-#define CCIF_HW_CH_RX_RESERVED \
-			((1 << (RINGQ_EXP_BASE+0)) | (1 << (RINGQ_EXP_BASE+5)))
-#define D2H_EXCEPTION_INIT        (RINGQ_EXP_BASE+1)
-#define D2H_EXCEPTION_INIT_DONE   (RINGQ_EXP_BASE+2)
-#define D2H_EXCEPTION_CLEARQ_DONE (RINGQ_EXP_BASE+3)
-#define D2H_EXCEPTION_ALLQ_RESET  (RINGQ_EXP_BASE+4)
-#define AP_MD_SEQ_ERROR           (RINGQ_EXP_BASE+6)
-#define D2H_SRAM    (RINGQ_SRAM)
+/* HWQ 0~7 */
 #define D2H_RINGQ0  (RINGQ_BASE+0)
 #define D2H_RINGQ1  (RINGQ_BASE+1)
 #define D2H_RINGQ2  (RINGQ_BASE+2)
@@ -75,9 +70,20 @@ void ccif_write32(void *b, unsigned long a, unsigned int v);
 #define D2H_RINGQ5  (RINGQ_BASE+5)
 #define D2H_RINGQ6  (RINGQ_BASE+6)
 #define D2H_RINGQ7  (RINGQ_BASE+7)
+/* HWQ 15 */
+#define D2H_SRAM    (RINGQ_SRAM)
 
-/* peer */
-#define AP_MD_PEER_WAKEUP	(RINGQ_EXP_BASE+5)
+#define CCIF_HW_CH_RX_RESERVED \
+			((1 << (RINGQ_EXP_BASE+0)) | (1 << (RINGQ_EXP_BASE+5)))
+/* HWQ 16~19 */
+#define D2H_EXCEPTION_INIT        (RINGQ_EXP_BASE+1)
+#define D2H_EXCEPTION_INIT_DONE   (RINGQ_EXP_BASE+2)
+#define D2H_EXCEPTION_CLEARQ_DONE (RINGQ_EXP_BASE+3)
+#define D2H_EXCEPTION_ALLQ_RESET  (RINGQ_EXP_BASE+4)
+/* peer HWQ 20 */
+#define AP_MD_PEER_WAKEUP         (RINGQ_EXP_BASE+5)
+/* HWQ 21 */
+#define AP_MD_SEQ_ERROR           (RINGQ_EXP_BASE+6)
 
 #define CCIF_SRAM_SIZE 512
 #endif /*__CCIF_HIF_PLATFORM_H__*/
