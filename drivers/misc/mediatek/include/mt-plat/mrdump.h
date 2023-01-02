@@ -9,7 +9,7 @@
 #include <asm/ptrace.h>
 #include <linux/elf.h>
 #include <linux/elfcore.h>
-#include <stdarg.h>
+#include <linux/stdarg.h>
 #include <mt-plat/aee.h>
 
 #ifdef __aarch64__
