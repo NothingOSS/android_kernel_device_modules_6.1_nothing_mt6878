@@ -7682,6 +7682,18 @@
 				id = <0x00000004>;
 				value = <1>;
 			};
+			spm_vcore: spm_vcore {
+				id = <0x00000005>;
+				value = <1>;
+			};
+			spm_emi: spm_emi {
+				id = <0x00000006>;
+				value = <1>;
+			};
+			spm_pmic: spm_pmic {
+				id = <0x00000007>;
+				value = <1>;
+			};
 		};
 		constraint-list {
 			rc_bus26m: rc_bus26m {
