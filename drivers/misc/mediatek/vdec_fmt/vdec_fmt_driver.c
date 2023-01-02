@@ -34,7 +34,7 @@ static int fmt_check_reg_base(struct mtk_vdec_fmt *fmt, u64 addr, u64 length)
 		if (addr >= (u64)fmt->map_base[i].base &&
 			addr + length <= (u64)fmt->map_base[i].base + fmt->map_base[i].len)
 			return i;
-	fmt_err("addr %x length %x not found!", addr, length);
+	fmt_err("addr %llx length %llx not found!", addr, length);
 
 	return -EINVAL;
 }
@@ -154,44 +154,45 @@ static int fmt_set_gce_cmd(struct cmdq_pkt *pkt,
 
 	switch (cmd) {
 	case CMD_READ:
-		fmt_debug(3, "CMD_READ addr 0x%lx", addr);
+		fmt_debug(3, "CMD_READ addr 0x%llx", addr);
 		if (fmt_check_reg_base(fmt, addr, 4) >= 0)
 			cmdq_pkt_read_addr(pkt, addr, CMDQ_THR_SPR_IDX1);
 		else
-			fmt_err("CMD_READ wrong addr: 0x%lx", addr);
+			fmt_err("CMD_READ wrong addr: 0x%llx", addr);
 	break;
 	case CMD_WRITE:
-		fmt_debug(3, "CMD_WRITE addr 0x%lx data 0x%lx mask 0x%x", addr, data, mask);
+		fmt_debug(3, "CMD_WRITE addr 0x%llx data 0x%llx mask 0x%x", addr, data, mask);
 		if (fmt_check_reg_base(fmt, addr, 4) >= 0)
 			cmdq_pkt_write(pkt, fmt->clt_base, addr, data, mask);
 		else
-			fmt_err("CMD_WRITE wrong addr: 0x%lx 0x%lx 0x%x",
+			fmt_err("CMD_WRITE wrong addr: 0x%llx 0x%llx 0x%x",
 				addr, data, mask);
 	break;
 	case CMD_WRITE_RDMA:
-		fmt_debug(3, "CMD_WRITE_RDMA cpridx %lu data 0x%lx offset 0x%x", addr, data, mask);
+		fmt_debug(3, "CMD_WRITE_RDMA cpridx %llu data 0x%llx offset 0x%x",
+				addr, data, mask);
 		if (addr == CPR_IDX_FMT_RDMA_PIPE_IDX) {
-			fmt_debug(3, "cmdq_pkt_assign_command idx %d cpr %lu value 0x%lx",
+			fmt_debug(3, "cmdq_pkt_assign_command idx %d cpr %llu value 0x%llx",
 					idx, addr, data);
 			cmdq_pkt_assign_command(pkt,
 					CMDQ_CPR_PREBUILT_PIPE(CMDQ_PREBUILT_VFMT),
 					idx);
 		} else if (addr <= CPR_IDX_FMT_RDMA_AFBC_PAYLOAD_OST) {
-			fmt_debug(3, "cmdq_pkt_assign_command idx %d cpr %lu value 0x%lx",
+			fmt_debug(3, "cmdq_pkt_assign_command idx %d cpr %llu value 0x%llx",
 					idx, addr, data);
 			cmdq_pkt_assign_command(pkt,
 					CMDQ_CPR_PREBUILT(CMDQ_PREBUILT_VFMT, idx, addr),
 					data);
 		} else {
-			fmt_err("invalid GCE cpr index %lu", addr);
+			fmt_err("invalid GCE cpr index %llu", addr);
 		}
 	break;
 	case CMD_POLL_REG:
-		fmt_debug(3, "CMD_POLL_REG addr 0x%lx data 0x%lx mask 0x%x", addr, data, mask);
+		fmt_debug(3, "CMD_POLL_REG addr 0x%llx data 0x%llx mask 0x%x", addr, data, mask);
 		if (fmt_check_reg_base(fmt, addr, 4) >= 0)
 			cmdq_pkt_poll_addr(pkt, data, addr, mask, gpr);
 		else
-			fmt_err("CMD_POLL_REG wrong addr: 0x%lx 0x%lx 0x%x",
+			fmt_err("CMD_POLL_REG wrong addr: 0x%llx 0x%llx 0x%x",
 				addr, data, mask);
 	break;
 	case CMD_WAIT_EVENT:
@@ -219,9 +220,9 @@ static int fmt_set_gce_cmd(struct cmdq_pkt *pkt,
 			default:
 			break;
 			}
-			fmt_debug(3, "CMD_WAIT_EVENT %lu", data);
+			fmt_debug(3, "CMD_WAIT_EVENT %llu", data);
 		} else
-			fmt_err("CMD_WAIT_EVENT got wrong eid %lu",
+			fmt_err("CMD_WAIT_EVENT got wrong eid %llu",
 				data);
 	break;
 	case CMD_SET_EVENT:
@@ -246,9 +247,9 @@ static int fmt_set_gce_cmd(struct cmdq_pkt *pkt,
 			default:
 			break;
 			}
-			fmt_debug(3, "CMD_SET_EVENT %lu", data);
+			fmt_debug(3, "CMD_SET_EVENT %llu", data);
 		} else
-			fmt_err("CMD_WAIT_EVENT got wrong eid %lu",
+			fmt_err("CMD_WAIT_EVENT got wrong eid %llu",
 				data);
 	break;
 	case CMD_CLEAR_EVENT:
@@ -256,11 +257,11 @@ static int fmt_set_gce_cmd(struct cmdq_pkt *pkt,
 			fmt_debug(3, "CMD_CLEAR_EVENT eid %d", fmt->gce_codec_eid[data]);
 			cmdq_pkt_clear_event(pkt, fmt->gce_codec_eid[data]);
 		} else
-			fmt_err("got wrong eid %lu",
+			fmt_err("got wrong eid %llu",
 				data);
 	break;
 	case CMD_WRITE_FD:
-		fmt_debug(3, "CMD_WRITE_FD addr 0x%lx fd 0x%lx offset 0x%x", addr, data, mask);
+		fmt_debug(3, "CMD_WRITE_FD addr 0x%llx fd 0x%llx offset 0x%x", addr, data, mask);
 		type = fmt_check_reg_base(fmt, addr, 4);
 		if (type >= 0 && type < FMT_MAP_HW_REG_NUM) {
 			if (type % 2 == 0) {
@@ -269,12 +270,12 @@ static int fmt_set_gce_cmd(struct cmdq_pkt *pkt,
 				if (iinfo->attach == NULL || iinfo->sgt == NULL)
 					return -1;
 				if (addr - fmt->map_base[type].base >= 0xf30) { // rdma 34bit
-					fmt_debug(3, "cmdq_pkt_write base: 0x%lx addr:0x%lx value:0x%lx",
+					fmt_debug(3, "cmdq_pkt_write base: 0x%lx addr:0x%llx value:0x%llx",
 						fmt->map_base[type].base, addr, (iova >> 32));
 					cmdq_pkt_write(pkt, fmt->clt_base, addr,
 						(iova >> 32), ~0);
 				} else {
-					fmt_debug(3, "cmdq_pkt_write base: 0x%lx addr:0x%lx value:0x%lx",
+					fmt_debug(3, "cmdq_pkt_write base: 0x%lx addr:0x%llx value:0x%llx",
 							fmt->map_base[type].base, addr, iova);
 					cmdq_pkt_write(pkt, fmt->clt_base, addr,
 						iova, ~0);
@@ -285,43 +286,43 @@ static int fmt_set_gce_cmd(struct cmdq_pkt *pkt,
 				if (oinfo->attach == NULL || oinfo->sgt == NULL)
 					return -1;
 				if (addr - fmt->map_base[type].base >= 0xf34) { // wrot 34bit
-					fmt_debug(3, "cmdq_pkt_write base: 0x%lx addr:0x%lx value:0x%lx",
+					fmt_debug(3, "cmdq_pkt_write base: 0x%lx addr:0x%llx value:0x%llx",
 						fmt->map_base[type].base, addr, (iova >> 32));
 					cmdq_pkt_write(pkt, fmt->clt_base, addr,
 						(iova >> 32), ~0);
 				} else {
-					fmt_debug(3, "cmdq_pkt_write base: 0x%lx addr:0x%lx value:0x%lx",
+					fmt_debug(3, "cmdq_pkt_write base: 0x%lx addr:0x%llx value:0x%llx",
 							fmt->map_base[type].base, addr, iova);
 					cmdq_pkt_write(pkt, fmt->clt_base, addr,
 						iova, ~0);
 				}
 			}
 		} else
-			fmt_err("CMD_WRITE_FD wrong addr: 0x%lx 0x%lx 0x%x",
+			fmt_err("CMD_WRITE_FD wrong addr: 0x%llx 0x%llx 0x%x",
 				addr, data, mask);
 	break;
 	case CMD_WRITE_FD_RDMA:
-		fmt_debug(3, "CMD_WRITE_FD_RDMA cpridx %lu fd 0x%lx offset 0x%x", addr, data, mask);
+		fmt_debug(3, "CMD_WRITE_FD_RDMA cpridx %llu fd 0x%llx offset 0x%x", addr, data, mask);
 		iova = fmt_translate_fd(data, mask, map, fmt->dev,
 					&iinfo->dbuf, &iinfo->attach, &iinfo->sgt, false);
 		if (iinfo->attach == NULL || iinfo->sgt == NULL)
 			return -1;
 		if (addr >= CPR_IDX_FMT_RDMA_SRC_OFFSET_0
 			&& addr <= CPR_IDX_FMT_RDMA_UFO_DEC_LENGTH_BASE_C) {
-			fmt_debug(3, "cmdq_pkt_assign_command idx %d cpr %lu value 0x%lx",
+			fmt_debug(3, "cmdq_pkt_assign_command idx %d cpr %llu value 0x%llx",
 						idx, addr, iova);
 			cmdq_pkt_assign_command(pkt,
 					CMDQ_CPR_PREBUILT(CMDQ_PREBUILT_VFMT, idx, addr),
 					iova);
 		} else if (addr >= CPR_IDX_FMT_RDMA_SRC_BASE_0_MSB
 					&& addr <= CPR_IDX_FMT_RDMA_SRC_OFFSET_2_MSB){ // 34bit msb
-			fmt_debug(3, "cmdq_pkt_assign_command idx %d cpr %lu value 0x%lx",
+			fmt_debug(3, "cmdq_pkt_assign_command idx %d cpr %llu value 0x%llx",
 						idx, addr, (iova >> 32));
 			cmdq_pkt_assign_command(pkt,
 					CMDQ_CPR_PREBUILT(CMDQ_PREBUILT_VFMT, idx, addr),
 					(iova >> 32));
 		} else {
-			fmt_err("invalid GCE cpr index %lu", addr);
+			fmt_err("invalid GCE cpr index %llu", addr);
 		}
 	break;
 	default:
