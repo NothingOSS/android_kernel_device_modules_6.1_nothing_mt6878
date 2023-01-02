@@ -280,19 +280,21 @@
 #define CLK_TOP_CAM					269
 #define CLK_TOP_CCUSYS					270
 #define CLK_TOP_CAMTM					271
-#define CLK_TOP_ARMPLL_DIVIDER_PLL1			272
-#define CLK_TOP_ARMPLL_DIVIDER_PLL2			273
-#define CLK_TOP_FMEM_CK_OCC_FRC_EN			274
-#define CLK_TOP_MD_32K					275
-#define CLK_TOP_MD_26M					276
-#define CLK_TOP_NR_CLK					277
+#define CLK_TOP_I2C_PSEUDO				272
+#define CLK_TOP_ARMPLL_DIVIDER_PLL1			273
+#define CLK_TOP_ARMPLL_DIVIDER_PLL2			274
+#define CLK_TOP_FMEM_CK_OCC_FRC_EN			275
+#define CLK_TOP_MD_32K					276
+#define CLK_TOP_MD_26M					277
+#define CLK_TOP_NR_CLK					278
 
 /* INFRACFG_AO */
 #define CLK_IFRAO_CLDMA_BCLK				0
 #define CLK_IFRAO_FBIST2FPC				1
 #define CLK_IFRAO_DPMAIF_MAIN				2
 #define CLK_IFRAO_RG_MMW_DPMAIF26M_CK			3
-#define CLK_IFRAO_NR_CLK				4
+#define CLK_IFRAO_RG_AP_I3C				4
+#define CLK_IFRAO_NR_CLK				5
 
 /* APMIXEDSYS */
 #define CLK_APMIXED_MAINPLL2				0
@@ -534,7 +536,10 @@
 #define CLK_MM_DISP_WDMA1				37
 #define CLK_MM_SMI_SUB_COMM0				38
 #define CLK_MM_DISP_Y2R0				39
-#define CLK_MM_NR_CLK					40
+#define CLK_MM_DSI_CLK					40
+#define CLK_MM_DP_CLK					41
+#define CLK_MM_26M_CLK					42
+#define CLK_MM_NR_CLK					43
 
 /* DISPSYS1_CONFIG */
 #define CLK_MM1_CONFIG					0
@@ -577,7 +582,10 @@
 #define CLK_MM1_DISP_WDMA1				37
 #define CLK_MM1_SMI_SUB_COMM0				38
 #define CLK_MM1_DISP_Y2R0				39
-#define CLK_MM1_NR_CLK					40
+#define CLK_MM1_DSI_CLK					40
+#define CLK_MM1_DP_CLK					41
+#define CLK_MM1_26M_CLK					42
+#define CLK_MM1_NR_CLK					43
 
 /* OVLSYS_CONFIG */
 #define CLK_OVL_CONFIG					0
