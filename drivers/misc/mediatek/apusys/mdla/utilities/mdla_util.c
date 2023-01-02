@@ -331,11 +331,12 @@ void mdla_util_apu_pmu_update(struct mdla_dev *mdla_info,
 	if (result.cmd_id == mdla_info->max_cmd_id) {
 		if (unlikely(mdla_dbg_read_u32(FS_KLOG) & MDLA_DBG_PMU)) {
 			struct mdla_pmu_result check;
+			struct mdla_pmu_result *p =
+				container_of(desc, struct mdla_pmu_result,
+						cmd_id);
 
-			memset((void *)&check, 0, sizeof(struct mdla_pmu_result));
+			memcpy(&check, p, sizeof(check));
 			check.cmd_len = ((struct mdla_pmu_result *)base)->cmd_len;
-
-			memcpy((void *)&(check.cmd_id), desc, sz);
 
 			mdla_pmu_debug("[-] check cmd_len: %d\n", check.cmd_len);
 			mdla_pmu_debug("[-] check offset: %d\n", offset);
