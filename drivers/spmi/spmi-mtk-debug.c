@@ -2103,8 +2103,8 @@ static ssize_t pmif_access_store(struct device_driver *ddri,
 				pr_notice("%s() Illegal offset[0x%x]!!\n",
 					__func__, offset);
 			} else {
-				pr_info("%s() set offset[0x%x]=0x%x\n",
-					__func__, arb->base + offset, value);
+				pr_info("%s() set offset[0x%lx]=0x%x\n",
+					__func__, (unsigned long)arb->base + offset, value);
 				writel(value, arb->base + offset);
 			}
 		}
@@ -2156,8 +2156,8 @@ static ssize_t spmi_access_store(struct device_driver *ddri,
 				pr_notice("%s() Illegal offset[0x%x]!!\n",
 					__func__, offset);
 			} else {
-				pr_info("%s() set offset[0x%x]=0x%x\n",
-					__func__, arb->spmimst_base + offset,
+				pr_info("%s() set offset[0x%lx]=0x%x\n",
+					__func__, (unsigned long)arb->spmimst_base + offset,
 					value);
 				writel(value, arb->spmimst_base + offset);
 			}
