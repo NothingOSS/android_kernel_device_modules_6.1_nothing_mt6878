@@ -1179,7 +1179,7 @@
 		compatible = "mediatek,mt6685-tia-ntc";
 		status = "disabled";
 		#thermal-sensor-cells = <0>;
-		reg = <0 0x1c8050d4 0 0x4>; /* TIA DATA T0 */
+		reg = <0 0x1c805554 0 0x4>; /* TIA DATA T0 */
 		temperature-lookup-table = <
 			(-40000) 4397119
 			(-39000) 4092874
@@ -1353,7 +1353,7 @@
 		compatible = "mediatek,mt6685-tia-ntc";
 		status = "disabled";
 		#thermal-sensor-cells = <0>;
-		reg = <0 0x1c8050d8 0 0x4>; /* TIA DATA T1 */
+		reg = <0 0x1c805558 0 0x4>; /* TIA DATA T1 */
 		temperature-lookup-table = <
 			(-40000) 4397119
 			(-39000) 4092874
@@ -1527,7 +1527,7 @@
 		compatible = "mediatek,mt6685-tia-ntc";
 		status = "disabled";
 		#thermal-sensor-cells = <0>;
-		reg = <0 0x1c8050dc 0 0x4>; /* TIA DATA T2 */
+		reg = <0 0x1c80555c 0 0x4>; /* TIA DATA T2 */
 		temperature-lookup-table = <
 			(-40000) 4397119
 			(-39000) 4092874
