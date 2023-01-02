@@ -27,7 +27,7 @@
 
 #define LOCAL_DBG	(1)
 #define RPC_ALIVE_DBG	(0)
-uint32_t ce_pwr_on[] = {
+static uint32_t ce_pwr_on[] = {
 	0x31ba0001,
 	0x32011900,
 	0x0103c005,
@@ -149,8 +149,8 @@ uint32_t ce_pwr_on[] = {
 	0x31ba000b,
 	0x28010000, //0x78 elements = 120 elements = 120 * 4 = 480 bytes
 };
-uint32_t ce_pwr_on_sz = sizeof(ce_pwr_on);
-uint32_t ce_pwr_off[] = {
+static uint32_t ce_pwr_on_sz = sizeof(ce_pwr_on);
+static uint32_t ce_pwr_off[] = {
 	0x31ba000b,
 	0x32011900,
 	0x03c3c002,
@@ -302,7 +302,7 @@ uint32_t ce_pwr_off[] = {
 	0x7343c007,
 	0x28010000,
 };
-uint32_t ce_pwr_off_sz = sizeof(ce_pwr_off);
+static uint32_t ce_pwr_off_sz = sizeof(ce_pwr_off);
 
 static struct apu_power *papw;
 
