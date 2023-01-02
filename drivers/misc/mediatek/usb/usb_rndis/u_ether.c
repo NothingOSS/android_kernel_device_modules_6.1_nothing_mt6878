@@ -525,7 +525,7 @@ static void process_rx_w(struct work_struct *work)
 #endif
 
 		rndis_test_rx_net_out++;
-		status = netif_rx_ni(skb);
+		status = netif_rx(skb);
 	}
 
 }
