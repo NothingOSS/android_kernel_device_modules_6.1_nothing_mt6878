@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 
+ifneq ($(CONFIG_DEVICE_MODULES_ALLOW_BUILTIN),y)
+
 LINUXINCLUDE := $(DEVCIE_MODULES_INCLUDE) $(LINUXINCLUDE)
 
 subdir-ccflags-y += -Werror \
@@ -95,3 +97,5 @@ obj-y += sound/soc/codecs/
 obj-y += sound/soc/mediatek/
 
 obj-y += drivers/pci/controller/
+
+endif
