@@ -384,7 +384,8 @@ static int emi_icc_remove(struct platform_device *pdev)
 		icc_node_destroy(n->id);
 	}
 
-	return icc_provider_del(provider);
+	icc_provider_del(provider);
+	return 0;
 }
 
 static struct platform_driver emi_icc_driver = {
