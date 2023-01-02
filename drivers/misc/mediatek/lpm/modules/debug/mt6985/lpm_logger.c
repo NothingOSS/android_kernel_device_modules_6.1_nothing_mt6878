@@ -83,63 +83,6 @@ const char *wakesrc_str[32] = {
 	[30] = " R12_PCIE",
 	[31] = " R12_MSDC",
 };
-/*FIXME*/
-struct spm_wakesrc_irq_list spm_wakesrc_irqs[] = {
-	/* mtk-kpd */
-	{ WAKE_SRC_STA1_KP_IRQ_B, "mediatek,kp", 0, 0},
-	/* mt_wdt */
-	{ WAKE_SRC_STA1_APWDT_EVENT_B, "mediatek,toprgu", 0, 0},
-	/* BTCVSD_ISR_Handle */
-	{ WAKE_SRC_STA1_CONN2AP_SPM_WAKEUP_B, "mediatek,mtk-btcvsd-snd", 0, 0},
-	/* BTIF_WAKEUP_IRQ */
-	{ WAKE_SRC_STA1_CONN2AP_SPM_WAKEUP_B, "mediatek,bt", 0, 0},
-	/* BGF_SW_IRQ */
-	{ WAKE_SRC_STA1_CONN2AP_SPM_WAKEUP_B, "mediatek,bt", 1, 0},
-	/* wlan0 */
-	{ WAKE_SRC_STA1_CONN2AP_SPM_WAKEUP_B, "mediatek,wifi", 0, 0},
-	/* wlan0 */
-	{ WAKE_SRC_STA1_CONN2AP_SPM_WAKEUP_B, "mediatek,wifi", 1, 0},
-	/* fm */
-	{ WAKE_SRC_STA1_CONN2AP_SPM_WAKEUP_B, "mediatek,fm", 0, 0},
-	/* gps */
-	{ WAKE_SRC_STA1_CONN2AP_SPM_WAKEUP_B, "mediatek,mt6885-gps", 0, 0},
-	/* gps */
-	{ WAKE_SRC_STA1_CONN2AP_SPM_WAKEUP_B, "mediatek,mt6885-gps", 1, 0},
-	/* gps */
-	{ WAKE_SRC_STA1_CONN2AP_SPM_WAKEUP_B, "mediatek,mt6885-gps", 2, 0},
-	/* gps */
-	{ WAKE_SRC_STA1_CONN2AP_SPM_WAKEUP_B, "mediatek,mt6885-gps", 3, 0},
-	/* gps */
-	{ WAKE_SRC_STA1_CONN2AP_SPM_WAKEUP_B, "mediatek,mt6885-gps", 4, 0},
-	/* gps */
-	{ WAKE_SRC_STA1_CONN2AP_SPM_WAKEUP_B, "mediatek,mt6885-gps", 5, 0},
-	/* gps */
-	{ WAKE_SRC_STA1_CONN2AP_SPM_WAKEUP_B, "mediatek,mt6885-gps", 6, 0},
-	/* CCIF_AP_DATA */
-	{ WAKE_SRC_STA1_CCIF0_EVENT_B, "mediatek,ap_ccif0", 0, 0},
-	/* SCP IPC0 */
-	{ WAKE_SRC_STA1_SC_SCP2SPM_WAKEUP_B, "mediatek,scp", 0, 0},
-	/* SCP IPC1 */
-	{ WAKE_SRC_STA1_SC_SCP2SPM_WAKEUP_B, "mediatek,scp", 1, 0},
-	/* MBOX_ISR0 */
-	{ WAKE_SRC_STA1_SC_SCP2SPM_WAKEUP_B, "mediatek,scp", 2, 0},
-	/* MBOX_ISR1 */
-	{ WAKE_SRC_STA1_SC_SCP2SPM_WAKEUP_B, "mediatek,scp", 3, 0},
-	/* MBOX_ISR2 */
-	{ WAKE_SRC_STA1_SC_SCP2SPM_WAKEUP_B, "mediatek,scp", 4, 0},
-	/* MBOX_ISR3 */
-	{ WAKE_SRC_STA1_SC_SCP2SPM_WAKEUP_B, "mediatek,scp", 5, 0},
-	/* MBOX_ISR4 */
-	{ WAKE_SRC_STA1_SC_SCP2SPM_WAKEUP_B, "mediatek,scp", 6, 0},
-	/* ADSP_A_AUD */
-	{ WAKE_SRC_STA1_SC_ADSP2SPM_WAKEUP_B, "mediatek,adsp_core_0", 2, 0},
-	/* ADSP_B_AUD */
-	{ WAKE_SRC_STA1_SC_ADSP2SPM_WAKEUP_B, "mediatek,adsp_core_1", 2, 0},
-	/* CCIF0_AP */
-	{ WAKE_SRC_STA1_MD1_WDT_B, "mediatek,mddriver", 2, 0},
-	/* DPMAIF_AP */
-	{ WAKE_SRC_STA1_AP2AP_PEER_WAKEUPEVENT_B, "mediatek,dpmaif", 0, 0},
-};
 
 #define plat_mmio_read(offset)	__raw_readl(lpm_spm_base + offset)
 u64 ap_pd_count;
@@ -168,37 +111,6 @@ static struct lpm_log_helper log_help = {
 	.cur = 0,
 	.prev = 0,
 };
-
-
-#define IRQ_NUMBER	\
-	(sizeof(spm_wakesrc_irqs)/sizeof(struct spm_wakesrc_irq_list))
-static void lpm_get_spm_wakesrc_irq(void)
-{
-	int i;
-	struct device_node *node = NULL;
-
-	for (i = 0; i < IRQ_NUMBER; i++) {
-		if (spm_wakesrc_irqs[i].name == NULL)
-			continue;
-
-		node = of_find_compatible_node(NULL, NULL,
-			spm_wakesrc_irqs[i].name);
-		if (!node) {
-			pr_info("[name:spm&][SPM] find '%s' node failed\n",
-				spm_wakesrc_irqs[i].name);
-			continue;
-		}
-
-		spm_wakesrc_irqs[i].irq_no =
-			irq_of_parse_and_map(node,
-				spm_wakesrc_irqs[i].order);
-
-		if (!spm_wakesrc_irqs[i].irq_no) {
-			pr_info("[name:spm&][SPM] get '%s' failed\n",
-				spm_wakesrc_irqs[i].name);
-		}
-	}
-}
 
 static int lpm_get_wakeup_status(void)
 {
@@ -711,7 +623,7 @@ end:
 static struct lpm_dbg_plat_ops dbg_ops = {
 	.lpm_show_message = lpm_show_message,
 	.lpm_save_sleep_info = lpm_save_sleep_info,
-	.lpm_get_spm_wakesrc_irq = lpm_get_spm_wakesrc_irq,
+	.lpm_get_spm_wakesrc_irq = NULL,
 	.lpm_get_wakeup_status = lpm_get_wakeup_status,
 };
 
