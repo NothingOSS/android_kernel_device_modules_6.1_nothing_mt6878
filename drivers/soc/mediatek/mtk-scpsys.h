@@ -29,7 +29,7 @@
 #define MTK_SCPD_IPI_OPS		BIT(14)
 
 #define MAX_CLKS	5
-#define MAX_SUBSYS_CLKS 10
+#define MAX_SUBSYS_CLKS 20
 #define MAX_STEPS		14
 #define MAX_SRAM_STEPS	4
 #define MAX_CHILDREN	2
