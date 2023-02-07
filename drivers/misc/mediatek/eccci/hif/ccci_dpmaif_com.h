@@ -492,6 +492,7 @@ struct dpmaif_ctrl {
 	struct dpmaif_clk_node     *clk_tbs;
 
 	unsigned int                suspend_reg_int_mask_bak;
+	unsigned int                max_pit_seq;
 
 #if DPMAIF_TRAFFIC_MONITOR_INTERVAL
 	unsigned int                tx_tfc_pkgs[DPMAIF_TXQ_NUM];

@@ -993,7 +993,7 @@ static inline int dpmaif_rxq_check_pit_seq(struct dpmaif_rx_queue *rxq, unsigned
 		return DATA_CHECK_FAIL;
 	}
 
-	if (rxq->pit_seq == 0xFE)
+	if (rxq->pit_seq == dpmaif_ctl->max_pit_seq)
 		rxq->pit_seq = 0;
 	else
 		rxq->pit_seq++;
@@ -2654,9 +2654,12 @@ static int dpmaif_init_cap(struct device *dev)
 		dpmaif_ctl->real_rxq_num = DPMAIF_RXQ_NUM;
 		dpmaif_ctl->support_lro = 1;
 		dpmaif_ctl->support_2rxq = 1;
+		dpmaif_ctl->max_pit_seq = 0xFF;
 		ccmni_set_tcp_is_need_gro(1);
-	} else
+	} else {
 		dpmaif_ctl->real_rxq_num = 1;
+		dpmaif_ctl->max_pit_seq = 0xFE;
+	}
 
 	if (of_property_read_u32(dev->of_node,
 			"dl_bat_entry_size", &dpmaif_ctl->dl_bat_entry_size))
