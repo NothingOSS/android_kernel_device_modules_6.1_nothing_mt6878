@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0
+ccflags-y += -I$(srctree)/drivers/iommu/arm/arm-smmu-v3
+obj-$(CONFIG_DEVICE_MODULES_ARM_SMMU_V3) += arm_smmu_v3.o
+arm_smmu_v3-objs-y += arm-smmu-v3.o
+arm_smmu_v3-objs := $(arm_smmu_v3-objs-y)

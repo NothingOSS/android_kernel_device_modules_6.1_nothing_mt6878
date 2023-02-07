@@ -2,6 +2,19 @@
 
 if IOMMU_SUPPORT
 
+config DEVICE_MODULES_ARM_SMMU_V3
+	tristate "ARM Ltd. System MMU Version 3 (SMMUv3) Support"
+	depends on ARM64
+	select IOMMU_API
+	select IOMMU_IO_PGTABLE_LPAE
+	select GENERIC_MSI_IRQ_DOMAIN
+	help
+	  Support for implementations of the ARM System MMU architecture
+	  version 3 providing translation support to a PCIe root complex.
+
+	  Say Y here if your system includes an IOMMU device implementing
+	  the ARM SMMUv3 architecture.
+
 config DEVICE_MODULES_MTK_IOMMU
 	tristate "MediaTek IOMMU Support"
 	depends on ARM || ARM64
