@@ -496,26 +496,24 @@ static const struct mtk_iommu_iova_region mt6895_multi_dom_apu[] = {
 };
 
 /*
- * 0.NORMAL: total: 14.04GB
- *	-NORMAL: 0x1000~0x1FFF_FFFF(512MB)
- *	-VDEC
- *	-NORMAL: 0x32C0_0000~0xFFFF_FFFF(3.2GB)
+ * 0.NORMAL: total: 13.5GB + 96M
+ *	-NORMAL: 0x1000~0x0xFFFF_FFFF(4GB)
  *	-NORMAL: 0x1_0000_0000~0x1_05FF_FFFF(96MB)
  *	-LK + CCU + Video uP
- *	-NORMAL: 0x1_7000_0000~0x3_FFFF_FFFF(10.25GB)
- * 1.LK_RESV:        0x1_0000_0000~0x1_01FF_FFFF(32MB)
- * 2.CCU0:           0x1_0200_0000~0x1_05FF_FFFF(64MB)
- * 3.CCU1:           0x1_0600_0000~0x1_09FF_FFFF(64MB)
- * 4.VDO_UP_256MB:        0x1_0A00_0000~0x1_19FF_FFFF(256M)
- * 5.VDO_UP_1.5G:         0x1_2000_0000~0x1_7FFF_FFFF(1.5G)
+ *	-NORMAL: 0x1_A000_0000~0x3_FFFF_FFFF(9.5GB)
+ * 1.LK_RESV:        0x1_0600_0000~0x1_07FF_FFFF(32MB)
+ * 2.CCU0:           0x1_0800_0000~0x1_0BFF_FFFF(64MB)
+ * 3.CCU1:           0x1_0C00_0000~0x1_0FFF_FFFF(64MB)
+ * 4.VDO_UP_768MB:   0x1_1000_0000~0x1_3FFF_FFFF(768M)
+ * 5.VDO_UP_1.5G:    0x1_4000_0000~0x1_9FFF_FFFF(1.5G)
  */
 static const struct mtk_iommu_iova_region mt6897_multi_dom_mm[] = {
 	{ .iova_base = SZ_4K, .size = (SZ_4G * 4 - SZ_4K), .type = NORMAL}, /*0. NORMAL */
-	{ .iova_base = 0x100000000ULL, .size = SZ_32M, .type = NORMAL}, /* 1,LK_RESV:32MB */
-	{ .iova_base = 0x102000000ULL, .size = SZ_64M, .type = PROTECTED}, /* 2,CCU0:64MB */
-	{ .iova_base = 0x106000000ULL, .size = SZ_64M, .type = PROTECTED}, /* 3,CCU1:64MB */
-	{ .iova_base = 0x10A000000ULL, .size = SZ_256M, .type = SECURE}, /* 4,VDO_UP_256MB */
-	{ .iova_base = 0x120000000ULL, .size = 0x60000000, .type = PROTECTED}, /* 5,VDO_UP_1.5G */
+	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = NORMAL}, /* 1,LK_RESV:32MB */
+	{ .iova_base = 0x108000000ULL, .size = SZ_64M, .type = PROTECTED}, /* 2,CCU0:64MB */
+	{ .iova_base = 0x10C000000ULL, .size = SZ_64M, .type = PROTECTED}, /* 3,CCU1:64MB */
+	{ .iova_base = 0x110000000ULL, .size = SZ_128M * 6, .type = PROTECTED}, /* 4,VDO_UP_768MB */
+	{ .iova_base = 0x140000000ULL, .size = 0x60000000, .type = NORMAL}, /* 5,VDO_UP_1.5G */
 };
 
 /*
