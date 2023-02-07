@@ -37,6 +37,8 @@
 #include "imgsensor-user.h"
 #include "mtk_cam-seninf-ca.h"
 
+#define is_irq_ready 0
+
 #define ESD_RESET_SUPPORT 1
 #define V4L2_CID_MTK_SENINF_BASE	(V4L2_CID_USER_BASE | 0xf000)
 #define V4L2_CID_MTK_TEST_STREAMON	(V4L2_CID_MTK_SENINF_BASE + 1)
@@ -605,11 +607,13 @@ static int seninf_core_pm_runtime_put(struct seninf_core *core)
 	return 0;
 }
 
+#if is_irq_ready
 static irqreturn_t mtk_irq_seninf(int irq, void *data)
 {
 	g_seninf_ops->_irq_handler(irq, data);
 	return IRQ_HANDLED;
 }
+#endif
 
 static int get_seninf_ops(struct device *dev, struct seninf_core *core)
 {
@@ -778,6 +782,8 @@ static int seninf_core_probe(struct platform_device *pdev)
 	mtk_cam_seninf_init_res(core);
 
 	spin_lock_init(&core->spinlock_irq);
+
+#if is_irq_ready
 	irq = platform_get_irq(pdev, 0);
 	if (!irq) {
 		dev_info(dev, "failed to get irq\n");
@@ -791,6 +797,7 @@ static int seninf_core_probe(struct platform_device *pdev)
 		}
 		dev_info(dev, "registered irq=%d\n", irq);
 	}
+#endif
 
 	/* default platform properties */
 	core->cphy_settle_delay_dt = SENINF_CPHY_SETTLE_DELAY_DT;
