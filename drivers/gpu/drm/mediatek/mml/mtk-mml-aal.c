@@ -447,25 +447,12 @@ static s32 aal_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 			    struct tile_func_block *func,
 			    union mml_tile_data *data)
 {
-	struct mml_frame_config *cfg = task->config;
-	struct mml_frame_data *src = &cfg->info.src;
-	struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
+	const struct mml_frame_config *cfg = task->config;
+	const struct mml_frame_data *src = &cfg->info.src;
+	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	struct mml_comp_aal *aal = comp_to_aal(comp);
 
-	mml_pq_trace_ex_begin("%s", __func__);
-	func->in_tile_width = aal->data->tile_width;
-	func->out_tile_width = aal->data->tile_width;
 	func->for_func = tile_aal_for;
-	func->in_tile_height  = 65535;
-	func->out_tile_height = 65535;
-	if (aal->data->crop) {
-		func->l_tile_loss     = 8;
-		func->r_tile_loss     = 8;
-	} else {
-		func->l_tile_loss     = 0;
-		func->r_tile_loss     = 0;
-	}
-
 	func->enable_flag = dest->pq_config.en_dre;
 
 	if ((cfg->info.dest_cnt == 1 ||
@@ -491,12 +478,22 @@ static s32 aal_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	func->full_size_x_out = func->full_size_x_in;
 	func->full_size_y_out = func->full_size_y_in;
 
+	func->in_tile_width = aal->data->tile_width;
+	func->out_tile_width = aal->data->tile_width;
+	func->in_tile_height = 65535;
+	func->out_tile_height = 65535;
+
+	if (aal->data->crop) {
+		func->l_tile_loss = 8;
+		func->r_tile_loss = 8;
+	} else {
+		func->l_tile_loss = 0;
+		func->r_tile_loss = 0;
+	}
 	func->in_min_width = max(min(aal->data->min_hist_width,
 				     (u32)func->full_size_x_in),
 				 aal->data->min_tile_width);
 
-	mml_pq_msg("%s engine_id[%d]", __func__, comp->id);
-	mml_pq_trace_ex_end();
 	return 0;
 }
 

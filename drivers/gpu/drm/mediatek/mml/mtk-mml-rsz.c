@@ -129,13 +129,13 @@ static const struct rsz_data mt6895_rsz_data = {
 static const struct rsz_data mt6985_rsz_data = {
 	.tile_width = 1674,
 	.add_ddp = true,
-	.aal_crop = false,
+	/* .aal_crop = false, */
 };
 
 static const struct rsz_data mt6985_rsz2_data = {
 	.tile_width = 544,
 	.add_ddp = true,
-	.aal_crop = false,
+	/* .aal_crop = false, */
 };
 
 struct mml_comp_rsz {
@@ -289,7 +289,7 @@ static s32 rsz_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 			    union mml_tile_data *data)
 {
 	struct rsz_frame_data *rsz_frm = rsz_frm_data(ccfg);
-	struct mml_frame_config *cfg = task->config;
+	const struct mml_frame_config *cfg = task->config;
 	const struct mml_frame_data *src = &cfg->info.src;
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	struct mml_comp_rsz *rsz = comp_to_rsz(comp);

@@ -1282,7 +1282,7 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 	rdma_color_fmt(cfg, rdma_frm);
 
 	if (MML_FMT_V_SUBSAMPLE(src->format) &&
-	    !MML_FMT_V_SUBSAMPLE(cfg->info.dest[0].data.format) &&
+	    !MML_FMT_V_SUBSAMPLE(dst_fmt) &&
 	    !MML_FMT_BLOCK(src->format))
 		/* 420 to 422 interpolation solution */
 		filter_mode = 2;
@@ -1339,7 +1339,7 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 	rdma_frm->gmcif_con = gmcif_con;
 
 	if (MML_FMT_IS_RGB(src->format) && cfg->info.dest[0].pq_config.en_hdr &&
-		cfg->info.dest_cnt == 1)
+	    cfg->info.dest_cnt == 1)
 		rdma_frm->color_tran = 0;
 
 	if (MML_FMT_10BIT_LOOSE(src->format))
@@ -1479,8 +1479,7 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 				CPR_RDMA_UFO_DEC_LENGTH_BASE_C, 0, write_sec);
 	}
 
-	if (MML_FMT_10BIT(src->format) ||
-	    MML_FMT_10BIT(cfg->info.dest[0].data.format))
+	if (MML_FMT_10BIT(src->format) || MML_FMT_10BIT(dst_fmt))
 		output_10bit = 1;
 	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_CON,
 		   (rdma_frm->lb_2b_mode << 12) +
@@ -2097,6 +2096,7 @@ static void rdma_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
 	void __iomem *base = comp->base;
+	const bool write_sec = rdma->data->write_sec_reg;
 	u32 value[33];
 	u32 apu_en;
 	u32 state, greq;
@@ -2104,7 +2104,7 @@ static void rdma_debug_dump(struct mml_comp *comp)
 
 	mml_err("rdma component %u dump:", comp->id);
 
-	if (rdma->data->write_sec_reg)
+	if (write_sec)
 		cmdq_util_prebuilt_dump(0, CMDQ_TOKEN_PREBUILT_MML_WAIT);
 	else {
 		u32 shadow_ctrl;
@@ -2120,7 +2120,7 @@ static void rdma_debug_dump(struct mml_comp *comp)
 	value[2] = readl(base + RDMA_SRC_CON);
 	value[3] = readl(base + RDMA_COMP_CON);
 	/* for afbc case enable more debug info */
-	if (value[3] & BIT(22)) {
+	if (!write_sec && (value[3] & BIT(22))) {
 		u32 debug_con = readl(base + RDMA_DEBUG_CON);
 
 		debug_con |= 0xe000;
@@ -2136,7 +2136,7 @@ static void rdma_debug_dump(struct mml_comp *comp)
 	value[8] = readl(base + RDMA_MF_OFFSET_1);
 	value[9] = readl(base + RDMA_SF_BKGD_SIZE_IN_BYTE);
 	value[10] = readl(base + RDMA_MF_BKGD_H_SIZE_IN_PXL);
-	if (!rdma->data->write_sec_reg) {
+	if (!write_sec) {
 		if (!apu_en) {
 			value[11] = readl(base + RDMA_SRC_OFFSET_0_MSB);
 			value[12] = readl(base + RDMA_SRC_OFFSET_0);
@@ -2169,7 +2169,7 @@ static void rdma_debug_dump(struct mml_comp *comp)
 		value[6], value[7], value[8]);
 	mml_err("RDMA_SF_BKGD_SIZE_IN_BYTE %#010x RDMA_MF_BKGD_H_SIZE_IN_PXL %#010x",
 		value[9], value[10]);
-	if (!rdma->data->write_sec_reg) {
+	if (!write_sec) {
 		if (!apu_en) {
 			mml_err("RDMA_SRC OFFSET_0_MSB %#010x OFFSET_0 %#010x",
 				value[11], value[12]);

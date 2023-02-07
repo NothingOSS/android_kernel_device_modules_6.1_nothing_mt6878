@@ -196,7 +196,7 @@ struct wrot_data {
 	u8 rb_swap;	/* version for rb channel swap behavior */
 };
 
-static const struct wrot_data mml_wrot_data = {
+static const struct wrot_data mt6983_wrot_data = {
 	.fifo = 256,
 	.tile_width = 512,
 	.sram_size = 512 * 1024,
@@ -207,6 +207,7 @@ static const struct wrot_data mt6985_wrot_data = {
 	.fifo = 256,
 	.tile_width = 512,
 	.sram_size = 512 * 1024,
+	/* .rb_swap = 2 */
 };
 
 struct mml_comp_wrot {
@@ -2403,19 +2404,19 @@ static int remove(struct platform_device *pdev)
 const struct of_device_id mml_wrot_driver_dt_match[] = {
 	{
 		.compatible = "mediatek,mt6983-mml_wrot",
-		.data = &mml_wrot_data,
+		.data = &mt6983_wrot_data,
 	},
 	{
 		.compatible = "mediatek,mt6893-mml_wrot",
-		.data = &mml_wrot_data
+		.data = &mt6983_wrot_data
 	},
 	{
 		.compatible = "mediatek,mt6879-mml_wrot",
-		.data = &mml_wrot_data
+		.data = &mt6983_wrot_data
 	},
 	{
 		.compatible = "mediatek,mt6895-mml_wrot",
-		.data = &mml_wrot_data
+		.data = &mt6983_wrot_data
 	},
 	{
 		.compatible = "mediatek,mt6985-mml_wrot",
@@ -2423,7 +2424,7 @@ const struct of_device_id mml_wrot_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6886-mml_wrot",
-		.data = &mml_wrot_data
+		.data = &mt6983_wrot_data
 	},
 	{
 		.compatible = "mediatek,mt6897-mml_wrot",

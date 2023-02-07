@@ -36,7 +36,6 @@ struct mml_dle_ctx {
 	struct workqueue_struct *wq_config;
 	struct workqueue_struct *wq_destroy;
 	struct kthread_worker *kt_done;
-	struct task_struct *kt_done_task;
 	bool dl_dual;
 	void (*config_cb)(struct mml_task *task, void *cb_param);
 	struct mml_tile_cache tile_cache[MML_PIPE_CNT];

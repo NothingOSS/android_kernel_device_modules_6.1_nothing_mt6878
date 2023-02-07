@@ -64,27 +64,7 @@ struct color_data {
 	const u16 *reg_table;
 };
 
-static const struct color_data mt6893_color_data = {
-	.reg_table = colo_reg_table_mt6983,
-};
-
 static const struct color_data mt6983_color_data = {
-	.reg_table = colo_reg_table_mt6983,
-};
-
-static const struct color_data mt6879_color_data = {
-	.reg_table = colo_reg_table_mt6983,
-};
-
-static const struct color_data mt6895_color_data = {
-	.reg_table = colo_reg_table_mt6983,
-};
-
-static const struct color_data mt6886_color_data = {
-	.reg_table = colo_reg_table_mt6983,
-};
-
-static const struct color_data mt6985_color_data = {
 	.reg_table = colo_reg_table_mt6983,
 };
 
@@ -499,27 +479,27 @@ const struct of_device_id mml_color_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6893-mml_color",
-		.data = &mt6893_color_data,
+		.data = &mt6983_color_data,
 	},
 	{
 		.compatible = "mediatek,mt6879-mml_color",
-		.data = &mt6879_color_data,
+		.data = &mt6983_color_data,
 	},
 	{
 		.compatible = "mediatek,mt6895-mml_color",
-		.data = &mt6895_color_data,
+		.data = &mt6983_color_data,
 	},
 	{
 		.compatible = "mediatek,mt6985-mml_color",
-		.data = &mt6985_color_data,
+		.data = &mt6983_color_data,
 	},
 	{
 		.compatible = "mediatek,mt6886-mml_color",
-		.data = &mt6886_color_data,
+		.data = &mt6983_color_data,
 	},
 	{
 		.compatible = "mediatek,mt6897-mml_color",
-		.data = &mt6985_color_data,
+		.data = &mt6983_color_data,
 	},
 	{},
 };

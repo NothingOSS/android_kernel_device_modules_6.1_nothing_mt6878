@@ -97,25 +97,7 @@ struct hdr_data {
 	bool vcp_readback;
 };
 
-static const struct hdr_data mt6893_hdr_data = {
-	.min_tile_width = 16,
-	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
-	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
-	.vcp_readback = false,
-	.reg_table = hdr_reg_table_mt6983,
-	.tile_loss = 8,
-};
-
 static const struct hdr_data mt6983_hdr_data = {
-	.min_tile_width = 16,
-	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
-	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
-	.vcp_readback = false,
-	.reg_table = hdr_reg_table_mt6983,
-	.tile_loss = 8,
-};
-
-static const struct hdr_data mt6879_hdr_data = {
 	.min_tile_width = 16,
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
@@ -129,15 +111,6 @@ static const struct hdr_data mt6895_hdr_data = {
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.vcp_readback = true,
-	.reg_table = hdr_reg_table_mt6983,
-	.tile_loss = 8,
-};
-
-static const struct hdr_data mt6886_hdr_data = {
-	.min_tile_width = 16,
-	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
-	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
-	.vcp_readback = false,
 	.reg_table = hdr_reg_table_mt6983,
 	.tile_loss = 8,
 };
@@ -226,15 +199,13 @@ static s32 hdr_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 			    struct tile_func_block *func,
 			    union mml_tile_data *data)
 {
-	struct mml_frame_config *cfg = task->config;
-	struct mml_frame_data *src = &cfg->info.src;
-	struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
+	const struct mml_frame_config *cfg = task->config;
+	const struct mml_frame_data *src = &cfg->info.src;
+	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
-	bool relay_mode = dest->pq_config.en_hdr ? false : true;
+	bool relay_mode = !dest->pq_config.en_hdr;
 
 	func->for_func = tile_crop_for;
-	func->data = data;
-
 	func->enable_flag = dest->pq_config.en_hdr;
 
 	if ((cfg->info.dest_cnt == 1 ||
@@ -1193,11 +1164,11 @@ const struct of_device_id mml_hdr_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6893-mml_hdr",
-		.data = &mt6893_hdr_data,
+		.data = &mt6983_hdr_data,
 	},
 	{
 		.compatible = "mediatek,mt6879-mml_hdr",
-		.data = &mt6879_hdr_data,
+		.data = &mt6983_hdr_data,
 	},
 	{
 		.compatible = "mediatek,mt6895-mml_hdr",
@@ -1209,7 +1180,7 @@ const struct of_device_id mml_hdr_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6886-mml_hdr",
-		.data = &mt6886_hdr_data,
+		.data = &mt6983_hdr_data,
 	},
 	{
 		.compatible = "mediatek,mt6897-mml_hdr",

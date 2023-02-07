@@ -31,25 +31,7 @@ struct mutex_data {
 	u32 mod_cnt;
 };
 
-static const struct mutex_data mt6893_mutex_data = {
-	.mutex_cnt = 16,
-	.mod_offsets = {0x30, 0x34},
-	.mod_cnt = 2,
-};
-
 static const struct mutex_data mt6983_mutex_data = {
-	.mutex_cnt = 16,
-	.mod_offsets = {0x30, 0x34},
-	.mod_cnt = 2,
-};
-
-static const struct mutex_data mt6879_mutex_data = {
-	.mutex_cnt = 16,
-	.mod_offsets = {0x30, 0x34},
-	.mod_cnt = 2,
-};
-
-static const struct mutex_data mt6895_mutex_data = {
 	.mutex_cnt = 16,
 	.mod_offsets = {0x30, 0x34},
 	.mod_cnt = 2,
@@ -509,15 +491,15 @@ const struct of_device_id mml_mutex_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6893-mml_mutex",
-		.data = &mt6893_mutex_data
+		.data = &mt6983_mutex_data
 	},
 	{
 		.compatible = "mediatek,mt6879-mml_mutex",
-		.data = &mt6879_mutex_data
+		.data = &mt6983_mutex_data
 	},
 	{
 		.compatible = "mediatek,mt6895-mml_mutex",
-		.data = &mt6895_mutex_data
+		.data = &mt6983_mutex_data
 	},
 	{
 		.compatible = "mediatek,mt6985-mml_mutex",
@@ -525,7 +507,7 @@ const struct of_device_id mml_mutex_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6886-mml_mutex",
-		.data = &mt6895_mutex_data
+		.data = &mt6983_mutex_data
 	},
 	{
 		.compatible = "mediatek,mt6897-mml_mutex",
