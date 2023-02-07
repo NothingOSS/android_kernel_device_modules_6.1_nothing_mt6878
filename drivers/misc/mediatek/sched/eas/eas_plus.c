@@ -253,9 +253,9 @@ int sort_thermal_headroom(struct cpumask *cpus, int *cpu_order)
  * Return: the sum of the energy consumed by the CPUs of the domain assuming
  * a capacity state satisfying the max utilization of the domain.
  */
-unsigned long mtk_em_cpu_energy(struct em_perf_domain *pd,
+unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 		unsigned long max_util, unsigned long sum_util,
-		unsigned long allowed_cpu_cap, unsigned int *cpu_temp)
+		unsigned long allowed_cpu_cap, struct energy_env *eenv)
 {
 	unsigned long freq, scale_cpu;
 	struct em_perf_state *ps;
@@ -268,6 +268,7 @@ unsigned long mtk_em_cpu_energy(struct em_perf_domain *pd,
 #endif
 	unsigned long dyn_pwr = 0, static_pwr = 0;
 	unsigned long energy;
+	int *cpu_temp = eenv->cpu_temp;
 
 	if (!sum_util)
 		return 0;

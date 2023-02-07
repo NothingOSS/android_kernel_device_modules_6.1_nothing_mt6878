@@ -156,31 +156,6 @@ static unsigned long cpu_util_next(int cpu, struct task_struct *p, int dst_cpu)
 }
 
 /*
- * energy_env - Utilization landscape for energy estimation.
- * @task_busy_time: Utilization contribution by the task for which we test the
- *                  placement. Given by eenv_task_busy_time().
- * @pd_busy_time:   Utilization of the whole perf domain without the task
- *                  contribution. Given by eenv_pd_busy_time().
- * @cpu_cap:        Maximum CPU capacity for the perf domain.
- * @pd_cap:         Entire perf domain capacity. (pd->nr_cpus * cpu_cap).
- */
-struct energy_env {
-	unsigned long task_busy_time;
-	unsigned long pd_busy_time;
-	unsigned long pds_max_util[2];    /* 0: dst_cpu=-1 1: with dst_cpu*/
-	unsigned long cpu_cap;
-	unsigned long pd_cap;
-	unsigned long min_cap;
-	unsigned long max_cap;
-};
-
-static inline void eenv_init(struct energy_env *eenv,
-				struct task_struct *p, int prev_cpu, struct perf_domain *pd)
-{
-	eenv->pds_max_util[0] =  -1;
-	eenv->pds_max_util[1] =  -1;
-}
-/*
  * Compute the task busy time for compute_energy(). This time cannot be
  * injected directly into effective_cpu_util() because of the IRQ scaling.
  * The latter only makes sense with the most recent CPUs where the task has
@@ -198,6 +173,55 @@ static inline void eenv_task_busy_time(struct energy_env *eenv,
 		busy_time = scale_irq_capacity(task_util_est(p), irq, max_cap);
 
 	eenv->task_busy_time = busy_time;
+}
+
+DEFINE_PER_CPU(cpumask_var_t, mtk_select_rq_mask);
+static inline void eenv_init(struct energy_env *eenv,
+			struct task_struct *p, int prev_cpu, struct perf_domain *pd)
+{
+	struct cpumask *cpus = this_cpu_cpumask_var_ptr(mtk_select_rq_mask);
+	unsigned int cpu, pd_idx, pd_cnt;
+	struct perf_domain *pd_ptr = pd;
+	unsigned int gear_idx;
+
+	eenv_task_busy_time(eenv, p, prev_cpu);
+
+	pd_cnt = get_nr_gears();
+	for (pd_idx = 0; pd_idx < pd_cnt; pd_idx++) {
+		eenv->pds_busy_time[pd_idx] =  -1;
+		eenv->pds_max_util[pd_idx][0] =  -1;
+		eenv->pds_max_util[pd_idx][1] =  -1;
+		eenv->pds_cpu_cap[pd_idx] = -1;
+		eenv->pds_cap[pd_idx] = -1;
+	}
+
+	for (; pd_ptr; pd_ptr = pd_ptr->next) {
+		unsigned long cpu_thermal_cap;
+
+		cpumask_and(cpus, perf_domain_span(pd_ptr), cpu_active_mask);
+		if (cpumask_empty(cpus))
+			continue;
+
+		/* Account thermal pressure for the energy estimation */
+		cpu = cpumask_first(cpus);
+		cpu_thermal_cap = arch_scale_cpu_capacity(cpu);
+		cpu_thermal_cap -= arch_scale_thermal_pressure(cpu);
+
+		gear_idx = per_cpu(gear_id, cpu);
+		eenv->pds_cpu_cap[gear_idx] = cpu_thermal_cap;
+		eenv->pds_cap[gear_idx] = 0;
+		for_each_cpu(cpu, cpus) {
+			eenv->pds_cap[gear_idx] += cpu_thermal_cap;
+		}
+
+		trace_sched_energy_init(cpus, gear_idx, eenv->pds_cpu_cap[gear_idx],
+				eenv->pds_cap[gear_idx]);
+	}
+
+	for_each_cpu(cpu, cpu_possible_mask) {
+		eenv->cpu_temp[cpu] = get_cpu_temp(cpu);
+		eenv->cpu_temp[cpu] /= 1000;
+	}
 }
 
 /*
@@ -221,12 +245,17 @@ static inline void eenv_task_busy_time(struct energy_env *eenv,
  * Set @eenv busy time for the PD that spans @pd_cpus. This busy time can't
  * exceed @eenv->pd_cap.
  */
-static inline void eenv_pd_busy_time(struct energy_env *eenv,
-				     struct cpumask *pd_cpus,
-				     struct task_struct *p)
+static inline void eenv_pd_busy_time(int gear_idx, struct energy_env *eenv,
+				struct cpumask *pd_cpus,
+				struct task_struct *p)
 {
 	unsigned long busy_time = 0;
 	int cpu;
+
+	if (eenv->pds_busy_time[gear_idx] != -1) {
+		eenv->pd_busy_time = eenv->pds_busy_time[gear_idx];
+		return;
+	}
 
 	for_each_cpu(cpu, pd_cpus) {
 		unsigned long util = cpu_util_next(cpu, p, -1);
@@ -239,7 +268,8 @@ static inline void eenv_pd_busy_time(struct energy_env *eenv,
 #endif
 	}
 
-	eenv->pd_busy_time = min(eenv->pd_cap, busy_time);
+	eenv->pd_busy_time = min(eenv->pds_cap[gear_idx], busy_time);
+	eenv->pds_busy_time[gear_idx] = eenv->pd_busy_time;
 }
 
 /*
@@ -250,7 +280,7 @@ static inline void eenv_pd_busy_time(struct energy_env *eenv,
  * exceed @eenv->cpu_cap.
  */
 static inline unsigned long
-eenv_pd_max_util(struct energy_env *eenv, struct cpumask *pd_cpus,
+eenv_pd_max_util(int gear_idx, struct energy_env *eenv, struct cpumask *pd_cpus,
 		 struct task_struct *p, int dst_cpu)
 {
 	unsigned long max_util = 0, max_util_base = 0;
@@ -259,8 +289,8 @@ eenv_pd_max_util(struct energy_env *eenv, struct cpumask *pd_cpus,
 	if (dst_cpu != -1)
 		dst_idx = 1;
 
-	if (eenv->pds_max_util[dst_idx] != -1)
-		return  eenv->pds_max_util[dst_idx];
+	if (eenv->pds_max_util[gear_idx][dst_idx] != -1)
+		return  eenv->pds_max_util[gear_idx][dst_idx];
 
 	for_each_cpu(cpu, pd_cpus) {
 		struct task_struct *tsk = (cpu == dst_cpu) ? p : NULL;
@@ -275,12 +305,11 @@ eenv_pd_max_util(struct energy_env *eenv, struct cpumask *pd_cpus,
 		 * FREQUENCY_UTIL's utilization can be max OPP.
 		 */
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
-		cpu_util = mtk_cpu_util(cpu, util, FREQUENCY_UTIL, tsk,
-				eenv->min_cap, eenv->max_cap);
+		cpu_util = mtk_cpu_util(cpu, util, FREQUENCY_UTIL, tsk, eenv->min_cap,
+				eenv->max_cap);
 #else
 		cpu_util = effective_cpu_util(cpu, util, FREQUENCY_UTIL, tsk);
 #endif
-
 		if (dst_cpu != -1) {
 			unsigned long util_base = cpu_util_next(cpu, p, -1);
 			unsigned long cpu_util_base;
@@ -291,13 +320,35 @@ eenv_pd_max_util(struct energy_env *eenv, struct cpumask *pd_cpus,
 		}
 
 		max_util = max(max_util, cpu_util);
+
+		trace_sched_max_util(gear_idx, dst_cpu, max_util, cpu, util, cpu_util);
 	}
 
-	eenv->pds_max_util[dst_idx] =  min(max_util, eenv->cpu_cap);
+	eenv->pds_max_util[gear_idx][dst_idx] =  min(max_util, eenv->pds_cpu_cap[gear_idx]);
 	if (dst_cpu != -1)
-		eenv->pds_max_util[0] =  min(max_util_base, eenv->cpu_cap);
+		eenv->pds_max_util[gear_idx][0] =  min(max_util_base, eenv->pds_cpu_cap[gear_idx]);
+	trace_sched_max_util(gear_idx, dst_cpu, eenv->pds_max_util[gear_idx][dst_idx], -1, 0, 0);
 
-	return min(max_util, eenv->cpu_cap);
+	return eenv->pds_max_util[gear_idx][dst_idx];
+}
+
+static inline unsigned long
+mtk_compute_energy_cpu(int gear_idx, struct energy_env *eenv, struct perf_domain *pd,
+		       struct cpumask *pd_cpus, struct task_struct *p, int dst_cpu)
+{
+	unsigned long max_util = eenv_pd_max_util(gear_idx, eenv, pd_cpus, p, dst_cpu);
+	unsigned long busy_time = eenv->pd_busy_time;
+	unsigned long energy;
+
+	if (dst_cpu >= 0)
+		busy_time = min(eenv->pds_cap[gear_idx], busy_time + eenv->task_busy_time);
+
+	energy =  mtk_em_cpu_energy(gear_idx, pd->em_pd, max_util, busy_time,
+			eenv->pds_cpu_cap[gear_idx], eenv);
+
+	trace_sched_compute_energy(dst_cpu, gear_idx, pd_cpus, energy, max_util, busy_time);
+
+	return energy;
 }
 
 /*
@@ -309,15 +360,9 @@ static inline unsigned long
 mtk_compute_energy(struct energy_env *eenv, struct perf_domain *pd,
 	       struct cpumask *pd_cpus, struct task_struct *p, int dst_cpu)
 {
-	unsigned long max_util = eenv_pd_max_util(eenv, pd_cpus, p, dst_cpu);
-	unsigned long busy_time = eenv->pd_busy_time;
 
-	if (dst_cpu >= 0)
-		busy_time = min(eenv->pd_cap, busy_time + eenv->task_busy_time);
-
-	return em_cpu_energy(pd->em_pd, max_util, busy_time, eenv->cpu_cap);
+	return mtk_compute_energy_cpu(eenv->gear_idx, eenv, pd, pd_cpus, p, dst_cpu);
 }
-
 #endif
 
 static unsigned int uclamp_min_ls;
@@ -785,13 +830,15 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	eenv.min_cap = min_cap;
 	eenv.max_cap = max_cap;
 
+	eenv_init(&eenv, p, prev_cpu, pd);
+
 	for (; pd; pd = pd->next) {
 		unsigned long cur_delta, base_energy;
 		long spare_cap, max_spare_cap = LONG_MIN;
 		unsigned long max_spare_cap_ls_idle = 0;
 		int max_spare_cap_cpu = -1;
 		int max_spare_cap_cpu_ls_idle = -1;
-		unsigned long cpu_thermal_cap;
+		int gear_idx;
 #if IS_ENABLED(CONFIG_MTK_THERMAL_AWARE_SCHEDULING)
 		int cpu_order[NR_CPUS]  ____cacheline_aligned, cnt, i;
 
@@ -802,15 +849,9 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 		if (cpumask_empty(cpus))
 			continue;
 
-		eenv_init(&eenv, p, prev_cpu, pd);
-
 		/* Account thermal pressure for the energy estimation */
 		cpu = cpumask_first(cpus);
-		cpu_thermal_cap = arch_scale_cpu_capacity(cpu);
-		cpu_thermal_cap -= arch_scale_thermal_pressure(cpu);
-
-		eenv.cpu_cap = cpu_thermal_cap;
-		eenv.pd_cap = 0;
+		gear_idx = eenv.gear_idx = per_cpu(gear_id, cpu);
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_AWARE_SCHEDULING)
 		cnt = sort_thermal_headroom(cpus, cpu_order);
@@ -820,8 +861,6 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 #else
 		for_each_cpu(cpu, cpus) {
 #endif
-			eenv.pd_cap += cpu_thermal_cap;
-
 			if (!cpumask_test_cpu(cpu, p->cpus_ptr))
 				continue;
 
@@ -908,7 +947,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 
 		/* Evaluate the energy impact of using this CPU. */
 		if (!latency_sensitive && max_spare_cap_cpu >= 0) {
-			eenv_pd_busy_time(&eenv, cpus, p);
+			eenv_pd_busy_time(gear_idx, &eenv, cpus, p);
 			cur_delta = mtk_compute_energy(&eenv, pd, cpus, p, max_spare_cap_cpu);
 			base_energy = mtk_compute_energy(&eenv, pd, cpus, p, -1);
 			cur_delta = cur_delta - base_energy;
@@ -920,7 +959,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 
 		if (latency_sensitive) {
 			if (max_spare_cap_cpu_ls_idle >= 0) {
-				eenv_pd_busy_time(&eenv, cpus, p);
+				eenv_pd_busy_time(gear_idx, &eenv, cpus, p);
 				cur_delta = mtk_compute_energy(&eenv, pd, cpus, p,
 						max_spare_cap_cpu_ls_idle);
 				base_energy = mtk_compute_energy(&eenv, pd, cpus, p, -1);

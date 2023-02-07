@@ -43,6 +43,33 @@ DECLARE_PER_CPU(unsigned long, min_freq);
 #define LB_RT_FAIL_RANDOM      (0x40000)
 #define LB_RT_NO_LOWEST_RQ     (0x80000)
 
+/*
+ * energy_env - Utilization landscape for energy estimation.
+ * @task_busy_time: Utilization contribution by the task for which we test the
+ *                  placement. Given by eenv_task_busy_time().
+ * @pd_busy_time:   Utilization of the whole perf domain without the task
+ *                  contribution. Given by eenv_pd_busy_time().
+ * @cpu_cap:        Maximum CPU capacity for the perf domain.
+ * @pd_cap:         Entire perf domain capacity. (pd->nr_cpus * cpu_cap).
+ */
+struct energy_env {
+
+	unsigned long task_busy_time;     /* task util*/
+	unsigned long min_cap;            /* min cap of task */
+	unsigned long max_cap;            /* max cap of task */
+
+	unsigned long pd_busy_time;       /* CPUs total util */
+
+	unsigned int gear_idx;
+	unsigned long pds_busy_time[4];
+	unsigned long pds_max_util[4][2]; /* 0: dst_cpu=-1 1: with dst_cpu*/
+	unsigned long pds_cpu_cap[4];
+	unsigned long pds_cap[4];
+
+	/* temperature for each cpu*/
+	unsigned int cpu_temp[NR_CPUS];
+};
+
 #ifdef CONFIG_SMP
 /*
  * The margin used when comparing utilization with CPU capacity.
@@ -62,9 +89,9 @@ extern void mtk_find_busiest_group(void *data, struct sched_group *busiest,
 extern void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p,
 		int prev_cpu, int sync, int *new_cpu);
 extern void mtk_cpu_overutilized(void *data, int cpu, int *overutilized);
-extern unsigned long mtk_em_cpu_energy(struct em_perf_domain *pd,
+extern unsigned long mtk_em_cpu_energy(int gear_id, struct em_perf_domain *pd,
 		unsigned long max_util, unsigned long sum_util,
-		unsigned long allowed_cpu_cap, unsigned int *cpu_temp);
+		unsigned long allowed_cpu_cap, struct energy_env *eenv);
 extern unsigned int new_idle_balance_interval_ns;
 #if IS_ENABLED(CONFIG_MTK_THERMAL_AWARE_SCHEDULING)
 extern int sort_thermal_headroom(struct cpumask *cpus, int *cpu_order);
