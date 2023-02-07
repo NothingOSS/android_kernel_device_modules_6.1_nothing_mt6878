@@ -13,7 +13,7 @@
 
 #include "mtk_cam-pool.h"
 #include "mtk_cam-ipi.h"
-#include "mtk_camera-v4l2-controls.h"
+#include "mtk_camera-v4l2-controls-7sp.h"
 #include "mtk_cam-engine.h"
 
 struct mtk_cam_job;

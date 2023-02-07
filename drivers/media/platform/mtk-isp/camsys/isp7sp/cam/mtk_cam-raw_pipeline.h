@@ -9,7 +9,7 @@
 #include <media/v4l2-subdev.h>
 #include "mtk_cam-video.h"
 #include "mtk_cam-tg-flash.h"
-#include "mtk_camera-v4l2-controls.h"
+#include "mtk_camera-v4l2-controls-7sp.h"
 #include "mtk_cam-raw_pads.h"
 
 /* FIXME: dynamic config image max/min w/h */

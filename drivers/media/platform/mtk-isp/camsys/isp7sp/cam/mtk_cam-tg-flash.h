@@ -6,7 +6,7 @@
 #ifndef __MTK_CAM_TG_FALSH_H
 #define __MTK_CAM_TG_FALSH_H
 
-#include "mtk_camera-v4l2-controls.h"
+#include "mtk_camera-v4l2-controls-7sp.h"
 
 struct mtk_cam_ctx;
 struct mtk_raw_pipeline;

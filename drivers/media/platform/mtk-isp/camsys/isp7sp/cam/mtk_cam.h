@@ -30,7 +30,7 @@
 #include "mtk_cam-seninf-if.h"
 #include "mtk_cam-sv.h"
 #include "mtk_cam-mraw.h"
-#include "mtk_camera-v4l2-controls.h"
+#include "mtk_camera-v4l2-controls-7sp.h"
 #include "mtk_cam-dvfs_qos.h"
 
 #include "mtk_cam-raw_pipeline.h"

@@ -21,7 +21,7 @@
 #include "mtk_cam-mraw.h"
 #include "mtk_cam-feature.h"
 
-#include "mtk_camera-v4l2-controls.h"
+#include "mtk_camera-v4l2-controls-7sp.h"
 #include "mtk_camera-videodev2.h"
 #include "mtk_cam-fmt_utils.h"
 
