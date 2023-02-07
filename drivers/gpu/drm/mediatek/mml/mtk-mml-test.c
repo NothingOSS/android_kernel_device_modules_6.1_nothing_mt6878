@@ -167,6 +167,8 @@ module_param(mml_test_out_fmt, int, 0644);
 int mml_test_dump_dest = 1;
 module_param(mml_test_dump_dest, int, 0644);
 
+static u64 apu_ut_handle;
+
 struct mml_test {
 	struct platform_device *pdev;
 	struct device *dev;
@@ -178,6 +180,7 @@ struct mml_test {
 	struct dentry *fs_frame_out;
 	struct dentry *fs_dump;
 	struct dentry *fs_dump_dest;
+	struct dentry *apu_ut;
 };
 
 struct test_case_op {
@@ -1144,7 +1147,7 @@ static void case_run_read_sram(struct mml_test *test, struct mml_ut *cur)
 		return;
 	}
 	mml = dev_get_drvdata(dev);
-	mml_sram_get(mml);
+	mml_sram_get(mml, mml_sram_racing);
 
 	msleep_interruptible(mml_test_interval);
 
@@ -1158,7 +1161,7 @@ static void case_run_read_sram(struct mml_test *test, struct mml_ut *cur)
 	case_general_submit(test, cur, setup_read_sram_bufb);
 
 	/* release */
-	mml_sram_put(mml);
+	mml_sram_put(mml, mml_sram_racing);
 	mml_drm_put_context(mml_ctx);
 }
 
@@ -1225,7 +1228,7 @@ static void case_run_wr_sram(struct mml_test *test, struct mml_ut *cur)
 		return;
 	}
 	mml = dev_get_drvdata(dev);
-	mml_sram_get(mml);
+	mml_sram_get(mml, mml_sram_racing);
 
 	/* dram -> sram */
 	swap(fd, cur->fd_out);
@@ -1243,7 +1246,7 @@ static void case_run_wr_sram(struct mml_test *test, struct mml_ut *cur)
 	case_general_submit(test, cur, setup_read_sram_bufb);
 
 	/* release */
-	mml_sram_put(mml);
+	mml_sram_put(mml, mml_sram_racing);
 	mml_drm_put_context(mml_ctx);
 }
 
@@ -1344,13 +1347,14 @@ static void setup_read_sram_frame(struct mml_submit *task, struct mml_ut *cur)
 	task->info.mode = MML_MODE_APUDC;
 	task->buffer.src.flush = false;
 	task->buffer.src.invalid = false;
-	task->buffer.src.fd[0] = -1;
+	mml_set_apu_handle(&task->buffer.src, apu_ut_handle);
 
-	task->info.src.height = SRAM_HEIGHT;
-	task->info.dest[0].data.height = SRAM_HEIGHT;
-	task->buffer.src.size[0] /= 2;
-	task->buffer.src.size[1] /= 2;
-	task->buffer.src.size[2] /= 2;
+	task->info.dest[0].crop.r.left = mml_test_crop_left;
+	task->info.dest[0].crop.r.top = mml_test_crop_top;
+	task->info.dest[0].crop.r.width = mml_test_crop_width;
+	task->info.dest[0].crop.r.height = mml_test_crop_height;
+	task->info.dest[0].rotate = mml_test_rot;
+	task->info.dest[0].flip = mml_test_flip;
 }
 
 static void case_run_sram_frame(struct mml_test *test, struct mml_ut *cur)
@@ -1372,20 +1376,13 @@ static void case_run_sram_frame(struct mml_test *test, struct mml_ut *cur)
 		return;
 	}
 	mml = dev_get_drvdata(dev);
-	mml_sram_get(mml);
+	mml_sram_get(mml, mml_sram_racing);
 
 	msleep_interruptible(mml_test_interval);
-
-	/* correct the format in sram */
-	the_case.cfg_src_format = the_case.cfg_dest_format;
-	the_case.cfg_dest_h = SRAM_HEIGHT;
-
-	/* sram -> dram */
-	cur->fd_in = -1;
 	case_general_submit(test, cur, setup_read_sram_frame);
 
 	/* release */
-	mml_sram_put(mml);
+	mml_sram_put(mml, mml_sram_racing);
 	mml_drm_put_context(mml_ctx);
 }
 
@@ -2181,6 +2178,59 @@ static const struct file_operations dumpsrv_dest_fops = {
 	.write = dumpsrv_write,
 };
 
+
+static int apu_ut_open(struct inode *node, struct file *filp)
+{
+	mml_log("%s open with %p", __func__, filp);
+	return 0;
+}
+
+static int apu_ut_release(struct inode *node, struct file *filp)
+{
+	mml_log("%s release with %p", __func__, filp);
+	return 0;
+}
+
+static ssize_t apu_ut_read(struct file *filp, char __user *buf, size_t size, loff_t *offset)
+{
+	mml_log("%s read with %p", __func__, filp);
+	return 0;
+}
+
+static ssize_t apu_ut_write(struct file *filp, const char __user *buf, size_t len, loff_t *offset)
+{
+	char handle[20] = {0};
+	int ret;
+
+	mml_log("%s len %u", __func__, len);
+
+	if (copy_from_user(&handle, buf, min(len, sizeof(handle)))) {
+		mml_err("%s copy apu ut handle fail", __func__);
+		return -EFAULT;
+	}
+
+	if (len > 2 && strncmp(handle, "0x", 2) == 0)
+		ret = kstrtou64(handle + 2, 16, &apu_ut_handle);
+	else
+		ret = kstrtou64(handle, 10, &apu_ut_handle);
+	if (ret < 0) {
+		mml_err("%s fail to read handle %s", __func__, handle);
+		return -EFAULT;
+	}
+
+	mml_log("%s call run with handle %#x (%s)", __func__, apu_ut_handle, handle);
+	mml_test_krun(MML_UT_SRAM_FRAME);
+
+	return len;
+}
+
+static const struct file_operations apu_ut_fops = {
+	.open = apu_ut_open,
+	.release = apu_ut_release,
+	.read = apu_ut_read,
+	.write = apu_ut_write,
+};
+
 static int probe(struct platform_device *pdev)
 {
 	struct mml_test *test;
@@ -2243,6 +2293,13 @@ static int probe(struct platform_device *pdev)
 	if (IS_ERR(test->fs_dump_dest)) {
 		mml_err("debugfs_create_file mml-dumpsrv-dest failed:%pe", test->fs_dump_dest);
 		return PTR_ERR(test->fs_dump_dest);
+	}
+
+	test->apu_ut = debugfs_create_file(
+		"mml-apu-ut", 0444, dir, test, &apu_ut_fops);
+	if (IS_ERR(test->apu_ut)) {
+		mml_err("debugfs_create_file mml-apu-ut failed:%pe", test->apu_ut);
+		return PTR_ERR(test->apu_ut);
 	}
 
 	if (exists)

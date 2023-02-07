@@ -149,6 +149,9 @@
 #define APU_SRC_OFFSET_0_C_MSB		0xf98
 #define APU_SRC_OFFSET_0_D_MSB		0xf9c
 
+/* RDMA debug monitor register count */
+#define RDMA_MON_COUNT 29
+
 enum cpr_reg_idx {
 	/* CMDQ_CPR_PREBUILT_REG_CNT = 20 */
 	CPR_RDMA_SRC_OFFSET_0 = 0,
@@ -599,6 +602,8 @@ struct mml_comp_rdma {
 	u32 sram_cnt;
 	u64 sram_pa;
 	struct mutex sram_mutex;
+
+	u32 apudc_sel;
 };
 
 struct rdma_frame_data {
@@ -654,17 +659,8 @@ static s32 rdma_buf_map(struct mml_comp *comp, struct mml_task *task,
 
 	mml_trace_ex_begin("%s", __func__);
 
-	if (task->config->info.mode == MML_MODE_APUDC ||
-		unlikely(task->config->info.mode == MML_MODE_SRAM_READ)) {
-		mutex_lock(&rdma->sram_mutex);
-		if (!rdma->sram_cnt)
-			rdma->sram_pa = (u64)mml_sram_get(task->config->mml);
-		rdma->sram_cnt++;
-		mutex_unlock(&rdma->sram_mutex);
-
-		mml_msg("%s comp %u sram pa %#llx",
-			__func__, comp->id, rdma->sram_pa);
-	} else {
+	if (task->config->info.mode != MML_MODE_APUDC &&
+		unlikely(task->config->info.mode != MML_MODE_SRAM_READ)) {
 		/* get iova */
 		ret = mml_buf_iova_get(rdma->dev, &task->buf.src);
 		if (ret < 0)
@@ -696,6 +692,15 @@ static s32 rdma_buf_prepare(struct mml_comp *comp, struct mml_task *task,
 		unlikely(task->config->info.mode == MML_MODE_SRAM_READ)) {
 		struct mml_comp_rdma *rdma = comp_to_rdma(comp);
 
+		mutex_lock(&rdma->sram_mutex);
+		if (!rdma->sram_cnt)
+			rdma->sram_pa = (u64)mml_sram_get(task->config->mml, mml_sram_apudc);
+		rdma->sram_cnt++;
+		mutex_unlock(&rdma->sram_mutex);
+
+		mml_msg("%s comp %u sram pa %#llx",
+			__func__, comp->id, rdma->sram_pa);
+
 		/* sram read case must have sram pa */
 		if (!rdma->sram_pa)
 			return -EINVAL;
@@ -708,8 +713,8 @@ static s32 rdma_buf_prepare(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
-static void rdma_buf_unmap(struct mml_comp *comp, struct mml_task *task,
-			   const struct mml_path_node *node)
+static void rdma_buf_unprepare(struct mml_comp *comp, struct mml_task *task,
+			       struct mml_comp_config *ccfg)
 {
 	struct mml_comp_rdma *rdma;
 
@@ -720,7 +725,7 @@ static void rdma_buf_unmap(struct mml_comp *comp, struct mml_task *task,
 		mutex_lock(&rdma->sram_mutex);
 		rdma->sram_cnt--;
 		if (rdma->sram_cnt == 0)
-			mml_sram_put(task->config->mml);
+			mml_sram_put(task->config->mml, mml_sram_apudc);
 		mutex_unlock(&rdma->sram_mutex);
 	}
 }
@@ -1480,10 +1485,21 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	/* Write frame base address */
 	if (cfg->info.mode == MML_MODE_APUDC) {
+		u32 stride = mml_color_get_min_y_stride(src->format, src->width);
+		u32 tile_size = max(stride, src->y_stride) * mml_racing_rh;
+
 		iova[0] = rdma->sram_pa;
-		iova[1] = rdma->sram_pa + rdma->data->sram_size;
+		iova[1] = rdma->sram_pa + tile_size;
 		iova[2] = 0;
-		mml_msg("%s sram %#011llx", __func__, iova[0]);
+
+		cmdq_pkt_write(pkt, NULL, rdma->smi_larb_con,
+			GENMASK(19, 16), GENMASK(19, 16));
+
+		/* select rdma read toggle signal send to apu, instead of disp */
+		if (rdma->apudc_sel)
+			cmdq_pkt_write(pkt, NULL, rdma->apudc_sel, 0x2, U32_MAX);
+
+		mml_msg("%s sram %#011llx tile size %u", __func__, iova[0], tile_size);
 
 	} else if (unlikely(cfg->info.mode == MML_MODE_SRAM_READ)) {
 		iova[0] = rdma->sram_pa + src->plane_offset[0];
@@ -1532,13 +1548,21 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		cmdq_pkt_write(pkt, NULL, base_pa + APU_SRC_BASE_0_A, iova[0], U32_MAX);
 		cmdq_pkt_write(pkt, NULL, base_pa + APU_SRC_BASE_0_B, iova[1], U32_MAX);
 
+		mml_msg("APU_SRC_BASE A %#010llx B %#010llx", iova[0], iova[1]);
+
+		/* dummy read to make sure direct couple handshaking work */
+		cmdq_pkt_read_addr(pkt, base_pa + APU_DIRECT_COUPLE_CONTROL_EN, CMDQ_THR_SPR_IDX0);
+
 		/* also enable sram handshaking with APU */
 		cmdq_pkt_write(pkt, NULL, base_pa + APU_DIRECT_COUPLE_CONTROL_EN,
 			0x3, U32_MAX);
 
-		cmdq_pkt_write(pkt, NULL, base_pa + APU_DIRECT_COUPLE_CONTROL,
-			(cfg->dual << 8) + (mml_racing_rh << 13), U32_MAX);
-
+		if (ccfg->pipe == 0)
+			cmdq_pkt_write(pkt, NULL, base_pa + APU_DIRECT_COUPLE_CONTROL,
+				(cfg->dual << 8) | (mml_racing_rh << 13), U32_MAX);
+		else
+			cmdq_pkt_write(pkt, NULL, base_pa + APU_DIRECT_COUPLE_CONTROL,
+				mml_racing_rh << 13, U32_MAX);
 	} else if (!mml_slt) {
 		rdma_write_addr(pkt, base_pa, hw_pipe,
 				CPR_RDMA_SRC_BASE_0,
@@ -1768,12 +1792,19 @@ static s32 rdma_config_tile(struct mml_comp *comp, struct mml_task *task,
 		mf_offset_h_1 = (out_ys + rdma_frm->crop_off_t - in_ys) << rdma_frm->field;
 	}
 
-	rdma_write_ofst(pkt, base_pa, hw_pipe, CPR_RDMA_SRC_OFFSET_0,
-			src_offset_0, write_sec);
-	rdma_write_ofst(pkt, base_pa, hw_pipe, CPR_RDMA_SRC_OFFSET_1,
-			src_offset_1, write_sec);
-	rdma_write_ofst(pkt, base_pa, hw_pipe, CPR_RDMA_SRC_OFFSET_2,
-			src_offset_2, write_sec);
+	if (cfg->info.mode != MML_MODE_APUDC) {
+		rdma_write_ofst(pkt, base_pa, hw_pipe, CPR_RDMA_SRC_OFFSET_0,
+				src_offset_0, write_sec);
+		rdma_write_ofst(pkt, base_pa, hw_pipe, CPR_RDMA_SRC_OFFSET_1,
+				src_offset_1, write_sec);
+		rdma_write_ofst(pkt, base_pa, hw_pipe, CPR_RDMA_SRC_OFFSET_2,
+				src_offset_2, write_sec);
+	} else {
+		cmdq_pkt_write(pkt, NULL, base_pa + APU_SRC_OFFSET_0_A, src_offset_0, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + APU_SRC_OFFSET_0_B, src_offset_0, U32_MAX);
+
+		mml_msg("APU_SRC_OFFSET A %#010llx B %#010llx", src_offset_0, src_offset_0);
+	}
 
 	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_SRC_OFFSET_WP,
 		   src_offset_wp, write_sec);
@@ -1842,11 +1873,16 @@ static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 		__func__, task, ccfg->pipe, rdma_frm->datasize, rdma_frm->pixel_acc);
 
 	/* for sram test rollback smi config */
-	if (unlikely(cfg->info.mode == MML_MODE_SRAM_READ)) {
+	if (cfg->info.mode == MML_MODE_APUDC ||
+		unlikely(cfg->info.mode == MML_MODE_SRAM_READ)) {
 		struct mml_comp_rdma *rdma = comp_to_rdma(comp);
 
 		cmdq_pkt_write(task->pkts[ccfg->pipe], NULL, rdma->smi_larb_con,
 			0, GENMASK(19, 16));
+
+		/* disable handshaking for safe */
+		cmdq_pkt_write(task->pkts[ccfg->pipe], NULL,
+			comp->base_pa + APU_DIRECT_COUPLE_CONTROL_EN, 0, U32_MAX);
 	}
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
@@ -1971,7 +2007,7 @@ static const struct mml_comp_config_ops rdma_cfg_ops = {
 	.prepare = rdma_config_read,
 	.buf_map = rdma_buf_map,
 	.buf_prepare = rdma_buf_prepare,
-	.buf_unmap = rdma_buf_unmap,
+	.buf_unprepare = rdma_buf_unprepare,
 	.get_label_count = rdma_get_label_count,
 	.frame = rdma_config_frame,
 	.tile = rdma_config_tile,
@@ -2052,7 +2088,7 @@ static void rdma_debug_dump(struct mml_comp *comp)
 	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
 	void __iomem *base = comp->base;
 	u32 value[33];
-	u32 mon[29];
+	u32 apu_en;
 	u32 state, greq;
 	u32 i;
 
@@ -2081,6 +2117,8 @@ static void rdma_debug_dump(struct mml_comp *comp)
 		writel(debug_con, base + RDMA_DEBUG_CON);
 	}
 
+	apu_en = readl(base + APU_DIRECT_COUPLE_CONTROL_EN);
+
 	value[4] = readl(base + RDMA_MF_BKGD_SIZE_IN_BYTE);
 	value[5] = readl(base + RDMA_MF_BKGD_SIZE_IN_PXL);
 	value[6] = readl(base + RDMA_MF_SRC_SIZE);
@@ -2089,12 +2127,14 @@ static void rdma_debug_dump(struct mml_comp *comp)
 	value[9] = readl(base + RDMA_SF_BKGD_SIZE_IN_BYTE);
 	value[10] = readl(base + RDMA_MF_BKGD_H_SIZE_IN_PXL);
 	if (!rdma->data->write_sec_reg) {
-		value[11] = readl(base + RDMA_SRC_OFFSET_0_MSB);
-		value[12] = readl(base + RDMA_SRC_OFFSET_0);
-		value[13] = readl(base + RDMA_SRC_OFFSET_1_MSB);
-		value[14] = readl(base + RDMA_SRC_OFFSET_1);
-		value[15] = readl(base + RDMA_SRC_OFFSET_2_MSB);
-		value[16] = readl(base + RDMA_SRC_OFFSET_2);
+		if (!apu_en) {
+			value[11] = readl(base + RDMA_SRC_OFFSET_0_MSB);
+			value[12] = readl(base + RDMA_SRC_OFFSET_0);
+			value[13] = readl(base + RDMA_SRC_OFFSET_1_MSB);
+			value[14] = readl(base + RDMA_SRC_OFFSET_1);
+			value[15] = readl(base + RDMA_SRC_OFFSET_2_MSB);
+			value[16] = readl(base + RDMA_SRC_OFFSET_2);
+		}
 		value[17] = readl(base + RDMA_SRC_OFFSET_WP);
 		value[18] = readl(base + RDMA_SRC_OFFSET_HP);
 		value[19] = readl(base + RDMA_SRC_BASE_0_MSB);
@@ -2111,15 +2151,6 @@ static void rdma_debug_dump(struct mml_comp *comp)
 	}
 	value[30] = readl(base + RDMA_GMCIF_CON);
 
-	if (mml_rdma_crc) {
-		value[31] = readl(base + RDMA_CHKS_EXTR);
-		value[32] = readl(base + RDMA_DEBUG_CON);
-	}
-
-	/* mon sta from 0 ~ 28 */
-	for (i = 0; i < ARRAY_SIZE(mon); i++)
-		mon[i] = readl(base + RDMA_MON_STA_0 + i * 8);
-
 	mml_err("RDMA_EN %#010x RDMA_RESET %#010x RDMA_SRC_CON %#010x RDMA_COMP_CON %#010x",
 		value[0], value[1], value[2], value[3]);
 	mml_err("RDMA_MF_BKGD_SIZE_IN_BYTE %#010x RDMA_MF_BKGD_SIZE_IN_PXL %#010x",
@@ -2129,12 +2160,14 @@ static void rdma_debug_dump(struct mml_comp *comp)
 	mml_err("RDMA_SF_BKGD_SIZE_IN_BYTE %#010x RDMA_MF_BKGD_H_SIZE_IN_PXL %#010x",
 		value[9], value[10]);
 	if (!rdma->data->write_sec_reg) {
-		mml_err("RDMA_SRC OFFSET_0_MSB %#010x OFFSET_0 %#010x",
-			value[11], value[12]);
-		mml_err("RDMA_SRC OFFSET_1_MSB %#010x OFFSET_1 %#010x",
-			value[13], value[14]);
-		mml_err("RDMA_SRC OFFSET_2_MSB %#010x OFFSET_2 %#010x",
-			value[15], value[16]);
+		if (!apu_en) {
+			mml_err("RDMA_SRC OFFSET_0_MSB %#010x OFFSET_0 %#010x",
+				value[11], value[12]);
+			mml_err("RDMA_SRC OFFSET_1_MSB %#010x OFFSET_1 %#010x",
+				value[13], value[14]);
+			mml_err("RDMA_SRC OFFSET_2_MSB %#010x OFFSET_2 %#010x",
+				value[15], value[16]);
+		}
 		mml_err("RDMA_SRC_OFFSET_WP %#010x RDMA_SRC_OFFSET_HP %#010x",
 			value[17], value[18]);
 		mml_err("RDMA_SRC BASE_0_MSB %#010x BASE_0 %#010x",
@@ -2152,28 +2185,49 @@ static void rdma_debug_dump(struct mml_comp *comp)
 	}
 
 	if (mml_rdma_crc) {
+		value[31] = readl(base + RDMA_CHKS_EXTR);
+		value[32] = readl(base + RDMA_DEBUG_CON);
 		mml_err("RDMA_CHKS_EXTR %#010x RDMA_DEBUG_CON %#010x",
 			value[31], value[32]);
 	}
 
-	for (i = 0; i < ARRAY_SIZE(mon) / 3; i++) {
+	if (apu_en) {
+		value[0] = readl(base + APU_DIRECT_COUPLE_CONTROL);
+		value[1] = readl(base + APU_SRC_BASE_0_A);
+		value[2] = readl(base + APU_SRC_OFFSET_0_A);
+		value[3] = readl(base + APU_SRC_BASE_0_B);
+		value[4] = readl(base + APU_SRC_OFFSET_0_B);
+
+		mml_err("APU_DIRECT_COUPLE_CONTROL_EN %#010x APU_DIRECT_COUPLE_CONTROL %#010x",
+			apu_en, value[0]);
+		mml_err("APU_SRC_BASE_0_A %#010x APU_SRC_OFFSET_0_A %#010x",
+			value[1], value[2]);
+		mml_err("APU_SRC_BASE_0_B %#010x APU_SRC_OFFSET_0_B %#010x",
+			value[3], value[4]);
+	}
+
+	/* mon sta from 0 ~ 28 */
+	for (i = 0; i < RDMA_MON_COUNT; i++)
+		value[i] = readl(base + RDMA_MON_STA_0 + i * 8);
+
+	for (i = 0; i < RDMA_MON_COUNT / 3; i++) {
 		mml_err("RDMA_MON_STA_%-2u %#010x RDMA_MON_STA_%-2u %#010x RDMA_MON_STA_%-2u %#010x",
-			i * 3, mon[i * 3],
-			i * 3 + 1, mon[i * 3 + 1],
-			i * 3 + 2, mon[i * 3 + 2]);
+			i * 3, value[i * 3],
+			i * 3 + 1, value[i * 3 + 1],
+			i * 3 + 2, value[i * 3 + 2]);
 	}
 	mml_err("RDMA_MON_STA_27 %#010x RDMA_MON_STA_28 %#010x",
-		mon[27], mon[28]);
+		value[27], value[28]);
 
 	/* parse state */
 	mml_err("RDMA ack:%u req:%d ufo:%u",
-		(mon[0] >> 11) & 0x1, (mon[0] >> 10) & 0x1,
-		(mon[0] >> 25) & 0x1);
-	state = (mon[1] >> 8) & 0x7ff;
-	greq = (mon[0] >> 21) & 0x1;
+		(value[0] >> 11) & 0x1, (value[0] >> 10) & 0x1,
+		(value[0] >> 25) & 0x1);
+	state = (value[1] >> 8) & 0x7ff;
+	greq = (value[0] >> 21) & 0x1;
 	mml_err("RDMA state: %#x (%s)", state, rdma_state(state));
 	mml_err("RDMA horz_cnt %u vert_cnt %u",
-		mon[26] & 0xffff, (mon[26] >> 16) & 0xffff);
+		value[26] & 0xffff, (value[26] >> 16) & 0xffff);
 	mml_err("RDMA greq:%u => suggest to ask SMI help:%u", greq, greq);
 }
 
@@ -2250,6 +2304,10 @@ static int probe(struct platform_device *pdev)
 	if (of_property_read_u16(dev->of_node, "event-frame-done",
 				 &priv->event_eof))
 		dev_err(dev, "read event frame_done fail\n");
+
+	/* apu direct couple mml sel register */
+	if (of_property_read_u32(dev->of_node, "apudc-sel", &priv->apudc_sel))
+		priv->apudc_sel = 0;
 
 	/* assign ops */
 	priv->comp.tile_ops = &rdma_tile_ops;

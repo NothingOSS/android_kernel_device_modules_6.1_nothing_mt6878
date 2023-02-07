@@ -395,7 +395,10 @@ struct mml_dma_buf {
 
 struct mml_file_buf {
 	/* dma buf heap */
-	struct mml_dma_buf dma[MML_MAX_PLANES];
+	union {
+		struct mml_dma_buf dma[MML_MAX_PLANES];
+		u64 apu_handle;
+	};
 	u32 size[MML_MAX_PLANES];
 	u8 cnt;
 	struct dma_fence *fence;

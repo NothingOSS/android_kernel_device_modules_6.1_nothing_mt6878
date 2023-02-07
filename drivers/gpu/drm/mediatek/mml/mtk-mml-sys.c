@@ -33,6 +33,12 @@
 #define MML_MAX_SYS_DBG_REGS	78
 #define MML_MAX_AID_COMPS	10
 
+#define APU_CTRL		0x2d0
+#define APU_HANDLE		0x200
+#define APU_HANDLE_H		0x204
+#define APU_DCEN		0x208
+
+
 int mml_ir_loop = 1;
 module_param(mml_ir_loop, int, 0644);
 
@@ -154,11 +160,15 @@ struct mml_sys {
 	u16 event_racing_pipe0;
 	u16 event_racing_pipe1;
 	u16 event_racing_pipe1_next;
+	u16 event_apu_start;
 
 #ifndef MML_FPGA
 	/* for config sspm aid */
 	void *mml_scmi;
 #endif
+
+	u32 apu_base;
+	void __iomem *apu_base_va;
 };
 
 struct sys_frame_data {
@@ -173,6 +183,7 @@ struct sys_frame_data {
 	u32 racing_pipe_conti_offset;
 	u32 racing_pipe_conti_jump;
 
+	u32 tile_idx;
 };
 
 static inline struct sys_frame_data *sys_frm_data(struct mml_comp_config *ccfg)
@@ -200,11 +211,11 @@ static s32 sys_config_prepare(struct mml_comp *comp, struct mml_task *task,
 {
 	struct sys_frame_data *sys_frm;
 
-	if (task->config->info.mode == MML_MODE_RACING) {
-		/* initialize component frame data for current frame config */
-		sys_frm = kzalloc(sizeof(*sys_frm), GFP_KERNEL);
-		ccfg->data = sys_frm;
-	}
+	/* initialize component frame data for current frame config */
+	sys_frm = kzalloc(sizeof(*sys_frm), GFP_KERNEL);
+	ccfg->data = sys_frm;
+	if (!sys_frm)
+		return -ENOMEM;
 	return 0;
 }
 
@@ -258,6 +269,22 @@ static void sys_config_frame_racing(struct mml_comp *comp, struct mml_task *task
 	}
 }
 
+static void sys_apu_enable(struct cmdq_pkt *pkt, u32 apu_base, u64 handle)
+{
+	cmdq_pkt_write(pkt, NULL, apu_base + APU_CTRL, 0xfb, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, apu_base + APU_HANDLE, (u32)(handle >> 32), U32_MAX);
+	cmdq_pkt_write(pkt, NULL, apu_base + APU_HANDLE_H, (u32)handle, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, apu_base + APU_DCEN, 0, U32_MAX);
+}
+
+static void sys_apu_disable(struct cmdq_pkt *pkt, u32 apu_base, u64 handle)
+{
+	cmdq_pkt_write(pkt, NULL, apu_base + APU_CTRL, 0xfb, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, apu_base + APU_HANDLE, (u32)(handle >> 32), U32_MAX);
+	cmdq_pkt_write(pkt, NULL, apu_base + APU_HANDLE_H, (u32)handle, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, apu_base + APU_DCEN, 1, U32_MAX);
+}
+
 static s32 sys_config_frame(struct mml_comp *comp, struct mml_task *task,
 			    struct mml_comp_config *ccfg)
 {
@@ -270,6 +297,9 @@ static s32 sys_config_frame(struct mml_comp *comp, struct mml_task *task,
 	} else if (cfg->info.mode == MML_MODE_DDP_ADDON) {
 		/* use hw reset flow */
 		cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_MISC_REG, 0, 0x80000000);
+	} else if (cfg->info.mode == MML_MODE_APUDC) {
+		if (ccfg->pipe == 0)
+			sys_apu_enable(pkt, sys->apu_base, task->buf.src.apu_handle);
 	}
 
 	/* config aid sel by platform */
@@ -442,6 +472,15 @@ static s32 sys_config_tile(struct mml_comp *comp, struct mml_task *task,
 
 	if (task->config->info.mode == MML_MODE_RACING && !sys_frm->racing_tile0_offset)
 		sys_config_tile_racing(task, ccfg, sys, sys_frm, pkt);
+	else if (task->config->info.mode == MML_MODE_APUDC && !sys_frm->tile_idx) {
+		if (ccfg->pipe == 0) {
+			cmdq_pkt_wfe(pkt, sys->event_apu_start);
+			cmdq_pkt_set_event(pkt, sys->event_racing_pipe0);
+		} else {
+			cmdq_pkt_wfe(pkt, sys->event_racing_pipe0);
+		}
+	}
+	sys_frm->tile_idx++;
 
 	for (i = 0; i < path->node_cnt; i++) {
 		const struct mml_path_node *node = &path->nodes[i];
@@ -604,6 +643,13 @@ static s32 sys_post(struct mml_comp *comp, struct mml_task *task,
 		 * and job id for debug in both mode.
 		 */
 		sys_racing_addr_update(comp, task, ccfg);
+	} else if (task->config->info.mode == MML_MODE_APUDC) {
+		if (ccfg->pipe == 0) {
+			struct mml_sys *sys = comp_to_sys(comp);
+
+			sys_apu_disable(task->pkts[ccfg->pipe],
+				sys->apu_base, task->buf.src.apu_handle);
+		}
 	}
 
 	return 0;
@@ -653,7 +699,7 @@ static void sys_reset(struct mml_comp *comp, struct mml_frame_config *cfg, u32 p
 		writel(U32_MAX, comp->base + SYS_SW1_RST_B_REG);
 	}
 
-	if (cfg->info.mode == MML_MODE_RACING) {
+	if (cfg->info.mode == MML_MODE_RACING || cfg->info.mode == MML_MODE_APUDC) {
 		struct mml_sys *sys = comp_to_sys(comp);
 		u16 event_ir_eof = mml_ir_get_target_event(cfg->mml);
 
@@ -1570,6 +1616,12 @@ static int mml_sys_init(struct platform_device *pdev, struct mml_sys *sys,
 			     &sys->event_racing_pipe1);
 	of_property_read_u16(dev->of_node, "event-racing-pipe1-next",
 			     &sys->event_racing_pipe1_next);
+
+	/* apu direct couple mml feature */
+	of_property_read_u16(dev->of_node, "event-apu-start",
+			     &sys->event_apu_start);
+	sys->apu_base = mml_get_node_base_pa(pdev, "apu", 0, &sys->apu_base_va);
+
 	return 0;
 
 err_comp_add:

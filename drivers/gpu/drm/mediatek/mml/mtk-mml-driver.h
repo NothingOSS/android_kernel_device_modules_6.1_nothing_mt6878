@@ -38,6 +38,12 @@ static inline int of_mml_read_comp_id_index(const struct device_node *np,
 	return of_property_read_u32_index(np, "comp-ids", index, id);
 }
 
+enum mml_sram_mode {
+	mml_sram_racing,
+	mml_sram_apudc,
+	mml_sram_mode_total
+};
+
 /*
  * mml_qos_update_tput - scan throughputs in all path client and update the max one
  *
@@ -66,14 +72,14 @@ void mml_comp_qos_clear(struct mml_comp *comp);
  *
  * Return:	The address of sram
  */
-void __iomem *mml_sram_get(struct mml_dev *mml);
+void __iomem *mml_sram_get(struct mml_dev *mml, enum mml_sram_mode mode);
 
 /*
  * mml_sram_put - power off sram and release slbc object
  *
  * @mml:	The mml driver instance
  */
-void mml_sram_put(struct mml_dev *mml);
+void mml_sram_put(struct mml_dev *mml, enum mml_sram_mode mode);
 
 /*
  * mml_sram_get_racing_height - get racing height in mml cache
@@ -208,6 +214,19 @@ struct mml_topology_cache *mml_topology_get_cache(struct mml_dev *mml);
  * Return: pointer of component instance
  */
 struct mml_comp *mml_dev_get_comp_by_id(struct mml_dev *mml, u32 id);
+
+/*
+ * mml_get_node_base_pa - Help parse node pa addr
+ *
+ * @pdev:	Platform device.
+ * @name:	Node property name.
+ * @idx:	Index in property.
+ * @base:	[out]Node base addr va
+ *
+ * Return: node base addr pa
+ */
+phys_addr_t mml_get_node_base_pa(struct platform_device *pdev, const char *name,
+	u32 idx, void __iomem **base);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 /*

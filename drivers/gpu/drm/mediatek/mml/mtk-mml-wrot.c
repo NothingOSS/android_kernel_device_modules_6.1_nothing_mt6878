@@ -607,7 +607,7 @@ static s32 wrot_buf_prepare(struct mml_comp *comp, struct mml_task *task,
 			((u64)task->job.jobid << 16) | comp->id, 0);
 		mutex_lock(&wrot->sram_mutex);
 		if (!wrot->sram_cnt)
-			wrot->sram_pa = (u64)mml_sram_get(task->config->mml);
+			wrot->sram_pa = (u64)mml_sram_get(task->config->mml, mml_sram_racing);
 		wrot->sram_cnt++;
 		/* store it for mml record */
 		task->buf.dest[wrot_frm->out_idx].dma[0].iova = wrot->sram_pa;
@@ -636,7 +636,7 @@ static void wrot_buf_unprepare(struct mml_comp *comp, struct mml_task *task,
 		mutex_lock(&wrot->sram_mutex);
 		wrot->sram_cnt--;
 		if (wrot->sram_cnt == 0)
-			mml_sram_put(task->config->mml);
+			mml_sram_put(task->config->mml, mml_sram_racing);
 		mutex_unlock(&wrot->sram_mutex);
 	}
 }
@@ -2341,31 +2341,6 @@ static const struct component_ops mml_comp_ops = {
 
 static const struct mtk_ddp_comp_funcs ddp_comp_funcs = {
 };
-
-phys_addr_t mml_get_node_base_pa(struct platform_device *pdev, const char *name,
-	u32 idx, void __iomem **base)
-{
-	struct device *dev = &pdev->dev;
-	struct device_node *node;
-	struct resource res;
-	phys_addr_t base_pa = 0;
-
-	node = of_parse_phandle(dev->of_node, name, idx);
-	if (!node)
-		goto done;
-
-	if (of_address_to_resource(node, 0, &res))
-		goto done;
-
-	base_pa = res.start;
-	*base = of_iomap(node, 0);
-	mml_log("[wrot]%s%u %pa %p", name, idx, &base_pa, *base);
-
-done:
-	if (node)
-		of_node_put(node);
-	return base_pa;
-}
 
 static struct mml_comp_wrot *dbg_probed_components[4];
 static int dbg_probed_count;

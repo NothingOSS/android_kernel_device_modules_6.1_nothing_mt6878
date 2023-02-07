@@ -194,6 +194,9 @@ struct mml_buffer {
 	bool invalid:1;
 };
 
+#define mml_set_apu_handle(b, h)	(*((u64 *)((b)->dmabuf[0])) = h)
+#define mml_get_apu_handle(b)		(*((u64 *)((b)->dmabuf[0])))
+
 struct mml_frame_buffer {
 	struct mml_buffer src;
 	struct mml_buffer seg_map;

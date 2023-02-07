@@ -98,8 +98,8 @@ struct mml_dev {
 
 	/* sram operation */
 	bool racing_en;
-	struct slbc_data sram_data;
-	s32 sram_cnt;
+	struct slbc_data sram_data[mml_sram_mode_total];
+	s32 sram_cnt[mml_sram_mode_total];
 	struct mutex sram_mutex;
 	/* The height of racing mode for each output tile in pixel. */
 	u8 racing_height;
@@ -377,6 +377,31 @@ struct mml_comp *mml_dev_get_comp_by_id(struct mml_dev *mml, u32 id)
 	return mml->comps[id];
 }
 EXPORT_SYMBOL_GPL(mml_dev_get_comp_by_id);
+
+phys_addr_t mml_get_node_base_pa(struct platform_device *pdev, const char *name,
+	u32 idx, void __iomem **base)
+{
+	struct device *dev = &pdev->dev;
+	struct device_node *node;
+	struct resource res;
+	phys_addr_t base_pa = 0;
+
+	node = of_parse_phandle(dev->of_node, name, idx);
+	if (!node)
+		goto done;
+
+	if (of_address_to_resource(node, 0, &res))
+		goto done;
+
+	base_pa = res.start;
+	*base = of_iomap(node, 0);
+	mml_log("%s%u %pa %p", name, idx, &base_pa, *base);
+
+done:
+	if (node)
+		of_node_put(node);
+	return base_pa;
+}
 
 static int master_bind(struct device *dev)
 {
@@ -815,7 +840,7 @@ static const struct mml_comp_hw_ops mml_hw_ops = {
 	.clk_disable = &mml_comp_clk_disable,
 };
 
-void __iomem *mml_sram_get(struct mml_dev *mml)
+void __iomem *mml_sram_get(struct mml_dev *mml, enum mml_sram_mode mode)
 {
 #ifndef MML_FPGA
 	int ret;
@@ -823,24 +848,24 @@ void __iomem *mml_sram_get(struct mml_dev *mml)
 
 	mutex_lock(&mml->sram_mutex);
 
-	if (!mml->sram_cnt) {
-		ret = slbc_request(&mml->sram_data);
+	if (!mml->sram_cnt[mode]) {
+		ret = slbc_request(&mml->sram_data[mode]);
 		if (ret < 0) {
 			mml_err("%s request slbc fail %d", __func__, ret);
 			goto done;
 		}
 
-		ret = slbc_power_on(&mml->sram_data);
+		ret = slbc_power_on(&mml->sram_data[mode]);
 		if (ret < 0) {
 			mml_err("%s slbc power on fail %d", __func__, ret);
 			goto done;
 		}
 
-		mml_msg("mml sram %#lx", (unsigned long)mml->sram_data.paddr);
+		mml_msg("mml sram %#lx mode %d", (unsigned long)mml->sram_data[mode].paddr, mode);
 	}
 
-	mml->sram_cnt++;
-	sram = mml->sram_data.paddr;
+	mml->sram_cnt[mode]++;
+	sram = mml->sram_data[mode].paddr;
 
 done:
 	mutex_unlock(&mml->sram_mutex);
@@ -850,18 +875,18 @@ done:
 #endif
 }
 
-void mml_sram_put(struct mml_dev *mml)
+void mml_sram_put(struct mml_dev *mml, enum mml_sram_mode mode)
 {
 #ifndef MML_FPGA
 	mutex_lock(&mml->sram_mutex);
 
-	mml->sram_cnt--;
-	if (!mml->sram_cnt) {
-		slbc_power_off(&mml->sram_data);
-		slbc_release(&mml->sram_data);
+	mml->sram_cnt[mode]--;
+	if (!mml->sram_cnt[mode]) {
+		slbc_power_off(&mml->sram_data[mode]);
+		slbc_release(&mml->sram_data[mode]);
 		goto done;
-	} else if (mml->sram_cnt < 0) {
-		mml_err("%s sram slbc count wrong %d", __func__, mml->sram_cnt);
+	} else if (mml->sram_cnt[mode] < 0) {
+		mml_err("%s sram slbc count wrong %d mode %d", __func__, mml->sram_cnt[mode], mode);
 		goto done;
 	}
 
@@ -1216,9 +1241,12 @@ static int mml_probe(struct platform_device *pdev)
 
 	/* init sram request parameters */
 	mutex_init(&mml->sram_mutex);
-	mml->sram_data.uid = UID_MML;
-	mml->sram_data.type = TP_BUFFER;
-	mml->sram_data.flag = FG_POWER;
+	mml->sram_data[mml_sram_racing].uid = UID_MML;
+	mml->sram_data[mml_sram_racing].type = TP_BUFFER;
+	mml->sram_data[mml_sram_racing].flag = FG_POWER;
+	mml->sram_data[mml_sram_apudc].uid = UID_AISR_MML;
+	mml->sram_data[mml_sram_apudc].type = TP_BUFFER;
+	mml->sram_data[mml_sram_apudc].flag = FG_POWER;
 
 	mml->sys = mml_sys_create(pdev, &sys_comp_ops);
 	if (IS_ERR(mml->sys)) {

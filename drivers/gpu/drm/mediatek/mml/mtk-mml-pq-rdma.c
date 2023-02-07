@@ -462,7 +462,7 @@ static s32 rdma_buf_map(struct mml_comp *comp, struct mml_task *task,
 	if (unlikely(task->config->info.mode == MML_MODE_SRAM_READ)) {
 		mutex_lock(&rdma->sram_mutex);
 		if (!rdma->sram_cnt)
-			rdma->sram_pa = (u64)mml_sram_get(task->config->mml);
+			rdma->sram_pa = (u64)mml_sram_get(task->config->mml, mml_sram_apudc);
 		rdma->sram_cnt++;
 		mutex_unlock(&rdma->sram_mutex);
 
@@ -504,7 +504,7 @@ static void rdma_buf_unmap(struct mml_comp *comp, struct mml_task *task,
 		mutex_lock(&rdma->sram_mutex);
 		rdma->sram_cnt--;
 		if (rdma->sram_cnt == 0)
-			mml_sram_put(task->config->mml);
+			mml_sram_put(task->config->mml, mml_sram_apudc);
 		mutex_unlock(&rdma->sram_mutex);
 	}
 }
