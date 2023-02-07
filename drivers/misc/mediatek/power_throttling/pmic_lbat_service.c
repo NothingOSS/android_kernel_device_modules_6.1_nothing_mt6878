@@ -74,6 +74,7 @@ struct reg_t {
 struct lbat_regs_t {
 	const char *regmap_source;
 	const char *r_ratio_node_name;
+	const char *legacy_r_ratio_node_name;
 	struct reg_t en;
 	struct reg_t debt_max;
 	struct reg_t debt_min;
@@ -119,7 +120,8 @@ static struct lbat_regs_t mt6375_lbat_regs = {
 	.min_en = { MT6375_AUXADC_LBAT5, GENMASK(1, 0), 1 },
 	.volt_min = { MT6375_AUXADC_LBAT6, GENMASK(11, 0), 2 },
 	.adc_out = { MT6375_AUXADC_ADC_OUT_LBAT, GENMASK(11, 0), 2 },
-	.r_ratio_node_name = "lbat_service",
+	.r_ratio_node_name = "lbat-service",
+	.legacy_r_ratio_node_name = "lbat_service",
 	.volt_full = 1840,
 };
 
@@ -783,6 +785,11 @@ static int pmic_lbat_service_probe(struct platform_device *pdev)
 
 	/* get LBAT r_ratio */
 	r_ratio_node_name = lbat_regs->r_ratio_node_name ? lbat_regs->r_ratio_node_name : "batadc";
+	np = of_find_node_by_name(pdev->dev.parent->of_node, r_ratio_node_name);
+	if (!np)
+		r_ratio_node_name = lbat_regs->legacy_r_ratio_node_name ?
+				    lbat_regs->legacy_r_ratio_node_name : "batadc";
+
 	np = of_find_node_by_name(pdev->dev.parent->of_node, r_ratio_node_name);
 	if (!np) {
 		dev_notice(&pdev->dev, "get %s node fail\n", r_ratio_node_name);

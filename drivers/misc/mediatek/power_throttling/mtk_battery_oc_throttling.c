@@ -427,9 +427,17 @@ static int battery_oc_parse_dt(struct platform_device *pdev)
 	}
 	priv->car_tune_value *= UNIT_TRANS_10;
 
-	/* Get oc_thd_h/oc_thd_l value from dts node */
+	/*
+	 * Get oc_thd_h/oc_thd_l value from dts node.
+	 * For compatibility, there are 2 possible naming,
+	 * one is "mtk_battery_oc_throttling", and the other is
+	 * "mtk-battery-oc-throttling".
+	 */
 	np = of_find_node_by_name(pdev->dev.parent->of_node,
 				  "mtk_battery_oc_throttling");
+	if (!np)
+		np = of_find_node_by_name(pdev->dev.parent->of_node,
+					  "mtk-battery-oc-throttling");
 	if (!np) {
 		dev_notice(&pdev->dev, "get mtk battery oc node fail\n");
 		return -EINVAL;
