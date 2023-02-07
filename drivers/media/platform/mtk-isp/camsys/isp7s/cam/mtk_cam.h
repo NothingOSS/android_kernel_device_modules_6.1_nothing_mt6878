@@ -51,6 +51,7 @@ struct mtk_rpmsg_device;
 
 #define JOB_NUM_PER_STREAM 5
 #define MAX_PIPES_PER_STREAM 5
+#define MAX_RAW_PER_STREAM 3 // twin, 3raw
 #define MAX_SV_PIPES_PER_STREAM (MAX_PIPES_PER_STREAM - 1)
 #define MAX_MRAW_PIPES_PER_STREAM (MAX_PIPES_PER_STREAM - 1)
 
@@ -130,7 +131,7 @@ struct mtk_cam_ctx {
 	bool configured;
 	struct mtkcam_ipi_config_param ipi_config;
 
-	struct device *hw_raw;
+	struct device *hw_raw[MAX_RAW_PER_STREAM];
 	struct device *hw_sv;
 	struct device *hw_mraw[MAX_MRAW_PIPES_PER_STREAM];
 	//struct mtk_raw_pipeline *pipe;

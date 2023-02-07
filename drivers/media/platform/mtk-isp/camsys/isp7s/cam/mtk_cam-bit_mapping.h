@@ -21,6 +21,12 @@ unsigned long bit_map_subset_of(unsigned int map, unsigned long set)
 }
 
 static inline
+unsigned long bit_map_subset_mask(unsigned int map)
+{
+	return ((1u << BIT_MAP_CNT(map)) - 1);
+}
+
+static inline
 unsigned long bit_map_bit(unsigned int map, long idx)
 {
 	return BIT(idx + BIT_MAP_OFFSET(map));

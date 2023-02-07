@@ -316,23 +316,32 @@ static void set_tg_vfdata_en(struct mtk_raw_device *dev, int on)
 		 __func__, readl(dev->base + REG_TG_VF_CON));
 }
 
+static inline u32 to_scq_period(unsigned int ms,
+				unsigned int tg_time_stamp_cnt)
+{
+	return ms * 1000 * SCQ_DEFAULT_CLK_RATE / (tg_time_stamp_cnt * 2);
+}
+
 void stream_on(struct mtk_raw_device *dev, int on)
 {
 	u32 val;
 	if (on) {
-		val = readl_relaxed(dev->base + REG_TG_TIME_STAMP_CNT);
-		writel_relaxed(SCQ_DEADLINE_MS * 1000 * SCQ_DEFAULT_CLK_RATE /
-					(val * 2),
-					dev->base + REG_CAMCQ_SCQ_START_PERIOD);
-		dev_info(dev->dev, "[%s] val:%d, REG_CAMCQ_SCQ_START_PERIOD: 0x%x\n",
-			 __func__,
-			 val, readl(dev->base + REG_CAMCQ_SCQ_START_PERIOD));
-		/* toggle db before stream-on */
-		enable_tg_db(dev, 0);
-		enable_tg_db(dev, 1);
-		toggle_db(dev);
+		if (!dev->is_slave) {
+			val = readl_relaxed(dev->base + REG_TG_TIME_STAMP_CNT);
+			writel_relaxed(to_scq_period(SCQ_DEADLINE_MS, val),
+				       dev->base + REG_CAMCQ_SCQ_START_PERIOD);
 
-		set_tg_vfdata_en(dev, 1);
+			dev_info(dev->dev, "[%s] val:%d, REG_CAMCQ_SCQ_START_PERIOD:0x%x\n",
+				 __func__, val,
+				 readl(dev->base + REG_CAMCQ_SCQ_START_PERIOD));
+			/* toggle db before stream-on */
+			enable_tg_db(dev, 0);
+			enable_tg_db(dev, 1);
+			toggle_db(dev);
+
+			set_tg_vfdata_en(dev, 1);
+		} else
+			toggle_db(dev);
 	} else {
 		set_tg_vfdata_en(dev, 0);
 		enable_tg_db(dev, 0);

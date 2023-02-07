@@ -237,14 +237,20 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 		dev_info(cam->dev, "failed to find valid resource\n");
 
 	r->raw_pixel_mode = c.raw_pixel_mode;
-	r->raws = 1;//c.raw_num; //TODO
 
 	r->img_wbuf_num = 0;
 	r->img_wbuf_size = 0;
 
+	//TODO: return raw bitmap
+	r->raws = 0x1;
+
 	if (drv_data) {
 		drv_data->user_data = *user_ctrl;
 		drv_data->clk_target = c.clk;
+
+		//TODO: c.raw_num;
+		//TODO: move debug param to function
+		drv_data->raw_num = (debug_raw_num != -1) ? debug_raw_num : 1;
 	}
 
 	dev_info(cam->dev,

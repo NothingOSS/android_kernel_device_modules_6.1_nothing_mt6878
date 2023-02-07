@@ -89,10 +89,9 @@ int get_subsample_ratio(struct mtk_cam_job *job);
 int get_apply_sensor_margin_ms(struct mtk_cam_job *job);
 int get_raw_subdev_idx(unsigned long used_pipe);
 int get_sv_subdev_idx(unsigned long used_pipe);
-unsigned int _get_master_raw_id(unsigned int num_raw,
-	unsigned int enabled_raw);
-unsigned int _get_master_sv_id(unsigned int num_sv,
-	unsigned int enabled_sv);
+unsigned int _get_master_engines(unsigned int used_engine);
+unsigned int _get_master_raw_id(unsigned int used_engine);
+unsigned int _get_master_sv_id(unsigned int used_engine);
 int fill_img_in(struct mtkcam_ipi_img_input *ii,
 		struct mtk_cam_buffer *buf,
 		struct mtk_cam_video_device *node);

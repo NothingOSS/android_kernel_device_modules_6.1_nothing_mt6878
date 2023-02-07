@@ -526,8 +526,7 @@ int apply_cam_mux_stagger(struct mtk_cam_job *job)
 	int type = stagger_job->switch_type;
 	int config_exposure_num = job->job_scen.scen.normal.max_exp_num;
 	int is_dc = is_stagger_dc(job);
-	int raw_id = _get_master_raw_id(ctx->cam->engines.num_raw_devices,
-			job->used_engine);
+	int raw_id = _get_master_raw_id(job->used_engine);
 	int raw_tg_idx = raw_to_tg_idx(raw_id);
 	int first_tag_idx, second_tag_idx, last_tag_idx;
 
@@ -704,23 +703,24 @@ int wakeup_apply_sensor(struct mtk_cam_job *job)
 int stream_on_otf_stagger(struct mtk_cam_job *job, bool on)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
-	struct mtk_cam_device *cam = ctx->cam;
-	int raw_id = _get_master_raw_id(cam->engines.num_raw_devices,
-			job->used_engine);
-	struct mtk_raw_device *raw_dev =
-		dev_get_drvdata(cam->engines.raw_devs[raw_id]);
+	struct mtk_raw_device *raw_dev;
 	struct mtk_camsv_device *sv_dev;
 	struct mtk_mraw_device *mraw_dev;
 	int seninf_pad, pixel_mode, tg_idx;
 	int i;
+	int raw_id = _get_master_raw_id(job->used_engine);
 
+	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
+		if (ctx->hw_raw[i]) {
+			raw_dev = dev_get_drvdata(ctx->hw_raw[i]);
 #ifdef NOT_READY
-	int scq_ms = SCQ_DEADLINE_MS * 3;
-
-	stream_on(raw_dev, on, scq_ms, 0);
+		stream_on(raw_dev, on, SCQ_DEADLINE_MS * 3, 0);
 #else
-	stream_on(raw_dev, on);
+		stream_on(raw_dev, on);
 #endif
+		}
+	}
+
 	pr_info("[%s] on:%d",
 			__func__, on);
 	if (ctx->hw_sv) {

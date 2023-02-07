@@ -119,36 +119,31 @@ int get_apply_sensor_margin_ms(struct mtk_cam_job *job)
 	return apply_sensor_ms;
 }
 
-unsigned int
-_get_master_raw_id(unsigned int num_raw, unsigned int enabled_raw)
+unsigned int _get_master_engines(unsigned int used_engine)
 {
-	unsigned int i;
+	unsigned int master_engine = used_engine & ~bit_map_subset_mask(MAP_HW_RAW);
+	int master_raw_id = _get_master_raw_id(used_engine);
 
-	for (i = 0; i < num_raw; i++) {
-		if (enabled_raw & (1 << i))
-			break;
-	}
+	if (master_raw_id != -1)
+		master_engine |= bit_map_bit(MAP_HW_RAW, master_raw_id);
 
-	if (i == num_raw)
-		pr_info("no raw id found, enabled_raw 0x%x", enabled_raw);
-
-	return i;
+	return master_engine;
 }
 
 unsigned int
-_get_master_sv_id(unsigned int num_sv, unsigned int enabled_sv)
+_get_master_raw_id(unsigned int used_engine)
 {
-	unsigned int i;
+	used_engine = bit_map_subset_of(MAP_HW_RAW, used_engine);
 
-	for (i = 0; i < num_sv; i++) {
-		if (enabled_sv & (1 << (i + MTKCAM_SUBDEV_CAMSV_START)))
-			break;
-	}
+	return ffs(used_engine) - 1;
+}
 
-	if (i == num_sv)
-		pr_info("no raw id found, enabled_sv 0x%x", enabled_sv);
+unsigned int
+_get_master_sv_id(unsigned int used_engine)
+{
+	used_engine = bit_map_subset_of(MAP_HW_CAMSV, used_engine);
 
-	return i;
+	return ffs(used_engine) - 1;
 }
 
 static int mtk_cam_fill_img_in_buf(struct mtkcam_ipi_img_input *ii,

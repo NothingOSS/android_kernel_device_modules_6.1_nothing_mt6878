@@ -132,11 +132,11 @@ struct mtk_cam_resource_driver {
 
 	/* driver internally cached */
 	unsigned int clk_target; /* Hz */
+	int raw_num;
 };
 
 
 struct mtk_raw_ctrl_data {
-
 	struct mtk_cam_resource_driver resource;
 	int raw_path;
 

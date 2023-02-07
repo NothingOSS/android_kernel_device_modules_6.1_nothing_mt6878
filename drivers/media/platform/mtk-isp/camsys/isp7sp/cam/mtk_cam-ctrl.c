@@ -27,6 +27,7 @@
 #include "mtk_camera-v4l2-controls-7sp.h"
 #include "mtk_camera-videodev2.h"
 #include "mtk_cam-trace.h"
+#include "mtk_cam-job_utils.h"
 
 #include "imgsys/mtk_imgsys-cmdq-ext.h"
 
@@ -586,7 +587,8 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 	job->frame_seq_no = next_frame_seq;
 	// to be removed
 	if (next_frame_seq == 1) {
-		vsync_set_desired(&cam_ctrl->vsync_col, job->used_engine);
+		vsync_set_desired(&cam_ctrl->vsync_col,
+						  _get_master_engines(job->used_engine));
 	}
 
 	/* TODO(AY): refine this */
@@ -698,9 +700,11 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 		cancel_work_sync(&cam_ctrl->stream_on_work);
 
 	/* disable irq first */
-	if (ctx->hw_raw) {
-		raw_dev = dev_get_drvdata(ctx->hw_raw);
-		disable_irq(raw_dev->irq);
+	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
+		if (ctx->hw_raw[i]) {
+			raw_dev = dev_get_drvdata(ctx->hw_raw[i]);
+			disable_irq(raw_dev->irq);
+		}
 	}
 	if (ctx->hw_sv) {
 		sv_dev = dev_get_drvdata(ctx->hw_sv);
@@ -717,8 +721,12 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 	mtk_cam_ctrl_wait_all_released(cam_ctrl);
 
 	/* reset hw */
-	if (ctx->hw_raw)
-		reset(raw_dev);
+	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
+		if (ctx->hw_raw[i]) {
+			raw_dev = dev_get_drvdata(ctx->hw_raw[i]);
+			reset(raw_dev);
+		}
+	}
 	if (ctx->hw_sv)
 		sv_reset(sv_dev);
 	for (i = 0; i < ARRAY_SIZE(ctx->hw_mraw); i++) {

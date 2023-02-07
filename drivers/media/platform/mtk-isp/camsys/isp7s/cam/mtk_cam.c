@@ -1207,7 +1207,6 @@ static void mtk_cam_ctx_match_pipe_subdevs(struct mtk_cam_ctx *ctx)
 		ctx->mraw_subdev_idx[i] = -1;
 
 	while (*sd) {
-
 		idx = _find_raw_sd_idx(ppls->raw, ppls->num_raw, *sd);
 		if (idx >= 0)
 			ctx->raw_subdev_idx = idx;
@@ -1811,8 +1810,8 @@ int ctx_stream_on_seninf_sensor(struct mtk_cam_ctx *ctx, int enable)
 		return -1;
 
 	/* RAW */
-	if (ctx->hw_raw) {
-		raw_dev = dev_get_drvdata(ctx->hw_raw);
+	if (ctx->hw_raw[0]) {
+		raw_dev = dev_get_drvdata(ctx->hw_raw[0]);
 		seninf_pad = PAD_SRC_RAW0;
 		tg_idx = raw_to_tg_idx(raw_dev->id);
 
@@ -1896,9 +1895,11 @@ int mtk_cam_ctx_stream_off(struct mtk_cam_ctx *ctx)
 		return 0;
 
 	/* TODO */
-	if (ctx->hw_raw) {
-		raw_dev = dev_get_drvdata(ctx->hw_raw);
-		stream_on(raw_dev, false);
+	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
+		if (ctx->hw_raw[i]) {
+			raw_dev = dev_get_drvdata(ctx->hw_raw[i]);
+			stream_on(raw_dev, false);
+		}
 	}
 
 	if (ctx->hw_sv) {

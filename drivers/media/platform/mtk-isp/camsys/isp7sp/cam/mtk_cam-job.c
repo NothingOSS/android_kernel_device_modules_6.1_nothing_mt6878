@@ -231,8 +231,10 @@ static int mtk_cam_select_hw_only_sv(struct mtk_cam_job *job)
 		return -1;
 	}
 
-	ctx->hw_raw = NULL;
 	ctx->hw_sv = sv;
+
+	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++)
+		ctx->hw_raw[i] = NULL;
 	for (i = 0; i < ARRAY_SIZE(ctx->hw_mraw); i++)
 		ctx->hw_mraw[i] = NULL;
 
@@ -243,11 +245,15 @@ static int mtk_cam_select_hw(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_device *cam = ctx->cam;
-	struct device *raw = NULL;
 	unsigned long available, raw_available, sv_available, mraw_available;
 	unsigned long selected;
 	int i = 0;
 	int raw_idx = -1, mraw_idx;
+	int raw_required =
+		job->req->raw_data[ctx->raw_subdev_idx].ctrl.resource.raw_num;
+	int raw_cnt = 0;
+
+	WARN_ON(!raw_required);
 
 	selected = 0;
 	available = mtk_cam_get_available_engine(cam);
@@ -259,21 +265,22 @@ static int mtk_cam_select_hw(struct mtk_cam_job *job)
 	for (i = 0; i < cam->engines.num_raw_devices; i++)
 		if (raw_available & BIT(i)) {
 			selected |= bit_map_bit(MAP_HW_RAW, i);
-			raw = cam->engines.raw_devs[i];
-			raw_idx = i;
-			break;
+			ctx->hw_raw[raw_cnt++] = cam->engines.raw_devs[i];
+			raw_idx = (raw_idx == -1) ? i : raw_idx;
+			if (raw_cnt == raw_required)
+				break;
 		}
 
-	if (!selected) {
+	if (raw_cnt != raw_required) {
+		for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++)
+			ctx->hw_raw[i] = NULL;
 		dev_info(cam->dev, "select hw failed\n");
 		return -1;
 	}
 
-	ctx->hw_raw = raw;
-
 	/* camsv */
 	ctx->hw_sv = NULL;
-	if (ctx->hw_raw) {
+	if (ctx->hw_raw[0]) {
 		dev_info(cam->dev,
 			 "select sv hw start (raw_idx:%d/sv_available:0x%lx)\n",
 			 raw_idx, sv_available);
@@ -319,9 +326,11 @@ static int update_job_used_engine(struct mtk_cam_job *job)
 	unsigned long used_pipe = job->req->used_pipe & ctx->used_pipe;
 	int i;
 
-	if (ctx->hw_raw) {
-		raw_dev = dev_get_drvdata(ctx->hw_raw);
-		used_engine |= bit_map_bit(MAP_HW_RAW, raw_dev->id);
+	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
+		if (ctx->hw_raw[i]) {
+			raw_dev = dev_get_drvdata(ctx->hw_raw[i]);
+			used_engine |= bit_map_bit(MAP_HW_RAW, raw_dev->id);
+		}
 	}
 
 	/* HS_TODO: sv pure raw dump case? */
@@ -575,7 +584,7 @@ static int job_buffer_done(struct mtk_cam_job *job)
 
 		job->done_handled |= cur_handle;
 
-	} while (job->done_handled != job->used_engine);
+	} while (job->done_handled != _get_master_engines(job->used_engine));
 
 	return 0;
 }
@@ -609,18 +618,19 @@ static int job_mark_engine_done(struct mtk_cam_job *job,
 	bool do_queue_work = is_first_done(job);
 	unsigned long coming;
 	unsigned long old;
+	unsigned int master_engine = _get_master_engines(job->used_engine);
 
 	coming = engine_idx_to_bit(engine_type, engine_id);
 
-	if (!(coming & job->used_engine))
+	if (!(coming & master_engine))
 		return 0;
 
 	if (CAM_DEBUG_ENABLED(STATE))
 		pr_info("%s: no %d eng 0x%08x done 0x%lx coming 0x%lx\n",
-			__func__, job->frame_seq_no, job->used_engine,
+			__func__, job->frame_seq_no, master_engine,
 			atomic_long_read(&job->done_set), coming);
 
-	coming &= job->used_engine;
+	coming &= master_engine;
 	old = atomic_long_fetch_or(coming, &job->done_set);
 
 	if (do_queue_work)
@@ -628,23 +638,24 @@ static int job_mark_engine_done(struct mtk_cam_job *job,
 	else
 		wake_up_interruptible(&job->done_wq);
 
-	return (old | coming) == job->used_engine;
+	return (old | coming) == master_engine;
 }
 
 static int
 _stream_on(struct mtk_cam_job *job, bool on)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
-	struct mtk_cam_device *cam = ctx->cam;
-	int raw_id = _get_master_raw_id(cam->engines.num_raw_devices,
-			job->used_engine);
-	struct mtk_raw_device *raw_dev =
-		dev_get_drvdata(cam->engines.raw_devs[raw_id]);
+	struct mtk_raw_device *raw_dev;
 	struct mtk_camsv_device *sv_dev;
 	struct mtk_mraw_device *mraw_dev;
 	int i;
 
-	stream_on(raw_dev, on);
+	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
+		if (ctx->hw_raw[i]) {
+			raw_dev = dev_get_drvdata(ctx->hw_raw[i]);
+			stream_on(raw_dev, on);
+		}
+	}
 
 	if (ctx->hw_sv) {
 		sv_dev = dev_get_drvdata(ctx->hw_sv);
@@ -948,8 +959,7 @@ static int _apply_raw_cq(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_device *cam = ctx->cam;
-	int raw_id = _get_master_raw_id(cam->engines.num_raw_devices,
-					job->used_engine);
+	int raw_id = _get_master_raw_id(job->used_engine);
 	struct mtk_raw_device *raw_dev;
 
 	if (raw_id < 0)
@@ -1052,8 +1062,7 @@ static int trigger_m2m(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_device *cam = ctx->cam;
-	int raw_id = _get_master_raw_id(cam->engines.num_raw_devices,
-			job->used_engine);
+	int raw_id = _get_master_raw_id(job->used_engine);
 	struct mtk_raw_device *raw_dev =
 		dev_get_drvdata(cam->engines.raw_devs[raw_id]);
 	int ret = 0;
@@ -1135,7 +1144,7 @@ alloc_hdr_buffer(struct mtk_cam_ctx *ctx,
 	desc->size = desc->stride[0] * desc->height;
 
 	/* FIXME: */
-	dev = ctx->hw_raw;
+	dev = ctx->hw_raw[0];
 
 	ret = alloc_image_work_buffer(buf, desc->size, dev);
 	if (ret)
@@ -1163,6 +1172,8 @@ _job_pack_subsample(struct mtk_cam_job *job,
 	int first_frame_only_prev = subsample_job->prev_scen.scen.smvr.output_first_frame_only;
 	int i;
 	int ret;
+	int raw_id;
+	struct mtk_raw_device *master_raw = NULL;
 
 	subsample_job->prev_scen = ctx->ctldata_stored.resource.user_data.raw_res.scen;
 	job->exp_num_cur = 1;
@@ -1186,12 +1197,20 @@ _job_pack_subsample(struct mtk_cam_job *job,
 
 		mtk_cam_pm_runtime_engines(&ctx->cam->engines, selected, 1);
 		ctx->used_engine = selected;
-		/* raw */
-		if (ctx->hw_raw) {
-			struct mtk_raw_device *raw = dev_get_drvdata(ctx->hw_raw);
 
-			initialize(raw, 0);
-			subsample_enable(raw, job->sub_ratio);
+		// TODO: get_master_raw_dev
+		raw_id = _get_master_raw_id(selected);
+		master_raw = dev_get_drvdata(cam->engines.raw_devs[raw_id]);
+
+		/* raw */
+		for (i = 0 ; i < ARRAY_SIZE(ctx->hw_raw); i++) {
+			if (ctx->hw_raw[i]) {
+				struct mtk_raw_device *raw = dev_get_drvdata(ctx->hw_raw[i]);
+
+				initialize(raw, master_raw != raw);
+				if (master_raw == raw)
+					subsample_enable(raw, job->sub_ratio);
+			}
 		}
 		/* camsv */
 		if (ctx->hw_sv) {
@@ -1213,7 +1232,7 @@ _job_pack_subsample(struct mtk_cam_job *job,
 	}
 	/* config_flow_by_job_type */
 	update_job_used_engine(job);
-	job->hw_raw = ctx->hw_raw;
+	job->hw_raw = ctx->hw_raw[0];
 
 	job->do_ipi_config = false;
 	if (first_frame_only_cur != first_frame_only_prev) {
@@ -1255,6 +1274,8 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 	struct mtk_cam_stagger_job *stagger_job =
 			(struct mtk_cam_stagger_job *)job;
 	int ret, i;
+	int raw_id;
+	struct mtk_raw_device *master_raw = NULL;
 
 	/* stagger job needed */
 	stagger_job->prev_scen = ctx->ctldata_stored.resource.user_data.raw_res.scen;
@@ -1284,11 +1305,18 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 
 		mtk_cam_pm_runtime_engines(&ctx->cam->engines, selected, 1);
 		ctx->used_engine = selected;
-		if (ctx->hw_raw) {
-			struct mtk_raw_device *raw = dev_get_drvdata(ctx->hw_raw);
 
-			initialize(raw, 0);
-			stagger_enable(raw);
+		raw_id = _get_master_raw_id(selected);
+		master_raw = dev_get_drvdata(cam->engines.raw_devs[raw_id]);
+
+		for (i = 0 ; i < ARRAY_SIZE(ctx->hw_raw); i++) {
+			if (ctx->hw_raw[i]) {
+				struct mtk_raw_device *raw = dev_get_drvdata(ctx->hw_raw[i]);
+
+				initialize(raw, master_raw != raw);
+				if (master_raw == raw)
+					stagger_enable(raw);
+			}
 		}
 
 		/* camsv */
@@ -1312,7 +1340,7 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 	}
 	/* config_flow_by_job_type */
 	update_job_used_engine(job);
-	job->hw_raw = ctx->hw_raw;
+	job->hw_raw = ctx->hw_raw[0];
 
 	job->do_ipi_config = false;
 	if (!ctx->configured) {
@@ -1355,6 +1383,8 @@ _job_pack_normal(struct mtk_cam_job *job,
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_device *cam = ctx->cam;
 	int ret, i;
+	int raw_id;
+	struct mtk_raw_device *master_raw = NULL;
 
 	job->exp_num_cur = 1;
 	job->exp_num_prev = 1;
@@ -1378,11 +1408,16 @@ _job_pack_normal(struct mtk_cam_job *job,
 		mtk_cam_pm_runtime_engines(&ctx->cam->engines, selected, 1);
 		ctx->used_engine = selected;
 
-		/* raw */
-		if (ctx->hw_raw) {
-			struct mtk_raw_device *raw = dev_get_drvdata(ctx->hw_raw);
+		raw_id = _get_master_raw_id(selected);
+		master_raw = dev_get_drvdata(cam->engines.raw_devs[raw_id]);
 
-			initialize(raw, 0);
+		/* raw */
+		for (i = 0 ; i < ARRAY_SIZE(ctx->hw_raw); i++) {
+			if (ctx->hw_raw[i]) {
+				struct mtk_raw_device *raw = dev_get_drvdata(ctx->hw_raw[i]);
+
+				initialize(raw, master_raw != raw);
+			}
 		}
 
 		/* camsv */
@@ -1406,7 +1441,7 @@ _job_pack_normal(struct mtk_cam_job *job,
 	}
 	/* config_flow_by_job_type */
 	update_job_used_engine(job);
-	job->hw_raw = ctx->hw_raw;
+	job->hw_raw = ctx->hw_raw[0];
 
 	job->do_ipi_config = false;
 	if (!ctx->configured) {
@@ -1446,6 +1481,8 @@ _job_pack_m2m(struct mtk_cam_job *job,
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_device *cam = ctx->cam;
 	int ret, i;
+	int raw_id;
+	struct mtk_raw_device *master_raw = NULL;
 
 	job->exp_num_cur = 1;
 	job->exp_num_prev = 1;
@@ -1470,10 +1507,10 @@ _job_pack_m2m(struct mtk_cam_job *job,
 		ctx->used_engine = selected;
 
 		/* raw */
-		if (ctx->hw_raw) {
-			struct mtk_raw_device *raw = dev_get_drvdata(ctx->hw_raw);
+		for (i = 0 ; i < ARRAY_SIZE(ctx->hw_raw); i++) {
+			struct mtk_raw_device *raw = dev_get_drvdata(ctx->hw_raw[i]);
 
-			initialize(raw, 0);
+			initialize(raw, master_raw != raw);
 		}
 
 		/* camsv */
@@ -1482,6 +1519,9 @@ _job_pack_m2m(struct mtk_cam_job *job,
 
 			mtk_cam_sv_dev_config(sv);
 		}
+
+		raw_id = _get_master_raw_id(selected);
+		master_raw = dev_get_drvdata(cam->engines.raw_devs[raw_id]);
 
 		/* mraw */
 		for (i = 0 ; i < ARRAY_SIZE(ctx->hw_mraw); i++) {
@@ -1497,7 +1537,7 @@ _job_pack_m2m(struct mtk_cam_job *job,
 	}
 	/* config_flow_by_job_type */
 	update_job_used_engine(job);
-	job->hw_raw = ctx->hw_raw;
+	job->hw_raw = ctx->hw_raw[0];
 
 	job->do_ipi_config = false;
 	if (!ctx->configured) {
