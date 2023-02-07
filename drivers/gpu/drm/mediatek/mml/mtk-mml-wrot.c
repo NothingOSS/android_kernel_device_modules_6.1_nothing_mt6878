@@ -1287,84 +1287,57 @@ static void wrot_tile_calc_comp(const struct mml_frame_dest *dest,
 {
 	/* Following data retrieve from tile calc result */
 	const u64 out_xs = tile->out.xs;
+	const u64 out_ys = 0; /* In decouple mode, wrot's tile->out.ys is constantly 0. */
+	const u64 out_w = wrot_frm->out_w;
+	const u64 out_h = wrot_frm->out_h;
 	const char *msg = "";
 
 	if (dest->rotate == MML_ROT_0 && !dest->flip) {
 		/* Target Y offset */
-		ofst->y = out_xs * 32;
-
-		/*
-		 * Target U offset
-		 * RGBA: 64, YV12 8-bit: 24, 10-bit: 32
-		 */
-		ofst->c = ofst->y / 64;
-
+		ofst->y = (out_ys / 8) * (wrot_frm->y_stride / 128) * 1024 +
+			  out_xs * 32;
 		msg = "No flip and no rotation";
 	} else if (dest->rotate == MML_ROT_0 && dest->flip) {
 		/* Target Y offset */
-		ofst->y = (wrot_frm->out_w - out_xs - 32) * 32;
-
-		/* Target U offset */
-		ofst->c = ofst->y / 64;
-
+		ofst->y = ((out_ys / 8) * (wrot_frm->y_stride / 128) +
+			  (out_w / 32) - (out_xs / 32) - 1) * 1024;
 		msg = "Flip without rotation";
 	} else if (dest->rotate == MML_ROT_90 && !dest->flip) {
 		/* Target Y offset */
-		ofst->y = (((out_xs / 8) + 1) *
-			  (wrot_frm->y_stride / 128) - 1) * 1024;
-
-		/* Target U offset */
-		ofst->c = ofst->y / 64;
-
+		ofst->y = ((out_xs / 8) * (wrot_frm->y_stride / 128) +
+			  (out_h / 32) - (out_ys / 32) - 1) * 1024;
 		msg = "Rotate 90 degree only";
 	} else if (dest->rotate == MML_ROT_90 && dest->flip) {
 		/* Target Y offset */
-		ofst->y = (out_xs / 8) * (wrot_frm->y_stride / 128) * 1024;
-
-		/* Target U offset */
-		ofst->c = ofst->y / 64;
-
+		ofst->y = (out_xs / 8) * (wrot_frm->y_stride / 128) * 1024 +
+			  out_ys * 32;
 		msg = "Flip and Rotate 90 degree";
 	} else if (dest->rotate == MML_ROT_180 && !dest->flip) {
 		/* Target Y offset */
-		ofst->y = ((((u64)wrot_frm->out_h / 8) - 1) *
+		ofst->y = (((out_h / 8) - (out_ys / 8) - 1) *
 			  (wrot_frm->y_stride / 128) +
-			  ((wrot_frm->out_w / 32) - (out_xs / 32) - 1)) *
-			  1024;
-
-		/* Target U offset */
-		ofst->c = ofst->y / 64;
-
+			  (out_w / 32) - (out_xs / 32) - 1) * 1024;
 		msg = "Rotate 180 degree only";
 	} else if (dest->rotate == MML_ROT_180 && dest->flip) {
 		/* Target Y offset */
-		ofst->y = ((((u64)wrot_frm->out_h / 8) - 1) *
-			  (wrot_frm->y_stride / 128) +
-			  (out_xs / 32)) * 1024;
-
-		/* Target U offset */
-		ofst->c = ofst->y / 64;
-
+		ofst->y = (((out_h / 8) - (out_ys / 8) - 1) *
+			  (wrot_frm->y_stride / 128)) * 1024 + out_xs * 32;
 		msg = "Flip and Rotate 180 degree";
 	} else if (dest->rotate == MML_ROT_270 && !dest->flip) {
 		/* Target Y offset */
-		ofst->y = ((wrot_frm->out_w / 8) - (out_xs / 8) - 1) *
-			  (wrot_frm->y_stride / 128) * 1024;
-
-		/* Target U offset */
-		ofst->c = ofst->y / 64;
-
+		ofst->y = (((out_w / 8) - (out_xs / 8) - 1) *
+			  (wrot_frm->y_stride / 128)) * 1024 + out_ys * 32;
 		msg = "Rotate 270 degree only";
 	} else if (dest->rotate == MML_ROT_270 && dest->flip) {
 		/* Target Y offset */
-		ofst->y = (((wrot_frm->out_w / 8) - (out_xs / 8)) *
-			  (wrot_frm->y_stride / 128) - 1) * 1024;
-
-		/* Target U offset */
-		ofst->c = ofst->y / 64;
-
+		ofst->y = (((out_w / 8) - (out_xs / 8) - 1) *
+			  (wrot_frm->y_stride / 128) +
+			  (out_h / 32) - (out_ys / 32) - 1) * 1024;
 		msg = "Flip and Rotate 270 degree";
 	}
+	/* Target U offset. RGBA: 64, YV12 8-bit: 24, 10-bit: 32. */
+	ofst->c = ofst->y / 64;
+
 	mml_msg("%s %s: offset Y:%#010llx U:%#010llx V:%#010llx",
 		__func__, msg, ofst->y, ofst->c, ofst->v);
 }
