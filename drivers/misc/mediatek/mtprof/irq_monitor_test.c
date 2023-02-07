@@ -107,7 +107,13 @@ void irq_mon_test_irq_disable(void)
 static struct hrtimer irq_mon_hrtimer;
 static enum hrtimer_restart irq_mon_hrtimer_func(struct hrtimer *unused)
 {
-	mdelay(600);
+	irq_log_store();
+	mdelay(100);
+	irq_log_store();
+	mdelay(400);
+	irq_log_store();
+	mdelay(100);
+	irq_log_store();
 	return HRTIMER_NORESTART;
 }
 

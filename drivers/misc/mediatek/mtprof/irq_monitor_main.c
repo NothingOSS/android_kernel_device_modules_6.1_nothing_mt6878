@@ -619,8 +619,18 @@ static void probe_hrtimer_expire_exit(void *ignore, struct hrtimer *hrtimer)
 				irq_mon_msg(TO_FTRACE, "hrtimer duration skip in debounce period");
 			} else {
 				char module[100];
+				struct trace_stat *i_stat;
 
 				ever_dump = 1;
+
+				/*
+				 * We don't need to check the irq_handler_tracer.
+				 * If it is not tracing, then nothing will be dumped.
+				 */
+				i_stat = raw_cpu_ptr(irq_handler_tracer.stat);
+				irq_log_dump(out, i_stat->start_timestamp,
+					     stat->end_timestamp);
+
 				scnprintf(module, sizeof(module), "HRTIMER LONG: %pS, %llu ms"
 					, (void *)hrtimer->function, msec_high(duration));
 				aee_kernel_warning_api(__FILE__, __LINE__,
