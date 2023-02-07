@@ -134,6 +134,7 @@ bool mtk_cam_is_with_w_channel(struct mtk_cam_ctx *ctx)
 int mtk_cam_get_sensor_exposure_num(u32 raw_feature)
 {
 	int result = 1;
+
 	raw_feature &= MTK_CAM_FEATURE_HDR_MASK;
 
 	switch (raw_feature) {

@@ -234,7 +234,7 @@ struct mtk_cam_job {
 	/* for complete only: not null if current request has sensor ctrl */
 	struct media_request_object *sensor_hdl_obj;
 	struct v4l2_subdev *sensor;
-#if 0 /*AY: remove? */
+#ifdef REMOVE_LATER /*AY: remove? */
 	int link_engine;
 	int proc_engine;
 	atomic_t seninf_dump_state;

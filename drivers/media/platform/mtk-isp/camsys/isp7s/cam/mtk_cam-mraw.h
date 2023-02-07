@@ -156,7 +156,7 @@ int mtk_cam_mraw_top_config(struct mtk_mraw_device *mraw_dev);
 int mtk_cam_mraw_dma_config(struct mtk_mraw_device *mraw_dev);
 int mtk_cam_mraw_fbc_config(struct mtk_mraw_device *mraw_dev);
 int mtk_cam_mraw_top_enable(struct mtk_mraw_device *mraw_dev);
-int mtk_cam_mraw_fbc_enable(	struct mtk_mraw_device *mraw_dev);
+int mtk_cam_mraw_fbc_enable(struct mtk_mraw_device *mraw_dev);
 int mtk_cam_mraw_tg_disable(struct mtk_mraw_device *mraw_dev);
 int mtk_cam_mraw_top_disable(struct mtk_mraw_device *mraw_dev);
 int mtk_cam_mraw_fbc_disable(struct mtk_mraw_device *mraw_dev);

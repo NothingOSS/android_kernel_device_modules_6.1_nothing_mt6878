@@ -796,6 +796,7 @@ int mtk_camsv_register_entities(struct mtk_camsv_pipeline *arr_pipe,
 
 	for (i = 0; i < num; i++) {
 		struct mtk_camsv_pipeline *pipe = arr_pipe + i;
+
 		memset(pipe->pad_cfg, 0, sizeof(*pipe->pad_cfg));
 		ret = mtk_camsv_pipeline_register(
 						"mtk-cam camsv",
