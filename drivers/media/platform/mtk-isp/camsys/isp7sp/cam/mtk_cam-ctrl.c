@@ -94,7 +94,8 @@ mtk_cam_ctrl_get_job(struct mtk_cam_ctrl *ctrl,
 	list_for_each_entry(state, &ctrl->camsys_state_list, list) {
 		job = container_of(state, struct mtk_cam_job, job_state);
 
-		if ((found = cond_func(job, arg)))
+		found = cond_func(job, arg);
+		if (found)
 			break;
 	}
 	read_unlock(&ctrl->list_lock);
@@ -113,7 +114,7 @@ static void mtk_cam_event_eos(struct mtk_cam_ctrl *cam_ctrl)
 		mtk_cam_ctx_send_sv_event(cam_ctrl->ctx, &event);
 
 	if (CAM_DEBUG_ENABLED(EVENT))
-		pr_info("%s\n", __func__);
+		pr_info("%s: ctx %d\n", __func__, cam_ctrl->ctx->stream_id);
 }
 
 void mtk_cam_event_frame_sync(struct mtk_cam_ctrl *cam_ctrl,
@@ -294,10 +295,8 @@ static void handle_raw_frame_start(struct mtk_cam_ctrl *ctrl)
 		mtk_cam_sof_timer_setup(ctrl);
 	}
 
-	if (ctrl->state_trans_ref == ctrl->r_info.event_engine) {
+	if (ctrl->state_trans_ref == ctrl->r_info.event_engine)
 		mtk_cam_ctrl_send_event(ctrl, CAMSYS_EVENT_IRQ_SOF);
-	}
-
 }
 
 static int mtk_cam_event_handle_raw(struct mtk_cam_ctrl *ctrl,
@@ -387,7 +386,7 @@ static int mtk_camsys_event_handle_camsv(struct mtk_cam_ctrl *ctrl,
 		handle_frame_done(ctrl);
 
 	/* camsv's SOF (proc engine frame start) */
-	if (irq_info->irq_type & BIT(CAMSYS_IRQ_FRAME_START)){
+	if (irq_info->irq_type & BIT(CAMSYS_IRQ_FRAME_START)) {
 		spin_lock(&ctrl->info_lock);
 		ctrl->r_info.sof_ts_ns = irq_info->ts_ns;
 		ctrl->r_info.outer_seq_no =
@@ -442,9 +441,9 @@ int mtk_cam_ctrl_isr_event(struct mtk_cam_device *cam,
 	int ret = 0;
 
 	/* TBC
-	MTK_CAM_TRACE_BEGIN(BASIC, "irq_type %d, inner %d",
-			    irq_info->irq_type, irq_info->frame_idx_inner);
-	*/
+	 *  MTK_CAM_TRACE_BEGIN(BASIC, "irq_type %d, inner %d",
+	 *  irq_info->irq_type, irq_info->frame_idx_inner);
+	 */
 	/**
 	 * Here it will be implemented dispatch rules for some scenarios
 	 * like twin/stagger/m-stream,
@@ -485,8 +484,8 @@ int mtk_cam_ctrl_isr_event(struct mtk_cam_device *cam,
 		break;
 	}
 	/* TBC
-	MTK_CAM_TRACE_END(BASIC);
-	*/
+	 * MTK_CAM_TRACE_END(BASIC);
+	 */
 	return ret;
 }
 
@@ -498,14 +497,14 @@ static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 	unsigned long timeout = msecs_to_jiffies(1000);
 	int next_job_no;
 
-	dev_info(ctrl->ctx->cam->dev, "[%s] begin\n", __func__);
+	dev_info(ctrl->ctx->cam->dev, "[%s] ctx %d begin\n",
+		 __func__, ctrl->ctx->stream_id);
 
 	job = mtk_cam_ctrl_get_job(ctrl, cond_first_job, 0);
 	if (!job)
 		return;
 
-	if (!wait_for_completion_timeout(&job->compose_completion, timeout))
-	{
+	if (!wait_for_completion_timeout(&job->compose_completion, timeout)) {
 		pr_info("[%s] error: wait for job composed timeout\n",
 			__func__);
 		return;
@@ -517,8 +516,7 @@ static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 	mtk_cam_job_state_set(&job->job_state, ISP_STATE, S_ISP_APPLYING);
 	call_jobop(job, apply_isp);
 
-	if (!wait_for_completion_timeout(&job->cq_exe_completion, timeout))
-	{
+	if (!wait_for_completion_timeout(&job->cq_exe_completion, timeout)) {
 		pr_info("[%s] error: wait for job cq exe\n",
 			__func__);
 		return;
@@ -536,7 +534,8 @@ static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 
 	mtk_cam_ctrl_apply_by_state(ctrl, 1);
 
-	dev_info(ctrl->ctx->cam->dev, "[%s] finish\n", __func__);
+	dev_info(ctrl->ctx->cam->dev, "[%s] ctx %d finish\n",
+		 __func__, ctrl->ctx->stream_id);
 }
 
 /* request queue */
@@ -726,9 +725,9 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 
 	drain_workqueue(ctx->frame_done_wq);
 
-	if (ctx->sensor) {
+	if (ctx->sensor)
 		hrtimer_cancel(&cam_ctrl->sensor_deadline_timer);
-	}
+
 	/* using func. kthread_cancel_work_sync, which contains kthread_flush_work func.*/
 	//kthread_cancel_work_sync(&cam_ctrl->work);
 	kthread_flush_worker(&ctx->sensor_worker);
@@ -742,7 +741,8 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 		mtk_cam_ctx_job_finish(job);
 
 		/* note: call list_del directly here to avoid deadlock in
-		 * _on_job_last_ref */
+		 * _on_job_last_ref
+		 */
 		list_del(&job->job_state.list);
 	}
 	write_unlock(&cam_ctrl->list_lock);

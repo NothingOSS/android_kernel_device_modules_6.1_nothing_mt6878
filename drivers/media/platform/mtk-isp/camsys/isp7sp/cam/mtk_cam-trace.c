@@ -7,7 +7,7 @@
 
 #include <linux/module.h>
 
-static int ftrace_tags = 0;
+static int ftrace_tags;
 module_param(ftrace_tags, int, 0644);
 MODULE_PARM_DESC(ftrace_tags, "enable ftrace tags (bitmask)");
 

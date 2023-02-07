@@ -9,7 +9,7 @@
 
 const char *str_sensor_state(int state)
 {
-	static const char *str[] = {
+	static const char * const str[] = {
 		[S_SENSOR_NOT_SET] = "not-set",
 		[S_SENSOR_APPLYING] = "applying",
 		[S_SENSOR_DONE] = "done",
@@ -23,7 +23,7 @@ const char *str_sensor_state(int state)
 
 const char *str_isp_state(int state)
 {
-	static const char *str[] = {
+	static const char * const str[] = {
 		//[S_ISP_NOT_SET] = "not-set",
 		[S_ISP_COMPOSING] = "composing",
 		[S_ISP_COMPOSED] = "composed",
@@ -43,7 +43,7 @@ const char *str_isp_state(int state)
 
 const char *str_state(int state_type, int state)
 {
-	static const char *(*str_fn[NR_STATE_TYPE])(int) = {
+	static const char * (*str_fn[NR_STATE_TYPE])(int) = {
 		[SENSOR_1ST_STATE] = str_sensor_state,
 		[ISP_1ST_STATE] = str_isp_state,
 		[SENSOR_2ND_STATE] = str_sensor_state,

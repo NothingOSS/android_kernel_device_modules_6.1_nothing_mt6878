@@ -420,9 +420,9 @@ static void convert_fho_timestamp_to_meta(struct mtk_cam_job *job)
 
 		/* timstamp_LSB + timestamp_MSB << 32 */
 		(*job->timestamp_buf)[i*2] =
-			mtk_cam_timesync_to_monotonic(hw_timestamp) /1000;
+			mtk_cam_timesync_to_monotonic(hw_timestamp) / 1000;
 		(*job->timestamp_buf)[i*2 + 1] =
-			mtk_cam_timesync_to_boot(hw_timestamp) /1000;
+			mtk_cam_timesync_to_boot(hw_timestamp) / 1000;
 #ifdef TIMESTAMP_LOG
 		dev_dbg(job->src_ctx->cam->dev,
 			"timestamp TS:momo %llu us boot %llu us, hw ts:%llu\n",
@@ -1035,9 +1035,11 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 	stagger_job->dcif_enable = job->exp_num_cur > 1 ? 1 : 0;
 	stagger_job->need_drv_buffer_check = is_stagger_multi_exposure(job);
 	dev_info(cam->dev, "[%s] ctx/seq:%d/%d, type:%d, scen exp:%d->%d, swi:%d,  expN:%d->%d, sw/scene:%d/0x%x",
-		__func__, ctx->stream_id, job->job_type, job->frame_seq_no, stagger_job->prev_scen.scen.normal.exp_num,
-		job->job_scen.scen.normal.exp_num, stagger_job->switch_type, job->exp_num_prev,
-		job->exp_num_cur, job->sw_feature, job->hardware_scenario);
+		__func__, ctx->stream_id, job->job_type, job->frame_seq_no,
+		stagger_job->prev_scen.scen.normal.exp_num,
+		job->job_scen.scen.normal.exp_num, stagger_job->switch_type,
+		job->exp_num_prev, job->exp_num_cur,
+		job->sw_feature, job->hardware_scenario);
 	job->stream_on_seninf = false;
 	if (!ctx->used_engine) {
 		int selected;
@@ -1413,12 +1415,14 @@ static int fill_raw_img_buffer_to_ipi_frame(
 
 	if (V4L2_TYPE_IS_CAPTURE(buf->vbb.vb2_buf.type)) {
 		struct mtkcam_ipi_img_output *out;
+
 		out = &fp->img_outs[helper->io_idx];
 		++helper->io_idx;
 
 		ret = fill_img_out(out, buf, node);
 	} else {
 		struct mtkcam_ipi_img_input *in;
+
 		in = &fp->img_ins[helper->ii_idx];
 		++helper->ii_idx;
 
@@ -1516,10 +1520,10 @@ static void otf_on_transit(struct mtk_cam_job_state *s, int state_type,
 			str_state(state_type, new_state),
 			act);
 
-	if (state_type == ISP_STATE)
-	{
-		switch (new_state)
-		{
+	if (state_type == ISP_STATE) {
+
+		switch (new_state) {
+
 		case S_ISP_COMPOSED:
 			complete(&job->compose_completion);
 			break;
@@ -1809,13 +1813,14 @@ static int mtk_cam_job_fill_ipi_config(struct mtk_cam_job *job,
 	/* camsv */
 	if (ctx->hw_sv) {
 		struct mtk_camsv_device *sv_dev = dev_get_drvdata(ctx->hw_sv);
+
 		for (i = SVTAG_START; i < SVTAG_END; i++) {
 			if (sv_dev->enabled_tags & (1 << i)) {
 				sv_input = &config->sv_input[0][i];
 
 				sv_input->pipe_id = sv_dev->id + MTKCAM_SUBDEV_CAMSV_START;
 				sv_input->tag_id = i;
-				sv_input->tag_order = sv_dev->tag_info[i].tag_order;;
+				sv_input->tag_order = sv_dev->tag_info[i].tag_order;
 				sv_input->is_first_frame = (ctx->not_first_job) ? 0 : 1;
 				sv_input->input = sv_dev->tag_info[i].cfg_in_param;
 			}

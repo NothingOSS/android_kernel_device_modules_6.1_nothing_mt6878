@@ -338,10 +338,12 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_MTK_CAM_INTERNAL_MEM_CTRL:
 		{
-			pipeline->ctrl_data.pre_alloc_mem = *((struct mtk_cam_internal_mem *)ctrl->p_new.p);
+			pipeline->ctrl_data.pre_alloc_mem =
+				*((struct mtk_cam_internal_mem *)ctrl->p_new.p);
 			dev_info(dev,
 				 "%s:pipe(%d): pre_alloc_mem(%d,%d,%d)\n",
-				 __func__, pipeline->id, pipeline->ctrl_data.pre_alloc_mem.num,
+				 __func__, pipeline->id,
+				 pipeline->ctrl_data.pre_alloc_mem.num,
 				 pipeline->ctrl_data.pre_alloc_mem.bufs[0].fd,
 				 pipeline->ctrl_data.pre_alloc_mem.bufs[0].length);
 			/* test of the allocation */
@@ -1076,6 +1078,7 @@ static int mtk_raw_set_pad_selection(struct v4l2_subdev *sd,
 {
 	struct mbus_config_getter *config_getter;
 	struct v4l2_rect *crop;
+	struct v4l2_rect *sink_crop;
 
 	if (CAM_DEBUG_ENABLED(FORMAT))
 		log_raw_subdev_selection(sd, sel, __func__);
@@ -1087,21 +1090,19 @@ static int mtk_raw_set_pad_selection(struct v4l2_subdev *sd,
 	if (raw_is_sink_pad(sel->pad)) {
 		pr_info("%s: error: not support sink corp yet\n", __func__);
 		return -EINVAL;
-	} else {
-		struct v4l2_rect *sink_crop;
-
-		sink_crop = get_enabled_sink_crop(sd, state, config_getter);
-		if (!sink_crop) {
-			pr_info("%s: error: no sink fmt is set already.\n",
-				__func__);
-			return -EINVAL;
-		}
-
-		adjust_crop(&sel->r, sink_crop);
-
-		crop = config_getter->get_crop(sd, state, sel->pad);
-		*crop = sel->r;
 	}
+
+	sink_crop = get_enabled_sink_crop(sd, state, config_getter);
+	if (!sink_crop) {
+		pr_info("%s: error: no sink fmt is set already.\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	adjust_crop(&sel->r, sink_crop);
+
+	crop = config_getter->get_crop(sd, state, sel->pad);
+	*crop = sel->r;
 
 	return 0;
 }

@@ -1814,12 +1814,12 @@ static const struct v4l2_subdev_video_ops seninf_subdev_video_ops = {
 	.s_stream = seninf_s_stream,
 };
 
-static struct v4l2_subdev_core_ops seninf_subdev_core_ops = {
+static const struct v4l2_subdev_core_ops seninf_subdev_core_ops = {
 	.subscribe_event	= seninf_subscribe_event,
 	.unsubscribe_event	= v4l2_event_subdev_unsubscribe,
 };
 
-static struct v4l2_subdev_ops seninf_subdev_ops = {
+static const struct v4l2_subdev_ops seninf_subdev_ops = {
 	.core	= &seninf_subdev_core_ops,
 	.video	= &seninf_subdev_video_ops,
 	.pad	= &seninf_subdev_pad_ops,

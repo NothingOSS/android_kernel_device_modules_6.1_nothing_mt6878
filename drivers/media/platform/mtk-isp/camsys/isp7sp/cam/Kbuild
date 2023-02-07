@@ -67,8 +67,6 @@ $(CAM_MODULE)-objs := \
     mtk_cam-debug_option.o \
     mtk_cam-size_assertion.o
 
-    #state.o
-
     #mtk_cam-raw_debug.o \
 
     #mtk_cam-smem.o \
@@ -107,5 +105,3 @@ $(CAM_MODULE)-objs += mtk_cam-plat-mt6989.o
 endif
 
 obj-$(CONFIG_VIDEO_MTK_ISP_CAMSYS) += $(CAM_MODULE).o
-
-#obj-$(CONFIG_VIDEO_MTK_ISP_CAMSYS) += state.o

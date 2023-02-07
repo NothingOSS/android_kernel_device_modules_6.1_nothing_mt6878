@@ -213,7 +213,7 @@ int fill_sv_img_fp(
 	else
 		exp_no = 1;
 
-	for(i = 0; i < exp_no; i++) {
+	for (i = 0; i < exp_no; i++) {
 		/* remove this check for supporting pure raw dump */
 		if (!is_stagger_dc(job) && (i + 1) == exp_no)
 			continue;
@@ -295,7 +295,7 @@ void update_stagger_job_exp(struct mtk_cam_job *job)
 	//pr_info("[%s] prev:%d-exp -> cur:%d-exp\n",
 	//	__func__, job->feature->exp_num_prev, job->feature->exp_num_cur);
 }
-#if 0
+#ifdef REMOVE_LATER
 void update_event_setting_done_stagger(struct mtk_cam_job *job,
 		struct mtk_cam_job_event_info *event_info, int *action)
 {
@@ -857,23 +857,24 @@ int handle_sv_tag_hdr(struct mtk_cam_job *job)
 			__func__, hw_scen, exp_no, req_amount);
 	if (mtk_cam_sv_get_tag_param(img_tag_param, hw_scen, exp_no, req_amount))
 		return 1;
-	else {
-		raw_pipe_idx = ctx->raw_subdev_idx;
-		raw_pipe = &ctx->cam->pipelines.raw[raw_pipe_idx];
-		mbus_code = raw_pipe->pad_cfg[MTK_RAW_SINK].mbus_fmt.code;
-		set_dcif_fmt(&img_fmt,
-			raw_pipe->pad_cfg[MTK_RAW_SINK].mbus_fmt.width,
-			raw_pipe->pad_cfg[MTK_RAW_SINK].mbus_fmt.height,
-			raw_pipe->pad_cfg[MTK_RAW_SINK].mbus_fmt.code);
-		for (i = 0; i < req_amount; i++) {
-			mtk_cam_sv_fill_tag_info(sv_dev->tag_info,
-				&img_tag_param[i], hw_scen, 3, job->sub_ratio,
-				mbus_code, NULL, &img_fmt);
 
-			sv_dev->used_tag_cnt++;
-			sv_dev->enabled_tags |= (1 << img_tag_param[i].tag_idx);
-		}
+	raw_pipe_idx = ctx->raw_subdev_idx;
+	raw_pipe = &ctx->cam->pipelines.raw[raw_pipe_idx];
+	mbus_code = raw_pipe->pad_cfg[MTK_RAW_SINK].mbus_fmt.code;
+	set_dcif_fmt(&img_fmt,
+		     raw_pipe->pad_cfg[MTK_RAW_SINK].mbus_fmt.width,
+		     raw_pipe->pad_cfg[MTK_RAW_SINK].mbus_fmt.height,
+		     raw_pipe->pad_cfg[MTK_RAW_SINK].mbus_fmt.code);
+	for (i = 0; i < req_amount; i++) {
+		mtk_cam_sv_fill_tag_info(sv_dev->tag_info,
+					 &img_tag_param[i], hw_scen, 3,
+					 job->sub_ratio,
+					 mbus_code, NULL, &img_fmt);
+
+		sv_dev->used_tag_cnt++;
+		sv_dev->enabled_tags |= (1 << img_tag_param[i].tag_idx);
 	}
+
 	for (i = 0; i < req_amount; i++)
 		pr_info("[%s] tag_param:%d tag_idx:%d seninf_padidx:%d tag_order:%d",
 				__func__, i, img_tag_param[i].tag_idx,

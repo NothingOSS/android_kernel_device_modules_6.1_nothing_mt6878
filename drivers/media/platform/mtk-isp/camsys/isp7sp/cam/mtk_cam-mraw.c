@@ -179,7 +179,8 @@ void apply_mraw_cq(struct mtk_mraw_device *mraw_dev,
 		wmb(); /* TBC */
 		dev_info(mraw_dev->dev,
 			"apply 1st mraw%d scq - addr/size = [main] 0x%llx/%d cq_en(0x%x)\n",
-			mraw_dev->id, cq_addr, cq_size, readl_relaxed(mraw_dev->base + REG_MRAW_CTL_START));
+			mraw_dev->id, cq_addr, cq_size,
+			readl_relaxed(mraw_dev->base + REG_MRAW_CTL_START));
 	} else {
 #if USING_MRAW_SCQ
 		writel_relaxed(MRAWCTL_CQ_THR0_START, mraw_dev->base + REG_MRAW_CTL_START);
@@ -1038,8 +1039,7 @@ int mtk_cam_mraw_dev_stream_on(struct mtk_mraw_device *mraw_dev, bool on)
 		mraw_dev->last_wcnt = 0;
 
 #endif
-	}
-	else {
+	} else {
 		/* reset enqueued status */
 		atomic_set(&mraw_dev->is_enqueued, 0);
 		/* reset format status */
@@ -1064,6 +1064,7 @@ int mtk_cam_mraw_dev_stream_on(struct mtk_mraw_device *mraw_dev, bool on)
 void mtk_mraw_register_error_handle(struct mtk_mraw_device *mraw_dev)
 {
 	int val, val2;
+
 	val = readl_relaxed(mraw_dev->base + REG_MRAW_TG_PATH_CFG);
 	val = val | MRAW_TG_PATH_TG_FULL_SEL;
 	writel_relaxed(val, mraw_dev->base + REG_MRAW_TG_PATH_CFG);
