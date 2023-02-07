@@ -166,7 +166,7 @@ static bool is_tbl_supported_event(struct state_table *tbl, int event)
 }
 
 int loop_each_transition(struct state_table *tbl,
-			 struct mtk_cam_job_state *s, int state_type,
+			 struct state_accessor *s_acc, int state_type,
 			 struct transition_param *p)
 {
 	struct transitions_entry *entry;
@@ -176,12 +176,12 @@ int loop_each_transition(struct state_table *tbl,
 	int ret = 0;
 
 	event = p->event;
-	state = mtk_cam_job_state_get(s, state_type);
+	state = mtk_cam_job_state_get(s_acc->s, state_type);
 
-	if (CAM_DEBUG_ENABLED(STATE))
+	if (CAM_DEBUG_ENABLED(STATE) && 0)
 		pr_info("%s: ...#%d %s [%s], trying for event %d\n",
 			__func__,
-			s->seq_no,
+			cur_seq_no(s_acc),
 			str_state_type(state_type),
 			str_state(state_type, state),
 			event);
@@ -202,10 +202,11 @@ int loop_each_transition(struct state_table *tbl,
 		if (trans->on_event != event)
 			continue;
 
-		ret = trans->guard ? trans->guard(s, p) : 1;
+		ret = trans->guard ? trans->guard(s_acc, p) : 1;
 		if (ret > 0) {
-			_transit_state(s, state_type, state,
-				       trans->dst_state, trans->action, p->info);
+			_transit_state(s_acc->s, state_type, state,
+				       trans->dst_state, trans->action,
+				       p->info);
 			break;
 		}
 	}

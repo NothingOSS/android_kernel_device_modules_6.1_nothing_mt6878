@@ -584,17 +584,19 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 	list_add_tail(&job->job_state.list, &cam_ctrl->camsys_state_list);
 	write_unlock(&cam_ctrl->list_lock);
 
-	job->frame_seq_no = next_frame_seq;
+	mtk_cam_job_set_no(job, next_frame_seq);
+
 	// to be removed
 	if (next_frame_seq == 1) {
 		vsync_set_desired(&cam_ctrl->vsync_col,
-						  _get_master_engines(job->used_engine));
+				  _get_master_engines(job->used_engine));
+
+		/* TODO(AY): refine this */
+		if (job->job_scen.id == MTK_CAM_SCEN_M2M_NORMAL ||
+		    job->job_scen.id == MTK_CAM_SCEN_ODT_NORMAL)
+			mtk_cam_ctrl_apply_by_state(cam_ctrl, 1);
 	}
 
-	/* TODO(AY): refine this */
-	if (job->job_scen.id == MTK_CAM_SCEN_M2M_NORMAL ||
-	    job->job_scen.id == MTK_CAM_SCEN_ODT_NORMAL)
-		mtk_cam_ctrl_apply_by_state(cam_ctrl, 1);
 
 	call_jobop(job, compose);
 	mtk_cam_ctrl_send_event(cam_ctrl, CAMSYS_EVENT_ENQUE);

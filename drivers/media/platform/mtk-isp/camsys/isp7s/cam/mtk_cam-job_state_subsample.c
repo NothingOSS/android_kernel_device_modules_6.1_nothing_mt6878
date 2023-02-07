@@ -92,23 +92,57 @@ static struct transitions_entry basic_isp_entries[NR_S_ISP_STATE] = {
 };
 DECL_STATE_TABLE(subsample_isp_tbl, basic_isp_entries);
 
+static const struct state_accessor_ops _acc_ops = {
+	.prev_allow_apply_sensor = sf_prev_allow_apply_sensor,
+	.prev_allow_apply_isp = sf_prev_allow_apply_isp,
+	.is_next_sensor_applied = sf_is_next_sensor_applied,
+	.cur_sensor_state = sf_cur_sensor_state,
+	.cur_isp_state = sf_cur_isp_state,
+};
+
 static int subsample_send_event(struct mtk_cam_job_state *s,
 			    struct transition_param *p)
 {
+	struct state_accessor s_acc;
 	int ret;
 
-	ret = loop_each_transition(&subsample_sensor_tbl, s, SENSOR_STATE, p);
+	s_acc.head = p->head;
+	s_acc.s = s;
+	s_acc.seq_no = s->seq_no;
+	s_acc.ops = &_acc_ops;
 
-	ret = ret || loop_each_transition(&subsample_isp_tbl, s, ISP_STATE, p);
+	ret = loop_each_transition(&subsample_sensor_tbl,
+				   &s_acc, SENSOR_STATE, p);
+
+	ret = ret || loop_each_transition(&subsample_isp_tbl,
+					  &s_acc, ISP_STATE, p);
 
 	return ret < 0 ? -1 : 0;
 }
 
-static struct mtk_cam_job_state_ops subsample_state_ops = {
+static int _is_next_sensor_applicable(struct mtk_cam_job_state *s)
+{
+	/* since in subsample, sensor setting is applied after cq
+	 * we don't need to consider previous job.
+	 */
+	return 1;
+}
+
+static int _is_next_isp_applicable(struct mtk_cam_job_state *s)
+{
+	return is_isp_ge_processing(mtk_cam_job_state_get(s, ISP_STATE));
+}
+
+static int _is_sensor_set(struct mtk_cam_job_state *s)
+{
+	return is_sensor_set(mtk_cam_job_state_get(s, SENSOR_STATE));
+}
+
+static const struct mtk_cam_job_state_ops subsample_state_ops = {
 	.send_event = subsample_send_event,
-	//.is_sensor_updated
-	//.is_next_sensor_applicable
-	//.is_next_isp_applicable
+	.is_next_sensor_applicable = _is_next_sensor_applicable,
+	.is_next_isp_applicable = _is_next_isp_applicable,
+	.is_sensor_applied = _is_sensor_set,
 };
 
 int mtk_cam_job_state_init_subsample(struct mtk_cam_job_state *s,

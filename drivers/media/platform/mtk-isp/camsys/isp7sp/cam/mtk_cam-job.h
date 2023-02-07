@@ -101,9 +101,11 @@ struct mtk_cam_job_state_ops {
 	int (*send_event)(struct mtk_cam_job_state *s,
 			  struct transition_param *p);
 
-	int (*is_sensor_updated)(struct mtk_cam_job_state *s);
 	int (*is_next_sensor_applicable)(struct mtk_cam_job_state *s);
 	int (*is_next_isp_applicable)(struct mtk_cam_job_state *s);
+
+	/* for sensor-mismatched case */
+	int (*is_sensor_applied)(struct mtk_cam_job_state *s);
 };
 
 enum state_type {
@@ -138,6 +140,12 @@ struct mtk_cam_job_state {
 
 	const struct mtk_cam_job_state_cb *cb;
 };
+
+#define ops_call(s, func, ...) \
+({\
+	typeof(s) _s = (s); \
+	_s->ops->func(_s, ##__VA_ARGS__); \
+})
 
 /* TODO(AY): try to remove from this header */
 static inline
@@ -249,11 +257,7 @@ struct mtk_cam_job {
 	/* for complete only: not null if current request has sensor ctrl */
 	struct media_request_object *sensor_hdl_obj;
 	struct v4l2_subdev *sensor;
-#ifdef REMOVE_LATER /*AY: remove? */
-	int link_engine;
-	int proc_engine;
-	atomic_t seninf_dump_state;
-#endif
+
 	struct mtk_cam_scen job_scen;		/* job 's scen by res control */
 	int exp_num_cur;		/* for ipi */
 	int exp_num_prev;		/* for ipi */
@@ -386,6 +390,11 @@ static inline void mtk_cam_job_return(struct mtk_cam_job *job)
 int mtk_cam_job_pack(struct mtk_cam_job *job, struct mtk_cam_ctx *ctx,
 		     struct mtk_cam_request *req);
 int mtk_cam_job_get_sensor_margin(struct mtk_cam_job *job);
+static inline void mtk_cam_job_set_no(struct mtk_cam_job *job, int seq_no)
+{
+	job->frame_seq_no = seq_no;
+	job->job_state.seq_no = seq_no;
+}
 
 static inline void mtk_cam_job_mark_cancelled(struct mtk_cam_job *job)
 {

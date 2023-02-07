@@ -13,7 +13,7 @@
 struct state_transition {
 	int dst_state;
 	int on_event;
-	int (*guard)(struct mtk_cam_job_state *s, struct transition_param *p);
+	int (*guard)(struct state_accessor *s_acc, struct transition_param *p);
 	int action;
 };
 
@@ -36,7 +36,6 @@ struct state_table {
 #define ADD_TRANS_ENTRY(prefix, state)	\
 	_ADD_TRANS_ENTRY(state, STATE_TRANS(prefix, state))
 
-#define STATE_TABLE(_entries)
 #define DECL_STATE_TABLE(tbl_name, _entries)	\
 static struct state_table tbl_name = {		\
 	.entries = _entries,			\
@@ -44,7 +43,11 @@ static struct state_table tbl_name = {		\
 }
 
 int loop_each_transition(struct state_table *tbl,
-			 struct mtk_cam_job_state *s, int state_type,
+			 struct state_accessor *s_acc, int state_type,
 			 struct transition_param *p);
+
+/* export from basic for mstream */
+extern struct state_table basic_sensor_tbl;
+extern struct state_table basic_isp_tbl;
 
 #endif //__MTK_CAM_JOB_STATE_IMPL_H

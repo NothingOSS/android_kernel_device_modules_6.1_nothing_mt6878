@@ -869,7 +869,6 @@ static int ipi_config(struct mtk_cam_job *job)
 	struct mtkcam_ipi_config_param *config = &event.config_data;
 	struct mtkcam_ipi_config_param *src_config = &job->ipi_config;
 
-	memset(&event, 0, sizeof(event));
 	event.cmd_id = CAM_CMD_CONFIG;
 	session->session_id = ctx->stream_id;
 	memcpy(config, src_config, sizeof(*src_config));
@@ -895,7 +894,6 @@ static int _compose(struct mtk_cam_job *job)
 			return ret;
 	}
 
-	memset(&event, 0, sizeof(event));
 	event.cmd_id = CAM_CMD_FRAME;
 	session->session_id = job->src_ctx->stream_id;
 	session->frame_no =
@@ -905,9 +903,6 @@ static int _compose(struct mtk_cam_job *job)
 
 	if (WARN_ON(!job->src_ctx->rpmsg_dev))
 		return -1;
-
-	/* FIXME(AY): remove, move to pack */
-	job->job_state.seq_no = job->frame_seq_no;
 
 	//MTK_CAM_TRACE_BEGIN(BASIC, "ipi_cmd_frame:%d",
 	//req_stream_data->frame_seq_no);

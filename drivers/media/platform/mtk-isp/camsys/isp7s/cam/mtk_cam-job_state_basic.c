@@ -94,7 +94,10 @@ static struct state_transition STATE_TRANS(basic, S_ISP_SENSOR_MISMATCHED)[] = {
 static struct transitions_entry basic_sensor_entries[NR_S_SENSOR_STATE] = {
 	ADD_TRANS_ENTRY(basic_sensor, S_SENSOR_NOT_SET),
 };
-DECL_STATE_TABLE(basic_sensor_tbl, basic_sensor_entries);
+struct state_table basic_sensor_tbl = {
+	.entries = basic_sensor_entries,
+	.size = ARRAY_SIZE(basic_sensor_entries),
+};
 
 static struct transitions_entry basic_isp_entries[NR_S_ISP_STATE] = {
 	ADD_TRANS_ENTRY(basic, S_ISP_COMPOSING),
@@ -106,25 +109,57 @@ static struct transitions_entry basic_isp_entries[NR_S_ISP_STATE] = {
 	//ADD_TRANS_ENTRY(basic, S_ISP_DONE),
 	//ADD_TRANS_ENTRY(basic, S_ISP_DONE_MISMATCHED),
 };
-DECL_STATE_TABLE(basic_isp_tbl, basic_isp_entries);
+struct state_table basic_isp_tbl = {
+	.entries = basic_isp_entries,
+	.size = ARRAY_SIZE(basic_isp_entries),
+};
+
+static const struct state_accessor_ops _acc_ops = {
+	.prev_allow_apply_sensor = sf_prev_allow_apply_sensor,
+	.prev_allow_apply_isp = sf_prev_allow_apply_isp,
+	.is_next_sensor_applied = sf_is_next_sensor_applied,
+	.cur_sensor_state = sf_cur_sensor_state,
+	.cur_isp_state = sf_cur_isp_state,
+};
 
 static int basic_send_event(struct mtk_cam_job_state *s,
 			    struct transition_param *p)
 {
+	struct state_accessor s_acc;
 	int ret;
 
-	ret = loop_each_transition(&basic_sensor_tbl, s, SENSOR_STATE, p);
+	s_acc.head = p->head;
+	s_acc.s = s;
+	s_acc.seq_no = s->seq_no;
+	s_acc.ops = &_acc_ops;
 
-	ret = ret || loop_each_transition(&basic_isp_tbl, s, ISP_STATE, p);
+	ret = loop_each_transition(&basic_sensor_tbl, &s_acc, SENSOR_STATE, p);
+
+	ret = ret || loop_each_transition(&basic_isp_tbl, &s_acc, ISP_STATE, p);
 
 	return ret < 0 ? -1 : 0;
 }
 
-static struct mtk_cam_job_state_ops basic_state_ops = {
+static int _is_next_sensor_applicable(struct mtk_cam_job_state *s)
+{
+	return is_isp_ge_outer(mtk_cam_job_state_get(s, ISP_STATE));
+}
+
+static int _is_next_isp_applicable(struct mtk_cam_job_state *s)
+{
+	return is_isp_ge_processing(mtk_cam_job_state_get(s, ISP_STATE));
+}
+
+static int _is_sensor_set(struct mtk_cam_job_state *s)
+{
+	return is_sensor_set(mtk_cam_job_state_get(s, SENSOR_STATE));
+}
+
+static const struct mtk_cam_job_state_ops basic_state_ops = {
 	.send_event = basic_send_event,
-	//.is_sensor_updated
-	//.is_next_sensor_applicable
-	//.is_next_isp_applicable
+	.is_next_sensor_applicable = _is_next_sensor_applicable,
+	.is_next_isp_applicable = _is_next_isp_applicable,
+	.is_sensor_applied = _is_sensor_set,
 };
 
 int mtk_cam_job_state_init_basic(struct mtk_cam_job_state *s,
