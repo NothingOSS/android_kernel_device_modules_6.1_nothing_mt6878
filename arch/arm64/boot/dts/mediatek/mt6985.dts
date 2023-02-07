@@ -13052,8 +13052,8 @@
 		mediatek,smi = <&mmsram_smi_2x1_sub_comm4 &smi_mdp_2x1_subcommon>;
 
 		core-0 = "enable";
-		vcp-sramSize = <0x00040000>;
-		vcp-dramSize = <0x00800000>;
+		vcp-sram-size = <0x00040000>;
+		vcp-dram-size = <0x00800000>;
 		core-nums = <1>;	/* core number */
 		twohart = <1>;		/* two hart arch */
 		femter-ck = <12>;	/* clk table fmeter f_fmmup_ck */
