@@ -51,6 +51,7 @@ extern const struct clk_ops mtk_mux_gate_ops;
 extern const struct clk_ops mtk_mux_gate_clr_set_upd_ops;
 extern const struct clk_ops mtk_hwv_mux_ops;
 extern const struct clk_ops mtk_ipi_mux_ops;
+extern const struct clk_ops mtk_ipi_mux_2_ops;
 
 #define GATE_CLR_SET_UPD_FLAGS(_id, _name, _parents, _mux_ofs,		\
 			_mux_set_ofs, _mux_clr_ofs, _shift, _width,	\
@@ -85,7 +86,7 @@ extern const struct clk_ops mtk_ipi_mux_ops;
 		MUX_GATE_CLR_SET_UPD_FLAGS(_id, _name, _parents,	\
 			_mux_ofs, _mux_set_ofs, _mux_clr_ofs, _shift,	\
 			_width, _gate, _upd_ofs, _upd,			\
-			CLK_SET_RATE_PARENT)
+			0)
 
 #define MUX_CLR_SET_UPD_FLAGS(_id, _name, _parents, _mux_ofs,		\
 			_mux_set_ofs, _mux_clr_ofs, _shift, _width,	\
@@ -100,7 +101,7 @@ extern const struct clk_ops mtk_ipi_mux_ops;
 			_upd_ofs, _upd)					\
 		MUX_CLR_SET_UPD_FLAGS(_id, _name, _parents,		\
 			_mux_ofs, _mux_set_ofs, _mux_clr_ofs, _shift,	\
-			_width, _upd_ofs, _upd, CLK_SET_RATE_PARENT)
+			_width, _upd_ofs, _upd, 0)
 
 #define MUX_CLR_SET(_id, _name, _parents, _mux_ofs,			\
 			_mux_set_ofs, _mux_clr_ofs, _shift, _width) {	\
@@ -136,7 +137,7 @@ extern const struct clk_ops mtk_ipi_mux_ops;
 		.upd_shift = _upd,					\
 		.parent_names = _parents,				\
 		.num_parents = ARRAY_SIZE(_parents),			\
-		.flags = CLK_SET_RATE_PARENT | CLK_USE_HW_VOTER,	\
+		.flags =  CLK_USE_HW_VOTER,	\
 		.ops = &mtk_hwv_mux_ops,				\
 	}
 
@@ -159,7 +160,7 @@ extern const struct clk_ops mtk_ipi_mux_ops;
 		.upd_shift = _upd,					\
 		.parent_names = _parents,				\
 		.num_parents = ARRAY_SIZE(_parents),			\
-		.flags = CLK_SET_RATE_PARENT | CLK_USE_HW_VOTER | _flags,	\
+		.flags =  CLK_USE_HW_VOTER | _flags,	\
 		.ops = &mtk_hwv_mux_ops,				\
 	}
 
@@ -185,7 +186,7 @@ extern const struct clk_ops mtk_ipi_mux_ops;
 		.qs_shift = _qs_shift,                                \
 		.parent_names = _parents,				\
 		.num_parents = ARRAY_SIZE(_parents),			\
-		.flags = CLK_SET_RATE_PARENT | CLK_USE_HW_VOTER | _flags,	\
+		.flags = CLK_USE_HW_VOTER | _flags,	\
 		.ops = &mtk_ipi_mux_ops,				\
 	}
 #define MUX_IPI(_id, _name, _parents, _mux_ofs,		\
@@ -208,8 +209,58 @@ extern const struct clk_ops mtk_ipi_mux_ops;
 		.ipi_shift = _ipi_shift,					\
 		.parent_names = _parents,				\
 		.num_parents = ARRAY_SIZE(_parents),			\
-		.flags = CLK_SET_RATE_PARENT | CLK_USE_HW_VOTER,	\
+		.flags = CLK_USE_HW_VOTER,	\
 		.ops = &mtk_ipi_mux_ops,				\
+	}
+
+#define MUX_IPI_2_FLAGS(_id, _name, _parents, _mux_ofs,		\
+			_mux_set_ofs, _mux_clr_ofs, _hwv_sta_ofs,	\
+			_hwv_set_ofs, _hwv_clr_ofs, _ipi_shift,		\
+			_shift, _width, _gate, _upd_ofs, _upd,		\
+			_qs_shift, _flags) {		\
+		.id = _id,						\
+		.name = _name,						\
+		.mux_ofs = _mux_ofs,					\
+		.set_ofs = _mux_set_ofs,				\
+		.clr_ofs = _mux_clr_ofs,				\
+		.hwv_sta_ofs = _hwv_sta_ofs,				\
+		.hwv_set_ofs = _hwv_set_ofs,				\
+		.hwv_clr_ofs = _hwv_clr_ofs,				\
+		.upd_ofs = _upd_ofs,					\
+		.mux_shift = _shift,					\
+		.mux_width = _width,					\
+		.gate_shift = _gate,					\
+		.upd_shift = _upd,					\
+		.ipi_shift = _ipi_shift,				\
+		.qs_shift = _qs_shift,                                \
+		.parent_names = _parents,				\
+		.num_parents = ARRAY_SIZE(_parents),			\
+		.flags = CLK_USE_HW_VOTER | _flags,	\
+		.ops = &mtk_ipi_mux_2_ops,				\
+	}
+
+#define MUX_IPI_2(_id, _name, _parents, _mux_ofs,		\
+			_mux_set_ofs, _mux_clr_ofs, _hwv_sta_ofs,	\
+			_hwv_set_ofs, _hwv_clr_ofs, _ipi_shift,		\
+			_shift, _width, _gate, _upd_ofs, _upd) {		\
+		.id = _id,						\
+		.name = _name,						\
+		.mux_ofs = _mux_ofs,					\
+		.set_ofs = _mux_set_ofs,				\
+		.clr_ofs = _mux_clr_ofs,				\
+		.hwv_sta_ofs = _hwv_sta_ofs,				\
+		.hwv_set_ofs = _hwv_set_ofs,				\
+		.hwv_clr_ofs = _hwv_clr_ofs,				\
+		.upd_ofs = _upd_ofs,					\
+		.mux_shift = _shift,					\
+		.mux_width = _width,					\
+		.gate_shift = _gate,					\
+		.upd_shift = _upd,					\
+		.ipi_shift = _ipi_shift,					\
+		.parent_names = _parents,				\
+		.num_parents = ARRAY_SIZE(_parents),			\
+		.flags = CLK_USE_HW_VOTER,	\
+		.ops = &mtk_ipi_mux_2_ops,				\
 	}
 
 int mtk_clk_register_muxes(const struct mtk_mux *muxes,

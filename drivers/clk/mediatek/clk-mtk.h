@@ -241,11 +241,11 @@ void mtk_clk_register_dividers(const struct mtk_clk_divider *mcds,
 struct clk_onecell_data *mtk_alloc_clk_data(unsigned int clk_num);
 void mtk_free_clk_data(struct clk_onecell_data *clk_data);
 
-#define HAVE_RST_BAR			BIT(0)
-#define PLL_AO				BIT(1)
-#define CLK_USE_HW_VOTER		BIT(2)
-#define HWV_CHK_FULL_STA		BIT(3)
-#define CLK_ENABLE_QUICK_SWITCH		BIT(4)
+#define HAVE_RST_BAR			BIT(16)
+#define PLL_AO				BIT(17)
+#define CLK_USE_HW_VOTER		BIT(18)
+#define HWV_CHK_FULL_STA		BIT(19)
+#define CLK_ENABLE_QUICK_SWITCH		BIT(20)
 
 struct mtk_pll_div_table {
 	u32 div;
@@ -285,6 +285,42 @@ struct mtk_pll_data {
 	const char *parent_name;
 	uint8_t pll_en_bit;
 };
+
+struct mtk_clk_user {
+	struct clk_hw hw;
+	struct clk_hw *target_hw;
+	spinlock_t *lock;
+	unsigned int flags;
+};
+
+struct mtk_mux_user {
+	int id;
+	const char *name;
+	const char *target_name;
+	unsigned long rate;
+	const struct clk_ops *ops;
+	unsigned int flags;
+};
+
+struct dfs_ops {
+	int (*set_opp)(const char *name, unsigned long rate);
+	int (*get_opp)(const char *name);
+	unsigned long (*get_rate)(const char *name);
+};
+
+#define MUX_USER_CLK(_id, _name, _target_name, _rate) {	\
+		.id = _id,				\
+		.name = _name,				\
+		.target_name = _target_name,		\
+		.rate = _rate,				\
+		.flags = 0,		\
+		.ops = &mtk_mux_user_ops,		\
+	}
+
+extern const struct clk_ops mtk_mux_user_ops;
+int mtk_clk_mux_register_user_clks(const struct mtk_mux_user *clks, int num,
+		spinlock_t *lock, struct clk_onecell_data *clk_data, struct device *dev);
+void mtk_clk_mux_register_callback(const struct dfs_ops *ops);
 
 struct ipi_callbacks {
 	int (*clk_enable)(const u8 clk_idx);

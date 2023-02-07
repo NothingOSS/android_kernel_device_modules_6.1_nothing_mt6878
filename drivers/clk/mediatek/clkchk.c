@@ -41,6 +41,7 @@ void __attribute__((weak)) clkchk_set_cfg(void)
 }
 
 static const struct clkchk_ops *clkchk_ops;
+static struct provider_clk clkchk_pvd_clks[MAX_CLK_NUM], clkdbg_pvd_clks[MAX_CLK_NUM];
 static struct notifier_block mtk_clkchk_notifier;
 static int hwv_irq;
 
@@ -139,14 +140,23 @@ static void setup_provider_clk(struct provider_clk *pvdck)
 	pvdck->pwr_mask = INV_MSK;
 }
 
-struct provider_clk *get_all_provider_clks(void)
+struct provider_clk *get_all_provider_clks(bool is_internal)
 {
-	static struct provider_clk provider_clks[MAX_CLK_NUM];
+	struct provider_clk *temp_clks;
 	struct device_node *node = NULL;
 	unsigned int n = 0;
 
-	if (provider_clks[0].ck != NULL)
-		return provider_clks;
+	if (is_internal) {
+		if (clkchk_pvd_clks[0].ck != NULL)
+			return clkchk_pvd_clks;
+
+		temp_clks = &clkchk_pvd_clks[0];
+	} else {
+		if (clkdbg_pvd_clks[0].ck != NULL)
+			return clkdbg_pvd_clks;
+
+		temp_clks = &clkdbg_pvd_clks[0];
+	}
 
 	do {
 		const char *node_name;
@@ -176,24 +186,24 @@ struct provider_clk *get_all_provider_clks(void)
 				else if (IS_ERR_OR_NULL(ck))
 					continue;
 
-				provider_clks[n].ck = ck;
-				provider_clks[n].ck_name = __clk_get_name(ck);
-				provider_clks[n].idx = i;
-				provider_clks[n].provider_name = node_name;
-				setup_provider_clk(&provider_clks[n]);
+				temp_clks[n].ck = ck;
+				temp_clks[n].ck_name = __clk_get_name(ck);
+				temp_clks[n].idx = i;
+				temp_clks[n].provider_name = node_name;
+				setup_provider_clk(&temp_clks[n]);
 
 				++n;
 			}
 		}
 	} while (node != NULL && n < MAX_CLK_NUM);
 
-	return provider_clks;
+	return temp_clks;
 }
-EXPORT_SYMBOL(get_all_provider_clks);
+EXPORT_SYMBOL_GPL(get_all_provider_clks);
 
 static struct provider_clk *__clk_chk_lookup_pvdck(const char *name)
 {
-	struct provider_clk *pvdck = get_all_provider_clks();
+	struct provider_clk *pvdck = get_all_provider_clks(true);
 
 	for (; pvdck->ck != NULL; pvdck++) {
 		if (!strcmp(pvdck->ck_name, name))
@@ -582,7 +592,7 @@ static void clkchk_dump_pll_reg(bool bug_on)
 
 static int clk_chk_dev_pm_suspend(struct device *dev)
 {
-	struct provider_clk *pvdck = get_all_provider_clks();
+	struct provider_clk *pvdck = get_all_provider_clks(true);
 
 	if (check_pll_off()) {
 		for (; pvdck->ck != NULL; pvdck++)

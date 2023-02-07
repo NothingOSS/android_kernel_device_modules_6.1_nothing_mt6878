@@ -2871,7 +2871,7 @@ static const struct mtk_mux top_muxes[] = {
 		0/* lsb */, 4/* width */,
 		7/* pdn */, CKSYS2_CLK_CFG_UPDATE1/* upd ofs */,
 		TOP_MUX_VENC_SHIFT/* upd shift */),
-	MUX_IPI(CLK_TOP_VDEC_SEL/* dts */, "vdec_sel", vdec_parents/* parent */,
+	MUX_IPI_2(CLK_TOP_VDEC_SEL/* dts */, "vdec_sel", vdec_parents/* parent */,
 		CKSYS2_CLK_CFG_14, CKSYS2_CLK_CFG_14_SET, CKSYS2_CLK_CFG_14_CLR/* set parent */,
 		HWV_CG_27_DONE, HWV_CG_27_SET, HWV_CG_27_CLR, /* hwv */
 		9/* ipi */, 8/* lsb */, 4/* width */,
@@ -2885,19 +2885,19 @@ static const struct mtk_mux top_muxes[] = {
 		23/* pdn */, CKSYS2_CLK_CFG_UPDATE2/* upd ofs */,
 		TOP_MUX_CCU_AHB_SHIFT/* upd shift */),
 	/* CKSYS2_CLK_CFG_17 */
-	MUX_IPI(CLK_TOP_IMG1_SEL/* dts */, "img1_sel", img1_parents/* parent */,
+	MUX_IPI_2(CLK_TOP_IMG1_SEL/* dts */, "img1_sel", img1_parents/* parent */,
 		CKSYS2_CLK_CFG_17, CKSYS2_CLK_CFG_17_SET, CKSYS2_CLK_CFG_17_CLR/* set parent */,
 		HWV_CG_29_DONE, HWV_CG_29_SET, HWV_CG_29_CLR, /* hwv */
 		10/* ipi */, 0/* lsb */, 4/* width */,
 		7/* pdn */, CKSYS2_CLK_CFG_UPDATE2/* upd ofs */,
 		TOP_MUX_IMG1_SHIFT/* upd shift */),
-	MUX_IPI(CLK_TOP_IPE_SEL/* dts */, "ipe_sel", ipe_parents/* parent */,
+	MUX_IPI_2(CLK_TOP_IPE_SEL/* dts */, "ipe_sel", ipe_parents/* parent */,
 		CKSYS2_CLK_CFG_17, CKSYS2_CLK_CFG_17_SET, CKSYS2_CLK_CFG_17_CLR/* set parent */,
 		HWV_CG_29_DONE, HWV_CG_29_SET, HWV_CG_29_CLR, /* hwv */
 		11/* ipi */, 8/* lsb */, 4/* width */,
 		15/* pdn */, CKSYS2_CLK_CFG_UPDATE2/* upd ofs */,
 		TOP_MUX_IPE_SHIFT/* upd shift */),
-	MUX_IPI_FLAGS(CLK_TOP_CAM_SEL/* dts */, "cam_sel", cam_parents/* parent */,
+	MUX_IPI_2_FLAGS(CLK_TOP_CAM_SEL/* dts */, "cam_sel", cam_parents/* parent */,
 		CKSYS2_CLK_CFG_17, CKSYS2_CLK_CFG_17_SET, CKSYS2_CLK_CFG_17_CLR/* set parent */,
 		HWV_CG_29_DONE, HWV_CG_29_SET, HWV_CG_29_CLR, /* hwv */
 		12/* ipi */, 16/* lsb */, 4/* width */,

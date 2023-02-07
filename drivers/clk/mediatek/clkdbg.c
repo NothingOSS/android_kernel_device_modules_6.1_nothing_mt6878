@@ -185,7 +185,7 @@ static void proc_all_fclk_freq(fn_fclk_freq_proc proc, void *data)
 
 static struct provider_clk *__clk_dbg_lookup_pvdck(const char *name)
 {
-	struct provider_clk *pvdck = get_all_provider_clks();
+	struct provider_clk *pvdck = get_all_provider_clks(false);
 
 	for (; pvdck->ck != NULL; pvdck++) {
 		if (!strcmp(pvdck->ck_name, name))
@@ -374,7 +374,7 @@ static void dump_provider_clk(struct provider_clk *pvdck, struct seq_file *s)
 
 static int clkdbg_dump_provider_clks(struct seq_file *s, void *v)
 {
-	struct provider_clk *pvdck = get_all_provider_clks();
+	struct provider_clk *pvdck = get_all_provider_clks(false);
 
 	for (; pvdck->ck != NULL; pvdck++)
 		dump_provider_clk(pvdck, s);
@@ -410,7 +410,7 @@ static void dump_provider_mux(struct provider_clk *pvdck, struct seq_file *s)
 
 static int clkdbg_dump_muxes(struct seq_file *s, void *v)
 {
-	struct provider_clk *pvdck = get_all_provider_clks();
+	struct provider_clk *pvdck = get_all_provider_clks(false);
 
 	for (; pvdck->ck != NULL; pvdck++)
 		dump_provider_mux(pvdck, s);
@@ -499,7 +499,7 @@ static int clkdbg_clkop_int_ckname(int (*clkop)(struct clk *clk),
 		return 0;
 
 	if (strcmp(clk_name, "all") == 0) {
-		struct provider_clk *pvdck = get_all_provider_clks();
+		struct provider_clk *pvdck = get_all_provider_clks(false);
 
 		for (; pvdck->ck != NULL; pvdck++) {
 			r |= clkop_int_ckname(clkop, clkop_name, NULL,
@@ -554,7 +554,7 @@ static int clkdbg_clkop_void_ckname(void (*clkop)(struct clk *clk),
 		return 0;
 
 	if (strcmp(clk_name, "all") == 0) {
-		struct provider_clk *pvdck = get_all_provider_clks();
+		struct provider_clk *pvdck = get_all_provider_clks(false);
 
 		for (; pvdck->ck != NULL; pvdck++) {
 			clkop_void_ckname(clkop, clkop_name, NULL,
@@ -611,7 +611,7 @@ static int clkdbg_disable_unprepare(struct seq_file *s, void *v)
 void prepare_enable_provider(const char *pvd)
 {
 	bool allpvd = (pvd == NULL || strcmp(pvd, "all") == 0);
-	struct provider_clk *pvdck = get_all_provider_clks();
+	struct provider_clk *pvdck = get_all_provider_clks(false);
 
 	for (; pvdck->ck != NULL; pvdck++) {
 		if (allpvd || (pvdck->provider_name != NULL &&
@@ -627,7 +627,7 @@ void prepare_enable_provider(const char *pvd)
 void disable_unprepare_provider(const char *pvd)
 {
 	bool allpvd = (pvd == NULL || strcmp(pvd, "all") == 0);
-	struct provider_clk *pvdck = get_all_provider_clks();
+	struct provider_clk *pvdck = get_all_provider_clks(false);
 
 	for (; pvdck->ck != NULL; pvdck++) {
 		if (allpvd || (pvdck->provider_name != NULL &&
@@ -1853,7 +1853,7 @@ static void save_pwr_status(u32 spm_pwr_status)
 static void save_all_clks_state(struct provider_clk_state *clks_states,
 				u32 spm_pwr_status)
 {
-	struct provider_clk *pvdck = get_all_provider_clks();
+	struct provider_clk *pvdck = get_all_provider_clks(false);
 	struct provider_clk_state *st = clks_states;
 
 	for (; pvdck->ck != NULL; pvdck++, st++) {
@@ -2248,11 +2248,13 @@ int clk_dbg_driver_register(struct platform_driver *drv, const char *name)
 {
 	static struct platform_device *clk_dbg_dev;
 	struct proc_dir_entry *entry;
-	int r;
+	int r = 0;
 
-	clk_dbg_dev = platform_device_register_simple(name, -1, NULL, 0);
-	if (IS_ERR(clk_dbg_dev))
-		pr_warn("unable to register %s device", name);
+	if (name) {
+		clk_dbg_dev = platform_device_register_simple(name, -1, NULL, 0);
+		if (IS_ERR(clk_dbg_dev))
+			pr_warn("unable to register %s device", name);
+	}
 
 	r = register_pm_notifier(&clkdbg_pm_notifier);
 	if (r != 0) {
@@ -2268,7 +2270,10 @@ int clk_dbg_driver_register(struct platform_driver *drv, const char *name)
 
 	drv->driver.pm = &clk_dbg_dev_pm_ops;
 
-	return platform_driver_register(drv);
+	if (name)
+		r = platform_driver_register(drv);
+
+	return r;
 }
 EXPORT_SYMBOL(clk_dbg_driver_register);
 

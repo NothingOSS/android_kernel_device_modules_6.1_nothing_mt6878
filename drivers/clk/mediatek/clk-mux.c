@@ -4,6 +4,7 @@
  * Author: Owen Chen <owen.chen@mediatek.com>
  */
 
+#include <linux/clk.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/slab.h>
@@ -12,16 +13,29 @@
 #include <linux/time64.h>
 #include <linux/timekeeping.h>
 #include <linux/sched/clock.h>
+#include <linux/clk-provider.h>
 
 #include "clk-mtk.h"
 #include "clk-mux.h"
 
 static bool is_registered;
+static const struct dfs_ops *mux_dfs_ops;
 
 static inline struct mtk_clk_mux *to_mtk_clk_mux(struct clk_hw *hw)
 {
 	return container_of(hw, struct mtk_clk_mux, hw);
 }
+
+static inline struct mtk_clk_user *to_mtk_clk_user(struct clk_hw *hw)
+{
+	return container_of(hw, struct mtk_clk_user, hw);
+}
+
+void mtk_clk_mux_register_callback(const struct dfs_ops *ops)
+{
+	mux_dfs_ops = ops;
+}
+EXPORT_SYMBOL_GPL(mtk_clk_mux_register_callback);
 
 static int mtk_clk_mux_enable(struct clk_hw *hw)
 {
@@ -354,6 +368,96 @@ static int mtk_clk_mux_set_parent_setclr_upd_lock(struct clk_hw *hw, u8 index)
 	return __mtk_clk_mux_set_parent_lock(hw, index, true, true);
 }
 
+static int mtk_clk_hwv_mux_set_parent(struct clk_hw *hw, u8 index)
+{
+	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
+	u32 mask = GENMASK(mux->data->mux_width - 1, 0);
+	u32 val = 0, val2 = 0, orig = 0, renew = 0;
+	int i = 0;
+
+	return 0;
+
+	regmap_read(mux->hwv_regmap, mux->data->hwv_set_ofs, &orig);
+
+	val = (orig & ~(mask << mux->data->mux_shift))
+			| (index << mux->data->mux_shift);
+
+	if (val != orig) {
+		regmap_write(mux->hwv_regmap, mux->data->hwv_clr_ofs,
+					mask << mux->data->mux_shift);
+		regmap_write(mux->hwv_regmap, mux->data->hwv_set_ofs,
+				index << mux->data->mux_shift);
+
+		while (1) {
+			regmap_read(mux->hwv_regmap, mux->data->hwv_set_ofs, &renew);
+			if (renew == val)
+				break;
+			if (i < MTK_WAIT_HWV_PREPARE_CNT)
+				udelay(MTK_WAIT_HWV_PREPARE_US);
+			else
+				goto hwv_prepare_fail;
+			i++;
+		}
+
+		i = 0;
+
+		while (1) {
+			regmap_read(mux->hwv_regmap, mux->data->hwv_sta_ofs, &val);
+
+			if ((val & mask) != 0)
+				break;
+
+			if (i < MTK_WAIT_HWV_DONE_CNT)
+				udelay(MTK_WAIT_HWV_DONE_US);
+			else
+				goto hwv_done_fail;
+
+			i++;
+		}
+	}
+
+	return 0;
+
+hwv_done_fail:
+	regmap_read(mux->regmap, mux->data->mux_ofs, &val);
+	regmap_read(mux->hwv_regmap, mux->data->hwv_sta_ofs, &val2);
+	pr_err("%s mux enable timeout(%x %x)\n", clk_hw_get_name(hw), val, val2);
+hwv_prepare_fail:
+	regmap_read(mux->regmap, mux->data->hwv_sta_ofs, &val);
+	pr_err("%s mux prepare timeout(%x)\n", clk_hw_get_name(hw), val);
+
+	return -EBUSY;
+}
+
+static int mtk_clk_mux_determine_rate(struct clk_hw *hw, struct clk_rate_request *req)
+{
+	int idx, parent_index = -1;
+	int ret = 0;
+
+	if (mux_dfs_ops != NULL && mux_dfs_ops->get_opp != NULL)
+		parent_index = mux_dfs_ops->get_opp(clk_hw_get_name(hw));
+
+	if (parent_index >= 0) {
+		ret = mtk_clk_hwv_mux_set_parent(hw, parent_index);
+		if (!ret) {
+			idx = mtk_clk_mux_get_parent(hw);
+			req->best_parent_hw = clk_hw_get_parent_by_index(hw, parent_index);
+			if (!req->best_parent_hw)
+				return -EINVAL;
+
+			req->best_parent_rate = clk_hw_get_rate(req->best_parent_hw);
+			ret = clk_hw_set_parent(hw, req->best_parent_hw);
+			if (ret)
+				pr_err("mux set parent error(%d)\n", ret);
+		}
+
+		return ret;
+	} else
+		return parent_index;
+
+	return 0;
+}
+
 const struct clk_ops mtk_mux_ops = {
 	.get_parent = mtk_clk_mux_get_parent,
 	.set_parent = mtk_clk_mux_set_parent_lock,
@@ -411,6 +515,18 @@ const struct clk_ops mtk_ipi_mux_ops = {
 };
 EXPORT_SYMBOL_GPL(mtk_ipi_mux_ops);
 
+const struct clk_ops mtk_ipi_mux_2_ops = {
+	.prepare = mtk_clk_ipi_mux_enable,
+	.unprepare = mtk_clk_ipi_mux_disable,
+	.enable = mtk_clk_hwv_mux_enable,
+	.disable = mtk_clk_hwv_mux_disable,
+	.is_enabled = mtk_clk_mux_is_enabled,
+	.get_parent = mtk_clk_mux_get_parent,
+	.set_parent = mtk_clk_hwv_mux_set_parent,
+	.determine_rate = mtk_clk_mux_determine_rate,
+};
+EXPORT_SYMBOL_GPL(mtk_ipi_mux_2_ops);
+
 static struct clk *mtk_clk_register_mux(const struct mtk_mux *mux,
 				 struct regmap *regmap,
 				 struct regmap *hw_voter_regmap,
@@ -425,7 +541,7 @@ static struct clk *mtk_clk_register_mux(const struct mtk_mux *mux,
 		return ERR_PTR(-ENOMEM);
 
 	init.name = mux->name;
-	init.flags = mux->flags | CLK_SET_RATE_PARENT;
+	init.flags = mux->flags;
 	init.parent_names = mux->parent_names;
 	init.num_parents = mux->num_parents;
 	init.ops = mux->ops;
@@ -489,5 +605,101 @@ int mtk_clk_register_muxes(const struct mtk_mux *muxes,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mtk_clk_register_muxes);
+
+static int mtk_clk_mux_user_determine_rate(struct clk_hw *hw, struct clk_rate_request *req)
+{
+	struct mtk_clk_user *user = to_mtk_clk_user(hw);
+	struct clk_hw *hw_t = user->target_hw;
+
+	if (mux_dfs_ops != NULL && mux_dfs_ops->set_opp != NULL) {
+		mux_dfs_ops->set_opp(clk_hw_get_name(hw), req->rate);
+		req->rate = clk_hw_round_rate(hw_t, req->rate);
+	}
+
+	return 0;
+}
+
+static unsigned long mtk_clk_mux_user_recalc_rate(struct clk_hw *hw, unsigned long parent_rate)
+{
+	if (mux_dfs_ops != NULL && mux_dfs_ops->get_rate != NULL)
+		return mux_dfs_ops->get_rate(clk_hw_get_name(hw));
+
+	return 0;
+}
+
+const struct clk_ops mtk_mux_user_ops = {
+	.determine_rate = mtk_clk_mux_user_determine_rate,
+	.recalc_rate = mtk_clk_mux_user_recalc_rate,
+};
+EXPORT_SYMBOL_GPL(mtk_mux_user_ops);
+
+static struct clk *mtk_clk_mux_register_user(const struct mtk_mux_user *user,
+				struct clk_hw *target_hw,
+				spinlock_t *lock)
+{
+	struct mtk_clk_user *clk_user;
+	struct clk_init_data init = {};
+	struct clk *clk;
+
+	clk_user = kzalloc(sizeof(*clk_user), GFP_KERNEL);
+	if (!clk_user)
+		return ERR_PTR(-ENOMEM);
+
+	init.name = user->name;
+	init.flags = user->flags;
+	init.parent_names = NULL;
+	init.num_parents = 0;
+	init.ops = user->ops;
+
+	clk_user->lock = lock;
+	clk_user->flags = user->flags;
+	clk_user->hw.init = &init;
+	clk_user->target_hw = target_hw;
+
+	clk = clk_register(NULL, &clk_user->hw);
+	if (IS_ERR(clk)) {
+		kfree(clk);
+		return clk;
+	}
+
+	return clk;
+}
+
+int mtk_clk_mux_register_user_clks(const struct mtk_mux_user *clks, int num,
+		spinlock_t *lock, struct clk_onecell_data *clk_data, struct device *dev)
+{
+	struct clk *clk_t;
+	struct clk *clk;
+	struct clk_hw *hw;
+	int i;
+
+	for (i = 0; i < num; i++) {
+		const struct mtk_mux_user *user = &clks[i];
+
+		if (IS_ERR_OR_NULL(clk_data->clks[user->id])) {
+			clk_t = devm_clk_get(dev, user->target_name);
+			if (IS_ERR(clk_t)) {
+				pr_err("Failed to find clk target %s: %ld\n",
+						user->name, PTR_ERR(clk_t));
+				continue;
+			}
+
+			hw = __clk_get_hw(clk_t);
+
+			clk = mtk_clk_mux_register_user(user, hw, lock);
+
+			if (IS_ERR(clk)) {
+				pr_err("Failed to register clk %s: %ld\n",
+						user->name, PTR_ERR(clk));
+				continue;
+			}
+
+			clk_data->clks[user->id] = clk;
+		}
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_clk_mux_register_user_clks);
 
 MODULE_LICENSE("GPL");
