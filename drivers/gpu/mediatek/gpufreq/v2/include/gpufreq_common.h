@@ -12,6 +12,12 @@
 #endif
 
 /**************************************************
+ * GPUFREQ Register Operation
+ **************************************************/
+#define DRV_Reg32(addr) readl(addr)
+#define DRV_WriteReg32(addr, val) writel(val, addr)
+
+/**************************************************
  * Misc Definition
  **************************************************/
 #define GPUOP(_freq, _volt, _vsram, _posdiv, _margin, _power) \
