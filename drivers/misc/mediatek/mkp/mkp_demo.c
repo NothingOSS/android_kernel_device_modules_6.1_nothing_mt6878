@@ -10,7 +10,6 @@
 #include <trace/hooks/avc.h>
 #include <trace/hooks/creds.h>
 #include <trace/hooks/module.h>
-#include <trace/hooks/memory.h>
 #include <trace/hooks/selinux.h>
 #include <trace/hooks/syscall_check.h>
 #include <linux/types.h> // for list_head
@@ -105,8 +104,7 @@ bool mkp_hook_trace_enabled(void)
 	return !!mkp_hook_trace_on;
 }
 
-static void probe_android_vh_set_memory_rw(void *ignore, unsigned long addr,
-		int nr_pages)
+static void set_memory_rw(unsigned long addr, int nr_pages)
 {
 	int ret;
 	bool valid_addr = false;
@@ -120,8 +118,8 @@ static void probe_android_vh_set_memory_rw(void *ignore, unsigned long addr,
 	} else
 		MKP_WARN("addr is not a module or vmalloc address\n");
 }
-static void probe_android_vh_set_memory_nx(void *ignore, unsigned long addr,
-		int nr_pages)
+
+static void set_memory_nx(unsigned long addr, int nr_pages)
 {
 	int ret;
 	bool valid_addr = false;
@@ -156,6 +154,20 @@ static void probe_android_vh_set_memory_nx(void *ignore, unsigned long addr,
 		}
 		write_unlock_irqrestore(&mkp_rbtree_rwlock, flags);
 	}
+}
+
+static void probe_android_rvh_set_module_core_rw_nx(void *ignore,
+		const struct module *mod)
+{
+	set_memory_rw((unsigned long)mod->core_layout.base, (mod->core_layout.size) >> PAGE_SHIFT);
+	set_memory_nx((unsigned long)mod->core_layout.base, (mod->core_layout.size) >> PAGE_SHIFT);
+}
+
+static void probe_android_rvh_set_module_init_rw_nx(void *ignore,
+		const struct module *mod)
+{
+	set_memory_rw((unsigned long)mod->init_layout.base, (mod->init_layout.size) >> PAGE_SHIFT);
+	set_memory_nx((unsigned long)mod->init_layout.base, (mod->init_layout.size) >> PAGE_SHIFT);
 }
 
 #ifdef SUPPORT_FULL_KERNEL_CODE_2M
@@ -271,7 +283,7 @@ protect_krn_fail:
 #endif
 #endif
 
-static void probe_android_vh_set_module_permit_before_init(void *ignore,
+static void probe_android_rvh_set_module_permit_before_init(void *ignore,
 	const struct module *mod)
 {
 	if (mod == THIS_MODULE && policy_ctrl[MKP_POLICY_MKP] != 0) {
@@ -289,7 +301,7 @@ static void probe_android_vh_set_module_permit_before_init(void *ignore,
 	}
 }
 
-static void probe_android_vh_set_module_permit_after_init(void *ignore,
+static void probe_android_rvh_set_module_permit_after_init(void *ignore,
 	const struct module *mod)
 {
 	if (mod == THIS_MODULE && policy_ctrl[MKP_POLICY_MKP] != 0) {
@@ -1117,14 +1129,14 @@ int __init mkp_demo_init(void)
 		policy_ctrl[MKP_POLICY_KERNEL_PAGES] != 0 ||
 		policy_ctrl[MKP_POLICY_MKP] != 0) {
 		// register rw, nx
-		ret = register_trace_android_vh_set_memory_rw(
-				probe_android_vh_set_memory_rw, NULL);
+		ret = register_trace_android_rvh_set_module_core_rw_nx(
+				probe_android_rvh_set_module_core_rw_nx, NULL);
 		if (ret) {
 			ret_erri_line = __LINE__;
 			goto failed;
 		}
-		ret = register_trace_android_vh_set_memory_nx(
-				probe_android_vh_set_memory_nx, NULL);
+		ret = register_trace_android_rvh_set_module_init_rw_nx(
+				probe_android_rvh_set_module_init_rw_nx, NULL);
 		if (ret) {
 			ret_erri_line = __LINE__;
 			goto failed;
@@ -1134,15 +1146,15 @@ int __init mkp_demo_init(void)
 	if (policy_ctrl[MKP_POLICY_DRV] != 0 ||
 		policy_ctrl[MKP_POLICY_MKP] != 0) {
 		/* register before/after_init */
-		ret = register_trace_android_vh_set_module_permit_before_init(
-				probe_android_vh_set_module_permit_before_init, NULL);
+		ret = register_trace_android_rvh_set_module_permit_before_init(
+				probe_android_rvh_set_module_permit_before_init, NULL);
 		if (ret) {
 			ret_erri_line = __LINE__;
 			goto failed;
 		}
 
-		ret = register_trace_android_vh_set_module_permit_after_init(
-				probe_android_vh_set_module_permit_after_init, NULL);
+		ret = register_trace_android_rvh_set_module_permit_after_init(
+				probe_android_rvh_set_module_permit_after_init, NULL);
 		if (ret) {
 			ret_erri_line = __LINE__;
 			goto failed;

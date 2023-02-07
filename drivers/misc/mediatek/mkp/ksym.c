@@ -31,7 +31,7 @@ void __init *mkp_abt_addr(void *ssa)
 	}
 
 	if ((unsigned long)ssa >= KV + S_MAX) {
-		MKP_ERR("out of range: 0x%x\n", (unsigned long)ssa);
+		MKP_ERR("out of range: 0x%lx\n", (unsigned long)ssa);
 		return NULL;
 	}
 
