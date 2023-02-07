@@ -1,21 +1,27 @@
 // SPDX-License-Identifier: GPL-2.0
 //
-// Copyright (c) 2020 MediaTek Inc.
+// Copyright (c) 2023 MediaTek Inc.
 
 #include <linux/clk.h>
 #include <linux/iopoll.h>
 #include <linux/interrupt.h>
 #include <linux/irqdomain.h>
+#include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
+#include <linux/sched/clock.h>
+#include <linux/sched/mm.h>
 #include <linux/spmi.h>
 #include <linux/irq.h>
-
 #include "spmi-mtk.h"
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-#include <aee.h>
+#include <mt-plat/aee.h>
 #endif
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+#include <mt-plat/mrdump.h>
+#endif
+#define DUMP_LIMIT 0x1000
 
 #define SWINF_IDLE	0x00
 #define SWINF_WFVLDCLR	0x06
@@ -56,6 +62,9 @@ struct pmif_irq_desc {
 enum pmif_regs {
 	PMIF_INIT_DONE,
 	PMIF_INF_EN,
+	MD_AUXADC_RDATA_0_ADDR,
+	MD_AUXADC_RDATA_1_ADDR,
+	MD_AUXADC_RDATA_2_ADDR,
 	PMIF_ARB_EN,
 	PMIF_CMDISSUE_EN,
 	PMIF_TIMER_CTRL,
@@ -99,10 +108,18 @@ enum pmif_regs {
 	PMIF_SWINF_3_RDATA_31_0,
 	PMIF_SWINF_3_ACC,
 	PMIF_SWINF_3_VLD_CLR,
+	PMIF_PMIC_SWINF_0_PER,
+	PMIF_PMIC_SWINF_1_PER,
+	PMIF_ACC_VIO_INFO_0,
+	PMIF_ACC_VIO_INFO_1,
+	PMIF_ACC_VIO_INFO_2,
 };
 static const u32 mt6xxx_regs[] = {
 	[PMIF_INIT_DONE] =			0x0000,
 	[PMIF_INF_EN] =				0x0024,
+	[MD_AUXADC_RDATA_0_ADDR] =		0x0080,
+	[MD_AUXADC_RDATA_1_ADDR] =		0x0084,
+	[MD_AUXADC_RDATA_2_ADDR] =		0x0088,
 	[PMIF_ARB_EN] =				0x0150,
 	[PMIF_CMDISSUE_EN] =			0x03B8,
 	[PMIF_TIMER_CTRL] =			0x03E4,
@@ -146,6 +163,11 @@ static const u32 mt6xxx_regs[] = {
 	[PMIF_SWINF_3_RDATA_31_0] =		0x08D4,
 	[PMIF_SWINF_3_VLD_CLR] =		0x08E4,
 	[PMIF_SWINF_3_STA] =			0x08E8,
+	[PMIF_PMIC_SWINF_0_PER] =		0x093C,
+	[PMIF_PMIC_SWINF_1_PER] =		0x0940,
+	[PMIF_ACC_VIO_INFO_0] =			0x0980,
+	[PMIF_ACC_VIO_INFO_1] =			0x0984,
+	[PMIF_ACC_VIO_INFO_2] =			0x0988,
 };
 
 static const u32 mt6853_regs[] = {
@@ -313,7 +335,31 @@ enum {
 	IRQ_HW_MONITOR_V4 = 29,
 	IRQ_WDT_V4 = 30,
 	IRQ_ALL_PMIC_MPU_VIO_V4 = 31,
+	/* MT6985 */
+	IRQ_PMIF_ACC_VIO_V3 = 27,
+	IRQ_PMIF_SWINF_ACC_ERR_0 = 3,
+	IRQ_PMIF_SWINF_ACC_ERR_1 = 4,
+	IRQ_PMIF_SWINF_ACC_ERR_2 = 5,
+	IRQ_PMIF_SWINF_ACC_ERR_3 = 6,
+	IRQ_PMIF_SWINF_ACC_ERR_4 = 7,
+	IRQ_PMIF_SWINF_ACC_ERR_5 = 8,
+	/* MT6897 */
+	IRQ_PMIF_SWINF_ACC_ERR_0_V2 = 15,
+	IRQ_PMIF_SWINF_ACC_ERR_1_V2 = 16,
+	IRQ_PMIF_SWINF_ACC_ERR_2_V2 = 17,
+	IRQ_PMIF_SWINF_ACC_ERR_3_V2 = 18,
+	IRQ_PMIF_SWINF_ACC_ERR_4_V2 = 19,
+	IRQ_PMIF_SWINF_ACC_ERR_5_V2 = 20,
 };
+
+unsigned long long get_current_time_ms(void)
+{
+	unsigned long long cur_ts;
+
+	cur_ts = sched_clock();
+	do_div(cur_ts, 1000000);
+	return cur_ts;
+}
 
 static u32 pmif_readl(struct pmif *arb, enum pmif_regs reg)
 {
@@ -585,6 +631,14 @@ static void pmif_lat_limit_reached_irq_handler(int irq, void *data)
 	spmi_dump_pmif_record_reg();
 }
 
+static void pmif_acc_vio_irq_handler(int irq, void *data)
+{
+	pr_notice("[PMIF]:PMIF ACC violation\n");
+	pr_notice("[PMIF]:PMIF_ACC_VIO_INFO_0 = 0x%x\n", pmif_readl(data, PMIF_ACC_VIO_INFO_0));
+	pr_notice("[PMIF]:PMIF_ACC_VIO_INFO_1 = 0x%x\n", pmif_readl(data, PMIF_ACC_VIO_INFO_1));
+	pr_notice("[PMIF]:PMIF_ACC_VIO_INFO_2 = 0x%x\n", pmif_readl(data, PMIF_ACC_VIO_INFO_2));
+}
+
 static void pmif_hw_monitor_irq_handler(int irq, void *data)
 {
 	spmi_dump_pmif_record_reg();
@@ -599,6 +653,50 @@ static void pmif_wdt_irq_handler(int irq, void *data)
 	spmi_dump_pmif_busy_reg();
 	spmi_dump_pmif_record_reg();
 	spmi_dump_wdt_reg();
+	pmif_writel(data, 0x40000000, PMIF_IRQ_CLR_0);
+	pr_notice("[PMIF]:WDT IRQ HANDLER DONE\n");
+}
+
+static void pmif_swinf_acc_err_0_irq_handler(int irq, void *data)
+{
+	pmif_writel(data, 0x0, MD_AUXADC_RDATA_0_ADDR);
+	pmif_writel(data, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	pr_notice("[PMIF]:SWINF_ACC_ERR_0\n");
+}
+
+static void pmif_swinf_acc_err_1_irq_handler(int irq, void *data)
+{
+	pmif_writel(data, 0x1, MD_AUXADC_RDATA_0_ADDR);
+	pmif_writel(data, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	pr_notice("[PMIF]:SWINF_ACC_ERR_1\n");
+}
+
+static void pmif_swinf_acc_err_2_irq_handler(int irq, void *data)
+{
+	pmif_writel(data, 0x2, MD_AUXADC_RDATA_0_ADDR);
+	pmif_writel(data, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	pr_notice("[PMIF]:SWINF_ACC_ERR_2\n");
+}
+
+static void pmif_swinf_acc_err_3_irq_handler(int irq, void *data)
+{
+	pmif_writel(data, 0x3, MD_AUXADC_RDATA_0_ADDR);
+	pmif_writel(data, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	pr_notice("[PMIF]:SWINF_ACC_ERR_3\n");
+}
+
+static void pmif_swinf_acc_err_4_irq_handler(int irq, void *data)
+{
+	pmif_writel(data, 0x4, MD_AUXADC_RDATA_0_ADDR);
+	pmif_writel(data, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	pr_notice("[PMIF]:SWINF_ACC_ERR_4\n");
+}
+
+static void pmif_swinf_acc_err_5_irq_handler(int irq, void *data)
+{
+	pmif_writel(data, 0x5, MD_AUXADC_RDATA_0_ADDR);
+	pmif_writel(data, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	pr_notice("[PMIF]:SWINF_ACC_ERR_5\n");
 }
 
 static irqreturn_t pmif_event_0_irq_handler(int irq, void *data)
@@ -618,6 +716,9 @@ static irqreturn_t pmif_event_0_irq_handler(int irq, void *data)
 	for (idx = 0; idx < 32; idx++) {
 		if ((irq_f & (0x1 << idx)) != 0) {
 			switch (idx) {
+			case IRQ_PMIF_ACC_VIO_V3:
+				pmif_acc_vio_irq_handler(irq, data);
+			break;
 			case IRQ_WDT_V4:
 				pmif_wdt_irq_handler(irq, data);
 			break;
@@ -690,10 +791,28 @@ static irqreturn_t pmif_event_2_irq_handler(int irq, void *data)
 	for (idx = 0; idx < 32; idx++) {
 		if ((irq_f & (0x1 << idx)) != 0) {
 			switch (idx) {
-			case IRQ_PMIC_CMD_ERR_PARITY_ERR:
-				pmif_cmd_err_parity_err_irq_handler(irq, data);
+			case IRQ_PMIF_SWINF_ACC_ERR_0_V2:
+				pmif_swinf_acc_err_0_irq_handler(irq, data);
 			break;
-			case IRQ_PMIF_ACC_VIO:
+			case IRQ_PMIF_SWINF_ACC_ERR_1_V2:
+				pmif_swinf_acc_err_1_irq_handler(irq, data);
+			break;
+			/* Use caps to distinguish platform if they have same irq number */
+			case IRQ_PMIC_CMD_ERR_PARITY_ERR:
+				if (arb->caps == 1)
+					pmif_cmd_err_parity_err_irq_handler(irq, data);
+				else
+					pmif_swinf_acc_err_2_irq_handler(irq, data);
+			break;
+			case IRQ_PMIF_SWINF_ACC_ERR_3_V2:
+				pmif_swinf_acc_err_3_irq_handler(irq, data);
+			break;
+			case IRQ_PMIF_SWINF_ACC_ERR_4_V2:
+				pmif_swinf_acc_err_4_irq_handler(irq, data);
+			break;
+			case IRQ_PMIF_SWINF_ACC_ERR_5_V2:
+				pmif_swinf_acc_err_5_irq_handler(irq, data);
+			break;
 			case IRQ_PMIF_ACC_VIO_V2:
 				pmif_pmif_acc_vio_irq_handler(irq, data);
 			break;
@@ -733,15 +852,32 @@ static irqreturn_t pmif_event_3_irq_handler(int irq, void *data)
 	for (idx = 0; idx < 32; idx++) {
 		if ((irq_f & (0x1 << idx)) != 0) {
 			switch (idx) {
-			case IRQ_LAT_LIMIT_REACHED:
-				pmif_lat_limit_reached_irq_handler(irq, data);
+			case IRQ_PMIF_SWINF_ACC_ERR_0:
+				pmif_swinf_acc_err_0_irq_handler(irq, data);
 			break;
-			case IRQ_HW_MONITOR:
+			case IRQ_PMIF_SWINF_ACC_ERR_1:
+				pmif_swinf_acc_err_1_irq_handler(irq, data);
+			break;
+			case IRQ_PMIF_SWINF_ACC_ERR_2:
+				pmif_swinf_acc_err_2_irq_handler(irq, data);
+			break;
+			/* Use caps to distinguish platform if they have same irq number */
+			case IRQ_LAT_LIMIT_REACHED:
+				if (arb->caps == 1)
+					pmif_lat_limit_reached_irq_handler(irq, data);
+				else
+					pmif_swinf_acc_err_3_irq_handler(irq, data);
+			break;
+			case IRQ_PMIF_SWINF_ACC_ERR_4:
+				pmif_swinf_acc_err_4_irq_handler(irq, data);
+			break;
+			case IRQ_PMIF_SWINF_ACC_ERR_5:
+				pmif_swinf_acc_err_5_irq_handler(irq, data);
+			break;
 			case IRQ_HW_MONITOR_V2:
 			case IRQ_HW_MONITOR_V3:
 				pmif_hw_monitor_irq_handler(irq, data);
 			break;
-			case IRQ_WDT:
 			case IRQ_WDT_V2:
 			case IRQ_WDT_V3:
 				pmif_wdt_irq_handler(irq, data);
@@ -831,7 +967,7 @@ static void pmif_irq_register(struct platform_device *pdev,
 		pmif_event_irq[i].irq = irq;
 	}
 
-	ret = of_property_read_u32_array(pdev->dev.of_node, "irq_event_en",
+	ret = of_property_read_u32_array(pdev->dev.of_node, "irq-event-en",
 		irq_event_en, ARRAY_SIZE(irq_event_en));
 
 	pmif_writel(arb, irq_event_en[0] | pmif_readl(arb, PMIF_IRQ_EVENT_EN_0),
@@ -844,6 +980,82 @@ static void pmif_irq_register(struct platform_device *pdev,
 			PMIF_IRQ_EVENT_EN_3);
 	pmif_writel(arb, irq_event_en[4] | pmif_readl(arb, PMIF_IRQ_EVENT_EN_4),
 			PMIF_IRQ_EVENT_EN_4);
+}
+
+static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
+{
+	struct pmif *arb = data;
+	int flag = 0;
+	int spmi_nack = 0, spmi_nack_data = 0;
+	int spmi_rcs_nack = 0, spmi_debug_nack = 0, spmi_mst_nack = 0;
+
+	__pm_stay_awake(arb->pmifThread_lock);
+	mutex_lock(&arb->pmif_mutex);
+
+	spmi_nack = mtk_spmi_readl(arb, SPMI_REC0);
+	spmi_nack_data = mtk_spmi_readl(arb, SPMI_REC1);
+	spmi_rcs_nack = mtk_spmi_readl(arb, SPMI_REC_CMD_DEC);
+	spmi_debug_nack = mtk_spmi_readl(arb, SPMI_DEC_DBG);
+	spmi_mst_nack = mtk_spmi_readl(arb, SPMI_MST_DBG);
+
+	if ((spmi_nack & 0xD8)) {
+		pr_notice("%s spmi transaction fail irq triggered SPMI_REC0:0x%x, SPMI_REC1:0x%x\n",
+			__func__, spmi_nack, spmi_nack_data);
+		flag = 1;
+	}
+	if ((spmi_rcs_nack & 0xC0000)) {
+		pr_notice("%s spmi_rcs transaction fail irq triggered SPMI_REC_CMD_DEC:0x%x\n",
+			__func__, spmi_rcs_nack);
+		flag = 1;
+	}
+	if ((spmi_debug_nack & 0xF0000)) {
+		pr_notice("%s spmi_debug_nack transaction fail irq triggered SPMI_DEC_DBG:0x%x\n",
+			__func__, spmi_debug_nack);
+		flag = 1;
+	}
+	if ((spmi_mst_nack & 0xC0000)) {
+		pr_notice("%s spmi_mst_nack transaction fail irq triggered SPMI_MST_DBG:0x%x\n",
+			__func__, spmi_mst_nack);
+		flag = 1;
+	}
+	if ((spmi_nack & 0x20)) {
+		pr_notice("%s spmi transaction PARITY_ERR triggered SPMI_REC0:0x%x, SPMI_REC1:0x%x\n",
+			__func__, spmi_nack, spmi_nack_data);
+		pr_notice("%s SPMI_REC_CMD_DEC:0x%x\n", __func__, spmi_rcs_nack);
+		pr_notice("%s SPMI_DEC_DBG:0x%x\n", __func__, spmi_debug_nack);
+		pr_notice("%s SPMI_MST_DBG:0x%x\n", __func__, spmi_mst_nack);
+		flag = 0;
+	}
+
+	if (flag) {
+		/* trigger AEE event*/
+		if (IS_ENABLED(CONFIG_MTK_AEE_FEATURE))
+			aee_kernel_warning("SPMI", "SPMI:transaction_fail");
+	}
+
+	/* clear irq*/
+	mtk_spmi_writel(arb, 0x3, SPMI_REC_CTRL);
+
+	mutex_unlock(&arb->pmif_mutex);
+	__pm_relax(arb->pmifThread_lock);
+
+	return IRQ_HANDLED;
+}
+
+static int spmi_nack_irq_register(struct platform_device *pdev,
+		struct pmif *arb, int irq)
+{
+	int ret = 0;
+
+	ret = devm_request_threaded_irq(&pdev->dev, irq, NULL,
+				spmi_nack_irq_handler,
+				IRQF_TRIGGER_HIGH | IRQF_ONESHOT | IRQF_SHARED,
+				"spmi_nack_irq", arb);
+	if (ret < 0) {
+		dev_notice(&pdev->dev, "request %s irq fail\n",
+			"spmi_nack_irq");
+	}
+	return ret;
 }
 
 static void rcs_irq_lock(struct irq_data *data)
@@ -966,6 +1178,41 @@ static int rcs_irq_register(struct platform_device *pdev,
 	return ret;
 }
 
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+static void pmif_spmi_mrdump_register(struct platform_device *pdev, struct pmif *arb)
+{
+	u32 reg[12] = {0};
+	int ret;
+
+	ret = of_property_read_u32_array(pdev->dev.of_node, "reg", reg, ARRAY_SIZE(reg));
+	if (ret < 0) {
+		dev_notice(&pdev->dev, "Failed to request reg from SPMI node\n");
+		return;
+	}
+
+	if (reg[3] > DUMP_LIMIT || reg[7] > DUMP_LIMIT || reg[11] > DUMP_LIMIT) {
+		dev_info(&pdev->dev, "%s: dump size > 4K\n", __func__);
+		return;
+	}
+	ret = mrdump_mini_add_extra_file((unsigned long)arb->base, reg[1], reg[3], "PMIF_DATA");
+	if (ret)
+		dev_info(&pdev->dev, "%s: PMIF_DATA add fail(%d)\n",
+			 __func__, ret);
+
+	ret = mrdump_mini_add_extra_file((unsigned long)arb->spmimst_base,
+					reg[5], reg[7], "SPMI_DATA");
+	if (ret)
+		dev_info(&pdev->dev, "%s: SPMI_DATA add fail(%d)\n",
+			__func__, ret);
+
+	ret = mrdump_mini_add_extra_file((unsigned long)arb->busdbgregs,
+					reg[9], reg[11], "DEM_DBG_DATA");
+	if (ret)
+		dev_info(&pdev->dev, "%s: DEM_DBG_DATA add fail(%d)\n",
+			__func__, ret);
+}
+#endif
+
 static int mtk_spmi_probe(struct platform_device *pdev)
 {
 	struct pmif *arb;
@@ -1012,6 +1259,13 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 	arb->spmimst_base_p = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(arb->spmimst_base_p))
 		dev_notice(&pdev->dev, "[PMIF]:no spmimst-p found\n");
+
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "bugdbg");
+	arb->busdbgregs = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(arb->busdbgregs))
+		dev_notice(&pdev->dev, "[PMIF]:no bus dbg regs found\n");
+#endif
 
 #if !defined(CONFIG_FPGA_EARLY_PORTING)
 
@@ -1133,6 +1387,17 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 				dev_notice(&pdev->dev,
 				   "Failed to register rcs_irq, ret = %d\n", arb->rcs_irq);
 		}
+		arb->spmi_nack_irq = platform_get_irq_byname(pdev, "spmi_nack_irq");
+		if (arb->spmi_nack_irq < 0) {
+			dev_notice(&pdev->dev,
+				"Failed to get spmi_nack_irq, ret = %d\n", arb->spmi_nack_irq);
+		} else {
+			err = spmi_nack_irq_register(pdev, arb, arb->spmi_nack_irq);
+			if (err)
+				dev_notice(&pdev->dev,
+					"Failed to register spmi_nack_irq, ret = %d\n",
+						 arb->spmi_nack_irq);
+		}
 	}
 #if defined(CONFIG_FPGA_EARLY_PORTING)
 	/* pmif/spmi initial setting */
@@ -1152,6 +1417,11 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 	ctrl->read_cmd(ctrl, 0x38, test_id, test_w_addr, &val, 1);
 	dev_notice(&pdev->dev, "%s check [0x%x] = 0x%x\n", __func__, test_w_addr, val);
 
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+	/* add mrdump for reboot DB*/
+	pmif_spmi_mrdump_register(pdev, arb);
 #endif
 	platform_set_drvdata(pdev, ctrl);
 
@@ -1214,6 +1484,9 @@ static const struct of_device_id mtk_spmi_match_table[] = {
 		.data = &mt6893_pmif_arb,
 	}, {
 		.compatible = "mediatek,mt6895-spmi",
+		.data = &mt6xxx_pmif_arb,
+	}, {
+		.compatible = "mediatek,mt6897-spmi",
 		.data = &mt6xxx_pmif_arb,
 	}, {
 		.compatible = "mediatek,mt6983-spmi",

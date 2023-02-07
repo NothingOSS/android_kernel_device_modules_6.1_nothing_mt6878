@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (C) 2019 MediaTek Inc.
+ * Copyright (C) 2023 MediaTek Inc.
  * Author: Argus Lin <argus.lin@mediatek.com>
  */
 #define DEBUG
@@ -1964,6 +1964,7 @@ static int proc_dump_pmif_busy_reg_open(struct inode *inode, struct file *file)
 static const struct file_operations dump_pmif_busy_reg_proc_fops = {
 	.open = proc_dump_pmif_busy_reg_open,
 	.read = seq_read,
+	.release = single_release,
 };
 
 /*
@@ -1987,6 +1988,7 @@ static int proc_dump_pmif_swinf_open(struct inode *inode, struct file *file)
 static const struct file_operations dump_pmif_swinf_proc_fops = {
 	.open = proc_dump_pmif_swinf_open,
 	.read = seq_read,
+	.release = single_release,
 };
 
 /*
@@ -2009,6 +2011,7 @@ static int proc_dump_pmif_all_reg_open(struct inode *inode, struct file *file)
 static const struct file_operations dump_pmif_all_reg_proc_fops = {
 	.open = proc_dump_pmif_all_reg_open,
 	.read = seq_read,
+	.release = single_release,
 };
 
 /*
@@ -2032,6 +2035,7 @@ static int proc_dump_pmif_record_reg_open(struct inode *inode,
 static const struct file_operations dump_pmif_record_reg_proc_fops = {
 	.open = proc_dump_pmif_record_reg_open,
 	.read = seq_read,
+	.release = single_release,
 };
 
 /*
@@ -2055,6 +2059,7 @@ static int proc_dump_spmimst_all_reg_open(struct inode *inode,
 static const struct file_operations dump_spmimst_all_reg_proc_fops = {
 	.open = proc_dump_spmimst_all_reg_open,
 	.read = seq_read,
+	.release = single_release,
 };
 
 static u32 gpmif_of;
@@ -2261,6 +2266,10 @@ int spmi_pmif_dbg_init(struct spmi_controller *ctrl)
 		arb->dbgver = 3;
 	} else if (of_device_is_compatible(ctrl->dev.parent->of_node,
 				    "mediatek,mt6895-spmi")) {
+		arb->dbgregs = mt6833_pmif_dbg_regs;
+		arb->dbgver = 3;
+	} else if (of_device_is_compatible(ctrl->dev.parent->of_node,
+				    "mediatek,mt6897-spmi")) {
 		arb->dbgregs = mt6833_pmif_dbg_regs;
 		arb->dbgver = 3;
 	} else if (of_device_is_compatible(ctrl->dev.parent->of_node,
