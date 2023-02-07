@@ -732,6 +732,11 @@ static ssize_t mfgsys_config_proc_write(struct file *file,
 				val = FEAT_DISABLE;
 			else if (sysfs_streq(input_val, "force_dump"))
 				val = DFD_FORCE_DUMP;
+		} else if (sysfs_streq(input_target, "imax_gpu")) {
+			target = CONFIG_IMAX_GPU;
+			ret = kstrtouint(input_val, 10, &val);
+			if (ret)
+				val = CONFIG_VAL_INVALID;
 		} else if (sysfs_streq(input_target, "imax_stack")) {
 			target = CONFIG_IMAX_STACK;
 			ret = kstrtouint(input_val, 10, &val);
@@ -739,6 +744,11 @@ static ssize_t mfgsys_config_proc_write(struct file *file,
 				val = CONFIG_VAL_INVALID;
 		} else if (sysfs_streq(input_target, "imax_sram")) {
 			target = CONFIG_IMAX_SRAM;
+			ret = kstrtouint(input_val, 10, &val);
+			if (ret)
+				val = CONFIG_VAL_INVALID;
+		} else if (sysfs_streq(input_target, "dyn_gpu")) {
+			target = CONFIG_DYN_GPU;
 			ret = kstrtouint(input_val, 10, &val);
 			if (ret)
 				val = CONFIG_VAL_INVALID;
