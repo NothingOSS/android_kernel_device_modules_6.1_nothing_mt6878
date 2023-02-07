@@ -77,6 +77,7 @@ enum {
 };
 static int log_level;
 static int vcp_log_level;
+static int vmrc_log_level;
 
 static call_ccu call_ccu_fp;
 
@@ -783,6 +784,54 @@ static struct kernel_param_ops mmdvfs_set_vcp_log_ops = {
 module_param_cb(vcp_log, &mmdvfs_set_vcp_log_ops, NULL, 0644);
 MODULE_PARM_DESC(vcp_log, "mmdvfs vcp log");
 
+int mmdvfs_get_vmrc_log(char *buf, const struct kernel_param *kp)
+{
+	int len = 0, ret;
+
+	if (!mmdvfs_is_init_done())
+		return 0;
+
+	ret = readl(MEM_VMRC_LOG_FLAG);
+	len += snprintf(buf + len, PAGE_SIZE - len, "MEM_VMRC_LOG_FLAG:%#x", ret);
+	return len;
+}
+
+static int mtk_mmdvfs_v3_set_vmrc_log(const u32 log)
+{
+	if (!mmdvfs_is_init_done()) {
+		MMDVFS_ERR("mmdvfs is not init done");
+		return -1;
+	}
+
+	writel(log, MEM_VMRC_LOG_FLAG);
+	return 0;
+}
+
+int mmdvfs_set_vmrc_log(const char *val, const struct kernel_param *kp)
+{
+	u32 log = 0;
+	int ret;
+
+	ret = kstrtou32(val, 0, &log);
+	if (ret || log >= (1 << LOG_NUM)) {
+		MMDVFS_ERR("failed:%d log:%#x", ret, log);
+		return ret;
+	}
+
+	ret = mtk_mmdvfs_v3_set_vmrc_log(log);
+	if (ret)
+		MMDVFS_ERR("set vmrc log failed:%d log:%#x", ret, log);
+
+	return ret;
+}
+
+static const struct kernel_param_ops mmdvfs_set_vmrc_log_ops = {
+	.get = mmdvfs_get_vmrc_log,
+	.set = mmdvfs_set_vmrc_log,
+};
+module_param_cb(vmrc_log, &mmdvfs_set_vmrc_log_ops, NULL, 0644);
+MODULE_PARM_DESC(vmrc_log, "mmdvfs vmrc log");
+
 module_param(log_level, uint, 0644);
 MODULE_PARM_DESC(log_level, "mmdvfs log level");
 
@@ -927,6 +976,9 @@ static int mmdvfs_vcp_init_thread(void *data)
 
 	if (vcp_log_level)
 		mtk_mmdvfs_v3_set_vcp_log(vcp_log_level);
+
+	if (vmrc_log_level)
+		mtk_mmdvfs_v3_set_vmrc_log(vmrc_log_level);
 
 	if (vmm_ceil_step)
 		mtk_mmdvfs_v3_set_vmm_ceil_step(vmm_ceil_step);
@@ -1140,6 +1192,7 @@ static int mmdvfs_v3_probe(struct platform_device *pdev)
 
 	of_property_read_s32(node, "kernel-log-level", &log_level);
 	of_property_read_s32(node, "vcp-log-level", &vcp_log_level);
+	of_property_read_s32(node, "vmrc-log-level", &vmrc_log_level);
 	of_property_read_s32(node, "vmm-ceil-step", &vmm_ceil_step);
 
 	kthr_vcp = kthread_run(mmdvfs_vcp_init_thread, NULL, "mmdvfs-vcp");

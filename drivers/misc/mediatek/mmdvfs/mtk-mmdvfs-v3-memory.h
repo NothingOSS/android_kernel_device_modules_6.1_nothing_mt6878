@@ -26,7 +26,7 @@ static inline bool mmdvfs_is_init_done(void) { return false; }
 #define MEM_VSRAM_VOL		(MEM_BASE + 0x8)
 #define MEM_IPI_SYNC_FUNC	(MEM_BASE + 0xC)
 #define MEM_IPI_SYNC_DATA	(MEM_BASE + 0x10)
-/* skip : 0x14 */
+#define MEM_VMRC_LOG_FLAG	(MEM_BASE + 0x14)
 
 #define MEM_GENPD_ENABLE_USR(x)	(MEM_BASE + 0x18 + 0x4 * (x)) // CAM, VDE
 #define MEM_AGING_CNT_USR(x)	(MEM_BASE + 0x20 + 0x4 * (x)) // CAM, IMG
