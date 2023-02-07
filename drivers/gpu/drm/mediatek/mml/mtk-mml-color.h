@@ -48,10 +48,11 @@
 #define MML_FMT_YUV420(c)		(MML_FMT_H_SUBSAMPLE(c) && \
 					 MML_FMT_V_SUBSAMPLE(c))
 #define MML_FMT_AUO(c)			(MML_FMT_10BIT_JUMP(c))
-#define MML_FMT_IS_ARGB(c)		(MML_FMT_HW_FORMAT(c) == 2 || \
+#define MML_FMT_ALPHA(c)		(MML_FMT_HW_FORMAT(c) == 2 || \
 					 MML_FMT_HW_FORMAT(c) == 3)
-#define MML_FMT_ARGB_COMPRESS(c)	(MML_FMT_AFBC(c) && MML_FMT_IS_ARGB(c))
-#define MML_FMT_YUV_COMPRESS(c)		(MML_FMT_AFBC(c) && MML_FMT_IS_YUV(c))
+#define MML_FMT_IS_ARGB(c)		(MML_FMT_ALPHA(c))
+#define MML_FMT_AFBC_ARGB(c)		(MML_FMT_AFBC(c) && MML_FMT_IS_ARGB(c))
+#define MML_FMT_AFBC_YUV(c)		(MML_FMT_AFBC(c) && MML_FMT_IS_YUV(c))
 
 enum mml_color {
 	MML_FMT_UNKNOWN		= 0,
@@ -89,61 +90,53 @@ enum mml_color {
 
 	/* Mediatek proprietary formats */
 
-	/* Frame mode + Block mode + UFO 420 block packed */
-	MML_FMT_BLK_UFO		= MML_FMT(0, 0, 0, 5, 2, 1, 1, 256, 1, 0, 12),
-	/* Frame mode + Block mode + UFO AUO 420 block packed */
-	MML_FMT_BLK_UFO_AUO	= MML_FMT(0, 0, 0, 13, 2, 1, 1, 256, 1, 0, 12),
-	/* Frame mode + Block mode 420 block packed */
+	/* Block mode YUV420 */
 	MML_FMT_BLK		= MML_FMT(0, 0, 0, 1, 2, 1, 1, 256, 1, 0, 12),
+	/* Block mode + UFO */
+	MML_FMT_BLK_UFO		= MML_FMT(0, 0, 0, 5, 2, 1, 1, 256, 1, 0, 12),
+	/* Block mode + UFO AUO */
+	MML_FMT_BLK_UFO_AUO	= MML_FMT(0, 0, 0, 13, 2, 1, 1, 256, 1, 0, 12),
 
 	/* Packed 10-bit formats */
 	MML_FMT_RGBA1010102	= MML_FMT(0, 1, 0, 0, 1, 0, 0, 32, 0, 1, 2),
 	MML_FMT_BGRA1010102	= MML_FMT(0, 1, 0, 0, 1, 0, 0, 32, 0, 0, 2),
 	MML_FMT_ARGB1010102	= MML_FMT(0, 1, 0, 0, 1, 0, 0, 32, 0, 1, 3),
 	MML_FMT_ABGR1010102	= MML_FMT(0, 1, 0, 0, 1, 0, 0, 32, 0, 0, 3),
-	/* Packed 10-bit NV21 */
-	MML_FMT_NV12_10P	= MML_FMT(0, 1, 0, 0, 2, 1, 1, 10, 1, 0, 12),
-	MML_FMT_NV21_10P	= MML_FMT(0, 1, 0, 0, 2, 1, 1, 10, 1, 1, 12),
-	/* Frame mode + Block mode 420 block packed */
+
+	MML_FMT_YUVA1010102	= MML_FMT(0, 1, 0, 0, 1, 0, 0, 32, 1, 1, 2),
+	MML_FMT_NV15		= MML_FMT(0, 1, 0, 0, 2, 1, 1, 10, 1, 0, 12),
+	MML_FMT_NV51		= MML_FMT(0, 1, 0, 0, 2, 1, 1, 10, 1, 1, 12),
+
+	/* Block mode YUV420 10-bit */
 	MML_FMT_BLK_10H		= MML_FMT(0, 1, 0, 1, 2, 1, 1, 320, 1, 0, 12),
-	/* Frame mode + HEVC tile mode 420 block packed */
+	/* HEVC tile mode */
 	MML_FMT_BLK_10V		= MML_FMT(0, 1, 1, 1, 2, 1, 1, 320, 1, 0, 12),
-	/* Frame mode + Block mode + Jump 420 block packed 10 H Jump */
+	/* Block mode 10-bit + Jump */
 	MML_FMT_BLK_10HJ	= MML_FMT(0, 1, 0, 9, 2, 1, 1, 320, 1, 0, 12),
-	/* Frame mode + HEVC tile mode + Jump 420 block packed 10 V Jump */
+	/* HEVC tile mode + Jump */
 	MML_FMT_BLK_10VJ	= MML_FMT(0, 1, 1, 9, 2, 1, 1, 320, 1, 0, 12),
-	/* Frame mode + Block mode 420 block packed */
+	/* Block mode 10-bit + UFO */
 	MML_FMT_BLK_UFO_10H	= MML_FMT(0, 1, 0, 5, 2, 1, 1, 320, 1, 0, 12),
-	/* Frame mode + HEVC tile mode 420 block packed */
+	/* HEVC tile mode + UFO */
 	MML_FMT_BLK_UFO_10V	= MML_FMT(0, 1, 1, 5, 2, 1, 1, 320, 1, 0, 12),
-	/* Frame mode + Block mode + Jump 420 block packed UFO 10 H Jump */
+	/* Block mode 10-bit + UFO Jump */
 	MML_FMT_BLK_UFO_10HJ	= MML_FMT(0, 1, 0, 13, 2, 1, 1, 320, 1, 0, 12),
-	/* Frame mode + HEVC tile mode + Jump 420 block packed UFO 10 V Jump */
+	/* HEVC tile mode + UFO Jump */
 	MML_FMT_BLK_UFO_10VJ	= MML_FMT(0, 1, 1, 13, 2, 1, 1, 320, 1, 0, 12),
 
 	/* Loose 10-bit formats */
+	MML_FMT_UYV1010102	= MML_FMT(0, 0, 1, 0, 1, 0, 0, 32, 1, 0, 14),
 	MML_FMT_NV12_10L	= MML_FMT(0, 0, 1, 0, 2, 1, 1, 16, 1, 0, 12),
 	MML_FMT_NV21_10L	= MML_FMT(0, 0, 1, 0, 2, 1, 1, 16, 1, 1, 12),
-	MML_FMT_YUV4441010102	= MML_FMT(0, 0, 1, 0, 1, 0, 0, 32, 1, 0, 14),
 
-	MML_FMT_YV12_10P	= MML_FMT(0, 1, 0, 0, 3, 1, 1, 10, 1, 1, 8),
-	MML_FMT_I422_10P	= MML_FMT(0, 1, 0, 0, 3, 1, 0, 10, 1, 0, 9),
-	MML_FMT_NV16_10P	= MML_FMT(0, 1, 0, 0, 2, 1, 0, 10, 1, 0, 13),
-	MML_FMT_NV61_10P	= MML_FMT(0, 1, 0, 0, 2, 1, 0, 10, 1, 1, 13),
-
+	/* Compression formats */
 	MML_FMT_RGBA8888_AFBC	= MML_FMT(1, 0, 0, 0, 1, 0, 0, 32, 0, 1, 2),
-	MML_FMT_BGRA8888_AFBC	= MML_FMT(1, 0, 0, 0, 1, 0, 0, 32, 0, 0, 2),
 	MML_FMT_RGBA1010102_AFBC = MML_FMT(1, 1, 0, 0, 1, 0, 0, 32, 0, 1, 2),
-	MML_FMT_BGRA1010102_AFBC = MML_FMT(1, 1, 0, 0, 1, 0, 0, 32, 0, 0, 2),
-
 	MML_FMT_YUV420_AFBC	= MML_FMT(1, 0, 0, 0, 1, 1, 1, 12, 1, 0, 12),
-	MML_FMT_YVU420_AFBC	= MML_FMT(1, 0, 0, 0, 1, 1, 1, 12, 1, 1, 12),
 	MML_FMT_YUV420_10P_AFBC	= MML_FMT(1, 1, 0, 0, 1, 1, 1, 16, 1, 0, 12),
-	MML_FMT_YVU420_10P_AFBC	= MML_FMT(1, 1, 0, 0, 1, 1, 1, 16, 1, 1, 12),
-
-	/* HyFBC format YUV420 with compress, align size 32x16 */
+	/* HyFBC format YUV420, align size 32x16 */
 	MML_FMT_NV12_HYFBC	= MML_FMT(2, 0, 0, 0, 1, 1, 1, 12, 1, 0, 12),
-	/* HyFBC format YUV420 10bit with compress, align size 32x16 */
+	/* HyFBC format YUV420 10bit, align size 32x16 */
 	MML_FMT_P010_HYFBC	= MML_FMT(2, 1, 0, 0, 1, 1, 1, 18, 1, 0, 12),
 };
 

@@ -374,7 +374,7 @@ static void wrot_config_left(struct mml_frame_dest *dest,
 	wrot_frm->out_crop.left = 0;
 	wrot_frm->out_crop.width = wrot_frm->out_w >> 1;
 
-	if (MML_FMT_ARGB_COMPRESS(dest->data.format) &&
+	if (MML_FMT_AFBC_ARGB(dest->data.format) &&
 	    wrot_frm->out_crop.width & 31) {
 		wrot_frm->out_crop.width =
 			(wrot_frm->out_crop.width & ~31) + 32;
@@ -398,7 +398,7 @@ static void wrot_config_right(struct mml_frame_dest *dest,
 	wrot_frm->en_x_crop = true;
 	wrot_frm->out_crop.left = wrot_frm->out_w >> 1;
 
-	if (MML_FMT_ARGB_COMPRESS(dest->data.format) &&
+	if (MML_FMT_AFBC_ARGB(dest->data.format) &&
 	    wrot_frm->out_crop.left & 31) {
 		wrot_frm->out_crop.left =
 			(wrot_frm->out_crop.left & ~31) + 32;
@@ -722,9 +722,7 @@ static void wrot_color_fmt(struct mml_frame_config *cfg,
 	case MML_FMT_ABGR1010102:
 	/* DMA_SUPPORT_AFBC */
 	case MML_FMT_RGBA8888_AFBC:
-	case MML_FMT_BGRA8888_AFBC:
 	case MML_FMT_RGBA1010102_AFBC:
-	case MML_FMT_BGRA1010102_AFBC:
 		wrot_frm->bbp_uv = 0;
 		wrot_frm->hor_sh_uv = 0;
 		wrot_frm->ver_sh_uv = 0;
@@ -734,7 +732,9 @@ static void wrot_color_fmt(struct mml_frame_config *cfg,
 	case MML_FMT_VYUY:
 	case MML_FMT_YUYV:
 	case MML_FMT_YVYU:
-		/* YUV422, 1 plane */
+	/* HW_SUPPORT_10BIT_PATH */
+	case MML_FMT_YUVA1010102:
+		/* YUV422/444, 1 plane */
 		wrot_frm->bbp_uv = 0;
 		wrot_frm->hor_sh_uv = 0;
 		wrot_frm->ver_sh_uv = 0;
@@ -782,9 +782,9 @@ static void wrot_color_fmt(struct mml_frame_config *cfg,
 		wrot_frm->hor_sh_uv = 1;
 		wrot_frm->ver_sh_uv = 1;
 		break;
-	case MML_FMT_NV12_10P:
-	case MML_FMT_NV21_10P:
-		/* MTK packet YUV420, 2 plane 10bit */
+	case MML_FMT_NV15:
+	case MML_FMT_NV51:
+		/* MTK packed YUV420, 2 plane 10bit */
 		wrot_frm->bbp_uv = 20;
 		wrot_frm->hor_sh_uv = 1;
 		wrot_frm->ver_sh_uv = 1;
@@ -918,17 +918,12 @@ static void wrot_calc_hw_buf_setting(const struct mml_comp_wrot *wrot,
 	} else if (dest_fmt == MML_FMT_GREY) {
 		wrot_frm->fifo_max_sz = wrot->data->tile_width * 64;
 		wrot_frm->max_line_cnt = 64;
-	} else if (MML_FMT_IS_RGB(dest_fmt)) {
-		if (cfg->alpharot) {
-			wrot_frm->fifo_max_sz = wrot->data->tile_width * 16;
-			wrot_frm->max_line_cnt = 16;
-		} else {
-			wrot_frm->fifo_max_sz = wrot->data->tile_width * 32;
-			wrot_frm->max_line_cnt = 32;
-		}
+	} else if (cfg->alpharot) {
+		wrot_frm->fifo_max_sz = wrot->data->tile_width * 16;
+		wrot_frm->max_line_cnt = 16;
 	} else {
-		mml_err("%s fail set fifo max size, max line count for %#x",
-			__func__, dest_fmt);
+		wrot_frm->fifo_max_sz = wrot->data->tile_width * 32;
+		wrot_frm->max_line_cnt = 32;
 	}
 }
 
@@ -965,7 +960,7 @@ static void wrot_config_addr(const struct mml_frame_dest *dest,
 			       frame_size, U32_MAX);
 
 		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_AFBC_YUVTRANS,
-			       MML_FMT_IS_ARGB(dest_fmt), 0x1);
+			       MML_FMT_IS_RGB(dest_fmt), 0x1);
 	} else {
 		addr = wrot_frm->iova[0] + wrot_frm->plane_offset[0];
 		addr_c = wrot_frm->iova[1] + wrot_frm->plane_offset[1];
@@ -1202,13 +1197,16 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	}
 
 	if (MML_FMT_10BIT_LOOSE(dest_fmt)) {
-		scan_10bit = 1;
-		bit_num = 1;
-	} else if (MML_FMT_10BIT_PACKED(dest_fmt)) {
-		if (MML_FMT_IS_ARGB(dest_fmt))
+		if (MML_FMT_HW_FORMAT(dest_fmt) == 12)
 			scan_10bit = 1;
 		else
+			scan_10bit = 5;
+		bit_num = 1;
+	} else if (MML_FMT_10BIT_PACKED(dest_fmt)) {
+		if (MML_FMT_HW_FORMAT(dest_fmt) == 12)
 			scan_10bit = 3;
+		else
+			scan_10bit = 1;
 		pending_zero = 1;
 		bit_num = 1;
 	}
@@ -1656,8 +1654,8 @@ static void wrot_check_buf(const struct mml_frame_dest *dest,
 	}
 
 	if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270) {
-		if (dest->data.format == MML_FMT_NV12_10P ||
-		    dest->data.format == MML_FMT_NV21_10P) {
+		if (dest->data.format == MML_FMT_NV15 ||
+		    dest->data.format == MML_FMT_NV51) {
 			if (setting->main_buf_line_num > 32)
 				setting->main_buf_line_num = 64;
 			else

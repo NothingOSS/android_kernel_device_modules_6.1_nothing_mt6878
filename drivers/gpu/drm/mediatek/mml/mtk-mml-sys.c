@@ -1167,14 +1167,14 @@ static const struct mml_submit bypass_submit = {
 		.src = {
 			.width = U16_MAX,
 			.height = U16_MAX,
-			.format = MML_FMT_YUV4441010102,
+			.format = MML_FMT_UYV1010102,
 			.profile = MML_YCBCR_PROFILE_BT709,
 		},
 		.dest[0] = {
 			.data = {
 				.width = U16_MAX,
 				.height = U16_MAX,
-				.format = MML_FMT_YUV4441010102,
+				.format = MML_FMT_UYV1010102,
 				.profile = MML_YCBCR_PROFILE_BT709,
 			},
 			.crop.r = {

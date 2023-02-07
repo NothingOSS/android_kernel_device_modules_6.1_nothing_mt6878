@@ -255,20 +255,12 @@ static u32 afbc_drm_to_mml(u32 drm_format)
 	switch (drm_format) {
 	case MML_FMT_RGBA8888:
 		return MML_FMT_RGBA8888_AFBC;
-	case MML_FMT_BGRA8888:
-		return MML_FMT_BGRA8888_AFBC;
 	case MML_FMT_RGBA1010102:
 		return MML_FMT_RGBA1010102_AFBC;
-	case MML_FMT_BGRA1010102:
-		return MML_FMT_BGRA1010102_AFBC;
 	case MML_FMT_NV12:
 		return MML_FMT_YUV420_AFBC;
-	case MML_FMT_NV21:
-		return MML_FMT_YVU420_AFBC;
 	case MML_FMT_NV12_10L:
 		return MML_FMT_YUV420_10P_AFBC;
-	case MML_FMT_NV21_10L:
-		return MML_FMT_YVU420_10P_AFBC;
 	default:
 		mml_err("[drm]%s unknown drm format %#x", __func__, drm_format);
 		return drm_format;
@@ -819,7 +811,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 				&submit->buffer.dest[i]);
 	}
 
-	if (MML_FMT_YUV_COMPRESS(submit->info.src.format)) {
+	if (MML_FMT_AFBC_YUV(submit->info.src.format)) {
 		submit->info.src.y_stride =
 			mml_color_get_min_y_stride(submit->info.src.format, submit->info.src.width);
 		submit->info.src.uv_stride = 0;

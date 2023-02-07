@@ -7,14 +7,6 @@
 #include "tile_mdp_func.h"
 #include "mtk-mml-color.h"
 
-#ifndef MAX
-#define MAX(x, y)   ((x) >= (y) ? (x) : (y))
-#endif  // MAX
-
-#ifndef MIN
-#define MIN(x, y)   ((x) <= (y) ? (x) : (y))
-#endif  // MIN
-
 enum isp_tile_message tile_rdma_init(struct tile_func_block *ptr_func,
 				     struct tile_reg_map *ptr_tile_reg_map)
 {
@@ -33,13 +25,13 @@ enum isp_tile_message tile_rdma_init(struct tile_func_block *ptr_func,
 	 *       YUV422 | L * 2
 	 * YUV444/RGB/Y | L * 4
 	 */
-	if (MML_FMT_ARGB_COMPRESS(data->src_fmt)) {
+	if (MML_FMT_AFBC_ARGB(data->src_fmt)) {
 		/* For AFBC mode end x may be extend to block size
 		 * and may exceed max tile width 640. So reduce width
 		 * to prevent it.
 		 */
 		ptr_func->in_tile_width = ((data->max_width >> 5) - 1) << 5;
-	} else if (MML_FMT_YUV_COMPRESS(data->src_fmt)) {
+	} else if (MML_FMT_AFBC_YUV(data->src_fmt)) {
 		ptr_func->in_tile_width = ((data->max_width >> 4) - 1) << 4;
 	} else if (MML_FMT_HYFBC(data->src_fmt)) {
 		/* For HyFBC block size 32x16, so tile rule same as RGB AFBC */
@@ -67,11 +59,10 @@ enum isp_tile_message tile_rdma_init(struct tile_func_block *ptr_func,
 	}
 
 	if (MML_FMT_10BIT_PACKED(data->src_fmt) &&
-	    !MML_FMT_HYFBC(data->src_fmt) &&
-	    !MML_FMT_AFBC(data->src_fmt) &&
-	    !MML_FMT_IS_RGB(data->src_fmt) &&
+	    !MML_FMT_COMPRESS(data->src_fmt) &&
+	    !MML_FMT_ALPHA(data->src_fmt) &&
 	    !MML_FMT_BLOCK(data->src_fmt)) {
-		/* 10-bit packed, not compress, not rgb, not blk */
+		/* 10-bit packed, not compress, not alpha 32-bit, not blk */
 		ptr_func->in_const_x = 4;
 	}
 
@@ -195,7 +186,7 @@ enum isp_tile_message tile_wrot_init(struct tile_func_block *ptr_func,
 	}
 
 	if (MML_FMT_AFBC(data->dest_fmt))
-		ptr_func->out_tile_width = MIN(128, ptr_func->out_tile_width);
+		ptr_func->out_tile_width = min(128, ptr_func->out_tile_width);
 
 	/* For tile calculation */
 	if (MML_FMT_YUV422(data->dest_fmt)) {
@@ -211,10 +202,6 @@ enum isp_tile_message tile_wrot_init(struct tile_func_block *ptr_func,
 	} else if (MML_FMT_YUV420(data->dest_fmt)) {
 		ptr_func->out_const_x = 2;
 		ptr_func->out_const_y = 2;
-	} else if (data->dest_fmt != MML_FMT_GREY &&
-		   !MML_FMT_IS_RGB(data->dest_fmt)) {
-		ASSERT(0);
-		return MDP_MESSAGE_WROT_INVALID_FORMAT;
 	}
 
 	return ISP_MESSAGE_TILE_OK;
@@ -236,7 +223,7 @@ enum isp_tile_message tile_rdma_for(struct tile_func_block *ptr_func,
 	if (!ptr_tile_reg_map->skip_x_cal && !ptr_func->tdr_h_disable_flag) {
 		if (ptr_func->backward_output_xs_pos >= ptr_func->out_pos_xs) {
 			ptr_func->bias_x = ptr_func->backward_output_xs_pos -
-					   ptr_func->out_pos_xs;
+				       ptr_func->out_pos_xs;
 			ptr_func->out_pos_xs = ptr_func->backward_output_xs_pos;
 		} else {
 			return MDP_MESSAGE_BACKWARD_START_LESS_THAN_FORWARD;
@@ -249,7 +236,7 @@ enum isp_tile_message tile_rdma_for(struct tile_func_block *ptr_func,
 	if (!ptr_tile_reg_map->skip_y_cal && !ptr_func->tdr_v_disable_flag) {
 		if (ptr_func->backward_output_ys_pos >= ptr_func->out_pos_ys) {
 			ptr_func->bias_y = ptr_func->backward_output_ys_pos -
-					   ptr_func->out_pos_ys;
+				       ptr_func->out_pos_ys;
 			ptr_func->out_pos_ys = ptr_func->backward_output_ys_pos;
 		} else {
 			return MDP_MESSAGE_BACKWARD_START_LESS_THAN_FORWARD;
@@ -268,7 +255,7 @@ enum isp_tile_message tile_crop_for(struct tile_func_block *ptr_func,
 	if (!ptr_tile_reg_map->skip_x_cal && !ptr_func->tdr_h_disable_flag) {
 		if (ptr_func->backward_output_xs_pos >= ptr_func->out_pos_xs) {
 			ptr_func->bias_x = ptr_func->backward_output_xs_pos -
-					   ptr_func->out_pos_xs;
+				       ptr_func->out_pos_xs;
 			ptr_func->out_pos_xs = ptr_func->backward_output_xs_pos;
 		} else {
 			return MDP_MESSAGE_BACKWARD_START_LESS_THAN_FORWARD;
@@ -281,7 +268,7 @@ enum isp_tile_message tile_crop_for(struct tile_func_block *ptr_func,
 	if (!ptr_tile_reg_map->skip_y_cal && !ptr_func->tdr_v_disable_flag) {
 		if (ptr_func->backward_output_ys_pos >= ptr_func->out_pos_ys) {
 			ptr_func->bias_y = ptr_func->backward_output_ys_pos -
-					   ptr_func->out_pos_ys;
+				       ptr_func->out_pos_ys;
 			ptr_func->out_pos_ys = ptr_func->backward_output_ys_pos;
 		} else {
 			return MDP_MESSAGE_BACKWARD_START_LESS_THAN_FORWARD;
@@ -302,23 +289,21 @@ enum isp_tile_message tile_aal_for(struct tile_func_block *ptr_func,
 		return ISP_MESSAGE_TILE_OK;
 
 	if (!ptr_tile_reg_map->skip_x_cal && !ptr_func->tdr_h_disable_flag) {
-		if (ptr_func->out_tile_width) {
-			if (ptr_func->out_pos_xe + 1 >
-			    ptr_func->out_pos_xs + ptr_func->out_tile_width) {
-				ptr_func->out_pos_xe = ptr_func->out_pos_xs +
-						       ptr_func->out_tile_width - 1;
-				ptr_func->h_end_flag = false;
-			}
+		if (ptr_func->out_tile_width &&
+		    ptr_func->out_pos_xe + 1 >
+				ptr_func->out_pos_xs + ptr_func->out_tile_width) {
+			ptr_func->out_pos_xe =
+				ptr_func->out_pos_xs + ptr_func->out_tile_width - 1;
+			ptr_func->h_end_flag = false;
 		}
 	}
 
 	if (!ptr_tile_reg_map->skip_y_cal && !ptr_func->tdr_v_disable_flag) {
-		if (ptr_func->out_tile_height) {
-			if (ptr_func->out_pos_ye + 1 >
-			    ptr_func->out_pos_ys + ptr_func->out_tile_height)
-				ptr_func->out_pos_ye = ptr_func->out_pos_ys +
-						       ptr_func->out_tile_height - 1;
-		}
+		if (ptr_func->out_tile_height &&
+		    ptr_func->out_pos_ye + 1 >
+				ptr_func->out_pos_ys + ptr_func->out_tile_height)
+			ptr_func->out_pos_ye =
+				ptr_func->out_pos_ys + ptr_func->out_tile_height - 1;
 	}
 
 	return ISP_MESSAGE_TILE_OK;
@@ -530,10 +515,13 @@ static enum isp_tile_message tile_wrot_align_out_width(
 	s32 alignment = 1;
 	s32 remain = 0;
 
-	if (MML_FMT_AFBC(data->dest_fmt))
+	if (MML_FMT_AFBC(data->dest_fmt)) {
 		alignment = 32;
-	else if (MML_FMT_10BIT_PACKED(data->dest_fmt))
+	} else if (MML_FMT_10BIT_PACKED(data->dest_fmt) &&
+	    !MML_FMT_ALPHA(data->dest_fmt)) {
+		/* 10-bit packed, not alpha 32-bit */
 		alignment = 4;
+	}
 
 	if (alignment > 1) {
 		remain = 0;
@@ -596,7 +584,7 @@ enum isp_tile_message tile_wrot_for(struct tile_func_block *ptr_func,
 	if (!ptr_tile_reg_map->skip_x_cal && !ptr_func->tdr_h_disable_flag) {
 		if (ptr_func->backward_output_xs_pos >= ptr_func->out_pos_xs) {
 			ptr_func->bias_x = ptr_func->backward_output_xs_pos -
-					   ptr_func->out_pos_xs;
+				       ptr_func->out_pos_xs;
 			ptr_func->out_pos_xs = ptr_func->backward_output_xs_pos;
 		} else {
 			return MDP_MESSAGE_BACKWARD_START_LESS_THAN_FORWARD;
@@ -622,7 +610,7 @@ enum isp_tile_message tile_wrot_for(struct tile_func_block *ptr_func,
 	if (!ptr_tile_reg_map->skip_y_cal && !ptr_func->tdr_v_disable_flag) {
 		if (ptr_func->backward_output_ys_pos >= ptr_func->out_pos_ys) {
 			ptr_func->bias_y = ptr_func->backward_output_ys_pos -
-					   ptr_func->out_pos_ys;
+				       ptr_func->out_pos_ys;
 			ptr_func->out_pos_ys = ptr_func->backward_output_ys_pos;
 		} else {
 			return MDP_MESSAGE_BACKWARD_START_LESS_THAN_FORWARD;
@@ -802,11 +790,10 @@ enum isp_tile_message tile_prz_back(struct tile_func_block *ptr_func,
 		if (C24InXLeft & 0x1)
 			C24InXLeft -= 1;
 
-		if (ptr_func->out_tile_width) {
-			if (ptr_func->out_pos_xe + 1 > C24InXLeft + ptr_func->out_tile_width) {
-				ptr_func->out_pos_xe = C24InXLeft + ptr_func->out_tile_width - 1;
-				ptr_func->h_end_flag = false;
-			}
+		if (ptr_func->out_tile_width &&
+		    ptr_func->out_pos_xe + 1 > C24InXLeft + ptr_func->out_tile_width) {
+			ptr_func->out_pos_xe = C24InXLeft + ptr_func->out_tile_width - 1;
+			ptr_func->h_end_flag = false;
 		}
 
 		if (ptr_func->out_pos_xe + 1 >= ptr_func->full_size_x_out) {
@@ -820,9 +807,9 @@ enum isp_tile_message tile_prz_back(struct tile_func_block *ptr_func,
 		}
 
 		/* prz */
-		if (data->prz_out_tile_w && ptr_func->out_tile_width)
-			if (C24InXRight + 1 > C24InXLeft + data->prz_out_tile_w)
-				C24InXRight = C24InXLeft + data->prz_out_tile_w - 1;
+		if (data->prz_out_tile_w && ptr_func->out_tile_width &&
+		    C24InXRight + 1 > C24InXLeft + data->prz_out_tile_w)
+			C24InXRight = C24InXLeft + data->prz_out_tile_w - 1;
 
 		if (C24InXRight + 1 > data->c24_in_frame_w)
 			C24InXRight = data->c24_in_frame_w - 1;
@@ -883,9 +870,9 @@ enum isp_tile_message tile_prz_back(struct tile_func_block *ptr_func,
 				C42OutXRight = data->c42_out_frame_w - 1;
 		}
 
-		if (ptr_func->in_tile_width)
-			if (C42OutXRight + 1 > C42OutXLeft + ptr_func->in_tile_width)
-				C42OutXRight = C42OutXLeft + ptr_func->in_tile_width - 1;
+		if (ptr_func->in_tile_width &&
+		    C42OutXRight + 1 > C42OutXLeft + ptr_func->in_tile_width)
+			C42OutXRight = C42OutXLeft + ptr_func->in_tile_width - 1;
 		data->prz_back_xs = C24InXLeft;
 		data->prz_back_xe = C24InXRight;
 
@@ -1000,7 +987,7 @@ enum isp_tile_message tile_wrot_back(struct tile_func_block *ptr_func,
 			}
 			if (ptr_func->out_tile_width) {
 				ptr_func->out_pos_xe = ptr_func->out_pos_xs +
-						       ptr_func->out_tile_width - 1;
+						   ptr_func->out_tile_width - 1;
 				ptr_func->in_pos_xe = ptr_func->out_pos_xe;
 			}
 
@@ -1039,7 +1026,7 @@ enum isp_tile_message tile_wrot_back(struct tile_func_block *ptr_func,
 			}
 			if (ptr_func->out_tile_height) {
 				ptr_func->out_pos_ye = ptr_func->out_pos_ys +
-						       ptr_func->out_tile_height - 1;
+						   ptr_func->out_tile_height - 1;
 				ptr_func->in_pos_ye = ptr_func->out_pos_ye;
 			}
 

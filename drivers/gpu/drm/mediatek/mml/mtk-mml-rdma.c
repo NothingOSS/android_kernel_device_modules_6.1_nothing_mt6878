@@ -850,9 +850,7 @@ static void rdma_color_fmt(struct mml_frame_config *cfg,
 	case MML_FMT_RGBA1010102:
 	case MML_FMT_BGRA1010102:
 	case MML_FMT_RGBA8888_AFBC:
-	case MML_FMT_BGRA8888_AFBC:
 	case MML_FMT_RGBA1010102_AFBC:
-	case MML_FMT_BGRA1010102_AFBC:
 		rdma_frm->bits_per_pixel_y = 32;
 		rdma_frm->bits_per_pixel_uv = 0;
 		rdma_frm->hor_shift_uv = 0;
@@ -897,7 +895,6 @@ static void rdma_color_fmt(struct mml_frame_config *cfg,
 		rdma_frm->ver_shift_uv = 1;
 		break;
 	case MML_FMT_YUV420_AFBC:
-	case MML_FMT_YVU420_AFBC:
 	case MML_FMT_NV12_HYFBC:
 		rdma_frm->bits_per_pixel_y = 12;
 		rdma_frm->bits_per_pixel_uv = 0;
@@ -936,21 +933,21 @@ static void rdma_color_fmt(struct mml_frame_config *cfg,
 		rdma_frm->hor_shift_uv = 1;
 		rdma_frm->ver_shift_uv = 1;
 		break;
-	case MML_FMT_YUV4441010102:
+	case MML_FMT_YUVA1010102:
+	case MML_FMT_UYV1010102:
 		rdma_frm->bits_per_pixel_y = 32;
 		rdma_frm->bits_per_pixel_uv = 0;
 		rdma_frm->hor_shift_uv = 0;
 		rdma_frm->ver_shift_uv = 0;
 		break;
-	case MML_FMT_NV12_10P:
-	case MML_FMT_NV21_10P:
+	case MML_FMT_NV15:
+	case MML_FMT_NV51:
 		rdma_frm->bits_per_pixel_y = 10;
 		rdma_frm->bits_per_pixel_uv = 20;
 		rdma_frm->hor_shift_uv = 1;
 		rdma_frm->ver_shift_uv = 1;
 		break;
 	case MML_FMT_YUV420_10P_AFBC:
-	case MML_FMT_YVU420_10P_AFBC:
 	case MML_FMT_P010_HYFBC:
 		rdma_frm->bits_per_pixel_y = 16;
 		rdma_frm->bits_per_pixel_uv = 0;
@@ -1398,7 +1395,7 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		height_in_pxl = ((src->height + 15) >> 4) << 4;
 	} else if (MML_FMT_AFBC(src->format)) {
 		afbc = 1;
-		if (MML_FMT_IS_ARGB(src->format))
+		if (MML_FMT_IS_RGB(src->format))
 			afbc_y2r = 1;
 		ufbdc = 1;
 		if (MML_FMT_IS_YUV(src->format)) {
