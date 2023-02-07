@@ -859,7 +859,7 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	of_for_each_phandle(
-		&it, ret, pdev->dev.of_node, "mediatek,larbs", NULL, 0) {
+		&it, ret, pdev->dev.of_node, "mediatek,larbs-supply", NULL, 0) {
 		np = of_node_get(it.node);
 		if (!of_device_is_available(np))
 			continue;
@@ -968,7 +968,7 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 				goto err;
 			}
 			np = of_parse_phandle(pdev->dev.of_node,
-					      "mediatek,commons",
+					      "mediatek,commons-supply",
 					      MASK_8(node->id));
 			if (!of_device_is_available(np)) {
 				pr_notice("get common(%d) dev fail\n",
