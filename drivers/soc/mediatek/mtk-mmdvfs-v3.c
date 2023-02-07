@@ -462,7 +462,8 @@ int vmm_avs_debug_dump(char *buf, const struct kernel_param *kp)
 	}
 
 	// power opp
-	len += snprintf(buf + len, PAGE_SIZE - len, "efuse:%#x\n", readl(MEM_VMM_EFUSE));
+	len += snprintf(buf + len, PAGE_SIZE - len, "efuse_low:%#x, efuse_high:%#x\n",
+		readl(MEM_VMM_EFUSE_LOW), readl(MEM_VMM_EFUSE_HIGH));
 	for (i = 0; i < 8; i++)
 		len += snprintf(buf + len, PAGE_SIZE - len,
 			"opp_level%u: %u\n", i, readl(MEM_VMM_OPP_VOLT(i)));
