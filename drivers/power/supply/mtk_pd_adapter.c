@@ -729,19 +729,18 @@ static int adapter_parse_dt(struct mtk_pd_adapter_info *info,
 		u32 boot_type;
 	} *tag;
 
-	if (of_property_read_string(np, "adapter-name",
-		&info->adapter_dev_name) < 0) {
-		if (of_property_read_string(np, "adapter_name",
-			&info->adapter_dev_name) < 0)
-			pr_notice("%s: no adapter name\n", __func__);
+	if (of_property_read_string(np, "adapter-name", &info->adapter_dev_name) < 0 &&
+	    of_property_read_string(np, "adapter_name", &info->adapter_dev_name) < 0)
+		pr_notice("%s: no adapter name\n", __func__);
+
+	info->force_cv = of_property_read_bool(np, "force-cv") ||
+			 of_property_read_bool(np, "force_cv");
+
+	if (of_property_read_u32(np, "ita-min", &info->ita_min) < 0 &&
+	    of_property_read_u32(np, "ita_min", &info->ita_min) < 0) {
+		info->ita_min = 0;
+		pr_notice("%s: ita-min, use 0\n", __func__);
 	}
-	info->force_cv = of_property_read_bool(np, "force_cv")
-		|| of_property_read_bool(np, "force-cv");
-	if (of_property_read_u32(np, "ita_min", &info->ita_min) < 0)
-		if (of_property_read_u32(np, "ita-min", &info->ita_min) < 0) {
-			info->ita_min = 0;
-			pr_notice("%s: ita-min, use 0\n", __func__);
-		}
 
 	pr_notice("%s\n", __func__);
 
@@ -752,11 +751,12 @@ static int adapter_parse_dt(struct mtk_pd_adapter_info *info,
 
 	/* mediatek boot mode */
 	boot_np = of_parse_phandle(np, "boot-mode", 0);
-	if (!boot_np) {
+	if (!boot_np)
 		boot_np = of_parse_phandle(np, "boot_mode", 0);
-		if (!boot_np)
-			pr_info("%s: failed to get bootmode phandle\n", __func__);
-	}
+
+	if (!boot_np)
+		pr_info("%s: failed to get bootmode phandle\n", __func__);
+
 	tag = of_get_property(boot_np, "atag,boot", NULL);
 	if (!tag) {
 		pr_info("%s: failed to get atag,boot\n", __func__);

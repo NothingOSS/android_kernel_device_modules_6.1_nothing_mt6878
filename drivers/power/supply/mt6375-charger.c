@@ -94,6 +94,7 @@ module_param(dbg_log_en, bool, 0644);
 #define NORMAL_CHARGING_CURR_UA	500000
 #define FAST_CHARGING_CURR_UA	1500000
 #define RECHG_THRESHOLD		100
+#define DEFAULT_PMIC_UVLO_mV	2000
 
 enum mt6375_chg_reg_field {
 	/* MT6375_REG_CORE_CTRL2 */
@@ -240,6 +241,7 @@ struct mt6375_chg_data {
 	atomic_t tchg;
 	int vbat0_flag;
 	unsigned int detach_irq;
+	atomic_t no_6pin_used;
 };
 
 struct mt6375_chg_platform_data {
@@ -259,6 +261,7 @@ struct mt6375_chg_platform_data {
 	u32 bc12_sel;
 	u32 boot_mode;
 	u32 boot_type;
+	u32 pmic_uvlo;
 	enum mt6375_attach_trigger attach_trig;
 	const char *chg_name;
 	bool chg_tmr_en;
@@ -2023,6 +2026,7 @@ static int mt6375_enable_6pin_battery_charging(struct charger_device *chgdev,
 	u16 data, batend_code;
 	u32 vbat, cv;
 	struct mt6375_chg_data *ddata = charger_get_data(chgdev);
+	struct mt6375_chg_platform_data *pdata = dev_get_platdata(ddata->dev);
 
 	mutex_lock(&ddata->cv_lock);
 	if (ddata->batprotect_en == en)
@@ -2030,6 +2034,10 @@ static int mt6375_enable_6pin_battery_charging(struct charger_device *chgdev,
 
 	mt_dbg(ddata->dev, "en=%d\n", en);
 	if (!en)
+		goto dis_pro;
+
+	/* If no 6pin used, always bypass this function */
+	if (atomic_read(&ddata->no_6pin_used) == 1)
 		goto dis_pro;
 
 	ret = mt6375_chg_field_set(ddata, F_VBAT_MON_EN, 1);
@@ -2053,6 +2061,15 @@ static int mt6375_enable_6pin_battery_charging(struct charger_device *chgdev,
 	if (vbat >= cv) {
 		dev_warn(ddata->dev, "vbat(%d) >= cv(%d), should not start\n",
 			 vbat, cv);
+		goto dis_mon;
+	} else if (vbat <= pdata->pmic_uvlo) {
+		/*
+		 * If no 6pin used, vbat detected by vbat mon will be much
+		 * lower than the PMIC UVLO.
+		 */
+		atomic_set(&ddata->no_6pin_used, 1);
+			dev_notice(ddata->dev, "vbat <= PMIC UVLO(%d mV), should not start\n",
+				   pdata->pmic_uvlo);
 		goto dis_mon;
 	}
 	ret = mt6375_chg_field_set(ddata, F_BATINT, cv);
@@ -2278,38 +2295,40 @@ static irqreturn_t mt6375_adc_vbat_mon_ov_handler(int irq, void *data)
 
 struct mt6375_chg_dtprop {
 	const char *name;
+	const char *legacy_name;
 	size_t offset;
 	enum mt6375_chg_reg_field field;
 	enum mt6375_chg_dtprop_type type;
 	bool optional;
 };
 
-#define MT6375_CHG_DTPROP(_name, _field, _type, _opt) \
+#define MT6375_CHG_DTPROP(_prop_name, _var, _field, _type, _opt) \
 { \
-	.name = #_name, \
+	.name = _prop_name, \
+	.legacy_name = #_var, \
 	.field = _field, \
 	.type = _type, \
-	.offset = offsetof(struct mt6375_chg_platform_data, _name), \
+	.offset = offsetof(struct mt6375_chg_platform_data, _var), \
 	.optional = _opt, \
 }
 
 static const struct mt6375_chg_dtprop mt6375_chg_dtprops[] = {
-	MT6375_CHG_DTPROP(vbus_ov, F_VBUS_OV, DTPROP_U32, false),
-	MT6375_CHG_DTPROP(chg_tmr, F_CHG_TMR, DTPROP_U32, false),
-	MT6375_CHG_DTPROP(chg_tmr_en, F_CHG_TMR_EN, DTPROP_BOOL, false),
-	MT6375_CHG_DTPROP(otg_lbp, F_OTG_LBP, DTPROP_U32, false),
-	MT6375_CHG_DTPROP(ircmp_v, F_IRCMP_V, DTPROP_U32, false),
-	MT6375_CHG_DTPROP(ircmp_r, F_IRCMP_R, DTPROP_U32, false),
-	MT6375_CHG_DTPROP(wdt, F_WDT, DTPROP_U32, false),
-	MT6375_CHG_DTPROP(wdt_en, F_WDT_EN, DTPROP_BOOL, false),
-	MT6375_CHG_DTPROP(te_en, F_TE, DTPROP_BOOL, false),
-	MT6375_CHG_DTPROP(mivr, F_VMIVR, DTPROP_U32, true),
-	MT6375_CHG_DTPROP(aicr, F_IAICR, DTPROP_U32, true),
-	MT6375_CHG_DTPROP(ichg, F_CC, DTPROP_U32, true),
-	MT6375_CHG_DTPROP(ieoc, F_IEOC, DTPROP_U32, true),
-	MT6375_CHG_DTPROP(cv, F_CV, DTPROP_U32, true),
-	MT6375_CHG_DTPROP(vrec, F_VREC, DTPROP_U32, true),
-	MT6375_CHG_DTPROP(dcdt_sel, F_DCDT_SEL, DTPROP_U32, true),
+	MT6375_CHG_DTPROP("vbus-ov", vbus_ov, F_VBUS_OV, DTPROP_U32, false),
+	MT6375_CHG_DTPROP("chg-tmr", chg_tmr, F_CHG_TMR, DTPROP_U32, false),
+	MT6375_CHG_DTPROP("chg-tmr-en", chg_tmr_en, F_CHG_TMR_EN, DTPROP_BOOL, false),
+	MT6375_CHG_DTPROP("otg-lbp", otg_lbp, F_OTG_LBP, DTPROP_U32, false),
+	MT6375_CHG_DTPROP("ircmp-v", ircmp_v, F_IRCMP_V, DTPROP_U32, false),
+	MT6375_CHG_DTPROP("ircmp-r", ircmp_r, F_IRCMP_R, DTPROP_U32, false),
+	MT6375_CHG_DTPROP("wdt", wdt, F_WDT, DTPROP_U32, false),
+	MT6375_CHG_DTPROP("wdt-en", wdt_en, F_WDT_EN, DTPROP_BOOL, false),
+	MT6375_CHG_DTPROP("te-en", te_en, F_TE, DTPROP_BOOL, false),
+	MT6375_CHG_DTPROP("mivr", mivr, F_VMIVR, DTPROP_U32, true),
+	MT6375_CHG_DTPROP("aicr", aicr, F_IAICR, DTPROP_U32, true),
+	MT6375_CHG_DTPROP("ichg", ichg, F_CC, DTPROP_U32, true),
+	MT6375_CHG_DTPROP("ieoc", ieoc, F_IEOC, DTPROP_U32, true),
+	MT6375_CHG_DTPROP("cv", cv, F_CV, DTPROP_U32, true),
+	MT6375_CHG_DTPROP("vrec", vrec, F_VREC, DTPROP_U32, true),
+	MT6375_CHG_DTPROP("dcdt-sel", dcdt_sel, F_DCDT_SEL, DTPROP_U32, true),
 };
 
 static inline u32 pdata_get_val(void *pdata, const struct mt6375_chg_dtprop *dp)
@@ -2347,11 +2366,14 @@ static void mt6375_chg_parse_dt_helper(struct device *dev, void *pdata,
 	void *val = pdata + dp->offset;
 
 	if (dp->type == DTPROP_BOOL)
-		*((bool *)val) = device_property_read_bool(dev, dp->name);
+		*((bool *)val) = device_property_read_bool(dev, dp->name) ||
+				 device_property_read_bool(dev, dp->legacy_name);
 	else {
-		ret = device_property_read_u32(dev, dp->name, val);
+		ret = device_property_read_u32(dev, dp->name, val) ?
+		      device_property_read_u32(dev, dp->legacy_name, val) : 0;
 		if (ret < 0)
-			dev_info(dev, "property %s not found\n", dp->name);
+			dev_info(dev, "property %s (legacy_name: %s) not found\n",
+				 dp->name, dp->legacy_name);
 	}
 }
 
@@ -2365,7 +2387,7 @@ static int mt6375_chg_get_pdata(struct device *dev)
 		u32 boot_mode;
 		u32 boot_type;
 	} *tag;
-	struct device_node *bc12_np, *boot_np, *np = dev->of_node;
+	struct device_node *bc12_np, *boot_np, *pmic_uvlo_np, *np = dev->of_node;
 	struct mt6375_chg_platform_data *pdata = dev_get_platdata(dev);
 
 	mt_dbg(dev, "%s: entry. Get pdata now.\n", __func__);
@@ -2377,15 +2399,19 @@ static int mt6375_chg_get_pdata(struct device *dev)
 		for (i = 0; i < ARRAY_SIZE(mt6375_chg_dtprops); i++)
 			mt6375_chg_parse_dt_helper(dev, pdata,
 						   &mt6375_chg_dtprops[i]);
-		pdata->usb_killer_detect =
-			device_property_read_bool(dev, "usb_killer_detect");
+		pdata->usb_killer_detect = device_property_read_bool(dev, "usb-killer-detect") ||
+					   device_property_read_bool(dev, "usb_killer_detect");
 
 		/* mediatek chgdev name */
-		if (of_property_read_string(np, "chg_name", &pdata->chg_name))
+		if (of_property_read_string(np, "chg_name", &pdata->chg_name) &&
+		    of_property_read_string(np, "chg-name", &pdata->chg_name))
 			dev_notice(dev, "failed to get chg_name\n");
 
 		/* mediatek boot mode */
-		boot_np = of_parse_phandle(np, "boot_mode", 0);
+		boot_np = of_parse_phandle(np, "boot-mode", 0);
+		if (!boot_np)
+			boot_np = of_parse_phandle(np, "boot_mode", 0);
+
 		if (!boot_np) {
 			dev_err(dev, "failed to get bootmode phandle\n");
 			return -ENODEV;
@@ -2405,12 +2431,16 @@ static int mt6375_chg_get_pdata(struct device *dev)
 		 * 0 means bc12 owner is THIS_MODULE,
 		 * if it is not 0, always ignore
 		 */
-		bc12_np = of_parse_phandle(np, "bc12_sel", 0);
+		bc12_np = of_parse_phandle(np, "bc12-sel", 0);
+		if (!bc12_np)
+			bc12_np = of_parse_phandle(np, "bc12_sel", 0);
+
 		if (!bc12_np) {
 			dev_err(dev, "failed to get bc12_sel phandle\n");
 			return -ENODEV;
 		}
-		if (of_property_read_u32(bc12_np, "bc12_sel", &val) < 0) {
+		if (of_property_read_u32(bc12_np, "bc12-sel", &val) < 0 &&
+		    of_property_read_u32(bc12_np, "bc12_sel", &val) < 0) {
 			dev_err(dev, "property bc12_sel not found\n");
 			return -EINVAL;
 		}
@@ -2420,6 +2450,19 @@ static int mt6375_chg_get_pdata(struct device *dev)
 			pdata->attach_trig = ATTACH_TRIG_TYPEC;
 		else
 			pdata->attach_trig = ATTACH_TRIG_PWR_RDY;
+
+		pmic_uvlo_np = of_parse_phandle(np, "pmic-uvlo", 0);
+		if (!pmic_uvlo_np)
+			dev_notice(dev, "Failed to get pmic-uvlo phandle\n");
+
+		if (of_property_read_u32(pmic_uvlo_np, "uvlo-level", &val) < 0)
+			dev_notice(dev, "property uvlo-level not found, use default: %d mv\n",
+				   DEFAULT_PMIC_UVLO_mV);
+
+		if (val != 0)
+			pdata->pmic_uvlo = val;
+		else
+			pdata->pmic_uvlo = DEFAULT_PMIC_UVLO_mV;
 
 		dev->platform_data = pdata;
 	}
@@ -2685,6 +2728,7 @@ static int mt6375_chg_probe(struct platform_device *pdev)
 	mutex_init(&ddata->hm_lock);
 	atomic_set(&ddata->attach, 0);
 	atomic_set(&ddata->eoc_cnt, 0);
+	atomic_set(&ddata->no_6pin_used, 0);
 	ddata->wq = create_singlethread_workqueue(dev_name(dev));
 	if (!ddata->wq) {
 		dev_err(dev, "failed to create workqueue\n");

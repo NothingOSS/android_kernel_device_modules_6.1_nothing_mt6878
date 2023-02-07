@@ -271,7 +271,8 @@ static void mtk_ctd_parse_dt(struct mtk_ctd_info *mci)
 	struct device_node *np = mci->dev->of_node;
 	int ret;
 
-	ret = of_property_read_u32(np, "bc12_sel", &mci->bc12_sel);
+	ret = of_property_read_u32(np, "bc12-sel", &mci->bc12_sel) ?
+	      of_property_read_u32(np, "bc12_sel", &mci->bc12_sel) : 0;
 	if (ret < 0) {
 		dev_info(mci->dev,
 			 "%s: not defined, set default bc12_sel to 0\n",
