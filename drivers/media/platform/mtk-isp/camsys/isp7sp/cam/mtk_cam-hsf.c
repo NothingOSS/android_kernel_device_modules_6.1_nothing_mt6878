@@ -72,7 +72,7 @@ int mtk_cam_dmabuf_get_iova(struct mtk_cam_ctx *ctx,
 	struct mtk_cam_device *cam = ctx->cam;
 	struct dma_buf_attachment *attach;
 	struct sg_table *table;
-	int handle;
+	uint64_t handle;
 
 	handle = dmabuf_to_secure_handle(dmap->dbuf);
 

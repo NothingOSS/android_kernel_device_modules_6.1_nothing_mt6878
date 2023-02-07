@@ -35,7 +35,7 @@ struct mtk_cam_hsf_info {
 	u32 enable_raw;
 	u32 cam_module;
 	u64 chunk_iova;
-	uint32_t chunk_hsfhandle;
+	u64 chunk_hsfhandle;
 };
 
 struct cq_info {
