@@ -18411,6 +18411,19 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 	struct mtk_drm_private *priv = NULL;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 
+	if (ddp->mtk_crtc[0])
+		mtk_crtc = ddp->mtk_crtc[0];
+	else {
+		DDPPR_ERR("%s mtk_crtc is null\n", __func__);
+		return IRQ_NONE;
+	}
+	if (ddp->mtk_crtc[0]->base.dev->dev_private)
+		priv = ddp->mtk_crtc[0]->base.dev->dev_private;
+	else {
+		DDPPR_ERR("%s private is null\n", __func__);
+		return IRQ_NONE;
+	}
+
 	irq_debug[0] = sched_clock();
 
 	if (mtk_drm_top_clk_isr_get("mutex_irq") == false) {
@@ -18434,10 +18447,7 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 		if (val & (0x1 << (m_id + DISP_MUTEX_TOTAL))) {
 			DDPIRQ("[IRQ] mutex%d eof!\n", m_id);
 			DRM_MMP_MARK(mutex[m_id], val, 1);
-			if (ddp->mtk_crtc[0] && ddp->mtk_crtc[0]->base.dev->dev_private &&
-				ddp->mtk_crtc[0]->esd_ctx) {
-				priv = ddp->mtk_crtc[0]->base.dev->dev_private;
-				mtk_crtc = ddp->mtk_crtc[0];
+			if (mtk_crtc && mtk_crtc->esd_ctx) {
 				if (priv && priv->data->mmsys_id == MMSYS_MT6985)
 					atomic_set(&mtk_crtc->esd_ctx->target_time, 0);
 			}
