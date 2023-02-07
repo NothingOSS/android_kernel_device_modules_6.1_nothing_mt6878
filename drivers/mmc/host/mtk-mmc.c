@@ -260,8 +260,8 @@ static const struct mtk_mmc_compatible mt6897_compat = {
 	.enhance_rx = true,
 	.support_64g = true,
 	.need_gate_cg = false,
-	.new_tx_ver = 0,
-	.new_rx_ver = 0,
+	.new_tx_ver = MSDC_NEW_TX_V1,
+	.new_rx_ver = MSDC_NEW_RX_V1,
 };
 
 static const struct of_device_id msdc_of_ids[] = {
