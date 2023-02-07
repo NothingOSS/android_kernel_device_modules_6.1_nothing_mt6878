@@ -158,6 +158,7 @@ enum scp_reserve_mem_id_t {
 	SCP_AOV_MEM_ID,
 	SCP_SPK_MEM_ID,
 	SCP_AOD_MEM_ID,
+	SCP_CONNSYS_MEM_ID,
 	NUMS_MEM_ID,
 };
 
