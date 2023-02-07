@@ -19,6 +19,8 @@
 #include <linux/slab.h>
 #include <linux/of.h>
 #include <linux/overflow.h>
+#include <soc/mediatek/mmqos.h>
+
 
 #include "internal.h"
 
@@ -29,6 +31,12 @@ static DEFINE_IDR(icc_idr);
 static LIST_HEAD(icc_providers);
 static DEFINE_MUTEX(icc_lock);
 static struct dentry *icc_debugfs_dir;
+static int ftrace_ena;
+
+static u32 log_level;
+enum interconnect_v2_log_level {
+	log_v2_dbg = 0,
+};
 
 static void mtk_icc_summary_show_one(struct seq_file *s, struct icc_node *n)
 {
@@ -187,22 +195,85 @@ static int aggregate_requests(struct icc_node *node)
 	node->avg_bw = 0;
 	node->peak_bw = 0;
 
+	MMQOS_ICC_SYSTRACE_BEGIN("%s pre_aggr\n", __func__);
 	if (p->pre_aggregate)
 		p->pre_aggregate(node);
+	MMQOS_ICC_SYSTRACE_END();
 
 	for (i = 0; i < node->num_reverse_links; i++) {
 		rl = node->reverse_links[i];
+		MMQOS_ICC_SYSTRACE_BEGIN("%s node:%s r1:%s\n", __func__, node->name, rl->name);
 		p->aggregate(node, 0, rl->avg_bw, rl->peak_bw,
 			     &node->avg_bw, &node->peak_bw);
+		MMQOS_ICC_SYSTRACE_END();
 	}
 
+	/* update leave node */
 	hlist_for_each_entry(r, &node->direct_req_list, req_node) {
+		MMQOS_ICC_SYSTRACE_BEGIN("%s node:%s direct_req_list\n", __func__, node);
 		p->aggregate(node, r->tag, r->avg_bw, r->peak_bw,
 			     &node->avg_bw, &node->peak_bw);
+		MMQOS_ICC_SYSTRACE_END();
 	}
 
 	return 0;
 }
+
+#ifdef ENABLE_INTERCONNECT_V2
+static int aggregate_requests_v2(struct icc_path *path, u32 avg_bw, u32 peak_bw)
+{
+	struct icc_provider *p = NULL;
+	struct icc_node *node;
+	size_t i;
+	u32 v2_cal_r_avg, v2_cal_r_peak, v2_cal_w_avg, v2_cal_w_peak, v2_cal_mix, normalize_peak;
+	bool is_write;
+
+	for (i = 0; i < path->num_nodes; i++) {
+		node = path->reqs[i].node;
+		p = node->provider;
+		if (i == 0)
+			is_write = p->path_is_write(node);
+		if (log_level & 1 << log_v2_dbg)
+			pr_notice("[mmqos][aggr] node:%s is_write:%d\n",
+						 node->name, is_write);
+		normalize_peak = peak_bw;
+		if (normalize_peak == MTK_MMQOS_MAX_BW) {
+			node->v2_max_ostd = true;
+			normalize_peak = 1000;
+		}
+		if (is_write) {
+			v2_cal_w_avg = node->v2_avg_w_bw -  path->old_avg_bw + avg_bw;
+			v2_cal_w_peak = node->v2_peak_w_bw -  path->old_peak_bw + normalize_peak;
+			node->v2_avg_w_bw = v2_cal_w_avg;
+			node->v2_peak_w_bw = v2_cal_w_peak;
+		} else {
+			v2_cal_r_avg = node->v2_avg_r_bw -  path->old_avg_bw + avg_bw;
+			v2_cal_r_peak = node->v2_peak_r_bw -  path->old_peak_bw + normalize_peak;
+			node->v2_avg_r_bw = v2_cal_r_avg;
+			node->v2_peak_r_bw = v2_cal_r_peak;
+		}
+
+		node->v2_avg_bw = node->v2_avg_r_bw + node->v2_avg_w_bw;
+		node->v2_peak_bw = node->v2_peak_r_bw + node->v2_peak_w_bw;
+
+		if (node->v2_peak_bw > node->v2_avg_bw)
+			v2_cal_mix = node->v2_peak_bw;
+		else
+			v2_cal_mix = node->v2_avg_bw;
+
+		node->v2_mix_bw = v2_cal_mix;
+	}
+
+
+	path->old_avg_bw = avg_bw;
+	if (peak_bw == MTK_MMQOS_MAX_BW)
+		path->old_peak_bw = 1000;
+	else
+		path->old_peak_bw = peak_bw;
+
+	return 0;
+}
+#endif
 
 static int apply_constraints(struct icc_path *path)
 {
@@ -462,48 +533,80 @@ EXPORT_SYMBOL_GPL(mtk_icc_set_bw_not_update);
 int mtk_icc_set_bw(struct icc_path *path, u32 avg_bw, u32 peak_bw)
 {
 	struct icc_node *node;
-	u32 old_avg, old_peak;
+	u32 restore_avg_bw, restore_peak_bw;
 	size_t i;
 	int ret;
 
-	if (IS_ERR_OR_NULL(path) || !path->num_nodes)
+	MMQOS_ICC_SYSTRACE_BEGIN("%s set bw\n", __func__);
+	if (IS_ERR_OR_NULL(path) || !path->num_nodes) {
+		MMQOS_ICC_SYSTRACE_END();
 		return 0;
+	}
 
+	MMQOS_ICC_SYSTRACE_BEGIN("%s lock\n", __func__);
 	mutex_lock(&icc_lock);
+	MMQOS_ICC_SYSTRACE_END();
 
-	old_avg = path->reqs[0].avg_bw;
-	old_peak = path->reqs[0].peak_bw;
+	restore_avg_bw = path->reqs[0].avg_bw;
+	restore_peak_bw = path->reqs[0].peak_bw;
+
+#ifdef ENABLE_INTERCONNECT_V2
+	MMQOS_ICC_SYSTRACE_BEGIN("[v2] %s aggregate\n", __func__);
+	aggregate_requests_v2(path, avg_bw, peak_bw);
+	MMQOS_ICC_SYSTRACE_END(); //v2 aggr
+#endif
 
 	for (i = 0; i < path->num_nodes; i++) {
 		node = path->reqs[i].node;
-
 		/* update the consumer request for this path */
 		path->reqs[i].avg_bw = avg_bw;
 		path->reqs[i].peak_bw = peak_bw;
-
+		if (log_level & 1 << log_v2_dbg)
+			pr_notice("[mmqos][set] node:%s num:%d avg_bw:%d peak_bw:%d\n",
+						node->name, (int)path->num_nodes, avg_bw, peak_bw);
+#ifdef ENABLE_INTERCONNECT_V1
+		MMQOS_ICC_SYSTRACE_BEGIN("[v1] %s %s aggregate\n", __func__, node->name);
 		/* aggregate requests for this node */
 		aggregate_requests(node);
+		MMQOS_ICC_SYSTRACE_END(); //v1 aggr
+		if ((node->avg_bw != node->v2_avg_bw) || (node->peak_bw != node->v2_peak_bw)) {
+			pr_notice("[new][mmqos][set][old_rule] result avg_bw:%d peak_bw:%d\n",
+					 node->avg_bw, node->peak_bw);
+			pr_notice("[new][mmqos][set][new_rule] result avg_bw:%d peak_bw:%d\n",
+					node->v2_avg_bw, node->v2_peak_bw);
+		}
+#endif
+
+#ifdef ENABLE_INTERCONNECT_V2
+		node->avg_bw = node->v2_avg_bw;
+		node->peak_bw = node->v2_peak_bw;
+#endif
 
 		trace_mtk_icc_set_bw(path, node, i, avg_bw, peak_bw);
 	}
 
+	MMQOS_ICC_SYSTRACE_BEGIN("%s apply_constraints\n", __func__);
 	ret = apply_constraints(path);
+	MMQOS_ICC_SYSTRACE_END(); //apply_constraints
+
 	if (ret) {
 		pr_debug("interconnect: error applying constraints (%d)\n",
 			 ret);
 
 		for (i = 0; i < path->num_nodes; i++) {
 			node = path->reqs[i].node;
-			path->reqs[i].avg_bw = old_avg;
-			path->reqs[i].peak_bw = old_peak;
+			path->reqs[i].avg_bw = restore_avg_bw;
+			path->reqs[i].peak_bw = restore_peak_bw;
 			aggregate_requests(node);
 		}
 		apply_constraints(path);
 	}
 
+	MMQOS_ICC_SYSTRACE_BEGIN("%s unlock\n", __func__);
 	mutex_unlock(&icc_lock);
-
+	MMQOS_ICC_SYSTRACE_END(); //unlock
 	trace_mtk_icc_set_bw_end(path, ret);
+	MMQOS_ICC_SYSTRACE_END(); //full icc set
 
 	return ret;
 }
@@ -866,6 +969,38 @@ static void __exit mtk_icc_exit(void)
 }
 module_init(mtk_icc_init);
 module_exit(mtk_icc_exit);
+
+bool mmqos_icc_systrace_enabled(void)
+{
+	return ftrace_ena & (1 << MMQOS_ICC_PROFILE_SYSTRACE);
+}
+
+noinline int icc_tracing_mark_write(char *fmt, ...)
+{
+#if IS_ENABLED(CONFIG_MTK_FTRACER)
+	char buf[TRACE_MSG_LEN];
+	va_list args;
+	int len;
+
+	va_start(args, fmt);
+	len = vsnprintf(buf, sizeof(buf), fmt, args);
+	va_end(args);
+
+	if (len >= TRACE_MSG_LEN) {
+		pr_notice("%s trace size %u exceed limit\n", __func__, len);
+		return -1;
+	}
+
+	trace_puts(buf);
+#endif
+	return 0;
+}
+
+module_param(log_level, uint, 0644);
+MODULE_PARM_DESC(log_level, "interconnect dbg level");
+
+module_param(ftrace_ena, uint, 0644);
+MODULE_PARM_DESC(ftrace_ena, "ftrace enable");
 
 //MODULE_AUTHOR("Georgi Djakov <georgi.djakov@linaro.org>");
 MODULE_DESCRIPTION("MTK Interconnect Driver Core");

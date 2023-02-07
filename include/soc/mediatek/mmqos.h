@@ -7,6 +7,8 @@
 #ifndef MTK_MMQOS_H
 #define MTK_MMQOS_H
 
+#define MTK_MMQOS_MAX_BW	(0x10000000)
+
 enum hrt_type {
 	HRT_MD,
 	HRT_CAM,

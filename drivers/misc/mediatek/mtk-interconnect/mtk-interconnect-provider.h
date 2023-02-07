@@ -49,6 +49,7 @@ struct icc_provider {
 	int (*set)(struct icc_node *src, struct icc_node *dst);
 	int (*aggregate)(struct icc_node *node, u32 tag, u32 avg_bw,
 			 u32 peak_bw, u32 *agg_avg, u32 *agg_peak);
+	bool (*path_is_write)(struct icc_node *node);
 	void (*pre_aggregate)(struct icc_node *node);
 	struct icc_node* (*xlate)(struct of_phandle_args *spec, void *data);
 	struct device		*dev;
@@ -90,6 +91,14 @@ struct icc_node {
 	struct hlist_head	direct_req_list;
 	u32			avg_bw;
 	u32			peak_bw;
+	u32			v2_mix_bw;
+	u32			v2_avg_bw;
+	u32			v2_peak_bw;
+	u32			v2_avg_r_bw;
+	u32			v2_peak_r_bw;
+	u32			v2_avg_w_bw;
+	u32			v2_peak_w_bw;
+	bool			v2_max_ostd;
 	void			*data;
 };
 

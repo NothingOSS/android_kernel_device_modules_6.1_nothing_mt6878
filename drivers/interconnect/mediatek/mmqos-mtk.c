@@ -74,8 +74,13 @@ struct common_port_node {
 	u32 latest_mix_bw;
 	u64 latest_peak_bw;
 	u32 latest_avg_bw;
+	u32 old_avg_w_bw;
+	u32 old_avg_r_bw;
+	u32 old_peak_w_bw;
+	u32 old_peak_r_bw;
 	struct list_head list;
 	u8 channel;
+	u8 channel_v2;
 	u8 hrt_type;
 	u32 write_peak_bw;
 	u32 write_avg_bw;
@@ -110,14 +115,20 @@ static struct mmqos_hrt *g_hrt;
 static u32 log_level;
 enum mmqos_log_level {
 	log_bw = 0,
-	log_comm_freq,
+	log_comm_freq = 1,
+	log_v2_dbg,
 };
 
 static u32 chn_hrt_r_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
 static u32 chn_srt_r_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
 static u32 chn_hrt_w_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
 static u32 chn_srt_w_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
-
+#ifdef ENABLE_INTERCONNECT_V2
+static u32 v2_chn_hrt_r_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
+static u32 v2_chn_srt_r_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
+static u32 v2_chn_hrt_w_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
+static u32 v2_chn_srt_w_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
+#endif
 static void mmqos_update_comm_bw(struct device *dev,
 	u32 comm_port, u32 freq, u64 mix_bw, u64 bw_peak, bool qos_bound, bool max_bwl)
 {
@@ -398,6 +409,73 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 	switch (NODE_TYPE(dst->id)) {
 	case MTK_MMQOS_NODE_COMMON:
 		comm_node = (struct common_node *)dst->data;
+#ifdef ENABLE_INTERCONNECT_V2
+		comm_port_node = (struct common_port_node *)src->data;
+		comm_id = (comm_port_node->channel_v2 >> 4) & 0xf;
+		chnn_id = comm_port_node->channel_v2 & 0xf;
+		if (chnn_id) {
+			chnn_id -= 1;
+			v2_chn_hrt_w_bw[comm_id][chnn_id] -= comm_port_node->old_peak_w_bw;
+			v2_chn_srt_w_bw[comm_id][chnn_id] -= comm_port_node->old_avg_w_bw;
+			v2_chn_hrt_w_bw[comm_id][chnn_id] += src->v2_peak_w_bw;
+			v2_chn_srt_w_bw[comm_id][chnn_id] += src->v2_avg_w_bw;
+			comm_port_node->old_peak_w_bw = src->v2_peak_w_bw;
+			comm_port_node->old_avg_w_bw = src->v2_avg_w_bw;
+			if (comm_port_node->hrt_type == HRT_DISP
+				&& gmmqos->dual_pipe_enable) {
+				v2_chn_hrt_r_bw[comm_id][chnn_id] -= comm_port_node->old_peak_r_bw;
+				v2_chn_hrt_r_bw[comm_id][chnn_id] += (src->v2_peak_r_bw / 2);
+				comm_port_node->old_peak_r_bw = (src->v2_peak_r_bw / 2);
+			} else {
+				v2_chn_hrt_r_bw[comm_id][chnn_id] -= comm_port_node->old_peak_r_bw;
+				v2_chn_hrt_r_bw[comm_id][chnn_id] += src->v2_peak_r_bw;
+				comm_port_node->old_peak_r_bw = src->v2_peak_r_bw;
+			}
+			v2_chn_srt_r_bw[comm_id][chnn_id] -= comm_port_node->old_avg_r_bw;
+			v2_chn_srt_r_bw[comm_id][chnn_id] += src->v2_avg_r_bw;
+			comm_port_node->old_avg_r_bw = src->v2_avg_r_bw;
+
+#ifdef ENABLE_INTERCONNECT_V1
+			if (chn_hrt_w_bw[comm_id][chnn_id] != v2_chn_hrt_w_bw[comm_id][chnn_id] ||
+			chn_hrt_r_bw[comm_id][chnn_id] != v2_chn_hrt_r_bw[comm_id][chnn_id] ||
+			chn_srt_w_bw[comm_id][chnn_id] != v2_chn_srt_w_bw[comm_id][chnn_id] ||
+			chn_srt_r_bw[comm_id][chnn_id] != v2_chn_srt_r_bw[comm_id][chnn_id]) {
+				pr_notice("[mmqos][dbg][new]v1_hrt_w_bw:%d  v1_hrt_r_bw:%d v1_srt_w_bw:%d v1_srt_r_bw:%d\n",
+					 chn_hrt_w_bw[comm_id][chnn_id],
+					 chn_hrt_r_bw[comm_id][chnn_id],
+					 chn_srt_w_bw[comm_id][chnn_id],
+					 chn_srt_r_bw[comm_id][chnn_id]);
+				pr_notice("[mmqos][dbg][new]v2_hrt_w_bw:%d  v2_hrt_r_bw:%d v2_srt_w_bw:%d v2_srt_r_bw:%d\n",
+					 v2_chn_hrt_w_bw[comm_id][chnn_id],
+					 v2_chn_hrt_r_bw[comm_id][chnn_id],
+					 v2_chn_srt_w_bw[comm_id][chnn_id],
+					 v2_chn_srt_r_bw[comm_id][chnn_id]);
+			}
+#endif
+			chn_hrt_w_bw[comm_id][chnn_id] = v2_chn_hrt_w_bw[comm_id][chnn_id];
+			chn_srt_w_bw[comm_id][chnn_id] = v2_chn_srt_w_bw[comm_id][chnn_id];
+			chn_hrt_r_bw[comm_id][chnn_id] = v2_chn_hrt_r_bw[comm_id][chnn_id];
+			chn_srt_r_bw[comm_id][chnn_id] = v2_chn_srt_r_bw[comm_id][chnn_id];
+			if (log_level & 1 << log_v2_dbg)
+				pr_notice("[mmqos][dbg][new] hrt_w_bw:%d  hrt_r_bw:%d srt_w_bw:%d srt_r_bw:%d\n",
+					chn_hrt_w_bw[comm_id][chnn_id],
+					chn_hrt_r_bw[comm_id][chnn_id],
+					chn_srt_w_bw[comm_id][chnn_id],
+					chn_srt_r_bw[comm_id][chnn_id]);
+
+			record_chn_bw(comm_id, chnn_id,
+				chn_srt_r_bw[comm_id][chnn_id],
+				chn_srt_w_bw[comm_id][chnn_id],
+				chn_hrt_r_bw[comm_id][chnn_id],
+				chn_hrt_w_bw[comm_id][chnn_id]);
+			if (mmqos_met_enabled())
+				trace_mmqos__chn_bw(comm_id, chnn_id,
+					icc_to_MBps(chn_srt_r_bw[comm_id][chnn_id]),
+					icc_to_MBps(chn_srt_w_bw[comm_id][chnn_id]),
+					icc_to_MBps(chn_hrt_r_bw[comm_id][chnn_id]),
+					icc_to_MBps(chn_hrt_w_bw[comm_id][chnn_id]));
+		}
+#endif
 		if (!comm_node)
 			break;
 		if (mmqos_state & DVFSRC_ENABLE) {
@@ -420,7 +498,9 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 				pr_notice("ignore larb%d\n", src->id);
 			break;
 		}
+
 		if (chnn_id) {
+#ifdef ENABLE_INTERCONNECT_V1
 			chnn_id -= 1;
 			if (mmqos_state & DISP_BY_LARB_ENABLE
 				&& src->id == gmmqos->disp_virt_larbs[0]) {
@@ -457,7 +537,7 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 						icc_to_MBps(chn_srt_r_bw[comm_id][chnn_id]),
 						icc_to_MBps(chn_hrt_r_bw[comm_id][chnn_id]));
 			}
-
+#endif
 			if (mmqos_met_enabled()) {
 				trace_mmqos__larb_avg_bw(
 					LARB_ID(src->id),
@@ -465,14 +545,21 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 				trace_mmqos__larb_peak_bw(
 					LARB_ID(src->id),
 					icc_to_MBps(src->peak_bw));
+#ifdef ENABLE_INTERCONNECT_V1
 				trace_mmqos__chn_bw(comm_id, chnn_id,
 					icc_to_MBps(chn_srt_r_bw[comm_id][chnn_id]),
 					icc_to_MBps(chn_srt_w_bw[comm_id][chnn_id]),
 					icc_to_MBps(chn_hrt_r_bw[comm_id][chnn_id]),
 					icc_to_MBps(chn_hrt_w_bw[comm_id][chnn_id]));
+#endif
 			}
 		}
+
 		mutex_lock(&comm_port_node->bw_lock);
+#ifdef ENABLE_INTERCONNECT_V1
+		if (log_level & 1 << log_v2_dbg)
+			pr_notice("[mmqos][MTK_MMQOS_NODE_COMMON_PORT] v1_mix:%d v2_mix:%d node_name:%s\n",
+					comm_port_node->base->mix_bw, dst->v2_mix_bw, dst->name);
 		if (comm_port_node->latest_mix_bw == comm_port_node->base->mix_bw
 			&& comm_port_node->latest_peak_bw == dst->peak_bw
 			&& comm_port_node->latest_avg_bw == dst->avg_bw) {
@@ -480,6 +567,16 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 			break;
 		}
 		comm_port_node->latest_mix_bw = comm_port_node->base->mix_bw;
+#endif
+#ifdef ENABLE_INTERCONNECT_V2
+		if (comm_port_node->latest_mix_bw == dst->v2_mix_bw
+			&& comm_port_node->latest_peak_bw == dst->peak_bw
+			&& comm_port_node->latest_avg_bw == dst->avg_bw) {
+			mutex_unlock(&comm_port_node->bw_lock);
+			break;
+		}
+		comm_port_node->latest_mix_bw = dst->v2_mix_bw;
+#endif
 		comm_port_node->latest_peak_bw = dst->peak_bw;
 		comm_port_node->latest_avg_bw = dst->avg_bw;
 		port_id = MASK_8(dst->id);
@@ -498,6 +595,7 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 		comm_id = COMM_PORT_COMM_ID(dst->id);
 		if (port_id != VIRT_COMM_PORT_ID)
 			chnn_id = comm_port_node->channel - 1;
+#ifdef ENABLE_INTERCONNECT_V1
 		if (log_level & 1 << log_bw)
 			pr_notice("%s comm %d port %d chnn %d larb %d %d %d latest %d %llu chn %d %d %d %d\n",
 				__func__,
@@ -510,16 +608,18 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 				icc_to_MBps(chn_srt_w_bw[comm_id][chnn_id]),
 				icc_to_MBps(chn_hrt_r_bw[comm_id][chnn_id]),
 				icc_to_MBps(chn_hrt_w_bw[comm_id][chnn_id]));
+#endif
 		record_comm_port_bw(comm_id, port_id, LARB_ID(src->id),
 			src->avg_bw, src->peak_bw,
 			comm_port_node->latest_avg_bw,
 			comm_port_node->latest_peak_bw);
+#ifdef ENABLE_INTERCONNECT_V1
 		record_chn_bw(comm_id, chnn_id,
 			chn_srt_r_bw[comm_id][chnn_id],
 			chn_srt_w_bw[comm_id][chnn_id],
 			chn_hrt_r_bw[comm_id][chnn_id],
 			chn_hrt_w_bw[comm_id][chnn_id]);
-
+#endif
 		mutex_unlock(&comm_port_node->bw_lock);
 		break;
 	case MTK_MMQOS_NODE_LARB:
@@ -530,6 +630,7 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 		/* update channel BW */
 		comm_id = (larb_port_node->channel >> 4) & 0xf;
 		chnn_id = larb_port_node->channel & 0xf;
+#ifdef ENABLE_INTERCONNECT_V1
 		if (chnn_id) {
 			chnn_id -= 1;
 			if (larb_port_node->is_write) {
@@ -548,6 +649,9 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 				larb_port_node->old_avg_bw = src->avg_bw;
 			}
 		}
+		if (log_level & 1 << log_v2_dbg)
+			pr_notice("[mmqos][MTK_MMQOS_NODE_LARB] v1_mix:%d v2_mix:%d node_name:%s\n",
+				larb_port_node->base->mix_bw, src->v2_mix_bw, src->name);
 
 		if (larb_port_node->base->mix_bw) {
 			value = SHIFT_ROUND(
@@ -560,6 +664,20 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 		}
 		if (value > mmqos->max_ratio || larb_port_node->is_max_ostd)
 			value = mmqos->max_ratio;
+#endif
+#ifdef ENABLE_INTERCONNECT_V2
+		if (src->v2_mix_bw) {
+			value = SHIFT_ROUND(
+				icc_to_MBps(src->v2_mix_bw),
+				larb_port_node->bw_ratio);
+			if (src->peak_bw)
+				value = SHIFT_ROUND(value * 3, 1);
+		} else {
+			src->v2_max_ostd = false;
+		}
+		if (value > mmqos->max_ratio || src->v2_max_ostd)
+			value = mmqos->max_ratio;
+#endif
 		if (mmqos_state & OSTD_ENABLE)
 			mtk_smi_larb_bw_set(
 				larb_node->larb_dev,
@@ -580,11 +698,13 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 			trace_mmqos__larb_port_peak_bw(
 				MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
 				icc_to_MBps(larb_port_node->base->icc_node->peak_bw));
+#ifdef ENABLE_INTERCONNECT_V1
 			trace_mmqos__chn_bw(comm_id, chnn_id,
 				icc_to_MBps(chn_srt_r_bw[comm_id][chnn_id]),
 				icc_to_MBps(chn_srt_w_bw[comm_id][chnn_id]),
 				icc_to_MBps(chn_hrt_r_bw[comm_id][chnn_id]),
 				icc_to_MBps(chn_hrt_w_bw[comm_id][chnn_id]));
+#endif
 		}
 		//queue_work(mmqos->wq, &larb_node->work);
 		break;
@@ -631,6 +751,7 @@ static int mtk_mmqos_aggregate(struct icc_node *node,
 			base_node->mix_bw = 0;
 		base_node->mix_bw += peak_bw ? mix_bw : avg_bw;
 	}
+
 	*agg_avg += avg_bw;
 
 	if (peak_bw == MTK_MMQOS_MAX_BW)
@@ -640,6 +761,41 @@ static int mtk_mmqos_aggregate(struct icc_node *node,
 
 	MMQOS_SYSTRACE_END();
 	return 0;
+}
+
+static bool mtk_mmqos_path_is_write(struct icc_node *node)
+{
+	struct larb_port_node *larb_port_node = NULL;
+	struct larb_node *larb_node = NULL;
+
+	switch (NODE_TYPE(node->id)) {
+	case MTK_MMQOS_NODE_LARB_PORT:
+		larb_port_node = (struct larb_port_node *)node->data;
+		if (larb_port_node->is_write) {
+			if (log_level & 1 << log_v2_dbg)
+				pr_notice("[mmqos][port] node_id:0x%x is_write:%d\n",
+						 node->id, larb_port_node->is_write);
+			return true;
+		}
+		if (log_level & 1 << log_v2_dbg)
+			pr_notice("[mmqos][port] node_id:0x%x is_write:%d\n",
+						 node->id, larb_port_node->is_write);
+
+		break;
+	case MTK_MMQOS_NODE_LARB:
+		larb_node = (struct larb_node *)node->data;
+		if (larb_node->is_write) {
+			if (log_level & 1 << log_v2_dbg)
+				pr_notice("[mmqos][larb] node_id:0x%x is_write:%d\n",
+						 node->id, larb_node->is_write);
+			return true;
+		}
+		if (log_level & 1 << log_v2_dbg)
+			pr_notice("[mmqos][larb] node_id:0x%x is_write:%d\n",
+						node->id, larb_node->is_write);
+		break;
+	}
+	return false;
 }
 
 static struct icc_node *mtk_mmqos_xlate(
@@ -881,6 +1037,7 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&mmqos->prov.nodes);
 	mmqos->prov.set = mtk_mmqos_set;
 	mmqos->prov.aggregate = mtk_mmqos_aggregate;
+	mmqos->prov.path_is_write = mtk_mmqos_path_is_write;
 	mmqos->prov.xlate = mtk_mmqos_xlate;
 	mmqos->prov.dev = &pdev->dev;
 	ret = mtk_icc_provider_add(&mmqos->prov);
@@ -1002,6 +1159,7 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 			comm_port_node->channel =
 				mmqos_desc->comm_port_channels[
 				MASK_8((node->id >> 8))][MASK_8(node->id)];
+			comm_port_node->channel_v2 = node_desc->channel;
 			comm_port_node->hrt_type =
 				mmqos_desc->comm_port_hrt_types[
 				MASK_8((node->id >> 8))][MASK_8(node->id)];

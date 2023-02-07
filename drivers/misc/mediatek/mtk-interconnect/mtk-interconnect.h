@@ -8,6 +8,7 @@
 
 #include <linux/mutex.h>
 #include <linux/types.h>
+#include <linux/kernel.h>
 
 /* macros for converting to icc units */
 #define Bps_to_icc(x)	((x) / 1000)
@@ -21,6 +22,37 @@
 
 struct icc_path;
 struct device;
+
+/* For systrace */
+enum MMQOS_ICC_PROFILE_LEVEL {
+	MMQOS_ICC_PROFILE_SYSTRACE = 0,
+	MMQOS_ICC_PROFILE_MAX /* Always keep at the end */
+};
+bool mmqos_icc_systrace_enabled(void);
+int icc_tracing_mark_write(char *fmt, ...);
+
+#define TRACE_MSG_LEN	1024
+
+#define MMQOS_ICC_TRACE_FORCE_BEGIN_TID(tid, fmt, args...) \
+	icc_tracing_mark_write("B|%d|" fmt "\n", tid, ##args)
+
+#define MMQOS_ICC_TRACE_FORCE_BEGIN(fmt, args...) \
+	MMQOS_ICC_TRACE_FORCE_BEGIN_TID(current->tgid, fmt, ##args)
+
+#define MMQOS_ICC_TRACE_FORCE_END() \
+	icc_tracing_mark_write("E\n")
+
+#define MMQOS_ICC_SYSTRACE_BEGIN(fmt, args...) do { \
+	if (mmqos_icc_systrace_enabled()) { \
+		MMQOS_ICC_TRACE_FORCE_BEGIN(fmt, ##args); \
+	} \
+} while (0)
+
+#define MMQOS_ICC_SYSTRACE_END() do { \
+	if (mmqos_icc_systrace_enabled()) { \
+		MMQOS_ICC_TRACE_FORCE_END(); \
+	} \
+} while (0)
 
 #if IS_ENABLED(CONFIG_INTERCONNECT_MTK_EXTENSION)
 

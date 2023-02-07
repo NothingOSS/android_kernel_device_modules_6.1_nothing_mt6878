@@ -34,6 +34,9 @@ struct icc_req {
  */
 struct icc_path {
 	const char *name;
+	u32 old_avg_bw;
+	u32 old_peak_bw;
+	bool is_write;
 	size_t num_nodes;
 	struct icc_req reqs[];
 };
