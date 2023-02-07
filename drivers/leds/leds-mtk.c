@@ -397,7 +397,7 @@ int mt_leds_parse_dt(struct mt_led_data *mdev, struct fwnode_handle *fwnode)
 		mdev->conf.min_brightness = 1;
 	}
 	ret = fwnode_property_read_u32(fwnode,
-		"led_mode", &(mdev->conf.mode));
+		"led-mode", &(mdev->conf.mode));
 	if (ret) {
 		pr_info("No min-brightness, use default value 1");
 		mdev->conf.mode = MT_LED_MODE_CUST_BLS_I2C;
