@@ -418,6 +418,34 @@ int mtk_dprec_logger_get_buf(enum DPREC_LOGGER_PR_TYPE type, char *stringbuf,
 	return n;
 }
 
+void mtk_dprec_snapshot(void)
+{
+	unsigned long flag = 0;
+	unsigned int buf_id = 0;
+	static bool called;
+	int i;
+
+	if (called || !logger_enable)
+		return;
+
+	called = true;
+	spin_lock_irqsave(dprec_logger_lock(DPREC_LOGGER_STATUS), flag);
+	spin_lock_irqsave(dprec_logger_lock(DPREC_LOGGER_DEBUG), flag);
+
+	buf_id = dprec_logger_buffer[DPREC_LOGGER_DEBUG].id;
+
+	for (i = STATUS_BUFFER_COUNT - 1 ; i >= 0; --i) {
+		memcpy(status_buffer[i], dbg_buffer[buf_id], LOGGER_BUFFER_SIZE);
+		if (buf_id > 0)
+			--buf_id;
+		else
+			buf_id = DEBUG_BUFFER_COUNT - 1;
+	}
+
+	spin_unlock_irqrestore(dprec_logger_lock(DPREC_LOGGER_DEBUG), flag);
+	spin_unlock_irqrestore(dprec_logger_lock(DPREC_LOGGER_STATUS), flag);
+}
+
 int __mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param,
 			       unsigned int cfg_flag, bool group)
 {
@@ -3995,8 +4023,23 @@ static void process_dbg_opt(const char *opt)
 	} else if (strncmp(opt, "get_panels_info", 15) == 0) {
 		mtk_get_panels_info();
 	} else if (strncmp(opt, "clear_errdump", 13) == 0) {
+		unsigned long flag = 0;
+
+		spin_lock_irqsave(dprec_logger_lock(DPREC_LOGGER_ERROR), flag);
 		memset(err_buffer[0], 0, ERROR_BUFFER_COUNT * LOGGER_BUFFER_SIZE);
+		dprec_logger_buffer[DPREC_LOGGER_ERROR].len = 0;
+		dprec_logger_buffer[DPREC_LOGGER_ERROR].id = 0;
+		spin_unlock_irqrestore(dprec_logger_lock(DPREC_LOGGER_ERROR), flag);
+		spin_lock_irqsave(dprec_logger_lock(DPREC_LOGGER_DUMP), flag);
 		memset(dump_buffer[0], 0, DUMP_BUFFER_COUNT * LOGGER_BUFFER_SIZE);
+		dprec_logger_buffer[DPREC_LOGGER_DUMP].len = 0;
+		dprec_logger_buffer[DPREC_LOGGER_DUMP].id = 0;
+		spin_unlock_irqrestore(dprec_logger_lock(DPREC_LOGGER_DUMP), flag);
+		spin_lock_irqsave(dprec_logger_lock(DPREC_LOGGER_STATUS), flag);
+		memset(dump_buffer[0], 0, DUMP_BUFFER_COUNT * LOGGER_BUFFER_SIZE);
+		dprec_logger_buffer[DPREC_LOGGER_STATUS].len = 0;
+		dprec_logger_buffer[DPREC_LOGGER_STATUS].id = 0;
+		spin_unlock_irqrestore(dprec_logger_lock(DPREC_LOGGER_STATUS), flag);
 	} else if (strncmp(opt, "conn_obj_id", 11) == 0) {
 		unsigned int value;
 		int ret;

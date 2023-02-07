@@ -8,10 +8,10 @@
 
 #define LOGGER_BUFFER_SIZE (16 * 1024)
 #define ERROR_BUFFER_COUNT 4
-#define FENCE_BUFFER_COUNT 22
+#define FENCE_BUFFER_COUNT 20
 #define DEBUG_BUFFER_COUNT 30
 #define DUMP_BUFFER_COUNT 10
-#define STATUS_BUFFER_COUNT 1
+#define STATUS_BUFFER_COUNT 3
 #define _DRM_P_H_
 #if defined(CONFIG_MT_ENG_BUILD) || !defined(CONFIG_MTK_GMO_RAM_OPTIMIZE)
 #define DEBUG_BUFFER_SIZE                                                      \
@@ -96,6 +96,7 @@ struct cb_data_store *mtk_drm_get_cb_data(unsigned int crtc_id);
 void mtk_drm_del_cb_data(struct cmdq_cb_data data, unsigned int crtc_id);
 int hrt_lp_switch_get(void);
 void debug_dsi(struct drm_crtc *crtc, unsigned int offset, unsigned int mask);
+void mtk_dprec_snapshot(void);
 #endif
 
 enum mtk_drm_mml_dbg {

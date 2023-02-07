@@ -5770,6 +5770,8 @@ static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 		return;
 	}
 
+	mtk_dprec_snapshot();
+
 	DDPPR_ERR("%s cmdq timeout, crtc id:%d\n", __func__,
 		drm_crtc_index(crtc));
 	mtk_drm_crtc_analysis(crtc);
@@ -6861,6 +6863,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 
 		if (ovl_status & 1) {
 			DDPPR_ERR("ovl status error:0x%x\n", ovl_status);
+			mtk_dprec_snapshot();
 			if (priv->data->mmsys_id == MMSYS_MT6985) {
 				DDPAEE("ovl status error. TS: 0x%08x\n", ovl_status);
 				mtk_drm_crtc_mini_analysis(crtc);

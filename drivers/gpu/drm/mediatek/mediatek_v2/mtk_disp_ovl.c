@@ -889,8 +889,10 @@ static irqreturn_t mtk_disp_ovl_irq_handler(int irq, void *dev_id)
 	if (val & (1 << 2)) {
 		unsigned long long aee_now_ts = sched_clock();
 
-		if (drv_priv && (!atomic_read(&drv_priv->need_recover)))
+		if (drv_priv && (!atomic_read(&drv_priv->need_recover))) {
 			atomic_set(&drv_priv->need_recover, 1);
+			mtk_dprec_snapshot();
+		}
 
 		if (__ratelimit(&isr_ratelimit)) {
 			unsigned int smi_cnt = 0;
