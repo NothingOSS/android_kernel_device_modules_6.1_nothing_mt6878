@@ -33,6 +33,14 @@ endif
 ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/power/3.0/platform/mt6879_pwr_func.c),)
 SRC += 3.0/platform/mt6879_pwr_func.o
 endif
+ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/power/3.0/platform/mt6897_aputop.c),)
+subdir-ccflags-y += -DMT6897_PLAT_DATA
+SRC += 3.0/platform/mt6897_aputop.o
+SRC += 3.0/platform/mt6897_ao.o
+endif
+ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/power/3.0/platform/mt6897_pwr_func.c),)
+SRC += 3.0/platform/mt6897_pwr_func.o
+endif
 ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/power/3.0/platform/mt6895_aputop.c),)
 subdir-ccflags-y += -DMT6895_PLAT_DATA
 SRC += 3.0/platform/mt6895_aputop.o
