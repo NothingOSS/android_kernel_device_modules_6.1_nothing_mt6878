@@ -99,13 +99,15 @@ static int set_dev_to_arr(struct device **arr, int num,
 }
 
 int mtk_cam_set_dev_raw(struct device *dev, int idx,
-			 struct device *raw, struct device *yuv)
+			struct device *raw, struct device *yuv,
+			struct device *rms)
 {
 	struct mtk_cam_device *cam_dev = dev_get_drvdata(dev);
 	struct mtk_cam_engines *eng = &cam_dev->engines;
 
 	return set_dev_to_arr(eng->raw_devs, eng->num_raw_devices, idx, raw) ||
-		set_dev_to_arr(eng->yuv_devs, eng->num_raw_devices, idx, yuv);
+		set_dev_to_arr(eng->yuv_devs, eng->num_raw_devices, idx, yuv) ||
+		set_dev_to_arr(eng->rms_devs, eng->num_raw_devices, idx, rms);
 }
 
 int mtk_cam_set_dev_sv(struct device *dev, int idx, struct device *sv)
@@ -2297,7 +2299,7 @@ static int mtk_cam_alloc_for_engine(struct device *dev)
 	struct mtk_cam_device *cam_dev = dev_get_drvdata(dev);
 	struct mtk_cam_engines *eng = &cam_dev->engines;
 	struct device **dev_arr;
-	int num = eng->num_raw_devices * 2 /* raw + yuv */
+	int num = eng->num_raw_devices * 3 /* raw + yuv + rms */
 		+ eng->num_camsv_devices
 		+ eng->num_mraw_devices
 		+ eng->num_larb_devices;
@@ -2310,6 +2312,9 @@ static int mtk_cam_alloc_for_engine(struct device *dev)
 	dev_arr += eng->num_raw_devices;
 
 	eng->yuv_devs = dev_arr;
+	dev_arr += eng->num_raw_devices;
+
+	eng->rms_devs = dev_arr;
 	dev_arr += eng->num_raw_devices;
 
 	eng->sv_devs = dev_arr;

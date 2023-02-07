@@ -3099,24 +3099,31 @@ struct mtk_raw_pipeline *mtk_raw_pipeline_create(struct device *dev, int n)
 
 int mtk_raw_setup_dependencies(struct mtk_cam_engines *eng)
 {
-	struct device *consumer, *supplier;
+	struct device *consumer, *supplier, *supplier2;
 	struct device_link *link;
 	struct mtk_raw_device *raw_dev;
 	struct mtk_yuv_device *yuv_dev;
+	struct mtk_rms_device *rms_dev;
 	int i;
 
+	/* TODO: refine duplicated codes */
 	for (i = 0; i < eng->num_raw_devices; i++) {
 		consumer = eng->raw_devs[i];
 		supplier = eng->yuv_devs[i];
-		if (!consumer || !supplier) {
-			pr_info("failed to get raw/yuv dev for id %d\n", i);
+		supplier2 = eng->rms_devs[i];
+		if (!consumer || !supplier || !supplier2) {
+			pr_info("failed to get raw/yuv/rms dev for id %d\n", i);
 			continue;
 		}
 
 		raw_dev = dev_get_drvdata(consumer);
 		yuv_dev = dev_get_drvdata(supplier);
+		rms_dev = dev_get_drvdata(supplier2);
+
 		raw_dev->yuv_base = yuv_dev->base;
 		raw_dev->yuv_base_inner = yuv_dev->base_inner;
+		raw_dev->rms_base = rms_dev->base;
+		raw_dev->rms_base_inner = rms_dev->base_inner;
 
 		link = device_link_add(consumer, supplier,
 				       DL_FLAG_AUTOREMOVE_CONSUMER |
@@ -3124,6 +3131,15 @@ int mtk_raw_setup_dependencies(struct mtk_cam_engines *eng)
 		if (!link) {
 			pr_info("Unable to create link between %s and %s\n",
 				 dev_name(consumer), dev_name(supplier));
+			return -ENODEV;
+		}
+
+		link = device_link_add(consumer, supplier2,
+				       DL_FLAG_AUTOREMOVE_CONSUMER |
+				       DL_FLAG_PM_RUNTIME);
+		if (!link) {
+			pr_info("Unable to create link between %s and %s\n",
+				 dev_name(consumer), dev_name(supplier2));
 			return -ENODEV;
 		}
 	}

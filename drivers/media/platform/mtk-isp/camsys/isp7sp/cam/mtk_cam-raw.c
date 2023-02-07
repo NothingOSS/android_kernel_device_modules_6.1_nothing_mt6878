@@ -963,7 +963,7 @@ static int mtk_raw_component_bind(struct device *dev, struct device *master,
 	struct mtk_cam_device *cam_dev = data;
 
 	raw_dev->cam = cam_dev;
-	return mtk_cam_set_dev_raw(cam_dev->dev, raw_dev->id, dev, NULL);
+	return mtk_cam_set_dev_raw(cam_dev->dev, raw_dev->id, dev, NULL, NULL);
 }
 
 static void mtk_raw_component_unbind(struct device *dev, struct device *master,
@@ -1125,7 +1125,7 @@ static int mtk_yuv_component_bind(struct device *dev, struct device *master,
 	struct mtk_cam_device *cam_dev = data;
 
 	dev_info(dev, "%s: id=%d\n", __func__, drvdata->id);
-	return mtk_cam_set_dev_raw(cam_dev->dev, drvdata->id, NULL, dev);
+	return mtk_cam_set_dev_raw(cam_dev->dev, drvdata->id, NULL, dev, NULL);
 }
 
 static void mtk_yuv_component_unbind(struct device *dev, struct device *master,
@@ -1486,5 +1486,253 @@ struct platform_driver mtk_cam_yuv_driver = {
 		.name  = "mtk-cam yuv",
 		.of_match_table = of_match_ptr(mtk_yuv_of_ids),
 		.pm     = &mtk_yuv_pm_ops,
+	}
+};
+
+/* rms partition */
+
+static int mtk_rms_component_bind(struct device *dev, struct device *master,
+				  void *data)
+{
+	struct mtk_rms_device *drvdata = dev_get_drvdata(dev);
+	struct mtk_cam_device *cam_dev = data;
+
+	dev_info(dev, "%s: id=%d\n", __func__, drvdata->id);
+	return mtk_cam_set_dev_raw(cam_dev->dev, drvdata->id, NULL, NULL, dev);
+}
+
+static void mtk_rms_component_unbind(struct device *dev, struct device *master,
+				     void *data)
+{
+}
+
+static const struct component_ops mtk_rms_component_ops = {
+	.bind = mtk_rms_component_bind,
+	.unbind = mtk_rms_component_unbind,
+};
+
+static int mtk_rms_pm_suspend_prepare(struct mtk_rms_device *dev)
+{
+	int ret;
+
+	dev_dbg(dev->dev, "- %s\n", __func__);
+
+	if (pm_runtime_suspended(dev->dev))
+		return 0;
+
+	/* Force ISP HW to idle */
+	ret = pm_runtime_force_suspend(dev->dev);
+	return ret;
+}
+
+static int mtk_rms_pm_post_suspend(struct mtk_rms_device *dev)
+{
+	int ret;
+
+	dev_dbg(dev->dev, "- %s\n", __func__);
+
+	if (pm_runtime_suspended(dev->dev))
+		return 0;
+
+	/* Force ISP HW to resume */
+	ret = pm_runtime_force_resume(dev->dev);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+static int rms_pm_notifier(struct notifier_block *nb,
+			   unsigned long action, void *data)
+{
+	struct mtk_rms_device *rms_dev =
+			container_of(nb, struct mtk_rms_device, pm_notifier);
+
+	switch (action) {
+	case PM_SUSPEND_PREPARE:
+		mtk_rms_pm_suspend_prepare(rms_dev);
+		break;
+	case PM_POST_SUSPEND:
+		mtk_rms_pm_post_suspend(rms_dev);
+		break;
+	default:
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
+static int mtk_rms_of_probe(struct platform_device *pdev,
+			    struct mtk_rms_device *drvdata)
+{
+	struct device *dev = &pdev->dev;
+	struct resource *res;
+	unsigned int i;
+	int clks, ret;
+
+	ret = of_property_read_u32(dev->of_node, "mediatek,cam-id",
+				   &drvdata->id);
+	if (ret) {
+		dev_dbg(dev, "missing camid property\n");
+		return ret;
+	}
+
+	/* base outer register */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "base");
+	if (!res) {
+		dev_info(dev, "failed to get mem\n");
+		return -ENODEV;
+	}
+
+	drvdata->base = devm_ioremap_resource(dev, res);
+	if (IS_ERR(drvdata->base)) {
+		dev_dbg(dev, "failed to map register base\n");
+		return PTR_ERR(drvdata->base);
+	}
+
+	/* base inner register */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "inner_base");
+	if (!res) {
+		dev_dbg(dev, "failed to get mem\n");
+		return -ENODEV;
+	}
+
+	drvdata->base_inner = devm_ioremap_resource(dev, res);
+	if (IS_ERR(drvdata->base_inner)) {
+		dev_dbg(dev, "failed to map register inner base\n");
+		return PTR_ERR(drvdata->base_inner);
+	}
+
+	clks = of_count_phandle_with_args(pdev->dev.of_node, "clocks",
+			"#clock-cells");
+
+	drvdata->num_clks = (clks == -ENOENT) ? 0 : clks;
+	dev_info(dev, "clk_num:%d\n", drvdata->num_clks);
+
+	if (drvdata->num_clks) {
+		drvdata->clks = devm_kcalloc(dev,
+					     drvdata->num_clks, sizeof(*drvdata->clks),
+					     GFP_KERNEL);
+		if (!drvdata->clks)
+			return -ENOMEM;
+	}
+
+	for (i = 0; i < drvdata->num_clks; i++) {
+		drvdata->clks[i] = of_clk_get(pdev->dev.of_node, i);
+		if (IS_ERR(drvdata->clks[i])) {
+			dev_info(dev, "failed to get clk %d\n", i);
+			return -ENODEV;
+		}
+	}
+
+#ifdef CONFIG_PM_SLEEP
+	drvdata->pm_notifier.notifier_call = rms_pm_notifier;
+	ret = register_pm_notifier(&drvdata->pm_notifier);
+	if (ret) {
+		dev_info(dev, "failed to register notifier block.\n");
+		return ret;
+	}
+#endif
+
+	return 0;
+}
+
+static int mtk_rms_probe(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	struct mtk_rms_device *drvdata;
+	int ret;
+
+	drvdata = devm_kzalloc(dev, sizeof(*drvdata), GFP_KERNEL);
+	if (!drvdata)
+		return -ENOMEM;
+
+	drvdata->dev = dev;
+	dev_set_drvdata(dev, drvdata);
+
+	ret = mtk_rms_of_probe(pdev, drvdata);
+	if (ret) {
+		dev_info(dev, "mtk_rms_of_probe failed\n");
+		return ret;
+	}
+
+	pm_runtime_enable(dev);
+
+	return component_add(dev, &mtk_rms_component_ops);
+}
+
+static int mtk_rms_remove(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	struct mtk_rms_device *drvdata = dev_get_drvdata(dev);
+	int i;
+
+	unregister_pm_notifier(&drvdata->pm_notifier);
+
+	pm_runtime_disable(dev);
+#ifdef QOS_ENABLE
+	mtk_cam_qos_remove(&drvdata->qos);
+#endif
+	component_del(dev, &mtk_rms_component_ops);
+
+	for (i = 0; i < drvdata->num_clks; i++)
+		clk_put(drvdata->clks[i]);
+
+	return 0;
+}
+
+static int mtk_rms_runtime_suspend(struct device *dev)
+{
+	struct mtk_rms_device *drvdata = dev_get_drvdata(dev);
+	int i;
+
+	dev_info(dev, "%s:disable clock\n", __func__);
+
+	for (i = 0; i < drvdata->num_clks; i++)
+		clk_disable_unprepare(drvdata->clks[i]);
+
+	return 0;
+}
+
+static int mtk_rms_runtime_resume(struct device *dev)
+{
+	struct mtk_rms_device *drvdata = dev_get_drvdata(dev);
+	int i, ret;
+
+	dev_info(dev, "%s:enable clock\n", __func__);
+
+	for (i = 0; i < drvdata->num_clks; i++) {
+		ret = clk_prepare_enable(drvdata->clks[i]);
+		if (ret) {
+			dev_info(dev, "enable failed at clk #%d, ret = %d\n",
+				 i, ret);
+			i--;
+			while (i >= 0)
+				clk_disable_unprepare(drvdata->clks[i--]);
+
+			return ret;
+		}
+	}
+
+	return 0;
+}
+static const struct dev_pm_ops mtk_rms_pm_ops = {
+	SET_RUNTIME_PM_OPS(mtk_rms_runtime_suspend, mtk_rms_runtime_resume,
+			   NULL)
+};
+
+static const struct of_device_id mtk_rms_of_ids[] = {
+	{.compatible = "mediatek,cam-rms",},
+	{}
+};
+MODULE_DEVICE_TABLE(of, mtk_rms_of_ids);
+
+struct platform_driver mtk_cam_rms_driver = {
+	.probe   = mtk_rms_probe,
+	.remove  = mtk_rms_remove,
+	.driver  = {
+		.name  = "mtk-cam rms",
+		.of_match_table = of_match_ptr(mtk_rms_of_ids),
+		.pm     = &mtk_rms_pm_ops,
 	}
 };

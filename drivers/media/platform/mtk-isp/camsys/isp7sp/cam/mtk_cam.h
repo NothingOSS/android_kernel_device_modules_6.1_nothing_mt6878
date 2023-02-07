@@ -166,6 +166,7 @@ struct mtk_cam_engines {
 	/* raw */
 	struct device **raw_devs;
 	struct device **yuv_devs;
+	struct device **rms_devs;
 
 	/* camsv */
 	struct device **sv_devs;
@@ -240,7 +241,8 @@ static inline struct mtk_cam_device *subdev_to_cam_device(struct v4l2_subdev *sd
 struct device *mtk_cam_root_dev(void);
 
 int mtk_cam_set_dev_raw(struct device *dev, int idx,
-			struct device *raw, struct device *yuv);
+			struct device *raw, struct device *yuv,
+			struct device *rms);
 int mtk_cam_set_dev_sv(struct device *dev, int idx, struct device *sv);
 int mtk_cam_set_dev_mraw(struct device *dev, int idx, struct device *mraw);
  /* special case: larb dev is push back into array */
