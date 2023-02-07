@@ -195,10 +195,13 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 		}
 	}
 
-	if (of_property_read_string(np, "algorithm_name",
+	if (of_property_read_string(np, "algorithm-name",
 		&info->algorithm_name) < 0) {
-		chr_err("%s: no algorithm_name name\n", __func__);
-		info->algorithm_name = "Basic";
+		if (of_property_read_string(np, "algorithm_name",
+			&info->algorithm_name) < 0) {
+			chr_err("%s: no algorithm_name, use Basic\n", __func__);
+			info->algorithm_name = "Basic";
+		}
 	}
 
 	if (strcmp(info->algorithm_name, "Basic") == 0) {
@@ -209,19 +212,28 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 		mtk_pulse_charger_init(info);
 	}
 
-	info->disable_charger = of_property_read_bool(np, "disable_charger");
-	info->charger_unlimited = of_property_read_bool(np, "charger_unlimited");
-	info->atm_enabled = of_property_read_bool(np, "atm_is_enabled");
+	info->disable_charger = of_property_read_bool(np, "disable_charger")
+		|| of_property_read_bool(np, "disable-charger");
+	info->charger_unlimited = of_property_read_bool(np, "charger_unlimited")
+		|| of_property_read_bool(np, "charger-unlimited");
+	info->atm_enabled = of_property_read_bool(np, "atm_is_enabled")
+		|| of_property_read_bool(np, "atm-is-enabled");
 	info->enable_sw_safety_timer =
-			of_property_read_bool(np, "enable_sw_safety_timer");
+			of_property_read_bool(np, "enable_sw_safety_timer")
+			|| of_property_read_bool(np, "enable-sw-safety-timer");
 	info->sw_safety_timer_setting = info->enable_sw_safety_timer;
-	info->disable_aicl = of_property_read_bool(np, "disable_aicl");
-	info->alg_new_arbitration = of_property_read_bool(np, "alg_new_arbitration");
-	info->alg_unchangeable = of_property_read_bool(np, "alg_unchangeable");
+	info->disable_aicl = of_property_read_bool(np, "disable_aicl")
+		|| of_property_read_bool(np, "disable-aicl");
+	info->alg_new_arbitration = of_property_read_bool(np, "alg_new_arbitration")
+		|| of_property_read_bool(np, "alg-new-arbitration");
+	info->alg_unchangeable = of_property_read_bool(np, "alg_unchangeable")
+		|| of_property_read_bool(np, "alg-unchangeable");
 
 	/* common */
 
 	if (of_property_read_u32(np, "charger_configuration", &val) >= 0)
+		info->config = val;
+	else if (of_property_read_u32(np, "charger-configuration", &val) >= 0)
 		info->config = val;
 	else {
 		chr_err("use default charger_configuration:%d\n",
@@ -231,12 +243,16 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 
 	if (of_property_read_u32(np, "battery_cv", &val) >= 0)
 		info->data.battery_cv = val;
+	else if (of_property_read_u32(np, "battery-cv", &val) >= 0)
+		info->data.battery_cv = val;
 	else {
 		chr_err("use default BATTERY_CV:%d\n", BATTERY_CV);
 		info->data.battery_cv = BATTERY_CV;
 	}
 
 	if (of_property_read_u32(np, "max_charger_voltage", &val) >= 0)
+		info->data.max_charger_voltage = val;
+	else if (of_property_read_u32(np, "max-charger-voltage", &val) >= 0)
 		info->data.max_charger_voltage = val;
 	else {
 		chr_err("use default V_CHARGER_MAX:%d\n", V_CHARGER_MAX);
@@ -246,6 +262,8 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 
 	if (of_property_read_u32(np, "vbus_sw_ovp_voltage", &val) >= 0)
 		info->data.vbus_sw_ovp_voltage = val;
+	else if (of_property_read_u32(np, "vbus-sw-ovp-voltage", &val) >= 0)
+		info->data.vbus_sw_ovp_voltage = val;
 	else {
 		chr_err("use default V_CHARGER_MAX:%d\n", V_CHARGER_MAX);
 		info->data.vbus_sw_ovp_voltage = VBUS_OVP_VOLTAGE;
@@ -253,19 +271,33 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 
 	if (of_property_read_u32(np, "min_charger_voltage", &val) >= 0)
 		info->data.min_charger_voltage = val;
+	else if (of_property_read_u32(np, "min-charger-voltage", &val) >= 0)
+		info->data.min_charger_voltage = val;
 	else {
 		chr_err("use default V_CHARGER_MIN:%d\n", V_CHARGER_MIN);
 		info->data.min_charger_voltage = V_CHARGER_MIN;
 	}
-	info->enable_vbat_mon = of_property_read_bool(np, "enable_vbat_mon");
-	if (info->enable_vbat_mon == true)
-		info->setting.vbat_mon_en = true;
-	chr_err("use 6pin bat, enable_vbat_mon:%d\n", info->enable_vbat_mon);
-	info->enable_vbat_mon_bak = of_property_read_bool(np, "enable_vbat_mon");
+
+	if (of_property_read_u32(np, "enable_vbat_mon", &val) >= 0) {
+		info->enable_vbat_mon = val;
+		info->enable_vbat_mon_bak = val;
+	} else if (of_property_read_u32(np, "enable-vbat-mon", &val) >= 0) {
+		info->enable_vbat_mon = val;
+		info->enable_vbat_mon_bak = val;
+	} else {
+		chr_err("use default enable 6pin\n");
+		info->enable_vbat_mon = 0;
+		info->enable_vbat_mon_bak = 0;
+	}
+	chr_err("enable_vbat_mon:%d\n", info->enable_vbat_mon);
 
 	/* sw jeita */
-	info->enable_sw_jeita = of_property_read_bool(np, "enable_sw_jeita");
+	info->enable_sw_jeita = of_property_read_bool(np, "enable_sw_jeita")
+		|| of_property_read_bool(np, "enable-sw-jeita");
+
 	if (of_property_read_u32(np, "jeita_temp_above_t4_cv", &val) >= 0)
+		info->data.jeita_temp_above_t4_cv = val;
+	else if (of_property_read_u32(np, "jeita-temp-above-t4-cv", &val) >= 0)
 		info->data.jeita_temp_above_t4_cv = val;
 	else {
 		chr_err("use default JEITA_TEMP_ABOVE_T4_CV:%d\n",
@@ -275,6 +307,8 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 
 	if (of_property_read_u32(np, "jeita_temp_t3_to_t4_cv", &val) >= 0)
 		info->data.jeita_temp_t3_to_t4_cv = val;
+	else if (of_property_read_u32(np, "jeita-temp-t3-to-t4-cv", &val) >= 0)
+		info->data.jeita_temp_t3_to_t4_cv = val;
 	else {
 		chr_err("use default JEITA_TEMP_T3_TO_T4_CV:%d\n",
 			JEITA_TEMP_T3_TO_T4_CV);
@@ -282,6 +316,8 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 	}
 
 	if (of_property_read_u32(np, "jeita_temp_t2_to_t3_cv", &val) >= 0)
+		info->data.jeita_temp_t2_to_t3_cv = val;
+	else if (of_property_read_u32(np, "jeita-temp-t2-to-t3-cv", &val) >= 0)
 		info->data.jeita_temp_t2_to_t3_cv = val;
 	else {
 		chr_err("use default JEITA_TEMP_T2_TO_T3_CV:%d\n",
@@ -291,6 +327,8 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 
 	if (of_property_read_u32(np, "jeita_temp_t1_to_t2_cv", &val) >= 0)
 		info->data.jeita_temp_t1_to_t2_cv = val;
+	else if (of_property_read_u32(np, "jeita-temp-t1-to-t2-cv", &val) >= 0)
+		info->data.jeita_temp_t1_to_t2_cv = val;
 	else {
 		chr_err("use default JEITA_TEMP_T1_TO_T2_CV:%d\n",
 			JEITA_TEMP_T1_TO_T2_CV);
@@ -298,6 +336,8 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 	}
 
 	if (of_property_read_u32(np, "jeita_temp_t0_to_t1_cv", &val) >= 0)
+		info->data.jeita_temp_t0_to_t1_cv = val;
+	else if (of_property_read_u32(np, "jeita-temp-t0-to-t1-cv", &val) >= 0)
 		info->data.jeita_temp_t0_to_t1_cv = val;
 	else {
 		chr_err("use default JEITA_TEMP_T0_TO_T1_CV:%d\n",
@@ -307,6 +347,8 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 
 	if (of_property_read_u32(np, "jeita_temp_below_t0_cv", &val) >= 0)
 		info->data.jeita_temp_below_t0_cv = val;
+	if (of_property_read_u32(np, "jeita-temp-below-t0-cv", &val) >= 0)
+		info->data.jeita_temp_below_t0_cv = val;
 	else {
 		chr_err("use default JEITA_TEMP_BELOW_T0_CV:%d\n",
 			JEITA_TEMP_BELOW_T0_CV);
@@ -315,6 +357,8 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 
 	if (of_property_read_u32(np, "temp_t4_thres", &val) >= 0)
 		info->data.temp_t4_thres = val;
+	else if (of_property_read_u32(np, "temp-t4-thres", &val) >= 0)
+		info->data.temp_t4_thres = val;
 	else {
 		chr_err("use default TEMP_T4_THRES:%d\n",
 			TEMP_T4_THRES);
@@ -322,6 +366,8 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 	}
 
 	if (of_property_read_u32(np, "temp_t4_thres_minus_x_degree", &val) >= 0)
+		info->data.temp_t4_thres_minus_x_degree = val;
+	else if (of_property_read_u32(np, "temp-t4-thres-minus-x-degree", &val) >= 0)
 		info->data.temp_t4_thres_minus_x_degree = val;
 	else {
 		chr_err("use default TEMP_T4_THRES_MINUS_X_DEGREE:%d\n",
@@ -332,6 +378,8 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 
 	if (of_property_read_u32(np, "temp_t3_thres", &val) >= 0)
 		info->data.temp_t3_thres = val;
+	else if (of_property_read_u32(np, "temp-t3-thres", &val) >= 0)
+		info->data.temp_t3_thres = val;
 	else {
 		chr_err("use default TEMP_T3_THRES:%d\n",
 			TEMP_T3_THRES);
@@ -339,6 +387,8 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 	}
 
 	if (of_property_read_u32(np, "temp_t3_thres_minus_x_degree", &val) >= 0)
+		info->data.temp_t3_thres_minus_x_degree = val;
+	else if (of_property_read_u32(np, "temp-t3-thres-minus-x-degree", &val) >= 0)
 		info->data.temp_t3_thres_minus_x_degree = val;
 	else {
 		chr_err("use default TEMP_T3_THRES_MINUS_X_DEGREE:%d\n",
@@ -349,6 +399,8 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 
 	if (of_property_read_u32(np, "temp_t2_thres", &val) >= 0)
 		info->data.temp_t2_thres = val;
+	else if (of_property_read_u32(np, "temp-t2-thres", &val) >= 0)
+		info->data.temp_t2_thres = val;
 	else {
 		chr_err("use default TEMP_T2_THRES:%d\n",
 			TEMP_T2_THRES);
@@ -356,6 +408,8 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 	}
 
 	if (of_property_read_u32(np, "temp_t2_thres_plus_x_degree", &val) >= 0)
+		info->data.temp_t2_thres_plus_x_degree = val;
+	else if (of_property_read_u32(np, "temp-t2-thres-plus-x-degree", &val) >= 0)
 		info->data.temp_t2_thres_plus_x_degree = val;
 	else {
 		chr_err("use default TEMP_T2_THRES_PLUS_X_DEGREE:%d\n",
@@ -366,6 +420,8 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 
 	if (of_property_read_u32(np, "temp_t1_thres", &val) >= 0)
 		info->data.temp_t1_thres = val;
+	else if (of_property_read_u32(np, "temp-t1-thres", &val) >= 0)
+		info->data.temp_t1_thres = val;
 	else {
 		chr_err("use default TEMP_T1_THRES:%d\n",
 			TEMP_T1_THRES);
@@ -373,6 +429,8 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 	}
 
 	if (of_property_read_u32(np, "temp_t1_thres_plus_x_degree", &val) >= 0)
+		info->data.temp_t1_thres_plus_x_degree = val;
+	else if (of_property_read_u32(np, "temp-t1-thres-plus-x-degree", &val) >= 0)
 		info->data.temp_t1_thres_plus_x_degree = val;
 	else {
 		chr_err("use default TEMP_T1_THRES_PLUS_X_DEGREE:%d\n",
@@ -383,6 +441,8 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 
 	if (of_property_read_u32(np, "temp_t0_thres", &val) >= 0)
 		info->data.temp_t0_thres = val;
+	else if (of_property_read_u32(np, "temp-t0-thres", &val) >= 0)
+		info->data.temp_t0_thres = val;
 	else {
 		chr_err("use default TEMP_T0_THRES:%d\n",
 			TEMP_T0_THRES);
@@ -390,6 +450,8 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 	}
 
 	if (of_property_read_u32(np, "temp_t0_thres_plus_x_degree", &val) >= 0)
+		info->data.temp_t0_thres_plus_x_degree = val;
+	else if (of_property_read_u32(np, "temp-t0-thres-plus-x-degree", &val) >= 0)
 		info->data.temp_t0_thres_plus_x_degree = val;
 	else {
 		chr_err("use default TEMP_T0_THRES_PLUS_X_DEGREE:%d\n",
@@ -400,6 +462,8 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 
 	if (of_property_read_u32(np, "temp_neg_10_thres", &val) >= 0)
 		info->data.temp_neg_10_thres = val;
+	else if (of_property_read_u32(np, "temp-neg-10-thres", &val) >= 0)
+		info->data.temp_neg_10_thres = val;
 	else {
 		chr_err("use default TEMP_NEG_10_THRES:%d\n",
 			TEMP_NEG_10_THRES);
@@ -409,9 +473,12 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 	/* battery temperature protection */
 	info->thermal.sm = BAT_TEMP_NORMAL;
 	info->thermal.enable_min_charge_temp =
-		of_property_read_bool(np, "enable_min_charge_temp");
+		of_property_read_bool(np, "enable_min_charge_temp")
+		|| of_property_read_bool(np, "enable-min-charge-temp");
 
 	if (of_property_read_u32(np, "min_charge_temp", &val) >= 0)
+		info->thermal.min_charge_temp = val;
+	else if (of_property_read_u32(np, "min-charge-temp", &val) >= 0)
 		info->thermal.min_charge_temp = val;
 	else {
 		chr_err("use default MIN_CHARGE_TEMP:%d\n",
@@ -420,6 +487,9 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 	}
 
 	if (of_property_read_u32(np, "min_charge_temp_plus_x_degree", &val)
+		>= 0) {
+		info->thermal.min_charge_temp_plus_x_degree = val;
+	} else if (of_property_read_u32(np, "min-charge-temp-plus-x-degree", &val)
 		>= 0) {
 		info->thermal.min_charge_temp_plus_x_degree = val;
 	} else {
@@ -431,6 +501,8 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 
 	if (of_property_read_u32(np, "max_charge_temp", &val) >= 0)
 		info->thermal.max_charge_temp = val;
+	else if (of_property_read_u32(np, "max-charge-temp", &val) >= 0)
+		info->thermal.max_charge_temp = val;
 	else {
 		chr_err("use default MAX_CHARGE_TEMP:%d\n",
 			MAX_CHARGE_TEMP);
@@ -438,6 +510,9 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 	}
 
 	if (of_property_read_u32(np, "max_charge_temp_minus_x_degree", &val)
+		>= 0) {
+		info->thermal.max_charge_temp_minus_x_degree = val;
+	} else if (of_property_read_u32(np, "max-charge-temp-minus-x-degree", &val)
 		>= 0) {
 		info->thermal.max_charge_temp_minus_x_degree = val;
 	} else {
@@ -448,23 +523,29 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 	}
 
 	/* charging current */
-	if (of_property_read_u32(np, "usb_charger_current", &val) >= 0) {
+	if (of_property_read_u32(np, "usb_charger_current", &val) >= 0)
 		info->data.usb_charger_current = val;
-	} else {
+	else if (of_property_read_u32(np, "usb-charger-current", &val) >= 0)
+		info->data.usb_charger_current = val;
+	else {
 		chr_err("use default USB_CHARGER_CURRENT:%d\n",
 			USB_CHARGER_CURRENT);
 		info->data.usb_charger_current = USB_CHARGER_CURRENT;
 	}
 
-	if (of_property_read_u32(np, "ac_charger_current", &val) >= 0) {
+	if (of_property_read_u32(np, "ac_charger_current", &val) >= 0)
 		info->data.ac_charger_current = val;
-	} else {
+	if (of_property_read_u32(np, "ac-charger-current", &val) >= 0)
+		info->data.ac_charger_current = val;
+	else {
 		chr_err("use default AC_CHARGER_CURRENT:%d\n",
 			AC_CHARGER_CURRENT);
 		info->data.ac_charger_current = AC_CHARGER_CURRENT;
 	}
 
 	if (of_property_read_u32(np, "ac_charger_input_current", &val) >= 0)
+		info->data.ac_charger_input_current = val;
+	else if (of_property_read_u32(np, "ac-charger-input-current", &val) >= 0)
 		info->data.ac_charger_input_current = val;
 	else {
 		chr_err("use default AC_CHARGER_INPUT_CURRENT:%d\n",
@@ -473,6 +554,9 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 	}
 
 	if (of_property_read_u32(np, "charging_host_charger_current", &val)
+		>= 0) {
+		info->data.charging_host_charger_current = val;
+	} else if (of_property_read_u32(np, "charging-host-charger-current", &val)
 		>= 0) {
 		info->data.charging_host_charger_current = val;
 	} else {
@@ -484,9 +568,12 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 
 	/* dynamic mivr */
 	info->enable_dynamic_mivr =
-			of_property_read_bool(np, "enable_dynamic_mivr");
+			of_property_read_bool(np, "enable_dynamic_mivr")
+			|| of_property_read_bool(np, "enable-dynamic-mivr");
 
 	if (of_property_read_u32(np, "min_charger_voltage_1", &val) >= 0)
+		info->data.min_charger_voltage_1 = val;
+	else if (of_property_read_u32(np, "min-charger-voltage-1", &val) >= 0)
 		info->data.min_charger_voltage_1 = val;
 	else {
 		chr_err("use default V_CHARGER_MIN_1: %d\n", V_CHARGER_MIN_1);
@@ -495,12 +582,16 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 
 	if (of_property_read_u32(np, "min_charger_voltage_2", &val) >= 0)
 		info->data.min_charger_voltage_2 = val;
+	else if (of_property_read_u32(np, "min-charger-voltage-2", &val) >= 0)
+		info->data.min_charger_voltage_2 = val;
 	else {
 		chr_err("use default V_CHARGER_MIN_2: %d\n", V_CHARGER_MIN_2);
 		info->data.min_charger_voltage_2 = V_CHARGER_MIN_2;
 	}
 
 	if (of_property_read_u32(np, "max_dmivr_charger_current", &val) >= 0)
+		info->data.max_dmivr_charger_current = val;
+	else if (of_property_read_u32(np, "max-dmivr-charger-current", &val) >= 0)
 		info->data.max_dmivr_charger_current = val;
 	else {
 		chr_err("use default MAX_DMIVR_CHARGER_CURRENT: %d\n",
@@ -510,7 +601,8 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 	}
 	/* fast charging algo support indicator */
 	info->enable_fast_charging_indicator =
-			of_property_read_bool(np, "enable_fast_charging_indicator");
+			of_property_read_bool(np, "enable_fast_charging_indicator")
+			|| of_property_read_bool(np, "enable-fast-charging-indicator");
 }
 
 static void mtk_charger_start_timer(struct mtk_charger *info)

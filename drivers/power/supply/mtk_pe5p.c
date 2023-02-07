@@ -3970,11 +3970,11 @@ static struct chg_alg_ops pe5p_ops = {
 	.set_prop = pe5p_set_prop,
 };
 
-#define PE5P_DT_VALPROP_ARR(name, sz) \
-	{#name, offsetof(struct pe5p_algo_desc, name), sz}
+#define PE5P_DT_VALPROP_ARR(name, var_name, sz) \
+	{name, offsetof(struct pe5p_algo_desc, var_name), sz}
 
-#define PE5P_DT_VALPROP(name) \
-	PE5P_DT_VALPROP_ARR(name, 1)
+#define PE5P_DT_VALPROP(name, var_name) \
+	PE5P_DT_VALPROP_ARR(name, var_name, 1)
 
 struct pe5p_dtprop {
 	const char *name;
@@ -4032,58 +4032,58 @@ static inline void pe5p_parse_dt_s32_arr(struct device_node *np, void *desc,
 }
 
 static const struct pe5p_dtprop pe5p_dtprops_u32[] = {
-	PE5P_DT_VALPROP(polling_interval),
-	PE5P_DT_VALPROP(ta_cv_ss_repeat_tmin),
-	PE5P_DT_VALPROP(vbat_cv),
-	PE5P_DT_VALPROP(start_soc_min),
-	PE5P_DT_VALPROP(start_soc_max),
-	PE5P_DT_VALPROP(start_vbat_min),
-	PE5P_DT_VALPROP(start_vbat_max),
-	PE5P_DT_VALPROP(idvchg_term),
-	PE5P_DT_VALPROP(idvchg_step),
-	PE5P_DT_VALPROP(idvchg_ss_init),
-	PE5P_DT_VALPROP(idvchg_ss_step),
-	PE5P_DT_VALPROP(idvchg_ss_step1),
-	PE5P_DT_VALPROP(idvchg_ss_step2),
-	PE5P_DT_VALPROP(idvchg_ss_step1_vbat),
-	PE5P_DT_VALPROP(idvchg_ss_step2_vbat),
-	PE5P_DT_VALPROP(ta_blanking),
-	PE5P_DT_VALPROP(swchg_aicr),
-	PE5P_DT_VALPROP(swchg_ichg),
-	PE5P_DT_VALPROP(swchg_aicr_ss_init),
-	PE5P_DT_VALPROP(swchg_aicr_ss_step),
-	PE5P_DT_VALPROP(swchg_off_vbat),
-	PE5P_DT_VALPROP(force_ta_cv_vbat),
-	PE5P_DT_VALPROP(chg_time_max),
-	PE5P_DT_VALPROP(tta_recovery_area),
-	PE5P_DT_VALPROP(tbat_recovery_area),
-	PE5P_DT_VALPROP(tdvchg_recovery_area),
-	PE5P_DT_VALPROP(tswchg_recovery_area),
-	PE5P_DT_VALPROP(ifod_threshold),
-	PE5P_DT_VALPROP(rsw_min),
-	PE5P_DT_VALPROP(ircmp_rbat),
-	PE5P_DT_VALPROP(ircmp_vclamp),
-	PE5P_DT_VALPROP(vta_cap_min),
-	PE5P_DT_VALPROP(vta_cap_max),
-	PE5P_DT_VALPROP(ita_cap_min),
+	PE5P_DT_VALPROP("polling-interval", polling_interval),
+	PE5P_DT_VALPROP("ta-cv-ss-repeat-tmin", ta_cv_ss_repeat_tmin),
+	PE5P_DT_VALPROP("vbat-cv", vbat_cv),
+	PE5P_DT_VALPROP("start-soc-min", start_soc_min),
+	PE5P_DT_VALPROP("start-soc-max", start_soc_max),
+	PE5P_DT_VALPROP("start-vbat-min", start_vbat_min),
+	PE5P_DT_VALPROP("start-vbat-max", start_vbat_max),
+	PE5P_DT_VALPROP("idvchg-term", idvchg_term),
+	PE5P_DT_VALPROP("idvchg-step", idvchg_step),
+	PE5P_DT_VALPROP("idvchg-ss-init", idvchg_ss_init),
+	PE5P_DT_VALPROP("idvchg-ss-step", idvchg_ss_step),
+	PE5P_DT_VALPROP("idvchg-ss-step1", idvchg_ss_step1),
+	PE5P_DT_VALPROP("idvchg-ss-step2", idvchg_ss_step2),
+	PE5P_DT_VALPROP("idvchg-ss-step1-vbat", idvchg_ss_step1_vbat),
+	PE5P_DT_VALPROP("idvchg-ss-step2-vbat", idvchg_ss_step2_vbat),
+	PE5P_DT_VALPROP("ta-blanking", ta_blanking),
+	PE5P_DT_VALPROP("swchg-aicr", swchg_aicr),
+	PE5P_DT_VALPROP("swchg-ichg", swchg_ichg),
+	PE5P_DT_VALPROP("swchg-aicr-ss-init", swchg_aicr_ss_init),
+	PE5P_DT_VALPROP("swchg-aicr-ss-step", swchg_aicr_ss_step),
+	PE5P_DT_VALPROP("swchg-off-vbat", swchg_off_vbat),
+	PE5P_DT_VALPROP("force-ta-cv-vbat", force_ta_cv_vbat),
+	PE5P_DT_VALPROP("chg-time-max", chg_time_max),
+	PE5P_DT_VALPROP("tta-recovery-area", tta_recovery_area),
+	PE5P_DT_VALPROP("tbat-recovery-area", tbat_recovery_area),
+	PE5P_DT_VALPROP("tdvchg-recovery-area", tdvchg_recovery_area),
+	PE5P_DT_VALPROP("tswchg-recovery-area", tswchg_recovery_area),
+	PE5P_DT_VALPROP("ifod-threshold", ifod_threshold),
+	PE5P_DT_VALPROP("rsw-min", rsw_min),
+	PE5P_DT_VALPROP("ircmp-rbat", ircmp_rbat),
+	PE5P_DT_VALPROP("ircmp-vclamp", ircmp_vclamp),
+	PE5P_DT_VALPROP("vta-cap-min", vta_cap_min),
+	PE5P_DT_VALPROP("vta-cap-max", vta_cap_max),
+	PE5P_DT_VALPROP("ita-cap-min", ita_cap_min),
 };
 
 static const struct pe5p_dtprop pe5p_dtprops_u32_array[] = {
-	PE5P_DT_VALPROP_ARR(ita_level, PE5P_RCABLE_MAX),
-	PE5P_DT_VALPROP_ARR(rcable_level, PE5P_RCABLE_MAX),
-	PE5P_DT_VALPROP_ARR(ita_level_dual, PE5P_RCABLE_MAX),
-	PE5P_DT_VALPROP_ARR(rcable_level_dual, PE5P_RCABLE_MAX),
+	PE5P_DT_VALPROP_ARR("ita-level", ita_level, PE5P_RCABLE_MAX),
+	PE5P_DT_VALPROP_ARR("rcable-level", rcable_level, PE5P_RCABLE_MAX),
+	PE5P_DT_VALPROP_ARR("ita-level-dual", ita_level_dual, PE5P_RCABLE_MAX),
+	PE5P_DT_VALPROP_ARR("rcable-level-dual", rcable_level_dual, PE5P_RCABLE_MAX),
 };
 
 static const struct pe5p_dtprop pe5p_dtprops_s32_array[] = {
-	PE5P_DT_VALPROP_ARR(tta_level_def, PE5P_THERMAL_MAX),
-	PE5P_DT_VALPROP_ARR(tta_curlmt, PE5P_THERMAL_MAX),
-	PE5P_DT_VALPROP_ARR(tbat_level_def, PE5P_THERMAL_MAX),
-	PE5P_DT_VALPROP_ARR(tbat_curlmt, PE5P_THERMAL_MAX),
-	PE5P_DT_VALPROP_ARR(tdvchg_level_def, PE5P_THERMAL_MAX),
-	PE5P_DT_VALPROP_ARR(tdvchg_curlmt, PE5P_THERMAL_MAX),
-	PE5P_DT_VALPROP_ARR(tswchg_level_def, PE5P_THERMAL_MAX),
-	PE5P_DT_VALPROP_ARR(tswchg_curlmt, PE5P_THERMAL_MAX),
+	PE5P_DT_VALPROP_ARR("tta-level-def", tta_level_def, PE5P_THERMAL_MAX),
+	PE5P_DT_VALPROP_ARR("tta-curlmt", tta_curlmt, PE5P_THERMAL_MAX),
+	PE5P_DT_VALPROP_ARR("tbat-level-def", tbat_level_def, PE5P_THERMAL_MAX),
+	PE5P_DT_VALPROP_ARR("tbat-curlmt", tbat_curlmt, PE5P_THERMAL_MAX),
+	PE5P_DT_VALPROP_ARR("tdvchg-level-def", tdvchg_level_def, PE5P_THERMAL_MAX),
+	PE5P_DT_VALPROP_ARR("tdvchg-curlmt", tdvchg_curlmt, PE5P_THERMAL_MAX),
+	PE5P_DT_VALPROP_ARR("tswchg-level_def", tswchg_level_def, PE5P_THERMAL_MAX),
+	PE5P_DT_VALPROP_ARR("tswchg-curlmt", tswchg_curlmt, PE5P_THERMAL_MAX),
 };
 
 static int pe5p_parse_dt(struct pe5p_algo_info *info)
@@ -4093,6 +4093,7 @@ static int pe5p_parse_dt(struct pe5p_algo_info *info)
 	struct pe5p_algo_data *data;
 	struct device_node *np = info->dev->of_node;
 	u32 val;
+	int nondash_flag = 0;
 
 	desc = devm_kzalloc(info->dev, sizeof(*desc), GFP_KERNEL);
 	if (!desc)
@@ -4101,24 +4102,34 @@ static int pe5p_parse_dt(struct pe5p_algo_info *info)
 	data = info->data;
 	memcpy(desc, &algo_desc_defval, sizeof(*desc));
 
-	ret = of_property_count_strings(np, "support_ta");
-	if (ret < 0)
-		return ret;
+	ret = of_property_count_strings(np, "support-ta");
+	if (ret < 0) {
+		nondash_flag = 1;
+		ret = of_property_count_strings(np, "support_ta");
+		if (ret < 0)
+			return ret;
+	}
+
 	desc->support_ta_cnt = ret;
 	desc->support_ta = devm_kzalloc(info->dev, ret * sizeof(char *),
 					GFP_KERNEL);
 	if (!desc->support_ta)
 		return -ENOMEM;
 	for (i = 0; i < desc->support_ta_cnt; i++) {
-		ret = of_property_read_string_index(np, "support_ta", i,
-						    &desc->support_ta[i]);
+		if (nondash_flag)
+			ret = of_property_read_string_index(np, "support_ta", i,
+							    &desc->support_ta[i]);
+		else
+			ret = of_property_read_string_index(np, "support-ta", i,
+							    &desc->support_ta[i]);
 		if (ret < 0)
 			return ret;
 		PE5P_INFO("support ta(%s)\n", desc->support_ta[i]);
 	}
 
 	desc->allow_not_check_ta_status =
-		of_property_read_bool(np, "allow_not_check_ta_status");
+		of_property_read_bool(np, "allow_not_check_ta_status")
+			|| of_property_read_bool(np, "allow-not-check-ta-status");
 	pe5p_parse_dt_u32(np, (void *)desc, pe5p_dtprops_u32,
 			  ARRAY_SIZE(pe5p_dtprops_u32));
 	pe5p_parse_dt_u32_arr(np, (void *)desc, pe5p_dtprops_u32_array,
@@ -4131,6 +4142,8 @@ static int pe5p_parse_dt(struct pe5p_algo_info *info)
 	}
 
 	if (of_property_read_u32(np, "vbat_threshold", &val) >= 0)
+		data->vbat_threshold = val;
+	else if (of_property_read_u32(np, "vbat-threshold", &val) >= 0)
 		data->vbat_threshold = val;
 	else {
 		pr_notice("turn off vbat_threshold checking:%d\n",

@@ -1217,6 +1217,8 @@ static void mtk_pe2_parse_dt(struct mtk_pe20 *pe2,
 	/* PE 2.0 */
 	if (of_property_read_u32(np, "pe20_ichg_level_threshold", &val) >= 0)
 		pe2->pe20_ichg_level_threshold = val;
+	else if (of_property_read_u32(np, "pe20-ichg-level-threshold", &val) >= 0)
+		pe2->pe20_ichg_level_threshold = val;
 	else {
 		pr_notice("use default PE20_ICHG_LEAVE_THRESHOLD:%d\n",
 			PE20_ICHG_LEAVE_THRESHOLD);
@@ -1226,6 +1228,8 @@ static void mtk_pe2_parse_dt(struct mtk_pe20 *pe2,
 
 	if (of_property_read_u32(np, "ta_start_battery_soc", &val) >= 0)
 		pe2->ta_start_battery_soc = val;
+	else if (of_property_read_u32(np, "ta-start-battery-soc", &val) >= 0)
+		pe2->ta_start_battery_soc = val;
 	else {
 		pr_notice("use default TA_START_BATTERY_SOC:%d\n",
 			TA_START_BATTERY_SOC);
@@ -1233,6 +1237,8 @@ static void mtk_pe2_parse_dt(struct mtk_pe20 *pe2,
 	}
 
 	if (of_property_read_u32(np, "ta_stop_battery_soc", &val) >= 0)
+		pe2->ta_stop_battery_soc = val;
+	else if (of_property_read_u32(np, "ta-stop-battery-soc", &val) >= 0)
 		pe2->ta_stop_battery_soc = val;
 	else {
 		pr_notice("use default TA_STOP_BATTERY_SOC:%d\n",
@@ -1242,6 +1248,8 @@ static void mtk_pe2_parse_dt(struct mtk_pe20 *pe2,
 
 	if (of_property_read_u32(np, "min_charger_voltage", &val) >= 0)
 		pe2->min_charger_voltage = val;
+	else if (of_property_read_u32(np, "min-charger-voltage", &val) >= 0)
+		pe2->min_charger_voltage = val;
 	else {
 		pr_notice("use default V_CHARGER_MIN:%d\n", PE20_V_CHARGER_MIN);
 		pe2->min_charger_voltage = PE20_V_CHARGER_MIN;
@@ -1250,6 +1258,8 @@ static void mtk_pe2_parse_dt(struct mtk_pe20 *pe2,
 	/* cable measurement impedance */
 	if (of_property_read_u32(np, "cable_imp_threshold", &val) >= 0)
 		pe2->cable_imp_threshold = val;
+	else if (of_property_read_u32(np, "cable-imp-threshold", &val) >= 0)
+		pe2->cable_imp_threshold = val;
 	else {
 		pr_notice("use default CABLE_IMP_THRESHOLD:%d\n",
 			PE2_CABLE_IMP_THRESHOLD);
@@ -1257,6 +1267,8 @@ static void mtk_pe2_parse_dt(struct mtk_pe20 *pe2,
 	}
 
 	if (of_property_read_u32(np, "vbat_cable_imp_threshold", &val) >= 0)
+		pe2->vbat_cable_imp_threshold = val;
+	else if (of_property_read_u32(np, "vbat-cable-imp-threshold", &val) >= 0)
 		pe2->vbat_cable_imp_threshold = val;
 	else {
 		pr_notice("use default VBAT_CABLE_IMP_THRESHOLD:%d\n",
@@ -1267,6 +1279,8 @@ static void mtk_pe2_parse_dt(struct mtk_pe20 *pe2,
 	/* single charger */
 	if (of_property_read_u32(np, "sc_input_current", &val) >= 0)
 		pe2->sc_input_current = val;
+	else if (of_property_read_u32(np, "sc-input-current", &val) >= 0)
+		pe2->sc_input_current = val;
 	else {
 		pr_notice("use default SC_INPUT_CURRENT:%d\n",
 			SC_INPUT_CURRENT);
@@ -1274,6 +1288,8 @@ static void mtk_pe2_parse_dt(struct mtk_pe20 *pe2,
 	}
 
 	if (of_property_read_u32(np, "sc_charger_current", &val) >= 0)
+		pe2->sc_charger_current = val;
+	else if (of_property_read_u32(np, "sc-charger-current", &val) >= 0)
 		pe2->sc_charger_current = val;
 	else {
 		pr_notice("use default SC_CHARGING_CURRENT:%d\n",
@@ -1284,6 +1300,8 @@ static void mtk_pe2_parse_dt(struct mtk_pe20 *pe2,
 	/* dual charger in series */
 	if (of_property_read_u32(np, "dcs_input_current", &val) >= 0)
 		pe2->dcs_input_current = val;
+	else if (of_property_read_u32(np, "dcs-input-current", &val) >= 0)
+		pe2->dcs_input_current = val;
 	else {
 		pr_notice("use default DCS_INPUT_CURRENT:%d\n",
 			DCS_INPUT_CURRENT);
@@ -1291,6 +1309,8 @@ static void mtk_pe2_parse_dt(struct mtk_pe20 *pe2,
 	}
 
 	if (of_property_read_u32(np, "dcs_chg1_charger_current", &val) >= 0)
+		pe2->dcs_chg1_charger_current = val;
+	else if (of_property_read_u32(np, "dcs-chg1-charger-current", &val) >= 0)
 		pe2->dcs_chg1_charger_current = val;
 	else {
 		pr_notice("use default DCS_CHG1_CHARGER_CURRENT:%d\n",
@@ -1300,6 +1320,8 @@ static void mtk_pe2_parse_dt(struct mtk_pe20 *pe2,
 
 	if (of_property_read_u32(np, "dcs_chg2_charger_current", &val) >= 0)
 		pe2->dcs_chg2_charger_current = val;
+	else if (of_property_read_u32(np, "dcs-chg2-charger-current", &val) >= 0)
+		pe2->dcs_chg2_charger_current = val;
 	else {
 		pr_notice("use default DCS_CHG2_CHARGER_CURRENT:%d\n",
 			SC_CHARGING_CURRENT);
@@ -1307,6 +1329,8 @@ static void mtk_pe2_parse_dt(struct mtk_pe20 *pe2,
 	}
 
 	if (of_property_read_u32(np, "slave_mivr_diff", &val) >= 0)
+		pe2->pe2_slave_mivr_diff = val;
+	else if (of_property_read_u32(np, "slave-mivr-diff", &val) >= 0)
 		pe2->pe2_slave_mivr_diff = val;
 	else {
 		pr_notice("use default slave_mivr_diff:%d\n",
@@ -1316,12 +1340,16 @@ static void mtk_pe2_parse_dt(struct mtk_pe20 *pe2,
 
 	if (of_property_read_u32(np, "dual_polling_ieoc", &val) >= 0)
 		pe2->dual_polling_ieoc = val;
+	else if (of_property_read_u32(np, "dual-polling-ieoc", &val) >= 0)
+		pe2->dual_polling_ieoc = val;
 	else {
 		pr_notice("use default dual_polling_ieoc :%d\n", 750000);
 		pe2->dual_polling_ieoc = 750000;
 	}
 
 	if (of_property_read_u32(np, "vbat_threshold", &val) >= 0)
+		pe2->vbat_threshold = val;
+	else if (of_property_read_u32(np, "vbat-threshold", &val) >= 0)
 		pe2->vbat_threshold = val;
 	else {
 		pr_notice("turn off vbat_threshold checking:%d\n",

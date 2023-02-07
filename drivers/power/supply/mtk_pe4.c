@@ -1791,12 +1791,16 @@ static void mtk_pe4_parse_dt(struct mtk_pe40 *pe4,
 
 	if (of_property_read_u32(np, "pe40_max_vbus", &val) >= 0)
 		pe4->pe40_max_vbus = val;
+	else if (of_property_read_u32(np, "pe40-max-vbus", &val) >= 0)
+		pe4->pe40_max_vbus = val;
 	else {
 		pe4_err("use default pe40_max_vbus:%d\n", PE40_MAX_VBUS);
 		pe4->pe40_max_vbus = PE40_MAX_VBUS;
 	}
 
 	if (of_property_read_u32(np, "pe40_max_ibus", &val) >= 0)
+		pe4->pe40_max_ibus = val;
+	else if (of_property_read_u32(np, "pe40-max-ibus", &val) >= 0)
 		pe4->pe40_max_ibus = val;
 	else {
 		pe4_err("use default pe40_max_ibus:%d\n", PE40_MAX_IBUS);
@@ -1805,6 +1809,8 @@ static void mtk_pe4_parse_dt(struct mtk_pe40 *pe4,
 
 	if (of_property_read_u32(np, "min_charger_voltage", &val) >= 0)
 		pe4->min_charger_voltage = val;
+	else if (of_property_read_u32(np, "min-charger-voltage", &val) >= 0)
+		pe4->min_charger_voltage = val;
 	else {
 		pe4_err("use default V_CHARGER_MIN:%d\n", V_CHARGER_MIN);
 		pe4->min_charger_voltage = V_CHARGER_MIN;
@@ -1812,52 +1818,66 @@ static void mtk_pe4_parse_dt(struct mtk_pe40 *pe4,
 
 	if (of_property_read_u32(np, "pe40_stop_battery_soc", &val) >= 0)
 		pe4->pe40_stop_battery_soc = val;
+	else if (of_property_read_u32(np, "pe40-stop-battery-soc", &val) >= 0)
+		pe4->pe40_stop_battery_soc = val;
 	else {
 		pe4_err("use default pe40_stop_battery_soc:%d\n", 80);
 		pe4->pe40_stop_battery_soc = 80;
 	}
 
-	if (of_property_read_u32(np, "high_temp_to_leave_pe40", &val) >= 0) {
+	if (of_property_read_u32(np, "high_temp_to_leave_pe40", &val) >= 0)
 		pe4->high_temp_to_leave_pe40 = val;
-	} else {
+	else if (of_property_read_u32(np, "high-temp-to-leave-pe40", &val) >= 0)
+		pe4->high_temp_to_leave_pe40 = val;
+	else {
 		pe4_err("use default high_temp_to_leave_pe40:%d\n",
 			HIGH_TEMP_TO_LEAVE_PE40);
 		pe4->high_temp_to_leave_pe40 = HIGH_TEMP_TO_LEAVE_PE40;
 	}
 
-	if (of_property_read_u32(np, "high_temp_to_enter_pe40", &val) >= 0) {
+	if (of_property_read_u32(np, "high_temp_to_enter_pe40", &val) >= 0)
 		pe4->high_temp_to_enter_pe40 = val;
-	} else {
+	else if (of_property_read_u32(np, "high-temp-to-enter-pe40", &val) >= 0)
+		pe4->high_temp_to_enter_pe40 = val;
+	else {
 		pe4_err("use default high_temp_to_enter_pe40:%d\n",
 			HIGH_TEMP_TO_ENTER_PE40);
 		pe4->high_temp_to_enter_pe40 = HIGH_TEMP_TO_ENTER_PE40;
 	}
 
-	if (of_property_read_u32(np, "low_temp_to_leave_pe40", &val) >= 0) {
+	if (of_property_read_u32(np, "low_temp_to_leave_pe40", &val) >= 0)
 		pe4->low_temp_to_leave_pe40 = val;
-	} else {
+	else if (of_property_read_u32(np, "low-temp-to-leave-pe40", &val) >= 0)
+		pe4->low_temp_to_leave_pe40 = val;
+	else {
 		pe4_err("use default low_temp_to_leave_pe40:%d\n",
 			LOW_TEMP_TO_LEAVE_PE40);
 		pe4->low_temp_to_leave_pe40 = LOW_TEMP_TO_LEAVE_PE40;
 	}
 
-	if (of_property_read_u32(np, "low_temp_to_enter_pe40", &val) >= 0) {
+	if (of_property_read_u32(np, "low_temp_to_enter_pe40", &val) >= 0)
 		pe4->low_temp_to_enter_pe40 = val;
-	} else {
+	else if (of_property_read_u32(np, "low-temp-to-enter-pe40", &val) >= 0)
+		pe4->low_temp_to_enter_pe40 = val;
+	else {
 		pe4_err("use default low_temp_to_enter_pe40:%d\n",
 			LOW_TEMP_TO_ENTER_PE40);
 		pe4->low_temp_to_enter_pe40 = LOW_TEMP_TO_ENTER_PE40;
 	}
 
-	if (of_property_read_u32(np, "ibus_err", &val) >= 0) {
+	if (of_property_read_u32(np, "ibus_err", &val) >= 0)
 		pe4->ibus_err = val;
-	} else {
+	else if (of_property_read_u32(np, "ibus-err", &val) >= 0)
+		pe4->ibus_err = val;
+	else {
 		pe4_err("use default ibus_err:%d\n",
 			IBUS_ERR);
 		pe4->ibus_err = IBUS_ERR;
 	}
 
 	if (of_property_read_u32(np, "pe40_r_cable_1a_lower", &val) >= 0)
+		pe4->pe40_r_cable_1a_lower = val;
+	else if (of_property_read_u32(np, "pe40-r-cable-1a-lower", &val) >= 0)
 		pe4->pe40_r_cable_1a_lower = val;
 	else {
 		pe4_err("use default pe40_r_cable_1a_lower:%d\n", 530);
@@ -1866,12 +1886,16 @@ static void mtk_pe4_parse_dt(struct mtk_pe40 *pe4,
 
 	if (of_property_read_u32(np, "pe40_r_cable_2a_lower", &val) >= 0)
 		pe4->pe40_r_cable_2a_lower = val;
+	else if (of_property_read_u32(np, "pe40-r-cable-2a-lower", &val) >= 0)
+		pe4->pe40_r_cable_2a_lower = val;
 	else {
 		pe4_err("use default pe40_r_cable_2a_lower:%d\n", 390);
 		pe4->pe40_r_cable_2a_lower = 390;
 	}
 
 	if (of_property_read_u32(np, "pe40_r_cable_3a_lower", &val) >= 0)
+		pe4->pe40_r_cable_3a_lower = val;
+	else if (of_property_read_u32(np, "pe40-r-cable-3a-lower", &val) >= 0)
 		pe4->pe40_r_cable_3a_lower = val;
 	else {
 		pe4_err("use default pe40_r_cable_3a_lower:%d\n", 252);
@@ -1882,12 +1906,18 @@ static void mtk_pe4_parse_dt(struct mtk_pe40 *pe4,
 	if (of_property_read_u32(np, "sc_input_current", &val)
 		>= 0) {
 		pe4->sc_input_current = val;
+	} else if (of_property_read_u32(np, "sc-input-current", &val)
+		>= 0) {
+		pe4->sc_input_current = val;
 	} else {
 		pe4_err("use default sc_input_current:%d\n", 3000000);
 		pe4->sc_input_current = 3000000;
 	}
 
 	if (of_property_read_u32(np, "sc_charger_current", &val)
+		>= 0) {
+		pe4->sc_charger_current = val;
+	} else if (of_property_read_u32(np, "sc-charger-current", &val)
 		>= 0) {
 		pe4->sc_charger_current = val;
 	} else {
@@ -1899,12 +1929,18 @@ static void mtk_pe4_parse_dt(struct mtk_pe40 *pe4,
 	if (of_property_read_u32(np, "dcs_input_current", &val)
 		>= 0) {
 		pe4->dcs_input_current = val;
+	} else if (of_property_read_u32(np, "dcs-input-current", &val)
+		>= 0) {
+		pe4->dcs_input_current = val;
 	} else {
 		pe4_err("use default dcs_input_current:%d\n", 3000000);
 		pe4->dcs_input_current = 3000000;
 	}
 
 	if (of_property_read_u32(np, "dcs_chg1_charger_current", &val)
+		>= 0) {
+		pe4->dcs_chg1_charger_current = val;
+	} else if (of_property_read_u32(np, "dcs-chg1-charger-current", &val)
 		>= 0) {
 		pe4->dcs_chg1_charger_current = val;
 	} else {
@@ -1915,12 +1951,17 @@ static void mtk_pe4_parse_dt(struct mtk_pe40 *pe4,
 	if (of_property_read_u32(np, "dcs_chg2_charger_current", &val)
 		>= 0) {
 		pe4->dcs_chg2_charger_current = val;
+	} else if (of_property_read_u32(np, "dcs-chg2-charger-current", &val)
+		>= 0) {
+		pe4->dcs_chg2_charger_current = val;
 	} else {
 		pe4_err("use default dcs_chg2_charger_current:%d\n", 1500000);
 		pe4->dcs_chg2_charger_current = 1500000;
 	}
 
 	if (of_property_read_u32(np, "dual_polling_ieoc", &val) >= 0)
+		pe4->dual_polling_ieoc = val;
+	else if (of_property_read_u32(np, "dual-polling-ieoc", &val) >= 0)
 		pe4->dual_polling_ieoc = val;
 	else {
 		pr_notice("use default dual_polling_ieoc :%d\n", 750000);
@@ -1929,6 +1970,8 @@ static void mtk_pe4_parse_dt(struct mtk_pe40 *pe4,
 
 	if (of_property_read_u32(np, "slave_mivr_diff", &val) >= 0)
 		pe4->slave_mivr_diff = val;
+	else if (of_property_read_u32(np, "slave-mivr-diff", &val) >= 0)
+		pe4->slave_mivr_diff = val;
 	else {
 		pr_notice("use default slave_mivr_diff:%d\n",
 			PE4_SLAVE_MIVR_DIFF);
@@ -1936,6 +1979,8 @@ static void mtk_pe4_parse_dt(struct mtk_pe40 *pe4,
 	}
 
 	if (of_property_read_u32(np, "vbat_threshold", &val) >= 0)
+		pe4->vbat_threshold = val;
+	else if (of_property_read_u32(np, "vbat-threshold", &val) >= 0)
 		pe4->vbat_threshold = val;
 	else {
 		pr_notice("turn off vbat_threshold checking:%d\n",

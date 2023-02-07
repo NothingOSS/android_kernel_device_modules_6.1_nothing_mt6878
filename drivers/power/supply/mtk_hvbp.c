@@ -3611,11 +3611,11 @@ static struct chg_alg_ops hvbp_ops = {
 	.set_prop = hvbp_set_prop,
 };
 
-#define HVBP_DT_VALPROP_ARR(name, sz) \
-	{#name, offsetof(struct hvbp_algo_desc, name), sz}
+#define HVBP_DT_VALPROP_ARR(name, var_name, sz) \
+	{name, offsetof(struct hvbp_algo_desc, var_name), sz}
 
-#define HVBP_DT_VALPROP(name) \
-	HVBP_DT_VALPROP_ARR(name, 1)
+#define HVBP_DT_VALPROP(name, var_name) \
+	HVBP_DT_VALPROP_ARR(name, var_name, 1)
 
 struct hvbp_dtprop {
 	const char *name;
@@ -3673,50 +3673,50 @@ static inline void hvbp_parse_dt_s32_arr(struct device_node *np, void *desc,
 }
 
 static const struct hvbp_dtprop hvbp_dtprops_u32[] = {
-	HVBP_DT_VALPROP(polling_interval),
-	HVBP_DT_VALPROP(ta_cv_ss_repeat_tmin),
-	HVBP_DT_VALPROP(vbat_cv),
-	HVBP_DT_VALPROP(start_soc_min),
-	HVBP_DT_VALPROP(start_soc_max),
-	HVBP_DT_VALPROP(start_vbat_min),
-	HVBP_DT_VALPROP(start_vbat_max),
-	HVBP_DT_VALPROP(idvchg_term),
-	HVBP_DT_VALPROP(idvchg_step),
-	HVBP_DT_VALPROP(idvchg_ss_init),
-	HVBP_DT_VALPROP(idvchg_ss_step),
-	HVBP_DT_VALPROP(idvchg_ss_step1),
-	HVBP_DT_VALPROP(idvchg_ss_step2),
-	HVBP_DT_VALPROP(idvchg_ss_step1_vbat),
-	HVBP_DT_VALPROP(idvchg_ss_step2_vbat),
-	HVBP_DT_VALPROP(ta_blanking),
-	HVBP_DT_VALPROP(force_ta_cv_vbat),
-	HVBP_DT_VALPROP(chg_time_max),
-	HVBP_DT_VALPROP(tta_recovery_area),
-	HVBP_DT_VALPROP(tbat_recovery_area),
-	HVBP_DT_VALPROP(tdvchg_recovery_area),
-	HVBP_DT_VALPROP(ifod_threshold),
-	HVBP_DT_VALPROP(rsw_min),
-	HVBP_DT_VALPROP(ircmp_rbat),
-	HVBP_DT_VALPROP(ircmp_vclamp),
-	HVBP_DT_VALPROP(vta_cap_min),
-	HVBP_DT_VALPROP(vta_cap_max),
-	HVBP_DT_VALPROP(ita_cap_min),
+	HVBP_DT_VALPROP("polling-interval", polling_interval),
+	HVBP_DT_VALPROP("ta-cv-ss-repeat-tmin", ta_cv_ss_repeat_tmin),
+	HVBP_DT_VALPROP("vbat-cv", vbat_cv),
+	HVBP_DT_VALPROP("start-soc-min", start_soc_min),
+	HVBP_DT_VALPROP("start-soc-max", start_soc_max),
+	HVBP_DT_VALPROP("start-vbat-min", start_vbat_min),
+	HVBP_DT_VALPROP("start-vbat-max", start_vbat_max),
+	HVBP_DT_VALPROP("idvchg-term", idvchg_term),
+	HVBP_DT_VALPROP("idvchg-step", idvchg_step),
+	HVBP_DT_VALPROP("idvchg-ss-init", idvchg_ss_init),
+	HVBP_DT_VALPROP("idvchg-ss-step", idvchg_ss_step),
+	HVBP_DT_VALPROP("idvchg-ss-step1", idvchg_ss_step1),
+	HVBP_DT_VALPROP("idvchg-ss-step2", idvchg_ss_step2),
+	HVBP_DT_VALPROP("idvchg-ss-step1-vbat", idvchg_ss_step1_vbat),
+	HVBP_DT_VALPROP("idvchg-ss-step2-vbat", idvchg_ss_step2_vbat),
+	HVBP_DT_VALPROP("ta-blanking", ta_blanking),
+	HVBP_DT_VALPROP("force-ta-cv-vbat", force_ta_cv_vbat),
+	HVBP_DT_VALPROP("chg-time-max", chg_time_max),
+	HVBP_DT_VALPROP("tta-recovery-area", tta_recovery_area),
+	HVBP_DT_VALPROP("tbat-recovery-area", tbat_recovery_area),
+	HVBP_DT_VALPROP("tdvchg-recovery-area", tdvchg_recovery_area),
+	HVBP_DT_VALPROP("ifod-threshold", ifod_threshold),
+	HVBP_DT_VALPROP("rsw-min", rsw_min),
+	HVBP_DT_VALPROP("ircmp-rbat", ircmp_rbat),
+	HVBP_DT_VALPROP("ircmp-vclamp", ircmp_vclamp),
+	HVBP_DT_VALPROP("vta-cap-min", vta_cap_min),
+	HVBP_DT_VALPROP("vta-cap-max", vta_cap_max),
+	HVBP_DT_VALPROP("ita-cap-min", ita_cap_min),
 };
 
 static const struct hvbp_dtprop hvbp_dtprops_u32_array[] = {
-	HVBP_DT_VALPROP_ARR(ita_level, HVBP_RCABLE_MAX),
-	HVBP_DT_VALPROP_ARR(rcable_level, HVBP_RCABLE_MAX),
-	HVBP_DT_VALPROP_ARR(ita_level_dual, HVBP_RCABLE_MAX),
-	HVBP_DT_VALPROP_ARR(rcable_level_dual, HVBP_RCABLE_MAX),
+	HVBP_DT_VALPROP_ARR("ita-level", ita_level, HVBP_RCABLE_MAX),
+	HVBP_DT_VALPROP_ARR("rcable-level", rcable_level, HVBP_RCABLE_MAX),
+	HVBP_DT_VALPROP_ARR("ita-level-dual", ita_level_dual, HVBP_RCABLE_MAX),
+	HVBP_DT_VALPROP_ARR("rcable-level-dual", rcable_level_dual, HVBP_RCABLE_MAX),
 };
 
 static const struct hvbp_dtprop hvbp_dtprops_s32_array[] = {
-	HVBP_DT_VALPROP_ARR(tta_level_def, HVBP_THERMAL_MAX),
-	HVBP_DT_VALPROP_ARR(tta_curlmt, HVBP_THERMAL_MAX),
-	HVBP_DT_VALPROP_ARR(tbat_level_def, HVBP_THERMAL_MAX),
-	HVBP_DT_VALPROP_ARR(tbat_curlmt, HVBP_THERMAL_MAX),
-	HVBP_DT_VALPROP_ARR(tdvchg_level_def, HVBP_THERMAL_MAX),
-	HVBP_DT_VALPROP_ARR(tdvchg_curlmt, HVBP_THERMAL_MAX),
+	HVBP_DT_VALPROP_ARR("tta-level-def", tta_level_def, HVBP_THERMAL_MAX),
+	HVBP_DT_VALPROP_ARR("tta-curlmt", tta_curlmt, HVBP_THERMAL_MAX),
+	HVBP_DT_VALPROP_ARR("tbat-level-def", tbat_level_def, HVBP_THERMAL_MAX),
+	HVBP_DT_VALPROP_ARR("tbat-curlmt", tbat_curlmt, HVBP_THERMAL_MAX),
+	HVBP_DT_VALPROP_ARR("tdvchg-level-def", tdvchg_level_def, HVBP_THERMAL_MAX),
+	HVBP_DT_VALPROP_ARR("tdvchg-curlmt", tdvchg_curlmt, HVBP_THERMAL_MAX),
 };
 
 static int hvbp_parse_dt(struct hvbp_algo_info *info)
@@ -3726,6 +3726,7 @@ static int hvbp_parse_dt(struct hvbp_algo_info *info)
 	struct hvbp_algo_data *data;
 	struct device_node *np = info->dev->of_node;
 	u32 val;
+	int nondash_flag = 0;
 
 	desc = devm_kzalloc(info->dev, sizeof(*desc), GFP_KERNEL);
 	if (!desc)
@@ -3734,24 +3735,35 @@ static int hvbp_parse_dt(struct hvbp_algo_info *info)
 	data = info->data;
 	memcpy(desc, &algo_desc_defval, sizeof(*desc));
 
-	ret = of_property_count_strings(np, "support_ta");
-	if (ret < 0)
-		return ret;
+	ret = of_property_count_strings(np, "support-ta");
+	if (ret < 0) {
+		nondash_flag = 1;
+		ret = of_property_count_strings(np, "support_ta");
+		if (ret < 0)
+			return ret;
+	}
+
 	desc->support_ta_cnt = ret;
 	desc->support_ta = devm_kzalloc(info->dev, ret * sizeof(char *),
 					GFP_KERNEL);
 	if (!desc->support_ta)
 		return -ENOMEM;
 	for (i = 0; i < desc->support_ta_cnt; i++) {
-		ret = of_property_read_string_index(np, "support_ta", i,
-						    &desc->support_ta[i]);
+		if (nondash_flag)
+			ret = of_property_read_string_index(np, "support_ta", i,
+							    &desc->support_ta[i]);
+		else
+			ret = of_property_read_string_index(np, "support-ta", i,
+							    &desc->support_ta[i]);
 		if (ret < 0)
 			return ret;
 		HVBP_INFO("support ta(%s)\n", desc->support_ta[i]);
 	}
 
 	desc->allow_not_check_ta_status =
-		of_property_read_bool(np, "allow_not_check_ta_status");
+		of_property_read_bool(np, "allow_not_check_ta_status")
+			|| of_property_read_bool(np, "allow-not-check-ta-status");
+
 	hvbp_parse_dt_u32(np, (void *)desc, hvbp_dtprops_u32,
 			  ARRAY_SIZE(hvbp_dtprops_u32));
 	hvbp_parse_dt_u32_arr(np, (void *)desc, hvbp_dtprops_u32_array,
@@ -3760,6 +3772,8 @@ static int hvbp_parse_dt(struct hvbp_algo_info *info)
 			      ARRAY_SIZE(hvbp_dtprops_s32_array));
 
 	if (of_property_read_u32(np, "vbat_threshold", &val) >= 0)
+		data->vbat_threshold = val;
+	else if (of_property_read_u32(np, "vbat-threshold", &val) >= 0)
 		data->vbat_threshold = val;
 	else {
 		pr_notice("turn off vbat_threshold checking:%d\n",
