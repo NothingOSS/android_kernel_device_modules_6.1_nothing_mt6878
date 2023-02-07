@@ -35,6 +35,40 @@
 #define V4L2_CID_MTK_CAM_CAMSYS_HDR_TIMESTAMP (V4L2_CID_USER_MTK_CAM_BASE + 25)
 #define V4L2_CID_MTK_CAM_APU_INFO (V4L2_CID_USER_MTK_CAM_BASE + 26)
 #define V4L2_CID_MTK_CAM_CAMSYS_VF_RESET (V4L2_CID_USER_MTK_CAM_BASE + 27)
+#define V4L2_CID_MTK_CAM_CAMSYS_DYNAMIC_METADATA (V4L2_CID_USER_MTK_CAM_BASE + 28)
+/**
+ * struct mtk_cam_dynamic_metadata_params
+ * @cfg_pixelformat: pixelformat for metadata config.
+ *    e.g., V4L2_META_FMT_MTISP_PARAMS_RGBW
+ * @sensor_width/height
+ * @bin_type: ref. enum mtk_cam_bin
+ * @raw_num: number of raw used
+ * @cac_support: to support cac or not
+ * @pdi_tbl_size: pdi table size in bytes
+ * @aao_blk_num: e.g., 128x128
+ * @afo_blk_num: e.g., 128x128
+ *
+ * @min_(meta_cfg/meta0/meta1)_size
+ */
+struct mtk_cam_dynamic_metadata_params {
+	__u32 cfg_dataformat;
+	__u32 sensor_width;
+	__u32 sensor_height;
+	__u8 bin;
+	__u8 raw_num;
+	__u8 cac_support;
+	__u32 pdi_tbl_size;
+	__u32 aao_blk_num;
+	__u32 afo_blk_num;
+
+	__u32 min_meta_cfg_size;
+	__u32 min_meta0_size;
+	__u32 min_meta1_size;
+
+	__u32 caci_size;
+	__u32 pdi_size;
+};
+
 #define V4L2_CID_MTK_CAM_RAW_RESOURCE_CALC_TEST (V4L2_CID_USER_MTK_CAM_BASE + 47)
 
 
