@@ -876,6 +876,13 @@ static bool frame_sync_end(struct mtk_cam_ctx *ctx,
 	return ret;
 }
 
+static void job_complete_sensor_ctrl_obj(struct mtk_cam_job *job)
+{
+	if (job->sensor_hdl_obj) {
+		mtk_cam_req_complete_ctrl_obj(job->sensor_hdl_obj);
+		job->sensor_hdl_obj = NULL;
+	}
+}
 
 /* kthread context */
 static int
@@ -905,8 +912,7 @@ _apply_sensor(struct mtk_cam_job *job)
 
 	/* TBC */
 	/* mtk_cam_tg_flash_req_setup(ctx, s_data); */
-	mtk_cam_req_complete_ctrl_obj(job->sensor_hdl_obj);
-	job->sensor_hdl_obj = NULL;
+	job_complete_sensor_ctrl_obj(job);
 
 	dev_dbg(cam->dev, "%s:%s:ctx(%d)req(%d):sensor done\n",
 		__func__, req->req.debug_str, ctx->stream_id, job->frame_seq_no);
@@ -1876,6 +1882,8 @@ static void job_cancel(struct mtk_cam_job *job)
 
 	used_pipe = job->req->used_pipe & job->src_ctx->used_pipe;
 
+	job_complete_sensor_ctrl_obj(job);
+
 	for (i = 0; i < MTKCAM_SUBDEV_MAX; i++) {
 		if (used_pipe & ipi_pipe_id_to_bit(i))
 			mtk_cam_req_buffer_done(job->req, i, -1,
@@ -2046,8 +2054,10 @@ static int apply_sensor_mstream(struct mtk_cam_job *job)
 	struct mtk_cam_device *cam = ctx->cam;
 	struct mtk_cam_request *req = job->req;
 	u8 cur_idx;
+	bool do_request_setup;
 
 	cur_idx = mjob->apply_sensor_idx;
+	do_request_setup = (cur_idx == 0) && job->sensor_hdl_obj;
 
 	frame_sync_start(ctx, job->req);
 
@@ -2057,13 +2067,16 @@ static int apply_sensor_mstream(struct mtk_cam_job *job)
 
 	apply_sensor_mstream_exp_gain(ctx, mjob, cur_idx);
 
-	if (cur_idx == 0)
+	if (do_request_setup)
 		v4l2_ctrl_request_setup(&req->req, job->sensor->ctrl_handler);
 
 	frame_sync_end(ctx, job->req);
 
-	dev_info(cam->dev, "[%s] ctx:%d, job:%d_%d\n",
-		 __func__, ctx->stream_id, job->frame_seq_no, cur_idx);
+	if (do_request_setup)
+		job_complete_sensor_ctrl_obj(job);
+
+	dev_info(cam->dev, "[%s] ctx:%d, job: seq %d\n",
+		 __func__, ctx->stream_id, job->frame_seq_no + cur_idx);
 	++mjob->apply_sensor_idx;
 	return 0;
 }
@@ -2114,8 +2127,7 @@ static void job_finalize_mstream(struct mtk_cam_job *job)
 	struct mtk_cam_mstream_job *mjob =
 		container_of(job, struct mtk_cam_mstream_job, job);
 
-	mtk_cam_buffer_pool_return(&job->cq);
-	mtk_cam_buffer_pool_return(&job->ipi);
+	job_finalize(job);
 	mtk_cam_buffer_pool_return(&mjob->cq);
 	mtk_cam_buffer_pool_return(&mjob->ipi);
 }

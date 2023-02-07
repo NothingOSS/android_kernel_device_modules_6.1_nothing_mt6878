@@ -180,12 +180,11 @@ int loop_each_transition(struct state_table *tbl,
 	state = mtk_cam_job_state_get(s_acc->s, state_type);
 
 	if (CAM_DEBUG_ENABLED(STATE) && 0)
-		pr_info("%s: ...#%d %s [%s], trying for event %d\n",
+		pr_info("%s: ...#%d %s [%s]\n",
 			__func__,
 			cur_seq_no(s_acc),
 			str_state_type(state_type),
-			str_state(state_type, state),
-			event);
+			str_state(state_type, state));
 
 	/* check with supported event types for performance */
 	if (state >= tbl->size || !is_tbl_supported_event(tbl, event))
