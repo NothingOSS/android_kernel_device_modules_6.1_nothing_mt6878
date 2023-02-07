@@ -595,9 +595,7 @@ static int mobicore_probe(struct platform_device *pdev)
 	mc_dev_info("MobiCore %s", MOBICORE_COMPONENT_BUILD_TAG);
 #endif
 
-	ret = of_property_read_u32(g_ctx.mcd->of_node,
-				   "trustonic,real-drv", &g_ctx.real_drv);
-	if (ret || !g_ctx.real_drv) {
+	if (!g_ctx.real_drv) {
 		mc_dev_info("MobiCore dummy driver");
 		return 0;
 	}
@@ -713,6 +711,7 @@ static struct platform_driver mc_plat_driver = {
 
 static int __init mobicore_init(void)
 {
+	struct device_node *node;
 	int ret;
 
 	dev_set_name(g_ctx.mcd, "TEE");
@@ -724,13 +723,23 @@ static int __init mobicore_init(void)
 		    MCDRVMODULEAPI_VERSION_MAJOR,
 		    MCDRVMODULEAPI_VERSION_MINOR);
 
+	node = of_find_compatible_node(NULL, NULL, MC_DEVICE_PROPNAME);
+	if (node) {
+		main_ctx.use_platform_driver = true;
+		ret = of_property_read_u32(node, "trustonic,real-drv", &g_ctx.real_drv);
+		if (!ret && g_ctx.real_drv) {
 #ifdef MC_FFA_FASTCALL
-	ret = ffa_register_module();
-	if (ret) {
-		mc_dev_err(ret, "FFA init failed");
-		return ret;
-	}
+			ret = ffa_register_module();
+			if (ret) {
+				mc_dev_err(ret, "FFA init failed");
+				return ret;
+			}
 #endif
+		}
+	} else {
+		main_ctx.use_platform_driver = false;
+		g_ctx.real_drv = 0;
+	}
 
 	/* In a Xen DomU, just register the front-end */
 	ret = protocol_early_init(mobicore_probe_not_of, mobicore_start_fe);
@@ -743,8 +752,6 @@ static int __init mobicore_init(void)
 		return ret;
 	}
 
-	main_ctx.use_platform_driver =
-		of_find_compatible_node(NULL, NULL, MC_DEVICE_PROPNAME);
 	if (main_ctx.use_platform_driver) {
 		ret = platform_driver_register(&mc_plat_driver);
 	} else {
@@ -761,9 +768,11 @@ static int __init mobicore_init(void)
 
 static void __exit mobicore_exit(void)
 {
+	if (g_ctx.real_drv) {
 #ifdef MC_FFA_FASTCALL
-	ffa_unregister_module();
+		ffa_unregister_module();
 #endif
+	}
 
 	if (main_ctx.use_platform_driver)
 		platform_driver_unregister(&mc_plat_driver);
