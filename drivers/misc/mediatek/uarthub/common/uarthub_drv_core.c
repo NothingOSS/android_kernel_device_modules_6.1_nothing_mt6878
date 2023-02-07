@@ -104,6 +104,7 @@ struct uarthub_ops_struct __weak mt6985_plat_data = {};
 
 const struct of_device_id apuarthub_of_ids[] = {
 	{ .compatible = "mediatek,mt6886-uarthub", .data = &mt6886_plat_data },
+	{ .compatible = "mediatek,mt6897-uarthub", .data = &mt6886_plat_data },
 	{ .compatible = "mediatek,mt6983-uarthub", .data = &mt6983_plat_data },
 	{ .compatible = "mediatek,mt6985-uarthub", .data = &mt6985_plat_data },
 	{}
@@ -580,8 +581,11 @@ int uarthub_core_check_disable_from_dts(struct platform_device *pdev)
 
 	if (node) {
 		if (of_property_read_u32(node, "uarthub_disable", &uarthub_disable)) {
-			pr_notice("[%s] unable to get uarthub_disable from dts\n", __func__);
-			return -1;
+			if (of_property_read_u32(node, "uarthub-disable", &uarthub_disable)) {
+				pr_notice("[%s] unable to get uarthub_disable from dts\n",
+					__func__);
+				return -1;
+			}
 		}
 		pr_info("[%s] Get uarthub_disable(%d)\n", __func__, uarthub_disable);
 		g_uarthub_disable = ((uarthub_disable == 0) ? 0 : 1);
