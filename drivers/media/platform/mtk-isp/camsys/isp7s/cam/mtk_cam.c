@@ -1064,7 +1064,7 @@ static int isp_composer_handler(struct rpmsg_device *rpdev, void *data,
 
 static int mtk_cam_in_ctx(struct mtk_cam_ctx *ctx, struct media_entity *entity)
 {
-	return entity->pipe == &ctx->pipeline;
+	return media_entity_pipeline(entity) == &ctx->pipeline;
 }
 
 struct mtk_cam_ctx *mtk_cam_find_ctx(struct mtk_cam_device *cam,
@@ -1073,7 +1073,7 @@ struct mtk_cam_ctx *mtk_cam_find_ctx(struct mtk_cam_device *cam,
 	unsigned int i;
 
 	for (i = 0;  i < cam->max_stream_num; i++) {
-		if (entity->pipe == &cam->ctxs[i].pipeline)
+		if (media_entity_pipeline(entity) == &cam->ctxs[i].pipeline)
 			return &cam->ctxs[i];
 	}
 
@@ -1208,12 +1208,15 @@ static int mtk_cam_ctx_pipeline_start(struct mtk_cam_ctx *ctx,
 				      struct media_entity *entity)
 {
 	struct device *dev = ctx->cam->dev;
-	struct media_graph *graph;
 	struct v4l2_subdev **target_sd;
 	struct mtk_cam_video_device *mtk_vdev;
-	int i, ret;
+	struct media_pipeline_pad *ppad;
+	struct media_entity *entity_walked[32] = {0};
+	int last_entity_walked = 0;
+	bool walked;
+	int i, j, ret;
 
-	ret = media_pipeline_start(entity, &ctx->pipeline);
+	ret = media_pipeline_start(&entity->pads[0], &ctx->pipeline);
 	if (ret) {
 		dev_info(dev,
 			 "%s:failed %s in media_pipeline_start:%d\n",
@@ -1222,14 +1225,32 @@ static int mtk_cam_ctx_pipeline_start(struct mtk_cam_ctx *ctx,
 	}
 
 	/* traverse to update used subdevs & number of nodes */
-	graph = &ctx->pipeline.graph;
-	media_graph_walk_start(graph, entity);
 
 	mutex_lock(&ctx->cam->v4l2_dev.mdev->graph_mutex);
 
 	i = 0;
-	while ((entity = media_graph_walk_next(graph))) {
-		dev_dbg(dev, "linked entity %s\n", entity->name);
+	list_for_each_entry(ppad, &ctx->pipeline.pads, list) {
+		walked = false;
+		entity = ppad->pad->entity;
+		dev_info(dev, "linked entity %s, pad idx: %d, func: %d\n",
+			 entity->name, ppad->pad->index, entity->function);
+
+		for (j = 0;
+		     j <= last_entity_walked && j < ARRAY_SIZE(entity_walked);
+		     j++) {
+			if (entity_walked[j] == entity) {
+				walked = true;
+				break;
+			}
+		}
+
+		if (!walked) {
+			last_entity_walked++;
+			entity_walked[last_entity_walked] = entity;
+		} else {
+			/* The owner entity of this pad was already walked */
+			continue;
+		}
 
 		target_sd = NULL;
 
@@ -1262,7 +1283,7 @@ static int mtk_cam_ctx_pipeline_start(struct mtk_cam_ctx *ctx,
 			continue;
 
 		if (*target_sd) {
-			dev_info(dev, "duplicated subdevs!!!\n");
+			dev_info(dev, "duplicated subdevs: %s!\n", entity->name);
 			goto fail_stop_pipeline;
 		}
 
@@ -1278,7 +1299,7 @@ static int mtk_cam_ctx_pipeline_start(struct mtk_cam_ctx *ctx,
 
 fail_stop_pipeline:
 	mutex_unlock(&ctx->cam->v4l2_dev.mdev->graph_mutex);
-	media_pipeline_stop(entity);
+	media_pipeline_stop(&entity->pads[0]);
 	return -EPIPE;
 }
 
@@ -1287,7 +1308,7 @@ static void mtk_cam_ctx_pipeline_stop(struct mtk_cam_ctx *ctx,
 {
 	int i;
 
-	media_pipeline_stop(entity);
+	media_pipeline_stop(&entity->pads[0]);
 
 	ctx->sensor = NULL;
 	ctx->seninf = NULL;

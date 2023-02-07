@@ -36,7 +36,7 @@ struct mtk_cam_vb2_buf {
 
 	/* DMABUF related */
 	struct dma_buf_attachment	*db_attach;
-	struct dma_buf_map map;
+	struct iosys_map map;
 };
 
 /*********************************************/
@@ -66,12 +66,14 @@ static unsigned long mtk_cam_vb2_get_contiguous_size(struct sg_table *sgt)
 static void *mtk_cam_vb2_cookie(struct vb2_buffer *vb, void *buf_priv)
 {
 	struct mtk_cam_vb2_buf *buf = buf_priv;
+
 	return &buf->dma_addr;
 }
 static void *mtk_cam_vb2_vaddr(struct vb2_buffer *vb, void *buf_priv)
 {
 	struct mtk_cam_vb2_buf *buf = buf_priv;
 	int ret;
+
 	MTK_CAM_TRACE_FUNC_BEGIN(BUFFER);
 	if (!buf->vaddr && buf->db_attach)
 		ret = dma_buf_vmap(buf->db_attach->dmabuf, &buf->map);
@@ -198,11 +200,13 @@ static void mtk_cam_vb2_detach_dmabuf(void *mem_priv)
 	kfree(buf);
 }
 
-static void *mtk_cam_vb2_attach_dmabuf(struct vb2_buffer *vb, struct device *dev, struct dma_buf *dbuf,
+static void *mtk_cam_vb2_attach_dmabuf(
+	struct vb2_buffer *vb, struct device *dev, struct dma_buf *dbuf,
 	unsigned long size)
 {
 	struct mtk_cam_vb2_buf *buf;
 	struct dma_buf_attachment *dba;
+
 	if (dbuf->size < size)
 		return ERR_PTR(-EFAULT);
 	if (WARN_ON(!dev))
@@ -271,4 +275,5 @@ void mtk_cam_vb2_sync_for_cpu(void *buf_priv)
 }
 
 MODULE_DESCRIPTION("DMA-contig memory handling routines for mtk-cam videobuf2");
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL");

@@ -39,7 +39,7 @@ static void log_fmt_ops(struct mtk_cam_video_device *node,
 	struct media_pad *remote_pad;
 	const char *remote_name = "null";
 
-	remote_pad = media_entity_remote_pad(&node->pad);
+	remote_pad = media_pad_remote_pad_unique(&node->pad);
 	if (remote_pad)
 		remote_name = remote_pad->entity->name;
 
@@ -277,7 +277,7 @@ static int refine_valid_selection(struct mtk_cam_video_device *node,
 		struct mtk_raw_pipeline *pipe;
 		int sink_w, sink_h;
 
-		remote_pad = media_entity_remote_pad(&node->pad);
+		remote_pad = media_pad_remote_pad_unique(&node->pad);
 		if (WARN_ON_ONCE(!remote_pad))
 			return -1;
 

@@ -570,15 +570,13 @@ static const struct v4l2_ctrl_config cfg_pde_info = {
 struct v4l2_subdev *mtk_cam_find_sensor(struct mtk_cam_ctx *ctx,
 					struct media_entity *entity)
 {
-	struct media_graph *graph;
 	struct v4l2_subdev *sensor = NULL;
-
-	graph = &ctx->pipeline.graph;
-	media_graph_walk_start(graph, entity);
+	struct media_pipeline_pad *ppad;
 
 	mutex_lock(&ctx->cam->v4l2_dev.mdev->graph_mutex);
 
-	while ((entity = media_graph_walk_next(graph))) {
+	list_for_each_entry(ppad, &ctx->pipeline.pads, list) {
+		entity = ppad->pad->entity;
 		dev_dbg(ctx->cam->dev, "linked entity: %s\n", entity->name);
 		sensor = NULL;
 

@@ -785,8 +785,9 @@ int mtk_cam_mraw_toggle_db(struct mtk_mraw_device *mraw_dev)
 int mtk_cam_mraw_cq_disable(struct mtk_mraw_device *mraw_dev)
 {
 	int ret = 0;
+	unsigned int thr0_ctrl = CQ_SUB_THR0_EN;
 
-	writel_relaxed(~CQ_SUB_THR0_EN, mraw_dev->base + REG_MRAW_CQ_SUB_THR0_CTL);
+	writel_relaxed(~thr0_ctrl, mraw_dev->base + REG_MRAW_CQ_SUB_THR0_CTL);
 	wmb(); /* TBC */
 
 	return ret;
