@@ -54,7 +54,8 @@ int is_reserved(int cpu)
 
 bool is_min_capacity_cpu(int cpu)
 {
-	if (capacity_orig_of(cpu) == capacity_orig_of(sched_min_cap_orig_cpu))
+	if (arch_scale_cpu_capacity(cpu) ==
+		arch_scale_cpu_capacity(sched_min_cap_orig_cpu))
 		return true;
 
 	return false;
@@ -62,7 +63,7 @@ bool is_min_capacity_cpu(int cpu)
 
 bool is_max_capacity_cpu(int cpu)
 {
-	return capacity_orig_of(cpu) == SCHED_CAPACITY_SCALE;
+	return arch_scale_cpu_capacity(cpu) == SCHED_CAPACITY_SCALE;
 }
 
 static void task_rotate_work_func(struct work_struct *work)
