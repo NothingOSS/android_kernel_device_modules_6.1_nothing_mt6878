@@ -469,7 +469,7 @@ void mtk_tick_entry(void *data, struct rq *rq)
 	if (this_cpu != cpumask_first(to_cpumask(pd->cpus)))
 		return;
 
-	gear_id = topology_physical_package_id(this_cpu);
+	gear_id = pd_get_cpu_gear_id(this_cpu);
 	offset = gear_id << 2;
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	ts[2] = sched_clock();

@@ -99,6 +99,7 @@ extern unsigned long pd_get_util_pwr_eff(int cpu, unsigned long util);
 extern unsigned long pd_get_util_opp(int cpu, unsigned long util);
 extern unsigned long pd_get_opp_pwr_eff(int cpu, int opp);
 extern unsigned int pd_get_cpu_opp(int cpu);
+extern unsigned int pd_get_cpu_gear_id(int cpu);
 extern unsigned int pd_get_opp_leakage(unsigned int cpu, unsigned int opp,
 	unsigned int temperature);
 #if IS_ENABLED(CONFIG_NONLINEAR_FREQ_CTL)

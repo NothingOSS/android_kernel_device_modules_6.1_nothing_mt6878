@@ -376,6 +376,12 @@ unsigned int pd_get_cpu_opp(int cpu)
 }
 EXPORT_SYMBOL_GPL(pd_get_cpu_opp);
 
+unsigned int pd_get_cpu_gear_id(int cpu)
+{
+	return per_cpu(gear_id, cpu);
+}
+EXPORT_SYMBOL_GPL(pd_get_cpu_gear_id);
+
 unsigned int pd_get_opp_leakage(unsigned int cpu, unsigned int opp, unsigned int temperature)
 {
 	return mtk_get_leakage(cpu, opp, temperature);
