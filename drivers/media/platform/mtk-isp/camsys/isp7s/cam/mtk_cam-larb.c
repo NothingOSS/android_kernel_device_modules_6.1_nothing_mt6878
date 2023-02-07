@@ -36,7 +36,7 @@ static int mtk_cam_pm_component_bind(struct device *dev, struct device *master,
 	struct mtk_cam_larb_device *larb_dev = dev_get_drvdata(dev);
 	struct mtk_cam_device *cam_dev = data;
 
-	dev_info(dev, "%s: dev:0x%x, id=%d\n", __func__, dev, larb_dev->larb_id);
+	dev_info(dev, "%s: id=%d\n", __func__, larb_dev->larb_id);
 	return mtk_cam_set_dev_larb(cam_dev->dev, dev);
 }
 

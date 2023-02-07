@@ -745,7 +745,7 @@ int apply_cam_mux_stagger(struct mtk_cam_job *job)
 		param.num = 2;
 		mtk_cam_seninf_streaming_mux_change(&param);
 		dev_info(ctx->cam->dev,
-			"[%s] switch Req:%d, type:%d, cam_mux[0][1]:[%d/%d/%d][%d/%d/%d] ts:%lu\n",
+			"[%s] switch Req:%d, type:%d, cam_mux[0][1]:[%d/%d/%d][%d/%d/%d] ts:%llu\n",
 			__func__, job->frame_seq_no, type,
 			settings[0].source, settings[0].camtg, settings[0].enable,
 			settings[1].source, settings[1].camtg, settings[1].enable,

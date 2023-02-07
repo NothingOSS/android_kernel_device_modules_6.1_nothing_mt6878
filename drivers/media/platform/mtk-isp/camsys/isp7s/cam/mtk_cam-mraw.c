@@ -450,7 +450,7 @@ static void mtk_cam_mraw_set_frame_param_dmao(
 		offset = offset + (((pipe->res_config.mraw_dma_size[i] + 15) >> 4) << 4);
 
 
-		dev_dbg(cam->dev, "%s:dmao_id:%d iova:0x%llx stride:0x%x height:0x%x size:%d offset:%d\n",
+		dev_dbg(cam->dev, "%s:dmao_id:%d iova:0x%llx stride:0x%x height:0x%x size:%d offset:%lu\n",
 			__func__, i, mraw_img_outputs->buf[0][0].iova,
 			mraw_img_outputs->fmt.stride[0], mraw_img_outputs->fmt.s.h,
 			pipe->res_config.mraw_dma_size[i], offset);

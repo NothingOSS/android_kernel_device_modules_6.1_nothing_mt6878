@@ -781,7 +781,7 @@ static int _apply_sv_cq(struct mtk_cam_job *job)
 					job->cq_rst.camsv[0].size,
 					job->cq_rst.camsv[0].offset, 0);
 				dev_info(sv_dev->dev,
-					"SOF[ctx:%d], CQ-%d triggered, cq_addr:0x%x\n",
+					"SOF[ctx:%d], CQ-%d triggered, cq_addr:0x%llx\n",
 					ctx->stream_id, job->frame_seq_no, job->cq.daddr);
 			}
 		}
@@ -806,7 +806,7 @@ static int _apply_mraw_cq(struct mtk_cam_job *job)
 				job->cq_rst.mraw[i].size,
 				job->cq_rst.mraw[i].offset, 0);
 			dev_info(mraw_dev->dev,
-				"SOF[ctx:%d], CQ-%d triggered, cq_addr:0x%x\n",
+				"SOF[ctx:%d], CQ-%d triggered, cq_addr:0x%llx\n",
 				ctx->stream_id, job->frame_seq_no, job->cq.daddr);
 		}
 	}
@@ -833,7 +833,7 @@ static int _apply_cq(struct mtk_cam_job *job)
 		 job->cq_rst.sub.size, job->cq_rst.sub.offset);
 
 	dev_info(raw_dev->dev,
-		 "[ctx:%d], CQ-%d triggered, cq_addr:0x%x\n",
+		 "[ctx:%d], CQ-%d triggered, cq_addr:0x%llx\n",
 		 ctx->stream_id, job->frame_seq_no, base_addr);
 
 	// to be confirmed
@@ -1351,7 +1351,7 @@ _job_pack_only_sv(struct mtk_cam_job *job,
 	job->sw_feature = MTKCAM_IPI_SW_FEATURE_NORMAL;
 	job->sub_ratio = 0;
 	dev_dbg(cam->dev, "[%s] ctx:%d, job_type:%d, scen:%d, expnum:%d->%d, sw/scene:%d/%d",
-		__func__, ctx->stream_id, job->job_type, job->job_scen,
+		__func__, ctx->stream_id, job->job_type, job->job_scen.id,
 		job->exp_num_prev, job->exp_num_cur, job->sw_feature, job->hardware_scenario);
 	job->stream_on_seninf = false;
 	if (!ctx->used_engine) {

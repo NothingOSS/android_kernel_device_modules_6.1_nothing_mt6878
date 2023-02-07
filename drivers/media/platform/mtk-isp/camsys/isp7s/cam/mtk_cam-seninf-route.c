@@ -885,7 +885,7 @@ int mtk_cam_seninf_get_vcinfo(struct seninf_ctx *ctx)
 					       NULL, &raw_fmt);
 			if (ret) {
 				dev_info(ctx->dev, "no get_fmt in %s\n",
-					ctx->sensor_sd);
+					ctx->sensor_sd->name);
 				ctx->fmt[vc->out_pad].format.code =
 					get_mbus_format_by_dt(vc->dt);
 			} else {
@@ -1454,7 +1454,7 @@ int mtk_cam_seninf_s_stream_mux(struct seninf_ctx *ctx)
 		vc->enable = mtk_cam_seninf_is_vc_enabled(ctx, vc);
 		if (!vc->enable) {
 			dev_info(ctx->dev, "vc[%d] pad %d. skip\n",
-				 i, vc->feature, vc->out_pad);
+				 i, vc->out_pad);
 			continue;
 		}
 

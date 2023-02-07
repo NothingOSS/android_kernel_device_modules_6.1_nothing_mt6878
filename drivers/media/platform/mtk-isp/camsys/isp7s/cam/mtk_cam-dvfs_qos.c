@@ -240,7 +240,8 @@ int mtk_cam_qos_probe(struct device *dev,
 
 	//dev_info(dev, "icc_path num %d\n", qos->n_path);
 	if (qos->n_path > ARRAY_SIZE(names)) {
-		dev_info(dev, "%s: array size of names is not enough.\n");
+		dev_info(dev, "%s: array size of names is not enough.\n",
+			 __func__);
 		return -EINVAL;
 	}
 

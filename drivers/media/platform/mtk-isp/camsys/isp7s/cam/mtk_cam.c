@@ -1680,7 +1680,7 @@ static int ctx_stream_on_pipe_subdev(struct mtk_cam_ctx *ctx, int enable)
 		ret = v4l2_subdev_call(ctx->pipe_subdevs[i], video,
 				       s_stream, enable);
 		if (ret) {
-			dev_info(dev, "failed to stream_on %d, %d: %d\n",
+			dev_info(dev, "failed to stream_on %s, %d: %d\n",
 				 ctx->pipe_subdevs[i]->name, enable, ret);
 			goto fail_pipe_off;
 		}
@@ -2604,7 +2604,7 @@ int mtk_cam_update_engine_status(struct mtk_cam_device *cam, int engine_mask,
 
 	if (WARN_ON(err_mask)) {
 		dev_info(cam->dev, "%s: set %d, engine 0x%08x err 0x%08x\n",
-			 __func__, available, engine_mask);
+			 __func__, available, engine_mask, err_mask);
 		return -1;
 	}
 

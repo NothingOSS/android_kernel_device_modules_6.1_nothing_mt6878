@@ -1231,7 +1231,7 @@ static irqreturn_t mtk_thread_irq_camsv(int irq, void *data)
 		int len = kfifo_out(&sv_dev->msg_fifo, &irq_info, sizeof(irq_info));
 
 		WARN_ON(len != sizeof(irq_info));
-		dev_info(sv_dev->dev, "ts=%lu irq_type %d, req:0x%x/0x%x\n",
+		dev_info(sv_dev->dev, "ts=%llu irq_type %d, req:0x%x/0x%x\n",
 			irq_info.ts_ns / 1000,
 			irq_info.irq_type,
 			irq_info.frame_idx_inner,

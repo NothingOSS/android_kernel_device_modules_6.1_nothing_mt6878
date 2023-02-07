@@ -39,8 +39,8 @@ static inline int mtk_cam_device_buf_fd(struct mtk_cam_device_buf *buf)
 
 struct mtk_cam_pool_priv {
 	struct mtk_cam_pool *pool;
-	int index : 7;
-	int available : 1;
+	int index : 6;
+	int available : 2;
 };
 
 struct mtk_cam_pool {

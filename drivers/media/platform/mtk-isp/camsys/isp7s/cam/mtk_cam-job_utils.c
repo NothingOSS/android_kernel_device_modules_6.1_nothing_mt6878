@@ -338,7 +338,7 @@ int fill_img_in_hdr(struct mtkcam_ipi_img_input *ii,
 	ii->buf[0].iova = buf->daddr;
 	ii->buf[0].ccd_fd = buf->vbb.vb2_buf.planes[0].m.fd;
 
-	buf_printk("buf->daddr:0x%x, io->buf[0][0].iova:0x%x, size%d",
+	buf_printk("buf->daddr:0x%llx, io->buf[0][0].iova:0x%llx, size%d",
 		   buf->daddr, ii->buf[0].iova, ii->buf[0].size);
 
 	return 0;
@@ -377,7 +377,7 @@ int fill_imgo_out_subsample(struct mtkcam_ipi_img_output *io,
 		io->buf[i][0].size = buf->image_info.size[0];
 		io->buf[i][0].iova = buf->daddr + io->buf[i][0].size;
 		io->buf[i][0].ccd_fd = buf->vbb.vb2_buf.planes[0].m.fd;
-		buf_printk("i=%d: buf->daddr:0x%x, io->buf[i][0].iova:0x%x, size:%d",
+		buf_printk("i=%d: buf->daddr:0x%llx, io->buf[i][0].iova:0x%llx, size:%d",
 			   i, buf->daddr, io->buf[i][0].iova, io->buf[i][0].size);
 	}
 
@@ -410,7 +410,7 @@ int fill_img_out_hdr(struct mtkcam_ipi_img_output *io,
 	/* crop */
 	io->crop = v4l2_rect_to_ipi_crop(&buf->image_info.crop);
 
-	buf_printk("buf->daddr:0x%x, io->buf[0][0].iova:0x%x, size:%d",
+	buf_printk("buf->daddr:0x%llx, io->buf[0][0].iova:0x%llx, size:%d",
 		   buf->daddr, io->buf[0][0].iova, io->buf[0][0].size);
 	buf_printk("%s %dx%d @%d,%d-%dx%d\n",
 		   node->desc.name,
@@ -505,7 +505,7 @@ int fill_img_in(struct mtkcam_ipi_img_input *ii,
 
 	mtk_cam_fill_img_in_buf(ii, buf);
 
-	buf_printk("%s %dx%d @%d,%d-%dx%d\n",
+	buf_printk("%s %dx%d\n",
 		   node->desc.name,
 		   ii->fmt.s.w, ii->fmt.s.h);
 	return 0;

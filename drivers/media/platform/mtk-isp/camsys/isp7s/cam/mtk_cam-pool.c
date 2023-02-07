@@ -190,7 +190,7 @@ int mtk_cam_pool_alloc(struct mtk_cam_pool *pool,
 	pool->fetch_idx = 0;
 	pool->available_cnt = pool->n_element;
 
-	pool_dbg("pool %p: size %zu, n = %d\n",
+	pool_dbg("pool %p: size %zu, n = %zu\n",
 		 pool, pool->element_size, pool->n_element);
 
 	return 0;
