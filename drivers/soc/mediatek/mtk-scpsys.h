@@ -28,7 +28,7 @@
 #define MTK_SCPD_PEXTP_PHY_RTFF		BIT(13)
 #define MTK_SCPD_IPI_OPS		BIT(14)
 
-#define MAX_CLKS	3
+#define MAX_CLKS	5
 #define MAX_SUBSYS_CLKS 10
 #define MAX_STEPS		14
 #define MAX_SRAM_STEPS	4
