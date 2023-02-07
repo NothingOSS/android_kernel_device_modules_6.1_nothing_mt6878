@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-CAM_MODULE := mtk-cam-isp7s
+CAM_MODULE := mtk-cam-isp7sp
 
 CAMSYS_TRACE_ENABLE = n
 
@@ -18,9 +18,9 @@ subdir-ccflags-y += \
     -I$(srctree)/$(src)
 
 
-ifneq ($(wildcard $(DEVICE_MODULES_PATH)/include/dt-bindings/memory/mt6985-larb-port.h),)
-  subdir-ccflags-y += -DCAMSYS_TF_DUMP_7S
-endif
+#ifneq ($(wildcard $(DEVICE_MODULES_PATH)/include/dt-bindings/memory/mt6985-larb-port.h),)
+#  subdir-ccflags-y += -DCAMSYS_TF_DUMP_7SP
+#endif
 
 # MTEE part
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/geniezone/public
@@ -96,9 +96,14 @@ PLATFORM_PATH = $(srctree)/$(src)
 endif
 
 # platform data
-ifneq ($(wildcard $(PLATFORM_PATH)/mtk_cam-plat-mt6985.c),)
-ccflags-y += -DCAMSYS_ISP7S_MT6985
-$(CAM_MODULE)-objs += mtk_cam-plat-mt6985.o
+ifneq ($(wildcard $(PLATFORM_PATH)/mtk_cam-plat-mt6897.c),)
+ccflags-y += -DCAMSYS_ISP7S_MT6897
+$(CAM_MODULE)-objs += mtk_cam-plat-mt6897.o
+endif
+
+ifneq ($(wildcard $(PLATFORM_PATH)/mtk_cam-plat-mt6989.c),)
+ccflags-y += -DCAMSYS_ISP7S_MT6989
+$(CAM_MODULE)-objs += mtk_cam-plat-mt6989.o
 endif
 
 obj-$(CONFIG_VIDEO_MTK_ISP_CAMSYS) += $(CAM_MODULE).o

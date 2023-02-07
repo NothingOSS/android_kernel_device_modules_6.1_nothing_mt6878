@@ -95,11 +95,11 @@ void set_platform_data(const struct camsys_platform_data *platform_data);
 #define GET_PLAT_V4L2(member) (cur_platform->v4l2->member)
 
 /* platform data list */
-#ifdef CAMSYS_ISP7S_MT6985
-extern struct camsys_platform_data mt6985_data;
+#ifdef CAMSYS_ISP7S_MT6897
+extern struct camsys_platform_data mt6897_data;
 #endif
-#ifdef CAMSYS_ISP7S_MT6886
-extern struct camsys_platform_data mt6886_data;
+#ifdef CAMSYS_ISP7S_MT6989
+extern struct camsys_platform_data mt6989_data;
 #endif
 
 

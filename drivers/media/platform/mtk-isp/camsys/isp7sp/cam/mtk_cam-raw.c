@@ -429,8 +429,8 @@ static bool is_sub_sample_sensor_timing(struct mtk_raw_device *dev)
 	return dev->cur_vsync_idx >= dev->set_sensor_idx;
 }
 
-/* use spare register FH_SPARE_5 */
-#define REG_FRAME_SEQ_NUM					0x4874
+/* use spare register FHG/FH_SPARE_7 */
+#define REG_FRAME_SEQ_NUM					0x2c58
 
 /* IRQ Error Mask */
 #define INT_ST_MASK_CAM_ERR					\
@@ -1113,7 +1113,7 @@ static irqreturn_t mtk_irq_yuv(int irq, void *data)
 	dma_ofl_status =
 		readl_relaxed(yuv->base + REG_CAMCTL2_INT5_STATUS);
 	dma_ufl_status =
-		readl_relaxed(yuv->base + REG_CAMCTL2_INT6_STATUS);
+		readl_relaxed(yuv->base + REG_CAMCTL2_INT8_STATUS);
 
 	err_status = irq_status & 0x4; // bit2: DMA_ERR
 

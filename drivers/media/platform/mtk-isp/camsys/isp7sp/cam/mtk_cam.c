@@ -66,11 +66,11 @@ MODULE_PARM_DESC(debug_ae, "activates debug ae info");
 	0, sizeof(*(p)) - offsetof(typeof(*(p)), field) -sizeof((p)->field))
 
 static const struct of_device_id mtk_cam_of_ids[] = {
-#ifdef CAMSYS_ISP7S_MT6985
-	{.compatible = "mediatek,mt6985-camisp", .data = &mt6985_data},
+#ifdef CAMSYS_ISP7S_MT6897
+	{.compatible = "mediatek,mt6897-camisp", .data = &mt6897_data},
 #endif
-#ifdef CAMSYS_ISP7S_MT6886
-	{.compatible = "mediatek,mt6886-camisp", .data = &mt6886_data},
+#ifdef CAMSYS_ISP7S_MT6989
+	{.compatible = "mediatek,mt6989-camisp", .data = &mt6989_data},
 #endif
 	{}
 };
