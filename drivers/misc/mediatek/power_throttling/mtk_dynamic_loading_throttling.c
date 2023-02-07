@@ -11,6 +11,7 @@
 #include <linux/mutex.h>
 #include <linux/mfd/mt6359p/registers.h>
 #include <linux/mfd/mt6363/registers.h>
+#include <linux/mfd/mt6377/registers.h>
 #include <linux/mfd/mt6397/core.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
@@ -39,6 +40,13 @@ struct dlpt_regs_t {
 	struct reg_t uvlo_reg;
 	struct reg_t vbb_uvlo_reg;
 	const struct linear_range uvlo_range;
+};
+
+struct tag_bootmode {
+	u32 size;
+	u32 tag;
+	u32 bootmode;
+	u32 boottype;
 };
 
 struct dlpt_regs_t mt6359p_dlpt_regs = {
@@ -84,6 +92,25 @@ struct dlpt_regs_t mt6363_dlpt_regs = {
 	},
 };
 
+struct dlpt_regs_t mt6377_dlpt_regs = {
+	.rgs_chrdet = {
+		MT6377_CHRDET_DEB_ADDR,
+		MT6377_CHRDET_DEB_MASK << MT6377_CHRDET_DEB_SHIFT,
+		MT6377_CHRDET_DEB_SHIFT
+	},
+	.uvlo_reg = {
+		MT6377_RG_VSYS_UVLO_VTHL_ADDR,
+		MT6377_RG_VSYS_UVLO_VTHL_MASK << MT6377_RG_VSYS_UVLO_VTHL_SHIFT,
+		MT6377_RG_VSYS_UVLO_VTHL_SHIFT
+	},
+	.uvlo_range = {
+		.min = 2500,
+		.min_sel = 0,
+		.max_sel = 8,
+		.step = 50,
+	},
+};
+
 struct dlpt_priv {
 	struct regmap *regmap;
 	enum LOW_BATTERY_LEVEL_TAG lbat_level;
@@ -105,7 +132,7 @@ struct dlpt_priv {
 	struct iio_channel *chan_imix_r;
 	struct iio_channel *chan_zcv;
 	bool suspend_flag;
-
+	struct tag_bootmode *tag;
 };
 
 struct dlpt_callback_table {
@@ -227,7 +254,7 @@ static int dlpt_check_power_off(void)
 	int ret = 0;
 	static int dlpt_power_off_cnt;
 
-	if (dlpt.lbat_level == LOW_BATTERY_LEVEL_2) {
+	if (dlpt.lbat_level == LOW_BATTERY_LEVEL_2 && dlpt.tag->bootmode != 8) {
 		if (dlpt_power_off_cnt == 0)
 			ret = 0; /* 1st time get VBAT < 3.1V, record it */
 		else
@@ -433,7 +460,6 @@ static int dlpt_notify_handler(void *unused)
 				, cur_ui_soc, IMAX_MAX_VALUE);
 		}
 		pre_ui_soc = cur_ui_soc;
-		dlpt.notify_flag = false;
 
 		/* Check low battery volt < 3.1V */
 		if (dlpt_check_power_off()) {
@@ -442,6 +468,7 @@ static int dlpt_notify_handler(void *unused)
 			pr_info("[DLPT] notify battery SOC=0 to power off.\n");
 		}
 bypass:
+		dlpt.notify_flag = false;
 		mutex_unlock(&dlpt.notify_lock);
 		__pm_relax(dlpt.notify_ws);
 
@@ -558,9 +585,18 @@ static void dlpt_parse_dt(struct platform_device *pdev)
 		else
 			dlpt.is_power_path_supported =
 				of_property_read_bool(np, "power_path_support");
+
+		np = of_parse_phandle(pdev->dev.of_node, "bootmode", 0);
+		if (!np)
+			dev_notice(&pdev->dev, "get bootmode fail\n");
+		else {
+			dlpt.tag = (struct tag_bootmode *)of_get_property(np, "atag,boot", NULL);
+			if (!dlpt.tag)
+				dev_notice(&pdev->dev, "failed to get atag,boot\n");
+		}
 	}
-	dev_notice(&pdev->dev, "power_path_support:%d isense_support:%d\n"
-		   , dlpt.is_power_path_supported, dlpt.is_isense_supported);
+	dev_notice(&pdev->dev, "power_path_support:%d isense_support:%d bootmode:0x%x\n"
+		   , dlpt.is_power_path_supported, dlpt.is_isense_supported, dlpt.tag->bootmode);
 }
 
 static int dlpt_probe(struct platform_device *pdev)
@@ -618,6 +654,9 @@ static const struct of_device_id dynamic_loading_throttling_of_match[] = {
 	}, {
 		.compatible = "mediatek,mt6363-dynamic_loading_throttling",
 		.data = &mt6363_dlpt_regs,
+	}, {
+		.compatible = "mediatek,mt6377-dynamic_loading_throttling",
+		.data = &mt6377_dlpt_regs,
 	}, {
 		/* sentinel */
 	}

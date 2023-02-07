@@ -9,11 +9,13 @@
 #define MT6315_SLAVE_ID_3	3
 #define MT6315_SLAVE_ID_6	6
 #define MT6315_SLAVE_ID_7	7
+#define MT6315_SLAVE_ID_8	8
 #define MT6315_SLAVE_ID_15	15
 
 #define MT6315_ID_3_MAX		3
-#define MT6315_ID_6_MAX		2
-#define MT6315_ID_7_MAX		2
+#define MT6315_ID_6_MAX		3
+#define MT6315_ID_7_MAX		3
+#define MT6315_ID_8_MAX		3
 #define MT6315_ID_15_MAX	2
 
 enum {
