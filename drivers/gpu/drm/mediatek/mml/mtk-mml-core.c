@@ -1168,13 +1168,13 @@ static void core_taskdone_kt_work(struct kthread_work *work)
 	}
 #endif
 
-	queue_work(task->config->wq_done, &task->wq_work_done);
+	queue_work(task->config->wq_done, &task->work_done);
 	mml_trace_end();
 }
 
 static void core_taskdone(struct work_struct *work)
 {
-	struct mml_task *task = container_of(work, struct mml_task, wq_work_done);
+	struct mml_task *task = container_of(work, struct mml_task, work_done);
 	u32 *perf, hw_time = 0;
 
 	mml_trace_begin("%s", __func__);
@@ -1766,7 +1766,7 @@ struct mml_task *mml_core_create_task(void)
 	INIT_LIST_HEAD(&task->pipe[1].entry_clt);
 	INIT_WORK(&task->work_config[0], core_config_task_work);
 	INIT_WORK(&task->work_config[1], core_config_pipe1_work);
-	INIT_WORK(&task->wq_work_done, core_taskdone);
+	INIT_WORK(&task->work_done, core_taskdone);
 	kthread_init_work(&task->kt_work_done, core_taskdone_kt_work);
 
 	kref_init(&task->ref);

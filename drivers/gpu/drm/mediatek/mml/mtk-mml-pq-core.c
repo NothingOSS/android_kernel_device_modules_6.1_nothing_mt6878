@@ -663,10 +663,9 @@ static int set_sub_task(struct mml_task *task,
 		}
 		atomic_set(&sub_task->result_ref, 0);
 		kref_get(&pq_task->ref);
+		sub_task->frame_data.info = task->config->info;
 		memcpy(&sub_task->frame_data.pq_param, task->pq_param,
 			MML_MAX_OUTPUTS * sizeof(struct mml_pq_param));
-		memcpy(&sub_task->frame_data.info, &task->config->info,
-			sizeof(struct mml_frame_info));
 		memcpy(&sub_task->frame_data.frame_out, &task->config->frame_out,
 			MML_MAX_OUTPUTS * sizeof(struct mml_frame_size));
 		sub_task->readback_data.is_dual = task->config->dual;

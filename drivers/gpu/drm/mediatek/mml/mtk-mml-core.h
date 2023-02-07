@@ -497,7 +497,7 @@ struct mml_task {
 
 	/* config and done on thread */
 	struct work_struct work_config[MML_PIPE_CNT];
-	struct work_struct wq_work_done;
+	struct work_struct work_done;
 	struct kthread_work kt_work_done;
 	atomic_t pipe_done;
 

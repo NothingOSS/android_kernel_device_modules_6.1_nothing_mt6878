@@ -641,11 +641,11 @@ s32 mml_dle_config(struct mml_dle_ctx *ctx, struct mml_submit *submit,
 
 	/* copy job content back */
 	if (submit->job)
-		memcpy(submit->job, &task->job, sizeof(*submit->job));
+		*submit->job = task->job;
 
 	/* copy pq parameters */
 	for (i = 0; i < submit->buffer.dest_cnt && submit->pq_param[i]; i++)
-		memcpy(&task->pq_param[i], submit->pq_param[i], sizeof(task->pq_param[i]));
+		task->pq_param[i] = *submit->pq_param[i];
 
 	/* wake lock */
 	/* mml_lock_wake_lock(task->config->mml, true); */
