@@ -204,24 +204,15 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
  * based on the task model parameters and gives the minimal utilization
  * required to meet deadlines.
  */
-unsigned long mtk_cpu_util(int cpu, struct util_rq *util_rq,
+unsigned long mtk_cpu_util(int cpu, unsigned long util_cfs,
 				 unsigned long max, enum cpu_util_type type,
 				 struct task_struct *p,
 				 unsigned long min_cap, unsigned long max_cap)
 {
-	unsigned long util_cfs, dl_util, util, irq;
+	unsigned long dl_util, util, irq;
 	unsigned long util_ori;
 	//bool sbb_trigger = false;
 	struct rq *rq = cpu_rq(cpu);
-
-	if (util_rq->base) {
-		util_rq->dl_util = cpu_util_dl(rq);
-		util_rq->irq_util = cpu_util_irq(rq);
-		util_rq->rt_util = cpu_util_rt(rq);
-		util_rq->bw_dl_util = cpu_bw_dl(rq);
-		util_rq->base = 0;
-	}
-	util_cfs = util_rq->util_cfs;
 
 	if (!uclamp_is_used() &&
 	    type == FREQUENCY_UTIL && rt_rq_is_runnable(&rq->rt)) {
@@ -233,7 +224,7 @@ unsigned long mtk_cpu_util(int cpu, struct util_rq *util_rq,
 	 * because of inaccuracies in how we track these -- see
 	 * update_irq_load_avg().
 	 */
-	irq = util_rq->irq_util;
+	irq = cpu_util_irq(rq);
 	if (unlikely(irq >= max))
 		return max;
 
@@ -249,7 +240,7 @@ unsigned long mtk_cpu_util(int cpu, struct util_rq *util_rq,
 	 * When there are no CFS RUNNABLE tasks, clamps are released and
 	 * frequency will be gracefully reduced with the utilization decay.
 	 */
-	util = util_cfs + util_rq->rt_util;
+	util = util_cfs + cpu_util_rt(rq);
 	util_ori = util;
 
 	if (type == FREQUENCY_UTIL) {
@@ -270,7 +261,7 @@ unsigned long mtk_cpu_util(int cpu, struct util_rq *util_rq,
 	}
 
 
-	dl_util = util_rq->dl_util;
+	dl_util = cpu_util_dl(rq);
 
 	/*
 	 * For frequency selection we do not make cpu_util_dl() a permanent part
@@ -314,7 +305,7 @@ unsigned long mtk_cpu_util(int cpu, struct util_rq *util_rq,
 	 * an interface. So, we only do the latter for now.
 	 */
 	if (type == FREQUENCY_UTIL)
-		util += util_rq->bw_dl_util;
+		util += cpu_bw_dl(rq);
 
 	return min(max, util);
 }
@@ -324,14 +315,13 @@ static void sugov_get_util(struct sugov_cpu *sg_cpu)
 {
 	struct rq *rq = cpu_rq(sg_cpu->cpu);
 	unsigned long max = capacity_orig_of(sg_cpu->cpu);
-	struct util_rq util_rq_sugov;
+	unsigned long util_cfs;
 
 	sg_cpu->max = max;
 	sg_cpu->bw_dl = cpu_bw_dl(rq);
 
-	util_rq_sugov.util_cfs = cpu_util_cfs(sg_cpu->cpu);
-	util_rq_sugov.base = 1;
-	sg_cpu->util = mtk_cpu_util(sg_cpu->cpu, &util_rq_sugov, max, FREQUENCY_UTIL,
+	util_cfs = cpu_util_cfs(sg_cpu->cpu);
+	sg_cpu->util = mtk_cpu_util(sg_cpu->cpu, util_cfs, max, FREQUENCY_UTIL,
 							(struct task_struct *)UINTPTR_MAX,
 							0, SCHED_CAPACITY_SCALE);
 }
