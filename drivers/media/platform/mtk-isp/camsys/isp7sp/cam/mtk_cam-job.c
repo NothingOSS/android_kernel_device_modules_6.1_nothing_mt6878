@@ -1505,6 +1505,8 @@ _job_pack_m2m(struct mtk_cam_job *job,
 
 		mtk_cam_pm_runtime_engines(&ctx->cam->engines, selected, 1);
 		ctx->used_engine = selected;
+		raw_id = _get_master_raw_id(selected);
+		master_raw = dev_get_drvdata(cam->engines.raw_devs[raw_id]);
 
 		/* raw */
 		for (i = 0 ; i < ARRAY_SIZE(ctx->hw_raw); i++) {
@@ -1519,9 +1521,6 @@ _job_pack_m2m(struct mtk_cam_job *job,
 
 			mtk_cam_sv_dev_config(sv);
 		}
-
-		raw_id = _get_master_raw_id(selected);
-		master_raw = dev_get_drvdata(cam->engines.raw_devs[raw_id]);
 
 		/* mraw */
 		for (i = 0 ; i < ARRAY_SIZE(ctx->hw_mraw); i++) {
