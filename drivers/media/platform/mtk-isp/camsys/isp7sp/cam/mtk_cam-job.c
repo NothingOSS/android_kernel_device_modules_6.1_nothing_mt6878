@@ -1612,7 +1612,7 @@ _job_pack_only_sv(struct mtk_cam_job *job,
 	job->exp_num_prev = 1;
 	job->hardware_scenario = MTKCAM_IPI_HW_PATH_ON_THE_FLY;
 	job->sw_feature = MTKCAM_IPI_SW_FEATURE_NORMAL;
-	job->sub_ratio = 0;
+	job->sub_ratio = 1;
 	dev_dbg(cam->dev, "[%s] ctx:%d, job_type:%d, scen:%d, expnum:%d->%d, sw/scene:%d/%d",
 		__func__, ctx->stream_id, job->job_type, job->job_scen.id,
 		job->exp_num_prev, job->exp_num_cur, job->sw_feature, job->hardware_scenario);
