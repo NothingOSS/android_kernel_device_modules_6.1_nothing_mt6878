@@ -18,6 +18,7 @@ struct cam_ioctl_set_testmdl {
 	__u8 pixmode_lg2;
 	__u8 mode;
 	__u32 hwScenario;
+	__u32 isp_hardware;
 };
 
 #define ISP_UT_IOCTL_SET_TESTMDL \

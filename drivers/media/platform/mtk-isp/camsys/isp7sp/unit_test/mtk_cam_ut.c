@@ -45,6 +45,84 @@ static int debug_testmdl_pixmode = -1;
 module_param(debug_testmdl_pixmode, int, 0644);
 MODULE_PARM_DESC(debug_testmdl_pixmode, "fixed pixel mode for testmdl");
 
+static int apply_mraw_next_req(struct mtk_cam_ut *ut)
+{
+	struct mtk_cam_ut_buf_entry *buf_entry;
+	unsigned long flags;
+
+	spin_lock_irqsave(&ut->enque_list.lock, flags);
+	if (list_empty(&ut->enque_list.list)) {
+		dev_info(ut->dev, "no req to apply\n");
+		spin_unlock_irqrestore(&ut->enque_list.lock, flags);
+		return 0;
+	}
+
+	buf_entry = list_first_entry(&ut->enque_list.list,
+				     struct mtk_cam_ut_buf_entry, list_entry);
+	if (buf_entry->cq_buf.size == 0) {
+		dev_info(ut->dev, "Composer handler is not finished yet\n");
+		spin_unlock_irqrestore(&ut->enque_list.lock, flags);
+		return 0;
+	}
+
+	list_del(&buf_entry->list_entry);
+	ut->enque_list.cnt--;
+	spin_unlock_irqrestore(&ut->enque_list.lock, flags);
+
+
+	CALL_MRAW_OPS(ut->mraw[0], apply_cq,
+		     buf_entry->cq_buf.iova,
+		     buf_entry->cq_buf.size,
+		     buf_entry->cq_offset,
+		     buf_entry->sub_cq_size,
+		     buf_entry->sub_cq_offset);
+
+	spin_lock_irqsave(&ut->processing_list.lock, flags);
+	list_add_tail(&buf_entry->list_entry, &ut->processing_list.list);
+	ut->processing_list.cnt++;
+	spin_unlock_irqrestore(&ut->processing_list.lock, flags);
+
+	return 0;
+}
+static int apply_sv_next_req(struct mtk_cam_ut *ut)
+{
+	struct mtk_cam_ut_buf_entry *buf_entry;
+	unsigned long flags;
+
+	spin_lock_irqsave(&ut->enque_list.lock, flags);
+	if (list_empty(&ut->enque_list.list)) {
+		dev_info(ut->dev, "no req to apply\n");
+		spin_unlock_irqrestore(&ut->enque_list.lock, flags);
+		return 0;
+	}
+
+	buf_entry = list_first_entry(&ut->enque_list.list,
+				     struct mtk_cam_ut_buf_entry, list_entry);
+	if (buf_entry->cq_buf.size == 0) {
+		dev_info(ut->dev, "Composer handler is not finished yet\n");
+		spin_unlock_irqrestore(&ut->enque_list.lock, flags);
+		return 0;
+	}
+
+	list_del(&buf_entry->list_entry);
+	ut->enque_list.cnt--;
+	spin_unlock_irqrestore(&ut->enque_list.lock, flags);
+
+	CALL_CAMSV_OPS(ut->camsv[3], apply_cq,
+		     buf_entry->cq_buf.iova,
+		     buf_entry->cq_buf.size,
+		     buf_entry->cq_offset,
+		     buf_entry->sub_cq_size,
+		     buf_entry->sub_cq_offset);
+
+	spin_lock_irqsave(&ut->processing_list.lock, flags);
+	list_add_tail(&buf_entry->list_entry, &ut->processing_list.list);
+	ut->processing_list.cnt++;
+	spin_unlock_irqrestore(&ut->processing_list.lock, flags);
+
+	return 0;
+}
+
 static int apply_next_req(struct mtk_cam_ut *ut)
 {
 	struct mtk_cam_ut_buf_entry *buf_entry;
@@ -151,6 +229,29 @@ static int on_ipi_composed(struct mtk_cam_ut *ut)
 	return  0;
 }
 
+static int apply_sv_req_on_composed_once(struct mtk_cam_ut *ut)
+{
+	/* use camsv 4 for single sv case */
+	CALL_CAMSV_OPS(ut->camsv[3], initialize, NULL);
+
+	ut->hdl.on_ipi_composed = on_ipi_composed;
+	return apply_sv_next_req(ut);
+}
+
+static int apply_mraw_req_on_composed_once(struct mtk_cam_ut *ut)
+{
+	struct mtk_ut_mraw_initial_params mraw_params;
+
+	mraw_params.subsample = ut->subsample;
+
+	CALL_MRAW_OPS(ut->mraw[0], initialize, &mraw_params);
+
+	ut->hdl.on_ipi_composed = on_ipi_composed;
+
+	return apply_mraw_next_req(ut);
+
+}
+
 static int apply_req_on_composed_once(struct mtk_cam_ut *ut)
 {
 	struct mtk_ut_raw_initial_params raw_params;
@@ -201,6 +302,16 @@ static int apply_req_on_composed_m2m_once(struct mtk_cam_ut *ut)
 	return apply_next_req(ut);
 }
 
+static int single_sv_case(unsigned int isp_hardware)
+{
+	return (isp_hardware & 0x2) ? 1 : 0;
+}
+
+static int single_mraw_case(unsigned int isp_hardware)
+{
+	return (isp_hardware & 0x4) ? 1 : 0;
+}
+
 static int streamon_on_cqdone_once(struct mtk_cam_ut *ut)
 {
 	int i;
@@ -215,6 +326,25 @@ static int streamon_on_cqdone_once(struct mtk_cam_ut *ut)
 	return 0;
 }
 
+static int streamon_sv_on_cqdone_once(struct mtk_cam_ut *ut)
+{
+	/* use camsv 4 for single sv case */
+	CALL_CAMSV_OPS(ut->camsv[3], s_stream, 1);
+
+	ut->hdl.on_isr_cq_done = NULL;
+	return 0;
+}
+
+static int streamon_mraw_on_cqdone_once(struct mtk_cam_ut *ut)
+{
+
+	CALL_MRAW_OPS(ut->mraw[0], s_stream, 1);
+
+	ut->hdl.on_isr_cq_done = NULL;
+	return 0;
+}
+
+
 static int trigger_rawi(struct mtk_cam_ut *ut)
 {
 	CALL_RAW_OPS(ut->raw[0], s_stream, 1);
@@ -226,10 +356,23 @@ static void setup_hanlder(struct mtk_cam_ut *ut)
 	memset(&ut->hdl, 0, sizeof(struct mtk_cam_ut_event_handler));
 
 	dev_info(ut->dev,
-				 "ut->with_testmdl %d\n", ut->with_testmdl);
+		"ut->with_testmdl(%d) ut->isp_hardware(%d)\n",
+		ut->with_testmdl, ut->isp_hardware);
 
 	if (ut->with_testmdl) {
-		if (!ut->is_dcif_camsv) {
+		if (single_sv_case(ut->isp_hardware)) {
+			ut->hdl.on_ipi_composed = apply_sv_req_on_composed_once;
+			ut->hdl.on_isr_sof = NULL;
+			ut->hdl.on_isr_sv_sof = apply_sv_next_req;
+			ut->hdl.on_isr_cq_done = streamon_sv_on_cqdone_once;
+			ut->hdl.on_isr_frame_done = handle_req_done;
+		} else if (single_mraw_case(ut->isp_hardware)) {
+			ut->hdl.on_ipi_composed = apply_mraw_req_on_composed_once;
+			ut->hdl.on_isr_sof = NULL;
+			ut->hdl.on_isr_mraw_sof = apply_mraw_next_req;
+			ut->hdl.on_isr_cq_done = streamon_mraw_on_cqdone_once;
+			ut->hdl.on_isr_frame_done = handle_req_done;
+		} else if (!ut->is_dcif_camsv) {
 			ut->hdl.on_ipi_composed = apply_req_on_composed_once;
 			ut->hdl.on_isr_sof = apply_next_req;
 			ut->hdl.on_isr_sv_sof = NULL;
@@ -310,6 +453,25 @@ static int cam_composer_handler(struct rpmsg_device *rpdev, void *data,
 			ipi_msg->ack_data.frame_result.sub.offset;
 		spin_unlock_irqrestore(&ut->enque_list.lock, flags);
 
+		if (single_sv_case(ut->isp_hardware)) {
+			buf_entry->cq_buf.size =
+				ipi_msg->ack_data.frame_result.camsv[0].size;
+			buf_entry->cq_offset =
+				ipi_msg->ack_data.frame_result.camsv[0].offset;
+			dev_info(dev, "%s, camsv size/offset(%d/%d)\n", __func__,
+				buf_entry->cq_buf.size, buf_entry->cq_offset);
+		}
+
+		if (single_mraw_case(ut->isp_hardware)) {
+			buf_entry->cq_buf.size =
+				ipi_msg->ack_data.frame_result.mraw[0].size;
+			buf_entry->cq_offset =
+				ipi_msg->ack_data.frame_result.mraw[0].offset;
+			dev_info(dev, "%s, mraw size/offset(%d/%d)\n", __func__,
+				buf_entry->cq_buf.size, buf_entry->cq_offset);
+		}
+
+
 		if (ut->hdl.on_ipi_composed)
 			ut->hdl.on_ipi_composed(ut);
 	}
@@ -327,13 +489,13 @@ static int cam_composer_init(struct mtk_cam_ut *ut)
 
 	ut->rproc_handle = rproc_get_by_phandle(ut->rproc_phandle);
 	if (!ut->rproc_handle) {
-		dev_dbg(dev, "fail to get rproc_handle\n");
+		dev_info(dev, "fail to get rproc_handle\n");
 		return -EINVAL;
 	}
 
 	ret = rproc_boot(ut->rproc_handle);
 	if (ret) {
-		dev_dbg(dev, "failed to rproc_boot:%d\n", ret);
+		dev_info(dev, "failed to rproc_boot:%d\n", ret);
 		goto fail_rproc_put;
 	}
 
@@ -388,6 +550,9 @@ static void ut_event_on_notify(struct ut_event_listener *listener,
 
 	if ((mask & EVENT_SV_SOF) && ut->hdl.on_isr_sv_sof)
 		ut->hdl.on_isr_sv_sof(ut);
+
+	if ((mask & EVENT_MRAW_SOF) && ut->hdl.on_isr_mraw_sof)
+		ut->hdl.on_isr_mraw_sof(ut);
 
 	if ((mask & EVENT_CQ_DONE) && ut->hdl.on_isr_cq_done)
 		ut->hdl.on_isr_cq_done(ut);
@@ -444,6 +609,8 @@ static int set_test_mdl(struct mtk_cam_ut *ut,
 	pattern = testmdl->pattern;
 
 	pixel_mode = testmdl->pixmode_lg2;
+
+	ut->isp_hardware = testmdl->isp_hardware;
 	if (debug_testmdl_pixmode >= 0) {
 		dev_info(dev, "DEBUG: set testmdl pixel mode (log2) %d\n",
 			 debug_testmdl_pixmode);
@@ -529,11 +696,28 @@ static int set_test_mdl(struct mtk_cam_ut *ut,
         break;
 	default:
 		if (ut->with_testmdl == 1) {
-			CALL_SENINF_OPS(seninf, set_size,
-					width, height,
-					pixel_mode, pattern,
-					seninf_mux_raw(seninf, 0),
-					seninf_cammux_raw(seninf, 0));
+			if (ut->isp_hardware & 0x1)
+				CALL_SENINF_OPS(seninf, set_size,
+						width, height,
+						pixel_mode, pattern,
+						seninf_mux_raw(seninf, 0),
+						seninf_cammux_raw(seninf, 0));
+			if (ut->isp_hardware & 0x2) {
+				tag = 0;
+				CALL_SENINF_OPS(seninf, set_size,
+						width, height,
+						pixel_mode, pattern,
+						camsv_tg_24,
+						tag);
+			}
+			if (ut->isp_hardware & 0x4) {
+				tag = 255;
+				CALL_SENINF_OPS(seninf, set_size,
+						width, height,
+						pixel_mode, pattern,
+						pdp_tg_0,
+						tag);
+			}
 		}
 	}
 
@@ -555,7 +739,7 @@ static long cam_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		ut->is_dcif_camsv = 0;
 		ut->with_testmdl = 0;
-
+		ut->isp_hardware = 0;
 		if (copy_from_user(&testmdl, (void *)arg,
 				   sizeof(struct cam_ioctl_set_testmdl)) != 0) {
 			dev_dbg(dev, "Fail to get testmdl parameter\n");
@@ -686,6 +870,11 @@ static long cam_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			}
 
 			CALL_SENINF_OPS(ut->seninf, reset);
+
+			if (ut->isp_hardware & 0x2)
+				CALL_CAMSV_OPS(ut->camsv[3], s_stream, 0);
+			if (ut->isp_hardware & 0x4)
+				CALL_MRAW_OPS(ut->mraw[0], s_stream, 0);
 		}
 
 		smem.va = ut->mem->va;
@@ -812,7 +1001,11 @@ static long cam_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		config.config_param.flags = MTK_CAM_IPI_CONFIG_TYPE_INIT;
 					/* |MTK_CAM_IPI_CONFIG_TYPE_SMVR_PREVIEW */
 
-		ut->subsample = config.config_param.input.subsample;
+		/* TODO: camsv subsample */
+		if (ut->isp_hardware & 0x1)
+			ut->subsample = config.config_param.input.subsample;
+		else if (ut->isp_hardware & 0x4)
+			ut->subsample = config.config_param.mraw_input[0].input.subsample;
 
 		event.cmd_id = CAM_CMD_CONFIG;
 		event.cookie = config.cookie;
@@ -833,7 +1026,7 @@ static long cam_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		if (copy_from_user(&workbuf, (void *)arg,
 				   sizeof(workbuf)) != 0) {
-			dev_dbg(dev, "[ALLOC_DMABUF] Fail to get sw buffer\n");
+			dev_info(dev, "[ALLOC_DMABUF] Fail to get sw buffer\n");
 			return -EFAULT;
 		}
 
@@ -847,7 +1040,7 @@ static long cam_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		if (copy_to_user((void *)arg, &workbuf,
 				   sizeof(workbuf)) != 0) {
-			dev_dbg(dev, "[ALLOC_DMABUF] Fail to put sw buffer\n");
+			dev_info(dev, "[ALLOC_DMABUF] Fail to put sw buffer\n");
 			return -EFAULT;
 		}
 
@@ -1055,6 +1248,10 @@ static struct component_match *mtk_cam_match_add(struct device *dev)
 	ut->num_camsv = add_match_by_driver(dev, &match, &mtk_ut_camsv_driver);
 	dev_info(dev, "# of camsv: %d\n", ut->num_camsv);
 #endif
+#if WITH_MRAW_DRIVER
+	ut->num_mraw = add_match_by_driver(dev, &match, &mtk_ut_mraw_driver);
+	dev_info(dev, "# of mraw: %d\n", ut->num_mraw);
+#endif
 	if (IS_ERR(match))
 		mtk_cam_match_remove(dev);
 
@@ -1106,15 +1303,19 @@ static int mtk_cam_ut_master_bind(struct device *dev)
 	if (ut->num_raw) {
 		ut->raw = devm_kcalloc(dev, ut->num_raw, sizeof(*ut->raw),
 				       GFP_KERNEL);
-		if (!ut->raw)
+		if (!ut->raw) {
+			dev_info(dev, "kcalloc raw fail\n");
 			return -ENOMEM;
+		}
 	}
 
 	if (ut->num_yuv) {
 		ut->yuv = devm_kcalloc(dev, ut->num_yuv, sizeof(*ut->yuv),
 				       GFP_KERNEL);
-		if (!ut->yuv)
+		if (!ut->yuv) {
+			dev_info(dev, "kcalloc yuv fail\n");
 			return -ENOMEM;
+		}
 	}
 
 	if (ut->num_raw != ut->num_yuv) {
@@ -1126,16 +1327,30 @@ static int mtk_cam_ut_master_bind(struct device *dev)
 	if (ut->num_camsv) {
 		ut->camsv = devm_kcalloc(dev, ut->num_camsv, sizeof(*ut->camsv),
 				       GFP_KERNEL);
-		if (!ut->camsv)
+		if (!ut->camsv) {
+			dev_info(dev, "kcalloc camsv fail\n");
 			return -ENOMEM;
+		}
+	}
+#endif
+#if WITH_MRAW_DRIVER
+	if (ut->num_mraw) {
+		ut->mraw = devm_kcalloc(dev, ut->num_mraw, sizeof(*ut->mraw),
+				       GFP_KERNEL);
+		if (!ut->mraw) {
+			// dev_info(dev, "kcalloc mraw fail\n");
+			return -ENOMEM;
+		}
 	}
 #endif
 #if WITH_LARB_DRIVER
 	if (ut->num_larb) {
 		ut->larb = devm_kcalloc(dev, ut->num_larb, sizeof(*ut->larb),
 					GFP_KERNEL);
-		if (!ut->larb)
+		if (!ut->larb) {
+			dev_info(dev, "kcalloc larb fail\n");
 			return -ENOMEM;
+		}
 	}
 #endif
 
@@ -1205,6 +1420,13 @@ static int register_sub_drivers(struct device *dev)
 		goto REGISTER_CAMSV_FAIL;
 	}
 #endif
+#if WITH_MRAW_DRIVER
+	ret = platform_driver_register(&mtk_ut_mraw_driver);
+	if (ret) {
+		dev_info(dev, "%s register mraw driver fail\n", __func__);
+		goto REGISTER_MRAW_FAIL;
+	}
+#endif
 	ret = platform_driver_register(&mtk_ut_seninf_driver);
 	if (ret) {
 		dev_info(dev, "%s register seninf driver fail\n", __func__);
@@ -1231,11 +1453,18 @@ ADD_MATCH_FAIL:
 	platform_driver_unregister(&mtk_ut_seninf_driver);
 
 REGISTER_SENINF_FAIL:
+	platform_driver_unregister(&mtk_ut_mraw_driver);
+
+#if WITH_MRAW_DRIVER
+REGISTER_MRAW_FAIL:
 	platform_driver_unregister(&mtk_ut_camsv_driver);
+#endif
+
 #if WITH_CAMSV_DRIVER
 REGISTER_CAMSV_FAIL:
 	platform_driver_unregister(&mtk_ut_rms_driver);
 #endif
+
 REGISTER_RMS_FAIL:
 	platform_driver_unregister(&mtk_ut_yuv_driver);
 

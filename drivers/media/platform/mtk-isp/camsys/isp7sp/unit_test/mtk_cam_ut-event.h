@@ -98,5 +98,6 @@ static inline void send_event(struct ut_event_source *src,
 #define EVENT_SW_P1_DONE	BIT(2)
 #define EVENT_CQ_MAIN_TRIG_DLY	BIT(3)
 #define EVENT_SV_SOF		BIT(4)
+#define EVENT_MRAW_SOF		BIT(5)
 
 #endif /* __MTK_CAM_UT_EVENT_H */

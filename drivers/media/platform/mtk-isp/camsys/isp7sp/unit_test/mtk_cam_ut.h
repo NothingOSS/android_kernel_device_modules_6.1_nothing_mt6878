@@ -101,6 +101,7 @@ struct mtk_cam_ut_event_handler {
 
 	int (*on_isr_sof)(struct mtk_cam_ut *ut);
 	int (*on_isr_sv_sof)(struct mtk_cam_ut *ut);
+	int (*on_isr_mraw_sof)(struct mtk_cam_ut *ut);
 	int (*on_isr_cq_done)(struct mtk_cam_ut *ut);
 	int (*on_isr_frame_done)(struct mtk_cam_ut *ut);
 };
@@ -117,6 +118,7 @@ struct mtk_cam_ut {
 	int num_rms;
 	int num_larb;
 	int num_camsv;
+	int num_mraw;
 
 	struct device *seninf;
 	struct device **raw;
@@ -124,6 +126,7 @@ struct mtk_cam_ut {
 	struct device **rms;
 	struct device **larb;
 	struct device **camsv;
+	struct device **mraw;
 
 	struct mtk_cam_ut_mem_obj *mem;
 	struct mtk_cam_ut_mem_obj *msg_mem;
@@ -147,6 +150,7 @@ struct mtk_cam_ut {
 	int subsample;
 	int hardware_scenario;
 	int main_rawi;
+	unsigned int isp_hardware;
 
 	struct mtk_cam_ut_event_handler hdl;
 

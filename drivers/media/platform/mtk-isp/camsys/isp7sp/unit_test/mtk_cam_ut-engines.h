@@ -68,6 +68,10 @@ struct mtk_ut_raw_device {
 
 };
 
+struct mtk_ut_mraw_initial_params {
+	int subsample;
+};
+
 void raw_disable_tg_vseol_sub_ctl(struct device *dev);
 
 #define CALL_RAW_OPS(dev, op, ...) \
@@ -129,12 +133,37 @@ struct mtk_ut_rms_device {
 	 -EINVAL);\
 }
 
-struct mtk_ut_camsv_device {
+struct mtk_ut_mraw_device {
 	struct device *dev;
 	unsigned int id;
 	void __iomem *base;
 	void __iomem *base_inner;
+	void __iomem *mraw_base;
 	unsigned int num_clks;
+	unsigned int cammux_id;
+	struct clk **clks;
+
+	struct ut_event_source event_src;
+	struct engine_ops ops;
+};
+
+#define CALL_MRAW_OPS(dev, op, ...) \
+{\
+	struct mtk_ut_mraw_device *mraw = dev_get_drvdata(dev);\
+	((dev && mraw->ops.op) ? mraw->ops.op(dev, ##__VA_ARGS__) : -EINVAL);\
+}
+
+struct mtk_ut_camsv_device {
+	struct device *dev;
+	unsigned int id;
+	void __iomem *base;
+	void __iomem *base_dma;
+	void __iomem *base_scq;
+	void __iomem *base_inner;
+	void __iomem *base_inner_dma;
+	void __iomem *base_inner_scq;
+	unsigned int num_clks;
+	unsigned int cammux_id;
 	struct clk **clks;
 
 	struct ut_event_source event_src;
@@ -187,9 +216,11 @@ extern struct platform_driver mtk_ut_raw_driver;
 extern struct platform_driver mtk_ut_yuv_driver;
 extern struct platform_driver mtk_ut_rms_driver;
 extern struct platform_driver mtk_ut_camsv_driver;
+extern struct platform_driver mtk_ut_mraw_driver;
 extern struct platform_driver mtk_ut_seninf_driver;
 #define WITH_LARB_DRIVER 1
-#define WITH_CAMSV_DRIVER 0
+#define WITH_CAMSV_DRIVER 1
+#define WITH_MRAW_DRIVER 1
 #define SUPPORT_PM 1
 #define SUPPORT_RAWB 0
 #define WITH_POWER_DRIVER 0

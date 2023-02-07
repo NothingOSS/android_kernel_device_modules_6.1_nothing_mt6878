@@ -6,6 +6,8 @@
 #ifndef _MRAW_REGS_H
 #define _MRAW_REGS_H
 
+#define REG_CAMSYS_MRAW_SW_RST					0xA0
+
 #define REG_MRAW_MRAWCTL_MOD_EN					0x0000
 #define REG_MRAW_MRAWCTL_MOD2_EN				0x0004
 union MRAW_MRAWCTL_MOD2_EN {
@@ -35,45 +37,50 @@ union MRAW_MRAWCTL_MOD2_EN {
 
 #define REG_MRAW_CQ_EN					0x0400
 #define REG_MRAW_SCQ_START_PERIOD		0x0408
-#define REG_MRAW_CQ_SUB_THR0_CTL		0x04B0
+#define REG_MRAW_CQ_SUB_EN				0x0430
+#define REG_MRAW_CQ_SUB_THR0_CTL		0x0440
 
 #define REG_MRAW_CTL_SW_CTL				0x0048
 #define REG_MRAW_CTL_START				0x0040
-#define REG_MRAW_CTL_MOD_EN				0x0000
 
 
-#define REG_MRAWCQ_CQ_SUB_THR0_BASEADDR_2			0x04BC
-#define REG_MRAWCQ_CQ_SUB_THR0_BASEADDR_2_MSB			0x04C0
-#define REG_MRAWCQ_CQ_SUB_THR0_DESC_SIZE_2			0x04C8
+#define REG_MRAWCQ_CQ_SUB_THR0_BASEADDR_2			0x044C
+#define REG_MRAWCQ_CQ_SUB_THR0_BASEADDR_2_MSB			0x0450
+#define REG_MRAWCQ_CQ_SUB_THR0_DESC_SIZE_2			0x0458
 #define MRAWCQ_SCQ_TRIG_TIME						0x040C
 #define SCQ_STAGGER_MODE			BIT(12)
 #define SCQ_SUBSAMPLE_EN			BIT(21)
 #define CQ_DB_EN					BIT(4)
+#define CQ_SOF_SEL					BIT(2)
+#define CQ_SUB_DB_EN				BIT(4)
 #define CQ_DB_LOAD_MODE				BIT(8)
 #define CQ_SUB_THR0_MODE_IMMEDIATE	BIT(4)
-#define CQ_SUB_THR0_MODE_CONTINUOUS	BIT(5)
 #define CQ_SUB_THR0_EN				BIT(0)
 #define SCQ_SUB_RESET				BIT(16)
 
 union MRAW_MRAWCQ_CQ_EN {
 	struct {
-		unsigned int MRAWCQ_CQ_APB_2T          :  1;    /*  0.. 0, 0x00000001 */
-		unsigned int MRAWCQ_CQ_DROP_FRAME_EN   :  1;    /*  1.. 1, 0x00000002 */
-		unsigned int MRAWCQ_CQ_SOF_SEL         :  1;    /*  2.. 2, 0x00000004 */
-		unsigned int rsv_3                     :  1;    /*  3.. 3, 0x00000008 */
-		unsigned int MRAWCQ_CQ_DB_EN           :  1;    /*  4.. 4, 0x00000010 */
-		unsigned int rsv_5                     :  3;    /*  5.. 7, 0x000000e0 */
-		unsigned int MRAWCQ_CQ_DB_LOAD_MODE    :  1;    /*  8.. 8, 0x00000100 */
-		unsigned int rsv_9                     :  3;    /*  9..11, 0x00000e00 */
-		unsigned int MRAWCQ_SCQ_STAGGER_MODE   :  1;    /* 12..12, 0x00001000 */
-		unsigned int rsv_13                    :  3;    /* 13..15, 0x0000e000 */
-		unsigned int MRAWCQ_CQ_RESET           :  1;    /* 16..16, 0x00010000 */
-		unsigned int rsv_17                    :  4;    /* 17..20, 0x001e0000 */
-		unsigned int MRAWCQ_SCQ_SUBSAMPLE_EN   :  1;    /* 21..21, 0x00200000 */
-		unsigned int rsv_22                    :  6;    /* 22..27, 0x0fc00000 */
-		unsigned int MRAWCQ_CQ_DBG_SEL         :  1;    /* 28..28, 0x10000000 */
-		unsigned int MRAWCQ_CQ_DBG_MAIN_SUB_SEL  :  1;    /* 29..29, 0x20000000 */
-		unsigned int rsv_30                      :  2;    /* 30..31, 0xc0000000 */
+		unsigned int MRAWCQ_CQ_APB_2T                   :  1;    /*  0.. 0, 0x00000001 */
+		unsigned int MRAWCQ_CQ_DROP_FRAME_EN            :  1;    /*  1.. 1, 0x00000002 */
+		unsigned int MRAWCQ_CQ_SOF_SEL                  :  1;    /*  2.. 2, 0x00000004 */
+		unsigned int rsv_3                              :  1;    /*  3.. 3, 0x00000008 */
+		unsigned int MRAWCQ_CQ_DB_EN                    :  1;    /*  4.. 4, 0x00000010 */
+		unsigned int rsv_5                              :  3;    /*  5.. 7, 0x000000e0 */
+		unsigned int MRAWCQ_CQ_DB_LOAD_MODE             :  1;    /*  8.. 8, 0x00000100 */
+		unsigned int rsv_9                              :  3;    /*  9..11, 0x00000e00 */
+		unsigned int MRAWCQ_SCQ_STAGGER_MODE            :  1;    /* 12..12, 0x00001000 */
+		unsigned int MRAWCQ_SCQ_INVLD_CLR_SEL           :  1;    /* 13..13, 0x00002000 */
+		unsigned int MRAWCQ_SCQ_CAMSV_ENQ_FAIL_TRIG_EN  :  1;    /* 14..14, 0x00004000 */
+		unsigned int MRAWCQ_SCQ_LAST_FRAME_TRIG_EN      :  1;    /* 15..15, 0x00008000 */
+		unsigned int MRAWCQ_CQ_RESET                    :  1;    /* 16..16, 0x00010000 */
+		unsigned int MRAWCQ_SCQ_INVLD_CLR_CHK           :  1;    /* 17..17, 0x00020000 */
+		unsigned int rsv_18                             :  3;    /* 18..20, 0x001c0000 */
+		unsigned int MRAWCQ_SCQ_SUBSAMPLE_EN            :  1;    /* 21..21, 0x00200000 */
+		unsigned int MRAWCQ_CQ_DB_LOAD_SEL              :  1;    /* 22..22, 0x00400000 */
+		unsigned int rsv_23                             :  5;    /* 23..27, 0x0f800000 */
+		unsigned int MRAWCQ_CQ_DBG_SEL                  :  1;    /* 28..28, 0x10000000 */
+		unsigned int MRAWCQ_CQ_DBG_MAIN_SUB_SEL         :  1;    /* 29..29, 0x20000000 */
+		unsigned int rsv_30                             :  2;    /* 30..31, 0xc0000000 */
 	} Bits;
 	unsigned int Raw;
 };
@@ -185,15 +192,16 @@ union MRAW_TG_PATH_CFG // only for db_load test
 #define REG_MRAW_MRAWCTL_FMT_SEL			0x0024
 union MRAW_FMT_SEL {
 	struct {
-		unsigned int MRAWCTL_PIX_ID       :  2;    /*  0.. 1, 0x00000003 */
-		unsigned int rsv_2                :  2;    /*  2.. 3, 0x0000000c */
-		unsigned int MRAWCTL_IMGO_M1_FMT  :  8;    /*  4..11, 0x00000ff0 */
-		unsigned int MRAWCTL_TG_FMT       :  3;    /* 12..14, 0x00007000 */
-		unsigned int rsv_15               :  1;    /* 15..15, 0x00008000 */
-		unsigned int MRAWCTL_TG_SWAP      :  2;    /* 16..17, 0x00030000 */
-		unsigned int MRAWCTL_PIX_BUS_TGO  :  2;    /* 18..19, 0x000c0000 */
-		unsigned int MRAWCTL_PIX_BUS_SEPO :  2;    /* 20..21, 0x00300000 */
-		unsigned int rsv_22               : 10;    /* 22..31, 0xffc00000 */
+		unsigned int MRAWCTL_PIX_ID         :  2;    /*  0.. 1, 0x00000003 */
+		unsigned int rsv_2                  :  2;    /*  2.. 3, 0x0000000c */
+		unsigned int MRAWCTL_IMGO_M1_FMT    :  8;    /*  4..11, 0x00000ff0 */
+		unsigned int MRAWCTL_TG_FMT         :  4;    /* 12..15, 0x0000f000 */
+		unsigned int MRAWCTL_TG_SWAP        :  2;    /* 16..17, 0x00030000 */
+		unsigned int rsv_18                 :  6;    /* 18..23, 0x00fc0000 */
+		unsigned int MRAWCTL_PIX_BUS_TGO    :  3;    /* 24..26, 0x07000000 */
+		unsigned int rsv_27                 :  1;    /* 27..27, 0x08000000 */
+		unsigned int MRAWCTL_PIX_BUS_SEPO   :  3;    /* 28..30, 0x70000000 */
+		unsigned int rsv_31                 :  1;    /* 31..31, 0x80000000 */
 	} Bits;
 	unsigned int Raw;
 };
@@ -218,16 +226,17 @@ union MRAW_FMT_SEL {
 #define REG_MRAW_TG_TIME_STAMP				0x0578
 #define REG_MRAW_TG_TIME_STAMP_CNT			0x057C
 
-/* use spare register FH_SPARE_3 */
-#define REG_MRAW_FRAME_SEQ_NUM				0x223C
+/* use spare register FHG_SPARE_3 */
+#define REG_MRAW_FRAME_SEQ_NUM				0x11c8
 
 #define REG_MRAW_MRAWCTL_FBC_GROUP			0x0038
 union MRAW_MRAWCTL_FBC_GROUP {
 	struct {
-		unsigned int MRAWCTL_IMGO_M1_FBC_SEL  :  1;    /*  0.. 0, 0x00000001 */
-		unsigned int MRAWCTL_IMGBO_M1_FBC_SEL :  1;    /*  1.. 1, 0x00000002 */
-		unsigned int MRAWCTL_CPIO_M1_FBC_SEL  :  1;    /*  2.. 2, 0x00000004 */
-		unsigned int rsv_3                    : 29;
+		unsigned int MRAWCTL_IMGO_M1_FBC_SEL     :  1;    /*  0.. 0, 0x00000001 */
+		unsigned int MRAWCTL_IMGBO_M1_FBC_SEL    :  1;    /*  1.. 1, 0x00000002 */
+		unsigned int MRAWCTL_CPIO_M1_FBC_SEL     :  1;    /*  2.. 2, 0x00000004 */
+		unsigned int MRAWCTL_FHO_M1_FBC_SEL      :  1;    /*  3.. 3, 0x00000008 */
+		unsigned int rsv_4                       : 28;    /*  4..31, 0xfffffff0 */
 	} Bits;
 	unsigned int Raw;
 };
@@ -265,11 +274,23 @@ union MRAW_FBC_CPIO_M1_CTRL2 {
 	unsigned int Raw;
 };
 
+union MRAW_FBC_FHO_M1_CTRL2 {
+	struct /* 0x1A1310DC */
+	{
+		unsigned int FBC_FHO_M1_RCNT :  8;    /*  0.. 7, 0x000000ff */
+		unsigned int FBC_FHO_M1_WCNT :  8;    /*  8..15, 0x0000ff00 */
+		unsigned int FBC_FHO_M1_FBC_CNT :  9;    /* 16..24, 0x01ff0000 */
+		unsigned int FBC_FHO_M1_DROP_CNT :  7;    /* 25..31, 0xfe000000 */
+	} Bits;
+	unsigned int Raw;
+};
+
 #define REG_MRAW_CAMCTL_FBC_RCNT_INC				0x003C
 
 #define MRAWCTL_IMGO_RCNT_INC			BIT(0)
 #define MRAWCTL_IMGBO_RCNT_INC			BIT(1)
 #define MRAWCTL_CPIO_RCNT_INC			BIT(2)
+#define MRAWCTL_FHO_RCNT_INC			BIT(3)
 #define MRAWCTL_CQ_SUB_THR0_DONE_EN		BIT(1)
 #define MRAWCTL_CQ_SUB_THR0_DONE_ST		BIT(9)
 #define MRAWCTL_CQ_THR0_START			BIT(0)
@@ -306,6 +327,17 @@ union MRAW_FBC_CPIO_M1_CTRL2 {
 #define REG_MRAW_CPIO_YSIZE				0x22E4
 #define REG_MRAW_CPIO_STRIDE			0x22E8
 #define REG_MRAW_CPIO_ERR_STAT			0x2304
+
+#define REG_MRAW_FBC_FHO_CTL1			0x10D8
+#define REG_MRAW_FBC_FHO_CTL2			0x10DC
+#define REG_MRAW_FHO_BASE_ADDR			0x2310
+#define REG_MRAW_FHO_BASE_ADDR_MSB		0x2314
+#define REG_MRAW_FHO_OFST_ADDR			0x2318
+#define REG_MRAW_FHO_OFST_ADDR_MSB		0x231C
+#define REG_MRAW_FHO_XSIZE				0x2320
+#define REG_MRAW_FHO_YSIZE				0x2324
+#define REG_MRAW_FHO_STRIDE				0x2328
+#define REG_MRAW_FHO_ERR_STAT			0x2344
 
 #define REG_MRAW_CTL_MOD2_EN			0x0004
 union MRAW_FBC_IMGO_CTL1 {
@@ -356,6 +388,22 @@ union MRAW_FBC_CPIO_CTL1 {
 	unsigned int Raw;
 };
 
+union MRAW_FBC_FHO_CTL1 {
+	struct {
+		unsigned int rsv_0                :  8;    /*  0.. 7, 0x000000ff */
+		unsigned int FBC_FHO_FBC_RESET   :  1;    /*  8.. 8, 0x00000100 */
+		unsigned int FBC_FHO_FBC_DB_EN   :  1;    /*  9.. 9, 0x00000200 */
+		unsigned int rsv_10               :  2;    /* 10..11, 0x00000c00 */
+		unsigned int FBC_FHO_LOCK_EN     :  1;    /* 12..12, 0x00001000 */
+		unsigned int FBC_FHO_DROP_TIMING :  1;    /* 13..13, 0x00002000 */
+		unsigned int FBC_FHO_FBC_SUB_EN  :  1;    /* 14..14, 0x00004000 */
+		unsigned int FBC_FHO_FBC_EN      :  1;    /* 15..15, 0x00008000 */
+		unsigned int FBC_FHO_VALID_NUM   :  8;    /* 16..23, 0x00ff0000 */
+		unsigned int FBC_FHO_SUB_RATIO   :  8;    /* 24..31, 0xff000000 */
+	} Bits;
+	unsigned int Raw;
+};
+
 union MRAW_CTL_MOD2_EN {
 	struct {
 		unsigned int MRAWCTL_IMGO_M1_EN  :  1;    /*  0.. 0, 0x00000001 */
@@ -363,25 +411,26 @@ union MRAW_CTL_MOD2_EN {
 		unsigned int MRAWCTL_CPIO_M1_EN  :  1;    /*  2.. 2, 0x00000004 */
 		unsigned int MRAWCTL_CQI_M1_EN   :  1;    /*  3.. 3, 0x00000008 */
 		unsigned int MRAWCTL_CQI_M2_EN   :  1;    /*  4.. 4, 0x00000010 */
-		unsigned int rsv_5               : 27;    /* 11..31, 0xfffff800 */
+		unsigned int MRAWCTL_FHO_M1_EN   :  1;    /*  5.. 5, 0x00000020 */
+		unsigned int rsv_6               : 26;    /*  6..31, 0xffffffc0 */
 	} Bits;
 	unsigned int Raw;
 };
 
 #define REG_MRAW_M_MRAWCTL_MISC 0x0060
-//[todo]: implement MRAWCTL_DB_LOAD_FORCE
 union MRAW_CTL_MISC {
 	struct {
-		unsigned int MRAWCTL_DB_LOAD_HOLD        :  1; /*  0.. 0, 0x00000001 */
-		unsigned int MRAWCTL_DB_LOAD_HOLD_SUB    :  1; /*  1.. 1, 0x00000002 */
-		unsigned int MRAWCTL_DB_LOAD_SRC         :  2; /*  2.. 3, 0x0000000c */
-		unsigned int MRAWCTL_DB_EN               :  1; /*  4.. 4, 0x00000010 */
-		unsigned int MRAWCTL_DB_LOAD_FORCE       :  1; /*  5.. 5, 0x00000020 */
-		unsigned int rsv_6                       :  2; /*  5.. 7, 0x000000e0 */
-		unsigned int MRAWCTL_APB_CLK_GATE_BYPASS :  1; /*  8.. 8, 0x00000100 */
-		unsigned int rsv_9                       : 19; /*  9..31, 0xfffffe00 */
-		unsigned int MRAWCTL_PERF_MEAS_EN        :  1; /* 12..12, 0x00001000 */
-		unsigned int rsv_29                      : 3; /* 13..31, 0xffffe000 */
+		unsigned int MRAWCTL_DB_LOAD_HOLD         :  1;    /*  0.. 0, 0x00000001 */
+		unsigned int MRAWCTL_DB_LOAD_HOLD_SUB     :  1;    /*  1.. 1, 0x00000002 */
+		unsigned int MRAWCTL_DB_LOAD_SRC          :  2;    /*  2.. 3, 0x0000000c */
+		unsigned int MRAWCTL_DB_EN                :  1;    /*  4.. 4, 0x00000010 */
+		unsigned int MRAWCTL_DB_LOAD_FORCE        :  1;    /*  5.. 5, 0x00000020 */
+		unsigned int rsv_6                        :  2;    /*  6.. 7, 0x000000c0 */
+		unsigned int MRAWCTL_APB_CLK_GATE_BYPASS  :  1;    /*  8.. 8, 0x00000100 */
+		unsigned int MRAWCTL_DB_LOAD_TRIG         :  1;    /*  9.. 9, 0x00000200 */
+		unsigned int rsv_10                       : 18;    /* 10..27, 0x0ffffc00 */
+		unsigned int MRAWCTL_PERF_MEAS_EN         :  1;    /* 28..28, 0x10000000 */
+		unsigned int rsv_29                       :  3;    /* 29..31, 0xe0000000 */
 	} Bits;
 	unsigned int Raw;
 };
@@ -403,6 +452,12 @@ union MRAW_CTL_MISC {
 #define REG_MRAW_M_CPIO_ORIWDMA_CON2        0x22F8
 #define REG_MRAW_M_CPIO_ORIWDMA_CON3        0x22FC
 #define REG_MRAW_M_CPIO_ORIWDMA_CON4        0x2300
+
+#define REG_MRAW_M_FHO_ORIWDMA_CON0        0x2330
+#define REG_MRAW_M_FHO_ORIWDMA_CON1        0x2334
+#define REG_MRAW_M_FHO_ORIWDMA_CON2        0x2338
+#define REG_MRAW_M_FHO_ORIWDMA_CON3        0x233C
+#define REG_MRAW_M_FHO_ORIWDMA_CON4        0x2340
 
 #define REG_MRAW_M1_CQI_ORIRDMA_CON0        0x2120
 #define REG_MRAW_M1_CQI_ORIRDMA_CON1        0x2124
@@ -447,6 +502,7 @@ union MRAW_CTL_MISC {
 #define MRAWCTL_IMGO_M1_OTF_OVERFLOW_ST          BIT(0)
 #define MRAWCTL_IMGBO_M1_OTF_OVERFLOW_ST         BIT(1)
 #define MRAWCTL_CPIO_M1_OTF_OVERFLOW_ST          BIT(2)
+#define MRAWCTL_FHO_M1_OTF_OVERFLOW_ST          BIT(3)
 
 /* IRQ Error Mask */
 #define INT_ST_MASK_MRAW_ERR (\

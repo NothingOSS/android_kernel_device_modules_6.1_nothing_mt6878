@@ -650,7 +650,7 @@ void mraw_reset(struct mtk_mraw_device *mraw_dev)
 		dev_info(mraw_dev->dev,
 			 "tg_sen_mode: 0x%x, ctl_en: 0x%x, ctl_sw_ctl:0x%x, frame_no:0x%x\n",
 			 readl(mraw_dev->base + REG_MRAW_TG_SEN_MODE),
-			 readl(mraw_dev->base + REG_MRAW_CTL_MOD_EN),
+			 readl(mraw_dev->base + REG_MRAW_MRAWCTL_MOD_EN),
 			 readl(mraw_dev->base + REG_MRAW_CTL_SW_CTL),
 			 readl(mraw_dev->base + REG_MRAW_FRAME_SEQ_NUM)
 			);
