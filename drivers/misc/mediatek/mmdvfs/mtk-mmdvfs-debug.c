@@ -355,8 +355,13 @@ static int mmdvfs_v3_dbg_ftrace_thread(void *data)
 	int retry = 0;
 	s32 i;
 
+	if (!g_mmdvfs->release_step0) {
+		ftrace_v3_ena = false;
+		return 0;
+	}
+
 	while (!mmdvfs_is_init_done()) {
-		if (++retry > 100) {
+		if (++retry > 20) {
 			ftrace_v3_ena = false;
 			MMDVFS_DBG("mmdvfs_v3 init not ready");
 			return 0;
