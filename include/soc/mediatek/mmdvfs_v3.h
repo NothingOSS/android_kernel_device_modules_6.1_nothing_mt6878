@@ -75,6 +75,8 @@ int mtk_mmdvfs_v3_set_vote_step(const u16 pwr_idx, const s16 opp);
 
 void mmdvfs_set_lp_mode(bool lp_mode);
 void mmdvfs_call_ccu_set_fp(call_ccu fp);
+
+int mmdvfs_mux_set_opp(const char *name, unsigned long rate);
 #else
 static inline int mtk_mmdvfs_get_ipi_status(void) { return 0; }
 static inline int mtk_mmdvfs_enable_vcp(const bool enable, const u8 idx) { return 0; }
@@ -89,6 +91,8 @@ static inline int mtk_mmdvfs_v3_set_vote_step(const u16 pwr_idx, const s16 opp) 
 
 static inline void mmdvfs_set_lp_mode(bool lp_mode) { return; }
 static inline void mmdvfs_call_ccu_set_fp(call_ccu fp) {return; }
+
+static inline int mmdvfs_mux_set_opp(const char *name, unsigned long rate) { return 0; }
 #endif
 
 #endif /* MTK_MMDVFS_V3_H */

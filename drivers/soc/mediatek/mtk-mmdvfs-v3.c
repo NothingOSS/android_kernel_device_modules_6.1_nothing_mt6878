@@ -249,7 +249,10 @@ static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *d
 	val = readl(MEM_IPI_SYNC_FUNC);
 	mutex_unlock(&mmdvfs_vcp_ipi_mutex);
 
-	while (!is_vcp_ready_ex(VCP_A_ID) || (!mmdvfs_vcp_cb_ready && func != FUNC_MMDVFS_INIT)) {
+	while (!is_vcp_ready_ex(VCP_A_ID) || !mmdvfs_vcp_cb_ready) {
+		if (!mmdvfs_vcp_cb_ready &&
+			(func == FUNC_MMDVFS_INIT || func == FUNC_MMDVFSRC_INIT))
+			break;
 		if (func == FUNC_VMM_GENPD_NOTIFY || func == FUNC_VMM_CEIL_ENABLE)
 			goto ipi_send_end;
 		if (++retry > 100) {
@@ -835,6 +838,111 @@ MODULE_PARM_DESC(vmrc_log, "mmdvfs vmrc log");
 module_param(log_level, uint, 0644);
 MODULE_PARM_DESC(log_level, "mmdvfs log level");
 
+struct mmdvfs_mux {
+	u8 id;
+	const char *name;
+	const char *target_name;
+	u8 freq_num;
+	u64 freq[MAX_OPP];
+	u64 rate;
+	s8 opp;
+	u8 user_num;
+	struct mtk_mux_user *user;
+};
+
+static struct mmdvfs_mux mmdvfs_mux[MMDVFS_MUX_NUM];
+static struct mtk_mux_user mmdvfs_user[MMDVFS_USER_NUM];
+static struct clk *mmdvfs_user_clk[MMDVFS_USER_NUM];
+
+static DEFINE_SPINLOCK(mmdvfs_mux_lock);
+static bool mmdvfs_swrgo;
+
+static int mmdvfs_mux_get_by_user_name(const char *name, int *id)
+{
+	const char *target;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(mmdvfs_user); i++)
+		if (!strncmp(mmdvfs_user[i].name, name, 16)) {
+			target = mmdvfs_user[i].target_name;
+			if (id)
+				*id = i; // MMDVFS_USER
+			break;
+		}
+
+	if (i >= ARRAY_SIZE(mmdvfs_user))
+		return -EINVAL;
+
+	for (i = 0; i < ARRAY_SIZE(mmdvfs_mux); i++)
+		if (!strncmp(mmdvfs_mux[i].name, target, 16))
+			break;
+
+	if (i >= ARRAY_SIZE(mmdvfs_mux))
+		return -EINVAL;
+
+	return i; // MMDVFS_MUX
+}
+
+int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
+{
+	u8 func, idx;
+	s8 opp;
+	int ret;
+
+	ret = sscanf(val, "%hhu %hhu %hhd", &func, &idx, &opp);
+	if (ret != 3) {
+		MMDVFS_ERR("input failed:%d func:%hhu idx:%hhu opp:%hhd", ret, func, idx, opp);
+		return -EINVAL;
+	}
+
+	if (func == TEST_AP_SET_OPP || func == TEST_AP_SET_USER_RATE) {
+		if (idx >= MMDVFS_USER_NUM) {
+			MMDVFS_ERR("invalid idx:%hhu opp:%hhd", idx, opp);
+			return -EINVAL;
+		}
+
+		ret = mmdvfs_mux_get_by_user_name(mmdvfs_user[idx].name, NULL);
+		if (ret < 0) {
+			MMDVFS_ERR("failed:%d name:%s idx:%hhu", ret, mmdvfs_user[idx].name, idx);
+			return ret;
+		}
+
+		if (opp >= mmdvfs_mux[ret].freq_num) {
+			MMDVFS_ERR("invalid opp:%hhd idx:%hhu mux:%d", opp, idx, ret);
+			return -EINVAL;
+		}
+		opp = mmdvfs_mux[ret].freq_num - 1 - opp;
+	}
+
+	switch (func) {
+	case TEST_AP_SET_OPP:
+		ret = mmdvfs_mux_set_opp(mmdvfs_user[idx].name, mmdvfs_mux[ret].freq[opp]);
+		break;
+	case TEST_AP_SET_USER_RATE:
+		if (!mmdvfs_user_clk[idx]) {
+			MMDVFS_ERR("invalid idx:%hhu opp:%hhd", idx, opp);
+			return -EINVAL;
+		}
+		ret = clk_set_rate(mmdvfs_user_clk[idx], mmdvfs_mux[ret].freq[opp]);
+		break;
+	default:
+		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_GENPD);
+		ret = mmdvfs_vcp_ipi_send(func, idx, opp, NULL);
+		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_GENPD);
+		break;
+	}
+
+	if (ret || log_level & (1 << log_adb))
+		MMDVFS_DBG("ret:%d func:%hhu idx:%hhu opp:%hhd", ret, func, idx, opp);
+	return ret;
+}
+
+static const struct kernel_param_ops mmdvfs_vcp_test_ops = {
+	.set = mmdvfs_set_vcp_test,
+};
+module_param_cb(vcp_test, &mmdvfs_vcp_test_ops, NULL, 0644);
+MODULE_PARM_DESC(vcp_test, "trigger vcp test");
+
 static inline void mmdvfs_reset_ccu(void)
 {
 	int i;
@@ -908,6 +1016,8 @@ static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long
 		MMDVFS_DBG("receive VCP_EVENT_READY IPI_SYNC_FUNC=%#x IPI_SYNC_DATA=%#x",
 			readl(MEM_IPI_SYNC_FUNC), readl(MEM_IPI_SYNC_DATA));
 		mmdvfs_vcp_ipi_send(FUNC_MMDVFS_INIT, MAX_OPP, MAX_OPP, NULL);
+		// TODO : DPC
+		mmdvfs_vcp_ipi_send(FUNC_MMDVFSRC_INIT, MAX_OPP, MAX_OPP, NULL);
 		mmdvfs_vcp_cb_ready = true;
 		break;
 	case VCP_EVENT_STOP:
@@ -966,9 +1076,13 @@ static int mmdvfs_vcp_init_thread(void *data)
 	for (i = 0; i < PWR_MMDVFS_NUM; i++) {
 		writel_relaxed(MAX_OPP, MEM_FORCE_OPP_PWR(i));
 		writel_relaxed(MAX_OPP, MEM_VOTE_OPP_PWR(i));
+		writel_relaxed(MAX_OPP, MEM_PWR_OPP(i));
 	}
-	for (i = 0; i < USER_NUM; i++)
+	for (i = 0; i < USER_NUM; i++) {
 		writel_relaxed(MAX_OPP, MEM_VOTE_OPP_USR(i));
+		writel_relaxed(MAX_OPP, MEM_MUX_OPP(i));
+		writel_relaxed(MAX_OPP, MEM_USR_OPP(i));
+	}
 
 	mmdvfs_init_done = true;
 	MMDVFS_DBG("iova:%pa pa:%pa va:%#lx init_done:%d",
@@ -1138,8 +1252,8 @@ static int mmdvfs_v3_probe(struct platform_device *pdev)
 
 		clk = clk_register(NULL, &mtk_mmdvfs_clks[i].clk_hw);
 		if (IS_ERR_OR_NULL(clk))
-			MMDVFS_ERR("i:%d clk:%s register failed:%ld",
-				i, mtk_mmdvfs_clks[idx].name, PTR_ERR(clk));
+			MMDVFS_ERR("i:%d clk:%s register failed:%d",
+				i, mtk_mmdvfs_clks[idx].name, PTR_ERR_OR_ZERO(clk));
 		else
 			clk_data->clks[i] = clk;
 	}
@@ -1156,7 +1270,7 @@ static int mmdvfs_v3_probe(struct platform_device *pdev)
 
 		clk = of_clk_get(node, i);
 		if (IS_ERR_OR_NULL(clk))
-			MMDVFS_DBG("i:%d clk get failed:%ld", i, PTR_ERR(clk));
+			MMDVFS_DBG("i:%d clk get failed:%d", i, PTR_ERR_OR_ZERO(clk));
 		else
 			mmdvfs_pwr_clk[i] = clk;
 	}
@@ -1210,14 +1324,288 @@ static struct platform_driver clk_mmdvfs_drv = {
 	},
 };
 
+int mmdvfs_mux_set_opp(const char *name, unsigned long rate)
+{
+	struct mmdvfs_mux *mux;
+	int i, id, ret;
+
+	ret = mmdvfs_mux_get_by_user_name(name, &id);
+	if (ret < 0) {
+		MMDVFS_ERR("failed:%d name:%s id:%d rate:%lu", ret, name, id, rate);
+		return ret;
+	}
+	mux = &mmdvfs_mux[ret];
+
+	if (mmdvfs_user[id].rate == rate)
+		goto set_opp_end;
+	mmdvfs_user[id].rate = rate;
+
+	mux->rate = 0ULL;
+	for (i = 0; i < mux->user_num; i++)
+		if (mux->rate < mux->user[i].rate)
+			mux->rate = mux->user[i].rate;
+
+	for (i = 0; i < mux->freq_num; i++)
+		if (mux->rate <= mux->freq[i])
+			break;
+	mux->opp = (mux->freq_num - ((i == mux->freq_num) ? (i - 1) : i) - 1);
+
+	if (mmdvfs_swrgo) {
+		const u8 vcp_mux_id[MMDVFS_MUX_NUM] = {0, 4, 5, 6, 7, 9, 10, 12};
+
+		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_GENPD);
+		ret = mmdvfs_vcp_ipi_send(TEST_SET_MUX, vcp_mux_id[mux->id], mux->opp, NULL);
+		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_GENPD);
+	}
+
+set_opp_end:
+	if (log_level & (1 << log_clk_ops))
+		MMDVFS_DBG(
+			"name:%s rate:%lu user:%d name:%s rate:%lu mux:%hhu name:%s rate:%llu opp:%hhd",
+			name, rate, mmdvfs_user[id].id, mmdvfs_user[id].name, mmdvfs_user[id].rate,
+			mux->id, mux->name, mux->rate, mux->opp);
+	return 0;
+}
+EXPORT_SYMBOL(mmdvfs_mux_set_opp);
+
+static int mmdvfs_mux_get_opp(const char *name)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(mmdvfs_mux); i++)
+		if (!strncmp(mmdvfs_mux[i].target_name, name, 16))
+			break;
+
+	if (i >= ARRAY_SIZE(mmdvfs_mux)) {
+		MMDVFS_ERR("invalid name:%s i:%d", name, i);
+		return -EINVAL;
+	}
+
+	if (log_level & (1 << log_clk_ops))
+		MMDVFS_DBG("name:%s mux:%hhu name:%s rate:%llu opp:%hhd", name, mmdvfs_mux[i].id,
+			mmdvfs_mux[i].name, mmdvfs_mux[i].rate, mmdvfs_mux[i].opp);
+
+	return mmdvfs_mux[i].opp;
+}
+
+static unsigned long mmdvfs_mux_get_rate(const char *name)
+{
+	int id, ret;
+
+	ret = mmdvfs_mux_get_by_user_name(name, &id);
+	if (ret < 0) {
+		MMDVFS_ERR("failed:%d name:%s id:%d", ret, name, id);
+		return ret;
+	}
+
+	if (log_level & (1 << log_clk_ops))
+		MMDVFS_DBG("name:%s user:%d name:%s rate:%lu mux:%hhu name:%s rate:%llu opp:%hhd",
+			name, mmdvfs_user[id].id, mmdvfs_user[id].name, mmdvfs_user[id].rate,
+			mmdvfs_mux[ret].id, mmdvfs_mux[ret].name, mmdvfs_mux[ret].rate,
+			mmdvfs_mux[ret].opp);
+
+	return mmdvfs_user[id].rate;
+}
+
+static struct dfs_ops mmdvfs_mux_dfs_ops = {
+	.set_opp = mmdvfs_mux_set_opp,
+	.get_opp = mmdvfs_mux_get_opp,
+	.get_rate = mmdvfs_mux_get_rate,
+};
+
+static int mmdvfs_mux_probe(struct platform_device *pdev)
+{
+	struct device_node *node = pdev->dev.of_node;
+	struct clk_onecell_data *data;
+	const char *name;
+	int i, j, ret;
+
+	mmdvfs_swrgo = of_property_read_bool(node, "mediatek,mmdvfs-swrgo");
+
+	for (i = 0; i < ARRAY_SIZE(mmdvfs_mux); i++) {
+		struct device_node *table, *opp = NULL;
+		struct clk *clk;
+		phandle handle;
+		u64 freq;
+
+		mmdvfs_mux[i].id = i;
+
+		ret = of_property_read_string_index(node, "clock-names", i, &name);
+		if (ret) {
+			MMDVFS_ERR("failed:%d i:%d name:%s", ret, i, name);
+			return ret;
+		}
+		mmdvfs_mux[i].name = name;
+
+		clk = of_clk_get(node, i);
+		if (IS_ERR_OR_NULL(clk)) {
+			MMDVFS_ERR("failed:%d i:%d", PTR_ERR_OR_ZERO(clk), i);
+			return PTR_ERR_OR_ZERO(clk);
+		}
+
+		name = __clk_get_name(clk);
+		if (!name) {
+			MMDVFS_ERR("failed:%d name:%s clk:%p", PTR_ERR_OR_ZERO(name), name, clk);
+			return PTR_ERR_OR_ZERO(clk);
+		}
+		mmdvfs_mux[i].target_name = name;
+
+		ret = of_property_read_u32_index(node, "mediatek,mmdvfs-opp-table", i, &handle);
+		if (ret) {
+			MMDVFS_ERR("failed:%d i:%d handle:%u", ret, i, handle);
+			return ret;
+		}
+
+		table = of_find_node_by_phandle(handle);
+		if (!table)
+			return -EINVAL;
+
+		j = 0;
+		do {
+			opp = of_get_next_available_child(table, opp);
+			if (opp) {
+				ret = of_property_read_u64(opp, "opp-hz", &freq);
+				if (ret) {
+					MMDVFS_ERR("failed:%d i:%d freq:%llu", ret, i, freq);
+					return ret;
+				}
+				mmdvfs_mux[i].freq[j] = freq;
+				j += 1;
+			}
+		} while (opp);
+		of_node_put(table);
+
+		mmdvfs_mux[i].freq_num = j;
+		mmdvfs_mux[i].rate = 26000000UL;
+		mmdvfs_mux[i].opp = MAX_OPP;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(mmdvfs_user); i++) {
+		mmdvfs_user[i].id = i;
+
+		ret = of_property_read_string_index(
+			node, "mediatek,mmdvfs-user-names", i, &name);
+		if (ret) {
+			MMDVFS_ERR("failed:%d i:%d name:%s", ret, i, name);
+			return ret;
+		}
+		mmdvfs_user[i].name = name;
+
+		ret = of_property_read_u32_index(node, "mediatek,mmdvfs-user-target", i, &j);
+		if (ret || j >= ARRAY_SIZE(mmdvfs_mux)) {
+			MMDVFS_ERR("failed:%d i:%d j:%d", ret, i, j);
+			return ret;
+		}
+		mmdvfs_user[i].target_name = mmdvfs_mux[j].name;
+
+		if (!mmdvfs_mux[j].user_num)
+			mmdvfs_mux[j].user = &mmdvfs_user[i];
+		mmdvfs_mux[j].user_num += 1;
+
+		mmdvfs_user[i].rate = 26000000UL;
+		mmdvfs_user[i].ops = &mtk_mux_user_ops;
+		mmdvfs_user[i].flags = 0;
+
+		MMDVFS_DBG(
+			"user:%u name:%12s target:%8s mux:%hhu name:%8s target:%12s freq_num:%hhu user_num:%hhu",
+			mmdvfs_user[i].id, mmdvfs_user[i].name, mmdvfs_user[i].target_name,
+			mmdvfs_mux[j].id, mmdvfs_mux[j].name, mmdvfs_mux[j].target_name,
+			mmdvfs_mux[j].freq_num, mmdvfs_mux[j].user_num);
+	}
+
+	data = mtk_alloc_clk_data(ARRAY_SIZE(mmdvfs_user));
+	if (!data)
+		return -ENOMEM;
+
+	ret = mtk_clk_mux_register_user_clks(
+		mmdvfs_user, ARRAY_SIZE(mmdvfs_user), &mmdvfs_mux_lock, data, &pdev->dev);
+	if (ret) {
+		MMDVFS_ERR("failed:%d user:%p size:%lu data:%p",
+			ret, mmdvfs_user, ARRAY_SIZE(mmdvfs_user), data);
+		return ret;
+	}
+
+	ret = of_clk_add_provider(node, of_clk_src_onecell_get, data);
+	if (ret) {
+		MMDVFS_ERR("failed:%d data:%p", ret, data);
+		return ret;
+	}
+
+	mtk_clk_mux_register_callback(&mmdvfs_mux_dfs_ops);
+	return ret;
+}
+
+static int mmdvfs_user_probe(struct platform_device *pdev)
+{
+	struct device_node *node = pdev->dev.of_node;
+	const char *name;
+	struct clk *clk;
+	int i;
+
+	clk = of_clk_get(node, 0);
+	if (IS_ERR_OR_NULL(clk)) {
+		MMDVFS_ERR("failed:%d", PTR_ERR_OR_ZERO(clk));
+		return PTR_ERR_OR_ZERO(clk);
+	}
+
+	name = __clk_get_name(clk);
+	if (!name) {
+		MMDVFS_ERR("failed:%d name:%s clk:%p", PTR_ERR_OR_ZERO(name), name, clk);
+		return PTR_ERR_OR_ZERO(clk);
+	}
+
+	for (i = 0; i < ARRAY_SIZE(mmdvfs_user); i++)
+		if (!strncmp(mmdvfs_user[i].name, name, 16)) {
+			mmdvfs_user_clk[i] = clk;
+			MMDVFS_DBG("user:%d name:%12s", i, name);
+			break;
+		}
+
+	return 0;
+}
+
+static const struct of_device_id of_match_mmdvfs_mux[] = {
+	{
+		.compatible = "mediatek,mtk-mmdvfs-mux",
+	}, {}
+};
+
+static const struct of_device_id of_match_mmdvfs_user[] = {
+	{
+		.compatible = "mediatek,mtk-mmdvfs-user",
+	}, {}
+};
+
+static struct platform_driver mmdvfs_mux_drv = {
+	.probe = mmdvfs_mux_probe,
+	.driver = {
+		.name = "mtk-mmdvfs-mux",
+		.of_match_table = of_match_mmdvfs_mux,
+	},
+};
+
+static struct platform_driver mmdvfs_user_drv = {
+	.probe = mmdvfs_user_probe,
+	.driver = {
+		.name = "mtk-mmdvfs-user",
+		.of_match_table = of_match_mmdvfs_user,
+	},
+};
+
+static struct platform_driver * const mmdvfs_drv[] = {
+	&clk_mmdvfs_drv,
+	&mmdvfs_mux_drv,
+	&mmdvfs_user_drv,
+};
+
 static int __init clk_mmdvfs_init(void)
 {
-	return platform_driver_register(&clk_mmdvfs_drv);
+	return platform_register_drivers(mmdvfs_drv, ARRAY_SIZE(mmdvfs_drv));
 }
 
 static void __exit clk_mmdvfs_exit(void)
 {
-	platform_driver_unregister(&clk_mmdvfs_drv);
+	platform_unregister_drivers(mmdvfs_drv, ARRAY_SIZE(mmdvfs_drv));
 }
 
 module_init(clk_mmdvfs_init);

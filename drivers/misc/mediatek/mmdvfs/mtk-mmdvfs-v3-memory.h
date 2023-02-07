@@ -35,14 +35,20 @@ static inline bool mmdvfs_is_init_done(void) { return false; }
 #define MEM_VOTE_OPP_PWR(x)	(MEM_BASE + 0x40 + 0x4 * (x)) // POWER_NUM
 #define MEM_VOTE_OPP_USR(x)	(MEM_BASE + 0x50 + 0x4 * (x)) // USER_NUM
 
-/* skip : 0x8C */
+#define MEM_VMM_CEIL_ENABLE	(MEM_BASE + 0x8C)
+
 #define MEM_CLKMUX_ENABLE	(MEM_BASE + 0x90)
 #define MEM_CLKMUX_ENABLE_DONE	(MEM_BASE + 0x94)
-#define MEM_VMM_CEIL_ENABLE	(MEM_BASE + 0x98)
-#define MEM_VMM_EFUSE_LOW	(MEM_BASE + 0x9C)
-#define MEM_VMM_EFUSE_HIGH	(MEM_BASE + 0xA0)
-#define MEM_VMM_OPP_VOLT(x)	(MEM_BASE + 0xA4 + 0x4 * (x)) // VMM_OPP_NUM(8)
-/* next start: 0xC4 */
+#define MEM_VMM_EFUSE_LOW	(MEM_BASE + 0x98)
+#define MEM_VMM_EFUSE_HIGH	(MEM_BASE + 0x9C)
+
+#define MEM_VMM_OPP_VOLT(x)	(MEM_BASE + 0xA0 + 0x4 * (x)) // VMM_OPP_NUM(8)
+
+#define MEM_USR_OPP(x)		(MEM_BASE + 0xC0 + 0x4 * (x)) // USER_NUM(16)
+#define MEM_MUX_OPP(x)		(MEM_BASE + 0x100 + 0x4 * (x)) // MUX_NUM(16)
+#define MEM_PWR_OPP(x)		(MEM_BASE + 0x140 + 0x4 * (x)) // POWER_NUM(4)
+#define MEM_PWR_CUR_GEAR(x)	(MEM_BASE + 0x150 + 0x4 * (x)) // POWER_NUM(4)
+/* next start: 0x160 */
 
 #define MEM_REC_PWR_OBJ		4
 #define MEM_REC_USR_OBJ		5
