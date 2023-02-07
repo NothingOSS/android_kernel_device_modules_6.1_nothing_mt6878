@@ -235,6 +235,11 @@ int mtk_afe_fe_hw_params(struct snd_pcm_substream *substream,
 				    substream,
 				    params_format(params), false) == 0) {
 		memif->using_sram = 1;
+#if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
+		if (memif->vow_barge_in_enable) {
+			memif->vow_barge_in_using_dram = false;
+		}
+#endif
 	} else
 #endif
 	{
@@ -248,7 +253,7 @@ int mtk_afe_fe_hw_params(struct snd_pcm_substream *substream,
 					__func__, ret);
 				return -EINVAL;
 			}
-
+			memif->vow_barge_in_using_dram = true;
 			goto MEM_ALLOCATE_DONE;
 		}
 #endif
@@ -449,8 +454,10 @@ int mtk_afe_fe_hw_free(struct snd_pcm_substream *substream,
 #endif
 #if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
 		// vow uses reserve dram, ignore free
-		if (memif->vow_barge_in_enable)
+		if (memif->vow_barge_in_using_dram) {
+			memif->vow_barge_in_using_dram = false;
 			return 0;
+		}
 #endif
 
 		return snd_pcm_lib_free_pages(substream);

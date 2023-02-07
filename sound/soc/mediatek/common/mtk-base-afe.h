@@ -222,6 +222,7 @@ struct mtk_base_afe_memif {
 	int (*ack)(struct snd_pcm_substream *substream);
 	int use_mmap_share_mem;  // 1: dl, 2: ul
 	bool vow_barge_in_enable;
+	bool vow_barge_in_using_dram;
 	bool scp_ultra_enable;
 	int use_scp_share_mem;
 };
