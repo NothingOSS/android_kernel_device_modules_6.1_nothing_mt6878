@@ -259,37 +259,37 @@ static ssize_t lpm_cpuidle_state_write(char *FromUserBuf,
 
 static int lpm_topology_init(void)
 {
-	unsigned int package_id_map = 0, package_num = 0;
-	int package_id = 0, cpu = 0;
+	unsigned int cluster_id_map = 0, cluster_num = 0;
+	int cluster_id = 0, cpu = 0;
 
 	for_each_present_cpu(cpu) {
-		package_id = cpu_topology[cpu].package_id;
-		package_id_map |= (1 << package_id);
+		cluster_id = cpu_topology[cpu].cluster_id;
+		cluster_id_map |= (1 << cluster_id);
 	}
 
-	package_num = hweight32(package_id_map);
+	cluster_num = hweight32(cluster_id_map);
 
 	topology = kzalloc(sizeof(struct lpm_cpu_topology *) *
-				(package_num + 1),
+				(cluster_num + 1),
 				GFP_KERNEL);
 	if (!topology)
 		return -ENOMEM;
 
-	for (package_id = 0; package_id <= package_num; package_id++) {
-		topology[package_id] = kzalloc(sizeof(struct lpm_cpu_topology),
+	for (cluster_id = 0; cluster_id <= cluster_num; cluster_id++) {
+		topology[cluster_id] = kzalloc(sizeof(struct lpm_cpu_topology),
 						GFP_KERNEL);
-		if (!topology[package_id]) {
+		if (!topology[cluster_id]) {
 			kfree(topology);
 			return -ENOMEM;
 		}
 	}
 
 	for_each_present_cpu(cpu) {
-		package_id = cpu_topology[cpu].package_id;
-		topology[package_id]->id = (package_id + 1) * 10;
-		topology[package_id]->cpu_mask |= (1 << cpu);
-		topology[package_num]->id |= ALL_CPU_ID;
-		topology[package_num]->cpu_mask |= (1 << cpu);
+		cluster_id = cpu_topology[cpu].cluster_id;
+		topology[cluster_id]->id = (cluster_id + 1) * 10;
+		topology[cluster_id]->cpu_mask |= (1 << cpu);
+		topology[cluster_num]->id |= ALL_CPU_ID;
+		topology[cluster_num]->cpu_mask |= (1 << cpu);
 	}
 
 	return 0;
