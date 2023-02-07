@@ -266,6 +266,7 @@ int mtk_cam_pool_fetch(struct mtk_cam_pool *pool,
 			--pool->available_cnt;
 			break;
 		}
+		c++;
 	}
 	spin_unlock(&pool->lock);
 

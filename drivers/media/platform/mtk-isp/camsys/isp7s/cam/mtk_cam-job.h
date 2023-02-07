@@ -220,6 +220,7 @@ struct mtk_cam_job {
 
 	struct mtk_cam_pool_buffer cq;
 	struct mtk_cam_pool_buffer ipi;
+	struct mtk_cam_pool_buffer img_work_buf;
 	struct mtkcam_ipi_frame_ack_result cq_rst;
 	unsigned int used_engine;
 	bool do_ipi_config;
@@ -311,7 +312,6 @@ struct mtk_cam_stagger_job {
 	int switch_type;
 	bool dcif_enable;
 	bool need_drv_buffer_check;
-	bool is_dc_stagger;
 };
 struct mtk_cam_mstream_job {
 	struct mtk_cam_job job; /* always on top */

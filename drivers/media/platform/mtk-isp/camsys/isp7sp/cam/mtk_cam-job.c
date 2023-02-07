@@ -670,7 +670,7 @@ _stream_on(struct mtk_cam_job *job, bool on)
 	}
 
 	if (job->stream_on_seninf)
-		ctx_stream_on_seninf_sensor(job->src_ctx, on);
+		ctx_stream_on_seninf_sensor(job->src_ctx, !is_dc_mode(job), on);
 
 	return 0;
 }
@@ -687,7 +687,7 @@ _stream_on_only_sv(struct mtk_cam_job *job, bool on)
 	}
 
 	if (job->stream_on_seninf)
-		ctx_stream_on_seninf_sensor(job->src_ctx, on);
+		ctx_stream_on_seninf_sensor(job->src_ctx, 0, on);
 
 	return 0;
 }
@@ -1276,7 +1276,7 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 	stagger_job->prev_scen = ctx->ctldata_stored.resource.user_data.raw_res.scen;
 	stagger_job->switch_type = get_switch_type_stagger(job);
 	update_stagger_job_exp(job);
-	job->hardware_scenario = get_hard_scenario_stagger(job);
+	job->hardware_scenario = get_hw_scenario(job);
 	job->sw_feature = MTKCAM_IPI_SW_FEATURE_VHDR;
 	job->sub_ratio = get_subsample_ratio(job);
 	stagger_job->dcif_enable = job->exp_num_cur > 1 ? 1 : 0;
@@ -1383,7 +1383,7 @@ _job_pack_normal(struct mtk_cam_job *job,
 
 	job->exp_num_cur = 1;
 	job->exp_num_prev = 1;
-	job->hardware_scenario = MTKCAM_IPI_HW_PATH_ON_THE_FLY;
+	job->hardware_scenario = get_hw_scenario(job);
 	job->sw_feature = MTKCAM_IPI_SW_FEATURE_NORMAL;
 	job->sub_ratio = get_subsample_ratio(job);
 	dev_dbg(cam->dev, "[%s] ctx:%d, job_type:%d, scen:%d, expnum:%d->%d, sw/scene:%d/%d",
@@ -1883,7 +1883,7 @@ static struct pack_job_ops_helper otf_pack_helper = {
 	.update_raw_imgo_to_ipi = NULL,
 	.update_sv_imgo_to_ipi = fill_sv_imgo_img_buffer_to_ipi_frame,
 	.update_raw_yuvo_to_ipi = NULL,
-	.pack_job_check_ipi_buffer = NULL,
+	.pack_job_check_ipi_buffer = update_work_buffer_to_ipi_frame,
 	.pack_job = _job_pack_normal,
 };
 

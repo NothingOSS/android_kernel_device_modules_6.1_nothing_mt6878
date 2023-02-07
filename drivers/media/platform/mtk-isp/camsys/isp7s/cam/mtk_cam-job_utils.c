@@ -15,6 +15,35 @@
 	} while (0)
 
 
+static struct mtk_cam_resource_v2 *_get_job_res(struct mtk_cam_job *job)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtk_cam_resource_v2 *res = NULL;
+
+	if (ctx->has_raw_subdev) {
+		int p_idx;
+
+		p_idx = get_raw_subdev_idx(ctx->used_pipe);
+		if (p_idx == -1)
+			return NULL;
+
+		res = &job->req->raw_data[p_idx].ctrl.resource.user_data;
+	}
+
+	return res;
+}
+
+bool is_dc_mode(struct mtk_cam_job *job)
+{
+	struct mtk_cam_resource_v2 *res;
+
+	res = _get_job_res(job);
+	if (res)
+		return (res->raw_res.hw_mode == HW_MODE_DIRECT_COUPLED);
+	else
+		return false;
+}
+
 void _set_timestamp(struct mtk_cam_job *job,
 	u64 time_boot, u64 time_mono)
 {
@@ -43,6 +72,56 @@ int get_sv_subdev_idx(unsigned long used_pipe)
 			return i;
 
 	return -1;
+}
+
+int get_sv_tag_idx_hdr(unsigned int exp_no, unsigned int tag_order, bool is_w)
+{
+	struct mtk_camsv_tag_param img_tag_param[SVTAG_IMG_END];
+	unsigned int hw_scen, req_amount;
+	int i, tag_idx = -1;
+
+	hw_scen = 1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_STAGGER);
+	req_amount = (exp_no < 3) ? exp_no * 2 : exp_no;
+	if (mtk_cam_sv_get_tag_param(img_tag_param, hw_scen, exp_no, req_amount))
+		goto EXIT;
+	else {
+		for (i = 0; i < req_amount; i++) {
+			if (img_tag_param[i].tag_order == tag_order &&
+				img_tag_param[i].is_w == is_w) {
+				tag_idx = img_tag_param[i].tag_idx;
+				break;
+			}
+		}
+	}
+
+EXIT:
+	return tag_idx;
+}
+
+int get_hw_scenario(struct mtk_cam_job *job)
+{
+	struct mtk_cam_scen *scen = &job->job_scen;
+	int isDC = is_dc_mode(job);
+	int hard_scenario = 0;
+
+	switch (scen->id) {
+	case MTK_CAM_SCEN_NORMAL:
+		if (scen->scen.normal.max_exp_num > 1)
+			hard_scenario = isDC ?
+				MTKCAM_IPI_HW_PATH_DC_STAGGER :
+				MTKCAM_IPI_HW_PATH_STAGGER;
+		else
+			hard_scenario = isDC ?
+				MTKCAM_IPI_HW_PATH_DC_STAGGER :
+				MTKCAM_IPI_HW_PATH_ON_THE_FLY;
+		break;
+	default:
+		pr_info("[%s] un-support scen id:%d",
+			__func__, scen->id);
+		break;
+	}
+
+	return hard_scenario;
 }
 
 #define SENSOR_SET_DEADLINE_MS  18
@@ -172,7 +251,8 @@ static int mtk_cam_fill_img_in_buf(struct mtkcam_ipi_img_input *ii,
 
 static int fill_img_in_driver_buf(struct mtkcam_ipi_img_input *ii,
 				  struct mtkcam_ipi_uid uid,
-				  struct mtk_cam_driver_buf_desc *desc)
+				  struct mtk_cam_driver_buf_desc *desc,
+				  struct mtk_cam_pool_buffer *buf)
 {
 	int i;
 
@@ -192,17 +272,18 @@ static int fill_img_in_driver_buf(struct mtkcam_ipi_img_input *ii,
 
 	/* buf */
 	ii->buf[0].size = desc->size;
-	ii->buf[0].iova = desc->daddr;
-	ii->buf[0].ccd_fd = 0; /* TODO: ufo : desc->fd; */
+	ii->buf[0].iova = buf->daddr;
+	ii->buf[0].ccd_fd = desc->fd; /* TODO: ufo : desc->fd; */
 
-	buf_printk("%dx%d sz %zu\n",
-		   desc->width, desc->height, desc->size);
+	buf_printk("%dx%d sz %zu/%d iova %pad\n",
+		   desc->width, desc->height, desc->size, buf->size, &buf->daddr);
 	return 0;
 }
 
 static int fill_img_out_driver_buf(struct mtkcam_ipi_img_output *io,
 				  struct mtkcam_ipi_uid uid,
-				  struct mtk_cam_driver_buf_desc *desc)
+				  struct mtk_cam_driver_buf_desc *desc,
+				  struct mtk_cam_pool_buffer *buf)
 {
 	int i;
 
@@ -222,8 +303,8 @@ static int fill_img_out_driver_buf(struct mtkcam_ipi_img_output *io,
 
 	/* buf */
 	io->buf[0][0].size = desc->size;
-	io->buf[0][0].iova = desc->daddr;
-	io->buf[0][0].ccd_fd = 0; /* TODO: ufo : desc->fd; */
+	io->buf[0][0].iova = buf->daddr;
+	io->buf[0][0].ccd_fd = desc->fd; /* TODO: ufo : desc->fd; */
 
 	/* crop */
 	io->crop = (struct mtkcam_ipi_crop) {
@@ -237,13 +318,14 @@ static int fill_img_out_driver_buf(struct mtkcam_ipi_img_output *io,
 		},
 	};
 
-	buf_printk("%dx%d sz %zu\n",
-		   desc->width, desc->height, desc->size);
+	buf_printk("%dx%d sz %zu/%d iova %pad\n",
+		   desc->width, desc->height, desc->size, buf->size, &buf->daddr);
 	return 0;
 }
 
 static int fill_sv_img_fp_working_buffer(struct req_buffer_helper *helper,
-	struct mtk_cam_driver_buf_desc *desc)
+	struct mtk_cam_driver_buf_desc *desc,
+	struct mtk_cam_pool_buffer *buf, int exp_no)
 {
 	struct mtkcam_ipi_frame_param *fp = helper->fp;
 	struct mtk_cam_job *job = helper->job;
@@ -252,33 +334,62 @@ static int fill_sv_img_fp_working_buffer(struct req_buffer_helper *helper,
 	struct mtkcam_ipi_img_output *out;
 	struct mtkcam_ipi_uid uid;
 	unsigned int tag_idx;
+	int job_exp_no = 0;
 	int ret = 0;
 
 	if (ctx->hw_sv == NULL)
 		goto EXIT;
+
 	sv_dev = dev_get_drvdata(ctx->hw_sv);
 
-	tag_idx = SVTAG_0;
+	job_exp_no = job->exp_num_cur;
+	tag_idx = (is_dc_mode(job) && job_exp_no > 1 && (exp_no + 1) == job_exp_no) ?
+		get_sv_tag_idx_hdr(job_exp_no, MTKCAM_IPI_ORDER_LAST_TAG, false) :
+		get_sv_tag_idx_hdr(job_exp_no, exp_no, false);
+	if (tag_idx == -1) {
+		pr_info("%s: tag_idx not found(exp_no:%d)", __func__, job_exp_no);
+		goto EXIT;
+	}
+
 	uid.pipe_id = sv_dev->id + MTKCAM_SUBDEV_CAMSV_START;
 	uid.id = MTKCAM_IPI_CAMSV_MAIN_OUT;
 
 	fp->camsv_param[0][tag_idx].pipe_id = uid.pipe_id;
 	fp->camsv_param[0][tag_idx].tag_id = tag_idx;
-	fp->camsv_param[0][tag_idx].hardware_scenario = 0;
+	fp->camsv_param[0][tag_idx].hardware_scenario = job->hardware_scenario;
 
 	out = &fp->camsv_param[0][tag_idx].camsv_img_outputs[0];
-	ret = fill_img_out_driver_buf(out, uid, desc);
+	ret = fill_img_out_driver_buf(out, uid, desc, buf);
 
 EXIT:
 	return ret;
 }
+
+static const int otf_2exp_rawi[1] = {
+	MTKCAM_IPI_RAW_RAWI_2
+};
+static const int otf_3exp_rawi[2] = {
+	MTKCAM_IPI_RAW_RAWI_2, MTKCAM_IPI_RAW_RAWI_3
+};
+static const int dc_1exp_rawi[1] = {
+	MTKCAM_IPI_RAW_RAWI_5
+};
+static const int dc_2exp_rawi[2] = {
+	MTKCAM_IPI_RAW_RAWI_2, MTKCAM_IPI_RAW_RAWI_5
+};
+static const int dc_3exp_rawi[3] = {
+	MTKCAM_IPI_RAW_RAWI_2, MTKCAM_IPI_RAW_RAWI_3, MTKCAM_IPI_RAW_RAWI_5
+};
 
 int update_work_buffer_to_ipi_frame(struct req_buffer_helper *helper)
 {
 	struct mtkcam_ipi_frame_param *fp = helper->fp;
 	struct mtk_cam_job *job = helper->job;
 	struct mtk_cam_ctx *ctx = job->src_ctx;
+	const int *rawi_table = NULL;
+	int raw_table_size = 0;
 	int ret = 0;
+	int i;
 
 	struct mtkcam_ipi_img_input *ii;
 	struct mtkcam_ipi_uid uid;
@@ -286,16 +397,50 @@ int update_work_buffer_to_ipi_frame(struct req_buffer_helper *helper)
 	if (helper->filled_hdr_buffer)
 		return 0;
 
-	uid.pipe_id = get_raw_subdev_idx(ctx->used_pipe);
-	uid.id = MTKCAM_IPI_RAW_RAWI_2;
+	switch (job->exp_num_cur) {
+	case 1:
+		rawi_table = is_dc_mode(job) ? dc_1exp_rawi : NULL;
+		break;
+	case 2:
+		rawi_table = is_dc_mode(job) ? dc_2exp_rawi : otf_2exp_rawi;
+		break;
+	case 3:
+		rawi_table = is_dc_mode(job) ? dc_3exp_rawi : otf_3exp_rawi;
+		break;
+	default:
+		return ret;
+	}
 
-	ii = &fp->img_ins[helper->ii_idx];
-	++helper->ii_idx;
+	/* no need img working buffer */
+	if (!rawi_table)
+		return ret;
 
-	ret = fill_img_in_driver_buf(ii, uid, &ctx->hdr_buf_desc);
+	raw_table_size = is_dc_mode(job) ?
+			job->exp_num_cur : job->exp_num_cur - 1;
 
-	/* HS_TODO: dc? */
-	ret = fill_sv_img_fp_working_buffer(helper, &ctx->hdr_buf_desc);
+	for (i = 0 ; i < raw_table_size; i++) {
+		ret = mtk_cam_buffer_pool_fetch(&ctx->img_work_pool, &job->img_work_buf);
+		if (ret) {
+			pr_info("[%s] fail to fetch\n", __func__);
+			return ret;
+		}
+
+		uid.pipe_id = get_raw_subdev_idx(ctx->used_pipe);
+		uid.id = rawi_table[i];
+		ii = &fp->img_ins[helper->ii_idx];
+		++helper->ii_idx;
+
+		ret = fill_img_in_driver_buf(ii, uid,
+				&ctx->img_work_buf_desc,
+				&job->img_work_buf);
+
+		/* HS_TODO: dc? */
+		ret = fill_sv_img_fp_working_buffer(helper,
+				&ctx->img_work_buf_desc,
+				&job->img_work_buf, i);
+
+		mtk_cam_buffer_pool_return(&job->img_work_buf);
+	}
 
 	return ret;
 }

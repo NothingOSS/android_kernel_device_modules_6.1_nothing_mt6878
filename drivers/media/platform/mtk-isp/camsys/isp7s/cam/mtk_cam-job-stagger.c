@@ -17,46 +17,11 @@ is_stagger_3_exposure(struct mtk_cam_scen *scen)
 {
 	return scen->scen.normal.exp_num == 3;
 }
+
 bool
 is_stagger_multi_exposure(struct mtk_cam_job *job)
 {
 	return job->job_scen.scen.normal.exp_num > 1;
-}
-
-/* FIXME(AY): this function has no guarantee that job is in type of stagger_job */
-static bool
-is_stagger_dc(struct mtk_cam_job *job)
-{
-	struct mtk_cam_stagger_job *stagger_job =
-		(struct mtk_cam_stagger_job *)job;
-	bool ret = false;
-
-	if (stagger_job->is_dc_stagger)
-		ret = true;
-
-	return ret;
-}
-
-int get_hard_scenario_stagger(struct mtk_cam_job *job)
-{
-	struct mtk_cam_scen *scen = &job->job_scen;
-	int isDC = is_stagger_dc(job);
-	int hard_scenario;
-
-	if (is_stagger_2_exposure(scen))
-		hard_scenario = isDC ?
-				MTKCAM_IPI_HW_PATH_DC_STAGGER :
-				MTKCAM_IPI_HW_PATH_STAGGER;
-	else if (is_stagger_3_exposure(scen))
-		hard_scenario = isDC ?
-				MTKCAM_IPI_HW_PATH_DC_STAGGER :
-				MTKCAM_IPI_HW_PATH_STAGGER;
-	else
-		hard_scenario = isDC ?
-				MTKCAM_IPI_HW_PATH_DC :
-				MTKCAM_IPI_HW_PATH_ON_THE_FLY;
-
-	return hard_scenario;
 }
 
 int fill_imgo_img_buffer_to_ipi_frame_stagger(
@@ -137,12 +102,11 @@ int fill_sv_img_fp(
 		exp_no = 1;
 
 	for (i = 0; i < exp_no; i++) {
-		/* remove this check for supporting pure raw dump */
 #ifndef SV_PURE_RAW_DUMP
-		if (!is_stagger_dc(job) && (i + 1) == exp_no)
+		if (!is_dc_mode(job) && (i + 1) == exp_no)
 			continue;
 #endif
-		tag_idx = (is_stagger_dc(job) && exp_no > 1 && (i + 1) == exp_no) ?
+		tag_idx = (is_dc_mode(job) && exp_no > 1 && (i + 1) == exp_no) ?
 			get_sv_tag_idx(exp_no, MTKCAM_IPI_ORDER_LAST_TAG, false) :
 			get_sv_tag_idx(exp_no, i, false);
 		if (tag_idx == -1) {
@@ -525,7 +489,7 @@ int apply_cam_mux_stagger(struct mtk_cam_job *job)
 	struct mtk_cam_seninf_mux_setting settings[3];
 	int type = stagger_job->switch_type;
 	int config_exposure_num = job->job_scen.scen.normal.max_exp_num;
-	int is_dc = is_stagger_dc(job);
+	int is_dc = is_dc_mode(job);
 	int raw_id = _get_master_raw_id(job->used_engine);
 	int raw_tg_idx = raw_to_tg_idx(raw_id);
 	int first_tag_idx, second_tag_idx, last_tag_idx;
@@ -744,7 +708,8 @@ int stream_on_otf_stagger(struct mtk_cam_job *job, bool on)
 			seninf_pad = PAD_SRC_RAW0;
 		pixel_mode = 3;
 		tg_idx = raw_to_tg_idx(raw_id);
-		ctx_stream_on_seninf_sensor_hdr(job->src_ctx, on,
+		ctx_stream_on_seninf_sensor_hdr(job->src_ctx,
+			!is_dc_mode(job), on,
 			seninf_pad, pixel_mode, tg_idx);
 		/* exp. switch at first frame */
 		// apply_cam_mux_stagger(job);
@@ -773,19 +738,19 @@ int handle_sv_tag(struct mtk_cam_job *job)
 	/* img tag(s) */
 	if (is_stagger_2_exposure(&job->job_scen)) {
 		exp_no = req_amount = 2;
-		hw_scen = is_stagger_dc(job) ?
+		hw_scen = is_dc_mode(job) ?
 			(1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_DC_STAGGER)) :
 			(1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_STAGGER));
 	} else if (is_stagger_3_exposure(&job->job_scen)) {
 		exp_no = req_amount = 3;
-		hw_scen = is_stagger_dc(job) ?
+		hw_scen = is_dc_mode(job) ?
 			(1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_DC_STAGGER)) :
 			(1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_STAGGER));
 	} else {
 		exp_no = req_amount = 1;
-		hw_scen = is_stagger_dc(job) ?
-			(1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_ON_THE_FLY)) :
-			(1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_DC));
+		hw_scen = is_dc_mode(job) ?
+			(1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_DC_STAGGER)) :
+			(1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_ON_THE_FLY));
 	}
 	pr_info("[%s] hw_scen:%d exp_no:%d req_amount:%d",
 			__func__, hw_scen, exp_no, req_amount);

@@ -112,11 +112,12 @@ struct mtk_cam_ctx {
 	struct mtk_cam_device_buf cq_buffer;
 	struct mtk_cam_device_buf ipi_buffer;
 
-	struct mtk_cam_device_buf hdr_buffer;
-	struct mtk_cam_driver_buf_desc hdr_buf_desc;
+	struct mtk_cam_device_buf img_work_buffer;
+	struct mtk_cam_driver_buf_desc img_work_buf_desc;
 
 	struct mtk_cam_pool	cq_pool;
 	struct mtk_cam_pool	ipi_pool;
+	struct mtk_cam_pool	img_work_pool;
 
 	/* TODO:
 	 * life-cycle of work buffer during switch
@@ -152,9 +153,10 @@ struct mtk_cam_v4l2_pipelines {
 	struct mtk_mraw_pipeline *mraw;
 };
 int ctx_stream_on_seninf_sensor_hdr(struct mtk_cam_ctx *ctx,
-	int enable, int seninf_pad, int pixel_mode, int tg_idx);
+	int with_tg, int enable, int seninf_pad, int pixel_mode, int tg_idx);
 
-int ctx_stream_on_seninf_sensor(struct mtk_cam_ctx *ctx, int enable);
+int ctx_stream_on_seninf_sensor(
+	struct mtk_cam_ctx *ctx, int with_tg, int enable);
 
 struct mtk_cam_engines {
 	int num_seninf_devices;

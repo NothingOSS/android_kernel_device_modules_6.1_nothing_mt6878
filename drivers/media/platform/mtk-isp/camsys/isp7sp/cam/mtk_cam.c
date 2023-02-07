@@ -46,6 +46,7 @@
 #include "mtk_cam-ufbc-def.h"
 #include "mtk_cam-timesync.h"
 #include "mtk_cam-job.h"
+#include "mtk_cam-fmt_utils.h"
 
 #ifdef CONFIG_VIDEO_MTK_ISP_CAMSYS_DUBUG
 static unsigned int debug_ae = 1;
@@ -1426,6 +1427,36 @@ fail_device_buf_uninit:
 	return ret;
 }
 
+static int _alloc_pool_by_fd(
+		       struct mtk_cam_device_buf *buf, struct mtk_cam_pool *pool,
+		       struct device *dev, int buf_fd, int total_size, int num)
+{
+	struct dma_buf *dbuf;
+	int ret;
+
+	dbuf = dma_buf_get(buf_fd);
+	if (!dbuf)
+		return -1;
+
+	ret = mtk_cam_device_buf_init(buf, dbuf, dev, total_size)
+		|| mtk_cam_device_buf_vmap(buf);
+
+	/* since mtk_cam_device_buf already increase refcnt */
+	dma_heap_buffer_free(dbuf);
+	if (ret)
+		return ret;
+
+	ret = mtk_cam_buffer_pool_alloc(pool, buf, num);
+	if (ret)
+		goto fail_device_buf_uninit;
+
+	return 0;
+
+fail_device_buf_uninit:
+	mtk_cam_device_buf_uninit(buf);
+	return ret;
+}
+
 static void _destroy_pool(struct mtk_cam_device_buf *buf,
 			  struct mtk_cam_pool *pool)
 {
@@ -1463,18 +1494,83 @@ fail_destroy_cq:
 	return ret;
 }
 
+static int mtk_cam_ctx_alloc_img_pool(struct mtk_cam_ctx *ctx)
+{
+	struct device *dev_to_attach;
+	struct mtk_cam_driver_buf_desc *desc = &ctx->img_work_buf_desc;
+	struct mtk_raw_pipeline *raw_pipe;
+	struct mtk_raw_ctrl_data *ctrl_data;
+	struct mtk_cam_resource_raw_v2 *raw_res;
+	struct v4l2_mbus_framefmt *mf;
+	int ret = 0;
+
+	dev_to_attach = ctx->cam->engines.raw_devs[0];
+	raw_pipe = &ctx->cam->pipelines.raw[ctx->raw_subdev_idx];
+	ctrl_data = &raw_pipe->ctrl_data;
+	raw_res = &ctrl_data->resource.user_data.raw_res;
+
+	if (raw_res->img_wbuf_num == 0)
+		return ret;
+
+	/* img working buf desc */
+	mf = &raw_pipe->pad_cfg[MTK_RAW_SINK].mbus_fmt;
+	desc->ipi_fmt = sensor_mbus_to_ipi_fmt(mf->code);
+	if (WARN_ON_ONCE(desc->ipi_fmt == MTKCAM_IPI_BAYER_PXL_ID_UNKNOWN))
+		return -1;
+
+	desc->width = mf->width;
+	desc->height = mf->height;
+	desc->stride[0] = mtk_cam_dmao_xsize(desc->width, desc->ipi_fmt, 4);
+	desc->stride[1] = 0;
+	desc->stride[2] = 0;
+	desc->size = desc->stride[0] * desc->height;
+
+	if (ctrl_data->pre_alloc_mem.num) {
+		ret = _alloc_pool_by_fd(
+			  &ctx->img_work_buffer, &ctx->img_work_pool,
+			  dev_to_attach,
+			  ctrl_data->pre_alloc_mem.bufs[0].fd,
+			  ctrl_data->pre_alloc_mem.bufs[0].length,
+			  raw_res->img_wbuf_num);
+		desc->fd = ctrl_data->pre_alloc_mem.bufs[0].fd;
+	} else {
+		ret = _alloc_pool(
+			  "CAM_MEM_IMG_ID",
+			  &ctx->img_work_buffer, &ctx->img_work_pool,
+			  dev_to_attach, desc->size,
+			  raw_res->img_wbuf_num,
+			  false);
+		desc->fd = mtk_cam_device_buf_fd(&ctx->img_work_buffer);
+	}
+
+	dev_info(dev_to_attach, "[%s]: desc(%d/%d/%d/%zu/0x%x) alloc_mem(%d/%d/%d) img_wbuf_num(%d/%d)\n",
+		__func__,
+		desc->width, desc->height, desc->stride[0], desc->size, mf->code,
+		ctrl_data->pre_alloc_mem.bufs[0].fd,
+		ctrl_data->pre_alloc_mem.bufs[0].length,
+		ctrl_data->pre_alloc_mem.num,
+		raw_res->img_wbuf_num,
+		raw_res->img_wbuf_size);
+
+	return ret;
+}
+
 static void mtk_cam_ctx_destroy_pool(struct mtk_cam_ctx *ctx)
 {
 	_destroy_pool(&ctx->cq_buffer, &ctx->cq_pool);
 	_destroy_pool(&ctx->ipi_buffer, &ctx->ipi_pool);
 }
 
-static void mtk_cam_ctx_release_work_buffer(struct mtk_cam_ctx *ctx)
+static void mtk_cam_ctx_destroy_img_pool(struct mtk_cam_ctx *ctx)
 {
-	struct mtk_cam_device_buf *buf = &ctx->hdr_buffer;
+	struct mtk_raw_pipeline *raw_pipe;
+	struct mtk_cam_resource_raw_v2 *raw_res;
 
-	if (buf->size)
-		mtk_cam_device_buf_uninit(buf);
+	raw_pipe = &ctx->cam->pipelines.raw[ctx->raw_subdev_idx];
+	raw_res = &raw_pipe->ctrl_data.resource.user_data.raw_res;
+
+	if (raw_res->img_wbuf_num > 0)
+		_destroy_pool(&ctx->img_work_buffer, &ctx->img_work_pool);
 }
 
 static int mtk_cam_ctx_prepare_session(struct mtk_cam_ctx *ctx)
@@ -1630,8 +1726,11 @@ struct mtk_cam_ctx *mtk_cam_start_ctx(struct mtk_cam_device *cam,
 	if (mtk_cam_ctx_alloc_pool(ctx))
 		goto fail_destroy_workers;
 
-	if (mtk_cam_ctx_prepare_session(ctx))
+	if (mtk_cam_ctx_alloc_img_pool(ctx))
 		goto fail_destroy_pools;
+
+	if (mtk_cam_ctx_prepare_session(ctx))
+		goto fail_destroy_img_pool;
 
 	if (mtk_cam_ctx_init_job_pool(ctx))
 		goto fail_unprepare_session;
@@ -1645,6 +1744,8 @@ fail_unprepare_session:
 	mtk_cam_ctx_unprepare_session(ctx);
 fail_destroy_pools:
 	mtk_cam_ctx_destroy_pool(ctx);
+fail_destroy_img_pool:
+	mtk_cam_ctx_destroy_img_pool(ctx);
 fail_destroy_workers:
 	mtk_cam_ctx_destroy_workers(ctx);
 fail_pipeline_stop:
@@ -1669,7 +1770,7 @@ void mtk_cam_stop_ctx(struct mtk_cam_ctx *ctx, struct media_entity *entity)
 
 	mtk_cam_ctx_unprepare_session(ctx);
 	mtk_cam_ctx_destroy_pool(ctx);
-	mtk_cam_ctx_release_work_buffer(ctx);
+	mtk_cam_ctx_destroy_img_pool(ctx);
 	mtk_cam_ctx_destroy_workers(ctx);
 	mtk_cam_ctx_pipeline_stop(ctx, entity);
 	mtk_cam_pool_destroy(&ctx->job_pool);
@@ -1741,7 +1842,7 @@ int PipeIDtoTGIDX(int pipe_id)
 }
 #endif
 int ctx_stream_on_seninf_sensor_hdr(struct mtk_cam_ctx *ctx,
-	int enable, int seninf_pad, int pixel_mode, int tg_idx)
+	int with_tg, int enable, int seninf_pad, int pixel_mode, int tg_idx)
 {
 	struct mtk_cam_device *cam = ctx->cam;
 	struct v4l2_subdev *seninf = ctx->seninf;
@@ -1753,7 +1854,7 @@ int ctx_stream_on_seninf_sensor_hdr(struct mtk_cam_ctx *ctx,
 		return -1;
 
 	/* RAW */
-	if (ctx->has_raw_subdev) {
+	if (with_tg && ctx->has_raw_subdev) {
 		mtk_cam_seninf_set_camtg(seninf, seninf_pad, tg_idx);
 		mtk_cam_seninf_set_pixelmode(seninf, seninf_pad, pixel_mode);
 	}
@@ -1797,7 +1898,8 @@ int ctx_stream_on_seninf_sensor_hdr(struct mtk_cam_ctx *ctx,
 	return ret;
 }
 
-int ctx_stream_on_seninf_sensor(struct mtk_cam_ctx *ctx, int enable)
+int ctx_stream_on_seninf_sensor(
+	struct mtk_cam_ctx *ctx, int with_tg, int enable)
 {
 	struct mtk_cam_device *cam = ctx->cam;
 	struct v4l2_subdev *seninf = ctx->seninf;
@@ -1812,7 +1914,7 @@ int ctx_stream_on_seninf_sensor(struct mtk_cam_ctx *ctx, int enable)
 		return -1;
 
 	/* RAW */
-	if (ctx->hw_raw[0]) {
+	if (with_tg && ctx->hw_raw[0]) {
 		raw_dev = dev_get_drvdata(ctx->hw_raw[0]);
 		seninf_pad = PAD_SRC_RAW0;
 		tg_idx = raw_to_tg_idx(raw_dev->id);
@@ -1917,7 +2019,7 @@ int mtk_cam_ctx_stream_off(struct mtk_cam_ctx *ctx)
 	}
 
 	// seninf
-	ctx_stream_on_seninf_sensor(ctx, 0);
+	ctx_stream_on_seninf_sensor(ctx, 0, 0);
 
 	ctx_stream_on_pipe_subdev(ctx, 0);
 

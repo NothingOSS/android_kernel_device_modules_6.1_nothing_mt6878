@@ -208,6 +208,37 @@ static inline int mtk_raw_find_combination(struct mtk_cam_res_calc *c,
 					policy, ARRAY_SIZE(policy));
 }
 
+static void mtk_cam_get_work_buf_num(struct mtk_cam_resource_v2 *user_ctrl)
+{
+	struct mtk_cam_resource_sensor_v2 *s = &user_ctrl->sensor_res;
+	struct mtk_cam_resource_raw_v2 *r = &user_ctrl->raw_res;
+	struct mtk_cam_scen *scen = &r->scen;
+	int exp_num = 0, buf_require = 0;
+
+	switch (scen->id) {
+	case MTK_CAM_SCEN_MSTREAM:
+	case MTK_CAM_SCEN_NORMAL:
+		exp_num = (scen->scen.normal.max_exp_num == 0) ?
+					1 : scen->scen.normal.max_exp_num;
+		buf_require = (r->hw_mode == HW_MODE_DIRECT_COUPLED) ?
+					exp_num : exp_num - 1;
+		buf_require = !!(scen->scen.normal.w_chn_supported) ?
+					buf_require * 2 : buf_require;
+		break;
+	case MTK_CAM_SCEN_EXT_ISP:
+		/* TODO */
+		buf_require = 1;
+		break;
+	default:
+		break;
+	}
+
+	/* TODO: check pure raw fmt for DC */
+	r->img_wbuf_size =
+		mtk_cam_dmao_xsize(s->width, s->code, 4) * s->height;
+	r->img_wbuf_num = buf_require;
+}
+
 static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 				     struct mtk_cam_resource_v2 *user_ctrl,
 				     struct mtk_cam_resource_driver *drv_data)
@@ -238,8 +269,7 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 
 	r->raw_pixel_mode = c.raw_pixel_mode;
 
-	r->img_wbuf_num = 0;
-	r->img_wbuf_size = 0;
+	mtk_cam_get_work_buf_num(user_ctrl);
 
 	//TODO: return raw bitmap
 	r->raws = 0x1;
@@ -254,11 +284,12 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 	}
 
 	dev_info(cam->dev,
-		 "calc_resource: sensor fps %u/%u %dx%d blank %u/%u linet %ld prate %llu clk %d pxlmode %d num %d\n",
+		 "calc_resource: sensor fps %u/%u %dx%d blank %u/%u linet %ld prate %llu clk %d pxlmode %d num %d img_wbuf_num %d img_wbuf_size %d\n",
 		 s->interval.denominator, s->interval.numerator,
 		 s->width, s->height, s->hblank, s->vblank, c.line_time,
 		 s->pixel_rate,
-		 c.clk, c.raw_pixel_mode, c.raw_num);
+		 c.clk, c.raw_pixel_mode, c.raw_num,
+		 r->img_wbuf_num, r->img_wbuf_size);
 	return ret;
 }
 
