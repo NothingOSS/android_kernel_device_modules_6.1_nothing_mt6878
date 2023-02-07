@@ -12431,7 +12431,7 @@
 						"mmdvfs_interconnect3";
 	};
 
-	mmdvfs-debug {
+	mmdvfs_debug: mmdvfs-debug {
 		compatible = "mediatek,mmdvfs-debug";
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		disp-dev = <&dispsys_config>;
