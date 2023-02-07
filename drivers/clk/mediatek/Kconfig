@@ -341,7 +341,7 @@ config COMMON_CLK_MT6886_VCODEC
 config COMMON_CLK_MT6897
 	tristate "Clock driver for MediaTek MT6897"
 	depends on ARM64 || COMPILE_TEST
-	select COMMON_CLK_MEDIATEK
+	select DEVICE_MODULES_COMMON_CLK_MEDIATEK
 	default MACH_MT6897
 	help
 	  This driver supports MediaTek MT6897 basic clocks,
