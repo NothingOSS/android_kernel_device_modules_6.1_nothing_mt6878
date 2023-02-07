@@ -23,7 +23,7 @@
 #include "mtk_cam-seninf-route.h"
 #include "imgsensor-user.h"
 #define __SMT 0
-#define SENINF_CK 499000000
+#define SENINF_CK 312000000
 #define CYCLE_MARGIN 1
 #define RESYNC_DMY_CNT 4
 #define DPHY_SETTLE_DEF 100  // ns

@@ -2863,6 +2863,9 @@ static int runtime_resume(struct device *dev)
 			}
 		}
 
+		clk_set_parent(core->clk[CLK_TOP_SENINF],
+						core->clk[CLK_TOP_MAINPLL2_D9]);
+
 		if (core->refcnt == 1) {
 			if (core->pwr_refcnt_for_aov &&
 				!(core->aov_sensor_id < 0) &&
