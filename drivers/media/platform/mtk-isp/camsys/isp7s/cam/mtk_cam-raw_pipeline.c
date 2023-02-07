@@ -354,13 +354,64 @@ static int mtk_raw_try_ctrl(struct v4l2_ctrl *ctrl)
 	return ret;
 }
 
+static void reset_internal_mem(struct mtk_raw_pipeline *pipeline)
+{
+	struct mtk_raw_ctrl_data *ctrl_data;
+	struct mtk_cam_internal_mem *mem;
+
+	ctrl_data = &pipeline->ctrl_data;
+	mem = &ctrl_data->pre_alloc_mem;
+
+	if (ctrl_data->pre_alloc_dbuf)
+		dma_buf_put(ctrl_data->pre_alloc_dbuf);
+
+	ctrl_data->pre_alloc_dbuf = NULL;
+	mem->num = 0;
+}
+
+static int mtk_raw_set_internal_mem(struct mtk_raw_pipeline *pipeline,
+				    struct mtk_cam_internal_mem *ctrl_mem)
+{
+	struct mtk_raw_ctrl_data *ctrl_data;
+	struct device *dev;
+
+	ctrl_data = &pipeline->ctrl_data;
+	dev = subdev_to_cam_dev(&pipeline->subdev);
+
+	reset_internal_mem(pipeline);
+
+	if (ctrl_mem->num > 0) {
+		int buf_fd;
+
+		buf_fd = ctrl_mem->bufs[0].fd;
+		ctrl_data->pre_alloc_dbuf = dma_buf_get(buf_fd);
+		if (!ctrl_data->pre_alloc_dbuf) {
+			dev_info(dev, "%s: pipe(%d): failed to get dbuf from fd %d\n",
+				 __func__, pipeline->id, buf_fd);
+			return -1;
+		}
+
+		ctrl_data->pre_alloc_mem = *ctrl_mem;
+	}
+
+	dev_info(dev,
+		 "%s:pipe(%d): pre_alloc_mem(%d,%d,%d)\n",
+		 __func__, pipeline->id,
+		 ctrl_mem->num,
+		 ctrl_mem->bufs[0].fd,
+		 ctrl_mem->bufs[0].length);
+	return 0;
+}
+
 static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct mtk_raw_pipeline *pipeline;
+	struct mtk_raw_ctrl_data *ctrl_data;
 	struct device *dev;
 	int ret = 0;
 
 	pipeline = mtk_cam_ctrl_handler_to_raw_pipeline(ctrl->handler);
+	ctrl_data = &pipeline->ctrl_data;
 	dev = subdev_to_cam_dev(&pipeline->subdev);
 
 	switch (ctrl->id) {
@@ -369,25 +420,14 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 			struct mtk_cam_resource_v2 *user_ctrl =
 				(struct mtk_cam_resource_v2 *)ctrl->p_new.p;
 			struct mtk_cam_resource_driver *drv_res =
-				&pipeline->ctrl_data.resource;
+				&ctrl_data->resource;
 
 			ret = mtk_raw_calc_raw_resource(pipeline,
 							user_ctrl, drv_res);
 		}
 		break;
 	case V4L2_CID_MTK_CAM_INTERNAL_MEM_CTRL:
-		{
-			pipeline->ctrl_data.pre_alloc_mem =
-				*((struct mtk_cam_internal_mem *)ctrl->p_new.p);
-			dev_info(dev,
-				 "%s:pipe(%d): pre_alloc_mem(%d,%d,%d)\n",
-				 __func__, pipeline->id,
-				 pipeline->ctrl_data.pre_alloc_mem.num,
-				 pipeline->ctrl_data.pre_alloc_mem.bufs[0].fd,
-				 pipeline->ctrl_data.pre_alloc_mem.bufs[0].length);
-			/* test of the allocation */
-			ret = 0;
-		}
+		ret = mtk_raw_set_internal_mem(pipeline, ctrl->p_new.p);
 		break;
 	case V4L2_CID_MTK_CAM_RAW_PATH_SELECT:
 		{
@@ -679,8 +719,14 @@ static int mtk_raw_sd_subscribe_event(struct v4l2_subdev *subdev,
 static int mtk_raw_sd_s_stream(struct v4l2_subdev *sd, int enable)
 {
 	struct device *dev = sd->v4l2_dev->dev;
+	struct mtk_raw_pipeline *pipe =
+		container_of(sd, struct mtk_raw_pipeline, subdev);
 
 	dev_info(dev, "%s: %d\n", __func__, enable);
+
+	if (!enable)
+		reset_internal_mem(pipe);
+
 	return 0;
 }
 

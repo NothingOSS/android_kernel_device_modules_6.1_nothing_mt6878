@@ -1387,30 +1387,37 @@ static void mtk_cam_ctx_destroy_workers(struct mtk_cam_ctx *ctx)
 	destroy_workqueue(ctx->frame_done_wq);
 }
 
-static int _alloc_pool(const char *name,
-		       struct mtk_cam_device_buf *buf,
-		       struct mtk_cam_pool *pool,
-		       struct device *dev, int size, int num, bool cacheable)
+static struct dma_buf *_alloc_dma_buf(const char *name,
+				      int size, bool cacheable)
 {
-	int total_size = size * num;
 	struct dma_buf *dbuf;
-	int ret;
 
 	if (cacheable)
-		dbuf = mtk_cam_cached_buffer_alloc(total_size);
+		dbuf = mtk_cam_cached_buffer_alloc(size);
 	else
-		dbuf = mtk_cam_noncached_buffer_alloc(total_size);
+		dbuf = mtk_cam_noncached_buffer_alloc(size);
+
+	if (!dbuf) {
+		pr_info("%s: failed\n", __func__);
+		return NULL;
+	}
+
+	mtk_dma_buf_set_name(dbuf, name);
+	return dbuf;
+}
+
+static int _alloc_pool_by_dbuf(struct mtk_cam_device_buf *buf,
+			       struct mtk_cam_pool *pool,
+			       struct device *dev,
+			       struct dma_buf *dbuf, int total_size, int num)
+{
+	int ret;
 
 	if (!dbuf)
 		return -1;
 
-	mtk_dma_buf_set_name(dbuf, name);
-
 	ret = mtk_cam_device_buf_init(buf, dbuf, dev, total_size)
 		|| mtk_cam_device_buf_vmap(buf);
-
-	/* since mtk_cam_device_buf already increase refcnt */
-	dma_heap_buffer_free(dbuf);
 	if (ret)
 		return ret;
 
@@ -1425,34 +1432,19 @@ fail_device_buf_uninit:
 	return ret;
 }
 
-static int _alloc_pool_by_fd(
-		       struct mtk_cam_device_buf *buf, struct mtk_cam_pool *pool,
-		       struct device *dev, int buf_fd, int total_size, int num)
+static int _alloc_pool(const char *name,
+		       struct mtk_cam_device_buf *buf,
+		       struct mtk_cam_pool *pool,
+		       struct device *dev, int size, int num, bool cacheable)
 {
+	int total_size = size * num;
 	struct dma_buf *dbuf;
-	int ret;
 
-	dbuf = dma_buf_get(buf_fd);
+	dbuf = _alloc_dma_buf(name, total_size, cacheable);
 	if (!dbuf)
 		return -1;
 
-	ret = mtk_cam_device_buf_init(buf, dbuf, dev, total_size)
-		|| mtk_cam_device_buf_vmap(buf);
-
-	/* since mtk_cam_device_buf already increase refcnt */
-	dma_heap_buffer_free(dbuf);
-	if (ret)
-		return ret;
-
-	ret = mtk_cam_buffer_pool_alloc(pool, buf, num);
-	if (ret)
-		goto fail_device_buf_uninit;
-
-	return 0;
-
-fail_device_buf_uninit:
-	mtk_cam_device_buf_uninit(buf);
-	return ret;
+	return _alloc_pool_by_dbuf(buf, pool, dev, dbuf, total_size, num);
 }
 
 static void _destroy_pool(struct mtk_cam_device_buf *buf,
@@ -1526,11 +1518,12 @@ static int mtk_cam_ctx_alloc_img_pool(struct mtk_cam_ctx *ctx)
 	desc->stride[2] = 0;
 	desc->size = desc->stride[0] * desc->height;
 
-	if (ctrl_data->pre_alloc_mem.num) {
-		ret = _alloc_pool_by_fd(
+	if (ctrl_data->pre_alloc_mem.num
+	    && desc->size >= ctrl_data->pre_alloc_mem.bufs[0].length) {
+		ret = _alloc_pool_by_dbuf(
 			  &ctx->img_work_buffer, &ctx->img_work_pool,
 			  dev_to_attach,
-			  ctrl_data->pre_alloc_mem.bufs[0].fd,
+			  ctrl_data->pre_alloc_dbuf,
 			  ctrl_data->pre_alloc_mem.bufs[0].length,
 			  raw_res->img_wbuf_num);
 		desc->fd = ctrl_data->pre_alloc_mem.bufs[0].fd;
@@ -1541,6 +1534,7 @@ static int mtk_cam_ctx_alloc_img_pool(struct mtk_cam_ctx *ctx)
 			  dev_to_attach, desc->size,
 			  raw_res->img_wbuf_num,
 			  false);
+		/* FIXME: close fd */
 		desc->fd = mtk_cam_device_buf_fd(&ctx->img_work_buffer);
 	}
 
