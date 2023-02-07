@@ -36,7 +36,12 @@ struct ssheap_buf_info {
 	struct page *pmm_msg_page;
 	u8 mem_type;
 	u64 ffa_handle;
+#if IS_ENABLED(CONFIG_MTK_PROT_MEM_SSHEAP_V2)
+	struct list_head pmm_msg_list;
+	struct page *pmm_page;
+#endif
 };
+
 
 /**********************************************************/
 /**** Trusted Memory Common APIs for ION kernel driver ****/

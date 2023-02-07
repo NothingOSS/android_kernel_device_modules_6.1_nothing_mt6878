@@ -13,6 +13,11 @@ int ssheap_free_non_contig(struct ssheap_buf_info *info);
 unsigned long mtee_assign_buffer(struct ssheap_buf_info *info, uint8_t mem_type);
 unsigned long mtee_unassign_buffer(struct ssheap_buf_info *info, uint8_t mem_type);
 
+#if IS_ENABLED(CONFIG_MTK_PROT_MEM_SSHEAP_V2)
+unsigned long mtee_assign_pages(struct ssheap_buf_info *info, uint8_t mem_type);
+unsigned long mtee_unassign_pages(struct ssheap_buf_info *info, uint8_t mem_type);
+#endif
+
 void ssheap_set_cma_region(phys_addr_t base, phys_addr_t size);
 void ssheap_set_dev(struct device *dev);
 

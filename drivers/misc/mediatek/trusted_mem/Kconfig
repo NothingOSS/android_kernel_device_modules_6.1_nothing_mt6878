@@ -146,3 +146,14 @@ config TEST_MTK_TRUSTED_MEMORY
 	  This is a test module doing various nasty things like
 	  open/close/alloc/free operation, It is useful for testing
 	  trusted memory features.
+
+config MTK_PROT_MEM_SSHEAP_V2
+	bool "MTK Protect Memory ssheap v2 Support"
+	default y
+	depends on MTK_PROT_MEM_SUPPORT
+	help
+	  Enable the support of MediaTek page based protect memory driver.
+	  This driver provide a page-base solution from buddy system for protection
+	  secure memory protection.
+	  Say Y if you would like to enable this feature.
+	  If unsure, say N.
