@@ -754,7 +754,7 @@ int mtk_rollback_resize_layer_to_GPU_range(
 		    (lc->src_width != lc->dst_width)) {
 			if (mtk_has_layer_cap(lc, MTK_MDP_RSZ_LAYER | MTK_DISP_RSZ_LAYER))
 				continue;
-			if (mtk_has_layer_cap(lc, MTK_MML_OVL_LAYER))
+			if (mtk_has_layer_cap(lc, DISP_MML_CAPS_MASK))
 				continue;
 
 			mtk_gles_incl_layer(disp_info, idx, i);
@@ -3021,27 +3021,6 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 
 	return 0;
 }
-static inline int get_scale_cnt(struct drm_mtk_layering_info *disp_info)
-{
-	int disp_idx, scale_cnt = 0;
-
-	for (disp_idx = 0; disp_idx < HRT_DISP_TYPE_NUM; disp_idx++) {
-		struct drm_mtk_layer_config *c;
-		int i = 0;
-
-		if (disp_info->layer_num[disp_idx] <= 0)
-			continue;
-
-		/* check exist clear layer */
-		for (i = 0; i < disp_info->layer_num[disp_idx]; i++) {
-			c = &disp_info->input_config[disp_idx][i];
-			if (mtk_has_layer_cap(c, MTK_DISP_RSZ_LAYER))
-				scale_cnt++;
-		}
-	}
-
-	return scale_cnt;
-}
 
 static int dispatch_gles_range(struct drm_mtk_layering_info *disp_info,
 			struct drm_device *drm_dev)
@@ -3656,7 +3635,7 @@ static int check_cross_pipe_rpo(
 	return 0;
 }
 
-static int RPO_rule(struct drm_crtc *crtc,
+static void RPO_rule(struct drm_crtc *crtc,
 		struct drm_mtk_layering_info *disp_info, int disp_idx)
 {
 	struct drm_mtk_layer_config *c = NULL;
@@ -3671,7 +3650,7 @@ static int RPO_rule(struct drm_crtc *crtc,
 	u8 scale_cnt = 0;
 
 	if (disp_info->layer_num[disp_idx] <= 0)
-		return 0;
+		return;
 
 	mode = mtk_drm_crtc_avail_disp_mode(crtc, disp_info->disp_mode_idx[0]);
 	if (mode) {
@@ -3734,55 +3713,38 @@ static int RPO_rule(struct drm_crtc *crtc,
 		    src_roi.height > l_rule_info->rpo_in_max_height)
 			continue;
 
+		if (mtk_has_layer_cap(c, MTK_MML_DISP_DIRECT_DECOUPLE_LAYER |
+					 MTK_MML_DISP_DIRECT_LINK_LAYER))
+			continue;
+
+		if (mtk_has_layer_cap(c, MTK_MDP_RSZ_LAYER))
+			continue;
+
+		if (scale_cnt >= l_rule_info->rpo_scale_num)
+			break;
+
 		c->layer_caps |= MTK_DISP_RSZ_LAYER;
 		++scale_cnt;
 	}
-
-	return scale_cnt;
 }
 
 /* resizing_rule - layering rule resize layer layout */
 static void resizing_rule(struct drm_device *dev,
-			struct drm_mtk_layering_info *disp_info,
-			unsigned int *scale_num)
+			struct drm_mtk_layering_info *disp_info)
 {
 	const u8 disp_idx = get_layering_opt(LYE_OPT_SPHRT) ? disp_info->disp_idx : 0;
 
-	if (*scale_num == 0) {
-		mtk_rollback_all_resize_layer_to_GPU(disp_info, HRT_SECONDARY);
-		mtk_rollback_all_resize_layer_to_GPU(disp_info, HRT_THIRD);
+	mtk_rollback_all_resize_layer_to_GPU(disp_info, HRT_SECONDARY);
+	mtk_rollback_all_resize_layer_to_GPU(disp_info, HRT_THIRD);
 
-		/* RPO only support primary */
-		if (disp_idx == HRT_PRIMARY) {
-			struct mtk_drm_private *priv = dev->dev_private;
-			struct drm_crtc *crtc = priv->crtc[disp_idx];
+	/* RPO only support primary */
+	if (disp_idx == HRT_PRIMARY) {
+		struct mtk_drm_private *priv = dev->dev_private;
+		struct drm_crtc *crtc = priv->crtc[disp_idx];
 
-			if (crtc)
-				*scale_num = RPO_rule(crtc, disp_info, HRT_PRIMARY);
+		if (crtc)
+			RPO_rule(crtc, disp_info, HRT_PRIMARY);
 
-			mtk_rollback_all_resize_layer_to_GPU(disp_info, HRT_PRIMARY);
-		}
-	} else if (*scale_num > l_rule_info->rpo_scale_num) {
-		int i = 0;
-		u8 cnt = 0;
-		struct drm_mtk_layer_config *c = NULL;
-
-		for (i = 0; i < disp_info->layer_num[HRT_PRIMARY]; i++) {
-			c = &disp_info->input_config[disp_idx][i];
-			if (!mtk_has_layer_cap(c, MTK_DISP_RSZ_LAYER))
-				continue;
-
-			if (cnt == l_rule_info->rpo_scale_num) {
-				c->layer_caps &= ~MTK_DISP_RSZ_LAYER;
-				continue;
-			}
-
-			if (mtk_has_layer_cap(c, DISP_MML_CAPS_MASK | MTK_MDP_RSZ_LAYER)) {
-				c->layer_caps &= ~MTK_DISP_RSZ_LAYER;
-				continue;
-			}
-			++cnt;
-		}
 		mtk_rollback_all_resize_layer_to_GPU(disp_info, HRT_PRIMARY);
 	}
 
@@ -3964,10 +3926,6 @@ static void check_is_mml_layer(const int disp_idx,
 			DRM_MMP_MARK(layering, 0x331, __LINE__);
 		}
 
-		if (mtk_has_layer_cap(c, MTK_MML_DISP_DIRECT_DECOUPLE_LAYER |
-					 MTK_MML_DISP_DIRECT_LINK_LAYER))
-			c->layer_caps &= ~MTK_DISP_RSZ_LAYER;
-
 		if (MTK_MML_DISP_NOT_SUPPORT & c->layer_caps)
 			mtk_gles_incl_layer(disp_info, disp_idx, i);
 	}
@@ -4085,7 +4043,6 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	int ret;
 	int overlap_num;
 	struct mtk_drm_lyeblob_ids *lyeblob_ids;
-	unsigned int scale_num = 0;
 	enum SCN_FACTOR scn_decision_flag = SCN_NO_FACTOR;
 	int crtc_num, crtc_mask;
 	int disp_idx = 0, hrt_idx;
@@ -4155,17 +4112,6 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 		ret = l_rule_ops->rollback_to_gpu_by_hw_limitation(
 			dev, &layering_info);
 
-	/* Check and choose the Resize Scenario */
-	if (get_layering_opt(LYE_OPT_RPO)) {
-		resizing_rule(dev, &layering_info, &scale_num);
-	} else {
-		mtk_rollback_all_resize_layer_to_GPU(&layering_info, HRT_PRIMARY);
-		mtk_rollback_all_resize_layer_to_GPU(&layering_info, HRT_SECONDARY);
-		mtk_rollback_all_resize_layer_to_GPU(&layering_info, HRT_THIRD);
-		mtk_rollback_all_resize_layer_to_GPU(&layering_info, HRT_FOURTH);
-	}
-	check_gles_change(&dbg_gles, __LINE__, false);
-
 	/* Check can do MML or not */
 	if (disp_idx == 0 && layering_info.layer_num[HRT_PRIMARY] > 0) {
 		check_is_mml_layer(disp_idx, &layering_info,
@@ -4173,11 +4119,16 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 		check_gles_change(&dbg_gles, __LINE__, false);
 	}
 
-	/* TODO: check if reorder mml and rpo */
+	/* Check and choose the Resize Scenario */
 	if (get_layering_opt(LYE_OPT_RPO)) {
-		resizing_rule(dev, &layering_info, &scale_num);
-		check_gles_change(&dbg_gles, __LINE__, false);
+		resizing_rule(dev, &layering_info);
+	} else {
+		mtk_rollback_all_resize_layer_to_GPU(&layering_info, HRT_PRIMARY);
+		mtk_rollback_all_resize_layer_to_GPU(&layering_info, HRT_SECONDARY);
+		mtk_rollback_all_resize_layer_to_GPU(&layering_info, HRT_THIRD);
+		mtk_rollback_all_resize_layer_to_GPU(&layering_info, HRT_FOURTH);
 	}
+	check_gles_change(&dbg_gles, __LINE__, false);
 
 	/* fbdc_rule should be after resizing_rule
 	 * for optimizing secondary display BW
