@@ -37,6 +37,27 @@ UNLOCK_RETURN:
 	return hdl ? obj : NULL;
 }
 
+struct mtk_cam_buffer *
+mtk_cam_req_find_buffer(struct mtk_cam_request *cam_req, int pipe_id, int id)
+{
+	struct mtk_cam_buffer *buf;
+	struct mtk_cam_video_device *node;
+
+	spin_lock(&cam_req->buf_lock);
+	list_for_each_entry(buf, &cam_req->buf_list, list) {
+		node = mtk_cam_buf_to_vdev(buf);
+
+		if (node->uid.pipe_id == pipe_id &&
+		    node->desc.id == id)
+			goto UNLOCK_RETURN;
+	}
+	buf = NULL;
+
+UNLOCK_RETURN:
+	spin_unlock(&cam_req->buf_lock);
+	return buf;
+}
+
 int mtk_cam_req_complete_ctrl_obj(struct media_request_object *obj)
 {
 	if (!obj)

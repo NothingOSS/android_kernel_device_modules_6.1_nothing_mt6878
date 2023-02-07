@@ -26,6 +26,7 @@
 static void reset_unused_io_of_ipi_frame(struct req_buffer_helper *helper);
 static int update_cq_buffer_to_ipi_frame(struct mtk_cam_pool_buffer *cq,
 					 struct mtkcam_ipi_frame_param *fp);
+static int job_debug_dump(struct mtk_cam_job *job, const char *desc);
 
 void _on_job_last_ref(struct mtk_cam_job *job)
 {
@@ -1209,12 +1210,38 @@ static int trigger_m2m(struct mtk_cam_job *job)
 	return ret;
 }
 
+static int job_print_warn_desc(struct mtk_cam_job *job, const char *desc,
+			       char warn_desc[64])
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+
+	return snprintf(warn_desc, 64, "%s:ctx(%d):req(%d):%s",
+			job->req->req.debug_str, ctx->stream_id,
+			job->frame_seq_no, desc);
+}
+
+static void trigger_compose_error_dump(struct mtk_cam_job *job)
+{
+	const char *desc = MSG_COMPOSE_ERROR;
+	char warn_desc[64];
+
+	job_print_warn_desc(job, desc, warn_desc);
+
+	pr_info("%s: compose failed: %s\n", __func__, warn_desc);
+
+	if (job_debug_dump(job, desc))
+		WRAP_AEE_EXCEPTION(desc, warn_desc);
+}
+
 static void
 _compose_done(struct mtk_cam_job *job,
-	struct mtkcam_ipi_frame_ack_result *cq_ret)
+	      struct mtkcam_ipi_frame_ack_result *cq_ret, int compose_ret)
 {
-	job->composed = true;
+	job->composed = !compose_ret;
 	job->cq_rst = *cq_ret;
+
+	if (compose_ret)
+		trigger_compose_error_dump(job);
 }
 
 static int apply_raw_target_clk(struct mtk_cam_ctx *ctx,
@@ -1487,6 +1514,7 @@ static int job_init_mstream(struct mtk_cam_job *job)
 	mjob->composed_idx = 0;
 	mjob->apply_sensor_idx = 0;
 	mjob->apply_isp_idx = 0;
+	mjob->composed_1st = 0;
 
 	ret = mtk_cam_buffer_pool_fetch(&ctx->cq_pool, &mjob->cq);
 	if (ret) {
@@ -2005,22 +2033,28 @@ static int compose_mstream(struct mtk_cam_job *job)
 }
 
 static void compose_done_mstream(struct mtk_cam_job *job,
-				 struct mtkcam_ipi_frame_ack_result *cq_ret)
+				 struct mtkcam_ipi_frame_ack_result *cq_ret,
+				 int compose_ret)
 {
 	struct mtk_cam_mstream_job *mjob =
 		container_of(job, struct mtk_cam_mstream_job, job);
 
 	/* 1st frame */
 	if (mjob->composed_idx == 0) {
+		mjob->composed_1st = !compose_ret;
 		mjob->cq_rst = *cq_ret;
 		++mjob->composed_idx;
 		return;
 	}
 
 	/* 2nd frame */
-	job->composed = true;
+	job->composed = !compose_ret;
 	job->cq_rst = *cq_ret;
 	++mjob->composed_idx;
+
+	/* TODO: add compose failed dump for 1st frame */
+	if (compose_ret)
+		trigger_compose_error_dump(job);
 }
 
 static void mtk_cam_set_sensor_mstream_mode(struct mtk_cam_ctx *ctx, bool on)
@@ -2823,7 +2857,7 @@ static int update_mraw_meta_buf_to_ipi_frame(
 	}
 	if (i == ctx->num_mraw_subdevs) {
 		ret = -1;
-		pr_info("%s %s: mraw subdev idx not found(pipe_id:%d)",
+		pr_info("%s %s: mraw subdev idx not found(pipe_id:%d)\n",
 			__FILE__, __func__, node->uid.pipe_id);
 		goto EXIT;
 	}
@@ -3045,8 +3079,114 @@ static int mtk_cam_job_fill_ipi_frame(struct mtk_cam_job *job,
 		|| update_job_buffer_to_ipi_frame(job, fp, job_helper);
 
 	if (ret)
-		pr_info("%s: failed.", __func__);
+		pr_info("%s: failed.\n", __func__);
 
 	return ret;
 }
 
+int mtk_cam_job_fill_dump_param(struct mtk_cam_job *job,
+				struct mtk_cam_dump_param *p,
+				const char *desc)
+{
+	struct mtk_cam_request *req;
+	struct mtk_cam_buffer *buf;
+	int pipe_id;
+
+	req = job->req;
+	if (!req) {
+		pr_info("%s: failed to get req", __func__);
+		return -1;
+	}
+
+	pipe_id = get_raw_subdev_idx(job->src_ctx->used_pipe);
+	if (pipe_id < 0) {
+		pr_info("%s: failed to get pipe_id from %x\n",
+			__func__, job->src_ctx->used_pipe);
+		return -1;
+	}
+
+	/* Common Debug Information*/
+	strncpy(p->desc, desc, sizeof(p->desc) - 1);
+
+	p->request_fd = -1; /* TODO */
+	p->stream_id = job->src_ctx->stream_id;
+	p->timestamp = job->timestamp;
+	p->sequence = job->frame_seq_no + job->frame_cnt - 1;
+
+	/* CQ dump */
+	p->cq_cpu_addr	= job->cq.vaddr;
+	p->cq_size	= job->cq.size;
+	p->cq_iova	= job->cq.daddr;
+	p->cq_desc_offset	= job->cq_rst.main.offset;
+	p->cq_desc_size		= job->cq_rst.main.size;
+	p->sub_cq_desc_offset	= job->cq_rst.sub.offset;
+	p->sub_cq_desc_size	= job->cq_rst.sub.size;
+
+	/* meta in */
+	buf = mtk_cam_req_find_buffer(req, pipe_id, MTK_RAW_META_IN);
+	if (buf) {
+		p->meta_in_cpu_addr = vb2_plane_vaddr(&buf->vbb.vb2_buf, 0);
+		p->meta_in_dump_buf_size = buf->meta_info.buffersize;
+		p->meta_in_iova = buf->daddr;
+	} else
+		pr_info("%s: meta_in not found\n", __func__);
+
+	/* meta out 0 */
+	buf = mtk_cam_req_find_buffer(req, pipe_id, MTK_RAW_META_OUT_0);
+	if (buf) {
+		p->meta_out_0_cpu_addr = vb2_plane_vaddr(&buf->vbb.vb2_buf, 0);
+		p->meta_out_0_dump_buf_size = buf->meta_info.buffersize;
+		p->meta_out_0_iova = buf->daddr;
+	} else
+		pr_info("%s: meta_out_0 not found\n", __func__);
+
+	/* meta out 1 */
+	buf = mtk_cam_req_find_buffer(req, pipe_id, MTK_RAW_META_OUT_1);
+	if (buf) {
+		p->meta_out_1_cpu_addr = vb2_plane_vaddr(&buf->vbb.vb2_buf, 0);
+		p->meta_out_1_dump_buf_size = buf->meta_info.buffersize;
+		p->meta_out_1_iova = buf->daddr;
+	} else
+		pr_info("%s: meta_out_1 not found\n", __func__);
+
+	/* meta out 2 */
+	p->meta_out_2_cpu_addr		= NULL;
+	p->meta_out_2_dump_buf_size	= 0;
+	p->meta_out_2_iova		= 0;
+
+	/* ipi frame param */
+	p->frame_params		= job->ipi.vaddr;
+	p->frame_param_size	= sizeof(*p->frame_params);
+
+	/* ipi config param */
+	p->config_params	= &job->ipi_config;
+	p->config_param_size	= sizeof(job->ipi_config);
+
+	return 0;
+}
+
+static int job_debug_dump(struct mtk_cam_job *job, const char *desc)
+{
+	struct mtk_cam_dump_param p;
+	struct mtk_cam_ctx *ctx;
+	struct mtk_cam_debug *dbg;
+
+	ctx = job->src_ctx;
+	if (WARN_ON(!ctx))
+		return -1;
+
+	if (mtk_cam_job_fill_dump_param(job, &p, desc))
+		goto DUMP_FAILED;
+
+	dbg = &job->src_ctx->cam->dbg;
+	if (mtk_cam_debug_exp_dump(dbg, &p))
+		goto DUMP_FAILED;
+
+	return 0;
+
+DUMP_FAILED:
+	pr_info("%s: failed. ctx %d pipe %x job req_seq %i desc %s\n",
+		__func__, ctx->stream_id, ctx->used_pipe,
+		job->req_seq, desc);
+	return -1;
+}

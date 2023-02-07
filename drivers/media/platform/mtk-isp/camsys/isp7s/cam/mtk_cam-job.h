@@ -192,7 +192,8 @@ struct mtk_cam_job_ops {
 	void (*finalize)(struct mtk_cam_job *job);
 
 	void (*compose_done)(struct mtk_cam_job *job,
-			     struct mtkcam_ipi_frame_ack_result *cq_ret);
+			     struct mtkcam_ipi_frame_ack_result *cq_ret,
+			     int compose_ret);
 	/* action */
 	int (*compose)(struct mtk_cam_job *job);
 	int (*stream_on)(struct mtk_cam_job *job, bool on);
@@ -347,6 +348,8 @@ struct mtk_cam_mstream_job {
 	u8 apply_sensor_idx;
 	u8 apply_isp_idx;
 
+	bool composed_1st;
+
 #ifdef DOES_MSTREAM_NEED_THESE
 	/* TODO */
 	wait_queue_head_t expnum_change_wq;
@@ -456,5 +459,9 @@ static inline void mtk_cam_job_mark_cancelled(struct mtk_cam_job *job)
 	wake_up_interruptible(&job->done_wq);
 }
 
+struct mtk_cam_dump_param;
+int mtk_cam_job_fill_dump_param(struct mtk_cam_job *job,
+				struct mtk_cam_dump_param *p,
+				const char *desc);
 
 #endif //__MTK_CAM_JOB_H

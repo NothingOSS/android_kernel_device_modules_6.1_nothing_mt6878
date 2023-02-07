@@ -35,6 +35,7 @@
 
 #include "mtk_cam-raw_pipeline.h"
 #include "mtk_cam-bit_mapping.h"
+#include "mtk_cam-debug.h"
 
 #define CCD_READY 1
 
@@ -228,6 +229,8 @@ struct mtk_cam_device {
 	spinlock_t running_job_lock;
 
 	struct mtk_camsys_dvfs dvfs;
+
+	struct mtk_cam_debug dbg;
 	//struct mtk_cam_debug_fs *debug_fs;
 	//struct workqueue_struct *debug_wq;
 	//struct workqueue_struct *debug_exception_wq;

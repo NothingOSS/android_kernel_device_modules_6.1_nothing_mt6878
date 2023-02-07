@@ -134,7 +134,8 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 /* inform job composed */
 void mtk_cam_ctrl_job_composed(struct mtk_cam_ctrl *cam_ctrl,
 			       unsigned int fh_cookie,
-			       struct mtkcam_ipi_frame_ack_result *cq_ret);
+			       struct mtkcam_ipi_frame_ack_result *cq_ret,
+			       int ack_ret);
 
 void mtk_cam_event_frame_sync(struct mtk_cam_ctrl *cam_ctrl,
 			      unsigned int frame_seq_no);

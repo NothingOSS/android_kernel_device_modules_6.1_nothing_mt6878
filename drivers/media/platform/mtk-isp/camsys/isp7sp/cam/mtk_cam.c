@@ -1038,7 +1038,7 @@ static int mtk_cam_initialize(struct mtk_cam_device *cam)
 	if (ret)
 		return ret; //TODO: goto
 
-	// TODO: debug_fs
+	mtk_cam_debug_exp_reset(&cam->dbg);
 
 	return ret;
 }
@@ -1089,11 +1089,10 @@ static int isp_composer_handler(struct rpmsg_device *rpdev, void *data,
 			dev_info(dev, "ipi_frame_ack:%d\n",
 				 ipi_msg->cookie.frame_no);
 
-		if (WARN_ON(ipi_msg->ack_data.ret))
-			dev_info(dev, "TODO: implement dump\n");
-
 		mtk_cam_ctrl_job_composed(&ctx->cam_ctrl,
-			ipi_msg->cookie.frame_no, &ipi_msg->ack_data.frame_result);
+					  ipi_msg->cookie.frame_no,
+					  &ipi_msg->ack_data.frame_result,
+					  ipi_msg->ack_data.ret);
 
 		//MTK_CAM_TRACE_END(BASIC);
 		return 0;
@@ -2655,9 +2654,9 @@ int mtk_cam_mraw_link_validate(struct v4l2_subdev *sd,
 	return ret;
 }
 
+#ifdef NOT_READY
 static int mtk_cam_debug_fs_init(struct mtk_cam_device *cam)
 {
-#ifdef NOT_READY
 	/**
 	 * The dump buffer size depdends on the meta buffer size
 	 * which is variable among devices using different type of sensors
@@ -2686,13 +2685,11 @@ static int mtk_cam_debug_fs_init(struct mtk_cam_device *cam)
 
 	if (!cam->debug_wq || !cam->debug_exception_wq)
 		return -EINVAL;
-#endif
 	return 0;
 }
 
 static void mtk_cam_debug_fs_deinit(struct mtk_cam_device *cam)
 {
-#ifdef NOT_READY
 	drain_workqueue(cam->debug_wq);
 	destroy_workqueue(cam->debug_wq);
 	drain_workqueue(cam->debug_exception_wq);
@@ -2700,8 +2697,8 @@ static void mtk_cam_debug_fs_deinit(struct mtk_cam_device *cam)
 
 	if (cam->debug_fs)
 		cam->debug_fs->ops->deinit(cam->debug_fs);
-#endif
 }
+#endif
 
 bool mtk_cam_is_any_streaming(struct mtk_cam_device *cam)
 {
@@ -3024,14 +3021,9 @@ static int mtk_cam_probe(struct platform_device *pdev)
 		goto fail_return;
 	}
 
-	ret = mtk_cam_debug_fs_init(cam_dev);
-	if (ret < 0)
-		goto fail_match_remove;
+	mtk_cam_debug_init(&cam_dev->dbg, cam_dev);
 
 	return 0;
-
-fail_match_remove:
-	mtk_cam_match_remove(dev);
 
 fail_return:
 
@@ -3048,7 +3040,7 @@ static int mtk_cam_remove(struct platform_device *pdev)
 	component_master_del(dev, &mtk_cam_master_ops);
 	mtk_cam_match_remove(dev);
 
-	mtk_cam_debug_fs_deinit(cam_dev);
+	mtk_cam_debug_deinit(&cam_dev->dbg);
 
 #ifdef NOT_READY
 	platform_driver_unregister(&mtk_cam_mraw_driver);

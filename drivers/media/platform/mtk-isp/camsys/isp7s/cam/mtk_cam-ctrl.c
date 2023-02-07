@@ -753,7 +753,8 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 
 void mtk_cam_ctrl_job_composed(struct mtk_cam_ctrl *cam_ctrl,
 			       unsigned int fh_cookie,
-			       struct mtkcam_ipi_frame_ack_result *cq_ret)
+			       struct mtkcam_ipi_frame_ack_result *cq_ret,
+			       int ack_ret)
 {
 	struct mtk_cam_job *job_composed;
 	struct mtk_cam_device *cam;
@@ -775,7 +776,7 @@ void mtk_cam_ctrl_job_composed(struct mtk_cam_ctrl *cam_ctrl,
 		goto PUT_CTRL;
 	}
 
-	call_jobop(job_composed, compose_done, cq_ret);
+	call_jobop(job_composed, compose_done, cq_ret, ack_ret);
 
 	spin_lock(&cam_ctrl->info_lock);
 	cam_ctrl->r_info.ack_seq_no = seq;

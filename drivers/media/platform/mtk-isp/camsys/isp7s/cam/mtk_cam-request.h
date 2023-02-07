@@ -75,6 +75,9 @@ static inline int mtk_cam_req_used_ctx(struct media_request *req)
 struct media_request_object *
 mtk_cam_req_find_ctrl_obj(struct mtk_cam_request *req, void *ctrl_hdl);
 
+struct mtk_cam_buffer *
+mtk_cam_req_find_buffer(struct mtk_cam_request *req, int pipe_id, int dma_port);
+
 int mtk_cam_req_complete_ctrl_obj(struct media_request_object *obj);
 
 void mtk_cam_req_dump_incomplete_ctrl(struct mtk_cam_request *req);
