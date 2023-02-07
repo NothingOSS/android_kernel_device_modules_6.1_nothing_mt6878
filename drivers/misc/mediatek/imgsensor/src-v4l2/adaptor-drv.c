@@ -702,7 +702,6 @@ static int imgsensor_start_streaming(struct adaptor_ctx *ctx)
 //	int ret;
 	u64 data[4];
 	u32 len;
-	union feature_para para;
 #if IMGSENSOR_LOG_MORE
 	dev_info(ctx->dev, "[%s]+\n", __func__);
 #endif
@@ -718,17 +717,6 @@ static int imgsensor_start_streaming(struct adaptor_ctx *ctx)
 #endif
 
 	data[0] = 0; // shutter
-	para.u8[0] = 0;
-#if IMGSENSOR_LOG_MORE
-	dev_info(ctx->dev, "[%s] [SENSOR_FEATURE_SET_TEST_PATTERN]+\n", __func__);
-#endif
-	//Make sure close test pattern
-	subdrv_call(ctx, feature_control,
-		SENSOR_FEATURE_SET_TEST_PATTERN,
-		para.u8, &len);
-#if IMGSENSOR_LOG_MORE
-	dev_info(ctx->dev, "[%s] [SENSOR_FEATURE_SET_TEST_PATTERN]-\n", __func__);
-#endif
 	subdrv_call(ctx, feature_control,
 		SENSOR_FEATURE_SET_STREAMING_RESUME,
 		(u8 *)data, &len);
@@ -756,10 +744,17 @@ static int imgsensor_stop_streaming(struct adaptor_ctx *ctx)
 {
 	u64 data[4];
 	u32 len;
+	union feature_para para;
 
 	subdrv_call(ctx, feature_control,
 		SENSOR_FEATURE_SET_STREAMING_SUSPEND,
 		(u8 *)data, &len);
+
+	para.u8[0] = 0;
+	//Make sure close test pattern
+	subdrv_call(ctx, feature_control,
+		    SENSOR_FEATURE_SET_TEST_PATTERN,
+		    para.u8, &len);
 
 	/* notify frame-sync streaming OFF */
 	notify_fsync_mgr_streaming(ctx, 0);
