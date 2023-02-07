@@ -31,9 +31,6 @@ struct clk_bulk_data imgsys_isp7_clks[] = {
 		.id = "IMGSYS_CG_IMG_WPE2",
 	},
 	{
-		.id = "IMGSYS_CG_IMG_ADL_TOP0",
-	},
-	{
 		.id = "IMGSYS_CG_IMG_AVS",
 	},
 	{
