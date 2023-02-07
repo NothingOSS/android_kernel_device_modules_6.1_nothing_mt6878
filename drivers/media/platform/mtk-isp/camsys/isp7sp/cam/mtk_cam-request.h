@@ -29,6 +29,13 @@ struct mtk_cam_frame_sync {
 	struct mutex op_lock;
 };
 
+static inline void frame_sync_init(struct mtk_cam_frame_sync *fs, int ctx_cnt)
+{
+	fs->target = ctx_cnt > 1 ? ctx_cnt : 0;
+	fs->on_cnt = 0;
+	fs->off_cnt = 0;
+}
+
 struct v4l2_ctrl_handler;
 /*
  * struct mtk_cam_request - MTK camera request.

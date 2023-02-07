@@ -211,6 +211,7 @@ struct mtk_cam_job_ops {
 struct mtk_cam_job {
 	/* note: to manage life-cycle in state list */
 	atomic_t refs;
+	struct list_head list;
 
 	struct mtk_cam_request *req;
 

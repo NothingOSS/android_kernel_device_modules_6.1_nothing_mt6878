@@ -175,6 +175,7 @@ static int mtk_cam_job_pack_init(struct mtk_cam_job *job,
 	int ret;
 
 	atomic_set(&job->refs, 0);
+	INIT_LIST_HEAD(&job->list);
 
 	job->req = req;
 	job->src_ctx = ctx;
@@ -789,136 +790,76 @@ _stream_on_only_sv(struct mtk_cam_job *job, bool on)
 	return 0;
 }
 
-static bool frame_sync_start(struct mtk_cam_request *req)
+static void mtk_cam_fs_sync_frame(struct mtk_cam_ctx *ctx,
+				  struct mtk_cam_request *req, int state)
 {
-#ifdef NOT_READY
+	struct mtk_cam_device *cam;
 
-	/* All ctx with sensor is in ready state */
-	struct mtk_cam_device *cam =
-		container_of(req->req.mdev, struct mtk_cam_device, media_dev);
-	struct mtk_cam_ctx *ctx;
-	struct mtk_cam_ctx *sync_ctx[MTKCAM_SUBDEV_MAX];
-	unsigned int pipe_id;
-	int i, ctx_cnt = 0, synced_cnt = 0;
-	bool ret = false;
+	if (!ctx)
+		return;
 
-	/* pick out the used ctxs */
-	for (i = 0; i < cam->max_stream_num; i++) {
-		if (!(1 << i & req->ctx_used))
-			continue;
+	if (!req)
+		return;
 
-		sync_ctx[ctx_cnt] = &cam->ctxs[i];
-		ctx_cnt++;
+	cam = ctx->cam;
+	if (!cam)
+		return;
+
+	if (ctx->sensor &&
+	    ctx->sensor->ops &&
+	    ctx->sensor->ops->core &&
+	    ctx->sensor->ops->core->command) {
+		ctx->sensor->ops->core->command(ctx->sensor,
+						V4L2_CMD_FSYNC_SYNC_FRAME_START_END,
+						&state);
+		dev_info(cam->dev, "%s:%s:fs_sync_frame(%d): ctxs:0x%x\n",
+			__func__, req->req.debug_str, state, req->used_ctx);
+	} else {
+		dev_info(cam->dev,
+			"%s:%s: find sensor command failed, state(%d)\n",
+			__func__, req->req.debug_str, state);
 	}
-
-	mutex_lock(&req->fs.op_lock);
-	if (ctx_cnt > 1) {  /* multi sensor case */
-		req->fs.on_cnt++;
-		if (req->fs.on_cnt != 1)  /* not first time */
-			goto EXIT;
-
-		for (i = 0; i < ctx_cnt; i++) {
-			ctx = sync_ctx[i];
-			spin_lock(&ctx->streaming_lock);
-			if (!ctx->streaming) {
-				spin_unlock(&ctx->streaming_lock);
-				dev_info(cam->dev,
-					 "%s: ctx(%d): is streamed off\n",
-					 __func__, ctx->stream_id);
-				continue;
-			}
-			pipe_id = ctx->stream_id;
-			spin_unlock(&ctx->streaming_lock);
-
-			/* update sensor frame sync */
-			if (!ctx->synced) {
-				if (mtk_cam_req_frame_sync_set(req, pipe_id, 1))
-					ctx->synced = 1;
-			}
-			/* TODO: user fs */
-
-			if (ctx->synced)
-				synced_cnt++;
-		}
-
-		/* the prepared sensor is no enough, skip */
-		/* frame sync set failed or stream off */
-		if (synced_cnt < 2) {
-			mtk_cam_fs_reset(&req->fs);
-			dev_info(cam->dev, "%s:%s: sensor is not ready\n",
-				 __func__, req->req.debug_str);
-			goto EXIT;
-		}
-
-		dev_dbg(cam->dev, "%s:%s:fs_sync_frame(1): ctxs: 0x%x\n",
-			__func__, req->req.debug_str, req->ctx_used);
-
-#ifdef TO_BE_UPDATED
-		fs_sync_frame(1);
-#endif
-
-		ret = true;
-		goto EXIT;
-
-	} else if (ctx_cnt == 1) {  /* single sensor case */
-		ctx = sync_ctx[0];
-		spin_lock(&ctx->streaming_lock);
-		if (!ctx->streaming) {
-			spin_unlock(&ctx->streaming_lock);
-			dev_info(cam->dev,
-				 "%s: ctx(%d): is streamed off\n",
-				 __func__, ctx->stream_id);
-			goto EXIT;
-		}
-		pipe_id = ctx->stream_id;
-		spin_unlock(&ctx->streaming_lock);
-
-		if (ctx->synced) {
-			if (mtk_cam_req_frame_sync_set(req, pipe_id, 0))
-				ctx->synced = 0;
-		}
-	}
-EXIT:
-	dev_dbg(cam->dev, "%s:%s:target/on/off(%d/%d/%d)\n", __func__,
-		req->req.debug_str, req->fs.target, req->fs.on_cnt,
-		req->fs.off_cnt);
-	mutex_unlock(&req->fs.op_lock);
-	return ret;
-#endif
-	return 0;
 }
 
-
-static bool frame_sync_end(struct mtk_cam_request *req)
+static bool frame_sync_start(struct mtk_cam_ctx *ctx,
+			     struct mtk_cam_request *req)
 {
-	/* All ctx with sensor is not in ready state */
-	struct mtk_cam_device *cam =
-		container_of(req->req.mdev, struct mtk_cam_device, media_dev);
+	struct mtk_cam_frame_sync *fs = &req->fs;
 	bool ret = false;
 
-	mutex_lock(&req->fs.op_lock);
-	if (req->fs.target && req->fs.on_cnt) { /* check fs on */
-		req->fs.off_cnt++;
-		if (req->fs.on_cnt != req->fs.target ||
-		    req->fs.off_cnt != req->fs.target) { /* not the last */
-			goto EXIT;
-		}
-		dev_dbg(cam->dev,
-			 "%s:%s:fs_sync_frame(0)\n",
-			 __func__, req->req.debug_str);
+	if (!fs->target)
+		return 0;
 
-#ifdef TO_BE_UPDATED
-		fs_sync_frame(0);
-#endif
+	mutex_lock(&fs->op_lock);
 
+	++fs->on_cnt;
+	if (fs->on_cnt == 1) {
+		mtk_cam_fs_sync_frame(ctx, req, 1);
 		ret = true;
-		goto EXIT;
 	}
-EXIT:
-	dev_dbg(cam->dev, "%s:%s:target/on/off(%d/%d/%d)\n", __func__,
-		req->req.debug_str, req->fs.target, req->fs.on_cnt,
-		req->fs.off_cnt);
-	mutex_unlock(&req->fs.op_lock);
+
+	mutex_unlock(&fs->op_lock);
+	return ret;
+}
+
+static bool frame_sync_end(struct mtk_cam_ctx *ctx,
+			   struct mtk_cam_request *req)
+{
+	struct mtk_cam_frame_sync *fs = &req->fs;
+	bool ret = false;
+
+	if (!fs->target)
+		return 0;
+
+	mutex_lock(&fs->op_lock);
+
+	++fs->off_cnt;
+	if (fs->off_cnt == fs->target) {
+		mtk_cam_fs_sync_frame(ctx, req, 0);
+		ret = true;
+	}
+
+	mutex_unlock(&fs->op_lock);
 	return ret;
 }
 
@@ -932,7 +873,7 @@ _apply_sensor(struct mtk_cam_job *job)
 	struct mtk_cam_request *req = job->req;
 
 	//MTK_CAM_TRACE_BEGIN(BASIC, "frame_sync_start");
-	if (frame_sync_start(req))
+	if (frame_sync_start(ctx, req))
 		dev_dbg(cam->dev, "%s:%s:ctx(%d): sensor ctrl with frame sync - start\n",
 			__func__, req->req.debug_str, ctx->stream_id);
 	//MTK_CAM_TRACE_END(BASIC); /* frame_sync_start */
@@ -944,7 +885,7 @@ _apply_sensor(struct mtk_cam_job *job)
 			__func__, ctx->stream_id, job->frame_seq_no);
 	}
 	//MTK_CAM_TRACE_BEGIN(BASIC, "frame_sync_end");
-	if (frame_sync_end(req))
+	if (frame_sync_end(ctx, req))
 		dev_dbg(cam->dev, "%s:ctx(%d): sensor ctrl with frame sync - stop\n",
 				__func__, ctx->stream_id);
 	//MTK_CAM_TRACE_END(BASIC); /* frame_sync_end */

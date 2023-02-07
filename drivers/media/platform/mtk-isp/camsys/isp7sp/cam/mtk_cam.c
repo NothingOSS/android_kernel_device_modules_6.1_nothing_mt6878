@@ -345,7 +345,7 @@ static struct media_request *mtk_cam_req_alloc(struct media_device *mdev)
 	cam_req = vzalloc(sizeof(*cam_req));
 
 	spin_lock_init(&cam_req->buf_lock);
-	//mutex_init(&cam_req->fs.op_lock);
+	mutex_init(&cam_req->fs.op_lock);
 
 	return &cam_req->req;
 }
@@ -696,10 +696,15 @@ int mtk_cam_dev_req_enqueue(struct mtk_cam_device *cam,
 	unsigned int used_ctx = req->used_ctx;
 	struct mtk_cam_ctx *ctx;
 	struct mtk_cam_job *job;
+	struct list_head job_list;
+	int job_cnt;
 	int i;
 	unsigned int stream_bit;
 
 	WARN_ON(!used_ctx);
+
+	INIT_LIST_HEAD(&job_list);
+	job_cnt = 0;
 
 	/*
 	 * for each context involved:
@@ -733,6 +738,17 @@ int mtk_cam_dev_req_enqueue(struct mtk_cam_device *cam,
 			return -1;
 		}
 		mtk_cam_store_pipe_data_to_ctx(ctx, req);
+
+		list_add_tail(&job->list, &job_list);
+		++job_cnt;
+	}
+
+	frame_sync_init(&req->fs, job_cnt);
+
+	list_for_each_entry(job, &job_list, list) {
+
+		ctx  = job->src_ctx;
+
 		// enque to ctrl ; job will send ipi
 		mtk_cam_ctrl_job_enque(&ctx->cam_ctrl, job);
 	}
