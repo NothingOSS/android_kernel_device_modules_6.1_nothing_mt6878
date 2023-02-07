@@ -15,7 +15,7 @@
 #include <media/videobuf2-v4l2.h>
 
 #include "mtk_cam-ipi.h"
-#include "mtk_camera-v4l2-controls.h"
+#include "mtk_camera-v4l2-controls-7sp.h"
 #include "mtk_camera-videodev2.h"
 
 #define CAMSYS_VIDEO_DEV_NR 6
@@ -24,7 +24,6 @@
 #define MAX_SUBSAMPLE_PLANE_NUM 8
 
 struct mtk_cam_device;
-struct mtk_cam_resource;
 struct mtk_raw_pde_config;
 
 typedef int (*set_pad_fmt_func_t)(struct v4l2_subdev *sd,

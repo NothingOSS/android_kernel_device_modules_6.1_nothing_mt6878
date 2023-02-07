@@ -7,7 +7,7 @@
 #define __MTK_CAM_TG_FALSH_H
 
 #include "mtk_cam.h"
-#include "mtk_camera-v4l2-controls.h"
+#include "mtk_camera-v4l2-controls-7sp.h"
 
 void
 mtk_cam_tg_flash_req_update(struct mtk_raw_pipeline *pipe,

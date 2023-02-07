@@ -8,7 +8,7 @@
 
 #include "mtk_cam.h"
 #include "mtk_cam-raw.h"
-#include "mtk_camera-v4l2-controls.h"
+#include "mtk_camera-v4l2-controls-7sp.h"
 
 /* TODO(MTK): mtk_cam-util.c */
 #define snprintf_safe(buf, size, fmt, args...) \

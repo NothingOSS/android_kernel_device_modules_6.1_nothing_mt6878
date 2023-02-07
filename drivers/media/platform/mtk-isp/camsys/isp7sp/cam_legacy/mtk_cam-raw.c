@@ -33,7 +33,7 @@
 #include "mtk_cam-seninf-if.h"
 #include "mtk_cam-resource_calc.h"
 #include "mtk_cam-tg-flash.h"
-#include "mtk_camera-v4l2-controls.h"
+#include "mtk_camera-v4l2-controls-7sp.h"
 #include "mtk_camera-videodev2.h"
 #include "mtk_cam-dmadbg.h"
 #include "mtk_cam-raw_debug.h"
@@ -387,55 +387,6 @@ static int mtk_raw_get_ctrl(struct v4l2_ctrl *ctrl)
 	dev_dbg(dev, "%s:pipe(%d):id(%s) val(%d)\n",
 		__func__, pipeline->id, ctrl->name, ctrl->val);
 	return ret;
-}
-
-int
-mtk_cam_res_copy_fmt_from_user(struct mtk_raw_pipeline *pipeline,
-			       struct mtk_cam_resource *res_user,
-			       struct v4l2_mbus_framefmt *dest)
-{
-	long bytes;
-	struct device *dev = pipeline->raw->devs[pipeline->id];
-
-	if (!res_user->sink_fmt) {
-		dev_info(dev,
-			 "%s:pipe(%d): sink_fmt can't be NULL for res ctrl\n",
-			 __func__, pipeline->id);
-
-		return -EINVAL;
-	}
-
-	bytes = copy_from_user(dest, (void *)res_user->sink_fmt,
-			       sizeof(*dest));
-	if (bytes) {
-		dev_info(dev,
-			 "%s:pipe(%d): copy_from_user on sink_fmt failed (%ld)\n",
-			 __func__, pipeline->id, bytes);
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-int
-mtk_cam_res_copy_fmt_to_user(struct mtk_raw_pipeline *pipeline,
-			     struct mtk_cam_resource *res_user,
-			     struct v4l2_mbus_framefmt *src)
-{
-	long bytes;
-	struct device *dev = pipeline->raw->devs[pipeline->id];
-
-	/* return the fmt to the users */
-	bytes = copy_to_user((void *)res_user->sink_fmt, src, sizeof(*src));
-	if (bytes) {
-		dev_info(dev,
-			 "%s:pipe(%d): copy_to_user on sink_fmt failed (%ld)\n",
-			 __func__, pipeline->id, bytes);
-
-		return -EINVAL;
-	}
-
-	return 0;
 }
 
 static s64 mtk_cam_calc_pure_m2m_pixelrate(s64 width, s64 height,

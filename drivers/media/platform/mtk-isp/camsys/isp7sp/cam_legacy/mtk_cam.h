@@ -23,7 +23,7 @@
 #include "mtk_cam-seninf-if.h"
 #include "mtk_cam-ctrl.h"
 #include "mtk_cam-debug.h"
-#include "mtk_camera-v4l2-controls.h"
+#include "mtk_camera-v4l2-controls-7sp.h"
 #include "mtk_cam-hsf-def.h"
 #include "mtk_cam-plat.h"
 

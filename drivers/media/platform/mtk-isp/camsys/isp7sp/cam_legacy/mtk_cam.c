@@ -41,7 +41,7 @@
 #include "mtk_cam-mraw-regs.h"
 #include "mtk_cam-smem.h"
 #include "mtk_cam-tg-flash.h"
-#include "mtk_camera-v4l2-controls.h"
+#include "mtk_camera-v4l2-controls-7sp.h"
 #include "mtk_camera-videodev2.h"
 #include "mtk_cam-hsf.h"
 #include "mtk_cam-trace.h"

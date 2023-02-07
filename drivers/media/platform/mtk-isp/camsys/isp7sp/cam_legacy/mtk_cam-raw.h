@@ -9,7 +9,7 @@
 #include <linux/kfifo.h>
 #include <media/v4l2-subdev.h>
 #include "mtk_cam-video.h"
-#include "mtk_camera-v4l2-controls.h"
+#include "mtk_camera-v4l2-controls-7sp.h"
 
 struct mtk_cam_request_stream_data;
 
@@ -230,19 +230,6 @@ struct mtk_cam_resource_config {
 	struct v4l2_mbus_framefmt sink_fmt;
 	u32 enable_hsf_raw;
 	u32 hw_mode;
-};
-
-/* exposure for m-stream */
-struct mtk_cam_shutter_gain {
-	__u32 shutter;
-	__u32 gain;
-};
-
-/* multiple exposure for m-stream(2 exposures) */
-struct mtk_cam_mstream_exposure {
-	struct mtk_cam_shutter_gain exposure[2];
-	unsigned int valid;
-	int req_id;
 };
 
 struct mtk_raw_pad_config {
@@ -498,20 +485,12 @@ mtk_cam_raw_try_res_ctrl(struct mtk_raw_pipeline *pipeline,
 			 struct mtk_cam_resource_v2 *res_user,
 			 struct mtk_cam_resource_config *res_cfg,
 			 char *dbg_str, bool log);
-int
-mtk_cam_res_copy_fmt_from_user(struct mtk_raw_pipeline *pipeline,
-			       struct mtk_cam_resource *res_user,
-			       struct v4l2_mbus_framefmt *dest);
-
-int
-mtk_cam_res_copy_fmt_to_user(struct mtk_raw_pipeline *pipeline,
-			     struct mtk_cam_resource *res_user,
-			     struct v4l2_mbus_framefmt *src);
 
 bool mtk_raw_resource_calc(struct mtk_cam_device *cam,
 			   struct mtk_cam_resource_config *res,
 			   s64 pixel_rate, int res_plan,
 			   int in_w, int in_h, int *out_w, int *out_h);
+
 void mtk_raw_set_dcif_rawi_fmt(struct device *dev, struct v4l2_format *img_fmt,
 			       int width, int height, unsigned int code);
 
