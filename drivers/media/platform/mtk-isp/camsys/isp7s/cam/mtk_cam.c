@@ -1477,7 +1477,7 @@ static void _destroy_pool(struct mtk_cam_device_buf *buf,
 
 /* for cq working buffers */
 #define CQ_BUF_SIZE  0x10000
-#define CAM_CQ_BUF_NUM JOB_NUM_PER_STREAM
+#define CAM_CQ_BUF_NUM  (JOB_NUM_PER_STREAM * 2) /* 2 for mstream */
 #define IPI_FRAME_BUF_SIZE ALIGN(sizeof(struct mtkcam_ipi_frame_param), SZ_1K)
 static int mtk_cam_ctx_alloc_pool(struct mtk_cam_ctx *ctx)
 {

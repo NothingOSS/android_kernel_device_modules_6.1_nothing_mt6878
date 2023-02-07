@@ -585,7 +585,6 @@ static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 	struct mtk_cam_ctx *ctx = ctrl->ctx;
 	struct device *dev = ctx->cam->dev;
 	unsigned long timeout = msecs_to_jiffies(1000);
-	int next_job_no;
 
 	dev_info(dev, "[%s] ctx %d begin\n", __func__, ctrl->ctx->stream_id);
 
@@ -623,11 +622,22 @@ static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 
 	call_jobop(job, stream_on, true);
 
-	next_job_no = job->frame_seq_no + 1;
-
-	job = mtk_cam_ctrl_get_job(ctrl, cond_frame_no_belong, &next_job_no);
-	if (job)
+	/* non multi-frame job: e.g., mstream */
+	if (job->frame_cnt > 1) {
+		mtk_cam_job_state_set(&job->job_state,
+				      SENSOR_2ND_STATE, S_SENSOR_APPLYING);
 		call_jobop(job, apply_sensor);
+	} else {
+		int seq;
+
+		seq = next_frame_seq(job->frame_seq_no);
+		job = mtk_cam_ctrl_get_job(ctrl, cond_frame_no_belong, &seq);
+		if (job) {
+			mtk_cam_job_state_set(&job->job_state,
+					SENSOR_2ND_STATE, S_SENSOR_APPLYING);
+			call_jobop(job, apply_sensor);
+		}
+	}
 
 	mtk_cam_ctrl_apply_by_state(ctrl, 1);
 
