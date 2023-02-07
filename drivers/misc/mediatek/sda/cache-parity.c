@@ -828,10 +828,10 @@ static int cache_parity_probe(struct platform_device *pdev)
 
 	case 2:
 		ret = of_property_read_u32(pdev->dev.of_node,
-					"arm_dsu_ecc_hwirq",
+					"arm-dsu-ecc-hwirq",
 					&cache_parity.arm_dsu_ecc_hwirq);
 		if (ret) {
-			dev_err(&pdev->dev, "no arm_dsu_ecc_hwirq");
+			dev_err(&pdev->dev, "no arm-dsu-ecc-hwir");
 			return -ENXIO;
 		}
 
@@ -841,21 +841,21 @@ static int cache_parity_probe(struct platform_device *pdev)
 
 	case 3:
 		ret = of_property_read_u32(pdev->dev.of_node,
-					"arm_dsu_ecc_hwirq",
+					"arm-dsu-ecc-hwirq",
 					&cache_parity.arm_dsu_ecc_hwirq);
 		if (ret) {
-			dev_err(&pdev->dev, "no arm_dsu_ecc_hwirq");
+			dev_err(&pdev->dev, "no arm-dsu-ecc-hwir");
 			return -ENXIO;
 		}
 		len = of_property_count_elems_of_size(pdev->dev.of_node,
-							"arm_complex_ecc_hwirq", 4);
+							"arm-complex-ecc-hwirq", 4);
 		if (len <= 0) {
-			dev_err(&pdev->dev, "no arm_complex_ecc_hwirq");
+			dev_err(&pdev->dev, "no arm-complex-ecc-hwirq");
 			cache_parity.nr_complex_irq = 0;
 		} else {
 			if (len > MAX_COMPLEX_IRQ_NUM) {
 				dev_err(&pdev->dev,
-					"count of arm_complex_ecc_hwirq (%d) exceeds expect (%d)\n",
+					"count of arm-complex-ecc-hwirq (%d) exceeds expect (%d)\n",
 					len, MAX_COMPLEX_IRQ_NUM);
 				return -ENXIO;
 			}
@@ -863,10 +863,10 @@ static int cache_parity_probe(struct platform_device *pdev)
 			cache_parity.nr_complex_irq = len;
 			for (i = 0; i < len; i++) {
 				ret = of_property_read_u32_index(pdev->dev.of_node,
-					"arm_complex_ecc_hwirq", i,
+					"arm-complex-ecc-hwirq", i,
 					&cache_parity.arm_complex_ecc_hwirq[i]);
 				if (ret) {
-					dev_err(&pdev->dev, "no arm_complex_ecc_hwirq");
+					dev_err(&pdev->dev, "no arm-complex-ecc-hwirq");
 					return -ENXIO;
 				}
 			}
@@ -887,7 +887,7 @@ static int cache_parity_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "%s %d, %s %d, %s %d %s %d\n",
 			"version", cache_parity.ver,
 			"nr_irq", cache_parity.nr_irq,
-			"arm_dsu_ecc_hwirq", cache_parity.arm_dsu_ecc_hwirq,
+			"arm-dsu-ecc-hwirq", cache_parity.arm_dsu_ecc_hwirq,
 			"nr_err", atomic_read(&cache_parity.nr_err));
 
 	return ret;
