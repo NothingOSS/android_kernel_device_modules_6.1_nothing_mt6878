@@ -7510,6 +7510,10 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 	struct mtk_drm_private *priv = NULL;
 	struct drm_display_mode *mode;
 	struct mtk_ddp_comp *comp = NULL;
+	unsigned int i = 0;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	unsigned int check_panel_cmd = 0;
+	unsigned int check_ms_work = 0;
 
 	if (!dsi) {
 		DDPPR_ERR("%s, %d, invalid parameter\n", __func__, __LINE__);
@@ -7536,6 +7540,7 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 		need_mipi_change = 0;
 
 	DDPINFO("%s, need_mipi_change %d\n", __func__, need_mipi_change);
+	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 0);
 
 	if (!(mtk_crtc->mode_change_index & MODE_DSI_RES)) {
 		mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
@@ -7554,8 +7559,11 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 		cmdq_pkt_wfe(cmdq_handle,
 			mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
 		mtk_dsi_poll_for_idle(dsi, cmdq_handle);
-		cmdq_pkt_flush(cmdq_handle);
-		cmdq_pkt_destroy(cmdq_handle);
+		if (!dsi->ext->params->mode_switch_cmdq) {
+			DDPINFO("Use CPU cmd to mode switch\n");
+			cmdq_pkt_flush(cmdq_handle);
+			cmdq_pkt_destroy(cmdq_handle);
+		}
 	} else {
 		mode = mtk_crtc_get_display_mode_by_comp(__func__, &mtk_crtc->base, comp, false);
 		if (mode == NULL) {
@@ -7570,10 +7578,25 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 		dsi->ext->funcs->mode_switch_hs(dsi->panel,
 		&dsi->conn, dsi, src_mode, dst_mode, BEFORE_DSI_POWERDOWN, mtk_dsi_cmdq_pack_gce);
 	} else if (dsi->ext && dsi->ext->funcs &&
-		dsi->ext->funcs->mode_switch)
-		dsi->ext->funcs->mode_switch(dsi->panel, &dsi->conn, src_mode,
-			dst_mode, BEFORE_DSI_POWERDOWN);
+		dsi->ext->funcs->mode_switch) {
+		check_ms_work = dsi->ext->funcs->mode_switch(dsi->panel, &dsi->conn,
+			src_mode, dst_mode, BEFORE_DSI_POWERDOWN);
 
+		if (!check_ms_work) {
+			check_panel_cmd = dsi->ext->params->mode_switch_cmd.num_cmd;
+			if (check_panel_cmd) {
+				for (i = 0; i < check_panel_cmd; i++) {
+					mipi_dsi_dcs_write_gce_dyn(dsi, cmdq_handle,
+					    dsi->ext->params->mode_switch_cmd.ms_table[i].para_list,
+					    dsi->ext->params->mode_switch_cmd.ms_table[i].cmd_num);
+				}
+				cmdq_pkt_flush(cmdq_handle);
+				cmdq_pkt_destroy(cmdq_handle);
+			}
+		}
+	}
+
+	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 1);
 	if (need_mipi_change == 0)
 		goto skip_change_mipi;
 
@@ -7583,11 +7606,15 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 		mtk_dsi_ddp_unprepare(&dsi->ddp_comp);
 	mtk_dsi_enter_idle(dsi);
 
+	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 2);
+
 	if (dsi->mipi_hopping_sta && dsi->ext->params->dyn.switch_en)
 		mtk_mipi_tx_pll_rate_set_adpt(dsi->phy,
 			dsi->ext->params->dyn.data_rate);
 	else
 		mtk_mipi_tx_pll_rate_set_adpt(dsi->phy, 0);
+
+	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 3);
 
 	/* Power on DSI */
 	mtk_dsi_leave_idle(dsi);
@@ -7596,21 +7623,50 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 
 	mtk_dsi_set_mode(dsi);
 	mtk_dsi_clk_hs_mode(dsi, 1);
+	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 4);
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_MMDVFS_SUPPORT)) {
 		if (dsi->driver_data && dsi->driver_data->mmclk_by_datarate)
 			dsi->driver_data->mmclk_by_datarate(dsi, mtk_crtc, 1);
 	}
+	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 5);
 skip_change_mipi:
 	/*  send lcm cmd after DSI power on if needed */
 	if (dsi->ext && dsi->ext->funcs && dsi->ext->funcs->mode_switch_hs) {
 		dsi->ext->funcs->mode_switch_hs(dsi->panel,
 		&dsi->conn, dsi, src_mode, dst_mode, AFTER_DSI_POWERON, mtk_dsi_cmdq_pack_gce);
 	} else if (dsi->ext && dsi->ext->funcs &&
-		dsi->ext->funcs->mode_switch)
-		dsi->ext->funcs->mode_switch(dsi->panel, &dsi->conn, src_mode,
-			dst_mode, AFTER_DSI_POWERON);
+		dsi->ext->funcs->mode_switch) {
+		check_ms_work = dsi->ext->funcs->mode_switch(dsi->panel, &dsi->conn,
+			src_mode, dst_mode, AFTER_DSI_POWERON);
+		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 6);
+		if (!check_ms_work) {
+			check_panel_cmd = dsi->ext->params->mode_switch_cmd.num_cmd;
+			if (check_panel_cmd) {
+				for (i = 0; i < check_panel_cmd; i++) {
+					mipi_dsi_dcs_write_gce_dyn(dsi, cmdq_handle,
+					    dsi->ext->params->mode_switch_cmd.ms_table[i].para_list,
+					    dsi->ext->params->mode_switch_cmd.ms_table[i].cmd_num);
+				}
 
+				/* set frame done */
+				mtk_dsi_poll_for_idle(dsi, cmdq_handle);
+				cmdq_pkt_set_event(cmdq_handle,
+					mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+				cmdq_pkt_set_event(cmdq_handle,
+					mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
+				cmdq_pkt_set_event(cmdq_handle,
+					mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
+
+				cmdq_pkt_flush(cmdq_handle);
+				cmdq_pkt_destroy(cmdq_handle);
+
+				CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 7);
+				return;
+			}
+		}
+
+	}
 	if (!(mtk_crtc->mode_change_index & MODE_DSI_RES)) {
 		/* set frame done */
 		mtk_crtc_pkt_create(&cmdq_handle2, &mtk_crtc->base,
@@ -7625,6 +7681,7 @@ skip_change_mipi:
 		cmdq_pkt_flush(cmdq_handle2);
 		cmdq_pkt_destroy(cmdq_handle2);
 	}
+	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 8);
 }
 
 static void mtk_dsi_dy_fps_cmdq_cb(struct cmdq_cb_data data)

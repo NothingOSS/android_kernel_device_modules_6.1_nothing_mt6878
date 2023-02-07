@@ -23,6 +23,7 @@
 #define READ_DDIC_SLOT_NUM 4
 #define MAX_DYN_CMD_NUM 20
 #define MAX_TX_CMD_NUM_PACK 64
+#define MAX_MODE_SWITCH_CMD_NUM 20
 
 struct mtk_dsi;
 struct cmdq_pkt;
@@ -98,6 +99,17 @@ struct mtk_ddic_dsi_cmd {
 	unsigned int cmd_count;
 	struct mtk_ddic_cmd mtk_ddic_cmd_table[MAX_TX_CMD_NUM_PACK];
 };
+
+struct mtk_mode_switch_cmd {
+	unsigned int cmd_num;
+	unsigned char para_list[256];
+};
+
+struct mode_switch_params {
+	unsigned int num_cmd;
+	struct mtk_mode_switch_cmd ms_table[MAX_MODE_SWITCH_CMD_NUM];
+};
+
 //send ddic cmd by gce, return err if cmdq handle is null
 #define MTK_LCM_DSI_CMD_PROP_CMDQ        BIT(0)
 //send ddic cmd by gce, create one if cmdq handle is null
@@ -511,6 +523,9 @@ struct mtk_panel_params {
 	/*Msync 3.0*/
 	unsigned int skip_vblank;
 	bool vblank_off;
+
+	struct mode_switch_params mode_switch_cmd;
+	unsigned int mode_switch_cmdq;
 };
 
 struct mtk_panel_ext {
