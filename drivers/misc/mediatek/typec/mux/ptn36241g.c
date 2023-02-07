@@ -17,7 +17,7 @@
 
 struct ptn36241g {
 	struct device *dev;
-	struct typec_switch *sw;
+	struct typec_switch_dev *sw;
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *c1_active;
 	struct pinctrl_state *c1_sleep;
@@ -26,7 +26,7 @@ struct ptn36241g {
 	struct mutex lock;
 };
 
-static int ptn36241g_switch_set(struct typec_switch *sw,
+static int ptn36241g_switch_set(struct typec_switch_dev *sw,
 			      enum typec_orientation orientation)
 {
 	struct ptn36241g *ptn = typec_switch_get_drvdata(sw);

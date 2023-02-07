@@ -5,12 +5,12 @@
 #ifndef MTK_TYPEC_MUX_SWITCH_H
 #define MTK_TYPEC_MUX_SWITCH_H
 
-struct typec_switch *mtk_typec_switch_register(struct device *dev,
+struct typec_switch_dev *mtk_typec_switch_register(struct device *dev,
 			const struct typec_switch_desc *desc);
-void mtk_typec_switch_unregister(struct typec_switch *sw);
-struct typec_mux *mtk_typec_mux_register(struct device *dev,
+void mtk_typec_switch_unregister(struct typec_switch_dev *sw);
+struct typec_mux_dev *mtk_typec_mux_register(struct device *dev,
 			const struct typec_mux_desc *desc);
-void mtk_typec_mux_unregister(struct typec_mux *mux);
+void mtk_typec_mux_unregister(struct typec_mux_dev *mux);
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 extern void mtk_dp_SWInterruptSet(int bstatus);

@@ -27,8 +27,8 @@
 /* struct typec_mux_switch */
 struct typec_mux_switch {
 	struct device *dev;
-	struct typec_switch *sw;
-	struct typec_mux *mux;
+	struct typec_switch_dev *sw;
+	struct typec_mux_dev *mux;
 	int orientation;
 	struct typec_mux_state state;
 	struct proc_dir_entry *root;
@@ -37,14 +37,14 @@ struct typec_mux_switch {
 /* struct mtk_typec_switch */
 struct mtk_typec_switch {
 	struct device *dev;
-	struct typec_switch *sw;
+	struct typec_switch_dev *sw;
 	struct list_head list;
 };
 
 /* struct mtk_typec_mux */
 struct mtk_typec_mux {
 	struct device *dev;
-	struct typec_mux *mux;
+	struct typec_mux_dev *mux;
 	struct list_head list;
 };
 
@@ -54,11 +54,11 @@ static DEFINE_MUTEX(mux_lock);
 static DEFINE_MUTEX(switch_lock);
 
 /* MUX */
-struct typec_mux *mtk_typec_mux_register(struct device *dev,
+struct typec_mux_dev *mtk_typec_mux_register(struct device *dev,
 			const struct typec_mux_desc *desc)
 {
 	struct mtk_typec_mux *typec_mux;
-	struct typec_mux *mux;
+	struct typec_mux_dev *mux;
 
 	mutex_lock(&mux_lock);
 	list_for_each_entry(typec_mux, &mux_list, list) {
@@ -88,7 +88,7 @@ out:
 }
 EXPORT_SYMBOL_GPL(mtk_typec_mux_register);
 
-void mtk_typec_mux_unregister(struct typec_mux *mux)
+void mtk_typec_mux_unregister(struct typec_mux_dev *mux)
 {
 	struct mtk_typec_mux *typec_mux;
 
@@ -106,13 +106,13 @@ void mtk_typec_mux_unregister(struct typec_mux *mux)
 }
 EXPORT_SYMBOL_GPL(mtk_typec_mux_unregister);
 
-static int mtk_typec_mux_set(struct typec_mux *mux, struct typec_mux_state *state)
+static int mtk_typec_mux_set(struct typec_mux_dev *mux, struct typec_mux_state *state)
 {
 	struct typec_mux_switch *mux_sw = typec_mux_get_drvdata(mux);
 	struct mtk_typec_mux *typec_mux;
 	int ret = 0;
 
-	dev_info(mux_sw->dev, "%s %d %d\n", __func__,
+	dev_info(mux_sw->dev, "%s %lu %lu\n", __func__,
 		 mux_sw->state.mode, state->mode);
 
 	mutex_lock(&mux_lock);
@@ -161,7 +161,7 @@ static ssize_t proc_mux_write(struct file *file,
 		return -EINVAL;
 
 	if (tmp > 2) {
-		dev_info(mux_sw->dev, "%s %d, INVALID: %d\n", __func__,
+		dev_info(mux_sw->dev, "%s %lu, INVALID: %u\n", __func__,
 			 mux_sw->state.mode, tmp);
 		return count;
 	}
@@ -181,11 +181,11 @@ static const struct proc_ops proc_mux_fops = {
 };
 
 /* SWITCH */
-struct typec_switch *mtk_typec_switch_register(struct device *dev,
+struct typec_switch_dev *mtk_typec_switch_register(struct device *dev,
 			const struct typec_switch_desc *desc)
 {
 	struct mtk_typec_switch *typec_sw;
-	struct typec_switch *sw;
+	struct typec_switch_dev *sw;
 
 	mutex_lock(&switch_lock);
 	list_for_each_entry(typec_sw, &switch_list, list) {
@@ -215,7 +215,7 @@ out:
 }
 EXPORT_SYMBOL_GPL(mtk_typec_switch_register);
 
-void mtk_typec_switch_unregister(struct typec_switch *sw)
+void mtk_typec_switch_unregister(struct typec_switch_dev *sw)
 {
 	struct mtk_typec_switch *typec_sw;
 
@@ -232,7 +232,7 @@ void mtk_typec_switch_unregister(struct typec_switch *sw)
 }
 EXPORT_SYMBOL_GPL(mtk_typec_switch_unregister);
 
-static int mtk_typec_switch_set(struct typec_switch *sw,
+static int mtk_typec_switch_set(struct typec_switch_dev *sw,
 			      enum typec_orientation orientation)
 {
 	struct typec_mux_switch *mux_sw = typec_switch_get_drvdata(sw);
@@ -331,7 +331,7 @@ static int typec_mux_switch_procfs_init(struct typec_mux_switch *mux_sw)
 
 	root = proc_mkdir(PROC_MUX_SWITCH, NULL);
 	if (!root) {
-		dev_info(dev, "failed to creat %d dir\n", PROC_MUX_SWITCH);
+		dev_info(dev, "failed to creat %s dir\n", PROC_MUX_SWITCH);
 		return -ENOMEM;
 	}
 

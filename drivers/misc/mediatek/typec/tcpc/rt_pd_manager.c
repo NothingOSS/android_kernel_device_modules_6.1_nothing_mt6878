@@ -15,29 +15,9 @@
 #if IS_ENABLED(CONFIG_MTK_CHARGER)
 #include <charger_class.h>
 #endif /* CONFIG_MTK_CHARGER */
+#include "class.h"
 
 #define RT_PD_MANAGER_VERSION	"1.0.9"
-
-struct typec_port {
-	unsigned int			id;
-	struct device			dev;
-	struct ida			mode_ids;
-
-	int				prefer_role;
-	enum typec_data_role		data_role;
-	enum typec_role			pwr_role;
-	enum typec_role			vconn_role;
-	enum typec_pwr_opmode		pwr_opmode;
-	enum typec_port_type		port_type;
-	struct mutex			port_type_lock;
-
-	enum typec_orientation		orientation;
-	struct typec_switch		*sw;
-	struct typec_mux		*mux;
-
-	const struct typec_capability	*cap;
-	const struct typec_operations   *ops;
-};
 
 struct rt_pd_manager_data {
 	struct device *dev;

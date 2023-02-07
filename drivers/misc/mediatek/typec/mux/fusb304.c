@@ -17,7 +17,7 @@
 
 struct fusb304 {
 	struct device *dev;
-	struct typec_switch *sw;
+	struct typec_switch_dev *sw;
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *sel_up;
 	struct pinctrl_state *sel_down;
@@ -26,7 +26,7 @@ struct fusb304 {
 	struct mutex lock;
 };
 
-static int fusb304_switch_set(struct typec_switch *sw,
+static int fusb304_switch_set(struct typec_switch_dev *sw,
 			      enum typec_orientation orientation)
 {
 	struct fusb304 *fusb = typec_switch_get_drvdata(sw);

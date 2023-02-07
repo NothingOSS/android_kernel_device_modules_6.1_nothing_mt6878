@@ -46,8 +46,8 @@ static u8 eq_fg_sw[8][6];
 struct pi3dpx1205a {
 	struct device *dev;
 	struct i2c_client *i2c;
-	struct typec_switch *sw;
-	struct typec_mux *mux;
+	struct typec_switch_dev *sw;
+	struct typec_mux_dev *mux;
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *pwr_en;
 	struct pinctrl_state *ext_pwr_en;
@@ -283,7 +283,7 @@ static int pi3dpx1205a_init(struct i2c_client *client)
  * xxxx1xxx = Pin Assignment D is supported. 2 lanes
  * xx1xxxxx = Pin Assignment F is supported. 2 lanes
  */
-static int pi3dpx1205a_mux_set(struct typec_mux *mux, struct typec_mux_state *state)
+static int pi3dpx1205a_mux_set(struct typec_mux_dev *mux, struct typec_mux_state *state)
 {
 	/*
 	 * struct tcp_ny_ama_dp_state {
@@ -377,7 +377,7 @@ static int pi3dpx1205a_mux_set(struct typec_mux *mux, struct typec_mux_state *st
 	return ret;
 }
 
-static int pi3dpx1205a_switch_set(struct typec_switch *sw,
+static int pi3dpx1205a_switch_set(struct typec_switch_dev *sw,
 	enum typec_orientation orientation)
 {
 	struct pi3dpx1205a *pi3dpx = typec_switch_get_drvdata(sw);
@@ -537,14 +537,13 @@ static int pi3dpx1205a_probe(struct i2c_client *client,
 	return ret;
 }
 
-static int pi3dpx1205a_remove(struct i2c_client *client)
+static void pi3dpx1205a_remove(struct i2c_client *client)
 {
 	struct pi3dpx1205a *pi3dpx = i2c_get_clientdata(client);
 
 	mtk_typec_switch_unregister(pi3dpx->sw);
 	typec_mux_unregister(pi3dpx->mux);
 	/* typec_switch_unregister(pi->sw); */
-	return 0;
 }
 
 static const struct i2c_device_id pi3dpx1205a_id_table[] = {
@@ -573,4 +572,3 @@ module_i2c_driver(usb_dp_driver);
 
 MODULE_DESCRIPTION("PI3DPX1205A Type-C Redriver");
 MODULE_LICENSE("GPL v2");
-

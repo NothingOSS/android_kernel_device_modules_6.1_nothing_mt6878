@@ -20,7 +20,7 @@
 struct ps5169 {
 	struct device *dev;
 	struct i2c_client *i2c;
-	struct typec_switch *sw;
+	struct typec_switch_dev *sw;
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *enable;
 	struct pinctrl_state *disable;
@@ -37,7 +37,7 @@ static int ps5169_init(struct ps5169 *ps)
 	return 0;
 }
 
-static int ps5169_switch_set(struct typec_switch *sw,
+static int ps5169_switch_set(struct typec_switch_dev *sw,
 			enum typec_orientation orientation)
 {
 	struct ps5169 *ps = typec_switch_get_drvdata(sw);
@@ -154,16 +154,15 @@ static int ps5169_probe(struct i2c_client *client)
 	/* switch off after init done */
 	ps5169_switch_set(ps->sw, TYPEC_ORIENTATION_NONE);
 
-	dev_info(dev, "%s probe done\n");
+	dev_info(dev, "probe done\n");
 	return ret;
 }
 
-static int ps5169_remove(struct i2c_client *client)
+static void ps5169_remove(struct i2c_client *client)
 {
 	struct ps5169 *ps = i2c_get_clientdata(client);
 
 	mtk_typec_switch_unregister(ps->sw);
-	return 0;
 }
 
 static const struct i2c_device_id ps5169_table[] = {

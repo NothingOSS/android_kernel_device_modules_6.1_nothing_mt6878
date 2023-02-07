@@ -30,8 +30,8 @@ enum usb_dp_sw_vers {
 
 struct usb_dp_selector {
 	struct device *dev;
-	struct typec_switch *sw;
-	struct typec_mux *mux;
+	struct typec_switch_dev *sw;
+	struct typec_mux_dev *mux;
 	struct mutex lock;
 	void __iomem *selector_reg_address;
 	int uds_ver;
@@ -59,7 +59,7 @@ static inline void uds_clrbits(void __iomem *base, u32 bits)
 	writel((tmp & ~(bits)), addr);
 }
 
-static int usb_dp_selector_switch_set(struct typec_switch *sw,
+static int usb_dp_selector_switch_set(struct typec_switch_dev *sw,
 			      enum typec_orientation orientation)
 {
 	struct usb_dp_selector *uds = typec_switch_get_drvdata(sw);
@@ -123,7 +123,7 @@ static int usb_dp_selector_switch_set(struct typec_switch *sw,
  * 32 Pin Assignment F 2-lans
  */
 
-static int usb_dp_selector_mux_set(struct typec_mux *mux,
+static int usb_dp_selector_mux_set(struct typec_mux_dev *mux,
 				struct typec_mux_state *state)
 {
 	struct usb_dp_selector *uds = typec_mux_get_drvdata(mux);
@@ -131,7 +131,7 @@ static int usb_dp_selector_mux_set(struct typec_mux *mux,
 	int ret = 0;
 
 	/*dev_info(uds->dev, "usb_dp_selector_mux_set\n");
-	 *dev_info(uds->dev, "state->mode : %d\n", state->mode);
+	 *dev_info(uds->dev, "state->mode : %lu\n", state->mode);
 	 *dev_info(uds->dev, "data-> polarity : %d\n", data->ama_dp_state.polarity);
 	 *dev_info(uds->dev, "data-> signal : %d\n", data->ama_dp_state.signal);
 	 *dev_info(uds->dev, "data-> pin_assignment : %d\n", data->ama_dp_state.pin_assignment);

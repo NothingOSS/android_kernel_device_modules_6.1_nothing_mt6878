@@ -28,8 +28,8 @@
 struct ps5170 {
 	struct device *dev;
 	struct i2c_client *i2c;
-	struct typec_switch *sw;
-	struct typec_mux *mux;
+	struct typec_switch_dev *sw;
+	struct typec_mux_dev *mux;
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *enable;
 	struct pinctrl_state *disable;
@@ -341,7 +341,7 @@ static void ps5170_switch_set_work(struct work_struct *data)
 
 }
 
-static int ps5170_switch_set(struct typec_switch *sw,
+static int ps5170_switch_set(struct typec_switch_dev *sw,
 			enum typec_orientation orientation)
 {
 	struct ps5170 *ps = typec_switch_get_drvdata(sw);
@@ -425,13 +425,13 @@ static void ps5170_mux_set_work(struct work_struct *data)
 
 }
 
-static int ps5170_mux_set(struct typec_mux *mux, struct typec_mux_state *state)
+static int ps5170_mux_set(struct typec_mux_dev *mux, struct typec_mux_state *state)
 {
 	struct ps5170 *ps = typec_mux_get_drvdata(mux);
 	struct tcp_notify *data = state->data;
 
 	/*dev_info(ps->dev, "B ps5170_mux_set\n");
-	 *dev_info(ps->dev, "B state->mode : %d\n", state->mode);
+	 *dev_info(ps->dev, "B state->mode : %lu\n", state->mode);
 	 *dev_info(ps->dev, "B data-> polarity : %d\n", data->ama_dp_state.polarity);
 	 *dev_info(ps->dev, "B data-> signal : %d\n", data->ama_dp_state.signal);
 	 *dev_info(ps->dev, "B data-> pin_assignment : %d\n", data->ama_dp_state.pin_assignment);
@@ -570,14 +570,13 @@ static int ps5170_probe(struct i2c_client *client)
 	return ret;
 }
 
-static int ps5170_remove(struct i2c_client *client)
+static void ps5170_remove(struct i2c_client *client)
 {
 	struct ps5170 *ps = i2c_get_clientdata(client);
 
 	mtk_typec_switch_unregister(ps->sw);
 	typec_mux_unregister(ps->mux);
 	/* typec_switch_unregister(pi->sw); */
-	return 0;
 }
 
 static int __maybe_unused ps5170_suspend(struct device *dev)
