@@ -8072,7 +8072,7 @@
 				1 MML_AAL1       MML_RSZ3       MML_MUX_MOUT MML_AAL1_MOUT_EN>;
 			dbg-reg-names =
 				"MMLSYS_MISC", "CG_CON0", "CG_SET0", "CG_CLR0",
-				"SW0_RST_B", "SW1_RST_B", "MOUT_RST",
+				"SW0_RST_B", "SW1_RST_B", "MOUT_RST", "APU_DP_SEL",
 				"EVENT_GCED_EN", "IN_LINE_READY_SEL", "SMI_LARB_GREQ",
 				"BYPASS_MUX_SHADOW",
 				"DLI0_SEL_IN", "DLI1_SEL_IN",
@@ -8106,7 +8106,7 @@
 				"WROT0_AIDSEL", "WROT1_AIDSEL";
 			dbg-reg-offsets =
 				<MMLSYS_MISC>, <MML_CG_CON0>, <MML_CG_SET0>, <MML_CG_CLR0>,
-				<MML_SW0_RST_B>, <MML_SW1_RST_B>, <MML_MOUT_RST>,
+				<MML_SW0_RST_B>, <MML_SW1_RST_B>, <MML_MOUT_RST>, <MML_APU_DP_SEL>,
 				<MML_EVENT_GCED_EN>, <MML_IN_LINE_READY_SEL>, <MML_SMI_LARB_GREQ>,
 				<MML_BYPASS_MUX_SHADOW>,
 				<MML_DLI0_SEL_IN>, <MML_DLI1_SEL_IN>,
@@ -8156,6 +8156,7 @@
 			event-racing-pipe0 = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_PIPE0>;
 			event-racing-pipe1 = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_PIPE1>;
 			event-racing-pipe1-next = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_PIPE1_NEXT>;
+			event-apu-start = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_APU_START>;
 			/* sys register offset */
 			ready-sel = /bits/ 16 <MML_IN_LINE_READY_SEL>;
 			/* as dl component */
@@ -8167,6 +8168,7 @@
 			sspm-aid-enable;
 			operating-points-v2 = <&opp_table_mdp>;
 			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			apu = <&apusys_rv>;
 		};
 
 		mml-test {
@@ -8238,6 +8240,7 @@
 				<&mmqos MASTER_LARB_PORT(M4U_PORT_L3_MDP_RDMA0)
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma";
+			apudc-sel = <0x1400003c>;
 		};
 
 		mml_rdma1: mml-rdma1@1f804000 {
