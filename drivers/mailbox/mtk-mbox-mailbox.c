@@ -31,6 +31,18 @@
 #define T_IRQ_OFFSET_H		(FIXED_MBOX_SIZE - 8)
 #define T_IRQ_OFFSET_L		(FIXED_MBOX_SIZE - 4)
 #endif
+
+/* for secure mode*/
+#include <linux/arm-smccc.h>
+#include <linux/soc/mediatek/mtk_sip_svc.h>
+
+enum mtk_tinysys_sspm_kernel_op {
+	MTK_TINYSYS_SSPM_KERNEL_OP_MBOX_CLEAR = 0,
+	MTK_TINYSYS_SSPM_KERNEL_OP_NUM,
+};
+
+static unsigned int secure_mbox_clr_support;
+
 #define INTR_SET_OFS	0x0
 #define INTR_CLR_OFS	0x4
 
@@ -39,13 +51,14 @@
 
 
 struct mhu_link {
-	unsigned irq;
+	unsigned int irq; /* GIC irq */
 	void __iomem *tx_reg;
 	void __iomem *rx_reg;
 #ifdef MBOX_TIMESTAMP
 	void __iomem *shmem;
 	resource_size_t shmem_size;
 #endif
+	unsigned int mbox_irq; /* for secure mode*/
 };
 
 struct mtk_mbu {
@@ -54,6 +67,18 @@ struct mtk_mbu {
 	struct mbox_chan chan[MBOX_CHANS];
 	struct mbox_controller mbox;
 };
+
+/* for secure mode */
+static inline uint64_t sspm_do_mbox_clear(unsigned int mbox_irq)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(MTK_SIP_TINYSYS_SSPM_CONTROL,
+			MTK_TINYSYS_SSPM_KERNEL_OP_MBOX_CLEAR,
+			mbox_irq, 0, 0, 0, 0, 0, &res);
+
+	return res.a0;
+}
 
 static irqreturn_t tinysys_mbox_rx_interrupt(int irq, void *p)
 {
@@ -77,7 +102,12 @@ static irqreturn_t tinysys_mbox_rx_interrupt(int irq, void *p)
 	if (!val)
 		return IRQ_NONE;
 
-	writel_relaxed(1, mlink->rx_reg + INTR_CLR_OFS);
+	/* for secure mode */
+	if (secure_mbox_clr_support)
+		sspm_do_mbox_clear(mlink->mbox_irq);
+	else
+		writel_relaxed(1, mlink->rx_reg + INTR_CLR_OFS);
+
 	mbox_chan_received_data(chan, (void *)&val);
 
 	return IRQ_HANDLED;
@@ -155,6 +185,7 @@ static const struct mbox_chan_ops tinysys_mbox_chan_ops = {
 static int tinysys_mbox_probe(struct platform_device *pdev)
 {
 	int err, i;
+	int secure_ret; /* for secure mode */
 	struct mtk_mbu *mbu;
 	struct device *dev = &pdev->dev;
 	struct resource *res;
@@ -206,8 +237,20 @@ static int tinysys_mbox_probe(struct platform_device *pdev)
 		if (!mbu->mlink[i].irq)
 			dev_notice(dev, "failed to get irq");
 
+		mbu->mlink[i].mbox_irq = i; /* for secure mode*/
 		mbu->mlink[i].rx_reg = mbu->base;
 		mbu->mlink[i].tx_reg = mbu->base;
+	}
+
+	/* for secure mode*/
+	secure_ret = of_property_read_u32(pdev->dev.of_node,
+		"secure-sspm-mbox-clr", &secure_mbox_clr_support);
+
+	if ((!secure_ret) && secure_mbox_clr_support) {
+		pr_notice("[scmi] secure-sspm-mbox-clr support, secure_mbox_clr_support: %d\n",
+			secure_mbox_clr_support);
+	} else {
+		pr_notice("[scmi] secure-sspm-mbox-clr not support\n");
 	}
 
 	plat_data = (struct tinysys_mbox_plat *)of_device_get_match_data(dev);
