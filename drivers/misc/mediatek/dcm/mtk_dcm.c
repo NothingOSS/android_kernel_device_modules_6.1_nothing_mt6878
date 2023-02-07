@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2019 MediaTek Inc.
+ * Copyright (c) 2022 MediaTek Inc.
  */
 
 #include <linux/init.h>
@@ -8,6 +8,7 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/io.h>
+
 #include "mtk_dcm_common.h"
 #include <mtk_dcm.h>
 
@@ -41,8 +42,12 @@ unsigned int __attribute__((weak)) dcm_get_chip_sw_ver(void)
  *****************************************/
 void dcm_set_default(unsigned int type)
 {
-	int i;
 	struct DCM *dcm;
+
+	if (!is_dcm_initialized()) {
+		dcm_pr_info("[%s]DCM common driver not initialized!\n", __func__);
+		return;
+	}
 
 	dcm_pr_info("[%s]type:0x%08x, init_dcm_type=0x%x, INIT_DCM_TYPE_BY_K=0x%x\n",
 		 __func__, type, common_init_dcm_type,
@@ -50,7 +55,7 @@ void dcm_set_default(unsigned int type)
 
 	mutex_lock(&dcm_lock);
 
-	for (i = 0, dcm = &common_dcm_array[0]; i < NR_DCM_TYPE; i++, dcm++) {
+	for (dcm = common_dcm_array; dcm->name != NULL; dcm++) {
 		if (type & dcm->typeid) {
 			dcm->saved_state = dcm->default_state;
 			dcm->current_state = dcm->default_state;
@@ -74,17 +79,20 @@ void dcm_set_default(unsigned int type)
 
 void dcm_set_state(unsigned int type, int state)
 {
-	int i;
 	struct DCM *dcm;
 	unsigned int init_dcm_type_pre = common_init_dcm_type;
+
+	if (!is_dcm_initialized()) {
+		dcm_pr_info("[%s]DCM common driver not initialized!\n", __func__);
+		return;
+	}
 
 	dcm_pr_info("[%s]type:0x%08x, set:%d, init_dcm_type_pre=0x%x\n",
 		 __func__, type, state, init_dcm_type_pre);
 
 	mutex_lock(&dcm_lock);
 
-	for (i = 0, dcm = &common_dcm_array[0];
-		type && (i < NR_DCM_TYPE); i++, dcm++) {
+	for (dcm = common_dcm_array; dcm->name != NULL; dcm++) {
 		if (type & dcm->typeid) {
 			type &= ~(dcm->typeid);
 
@@ -119,16 +127,19 @@ void dcm_set_state(unsigned int type, int state)
 
 void dcm_disable(unsigned int type)
 {
-	int i;
 	struct DCM *dcm;
 	unsigned int init_dcm_type_pre = common_init_dcm_type;
+
+	if (!is_dcm_initialized()) {
+		dcm_pr_info("[%s]DCM common driver not initialized!\n", __func__);
+		return;
+	}
 
 	dcm_pr_info("[%s]type:0x%08x\n", __func__, type);
 
 	mutex_lock(&dcm_lock);
 
-	for (i = 0, dcm = &common_dcm_array[0];
-		type && (i < NR_DCM_TYPE); i++, dcm++) {
+	for (dcm = common_dcm_array; dcm->name != NULL; dcm++) {
 		if (type & dcm->typeid) {
 			type &= ~(dcm->typeid);
 
@@ -158,16 +169,19 @@ EXPORT_SYMBOL(dcm_disable);
 
 void dcm_restore(unsigned int type)
 {
-	int i;
 	struct DCM *dcm;
 	unsigned int init_dcm_type_pre = common_init_dcm_type;
+
+	if (!is_dcm_initialized()) {
+		dcm_pr_info("[%s]DCM common driver not initialized!\n", __func__);
+		return;
+	}
 
 	dcm_pr_info("[%s]type:0x%08x\n", __func__, type);
 
 	mutex_lock(&dcm_lock);
 
-	for (i = 0, dcm = &common_dcm_array[0];
-		type && (i < NR_DCM_TYPE); i++, dcm++) {
+	for (dcm = common_dcm_array; dcm->name != NULL; dcm++) {
 		if (type & dcm->typeid) {
 			type &= ~(dcm->typeid);
 
@@ -200,13 +214,18 @@ void dcm_restore(unsigned int type)
 	mutex_unlock(&dcm_lock);
 }
 
+
 void dcm_dump_state(int type)
 {
-	int i;
 	struct DCM *dcm;
 
+	if (!is_dcm_initialized()) {
+		dcm_pr_info("[%s]DCM common driver not initialized!\n", __func__);
+		return;
+	}
+
 	dcm_pr_info("\n******** Kernel dcm dump state *********\n");
-	for (i = 0, dcm = &common_dcm_array[0]; i < NR_DCM_TYPE; i++, dcm++) {
+	for (dcm = common_dcm_array; dcm->name != NULL; dcm++) {
 		if (type & dcm->typeid) {
 			dcm_pr_info("[%-16s 0x%08x] current state:%d (%d)\n",
 				 dcm->name, dcm->typeid, dcm->current_state,
@@ -221,13 +240,12 @@ static ssize_t dcm_state_show(struct kobject *kobj, struct kobj_attribute *attr,
 				  char *buf)
 {
 	int len = 0;
-	int i;
 	struct DCM *dcm;
 
 	/* dcm_dump_state(common_all_dcm_type); */
 	len += snprintf(buf+len, PAGE_SIZE-len,
 			"\n******** dcm dump state *********\n");
-	for (i = 0, dcm = &common_dcm_array[0]; i < NR_DCM_TYPE; i++, dcm++)
+	for (dcm = common_dcm_array; dcm->name != NULL; dcm++)
 		len += snprintf(buf+len, PAGE_SIZE-len,
 				"[%-16s 0x%08x] current state:%d (%d)\n",
 				dcm->name, dcm->typeid, dcm->current_state,
@@ -295,10 +313,9 @@ static ssize_t dcm_state_store(struct kobject *kobj,
 				if (mode == 0 || mode == 1) {
 					dcm_set_state(mask, mode);
 				} else {
-					dcm_pr_info("SORRY, do not support your value(must be 1 or 0): %s\n",
-				    cmd);
+					dcm_pr_info("SORRY, unsupported mode(must be 1 or 0): %s\n",
+							cmd);
 				}
-
 			}
 		} else {
 			dcm_pr_info("SORRY, do not support your command: %s\n",
@@ -331,8 +348,8 @@ int mt_dcm_common_init(void)
 	int default_state;
 	int err = 0;
 	/*dcm_pr_info("[%s]: dcm common init\n", __func__);*/
-	if (common_dcm_ops == NULL) {
-		dcm_pr_notice("[%s] dcm common ops null\n",
+	if (common_dcm_ops == NULL || common_dcm_array == NULL) {
+		dcm_pr_notice("[%s] dcm common ops or array is null\n",
 					__func__);
 		return -1;
 	}

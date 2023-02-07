@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2019 MediaTek Inc.
+ * Copyright (c) 2022 MediaTek Inc.
  */
 
 #ifndef __MTK_DCM_COMMON_H__
@@ -20,22 +20,18 @@
 #define dcm_pr_info(fmt, args...)			\
 	pr_info(TAG fmt, ##args)
 #define dcm_pr_dbg(fmt, args...)			\
-	do {                       \
-		if (dcm_debug)              \
-			pr_info(TAG fmt, ##args);    \
+	do {						\
+		if (dcm_debug)				\
+			pr_info(TAG fmt, ##args);	\
 	} while (0)
-
-/** macro **/
-#define and(v, a) ((v) & (a))
-#define or(v, o) ((v) | (o))
-#define aor(v, a, o) (((v) & (a)) | (o))
 
 #define DCM_BASE_INFO(_name) \
 { \
 	.name = #_name, \
 	.base = &_name, \
 }
-/**/
+
+
 enum {
 	ARMCORE_DCM_OFF = DCM_OFF,
 	ARMCORE_DCM_MODE1 = DCM_ON,
@@ -98,11 +94,6 @@ enum {
 };
 
 enum {
-	MCUSYS_APB_DCM_OFF = DCM_OFF,
-	MCUSYS_APB_DCM_ON = DCM_ON,
-};
-
-enum {
 	MCUSYS_BKR_DCM_OFF = DCM_OFF,
 	MCUSYS_BKR_DCM_ON = DCM_ON,
 };
@@ -133,10 +124,19 @@ enum {
 };
 
 enum {
+	MCUSYS_APB_DCM_OFF = DCM_OFF,
+	MCUSYS_APB_DCM_ON = DCM_ON,
+};
+
+enum {
 	MCUSYS_DCM_OFF = DCM_OFF,
 	MCUSYS_DCM_ON = DCM_ON,
 };
 
+enum {
+	MCUSYS_MCUPM_DCM_OFF = DCM_OFF,
+	MCUSYS_MCUPM_DCM_ON = DCM_ON,
+};
 enum {
 	VLP_DCM_OFF = DCM_OFF,
 	VLP_DCM_ON = DCM_ON,
@@ -153,139 +153,59 @@ enum {
 };
 
 enum {
-	STALL_DCM_OFF = DCM_OFF,
-	STALL_DCM_ON = DCM_ON,
-};
-
-enum {
-	DRAMC_AO_DCM_OFF = DCM_OFF,
-	DRAMC_AO_DCM_ON = DCM_ON,
-};
-
-enum {
-	DDRPHY_DCM_OFF = DCM_OFF,
-	DDRPHY_DCM_ON = DCM_ON,
-};
-
-enum {
-	EMI_DCM_OFF = DCM_OFF,
-	EMI_DCM_ON = DCM_ON,
-};
-
-enum {
-	BIG_CORE_DCM_OFF = DCM_OFF,
-	BIG_CORE_DCM_ON = DCM_ON,
-};
-
-enum {
-	GIC_SYNC_DCM_OFF = DCM_OFF,
-	GIC_SYNC_DCM_ON = DCM_ON,
-};
-
-enum {
-	LAST_CORE_DCM_OFF = DCM_OFF,
-	LAST_CORE_DCM_ON = DCM_ON,
-};
-
-enum {
-	RGU_DCM_OFF = DCM_OFF,
-	RGU_DCM_ON = DCM_ON,
-};
-
-enum {
-	TOPCKG_DCM_OFF = DCM_OFF,
-	TOPCKG_DCM_ON = DCM_ON,
-};
-
-enum {
-	LPDMA_DCM_OFF = DCM_OFF,
-	LPDMA_DCM_ON = DCM_ON,
-};
-
-enum {
-	PWRAP_DCM_OFF = DCM_OFF,
-	PWRAP_DCM_ON = DCM_ON,
-};
-
-enum {
-	MCSI_DCM_OFF = DCM_OFF,
-	MCSI_DCM_ON = DCM_ON,
-};
-
-enum {
 	ARMCORE_DCM = 0,
 	MCUSYS_DCM,
 	INFRA_DCM,
 	PERI_DCM,
 	MCUSYS_ACP_DCM,
-	MCUSYS_ADB_DCM,
+	MCUSYS_ADB_DCM = 5,
 	MCUSYS_BUS_DCM,
 	MCUSYS_CBIP_DCM,
 	MCUSYS_CORE_DCM,
 	MCUSYS_IO_DCM,
-	MCUSYS_CPC_PBI_DCM,
+	MCUSYS_CPC_PBI_DCM = 10,
 	MCUSYS_CPC_TURBO_DCM,
 	MCUSYS_STALL_DCM,
-	MCUSYS_APB_DCM,
 	MCUSYS_BKR_DCM,
 	MCUSYS_DSU_STALL_DCM,
-	MCUSYS_MISC_DCM,
+	MCUSYS_MISC_DCM = 15,
 	MCUSYS_LCPU_STALL_DCM,
 	MCUSYS_MCPU_STALL_DCM,
 	MCUSYS_BCPU_STALL_DCM,
+	MCUSYS_APB_DCM,
+	MCUSYS_MCUPM_DCM = 20,
 	VLP_DCM,
 	UFS0_DCM,
 	PEXTP_DCM,
-	EMI_DCM,
-	DRAMC_DCM,
-	DDRPHY_DCM,
-	STALL_DCM,
-	BIG_CORE_DCM,
-	GIC_SYNC_DCM,
-	LAST_CORE_DCM,
-	RGU_DCM,
-	TOPCKG_DCM,
-	LPDMA_DCM,
-	MCSI_DCM,
 	NR_DCM,
 };
 
 enum {
-	ARMCORE_DCM_TYPE	= (1U << ARMCORE_DCM),
-	MCUSYS_DCM_TYPE		= (1U << MCUSYS_DCM),
-	INFRA_DCM_TYPE		= (1U << INFRA_DCM),
-	PERI_DCM_TYPE		= (1U << PERI_DCM),
-	MCUSYS_ACP_DCM_TYPE	      = (1U << MCUSYS_ACP_DCM),
-	MCUSYS_ADB_DCM_TYPE	      = (1U << MCUSYS_ADB_DCM),
-	MCUSYS_BUS_DCM_TYPE       = (1U << MCUSYS_BUS_DCM),
-	MCUSYS_CBIP_DCM_TYPE      = (1U << MCUSYS_CBIP_DCM),
-	MCUSYS_CORE_DCM_TYPE      = (1U << MCUSYS_CORE_DCM),
-	MCUSYS_IO_DCM_TYPE        = (1U << MCUSYS_IO_DCM),
-	MCUSYS_CPC_PBI_DCM_TYPE   = (1U << MCUSYS_CPC_PBI_DCM),
-	MCUSYS_CPC_TURBO_DCM_TYPE = (1U << MCUSYS_CPC_TURBO_DCM),
-	MCUSYS_STALL_DCM_TYPE     = (1U << MCUSYS_STALL_DCM),
-	MCUSYS_APB_DCM_TYPE       = (1U << MCUSYS_APB_DCM),
-	MCUSYS_BKR_DCM_TYPE		= (1U << MCUSYS_BKR_DCM),
-	MCUSYS_DSU_STALL_DCM_TYPE = (1U << MCUSYS_DSU_STALL_DCM),
-	MCUSYS_MISC_DCM_TYPE	= (1U << MCUSYS_MISC_DCM),
-	MCUSYS_LCPU_STALL_DCM_TYPE = (1U << MCUSYS_LCPU_STALL_DCM),
-	MCUSYS_MCPU_STALL_DCM_TYPE = (1U << MCUSYS_MCPU_STALL_DCM),
-	MCUSYS_BCPU_STALL_DCM_TYPE = (1U << MCUSYS_BCPU_STALL_DCM),
-	VLP_DCM_TYPE        = (1U << VLP_DCM),
-	UFS0_DCM_TYPE	   = (1U << UFS0_DCM),
-	PEXTP_DCM_TYPE	   = (1U << PEXTP_DCM),
-	EMI_DCM_TYPE        = (1U << EMI_DCM),
-	DRAMC_DCM_TYPE      = (1U << DRAMC_DCM),
-	DDRPHY_DCM_TYPE     = (1U << DDRPHY_DCM),
-	STALL_DCM_TYPE      = (1U << STALL_DCM),
-	BIG_CORE_DCM_TYPE   = (1U << BIG_CORE_DCM),
-	GIC_SYNC_DCM_TYPE   = (1U << GIC_SYNC_DCM),
-	LAST_CORE_DCM_TYPE  = (1U << LAST_CORE_DCM),
-	RGU_DCM_TYPE        = (1U << RGU_DCM),
-	TOPCKG_DCM_TYPE     = (1U << TOPCKG_DCM),
-	LPDMA_DCM_TYPE      = (1U << LPDMA_DCM),
-	MCSI_DCM_TYPE       = (1U << MCSI_DCM),
-	NR_DCM_TYPE = NR_DCM,
+	ARMCORE_DCM_TYPE   = BIT(ARMCORE_DCM),
+	MCUSYS_DCM_TYPE	   = BIT(MCUSYS_DCM),
+	INFRA_DCM_TYPE	   = BIT(INFRA_DCM),
+	PERI_DCM_TYPE	   = BIT(PERI_DCM),
+	MCUSYS_ACP_DCM_TYPE	= BIT(MCUSYS_ACP_DCM),
+	MCUSYS_ADB_DCM_TYPE	= BIT(MCUSYS_ADB_DCM),
+	MCUSYS_BUS_DCM_TYPE = BIT(MCUSYS_BUS_DCM),
+	MCUSYS_CBIP_DCM_TYPE = BIT(MCUSYS_CBIP_DCM),
+	MCUSYS_CORE_DCM_TYPE = BIT(MCUSYS_CORE_DCM),
+	MCUSYS_IO_DCM_TYPE	= BIT(MCUSYS_IO_DCM),
+	MCUSYS_CPC_PBI_DCM_TYPE = BIT(MCUSYS_CPC_PBI_DCM),
+	MCUSYS_CPC_TURBO_DCM_TYPE = BIT(MCUSYS_CPC_TURBO_DCM),
+	MCUSYS_STALL_DCM_TYPE	= BIT(MCUSYS_STALL_DCM),
+	MCUSYS_BKR_DCM_TYPE	= BIT(MCUSYS_BKR_DCM),
+	MCUSYS_DSU_STALL_DCM_TYPE = BIT(MCUSYS_DSU_STALL_DCM),
+	MCUSYS_MISC_DCM_TYPE	= BIT(MCUSYS_MISC_DCM),
+	MCUSYS_LCPU_STALL_DCM_TYPE = BIT(MCUSYS_LCPU_STALL_DCM),
+	MCUSYS_MCPU_STALL_DCM_TYPE = BIT(MCUSYS_MCPU_STALL_DCM),
+	MCUSYS_BCPU_STALL_DCM_TYPE = BIT(MCUSYS_BCPU_STALL_DCM),
+	MCUSYS_APB_DCM_TYPE = BIT(MCUSYS_APB_DCM),
+	MCUSYS_MCUPM_DCM_TYPE = BIT(MCUSYS_MCUPM_DCM),
+	VLP_DCM_TYPE = BIT(VLP_DCM),
+	UFS0_DCM_TYPE = BIT(UFS0_DCM),
+	PEXTP_DCM_TYPE = BIT(PEXTP_DCM),
+	ALL_DCM_TYPE = BIT(NR_DCM) - 1,
 };
 
 enum {
@@ -326,17 +246,6 @@ struct DCM {
 	int typeid;
 	char *name;
 };
-
-/*extern short dcm_debug;*/
-/*extern short dcm_initiated;*/
-/*extern unsigned int all_dcm_type;*/
-/*extern unsigned int init_dcm_type;*/
-/*extern struct mutex dcm_lock;*/
-
-/*void dcm_dump_regs(void);*/
-/*int dcm_smc_get_cnt(int type_id);*/
-/*void dcm_smc_msg_send(unsigned int msg);*/
-/*short is_dcm_bringup(void);*/
 
 #endif /* #ifndef __MTK_DCM_COMMON_H__ */
 

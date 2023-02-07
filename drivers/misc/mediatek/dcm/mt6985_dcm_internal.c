@@ -25,7 +25,7 @@ static short dcm_cpu_cluster_stat;
 
 
 unsigned int all_dcm_type =
-		(ARMCORE_DCM_TYPE | MCUSYS_DCM_TYPE | STALL_DCM_TYPE |
+		(ARMCORE_DCM_TYPE | MCUSYS_DCM_TYPE |
 		INFRA_DCM_TYPE | PERI_DCM_TYPE | VLP_DCM_TYPE |
 		UFS0_DCM_TYPE | PEXTP_DCM_TYPE | MCUSYS_ACP_DCM_TYPE |
 		MCUSYS_ADB_DCM_TYPE | MCUSYS_BUS_DCM_TYPE |
@@ -35,7 +35,7 @@ unsigned int all_dcm_type =
 		MCUSYS_APB_DCM_TYPE | MCUSYS_BKR_DCM_TYPE |
 		MCUSYS_DSU_STALL_DCM_TYPE | MCUSYS_MISC_DCM_TYPE);
 unsigned int init_dcm_type =
-		(ARMCORE_DCM_TYPE | MCUSYS_DCM_TYPE | STALL_DCM_TYPE |
+		(ARMCORE_DCM_TYPE | MCUSYS_DCM_TYPE |
 		INFRA_DCM_TYPE | PERI_DCM_TYPE | VLP_DCM_TYPE |
 		UFS0_DCM_TYPE | PEXTP_DCM_TYPE | MCUSYS_ACP_DCM_TYPE |
 		MCUSYS_ADB_DCM_TYPE | MCUSYS_BUS_DCM_TYPE |
@@ -402,7 +402,7 @@ struct DCM_BASE dcm_base_array[] = {
 	DCM_BASE_INFO(dcm_mcusys_par_wrap_complex1_base),
 };
 
-struct DCM dcm_array[NR_DCM_TYPE] = {
+struct DCM dcm_array[] = {
 	{
 	 .typeid = ARMCORE_DCM_TYPE,
 	 .name = "ARMCORE_DCM",
@@ -587,94 +587,8 @@ struct DCM dcm_array[NR_DCM_TYPE] = {
 	 .default_state = PEXTP_DCM_ON,
 	 .disable_refcnt = 0,
 	},
-	{
-	 .typeid = EMI_DCM_TYPE,
-	 .name = "EMI_DCM",
-	 .func = (DCM_FUNC) dcm_emi,
-	 .current_state = EMI_DCM_ON,
-	 .default_state = EMI_DCM_ON,
-	 .disable_refcnt = 0,
-	 },
-	{
-	 .typeid = DRAMC_DCM_TYPE,
-	 .name = "DRAMC_DCM",
-	 .func = (DCM_FUNC) dcm_dramc_ao,
-	 .current_state = DRAMC_AO_DCM_ON,
-	 .default_state = DRAMC_AO_DCM_ON,
-	 .disable_refcnt = 0,
-	 },
-	{
-	 .typeid = DDRPHY_DCM_TYPE,
-	 .name = "DDRPHY_DCM",
-	 .func = (DCM_FUNC) dcm_ddrphy,
-	 .current_state = DDRPHY_DCM_ON,
-	 .default_state = DDRPHY_DCM_ON,
-	 .disable_refcnt = 0,
-	 },
-	{
-	 .typeid = STALL_DCM_TYPE,
-	 .name = "STALL_DCM",
-	 .func = (DCM_FUNC) dcm_stall,
-	 .current_state = STALL_DCM_ON,
-	 .default_state = STALL_DCM_ON,
-	 .disable_refcnt = 0,
-	 },
-	{
-	 .typeid = BIG_CORE_DCM_TYPE,
-	 .name = "BIG_CORE_DCM",
-	 .func = (DCM_FUNC) dcm_big_core,
-	 .current_state = BIG_CORE_DCM_ON,
-	 .default_state = BIG_CORE_DCM_ON,
-	 .disable_refcnt = 0,
-	 },
-	{
-	 .typeid = GIC_SYNC_DCM_TYPE,
-	 .name = "GIC_SYNC_DCM",
-	 .func = (DCM_FUNC) dcm_gic_sync,
-	 .current_state = GIC_SYNC_DCM_ON,
-	 .default_state = GIC_SYNC_DCM_ON,
-	 .disable_refcnt = 0,
-	 },
-	{
-	 .typeid = LAST_CORE_DCM_TYPE,
-	 .name = "LAST_CORE_DCM",
-	 .func = (DCM_FUNC) dcm_last_core,
-	 .current_state = LAST_CORE_DCM_ON,
-	 .default_state = LAST_CORE_DCM_ON,
-	 .disable_refcnt = 0,
-	 },
-	{
-	 .typeid = RGU_DCM_TYPE,
-	 .name = "RGU_CORE_DCM",
-	 .func = (DCM_FUNC) dcm_rgu,
-	 .current_state = RGU_DCM_ON,
-	 .default_state = RGU_DCM_ON,
-	 .disable_refcnt = 0,
-	 },
-	{
-	 .typeid = TOPCKG_DCM_TYPE,
-	 .name = "TOPCKG_DCM",
-	 .func = (DCM_FUNC) dcm_topckg,
-	 .current_state = TOPCKG_DCM_ON,
-	 .default_state = TOPCKG_DCM_ON,
-	 .disable_refcnt = 0,
-	 },
-	{
-	 .typeid = LPDMA_DCM_TYPE,
-	 .name = "LPDMA_DCM",
-	 .func = (DCM_FUNC) dcm_lpdma,
-	 .current_state = LPDMA_DCM_ON,
-	 .default_state = LPDMA_DCM_ON,
-	 .disable_refcnt = 0,
-	 },
-	{
-	 .typeid = MCSI_DCM_TYPE,
-	 .name = "MCSI_DCM",
-	 .func = (DCM_FUNC) dcm_mcsi,
-	 .current_state = MCSI_DCM_ON,
-	 .default_state = MCSI_DCM_ON,
-	 .disable_refcnt = 0,
-	 },
+	/* Keep this NULL element for array traverse */
+	{0},
 };
 
 void dcm_set_hotplug_nb(void) {}

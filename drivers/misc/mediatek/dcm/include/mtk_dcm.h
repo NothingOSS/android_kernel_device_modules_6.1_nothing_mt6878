@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2019 MediaTek Inc.
+ * Copyright (c) 2022 MediaTek Inc.
  */
 
 #ifndef __MTK_DCM_H__
@@ -16,4 +16,3 @@ void dcm_disable(unsigned int type);
 void dcm_dump_state(int type);
 
 #endif /* #ifndef __MTK_DCM_H__ */
-
