@@ -30,14 +30,21 @@ static int job_debug_dump(struct mtk_cam_job *job, const char *desc);
 
 void _on_job_last_ref(struct mtk_cam_job *job)
 {
+	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_ctrl *ctrl = &job->src_ctx->cam_ctrl;
-
-	if (CAM_DEBUG_ENABLED(STATE))
-		pr_info("%s: job #%d\n", __func__, job->req_seq);
+	bool is_last;
 
 	write_lock(&ctrl->list_lock);
+
 	list_del(&job->job_state.list);
+	is_last = list_empty(&ctrl->camsys_state_list);
+
 	write_unlock(&ctrl->list_lock);
+
+	if (CAM_DEBUG_ENABLED(CTRL) || is_last)
+		pr_info("%s: ctx %d job #%d %s%s\n", __func__,
+			ctx->stream_id, job->req_seq, job->req->req.debug_str,
+			is_last ? "(last)" : "");
 
 	mtk_cam_ctx_job_finish(job);
 }
@@ -917,8 +924,8 @@ _apply_sensor(struct mtk_cam_job *job)
 
 
 	if (!job->sensor_hdl_obj) {
-		dev_info(cam->dev, "[%s] warn. no sensor_hdl_obj to apply\n",
-			 __func__);
+		dev_info(cam->dev, "[%s] warn. no sensor_hdl_obj to apply: ctx-%d job %d\n",
+			 __func__, ctx->stream_id, job->frame_seq_no);
 		return 0;
 	}
 

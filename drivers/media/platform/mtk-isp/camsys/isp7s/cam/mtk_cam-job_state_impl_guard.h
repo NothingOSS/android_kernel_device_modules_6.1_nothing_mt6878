@@ -191,7 +191,7 @@ static inline int guard_apply_isp(struct state_accessor *s_acc,
 {
 	return allow_applying_hw(p) &&
 		ops_call(s_acc, prev_allow_apply_isp) &&
-		valid_i2c_period(p);
+		current_sensor_ready(s_acc);
 }
 
 static inline int guard_apply_m2m(struct state_accessor *s_acc,

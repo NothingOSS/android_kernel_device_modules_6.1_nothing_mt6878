@@ -640,7 +640,7 @@ static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 		job = mtk_cam_ctrl_get_job(ctrl, cond_frame_no_belong, &seq);
 		if (job) {
 			mtk_cam_job_state_set(&job->job_state,
-					SENSOR_2ND_STATE, S_SENSOR_APPLYING);
+					SENSOR_STATE, S_SENSOR_APPLYING);
 			call_jobop(job, apply_sensor);
 		}
 	}
