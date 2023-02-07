@@ -240,12 +240,12 @@ static int logmuch_dump_thread(void *arg)
 								 log_much_len, &len);
 			memset(aee_str, 0, 63);
 			add_len = scnprintf(aee_str, 63,
-					"Printk too much: >%d L/s, L: %llu, S: %llu.%03lu\n",
+					"Printk too much: >%d L/s, L: %u, S: %llu.%03llu\n",
 					detect_count, log_count, period/1000, period%1000);
 			aee_kernel_warning_api(__FILE__, __LINE__,
 					DB_OPT_PRINTK_TOO_MUCH | DB_OPT_DUMMY_DUMP,
 					aee_str, "Need to shrink kernel log");
-			pr_info("log_much detect %d log.\n", len);
+			pr_info("log_much detect %lu log.\n", len);
 			wait_event_interruptible_timeout(logmuch_thread_exit,
 				logmuch_exit == 1, 60 * CONFIG_LOG_TOO_MUCH_DETECT_GAP * HZ);
 		}
