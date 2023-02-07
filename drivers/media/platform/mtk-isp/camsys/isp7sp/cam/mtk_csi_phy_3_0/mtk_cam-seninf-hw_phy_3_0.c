@@ -236,7 +236,7 @@ static int mtk_cam_seninf_init_iomem(struct seninf_ctx *ctx,
 
 	for (i = SENINF_1; i < _seninf_ops->seninf_num; i++) {
 		ctx->reg_if_ctrl[i] = if_base + 0x0200 + (0x1000 * i);
-		ctx->reg_if_tg[i] = if_base + 0x0f00 + (0x1000 * i);
+		ctx->reg_if_tg[i] = if_base + 0x0200 + (0x1000 * i);
 		ctx->reg_if_csi2[i] = if_base + 0x0a00 + (0x1000 * i);
 	}
 
