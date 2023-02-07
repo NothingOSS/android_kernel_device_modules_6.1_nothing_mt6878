@@ -16,7 +16,7 @@
 #include <sspm_reservedmem.h>
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_THERMAL)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_THERMAL)
 #include <thermal_interface.h>
 #endif
 
@@ -37,7 +37,7 @@ static void update_cpu_temp(void)
 	unsigned int temp = 30000, i;
 
 	for (i = 0; i < NR_CPU_CORE; i++) {
-#if IS_ENABLED(CONFIG_MTK_THERMAL)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_THERMAL)
 		temp = get_cpu_temp(i);
 		if (temp > 100000)
 			temp = 100000;

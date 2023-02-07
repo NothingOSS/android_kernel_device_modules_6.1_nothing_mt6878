@@ -39,7 +39,7 @@
 #include <linux/delay.h>
 #include <aee.h>
 #include <soc/mediatek/smi.h>
-#if IS_ENABLED(CONFIG_MTK_DEVAPC)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 #include <linux/soc/mediatek/devapc_public.h>
 #endif
 #include "vcp_feature_define.h"
@@ -1095,7 +1095,7 @@ void vcp_set_clk(void)
 #endif
 }
 
-#if IS_ENABLED(CONFIG_MTK_DEVAPC)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 static bool devapc_power_cb(void)
 {
 	pr_info("[VCP] %s\n", __func__);
@@ -3042,7 +3042,7 @@ static int __init vcp_init(void)
 	vcp_set_fp(&vcp_helper_fp);
 	vcp_set_ipidev(&vcp_ipidev);
 
-#if IS_ENABLED(CONFIG_MTK_DEVAPC)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 	register_devapc_power_callback(&devapc_power_handle);
 #endif
 
