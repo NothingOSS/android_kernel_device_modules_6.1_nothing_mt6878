@@ -9,6 +9,9 @@
 
 #define MTK_MMQOS_MAX_BW	(0x10000000)
 
+//#define ENABLE_INTERCONNECT_V1
+#define ENABLE_INTERCONNECT_V2
+
 enum hrt_type {
 	HRT_MD,
 	HRT_CAM,
