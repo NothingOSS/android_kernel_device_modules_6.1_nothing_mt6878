@@ -25,14 +25,14 @@ static unsigned int venc_h265_get_profile(struct venc_inst *inst,
 {
 	switch (profile) {
 	case V4L2_MPEG_VIDEO_HEVC_PROFILE_MAIN:
-		return 2;
+		return 1;
 	case V4L2_MPEG_VIDEO_HEVC_PROFILE_MAIN_10:
-		return 4;
+		return 2;
 	case V4L2_MPEG_VIDEO_HEVC_PROFILE_MAIN_STILL_PICTURE:
-		return 8;
+		return 4;
 	default:
 		mtk_vcodec_debug(inst, "unsupported profile %d", profile);
-		return 0;
+		return 1;
 	}
 }
 
@@ -41,34 +41,34 @@ static unsigned int venc_h265_get_level(struct venc_inst *inst,
 {
 	switch (level) {
 	case V4L2_MPEG_VIDEO_HEVC_LEVEL_1:
-		return (tier == V4L2_MPEG_VIDEO_HEVC_TIER_MAIN) ? 0 : 1;
+		return 1;
 	case V4L2_MPEG_VIDEO_HEVC_LEVEL_2:
-		return (tier == V4L2_MPEG_VIDEO_HEVC_TIER_MAIN) ? 2 : 3;
+		return 7;
 	case V4L2_MPEG_VIDEO_HEVC_LEVEL_2_1:
-		return (tier == V4L2_MPEG_VIDEO_HEVC_TIER_MAIN) ? 4 : 5;
+		return 8;
 	case V4L2_MPEG_VIDEO_HEVC_LEVEL_3:
-		return (tier == V4L2_MPEG_VIDEO_HEVC_TIER_MAIN) ? 6 : 7;
+		return 10;
 	case V4L2_MPEG_VIDEO_HEVC_LEVEL_3_1:
-		return (tier == V4L2_MPEG_VIDEO_HEVC_TIER_MAIN) ? 8 : 9;
+		return 11;
 	case V4L2_MPEG_VIDEO_HEVC_LEVEL_4:
-		return (tier == V4L2_MPEG_VIDEO_HEVC_TIER_MAIN) ? 10 : 11;
+		return 13;
 	case V4L2_MPEG_VIDEO_HEVC_LEVEL_4_1:
-		return (tier == V4L2_MPEG_VIDEO_HEVC_TIER_MAIN) ? 12 : 13;
+		return 14;
 	case V4L2_MPEG_VIDEO_HEVC_LEVEL_5:
-		return (tier == V4L2_MPEG_VIDEO_HEVC_TIER_MAIN) ? 14 : 15;
+		return 16;
 	case V4L2_MPEG_VIDEO_HEVC_LEVEL_5_1:
-		return (tier == V4L2_MPEG_VIDEO_HEVC_TIER_MAIN) ? 16 : 17;
+		return 17;
 	case V4L2_MPEG_VIDEO_HEVC_LEVEL_5_2:
-		return (tier == V4L2_MPEG_VIDEO_HEVC_TIER_MAIN) ? 18 : 19;
+		return 18;
 	case V4L2_MPEG_VIDEO_HEVC_LEVEL_6:
-		return (tier == V4L2_MPEG_VIDEO_HEVC_TIER_MAIN) ? 20 : 21;
+		return 19;
 	case V4L2_MPEG_VIDEO_HEVC_LEVEL_6_1:
-		return (tier == V4L2_MPEG_VIDEO_HEVC_TIER_MAIN) ? 22 : 23;
+		return 20;
 	case V4L2_MPEG_VIDEO_HEVC_LEVEL_6_2:
-		return (tier == V4L2_MPEG_VIDEO_HEVC_TIER_MAIN) ? 24 : 25;
+		return 21;
 	default:
 		mtk_vcodec_debug(inst, "unsupported level %d", level);
-		return 26;
+		return 21;
 	}
 }
 
@@ -128,11 +128,11 @@ static int venc_encode_header(struct venc_inst *inst,
 	if (bs_buf == NULL)
 		inst->vsi->venc.venc_bs_va = 0;
 	else
-		inst->vsi->venc.venc_bs_va = (u64)(uintptr_t)bs_buf;
+		inst->vsi->venc.venc_bs_va = (u64)(bs_buf->index + 1);
 
 	inst->vsi->venc.venc_fb_va = 0;
 
-	mtk_vcodec_debug(inst, "vsi venc_bs_va 0x%llx",
+	mtk_vcodec_debug(inst, "vsi venc_bs_va %lld",
 			 inst->vsi->venc.venc_bs_va);
 
 	ret = vcu_enc_encode(&inst->vcu_inst, VENC_BS_MODE_SEQ_HDR, NULL,
@@ -155,12 +155,12 @@ static int venc_encode_frame(struct venc_inst *inst,
 	if (bs_buf == NULL)
 		inst->vsi->venc.venc_bs_va = 0;
 	else
-		inst->vsi->venc.venc_bs_va = (u64)(uintptr_t)bs_buf;
+		inst->vsi->venc.venc_bs_va = (u64)(bs_buf->index + 1);
 
 	if (frm_buf == NULL)
 		inst->vsi->venc.venc_fb_va = 0;
 	else {
-		inst->vsi->venc.venc_fb_va = (u64)(uintptr_t)frm_buf;
+		inst->vsi->venc.venc_fb_va = (u64)(frm_buf->index + 1);
 		inst->vsi->venc.timestamp = frm_buf->timestamp;
 	}
 	ret = vcu_enc_encode(&inst->vcu_inst, VENC_BS_MODE_FRAME, frm_buf,
@@ -170,7 +170,7 @@ static int venc_encode_frame(struct venc_inst *inst,
 
 	++inst->frm_cnt;
 	mtk_vcodec_debug(inst,
-		 "Format: frame_va %llx (%c%c%c%c) bs_va:%llx (%c%c%c%c)",
+		 "Format: frame_va %lld (%c%c%c%c) bs_va:%lld (%c%c%c%c)",
 		  inst->vsi->venc.venc_fb_va,
 		  fm_fourcc & 0xFF, (fm_fourcc >> 8) & 0xFF,
 		  (fm_fourcc >> 16) & 0xFF, (fm_fourcc >> 24) & 0xFF,
@@ -195,11 +195,11 @@ static int venc_encode_frame_final(struct venc_inst *inst,
 	if (bs_buf == NULL)
 		inst->vsi->venc.venc_bs_va = 0;
 	else
-		inst->vsi->venc.venc_bs_va = (u64)(uintptr_t)bs_buf;
+		inst->vsi->venc.venc_bs_va = (u64)(bs_buf->index + 1);
 	if (frm_buf == NULL)
 		inst->vsi->venc.venc_fb_va = 0;
 	else
-		inst->vsi->venc.venc_fb_va = (u64)(uintptr_t)frm_buf;
+		inst->vsi->venc.venc_fb_va = (u64)(frm_buf->index + 1);
 
 	ret = vcu_enc_encode(&inst->vcu_inst, VENC_BS_MODE_FRAME_FINAL, frm_buf,
 						 bs_buf, bs_size);
@@ -325,6 +325,8 @@ static void venc_get_free_buffers(struct venc_inst *inst,
 			     struct ring_input_list *list,
 			     struct venc_done_result *pResult)
 {
+	u64 bs_index, fb_index;
+
 	if (list->count < 0 || list->count >= VENC_MAX_FB_NUM) {
 		mtk_vcodec_err(inst, "list count %d invalid ! (write_idx %d, read_idx %d)",
 			list->count, list->write_idx, list->read_idx);
@@ -347,14 +349,16 @@ static void venc_get_free_buffers(struct venc_inst *inst,
 
 	pResult->bs_size = list->bs_size[list->read_idx];
 	pResult->is_key_frm = list->is_key_frm[list->read_idx];
-	pResult->bs_va = list->venc_bs_va_list[list->read_idx];
-	pResult->frm_va = list->venc_fb_va_list[list->read_idx];
+	bs_index = list->venc_bs_va_list[list->read_idx];
+	pResult->bs_va = (unsigned long)inst->ctx->bs_list[bs_index];
+	fb_index = list->venc_fb_va_list[list->read_idx];
+	pResult->frm_va = (unsigned long)inst->ctx->fb_list[fb_index];
 	pResult->is_last_slc = list->is_last_slice[list->read_idx];
 
-	mtk_vcodec_debug(inst, "read_idx=%d bsva %lx frva %lx bssize %d iskey %d is_last_slc=%d",
+	mtk_vcodec_debug(inst, "read_idx=%d bsva %lx %lld frva %lx %lld bssize %d iskey %d is_last_slc=%d",
 		list->read_idx,
-		pResult->bs_va,
-		pResult->frm_va,
+		pResult->bs_va, bs_index,
+		pResult->frm_va, fb_index,
 		pResult->bs_size,
 		pResult->is_key_frm,
 		pResult->is_last_slc);
@@ -417,6 +421,9 @@ static int venc_get_param(unsigned long handle,
 		if (inst->vsi == NULL)
 			return -EINVAL;
 		venc_get_resolution_change(inst, &inst->vsi->config, out);
+		break;
+	case GET_PARAM_VENC_VCU_VPUD_LOG:
+		VCU_FPTR(vcu_get_log)(out, LOG_PROPERTY_SIZE);
 		break;
 	default:
 		mtk_vcodec_err(inst, "invalid get parameter type=%d", type);
@@ -549,6 +556,9 @@ static int venc_set_param(unsigned long handle,
 		break;
 	case VENC_SET_PARAM_PROPERTY:
 		mtk_vcodec_err(inst, "VCU not support SET_PARAM_VDEC_PROPERTY\n");
+		break;
+	case VENC_SET_PARAM_VCU_VPUD_LOG:
+		ret = VCU_FPTR(vcu_set_log)(enc_prm->log);
 		break;
 	default:
 		if (inst->vsi == NULL)

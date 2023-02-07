@@ -101,6 +101,7 @@ struct vcu_v4l2_func {
 	int (*vcu_compare_version)(struct platform_device *pdev,
 				const char *expected_version);
 	void (*vcu_get_task)(struct task_struct **task, int reset);
+	void (*vcu_put_task)(void);
 	int (*vcu_set_v4l2_callback)(struct platform_device *pdev,
 		struct vcu_v4l2_callback_func *call_back);
 	int (*vcu_get_ctx_ipi_binding_lock)(struct platform_device *pdev,
@@ -118,6 +119,8 @@ struct vcu_v4l2_func {
 	int (*vcu_ipi_send)(struct platform_device *pdev,
 			 enum ipi_id id, void *buf,
 			 unsigned int len, void *priv);
+	int (*vcu_set_log)(const char *val);
+	int (*vcu_get_log)(char *val, unsigned int val_len);
 };
 extern struct vcu_v4l2_func vcu_func;
 
@@ -217,6 +220,7 @@ void *vcu_mapping_dm_addr(struct platform_device *pdev,
  *
  **/
 void vcu_get_task(struct task_struct **task, int reset);
+void vcu_put_task(void);
 int vcu_set_v4l2_callback(struct platform_device *pdev,
 	struct vcu_v4l2_callback_func *call_back);
 int vcu_get_ctx_ipi_binding_lock(struct platform_device *pdev,
@@ -236,5 +240,7 @@ extern void venc_encode_pmqos_gce_end(void *ctx_end,
 		unsigned int core_id, int job_cnt);
 extern void vdec_check_release_lock(void *ctx_check);
 extern void mtk_vcodec_gce_timeout_dump(void *ctx);
+int vcu_set_log(const char *val);
+int vcu_get_log(char *val, unsigned int val_len);
 
 #endif /* _MTK_VCU_H */

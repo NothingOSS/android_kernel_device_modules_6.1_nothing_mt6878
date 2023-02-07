@@ -23,6 +23,7 @@
 #include "mtk_vcodec_util.h"
 #include "vcodec_ipi_msg.h"
 #include "mtk_vcodec_pm.h"
+#include "mtk_vcodec_dec_pm_plat.h"
 #include "vcodec_dvfs.h"
 #include "vcodec_bw.h"
 #include "mtk_dma_contig.h"
@@ -48,6 +49,8 @@
 #define V4L2_BUF_FLAG_OUTPUT_NOT_GENERATED 0x02000000
 #define MTK_INVALID_TIMESTAMP   ((u64)-1)
 #define MTK_VDEC_ALWAYS_ON_OP_RATE 135
+#define MTK_VCODEC_IPI_THREAD_PRIORITY 1
+#define MTK_VCODEC_MAX_MQ_NODE_CNT  4
 
 #define MAX_CODEC_FREQ_STEP	10
 #define MTK_VDEC_PORT_NUM	64
@@ -456,6 +459,7 @@ struct venc_enc_param {
 	unsigned int slice_header_spacing;
 	struct mtk_venc_multi_ref *multi_ref;
 	struct mtk_venc_vui_info *vui_info;
+	char *log;
 };
 
 /*
@@ -465,6 +469,7 @@ struct venc_enc_param {
  */
 struct venc_frm_buf {
 	struct mtk_vcodec_mem fb_addr[MTK_VCODEC_MAX_PLANES];
+	u32 index;
 	unsigned int num_planes;
 	u64 timestamp;
 	bool has_meta;
@@ -525,6 +530,7 @@ struct vdec_set_frame_work_struct {
 struct vdec_check_alive_work_struct {
 	struct work_struct work;
 	struct mtk_vcodec_ctx *ctx;
+	struct mtk_vcodec_dev *dev;
 };
 
 /**
@@ -589,6 +595,8 @@ struct mtk_vcodec_ctx {
 	const struct vdec_common_if *dec_if;
 	const struct venc_common_if *enc_if;
 	unsigned long drv_handle;
+	uintptr_t bs_list[VB2_MAX_FRAME+1];
+	uintptr_t fb_list[VB2_MAX_FRAME+1];
 
 	struct vdec_pic_info picinfo;
 	int dpb_size;
@@ -652,6 +660,7 @@ struct mtk_vcodec_ctx {
 	struct mutex q_mutex;
 	int use_slbc;
 	unsigned int slbc_addr;
+	int sysram_enable;
 #if ENABLE_FENCE
 	struct sync_timeline *p_timeline_obj;
 #endif
@@ -744,6 +753,9 @@ struct mtk_vcodec_dev {
 	spinlock_t dec_power_lock[MTK_VDEC_HW_NUM];
 	spinlock_t enc_power_lock[MTK_VENC_HW_NUM];
 	int dec_m4u_ports[NUM_MAX_VDEC_M4U_PORT];
+	int dec_clk_ref_cnt[MTK_VDEC_HW_NUM];
+	int dec_larb_ref_cnt;
+	struct mutex dec_larb_mutex;
 
 	unsigned long id_counter;
 
@@ -766,7 +778,6 @@ struct mtk_vcodec_dev {
 
 	struct semaphore dec_sem[MTK_VDEC_HW_NUM];
 	struct semaphore enc_sem[MTK_VENC_HW_NUM];
-	unsigned int dec_always_on[MTK_VDEC_HW_NUM]; // ref count
 
 	struct mutex dec_dvfs_mutex;
 	struct mutex enc_dvfs_mutex;

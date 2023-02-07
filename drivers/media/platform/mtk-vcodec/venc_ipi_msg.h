@@ -69,6 +69,7 @@ enum venc_get_param_type {
 	GET_PARAM_FREE_BUFFERS,
 	GET_PARAM_ROI_RC_QP,
 	GET_PARAM_RESOLUTION_CHANGE,
+	GET_PARAM_VENC_VCU_VPUD_LOG
 };
 
 /*
@@ -120,7 +121,8 @@ enum venc_set_param_type {
 	VENC_SET_PARAM_VCP_LOG_INFO,
 	VENC_SET_PARAM_ADJUST_QP_CONTROL_MODE,
 	VENC_SET_PARAM_TEMPORAL_LAYER_CNT,
-	VENC_SET_PARAM_RELEASE_SLB
+	VENC_SET_PARAM_RELEASE_SLB,
+	VENC_SET_PARAM_VCU_VPUD_LOG
 };
 
 #define VENC_MSG_AP_SEND_PREFIX	\
@@ -466,6 +468,7 @@ struct venc_vcu_config {
 	__u32 temporal_layer_bcount;
 	__u32 max_ltr_num;
 	__u32 slice_header_spacing;
+	__u32 sysram_enable;
 	__u32 reserved;
 	struct mtk_color_desc color_desc;
 	struct mtk_venc_multi_ref multi_ref;

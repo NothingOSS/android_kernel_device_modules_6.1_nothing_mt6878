@@ -476,13 +476,17 @@ void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 			freq_sum, op_rate_sum);
 
 		if (dev->vdec_dvfs_params.allow_oc == 0) { /* normal max */
-			if (freq_sum > dev->vdec_dvfs_params.normal_max_freq ||
-				no_op_rate_max_freq == 1)
+			if (freq_sum > dev->vdec_dvfs_params.normal_max_freq)
 				freq_sum = dev->vdec_dvfs_params.normal_max_freq;
 		} else { /* allow oc */
 			if (no_op_rate_max_freq == true)
 				freq_sum = MAX_VCODEC_FREQ;
 		}
+
+		if (op_rate_sum < dev->vdec_dvfs_params.per_frame_adjust_op_rate)
+			dev->vdec_dvfs_params.per_frame_adjust = 1;
+		else
+			dev->vdec_dvfs_params.per_frame_adjust = 0;
 
 		freq_sum = match_avail_freq(dev, codec_type, freq_sum);
 
@@ -526,9 +530,51 @@ void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 				freq_sum = MAX_VCODEC_FREQ;
 		}
 
+		if (op_rate_sum < dev->venc_dvfs_params.per_frame_adjust_op_rate)
+			dev->venc_dvfs_params.per_frame_adjust = 1;
+		else
+			dev->venc_dvfs_params.per_frame_adjust = 0;
+
 		freq_sum = match_avail_freq(dev, codec_type, freq_sum);
 
 		dev->venc_dvfs_params.target_freq = (u32)freq_sum;
 		mtk_v4l2_debug(6, "[VDVFS] VENC freq = %u", dev->venc_dvfs_params.target_freq);
 	}
+}
+
+void mtk_vcodec_alive_checker_suspend(struct mtk_vcodec_dev *dev)
+{
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+#ifdef VDEC_CHECK_ALIVE
+	/* Only support vdec check alive now */
+	if (mtk_vcodec_is_vcp(MTK_INST_DECODER)) {
+		if (!list_empty(&dev->ctx_list) && dev->vdec_dvfs_params.has_timer) {
+			mtk_v4l2_debug(0, "[VDVFS][VDEC] suspend vdec alive checker...");
+			del_timer_sync(&dev->vdec_dvfs_params.vdec_active_checker);
+			flush_workqueue(dev->check_alive_workqueue);
+			dev->vdec_dvfs_params.has_timer = 0;
+		}
+	}
+#endif
+#endif
+}
+
+void mtk_vcodec_alive_checker_resume(struct mtk_vcodec_dev *dev)
+{
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+#ifdef VDEC_CHECK_ALIVE
+	/* Only support vdec check alive now */
+	if (mtk_vcodec_is_vcp(MTK_INST_DECODER)) {
+		if (!list_empty(&dev->ctx_list) && !dev->vdec_dvfs_params.has_timer) {
+			mtk_v4l2_debug(0, "[VDVFS][VDEC] resume vdec alive checker...");
+			timer_setup(&dev->vdec_dvfs_params.vdec_active_checker,
+				mtk_vcodec_check_alive, 0);
+			dev->vdec_dvfs_params.vdec_active_checker.expires =
+				jiffies + msecs_to_jiffies(MTK_VDEC_CHECK_ACTIVE_INTERVAL);
+			add_timer(&dev->vdec_dvfs_params.vdec_active_checker);
+			dev->vdec_dvfs_params.has_timer = 1;
+		}
+	}
+#endif
+#endif
 }

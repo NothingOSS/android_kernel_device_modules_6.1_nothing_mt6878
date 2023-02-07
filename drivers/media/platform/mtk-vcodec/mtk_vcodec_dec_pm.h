@@ -9,6 +9,10 @@
 
 #include "mtk_vcodec_drv.h"
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+void vdec_dump_mem_buf(unsigned long h_vdec);
+#endif
+
 void mtk_dec_init_ctx_pm(struct mtk_vcodec_ctx *ctx);
 int mtk_vcodec_init_dec_pm(struct mtk_vcodec_dev *dev);
 void mtk_vcodec_release_dec_pm(struct mtk_vcodec_dev *dev);

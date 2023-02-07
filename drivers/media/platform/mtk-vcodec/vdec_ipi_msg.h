@@ -141,7 +141,8 @@ enum vdec_get_param_type {
 	GET_PARAM_INPUT_DRIVEN,
 	GET_PARAM_ALIGN_MODE,
 	GET_PARAM_INTERLACING_FIELD_SEQ,
-	GET_PARAM_CAPABILITY_FRAMEINTERVALS
+	GET_PARAM_CAPABILITY_FRAMEINTERVALS,
+	GET_PARAM_VDEC_VCU_VPUD_LOG
 };
 
 /*
@@ -180,6 +181,7 @@ enum vdec_set_param_type {
 	SET_PARAM_NO_REORDER,
 	SET_PARAM_DECODE_ERROR_HANDLE_MODE,
 	SET_PARAM_MMDVFS,
+	SET_PARAM_VDEC_VCU_VPUD_LOG,
 	SET_PARAM_MAX = 0xFFFFFFFF
 };
 
@@ -465,6 +467,7 @@ struct vdec_vsi {
 	__u32 codec_fmt;
 	__s32 target_freq;
 	__u32 is_active;
+	__u8  high_loading_scenario;
 };
 
 #endif

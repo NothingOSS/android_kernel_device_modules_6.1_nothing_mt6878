@@ -15,25 +15,22 @@
 #include "mtk_vcodec_dec_pm_plat.h"
 #include "mtk_vcodec_util.h"
 #include "mtk_vcu.h"
-
-#if DEC_DVFS
 #include <linux/pm_opp.h>
 #include <linux/regulator/consumer.h>
 #include "vcodec_dvfs.h"
 #include "vdec_drv_if.h"
 #define STD_VDEC_FREQ 218000000
-#endif
 
-#if DEC_EMI_BW
 //#include <linux/interconnect-provider.h>
 #include "mtk-interconnect.h"
 #include "vcodec_bw.h"
-#endif
+
 
 //#define VDEC_PRINT_DTS_INFO
 
 static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 {
+#if DEC_DVFS
 	const int op_item_num = 9;
 	const int tp_item_num = 4;
 	const int bw_item_num = 3;
@@ -255,11 +252,14 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 			dev->vdec_larb_bw[i].larb_base_bw);
 	}
 #endif
+#endif
 	return true;
+
 }
 
 static void mtk_dec_tput_deinit(struct mtk_vcodec_dev *dev)
 {
+#if DEC_DVFS
 	if (dev->vdec_dflt_op_rate) {
 		vfree(dev->vdec_dflt_op_rate);
 		dev->vdec_dflt_op_rate = 0;
@@ -274,6 +274,7 @@ static void mtk_dec_tput_deinit(struct mtk_vcodec_dev *dev)
 		vfree(dev->vdec_larb_bw);
 		dev->vdec_larb_bw = 0;
 	}
+#endif
 }
 
 
@@ -284,7 +285,6 @@ void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 	struct dev_pm_opp *opp = 0;
 	unsigned long freq = 0;
 	int i = 0;
-	bool tput_ret = false;
 
 	INIT_LIST_HEAD(&dev->vdec_dvfs_inst);
 
@@ -319,17 +319,15 @@ void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 		i++;
 		dev_pm_opp_put(opp);
 	}
-
-	tput_ret = mtk_dec_tput_init(dev);
+	dev->vdec_dvfs_params.high_loading_scenario = 0;
 #endif
+	mtk_dec_tput_init(dev);
 }
 
 void mtk_unprepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 {
-#if DEC_DVFS
 	/* Set to lowest clock before leaving */
 	mtk_dec_tput_deinit(dev);
-#endif
 }
 
 void mtk_prepare_vdec_emi_bw(struct mtk_vcodec_dev *dev)
@@ -392,14 +390,14 @@ void set_vdec_opp(struct mtk_vcodec_dev *dev, u32 freq)
 				mtk_v4l2_err("[VDEC] Failed to set mmdvfs rate %lu\n",
 						freq_64);
 			}
-			mtk_v4l2_debug(0, "[VDEC] freq %u, find_freq %lu", freq, freq_64);
+			mtk_v4l2_debug(8, "[VDEC] freq %u, find_freq %lu", freq, freq_64);
 		} else if (dev->vdec_reg) {
 			ret = regulator_set_voltage(dev->vdec_reg, volt, INT_MAX);
 			if (ret) {
 				mtk_v4l2_err("[VDEC] Failed to set regulator voltage %d\n",
 						volt);
 			}
-			mtk_v4l2_debug(0, "[VDEC] freq %u, voltage %d", freq, volt);
+			mtk_v4l2_debug(8, "[VDEC] freq %u, voltage %d", freq, volt);
 		}
 	}
 }
@@ -409,13 +407,9 @@ void mtk_vdec_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)
 	struct mtk_vcodec_dev *dev = ctx->dev;
 	struct vdec_inst *inst = (struct vdec_inst *) ctx->drv_handle;
 
-	if (ctx->state != MTK_STATE_ABORT) {
-		dev->vdec_dvfs_params.target_freq = inst->vsi->target_freq;
-		ctx->dec_params.operating_rate = inst->vsi->op_rate;
-	}
-
-	mtk_v4l2_debug(4, "[VDVFS][VDEC] sync target_freq %d %d by ctx vsi from uP",
-		dev->vdec_dvfs_params.target_freq, inst->vsi->target_freq);
+	dev->vdec_dvfs_params.target_freq = inst->vsi->target_freq;
+	dev->vdec_dvfs_params.high_loading_scenario = inst->vsi->high_loading_scenario;
+	ctx->dec_params.operating_rate = inst->vsi->op_rate;
 }
 
 void mtk_vdec_dvfs_begin_inst(struct mtk_vcodec_ctx *ctx)
@@ -694,3 +688,10 @@ void mtk_vdec_dvfs_update_active_state(struct mtk_vcodec_ctx *ctx)
 		inst->is_active = ctx->is_active;
 	}
 }
+
+bool mtk_vdec_dvfs_is_pw_always_on(struct mtk_vcodec_ctx *ctx)
+{
+	return (ctx->dev->vdec_dvfs_params.target_freq == VDEC_HIGHEST_FREQ ||
+		ctx->dev->vdec_dvfs_params.high_loading_scenario);
+}
+
