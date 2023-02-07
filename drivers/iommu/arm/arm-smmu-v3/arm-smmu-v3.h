@@ -3,6 +3,7 @@
  * IOMMU API for ARM architected SMMUv3 implementations.
  *
  * Copyright (C) 2015 ARM Limited
+ * Copyright (c) 2023 MediaTek Inc.
  */
 
 #ifndef _ARM_SMMU_V3_H
@@ -153,6 +154,8 @@
 #define ARM_SMMU_PRIQ_IRQ_CFG2		0xdc
 
 #define ARM_SMMU_REG_SZ			0xe00
+#define SMMUWP_REG_SZ			0x800
+#define SMMUWP_OFFSET			0x1ff000
 
 /* Common MSI config fields */
 #define MSI_CFG0_ADDR_MASK		GENMASK_ULL(51, 2)
@@ -420,6 +423,15 @@
 #define MSI_IOVA_BASE			0x8000000
 #define MSI_IOVA_LENGTH			0x100000
 
+/* MTK iommu device features */
+#define MTK_IOMMU_DEV_FEAT_BASE			20
+/**
+ * @IOMMU_DEV_FEAT_BYPASS_S1: Bypass smmu stage 1 by StreamID
+ *
+ */
+#define IOMMU_DEV_FEAT_BYPASS_S1		(MTK_IOMMU_DEV_FEAT_BASE + 0)
+#define MASTER_FEATURE_COUNT_EXTENDED		(MTK_IOMMU_DEV_FEAT_BASE + 1)
+
 enum pri_resp {
 	PRI_RESP_DENY = 0,
 	PRI_RESP_FAIL = 1,
@@ -619,6 +631,7 @@ struct arm_smmu_device {
 	struct device			*dev;
 	void __iomem			*base;
 	void __iomem			*page1;
+	void __iomem			*wp_base;
 
 #define ARM_SMMU_FEAT_2_LVL_STRTAB	(1 << 0)
 #define ARM_SMMU_FEAT_2_LVL_CDTAB	(1 << 1)
@@ -645,6 +658,8 @@ struct arm_smmu_device {
 #define ARM_SMMU_OPT_PAGE0_REGS_ONLY	(1 << 1)
 #define ARM_SMMU_OPT_MSIPOLL		(1 << 2)
 	u32				options;
+
+	const struct arm_smmu_impl	*impl;
 
 	struct arm_smmu_cmdq		cmdq;
 	struct arm_smmu_evtq		evtq;
@@ -696,6 +711,8 @@ struct arm_smmu_master {
 	bool				iopf_enabled;
 	struct list_head		bonds;
 	unsigned int			ssid_bits;
+	/* Mediatek proprietary */
+	DECLARE_BITMAP(features, MASTER_FEATURE_COUNT_EXTENDED);
 };
 
 /* SMMU private data for an IOMMU domain */
@@ -733,6 +750,43 @@ static inline struct arm_smmu_domain *to_smmu_domain(struct iommu_domain *dom)
 	return container_of(dom, struct arm_smmu_domain, domain);
 }
 
+struct arm_smmu_impl {
+	struct iommu_group* (*device_group)(struct device *dev);
+	bool (*delay_hw_init)(struct arm_smmu_device *smmu);
+	int (*smmu_hw_init)(struct arm_smmu_device *smmu);
+	int (*smmu_hw_deinit)(struct arm_smmu_device *smmu);
+	int (*smmu_power_get)(struct arm_smmu_device *smmu);
+	void (*smmu_power_put)(struct arm_smmu_device *smmu);
+	int (*smmu_runtime_suspend)(struct device *dev);
+	int (*smmu_runtime_resume)(struct device *dev);
+	void (*get_resv_regions)(struct device *dev, struct list_head *head);
+	int (*smmu_irq_handler)(int irq, void *dev);
+	int (*smmu_evt_handler)(int irq, void *dev, u64 *evt);
+	int (*report_device_fault)(struct arm_smmu_master *master,
+				   u64 *evt,
+				   struct iommu_fault_event *fault_evt);
+	int (*def_domain_type)(struct device *dev);
+	bool (*dev_has_feature)(struct device *dev,
+				enum iommu_dev_features feat);
+	bool (*dev_feature_enabled)(struct device *dev,
+				    enum iommu_dev_features feat);
+	bool (*dev_enable_feature)(struct device *dev,
+				   enum iommu_dev_features feat);
+	bool (*dev_disable_feature)(struct device *dev,
+				    enum iommu_dev_features feat);
+	void (*iotlb_sync_map)(struct iommu_domain *domain,
+			       unsigned long iova, size_t size);
+	void (*iotlb_sync)(struct iommu_domain *domain,
+			   struct iommu_iotlb_gather *gather);
+	void (*tlb_flush)(struct arm_smmu_domain *smmu_domain,
+			  unsigned long iova,
+			  size_t size);
+	void (*fault_dump)(struct arm_smmu_device *smmu);
+};
+
+struct arm_smmu_device *arm_smmu_v3_impl_init(struct arm_smmu_device *smmu);
+struct arm_smmu_device *mtk_smmu_v3_impl_init(struct arm_smmu_device *smmu);
+
 extern struct xarray arm_smmu_asid_xa;
 extern struct mutex arm_smmu_asid_lock;
 extern struct arm_smmu_ctx_desc quiet_cd;
@@ -746,6 +800,10 @@ void arm_smmu_tlb_inv_range_asid(unsigned long iova, size_t size, int asid,
 bool arm_smmu_free_asid(struct arm_smmu_ctx_desc *cd);
 int arm_smmu_atc_inv_domain(struct arm_smmu_domain *smmu_domain, int ssid,
 			    unsigned long iova, size_t size);
+
+void arm_smmu_sync_ste_for_sid(struct arm_smmu_device *smmu, u32 sid);
+int arm_smmu_cmdq_issue_cmd(struct arm_smmu_device *smmu,
+			    struct arm_smmu_cmdq_ent *ent);
 
 #ifdef CONFIG_ARM_SMMU_V3_SVA
 bool arm_smmu_sva_supported(struct arm_smmu_device *smmu);

@@ -3604,4 +3604,16 @@ static const struct mtk_iommu_port apu_port_mt6985[] = {
 	APU_IOMMU_PORT_INIT("APU_UNKNOWN", 0, 0, 0, 0x1f)
 };
 
+static const struct mtk_iommu_port mm_port_mt6989[] = {
+	MM_IOMMU_PORT_INIT("MM_UNKNOWN", 0, 0, 0, 0)
+};
+
+static const struct mtk_iommu_port apu_port_mt6989[] = {
+	APU_IOMMU_PORT_INIT("APU_UNKNOWN", 0, 0, 0, 0)
+};
+
+static const struct mtk_iommu_port soc_port_mt6989[] = {
+	MM_IOMMU_PORT_INIT("SOC_UNKNOWN", 0, 0, 0, 0)
+};
+
 #endif /* IOMMU_PORT_H */

@@ -14,6 +14,7 @@
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps
+ccflags-y += -I$(srctree)/drivers/iommu
 
 obj-$(CONFIG_MTK_IOMMU_MISC_DBG)    += iommu_debug.o
 obj-$(CONFIG_MTK_IOMMU_MISC_SECURE) += iommu_secure.o

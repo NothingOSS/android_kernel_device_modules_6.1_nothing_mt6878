@@ -11,7 +11,8 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 
-#include "mtk_iommu.h"
+#include "../../../iommu/mtk_iommu.h"
+#include "../../../iommu/arm/arm-smmu-v3/mtk-smmu-v3.h"
 
 #define DEFINE_PROC_ATTRIBUTE(__fops, __get, __set, __fmt)		  \
 static int __fops ## _open(struct inode *inode, struct file *file)	  \
@@ -64,6 +65,7 @@ int mtk_iommu_unregister_fault_callback(int port, bool is_vpu);
 void mtk_iova_map(u64 tab_id, u64 iova, size_t size);
 void mtk_iova_unmap(u64 tab_id, u64 iova, size_t size);
 void mtk_iova_map_dump(u64 iova, u64 tab_id);
+void mtk_iova_trace_dump(u64 iova);
 void mtk_iommu_tlb_sync_trace(u64 iova, size_t size, int iommu_ids);
 void mtk_iommu_pm_trace(int event, int iommu_id, int pd_sta,
 	unsigned long flags, struct device *dev);
@@ -75,4 +77,45 @@ char *mtk_iommu_get_port_name(enum mtk_iommu_type type, int id, int tf_id);
 const struct mau_config_info *mtk_iommu_get_mau_config(
 	enum mtk_iommu_type type, int id,
 	unsigned int slave, unsigned int mau);
-#endif
+
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
+int mtk_smmu_set_ops(const struct mtk_smmu_ops *ops);
+
+void report_custom_smmu_fault(u64 fault_iova, u64 fault_pa,
+			      u32 fault_id, u32 smmu_id);
+
+void mtk_smmu_get_fault_idx(int tf_id, u32 smmu_id,
+			    struct mtk_smmu_fault_param *mtk_fault_param);
+
+void mtk_smmu_wpreg_dump(struct seq_file *s, int smmu_type);
+void mtk_smmu_ste_cd_dump(struct seq_file *s, int smmu_type);
+void mtk_smmu_pgtable_dump(struct seq_file *s, int smmu_type);
+#else /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 */
+static inline int mtk_smmu_set_ops(const struct mtk_smmu_ops *ops)
+{
+	return 0;
+}
+
+static inline void report_custom_smmu_fault(u64 fault_iova, u64 fault_pa,
+					    u32 fault_id, u32 smmu_id)
+{
+}
+
+static inline void mtk_smmu_get_fault_idx(int tf_id, u32 smmu_id,
+					  struct mtk_smmu_fault_param *mtk_fault_param)
+{
+}
+
+static inline void mtk_smmu_wpreg_dump(struct seq_file *s, int smmu_type)
+{
+}
+
+static inline void mtk_smmu_ste_cd_dump(struct seq_file *s, int smmu_type)
+{
+}
+
+static inline void mtk_smmu_pgtable_dump(struct seq_file *s, int smmu_type)
+{
+}
+#endif /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 */
+#endif /* IOMMU_DEBUG_H */
