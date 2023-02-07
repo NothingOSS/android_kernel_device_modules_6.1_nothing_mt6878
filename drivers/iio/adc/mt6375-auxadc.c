@@ -833,23 +833,23 @@ static int auxadc_cali_imix_r(struct mt6375_priv *priv)
 static int mt6375_auxadc_parse_dt(struct mt6375_priv *priv)
 {
 	int ret = 0;
-	struct device_node *np;
+	struct device_node *np, *imix_r_np;
 	u32 val = 0;
 
 	np = of_find_compatible_node(NULL, NULL, "mediatek,pmic-auxadc");
 	if (!np)
 		return -ENODEV;
 
-	np = of_get_child_by_name(np, "imix_r");
-	if (!np)
-		np = of_get_child_by_name(np, "imix-r");
+	imix_r_np = of_get_child_by_name(np, "imix_r");
+	if (!imix_r_np)
+		imix_r_np = of_get_child_by_name(np, "imix-r");
 
-	if (!np) {
+	if (!imix_r_np) {
 		dev_notice(priv->dev, "no imix_r(%d)\n", ret);
 		return -ENODEV;
 	}
 
-	ret = of_property_read_u32(np, "val", &val);
+	ret = of_property_read_u32(imix_r_np, "val", &val);
 	if (ret) {
 		dev_notice(priv->dev, "no imix_r(%d)\n", ret);
 		return ret;
