@@ -96,12 +96,12 @@ endif
 
 # platform data
 ifneq ($(wildcard $(PLATFORM_PATH)/mtk_cam-plat-mt6897.c),)
-ccflags-y += -DCAMSYS_ISP7S_MT6897
+ccflags-y += -DCAMSYS_ISP7SP_MT6897
 $(CAM_MODULE)-objs += mtk_cam-plat-mt6897.o
 endif
 
 ifneq ($(wildcard $(PLATFORM_PATH)/mtk_cam-plat-mt6989.c),)
-ccflags-y += -DCAMSYS_ISP7S_MT6989
+ccflags-y += -DCAMSYS_ISP7SP_MT6989
 $(CAM_MODULE)-objs += mtk_cam-plat-mt6989.o
 endif
 
