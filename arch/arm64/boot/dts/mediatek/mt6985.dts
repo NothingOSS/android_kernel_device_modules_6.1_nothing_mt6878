@@ -151,8 +151,8 @@
 	cache-parity {
 		compatible = "mediatek,mt6985-cache-parity";
 		ecc-irq-support = <1>;
-		arm_complex_ecc_hwirq = <40 41>;
-		arm_dsu_ecc_hwirq = <48>;
+		arm-complex-ecc-hwirq = <40 41>;
+		arm-dsu-ecc-hwirq = <48>;
 		interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH 0>, /* Core 0 Fault IRQ */
 			     <GIC_SPI 1 IRQ_TYPE_LEVEL_HIGH 0>, /* Core 1 Fault IRQ */
 			     <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH 0>, /* Core 2 Fault IRQ */
@@ -929,7 +929,7 @@
 		};
 	};
 
-	bus_parity {
+	bus-parity@c000900 {
 			compatible = "mediatek,bus-parity";
 			reg = <0 0x0c000900 0 0x20>,   /* MST_EMI0_CH0 */
 			      <0 0x0c000920 0 0x20>,   /* MST_EMI0_CH1 */
@@ -3499,7 +3499,7 @@
 		drm:drm@1000d000 {
 			compatible = "mediatek,dbgtop-drm";
 			reg = <0 0x1000d000 0 0x1000>;
-			rgu_timeout = <0xea60>; // for ddr-reserved mode
+			rgu-timeout = <0xea60>; // for ddr-reserved mode
 			ver = <2>;
 		};
 
