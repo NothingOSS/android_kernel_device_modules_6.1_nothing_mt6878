@@ -267,6 +267,8 @@ static int lpm_topology_init(void)
 	int cluster_id = 0, cpu = 0;
 
 	for_each_present_cpu(cpu) {
+		if (cpu_topology[cpu].cluster_id < 0)
+			return -EINVAL;
 		cluster_id = cpu_topology[cpu].cluster_id;
 		cluster_id_map |= (1 << cluster_id);
 	}
