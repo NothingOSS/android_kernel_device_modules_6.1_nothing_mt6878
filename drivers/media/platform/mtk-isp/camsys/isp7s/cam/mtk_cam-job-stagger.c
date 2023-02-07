@@ -664,60 +664,6 @@ int wakeup_apply_sensor(struct mtk_cam_job *job)
 	return 0;
 }
 
-int stream_on_otf_stagger(struct mtk_cam_job *job, bool on)
-{
-	struct mtk_cam_ctx *ctx = job->src_ctx;
-	struct mtk_raw_device *raw_dev;
-	struct mtk_camsv_device *sv_dev;
-	struct mtk_mraw_device *mraw_dev;
-	int seninf_pad, pixel_mode, tg_idx;
-	int i;
-	int raw_id = _get_master_raw_id(job->used_engine);
-
-	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
-		if (ctx->hw_raw[i]) {
-			raw_dev = dev_get_drvdata(ctx->hw_raw[i]);
-#ifdef NOT_READY
-		stream_on(raw_dev, on, SCQ_DEADLINE_MS * 3, 0);
-#else
-		stream_on(raw_dev, on);
-#endif
-		}
-	}
-
-	pr_info("[%s] on:%d",
-			__func__, on);
-	if (ctx->hw_sv) {
-		sv_dev = dev_get_drvdata(ctx->hw_sv);
-		mtk_cam_sv_dev_stream_on(sv_dev, on);
-	}
-
-	for (i = 0; i < ctx->num_mraw_subdevs; i++) {
-		if (ctx->hw_mraw[i]) {
-			mraw_dev = dev_get_drvdata(ctx->hw_mraw[i]);
-			mtk_cam_mraw_dev_stream_on(mraw_dev, on);
-		}
-	}
-
-	if (job->stream_on_seninf) {
-		if (job->job_scen.scen.normal.max_exp_num == 2)
-			seninf_pad = PAD_SRC_RAW1;
-		else if (job->job_scen.scen.normal.max_exp_num == 3)
-			seninf_pad = PAD_SRC_RAW2;
-		else
-			seninf_pad = PAD_SRC_RAW0;
-		pixel_mode = 3;
-		tg_idx = raw_to_tg_idx(raw_id);
-		ctx_stream_on_seninf_sensor_hdr(job->src_ctx,
-			!is_dc_mode(job), on,
-			seninf_pad, pixel_mode, tg_idx);
-		/* exp. switch at first frame */
-		// apply_cam_mux_stagger(job);
-	}
-
-	return 0;
-}
-
 int handle_sv_tag(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;

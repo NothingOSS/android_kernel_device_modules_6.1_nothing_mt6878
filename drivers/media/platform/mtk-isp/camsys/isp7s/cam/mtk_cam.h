@@ -132,6 +132,10 @@ struct mtk_cam_ctx {
 	bool configured;
 	struct mtkcam_ipi_config_param ipi_config;
 
+	/* cached for stream_off */
+	int raw_tg_idx;
+	int cur_exp_num;
+
 	struct device *hw_raw[MAX_RAW_PER_STREAM];
 	struct device *hw_sv;
 	struct device *hw_mraw[MAX_MRAW_PIPES_PER_STREAM];
@@ -152,11 +156,10 @@ struct mtk_cam_v4l2_pipelines {
 	int num_mraw;
 	struct mtk_mraw_pipeline *mraw;
 };
-int ctx_stream_on_seninf_sensor_hdr(struct mtk_cam_ctx *ctx,
-	int with_tg, int enable, int seninf_pad, int pixel_mode, int tg_idx);
 
-int ctx_stream_on_seninf_sensor(
-	struct mtk_cam_ctx *ctx, int with_tg, int enable);
+int ctx_stream_on_seninf_sensor(struct mtk_cam_ctx *ctx,
+				int enable,
+				int exp_num, int raw_tg_idx);
 
 struct mtk_cam_engines {
 	int num_seninf_devices;

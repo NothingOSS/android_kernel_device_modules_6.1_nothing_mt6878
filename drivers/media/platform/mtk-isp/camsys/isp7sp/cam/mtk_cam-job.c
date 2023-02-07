@@ -731,14 +731,21 @@ _stream_on(struct mtk_cam_job *job, bool on)
 	struct mtk_raw_device *raw_dev;
 	struct mtk_camsv_device *sv_dev;
 	struct mtk_mraw_device *mraw_dev;
+	int raw_tg_idx = -1;
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
 		if (ctx->hw_raw[i]) {
 			raw_dev = dev_get_drvdata(ctx->hw_raw[i]);
 			stream_on(raw_dev, on);
+
+			if (raw_tg_idx == -1)
+				raw_tg_idx = raw_to_tg_idx(raw_dev->id);
 		}
 	}
+
+	if (is_dc_mode(job))
+		raw_tg_idx = -1;
 
 	if (ctx->hw_sv) {
 		sv_dev = dev_get_drvdata(ctx->hw_sv);
@@ -752,8 +759,13 @@ _stream_on(struct mtk_cam_job *job, bool on)
 		}
 	}
 
-	if (job->stream_on_seninf)
-		ctx_stream_on_seninf_sensor(job->src_ctx, !is_dc_mode(job), on);
+	if (job->stream_on_seninf) {
+		int exp_num;
+
+		exp_num = job->job_scen.scen.normal.max_exp_num;
+		ctx_stream_on_seninf_sensor(job->src_ctx, on,
+					    exp_num, raw_tg_idx);
+	}
 
 	return 0;
 }
@@ -770,7 +782,7 @@ _stream_on_only_sv(struct mtk_cam_job *job, bool on)
 	}
 
 	if (job->stream_on_seninf)
-		ctx_stream_on_seninf_sensor(job->src_ctx, 0, on);
+		ctx_stream_on_seninf_sensor(job->src_ctx, on, 0, -1);
 
 	return 0;
 }
@@ -1812,7 +1824,7 @@ static struct mtk_cam_job_ops otf_stagger_job_ops = {
 	.finalize = job_finalize,
 	.compose_done = _compose_done,
 	.compose = _compose,
-	.stream_on = stream_on_otf_stagger,
+	.stream_on = _stream_on,
 	//.reset
 	.apply_sensor = _apply_sensor,
 	.apply_isp = _apply_cq,

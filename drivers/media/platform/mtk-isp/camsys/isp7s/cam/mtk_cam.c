@@ -1839,89 +1839,48 @@ int PipeIDtoTGIDX(int pipe_id)
 	return -1;
 }
 #endif
-int ctx_stream_on_seninf_sensor_hdr(struct mtk_cam_ctx *ctx,
-	int with_tg, int enable, int seninf_pad, int pixel_mode, int tg_idx)
+
+static int exp_num_to_seninf_pad(int exp_num)
+{
+	if (exp_num == 2)
+		return PAD_SRC_RAW1;
+	else if (exp_num == 3)
+		return PAD_SRC_RAW2;
+	return PAD_SRC_RAW0;
+}
+
+int ctx_stream_on_seninf_sensor(struct mtk_cam_ctx *ctx,
+				int enable,
+				int exp_num, int raw_tg_idx)
 {
 	struct mtk_cam_device *cam = ctx->cam;
 	struct v4l2_subdev *seninf = ctx->seninf;
-	struct mtk_camsv_device *sv_dev;
 	int ret;
 	int i;
 
 	if (WARN_ON(!seninf))
 		return -1;
 
+	if (!enable) {
+		/* use cached exp num */
+		exp_num = ctx->cur_exp_num;
+		raw_tg_idx = ctx->raw_tg_idx;
+	}
+
 	/* RAW */
-	if (with_tg && ctx->has_raw_subdev) {
-		mtk_cam_seninf_set_camtg(seninf, seninf_pad, tg_idx);
+	if (raw_tg_idx >= 0 && ctx->hw_raw[0]) {
+		int seninf_pad;
+		int pixel_mode = 3;
+
+		seninf_pad = exp_num_to_seninf_pad(exp_num);
+
+		mtk_cam_seninf_set_camtg(seninf, seninf_pad, raw_tg_idx);
 		mtk_cam_seninf_set_pixelmode(seninf, seninf_pad, pixel_mode);
 	}
 
 	if (ctx->hw_sv) {
-		sv_dev = dev_get_drvdata(ctx->hw_sv);
-		for (i = SVTAG_START; i < SVTAG_END; i++) {
-			if (sv_dev->enabled_tags & (1 << i)) {
-				unsigned int sv_cammux_id =
-					mtk_cam_get_sv_cammux_id(sv_dev, i);
+		struct mtk_camsv_device *sv_dev;
 
-				mtk_cam_seninf_set_camtg_camsv(seninf,
-					sv_dev->tag_info[i].seninf_padidx,
-					sv_cammux_id, i);
-				mtk_cam_seninf_set_pixelmode(seninf,
-					sv_dev->tag_info[i].seninf_padidx, 3);
-			}
-		}
-	}
-
-	for (i = 0; i < ctx->num_mraw_subdevs; i++) {
-		if (ctx->hw_mraw[i]) {
-			struct mtk_mraw_device *mraw_dev =
-				dev_get_drvdata(ctx->hw_mraw[i]);
-			struct mtk_mraw_pipeline *mraw_pipe =
-				&cam->pipelines.mraw[ctx->mraw_subdev_idx[i]];
-
-			mtk_cam_seninf_set_camtg(seninf,
-				mraw_pipe->seninf_padidx, mraw_dev->cammux_id);
-			mtk_cam_seninf_set_pixelmode(seninf,
-				mraw_pipe->seninf_padidx, 3);
-		}
-	}
-
-	ret = v4l2_subdev_call(ctx->seninf, video, s_stream, enable);
-	if (ret) {
-		dev_info(cam->dev, "ctx %d failed to stream_on %s %d:%d\n",
-			 ctx->stream_id, seninf->name, enable, ret);
-		return -EPERM;
-	}
-	return ret;
-}
-
-int ctx_stream_on_seninf_sensor(
-	struct mtk_cam_ctx *ctx, int with_tg, int enable)
-{
-	struct mtk_cam_device *cam = ctx->cam;
-	struct v4l2_subdev *seninf = ctx->seninf;
-	struct mtk_camsv_device *sv_dev;
-	struct mtk_raw_device *raw_dev;
-	int seninf_pad;
-	int tg_idx;
-	int ret;
-	int i;
-
-	if (WARN_ON(!seninf))
-		return -1;
-
-	/* RAW */
-	if (with_tg && ctx->hw_raw[0]) {
-		raw_dev = dev_get_drvdata(ctx->hw_raw[0]);
-		seninf_pad = PAD_SRC_RAW0;
-		tg_idx = raw_to_tg_idx(raw_dev->id);
-
-		mtk_cam_seninf_set_camtg(seninf, seninf_pad, tg_idx);
-		mtk_cam_seninf_set_pixelmode(seninf, seninf_pad, 3);
-	}
-
-	if (ctx->hw_sv) {
 		sv_dev = dev_get_drvdata(ctx->hw_sv);
 		for (i = SVTAG_START; i < SVTAG_END; i++) {
 			if (sv_dev->enabled_tags & (1 << i)) {
@@ -1957,6 +1916,13 @@ int ctx_stream_on_seninf_sensor(
 			 ctx->stream_id, seninf->name, enable, ret);
 		return -EPERM;
 	}
+
+	/* cache for stop */
+	if (enable) {
+		ctx->cur_exp_num = exp_num;
+		ctx->raw_tg_idx = raw_tg_idx;
+	}
+
 	return ret;
 }
 
@@ -2017,7 +1983,7 @@ int mtk_cam_ctx_stream_off(struct mtk_cam_ctx *ctx)
 	}
 
 	// seninf
-	ctx_stream_on_seninf_sensor(ctx, 0, 0);
+	ctx_stream_on_seninf_sensor(ctx, 0, 0, 0);
 
 	ctx_stream_on_pipe_subdev(ctx, 0);
 
