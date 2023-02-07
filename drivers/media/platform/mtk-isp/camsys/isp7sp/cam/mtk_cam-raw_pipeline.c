@@ -448,6 +448,10 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 			}
 		}
 		break;
+	case V4L2_CID_MTK_CAM_MSTREAM_EXPOSURE:
+		ctrl_data->mstream_exp =
+			*(struct mtk_cam_mstream_exposure *)ctrl->p_new.p;
+		break;
 #ifdef NOT_READY
 	case V4L2_CID_MTK_CAM_RAW_RESOURCE_UPDATE:
 		/**

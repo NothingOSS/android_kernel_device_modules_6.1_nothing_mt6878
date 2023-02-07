@@ -303,10 +303,27 @@ int mtk_cam_job_apply_pending_action(struct mtk_cam_job *job);
 	_job->ops.func ? _job->ops.func(_job, ##__VA_ARGS__) : 0;\
 })
 
+enum MTK_CAMSYS_JOB_TYPE {
+	JOB_TYPE_BASIC,
+	JOB_TYPE_M2M,
+	JOB_TYPE_MSTREAM,
+	JOB_TYPE_STAGGER,
+	JOB_TYPE_HW_PREISP,
+	JOB_TYPE_HW_SUBSAMPLE,
+	JOB_TYPE_ONLY_SV = 0x100,
 
-struct mtk_cam_normal_job {
-	struct mtk_cam_job job; /* always on top */
+	/* TODO(AY): remove following if we don't need */
+	//RAW_JOB_DC,
+	//RAW_JOB_DC_MSTREAM,
+	//RAW_JOB_DC_STAGGER,
+	//RAW_JOB_OFFLINE_STAGGER,
+	//RAW_JOB_OTF_RGBW,
+	//RAW_JOB_DC_RGBW,
+	//RAW_JOB_OFFLINE_RGBW,
+	//RAW_JOB_HW_TIMESHARED,
 };
+
+/* TODO(AY): remove following xxx_job struct def. */
 struct mtk_cam_stagger_job {
 	struct mtk_cam_job job; /* always on top */
 
@@ -320,11 +337,22 @@ struct mtk_cam_stagger_job {
 struct mtk_cam_mstream_job {
 	struct mtk_cam_job job; /* always on top */
 
+	struct mtk_cam_pool_buffer cq;
+	struct mtk_cam_pool_buffer ipi;
+
+	struct mtkcam_ipi_frame_ack_result cq_rst;
+	u8 composed_idx;
+	u8 apply_sensor_idx;
+	u8 apply_isp_idx;
+	u8 done_idx;
+
+#ifdef DOES_MSTREAM_NEED_THESE
 	/* TODO */
 	wait_queue_head_t expnum_change_wq;
 	atomic_t expnum_change;
 	struct mtk_cam_scen prev_scen;
 	int switch_type;
+#endif
 };
 struct mtk_cam_subsample_job {
 	struct mtk_cam_job job; /* always on top */
@@ -347,7 +375,7 @@ struct mtk_cam_job_data {
 	struct mtk_cam_pool_job pool_job;
 
 	union {
-		struct mtk_cam_normal_job n;
+		struct mtk_cam_job job;
 		struct mtk_cam_stagger_job s;
 		struct mtk_cam_mstream_job m;
 		struct mtk_cam_subsample_job ss;
@@ -376,12 +404,12 @@ static inline unsigned int to_fh_cookie(unsigned int ctx, unsigned int seq_no)
 
 static inline struct mtk_cam_job_data *job_to_data(struct mtk_cam_job *job)
 {
-	return container_of(job, struct mtk_cam_job_data, m.job);
+	return container_of(job, struct mtk_cam_job_data, job);
 }
 
 static inline struct mtk_cam_job *data_to_job(struct mtk_cam_job_data *data)
 {
-	return &data->n.job;
+	return &data->job;
 }
 
 static inline void mtk_cam_job_return(struct mtk_cam_job *job)

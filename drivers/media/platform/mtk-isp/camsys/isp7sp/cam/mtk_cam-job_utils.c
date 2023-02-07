@@ -405,10 +405,12 @@ int update_work_buffer_to_ipi_frame(struct req_buffer_helper *helper)
 				&ctx->img_work_buf_desc,
 				&job->img_work_buf);
 
-		/* HS_TODO: dc? */
-		ret = fill_sv_img_fp_working_buffer(helper,
-				&ctx->img_work_buf_desc,
-				&job->img_work_buf, i);
+		if (job->job_type != JOB_TYPE_MSTREAM) {
+			/* HS_TODO: dc? */
+			ret = fill_sv_img_fp_working_buffer(helper,
+					&ctx->img_work_buf_desc,
+					&job->img_work_buf, i);
+		}
 
 		mtk_cam_buffer_pool_return(&job->img_work_buf);
 	}

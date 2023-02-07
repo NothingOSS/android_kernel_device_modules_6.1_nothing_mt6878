@@ -63,6 +63,16 @@ typedef void (*fn_config_element)(void *data, int index, void *element);
 int mtk_cam_pool_config(struct mtk_cam_pool *pool,
 			fn_config_element fn, void *data);
 
+static inline void mtk_cam_pool_priv_init(struct mtk_cam_pool_priv *priv)
+{
+	priv->pool = NULL;
+}
+
+static inline bool mtk_cam_pool_priv_is_valid(struct mtk_cam_pool_priv *priv)
+{
+	return priv->pool != NULL;
+}
+
 int mtk_cam_pool_fetch(struct mtk_cam_pool *pool,
 		       void *buf, size_t size);
 void mtk_cam_pool_return(void *buf, size_t size);
@@ -81,6 +91,16 @@ struct mtk_cam_pool_buffer {
 /* with built-in config func */
 int mtk_cam_buffer_pool_alloc(struct mtk_cam_pool *pool,
 			      struct mtk_cam_device_buf *buf, int n_buffers);
+
+static inline void mtk_cam_pool_buffer_init(struct mtk_cam_pool_buffer *buf)
+{
+	mtk_cam_pool_priv_init(&buf->priv);
+}
+
+static inline bool mtk_cam_pool_buffer_is_valid(struct mtk_cam_pool_buffer *buf)
+{
+	return mtk_cam_pool_priv_is_valid(&buf->priv);
+}
 
 static inline int mtk_cam_buffer_pool_fetch(struct mtk_cam_pool *pool,
 					    struct mtk_cam_pool_buffer *buf)

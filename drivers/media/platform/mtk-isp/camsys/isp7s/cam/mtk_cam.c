@@ -1080,6 +1080,11 @@ static int isp_composer_handler(struct rpmsg_device *rpdev, void *data,
 		ctx = &cam->ctxs[ipi_msg->cookie.session_id];
 		//MTK_CAM_TRACE_BEGIN(BASIC, "ipi_frame_ack:%d",
 		//		    ipi_msg->cookie.frame_no);
+
+		if (CAM_DEBUG_ENABLED(CTRL))
+			dev_info(dev, "ipi_frame_ack:%d\n",
+				 ipi_msg->cookie.frame_no);
+
 		if (WARN_ON(ipi_msg->ack_data.ret))
 			dev_info(dev, "TODO: implement dump\n");
 

@@ -65,6 +65,9 @@ struct req_buffer_helper {
 	bool filled_hdr_buffer;
 };
 struct pack_job_ops_helper {
+	/* specific init for job */
+	int (*job_init)(struct mtk_cam_job *job);
+
 	/* pack job ops */
 	int (*pack_job)(struct mtk_cam_job *job,
 			struct pack_job_ops_helper *job_helper);
@@ -81,7 +84,7 @@ struct pack_job_ops_helper {
 	int (*update_raw_yuvo_to_ipi)(struct req_buffer_helper *helper,
 				      struct mtk_cam_buffer *buf,
 				      struct mtk_cam_video_device *node);
-	int (*pack_job_check_ipi_buffer)(struct req_buffer_helper *helper);
+	int (*append_work_buf_to_ipi)(struct req_buffer_helper *helper);
 };
 void _set_timestamp(struct mtk_cam_job *job,
 	u64 time_boot, u64 time_mono);
