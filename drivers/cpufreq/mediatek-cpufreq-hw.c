@@ -160,8 +160,6 @@ static unsigned int mtk_cpufreq_hw_fast_switch(struct cpufreq_policy *policy,
 static int mtk_cpufreq_hw_cpu_init(struct cpufreq_policy *policy)
 {
 	struct cpufreq_mtk *c;
-	struct device *cpu_dev;
-	struct em_data_callback em_cb = EM_DATA_CB(mtk_cpufreq_get_cpu_power);
 	struct pm_qos_request *qos_request;
 	int sig, pwr_hw = CPUFREQ_HW_STATUS | SVS_HW_STATUS;
 	unsigned int latency;
@@ -169,13 +167,6 @@ static int mtk_cpufreq_hw_cpu_init(struct cpufreq_policy *policy)
 	qos_request = kzalloc(sizeof(*qos_request), GFP_KERNEL);
 	if (!qos_request)
 		return -ENOMEM;
-
-	cpu_dev = get_cpu_device(policy->cpu);
-	if (!cpu_dev) {
-		pr_info("failed to get cpu%d device\n", policy->cpu);
-		kfree(qos_request);
-		return -ENODEV;
-	}
 
 	c = mtk_freq_domain_map[policy->cpu];
 	if (!c) {
@@ -218,8 +209,6 @@ static int mtk_cpufreq_hw_cpu_init(struct cpufreq_policy *policy)
 		pr_info("SVS of CPU%d is not enabled\n", policy->cpu);
 	}
 
-	em_dev_register_perf_domain(cpu_dev, c->nr_opp, &em_cb, policy->cpus,
-			true);
 	cpu_latency_qos_remove_request(qos_request);
 	kfree(qos_request);
 
@@ -242,6 +231,21 @@ static int mtk_cpufreq_hw_cpu_exit(struct cpufreq_policy *policy)
 	return 0;
 }
 
+static void mtk_cpufreq_register_em(struct cpufreq_policy *policy)
+{
+	struct em_data_callback em_cb = EM_DATA_CB(mtk_cpufreq_get_cpu_power);
+	struct cpufreq_mtk *c = policy->driver_data;
+
+	if (!c->nr_opp) {
+		pr_info("%s: %d: CPU%d: Get opp failed\n", __func__, __LINE__,
+				policy->cpu);
+		return;
+	}
+
+	em_dev_register_perf_domain(get_cpu_device(policy->cpu), c->nr_opp, &em_cb, policy->cpus,
+			true);
+}
+
 static struct cpufreq_driver cpufreq_mtk_hw_driver = {
 	.flags		= CPUFREQ_NEED_INITIAL_FREQ_CHECK |
 			  CPUFREQ_HAVE_GOVERNOR_PER_POLICY |
@@ -251,6 +255,7 @@ static struct cpufreq_driver cpufreq_mtk_hw_driver = {
 	.get		= mtk_cpufreq_hw_get,
 	.init		= mtk_cpufreq_hw_cpu_init,
 	.exit		= mtk_cpufreq_hw_cpu_exit,
+	.register_em	= mtk_cpufreq_register_em,
 	.fast_switch	= mtk_cpufreq_hw_fast_switch,
 	.name		= "mtk-cpufreq-hw",
 	.attr		= cpufreq_generic_attr,
