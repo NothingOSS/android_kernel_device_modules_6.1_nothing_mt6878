@@ -25,6 +25,7 @@
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 #include <mt-plat/aee.h>
 #include "sda.h"
+#include "dbg_error_flag.h"
 
 #define MCU_BP_IRQ_TRIGGER_THRESHOLD	(2)
 #define INFRA_BP_IRQ_TRIGGER_THRESHOLD	(2)
@@ -144,49 +145,6 @@ static void mcu_bp_irq_work(struct work_struct *w)
 	else
 		BPR_LOG("%s disable irq %d due to trigger over than %d times.\n",
 			__func__, mcu_bp.irq, MCU_BP_IRQ_TRIGGER_THRESHOLD);
-}
-
-static void infra_bp_irq_work(struct work_struct *w)
-{
-	struct bus_parity_elem *bpm;
-	union bus_parity_err *bpr;
-	unsigned int check_count = 0;
-	int i;
-
-	for (i = 0; i < infra_bp.nr_bpm; i++) {
-		bpm = &infra_bp.bpm[i];
-		bpr = &infra_bp.bpm[i].bpr;
-
-		if (!bpm->type && (bpr->mst.is_err == true))
-			bpr->mst.is_err = false;
-		else if (bpm->type && (bpr->slv.is_err == true))
-			bpr->slv.is_err = false;
-		else {
-			check_count++;
-			continue;
-		}
-	}
-
-#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-	if (check_count < infra_bp.nr_bpm)
-		aee_kernel_exception("Infra Bus Parity", infra_bp.dump);
-#endif
-	if (check_count == infra_bp.nr_bpm) {
-		BPR_LOG("%s: Receive irq but no bus parity fail\n", __func__);
-
-		if (infra_bp.dbgao_base != NULL) {
-			BPR_LOG("%s: err_flag status1 is 0x%x.\n",
-				__func__, readl(infra_bp.dbgao_base + DBG_ERR_FLAG_STATUS0));
-			BPR_LOG("%s: err_flag status2 is 0x%x.\n",
-				__func__, readl(infra_bp.dbgao_base + DBG_ERR_FLAG_STATUS1));
-		}
-	}
-
-	if (infra_bp.nr_err < INFRA_BP_IRQ_TRIGGER_THRESHOLD)
-		enable_irq(infra_bp.irq);
-	else
-		BPR_LOG("%s disable irq %d due to trigger over than %d times.\n",
-			__func__, infra_bp.irq, INFRA_BP_IRQ_TRIGGER_THRESHOLD);
 }
 
 static void mcu_bp_dump(void)
@@ -382,7 +340,7 @@ static irqreturn_t mcu_bp_isr(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-static irqreturn_t infra_bp_isr(int irq, void *dev_id)
+static void infra_bp_dump_flow(void)
 {
 	int i;
 	unsigned int status;
@@ -390,8 +348,7 @@ static irqreturn_t infra_bp_isr(int irq, void *dev_id)
 	struct bus_parity_elem *bpm;
 	union bus_parity_err *bpr;
 
-	disable_irq_nosync(irq);
-
+	/* infra parity dump */
 	if (!infra_bp.nr_err)
 		infra_bp.ts = local_clock();
 	infra_bp.nr_err++;
@@ -435,19 +392,6 @@ static irqreturn_t infra_bp_isr(int irq, void *dev_id)
 		}
 	}
 
-	schedule_work(&infra_bp.wk);
-
-	/*
-	 * Due to multi-sources (parity fail/timeout/emi parity/tracker) will trigger
-	 * this interrupt, we should ignore if no bus parity fail but receive irq.
-	 *
-	 * TODO: Decouple/distinguish different interrupt sources to avoid bus parity
-	 * get no function after bypassing other sources. Use IRQF_SHARED and return
-	 * IRQ_NONE.
-	 */
-	if (check_count == infra_bp.nr_bpm)
-		return IRQ_HANDLED;
-
 	spin_lock(&infra_bp_isr_lock);
 
 	for (i = 0; i < infra_bp.nr_bpm; i++) {
@@ -462,9 +406,43 @@ static irqreturn_t infra_bp_isr(int irq, void *dev_id)
 
 	infra_bp_dump();
 	BPR_LOG("%s", infra_bp.dump);
-
-	return IRQ_HANDLED;
 }
+
+static int infra_bp_dump_event(struct notifier_block *this,
+				unsigned long err_flag_status,
+				void *ptr)
+{
+	unsigned long infra_bp_err_status;
+
+	infra_bp_err_status = get_dbg_error_flag_mask(MCU2SUB_EMI_M1_PARITY) |
+				get_dbg_error_flag_mask(MCU2SUB_EMI_M0_PARITY) |
+				get_dbg_error_flag_mask(MCU2EMI_M1_PARITY) |
+				get_dbg_error_flag_mask(MCU2EMI_M0_PARITY) |
+				get_dbg_error_flag_mask(MCU2INFRA_REG_PARITY) |
+				get_dbg_error_flag_mask(INFRA_L3_CACHE2MCU_PARITY) |
+				get_dbg_error_flag_mask(EMI_PARITY_CEN);
+
+
+	if (!(err_flag_status & infra_bp_err_status)) {
+		BPR_LOG("err_flag_status %lx, infra_bp_err_status %lx\n",
+			err_flag_status,
+			infra_bp_err_status);
+		return 0;
+	}
+
+	/* infra parity dump */
+	infra_bp_dump_flow();
+
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+	aee_kernel_exception("INFRA Bus Parity", infra_bp.dump);
+#endif
+
+	return 0;
+}
+
+static struct notifier_block dbg_error_flag_notifier = {
+	.notifier_call = infra_bp_dump_event,
+};
 
 static int bus_parity_probe(struct platform_device *pdev)
 {
@@ -481,7 +459,6 @@ static int bus_parity_probe(struct platform_device *pdev)
 	infra_bp.nr_err = 0;
 
 	INIT_WORK(&mcu_bp.wk, mcu_bp_irq_work);
-	INIT_WORK(&infra_bp.wk, infra_bp_irq_work);
 
 	ret = of_property_count_strings(np, "mcu-names");
 	if (ret < 0) {
@@ -626,18 +603,8 @@ static int bus_parity_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	infra_bp.irq = irq_of_parse_and_map(np, 1);
-	if (!infra_bp.irq) {
-		dev_err(dev, "can't map infra-bus-parity irq\n");
-		return -EINVAL;
-	}
-
-	ret = devm_request_irq(dev, infra_bp.irq, infra_bp_isr, IRQF_ONESHOT |
-			IRQF_TRIGGER_NONE, "infra-bus-parity", NULL);
-	if (ret) {
-		dev_err(dev, "can't request infra-bus-parity irq(%d)\n", ret);
-		return ret;
-	}
+	/* register error flag notifier to dump infra parity status for error flag mcu irq */
+	dbg_error_flag_register_notify(&dbg_error_flag_notifier);
 
 	np_chosen = of_find_node_by_path("/chosen");
 	if (!np_chosen)
