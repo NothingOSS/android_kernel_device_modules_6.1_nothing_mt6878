@@ -1563,7 +1563,6 @@ retry:
 static int ufs_mtk_rpmb_cmd_seq(struct device *dev,
 			       struct rpmb_cmd *cmds, u32 ncmds, u8 region)
 {
-#if 0
 	unsigned long flags;
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 	struct ufs_mtk_host *host;
@@ -1575,7 +1574,7 @@ static int ufs_mtk_rpmb_cmd_seq(struct device *dev,
 	host = ufshcd_get_variant(hba);
 
 	spin_lock_irqsave(hba->host->host_lock, flags);
-	sdev = hba->sdev_rpmb;
+	sdev = host->sdev_rpmb;
 	if (sdev) {
 		ret = scsi_device_get(sdev);
 		if (!ret && !scsi_device_online(sdev)) {
@@ -1614,9 +1613,6 @@ static int ufs_mtk_rpmb_cmd_seq(struct device *dev,
 
 	scsi_device_put(sdev);
 	return ret;
-#else
-	return 0;
-#endif
 }
 
 static struct rpmb_ops ufs_mtk_rpmb_dev_ops = {
@@ -1673,8 +1669,8 @@ static void ufs_mtk_rpmb_add(void *data, async_cookie_t cookie)
 
 	ufs_mtk_rpmb_dev_ops.reliable_wr_cnt = rw_size;
 
-	//if (unlikely(scsi_device_get(hba->sdev_rpmb)))
-	//	goto out;
+	if (unlikely(scsi_device_get(host->sdev_rpmb)))
+		goto out;
 
 	rdev = rpmb_dev_register(hba->dev, &ufs_mtk_rpmb_dev_ops);
 	if (IS_ERR(rdev)) {
@@ -1690,7 +1686,7 @@ static void ufs_mtk_rpmb_add(void *data, async_cookie_t cookie)
 	rawdev_ufs_rpmb = rdev;
 
 out_put_dev:
-	//scsi_device_put(hba->sdev_rpmb);
+	scsi_device_put(host->sdev_rpmb);
 
 out:
 	up(&host->rpmb_sem);
@@ -2391,8 +2387,8 @@ static int ufs_mtk_pre_pwr_change(struct ufs_hba *hba,
 	int ret;
 
 	ufshcd_init_pwr_dev_param(&host_cap);
-	//host_cap.hs_rx_gear = UFS_HS_G5;
-	//host_cap.hs_tx_gear = UFS_HS_G5;
+	host_cap.hs_rx_gear = UFS_HS_G5;
+	host_cap.hs_tx_gear = UFS_HS_G5;
 
 	ret = ufshcd_get_pwr_dev_param(&host_cap,
 				       dev_max_params,
@@ -2421,10 +2417,8 @@ static int ufs_mtk_pre_pwr_change(struct ufs_hba *hba,
 		ufshcd_dme_set(hba, UIC_ARG_MIB(PA_TXHSADAPTTYPE),
 			PA_NO_ADAPT);
 
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 		ret = ufshcd_uic_change_pwr_mode(hba,
 			FASTAUTO_MODE << 4 | FASTAUTO_MODE);
-#endif
 
 		if (ret) {
 			dev_err(hba->dev, "%s: HSG1B FASTAUTO failed ret=%d\n",

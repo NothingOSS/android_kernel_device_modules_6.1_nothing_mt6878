@@ -226,6 +226,7 @@ struct ufs_mtk_host {
 	struct completion luns_added;
 
 	struct semaphore rpmb_sem;
+	struct scsi_device *sdev_rpmb;
 #if defined(CONFIG_UFSFEATURE)
 	struct ufsf_feature ufsf;
 #endif
