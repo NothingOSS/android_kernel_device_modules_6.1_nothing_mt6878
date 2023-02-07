@@ -2481,7 +2481,7 @@ static int vcp_device_probe(struct platform_device *pdev)
 	pr_debug("[VCP] cfg_mmu base = 0x%p\n", vcpreg.cfg_mmu);
 #endif
 
-	of_property_read_u32(pdev->dev.of_node, "vcp-sramSize"
+	of_property_read_u32(pdev->dev.of_node, "vcp-sram-size"
 						, &vcpreg.vcp_tcmsize);
 	if (!vcpreg.vcp_tcmsize) {
 		pr_notice("[VCP] total_tcmsize not found\n");
