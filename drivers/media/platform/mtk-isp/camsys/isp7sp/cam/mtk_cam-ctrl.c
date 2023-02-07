@@ -307,8 +307,9 @@ static void ctrl_vsync_preprocess(struct mtk_cam_ctrl *ctrl,
 				  struct vsync_result *vsync_res)
 {
 
-	vsync_update(&ctrl->vsync_col,
-		     engine_type, engine_id, vsync_res);
+	if (vsync_update(&ctrl->vsync_col,
+		     engine_type, engine_id, vsync_res))
+		return;
 
 	spin_lock(&ctrl->info_lock);
 
@@ -828,16 +829,19 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 		__func__, ctx->stream_id, atomic_read(&cam_ctrl->stopped));
 }
 
-void vsync_update(struct vsync_collector *c,
+int vsync_update(struct vsync_collector *c,
 		  int engine_type, int idx,
 		  struct vsync_result *res)
 {
 	unsigned int coming;
 
 	if (!res)
-		return;
+		return 1;
 
 	coming = engine_idx_to_bit(engine_type, idx);
+
+	if (!(coming & c->desired))
+		return 1;
 
 	c->collected |= (coming & c->desired);
 
@@ -850,4 +854,6 @@ void vsync_update(struct vsync_collector *c,
 
 	if (res->is_last)
 		c->collected = 0;
+
+	return 0;
 }

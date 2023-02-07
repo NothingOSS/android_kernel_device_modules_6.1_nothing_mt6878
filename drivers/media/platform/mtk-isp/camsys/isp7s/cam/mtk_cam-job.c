@@ -365,6 +365,8 @@ static int update_job_used_engine(struct mtk_cam_job *job)
 	/* HS_TODO: sv pure raw dump case? */
 	if (ctx->hw_sv) {
 		sv_dev = dev_get_drvdata(ctx->hw_sv);
+		if (is_sv_img_tag_used(job))
+			used_engine |= bit_map_bit(MAP_HW_CAMSV, sv_dev->id);
 		for (i = 0; i < ctx->num_sv_subdevs; i++) {
 			if (used_pipe &
 			    bit_map_bit(MAP_SUBDEV_CAMSV, ctx->sv_subdev_idx[i]))

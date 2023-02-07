@@ -745,3 +745,17 @@ int handle_sv_tag(struct mtk_cam_job *job)
 	return ret;
 }
 
+bool is_sv_img_tag_used(struct mtk_cam_job *job)
+{
+	bool rst = false;
+
+	/* HS_TODO: check all features */
+	if (is_stagger_multi_exposure(job))
+		rst = true;
+	/* HS_TODO: use new api implemented by Roy */
+	if (is_stagger_dc(job))
+		rst = true;
+
+	return rst;
+}
+
