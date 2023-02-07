@@ -1998,6 +1998,7 @@ void fg_custom_init_from_dts(struct platform_device *dev,
 	int bat_id, multi_battery, active_table, i, j, ret, column;
 	int r_pseudo100_raw = 0, r_pseudo100_col = 0;
 	int lk_v, lk_i, shuttime;
+	int is_evb_board;
 	char node_name[128];
 	struct fuel_gauge_custom_data *fg_cust_data;
 	struct fuel_gauge_table_custom_data *fg_table_cust_data;
@@ -2024,8 +2025,11 @@ void fg_custom_init_from_dts(struct platform_device *dev,
 		gm->pl_shutdown_time = shuttime;
 	}
 
-	bm_err("%s swocv_v:%d swocv_i:%d shutdown_time:%d\n",
-		__func__, gm->ptim_lk_v, gm->ptim_lk_i, gm->pl_shutdown_time);
+	fg_read_dts_val(np, "is_evb_board", &(is_evb_board), 1);
+	gm->is_evb_board = is_evb_board;
+
+	bm_err("%s swocv_v:%d swocv_i:%d shutdown_time:%d is_evb_board:%d\n",
+		__func__, gm->ptim_lk_v, gm->ptim_lk_i, gm->pl_shutdown_time, gm->is_evb_board);
 
 	fg_cust_data->disable_nafg =
 		of_property_read_bool(np, "DISABLE_NAFG");
@@ -2397,6 +2401,8 @@ void fg_custom_init_from_dts(struct platform_device *dev,
 
 	gm->disableGM30 = of_property_read_bool(
 		np, "DISABLE_MTKBATTERY");
+	gm->disableGM30 |= gm->is_evb_board;
+
 	fg_read_dts_val(np, "MULTI_TEMP_GAUGE0",
 		&(fg_cust_data->multi_temp_gauge0), 1);
 	fg_read_dts_val(np, "FGC_FGV_TH1",
@@ -3211,7 +3217,7 @@ static void fg_drv_update_hw_status(struct mtk_battery *gm)
 	gm->tbat = force_get_tbat_internal(gm);
 	fg_update_porp_control(prop_control);
 
-	bm_err("car[%d,%ld,%ld,%ld,%ld] tmp:%d soc:%d uisoc:%d vbat:%d ibat:%d baton:%d algo:%d gm3:%d %d %d %d %d %d, get_prop:%lld %d %d %d %lld %ld %lld, boot:%d\n",
+	bm_err("car[%d,%ld,%ld,%ld,%ld] tmp:%d soc:%d uisoc:%d vbat:%d ibat:%d baton:%d algo:%d gm3:%d %d %d %d %d %d, get_prop:%d %lld %d %d %d %lld %ld %lld, boot:%d\n",
 		gauge_get_int_property(GAUGE_PROP_COULOMB),
 		gm->coulomb_plus.end, gm->coulomb_minus.end,
 		gm->uisoc_plus.end, gm->uisoc_minus.end,
@@ -3222,7 +3228,7 @@ static void fg_drv_update_hw_status(struct mtk_battery *gm)
 		gm->baton,
 		gm->algo.active,
 		gm->disableGM30, gm->fg_cust_data.disable_nafg,
-		gm->ntc_disable_nafg, gm->cmd_disable_nafg, gm->vbat0_flag,
+		gm->ntc_disable_nafg, gm->cmd_disable_nafg, gm->vbat0_flag, gm->is_evb_board,
 		gm->no_prop_timeout_control, prop_control->last_period.tv_sec,
 		prop_control->last_binder_counter, prop_control->total_fail,
 		prop_control->max_gp, prop_control->max_get_prop_time.tv_sec,

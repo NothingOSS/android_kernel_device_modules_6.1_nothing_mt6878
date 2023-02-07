@@ -1035,6 +1035,7 @@ struct mtk_battery {
 	int pl_shutdown_time;
 	int pl_two_sec_reboot;
 	int plug_miss_count;
+	int is_evb_board;
 
 	/* suspend, resume notify */
 	bool in_sleep;
