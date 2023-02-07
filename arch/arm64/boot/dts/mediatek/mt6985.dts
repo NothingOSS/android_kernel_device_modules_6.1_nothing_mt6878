@@ -9534,14 +9534,14 @@
 				  "mbox3",
 				  "mbox4";
 
-		core_0 = "enable";
+		core-0 = "enable";
 		scp-hwvoter = "enable";
-		scp_sramSize = <0x00300000>;
-		core_nums = <2>;	/* core number */
+		scp-sram-size = <0x00300000>;
+		core-nums = <2>;	/* core number */
 		twohart = <1>;		/* two hart arch */
-		mbox_count = <5>;
+		mbox-count = <5>;
 		/* id, mbox, send_size*/
-		send_table =
+		send-table =
 		< 0 0  11>,/* IPI_OUT_AUDIO_VOW_1 */
 		<14 0  1>,/* IPI_OUT_DVFS_SET_FREQ_1 */
 		<15 0  2>,/* IPI_OUT_C_SLEEP_1 */
@@ -9565,14 +9565,14 @@
 		<29 4 16>,/* IPI_OUT_SENSOR_CTRL */
 		<31 4  7>;/* IPI_OUT_SENSOR_NOTIFY */
 
-		#recv_cells_mode = <1>;
-		/* mode 0 or no defined #recv_cells_mode => 4 elements : id, mbox,
+		#recv-cells-mode = <1>;
+		/* mode 0 or no defined #recv-cells-mode => 4 elements : id, mbox,
 		 * recv_size, recv_opt
 		 */
 		/* mode 1 => 7 elements : id, mbox, recv_size, recv_opt, lock, buf_full_opt,
 		 * cb_ctx_opt
 		 */
-		recv_table =
+		recv-table =
 		< 1 0  2 0 0 0 0>,/* IPI_IN_AUDIO_VOW_ACK_1 */
 		< 2 0 26 0 0 0 0>,/* IPI_IN_AUDIO_VOW_1 */
 		<36 0  1 0 0 0 0>,/* IPI_IN_AUDIO_ACDDET_1 */
@@ -9603,7 +9603,7 @@
 		//		<6>; /* in_size */
 
 		/* feature, frequecy, coreid */
-		scp_feature_tbl = < 0 40 1>,	/* vow */
+		scp-feature-tbl = < 0 40 1>,	/* vow */
 				  < 1  29 0>,	/* sensor */
 				  < 2  26 0>,	/* flp */
 				  < 3   0 0>,	/* rtos */
@@ -9620,15 +9620,15 @@
 
 		scp-dram-region = "enable";   /* enable scp dram region manage */
 		scp-protect = "enable";   /* enable scp protections */
-		secure_dump = "enable";   /* enable dump via secure world*/
-		secure_dump_size = <0x480000>;
-		scp_pm_notify = "enable";
+		secure-dump = "enable";   /* enable dump via secure world*/
+		secure-dump-size = <0x480000>;
+		scp-pm-notify = "enable";
 
-		scp_aovmem_key = "mediatek,scp_aov_reserved";
-		scp_mem_key = "mediatek,reserve-memory-scp_share";
+		//scp_aovmem_key = "mediatek,scp_aov_reserved";
+		scp-mem-key = "mediatek,reserve-memory-scp_share";
 
 		/* feature ID, size, alignment */
-		scp-mem-tbl = <0 0x0 0x0>, /* secure dump, its size is in secure_dump_size */
+		scp-mem-tbl = <0 0x0 0x0>, /* secure dump, its size is in secure-dump-size */
 			      <1 0xca700 0x0>, /* vow */
 			      <2 0x100000 0x0>, /* sensor main*/
 			      <3 0x180000 0x0>, /* logger */
@@ -9658,9 +9658,9 @@
 		/* dump register */
 		/* cell means register info (address,size), not total reg num */
 		scp-resource-reg-dump-cell = <2>;
-		scp-resource-reg-dump = <0x1C013008 0x4>,
-			<0x1C001908 0x4>,
-			<0x1C001818 0x4>;
+		scp-resource-reg-dump = <0x1c013008 0x4>,
+			<0x1c001908 0x4>,
+			<0x1c001818 0x4>;
 	};
 
 	scp_clk_ctrl: scp-clk-ctrl@1c721000 {
