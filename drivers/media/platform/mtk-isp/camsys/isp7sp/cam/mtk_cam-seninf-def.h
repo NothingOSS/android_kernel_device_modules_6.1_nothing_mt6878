@@ -130,6 +130,7 @@ enum CSI_PORT {
 	CSI_PORT_5A,
 	CSI_PORT_5B,
 	CSI_PORT_MAX_NUM,
+	CSI_PORT_MIN_SPLIT_PORT = CSI_PORT_0A,
 };
 
 #define SENINF_CSI_PORT_NAMES \
@@ -175,6 +176,9 @@ enum SENINF_ENUM {
 	SENINF_10,
 	SENINF_11,
 	SENINF_12,
+	SENINF_13,
+	SENINF_14,
+	SENINF_15,
 	SENINF_NUM,
 };
 
@@ -248,6 +252,17 @@ enum SENINF_CAM_MUX_ENUM {
 	SENINF_CAM_MUX38,
 	SENINF_CAM_MUX39,
 	SENINF_CAM_MUX40,
+	SENINF_CAM_MUX41,
+	SENINF_CAM_MUX42,
+	SENINF_CAM_MUX43,
+	SENINF_CAM_MUX44,
+	SENINF_CAM_MUX45,
+	SENINF_CAM_MUX46,
+	SENINF_CAM_MUX47,
+	SENINF_CAM_MUX48,
+	SENINF_CAM_MUX49,
+	SENINF_CAM_MUX50,
+	SENINF_CAM_MUX51,
 	SENINF_CAM_MUX_NUM,
 
 	SENINF_CAM_MUX_ERR = 0xff
@@ -257,24 +272,24 @@ enum CAM_TYPE_ENUM {
 	TYPE_CAMSV_SAT,
 	TYPE_CAMSV_NORMAL,
 	TYPE_RAW,
-	TYPE_UISP,
 	TYPE_PDP,
+	TYPE_UISP,
 	TYPE_MAX_NUM,
 };
 
 #define MUX_RANGE_NAMES \
-	"mux-camsv-sat_range", \
-	"mux-camsv-normal_range", \
-	"mux-raw_range", \
-	"mux-uisp_range", \
-	"mux-pdp_range", \
+	"mux-camsv-sat-range", \
+	"mux-camsv-normal-range", \
+	"mux-raw-range", \
+	"mux-pdp-range", \
+	"mux-uisp-range", \
 
 #define CAMMUX_RANGE_NAMES \
-	"cammux-camsv-sat_range", \
-	"cammux-camsv-normal_range", \
-	"cammux-raw_range", \
-	"cammux-uisp_range", \
-	"cammux-pdp_range", \
+	"cammux-camsv-sat-range", \
+	"cammux-camsv-normal-range", \
+	"cammux-raw-range", \
+	"cammux-pdp-range", \
+	"cammux-uisp-range", \
 
 #define VC_STREAM_MAX_NUM 8
 

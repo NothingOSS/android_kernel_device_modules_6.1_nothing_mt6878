@@ -613,22 +613,24 @@ static irqreturn_t mtk_irq_seninf(int irq, void *data)
 
 static int get_seninf_ops(struct device *dev, struct seninf_core *core)
 {
-	int i, ret;
+	int i, ret, cam_type_cnt = 0;
 	const char *ver;
+	u32 read_prop_test;
 
 	ret = of_property_read_string(dev->of_node, "mtk_csi_phy_ver", &ver);
 	if (ret) {
 		g_seninf_ops = &mtk_csi_phy_3_0;
-		of_property_read_u32(dev->of_node, "seninf_num",
+		of_property_read_u32(dev->of_node, "seninf-num",
 			&g_seninf_ops->seninf_num);
-		of_property_read_u32(dev->of_node, "mux_num",
+		of_property_read_u32(dev->of_node, "mux-num",
 			&g_seninf_ops->mux_num);
-		of_property_read_u32(dev->of_node, "cam_mux_num",
+		of_property_read_u32(dev->of_node, "cam-mux-num",
 			&g_seninf_ops->cam_mux_num);
-		of_property_read_u32(dev->of_node, "pref_mux_num",
+		of_property_read_u32(dev->of_node, "pref-mux-num",
 			&g_seninf_ops->pref_mux_num);
-		ret = of_property_read_string(dev->of_node, "mtk_iomem_ver",
+		ret = of_property_read_string(dev->of_node, "mtk-iomem-ver",
 			&g_seninf_ops->iomem_ver);
+
 		if (!ret) {
 			dev_info(dev,
 				"%s: NOTICE: read property:(mtk_iomem_ver) success, ret:%d, using special mapping order\n",
@@ -640,6 +642,21 @@ static int get_seninf_ops(struct device *dev, struct seninf_core *core)
 		}
 
 		for (i = 0; i < TYPE_MAX_NUM; i++) {
+			ret = of_property_read_u32_index(dev->of_node, mux_range_name[i],
+						   0, &read_prop_test);
+			if (ret) {
+				dev_info(dev,
+					"%s: ERROR: try get mux_range property '%s' not found with ret %d\n",
+					__func__, mux_range_name[i], ret);
+				continue;
+			}
+			cam_type_cnt++;
+			dev_info(dev,
+					"%s: INFO:  try get mux_range property '%s' is found, cam_type_cnt %d\n",
+					__func__, mux_range_name[i], cam_type_cnt);
+		}
+
+		for (i = 0; i < cam_type_cnt; i++) {
 			ret = of_property_read_u32_index(dev->of_node, mux_range_name[i],
 						   0, &core->mux_range[i].first);
 			if (ret) {
@@ -700,17 +717,17 @@ static int get_seninf_ops(struct device *dev, struct seninf_core *core)
 
 			g_seninf_ops = &mtk_csi_phy_3_0;
 
-			dev_info(dev, "%s: mtk_csi_phy_ver = %s i = %d 0x%lx ret = %d\n",
+			dev_info(dev, "%s: mtk_csi_phy_ver = %s i = %d 0x%p ret = %d\n",
 			__func__,
-			csi_phy_versions[i], i, (unsigned long)g_seninf_ops, ret);
+			csi_phy_versions[i], i, g_seninf_ops, ret);
 
-			of_property_read_u32(dev->of_node, "seninf_num",
+			of_property_read_u32(dev->of_node, "seninf-num",
 				&g_seninf_ops->seninf_num);
-			of_property_read_u32(dev->of_node, "mux_num",
+			of_property_read_u32(dev->of_node, "mux-num",
 				&g_seninf_ops->mux_num);
-			of_property_read_u32(dev->of_node, "cam_mux_num",
+			of_property_read_u32(dev->of_node, "cam-mux-num",
 				&g_seninf_ops->cam_mux_num);
-			of_property_read_u32(dev->of_node, "pref_mux_num",
+			of_property_read_u32(dev->of_node, "pref-mux-num",
 				&g_seninf_ops->pref_mux_num);
 
 
@@ -782,13 +799,13 @@ static int seninf_core_probe(struct platform_device *pdev)
 	core->hs_trail_parameter = SENINF_HS_TRAIL_PARAMETER;
 
 	/* read platform properties from device tree */
-	of_property_read_u32(dev->of_node, "cphy_settle_delay_dt",
+	of_property_read_u32(dev->of_node, "cphy-settle-delay-dt",
 		&core->cphy_settle_delay_dt);
-	of_property_read_u32(dev->of_node, "dphy_settle_delay_dt",
+	of_property_read_u32(dev->of_node, "dphy-settle-delay-dt",
 		&core->dphy_settle_delay_dt);
-	of_property_read_u32(dev->of_node, "settle_delay_ck",
+	of_property_read_u32(dev->of_node, "settle-delay-ck",
 		&core->settle_delay_ck);
-	of_property_read_u32(dev->of_node, "hs_trail_parameter",
+	of_property_read_u32(dev->of_node, "hs-trail-parameter",
 		&core->hs_trail_parameter);
 
 	core->seninf_vsync_debug_flag = &seninf_vsync_debug;
@@ -1090,12 +1107,10 @@ static int set_aov_test_model_param(struct seninf_ctx *ctx,
 		/* must enable mux(clk) before clk_set_parent
 		 * pm_runtime_get_sync will call runtime_resume.
 		 */
-		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_SENIF);
 		ret = pm_runtime_get_sync(ctx->dev);
 		if (ret < 0) {
 			dev_info(ctx->dev, "%s pm_runtime_get_sync ret %d\n", __func__, ret);
 			pm_runtime_put_noidle(ctx->dev);
-			mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_SENIF);
 			return ret;
 		}
 
@@ -1123,7 +1138,6 @@ static int set_aov_test_model_param(struct seninf_ctx *ctx,
 		}
 	} else {
 		pm_runtime_put_sync(ctx->dev);
-		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_SENIF);
 		/* array size of aov_ctx[] is
 		 * 6: most number of sensors support
 		 */
@@ -1185,12 +1199,10 @@ static int set_test_model(struct seninf_ctx *ctx, char enable)
 	}
 
 	if (enable) {
-		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_SENIF);
 		ret = pm_runtime_get_sync(ctx->dev);
 		if (ret < 0) {
 			dev_info(ctx->dev, "%s pm_runtime_get_sync ret %d\n", __func__, ret);
 			pm_runtime_put_noidle(ctx->dev);
-			mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_SENIF);
 			return ret;
 		}
 
@@ -1221,8 +1233,7 @@ static int set_test_model(struct seninf_ctx *ctx, char enable)
 
 			g_seninf_ops->_set_test_model(ctx,
 					vc[i]->dest[0].mux, vc[i]->dest[0].cam, vc[i]->pixel_mode,
-					vc_dt_filter, i, vc[i]->vc, vc[i]->dt);
-
+					vc_dt_filter, i, vc[i]->vc, vc[i]->dt, vc[i]->vc);
 			if (vc[i]->out_pad == PAD_SRC_PDAF0)
 				mdelay(40);
 			else
@@ -1235,7 +1246,6 @@ static int set_test_model(struct seninf_ctx *ctx, char enable)
 			seninf_dfs_set(ctx, 0);
 
 		pm_runtime_put_sync(ctx->dev);
-		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_SENIF);
 	}
 
 	ctx->streaming = enable;
@@ -1294,7 +1304,7 @@ static int calc_buffered_pixel_rate(struct device *dev,
 	s64 k;
 
 	if (fps_d == 0 || width == 0 || hblank == 0 || ISP_CLK_LOW == 0) {
-		dev_info(dev, "Prevent divided by 0, fps_d= %d, w= %lld, h= %lld, ISP_CLK= %d\n",
+		dev_info(dev, "Prevent divided by 0, fps_d= %d, w= %llu, h= %llu, ISP_CLK= %d\n",
 			fps_d, width, hblank, ISP_CLK_LOW);
 		return 0;
 	}
@@ -1312,7 +1322,7 @@ static int calc_buffered_pixel_rate(struct device *dev,
 
 	dev_dbg(
 		dev,
-		"%s: w %lld h %lld hb %lld vb %lld fps %d/%d pclk %lld->%lld orig %lld k %lld hbe %d\n",
+		"%s: w %llu h %llu hb %llu vb %llu fps %d/%d pclk %llu->%llu orig %llu k %llu hbe %d\n",
 		__func__, width, height, hblank, vblank,
 		fps_n, fps_d, pclk, buffered_pixel_rate, orig_pixel_rate, k, HW_BUF_EFFECT);
 
@@ -1646,12 +1656,10 @@ static int seninf_csi_s_stream(struct v4l2_subdev *sd, int enable)
 					ctx->sensor_pad_idx, &ctx->buffered_pixel_rate);
 
 		get_customized_pixel_rate(ctx, ctx->sensor_sd, &ctx->customized_pixel_rate);
-		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_SENIF);
 		ret = pm_runtime_get_sync(ctx->dev);
 		if (ret < 0) {
 			dev_info(ctx->dev, "%s pm_runtime_get_sync ret %d\n", __func__, ret);
 			pm_runtime_put_noidle(ctx->dev);
-			mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_SENIF);
 			return ret;
 		}
 
@@ -1672,21 +1680,7 @@ static int seninf_csi_s_stream(struct v4l2_subdev *sd, int enable)
 		//update_sensor_frame_desc(ctx);
 #endif
 
-		ret = v4l2_subdev_call(ctx->sensor_sd, video, s_stream, 1);
-		if (ret) {
-			dev_info(ctx->dev, "sensor stream-on fail,ret(%d)\n", ret);
-			return  ret;
-		}
-#ifdef SENINF_UT_DUMP
-		g_seninf_ops->_debug(ctx);
-#endif
-
 	} else {
-		ret = v4l2_subdev_call(ctx->sensor_sd, video, s_stream, 0);
-		if (ret) {
-			dev_info(ctx->dev, "sensor stream-off fail,ret(%d)\n", ret);
-			return ret;
-		}
 #ifdef SENSOR_SECURE_MTEE_SUPPORT
 		if (ctx->is_secure == 1) {
 			dev_info(ctx->dev, "sensor kernel ca_free");
@@ -1703,11 +1697,29 @@ static int seninf_csi_s_stream(struct v4l2_subdev *sd, int enable)
 		g_seninf_ops->_poweroff(ctx);
 		ctx->dbg_last_dump_req = 0;
 		pm_runtime_put_sync(ctx->dev);
-		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_SENIF);
 	}
 
 	ctx->csi_streaming = enable;
 	return 0;
+}
+
+static int stream_sensor(struct seninf_ctx *ctx, bool enable)
+{
+	int ret;
+
+	ret = v4l2_subdev_call(ctx->sensor_sd, video, s_stream, enable);
+	if (ret) {
+		dev_info(ctx->dev, "%s sensor stream-%s fail,ret(%d)\n",
+			 __func__,
+			 enable ? "on" : "off",
+			 ret);
+	} else {
+#ifdef SENINF_UT_DUMP
+		g_seninf_ops->_debug(ctx);
+#endif
+	}
+
+	return ret;
 }
 
 static int seninf_s_stream(struct v4l2_subdev *sd, int enable)
@@ -1737,6 +1749,8 @@ static int seninf_s_stream(struct v4l2_subdev *sd, int enable)
 		if (!pad_inited) {
 			dev_info(ctx->dev,
 				 "[%s] pad_inited(%d)\n", __func__, pad_inited);
+			// stream on sensor while csi streamed
+			stream_sensor(ctx, enable);
 			return 0;
 		}
 	}
@@ -1775,6 +1789,9 @@ static int seninf_s_stream(struct v4l2_subdev *sd, int enable)
 		mtk_cam_seninf_s_stream_mux(ctx);
 		// notify_fsync_listen_target(ctx);
 	}
+
+	// stream on sensor after mux set
+	stream_sensor(ctx, enable);
 
 	ctx->streaming = enable;
 	notify_fsync_listen_target_with_kthread(ctx, 2);
@@ -2470,7 +2487,7 @@ static int seninf_probe(struct platform_device *pdev)
 	//ctx->seninf_dphy_settle_delay_dt = 0;
 
 	/* read platform properties from device tree */
-	//of_property_read_u32(dev->of_node, "seninf_dphy_settle_delay_dt",
+	//of_property_read_u32(dev->of_node, "seninf_dphy-settle-delay-dt",
 	//	&ctx->seninf_dphy_settle_delay_dt);
 	//dev_info(dev, "seninf dphy settle delay dt = %u\n",
 	//	 ctx->seninf_dphy_settle_delay_dt);
@@ -2480,13 +2497,13 @@ static int seninf_probe(struct platform_device *pdev)
 	ctx->settle_delay_ck = ctx->core->settle_delay_ck;
 	ctx->hs_trail_parameter = ctx->core->hs_trail_parameter;
 
-	of_property_read_u32(dev->of_node, "cphy_settle_delay_dt",
+	of_property_read_u32(dev->of_node, "cphy-settle-delay-dt",
 		&ctx->cphy_settle_delay_dt);
-	of_property_read_u32(dev->of_node, "dphy_settle_delay_dt",
+	of_property_read_u32(dev->of_node, "dphy-settle-delay-dt",
 		&ctx->dphy_settle_delay_dt);
-	of_property_read_u32(dev->of_node, "settle_delay_ck",
+	of_property_read_u32(dev->of_node, "settle-delay-ck",
 		&ctx->settle_delay_ck);
-	of_property_read_u32(dev->of_node, "hs_trail_parameter",
+	of_property_read_u32(dev->of_node, "hs-trail-parameter",
 		&ctx->hs_trail_parameter);
 
 	dev_info(dev,
@@ -3034,13 +3051,10 @@ int mtk_cam_seninf_dump(struct v4l2_subdev *sd, u32 seq_id, bool force_check)
 		if (val > 0)
 			ctx->dbg_timeout = val;
 	}
-
-	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_SENIF);
 	ret = pm_runtime_get_sync(ctx->dev);
 	if (ret < 0) {
 		dev_info(ctx->dev, "%s pm_runtime_get_sync ret %d\n", __func__, ret);
 		pm_runtime_put_noidle(ctx->dev);
-		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_SENIF);
 		return ret;
 	}
 
@@ -3057,7 +3071,6 @@ int mtk_cam_seninf_dump(struct v4l2_subdev *sd, u32 seq_id, bool force_check)
 		dev_info(ctx->dev, "%s should not dump during stream off\n", __func__);
 
 	pm_runtime_put_sync(ctx->dev);
-	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_SENIF);
 
 	dev_info(ctx->dev, "%s ret(%d), req(%u), force(%d) reset_by_user(%d)\n",
 		 __func__, ret, seq_id, force_check, reset_by_user);

@@ -8,9 +8,8 @@
 #include <linux/slab.h>
 #include <linux/of_graph.h>
 #include <linux/of_device.h>
-#include <linux/version.h>
-#include <linux/videodev2.h>
 
+#include <linux/videodev2.h>
 #include <media/v4l2-subdev.h>
 #include <media/v4l2-fwnode.h>
 #include <media/v4l2-ctrls.h>
@@ -30,7 +29,6 @@
 
 #define to_std_fmt_code(code) \
 	((code) & 0xFFFF)
-
 
 void mtk_cam_seninf_init_res(struct seninf_core *core)
 {
@@ -153,47 +151,126 @@ struct seninf_mux *mtk_cam_seninf_mux_get_by_type(struct seninf_ctx *ctx,
 }
 
 #define SAT_MUX_FACTOR 8
+#define SV_NORMAL_MUX_FACTOR 1
+#define RAW_MUX_FACTOR 4
 
-int mux2mux_vr(struct seninf_ctx *ctx, int mux, int cammux)
+int mux2mux_vr(struct seninf_ctx *ctx, int mux, int cammux, int vc_idx)
 {
-	int sat_mux_factor = SAT_MUX_FACTOR;
 	struct seninf_core *core = ctx->core;
 	int mux_vr = mux;
 	int sat_mux_first = core->mux_range[TYPE_CAMSV_SAT].first;
 	int sat_mux_second = core->mux_range[TYPE_CAMSV_SAT].second;
+	int num_sat_mux = sat_mux_second - sat_mux_first + 1;
+
+	int sv_normal_mux_first = core->mux_range[TYPE_CAMSV_NORMAL].first;
+	int sv_normal_mux_second = core->mux_range[TYPE_CAMSV_NORMAL].second;
+	int num_sv_normal_mux = sv_normal_mux_second - sv_normal_mux_first + 1;
+
+	int raw_mux_first = core->mux_range[TYPE_RAW].first;
+	int raw_mux_second = core->mux_range[TYPE_RAW].second;
+	int num_raw_mux = raw_mux_second - raw_mux_first + 1;
+
 	int sat_cammux_first = core->cammux_range[TYPE_CAMSV_SAT].first;
 	int sat_cammux_second = core->cammux_range[TYPE_CAMSV_SAT].second;
-	int num_sat_mux = sat_mux_second - sat_mux_first + 1;
+
+	int raw_cammux_first = core->cammux_range[TYPE_RAW].first;
+	int raw_cammux_second = core->cammux_range[TYPE_RAW].second;
+
+	dev_info(ctx->dev,
+				"[%s] num_sat_mux %d num_sv_normal_mux %d num_raw_mux %d\n",
+				__func__,
+				num_sat_mux,
+				num_sv_normal_mux,
+				num_raw_mux);
 
 	if (mux < sat_mux_first)
 		mux_vr = mux;
-	else if (mux >= sat_mux_first && mux <= sat_mux_second) {
-		mux_vr = sat_mux_first + ((mux - sat_mux_first) * sat_mux_factor);
-		if (cammux >= sat_cammux_first && cammux <= sat_cammux_second)
-			mux_vr += ((cammux - sat_cammux_first) % sat_mux_factor);
-	} else
-		mux_vr = (mux - sat_mux_second) + (num_sat_mux * sat_mux_factor) - 1;
+	else if ((mux >= sat_mux_first) && (mux <= sat_mux_second)) {  // sat camsv
+
+		mux_vr = ((mux - sat_mux_first) * SAT_MUX_FACTOR) + sat_mux_first;
+
+		if ((cammux >= sat_cammux_first) && (cammux <= sat_cammux_second))
+			mux_vr += vc_idx;
+
+	} else if ((mux >= sv_normal_mux_first) && (mux <= sv_normal_mux_second)) {  // normal camsv
+		mux_vr = (mux - sv_normal_mux_first)
+			   + (num_sat_mux * SAT_MUX_FACTOR);
+
+	} else if ((mux >= raw_mux_first) && (mux <= raw_mux_second)) {  // raw
+
+		mux_vr = ((mux - raw_mux_first) * RAW_MUX_FACTOR)
+			   + (num_sat_mux * SAT_MUX_FACTOR)
+			   + (num_sv_normal_mux * SV_NORMAL_MUX_FACTOR);
+
+		if ((cammux >= raw_cammux_first) && (cammux <= raw_cammux_second))
+			mux_vr += (cammux - raw_cammux_first) % RAW_MUX_FACTOR;
+	} else {  // PDP & uISP
+		mux_vr = (mux - raw_mux_second)
+			   + (num_sat_mux * SAT_MUX_FACTOR)
+			   + (num_raw_mux * RAW_MUX_FACTOR)
+			   + (num_sv_normal_mux * SV_NORMAL_MUX_FACTOR);
+	}
+
+	dev_info(ctx->dev,
+				"[%s] sat_based %d sv_based %d raw_based %d, raw_based %d\n",
+				__func__,
+				sat_mux_first,
+				(num_sat_mux * SAT_MUX_FACTOR),
+				(num_sat_mux * SAT_MUX_FACTOR) +
+					(num_sv_normal_mux * SV_NORMAL_MUX_FACTOR),
+				(num_sat_mux * SAT_MUX_FACTOR) +
+					(num_raw_mux * RAW_MUX_FACTOR) +
+					(num_sv_normal_mux * SV_NORMAL_MUX_FACTOR));
+
+	dev_info(ctx->dev,
+				"[%s] Input(mux_id %d, camtg_id %d, vc_offset %d), Output(mux_vr %d)\n",
+				__func__, mux, cammux, vc_idx, mux_vr);
 
 	return mux_vr;
 }
 
 int mux_vr2mux(struct seninf_ctx *ctx, int mux_vr)
 {
-	int sat_mux_factor = SAT_MUX_FACTOR;
 	struct seninf_core *core = ctx->core;
 	int mux = mux_vr;
 	int sat_mux_first = core->mux_range[TYPE_CAMSV_SAT].first;
 	int sat_mux_last = core->mux_range[TYPE_CAMSV_SAT].second;
 	int num_sat_mux = sat_mux_last - sat_mux_first + 1;
 	int sat_mux_vr_first = sat_mux_first;
-	int sat_mux_vr_last = sat_mux_first + (sat_mux_factor * num_sat_mux) - 1;
+	int sat_mux_vr_last = sat_mux_vr_first + (SAT_MUX_FACTOR * num_sat_mux) - 1;
+
+	int sv_normal_mux_first = core->mux_range[TYPE_CAMSV_NORMAL].first;
+	int sv_normal_mux_last = core->mux_range[TYPE_CAMSV_NORMAL].second;
+	int num_sv_normal_mux = sv_normal_mux_last - sv_normal_mux_first + 1;
+	int sv_normal_mux_vr_first = sat_mux_vr_last + 1;
+	int sv_normal_mux_vr_last = sv_normal_mux_vr_first
+						+ (SV_NORMAL_MUX_FACTOR * num_sv_normal_mux) - 1;
+
+	int raw_mux_first = core->mux_range[TYPE_RAW].first;
+	int raw_mux_last = core->mux_range[TYPE_RAW].second;
+	int num_raw_mux = raw_mux_last - raw_mux_first + 1;
+	int raw_mux_vr_first = sv_normal_mux_vr_last + 1;
+	int raw_mux_vr_last = raw_mux_vr_first + (RAW_MUX_FACTOR * num_raw_mux) - 1;
 
 	if (mux_vr < sat_mux_vr_first)
 		mux = mux_vr;
 	else if ((mux_vr >= sat_mux_vr_first) && (mux_vr <= sat_mux_vr_last))
-		mux = sat_mux_first + ((mux_vr - sat_mux_vr_first) / sat_mux_factor);
-	else
+		mux = sat_mux_first + ((mux_vr - sat_mux_vr_first) / SAT_MUX_FACTOR);
+
+	else if ((mux_vr >= sv_normal_mux_first) &&
+			 (mux_vr <= sv_normal_mux_last)) {
 		mux = sat_mux_last + (mux_vr - sat_mux_vr_last);
+
+	} else if ((mux_vr >= raw_mux_first) && (mux_vr <= raw_mux_last)) {
+
+		mux = raw_mux_first
+			+ ((mux_vr - sv_normal_mux_vr_last) / RAW_MUX_FACTOR);
+	} else
+		mux = raw_mux_last + (mux_vr - raw_mux_vr_last);
+
+	dev_info(ctx->dev,
+				"[%s] Input(mux_vr %d), Output(mux %d)\n",
+				__func__, mux_vr, mux);
 
 	return mux;
 }
@@ -316,6 +393,9 @@ void mtk_cam_seninf_mux_put(struct seninf_ctx *ctx, struct seninf_mux *mux)
 {
 	struct seninf_core *core = ctx->core;
 	int i, j;
+
+	// disable mux and the cammux if cammux already disabled
+	g_seninf_ops->_disable_mux(ctx, mux->idx);
 
 	mutex_lock(&core->mutex);
 	list_move_tail(&mux->list, &core->list_mux);
@@ -669,6 +749,8 @@ int mtk_cam_seninf_get_vcinfo(struct seninf_ctx *ctx)
 	int i, raw_cnt;
 	int desc;
 	int ret = 0;
+	int *vcid_map = NULL;
+	int j, map_cnt;
 
 	if (!ctx->sensor_sd)
 		return -EINVAL;
@@ -693,12 +775,27 @@ int mtk_cam_seninf_get_vcinfo(struct seninf_ctx *ctx)
 	vcinfo->cnt = 0;
 	raw_cnt = 0;
 
+	vcid_map = kmalloc_array(fd.num_entries, sizeof(int), GFP_KERNEL);
+	map_cnt = 0;
+	if (!vcid_map)
+		return -EINVAL;
+
 	for (i = 0; i < fd.num_entries; i++) {
 		vc = &vcinfo->vc[vcinfo->cnt];
 		vc->vc = fd.entry[i].bus.csi2.channel;
 		vc->dt = fd.entry[i].bus.csi2.data_type;
 		desc = fd.entry[i].bus.csi2.user_data_desc;
 		vc->dt_remap_to_type = fd.entry[i].bus.csi2.dt_remap_to_type;
+
+		for (j = 0; j < map_cnt; j++) {
+			if (vcid_map[j] == vc->vc)
+				break;
+		}
+		if (map_cnt == j) { /* not found in vc id map */
+			vcid_map[j] = vc->vc;
+			map_cnt = j + 1;
+		}
+		vc->muxvr_offset = j;
 
 		switch (desc) {
 		case VC_3HDR_Y:
@@ -899,10 +996,10 @@ int mtk_cam_seninf_get_vcinfo(struct seninf_ctx *ctx)
 		}
 
 		dev_info(ctx->dev,
-			"%s vc[%d] vc 0x%x dt 0x%x pad %d exp %dx%d grp 0x%x code 0x%x, fsync_ext_vsync_pad_code:%#llx\n",
+			"%s vc[%d] vc 0x%x dt 0x%x pad %d exp %dx%d grp 0x%x muxvr_offset %d code 0x%x, fsync_ext_vsync_pad_code:%#llx\n",
 			__func__,
 			vcinfo->cnt, vc->vc, vc->dt, vc->out_pad,
-			vc->exp_hsize, vc->exp_vsize, vc->group,
+			vc->exp_hsize, vc->exp_vsize, vc->group, vc->muxvr_offset,
 			ctx->fmt[vc->out_pad].format.code,
 			fsync_ext_vsync_pad_code);
 
@@ -910,6 +1007,8 @@ int mtk_cam_seninf_get_vcinfo(struct seninf_ctx *ctx)
 	}
 
 	setup_fsync_vsync_src_pad(ctx, fsync_ext_vsync_pad_code);
+
+	kfree(vcid_map);
 
 	return 0;
 }
@@ -1095,6 +1194,9 @@ static struct seninf_mux *get_mux(struct seninf_ctx *ctx, struct seninf_vc *vc,
 
 		g_seninf_ops->_set_top_mux_ctrl(ctx, mux->idx, intf);
 
+		// set vc split
+		g_seninf_ops->_set_mux_vc_split_all(ctx, mux->idx);
+
 		//TODO
 		//mtk_cam_seninf_set_mux_crop(ctx, mux->idx, 0, 2327, 0);
 	}
@@ -1145,7 +1247,7 @@ int _mtk_cam_seninf_set_camtg_with_dest_idx(struct v4l2_subdev *sd, int pad_id,
 #ifdef SENSOR_SECURE_MTEE_SUPPORT
 		if (ctx->is_secure == 1) {
 			dest->cam = camtg;
-			dest->mux_vr = mux2mux_vr(ctx, dest->mux, dest->cam);
+			dest->mux_vr = mux2mux_vr(ctx, dest->mux, dest->cam, vc->muxvr_offset);
 
 			dev_info(ctx->dev, "Sensor Secure CA");
 			g_seninf_ops->_set_cammux_vc(ctx, dest->cam,
@@ -1193,12 +1295,10 @@ int _mtk_cam_seninf_set_camtg_with_dest_idx(struct v4l2_subdev *sd, int pad_id,
 					dev_info(ctx->dev, "mux is null\n");
 					return -EBUSY;
 				}
-				// set vc split
-				g_seninf_ops->_set_mux_vc_split(ctx, mux->idx,
-								dest->tag, vc->vc);
 
 				dest->mux = mux->idx;
-				dest->mux_vr = mux2mux_vr(ctx, dest->mux, dest->cam);
+				dest->mux_vr = mux2mux_vr(ctx, dest->mux, dest->cam,
+							vc->muxvr_offset);
 
 				g_seninf_ops->_switch_to_cammux_inner_page(ctx, true);
 				g_seninf_ops->_set_cammux_next_ctrl(ctx, 0x3f, dest->cam);
@@ -1454,8 +1554,8 @@ int mtk_cam_seninf_s_stream_mux(struct seninf_ctx *ctx)
 
 		vc->enable = mtk_cam_seninf_is_vc_enabled(ctx, vc);
 		if (!vc->enable) {
-			dev_info(ctx->dev, "vc[%d] feature %d, pad %d. skip\n",
-				 i, vc->feature, vc->out_pad);
+			dev_info(ctx->dev, "vc[%d] pad %d. skip\n",
+				 i, vc->feature);
 			continue;
 		}
 
@@ -1490,11 +1590,9 @@ int mtk_cam_seninf_s_stream_mux(struct seninf_ctx *ctx)
 			dest->mux = mux->idx;
 
 			if (dest->cam != 0xff) {
-				dest->mux_vr = mux2mux_vr(ctx, dest->mux, dest->cam);
+				dest->mux_vr = mux2mux_vr(ctx, dest->mux, dest->cam,
+							vc->muxvr_offset);
 				dest->tag = ctx->pad_tag_id[vc->out_pad][j];
-				// set vc split
-				g_seninf_ops->_set_mux_vc_split(ctx, dest->mux,
-								dest->tag, vc->vc);
 
 				vc_sel = vc->vc;
 				dt_sel = vc->dt;
