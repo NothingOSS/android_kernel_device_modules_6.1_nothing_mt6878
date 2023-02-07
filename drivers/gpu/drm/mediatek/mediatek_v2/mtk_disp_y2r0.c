@@ -29,6 +29,7 @@
 #define DISP_REG_DISP_DL_IN_RELAY3_SIZE 0x26C
 #define DISP_REG_DISP_DL_OUT_RELAY3_SIZE 0x27C
 
+
 /**
  * struct mtk_disp_y2r - DISP_RSZ driver structure
  * @ddp_comp - structure containing type enum and hardware resources
@@ -65,7 +66,7 @@ static void mtk_y2r_addon_config(struct mtk_ddp_comp *comp,
 			comp->regs_pa
 			+ DISP_REG_DISP_Y2R0_EN, addon_config->addon_mml_config.is_yuv, ~0);
 	if (mtk_crtc->mml_cfg) {
-		/*follow mml output profile*/
+		/*follow mml output prefile*/
 		int profile = 5;
 
 		switch (mtk_crtc->mml_cfg->info.dest[0].data.profile) {
@@ -79,7 +80,6 @@ static void mtk_y2r_addon_config(struct mtk_ddp_comp *comp,
 			profile = DISP_REG_DISP_Y2R0_MATRIX_SEL_JPEG_RGB;
 			break;
 		default:
-			profile = DISP_REG_DISP_Y2R0_MATRIX_SEL_FULL_RANGE_BT709_RGB;
 			break;
 		}
 		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,

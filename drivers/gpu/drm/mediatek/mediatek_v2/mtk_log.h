@@ -179,7 +179,7 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 		if (r < 0) {	\
 			pr_err("snprintf error\n"); \
 		}	\
-		pr_err("[DDP Fatal Error]" string, ##args); 			\
+		pr_err("[DDP Fatal Error]" string, ##args);				\
 	} while (0)
 #endif /* CONFIG_MTK_AEE_FEATURE */
 

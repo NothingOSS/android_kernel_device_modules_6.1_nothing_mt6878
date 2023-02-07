@@ -23,12 +23,13 @@
 #include "mtk_drm_drv.h"
 #include "mtk_disp_color.h"
 #include "mtk_dump.h"
+#include "platform/mtk_drm_platform.h"
 #include "mtk_disp_ccorr.h"
 
 #define UNUSED(expr) (void)(expr)
 #define index_of_color(module) ((module == DDP_COMPONENT_COLOR0) ? 0 : 1)
 #define PQ_MODULE_NUM 9
-static struct DISP_PQ_PARAM g_Color_Param[DISP_COLOR_TOTAL];
+static struct DISP_PQ_PARAM g_Color_Param;
 
 #define CCORR_REG(idx) (idx * 4 + 0x80)
 
@@ -52,7 +53,7 @@ static atomic_t g_color_is_clock_on[DISP_COLOR_TOTAL] = { ATOMIC_INIT(0),
 
 static DEFINE_SPINLOCK(g_color_clock_lock);
 
-static int g_color_bypass[DISP_COLOR_TOTAL];
+static int g_color_bypass;
 
 static DEFINE_MUTEX(g_color_reg_lock);
 static struct DISPLAY_COLOR_REG g_color_reg;
@@ -131,9 +132,19 @@ struct mtk_disp_color {
 	const struct mtk_disp_color_data *data;
 };
 
+struct mtk_disp_color_tile_overhead {
+	unsigned int left_in_width;
+	unsigned int left_overhead;
+	unsigned int left_comp_overhead;
+	unsigned int right_in_width;
+	unsigned int right_overhead;
+	unsigned int right_comp_overhead;
+};
+
+struct mtk_disp_color_tile_overhead color_tile_overhead = { 0 };
+
 /* global PQ param for kernel space */
-static struct DISP_PQ_PARAM g_Color_Param[2] = {
-	{
+static struct DISP_PQ_PARAM g_Color_Param = {
 u4SHPGain:2,
 u4SatGain:4,
 u4PartialY:0,
@@ -143,18 +154,6 @@ u4Contrast:4,
 u4Brightness:4,
 u4Ccorr:0,
 u4ColorLUT:0
-	 },
-	{
-u4SHPGain:2,
-u4SatGain:4,
-u4PartialY:0,
-u4HueAdj:{9, 9, 9, 9},
-u4SatAdj:{0, 0, 0, 0},
-u4Contrast:4,
-u4Brightness:4,
-u4Ccorr:1,
-u4ColorLUT:0
-	}
 };
 
 /* initialize index */
@@ -1193,11 +1192,6 @@ static void ddp_color_set_window(struct mtk_ddp_comp *comp,
 		comp->regs_pa + DISP_COLOR_WIN_Y_MAIN, split_window_y, ~0);
 }
 
-struct DISP_PQ_PARAM *get_Color_config(int id)
-{
-	return &g_Color_Param[id];
-}
-
 struct DISPLAY_PQ_T *get_Color_index(void)
 {
 	g_legacy_color_cust = true;
@@ -1240,9 +1234,8 @@ void DpEngine_COLORonConfig(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	unsigned char h_series[20] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 			0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-	int id = index_of_color(comp->id);
 	struct mtk_disp_color *color = comp_to_color(comp);
-	struct DISP_PQ_PARAM *pq_param_p = &g_Color_Param[id];
+	struct DISP_PQ_PARAM *pq_param_p = &g_Color_Param;
 	int i, j, reg_index;
 	unsigned int pq_index;
 	int wide_gamut_en = 0;
@@ -1263,7 +1256,7 @@ void DpEngine_COLORonConfig(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 		return;
 	}
 
-	if (g_color_bypass[id] == 0) {
+	if (g_color_bypass == 0) {
 		if (color->data->support_color21 == true) {
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DISP_COLOR_CFG_MAIN,
@@ -1681,12 +1674,11 @@ static void color_write_hw_reg(struct mtk_ddp_comp *comp,
 	unsigned char h_series[20] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 		, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	unsigned int u4Temp = 0;
-	int id = index_of_color(comp->id);
 	struct mtk_disp_color *color = comp_to_color(comp);
 	int i, j, reg_index;
 	int wide_gamut_en = 0;
 
-	if (g_color_bypass[id] == 0) {
+	if (g_color_bypass == 0) {
 		if (color->data->support_color21 == true) {
 			if (g_legacy_color_cust)
 				cmdq_pkt_write(handle, comp->cmdq_base,
@@ -2103,24 +2095,57 @@ static void color_write_hw_reg(struct mtk_ddp_comp *comp,
 		}
 	}
 }
+
+static void mtk_disp_color_config_overhead(struct mtk_ddp_comp *comp,
+	struct mtk_ddp_config *cfg)
+{
+	DDPINFO("line: %d\n", __LINE__);
+
+	if (cfg->tile_overhead.is_support) {
+		if (comp->id == DDP_COMPONENT_COLOR0) {
+			color_tile_overhead.left_comp_overhead = 0;
+			/*add component overhead on total overhead*/
+			cfg->tile_overhead.left_overhead += color_tile_overhead.left_comp_overhead;
+			cfg->tile_overhead.left_in_width += color_tile_overhead.left_comp_overhead;
+			/*copy from total overhead info*/
+			color_tile_overhead.left_in_width = cfg->tile_overhead.left_in_width;
+			color_tile_overhead.left_overhead = cfg->tile_overhead.left_overhead;
+		} else {
+			/*set component overhead*/
+			color_tile_overhead.right_comp_overhead = 0;
+			/*add component overhead on total overhead*/
+			cfg->tile_overhead.right_overhead +=
+				color_tile_overhead.right_comp_overhead;
+			cfg->tile_overhead.right_in_width +=
+				color_tile_overhead.right_comp_overhead;
+			/*copy from total overhead info*/
+			color_tile_overhead.right_in_width = cfg->tile_overhead.right_in_width;
+			color_tile_overhead.right_overhead = cfg->tile_overhead.right_overhead;
+		}
+	}
+}
+
 static void mtk_color_config(struct mtk_ddp_comp *comp,
 			     struct mtk_ddp_config *cfg,
 			     struct cmdq_pkt *handle)
 {
 	struct mtk_disp_color *color = comp_to_color(comp);
 
-	//if (!cfg->dst_dirty)
-	//	return 0;
-
 	int id = index_of_color(comp->id);
 	unsigned int width;
 
+	if (comp->mtk_crtc->is_dual_pipe && cfg->tile_overhead.is_support)
+		width = color_tile_overhead.left_in_width;
+	else {
+		if (comp->mtk_crtc->is_dual_pipe)
+			width = cfg->w / 2;
+		else
+			width = cfg->w;
+	}
+
 	if (comp->mtk_crtc->is_dual_pipe) {
-		width = cfg->w / 2;
 		g_width = width;
 	}
-	else
-		width = cfg->w;
 
 	if (comp->mtk_crtc->is_dual_pipe)
 		g_color_dst_w[id] = cfg->w / 2;
@@ -2148,7 +2173,7 @@ void ddp_color_bypass_color(struct mtk_ddp_comp *comp, int bypass,
 		struct cmdq_pkt *handle)
 {
 
-	g_color_bypass[index_of_color(comp->id)] = bypass;
+	g_color_bypass = bypass;
 
 	if (bypass) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -2718,10 +2743,9 @@ int mtk_drm_ioctl_set_pqparam(struct drm_device *dev, void *data,
 	struct mtk_ddp_comp *comp = private->ddp_comp[DDP_COMPONENT_COLOR0];
 	struct drm_crtc *crtc = private->crtc[0];
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	int id = index_of_color(comp->id);
 	struct DISP_PQ_PARAM *pq_param;
 
-	pq_param = get_Color_config(id);
+	pq_param = &g_Color_Param;
 	memcpy(pq_param, (struct DISP_PQ_PARAM *)data,
 		sizeof(struct DISP_PQ_PARAM));
 
@@ -3563,6 +3587,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_color_funcs = {
 	.user_cmd = mtk_color_user_cmd,
 	.prepare = mtk_color_prepare,
 	.unprepare = mtk_color_unprepare,
+	.config_overhead = mtk_disp_color_config_overhead,
 };
 
 void mtk_color_dump(struct mtk_ddp_comp *comp)
@@ -3667,9 +3692,9 @@ static int mtk_disp_color_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	if (!default_comp)
+	if (!default_comp && comp_id == DDP_COMPONENT_COLOR0)
 		default_comp = &priv->ddp_comp;
-	if (comp_id == DDP_COMPONENT_COLOR1)
+	if (!default_comp1 && comp_id == DDP_COMPONENT_COLOR1)
 		default_comp1 = &priv->ddp_comp;
 
 	priv->data = of_device_get_match_data(dev);
@@ -3868,6 +3893,8 @@ static const struct of_device_id mtk_disp_color_driver_dt_match[] = {
 	 .data = &mt6985_color_driver_data},
 	{.compatible = "mediatek,mt6886-disp-color",
 	 .data = &mt6886_color_driver_data},
+	{.compatible = "mediatek,mt6835-disp-color",
+	 .data = &mt6835_color_driver_data},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_color_driver_dt_match);

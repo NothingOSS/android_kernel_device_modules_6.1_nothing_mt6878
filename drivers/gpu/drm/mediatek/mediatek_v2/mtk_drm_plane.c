@@ -34,6 +34,7 @@ static const u32 formats[] = {
 	DRM_FORMAT_UYVY,     DRM_FORMAT_VYUY,     DRM_FORMAT_ABGR2101010,
 	DRM_FORMAT_ABGR16161616F,
 	DRM_FORMAT_RGB332, // for skip_update
+	DRM_FORMAT_P010,
 };
 
 unsigned int to_crtc_plane_index(unsigned int plane_index)
@@ -328,7 +329,8 @@ static int mtk_plane_atomic_check(struct drm_plane *plane,
 		return PTR_ERR(crtc_state);
 
 	mtk_crtc = to_mtk_crtc(new_plane_state->crtc);
-	if (mtk_crtc->res_switch && (drm_crtc_index(new_plane_state->crtc) == 0)) {
+	if ((mtk_crtc->res_switch != RES_SWITCH_NO_USE)
+		&& (drm_crtc_index(new_plane_state->crtc) == 0)) {
 		struct mtk_crtc_state *mtk_state = to_mtk_crtc_state(crtc_state);
 		struct mtk_crtc_state *old_mtk_state =
 			to_mtk_crtc_state(new_plane_state->crtc->state);
@@ -445,7 +447,7 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 	if ((!fb) || (mtk_crtc->ddp_mode == DDP_NO_USE))
 		return;
 
-	if (priv->usage[crtc_index] == DISP_OPENING) {
+	if (priv && crtc_index < MAX_CRTC && priv->usage[crtc_index] == DISP_OPENING) {
 		DDPINFO("%s: skip in opening\n", __func__);
 		return;
 	}
@@ -483,7 +485,7 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 		mtk_plane_state->pending.pitch = pitch;
 		mtk_plane_state->pending.format = fb->format->format;
 		mtk_plane_state->pending.addr = (dma_addr_t)(mtk_crtc->mml_ir_sram.data.paddr);
-		mtk_plane_state->pending.modifier = MTK_FMT_NONE;
+		mtk_plane_state->pending.modifier = fb->modifier;
 		mtk_plane_state->pending.size = pitch  * height;
 		mtk_plane_state->pending.src_x = crtc_state->mml_src_roi[0].x;
 		mtk_plane_state->pending.src_y = crtc_state->mml_src_roi[0].y;
@@ -551,8 +553,14 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 	if (mtk_plane_state->pending.enable)
 		atomic_set(&mtk_crtc->already_config, 1);
 
-	if (mtk_plane_state->pending.format == DRM_FORMAT_RGB332)
+	if (mtk_plane_state->pending.format == DRM_FORMAT_RGB332) {
 		skip_update = 1;
+		/* workaround for skip plane update and trigger hwc set crtc in discrete*/
+		if (mtk_crtc->path_data->is_discrete_path) {
+			mtk_crtc->skip_frame = true;
+			DDPMSG("skip setcrtc trigger\n");
+		}
+	}
 	/* workaround for skip plane update when hwc set crtc */
 	if (skip_update == 0)
 		mtk_drm_crtc_plane_update(crtc, plane, mtk_plane_state);
@@ -579,7 +587,7 @@ static void mtk_plane_atomic_disable(struct drm_plane *plane,
 	if (crtc) {
 		crtc_index = drm_crtc_index(crtc);
 
-		if (priv->usage[crtc_index] == DISP_OPENING) {
+		if (priv && crtc_index < MAX_CRTC && priv->usage[crtc_index] == DISP_OPENING) {
 			DDPINFO("%s: skip in opening\n", __func__);
 			return;
 		}

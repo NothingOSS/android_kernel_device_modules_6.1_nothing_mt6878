@@ -11,6 +11,7 @@
 #include <drm/drm_fourcc.h>
 #include <drm/drm_framebuffer.h>
 #include <drm/drm_plane_helper.h>
+#include <drm/drm_fourcc.h>
 #include <linux/clk.h>
 #include <linux/pm_runtime.h>
 #include <linux/mailbox_controller.h>
@@ -59,6 +60,7 @@
 #include "mtk_disp_ccorr.h"
 #include "mtk_debug.h"
 #include "mtk_disp_oddmr/mtk_disp_oddmr.h"
+#include "platform/mtk_drm_platform.h"
 
 /* *****Panel_Master*********** */
 #include "mtk_fbconfig_kdebug.h"
@@ -154,6 +156,8 @@ static bool g_ccorr_linear;
 #define DISP_REG_OVL_ELX_BURST_ACC(n) (0x950UL + 0x4 * (n))
 #define DISP_REG_OVL_LX_BURST_ACC_WIN_MAX(n) (0x960UL + 0x4 * (n))
 #define DISP_REG_OVL_ELX_BURST_ACC_WIN_MAX(n) (0x970UL + 0x4 * (n))
+
+#define DISP_REG_OVL_GREQ_LAYER_CNT (0x234UL)
 
 struct drm_crtc *_get_context(void)
 {
@@ -526,6 +530,7 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 	case MMSYS_MT6833:
 	case MMSYS_MT6879:
 	case MMSYS_MT6855:
+	case MMSYS_MT6835:
 		mmsys_config_dump_reg_mt6879(mtk_crtc->config_regs);
 		mutex_dump_reg_mt6879(mtk_crtc->mutex[0]);
 		break;
@@ -588,7 +593,11 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 
 	if (panel_ext &&
 		panel_ext->output_mode == MTK_PANEL_DSC_SINGLE_PORT) {
-		comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
+		if (crtc_id == 3)
+			comp = priv->ddp_comp[DDP_COMPONENT_DSC1];
+		else
+			comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
+
 		mtk_dump_reg(comp);
 	}
 
@@ -960,6 +969,10 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 		mmsys_config_dump_analysis_mt6855(mtk_crtc->config_regs);
 		mutex_dump_analysis_mt6855(mtk_crtc->mutex[0]);
 		break;
+	case MMSYS_MT6835:
+		mmsys_config_dump_analysis_mt6835(mtk_crtc->config_regs);
+		mutex_dump_analysis_mt6835(mtk_crtc->mutex[0]);
+		break;
 	default:
 		DDPPR_ERR("%s mtk drm not support mmsys id %d\n",
 			__func__, priv->data->mmsys_id);
@@ -1112,9 +1125,11 @@ mtk_drm_crtc_duplicate_state(struct drm_crtc *crtc)
 		state->rsz_dst_roi = old_state->rsz_dst_roi;
 		state->prop_val[CRTC_PROP_DOZE_ACTIVE] =
 			old_state->prop_val[CRTC_PROP_DOZE_ACTIVE];
-		if (mtk_crtc->res_switch)
+		if (mtk_crtc->res_switch != RES_SWITCH_NO_USE)
 			state->prop_val[CRTC_PROP_DISP_MODE_IDX] =
 				old_state->prop_val[CRTC_PROP_DISP_MODE_IDX];
+		state->prop_val[CRTC_PROP_PRES_FENCE_IDX] =
+			old_state->prop_val[CRTC_PROP_PRES_FENCE_IDX];
 	}
 
 	return &state->base;
@@ -1173,6 +1188,7 @@ static int mtk_drm_crtc_get_property(struct drm_crtc *crtc,
 	int ret = 0;
 	int index = drm_crtc_index(crtc);
 	int i;
+
 	if (index < 0) {
 		DDPPR_ERR("%s invalid crtc index\n", __func__);
 		return -EINVAL;
@@ -1425,7 +1441,8 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 
 	is_frame_mode = mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base);
 
-	if (m_new_pq_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS] &&
+	/* SILKY BRIGHTNESS control flow only support CRTC0 */
+	if (index == 0 && m_new_pq_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS] &&
 		sb_cmdq_handle != NULL) {
 		cmdq_handle = sb_cmdq_handle;
 		sb_cmdq_handle = NULL;
@@ -1458,7 +1475,9 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
 	mtk_ddp_comp_io_cmd(oddmr_comp, cmdq_handle, ODDMR_BL_CHG, &level);
 
-	if ((cfg_flag & (0x1<<SET_BACKLIGHT_LEVEL)) && !(cfg_flag & (0x1<<SET_ELVSS_PN))) {
+	if ((cfg_flag & (0x1<<SET_BACKLIGHT_LEVEL)) && !(cfg_flag & (0x1<<SET_ELVSS_PN))
+		&& !(cfg_flag & (0x1<<ENABLE_DYN_ELVSS))
+		&& !(cfg_flag & (0x1<<DISABLE_DYN_ELVSS))) {
 
 		DDPINFO("%s cfg_flag = %d,level=%d\n", __func__, cfg_flag, level);
 		if (comp && comp->funcs && comp->funcs->io_cmd)
@@ -1842,6 +1861,7 @@ bool mtk_crtc_is_dual_pipe(struct drm_crtc *crtc)
 	struct mtk_panel_params *panel_ext =
 		mtk_drm_get_lcm_ext_params(crtc);
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 
 	if ((drm_crtc_index(crtc) == 0) &&
 		panel_ext &&
@@ -1857,6 +1877,10 @@ bool mtk_crtc_is_dual_pipe(struct drm_crtc *crtc)
 			return true;
 		}
 	}
+
+	if (drm_crtc_index(crtc) == 3 &&
+		mtk_crtc && mtk_crtc->path_data->is_discrete_path)
+		return true;
 
 	if ((drm_crtc_index(crtc) == 0) &&
 		mtk_drm_helper_get_opt(priv->helper_opt,
@@ -2210,7 +2234,11 @@ void mtk_crtc_ddp_prepare(struct mtk_drm_crtc *mtk_crtc)
 	}
 	if (panel_ext &&
 		panel_ext->output_mode == MTK_PANEL_DSC_SINGLE_PORT) {
-		comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
+		if (drm_crtc_index(crtc) == 3)
+			comp = priv->ddp_comp[DDP_COMPONENT_DSC1];
+		else
+			comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
+
 		mtk_ddp_comp_clk_prepare(comp);
 	}
 	if (mtk_crtc->is_dual_pipe) {
@@ -2277,7 +2305,11 @@ void mtk_crtc_ddp_unprepare(struct mtk_drm_crtc *mtk_crtc)
 		}
 	}
 	if (panel_ext && panel_ext->output_mode == MTK_PANEL_DSC_SINGLE_PORT) {
-		comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
+		if (drm_crtc_index(crtc) == 3)
+			comp = priv->ddp_comp[DDP_COMPONENT_DSC1];
+		else
+			comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
+
 		mtk_ddp_comp_clk_unprepare(comp);
 	}
 
@@ -2380,6 +2412,7 @@ static void calc_mml_config(struct drm_crtc *crtc,
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	int x = -1, y = -1, w = -1, h = -1, mid_line = -1;
+	struct total_tile_overhead to_info;
 
 	x = crtc_state->mml_dst_roi.x;
 	y = crtc_state->mml_dst_roi.y;
@@ -2388,9 +2421,14 @@ static void calc_mml_config(struct drm_crtc *crtc,
 
 	CRTC_MMP_EVENT_START(0, mml_dbg, x, w);
 
+	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
+	DDPINFO("%s:overhead is_support:%d, width L:%d R:%d\n", __func__,
+			to_info.is_support, to_info.left_in_width, to_info.right_in_width);
+
 	addon_config->addon_mml_config.mml_dst_roi[0].x = x;
 	addon_config->addon_mml_config.mml_dst_roi[0].y = y;
-	addon_config->addon_mml_config.mml_dst_roi[0].width = w;
+	addon_config->addon_mml_config.mml_dst_roi[0].width
+		= w + (to_info.is_support ? to_info.left_overhead : 0);
 	addon_config->addon_mml_config.mml_dst_roi[0].height = h;
 
 	if (mtk_crtc->is_dual_pipe) {
@@ -2406,13 +2444,16 @@ static void calc_mml_config(struct drm_crtc *crtc,
 		}
 		mid_line = panel_w/2;
 
-		if ((x + w) > mid_line)
-			addon_config->addon_mml_config.mml_dst_roi[0].width = mid_line - x;
+		if ((x + w) > mid_line + (to_info.is_support ? to_info.left_overhead : 0))
+			addon_config->addon_mml_config.mml_dst_roi[0].width =
+				mid_line + (to_info.is_support ? to_info.left_overhead : 0) - x;
 
-		addon_config->addon_mml_config.mml_dst_roi[1].x = mid_line;
+		addon_config->addon_mml_config.mml_dst_roi[1].x
+			= mid_line - (to_info.is_support ? to_info.right_overhead : 0);
 		addon_config->addon_mml_config.mml_dst_roi[1].y = y;
 		addon_config->addon_mml_config.mml_dst_roi[1].width
-			= ((x + w) > mid_line) ? (x + w) - mid_line : 0;
+			= (((x + w) > mid_line) ? (x + w) - mid_line : 0)
+			+ (to_info.is_support ? to_info.right_overhead : 0);
 		addon_config->addon_mml_config.mml_dst_roi[1].height = h;
 	}
 
@@ -2423,7 +2464,8 @@ static void calc_mml_config(struct drm_crtc *crtc,
 			   addon_config->addon_mml_config.mml_dst_roi[1].width);
 
 	if (mtk_crtc->is_dual_pipe)
-		addon_config->addon_mml_config.mml_dst_roi[1].x -= mid_line;
+		addon_config->addon_mml_config.mml_dst_roi[1].x -=
+			(mid_line - (to_info.is_support ? to_info.right_overhead : 0));
 
 	crtc_state->mml_src_roi[0] = addon_config->addon_mml_config.mml_src_roi[0];
 	crtc_state->mml_dst_roi_dual[0] = addon_config->addon_mml_config.mml_dst_roi[0];
@@ -2586,6 +2628,8 @@ int get_addon_path_wait_event(struct drm_crtc *crtc,
 		return mtk_crtc->gce_obj.event[EVENT_WDMA0_EOF];
 	else if (comp->id == DDP_COMPONENT_OVLSYS_WDMA0)
 		return mtk_crtc->gce_obj.event[EVENT_OVLSYS_WDMA0_EOF];
+	else if (comp->id == DDP_COMPONENT_OVLSYS_WDMA1)
+		return mtk_crtc->gce_obj.event[EVENT_OVLSYS_WDMA1_EOF];
 
 	DDPPR_ERR("The output component has not frame done event\n");
 	return -EINVAL;
@@ -2907,12 +2951,14 @@ _mtk_crtc_wb_addon_module_connect(
 	int index = drm_crtc_index(crtc);
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_crtc_state *state = to_mtk_crtc_state(crtc->state);
+	struct total_tile_overhead to_info;
 	enum addon_scenario scn;
 
 	if (index != 0 || mtk_crtc_is_dc_mode(crtc) ||
 		!state->prop_val[CRTC_PROP_OUTPUT_ENABLE])
 		return;
 
+	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
 	if (state->prop_val[CRTC_PROP_OUTPUT_SCENARIO] == 0)
 		scn = WDMA_WRITE_BACK_OVL;
 	else
@@ -2946,8 +2992,8 @@ _mtk_crtc_wb_addon_module_connect(
 			struct mtk_rect dst_roi = {0};
 			struct drm_framebuffer *fb;
 
-			src_roi.width = crtc->state->adjusted_mode.hdisplay;
-			src_roi.height = crtc->state->adjusted_mode.vdisplay;
+			mtk_crtc_set_width_height(&(src_roi.width), &(src_roi.height),
+				crtc, (scn == WDMA_WRITE_BACK));
 			dst_roi.x = state->prop_val[CRTC_PROP_OUTPUT_X];
 			dst_roi.y = state->prop_val[CRTC_PROP_OUTPUT_Y];
 			dst_roi.width = state->prop_val[CRTC_PROP_OUTPUT_WIDTH];
@@ -2968,12 +3014,12 @@ _mtk_crtc_wb_addon_module_connect(
 			addon_config.addon_wdma_config.p_golden_setting_context
 				= __get_golden_setting_context(mtk_crtc);
 
-			DDPFENCE("S+/PL12/e1/id%d/mva0x%08llx/size0x%08lx\n",
+			DDPFENCE("S+/PL12/e1/id%d/mva0x%08llx/size0x%08lx/sec%d\n",
 				(unsigned int)state->prop_val[CRTC_PROP_OUTPUT_FENCE_IDX],
-				mtk_fb_get_dma(fb), mtk_fb_get_size(fb));
+				mtk_fb_get_dma(fb), mtk_fb_get_size(fb), mtk_drm_fb_is_secure(fb));
 
 			if (mtk_crtc->is_dual_pipe) {
-				int w = crtc->state->adjusted_mode.hdisplay;
+				int src_w = 0, dst_w = 0;
 				struct mtk_rect src_roi_l, src_roi_r;
 				struct mtk_rect dst_roi_l, dst_roi_r;
 				unsigned int r_buff_off = 0;
@@ -2982,22 +3028,47 @@ _mtk_crtc_wb_addon_module_connect(
 				src_roi_l = src_roi_r = src_roi;
 				dst_roi_l = dst_roi_r = dst_roi;
 
-				src_roi_l.width = w/2;
-				src_roi_r.width = w/2;
+				/*
+				 * If support tile overhead, front WDMA will be affected
+				 * and WDMA after RSZ will be affected by ap-resolution switch
+				 * need to assign proper width height
+				 */
+				src_w = mtk_crtc_get_width_by_comp(__func__, crtc,
+					NULL, (scn == WDMA_WRITE_BACK));
+				dst_w = mtk_crtc_get_width_by_comp(__func__, crtc,
+					NULL, (scn == WDMA_WRITE_BACK));
+				if (to_info.is_support && scn == WDMA_WRITE_BACK_OVL)
+					src_w = to_info.left_in_width + to_info.right_in_width;
 
-				if (dst_roi.x + dst_roi.width < w/2) {
+				/*
+				 * If support tile overhead, front WDMA will be affected
+				 * and WDMA after RSZ will be affected by ap-resolution switch
+				 * need to assign proper width height
+				 */
+				if (to_info.is_support && scn == WDMA_WRITE_BACK_OVL) {
+					src_roi_l.width = to_info.left_in_width;
+					src_roi_r.width = to_info.right_in_width;
+				} else {
+					src_roi_l.width = src_w/2;
+					src_roi_r.width = src_w/2;
+				}
+
+				/* Check if dst roi exceed src roi range */
+				if (dst_roi.x + dst_roi.width < dst_w/2) {
 					/* handle dst ROI locate in left pipe */
 					dst_roi_r.x = 0;
 					dst_roi_r.y = 0;
 					dst_roi_r.width = 0;
-				} else if (dst_roi.x >= w/2) {
+				} else if (dst_roi.x >= dst_w/2) {
 					/* handle dst ROI locate in right pipe */
 					dst_roi_l.x = 0;
-					dst_roi_r.x = dst_roi.x - w/2;
+					dst_roi_r.x = dst_roi.x - dst_w/2;
 				} else {
 					/* handle dst ROI locate in both display pipe */
-					dst_roi_l.width = w/2 - dst_roi_l.x;
+					dst_roi_l.width = dst_w/2 - dst_roi_l.x;
 					dst_roi_r.x = 0;
+					if (to_info.is_support && scn == WDMA_WRITE_BACK_OVL)
+						dst_roi_r.x += to_info.right_overhead;
 					dst_roi_r.width = dst_roi.width - dst_roi_l.width;
 					r_buff_off = dst_roi_l.width;
 				}
@@ -3044,9 +3115,12 @@ _mtk_crtc_cwb_addon_module_connect(
 	unsigned int buf_idx;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct drm_framebuffer *fb;
+	struct total_tile_overhead to_info;
 	int Bpp = 3;
 
 	cwb_info = mtk_crtc->cwb_info;
+	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
+
 	if (index != 0 || mtk_crtc_is_dc_mode(crtc) ||
 		!cwb_info)
 		return;
@@ -3098,36 +3172,69 @@ _mtk_crtc_cwb_addon_module_connect(
 			addon_config.addon_wdma_config.p_golden_setting_context
 				= __get_golden_setting_context(mtk_crtc);
 			if (mtk_crtc->is_dual_pipe) {
-				int w = crtc->state->adjusted_mode.hdisplay;
+				int src_w = 0, dst_w = 0;
 				struct mtk_rect src_roi_l;
 				struct mtk_rect src_roi_r;
 				struct mtk_rect dst_roi_l;
 				struct mtk_rect dst_roi_r;
 				unsigned int r_buff_off = 0;
 
+				/*
+				 * If support tile overhead, front WDMA will be affected
+				 * and WDMA after RSZ will be affected by ap-resolution switch
+				 * need to assign proper width height
+				 */
+				src_w = mtk_crtc_get_width_by_comp(__func__, crtc,
+					NULL, (cwb_info->scn == WDMA_WRITE_BACK));
+				dst_w = mtk_crtc_get_width_by_comp(__func__, crtc,
+					NULL, (cwb_info->scn == WDMA_WRITE_BACK));
+				if (to_info.is_support &&
+					cwb_info->scn == WDMA_WRITE_BACK_OVL)
+					src_w = to_info.left_in_width + to_info.right_in_width;
+
 				src_roi_l = src_roi_r = cwb_info->src_roi;
 				dst_roi_l = dst_roi_r = cwb_info->buffer[buf_idx].dst_roi;
 
 				src_roi_l.x = 0;
-				src_roi_l.width = w/2;
 				src_roi_r.x = 0;
-				src_roi_r.width = w/2;
+
+				/*
+				 * If support tile overhead, front WDMA will be affected
+				 * and WDMA after RSZ will be affected by ap-resolution switch
+				 * need to assign proper width height
+				 */
+				if (to_info.is_support &&
+					cwb_info->scn == WDMA_WRITE_BACK_OVL) {
+					src_roi_l.width = to_info.left_in_width;
+					src_roi_r.width = to_info.right_in_width;
+				} else {
+					src_roi_l.width = src_w/2;
+					src_roi_r.width = src_w/2;
+				}
 
 				if (cwb_info->buffer[buf_idx].dst_roi.x +
-					cwb_info->buffer[buf_idx].dst_roi.width < w/2) {
+					cwb_info->buffer[buf_idx].dst_roi.width < dst_w/2) {
 				/* handle source ROI locate in left pipe*/
 					dst_roi_r.x = 0;
 					dst_roi_r.y = 0;
 					dst_roi_r.width = 0;
-				} else if (cwb_info->buffer[buf_idx].dst_roi.x >= w/2) {
+				} else if (cwb_info->buffer[buf_idx].dst_roi.x >= dst_w/2) {
 				/* handle source ROI locate in right pipe*/
 					dst_roi_l.x = 0;
 					dst_roi_l.width = 0;
-					dst_roi_r.x = cwb_info->buffer[buf_idx].dst_roi.x - w/2;
+					dst_roi_r.x = cwb_info->buffer[buf_idx].dst_roi.x - dst_w/2;
+					/* add tile overhead offest */
+					if (to_info.is_support &&
+						cwb_info->scn == WDMA_WRITE_BACK_OVL)
+						dst_roi_r.x += to_info.right_overhead;
 				} else {
 				/* handle source ROI locate in both display pipe*/
-					dst_roi_l.width = w/2 - cwb_info->buffer[buf_idx].dst_roi.x;
+					dst_roi_l.width = dst_w/2 -
+						cwb_info->buffer[buf_idx].dst_roi.x;
 					dst_roi_r.x = 0;
+					if (to_info.is_support &&
+						cwb_info->scn == WDMA_WRITE_BACK_OVL)
+						dst_roi_r.x += to_info.right_overhead;
 					dst_roi_r.width =
 						cwb_info->buffer[buf_idx].dst_roi.width -
 						dst_roi_l.width;
@@ -3415,6 +3522,7 @@ bool mtk_crtc_alloc_sram(struct mtk_drm_crtc *mtk_crtc, unsigned int hrt_idx)
 		       (unsigned long)sram->paddr, sram->size);
 
 		kref_init(&mtk_crtc->mml_ir_sram.ref);
+		mtk_crtc->mml_ir_sram.bk_hrt_idx = 0;
 	} else {
 		kref_get(&mtk_crtc->mml_ir_sram.ref);
 	}
@@ -3576,6 +3684,9 @@ static unsigned int dual_comp_map_mt6885(unsigned int comp_id)
 	case DDP_COMPONENT_WDMA0:
 		ret = DDP_COMPONENT_WDMA1;
 		break;
+	case DDP_COMPONENT_OVLSYS_WDMA0:
+		ret = DDP_COMPONENT_OVLSYS_WDMA2;
+		break;
 	default:
 		DDPMSG("unknown comp %u for %s\n", comp_id, __func__);
 	}
@@ -3660,6 +3771,9 @@ static unsigned int dual_comp_map_mt6985(unsigned int comp_id)
 		break;
 	case DDP_COMPONENT_WDMA0:
 		ret = DDP_COMPONENT_WDMA1;
+		break;
+	case DDP_COMPONENT_MDP_RDMA1:
+		ret = DDP_COMPONENT_MDP_RDMA0;
 		break;
 	case DDP_COMPONENT_OVLSYS_WDMA0:
 		ret = DDP_COMPONENT_OVLSYS_WDMA2;
@@ -3949,6 +4063,13 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 		return;
 	}
 
+	if (mtk_crtc->path_data->is_discrete_path) {
+		if (mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_MMQOS_SUPPORT))
+			mtk_disp_set_hrt_bw(mtk_crtc, bw);
+		return;
+	}
+
 	DDPINFO("%s bw=%d, last_hrt_req=%d, overlap=%d\n",
 			__func__, bw, mtk_crtc->qos_ctx->last_hrt_req, frame_weight);
 
@@ -3956,14 +4077,9 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 		unsigned int step_size = mtk_drm_get_mmclk_step_size();
 
 		if (!mtk_crtc->force_high_enabled) {
-			DDPMSG("start SET MMCLK step 0, and disable underrun irq\n");
+			DDPMSG("start SET MMCLK step 0\n");
 			/* set MMCLK highest step for next 2048 frame */
 			mtk_crtc->force_high_enabled = 2048;
-			/* disable dsi underrun irq*/
-			output_comp = mtk_ddp_comp_request_output(mtk_crtc);
-			en = 0;
-			if (output_comp)
-				mtk_ddp_comp_io_cmd(output_comp, NULL, IRQ_UNDERRUN, &en);
 		}
 		mtk_crtc->force_high_enabled--;
 
@@ -4079,6 +4195,7 @@ __get_golden_setting_context(struct mtk_drm_crtc *mtk_crtc)
 	/* primary_display */
 	switch (idx) {
 	case 0:
+	case 3:
 		gs_ctx[idx].is_vdo_mode =
 				mtk_crtc_is_frame_trigger_mode(crtc) ? 0 : 1;
 		gs_ctx[idx].dst_width = crtc->state->adjusted_mode.hdisplay;
@@ -4118,6 +4235,55 @@ __get_golden_setting_context(struct mtk_drm_crtc *mtk_crtc)
 	return &gs_ctx[idx];
 }
 
+struct golden_setting_context *
+__get_scaling_golden_setting_context(struct mtk_drm_crtc *mtk_crtc)
+{
+	static struct golden_setting_context scaling_gs_ctx[MAX_CRTC];
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	unsigned int idx = drm_crtc_index(&mtk_crtc->base);
+	struct drm_display_mode *mode;
+	struct golden_setting_context *ctx = __get_golden_setting_context(mtk_crtc);
+
+	scaling_gs_ctx[idx].is_dc = ctx->is_dc;
+
+	/* primary_display */
+	switch (idx) {
+	case 0:
+		mode = mtk_crtc_get_display_mode_by_comp(__func__, crtc, NULL, true);
+		scaling_gs_ctx[idx].is_vdo_mode =
+				mtk_crtc_is_frame_trigger_mode(crtc) ? 0 : 1;
+
+		if (mode == NULL) {
+			DDPPR_ERR("display_mode is NULL\n");
+			break;
+		}
+
+		scaling_gs_ctx[idx].dst_width = mode->hdisplay;
+		scaling_gs_ctx[idx].dst_height = mode->vdisplay;
+
+		if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params) {
+			struct mtk_panel_params *params;
+
+			params = mtk_crtc->panel_ext->params;
+			if (params->dyn_fps.switch_en == 1 &&
+				params->dyn_fps.vact_timing_fps != 0)
+				scaling_gs_ctx[idx].vrefresh =
+					params->dyn_fps.vact_timing_fps;
+			else
+				scaling_gs_ctx[idx].vrefresh =
+					drm_mode_vrefresh(mode);
+		} else
+			scaling_gs_ctx[idx].vrefresh =
+				drm_mode_vrefresh(mode);
+		break;
+
+	default:
+		DDPPR_ERR("%s unknown for %d\n", __func__, idx);
+	}
+
+	return &scaling_gs_ctx[idx];
+}
+
 unsigned int mtk_crtc_get_idle_interval(struct drm_crtc *crtc, unsigned int fps)
 {
 
@@ -4129,7 +4295,10 @@ unsigned int mtk_crtc_get_idle_interval(struct drm_crtc *crtc, unsigned int fps)
 	if (!vblank_off && idle_interval > 50)
 		return 0;
 
-	idle_interval = (3 * 1000) / fps + 1;
+	if (fps > 90)
+		idle_interval = (4 * 1000) / fps + 1;
+	else
+		idle_interval = (3 * 1000) / fps + 1;
 
 	if (idle_interval > 50)
 		idle_interval = 50;
@@ -4147,19 +4316,30 @@ void mtk_drm_crtc_mode_check(struct drm_crtc *crtc,
 	struct drm_display_mode *mode;
 	struct mtk_crtc_state *old_mtk_state = NULL;
 	struct mtk_crtc_state *new_mtk_state = NULL;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	if (!new_state || !old_state)
 		return;
 
 	old_mtk_state = to_mtk_crtc_state(old_state);
 	new_mtk_state = to_mtk_crtc_state(new_state);
+	mtk_crtc->mode_chg = false;
 
 	if (old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] ==
 		new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX])
 		return;
 
+	/*connector is changed , update mode_idx to new one*/
+	if (of_property_read_bool(priv->mmsys_dev->of_node, "enable_output_int_switch")
+		&& old_state->connectors_changed) {
+		DDPMSG("%s++ from %u to %u when connectors changed\n", __func__,
+		old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX],
+		new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
 
-	if (mtk_crtc->res_switch) {
+		old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] =
+			new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX];
+	}
+	if (mtk_crtc->res_switch != RES_SWITCH_NO_USE) {
 		//workaround for hwc
 		if (mtk_crtc->mode_idx
 			== old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]) {
@@ -4183,10 +4363,242 @@ void mtk_drm_crtc_mode_check(struct drm_crtc *crtc,
 	copy_drm_disp_mode(mode, &new_state->adjusted_mode);
 	new_state->adjusted_mode.hskew = mode->hskew;
 	drm_mode_set_crtcinfo(&new_state->adjusted_mode, 0);
+
+	if (old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] !=
+		new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX])
+		mtk_crtc->mode_chg = true;
 }
 
 void mtk_crtc_load_round_corner_pattern(struct drm_crtc *crtc,
 					struct cmdq_pkt *handle);
+
+void mtk_crtc_mode_switch_on_ap_config(struct mtk_drm_crtc *mtk_crtc,
+	struct drm_crtc_state *old_state)
+{
+	int i, j;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct cmdq_pkt *cevent_cmdq_handle, *cmdq_handle, *sevent_cmdq_handle;
+	struct mtk_ddp_config cfg = {0};
+	struct mtk_ddp_config scaling_cfg = {0};
+	struct mtk_ddp_comp *comp;
+	struct mtk_ddp_comp *output_comp;
+
+	if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+		DDPMSG("video mode does not support resolution switch!!!\n");
+		return;
+	}
+
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (!output_comp) {
+		DDPMSG("output_comp is null!\n");
+		return;
+	}
+
+	cfg.w = crtc->state->adjusted_mode.hdisplay;
+	cfg.h = crtc->state->adjusted_mode.vdisplay;
+	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params &&
+		mtk_crtc->panel_ext->params->dyn_fps.switch_en == 1
+		&& mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps != 0)
+		cfg.vrefresh =
+			mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps;
+	else
+		cfg.vrefresh = drm_mode_vrefresh(&crtc->state->adjusted_mode);
+	cfg.bpc = mtk_crtc->bpc;
+	cfg.p_golden_setting_context = __get_golden_setting_context(mtk_crtc);
+
+	cfg.rsz_src_w = cfg.w;
+	cfg.rsz_src_h = cfg.h;
+
+	if (mtk_crtc->scaling_ctx.scaling_en) {
+		memcpy(&scaling_cfg, &cfg, sizeof(struct mtk_ddp_config));
+		scaling_cfg.w = mtk_crtc->scaling_ctx.scaling_mode->hdisplay;
+		scaling_cfg.h = mtk_crtc->scaling_ctx.scaling_mode->vdisplay;
+		scaling_cfg.p_golden_setting_context =
+			__get_scaling_golden_setting_context(mtk_crtc);
+	}
+
+	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 0, 1);
+
+	mtk_crtc_pkt_create(&cevent_cmdq_handle, &mtk_crtc->base,
+				mtk_crtc->gce_obj.client[CLIENT_CFG]);
+	/* 1. wait frame done & wait DSI not busy */
+	cmdq_pkt_wait_no_clear(cevent_cmdq_handle,
+		mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
+	/* Clear stream block to prevent trigger loop start */
+	cmdq_pkt_clear_event(cevent_cmdq_handle,
+		mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
+	cmdq_pkt_wfe(cevent_cmdq_handle,
+		mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+	cmdq_pkt_clear_event(cevent_cmdq_handle,
+		mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+	cmdq_pkt_wfe(cevent_cmdq_handle,
+		mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
+	cmdq_pkt_flush(cevent_cmdq_handle);
+	cmdq_pkt_destroy(cevent_cmdq_handle);
+
+	mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
+				mtk_crtc->gce_obj.client[CLIENT_CFG]);
+
+	if (mtk_crtc->is_dual_pipe &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_TILE_OVERHEAD)) {
+		cfg.tile_overhead.is_support = true;
+		cfg.tile_overhead.left_in_width = cfg.w / 2;
+		cfg.tile_overhead.right_in_width = cfg.w / 2;
+
+		if (mtk_crtc->scaling_ctx.scaling_en) {
+			scaling_cfg.tile_overhead.is_support = true;
+			scaling_cfg.tile_overhead.left_in_width = scaling_cfg.w / 2;
+			scaling_cfg.tile_overhead.right_in_width = scaling_cfg.w / 2;
+		}
+
+	} else {
+		cfg.tile_overhead.is_support = false;
+		cfg.tile_overhead.left_in_width = cfg.w;
+		cfg.tile_overhead.right_in_width = cfg.w;
+	}
+
+	/*Calculate total overhead*/
+	for_each_comp_in_crtc_path_reverse(comp, mtk_crtc, i, j) {
+
+		if (mtk_crtc->scaling_ctx.scaling_en && comp->in_scaling_path) {
+			mtk_ddp_comp_config_overhead(comp, &scaling_cfg);
+			DDPINFO("%s:comp %s (scaling_path) width L:%d R:%d, overhead L:%d R:%d\n",
+				__func__, mtk_dump_comp_str(comp),
+				scaling_cfg.tile_overhead.left_in_width,
+				scaling_cfg.tile_overhead.right_in_width,
+				scaling_cfg.tile_overhead.left_overhead,
+				scaling_cfg.tile_overhead.right_overhead);
+		} else {
+			mtk_ddp_comp_config_overhead(comp, &cfg);
+			DDPINFO("%s:comp %s width L:%d R:%d, overhead L:%d R:%d\n",
+				__func__, mtk_dump_comp_str(comp),
+				cfg.tile_overhead.left_in_width,
+				cfg.tile_overhead.right_in_width,
+				cfg.tile_overhead.left_overhead,
+				cfg.tile_overhead.right_overhead);
+		}
+
+		if (mtk_crtc->scaling_ctx.scaling_en
+			&& mtk_crtc_check_is_scaling_comp(mtk_crtc, comp->id))
+			cfg.tile_overhead = scaling_cfg.tile_overhead;
+	}
+
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+		/* skip config comp after rsz, except chist */
+		if (comp->in_scaling_path &&
+			(!((mtk_ddp_comp_get_type(comp->id) == MTK_DISP_RSZ) ||
+				(mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CHIST))))
+			continue;
+
+		DDPDBG("%s:%s, scaling_path:%d\n", __func__,
+			mtk_dump_comp_str(comp), comp->in_scaling_path);
+		mtk_ddp_comp_stop(comp, cmdq_handle);
+
+		if (mtk_crtc->scaling_ctx.scaling_en && comp->in_scaling_path)
+			mtk_ddp_comp_config(comp, &scaling_cfg, cmdq_handle);
+		else
+			mtk_ddp_comp_config(comp, &cfg, cmdq_handle);
+
+		mtk_ddp_comp_start(comp, cmdq_handle);
+		if (!mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_USE_PQ))
+			mtk_ddp_comp_bypass(comp, 1, cmdq_handle);
+
+		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL) {
+			cfg.source_bpc = mtk_ddp_comp_io_cmd(comp, NULL,
+				OVL_GET_SOURCE_BPC, NULL);
+			scaling_cfg.source_bpc = cfg.source_bpc;
+		}
+	}
+
+	if (mtk_crtc->is_dual_pipe) {
+
+		/*Calculate total overhead*/
+		for_each_comp_in_dual_pipe_reverse(comp, mtk_crtc, i, j) {
+
+			if (mtk_crtc->scaling_ctx.scaling_en && comp->in_scaling_path) {
+				mtk_ddp_comp_config_overhead(comp, &scaling_cfg);
+				DDPINFO("in scaling_path");
+				DDPINFO("%s:comp %s width L:%d R:%d, overhead L:%d R:%d\n",
+					__func__, mtk_dump_comp_str(comp),
+					scaling_cfg.tile_overhead.left_in_width,
+					scaling_cfg.tile_overhead.right_in_width,
+					scaling_cfg.tile_overhead.left_overhead,
+					scaling_cfg.tile_overhead.right_overhead);
+			} else {
+				mtk_ddp_comp_config_overhead(comp, &cfg);
+				DDPINFO("%s:comp %s width L:%d R:%d, overhead L:%d R:%d\n",
+					__func__, mtk_dump_comp_str(comp),
+					cfg.tile_overhead.left_in_width,
+					cfg.tile_overhead.right_in_width,
+					cfg.tile_overhead.left_overhead,
+					cfg.tile_overhead.right_overhead);
+			}
+
+			if (mtk_crtc->scaling_ctx.scaling_en
+				&& mtk_crtc_check_is_scaling_comp(mtk_crtc, comp->id))
+				cfg.tile_overhead = scaling_cfg.tile_overhead;
+		}
+
+		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
+			/* skip config comp after rsz, except chist */
+			if (comp->in_scaling_path &&
+				(!((mtk_ddp_comp_get_type(comp->id) == MTK_DISP_RSZ) ||
+					(mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CHIST))))
+				continue;
+
+			DDPDBG("%s:%s, scaling_path:%d\n", __func__,
+				mtk_dump_comp_str(comp), comp->in_scaling_path);
+			mtk_ddp_comp_stop(comp, cmdq_handle);
+
+			if (mtk_crtc->scaling_ctx.scaling_en && comp->in_scaling_path)
+				mtk_ddp_comp_config(comp, &scaling_cfg, cmdq_handle);
+			else
+				mtk_ddp_comp_config(comp, &cfg, cmdq_handle);
+
+			mtk_ddp_comp_start(comp, cmdq_handle);
+			if (!mtk_drm_helper_get_opt(priv->helper_opt,
+					MTK_DRM_OPT_USE_PQ))
+				mtk_ddp_comp_bypass(comp, 1, cmdq_handle);
+		}
+	}
+
+	/*store total overhead data*/
+	mtk_crtc_store_total_overhead(mtk_crtc, cfg.tile_overhead);
+
+	drm_update_dal(&mtk_crtc->base, cmdq_handle);
+
+	cmdq_pkt_flush(cmdq_handle);
+	cmdq_pkt_destroy(cmdq_handle);
+	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 0, 2);
+
+	mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_TIMING_CHANGE, old_state);
+	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 0, 3);
+
+	/* adjust trigger loop in different display mode */
+	if (mtk_crtc_with_trigger_loop(crtc) &&
+			mtk_crtc_with_event_loop(crtc) &&
+			mtk_crtc_is_frame_trigger_mode(crtc)) {
+		mtk_crtc_stop_trig_loop(crtc);
+		mtk_crtc_stop_event_loop(crtc);
+
+		mtk_crtc_start_event_loop(crtc);
+		mtk_crtc_start_trig_loop(crtc);
+	}
+
+	/* set frame done */
+	mtk_crtc_pkt_create(&sevent_cmdq_handle, &mtk_crtc->base,
+				mtk_crtc->gce_obj.client[CLIENT_CFG]);
+	cmdq_pkt_set_event(sevent_cmdq_handle,
+		mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+	cmdq_pkt_set_event(sevent_cmdq_handle,
+		mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
+	cmdq_pkt_set_event(sevent_cmdq_handle,
+		mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
+	cmdq_pkt_flush(sevent_cmdq_handle);
+	cmdq_pkt_destroy(sevent_cmdq_handle);
+}
 
 void mtk_crtc_mode_switch_config(struct mtk_drm_crtc *mtk_crtc,
 	struct drm_crtc_state *old_state)
@@ -4196,7 +4608,7 @@ void mtk_crtc_mode_switch_config(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_panel_params *panel_ext = mtk_drm_get_lcm_ext_params(crtc);
 	struct cmdq_pkt *cevent_cmdq_handle, *cmdq_handle, *sevent_cmdq_handle;
-	struct mtk_ddp_config cfg;
+	struct mtk_ddp_config cfg = {0};
 	struct mtk_ddp_comp *comp;
 	struct mtk_ddp_comp *output_comp;
 
@@ -4258,6 +4670,28 @@ void mtk_crtc_mode_switch_config(struct mtk_drm_crtc *mtk_crtc,
 
 	mtk_crtc_load_round_corner_pattern(&mtk_crtc->base, cmdq_handle);
 
+	if (mtk_crtc->is_dual_pipe &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_TILE_OVERHEAD)) {
+		cfg.tile_overhead.is_support = true;
+		cfg.tile_overhead.left_in_width = cfg.w / 2;
+		cfg.tile_overhead.right_in_width = cfg.w / 2;
+	} else {
+		cfg.tile_overhead.is_support = false;
+		cfg.tile_overhead.left_in_width = cfg.w;
+		cfg.tile_overhead.right_in_width = cfg.w;
+	}
+
+	/* Calculate total overhead */
+	for_each_comp_in_crtc_path_reverse(comp, mtk_crtc, i, j) {
+		mtk_ddp_comp_config_overhead(comp, &cfg);
+		DDPINFO("%s:comp %s width L:%d R:%d, overhead L:%d R:%d\n",
+			__func__, mtk_dump_comp_str(comp),
+			cfg.tile_overhead.left_in_width,
+			cfg.tile_overhead.right_in_width,
+			cfg.tile_overhead.left_overhead,
+			cfg.tile_overhead.right_overhead);
+	}
+
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		DDPDBG("%s:%s\n", __func__, mtk_dump_comp_str(comp));
 		mtk_ddp_comp_stop(comp, cmdq_handle);
@@ -4269,6 +4703,17 @@ void mtk_crtc_mode_switch_config(struct mtk_drm_crtc *mtk_crtc,
 	}
 
 	if (mtk_crtc->is_dual_pipe) {
+		/* Calculate total overhead */
+		for_each_comp_in_dual_pipe_reverse(comp, mtk_crtc, i, j) {
+			mtk_ddp_comp_config_overhead(comp, &cfg);
+			DDPINFO("%s:comp %s width L:%d R:%d, overhead L:%d R:%d\n",
+				__func__, mtk_dump_comp_str(comp),
+				cfg.tile_overhead.left_in_width,
+				cfg.tile_overhead.right_in_width,
+				cfg.tile_overhead.left_overhead,
+				cfg.tile_overhead.right_overhead);
+		}
+
 		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
 			DDPDBG("%s:%s\n", __func__, mtk_dump_comp_str(comp));
 			mtk_ddp_comp_stop(comp, cmdq_handle);
@@ -4280,10 +4725,17 @@ void mtk_crtc_mode_switch_config(struct mtk_drm_crtc *mtk_crtc,
 		}
 	}
 
+	/* store total overhead data */
+	mtk_crtc_store_total_overhead(mtk_crtc, cfg.tile_overhead);
+
 	if (panel_ext && panel_ext->output_mode == MTK_PANEL_DSC_SINGLE_PORT) {
 		struct mtk_ddp_comp *dsc_comp;
 
-		dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
+		if (drm_crtc_index(crtc) == 3)
+			dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC1];
+		else
+			dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
+
 		dsc_comp->mtk_crtc = mtk_crtc;
 
 		DDPDBG("%s:%s\n", __func__, mtk_dump_comp_str(dsc_comp));
@@ -4408,8 +4860,12 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 				&en);
 	}
 
-	if (mode_chg_index & MODE_DSI_RES)
+	if ((mode_chg_index & MODE_DSI_RES)
+		&& (mtk_crtc->res_switch == RES_SWITCH_ON_DDIC))
 		mtk_crtc_mode_switch_config(mtk_crtc, old_state);
+	else if ((mode_chg_index & MODE_DSI_RES)
+		&& (mtk_crtc->res_switch == RES_SWITCH_ON_AP))
+		mtk_crtc_mode_switch_on_ap_config(mtk_crtc, old_state);
 	else if (output_comp) {/* Change DSI mipi clk & send LCM cmd */
 		mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_TIMING_CHANGE,
 				old_state);
@@ -4425,11 +4881,12 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 			mtk_crtc_start_trig_loop(crtc);
 		}
 	}
-	oddmr_timing.hdisplay = crtc->state->mode.hdisplay;
-	oddmr_timing.vdisplay = crtc->state->mode.vdisplay;
+	/* scaling path */
+	oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
+	oddmr_timing.hdisplay = mtk_crtc_get_width_by_comp(__func__, crtc, oddmr_comp, false);
+	oddmr_timing.vdisplay = mtk_crtc_get_height_by_comp(__func__, crtc, oddmr_comp, false);
 	oddmr_timing.mode_chg_index = mode_chg_index;
 	oddmr_timing.vrefresh = fps_dst;
-	oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
 	mtk_ddp_comp_io_cmd(oddmr_comp, cmdq_handle, ODDMR_TIMING_CHG, &oddmr_timing);
 
 	drm_invoke_fps_chg_callbacks(fps_dst);
@@ -4444,6 +4901,10 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 		mtk_drm_set_idle_check_interval(crtc, _idle_timeout);
 
 	mtk_drm_idlemgr_kick(__func__, crtc, 0);
+
+	if (mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE])
+		if (aod_scp_ipi.module_backup && mode_chg_index)
+			aod_scp_ipi.module_backup(&cfg);
 
 	CRTC_MMP_EVENT_END((int) drm_crtc_index(crtc), mode_switch, fps_src, fps_dst);
 	DDPMSG("%s--\n", __func__);
@@ -4653,6 +5114,11 @@ void mtk_crtc_ovl_connect_change(struct drm_crtc *crtc, unsigned int ovl_res,
 		cfg.vrefresh = drm_mode_vrefresh(&crtc->state->adjusted_mode);
 	cfg.bpc = mtk_crtc->bpc;
 	cfg.p_golden_setting_context = __get_golden_setting_context(mtk_crtc);
+
+	cfg.tile_overhead = mtk_crtc_get_total_overhead(mtk_crtc);
+	DDPINFO("%s:overhead is_support:%d, width L:%d R:%d\n", __func__,
+		cfg.tile_overhead.is_support, cfg.tile_overhead.left_in_width,
+		cfg.tile_overhead.right_in_width);
 
 	for (i = 0 ; i < mtk_crtc->ddp_ctx[ddp_mode].ovl_comp_nr[DDP_FIRST_PATH] ; ++i) {
 		comp = mtk_crtc->ddp_ctx[ddp_mode].ovl_comp[DDP_FIRST_PATH][i];
@@ -4946,22 +5412,22 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 						 crtc_mask,
 						 lyeblob_ids->ref_cnt);
 				}
-				if (!lyeblob_ids->ref_cnt) {
-					mtk_crtc_frame_buffer_release(crtc, index,
-						lyeblob_ids->hrt_valid);
-					DDPINFO("free lyeblob:(%d,%d)\n",
-						lyeblob_ids->lye_idx,
-						prop_lye_idx);
-					mtk_crtc_free_lyeblob_ids(crtc,
-							lyeblob_ids);
-					mtk_crtc_free_ddpblob_ids(crtc,
-							lyeblob_ids);
-				}
+			}
+			if (!lyeblob_ids->ref_cnt) {
+				mtk_crtc_frame_buffer_release(crtc, index,
+					lyeblob_ids->hrt_valid);
+				DDPINFO("free lyeblob:(%d,%d)\n",
+					lyeblob_ids->lye_idx,
+					prop_lye_idx);
+				mtk_crtc_free_lyeblob_ids(crtc,
+						lyeblob_ids);
+				mtk_crtc_free_ddpblob_ids(crtc,
+						lyeblob_ids);
 			}
 		}
 	}
 	/*set_hrt_bw for pan display ,set 4 for two RGB layer*/
-	if (index == 0 && hrt_valid == false) {
+	if ((index == 0 || mtk_crtc->path_data->is_discrete_path) && hrt_valid == false) {
 		if (mtk_drm_helper_get_opt(mtk_drm->helper_opt, MTK_DRM_OPT_HRT))
 			DDPMSG("%s frame:%u correct invalid hrt to:%u, mode:%u->%u\n",
 				__func__, prop_lye_idx, pan_disp_frame_weight,
@@ -5013,15 +5479,15 @@ static void mtk_crtc_release_lye_idx(struct drm_crtc *crtc)
 					crtc_mask,
 					lyeblob_ids->ref_cnt);
 			}
-			if (!lyeblob_ids->ref_cnt) {
-				DDPINFO("%s:%d free lyeblob:%d\n",
-					__func__, __LINE__,
-					lyeblob_ids->lye_idx);
-				mtk_crtc_free_lyeblob_ids(crtc,
-					lyeblob_ids);
-				mtk_crtc_free_ddpblob_ids(crtc,
-					lyeblob_ids);
-			}
+		}
+		if (!lyeblob_ids->ref_cnt) {
+			DDPINFO("%s:%d free lyeblob:%d\n",
+				__func__, __LINE__,
+				lyeblob_ids->lye_idx);
+			mtk_crtc_free_lyeblob_ids(crtc,
+				lyeblob_ids);
+			mtk_crtc_free_ddpblob_ids(crtc,
+				lyeblob_ids);
 		}
 	}
 	mutex_unlock(&mtk_drm->lyeblob_list_mutex);
@@ -5087,7 +5553,10 @@ bool mtk_crtc_is_frame_trigger_mode(struct drm_crtc *crtc)
 		return false;
 	}
 
-	if (crtc_id == 0)
+	comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (crtc_id == 0 && comp)
+		return mtk_dsi_is_cmd_mode(comp);
+	else if (crtc_id == 0)
 		return mtk_dsi_is_cmd_mode(priv->ddp_comp[DDP_COMPONENT_DSI0]);
 
 	for_each_comp_in_crtc_target_path(
@@ -5160,6 +5629,33 @@ bool mtk_crtc_is_mem_mode(struct drm_crtc *crtc)
 	return false;
 }
 
+int get_comp_wait_event(struct mtk_drm_crtc *mtk_crtc,
+			struct mtk_ddp_comp *comp)
+{
+	if (comp->id == DDP_COMPONENT_DSI0 || comp->id == DDP_COMPONENT_DSI1) {
+		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base))
+			return mtk_crtc->gce_obj.event[EVENT_STREAM_EOF];
+		else
+			return mtk_crtc->gce_obj.event[EVENT_CMD_EOF];
+
+	} else if (comp->id == DDP_COMPONENT_DP_INTF0) {
+		return mtk_crtc->gce_obj.event[EVENT_VDO_EOF];
+	} else if (comp->id == DDP_COMPONENT_WDMA0) {
+		return mtk_crtc->gce_obj.event[EVENT_WDMA0_EOF];
+	} else if (comp->id == DDP_COMPONENT_WDMA1) {
+		return mtk_crtc->gce_obj.event[EVENT_WDMA1_EOF];
+	} else if (comp->id == DDP_COMPONENT_OVLSYS_WDMA2) {
+		return mtk_crtc->gce_obj.event[EVENT_OVLSYS1_WDMA0_EOF];
+	} else if (comp->id == DDP_COMPONENT_MDP_RDMA0) {
+		return mtk_crtc->gce_obj.event[EVENT_MDP_RDMA0_EOF];
+	} else if (comp->id == DDP_COMPONENT_MDP_RDMA1) {
+		return mtk_crtc->gce_obj.event[EVENT_MDP_RDMA1_EOF];
+	}
+
+	DDPPR_ERR("The component has not frame done event\n");
+	return -EINVAL;
+}
+
 int get_path_wait_event(struct mtk_drm_crtc *mtk_crtc,
 			enum CRTC_DDP_PATH ddp_path)
 {
@@ -5182,24 +5678,41 @@ int get_path_wait_event(struct mtk_drm_crtc *mtk_crtc,
 		return -EINVAL;
 	}
 
-	if (comp->id == DDP_COMPONENT_DSI0 || comp->id == DDP_COMPONENT_DSI1) {
-		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base))
-			return mtk_crtc->gce_obj.event[EVENT_STREAM_EOF];
-		else
-			return mtk_crtc->gce_obj.event[EVENT_CMD_EOF];
+	return get_comp_wait_event(mtk_crtc, comp);
+}
 
-	} else if (comp->id == DDP_COMPONENT_DP_INTF0) {
-		return mtk_crtc->gce_obj.event[EVENT_VDO_EOF];
-	} else if (comp->id == DDP_COMPONENT_WDMA0) {
-		return mtk_crtc->gce_obj.event[EVENT_WDMA0_EOF];
-	} else if (comp->id == DDP_COMPONENT_WDMA1) {
-		return mtk_crtc->gce_obj.event[EVENT_WDMA1_EOF];
-	} else if (comp->id == DDP_COMPONENT_OVLSYS_WDMA2) {
-		return mtk_crtc->gce_obj.event[EVENT_OVLSYS1_WDMA0_EOF];
-	}
+void mtk_crtc_clr_comp_done(struct mtk_drm_crtc *mtk_crtc,
+			      struct cmdq_pkt *cmdq_handle,
+			      struct mtk_ddp_comp *comp,
+			      int clear_event)
+{
+	int gce_event;
 
-	DDPPR_ERR("The output component has not frame done event\n");
-	return -EINVAL;
+	gce_event = get_comp_wait_event(mtk_crtc, comp);
+	if (gce_event < 0)
+		return;
+	if (gce_event == mtk_crtc->gce_obj.event[EVENT_MDP_RDMA0_EOF] ||
+		gce_event == mtk_crtc->gce_obj.event[EVENT_MDP_RDMA1_EOF])
+		cmdq_pkt_clear_event(cmdq_handle, gce_event);
+	else
+		DDPPR_ERR("The component has not frame done event\n");
+}
+
+void mtk_crtc_wait_comp_done(struct mtk_drm_crtc *mtk_crtc,
+			      struct cmdq_pkt *cmdq_handle,
+			      struct mtk_ddp_comp *comp,
+			      int clear_event)
+{
+	int gce_event;
+
+	gce_event = get_comp_wait_event(mtk_crtc, comp);
+	if (gce_event < 0)
+		return;
+	if (gce_event == mtk_crtc->gce_obj.event[EVENT_MDP_RDMA0_EOF] ||
+		gce_event == mtk_crtc->gce_obj.event[EVENT_MDP_RDMA1_EOF])
+		cmdq_pkt_wfe(cmdq_handle, gce_event);
+	else
+		DDPPR_ERR("The component has not frame done event\n");
 }
 
 void mtk_crtc_wait_frame_done(struct mtk_drm_crtc *mtk_crtc,
@@ -5216,6 +5729,7 @@ void mtk_crtc_wait_frame_done(struct mtk_drm_crtc *mtk_crtc,
 	    gce_event == mtk_crtc->gce_obj.event[EVENT_CMD_EOF] ||
 	    gce_event == mtk_crtc->gce_obj.event[EVENT_VDO_EOF]) {
 		struct mtk_drm_private *priv;
+
 		if (clear_event)
 			cmdq_pkt_wfe(cmdq_handle, gce_event);
 		else
@@ -6165,6 +6679,7 @@ void mtk_crtc_enable_iommu_runtime(struct mtk_drm_crtc *mtk_crtc,
 			priv->data->mmsys_id == MMSYS_MT6897 ||
 			priv->data->mmsys_id == MMSYS_MT6879 ||
 			priv->data->mmsys_id == MMSYS_MT6895 ||
+			priv->data->mmsys_id == MMSYS_MT6835 ||
 			priv->data->mmsys_id == MMSYS_MT6855 ||
 			priv->data->mmsys_id == MMSYS_MT6886) {
 			/*set smi_larb_sec_con reg as 1*/
@@ -6195,47 +6710,49 @@ static ktime_t mtk_check_preset_fence_timestamp(struct drm_crtc *crtc)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	unsigned int vrefresh = 0;
 	bool is_frame_mode;
-	ktime_t cur_time, prev_time;
+	ktime_t cur_time, diff_time;
 	ktime_t start_time, wait_time;
+	bool pass = false;
 
 	is_frame_mode = mtk_crtc_is_frame_trigger_mode(crtc);
 	cur_time = mtk_crtc->pf_time;
-	prev_time = mtk_crtc->prev_pf_time;
 
-	if ((id == 0) && prev_time == cur_time) {
+	if (id == 0) {
 		vrefresh = drm_mode_vrefresh(&crtc->state->adjusted_mode);
 		if (vrefresh == 0) {
 			DDPINFO("%s: invalid fps:%u\n", __func__, vrefresh);
 			vrefresh = 60;
 		}
 
-		start_time = ktime_get();
+		start_time = mtk_crtc->sof_time;
 		do {
 			wait_event_interruptible_timeout(
 				mtk_crtc->signal_irq_for_pre_fence_wq
 				, atomic_read(&mtk_crtc->signal_irq_for_pre_fence)
 				, msecs_to_jiffies(1000 / vrefresh));
-			atomic_set(&mtk_crtc->signal_irq_for_pre_fence, 0);
-		} while (mtk_crtc->pf_time == prev_time && is_frame_mode);
+
+			cur_time = mtk_crtc->pf_time;
+
+			if (start_time > cur_time) {
+				diff_time = (start_time - cur_time) / 1000000;
+				if (diff_time < (1000 / vrefresh / 2))
+					pass = true;
+			} else
+				pass = true;
+
+			if (!pass && cur_time == mtk_crtc->pf_time)
+				atomic_set(&mtk_crtc->signal_irq_for_pre_fence, 0);
+
+		} while (!pass && is_frame_mode);
+
 		wait_time = ktime_get();
 
-		if ((start_time - wait_time) / 100000 > vrefresh / 2) {
-			DDPINFO("Wait time over %d, start time %lld wait time %lld\n",
-				(1000 / vrefresh), start_time, wait_time);
+		if (((wait_time - start_time) / 1000000) > (1000 / vrefresh / 2)) {
+			DDPINFO("Wait time over %d ms, start %lld, wait %lld, cur %lld\n",
+				(1000 / vrefresh / 2), start_time, wait_time, cur_time);
 			CRTC_MMP_MARK(id, present_fence_timestamp, start_time, wait_time);
 		}
-
-		cur_time = mtk_crtc->pf_time;
-		DDPINFO("%s:Modify the pf_time to avoid same timestamp.\n", __func__);
-
-		if (prev_time == cur_time) {
-			DDPINFO("%s:The present fence timestamp still same.\n", __func__);
-			CRTC_MMP_MARK(id, present_fence_timestamp_same,
-			prev_time, cur_time);
-		}
 	}
-
-	mtk_crtc->prev_pf_time = cur_time;
 
 	return cur_time;
 }
@@ -6258,7 +6775,7 @@ static void mtk_disp_signal_fence_worker_signal(struct drm_crtc *crtc, struct cm
 		return;
 	}
 
-	cb_data_s = kzalloc(sizeof(struct cb_data_store), GFP_ATOMIC);
+	cb_data_s = cb_data->store_cb_data;
 	if (!cb_data_s)
 		DDPMSG("create cb_data_s fail\n");
 	else {
@@ -6360,7 +6877,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 		wake_up_interruptible(&(mtk_crtc->signal_mml_last_job_is_flushed_wq));
 	}
 
-	mutex_lock(&priv->commit.lock);
+	DDP_MUTEX_LOCK(&priv->commit.lock, __func__, cb_data->pres_fence_idx);
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 	if ((id == 0) && (priv && priv->power_state)) {
 		ovl_status = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
@@ -6497,8 +7014,27 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 		mutex_unlock(&mtk_crtc->mml_ir_sram.lock);
 	}
 
+	{	/* OVL reset debug */
+		unsigned int i;
+		unsigned int ovl_comp_id;
+
+		for (i = 0; i < OVL_RT_LOG_NR; i++) {
+			ovl_comp_id = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+							DISP_SLOT_OVL_COMP_ID(i));
+
+			if (ovl_comp_id) {
+				DDPPR_ERR("crtc%d(%d)%s reset, 0x%x\n", id, frame_idx,
+					mtk_dump_comp_str_id(ovl_comp_id),
+					*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+					DISP_SLOT_OVL_GREQ_CNT(i)));
+				writel(0, mtk_get_gce_backup_slot_va(mtk_crtc,
+					DISP_SLOT_OVL_COMP_ID(i)));
+			}
+		}
+	}
+
 	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-	mutex_unlock(&priv->commit.lock);
+	DDP_MUTEX_UNLOCK(&priv->commit.lock, __func__, cb_data->pres_fence_idx);
 #ifdef MTK_DRM_ASYNC_HANDLE
 	cmdq_pkt_wait_complete(cb_data->cmdq_handle);
 	mtk_drm_del_cb_data(data, id);
@@ -7188,6 +7724,81 @@ static void cmdq_pkt_wait_te(struct cmdq_pkt *cmdq_handle,
 	*inst = *inst & ((u64)0xFFFFFFFF << 32);
 	*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
 }
+
+static void cmdq_pkt_reset_ovl_by_crtc(struct cmdq_pkt *cmdq_handle, struct mtk_ddp_comp *comp,
+	struct mtk_drm_crtc *mtk_crtc, unsigned int index)
+{
+	const u16 reg_jump = CMDQ_THR_SPR_IDX2;
+	const u16 ovl_greq_cnt = CMDQ_THR_SPR_IDX3;
+	struct cmdq_operand lop;
+	struct cmdq_operand rop;
+	u32 inst_condi_jump;
+	u64 *inst, jump_pa;
+
+	lop.reg = true;
+	lop.idx = ovl_greq_cnt;
+	rop.reg = false;
+	rop.value = 0;		/* condition */
+
+	cmdq_pkt_read(cmdq_handle, NULL,
+		comp->regs_pa + DISP_REG_OVL_GREQ_LAYER_CNT, ovl_greq_cnt);
+
+	inst_condi_jump = cmdq_handle->cmd_buf_size;
+	cmdq_pkt_assign_command(cmdq_handle, reg_jump, 0);
+	/* check OVL GREQ_LAYER_CNT is 0 */
+	cmdq_pkt_cond_jump_abs(cmdq_handle, reg_jump,
+		&lop, &rop, CMDQ_EQUAL);
+
+	/* if condition false, will jump here */
+	{
+		dma_addr_t addr_oci = mtk_get_gce_backup_slot_pa(mtk_crtc,
+			DISP_SLOT_OVL_COMP_ID(index));
+		dma_addr_t addr_ogc = mtk_get_gce_backup_slot_pa(mtk_crtc,
+			DISP_SLOT_OVL_GREQ_CNT(index));
+
+		mtk_ddp_comp_reset(comp, cmdq_handle);
+		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, addr_oci, comp->id, ~0);
+		cmdq_pkt_mem_move(cmdq_handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_OVL_GREQ_LAYER_CNT, addr_ogc, CMDQ_THR_SPR_IDX1);
+	}
+
+	/* if condition true, will jump current postzion */
+	inst = cmdq_pkt_get_va_by_offset(cmdq_handle,  inst_condi_jump);
+	jump_pa = cmdq_pkt_get_pa_by_offset(cmdq_handle,
+				cmdq_handle->cmd_buf_size);
+	*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
+}
+
+/* check ovl GREQ_CNT then reset ovl */
+static void cmdq_pkt_reset_ovl(struct cmdq_pkt *cmdq_handle,
+		struct mtk_drm_crtc *mtk_crtc)
+{
+	struct mtk_ddp_comp *comp = NULL;
+	int type;
+	int i, j;
+	unsigned int index = 0;
+
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+		type = mtk_ddp_comp_get_type(comp->id);
+		if (type != MTK_DISP_OVL)
+			continue;
+		cmdq_pkt_reset_ovl_by_crtc(cmdq_handle, comp, mtk_crtc, index);
+		if (index < OVL_RT_LOG_NR - 1)
+			index++;
+	}
+
+	if (mtk_crtc->is_dual_pipe) {
+		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
+			type = mtk_ddp_comp_get_type(comp->id);
+			if (type != MTK_DISP_OVL)
+				continue;
+			cmdq_pkt_reset_ovl_by_crtc(cmdq_handle, comp, mtk_crtc, index);
+			if (index < OVL_RT_LOG_NR - 1)
+				index++;
+		}
+	}
+}
+
 #endif
 
 void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
@@ -7481,7 +8092,7 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 						mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
 				/*clear last SOF*/
 				cmdq_pkt_clear_event(cmdq_handle,
-						mtk_crtc->gce_obj.event[EVENT_DSI0_SOF]);
+						mtk_crtc->gce_obj.event[EVENT_DSI_SOF]);
 
 				/*for dynamic Msync on/off,set vfp period token*/
 				cmdq_pkt_set_event(cmdq_handle,
@@ -7559,7 +8170,7 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 					params->msync2_enable) {
 				/*wait next SOF*/
 				cmdq_pkt_wait_no_clear(cmdq_handle,
-						    mtk_crtc->gce_obj.event[EVENT_DSI0_SOF]);
+						    mtk_crtc->gce_obj.event[EVENT_DSI_SOF]);
 				/*clear last EOF*/
 				cmdq_pkt_clear_event(cmdq_handle,
 							mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
@@ -7769,7 +8380,10 @@ static void mtk_crtc_addon_connector_disconnect(struct drm_crtc *crtc,
 
 	if (panel_ext &&
 		panel_ext->output_mode == MTK_PANEL_DSC_SINGLE_PORT) {
-		dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
+		if (drm_crtc_index(crtc) == 3)
+			dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC1];
+		else
+			dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
 
 		switch (priv->data->mmsys_id) {
 		case MMSYS_MT6885:
@@ -7779,7 +8393,10 @@ static void mtk_crtc_addon_connector_disconnect(struct drm_crtc *crtc,
 			mtk_ddp_remove_dsc_prim_MT6983(mtk_crtc, handle);
 			break;
 		case MMSYS_MT6985:
-			mtk_ddp_remove_dsc_prim_MT6985(mtk_crtc, handle);
+			if (drm_crtc_index(crtc) == 3)
+				mtk_ddp_remove_dsc_ext_MT6985(mtk_crtc, handle);
+			else
+				mtk_ddp_remove_dsc_prim_MT6985(mtk_crtc, handle);
 			break;
 		case MMSYS_MT6897:
 			mtk_ddp_remove_dsc_prim_mt6897(mtk_crtc, handle);
@@ -7863,19 +8480,28 @@ void mtk_crtc_addon_connector_connect(struct drm_crtc *crtc,
 			return;
 		}
 
-		dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
+		if (drm_crtc_index(crtc) == 3)
+			dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC1];
+		else
+			dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
 
-		cfg.w = crtc->state->adjusted_mode.hdisplay;
-		cfg.h = crtc->state->adjusted_mode.vdisplay;
-		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
-		if (output_comp && drm_crtc_index(crtc) == 0) {
-			cfg.w = mtk_ddp_comp_io_cmd(
-					output_comp, NULL,
-					DSI_GET_VIRTUAL_WIDTH, NULL);
-			cfg.h = mtk_ddp_comp_io_cmd(
-					output_comp, NULL,
-					DSI_GET_VIRTUAL_HEIGH, NULL);
+		if (mtk_crtc->scaling_ctx.scaling_en) {
+			cfg.w = mtk_crtc_get_width_by_comp(__func__, crtc, dsc_comp, true);
+			cfg.h = mtk_crtc_get_height_by_comp(__func__, crtc, dsc_comp, true);
+		} else {
+			cfg.w = crtc->state->adjusted_mode.hdisplay;
+			cfg.h = crtc->state->adjusted_mode.vdisplay;
+			output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+			if (output_comp && drm_crtc_index(crtc) == 0) {
+				cfg.w = mtk_ddp_comp_io_cmd(
+						output_comp, NULL,
+						DSI_GET_VIRTUAL_WIDTH, NULL);
+				cfg.h = mtk_ddp_comp_io_cmd(
+						output_comp, NULL,
+						DSI_GET_VIRTUAL_HEIGH, NULL);
+			}
 		}
+
 		if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params) {
 			struct mtk_panel_params *params;
 
@@ -7890,8 +8516,14 @@ void mtk_crtc_addon_connector_connect(struct drm_crtc *crtc,
 		} else
 			cfg.vrefresh = drm_mode_vrefresh(&crtc->state->adjusted_mode);
 		cfg.bpc = mtk_crtc->bpc;
-		cfg.p_golden_setting_context =
+
+		if (mtk_crtc->scaling_ctx.scaling_en)
+			cfg.p_golden_setting_context =
+				__get_scaling_golden_setting_context(mtk_crtc);
+		else
+			cfg.p_golden_setting_context =
 				__get_golden_setting_context(mtk_crtc);
+
 		dsc_comp->mtk_crtc = mtk_crtc;
 
 		/* insert DSC */
@@ -7903,7 +8535,10 @@ void mtk_crtc_addon_connector_connect(struct drm_crtc *crtc,
 			mtk_ddp_insert_dsc_prim_MT6983(mtk_crtc, handle);
 			break;
 		case MMSYS_MT6985:
-			mtk_ddp_insert_dsc_prim_MT6985(mtk_crtc, handle);
+			if (drm_crtc_index(crtc) == 3)
+				mtk_ddp_insert_dsc_ext_MT6985(mtk_crtc, handle);
+			else
+				mtk_ddp_insert_dsc_prim_MT6985(mtk_crtc, handle);
 			break;
 		case MMSYS_MT6897:
 			mtk_ddp_insert_dsc_prim_mt6897(mtk_crtc, handle);
@@ -8077,8 +8712,8 @@ void mtk_crtc_dual_layer_config(struct mtk_drm_crtc *mtk_crtc,
 
 	crtc = &mtk_crtc->base;
 	priv = mtk_crtc->base.dev->dev_private;
-	mtk_drm_layer_dispatch_to_dual_pipe(priv->data->mmsys_id, plane_state,
-		&plane_state_l, &plane_state_r,
+	mtk_drm_layer_dispatch_to_dual_pipe(mtk_crtc, priv->data->mmsys_id,
+		plane_state, &plane_state_l, &plane_state_r,
 		crtc->state->adjusted_mode.hdisplay);
 
 	if (plane_state->comp_state.comp_id == 0)
@@ -8115,9 +8750,16 @@ void mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc)
 	if (drm_crtc_index(crtc) == 1)
 		mtk_crtc_init_plane_setting(mtk_crtc);
 
+	//discrete mdp_rdma do not restore
+	if (mtk_crtc->path_data->is_discrete_path) {
+		cmdq_pkt_destroy(cmdq_handle);
+		return;
+	}
+
 	for (i = 0; i < mtk_crtc->layer_nr; i++) {
 		struct drm_plane *plane = &mtk_crtc->planes[i].base;
 		struct mtk_plane_state *plane_state;
+		struct mtk_crtc_state *mtk_crtc_state = NULL;
 
 		plane_state = to_mtk_plane_state(plane->state);
 		if (plane_state->base.crtc == NULL && plane_state->pending.enable) {
@@ -8125,10 +8767,19 @@ void mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc)
 			break;
 		}
 
+		mtk_crtc_state = to_mtk_crtc_state(mtk_crtc->base.state);
 		if (!plane_state->pending.enable ||
-			(i >= OVL_PHY_LAYER_NR && !plane_state->comp_state.comp_id)) {
-			DDPINFO("%s i=%d comp_id=%u continue\n", __func__, i,
-				plane_state->comp_state.comp_id);
+			(i >= OVL_PHY_LAYER_NR && !plane_state->comp_state.comp_id) ||
+			((plane_state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER) &&
+			mtk_crtc_state &&
+			(mtk_crtc_state->rsz_param[0].out_len == 0 ||
+			(mtk_crtc->is_dual_pipe && mtk_crtc_state->rsz_param[1].out_len == 0)))) {
+			DDPINFO("%s i=%d comp_id=%u (%d,%d,%d,%d) continue\n", __func__, i,
+				plane_state->comp_state.comp_id,
+				(plane_state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER),
+				plane_state->pending.enable,
+				mtk_crtc_state->rsz_param[0].out_len,
+				mtk_crtc_state->rsz_param[1].out_len);
 			continue;
 		}
 
@@ -8429,8 +9080,17 @@ void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct cmdq_pkt *cmdq_handle;
 	struct mtk_ddp_config cfg = {0};
+	struct mtk_ddp_config scaling_cfg = {0};
 	struct mtk_ddp_comp *comp;
 	struct mtk_ddp_comp *output_comp;
+
+	if ((mtk_crtc->res_switch == RES_SWITCH_ON_AP)
+		&& mtk_crtc->scaling_ctx.scaling_en
+		&& (crtc->state->adjusted_mode.hdisplay == mtk_crtc->scaling_ctx.lcm_width)
+		&& (crtc->state->adjusted_mode.vdisplay == mtk_crtc->scaling_ctx.lcm_height)) {
+		DDPMSG("%s scaling_en mismatch, reset to false\n", __func__);
+		mtk_crtc->scaling_ctx.scaling_en = false;
+	}
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 
@@ -8453,10 +9113,22 @@ void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
 	cfg.bpc = mtk_crtc->bpc;
 	cfg.p_golden_setting_context = __get_golden_setting_context(mtk_crtc);
 
+	cfg.rsz_src_w = cfg.w;
+	cfg.rsz_src_h = cfg.h;
+
+	if (mtk_crtc->scaling_ctx.scaling_en) {
+		memcpy(&scaling_cfg, &cfg, sizeof(struct mtk_ddp_config));
+		scaling_cfg.w = mtk_crtc->scaling_ctx.scaling_mode->hdisplay;
+		scaling_cfg.h = mtk_crtc->scaling_ctx.scaling_mode->vdisplay;
+		scaling_cfg.p_golden_setting_context =
+			__get_scaling_golden_setting_context(mtk_crtc);
+	}
+
 #ifndef DRM_CMDQ_DISABLE
 	if (priv->data->mmsys_id == MMSYS_MT6983 ||
 		priv->data->mmsys_id == MMSYS_MT6879 ||
 		priv->data->mmsys_id == MMSYS_MT6895 ||
+		priv->data->mmsys_id == MMSYS_MT6835 ||
 		priv->data->mmsys_id == MMSYS_MT6855 ||
 		priv->data->mmsys_id == MMSYS_MT6886) {
 		/*Set EVENT_GCED_EN EVENT_GCEM_EN*/
@@ -8503,8 +9175,57 @@ void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
 		return;
 	}
 
+	if (mtk_crtc->is_dual_pipe &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_TILE_OVERHEAD)) {
+		cfg.tile_overhead.is_support = true;
+		cfg.tile_overhead.left_in_width = cfg.w / 2;
+		cfg.tile_overhead.right_in_width = cfg.w / 2;
+
+		if (mtk_crtc->scaling_ctx.scaling_en) {
+			scaling_cfg.tile_overhead.is_support = true;
+			scaling_cfg.tile_overhead.left_in_width = scaling_cfg.w / 2;
+			scaling_cfg.tile_overhead.right_in_width = scaling_cfg.w / 2;
+		}
+
+	} else {
+		cfg.tile_overhead.is_support = false;
+		cfg.tile_overhead.left_in_width = cfg.w;
+		cfg.tile_overhead.right_in_width = cfg.w;
+	}
+
+	/*Calculate total overhead*/
+	for_each_comp_in_crtc_path_reverse(comp, mtk_crtc, i, j) {
+
+		if (mtk_crtc->scaling_ctx.scaling_en && comp->in_scaling_path) {
+			mtk_ddp_comp_config_overhead(comp, &scaling_cfg);
+			DDPINFO("%s:comp %s (scaling_path) width L:%d R:%d, overhead L:%d R:%d\n",
+				__func__, mtk_dump_comp_str(comp),
+				scaling_cfg.tile_overhead.left_in_width,
+				scaling_cfg.tile_overhead.right_in_width,
+				scaling_cfg.tile_overhead.left_overhead,
+				scaling_cfg.tile_overhead.right_overhead);
+		} else {
+			mtk_ddp_comp_config_overhead(comp, &cfg);
+			DDPINFO("%s:comp %s width L:%d R:%d, overhead L:%d R:%d\n",
+				__func__, mtk_dump_comp_str(comp),
+				cfg.tile_overhead.left_in_width,
+				cfg.tile_overhead.right_in_width,
+				cfg.tile_overhead.left_overhead,
+				cfg.tile_overhead.right_overhead);
+		}
+
+		if (mtk_crtc->scaling_ctx.scaling_en
+			&& mtk_crtc_check_is_scaling_comp(mtk_crtc, comp->id))
+			cfg.tile_overhead = scaling_cfg.tile_overhead;
+	}
+
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
-		mtk_ddp_comp_config(comp, &cfg, cmdq_handle);
+
+		if (mtk_crtc->scaling_ctx.scaling_en && comp->in_scaling_path)
+			mtk_ddp_comp_config(comp, &scaling_cfg, cmdq_handle);
+		else
+			mtk_ddp_comp_config(comp, &cfg, cmdq_handle);
+
 		mtk_ddp_comp_start(comp, cmdq_handle);
 
 		if (!mtk_drm_helper_get_opt(
@@ -8512,14 +9233,48 @@ void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
 				    MTK_DRM_OPT_USE_PQ))
 			mtk_ddp_comp_bypass(comp, 1, cmdq_handle);
 
-		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL)
+		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL) {
 			cfg.source_bpc = mtk_ddp_comp_io_cmd(comp, NULL,
 				OVL_GET_SOURCE_BPC, NULL);
+			scaling_cfg.source_bpc = cfg.source_bpc;
+		}
 	}
 
 	if (mtk_crtc->is_dual_pipe) {
+		/*Calculate total overhead*/
+		for_each_comp_in_dual_pipe_reverse(comp, mtk_crtc, i, j) {
+
+			if (mtk_crtc->scaling_ctx.scaling_en && comp->in_scaling_path) {
+				mtk_ddp_comp_config_overhead(comp, &scaling_cfg);
+				DDPINFO("in scaling_path");
+				DDPINFO("%s:comp %s width L:%d R:%d, overhead L:%d R:%d\n",
+					__func__, mtk_dump_comp_str(comp),
+					scaling_cfg.tile_overhead.left_in_width,
+					scaling_cfg.tile_overhead.right_in_width,
+					scaling_cfg.tile_overhead.left_overhead,
+					scaling_cfg.tile_overhead.right_overhead);
+			} else {
+				mtk_ddp_comp_config_overhead(comp, &cfg);
+				DDPINFO("%s:comp %s width L:%d R:%d, overhead L:%d R:%d\n",
+					__func__, mtk_dump_comp_str(comp),
+					cfg.tile_overhead.left_in_width,
+					cfg.tile_overhead.right_in_width,
+					cfg.tile_overhead.left_overhead,
+					cfg.tile_overhead.right_overhead);
+			}
+
+			if (mtk_crtc->scaling_ctx.scaling_en
+				&& mtk_crtc_check_is_scaling_comp(mtk_crtc, comp->id))
+				cfg.tile_overhead = scaling_cfg.tile_overhead;
+		}
+
 		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
-			mtk_ddp_comp_config(comp, &cfg, cmdq_handle);
+
+			if (mtk_crtc->scaling_ctx.scaling_en && comp->in_scaling_path)
+				mtk_ddp_comp_config(comp, &scaling_cfg, cmdq_handle);
+			else
+				mtk_ddp_comp_config(comp, &cfg, cmdq_handle);
+
 			mtk_ddp_comp_start(comp, cmdq_handle);
 
 			if (!mtk_drm_helper_get_opt(
@@ -8528,6 +9283,10 @@ void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
 				mtk_ddp_comp_bypass(comp, 1, cmdq_handle);
 		}
 	}
+
+	/*store total overhead data*/
+	mtk_crtc_store_total_overhead(mtk_crtc, cfg.tile_overhead);
+
 	/* Althought some of the m4u port may be enabled in LK stage.
 	 * To make sure the driver independent, we still enable all the
 	 * componets port here.
@@ -8656,7 +9415,7 @@ skip:
 			PMQOS_UPDATE_BW, NULL);
 
 	/* 3.1 stop the last mml pkt */
-	if (mtk_crtc->is_mml || (mtk_crtc->mml_ir_state == MML_IR_LEAVING)) {
+	if (kref_read(&mtk_crtc->mml_ir_sram.ref)) {
 		struct mtk_drm_sram_list *entry, *tmp;
 
 		if (mtk_crtc_is_frame_trigger_mode(crtc) || mtk_crtc_is_connector_enable(mtk_crtc))
@@ -8725,6 +9484,9 @@ void mtk_crtc_disconnect_default_path(struct mtk_drm_crtc *mtk_crtc)
 			comp->id, next_comp_id);
 	}
 
+	/* reset dsc output_swap state */
+	mtk_crtc->is_dsc_output_swap = false;
+
 	if (mtk_crtc_is_dc_mode(crtc)) {
 		for_each_comp_in_crtc_target_path(comp, mtk_crtc, i,
 						  DDP_FIRST_PATH)
@@ -8775,6 +9537,7 @@ void mtk_crtc_prepare_instr(struct drm_crtc *crtc)
 		priv->data->mmsys_id == MMSYS_MT6879 ||
 		priv->data->mmsys_id == MMSYS_MT6895 ||
 		priv->data->mmsys_id == MMSYS_MT6886 ||
+		priv->data->mmsys_id == MMSYS_MT6835 ||
 		priv->data->mmsys_id == MMSYS_MT6855) {
 		handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
 
@@ -8962,6 +9725,9 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	/*for dual pipe*/
 	mtk_crtc_prepare_dual_pipe(mtk_crtc);
 
+	/* for ap res switch */
+	mtk_crtc_divide_default_path_by_rsz(mtk_crtc);
+
 	/* attach the crtc to each componet */
 	mtk_crtc_attach_ddp_comp(crtc, mtk_crtc->ddp_mode, true);
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
@@ -9049,7 +9815,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	/* 10. set dirty for cmd mode */
 	if (mtk_crtc_is_frame_trigger_mode(crtc) &&
 		!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE] &&
-		!mtk_state->doze_changed)
+		!mtk_state->doze_changed && !mtk_crtc->skip_frame)
 		mtk_crtc_set_dirty(mtk_crtc);
 
 	/* 11. set vblank*/
@@ -9117,6 +9883,134 @@ unsigned int mtk_drm_dump_wk_lock(
 	return len;
 }
 
+static int mtk_drm_crtc_update_ddp_mode(
+	struct mtk_drm_crtc *mtk_crtc, enum mtk_ddp_comp_id id)
+{
+	int ddp_mode = DDP_MAJOR;
+	int i, j;
+	struct mtk_ddp_comp *comp;
+
+	for (; ddp_mode < DDP_MODE_NR; ddp_mode++) {
+		for_each_comp_in_target_ddp_mode(comp, mtk_crtc, i, j, ddp_mode) {
+			if (comp->id == id)
+				return ddp_mode;
+		}
+	}
+	return DDP_MAJOR;
+}
+
+static void mtk_drm_crtc_fix_conn_mode(struct drm_crtc *crtc, struct drm_display_mode *timing,
+			struct mtk_ddp_comp *output_comp)
+{
+	struct mtk_drm_crtc *mtk_crtc;
+	struct drm_display_mode *mode;
+	struct mtk_crtc_state *mtk_state;
+
+	mtk_crtc = to_mtk_crtc(crtc);
+
+	if (!crtc->state) {
+		DDPPR_ERR("%s invalid CRTC state\n", __func__);
+		return;
+	}
+
+	mtk_state = to_mtk_crtc_state(crtc->state);
+
+	crtc->mode.hdisplay = timing->hdisplay;
+	crtc->mode.vdisplay = timing->vdisplay;
+	crtc->state->adjusted_mode.clock	= timing->clock;
+	crtc->state->adjusted_mode.hdisplay	= timing->hdisplay;
+	crtc->state->adjusted_mode.hsync_start	= timing->hsync_start;
+	crtc->state->adjusted_mode.hsync_end	= timing->hsync_end;
+	crtc->state->adjusted_mode.htotal	= timing->htotal;
+	crtc->state->adjusted_mode.hskew	= timing->hskew;
+	crtc->state->adjusted_mode.vdisplay	= timing->vdisplay;
+	crtc->state->adjusted_mode.vsync_start	= timing->vsync_start;
+	crtc->state->adjusted_mode.vsync_end	= timing->vsync_end;
+	crtc->state->adjusted_mode.vtotal	= timing->vtotal;
+	crtc->state->adjusted_mode.vscan	= timing->vscan;
+	vfree(mtk_crtc->avail_modes);
+	mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_SET_CRTC_AVAIL_MODES, mtk_crtc);
+
+	/* Update mode & adjusted_mode in CRTC */
+	mode = mtk_drm_crtc_avail_disp_mode(crtc,
+		mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
+
+	copy_drm_disp_mode(mode, &crtc->state->mode);
+	crtc->state->mode.hskew = mode->hskew;
+	drm_mode_set_crtcinfo(&crtc->state->mode, 0);
+
+	copy_drm_disp_mode(mode, &crtc->state->adjusted_mode);
+	crtc->state->adjusted_mode.hskew = mode->hskew;
+	drm_mode_set_crtcinfo(&crtc->state->adjusted_mode, 0);
+}
+
+static void mtk_drm_crtc_update_interface(struct drm_crtc *crtc,
+	struct drm_atomic_state *state)
+{
+	int i;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct drm_connector *connector;
+	struct drm_connector_state *new_conn_state;
+	struct mtk_ddp_comp *output_comp = NULL;
+	enum mtk_ddp_comp_id comp_id = 0;
+	struct drm_display_mode *timing = NULL;
+	struct drm_crtc_state *crtc_state;
+	struct mtk_crtc_state *mtk_crtc_state;
+	unsigned int crtc_index;
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+
+	for_each_new_connector_in_state(state, connector, new_conn_state, i) {
+		if (new_conn_state && new_conn_state->crtc == crtc) {
+			if (connector->connector_type == DRM_MODE_CONNECTOR_DSI &&
+				output_comp &&
+				mtk_dsi_get_comp_id(connector) != output_comp->id) {
+				/*output component is changed*/
+				comp_id = mtk_dsi_get_comp_id(connector);
+				mtk_crtc->ddp_mode =
+					mtk_drm_crtc_update_ddp_mode(mtk_crtc, comp_id);
+
+				DDPMSG("%s ddp mode is %d, comp id is %d\n",
+					__func__, mtk_crtc->ddp_mode, comp_id);
+
+				mtk_crtc_update_gce_event(mtk_crtc);
+
+				crtc_state = drm_atomic_get_crtc_state(state, crtc);
+				mtk_crtc_state = (crtc_state) ?
+						to_mtk_crtc_state(crtc_state) : NULL;
+				if (mtk_crtc_state) {
+					crtc_index = drm_crtc_index(crtc);
+					mtk_crtc_state->lye_state.scn[crtc_index] = NONE;
+				}
+				/*update mtk_crtc->panel_ext*/
+				output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+				if (!output_comp)
+					continue;
+				mtk_ddp_comp_io_cmd(output_comp, NULL, REQ_PANEL_EXT,
+						    &mtk_crtc->panel_ext);
+				mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_TIMING, &timing);
+
+				mtk_drm_crtc_fix_conn_mode(crtc, timing, output_comp);
+			}
+		}
+	}
+	if (timing == NULL) {
+		mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_TIMING, &timing);
+		if (timing == NULL) {
+			DDPPR_ERR("%s %d fail to get default timing\n",
+				__func__, __LINE__);
+			return;
+		}
+
+		if (crtc->mode.hdisplay != timing->hdisplay ||
+				crtc->mode.vdisplay != timing->vdisplay) {
+			DDPMSG("crtc mode different from connector state, change mode\n");
+			mtk_drm_crtc_fix_conn_mode(crtc, timing, output_comp);
+		}
+	}
+}
+
 void mtk_drm_crtc_atomic_resume(struct drm_crtc *crtc,
 				struct drm_atomic_state *atomic_state)
 {
@@ -9148,6 +10042,9 @@ void mtk_drm_crtc_atomic_resume(struct drm_crtc *crtc,
 	/* hold wakelock */
 	mtk_drm_crtc_wk_lock(crtc, 1, __func__, __LINE__);
 
+	if (mtk_crtc->path_data->is_discrete_path)
+		mtk_crtc->skip_frame = true;
+
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT) && index < MAX_CRTC) {
 		if (priv->usage[index] == DISP_ENABLE || priv->usage[index] == DISP_OPENING) {
 			DDPPR_ERR("%s usage control exception crtc%d cur usage %u\n",
@@ -9162,6 +10059,10 @@ void mtk_drm_crtc_atomic_resume(struct drm_crtc *crtc,
 			return;
 		}
 	}
+
+	/*update interface when connector is changed*/
+	if (of_property_read_bool(priv->mmsys_dev->of_node, "enable_output_int_switch"))
+		mtk_drm_crtc_update_interface(crtc, atomic_state);
 
 	mtk_drm_crtc_enable(crtc);
 	CRTC_MMP_EVENT_END((int) index, resume,
@@ -9180,8 +10081,8 @@ void mtk_crtc_config_round_corner(struct drm_crtc *crtc,
 	int i, j;
 	int cur_path_idx;
 
-	cfg.w = crtc->mode.hdisplay;
-	cfg.h = crtc->mode.vdisplay;
+//	cfg.w = crtc->mode.hdisplay;
+//	cfg.h = crtc->mode.vdisplay;
 
 	if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
 		cur_path_idx = DDP_SECOND_PATH;
@@ -9195,6 +10096,8 @@ void mtk_crtc_config_round_corner(struct drm_crtc *crtc,
 		comp, mtk_crtc, i, j)
 		if (comp->id == DDP_COMPONENT_POSTMASK0 ||
 			comp->id == DDP_COMPONENT_POSTMASK1) {
+			cfg.w = mtk_crtc_get_width_by_comp(__func__, crtc, comp, false);
+			cfg.h = mtk_crtc_get_height_by_comp(__func__, crtc, comp, false);
 			mtk_ddp_comp_config(comp, &cfg, handle);
 			break;
 		}
@@ -9205,6 +10108,8 @@ void mtk_crtc_config_round_corner(struct drm_crtc *crtc,
 	for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
 		if (comp->id == DDP_COMPONENT_POSTMASK0 ||
 			comp->id == DDP_COMPONENT_POSTMASK1) {
+			cfg.w = mtk_crtc_get_width_by_comp(__func__, crtc, comp, false);
+			cfg.h = mtk_crtc_get_height_by_comp(__func__, crtc, comp, false);
 			mtk_ddp_comp_config(comp, &cfg, handle);
 			break;
 		}
@@ -9348,6 +10253,7 @@ void mtk_drm_crtc_init_para(struct drm_crtc *crtc)
 	struct mtk_drm_private *priv =
 			mtk_crtc->base.dev->dev_private;
 	int en = 1;
+	unsigned int invoke_fps, init_idle_timeout = 50;
 
 	comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (comp == NULL)
@@ -9374,8 +10280,15 @@ void mtk_drm_crtc_init_para(struct drm_crtc *crtc)
 	crtc->state->adjusted_mode.vtotal       = timing->vtotal;
 	crtc->state->adjusted_mode.vscan        = timing->vscan;
 
-	drm_invoke_fps_chg_callbacks(drm_mode_vrefresh(timing));
+	invoke_fps = drm_mode_vrefresh(timing);
+
+	drm_invoke_fps_chg_callbacks(invoke_fps);
 	mtk_crtc_attach_ddp_comp(crtc, mtk_crtc->ddp_mode, true);
+
+	if (invoke_fps > 0)
+		init_idle_timeout = mtk_crtc_get_idle_interval(crtc, invoke_fps);
+	if (init_idle_timeout > 0)
+		mtk_drm_set_idle_check_interval(crtc, init_idle_timeout);
 
 	/* backup display context */
 	if (crtc_id == 0) {
@@ -9388,6 +10301,17 @@ void mtk_drm_crtc_init_para(struct drm_crtc *crtc)
 	if (comp && drm_crtc_index(&mtk_crtc->base) == 0) {
 		mtk_ddp_comp_io_cmd(comp, NULL,
 			DSI_SET_CRTC_AVAIL_MODES, mtk_crtc);
+
+		/* 0:no use, 1:on ddic, 2:on ap */
+		DDPMSG("%s resolution switch type: %d\n", __func__, mtk_crtc->res_switch);
+
+		if (mtk_crtc->res_switch == RES_SWITCH_ON_AP)
+			mtk_drm_crtc_get_panel_original_size(crtc,
+				&mtk_crtc->scaling_ctx.lcm_width,
+				&mtk_crtc->scaling_ctx.lcm_height);
+
+		/* fill connector prop caps for hwc */
+		mtk_ddp_comp_io_cmd(comp, NULL, DSI_FILL_CONNECTOR_PROP_CAPS, mtk_crtc);
 		mtk_ddp_comp_io_cmd(comp, NULL, SET_MMCLK_BY_DATARATE, &en);
 		/*need enable hrt_bw for pan display*/
 		if (mtk_drm_helper_get_opt(priv->helper_opt,
@@ -9432,6 +10356,7 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 		priv->data->mmsys_id == MMSYS_MT6897 ||
 		priv->data->mmsys_id == MMSYS_MT6879 ||
 		priv->data->mmsys_id == MMSYS_MT6895 ||
+		priv->data->mmsys_id == MMSYS_MT6835 ||
 		priv->data->mmsys_id == MMSYS_MT6855 ||
 		priv->data->mmsys_id == MMSYS_MT6886) {
 		/*Set EVENT_GCED_EN EVENT_GCEM_EN*/
@@ -9500,7 +10425,30 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 		DDPINFO("%s, enable iommu\n", __func__);
 		mtk_crtc_enable_iommu_runtime(mtk_crtc, cmdq_handle);
 	}
-	/*4. Enable Frame done IRQ &  process first config */
+
+	if (mtk_crtc->is_dual_pipe &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_TILE_OVERHEAD)) {
+		cfg.tile_overhead.is_support = true;
+		cfg.tile_overhead.left_in_width = cfg.w / 2;
+		cfg.tile_overhead.right_in_width = cfg.w / 2;
+	} else {
+		cfg.tile_overhead.is_support = false;
+		cfg.tile_overhead.left_in_width = cfg.w;
+		cfg.tile_overhead.right_in_width = cfg.w;
+	}
+
+	/*4. Calculate total overhead */
+	for_each_comp_in_crtc_path_reverse(comp, mtk_crtc, i, j) {
+		mtk_ddp_comp_config_overhead(comp, &cfg);
+		DDPINFO("%s:comp %s width L:%d R:%d, overhead L:%d R:%d\n",
+			__func__, mtk_dump_comp_str(comp),
+			cfg.tile_overhead.left_in_width,
+			cfg.tile_overhead.right_in_width,
+			cfg.tile_overhead.left_overhead,
+			cfg.tile_overhead.right_overhead);
+	}
+
+	/*5. Enable Frame done IRQ &  process first config */
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		mtk_ddp_comp_first_cfg(comp, &cfg, cmdq_handle);
 		mtk_ddp_comp_io_cmd(comp, cmdq_handle, IRQ_LEVEL_NORMAL, NULL);
@@ -9513,6 +10461,18 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 	}
 	if (mtk_crtc->is_dual_pipe) {
 		DDPFUNC();
+
+		/*Calculate total overhead */
+		for_each_comp_in_dual_pipe_reverse(comp, mtk_crtc, i, j) {
+			mtk_ddp_comp_config_overhead(comp, &cfg);
+			DDPINFO("%s:comp %s width L:%d R:%d, overhead L:%d R:%d\n",
+				__func__, mtk_dump_comp_str(comp),
+				cfg.tile_overhead.left_in_width,
+				cfg.tile_overhead.right_in_width,
+				cfg.tile_overhead.left_overhead,
+				cfg.tile_overhead.right_overhead);
+		}
+
 		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
 			mtk_ddp_comp_first_cfg(comp, &cfg, cmdq_handle);
 			mtk_ddp_comp_io_cmd(comp, cmdq_handle,
@@ -9521,6 +10481,10 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 				MTK_IO_CMD_RDMA_GOLDEN_SETTING, &cfg);
 		}
 	}
+
+	/*store total overhead data*/
+	mtk_crtc_store_total_overhead(mtk_crtc, cfg.tile_overhead);
+
 	cmdq_pkt_flush(cmdq_handle);
 	cmdq_pkt_destroy(cmdq_handle);
 
@@ -9550,6 +10514,9 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 
 	/*for dual pipe*/
 	mtk_crtc_prepare_dual_pipe(mtk_crtc);
+
+	/* for ap res switch */
+	mtk_crtc_divide_default_path_by_rsz(mtk_crtc);
 
 	/* 2. start trigger loop first to keep gce alive */
 	if (mtk_crtc_with_trigger_loop(crtc)) {
@@ -9783,7 +10750,9 @@ void mtk_drm_crtc_suspend(struct drm_crtc *crtc)
 	mtk_crtc_release_lye_idx(crtc);
 #endif
 	atomic_set(&mtk_crtc->already_config, 0);
-	priv->usage[index] = DISP_DISABLE;
+
+	if (index >= 0 && index < MAX_CRTC)
+		priv->usage[index] = DISP_DISABLE;
 
 	/* release wakelock */
 	mtk_drm_crtc_wk_lock(crtc, 0, __func__, __LINE__);
@@ -10367,6 +11336,7 @@ static void mtk_crtc_msync2_send_cmds_bef_cfg(struct drm_crtc *crtc, unsigned in
 	struct mtk_oddmr_timing oddmr_timing = { 0 };
 	struct mtk_ddp_comp *oddmr_comp;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct drm_display_mode *mode;
 
 
 	DDPMSG("[Msync2.0] Cmd mode send cmds before config\n");
@@ -10496,14 +11466,16 @@ rte_target:
 		/* Switch msync TE level */
 		if (fps_level != fps_level_old) {
 
-			oddmr_timing.hdisplay = crtc->state->mode.hdisplay;
-			oddmr_timing.vdisplay = crtc->state->mode.vdisplay;
+			/* scaling path */
+			oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
+			mode = mtk_crtc_get_display_mode_by_comp(__func__, crtc, oddmr_comp, false);
+			oddmr_timing.hdisplay = mode->hdisplay;
+			oddmr_timing.vdisplay = mode->vdisplay;
 			if (fps_level == 0xFFFF)
-				oddmr_timing.vrefresh =  drm_mode_vrefresh(&crtc->state->mode);
+				oddmr_timing.vrefresh =  drm_mode_vrefresh(mode);
 			else
 				oddmr_timing.vrefresh = fps_level;
 
-			oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
 			mtk_ddp_comp_io_cmd(oddmr_comp, state->cmdq_handle,
 				ODDMR_TIMING_CHG, &oddmr_timing);
 			mtk_ddp_comp_io_cmd(comp, state->cmdq_handle,
@@ -10640,14 +11612,16 @@ mte_target:
 		/* Switch msync TE level */
 		if (fps_level != fps_level_old) {
 
-			oddmr_timing.hdisplay = crtc->state->mode.hdisplay;
-			oddmr_timing.vdisplay = crtc->state->mode.vdisplay;
+			/* scaling path */
+			oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
+			mode = mtk_crtc_get_display_mode_by_comp(__func__, crtc, oddmr_comp, false);
+			oddmr_timing.hdisplay = mode->hdisplay;
+			oddmr_timing.vdisplay = mode->vdisplay;
 			if (fps_level == 0xFFFF)
-				oddmr_timing.vrefresh =  drm_mode_vrefresh(&crtc->state->mode);
+				oddmr_timing.vrefresh =  drm_mode_vrefresh(mode);
 			else
 				oddmr_timing.vrefresh = fps_level;
 
-			oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
 			mtk_ddp_comp_io_cmd(oddmr_comp, state->cmdq_handle,
 				ODDMR_TIMING_CHG, &oddmr_timing);
 			mtk_ddp_comp_io_cmd(comp, state->cmdq_handle,
@@ -10773,7 +11747,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	if (mtk_crtc->event && mtk_crtc_state->base.event)
 		DRM_ERROR("new event while there is still a pending event\n");
 
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT)) {
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT) && crtc_idx < MAX_CRTC) {
 		if (priv->usage[crtc_idx] == DISP_OPENING) {
 			DDPINFO("%s %d skip due to still opening\n", __func__, crtc_idx);
 			CRTC_MMP_MARK(index, atomic_begin, 0, 0xF);
@@ -10835,6 +11809,8 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 			mtk_ddp_comp_reset(comp, mtk_crtc_state->cmdq_handle);
 		}
 	}
+
+	cmdq_pkt_reset_ovl(mtk_crtc_state->cmdq_handle, mtk_crtc);
 
 	/* BW monitor: Read and Save BW info */
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
@@ -10940,7 +11916,7 @@ end:
 }
 
 void mtk_drm_layer_dispatch_to_dual_pipe(
-	unsigned int mmsys_id,
+	struct mtk_drm_crtc *mtk_crtc, unsigned int mmsys_id,
 	struct mtk_plane_state *plane_state,
 	struct mtk_plane_state *plane_state_l,
 	struct mtk_plane_state *plane_state_r,
@@ -10951,6 +11927,18 @@ void mtk_drm_layer_dispatch_to_dual_pipe(
 	int right_bg = w/2;
 	int roi_w = w;
 	struct mtk_crtc_state *crtc_state = NULL;
+	struct total_tile_overhead to_info = {0};
+
+	if (mtk_crtc)
+		to_info = mtk_crtc_get_total_overhead(mtk_crtc);
+	else
+		to_info.is_support = 0;
+	DDPINFO("%s:overhead is_support:%d, width L:%d R:%d\n", __func__,
+			to_info.is_support, to_info.left_in_width, to_info.right_in_width);
+	if (to_info.is_support) {
+		left_bg += to_info.left_overhead;
+		right_bg += to_info.right_overhead;
+	}
 
 	memcpy(plane_state_l,
 		plane_state, sizeof(struct mtk_plane_state));
@@ -10959,9 +11947,10 @@ void mtk_drm_layer_dispatch_to_dual_pipe(
 
 	if (plane_state->pending.mml_mode == MML_MODE_RACING &&
 		plane_state->base.crtc != NULL) {
-		struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(plane_state->base.crtc);
+		struct mtk_drm_crtc *mtk_crtc_local = to_mtk_crtc(plane_state->base.crtc);
 
-		if (mtk_crtc && mtk_crtc->is_mml && mtk_crtc->is_force_mml_scen) {
+		if (mtk_crtc_local && mtk_crtc_local->is_mml &&
+			mtk_crtc_local->is_force_mml_scen) {
 			crtc_state = to_mtk_crtc_state(plane_state->base.crtc->state);
 			plane_state_l->pending.width = crtc_state->mml_src_roi[0].width;
 			plane_state_l->pending.height = crtc_state->mml_src_roi[0].height;
@@ -11019,7 +12008,7 @@ void mtk_drm_layer_dispatch_to_dual_pipe(
 	if (plane_state_l->pending.width > plane_state->pending.width)
 		plane_state_l->pending.width = plane_state->pending.width;
 
-	if (w/2 <= plane_state->pending.dst_x) {
+	if ((to_info.is_support ? left_bg : w/2) <= plane_state->pending.dst_x) {
 		plane_state_l->pending.dst_x = 0;
 		plane_state_l->pending.width = 0;
 		plane_state_l->pending.height = 0;
@@ -11029,8 +12018,8 @@ void mtk_drm_layer_dispatch_to_dual_pipe(
 	if (plane_state_l->pending.width == 0)
 		plane_state_l->pending.height = 0;
 
-	if (plane_state_l->pending.width > w/2)
-		plane_state_l->pending.width = w/2;
+	if (plane_state_l->pending.width > (to_info.is_support ? left_bg : w/2))
+		plane_state_l->pending.width = (to_info.is_support ? left_bg : w/2);
 
 	DDPDBG("plane_l (%u,%u) (%u,%u), (%u,%u)\n",
 		plane_state_l->pending.src_x, plane_state_l->pending.src_y,
@@ -11068,8 +12057,8 @@ void mtk_drm_layer_dispatch_to_dual_pipe(
 	if (plane_state_r->pending.width == 0)
 		plane_state_r->pending.height = 0;
 
-	if (plane_state_r->pending.width > w/2)
-		plane_state_r->pending.width = w/2;
+	if (plane_state_r->pending.width > (to_info.is_support ? right_bg : w/2))
+		plane_state_r->pending.width = (to_info.is_support ? right_bg : w/2);
 
 	DDPDBG("plane_r (%u,%u) (%u,%u), (%u,%u)\n",
 		plane_state_r->pending.src_x, plane_state_r->pending.src_y,
@@ -11215,6 +12204,12 @@ void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 			mtk_ddp_comp_layer_config(comp, plane_index, plane_state,
 						  cmdq_handle);
 		}
+		//discrete path need re-trigger by itself after plane 0
+		if (mtk_crtc->path_data->is_discrete_path &&
+			plane_index != 0 && mtk_crtc->pending_handle) {
+			mtk_disp_mutex_enable_cmdq(mtk_crtc->mutex[1],
+				mtk_crtc->pending_handle, mtk_crtc->gce_obj.base);
+		}
 #ifndef DRM_CMDQ_DISABLE
 		mtk_wb_atomic_commit(mtk_crtc, v, h, state->cmdq_handle);
 #else
@@ -11236,8 +12231,8 @@ void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 					DDPPR_ERR("%s,%d NULL comp_id error\n", __func__, __LINE__);
 			}
 
-			mtk_drm_layer_dispatch_to_dual_pipe(priv->data->mmsys_id, plane_state,
-				&plane_state_l, &plane_state_r,
+			mtk_drm_layer_dispatch_to_dual_pipe(mtk_crtc, priv->data->mmsys_id,
+				plane_state, &plane_state_l, &plane_state_r,
 				crtc->state->adjusted_mode.hdisplay);
 
 			comp = priv->ddp_comp[plane_state_r.comp_state.comp_id];
@@ -11555,6 +12550,18 @@ static void mtk_crtc_dl_config_color_matrix(struct drm_crtc *crtc,
 		DDPPR_ERR("Cannot not find DDP_COMPONENT_CCORR0\n");
 }
 
+static void mtk_drm_discrete_cb(struct cmdq_cb_data data)
+{
+	struct mtk_cmdq_cb_data *cb_data = data.data;
+	int crtc_index = drm_crtc_index(cb_data->crtc);
+
+	DDPINFO("[discrete] destroy hnd:0x%lx\n", (unsigned long)cb_data->cmdq_handle);
+	CRTC_MMP_MARK(crtc_index, discrete, 0,
+			(unsigned long)cb_data->cmdq_handle);
+	cmdq_pkt_destroy(cb_data->cmdq_handle);
+	kfree(cb_data);
+}
+
 static void mtk_drm_wb_cb(struct cmdq_cb_data data)
 {
 	struct mtk_cmdq_cb_data *cb_data = data.data;
@@ -11586,6 +12593,10 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 	struct cmdq_pkt *handle;
 	struct cmdq_client *client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 	struct mtk_cmdq_cb_data *wb_cb_data;
+	struct mtk_cmdq_cb_data *discrete_cb_data;
+	unsigned int r_comp_id;
+	struct mtk_ddp_comp *first_comp, *r_comp;
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 
 	if (!cmdq_handle) {
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
@@ -11618,6 +12629,20 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		mtk_crtc_dl_config_color_matrix(crtc, ccorr_config,
 						cmdq_handle);
 
+	//discrete mdp_rdma need fill full frame
+	if (mtk_crtc->path_data->is_discrete_path) {
+		first_comp = mtk_crtc_get_comp(crtc, mtk_crtc->ddp_mode, 0, 0);
+		mtk_ddp_comp_io_cmd(first_comp, cmdq_handle,
+			MDP_RDMA_FILL_FRAME, NULL);
+		if (mtk_crtc->is_dual_pipe) {
+			r_comp_id = dual_pipe_comp_mapping(
+				priv->data->mmsys_id, first_comp->id);
+			r_comp = priv->ddp_comp[r_comp_id];
+			mtk_ddp_comp_io_cmd(r_comp, cmdq_handle,
+				MDP_RDMA_FILL_FRAME, NULL);
+		}
+	}
+
 	if (mtk_crtc_is_dc_mode(crtc) ||
 		(state->prop_val[CRTC_PROP_OUTPUT_ENABLE] && crtc_index != 0)) {
 		int gce_event =
@@ -11639,8 +12664,8 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		cmdq_pkt_wait_no_clear(cmdq_handle, gce_event);
 	} else if (mtk_crtc_is_frame_trigger_mode(crtc) &&
 					mtk_crtc_with_trigger_loop(crtc)) {
-		if (mtk_crtc->is_mml && is_from_dal) {
-			/* skip trigger when racing with mml */
+		if ((mtk_crtc->is_mml && is_from_dal) ||
+				mtk_crtc->skip_frame) {
 		} else {
 			/* DL with trigger loop */
 			cmdq_pkt_set_event(cmdq_handle,
@@ -11664,18 +12689,48 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 #endif
 	}
 
+	mtk_crtc->skip_frame = false;
 #ifdef MTK_DRM_CMDQ_ASYNC
 #ifdef MTK_DRM_ASYNC_HANDLE
-	if (cmdq_pkt_flush_async(cmdq_handle,
-		gce_cb, cb_data) < 0)
+	if (gce_cb) {
+		((struct mtk_cmdq_cb_data *)cb_data)->store_cb_data
+			= kzalloc(sizeof(struct cb_data_store), GFP_KERNEL);
+		if (!((struct mtk_cmdq_cb_data *)cb_data)->store_cb_data) {
+			DDPPR_ERR("store_cb_data alloc fail\n");
+			cmdq_pkt_destroy(cmdq_handle);
+			kfree(cb_data);
+			return -EINVAL;
+		}
+	}
+
+	if (cmdq_pkt_flush_async(cmdq_handle, gce_cb, cb_data) < 0)
+		DDPPR_ERR("failed to flush gce_cb async\n");
 #else
-	if (cmdq_pkt_flush_threaded(cmdq_handle,
-		gce_cb, cb_data) < 0)
+	if (cmdq_pkt_flush_threaded(cmdq_handle, gce_cb, cb_data) < 0)
+		DDPPR_ERR("failed to flush gce_cb threaded\n");
 #endif
-		DDPPR_ERR("failed to flush gce_cb\n");
 #else
 	cmdq_pkt_flush(cmdq_handle);
 #endif
+
+	//discrete flush pending job
+	if (mtk_crtc->path_data->is_discrete_path &&
+		mtk_crtc->pending_handle) {
+		struct cmdq_pkt *pending_handle;
+
+		pending_handle = mtk_crtc->pending_handle;
+		mtk_crtc->pending_handle = NULL;
+		discrete_cb_data = kmalloc(sizeof(*discrete_cb_data), GFP_KERNEL);
+		discrete_cb_data->cmdq_handle = pending_handle;
+		discrete_cb_data->crtc = crtc;
+
+		DDPINFO("[discrete] flush pending hnd:0x%lx\n",
+			(unsigned long)pending_handle);
+		CRTC_MMP_MARK(crtc_index, discrete, 0,
+			(unsigned long)pending_handle);
+		cmdq_pkt_flush_threaded(pending_handle,
+			mtk_drm_discrete_cb, discrete_cb_data);
+	}
 
 	/* For DL write-back path */
 	/* wait WDMA frame done and disconnect immediately */
@@ -11747,6 +12802,136 @@ static int mtk_drm_crtc_find_ovl_comp_id(struct mtk_drm_private *priv,
 	return comp_id;
 }
 
+bool mtk_crtc_check_is_scaling_comp(struct mtk_drm_crtc *mtk_crtc,
+	enum mtk_ddp_comp_id comp_id)
+{
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	const struct mtk_crtc_path_data *path_data;
+	enum mtk_ddp_comp_id scaling_comp_id, scaling_comp_dual_id;
+	bool ret = false;
+
+	if (drm_crtc_index(&mtk_crtc->base) != 0)
+		return false;
+
+	path_data = priv->data->main_path_data != NULL ? priv->data->main_path_data : NULL;
+	if ((path_data == NULL) || (path_data->scaling_data == NULL))
+		return false;
+
+	scaling_comp_id = path_data->scaling_data[0];
+
+	if (mtk_crtc->is_dual_pipe && (path_data->scaling_data_dual != NULL)) {
+		scaling_comp_dual_id = path_data->scaling_data_dual[0];
+		ret = ((comp_id == scaling_comp_id) || (comp_id == scaling_comp_dual_id));
+	} else
+		ret = (comp_id == scaling_comp_id);
+
+	return ret;
+}
+
+void mtk_crtc_divide_default_path_by_rsz(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct mtk_ddp_comp *comp;
+	int i, j;
+	bool in_scaling_path = false;
+
+	if ((drm_crtc_index(&mtk_crtc->base) != 0) ||
+		(mtk_crtc->res_switch != RES_SWITCH_ON_AP))
+		return;
+
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+		if (mtk_crtc_check_is_scaling_comp(mtk_crtc, comp->id))
+			in_scaling_path = true;
+		comp->in_scaling_path = in_scaling_path;
+		DDPDBG("%s: %s is %s scaling path\n", __func__,
+			mtk_dump_comp_str(comp), (comp->in_scaling_path ? "in" : "before"));
+	}
+
+	in_scaling_path = false;
+	if (mtk_crtc->is_dual_pipe) {
+		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
+			if (mtk_crtc_check_is_scaling_comp(mtk_crtc, comp->id))
+				in_scaling_path = true;
+			comp->in_scaling_path = in_scaling_path;
+			DDPDBG("%s: %s is %s scaling path\n", __func__,
+				mtk_dump_comp_str(comp), (comp->in_scaling_path ? "in" : "before"));
+		}
+	}
+}
+
+struct drm_display_mode *mtk_crtc_get_display_mode_by_comp(
+	const char *source,
+	struct drm_crtc *crtc,
+	struct mtk_ddp_comp *comp,
+	bool in_scaling_path)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct drm_display_mode *mode;
+
+	if ((crtc == NULL) || (crtc->state == NULL) || (mtk_crtc == NULL)) {
+		DDPPR_ERR("%s null pointer!!\n", __func__);
+		dump_stack();
+		return NULL;
+	}
+
+	if (mtk_crtc->scaling_ctx.scaling_en
+			&& (in_scaling_path || ((comp != NULL) && comp->in_scaling_path))
+			&& (mtk_crtc->scaling_ctx.scaling_mode != NULL))
+		mode = mtk_crtc->scaling_ctx.scaling_mode;
+	else
+		mode = &crtc->state->adjusted_mode;
+
+	DDPDBG("%s scaling_en: %d, comp: %s, in_scaling_path: %d, mode: %ux%u@%d\n", source,
+		mtk_crtc->scaling_ctx.scaling_en,
+		(comp != NULL) ? mtk_dump_comp_str(comp) : "unknown",
+		(((comp != NULL) && comp->in_scaling_path) || in_scaling_path),
+		mode->hdisplay, mode->vdisplay, drm_mode_vrefresh(mode));
+
+	return mode;
+}
+
+unsigned int mtk_crtc_get_width_by_comp(
+	const char *source,
+	struct drm_crtc *crtc,
+	struct mtk_ddp_comp *comp,
+	bool in_scaling_path)
+{
+	struct drm_display_mode *mode;
+
+	mode = mtk_crtc_get_display_mode_by_comp(source, crtc, comp, in_scaling_path);
+	if (mode == NULL) {
+		DDPPR_ERR("%s null pointer!!\n", __func__);
+		return 0;
+	}
+
+	return mode->hdisplay;
+}
+
+unsigned int mtk_crtc_get_height_by_comp(
+	const char *source,
+	struct drm_crtc *crtc,
+	struct mtk_ddp_comp *comp,
+	bool in_scaling_path)
+{
+	struct drm_display_mode *mode;
+
+	mode = mtk_crtc_get_display_mode_by_comp(source, crtc, comp, in_scaling_path);
+	if (mode == NULL) {
+		DDPPR_ERR("%s null pointer!!\n", __func__);
+		return 0;
+	}
+
+	return mode->vdisplay;
+}
+
+void mtk_crtc_set_width_height(
+	int *w,
+	int *h,
+	struct drm_crtc *crtc,
+	bool is_scaling_path)
+{
+	*w = mtk_crtc_get_width_by_comp(__func__, crtc, NULL, is_scaling_path);
+	*h = mtk_crtc_get_height_by_comp(__func__, crtc, NULL, is_scaling_path);
+}
 
 static void mtk_drm_crtc_enable_fake_layer(struct drm_crtc *crtc,
 				      struct drm_crtc_state *old_crtc_state)
@@ -11993,11 +13178,11 @@ static void mtk_atomic_hbm_bypass_pq(struct drm_crtc *crtc,
 	struct mtk_ddp_comp *comp;
 	int i, j;
 
-	DDPINFO("%s: enter\n", __func__);
+	DDPINFO("%s: enter en[%d]\n", __func__, en);
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
-		if (comp && (comp->id == DDP_COMPONENT_AAL0 ||
-			comp->id == DDP_COMPONENT_CCORR0)) {
+		if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_AAL ||
+				mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CCORR)) {
 			if (comp->funcs && comp->funcs->bypass)
 				mtk_ddp_comp_bypass(comp, en, handle);
 		}
@@ -12005,8 +13190,8 @@ static void mtk_atomic_hbm_bypass_pq(struct drm_crtc *crtc,
 
 	if (mtk_crtc->is_dual_pipe) {
 		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
-			if (comp && (comp->id == DDP_COMPONENT_AAL1 ||
-				comp->id == DDP_COMPONENT_CCORR1)) {
+			if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_AAL ||
+					mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CCORR)) {
 				if (comp->funcs && comp->funcs->bypass)
 					mtk_ddp_comp_bypass(comp, en, handle);
 			}
@@ -12058,7 +13243,7 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	}
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT) &&
-			priv->usage[index] == DISP_OPENING) {
+			index < MAX_CRTC && priv->usage[index] == DISP_OPENING) {
 		DDPINFO("%s: %d skip in opening\n", __func__, index);
 		CRTC_MMP_MARK((int) index, atomic_flush, 0, __LINE__);
 		/* release all fence when opening CRTC */
@@ -12115,22 +13300,22 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 		if (crtc->state->color_mgmt_changed)
 			mtk_ddp_gamma_set(comp, crtc->state, cmdq_handle);
 		mtk_ddp_comp_io_cmd(comp, cmdq_handle,
+				COMP_ODDMR_CFG, &mtk_crtc->sec_on);
+		mtk_ddp_comp_io_cmd(comp, cmdq_handle,
 				PMQOS_UPDATE_BW, NULL);
 		mtk_ddp_comp_io_cmd(comp, cmdq_handle,
 				FRAME_DIRTY, NULL);
-		mtk_ddp_comp_io_cmd(comp, cmdq_handle,
-				COMP_SEC_CFG, &mtk_crtc->sec_on);
 	}
 	if (mtk_crtc->is_dual_pipe) {
 		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
 			if (crtc->state->color_mgmt_changed)
 				mtk_ddp_gamma_set(comp, crtc->state, cmdq_handle);
 			mtk_ddp_comp_io_cmd(comp, cmdq_handle,
+					COMP_ODDMR_CFG, &mtk_crtc->sec_on);
+			mtk_ddp_comp_io_cmd(comp, cmdq_handle,
 					PMQOS_UPDATE_BW, NULL);
 			mtk_ddp_comp_io_cmd(comp, cmdq_handle,
 					FRAME_DIRTY, NULL);
-			mtk_ddp_comp_io_cmd(comp, cmdq_handle,
-					COMP_SEC_CFG, &mtk_crtc->sec_on);
 		}
 	}
 
@@ -12193,7 +13378,7 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	   (mtk_crtc_state->prop_val[CRTC_PROP_SF_PRES_FENCE_IDX] != (unsigned int)-1)) {
 		if (index == 0)
 			cmdq_pkt_clear_event(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_DSI0_SOF]);
+				mtk_crtc->gce_obj.event[EVENT_DSI_SOF]);
 	}
 
 	/*Msync 2.0*/
@@ -12307,7 +13492,7 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 		/*add wait SOF cmd*/
 		cmdq_pkt_wait_no_clear(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_DSI0_SOF]);
+				mtk_crtc->gce_obj.event[EVENT_DSI_SOF]);
 		if (mtk_crtc_state->prop_val[CRTC_PROP_MSYNC2_0_ENABLE] != 0)
 			need_disable = msync_need_disable(mtk_crtc);
 		/* if 1->0 or msync_need_disable*/
@@ -12605,9 +13790,10 @@ static void mtk_crtc_get_event_name(struct mtk_drm_crtc *mtk_crtc, char *buf,
 		len = snprintf(buf, buf_len, "disp_token_cabc_eof%d",
 					drm_crtc_index(&mtk_crtc->base));
 		break;
-	case EVENT_DSI0_SOF:
-		len = snprintf(buf, buf_len, "disp_dsi0_sof%d",
-			       drm_crtc_index(&mtk_crtc->base));
+	case EVENT_DSI_SOF:
+		mtk_crtc_get_output_comp_name(mtk_crtc, output_comp,
+					      sizeof(output_comp));
+		len = snprintf(buf, buf_len, "disp_%s_sof0", output_comp);
 		break;
 	/*Msync 2.0*/
 	case EVENT_SYNC_TOKEN_VFP_PERIOD:
@@ -12656,9 +13842,34 @@ static void mtk_crtc_get_event_name(struct mtk_drm_crtc *mtk_crtc, char *buf,
 		len = snprintf(buf, buf_len, "disp_token_disp_check_trigger_merge%d",
 					drm_crtc_index(&mtk_crtc->base));
 		break;
+	case EVENT_OVLSYS_WDMA1_EOF:
+		len = snprintf(buf, buf_len, "disp_ovlsys_wdma1_eof%d",
+			       drm_crtc_index(&mtk_crtc->base));
+		break;
+	case EVENT_MDP_RDMA0_EOF:
+		len = snprintf(buf, buf_len, "disp_mdp_rdma0_eof%d",
+			       drm_crtc_index(&mtk_crtc->base));
+		break;
+	case EVENT_MDP_RDMA1_EOF:
+		len = snprintf(buf, buf_len, "disp_mdp_rdma1_eof%d",
+			       drm_crtc_index(&mtk_crtc->base));
+		break;
 	default:
 		DDPPR_ERR("%s invalid event_id:%d\n", __func__, event_id);
 		memset(output_comp, 0, sizeof(output_comp));
+	}
+}
+
+void mtk_crtc_update_gce_event(struct mtk_drm_crtc *mtk_crtc)
+{
+	char buf[50];
+	int i;
+	struct device *dev = mtk_crtc->base.dev->dev;
+
+	/* Load CRTC GCE event again after re-enable crtc */
+	for (i = 0; i < EVENT_TYPE_MAX; i++) {
+		mtk_crtc_get_event_name(mtk_crtc, buf, sizeof(buf), i);
+		mtk_crtc->gce_obj.event[i] = cmdq_dev_get_event(dev, buf);
 	}
 }
 
@@ -13267,6 +14478,10 @@ static int disp_mutex_dispatch(struct mtk_drm_private *priv, struct mtk_drm_crtc
 			max_path = cur;
 	}
 	ddp->mtk_crtc[pipe] = mtk_crtc;
+
+	if (path_data->is_discrete_path)
+		max_path++;
+
 	for (i = 0, cur = 0 ; i < 10 ; ++i) {
 		struct mtk_disp_mutex *mutex;
 
@@ -13320,6 +14535,13 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 
 		node = priv->comp_node[comp_id];
 		if (!node) {
+			if (!of_property_read_bool(priv->mmsys_dev->of_node,
+				"enable_output_int_switch")
+				&& mtk_ddp_comp_is_output_by_id(comp_id)
+				&& pipe == 0 && p_mode == DDP_MINOR) {
+				DDPMSG("skip this error because %d is not enabled.\n", comp_id);
+				continue;
+			}
 			dev_info(
 				dev,
 				"Not creating crtc %d because component %d is disabled or missing\n",
@@ -13380,19 +14602,19 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 				path_data->path_len[i][j];
 			mtk_crtc->ddp_ctx[i].ddp_comp[j] = devm_kmalloc_array(
 				dev, path_data->path_len[i][j],
-				sizeof(struct mtk_ddp_comp *), GFP_KERNEL);
+				sizeof(struct mtk_ddp_comp *), GFP_KERNEL | __GFP_ZERO);
 			mtk_crtc->ddp_ctx[i].ovl_comp_nr[j] =
 				path_data->ovl_path_len[i][j];
 			mtk_crtc->ddp_ctx[i].ovl_comp[j] = devm_kmalloc_array(
 				dev, path_data->ovl_path_len[i][j],
-				sizeof(struct mtk_ddp_comp *), GFP_KERNEL);
+				sizeof(struct mtk_ddp_comp *), GFP_KERNEL | __GFP_ZERO);
 			mtk_crtc->ddp_ctx[i].req_hrt[j] =
 				path_data->path_req_hrt[i][j];
 		}
 		mtk_crtc->ddp_ctx[i].wb_comp_nr = path_data->wb_path_len[i];
 		mtk_crtc->ddp_ctx[i].wb_comp = devm_kmalloc_array(
 			dev, path_data->wb_path_len[i],
-			sizeof(struct mtk_ddp_comp *), GFP_KERNEL);
+			sizeof(struct mtk_ddp_comp *), GFP_KERNEL | __GFP_ZERO);
 	}
 
 	ret = disp_mutex_dispatch(priv, mtk_crtc, path_data, pipe);
@@ -13416,6 +14638,12 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 				/* shift comp_idx from global idx to local idx for ddp_comp array */
 				mtk_crtc->ddp_ctx[p_mode].ddp_comp[i]
 					[j - mtk_crtc->ddp_ctx[p_mode].ovl_comp_nr[i]] = comp;
+			continue;
+		}
+		if (!of_property_read_bool(priv->mmsys_dev->of_node, "enable_output_int_switch")
+			&& mtk_ddp_comp_is_output_by_id(comp_id)
+			&& pipe == 0 && p_mode == DDP_MINOR) {
+			DDPMSG("skip this component because %d is not enabled.\n", comp_id);
 			continue;
 		}
 
@@ -13581,7 +14809,8 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 
 	mtk_crtc->vblank_en = 1;
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_IDLE_MGR) &&
-	    drm_crtc_index(&mtk_crtc->base) == 0) {
+	    !IS_ERR_OR_NULL(output_comp) &&
+	    mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI) {
 		char name[50];
 
 		mtk_drm_idlemgr_init(&mtk_crtc->base,
@@ -15880,6 +17109,9 @@ int mtk_drm_format_plane_cpp(uint32_t format, unsigned int plane)
 	if (!info || plane >= info->num_planes)
 		return 0;
 
+	if (info->cpp[plane] == 0)
+		return info->char_per_block[plane];
+
 	return info->cpp[plane];
 }
 
@@ -16020,4 +17252,15 @@ void mtk_crtc_mml_racing_stop_sync(struct drm_crtc *crtc, struct cmdq_pkt *_cmdq
 		cmdq_pkt_flush(cmdq_handle);
 		cmdq_pkt_destroy(cmdq_handle);
 	}
+}
+
+void mtk_crtc_store_total_overhead(struct mtk_drm_crtc *mtk_crtc,
+	struct total_tile_overhead info)
+{
+	mtk_crtc->tile_overhead = info;
+}
+
+struct total_tile_overhead mtk_crtc_get_total_overhead(struct mtk_drm_crtc *mtk_crtc)
+{
+	return mtk_crtc->tile_overhead;
 }

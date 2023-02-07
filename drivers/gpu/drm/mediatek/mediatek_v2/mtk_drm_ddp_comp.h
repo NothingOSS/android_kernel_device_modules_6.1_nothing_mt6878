@@ -25,6 +25,57 @@ struct drm_crtc_state;
 
 #define ALIGN_TO(x, n)  (((x) + ((n) - 1)) & ~((n) - 1))
 
+#define MMSYS_MISC                                0xF0
+#define MMSYS_SODI_REQ_MASK                       0xF4
+#define MMSYS_EMI_REQ_CTL                         0xF8
+
+#define MMSYS_DUMMY0 0x0400
+#define DISP_REG_CONFIG_MMSYS_MISC                0x0F0
+
+#define SODI_HRT_FIFO_SEL                         REG_FLD_MSB_LSB(3, 0)
+	#define SODI_HRT_FIFO_SEL_DISP0_PD_MODE       REG_FLD_MSB_LSB(0, 0)
+	#define SODI_HRT_FIFO_SEL_DISP0_CG_MODE       REG_FLD_MSB_LSB(1, 1)
+	#define SODI_HRT_FIFO_SEL_DISP1_PD_MODE       REG_FLD_MSB_LSB(2, 2)
+	#define SODI_HRT_FIFO_SEL_DISP1_CG_MODE       REG_FLD_MSB_LSB(3, 3)
+
+#define SODI_REQ_SEL_APSRC				          REG_FLD_MSB_LSB(0, 0)
+#define SODI_REQ_SEL_DDREN				          REG_FLD_MSB_LSB(1, 1)
+
+#define SODI_REQ_SEL_ALL                          REG_FLD_MSB_LSB(11, 8)
+	#define SODI_REQ_SEL_RDMA0_PD_MODE            REG_FLD_MSB_LSB(8, 8)
+	#define SODI_REQ_SEL_RDMA0_CG_MODE            REG_FLD_MSB_LSB(9, 9)
+	#define SODI_REQ_SEL_RDMA1_PD_MODE            REG_FLD_MSB_LSB(10, 10)
+	#define SODI_REQ_SEL_RDMA1_CG_MODE            REG_FLD_MSB_LSB(11, 11)
+
+#define SODI_REQ_VAL_ALL                          REG_FLD_MSB_LSB(15, 12)
+	#define SODI_REQ_VAL_RDMA0_PD_MODE            REG_FLD_MSB_LSB(12, 12)
+	#define SODI_REQ_VAL_RDMA0_CG_MODE            REG_FLD_MSB_LSB(13, 13)
+	#define SODI_REQ_VAL_RDMA1_PD_MODE            REG_FLD_MSB_LSB(14, 14)
+	#define SODI_REQ_VAL_RDMA1_CG_MODE            REG_FLD_MSB_LSB(15, 15)
+
+#define HRT_URGENT_CTL_SEL_ALL                    REG_FLD_MSB_LSB(7, 0)
+	#define HRT_URGENT_CTL_SEL_RDMA0              REG_FLD_MSB_LSB(0, 0)
+	#define HRT_URGENT_CTL_SEL_WDMA0              REG_FLD_MSB_LSB(1, 1)
+	#define HRT_URGENT_CTL_SEL_RDMA1              REG_FLD_MSB_LSB(2, 2)
+	#define HRT_URGENT_CTL_SEL_WDMA1              REG_FLD_MSB_LSB(3, 3)
+	#define HRT_URGENT_CTL_SEL_RDMA4              REG_FLD_MSB_LSB(4, 4)
+	#define HRT_URGENT_CTL_SEL_RDMA5              REG_FLD_MSB_LSB(5, 5)
+	#define HRT_URGENT_CTL_SEL_MDP_RDMA4          REG_FLD_MSB_LSB(6, 6)
+
+#define HRT_URGENT_CTL_VAL_ALL                    REG_FLD_MSB_LSB(16, 9)
+	#define HRT_URGENT_CTL_VAL_RDMA0              REG_FLD_MSB_LSB(9, 9)
+	#define HRT_URGENT_CTL_VAL_WDMA0              REG_FLD_MSB_LSB(10, 10)
+	#define HRT_URGENT_CTL_VAL_RDMA4              REG_FLD_MSB_LSB(13, 13)
+	#define HRT_URGENT_CTL_VAL_MDP_RDMA4          REG_FLD_MSB_LSB(15, 15)
+
+#define DVFS_HALT_MASK_SEL_ALL                    REG_FLD_MSB_LSB(23, 18)
+	#define DVFS_HALT_MASK_SEL_RDMA0              REG_FLD_MSB_LSB(18, 18)
+	#define DVFS_HALT_MASK_SEL_RDMA1              REG_FLD_MSB_LSB(19, 19)
+	#define DVFS_HALT_MASK_SEL_RDMA4              REG_FLD_MSB_LSB(20, 20)
+	#define DVFS_HALT_MASK_SEL_RDMA5              REG_FLD_MSB_LSB(21, 21)
+	#define DVFS_HALT_MASK_SEL_WDMA0              REG_FLD_MSB_LSB(22, 22)
+	#define DVFS_HALT_MASK_SEL_WDMA1              REG_FLD_MSB_LSB(23, 23)
+
 enum mtk_ddp_comp_type {
 	MTK_DISP_OVL,
 	MTK_DISP_RDMA,
@@ -415,6 +466,8 @@ enum mtk_ddp_comp_type {
 	EXPR(DDP_COMPONENT_CCORR7)			\
 	EXPR(DDP_COMPONENT_GAMMA2)			\
 	EXPR(DDP_COMPONENT_GAMMA3)			\
+	EXPR(DDP_COMPONENT_TDSHP_VIRTUAL0)				\
+	EXPR(DDP_COMPONENT_MAIN0_TX_VIRTUAL0)				\
 	EXPR(DDP_COMPONENT_ID_MAX)
 #define DECLARE_NUM(ENUM) ENUM,
 #define DECLARE_STR(STR) #STR,
@@ -528,9 +581,11 @@ enum mtk_ddp_io_cmd {
 	DSI_HBM_WAIT,
 	LCM_ATA_CHECK,
 	DSI_SET_CRTC_AVAIL_MODES,
+	DSI_FILL_CONNECTOR_PROP_CAPS,
 	DSI_TIMING_CHANGE,
 	GET_PANEL_NAME,
 	GET_ALL_CONNECTOR_PANEL_NAME,
+	GET_CRTC0_CONNECTOR_ID,
 	DSI_CHANGE_MODE,
 	BACKUP_OVL_STATUS,
 	MIPI_HOPPING,
@@ -571,7 +626,7 @@ enum mtk_ddp_io_cmd {
 	ODDMR_BL_CHG,
 	ODDMR_TIMING_CHG,
 	ODDMR_TRIG_CTL,
-	COMP_SEC_CFG,
+	COMP_ODDMR_CFG,
 	OVL_GET_SELFLOOP_SUPPORT,
 	RSZ_GET_TILE_LENGTH,
 	RSZ_GET_IN_MAX_HEIGHT,
@@ -580,6 +635,7 @@ enum mtk_ddp_io_cmd {
 	DSI_PLL_SWITCH_REFERENCE_CNT_CTL,
 	DSI_PLL_SWITCH_REFERENCE_CNT_GET,
 	DSI_PLL_SWITCH_ON_OFF,
+	MDP_RDMA_FILL_FRAME,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {
@@ -601,6 +657,16 @@ struct golden_setting_context {
 	unsigned int vrefresh;
 };
 
+struct total_tile_overhead {
+unsigned int left_in_width;
+unsigned int left_overhead;
+unsigned int left_overhead_scaling;
+unsigned int right_in_width;
+unsigned int right_overhead;
+unsigned int right_overhead_scaling;
+bool is_support;
+};
+
 struct mtk_ddp_config {
 	void *pa;
 	unsigned int w;
@@ -612,6 +678,9 @@ struct mtk_ddp_config {
 	unsigned int bpc;
 	struct golden_setting_context *p_golden_setting_context;
 	unsigned int source_bpc;
+	struct total_tile_overhead tile_overhead;
+	unsigned int rsz_src_w;
+	unsigned int rsz_src_h;
 };
 
 struct mtk_oddmr_timing {
@@ -677,6 +746,7 @@ struct mtk_ddp_comp_funcs {
 			     struct cmdq_pkt *handle);
 	void (*dump)(struct mtk_ddp_comp *comp);
 	void (*reset)(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle);
+	void (*config_overhead)(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg);
 };
 
 struct mtk_ddp_comp {
@@ -713,7 +783,15 @@ struct mtk_ddp_comp {
 	u32 last_qos_bw_other;
 	u32 fbdc_bw;
 	u32 hrt_bw;
+	bool in_scaling_path;
 };
+
+static inline void mtk_ddp_comp_config_overhead(struct mtk_ddp_comp *comp,
+				       struct mtk_ddp_config *cfg)
+{
+	if (comp && comp->funcs && comp->funcs->config_overhead && !comp->blank_mode)
+		comp->funcs->config_overhead(comp, cfg);
+}
 
 static inline void mtk_ddp_comp_config(struct mtk_ddp_comp *comp,
 				       struct mtk_ddp_config *cfg,
@@ -920,7 +998,9 @@ int mtk_ddp_comp_register(struct drm_device *drm, struct mtk_ddp_comp *comp);
 void mtk_ddp_comp_unregister(struct drm_device *drm, struct mtk_ddp_comp *comp);
 int mtk_ddp_comp_get_type(enum mtk_ddp_comp_id comp_id);
 bool mtk_dsi_is_cmd_mode(struct mtk_ddp_comp *comp);
+enum mtk_ddp_comp_id mtk_dsi_get_comp_id(struct drm_connector *c);
 bool mtk_ddp_comp_is_output(struct mtk_ddp_comp *comp);
+bool mtk_ddp_comp_is_output_by_id(enum mtk_ddp_comp_id id);
 void mtk_ddp_comp_get_name(struct mtk_ddp_comp *comp, char *buf, int buf_len);
 int mtk_ovl_layer_num(struct mtk_ddp_comp *comp);
 void mtk_ddp_write(struct mtk_ddp_comp *comp, unsigned int value,
@@ -960,6 +1040,8 @@ void mt6855_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 void mt6985_mtk_sodi_apsrc_config(struct drm_crtc *crtc,
 	struct cmdq_pkt *_cmdq_handle, bool reset, bool condition_check,
 	unsigned int crtc_id, bool enable);
+
+void mtk_sodi_ddren(struct drm_crtc *crtc, struct cmdq_pkt *_cmdq_handle, bool enable);
 
 int mtk_ddp_comp_helper_get_opt(struct mtk_ddp_comp *comp,
 				enum MTK_DRM_HELPER_OPT option);

@@ -203,6 +203,12 @@ enum MODE_CHANGE_INDEX {
 	MODE_DSI_RES = BIT(3),
 };
 
+enum RES_SWITCH_TYPE {
+	RES_SWITCH_NO_USE,
+	RES_SWITCH_ON_DDIC,
+	RES_SWITCH_ON_AP,
+};
+
 enum MTK_LCM_DUMP_FLAG {
 	MTK_DRM_PANEL_DUMP_PARAMS,
 	MTK_DRM_PANEL_DUMP_OPS,
@@ -219,11 +225,6 @@ enum SPR_COLOR_PARAMS_TYPE {
 enum REQUEST_TE_OPERATE {
 	DISABLE_REQUEST_TE = 0,
 	ENABLE_REQUSET_TE,
-};
-
-enum SET_BL_EXT_TYPE {
-	SET_BACKLIGHT_LEVEL,
-	SET_ELVSS_PN,
 };
 
 struct spr_color_params {
@@ -480,6 +481,7 @@ struct mtk_panel_params {
 	unsigned int is_cphy;
 	enum MIPITX_PHY_LANE_SWAP
 		lane_swap[MIPITX_PHY_PORT_NUM][MIPITX_PHY_LANE_NUM];
+	bool pn_swap[MIPITX_PHY_PORT_NUM][MIPITX_PHY_LANE_NUM];
 	struct mtk_panel_dsc_params dsc_params;
 	unsigned int output_mode;
 	unsigned int spr_output_mode;
@@ -552,6 +554,7 @@ struct mtk_panel_funcs {
 		struct drm_connector *connector,
 		struct mtk_panel_params **ext_para,
 		unsigned int mode);
+	enum RES_SWITCH_TYPE (*get_res_switch_type)(void);
 	int (*mode_switch)(struct drm_panel *panel,
 		struct drm_connector *connector, unsigned int cur_mode,
 		unsigned int dst_mode, enum MTK_PANEL_MODE_SWITCH_STAGE stage);

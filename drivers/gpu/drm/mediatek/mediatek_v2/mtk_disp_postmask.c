@@ -22,6 +22,8 @@
 #include "mtk_dump.h"
 #include "mtk_drm_mmp.h"
 #include "mtk_drm_gem.h"
+#include "mtk_disp_postmask.h"
+#include "platform/mtk_drm_platform.h"
 
 #define POSTMASK_MASK_MAX_NUM 96
 #define POSTMASK_GRAD_MAX_NUM 192
@@ -113,10 +115,6 @@
 
 static irqreturn_t mtk_postmask_irq_handler(int irq, void *dev_id) __always_unused;
 
-struct mtk_disp_postmask_data {
-	bool is_support_34bits;
-};
-
 struct mtk_disp_postmask {
 	struct mtk_ddp_comp ddp_comp;
 	struct drm_crtc *crtc;
@@ -124,6 +122,18 @@ struct mtk_disp_postmask {
 	unsigned int abnormal_cnt;
 	const struct mtk_disp_postmask_data *data;
 };
+
+struct mtk_disp_postmark_tile_overhead {
+	unsigned int left_in_width;
+	unsigned int left_overhead;
+	unsigned int left_comp_overhead;
+	unsigned int right_in_width;
+	unsigned int right_overhead;
+	unsigned int right_comp_overhead;
+};
+
+struct mtk_disp_postmark_tile_overhead postmark_tile_overhead = { 0 };
+
 
 static inline struct mtk_disp_postmask *comp_to_postmask(struct mtk_ddp_comp *comp)
 {
@@ -193,6 +203,42 @@ out:
 	return ret;
 }
 
+
+static void mtk_disp_postmark_config_overhead(struct mtk_ddp_comp *comp,
+	struct mtk_ddp_config *cfg)
+{
+	DDPINFO("line: %d\n", __LINE__);
+
+	if (cfg->tile_overhead.is_support) {
+		/*set component overhead*/
+		if (comp->id == DDP_COMPONENT_POSTMASK0) {
+			postmark_tile_overhead.left_comp_overhead = 0;
+			/*add component overhead on total overhead*/
+			cfg->tile_overhead.left_overhead +=
+				postmark_tile_overhead.left_comp_overhead;
+			cfg->tile_overhead.left_in_width +=
+				postmark_tile_overhead.left_comp_overhead;
+			/*copy from total overhead info*/
+			postmark_tile_overhead.left_in_width = cfg->tile_overhead.left_in_width;
+			postmark_tile_overhead.left_overhead = cfg->tile_overhead.left_overhead;
+		}
+		if (comp->id == DDP_COMPONENT_POSTMASK1) {
+			postmark_tile_overhead.right_comp_overhead = 0;
+			/*add component overhead on total overhead*/
+			cfg->tile_overhead.right_overhead +=
+				postmark_tile_overhead.right_comp_overhead;
+			cfg->tile_overhead.right_in_width +=
+				postmark_tile_overhead.right_comp_overhead;
+			/*copy from total overhead info*/
+			postmark_tile_overhead.right_in_width = cfg->tile_overhead.right_in_width;
+			postmark_tile_overhead.right_overhead = cfg->tile_overhead.right_overhead;
+		}
+	}
+}
+
+
+
+
 static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 				struct mtk_ddp_config *cfg,
 				struct cmdq_pkt *handle)
@@ -212,9 +258,12 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 #endif
 	unsigned int width;
 
-	if (comp->mtk_crtc->is_dual_pipe)
+	if (comp->mtk_crtc->is_dual_pipe) {
 		width = cfg->w / 2;
-	else
+		if (cfg->tile_overhead.is_support)
+			width = postmark_tile_overhead.left_in_width;
+
+	} else
 		width = cfg->w;
 
 	value = (REG_FLD_VAL((BLEND_CFG_FLD_A_EN), 1) |
@@ -462,7 +511,6 @@ static void mtk_postmask_stop(struct mtk_ddp_comp *comp,
 {
 	DDPDBG("%s\n", __func__);
 
-
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_POSTMASK_INTEN, 0, ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base,
@@ -546,12 +594,14 @@ static int mtk_postmask_io_cmd(struct mtk_ddp_comp *comp,
 }
 
 static const struct mtk_ddp_comp_funcs mtk_disp_postmask_funcs = {
+	.first_cfg = mtk_postmask_config,
 	.config = mtk_postmask_config,
 	.start = mtk_postmask_start,
 	.stop = mtk_postmask_stop,
 	.prepare = mtk_postmask_prepare,
 	.unprepare = mtk_postmask_unprepare,
 	.io_cmd = mtk_postmask_io_cmd,
+	.config_overhead = mtk_disp_postmark_config_overhead,
 };
 
 static const struct component_ops mtk_disp_postmask_component_ops = {
@@ -677,6 +727,8 @@ static const struct of_device_id mtk_disp_postmask_driver_dt_match[] = {
 	  .data = &mt6855_postmask_driver_data},
 	{ .compatible = "mediatek,mt6985-disp-postmask",
 	  .data = &mt6985_postmask_driver_data},
+	{ .compatible = "mediatek,mt6835-disp-postmask",
+	  .data = &mt6835_postmask_driver_data},
 	{},
 };
 

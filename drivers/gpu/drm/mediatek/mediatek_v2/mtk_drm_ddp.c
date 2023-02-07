@@ -24,8 +24,10 @@
 #include "mtk_drm_mmp.h"
 #include "mtk_disp_aal.h"
 #include "mtk_disp_c3d.h"
+#include "mtk_disp_ccorr.h"
 #include "mtk_disp_gamma.h"
 #include "mtk_disp_oddmr/mtk_disp_oddmr.h"
+#include "platform/mtk_drm_platform.h"
 #ifdef CONFIG_MTK_SMI_EXT
 #include "smi_public.h"
 #endif
@@ -151,19 +153,6 @@
 #define DISP_REG_MUTEX_INTEN 0x00
 #define DISP_REG_MUTEX_INTSTA 0x04
 #define DISP_REG_MUTEX_CFG 0x08
-#define DISP_REG_MUTEX_EN(n) (0x20 + 0x20 * (n))
-#define DISP_REG_MUTEX(n) (0x24 + 0x20 * (n))
-#define DISP_REG_MUTEX_RST(n) (0x28 + 0x20 * (n))
-#define DISP_REG_MUTEX_SOF(data, n) (data->mutex_sof_reg + 0x20 * (n))
-#define DISP_REG_MUTEX_MOD(data, n) (data->mutex_mod_reg + 0x20 * (n))
-#define DISP_REG_MUTEX_MOD2(n) (0x34 + 0x20 * (n))
-
-#define SOF_FLD_MUTEX0_SOF REG_FLD(3, 0)
-#define SOF_FLD_MUTEX0_SOF_TIMING REG_FLD(2, 3)
-#define SOF_FLD_MUTEX0_SOF_WAIT REG_FLD(1, 5)
-#define SOF_FLD_MUTEX0_EOF REG_FLD(3, 6)
-#define SOF_FLD_MUTEX0_FOF_TIMING REG_FLD(2, 9)
-#define SOF_FLD_MUTEX0_EOF_WAIT REG_FLD(1, 11)
 
 #define INT_MUTEX BIT(1)
 
@@ -224,12 +213,6 @@
 #define MT6779_MUTEX_MOD_DISP_DSI0 BIT(19)
 #define MT6779_MUTEX_MOD_DISP_POSTMASK BIT(21)
 #define MT6779_MUTEX_MOD_DISP_RSZ BIT(22)
-
-#define MUTEX_SOF_SINGLE_MODE 0
-#define MUTEX_SOF_DSI0 1
-#define MUTEX_SOF_DSI1 2
-#define MUTEX_SOF_DPI0 3
-#define MUTEX_SOF_DPI1 4
 
 #define MT6779_MUTEX_SOF_SINGLE_MODE 0
 #define MT6779_MUTEX_SOF_DSI0 1
@@ -585,6 +568,7 @@
 	#define DISP_WDMA0_SEL_IN_FROM_DISP_SPR0      0x2
 
 #define MT6983_DISP_MAIN0_SEL_IN	0xF78
+	#define DISP_MAIN0_SEL_IN_FROM_DISP_DLI_ASYNC1            0x0
 	#define DISP_MAIN0_SEL_IN_FROM_DISP_PQ0_SOUT_SEL	  0x1
 	#define DISP_MAIN0_SEL_IN_FROM_DISP_MERGE0_MOUT_EN	  0x2
 	#define DISP_MAIN0_SEL_IN_FROM_DISP_DSC_WRAP0_MOUT_EN	0x3
@@ -2584,31 +2568,6 @@ same with 6873
 #define MT6855_MUTEX_SOF_DSI0 1
 #define MT6855_MUTEX_EOF_DSI0 (MT6855_MUTEX_SOF_DSI0 << 6)
 
-enum mtk_ddp_mutex_sof_id {
-	DDP_MUTEX_SOF_SINGLE_MODE,
-	DDP_MUTEX_SOF_DSI0,
-	DDP_MUTEX_SOF_DSI1,
-	DDP_MUTEX_SOF_DPI0,
-	DDP_MUTEX_SOF_DPI1,
-	DDP_MUTEX_SOF_DSI2,
-	DDP_MUTEX_SOF_DSI3,
-	DDP_MUTEX_SOF_MAX,
-};
-
-struct mtk_mmsys_reg_data {
-	unsigned int ovl0_mout_en;
-	unsigned int rdma0_sout_sel_in;
-	unsigned int rdma0_sout_color0;
-	unsigned int rdma1_sout_sel_in;
-	unsigned int rdma1_sout_dpi0;
-	unsigned int rdma1_sout_dsi0;
-	unsigned int dpi0_sel_in;
-	unsigned int dpi0_sel_in_rdma1;
-	unsigned int *path_sel;
-	unsigned int path_sel_size;
-	const unsigned int *dispsys_map;
-};
-
 /* use DDP_COMPONENT_ID_MAX represent dispsys */
 /* use DDP_COMPONENT_ID_MAX | BIT(31) represent dispsys1 */
 struct dummy_mapping mt6983_dispsys_dummy_register[MT6983_DUMMY_REG_CNT] = {
@@ -3049,17 +3008,15 @@ static const unsigned int mt6985_mutex_mod[DDP_COMPONENT_ID_MAX] = {
 	[DDP_COMPONENT_DP_INTF0] = MT6985_MUTEX_MOD0_DISP_DP_INTF0,
 	[DDP_COMPONENT_DP_INTF1] = MT6985_MUTEX_MOD0_DISP_DP_INTF0,
 		[DDP_COMPONENT_DSC0] = MT6985_MUTEX_MOD0_DISP_DSC0,
-		[DDP_COMPONENT_DSC1] = MT6985_MUTEX_MOD0_DISP_DSC1,
-	[DDP_COMPONENT_DSC2] = MT6985_MUTEX_MOD0_DISP_DSC0,
-	[DDP_COMPONENT_DSC3] = MT6985_MUTEX_MOD0_DISP_DSC1,
+	[DDP_COMPONENT_DSC1] = MT6985_MUTEX_MOD0_DISP_DSC0,
 		[DDP_COMPONENT_DSI0] = MT6985_MUTEX_MOD0_DISP_DSI0,
 	[DDP_COMPONENT_DSI1] = MT6985_MUTEX_MOD0_DISP_DSI0,
 		[DDP_COMPONENT_GAMMA0] = MT6985_MUTEX_MOD0_DISP_GAMMA0,
 	[DDP_COMPONENT_GAMMA1] = MT6985_MUTEX_MOD0_DISP_GAMMA0,
 		[DDP_COMPONENT_DMDP_AAL0] = MT6985_MUTEX_MOD0_DISP_MDP_AAL0,
 	[DDP_COMPONENT_DMDP_AAL1] = MT6985_MUTEX_MOD0_DISP_MDP_AAL0,
-		[DDP_COMPONENT_DMDP_RDMA0] = MT6985_MUTEX_MOD0_DISP_MDP_RDMA0,
-	[DDP_COMPONENT_DMDP_RDMA1] = MT6985_MUTEX_MOD0_DISP_MDP_RDMA0,
+		[DDP_COMPONENT_MDP_RDMA0] = MT6985_MUTEX_MOD0_DISP_MDP_RDMA0,
+	[DDP_COMPONENT_MDP_RDMA1] = MT6985_MUTEX_MOD0_DISP_MDP_RDMA0,
 		[DDP_COMPONENT_MERGE0] = MT6985_MUTEX_MOD0_DISP_MERGE0,
 		[DDP_COMPONENT_MERGE1] = MT6985_MUTEX_MOD0_DISP_MERGE1,
 	[DDP_COMPONENT_MERGE2] = MT6985_MUTEX_MOD0_DISP_MERGE0,
@@ -3583,17 +3540,15 @@ static const unsigned int mt6985_dispsys_map[DDP_COMPONENT_ID_MAX] = {
 		[DDP_COMPONENT_DLO_ASYNC2] = DISPSYS1,
 		[DDP_COMPONENT_DLO_ASYNC3] = DISPSYS1,
 			[DDP_COMPONENT_DSC0] = DISPSYS0,
-			[DDP_COMPONENT_DSC1] = DISPSYS0,
-		[DDP_COMPONENT_DSC2] = DISPSYS1,
-		[DDP_COMPONENT_DSC3] = DISPSYS1,
+		[DDP_COMPONENT_DSC1] = DISPSYS1,
 			[DDP_COMPONENT_DSI0] = DISPSYS0,
 		[DDP_COMPONENT_DSI1] = DISPSYS1,
 			[DDP_COMPONENT_GAMMA0] = DISPSYS0,
 		[DDP_COMPONENT_GAMMA1] = DISPSYS1,
 			[DDP_COMPONENT_DMDP_AAL0] = DISPSYS0,
 		[DDP_COMPONENT_DMDP_AAL1] = DISPSYS1,
-			[DDP_COMPONENT_DMDP_RDMA0] = DISPSYS0,
-		[DDP_COMPONENT_DMDP_RDMA1] = DISPSYS1,
+			[DDP_COMPONENT_MDP_RDMA0] = DISPSYS0,
+		[DDP_COMPONENT_MDP_RDMA1] = DISPSYS1,
 			[DDP_COMPONENT_MERGE0] = DISPSYS0,
 			[DDP_COMPONENT_MERGE1] = DISPSYS0,
 		[DDP_COMPONENT_MERGE2] = DISPSYS1,
@@ -11332,6 +11287,18 @@ static int mtk_ddp_sel_in_MT6983(const struct mtk_mmsys_reg_data *data,
 		next == DDP_COMPONENT_MAIN1_VIRTUAL)) {
 		*addr = MT6983_DISP_MAIN0_SEL_IN;
 		value = DISP_MAIN0_SEL_IN_FROM_DISP_MERGE0_MOUT_EN;
+	} else if ((cur == DDP_COMPONENT_DLI_ASYNC1 &&
+		next == DDP_COMPONENT_MAIN0_VIRTUAL) ||
+		(cur == DDP_COMPONENT_DLI_ASYNC5 &&
+		next == DDP_COMPONENT_MAIN1_VIRTUAL)) {
+		*addr = MT6983_DISP_MAIN0_SEL_IN;
+		value = DISP_MAIN0_SEL_IN_FROM_DISP_DLI_ASYNC1;
+	} else if ((cur == DDP_COMPONENT_PQ0_VIRTUAL &&
+		next == DDP_COMPONENT_DSC0) ||
+		(cur == DDP_COMPONENT_PQ1_VIRTUAL &&
+		next == DDP_COMPONENT_DSC1)) {
+		*addr = MT6983_DISP_DSC_WRAP0_L_SEL_IN;
+		value = DISP_DSC_WRAP0_L_SEL_IN_FROM_DISP_PQ0_SOUT_SEL;
 	} else if ((cur == DDP_COMPONENT_PWM0 && /* Wired path */
 		next == DDP_COMPONENT_CHIST0) || (cur == DDP_COMPONENT_PWM1 &&
 		next == DDP_COMPONENT_CHIST2)) {
@@ -11472,6 +11439,12 @@ static int mtk_ddp_sout_sel_MT6983(const struct mtk_mmsys_reg_data *data,
 		next == DDP_COMPONENT_DLO_ASYNC4)) {
 		*addr = MT6983_DISP_PQ0_SOUT_SEL;
 		value = DISP_PQ0_SOUT_SEL_TO_DISP_DLO_RELAY0;
+	} else if ((cur == DDP_COMPONENT_PQ0_VIRTUAL &&
+		next == DDP_COMPONENT_DSC0) ||
+		(cur == DDP_COMPONENT_PQ1_VIRTUAL &&
+		next == DDP_COMPONENT_DSC1)) {
+		*addr = MT6983_DISP_PQ0_SOUT_SEL;
+		value = DISP_PQ0_SOUT_SEL_TO_DISP_DSC_WRAP0_L_SEL_IN;
 	} else if ((cur == DDP_COMPONENT_MAIN0_VIRTUAL &&
 		next == DDP_COMPONENT_DSI0) ||
 		(cur == DDP_COMPONENT_MAIN1_VIRTUAL &&
@@ -11777,6 +11750,13 @@ static int mtk_ddp_mout_en_MT6985(const struct mtk_mmsys_reg_data *data,
 		/* PQ_IN_CROSSBAR */
 		*addr = MT6985_PQ_IN_CROSSBAR2_MOUT_EN;
 		value = DISP_DLI_RELAY2_TO_PQ_OUT_CROSSBAR4;
+	} else if ((cur == DDP_COMPONENT_Y2R0 &&
+		next == DDP_COMPONENT_PQ0_OUT_CB4) ||
+		(cur == DDP_COMPONENT_Y2R1 &&
+		next == DDP_COMPONENT_PQ1_OUT_CB4)) {
+		/* PQ_IN_CROSSBAR */
+		*addr = MT6985_PQ_IN_CROSSBAR4_MOUT_EN;
+		value = DISP_DLI_Y2R0_TO_PQ_OUT_CROSSBAR4;
 	} else if ((cur == DDP_COMPONENT_DLI_ASYNC3 &&
 		next == DDP_COMPONENT_PQ0_IN_CB3)) {
 		/* PQ_IN_CROSSBAR */
@@ -12457,6 +12437,13 @@ static int mtk_ddp_mout_en_MT6897(const struct mtk_mmsys_reg_data *data,
 		/* PQ_IN_CROSSBAR */
 		*addr = MT6985_PQ_IN_CROSSBAR2_MOUT_EN;
 		value = DISP_DLI_RELAY2_TO_PQ_OUT_CROSSBAR4;
+	} else if ((cur == DDP_COMPONENT_Y2R0 &&
+		next == DDP_COMPONENT_PQ0_OUT_CB4) ||
+		(cur == DDP_COMPONENT_Y2R1 &&
+		next == DDP_COMPONENT_PQ1_OUT_CB4)) {
+		/* PQ_IN_CROSSBAR */
+		*addr = MT6985_PQ_IN_CROSSBAR4_MOUT_EN;
+		value = DISP_DLI_Y2R0_TO_PQ_OUT_CROSSBAR4;
 	} else if ((cur == DDP_COMPONENT_DLI_ASYNC3 &&
 		next == DDP_COMPONENT_PQ0_IN_CB3)) {
 		/* PQ_IN_CROSSBAR */
@@ -14437,6 +14424,12 @@ void mtk_ddp_add_comp_to_path(struct mtk_drm_crtc *mtk_crtc,
 		if (value >= 0)
 			writel_relaxed(value, config_regs + addr);
 
+		if (cur == DDP_COMPONENT_DSC0) {
+			if (next == DDP_COMPONENT_DLO_ASYNC1)
+				mtk_crtc->is_dsc_output_swap = true;
+			else
+				mtk_crtc->is_dsc_output_swap = false;
+		}
 		break;
 
 	case MMSYS_MT6985:
@@ -14685,6 +14678,29 @@ void mtk_ddp_add_comp_to_path(struct mtk_drm_crtc *mtk_crtc,
 			writel_relaxed(reg, config_regs + addr);
 		}
 		break;
+	case MMSYS_MT6835:
+		value = mtk_ddp_mout_en_MT6835(reg_data, cur, next, &addr);
+		if (value >= 0) {
+			reg = readl_relaxed(config_regs + addr) | value;
+			writel_relaxed(reg, config_regs + addr);
+		}
+
+		value = mtk_ddp_sout_sel_MT6835(reg_data, cur, next, &addr);
+		if (value >= 0)
+			writel_relaxed(value, config_regs + addr);
+
+		value = mtk_ddp_sel_in_MT6835(reg_data, cur, next, &addr);
+		if (value >= 0)
+			writel_relaxed(value, config_regs + addr);
+
+		value = mtk_ddp_ovl_bg_blend_en_MT6835(
+			reg_data, cur, next, &addr);
+		if (value >= 0) {
+			reg = readl_relaxed(config_regs + addr) | value;
+			writel_relaxed(reg, config_regs + addr);
+		}
+
+		break;
 
 	case MMSYS_MT6833:
 		value = mtk_ddp_mout_en_MT6833(reg_data, cur, next, &addr);
@@ -14804,6 +14820,12 @@ void mtk_ddp_add_comp_to_path_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 				config_regs_pa
 				+ addr, value, ~0);
+		if (cur == DDP_COMPONENT_DSC0) {
+			if (next == DDP_COMPONENT_DLO_ASYNC1)
+				mtk_crtc->is_dsc_output_swap = true;
+			else
+				mtk_crtc->is_dsc_output_swap = false;
+		}
 		break;
 
 	case MMSYS_MT6985:
@@ -15098,6 +15120,35 @@ void mtk_ddp_add_comp_to_path_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 				+ addr, value, value);
 		}
 		break;
+	case MMSYS_MT6835:
+		value = mtk_ddp_mout_en_MT6835(reg_data,
+				cur, next, &addr);
+		if (value >= 0)
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				config_regs_pa
+				+ addr, value, value);
+
+		value = mtk_ddp_sout_sel_MT6835(reg_data,
+				cur, next, &addr);
+		if (value >= 0)
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				config_regs_pa
+				+ addr, value, ~0);
+
+		value = mtk_ddp_sel_in_MT6835(reg_data,
+				cur, next, &addr);
+		if (value >= 0)
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				config_regs_pa
+				+ addr, value, ~0);
+
+		value = mtk_ddp_ovl_bg_blend_en_MT6835(reg_data,
+				cur, next, &addr);
+		if (value >= 0)
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				config_regs_pa
+				+ addr, value, value);
+		break;
 
 	case MMSYS_MT6833:
 		value = mtk_ddp_mout_en_MT6833(reg_data,
@@ -15348,6 +15399,21 @@ void mtk_ddp_remove_comp_from_path(struct mtk_drm_crtc *mtk_crtc,
 		}
 		break;
 
+	case MMSYS_MT6835:
+		value = mtk_ddp_mout_en_MT6835(reg_data, cur, next, &addr);
+		if (value >= 0) {
+			reg = readl_relaxed(config_regs + addr) & ~value;
+			writel_relaxed(reg, config_regs + addr);
+		}
+
+		value = mtk_ddp_ovl_bg_blend_en_MT6835(reg_data, cur, next, &addr);
+
+		if (value >= 0) {
+			reg = readl_relaxed(config_regs + addr) & ~value;
+			writel_relaxed(reg, config_regs + addr);
+		}
+		break;
+
 	default:
 		DDPINFO("%s mtk drm not support mmsys id %d\n",
 			__func__, priv->data->mmsys_id);
@@ -15552,6 +15618,20 @@ void mtk_ddp_remove_comp_from_path_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 				       config_regs_pa + addr, ~value, value);
 		}
+		break;
+
+	case MMSYS_MT6835:
+		value = mtk_ddp_mout_en_MT6835(reg_data,
+					cur, next, &addr);
+		if (value >= 0)
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				       config_regs_pa + addr, ~value, value);
+
+		value = mtk_ddp_ovl_bg_blend_en_MT6835(reg_data,
+					cur, next, &addr);
+		if (value >= 0)
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				       config_regs_pa + addr, ~value, value);
 		break;
 
 	default:
@@ -16714,6 +16794,91 @@ static void mtk_ddp_ext_insert_dual_pipe(struct mtk_drm_crtc *mtk_crtc,
 	}
 }
 
+static void mtk_ddp_discrete_insert_dual_pipe_MT6985(
+	struct mtk_drm_crtc *mtk_crtc, struct mtk_disp_mutex *mutex)
+{
+	unsigned int addr, value, reg;
+	void __iomem *config_regs = mtk_crtc->config_regs;
+	void __iomem *side_config_regs = mtk_crtc->side_config_regs;
+
+	DDPFUNC();
+
+	//DISPSYS0
+	/* pipe1 form mdp_rdma0 to dlo_async1 */
+	/* DDP_COMPONENT_Y2R0 -> DDP_COMPONENT_PQ0_OUT_CB4 */
+	addr = MT6985_PQ_IN_CROSSBAR4_MOUT_EN;
+	value = DISP_DLI_Y2R0_TO_PQ_OUT_CROSSBAR4;
+	writel_relaxed(value, config_regs + addr);
+
+	/* DDP_COMPONENT_PQ0_OUT_CB4 -> DDP_COMPONENT_PANEL0_COMP_OUT_CB3 */
+	addr = MT6985_PQ_OUT_CROSSBAR4_MOUT_EN;
+	value = DISP_PQ_IN_CROSSBAR3_TO_PANEL_COMP_OUT_CROSSBAR3;
+	writel_relaxed(value, config_regs + addr);
+
+	/* DDP_COMPONENT_PANEL0_COMP_OUT_CB3 -> DDP_COMPONENT_COMP0_OUT_CB5 */
+	addr = MT6985_PANEL_COMP_OUT_CROSSBAR3_MOUT_EN;
+	value = DISP_PQ_OUT_CROSSBAR3_TO_COMP_OUT_CROSSBAR5;
+	writel_relaxed(value, config_regs + addr);
+
+	/* DDP_COMPONENT_COMP0_OUT_CB5 -> DDP_COMPONENT_MERGE0_OUT_CB3 */
+	addr = MT6985_COMP_OUT_CROSSBAR5_MOUT_EN;
+	value = DISP_PANEL_COMP_OUT_CROSSBAR5_TO_MERGE_OUT_CROSSBAR3;
+	writel_relaxed(value, config_regs + addr);
+
+	/* DDP_COMPONENT_MERGE0_OUT_CB3 -> DDP_COMPONENT_DLO_ASYNC1 */
+	addr = MT6985_MERGE_OUT_CROSSBAR3_MOUT_EN;
+	value = DISP_COMP_OUT_CROSSBAR3_TO_DLO_RELAY1;
+	writel_relaxed(value, config_regs + addr);
+
+	//DISPSYS1
+	/* continue pipe1 from dli_async11 to merge2_r */
+	/* DDP_COMPONENT_DLI_ASYNC11 -> DDP_COMPONENT_MERGE2_R */
+	addr = MT6985_COMP_OUT_CROSSBAR6_MOUT_EN;
+	value = DISP_DLI_RELAY5_TO_MERGE0_1;
+	writel_relaxed(value, side_config_regs + addr);
+
+	/* pipe0 from comp1_out_cb4 to dsi1 */
+	/* DDP_COMPONENT_COMP1_OUT_CB5 -> DDP_COMPONENT_MERGE2_L */
+	addr = MT6985_COMP_OUT_CROSSBAR5_MOUT_EN;
+	value = DISP_PANEL_COMP_OUT_CROSSBAR5_TO_MERGE0_0;
+	reg = readl_relaxed(side_config_regs + addr);
+	reg = reg & ~DISP_PANEL_COMP_OUT_CROSSBAR5_TO_MERGE_OUT_CROSSBAR3;
+	reg = reg | value;
+	writel_relaxed(reg, side_config_regs + addr);
+
+	/* remove DDP_COMPONENT_MERGE1_OUT_CB3 -> DDP_COMPONENT_DSI1 */
+	addr = MT6985_MERGE_OUT_CROSSBAR3_MOUT_EN;
+	value = DISP_COMP_OUT_CROSSBAR3_TO_DSI0;
+	reg = readl_relaxed(side_config_regs + addr);
+	reg = reg & ~value;
+	writel_relaxed(reg, side_config_regs + addr);
+
+	/* DDP_COMPONENT_MERGE2 -> DDP_COMPONENT_DSI1 */
+	addr = MT6985_MERGE_OUT_CROSSBAR4_MOUT_EN;
+	value = DISP_MERGE0_0_TO_DSI0;
+	writel_relaxed(value, side_config_regs + addr);
+
+	addr = MT6985_DISPSYS_BYPASS_MUX_SHADOW;
+	reg = readl_relaxed(side_config_regs + addr) | 0xFF0001;
+	writel_relaxed(reg, config_regs + addr);
+}
+
+static void mtk_ddp_discrete_insert_dual_pipe(struct mtk_drm_crtc *mtk_crtc,
+	struct mtk_disp_mutex *mutex)
+{
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+
+	switch (priv->data->mmsys_id) {
+	case MMSYS_MT6985:
+		mtk_ddp_discrete_insert_dual_pipe_MT6985(mtk_crtc, mutex);
+		break;
+	default:
+		DDPINFO("%s mtk drm not support mmsys id %x\n",
+			__func__, priv->data->mmsys_id);
+		break;
+	}
+}
+
 void mtk_ddp_insert_dsc_prim_MT6983(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle)
 {
@@ -16785,6 +16950,28 @@ void mtk_ddp_remove_dsc_prim_MT6983(struct mtk_drm_crtc *mtk_crtc,
 		       mtk_crtc->config_regs_pa + addr, value, ~0);
 }
 
+void mtk_ddp_insert_dsc_ext_MT6985(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *handle)
+{
+	unsigned int addr, value;
+	void __iomem *side_config_regs = mtk_crtc->side_config_regs;
+
+	//DISPSYS1
+	/* DDP_COMPONENT_PANEL1_COMP_OUT_CB3 -> DISP_PQ_OUT_CROSSBAR3_TO_DSC_0 */
+	addr = MT6985_PANEL_COMP_OUT_CROSSBAR3_MOUT_EN;
+	value = DISP_PQ_OUT_CROSSBAR3_TO_DSC_0;
+	writel_relaxed(value, side_config_regs + addr);
+
+	/* DISP_PQ_OUT_CROSSBAR3_TO_DSC_0 -> DISP_DSC_0_TO_MERGE_OUT_CROSSBAR3 */
+	addr = MT6985_COMP_OUT_CROSSBAR1_MOUT_EN;
+	value = DISP_DSC_0_TO_MERGE_OUT_CROSSBAR3;
+	writel_relaxed(value, side_config_regs + addr);
+
+	addr = MT6985_COMP_OUT_CROSSBAR5_MOUT_EN;
+	value = 0;
+	writel_relaxed(value, side_config_regs + addr);
+}
+
 void mtk_ddp_insert_dsc_prim_MT6985(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle)
 {
@@ -16833,6 +17020,11 @@ void mtk_ddp_insert_dsc_prim_MT6985(struct mtk_drm_crtc *mtk_crtc,
 	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 		       mtk_crtc->config_regs_pa + addr, value, ~0);
 
+}
+
+void mtk_ddp_remove_dsc_ext_MT6985(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *handle)
+{
 }
 
 void mtk_ddp_remove_dsc_prim_MT6985(struct mtk_drm_crtc *mtk_crtc,
@@ -17210,7 +17402,9 @@ void mtk_ddp_connect_dual_pipe_path(struct mtk_drm_crtc *mtk_crtc,
 			mtk_ddp_ext_dual_pipe_dsc(mtk_crtc, mutex);
 		else
 			mtk_ddp_ext_insert_dual_pipe(mtk_crtc, mutex);
-	}
+	} else if (drm_crtc_index(&mtk_crtc->base) == 3 &&
+		mtk_crtc->path_data->is_discrete_path)
+		mtk_ddp_discrete_insert_dual_pipe(mtk_crtc, mutex);
 }
 
 void mtk_ddp_disconnect_dual_pipe_path(struct mtk_drm_crtc *mtk_crtc,
@@ -17275,6 +17469,9 @@ mtk_ddp_get_mmsys_reg_data(enum mtk_mmsys_id mmsys_id)
 		break;
 	case MMSYS_MT6855:
 		data = &mt6855_mmsys_reg_data;
+		break;
+	case MMSYS_MT6835:
+		data = &mt6835_mmsys_reg_data;
 		break;
 	default:
 		DDPPR_ERR("mtk drm not support mmsys id %d\n", mmsys_id);
@@ -18094,7 +18291,7 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 	unsigned int val = 0;
 	unsigned int m_id = 0;
 	int ret = 0;
-	unsigned long long irq_debug[10] = {0};
+	unsigned long long irq_debug[11] = {0};
 	static DEFINE_RATELIMIT_STATE(irq_ratelimit, 5 * HZ, 1);
 	struct mtk_drm_private *priv = NULL;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
@@ -18144,8 +18341,10 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 				vcp_cmd_ex(VCP_SET_DISP_SYNC);
 			}
 #endif
-			if (m_id == 0 && ddp->data->wakeup_pf_wq)
-				mtk_wakeup_pf_wq();
+			if ((m_id == 0 || m_id == 3) && ddp->data->wakeup_pf_wq && mtk_crtc) {
+				mtk_crtc->sof_time = ktime_get();
+				mtk_wakeup_pf_wq(m_id);
+			}
 			if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 				irq_debug[3] = sched_clock();
 				mtk_drm_cwb_backup_copy_size();
@@ -18163,20 +18362,23 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 			irq_debug[8] = sched_clock();
 			disp_gamma_on_start_of_frame();
 			irq_debug[9] = sched_clock();
+			disp_ccorr_on_start_of_frame();
+			irq_debug[10] = sched_clock();
 #endif
 		}
 	}
 
 	if (((sched_clock() - irq_debug[0]) > 850000) &&
 			__ratelimit(&irq_ratelimit)) {
-		DDPMSG("%s > 850 us, %llu %llu %llu %llu %llu %llu\n",
+		DDPMSG("%s > 850 us, %llu %llu %llu %llu %llu %llu %llu\n",
 			__func__,
 			(irq_debug[2] - irq_debug[1]),
 			(irq_debug[4] - irq_debug[3]),
 			(irq_debug[6] - irq_debug[5]),
 			(irq_debug[7] - irq_debug[6]),
 			(irq_debug[8] - irq_debug[7]),
-			(irq_debug[9] - irq_debug[8])
+			(irq_debug[9] - irq_debug[8]),
+			(irq_debug[10] - irq_debug[9])
 			);
 	}
 
@@ -18375,38 +18577,13 @@ void mutex_ovlsys_dump_reg_mt6897(struct mtk_disp_mutex *mutex)
 	void __iomem *module_base = ddp->ovlsys0_regs;
 	resource_size_t regs_pa = ddp->ovlsys0_regs_pa;
 	int cnt = 0;
+	int i;
 
 REDUMP:
 	DDPDUMP("== OVLSYS-%d MUTEX REGS:0x%pa ==\n", cnt, &regs_pa);
-	DDPDUMP("0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x\n",
-		0x0, readl_relaxed(module_base + 0x0), 0x4,
-		readl_relaxed(module_base + 0x4), 0x8,
-		readl_relaxed(module_base + 0x8), 0x020,
-		readl_relaxed(module_base + 0x020));
-	DDPDUMP("0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x\n",
-		0x028, readl_relaxed(module_base + 0x028), 0x02C,
-		readl_relaxed(module_base + 0x02C), 0x030,
-		readl_relaxed(module_base + 0x030), 0x034,
-		readl_relaxed(module_base + 0x034));
-	DDPDUMP("0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x\n",
-		0x040, readl_relaxed(module_base + 0x040), 0x048,
-		readl_relaxed(module_base + 0x048), 0x04C,
-		readl_relaxed(module_base + 0x04C), 0x050,
-		readl_relaxed(module_base + 0x050));
-	DDPDUMP("0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x\n",
-		0x054, readl_relaxed(module_base + 0x054), 0x060,
-		readl_relaxed(module_base + 0x060), 0x068,
-		readl_relaxed(module_base + 0x068), 0x06C,
-		readl_relaxed(module_base + 0x06C));
-	DDPDUMP("0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x\n",
-		0x070, readl_relaxed(module_base + 0x070), 0x074,
-		readl_relaxed(module_base + 0x074), 0x080,
-		readl_relaxed(module_base + 0x080), 0x088,
-		readl_relaxed(module_base + 0x088));
-	DDPDUMP("0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x\n",
-		0x08C, readl_relaxed(module_base + 0x08C), 0x090,
-		readl_relaxed(module_base + 0x090), 0x094,
-		readl_relaxed(module_base + 0x094));
+	mtk_serial_dump_reg(module_base, 0x0, 3);
+	for (i = 0x20; i < 0xc0 ; i += 0x20)
+		mtk_cust_dump_reg(module_base, i, i+0xc, i+0x10, i+0x14);
 
 	if (cnt == 0 && ddp->ovlsys1_regs != NULL) {
 		cnt = 1;
@@ -18423,38 +18600,13 @@ void mutex_dump_reg_mt6897(struct mtk_disp_mutex *mutex)
 	void __iomem *module_base = ddp->regs;
 	resource_size_t regs_pa = ddp->regs_pa;
 	int cnt = 0;
+	int i;
 
 REDUMP:
 	DDPDUMP("== DISP-%d MUTEX REGS:0x%pa ==\n", cnt, &regs_pa);
-	DDPDUMP("0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x\n",
-		0x0, readl_relaxed(module_base + 0x0), 0x4,
-		readl_relaxed(module_base + 0x4), 0x8,
-		readl_relaxed(module_base + 0x8), 0x020,
-		readl_relaxed(module_base + 0x020));
-	DDPDUMP("0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x\n",
-		0x028, readl_relaxed(module_base + 0x028), 0x02C,
-		readl_relaxed(module_base + 0x02C), 0x030,
-		readl_relaxed(module_base + 0x030), 0x034,
-		readl_relaxed(module_base + 0x034));
-	DDPDUMP("0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x\n",
-		0x040, readl_relaxed(module_base + 0x040), 0x048,
-		readl_relaxed(module_base + 0x048), 0x04C,
-		readl_relaxed(module_base + 0x04C), 0x050,
-		readl_relaxed(module_base + 0x050));
-	DDPDUMP("0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x\n",
-		0x054, readl_relaxed(module_base + 0x054), 0x060,
-		readl_relaxed(module_base + 0x060), 0x068,
-		readl_relaxed(module_base + 0x068), 0x06C,
-		readl_relaxed(module_base + 0x06C));
-	DDPDUMP("0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x\n",
-		0x070, readl_relaxed(module_base + 0x070), 0x074,
-		readl_relaxed(module_base + 0x074), 0x080,
-		readl_relaxed(module_base + 0x080), 0x088,
-		readl_relaxed(module_base + 0x088));
-	DDPDUMP("0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x\n",
-		0x08C, readl_relaxed(module_base + 0x08C), 0x090,
-		readl_relaxed(module_base + 0x090), 0x094,
-		readl_relaxed(module_base + 0x094));
+	mtk_serial_dump_reg(module_base, 0x0, 3);
+	for (i = 0x20; i < 0xc0 ; i += 0x20)
+		mtk_cust_dump_reg(module_base, i, i+0xc, i+0x10, i+0x14);
 
 	if (cnt == 0 && ddp->side_regs != NULL) {
 		cnt = 1;
@@ -20583,12 +20735,9 @@ void mmsys_config_dump_analysis_mt6895(void __iomem *config_regs)
 	char *name = NULL;
 	unsigned int valid[6] = {0};
 	unsigned int ready[6] = {0};
-	unsigned int greq0 =
-		readl_relaxed(config_regs +
-				MT6895_DISP_REG_CONFIG_SMI_LARB0_GREQ);
-	unsigned int greq1 =
-		readl_relaxed(config_regs +
-				MT6895_DISP_REG_CONFIG_SMI_LARB1_GREQ);
+	unsigned int greq0 = 0;
+	unsigned int greq1 = 0;
+
 	valid[0] =
 		readl_relaxed(config_regs + MT6895_DISP_REG_CONFIG_DL_VALID_0);
 	valid[1] =
@@ -20615,6 +20764,10 @@ void mmsys_config_dump_analysis_mt6895(void __iomem *config_regs)
 	ready[5] =
 		readl_relaxed(config_regs + MT6895_DISP_REG_CONFIG_DL_READY_5);
 
+	greq0 = readl_relaxed(config_regs +
+				MT6895_DISP_REG_CONFIG_SMI_LARB0_GREQ);
+	greq1 = readl_relaxed(config_regs +
+				MT6895_DISP_REG_CONFIG_SMI_LARB1_GREQ);
 	DDPDUMP("== DISP MMSYS_CONFIG ANALYSIS ==\n");
 	reg = readl_relaxed(config_regs + DISP_REG_CONFIG_MMSYS_CG_CON0_MT6895);
 	for (bit = 0; bit < 32; bit++) {
@@ -21711,6 +21864,8 @@ static const struct of_device_id ddp_driver_dt_match[] = {
 	 .data = &mt6833_ddp_driver_data},
 	{.compatible = "mediatek,mt6879-disp-mutex",
 	 .data = &mt6879_ddp_driver_data},
+	{.compatible = "mediatek,mt6835-disp-mutex",
+	 .data = &mt6835_ddp_driver_data},
 	{.compatible = "mediatek,mt6855-disp-mutex",
 	 .data = &mt6855_ddp_driver_data},
 	{.compatible = "mediatek,mt8173-disp-mutex",

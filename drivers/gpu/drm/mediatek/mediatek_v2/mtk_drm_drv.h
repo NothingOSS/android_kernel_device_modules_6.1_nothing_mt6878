@@ -266,6 +266,11 @@ struct mtk_drm_disp_sec_cb {
 				struct dma_buf *buf_hnd);
 };
 
+struct mtk_aod_scp_cb {
+	int (*send_ipi)(int value);
+	void (*module_backup)(struct mtk_ddp_config *cfg);
+};
+
 enum DISP_SEC_SIGNAL {
 	DISP_SEC_START = 0,
 	DISP_SEC_STOP,
@@ -292,6 +297,38 @@ struct layer_compress_ratio_item {
 	__u32 active;
 };
 
+static const struct mtk_addon_module_data addon_rsz_data[] = {
+	{DISP_RSZ, ADDON_BETWEEN, DDP_COMPONENT_OVL0_2L},
+};
+
+static const struct mtk_addon_module_data addon_rsz_data_v2[] = {
+	{DISP_RSZ_v2, ADDON_BETWEEN, DDP_COMPONENT_OVL0_2L},
+};
+
+static const struct mtk_addon_module_data addon_rsz_data_v3[] = {
+	{DISP_RSZ_v3, ADDON_BETWEEN, DDP_COMPONENT_OVL1_2L},
+};
+
+static const struct mtk_addon_module_data addon_rsz_data_v4[] = {
+	{DISP_RSZ_v4, ADDON_BETWEEN, DDP_COMPONENT_OVL2_2L},
+};
+
+static const struct mtk_addon_module_data addon_rsz_data_v5[] = {
+	{DISP_RSZ_v5, ADDON_BETWEEN, DDP_COMPONENT_OVL1_2L},
+};
+
+static const struct mtk_addon_module_data addon_rsz_data_v6[] = {
+	{DISP_RSZ_v6, ADDON_BETWEEN, DDP_COMPONENT_OVL3_2L},
+};
+
+static const struct mtk_addon_module_data addon_wdma0_data[] = {
+	{DISP_WDMA0, ADDON_AFTER, DDP_COMPONENT_DITHER0},
+};
+
+static const struct mtk_addon_module_data addon_wdma1_data[] = {
+	{DISP_WDMA1, ADDON_AFTER, DDP_COMPONENT_DITHER1},
+};
+
 struct disp_iommu_device *disp_get_iommu_dev(void);
 
 extern struct platform_driver mtk_ddp_driver;
@@ -307,6 +344,7 @@ extern struct platform_driver mtk_disp_dither_driver;
 extern struct platform_driver mtk_disp_chist_driver;
 extern struct platform_driver mtk_disp_ovl_driver;
 extern struct platform_driver mtk_disp_rdma_driver;
+extern struct platform_driver mtk_disp_mdp_rdma_driver;
 extern struct platform_driver mtk_disp_wdma_driver;
 extern struct platform_driver mtk_disp_rsz_driver;
 extern struct platform_driver mtk_disp_mdp_rsz_driver;
@@ -330,6 +368,7 @@ extern struct platform_driver mtk_disp_inlinerotate_driver;
 extern struct platform_driver mtk_mmlsys_bypass_driver;
 extern struct platform_driver mtk_disp_postalign_driver;
 extern struct mtk_drm_disp_sec_cb disp_sec_cb;
+extern struct mtk_aod_scp_cb aod_scp_ipi;
 
 /* For overlay bandwidth monitor */
 extern struct layer_compress_ratio_data
@@ -377,7 +416,7 @@ int _parse_tag_videolfb(unsigned int *vramsize, phys_addr_t *fb_base,
 struct mml_drm_ctx *mtk_drm_get_mml_drm_ctx(struct drm_device *dev,
 	struct drm_crtc *crtc);
 void mtk_drm_wait_mml_submit_done(struct mtk_mml_cb_para *cb_para);
-void **mtk_aod_scp_ipi_init(void);
+void mtk_aod_scp_ipi_init(struct mtk_aod_scp_cb *cb);
 void mtk_free_mml_submit(struct mml_submit *temp);
 int copy_mml_submit(struct mml_submit *src, struct mml_submit *dst);
 void **mtk_drm_disp_sec_cb_init(void);
