@@ -603,6 +603,7 @@ static int set_test_mdl(struct mtk_cam_ut *ut,
 	int width, height;
 	int pixel_mode;
 	int pattern;
+	int tag;
 
 	width = testmdl->width;
 	height = testmdl->height;
@@ -630,31 +631,36 @@ static int set_test_mdl(struct mtk_cam_ut *ut,
 	case MTKCAM_IPI_HW_PATH_STAGGER:
 		if (testmdl->mode == testmdl_stagger_3exp) {
 			ut->is_dcif_camsv = 2;
+			tag = 0;
 			CALL_SENINF_OPS(seninf, set_size,
 					width, height,
 					pixel_mode, pattern,
-					seninf_0, camsv_tg_0);
+					camsv_tg_0, tag);
 			mdelay(1);
+			tag = 1;
 			CALL_SENINF_OPS(seninf, set_size,
 					width, height,
 					pixel_mode, pattern,
-					seninf_1, camsv_tg_1);
+					camsv_tg_1, tag);
 			mdelay(1);
+			tag = 255;
 			CALL_SENINF_OPS(seninf, set_size,
 					width, height,
 					pixel_mode, pattern,
-					seninf_2, raw_tg_0);
+					raw_tg_0, tag);
 		} else if (testmdl->mode == testlmdl_stagger_2exp) {
 			ut->is_dcif_camsv = 1;
+			tag = 0;
 			CALL_SENINF_OPS(seninf, set_size,
 					width, height,
 					pixel_mode, pattern,
-					seninf_0, camsv_tg_0);
+					camsv_tg_0, tag);
 			mdelay(1);
+			tag = 255;
 			CALL_SENINF_OPS(seninf, set_size,
 					width, height,
 					pixel_mode, pattern,
-					seninf_1, raw_tg_0);
+					raw_tg_0, tag);
 		}
 		break;
 
@@ -662,21 +668,24 @@ static int set_test_mdl(struct mtk_cam_ut *ut,
 		// temporarily support camsv_a1 + camsv_a2 + raw_a case
 		if (testmdl->mode == testmdl_stagger_2exp) {
 			ut->is_dcif_camsv = 2;
+			tag = 0;
 			CALL_SENINF_OPS(seninf, set_size,
 					width, height,
 					pixel_mode, pattern,
-					seninf_0, camsv_tg_0);
+					camsv_tg_0, tag);
 			mdelay(1);
+			tag = 1;
 			CALL_SENINF_OPS(seninf, set_size,
 					width, height,
 					pixel_mode, pattern,
-					seninf_1, camsv_tg_1);
+					camsv_tg_1, tag);
 		} else if (testmdl->mode == testmdl_normal) {
 			ut->is_dcif_camsv = 1;
+			tag = 0;
 			CALL_SENINF_OPS(seninf, set_size,
 					width, height,
 					pixel_mode, pattern,
-					seninf_0, camsv_tg_0);
+					camsv_tg_0, tag);
 		}
 		break;
 #endif

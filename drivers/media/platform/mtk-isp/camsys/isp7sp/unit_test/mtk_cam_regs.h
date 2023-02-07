@@ -58,16 +58,38 @@ enum topdebug_event {
 			     DMA_ERR_ST)
 
 #define ISP_SENINF_CTRL(regs)				(regs + 0x0200)
-#define ISP_SENINF_TSETMDL_CTRL(regs)			(regs + 0x0220)
+#define ISP_SENINF_TSETMDL_CTRL(regs)		(regs + 0x0220)
+
+#define ISP_SENINF_TOP_MUX_CTRL_0(regs)		(regs + 0x0010)
+#define ISP_SENINF_TOP_MUX_CTRL_1(regs)		(regs + 0x0014)
+#define ISP_SENINF_TOP_MUX_CTRL_2(regs)		(regs + 0x0018)
+#define ISP_SENINF_TOP_MUX_CTRL_3(regs)		(regs + 0x001C)
+#define ISP_SENINF_TOP_MUX_CTRL_4(regs)		(regs + 0x0020)
+#define ISP_SENINF_TOP_MUX_CTRL_5(regs)		(regs + 0x0024)
+
 #define ISP_SENINF_MUX_CTRL_0(regs)			(regs + 0x0D00)
 #define ISP_SENINF_MUX_CTRL_1(regs)			(regs + 0x0D04)
+#define ISP_SENINF_MUX_OPT(regs)			(regs + 0x0D08)
+#define ISP_SENINF_MUX_VC_SEL0(regs)		(regs + 0x0E00)
+#define ISP_SENINF_MUX_VC_SEL1(regs)		(regs + 0x0E04)
+#define ISP_SENINF_MUX_VC_SEL2(regs)		(regs + 0x0E08)
+#define ISP_SENINF_MUX_VC_SEL3(regs)		(regs + 0x0E0C)
+#define ISP_SENINF_MUX_VC_SEL4(regs)		(regs + 0x0E10)
+#define ISP_SENINF_MUX_VC_SEL5(regs)		(regs + 0x0E14)
+#define ISP_SENINF_MUX_VC_SEL6(regs)		(regs + 0x0E18)
+#define ISP_SENINF_MUX_VC_SEL7(regs)		(regs + 0x0E1C)
 
 #define ISP_SENINF_TM_CTL(regs)				(regs + 0x0F08)
 #define ISP_SENINF_TM_SIZE(regs)			(regs + 0x0F0C)
 #define ISP_SENINF_TM_CLK(regs)				(regs + 0x0F10)
 #define ISP_SENINF_TM_DUM(regs)				(regs + 0x0F18)
 
-#define ISP_SENINF_CAM_MUX_PCSR_0(regs)			(regs + 0x17000)
+#define ISP_SENINF_CAM_MUX_PCSR_CTRL(regs)			(regs + 0x17000)
+#define ISP_SENINF_CAM_MUX_PCSR_OPT(regs)			(regs + 0x17004)
+#define ISP_SENINF_CAM_MUX_PCSR_VC_SEL(regs)	(regs + 0x17020)
+#define ISP_SENINF_CAM_MUX_PCSR_DT_SEL(regs)	(regs + 0x17024)
+
+#define ISP_SENINF_CAM_MUX_GCSR_CTRL(regs)			(regs + 0x17F00)
 
 #define CAMSYS_MAIN_REG_HALT1_EN(regs)			(regs + 0x00C4)
 #define CAMSYS_MAIN_REG_HALT2_EN(regs)			(regs + 0x00C8)

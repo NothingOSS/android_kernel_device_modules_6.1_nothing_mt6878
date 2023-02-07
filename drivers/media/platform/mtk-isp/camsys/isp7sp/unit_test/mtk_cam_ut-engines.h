@@ -15,8 +15,8 @@ struct engine_ops {
 			int width, int height,
 			int pixmode_lg2,
 			int pattern,
-			int seninf_idx,
-			int tg_idx);
+			int tg_idx,
+			int tag);
 
 	int (*initialize)(struct device *dev, void *ext_params);
 	int (*reset)(struct device *dev);
@@ -176,6 +176,54 @@ struct mtk_ut_camsv_device {
 	((dev && camsv->ops.op) ? camsv->ops.op(dev, ##__VA_ARGS__) : -EINVAL);\
 }
 
+enum SENINF_ENUM {
+	SENINF_1,
+	SENINF_2,
+	SENINF_3,
+	SENINF_4,
+	SENINF_5,
+	SENINF_6,
+	SENINF_7,
+	SENINF_8,
+	SENINF_9,
+	SENINF_10,
+	SENINF_11,
+	SENINF_12,
+	SENINF_NUM,
+};
+
+enum SENINF_MUX_ENUM {
+	SENINF_MUX1,
+	SENINF_MUX2,
+	SENINF_MUX3,
+	SENINF_MUX4,
+	SENINF_MUX5,
+	SENINF_MUX6,
+	SENINF_MUX7,
+	SENINF_MUX8,
+	SENINF_MUX9,
+	SENINF_MUX10,
+	SENINF_MUX11,
+	SENINF_MUX12,
+	SENINF_MUX13,
+	SENINF_MUX14,
+	SENINF_MUX15,
+	SENINF_MUX16,
+	SENINF_MUX17,
+	SENINF_MUX18,
+	SENINF_MUX19,
+	SENINF_MUX20,
+	SENINF_MUX21,
+	SENINF_MUX22,
+	SENINF_MUX_NUM,
+
+	SENINF_MUX_ERROR = -1,
+};
+
+enum mux_status {
+	IDLE,
+	USING,
+};
 struct mtk_ut_seninf_device {
 	struct device *dev;
 	void __iomem *base;
@@ -185,11 +233,18 @@ struct mtk_ut_seninf_device {
 
 	struct engine_ops ops;
 
+	unsigned int seninf_mux_status[SENINF_MUX_NUM];
+	unsigned int seninf_status[SENINF_NUM];
+
 	int mux_camsv_sat_range[2];
+	int mux_camsv_range[2];
 	int mux_raw_range[2];
+	int mux_pdp_range[2];
 
 	int cammux_camsv_sat_range[2];
+	int cammux_camsv_range[2];
 	int cammux_raw_range[2];
+	int cammux_pdp_range[2];
 };
 
 static inline int seninf_mux_raw(struct device *dev, int raw_idx)
