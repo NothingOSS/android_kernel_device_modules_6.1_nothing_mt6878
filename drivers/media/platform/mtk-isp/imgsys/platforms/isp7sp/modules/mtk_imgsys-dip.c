@@ -14,7 +14,7 @@
 #include "mtk_imgsys-dip.h"
 
 const struct mtk_imgsys_init_array mtk_imgsys_dip_init_ary[] = {
-	{0x0A8, 0x80000000},	/* DIPCTL_D1A_DIPCTL_INT2_EN */
+	{0x0AC, 0x80000000}, /* DIPCTL_D1A_DIPCTL_INT2_EN */
 };
 
 static struct DIPDmaDebugInfo g_DMATopDbgIfo[] = {
@@ -54,8 +54,10 @@ static struct DIPDmaDebugInfo g_DMANrDbgIfo[] = {
 	{"VIPI", DIP_ULC_RDMA_DEBUG, 0},
 	{"VIPBI", DIP_ULC_RDMA_DEBUG, 1},
 	{"VIPCI", DIP_ULC_RDMA_DEBUG, 2},
+	{"SMTI_D4", DIP_ULC_RDMA_DEBUG, 3},
 	{"SMTI_D5", DIP_ULC_RDMA_DEBUG, 4},
 	{"SMTI_D6", DIP_ULC_RDMA_DEBUG, 5},
+	{"SMTCI_D4", DIP_ULC_RDMA_DEBUG, 7},
 	{"SMTCI_D5", DIP_ULC_RDMA_DEBUG, 8},
 	{"SMTCI_D6", DIP_ULC_RDMA_DEBUG, 9},
 	{"EECSI", DIP_ULC_RDMA_DEBUG, 11},
@@ -71,16 +73,24 @@ static struct DIPDmaDebugInfo g_DMANrDbgIfo[] = {
 	{"FEO", DIP_ULC_WDMA_DEBUG, 21},
 	{"IMG2O", DIP_ULC_WDMA_DEBUG, 22},
 	{"IMG2BO", DIP_ULC_WDMA_DEBUG, 23},
+	{"SMTO_D4", DIP_ULC_WDMA_DEBUG, 24},
 	{"SMTO_D5", DIP_ULC_WDMA_DEBUG, 25},
 	{"SMTO_D6", DIP_ULC_WDMA_DEBUG, 26},
+	{"SMTCO_D4", DIP_ULC_WDMA_DEBUG, 28},
 	{"SMTCO_D5", DIP_ULC_WDMA_DEBUG, 29},
 	{"SMTCO_D6", DIP_ULC_WDMA_DEBUG, 30},
 	{"CSMCSO", DIP_ULC_WDMA_DEBUG, 37},
+	{"CNRO", DIP_ULC_WDMA_DEBUG, 51},
+	{"CNRBO", DIP_ULC_WDMA_DEBUG, 52},
+	{"BOKMO", DIP_ULC_WDMA_DEBUG, 53},
+	{"BOKMI", DIP_ULC_RDMA_DEBUG, 54},
+	{"BOKPYI", DIP_ULC_RDMA_DEBUG, 55},
+	{"BOKPCI", DIP_ULC_RDMA_DEBUG, 56},
 };
 
 #define DIP_HW_SET 3
 
-#define	DIP_INIT_ARRAY_COUNT	1
+#define DIP_INIT_ARRAY_COUNT 1
 
 static void __iomem *gdipRegBA[DIP_HW_SET] = {0L};
 static unsigned int g_RegBaseAddr = DIP_TOP_ADDR;
@@ -88,7 +98,6 @@ static unsigned int g_RegBaseAddr = DIP_TOP_ADDR;
 void imgsys_dip_set_initial_value(struct mtk_imgsys_dev *imgsys_dev)
 {
 	unsigned int hw_idx = 0, ary_idx = 0;
-
 
 	for (hw_idx = REG_MAP_E_DIP; hw_idx <= REG_MAP_E_DIP_NR2; hw_idx++) {
 		/* iomap registers */
@@ -101,7 +110,6 @@ void imgsys_dip_set_initial_value(struct mtk_imgsys_dev *imgsys_dev)
 		}
 	}
 
-
 }
 
 void imgsys_dip_set_hw_initial_value(struct mtk_imgsys_dev *imgsys_dev)
@@ -109,7 +117,6 @@ void imgsys_dip_set_hw_initial_value(struct mtk_imgsys_dev *imgsys_dev)
 	void __iomem *dipRegBA = 0L;
 	void __iomem *ofset = NULL;
 	unsigned int i;
-
 
 	/* iomap registers */
 	dipRegBA = gdipRegBA[0];
@@ -305,13 +312,13 @@ static void imgsys_dip_dump_dl(struct mtk_imgsys_dev *a_pDev,
 	/* line_cnt[15:0],  pix_cnt[15:0] */
 	DbgCmd = 0x00000007;
 	DbgData = ExeDbgCmd(a_pDev, a_pRegBA, a_DdbSel, a_DbgOut, DbgCmd);
-	DbgLineCnt = (DbgData & 0xFFFF0000) / 0xFFFF;
+	DbgLineCnt = (DbgData & 0xFFFF0000) >> 16;
 	pr_info("[wpe_wif_d1_debug]pix_cnt(0x%X),line_cnt(0x%X)\n",
 		DbgData & 0xFFFF, DbgLineCnt);
 	/* line_cnt_reg[15:0], pix_cnt_reg[15:0] */
 	DbgCmd = 0x00000008;
 	DbgData = ExeDbgCmd(a_pDev, a_pRegBA, a_DdbSel, a_DbgOut, DbgCmd);
-	DbgLineCntReg = (DbgData & 0xFFFF0000) / 0xFFFF;
+	DbgLineCntReg = (DbgData & 0xFFFF0000) >> 16;
 	pr_info("[wpe_wif_d1_debug]pix_cnt_reg(0x%X),line_cnt_reg(0x%X)\n",
 		DbgData & 0xFFFF, DbgLineCntReg);
 
@@ -326,13 +333,13 @@ static void imgsys_dip_dump_dl(struct mtk_imgsys_dev *a_pDev,
 	/* line_cnt[15:0],  pix_cnt[15:0] */
 	DbgCmd = 0x00000107;
 	DbgData = ExeDbgCmd(a_pDev, a_pRegBA, a_DdbSel, a_DbgOut, DbgCmd);
-	DbgLineCnt = (DbgData & 0xFFFF0000) / 0xFFFF;
+	DbgLineCnt = (DbgData & 0xFFFF0000) >> 16;
 	pr_info("[wpe_wif_d2_debug]pix_cnt(0x%X),line_cnt(0x%X)\n",
 		DbgData & 0xFFFF, DbgLineCnt);
 	/* line_cnt_reg[15:0], pix_cnt_reg[15:0] */
 	DbgCmd = 0x00000108;
 	DbgData = ExeDbgCmd(a_pDev, a_pRegBA, a_DdbSel, a_DbgOut, DbgCmd);
-	DbgLineCntReg = (DbgData & 0xFFFF0000) / 0xFFFF;
+	DbgLineCntReg = (DbgData & 0xFFFF0000) >> 16;
 	pr_info("[wpe_wif_d2_debug]pix_cnt_reg(0x%X),line_cnt_reg(0x%X)\n",
 		DbgData & 0xFFFF, DbgLineCntReg);
 
@@ -347,13 +354,13 @@ static void imgsys_dip_dump_dl(struct mtk_imgsys_dev *a_pDev,
 	/* line_cnt[15:0],  pix_cnt[15:0] */
 	DbgCmd = 0x00000207;
 	DbgData = ExeDbgCmd(a_pDev, a_pRegBA, a_DdbSel, a_DbgOut, DbgCmd);
-	DbgLineCnt = (DbgData & 0xFFFF0000) / 0xFFFF;
+	DbgLineCnt = (DbgData & 0xFFFF0000) >> 16;
 	pr_info("[wpe_wif_d3_debug]pix_cnt(0x%X),line_cnt(0x%X)\n",
 		DbgData & 0xFFFF, DbgLineCnt);
 	/* line_cnt_reg[15:0], pix_cnt_reg[15:0] */
 	DbgCmd = 0x00000208;
 	DbgData = ExeDbgCmd(a_pDev, a_pRegBA, a_DdbSel, a_DbgOut, DbgCmd);
-	DbgLineCntReg = (DbgData & 0xFFFF0000) / 0xFFFF;
+	DbgLineCntReg = (DbgData & 0xFFFF0000) >> 16;
 	pr_info("[wpe_wif_d3_debug]pix_cnt_reg(0x%X),line_cnt_reg(0x%X)\n",
 		DbgData & 0xFFFF, DbgLineCntReg);
 
@@ -368,13 +375,13 @@ static void imgsys_dip_dump_dl(struct mtk_imgsys_dev *a_pDev,
 	/* line_cnt[15:0],  pix_cnt[15:0] */
 	DbgCmd = 0x00000307;
 	DbgData = ExeDbgCmd(a_pDev, a_pRegBA, a_DdbSel, a_DbgOut, DbgCmd);
-	DbgLineCnt = (DbgData & 0xFFFF0000) / 0xFFFF;
+	DbgLineCnt = (DbgData & 0xFFFF0000) >> 16;
 	pr_info("[mcrp_d1_debug]pix_cnt(0x%X),line_cnt(0x%X)\n",
 		DbgData & 0xFFFF, DbgLineCnt);
 	/* line_cnt_reg[15:0], pix_cnt_reg[15:0] */
 	DbgCmd = 0x00000308;
 	DbgData = ExeDbgCmd(a_pDev, a_pRegBA, a_DdbSel, a_DbgOut, DbgCmd);
-	DbgLineCntReg = (DbgData & 0xFFFF0000) / 0xFFFF;
+	DbgLineCntReg = (DbgData & 0xFFFF0000) >> 16;
 	pr_info("[mcrp_d1_debug]pix_cnt_reg(0x%X),line_cnt_reg(0x%X)\n",
 		DbgData & 0xFFFF, DbgLineCntReg);
 
@@ -695,8 +702,26 @@ void imgsys_dip_debug_dump(struct mtk_imgsys_dev *imgsys_dev,
 			(unsigned int)ioread32((void *)(dipRegBA + i + 0x8)),
 			(unsigned int)ioread32((void *)(dipRegBA + i + 0xc)));
 	}
-	/* SMTCO_D4~DRZS8T_D1 */
+	/* SMTCO_D4~BOKPCI_D1 */
 	for (i = SMTCO_D4_CTL_OFT; i <= (SMTCO_D4_CTL_OFT + SMTCO_D4_CTL_SZ); i += 0x10) {
+		pr_info("[0x%08X] 0x%08X 0x%08X 0x%08X 0x%08X",
+			(unsigned int)(DIP_NR2_ADDR + i),
+			(unsigned int)ioread32((void *)(dipRegBA + i)),
+			(unsigned int)ioread32((void *)(dipRegBA + i + 0x4)),
+			(unsigned int)ioread32((void *)(dipRegBA + i + 0x8)),
+			(unsigned int)ioread32((void *)(dipRegBA + i + 0xc)));
+	}
+	/* SMT_D5~MCRP_D1 */
+	for (i = SMT_D5_CTL_OFT; i <= (SMT_D5_CTL_OFT + SMT_D5_CTL_SZ); i += 0x10) {
+		pr_info("[0x%08X] 0x%08X 0x%08X 0x%08X 0x%08X",
+			(unsigned int)(DIP_NR2_ADDR + i),
+			(unsigned int)ioread32((void *)(dipRegBA + i)),
+			(unsigned int)ioread32((void *)(dipRegBA + i + 0x4)),
+			(unsigned int)ioread32((void *)(dipRegBA + i + 0x8)),
+			(unsigned int)ioread32((void *)(dipRegBA + i + 0xc)));
+	}
+	/* URZS2T_D12~PCRP_D39 */
+	for (i = URZS2T_D12_CTL_OFT; i <= (URZS2T_D12_CTL_OFT + URZS2T_D12_CTL_SZ); i += 0x10) {
 		pr_info("[0x%08X] 0x%08X 0x%08X 0x%08X 0x%08X",
 			(unsigned int)(DIP_NR2_ADDR + i),
 			(unsigned int)ioread32((void *)(dipRegBA + i)),
@@ -706,6 +731,15 @@ void imgsys_dip_debug_dump(struct mtk_imgsys_dev *imgsys_dev,
 	}
 	/* DRZH2N_D2 */
 	for (i = DRZH2N_D2_CTL_OFT; i <= (DRZH2N_D2_CTL_OFT + DRZH2N_D2_CTL_SZ); i += 0x10) {
+		pr_info("[0x%08X] 0x%08X 0x%08X 0x%08X 0x%08X",
+			(unsigned int)(DIP_NR2_ADDR + i),
+			(unsigned int)ioread32((void *)(dipRegBA + i)),
+			(unsigned int)ioread32((void *)(dipRegBA + i + 0x4)),
+			(unsigned int)ioread32((void *)(dipRegBA + i + 0x8)),
+			(unsigned int)ioread32((void *)(dipRegBA + i + 0xc)));
+	}
+	/* BOK_D1 */
+	for (i = BOK_D1_CTL_OFT; i <= (BOK_D1_CTL_OFT + BOK_D1_CTL_SZ); i += 0x10) {
 		pr_info("[0x%08X] 0x%08X 0x%08X 0x%08X 0x%08X",
 			(unsigned int)(DIP_NR2_ADDR + i),
 			(unsigned int)ioread32((void *)(dipRegBA + i)),
@@ -758,4 +792,5 @@ void imgsys_dip_uninit(struct mtk_imgsys_dev *imgsys_dev)
 		iounmap(gdipRegBA[i]);
 		gdipRegBA[i] = 0L;
 	}
+
 }

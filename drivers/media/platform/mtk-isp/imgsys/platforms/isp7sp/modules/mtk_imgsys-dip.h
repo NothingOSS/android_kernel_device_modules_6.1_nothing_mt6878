@@ -39,8 +39,8 @@
 #define SMT_D1_CTL_OFT	0x83C0
 #define SMT_D1_CTL_SZ	0x3C4
 
-#define DIP_DBG_SEL		0x1D8
-#define DIP_DBG_OUT		0x1DC
+#define DIP_DBG_SEL		0x1DC
+#define DIP_DBG_OUT		0x1E0
 #define DIP_DMA_DBG_SEL		0x10C0
 #define DIP_DMA_DBG_PORT	0x10C4
 #define DIP_NR3D_DBG_SEL	0x501C
@@ -70,9 +70,15 @@
 #define SNRCSI_D1_CTL_OFT	0x2240
 #define SNRCSI_D1_CTL_SZ	0x1140
 #define SMTCO_D4_CTL_OFT	0x3640
-#define SMTCO_D4_CTL_SZ		0x1FE4
+#define SMTCO_D4_CTL_SZ		0x300
+#define SMT_D5_CTL_OFT		0x4000
+#define SMT_D5_CTL_SZ		0x8C8
+#define URZS2T_D12_CTL_OFT	0x5000
+#define URZS2T_D12_CTL_SZ	0x988
 #define DRZH2N_D2_CTL_OFT	0x6D00
 #define DRZH2N_D2_CTL_SZ	0x54
+#define BOK_D1_CTL_OFT		0x7B70
+#define BOK_D1_CTL_SZ		0x78
 
 #define DIP_DMA_NAME_MAX_SIZE	20
 
@@ -123,4 +129,3 @@ void imgsys_dip_debug_dump(struct mtk_imgsys_dev *imgsys_dev,
 void imgsys_dip_uninit(struct mtk_imgsys_dev *imgsys_dev);
 
 #endif /* _MTK_DIP_DIP_H_ */
-
