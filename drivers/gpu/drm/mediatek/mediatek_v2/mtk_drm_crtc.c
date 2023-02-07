@@ -6852,7 +6852,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	}
 
 	DDP_MUTEX_LOCK(&priv->commit.lock, __func__, cb_data->pres_fence_idx);
-	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, cb_data->pres_fence_idx);
 	if ((id == 0) && (priv && priv->power_state)) {
 		ovl_status = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 				DISP_SLOT_OVL_STATUS);
@@ -7008,7 +7008,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 		}
 	}
 
-	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, cb_data->pres_fence_idx);
 	DDP_MUTEX_UNLOCK(&priv->commit.lock, __func__, cb_data->pres_fence_idx);
 #ifdef MTK_DRM_ASYNC_HANDLE
 	cmdq_pkt_wait_complete(cb_data->cmdq_handle);
@@ -14488,9 +14488,9 @@ static int mtk_drm_sf_pf_release_thread(void *data)
 		atomic_set(&mtk_crtc->sf_pf_event, 0);
 
 #ifndef DRM_CMDQ_DISABLE
-		mutex_lock(&private->commit.lock);
+		DDP_MUTEX_LOCK(&private->commit.lock, __func__, __LINE__);
 
-		mutex_unlock(&private->commit.lock);
+		DDP_MUTEX_UNLOCK(&private->commit.lock, __func__, __LINE__);
 #endif
 	}
 
@@ -17178,7 +17178,7 @@ int mtk_drm_switch_te(struct drm_crtc *crtc, int te_num, bool need_lock)
 		return -EINVAL;
 
 	if (need_lock) {
-		mutex_lock(&private->commit.lock);
+		DDP_MUTEX_LOCK(&private->commit.lock, __func__, __LINE__);
 		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 	}
 	mtk_crtc_pkt_create(&handle, &mtk_crtc->base,
@@ -17214,7 +17214,7 @@ int mtk_drm_switch_te(struct drm_crtc *crtc, int te_num, bool need_lock)
 
 	if (need_lock) {
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-		mutex_unlock(&private->commit.lock);
+		DDP_MUTEX_UNLOCK(&private->commit.lock, __func__, __LINE__);
 	}
 	return 0;
 }

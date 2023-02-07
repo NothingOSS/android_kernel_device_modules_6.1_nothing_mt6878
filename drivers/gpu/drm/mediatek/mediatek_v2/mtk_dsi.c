@@ -6663,7 +6663,7 @@ int mtk_lcm_dsi_ddic_handler(struct mipi_dsi_device *dsi_dev, struct cmdq_pkt *h
 
 	CRTC_MMP_EVENT_START(index, ddic_send_cmd, 0xffffffff, prop);
 	if ((prop & MTK_LCM_DSI_CMD_PROP_LOCK) != 0) {
-		mutex_lock(&priv->commit.lock);
+		DDP_MUTEX_LOCK(&priv->commit.lock, __func__, __LINE__);
 		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 	}
 
@@ -6681,7 +6681,7 @@ int mtk_lcm_dsi_ddic_handler(struct mipi_dsi_device *dsi_dev, struct cmdq_pkt *h
 
 	if ((prop & MTK_LCM_DSI_CMD_PROP_LOCK) != 0) {
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-		mutex_unlock(&priv->commit.lock);
+		DDP_MUTEX_UNLOCK(&priv->commit.lock, __func__, __LINE__);
 	}
 	CRTC_MMP_EVENT_END(index, ddic_send_cmd, mask, ret);
 
