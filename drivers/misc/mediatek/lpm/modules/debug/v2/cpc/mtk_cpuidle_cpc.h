@@ -15,7 +15,7 @@ enum {
 	CPC_SMC_EVENT_GIC_DPG_SET,
 	CPC_SMC_EVENT_CPC_CONFIG,
 	CPC_SMC_EVENT_READ_CONFIG,
-	CPC_SMC_EVENT_CPC_PROFILE,
+	CPC_SMC_EVENT_PROF_LATENCY,
 
 	NF_CPC_SMC_EVENT
 };
@@ -57,7 +57,7 @@ enum {
 	lpm_smc_cpu_pm_lp(LP_CPC_COMMAND, act, arg1, arg2)
 
 #define cpc_smc_prof(arg1, arg2)\
-	cpc_smc(CPC_SMC_EVENT_CPC_PROFILE, arg1, arg2)\
+	cpc_smc(CPC_SMC_EVENT_PROF_LATENCY, arg1, arg2)\
 
 #define cpc_time_sync()\
 	cpc_smc(CPC_SMC_EVENT_CPC_CONFIG\

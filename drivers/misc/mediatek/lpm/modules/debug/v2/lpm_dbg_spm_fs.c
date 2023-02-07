@@ -6,6 +6,7 @@
 #include <linux/device.h>
 #include <linux/fs.h>
 #include <linux/module.h>
+#include <linux/rtc.h>
 #include <linux/of_device.h>
 #include <linux/spinlock.h>
 
@@ -16,17 +17,10 @@
 #include <mtk_spm_sysfs.h>
 
 #include <lpm_dbg_fs_common.h>
+#include <lpm_dbg_logger.h>
 
 /* Determine for node route */
 #define MT_LP_RQ_NODE	"/proc/mtk_lpm/spm/spm_resource_req"
-
-/* Determine for user name handle */
-#define MT_LP_RQ_USER_NAME_LEN	(4)
-#define MT_LP_RQ_USER_CHAR_U	(8)
-#define MT_LP_RQ_USER_CHAR_MASK	(0xFF)
-
-/* Determine for resource usage id */
-#define MT_LP_RQ_ID_ALL_USAGE	(-1)
 
 #define DEFINE_ATTR_RO(_name)			\
 	static struct kobj_attribute _name##_attr = {	\
@@ -183,18 +177,6 @@ generic_spm_write(char *FromUserBuf, size_t sz, void *priv)
 	return store_pwr_ctrl(id, FromUserBuf, sz, priv);
 }
 
-static char *spm_resource_str[MT_SPM_RES_MAX] = {
-	[MT_SPM_RES_XO_FPM] = "XO_FPM",
-	[MT_SPM_RES_CK_26M] = "CK_26M",
-	[MT_SPM_RES_INFRA] = "INFRA",
-	[MT_SPM_RES_SYSPLL] = "SYSPLL",
-	[MT_SPM_RES_DRAM_S0] = "DRAM_S0",
-	[MT_SPM_RES_DRAM_S1] = "DRAM_S1",
-	[MT_SPM_RES_VCORE] = "VCORE",
-	[MT_SPM_RES_EMI] = "EMI",
-	[MT_SPM_RES_PMIC] = "PMIC",
-};
-
 static ssize_t spm_res_rq_read(char *ToUserBuf, size_t sz, void *priv)
 {
 	char *p = ToUserBuf;
@@ -237,7 +219,7 @@ static ssize_t spm_res_rq_read(char *ToUserBuf, size_t sz, void *priv)
 	mtk_dbg_spm_log("resource [bit][user_usage][blocking]:\n");
 	for (i = 0; i < rnum; i++) {
 		mtk_dbg_spm_log("%8s [%3d][0x%08x][%3s]\n",
-			spm_resource_str[i], i,
+			get_spm_resource_str(i), i,
 			(per_usage =
 			lpm_smc_spm_dbg(MT_SPM_DBG_SMC_UID_RES_USAGE,
 					    MT_LPM_SMC_ACT_GET, i, 0)),
@@ -471,7 +453,8 @@ static ssize_t system_stat_read(char *ToUserBuf, size_t sz, void *priv)
 	char *p = ToUserBuf;
 	struct md_sleep_status tmp_md_data;
 	struct lpm_dbg_lp_info info;
-	int i;
+	unsigned int i;
+	struct spm_req_sta_list *sta_list;
 
 	mtk_get_lp_info(&info, SPM_IDLE_STAT);
 	for (i = 0; i < NUM_SPM_STAT; i++) {
@@ -508,6 +491,29 @@ static ssize_t system_stat_read(char *ToUserBuf, size_t sz, void *priv)
 		cur_md_sleep_status.nr_sleep_time / 1000000,
 		(cur_md_sleep_status.nr_sleep_time % 1000000) / 1000);
 
+	/* dump last suspend blocking request */
+	sta_list = spm_get_req_sta_list();
+	if (!sta_list || sta_list->is_blocked == 0) {
+		mtk_dbg_spm_log("Last Suspend is not blocked\n");
+		goto SKIP_REQ_DUMP;
+	}
+
+	mtk_dbg_spm_log("Last Suspend %d-%02d-%02d %02d:%02d:%02d (UTC) blocked by ",
+		sta_list->suspend_tm->tm_year + 1900, sta_list->suspend_tm->tm_mon + 1,
+		sta_list->suspend_tm->tm_mday, sta_list->suspend_tm->tm_hour,
+		sta_list->suspend_tm->tm_min, sta_list->suspend_tm->tm_sec);
+
+	for (i = 0; i < sta_list->spm_req_num; i++) {
+		if (sta_list->spm_req[i].on)
+			mtk_dbg_spm_log("%s ", sta_list->spm_req[i].name);
+	}
+
+	for (i = 0; i < NUM_SPM_SCENE; i++) {
+		if ((sta_list->lp_scenario_sta & (1 << i)))
+			mtk_dbg_spm_log("%s ", get_spm_scenario_str(i));
+	}
+	mtk_dbg_spm_log("\n");
+SKIP_REQ_DUMP:
 	return p - ToUserBuf;
 }
 

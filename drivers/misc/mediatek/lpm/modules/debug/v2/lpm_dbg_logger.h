@@ -6,9 +6,24 @@
 #ifndef __LPM_DBG_LOGGER_H__
 #define __LPM_DBG_LOGGER_H__
 
+#include <lpm_dbg_common_v2.h>
+
 extern void __iomem *lpm_spm_base;
+
+struct spm_req_sta_list {
+	struct subsys_req *spm_req;
+	unsigned int spm_req_num;
+	unsigned int spm_req_sta_addr;
+	unsigned int spm_req_sta_num;
+	unsigned int lp_scenario_sta;
+	unsigned int is_blocked;
+	struct rtc_time *suspend_tm;
+};
 
 int lpm_logger_init(void);
 void lpm_logger_deinit(void);
+struct spm_req_sta_list *spm_get_req_sta_list(void);
+char *get_spm_resource_str(unsigned int index);
+char *get_spm_scenario_str(unsigned int index);
 
 #endif

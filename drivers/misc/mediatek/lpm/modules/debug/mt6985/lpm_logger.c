@@ -13,6 +13,7 @@
 #include <linux/rtc.h>
 #include <linux/wakeup_reason.h>
 #include <linux/syscore_ops.h>
+#include <linux/suspend.h>
 
 #include <lpm.h>
 #include <lpm_module.h>
@@ -39,6 +40,9 @@
 #define SPM_HW_CG_CHECK_MASK (0x7f)
 #define SPM_HW_CG_CHECK_SHIFT (12)
 
+#define SPM_REQ_STA_NUM (((SPM_REQ_STA_10 - SPM_REQ_STA_0) / 4) + 1)
+
+#define plat_mmio_read(offset)	__raw_readl(lpm_spm_base + offset)
 
 const char *wakesrc_str[32] = {
 	[0] = " R12_PCM_TIMER",
@@ -358,19 +362,21 @@ static char *pwr_ctrl_str[PW_MAX_COUNT] = {
 	[PW_REG_EXT_WAKEUP_EVENT_MASK] = "reg_ext_wakeup_event_mask",
 };
 
-struct subsys_req plat_subsys_req[SUBSYS_REQ_MAX] = {
-        {SPM_REQ_STA_4, 0x1F, 0, 0},
-        {SPM_REQ_STA_2, 0xF, SPM_REQ_STA_1, (0x7 << 29)},
-        {SPM_REQ_STA_5, (0x1F << 3), 0, 0},
-        {SPM_REQ_STA_0, (0x1F << 10), 0, 0},
-        {SPM_REQ_STA_5, (0x1F << 27), 0, 0},
-        {SPM_REQ_STA_4, (0x3FF << 15), 0, 0},
-        {SPM_REQ_STA_2, (0xF << 9), 0, 0},
-        {SPM_REQ_STA_0, (0x1F << 5), 0, 0},
-        {SPM_SRC_REQ, 0x63E, 0, 0},
+struct subsys_req plat_subsys_req[] = {
+	{"md", SPM_REQ_STA_6, (0x1FF << 16), 0, 0, 0},
+	{"conn", SPM_REQ_STA_3, (0x1FF << 19), 0, 0, 0},
+	{"disp", SPM_REQ_STA_4, (0x3F << 3), 0, 0, 0},
+	{"scp", SPM_REQ_STA_8, (0xFF << 10), 0, 0, 0},
+	{"adsp", SPM_REQ_STA_0, (0xFF << 15), 0, 0, 0},
+	{"ufs", SPM_REQ_STA_9, (0x7F << 22), 0, 0, 0},
+	{"msdc", SPM_REQ_STA_7, (0x3FFF << 6), 0, 0, 0},
+	{"apu", SPM_REQ_STA_0, (0x3F << 8), 0, 0, 0},
+	{"gce", SPM_REQ_STA_5, (0x1F << 1), 0, 0, 0},
+	{"uarthub", SPM_REQ_STA_9, (0x1F << 17), 0, 0, 0},
+	{"pcie", SPM_REQ_STA_7, (0x3F << 26), SPM_REQ_STA_8, (0x3FF << 0), 0},
+	{"srclkeni", SPM_REQ_STA_7, (0x3F << 18), 0, 0, 0},
+	{"spm", SPM_SRC_REQ, 0x18F6, 0, 0, 0},
 };
-
-#define plat_mmio_read(offset)	__raw_readl(lpm_spm_base + offset)
 
 u64 ap_pd_count;
 u64 ap_slp_duration;
@@ -474,100 +480,6 @@ static int lpm_get_wakeup_status(void)
 	return 0;
 }
 
-static void dump_hw_cg_status(void)
-{
-#undef LOG_BUF_SIZE
-#define LOG_BUF_SIZE	(128)
-	char log_buf[LOG_BUF_SIZE] = { 0 };
-	unsigned int log_size = 0;
-	unsigned int hwcg_num, setting_num;
-	unsigned int sta, setting;
-	int i, j;
-
-	hwcg_num = (unsigned int)lpm_smc_spm_dbg(MT_SPM_DBG_SMC_HWCG_NUM,
-				MT_LPM_SMC_ACT_GET, 0, 0);
-
-	setting_num = (unsigned int)lpm_smc_spm_dbg(MT_SPM_DBG_SMC_HWCG_NUM,
-				MT_LPM_SMC_ACT_GET, 0, 1);
-
-	log_size = scnprintf(log_buf + log_size,
-		LOG_BUF_SIZE - log_size,
-		"HWCG sta :");
-
-	for (i = 0 ; i < hwcg_num; i++) {
-		log_size += scnprintf(log_buf + log_size,
-				LOG_BUF_SIZE - log_size,
-				"[%d] ", i);
-		for (j = 0 ; j < setting_num; j++) {
-			sta =  (unsigned int)lpm_smc_spm_dbg(
-					MT_SPM_DBG_SMC_HWCG_STATUS,
-					MT_LPM_SMC_ACT_GET, i, j);
-
-			setting = (unsigned int)lpm_smc_spm_dbg(
-						MT_SPM_DBG_SMC_HWCG_SETTING,
-						MT_LPM_SMC_ACT_GET, i, j);
-
-			log_size += scnprintf(log_buf + log_size,
-				LOG_BUF_SIZE - log_size,
-				"0x%x ", setting & sta);
-		}
-		log_size += scnprintf(log_buf + log_size,
-				LOG_BUF_SIZE - log_size,
-				i < hwcg_num - 1 ? "|" : ".");
-
-	}
-	WARN_ON(strlen(log_buf) >= LOG_BUF_SIZE);
-	pr_info("[name:spm&][SPM] %s\n", log_buf);
-
-}
-
-static void dump_peri_cg_status(void)
-{
-#undef LOG_BUF_SIZE
-#define LOG_BUF_SIZE	(128)
-	char log_buf[LOG_BUF_SIZE] = { 0 };
-	unsigned int log_size = 0;
-	unsigned int peri_cg_num, setting_num;
-	unsigned int sta, setting;
-	int i, j;
-
-	peri_cg_num = (unsigned int)lpm_smc_spm_dbg(MT_SPM_DBG_SMC_PERI_REQ_NUM,
-				MT_LPM_SMC_ACT_GET, 0, 0);
-
-	setting_num = (unsigned int)lpm_smc_spm_dbg(MT_SPM_DBG_SMC_PERI_REQ_NUM,
-				MT_LPM_SMC_ACT_GET, 0, 1);
-
-	log_size = scnprintf(log_buf + log_size,
-		LOG_BUF_SIZE - log_size,
-		"PERI_CG sta :");
-
-	for (i = 0 ; i < peri_cg_num; i++) {
-		log_size += scnprintf(log_buf + log_size,
-				LOG_BUF_SIZE - log_size,
-				"[%d] ", i);
-		for (j = 0 ; j < setting_num; j++) {
-			sta =  (unsigned int)lpm_smc_spm_dbg(
-					MT_SPM_DBG_SMC_PERI_REQ_STATUS,
-					MT_LPM_SMC_ACT_GET, i, j);
-
-			setting = (unsigned int)lpm_smc_spm_dbg(
-						MT_SPM_DBG_SMC_PERI_REQ_SETTING,
-						MT_LPM_SMC_ACT_GET, i, j);
-
-			log_size += scnprintf(log_buf + log_size,
-				LOG_BUF_SIZE - log_size,
-				"0x%x ", setting & sta);
-		}
-		log_size += scnprintf(log_buf + log_size,
-				LOG_BUF_SIZE - log_size,
-				i < peri_cg_num - 1 ? "|" : ".");
-
-	}
-	WARN_ON(strlen(log_buf) >= LOG_BUF_SIZE);
-	pr_info("[name:spm&][SPM] %s\n", log_buf);
-
-}
-
 static void lpm_save_sleep_info(void)
 {
 }
@@ -575,105 +487,6 @@ static void lpm_save_sleep_info(void)
 static void suspend_show_detailed_wakeup_reason
 	(struct lpm_spm_wake_status *wakesta)
 {
-}
-
-static unsigned int is_lp_blocked_threshold;
-static void suspend_spm_rsc_req_check
-	(struct lpm_spm_wake_status *wakesta)
-{
-#undef LOG_BUF_SIZE
-#define LOG_BUF_SIZE		        256
-#undef AVOID_OVERFLOW
-#define AVOID_OVERFLOW (0xF0000000)
-static u32 is_blocked_cnt;
-	char log_buf[LOG_BUF_SIZE] = { 0 };
-	int log_size = 0;
-	u32 is_no_blocked = 0;
-	u32 req_sta_0, req_sta_1, req_sta_2;
-	u32 req_sta_3, req_sta_4, req_sta_5;
-	u32 req_sta_6, req_sta_7, req_sta_8;
-	u32 req_sta_9, req_sta_10;
-	u32 src_req;
-
-	if (is_blocked_cnt >= AVOID_OVERFLOW)
-		is_blocked_cnt = 0;
-
-	/* Check if ever enter deepest System LPM */
-	is_no_blocked = wakesta->debug_flag & 0x200;
-
-	/* Check if System LPM ever is blocked over 10 times */
-	if (!is_no_blocked)
-		is_blocked_cnt++;
-	else
-		is_blocked_cnt = 0;
-
-	if (is_blocked_cnt < is_lp_blocked_threshold)
-		return;
-
-	if (!lpm_spm_base)
-		return;
-
-	/* Show who is blocking system LPM */
-	log_size += scnprintf(log_buf + log_size,
-		LOG_BUF_SIZE - log_size,
-		"suspend warning:(OneShot) System LPM is blocked by ");
-
-	req_sta_0 = plat_mmio_read(SPM_REQ_STA_0);
-	req_sta_1 = plat_mmio_read(SPM_REQ_STA_1);
-	req_sta_2 = plat_mmio_read(SPM_REQ_STA_2);
-	req_sta_3 = plat_mmio_read(SPM_REQ_STA_3);
-	req_sta_4 = plat_mmio_read(SPM_REQ_STA_4);
-	req_sta_5 = plat_mmio_read(SPM_REQ_STA_5);
-	req_sta_6 = plat_mmio_read(SPM_REQ_STA_6);
-	req_sta_7 = plat_mmio_read(SPM_REQ_STA_7);
-	req_sta_8 = plat_mmio_read(SPM_REQ_STA_8);
-	req_sta_9 = plat_mmio_read(SPM_REQ_STA_9);
-	req_sta_10 = plat_mmio_read(SPM_REQ_STA_10);
-	if (req_sta_6 & (0x1FF << 16))
-		log_size += scnprintf(log_buf + log_size,
-			LOG_BUF_SIZE - log_size, "md ");
-	if (req_sta_3 & (0x1FF << 19))
-		log_size += scnprintf(log_buf + log_size,
-			LOG_BUF_SIZE - log_size, "conn ");
-	if (req_sta_4 & (0x3F << 3))
-		log_size += scnprintf(log_buf + log_size,
-			LOG_BUF_SIZE - log_size, "disp ");
-
-	if (req_sta_8 & (0xFF << 10))
-		log_size += scnprintf(log_buf + log_size,
-			LOG_BUF_SIZE - log_size, "scp ");
-
-	if (req_sta_0 & (0xFF << 15))
-		log_size += scnprintf(log_buf + log_size,
-			LOG_BUF_SIZE - log_size, "adsp ");
-
-	if (req_sta_9 & (0x7F << 22))
-		log_size += scnprintf(log_buf + log_size,
-			LOG_BUF_SIZE - log_size, "ufs ");
-
-	if (req_sta_7 & (0x3FFF << 6))
-		log_size += scnprintf(log_buf + log_size,
-			LOG_BUF_SIZE - log_size, "msdc ");
-
-	if (req_sta_0 & (0x3F << 8))
-		log_size += scnprintf(log_buf + log_size,
-			LOG_BUF_SIZE - log_size, "apu ");
-
-	if (req_sta_5 & (0x1F << 1))
-		log_size += scnprintf(log_buf + log_size,
-			LOG_BUF_SIZE - log_size, "gce ");
-
-	/* FIXME: add other request check? */
-
-	src_req = plat_mmio_read(SPM_SRC_REQ);
-	if (src_req & 0x18F6) {
-		log_size += scnprintf(log_buf + log_size,
-			LOG_BUF_SIZE - log_size, "spm ");
-	}
-	WARN_ON(strlen(log_buf) >= LOG_BUF_SIZE);
-	pr_info("[name:spm&][SPM] %s\n", log_buf);
-	dump_hw_cg_status();
-	dump_peri_cg_status();
 }
 
 static int lpm_show_message(int type, const char *prefix, void *data)
@@ -932,7 +745,7 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 	if (type == LPM_ISSUER_SUSPEND) {
 		pr_info("[name:spm&][SPM] %s", log_buf);
 		suspend_show_detailed_wakeup_reason(wakesrc);
-		suspend_spm_rsc_req_check(wakesrc);
+		lpm_dbg_spm_rsc_req_check(wakesrc->debug_flag);
 		pr_info("[name:spm&][SPM] Suspended for %d.%03d seconds",
 			PCM_TICK_TO_SEC(wakesrc->timer_out),
 			PCM_TICK_TO_SEC((wakesrc->timer_out %
@@ -948,7 +761,6 @@ end:
 	return wr;
 }
 
-
 static struct lpm_dbg_plat_ops dbg_ops = {
 	.lpm_show_message = lpm_show_message,
 	.lpm_save_sleep_info = lpm_save_sleep_info,
@@ -956,20 +768,23 @@ static struct lpm_dbg_plat_ops dbg_ops = {
 	.lpm_get_wakeup_status = lpm_get_wakeup_status,
 };
 
-int dbg_ops_register(void)
-{
-	int ret;
-
-	ret = lpm_dbg_plat_ops_register(&dbg_ops);
-
-	is_lp_blocked_threshold = lpm_get_lp_blocked_threshold();
-
-	return ret;
-}
+static struct lpm_dbg_plat_info dbg_info = {
+	.spm_req = plat_subsys_req,
+	.spm_req_num = sizeof(plat_subsys_req)/sizeof(struct subsys_req),
+	.spm_req_sta_addr = SPM_REQ_STA_0,
+	.spm_req_sta_num = SPM_REQ_STA_NUM,
+};
 
 static int __init mt6985_dbg_device_initcall(void)
 {
-	lpm_dbg_plat_ops_register(&dbg_ops);
+	int ret;
+
+	lpm_dbg_plat_info_set(dbg_info);
+
+	ret = lpm_dbg_plat_ops_register(&dbg_ops);
+	if (ret)
+		pr_info("[name:spm&][SPM] Failed to register dbg plat ops notifier.\n");
+
 	lpm_spm_fs_init(pwr_ctrl_str, PW_MAX_COUNT);
 
 	return 0;
@@ -977,7 +792,7 @@ static int __init mt6985_dbg_device_initcall(void)
 
 static int __init mt6985_dbg_late_initcall(void)
 {
-	lpm_trace_event_init(plat_subsys_req);
+	lpm_trace_event_init(plat_subsys_req, sizeof(plat_subsys_req)/sizeof(struct subsys_req));
 
 	return 0;
 }

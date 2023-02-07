@@ -3,8 +3,19 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 
-#ifndef __LPM_DBG_COMMON_V1_H__
-#define __LPM_DBG_COMMON_V1_H__
+#ifndef __LPM_DBG_COMMON_V2_H__
+#define __LPM_DBG_COMMON_V2_H__
+
+/* Determine for user name handle */
+#define MT_LP_RQ_USER_NAME_LEN	(4)
+#define MT_LP_RQ_USER_CHAR_U	(8)
+#define MT_LP_RQ_USER_CHAR_MASK	(0xFF)
+
+/* Determine for resource usage id */
+#define MT_LP_RQ_ID_ALL_USAGE	(-1)
+
+/* Determine for resource request state */
+#define SPM_REQ_STA_ALL (-1)
 
 /* For sysfs get the last wake status */
 enum mtk_spm_wake_status_enum {
@@ -100,7 +111,6 @@ struct lpm_dbg_plat_ops {
 	int (*lpm_get_wakeup_status)(void);
 };
 
-
 struct spm_condition {
 	bool init;
 	char **cg_str;
@@ -139,8 +149,31 @@ extern struct md_sleep_status after_md_sleep_status;
 extern struct md_sleep_status cur_md_sleep_status;
 #endif
 
+enum MT_SPM_SCENE_STATE {
+	MT_SPM_AUDIO_AFE,
+	MT_SPM_AUDIO_DSP,
+	MT_SPM_USB_HEADSET,
+	NUM_SPM_SCENE,
+};
+
 struct lpm_dbg_lp_info {
 	struct lpm_stat_record record[NUM_SPM_STAT];
+};
+
+struct subsys_req {
+	char name[15];
+	u32 req_addr1;
+	u32 req_mask1;
+	u32 req_addr2;
+	u32 req_mask2;
+	u32 on;
+};
+
+struct lpm_dbg_plat_info {
+	struct subsys_req *spm_req;
+	u32 spm_req_num;
+	u32 spm_req_sta_addr;
+	u32 spm_req_sta_num;
 };
 
 extern u64 spm_26M_off_count;
@@ -153,6 +186,8 @@ extern struct spm_condition spm_cond;
 extern int kernel_suspend_only;
 
 int lpm_dbg_plat_ops_register(struct lpm_dbg_plat_ops *lpm_dbg_plat_ops);
+void lpm_dbg_plat_info_set(struct lpm_dbg_plat_info lpm_dbg_plat_info);
+void lpm_dbg_spm_rsc_req_check(u32 wakesta_debug_flag);
 
 int spm_cond_init(void);
 void spm_cond_deinit(void);
