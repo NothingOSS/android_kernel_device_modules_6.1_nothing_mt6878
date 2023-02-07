@@ -27,6 +27,7 @@ struct mtk_composite_async_subdev {
 struct mtk_composite_v4l2_device {
 	struct v4l2_device v4l2_dev;
 	struct v4l2_async_notifier notifier;
+	struct v4l2_subdev nf_sd;
 	struct media_device media_dev;
 	struct video_device *vdev;
 	struct device *dev;
