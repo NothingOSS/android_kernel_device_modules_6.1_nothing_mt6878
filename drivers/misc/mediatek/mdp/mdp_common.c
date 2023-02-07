@@ -3388,9 +3388,6 @@ static void mdp_readback_aal_virtual(struct cmdqRecStruct *handle,
 	cmdq_pkt_assign_command(pkt, idx_out_spr, (u32)pa);
 	cmdq_pkt_assign_command(pkt, idx_out + 1, (u32)(pa >> 32));
 
-	/* loop again here */
-	begin_pa = cmdq_pkt_get_curr_buf_pa(pkt);
-
 	/* config aal sram addr and poll */
 	cmdq_pkt_write_reg_addr(pkt, base + MDP_AAL_SRAM_RW_IF_2,
 		idx_addr, U32_MAX);
@@ -3398,6 +3395,10 @@ static void mdp_readback_aal_virtual(struct cmdqRecStruct *handle,
 	cmdq_pkt_poll_addr(pkt, MDP_AAL_SRAM_STATUS_BIT,
 		base + MDP_AAL_SRAM_STATUS,
 		MDP_AAL_SRAM_STATUS_BIT, idx_out - CMDQ_GPR_CNT_ID);
+
+	/* loop again here */
+	begin_pa = cmdq_pkt_get_curr_buf_pa(pkt);
+
 	/* read to value gpr */
 	cmdq_pkt_read_addr(pkt, base + MDP_AAL_SRAM_RW_IF_3, idx_val);
 	/* and now assign addr low 32bit from spr to idx_out gpr */
