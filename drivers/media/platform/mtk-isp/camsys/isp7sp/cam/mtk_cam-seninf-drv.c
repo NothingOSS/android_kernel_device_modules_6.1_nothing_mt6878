@@ -1477,21 +1477,7 @@ static int get_mbus_config(struct seninf_ctx *ctx, struct v4l2_subdev *sd)
 	}
 
 	ctx->is_cphy = cfg.type == V4L2_MBUS_CSI2_CPHY;
-
-	switch (cfg.bus.mipi_csi2.num_data_lanes) {
-	case SENSOR_MIPI_1_LANE:
-		ctx->num_data_lanes = 1;
-		break;
-	case SENSOR_MIPI_2_LANE:
-		ctx->num_data_lanes = 2;
-		break;
-	case SENSOR_MIPI_3_LANE:
-		ctx->num_data_lanes = 3;
-		break;
-	case SENSOR_MIPI_4_LANE:
-		ctx->num_data_lanes = 4;
-		break;
-	}
+	ctx->num_data_lanes = cfg.bus.mipi_csi2.num_data_lanes;
 
 #if AOV_GET_PARAM
 	if (!(core->aov_sensor_id < 0) &&
@@ -1501,6 +1487,8 @@ static int get_mbus_config(struct seninf_ctx *ctx, struct v4l2_subdev *sd)
 		g_aov_param.num_data_lanes = ctx->num_data_lanes;
 	}
 #endif
+
+	dev_info(ctx->dev, "%s num_data_lanes %d\n", __func__, ctx->num_data_lanes);
 
 	return 0;
 }

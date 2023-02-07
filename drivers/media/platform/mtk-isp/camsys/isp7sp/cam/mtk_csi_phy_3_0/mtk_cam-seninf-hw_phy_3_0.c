@@ -23,7 +23,7 @@
 #include "mtk_cam-seninf-route.h"
 #include "imgsensor-user.h"
 #define __SMT 0
-#define SENINF_CK 242000000
+#define SENINF_CK 499000000
 #define CYCLE_MARGIN 1
 #define RESYNC_DMY_CNT 4
 #define DPHY_SETTLE_DEF 100  // ns
@@ -2075,7 +2075,10 @@ static int csirx_mac_csi_setting(struct seninf_ctx *ctx)
 		SENINF_BITS(csirx_mac_csi, CSIRX_MAC_CSI2_EN, CSI2_LANE0_EN, 1);
 		SENINF_BITS(csirx_mac_csi, CSIRX_MAC_CSI2_EN, CSI2_LANE1_EN, 1);
 		SENINF_BITS(csirx_mac_csi, CSIRX_MAC_CSI2_EN, CSI2_LANE2_EN, 1);
-		SENINF_BITS(csirx_mac_csi, CSIRX_MAC_CSI2_EN, CSI2_LANE3_EN, 1);
+
+		if (!ctx->is_cphy)
+			SENINF_BITS(csirx_mac_csi, CSIRX_MAC_CSI2_EN, CSI2_LANE3_EN, 1);
+
 		break;
 
 	case CSI_PORT_0A:
@@ -2223,8 +2226,8 @@ static int csirx_mac_csi_setting(struct seninf_ctx *ctx)
 			cycles = ctx->csi_param.dphy_csi2_resync_dmy_cycle;
 
 		dev_info(ctx->dev,
-		"%s data_rate %lld pps cycles %lld\n",
-		__func__, data_rate, cycles);
+		"%s data_rate %lld pps cycles %lld, ctx->num_data_lanes %d\n",
+		__func__, data_rate, cycles, ctx->num_data_lanes);
 
 		SENINF_BITS(csirx_mac_csi,
 					CSIRX_MAC_CSI2_HDR_MODE_0,
