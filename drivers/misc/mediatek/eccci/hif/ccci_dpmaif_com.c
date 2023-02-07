@@ -33,6 +33,7 @@
 #endif
 #include <linux/clk.h>
 #include <linux/suspend.h>
+#include <linux/rtc.h>
 
 #include "modem_secure_base.h"
 #include "ccci_dpmaif_com.h"
@@ -127,7 +128,28 @@ static inline void dpmaif_set_cpu_mask(struct cpumask *cpu_mask,
 	}
 }
 
-static void dpmaif_handle_wakeup_skb(struct sk_buff *skb)
+static void dpmaif_get_android_time(char *time_buf, int buf_len)
+{
+	struct timespec64 tv_android = { 0 };
+	struct rtc_time tm = { 0 };
+	struct rtc_time tm_android = { 0 };
+
+	if (!time_buf)
+		return;
+
+	ktime_get_real_ts64(&tv_android);
+
+	rtc_time64_to_tm(tv_android.tv_sec, &tm);
+	tv_android.tv_sec -= (time64_t)sys_tz.tz_minuteswest * 60;
+	rtc_time64_to_tm(tv_android.tv_sec, &tm_android);
+
+	scnprintf(time_buf, buf_len, "[%04d-%02d-%02d %02d:%02d:%02d.%06u]",
+		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+		tm_android.tm_hour, tm_android.tm_min,
+		tm_android.tm_sec, (unsigned int)(tv_android.tv_nsec/1000));
+}
+
+static void dpmaif_handle_wakeup_skb(unsigned int is_rx, struct sk_buff *skb)
 {
 	struct iphdr *iph = NULL;
 	struct ipv6hdr *ip6h = NULL;
@@ -139,9 +161,11 @@ static void dpmaif_handle_wakeup_skb(struct sk_buff *skb)
 	u32 src_port = 0;
 	u32 dst_port = 0;
 	u32 skb_len  = 0;
+	char prot_str[10], *ip_ver = "";
+	char time_str[50] = { 0 };
 
 	if (!skb || !(skb->data))
-		goto err;
+		return;
 
 	iph = (struct iphdr *)skb->data;
 	ip6h = (struct ipv6hdr *)skb->data;
@@ -151,26 +175,48 @@ static void dpmaif_handle_wakeup_skb(struct sk_buff *skb)
 	if (version == 4) {
 		protocol = iph->protocol;
 		ip_offset = (iph->ihl << 2);
+		ip_ver = "[IPV4]";
+
 	} else if (version == 6) {
 		protocol = ip6h->nexthdr;
 		ip_offset = 40;
+		ip_ver = "[IPV6]";
+
 	} else
 		goto err;
+
 	if (protocol == IPPROTO_TCP) {
 		tcph = (struct tcphdr *)((void *)iph + ip_offset);
 		src_port = ntohs(tcph->source);
 		dst_port = ntohs(tcph->dest);
+		scnprintf(prot_str, 10, "%s", "TCP");
+
 	} else if (protocol == IPPROTO_UDP) {
 		udph = (struct udphdr *)((void *)iph + ip_offset);
 		src_port = ntohs(udph->source);
 		dst_port = ntohs(udph->dest);
+		scnprintf(prot_str, 10, "%s", "UDP");
+
 	} else
-		goto err;
+		scnprintf(prot_str, 10, "PROT: %u", protocol);
 
 err:
-	CCCI_NORMAL_LOG(0, TAG,
-		"[%s] ver: %u; pro: %u; spt: %u; dpt: %u; len: %u\n",
-		__func__, version, protocol, src_port, dst_port, skb_len);
+	dpmaif_get_android_time(time_str, 50);
+
+	if (version == 4)
+		CCCI_NORMAL_LOG(0, TAG,
+			"%s %s %s %s %pI4->%pI4, %u->%u, ipid: 0x%04X, len: %u\n",
+			time_str, is_rx ? "[RX]" : "[TX]", ip_ver, prot_str,
+			&iph->saddr, &iph->daddr, src_port, dst_port, ntohs(iph->id), skb_len);
+	else if (version == 6)
+		CCCI_NORMAL_LOG(0, TAG,
+			"%s %s %s %s %pI6->%pI6, %u->%u, len: %u\n",
+			time_str, is_rx ? "[RX]" : "[TX]", ip_ver, prot_str,
+			&ip6h->saddr, &ip6h->daddr, src_port, dst_port, skb_len);
+	else
+		CCCI_ERROR_LOG(0, TAG,
+			"[%s] %s error: invalid ip version: %u.\n",
+			__func__, is_rx ? "[RX]" : "[TX]", version);
 }
 
 static void tx_force_md_assert(char buf[])
@@ -502,7 +548,7 @@ gro_too_much_skb:
 		CCCI_NOTICE_LOG(0, TAG,
 			"DPMA_MD wakeup source:(%d/%d)\n",
 			rxq->index, rxq->cur_chn_idx);
-		dpmaif_handle_wakeup_skb(skb0);
+		dpmaif_handle_wakeup_skb(1, skb0);
 	}
 
 	if (g_debug_flags & DEBUG_RX_DONE_SKB) {
@@ -815,57 +861,6 @@ static inline int dpmaif_rxq_set_frg_to_skb(struct dpmaif_rx_queue *rxq,
 	return 0;
 }
 
-static inline void dpmaif_rxq_handle_skb_wakeup(struct dpmaif_rx_queue *rxq,
-		struct sk_buff *skb)
-{
-	struct iphdr *iph = NULL;
-	struct ipv6hdr *ip6h = NULL;
-	struct tcphdr *tcph = NULL;
-	struct udphdr *udph = NULL;
-	int ip_offset = 0;
-	u32 version  = 0;
-	u32 protocol = 0;
-	u32 src_port = 0;
-	u32 dst_port = 0;
-	u32 skb_len  = 0;
-
-	if (!skb || !(skb->data))
-		goto err;
-
-	iph = (struct iphdr *)skb->data;
-	ip6h = (struct ipv6hdr *)skb->data;
-
-	skb_len = skb->len;
-	version = iph->version;
-
-	if (version == 4) {
-		protocol = iph->protocol;
-		ip_offset = (iph->ihl << 2);
-
-	} else if (version == 6) {
-		protocol = ip6h->nexthdr;
-		ip_offset = 40;
-
-	} else
-		goto err;
-
-	if (protocol == IPPROTO_TCP) {
-		tcph = (struct tcphdr *)((void *)iph + ip_offset);
-		src_port = ntohs(tcph->source);
-		dst_port = ntohs(tcph->dest);
-
-	} else if (protocol == IPPROTO_UDP) {
-		udph = (struct udphdr *)((void *)iph + ip_offset);
-		src_port = ntohs(udph->source);
-		dst_port = ntohs(udph->dest);
-
-	}
-
-err:
-	CCCI_NORMAL_LOG(0, TAG, "[%s] ver: %u; pro: %u; spt: %u; dpt: %u; len: %u\n",
-		__func__, version, protocol, src_port, dst_port, skb_len);
-}
-
 static inline void dpmaif_rxq_add_skb_to_rx_push_thread(struct dpmaif_rx_queue *rxq)
 {
 	struct dpmaif_bat_skb *cur_skb_info =
@@ -882,7 +877,7 @@ static inline void dpmaif_rxq_add_skb_to_rx_push_thread(struct dpmaif_rx_queue *
 			"[%s] DPMA_MD wakeup source:(%d/%d)\n",
 			__func__, rxq->index, rxq->cur_chn_idx);
 
-		dpmaif_rxq_handle_skb_wakeup(rxq, cur_skb_info->skb);
+		dpmaif_handle_wakeup_skb(1, cur_skb_info->skb);
 	}
 
 	if (g_debug_flags & DEBUG_RX_DONE_SKB) {
@@ -1711,7 +1706,7 @@ static inline unsigned int dpmaif_txq_release_buffer(struct dpmaif_tx_queue *txq
 					CCCI_NORMAL_LOG(0, TAG,
 						"[%s] DPMA_MD wakeup source: txq%d.\n",
 						__func__, txq->index);
-					dpmaif_handle_wakeup_skb(cur_drb_skb->skb);
+					dpmaif_handle_wakeup_skb(0, cur_drb_skb->skb);
 				}
 
 				dev_kfree_skb_any(cur_drb_skb->skb);
