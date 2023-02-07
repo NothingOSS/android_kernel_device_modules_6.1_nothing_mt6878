@@ -1809,6 +1809,12 @@ static unsigned int find_turn_point(struct cluster_data *c1,
 	return turn_point;
 }
 
+#if IS_ENABLED(CONFIG_64BIT)
+#define em_scale_power(p) ((p)*1000)
+#else
+#define em_scale_power(p) (p)
+#endif
+
 static int ppm_data_init(struct cluster_data *cluster)
 {
 	struct cpufreq_policy *policy;
@@ -1844,7 +1850,7 @@ static int ppm_data_init(struct cluster_data *cluster)
 
 	for (i = 0; i < opp_nr; i++) {
 		ps = &pd->table[opp_nr-1-i];
-		//ppm_tbl[i].power = em_scale_power(ps->power);
+		ppm_tbl[i].power = em_scale_power(ps->power);
 		ppm_tbl[i].freq = ps->frequency;
 		ppm_tbl[i].leakage = mtk_get_leakage(first_cpu, i, NORMAL_TEMP);
 		ppm_tbl[i].thermal_leakage = mtk_get_leakage(first_cpu, i, THERMAL_TEMP);
