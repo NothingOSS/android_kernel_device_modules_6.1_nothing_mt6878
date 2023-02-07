@@ -57,7 +57,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 	u32 i, mbox_id, recv_opt, pin_name_size, cnt_elems;
 
 	// Get MBOX num
-	of_property_read_u32(pdev->dev.of_node, "mbox_count",
+	of_property_read_u32(pdev->dev.of_node, "mbox-count",
 			&gpueb_mboxdev.count);
 	if (!gpueb_mboxdev.count) {
 		gpueb_pr_debug("mbox count not found\n");
@@ -65,7 +65,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 	}
 
 	// Get MBOX size
-	of_property_read_u32(pdev->dev.of_node, "mbox_size",
+	of_property_read_u32(pdev->dev.of_node, "mbox-size",
 			&g_mbox_size);
 	if (g_mbox_size == 0) {
 		gpueb_pr_debug("mbox size not found\n");
@@ -73,7 +73,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 	}
 
 	// Get SLOT size
-	of_property_read_u32(pdev->dev.of_node, "slot_size",
+	of_property_read_u32(pdev->dev.of_node, "slot-size",
 			&g_slot_size);
 	if (g_slot_size == 0) {
 		gpueb_pr_debug("slot size not found\n");
@@ -81,17 +81,17 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 	}
 
 	// Get mbox for timesync
-	of_property_read_u32(pdev->dev.of_node, "ts_mbox",
+	of_property_read_u32(pdev->dev.of_node, "ts-mbox",
 			&g_ts_mbox);
 	if (g_ts_mbox > gpueb_mboxdev.count) {
-		gpueb_pr_debug("ts_mbox(%d) > mbox_count(%d)\n",
+		gpueb_pr_debug("ts-mbox(%d) > mbox-count(%d)\n",
 			g_ts_mbox, gpueb_mboxdev.count);
 		return false;
 	}
 
 	// Get send PIN num
 	cnt_elems = of_property_count_u32_elems(
-			pdev->dev.of_node, "send_table");
+			pdev->dev.of_node, "send-table");
 	if (cnt_elems <= 0) {
 		gpueb_pr_debug("send table not found\n");
 		return false;
@@ -100,7 +100,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 
 	// Get recv PIN num
 	cnt_elems = of_property_count_u32_elems(
-			pdev->dev.of_node, "recv_table");
+			pdev->dev.of_node, "recv-table");
 	if (cnt_elems <= 0) {
 		gpueb_pr_debug("recv table not found\n");
 		return false;
@@ -109,11 +109,11 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 
 	// Get send PIN name
 	ret = of_property_read_string_array(pdev->dev.of_node,
-			"send_name_table",
+			"send-name-table",
 			gpueb_mbox_pin_send_name,
 			gpueb_mboxdev.send_count);
 	if (ret < 0) {
-		gpueb_pr_debug("Could not find send_name_table in dts\n");
+		gpueb_pr_debug("Could not find send-name-table in dts\n");
 		return false;
 	}
 
@@ -126,17 +126,17 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 	}
 
 	for (i = 0; i < gpueb_mboxdev.send_count; i++) {
-		gpueb_pr_debug("send_name_table[%d] = %s\n",
+		gpueb_pr_debug("send-name-table[%d] = %s\n",
 				i, gpueb_mbox_pin_send_name[i]);
 	}
 
 	// Get recv PIN name
 	ret = of_property_read_string_array(pdev->dev.of_node,
-			"recv_name_table",
+			"recv-name-table",
 			gpueb_mbox_pin_recv_name,
 			gpueb_mboxdev.recv_count);
 	if (ret < 0) {
-		gpueb_pr_debug("Could not find recv_name_table in dts\n");
+		gpueb_pr_debug("Could not find recv-name-table in dts\n");
 		return false;
 	}
 
@@ -149,7 +149,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 	}
 
 	for (i = 0; i < gpueb_mboxdev.recv_count; i++) {
-		gpueb_pr_debug("recv_name_table[%d] = %s\n",
+		gpueb_pr_debug("recv-name-table[%d] = %s\n",
 				i, gpueb_mbox_pin_recv_name[i]);
 	}
 
@@ -175,7 +175,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 	gpueb_mbox_pin_send = gpueb_mboxdev.pin_send_table;
 	for (i = 0; i < gpueb_mboxdev.send_count; i++) {
 		ret = of_property_read_u32_index(pdev->dev.of_node,
-				"send_table",
+				"send-table",
 				i * send_item_num,
 				&gpueb_mbox_pin_send[i].chan_id);
 		if (ret) {
@@ -185,7 +185,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 		gpueb_mbox_pin_send[i].pin_index = gpueb_mbox_pin_send[i].chan_id;
 
 		ret = of_property_read_u32_index(pdev->dev.of_node,
-				"send_table",
+				"send-table",
 				i * send_item_num + 1,
 				&mbox_id);
 		if (ret) {
@@ -195,7 +195,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 		// Because mbox and recv_opt is a bit-field
 		gpueb_mbox_pin_send[i].mbox = mbox_id;
 		ret = of_property_read_u32_index(pdev->dev.of_node,
-				"send_table",
+				"send-table",
 				i * send_item_num + 2,
 				&gpueb_mbox_pin_send[i].msg_size);
 		if (ret) {
@@ -212,7 +212,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 	gpueb_mbox_pin_recv = gpueb_mboxdev.pin_recv_table;
 	for (i = 0; i < gpueb_mboxdev.recv_count; ++i) {
 		ret = of_property_read_u32_index(pdev->dev.of_node,
-				"recv_table",
+				"recv-table",
 				i * recv_item_num,
 				&gpueb_mbox_pin_recv[i].chan_id);
 		if (ret) {
@@ -222,7 +222,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 		gpueb_mbox_pin_recv[i].pin_index = gpueb_mbox_pin_recv[i].chan_id;
 
 		ret = of_property_read_u32_index(pdev->dev.of_node,
-				"recv_table",
+				"recv-table",
 				i * recv_item_num + 1,
 				&mbox_id);
 		if (ret) {
@@ -233,7 +233,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 		// Because mbox and recv_opt(0:receive ,1: response) is a bit-field
 		gpueb_mbox_pin_recv[i].mbox = mbox_id;
 		ret = of_property_read_u32_index(pdev->dev.of_node,
-				"recv_table",
+				"recv-table",
 				i * recv_item_num + 2,
 				&gpueb_mbox_pin_recv[i].msg_size);
 		if (ret) {
@@ -241,7 +241,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 			return false;
 		}
 		ret = of_property_read_u32_index(pdev->dev.of_node,
-				"recv_table",
+				"recv-table",
 				i * recv_item_num + 3,
 				&recv_opt);
 		if (ret) {

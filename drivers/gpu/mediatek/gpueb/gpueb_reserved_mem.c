@@ -162,21 +162,21 @@ int gpueb_reserved_mem_init(struct platform_device *pdev)
 	// Set reserved memory table
 	gpueb_mem_num = of_property_count_u32_elems(
 			pdev->dev.of_node,
-			"gpueb_mem_table")
+			"gpueb-mem-table")
 			/ MEMORY_TBL_ELEM_NUM;
 	if (gpueb_mem_num <= 0) {
-		gpueb_pr_debug("@%s: gpueb_mem_table not found\n",
+		gpueb_pr_debug("@%s: gpueb-mem-table not found\n",
 			__func__);
 		gpueb_mem_num = 0;
 	}
 
 	// Get reserved mblock name
 	ret = of_property_read_string_array(pdev->dev.of_node,
-			"gpueb_mem_name_table",
+			"gpueb-mem-name-table",
 			gpueb_reserve_mblock_ary_name,
 			gpueb_mem_num);
 	if (ret < 0) {
-		gpueb_pr_debug("@%s: gpueb_mem_name_table not found\n", __func__);
+		gpueb_pr_debug("@%s: gpueb-mem-name-table not found\n", __func__);
 		return -1;
 	}
 
@@ -190,7 +190,7 @@ int gpueb_reserved_mem_init(struct platform_device *pdev)
 	for (i = 0; i < gpueb_mem_num; i++) {
 		// Get reserved block's ID
 		ret = of_property_read_u32_index(pdev->dev.of_node,
-				"gpueb_mem_table",
+				"gpueb-mem-table",
 				i * MEMORY_TBL_ELEM_NUM,
 				&m_idx);
 		if (ret) {
@@ -201,7 +201,7 @@ int gpueb_reserved_mem_init(struct platform_device *pdev)
 
 		// Get reserved block's size
 		ret = of_property_read_u32_index(pdev->dev.of_node,
-				"gpueb_mem_table",
+				"gpueb-mem-table",
 				(i * MEMORY_TBL_ELEM_NUM) + 1,
 				&m_size);
 		if (ret) {

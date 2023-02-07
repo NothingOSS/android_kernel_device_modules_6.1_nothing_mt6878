@@ -1607,7 +1607,7 @@ static int gpufreq_shared_memory_init(void)
 
 	/* init gpufreq shared memory from gpueb shared memory */
 	of_property_read_u32_index(of_gpueb,
-		"gpueb_mem_table", GPUFREQ_MEM_TABLE_IDX, &gpufreq_mem_size);
+		"gpueb-mem-table", GPUFREQ_MEM_TABLE_IDX, &gpufreq_mem_size);
 	if (unlikely(!gpufreq_mem_size)) {
 		GPUFREQ_LOGE("fail to get gpufreq reserved memory size");
 		ret = GPUFREQ_ENOENT;
