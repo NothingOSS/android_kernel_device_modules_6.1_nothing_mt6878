@@ -128,7 +128,7 @@ static int __init sspm_device_probe(struct platform_device *pdev)
 		return -1;
 
 	ret = of_property_read_u32(pdev->dev.of_node,
-		"mediatek,fake_sspm", &fake_sspm);
+		"mediatek,fake-sspm", &fake_sspm);
 
 	if (!ret) {
 		pr_info("[SSPM] It's fake probe\n");
