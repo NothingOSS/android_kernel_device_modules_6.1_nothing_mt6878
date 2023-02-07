@@ -550,7 +550,7 @@ static int emimpu_probe(struct platform_device *pdev)
 
 //clear md start
 	size = of_property_count_elems_of_size(emimpu_node,
-		"clear_md", sizeof(char));
+		"clear-md", sizeof(char));
 	if (size <= 0) {
 		dev_err(&pdev->dev, "No clear_md\n");
 		return -ENXIO;
@@ -562,7 +562,7 @@ static int emimpu_probe(struct platform_device *pdev)
 
 	mpu->clear_md_reg_cnt = size / sizeof(struct reg_info_t);
 	size >>= 2;
-	ret = of_property_read_u32_array(emimpu_node, "clear_md",
+	ret = of_property_read_u32_array(emimpu_node, "clear-md",
 		(unsigned int *)(mpu->clear_md_reg), size);
 	if (ret) {
 		dev_err(&pdev->dev, "No clear_md\n");
@@ -571,7 +571,7 @@ static int emimpu_probe(struct platform_device *pdev)
 //clear md end
 //clear hp start
 	size = of_property_count_elems_of_size(emimpu_node,
-		"clear_hp", sizeof(char));
+		"clear-hp", sizeof(char));
 	if (size <= 0) {
 		dev_err(&pdev->dev, "No clear_hp\n");
 		return -ENXIO;
@@ -583,7 +583,7 @@ static int emimpu_probe(struct platform_device *pdev)
 
 	mpu->clear_hp_reg_cnt = size / sizeof(struct reg_info_t);
 	size >>= 2;
-	ret = of_property_read_u32_array(emimpu_node, "clear_hp",
+	ret = of_property_read_u32_array(emimpu_node, "clear-hp",
 		(unsigned int *)(mpu->clear_hp_reg), size);
 	if (ret) {
 		dev_err(&pdev->dev, "No clear_hp\n");

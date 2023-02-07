@@ -1259,30 +1259,30 @@ static int emicen_probe(struct platform_device *pdev)
 		cen->emi_chn_base[i] = of_iomap(emichn_node, i);
 
 	ret = of_property_read_u32(emicen_node,
-		"a2d_disph", &(cen->disph));
+		"a2d-disph", &(cen->disph));
 	if (ret) {
-		dev_info(&pdev->dev, "No a2d_disph\n");
+		dev_info(&pdev->dev, "No a2d-disph\n");
 		cen->disph = MTK_EMI_DISPATCH;
 	}
 
 	ret = of_property_read_u32(emicen_node,
-		"a2d_hash", &(cen->hash));
+		"a2d-hash", &(cen->hash));
 	if (ret) {
-		dev_info(&pdev->dev, "No a2d_hash\n");
+		dev_info(&pdev->dev, "No a2d-hash\n");
 		cen->hash = MTK_EMI_HASH;
 	}
 
 	ret = of_property_read_u32_array(emicen_node,
-		"a2d_conf_offset", emi_a2d_con_offset,
+		"a2d-conf-offset", emi_a2d_con_offset,
 		ARRAY_SIZE(emi_a2d_con_offset));
 	if (ret)
-		dev_info(&pdev->dev, "No a2d_conf_offset\n");
+		dev_info(&pdev->dev, "No a2d-conf-offset\n");
 
 	ret = of_property_read_u32_array(emicen_node,
-		"a2d_chn_conf_offset", emi_a2d_chn_con_offset,
+		"a2d-chn-conf-offset", emi_a2d_chn_con_offset,
 		ARRAY_SIZE(emi_a2d_chn_con_offset));
 	if (ret)
-		dev_info(&pdev->dev, "No a2d_chn_conf_offset\n");
+		dev_info(&pdev->dev, "No a2d-chn-conf-offset\n");
 
 	if (cen->ver == 1)
 		prepare_a2d_v1(cen);
@@ -1302,16 +1302,16 @@ static int emicen_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "rk_size%d(0x%llx)\n",
 			i, cen->rk_size[i]);
 
-	dev_info(&pdev->dev, "a2d_disph %d\n", cen->disph);
+	dev_info(&pdev->dev, "a2d-disph %d\n", cen->disph);
 
-	dev_info(&pdev->dev, "a2d_hash %d\n", cen->hash);
+	dev_info(&pdev->dev, "a2d-hash %d\n", cen->hash);
 
 	for (i = 0; i < ARRAY_SIZE(emi_a2d_con_offset); i++)
-		dev_info(&pdev->dev, "emi_a2d_con_offset[%d] %d\n",
+		dev_info(&pdev->dev, "emi-a2d-con-offset[%d] %d\n",
 			i, emi_a2d_con_offset[i]);
 
 	for (i = 0; i < ARRAY_SIZE(emi_a2d_chn_con_offset); i++)
-		dev_info(&pdev->dev, "emi_a2d_chn_con_offset[%d] %d\n",
+		dev_info(&pdev->dev, "emi-a2d-chn-con-offset[%d] %d\n",
 			i, emi_a2d_chn_con_offset[i]);
 
 	return 0;

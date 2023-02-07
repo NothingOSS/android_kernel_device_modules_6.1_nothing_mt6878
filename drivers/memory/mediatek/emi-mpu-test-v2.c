@@ -244,25 +244,25 @@ static __init int emimputest_init(void)
 		return -ENOMEM;
 
 	ret = of_property_read_u32(node,
-		"sr_cnt", &(mpu_test->sr_cnt));
+		"sr-cnt", &(mpu_test->sr_cnt));
 	if (ret) {
-		pr_info("emimputest: no sr_cnt\n");
+		pr_info("emimputest: no sr-cnt\n");
 		ret = -ENXIO;
 		goto free_emi_mpu_test;
 	}
 
 	ret = of_property_read_u32(node,
-		"aid_cnt", &(mpu_test->aid_cnt));
+		"aid-cnt", &(mpu_test->aid_cnt));
 	if (ret) {
-		pr_info("emimputest: no aid_cnt\n");
+		pr_info("emimputest: no aid-cnt\n");
 		ret = -ENXIO;
 		goto free_emi_mpu_test;
 	}
 
 	ret = of_property_read_u32(node,
-		"aid_num_per_set", &(mpu_test->aid_num_per_set));
+		"aid-num-per-set", &(mpu_test->aid_num_per_set));
 	if (ret) {
-		pr_info("emimputest: no aid_num_per_set\n");
+		pr_info("emimputest: no aid-num-per-set\n");
 		ret = -ENXIO;
 		goto free_emi_mpu_test;
 	}

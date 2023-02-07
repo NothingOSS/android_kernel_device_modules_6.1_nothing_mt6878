@@ -199,7 +199,7 @@ static int emislb_probe(struct platform_device *pdev)
 
 	mpu_base_clear = 0;
 	ret = of_property_read_u32(emislb_node,
-		"mpu_base_clear", &mpu_base_clear);
+		"mpu-base-clear", &mpu_base_clear);
 	if (!ret)
 		dev_info(&pdev->dev, "Use smc to clear vio\n");
 
