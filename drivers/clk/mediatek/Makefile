@@ -30,7 +30,7 @@ obj-$(CONFIG_COMMON_CLK_MT6853_MMSYS_CONFIG) += clk-mt6853-mm.o
 obj-$(CONFIG_COMMON_CLK_MT6853_SCP_ADSP) += clk-mt6853-scp_par.o
 obj-$(CONFIG_COMMON_CLK_MT6853_VDEC_GCON) += clk-mt6853-vdec.o
 obj-$(CONFIG_COMMON_CLK_MT6853_VENC_GCON) += clk-mt6853-venc.o
-ifneq ($(wildcard $(srctree)/$(src)/clk-mt6985.c),)
+ifneq ($(wildcard $(srctree)/$(src)/clk-mt6897.c),)
 obj-$(CONFIG_COMMON_CLK_MT6897) += clk-mt6897.o clk-bringup.o
 obj-$(CONFIG_COMMON_CLK_MT6897_ADSP) += clk-mt6897-adsp.o
 obj-$(CONFIG_COMMON_CLK_MT6897_CAM) += clk-mt6897-cam.o
