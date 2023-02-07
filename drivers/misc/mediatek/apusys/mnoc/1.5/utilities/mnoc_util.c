@@ -17,7 +17,7 @@
 
 /* for Kernel Native SMC API */
 #include <linux/arm-smccc.h>
-#include <linux/soc/mediatek/mtk_sip_svc.h>
+#include <mtk_sip_svc.h>
 
 
 enum APUSYS_MNOC_SMC_ID {

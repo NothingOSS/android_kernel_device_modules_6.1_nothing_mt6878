@@ -8,7 +8,7 @@
 #define __APUSYS_REVISER_SECURE_H__
 
 #include <linux/arm-smccc.h>
-#include <linux/soc/mediatek/mtk_sip_svc.h>
+#include <mtk_sip_svc.h>
 
 #define APUSYS_SECURE 1
 #define BOUNDARY_ALL_NO_CHANGE (0xFFFFFFFF)

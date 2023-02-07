@@ -3,6 +3,8 @@ ccflags-y += -I$(srctree)/drivers/devfreq/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/soc/mediatek/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/debug/
+# for mtk_sip_svc.h
+ccflags-y += -I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek/
 
 # apusys power driver v2.5
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/include/

@@ -28,6 +28,10 @@ obj-$(CONFIG_MTK_APUSYS_SUPPORT) += apusys.o
 # common include path
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/geniezone/public/
+# for mtk_sip_svc.h
+ccflags-y += -I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek/
+
+ccflags-y += -I$(DEVICE_MODULES_PATH)/include/
 
 # core makefile
 apusys-objs += core/apusys_core.o

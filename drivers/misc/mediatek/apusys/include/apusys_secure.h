@@ -7,7 +7,7 @@
 #define __APUSYS_SECURE_H__
 
 #include <linux/arm-smccc.h>
-#include <linux/soc/mediatek/mtk_sip_svc.h>
+#include <mtk_sip_svc.h>
 
 enum mtk_apusys_kernel_op {
 	MTK_APUSYS_KERNEL_OP_REVISER_SET_BOUNDARY = 0,
