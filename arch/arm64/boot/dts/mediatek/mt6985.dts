@@ -6256,7 +6256,7 @@
 		aov: aov@0 {
 			compatible = "mediatek,aov";
 			status = "okay";
-			op_mode = <1>;
+			op-mode = <1>;
 		};
 
 		hcp: hcp@0 {
