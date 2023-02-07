@@ -528,7 +528,7 @@ int apply_cam_mux_stagger(struct mtk_cam_job *job)
 	int is_dc = is_stagger_dc(job);
 	int raw_id = _get_master_raw_id(ctx->cam->engines.num_raw_devices,
 			job->used_engine);
-	int raw_tg_idx = raw_id + GET_PLAT_V4L2(cammux_id_raw_start);
+	int raw_tg_idx = raw_to_tg_idx(raw_id);
 	int first_tag_idx, second_tag_idx, last_tag_idx;
 
 	/**
@@ -743,7 +743,7 @@ int stream_on_otf_stagger(struct mtk_cam_job *job, bool on)
 		else
 			seninf_pad = PAD_SRC_RAW0;
 		pixel_mode = 3;
-		tg_idx = raw_id + GET_PLAT_V4L2(cammux_id_raw_start);
+		tg_idx = raw_to_tg_idx(raw_id);
 		ctx_stream_on_seninf_sensor_hdr(job->src_ctx, on,
 			seninf_pad, pixel_mode, tg_idx);
 		/* exp. switch at first frame */

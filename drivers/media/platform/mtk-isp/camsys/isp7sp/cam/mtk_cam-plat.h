@@ -69,7 +69,6 @@ struct plat_v4l2_data {
 
 	int timestamp_buffer_ofst;
 	int reserved_camsv_dev_id;
-	int cammux_id_raw_start;
 
 	int (*set_meta_stats_info)(int ipi_id, void *addr);
 	int (*set_sv_meta_stats_info)(int ipi_id, void *addr, struct dma_info *info);
@@ -80,6 +79,8 @@ struct plat_v4l2_data {
 };
 
 struct plat_data_hw {
+	u32 camsys_axi_mux;
+	int cammux_id_raw_start;
 };
 
 struct camsys_platform_data {
@@ -96,6 +97,7 @@ void set_platform_data(const struct camsys_platform_data *platform_data);
 	 cur_platform->v4l2->ops(__VA_ARGS__) : -EINVAL)
 
 #define GET_PLAT_V4L2(member) (cur_platform->v4l2->member)
+#define GET_PLAT_HW(member) (cur_platform->hw->member)
 
 /* platform data list */
 #ifdef CAMSYS_ISP7SP_MT6897

@@ -45,8 +45,101 @@
 
 static int reset_msgfifo(struct mtk_raw_device *dev);
 
+#define FIFO_THRESHOLD(FIFO_SIZE, HEIGHT_RATIO, LOW_RATIO) \
+	(((FIFO_SIZE * HEIGHT_RATIO) & 0xFFF) << 16 | \
+	((FIFO_SIZE * LOW_RATIO) & 0xFFF))
+
+static void set_fifo_threshold(void __iomem *dma_base, unsigned int fifo_size)
+{
+	writel_relaxed((0x10 << 24) | fifo_size,
+			dma_base + DMA_OFFSET_CON0);
+	writel_relaxed((0x1 << 28) | FIFO_THRESHOLD(fifo_size, 2/10, 1/10),
+			dma_base + DMA_OFFSET_CON1);
+	writel_relaxed((0x1 << 28) | FIFO_THRESHOLD(fifo_size, 4/10, 3/10),
+			dma_base + DMA_OFFSET_CON2);
+	writel_relaxed((0x1 << 31) | FIFO_THRESHOLD(fifo_size, 6/10, 5/10),
+			dma_base + DMA_OFFSET_CON3);
+	writel_relaxed((0x1 << 31) | FIFO_THRESHOLD(fifo_size, 1/10, 0),
+			dma_base + DMA_OFFSET_CON4);
+}
+
+static struct mtk_yuv_device *get_yuv_dev(struct mtk_raw_device *raw_dev)
+{
+	struct device *dev;
+	struct mtk_cam_device *cam = raw_dev->cam;
+
+	dev = cam->engines.yuv_devs[raw_dev->id];
+
+	return dev_get_drvdata(dev);
+}
+
+static void init_camsys_settings(struct mtk_raw_device *dev, bool is_srt)
+{
+	struct mtk_cam_device *cam_dev = dev->cam;
+	struct mtk_yuv_device *yuv_dev = get_yuv_dev(dev);
+	unsigned int reg_raw_urgent, reg_yuv_urgent;
+	unsigned int raw_urgent, yuv_urgent;
+	u32 cam_axi_mux;
+
+	//set axi mux
+	cam_axi_mux = GET_PLAT_HW(camsys_axi_mux);
+	writel_relaxed(cam_axi_mux, cam_dev->base + REG_CAMSYS_AXI_MUX);
+
+	//Set CQI sram size
+	set_fifo_threshold(dev->base + REG_CQI_R1_BASE, 64);
+	set_fifo_threshold(dev->base + REG_CQI_R2_BASE, 64);
+	set_fifo_threshold(dev->base + REG_CQI_R3_BASE, 64);
+	set_fifo_threshold(dev->base + REG_CQI_R4_BASE, 64);
+
+	// TODO: move HALT1,2,13 to camsv
+	writel_relaxed(HALT1_EN, cam_dev->base + REG_HALT1_EN);
+	writel_relaxed(HALT2_EN, cam_dev->base + REG_HALT2_EN);
+	writel_relaxed(HALT13_EN, cam_dev->base + REG_HALT13_EN);
+
+	switch (dev->id) {
+	case RAW_A:
+		reg_raw_urgent = REG_HALT5_EN;
+		reg_yuv_urgent = REG_HALT6_EN;
+		raw_urgent = HALT5_EN;
+		yuv_urgent = HALT6_EN;
+		break;
+	case RAW_B:
+		reg_raw_urgent = REG_HALT7_EN;
+		reg_yuv_urgent = REG_HALT8_EN;
+		raw_urgent = HALT7_EN;
+		yuv_urgent = HALT8_EN;
+		break;
+	case RAW_C:
+		reg_raw_urgent = REG_HALT9_EN;
+		reg_yuv_urgent = REG_HALT10_EN;
+		raw_urgent = HALT9_EN;
+		yuv_urgent = HALT10_EN;
+		break;
+	default:
+		dev_info(dev->dev, "%s: unknown raw id %d\n", __func__, dev->id);
+		return;
+	}
+
+	if (is_srt) {
+		writel_relaxed(0x0, cam_dev->base + reg_raw_urgent);
+		writel_relaxed(0x0, cam_dev->base + reg_yuv_urgent);
+		mtk_smi_larb_ultra_dis(&dev->larb_pdev->dev, true);
+		mtk_smi_larb_ultra_dis(&yuv_dev->larb_pdev->dev, true);
+	} else {
+		writel_relaxed(raw_urgent, cam_dev->base + reg_raw_urgent);
+		writel_relaxed(yuv_urgent, cam_dev->base + reg_yuv_urgent);
+		mtk_smi_larb_ultra_dis(&dev->larb_pdev->dev, false);
+		mtk_smi_larb_ultra_dis(&yuv_dev->larb_pdev->dev, false);
+	}
+
+	wmb(); /* TBC */
+	dev_info(dev->dev, "%s: is srt:%d axi_mux:0x%x\n", __func__, is_srt,
+		readl_relaxed(cam_dev->base + REG_CAMSYS_AXI_MUX));
+}
+
 void initialize(struct mtk_raw_device *dev, int is_slave)
 {
+	bool is_srt = false; /* TODO(AY): move to args */
 	u32 val;
 
 	val = readl_relaxed(dev->base + REG_CAMCQ_CQ_EN);
@@ -81,6 +174,11 @@ void initialize(struct mtk_raw_device *dev, int is_slave)
 	atomic_set(&dev->vf_en, 0);
 	dev->stagger_en = 0;
 	reset_msgfifo(dev);
+
+	if (0)
+		init_camsys_settings(dev, is_srt);
+	else
+		pr_info("%s: TODO: should check setting.\n", __func__);
 
 	engine_fsm_reset(&dev->fsm);
 	dev->cq_ref = NULL;
@@ -1736,3 +1834,12 @@ struct platform_driver mtk_cam_rms_driver = {
 		.pm     = &mtk_rms_pm_ops,
 	}
 };
+
+
+int raw_to_tg_idx(int raw_id)
+{
+	int cammux_id_raw_start = GET_PLAT_HW(cammux_id_raw_start);
+
+	return raw_id + cammux_id_raw_start;
+}
+

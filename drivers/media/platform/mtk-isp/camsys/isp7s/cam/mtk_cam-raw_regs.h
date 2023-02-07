@@ -7048,4 +7048,48 @@ static inline u32 _set_field(u32 *val, int pos, int width, u32 fval)
 #define F_CAMYUVDMATOP_LOW_LATENCY_CNT_UP_TIMES_DRZS4NO_R1_POS       0
 #define F_CAMYUVDMATOP_LOW_LATENCY_CNT_UP_TIMES_DRZS4NO_R1_WIDTH     16
 
+
+/* manually added */
+#define DMA_OFFSET_CON0        0x020
+#define DMA_OFFSET_CON1        0x024
+#define DMA_OFFSET_CON2        0x028
+#define DMA_OFFSET_CON3        0x02c
+#define DMA_OFFSET_CON4        0x030
+
+#define REG_CQI_R1_BASE        0x4100
+#define REG_CQI_R2_BASE        0x4170
+#define REG_CQI_R3_BASE        0x41e0
+#define REG_CQI_R4_BASE        0x4250
+
+#define REG_CAMSYS_AXI_MUX			0x0334
+
+#define REG_HALT1_EN					0x00c4
+#define REG_HALT2_EN					0x00c8
+#define REG_HALT3_EN					0x00cc
+#define REG_HALT4_EN					0x00d0
+#define REG_HALT5_EN					0x00d4
+#define REG_HALT6_EN					0x00d8
+#define REG_HALT7_EN					0x00dc
+#define REG_HALT8_EN					0x00e0
+#define REG_HALT9_EN					0x00e4
+#define REG_HALT10_EN					0x00e8
+#define REG_HALT11_EN					0x00ec
+#define REG_HALT12_EN					0x00f0
+#define REG_HALT13_EN					0x00f4
+
+/* camsv_a/b */
+#define HALT1_EN		0x3
+#define HALT2_EN		0x3
+/* raw_a/yuv_a */
+#define HALT5_EN		0xF92
+#define HALT6_EN		0x6F
+/* raw_b/yuv_b */
+#define HALT7_EN		0xF92
+#define HALT8_EN		0x6F
+/* raw_c/yuv_c */
+#define HALT9_EN		0xF92
+#define HALT10_EN		0x6F
+/* camsv_c/d/e/f */
+#define HALT13_EN		0xFF
+
 #endif	/* _MTK_CAM_RAW_REGS_H */

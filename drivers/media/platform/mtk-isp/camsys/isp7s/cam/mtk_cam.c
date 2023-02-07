@@ -1814,7 +1814,7 @@ int ctx_stream_on_seninf_sensor(struct mtk_cam_ctx *ctx, int enable)
 	if (ctx->hw_raw) {
 		raw_dev = dev_get_drvdata(ctx->hw_raw);
 		seninf_pad = PAD_SRC_RAW0;
-		tg_idx = 34 + raw_dev->id; // PipeIDtoTGIDX(raw_dev->id)
+		tg_idx = raw_to_tg_idx(raw_dev->id);
 
 		mtk_cam_seninf_set_camtg(seninf, seninf_pad, tg_idx);
 		mtk_cam_seninf_set_pixelmode(seninf, seninf_pad, 3);

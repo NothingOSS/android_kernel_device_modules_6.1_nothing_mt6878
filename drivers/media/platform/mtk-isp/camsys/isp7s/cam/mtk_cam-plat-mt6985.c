@@ -235,7 +235,6 @@ static const struct plat_v4l2_data mt6985_v4l2_data = {
 					  timestamp),
 
 	.reserved_camsv_dev_id = 3,
-	.cammux_id_raw_start = 34,
 
 	.set_meta_stats_info = set_meta_stats_info,
 	.set_sv_meta_stats_info = set_sv_meta_stats_info,
@@ -243,8 +242,13 @@ static const struct plat_v4l2_data mt6985_v4l2_data = {
 	.get_mraw_stats_cfg_param = get_mraw_stats_cfg_param,
 };
 
+static const struct plat_data_hw mt6985_hw_data = {
+	.camsys_axi_mux = 0x3,
+	.cammux_id_raw_start = 34,
+};
+
 struct camsys_platform_data mt6985_data = {
 	.platform = "mt6985",
 	.v4l2 = &mt6985_v4l2_data,
-	.hw = NULL,
+	.hw = &mt6985_hw_data,
 };

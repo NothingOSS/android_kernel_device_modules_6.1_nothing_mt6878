@@ -179,4 +179,6 @@ static inline int is_subsample_en(struct mtk_raw_device *dev)
 	return dev->sub_sensor_ctrl_en;
 }
 
+int raw_to_tg_idx(int raw_id);
+
 #endif /*__MTK_CAM_RAW_H*/
