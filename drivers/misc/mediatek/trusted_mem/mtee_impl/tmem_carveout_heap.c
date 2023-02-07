@@ -283,12 +283,11 @@ static void set_memory_region_attrs(enum MTEE_MCHUNKS_ID mchunk_id,
 	ffa_args->attrs = mem_region_attrs;
 }
 
-int tmem_ffa_page_alloc(enum MTEE_MCHUNKS_ID mchunk_id,
-					    struct sg_table *sg_tbl,
-					    u64 *handle)
+int tmem_ffa_page_alloc(struct sg_table *sg_tbl, u64 *handle)
 {
 	struct ffa_mem_ops_args ffa_args;
 	struct ffa_mem_region_attributes mem_region_attrs[ATTRS_NUM];
+	enum MTEE_MCHUNKS_ID mchunk_id = MTEE_MCHUNKS_PROT;
 	int ret;
 
 	if (tmem_ffa_dev == NULL) {

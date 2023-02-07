@@ -324,9 +324,6 @@ int ssheap_free_non_contig(struct ssheap_buf_info *info)
 	if (!info)
 		return -EINVAL;
 
-	if (is_ffa_enabled())
-		tmem_ffa_page_free(info->ffa_handle);
-
 	freed_size = free_blocks(info);
 
 	if (info->pmm_msg_page)
@@ -501,9 +498,6 @@ retry:
 	}
 
 	dma_sync_sgtable_for_cpu(ssheap_dev, info->table, DMA_BIDIRECTIONAL);
-
-	if (is_ffa_enabled())
-		tmem_ffa_page_alloc(MTEE_MCUHNKS_INVALID, info->table, &info->ffa_handle);
 
 	return info;
 out_err:

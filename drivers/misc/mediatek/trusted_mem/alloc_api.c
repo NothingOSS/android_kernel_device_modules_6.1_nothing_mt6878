@@ -17,6 +17,8 @@
 #include "private/tmem_error.h"
 #include "private/tmem_utils.h"
 #include "public/trusted_mem_api.h"
+#include "public/mtee_regions.h"
+#include "mtee_impl/tmem_carveout_heap.h"
 
 static inline void trusted_mem_type_enum_validate(void)
 {
@@ -218,3 +220,19 @@ bool trusted_mem_is_ffa_enabled(void)
 }
 EXPORT_SYMBOL(trusted_mem_is_ffa_enabled);
 
+int trusted_mem_page_based_alloc(enum TRUSTED_MEM_REQ_TYPE req_mem_type,
+		struct sg_table *sg_tbl, u64 *handle)
+{
+	if (is_ffa_enabled())
+		return tmem_ffa_page_alloc(sg_tbl, handle);
+	return 0;
+}
+EXPORT_SYMBOL(trusted_mem_page_based_alloc);
+
+int trusted_mem_page_based_free(u64 handle)
+{
+	if (is_ffa_enabled())
+		return tmem_ffa_page_free(handle);
+	return 0;
+}
+EXPORT_SYMBOL(trusted_mem_page_based_free);

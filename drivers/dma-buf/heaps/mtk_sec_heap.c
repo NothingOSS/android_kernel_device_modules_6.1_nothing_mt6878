@@ -412,6 +412,8 @@ static void tmem_page_free(struct dma_buf *dmabuf)
 		return;
 	}
 
+	trusted_mem_page_based_free(buffer->sec_handle);
+
 	ret = page_base_free(sec_heap, buffer);
 	if (ret) {
 		pr_err("%s fail, heap:%u\n", __func__, sec_heap->heap_type);
@@ -1073,6 +1075,7 @@ static struct dma_buf *tmem_page_allocate(struct dma_heap *heap,
 	struct dma_buf *dmabuf;
 	struct mtk_sec_heap_buffer *buffer;
 	struct secure_heap_page *sec_heap = sec_heap_page_get(heap);
+	u64 sec_handle = 0;
 
 	if (!sec_heap) {
 		pr_info("%s, %s can not find secure heap!!\n",
@@ -1093,6 +1096,11 @@ static struct dma_buf *tmem_page_allocate(struct dma_heap *heap,
 	ret = page_base_alloc(sec_heap, buffer, len);
 	if (ret)
 		goto free_buffer;
+
+	trusted_mem_page_based_alloc(sec_heap->tmem_type, &buffer->sg_table, &sec_handle);
+	/* store seucre handle */
+	buffer->sec_handle = sec_handle;
+	pr_info("%s: ret = %d\n", __func__, ret);
 
 	dmabuf = alloc_dmabuf(heap, buffer, &sec_buf_page_ops, fd_flags);
 	if (IS_ERR(dmabuf)) {
