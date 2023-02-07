@@ -2084,6 +2084,59 @@ int mtk_cam_ctx_queue_done_wq(struct mtk_cam_ctx *ctx, struct work_struct *work)
 	return ret;
 }
 
+/* fetch devs & reset unused elements */
+static int fill_devs(struct device **arr_dev, int arr_dev_size,
+		     struct device **arr_eng, int arr_eng_size,
+		     unsigned long mask)
+{
+	int i, cnt;
+
+	cnt = 0;
+	for (i = 0; i < arr_eng_size && mask; i++) {
+
+		if (!(mask & BIT(i)))
+			continue;
+
+		if (cnt >= arr_dev_size)
+			return -1;
+
+		arr_dev[cnt++] = arr_eng[i];
+	}
+
+	if (cnt < arr_dev_size)
+		memset(arr_dev + cnt, 0,
+		       (arr_dev_size - cnt) * sizeof(arr_dev[0]));
+
+	return 0;
+}
+
+int mtk_cam_ctx_fetch_devices(struct mtk_cam_ctx *ctx, unsigned long engines)
+{
+	struct mtk_cam_device *cam = ctx->cam;
+	int ret;
+
+	dev_info(cam->dev, "%s: engines: 0x%lx\n", __func__, engines);
+	ret = fill_devs(ctx->hw_raw, ARRAY_SIZE(ctx->hw_raw),
+			cam->engines.raw_devs,
+			cam->engines.num_raw_devices,
+			bit_map_subset_of(MAP_HW_RAW, engines));
+
+	ret = ret || fill_devs(&ctx->hw_sv, 1,
+			       cam->engines.sv_devs,
+			       cam->engines.num_camsv_devices,
+			       bit_map_subset_of(MAP_HW_CAMSV, engines));
+
+	ret = ret || fill_devs(ctx->hw_mraw, ARRAY_SIZE(ctx->hw_mraw),
+			       cam->engines.mraw_devs,
+			       cam->engines.num_mraw_devices,
+			       bit_map_subset_of(MAP_HW_MRAW, engines));
+
+	if (ret)
+		dev_info(cam->dev, "%s: failed. engines = %lx\n",
+			 __func__, engines);
+	return ret;
+}
+
 static int _dynamic_link_seninf_pipe(struct device *dev,
 				     struct media_entity *seninf, u16 src_pad,
 				     struct media_entity *pipe, u16 sink_pad)

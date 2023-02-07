@@ -208,6 +208,7 @@ static int mtk_cam_job_pack_init(struct mtk_cam_job *job,
 	return ret;
 }
 
+/* TODO(AY): may be removed? */
 static int mtk_cam_select_hw_only_sv(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
@@ -248,12 +249,6 @@ static int mtk_cam_select_hw(struct mtk_cam_job *job)
 	unsigned long available, raw_available, sv_available, mraw_available;
 	unsigned long selected;
 	int i = 0;
-	int raw_idx = -1, mraw_idx;
-	int raw_required =
-		job->req->raw_data[ctx->raw_subdev_idx].ctrl.resource.raw_num;
-	int raw_cnt = 0;
-
-	WARN_ON(!raw_required);
 
 	selected = 0;
 	available = mtk_cam_get_available_engine(cam);
@@ -262,56 +257,90 @@ static int mtk_cam_select_hw(struct mtk_cam_job *job)
 	mraw_available = bit_map_subset_of(MAP_HW_MRAW, available);
 
 	/* todo: more rules */
-	for (i = 0; i < cam->engines.num_raw_devices; i++)
-		if (raw_available & BIT(i)) {
-			selected |= bit_map_bit(MAP_HW_RAW, i);
-			ctx->hw_raw[raw_cnt++] = cam->engines.raw_devs[i];
-			raw_idx = (raw_idx == -1) ? i : raw_idx;
-			if (raw_cnt == raw_required)
-				break;
+	if (ctx->has_raw_subdev) {
+		int raw_required =
+			job->req->raw_data[ctx->raw_subdev_idx].ctrl.resource.raw_num;
+		int raw_cnt = 0;
+
+		if (!raw_required) {
+			dev_info(cam->dev, "%s: no raw_requried\n", __func__);
+			selected = 0;
+			goto SELECT_HW_FAILED;
 		}
 
-	if (raw_cnt != raw_required) {
-		for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++)
-			ctx->hw_raw[i] = NULL;
-		dev_info(cam->dev, "select hw failed\n");
-		return -1;
+		for (i = 0; i < cam->engines.num_raw_devices; i++)
+			if (raw_available & BIT(i)) {
+				selected |= bit_map_bit(MAP_HW_RAW, i);
+
+				raw_cnt++;
+				if (raw_cnt == raw_required)
+					break;
+			}
+
+		if (raw_cnt != raw_required) {
+			dev_info(cam->dev, "select hw failed at raw\n");
+			selected = 0;
+			goto SELECT_HW_FAILED;
+		}
 	}
 
 	/* camsv */
-	ctx->hw_sv = NULL;
-	if (ctx->hw_raw[0]) {
+	/* if has raw */
+	if (selected) {
+		int raw_idx = _get_master_raw_id(selected);
+
 		dev_info(cam->dev,
 			 "select sv hw start (raw_idx:%d/sv_available:0x%lx)\n",
 			 raw_idx, sv_available);
-		if (sv_available & BIT(raw_idx)) {
-			selected |= bit_map_bit(MAP_HW_CAMSV, raw_idx);
-			ctx->hw_sv = cam->engines.sv_devs[raw_idx];
-			dev_info(cam->dev,
-				 "select sv hw end (raw_idx:%d/sv_available:0x%lx/selected:0x%lx)\n",
-				raw_idx, sv_available, selected);
-		} else {
+
+		/* if failed to find corresponding camsv */
+		if (!(sv_available & BIT(raw_idx))) {
 			dev_info(cam->dev, "select sv hw failed(raw_idx:%d/sv_available:0x%lx)\n",
 				raw_idx, sv_available);
-			return -1;
+			selected = 0;
+			goto SELECT_HW_FAILED;
 		}
+
+		selected |= bit_map_bit(MAP_HW_CAMSV, raw_idx);
+		dev_info(cam->dev,
+			 "select sv hw end (raw_idx:%d/sv_available:0x%lx/selected:0x%lx)\n",
+			 raw_idx, sv_available, selected);
+	} else {
+		int rsv_id = GET_PLAT_V4L2(reserved_camsv_dev_id);
+
+		if (!(sv_available & BIT(rsv_id))) {
+			dev_info(cam->dev,
+				 "only_sv select hw failed: sv_available 0x%lx rsv_id %d\n",
+				 sv_available, rsv_id);
+			selected = 0;
+			goto SELECT_HW_FAILED;
+		}
+
+		selected |= bit_map_bit(MAP_HW_CAMSV, rsv_id);
 	}
 
 	/* mraw */
-	for (i = 0; i < MAX_MRAW_PIPES_PER_STREAM; i++) {
-		if (i < ctx->num_mraw_subdevs) {
+	for (i =  0; i < ctx->num_mraw_subdevs; i++) {
+		int mraw_idx;
+
+		mraw_idx = ctx->mraw_subdev_idx[i];
+		if (mraw_available & BIT(mraw_idx)) {
+			struct device *dev;
 			struct mtk_mraw_device *mraw_dev;
 
-			mraw_idx = ctx->mraw_subdev_idx[i];
-			if (mraw_available & BIT(mraw_idx)) {
-				selected |= bit_map_bit(MAP_HW_MRAW, mraw_idx);
-				ctx->hw_mraw[i] = cam->engines.mraw_devs[mraw_idx];
-				mraw_dev = dev_get_drvdata(ctx->hw_mraw[i]);
-				mraw_dev->pipeline = &cam->pipelines.mraw[mraw_idx];
-			}
-		} else
-			ctx->hw_mraw[i] = NULL;
+			selected |= bit_map_bit(MAP_HW_MRAW, mraw_idx);
+
+			dev = cam->engines.mraw_devs[mraw_idx];
+			mraw_dev = dev_get_drvdata(dev);
+			mraw_dev->pipeline = &cam->pipelines.mraw[mraw_idx];
+		}
 	}
+
+SELECT_HW_FAILED:
+
+	/* update ctx's hw devs */
+	if (mtk_cam_ctx_fetch_devices(ctx, selected))
+		return 0;
 
 	return selected;
 }

@@ -307,6 +307,8 @@ int mtk_cam_ctx_queue_sensor_worker(struct mtk_cam_ctx *ctx,
 int mtk_cam_ctx_queue_done_wq(struct mtk_cam_ctx *ctx,
 			      struct work_struct *work);
 
+int mtk_cam_ctx_fetch_devices(struct mtk_cam_ctx *ctx, unsigned long engines);
+
 int isp_composer_create_session(struct mtk_cam_ctx *ctx);
 void isp_composer_destroy_session(struct mtk_cam_ctx *ctx);
 
