@@ -114,7 +114,28 @@ apusys-objs += $(REVISER_PLAT)/v_1_0/reviser_reg_v1_0.o
 apusys-objs += $(REVISER_PLAT)/v_rv/reviser_hw_vrv.o
 apusys-objs += $(REVISER_PLAT)/v_rv/reviser_plat_vrv.o
 
+# apummu driver makefile
+APUMMU_ROOT=$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/
+APUMMU_PLAT=apummu/platform
+APUMMU_COMN=apummu/common
 
+ccflags-y += -I$(APUMMU_ROOT)/$(APUMMU_PLAT)
+ccflags-y += -I$(APUMMU_ROOT)/$(APUMMU_COMN)
+
+# apummu boot api
+apusys-objs += $(APUMMU_COMN)/apummu_boot.o
+
+apusys-objs += $(APUMMU_COMN)/apummu_drv.o
+apusys-objs += $(APUMMU_COMN)/apummu_dbg.o
+apusys-objs += $(APUMMU_COMN)/apummu_export.o
+apusys-objs += $(APUMMU_COMN)/apummu_import.o
+apusys-objs += $(APUMMU_COMN)/apummu_mem.o
+apusys-objs += $(APUMMU_COMN)/apummu_remote.o
+apusys-objs += $(APUMMU_COMN)/apummu_remote_cmd.o
+apusys-objs += $(APUMMU_COMN)/apummu_mgt.o
+
+apusys-objs += $(APUMMU_PLAT)/apummu_device.o
+apusys-objs += $(APUMMU_PLAT)/apummu_plat.o
 
 # mnoc makefile
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/mnoc/$(APUSYS_VERSION_MNOC)/common/
@@ -206,9 +227,6 @@ apusys-objs += apusys_rv/apu_deepidle.o
 apusys-objs += apusys_rv/apu_regdump.o
 apusys-objs += apusys_rv/apu_debug.o
 apusys-objs += apusys_rv/apusys_rv_tag.o
-
-# apummu boot api
-apusys-objs += apusys_rv/apummu_boot.o
 
 ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/apusys_rv/2.0/mt6879_plat.c),)
 subdir-ccflags-y += -DMT6879_APUSYS_RV_PLAT_DATA
