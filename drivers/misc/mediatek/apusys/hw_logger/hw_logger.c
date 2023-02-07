@@ -364,6 +364,7 @@ int hw_logger_config_init(struct mtk_apu *apu)
 			lower_32_bits(hw_log_buf_addr);
 		st_logger_init_info->iova_h =
 			upper_32_bits(hw_log_buf_addr);
+		apu->apummu_hwlog_buf_da = hw_log_buf_addr;
 	}
 
 	if (aov_hw_log_buf_addr) {
