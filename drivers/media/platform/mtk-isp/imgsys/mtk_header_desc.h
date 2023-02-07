@@ -311,6 +311,8 @@ struct singlenode_desc_norm {
 	/* Y-16bit */
 #define V4L2_PIX_FMT_MTISP_Y8   v4l2_fourcc('M', 'T', '0', '8')
 	/* Y-8bit */
+#define V4L2_PIX_FMT_MTISP_Y8_2P   v4l2_fourcc('M', 'T', '2', '8')
+	/* Y-8bit, 2 plane */
 #define V4L2_PIX_FMT_MTISP_SBGGRU10  v4l2_fourcc('M', 'b', 'B', 'A')
 	/* Bayer-10bit-Unpacked, (B)(G)(G)(R) */
 #define V4L2_PIX_FMT_MTISP_SGBRGU10  v4l2_fourcc('M', 'b', 'G', 'A')
