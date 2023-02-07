@@ -69,6 +69,7 @@ f include/trace/events/block.h
 f include/trace/events/f2fs.h
 f include/trace/hooks/traps.h
 f include/trace/hooks/ufshcd.h
+f init/main.c
 f kernel/audit.c
 f kernel/fork.c
 f kernel/irq_work.c

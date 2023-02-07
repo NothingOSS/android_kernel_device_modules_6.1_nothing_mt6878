@@ -8,6 +8,7 @@
 #define DF(member, fmt) E_EX(member)
 #define DF_A(member, fmt, total) E_EX(member)
 #define DF_S(member, fmt) E_EX(member)
+#define DF_SA(member, fmt) E_EX(member)
 #define DF_PER_CPU(member, fmt) E_PER_CPU_EX(member)
 enum {
 	#include "desc_def.h"
@@ -23,6 +24,7 @@ enum DESC_DATA_TYPE_SPECIAL {
 	D_SEG_SINGLE_BYTE = 0xabe,
 	D_SINGLE_VALUE = 0xaee,
 	D_PER_CPU_VALUE = 0xaed,
+	D_STRING_ARRAY = 0xabc,
 };
 
 #define FMT_MAX_LEN 128
@@ -30,6 +32,7 @@ struct rrr_desc_data {
 	/* D_SINGLE_VARIABLE	: single;
 	 * D_PER_CPU_VALUE	: per cpu;
 	 * D_SEG_SINGLE_BYTE	: segmented into single byte;
+	 * D_STRING_ARRAY	: string array buf;
 	 * > 0			: array
 	 * == 0			: invalid
 	 */
@@ -68,6 +71,9 @@ struct rrr_desc {
 #undef DF_S
 #define DF_S(member, fmt) \
 	[E_EX(member)] = fmt
+#undef DF_SA
+#define DF_SA(member, fmt) \
+	[E_EX(member)] = fmt
 #undef DF_PER_CPU
 #define DF_PER_CPU(member, fmt) \
 	[E_PER_CPU_EX(member)] = fmt
@@ -92,6 +98,9 @@ static struct last_reboot_reason dummy_var;
 #undef DF_A
 #define DF_A(member, fmt, total) \
 	[E_EX(member)] = DF_C(total, member[0])
+#undef DF_SA
+#define DF_SA(member, fmt) \
+	[E_EX(member)] = DF_C(D_STRING_ARRAY, member)
 #undef DF_S
 #define DF_S(member, fmt) \
 	[E_EX(member)] = DF_C(D_SEG_SINGLE_BYTE, member)

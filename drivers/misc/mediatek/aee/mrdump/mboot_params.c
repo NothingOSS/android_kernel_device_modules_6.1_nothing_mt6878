@@ -44,6 +44,8 @@ static int mtk_cpu_num;
 #define ARRAY_LEN_4 4
 #define ARRAY_LEN_8 8
 
+#define FUNC_NAME_LEN 64
+
 static int mboot_params_init_done;
 static unsigned int old_wdt_status;
 static int mboot_params_clear;
@@ -208,6 +210,8 @@ struct last_reboot_reason {
 	uint32_t scp_pc;
 	uint32_t scp_lr;
 	unsigned long last_init_func;
+	char last_init_func_name[FUNC_NAME_LEN];
+	char last_shutdown_device[FUNC_NAME_LEN];
 	uint8_t pmic_ext_buck;
 	uint32_t hang_detect_timeout_count;
 	unsigned long last_async_func;
@@ -2161,6 +2165,20 @@ void aee_rr_rec_last_init_func(unsigned long val)
 	LAST_RR_SET(last_init_func, val);
 }
 
+void aee_rr_rec_last_init_func_name(const char *str)
+{
+	if (!mboot_params_init_done || !mboot_params_buffer)
+		return;
+	LAST_RR_MEMCPY(last_init_func_name, str, FUNC_NAME_LEN-1);
+}
+
+void aee_rr_rec_last_shutdown_device(const char *str)
+{
+	if (!mboot_params_init_done || !mboot_params_buffer)
+		return;
+	LAST_RR_MEMCPY(last_shutdown_device, str, FUNC_NAME_LEN-1);
+}
+
 void aee_rr_rec_last_async_func(unsigned long val)
 {
 	if (!mboot_params_init_done || !mboot_params_buffer)
@@ -3072,6 +3090,18 @@ void aee_rr_show_last_init_func(struct seq_file *m)
 			LAST_RRR_VAL(last_init_func));
 }
 
+void aee_rr_show_last_shutdown_device(struct seq_file *m)
+{
+	seq_printf(m, "last_shutdown_device: %s\n",
+			LAST_RRR_VAL(last_shutdown_device));
+}
+
+void aee_rr_show_last_init_func_name(struct seq_file *m)
+{
+	seq_printf(m, "last_init_func_name: %s\n",
+			LAST_RRR_VAL(last_init_func_name));
+}
+
 void aee_rr_show_last_sync_func(struct seq_file *m)
 {
 	seq_printf(m, "last sync function: 0x%lx\n",
@@ -3321,6 +3351,8 @@ last_rr_show_t aee_rr_show[] = {
 	aee_rr_show_last_sync_func,
 	aee_rr_show_gz_irq,
 	aee_rr_show_last_init_func,
+	aee_rr_show_last_init_func_name,
+	aee_rr_show_last_shutdown_device,
 	aee_rr_show_pmic_ext_buck,
 	aee_rr_show_hps_status,
 	aee_rr_show_hotplug_status,

@@ -128,6 +128,8 @@
 
 	/* ensure info related to HWT always be bottom and keep their order*/
 	DF(last_init_func, "last init function: 0x%lx\n"),
+	DF_SA(last_init_func_name, "last_init_func_name: %s\n"),
+	DF_SA(last_shutdown_device, "last_shutdown_device: %s\n"),
 	DF(pmic_ext_buck, "pmic & external buck: 0x%x\n"),
 	DF(hps_cb_enter_times, "CPU HPS footprint: %llu, "),
 	DF(hps_cb_cpu_bitmask, "0x%x, "),

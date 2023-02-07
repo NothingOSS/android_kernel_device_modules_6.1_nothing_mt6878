@@ -35,6 +35,11 @@ enum AEE_EXP_TYPE_NUM {
 	AEE_EXP_TYPE_MAX_NUM = 16,
 };
 
+#if IS_ENABLED(CONFIG_MTK_AEE_UT)
+extern void init_register_callback(void (* fn)(const char *str));
+extern void shutdown_register_callback(void (* fn)(const char *str));
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 extern void aee_rr_rec_clk(int id, u32 val);
 extern void aee_rr_rec_exp_type(unsigned int type);
@@ -190,6 +195,8 @@ extern void aee_rr_rec_hps_cb_cpu_bitmask(unsigned int val);
 extern void aee_rr_rec_hps_cb_footprint(unsigned int val);
 extern void aee_rr_rec_hps_cb_fp_times(unsigned long long val);
 extern void aee_rr_rec_last_init_func(unsigned long val);
+extern void aee_rr_rec_last_init_func_name(const char *str);
+extern void aee_rr_rec_last_shutdown_device(const char *str);
 extern void aee_rr_rec_last_sync_func(unsigned long val);
 extern void aee_rr_rec_last_async_func(unsigned long val);
 extern void aee_rr_rec_set_bit_pmic_ext_buck(int bit, int loc);
@@ -893,6 +900,14 @@ static inline void aee_rr_rec_hps_cb_fp_times(unsigned long long val)
 }
 
 static inline void aee_rr_rec_last_init_func(unsigned long val)
+{
+}
+
+static inline void aee_rr_rec_last_init_func_name(const char *str)
+{
+}
+
+static inline void aee_rr_rec_last_shutdown_device(const char *str)
 {
 }
 
