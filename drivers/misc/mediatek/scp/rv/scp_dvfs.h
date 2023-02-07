@@ -138,6 +138,7 @@ enum scp_dvfs_chip_hw_enum {
 enum clk_dbg_ver_enum {
 	CLK_DBG_VER_1,
 	CLK_DBG_VER_2,
+	CLK_DBG_VER_3,
 	MAX_CLK_DBG_VERSION,
 };
 
@@ -246,13 +247,13 @@ struct scp_dvfs_hw {
 	struct ulposc_cali_hw ulposc_hw;
 	struct scp_clk_hw *clk_hw;
 	bool ccf_fmeter_support; /* Has CCF provided fmeter api to use? */
+	bool only_support_ckgen_fmeter;
 	int ccf_fmeter_id;
 	int ccf_fmeter_type;
 	bool vlpck_support; /* Using 2-phase calibration if vlpck_bypass_phase1 not set */
 	bool vlpck_bypass_phase1;
 	bool vlp_support; /* Moving regulator & PMIC setting into SCP side */
 	bool has_pll_opp;
-	bool freq_voter_support;
 	bool pmic_sshub_en;
 	bool sleep_init_done;
 	bool pre_mux_en;

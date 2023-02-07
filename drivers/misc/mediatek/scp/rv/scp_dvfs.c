@@ -68,7 +68,6 @@
 #define PROPNAME_SCP_DVFS_CORES        "scp-cores"
 #define PROPNAME_SCP_CORE_ONLINE_MASK  "scp-core-online-mask"
 #define PROPNAME_SCP_VLP_SUPPORT       "vlp-support"
-#define PROPNAME_SCP_FREQVOTER_SUPPORT "scp-voter-support"
 #define PROPNAME_SCP_VLPCK_SUPPORT     "vlpck-support"
 #define PROPNAME_PMIC                  "pmic"
 #define PROPNAME_PMIC_VOW_LP_EN_GEAR   "vow-lp-en-gear"
@@ -92,6 +91,7 @@
 #define CALI_CONFIG_ELEM_CNT           (3)
 #define PROPNAME_SCP_CLK_DBG_VER       "clk-dbg-ver"
 #define PROPNAME_U2_FM_SUPPORT         "ccf-fmeter-support"
+#define PROPNAME_ONLY_SUPPORT_CKGEN_FM "only-support-ckgen-fmeter"
 #define PROPNAME_SCP_DVFS_SECURE       "secure-access"
 #define PROPNAME_SCP_DVFS_FLAG         "scp-dvfs-flag"
 
@@ -102,6 +102,11 @@ unsigned int scp_ipi_ackdata0, scp_ipi_ackdata1;
 struct ipi_tx_data_t {
 	unsigned int arg1;
 	unsigned int arg2;
+};
+
+struct ipi_request_freq_data {
+	uint32_t scp_req_freq:16,
+			 sap_req_freq:16;
 };
 
 /*
@@ -136,6 +141,7 @@ const char *ulposc_ver[MAX_ULPOSC_VERSION] __initconst = {
 const char *clk_dbg_ver[MAX_CLK_DBG_VERSION] __initconst = {
 	[CLK_DBG_VER_1] = "v1",
 	[CLK_DBG_VER_2] = "v2",
+	[CLK_DBG_VER_3] = "v3",
 };
 
 const char *scp_clk_ver[MAX_SCP_CLK_VERSION] __initconst = {
@@ -192,6 +198,19 @@ struct clk_cali_regs clk_dbg_reg[MAX_CLK_DBG_VERSION] __initdata = {
 		REG_DEFINE(clk26cali_1, 0x234, REG_MAX_MASK, 0)
 		REG_DEFINE(cal_cnt, 0x234, 0xFFFF, 0)
 		REG_DEFINE_WITH_INIT(load_cnt, 0x234, 0x3FF, 16, 0x1FF, 0)
+	},
+	[CLK_DBG_VER_3] = {/* Suppose TOPCKGEN is from 0x10000000 */
+		REG_DEFINE(clk26cali_0, 0x220, REG_MAX_MASK, 0)
+		REG_DEFINE_WITH_INIT(fmeter_en, 0x220, 0x1, 12, 0x1, 0)
+		REG_DEFINE_WITH_INIT(trigger_cal, 0x220, 0x1, 4, 1, 0)
+
+		REG_DEFINE(clk26cali_1, 0x224, REG_MAX_MASK, 0)
+		REG_DEFINE(cal_cnt, 0x224, 0xFFFF, 0)
+		REG_DEFINE_WITH_INIT(load_cnt, 0x224, 0x3FF, 16, 0x1FF, 0)
+
+		REG_DEFINE_WITH_INIT(fmeter_ck_sel, 0x28C, 0x3F, 16, 0x3E, 0)
+
+		REG_DEFINE_WITH_INIT(clk_misc_cfg0, 0x240, REG_MAX_MASK, 0, 0x90F00, 0)
 	},
 };
 
@@ -677,6 +696,7 @@ static int scp_request_freq_vcore(void)
 
 static int scp_request_freq_vlp(void)
 {
+	struct ipi_request_freq_data ipi_data;
 	int timeout = 50;
 	int ret = 0;
 	unsigned long spin_flags;
@@ -696,9 +716,10 @@ static int scp_request_freq_vlp(void)
 	 * In order to prevent sending the same freq request from kernel repeatedly,
 	 * we used last_scp_expected_freq to record last freq request.
 	 */
-	if (last_scp_expected_freq == scp_expected_freq) {
-		pr_debug("[SCP] Skip DFS: resending the same freq request: %dMhz\n",
-			last_scp_expected_freq);
+	if (last_scp_expected_freq == scp_expected_freq
+			&& last_sap_expected_freq == sap_expected_freq) {
+		pr_debug("[SCP] Skip DFS: the same freq request SCP: %dMhz, SAP: %dMhz\n",
+			last_scp_expected_freq, last_sap_expected_freq);
 		return 0;
 	}
 
@@ -707,29 +728,36 @@ static int scp_request_freq_vlp(void)
 	 */
 	__pm_stay_awake(scp_dvfs_lock);
 
-	if (scp_current_freq != scp_expected_freq) {
+	if (scp_current_freq != scp_expected_freq
+			|| last_sap_expected_freq != sap_expected_freq) {
+
+		ipi_data.scp_req_freq = scp_expected_freq;
+		ipi_data.sap_req_freq = sap_expected_freq;
 
 		scp_awake_lock((void *)SCP_A_ID);
 
-		/* Request SPM not to turn off mainpll/26M/infra */
-		/* because SCP may park in it during DFS process */
-		scp_resource_req(SCP_REQ_26M |
-				SCP_REQ_INFRA |
-				SCP_REQ_SYSPLL);
+		if (g_dvfs_dev.has_pll_opp) {
+			/* Request SPM not to turn off mainpll/26M/infra */
+			/* because SCP may park in it during DFS process */
+			scp_resource_req(SCP_REQ_26M |
+					SCP_REQ_INFRA |
+					SCP_REQ_SYSPLL);
 
-		/*  turn on PLL if necessary */
-		scp_pll_ctrl_set(PLL_ENABLE, scp_expected_freq);
+			/*  turn on PLL if necessary */
+			scp_pll_ctrl_set(PLL_ENABLE, scp_expected_freq);
+		}
 
 		do {
 			ret = mtk_ipi_send(&scp_ipidev,
 				IPI_OUT_DVFS_SET_FREQ_0,
-				IPI_SEND_WAIT, &scp_expected_freq,
+				IPI_SEND_WAIT, &ipi_data,
 				PIN_OUT_SIZE_DVFS_SET_FREQ_0, 0);
 			mdelay(2);
 			if (ret != IPI_ACTION_DONE) {
 				pr_notice("SCP send IPI fail - %d, %d\n", ret, timeout);
 			} else {
 				last_scp_expected_freq = scp_expected_freq;
+				last_sap_expected_freq = sap_expected_freq;
 				break;
 			}
 
@@ -742,124 +770,32 @@ static int scp_request_freq_vlp(void)
 			spin_lock_irqsave(&scp_awake_spinlock, spin_flags);
 			scp_current_freq = readl(CURRENT_FREQ_REG);
 			spin_unlock_irqrestore(&scp_awake_spinlock, spin_flags);
-			pr_notice("set expected_freq(%d) fail, current is %d\n",
-				scp_expected_freq, scp_current_freq);
-			scp_resource_req(SCP_REQ_RELEASE);
+			pr_notice("failed to set freq SCP(%d) SAP(%d), current=%d\n",
+				scp_expected_freq, sap_expected_freq, scp_current_freq);
+			if (g_dvfs_dev.has_pll_opp)
+				scp_resource_req(SCP_REQ_RELEASE);
 			__pm_relax(scp_dvfs_lock);
 			WARN_ON(1);
 			return -ESCP_DVFS_IPI_FAILED;
 		}
 
-		/* turn off PLL if necessary */
-		scp_pll_ctrl_set(PLL_DISABLE, scp_expected_freq);
-
-		scp_awake_unlock((void *)SCP_A_ID);
-
-		opp_idx = scp_get_freq_idx(scp_expected_freq);
-		if (g_dvfs_dev.opp[opp_idx].resource_req)
-			scp_resource_req(g_dvfs_dev.opp[opp_idx].resource_req);
-		else
-			scp_resource_req(SCP_REQ_RELEASE);
-	}
-
-	__pm_relax(scp_dvfs_lock);
-	pr_debug("[SCP] succeed to set freq, expect=%d, cur=%d\n",
-			scp_expected_freq, scp_current_freq);
-	return 0;
-}
-
-static int scp_request_freq_voter(void)
-{
-	int ret = 0;
-	bool skip_dvfs_core0 = 0;
-	bool skip_dvfs_core2 = 0;
-	int opp_idx;
-
-	if (!g_scp_dvfs_flow_enable) {
-		pr_debug("[%s]: warning: SCP DVFS is OFF\n", __func__);
-		return 0;
-	}
-
-	if (!g_dvfs_dev.freq_voter_support) {
-		pr_notice("[%s]: should not end here: vlp not supported!\n", __func__);
-		return 0;
-	}
-
-	/*
-	 * In order to prevent sending the same freq request from kernel repeatedly,
-	 * we used last_*_expected_freq to record last freq request.
-	 */
-	skip_dvfs_core0 = last_scp_expected_freq == scp_expected_freq;
-	skip_dvfs_core2 = last_sap_expected_freq == sap_expected_freq;
-	if (skip_dvfs_core0 && skip_dvfs_core2) {
-		pr_debug("[%s] Skip DFS\n", __func__);
-		return 0;
-	}
-
-	/* because we are waiting for scp to update register:scp_current_freq
-	 * use wake lock to prevent AP from entering suspend state
-	 */
-	__pm_stay_awake(scp_dvfs_lock);
-
-	/* hold scp wakelock to keep scp sram active, since sending ipi accesses
-	 * mbox which is located in scp sram.
-	 */
-	scp_awake_lock((void *)SCP_A_ID);
-
-	/* Send core0/1 dvfs request to scp core0 */
-	if (!skip_dvfs_core0) {
-		if (g_dvfs_dev.has_pll_opp) {
-			/* Request SPM not to turn off mainpll/26M/infra */
-			scp_resource_req(SCP_REQ_26M |
-					SCP_REQ_INFRA |
-					SCP_REQ_SYSPLL);
-
-			/* turn on PLL if necessary */
-			scp_pll_ctrl_set(PLL_ENABLE, scp_expected_freq);
-		}
-
-		ret = mtk_ipi_send(&scp_ipidev,
-			IPI_OUT_DVFS_SET_FREQ_0,
-			IPI_SEND_WAIT, &scp_expected_freq,
-			PIN_OUT_SIZE_DVFS_SET_FREQ_0, 500);
-		mdelay(2);
-		if (ret)
-			pr_notice("ipi fail: can't set scp_expected_freq(%d)\n", scp_expected_freq);
-		else
-			last_scp_expected_freq = scp_expected_freq;
-
 		if (g_dvfs_dev.has_pll_opp) {
 			/* turn off PLL if necessary */
 			scp_pll_ctrl_set(PLL_DISABLE, scp_expected_freq);
 
-			/* Release SPM resource */
 			opp_idx = scp_get_freq_idx(scp_expected_freq);
 			if (g_dvfs_dev.opp[opp_idx].resource_req)
 				scp_resource_req(g_dvfs_dev.opp[opp_idx].resource_req);
 			else
 				scp_resource_req(SCP_REQ_RELEASE);
 		}
+
+		scp_awake_unlock((void *)SCP_A_ID);
 	}
 
-	/* Send core2 dvfs request to scp core2 */
-	if (!skip_dvfs_core2) {
-		ret = mtk_ipi_send(&scp_ipidev,
-			IPI_OUT_DVFS_SET_FREQ_1, /* TODO: Should modify for Core2 */
-			IPI_SEND_WAIT, &sap_expected_freq,
-			PIN_OUT_SIZE_DVFS_SET_FREQ_1, 500); /* TODO: Should modify for Core2 */
-		mdelay(2);
-		if (ret)
-			pr_notice("ipi fail: can't set sap_expected_freq(%d)\n", sap_expected_freq);
-		else
-			last_sap_expected_freq = sap_expected_freq;
-	}
-
-	/* Release all wakelocks */
-	scp_awake_unlock((void *)SCP_A_ID);
 	__pm_relax(scp_dvfs_lock);
-
-	pr_debug("[%s] request freq, scp=%d, sap=%d\n",
-			__func__, last_scp_expected_freq, last_sap_expected_freq);
+	pr_debug("[SCP] succeed to set freq, expected SCP=%d SAP=%d, cur=%d\n",
+			scp_expected_freq, sap_expected_freq, scp_current_freq);
 	return 0;
 }
 
@@ -869,14 +805,10 @@ static int scp_request_freq_voter(void)
  */
 int scp_request_freq(void)
 {
-	if (g_dvfs_dev.vlp_support) {
-		if (g_dvfs_dev.freq_voter_support)
-			return scp_request_freq_voter();
-		else
-			return scp_request_freq_vlp();
-	}
-
-	return scp_request_freq_vcore();
+	if (g_dvfs_dev.vlp_support)
+		return scp_request_freq_vlp();
+	else
+		return scp_request_freq_vcore();
 }
 
 void wait_scp_dvfs_init_done(void)
@@ -1598,6 +1530,55 @@ static inline bool __init is_ulposc_cali_pass(unsigned int cur,
 	return 0;
 }
 
+static unsigned int __init _get_freq_by_fmeter(void)
+{
+	unsigned int result;
+	unsigned int i = 0;
+	unsigned int wait_for_measure = 0;
+	int is_fmeter_timeout = 0;
+
+	/* enable fmeter */
+	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
+		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_fmeter_en,
+		g_dvfs_dev.ulposc_hw.clkdbg_regs->_fmeter_en.init_config);
+
+	/* trigger fmeter to start measure */
+	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
+		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_trigger_cal,
+		g_dvfs_dev.ulposc_hw.clkdbg_regs->_trigger_cal.init_config);
+
+	/* wait for frequency measurement done */
+	scp_reg_read(g_dvfs_dev.ulposc_hw.fmeter_regmap,
+		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_trigger_cal, &wait_for_measure);
+	while (wait_for_measure) {
+		i++;
+		udelay(10);
+		if (i > 40000) {
+			is_fmeter_timeout = 1;
+			break;
+		}
+		scp_reg_read(g_dvfs_dev.ulposc_hw.fmeter_regmap,
+			&g_dvfs_dev.ulposc_hw.clkdbg_regs->_trigger_cal,
+			&wait_for_measure);
+	}
+
+	/* disable fmeter */
+	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
+		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_fmeter_en,
+		!g_dvfs_dev.ulposc_hw.clkdbg_regs->_fmeter_en.init_config);
+
+	/* get fmeter result */
+	if (!is_fmeter_timeout) {
+		scp_reg_read(g_dvfs_dev.ulposc_hw.fmeter_regmap,
+			&g_dvfs_dev.ulposc_hw.clkdbg_regs->_cal_cnt,
+			&result);
+	} else {
+		result = 0;
+	}
+
+	return result;
+}
+
 static unsigned int __init _get_ulposc_clk_by_fmeter_wrapper(void)
 {
 	unsigned int result_freq;
@@ -1612,12 +1593,53 @@ static unsigned int __init _get_ulposc_clk_by_fmeter_wrapper(void)
 	return FM_FREQ2CNT(result_freq) / 1000;
 }
 
+static unsigned int __init get_ulposc_clk_by_fmeter_ckgen(void)
+{
+	unsigned int result = 0;
+	unsigned int clk26cali_0_bk = 0, clk26cali_1_bk = 0;
+
+	if (g_dvfs_dev.ccf_fmeter_support)
+		return _get_ulposc_clk_by_fmeter_wrapper();
+
+	/* 0. backup regsiters */
+	scp_reg_read(g_dvfs_dev.ulposc_hw.fmeter_regmap,
+		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_clk26cali_0, &clk26cali_0_bk);
+	scp_reg_read(g_dvfs_dev.ulposc_hw.fmeter_regmap,
+		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_clk26cali_1, &clk26cali_1_bk);
+
+	/* 1. set load cnt */
+	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
+		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_load_cnt,
+		g_dvfs_dev.ulposc_hw.clkdbg_regs->_load_cnt.init_config);
+
+	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
+		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_clk_misc_cfg0,
+		g_dvfs_dev.ulposc_hw.clkdbg_regs->_clk_misc_cfg0.init_config);
+
+	/*
+	 * 2. select clock source
+	 * ULPOSC_1 (63), ULPOSC_2 (62)
+	 */
+	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
+		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_fmeter_ck_sel,
+		g_dvfs_dev.ulposc_hw.clkdbg_regs->_fmeter_ck_sel.init_config);
+
+	/* 3. trigger fmeter and get fmeter result */
+	result = _get_freq_by_fmeter();
+
+	/* 0. restore freq meter registers */
+	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
+		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_clk26cali_0, clk26cali_0_bk);
+	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
+		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_clk26cali_1, clk26cali_1_bk);
+
+	return result;
+}
+
 static unsigned int __init get_ulposc_clk_by_fmeter_vlp(void)
 {
-	unsigned int i = 0, result = 0;
+	unsigned int result = 0;
 	unsigned int vlp_fqmtr_con0_bk = 0, vlp_fqmtr_con1_bk = 0;
-	unsigned int wait_for_measure = 0;
-	int is_fmeter_timeout = 0;
 
 	if (g_dvfs_dev.ccf_fmeter_support)
 		return _get_ulposc_clk_by_fmeter_wrapper();
@@ -1651,43 +1673,8 @@ static unsigned int __init get_ulposc_clk_by_fmeter_vlp(void)
 		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_fmeter_rst,
 		g_dvfs_dev.ulposc_hw.clkdbg_regs->_fmeter_rst.init_config);
 
-	/* enable fmeter */
-	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_fmeter_en,
-		g_dvfs_dev.ulposc_hw.clkdbg_regs->_fmeter_en.init_config);
-
-	/* 3. trigger fmeter to start measure */
-	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_trigger_cal,
-		g_dvfs_dev.ulposc_hw.clkdbg_regs->_trigger_cal.init_config);
-
-	/* 4. wait for frequency measurement done */
-	scp_reg_read(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_trigger_cal, &wait_for_measure);
-	while (wait_for_measure) {
-		i++;
-		udelay(10);
-		if (i > 40000) {
-			is_fmeter_timeout = 1;
-			break;
-		}
-		scp_reg_read(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-			&g_dvfs_dev.ulposc_hw.clkdbg_regs->_trigger_cal, &wait_for_measure);
-	}
-
-	/* disable fmeter */
-	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_fmeter_en,
-		!g_dvfs_dev.ulposc_hw.clkdbg_regs->_fmeter_en.init_config);
-
-	/* 5. get fmeter result */
-	if (!is_fmeter_timeout) {
-		scp_reg_read(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-			&g_dvfs_dev.ulposc_hw.clkdbg_regs->_cal_cnt,
-			&result);
-	} else {
-		result = 0;
-	}
+	/* 3. trigger fmeter and get fmeter result */
+	result = _get_freq_by_fmeter();
 
 	/* 0. restore freq meter registers */
 	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
@@ -1698,12 +1685,17 @@ static unsigned int __init get_ulposc_clk_by_fmeter_vlp(void)
 	return result;
 }
 
+static unsigned int __init get_vlp_ulposc_clk_by_fmeter(void)
+{
+	if (g_dvfs_dev.only_support_ckgen_fmeter)
+		return get_ulposc_clk_by_fmeter_ckgen();
+	return get_ulposc_clk_by_fmeter_vlp();
+}
+
 static unsigned int __init get_ulposc_clk_by_fmeter(void)
 {
-	unsigned int i = 0, result = 0;
+	unsigned int result = 0;
 	unsigned int misc_org = 0, dbg_org = 0, cali0_org = 0, cali1_org = 0;
-	unsigned int wait_for_measure = 0;
-	int is_fmeter_timeout = 0;
 
 	if (g_dvfs_dev.ccf_fmeter_support)
 		return _get_ulposc_clk_by_fmeter_wrapper();
@@ -1738,45 +1730,8 @@ static unsigned int __init get_ulposc_clk_by_fmeter(void)
 		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_meter_div,
 		g_dvfs_dev.ulposc_hw.clkdbg_regs->_meter_div.init_config);
 
-	/* enable fmeter */
-	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_fmeter_en,
-		g_dvfs_dev.ulposc_hw.clkdbg_regs->_fmeter_en.init_config);
-
-	/* trigger fmeter to start measure */
-	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_trigger_cal,
-		g_dvfs_dev.ulposc_hw.clkdbg_regs->_trigger_cal.init_config);
-
-	scp_reg_read(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_trigger_cal, &wait_for_measure);
-
-	/* wait for frequency measurement done */
-	while (wait_for_measure) {
-		i++;
-		udelay(10);
-		if (i > 40000) {
-			is_fmeter_timeout = 1;
-			break;
-		}
-		scp_reg_read(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-			&g_dvfs_dev.ulposc_hw.clkdbg_regs->_trigger_cal,
-			&wait_for_measure);
-	}
-
-	/* disable fmeter */
-	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-		&g_dvfs_dev.ulposc_hw.clkdbg_regs->_fmeter_en,
-		!g_dvfs_dev.ulposc_hw.clkdbg_regs->_fmeter_en.init_config);
-
-	/* get fmeter result */
-	if (!is_fmeter_timeout) {
-		scp_reg_read(g_dvfs_dev.ulposc_hw.fmeter_regmap,
-			&g_dvfs_dev.ulposc_hw.clkdbg_regs->_cal_cnt,
-			&result);
-	} else {
-		result = 0;
-	}
+	/* trigger fmeter and get fmeter result */
+	result = _get_freq_by_fmeter();
 
 	/* restore freq meter registers */
 	scp_reg_update(g_dvfs_dev.ulposc_hw.fmeter_regmap,
@@ -1841,7 +1796,7 @@ static int __init ulposc_cali_process_vlp(unsigned int cali_idx,
 			}
 
 			set_ulposc_cali_value_ext(mid);
-			current_val = get_ulposc_clk_by_fmeter_vlp();
+			current_val = get_vlp_ulposc_clk_by_fmeter();
 
 			if (current_val > target_val)
 				max = mid;
@@ -1850,12 +1805,12 @@ static int __init ulposc_cali_process_vlp(unsigned int cali_idx,
 		} while (min <= max);
 
 		set_ulposc_cali_value_ext(min);
-		current_val = get_ulposc_clk_by_fmeter_vlp();
+		current_val = get_vlp_ulposc_clk_by_fmeter();
 		diff_by_min = (current_val > target_val) ?
 			(current_val - target_val):(target_val - current_val);
 
 		set_ulposc_cali_value_ext(max);
-		current_val = get_ulposc_clk_by_fmeter_vlp();
+		current_val = get_vlp_ulposc_clk_by_fmeter();
 		diff_by_max = (current_val > target_val) ?
 			(current_val - target_val):(target_val - current_val);
 
@@ -1874,7 +1829,7 @@ static int __init ulposc_cali_process_vlp(unsigned int cali_idx,
 		}
 
 		set_ulposc_cali_value(mid);
-		current_val = get_ulposc_clk_by_fmeter_vlp();
+		current_val = get_vlp_ulposc_clk_by_fmeter();
 
 		if (current_val > target_val)
 			max = mid;
@@ -1883,12 +1838,12 @@ static int __init ulposc_cali_process_vlp(unsigned int cali_idx,
 	} while (min <= max);
 
 	set_ulposc_cali_value(min);
-	current_val = get_ulposc_clk_by_fmeter_vlp();
+	current_val = get_vlp_ulposc_clk_by_fmeter();
 	diff_by_min = (current_val > target_val) ?
 		(current_val - target_val):(target_val - current_val);
 
 	set_ulposc_cali_value(max);
-	current_val = get_ulposc_clk_by_fmeter_vlp();
+	current_val = get_vlp_ulposc_clk_by_fmeter();
 	diff_by_max = (current_val > target_val) ?
 		(current_val - target_val):(target_val - current_val);
 
@@ -1896,7 +1851,7 @@ static int __init ulposc_cali_process_vlp(unsigned int cali_idx,
 	set_ulposc_cali_value(*cali_res2);
 
 	/* Checking final calibration result */
-	current_val = get_ulposc_clk_by_fmeter_vlp();
+	current_val = get_vlp_ulposc_clk_by_fmeter();
 	if (!is_ulposc_cali_pass(current_val, target_val)) {
 		pr_notice("[%s]: calibration failed for: %dMHz\n",
 			__func__,
@@ -2660,19 +2615,6 @@ static int __init mt_scp_dts_init(struct platform_device *pdev)
 		}
 	}
 
-	/* SCP is able to adjust its frequency inside SCP, if "freq voter" was supported.
-	 * Kernel side DVFS driver only need to notify SCP the frequency it needs via IPI
-     * in this case. Currently freq voter is only support when scp is in vlp domain.
-	 */
-	g_dvfs_dev.freq_voter_support = of_property_read_bool(node, PROPNAME_SCP_FREQVOTER_SUPPORT);
-	if (g_dvfs_dev.freq_voter_support) {
-		pr_notice("[%s]: SCP Voter Support on!\n", __func__);
-		if (!g_dvfs_dev.vlp_support) {
-			pr_notice("[%s]: Only VLP domain SCP can support voter!\n", __func__);
-			WARN_ON(1);
-		}
-	}
-
 	g_dvfs_dev.vlpck_support = of_property_read_bool(node, PROPNAME_SCP_VLPCK_SUPPORT);
 	if (g_dvfs_dev.vlpck_support) {
 		g_dvfs_dev.vlpck_bypass_phase1 = of_property_read_bool(node, "vlpck-bypass-phase1");
@@ -2725,12 +2667,16 @@ static int __init mt_scp_dts_init(struct platform_device *pdev)
 	 * 2. Only wehn mt_get_fmeter_freq havn't been provide, get_ulposc_clk_by_fmeter*() can
 	 * be used temporarily.
 	 */
+	g_dvfs_dev.only_support_ckgen_fmeter = of_property_read_bool(node,
+					PROPNAME_ONLY_SUPPORT_CKGEN_FM);
 	g_dvfs_dev.ccf_fmeter_support = of_property_read_bool(node, PROPNAME_U2_FM_SUPPORT);
 	if (!g_dvfs_dev.ccf_fmeter_support) {
 		pr_notice("[%s]: fmeter api havn't been provided, use legacy one\n", __func__);
 	} else {
 		/* enum FMETER_TYPE */
-		if (g_dvfs_dev.vlpck_support)
+		if (g_dvfs_dev.only_support_ckgen_fmeter)
+			g_dvfs_dev.ccf_fmeter_type = CKGEN;
+		else if (g_dvfs_dev.vlpck_support)
 			g_dvfs_dev.ccf_fmeter_type = VLPCK;
 		else
 			g_dvfs_dev.ccf_fmeter_type = ABIST;
