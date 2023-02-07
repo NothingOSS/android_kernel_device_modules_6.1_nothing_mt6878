@@ -927,6 +927,7 @@ struct mtk_drm_crtc {
 	atomic_t wait_mml_last_job_is_flushed;
 	wait_queue_head_t signal_mml_last_job_is_flushed_wq;
 	bool is_mml;
+	bool is_mml_dl;
 	unsigned int mml_debug;
 	bool is_force_mml_scen;
 	bool mml_cmd_ir;
@@ -1263,4 +1264,12 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 int mtk_drm_setbacklight_grp(struct drm_crtc *crtc, unsigned int level,
 			unsigned int panel_ext_param, unsigned int cfg_flag);
 void mtk_crtc_update_gce_event(struct mtk_drm_crtc *mtk_crtc);
+
+void mtk_addon_get_comp(u32 addon, u32 *comp_id, u8 *layer_idx);
+void mtk_addon_set_comp(u32 *addon, const u32 comp_id, const u8 layer_idx);
+void mtk_addon_get_module(const enum addon_scenario scn,
+			 struct mtk_drm_crtc *mtk_crtc,
+			 const struct mtk_addon_module_data **addon_module,
+			 const struct mtk_addon_module_data **addon_module_dual);
+
 #endif /* MTK_DRM_CRTC_H */

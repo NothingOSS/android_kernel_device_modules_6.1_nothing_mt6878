@@ -1284,23 +1284,33 @@ static void *fd_to_dma_buf(int32_t fd)
 	return (void *)dmabuf;
 }
 
-static bool _mtk_atomic_mml_plane(struct drm_device *dev,
+static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	struct mtk_plane_state *mtk_plane_state)
 {
 	struct mml_submit *submit_kernel = NULL;
 	struct mml_submit *submit_pq = NULL;
 	struct mml_drm_ctx *mml_ctx = NULL;
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(mtk_plane_state->crtc);
-	struct mtk_crtc_state *crtc_state = to_mtk_crtc_state(mtk_plane_state->crtc->state);
+	struct drm_crtc *crtc = NULL;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_crtc_state *crtc_state = NULL;
 	int i = 0, j = 0;
 	int ret = 0;
-	unsigned int fps = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
-	unsigned int vtotal = mtk_crtc->base.state->adjusted_mode.vtotal;
+	unsigned int fps = 0;
+	unsigned int vtotal = 0;
 	unsigned int line_time = 0;
 
-	mml_ctx = mtk_drm_get_mml_drm_ctx(dev, &(mtk_crtc->base));
+	if (!mtk_plane_state->prop_val[PLANE_PROP_IS_MML])
+		return MML_MODE_UNKNOWN;
+
+	crtc = mtk_plane_state->crtc;
+	mtk_crtc = to_mtk_crtc(crtc);
+	crtc_state = to_mtk_crtc_state(crtc->state);
+	fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
+	vtotal = crtc->state->adjusted_mode.vtotal;
+
+	mml_ctx = mtk_drm_get_mml_drm_ctx(dev, crtc);
 	if (!mml_ctx)
-		return false;
+		return MML_MODE_UNKNOWN;
 
 	submit_pq = mtk_alloc_mml_submit();
 	if (!submit_pq)
@@ -1316,7 +1326,6 @@ static bool _mtk_atomic_mml_plane(struct drm_device *dev,
 		goto err_copy_submit;
 
 	submit_kernel->update = false;
-	submit_kernel->info.mode = MML_MODE_RACING;
 
 	for (i = 0; i < MML_MAX_OUTPUTS; ++i) {
 		for (j = 0; j < MML_MAX_PLANES; ++j) {
@@ -1334,27 +1343,61 @@ static bool _mtk_atomic_mml_plane(struct drm_device *dev,
 
 	mml_drm_split_info(submit_kernel, submit_pq);
 
-	if (mtk_crtc_is_frame_trigger_mode(mtk_plane_state->crtc)) {
-		struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output(mtk_crtc);
-
-		if (mtk_drm_is_idle(mtk_plane_state->crtc))
-			mtk_drm_idlemgr_kick(__func__, mtk_plane_state->crtc, false);
-
-		if (comp)
-			mtk_ddp_comp_io_cmd(comp, NULL, DSI_GET_CMD_MODE_LINE_TIME, &line_time);
-	} else
-		line_time = (1000000000 / fps) / vtotal;
-
+	line_time = mtk_dsi_get_line_time_ns(crtc);
 	submit_kernel->info.act_time = line_time * submit_pq->info.dest[0].data.height;
 
-	DDPINFO("fps=%d vtotal=%d line_time=%d dst_h=%d act_time=%d dma=0x%lx src_fmt=%#010x ",
-			fps, vtotal, line_time,
-			submit_pq->info.dest[0].data.height,
-			submit_kernel->info.act_time,
-			(unsigned long)submit_kernel->buffer.src.dmabuf[0],
-			submit_kernel->info.src.format);
-	DDPINFO("plane=%d\n", submit_kernel->buffer.src.cnt);
+#define _ATOMIC_MML_FMT \
+	"fps=%d vtotal=%d line_time=%d dst_h=%d act_time=%d dma=0x%lx src_fmt=%#010x plane=%d\n"
+	DDPINFO(_ATOMIC_MML_FMT, fps, vtotal, line_time, submit_pq->info.dest[0].data.height,
+		submit_kernel->info.act_time, (unsigned long)submit_kernel->buffer.src.dmabuf[0],
+		submit_kernel->info.src.format,	submit_kernel->buffer.src.cnt);
 
+	crtc_state->mml_dst_roi.x = mtk_plane_state->base.dst.x1;
+	crtc_state->mml_dst_roi.y = mtk_plane_state->base.dst.y1;
+	crtc_state->mml_dst_roi.width = submit_pq->info.dest[0].compose.width;
+	crtc_state->mml_dst_roi.height = submit_pq->info.dest[0].compose.height;
+
+	if (mtk_crtc->is_dual_pipe) {
+		const int x = crtc_state->mml_dst_roi.x;
+		const int y = crtc_state->mml_dst_roi.y;
+		const int w = crtc_state->mml_dst_roi.width;
+		const int h = crtc_state->mml_dst_roi.height;
+		struct mtk_ddp_comp *output_comp = NULL;
+		int panel_w = -1, mid_line = -1;
+		unsigned int to_left = 0, to_right = 0;
+
+		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+		if (output_comp && drm_crtc_index(crtc) == 0)
+			panel_w = mtk_ddp_comp_io_cmd(output_comp, NULL,
+						      DSI_GET_VIRTUAL_WIDTH, NULL);
+		mid_line = panel_w / 2;
+
+		if (mtk_crtc->tile_overhead.is_support) {
+			to_left = mtk_crtc->tile_overhead.left_overhead;
+			to_right = mtk_crtc->tile_overhead.right_overhead;
+			DDPINFO("%s: tile_overhead L:%d R:%d\n", __func__, to_left, to_right);
+		}
+
+		crtc_state->mml_dst_roi_dual[0] = crtc_state->mml_dst_roi;
+		if ((x + w) > (mid_line + to_left))
+			crtc_state->mml_dst_roi_dual[0].width = mid_line + to_left - x;
+		else
+			crtc_state->mml_dst_roi_dual[0].width += to_left;
+
+		crtc_state->mml_dst_roi_dual[1].x = mid_line - to_right;
+		crtc_state->mml_dst_roi_dual[1].y = y;
+		crtc_state->mml_dst_roi_dual[1].height = h;
+		crtc_state->mml_dst_roi_dual[1].width = to_right;
+		if ((x + w) > mid_line)
+			crtc_state->mml_dst_roi_dual[1].width += x + w - mid_line;
+
+		memcpy(&submit_kernel->dl_out[0], &crtc_state->mml_dst_roi_dual[0],
+		       sizeof(struct mml_rect));
+		memcpy(&submit_kernel->dl_out[1], &crtc_state->mml_dst_roi_dual[1],
+		       sizeof(struct mml_rect));
+	}
+
+	mtk_drm_idlemgr_kick(__func__, crtc, false);
 	ret = mml_drm_submit(mml_ctx, submit_kernel, &(mtk_crtc->mml_cb));
 	if (ret)
 		goto err_submit;
@@ -1368,15 +1411,7 @@ static bool _mtk_atomic_mml_plane(struct drm_device *dev,
 	mtk_crtc->mml_cfg = submit_kernel;
 	mtk_crtc->mml_cfg_pq = submit_pq;
 
-	mtk_plane_state->mml_mode = MML_MODE_RACING;
-	mtk_plane_state->mml_cfg = mtk_crtc->mml_cfg_pq;
-
-	crtc_state->mml_dst_roi.x = mtk_plane_state->base.dst.x1;
-	crtc_state->mml_dst_roi.y = mtk_plane_state->base.dst.y1;
-	crtc_state->mml_dst_roi.width = submit_pq->info.dest[0].compose.width;
-	crtc_state->mml_dst_roi.height = submit_pq->info.dest[0].compose.height;
-
-	return true;
+	return submit_kernel->info.mode;
 
 err_submit:
 err_copy_submit:
@@ -1384,7 +1419,7 @@ err_alloc_submit_kernel:
 	mtk_free_mml_submit(submit_kernel);
 err_alloc_submit_pq:
 	mtk_free_mml_submit(submit_pq);
-	return false;
+	return MML_MODE_UNKNOWN;
 }
 
 static void mtk_atomic_mml(struct drm_device *dev,
@@ -1392,59 +1427,65 @@ static void mtk_atomic_mml(struct drm_device *dev,
 {
 	struct drm_crtc *crtc = NULL;
 	struct drm_crtc_state *old_crtc_state, *new_crtc_state;
+	struct mtk_crtc_state *mtk_crtc_state = NULL;
 	struct drm_plane *plane;
 	struct drm_plane_state *plane_state, *old_plane_state;
 	struct mtk_plane_state *mtk_plane_state;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	int i = 0;
-	bool last_is_mml = false;
+	enum mml_mode new_mode = MML_MODE_UNKNOWN;
 
-	for_each_old_crtc_in_state(state, crtc, old_crtc_state, i) {
+	for_each_oldnew_crtc_in_state(state, crtc, old_crtc_state, new_crtc_state, i) {
 		if (drm_crtc_index(crtc) == 0)
 			break;
 		else
 			return;
 	}
+
+	if (new_crtc_state)
+		mtk_crtc_state = to_mtk_crtc_state(new_crtc_state);
+	else
+		return;
+
 	mtk_crtc = to_mtk_crtc(crtc);
 
-	last_is_mml = (mtk_crtc->mml_ir_state == MML_IR_IDLE) ? false : mtk_crtc->is_mml;
-	mtk_crtc->is_mml = false;
 	for_each_old_plane_in_state(state, plane, old_plane_state, i) {
 		plane_state = plane->state;
 		if (plane_state && plane_state->crtc && drm_crtc_index(plane_state->crtc) == 0) {
 			mtk_plane_state = to_mtk_plane_state(plane_state);
-			if (mtk_plane_state->prop_val[PLANE_PROP_IS_MML]) {
-				mtk_crtc->is_mml = _mtk_atomic_mml_plane(dev, mtk_plane_state);
-				break;
+			mtk_plane_state->mml_mode = _mtk_atomic_mml_plane(dev, mtk_plane_state);
+			if (mtk_plane_state->mml_mode > MML_MODE_UNKNOWN) {
+				new_mode = mtk_plane_state->mml_mode;
+				mtk_plane_state->mml_cfg = mtk_crtc->mml_cfg_pq;
 			}
 		}
 	}
 
-	for_each_oldnew_crtc_in_state(state, crtc, old_crtc_state, new_crtc_state, i) {
-		struct mtk_crtc_state *s = to_mtk_crtc_state(new_crtc_state);
-
-		if (drm_atomic_crtc_effectively_active(old_crtc_state) &&
-		    drm_atomic_crtc_needs_modeset(new_crtc_state)) {
-			if (s->lye_state.scn[i] == MML_RSZ ||
-			    s->lye_state.scn[i] == MML_SRAM_ONLY) {
-				s->lye_state.scn[i] = NONE;
-				DDPMSG("%s:%d clear MML scn after suspend\n", __func__, __LINE__);
-			}
-		}
-
-		/* if resume from ir idle, the old addon should not be disconnect again */
-		if (mtk_crtc->mml_ir_state == MML_IR_IDLE)
-			s->lye_state.scn[i] = NONE;
+	if ((new_mode == MML_MODE_UNKNOWN) &&
+	    (mtk_crtc_state->lye_state.mml_ir_lye || mtk_crtc_state->lye_state.mml_dl_lye)) {
+		mtk_crtc_state->lye_state.mml_ir_lye = 0;
+		mtk_crtc_state->lye_state.mml_dl_lye = 0;
+		DDPMSG("%s clear mml lye to avoid abnormal cases\n", __func__);
 	}
 
-	if (!last_is_mml && mtk_crtc->is_mml)
-		mtk_crtc->mml_ir_state = MML_IR_ENTERING;
-	else if (last_is_mml && mtk_crtc->is_mml)
-		mtk_crtc->mml_ir_state = MML_IR_RACING;
-	else if (last_is_mml && !mtk_crtc->is_mml)
-		mtk_crtc->mml_ir_state = MML_IR_LEAVING;
-	else
-		mtk_crtc->mml_ir_state = NOT_MML_IR;
+	mtk_crtc->is_mml = (new_mode == MML_MODE_RACING);
+	mtk_crtc->is_mml_dl = (new_mode == MML_MODE_DIRECT_LINK);
+
+	if (new_mode == MML_MODE_RACING) {
+		if ((mtk_crtc->mml_ir_state == MML_IR_IDLE) ||
+		    (mtk_crtc->mml_ir_state == MML_IR_LEAVING) ||
+		    (mtk_crtc->mml_ir_state == NOT_MML_IR))
+			mtk_crtc->mml_ir_state = MML_IR_ENTERING;
+		else if ((mtk_crtc->mml_ir_state == MML_IR_ENTERING) ||
+			 (mtk_crtc->mml_ir_state == MML_IR_RACING))
+			mtk_crtc->mml_ir_state = MML_IR_RACING;
+	} else {
+		if ((mtk_crtc->mml_ir_state == MML_IR_ENTERING) ||
+		    (mtk_crtc->mml_ir_state == MML_IR_RACING))
+			mtk_crtc->mml_ir_state = MML_IR_LEAVING;
+		else
+			mtk_crtc->mml_ir_state = NOT_MML_IR;
+	}
 }
 
 static void mtk_set_first_config(struct drm_device *dev,
@@ -1548,6 +1589,42 @@ static int mtk_atomic_check(struct drm_device *dev,
 
 		if (drm_crtc_index(crtc) == 0)
 			mtk_drm_crtc_mode_check(crtc, crtc->state, crtc_state);
+
+		if (new_state->prop_val[CRTC_PROP_LYE_IDX]) {
+			struct mtk_drm_private *priv = crtc->dev->dev_private;
+			struct mtk_drm_lyeblob_ids *ids, *next;
+			struct list_head *lyeblob_head = NULL;
+			struct drm_property_blob *blob = NULL;
+			struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+
+			if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT) == 0)
+				lyeblob_head = &priv->lyeblob_head;
+			else
+				lyeblob_head = &mtk_crtc->lyeblob_head;
+
+			mutex_lock(&priv->lyeblob_list_mutex);
+			list_for_each_entry_safe(ids, next, lyeblob_head, list) {
+				if (!ids->ddp_blob_id)
+					continue;
+
+				if (ids->lye_idx != new_state->prop_val[CRTC_PROP_LYE_IDX])
+					continue;
+
+				blob = drm_property_lookup_blob(crtc->dev, ids->ddp_blob_id);
+				if (unlikely(!blob)) {
+					DDPMSG("%s NULL blob\n", __func__);
+					break;
+				}
+				new_state->lye_state =	*(struct mtk_lye_ddp_state *)blob->data;
+				drm_property_blob_put(blob);
+				break;
+			}
+			mutex_unlock(&priv->lyeblob_list_mutex);
+		} else {
+			new_state->lye_state.rpo_lye = 0;
+			new_state->lye_state.mml_ir_lye = 0;
+			new_state->lye_state.mml_dl_lye = 0;
+		}
 
 		if (old_state->prop_val[CRTC_PROP_DOZE_ACTIVE] ==
 		    new_state->prop_val[CRTC_PROP_DOZE_ACTIVE])
@@ -1780,13 +1857,14 @@ static int mtk_atomic_commit(struct drm_device *drm,
 		mtk_crtc_state = to_mtk_crtc_state(new_crtc_state);
 		pf = (unsigned int)mtk_crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX];
 
-		if (mtk_crtc->is_mml) {
-			if (mtk_crtc_state->prop_val[CRTC_PROP_USER_SCEN] &
-					USER_SCEN_SAME_POWER_MODE) {
+		if (mtk_crtc_state->prop_val[CRTC_PROP_USER_SCEN] & USER_SCEN_SAME_POWER_MODE) {
+			if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) {
 				DDPMSG("MML IR skip atomic commit with same power mode\n");
 				return 0;
 			}
+		}
 
+		if (mtk_crtc->is_mml) {
 			/* if last frame is mml, need to wait job done before holding lock */
 			ret = wait_event_interruptible(mtk_crtc->signal_mml_last_job_is_flushed_wq,
 					atomic_read(&mtk_crtc->wait_mml_last_job_is_flushed));
@@ -2945,12 +3023,12 @@ static const struct mtk_addon_scenario_data mt6985_addon_main[ADDON_SCN_NR] = {
 	[ONE_SCALING] = {
 		.module_num = ARRAY_SIZE(addon_ovl_rsz_data),
 		.module_data = addon_ovl_rsz_data,
-		.hrt_type = HRT_TB_TYPE_RPO_L0,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 	[MML_RSZ] = {
 		.module_num = ARRAY_SIZE(mt6985_addon_mml_rsz_data),
 		.module_data = mt6985_addon_mml_rsz_data,
-		.hrt_type = HRT_TB_TYPE_RPO_L0,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 	[MML_SRAM_ONLY] = {
 		.module_num = ARRAY_SIZE(addon_mml_sram_only_data),
@@ -2960,7 +3038,7 @@ static const struct mtk_addon_scenario_data mt6985_addon_main[ADDON_SCN_NR] = {
 	[MML_DL] = {
 		.module_num = ARRAY_SIZE(mt6985_addon_mml_dl_data),
 		.module_data = mt6985_addon_mml_dl_data,
-		.hrt_type = HRT_TB_TYPE_RPO_L0,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 };
 
@@ -2986,12 +3064,12 @@ static const struct mtk_addon_scenario_data mt6985_addon_main_dual[ADDON_SCN_NR]
 	[ONE_SCALING] = {
 		.module_num = ARRAY_SIZE(addon_ovl_rsz_data_1),
 		.module_data = addon_ovl_rsz_data_1,
-		.hrt_type = HRT_TB_TYPE_RPO_L0,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 	[MML_RSZ] = {
 		.module_num = ARRAY_SIZE(mt6985_addon_mml_rsz_data_1),
 		.module_data = mt6985_addon_mml_rsz_data_1,
-		.hrt_type = HRT_TB_TYPE_RPO_L0,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 	[MML_SRAM_ONLY] = {
 		.module_num = ARRAY_SIZE(mt6985_addon_mml_sram_only_data_1),
@@ -3001,7 +3079,7 @@ static const struct mtk_addon_scenario_data mt6985_addon_main_dual[ADDON_SCN_NR]
 	[MML_DL] = {
 		.module_num = ARRAY_SIZE(mt6985_addon_mml_dl_data_1),
 		.module_data = mt6985_addon_mml_dl_data_1,
-		.hrt_type = HRT_TB_TYPE_RPO_L0,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 };
 
@@ -5750,9 +5828,13 @@ void mtk_drm_wait_mml_submit_done(struct mtk_mml_cb_para *cb_para)
 		(unsigned long)cb_para,
 		(unsigned long)&(cb_para->mml_job_submit_wq),
 		(unsigned long)&(cb_para->mml_job_submit_done));
-	ret = wait_event_interruptible(
-		cb_para->mml_job_submit_wq,
-		atomic_read(&cb_para->mml_job_submit_done));
+	ret = wait_event_interruptible_timeout(cb_para->mml_job_submit_wq,
+		atomic_read(&cb_para->mml_job_submit_done), msecs_to_jiffies(500));
+
+	if (ret == 0)
+		DDPMSG("%s timeout\n", __func__);
+
+
 	atomic_set(&(cb_para->mml_job_submit_done), 0);
 	DDPINFO("%s- ret:%d\n", __func__, ret);
 }

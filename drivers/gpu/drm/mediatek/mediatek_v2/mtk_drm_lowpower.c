@@ -678,7 +678,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	mtk_crtc_config_default_path(mtk_crtc);
 
 	/* 8. conect addon module and config */
-	if (mtk_crtc->mml_ir_state == MML_IR_IDLE)
+	if (mtk_crtc->mml_ir_state == MML_IR_IDLE || mtk_crtc->is_mml_dl)
 		mtk_crtc_addon_connector_connect(crtc, NULL); /* config dsc only */
 	else
 		mtk_crtc_connect_addon_module(crtc);

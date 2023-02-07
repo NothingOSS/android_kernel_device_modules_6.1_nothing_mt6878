@@ -184,14 +184,16 @@ static const int disp_mml_rsz_path_v3[] = {
 
 static const int disp_mml_dl_path[] = {
 	DDP_COMPONENT_OVLSYS_DLI_ASYNC0,
+	DDP_COMPONENT_MML_MUTEX0,
 	DDP_COMPONENT_OVLSYS_Y2R0,
-	DDP_COMPONENT_Y2R0_VIRTUAL0,	/* to describe ufod in */
+	// DDP_COMPONENT_Y2R0_VIRTUAL0,	/* to describe ufod in */
 };
 
 static const int disp_mml_dl_path_1[] = {
 	DDP_COMPONENT_OVLSYS_DLI_ASYNC3,
+	DDP_COMPONENT_MML_MUTEX0,
 	DDP_COMPONENT_OVLSYS_Y2R2,
-	DDP_COMPONENT_Y2R1_VIRTUAL0,	/* to describe ufod in */
+	// DDP_COMPONENT_Y2R1_VIRTUAL0,	/* to describe ufod in */
 };
 
 static const int disp_mml_sram_only_path[] = {
@@ -404,7 +406,9 @@ static void mtk_addon_path_stop(struct drm_crtc *crtc,
 			(addon_config->config_type.module == DISP_MML_IR_PQ ||
 			addon_config->config_type.module == DISP_MML_IR_PQ_1 ||
 			addon_config->config_type.module == DISP_MML_IR_PQ_v2 ||
-			addon_config->config_type.module == DISP_MML_IR_PQ_v3) &&
+			addon_config->config_type.module == DISP_MML_IR_PQ_v3 ||
+			addon_config->config_type.module == DISP_MML_DL ||
+			addon_config->config_type.module == DISP_MML_DL_1) &&
 			addon_config->config_type.type == ADDON_DISCONNECT)
 			mtk_ddp_comp_addon_config(add_comp, -1, -1, addon_config, cmdq_handle);
 	}
@@ -706,9 +710,7 @@ void mtk_addon_connect_before(struct drm_crtc *crtc, unsigned int ddp_mode,
 	int i, j;
 	unsigned int addon_idx, prev_id;
 
-	next_attach_comp_id =
-		mtk_crtc_find_comp(crtc, ddp_mode, module_data->attach_comp);
-
+	next_attach_comp_id = addon_config->config_type.tgt_comp;
 	if (module_data->attach_comp >= DDP_COMPONENT_ID_MAX) {
 		DDPPR_ERR("Invalid attach_comp value\n");
 		return;
@@ -731,6 +733,7 @@ void mtk_addon_connect_before(struct drm_crtc *crtc, unsigned int ddp_mode,
 		prev_id = DDP_COMPONENT_ID_MAX;
 	else
 		prev_id = path_data->path[path_data->path_len - 2];
+
 	mtk_ddp_add_comp_to_path_with_cmdq(
 		mtk_crtc, path_data->path[path_data->path_len - 1], prev_id,
 		next_attach_comp_id, cmdq_handle);
@@ -754,6 +757,7 @@ void mtk_addon_connect_before(struct drm_crtc *crtc, unsigned int ddp_mode,
 			    MTK_DISP_VIRTUAL) {
 				next_comp_id = path_data->path[j];
 
+				comp->mtk_crtc = mtk_crtc;
 				mtk_ddp_comp_addon_config(
 					comp, prev_comp_id, next_comp_id,
 					addon_config, cmdq_handle);
@@ -771,6 +775,7 @@ void mtk_addon_connect_before(struct drm_crtc *crtc, unsigned int ddp_mode,
 	prev_comp_id = cur_comp_id;
 	cur_comp_id = comp->id;
 	next_comp_id = next_attach_comp_id;
+	comp->mtk_crtc = mtk_crtc;
 	mtk_ddp_comp_addon_config(comp, prev_comp_id, next_comp_id,
 				  addon_config, cmdq_handle);
 	comp = priv->ddp_comp[next_attach_comp_id];
@@ -778,6 +783,7 @@ void mtk_addon_connect_before(struct drm_crtc *crtc, unsigned int ddp_mode,
 	cur_comp_id = comp->id;
 	next_comp_id =
 		mtk_crtc_find_next_comp(crtc, ddp_mode, next_attach_comp_id);
+	comp->mtk_crtc = mtk_crtc;
 	mtk_ddp_comp_addon_config(comp, prev_comp_id, next_comp_id,
 				  addon_config, cmdq_handle);
 
@@ -797,9 +803,7 @@ void mtk_addon_disconnect_before(
 	const struct mtk_addon_path_data *path_data =
 		mtk_addon_module_get_path(module_data->module);
 
-	next_attach_comp_id =
-		mtk_crtc_find_comp(crtc, ddp_mode, module_data->attach_comp);
-
+	next_attach_comp_id = addon_config->config_type.tgt_comp;
 	if (next_attach_comp_id == -1 || next_attach_comp_id >= DDP_COMPONENT_ID_MAX) {
 		comp = priv->ddp_comp[module_data->attach_comp];
 		DDPPR_ERR(
@@ -826,6 +830,8 @@ void mtk_addon_disconnect_before(
 		mtk_crtc_find_prev_comp(crtc, ddp_mode, next_attach_comp_id);
 	next_comp_id =
 		mtk_crtc_find_next_comp(crtc, ddp_mode, next_attach_comp_id);
+
+	comp->mtk_crtc = mtk_crtc;
 	mtk_ddp_comp_addon_config(comp, prev_comp_id, next_comp_id,
 				  addon_config, cmdq_handle);
 }
@@ -998,7 +1004,7 @@ void mtk_addon_connect_embed(struct drm_crtc *crtc, unsigned int ddp_mode,
 	int i, j;
 	unsigned int addon_idx, prev_id;
 
-	attach_comp_id = mtk_crtc_find_comp(crtc, ddp_mode, module_data->attach_comp);
+	attach_comp_id = addon_config->config_type.tgt_comp;
 	if (attach_comp_id == -1 || attach_comp_id >= DDP_COMPONENT_ID_MAX) {
 		comp = priv->ddp_comp[module_data->attach_comp];
 		DDPPR_ERR(
@@ -1076,7 +1082,7 @@ void mtk_addon_disconnect_embed(struct drm_crtc *crtc, unsigned int ddp_mode,
 	const struct mtk_addon_path_data *path_data =
 	    mtk_addon_module_get_path(module_data->module);
 
-	attach_comp_id = mtk_crtc_find_comp(crtc, ddp_mode, module_data->attach_comp);
+	attach_comp_id = addon_config->config_type.tgt_comp;
 
 	if (attach_comp_id == -1 || attach_comp_id >= DDP_COMPONENT_ID_MAX) {
 		comp = priv->ddp_comp[module_data->attach_comp];

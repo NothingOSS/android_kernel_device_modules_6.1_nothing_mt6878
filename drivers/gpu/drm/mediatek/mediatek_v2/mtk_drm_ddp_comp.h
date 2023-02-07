@@ -619,7 +619,6 @@ enum mtk_ddp_io_cmd {
 	/*Msync 2.0 cmd end*/
 	DUAL_TE_INIT,
 	OVL_GET_SOURCE_BPC,
-	DSI_GET_CMD_MODE_LINE_TIME,
 	DSI_DUMP_LCM_INFO,
 	DSI_SET_TARGET_LINE,
 	DSI_READ_PANELID,
@@ -636,6 +635,8 @@ enum mtk_ddp_io_cmd {
 	DSI_PLL_SWITCH_REFERENCE_CNT_GET,
 	DSI_PLL_SWITCH_ON_OFF,
 	MDP_RDMA_FILL_FRAME,
+	INLINEROT_CONFIG,
+	OVL_SET_PQ_OUT,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {
@@ -733,7 +734,7 @@ struct mtk_ddp_comp_funcs {
 			     enum mtk_ddp_comp_id next,
 			     union mtk_addon_config *addon_config,
 			     struct cmdq_pkt *handle);
-	void (*config_begin)(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle);
+	void (*config_begin)(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, const u32 idx);
 	int (*io_cmd)(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		      enum mtk_ddp_io_cmd cmd, void *params);
 	int (*user_cmd)(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
@@ -929,11 +930,11 @@ mtk_ddp_comp_addon_config(struct mtk_ddp_comp *comp, enum mtk_ddp_comp_id prev,
 }
 
 static inline void
-mtk_ddp_comp_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
+mtk_ddp_comp_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, const u32 idx)
 {
 	if (comp && comp->funcs && comp->funcs->config_begin &&
 			!comp->blank_mode)
-		comp->funcs->config_begin(comp, handle);
+		comp->funcs->config_begin(comp, handle, idx);
 }
 
 static inline void

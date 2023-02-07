@@ -18,13 +18,13 @@ const char *mtk_dump_comp_str(struct mtk_ddp_comp *comp)
 		DDPPR_ERR("%s: Invalid ddp comp id:%d\n", __func__, comp->id);
 		return "invalid";
 	}
-	return ddp_comp_str[comp->id];
+	return ddp_comp_str[comp->id]+14;
 }
 
 const char *mtk_dump_comp_str_id(unsigned int id)
 {
 	if (likely(id < DDP_COMPONENT_ID_MAX))
-		return ddp_comp_str[id];
+		return ddp_comp_str[id]+14;
 
 	return "invalid";
 }
@@ -73,6 +73,8 @@ int mtk_dump_reg(struct mtk_ddp_comp *comp)
 	case DDP_COMPONENT_RSZ0:
 	case DDP_COMPONENT_RSZ1:
 	case DDP_COMPONENT_RSZ2:
+	case DDP_COMPONENT_OVLSYS_RSZ1:
+	case DDP_COMPONENT_OVLSYS_RSZ2:
 		mtk_rsz_dump(comp);
 		break;
 	case DDP_COMPONENT_MDP_RSZ0:

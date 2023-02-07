@@ -81,7 +81,9 @@ enum addon_type {
 struct mtk_lye_ddp_state {
 	enum addon_scenario scn[HRT_DISP_TYPE_NUM];
 	uint8_t lc_tgt_layer;
-	uint8_t dmdp_tgt_layer;
+	u32 rpo_lye;
+	u32 mml_ir_lye;
+	u32 mml_dl_lye;
 };
 
 struct mtk_addon_path_data {
@@ -104,6 +106,8 @@ struct mtk_addon_scenario_data {
 struct mtk_addon_config_type {
 	enum addon_module module;
 	enum addon_type type;
+	uint8_t tgt_layer;
+	int tgt_comp;
 };
 
 struct mtk_rsz_param {

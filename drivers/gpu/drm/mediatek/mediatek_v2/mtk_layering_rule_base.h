@@ -141,6 +141,7 @@ struct layering_rule_info_t {
 	unsigned int rpo_scale_num;
 	unsigned int rpo_tile_length;
 	unsigned int rpo_in_max_height;
+	u32 bk_mml_dl_lye;
 };
 
 enum SCN_FACTOR {

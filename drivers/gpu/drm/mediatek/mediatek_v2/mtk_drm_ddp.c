@@ -1471,6 +1471,11 @@
 #define DISP_REG_CONFIG_MMSYS_CG_CON0_MT6985 0x100
 #define DISP_REG_CONFIG_MMSYS_CG_CON1_MT6985 0x110
 
+#define MT6985_DISP_REG_OVLSYS_DLI_RELAY_SIZE_0 0x260
+#define MT6985_DISP_REG_OVLSYS_DLO_RELAY_SIZE_0 0x26C
+#define MT6985_DISP_REG_OVLSYS_DLI_RELAY_CNT_0 0x2C4
+#define MT6985_DISP_REG_OVLSYS_DLO_RELAY_CNT_0 0x28C
+
 #define MT6985_DISP_REG_CONFIG_DL_VALID_0 0xC00
 #define MT6985_DISP_REG_CONFIG_DL_VALID_1 0xC04
 #define MT6985_DISP_REG_CONFIG_DL_VALID_2 0xC08
@@ -11676,6 +11681,120 @@ static int mtk_ddp_ovl_bg_cb_MT6985(enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_
 	}
 	return value;
 }
+
+static int mtk_ddp_ovl_pq_out_cb_MT6985(enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id next,
+				unsigned int *addr)
+{
+	/* Aware this function can't detect cross OVLSYS path description,
+	 * like DDP_COMPONENT_OVL0_2L -> DDP_COMPONENT_OVLSYS_DLO_ASYNC10.
+	 */
+	int value = -1;
+
+	switch (cur) {
+	case DDP_COMPONENT_OVL0_2L:
+	case DDP_COMPONENT_OVL4_2L:
+		*addr = MT6985_OVL_PQ_OUT_CROSSBAR0_MOUT_EN;
+		break;
+	case DDP_COMPONENT_OVL1_2L:
+	case DDP_COMPONENT_OVL5_2L:
+		*addr = MT6985_OVL_PQ_OUT_CROSSBAR1_MOUT_EN;
+		break;
+	case DDP_COMPONENT_OVL2_2L:
+	case DDP_COMPONENT_OVL6_2L:
+		*addr = MT6985_OVL_PQ_OUT_CROSSBAR2_MOUT_EN;
+		break;
+	case DDP_COMPONENT_OVL3_2L:
+	case DDP_COMPONENT_OVL7_2L:
+		*addr = MT6985_OVL_PQ_OUT_CROSSBAR3_MOUT_EN;
+		break;
+	default:
+		value = -1;
+		DDPMSG("%s, cur=%s->next=%s not found in PQ_OUT_cb\n", __func__,
+			mtk_dump_comp_str_id(cur), mtk_dump_comp_str_id(next));
+		return value;
+	}
+
+	/* set value according to dst comp */
+	switch (next) {
+	case DDP_COMPONENT_OVLSYS_DLO_ASYNC0:
+	case DDP_COMPONENT_OVLSYS_DLO_ASYNC7:
+		value = BIT(0);
+		break;
+	case DDP_COMPONENT_OVLSYS_DLO_ASYNC2:
+	case DDP_COMPONENT_OVLSYS_DLO_ASYNC9:
+		value = BIT(1);
+		break;
+	case DDP_COMPONENT_OVLSYS_RSZ1:
+	case DDP_COMPONENT_OVLSYS_RSZ2:
+		value = BIT(2);
+		break;
+	default:
+		value = -1;
+		DDPMSG("%s, cur=%s->next=%s not found in PQ_OUT_cb\n", __func__,
+			mtk_dump_comp_str_id(cur), mtk_dump_comp_str_id(next));
+		return value;
+	}
+	return value;
+}
+
+static int mtk_ddp_ovl_pq_in_cb_MT6985(enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id next,
+				unsigned int *addr)
+{
+	/* Aware this function can't detect cross OVLSYS path description,
+	 * like DDP_COMPONENT_OVL0_2L -> DDP_COMPONENT_OVLSYS_DLO_ASYNC10.
+	 */
+	int value = -1;
+	bool ufod = (mtk_ddp_comp_get_type(cur) == MTK_DISP_VIRTUAL);
+
+	switch (cur) {
+	case DDP_COMPONENT_OVLSYS_Y2R0:
+	case DDP_COMPONENT_OVLSYS_Y2R2:
+	case DDP_COMPONENT_Y2R0_VIRTUAL0:
+	case DDP_COMPONENT_Y2R1_VIRTUAL0:
+		*addr = MT6985_OVL_PQ_IN_CROSSBAR0_MOUT_EN;
+		break;
+	case DDP_COMPONENT_OVLSYS_Y2R1:
+	case DDP_COMPONENT_OVLSYS_Y2R3:
+		*addr = MT6985_OVL_PQ_IN_CROSSBAR1_MOUT_EN;
+		break;
+	case DDP_COMPONENT_OVLSYS_RSZ1:
+	case DDP_COMPONENT_OVLSYS_RSZ2:
+		*addr = MT6985_OVL_PQ_IN_CROSSBAR2_MOUT_EN;
+		break;
+	default:
+		value = -1;
+		DDPMSG("%s, cur=%s->next=%s not found in PQ_IN_cb\n", __func__,
+			mtk_dump_comp_str_id(cur), mtk_dump_comp_str_id(next));
+		return value;
+	}
+
+	/* set value according to dst comp */
+	switch (next) {
+	case DDP_COMPONENT_OVL0_2L:
+	case DDP_COMPONENT_OVL4_2L:
+		value = (ufod ? BIT(4) : BIT(0));
+		break;
+	case DDP_COMPONENT_OVL1_2L:
+	case DDP_COMPONENT_OVL5_2L:
+		value = (ufod ? BIT(5) : BIT(1));
+		break;
+	case DDP_COMPONENT_OVL2_2L:
+	case DDP_COMPONENT_OVL6_2L:
+		value = (ufod ? BIT(6) : BIT(2));
+		break;
+	case DDP_COMPONENT_OVL3_2L:
+	case DDP_COMPONENT_OVL7_2L:
+		value = (ufod ? BIT(7) : BIT(3));
+		break;
+	default:
+		value = -1;
+		DDPMSG("%s, cur=%s->next=%s not found in PQ_IN_cb\n", __func__,
+			mtk_dump_comp_str_id(cur), mtk_dump_comp_str_id(next));
+		return value;
+	}
+	return value;
+}
+
 static int mtk_ddp_mout_en_MT6985(const struct mtk_mmsys_reg_data *data,
 			   enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id next,
 			   unsigned int *addr)
@@ -11684,29 +11803,49 @@ static int mtk_ddp_mout_en_MT6985(const struct mtk_mmsys_reg_data *data,
 
 	if (cur == DDP_COMPONENT_MML_MML0 || cur == DDP_COMPONENT_MML_MUTEX0 ||
 	    cur == DDP_COMPONENT_OVLSYS_DLO_ASYNC0 || cur == DDP_COMPONENT_OVLSYS_DLI_ASYNC0 ||
-	    cur == DDP_COMPONENT_INLINE_ROTATE0)
+	    cur == DDP_COMPONENT_OVLSYS_DLO_ASYNC7 || cur == DDP_COMPONENT_OVLSYS_DLI_ASYNC3 ||
+	    cur == DDP_COMPONENT_INLINE_ROTATE0 || cur == DDP_COMPONENT_INLINE_ROTATE1)
 		return 0;
 
-	if (mtk_ddp_comp_get_type(cur) == MTK_DISP_OVL &&
-		mtk_ddp_comp_get_type(next) == MTK_DISP_OVL) {
-		value = mtk_ddp_ovl_bg_cb_MT6985(cur, next, addr);
-		return value;
+	if (mtk_ddp_comp_get_type(cur) == MTK_DISP_OVL) {
+		if (mtk_ddp_comp_get_type(next) == MTK_DISP_OVL) {
+			value = mtk_ddp_ovl_bg_cb_MT6985(cur, next, addr);
+		} else if (next == DDP_COMPONENT_OVLSYS_DLO_ASYNC3 ||
+			   next == DDP_COMPONENT_OVLSYS_DLO_ASYNC10 ||
+			   next == DDP_COMPONENT_OVLSYS_DLO_ASYNC4 ||
+			   next == DDP_COMPONENT_OVLSYS_DLO_ASYNC11 ||
+			   next == DDP_COMPONENT_OVLSYS_DLO_ASYNC5 ||
+			   next == DDP_COMPONENT_OVLSYS_DLO_ASYNC12 ||
+			   next == DDP_COMPONENT_OVLSYS_DLO_ASYNC6 ||
+			   next == DDP_COMPONENT_OVLSYS_DLO_ASYNC13 ||
+			   next == DDP_COMPONENT_DMDP_RSZ0 ||
+			   next == DDP_COMPONENT_DMDP_RSZ1 ||
+			   next == DDP_COMPONENT_OVLSYS_WDMA0 ||
+			   next == DDP_COMPONENT_OVLSYS_WDMA2) {
+			value = mtk_ddp_ovl_blend_cb_MT6985(cur, next, addr);
+		} else if (next == DDP_COMPONENT_OVLSYS_DLO_ASYNC0 ||
+			   next == DDP_COMPONENT_OVLSYS_DLO_ASYNC7 ||
+			   next == DDP_COMPONENT_OVLSYS_DLO_ASYNC2 ||
+			   next == DDP_COMPONENT_OVLSYS_DLO_ASYNC9 ||
+			   next == DDP_COMPONENT_OVLSYS_RSZ1 ||
+			   next == DDP_COMPONENT_OVLSYS_RSZ2) {
+			value = mtk_ddp_ovl_pq_out_cb_MT6985(cur, next, addr);
+		}
+
+		if (value != -1)
+			return value;
 	}
 
-	if (mtk_ddp_comp_get_type(cur) == MTK_DISP_OVL &&
-		(next == DDP_COMPONENT_OVLSYS_DLO_ASYNC3 ||
-			next == DDP_COMPONENT_OVLSYS_DLO_ASYNC10 ||
-			next == DDP_COMPONENT_OVLSYS_DLO_ASYNC4 ||
-			next == DDP_COMPONENT_OVLSYS_DLO_ASYNC11 ||
-			next == DDP_COMPONENT_OVLSYS_DLO_ASYNC5 ||
-			next == DDP_COMPONENT_OVLSYS_DLO_ASYNC12 ||
-			next == DDP_COMPONENT_OVLSYS_DLO_ASYNC6 ||
-			next == DDP_COMPONENT_OVLSYS_DLO_ASYNC13 ||
-			next == DDP_COMPONENT_DMDP_RSZ0 ||
-			next == DDP_COMPONENT_DMDP_RSZ1 ||
-			next == DDP_COMPONENT_OVLSYS_WDMA0 ||
-			next == DDP_COMPONENT_OVLSYS_WDMA2)) {
-		value = mtk_ddp_ovl_blend_cb_MT6985(cur, next, addr);
+	if (mtk_ddp_comp_get_type(next) == MTK_DISP_OVL &&
+		(cur == DDP_COMPONENT_OVLSYS_Y2R0 ||
+		 cur == DDP_COMPONENT_OVLSYS_Y2R2 ||
+		 cur == DDP_COMPONENT_OVLSYS_Y2R1 ||
+		 cur == DDP_COMPONENT_OVLSYS_Y2R3 ||
+		 cur == DDP_COMPONENT_OVLSYS_RSZ1 ||
+		 cur == DDP_COMPONENT_OVLSYS_RSZ2 ||
+		 cur == DDP_COMPONENT_Y2R0_VIRTUAL0 ||
+		 cur == DDP_COMPONENT_Y2R1_VIRTUAL0)) {
+		value = mtk_ddp_ovl_pq_in_cb_MT6985(cur, next, addr);
 		return value;
 	}
 
@@ -12371,7 +12510,8 @@ static int mtk_ddp_mout_en_MT6897(const struct mtk_mmsys_reg_data *data,
 
 	if (cur == DDP_COMPONENT_MML_MML0 || cur == DDP_COMPONENT_MML_MUTEX0 ||
 	    cur == DDP_COMPONENT_OVLSYS_DLO_ASYNC0 || cur == DDP_COMPONENT_OVLSYS_DLI_ASYNC0 ||
-	    cur == DDP_COMPONENT_INLINE_ROTATE0)
+	    cur == DDP_COMPONENT_OVLSYS_DLO_ASYNC7 || cur == DDP_COMPONENT_OVLSYS_DLI_ASYNC3 ||
+	    cur == DDP_COMPONENT_INLINE_ROTATE0 || cur == DDP_COMPONENT_INLINE_ROTATE1)
 		return 0;
 
 	if (mtk_ddp_comp_get_type(cur) == MTK_DISP_OVL &&
@@ -12776,31 +12916,6 @@ static int mtk_ddp_mout_en_MT6897(const struct mtk_mmsys_reg_data *data,
 		/* COMP_OUT_CROSSBAR */
 		*addr = MT6985_COMP_OUT_CROSSBAR3_MOUT_EN;
 		value = DISP_PANEL_COMP_OUT_CROSSBAR3_TO_MERGE_OUT_CROSSBAR0;
-	} else if ((cur == DDP_COMPONENT_OVL0_2L && next == DDP_COMPONENT_OVLSYS_DLO_ASYNC0) ||
-		   (cur == DDP_COMPONENT_OVL4_2L && next == DDP_COMPONENT_OVLSYS_DLO_ASYNC7)) {
-		/* OVL_PQ_OUT_CROSSBAR */
-		*addr = MT6985_OVL_PQ_OUT_CROSSBAR0_MOUT_EN;
-		value = DISP_OVL0_2L_TO_DLO_RELAY0;
-	} else if ((cur == DDP_COMPONENT_OVL0_2L && next == DDP_COMPONENT_OVLSYS_RSZ1) ||
-		   (cur == DDP_COMPONENT_OVL4_2L && next == DDP_COMPONENT_OVLSYS_RSZ2)) {
-		/* OVL_PQ_OUT_CROSSBAR */
-		*addr = MT6985_OVL_PQ_OUT_CROSSBAR0_MOUT_EN;
-		value = DISP_OVL0_2L_TO_RSZ1;
-	} else if ((cur == DDP_COMPONENT_Y2R0_VIRTUAL0 && next == DDP_COMPONENT_OVL0_2L) ||
-		   (cur == DDP_COMPONENT_Y2R1_VIRTUAL0 && next == DDP_COMPONENT_OVL4_2L)) {
-		/* OVL_PQ_IN_CROSSBAR */
-		*addr = MT6985_OVL_PQ_IN_CROSSBAR0_MOUT_EN;
-		value = DISP_Y2R0_TO_UFOD_OVL0_2L;
-	} else if ((cur == DDP_COMPONENT_OVLSYS_Y2R0 && next == DDP_COMPONENT_OVL0_2L) ||
-		   (cur == DDP_COMPONENT_OVLSYS_Y2R2 && next == DDP_COMPONENT_OVL4_2L)) {
-		/* OVL_PQ_IN_CROSSBAR */
-		*addr = MT6985_OVL_PQ_IN_CROSSBAR0_MOUT_EN;
-		value = DISP_Y2R0_TO_PQ_OVL0_2L;
-	} else if ((cur == DDP_COMPONENT_OVLSYS_RSZ1 && next == DDP_COMPONENT_OVL0_2L) ||
-		   (cur == DDP_COMPONENT_OVLSYS_RSZ2 && next == DDP_COMPONENT_OVL4_2L)) {
-		/* OVL_PQ_IN_CROSSBAR */
-		*addr = MT6985_OVL_PQ_IN_CROSSBAR2_MOUT_EN;
-		value = DISP_RSZ1_TO_PQ_OVL0_2L;
 	} else if ((cur == DDP_COMPONENT_OVL2_2L &&
 		next == DDP_COMPONENT_OVLSYS_WDMA0) ||
 		(cur == DDP_COMPONENT_OVL6_2L &&
@@ -20311,6 +20426,7 @@ void ovlsys_config_dump_analysis_mt6985(void __iomem *config_regs)
 	unsigned int ready[6] = {0};
 	unsigned int greq0 = 0;
 	unsigned int greq1 = 0;
+	unsigned int dli_size = 0, dlo_size = 0, dli_cnt = 0, dlo_cnt = 0;
 
 	valid[0] =
 		readl_relaxed(config_regs + MT6985_DISP_REG_OVLSYS_DL_VALID_0);
@@ -20427,6 +20543,27 @@ void ovlsys_config_dump_analysis_mt6985(void __iomem *config_regs)
 	}
 
 	DDPDUMP("[ovlsys]%s\n", clock_on);
+
+	dli_size = readl_relaxed(config_regs + MT6985_DISP_REG_OVLSYS_DLI_RELAY_SIZE_0);
+	dlo_size = readl_relaxed(config_regs + MT6985_DISP_REG_OVLSYS_DLO_RELAY_SIZE_0);
+
+	if (dli_size != 0x3FFF3FFF) {
+		dli_cnt = readl_relaxed(config_regs + MT6985_DISP_REG_OVLSYS_DLI_RELAY_CNT_0);
+		DDPDUMP("[ovlsys]dli(%ux%u) hcnt:%u vcnt:%u\n",
+			REG_FLD_VAL_GET(REG_FLD_MSB_LSB(13, 0), dli_size),
+			REG_FLD_VAL_GET(REG_FLD_MSB_LSB(29, 16), dli_size),
+			REG_FLD_VAL_GET(REG_FLD_MSB_LSB(13, 0), dli_cnt),
+			REG_FLD_VAL_GET(REG_FLD_MSB_LSB(29, 16), dli_cnt));
+	}
+
+	if (dlo_size != 0x3FFF3FFF) {
+		dlo_cnt = readl_relaxed(config_regs + MT6985_DISP_REG_OVLSYS_DLO_RELAY_CNT_0);
+		DDPDUMP("[ovlsys]dlo(%ux%u) hcnt:%u vcnt:%u\n",
+			REG_FLD_VAL_GET(REG_FLD_MSB_LSB(13, 0), dlo_size),
+			REG_FLD_VAL_GET(REG_FLD_MSB_LSB(29, 16), dlo_size),
+			REG_FLD_VAL_GET(REG_FLD_MSB_LSB(13, 0), dlo_cnt),
+			REG_FLD_VAL_GET(REG_FLD_MSB_LSB(29, 16), dlo_cnt));
+	}
 
 #ifdef CONFIG_MTK_SMI_EXT
 	if (greq0 || greq1) {

@@ -129,5 +129,6 @@ void mtk_dsi_set_mmclk_by_datarate_V1(struct mtk_dsi *dsi,
 	struct mtk_drm_crtc *mtk_crtc, unsigned int en);
 void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 	struct mtk_drm_crtc *mtk_crtc, unsigned int en);
+u32 mtk_dsi_get_line_time_ns(struct drm_crtc *crtc);
 
 #endif

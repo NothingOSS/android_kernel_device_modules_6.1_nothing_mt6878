@@ -145,11 +145,14 @@ struct mtk_plane_pending_state {
 	unsigned int dst_y;
 	unsigned int width;
 	unsigned int height;
+	unsigned int dst_roi;
+	unsigned int offset;
 	bool dirty;
 	bool is_sec;
 	enum mml_mode mml_mode;
 	struct mml_submit *mml_cfg;
 	uint64_t prop_val[PLANE_PROP_MAX];
+	unsigned int pq_loop_type;	/* 0 = none, 1 = DL in, 2 = DL out and DL in */
 };
 
 struct mtk_plane_input_config {

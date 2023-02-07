@@ -24,7 +24,7 @@
 #define DISP_REG_INLINEROT_WDONE		0x3C
 
 struct mtk_disp_inlinerotate_data {
-	unsigned int (*ovl_sel_mapping)(struct mtk_ddp_comp *comp);
+	unsigned int (*ovl_sel_mapping)(int comp_id);
 };
 
 struct mtk_disp_inlinerotate {
@@ -37,50 +37,31 @@ static inline struct mtk_disp_inlinerotate *comp_to_inlinerotate(struct mtk_ddp_
 	return container_of(comp, struct mtk_disp_inlinerotate, ddp_comp);
 }
 
-static void mtk_inlinerotate_addon_config(struct mtk_ddp_comp *comp,
-				 enum mtk_ddp_comp_id prev,
-				 enum mtk_ddp_comp_id next,
-				 union mtk_addon_config *addon_config,
-				 struct cmdq_pkt *handle)
+int mtk_inlinerotate_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+	      enum mtk_ddp_io_cmd cmd, void *params)
 {
-	struct mtk_ddp_comp *first_ovl = NULL;
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct mtk_disp_inlinerotate *ir = comp_to_inlinerotate(comp);
+	struct mtk_addon_config_type *c;
 	unsigned int ovl_sel = 0;
 
-	/* config inlinerot only when the first IR frame, bypass addon_connect */
-	if (addon_config)
-		return;
+	if (cmd != INLINEROT_CONFIG)
+		return -1;
 
-	if (!mtk_crtc)
-		return;
+	c = (struct mtk_addon_config_type *)params;
+	ovl_sel = ir->data->ovl_sel_mapping(c->tgt_comp);
 
-	if (mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].ovl_comp_nr[0] != 0)
-		first_ovl = mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].ovl_comp[DDP_FIRST_PATH][0];
-	else
-		first_ovl = mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].ddp_comp[DDP_FIRST_PATH][0];
-	ovl_sel = ir->data->ovl_sel_mapping(first_ovl);
-
-	/* TODO: dynamic OVLSEL */
-#ifdef IF_ZERO
-	if (addon_config && addon_config->config_type.type == ADDON_DISCONNECT)
-		return;
-
-	if (addon_config && !addon_config->addon_mml_config.is_entering)
-		return;
-#endif
-
-	DDPINFO("%s handle:0x%lx, comp->regs_pa:0x%pa, ovl_sel:%u\n",
-		__func__, (unsigned long)handle, &comp->regs_pa, ovl_sel);
+	DDPINFO("%s comp->regs_pa:0x%x, ovl_sel:%u layer:%u\n",
+		__func__, (unsigned int)comp->regs_pa, ovl_sel, c->tgt_layer);
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_DISPSYS_SHADOW_CTRL,
 		       0x00000002, ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_INLINEROT_OVLSEL,
-		       ovl_sel, ~0);
+		       ovl_sel + c->tgt_layer, ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_INLINEROT_HEIGHT0,
 		       64, ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_INLINEROT_HEIGHT1,
 		       64, ~0);
+	return 0;
 }
 
 void mtk_inlinerotate_dump(struct mtk_ddp_comp *comp)
@@ -154,7 +135,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_inlinerotate_funcs = {
 	.start = mtk_inlinerotate_start,
 	.stop = mtk_inlinerotate_stop,
 	.reset = mtk_inlinerotate_reset,
-	.addon_config = mtk_inlinerotate_addon_config,
+	.io_cmd = mtk_inlinerotate_io_cmd,
 	.prepare = mtk_inlinerotate_prepare,
 	.unprepare = mtk_inlinerotate_unprepare,
 };
@@ -243,23 +224,23 @@ static int mtk_disp_inlinerotate_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static unsigned int mt6983_ovl_sel_mapping(struct mtk_ddp_comp *comp)
+static unsigned int mt6983_ovl_sel_mapping(int comp_id)
 {
-	switch (comp->id) {
+	switch (comp_id) {
 	case DDP_COMPONENT_OVL0:
 		return 0;
 	case DDP_COMPONENT_OVL0_2L:
 	case DDP_COMPONENT_OVL1_2L:
 		return 12;
 	default:
-		DDPPR_ERR("%s not support comp id %d\n", __func__, comp->id);
+		DDPMSG("%s not support comp id %d\n", __func__, comp_id);
 		return 0;
 	}
 }
 
-static unsigned int ovl_sel_mapping(struct mtk_ddp_comp *comp)
+static unsigned int ovl_sel_mapping(int comp_id)
 {
-	switch (comp->id) {
+	switch (comp_id) {
 	case DDP_COMPONENT_OVL0_2L:
 		return 0;
 	case DDP_COMPONENT_OVL1_2L:
@@ -269,7 +250,7 @@ static unsigned int ovl_sel_mapping(struct mtk_ddp_comp *comp)
 	case DDP_COMPONENT_OVL3_2L:
 		return 15;
 	default:
-		DDPPR_ERR("%s not support comp id %d\n", __func__, comp->id);
+		DDPMSG("%s not support comp id %d\n", __func__, comp_id);
 		return 0;
 	}
 }

@@ -435,6 +435,8 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 	unsigned int plane_index = to_crtc_plane_index(plane->index);
 	bool skip_update = 0;
 	unsigned int crtc_index = 0;
+	char dbg_msg[512] = {0};
+	int written = 0;
 
 	if (!crtc)
 		return;
@@ -473,7 +475,7 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 
 	// MML setting display single pipe in here, we set dual pipe
 	// in mtk_drm_layer_dispatch_to_dual_pipe()
-	if (mtk_plane_state->pending.mml_mode == MML_MODE_RACING && mtk_crtc->is_mml) {
+	if (mtk_plane_state->pending.mml_mode == MML_MODE_RACING) {
 		struct mml_submit *cfg = mtk_plane_state->pending.mml_cfg;
 		uint32_t width, height, pitch;
 
@@ -495,6 +497,34 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 			(mtk_crtc->is_force_mml_scen) ? 0 : dst_y;
 		mtk_plane_state->pending.width = width;
 		mtk_plane_state->pending.height = height;
+		mtk_plane_state->pending.dst_roi = crtc_state->mml_dst_roi.height << 16 |
+						   crtc_state->mml_dst_roi.width;
+		mtk_plane_state->pending.offset = crtc_state->mml_dst_roi.y << 16 |
+						  crtc_state->mml_dst_roi.x;
+	} else if (mtk_plane_state->pending.mml_mode == MML_MODE_DIRECT_LINK) {
+		struct mml_submit *cfg = mtk_plane_state->pending.mml_cfg;
+		uint32_t width, height, pitch;
+
+		width = cfg->info.dest[0].crop.r.width;
+		height = cfg->info.dest[0].crop.r.height;
+		pitch = cfg->info.src.y_stride;
+
+		mtk_plane_state->pending.enable = plane->state->visible;
+		mtk_plane_state->pending.pitch = pitch;
+		mtk_plane_state->pending.format = fb->format->format;
+		mtk_plane_state->pending.addr = 0;
+		mtk_plane_state->pending.modifier = fb->modifier;
+		mtk_plane_state->pending.size = pitch  * height;
+		mtk_plane_state->pending.src_x = 0;
+		mtk_plane_state->pending.src_y = 0;
+		mtk_plane_state->pending.dst_x = 0;
+		mtk_plane_state->pending.dst_y = 0;
+		mtk_plane_state->pending.width = 0;	/* for PQ_OUT_SIZE */
+		mtk_plane_state->pending.height = 0;	/* for PQ_OUT_SIZE */
+		mtk_plane_state->pending.dst_roi = crtc_state->mml_dst_roi.height << 16 |
+						   crtc_state->mml_dst_roi.width;
+		mtk_plane_state->pending.offset = crtc_state->mml_dst_roi.y << 16 |
+						  crtc_state->mml_dst_roi.x;
 	} else {
 		mtk_plane_state->pending.enable = plane->state->visible;
 		mtk_plane_state->pending.pitch = fb->pitches[0];
@@ -508,6 +538,13 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 		mtk_plane_state->pending.dst_y = dst_y;
 		mtk_plane_state->pending.width = dst_w;
 		mtk_plane_state->pending.height = dst_h;
+
+		if (mtk_plane_state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER) {
+			mtk_plane_state->pending.dst_roi = crtc_state->rsz_dst_roi.width |
+							   crtc_state->rsz_dst_roi.height << 16;
+			mtk_plane_state->pending.offset = crtc_state->rsz_dst_roi.x |
+							  crtc_state->rsz_dst_roi.y << 16;
+		}
 	}
 
 	if (mtk_drm_fb_is_secure(fb))
@@ -520,21 +557,18 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 	wmb(); /* Make sure the above parameters are set before update */
 	mtk_plane_state->pending.dirty = true;
 
-	DDPINFO("%s:%d en%d,pitch%d,fmt:%p4cc\n",
-		__func__, __LINE__, (unsigned int)mtk_plane_state->pending.enable,
-		mtk_plane_state->pending.pitch, &mtk_plane_state->pending.format);
-	DDPINFO("addr:0x%llx,sx%d,sy%d,dx%d,dy%d,width%d,height%d\n",
-		mtk_plane_state->pending.addr,
-		mtk_plane_state->pending.src_x, mtk_plane_state->pending.src_y,
+	DDPINFO("%s en%d pitch%d fmt:%p4cc addr:0x%llx x%d y%d w%d h%d\n", __func__,
+		(unsigned int)mtk_plane_state->pending.enable, mtk_plane_state->pending.pitch,
+		&mtk_plane_state->pending.format, mtk_plane_state->pending.addr,
 		mtk_plane_state->pending.dst_x, mtk_plane_state->pending.dst_y,
-		mtk_plane_state->pending.width,
-		mtk_plane_state->pending.height);
+		mtk_plane_state->pending.width,	mtk_plane_state->pending.height);
 
+	written = scnprintf(dbg_msg, 512, "prop_val:");
 	for (i = 0; i < PLANE_PROP_MAX; i++) {
-		DDPINFO("prop_val[%d]:%d ", i,
-			(unsigned int)mtk_plane_state->pending.prop_val[i]);
+		written += scnprintf(dbg_msg + written, 512 - written, "[%d]%d ",
+				     i, (unsigned int)mtk_plane_state->pending.prop_val[i]);
 	}
-	DDPINFO("\n");
+	DDPINFO("%s\n", dbg_msg);
 
 	DDPFENCE("S+/%sL%d/e%d/id%d/mva0x%08llx/size0x%08lx/S%d\n",
 		mtk_crtc_index_spy(crtc_index),

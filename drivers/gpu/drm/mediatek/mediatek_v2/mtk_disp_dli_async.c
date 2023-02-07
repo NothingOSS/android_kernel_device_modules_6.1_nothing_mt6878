@@ -43,7 +43,9 @@ static void mtk_dli_async_addon_config(struct mtk_ddp_comp *comp,
 		return;
 
 	if ((addon_config->config_type.module == DISP_MML_IR_PQ_v2) ||
-	    (addon_config->config_type.module == DISP_MML_IR_PQ_v2_1)) {
+	    (addon_config->config_type.module == DISP_MML_IR_PQ_v2_1) ||
+	    (addon_config->config_type.module == DISP_MML_DL) ||
+	    (addon_config->config_type.module == DISP_MML_DL_1)) {
 		u8 pipe = addon_config->addon_mml_config.pipe;
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -91,6 +93,8 @@ static void mtk_dli_async_prepare(struct mtk_ddp_comp *comp)
 {
 	DDPINFO("%s\n", __func__);
 	mtk_ddp_comp_clk_prepare(comp);
+
+	writel(0, comp->regs + DISP_REG_OVL_DL_IN_RELAY0_SIZE);
 }
 
 static void mtk_dli_async_unprepare(struct mtk_ddp_comp *comp)
