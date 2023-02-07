@@ -67,6 +67,7 @@ int vsync_update(struct vsync_collector *c,
 struct mtk_cam_ctrl {
 	struct mtk_cam_ctx *ctx;
 	struct work_struct stream_on_work;
+	struct work_struct seamless_switch_work;
 
 	struct sensor_apply_params s_params;
 

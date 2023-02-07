@@ -147,7 +147,6 @@ void initialize(struct mtk_raw_device *dev, int is_slave)
 	writel_relaxed(val, dev->base + REG_CAMCQ_CQ_EN);
 
 	writel_relaxed(0xffffffff, dev->base + REG_CAMCQ_SCQ_START_PERIOD);
-
 	val = FBIT(CAMCQ_CQ_THR0_EN);
 	SET_FIELD(&val, CAMCQ_CQ_THR0_MODE, 1);
 
@@ -172,7 +171,6 @@ void initialize(struct mtk_raw_device *dev, int is_slave)
 	dev->sub_sensor_ctrl_en = false;
 	dev->time_shared_busy = 0;
 	atomic_set(&dev->vf_en, 0);
-	dev->stagger_en = 0;
 	reset_msgfifo(dev);
 
 	init_camsys_settings(dev, is_srt);
@@ -223,7 +221,10 @@ void stagger_enable(struct mtk_raw_device *dev)
 	SET_FIELD(&val, CAMCQ_SCQ_STAGGER_MODE, 1);
 	writel_relaxed(val, dev->base + REG_CAMCQ_CQ_EN);
 
-	dev->stagger_en = 1;
+	if (CAM_DEBUG_ENABLED(RAW_INT))
+		dev_info(dev->dev,
+			 "[%s] raw%d - CQ_EN:0x%x\n",
+			 __func__, dev->id, readl_relaxed(dev->base + REG_CAMCQ_CQ_EN));
 }
 
 void stagger_disable(struct mtk_raw_device *dev)
@@ -234,7 +235,10 @@ void stagger_disable(struct mtk_raw_device *dev)
 	SET_FIELD(&val, CAMCQ_SCQ_STAGGER_MODE, 0);
 	writel_relaxed(val, dev->base + REG_CAMCQ_CQ_EN);
 
-	dev->stagger_en = 0;
+	if (CAM_DEBUG_ENABLED(RAW_INT))
+		dev_info(dev->dev,
+			 "[%s] raw%d - CQ_EN:0x%x\n",
+			 __func__, dev->id, readl_relaxed(dev->base + REG_CAMCQ_CQ_EN));
 }
 
 void apply_cq(struct mtk_raw_device *dev,
@@ -279,8 +283,14 @@ void apply_cq(struct mtk_raw_device *dev,
 
 void dbload_force(struct mtk_raw_device *dev)
 {
-	if (WARN_ON_ONCE(1))
-		dev_info(dev->dev, "not ready\n");
+	u32 val;
+
+	val = readl_relaxed(dev->base + REG_CAMCTL_MISC);
+	SET_FIELD(&val, CAMCTL_DB_LOAD_FORCE, 1);
+	writel_relaxed(val, dev->base + REG_CAMCTL_MISC);
+	writel_relaxed(val, dev->base_inner + REG_CAMCTL_MISC);
+	wmb(); /* TBC */
+	dev_info(dev->dev, "%s: 0x%x\n", __func__, val);
 }
 
 void toggle_db(struct mtk_raw_device *dev)
@@ -316,24 +326,21 @@ static void set_tg_vfdata_en(struct mtk_raw_device *dev, int on)
 		 __func__, readl(dev->base + REG_TG_VF_CON));
 }
 
-static inline u32 to_scq_period(unsigned int ms,
-				unsigned int tg_time_stamp_cnt)
+void update_scq_start_period(struct mtk_raw_device *dev, int scq_ms)
 {
-	return ms * 1000 * SCQ_DEFAULT_CLK_RATE / (tg_time_stamp_cnt * 2);
+	u32 val;
+
+	val = readl_relaxed(dev->base + REG_TG_TIME_STAMP_CNT);
+	writel_relaxed(scq_ms * 1000 * SCQ_DEFAULT_CLK_RATE /
+			(val * 2), dev->base + REG_CAMCQ_SCQ_START_PERIOD);
+	dev_info(dev->dev, "[%s] val:%d, REG_CAMCQ_SCQ_START_PERIOD:%d (%dms)\n",
+		__func__, val, readl(dev->base + REG_CAMCQ_SCQ_START_PERIOD), scq_ms);
 }
 
 void stream_on(struct mtk_raw_device *dev, int on)
 {
-	u32 val;
 	if (on) {
 		if (!dev->is_slave) {
-			val = readl_relaxed(dev->base + REG_TG_TIME_STAMP_CNT);
-			writel_relaxed(to_scq_period(SCQ_DEADLINE_MS, val),
-				       dev->base + REG_CAMCQ_SCQ_START_PERIOD);
-
-			dev_info(dev->dev, "[%s] val:%d, REG_CAMCQ_SCQ_START_PERIOD:0x%x\n",
-				 __func__, val,
-				 readl(dev->base + REG_CAMCQ_SCQ_START_PERIOD));
 			/* toggle db before stream-on */
 			enable_tg_db(dev, 0);
 			enable_tg_db(dev, 1);

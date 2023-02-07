@@ -95,6 +95,12 @@ bool cond_frame_no_belong(struct mtk_cam_job *job, void *arg)
 	return frame_seq_diff(no, job->frame_seq_no) < job->frame_cnt;
 }
 
+bool cond_switch_job_first(struct mtk_cam_job *job, void *arg)
+{
+
+	return job->seamless_switch;
+}
+
 static struct mtk_cam_job *
 mtk_cam_ctrl_get_job(struct mtk_cam_ctrl *ctrl,
 		     bool (*cond_func)(struct mtk_cam_job *, void *arg),
@@ -644,6 +650,32 @@ static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 	dev_info(dev, "[%s] ctx %d finish\n", __func__, ctrl->ctx->stream_id);
 }
 
+static void mtk_cam_ctrl_seamless_switch_work(struct work_struct *work)
+{
+	struct mtk_cam_ctrl *ctrl =
+		container_of(work, struct mtk_cam_ctrl, seamless_switch_work);
+	struct mtk_cam_job *job;
+	unsigned long timeout = msecs_to_jiffies(1000);
+
+	job = mtk_cam_ctrl_get_job(ctrl, cond_switch_job_first, 0);
+	if (!job)
+		return;
+	dev_info(ctrl->ctx->cam->dev, "[%s] begin waiting switch no:%d\n",
+		__func__, job->frame_seq_no);
+	if (!wait_for_completion_timeout(&job->cq_exe_completion, timeout)) {
+		pr_info("[%s] error: wait for job seamless_switch\n",
+			__func__);
+		return;
+	}
+	/* let sensor set seamless switch */
+	complete(&job->i2c_ready_completion);
+	if (job)
+		call_jobop(job, apply_switch);
+	vsync_set_desired(&ctrl->vsync_col, job->used_engine);
+	dev_info(ctrl->ctx->cam->dev, "[%s] finish, used_engine:0x%x\n",
+		__func__, job->used_engine);
+}
+
 /* request queue */
 void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 			    struct mtk_cam_job *job)
@@ -683,7 +715,6 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 			mtk_cam_ctrl_apply_by_state(cam_ctrl, 1);
 	}
 
-
 	call_jobop(job, compose);
 	mtk_cam_ctrl_send_event(cam_ctrl, CAMSYS_EVENT_ENQUE);
 	dev_dbg(ctx->cam->dev, "[%s] ctx:%d, req_no:%d frame_no:%d\n",
@@ -700,7 +731,23 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 		/* note: not sure if using system_highpri_wq is suitable */
 		queue_work(system_highpri_wq, &cam_ctrl->stream_on_work);
 	}
+	if (job->seamless_switch &&
+		!work_busy(&cam_ctrl->seamless_switch_work)) {
+		/*
+		 * Note: assume this function is called from user's context,
+		 *       thus, no need to consider race condition for
+		 *       seamless_switch (between enque & stream off).
+		 */
+		INIT_WORK(&cam_ctrl->seamless_switch_work, mtk_cam_ctrl_seamless_switch_work);
 
+		/* note: not sure if using system_highpri_wq is suitable */
+		queue_work(system_highpri_wq, &cam_ctrl->seamless_switch_work);
+	}
+	if (work_busy(&cam_ctrl->seamless_switch_work) ||
+		work_busy(&cam_ctrl->stream_on_work))
+		dev_info(ctx->cam->dev, "[%s] ctx:%d, frame_no:%d, stream on / seamless work busy:0x%x/0x%x\n",
+		__func__, ctx->stream_id, job->frame_seq_no, work_busy(&cam_ctrl->stream_on_work),
+		work_busy(&cam_ctrl->seamless_switch_work));
 	mtk_cam_ctrl_put(cam_ctrl);
 }
 
@@ -749,6 +796,7 @@ void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 {
 	cam_ctrl->ctx = ctx;
 	INIT_WORK(&cam_ctrl->stream_on_work, NULL);
+	INIT_WORK(&cam_ctrl->seamless_switch_work, NULL);
 
 	atomic_set(&cam_ctrl->enqueued_req_cnt, 0);
 	cam_ctrl->enqueued_frame_seq_no = 0;
@@ -790,7 +838,8 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 
 	if (cam_ctrl->stream_on_work.func)
 		cancel_work_sync(&cam_ctrl->stream_on_work);
-
+	if (cam_ctrl->seamless_switch_work.func)
+		cancel_work_sync(&cam_ctrl->seamless_switch_work);
 	/* disable irq first */
 	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
 		if (ctx->hw_raw[i]) {
@@ -881,9 +930,8 @@ int vsync_update(struct vsync_collector *c,
 	c->collected |= (coming & c->desired);
 
 	if (CAM_DEBUG_ENABLED(CTRL))
-		pr_info("%s: vsync desired/collected %x/%x\n",
-			__func__, c->desired, c->collected);
-
+		pr_info("%s: vsync desired/collected/coming %x/%x/%x\n",
+			__func__, c->desired, c->collected, (coming & c->desired));
 	res->is_first = !(c->collected & (c->collected - 1));
 	res->is_last = c->collected == c->desired;
 

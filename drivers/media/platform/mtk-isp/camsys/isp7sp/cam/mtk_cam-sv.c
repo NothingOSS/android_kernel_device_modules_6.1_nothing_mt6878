@@ -31,7 +31,7 @@
 #endif
 
 #define MTK_CAMSV_STOP_HW_TIMEOUT			(33 * USEC_PER_MSEC)
-
+#define CAMSV_DEBUG 0
 static unsigned int debug_sv_fbc;
 module_param(debug_sv_fbc, uint, 0644);
 MODULE_PARM_DESC(debug_sv_fbc, "debug: sv fbc");
@@ -1134,8 +1134,8 @@ static irqreturn_t mtk_irq_camsv_sof(int irq, void *data)
 		readl_relaxed(sv_dev->base + REG_CAMSVCENTRAL_VF_ST_TAG1 +
 				CAMSVCENTRAL_VF_ST_TAG_SHIFT * 3);
 	tg_cnt = (sv_dev->tg_cnt & 0xffffff00) + ((tg_cnt & 0xff000000) >> 24);
-
-	dev_dbg(sv_dev->dev, "camsv-%d: sof status:0x%x seq_no:%d_%d group_tags:0x%x_%x_%x_%x enque_tags:0x%x first_tag:0x%x last_tag:0x%x VF_ST_TAG4:%d",
+	if (CAM_DEBUG_ENABLED(RAW_INT))
+		dev_info(sv_dev->dev, "camsv-%d: sof status:0x%x seq_no:%d_%d group_tags:0x%x_%x_%x_%x enque_tags:0x%x first_tag:0x%x last_tag:0x%x VF_ST_TAG4:%d",
 		sv_dev->id, irq_sof_status,
 		dequeued_imgo_seq_no_inner, dequeued_imgo_seq_no,
 		sv_dev->active_group_info[0],

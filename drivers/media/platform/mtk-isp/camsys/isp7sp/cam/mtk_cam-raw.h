@@ -15,6 +15,7 @@ struct mtk_cam_request_stream_data;
 
 #define RAW_PIPELINE_NUM 3 //TODO: remove
 #define SCQ_DEADLINE_MS  15 // ~1/2 frame length
+#define SCQ_DEADLINE_MS_STAGGER  30 // ~1/2 frame length
 #define SCQ_DEFAULT_CLK_RATE 208 // default 208MHz
 #define USINGSCQ 1
 
@@ -73,7 +74,6 @@ struct mtk_raw_device {
 	u8 time_shared_busy;
 	u8 time_shared_busy_ctx_id;
 	atomic_t vf_en;
-	u32 stagger_en;
 	int overrun_debug_dump_cnt;
 
 	int default_printk_cnt;
@@ -134,7 +134,7 @@ void initialize(struct mtk_raw_device *dev, int is_slave);
 void subsample_enable(struct mtk_raw_device *dev, int ratio);
 void stagger_enable(struct mtk_raw_device *dev);
 void stagger_disable(struct mtk_raw_device *dev);
-
+void update_scq_start_period(struct mtk_raw_device *dev, int scq_ms);
 void apply_cq(struct mtk_raw_device *dev,
 	      struct apply_cq_ref *ref,
 	      dma_addr_t cq_addr,
@@ -147,8 +147,7 @@ void enable_tg_db(struct mtk_raw_device *dev, int en);
 
 
 /* trigger */
-void stream_on(struct mtk_raw_device *dev, int on
-	       /*, int scq_period_ms, bool pass_vf_en*/);
+void stream_on(struct mtk_raw_device *dev, int on);
 void immediate_stream_off(struct mtk_raw_device *dev);
 void trigger_rawi_r2(struct mtk_raw_device *dev);
 void trigger_rawi_r5(struct mtk_raw_device *dev);

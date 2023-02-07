@@ -43,12 +43,12 @@ int fill_imgo_img_buffer_to_ipi_frame_stagger(
 		ret = fill_img_in_hdr(in, buf, node);
 
 		helper->filled_hdr_buffer = true;
+
+		/* fill sv image fp */
+		ret = fill_sv_img_fp(helper, buf, node);
 	} else {
 		ret = fill_img_out(out, buf, node);
 	}
-
-	/* fill sv image fp */
-	ret = fill_sv_img_fp(helper, buf, node);
 
 	return ret;
 
@@ -148,6 +148,8 @@ int get_switch_type_stagger(struct mtk_cam_job *job)
 		else if (cur == 3)
 			res = EXPOSURE_CHANGE_1_to_3;
 	}
+	if (res != EXPOSURE_CHANGE_NONE)
+		job->seamless_switch = true;
 	pr_info("[%s] switch_type:%d (cur:%d prev:%d)",
 			__func__, res, cur, prev);
 
@@ -185,21 +187,7 @@ void update_stagger_job_exp(struct mtk_cam_job *job)
 	//	__func__, job->feature->exp_num_prev, job->feature->exp_num_cur);
 }
 
-int wait_apply_sensor_stagger(struct mtk_cam_job *job)
-{
-	struct mtk_cam_stagger_job *stagger_job =
-			(struct mtk_cam_stagger_job *)job;
-
-	atomic_set(&stagger_job->expnum_change, 0);
-	wait_event_interruptible(stagger_job->expnum_change_wq,
-		atomic_read(&stagger_job->expnum_change) > 0);
-	job->ops->apply_sensor(job);
-	atomic_dec_return(&stagger_job->expnum_change);
-
-	return 0;
-}
-
-int apply_cam_mux_stagger(struct mtk_cam_job *job)
+int apply_cam_mux_switch_stagger(struct mtk_cam_job *job)
 {
 	struct mtk_cam_stagger_job *stagger_job =
 			(struct mtk_cam_stagger_job *)job;
@@ -402,17 +390,6 @@ int apply_cam_mux_stagger(struct mtk_cam_job *job)
 	return 0;
 }
 
-/* threaded irq context */
-int wakeup_apply_sensor(struct mtk_cam_job *job)
-{
-	struct mtk_cam_stagger_job *stagger_job =
-			(struct mtk_cam_stagger_job *)job;
-
-	atomic_set(&stagger_job->expnum_change, 1);
-	wake_up_interruptible(&stagger_job->expnum_change_wq);
-
-	return 0;
-}
 
 int handle_sv_tag(struct mtk_cam_job *job)
 {

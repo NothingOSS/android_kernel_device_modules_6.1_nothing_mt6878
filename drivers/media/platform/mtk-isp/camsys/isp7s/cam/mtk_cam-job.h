@@ -206,7 +206,7 @@ struct mtk_cam_job_ops {
 				int engine_type, int engine_id,
 				int seq_no);
 	int (*handle_buffer_done)(struct mtk_cam_job *s);
-
+	int (*apply_switch)(struct mtk_cam_job *s);
 };
 struct mtk_cam_job {
 	/* note: to manage life-cycle in state list */
@@ -229,9 +229,11 @@ struct mtk_cam_job {
 	bool do_ipi_config;
 	struct mtkcam_ipi_config_param ipi_config;
 	bool stream_on_seninf;
+	bool seamless_switch;
 
 	struct completion compose_completion;
 	struct completion cq_exe_completion;
+	struct completion i2c_ready_completion;	/* seamless switch delay sensor setting */
 
 	struct mtk_cam_job_state job_state;
 	const struct mtk_cam_job_ops *ops;
@@ -271,6 +273,7 @@ struct mtk_cam_job {
 	int hardware_scenario;	/* for ipi */
 	int sw_feature;			/* for ipi */
 	unsigned int sub_ratio;
+	int scq_period;
 	u64 (*timestamp_buf)[128];
 
 	/* TODO(AY): in switch case, may not use devs in ctx */
@@ -330,12 +333,8 @@ enum MTK_CAMSYS_JOB_TYPE {
 struct mtk_cam_stagger_job {
 	struct mtk_cam_job job; /* always on top */
 
-	wait_queue_head_t expnum_change_wq;
-	atomic_t expnum_change;
 	struct mtk_cam_scen prev_scen;
 	int switch_type;
-	bool dcif_enable;
-	bool need_drv_buffer_check;
 };
 struct mtk_cam_mstream_job {
 	struct mtk_cam_job job; /* always on top */

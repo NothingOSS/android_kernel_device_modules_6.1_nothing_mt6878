@@ -743,6 +743,7 @@ _stream_on(struct mtk_cam_job *job, bool on)
 	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
 		if (ctx->hw_raw[i]) {
 			raw_dev = dev_get_drvdata(ctx->hw_raw[i]);
+			update_scq_start_period(raw_dev, job->scq_period);
 			stream_on(raw_dev, on);
 
 			if (raw_tg_idx == -1)
@@ -891,10 +892,19 @@ _apply_sensor(struct mtk_cam_job *job)
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_device *cam = ctx->cam;
 	struct mtk_cam_request *req = job->req;
+	unsigned long timeout = msecs_to_jiffies(1000);
+
 
 	if (!job->sensor_hdl_obj) {
 		dev_info(cam->dev, "[%s] warn. no sensor_hdl_obj to apply\n",
 			 __func__);
+		return 0;
+	}
+
+	/* for delay sensor setting scenario : seamless ... etc */
+	if (!wait_for_completion_timeout(&job->i2c_ready_completion, timeout)) {
+		pr_info("[%s] error: wait for job i2c ready completion\n",
+			__func__);
 		return 0;
 	}
 
@@ -916,6 +926,54 @@ _apply_sensor(struct mtk_cam_job *job)
 
 	dev_dbg(cam->dev, "%s:%s:ctx(%d)req(%d):sensor done\n",
 		__func__, req->req.debug_str, ctx->stream_id, job->frame_seq_no);
+	return 0;
+}
+#define STAGGER_SEAMLESS_DBLOAD_FORCE 1
+static int apply_cam_switch_stagger(struct mtk_cam_job *job)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtk_cam_device *cam = ctx->cam;
+	int raw_id = _get_master_raw_id(job->used_engine);
+	struct mtk_raw_device *raw_dev = NULL;
+	struct mtk_cam_stagger_job *stagger_job =
+			(struct mtk_cam_stagger_job *)job;
+	int type = stagger_job->switch_type;
+
+	if (raw_id < 0)
+		return -1;
+	raw_dev = dev_get_drvdata(cam->engines.raw_devs[raw_id]);
+	if (type == EXPOSURE_CHANGE_3_to_1 ||
+		type == EXPOSURE_CHANGE_2_to_1) {
+		stagger_disable(raw_dev);
+		dev_info(cam->dev,
+			"[%s] ctx:%d, job:%d, stagger_disable\n",
+			__func__, ctx->stream_id, job->frame_seq_no);
+	} else if (type == EXPOSURE_CHANGE_1_to_2 ||
+		type == EXPOSURE_CHANGE_1_to_3) {
+		stagger_enable(raw_dev);
+		dev_info(cam->dev,
+			"[%s] ctx:%d, job:%d, stagger_enable\n",
+			__func__, ctx->stream_id, job->frame_seq_no);
+	}
+	if (STAGGER_SEAMLESS_DBLOAD_FORCE)
+		dbload_force(raw_dev);
+
+	return 0;
+}
+/* kthread context */
+static int
+_apply_switch(struct mtk_cam_job *job)
+{
+	switch (job->job_type) {
+	case JOB_TYPE_STAGGER:
+		apply_cam_mux_switch_stagger(job);
+		apply_cam_switch_stagger(job);
+		break;
+	default:
+		pr_info("%s: job type %d not ready\n", __func__, job->job_type);
+		break;
+	}
+	pr_info("%s: job type:%d, seq:%d\n", __func__, job->job_type, job->frame_seq_no);
 	return 0;
 }
 
@@ -1251,6 +1309,7 @@ _job_pack_subsample(struct mtk_cam_job *job,
 		__func__, ctx->stream_id, job->job_type, job->job_scen.id, first_frame_only_cur,
 		job->sub_ratio, job->sw_feature, job->hardware_scenario);
 	job->stream_on_seninf = false;
+	complete(&job->i2c_ready_completion);
 	if (!ctx->used_engine) {
 		unsigned long selected;
 
@@ -1332,15 +1391,17 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 	job->hardware_scenario = get_hw_scenario(job);
 	job->sw_feature = MTKCAM_IPI_SW_FEATURE_VHDR;
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
-	stagger_job->dcif_enable = job->exp_num_cur > 1 ? 1 : 0;
-	stagger_job->need_drv_buffer_check = is_stagger_multi_exposure(job);
-	dev_info(cam->dev, "[%s] ctx/seq:%d/%d, type:%d, scen exp:%d->%d, swi:%d, expN:%d->%d, sw/scene:%d/0x%x",
-		__func__, ctx->stream_id, job->frame_seq_no, job->job_type,
+
+	dev_info(cam->dev, "[%s] ctx:%d, type:%d, scen exp:%d->%d, swi:%d,  expN:%d->%d, sw/scene:%d/0x%x",
+		__func__, ctx->stream_id, job->job_type,
 		stagger_job->prev_scen.scen.normal.exp_num,
 		job->job_scen.scen.normal.exp_num, stagger_job->switch_type,
 		job->exp_num_prev, job->exp_num_cur,
 		job->sw_feature, job->hardware_scenario);
 	job->stream_on_seninf = false;
+	job->scq_period = SCQ_DEADLINE_MS_STAGGER;
+	if (stagger_job->switch_type == EXPOSURE_CHANGE_NONE)
+		complete(&job->i2c_ready_completion);
 	if (!ctx->used_engine) {
 		unsigned long selected;
 
@@ -1574,6 +1635,7 @@ _job_pack_normal(struct mtk_cam_job *job,
 		__func__, ctx->stream_id, job->job_type, job->job_scen.id,
 		job->exp_num_prev, job->exp_num_cur, job->sw_feature, job->hardware_scenario);
 	job->stream_on_seninf = false;
+	complete(&job->i2c_ready_completion);
 	if (!ctx->used_engine) {
 		unsigned long selected;
 
@@ -1641,6 +1703,7 @@ _job_pack_m2m(struct mtk_cam_job *job,
 		__func__, ctx->stream_id, job->job_type, job->job_scen.id,
 		job->exp_num_prev, job->exp_num_cur, job->sw_feature, job->hardware_scenario);
 	job->stream_on_seninf = false;
+	complete(&job->i2c_ready_completion);
 	if (!ctx->used_engine) {
 		unsigned long selected;
 
@@ -2197,6 +2260,7 @@ static struct mtk_cam_job_ops otf_stagger_job_ops = {
 	.mark_afo_done = job_mark_afo_done,
 	.mark_engine_done = job_mark_engine_done,
 	.handle_buffer_done = job_buffer_done,
+	.apply_switch = _apply_switch,
 };
 
 static struct mtk_cam_job_ops m2m_job_ops = {
@@ -2314,9 +2378,11 @@ static int job_factory(struct mtk_cam_job *job)
 		mtk_cam_req_find_ctrl_obj(job->req, ctx->sensor->ctrl_handler) :
 		NULL;
 	job->composed = false;
-
+	job->seamless_switch = false;
+	job->scq_period = SCQ_DEADLINE_MS;
 	init_completion(&job->compose_completion);
 	init_completion(&job->cq_exe_completion);
+	init_completion(&job->i2c_ready_completion);
 
 	switch (job->job_type) {
 	case JOB_TYPE_BASIC:
