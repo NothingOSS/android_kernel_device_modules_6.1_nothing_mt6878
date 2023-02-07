@@ -28,6 +28,9 @@
 static struct attribute *sched_ctl_attrs[] = {
 #if IS_ENABLED(CONFIG_MTK_CORE_PAUSE)
 	&sched_core_pause_info_attr.attr,
+	&sched_turn_point_freq_attr.attr,
+	&sched_target_margin_attr.attr,
+	&sched_util_est_ctrl.attr,
 #endif
 	NULL,
 };
@@ -84,7 +87,7 @@ static ssize_t show_sched_target_margin(struct kobject *kobj,
 
 	for (i = 0; i < pd_count; i++)
 		len += snprintf(buf+len, max_len-len,
-			"C%d=%d ", get_target_margin(i));
+			"C%d=%d ", i, get_target_margin(i));
 	len += snprintf(buf + len, max_len-len, "\n");
 	return len;
 }
@@ -99,7 +102,7 @@ static ssize_t show_sched_turn_point_freq(struct kobject *kobj,
 
 	for (i = 0; i < pd_count; i++)
 		len += snprintf(buf+len, max_len-len,
-			"C%d=%d ", get_turn_point_freq(i));
+			"C%d=%lu ", i, get_turn_point_freq(i));
 	len += snprintf(buf + len, max_len-len, "\n");
 	return len;
 }
