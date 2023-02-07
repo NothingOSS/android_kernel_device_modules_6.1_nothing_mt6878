@@ -22,6 +22,7 @@ static const char *value_to_str(const char * const str_arr[], size_t size,
 const char *str_event(int event)
 {
 	static const char * const str[] = {
+		[CAMSYS_EVENT_IRQ_F_VSYNC] = "f_vsync",
 		[CAMSYS_EVENT_IRQ_L_SOF] = "l_sof",
 		[CAMSYS_EVENT_IRQ_L_CQ_DONE] = "l_cq_done",
 		[CAMSYS_EVENT_IRQ_FRAME_DONE] = "frame_done",
@@ -41,7 +42,7 @@ const char *str_sensor_state(int state)
 		[S_SENSOR_NONE] = "none",
 		[S_SENSOR_NOT_SET] = "not-set",
 		[S_SENSOR_APPLYING] = "applying",
-		[S_SENSOR_DONE] = "done",
+		[S_SENSOR_LATCHED] = "latched",
 	};
 
 	return value_to_str(str, ARRAY_SIZE(str), state);

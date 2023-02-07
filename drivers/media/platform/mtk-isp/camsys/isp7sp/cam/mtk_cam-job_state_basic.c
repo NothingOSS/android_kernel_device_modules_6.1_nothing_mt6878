@@ -19,6 +19,13 @@ static struct state_transition STATE_TRANS(basic_sensor, S_SENSOR_NOT_SET)[] = {
 	},
 };
 
+static struct state_transition STATE_TRANS(basic_sensor, S_SENSOR_APPLYING)[] = {
+	{
+		S_SENSOR_LATCHED, CAMSYS_EVENT_IRQ_F_VSYNC,
+		NULL, 0
+	},
+};
+
 static struct state_transition STATE_TRANS(basic, S_ISP_COMPOSING)[] = {
 	{
 		S_ISP_APPLYING, CAMSYS_EVENT_ACK,
@@ -93,6 +100,7 @@ static struct state_transition STATE_TRANS(basic, S_ISP_SENSOR_MISMATCHED)[] = {
 
 static struct transitions_entry basic_sensor_entries[NR_S_SENSOR_STATE] = {
 	ADD_TRANS_ENTRY(basic_sensor, S_SENSOR_NOT_SET),
+	ADD_TRANS_ENTRY(basic_sensor, S_SENSOR_APPLYING),
 };
 struct state_table basic_sensor_tbl = {
 	.entries = basic_sensor_entries,

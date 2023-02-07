@@ -24,7 +24,9 @@ enum mtk_cam_sensor_state {
 	S_SENSOR_NONE,
 	S_SENSOR_NOT_SET,
 	S_SENSOR_APPLYING,
-	S_SENSOR_DONE,
+	/* add this if want to confirm i2c transmission is done */
+	//S_SENSOR_APPLIED,
+	S_SENSOR_LATCHED,
 	NR_S_SENSOR_STATE,
 };
 
@@ -52,7 +54,7 @@ enum mtk_cam_job_action {
 
 enum mtk_camsys_event_type {
 
-	//CAMSYS_EVENT_IRQ_F_VSYNC, /* 1st vsync */
+	CAMSYS_EVENT_IRQ_F_VSYNC, /* 1st vsync */
 	CAMSYS_EVENT_IRQ_L_SOF, /* last sof */
 	CAMSYS_EVENT_IRQ_L_CQ_DONE, /* last cq done */
 	CAMSYS_EVENT_IRQ_FRAME_DONE,

@@ -166,8 +166,7 @@ static inline int guard_apply_sensor(struct state_accessor *s_acc,
 
 static inline bool is_sensor_set(int sensor_state)
 {
-	/* TODO(AY): may chenage to S_SENSOR_DONE later */
-	return sensor_state >= S_SENSOR_APPLYING;
+	return sensor_state >= S_SENSOR_LATCHED;
 }
 
 static inline bool is_isp_ge_outer(int isp_state)

@@ -347,6 +347,8 @@ static void handle_engine_frame_start(struct mtk_cam_ctrl *ctrl,
 		frame_sync_no = seq_from_fh_cookie(irq_info->frame_idx_inner);
 
 		mtk_cam_event_frame_sync(ctrl, frame_sync_no);
+
+		mtk_cam_ctrl_send_event(ctrl, CAMSYS_EVENT_IRQ_F_VSYNC);
 	}
 
 	if (is_last) {
@@ -586,6 +588,7 @@ static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 
 	mtk_cam_job_state_set(&job->job_state, SENSOR_STATE, S_SENSOR_APPLYING);
 	call_jobop(job, apply_sensor);
+	mtk_cam_job_state_set(&job->job_state, SENSOR_STATE, S_SENSOR_LATCHED);
 
 	mtk_cam_job_state_set(&job->job_state, ISP_STATE, S_ISP_APPLYING);
 	call_jobop(job, apply_isp);
