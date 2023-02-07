@@ -755,10 +755,11 @@ static int raw_process_fsm(struct mtk_raw_device *raw_dev,
 	    (BIT(CAMSYS_IRQ_AFO_DONE) | BIT(CAMSYS_IRQ_FRAME_DONE));
 	if (done_type) {
 		int cookie_done;
+		int ret;
 
-		engine_fsm_hw_done(fsm, &cookie_done);
+		ret = engine_fsm_hw_done(fsm, &cookie_done);
 		/* handle for fake p1 done */
-		if (!cookie_done) {
+		if (ret) {
 			dev_info(raw_dev->dev, "warn: fake done 0x%x out/in: 0x%x 0x%x\n",
 				 done_type,
 				 irq_info->frame_idx,

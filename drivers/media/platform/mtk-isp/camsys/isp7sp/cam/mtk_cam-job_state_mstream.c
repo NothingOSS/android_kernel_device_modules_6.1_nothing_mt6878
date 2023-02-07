@@ -76,7 +76,7 @@ static int mstream_send_event(struct mtk_cam_job_state *s,
 	ret = ret || loop_each_transition(&basic_isp_tbl, &s_acc,
 					  ISP_1ST_STATE, p);
 
-	s_acc.seq_no = s->seq_no + 1;
+	s_acc.seq_no = next_frame_seq(s->seq_no);
 	s_acc.ops = &_acc_ops_2nd;
 
 	ret = ret || loop_each_transition(&basic_sensor_tbl, &s_acc,

@@ -32,7 +32,7 @@ void _on_job_last_ref(struct mtk_cam_job *job)
 	struct mtk_cam_ctrl *ctrl = &job->src_ctx->cam_ctrl;
 
 	if (CAM_DEBUG_ENABLED(STATE))
-		pr_info("%s: job #%d\n", __func__, job->frame_seq_no);
+		pr_info("%s: job #%d\n", __func__, job->req_seq);
 
 	write_lock(&ctrl->list_lock);
 	list_del(&job->job_state.list);
@@ -68,14 +68,14 @@ mtk_cam_frame_done_work(struct work_struct *work)
 		mtk_cam_job_put(job);
 	else
 		pr_info("%s: job #%d is cancelled\n",
-			__func__, job->frame_seq_no);
+			__func__, job->req_seq);
 }
 
 static int handle_done_async(struct mtk_cam_job *job, struct work_struct *work)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 
-	/* pr_info("%s: job %d\n", __func__, job->frame_seq_no); */
+	/* pr_info("%s: job %d\n", __func__, job->req_seq); */
 	job->done_work_queued = 1;
 	return mtk_cam_ctx_queue_done_wq(ctx, work);
 }
@@ -190,6 +190,8 @@ static int mtk_cam_job_pack_init(struct mtk_cam_job *job,
 	atomic_long_set(&job->afo_done, 0);
 	atomic_long_set(&job->done_set, 0);
 	job->done_handled = 0;
+
+	job->frame_cnt = 1;
 
 	return ret;
 }
@@ -954,7 +956,7 @@ static int send_ipi_frame(struct mtk_cam_job *job,
 	dev_info(ctx->cam->dev,
 		 "[%s id:%d] req:%s ctx:%d seq:%d\n",
 		 __func__, session->session_id,
-		 job->req->req.debug_str, event.cmd_id, frame_seq_no);
+		 job->req->req.debug_str, ctx->stream_id, frame_seq_no);
 	return 0;
 }
 
@@ -1113,7 +1115,7 @@ static int trigger_m2m(struct mtk_cam_job *job)
 		dev_get_drvdata(cam->engines.raw_devs[raw_id]);
 	int ret = 0;
 
-	mtk_cam_event_frame_sync(&ctx->cam_ctrl, job->frame_seq_no);
+	mtk_cam_event_frame_sync(&ctx->cam_ctrl, job->req_seq);
 
 	trigger_rawi_r2(raw_dev);
 
@@ -1392,6 +1394,8 @@ static int job_init_mstream(struct mtk_cam_job *job)
 		container_of(job, struct mtk_cam_mstream_job, job);
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	int ret;
+
+	job->frame_cnt = 2; /* TODO(AY): not always */
 
 	mjob->composed_idx = 0;
 	mjob->apply_sensor_idx = 0;
@@ -1896,8 +1900,8 @@ static int compose_mstream(struct mtk_cam_job *job)
 	if (send_ipi_frame(job, &mjob->ipi, job->frame_seq_no))
 		return -1;
 
-	/* TODO(AY): should not use '+1' */
-	return send_ipi_frame(job, &job->ipi, job->frame_seq_no + 1);
+	return send_ipi_frame(job, &job->ipi,
+			      next_frame_seq(job->frame_seq_no));
 }
 
 static void compose_done_mstream(struct mtk_cam_job *job,
@@ -1953,6 +1957,7 @@ static void mtk_cam_set_sensor_mstream_mode(struct mtk_cam_ctx *ctx, bool on)
 {
 	struct v4l2_ctrl *mstream_mode_ctrl;
 
+	/* TODO(AY): cache v4l2_ctrl in ctx */
 	mstream_mode_ctrl = v4l2_ctrl_find(ctx->sensor->ctrl_handler,
 			V4L2_CID_MTK_MSTREAM_MODE);
 
@@ -2004,6 +2009,7 @@ static int apply_sensor_mstream_exp_gain(struct mtk_cam_ctx *ctx,
 		return -1;
 	}
 
+	/* TODO(AY): cache v4l2_ctrl in ctx */
 	ae_ctrl = v4l2_ctrl_find(ctx->sensor->ctrl_handler,
 				 V4L2_CID_MTK_STAGGER_AE_CTRL);
 	if (!ae_ctrl) {
@@ -2046,7 +2052,7 @@ static int apply_sensor_mstream(struct mtk_cam_job *job)
 	frame_sync_start(ctx, job->req);
 
 	/* TODO(AY): initial & switch */
-	if (job->frame_seq_no == 2)
+	if (job->frame_seq_no == 0)
 		mtk_cam_set_sensor_mstream_mode(ctx, 1);
 
 	apply_sensor_mstream_exp_gain(ctx, mjob, cur_idx);

@@ -70,7 +70,9 @@ struct mtk_cam_ctrl {
 
 	struct sensor_apply_params s_params;
 
-	atomic_t enqueued_frame_seq_no;		/* enque job counter - ctrl maintain */
+	atomic_t enqueued_req_cnt;
+	unsigned int enqueued_frame_seq_no;	/* enque job counter - ctrl maintain */
+	unsigned int frame_sync_event_cnt;
 
 	atomic_t stopped;
 	atomic_t ref_cnt;

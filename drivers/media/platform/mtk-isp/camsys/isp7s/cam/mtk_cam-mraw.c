@@ -59,10 +59,11 @@ static int mraw_process_fsm(struct mtk_mraw_device *mraw_dev,
 	done_type = irq_info->irq_type & BIT(CAMSYS_IRQ_FRAME_DONE);
 	if (done_type) {
 		int cookie_done;
+		int ret;
 
-		engine_fsm_hw_done(fsm, &cookie_done);
+		ret = engine_fsm_hw_done(fsm, &cookie_done);
 		/* handle for fake p1 done */
-		if (!cookie_done) {
+		if (ret) {
 			dev_info(mraw_dev->dev, "warn: fake done 0x%x out/in: 0x%x 0x%x\n",
 				 done_type,
 				 irq_info->frame_idx,

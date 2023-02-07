@@ -34,20 +34,24 @@ static inline void engine_fsm_sof(struct engine_fsm *fsm, int cookie_inner)
 	fsm->cookie_inner = cookie_inner;
 }
 
-static inline void engine_fsm_hw_done(struct engine_fsm *fsm, int *cookie_done)
+static inline int engine_fsm_hw_done(struct engine_fsm *fsm, int *cookie_done)
 {
+	int ret = 0;
+
 	if (!cookie_done)
-		return;
+		return 0;
 
 #ifdef TODO_RWFBC
 	/* note: for rwfbc fake sw_p1_done issue */
-	if (fsm->state == STATE_NO_REQ)
+	if (fsm->state == STATE_NO_REQ) {
 		*cookie_done = 0;
-	else
+		ret = -1;
+	} else
 		*cookie_done = fsm->cookie_inner;
 #else
 	*cookie_done = fsm->cookie_inner;
 #endif
+	return ret;
 }
 
 #endif /* __MTK_CAM_ENGINE_FSM_H */

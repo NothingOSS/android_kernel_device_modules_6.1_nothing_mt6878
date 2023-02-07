@@ -250,8 +250,11 @@ struct mtk_cam_job {
 
 	int job_type;	/* job type - only job layer */
 	int ctx_id;
-	/* TODO(AY): rename to seq_no/job_no/... to be distinguished from real frame number */
-	int frame_seq_no;
+
+	int req_seq; /* increase with request cnt */
+	int frame_seq_no; /* increase with isp frame */
+	int frame_cnt;
+
 	bool composed;
 	/* TODO: if margin is set by ctrl */
 	//int sensor_set_margin;	/* allow apply sensor before SOF + x (ms)*/
@@ -383,24 +386,42 @@ struct mtk_cam_job_data {
 	};
 };
 
-/* TODO(AY): handle seq_no overflow */
+#define BITS_FRAME_SEQ		24
+#define _MASK_FRAME_SEQ		(BIT(BITS_FRAME_SEQ) - 1)
 /*
  * frame header cookie = [31:24] ctx_id + [23:0] seq_no
  */
 static inline unsigned int ctx_from_fh_cookie(unsigned int fh_cookie)
 {
-	return fh_cookie >> 24;
+	return fh_cookie >> BITS_FRAME_SEQ;
 }
 
 static inline unsigned int seq_from_fh_cookie(unsigned int fh_cookie)
 {
-	return fh_cookie & (BIT(24) - 1);
+	return fh_cookie & _MASK_FRAME_SEQ;
 }
 
 static inline unsigned int to_fh_cookie(unsigned int ctx, unsigned int seq_no)
 {
-	return ctx << 24 | seq_no;
+	return ctx << BITS_FRAME_SEQ | seq_no;
 }
+
+static inline unsigned int add_frame_seq(unsigned int seq, unsigned int cnt)
+{
+	return (seq + cnt) & _MASK_FRAME_SEQ;
+}
+
+static inline unsigned int next_frame_seq(unsigned int seq)
+{
+	return add_frame_seq(seq, 1);
+}
+
+/* delta from a to b */
+static inline unsigned int frame_seq_diff(unsigned int b, unsigned int a)
+{
+	return  (b - a) & _MASK_FRAME_SEQ;
+}
+
 
 static inline struct mtk_cam_job_data *job_to_data(struct mtk_cam_job *job)
 {
@@ -422,8 +443,10 @@ static inline void mtk_cam_job_return(struct mtk_cam_job *job)
 int mtk_cam_job_pack(struct mtk_cam_job *job, struct mtk_cam_ctx *ctx,
 		     struct mtk_cam_request *req);
 
-static inline void mtk_cam_job_set_no(struct mtk_cam_job *job, int seq_no)
+static inline void mtk_cam_job_set_no(struct mtk_cam_job *job,
+				      int req_no, int seq_no)
 {
+	job->req_seq = req_no;
 	job->frame_seq_no = seq_no;
 	job->job_state.seq_no = seq_no;
 }

@@ -88,11 +88,11 @@ bool cond_first_job(struct mtk_cam_job *job, void *arg)
 	return 1;
 }
 
-bool cond_job_no_eq(struct mtk_cam_job *job, void *arg)
+bool cond_frame_no_belong(struct mtk_cam_job *job, void *arg)
 {
 	int no = *(int *)arg;
 
-	return job->frame_seq_no == no;
+	return frame_seq_diff(no, job->frame_seq_no) < job->frame_cnt;
 }
 
 static struct mtk_cam_job *
@@ -255,7 +255,7 @@ static void handle_meta1_done(struct mtk_cam_ctrl *ctrl, int seq_no)
 {
 	struct mtk_cam_job *job;
 
-	job = mtk_cam_ctrl_get_job(ctrl, cond_job_no_eq, &seq_no);
+	job = mtk_cam_ctrl_get_job(ctrl, cond_frame_no_belong, &seq_no);
 
 	if (!job) {
 		pr_info("%s: warn. job not found seq %d\n",
@@ -272,7 +272,7 @@ static void handle_frame_done(struct mtk_cam_ctrl *ctrl,
 {
 	struct mtk_cam_job *job;
 
-	job = mtk_cam_ctrl_get_job(ctrl, cond_job_no_eq, &seq_no);
+	job = mtk_cam_ctrl_get_job(ctrl, cond_frame_no_belong, &seq_no);
 
 	/*
 	 *
@@ -333,6 +333,17 @@ static void ctrl_vsync_preprocess(struct mtk_cam_ctrl *ctrl,
 	spin_unlock(&ctrl->info_lock);
 }
 
+static int frame_no_to_req_no(struct mtk_cam_ctrl *ctrl, int frame_no)
+{
+	struct mtk_cam_job *job;
+
+	job = mtk_cam_ctrl_get_job(ctrl, cond_frame_no_belong, &frame_no);
+	if (job)
+		ctrl->frame_sync_event_cnt = job->req_seq;
+
+	return ctrl->frame_sync_event_cnt;
+}
+
 static void handle_engine_frame_start(struct mtk_cam_ctrl *ctrl,
 				      struct mtk_camsys_irq_info *irq_info,
 				      bool is_first, bool is_last)
@@ -340,13 +351,15 @@ static void handle_engine_frame_start(struct mtk_cam_ctrl *ctrl,
 
 	if (is_first) {
 		int frame_sync_no;
+		int req_no;
 
 		if (CAM_DEBUG_ENABLED(CTRL))
 			pr_info("%s: first vsync\n", __func__);
 
 		frame_sync_no = seq_from_fh_cookie(irq_info->frame_idx_inner);
+		req_no = frame_no_to_req_no(ctrl, frame_sync_no);
 
-		mtk_cam_event_frame_sync(ctrl, frame_sync_no);
+		mtk_cam_event_frame_sync(ctrl, req_no);
 
 		mtk_cam_ctrl_send_event(ctrl, CAMSYS_EVENT_IRQ_F_VSYNC);
 	}
@@ -612,7 +625,7 @@ static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 
 	next_job_no = job->frame_seq_no + 1;
 
-	job = mtk_cam_ctrl_get_job(ctrl, cond_job_no_eq, &next_job_no);
+	job = mtk_cam_ctrl_get_job(ctrl, cond_frame_no_belong, &next_job_no);
 	if (job)
 		call_jobop(job, apply_sensor);
 
@@ -626,13 +639,18 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 			    struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx;
-	u32 next_frame_seq;
+	u32 req_seq, frame_seq;
 
 	if (mtk_cam_ctrl_get(cam_ctrl))
 		return;
 
 	ctx = cam_ctrl->ctx;
-	next_frame_seq = atomic_inc_return(&cam_ctrl->enqueued_frame_seq_no);
+
+	frame_seq = cam_ctrl->enqueued_frame_seq_no;
+	cam_ctrl->enqueued_frame_seq_no =
+		add_frame_seq(cam_ctrl->enqueued_frame_seq_no, job->frame_cnt);
+
+	req_seq = atomic_inc_return(&cam_ctrl->enqueued_req_cnt);
 
 	/* get before adding to list */
 	mtk_cam_job_get(job);
@@ -642,10 +660,10 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 	list_add_tail(&job->job_state.list, &cam_ctrl->camsys_state_list);
 	write_unlock(&cam_ctrl->list_lock);
 
-	mtk_cam_job_set_no(job, next_frame_seq);
+	mtk_cam_job_set_no(job, req_seq, frame_seq);
 
 	// to be removed
-	if (next_frame_seq == 1) {
+	if (frame_seq == 0) {
 		vsync_set_desired(&cam_ctrl->vsync_col,
 				  _get_master_engines(job->used_engine));
 
@@ -658,8 +676,8 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 
 	call_jobop(job, compose);
 	mtk_cam_ctrl_send_event(cam_ctrl, CAMSYS_EVENT_ENQUE);
-	dev_dbg(ctx->cam->dev, "[%s] ctx:%d, frame_no:%d, next_frame_seq:%d\n",
-		__func__, ctx->stream_id, job->frame_seq_no, next_frame_seq);
+	dev_dbg(ctx->cam->dev, "[%s] ctx:%d, req_no:%d frame_no:%d\n",
+		__func__, ctx->stream_id, req_seq, frame_seq);
 
 	if (job->stream_on_seninf) {
 		/*
@@ -691,7 +709,8 @@ void mtk_cam_ctrl_job_composed(struct mtk_cam_ctrl *cam_ctrl,
 	ctx_id = ctx_from_fh_cookie(fh_cookie);
 	seq = seq_from_fh_cookie(fh_cookie);
 
-	job_composed = mtk_cam_ctrl_get_job(cam_ctrl, cond_job_no_eq, &seq);
+	job_composed = mtk_cam_ctrl_get_job(cam_ctrl,
+					    cond_frame_no_belong, &seq);
 
 	if (WARN_ON(!job_composed)) {
 		dev_info(cam->dev, "%s: failed to find job ctx_id/frame = %d/%d\n",
@@ -721,8 +740,11 @@ void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 	cam_ctrl->ctx = ctx;
 	INIT_WORK(&cam_ctrl->stream_on_work, NULL);
 
+	atomic_set(&cam_ctrl->enqueued_req_cnt, 0);
+	cam_ctrl->enqueued_frame_seq_no = 0;
+	cam_ctrl->frame_sync_event_cnt = 0;
+
 	atomic_set(&cam_ctrl->stopped, 0);
-	atomic_set(&cam_ctrl->enqueued_frame_seq_no, 0);
 
 	spin_lock_init(&cam_ctrl->send_lock);
 	rwlock_init(&cam_ctrl->list_lock);

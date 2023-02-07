@@ -125,15 +125,16 @@ static int sv_process_fsm(struct mtk_camsv_device *sv_dev,
 	done_type = irq_info->irq_type & BIT(CAMSYS_IRQ_FRAME_DONE);
 	if (done_type) {
 		int cookie_done;
+		int ret;
 
-		engine_fsm_hw_done(fsm, &cookie_done);
+		ret = engine_fsm_hw_done(fsm, &cookie_done);
 		for (i = 0; i < MAX_SV_HW_GROUPS; i++) {
 			if (irq_info->done_tags & sv_dev->active_group_info[i])
 				sv_dev->group_handled |= (1 << i);
 		}
 		sv_dev->group_handled &= sv_dev->used_group;
 
-		if (!cookie_done ||
+		if (ret ||
 			sv_dev->group_handled != sv_dev->used_group) {
 			dev_info(sv_dev->dev, "%s: fake done or not all group done(frame_no:%d_%d/group:0x%x_0x%x/cookie_done:%d)\n",
 				 __func__,
