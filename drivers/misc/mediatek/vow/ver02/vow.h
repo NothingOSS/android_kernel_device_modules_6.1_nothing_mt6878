@@ -131,6 +131,7 @@
 #define VOW_SET_PAYLOADDUMP_INFO      _IOW(VOW_IOC_MAGIC, 0x16, unsigned int)
 #define VOW_READ_VOICE_DATA           _IOW(VOW_IOC_MAGIC, 0x17, unsigned int)
 #define VOW_SET_VOW_DUMP_DATA         _IOW(VOW_IOC_MAGIC, 0x18, unsigned int)
+#define VOW_GET_SCP_RECOVER_STATUS    _IOW(VOW_IOC_MAGIC, 0x19, unsigned int)
 
 #ifdef VOW_ECHO_SW_SRC
 #define VOW_BARGEIN_AFE_MEMIF_SIZE        (0x1E00)
@@ -288,6 +289,12 @@ enum {
 	VOW_ENABLE_SINGLE_REF_MIC = 0
 };
 
+enum {
+	VOW_SCP_EVENT_NONE = 0,
+	VOW_SCP_EVENT_STOP = 5,
+	VOW_SCP_EVENT_READY = 6
+};
+
 /*****************************************************************************
  * VOW Structure Define
  *****************************************************************************/
@@ -375,6 +382,14 @@ struct vow_payloaddump_info_kernel_t {
 	compat_size_t max_payloaddump_size;
 };
 
+struct vow_scp_recover_info_t {
+	long return_event_addr;
+};
+
+struct vow_scp_recover_info_kernel_t {
+	compat_size_t return_event_addr;
+};
+
 #else  /* #if IS_ENABLED(CONFIG_COMPAT) */
 
 struct vow_speaker_model_t {
@@ -415,6 +430,10 @@ struct vow_payloaddump_info_t {
 	long return_payloaddump_addr;
 	long return_payloaddump_size_addr;
 	long max_payloaddump_size;
+};
+
+struct vow_scp_recover_info_t {
+	long return_event_addr;
 };
 
 #endif  /* #if IS_ENABLED(CONFIG_COMPAT) */
