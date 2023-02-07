@@ -2405,7 +2405,7 @@ int mtk_imgsys_hw_streamon(struct mtk_imgsys_pipe *pipe)
 int mtk_imgsys_hw_streamoff(struct mtk_imgsys_pipe *pipe)
 {
 	struct mtk_imgsys_dev *imgsys_dev = pipe->imgsys_dev;
-	struct mtk_imgsys_dma_buf_iova_get_info *iova_info, *tmp;
+	/* struct mtk_imgsys_dma_buf_iova_get_info *iova_info, *tmp; */
 	int ret;
 
 	dev_dbg(imgsys_dev->dev,
@@ -2445,19 +2445,19 @@ int mtk_imgsys_hw_streamoff(struct mtk_imgsys_pipe *pipe)
 			__func__, imgsys_dev->imgsys_stream_cnt);
 
 		flush_fd_kva_list(imgsys_dev);
-
-		list_for_each_entry_safe(iova_info, tmp,
-					&pipe->iova_cache.list, list_entry) {
-			mtk_imgsys_put_dma_buf(iova_info->dma_buf,
-					iova_info->attach,
-					iova_info->sgt);
-			spin_lock(&pipe->iova_cache.lock);
-			list_del(&iova_info->list_entry);
-			hash_del(&iova_info->hnode);
-			spin_unlock(&pipe->iova_cache.lock);
-			vfree(iova_info);
-		}
-
+	/*
+	 *	list_for_each_entry_safe(iova_info, tmp,
+	 *				&pipe->iova_cache.list, list_entry) {
+	 *		mtk_imgsys_put_dma_buf(iova_info->dma_buf,
+	 *				iova_info->attach,
+	 *				iova_info->sgt);
+	 *		spin_lock(&pipe->iova_cache.lock);
+	 *		list_del(&iova_info->list_entry);
+	 *		hash_del(&iova_info->hnode);
+	 *		spin_unlock(&pipe->iova_cache.lock);
+	 *		vfree(iova_info);
+	 *	}
+	 */
 	}
 	dev_dbg(pipe->imgsys_dev->dev,
 		"%s:%s: stopped stream id(%d), stream cnt(%d)\n",
