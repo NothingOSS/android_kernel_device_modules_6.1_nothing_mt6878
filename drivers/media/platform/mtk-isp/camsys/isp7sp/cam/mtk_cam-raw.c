@@ -44,7 +44,7 @@
 #define RAW_DEBUG 0
 
 /* use spare register FHG/FH_SPARE_7 */
-#define REG_FRAME_SEQ_NUM					0x2c58
+#define REG_FRAME_SEQ_NUM					0x2c40
 
 static int reset_msgfifo(struct mtk_raw_device *dev);
 
