@@ -46,10 +46,6 @@
 #include "scp_reservedmem_define.h"
 #endif
 
-#if ENABLE_SCP_EMI_PROTECTION
-#include "soc/mediatek/emi.h"
-#endif
-
 /* scp mbox/ipi related */
 #include <linux/soc/mediatek/mtk-mbox.h>
 #include "scp_ipi.h"
@@ -1432,7 +1428,7 @@ static int scp_reserve_memory_ioremap(struct platform_device *pdev)
 		return -1;
 	}
 	/* Get reserved memory */
-	ret = of_property_read_string(pdev->dev.of_node, "scp_mem_key",
+	ret = of_property_read_string(pdev->dev.of_node, "scp-mem-key",
 			&mem_key);
 	if (ret) {
 		pr_info("[SCP] cannot find property\n");
@@ -1500,7 +1496,7 @@ static int scp_reserve_memory_ioremap(struct platform_device *pdev)
 		if (i == 0 && scpreg.secure_dump) {
 			/* secure_dump */
 			ret = of_property_read_u32(pdev->dev.of_node,
-					"secure_dump_size",
+					"secure-dump-size",
 					&m_size);
 		} else {
 			ret = of_property_read_u32_index(pdev->dev.of_node,
@@ -1569,26 +1565,6 @@ static int scp_reserve_memory_ioremap(struct platform_device *pdev)
 	}
 #endif  // DEBUG
 	return 0;
-}
-#endif
-
-#if ENABLE_SCP_EMI_PROTECTION
-void set_scp_mpu(void)
-{
-#if IS_ENABLED(CONFIG_MTK_EMI)
-	struct emimpu_region_t md_region;
-
-	mtk_emimpu_init_region(&md_region, MPU_REGION_ID_SCP_SMEM);
-	mtk_emimpu_set_addr(&md_region, scp_mem_base_phys,
-		scp_mem_base_phys + scp_mem_size - 1);
-	mtk_emimpu_set_apc(&md_region, MPU_DOMAIN_D0,
-		MTK_EMIMPU_NO_PROTECTION);
-	mtk_emimpu_set_apc(&md_region, MPU_DOMAIN_D3,
-		MTK_EMIMPU_NO_PROTECTION);
-	if (mtk_emimpu_set_protection(&md_region))
-		pr_notice("[SCP]mtk_emimpu_set_protection fail\n");
-	mtk_emimpu_free_region(&md_region);
-#endif
 }
 #endif
 
@@ -2073,16 +2049,16 @@ static int scp_feature_table_probe(struct platform_device *pdev)
 	int i, ret, feature_num, feature_id, frequency, core_id;
 
 	feature_num = of_property_count_u32_elems(
-			pdev->dev.of_node, "scp_feature_tbl")
+			pdev->dev.of_node, "scp-feature-tbl")
 			/ 3;
 	if (feature_num <= 0) {
-		pr_notice("[SCP] scp_feature_tbl not found\n");
+		pr_notice("[SCP] scp-feature-tbl not found\n");
 		return -1;
 	}
 
 	for (i = 0; i < feature_num; ++i) {
 		ret = of_property_read_u32_index(pdev->dev.of_node,
-			"scp_feature_tbl",
+			"scp-feature-tbl",
 			i * feaure_tbl_item_size,
 			&feature_id);
 
@@ -2101,7 +2077,7 @@ static int scp_feature_table_probe(struct platform_device *pdev)
 
 		/* because feature_table data member is bit-field */
 		ret = of_property_read_u32_index(pdev->dev.of_node,
-			"scp_feature_tbl",
+			"scp-feature-tbl",
 			i * feaure_tbl_item_size + 1,
 			&frequency);
 
@@ -2113,7 +2089,7 @@ static int scp_feature_table_probe(struct platform_device *pdev)
 		feature_table[i].freq = frequency;
 
 		ret = of_property_read_u32_index(pdev->dev.of_node,
-			"scp_feature_tbl",
+			"scp-feature-tbl",
 			i * feaure_tbl_item_size + 2,
 			&core_id);
 
@@ -2135,7 +2111,7 @@ static bool scp_ipi_table_init(struct mtk_mbox_device *scp_mboxdev, struct platf
 	};
 	u32 i, ret, mbox_id, recv_opt, recv_cells_mode, recv_cells_num, lock, buf_full_opt,
 			cb_ctx_opt;
-	of_property_read_u32(pdev->dev.of_node, "mbox_count"
+	of_property_read_u32(pdev->dev.of_node, "mbox-count"
 						, &scp_mboxdev->count);
 	if (!scp_mboxdev->count) {
 		pr_notice("[SCP] mbox count not found\n");
@@ -2147,7 +2123,7 @@ static bool scp_ipi_table_init(struct mtk_mbox_device *scp_mboxdev, struct platf
 	/* mode 1 => 7 elements : id, mbox, recv_size, recv_opt, lock, buf_full_opt,
 	 * cb_ctx_opt
 	 */
-	ret = of_property_read_u32(pdev->dev.of_node, "#recv_cells_mode"
+	ret = of_property_read_u32(pdev->dev.of_node, "#recv-cells-mode"
 						, &recv_cells_mode);
 	if (ret) {
 		recv_cells_num = recv_item_num;
@@ -2159,7 +2135,7 @@ static bool scp_ipi_table_init(struct mtk_mbox_device *scp_mboxdev, struct platf
 	}
 
 	scp_mboxdev->send_count = of_property_count_u32_elems(
-				pdev->dev.of_node, "send_table")
+				pdev->dev.of_node, "send-table")
 				/ send_item_num;
 	if (scp_mboxdev->send_count <= 0) {
 		pr_notice("[SCP] scp send table not found\n");
@@ -2167,7 +2143,7 @@ static bool scp_ipi_table_init(struct mtk_mbox_device *scp_mboxdev, struct platf
 	}
 
 	scp_mboxdev->recv_count = of_property_count_u32_elems(
-				pdev->dev.of_node, "recv_table")
+				pdev->dev.of_node, "recv-table")
 				/ recv_cells_num;
 	if (scp_mboxdev->recv_count <= 0) {
 		pr_notice("[SCP] scp recv table not found\n");
@@ -2195,7 +2171,7 @@ static bool scp_ipi_table_init(struct mtk_mbox_device *scp_mboxdev, struct platf
 	scp_mbox_pin_send = scp_mboxdev->pin_send_table;
 	for (i = 0; i < scp_mboxdev->send_count; ++i) {
 		ret = of_property_read_u32_index(pdev->dev.of_node,
-				"send_table",
+				"send-table",
 				i * send_item_num,
 				&scp_mbox_pin_send[i].chan_id);
 		if (ret) {
@@ -2203,7 +2179,7 @@ static bool scp_ipi_table_init(struct mtk_mbox_device *scp_mboxdev, struct platf
 			return false;
 		}
 		ret = of_property_read_u32_index(pdev->dev.of_node,
-				"send_table",
+				"send-table",
 				i * send_item_num + 1,
 				&mbox_id);
 		if (ret) {
@@ -2213,7 +2189,7 @@ static bool scp_ipi_table_init(struct mtk_mbox_device *scp_mboxdev, struct platf
 		/* because mbox and recv_opt is a bit-field */
 		scp_mbox_pin_send[i].mbox = mbox_id;
 		ret = of_property_read_u32_index(pdev->dev.of_node,
-				"send_table",
+				"send-table",
 				i * send_item_num + 2,
 				&scp_mbox_pin_send[i].msg_size);
 		if (ret) {
@@ -2230,7 +2206,7 @@ static bool scp_ipi_table_init(struct mtk_mbox_device *scp_mboxdev, struct platf
 	scp_mbox_pin_recv = scp_mboxdev->pin_recv_table;
 	for (i = 0; i < scp_mboxdev->recv_count; ++i) {
 		ret = of_property_read_u32_index(pdev->dev.of_node,
-				"recv_table",
+				"recv-table",
 				i * recv_cells_num,
 				&scp_mbox_pin_recv[i].chan_id);
 		if (ret) {
@@ -2239,7 +2215,7 @@ static bool scp_ipi_table_init(struct mtk_mbox_device *scp_mboxdev, struct platf
 			return false;
 		}
 		ret = of_property_read_u32_index(pdev->dev.of_node,
-				"recv_table",
+				"recv-table",
 				i * recv_cells_num + 1,
 				&mbox_id);
 		if (ret) {
@@ -2250,7 +2226,7 @@ static bool scp_ipi_table_init(struct mtk_mbox_device *scp_mboxdev, struct platf
 		/* because mbox and recv_opt is a bit-field */
 		scp_mbox_pin_recv[i].mbox = mbox_id;
 		ret = of_property_read_u32_index(pdev->dev.of_node,
-				"recv_table",
+				"recv-table",
 				i * recv_cells_num + 2,
 				&scp_mbox_pin_recv[i].msg_size);
 		if (ret) {
@@ -2259,7 +2235,7 @@ static bool scp_ipi_table_init(struct mtk_mbox_device *scp_mboxdev, struct platf
 			return false;
 		}
 		ret = of_property_read_u32_index(pdev->dev.of_node,
-				"recv_table",
+				"recv-table",
 				i * recv_cells_num + 3,
 				&recv_opt);
 		if (ret) {
@@ -2271,7 +2247,7 @@ static bool scp_ipi_table_init(struct mtk_mbox_device *scp_mboxdev, struct platf
 		scp_mbox_pin_recv[i].recv_opt = recv_opt;
 		if (recv_cells_mode == 1) {
 			ret = of_property_read_u32_index(pdev->dev.of_node,
-					"recv_table",
+					"recv-table",
 					i * recv_cells_num + 4,
 					&lock);
 			if (ret) {
@@ -2282,7 +2258,7 @@ static bool scp_ipi_table_init(struct mtk_mbox_device *scp_mboxdev, struct platf
 			/* because lock is a bit-field */
 			scp_mbox_pin_recv[i].lock = lock;
 			ret = of_property_read_u32_index(pdev->dev.of_node,
-					"recv_table",
+					"recv-table",
 					i * recv_cells_num + 5,
 					&buf_full_opt);
 			if (ret) {
@@ -2293,7 +2269,7 @@ static bool scp_ipi_table_init(struct mtk_mbox_device *scp_mboxdev, struct platf
 			/* because buf_full_opt is a bit-field */
 			scp_mbox_pin_recv[i].buf_full_opt = buf_full_opt;
 			ret = of_property_read_u32_index(pdev->dev.of_node,
-					"recv_table",
+					"recv-table",
 					i * recv_cells_num + 6,
 					&cb_ctx_opt);
 			if (ret) {
@@ -2577,7 +2553,7 @@ static int scp_device_probe(struct platform_device *pdev)
 		}
 	}
 
-	of_property_read_u32(pdev->dev.of_node, "scp_sramSize"
+	of_property_read_u32(pdev->dev.of_node, "scp-sram-size"
 						, &scpreg.scp_tcmsize);
 	if (!scpreg.scp_tcmsize) {
 		pr_notice("[SCP] total_tcmsize not found\n");
@@ -2586,7 +2562,7 @@ static int scp_device_probe(struct platform_device *pdev)
 	pr_debug("[SCP] scpreg.scp_tcmsize = %d\n", scpreg.scp_tcmsize);
 
 	/* scp core 0 */
-	if (of_property_read_string(pdev->dev.of_node, "core_0", &core_status))
+	if (of_property_read_string(pdev->dev.of_node, "core-0", &core_status))
 		return -1;
 
 	if (strcmp(core_status, "enable") != 0)
@@ -2610,7 +2586,7 @@ static int scp_device_probe(struct platform_device *pdev)
 		pr_notice("[SCP] scp_hwvoter not support: %d\n", scp_hwvoter_support);
 	}
 
-	of_property_read_u32(pdev->dev.of_node, "core_nums"
+	of_property_read_u32(pdev->dev.of_node, "core-nums"
 						, &scpreg.core_nums);
 	if (!scpreg.core_nums) {
 		pr_notice("[SCP] core number not found\n");
@@ -2624,7 +2600,7 @@ static int scp_device_probe(struct platform_device *pdev)
 
 	/* secure_dump */
 	scpreg.secure_dump = 0;
-	if (!of_property_read_string(pdev->dev.of_node, "secure_dump", &secure_dump)) {
+	if (!of_property_read_string(pdev->dev.of_node, "secure-dump", &secure_dump)) {
 		if (!strncmp(secure_dump, "enable", strlen("enable"))) {
 			pr_notice("[SCP] secure dump enabled\n");
 			scpreg.secure_dump = 1;
@@ -2634,7 +2610,7 @@ static int scp_device_probe(struct platform_device *pdev)
 	/* scp pm notify*/
 	scp_pm_notify_support = 0;
 	if (!of_property_read_string(pdev->dev.of_node,
-				"scp_pm_notify", &scp_pm_notify)){
+				"scp-pm-notify", &scp_pm_notify)){
 		if (!strncmp(scp_pm_notify, "enable", strlen("enable"))) {
 			pr_notice("[SCP] scp_pm_notify enabled\n");
 			scp_pm_notify_support = 1;
@@ -2814,7 +2790,7 @@ static struct platform_driver mtk_scp_device = {
 };
 
 static const struct of_device_id scpsys_of_ids[] = {
-	{ .compatible = "mediatek,scpinfra", },
+	{ .compatible = "mediatek,infracfg_ao", },
 	{}
 };
 
@@ -2960,10 +2936,6 @@ static int __init scp_init(void)
 		pr_notice("[SCP] scp_logger_init_fail\n");
 		goto err;
 	}
-#endif
-
-#if ENABLE_SCP_EMI_PROTECTION
-	set_scp_mpu();
 #endif
 
 	scp_recovery_init();
