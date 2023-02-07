@@ -12854,6 +12854,63 @@
 		mboxes = <&gce_sec 8 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_4>;
 	};
 
+	mmdvfs_mux: mmdvfs-mux {
+		compatible = "mediatek,mtk-mmdvfs-mux";
+		clocks = <&topckgen_clk CLK_TOP_DISP0_SEL>, <&topckgen_clk CLK_TOP_MDP0_SEL>,
+			<&topckgen_clk CLK_TOP_MDP1_SEL>, <&topckgen_clk CLK_TOP_MMINFRA_SEL>,
+			<&topckgen_clk CLK_TOP_VENC_SEL>, <&topckgen_clk CLK_TOP_VDEC_SEL>,
+			<&topckgen_clk CLK_TOP_IMG1_SEL>, <&topckgen_clk CLK_TOP_CAM_SEL>;
+		clock-names = "mux-dis", "mux-mdp", "mux-mml", "mux-smi", "mux-ven", "mux-vde",
+			"mux-img", "mux-cam";
+		#clock-cells = <1>;
+		mediatek,mmdvfs-opp-table = <&opp_table_disp>, <&opp_table_mdp>, <&opp_table_mdp>,
+			<&opp_table_mminfra>, <&opp_table_vdec>, <&opp_table_venc>,
+			<&opp_table_img>, <&opp_table_cam>;
+		mediatek,mmdvfs-user-target = <MMDVFS_MUX_DIS>, <MMDVFS_MUX_MDP>, <MMDVFS_MUX_MML>,
+			<MMDVFS_MUX_SMI>, <MMDVFS_MUX_VEN>, <MMDVFS_MUX_VEN>, <MMDVFS_MUX_VEN>,
+			<MMDVFS_MUX_VDE>, <MMDVFS_MUX_IMG>, <MMDVFS_MUX_CAM>;
+		mediatek,mmdvfs-user-names = "user-disp", "user-mdp", "user-mml", "user-smi",
+			"user-jpegdec", "user-jpegenc", "user-venc", "user-vfmt", "user-img",
+			"user-cam";
+		mediatek,mmdvfs-swrgo;
+	};
+
+	mmdvfs-user-smi {
+		compatible = "mediatek,mtk-mmdvfs-user-smi", "mediatek,mtk-mmdvfs-user";
+		clocks = <&mmdvfs_mux MMDVFS_USER_SMI>;
+		clock-names = "user-smi";
+	};
+
+	mmdvfs-user-jpegdec {
+		compatible = "mediatek,mtk-mmdvfs-user-jpegdec", "mediatek,mtk-mmdvfs-user";
+		clocks = <&mmdvfs_mux MMDVFS_USER_JPEGDEC>;
+		clock-names = "user-jpegdec";
+	};
+
+	mmdvfs-user-jpegenc {
+		compatible = "mediatek,mtk-mmdvfs-user-jpegenc", "mediatek,mtk-mmdvfs-user";
+		clocks = <&mmdvfs_mux MMDVFS_USER_JPEGENC>;
+		clock-names = "user-jpegenc";
+	};
+
+	mmdvfs-user-venc {
+		compatible = "mediatek,mtk-mmdvfs-user-venc", "mediatek,mtk-mmdvfs-user";
+		clocks = <&mmdvfs_mux MMDVFS_USER_VENC>;
+		clock-names = "user-venc";
+	};
+
+	mmdvfs-user-img {
+		compatible = "mediatek,mtk-mmdvfs-user-img", "mediatek,mtk-mmdvfs-user";
+		clocks = <&mmdvfs_mux MMDVFS_USER_IMG>;
+		clock-names = "user-img";
+	};
+
+	mmdvfs-user-cam {
+		compatible = "mediatek,mtk-mmdvfs-user-cam", "mediatek,mtk-mmdvfs-user";
+		clocks = <&mmdvfs_mux MMDVFS_USER_CAM>;
+		clock-names = "user-cam";
+	};
+
 	mmdvfs_clk: mmdvfs-clk {
 		compatible = "mediatek,mtk-mmdvfs-v3";
 		mmdvfs-free-run;
