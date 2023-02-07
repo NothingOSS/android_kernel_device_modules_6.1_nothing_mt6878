@@ -25,7 +25,8 @@
 #define MML_IR_HEIGHT		480
 #define MML_IR_MIN		(MML_IR_WIDTH * MML_IR_HEIGHT)
 #define MML_IR_RSZ_MIN_RATIO	375	/* resize must lower than this ratio */
-#define MML_IR_OUT_MIN_W	784	/* wqhd 1440/2+64=784 */
+#define MML_OUT_MIN_W		784	/* wqhd 1440/2+64=784 */
+#define MML_DL_MAX_W		2560
 
 /* use OPP index 0(229Mhz) 1(273Mhz) 2(458Mhz) */
 #define MML_IR_MAX_OPP		2
@@ -56,6 +57,9 @@ module_param(mml_path_mode, int, 0644);
 int mml_racing;
 module_param(mml_racing, int, 0644);
 
+int mml_dl = 2;
+module_param(mml_dl, int, 0644);
+
 int mml_racing_rsz = 1;
 module_param(mml_racing_rsz, int, 0644);
 
@@ -78,6 +82,8 @@ enum topology_scenario {
 	PATH_MML_2IN_1OUT_P1,
 	PATH_MML_APU_P0,
 	PATH_MML_APU_P1,
+	PATH_MML_PQ_DL0,
+	PATH_MML_PQ_DL1,
 	PATH_MML_MAX
 };
 
@@ -332,6 +338,34 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_RDMA1, MML_WROT1,},
 		{MML_WROT1,},
 	},
+	[PATH_MML_PQ_DL0] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RDMA0, MML_DLI0_SEL,},
+		{MML_DLI0_SEL, MML_HDR0,},
+		{MML_HDR0, MML_AAL0,},
+		{MML_AAL0, MML_RSZ0,},
+		{MML_RSZ0, MML_TDSHP0,},
+		{MML_TDSHP0, MML_COLOR0,},
+		{MML_COLOR0, MML_PQ0_SOUT,},
+		{MML_PQ0_SOUT, MML_DLO0_SOUT,},
+		{MML_DLO0_SOUT, MML_DLO0,},
+		{MML_DLO0,},
+	},
+	[PATH_MML_PQ_DL1] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RDMA1, MML_DLI1_SEL,},
+		{MML_DLI1_SEL, MML_HDR1,},
+		{MML_HDR1, MML_AAL1,},
+		{MML_AAL1, MML_RSZ1,},
+		{MML_RSZ1, MML_TDSHP1,},
+		{MML_TDSHP1, MML_COLOR1,},
+		{MML_COLOR1, MML_PQ1_SOUT,},
+		{MML_PQ1_SOUT, MML_DLO1_SOUT,},
+		{MML_DLO1_SOUT, MML_DLO1,},
+		{MML_DLO1,},
+	},
 };
 
 enum cmdq_clt_usage {
@@ -359,6 +393,8 @@ static const u8 clt_dispatch[PATH_MML_MAX] = {
 	[PATH_MML_2IN_1OUT_P1] = MML_CLT_PIPE1,
 	[PATH_MML_APU_P0] = MML_CLT_PIPE0,
 	[PATH_MML_APU_P1] = MML_CLT_PIPE1,
+	[PATH_MML_PQ_DL0] = MML_CLT_PIPE0,
+	[PATH_MML_PQ_DL1] = MML_CLT_PIPE1,
 };
 
 /* mux sof group of mmlsys mout/sel */
@@ -392,6 +428,8 @@ static const u8 grp_dispatch[PATH_MML_MAX] = {
 	[PATH_MML_2IN_1OUT_P1] = MUX_SOF_GRP2,
 	[PATH_MML_APU_P0] = MUX_SOF_GRP1,
 	[PATH_MML_APU_P1] = MUX_SOF_GRP2,
+	[PATH_MML_PQ_DL0] = MUX_SOF_GRP1,
+	[PATH_MML_PQ_DL1] = MUX_SOF_GRP2,
 };
 
 /* reset bit to each engine,
@@ -719,6 +757,10 @@ static void tp_select_path(struct mml_topology_cache *cache,
 			scene[0] = PATH_MML_PQ_DD0;
 			scene[1] = PATH_MML_PQ_DD1;
 		}
+	} else if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
+		/* TODO: pq or not pq in direct link mode */
+		scene[0] = PATH_MML_PQ_DL0;
+		scene[1] = PATH_MML_PQ_DL1;
 	} else if (!en_pq) {
 		/* dual pipe, rdma to wrot */
 		scene[0] = PATH_MML_NOPQ_P0;
@@ -792,6 +834,9 @@ static s32 tp_select(struct mml_topology_cache *cache,
 		cfg->dual = cfg->disp_dual;
 		cfg->framemode = true;
 		cfg->nocmd = true;
+	} else if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
+		cfg->dual = cfg->disp_dual;
+		cfg->framemode = true;
 	} else if (cfg->info.mode == MML_MODE_APUDC) {
 		cfg->dual = true;
 	} else if (cfg->info.mode == MML_MODE_SRAM_READ) {
@@ -823,33 +868,100 @@ static s32 tp_select(struct mml_topology_cache *cache,
 	return 0;
 }
 
-static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *info,
+static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info *info,
+	u32 *reason)
+{
+	struct mml_topology_cache *tp;
+
+	if (unlikely(mml_dl)) {
+		if (mml_dl == 2)
+			goto decouple;
+	}
+
+	/* no pq support for dl mode */
+	if (info->dest[0].pq_config.en_dc ||
+		info->dest[0].pq_config.en_color ||
+		info->dest[0].pq_config.en_hdr ||
+		info->dest[0].pq_config.en_ccorr ||
+		info->dest[0].pq_config.en_dre ||
+		info->dest[0].pq_config.en_region_pq) {
+		*reason = mml_query_pqen;
+		goto decouple;
+	}
+
+	/* dl only support 1 out */
+	if (info->dest_cnt > 1) {
+		*reason = mml_query_2out;
+		goto decouple;
+	}
+
+	if (info->dest[0].flip) {
+		*reason = mml_query_flip;
+		goto decouple;
+	}
+
+	if (info->src.width > MML_DL_MAX_W) {
+		*reason = mml_query_inwidth;
+		goto decouple;
+	}
+
+	/* destination width must cross display pipe width */
+	if (info->dest[0].data.width < MML_OUT_MIN_W) {
+		*reason = mml_query_outwidth;
+		goto decouple;
+	}
+
+	/* get mid opp frequency */
+	tp = mml_topology_get_cache(mml);
+	if (!tp || !tp->opp_cnt) {
+		mml_err("not support dl due to opp not ready");
+		goto decouple;
+	}
+
+	if (info->act_time) {
+		u32 tput, pixel;
+
+		pixel = max(info->src.width * info->src.height,
+			info->dest[0].data.width * info->dest[0].data.height);
+
+		if (!tp->opp_cnt) {
+			mml_err("no opp table support");
+			goto decouple;
+		}
+
+		/* not support if exceeding max throughput
+		 * pixel per-pipe is:
+		 *	pipe_pixel = pixel / 2 * 1.1
+		 * and necessary throughput:
+		 *	pipe_pixel / active_time(ns) * 1000
+		 * so merge all constant:
+		 *	tput = pixel / 2 * 1.1 * 1000 / act_time
+		 *	     = pixel * 550 / act_time
+		 */
+		tput = pixel * 550 / info->act_time;
+		if (tput > tp->opp_speeds[tp->opp_cnt - 1]) {
+			*reason = mml_query_opp_out;
+			goto decouple;
+		}
+	}
+
+	return MML_MODE_DIRECT_LINK;
+
+decouple:
+	return MML_MODE_MML_DECOUPLE;
+}
+
+static enum mml_mode tp_query_mode_racing(struct mml_dev *mml, struct mml_frame_info *info,
 	u32 *reason)
 {
 	struct mml_topology_cache *tp;
 	u32 pixel;
-
-	if (unlikely(mml_path_mode))
-		return mml_path_mode;
 
 	if (unlikely(mml_racing)) {
 		if (mml_racing == 2)
 			goto decouple;
 	} else if (!mml_racing_enable(mml))
 		goto decouple;
-
-	/* skip all racing mode check if use prefer dc */
-	if (info->mode == MML_MODE_MML_DECOUPLE ||
-		info->mode == MML_MODE_MDP_DECOUPLE) {
-		*reason = mml_query_userdc;
-		goto decouple_user;
-	}
-
-	if (info->mode == MML_MODE_APUDC &&
-		info->src.width == 1920 && info->src.height == 1080) {
-		*reason = mml_query_apudc;
-		goto decouple_user;
-	}
 
 	/* TODO: should REMOVE after inlinerot resize ready */
 	if (unlikely(!mml_racing_rsz) && tp_need_resize(info)) {
@@ -906,7 +1018,6 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 					i, opp_pixel_table[i]);
 			}
 		}
-
 		for (i = 0; i < tp->opp_cnt; i++)
 			if (pipe_pixel < opp_pixel_table[i])
 				break;
@@ -923,17 +1034,12 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 		ir_opp = min_t(u32, i, ARRAY_SIZE(opp_pixel_table) - 1);
 
 		/* simple check if ir mode need higher opp */
-		if (ir_opp > dc_opp) {
+		if (ir_opp > dc_opp && ir_opp > 1) {
 			*reason = mml_query_acttime;
 			goto decouple;
 		}
 	}
 
-	/* only support FHD/2K with rotate 90/270 case for now */
-	if (info->dest[0].rotate == MML_ROT_0 || info->dest[0].rotate == MML_ROT_180) {
-		*reason = mml_query_rot;
-		goto decouple;
-	}
 	if (info->dest[0].crop.r.width > MML_IR_WIDTH_2K ||
 		info->dest[0].crop.r.height > MML_IR_HEIGHT_2K ||
 		pixel > MML_IR_2K) {
@@ -948,7 +1054,7 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 	}
 
 	/* destination width must cross display pipe width */
-	if (info->dest[0].data.width < MML_IR_OUT_MIN_W) {
+	if (info->dest[0].data.width < MML_OUT_MIN_W) {
 		*reason = mml_query_outwidth;
 		goto decouple;
 	}
@@ -964,6 +1070,36 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 
 decouple:
 	return MML_MODE_MML_DECOUPLE;
+}
+
+static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *info,
+	u32 *reason)
+{
+	if (unlikely(mml_path_mode))
+		return mml_path_mode;
+
+	/* skip all racing mode check if use prefer dc */
+	if (info->mode == MML_MODE_MML_DECOUPLE ||
+		info->mode == MML_MODE_MDP_DECOUPLE) {
+		*reason = mml_query_userdc;
+		goto decouple_user;
+	}
+
+	if (info->mode == MML_MODE_APUDC) {
+		*reason = mml_query_apudc;
+		goto decouple_user;
+	}
+
+	/* no rotate, go to direct link */
+	if (info->dest[0].rotate == MML_ROT_0)
+		return tp_query_mode_dl(mml, info, reason);
+
+	/* rotate go to racing (inline rotate) */
+	if (info->dest[0].rotate == MML_ROT_90 || info->dest[0].rotate == MML_ROT_270)
+		return tp_query_mode_racing(mml, info, reason);
+
+	return MML_MODE_MML_DECOUPLE;
+
 decouple_user:
 	return info->mode;
 }
@@ -974,11 +1110,18 @@ static struct cmdq_client *get_racing_clt(struct mml_topology_cache *cache, u32 
 	return cache->paths[PATH_MML_NOPQ_P0 + pipe].clt;
 }
 
+static const struct mml_topology_path *tp_get_dl_path(struct mml_topology_cache *cache,
+	struct mml_submit *submit, u32 pipe)
+{
+	return &cache->paths[PATH_MML_PQ_DL0 + pipe];
+}
+
 static const struct mml_topology_ops tp_ops_mt6985 = {
 	.query_mode = tp_query_mode,
 	.init_cache = tp_init_cache,
 	.select = tp_select,
 	.get_racing_clt = get_racing_clt,
+	.get_dl_path = tp_get_dl_path,
 };
 
 static __init int mml_topology_ip_init(void)

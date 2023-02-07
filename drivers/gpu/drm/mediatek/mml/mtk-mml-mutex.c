@@ -13,6 +13,7 @@
 #include "mtk-mml-core.h"
 #include "mtk-mml-driver.h"
 #include "mtk-mml-dle-adaptor.h"
+#include "mtk-mml-drm-adaptor.h"
 
 #define MUTEX_MAX_MOD_REGS	((MML_MAX_COMPONENTS + 31) >> 5)
 
@@ -68,6 +69,10 @@ struct mml_mutex {
 	const struct mutex_data *data;
 	bool ddp_bound;
 	atomic_t connect[MML_PIPE_CNT];
+	enum mml_mode connected_mode;
+
+	u16 event_pipe0_mml;
+	u16 event_pipe1_mml;
 
 	struct mutex_module modules[MML_MAX_COMPONENTS];
 };
@@ -151,11 +156,40 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 	const struct mml_topology_path *path = task->config->path[ccfg->pipe];
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 
+	if (task->config->info.mode == MML_MODE_DIRECT_LINK) {
+		if (ccfg->pipe == 0) {
+			if (task->config->dual) {
+				cmdq_pkt_set_event(pkt, mutex->event_pipe0_mml);
+				cmdq_pkt_wfe(pkt, mutex->event_pipe1_mml);
+			}
+
+			cmdq_pkt_set_event(pkt, mml_ir_get_mml_ready_event(task->config->mml));
+			cmdq_pkt_wfe(pkt, mml_ir_get_disp_ready_event(task->config->mml));
+		} else {
+			cmdq_pkt_set_event(pkt, mutex->event_pipe1_mml);
+			cmdq_pkt_wfe(pkt, mutex->event_pipe0_mml);
+		}
+		return 0;
+	}
+
 	return mutex_enable(mutex, pkt, path, 0x0, task->config->info.mode);
 }
 
+static s32 mutex_disconnect(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg)
+{
+	struct mml_frame_config *cfg = task->config;
+	struct mml_mutex *mutex = comp_to_mutex(comp);
+
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK)
+		mutex_disable(mutex, task->pkts[ccfg->pipe], cfg->path[ccfg->pipe]);
+
+	return 0;
+}
+
 static const struct mml_comp_config_ops mutex_config_ops = {
-	.mutex = mutex_trigger
+	.mutex = mutex_trigger,
+	.post = mutex_disconnect,
 };
 
 static void mutex_debug_dump(struct mml_comp *comp)
@@ -243,8 +277,6 @@ static u32 get_mutex_sof(struct mml_mutex_ctl *ctl)
 {
 	u32 sof = 0;
 
-	if (ctl->is_cmd_mode)
-		return 0;
 	switch (ctl->sof_src) {
 	case DDP_COMPONENT_DSI0:
 		sof |= 1;
@@ -277,18 +309,41 @@ static u32 get_mutex_sof(struct mml_mutex_ctl *ctl)
 	return sof;
 }
 
-static void mutex_addon_config(struct mtk_ddp_comp *ddp_comp,
-			       enum mtk_ddp_comp_id prev,
-			       enum mtk_ddp_comp_id next,
-			       union mtk_addon_config *addon_config,
-			       struct cmdq_pkt *pkt)
+static void mutex_addon_config_dl(struct mtk_ddp_comp *ddp_comp,
+				  enum mtk_ddp_comp_id prev,
+				  enum mtk_ddp_comp_id next,
+				  union mtk_addon_config *addon_config,
+				  struct cmdq_pkt *pkt)
 {
 	struct mml_mutex *mutex = ddp_comp_to_mutex(ddp_comp);
 	struct mtk_addon_mml_config *cfg = &addon_config->addon_mml_config;
 	const struct mml_topology_path *path;
 
+	if (!cfg->ctx) {
+		mml_err("%s cannot configure %d without ctx", __func__, cfg->config_type.type);
+		return;
+	}
+
+	if (cfg->config_type.type == ADDON_CONNECT) {
+		path = mml_drm_query_dl_path(cfg->ctx, &cfg->submit, cfg->pipe);
+		mutex_enable(mutex, pkt, path, get_mutex_sof(&cfg->mutex), MML_MODE_DIRECT_LINK);
+		mutex->connected_mode = MML_MODE_DIRECT_LINK;
+	}
+}
+
+static void mutex_addon_config_addon(struct mtk_ddp_comp *ddp_comp,
+				     enum mtk_ddp_comp_id prev,
+				     enum mtk_ddp_comp_id next,
+				     union mtk_addon_config *addon_config,
+				     struct cmdq_pkt *pkt)
+{
+	struct mml_mutex *mutex = ddp_comp_to_mutex(ddp_comp);
+	struct mtk_addon_mml_config *cfg = &addon_config->addon_mml_config;
+	const struct mml_topology_path *path;
+	u32 mutex_sof;
+
 	if (!cfg->task) {
-		mml_err("%s cannot configure without mml_task", __func__);
+		mml_err("%s cannot configure %d without ctx", __func__, cfg->config_type.type);
 		return;
 	}
 
@@ -301,8 +356,39 @@ static void mutex_addon_config(struct mtk_ddp_comp *ddp_comp,
 			mml_err("%s disconnect without connect pipe %u", __func__, cfg->pipe);
 	} else {
 		atomic_set(&mutex->connect[cfg->pipe], 1);
-		mutex_enable(mutex, pkt, path, get_mutex_sof(&cfg->mutex), MML_MODE_DDP_ADDON);
+		mutex_sof = cfg->mutex.is_cmd_mode ? 0 : get_mutex_sof(&cfg->mutex);
+		mutex_enable(mutex, pkt, path, mutex_sof, MML_MODE_DDP_ADDON);
+		mutex->connected_mode = MML_MODE_DDP_ADDON;
 	}
+}
+
+static void mutex_addon_config(struct mtk_ddp_comp *ddp_comp,
+			       enum mtk_ddp_comp_id prev,
+			       enum mtk_ddp_comp_id next,
+			       union mtk_addon_config *addon_config,
+			       struct cmdq_pkt *pkt)
+{
+	struct mtk_addon_mml_config *cfg = &addon_config->addon_mml_config;
+	enum mml_mode mode = cfg->submit.info.mode;
+
+	if (mode == MML_MODE_UNKNOWN) {
+		struct mml_mutex *mutex = ddp_comp_to_mutex(ddp_comp);
+
+		if (mutex->connected_mode == MML_MODE_UNKNOWN ||
+			!atomic_read(&mutex->connect[cfg->pipe])) {
+			/* no current connected mode, stop */
+			return;
+		}
+
+		mode = mutex->connected_mode;
+	}
+
+	if (mode == MML_MODE_DIRECT_LINK)
+		mutex_addon_config_dl(ddp_comp, prev, next, addon_config, pkt);
+	else if (mode == MML_MODE_DDP_ADDON)
+		mutex_addon_config_addon(ddp_comp, prev, next, addon_config, pkt);
+	else
+		mml_err("%s not support mode %d(%d)", __func__, mode, cfg->submit.info.mode);
 }
 
 static const struct mtk_ddp_comp_funcs ddp_comp_funcs = {
@@ -385,6 +471,11 @@ static int probe(struct platform_device *pdev)
 
 	priv->comp.config_ops = &mutex_config_ops;
 	priv->comp.debug_ops = &mutex_debug_ops;
+
+	if (!of_property_read_u16(dev->of_node, "event-pipe0-mml", &priv->event_pipe0_mml))
+		mml_log("dl event event_pipe0_mml %u", priv->event_pipe0_mml);
+	if (!of_property_read_u16(dev->of_node, "event-pipe1-mml", &priv->event_pipe1_mml))
+		mml_log("dl event event_pipe1_mml %u", priv->event_pipe1_mml);
 
 	ret = mml_ddp_comp_init(dev, &priv->ddp_comp, &priv->comp,
 				&ddp_comp_funcs);

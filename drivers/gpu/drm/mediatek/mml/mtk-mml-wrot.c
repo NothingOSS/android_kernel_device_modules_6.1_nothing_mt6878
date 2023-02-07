@@ -438,7 +438,7 @@ static void wrot_config_bottom(struct mml_frame_data *src,
 {
 	wrot_frm->en_y_crop = true;
 	wrot_frm->out_crop.top = wrot_frm->out_h >> 1;
-	if (MML_FMT_COMPRESS(src->format))
+	if (MML_FMT_IS_YUV(src->format) || MML_FMT_COMPRESS(src->format))
 		wrot_frm->out_crop.top = align_up(wrot_frm->out_crop.top, 16);
 	else if (wrot_frm->out_crop.top & 0x1)
 		wrot_frm->out_crop.top++;

@@ -2534,6 +2534,7 @@ static void mml_addon_module_connect(struct drm_crtc *crtc, unsigned int ddp_mod
 
 	/* call mml_calc_cfg to calc how to split for rsz dual pipe */
 	calc_mml_config(crtc, addon_config, crtc_state);
+	addon_config->addon_mml_config.ctx = mtk_drm_get_mml_drm_ctx(crtc->dev, crtc);
 
 	for (i = 0; i <= (mtk_crtc->is_dual_pipe && addon_module_dual); ++i) {
 		c->pipe = i;

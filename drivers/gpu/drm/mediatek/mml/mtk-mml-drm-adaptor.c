@@ -35,10 +35,14 @@ module_param(mml_max_cache_task, int, 0644);
 int mml_max_cache_cfg = 2;
 module_param(mml_max_cache_cfg, int, 0644);
 
+int mml_dc = 1;
+module_param(mml_dc, int, 0644);
+
 struct mml_drm_ctx {
 	struct list_head configs;
 	u32 config_cnt;
 	atomic_t racing_cnt;	/* ref count for racing tasks */
+	atomic_t dl_cnt;
 	struct mutex config_mutex;
 	struct mml_dev *mml;
 	const struct mml_task_ops *task_ops;
@@ -157,7 +161,8 @@ enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *ctx,
 		goto not_support;
 
 	mode = tp->op->query_mode(ctx->mml, info, &reason);
-	if (atomic_read(&ctx->racing_cnt) && mode == MML_MODE_MML_DECOUPLE) {
+	if (mode == MML_MODE_MML_DECOUPLE &&
+		(atomic_read(&ctx->racing_cnt) || atomic_read(&ctx->dl_cnt))) {
 		/* if mml hw running racing mode and query info need dc,
 		 * go back to MDP decouple to avoid hw conflict.
 		 *
@@ -169,6 +174,9 @@ enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *ctx,
 		mml_log("%s mode %u to mdp dc", __func__, mode);
 		mode = MML_MODE_MDP_DECOUPLE;
 	}
+
+	if (mode == MML_MODE_MML_DECOUPLE && !mml_dc)
+		mode = MML_MODE_MDP_DECOUPLE;
 
 	mml_mmp(query_mode, MMPROFILE_FLAG_PULSE,
 		(info->mode << 16) | mode, reason);
@@ -547,13 +555,16 @@ static void task_move_to_idle(struct mml_task *task)
 	/* maintain racing ref count decrease after done */
 	if (cfg->info.mode == MML_MODE_RACING)
 		atomic_dec(&ctx->racing_cnt);
+	else if (cfg->info.mode == MML_MODE_DIRECT_LINK)
+		atomic_dec(&ctx->dl_cnt);
 
-	mml_msg("[drm]%s task cnt (%u %u %hhu) racing %d",
+	mml_msg("[drm]%s task cnt (%u %u %hhu) racing %d dl %d",
 		__func__,
 		task->config->await_task_cnt,
 		task->config->run_task_cnt,
 		task->config->done_task_cnt,
-		atomic_read(&ctx->racing_cnt));
+		atomic_read(&ctx->racing_cnt),
+		atomic_read(&ctx->dl_cnt));
 }
 
 static void task_move_to_destroy(struct kref *kref)
@@ -892,6 +903,21 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 				cfg->layer_h = submit->info.dest[0].compose.height;
 			cfg->disp_hrt = frame_calc_layer_hrt(ctx, &submit->info,
 				cfg->layer_w, cfg->layer_h);
+		} else if (submit->info.mode == MML_MODE_DIRECT_LINK) {
+			memcpy(cfg->dl_out, submit->dl_out, sizeof(cfg->dl_out));
+
+			/* TODO: remove it, workaround for direct link,
+			 * the dlo roi should fill by disp
+			 */
+			if (!cfg->dl_out[0].width || !cfg->dl_out[0].height) {
+				cfg->dl_out[0].width = submit->info.dest[0].compose.width / 2;
+				cfg->dl_out[0].height = submit->info.dest[0].compose.height;
+				cfg->dl_out[1].width = submit->info.dest[0].compose.width -
+					cfg->dl_out[0].width;
+				cfg->dl_out[1].height = submit->info.dest[0].compose.height;
+
+				mml_log("[wan][drm]auto fill in dl out by compose");
+			}
 		}
 
 		/* add more count for new task create */
@@ -903,7 +929,8 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 		/* also mark begin so that disp clear target line event */
 		if (atomic_inc_return(&ctx->racing_cnt) == 1)
 			ctx->racing_begin = true;
-	}
+	} else if (cfg->info.mode == MML_MODE_DIRECT_LINK)
+		atomic_inc(&ctx->dl_cnt);
 
 	/* make sure id unique and cached last */
 	task->job.jobid = atomic_inc_return(&ctx->job_serial);
@@ -911,12 +938,13 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 	cfg->last_jobid = task->job.jobid;
 	list_add_tail(&task->entry, &cfg->await_tasks);
 	cfg->await_task_cnt++;
-	mml_msg("[drm]%s task cnt (%u %u %hhu) racing %d",
+	mml_msg("[drm]%s task cnt (%u %u %hhu) racing %d dl %d",
 		__func__,
 		task->config->await_task_cnt,
 		task->config->run_task_cnt,
 		task->config->done_task_cnt,
-		atomic_read(&ctx->racing_cnt));
+		atomic_read(&ctx->racing_cnt),
+		atomic_read(&ctx->dl_cnt));
 
 	mutex_unlock(&ctx->config_mutex);
 
@@ -963,7 +991,9 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 	/* create fence for this task */
 	fence.value = task->job.jobid;
 #ifndef MML_FPGA
-	if (submit->job && ctx->timeline && submit->info.mode != MML_MODE_RACING &&
+	if (submit->job && ctx->timeline &&
+		submit->info.mode != MML_MODE_RACING &&
+		submit->info.mode != MML_MODE_DIRECT_LINK &&
 		mtk_sync_fence_create(ctx->timeline, &fence) >= 0) {
 		task->job.fence = fence.fence;
 		task->fence = sync_file_get_fence(task->job.fence);
@@ -1173,7 +1203,7 @@ static void task_ddren(struct mml_task *task, struct cmdq_pkt *pkt, bool enable)
 		return;
 
 	/* no need ddren for srt case */
-	if (task->config->info.mode == MML_MODE_MDP_DECOUPLE)
+	if (task->config->info.mode == MML_MODE_MML_DECOUPLE)
 		return;
 
 	ctx->ddren_cb(pkt, enable, ctx->ddren_param);
@@ -1187,7 +1217,7 @@ static void task_dispen(struct mml_task *task, bool enable)
 		return;
 
 	/* no need ddren so no dispen */
-	if (task->config->info.mode == MML_MODE_MDP_DECOUPLE)
+	if (task->config->info.mode == MML_MODE_MML_DECOUPLE)
 		return;
 
 	ctx->dispen_cb(enable, ctx->dispen_param);
@@ -1468,7 +1498,7 @@ static void mml_check_boundary_h(struct mml_frame_data *src,
 	}
 }
 
-void mml_drm_split_info(struct mml_submit *submit, struct mml_submit *submit_pq)
+static void mml_drm_split_info_racing(struct mml_submit *submit, struct mml_submit *submit_pq)
 {
 	struct mml_frame_info *info = &submit->info;
 	struct mml_frame_info *info_pq = &submit_pq->info;
@@ -1609,5 +1639,37 @@ void mml_drm_split_info(struct mml_submit *submit, struct mml_submit *submit_pq)
 		mml_err("%s dest plane should be 1 but format %#010x",
 			__func__, dest->data.format);
 }
+
+static void mml_drm_split_info_dl(struct mml_submit *submit, struct mml_submit *submit_pq)
+{
+	u32 i;
+
+	submit_pq->info = submit->info;
+	submit_pq->info.src = submit->info.dest[0].data;
+	submit_pq->layer = submit->layer;
+	for (i = 0; i < MML_MAX_OUTPUTS; i++)
+		if (submit_pq->pq_param[i] && submit->pq_param[i])
+			*submit_pq->pq_param[i] = *submit->pq_param[i];
+	submit_pq->info.mode = MML_MODE_DIRECT_LINK;
+}
+
+void mml_drm_split_info(struct mml_submit *submit, struct mml_submit *submit_pq)
+{
+	if (submit->info.mode == MML_MODE_RACING)
+		mml_drm_split_info_racing(submit, submit_pq);
+	else if (submit->info.mode == MML_MODE_DIRECT_LINK)
+		mml_drm_split_info_dl(submit, submit_pq);
+}
 EXPORT_SYMBOL_GPL(mml_drm_split_info);
+
+const struct mml_topology_path *mml_drm_query_dl_path(struct mml_drm_ctx *ctx,
+	struct mml_submit *submit, u32 pipe)
+{
+	struct mml_topology_cache *tp = mml_topology_get_cache(ctx->mml);
+
+	if (!tp->op->get_dl_path)
+		return NULL;
+
+	return tp->op->get_dl_path(tp, submit, pipe);
+}
 

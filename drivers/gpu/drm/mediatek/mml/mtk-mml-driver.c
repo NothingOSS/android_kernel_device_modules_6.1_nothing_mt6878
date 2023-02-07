@@ -785,7 +785,7 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 		hrt = false;
 		bandwidth = 0;
 		hrt_bw = 0;
-	} else if (cfg->info.mode == MML_MODE_RACING) {
+	} else if (cfg->info.mode == MML_MODE_RACING || cfg->info.mode == MML_MODE_DIRECT_LINK) {
 		hrt = true;
 		bandwidth = mml_calc_bw_racing(datasize);
 		hrt_bw = cfg->disp_hrt;

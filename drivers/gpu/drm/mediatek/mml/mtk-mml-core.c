@@ -322,15 +322,16 @@ static s32 command_make(struct mml_task *task, u32 pipe)
 
 	/* get total label count to create label array */
 	cache->label_cnt = 0;
-	for (i = 0; i < path->node_cnt; i++) {
-		comp = path->nodes[i].comp;
-		cache->label_cnt += call_cfg_op(comp, get_label_count, task, &ccfg[i]);
-	}
-	reuse->labels = kcalloc(cache->label_cnt, sizeof(*reuse->labels), GFP_KERNEL);
-	if (!reuse->labels) {
-		mml_err("%s not able to alloc label table", __func__);
-		ret = -ENOMEM;
-		goto err;
+	if (task->config->info.mode != MML_MODE_DDP_ADDON) {
+		for (i = 0; i < path->node_cnt; i++) {
+			comp = path->nodes[i].comp;
+			cache->label_cnt += call_cfg_op(comp, get_label_count, task, &ccfg[i]);
+		}
+		reuse->labels = kcalloc(cache->label_cnt, sizeof(*reuse->labels), GFP_KERNEL);
+		if (!reuse->labels) {
+			ret = -ENOMEM;
+			goto err;
+		}
 	}
 
 	/* call all component init and frame op, include mmlsys and mutex */
@@ -754,7 +755,7 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 	mutex_lock(&path_clt->clt_mutex);
 
 	ktime_get_real_ts64(&curr_time);
-	if (cfg->info.mode == MML_MODE_RACING) {
+	if (cfg->info.mode == MML_MODE_RACING || cfg->info.mode == MML_MODE_DIRECT_LINK) {
 		mml_msg_qos(
 			"task dvfs begin %p pipe %u cur %2u.%03llu act_time %u clt id %hhu",
 			task, pipe,
@@ -789,7 +790,7 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 		task->submit_time = curr_time;
 
 	task->pipe[pipe].throughput = 0;
-	if (cfg->info.mode == MML_MODE_RACING) {
+	if (cfg->info.mode == MML_MODE_RACING || cfg->info.mode == MML_MODE_DIRECT_LINK) {
 		/* racing mode uses different calculation since start time
 		 * consistent with disp
 		 */
@@ -903,7 +904,8 @@ static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 	}
 
 	list_for_each_entry(task_pipe_cur, &path_clt->tasks, entry_clt) {
-		if (task_pipe_cur->task->config->info.mode == MML_MODE_RACING)
+		if (task_pipe_cur->task->config->info.mode == MML_MODE_RACING ||
+			task_pipe_cur->task->config->info.mode == MML_MODE_DIRECT_LINK)
 			continue;
 		racing_mode = false;
 		break;
@@ -1899,6 +1901,9 @@ s32 mml_assign(struct cmdq_pkt *pkt, u16 reg_idx, u32 value,
 	       struct mml_pipe_cache *cache,
 	       u16 *label_idx)
 {
+	if (!cache->label_cnt)
+		return cmdq_pkt_assign_command(pkt, reg_idx, value);
+
 	if (check_label_idx(reuse, cache))
 		return -ENOMEM;
 
@@ -1914,6 +1919,9 @@ s32 mml_write(struct cmdq_pkt *pkt, dma_addr_t addr, u32 value, u32 mask,
 	      struct mml_pipe_cache *cache,
 	      u16 *label_idx)
 {
+	if (!cache->label_cnt)
+		return cmdq_pkt_write_value_addr(pkt, addr, value, mask);
+
 	if (check_label_idx(reuse, cache))
 		return -ENOMEM;
 
@@ -1995,7 +2003,12 @@ s32 mml_write_array(struct cmdq_pkt *pkt, dma_addr_t addr, u32 value, u32 mask,
 	struct mml_task_reuse *reuse, struct mml_pipe_cache *cache,
 	struct mml_reuse_array *reuses)
 {
-	s32 ret = mml_write(pkt, addr, value, mask, reuse, cache,
+	s32 ret;
+
+	if (!cache->label_cnt)
+		return cmdq_pkt_write_value_addr(pkt, addr, value, mask);
+
+	ret = mml_write(pkt, addr, value, mask, reuse, cache,
 		&reuses->offs[reuses->idx].label_idx);
 
 	if (ret < 0)

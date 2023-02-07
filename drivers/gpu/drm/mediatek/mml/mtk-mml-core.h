@@ -154,7 +154,7 @@ extern int mml_racing_urgent;
 extern int mml_racing_eoc;
 
 #define MML_MAX_PATH_NODES	18 /* must align MAX_TILE_FUNC_NO in tile_driver.h */
-#define MML_MAX_PATH_CACHES	18
+#define MML_MAX_PATH_CACHES	20 /* must >= PATH_MML_MAX in all mtk-mml-mtxxxx.c */
 #define MML_MAX_CMDQ_CLTS	4
 #define MML_MAX_OPPS		5
 #define MML_MAX_TPUT		800
@@ -272,6 +272,9 @@ struct mml_topology_ops {
 		      struct mml_frame_config *cfg);
 	struct cmdq_client *(*get_racing_clt)(struct mml_topology_cache *cache,
 					      u32 pipe);
+	const struct mml_topology_path *(*get_dl_path)(struct mml_topology_cache *cache,
+						       struct mml_submit *submit,
+						       u32 pipe);
 };
 
 struct mml_path_client {

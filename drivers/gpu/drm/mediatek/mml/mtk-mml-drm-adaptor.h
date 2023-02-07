@@ -34,6 +34,8 @@ enum mml_query_mode_reason {
 	mml_query_outwidth,
 	mml_query_rszratio,
 	mml_query_apudc,
+	mml_query_inwidth,
+	mml_query_flip,
 };
 
 struct mml_drm_param {
@@ -205,5 +207,15 @@ void mml_drm_config_rdone(struct mml_drm_ctx *ctx, struct mml_submit *submit,
  * @submit:	Frame info which want mml driver to execute.
  */
 void mml_drm_dump(struct mml_drm_ctx *ctx, struct mml_submit *submit);
+
+/*
+ * mml_drm_query_dl_path - query direct link path
+ *
+ * @ctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
+ * @submit:	Frame info which want mml driver to execute.
+ * @pipe:	path pipe
+ */
+const struct mml_topology_path *mml_drm_query_dl_path(struct mml_drm_ctx *ctx,
+	struct mml_submit *submit, u32 pipe);
 
 #endif	/* __MTK_MML_DRM_ADAPTOR_H__ */

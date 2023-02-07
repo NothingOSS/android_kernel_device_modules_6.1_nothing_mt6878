@@ -136,6 +136,7 @@ struct mtk_addon_wdma_config {
 
 struct mtk_addon_mml_config {
 	struct mtk_addon_config_type config_type;
+	void *ctx;
 	struct mml_mutex_ctl mutex;		    /* [IN] display mode and output port */
 	struct mml_submit submit;		    /* [IN] mml_drm_split_info submit_pq */
 	bool dual;				    /* [IN] set true if display uses dual pipe */
