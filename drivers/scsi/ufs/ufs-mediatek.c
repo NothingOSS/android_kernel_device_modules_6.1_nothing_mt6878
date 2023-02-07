@@ -1645,6 +1645,8 @@ static void ufs_mtk_rpmb_add(void *data, async_cookie_t cookie)
 
 	host = ufshcd_get_variant(hba);
 
+	sema_init(&host->rpmb_sem, 0);
+
 	err = wait_for_completion_timeout(&host->luns_added, 10 * HZ);
 	if (err == 0) {
 		dev_info(hba->dev, "%s: LUNs not ready before timeout. RPMB init failed", __func__);
@@ -1687,15 +1689,12 @@ static void ufs_mtk_rpmb_add(void *data, async_cookie_t cookie)
 	 */
 	rawdev_ufs_rpmb = rdev;
 
-	/*
-	 * Initialize rpmb semaphore.
-	 */
-	sema_init(&host->rpmb_sem, 1);
-
 out_put_dev:
 	//scsi_device_put(hba->sdev_rpmb);
 
 out:
+	up(&host->rpmb_sem);
+
 	return;
 }
 
