@@ -513,6 +513,8 @@ struct DISP_AAL_TRIG_STATE {
 #define DRM_MTK_SET_GAMMA_MUL_DISABLE 0x59
 #define DRM_MTK_GET_PANELS_INFO 0x5a
 
+#define DRM_MTK_KICK_IDLE 0x5b
+
 /* C3D */
 #define DISP_C3D_1DLUT_SIZE 32
 
@@ -720,6 +722,7 @@ enum mtk_mmsys_id {
 	MMSYS_MT6886 = 0x6886,
 	MMSYS_MT6855 = 0x6855,
 	MMSYS_MT6897 = 0x6897,
+	MMSYS_MT6835 = 0x6835,
 	MMSYS_MAX,
 };
 
@@ -807,8 +810,12 @@ struct mtk_drm_conn_caps {
 	unsigned int lcm_degree;
 };
 
+#define MAX_MODES 30
+
 struct mtk_drm_connector_caps {
 	struct mtk_drm_conn_caps conn_caps;
+	unsigned int width_after_pq[MAX_MODES];
+	unsigned int height_after_pq[MAX_MODES];
 };
 
 struct mtk_drm_crtc_caps {
@@ -1026,6 +1033,7 @@ struct DISP_MDP_AAL_CLARITY_REG {
 	__u32 bilateral_range_flt_slope;
 	__u32 bilateral_flt_en;
 	__u32 have_bilateral_filter;
+	__u32 dre_output_mode;
 
 	// Bilateral Blending
 	__u32 dre_bilateral_activate_blending_A;
@@ -1331,6 +1339,8 @@ struct drm_mtk_chist_info {
 	enum MTK_DRM_CHIST_CALLER caller;
 	unsigned int get_channel_count;
 	struct drm_mtk_channel_hist channel_hist[MTK_DRM_DISP_CHIST_CHANNEL_COUNT];
+	unsigned int lcm_width;
+	unsigned int lcm_height;
 };
 
 struct drm_mtk_channel_config {
@@ -1585,6 +1595,9 @@ struct mtk_drm_panels_info {
 #define DRM_IOCTL_MTK_ODDMR_CTL    DRM_IOWR(DRM_COMMAND_BASE + \
 				DRM_MTK_ODDMR_CTL, struct mtk_drm_oddmr_ctl)
 
+#define DRM_IOCTL_MTK_KICK_IDLE    DRM_IOWR(DRM_COMMAND_BASE + \
+			DRM_MTK_KICK_IDLE, unsigned int)
+
 
 /* AAL IOCTL */
 #define AAL_HIST_BIN            33	/* [0..32] */
@@ -1640,6 +1653,15 @@ struct DISP_AAL_INITREG {
 	int blk_cnt_y_end;
 	int last_tile_x_flag;
 	int last_tile_y_flag;
+	int act_win_x_start;
+	int dre0_blk_cnt_x_start;
+	int dre0_blk_cnt_x_end;
+	int dre1_blk_cnt_x_start;
+	int dre1_blk_cnt_x_end;
+	int dre0_act_win_x_start;
+	int dre0_act_win_x_end;
+	int dre1_act_win_x_start;
+	int dre1_act_win_x_end;
 };
 
 enum rgbSeq {
@@ -1669,6 +1691,7 @@ struct DISP_AAL_DISPLAY_SIZE {
 	int width;
 	int height;
 	_Bool isdualpipe;
+	int aaloverhead;
 };
 
 struct DISP_AAL_HIST {
@@ -1694,12 +1717,20 @@ struct DISP_AAL_HIST {
 	unsigned int aal1_clarity[MDP_AAL_CLARITY_READBACK_NUM];
 	unsigned int tdshp0_clarity[DISP_TDSHP_CLARITY_READBACK_NUM];
 	unsigned int tdshp1_clarity[DISP_TDSHP_CLARITY_READBACK_NUM];
+	int pipeLineNum;
 };
 
 struct DISP_AAL_ESS20_SPECT_PARAM {
 	unsigned int ELVSSPN;
 	unsigned int ClarityGain; /* 10-bit ; [0,1023] */
 	unsigned int flag;//
+};
+
+enum SET_BL_EXT_TYPE {
+	SET_BACKLIGHT_LEVEL,
+	SET_ELVSS_PN,
+	ENABLE_DYN_ELVSS,
+	DISABLE_DYN_ELVSS,
 };
 
 #define DRM_IOCTL_MTK_AAL_INIT_REG	DRM_IOWR(DRM_COMMAND_BASE + \
