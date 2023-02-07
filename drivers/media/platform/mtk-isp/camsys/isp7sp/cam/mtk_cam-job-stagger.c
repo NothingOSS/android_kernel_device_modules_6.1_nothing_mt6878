@@ -753,7 +753,7 @@ bool is_sv_img_tag_used(struct mtk_cam_job *job)
 	if (is_stagger_multi_exposure(job))
 		rst = true;
 	/* HS_TODO: use new api implemented by Roy */
-	if (is_stagger_dc(job))
+	if (is_dc_mode(job))
 		rst = true;
 
 	return rst;
