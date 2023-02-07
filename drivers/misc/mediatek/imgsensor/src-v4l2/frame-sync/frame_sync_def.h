@@ -40,7 +40,7 @@
  * get timestamp by using bellow method
  * e.g. CCU / N3D / TSREC / etc.
  */
-#define USING_CCU
+//#define USING_CCU
 #ifdef USING_CCU
 /*
  * delay power ON/OFF and operate CCU to fs_set_sync()
