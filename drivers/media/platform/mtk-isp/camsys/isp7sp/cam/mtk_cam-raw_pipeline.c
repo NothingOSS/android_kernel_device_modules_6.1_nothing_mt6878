@@ -352,6 +352,25 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 			ret = 0;
 		}
 		break;
+	case V4L2_CID_MTK_CAM_RAW_PATH_SELECT:
+		{
+			if (ctrl->val > V4L2_MTK_CAM_RAW_PATH_SELECT_LTM ||
+			    ctrl->val < 0) {
+				dev_info(dev,
+					 "%s:pipe(%d): invalid raw_path(%d) from user\n",
+					 __func__, pipeline->id,
+					 ctrl->val);
+				ret = -EINVAL;
+			} else {
+				pipeline->ctrl_data.raw_path = ctrl->val;
+				dev_info(dev,
+					 "%s:pipe(%d): raw_path(%d)\n",
+					 __func__, pipeline->id,
+					 pipeline->ctrl_data.raw_path);
+				ret = 0;
+			}
+		}
+		break;
 #ifdef NOT_READY
 	case V4L2_CID_MTK_CAM_RAW_RESOURCE_UPDATE:
 		/**
