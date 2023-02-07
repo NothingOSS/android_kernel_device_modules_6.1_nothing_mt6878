@@ -31,6 +31,14 @@ static inline bool allow_applying_hw(struct transition_param *p)
 	return p->info->apply_hw_by_FSM;
 }
 
+static inline bool valid_i2c_period(struct transition_param *p)
+{
+	if (unlikely(!p->s_params))
+		return false;
+
+	return (p->event_ts - p->info->sof_ts_ns) < p->s_params->i2c_thres_ns;
+}
+
 static inline int guard_apply_sensor_subsample(struct mtk_cam_job_state *s,
 			      struct transition_param *p)
 {
@@ -42,9 +50,9 @@ static inline int guard_apply_sensor_subsample(struct mtk_cam_job_state *s,
 static inline int guard_apply_sensor(struct mtk_cam_job_state *s,
 			      struct transition_param *p)
 {
-	/* TODO: add ts check */
 	return allow_applying_hw(p) &&
-		prev_isp_state_ge(s, p->head, S_ISP_OUTER);
+		prev_isp_state_ge(s, p->head, S_ISP_OUTER) &&
+		valid_i2c_period(p);
 }
 
 static inline int current_sensor_ready(struct mtk_cam_job_state *s)

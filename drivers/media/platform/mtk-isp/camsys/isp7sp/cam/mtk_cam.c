@@ -56,7 +56,7 @@ static unsigned int debug_ae;
 module_param(debug_ae, uint, 0644);
 MODULE_PARM_DESC(debug_ae, "activates debug ae info");
 
-#define CAM_DEBUG 1
+#define CAM_DEBUG 0
 
 /* Zero out the end of the struct pointed to by p.  Everything after, but
  * not including, the specified field is cleared.

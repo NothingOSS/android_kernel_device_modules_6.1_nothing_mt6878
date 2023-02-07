@@ -66,13 +66,9 @@ void vsync_update(struct vsync_collector *c,
 /*per stream (sensor) */
 struct mtk_cam_ctrl {
 	struct mtk_cam_ctx *ctx;
-	struct hrtimer sensor_deadline_timer;
-
 	struct work_struct stream_on_work;
 
-	/* TODO(AY): hrtimer related: to be removed */
-	u64 sof_time;
-	int timer_req_event;
+	struct sensor_apply_params s_params;
 
 	atomic_t enqueued_frame_seq_no;		/* enque job counter - ctrl maintain */
 

@@ -83,10 +83,16 @@ struct mtk_cam_ctrl_runtime_info {
 	int tmp_inner_seq_no;
 };
 
+struct sensor_apply_params {
+	u64 i2c_thres_ns; /* valid period from vsync */
+};
+
 struct transition_param {
 	struct list_head *head;
 	struct mtk_cam_ctrl_runtime_info *info;
 	int event;
+	u64 event_ts;
+	struct sensor_apply_params *s_params;
 };
 
 struct mtk_cam_job_state;

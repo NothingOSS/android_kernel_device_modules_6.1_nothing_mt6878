@@ -197,6 +197,8 @@ static int mtk_cam_ctrl_send_event(struct mtk_cam_ctrl *ctrl, int event)
 	p.head = &ctrl->camsys_state_list;
 	p.info = &local_info;
 	p.event = event;
+	p.event_ts = ktime_get_boottime_ns();
+	p.s_params = &ctrl->s_params;
 
 	if (CAM_DEBUG_ENABLED(STATE))
 		dump_runtime_info(p.info);
@@ -219,72 +221,6 @@ static int mtk_cam_ctrl_send_event(struct mtk_cam_ctrl *ctrl, int event)
 
 	MTK_CAM_TRACE_END(BASIC);
 	return 0;
-}
-
-/* sw irq - hrtimer context */
-static enum hrtimer_restart
-sensor_deadline_timer_handler(struct hrtimer *t)
-{
-	struct mtk_cam_ctrl *cam_ctrl =
-		container_of(t, struct mtk_cam_ctrl,
-			     sensor_deadline_timer);
-	int time_after_sof = ktime_get_boottime_ns() / 1000000 -
-			   cam_ctrl->sof_time;
-
-	if (mtk_cam_ctrl_get(cam_ctrl))
-		return HRTIMER_NORESTART;
-	/* handle V4L2_EVENT_REQUEST_DRAINED event */
-	// drained_res = mtk_cam_request_drained(cam_ctrl);
-
-	mtk_cam_ctrl_send_event(cam_ctrl, CAMSYS_EVENT_TIMER_SENSOR);
-
-	if (CAM_DEBUG_ENABLED(STATE))
-		dev_info(cam_ctrl->ctx->cam->dev, "[%s][sof+%dms]\n",
-		__func__, time_after_sof);
-	mtk_cam_ctrl_put(cam_ctrl);
-
-	return HRTIMER_NORESTART;
-}
-static bool check_cancel_hrtimer(struct mtk_cam_ctrl *cam_ctrl)
-{
-	struct mtk_cam_device *cam = cam_ctrl->ctx->cam;
-	struct mtk_raw_device *raw_dev;
-	int i;
-
-	for (i = 0; i < cam->engines.num_raw_devices; i++)
-		if (cam_ctrl->ctx->used_engine & (1 << i))
-			break;
-	raw_dev =
-		dev_get_drvdata(cam->engines.raw_devs[i]);
-
-	return is_subsample_en(raw_dev);
-}
-static void
-mtk_cam_sof_timer_setup(struct mtk_cam_ctrl *cam_ctrl)
-{
-	ktime_t m_kt;
-	struct mtk_seninf_sof_notify_param param;
-	int after_sof_ms = ktime_get_boottime_ns() / 1000000
-			- cam_ctrl->sof_time;
-
-	/*notify sof to sensor*/
-	param.sd = cam_ctrl->ctx->seninf;
-	/* TODO(AY): latest applied frame_no */
-	param.sof_cnt = 0;
-	mtk_cam_seninf_sof_notify(&param);
-
-	if (check_cancel_hrtimer(cam_ctrl))
-		return;
-	cam_ctrl->sensor_deadline_timer.function =
-		sensor_deadline_timer_handler;
-	if (after_sof_ms < 0)
-		after_sof_ms = 0;
-	else if (after_sof_ms > cam_ctrl->timer_req_event)
-		after_sof_ms = cam_ctrl->timer_req_event;
-	m_kt = ktime_set(0, cam_ctrl->timer_req_event * 1000000
-			- after_sof_ms * 1000000);
-	hrtimer_start(&cam_ctrl->sensor_deadline_timer, m_kt,
-		      HRTIMER_MODE_REL);
 }
 
 static void handle_setting_done(struct mtk_cam_ctrl *cam_ctrl)
@@ -384,11 +320,9 @@ static void handle_engine_frame_start(struct mtk_cam_ctrl *ctrl,
 		if (CAM_DEBUG_ENABLED(CTRL))
 			pr_info("%s: first vsync\n", __func__);
 
-		ctrl->sof_time = irq_info->ts_ns / 1000000;
 		frame_sync_no = seq_from_fh_cookie(irq_info->frame_idx_inner);
 
 		mtk_cam_event_frame_sync(ctrl, frame_sync_no);
-		mtk_cam_sof_timer_setup(ctrl);
 	}
 
 	if (is_last) {
@@ -582,11 +516,11 @@ static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 	struct mtk_cam_ctrl *ctrl =
 		container_of(work, struct mtk_cam_ctrl, stream_on_work);
 	struct mtk_cam_job *job;
+	struct device *dev = ctrl->ctx->cam->dev;
 	unsigned long timeout = msecs_to_jiffies(1000);
 	int next_job_no;
 
-	dev_info(ctrl->ctx->cam->dev, "[%s] ctx %d begin\n",
-		 __func__, ctrl->ctx->stream_id);
+	dev_info(dev, "[%s] ctx %d begin\n", __func__, ctrl->ctx->stream_id);
 
 	job = mtk_cam_ctrl_get_job(ctrl, cond_first_job, 0);
 	if (!job)
@@ -610,7 +544,10 @@ static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 		return;
 	}
 
-	ctrl->timer_req_event = mtk_cam_job_get_sensor_margin(job);
+	ctrl->s_params.i2c_thres_ns =
+		mtk_cam_job_get_sensor_margin(job) * 1000000LL;
+	dev_info(dev, "%s: i2c thres %llu\n",
+		 __func__, ctrl->s_params.i2c_thres_ns);
 
 	call_jobop(job, stream_on, true);
 
@@ -622,8 +559,7 @@ static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 
 	mtk_cam_ctrl_apply_by_state(ctrl, 1);
 
-	dev_info(ctrl->ctx->cam->dev, "[%s] ctx %d finish\n",
-		 __func__, ctrl->ctx->stream_id);
+	dev_info(dev, "[%s] ctx %d finish\n", __func__, ctrl->ctx->stream_id);
 }
 
 /* request queue */
@@ -725,8 +661,6 @@ void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 
 	atomic_set(&cam_ctrl->stopped, 0);
 	atomic_set(&cam_ctrl->enqueued_frame_seq_no, 0);
-	cam_ctrl->sof_time = ktime_get_boottime_ns() / 1000000;
-	cam_ctrl->timer_req_event = 0;
 
 	spin_lock_init(&cam_ctrl->send_lock);
 	rwlock_init(&cam_ctrl->list_lock);
@@ -736,12 +670,6 @@ void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 	reset_runtime_info(&cam_ctrl->r_info);
 
 	init_waitqueue_head(&cam_ctrl->stop_wq);
-	if (ctx->sensor) {
-		hrtimer_init(&cam_ctrl->sensor_deadline_timer,
-			     CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-		cam_ctrl->sensor_deadline_timer.function =
-			sensor_deadline_timer_handler;
-	}
 
 	dev_info(ctx->cam->dev, "[%s] ctx:%d\n", __func__, ctx->stream_id);
 }
@@ -811,8 +739,6 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 
 	drain_workqueue(ctx->frame_done_wq);
 
-	if (ctx->sensor)
-		hrtimer_cancel(&cam_ctrl->sensor_deadline_timer);
 
 	/* using func. kthread_cancel_work_sync, which contains kthread_flush_work func.*/
 	//kthread_cancel_work_sync(&cam_ctrl->work);
