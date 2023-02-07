@@ -72,6 +72,9 @@ struct mml_mmp_events_t {
 	mmp_event dle;
 	mmp_event dle_config_create;
 	mmp_event dle_buf;
+
+	/*events for dle PQ irq*/
+	mmp_event dle_aal_irq_done;
 };
 
 void mml_mmp_init(void);

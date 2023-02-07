@@ -67,6 +67,7 @@ void mml_mmp_init(void)
 	mml_mmp_events.dle = dle;
 	mml_mmp_events.dle_config_create = mmprofile_register_event(dle, "config_create");
 	mml_mmp_events.dle_buf = mmprofile_register_event(dle, "buf");
+	mml_mmp_events.dle_aal_irq_done = mmprofile_register_event(dle, "aal_irq_done");
 
 	mmprofile_enable_event_recursive(mml, 1);
 	mmprofile_start(1);

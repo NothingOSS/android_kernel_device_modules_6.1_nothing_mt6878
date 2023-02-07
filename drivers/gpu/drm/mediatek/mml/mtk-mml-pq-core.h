@@ -140,6 +140,11 @@ enum mml_pq_clarity_hist_start {
 	TDSHP_CLARITY_HIST_START = AAL_CLARITY_STATUS_NUM,
 };
 
+enum mml_pq_hist_read_status {
+	MML_PQ_HIST_INIT,
+	MML_PQ_HIST_READING,
+	MML_PQ_HIST_IDLE,
+};
 
 struct mml_pq_readback_buffer {
 	dma_addr_t pa;
@@ -178,12 +183,20 @@ struct mml_pq_sub_task {
 	u64 job_id;
 };
 
+struct mml_pq_read_status {
+	u32 aal_comp;
+	u32 hdr_comp;
+};
+
 struct mml_pq_task {
 	struct mml_task *task;
 	struct mutex buffer_mutex;
+	struct mutex aal_comp_lock;
+	struct completion aal_hist_done[MML_PIPE_CNT];
 	struct mml_pq_readback_buffer *aal_hist[MML_PIPE_CNT];
 	struct mml_pq_readback_buffer *hdr_hist[MML_PIPE_CNT];
 	struct mml_pq_readback_buffer *tdshp_hist[MML_PIPE_CNT];
+	struct mml_pq_read_status read_status;
 	struct kref ref;
 	struct mml_pq_sub_task tile_init;
 	struct mml_pq_sub_task comp_config;
@@ -323,8 +336,27 @@ void mml_pq_put_comp_config_result(struct mml_task *task);
 void mml_pq_comp_config_clear(struct mml_task *task);
 
 /*
- * mml_pq_aal_readback - noify from MML core through MML PQ driver
- *	to update histogram
+ * mml_pq_ir_aal_readback - noify from MML core through MML PQ driver
+ *	to update histogram in IR/DL
+ *
+ * @pq_task:	pq task data, include sub_task info
+ * @frame_data: frame related data
+ * @pipe:	pipe id
+ * @phist:	Histogram result
+ * @mml_jobid: mml jobid
+ * @dual: dual pipe flag
+ *
+ * Return:	if value < 0, means PQ update failed should debug
+ */
+int mml_pq_ir_aal_readback(struct mml_pq_task *pq_task,
+			 struct mml_pq_frame_data frame_data,
+			 u8 pipe, u32 *phist, u32 mml_jobid,
+			 bool dual);
+
+
+/*
+ * mml_pq_dc_aal_readback - noify from MML core through MML PQ driver
+ *	to update histogram in DC
  *
  * @task:	task data, include pq parameters and frame info
  * @pipe:	pipe id
@@ -332,7 +364,8 @@ void mml_pq_comp_config_clear(struct mml_task *task);
  *
  * Return:	if value < 0, means PQ update failed should debug
  */
-int mml_pq_aal_readback(struct mml_task *task, u8 pipe, u32 *phist);
+int mml_pq_dc_aal_readback(struct mml_task *task, u8 pipe, u32 *phist);
+
 
 /*
  * mml_pq_hdr_readback - noify from MML core through MML PQ driver
@@ -344,6 +377,7 @@ int mml_pq_aal_readback(struct mml_task *task, u8 pipe, u32 *phist);
  *
  * Return:	if value < 0, means PQ update failed should debug
  */
+
 
 int mml_pq_hdr_readback(struct mml_task *task, u8 pipe, u32 *phist);
 
@@ -384,5 +418,38 @@ int mml_pq_dc_readback(struct mml_task *task, u8 pipe, u32 *phist);
  * Return:	if value < 0, means PQ update failed should debug
  */
 int mml_pq_clarity_readback(struct mml_task *task, u8 pipe, u32 *phist, u32 arr_idx, u32 size);
+
+/*
+ * mml_pq_reset_hist_status - reset pq histogram use status
+ *
+ * @task:	task data, include pq parameters and frame info
+ *
+ */
+void mml_pq_reset_hist_status(struct mml_task *task);
+
+/*
+ * mml_pq_get_pq_task - get pq_task & increase kret
+ *
+ * @pq_task:	pq task data, include sub_task info
+ *
+ */
+void mml_pq_get_pq_task(struct mml_pq_task *pq_task);
+
+/*
+ * mml_pq_put_pq_task - reset pq histogram use status
+ *
+ * @pq_task:	pq task data, include sub_task info
+ *
+ */
+void mml_pq_put_pq_task(struct mml_pq_task *pq_task);
+
+/*
+ * copy_sub_task_data - copy sub_task info
+ *
+ * @pq_param:	pq related info
+ * @config:	mml config info
+ * @sub_task:	sub_task info
+ *
+ */
 
 #endif	/* __MTK_MML_PQ_CORE_H__ */

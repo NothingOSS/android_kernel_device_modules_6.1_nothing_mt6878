@@ -10,6 +10,7 @@
 #include <linux/delay.h>
 #include <linux/clk.h>
 #include <mtk_drm_ddp_comp.h>
+#include <linux/of_irq.h>
 
 #include "mtk-mml-color.h"
 #include "mtk-mml-core.h"
@@ -20,6 +21,8 @@
 #include "tile_driver.h"
 #include "mtk-mml-tile.h"
 #include "tile_mdp_func.h"
+#include "mtk-mml-mmp.h"
+#include <soc/mediatek/smi.h>
 
 #undef pr_fmt
 #define pr_fmt(fmt) "[mml_pq_aal]" fmt
@@ -42,6 +45,7 @@
 
 enum mml_aal_reg_index {
 	AAL_EN,
+	AAL_INTEN,
 	AAL_INTSTA,
 	AAL_STATUS,
 	AAL_CFG,
@@ -50,6 +54,7 @@ enum mml_aal_reg_index {
 	AAL_SIZE,
 	AAL_OUTPUT_SIZE,
 	AAL_OUTPUT_OFFSET,
+	AAL_SRAM_CFG,
 	AAL_SRAM_STATUS,
 	AAL_SRAM_RW_IF_0, /* sram curve addr */
 	AAL_SRAM_RW_IF_1, /* sram curve value */
@@ -89,6 +94,7 @@ enum mml_aal_reg_index {
 
 static const u16 aal_reg_table_mt6983[AAL_REG_MAX_COUNT] = {
 	[AAL_EN] = 0x000,
+	[AAL_INTEN] = 0x008,
 	[AAL_INTSTA] = 0x00c,
 	[AAL_STATUS] = 0x010,
 	[AAL_CFG] = 0x020,
@@ -97,6 +103,7 @@ static const u16 aal_reg_table_mt6983[AAL_REG_MAX_COUNT] = {
 	[AAL_SIZE] = 0x030,
 	[AAL_OUTPUT_SIZE] = 0x034,
 	[AAL_OUTPUT_OFFSET] = 0x038,
+	[AAL_SRAM_CFG] = 0x0c4,
 	[AAL_SRAM_STATUS] = 0x0c8,
 	[AAL_SRAM_RW_IF_0] = 0x0cc,
 	[AAL_SRAM_RW_IF_1] = 0x0d0,
@@ -135,6 +142,7 @@ static const u16 aal_reg_table_mt6983[AAL_REG_MAX_COUNT] = {
 
 static const u16 aal_reg_table_mt6985[AAL_REG_MAX_COUNT] = {
 	[AAL_EN] = 0x000,
+	[AAL_INTEN] = 0x008,
 	[AAL_INTSTA] = 0x00c,
 	[AAL_STATUS] = 0x010,
 	[AAL_CFG] = 0x020,
@@ -143,6 +151,7 @@ static const u16 aal_reg_table_mt6985[AAL_REG_MAX_COUNT] = {
 	[AAL_SIZE] = 0x030,
 	[AAL_OUTPUT_SIZE] = 0x034,
 	[AAL_OUTPUT_OFFSET] = 0x038,
+	[AAL_SRAM_CFG] = 0x0c4,
 	[AAL_SRAM_STATUS] = 0x0c8,
 	[AAL_SRAM_RW_IF_0] = 0x0cc,
 	[AAL_SRAM_RW_IF_1] = 0x0d0,
@@ -225,6 +234,12 @@ static const u16 aal_reg_table_mt6897[AAL_REG_MAX_COUNT] = {
 	[AAL_BILATERAL_STATUS_CTRL] = 0x5b8
 };
 
+enum mml_pq_read_mode {
+	MML_PQ_EOF_MODE = 0,
+	MML_PQ_SOF_MODE,
+};
+
+
 struct aal_data {
 	u32 min_tile_width;
 	u32 tile_width;
@@ -234,6 +249,7 @@ struct aal_data {
 	u16 cpr[MML_PIPE_CNT];
 	const u16 *reg_table;
 	bool crop;
+	u8 read_mode;
 };
 
 static const struct aal_data mt6893_aal_data = {
@@ -245,6 +261,7 @@ static const struct aal_data mt6893_aal_data = {
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
+	.read_mode = MML_PQ_EOF_MODE,
 };
 
 static const struct aal_data mt6983_aal_data = {
@@ -256,6 +273,7 @@ static const struct aal_data mt6983_aal_data = {
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
+	.read_mode = MML_PQ_EOF_MODE,
 };
 
 static const struct aal_data mt6879_aal_data = {
@@ -267,6 +285,7 @@ static const struct aal_data mt6879_aal_data = {
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
+	.read_mode = MML_PQ_EOF_MODE,
 };
 
 static const struct aal_data mt6895_aal0_data = {
@@ -278,6 +297,7 @@ static const struct aal_data mt6895_aal0_data = {
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
+	.read_mode = MML_PQ_EOF_MODE,
 };
 
 static const struct aal_data mt6895_aal1_data = {
@@ -289,6 +309,7 @@ static const struct aal_data mt6895_aal1_data = {
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
+	.read_mode = MML_PQ_EOF_MODE,
 };
 
 static const struct aal_data mt6985_aal_data = {
@@ -300,6 +321,7 @@ static const struct aal_data mt6985_aal_data = {
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6985,
 	.crop = false,
+	.read_mode = MML_PQ_EOF_MODE,
 };
 
 static const struct aal_data mt6886_aal_data = {
@@ -311,6 +333,7 @@ static const struct aal_data mt6886_aal_data = {
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
+	.read_mode = MML_PQ_EOF_MODE,
 };
 
 static const struct aal_data mt6897_aal_data = {
@@ -329,6 +352,22 @@ struct mml_comp_aal {
 	struct mml_comp comp;
 	const struct aal_data *data;
 	bool ddp_bound;
+	bool dual;
+	u32 jobid;
+	u8 pipe;
+	int irq;
+	atomic_t hist_read;
+	atomic_t hist_read_cnt;
+	u32 *phist;
+	u32 curve_sram_idx;
+	u32 hist_sram_idx;
+	struct workqueue_struct *aal_readback_wq;
+	struct work_struct aal_readback_task;
+	struct mml_pq_task *pq_task;
+	struct mml_pq_frame_data frame_data;
+	struct mml_dev *mml;
+	struct mutex irq_wq_lock;
+
 
 	u32 sram_curve_start;
 	u32 sram_hist_start;
@@ -470,11 +509,12 @@ static u32 aal_get_label_count(struct mml_comp *comp, struct mml_task *task,
 {
 	struct mml_frame_config *cfg = task->config;
 	struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
+	u32 mode = cfg->info.mode;
 
 	mml_pq_msg("%s engine_id[%d] en_dre[%d]", __func__, comp->id,
 			dest->pq_config.en_dre);
 
-	if (!dest->pq_config.en_dre)
+	if (!dest->pq_config.en_dre || mode == MML_MODE_DDP_ADDON)
 		return 0;
 
 	return AAL_LABEL_TOTAL;
@@ -510,6 +550,129 @@ static struct mml_pq_comp_config_result *get_aal_comp_config_result(
 	return task->pq_task->comp_config.result;
 }
 
+static bool aal_reg_poll(struct mml_comp *comp, u32 addr, u32 value, u32 mask)
+{
+	bool return_value = false;
+	u32 reg_value = 0;
+	u32 polling_time = 0;
+	void __iomem *base = comp->base;
+
+	do {
+		reg_value = readl(base + addr);
+
+		if ((reg_value & mask) == value) {
+			return_value = true;
+			break;
+		}
+
+		udelay(AAL_POLL_SLEEP_TIME_US);
+		polling_time += AAL_POLL_SLEEP_TIME_US;
+	} while (polling_time < AAL_MAX_POLL_TIME_US);
+
+	return return_value;
+}
+
+static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
+			    struct mml_comp_config *ccfg)
+{
+	struct mml_comp_aal *aal = comp_to_aal(comp);
+	struct mml_frame_config *cfg = task->config;
+	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	const phys_addr_t base_pa = comp->base_pa;
+	s8 mode = cfg->info.mode;
+	struct mml_pq_task *pq_task = task->pq_task;
+
+	if (mode != MML_MODE_MML_DECOUPLE) {
+		mutex_lock(&aal->irq_wq_lock);
+		mutex_lock(&pq_task->aal_comp_lock);
+
+		if (task->pq_task->read_status.aal_comp == MML_PQ_HIST_INIT) {
+			if (!atomic_read(&aal->hist_read) &&
+				!atomic_read(&aal->hist_read_cnt))
+				task->pq_task->read_status.aal_comp =
+					MML_PQ_HIST_IDLE;
+			else
+				task->pq_task->read_status.aal_comp =
+					MML_PQ_HIST_READING;
+		}
+
+		mml_pq_msg("%s: engine_id[%d] comp_jobid[%d] jobid[%d] pipe[%d] ",
+			__func__, aal->comp.id, aal->jobid,
+			task->job.jobid, ccfg->pipe);
+
+		mml_pq_msg("%s: hist_sram_idx[%d] curve_sram_idx[%d] aal_read_status[%d]",
+			__func__, aal->hist_sram_idx, aal->curve_sram_idx,
+			task->pq_task->read_status.aal_comp);
+
+		if (task->pq_task->read_status.aal_comp == MML_PQ_HIST_IDLE) {
+			atomic_inc(&aal->hist_read_cnt);
+
+			aal->hist_sram_idx = (aal->hist_sram_idx) ? 0 : 1;
+			aal->curve_sram_idx = aal->hist_sram_idx;
+
+			mutex_unlock(&pq_task->aal_comp_lock);
+			mutex_unlock(&aal->irq_wq_lock);
+
+			aal->dual = task->config->dual;
+			aal->pipe = ccfg->pipe;
+
+			if (task->pq_task) {
+				aal->pq_task = task->pq_task;
+				mml_pq_get_pq_task(aal->pq_task);
+			}
+
+			memcpy(&aal->frame_data.pq_param, task->pq_param,
+				MML_MAX_OUTPUTS * sizeof(struct mml_pq_param));
+			memcpy(&aal->frame_data.info, &task->config->info,
+				sizeof(struct mml_frame_info));
+			memcpy(&aal->frame_data.frame_out, &task->config->frame_out,
+				MML_MAX_OUTPUTS * sizeof(struct mml_frame_size));
+			aal->jobid = task->job.jobid;
+
+
+			if (aal->data->read_mode == MML_PQ_EOF_MODE) {
+				mml_clock_lock(task->config->mml);
+				mml_comp_pw_enable(comp);
+				mml_comp_clk_enable(comp);
+				mml_clock_unlock(task->config->mml);
+
+				cmdq_pkt_write(pkt, NULL, base_pa +
+					aal->data->reg_table[AAL_INTSTA],
+					0x0, U32_MAX);
+				cmdq_pkt_write(pkt, NULL, base_pa +
+					aal->data->reg_table[AAL_INTEN],
+					0x2, U32_MAX);
+			}
+
+			cmdq_pkt_write(pkt, NULL, base_pa +
+				aal->data->reg_table[AAL_SRAM_CFG],
+				aal->hist_sram_idx << 6 | aal->curve_sram_idx << 5 |
+				1 << 4,	0x7 << 4);
+		} else {
+			if (aal->hist_sram_idx == aal->curve_sram_idx)
+				aal->hist_sram_idx = (!aal->curve_sram_idx) ? 1 : 0;
+
+			mutex_unlock(&pq_task->aal_comp_lock);
+			mutex_unlock(&aal->irq_wq_lock);
+
+			if (aal->data->read_mode == MML_PQ_EOF_MODE) {
+				cmdq_pkt_write(pkt, NULL, base_pa +
+					aal->data->reg_table[AAL_INTSTA],
+					0x0, U32_MAX);
+				cmdq_pkt_write(pkt, NULL, base_pa +
+					aal->data->reg_table[AAL_INTEN],
+					0x0, U32_MAX);
+			}
+
+			cmdq_pkt_write(pkt, NULL, base_pa +
+				aal->data->reg_table[AAL_SRAM_CFG],
+				aal->hist_sram_idx << 6 | 1 << 4, 0x5 << 4);
+		}
+	}
+
+	return 0;
+}
+
 static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 			    struct mml_comp_config *ccfg)
 {
@@ -531,10 +694,14 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 	u32 addr = aal->sram_curve_start;
 	u32 gpr = aal->data->gpr[ccfg->pipe];
 	u32 cpr = aal->data->cpr[ccfg->pipe];
+	s8 mode = cfg->info.mode;
+	void __iomem *base = comp->base;
+	u32 sram_status_reg = aal->data->reg_table[AAL_SRAM_STATUS];
+	bool sram_staus = false;
 	s32 ret = 0;
 	u32 i;
 
-	mml_pq_trace_ex_begin("%s", __func__);
+	mml_pq_trace_ex_begin("%s %d", __func__, mode);
 	mml_pq_msg("%s engine_id[%d] en_dre[%d]", __func__, comp->id, dest->pq_config.en_dre);
 	if (aal_frm->relay_mode) {
 		/* relay mode */
@@ -542,6 +709,7 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 		goto exit;
 	}
 	aal_relay(comp, pkt, base_pa, 0x0);
+	aal_hist_ctrl(comp, task, ccfg);
 
 	mml_pq_msg("%s sram_start_addr[%d] cmdq_cpr[%d]", __func__, addr, cpr);
 
@@ -587,9 +755,24 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 		base_pa + aal->data->reg_table[AAL_SRAM_RW_IF_0], addr, U32_MAX);
 	cmdq_pkt_poll(pkt, NULL, (0x1 << 16),
 		base_pa + aal->data->reg_table[AAL_SRAM_STATUS], (0x1 << 16), gpr);
+
 	for (i = 0; i < AAL_CURVE_NUM; i++, addr += 4) {
-		mml_write_array(pkt, base_pa + aal->data->reg_table[AAL_SRAM_RW_IF_1], curve[i],
-			U32_MAX, reuse, cache, &aal_frm->reuse_curve);
+		if (mode == MML_MODE_MML_DECOUPLE)
+			mml_write_array(pkt, base_pa + aal->data->reg_table[AAL_SRAM_RW_IF_1],
+				curve[i], U32_MAX, reuse, cache, &aal_frm->reuse_curve);
+		else {
+			do {
+				writel(addr, base + aal->data->reg_table[AAL_SRAM_RW_IF_0]);
+				if (!sram_staus && aal_reg_poll(comp, sram_status_reg,
+					(0x1 << 16), (0x1 << 16)) != true) {
+					mml_pq_log("%s idx[%d]", __func__, i);
+					break;
+				}
+				sram_staus = true;
+
+				writel(curve[i], base + aal->data->reg_table[AAL_SRAM_RW_IF_1]);
+			} while (0);
+		}
 	}
 
 	mml_pq_msg("%s is_aal_need_readback[%d] base_pa[%llx] reuses[%u]",
@@ -675,7 +858,7 @@ static s32 aal_config_tile(struct mml_comp *comp, struct mml_task *task,
 
 	if (!idx) {
 		if (task->config->dual)
-			aal_frm->cut_pos_x = dest->crop.r.width / 2;
+			aal_frm->cut_pos_x = cfg->hist_div[ccfg->tile_eng_idx];
 		else
 			aal_frm->cut_pos_x = dest->crop.r.width;
 		if (ccfg->pipe)
@@ -748,8 +931,10 @@ static s32 aal_config_tile(struct mml_comp *comp, struct mml_task *task,
 		hist_first_tile = 1;
 		hist_last_tile = (tile_cnt == 1) ? 1 : 0;
 		save_first_blk_col_flag = (ccfg->pipe) ? 1 : 0;
-		if (idx + 1 >= tile_cnt)
+		if (idx + 1 >= tile_cnt) {
 			save_last_blk_col_flag = (ccfg->pipe) ? 0 : 1;
+			aal_frm->out_hist_xs = 0;
+		}
 		else
 			save_last_blk_col_flag = 0;
 	} else if (idx + 1 >= tile_cnt) {
@@ -1034,18 +1219,24 @@ static s32 aal_config_post(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_aal *aal = comp_to_aal(comp);
 	struct aal_frame_data *aal_frm = aal_frm_data(ccfg);
 	bool vcp = aal->data->vcp_readback;
+	u32 mode = task->config->info.mode;
 
-	mml_pq_msg("%s start engine_id[%d] en_dre[%d]", __func__, comp->id,
-			dest->pq_config.en_dre);
+
+	mml_pq_msg("%s start engine_id[%d] en_dre[%d] mode[%d]", __func__, comp->id,
+			dest->pq_config.en_dre, mode);
 
 	if (aal_frm->relay_mode)
 		goto exit;
+
+	if (mode == MML_MODE_DDP_ADDON)
+		goto put_comp_config;
 
 	if (vcp)
 		aal_readback_vcp(comp, task, ccfg);
 	else
 		aal_readback_cmdq(comp, task, ccfg);
 
+put_comp_config:
 	mml_pq_put_comp_config_result(task);
 exit:
 	return 0;
@@ -1206,28 +1397,6 @@ static const struct mml_comp_config_ops aal_cfg_ops = {
 	.repost = aal_config_repost,
 };
 
-static inline bool aal_reg_poll(struct mml_comp *comp, u32 addr, u32 value, u32 mask)
-{
-	bool return_value = false;
-	u32 reg_value = 0;
-	u32 polling_time = 0;
-	void __iomem *base = comp->base;
-
-	do {
-		reg_value = readl(base + addr);
-
-		if ((reg_value & mask) == value) {
-			return_value = true;
-			break;
-		}
-
-		udelay(AAL_POLL_SLEEP_TIME_US);
-		polling_time += AAL_POLL_SLEEP_TIME_US;
-	} while (polling_time < AAL_MAX_POLL_TIME_US);
-
-	return return_value;
-}
-
 static bool get_dre_block(u32 *phist, const int block_x, const int block_y,
 						  const int dre_blk_x_num)
 {
@@ -1340,6 +1509,72 @@ static bool aal_hist_check(struct mml_comp *comp, struct mml_task *task,
 	return true;
 }
 
+static bool aal_hist_read(struct mml_comp_aal *aal)
+{
+	struct mml_comp *comp = &aal->comp;
+	u32 addr = aal->sram_hist_start;
+	void __iomem *base = comp->base;
+	s32 i;
+	s32 dual_info_start = AAL_HIST_NUM;
+	u32 poll_sram_status_addr = aal->data->reg_table[AAL_SRAM_STATUS];
+	u32 *phist = aal->phist;
+
+	for (i = 0; i < AAL_HIST_NUM; i++) {
+		do {
+			writel(addr,
+				base + aal->data->reg_table[AAL_SRAM_RW_IF_2]);
+
+			if (aal_reg_poll(comp, poll_sram_status_addr,
+				(0x1 << 17), (0x1 << 17)) != true) {
+				mml_pq_log("%s idx[%d]", __func__, i);
+				break;
+			}
+			phist[i] = readl(base +
+				aal->data->reg_table[AAL_SRAM_RW_IF_3]);
+			} while (0);
+		addr = addr + 4;
+	}
+
+	if (aal->dual) {
+		phist[dual_info_start++] =
+			readl(base + aal->data->reg_table[AAL_DUAL_PIPE_00]);
+		phist[dual_info_start++] =
+			readl(base + aal->data->reg_table[AAL_DUAL_PIPE_01]);
+		phist[dual_info_start++] =
+			readl(base + aal->data->reg_table[AAL_DUAL_PIPE_02]);
+		phist[dual_info_start++] =
+			readl(base + aal->data->reg_table[AAL_DUAL_PIPE_03]);
+		phist[dual_info_start++] =
+			readl(base + aal->data->reg_table[AAL_DUAL_PIPE_04]);
+		phist[dual_info_start++] =
+			readl(base + aal->data->reg_table[AAL_DUAL_PIPE_05]);
+		phist[dual_info_start++] =
+			readl(base + aal->data->reg_table[AAL_DUAL_PIPE_06]);
+		phist[dual_info_start++] =
+			readl(base + aal->data->reg_table[AAL_DUAL_PIPE_07]);
+		phist[dual_info_start++] =
+			readl(base + aal->data->reg_table[AAL_DUAL_PIPE_08]);
+		phist[dual_info_start++] =
+			readl(base + aal->data->reg_table[AAL_DUAL_PIPE_09]);
+		phist[dual_info_start++] =
+			readl(base + aal->data->reg_table[AAL_DUAL_PIPE_10]);
+		phist[dual_info_start++] =
+			readl(base + aal->data->reg_table[AAL_DUAL_PIPE_11]);
+		phist[dual_info_start++] =
+			readl(base + aal->data->reg_table[AAL_DUAL_PIPE_12]);
+		phist[dual_info_start++] =
+			readl(base + aal->data->reg_table[AAL_DUAL_PIPE_13]);
+		phist[dual_info_start++] =
+			readl(base + aal->data->reg_table[AAL_DUAL_PIPE_14]);
+		phist[dual_info_start++] =
+			readl(base + aal->data->reg_table[AAL_DUAL_PIPE_15]);
+	}
+	mml_pq_ir_aal_readback(aal->pq_task, aal->frame_data, aal->pipe, aal->phist,
+		aal->jobid, aal->dual);
+	mml_pq_put_pq_task(aal->pq_task);
+	return true;
+}
+
 static void aal_task_done_readback(struct mml_comp *comp, struct mml_task *task,
 					 struct mml_comp_config *ccfg)
 {
@@ -1407,73 +1642,11 @@ static void aal_task_done_readback(struct mml_comp *comp, struct mml_task *task,
 
 
 	/*remain code for ping-pong in the feature*/
-	if (!dest->pq_config.en_dre) {
-		u32 addr = aal->sram_hist_start;
-		void __iomem *base = comp->base;
-		s32 i;
-		s32 dual_info_start = AAL_HIST_NUM;
-		u32 poll_intsta_addr = aal->data->reg_table[AAL_INTSTA];
-		u32 poll_sram_status_addr = aal->data->reg_table[AAL_SRAM_STATUS];
-		u32 *phist = kmalloc((AAL_HIST_NUM+AAL_DUAL_INFO_NUM)*sizeof(u32),
-			GFP_KERNEL);
-
-		for (i = 0; i < AAL_HIST_NUM; i++) {
-			if (aal_reg_poll(comp, poll_intsta_addr, (0x1 << 1), (0x1 << 1))) {
-				do {
-					writel(addr,
-						base + aal->data->reg_table[AAL_SRAM_RW_IF_2]);
-
-					if (aal_reg_poll(comp, poll_sram_status_addr,
-						(0x1 << 17), (0x1 << 17)) != true) {
-						mml_pq_log("%s idx[%d]", __func__, i);
-						break;
-					}
-
-					phist[i] = readl(base +
-						aal->data->reg_table[AAL_SRAM_RW_IF_3]);
-					} while (0);
-					addr = addr + 4;
-			}
-		}
-		if (task->config->dual) {
-			phist[dual_info_start++] =
-				readl(base + aal->data->reg_table[AAL_DUAL_PIPE_00]);
-			phist[dual_info_start++] =
-				readl(base + aal->data->reg_table[AAL_DUAL_PIPE_01]);
-			phist[dual_info_start++] =
-				readl(base + aal->data->reg_table[AAL_DUAL_PIPE_02]);
-			phist[dual_info_start++] =
-				readl(base + aal->data->reg_table[AAL_DUAL_PIPE_03]);
-			phist[dual_info_start++] =
-				readl(base + aal->data->reg_table[AAL_DUAL_PIPE_04]);
-			phist[dual_info_start++] =
-				readl(base + aal->data->reg_table[AAL_DUAL_PIPE_05]);
-			phist[dual_info_start++] =
-				readl(base + aal->data->reg_table[AAL_DUAL_PIPE_06]);
-			phist[dual_info_start++] =
-				readl(base + aal->data->reg_table[AAL_DUAL_PIPE_07]);
-			phist[dual_info_start++] =
-				readl(base + aal->data->reg_table[AAL_DUAL_PIPE_08]);
-			phist[dual_info_start++] =
-				readl(base + aal->data->reg_table[AAL_DUAL_PIPE_09]);
-			phist[dual_info_start++] =
-				readl(base + aal->data->reg_table[AAL_DUAL_PIPE_10]);
-			phist[dual_info_start++] =
-				readl(base + aal->data->reg_table[AAL_DUAL_PIPE_11]);
-			phist[dual_info_start++] =
-				readl(base + aal->data->reg_table[AAL_DUAL_PIPE_12]);
-			phist[dual_info_start++] =
-				readl(base + aal->data->reg_table[AAL_DUAL_PIPE_13]);
-			phist[dual_info_start++] =
-				readl(base + aal->data->reg_table[AAL_DUAL_PIPE_14]);
-			phist[dual_info_start++] =
-				readl(base + aal->data->reg_table[AAL_DUAL_PIPE_15]);
-		}
-		mml_pq_aal_readback(task, ccfg->pipe, phist);
-	}
+	if (!dest->pq_config.en_dre)
+		aal_hist_read(aal);
 
 	if (aal_frm->is_aal_need_readback) {
-		mml_pq_aal_readback(task, ccfg->pipe,
+		mml_pq_dc_aal_readback(task, ccfg->pipe,
 			&(task->pq_task->aal_hist[pipe]->va[offset]));
 
 		if (mml_pq_debug_mode & MML_PQ_HIST_CHECK) {
@@ -1514,6 +1687,8 @@ exit:
 }
 
 static const struct mml_comp_hw_ops aal_hw_ops = {
+	.pw_enable = &mml_comp_pw_enable,
+	.pw_disable = &mml_comp_pw_disable,
 	.clk_enable = &mml_comp_clk_enable,
 	.clk_disable = &mml_comp_clk_disable,
 	.task_done = aal_task_done_readback,
@@ -1523,7 +1698,7 @@ static void aal_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_aal *aal = comp_to_aal(comp);
 	void __iomem *base = comp->base;
-	u32 value[9];
+	u32 value[30];
 	u32 shadow_ctrl;
 
 	mml_err("aal component %u dump:", comp->id);
@@ -1566,6 +1741,7 @@ static int mml_bind(struct device *dev, struct device *master, void *data)
 		if (ret)
 			dev_err(dev, "Failed to register mml component %s: %d\n",
 				dev->of_node->full_name, ret);
+		aal->mml = dev_get_drvdata(master);
 	} else {
 		ret = mml_ddp_comp_register(drm_dev, &aal->ddp_comp);
 		if (ret)
@@ -1601,12 +1777,77 @@ static const struct mtk_ddp_comp_funcs ddp_comp_funcs = {
 static struct mml_comp_aal *dbg_probed_components[4];
 static int dbg_probed_count;
 
+static void aal_readback_work(struct work_struct *work_item)
+{
+	struct mml_comp_aal *aal = NULL;
+	u32 *phist0 = NULL;
+	struct mml_comp *comp = NULL;
+	void __iomem *base = NULL;
+
+	aal = container_of(work_item, struct mml_comp_aal, aal_readback_task);
+	phist0 = aal->phist;
+	comp = &aal->comp;
+	base = comp->base;
+
+	mutex_lock(&aal->irq_wq_lock);
+	mml_pq_msg("%s: engine_id[%d] jobid[%d] hist_read[%d] hist_read_cnt[%d]",
+		__func__, aal->comp.id, aal->jobid,
+		atomic_read(&aal->hist_read), atomic_read(&aal->hist_read_cnt));
+
+	if (!atomic_read(&aal->hist_read_cnt) ||
+		atomic_fetch_add_unless(&aal->hist_read, 1, 1)) {
+		mutex_unlock(&aal->irq_wq_lock);
+		return;
+	}
+	mutex_unlock(&aal->irq_wq_lock);
+
+	aal_hist_read(aal);
+
+	complete(&aal->pq_task->aal_hist_done[aal->pipe]);
+	if (aal->dual)
+		wait_for_completion(
+			&aal->pq_task->aal_hist_done[(aal->pipe + 1) & 0x1]);
+
+	mutex_lock(&aal->irq_wq_lock);
+	atomic_dec_if_positive(&aal->hist_read);
+	atomic_dec_if_positive(&aal->hist_read_cnt);
+	mutex_unlock(&aal->irq_wq_lock);
+
+	if (aal->data->read_mode == MML_PQ_EOF_MODE) {
+		mml_clock_lock(aal->mml);
+		mml_comp_pw_disable(comp);
+		mml_comp_clk_disable(comp);
+		mml_clock_unlock(aal->mml);
+	}
+
+}
+
+static irqreturn_t mml_aal_irq_handler(int irq, void *dev_id)
+{
+	struct mml_comp_aal *priv = dev_id;
+	struct mml_comp *comp = &priv->comp;
+	irqreturn_t ret = IRQ_NONE;
+	void __iomem *base = comp->base;
+
+	if (readl(base + priv->data->reg_table[AAL_INTEN]) &&
+		readl(base + priv->data->reg_table[AAL_INTSTA])) {
+		writel(0x0, base + priv->data->reg_table[AAL_INTSTA]);
+		queue_work(priv->aal_readback_wq, &priv->aal_readback_task);
+		ret = IRQ_HANDLED;
+	}
+
+	mml_mmp(dle_aal_irq_done, MMPROFILE_FLAG_PULSE, comp->id, 0);
+
+	return ret;
+}
+
 static int probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct mml_comp_aal *priv;
 	s32 ret;
 	bool add_ddp = true;
+	int irq = -1;
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -1619,6 +1860,15 @@ static int probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err(dev, "Failed to init mml component: %d\n", ret);
 		return ret;
+	}
+
+	/* init larb for smi and mtcmos */
+	ret = mml_comp_init_larb(&priv->comp, dev);
+	if (ret) {
+		if (ret == -EPROBE_DEFER)
+			return ret;
+		dev_info(dev, "fail to init component %u larb ret %d",
+			priv->comp.id, ret);
 	}
 
 	if (of_property_read_u32(dev->of_node, "sram-curve-base", &priv->sram_curve_start))
@@ -1639,6 +1889,34 @@ static int probe(struct platform_device *pdev)
 		mml_log("failed to init ddp component: %d", ret);
 		add_ddp = false;
 	}
+
+	if (priv->data->read_mode == MML_PQ_EOF_MODE) {
+		irq = platform_get_irq(pdev, 0);
+		if (irq < 0)
+			dev_info(dev, "Failed to get AAL irq: %d\n", irq);
+		else {
+			ret = devm_request_irq(dev, irq, mml_aal_irq_handler,
+				IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(dev), priv);
+			if (ret)
+				dev_info(dev, "register irq fail: %d irg:%d\n", ret, irq);
+			else
+				dev_info(dev, "register irq success: %d irg:%d\n", ret, irq);
+		}
+	}
+		priv->irq = irq;
+
+	mutex_init(&priv->irq_wq_lock);
+	dev_info(dev, "devm_request_irq success: %d irg:%d, %d\n",
+		ret, irq, priv->irq);
+
+	priv->phist = kzalloc((AAL_HIST_NUM+AAL_DUAL_INFO_NUM)*sizeof(u32),
+			GFP_KERNEL);
+
+	priv->aal_readback_wq = create_singlethread_workqueue("aal_readback");
+	INIT_WORK(&priv->aal_readback_task, aal_readback_work);
+
+	priv->curve_sram_idx = 1;
+	priv->hist_sram_idx = 1;
 
 	dbg_probed_components[dbg_probed_count++] = priv;
 

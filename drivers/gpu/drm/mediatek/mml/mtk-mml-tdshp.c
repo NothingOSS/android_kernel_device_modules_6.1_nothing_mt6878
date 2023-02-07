@@ -326,6 +326,9 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 	s32 i;
 	struct mml_pq_reg *regs = NULL;
 
+	mml_pq_msg("%s pipe_id[%d] engine_id[%d] en_sharp[%d]", __func__,
+		ccfg->pipe, comp->id, dest->pq_config.en_sharp);
+
 	if (MML_FMT_10BIT(src->format) || MML_FMT_10BIT(dest->data.format)) {
 		cmdq_pkt_write(pkt, NULL,
 			base_pa + tdshp->data->reg_table[TDSHP_CTRL], 0, 0x00000004);
@@ -377,15 +380,10 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 	mml_pq_msg("%s:config ds regs, count: %d", __func__, result->ds_reg_cnt);
 	tdshp_frm->config_success = true;
 	for (i = 0; i < result->ds_reg_cnt; i++) {
-		if (cfg->info.mode == MML_MODE_DDP_ADDON) {
-			/* no reuse support in addon mode*/
-			cmdq_pkt_write(pkt, NULL, base_pa + regs[i].offset,
-				regs[i].value, regs[i].mask);
-		} else {
-			mml_write(pkt, base_pa + regs[i].offset, regs[i].value,
-				regs[i].mask, reuse, cache,
-				&tdshp_frm->labels[i]);
-		}
+		mml_write(pkt, base_pa + regs[i].offset, regs[i].value,
+			regs[i].mask, reuse, cache,
+			&tdshp_frm->labels[i]);
+
 		mml_pq_msg("[ds][config][%x] = %#x mask(%#x)",
 			regs[i].offset, regs[i].value, regs[i].mask);
 	}
@@ -564,11 +562,16 @@ static s32 tdshp_config_post(struct mml_comp *comp, struct mml_task *task,
 			     struct mml_comp_config *ccfg)
 {
 	struct mml_frame_dest *dest = &task->config->info.dest[ccfg->node->out_idx];
+	s8 mode = task->config->info.mode;
+
+	if (mode != MML_MODE_MML_DECOUPLE)
+		goto put_comp_config;
 
 	if ((dest->pq_config.en_sharp && dest->pq_config.en_dre) ||
 		dest->pq_config.en_dc)
 		tdshp_readback_cmdq(comp, task, ccfg);
 
+put_comp_config:
 	if (dest->pq_config.en_sharp || dest->pq_config.en_dc)
 		mml_pq_put_comp_config_result(task);
 	return 0;

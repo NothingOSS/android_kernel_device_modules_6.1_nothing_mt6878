@@ -1323,9 +1323,9 @@ static void sys_addon_connect(struct mml_sys *sys,
 		return;
 	}
 
-	ddp_command_make(cfg->task, cfg->pipe, pkt);
-
 	sys_ddp_enable(sys, cfg->task, cfg->pipe);
+
+	ddp_command_make(cfg->task, cfg->pipe, pkt);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	if (mml_dle_delay)

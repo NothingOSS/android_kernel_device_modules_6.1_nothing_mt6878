@@ -196,6 +196,9 @@ s32 mml_pq_task_create(struct mml_task *task)
 	pq_task->task = task;
 	kref_init(&pq_task->ref);
 	mutex_init(&pq_task->buffer_mutex);
+	mutex_init(&pq_task->aal_comp_lock);
+	init_completion(&pq_task->aal_hist_done[0]);
+	init_completion(&pq_task->aal_hist_done[1]);
 	task->pq_task = pq_task;
 
 	init_sub_task(&pq_task->tile_init);
@@ -498,6 +501,16 @@ static struct mml_pq_task *from_dc_readback(struct mml_pq_sub_task *sub_task)
 		struct mml_pq_task, dc_readback);
 }
 
+void mml_pq_get_pq_task(struct mml_pq_task *pq_task)
+{
+	kref_get(&pq_task->ref);
+}
+
+void mml_pq_put_pq_task(struct mml_pq_task *pq_task)
+{
+	kref_put(&pq_task->ref, release_pq_task);
+}
+
 static void dump_sub_task(struct mml_pq_sub_task *sub_task, int new_job_id,
 	bool is_dual, u32 cut_pos_x, u32 readback_size)
 {
@@ -657,6 +670,9 @@ static int set_sub_task(struct mml_task *task,
 		memcpy(&sub_task->frame_data.frame_out, &task->config->frame_out,
 			MML_MAX_OUTPUTS * sizeof(struct mml_frame_size));
 		sub_task->readback_data.is_dual = task->config->dual;
+		mml_pq_msg("%s called, job_id[%d] sub_task[%p] mode[%d] format[%d]", __func__,
+			task->job.jobid, &pq_task->comp_config,
+			task->config->info.mode, task->config->info.src.format);
 		mutex_unlock(&sub_task->lock);
 
 		if (is_dup_check)
@@ -673,6 +689,84 @@ static int set_sub_task(struct mml_task *task,
 		sub_task->first_job);
 	return 0;
 }
+
+static int set_readback_sub_task(struct mml_pq_task *pq_task,
+			struct mml_pq_sub_task *sub_task,
+			struct mml_pq_chan *chan,
+			struct mml_pq_frame_data frame_data,
+			bool dual, u32 mml_jobid,
+			bool is_dup_check)
+{
+	u64 random_num = 0;
+
+	mml_pq_msg("%s called queued[%d] result_ref[%d] job_id[%llu, %d] first_job[%d]",
+		__func__, atomic_read(&sub_task->queued),
+		atomic_read(&sub_task->result_ref),
+		sub_task->job_id, mml_jobid,
+		sub_task->first_job);
+
+	if ((mml_pq_debug_mode & MML_PQ_STABILITY_TEST) &&
+		dual) {
+		get_random_bytes(&random_num, sizeof(u64));
+		mdelay((random_num % 50)+1);
+
+	}
+
+	mutex_lock(&sub_task->lock);
+	if (sub_task->mml_task_jobid != mml_jobid || sub_task->first_job) {
+		sub_task->mml_task_jobid = mml_jobid;
+		sub_task->first_job = false;
+	} else {
+		mutex_unlock(&sub_task->lock);
+		mml_pq_msg("%s already queue queued[%d] job_id[%llu, %d]",
+			__func__, atomic_read(&sub_task->queued),
+			sub_task->job_id, mml_jobid);
+
+		return 0;
+	}
+
+	if (!atomic_fetch_add_unless(&sub_task->queued, 1, 1)) {
+		//WARN_ON(atomic_read(&sub_task->result_ref));
+		if (atomic_read(&sub_task->result_ref) && !sub_task->aee_dump_done) {
+			mml_pq_log("%s ref[%d] job_id[%llu, %d] mode[%d] dual[%d]",
+				__func__, atomic_read(&sub_task->result_ref),
+				sub_task->job_id, mml_jobid,
+				frame_data.info.mode, dual);
+			mml_pq_util_aee("MMLPQ ref is not zero",
+				"jobid:%d", mml_jobid);
+			sub_task->aee_dump_done = true;
+		}
+		atomic_set(&sub_task->result_ref, 0);
+		kref_get(&pq_task->ref);
+
+		memcpy(&sub_task->frame_data.pq_param, frame_data.pq_param,
+			MML_MAX_OUTPUTS * sizeof(struct mml_pq_param));
+		memcpy(&sub_task->frame_data.info, &frame_data.info,
+			sizeof(struct mml_frame_info));
+		memcpy(&sub_task->frame_data.frame_out, &frame_data.frame_out,
+			MML_MAX_OUTPUTS * sizeof(struct mml_frame_size));
+		sub_task->readback_data.is_dual = dual;
+
+		mml_pq_msg("%s called, job_id[%d] sub_task[%p] mode[%d] format[%d]", __func__,
+			mml_jobid, &pq_task->comp_config,
+			frame_data.info.mode, frame_data.info.src.format);
+		mutex_unlock(&sub_task->lock);
+
+		if (is_dup_check)
+			mml_pq_check_dup_node(chan, sub_task);
+		queue_msg(chan, sub_task);
+		dump_pq_param(&(frame_data.pq_param[0]));
+	} else
+		mutex_unlock(&sub_task->lock);
+
+	mml_pq_msg("%s end queued[%d] result_ref[%d] job_id[%llx, %d] first_job[%d]",
+		__func__, atomic_read(&sub_task->queued),
+		atomic_read(&sub_task->result_ref),
+		sub_task->job_id, mml_jobid,
+		sub_task->first_job);
+	return 0;
+}
+
 
 static int get_sub_task_result(struct mml_pq_task *pq_task,
 			       struct mml_pq_sub_task *sub_task, u32 timeout_ms,
@@ -825,8 +919,9 @@ int mml_pq_set_comp_config(struct mml_task *task)
 	int ret;
 
 	mml_pq_trace_ex_begin("%s", __func__);
-	mml_pq_msg("%s called, job_id[%d] sub_task[%p]", __func__,
-		task->job.jobid, &pq_task->comp_config);
+	mml_pq_msg("%s called, job_id[%d] sub_task[%p] mode[%d] format[%d]", __func__,
+		task->job.jobid, &pq_task->comp_config,
+		task->config->info.mode, task->config->info.src.format);
 	ret = set_sub_task(task, &pq_task->comp_config, chan,
 			   &task->pq_param[0], false);
 	mml_pq_trace_ex_end();
@@ -859,7 +954,44 @@ static bool set_hist(struct mml_pq_sub_task *sub_task,
 	return ready;
 }
 
-int mml_pq_aal_readback(struct mml_task *task, u8 pipe, u32 *phist)
+int mml_pq_ir_aal_readback(struct mml_pq_task *pq_task, struct mml_pq_frame_data frame_data,
+			u8 pipe, u32 *phist, u32 mml_jobid,
+			bool dual)
+{
+	struct mml_pq_sub_task *sub_task = &pq_task->aal_readback;
+	struct mml_pq_chan *chan = &pq_mbox->aal_readback_chan;
+	int ret = 0;
+
+	mml_pq_msg("%s called job_id[%d] pipe[%d] sub_task->job_id[%llu]",
+		__func__, mml_jobid, pipe, sub_task->job_id);
+
+	if (!pipe) {
+		mml_pq_rb_msg("%s job_id[%d] hist[0~4]={%08x, %08x, %08x, %08x, %08x}",
+			__func__, mml_jobid, phist[0], phist[1],
+			phist[2], phist[3], phist[4]);
+
+		mml_pq_rb_msg("%s job_id[%d] hist[10~14]={%08x, %08x, %08x, %08x, %08x}",
+			__func__, mml_jobid, phist[10], phist[11],
+			phist[12], phist[13], phist[14]);
+	} else {
+		mml_pq_rb_msg("%s job_id[%d] hist[600~604]={%08x, %08x, %08x, %08x, %08x}",
+			__func__, mml_jobid, phist[600], phist[601],
+			phist[602], phist[603], phist[604]);
+
+		mml_pq_rb_msg("%s job_id[%d] hist[610~614]={%08x, %08x, %08x, %08x, %08x}",
+			__func__, mml_jobid, phist[610], phist[611],
+			phist[612], phist[613], phist[614]);
+	}
+
+	if (set_hist(sub_task, dual, pipe, phist,
+		0, (AAL_HIST_NUM+AAL_DUAL_INFO_NUM), 1))
+		ret = set_readback_sub_task(pq_task, sub_task, chan,
+			frame_data, dual, mml_jobid, true);
+
+	return ret;
+}
+
+int mml_pq_dc_aal_readback(struct mml_task *task, u8 pipe, u32 *phist)
 {
 	struct mml_pq_task *pq_task = task->pq_task;
 	struct mml_pq_sub_task *sub_task = &pq_task->aal_readback;
@@ -2131,6 +2263,12 @@ wake_up_dc_readback_task:
 	cancel_sub_task(new_sub_task);
 	mml_pq_msg("%s end %d\n", __func__, ret);
 	return ret;
+}
+
+void mml_pq_reset_hist_status(struct mml_task *task)
+{
+	task->pq_task->read_status.aal_comp = MML_PQ_HIST_INIT;
+	task->pq_task->read_status.hdr_comp = MML_PQ_HIST_INIT;
 }
 
 static long mml_pq_ioctl(struct file *file, unsigned int cmd,
