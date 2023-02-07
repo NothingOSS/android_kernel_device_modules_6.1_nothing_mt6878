@@ -169,6 +169,7 @@
 	/* chosen */
 	chosen: chosen {
 		bootargs = "console=tty0 root=/dev/ram \
+			nosoftlockup \
 			rcupdate.rcu_expedited=1 \
 			swiotlb=noforce disable_dma32=on \
 			8250.nr_uarts=4 \
