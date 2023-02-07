@@ -51,8 +51,8 @@ enum mml_aal_reg_index {
 	AAL_OUTPUT_SIZE,
 	AAL_OUTPUT_OFFSET,
 	AAL_SRAM_STATUS,
-	AAL_SRAM_RW_IF_0,
-	AAL_SRAM_RW_IF_1,
+	AAL_SRAM_RW_IF_0, /* sram curve addr */
+	AAL_SRAM_RW_IF_1, /* sram curve value */
 	AAL_SRAM_RW_IF_2,
 	AAL_SRAM_RW_IF_3,
 	AAL_SHADOW_CTRL,
@@ -179,6 +179,52 @@ static const u16 aal_reg_table_mt6985[AAL_REG_MAX_COUNT] = {
 	[AAL_BILATERAL_STATUS_CTRL] = 0x5b8
 };
 
+static const u16 aal_reg_table_mt6897[AAL_REG_MAX_COUNT] = {
+	[AAL_EN] = 0x000,
+	[AAL_INTSTA] = 0x00c,
+	[AAL_STATUS] = 0x010,
+	[AAL_CFG] = 0x020,
+	[AAL_INPUT_COUNT] = 0x024,
+	[AAL_OUTPUT_COUNT] = 0x028,
+	[AAL_SIZE] = 0x030,
+	[AAL_OUTPUT_SIZE] = 0x034,
+	[AAL_OUTPUT_OFFSET] = 0x038,
+	[AAL_SRAM_STATUS] = 0x0c8,
+	[AAL_SRAM_RW_IF_0] = 0x690,
+	[AAL_SRAM_RW_IF_1] = 0x694,
+	[AAL_SRAM_RW_IF_2] = 0x0d4,
+	[AAL_SRAM_RW_IF_3] = 0x0d8,
+	[AAL_SHADOW_CTRL] = 0x0f0,
+	[AAL_TILE_02] = 0x0f4,
+	[AAL_DRE_BLOCK_INFO_07] = 0x0f8,
+	[AAL_CFG_MAIN] = 0x200,
+	[AAL_WIN_X_MAIN] = 0x460,
+	[AAL_WIN_Y_MAIN] = 0x464,
+	[AAL_DRE_BLOCK_INFO_00] = 0x468,
+	[AAL_TILE_00] = 0x4ec,
+	[AAL_TILE_01] = 0x4f0,
+	[AAL_DUAL_PIPE_00] = 0x500,
+	[AAL_DUAL_PIPE_01] = 0x504,
+	[AAL_DUAL_PIPE_02] = 0x508,
+	[AAL_DUAL_PIPE_03] = 0x50c,
+	[AAL_DUAL_PIPE_04] = 0x510,
+	[AAL_DUAL_PIPE_05] = 0x514,
+	[AAL_DUAL_PIPE_06] = 0x518,
+	[AAL_DUAL_PIPE_07] = 0x51c,
+	[AAL_DRE_ROI_00] = 0x520,
+	[AAL_DRE_ROI_01] = 0x524,
+	[AAL_DUAL_PIPE_08] = 0x544,
+	[AAL_DUAL_PIPE_09] = 0x548,
+	[AAL_DUAL_PIPE_10] = 0x54c,
+	[AAL_DUAL_PIPE_11] = 0x550,
+	[AAL_DUAL_PIPE_12] = 0x554,
+	[AAL_DUAL_PIPE_13] = 0x558,
+	[AAL_DUAL_PIPE_14] = 0x55c,
+	[AAL_DUAL_PIPE_15] = 0x560,
+	[AAL_BILATERAL_STATUS_00] = 0x588,
+	[AAL_BILATERAL_STATUS_CTRL] = 0x5b8
+};
+
 struct aal_data {
 	u32 min_tile_width;
 	u32 tile_width;
@@ -264,6 +310,17 @@ static const struct aal_data mt6886_aal_data = {
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6983,
+	.crop = true,
+};
+
+static const struct aal_data mt6897_aal_data = {
+	.min_tile_width = 50,
+	.tile_width = 1690,
+	.min_hist_width = 128,
+	.vcp_readback = false,
+	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
+	.reg_table = aal_reg_table_mt6897,
 	.crop = true,
 };
 
@@ -526,11 +583,11 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 		mml_pq_msg("[aal][config][%x] = %#x mask(%#x)",
 			regs[i].offset, regs[i].value, regs[i].mask);
 	}
+	cmdq_pkt_write(pkt, NULL,
+		base_pa + aal->data->reg_table[AAL_SRAM_RW_IF_0], addr, U32_MAX);
+	cmdq_pkt_poll(pkt, NULL, (0x1 << 16),
+		base_pa + aal->data->reg_table[AAL_SRAM_STATUS], (0x1 << 16), gpr);
 	for (i = 0; i < AAL_CURVE_NUM; i++, addr += 4) {
-		cmdq_pkt_write(pkt, NULL,
-			base_pa + aal->data->reg_table[AAL_SRAM_RW_IF_0], addr, U32_MAX);
-		cmdq_pkt_poll(pkt, NULL, (0x1 << 16),
-			base_pa + aal->data->reg_table[AAL_SRAM_STATUS], (0x1 << 16), gpr);
 		mml_write_array(pkt, base_pa + aal->data->reg_table[AAL_SRAM_RW_IF_1], curve[i],
 			U32_MAX, reuse, cache, &aal_frm->reuse_curve);
 	}
@@ -828,9 +885,6 @@ static void aal_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 	mml_assign(pkt, idx_out + 1, (u32)(pa >> 32),
 		reuse, cache, &aal_frm->labels[AAL_POLLGPR_1]);
 
-	/* loop again here */
-	aal_frm->begin_offset = pkt->cmd_buf_size;
-	begin_pa = cmdq_pkt_get_pa_by_offset(pkt, aal_frm->begin_offset);
 
 	/* config aal sram addr and poll */
 	cmdq_pkt_write_reg_addr(pkt, base_pa + aal->data->reg_table[AAL_SRAM_RW_IF_2],
@@ -839,6 +893,11 @@ static void aal_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_poll_addr(pkt, AAL_SRAM_STATUS_BIT,
 		base_pa + aal->data->reg_table[AAL_SRAM_STATUS],
 		AAL_SRAM_STATUS_BIT, poll_gpr);
+
+	/* loop again here */
+	aal_frm->begin_offset = pkt->cmd_buf_size;
+	begin_pa = cmdq_pkt_get_pa_by_offset(pkt, aal_frm->begin_offset);
+
 	/* read to value spr */
 	cmdq_pkt_read_addr(pkt, base_pa + aal->data->reg_table[AAL_SRAM_RW_IF_3], idx_val);
 	/* write value spr to dst cpr64 */
@@ -1630,7 +1689,7 @@ const struct of_device_id mml_aal_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6897-mml_aal",
-		.data = &mt6985_aal_data
+		.data = &mt6897_aal_data
 	},
 	{},
 };
