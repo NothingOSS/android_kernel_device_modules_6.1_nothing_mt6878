@@ -6302,7 +6302,7 @@
 					<&smi_larb28>,
 					<&smi_larb18>,
 					<&smi_larb12>;
-			mediatek,imgsys_cmdq = <&imgsys_cmdq>;
+			mediatek,imgsys-cmdq = <&imgsys_cmdq>;
 			iommus = <&disp_iommu M4U_PORT_L28_IMGI_T1_A>;
 			mboxes = <&gce_m 0 3000 CMDQ_THR_PRIO_2>,
 					<&gce_m 1 3000 CMDQ_THR_PRIO_2>,
