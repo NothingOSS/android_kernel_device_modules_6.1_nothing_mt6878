@@ -382,6 +382,7 @@ struct mtk_smi_dbg_init_setting {
 #define MTK_SMI_NR_MAX (64)
 struct mtk_smi_dbg {
 	bool			probe;
+	struct device		*dev;
 	struct dentry		*fs;
 	struct dentry		*sta_fs;
 	struct mtk_smi_dbg_node	larb[MTK_SMI_NR_MAX];
@@ -848,17 +849,17 @@ static void init_smi_dbg_setting(struct mtk_smi_dbg	*smi)
 
 }
 
-static s32 mtk_smi_dbg_probe(struct mtk_smi_dbg *smi)
+static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 {
-	//struct device_node	*node = NULL, *comm;
+	struct device *dev = &dbg_pdev->dev;
+	struct mtk_smi_dbg	*smi = gsmi;
 	struct device_node	*node = NULL;
 	struct platform_device	*pdev;
-	struct resource	*res;
-	void __iomem	*va;
+	struct resource		*res;
+	void __iomem		*va;
 	s32			larb_nr = 0, comm_nr = 0, rsi_nr = 0, id, ret;
 
-	pr_info("%s: comp[%d]:%s\n", __func__, 0, mtk_smi_dbg_comp[0]);
-
+	smi->dev = dev;
 	for_each_compatible_node(node, NULL, mtk_smi_dbg_comp[0]) {
 
 		if (of_property_read_u32(node, "mediatek,larb-id", &id))
@@ -926,13 +927,14 @@ static s32 mtk_smi_dbg_probe(struct mtk_smi_dbg *smi)
 
 		smi->rsi[id].regs_nr = SMI_RSI_REGS_NR;
 		smi->rsi[id].regs = smi_rsi_regs;
-
 	}
 
 	init_smi_dbg_setting(smi);
 
 	smi->suspend_nb.notifier_call = smi_dbg_suspend_cb;
 	mtk_smi_driver_register_notifier(&smi->suspend_nb);
+
+	smi->probe = true;
 	return 0;
 }
 
@@ -1086,11 +1088,8 @@ s32 mtk_smi_dbg_cg_status(void)
 	s32			i, ret = 0;
 
 	if (!smi->probe) {
-		ret = mtk_smi_dbg_probe(smi);
-		if (ret)
-			return ret;
-
-		smi->probe = true;
+		pr_notice("[smi] smi dbg not ready\n");
+		return -EAGAIN;
 	}
 
 	//check LARB status
@@ -1124,16 +1123,12 @@ static int mtk_smi_dbg_set(void *data, u64 val)
 {
 	struct mtk_smi_dbg	*smi = (struct mtk_smi_dbg *)data;
 	u64			exval;
-	s32			ret;
 
 	pr_info("%s: val:%#llx\n", __func__, val);
 
 	if (!smi->probe) {
-		ret = mtk_smi_dbg_probe(smi);
-		if (ret)
-			return ret;
-
-		smi->probe = true;
+		pr_notice("[smi] smi dbg not ready\n");
+		return -EAGAIN;
 	}
 
 	switch (val & 0x7) {
@@ -1182,6 +1177,25 @@ static int mtk_smi_dbg_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(
 	mtk_smi_dbg_fops, mtk_smi_dbg_get, mtk_smi_dbg_set, "%llu");
 
+static const struct of_device_id mtk_smi_dbg_of_ids[] = {
+	{
+		.compatible = "mediatek,mtk-smi-dbg",
+	},
+	{}
+};
+
+static struct platform_driver mtk_smi_dbg_driver = {
+	.probe	= mtk_smi_dbg_probe,
+	.driver	= {
+		.name = DRV_NAME,
+		.of_match_table = mtk_smi_dbg_of_ids,
+	}
+};
+
+static struct platform_driver * const smi_dbg_drivers[] = {
+	&mtk_smi_dbg_driver,
+};
+
 static int __init mtk_smi_dbg_init(void)
 {
 	struct mtk_smi_dbg	*smi;
@@ -1219,11 +1233,10 @@ static int __init mtk_smi_dbg_init(void)
 	if (exists)
 		dput(dir);
 
-	if (!mtk_smi_dbg_probe(smi))
-		smi->probe = true;
-	//mtk_smi_dbg_hang_detect(DRV_NAME);
 	pr_debug("%s: smi:%p fs:%p\n", __func__, smi, smi->fs);
-	return 0;
+	smi->probe = false;
+
+	return platform_register_drivers(smi_dbg_drivers, ARRAY_SIZE(smi_dbg_drivers));
 }
 
 int smi_ut_dump_get(char *buf, const struct kernel_param *kp)
@@ -1426,16 +1439,13 @@ static void smi_hang_detect_bw_monitor(bool is_start)
 s32 mtk_smi_dbg_hang_detect(char *user)
 {
 	struct mtk_smi_dbg	*smi = gsmi;
-	s32			i, j, ret, PRINT_NR = 1, is_busy = 0, is_hang = 0;
+	s32			i, j, PRINT_NR = 1, is_busy = 0, is_hang = 0;
 
 	pr_info("%s: check caller:%s\n", __func__, user);
 
 	if (!smi->probe) {
-		ret = mtk_smi_dbg_probe(smi);
-		if (ret)
-			return ret;
-
-		smi->probe = true;
+		pr_notice("[smi] smi dbg not ready\n");
+		return -EAGAIN;
 	}
 #if IS_ENABLED(CONFIG_MTK_EMI)
 	mtk_emidbg_dump();
@@ -1486,7 +1496,7 @@ s32 mtk_smi_dbg_hang_detect(char *user)
 		BUG_ON(1);
 	}
 
-	return ret;
+	return 0;
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_hang_detect);
 

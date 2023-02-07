@@ -2809,7 +2809,7 @@ out:
 	}
 
 	/* Get smi-common dev from the last larb. */
-	smicomm_node = of_parse_phandle(larbnode, "mediatek,smi", 0);
+	smicomm_node = of_parse_phandle(larbnode, "mediatek,smi-supply", 0);
 	if (!smicomm_node) {
 		dev_err(dev, "%s, can't find smicomm_node phase1\n", __func__);
 		return -EINVAL;
@@ -2844,7 +2844,7 @@ repeat:
 		}
 		if (i < string_nr) {
 			pr_info("%s, find next level node, dev:%s\n", __func__, dev_name(dev));
-			smicomm_node = of_parse_phandle(smicomm_node, "mediatek,smi", 0);
+			smicomm_node = of_parse_phandle(smicomm_node, "mediatek,smi-supply", 0);
 			goto repeat;
 		}
 	}

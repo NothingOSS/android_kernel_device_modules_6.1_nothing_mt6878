@@ -231,7 +231,7 @@ enum smi_log_level {
 	log_pd_callback,
 };
 
-#define MAX_INIT_POWER_ON_DEV	(15)
+#define MAX_INIT_POWER_ON_DEV	(30)
 static struct mtk_smi *init_power_on_dev[MAX_INIT_POWER_ON_DEV];
 static unsigned int init_power_on_num;
 
@@ -2196,15 +2196,18 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 	atomic_set(&larb->smi.ref_count, 0);
 
 	for (i = 0; i < LARB_MAX_COMMON; i++) {
-		smi_node = of_parse_phandle(dev->of_node, "mediatek,smi", i);
+		smi_node = of_parse_phandle(dev->of_node, "mediatek,smi-supply", i);
 		if (!smi_node)
 			break;
 
 		smi_pdev = of_find_device_by_node(smi_node);
 		of_node_put(smi_node);
 		if (smi_pdev) {
-			if (!platform_get_drvdata(smi_pdev))
+			if (!platform_get_drvdata(smi_pdev)) {
+				dev_notice(dev, "%s: probe defer: can't find %s\n", __func__,
+								dev_name(&smi_pdev->dev));
 				return -EPROBE_DEFER;
+			}
 			larb->smi_common_dev[i] = &smi_pdev->dev;
 			link = device_link_add(dev, larb->smi_common_dev[i],
 					DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
@@ -2226,7 +2229,7 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 	larb->smi_common = larb->smi_common_dev[0];
 	for (;;) {
 		smi_node = smi_dev->of_node;
-		smi_node = of_parse_phandle(smi_node, "mediatek,smi", 0);
+		smi_node = of_parse_phandle(smi_node, "mediatek,smi-supply", 0);
 		if (smi_node) {
 			smi_pdev = of_find_device_by_node(smi_node);
 			of_node_put(smi_node);
@@ -2255,6 +2258,7 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 	of_property_read_u32(dev->of_node, "mediatek,larb-id", &larb->larbid);
 
 	if (of_property_read_bool(dev->of_node, "init-power-on")) {
+		dev_notice(dev, "%s: init power on\n", __func__);
 		ret = pm_runtime_get_sync(dev);
 		init_power_on_dev[init_power_on_num++] = &larb->smi;
 		if (ret < 0) {
@@ -3262,13 +3266,16 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 			return PTR_ERR(common->base);
 	}
 
-	smi_node = of_parse_phandle(dev->of_node, "mediatek,smi", 0);
+	smi_node = of_parse_phandle(dev->of_node, "mediatek,smi-supply", 0);
 	if (smi_node) {
 		smi_pdev = of_find_device_by_node(smi_node);
 		of_node_put(smi_node);
 		if (smi_pdev) {
-			if (!platform_get_drvdata(smi_pdev))
+			if (!platform_get_drvdata(smi_pdev)) {
+				dev_notice(dev, "%s: probe defer: can't find %s\n", __func__,
+								dev_name(&smi_pdev->dev));
 				return -EPROBE_DEFER;
+			}
 			link = device_link_add(dev, &smi_pdev->dev,
 					       DL_FLAG_PM_RUNTIME |
 					       DL_FLAG_STATELESS);
@@ -3283,13 +3290,16 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 		}
 	}
 
-	smi_node = of_parse_phandle(dev->of_node, "mediatek,smi", 1);
+	smi_node = of_parse_phandle(dev->of_node, "mediatek,smi-supply", 1);
 	if (smi_node) {
 		smi_pdev = of_find_device_by_node(smi_node);
 		of_node_put(smi_node);
 		if (smi_pdev) {
-			if (!platform_get_drvdata(smi_pdev))
+			if (!platform_get_drvdata(smi_pdev)) {
+				dev_notice(dev, "%s: probe defer: can't find %s\n", __func__,
+								dev_name(&smi_pdev->dev));
 				return -EPROBE_DEFER;
+			}
 			link = device_link_add(dev, &smi_pdev->dev,
 					       DL_FLAG_PM_RUNTIME |
 					       DL_FLAG_STATELESS);
@@ -3312,6 +3322,7 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 		kthr = kthread_run(smi_cmdq, dev, __func__);
 
 	if (of_property_read_bool(dev->of_node, "init-power-on")) {
+		dev_notice(dev, "%s: init power on\n", __func__);
 		ret = pm_runtime_get_sync(dev);
 		init_power_on_dev[init_power_on_num++] = common;
 		if (ret < 0) {
@@ -3447,15 +3458,18 @@ static int mtk_smi_pd_probe(struct platform_device *pdev)
 		smi_pd->bus_prot = true;
 
 	for (i = 0; i < MAX_COMMON_FOR_CLAMP; i++) {
-		smi_node = of_parse_phandle(dev->of_node, "mediatek,smi", i);
+		smi_node = of_parse_phandle(dev->of_node, "mediatek,smi-supply", i);
 		if (!smi_node)
 			break;
 
 		smi_pdev = of_find_device_by_node(smi_node);
 		of_node_put(smi_node);
 		if (smi_pdev) {
-			if (!platform_get_drvdata(smi_pdev))
+			if (!platform_get_drvdata(smi_pdev)) {
+				dev_notice(dev, "%s: probe defer: can't find %s\n", __func__,
+								dev_name(&smi_pdev->dev));
 				return -EPROBE_DEFER;
+			}
 			smi_pd->smi_common_dev[i] = &smi_pdev->dev;
 		} else {
 			dev_notice(dev, "Failed to get smi_comm dev for setting clamp:%d\n", i);
@@ -3467,15 +3481,18 @@ static int mtk_smi_pd_probe(struct platform_device *pdev)
 	}
 
 	for (i = 0; i < MAX_PD_CHECK_DEV_NUM; i++) {
-		smi_node = of_parse_phandle(dev->of_node, "mediatek,suspend-check-dev", i);
+		smi_node = of_parse_phandle(dev->of_node, "mediatek,suspend-check-dev-supply", i);
 		if (!smi_node)
 			break;
 
 		smi_pdev = of_find_device_by_node(smi_node);
 		of_node_put(smi_node);
 		if (smi_pdev) {
-			if (!platform_get_drvdata(smi_pdev))
+			if (!platform_get_drvdata(smi_pdev)) {
+				dev_notice(dev, "%s: probe defer: can't find %s\n", __func__,
+								dev_name(&smi_pdev->dev));
 				return -EPROBE_DEFER;
+			}
 			smi_pd->suspend_check_dev[i] = &smi_pdev->dev;
 		} else {
 			dev_notice(dev, "Failed to get smi_comm dev for suspend check:%d\n", i);
@@ -3508,6 +3525,7 @@ static int mtk_smi_pd_probe(struct platform_device *pdev)
 	pm_runtime_enable(dev);
 
 	if (of_property_read_bool(dev->of_node, "init-power-on")) {
+		dev_notice(dev, "%s: init power on\n", __func__);
 		ret = pm_runtime_get_sync(dev);
 		init_power_on_dev[init_power_on_num++] = &smi_pd->smi;
 		if (ret < 0) {
