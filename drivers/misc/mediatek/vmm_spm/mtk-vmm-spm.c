@@ -58,6 +58,13 @@
 #define SOC_BUCK_ISO_CON_SET 0xF7C
 #define SOC_BUCK_ISO_CON_CLR 0xF80
 
+/* Buck ISO control for 7sp */
+#define SPM_VMM_EXT_BUCK_ISO_BIT_7SP 20
+#define SPM_AOC_VMM_SRAM_ISO_DIN_BIT_7SP 21
+#define SPM_AOC_VMM_SRAM_LATCH_ENB_7SP 22
+#define SOC_BUCK_ISO_CON_SET_7SP 0xFA8
+#define SOC_BUCK_ISO_CON_CLR_7SP 0xFAC
+
 struct vmm_spm_drv_data {
 	void __iomem *spm_reg;
 	struct notifier_block nb;
@@ -333,6 +340,45 @@ static int regulator_event_notify_7s(struct notifier_block *nb,
 	return 0;
 }
 
+static void vmm_buck_isolation_off_7sp(void __iomem *base)
+{
+	void __iomem *addr = base + SOC_BUCK_ISO_CON_CLR_7SP;
+
+	writel_relaxed((1 << SPM_VMM_EXT_BUCK_ISO_BIT_7SP), addr);
+	writel_relaxed((1 << SPM_AOC_VMM_SRAM_ISO_DIN_BIT_7SP), addr);
+	writel_relaxed((1 << SPM_AOC_VMM_SRAM_LATCH_ENB_7SP), addr);
+}
+
+static void vmm_buck_isolation_on_7sp(void __iomem *base)
+{
+	void __iomem *addr = base + SOC_BUCK_ISO_CON_SET_7SP;
+
+	writel_relaxed((1 << SPM_AOC_VMM_SRAM_LATCH_ENB_7SP), addr);
+	writel_relaxed((1 << SPM_AOC_VMM_SRAM_ISO_DIN_BIT_7SP), addr);
+	writel_relaxed((1 << SPM_VMM_EXT_BUCK_ISO_BIT_7SP), addr);
+}
+
+static int regulator_event_notify_7sp(struct notifier_block *nb,
+				  unsigned long event, void *data)
+{
+	struct vmm_spm_drv_data *drv_data = &g_drv_data;
+
+	if (!drv_data->spm_reg) {
+		ISP_LOGE("SPM_BASE is NULL");
+		return -EINVAL;
+	}
+
+	if (event == REGULATOR_EVENT_ENABLE) {
+		vmm_buck_isolation_off_7sp(drv_data->spm_reg);
+		ISP_LOGI("VMM 7sp regulator enable done");
+	} else if (event == REGULATOR_EVENT_PRE_DISABLE) {
+		vmm_buck_isolation_on_7sp(drv_data->spm_reg);
+		ISP_LOGI("VMM 7sp regulator before disable");
+	}
+
+	return 0;
+}
+
 static int vmm_spm_probe(struct platform_device *pdev)
 {
 	struct vmm_spm_drv_data *drv_data = &g_drv_data;
@@ -360,7 +406,9 @@ static int vmm_spm_probe(struct platform_device *pdev)
 		return PTR_ERR(reg);
 	}
 
-	if (of_device_is_compatible(dev->of_node, "mediatek,vmm_spm_7s"))
+	if (of_device_is_compatible(dev->of_node, "mediatek,vmm_spm_7sp"))
+		drv_data->nb.notifier_call = regulator_event_notify_7sp;
+	else if (of_device_is_compatible(dev->of_node, "mediatek,vmm_spm_7s"))
 		drv_data->nb.notifier_call = regulator_event_notify_7s;
 	else if (of_device_is_compatible(dev->of_node, "mediatek,vmm_spm_mt6886"))
 		drv_data->nb.notifier_call = regulator_event_notify_mt6886;
