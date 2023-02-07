@@ -383,6 +383,7 @@ static struct fh_operation gpueb_ops_v1 = {
 	.ssc_disable = gpueb_ssc_disable_v1,
 };
 
+
 /*mt6985 begin*/
 static struct id_map map_6985[] = {
 	{"gpu0", 1000},
@@ -407,6 +408,7 @@ static struct match mt6985_match = {
 };
 /*mt6985 end*/
 
+
 /*mt6897 begin*/
 static struct match mt6897_match = {
 	.name = "mediatek,mt6897-fhctl",
@@ -415,9 +417,35 @@ static struct match mt6897_match = {
 };
 /*mt6897 end*/
 
+
+/*mt6989 begin*/
+static struct id_map map_6989[] = {
+	{"gpu0", 1000},
+	{"gpu1", 2000},
+	{"gpu2", 3000},
+	{}
+};
+
+struct hdlr_data_v1 hdlr_data_6989_gpueb = {
+	.reg_tr = NULL,
+	.map = map_6989,
+};
+static struct fh_hdlr gpueb_hdlr_6989 = {
+	.ops = &gpueb_ops_v1,
+	.data = &hdlr_data_6989_gpueb,
+};
+
+static struct match mt6989_match = {
+	.name = "mediatek,mt6989-fhctl",
+	.hdlr = &gpueb_hdlr_6989,
+	.init = &gpueb_init_v1,
+};
+/*mt6989 end*/
+
 static struct match *matches[] = {
 	&mt6897_match,
 	&mt6985_match,
+	&mt6989_match,
 	NULL,
 };
 

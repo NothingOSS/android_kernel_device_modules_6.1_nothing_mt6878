@@ -134,6 +134,8 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcupm/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/rv/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/include/
 
 obj-$(CONFIG_COMMON_CLK_MT6853) += clk-chk.o
 clk-chk-$(CONFIG_COMMON_CLK_MT6853) += clkchk.o clkchk-mt6853.o

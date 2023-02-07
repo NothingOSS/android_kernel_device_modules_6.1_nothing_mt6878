@@ -26,6 +26,9 @@ static int (*subsys_init[])(struct pll_dts *array) = {
 #ifdef USE_FHCTL_GPUEB
 	&fhctl_gpueb_init,
 #endif
+#ifdef USE_FHCTL_VCP
+	&fhctl_vcp_init,
+#endif
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 	&fhctl_debugfs_init,
 #endif
@@ -209,6 +212,7 @@ static void fh_plt_drv_shutdown(struct platform_device *pdev)
 static const struct of_device_id fh_of_match[] = {
 	{ .compatible = "mediatek,mt6897-fhctl"},
 	{ .compatible = "mediatek,mt6985-fhctl"},
+	{ .compatible = "mediatek,mt6989-fhctl"},
 	{}
 };
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2020 MediaTek Inc.
- * Author: Yu-Chang Wang <Yu-Chang.Wang@mediatek.com>
+ * Copyright (c) 2022 MediaTek Inc.
+ * Author: Kuan Hsin Lee <Kuan-Hsin.Lee@mediatek.com>
  */
 #include <linux/device.h>
 #include <linux/module.h>
@@ -15,10 +15,10 @@
 #include "clk-fhctl-pll.h"
 #include "clk-fhctl-util.h"
 #include <linux/soc/mediatek/mtk_tinysys_ipi.h>
-#include <include/mcupm_ipi_id.h>
+#include <vcp_status.h>
 
-#define FHCTL_TARGET FHCTL_MCUPM
-#define IPI_TIMEOUT_MS 10
+#define FHCTL_TARGET FHCTL_VCP
+#define FHCTL_IPI_TIMEOUT_MS 10
 #define IPI_TIMEOUT_LONG_MS 3000
 
 struct match {
@@ -79,7 +79,7 @@ enum FH_DEVCTL_CMD_ID {
 	sizeof(unsigned int))
 static unsigned int ack_data;
 
-static int id_to_mcupm(struct id_map *map, char *domain, int fh_id)
+static int id_to_vcp(struct id_map *map, char *domain, int fh_id)
 {
 	if (!map)
 		return fh_id;
@@ -103,7 +103,7 @@ static void ipi_get_data(unsigned int cmd)
 	ipi_data.cmd = cmd;
 
 	/* 3 sec for debug */
-	ret = mtk_ipi_send_compl(get_mcupm_ipidev(), CH_S_FHCTL,
+	ret = mtk_ipi_send_compl(vcp_get_ipidev(), IPI_OUT_C_FHCTL_DEBUG, //PIN_OUT_R_SIZE_FHCTL
 			IPI_SEND_POLLING, &ipi_data,
 			FHCTL_D_LEN, 3000);
 	FHDBG("ret<%d>, ack_data<%x>\n",
@@ -124,7 +124,7 @@ static void dump_hw(struct fh_pll_regs *regs,
 			readl(regs->reg_con_pcw));
 }
 
-static int mcupm_hopping_v1(void *priv_data, char *domain_name, int fh_id,
+static int vcp_hopping_v1(void *priv_data, char *domain_name, int fh_id,
 		unsigned int new_dds, int postdiv)
 {
 	int ret;
@@ -145,7 +145,7 @@ static int mcupm_hopping_v1(void *priv_data, char *domain_name, int fh_id,
 
 	memset(&ipi_data, 0, sizeof(struct fhctl_ipi_data));
 	ipi_data.cmd = FH_DCTL_CMD_GENERAL_DFS;
-	ipi_data.u.args[0] = id_to_mcupm(d->map, domain_name, fh_id);
+	ipi_data.u.args[0] = id_to_vcp(d->map, domain_name, fh_id);
 	ipi_data.u.args[1] = new_dds;
 	ipi_data.u.args[2] = postdiv;
 
@@ -157,9 +157,9 @@ static int mcupm_hopping_v1(void *priv_data, char *domain_name, int fh_id,
 	/* make sure tr_id_local is set before send ipi */
 	mb();
 
-	ret = mtk_ipi_send_compl(get_mcupm_ipidev(), CH_S_FHCTL,
+	ret = mtk_ipi_send_compl(vcp_get_ipidev(), IPI_OUT_C_FHCTL_DEBUG,
 			IPI_SEND_POLLING, &ipi_data,
-			FHCTL_D_LEN, IPI_TIMEOUT_MS);
+			FHCTL_D_LEN, FHCTL_IPI_TIMEOUT_MS);
 
 	domain = d->domain;
 	regs = &domain->regs[fh_id];
@@ -223,7 +223,7 @@ static int mcupm_hopping_v1(void *priv_data, char *domain_name, int fh_id,
 	return ret;
 }
 
-static int mcupm_ssc_enable_v1(void *priv_data,
+static int vcp_ssc_enable_v1(void *priv_data,
 		char *domain_name, int fh_id, int rate)
 {
 	struct freqhopping_ioctl fh_ctl;
@@ -239,7 +239,7 @@ static int mcupm_ssc_enable_v1(void *priv_data,
 
 	FHDBG("rate<%d>\n", rate);
 
-	fh_ctl.pll_id = id_to_mcupm(d->map, domain_name, fh_id);
+	fh_ctl.pll_id = id_to_vcp(d->map, domain_name, fh_id);
 	fh_ctl.result = 0;
 	fh_ctl.ssc_setting.dt = data->dt_val;
 	fh_ctl.ssc_setting.df = data->df_val;
@@ -251,7 +251,7 @@ static int mcupm_ssc_enable_v1(void *priv_data,
 					sizeof(struct freqhopping_ioctl));
 
 	ipi_data.cmd = FH_DCTL_CMD_SSC_ENABLE;
-	ret = mtk_ipi_send_compl(get_mcupm_ipidev(), CH_S_FHCTL,
+	ret = mtk_ipi_send_compl(vcp_get_ipidev(), IPI_OUT_C_FHCTL_DEBUG,
 			IPI_SEND_POLLING, &ipi_data,
 			FHCTL_D_LEN, IPI_TIMEOUT_LONG_MS);
 	FHDBG("ret<%d>\n", ret);
@@ -262,7 +262,7 @@ static int mcupm_ssc_enable_v1(void *priv_data,
 	return 0;
 }
 
-static int mcupm_ssc_disable_v1(void *priv_data,
+static int vcp_ssc_disable_v1(void *priv_data,
 		char *domain_name, int fh_id)
 {
 	struct freqhopping_ioctl fh_ctl;
@@ -277,7 +277,7 @@ static int mcupm_ssc_disable_v1(void *priv_data,
 
 	FHDBG("\n");
 
-	fh_ctl.pll_id = id_to_mcupm(d->map, domain_name, fh_id);
+	fh_ctl.pll_id = id_to_vcp(d->map, domain_name, fh_id);
 	fh_ctl.result = 0;
 
 	memset(&ipi_data, 0, sizeof(struct fhctl_ipi_data));
@@ -285,7 +285,7 @@ static int mcupm_ssc_disable_v1(void *priv_data,
 					sizeof(struct freqhopping_ioctl));
 
 	ipi_data.cmd = FH_DCTL_CMD_SSC_DISABLE;
-	ret = mtk_ipi_send_compl(get_mcupm_ipidev(), CH_S_FHCTL,
+	ret = mtk_ipi_send_compl(vcp_get_ipidev(), IPI_OUT_C_FHCTL_DEBUG,
 			IPI_SEND_POLLING, &ipi_data,
 			FHCTL_D_LEN, IPI_TIMEOUT_LONG_MS);
 	FHDBG("ret<%d>\n", ret);
@@ -296,7 +296,7 @@ static int mcupm_ssc_disable_v1(void *priv_data,
 	return 0;
 }
 
-static int mcupm_init_v1(struct pll_dts *array, struct match *match)
+static int vcp_init_v1(struct pll_dts *array, struct match *match)
 {
 	static bool ipi_inited;
 	static DEFINE_SPINLOCK(lock);
@@ -310,10 +310,17 @@ static int mcupm_init_v1(struct pll_dts *array, struct match *match)
 	if (!ipi_inited) {
 		int ret;
 
-		ret = mtk_ipi_register(get_mcupm_ipidev(), CH_S_FHCTL, NULL,
+
+		if (IPI_OUT_C_FHCTL_DEBUG <= 0) {
+			FHDBG("get vcp channel ID fail!");
+			return -1;
+		}
+		FHDBG("[vcp] ipi_get IPI_OUT_C_FHCTL_DEBUG: %d\n", IPI_OUT_C_FHCTL_DEBUG);
+
+		ret = mtk_ipi_register(vcp_get_ipidev(), IPI_OUT_C_FHCTL_DEBUG, NULL,
 				NULL, (void *)&ack_data);
 		if (ret) {
-			FHDBG("[MCUPM] ipi_register fail, ret %d\n", ret);
+			FHDBG("[vcp] ipi_register fail, ret %d\n", ret);
 			return -1;
 		}
 		ipi_inited = true;
@@ -321,7 +328,12 @@ static int mcupm_init_v1(struct pll_dts *array, struct match *match)
 	}
 
 	priv_data = kzalloc(sizeof(*priv_data), GFP_KERNEL);
+	if (!priv_data)
+		return -ENOMEM;
 	hdlr = kzalloc(sizeof(*hdlr), GFP_KERNEL);
+	if (!hdlr)
+		goto __fail;
+
 	init_fh_domain(array->domain,
 			array->comp,
 			array->fhctl_base,
@@ -357,67 +369,61 @@ static int mcupm_init_v1(struct pll_dts *array, struct match *match)
 	}
 
 	return 0;
+
+__fail:
+	kfree(priv_data);
+	return -ENOMEM;
 }
 
-static struct fh_operation mcupm_ops_v1 = {
-	.hopping = mcupm_hopping_v1,
-	.ssc_enable = mcupm_ssc_enable_v1,
-	.ssc_disable = mcupm_ssc_disable_v1,
+static struct fh_operation vcp_ops_v1 = {
+	.hopping = vcp_hopping_v1,
+	.ssc_enable = vcp_ssc_enable_v1,
+	.ssc_disable = vcp_ssc_disable_v1,
 };
 
-/*mt6897 begin*/
-static struct id_map map_6897[] = {
-	{"mcu0", 1000},
-	{"mcu1", 2000},
-	{"mcu2", 3000},
-	{"mcu3", 4000},
-	{"mcu4", 5000},
-	{}
-};
-struct hdlr_data_v1 hdlr_data_6897 = {
-	.reg_tr = NULL,
-	.map = map_6897,
-};
-static struct fh_hdlr mcupm_hdlr_6897 = {
-	.ops = &mcupm_ops_v1,
-	.data = &hdlr_data_6897,
-};
-static struct match mt6897_match = {
-	.name = "mediatek,mt6897-fhctl",
-	.hdlr = &mcupm_hdlr_6897,
-	.init = &mcupm_init_v1,
-};
-/*mt6897 end*/
 
 /*mt6985 begin*/
 static struct id_map map_6985[] = {
-	{"mcu0", 1000},
-	{"mcu1", 2000},
-	{"mcu2", 3000},
-	{"mcu3", 4000},
-	{"mcu4", 5000},
+	{"top1", 1000},
 	{}
 };
-struct hdlr_data_v1 hdlr_data_6985 = {
+struct hdlr_data_v1 hdlr_data_6985_vcp = {
 	.reg_tr = NULL,
 	.map = map_6985,
 };
-static struct fh_hdlr mcupm_hdlr_6985 = {
-	.ops = &mcupm_ops_v1,
-	.data = &hdlr_data_6985,
+static struct fh_hdlr vcp_hdlr_6985 = {
+	.ops = &vcp_ops_v1,
+	.data = &hdlr_data_6985_vcp,
 };
+
 static struct match mt6985_match = {
 	.name = "mediatek,mt6985-fhctl",
-	.hdlr = &mcupm_hdlr_6985,
-	.init = &mcupm_init_v1,
+	.hdlr = &vcp_hdlr_6985,
+	.init = &vcp_init_v1,
 };
 /*mt6985 end*/
 
+
+
+
 /*mt6989 begin*/
+static struct id_map map_6989[] = {
+	{"top1", 1000},
+	{}
+};
+struct hdlr_data_v1 hdlr_data_6989_vcp = {
+	.reg_tr = NULL,
+	.map = map_6989,
+};
+static struct fh_hdlr vcp_hdlr_6989 = {
+	.ops = &vcp_ops_v1,
+	.data = &hdlr_data_6989_vcp,
+};
+
 static struct match mt6989_match = {
 	.name = "mediatek,mt6989-fhctl",
-	.hdlr = &mcupm_hdlr_6985,
-	.init = &mcupm_init_v1,
+	.hdlr = &vcp_hdlr_6989,
+	.init = &vcp_init_v1,
 };
 /*mt6989 end*/
 
@@ -425,13 +431,12 @@ static struct match mt6989_match = {
 
 
 static struct match *matches[] = {
-	&mt6897_match,
 	&mt6985_match,
 	&mt6989_match,
 	NULL,
 };
 
-int fhctl_mcupm_init(struct pll_dts *array)
+int fhctl_vcp_init(struct pll_dts *array)
 {
 	int i;
 	int num_pll;
