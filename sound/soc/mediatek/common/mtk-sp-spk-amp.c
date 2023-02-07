@@ -165,19 +165,37 @@ int mtk_spk_update_info(struct snd_soc_card *card,
 	int i2s_in_dai_link_idx = -1;
 	const int i2s_num = 2;
 	unsigned int i2s_set[2];
+	unsigned int is_ipm2p0;
 
 	if (mtk_spk_type == MTK_SPK_NOT_SMARTPA)
 		goto BYPASS_UPDATE;
 
+	/* get hw IPM version */
+	ret = of_property_read_u32(pdev->dev.of_node, "mediatek,ipm", &is_ipm2p0);
+	if (ret) {
+		dev_info(&pdev->dev,
+			 "%s(), get mediatek,ipm fail, use defalut 0\n", __func__);
+		is_ipm2p0 = 0;
+	}
+
 	/* get spk i2s set */
 	ret = of_property_read_u32_array(pdev->dev.of_node, "mediatek,spk-i2s",
 					 i2s_set, i2s_num);
+
 	if (ret) {
-		dev_info(&pdev->dev,
-			 "%s(), fail read mediatek,spk-i2s, use defalut i2s3/i2s0\n",
-			 __func__);
-		mtk_spk_i2s_out = MTK_SPK_I2S_3;
-		mtk_spk_i2s_in = MTK_SPK_I2S_0;
+		if (is_ipm2p0) {
+			dev_info(&pdev->dev,
+				 "%s(), fail read mediatek,spk-i2s, use defalut i2sout0/i2sin0\n",
+				 __func__);
+			mtk_spk_i2s_out = MTK_SPK_I2S_OUT0;
+			mtk_spk_i2s_in = MTK_SPK_I2S_IN0;
+		} else {
+			dev_info(&pdev->dev,
+				 "%s(), fail read mediatek,spk-i2s, use defalut i2s3/i2s0\n",
+				 __func__);
+			mtk_spk_i2s_out = MTK_SPK_I2S_3;
+			mtk_spk_i2s_in = MTK_SPK_I2S_0;
+		}
 	} else {
 		mtk_spk_i2s_out = i2s_set[0];
 		mtk_spk_i2s_in = i2s_set[1];
@@ -212,8 +230,18 @@ int mtk_spk_update_info(struct snd_soc_card *card,
 			dai_link->codecs->name = NULL;
 			dai_link->codecs->dai_name = NULL;
 		} else if (i2s_out_dai_link_idx < 0 &&
-				strcmp(dai_link->cpus->dai_name, "ETDMOUT") == 0 &&
-				mtk_spk_i2s_out == MTK_SPK_ETDM_OUT) {
+			   strcmp(dai_link->cpus->dai_name, "ETDMOUT") == 0 &&
+			   mtk_spk_i2s_out == MTK_SPK_ETDM_OUT) {
+			i2s_out_dai_link_idx = i;
+			dai_link->name = MTK_SPK_NAME;
+		} else if (i2s_out_dai_link_idx < 0 &&
+			   strcmp(dai_link->cpus->dai_name, "I2SOUT0") == 0 &&
+			   mtk_spk_i2s_out == MTK_SPK_I2S_OUT0) {
+			i2s_out_dai_link_idx = i;
+			dai_link->name = MTK_SPK_NAME;
+		} else if (i2s_out_dai_link_idx < 0 &&
+			   strcmp(dai_link->cpus->dai_name, "I2SOUT1") == 0 &&
+			   mtk_spk_i2s_out == MTK_SPK_I2S_OUT1) {
 			i2s_out_dai_link_idx = i;
 			dai_link->name = MTK_SPK_NAME;
 		}
@@ -233,8 +261,18 @@ int mtk_spk_update_info(struct snd_soc_card *card,
 			dai_link->codecs->name = NULL;
 			dai_link->codecs->dai_name = NULL;
 		} else if (i2s_in_dai_link_idx < 0 &&
-				strcmp(dai_link->cpus->dai_name, "ETDMIN") == 0 &&
-				mtk_spk_i2s_in == MTK_SPK_ETDM_IN) {
+			   strcmp(dai_link->cpus->dai_name, "ETDMIN") == 0 &&
+			   mtk_spk_i2s_in == MTK_SPK_ETDM_IN) {
+			i2s_in_dai_link_idx = i;
+			dai_link->name = MTK_SPK_REF_NAME;
+		} else if (i2s_in_dai_link_idx < 0 &&
+			   strcmp(dai_link->cpus->dai_name, "I2SIN0") == 0 &&
+			   mtk_spk_i2s_in == MTK_SPK_I2S_IN0) {
+			i2s_in_dai_link_idx = i;
+			dai_link->name = MTK_SPK_REF_NAME;
+		} else if (i2s_in_dai_link_idx < 0 &&
+			   strcmp(dai_link->cpus->dai_name, "I2SIN1") == 0 &&
+			   mtk_spk_i2s_in == MTK_SPK_I2S_IN1) {
 			i2s_in_dai_link_idx = i;
 			dai_link->name = MTK_SPK_REF_NAME;
 		}
