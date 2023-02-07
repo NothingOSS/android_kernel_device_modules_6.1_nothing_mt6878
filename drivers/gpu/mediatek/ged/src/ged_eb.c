@@ -319,7 +319,7 @@ unsigned int mtk_gpueb_dvfs_set_feedback_info(int frag_done_interval_in_ns,
 	if (curr_fps > 0)
 		mtk_gpueb_sysram_write(SYSRAM_GPU_FEEDBACK_INFO_CURR_FPS,
 			curr_fps);
-		ret = mtk_gpueb_sysram_read(SYSRAM_GPU_TA_3D_COEF);
+	ret = mtk_gpueb_sysram_read(SYSRAM_GPU_TA_3D_COEF);
 #else
 	struct fdvfs_ipi_data ipi_data;
 
