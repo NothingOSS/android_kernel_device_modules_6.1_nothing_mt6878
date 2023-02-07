@@ -128,6 +128,28 @@ config SND_SOC_MT6886_MT6368
 	  Select Y if you have such device.
 	  If unsure select "N".
 
+config SND_SOC_MT6897
+	tristate "ASoC support for Mediatek MT6897 chip"
+	depends on ARCH_MEDIATEK
+	select SND_SOC_MEDIATEK
+	select SND_SOC_MTK_SRAM
+	select SND_SOC_MTK_SMART_PHONE
+	help
+	  This adds ASoC driver for Mediatek MT6897 boards
+	  that can be used with other codecs.
+	  Select Y if you have such device.
+	  If unsure select "N".
+
+config SND_SOC_MT6897_MT6368
+	tristate "ASoc Audio driver for MT6897 with MT6368 codec"
+	depends on SND_SOC_MT6897
+	select SND_SOC_MT6368
+	help
+	  This adds ASoC driver for Mediatek MT6897 boards
+	  with the MT6368 codecs.
+	  Select Y if you have such device.
+	  If unsure select "N".
+
 config DEVICE_MODULES_SND_SOC_MTK_BTCVSD
 	tristate "ALSA BT SCO CVSD/MSBC Driver"
 	help
