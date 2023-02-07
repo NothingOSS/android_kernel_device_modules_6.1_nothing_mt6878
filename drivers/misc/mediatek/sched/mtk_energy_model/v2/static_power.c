@@ -227,7 +227,7 @@ static int init_public_table(void)
 		}
 
 		pd_info_public = &mtk_em_pd_ptr_public[cluster];
-		pd_info_public->cpumask = topology_core_cpumask(cpu);
+		pd_info_public->cpumask = topology_cluster_cpumask(cpu);
 		pd_info_public->cluster_num = cluster;
 		pd_info_public->nr_perf_states = pd->nr_perf_states;
 		pd_info_public->max_freq = policy->cpuinfo.max_freq;
@@ -522,7 +522,7 @@ static int mtk_static_power_probe(struct platform_device *pdev)
 
 	pr_info("[Static Power v2.1.1] MTK EM start\n");
 
-	cpumask = topology_core_cpumask(0);
+	cpumask = topology_cluster_cpumask(0);
 	ret = init_public_table();
 	if (ret < 0) {
 		pr_info("%s: initialize public table failed, ret: %d\n",
@@ -554,8 +554,8 @@ static int mtk_static_power_probe(struct platform_device *pdev)
 				return -ENODEV;
 			}
 
-			cpumask = topology_core_cpumask(cpu);
-			pd_private->cpumask = topology_core_cpumask(cpu);
+			cpumask = topology_cluster_cpumask(cpu);
+			pd_private->cpumask = topology_cluster_cpumask(cpu);
 			pd_private->cluster_num = cluster;
 			pd_private->max_freq = pd_public->max_freq;
 			pd_private->min_freq = pd_public->min_freq;
