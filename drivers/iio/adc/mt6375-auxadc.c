@@ -841,6 +841,9 @@ static int mt6375_auxadc_parse_dt(struct mt6375_priv *priv)
 		return -ENODEV;
 
 	np = of_get_child_by_name(np, "imix_r");
+	if (!np)
+		np = of_get_child_by_name(np, "imix-r");
+
 	if (!np) {
 		dev_notice(priv->dev, "no imix_r(%d)\n", ret);
 		return -ENODEV;
@@ -930,6 +933,9 @@ static int mt6375_auxadc_probe(struct platform_device *pdev)
 	alarm_init(&priv->vbat0_alarm, ALARM_BOOTTIME, vbat0_alarm_poll_func);
 
 	priv->isink_load = devm_regulator_get_exclusive(&pdev->dev, "isink_load");
+	if (IS_ERR(priv->isink_load))
+		priv->isink_load = devm_regulator_get_exclusive(&pdev->dev, "isink-load");
+
 	if (IS_ERR(priv->isink_load)) {
 		dev_err(&pdev->dev, "Failed to get isink_load regulator [%d]\n",
 			(int)PTR_ERR(priv->isink_load));
