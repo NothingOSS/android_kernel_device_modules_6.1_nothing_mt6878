@@ -22,6 +22,8 @@
  ****************************************************************************/
 #include "s5k3p9spmipiraw_Sensor.h"
 
+#define USING_DPHY_N_LANE 4
+
 static void set_group_hold(void *arg, u8 en);
 static u16 get_gain2reg(u32 gain);
 static void s5k3p9sp_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *len);
@@ -102,6 +104,19 @@ static struct mtk_mbus_frame_desc_entry frame_desc_slim_vid[] = {
 		},
 	},
 };
+
+#if  USING_DPHY_N_LANE != 4
+static struct mtk_mbus_frame_desc_entry frame_desc_cust1[] = {
+	{
+		.bus.csi2 = {
+			.channel = 0,
+			.data_type = 0x2b,
+			.hsize = 0x0280,
+			.vsize = 0x01e0,
+		},
+	},
+};
+#endif
 
 static struct subdrv_mode_struct mode_struct[] = {
 	{
@@ -283,8 +298,8 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
 		.pclk = 560000000,
-		.linelength = 5088,
-		.framelength = 917,
+		.linelength = 20352,
+		.framelength = 1158,
 		.max_framerate = 1200,
 		.mipi_pixel_rate = 278400000,
 		.readout_length = 0,
@@ -314,6 +329,94 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.delay_frame = 2,
 		.csi_param = {0},
 	},
+
+#if USING_DPHY_N_LANE == 1
+	{
+		.frame_desc = frame_desc_cust1,
+		.num_entries = ARRAY_SIZE(frame_desc_cust1),
+		.mode_setting_table = addr_data_pair_cust1,
+		.mode_setting_len = ARRAY_SIZE(addr_data_pair_cust1),
+		.seamless_switch_group = PARAM_UNDEFINED,
+		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
+		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
+		.hdr_group = PARAM_UNDEFINED,
+		.hdr_mode = HDR_NONE,
+		.pclk = 560000000,
+		.linelength = 20352,
+		.framelength = 1158,
+		.max_framerate = 237,
+		.mipi_pixel_rate = 139200000,
+		.readout_length = 0,
+		.read_margin = 0,
+		.imgsensor_winsize_info = {
+			.full_w = 4640,
+			.full_h = 3488,
+			.x0_offset = 400,
+			.y0_offset = 664,
+			.w0_size = 3840,
+			.h0_size = 2160,
+			.scale_w = 1920,
+			.scale_h = 1080,
+			.x1_offset = 0,
+			.y1_offset = 0,
+			.w1_size = 1920,
+			.h1_size = 1080,
+			.x2_tg_offset = 0,
+			.y2_tg_offset = 0,
+			.w2_tg_size = 1920,
+			.h2_tg_size = 1080,
+		},
+		.pdaf_cap = FALSE,
+		.imgsensor_pd_info = PARAM_UNDEFINED,
+		.ae_binning_ratio = 4,
+		.fine_integ_line = 0,
+		.delay_frame = 2,
+		.csi_param = {0},
+	},
+#elif USING_DPHY_N_LANE == 2
+	{
+		.frame_desc = frame_desc_cust1,
+		.num_entries = ARRAY_SIZE(frame_desc_cust1),
+		.mode_setting_table = addr_data_pair_cust1_2_lane,
+		.mode_setting_len = ARRAY_SIZE(addr_data_pair_cust1_2_lane),
+		.seamless_switch_group = PARAM_UNDEFINED,
+		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
+		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
+		.hdr_group = PARAM_UNDEFINED,
+		.hdr_mode = HDR_NONE,
+		.pclk = 560000000,
+		.linelength = 5088,
+		.framelength = 1834,
+		.max_framerate = 300,
+		.mipi_pixel_rate = 2100000000,
+		.readout_length = 0,
+		.read_margin = 0,
+		.imgsensor_winsize_info = {
+			.full_w = 4640,
+			.full_h = 3488,
+			.x0_offset = 400,
+			.y0_offset = 664,
+			.w0_size = 3840,
+			.h0_size = 2160,
+			.scale_w = 1920,
+			.scale_h = 1080,
+			.x1_offset = 0,
+			.y1_offset = 0,
+			.w1_size = 1920,
+			.h1_size = 1080,
+			.x2_tg_offset = 0,
+			.y2_tg_offset = 0,
+			.w2_tg_size = 1920,
+			.h2_tg_size = 1080,
+		},
+		.pdaf_cap = FALSE,
+		.imgsensor_pd_info = PARAM_UNDEFINED,
+		.ae_binning_ratio = 4,
+		.fine_integ_line = 0,
+		.delay_frame = 2,
+		.csi_param = {0},
+	},
+#endif
 };
 
 static struct subdrv_static_ctx static_ctx = {
@@ -331,7 +434,13 @@ static struct subdrv_static_ctx static_ctx = {
 	.isp_driving_current = ISP_DRIVING_2MA,
 	.sensor_interface_type = SENSOR_INTERFACE_TYPE_MIPI,
 	.mipi_sensor_type = MIPI_OPHY_NCSI2,
+#if USING_DPHY_N_LANE == 1
+	.mipi_lane_num = SENSOR_MIPI_1_LANE,
+#elif USING_DPHY_N_LANE == 2
+	.mipi_lane_num = SENSOR_MIPI_2_LANE,
+#else
 	.mipi_lane_num = SENSOR_MIPI_4_LANE,
+#endif
 	.ob_pedestal = 0x40,
 
 	.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_4CELL_BAYER_Gr,
@@ -440,7 +549,7 @@ static void s5k3p9sp_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *len
 	u32 mode = *((u32 *)para);
 
 	if (mode != ctx->test_pattern)
-		DRV_LOG(ctx, "mode(%u->%u)\n", ctx->test_pattern, mode);
+		DRV_LOGE(ctx, "mode(%u->%u)\n", ctx->test_pattern, mode);
 	/* 1:Solid Color 2:Color Bar 5:Black */
 	if (mode)
 		subdrv_i2c_wr_u16(ctx, 0x0600, mode); /*100% Color bar*/
@@ -463,7 +572,7 @@ static void s5k3p9sp_set_test_pattern_data(struct subdrv_ctx *ctx, u8 *para, u32
 	subdrv_i2c_wr_u16(ctx, 0x0606, B);
 	subdrv_i2c_wr_u16(ctx, 0x0608, Gb);
 
-	DRV_LOG(ctx, "mode(%u) R/Gr/Gb/B = 0x%04x/0x%04x/0x%04x/0x%04x\n",
+	DRV_LOGE(ctx, "mode(%u) R/Gr/Gb/B = 0x%04x/0x%04x/0x%04x/0x%04x\n",
 		ctx->test_pattern, R, Gr, Gb, B);
 }
 
@@ -479,7 +588,9 @@ static int init_ctx(struct subdrv_ctx *ctx,	struct i2c_client *i2c_client, u8 i2
 
 static void s5k3p9sp_sensor_init(struct subdrv_ctx *ctx)
 {
-	DRV_LOG(ctx, "E\n");
+	DRV_LOGE(ctx, "E\n");
+#if USING_DPHY_N_LANE == 4
+	DRV_LOGE(ctx, "Dphy-4lane setting\n");
 	subdrv_i2c_wr_u16(ctx, 0x6028, 0x4000);
 	subdrv_i2c_wr_u16(ctx, 0x6010, 0x0001);
 	mdelay(3);
@@ -612,7 +723,20 @@ static void s5k3p9sp_sensor_init(struct subdrv_ctx *ctx)
 	subdrv_i2c_wr_u16(ctx, 0xB134, 0x0000);
 	subdrv_i2c_wr_u16(ctx, 0xB136, 0x0000);
 	subdrv_i2c_wr_u16(ctx, 0xB138, 0x0000);
-	DRV_LOG(ctx, "X\n");
+#else
+	DRV_LOGE(ctx, "Dphy-2lane setting\n");
+	subdrv_i2c_wr_u16(ctx, 0x6028, 0x4000);
+	subdrv_i2c_wr_u16(ctx, 0x0000, 0x1000);
+	subdrv_i2c_wr_u16(ctx, 0x0000, 0x3109);
+	subdrv_i2c_wr_u16(ctx, 0x6010, 0x0001);
+
+	mdelay(3);
+	i2c_table_write(ctx, uTnpArrayInit_1lane,
+			ARRAY_SIZE(uTnpArrayInit_1lane));
+
+
+#endif
+	DRV_LOGE(ctx, "X\n");
 }
 
 static int open(struct subdrv_ctx *ctx)
