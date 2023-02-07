@@ -1065,4 +1065,7 @@ bool imgsys_qos_dbg_enable_plat7sp(void);
 bool imgsys_quick_onoff_enable_plat7sp(void);
 bool imgsys_fence_dbg_enable_plat7sp(void);
 bool imgsys_fine_grain_dvfs_enable_plat7sp(void);
+bool imgsys_iova_dbg_enable_plat7sp(void);
+u32 imgsys_iova_dbg_port_plat7sp(void);
+
 #endif /* _MTK_IMGSYS_CMDQ_PLAT_7SP_H_ */

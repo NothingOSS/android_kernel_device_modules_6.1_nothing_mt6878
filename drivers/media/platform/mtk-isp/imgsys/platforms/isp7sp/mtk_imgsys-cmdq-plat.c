@@ -1538,6 +1538,9 @@ int imgsys_cmdq_sendtask_plat7sp(struct mtk_imgsys_dev *imgsys_dev,
 					vzalloc(sizeof(struct mtk_imgsys_cb_param));
 				if (cb_param == NULL) {
 					cmdq_pkt_destroy(pkt);
+					dev_info(imgsys_dev->dev,
+						"%s: cb_param is NULL! in block(%d) for frm(%d/%d)!\n",
+						__func__, blk_idx, frm_idx, frm_num);
 					return -1;
 				}
 				dev_dbg(imgsys_dev->dev,
@@ -1673,6 +1676,7 @@ int imgsys_cmdq_parser_plat7sp(struct mtk_imgsys_dev *imgsys_dev,
 	struct dma_buf *dbuf = NULL;
 	struct mtk_imgsys_request *req = NULL;
 	struct mtk_imgsys_dev_buffer *dev_b = 0;
+	bool iova_dbg = false;
 #endif
 
 	req_fd = frm_info->request_fd;
@@ -1705,10 +1709,14 @@ int imgsys_cmdq_parser_plat7sp(struct mtk_imgsys_dev *imgsys_dev,
 			break;
 #ifdef MTK_IOVA_SINK2KERNEL
 		case IMGSYS_CMD_WRITE_FD:
-			pr_debug(
-				"%s: WRITE_FD with addr(0x%08x) msb_ofst(0x%08x) fd(0x%08x) ofst(0x%08x) rshift(%d)\n",
-				__func__, cmd->u.dma_addr, cmd->u.dma_addr_msb_ofst,
+			iova_dbg = (imgsys_iova_dbg_port_plat7sp() == cmd->u.dma_addr);
+			if (imgsys_iova_dbg_enable_plat7sp() || iova_dbg) {
+				pr_info(
+					"%s: WRITE_FD with req_fd/no(%d/%d) frame_no(%d) addr(0x%08lx) msb_ofst(0x%08x) fd(0x%08x) ofst(0x%08x) rshift(%d)\n",
+					__func__, req_fd, req_no, frm_no,
+				(unsigned long)cmd->u.dma_addr, cmd->u.dma_addr_msb_ofst,
 				cmd->u.fd, cmd->u.ofst, cmd->u.right_shift);
+			}
 			if (cmd->u.fd <= 0) {
 				pr_info("%s: [ERROR] WRITE_FD with FD(%d)!\n", __func__, cmd->u.fd);
 				return -1;
@@ -1721,16 +1729,23 @@ int imgsys_cmdq_parser_plat7sp(struct mtk_imgsys_dev *imgsys_dev,
 			iova_addr = imgsys_get_iova(dbuf, cmd->u.fd, imgsys_dev, dev_b) +
 						cmd->u.ofst;
 			//
-			pr_debug(
-				"%s: WRITE_FD with addr(0x%08x) value(0x%llx)\n",
-				__func__, cmd->u.dma_addr, (iova_addr >> cmd->u.right_shift));
+			if (imgsys_iova_dbg_enable_plat7sp() || iova_dbg) {
+				pr_info(
+					"%s: WRITE_FD with req_fd/no(%d/%d) frame_no(%d) addr(0x%08lx) value(0x%08llx)\n",
+					__func__, req_fd, req_no, frm_no,
+					(unsigned long)cmd->u.dma_addr,
+					(iova_addr >> cmd->u.right_shift));
+			}
 			cmdq_pkt_write(pkt, NULL, cmd->u.dma_addr,
 				(iova_addr >> cmd->u.right_shift), 0xFFFFFFFF);
 
 			if (cmd->u.dma_addr_msb_ofst) {
-				pr_debug(
-					"%s: WRITE_FD with addr(0x%08x) value(0x%llx)\n",
-					__func__, cmd->u.dma_addr, (iova_addr>>32));
+				if (imgsys_iova_dbg_enable_plat7sp() || iova_dbg) {
+					pr_info(
+						"%s: WRITE_FD with req_fd/no(%d/%d) frame_no(%d) addr(0x%08lx) value(0x%08llx)\n",
+						__func__, req_fd, req_no, frm_no,
+						(unsigned long)cmd->u.dma_addr, (iova_addr>>32));
+				}
 				cmdq_pkt_write(pkt, NULL,
 					(cmd->u.dma_addr + cmd->u.dma_addr_msb_ofst),
 					(iova_addr>>32), 0xFFFFFFFF);
@@ -2789,6 +2804,16 @@ bool imgsys_fence_dbg_enable_plat7sp(void)
 bool imgsys_fine_grain_dvfs_enable_plat7sp(void)
 {
 	return imgsys_fine_grain_dvfs_en;
+}
+
+bool imgsys_iova_dbg_enable_plat7sp(void)
+{
+	return imgsys_iova_dbg_en;
+}
+
+u32 imgsys_iova_dbg_port_plat7sp(void)
+{
+	return imgsys_iova_dbg_port_en;
 }
 
 struct imgsys_cmdq_cust_data imgsys_cmdq_data_7sp = {

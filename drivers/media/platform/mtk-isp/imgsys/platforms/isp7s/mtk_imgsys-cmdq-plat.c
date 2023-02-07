@@ -854,7 +854,7 @@ void imgsys_cmdq_task_cb_plat7s(struct cmdq_cb_data data)
 				break;
 		if (err_idx >= cb_param->task_cnt) {
 			pr_info(
-				"%s: [ERROR] can't find task in task list! cb(%p) error(%d) for %d frm(%d/%d) blk(%d/%d) ofst(0x%lx) erridx(%d/%d) task(%d/%d/%d) ofst(%lx/%lx/%lx/%lx/%lx)",
+				"%s: [ERROR] can't find task in task list! cb(%p) error(%d)  gid(%d) for frm(%d/%d) blk(%d/%d) ofst(0x%lx) erridx(%d/%d) task(%d/%d/%d) ofst(%lx/%lx/%lx/%lx/%lx)",
 				__func__, cb_param, cb_param->err, cb_param->group_id,
 				cb_param->frm_idx, cb_param->frm_num,
 				cb_param->blk_idx, cb_param->blk_num,
@@ -1094,7 +1094,7 @@ int imgsys_cmdq_task_aee_cb_plat7s(struct cmdq_cb_data data)
 			break;
 	if (err_idx >= cb_param->task_cnt) {
 		pr_info(
-			"%s: [ERROR] can't find task in task list! cb(%p) error(%d) for %d frm(%d/%d) blk(%d/%d) ofst(0x%lx) erridx(%d/%d) task(%d/%d/%d) ofst(%lx/%lx/%lx/%lx/%lx)",
+			"%s: [ERROR] can't find task in task list! cb(%p) error(%d)  gid(%d) for frm(%d/%d) blk(%d/%d) ofst(0x%lx) erridx(%d/%d) task(%d/%d/%d) ofst(%lx/%lx/%lx/%lx/%lx)",
 			__func__, cb_param, cb_param->err, cb_param->group_id,
 			cb_param->frm_idx, cb_param->frm_num,
 			cb_param->blk_idx, cb_param->blk_num,
@@ -1374,7 +1374,7 @@ int imgsys_cmdq_sendtask_plat7s(struct mtk_imgsys_dev *imgsys_dev,
 	/* Allocate cmdq buffer for task timestamp */
 	if (imgsys_cmdq_ts_enable_plat7s() || imgsys_wpe_bwlog_enable_plat7s()) {
 		pkt_ts_va = cmdq_mbox_buf_alloc(imgsys_clt[0], &pkt_ts_pa);
-		/* if (imgsys_cmdq_ts_dbg_enable_plat7s()) { */
+		/* if (imgsys_cmdq_ts_dbg_enable_plat7sp()) { */
 			frm_info->hw_ts_log = vzalloc(sizeof(char)*MTK_IMGSYS_LOG_LENGTH*4);
 			memset((char *)frm_info->hw_ts_log, 0x0, MTK_IMGSYS_LOG_LENGTH*4);
 			frm_info->hw_ts_log[strlen(frm_info->hw_ts_log)] = '\0';
@@ -1538,6 +1538,9 @@ int imgsys_cmdq_sendtask_plat7s(struct mtk_imgsys_dev *imgsys_dev,
 					vzalloc(sizeof(struct mtk_imgsys_cb_param));
 				if (cb_param == NULL) {
 					cmdq_pkt_destroy(pkt);
+					dev_info(imgsys_dev->dev,
+						"%s: cb_param is NULL! in block(%d) for frm(%d/%d)!\n",
+						__func__, blk_idx, frm_idx, frm_num);
 					return -1;
 				}
 				dev_dbg(imgsys_dev->dev,
@@ -1673,6 +1676,7 @@ int imgsys_cmdq_parser_plat7s(struct mtk_imgsys_dev *imgsys_dev,
 	struct dma_buf *dbuf = NULL;
 	struct mtk_imgsys_request *req = NULL;
 	struct mtk_imgsys_dev_buffer *dev_b = 0;
+	bool iova_dbg = false;
 #endif
 
 	req_fd = frm_info->request_fd;
@@ -1705,10 +1709,14 @@ int imgsys_cmdq_parser_plat7s(struct mtk_imgsys_dev *imgsys_dev,
 			break;
 #ifdef MTK_IOVA_SINK2KERNEL
 		case IMGSYS_CMD_WRITE_FD:
-			pr_debug(
-				"%s: WRITE_FD with addr(0x%08x) msb_ofst(0x%08x) fd(0x%08x) ofst(0x%08x) rshift(%d)\n",
-				__func__, cmd->u.dma_addr, cmd->u.dma_addr_msb_ofst,
+			iova_dbg = (imgsys_iova_dbg_port_plat7s() == cmd->u.dma_addr);
+			if (imgsys_iova_dbg_enable_plat7s() || iova_dbg) {
+				pr_info(
+					"%s: WRITE_FD with req_fd/no(%d/%d) frame_no(%d) addr(0x%08lx) msb_ofst(0x%08x) fd(0x%08x) ofst(0x%08x) rshift(%d)\n",
+					__func__, req_fd, req_no, frm_no,
+				(unsigned long)cmd->u.dma_addr, cmd->u.dma_addr_msb_ofst,
 				cmd->u.fd, cmd->u.ofst, cmd->u.right_shift);
+			}
 			if (cmd->u.fd <= 0) {
 				pr_info("%s: [ERROR] WRITE_FD with FD(%d)!\n", __func__, cmd->u.fd);
 				return -1;
@@ -1721,16 +1729,23 @@ int imgsys_cmdq_parser_plat7s(struct mtk_imgsys_dev *imgsys_dev,
 			iova_addr = imgsys_get_iova(dbuf, cmd->u.fd, imgsys_dev, dev_b) +
 						cmd->u.ofst;
 			//
-			pr_debug(
-				"%s: WRITE_FD with addr(0x%08x) value(0x%08llx)\n",
-				__func__, cmd->u.dma_addr, (iova_addr >> cmd->u.right_shift));
+			if (imgsys_iova_dbg_enable_plat7s() || iova_dbg) {
+				pr_info(
+					"%s: WRITE_FD with req_fd/no(%d/%d) frame_no(%d) addr(0x%08lx) value(0x%08llx)\n",
+					__func__, req_fd, req_no, frm_no,
+					(unsigned long)cmd->u.dma_addr,
+					(iova_addr >> cmd->u.right_shift));
+			}
 			cmdq_pkt_write(pkt, NULL, cmd->u.dma_addr,
 				(iova_addr >> cmd->u.right_shift), 0xFFFFFFFF);
 
 			if (cmd->u.dma_addr_msb_ofst) {
-				pr_debug(
-					"%s: WRITE_FD with addr(0x%08x) value(0x%08llx)\n",
-					__func__, cmd->u.dma_addr, (iova_addr>>32));
+				if (imgsys_iova_dbg_enable_plat7s() || iova_dbg) {
+					pr_info(
+						"%s: WRITE_FD with req_fd/no(%d/%d) frame_no(%d) addr(0x%08lx) value(0x%08llx)\n",
+						__func__, req_fd, req_no, frm_no,
+						(unsigned long)cmd->u.dma_addr, (iova_addr>>32));
+				}
 				cmdq_pkt_write(pkt, NULL,
 					(cmd->u.dma_addr + cmd->u.dma_addr_msb_ofst),
 					(iova_addr>>32), 0xFFFFFFFF);
@@ -1805,8 +1820,8 @@ int imgsys_cmdq_parser_plat7s(struct mtk_imgsys_dev *imgsys_dev,
 			break;
 		case IMGSYS_CMD_TIME:
 			pr_debug(
-				"%s: TIME with addr(0x%08llx) num(0x%08x)\n",
-				__func__, dma_pa, *num);
+				"%s: TIME with addr(0x%08lx) num(0x%08x)\n",
+				__func__, (unsigned long)dma_pa, *num);
 			if (imgsys_cmdq_ts_enable_plat7s()) {
 				cmdq_pkt_write_indriect(pkt, NULL, dma_pa + (4*(*num)),
 					CMDQ_TPR_ID, ~0);
@@ -2789,6 +2804,16 @@ bool imgsys_fence_dbg_enable_plat7s(void)
 bool imgsys_fine_grain_dvfs_enable_plat7s(void)
 {
 	return imgsys_fine_grain_dvfs_en;
+}
+
+bool imgsys_iova_dbg_enable_plat7s(void)
+{
+	return imgsys_iova_dbg_en;
+}
+
+u32 imgsys_iova_dbg_port_plat7s(void)
+{
+	return imgsys_iova_dbg_port_en;
 }
 
 struct imgsys_cmdq_cust_data imgsys_cmdq_data_7s = {
