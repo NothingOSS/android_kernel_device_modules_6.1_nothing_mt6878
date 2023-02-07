@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: (GPL-2.0 OR MIT)
 /*
- * Copyright (c) 2021 MediaTek Inc.
+ * Copyright (c) 2023 MediaTek Inc.
  */
 #include <dt-bindings/iio/mt635x-auxadc.h>
 #include <dt-bindings/spmi/spmi.h>
@@ -10,8 +10,7 @@
 		compatible = "mediatek,mt6369";
 		reg = <0x5 SPMI_USID>;
 		interrupts = <0x5>;
-		#address-cells = <1>;
-		#size-cells = <0>;
+		#address-cells = <0>;
 		interrupt-controller;
 		#interrupt-cells = <2>;
 
