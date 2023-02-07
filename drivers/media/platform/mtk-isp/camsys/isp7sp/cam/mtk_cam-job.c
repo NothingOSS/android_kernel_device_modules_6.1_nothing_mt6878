@@ -1037,39 +1037,60 @@ static bool is_valid_cq(struct mtkcam_ipi_cq_desc_entry *cq_entry)
 	return !!cq_entry->size;
 }
 
-static int num_cq_to_trigger(unsigned long used_engine,
-			     struct mtkcam_ipi_frame_ack_result *cq_ret)
+static
+unsigned long engines_to_trigger_cq(struct mtk_cam_job *job,
+				    struct mtkcam_ipi_frame_ack_result *cq_ret)
 {
-	int i, n = 0;
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	unsigned long used_engine, subset;
+	unsigned long cq_engine;
+	int dev_idx;
+	int i;
+
+	used_engine = job->used_engine;
+	cq_engine = 0;
 
 	/* raw */
-	if (bit_map_subset_of(MAP_HW_RAW, used_engine))
-		if (is_valid_cq(&cq_ret->main) && is_valid_cq(&cq_ret->sub))
-			n++;
+	subset = bit_map_subset_of(MAP_HW_RAW, used_engine);
+	if (subset)
+		if (is_valid_cq(&cq_ret->main) && is_valid_cq(&cq_ret->sub)) {
+			dev_idx = find_first_bit_set(subset);
+			cq_engine |= bit_map_bit(MAP_HW_RAW, dev_idx);
+		}
 
 	/* mraw */
 	if (bit_map_subset_of(MAP_HW_MRAW, used_engine))
 		for (i = 0; i < ARRAY_SIZE(cq_ret->mraw); ++i)
-			if (is_valid_cq(&cq_ret->mraw[i]))
-				n++;
+			if (is_valid_cq(&cq_ret->mraw[i])) {
+				dev_idx = ctx->mraw_subdev_idx[i];
+				cq_engine |= bit_map_bit(MAP_HW_MRAW, dev_idx);
+			}
 
 	/* camsv */
-	if (bit_map_subset_of(MAP_HW_CAMSV, used_engine))
+	subset = bit_map_subset_of(MAP_HW_CAMSV, used_engine);
+	if (subset)
 		for (i = 0; i < ARRAY_SIZE(cq_ret->camsv); ++i)
-			if (is_valid_cq(&cq_ret->camsv[i]))
-				n++;
-	return n;
+			if (is_valid_cq(&cq_ret->camsv[i])) {
+				dev_idx = find_first_bit_set(subset);
+				cq_engine |= bit_map_bit(MAP_HW_CAMSV, dev_idx);
+
+				/* only single sv device */
+				break;
+			}
+
+	return cq_engine;
 }
 
 static int _apply_raw_cq(struct mtk_cam_job *job,
+			 unsigned long raw_engines,
 			 struct mtk_cam_pool_buffer *cq,
 			 struct mtkcam_ipi_frame_ack_result *cq_rst)
 {
-	struct mtk_cam_ctx *ctx = job->src_ctx;
-	struct mtk_cam_device *cam = ctx->cam;
-	int raw_id = _get_master_raw_id(job->used_engine);
+	struct mtk_cam_device *cam = job->src_ctx->cam;
+	int raw_id;
 	struct mtk_raw_device *raw_dev;
 
+	raw_id = find_first_bit_set(raw_engines);
 	if (raw_id < 0)
 		return -1;
 
@@ -1079,45 +1100,33 @@ static int _apply_raw_cq(struct mtk_cam_job *job,
 		 cq->daddr,
 		 cq_rst->main.size, cq_rst->main.offset,
 		 cq_rst->sub.size, cq_rst->sub.offset);
-
-	dev_info(raw_dev->dev,
-		 "[ctx:%d], CQ-%d triggered, cq_addr:0x%llx\n",
-		 ctx->stream_id, job->frame_seq_no, cq->daddr);
 	return 0;
 }
 
 static int _apply_sv_cq(struct mtk_cam_job *job,
+			unsigned long sv_engines,
 			struct mtk_cam_pool_buffer *cq,
 			struct mtkcam_ipi_frame_ack_result *cq_rst)
 {
-	struct mtk_cam_ctx *ctx = job->src_ctx;
-	struct mtk_cam_device *cam = ctx->cam;
+	struct mtk_cam_device *cam = job->src_ctx->cam;
 	struct mtk_camsv_device *sv_dev;
-	int i;
-	unsigned long used_engine;
-	int ret = 0;
+	int sv_dev_id;
 
-	used_engine = bit_map_subset_of(MAP_HW_CAMSV, job->used_engine);
-	for (i = 0; i < cam->engines.num_camsv_devices; i++) {
-		if (used_engine & (1 << i)) {
-			sv_dev = dev_get_drvdata(cam->engines.sv_devs[i]);
-			apply_camsv_cq(sv_dev, &job->cq_ref,
-				       cq->daddr,
-				       cq_rst->camsv[0].size,
-				       cq_rst->camsv[0].offset, 0);
-			dev_info(sv_dev->dev,
-				 "SOF[ctx:%d], CQ-%d triggered, cq_addr:0x%llx\n",
-				 ctx->stream_id, job->frame_seq_no, cq->daddr);
+	sv_dev_id = find_first_bit_set(sv_engines);
+	if (sv_dev_id < 0)
+		return -1;
 
-			/* only single sv device */
-			break;
-		}
-	}
+	sv_dev = dev_get_drvdata(cam->engines.sv_devs[sv_dev_id]);
 
-	return ret;
+	apply_camsv_cq(sv_dev, &job->cq_ref,
+		       cq->daddr,
+		       cq_rst->camsv[0].size,
+		       cq_rst->camsv[0].offset, 0);
+	return 0;
 }
 
 static int _apply_mraw_cq(struct mtk_cam_job *job,
+			  unsigned long mraw_engines,
 			  struct mtk_cam_pool_buffer *cq,
 			  struct mtkcam_ipi_frame_ack_result *cq_rst)
 {
@@ -1125,48 +1134,55 @@ static int _apply_mraw_cq(struct mtk_cam_job *job,
 	struct mtk_cam_device *cam = ctx->cam;
 	struct mtk_mraw_device *mraw_dev;
 	int i, mraw_idx;
-	int ret = 0;
 
 	for (i = 0; i < ctx->num_mraw_subdevs; i++) {
 		mraw_idx = ctx->mraw_subdev_idx[i];
+		if (!(mraw_engines & BIT(mraw_idx)))
+			continue;
+
 		mraw_dev = dev_get_drvdata(cam->engines.mraw_devs[mraw_idx]);
 		apply_mraw_cq(mraw_dev, &job->cq_ref,
 			      cq->daddr,
 			      cq_rst->mraw[i].size,
 			      cq_rst->mraw[i].offset, 0);
-		dev_info(mraw_dev->dev,
-			 "SOF[ctx:%d], CQ-%d triggered, cq_addr:0x%llx\n",
-			 ctx->stream_id, job->frame_seq_no, cq->daddr);
 	}
+	return 0;
+}
 
-	return ret;
+static int apply_engines_cq(struct mtk_cam_job *job,
+			    int frame_seq_no,
+			    struct mtk_cam_pool_buffer *cq,
+			    struct mtkcam_ipi_frame_ack_result *cq_rst)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	unsigned long cq_engine;
+	unsigned long subset;
+
+	cq_engine = engines_to_trigger_cq(job, cq_rst);
+
+	apply_cq_ref_set_cnt(&job->cq_ref, hweight_long(cq_engine));
+
+	subset = bit_map_subset_of(MAP_HW_RAW, cq_engine);
+	if (subset)
+		_apply_raw_cq(job, subset, cq, cq_rst);
+
+	subset = bit_map_subset_of(MAP_HW_CAMSV, cq_engine);
+	if (subset)
+		_apply_sv_cq(job, subset, cq, cq_rst);
+
+	subset = bit_map_subset_of(MAP_HW_MRAW, cq_engine);
+	if (subset)
+		_apply_mraw_cq(job, subset, cq, cq_rst);
+
+	dev_info(ctx->cam->dev, "[%s] ctx:%d CQ-%d eng 0x%lx cq_addr: %pad\n",
+		 __func__, ctx->stream_id, frame_seq_no, cq_engine,
+		 &cq->daddr);
+	return 0;
 }
 
 static int _apply_cq(struct mtk_cam_job *job)
 {
-	unsigned long used_engine;
-	int n_cq;
-
-	if (WARN_ON(!job->composed))
-		return -1;
-
-	used_engine = job->used_engine;
-
-	n_cq = num_cq_to_trigger(used_engine, &job->cq_rst);
-	/* pr_info("%s: n=%d\n", __func__, n_cq); */
-
-	apply_cq_ref_set_cnt(&job->cq_ref, n_cq);
-
-	/* TODO(AY): reduce duplicate bitmask check */
-	if (bit_map_subset_of(MAP_HW_RAW, used_engine))
-		_apply_raw_cq(job, &job->cq, &job->cq_rst);
-
-	if (bit_map_subset_of(MAP_HW_CAMSV, used_engine))
-		_apply_sv_cq(job, &job->cq, &job->cq_rst);
-
-	if (bit_map_subset_of(MAP_HW_MRAW, used_engine))
-		_apply_mraw_cq(job, &job->cq, &job->cq_rst);
-
+	apply_engines_cq(job, job->frame_seq_no, &job->cq, &job->cq_rst);
 	return 0;
 }
 
@@ -1467,7 +1483,6 @@ static int job_init_mstream(struct mtk_cam_job *job)
 	mjob->composed_idx = 0;
 	mjob->apply_sensor_idx = 0;
 	mjob->apply_isp_idx = 0;
-	mjob->done_idx = 0;
 
 	ret = mtk_cam_buffer_pool_fetch(&ctx->cq_pool, &mjob->cq);
 	if (ret) {
@@ -1525,6 +1540,16 @@ static int update_buffer_to_ipi_mstream_1st(struct mtk_cam_job *job,
 	img_out->fmt = img_in->fmt;
 	for (i = 0; i < ARRAY_SIZE(img_in->buf); ++i)
 		img_out->buf[0][i] = img_in->buf[i];
+
+	/* copy 2nd camsv frame's param to 1st */
+	memcpy(fp_1st->camsv_param, fp_2nd->camsv_param,
+		sizeof(struct mtkcam_ipi_camsv_frame_param) *
+		CAMSV_MAX_PIPE_USED * CAMSV_MAX_TAGS);
+
+	/* copy 2nd mraw frame's param to 1st */
+	memcpy(fp_1st->mraw_param, fp_2nd->mraw_param,
+		sizeof(struct mtkcam_ipi_mraw_frame_param) *
+		MRAW_MAX_PIPE_USED);
 
 	reset_unused_io_of_ipi_frame(&helper);
 	return 0;
@@ -1994,36 +2019,6 @@ static void compose_done_mstream(struct mtk_cam_job *job,
 	++mjob->composed_idx;
 }
 
-static int apply_1st_cq_mstream(struct mtk_cam_job *job)
-{
-	struct mtk_cam_mstream_job *mjob =
-		container_of(job, struct mtk_cam_mstream_job, job);
-	unsigned long used_engine;
-	int n_cq;
-
-	if (WARN_ON(mjob->composed_idx == 0))
-		return -1;
-
-	used_engine = job->used_engine;
-
-	n_cq = num_cq_to_trigger(used_engine, &mjob->cq_rst);
-	/* pr_info("%s: n=%d\n", __func__, n_cq); */
-
-	apply_cq_ref_set_cnt(&job->cq_ref, n_cq);
-
-	/* TODO(AY): reduce duplicate bitmask check */
-	if (bit_map_subset_of(MAP_HW_RAW, used_engine))
-		_apply_raw_cq(job, &mjob->cq, &mjob->cq_rst);
-
-	if (0 && bit_map_subset_of(MAP_HW_CAMSV, used_engine))
-		_apply_sv_cq(job, &mjob->cq, &mjob->cq_rst);
-
-	if (0 && bit_map_subset_of(MAP_HW_MRAW, used_engine))
-		_apply_mraw_cq(job, &mjob->cq, &mjob->cq_rst);
-
-	return 0;
-}
-
 static void mtk_cam_set_sensor_mstream_mode(struct mtk_cam_ctx *ctx, bool on)
 {
 	struct v4l2_ctrl *mstream_mode_ctrl;
@@ -2104,8 +2099,8 @@ static int apply_sensor_mstream_exp_gain(struct mtk_cam_ctx *ctx,
 		v4l2_ctrl_s_ctrl_compound(ae_ctrl, V4L2_CTRL_TYPE_U32, &ae);
 	}
 
-	pr_info("%s-%u: shutter %u gain %u req_id %d\n",
-		 __func__, index, shutter, gain, req_id);
+	//pr_info("%s-%u: shutter %u gain %u req_id %d\n",
+	//  __func__, index, shutter, gain, req_id);
 	return 0;
 }
 
@@ -2151,9 +2146,11 @@ static int apply_cq_mstream(struct mtk_cam_job *job)
 	int ret;
 
 	if (mjob->apply_isp_idx == 0)
-		ret = apply_1st_cq_mstream(job);
+		ret = apply_engines_cq(job, job->frame_seq_no,
+				       &mjob->cq, &mjob->cq_rst);
 	else
-		ret = _apply_cq(job);
+		ret = apply_engines_cq(job, next_frame_seq(job->frame_seq_no),
+				       &job->cq, &job->cq_rst);
 
 	++mjob->apply_isp_idx;
 	return ret;
@@ -2163,21 +2160,19 @@ static int job_mark_engine_done_mstream(struct mtk_cam_job *job,
 					int engine_type, int engine_id,
 					int seq_no)
 {
-	struct mtk_cam_mstream_job *mjob =
-		container_of(job, struct mtk_cam_mstream_job, job);
-	u8 cur_idx;
-
-	cur_idx = mjob->done_idx;
-
 	/* 1st frame */
-	if (cur_idx == 0) {
-
+	if (seq_no == job->frame_seq_no) {
 		if (engine_type != CAMSYS_ENGINE_RAW) {
-			pr_info("%s: warn. why does engine %d-%d has done\n",
-				__func__, engine_type, engine_id);
+
+			/* Note:
+			 * disable this log since we run camsv/mraw for both
+			 * frames now
+			 *
+			 * pr_info("%s: warn. why does engine %d-%d has done\n",
+			 *     __func__, engine_type, engine_id);
+			 */
 			return 0;
 		}
-		++mjob->done_idx;
 		return 1;
 	}
 

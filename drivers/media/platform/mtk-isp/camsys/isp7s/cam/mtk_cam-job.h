@@ -346,7 +346,6 @@ struct mtk_cam_mstream_job {
 	u8 composed_idx;
 	u8 apply_sensor_idx;
 	u8 apply_isp_idx;
-	u8 done_idx;
 
 #ifdef DOES_MSTREAM_NEED_THESE
 	/* TODO */

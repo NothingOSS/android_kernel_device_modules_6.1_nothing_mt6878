@@ -37,6 +37,11 @@ static inline bool is_mask_containing(unsigned long a, unsigned long b)
 	return (a & b) == b;
 }
 
+static inline int find_first_bit_set(unsigned long set)
+{
+	return ffs(set) - 1;
+}
+
 /* subdev mappings */
 #define MAP_SUBDEV_RAW		BIT_MAP(MTKCAM_SUBDEV_RAW_START, \
 					MTKCAM_SUBDEV_RAW_NUM)
