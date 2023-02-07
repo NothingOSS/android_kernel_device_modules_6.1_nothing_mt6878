@@ -140,23 +140,66 @@ enum mml_color {
 	MML_FMT_P010_HYFBC	= MML_FMT(2, 1, 0, 0, 1, 1, 1, 18, 1, 0, 12),
 };
 
-/* Combine colorspace, xfer_func, ycbcr_encoding, and quantization */
+/* Legacy: combine colorspace, xfer_func, ycbcr_encoding, and quantization */
 enum mml_ycbcr_profile {
-	/* V4L2_YCBCR_ENC_601 and V4L2_QUANTIZATION_LIM_RANGE */
+	/* MML_YCBCR_ENC_BT601 and MML_COLOR_RANGE_LIMITED */
 	MML_YCBCR_PROFILE_BT601,
-	/* V4L2_YCBCR_ENC_709 and V4L2_QUANTIZATION_LIM_RANGE */
+	/* MML_YCBCR_ENC_BT709 and MML_COLOR_RANGE_LIMITED */
 	MML_YCBCR_PROFILE_BT709,
-	/* V4L2_YCBCR_ENC_601 and V4L2_QUANTIZATION_FULL_RANGE */
+	/* MML_YCBCR_ENC_BT601 and MML_COLOR_RANGE_FULL */
 	MML_YCBCR_PROFILE_JPEG,
 	MML_YCBCR_PROFILE_FULL_BT601 = MML_YCBCR_PROFILE_JPEG,
 
 	/* Colorspaces not support for destination */
-	/* V4L2_YCBCR_ENC_BT2020 and V4L2_QUANTIZATION_LIM_RANGE */
+	/* MML_YCBCR_ENC_BT2020 and MML_COLOR_RANGE_LIMITED */
 	MML_YCBCR_PROFILE_BT2020,
-	/* V4L2_YCBCR_ENC_709 and V4L2_QUANTIZATION_FULL_RANGE */
+	/* MML_YCBCR_ENC_BT709 and MML_COLOR_RANGE_FULL */
 	MML_YCBCR_PROFILE_FULL_BT709,
-	/* V4L2_YCBCR_ENC_BT2020 and V4L2_QUANTIZATION_FULL_RANGE */
+	/* MML_YCBCR_ENC_BT2020 and MML_COLOR_RANGE_FULL */
 	MML_YCBCR_PROFILE_FULL_BT2020,
+};
+
+enum mml_gamut {
+	MML_GAMUT_BT601 = 0,		/* V4L2_COLORSPACE_SMPTE170M, 240M */
+	MML_GAMUT_BT709 = 1,		/* V4L2_COLORSPACE_REC709, sRGB, JPEG */
+	MML_GAMUT_BT2020 = 9,		/* V4L2_COLORSPACE_BT2020 */
+	MML_GAMUT_DISPLAY_P3 = 11,	/* V4L2_COLORSPACE_DCI_P3 */
+
+	MML_GAMUT_UNSUPPORTED = 200,
+	MML_GAMUT_ADOBE_RGB,		/* V4L2_COLORSPACE_OPRGB */
+};
+
+enum mml_ycbcr_encoding {
+	MML_YCBCR_ENC_BT709 = 1,	/* V4L2_YCBCR_ENC_709, Display-P3, DCI-P3 */
+	MML_YCBCR_ENC_BT601 = 6,	/* V4L2_YCBCR_ENC_601, 170M, 470M, sRGB, JPEG */
+	/* MML_YCBCR_ENC_SMPTE240M = 7, */
+	MML_YCBCR_ENC_BT2020 = 9,	/* V4L2_YCBCR_ENC_BT2020 Non-constant */
+	MML_YCBCR_ENC_BT2020_CON = 10,	/* V4L2_YCBCR_ENC_BT2020_CONST_LUM */
+	/* MML_YCBCR_ENC_P3 = 15, */	/* Self-defined */
+
+	MML_YCBCR_ENC_UNSUPPORTED = 200,
+};
+
+enum mml_color_range {
+	MML_COLOR_RANGE_LIMITED = 0,	/* V4L2_QUANTIZATION_LIM_RANGE, YCbCr */
+	MML_COLOR_RANGE_FULL = 1,	/* V4L2_QUANTIZATION_FULL_RANGE, RGB, JPEG */
+
+	MML_COLOR_RANGE_UNSUPPORTED = 200,
+	MML_COLOR_RANGE_EXTENDED,	/* HAL_DATASPACE_RANGE_EXTENDED */
+};
+
+enum mml_gamma {
+	MML_GAMMA_ITURBT709 = 1,	/* V4L2_XFER_FUNC_709, BT601, 170M, 470M, BT2020 */
+	MML_GAMMA_GAMMA2_2CURVE = 4,	/* V4L2_XFER_FUNC_SRGB, JPEG, Display-P3 */
+	MML_GAMMA_GAMMA2_8CURVE = 5,
+	/* MML_GAMMA_SMPTE240M = 7, */
+	MML_GAMMA_LINEAR = 8,		/* V4L2_XFER_FUNC_NONE */
+	MML_GAMMA_SMPTEST2084 = 16,	/* V4L2_XFER_FUNC_SMPTE2084 */
+	MML_GAMMA_ARIBSTD_B67 = 18,	/* HAL_DATASPACE_TRANSFER_HLG */
+
+	MML_GAMMA_UNSUPPORTED = 200,
+	MML_GAMMA_ADOBE_RGB,		/* V4L2_XFER_FUNC_OPRGB */
+	MML_GAMMA_GAMMA2_6CURVE,	/* V4L2_XFER_FUNC_DCI_P3 */
 };
 
 /* Minimum Y stride that is accepted by MML HW */
@@ -181,22 +224,39 @@ static inline u32 mml_color_get_min_uv_stride(enum mml_color c, u32 width)
 	return min_stride >> MML_FMT_H_SUBSAMPLE(c);
 }
 
+/* Y plane size that is necessary in buffer */
+static inline u32 mml_color_get_y_size(enum mml_color c,
+	u32 width, u32 height, u32 stride)
+{
+	if (MML_FMT_BLOCK(c))
+		return ((MML_FMT_BITS_PER_PIXEL(c) * width) >> 8) * height;
+	return stride * height;
+}
+
+/* UV plane size that is necessary in buffer */
+static inline u32 mml_color_get_uv_size(enum mml_color c,
+	u32 width, u32 height, u32 stride)
+{
+	height = height >> MML_FMT_V_SUBSAMPLE(c);
+	if (MML_FMT_BLOCK(c) && (MML_FMT_PLANE(c) > 1))
+		return ((MML_FMT_BITS_PER_PIXEL(c) * width) >> 8) * height;
+	return stride * height;
+}
+
 /* Minimum Y plane size that is necessary in buffer */
 static inline u32 mml_color_get_min_y_size(enum mml_color c,
 	u32 width, u32 height)
 {
-	if (MML_FMT_BLOCK(c))
-		return ((MML_FMT_BITS_PER_PIXEL(c) * width) >> 8) * height;
-	return mml_color_get_min_y_stride(c, width) * height;
+	return mml_color_get_y_size(c, width, height,
+		mml_color_get_min_y_stride(c, width));
 }
+
 /* Minimum UV plane size that is necessary in buffer */
 static inline u32 mml_color_get_min_uv_size(enum mml_color c,
 	u32 width, u32 height)
 {
-	height = height >> MML_FMT_V_SUBSAMPLE(c);
-	if (MML_FMT_BLOCK(c) && (1 < MML_FMT_PLANE(c)))
-		return ((MML_FMT_BITS_PER_PIXEL(c) * width) >> 8) * height;
-	return mml_color_get_min_uv_stride(c, width) * height;
+	return mml_color_get_uv_size(c, width, height,
+		mml_color_get_min_uv_stride(c, width));
 }
 
 #endif	/* __MTK_MML_COLOR_H__ */

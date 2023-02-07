@@ -89,15 +89,6 @@ enum mml_pq_enable_flag {
 	MML_PQ_AI_REGION_EN = 1 << 10,
 };
 
-enum mml_gamut {
-	MML_GAMUT_UNKNOWN = 0,
-	MML_GAMUT_SRGB,
-	MML_GAMUT_DISPLAY_P3,
-	MML_GAMUT_BT601,
-	MML_GAMUT_BT709,
-	MML_GAMUT_BT2020,
-};
-
 enum mml_pq_user_info {
 	MML_PQ_USER_UNKNOWN = 0,
 	MML_PQ_USER_HWC = 1,
@@ -120,13 +111,20 @@ struct mml_pq_param {
 	uint32_t scenario;
 	uint32_t layer_id;
 	uint32_t disp_id;
-	uint32_t src_gamut;
-	uint32_t dst_gamut;
+	uint32_t src_gamut;	/* legacy */
+	uint32_t dst_gamut;	/* legacy */
 	uint32_t src_hdr_video_mode;
 	uint32_t metadata_mem_id;
 	struct mml_pq_video_param video_param;
 	uint32_t user_info;
 	uint32_t app_hint;
+};
+
+struct mml_color_desc {
+	uint8_t gamut;		/* enum mml_gamut, color primaries */
+	uint8_t ycbcr_enc;	/* enum mml_ycbcr_encoding, matrix coeffs */
+	uint8_t color_range;	/* enum mml_color_range, quantization */
+	uint8_t gamma;		/* enum mml_gamma, transfer function */
 };
 
 struct mml_frame_data {
@@ -137,7 +135,8 @@ struct mml_frame_data {
 	uint32_t vert_stride;
 	uint32_t format;
 	uint64_t modifier;
-	uint16_t profile;
+	uint16_t profile;	/* enum mml_ycbcr_profile, legacy */
+	struct mml_color_desc color;
 	uint32_t plane_offset[MML_MAX_PLANES];
 	uint8_t plane_cnt;
 	bool secure;
