@@ -750,7 +750,10 @@ static int get_seninf_ops(struct device *dev, struct seninf_core *core)
 
 static int seninf_core_probe(struct platform_device *pdev)
 {
-	int i, ret, irq;
+	int i, ret;
+#if is_irq_ready
+	int irq;
+#endif
 	struct resource *res;
 	struct seninf_core *core;
 	struct device *dev = &pdev->dev;
