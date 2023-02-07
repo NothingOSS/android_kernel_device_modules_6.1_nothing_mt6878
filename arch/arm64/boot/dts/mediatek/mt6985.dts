@@ -7321,6 +7321,7 @@
 			sleep-en = <1>;
 			hub-en = <1>;
 			baudrate = <12000000>;
+			gpios = <&pio 234 0>;
 			pinctrl-names = "bt_combo_gpio_init",
 					"bt_combo_gpio_pre_on",
 					"bt_combo_uart_tx_aux",
@@ -16329,10 +16330,16 @@ FLL0_out,FLL1_out,FLL2_out,FLL4_out,FLL5_out,FLL6_out";
 		pins_cmd1_dat {
 			pinmux = <PINMUX_GPIO224__FUNC_UARTHUB_UART_TX>;
 		};
+		pins-cmd2-dat {
+			pinmux = <PINMUX_GPIO35__FUNC_URTS3>;
+		};
 	};
 	bt_combo_uart_rx_aux: bt_combo_uart_rx_aux {
 		pins_cmd1_dat {
 			pinmux = <PINMUX_GPIO225__FUNC_UARTHUB_UART_RX>;
+		};
+		pins-cmd2-dat {
+			pinmux = <PINMUX_GPIO34__FUNC_UCTS3>;
 		};
 	};
 	bt_rst_on: bt_rst_on {
