@@ -8221,6 +8221,8 @@
 			birsz0 = <MML_BIRSZ0 0 28>;
 			birsz1 = <MML_BIRSZ1 0 29>;
 			mutex-ids = <MML_RDMA0 0 MML_RDMA1 1 MML_DLI0 2 MML_DLI1 3>;
+			event-pipe0-mml = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_PIPE0>;
+			event-pipe1-mml = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_PIPE1>;
 		};
 
 		mml_rdma0: mml-rdma0@1f803000 {
