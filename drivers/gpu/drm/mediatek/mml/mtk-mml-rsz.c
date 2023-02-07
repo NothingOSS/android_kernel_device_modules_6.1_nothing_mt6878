@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2021 MediaTek Inc.
  * Author: Chris-YC Chen <chris-yc.chen@mediatek.com>
@@ -293,7 +293,6 @@ static s32 rsz_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	const struct mml_frame_data *src = &cfg->info.src;
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	struct mml_comp_rsz *rsz = comp_to_rsz(comp);
-	u32 in_crop_w, in_crop_h;
 
 	mml_trace_ex_begin("%s", __func__);
 
@@ -334,18 +333,20 @@ static s32 rsz_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 
 	func->enable_flag = !rsz_frm->relay_mode;
 
-	in_crop_w = dest->crop.r.width;
-	in_crop_h = dest->crop.r.height;
-	if (in_crop_w + dest->crop.r.left > src->width)
-		in_crop_w = src->width - dest->crop.r.left;
-	if (in_crop_h + dest->crop.r.top > src->height)
-		in_crop_h = src->height - dest->crop.r.top;
 	if ((cfg->info.dest_cnt == 1 ||
 	     !memcmp(&cfg->info.dest[0].crop,
 		     &cfg->info.dest[1].crop,
 		     sizeof(struct mml_crop))) &&
 	    (dest->crop.r.width != src->width ||
 	    dest->crop.r.height != src->height)) {
+		u32 in_crop_w, in_crop_h;
+
+		in_crop_w = dest->crop.r.width;
+		in_crop_h = dest->crop.r.height;
+		if (in_crop_w + dest->crop.r.left > src->width)
+			in_crop_w = src->width - dest->crop.r.left;
+		if (in_crop_h + dest->crop.r.top > src->height)
+			in_crop_h = src->height - dest->crop.r.top;
 		func->full_size_x_in = in_crop_w;
 		func->full_size_y_in = in_crop_h;
 		data->rsz.crop.r.left -= dest->crop.r.left;

@@ -109,7 +109,8 @@ struct mml_sys {
 	u32 comp_bound;
 
 	/* MML multiplexer pins.
-	 * The entry 0 leaves empty for efficiency, do not use. */
+	 * The entry 0 leaves empty for efficiency, do not use.
+	 */
 	struct mml_mux_pin mux_pins[MML_MAX_SYS_MUX_PINS + 1];
 	u32 mux_cnt;
 	u16 dl_relays[MML_MAX_SYS_DL_RELAYS + 1];

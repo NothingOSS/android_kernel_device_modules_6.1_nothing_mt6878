@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2021 MediaTek Inc.
  * Author: Dennis YC Hsieh <dennis-yc.hsieh@mediatek.com>
@@ -131,7 +131,7 @@ module_param(mml_wrot_bkgd, int, 0644);
 /* ceil_m and floor_m helper function */
 static u32 ceil_m(u64 n, u64 d)
 {
-	u32 reminder = do_div((n),(d));
+	u32 reminder = do_div((n), (d));
 
 	return n + (reminder != 0);
 }
@@ -1109,10 +1109,6 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		swap(wrot_frm->plane_offset[1], wrot_frm->plane_offset[2]);
 	}
 
-	if (dest->data.secure) {
-		/* TODO: for secure case setup plane offset and reg */
-	}
-
 	if (task->config->info.mode == MML_MODE_RACING) {
 		u64 sram_addr;
 
@@ -1229,21 +1225,16 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_PVRIC, pvric, U32_MAX);
 
 	/* set ESL */
-	if (plane == 3 || plane == 2 || hw_fmt == 7) {
-		/* 3-plane, 2-plane, Y8 */
+	if (plane == 3 || plane == 2 || hw_fmt == 7)	/* 3-plane, 2-plane, Y8 */
 		preultra = (216 << 12) + (196 << 0);
-	} else if(hw_fmt == 0 || hw_fmt == 1) {
-		/* RGB */
+	else if (hw_fmt == 0 || hw_fmt == 1)		/* RGB */
 		preultra = (136 << 12) + (76 << 0);
-	} else if (hw_fmt == 2 || hw_fmt == 3) {
-		/* ARGB */
+	else if (hw_fmt == 2 || hw_fmt == 3)		/* ARGB */
 		preultra = (96 << 12) + (16 << 0);
-	} else if (hw_fmt == 4 || hw_fmt == 5) {
-		/* UYVY */
+	else if (hw_fmt == 4 || hw_fmt == 5)		/* UYVY */
 		preultra = (176 << 12) + (136 << 0);
-	} else {
+	else
 		preultra = 0;
-	}
 	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_DMA_PREULTRA, preultra,
 		       U32_MAX);
 
@@ -1580,16 +1571,16 @@ static void wrot_check_buf(const struct mml_frame_dest *dest,
 	 */
 	buf->y_buf_width = ceil_m(setting->main_blk_width,
 				  setting->main_buf_line_num) *
-				setting->main_buf_line_num;
+			   setting->main_buf_line_num;
 	buf->y_buf_usage = buf->y_buf_width * setting->main_buf_line_num;
 	if (buf->y_buf_usage > buf->y_buf_size) {
 		setting->main_buf_line_num = setting->main_buf_line_num - 4;
 		buf->y_buf_check = 0;
 		buf->uv_buf_check = 0;
 		return;
-	} else {
-		buf->y_buf_check = 1;
 	}
+
+	buf->y_buf_check = 1;
 
 	/* Checking UV buffer usage */
 	if (!MML_FMT_H_SUBSAMPLE(dest->data.format)) {
@@ -1715,7 +1706,7 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	struct wrot_setting setting = {0};
 	u32 buf_line_num;
 
-	/* Fill the the tile settings */
+	/* Fill the tile settings */
 	if (MML_FMT_AFBC(dest_fmt))
 		wrot_tile_calc_comp(dest, wrot_frm, tile, &ofst);
 	else
@@ -1997,10 +1988,6 @@ static s32 update_frame_addr(struct mml_comp *comp, struct mml_task *task,
 
 	if (out_swap == 1 && MML_FMT_PLANE(dest_fmt) == 3)
 		swap(wrot_frm->iova[1], wrot_frm->iova[2]);
-
-	if (dest->data.secure) {
-		/* TODO: for secure case setup plane offset and reg */
-	}
 
 	/* DMA_SUPPORT_AFBC */
 	if (MML_FMT_AFBC(dest_fmt)) {

@@ -804,7 +804,6 @@ static struct mml_tile_cache *task_get_tile_cache(struct mml_task *task, u32 pip
 
 static void kt_setsched(void *adaptor_ctx)
 {
-	return;
 }
 
 const static struct mml_task_ops dle_task_ops = {

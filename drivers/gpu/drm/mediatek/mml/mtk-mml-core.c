@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2021 MediaTek Inc.
  * Author: Chris-YC Chen <chris-yc.chen@mediatek.com>
@@ -1397,9 +1397,8 @@ static void core_taskdump(struct mml_task *task, u32 pipe, int err)
 	/* turn on cmdq save log */
 	mml_cmdq_err = 1;
 	core_comp_dump(task, pipe, cnt);
-	if (cnt < 3) {
+	if (cnt < 3)
 		mml_err("dump smi");
-	}
 
 	/* record current fail task and do dump
 	 * note: so this task maybe record multiple times due to error record
@@ -2023,7 +2022,7 @@ void mml_update_array(struct mml_task_reuse *reuse,
 	struct cmdq_reuse *label = &reuse->labels[reuses->offs[reuse_idx].label_idx];
 	u64 *va = label->va + reuses->offs[reuse_idx].offset * off_idx;
 
-	*va = (*va & GENMASK(63, 32)) | value;
+	*va = (*va & GENMASK_ULL(63, 32)) | value;
 }
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)

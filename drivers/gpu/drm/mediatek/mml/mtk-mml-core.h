@@ -392,7 +392,7 @@ struct mml_frame_config {
 struct mml_dma_buf {
 	struct dma_buf *dmabuf;
 	struct dma_buf_attachment *attach;
-	struct sg_table* sgt;
+	struct sg_table *sgt;
 
 	u64 iova;
 	void *va;

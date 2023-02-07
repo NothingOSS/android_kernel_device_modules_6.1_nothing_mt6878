@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2021 MediaTek Inc.
  */
@@ -239,8 +239,7 @@ s32 mml_pq_task_create(struct mml_task *task)
 
 static void release_tile_init_result(void *data)
 {
-	struct mml_pq_tile_init_result *result =
-		(struct mml_pq_tile_init_result *)data;
+	struct mml_pq_tile_init_result *result = data;
 
 	mml_pq_msg("%s called", __func__);
 
@@ -254,8 +253,7 @@ static void release_tile_init_result(void *data)
 
 static void release_comp_config_result(void *data)
 {
-	struct mml_pq_comp_config_result *result =
-		(struct mml_pq_comp_config_result *)data;
+	struct mml_pq_comp_config_result *result = data;
 
 	if (!result)
 		return;
@@ -812,7 +810,8 @@ static void put_sub_task_result(struct mml_pq_sub_task *sub_task, struct mml_pq_
 static void dump_tile_init(void *data)
 {
 	u32 i;
-	struct mml_pq_tile_init_result *result = (struct mml_pq_tile_init_result *)data;
+	struct mml_pq_tile_init_result *result = data;
+
 	if (!result)
 		return;
 
@@ -891,8 +890,7 @@ void mml_pq_put_tile_init_result(struct mml_task *task)
 static void dump_comp_config(void *data)
 {
 	u32 i;
-	struct mml_pq_comp_config_result *result =
-		(struct mml_pq_comp_config_result *)data;
+	struct mml_pq_comp_config_result *result = data;
 
 	if (!result)
 		return;

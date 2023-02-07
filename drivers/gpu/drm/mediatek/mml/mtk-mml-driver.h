@@ -208,7 +208,7 @@ struct mml_topology_cache *mml_topology_get_cache(struct mml_dev *mml);
  * mml_dev_get_comp_by_id - Get component instance by component id, which
  * represent specific hardware engine in MML.
  *
- * @mml: 	The mml driver instance.
+ * @mml:	The mml driver instance.
  * @id:		Component ID, one of id in dt-bindings in specific IP.
  *
  * Return: pointer of component instance

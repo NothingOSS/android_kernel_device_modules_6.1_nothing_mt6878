@@ -151,4 +151,4 @@ void forward_cub_acc(s32 inTileStart,
 		     s32 *chromaOffset,
 		     s32 *chromaSubpixel);
 
-#endif  // __DP_TILE_SCALER_H__
+#endif  /* __DP_TILE_SCALER_H__ */

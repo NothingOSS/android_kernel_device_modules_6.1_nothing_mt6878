@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2021 MediaTek Inc.
  */
@@ -613,7 +613,7 @@ static s32 tdshp_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	} while ((mml_pq_debug_mode & MML_PQ_SET_TEST) && result->is_set_test);
 
 	regs = result->ds_regs;
-	//TODO: use different regs
+	/* TODO: use different regs */
 	mml_pq_msg("%s:config ds regs, count: %d is_set_test[%d]", __func__, result->ds_reg_cnt,
 		result->is_set_test);
 	for (i = 0; i < result->ds_reg_cnt; i++) {

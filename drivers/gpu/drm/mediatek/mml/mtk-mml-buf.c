@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2021 MediaTek Inc.
  * Author: Dennis YC Hsieh <dennis-yc.hsieh@mediatek.com>
@@ -55,7 +55,7 @@ void mml_buf_get(struct mml_file_buf *buf, void **dmabufs, u32 cnt, const char *
 	}
 }
 
-inline static int dmabuf_to_iova(struct device *dev, struct mml_dma_buf *dma)
+static inline int dmabuf_to_iova(struct device *dev, struct mml_dma_buf *dma)
 {
 	int err;
 
@@ -135,7 +135,7 @@ int mml_buf_va_get(struct mml_file_buf *buf)
 	return 0;
 }
 
-inline static void dmabuf_iova_free(struct mml_dma_buf *dma)
+static inline void dmabuf_iova_free(struct mml_dma_buf *dma)
 {
 #ifndef MML_FPGA
 	mtk_dma_buf_set_name(dma->dmabuf, NULL);

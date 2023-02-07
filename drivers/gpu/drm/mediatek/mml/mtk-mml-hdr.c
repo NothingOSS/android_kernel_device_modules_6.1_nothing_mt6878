@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2021 MediaTek Inc.
  */
@@ -254,15 +254,15 @@ static s32 hdr_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 		func->full_size_x_in = in_crop_w;
 		func->full_size_y_in = in_crop_h;
 	} else {
- 		func->full_size_x_in = src->width;
+		func->full_size_x_in = src->width;
 		func->full_size_y_in = src->height;
 	}
 	func->full_size_x_out = func->full_size_x_in;
 	func->full_size_y_out = func->full_size_y_in;
 
-	func->in_tile_width   = 8191;
-	func->out_tile_width  = 8191;
-	func->in_tile_height  = 65535;
+	func->in_tile_width = 8191;
+	func->out_tile_width = 8191;
+	func->in_tile_height = 65535;
 	func->out_tile_height = 65535;
 
 	if (!relay_mode || cfg->info.dest_cnt > 1) {
