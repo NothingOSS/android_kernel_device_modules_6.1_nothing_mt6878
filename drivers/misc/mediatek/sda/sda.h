@@ -8,12 +8,19 @@
 
 enum SDA_FEATURE {
 	SDA_BUS_PARITY = 0,
+	SDA_SYSTRACKER = 1,
 	NR_SDA_FEATURE
 };
 
 enum BUS_PARITY_OP {
 	BP_MCU_CLR = 0,
 	NR_BUS_PARITY_OP
+};
+
+enum SYSTRACKER_OP {
+	TRACKER_SW_RST = 0,
+	TRACKER_IRQ_SWITCH = 1,
+	NR_SYSTRACKER_OP
 };
 
 struct tag_chipid {

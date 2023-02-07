@@ -50,6 +50,16 @@ config MTK_BUS_PARITY_CHECK
 	  Enable this to get the report on detection or correction
 	  of errors.
 
+config MTK_SYSTRACKER_WATCHPOINT
+	tristate "MediaTek systracker IRQ service"
+	help
+	  The config item MTK_SYSTRACKER_WATCHPOINT is used to enable
+	  SYSTRACKER WATCHPOINT module, which is a debugging feature to
+	  monitor access to a specific address region and latency for
+	  whole region of IO registers.
+
+	  Enable this to support watchpoint and latecy detection.
+
 config MTK_BTM_SUPPORT
 	tristate "MediaTek BUS TRACER MODULE Support"
 	help
