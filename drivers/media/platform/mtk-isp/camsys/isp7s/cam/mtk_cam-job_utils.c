@@ -148,6 +148,7 @@ _sensor_margin_ms(int fps_ratio, int sub_sample)
 
 	return timer_ms;
 }
+/* TODO(AY): use mtk_cam_scen as parameter instead */
 int get_subsample_ratio(struct mtk_cam_job *job)
 {
 	struct mtk_cam_scen *scen = &job->job_scen;

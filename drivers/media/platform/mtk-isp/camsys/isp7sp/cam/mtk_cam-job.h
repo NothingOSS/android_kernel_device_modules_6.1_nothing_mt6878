@@ -245,7 +245,6 @@ struct mtk_cam_job {
 	atomic_long_t done_set;
 	unsigned long done_handled;
 
-	/* job private start */
 	int job_type;	/* job type - only job layer */
 	int ctx_id;
 	/* TODO(AY): rename to seq_no/job_no/... to be distinguished from real frame number */
@@ -266,9 +265,10 @@ struct mtk_cam_job {
 	int sw_feature;			/* for ipi */
 	unsigned int sub_ratio;
 	u64 (*timestamp_buf)[128];
+
+	/* TODO(AY): in switch case, may not use devs in ctx */
 	/* hw devices */
-	struct device *hw_raw;
-	/* job private end */
+	//struct device *hw_raw;
 };
 
 static inline void mtk_cam_job_get(struct mtk_cam_job *job)
