@@ -21,9 +21,9 @@ initcall_debug=1";
 	compatible = "mediatek,i2c-leds";
 
 	backlight {
-		led_mode = <6>;
-		gate_enable = <1>;
-		pwm_config = <0 1 0 0 0>;
+		led-mode = <6>;
+		gate-enable = <1>;
+		pwm-config = <0 1 0 0 0>;
 	};
 };
 
