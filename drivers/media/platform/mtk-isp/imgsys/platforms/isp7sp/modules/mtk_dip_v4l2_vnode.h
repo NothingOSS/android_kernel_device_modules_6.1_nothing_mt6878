@@ -1080,7 +1080,8 @@ static const struct mtk_imgsys_video_device_desc dip_setting[] = {
 		.dma_port = 7,
 		.frmsizeenum = &dip_out_frmsizeenum,
 		.description = "Color CSS output",
-	},	{
+	},
+	{
 		.id = MTK_IMGSYS_VIDEO_NODE_ID_BOKMO_CAPTURE,
 		.name = "Bokmo Output",
 		.cap = V4L2_CAP_VIDEO_CAPTURE_MPLANE | V4L2_CAP_STREAMING,
