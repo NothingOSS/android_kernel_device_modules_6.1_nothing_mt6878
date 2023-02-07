@@ -12,6 +12,7 @@
 #include "mtk-aov-config.h"
 #include "mtk-aov-drv.h"
 #include "mtk-aov-core.h"
+#include "mtk-aov-mtee.h"
 #include "mtk-aov-aee.h"
 #include "mtk-aov-data.h"
 #include "mtk-aov-trace.h"
@@ -93,6 +94,7 @@ static int mtk_aov_open(struct inode *inode, struct file *file)
 	file->private_data = aov_dev;
 
 	if (aov_dev->user_cnt == 0) {
+		aov_mtee_init(aov_dev);
 		aov_dev->is_open = true;
 	}
 	aov_dev->user_cnt++;
@@ -174,7 +176,7 @@ static long mtk_aov_ioctl(struct file *file, unsigned int cmd,
 		return -EINVAL;
 	}
 
-	dev_dbg(aov_dev->dev, "%s ioctl aov driver(%d)-(%d)\n", __func__, cmd, ret);
+	dev_dbg(aov_dev->dev, "%s ioctl aov driver(cmd)-(%d), ret(%d)\n", __func__, cmd, ret);
 
 	return ret;
 }
@@ -226,8 +228,10 @@ static int mtk_aov_release(struct inode *inode, struct file *file)
 	}
 
 	aov_dev->user_cnt--;
-	if (aov_dev->user_cnt == 0)
+	if (aov_dev->user_cnt == 0) {
 		aov_dev->is_open = false;
+		aov_mtee_uninit(aov_dev);
+	}
 
 	pr_info("%s release aov driver-\n", __func__);
 
@@ -246,8 +250,6 @@ static const struct file_operations aov_fops = {
 #endif
 };
 
-
-
 static int mtk_aov_probe(struct platform_device *pdev)
 {
 	struct mtk_aov *aov_dev;
@@ -265,7 +267,7 @@ static int mtk_aov_probe(struct platform_device *pdev)
 	aov_dev->dev = &pdev->dev;
 
 	if (pdev->dev.of_node) {
-		of_property_read_u32(pdev->dev.of_node, "op_mode", &(aov_dev->op_mode));
+		of_property_read_u32(pdev->dev.of_node, "op-mode", &(aov_dev->op_mode));
 
 		dev_info(&pdev->dev, "%s aov mode(%d)\n", __func__, aov_dev->op_mode);
 	} else {

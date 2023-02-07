@@ -9,8 +9,8 @@
 #define REDUCE_MEM_NETWORK 0
 
 #if REDUCE_MEM_NETWORK
-#include "aie_mp_fw_reduce/kernel/dma_def.h"
-#include "aie_mp_fw_reduce/all_header.h"
+#include <aie_mp_fw_reduce/kernel/dma_def.h>
+#include <aie_mp_fw_reduce/all_header.h>
 #include "./aie_aov_config_reduce/dma_def.h"
 #include "./aie_aov_config_reduce/aov_fd_confi_frame01.h"
 #include "./aie_aov_config_reduce/aov_rs_confi_frame01.h"

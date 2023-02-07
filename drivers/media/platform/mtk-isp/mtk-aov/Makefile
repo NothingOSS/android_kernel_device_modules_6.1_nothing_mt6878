@@ -22,12 +22,19 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc
 ccflags-y += -I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek
 
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/geniezone/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/geniezone/public
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/memory-ssmr
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem/public
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem/ssmr
+
 mtk_aov-objs := \
 	mtk-aov-drv.o	\
 	mtk-aov-core.o \
 	mtk-aov-trace.o \
 	mtk-aov-aee.o \
 	mtk-aov-queue.o \
+	mtk-aov-mtee.o \
 	mtk-aie-model.o \
 	alloc/tlsf/tlsf_alloc.o
 

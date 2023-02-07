@@ -46,18 +46,22 @@
 #define AOV_DISP_MODE_OFF         (0)
 #define AOV_DiSP_MODE_ON          (1)
 
-#define AOV_MAX_EVENT_COUNT       (1)
+#define AOV_MAX_BASE_EVENT        (2)
+#define AOV_MAX_NDD_EVENT         (1)
 
 #define AOV_MAX_USER_SIZE         (offsetof(struct aov_user, aaa_size))
 #define AOV_MAX_SENIF_SIZE        (2 * 1024)
 #define AOV_MAX_AAA_SIZE          (32 * 1024)
 #define AOV_MAX_TUNING_SIZE       (2 * 1024)
 #define AOV_MAX_AIE_SIZE          (162 * 1024)
+#define AOV_MAX_FLD_SIZE          (6 * 1024 * 1024)
 
 #define AOV_MAX_YUVO1_OUTPUT      (737280 + 32)  // 640 x 480, nv12 12-bit
 #define AOV_MAX_YUVO2_OUTPUT      (184320 + 32)  // 320 x 240, nv12 12-bit
 #define AOV_MAX_AIE_OUTPUT        (32 * 1024)
+#define AOV_MAX_FLD_OUTPUT        (2 * 1024)
 #define AOV_MAX_APU_OUTPUT        (256 * 1024)
+#define AOV_MAX_FR_RECORD         (5)
 #define AOV_MAX_IMGO_OUTPUT       (921600 + 32)  // 640 x 480, bayer12
 #define AOV_MAX_AAO_OUTPUT        (158 * 1024)
 #define AOV_MAX_AAHO_OUTPUT       (1 * 1024)
@@ -67,6 +71,7 @@
 #define AOV_MAX_SENSOR_COUNT      (64)
 
 extern void mtk_aie_aov_memcpy(char *buffer);
+extern void mtk_fld_aov_memcpy(char *buffer);
 
 struct sensor_notify {
 	uint32_t count;
@@ -84,6 +89,9 @@ struct aov_dqevent {
 	// for object detection
 	uint32_t aie_size;
 	void *aie_output;
+
+	uint32_t fld_size;
+	void *fld_output;
 
 	uint32_t apu_size;
 	void *apu_output;
@@ -122,7 +130,14 @@ struct aov_dqevent {
 	void *awb_output;
 };
 
-struct aov_event {
+struct fr_info_t {
+	uint32_t count;
+	uint32_t offset[AOV_MAX_FR_RECORD];
+};
+
+struct base_event {
+	uint32_t event_id;
+
 	uint32_t session;
 	uint32_t frame_id;
 	uint32_t frame_width;
@@ -134,8 +149,13 @@ struct aov_event {
 	uint32_t aie_size;
 	uint8_t aie_output[AOV_MAX_AIE_OUTPUT];
 
+	uint32_t fld_size;
+	uint8_t fld_output[AOV_MAX_FLD_OUTPUT];
+
 	uint32_t apu_size;
 	uint8_t apu_output[AOV_MAX_APU_OUTPUT];
+
+	struct fr_info_t fr_info;
 
 	// for general debug
 	uint32_t yuvo1_width;
@@ -149,6 +169,10 @@ struct aov_event {
 	uint32_t yuvo2_format;
 	uint32_t yuvo2_stride;
 	uint8_t yuvo2_output[AOV_MAX_YUVO2_OUTPUT];
+} __aligned(4);
+
+struct ndd_event {
+	struct base_event base;
 
 	// for NDD debug mode
 	uint32_t imgo_width;
@@ -232,6 +256,10 @@ struct aie_start {
 	uint8_t data[AOV_MAX_AIE_SIZE];
 } __aligned(8);
 
+struct fld_start {
+	uint8_t data[AOV_MAX_FLD_SIZE];
+} __aligned(8);
+
 struct aov_start {
 	// user parameter
 	uint32_t session;
@@ -274,11 +302,18 @@ struct aov_start {
 	///aie info
 	struct aie_start aie_info;
 
+	///fld info
+	// struct fld_start fld_info;
+
 	// aov event
-	struct aov_event aov_event[AOV_MAX_EVENT_COUNT];
+	union {
+		struct base_event base_event[AOV_MAX_BASE_EVENT];
+		struct ndd_event ndd_event[AOV_MAX_NDD_EVENT];
+	};
 };
 
-#define AOV_NOTIFY_AIE_AVAIL  (1)
+#define AOV_NOTIFY_AIE_AVAIL    (1)
+#define AOV_NOTIFY_EVT_AVAIL    (2)
 
 struct aov_notify {
 	uint32_t notify;
