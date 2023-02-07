@@ -8,7 +8,7 @@
 
 #include <linux/kfifo.h>
 #include "mtk_cam-raw_pipeline.h"
-
+#include "mtk_cam-engine.h"
 #include "mtk_cam-dvfs_qos.h"
 
 struct mtk_cam_request_stream_data;
@@ -51,6 +51,9 @@ struct mtk_raw_device {
 	struct kfifo	msg_fifo;
 	atomic_t	is_fifo_overflow;
 
+	struct engine_fsm fsm;
+	struct apply_cq_ref *cq_ref;
+
 	bool enable_hsf;
 	int fps;
 	int subsample_ratio;
@@ -59,7 +62,6 @@ struct mtk_raw_device {
 
 	u64 sof_count;
 	u64 vsync_count;
-	u64 last_sof_time_ns;
 
 	/* for subsample, sensor-control */
 	bool sub_sensor_ctrl_en;
@@ -120,7 +122,8 @@ void stagger_enable(struct mtk_raw_device *dev);
 void stagger_disable(struct mtk_raw_device *dev);
 
 void apply_cq(struct mtk_raw_device *dev,
-	      int initial, dma_addr_t cq_addr,
+	      struct apply_cq_ref *ref,
+	      dma_addr_t cq_addr,
 	      unsigned int cq_size, unsigned int cq_offset,
 	      unsigned int sub_cq_size, unsigned int sub_cq_offset);
 /* db */
@@ -156,6 +159,10 @@ static inline u32 dmaaddr_lsb(dma_addr_t addr)
 static inline u32 dmaaddr_msb(dma_addr_t addr)
 {
 	return addr >> 32;
+}
+static inline int is_subsample_en(struct mtk_raw_device *dev)
+{
+	return dev->sub_sensor_ctrl_en;
 }
 
 #endif /*__MTK_CAM_RAW_H*/

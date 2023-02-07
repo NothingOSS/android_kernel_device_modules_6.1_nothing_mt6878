@@ -44,10 +44,6 @@ struct mtk_camsv_pipeline {
 	/* seninf pad index */
 	u32 seninf_padidx;
 
-	unsigned int req_vfmt_update;
-	unsigned int req_pfmt_update;
-	struct v4l2_subdev_format req_pad_fmt[MTK_CAMSV_PIPELINE_PADS_NUM];
-
 	/* display ic */
 	u32 feature_pending;
 };
@@ -68,9 +64,6 @@ mtk_camsv_pipeline_create(struct device *dev, int n);
 int mtk_camsv_register_entities(struct mtk_camsv_pipeline *arr_pipe,
 	int num, struct v4l2_device *v4l2_dev);
 void mtk_camsv_unregister_entities(struct mtk_camsv_pipeline *arr_pipe, int num);
-
-int mtk_camsv_call_pending_set_fmt(struct v4l2_subdev *sd,
-				 struct v4l2_subdev_format *fmt);
 int mtk_cam_sv_update_feature(struct mtk_cam_video_device *node);
 int mtk_cam_sv_update_image_size(struct mtk_cam_video_device *node, struct v4l2_format *f);
 

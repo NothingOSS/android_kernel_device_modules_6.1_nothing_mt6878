@@ -50,6 +50,35 @@ static const struct of_device_id mtk_mraw_of_ids[] = {
 };
 MODULE_DEVICE_TABLE(of, mtk_mraw_of_ids);
 
+static int mraw_process_fsm(struct mtk_mraw_device *mraw_dev,
+			   struct mtk_camsys_irq_info *irq_info)
+{
+	struct engine_fsm *fsm = &mraw_dev->fsm;
+	int done_type;
+
+	done_type = irq_info->irq_type & BIT(CAMSYS_IRQ_FRAME_DONE);
+	if (done_type) {
+		int cookie_done;
+
+		engine_fsm_hw_done(fsm, &cookie_done);
+		/* handle for fake p1 done */
+		if (!cookie_done) {
+			dev_info(mraw_dev->dev, "warn: fake done 0x%x out/in: 0x%x 0x%x\n",
+				 done_type,
+				 irq_info->frame_idx,
+				 irq_info->frame_idx_inner);
+			irq_info->irq_type &= ~done_type;
+			irq_info->cookie_done = 0;
+		} else
+			irq_info->cookie_done = cookie_done;
+	}
+
+	if (irq_info->irq_type & BIT(CAMSYS_IRQ_FRAME_START))
+		engine_fsm_sof(fsm, irq_info->frame_idx_inner);
+
+	return 0;
+}
+
 static void mtk_mraw_register_iommu_tf_callback(struct mtk_mraw_device *mraw_dev)
 {
 #ifdef CAMSYS_TF_DUMP_7S
@@ -151,6 +180,7 @@ int mtk_mraw_translation_fault_callback(int port, dma_addr_t mva, void *data)
 #endif
 
 void apply_mraw_cq(struct mtk_mraw_device *mraw_dev,
+	      struct apply_cq_ref *ref,
 	      dma_addr_t cq_addr, unsigned int cq_size, unsigned int cq_offset,
 	      int initial)
 {
@@ -164,6 +194,9 @@ void apply_mraw_cq(struct mtk_mraw_device *mraw_dev,
 		readl_relaxed(mraw_dev->base + REG_MRAW_CQ_SUB_THR0_CTL));
 
 	if (cq_size == 0)
+		return;
+
+	if (WARN_ON(apply_cq_ref_set(&mraw_dev->cq_ref, ref)))
 		return;
 
 	writel_relaxed(cq_addr_lsb, mraw_dev->base + REG_MRAWCQ_CQ_SUB_THR0_BASEADDR_2);
@@ -639,10 +672,10 @@ RESET_FAILURE:
 int mtk_cam_mraw_tg_config(struct mtk_mraw_device *mraw_dev)
 {
 	int ret = 0;
-	unsigned int pixel_mode = mraw_dev->pipeline->res_config.pixel_mode;
 
+	/* HS_TODO: move to backend */
 	MRAW_WRITE_BITS(mraw_dev->base + REG_MRAW_TG_SEN_MODE,
-		MRAW_TG_SEN_MODE, TG_DBL_DATA_BUS, pixel_mode);
+		MRAW_TG_SEN_MODE, TG_DBL_DATA_BUS, MRAW_TG_PIXEL_MODE);
 
 	return ret;
 }
@@ -811,7 +844,7 @@ int mtk_cam_mraw_top_enable(struct mtk_mraw_device *mraw_dev)
 
 	/* Enable VF */
 	if (MRAW_READ_BITS(mraw_dev->base + REG_MRAW_TG_SEN_MODE,
-		MRAW_TG_SEN_MODE, TG_CMOS_EN) && atomic_read(&mraw_dev->is_enqueued))
+		MRAW_TG_SEN_MODE, TG_CMOS_EN))
 		mtk_cam_mraw_vf_on(mraw_dev, true);
 	else
 		dev_info(mraw_dev->dev, "%s, cmos_en:%d is_enqueued:%d\n", __func__,
@@ -1010,6 +1043,9 @@ int mtk_cam_mraw_is_vf_on(struct mtk_mraw_device *mraw_dev)
 
 int mtk_cam_mraw_dev_config(struct mtk_mraw_device *mraw_dev)
 {
+	engine_fsm_reset(&mraw_dev->fsm);
+	mraw_dev->cq_ref = NULL;
+
 	/* reset enqueued status */
 	atomic_set(&mraw_dev->is_enqueued, 0);
 
@@ -1149,9 +1185,11 @@ void mraw_irq_handle_tg_grab_err(struct mtk_mraw_device *mraw_dev,
 #ifdef HS_TODO
 	struct mtk_cam_request_stream_data *s_data;
 	struct mtk_cam_ctx *ctx;
+#endif
 
 	mtk_mraw_register_error_handle(mraw_dev);
 	mtk_mraw_print_register_status(mraw_dev);
+#ifdef HS_TODO
 	ctx = mtk_cam_find_ctx(mraw_dev->cam, &mraw_dev->pipeline->subdev.entity);
 	if (!ctx) {
 		dev_info(mraw_dev->dev, "%s: cannot find ctx\n", __func__);
@@ -1176,9 +1214,11 @@ void mraw_irq_handle_dma_err(struct mtk_mraw_device *mraw_dev,
 #ifdef HS_TODO
 	struct mtk_cam_request_stream_data *s_data;
 	struct mtk_cam_ctx *ctx;
+#endif
 
 	mtk_mraw_register_error_handle(mraw_dev);
 	mtk_mraw_print_register_status(mraw_dev);
+#ifdef HS_TODO
 	ctx = mtk_cam_find_ctx(mraw_dev->cam, &mraw_dev->pipeline->subdev.entity);
 	if (!ctx) {
 		dev_info(mraw_dev->dev, "%s: cannot find ctx\n", __func__);
@@ -1200,20 +1240,22 @@ void mraw_irq_handle_dma_err(struct mtk_mraw_device *mraw_dev,
 static void mraw_irq_handle_tg_overrun_err(struct mtk_mraw_device *mraw_dev,
 	int dequeued_frame_seq_no)
 {
-#ifdef HS_TODO
 	int irq_status5;
+#ifdef HS_TODO
 	struct mtk_cam_request_stream_data *s_data;
 	struct mtk_cam_ctx *ctx;
+#endif
 
 	mtk_mraw_register_error_handle(mraw_dev);
 	mtk_mraw_print_register_status(mraw_dev);
 	irq_status5 = readl_relaxed(mraw_dev->base + REG_MRAW_CTL_INT5_STATUSX);
 	dev_info_ratelimited(mraw_dev->dev,
 			"imgo_overr_status:0x%x, imgbo_overr_status:0x%x, cpio_overr_status:0x%x\n",
-			irq_status5 & MRAWCTL_IMGO_M1_OTF_OVERFLOW_ST,
-			irq_status5 & MRAWCTL_IMGBO_M1_OTF_OVERFLOW_ST,
-			irq_status5 & MRAWCTL_CPIO_M1_OTF_OVERFLOW_ST);
+			(int)(irq_status5 & MRAWCTL_IMGO_M1_OTF_OVERFLOW_ST),
+			(int)(irq_status5 & MRAWCTL_IMGBO_M1_OTF_OVERFLOW_ST),
+			(int)(irq_status5 & MRAWCTL_CPIO_M1_OTF_OVERFLOW_ST));
 
+#ifdef HS_TODO
 	ctx = mtk_cam_find_ctx(mraw_dev->cam, &mraw_dev->pipeline->subdev.entity);
 	if (!ctx) {
 		dev_info(mraw_dev->dev, "%s: cannot find ctx\n", __func__);
@@ -1308,9 +1350,9 @@ static irqreturn_t mtk_irq_mraw(int irq, void *data)
 	cpio_overr_status = irq_status5 & MRAWCTL_CPIO_M1_OTF_OVERFLOW_ST;
 
 	dev_dbg(dev,
-		"%i status:0x%x_%x(err:0x%x)/0x%x dma_err:0x%x seq_num:%d\n",
+		"%i status:0x%x_%x(err:0x%x)/0x%x dma_err:0x%x seq_num:%d/%d\n",
 		mraw_dev->id, irq_status, irq_status2, err_status, irq_status6, dma_err_status,
-		dequeued_imgo_seq_no_inner);
+		dequeued_imgo_seq_no_inner, dequeued_imgo_seq_no);
 
 	dev_dbg(dev,
 		"%i dma_overr:0x%x_0x%x_0x%x fbc_ctrl:0x%x_0x%x_0x%x dma_addr:0x%x%x_0x%x%x_0x%x%x\n",
@@ -1346,17 +1388,17 @@ static irqreturn_t mtk_irq_mraw(int irq, void *data)
 	/* Frame start */
 	if (irq_status & MRAWCTL_SOF_INT_ST) {
 		irq_info.irq_type |= (1 << CAMSYS_IRQ_FRAME_START);
-		mraw_dev->last_sof_time_ns = irq_info.ts_ns;
 		mraw_dev->sof_count++;
 #ifdef CHECK_MRAW_NODEQ
 		irq_info.fbc_cnt = (fbc_ctrl2_imgo & 0x1FF0000) >> 16;
 		irq_info.write_cnt = (fbc_ctrl2_imgo & 0xFF00) >> 8;
 #endif
-		dev_dbg(dev, "sof block cnt:%d\n", mraw_dev->sof_count);
+		dev_info(dev, "sof block cnt:%d\n", mraw_dev->sof_count);
 	}
 	/* CQ done */
 	if (irq_status6 & MRAWCTL_CQ_SUB_THR0_DONE_ST) {
-		irq_info.irq_type |= (1 << CAMSYS_IRQ_SETTING_DONE);
+		if (engine_handle_cq_done(&mraw_dev->cq_ref))
+			irq_info.irq_type |= 1 << CAMSYS_IRQ_SETTING_DONE;
 		dev_dbg(dev, "CQ done:%d\n", mraw_dev->sof_count);
 	}
 	irq_flag = irq_info.irq_type;
@@ -1398,14 +1440,14 @@ static irqreturn_t mtk_thread_irq_mraw(int irq, void *data)
 			mraw_handle_error(mraw_dev, &irq_info);
 			continue;
 		}
-		/* normal case */
 
-#ifdef HS_TODO
+		/* normal case */
+		mraw_process_fsm(mraw_dev, &irq_info);
+
 		/* inform interrupt information to camsys controller */
-		mtk_camsys_isr_event(mraw_dev->cam,
-				     CAMSYS_ENGINE_MRAW, mraw_dev->id,
-				     &irq_info);
-#endif
+		mtk_cam_ctrl_isr_event(mraw_dev->cam,
+				       CAMSYS_ENGINE_MRAW, mraw_dev->id,
+				       &irq_info);
 	}
 
 	return IRQ_HANDLED;

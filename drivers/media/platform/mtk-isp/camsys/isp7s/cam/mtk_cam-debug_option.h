@@ -17,6 +17,7 @@
 #define CAM_DEBUG_EVENT		3
 
 #define CAM_DEBUG_RAW_INT	4
+#define CAM_DEBUG_CTRL		7
 
 #define CAM_DEBUG_STATE		8
 

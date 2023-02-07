@@ -6,6 +6,7 @@
 
 #include "mtk_cam-debug_option.h"
 
+
 static unsigned int debug_opts;
 module_param(debug_opts, uint, 0644);
 MODULE_PARM_DESC(debug_opts, "debug options");

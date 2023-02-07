@@ -68,10 +68,5 @@ unsigned int v4l2_format_calc_planesize(const struct v4l2_format_info *info,
 unsigned int sensor_mbus_to_ipi_fmt(unsigned int mbus_code);
 unsigned int sensor_mbus_to_ipi_pixel_id(unsigned int mbus_code);
 unsigned int sensor_mbus_to_pixel_format(unsigned int mbus_code);
-void set_dcif_fmt(struct v4l2_format *img_fmt,
-	unsigned int width,
-	unsigned int height,
-	unsigned int mbus_code);
-
 
 #endif //__MTKCAM_FMT_UTILS_H

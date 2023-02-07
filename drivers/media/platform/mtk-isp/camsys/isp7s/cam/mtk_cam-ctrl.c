@@ -32,6 +32,19 @@
 
 #include "frame_sync_camsys.h"
 
+unsigned long engine_idx_to_bit(int engine_type, int idx)
+{
+	unsigned int map_hw = 0;
+
+	if (engine_type == CAMSYS_ENGINE_RAW)
+		map_hw = MAP_HW_RAW;
+	else if (engine_type == CAMSYS_ENGINE_MRAW)
+		map_hw = MAP_HW_MRAW;
+	else if (engine_type == CAMSYS_ENGINE_CAMSV)
+		map_hw = MAP_HW_CAMSV;
+
+	return bit_map_bit(map_hw, idx);
+}
 
 static int mtk_cam_ctrl_get(struct mtk_cam_ctrl *cam_ctrl)
 {
@@ -135,8 +148,8 @@ void mtk_cam_event_frame_sync(struct mtk_cam_ctrl *cam_ctrl,
 
 static void dump_runtime_info(struct mtk_cam_ctrl_runtime_info *info)
 {
-	if (!info->apply_hw_by_statemachine)
-		pr_info("runtime: by_statemachine is off\n");
+	if (!info->apply_hw_by_FSM)
+		pr_info("runtime: by_FSM is off\n");
 
 	pr_info("runtime: ack %d out/in %d/%d\n",
 		info->ack_seq_no, info->outer_seq_no, info->inner_seq_no);
@@ -189,8 +202,11 @@ static int mtk_cam_ctrl_send_event(struct mtk_cam_ctrl *ctrl, int event)
 		dump_runtime_info(p.info);
 
 	if (CAM_DEBUG_ENABLED(STATE))
-		dev_info(ctrl->ctx->cam->dev, "[%s] event:%d, out/in:%d/%d\n",
-		__func__, event, p.info->outer_seq_no, p.info->inner_seq_no);
+		dev_info(ctrl->ctx->cam->dev,
+			 "[%s] out/in:%d/%d event: %s\n",
+			 __func__,
+			 p.info->outer_seq_no, p.info->inner_seq_no,
+			 str_event(event));
 
 	spin_lock(&ctrl->send_lock);
 
@@ -229,7 +245,20 @@ sensor_deadline_timer_handler(struct hrtimer *t)
 
 	return HRTIMER_NORESTART;
 }
+static bool check_cancel_hrtimer(struct mtk_cam_ctrl *cam_ctrl)
+{
+	struct mtk_cam_device *cam = cam_ctrl->ctx->cam;
+	struct mtk_raw_device *raw_dev;
+	int i;
 
+	for (i = 0; i < cam->engines.num_raw_devices; i++)
+		if (cam_ctrl->ctx->used_engine & (1 << i))
+			break;
+	raw_dev =
+		dev_get_drvdata(cam->engines.raw_devs[i]);
+
+	return is_subsample_en(raw_dev);
+}
 static void
 mtk_cam_sof_timer_setup(struct mtk_cam_ctrl *cam_ctrl)
 {
@@ -244,6 +273,8 @@ mtk_cam_sof_timer_setup(struct mtk_cam_ctrl *cam_ctrl)
 	param.sof_cnt = 0;
 	mtk_cam_seninf_sof_notify(&param);
 
+	if (check_cancel_hrtimer(cam_ctrl))
+		return;
 	cam_ctrl->sensor_deadline_timer.function =
 		sensor_deadline_timer_handler;
 	if (after_sof_ms < 0)
@@ -258,92 +289,157 @@ mtk_cam_sof_timer_setup(struct mtk_cam_ctrl *cam_ctrl)
 
 static void handle_setting_done(struct mtk_cam_ctrl *cam_ctrl)
 {
-	mtk_cam_ctrl_send_event(cam_ctrl, CAMSYS_EVENT_IRQ_SETTING_DONE);
+	mtk_cam_ctrl_send_event(cam_ctrl, CAMSYS_EVENT_IRQ_L_CQ_DONE);
 }
 
-static void handle_meta1_done(struct mtk_cam_ctrl *cam_ctrl)
+static void handle_meta1_done(struct mtk_cam_ctrl *ctrl, int seq_no)
 {
-	mtk_cam_ctrl_send_event(cam_ctrl, CAMSYS_EVENT_IRQ_AFO_DONE);
-}
+	struct mtk_cam_job *job;
 
-static void handle_frame_done(struct mtk_cam_ctrl *cam_ctrl)
-{
-	mtk_cam_ctrl_send_event(cam_ctrl, CAMSYS_EVENT_IRQ_FRAME_DONE);
-}
+	job = mtk_cam_ctrl_get_job(ctrl, cond_job_no_eq, &seq_no);
 
-static void handle_raw_frame_start(struct mtk_cam_ctrl *ctrl)
-{
-	struct mtk_cam_job *processing_job = NULL;
-	int frame_sync_no;
-
-	spin_lock(&ctrl->info_lock);
-	ctrl->sof_time = ctrl->r_info.sof_ts_ns / 1000000;
-	frame_sync_no = ctrl->r_info.inner_seq_no;
-	spin_unlock(&ctrl->info_lock);
-
-	processing_job =
-		mtk_cam_ctrl_get_job(ctrl, cond_job_no_eq, &frame_sync_no);
-
-	/* no continuosly enque case */
-	if (processing_job) {
-		ctrl->sensor_set_ref = mtk_cam_job_get_sensor_set_ref(processing_job);
-		ctrl->state_trans_ref = mtk_cam_job_get_state_trans_ref(processing_job);
+	if (!job) {
+		pr_info("%s: warn. job not found seq %d\n",
+			__func__,  seq_no);
+		return;
 	}
 
-	if (ctrl->sensor_set_ref == ctrl->r_info.event_engine) {
+	call_jobop(job, mark_afo_done, seq_no);
+}
+
+static void handle_frame_done(struct mtk_cam_ctrl *ctrl,
+			      int engine_type, int engine_id,
+			      int seq_no)
+{
+	struct mtk_cam_job *job;
+
+	job = mtk_cam_ctrl_get_job(ctrl, cond_job_no_eq, &seq_no);
+
+	/*
+	 *
+	 * 1. handle each done => mark_engine_done
+	 *      TODO: check state
+	 *      if in wrong state, force transit?
+	 * 2. check if is last done,
+	 * 3. send_event(IRQ_FRAME_DONE)
+	 *    need to send_event IRQ_FRAME_DONE for m2m trigger
+	 */
+	if (!job) {
+		pr_info("%s: warn. job not found seq %d\n",
+			__func__,  seq_no);
+		return;
+	}
+
+	if (call_jobop(job, mark_engine_done,
+		       engine_type, engine_id, seq_no)) {
+
+		/* last done: trigger FSM */
+		mtk_cam_ctrl_send_event(ctrl, CAMSYS_EVENT_IRQ_FRAME_DONE);
+	}
+}
+static void handle_ss_try_set_sensor(struct mtk_cam_ctrl *cam_ctrl)
+{
+	mtk_cam_ctrl_send_event(cam_ctrl, CAMSYS_EVENT_TIMER_SENSOR);
+}
+static void ctrl_vsync_preprocess(struct mtk_cam_ctrl *ctrl,
+				  enum MTK_CAMSYS_ENGINE_TYPE engine_type,
+				  unsigned int engine_id,
+				  struct mtk_camsys_irq_info *irq_info,
+				  struct vsync_result *vsync_res)
+{
+
+	vsync_update(&ctrl->vsync_col,
+		     engine_type, engine_id, vsync_res);
+
+	spin_lock(&ctrl->info_lock);
+
+	/*
+	 * note:
+	 *   this is used to handle for case that some engine is not enqueued,
+	 *   so fh_cookie won't be updated.
+	 */
+	ctrl->r_info.tmp_inner_seq_no =
+		max(ctrl->r_info.tmp_inner_seq_no,
+		    (int)seq_from_fh_cookie(irq_info->frame_idx_inner));
+
+	if (vsync_res->is_first)
+		ctrl->r_info.sof_ts_ns = irq_info->ts_ns;
+
+	if (vsync_res->is_last) {
+		ctrl->r_info.inner_seq_no =
+			ctrl->r_info.tmp_inner_seq_no;
+	}
+
+	spin_unlock(&ctrl->info_lock);
+}
+
+static void handle_engine_frame_start(struct mtk_cam_ctrl *ctrl,
+				      struct mtk_camsys_irq_info *irq_info,
+				      bool is_first, bool is_last)
+{
+
+	if (is_first) {
+		int frame_sync_no;
+
+		if (CAM_DEBUG_ENABLED(CTRL))
+			pr_info("%s: first vsync\n", __func__);
+
+		ctrl->sof_time = irq_info->ts_ns / 1000000;
+		frame_sync_no = seq_from_fh_cookie(irq_info->frame_idx_inner);
+
 		mtk_cam_event_frame_sync(ctrl, frame_sync_no);
 		mtk_cam_sof_timer_setup(ctrl);
 	}
 
-	if (ctrl->state_trans_ref == ctrl->r_info.event_engine)
-		mtk_cam_ctrl_send_event(ctrl, CAMSYS_EVENT_IRQ_SOF);
+	if (is_last) {
+		if (CAM_DEBUG_ENABLED(CTRL))
+			pr_info("%s: last vsync\n", __func__);
+		mtk_cam_ctrl_send_event(ctrl, CAMSYS_EVENT_IRQ_L_SOF);
+	}
 }
 
 static int mtk_cam_event_handle_raw(struct mtk_cam_ctrl *ctrl,
 				       unsigned int engine_id,
 				       struct mtk_camsys_irq_info *irq_info)
 {
-	unsigned int seq_nearby =
-		atomic_read(&ctrl->enqueued_frame_seq_no);
 
 	MTK_CAM_TRACE_FUNC_BEGIN(BASIC);
-	// struct mtk_cam_job_event_info event_info;
-	//unsigned int ctx_id =
-		//decode_fh_reserved_data_to_ctx(irq_info->frame_idx);
-
-	// event_info.engine = (CAMSYS_ENGINE_RAW << 8) + engine_id;
-	// event_info.ctx_id = ctx_id;
 
 	/* raw's CQ done */
 	if (irq_info->irq_type & BIT(CAMSYS_IRQ_SETTING_DONE)) {
 		spin_lock(&ctrl->info_lock);
 		ctrl->r_info.outer_seq_no =
-			decode_fh_reserved_data_to_seq(seq_nearby, irq_info->frame_idx);
+			seq_from_fh_cookie(irq_info->frame_idx);
 		spin_unlock(&ctrl->info_lock);
-
 		handle_setting_done(ctrl);
 	}
 
 	/* raw's DMA done, we only allow AFO done here */
 	if (irq_info->irq_type & BIT(CAMSYS_IRQ_AFO_DONE))
-		handle_meta1_done(ctrl);
+		handle_meta1_done(ctrl,
+				  seq_from_fh_cookie(irq_info->cookie_done));
 
 	/* raw's SW done */
 	if (irq_info->irq_type & BIT(CAMSYS_IRQ_FRAME_DONE))
-		handle_frame_done(ctrl);
+		handle_frame_done(ctrl,
+				  CAMSYS_ENGINE_RAW, engine_id,
+				  seq_from_fh_cookie(irq_info->cookie_done));
+
+	/* raw's subsample n-2 vsync coming */
+	if (irq_info->irq_type & BIT(CAMSYS_IRQ_TRY_SENSOR_SET))
+		handle_ss_try_set_sensor(ctrl);
 
 	/* raw's SOF (proc engine frame start) */
 	if (irq_info->irq_type & BIT(CAMSYS_IRQ_FRAME_START)) {
-		spin_lock(&ctrl->info_lock);
-		ctrl->r_info.sof_ts_ns = irq_info->ts_ns;
-		ctrl->r_info.outer_seq_no =
-			decode_fh_reserved_data_to_seq(seq_nearby, irq_info->frame_idx);
-		ctrl->r_info.inner_seq_no =
-			decode_fh_reserved_data_to_seq(seq_nearby, irq_info->frame_idx_inner);
-		ctrl->r_info.event_engine = CAMSYS_EVENT_SOURCE_RAW;
-		spin_unlock(&ctrl->info_lock);
+		struct vsync_result vsync_res;
 
-		handle_raw_frame_start(ctrl);
+		ctrl_vsync_preprocess(ctrl,
+				      CAMSYS_ENGINE_RAW, engine_id, irq_info,
+				      &vsync_res);
+
+		handle_engine_frame_start(ctrl, irq_info,
+					  vsync_res.is_first,
+					  vsync_res.is_last);
 	}
 
 	/* DCIF' SOF (dc link engine frame start (first exposure) ) */
@@ -360,42 +456,32 @@ static int mtk_camsys_event_handle_camsv(struct mtk_cam_ctrl *ctrl,
 				       struct mtk_camsys_irq_info *irq_info)
 {
 
-	unsigned int seq_nearby =
-		atomic_read(&ctrl->enqueued_frame_seq_no);
-
-	// struct mtk_cam_job_event_info event_info;
-	//unsigned int ctx_id =
-		//decode_fh_reserved_data_to_ctx(irq_info->frame_idx);
-	// event_info.engine = (CAMSYS_ENGINE_RAW << 8) + engine_id;
-	// event_info.ctx_id = ctx_id;
-	// to be removed for camsv enable irq but wrong inner/outer no
-	if (ctrl->sensor_set_ref != CAMSYS_EVENT_SOURCE_CAMSV &&
-		ctrl->state_trans_ref != CAMSYS_EVENT_SOURCE_CAMSV)
-		return 0;
 	/* camsv's CQ done */
 	if (irq_info->irq_type & BIT(CAMSYS_IRQ_SETTING_DONE)) {
 		spin_lock(&ctrl->info_lock);
 		ctrl->r_info.outer_seq_no =
-			decode_fh_reserved_data_to_seq(seq_nearby, irq_info->frame_idx);
+			seq_from_fh_cookie(irq_info->frame_idx);
 		spin_unlock(&ctrl->info_lock);
 		handle_setting_done(ctrl);
 	}
 
 	/* camsv's SW done */
 	if (irq_info->irq_type & BIT(CAMSYS_IRQ_FRAME_DONE))
-		handle_frame_done(ctrl);
+		handle_frame_done(ctrl,
+				  CAMSYS_ENGINE_CAMSV, engine_id,
+				  seq_from_fh_cookie(irq_info->cookie_done));
 
 	/* camsv's SOF (proc engine frame start) */
 	if (irq_info->irq_type & BIT(CAMSYS_IRQ_FRAME_START)) {
-		spin_lock(&ctrl->info_lock);
-		ctrl->r_info.sof_ts_ns = irq_info->ts_ns;
-		ctrl->r_info.outer_seq_no =
-			decode_fh_reserved_data_to_seq(seq_nearby, irq_info->frame_idx);
-		ctrl->r_info.inner_seq_no =
-			decode_fh_reserved_data_to_seq(seq_nearby, irq_info->frame_idx_inner);
-		ctrl->r_info.event_engine = CAMSYS_EVENT_SOURCE_CAMSV;
-		spin_unlock(&ctrl->info_lock);
-		handle_raw_frame_start(ctrl);
+		struct vsync_result vsync_res;
+
+		ctrl_vsync_preprocess(ctrl,
+				      CAMSYS_ENGINE_CAMSV, engine_id, irq_info,
+				      &vsync_res);
+
+		handle_engine_frame_start(ctrl, irq_info,
+					  vsync_res.is_first,
+					  vsync_res.is_last);
 	}
 
 	return 0;
@@ -405,28 +491,34 @@ static int mtk_camsys_event_handle_mraw(struct mtk_cam_ctrl *ctrl,
 					unsigned int engine_id,
 					struct mtk_camsys_irq_info *irq_info)
 {
-	unsigned int seq_nearby =
-		atomic_read(&ctrl->enqueued_frame_seq_no);
-	// struct mtk_cam_job_event_info event_info;
-	//unsigned int ctx_id =
-		//decode_fh_reserved_data_to_ctx(irq_info->frame_idx);
 
-
-	// event_info.engine = (CAMSYS_ENGINE_RAW << 8) + engine_id;
-	// event_info.ctx_id = ctx_id;
 	/* mraw's CQ done */
 	if (irq_info->irq_type & BIT(CAMSYS_IRQ_SETTING_DONE)) {
 		spin_lock(&ctrl->info_lock);
 		ctrl->r_info.outer_seq_no =
-			decode_fh_reserved_data_to_seq(seq_nearby, irq_info->frame_idx);
+			seq_from_fh_cookie(irq_info->frame_idx);
 		spin_unlock(&ctrl->info_lock);
 		handle_setting_done(ctrl);
 	}
 
 	/* mraw's SW done */
 	if (irq_info->irq_type & BIT(CAMSYS_IRQ_FRAME_DONE))
-		handle_frame_done(ctrl);
+		handle_frame_done(ctrl,
+				  CAMSYS_ENGINE_MRAW, engine_id,
+				  seq_from_fh_cookie(irq_info->cookie_done));
 
+	/* mraw's SOF (proc engine frame start) */
+	if (irq_info->irq_type & BIT(CAMSYS_IRQ_FRAME_START)) {
+		struct vsync_result vsync_res;
+
+		ctrl_vsync_preprocess(ctrl,
+				      CAMSYS_ENGINE_MRAW, engine_id, irq_info,
+				      &vsync_res);
+
+		handle_engine_frame_start(ctrl, irq_info,
+					  vsync_res.is_first,
+					  vsync_res.is_last);
+	}
 	return 0;
 }
 
@@ -435,10 +527,12 @@ int mtk_cam_ctrl_isr_event(struct mtk_cam_device *cam,
 			 unsigned int engine_id,
 			 struct mtk_camsys_irq_info *irq_info)
 {
-	unsigned int ctx_id =
-		decode_fh_reserved_data_to_ctx(irq_info->frame_idx);
+	unsigned int ctx_id = ctx_from_fh_cookie(irq_info->frame_idx);
 	struct mtk_cam_ctrl *cam_ctrl = &cam->ctxs[ctx_id].cam_ctrl;
 	int ret = 0;
+
+	if (mtk_cam_ctrl_get(cam_ctrl))
+		return 0;
 
 	/* TBC
 	 *  MTK_CAM_TRACE_BEGIN(BASIC, "irq_type %d, inner %d",
@@ -457,22 +551,13 @@ int mtk_cam_ctrl_isr_event(struct mtk_cam_device *cam,
 
 	switch (engine_type) {
 	case CAMSYS_ENGINE_RAW:
-		if (mtk_cam_ctrl_get(cam_ctrl))
-			return 0;
 		ret = mtk_cam_event_handle_raw(cam_ctrl, engine_id, irq_info);
-		mtk_cam_ctrl_put(cam_ctrl);
 		break;
 	case CAMSYS_ENGINE_MRAW:
-		if (mtk_cam_ctrl_get(cam_ctrl))
-			return 0;
 		ret = mtk_camsys_event_handle_mraw(cam_ctrl, engine_id, irq_info);
-		mtk_cam_ctrl_put(cam_ctrl);
 		break;
 	case CAMSYS_ENGINE_CAMSV:
-		if (mtk_cam_ctrl_get(cam_ctrl))
-			return 0;
 		ret = mtk_camsys_event_handle_camsv(cam_ctrl, engine_id, irq_info);
-		mtk_cam_ctrl_put(cam_ctrl);
 		break;
 	case CAMSYS_ENGINE_SENINF:
 		/* ToDo - cam mux setting delay handling */
@@ -483,6 +568,9 @@ int mtk_cam_ctrl_isr_event(struct mtk_cam_device *cam,
 	default:
 		break;
 	}
+
+	mtk_cam_ctrl_put(cam_ctrl);
+
 	/* TBC
 	 * MTK_CAM_TRACE_END(BASIC);
 	 */
@@ -562,8 +650,7 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 	job->frame_seq_no = next_frame_seq;
 	// to be removed
 	if (next_frame_seq == 1) {
-		cam_ctrl->sensor_set_ref = mtk_cam_job_get_sensor_set_ref(job);
-		cam_ctrl->state_trans_ref = mtk_cam_job_get_state_trans_ref(job);
+		vsync_set_desired(&cam_ctrl->vsync_col, job->used_engine);
 	}
 
 	/* TODO(AY): refine this */
@@ -592,46 +679,37 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 }
 
 void mtk_cam_ctrl_job_composed(struct mtk_cam_ctrl *cam_ctrl,
-			       int frame_seq,
+			       unsigned int fh_cookie,
 			       struct mtkcam_ipi_frame_ack_result *cq_ret)
 {
-	//struct mtk_cam_job_state *job_s;
-	//struct mtk_cam_job *job, *job_composed = NULL;
 	struct mtk_cam_job *job_composed;
 	struct mtk_cam_device *cam;
-	int fh_temp_ctx_id, fh_temp_seq;
+	int ctx_id, seq;
 
 	if (mtk_cam_ctrl_get(cam_ctrl))
 		return;
+
 	cam = cam_ctrl->ctx->cam;
-	fh_temp_ctx_id = decode_fh_reserved_data_to_ctx(frame_seq);
-	/* TODO(AY): why not use frame_seq? */
-	fh_temp_seq = decode_fh_reserved_data_to_seq(
-		atomic_read(&cam_ctrl->enqueued_frame_seq_no), frame_seq);
+	ctx_id = ctx_from_fh_cookie(fh_cookie);
+	seq = seq_from_fh_cookie(fh_cookie);
 
-	job_composed = mtk_cam_ctrl_get_job(cam_ctrl,
-					    cond_job_no_eq, &fh_temp_seq);
+	job_composed = mtk_cam_ctrl_get_job(cam_ctrl, cond_job_no_eq, &seq);
 
-	/* TODO(AY): backend update cq_ret directly on ipi buffer */
-	if (job_composed) {
-		if (job_composed->ctx_id == fh_temp_ctx_id) {
-			/* assign job->cq_rst */
-			call_jobop(job_composed, compose_done, cq_ret);
-		} else {
-			dev_info(cam->dev, "[%s] job->ctx_id/ fh_temp_ctx_id = %d/%d\n",
-			__func__, job_composed->ctx_id, fh_temp_ctx_id);
-		}
-	} else {
-		dev_info(cam->dev, "[%s] not found, ctx_id/ frame_id = %d/%d\n",
-		__func__, fh_temp_ctx_id, fh_temp_seq);
+	if (WARN_ON(!job_composed)) {
+		dev_info(cam->dev, "%s: failed to find job ctx_id/frame = %d/%d\n",
+			 __func__, ctx_id, seq);
+		goto PUT_CTRL;
 	}
 
+	call_jobop(job_composed, compose_done, cq_ret);
+
 	spin_lock(&cam_ctrl->info_lock);
-	cam_ctrl->r_info.ack_seq_no = fh_temp_seq;
+	cam_ctrl->r_info.ack_seq_no = seq;
 	spin_unlock(&cam_ctrl->info_lock);
 
 	mtk_cam_ctrl_send_event(cam_ctrl, CAMSYS_EVENT_ACK);
 
+PUT_CTRL:
 	mtk_cam_ctrl_put(cam_ctrl);
 }
 
@@ -723,6 +801,14 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 	}
 	mtk_cam_event_eos(cam_ctrl);
 
+	read_lock(&cam_ctrl->list_lock);
+	list_for_each_entry(job_s, &cam_ctrl->camsys_state_list, list) {
+		job = container_of(job_s, struct mtk_cam_job, job_state);
+
+		mtk_cam_job_mark_cancelled(job);
+	}
+	read_unlock(&cam_ctrl->list_lock);
+
 	drain_workqueue(ctx->frame_done_wq);
 
 	if (ctx->sensor)
@@ -752,3 +838,26 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 		__func__, ctx->stream_id, atomic_read(&cam_ctrl->stopped));
 }
 
+void vsync_update(struct vsync_collector *c,
+		  int engine_type, int idx,
+		  struct vsync_result *res)
+{
+	unsigned int coming;
+
+	if (!res)
+		return;
+
+	coming = engine_idx_to_bit(engine_type, idx);
+
+	c->collected |= (coming & c->desired);
+
+	if (CAM_DEBUG_ENABLED(CTRL))
+		pr_info("%s: vsync desired/collected %x/%x\n",
+			__func__, c->desired, c->collected);
+
+	res->is_first = !(c->collected & (c->collected - 1));
+	res->is_last = c->collected == c->desired;
+
+	if (res->is_last)
+		c->collected = 0;
+}

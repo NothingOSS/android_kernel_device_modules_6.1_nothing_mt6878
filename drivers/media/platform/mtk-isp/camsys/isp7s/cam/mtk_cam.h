@@ -34,6 +34,7 @@
 #include "mtk_cam-dvfs_qos.h"
 
 #include "mtk_cam-raw_pipeline.h"
+#include "mtk_cam-bit_mapping.h"
 
 #define CCD_READY 1
 
@@ -175,7 +176,8 @@ struct mtk_cam_engines {
 	/* larb */
 	struct device **larb_devs;
 
-	int occupied_engine;
+	unsigned long full_set;
+	unsigned long occupied_engine;
 };
 
 struct mtk_cam_device {
@@ -246,23 +248,26 @@ int mtk_cam_set_dev_larb(struct device *dev, struct device *larb);
 struct device *mtk_cam_get_larb(struct device *dev, int larb_id);
 
 bool mtk_cam_is_any_streaming(struct mtk_cam_device *cam);
-bool mtk_cam_are_all_streaming(struct mtk_cam_device *cam, int stream_mask);
+bool mtk_cam_are_all_streaming(struct mtk_cam_device *cam,
+			       unsigned long stream_mask);
 
 int mtk_cam_get_available_engine(struct mtk_cam_device *cam);
-int mtk_cam_update_engine_status(struct mtk_cam_device *cam, int engine_mask,
-				  bool available);
-static inline int mtk_cam_release_engine(struct mtk_cam_device *cam, int engines)
+int mtk_cam_update_engine_status(struct mtk_cam_device *cam,
+				 unsigned long engine_mask, bool available);
+static inline int mtk_cam_release_engine(struct mtk_cam_device *cam,
+					 unsigned long engines)
 {
 	return mtk_cam_update_engine_status(cam, engines, true);
 }
 
-static inline int mtk_cam_occupy_engine(struct mtk_cam_device *cam, int engines)
+static inline int mtk_cam_occupy_engine(struct mtk_cam_device *cam,
+					unsigned long engines)
 {
 	return mtk_cam_update_engine_status(cam, engines, false);
 }
 
 int mtk_cam_pm_runtime_engines(struct mtk_cam_engines *eng,
-			       int engine_mask, int enable);
+			       unsigned long engine_mask, int enable);
 
 /* note: flag V4L2_MBUS_FRAMEFMT_PAD_ENABLE is defined by mtk internally */
 static inline void

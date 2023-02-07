@@ -9,6 +9,8 @@
 #include <linux/kfifo.h>
 #include <linux/suspend.h>
 
+#include "mtk_cam-engine.h"
+
 #define MAX_SV_HW_TAGS 8
 #define MAX_SV_HW_GROUPS 4
 #define CAMSV_IRQ_NUM 4
@@ -136,9 +138,6 @@ struct mtk_camsv_tag_info {
 	unsigned int hw_scen;
 	unsigned int tag_order;
 	struct mtkcam_ipi_input_param cfg_in_param;
-	struct v4l2_format img_fmt;
-	atomic_t is_config_done;
-	atomic_t is_stream_on;
 };
 
 struct mtk_camsv_device {
@@ -156,29 +155,31 @@ struct mtk_camsv_device {
 	struct clk **clks;
 	unsigned int cammux_id;
 	unsigned int used_tag_cnt;
-	unsigned int streaming_cnt;
+	unsigned int streaming_tag_cnt;
 	unsigned int enabled_tags;
-	unsigned int ctx_stream_id;
 	struct mtk_camsv_tag_info tag_info[MAX_SV_HW_TAGS];
-	unsigned int cfg_group_info[MAX_SV_HW_GROUPS];
 	unsigned int active_group_info[MAX_SV_HW_GROUPS];
+	unsigned int enque_tags;
 	unsigned int first_tag;
 	unsigned int last_tag;
+
+	unsigned int group_handled;
+	unsigned int used_group;
 
 	int fifo_size;
 	void *msg_buffer;
 	struct kfifo msg_fifo;
 	atomic_t is_fifo_overflow;
 
+	struct engine_fsm fsm;
+	struct apply_cq_ref *cq_ref;
+
 	unsigned int sof_count;
 	/* for preisp - for sof counter sync.*/
 	int tg_cnt;
-	u64 last_sof_time_ns;
 	unsigned int frame_wait_to_process;
 	struct notifier_block notifier_blk;
 	u64 sof_timestamp;
-
-	atomic_t is_first_frame;
 };
 
 void sv_reset(struct mtk_camsv_device *sv_dev);
@@ -209,12 +210,13 @@ int mtk_cam_sv_frame_no_inner(struct mtk_camsv_device *sv_dev);
 void mtk_cam_sv_fill_tag_info(struct mtk_camsv_tag_info *tag_info,
 	struct mtk_camsv_tag_param *tag_param, unsigned int hw_scen,
 	unsigned int pixelmode, unsigned int sub_ratio,
-	unsigned int mbus_code,	struct mtk_camsv_pipeline *pipeline,
-	struct v4l2_format *img_fmt);
+	unsigned int mbus_width, unsigned int mbus_height,
+	unsigned int mbus_code,	struct mtk_camsv_pipeline *pipeline);
 void mtk_cam_sv_reset_tag_info(struct mtk_camsv_device *sv_dev);
 int mtk_cam_sv_get_tag_param(struct mtk_camsv_tag_param *arr_tag_param,
 	unsigned int hw_scen, unsigned int exp_no, unsigned int req_amount);
 void apply_camsv_cq(struct mtk_camsv_device *sv_dev,
+	      struct apply_cq_ref *ref,
 	      dma_addr_t cq_addr, unsigned int cq_size, unsigned int cq_offset,
 	      int initial);
 bool mtk_cam_is_display_ic(struct mtk_cam_ctx *ctx);

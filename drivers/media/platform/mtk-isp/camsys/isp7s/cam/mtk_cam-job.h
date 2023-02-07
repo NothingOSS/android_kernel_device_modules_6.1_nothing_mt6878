@@ -14,12 +14,14 @@
 #include "mtk_cam-pool.h"
 #include "mtk_cam-ipi.h"
 #include "mtk_camera-v4l2-controls.h"
+#include "mtk_cam-engine.h"
 
 struct mtk_cam_job;
 
 
 /* new state machine */
 enum mtk_cam_sensor_state {
+	S_SENSOR_NONE,
 	S_SENSOR_NOT_SET,
 	S_SENSOR_APPLYING,
 	S_SENSOR_DONE,
@@ -50,9 +52,9 @@ enum mtk_cam_job_action {
 
 enum mtk_camsys_event_type {
 
-	CAMSYS_EVENT_IRQ_SETTING_DONE,
-	CAMSYS_EVENT_IRQ_SOF,
-	CAMSYS_EVENT_IRQ_AFO_DONE,
+	//CAMSYS_EVENT_IRQ_F_VSYNC, /* 1st vsync */
+	CAMSYS_EVENT_IRQ_L_SOF, /* last sof */
+	CAMSYS_EVENT_IRQ_L_CQ_DONE, /* last cq done */
 	CAMSYS_EVENT_IRQ_FRAME_DONE,
 
 	CAMSYS_EVENT_TIMER_SENSOR,
@@ -60,11 +62,7 @@ enum mtk_camsys_event_type {
 	CAMSYS_EVENT_ENQUE,
 	CAMSYS_EVENT_ACK,
 };
-enum mtk_camsys_event_engine {
-	CAMSYS_EVENT_SOURCE_RAW,
-	CAMSYS_EVENT_SOURCE_CAMSV,
-	CAMSYS_EVENT_SOURCE_MRAW,
-};
+const char *str_event(int event);
 
 struct mtk_cam_ctrl_runtime_info {
 
@@ -73,7 +71,7 @@ struct mtk_cam_ctrl_runtime_info {
 	 * if this is disabled, statemachine will skip transitions with hw
 	 * action
 	 */
-	bool apply_hw_by_statemachine;
+	bool apply_hw_by_FSM;
 
 	int ack_seq_no;
 	int outer_seq_no;
@@ -82,7 +80,7 @@ struct mtk_cam_ctrl_runtime_info {
 	u64 sof_ts_ns;
 	u64 sof_hw_ts;
 
-	int event_engine;
+	int tmp_inner_seq_no;
 };
 
 struct transition_param {
@@ -186,8 +184,13 @@ struct mtk_cam_job_ops {
 	int (*apply_sensor)(struct mtk_cam_job *s);
 	int (*apply_isp)(struct mtk_cam_job *s);
 	int (*trigger_isp)(struct mtk_cam_job *s); /* m2m use */
-	int (*handle_afo_done)(struct mtk_cam_job *s);
+
+	int (*mark_afo_done)(struct mtk_cam_job *s, int seq_no);
+	int (*mark_engine_done)(struct mtk_cam_job *s,
+				int engine_type, int engine_id,
+				int seq_no);
 	int (*handle_buffer_done)(struct mtk_cam_job *s);
+
 };
 struct mtk_cam_job {
 	/* note: to manage life-cycle in state list */
@@ -204,7 +207,7 @@ struct mtk_cam_job {
 	struct mtk_cam_pool_buffer cq;
 	struct mtk_cam_pool_buffer ipi;
 	struct mtkcam_ipi_frame_ack_result cq_rst;
-	int used_engine;
+	unsigned int used_engine;
 	bool do_ipi_config;
 	struct mtkcam_ipi_config_param ipi_config;
 	bool stream_on_seninf;
@@ -215,9 +218,17 @@ struct mtk_cam_job {
 	struct mtk_cam_job_state job_state;
 	const struct mtk_cam_job_ops *ops;
 
+	/* for cq_done handling */
+	struct apply_cq_ref cq_ref;
+
 	struct kthread_work sensor_work;
 	struct work_struct frame_done_work;
-	struct work_struct meta1_done_work;
+	wait_queue_head_t done_wq;
+	bool done_work_queued;
+	bool cancel_done_work;
+	atomic_long_t afo_done; /* bit 0: not handled, bit 1: handled */
+	atomic_long_t done_set;
+	unsigned long done_handled;
 
 	/* job private start */
 	int job_type;	/* job type - only job layer */
@@ -226,8 +237,6 @@ struct mtk_cam_job {
 	int frame_seq_no;
 	bool composed;
 	int sensor_set_margin;	/* allow apply sensor before SOF + x (ms)*/
-	int sensor_set_ref;
-	int state_trans_ref;
 	u64 timestamp;
 	u64 timestamp_mono;
 
@@ -305,7 +314,7 @@ struct mtk_cam_mstream_job {
 };
 struct mtk_cam_subsample_job {
 	struct mtk_cam_job job; /* always on top */
-
+	struct mtk_cam_scen prev_scen;
 	/* TODO */
 };
 struct mtk_cam_timeshare_job {
@@ -331,11 +340,25 @@ struct mtk_cam_job_data {
 		struct mtk_cam_timeshare_job t;
 	};
 };
-unsigned int decode_fh_reserved_data_to_ctx(u32 data_in);
-unsigned int decode_fh_reserved_data_to_seq(u32 ref_near_by, u32 data_in);
-unsigned int encode_fh_reserved_data(u32 ctx_id_in, u32 seq_no_in);
 
+/* TODO(AY): handle seq_no overflow */
+/*
+ * frame header cookie = [31:24] ctx_id + [23:0] seq_no
+ */
+static inline unsigned int ctx_from_fh_cookie(unsigned int fh_cookie)
+{
+	return fh_cookie >> 24;
+}
 
+static inline unsigned int seq_from_fh_cookie(unsigned int fh_cookie)
+{
+	return fh_cookie & (BIT(24) - 1);
+}
+
+static inline unsigned int to_fh_cookie(unsigned int ctx, unsigned int seq_no)
+{
+	return ctx << 24 | seq_no;
+}
 
 static inline struct mtk_cam_job_data *job_to_data(struct mtk_cam_job *job)
 {
@@ -354,18 +377,16 @@ static inline void mtk_cam_job_return(struct mtk_cam_job *job)
 	mtk_cam_pool_return(&data->pool_job, sizeof(data->pool_job));
 }
 
-static inline int mtk_cam_job_get_sensor_set_ref(struct mtk_cam_job *job)
-{
-	return job->sensor_set_ref;
-}
-static inline int mtk_cam_job_get_state_trans_ref(struct mtk_cam_job *job)
-{
-	return job->state_trans_ref;
-}
-
 int mtk_cam_job_pack(struct mtk_cam_job *job, struct mtk_cam_ctx *ctx,
 		     struct mtk_cam_request *req);
 int mtk_cam_job_get_sensor_margin(struct mtk_cam_job *job);
+
+static inline void mtk_cam_job_mark_cancelled(struct mtk_cam_job *job)
+{
+	/* to assure done_work could exit properly */
+	job->cancel_done_work = 1;
+	wake_up_interruptible(&job->done_wq);
+}
 
 
 #endif //__MTK_CAM_JOB_H

@@ -29,63 +29,6 @@ struct mtk_cam_frame_sync {
 	struct mutex op_lock;
 };
 
-static inline void _used_mask_set(unsigned int *m, int idx, int ofst, int num)
-{
-	WARN(idx < 0 || idx >= num, "idx %d num %d", idx, num);
-	*m |= (1 << (idx + ofst));
-}
-
-static inline void _used_mask_unset(unsigned int *m, int idx, int ofst, int num)
-{
-	WARN(idx < 0 || idx >= num, "idx %d num %d", idx, num);
-	*m &= ~(1 << (idx + ofst));
-}
-
-static inline bool _used_mask_has(unsigned int *m, int idx, int ofst, int num)
-{
-	WARN(idx < 0 || idx >= num, "idx %d num %d", idx, num);
-	return *m & (1 << (idx + ofst));
-}
-
-static inline unsigned int _used_mask_get_submask(unsigned int *m, int ofst, int num)
-{
-	return (*m) >> ofst & ((1 << num) - 1);
-}
-
-static inline unsigned int _submask_has(unsigned int *m, int idx, int num)
-{
-	WARN(idx < 0 || idx >= num, "idx %d num %d", idx, num);
-	return *m & (1 << idx);
-}
-
-#define _RANGE_POS_raw			MTKCAM_SUBDEV_RAW_START
-#define _RANGE_NUM_raw			MTKCAM_SUBDEV_RAW_NUM
-#define _RANGE_POS_camsv		MTKCAM_SUBDEV_CAMSV_START
-#define _RANGE_NUM_camsv		MTKCAM_SUBDEV_CAMSV_NUM
-#define _RANGE_POS_mraw			MTKCAM_SUBDEV_MRAW_START
-#define _RANGE_NUM_mraw			MTKCAM_SUBDEV_MRAW_NUM
-#define _RANGE_POS_all			MTKCAM_SUBDEV_RAW_START
-#define _RANGE_NUM_all			MTKCAM_SUBDEV_MAX
-#define _RANGE_POS_stream		0
-#define _RANGE_NUM_stream		8
-#define USED_MASK_HAS(m, type, idx)	\
-	_used_mask_has((m), idx, _RANGE_POS_ ## type, _RANGE_NUM_ ## type)
-#define USED_MASK_SET(m, type, idx)	\
-	_used_mask_set((m), idx, _RANGE_POS_ ## type, _RANGE_NUM_ ## type)
-#define USED_MASK_UNSET(m, type, idx)	\
-	_used_mask_unset((m), idx, _RANGE_POS_ ## type, _RANGE_NUM_ ## type)
-#define USED_MASK_GET_SUBMASK(m, type)	\
-	_used_mask_get_submask((m), _RANGE_POS_ ## type, _RANGE_NUM_ ## type)
-#define SUBMASK_HAS(m, type, idx)		\
-	_submask_has((m), idx, _RANGE_NUM_ ## type)
-
-#define USED_MASK_CONTAINS(ma, mb)	\
-({					\
-	typeof(*(ma)) _a = *(ma);	\
-	typeof(*(ma)) _b = *(mb);	\
-	(_a & _b) == _b;		\
-})
-
 struct v4l2_ctrl_handler;
 /*
  * struct mtk_cam_request - MTK camera request.

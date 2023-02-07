@@ -27,12 +27,41 @@ enum MTK_CAMSYS_IRQ_EVENT {
 	/* with error_data */
 	CAMSYS_IRQ_ERROR,
 };
+
 enum MTK_CAMSYS_ENGINE_TYPE {
 	CAMSYS_ENGINE_RAW,
 	CAMSYS_ENGINE_MRAW,
 	CAMSYS_ENGINE_CAMSV,
 	CAMSYS_ENGINE_SENINF,
 };
+
+unsigned long engine_idx_to_bit(int engine_type, int idx);
+
+struct vsync_result {
+	unsigned char is_first : 1;
+	unsigned char is_last  : 1;
+};
+
+struct vsync_collector {
+	unsigned int desired;
+	unsigned int collected;
+};
+
+static inline void vsync_reset(struct vsync_collector *c)
+{
+	c->desired = c->collected = 0;
+}
+
+static inline void vsync_set_desired(struct vsync_collector *c,
+				     unsigned int desried)
+{
+	c->desired = desried;
+	c->collected = 0;
+}
+
+void vsync_update(struct vsync_collector *c,
+		  int engine_type, int idx,
+		  struct vsync_result *res);
 
 /*per stream (sensor) */
 struct mtk_cam_ctrl {
@@ -63,6 +92,8 @@ struct mtk_cam_ctrl {
 	wait_queue_head_t stop_wq;
 	int sensor_set_ref;
 	int state_trans_ref;
+
+	struct vsync_collector vsync_col;
 };
 
 struct mtk_camsys_irq_normal_data {
@@ -77,10 +108,11 @@ struct mtk_camsys_irq_info {
 	u64 ts_ns;
 	int frame_idx;
 	int frame_idx_inner;
+	int cookie_done;
 	int write_cnt;
 	int fbc_cnt;
 	unsigned int sof_tags;
-	unsigned int done_groups;
+	unsigned int done_tags;
 	unsigned int err_tags;
 	union {
 		struct mtk_camsys_irq_normal_data	n;
@@ -102,7 +134,8 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 	struct mtk_cam_job *job);
 /* inform job composed */
 void mtk_cam_ctrl_job_composed(struct mtk_cam_ctrl *cam_ctrl,
-	int frame_seq, struct mtkcam_ipi_frame_ack_result *cq_ret);
+			       unsigned int fh_cookie,
+			       struct mtkcam_ipi_frame_ack_result *cq_ret);
 
 void mtk_cam_event_frame_sync(struct mtk_cam_ctrl *cam_ctrl,
 			      unsigned int frame_seq_no);
@@ -111,7 +144,7 @@ static inline
 void mtk_cam_ctrl_apply_by_state(struct mtk_cam_ctrl *ctrl, int enable)
 {
 	spin_lock(&ctrl->info_lock);
-	ctrl->r_info.apply_hw_by_statemachine = !!enable;
+	ctrl->r_info.apply_hw_by_FSM = !!enable;
 	spin_unlock(&ctrl->info_lock);
 }
 

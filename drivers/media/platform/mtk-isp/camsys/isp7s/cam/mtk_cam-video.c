@@ -466,36 +466,6 @@ static void mtk_cam_vb2_stop_streaming(struct vb2_queue *vq)
 
 }
 
-static int ipi_pipe_id_to_idx(int pipe_id)
-{
-	if (is_raw_subdev(pipe_id))
-		return pipe_id;
-
-	if (is_mraw_subdev(pipe_id))
-		return pipe_id - MTKCAM_SUBDEV_MRAW_START;
-
-	if (is_camsv_subdev(pipe_id))
-		return pipe_id - MTKCAM_SUBDEV_CAMSV_START;
-
-	return -1;
-}
-
-void mtk_cam_mark_pipe_used(int *used_mask, int ipi_pipe_id)
-{
-	int pipe_idx;
-
-	pipe_idx = ipi_pipe_id_to_idx(ipi_pipe_id);
-
-	if (is_raw_subdev(ipi_pipe_id))
-		USED_MASK_SET(used_mask, raw, pipe_idx);
-	else if (is_camsv_subdev(ipi_pipe_id))
-		USED_MASK_SET(used_mask, camsv, pipe_idx);
-	else if (is_mraw_subdev(ipi_pipe_id))
-		USED_MASK_SET(used_mask, mraw, pipe_idx);
-	else
-		pr_info("%s: wrong pipe id 0x%x\n", __func__, ipi_pipe_id);
-}
-
 static void mtk_cam_vb2_buf_queue(struct vb2_buffer *vb)
 {
 	struct mtk_cam_buffer *buf = mtk_cam_vb2_buf_to_dev_buf(vb);
@@ -511,7 +481,7 @@ static void mtk_cam_vb2_buf_queue(struct vb2_buffer *vb)
 	else
 		mtk_cam_vb2_buf_collect_meta_info(vb);
 
-	mtk_cam_mark_pipe_used(&req->used_pipe, ipi_pipe_id);
+	req->used_pipe |= ipi_pipe_id_to_bit(ipi_pipe_id);
 	list_add_tail(&buf->list, &req->buf_list);
 }
 
@@ -917,7 +887,7 @@ int mtk_cam_video_register(struct mtk_cam_video_device *video,
 	vdev->lock = &video->q_lock;
 	strscpy(vdev->name, video->desc.name, sizeof(vdev->name));
 
-	ret = video_register_device(vdev, VFL_TYPE_VIDEO, -1);
+	ret = video_register_device(vdev, VFL_TYPE_VIDEO, CAMSYS_VIDEO_DEV_NR);
 	if (ret < 0) {
 		dev_info(v4l2_dev->dev, "Failed to register video device: %d\n",
 			ret);

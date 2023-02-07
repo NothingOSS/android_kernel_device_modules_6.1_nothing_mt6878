@@ -11,9 +11,11 @@
 
 #include "mtk_cam-video.h"
 #include "mtk_cam-plat.h"
+#include "mtk_cam-engine.h"
 
 #define USING_MRAW_SCQ 1
 #define CHECK_MRAW_NODEQ 1
+#define MRAW_TG_PIXEL_MODE 3
 
 #define MRAW_WRITE_BITS(RegAddr, RegName, FieldName, FieldValue) do {\
 	union RegName reg;\
@@ -135,13 +137,14 @@ struct mtk_mraw_device {
 	struct kfifo msg_fifo;
 	atomic_t is_fifo_overflow;
 
+	struct engine_fsm fsm;
+	struct apply_cq_ref *cq_ref;
+
 	unsigned int sof_count;
-	u64 last_sof_time_ns;
 	unsigned int frame_wait_to_process;
 	struct notifier_block notifier_blk;
 
 	atomic_t is_enqueued;
-	atomic_t is_first_frame;
 #ifdef CHECK_MRAW_NODEQ
 	u64 last_wcnt;
 	u64 wcnt_no_dup_cnt;
@@ -165,6 +168,7 @@ int mtk_cam_mraw_is_vf_on(struct mtk_mraw_device *mraw_dev);
 int mtk_cam_mraw_toggle_tg_db(struct mtk_mraw_device *mraw_dev);
 int mtk_cam_mraw_toggle_db(struct mtk_mraw_device *mraw_dev);
 void apply_mraw_cq(struct mtk_mraw_device *mraw_dev,
+	      struct apply_cq_ref *ref,
 	      dma_addr_t cq_addr, unsigned int cq_size, unsigned int cq_offset,
 	      int initial);
 void mtk_cam_mraw_copy_user_input_param(struct mtk_cam_device *cam,	void *vaddr,
