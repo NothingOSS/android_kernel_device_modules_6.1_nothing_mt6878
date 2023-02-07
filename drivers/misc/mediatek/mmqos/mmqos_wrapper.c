@@ -35,6 +35,10 @@ static struct wrapper_data wrapper_data_mt6895 = {
 	.max_ostd = 40,
 	.icc_dst_id = SLAVE_COMMON(0),
 };
+static struct wrapper_data wrapper_data_mt6897 = {
+	.max_ostd = 40,
+	.icc_dst_id = SLAVE_COMMON(0),
+};
 static struct wrapper_data wrapper_data_mt6985 = {
 	.max_ostd = 40,
 	.icc_dst_id = SLAVE_COMMON(0),
@@ -226,6 +230,10 @@ static const struct of_device_id of_mmqos_wrapper_match_tbl[] = {
 	{
 		.compatible = "mediatek,mt6895-mmqos-wrapper",
 		.data = &wrapper_data_mt6895,
+	},
+	{
+		.compatible = "mediatek,mt6897-mmqos-wrapper",
+		.data = &wrapper_data_mt6897,
 	},
 	{
 		.compatible = "mediatek,mt6985-mmqos-wrapper",
