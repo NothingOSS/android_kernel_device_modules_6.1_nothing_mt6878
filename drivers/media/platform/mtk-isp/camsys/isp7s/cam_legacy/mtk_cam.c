@@ -4771,6 +4771,7 @@ immediate_link_update_chk(struct mtk_cam_ctx *ctx, int pipe_id,
 			  struct mtk_cam_request_stream_data *s_data)
 {
 	struct mtk_cam_request *req = mtk_cam_s_data_get_req(s_data);
+	int ret;
 
 	if (req->ctx_link_update && (!s_data->seninf_new || !s_data->seninf_old)) {
 		dev_info(ctx->cam->dev,
@@ -4787,6 +4788,17 @@ immediate_link_update_chk(struct mtk_cam_ctx *ctx, int pipe_id,
 	 * before set sensor.
 	 */
 	if (req->ctx_link_update & (1 << pipe_id)) {
+		/* update the media pipeline of the context */
+
+		media_pipeline_stop(&s_data->seninf_old->entity.pads[0]);
+
+		ret = media_pipeline_start(&s_data->seninf_new->entity.pads[0], &ctx->pipeline);
+		if (ret) {
+			dev_info(ctx->cam->dev,
+				 "%s:pipe(%d):failed in media_pipeline_start:%d\n",
+				 __func__, pipe_id, ret);
+		}
+
 		if (running_s_data_num == 1) {
 			dev_info(ctx->cam->dev,
 				 "%s:req(%s):pipe(%d):link change before enqueue: seq(%d), running_s_data_num(%d)\n",
@@ -5604,7 +5616,7 @@ int mtk_cam_req_save_link_change(struct mtk_raw_pipeline *pipe,
 	return 0;
 }
 
-static struct v4l2_subdev
+struct v4l2_subdev
 *mtk_cam_find_sensor_nolock(struct mtk_cam_ctx *ctx,
 			    struct media_entity *entity)
 {
@@ -5627,6 +5639,31 @@ static struct v4l2_subdev
 
 		if (sensor)
 			break;
+	}
+
+	return sensor;
+}
+
+static struct v4l2_subdev *mtk_cam_find_sensor_from_seninf(struct v4l2_subdev *seninf)
+{
+	struct v4l2_subdev *sensor = NULL;
+	struct media_link *link;
+
+	for_each_media_entity_data_link(&seninf->entity, link) {
+		dev_info(seninf->v4l2_dev->dev,
+			 "%s: link, sink:%s/%p, source:%s, seninf:%s/%p\n", __func__,
+			 link->sink->entity->name,
+			 link->sink->entity,
+			 link->source->entity->name,
+			 seninf->entity.name,
+			 &seninf->entity);
+
+		if (link->flags & MEDIA_LNK_FL_ENABLED &&
+		    link->sink->entity == &seninf->entity &&
+		    link->source->entity->function == MEDIA_ENT_F_CAM_SENSOR) {
+			sensor = media_entity_to_v4l2_subdev(link->source->entity);
+			break;
+		}
 	}
 
 	return sensor;
@@ -5676,7 +5713,8 @@ static int mtk_cam_link_notify(struct media_link *link, u32 flags,
 
 	req_seninf_old = ctx->seninf;
 	req_seninf_new = media_entity_to_v4l2_subdev(source);
-	req_sensor_new = mtk_cam_find_sensor_nolock(ctx, &req_seninf_new->entity);
+	req_sensor_new = mtk_cam_find_sensor_from_seninf(req_seninf_new);
+
 	if (!mtk_cam_collect_link_change(pipe, req_sensor_new,
 					 req_seninf_old, req_seninf_new))
 		dev_info(cam->dev,
