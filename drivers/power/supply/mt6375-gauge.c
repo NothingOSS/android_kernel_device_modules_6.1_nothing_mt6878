@@ -3938,15 +3938,18 @@ static int mt6375_gauge_refactor_unit(struct mt6375_priv *priv)
 	regval &= FG_GAINERR_SEL_MASK;
 	priv->default_r_fg = r_fg_val[regval];
 
-	ret = of_property_read_u32(np, "R_FG_VALUE", &r_fg_value);
-	r_fg_value *= 10;
-	ret |= of_property_read_u32(np, "CURR_MEASURE_20A", &curr_measure_20a);
-	ret |= of_property_read_u32(np, "UNIT_MULTIPLE", &unit_multiple);
+	ret = of_property_read_u32(np, "R_FG_VALUE", &r_fg_value) ?
+	      of_property_read_u32(np, "r-fg-value", &r_fg_value) : 0;
+	ret |= of_property_read_u32(np, "CURR_MEASURE_20A", &curr_measure_20a) ?
+	       of_property_read_u32(np, "curr-measure-20a", &curr_measure_20a) : 0;
+	ret |= of_property_read_u32(np, "UNIT_MULTIPLE", &unit_multiple) ?
+	       of_property_read_u32(np, "unit-multiple", &unit_multiple) : 0;
 	if (ret) {
 		dev_notice(priv->dev, "%s: failed to parse dt\n", __func__);
 		return -EINVAL;
 	}
 
+	r_fg_value *= 10;
 	if (r_fg_value == 20)
 		priv->default_r_fg = 20;
 	if (curr_measure_20a) {
