@@ -545,3 +545,27 @@ int fill_img_out(struct mtkcam_ipi_img_output *io,
 	return 0;
 }
 
+int get_sv_tag_idx(unsigned int exp_no, unsigned int tag_order, bool is_w)
+{
+	struct mtk_camsv_tag_param img_tag_param[SVTAG_IMG_END];
+	unsigned int hw_scen, req_amount;
+	int i, tag_idx = -1;
+
+	hw_scen = 1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_STAGGER);
+	req_amount = (exp_no < 3) ? exp_no * 2 : exp_no;
+	if (mtk_cam_sv_get_tag_param(img_tag_param, hw_scen, exp_no, req_amount))
+		goto EXIT;
+	else {
+		for (i = 0; i < req_amount; i++) {
+			if (img_tag_param[i].tag_order == tag_order &&
+				img_tag_param[i].is_w == is_w) {
+				tag_idx = img_tag_param[i].tag_idx;
+				break;
+			}
+		}
+	}
+
+EXIT:
+	return tag_idx;
+}
+

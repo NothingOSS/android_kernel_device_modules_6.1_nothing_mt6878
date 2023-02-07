@@ -223,7 +223,7 @@ static int mtk_cam_select_hw_only_sv(struct mtk_cam_job *job)
 	sv_available = bit_map_subset_of(MAP_HW_CAMSV, available);
 
 	/* HS_TODO: more rules */
-	if (sv_available & bit_map_bit(MAP_HW_CAMSV, rsv_id)) {
+	if (sv_available & BIT(rsv_id)) {
 		selected |= bit_map_bit(MAP_HW_CAMSV, rsv_id);
 		sv = cam->engines.sv_devs[rsv_id];
 	} else {
@@ -360,15 +360,8 @@ update_job_type_feature(struct mtk_cam_job *job)
 		/* TODO(AY): refine this deep access: job->.....raw_res.scen */
 		job->job_scen = job->req->raw_data[pipe_idx].ctrl.resource.user_data.raw_res.scen;
 		job->job_type = map_job_type(&job->job_scen);
-	} else {
-		/* FIXME(AY): may have more than 1 camsv-sd? */
-		pipe_idx = get_sv_subdev_idx(ctx->used_pipe);
-		if (pipe_idx == -1)
-			return -1;
-		/* FIXME(AY): does sv have this? */
-		job->job_scen = job->req->raw_data[pipe_idx].ctrl.resource.user_data.raw_res.scen;
+	} else
 		job->job_type = JOB_TYPE_ONLY_SV;
-	}
 
 	return 0;
 }
@@ -984,9 +977,6 @@ static int _apply_sv_cq(struct mtk_cam_job *job)
 	unsigned long used_engine;
 	int ret = 0;
 
-	if (WARN_ON(!job->composed))
-		return -1;
-
 	used_engine = bit_map_subset_of(MAP_HW_CAMSV, job->used_engine);
 	for (i = 0; i < cam->engines.num_camsv_devices; i++) {
 		if (used_engine & (1 << i)) {
@@ -1014,9 +1004,6 @@ static int _apply_mraw_cq(struct mtk_cam_job *job)
 	struct mtk_mraw_device *mraw_dev;
 	int i, mraw_idx;
 	int ret = 0;
-
-	if (WARN_ON(!job->composed))
-		return -1;
 
 	for (i = 0; i < ctx->num_mraw_subdevs; i++) {
 		mraw_idx = ctx->mraw_subdev_idx[i];
@@ -1330,7 +1317,7 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 	job->do_ipi_config = false;
 	if (!ctx->configured) {
 		/* handle camsv tags */
-		if (handle_sv_tag_hdr(job)) {
+		if (handle_sv_tag(job)) {
 			dev_info(cam->dev, "tag handle failed");
 			return -1;
 		}
@@ -1424,7 +1411,7 @@ _job_pack_normal(struct mtk_cam_job *job,
 	job->do_ipi_config = false;
 	if (!ctx->configured) {
 		/* handle camsv tags */
-		if (handle_sv_tag_hdr(job)) {
+		if (handle_sv_tag(job)) {
 			dev_info(cam->dev, "tag handle failed");
 			return -1;
 		}
@@ -1514,12 +1501,6 @@ _job_pack_m2m(struct mtk_cam_job *job,
 
 	job->do_ipi_config = false;
 	if (!ctx->configured) {
-		/* handle camsv tags */
-		if (handle_sv_tag_hdr(job)) {
-			dev_info(cam->dev, "tag handle failed");
-			return -1;
-		}
-
 		/* if has raw */
 		if (bit_map_subset_of(MAP_HW_RAW, ctx->used_engine)) {
 			/* ipi_config_param */
@@ -1568,7 +1549,8 @@ _handle_sv_tag_only_sv(struct mtk_cam_job *job)
 		sv_sink = &job->req->sv_data[sv_pipe_idx].sink;
 		tag_param.tag_idx = tag_idx;
 		tag_param.seninf_padidx = sv_pipe->seninf_padidx;
-		tag_param.tag_order = MTKCAM_IPI_ORDER_FIRST_TAG;
+		tag_param.tag_order = mtk_cam_seninf_get_tag_order(
+			ctx->seninf, sv_pipe->seninf_padidx);
 		mtk_cam_sv_fill_tag_info(sv_dev->tag_info,
 			&tag_param, 1, 3, job->sub_ratio,
 			sv_sink->width, sv_sink->height,
@@ -1845,7 +1827,7 @@ static struct mtk_cam_job_ops otf_only_sv_job_ops = {
 	.stream_on = _stream_on_only_sv,
 	//.reset
 	.apply_sensor = _apply_sensor,
-	.apply_isp = _apply_sv_cq,
+	.apply_isp = _apply_cq,
 	.mark_engine_done = job_mark_engine_done,
 	.handle_buffer_done = job_buffer_done,
 };

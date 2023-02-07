@@ -34,7 +34,7 @@ int fill_imgo_img_buffer_to_ipi_frame_stagger(
 	struct mtk_cam_video_device *node);
 int fill_sv_img_fp(struct req_buffer_helper *helper,
 	struct mtk_cam_buffer *buf, struct mtk_cam_video_device *node);
-int handle_sv_tag_hdr(struct mtk_cam_job *job);
+int handle_sv_tag(struct mtk_cam_job *job);
 
 #endif //__MTK_CAM_JOB_STAGGER_H
 

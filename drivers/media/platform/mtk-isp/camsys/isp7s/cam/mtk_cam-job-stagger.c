@@ -37,30 +37,6 @@ is_stagger_dc(struct mtk_cam_job *job)
 	return ret;
 }
 
-int get_sv_tag_idx_hdr(unsigned int exp_no, unsigned int tag_order, bool is_w)
-{
-	struct mtk_camsv_tag_param img_tag_param[SVTAG_IMG_END];
-	unsigned int hw_scen, req_amount;
-	int i, tag_idx = -1;
-
-	hw_scen = 1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_STAGGER);
-	req_amount = (exp_no < 3) ? exp_no * 2 : exp_no;
-	if (mtk_cam_sv_get_tag_param(img_tag_param, hw_scen, exp_no, req_amount))
-		goto EXIT;
-	else {
-		for (i = 0; i < req_amount; i++) {
-			if (img_tag_param[i].tag_order == tag_order &&
-				img_tag_param[i].is_w == is_w) {
-				tag_idx = img_tag_param[i].tag_idx;
-				break;
-			}
-		}
-	}
-
-EXIT:
-	return tag_idx;
-}
-
 int get_hard_scenario_stagger(struct mtk_cam_job *job)
 {
 	struct mtk_cam_scen *scen = &job->job_scen;
@@ -167,8 +143,8 @@ int fill_sv_img_fp(
 			continue;
 #endif
 		tag_idx = (is_stagger_dc(job) && exp_no > 1 && (i + 1) == exp_no) ?
-			get_sv_tag_idx_hdr(exp_no, MTKCAM_IPI_ORDER_LAST_TAG, false) :
-			get_sv_tag_idx_hdr(exp_no, i, false);
+			get_sv_tag_idx(exp_no, MTKCAM_IPI_ORDER_LAST_TAG, false) :
+			get_sv_tag_idx(exp_no, i, false);
 		if (tag_idx == -1) {
 			pr_info("%s: tag_idx not found(exp_no:%d)", __func__, exp_no);
 			goto EXIT;
@@ -567,9 +543,9 @@ int apply_cam_mux_stagger(struct mtk_cam_job *job)
 		case EXPOSURE_CHANGE_3_to_2:
 		case EXPOSURE_CHANGE_1_to_2:
 			first_tag_idx =
-				get_sv_tag_idx_hdr(2, MTKCAM_IPI_ORDER_FIRST_TAG, false);
+				get_sv_tag_idx(2, MTKCAM_IPI_ORDER_FIRST_TAG, false);
 			last_tag_idx =
-				get_sv_tag_idx_hdr(2, MTKCAM_IPI_ORDER_LAST_TAG, false);
+				get_sv_tag_idx(2, MTKCAM_IPI_ORDER_LAST_TAG, false);
 			settings[0].seninf = ctx->seninf;
 			settings[0].source = PAD_SRC_RAW0;
 			settings[0].camtg  =
@@ -594,7 +570,7 @@ int apply_cam_mux_stagger(struct mtk_cam_job *job)
 		case EXPOSURE_CHANGE_3_to_1:
 		case EXPOSURE_CHANGE_2_to_1:
 			first_tag_idx =
-				get_sv_tag_idx_hdr(1, MTKCAM_IPI_ORDER_FIRST_TAG, false);
+				get_sv_tag_idx(1, MTKCAM_IPI_ORDER_FIRST_TAG, false);
 			settings[0].seninf = ctx->seninf;
 			settings[0].source = PAD_SRC_RAW0;
 			settings[0].camtg  = (is_dc) ?
@@ -618,11 +594,11 @@ int apply_cam_mux_stagger(struct mtk_cam_job *job)
 		case EXPOSURE_CHANGE_2_to_3:
 		case EXPOSURE_CHANGE_1_to_3:
 			first_tag_idx =
-				get_sv_tag_idx_hdr(3, MTKCAM_IPI_ORDER_FIRST_TAG, false);
+				get_sv_tag_idx(3, MTKCAM_IPI_ORDER_FIRST_TAG, false);
 			second_tag_idx =
-				get_sv_tag_idx_hdr(3, MTKCAM_IPI_ORDER_NORMAL_TAG, false);
+				get_sv_tag_idx(3, MTKCAM_IPI_ORDER_NORMAL_TAG, false);
 			last_tag_idx =
-				get_sv_tag_idx_hdr(3, MTKCAM_IPI_ORDER_LAST_TAG, false);
+				get_sv_tag_idx(3, MTKCAM_IPI_ORDER_LAST_TAG, false);
 			settings[0].seninf = ctx->seninf;
 			settings[0].source = PAD_SRC_RAW0;
 			settings[0].camtg  =
@@ -661,7 +637,7 @@ int apply_cam_mux_stagger(struct mtk_cam_job *job)
 		switch (type) {
 		case EXPOSURE_CHANGE_2_to_1:
 			first_tag_idx =
-				get_sv_tag_idx_hdr(1, MTKCAM_IPI_ORDER_FIRST_TAG, false);
+				get_sv_tag_idx(1, MTKCAM_IPI_ORDER_FIRST_TAG, false);
 			settings[0].seninf = ctx->seninf;
 			settings[0].source = PAD_SRC_RAW0;
 			settings[0].camtg  = (is_dc) ?
@@ -678,9 +654,9 @@ int apply_cam_mux_stagger(struct mtk_cam_job *job)
 			break;
 		case EXPOSURE_CHANGE_1_to_2:
 			first_tag_idx =
-				get_sv_tag_idx_hdr(2, MTKCAM_IPI_ORDER_FIRST_TAG, false);
+				get_sv_tag_idx(2, MTKCAM_IPI_ORDER_FIRST_TAG, false);
 			last_tag_idx =
-				get_sv_tag_idx_hdr(2, MTKCAM_IPI_ORDER_LAST_TAG, false);
+				get_sv_tag_idx(2, MTKCAM_IPI_ORDER_LAST_TAG, false);
 			settings[0].seninf = ctx->seninf;
 			settings[0].source = PAD_SRC_RAW0;
 			settings[0].camtg  =
@@ -777,7 +753,7 @@ int stream_on_otf_stagger(struct mtk_cam_job *job, bool on)
 	return 0;
 }
 
-int handle_sv_tag_hdr(struct mtk_cam_job *job)
+int handle_sv_tag(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_raw_sink_data *raw_sink;

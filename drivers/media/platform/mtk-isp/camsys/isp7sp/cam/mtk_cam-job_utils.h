@@ -116,8 +116,7 @@ int fill_yuvo_out_subsample(struct mtkcam_ipi_img_output *io,
 			    int sub_ratio);
 int update_work_buffer_to_ipi_frame(struct req_buffer_helper *helper);
 struct mtkcam_ipi_crop v4l2_rect_to_ipi_crop(const struct v4l2_rect *r);
-
-
+int get_sv_tag_idx(unsigned int exp_no, unsigned int tag_order, bool is_w);
 
 #endif //__MTK_CAM_JOB_UTILS_H
 
