@@ -13584,14 +13584,15 @@
 		< 2 1  2>,/* IPI_OUT_C_SLEEP_0 */
 		< 3 1  1>,/* IPI_OUT_TEST_0 */
 		< 9 1  2>,/* IPI_OUT_MMDVFS */
-		<11 1  4>,/* IPI_OUT_C_VCP_HWVOTER_DEBUG */
-		<12 2 18>,/* IPI_OUT_VENC_0 */
-		<14 2  4>,/* IPI_OUT_VCP_MPOOL_0 */
-		<16 3  2>,/* IPI_OUT_C_SLEEP_1 */
-		<17 3  1>,/* IPI_OUT_TEST_1 */
-		<18 3  6>,/* IPI_OUT_LOGGER_CTRL */
-		<19 3  2>,/* IPI_OUT_VCPCTL_1 */
-		<24 4  4>;/* IPI_OUT_VCP_MPOOL_1 */
+		<11 1  2>,/* IPI_OUT_MMQOS */
+		<13 1  4>,/* IPI_OUT_C_VCP_HWVOTER_DEBUG */
+		<14 2 18>,/* IPI_OUT_VENC_0 */
+		<16 2  4>,/* IPI_OUT_VCP_MPOOL_0 */
+		<18 3  2>,/* IPI_OUT_C_SLEEP_1 */
+		<19 3  1>,/* IPI_OUT_TEST_1 */
+		<20 3  6>,/* IPI_OUT_LOGGER_CTRL */
+		<21 3  2>,/* IPI_OUT_VCPCTL_1 */
+		<26 4  4>;/* IPI_OUT_VCP_MPOOL_1 */
 
 		/* id, mbox, recv_size, recv_opt */
 		recv-table =
@@ -13601,15 +13602,16 @@
 		< 5 1  1 0>,/* IPI_IN_VCP_READY_0 */
 		< 6 1  2 0>,/* IPI_IN_VCP_RAM_DUMP_0 */
 		<10 1  2 0>,/* IPI_IN_MMDVFS */
-		<11 1  4 1>,/* IPI_OUT_C_VCP_HWVOTER_DEBUG */
-		<13 2 18 0>,/* IPI_IN_VENC_0 */
-		<15 2  4 0>,/* IPI_IN_VCP_MPOOL_0 */
-		<16 3  1 1>,/* IPI_OUT_C_SLEEP_1 */
-		<20 3 10 0>,/* IPI_IN_VCP_ERROR_INFO_1 */
-		<21 3  6 0>,/* IPI_IN_LOGGER_CTRL */
-		<22 3  1 0>,/* IPI_IN_VCP_READY_1 */
-		<23 3  2 0>,/* IPI_IN_VCP_RAM_DUMP_1 */
-		<25 4  4 0>;/* IPI_IN_VCP_MPOOL_1 */
+		<12 1  2 0>,/* IPI_IN_MMQOS */
+		<13 1  4 1>,/* IPI_OUT_C_VCP_HWVOTER_DEBUG */
+		<15 2 18 0>,/* IPI_IN_VENC_0 */
+		<17 2  4 0>,/* IPI_IN_VCP_MPOOL_0 */
+		<18 3  1 1>,/* IPI_OUT_C_SLEEP_1 */
+		<22 3 10 0>,/* IPI_IN_VCP_ERROR_INFO_1 */
+		<23 3  6 0>,/* IPI_IN_LOGGER_CTRL */
+		<24 3  1 0>,/* IPI_IN_VCP_READY_1 */
+		<25 3  2 0>,/* IPI_IN_VCP_RAM_DUMP_1 */
+		<27 4  4 0>;/* IPI_IN_VCP_MPOOL_1 */
 
 		vcp-secure-dump = <1>;   /* enable dump via secure world*/
 		vcp-secure-dump-size = <0x200000>;
@@ -13631,7 +13633,8 @@
 			      <6 0x400>, /* VENC_VCP_LOG_INFO_ID 1KB */
 			      <7 0x100000>, /* GCE_MEM_ID 256*4KB */
 			      <8 0x1000>, /* MMDVFS_MEM_ID 4KB */
-			      <9 0x0>; /* secure dump, its size is in secure_dump_size */
+			      <9 0x1000>, /* MMQOS_MEM_ID 4KB */
+			      <10 0x0>; /* secure dump, its size is in secure_dump_size */
 
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_MM_PROC_DORMANT>;
 		clocks = <&topckgen_clk CLK_TOP_MMUP_SEL>,
