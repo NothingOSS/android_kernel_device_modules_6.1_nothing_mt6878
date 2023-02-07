@@ -17,6 +17,7 @@
 #define FG_STATUS	0x004
 #define FG_CTRL_0	0x020
 #define FG_CK_EN	0x024
+#define FG_SHADOW_CTRL	0x028
 #define FG_BACK_DOOR_0	0x02c
 #define FG_PIC_INFO_0	0x400
 #define FG_PIC_INFO_1	0x404
@@ -110,6 +111,10 @@ static s32 fg_init(struct mml_comp *comp, struct mml_task *task,
 	const phys_addr_t base_pa = comp->base_pa;
 
 	cmdq_pkt_write(pkt, NULL, base_pa + FG_TRIGGER, 0, U32_MAX);
+
+	/* Enable shadow */
+	cmdq_pkt_write(pkt, NULL, base_pa + FG_SHADOW_CTRL, 0x2, U32_MAX);
+
 	return 0;
 }
 
@@ -156,8 +161,14 @@ static void fg_debug_dump(struct mml_comp *comp)
 {
 	void __iomem *base = comp->base;
 	u32 value[16];
+	u32 shadow_ctrl;
 
 	mml_err("fg component %u dump:", comp->id);
+
+	/* Enable shadow read working */
+	shadow_ctrl = readl(base + FG_SHADOW_CTRL);
+	shadow_ctrl |= 0x4;
+	writel(shadow_ctrl, base + FG_SHADOW_CTRL);
 
 	value[0] = readl(base + FG_TRIGGER);
 	value[1] = readl(base + FG_STATUS);

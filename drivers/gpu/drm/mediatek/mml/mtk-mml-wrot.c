@@ -1992,7 +1992,7 @@ static s32 wrot_post(struct mml_comp *comp, struct mml_task *task,
 		}
 
 		if (unlikely(!wrot_crc_va[ccfg->pipe]) || unlikely(!wrot_crc_pa[ccfg->pipe])) {
-			mml_err("%s job %u pipe %u get dram va[%p] pa[%llx] failed",
+			mml_err("%s wrot component %u job %u pipe %u get dram va[%p] pa[%llx] failed",
 				__func__, comp->id, task->job.jobid,
 				ccfg->pipe, wrot_crc_va[ccfg->pipe], wrot_crc_pa[ccfg->pipe]);
 		} else {

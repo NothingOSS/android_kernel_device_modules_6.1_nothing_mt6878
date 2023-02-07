@@ -336,7 +336,7 @@ static void case_general_submit(struct mml_test *test,
 
 	mml_ctx = mml_drm_get_context(mml_pdev, &disp);
 	if (IS_ERR_OR_NULL(mml_ctx)) {
-		mml_err("[test]get mml context failed %d", PTR_ERR(mml_ctx));
+		mml_err("[test]get mml context failed %ld", PTR_ERR(mml_ctx));
 		return;
 	}
 
@@ -1677,7 +1677,7 @@ static struct dma_buf *mml_test_create_buf(struct dma_heap *heap, u32 size)
 	frame_buf = dma_heap_buffer_alloc(heap, size,
 		O_RDWR | O_CLOEXEC, DMA_HEAP_VALID_HEAP_FLAGS);
 	if (IS_ERR_OR_NULL(frame_buf)) {
-		mml_err("[test]buffer alloc fail %d heap %p size %u",
+		mml_err("[test]buffer alloc fail %ld heap %p size %u",
 			PTR_ERR(frame_buf), heap, size);
 		return frame_buf;
 	}
@@ -2067,7 +2067,7 @@ static ssize_t dumpsrv_read(struct file *filp, char __user *buf, size_t size,
 	int ret;
 
 	if (size != sizeof(struct mml_dump_job)) {
-		mml_err("[dumpsrv]size not match %u %zu",
+		mml_err("[dumpsrv]size not match %lu %zu",
 			size, sizeof(struct mml_dump_job));
 		return -EFAULT;
 	}
@@ -2202,7 +2202,7 @@ static ssize_t apu_ut_write(struct file *filp, const char __user *buf, size_t le
 	char handle[20] = {0};
 	int ret;
 
-	mml_log("%s len %u", __func__, len);
+	mml_log("%s len %lu", __func__, len);
 
 	if (copy_from_user(&handle, buf, min(len, sizeof(handle)))) {
 		mml_err("%s copy apu ut handle fail", __func__);
@@ -2218,7 +2218,7 @@ static ssize_t apu_ut_write(struct file *filp, const char __user *buf, size_t le
 		return -EFAULT;
 	}
 
-	mml_log("%s call run with handle %#x (%s)", __func__, apu_ut_handle, handle);
+	mml_log("%s call run with handle %#llx (%s)", __func__, apu_ut_handle, handle);
 	mml_test_krun(MML_UT_SRAM_FRAME);
 
 	return len;

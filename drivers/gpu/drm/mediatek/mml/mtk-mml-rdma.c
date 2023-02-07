@@ -1902,7 +1902,7 @@ static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 		}
 
 		if (unlikely(!rdma_crc_va[ccfg->pipe]) || unlikely(!rdma_crc_pa[ccfg->pipe])) {
-			mml_err("%s job %u pipe %u get dram va[%p] pa[%llx] failed",
+			mml_err("%s rdma component %u job %u pipe %u get dram va[%p] pa[%llx] failed",
 				__func__, comp->id, task->job.jobid,
 				ccfg->pipe, rdma_crc_va[ccfg->pipe], rdma_crc_pa[ccfg->pipe]);
 		} else {
