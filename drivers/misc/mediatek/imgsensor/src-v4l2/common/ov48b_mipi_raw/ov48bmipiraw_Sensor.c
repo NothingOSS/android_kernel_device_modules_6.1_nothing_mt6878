@@ -336,6 +336,17 @@ static struct mtk_mbus_frame_desc_entry frame_desc_cus13[] = {
 	},
 };
 
+static struct mtk_mbus_frame_desc_entry frame_desc_cus14[] = {
+	{
+		.bus.csi2 = {
+			.channel = 0,
+			.data_type = 0x2b,
+			.hsize = 0x0fa0,
+			.vsize = 0x0bb8,
+		},
+	},
+};
+
 static struct subdrv_mode_struct mode_struct[] = {
 	{
 		.frame_desc = frame_desc_prev,
@@ -395,7 +406,13 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.linelength = 1200,
 		.framelength = 3200,
 		.max_framerate = 300,
+	#if USER_DEFINE_TRIO == 1
+		.mipi_pixel_rate = 183000000,
+	#elif USER_DEFINE_TRIO == 2
+		.mipi_pixel_rate = 366000000,
+	#else
 		.mipi_pixel_rate = 548000000,
+	#endif
 		.readout_length = 0,
 		.read_margin = 0,
 		.imgsensor_winsize_info = {
@@ -1132,6 +1149,50 @@ static struct subdrv_mode_struct mode_struct[] = {
 			.cphy_settle = 98,
 		},
 	},
+	{
+		.frame_desc = frame_desc_cus14,
+		.num_entries = ARRAY_SIZE(frame_desc_cus14),
+		.mode_setting_table = addr_data_pair_custom14,
+		.mode_setting_len = ARRAY_SIZE(addr_data_pair_custom14),
+		.seamless_switch_group = PARAM_UNDEFINED,
+		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
+		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
+		.hdr_group = PARAM_UNDEFINED,
+		.hdr_mode = HDR_NONE,
+		.pclk = 115200000,
+		.linelength = 576,
+		.framelength = 3333,
+		.max_framerate = 600,
+		.mipi_pixel_rate = 956000000,
+		.readout_length = 0,
+		.read_margin = 0,
+		.imgsensor_winsize_info = {
+			.full_w = 8000,
+			.full_h = 6000,
+			.x0_offset = 0,
+			.y0_offset = 0,
+			.w0_size = 8000,
+			.h0_size = 6000,
+			.scale_w = 4000,
+			.scale_h = 3000,
+			.x1_offset = 0,
+			.y1_offset = 0,
+			.w1_size = 4000,
+			.h1_size = 3000,
+			.x2_tg_offset = 0,
+			.y2_tg_offset = 0,
+			.w2_tg_size = 4000,
+			.h2_tg_size = 3000,
+		},
+		.pdaf_cap = FALSE,
+		.imgsensor_pd_info = PARAM_UNDEFINED,
+		.ae_binning_ratio = 1,
+		.fine_integ_line = 0,
+		.delay_frame = 2,
+		.csi_param = {
+			.cphy_settle = 98,
+		},
+	},
 };
 
 static struct subdrv_static_ctx static_ctx = {
@@ -1149,7 +1210,13 @@ static struct subdrv_static_ctx static_ctx = {
 	.isp_driving_current = ISP_DRIVING_8MA,
 	.sensor_interface_type = SENSOR_INTERFACE_TYPE_MIPI,
 	.mipi_sensor_type = MIPI_CPHY,
+#if USER_DEFINE_TRIO == 1
+	.mipi_lane_num = SENSOR_MIPI_1_LANE,
+#elif USER_DEFINE_TRIO == 2
+	.mipi_lane_num = SENSOR_MIPI_2_LANE,
+#else
 	.mipi_lane_num = SENSOR_MIPI_3_LANE,
+#endif
 	.ob_pedestal = 0x40,
 
 	.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_4CELL_HW_BAYER_B,
