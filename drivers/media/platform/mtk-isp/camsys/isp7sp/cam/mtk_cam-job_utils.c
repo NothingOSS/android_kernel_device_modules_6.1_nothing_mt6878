@@ -21,25 +21,25 @@ void _set_timestamp(struct mtk_cam_job *job,
 	job->timestamp = time_boot;
 	job->timestamp_mono = time_mono;
 }
-int get_raw_subdev_idx(unsigned int used_pipe)
+int get_raw_subdev_idx(unsigned long used_pipe)
 {
-	unsigned int used_raw = USED_MASK_GET_SUBMASK(&used_pipe, raw);
+	unsigned long used_raw = bit_map_subset_of(MAP_SUBDEV_RAW, used_pipe);
 	int i;
 
-	for (i = 0; used_raw; i++)
-		if (SUBMASK_HAS(&used_raw, raw, i))
+	for (i = 0; used_raw; i++, used_raw >>= 1)
+		if (used_raw & 0x1)
 			return i;
 
 	return -1;
 }
 
-int get_sv_subdev_idx(unsigned int used_pipe)
+int get_sv_subdev_idx(unsigned long used_pipe)
 {
-	unsigned int used_sv = USED_MASK_GET_SUBMASK(&used_pipe, camsv);
+	unsigned long used_sv = bit_map_subset_of(MAP_SUBDEV_CAMSV, used_pipe);
 	int i;
 
-	for (i = 0; used_sv; i++)
-		if (SUBMASK_HAS(&used_sv, camsv, i))
+	for (i = 0; used_sv; i++, used_sv >>= 1)
+		if (used_sv & 0x1)
 			return i;
 
 	return -1;
@@ -299,7 +299,7 @@ int update_work_buffer_to_ipi_frame(struct req_buffer_helper *helper)
 
 	ret = fill_img_in_driver_buf(ii, uid, &ctx->hdr_buf_desc);
 
-	/* todo: dc? */
+	/* HS_TODO: dc? */
 	ret = fill_sv_img_fp_working_buffer(helper, &ctx->hdr_buf_desc);
 
 	return ret;
@@ -372,7 +372,7 @@ int fill_imgo_out_subsample(struct mtkcam_ipi_img_output *io,
 	/* fmt */
 	fill_img_fmt(&io->fmt, buf);
 
-	for (i = 0; i < subsample_ratio; i++) {
+	for (i = 0; i <= subsample_ratio; i++) {
 		/* FIXME: porting workaround */
 		io->buf[i][0].size = buf->image_info.size[0];
 		io->buf[i][0].iova = buf->daddr + io->buf[i][0].size;
@@ -455,16 +455,28 @@ static int mtk_cam_fill_img_out_buf_subsample(struct mtkcam_ipi_img_output *io,
 	io->buf[0][0].ccd_fd = buf->vbb.vb2_buf.planes[0].m.fd;
 
 	daddr = buf->daddr;
-	for (j = 0; j < sub_ratio; j++) {
+	for (j = 0; j <= sub_ratio; j++) {
 		for (i = 0; i < ARRAY_SIZE(img_info->bytesperline); i++) {
 			unsigned int size = img_info->size[i];
 
 			if (!size)
 				break;
-
+			/* Only For IT. To be removed - user need to fix it */
+			/* same as mtk_cam_vb2_buf_prepare check if vb2_plane_size(vb, 0) < size */
+			if (img_info->bytesperline[i] > img_info->width * 100) {
+				pr_info("i:%d, wrong bpl:%d > 100*Width(%d) (using bpl as sizeimage)\n",
+				i, img_info->bytesperline[i], img_info->width);
+				size = img_info->bytesperline[i];
+			}
 			io->buf[j][i].iova = daddr;
 			io->buf[j][i].size = size;
+			io->buf[j][i].ccd_fd = buf->vbb.vb2_buf.planes[0].m.fd;
 			daddr += size;
+#ifdef DEBUG_SUBSAMPLE_INFO
+			buf_printk("sub/plane:%d/%d (iova,size):(0x%x/0x%x)\n",
+				j, i,
+				io->buf[j][i].iova, io->buf[j][i].size);
+#endif
 		}
 	}
 

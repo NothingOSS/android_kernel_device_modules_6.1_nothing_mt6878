@@ -17,6 +17,8 @@
 #include "mtk_cam-ipi.h"
 #include "mtk_camera-videodev2.h"
 
+#define CAMSYS_VIDEO_DEV_NR 6
+
 struct mtk_cam_device;
 struct mtk_cam_resource;
 struct mtk_raw_pde_config;

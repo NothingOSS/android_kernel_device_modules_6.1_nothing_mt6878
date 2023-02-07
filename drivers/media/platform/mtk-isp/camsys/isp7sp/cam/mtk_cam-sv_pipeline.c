@@ -116,7 +116,7 @@ static struct v4l2_mbus_framefmt *get_sv_fmt(struct mtk_camsv_pipeline *pipe,
 	return &pipe->pad_cfg[padid].mbus_fmt;
 }
 
-static int mtk_camsv_call_set_fmt(struct v4l2_subdev *sd,
+static int mtk_camsv_set_fmt(struct v4l2_subdev *sd,
 			  struct v4l2_subdev_state *state,
 			  struct v4l2_subdev_format *fmt)
 {
@@ -151,42 +151,6 @@ static int mtk_camsv_call_set_fmt(struct v4l2_subdev *sd,
 			"sd:%s pad:%d set format w/h/code/which %d/%d/0x%x/%d\n",
 			sd->name, fmt->pad, mf->width, mf->height, mf->code, fmt->which);
 	}
-
-	return 0;
-}
-
-static int mtk_camsv_collect_pfmt(struct mtk_camsv_pipeline *pipe,
-				struct v4l2_subdev_format *fmt)
-{
-	unsigned int pad = fmt->pad;
-
-	pipe->req_pfmt_update |= 1 << pad;
-	pipe->req_pad_fmt[pad] = *fmt;
-
-	dev_dbg(pipe->subdev.v4l2_dev->dev,
-		"%s:%s:pad(%d), pending s_fmt, w/h/code=%d/%d/0x%x\n",
-		__func__, pipe->subdev.name,
-		pad, fmt->format.width, fmt->format.height,
-		fmt->format.code);
-
-	return 0;
-}
-
-static int mtk_camsv_set_fmt(struct v4l2_subdev *sd,
-			  struct v4l2_subdev_state *state,
-			  struct v4l2_subdev_format *fmt)
-{
-	struct mtk_camsv_pipeline *pipe =
-		container_of(sd, struct mtk_camsv_pipeline, subdev);
-
-	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY)
-		return mtk_camsv_call_set_fmt(sd, state, fmt);
-
-	/* if the pipeline is streaming, pending the change */
-	if (!media_entity_is_streaming(&sd->entity))
-		return mtk_camsv_call_set_fmt(sd, state, fmt);
-
-	mtk_camsv_collect_pfmt(pipe, fmt);
 
 	return 0;
 }
@@ -824,23 +788,6 @@ mtk_camsv_pipeline_create(struct device *dev, int n)
 		return NULL;
 	return devm_kcalloc(dev, n, sizeof(struct mtk_camsv_pipeline),
 			    GFP_KERNEL);
-}
-
-int mtk_camsv_call_pending_set_fmt(struct v4l2_subdev *sd,
-				 struct v4l2_subdev_format *fmt)
-{
-	struct mtk_camsv_pipeline *pipe =
-		container_of(sd, struct mtk_camsv_pipeline, subdev);
-
-	/* We only allow V4L2_SUBDEV_FORMAT_ACTIVE for pending set fmt */
-	if (fmt->which != V4L2_SUBDEV_FORMAT_ACTIVE) {
-		dev_info(sd->v4l2_dev->dev,
-			"%s:pipe(%d):pad(%d): only allow V4L2_SUBDEV_FORMAT_ACTIVE\n",
-			__func__, pipe->id, fmt->pad);
-		return -EINVAL;
-	}
-
-	return mtk_camsv_call_set_fmt(sd, NULL, fmt);
 }
 
 int mtk_cam_sv_update_feature(struct mtk_cam_video_device *node)

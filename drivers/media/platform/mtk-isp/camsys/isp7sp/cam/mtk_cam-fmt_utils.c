@@ -936,26 +936,3 @@ unsigned int sensor_mbus_to_pixel_format(unsigned int mbus_code)
 	return V4L2_PIX_FMT_MTISP_SBGGR14;
 }
 
-void set_dcif_fmt(struct v4l2_format *img_fmt,
-	unsigned int width, unsigned int height, unsigned int mbus_code)
-{
-	unsigned int sink_ipi_fmt;
-
-	img_fmt->fmt.pix_mp.width = width;
-	img_fmt->fmt.pix_mp.height = height;
-	sink_ipi_fmt = sensor_mbus_to_ipi_fmt(mbus_code);
-	if (WARN_ON(sink_ipi_fmt == MTKCAM_IPI_IMG_FMT_UNKNOWN)) {
-		pr_info("sink_ipi_fmt not found(mbus_code:0x%x)\n", mbus_code);
-		sink_ipi_fmt = MTKCAM_IPI_IMG_FMT_BAYER14;
-	}
-
-	img_fmt->fmt.pix_mp.pixelformat =
-		sensor_mbus_to_pixel_format(mbus_code);
-
-	img_fmt->fmt.pix_mp.plane_fmt[0].bytesperline =
-		mtk_cam_dmao_xsize(width, sink_ipi_fmt, 3);
-	img_fmt->fmt.pix_mp.plane_fmt[0].sizeimage =
-		img_fmt->fmt.pix_mp.plane_fmt[0].bytesperline *
-		img_fmt->fmt.pix_mp.height;
-}
-

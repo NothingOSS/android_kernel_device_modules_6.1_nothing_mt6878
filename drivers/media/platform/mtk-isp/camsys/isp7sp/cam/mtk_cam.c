@@ -56,7 +56,7 @@ static unsigned int debug_ae;
 module_param(debug_ae, uint, 0644);
 MODULE_PARM_DESC(debug_ae, "activates debug ae info");
 
-#define CAM_DEBUG 0
+#define CAM_DEBUG 1
 
 /* Zero out the end of the struct pointed to by p.  Everything after, but
  * not including, the specified field is cleared.
@@ -208,7 +208,7 @@ static void remove_from_running_list(struct mtk_cam_device *cam,
 static void update_ctxs_available_jobs(struct mtk_cam_device *cam)
 {
 	struct mtk_cam_ctx *ctx;
-	int streaming_ctx;
+	unsigned long streaming_ctx;
 	int i;
 
 	spin_lock(&cam->streaming_lock);
@@ -218,7 +218,7 @@ static void update_ctxs_available_jobs(struct mtk_cam_device *cam)
 	for (i = 0; i < cam->max_stream_num; i++) {
 		ctx = &cam->ctxs[i];
 
-		if (!USED_MASK_HAS(&streaming_ctx, stream, i)) {
+		if (!(streaming_ctx & bit_map_bit(MAP_STREAM, i))) {
 			ctx->available_jobs = 0;
 			continue;
 		}
@@ -228,7 +228,7 @@ static void update_ctxs_available_jobs(struct mtk_cam_device *cam)
 }
 
 static bool mtk_cam_test_available_jobs(struct mtk_cam_device *cam,
-				       int stream_mask)
+					unsigned long stream_mask)
 {
 	struct mtk_cam_ctx *ctx;
 	int i;
@@ -236,7 +236,7 @@ static bool mtk_cam_test_available_jobs(struct mtk_cam_device *cam,
 	for (i = 0; i < cam->max_stream_num; i++) {
 		ctx = &cam->ctxs[i];
 
-		if (!USED_MASK_HAS(&stream_mask, stream, i))
+		if (!(stream_mask & bit_map_bit(MAP_STREAM, i)))
 			continue;
 
 		if (!ctx->available_jobs)
@@ -252,7 +252,7 @@ fail_to_fetch_job:
 		 __func__, ctx->stream_id);
 
 	for (i = i - 1; i >= 0; i--) {
-		if (!USED_MASK_HAS(&stream_mask, stream, i))
+		if (!(stream_mask & bit_map_bit(MAP_STREAM, i)))
 			continue;
 		++ctx->available_jobs;
 	}
@@ -277,7 +277,7 @@ static int mtk_cam_get_reqs_to_enque(struct mtk_cam_device *cam,
 	cnt = 0;
 	spin_lock(&cam->pending_job_lock);
 	list_for_each_entry_safe(req, req_prev, &cam->pending_job_list, list) {
-		int used_ctx;
+		unsigned long used_ctx;
 
 		if (mtk_cam_req_try_update_used_ctx(&req->req))
 			continue;
@@ -372,8 +372,9 @@ static int mtk_cam_req_try_update_used_ctx(struct media_request *req)
 	struct mtk_cam_device *cam =
 		container_of(req->mdev, struct mtk_cam_device, media_dev);
 	struct mtk_cam_v4l2_pipelines *ppls = &cam->pipelines;
-	int pipe_used = cam_req->used_pipe;
-	int used_ctx = 0;
+	unsigned long used_pipe = cam_req->used_pipe;
+	unsigned long used_ctx = 0;
+	unsigned long submask;
 	bool not_streamon_yet = false;
 	struct mtk_cam_ctx *ctx;
 	int i;
@@ -381,50 +382,56 @@ static int mtk_cam_req_try_update_used_ctx(struct media_request *req)
 	if (cam_req->used_ctx)
 		return 0;
 
-	for (i = 0; i < ppls->num_raw; i++)
-		if (USED_MASK_HAS(&pipe_used, raw, i)) {
-			ctx = mtk_cam_find_ctx(cam,
-					       &ppls->raw[i].subdev.entity);
+	submask = bit_map_subset_of(MAP_SUBDEV_RAW, used_pipe);
+	for (i = 0; i < ppls->num_raw && submask; i++, submask >>= 1) {
 
-			if (!ctx) {
-				/* not all pipes are stream-on */
-				not_streamon_yet = true;
-				break;
-			}
+		if (!(submask & 0x1))
+			continue;
 
-			USED_MASK_SET(&used_ctx, stream, ctx->stream_id);
+		ctx = mtk_cam_find_ctx(cam, &ppls->raw[i].subdev.entity);
+		if (!ctx) {
+			/* not all pipes are stream-on */
+			not_streamon_yet = true;
+			break;
 		}
 
-	for (i = 0; i < ppls->num_camsv; i++)
-		if (USED_MASK_HAS(&pipe_used, camsv, i)) {
-			ctx = mtk_cam_find_ctx(cam,
-					       &ppls->camsv[i].subdev.entity);
+		used_ctx |= bit_map_bit(MAP_STREAM, ctx->stream_id);
+	}
 
-			if (!ctx) {
-				/* not all pipes are stream-on */
-				not_streamon_yet = true;
-				break;
-			}
+	submask = bit_map_subset_of(MAP_SUBDEV_CAMSV, used_pipe);
+	for (i = 0; i < ppls->num_camsv && submask; i++, submask >>= 1) {
 
-			USED_MASK_SET(&used_ctx, stream, ctx->stream_id);
+		if (!(submask & 0x1))
+			continue;
+
+		ctx = mtk_cam_find_ctx(cam, &ppls->camsv[i].subdev.entity);
+		if (!ctx) {
+			/* not all pipes are stream-on */
+			not_streamon_yet = true;
+			break;
 		}
 
-	for (i = 0; i < ppls->num_mraw; i++)
-		if (USED_MASK_HAS(&pipe_used, mraw, i)) {
-			ctx = mtk_cam_find_ctx(cam,
-					       &ppls->mraw[i].subdev.entity);
+		used_ctx |= bit_map_bit(MAP_STREAM, ctx->stream_id);
+	}
 
-			if (!ctx) {
-				/* not all pipes are stream-on */
-				not_streamon_yet = true;
-				break;
-			}
+	submask = bit_map_subset_of(MAP_SUBDEV_MRAW, used_pipe);
+	for (i = 0; i < ppls->num_mraw && submask; i++, submask >>= 1) {
 
-			USED_MASK_SET(&used_ctx, stream, ctx->stream_id);
+		if (!(submask & 0x1))
+			continue;
+
+		ctx = mtk_cam_find_ctx(cam, &ppls->mraw[i].subdev.entity);
+		if (!ctx) {
+			/* not all pipes are stream-on */
+			not_streamon_yet = true;
+			break;
 		}
 
-	dev_dbg(cam->dev, "%s: req %s used_ctx 0x%x used_pipe 0x%x\n",
-		__func__, req->debug_str, used_ctx, pipe_used);
+		used_ctx |= bit_map_bit(MAP_STREAM, ctx->stream_id);
+	}
+
+	dev_dbg(cam->dev, "%s: req %s used_ctx 0x%lx used_pipe 0x%lx\n",
+		__func__, req->debug_str, used_ctx, used_pipe);
 	cam_req->used_ctx = !not_streamon_yet ? used_ctx : 0;
 	return !not_streamon_yet ? 0 : -1;
 }
@@ -436,13 +443,16 @@ static int mtk_cam_setup_pipe_ctrl(struct media_request *req)
 		container_of(req->mdev, struct mtk_cam_device, media_dev);
 	struct mtk_cam_v4l2_pipelines *ppls = &cam->pipelines;
 	struct v4l2_ctrl_handler *hdl;
+	unsigned long submask;
 	int i, ret;
 
 	ret = 0;
-	for (i = 0; i < ppls->num_raw; i++) {
+
+	submask = bit_map_subset_of(MAP_SUBDEV_RAW, cam_req->used_pipe);
+	for (i = 0; i < ppls->num_raw && submask; i++, submask >>= 1) {
 		struct media_request_object *obj;
 
-		if (!USED_MASK_HAS(&cam_req->used_pipe, raw, i))
+		if (!(submask & 0x1))
 			continue;
 
 		hdl = &ppls->raw[i].ctrl_handler;
@@ -472,14 +482,15 @@ static void mtk_cam_clone_pipe_data_to_req(struct media_request *req)
 		container_of(req->mdev, struct mtk_cam_device, media_dev);
 	struct mtk_cam_v4l2_pipelines *ppls = &cam->pipelines;
 	int i;
+	unsigned long submask;
 
-
-	for (i = 0; i < ppls->num_raw; i++) {
+	submask = bit_map_subset_of(MAP_SUBDEV_RAW, cam_req->used_pipe);
+	for (i = 0; i < ppls->num_raw && submask; i++, submask >>= 1) {
 		struct mtk_raw_request_data *data;
 		struct mtk_raw_pipeline *raw;
 		struct mtk_raw_pad_config *pad;
 
-		if (!USED_MASK_HAS(&cam_req->used_pipe, raw, i))
+		if (!(submask & 0x1))
 			continue;
 
 		data = &cam_req->raw_data[i];
@@ -501,12 +512,13 @@ static void mtk_cam_clone_pipe_data_to_req(struct media_request *req)
 		};
 	}
 
-	for (i = 0; i < ppls->num_camsv; i++) {
+	submask = bit_map_subset_of(MAP_SUBDEV_CAMSV, cam_req->used_pipe);
+	for (i = 0; i < ppls->num_camsv && submask; i++, submask >>= 1) {
 		struct mtk_camsv_request_data *data;
 		struct mtk_camsv_pipeline *sv;
 		struct mtk_camsv_pad_config *pad;
 
-		if (!USED_MASK_HAS(&cam_req->used_pipe, camsv, i))
+		if (!(submask & 0x1))
 			continue;
 
 		data = &cam_req->sv_data[i];
@@ -526,12 +538,13 @@ static void mtk_cam_clone_pipe_data_to_req(struct media_request *req)
 		};
 	}
 
-	for (i = 0; i < ppls->num_mraw; i++) {
+	submask = bit_map_subset_of(MAP_SUBDEV_MRAW, cam_req->used_pipe);
+	for (i = 0; i < ppls->num_mraw && submask; i++, submask >>= 1) {
 		struct mtk_mraw_request_data *data;
 		struct mtk_mraw_pipeline *mraw;
 		struct mtk_mraw_pad_config *pad;
 
-		if (!USED_MASK_HAS(&cam_req->used_pipe, mraw, i))
+		if (!(submask & 0x1))
 			continue;
 
 		data = &cam_req->mraw_data[i];
@@ -556,14 +569,18 @@ static void mtk_cam_store_pipe_data_to_ctx(
 {
 	struct mtk_cam_device *cam = ctx->cam;
 	struct mtk_cam_v4l2_pipelines *ppls = &cam->pipelines;
+	unsigned long used_raw_pipe = req->used_pipe;
 	int i;
 
+	used_raw_pipe = bit_map_subset_of(MAP_SUBDEV_RAW, req->used_pipe);
+
 	/* considering if correct when multi ctx used in media_request */
-	for (i = 0; i < ppls->num_raw; i++) {
+	for (i = 0; i < ppls->num_raw; i++, used_raw_pipe >>= 1) {
 		struct mtk_raw_request_data *data;
 
-		if (!USED_MASK_HAS(&req->used_pipe, raw, i))
+		if (!(used_raw_pipe & 0x1))
 			continue;
+
 		data = &req->raw_data[i];
 		ctx->ctldata_stored = data->ctrl;
 	}
@@ -673,10 +690,11 @@ static struct mtk_cam_job *mtk_cam_ctx_fetch_job(struct mtk_cam_ctx *ctx)
 int mtk_cam_dev_req_enqueue(struct mtk_cam_device *cam,
 			    struct mtk_cam_request *req)
 {
-	int used_ctx = req->used_ctx;
+	unsigned int used_ctx = req->used_ctx;
 	struct mtk_cam_ctx *ctx;
 	struct mtk_cam_job *job;
 	int i;
+	unsigned int stream_bit;
 
 	WARN_ON(!used_ctx);
 
@@ -688,12 +706,14 @@ int mtk_cam_dev_req_enqueue(struct mtk_cam_device *cam,
 	 *   ipi - config
 	 *   ipi - frame
 	 */
-	for (i = 0; i < cam->max_stream_num && used_ctx; ++i) {
+	for (i = 0, stream_bit = bit_map_bit(MAP_STREAM, 0);
+	     i < cam->max_stream_num && used_ctx;
+	     ++i, stream_bit <<= 1) {
 
-		if (!USED_MASK_HAS(&used_ctx, stream, i))
+		if (!(used_ctx & stream_bit))
 			continue;
 
-		USED_MASK_UNSET(&used_ctx, stream, i);
+		used_ctx &= ~stream_bit;
 
 		ctx = &cam->ctxs[i];
 
@@ -750,9 +770,9 @@ void mtk_cam_req_buffer_done(struct mtk_cam_request *req,
 
 	spin_unlock(&req->buf_lock);
 
-	dev_info(dev, "%s: req:%s pipe_id:%d, node_id:%d, ts:%lld, is_empty %d\n",
-		 __func__, req->req.debug_str,
-		 pipe_id, node_id, ts, is_buf_empty);
+	dev_info(dev, "%s: req:%s pipe_id:%d, node_id:%d, ts:%lld is_empty %d\n",
+		 __func__, req->req.debug_str, pipe_id, node_id, ts,
+		 is_buf_empty);
 
 	if (list_empty(&done_list)) {
 		dev_info(dev,
@@ -1487,9 +1507,10 @@ static int mtk_cam_ctx_unprepare_session(struct mtk_cam_ctx *ctx)
 
 		isp_composer_destroy_session(ctx);
 
-		ret = wait_for_completion_killable(&ctx->session_complete);
-		if (ret < 0)
-			dev_info(dev, "%s:ctx(%d): got killed\n",
+		ret = wait_for_completion_timeout(&ctx->session_complete,
+						  msecs_to_jiffies(1000));
+		if (ret == 0)
+			dev_info(dev, "%s:ctx(%d): wait session_complete timeout\n",
 				 __func__, ctx->stream_id);
 
 		isp_composer_uninit(ctx);
@@ -1520,21 +1541,24 @@ static void mtk_cam_update_pipe_used(struct mtk_cam_ctx *ctx,
 				     struct mtk_cam_v4l2_pipelines *ppls)
 {
 	int i;
+	unsigned int used_pipe = 0;
 
 	for (i = 0; i < ppls->num_raw; i++)
 		if (_ctx_find_subdev(ctx, &ppls->raw[i].subdev))
-			USED_MASK_SET(&ctx->used_pipe, raw, ppls->raw[i].id);
+			used_pipe |= bit_map_bit(MAP_SUBDEV_RAW,
+						 ppls->raw[i].id);
 
 	for (i = 0; i < ppls->num_camsv; i++)
 		if (_ctx_find_subdev(ctx, &ppls->camsv[i].subdev))
-			USED_MASK_SET(&ctx->used_pipe, camsv,
+			used_pipe |= bit_map_bit(MAP_SUBDEV_CAMSV,
 				ppls->camsv[i].id - MTKCAM_SUBDEV_CAMSV_START);
 
 	for (i = 0; i < ppls->num_mraw; i++)
 		if (_ctx_find_subdev(ctx, &ppls->mraw[i].subdev))
-			USED_MASK_SET(&ctx->used_pipe, mraw,
+			used_pipe |= bit_map_bit(MAP_SUBDEV_MRAW,
 				ppls->mraw[i].id - MTKCAM_SUBDEV_MRAW_START);
 
+	ctx->used_pipe = used_pipe;
 	dev_info(ctx->cam->dev, "%s: ctx %d pipe_used %x\n",
 		 __func__, ctx->stream_id, ctx->used_pipe);
 }
@@ -1822,7 +1846,7 @@ int ctx_stream_on_seninf_sensor(struct mtk_cam_ctx *ctx, int enable)
 			mtk_cam_seninf_set_camtg(seninf,
 				mraw_pipe->seninf_padidx, mraw_dev->cammux_id);
 			mtk_cam_seninf_set_pixelmode(seninf,
-				mraw_pipe->seninf_padidx, 3);
+				mraw_pipe->seninf_padidx, MRAW_TG_PIXEL_MODE);
 		}
 	}
 
@@ -2538,53 +2562,61 @@ bool mtk_cam_is_any_streaming(struct mtk_cam_device *cam)
 	return res;
 }
 
-bool mtk_cam_are_all_streaming(struct mtk_cam_device *cam, int stream_mask)
+bool mtk_cam_are_all_streaming(struct mtk_cam_device *cam,
+			       unsigned long stream_mask)
 {
-	int streaming_ctx;
+	unsigned long streaming_ctx;
 	bool res;
 
 	spin_lock(&cam->streaming_lock);
 	streaming_ctx = cam->streaming_ctx;
 	spin_unlock(&cam->streaming_lock);
 
-	res = USED_MASK_CONTAINS(&streaming_ctx, &stream_mask);
+	res = is_mask_containing(streaming_ctx, stream_mask);
 
 	if (!res)
 		dev_info(cam->dev,
-			 "%s: ctx not ready: streaming 0x%x desried 0x%x\n",
+			 "%s: ctx not ready: streaming 0x%lx desried 0x%lx\n",
 			 __func__, streaming_ctx, stream_mask);
 	return res;
 }
 
-static int get_engine_full_set(struct mtk_cam_engines *engines)
+static unsigned long get_engine_full_set(struct mtk_cam_engines *engines)
 {
-	int set, i;
+	unsigned long set = 0;
+	int i;
 
 	for (i = 0; i < engines->num_raw_devices; i++)
-		USED_MASK_SET(&set, raw, i);
+		set |= bit_map_bit(MAP_HW_RAW, i);
+
 	for (i = 0; i < engines->num_camsv_devices; i++)
-		USED_MASK_SET(&set, camsv, i);
+		set |= bit_map_bit(MAP_HW_CAMSV, i);
+
 	for (i = 0; i < engines->num_mraw_devices; i++)
-		USED_MASK_SET(&set, mraw, i);
+		set |= bit_map_bit(MAP_HW_MRAW, i);
+
 	return set;
 }
 
 int mtk_cam_get_available_engine(struct mtk_cam_device *cam)
 {
-	int full_set, occupied;
+	unsigned long occupied;
 
 	spin_lock(&cam->streaming_lock);
 	occupied = cam->engines.occupied_engine;
 	spin_unlock(&cam->streaming_lock);
 
-	full_set = get_engine_full_set(&cam->engines);
-	return full_set & ~occupied;
+	if (!cam->engines.full_set)
+		cam->engines.full_set = get_engine_full_set(&cam->engines);
+
+	return cam->engines.full_set & ~occupied;
 }
 
-int mtk_cam_update_engine_status(struct mtk_cam_device *cam, int engine_mask,
+int mtk_cam_update_engine_status(struct mtk_cam_device *cam,
+				 unsigned long engine_mask,
 				 bool available)
 {
-	int err_mask, occupied;
+	unsigned long err_mask, occupied;
 
 	spin_lock(&cam->streaming_lock);
 
@@ -2603,40 +2635,40 @@ int mtk_cam_update_engine_status(struct mtk_cam_device *cam, int engine_mask,
 	spin_unlock(&cam->streaming_lock);
 
 	if (WARN_ON(err_mask)) {
-		dev_info(cam->dev, "%s: set %d, engine 0x%08x err 0x%08x\n",
+		dev_info(cam->dev, "%s: set %d, engine 0x%lx err 0x%lx\n",
 			 __func__, available, engine_mask, err_mask);
 		return -1;
 	}
 
-	dev_info(cam->dev, "%s: mark engine 0x%08x available %d\n",
+	dev_info(cam->dev, "%s: mark engine 0x%lx available %d\n",
 		 __func__, engine_mask, available);
 	return 0;
 }
 
 static int loop_each_engine(struct mtk_cam_engines *eng,
-			    int engine_mask, int (*func)(struct device *dev))
+			    unsigned long engine_mask,
+			    int (*func)(struct device *dev))
 {
-	int engine_used = engine_mask;
-	int submask;
+	unsigned long submask;
 	int i;
 
-	submask = USED_MASK_GET_SUBMASK(&engine_used, raw);
-	for (i = 0; i < eng->num_raw_devices && submask; i++) {
-		if (!SUBMASK_HAS(&submask, raw, i))
+	submask = bit_map_subset_of(MAP_HW_RAW, engine_mask);
+	for (i = 0; i < eng->num_raw_devices && submask; i++, submask >>= 1) {
+		if (!(submask & 0x1))
 			continue;
 		func(eng->raw_devs[i]);
 	}
 
-	submask = USED_MASK_GET_SUBMASK(&engine_used, camsv);
-	for (i = 0; i < eng->num_camsv_devices && submask; i++) {
-		if (!SUBMASK_HAS(&submask, camsv, i))
+	submask = bit_map_subset_of(MAP_HW_CAMSV, engine_mask);
+	for (i = 0; i < eng->num_camsv_devices && submask; i++, submask >>= 1) {
+		if (!(submask & 0x1))
 			continue;
 		func(eng->sv_devs[i]);
 	}
 
-	submask = USED_MASK_GET_SUBMASK(&engine_used, mraw);
-	for (i = 0; i < eng->num_mraw_devices && submask; i++) {
-		if (!SUBMASK_HAS(&submask, mraw, i))
+	submask = bit_map_subset_of(MAP_HW_MRAW, engine_mask);
+	for (i = 0; i < eng->num_mraw_devices && submask; i++, submask >>= 1) {
+		if (!(submask & 0x1))
 			continue;
 		func(eng->mraw_devs[i]);
 	}
@@ -2645,7 +2677,7 @@ static int loop_each_engine(struct mtk_cam_engines *eng,
 }
 
 int mtk_cam_pm_runtime_engines(struct mtk_cam_engines *eng,
-			       int engine_mask, int enable)
+			       unsigned long engine_mask, int enable)
 {
 	if (enable)
 		loop_each_engine(eng, engine_mask, pm_runtime_resume_and_get);

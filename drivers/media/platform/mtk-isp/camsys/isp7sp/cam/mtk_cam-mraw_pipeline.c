@@ -114,7 +114,7 @@ static struct v4l2_mbus_framefmt *get_mraw_fmt(struct mtk_mraw_pipeline *pipe,
 	return &pipe->pad_cfg[padid].mbus_fmt;
 }
 
-static int mtk_mraw_call_set_fmt(struct v4l2_subdev *sd,
+static int mtk_mraw_set_fmt(struct v4l2_subdev *sd,
 			  struct v4l2_subdev_state *state,
 			  struct v4l2_subdev_format *fmt)
 {
@@ -157,73 +157,8 @@ static int mtk_mraw_call_set_fmt(struct v4l2_subdev *sd,
 				dev_info(sd->v4l2_dev->dev, "%s:Unknown pixelfmt:%d\n"
 					, __func__, ipi_fmt);
 			}
-			pipe->res_config.tg_crop.p.x = 0;
-			pipe->res_config.tg_crop.p.y = 0;
-			pipe->res_config.tg_crop.s.w = mf->width;
-			pipe->res_config.tg_crop.s.h = mf->height;
-			pipe->res_config.tg_fmt = ipi_fmt;
-			pipe->res_config.pixel_mode = 3;
-			atomic_set(&pipe->res_config.is_fmt_change, 1);
 		}
 	}
-
-	return 0;
-}
-
-int mtk_mraw_call_pending_set_fmt(struct v4l2_subdev *sd,
-				 struct v4l2_subdev_format *fmt)
-{
-	struct mtk_mraw_pipeline *pipe =
-		container_of(sd, struct mtk_mraw_pipeline, subdev);
-
-	/* We only allow V4L2_SUBDEV_FORMAT_ACTIVE for pending set fmt */
-	if (fmt->which != V4L2_SUBDEV_FORMAT_ACTIVE) {
-		dev_info(sd->v4l2_dev->dev,
-			"%s:pipe(%d):pad(%d): only allow V4L2_SUBDEV_FORMAT_ACTIVE\n",
-			__func__, pipe->id, fmt->pad);
-		return -EINVAL;
-	}
-
-	return mtk_mraw_call_set_fmt(sd, NULL, fmt);
-}
-
-static int mtk_mraw_collect_pfmt(struct mtk_mraw_pipeline *pipe,
-				struct v4l2_subdev_format *fmt)
-{
-	int pad = fmt->pad;
-
-	if (pad < 0) {
-		dev_info(pipe->subdev.v4l2_dev->dev,
-		"%s pad is negative", __func__);
-		return 0;
-	}
-	pipe->req_pfmt_update |= 1 << pad;
-	pipe->req_pad_fmt[pad] = *fmt;
-
-	dev_dbg(pipe->subdev.v4l2_dev->dev,
-		"%s:%s:pad(%d), pending s_fmt, w/h/code=%d/%d/0x%x\n",
-		__func__, pipe->subdev.name,
-		pad, fmt->format.width, fmt->format.height,
-		fmt->format.code);
-
-	return 0;
-}
-
-static int mtk_mraw_set_fmt(struct v4l2_subdev *sd,
-			  struct v4l2_subdev_state *state,
-			  struct v4l2_subdev_format *fmt)
-{
-	struct mtk_mraw_pipeline *pipe =
-		container_of(sd, struct mtk_mraw_pipeline, subdev);
-
-	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY)
-		return mtk_mraw_call_set_fmt(sd, state, fmt);
-
-	/* if the pipeline is streaming, pending the change */
-	if (!media_entity_is_streaming(&sd->entity))
-		return mtk_mraw_call_set_fmt(sd, state, fmt);
-
-	mtk_mraw_collect_pfmt(pipe, fmt);
 
 	return 0;
 }

@@ -7,18 +7,44 @@
 #include "mtk_cam-job_state.h"
 #include "mtk_cam-job_state_impl.h"
 
+static const char *value_to_str(const char * const str_arr[], size_t size,
+				int value)
+{
+	const char *str;
+
+	if (WARN_ON((unsigned int)value >= size))
+		return "(not-found)";
+
+	str = str_arr[value];
+	return str ? str : "null";
+}
+
+const char *str_event(int event)
+{
+	static const char * const str[] = {
+		[CAMSYS_EVENT_IRQ_L_SOF] = "l_sof",
+		[CAMSYS_EVENT_IRQ_L_CQ_DONE] = "l_cq_done",
+		[CAMSYS_EVENT_IRQ_FRAME_DONE] = "frame_done",
+
+		[CAMSYS_EVENT_TIMER_SENSOR] = "timer_sensor",
+
+		[CAMSYS_EVENT_ENQUE] = "enq",
+		[CAMSYS_EVENT_ACK] = "ack",
+	};
+
+	return value_to_str(str, ARRAY_SIZE(str), event);
+}
+
 const char *str_sensor_state(int state)
 {
 	static const char * const str[] = {
+		[S_SENSOR_NONE] = "none",
 		[S_SENSOR_NOT_SET] = "not-set",
 		[S_SENSOR_APPLYING] = "applying",
 		[S_SENSOR_DONE] = "done",
 	};
 
-	if (WARN_ON(state < 0 || state >= ARRAY_SIZE(str)))
-		return "(not-found)";
-
-	return str[state];
+	return value_to_str(str, ARRAY_SIZE(str), state);
 }
 
 const char *str_isp_state(int state)
@@ -30,15 +56,12 @@ const char *str_isp_state(int state)
 		[S_ISP_APPLYING] = "applying",
 		[S_ISP_OUTER] = "outer",
 		[S_ISP_PROCESSING] = "processing",
-		[S_ISP_SENSOR_MISMATCHED] = "s_mismatched",
+		[S_ISP_SENSOR_MISMATCHED] = "s-mismatched",
 		[S_ISP_DONE] = "done",
 		[S_ISP_DONE_MISMATCHED] = "done-mismatched",
 	};
 
-	if (WARN_ON(state < 0 || state >= ARRAY_SIZE(str)))
-		return "(not-found)";
-
-	return str[state];
+	return value_to_str(str, ARRAY_SIZE(str), state);
 }
 
 const char *str_state(int state_type, int state)
@@ -50,7 +73,7 @@ const char *str_state(int state_type, int state)
 		[ISP_2ND_STATE] = str_isp_state,
 	};
 
-	if (WARN_ON(state_type < 0 || state_type >= ARRAY_SIZE(str_fn)))
+	if (WARN_ON((unsigned int)state_type >= ARRAY_SIZE(str_fn)))
 		return "(not-found)";
 
 	return str_fn[state_type](state);
@@ -65,10 +88,7 @@ const char *str_state_type(int state_type)
 		[ISP_2ND_STATE] = "isp_2nd_state",
 	};
 
-	if (WARN_ON(state_type < 0 || state_type >= ARRAY_SIZE(str)))
-		return "(not-found)";
-
-	return str[state_type];
+	return value_to_str(str, ARRAY_SIZE(str), state_type);
 }
 
 static void _transit_state(struct mtk_cam_job_state *s, int state_type,
@@ -84,6 +104,7 @@ static void _transit_state(struct mtk_cam_job_state *s, int state_type,
 	prv_state = mtk_cam_job_state_set(s, state_type, new_state);
 	mtk_cam_job_state_set_action(s, act);
 
+	/* this warning indicates racing condition is just happened */
 	if (unlikely(prv_state != old_state))
 		pr_info("%s: #%d %s:warn. expected old_state %s, but get %s\n",
 			__func__, s->seq_no,
@@ -158,7 +179,8 @@ int loop_each_transition(struct state_table *tbl,
 	state = mtk_cam_job_state_get(s, state_type);
 
 	if (CAM_DEBUG_ENABLED(STATE))
-		pr_info("...#%d %s %s, trying for event %d\n",
+		pr_info("%s: ...#%d %s [%s], trying for event %d\n",
+			__func__,
 			s->seq_no,
 			str_state_type(state_type),
 			str_state(state_type, state),

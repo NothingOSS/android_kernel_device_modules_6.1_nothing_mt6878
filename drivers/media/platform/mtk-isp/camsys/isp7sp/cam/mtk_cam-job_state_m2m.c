@@ -24,16 +24,12 @@ static struct state_transition STATE_TRANS(m2m, S_ISP_COMPOSED)[] = {
 
 static struct state_transition STATE_TRANS(m2m, S_ISP_APPLYING)[] = {
 	{
-		S_ISP_PROCESSING, CAMSYS_EVENT_IRQ_SETTING_DONE,
+		S_ISP_PROCESSING, CAMSYS_EVENT_IRQ_L_CQ_DONE,
 		guard_outer_eq, ACTION_TRIGGER
 	},
 };
 
 static struct state_transition STATE_TRANS(m2m, S_ISP_PROCESSING)[] = {
-	{
-		S_ISP_PROCESSING, CAMSYS_EVENT_IRQ_AFO_DONE,
-		NULL, ACTION_AFO_DONE
-	},
 	{
 		S_ISP_DONE, CAMSYS_EVENT_IRQ_FRAME_DONE,
 		NULL, ACTION_BUFFER_DONE

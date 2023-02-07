@@ -82,6 +82,8 @@ void initialize(struct mtk_raw_device *dev, int is_slave)
 	dev->stagger_en = 0;
 	reset_msgfifo(dev);
 
+	engine_fsm_reset(&dev->fsm);
+	dev->cq_ref = NULL;
 #ifdef DISABLE_FLKO_ERROR
 	/* Workaround: disable FLKO error_sof: double sof error
 	 *   HW will send FLKO dma error when
@@ -92,14 +94,20 @@ void initialize(struct mtk_raw_device *dev, int is_slave)
 		       dev->base + REG_FLKO_R1_BASE + DMA_OFFSET_ERR_STAT);
 #endif
 }
+static void subsample_set_sensor_time(struct mtk_raw_device *dev,
+	u32 subsample_ratio)
+{
+	dev->sub_sensor_ctrl_en = true;
+	dev->set_sensor_idx = subsample_ratio - 1;
+	dev->cur_vsync_idx = -1;
+}
 
 void subsample_enable(struct mtk_raw_device *dev, int subsample_ratio)
 {
 	u32 val;
 	u32 sub_ratio = subsample_ratio;
 
-	if (WARN_ON_ONCE(1))
-		dev_info(dev->dev, "not ready\n");
+	subsample_set_sensor_time(dev, sub_ratio);
 
 	val = readl_relaxed(dev->base + REG_CAMCQ_CQ_EN);
 	SET_FIELD(&val, CAMCQ_SCQ_SUBSAMPLE_EN, 1);
@@ -135,7 +143,8 @@ void stagger_disable(struct mtk_raw_device *dev)
 }
 
 void apply_cq(struct mtk_raw_device *dev,
-	      int initial, dma_addr_t cq_addr,
+	      struct apply_cq_ref *ref,
+	      dma_addr_t cq_addr,
 	      unsigned int cq_size, unsigned int cq_offset,
 	      unsigned int sub_cq_size, unsigned int sub_cq_offset)
 {
@@ -148,6 +157,9 @@ void apply_cq(struct mtk_raw_device *dev,
 
 	/* note: apply cq with size = 0, will cause cq hang */
 	if (WARN_ON(!cq_size || !sub_cq_size))
+		return;
+
+	if (WARN_ON(apply_cq_ref_set(&dev->cq_ref, ref)))
 		return;
 
 	main = cq_addr + cq_offset;
@@ -211,7 +223,15 @@ static void set_tg_vfdata_en(struct mtk_raw_device *dev, int on)
 
 void stream_on(struct mtk_raw_device *dev, int on)
 {
+	u32 val;
 	if (on) {
+		val = readl_relaxed(dev->base + REG_TG_TIME_STAMP_CNT);
+		writel_relaxed(SCQ_DEADLINE_MS * 1000 * SCQ_DEFAULT_CLK_RATE /
+					(val * 2),
+					dev->base + REG_CAMCQ_SCQ_START_PERIOD);
+		dev_info(dev->dev, "[%s] val:%d, REG_CAMCQ_SCQ_START_PERIOD: 0x%x\n",
+			 __func__,
+			 val, readl(dev->base + REG_CAMCQ_SCQ_START_PERIOD));
 		/* toggle db before stream-on */
 		enable_tg_db(dev, 0);
 		enable_tg_db(dev, 1);
@@ -489,7 +509,7 @@ static irqreturn_t mtk_irq_raw(int irq, void *data)
 	struct mtk_raw_device *raw_dev = (struct mtk_raw_device *)data;
 	struct device *dev = raw_dev->dev;
 	struct mtk_camsys_irq_info irq_info;
-	unsigned int frame_idx, frame_idx_inner, fbc_fho_ctl2;
+	unsigned int frame_idx, frame_idx_inner;
 	unsigned int irq_status, err_status, dmao_done_status, dmai_done_status;
 	unsigned int drop_status, dma_ofl_status, cq_done_status, dcif_status;
 	bool wake_thread = 0;
@@ -505,13 +525,11 @@ static irqreturn_t mtk_irq_raw(int irq, void *data)
 	frame_idx	= readl_relaxed(raw_dev->base + REG_FRAME_SEQ_NUM);
 	frame_idx_inner	= readl_relaxed(raw_dev->base_inner + REG_FRAME_SEQ_NUM);
 
-	fbc_fho_ctl2 = readl_relaxed(raw_dev->base + REG_FBC_FHO_R1_CTL2);
-
 	err_status = irq_status & INT_ST_MASK_CAM_ERR;
 
 	if (CAM_DEBUG_ENABLED(RAW_INT))
 		dev_info(dev,
-			 "INT:0x%x(err:0x%x) 2~7 0x%x/0x%x/0x%x/0x%x/0x%x/0x%x (in:%d)\n",
+			 "INT:0x%x(err:0x%x) 2~7 0x%x/0x%x/0x%x/0x%x/0x%x/0x%x (in:0x%x)\n",
 			 irq_status, err_status,
 			 dmao_done_status, dmai_done_status, drop_status,
 			 dma_ofl_status, cq_done_status, dcif_status,
@@ -524,7 +542,8 @@ static irqreturn_t mtk_irq_raw(int irq, void *data)
 
 	/* CQ done */
 	if (cq_done_status & FBIT(CAMCTL_CQ_THR0_DONE_ST))
-		irq_info.irq_type |= 1 << CAMSYS_IRQ_SETTING_DONE;
+		if (engine_handle_cq_done(&raw_dev->cq_ref))
+			irq_info.irq_type |= 1 << CAMSYS_IRQ_SETTING_DONE;
 
 	/* DMAO done, only for AFO */
 	if (dmao_done_status & FBIT(CAMCTL_AFO_R1_DONE_ST)) {
@@ -548,9 +567,6 @@ static irqreturn_t mtk_irq_raw(int irq, void *data)
 		irq_info.irq_type |= 1 << CAMSYS_IRQ_FRAME_START;
 		raw_dev->sof_count++;
 		raw_dev->cur_vsync_idx = 0;
-		raw_dev->last_sof_time_ns = irq_info.ts_ns;
-		irq_info.write_cnt = ((fbc_fho_ctl2 & WCNT_BIT_MASK) >> 8) - 1;
-		irq_info.fbc_cnt = (fbc_fho_ctl2 & CNT_BIT_MASK) >> 16;
 	}
 
 	/* DCIF main sof */
@@ -622,11 +638,37 @@ static irqreturn_t mtk_irq_raw(int irq, void *data)
 		MTK_CAM_TRACE(HW_IRQ, "%s: cq=0x%08x",
 			      dev_name(dev), cq_done_status);
 
-#ifdef TO_REMOVE
-ctx_not_found:
-#endif
-
 	return wake_thread ? IRQ_WAKE_THREAD : IRQ_HANDLED;
+}
+
+static int raw_process_fsm(struct mtk_raw_device *raw_dev,
+			   struct mtk_camsys_irq_info *irq_info)
+{
+	struct engine_fsm *fsm = &raw_dev->fsm;
+	int done_type;
+
+	done_type = irq_info->irq_type &
+	    (BIT(CAMSYS_IRQ_AFO_DONE) | BIT(CAMSYS_IRQ_FRAME_DONE));
+	if (done_type) {
+		int cookie_done;
+
+		engine_fsm_hw_done(fsm, &cookie_done);
+		/* handle for fake p1 done */
+		if (!cookie_done) {
+			dev_info(raw_dev->dev, "warn: fake done 0x%x out/in: 0x%x 0x%x\n",
+				 done_type,
+				 irq_info->frame_idx,
+				 irq_info->frame_idx_inner);
+			irq_info->irq_type &= ~done_type;
+			irq_info->cookie_done = 0;
+		} else
+			irq_info->cookie_done = cookie_done;
+	}
+
+	if (irq_info->irq_type & BIT(CAMSYS_IRQ_FRAME_START))
+		engine_fsm_sof(fsm, irq_info->frame_idx_inner);
+
+	return 0;
 }
 
 static irqreturn_t mtk_thread_irq_raw(int irq, void *data)
@@ -662,10 +704,12 @@ static irqreturn_t mtk_thread_irq_raw(int irq, void *data)
 
 		/* normal case */
 
+		raw_process_fsm(raw_dev, &irq_info);
+
 		/* inform interrupt information to camsys controller */
 		mtk_cam_ctrl_isr_event(raw_dev->cam,
-				     CAMSYS_ENGINE_RAW, raw_dev->id,
-				     &irq_info);
+				       CAMSYS_ENGINE_RAW, raw_dev->id,
+				       &irq_info);
 	}
 
 	return IRQ_HANDLED;
@@ -1118,9 +1162,11 @@ static irqreturn_t mtk_irq_yuv(int irq, void *data)
 	err_status = irq_status & 0x4; // bit2: DMA_ERR
 
 	//if (unlikely(debug_raw))
-	//	dev_dbg(dev, "YUV-INT:0x%x(err:0x%x) INT2/4/5 0x%x/0x%x/0x%x\n",
-	//		irq_status, err_status,
-	//		dma_done_status, drop_status, dma_ofl_status);
+	if (CAM_DEBUG_ENABLED(RAW_INT))
+		if (irq_status || err_status || err_status)
+			dev_info(yuv->dev, "YUV-INT:0x%x(err:0x%x) INT2/4/5 0x%x/0x%x/0x%x\n",
+			irq_status, err_status,
+			wdma_done_status, drop_status, dma_ofl_status);
 
 	/* trace */
 	if (irq_status || wdma_done_status)

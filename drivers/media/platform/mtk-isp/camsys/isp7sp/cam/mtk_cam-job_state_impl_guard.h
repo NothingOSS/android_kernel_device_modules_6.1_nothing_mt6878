@@ -28,7 +28,15 @@ static inline int prev_isp_state_ge(struct mtk_cam_job_state *s,
 
 static inline bool allow_applying_hw(struct transition_param *p)
 {
-	return p->info->apply_hw_by_statemachine;
+	return p->info->apply_hw_by_FSM;
+}
+
+static inline int guard_apply_sensor_subsample(struct mtk_cam_job_state *s,
+			      struct transition_param *p)
+{
+	/* TODO: add ts check */
+	return allow_applying_hw(p) &&
+		mtk_cam_job_state_get(s, ISP_STATE) >= S_ISP_APPLYING;
 }
 
 static inline int guard_apply_sensor(struct mtk_cam_job_state *s,
@@ -39,12 +47,19 @@ static inline int guard_apply_sensor(struct mtk_cam_job_state *s,
 		prev_isp_state_ge(s, p->head, S_ISP_OUTER);
 }
 
+static inline int current_sensor_ready(struct mtk_cam_job_state *s)
+{
+	int s_state = mtk_cam_job_state_get(s, SENSOR_STATE);
+
+	return s_state >= S_SENSOR_APPLYING || s_state == S_SENSOR_NONE;
+}
+
 static inline int guard_apply_isp(struct mtk_cam_job_state *s,
 				  struct transition_param *p)
 {
 	return allow_applying_hw(p) &&
 		prev_isp_state_ge(s, p->head, S_ISP_PROCESSING) &&
-		mtk_cam_job_state_get(s, ISP_STATE) >= S_SENSOR_APPLYING;
+		current_sensor_ready(s);
 }
 
 static inline int guard_apply_m2m(struct mtk_cam_job_state *s,
@@ -52,6 +67,12 @@ static inline int guard_apply_m2m(struct mtk_cam_job_state *s,
 {
 	return allow_applying_hw(p) &&
 		prev_isp_state_ge(s, p->head, S_ISP_DONE);
+}
+static inline int guard_apply_isp_subsample(struct mtk_cam_job_state *s,
+				  struct transition_param *p)
+{
+	return allow_applying_hw(p) &&
+		prev_isp_state_ge(s, p->head, S_ISP_PROCESSING);
 }
 
 static inline int guard_ack_apply_directly(struct mtk_cam_job_state *s,
@@ -94,5 +115,10 @@ static inline int guard_hw_retry_mismatched(struct mtk_cam_job_state *s,
 		    >= S_SENSOR_APPLYING);
 }
 
+static inline int guard_hw_retry_matched(struct mtk_cam_job_state *s,
+					    struct transition_param *p)
+{
+	return !guard_hw_retry_mismatched(s, p);
+}
 
 #endif //__MTK_CAM_JOB_STATE_IMPL_GUARD_H

@@ -54,9 +54,6 @@ struct mtk_mraw_pipeline {
 
 	/* seninf pad index */
 	unsigned int seninf_padidx;
-
-	unsigned int req_pfmt_update;
-	struct v4l2_subdev_format req_pad_fmt[MTK_MRAW_PIPELINE_PADS_NUM];
 };
 
 struct mtk_mraw_sink_data {
@@ -75,8 +72,6 @@ mtk_mraw_pipeline_create(struct device *dev, int n);
 int mtk_mraw_register_entities(struct mtk_mraw_pipeline *arr_pipe,
 	int num, struct v4l2_device *v4l2_dev);
 void mtk_mraw_unregister_entities(struct mtk_mraw_pipeline *arr_pipe, int num);
-int mtk_mraw_call_pending_set_fmt(struct v4l2_subdev *sd,
-				 struct v4l2_subdev_format *fmt);
 
 #endif /*__MTK_CAM_MRAW_PIPELINE_H*/
 

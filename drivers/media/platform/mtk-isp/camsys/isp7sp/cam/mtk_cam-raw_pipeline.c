@@ -263,10 +263,12 @@ static int mtk_raw_get_ctrl(struct v4l2_ctrl *ctrl)
 
 	pipeline = mtk_cam_ctrl_handler_to_raw_pipeline(ctrl->handler);
 	dev = subdev_to_cam_dev(&pipeline->subdev);
+
 	if (ctrl->id == V4L2_CID_MTK_CAM_INTERNAL_MEM_CTRL)
 		*((struct mtk_cam_internal_mem *)ctrl->p_new.p) = pipeline->ctrl_data.pre_alloc_mem;
-	dev_info(dev, "%s: error. ctrl(\"%s\", id:0x%x) not supported yet\n",
-		 __func__, ctrl->name, ctrl->id);
+	else
+		dev_info(dev, "%s: error. ctrl(\"%s\", id:0x%x) not supported yet\n",
+			 __func__, ctrl->name, ctrl->id);
 	return 0;
 }
 
