@@ -567,7 +567,7 @@ void hook_rvh_find_new_ilb(void *data, struct cpumask *nohz_idle_cpus_mask, int 
 		if (cpu_paused(cpu))
 			continue;
 
-		if (idle_cpu(cpu)) {
+		if (available_idle_cpu(cpu)) {
 			*ilb = cpu;
 			return;
 		}

@@ -562,7 +562,7 @@ int mtk_find_energy_efficient_cpu_in_interrupt(struct task_struct *p, bool laten
 			 * Because this is just a backup option, we do not take care
 			 * of exit latency.
 			 */
-			if (latency_sensitive && idle_cpu(cpu) &&
+			if (latency_sensitive && available_idle_cpu(cpu) &&
 					spare_cap > idle_max_spare_cap) {
 				idle_max_spare_cap = spare_cap;
 				idle_max_spare_cap_cpu = cpu;
@@ -593,7 +593,7 @@ int mtk_find_energy_efficient_cpu_in_interrupt(struct task_struct *p, bool laten
 			if (!latency_sensitive)
 				continue;
 
-			if (idle_cpu(cpu)) {
+			if (available_idle_cpu(cpu)) {
 				idle_cpus = (idle_cpus | (1 << cpu));
 				idle = idle_get_state(cpu_rq(cpu));
 				if (idle) {
@@ -891,7 +891,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 			 * Because this is just a backup option, we do not take care
 			 * of exit latency.
 			 */
-			if (latency_sensitive && idle_cpu(cpu) &&
+			if (latency_sensitive && available_idle_cpu(cpu) &&
 					spare_cap > idle_max_spare_cap) {
 				idle_max_spare_cap = spare_cap;
 				idle_max_spare_cap_cpu = cpu;
@@ -920,7 +920,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 			if (!latency_sensitive)
 				continue;
 
-			if (idle_cpu(cpu)) {
+			if (available_idle_cpu(cpu)) {
 				cpu_cap = capacity_orig_of(cpu);
 				idle = idle_get_state(cpu_rq(cpu));
 #if IS_ENABLED(CONFIG_MTK_THERMAL_AWARE_SCHEDULING)

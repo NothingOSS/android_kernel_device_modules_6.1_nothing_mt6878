@@ -571,7 +571,7 @@ int select_idle_cpu_from_domains(struct task_struct *p,
 						cpu_active_mask) {
 			if (!cpumask_test_cpu(cpu, p->cpus_ptr))
 				continue;
-			if (idle_cpu(cpu)) {
+			if (available_idle_cpu(cpu)) {
 				best_cpu = cpu;
 				break;
 			}
@@ -1033,7 +1033,7 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 			if (!mtk_rt_task_fits_capacity(p, cpu, min_cap, max_cap))
 				continue;
 
-			if (idle_cpu(cpu)) {
+			if (available_idle_cpu(cpu)) {
 				/* WFI > non-WFI */
 				idle_cpus = (idle_cpus | (1 << cpu));
 				idle = idle_get_state(cpu_rq(cpu));
@@ -1251,7 +1251,7 @@ void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowes
 		for_each_cpu_and(cpu, &avail_lowest_mask, gear_cpus) {
 			struct task_struct *curr;
 
-			if (idle_cpu(cpu)) {
+			if (available_idle_cpu(cpu)) {
 				*lowest_cpu = cpu;
 				select_reason = LB_RT_IDLE;
 				goto out;
