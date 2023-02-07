@@ -829,7 +829,7 @@ static int lm3643_cooling_set_cur_state(struct thermal_cooling_device *cdev,
 
 	/* Request state should be less than max_state */
 	if (state > flash->max_state)
-		state = flash->max_state;
+		return -EINVAL;
 
 	if (flash->target_state == state)
 		return 0;
