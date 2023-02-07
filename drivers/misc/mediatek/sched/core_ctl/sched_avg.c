@@ -193,8 +193,8 @@ int arch_get_nr_clusters(void)
 	for_each_possible_cpu(cpu) {
 		struct cpu_topology *cpu_topo = &cpu_topology[cpu];
 
-		if (cpu_topo->package_id > max_id)
-			max_id = cpu_topo->package_id;
+		if (cpu_topo->cluster_id > max_id)
+			max_id = cpu_topo->cluster_id;
 	}
 	__arch_nr_clusters = max_id + 1;
 	return __arch_nr_clusters;
@@ -205,11 +205,11 @@ int arch_get_cluster_id(unsigned int cpu)
 {
 	struct cpu_topology *cpu_topo = &cpu_topology[cpu];
 
-	return cpu_topo->package_id < 0 ? 0 : cpu_topo->package_id;
+	return cpu_topo->cluster_id < 0 ? 0 : cpu_topo->cluster_id;
 }
 EXPORT_SYMBOL(arch_get_cluster_id);
 
-void arch_get_cluster_cpus(struct cpumask *cpus, int package_id)
+void arch_get_cluster_cpus(struct cpumask *cpus, int cluster_id)
 {
 	unsigned int cpu;
 
@@ -217,7 +217,7 @@ void arch_get_cluster_cpus(struct cpumask *cpus, int package_id)
 	for_each_possible_cpu(cpu) {
 		struct cpu_topology *cpu_topo = &cpu_topology[cpu];
 
-		if (cpu_topo->package_id == package_id)
+		if (cpu_topo->cluster_id == cluster_id)
 			cpumask_set_cpu(cpu, cpus);
 	}
 }
@@ -744,7 +744,7 @@ static inline bool is_all_cpu_parsed(void)
 
 	for_each_possible_cpu(cpu) {
 		core_id = cpu_topology[cpu].core_id;
-		cluster_id = cpu_topology[cpu].package_id;
+		cluster_id = cpu_topology[cpu].cluster_id;
 		if (core_id < 0 || cluster_id < 0) {
 			all_parsed = false;
 			break;
