@@ -64,9 +64,17 @@
 				channel = <AUXADC_VIN1>;
 				pures = <ADC_PURES_OPEN>;
 			};
+			vin2-100k {
+				channel = <AUXADC_VIN2>;
+				pures = <ADC_PURES_100K>;
+			};
 			vin2-open {
 				channel = <AUXADC_VIN2>;
 				pures = <ADC_PURES_OPEN>;
+			};
+			vin3-100k {
+				channel = <AUXADC_VIN3>;
+				pures = <ADC_PURES_100K>;
 			};
 			vin3-open {
 				channel = <AUXADC_VIN3>;
