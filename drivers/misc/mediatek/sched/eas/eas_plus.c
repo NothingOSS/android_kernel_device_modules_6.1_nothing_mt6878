@@ -118,7 +118,7 @@ void mtk_find_busiest_group(void *data, struct sched_group *busiest,
 		if (!pd)
 			return;
 
-		//src_cpu = group_first_cpu(busiest);
+		src_cpu = cpumask_first(sched_group_span(busiest));
 
 		/*
 		 *  1.same cluster

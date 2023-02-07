@@ -511,11 +511,11 @@ static int init_capacity_table(void)
 		for_each_cpu(j, &pd_info->cpus) {
 			per_cpu(gear_id, j) = i;
 			if (per_cpu(cpu_scale, j) != pd_info->table[0].capacity) {
-				pr_info("capacity err: cpu=%d, cpu_scale=%lu, pd_info_cap=%d\n",
+				pr_info("capacity err: cpu=%d, cpu_scale=%lu, pd_info_cap=%u\n",
 					j, per_cpu(cpu_scale, j), pd_info->table[0].capacity);
 				per_cpu(cpu_scale, j) = pd_info->table[0].capacity;
 			} else {
-				pr_info("capacity match: cpu=%d, cpu_scale=%lu, pd_info_cap=%d\n",
+				pr_info("capacity match: cpu=%d, cpu_scale=%lu, pd_info_cap=%u\n",
 					j, per_cpu(cpu_scale, j), pd_info->table[0].capacity);
 			}
 		}
@@ -523,6 +523,11 @@ static int init_capacity_table(void)
 	return 0;
 }
 #else
+#if IS_ENABLED(CONFIG_64BIT)
+#define em_scale_power(p) ((p) * 1000)
+#else
+#define em_scale_power(p) (p)
+#endif
 static int init_capacity_table(void)
 {
 	int i, j, cpu;
@@ -590,11 +595,11 @@ static int init_capacity_table(void)
 		for_each_cpu(j, &pd_info->cpus) {
 			per_cpu(gear_id, j) = i;
 			if (per_cpu(cpu_scale, j) != pd_info->table[0].capacity) {
-				pr_info("capacity err: cpu=%d, cpu_scale=%d, pd_info_cap=%d\n",
+				pr_info("capacity err: cpu=%d, cpu_scale=%lu, pd_info_cap=%u\n",
 					j, per_cpu(cpu_scale, j), pd_info->table[0].capacity);
 				per_cpu(cpu_scale, j) = pd_info->table[0].capacity;
 			} else {
-				pr_info("capacity match: cpu=%d, cpu_scale=%d, pd_info_cap=%d\n",
+				pr_info("capacity match: cpu=%d, cpu_scale=%lu, pd_info_cap=%u\n",
 					j, per_cpu(cpu_scale, j), pd_info->table[0].capacity);
 			}
 		}
@@ -746,7 +751,7 @@ static int pd_capacity_tbl_show(struct seq_file *m, void *v)
 		}
 		seq_printf(m, "nr_caps: %d\n", pd_info->nr_caps);
 		for (j = 0; j < pd_info->nr_caps; j++)
-			seq_printf(m, "%d: %lu, %lu\n", j, pd_info->table[j].capacity,
+			seq_printf(m, "%d: %u, %u\n", j, pd_info->table[j].capacity,
 				pd_info->table[j].freq);
 #endif
 	}
