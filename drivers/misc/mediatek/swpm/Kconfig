@@ -82,6 +82,16 @@ config MTK_SWPM_MT6885
 	  Set Y to select this feature for specific platform-mt6885.
 	  If unsure, set N to disable.
 
+config MTK_SWPM_MT6897
+	tristate "Specify Mediatek SWPM Platform is MT6897"
+	depends on MTK_SWPM_MODULE
+	select MTK_SWPM_DBG_COMMON
+	help
+	  Select MediaTek Software Power Model Platform is MT6897
+	  for power management.
+	  Set Y to select this feature for specific platform-mt6897.
+	  If unsure, set N to disable.
+
 config MTK_SWPM_MT6895
 	tristate "Specify Mediatek SWPM Platform is MT6895"
 	depends on MTK_SWPM_MODULE
