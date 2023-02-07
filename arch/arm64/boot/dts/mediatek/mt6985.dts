@@ -839,8 +839,8 @@
 		interrupts = <GIC_SPI 338 IRQ_TYPE_LEVEL_HIGH 0>;
 
 		interrupt-names = "ipc";
-		sspm_res_ram_start = <0x0>;
-		sspm_res_ram_size = <0x110000>; /* 1M + 64K */
+		sspm-res-ram-start = <0x0>;
+		sspm-res-ram-size = <0x110000>; /* 1M + 64K */
 	};
 
 	teeperf {
