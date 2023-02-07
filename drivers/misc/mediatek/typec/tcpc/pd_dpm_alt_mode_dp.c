@@ -999,23 +999,25 @@ bool dp_reset_state(struct pd_port *pd_port, struct svdm_svid_data *svid_data)
 #if CONFIG_USB_PD_ALT_MODE
 static const struct {
 	const char *prop_name;
+	const char *legacy_prop_name;
 	uint32_t mode;
 } supported_dp_pin_modes[] = {
-	{ "pin_assignment,mode_a", MODE_DP_PIN_A },
-	{ "pin_assignment,mode_b", MODE_DP_PIN_B },
-	{ "pin_assignment,mode_c", MODE_DP_PIN_C },
-	{ "pin_assignment,mode_d", MODE_DP_PIN_D },
-	{ "pin_assignment,mode_e", MODE_DP_PIN_E },
-	{ "pin_assignment,mode_f", MODE_DP_PIN_F },
+	{ "pin-assignment,mode-a", "pin_assignment,mode_a", MODE_DP_PIN_A },
+	{ "pin-assignment,mode-b", "pin_assignment,mode_b", MODE_DP_PIN_B },
+	{ "pin-assignment,mode-c", "pin_assignment,mode_c", MODE_DP_PIN_C },
+	{ "pin-assignment,mode-d", "pin_assignment,mode_d", MODE_DP_PIN_D },
+	{ "pin-assignment,mode-e", "pin_assignment,mode_e", MODE_DP_PIN_E },
+	{ "pin-assignment,mode-f", "pin_assignment,mode_f", MODE_DP_PIN_F },
 };
 
 static const struct {
 	const char *conn_mode;
+	const char *legacy_conn_mode;
 	uint32_t val;
 } dp_connect_mode[] = {
-	{"both", DPSTS_BOTH_CONNECTED},
-	{"dfp_d", DPSTS_DFP_D_CONNECTED},
-	{"ufp_d", DPSTS_UFP_D_CONNECTED},
+	{"both", "both", DPSTS_BOTH_CONNECTED},
+	{"dfp-d", "dfp_d", DPSTS_DFP_D_CONNECTED},
+	{"ufp-d", "ufp_d", DPSTS_UFP_D_CONNECTED},
 };
 
 bool dp_parse_svid_data(
@@ -1039,16 +1041,17 @@ bool dp_parse_svid_data(
 
 	pr_info("dp, svid\n");
 	svid_data->svid = USB_SID_DISPLAYPORT;
-	ufp_np = of_find_node_by_name(np, "ufp_d");
-	dfp_np = of_find_node_by_name(np, "dfp_d");
+	ufp_np = of_find_node_by_name(np, "ufp-d");
+	dfp_np = of_find_node_by_name(np, "dfp-d");
 
 	if (ufp_np) {
 		pr_info("dp, ufp_np\n");
 		for (i = 0; i < ARRAY_SIZE(supported_dp_pin_modes); i++) {
 			if (of_property_read_bool(ufp_np,
-				supported_dp_pin_modes[i].prop_name))
-				ufp_d_pin_cap |=
-					supported_dp_pin_modes[i].mode;
+						  supported_dp_pin_modes[i].prop_name) ||
+			    of_property_read_bool(ufp_np,
+						  supported_dp_pin_modes[i].legacy_prop_name))
+				ufp_d_pin_cap |= supported_dp_pin_modes[i].mode;
 		}
 	}
 
@@ -1056,17 +1059,21 @@ bool dp_parse_svid_data(
 		pr_info("dp, dfp_np\n");
 		for (i = 0; i < ARRAY_SIZE(supported_dp_pin_modes); i++) {
 			if (of_property_read_bool(dfp_np,
-				supported_dp_pin_modes[i].prop_name))
-				dfp_d_pin_cap |=
-					supported_dp_pin_modes[i].mode;
+						  supported_dp_pin_modes[i].prop_name) ||
+			    of_property_read_bool(dfp_np,
+						  supported_dp_pin_modes[i].legacy_prop_name))
+				dfp_d_pin_cap |= supported_dp_pin_modes[i].mode;
 		}
 	}
 
-	if (of_property_read_bool(np, "signal,dp_v13"))
+	if (of_property_read_bool(np, "signal,dp-v13") ||
+	    of_property_read_bool(np, "signal,dp_v13"))
 		signal |= MODE_DP_V13;
-	if (of_property_read_bool(np, "signal,dp_gen2"))
+	if (of_property_read_bool(np, "signal,dp-gen2") ||
+	    of_property_read_bool(np, "signal,dp_gen2"))
 		signal |= MODE_DP_GEN2;
-	if (of_property_read_bool(np, "usbr20_not_used"))
+	if (of_property_read_bool(np, "usbr20-not-used") ||
+	    of_property_read_bool(np, "usbr20_not_used"))
 		usb2 = 1;
 	if (of_property_read_bool(np, "typec,receptacle"))
 		receptacle = 1;
@@ -1080,25 +1087,29 @@ bool dp_parse_svid_data(
 	pd_port->dp_first_connected = DEFAULT_DP_FIRST_CONNECTED;
 	pd_port->dp_second_connected = DEFAULT_DP_SECOND_CONNECTED;
 
-	if (of_property_read_string(np, "1st_connection", &connection) == 0) {
+	if (of_property_read_string(np, "1st-connection", &connection) == 0 ||
+	    of_property_read_string(np, "1st_connection", &connection) == 0) {
 		pr_info("dp, 1st_connection\n");
 		for (i = 0; i < ARRAY_SIZE(dp_connect_mode); i++) {
 			if (strcasecmp(connection,
-				dp_connect_mode[i].conn_mode) == 0) {
-				pd_port->dp_first_connected =
-					dp_connect_mode[i].val;
+				       dp_connect_mode[i].conn_mode) == 0 ||
+			    strcasecmp(connection,
+				       dp_connect_mode[i].legacy_conn_mode) == 0) {
+				pd_port->dp_first_connected = dp_connect_mode[i].val;
 				break;
 			}
 		}
 	}
 
-	if (of_property_read_string(np, "2nd_connection", &connection) == 0) {
+	if (of_property_read_string(np, "2nd-connection", &connection) == 0 ||
+	    of_property_read_string(np, "2nd_connection", &connection) == 0) {
 		pr_info("dp, 2nd_connection\n");
 		for (i = 0; i < ARRAY_SIZE(dp_connect_mode); i++) {
 			if (strcasecmp(connection,
-				dp_connect_mode[i].conn_mode) == 0) {
-				pd_port->dp_second_connected =
-					dp_connect_mode[i].val;
+				       dp_connect_mode[i].conn_mode) == 0 ||
+			    strcasecmp(connection,
+				       dp_connect_mode[i].legacy_conn_mode) == 0) {
+				pd_port->dp_second_connected = dp_connect_mode[i].val;
 				break;
 			}
 		}

@@ -1932,14 +1932,16 @@ static int mt6362_parse_dt(struct mt6362_tcpc_data *tdata)
 	desc->rp_lvl = TYPEC_RP_DFT;
 	desc->vconn_supply = TCPC_VCONN_SUPPLY_ALWAYS;
 
-	if (of_property_read_u32(np, "tcpc,role_def", &val) >= 0) {
+	if (of_property_read_u32(np, "tcpc,role-def", &val) >= 0 ||
+	    of_property_read_u32(np, "tcpc,role_def", &val) >= 0) {
 		if (val >= TYPEC_ROLE_NR)
 			desc->role_def = TYPEC_ROLE_DRP;
 		else
 			desc->role_def = val;
 	}
 
-	if (of_property_read_u32(np, "tcpc,rp_level", &val) >= 0) {
+	if (of_property_read_u32(np, "tcpc,rp-level", &val) >= 0 ||
+	    of_property_read_u32(np, "tcpc,rp_level", &val) >= 0) {
 		switch (val) {
 		case TYPEC_RP_DFT:
 		case TYPEC_RP_1_5:
@@ -1952,7 +1954,8 @@ static int mt6362_parse_dt(struct mt6362_tcpc_data *tdata)
 	}
 
 #if CONFIG_TCPC_VCONN_SUPPLY_MODE
-	if (of_property_read_u32(np, "tcpc,vconn_supply", &val) >= 0) {
+	if (of_property_read_u32(np, "tcpc,vconn-supply", &val) >= 0 ||
+	    of_property_read_u32(np, "tcpc,vconn_supply", &val) >= 0) {
 		if (val >= TCPC_VCONN_SUPPLY_NR)
 			desc->vconn_supply = TCPC_VCONN_SUPPLY_ALWAYS;
 		else
@@ -1961,43 +1964,62 @@ static int mt6362_parse_dt(struct mt6362_tcpc_data *tdata)
 #endif	/* CONFIG_TCPC_VCONN_SUPPLY_MODE */
 
 #if CONFIG_WATER_DETECTION
-	if (of_property_read_u32(np, "wd,sbu_calib_init", &val) < 0)
+	if (of_property_read_u32(np, "wd,sbu-calib-init", &val) < 0 &&
+	    of_property_read_u32(np, "wd,sbu_calib_init", &val) < 0)
 		desc->wd_sbu_calib_init = CONFIG_WD_SBU_CALIB_INIT;
 	else
 		desc->wd_sbu_calib_init = val;
-	if (of_property_read_u32(np, "wd,sbu_pl_bound", &val) < 0)
+
+	if (of_property_read_u32(np, "wd,sbu-pl-bound", &val) < 0 &&
+	    of_property_read_u32(np, "wd,sbu_pl_bound", &val) < 0)
 		desc->wd_sbu_pl_bound = CONFIG_WD_SBU_PL_BOUND;
 	else
 		desc->wd_sbu_pl_bound = val;
-	if (of_property_read_u32(np, "wd,sbu_pl_lbound_c2c", &val) < 0)
+
+	if (of_property_read_u32(np, "wd,sbu-pl-lbound-c2c", &val) < 0 &&
+	    of_property_read_u32(np, "wd,sbu_pl_lbound_c2c", &val) < 0)
 		desc->wd_sbu_pl_lbound_c2c = CONFIG_WD_SBU_PL_LBOUND_C2C;
 	else
 		desc->wd_sbu_pl_lbound_c2c = val;
-	if (of_property_read_u32(np, "wd,sbu_pl_ubound_c2c", &val) < 0)
+
+	if (of_property_read_u32(np, "wd,sbu-pl-ubound-c2c", &val) < 0 &&
+	    of_property_read_u32(np, "wd,sbu_pl_ubound_c2c", &val) < 0)
 		desc->wd_sbu_pl_ubound_c2c = CONFIG_WD_SBU_PL_UBOUND_C2C;
 	else
 		desc->wd_sbu_pl_ubound_c2c = val;
-	if (of_property_read_u32(np, "wd,sbu_ph_auddev", &val) < 0)
+
+	if (of_property_read_u32(np, "wd,sbu-ph-auddev", &val) < 0 &&
+	    of_property_read_u32(np, "wd,sbu_ph_auddev", &val) < 0)
 		desc->wd_sbu_ph_auddev = CONFIG_WD_SBU_PH_AUDDEV;
 	else
 		desc->wd_sbu_ph_auddev = val;
-	if (of_property_read_u32(np, "wd,sbu_ph_lbound", &val) < 0)
+
+	if (of_property_read_u32(np, "wd,sbu-ph-lbound", &val) < 0 &&
+	    of_property_read_u32(np, "wd,sbu_ph_lbound", &val) < 0)
 		desc->wd_sbu_ph_lbound = CONFIG_WD_SBU_PH_LBOUND;
 	else
 		desc->wd_sbu_ph_lbound = val;
-	if (of_property_read_u32(np, "wd,sbu_ph_lbound1_c2c", &val) < 0)
+
+	if (of_property_read_u32(np, "wd,sbu-ph-lbound1-c2c", &val) < 0 &&
+	    of_property_read_u32(np, "wd,sbu_ph_lbound1_c2c", &val) < 0)
 		desc->wd_sbu_ph_lbound1_c2c = CONFIG_WD_SBU_PH_LBOUND1_C2C;
 	else
 		desc->wd_sbu_ph_lbound1_c2c = val;
-	if (of_property_read_u32(np, "wd,sbu_ph_ubound1_c2c", &val) < 0)
+
+	if (of_property_read_u32(np, "wd,sbu-ph-ubound1-c2c", &val) < 0 &&
+	    of_property_read_u32(np, "wd,sbu_ph_ubound1_c2c", &val) < 0)
 		desc->wd_sbu_ph_ubound1_c2c = CONFIG_WD_SBU_PH_UBOUND1_C2C;
 	else
 		desc->wd_sbu_ph_ubound1_c2c = val;
-	if (of_property_read_u32(np, "wd,sbu_ph_ubound2_c2c", &val) < 0)
+
+	if (of_property_read_u32(np, "wd,sbu-ph-ubound2-c2c", &val) < 0 &&
+	    of_property_read_u32(np, "wd,sbu_ph_ubound2_c2c", &val) < 0)
 		desc->wd_sbu_ph_ubound2_c2c = CONFIG_WD_SBU_PH_UBOUND2_C2C;
 	else
 		desc->wd_sbu_ph_ubound2_c2c = val;
-	if (of_property_read_u32(np, "wd,sbu_aud_ubound", &val) < 0)
+
+	if (of_property_read_u32(np, "wd,sbu-aud-ubound", &val) < 0 &&
+	    of_property_read_u32(np, "wd,sbu_aud_ubound", &val) < 0)
 		desc->wd_sbu_aud_ubound = CONFIG_WD_SBU_AUD_UBOUND;
 	else
 		desc->wd_sbu_aud_ubound = val;

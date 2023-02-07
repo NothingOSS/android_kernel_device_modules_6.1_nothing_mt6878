@@ -2544,42 +2544,46 @@ static int mt6375_parse_dt(struct mt6375_tcpc_data *ddata)
 	int i;
 	const struct {
 		const char *name;
+		const char *legacy_name;
 		bool *val_ptr;
 	} tcpc_props_bool[] = {
-		{ "tcpc,en_wd", &desc->en_wd },
-		{ "tcpc,en_wd_sbu_polling", &desc->en_wd_sbu_polling },
-		{ "tcpc,en_wd_polling_only", &desc->en_wd_polling_only },
-		{ "tcpc,en_ctd", &desc->en_ctd },
-		{ "tcpc,en_fod", &desc->en_fod },
-		{ "tcpc,en_typec_otp", &desc->en_typec_otp },
-		{ "tcpc,en_floatgnd", &desc->en_floatgnd },
-		{ "tcpc,en-vbus-short-cc", &desc->en_vbus_short_cc },
+		{ "tcpc,en-wd", "tcpc,en_wd", &desc->en_wd },
+		{ "tcpc,en-wd-sbu-polling", "tcpc,en_wd_sbu_polling", &desc->en_wd_sbu_polling },
+		{ "tcpc,en-wd-polling-only", "tcpc,en_wd_polling_only", &desc->en_wd_polling_only },
+		{ "tcpc,en-ctd", "tcpc,en_ctd", &desc->en_ctd },
+		{ "tcpc,en-fod", "tcpc,en_fod", &desc->en_fod },
+		{ "tcpc,en-typec-otp", "tcpc,en_typec_otp", &desc->en_typec_otp },
+		{ "tcpc,en-floatgnd", "tcpc,en_floatgnd", &desc->en_floatgnd },
+		{ "tcpc,en-vbus-short-cc", "tcpc,en_vbus_short_cc", &desc->en_vbus_short_cc },
 	};
 	const struct {
 		const char *name;
+		const char *legacy_name;
 		u32 *val_ptr;
 	} tcpc_props_u32[] = {
-		{ "wd,sbu_calib_init", &desc->wd_sbu_calib_init },
-		{ "wd,sbu_pl_bound", &desc->wd_sbu_pl_bound },
-		{ "wd,sbu_pl_lbound_c2c", &desc->wd_sbu_pl_lbound_c2c },
-		{ "wd,sbu_pl_ubound_c2c", &desc->wd_sbu_pl_ubound_c2c },
-		{ "wd,sbu_ph_auddev", &desc->wd_sbu_ph_auddev },
-		{ "wd,sbu_ph_lbound", &desc->wd_sbu_ph_lbound },
-		{ "wd,sbu_ph_lbound1_c2c", &desc->wd_sbu_ph_lbound1_c2c },
-		{ "wd,sbu_ph_ubound1_c2c", &desc->wd_sbu_ph_ubound1_c2c },
-		{ "wd,sbu_ph_ubound2_c2c", &desc->wd_sbu_ph_ubound2_c2c },
-		{ "wd,sbu_aud_ubound", &desc->wd_sbu_aud_ubound },
+		{ "wd,sbu-calib-init", "wd,sbu_calib_init", &desc->wd_sbu_calib_init },
+		{ "wd,sbu-pl-bound", "wd,sbu_pl_bound", &desc->wd_sbu_pl_bound },
+		{ "wd,sbu-pl-lbound-c2c", "wd,sbu_pl_lbound_c2c", &desc->wd_sbu_pl_lbound_c2c },
+		{ "wd,sbu-pl-ubound-c2c", "wd,sbu_pl_ubound_c2c", &desc->wd_sbu_pl_ubound_c2c },
+		{ "wd,sbu-ph-auddev", "wd,sbu_ph_auddev", &desc->wd_sbu_ph_auddev },
+		{ "wd,sbu-ph-lbound", "wd,sbu_ph_lbound", &desc->wd_sbu_ph_lbound },
+		{ "wd,sbu-ph-lbound1-c2c", "wd,sbu_ph_lbound1_c2c", &desc->wd_sbu_ph_lbound1_c2c },
+		{ "wd,sbu-ph-ubound1-c2c", "wd,sbu_ph_ubound1_c2c", &desc->wd_sbu_ph_ubound1_c2c },
+		{ "wd,sbu-ph-ubound2-c2c", "wd,sbu_ph_ubound2_c2c", &desc->wd_sbu_ph_ubound2_c2c },
+		{ "wd,sbu-aud-ubound", "wd,sbu_aud_ubound", &desc->wd_sbu_aud_ubound },
 	};
 
 	memcpy(desc, &def_tcpc_desc, sizeof(*desc));
 
 	device_property_read_string(dev, "tcpc,name", &desc->name);
 
-	if (!device_property_read_u32(dev, "tcpc,role_def", &val) &&
-		val < TYPEC_ROLE_NR)
+	if ((!device_property_read_u32(dev, "tcpc,role-def", &val) ||
+	     !device_property_read_u32(dev, "tcpc,role_def", &val)) &&
+	    val < TYPEC_ROLE_NR)
 		desc->role_def = val;
 
-	if (!device_property_read_u32(dev, "tcpc,rp_level", &val)) {
+	if (!device_property_read_u32(dev, "tcpc,rp-level", &val) ||
+	    !device_property_read_u32(dev, "tcpc,rp_level", &val)) {
 		switch (val) {
 		case TYPEC_RP_DFT:
 		case TYPEC_RP_1_5:
@@ -2592,41 +2596,48 @@ static int mt6375_parse_dt(struct mt6375_tcpc_data *ddata)
 	}
 
 #if CONFIG_TCPC_VCONN_SUPPLY_MODE
-	if (!device_property_read_u32(dev, "tcpc,vconn_supply", &val) &&
-		val < TCPC_VCONN_SUPPLY_NR)
+	if ((!device_property_read_u32(dev, "tcpc,vconn-supply", &val) ||
+	     !device_property_read_u32(dev, "tcpc,vconn_supply", &val)) &&
+	    val < TCPC_VCONN_SUPPLY_NR)
 		desc->vconn_supply = val;
 #endif	/* CONFIG_TCPC_VCONN_SUPPLY_MODE */
 
 	for (i = 0; i < ARRAY_SIZE(tcpc_props_bool); i++) {
 		*tcpc_props_bool[i].val_ptr =
-			device_property_read_bool(dev, tcpc_props_bool[i].name);
-			dev_info(dev, "props[%s] = %d\n",
-				 tcpc_props_bool[i].name,
+			device_property_read_bool(dev, tcpc_props_bool[i].name) ||
+			device_property_read_bool(dev, tcpc_props_bool[i].legacy_name);
+			dev_info(dev, "props[%s] (legacy: props[%s]) = %d\n",
+				 tcpc_props_bool[i].name, tcpc_props_bool[i].legacy_name,
 				 *tcpc_props_bool[i].val_ptr);
 	}
 
 	for (i = 0; i < ARRAY_SIZE(tcpc_props_u32); i++) {
 		if (device_property_read_u32(dev, tcpc_props_u32[i].name,
+					     tcpc_props_u32[i].val_ptr) &&
+		    device_property_read_u32(dev, tcpc_props_u32[i].legacy_name,
 					     tcpc_props_u32[i].val_ptr))
-			dev_notice(dev, "failed to parse props[%s]\n",
-				tcpc_props_u32[i].name);
+			dev_notice(dev, "failed to parse props[%s] (legacy: props[%s])\n",
+				   tcpc_props_u32[i].name, tcpc_props_u32[i].legacy_name);
 		else
-			dev_info(dev, "props[%s] = %d\n",
-				 tcpc_props_u32[i].name,
+			dev_info(dev, "props[%s] (legacy: props[%s]) = %d\n",
+				 tcpc_props_u32[i].name, tcpc_props_u32[i].legacy_name,
 				 *tcpc_props_u32[i].val_ptr);
 	}
 
 	ddata->desc = desc;
 
 	if (desc->en_floatgnd) {
-		if (device_property_read_u32(dev, "wd,wd0_tsleep", &val)) {
+		if (device_property_read_u32(dev, "wd,wd0-tsleep", &val) &&
+		    device_property_read_u32(dev, "wd,wd0_tsleep", &val)) {
 			dev_notice(dev, "wd0_tsleep use default\n");
 			ddata->wd0_tsleep = 1;
 		} else {
 			dev_notice(dev, "wd0_tsleep = %d\n", val);
 			ddata->wd0_tsleep = val;
 		}
-		if (device_property_read_u32(dev, "wd,wd0_tdet", &val)) {
+
+		if (device_property_read_u32(dev, "wd,wd0-tdet", &val) &&
+		    device_property_read_u32(dev, "wd,wd0_tdet", &val)) {
 			dev_notice(dev, "wd0_tdet use default\n");
 			ddata->wd0_tdet = 3;
 		} else {

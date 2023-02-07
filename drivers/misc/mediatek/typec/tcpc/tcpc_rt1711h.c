@@ -1234,15 +1234,18 @@ static int rt_parse_dt(struct rt1711_chip *chip, struct device *dev)
 	pr_info("%s\n", __func__);
 
 #if !IS_ENABLED(CONFIG_MTK_GPIO) || IS_ENABLED(CONFIG_MTK_GPIOLIB_STAND)
-	ret = of_get_named_gpio(np, "rt1711pd,intr_gpio", 0);
+	ret = of_get_named_gpio(np, "rt1711pd,intr-gpio", 0);
+	if (ret < 0)
+		ret = of_get_named_gpio(np, "rt1711pd,intr_gpio", 0);
+
 	if (ret < 0) {
 		pr_err("%s no intr_gpio info\n", __func__);
 		return ret;
 	}
 	chip->irq_gpio = ret;
 #else
-	ret = of_property_read_u32(np,
-		"rt1711pd,intr_gpio_num", &chip->irq_gpio);
+	ret = of_property_read_u32(np, "rt1711pd,intr-gpio-num", &chip->irq_gpio) ?
+	      of_property_read_u32(np, "rt1711pd,intr_gpio_num", &chip->irq_gpio) : 0;
 	if (ret < 0) {
 		pr_err("%s no intr_gpio info\n", __func__);
 		return ret;
@@ -1310,7 +1313,8 @@ static int rt1711_tcpcdev_init(struct rt1711_chip *chip, struct device *dev)
 	desc = devm_kzalloc(dev, sizeof(*desc), GFP_KERNEL);
 	if (!desc)
 		return -ENOMEM;
-	if (of_property_read_u32(np, "rt-tcpc,role_def", &val) >= 0) {
+	if (of_property_read_u32(np, "rt-tcpc,role-def", &val) >= 0 ||
+	    of_property_read_u32(np, "rt-tcpc,role_def", &val) >= 0) {
 		if (val >= TYPEC_ROLE_NR)
 			desc->role_def = TYPEC_ROLE_DRP;
 		else
@@ -1320,7 +1324,8 @@ static int rt1711_tcpcdev_init(struct rt1711_chip *chip, struct device *dev)
 		desc->role_def = TYPEC_ROLE_DRP;
 	}
 
-	if (of_property_read_u32(np, "rt-tcpc,rp_level", &val) >= 0) {
+	if (of_property_read_u32(np, "rt-tcpc,rp-level", &val) >= 0 ||
+	    of_property_read_u32(np, "rt-tcpc,rp_level", &val) >= 0) {
 		switch (val) {
 		case TYPEC_RP_DFT:
 		case TYPEC_RP_1_5:
@@ -1333,7 +1338,8 @@ static int rt1711_tcpcdev_init(struct rt1711_chip *chip, struct device *dev)
 	}
 
 #if CONFIG_TCPC_VCONN_SUPPLY_MODE
-	if (of_property_read_u32(np, "rt-tcpc,vconn_supply", &val) >= 0) {
+	if (of_property_read_u32(np, "rt-tcpc,vconn-supply", &val) >= 0 ||
+	    of_property_read_u32(np, "rt-tcpc,vconn_supply", &val) >= 0) {
 		if (val >= TCPC_VCONN_SUPPLY_NR)
 			desc->vconn_supply = TCPC_VCONN_SUPPLY_ALWAYS;
 		else
@@ -1364,8 +1370,8 @@ static int rt1711_tcpcdev_init(struct rt1711_chip *chip, struct device *dev)
 		return -EINVAL;
 
 #if CONFIG_USB_PD_DISABLE_PE
-	chip->tcpc->disable_pe =
-			of_property_read_bool(np, "rt-tcpc,disable_pe");
+	chip->tcpc->disable_pe = of_property_read_bool(np, "rt-tcpc,disable-pe") ||
+				 of_property_read_bool(np, "rt-tcpc,disable_pe");
 #endif	/* CONFIG_USB_PD_DISABLE_PE */
 
 	chip->tcpc->tcpc_flags = TCPC_FLAGS_LPM_WAKEUP_WATCHDOG |

@@ -55,7 +55,8 @@ static inline void pd_parse_pdata_bat_info(
 		pr_info("%s-%d snprintf fail\n", __func__, __LINE__);
 #endif	/* CONFIG_USB_PD_REV30_MFRS_INFO_LOCAL */
 
-	ret = of_property_read_u32(sub, "bat,design_cap", &design_cap);
+	ret = of_property_read_u32(sub, "bat,design-cap", &design_cap) ?
+	      of_property_read_u32(sub, "bat,design_cap", &design_cap) : 0;
 	if (ret < 0) {
 		bat_cap->bat_design_cap = PD_BCDB_BAT_CAP_UNKNOWN;
 		pr_err("%s get bat,dsn_cat fail\n", __func__);
@@ -134,7 +135,8 @@ static inline int pd_parse_pdata_country(
 	int ret = 0, j;
 	u32 *temp_u32;
 
-	ret = of_property_read_u32(sub, "pd,country_code", &val);
+	ret = of_property_read_u32(sub, "pd,country-code", &val) ?
+	      of_property_read_u32(sub, "pd,country_code", &val) : 0;
 	if (ret < 0) {
 		pr_err("%s get country code fail\n", __func__);
 		return -ENODEV;
@@ -142,7 +144,8 @@ static inline int pd_parse_pdata_country(
 
 	country_info->code = (uint16_t) val;
 
-	ret = of_property_read_u32(sub, "pd,country_len", &val);
+	ret = of_property_read_u32(sub, "pd,country-len", &val) ?
+	      of_property_read_u32(sub, "pd,country_len", &val) : 0;
 	if (ret < 0) {
 		pr_err("%s get country len fail\n", __func__);
 		return -ENODEV;
@@ -164,9 +167,10 @@ static inline int pd_parse_pdata_country(
 	temp_u32 = devm_kzalloc(&pd_port->tcpc->dev,
 		sizeof(u32)*country_info->len, GFP_KERNEL);
 
-	ret = of_property_read_u32_array(sub, "pd,country_data",
-		temp_u32,
-		country_info->len);
+	ret = of_property_read_u32_array(sub, "pd,country-data", temp_u32,
+					 country_info->len) ?
+	      of_property_read_u32_array(sub, "pd,country_data", temp_u32,
+					 country_info->len) : 0;
 	if (ret < 0)
 		pr_err("%s get country data fail\n", __func__);
 
@@ -185,8 +189,8 @@ static inline int pd_parse_pdata_countries(
 	struct device_node *sub;
 	char temp_string[26];
 
-	ret = of_property_read_u32(np, "pd,country_nr",
-			(u32 *)&pd_port->country_nr);
+	ret = of_property_read_u32(np, "pd,country-nr", (u32 *)&pd_port->country_nr) ?
+	      of_property_read_u32(np, "pd,country_nr", (u32 *)&pd_port->country_nr) : 0;
 	if (ret < 0) {
 		pr_err("%s get country nr fail\n", __func__);
 		pd_port->country_nr = 0;
@@ -415,7 +419,9 @@ static int pd_parse_pdata(struct pd_port *pd_port)
 		pd_port->id_header = pd_port->id_vdos[0];
 
 		val = DPM_CHARGING_POLICY_MAX_POWER_LVIC;
-		if (of_property_read_u32(np, "pd,charging_policy", &val) < 0)
+		ret = of_property_read_u32(np, "pd,charging-policy", &val) ?
+		      of_property_read_u32(np, "pd,charging_policy", &val) : 0;
+		if (ret)
 			pr_info("%s get charging policy fail\n", __func__);
 
 		pd_port->dpm_charging_policy = val;
@@ -443,31 +449,33 @@ static int pd_parse_pdata(struct pd_port *pd_port)
 
 static const struct {
 	const char *prop_name;
+	const char *legacy_prop_name;
 	uint32_t val;
 } supported_dpm_caps[] = {
-	{"local_dr_power", DPM_CAP_LOCAL_DR_POWER},
-	{"local_dr_data", DPM_CAP_LOCAL_DR_DATA},
-	{"local_ext_power", DPM_CAP_LOCAL_EXT_POWER},
-	{"local_usb_comm", DPM_CAP_LOCAL_USB_COMM},
-	{"local_usb_suspend", DPM_CAP_LOCAL_USB_SUSPEND},
-	{"local_high_cap", DPM_CAP_LOCAL_HIGH_CAP},
-	{"local_give_back", DPM_CAP_LOCAL_GIVE_BACK},
-	{"local_no_suspend", DPM_CAP_LOCAL_NO_SUSPEND},
-	{"local_vconn_supply", DPM_CAP_LOCAL_VCONN_SUPPLY},
+	{"local-dr-power", "local_dr_power", DPM_CAP_LOCAL_DR_POWER},
+	{"local-dr-data", "local_dr_data", DPM_CAP_LOCAL_DR_DATA},
+	{"local-ext-powera", "local_ext_powera", DPM_CAP_LOCAL_EXT_POWER},
+	{"local-usb-comm", "local_usb_comm", DPM_CAP_LOCAL_USB_COMM},
+	{"local-usb-suspend", "local_use_suspend", DPM_CAP_LOCAL_USB_SUSPEND},
+	{"local-high-cap", "local_high_cap", DPM_CAP_LOCAL_HIGH_CAP},
+	{"local-give-back", "local_give_back", DPM_CAP_LOCAL_GIVE_BACK},
+	{"local-no-suspend", "local_no_suspend", DPM_CAP_LOCAL_NO_SUSPEND},
+	{"local-vconn-supply", "local_vconn_supply", DPM_CAP_LOCAL_VCONN_SUPPLY},
 
-	{"attempt_discover_cable_dfp", DPM_CAP_ATTEMPT_DISCOVER_CABLE_DFP},
-	{"attempt_enter_dp_mode", DPM_CAP_ATTEMPT_ENTER_DP_MODE},
-	{"attempt_discover_cable", DPM_CAP_ATTEMPT_DISCOVER_CABLE},
-	{"attempt_discover_id", DPM_CAP_ATTEMPT_DISCOVER_ID},
-	{"attempt_discover_svid", DPM_CAP_ATTEMPT_DISCOVER_SVID},
+	{"attempt-discover-cable-dfp", "attempt_discover_cable_dfp",
+	 DPM_CAP_ATTEMPT_DISCOVER_CABLE_DFP},
+	{"attempt-enter-dp-mode", "attempt_enter_dp_mode", DPM_CAP_ATTEMPT_ENTER_DP_MODE},
+	{"attempt-discover-cable", "attempt_discover_cable", DPM_CAP_ATTEMPT_DISCOVER_CABLE},
+	{"attempt-discover-id", "attempt_discover_id", DPM_CAP_ATTEMPT_DISCOVER_ID},
+	{"attempt-discover-svid", "attempt_discover_svid", DPM_CAP_ATTEMPT_DISCOVER_SVID},
 
-	{"pr_reject_as_source", DPM_CAP_PR_SWAP_REJECT_AS_SRC},
-	{"pr_reject_as_sink", DPM_CAP_PR_SWAP_REJECT_AS_SNK},
-	{"pr_check_gp_source", DPM_CAP_PR_SWAP_CHECK_GP_SRC},
-	{"pr_check_gp_sink", DPM_CAP_PR_SWAP_CHECK_GP_SNK},
+	{"pr-reject-as-source", "pr_reject_as_source", DPM_CAP_PR_SWAP_REJECT_AS_SRC},
+	{"pr-reject-as-sink", "pr_reject_as_sink", DPM_CAP_PR_SWAP_REJECT_AS_SNK},
+	{"pr-check-gp-source", "pr_check_gp_source", DPM_CAP_PR_SWAP_CHECK_GP_SRC},
+	{"pr-check-gp-sink", "pr_check_gp_sink", DPM_CAP_PR_SWAP_CHECK_GP_SNK},
 
-	{"dr_reject_as_dfp", DPM_CAP_DR_SWAP_REJECT_AS_DFP},
-	{"dr_reject_as_ufp", DPM_CAP_DR_SWAP_REJECT_AS_UFP},
+	{"dr-reject-as-dfp", "dr_reject_as_dfp", DPM_CAP_DR_SWAP_REJECT_AS_DFP},
+	{"dr-reject-as-ufp", "dr_reject_as_ufp", DPM_CAP_DR_SWAP_REJECT_AS_UFP},
 };
 
 static void pd_core_power_flags_init(struct pd_port *pd_port)
@@ -479,23 +487,27 @@ static void pd_core_power_flags_init(struct pd_port *pd_port)
 	struct pd_port_power_caps *src_cap =
 				&pd_port->local_src_cap_default;
 
-	np = of_find_node_by_name(pd_port->tcpc->dev.of_node, "dpm_caps");
+	np = of_find_node_by_name(pd_port->tcpc->dev.of_node, "dpm-caps");
+	if (!np)
+		np = of_find_node_by_name(pd_port->tcpc->dev.of_node, "dpm_caps");
 
 	for (i = 0; i < ARRAY_SIZE(supported_dpm_caps); i++) {
-		if (of_property_read_bool(np,
-			supported_dpm_caps[i].prop_name))
+		if (of_property_read_bool(np, supported_dpm_caps[i].prop_name) ||
+		    of_property_read_bool(np, supported_dpm_caps[i].legacy_prop_name))
 			pd_port->dpm_caps |=
 				supported_dpm_caps[i].val;
 			pr_info("dpm_caps: %s\n",
 				supported_dpm_caps[i].prop_name);
 	}
 
-	if (of_property_read_u32(np, "pr_check", &val) == 0)
+	if (of_property_read_u32(np, "pr-check", &val) == 0 ||
+	    of_property_read_u32(np, "pr_check", &val) == 0)
 		pd_port->dpm_caps |= DPM_CAP_PR_CHECK_PROP(val);
 	else
 		pr_err("%s get pr_check data fail\n", __func__);
 
-	if (of_property_read_u32(np, "dr_check", &val) == 0)
+	if (of_property_read_u32(np, "dr-check", &val) == 0 ||
+	    of_property_read_u32(np, "dr_check", &val) == 0)
 		pd_port->dpm_caps |= DPM_CAP_DR_CHECK_PROP(val);
 	else
 		pr_err("%s get dr_check data fail\n", __func__);
