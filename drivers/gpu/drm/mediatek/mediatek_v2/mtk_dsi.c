@@ -7544,12 +7544,11 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 
 	if (IS_ERR_OR_NULL(priv)
 		|| (!(mtk_crtc->mode_change_index & MODE_DSI_CLK)
-		&& !(mtk_crtc->mode_change_index & MODE_DSI_RES)
-		&& !(dsi->ext && dsi->ext->params
-		&& dsi->ext->params->cmd_null_pkt_en)))
+		&& !(mtk_crtc->mode_change_index & MODE_DSI_RES)))
 		need_mipi_change = 0;
 
 	DDPINFO("%s, need_mipi_change %d\n", __func__, need_mipi_change);
+
 	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 0);
 
 	if (!(mtk_crtc->mode_change_index & MODE_DSI_RES)) {
@@ -7607,8 +7606,12 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 	}
 
 	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 1);
-	if (need_mipi_change == 0)
+
+	if (need_mipi_change == 0) {
+		DDPINFO("skip mipi chg\n");
+		mtk_dsi_config_null_packet(dsi);
 		goto skip_change_mipi;
+	}
 
 	/* Power off DSI */
 	clk_cnt  = dsi->clk_refcnt;
