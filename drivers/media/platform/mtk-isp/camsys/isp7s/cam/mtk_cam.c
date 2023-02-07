@@ -359,6 +359,8 @@ static void mtk_cam_req_reset(struct media_request *req)
 {
 	struct mtk_cam_request *cam_req = to_mtk_cam_req(req);
 
+	INIT_LIST_HEAD(&cam_req->list);
+
 	cam_req->used_ctx = 0;
 	cam_req->used_pipe = 0;
 
