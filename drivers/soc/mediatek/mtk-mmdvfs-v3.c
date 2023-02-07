@@ -67,6 +67,7 @@ static DEFINE_MUTEX(mmdvfs_vmm_pwr_mutex);
 static int last_vote_step[PWR_MMDVFS_NUM];
 static int last_force_step[PWR_MMDVFS_NUM];
 static int dpsw_thr;
+static int vmm_ceil_step;
 
 enum {
 	log_pwr,
@@ -75,6 +76,7 @@ enum {
 	log_adb,
 };
 static int log_level;
+static int vcp_log_level;
 
 static call_ccu call_ccu_fp;
 
@@ -533,6 +535,16 @@ static struct kernel_param_ops enable_vmm_ops = {
 module_param_cb(enable_vmm, &enable_vmm_ops, NULL, 0644);
 MODULE_PARM_DESC(enable_vmm, "enable vmm");
 
+static int mtk_mmdvfs_v3_set_vmm_ceil_step(const bool enable)
+{
+	MMDVFS_DBG("enable:%u start", enable);
+	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
+	mtk_mmdvfs_camera_notify(enable);
+	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
+	MMDVFS_DBG("enable:%u end", enable);
+	return 0;
+}
+
 int mmdvfs_vmm_ceil_step(const char *val, const struct kernel_param *kp)
 {
 	int result;
@@ -544,11 +556,7 @@ int mmdvfs_vmm_ceil_step(const char *val, const struct kernel_param *kp)
 		return result;
 	}
 
-	MMDVFS_DBG("enable:%u start", enable);
-	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
-	mtk_mmdvfs_camera_notify(enable);
-	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
-	MMDVFS_DBG("enable:%u end", enable);
+	mtk_mmdvfs_v3_set_vmm_ceil_step(enable);
 	return 0;
 }
 
@@ -737,13 +745,21 @@ int mmdvfs_get_vcp_log(char *buf, const struct kernel_param *kp)
 	return len;
 }
 
+static int mtk_mmdvfs_v3_set_vcp_log(const u32 log)
+{
+	if (!mmdvfs_is_init_done()) {
+		MMDVFS_ERR("mmdvfs is not init done");
+		return -1;
+	}
+
+	writel(log, MEM_LOG_FLAG);
+	return 0;
+}
+
 int mmdvfs_set_vcp_log(const char *val, const struct kernel_param *kp)
 {
 	u32 log = 0;
 	int ret;
-
-	if (!mmdvfs_is_init_done())
-		return 0;
 
 	ret = kstrtou32(val, 0, &log);
 	if (ret || log >= (1 << LOG_NUM)) {
@@ -751,8 +767,11 @@ int mmdvfs_set_vcp_log(const char *val, const struct kernel_param *kp)
 		return ret;
 	}
 
-	writel(log, MEM_LOG_FLAG);
-	return 0;
+	ret = mtk_mmdvfs_v3_set_vcp_log(log);
+	if (ret)
+		MMDVFS_ERR("set vcp log failed:%d log:%#x", ret, log);
+
+	return ret;
 }
 
 static struct kernel_param_ops mmdvfs_set_vcp_log_ops = {
@@ -902,6 +921,12 @@ static int mmdvfs_vcp_init_thread(void *data)
 	mmdvfs_init_done = true;
 	MMDVFS_DBG("iova:%pa pa:%pa va:%#lx init_done:%d",
 		&mmdvfs_memory_iova, &mmdvfs_memory_pa, (unsigned long)mmdvfs_memory_va, mmdvfs_init_done);
+
+	if (vcp_log_level)
+		mtk_mmdvfs_v3_set_vcp_log(vcp_log_level);
+
+	if (vmm_ceil_step)
+		mtk_mmdvfs_v3_set_vmm_ceil_step(vmm_ceil_step);
 
 	vcp_ready_notifier.notifier_call = mmdvfs_vcp_notifier_callback;
 	vcp_A_register_notify_ex(&vcp_ready_notifier);
@@ -1110,8 +1135,13 @@ static int mmdvfs_v3_probe(struct platform_device *pdev)
 		last_force_step[i] = -1;
 	}
 
+	of_property_read_s32(node, "kernel-log-level", &log_level);
+	of_property_read_s32(node, "vcp-log-level", &vcp_log_level);
+	of_property_read_s32(node, "vmm-ceil-step", &vmm_ceil_step);
+
 	kthr_vcp = kthread_run(mmdvfs_vcp_init_thread, NULL, "mmdvfs-vcp");
 	kthr_ccu = kthread_run(mmdvfs_ccu_init_thread, node, "mmdvfs-ccu");
+
 	return ret;
 }
 

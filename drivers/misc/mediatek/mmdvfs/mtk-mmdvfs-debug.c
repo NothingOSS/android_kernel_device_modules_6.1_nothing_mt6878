@@ -47,6 +47,8 @@ struct mmdvfs_debug {
 	u32 reg_cnt_vol;
 	u32 force_step0;
 	u32 release_step0;
+	u32 vote_step;
+	u32 force_step;
 
 	spinlock_t lock;
 	u8 rec_cnt;
@@ -296,6 +298,15 @@ static int mmdvfs_v3_debug_thread(void *data)
 
 	if (g_mmdvfs->use_v3_pwr & (1 << PWR_MMDVFS_VMM))
 		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VMM, -1);
+
+	if (g_mmdvfs->vote_step != 0xff)
+		mtk_mmdvfs_v3_set_vote_step(
+			g_mmdvfs->vote_step >> 4 & 0xf, g_mmdvfs->vote_step & 0xf);
+
+	if (g_mmdvfs->force_step != 0xff)
+		mtk_mmdvfs_v3_set_force_step(
+			g_mmdvfs->force_step >> 4 & 0xf, g_mmdvfs->force_step & 0xf);
+
 
 init_done:
 	mmdvfs_v3_debug_init_done = true;
@@ -568,6 +579,11 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 
 	g_mmdvfs->nb.notifier_call = mmdvfs_debug_smi_cb;
 	mtk_smi_dbg_register_notifier(&g_mmdvfs->nb);
+
+	g_mmdvfs->vote_step = 0xff;
+	of_property_read_u32(g_mmdvfs->dev->of_node, "vote-step", &g_mmdvfs->vote_step);
+	g_mmdvfs->force_step = 0xff;
+	of_property_read_u32(g_mmdvfs->dev->of_node, "force-step", &g_mmdvfs->force_step);
 
 	/* Below code should be in the bottom of probe function */
 
