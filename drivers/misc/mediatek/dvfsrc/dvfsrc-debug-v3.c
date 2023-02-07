@@ -34,9 +34,11 @@ enum dvfsrc_regs {
 	DVFSRC_HRT_REQ_MD_BW_0,
 	DVFSRC_HRT_REQ_MD_BW_8,
 	DVFSRC_MD_TURBO,
-	DVFSRC_95MD_SCEN_BW4,
+	DVFSRC_95MD_SCEN_BWU,
 	DVFSRC_95MD_SCEN_BW0,
 	DVFSRC_95MD_SCEN_BW0_T,
+	DVFSRC_95MD_SCEN_BW4,
+	DVFSRC_95MD_SCEN_BW4_T,
 	DVFSRC_RSRV_4,
 	DVFSRC_MD_DDR_FLOOR_REQUEST,
 	DVFSRC_QOS_DDR_REQUEST,
@@ -79,7 +81,7 @@ static const int mt6873_regs[] = {
 	[DVFSRC_HRT_REQ_MD_BW_0] = 0xA8C,
 	[DVFSRC_HRT_REQ_MD_BW_8] = 0xACC,
 	[DVFSRC_MD_TURBO] = 0xDC,
-	[DVFSRC_95MD_SCEN_BW4] = 0x544,
+	[DVFSRC_95MD_SCEN_BWU] = 0x544,
 	[DVFSRC_95MD_SCEN_BW0] = 0x524,
 	[DVFSRC_95MD_SCEN_BW0_T] = 0x534,
 	[DVFSRC_RSRV_4] = 0x610,
@@ -103,9 +105,11 @@ static const int mt6983_regs[] = {
 	[DVFSRC_HRT_REQ_MD_BW_0] = 0x324,
 	[DVFSRC_HRT_REQ_MD_BW_8] = 0x344,
 	[DVFSRC_MD_TURBO] = 0xE0,
-	[DVFSRC_95MD_SCEN_BW4] = 0x278,
+	[DVFSRC_95MD_SCEN_BWU] = 0x278,
 	[DVFSRC_95MD_SCEN_BW0] = 0x258,
 	[DVFSRC_95MD_SCEN_BW0_T] = 0x268,
+	[DVFSRC_95MD_SCEN_BW4] = 0x6B4,
+	[DVFSRC_95MD_SCEN_BW4_T] = 0x6C4,
 	[DVFSRC_RSRV_4] = 0x290,
 	[DVFSRC_MD_DDR_FLOOR_REQUEST] = 0x5E4,
 	[DVFSRC_QOS_DDR_REQUEST] = 0x5E8,
@@ -366,7 +370,7 @@ static u32 dvfsrc_get_md_scen_ddr_gear(struct mtk_dvfsrc *dvfsrc)
 		md_scen = sta0 & 0xFFFF;
 
 		if (is_urgent)
-			val = dvfsrc_read(dvfsrc, DVFSRC_95MD_SCEN_BW4, 0x0);
+			val = dvfsrc_read(dvfsrc, DVFSRC_95MD_SCEN_BWU, 0x0);
 		else {
 			index = md_scen / 8;
 			shift = (md_scen % 8) * 4;
@@ -670,6 +674,42 @@ static char *dvfsrc_dump_mt6983_spm_timer_latch(struct mtk_dvfsrc *dvfsrc,
 	return p;
 }
 
+static char *dvfsrc_dump_mt6983_md_floor_table(struct mtk_dvfsrc *dvfsrc, char *p, u32 size)
+{
+	char *buff_end = p + size;
+
+	p += snprintf(p, buff_end - p, "%-14s: %08x, %08x, %08x, %08x\n", "MD_SCEN_BW0",
+		dvfsrc_read(dvfsrc, DVFSRC_95MD_SCEN_BW0, 0x0),
+		dvfsrc_read(dvfsrc, DVFSRC_95MD_SCEN_BW0, 0x4),
+		dvfsrc_read(dvfsrc, DVFSRC_95MD_SCEN_BW0, 0x8),
+		dvfsrc_read(dvfsrc, DVFSRC_95MD_SCEN_BW0, 0xC));
+
+	p += snprintf(p, buff_end - p, "%-14s: %08x, %08x, %08x, %08x\n", "MD_SCEN_BW4",
+		dvfsrc_read(dvfsrc, DVFSRC_95MD_SCEN_BW4, 0x0),
+		dvfsrc_read(dvfsrc, DVFSRC_95MD_SCEN_BW4, 0x4),
+		dvfsrc_read(dvfsrc, DVFSRC_95MD_SCEN_BW4, 0x8),
+		dvfsrc_read(dvfsrc, DVFSRC_95MD_SCEN_BW4, 0xC));
+
+	p += snprintf(p, buff_end - p, "%-14s: %08x, %08x, %08x, %08x\n", "MD_SCEN_BW0_T",
+		dvfsrc_read(dvfsrc, DVFSRC_95MD_SCEN_BW0_T, 0x0),
+		dvfsrc_read(dvfsrc, DVFSRC_95MD_SCEN_BW0_T, 0x4),
+		dvfsrc_read(dvfsrc, DVFSRC_95MD_SCEN_BW0_T, 0x8),
+		dvfsrc_read(dvfsrc, DVFSRC_95MD_SCEN_BW0_T, 0xC));
+
+	p += snprintf(p, buff_end - p, "%-14s: %08x, %08x, %08x, %08x\n", "MD_SCEN_BW4_T",
+		dvfsrc_read(dvfsrc, DVFSRC_95MD_SCEN_BW4_T, 0x0),
+		dvfsrc_read(dvfsrc, DVFSRC_95MD_SCEN_BW4_T, 0x4),
+		dvfsrc_read(dvfsrc, DVFSRC_95MD_SCEN_BW4_T, 0x8),
+		dvfsrc_read(dvfsrc, DVFSRC_95MD_SCEN_BW4_T, 0xC));
+
+	p += snprintf(p, buff_end - p, "%-14s: %08x\n", "MD_SCEN_BWU",
+		dvfsrc_read(dvfsrc, DVFSRC_95MD_SCEN_BWU, 0x0));
+
+	p += snprintf(p, buff_end - p, "\n");
+
+	return p;
+}
+
 #define MTK_SIP_VCOREFS_GET_VCORE_INFO 18
 static int dvfsrc_dvfs_get_vcore_info_data(u32 idx)
 {
@@ -816,5 +856,5 @@ const struct dvfsrc_config mt6983_dvfsrc_config = {
 	.query_dvfs_time = dvfsrc_query_dvfs_time,
 	.dump_spm_cmd = dvfsrc_dump_mt6983_spm_cmd,
 	.dump_spm_timer_latch = dvfsrc_dump_mt6983_spm_timer_latch,
+	.dump_md_floor_table = dvfsrc_dump_mt6983_md_floor_table,
 };
-

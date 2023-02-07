@@ -288,6 +288,22 @@ static inline ssize_t dvfsrc_qos_mode_store(struct device *dev,
 }
 DEVICE_ATTR_RW(dvfsrc_qos_mode);
 
+static ssize_t dvfsrc_md_floor_table_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	char *p = buf;
+	ssize_t dump_size = PAGE_SIZE - 1;
+	const struct dvfsrc_config *config;
+	struct mtk_dvfsrc *dvfsrc = dev_get_drvdata(dev);
+
+	config = dvfsrc->dvd->config;
+	if (config->dump_md_floor_table)
+		p = config->dump_md_floor_table(dvfsrc, p, dump_size - (p - buf));
+
+	return p - buf;
+}
+static DEVICE_ATTR_RO(dvfsrc_md_floor_table);
+
 
 static struct attribute *dvfsrc_sysfs_attrs[] = {
 	&dev_attr_dvfsrc_req_bw.attr,
@@ -303,6 +319,7 @@ static struct attribute *dvfsrc_sysfs_attrs[] = {
 	&dev_attr_spm_cmd_dump.attr,
 	&dev_attr_spm_timer_latch_dump.attr,
 	&dev_attr_dvfsrc_qos_mode.attr,
+	&dev_attr_dvfsrc_md_floor_table.attr,
 	NULL,
 };
 
