@@ -470,6 +470,14 @@ static bool is_pll_chk_bug_on(void)
 	return clkchk_ops->is_pll_chk_bug_on();
 }
 
+static bool clkchk_is_retry_bug_on(bool reset_cnt)
+{
+	if (clkchk_ops == NULL || clkchk_ops->is_suspend_retry_stop == NULL)
+		return true;
+
+	return clkchk_ops->is_suspend_retry_stop(reset_cnt);
+}
+
 /*
  * clkchk vf table checking
  */
@@ -580,6 +588,9 @@ static int clk_chk_dev_pm_suspend(struct device *dev)
 		for (; pvdck->ck != NULL; pvdck++)
 			dump_enabled_clks(pvdck);
 
+		if (!clkchk_is_retry_bug_on(false))
+			return -1;
+
 		if (is_pll_chk_bug_on() || pdchk_get_bug_on_stat()) {
 			clkchk_dump_pll_reg(false);
 			BUG_ON(1);
@@ -590,6 +601,8 @@ static int clk_chk_dev_pm_suspend(struct device *dev)
 				DB_OPT_DEFAULT, "clk-chk",
 				"fail to disable clk/pd in suspend\n");
 #endif
+	} else {
+		clkchk_is_retry_bug_on(true);
 	}
 
 	return 0;
