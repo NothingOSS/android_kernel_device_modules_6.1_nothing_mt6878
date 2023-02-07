@@ -1236,7 +1236,7 @@ static void mvpu_drv_exit(void)
 	platform_driver_unregister(&mvpu_driver);
 }
 
-int mvpu_init(void)
+int mvpu_init(struct apusys_core_info *info)
 {
 	/* Register platform driver after debugfs initialization */
 	if (!mvpu_drv_init()) {
