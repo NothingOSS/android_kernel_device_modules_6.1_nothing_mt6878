@@ -8,9 +8,9 @@
 #include <linux/slab.h>
 #include <linux/of_graph.h>
 #include <linux/of_device.h>
-
+#include <linux/version.h>
 #include <linux/videodev2.h>
-#include <media/media-entity.h>
+
 #include <media/v4l2-subdev.h>
 #include <media/v4l2-fwnode.h>
 #include <media/v4l2-ctrls.h>
@@ -30,6 +30,7 @@
 
 #define to_std_fmt_code(code) \
 	((code) & 0xFFFF)
+
 
 void mtk_cam_seninf_init_res(struct seninf_core *core)
 {
@@ -946,7 +947,7 @@ int mtk_cam_seninf_is_vc_enabled(struct seninf_ctx *ctx, struct seninf_vc *vc)
 	if (vc->out_pad != PAD_SRC_RAW0 &&
 		vc->out_pad != PAD_SRC_RAW1 &&
 		vc->out_pad != PAD_SRC_RAW2) {
-		if (media_pad_remote_pad_first(&ctx->pads[vc->out_pad]))
+		if (media_entity_remote_pad(&ctx->pads[vc->out_pad]))
 			return 1;
 		else
 			return 0;
@@ -958,7 +959,7 @@ int mtk_cam_seninf_is_vc_enabled(struct seninf_ctx *ctx, struct seninf_vc *vc)
 		if ((out_pad == PAD_SRC_RAW0 ||
 			 out_pad == PAD_SRC_RAW1 ||
 			 out_pad == PAD_SRC_RAW2) &&
-			media_pad_remote_pad_first(&ctx->pads[out_pad]))
+			media_entity_remote_pad(&ctx->pads[out_pad]))
 			return 1;
 	}
 
@@ -979,7 +980,7 @@ int mtk_cam_seninf_is_di_enabled(struct seninf_ctx *ctx, u8 ch, u8 dt)
 			if (ctx->is_test_streamon)
 				return 1;
 #endif
-			if (media_pad_remote_pad_first(&ctx->pads[vc->out_pad]))
+			if (media_entity_remote_pad(&ctx->pads[vc->out_pad]))
 				return 1;
 			return 0;
 		}
@@ -1453,8 +1454,8 @@ int mtk_cam_seninf_s_stream_mux(struct seninf_ctx *ctx)
 
 		vc->enable = mtk_cam_seninf_is_vc_enabled(ctx, vc);
 		if (!vc->enable) {
-			dev_info(ctx->dev, "vc[%d] pad %d. skip\n",
-				 i, vc->out_pad);
+			dev_info(ctx->dev, "vc[%d] feature %d, pad %d. skip\n",
+				 i, vc->feature, vc->out_pad);
 			continue;
 		}
 
