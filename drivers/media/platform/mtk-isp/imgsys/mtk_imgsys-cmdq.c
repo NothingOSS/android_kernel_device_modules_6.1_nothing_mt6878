@@ -298,7 +298,7 @@ struct platform_device *mtk_imgsys_cmdq_get_plat_dev(struct platform_device *pde
 
 	dev_dbg(&pdev->dev, "- E. imgsys cmdq get platform device.\n");
 
-	cmdq_node = of_parse_phandle(dev->of_node, "mediatek,imgsys_cmdq", 0);
+	cmdq_node = of_parse_phandle(dev->of_node, "mediatek,imgsys-cmdq", 0);
 	if (cmdq_node == NULL) {
 		dev_info(&pdev->dev, "%s can't get imgsys cmdq node.\n", __func__);
 		return NULL;
