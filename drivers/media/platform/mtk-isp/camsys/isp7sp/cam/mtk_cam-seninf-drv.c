@@ -1468,7 +1468,20 @@ static int get_mbus_config(struct seninf_ctx *ctx, struct v4l2_subdev *sd)
 
 	ctx->is_cphy = cfg.type == V4L2_MBUS_CSI2_CPHY;
 
-	ctx->num_data_lanes = cfg.bus.mipi_csi2.num_data_lanes;
+	switch (cfg.bus.mipi_csi2.num_data_lanes) {
+	case SENSOR_MIPI_1_LANE:
+		ctx->num_data_lanes = 1;
+		break;
+	case SENSOR_MIPI_2_LANE:
+		ctx->num_data_lanes = 2;
+		break;
+	case SENSOR_MIPI_3_LANE:
+		ctx->num_data_lanes = 3;
+		break;
+	case SENSOR_MIPI_4_LANE:
+		ctx->num_data_lanes = 4;
+		break;
+	}
 
 #if AOV_GET_PARAM
 	if (!(core->aov_sensor_id < 0) &&
@@ -3035,6 +3048,7 @@ int mtk_cam_seninf_dump(struct v4l2_subdev *sd, u32 seq_id, bool force_check)
 	struct v4l2_ctrl *ctrl;
 	int val = 0;
 	int reset_by_user = 0;
+	bool in_reset = 0;
 
 	if (!force_check && ctx->dbg_last_dump_req != 0 &&
 		ctx->dbg_last_dump_req == seq_id) {
@@ -3058,15 +3072,22 @@ int mtk_cam_seninf_dump(struct v4l2_subdev *sd, u32 seq_id, bool force_check)
 		return ret;
 	}
 
+	/* query if sensor in reset */
+	sensor_sd->ops->core->command(sensor_sd,
+			V4L2_CMD_SENSOR_IN_RESET, &in_reset);
+
 	if (ctx->streaming) {
-		ret = g_seninf_ops->_debug(sd_to_ctx(sd));
+		if (!in_reset) {
+			ret = g_seninf_ops->_debug(sd_to_ctx(sd));
 #if ESD_RESET_SUPPORT
-		if (ret != 0) {
-			reset_by_user = is_reset_by_user(sd_to_ctx(sd));
-			if (!reset_by_user)
-				reset_sensor(sd_to_ctx(sd));
-		}
+			if (ret != 0) {
+				reset_by_user = is_reset_by_user(sd_to_ctx(sd));
+				if (!reset_by_user)
+					reset_sensor(sd_to_ctx(sd));
+			}
 #endif
+		} else
+			dev_info(ctx->dev, "%s skip dump, sensor is in resetting\n", __func__);
 	} else
 		dev_info(ctx->dev, "%s should not dump during stream off\n", __func__);
 
