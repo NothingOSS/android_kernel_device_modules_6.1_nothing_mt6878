@@ -4197,7 +4197,7 @@
 				  <0 0x0c034000 0 0x100>;
 
 			map0 {
-				domain = "top";
+				domain = "top0";
 				method = "fhctl-ap";
 				mainpll2 {
 					fh-id = <0>;
@@ -4219,9 +4219,6 @@
 				};
 				adsppll {
 					fh-id = <8>;
-				};
-				imgpll {
-					fh-id = <9>;
 				};
 				tvdpll {
 					fh-id = <10>;
