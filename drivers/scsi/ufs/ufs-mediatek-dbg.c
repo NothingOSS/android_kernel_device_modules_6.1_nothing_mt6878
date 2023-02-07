@@ -157,11 +157,13 @@ static void ufs_mtk_dbg_print_info(char **buff, unsigned long *size,
 		      hba->pwr_info.pwr_tx,
 		      hba->pwr_info.hs_rate);
 
-	/* Device info */
-	SPREAD_PRINTF(buff, size, m,
-		      "Device vendor=%.8s, model=%.16s, rev=%.4s\n",
-		      hba->ufs_device_wlun->vendor,
-		      hba->ufs_device_wlun->model, hba->ufs_device_wlun->rev);
+	if (hba->ufs_device_wlun) {
+		/* Device info */
+		SPREAD_PRINTF(buff, size, m,
+			      "Device vendor=%.8s, model=%.16s, rev=%.4s\n",
+			      hba->ufs_device_wlun->vendor,
+			      hba->ufs_device_wlun->model, hba->ufs_device_wlun->rev);
+	}
 
 #if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
 	if (hba_priv->is_mcq_enabled) {
