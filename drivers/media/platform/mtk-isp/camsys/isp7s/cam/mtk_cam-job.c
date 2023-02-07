@@ -246,8 +246,10 @@ static unsigned long mtk_cam_select_hw(struct mtk_cam_job *job)
 
 	/* todo: more rules */
 	if (ctx->has_raw_subdev) {
-		int raw_required =
-			job->req->raw_data[ctx->raw_subdev_idx].ctrl.resource.raw_num;
+		struct mtk_raw_ctrl_data *ctrl =
+			&job->req->raw_data[ctx->raw_subdev_idx].ctrl;
+		int raw_required = ctrl->resource.raw_num;
+		int raws = ctrl->resource.user_data.raw_res.raws;
 		int raw_cnt = 0;
 
 		if (!raw_required) {
@@ -257,7 +259,7 @@ static unsigned long mtk_cam_select_hw(struct mtk_cam_job *job)
 		}
 
 		for (i = 0; i < cam->engines.num_raw_devices; i++)
-			if (raw_available & BIT(i)) {
+			if (raws & BIT(i)) {
 				selected |= bit_map_bit(MAP_HW_RAW, i);
 
 				raw_cnt++;
@@ -266,7 +268,9 @@ static unsigned long mtk_cam_select_hw(struct mtk_cam_job *job)
 			}
 
 		if (raw_cnt != raw_required) {
-			dev_info(cam->dev, "select hw failed at raw\n");
+			dev_info(cam->dev,
+				 "select hw failed at raw (raw_cnt:%d, raw_required:%d)\n",
+				 raw_cnt, raw_required);
 			selected = 0;
 			goto SELECT_HW_FAILED;
 		}
