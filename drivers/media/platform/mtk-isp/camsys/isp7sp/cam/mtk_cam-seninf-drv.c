@@ -549,7 +549,7 @@ static int seninf_core_pm_runtime_get_sync(struct seninf_core *core)
 	int ret = 0;
 
 	if (core->pm_domain_cnt == 1) {
-		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_SENIF);
+		//mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_SENIF);
 		ret = pm_runtime_get_sync(core->dev);
 		if (ret < 0) {
 			dev_info(core->dev, "pm_runtime_get_sync(fail),ret(%d)\n", ret);
@@ -561,7 +561,7 @@ static int seninf_core_pm_runtime_get_sync(struct seninf_core *core)
 
 		for (i = 0; i < core->pm_domain_cnt; i++) {
 			if (core->pm_domain_devs[i] != NULL) {
-				mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_SENIF);
+				//mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_SENIF);
 				ret = pm_runtime_get_sync(core->pm_domain_devs[i]);
 				if (ret < 0) {
 					dev_info(core->dev,
@@ -586,7 +586,7 @@ static int seninf_core_pm_runtime_put(struct seninf_core *core)
 		ret = pm_runtime_put_sync(core->dev);
 		if (ret < 0)
 			dev_info(core->dev, "pm_runtime_put_sync(fail),ret(%d)\n", ret);
-		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_SENIF);
+		//mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_SENIF);
 	} else if (core->pm_domain_cnt > 1) {
 		if (!core->pm_domain_devs)
 			return -ENOMEM;
@@ -598,7 +598,7 @@ static int seninf_core_pm_runtime_put(struct seninf_core *core)
 					dev_info(core->dev,
 						"pm_runtime_put_sync(fail),ret(%d)\n",
 						ret);
-				mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_SENIF);
+				//mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_SENIF);
 			}
 		}
 	} else
