@@ -441,7 +441,7 @@
 			};
 		};
 
-		mtk_gauge: mtk_gauge {
+		mtk_gauge: mtk-gauge {
 			compatible = "mediatek,mt6359p-gauge";
 			bootmode = <&chosen>;
 			io-channels = <&pmic_auxadc AUXADC_BAT_TEMP>,
