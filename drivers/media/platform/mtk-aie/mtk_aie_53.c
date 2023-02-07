@@ -105,6 +105,13 @@ static struct clk_bulk_data ipesys_isp7s_aie_clks[] = {
 	{ .id = "IMG_IPE" },
 };
 
+static struct clk_bulk_data ipesys_isp7sp_aie_clks[] = {
+	{ .id = "VCORE_GALS" },
+	{ .id = "IPE_FDVT" },
+	{ .id = "IPE_SMI_LARB12" },
+	{ .id = "IMG_IPE" },
+};
+
 static struct aie_data data_isp71 = {
 	.clks = ipesys_isp7_aie_clks,
 	.clk_num = ARRAY_SIZE(ipesys_isp7_aie_clks),
@@ -117,13 +124,21 @@ static struct aie_data data_isp7s = {
 	.drv_ops = &aie_ops_isp7s,
 };
 
+static struct aie_data data_isp7sp = {
+	.clks = ipesys_isp7sp_aie_clks,
+	.clk_num = ARRAY_SIZE(ipesys_isp7sp_aie_clks),
+	.drv_ops = &aie_ops_isp7sp,
+};
+
 static int mtk_aie_suspend(struct device *dev)
 {
 	struct mtk_aie_dev *fd = dev_get_drvdata(dev);
 	int ret, num;
 
+#if POWER_READY
 	if (pm_runtime_suspended(dev))
 		return 0;
+#endif
 
 	num = atomic_read(&fd->num_composing);
 	dev_dbg(dev, "%s: suspend aie job start, num(%d)\n", __func__, num);
@@ -141,18 +156,21 @@ static int mtk_aie_suspend(struct device *dev)
 
 	dev_dbg(dev, "%s: suspend aie job end, num(%d)\n", __func__, num);
 
+#if POWER_READY
 	ret = pm_runtime_put_sync(dev);
 	if (ret) {
 		dev_info(dev, "%s: pm_runtime_put_sync failed:(%d)\n",
 			__func__, ret);
 		return ret;
 	}
+#endif
 
 	return 0;
 }
 
 static int mtk_aie_resume(struct device *dev)
 {
+#if POWER_READY
 	int ret;
 
 	dev_dbg(dev, "%s: resume aie job start)\n", __func__);
@@ -162,8 +180,13 @@ static int mtk_aie_resume(struct device *dev)
 			__func__);
 		return 0;
 	}
+#endif
 
+#if AOV_READY
 	mtk_aov_notify(gaov_dev, AOV_NOTIFY_AIE_AVAIL, 0); //unavailable: 0 available: 1
+#endif
+
+#if POWER_READY
 	ret = pm_runtime_get_sync(dev);
 	if (ret) {
 		dev_info(dev, "%s: pm_runtime_get_sync failed:(%d)\n",
@@ -172,7 +195,7 @@ static int mtk_aie_resume(struct device *dev)
 	}
 
 	dev_dbg(dev, "%s: resume aie job end)\n", __func__);
-
+#endif
 	return 0;
 }
 
@@ -506,9 +529,13 @@ static int mtk_aie_ccf_disable(struct device *dev)
 static int mtk_aie_hw_connect(struct mtk_aie_dev *fd)
 {
 	int ret = 0;
-
+#if AOV_READY
 	mtk_aov_notify(gaov_dev, AOV_NOTIFY_AIE_AVAIL, 0); //unavailable: 0 available: 1
+#endif
+
+#if POWER_READY
 	pm_runtime_get_sync((fd->dev));
+#endif
 
 	fd->fd_stream_count++;
 	if (fd->fd_stream_count == 1) {
@@ -522,7 +549,6 @@ static int mtk_aie_hw_connect(struct mtk_aie_dev *fd)
 
 		fd->map_count = 0;
 	}
-
 	return 0;
 }
 
@@ -530,10 +556,15 @@ static void mtk_aie_hw_disconnect(struct mtk_aie_dev *fd)
 {
 	if (g_user_param.is_secure == 1 & fd->fd_stream_count == 1) {
 		aie_disable_secure_domain(fd);
+#if CMDQ_SEC_READY
 		cmdq_sec_mbox_stop(fd->fdvt_secure_clt);
+#endif
 	}
 
+#if POWER_READY
 	pm_runtime_put_sync(fd->dev);
+#endif
+
 	dev_info(fd->dev, "[%s] stream_count:%d map_count%d\n", __func__,
 			fd->fd_stream_count, fd->map_count);
 	fd->fd_stream_count--;
@@ -712,17 +743,6 @@ static void mtk_aie_job_timeout_work(struct work_struct *work)
 		 fd->aie_cfg->src_padding.up,
 		 fd->aie_cfg->freq_level);
 
-	dev_info(fd->dev, "%s result result1: %x, %x, %x", __func__,
-		 readl(fd->fd_base + AIE_RESULT_0_REG),
-		 readl(fd->fd_base + AIE_RESULT_1_REG),
-		 readl(fd->fd_base + AIE_DMA_CTL_REG));
-
-	dev_info(fd->dev, "%s interrupt status: %x", __func__,
-		 readl(fd->fd_base + AIE_INT_EN_REG));
-
-	if (fd->aie_cfg->sel_mode == 1)
-		dev_info(fd->dev, "[ATTRMODE] w_idx = %d, r_idx = %d\n",
-			 fd->attr_para->w_idx, fd->attr_para->r_idx);
 	fd->drv_ops->fdvt_dump_reg(fd);
 
 	fd->drv_ops->irq_handle(fd);
@@ -905,14 +925,23 @@ int mtk_aie_vidioc_qbuf(struct file *file, void *priv,
 				  struct v4l2_buffer *buf)
 {
 	struct mtk_aie_dev *fd = video_drvdata(file);
-
 	int ret = 0;
 
 	if (buf->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) { /*IMG & data*/
 		if (!fd->map_count) {
 
 			fd->dmabuf = dma_buf_get(buf->m.planes[buf->length-1].m.fd);
-			dma_buf_begin_cpu_access(fd->dmabuf, DMA_BIDIRECTIONAL);
+			if (IS_ERR(fd->dmabuf) || fd->dmabuf == NULL) {
+				dev_info(fd->dev, "%s, dma_buf_getad failed\n", __func__);
+				return -ENOMEM;
+			}
+
+			ret = dma_buf_begin_cpu_access(fd->dmabuf, DMA_BIDIRECTIONAL);
+			if (ret < 0) {
+				dev_info(fd->dev, "%s, begin_cpu_access failed\n", __func__);
+				ret = -ENOMEM;
+				goto ERROR_PUTBUF;
+			}
 
 			ret = (u64)dma_buf_vmap(fd->dmabuf, &fd->map);
 			if (ret) {
@@ -958,6 +987,8 @@ int mtk_aie_vidioc_qbuf(struct file *file, void *priv,
 
 ERROR:
 	dma_buf_end_cpu_access(fd->dmabuf, DMA_BIDIRECTIONAL);
+
+ERROR_PUTBUF:
 	dma_buf_put(fd->dmabuf);
 
 	return ret;
@@ -1260,6 +1291,7 @@ err_free_dev:
 	return ret;
 }
 
+#if LARB_READY
 static int mtk_aie_dev_larb_init(struct mtk_aie_dev *fd)
 {
 	struct device_node *node;
@@ -1287,6 +1319,7 @@ static int mtk_aie_dev_larb_init(struct mtk_aie_dev *fd)
 
 	return 0;
 }
+#endif
 
 static int mtk_aie_dev_v4l2_init(struct mtk_aie_dev *fd)
 {
@@ -1358,8 +1391,6 @@ static void mtk_aie_frame_done_worker(struct work_struct *work)
 
 	switch (fd->aie_cfg->sel_mode) {
 	case FDMODE:
-		fd->reg_cfg.hw_result = readl(fd->fd_base + AIE_RESULT_0_REG);
-		fd->reg_cfg.hw_result1 = readl(fd->fd_base + AIE_RESULT_1_REG);
 		fd->drv_ops->get_fd_result(fd, fd->aie_cfg);
 	break;
 	case ATTRIBUTEMODE:
@@ -1382,8 +1413,6 @@ static int mtk_aie_probe(struct platform_device *pdev)
 
 	struct resource *res;
 	int ret;
-	struct device_node *img_node;
-	struct platform_device *img_pdev;
 	const struct aie_data *data;
 
 	dev_info(dev, "probe start\n");
@@ -1428,12 +1457,15 @@ static int mtk_aie_probe(struct platform_device *pdev)
 		return PTR_ERR(fd->fd_base);
 	}
 
+#if LARB_READY
 	ret = mtk_aie_dev_larb_init(fd);
 	if (ret) {
 		dev_info(dev, "Failed to init larb : %d\n", ret);
 		return ret;
 	}
+#endif
 
+#if CLK_READY
 	fd->aie_clk.clk_num = data->clk_num;
 	fd->aie_clk.clks = data->clks;
 	ret = devm_clk_bulk_get(dev,
@@ -1443,30 +1475,33 @@ static int mtk_aie_probe(struct platform_device *pdev)
 		dev_info(dev, "Failed to get clks: %d\n", ret);
 		return ret;
 	}
+#endif
 
 	fd->fdvt_clt = cmdq_mbox_create(dev, 0);
-	dev_info(dev, "cmdq fd->fdvt_clt:%lx\n", (unsigned long)fd->fdvt_clt);
 	if (!fd->fdvt_clt)
 		dev_info(dev, "cmdq mbox create fail\n");
 	else
 		dev_info(dev, "cmdq mbox create done\n");
 
+#if CMDQ_SEC_READY
 	fd->fdvt_secure_clt = cmdq_mbox_create(dev, 1);
 
 	if (!fd->fdvt_secure_clt)
 		dev_info(dev, "cmdq mbox create fail\n");
 	else
 		dev_info(dev, "cmdq mbox create done\n");
+#endif
 
-	of_property_read_u32(pdev->dev.of_node, "fdvt_frame_done", &(fd->fdvt_event_id));
-	dev_info(dev, "fdvt event id is %d\n", fd->fdvt_event_id);
+	of_property_read_u32(pdev->dev.of_node, "fdvt-frame-done", &(fd->fdvt_event_id));
 
-	of_property_read_u32(pdev->dev.of_node, "sw_sync_token_tzmp_aie_wait",
+#if CMDQ_SEC_READY
+	of_property_read_u32(pdev->dev.of_node, "sw-sync-token-tzmp-aie-wait",
 				&(fd->fdvt_sec_wait));
 	dev_info(dev, "fdvt_sec_wait is %d\n", fd->fdvt_sec_wait);
-	of_property_read_u32(pdev->dev.of_node, "sw_sync_token_tzmp_aie_set",
+	of_property_read_u32(pdev->dev.of_node, "sw-sync-token-tzmp-aie-set",
 				&(fd->fdvt_sec_set));
 	dev_info(dev, "fdvt_sec_set is %d\n", fd->fdvt_sec_set);
+#endif
 
 	mutex_init(&fd->vfd_lock);
 	init_completion(&fd->fd_job_finished);
@@ -1490,7 +1525,10 @@ static int mtk_aie_probe(struct platform_device *pdev)
 	//mtk_aie_mmqos_init(fd);
 	fd->aov_pdev = pdev;
 	gaov_dev = pdev;
+
+#if POWER_READY
 	pm_runtime_enable(dev);
+#endif
 
 	ret = mtk_aie_dev_v4l2_init(fd);
 	if (ret) {
@@ -1506,22 +1544,6 @@ static int mtk_aie_probe(struct platform_device *pdev)
 		return ret;
 	}
 #endif
-
-	img_node = of_parse_phandle(pdev->dev.of_node, "mediatek,imgsys_fw", 0);
-	if (!img_node) {
-		dev_info(dev,
-			"%s: img node not found\n", __func__);
-		return -EINVAL;
-	}
-	img_pdev = of_find_device_by_node(img_node);
-	if (!img_pdev) {
-		of_node_put(img_node);
-		dev_info(dev,
-			"%s: img device not found\n", __func__);
-		return -EINVAL;
-	}
-	of_node_put(img_node);
-	fd->img_pdev = img_pdev;
 
 	dev_info(dev, "AIE : Success to %s\n", __func__);
 
@@ -1559,7 +1581,9 @@ static int mtk_aie_runtime_suspend(struct device *dev)
 
 	dev_info(dev, "%s: runtime suspend aie job)\n", __func__);
 	mtk_aie_ccf_disable(dev);
+#if AOV_READY
 	mtk_aov_notify(gaov_dev, AOV_NOTIFY_AIE_AVAIL, 1); //unavailable: 0 available: 1
+#endif
 	return 0;
 }
 
@@ -1583,6 +1607,10 @@ static const struct of_device_id mtk_aie_of_ids[] = {
 	{
 		.compatible = "mediatek,aie-isp7s",
 		.data = &data_isp7s,
+	},
+	{
+		.compatible = "mediatek,aie-isp7sp",
+		.data = &data_isp7sp,
 	},
 	{} };
 MODULE_DEVICE_TABLE(of, mtk_aie_of_ids);

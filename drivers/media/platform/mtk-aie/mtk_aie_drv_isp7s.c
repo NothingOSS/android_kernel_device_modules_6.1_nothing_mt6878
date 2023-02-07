@@ -7,6 +7,7 @@
  */
 
 #include "mtk_aie.h"
+#include "mtk_aie_reg_7.h"
 #include <linux/delay.h>
 #include <linux/firmware.h>
 #include <linux/device.h>
@@ -36,7 +37,7 @@
 
 #define AIE_ALIGN32(x) round_up(x, 32)
 
-static struct cmdq_pkt *g_sec_pkt;
+// static struct cmdq_pkt *g_sec_pkt;
 static const unsigned int fd_wdma_en[fd_loop_num][output_WDMA_WRA_num] = {
 	{1, 0, 0, 0}, {1, 0, 1, 0}, {1, 0, 1, 0}, {1, 0, 0, 0}, {1, 1, 1, 1},
 	{1, 1, 1, 1}, {1, 0, 0, 0}, {1, 0, 1, 0}, {1, 1, 0, 0}, {1, 0, 0, 0},
@@ -366,7 +367,7 @@ static int FDVT_M4U_TranslationFault_callback(int port,
 							   dma_addr_t mva,
 							   void *data)
 {
-	pr_info("[FDVT_M4U]fault call port=%d, mva=0x%pad", port, &mva);
+	pr_info("[FDVT_M4U]fault call port=%d, mva=0x%llx", port, mva);
 
 	switch (port) {
 #if CHECK_SERVICE_IF_0
@@ -401,19 +402,29 @@ static void aie_fdvt_dump_reg(struct mtk_aie_dev *fd)
 	unsigned int loop_num = 1;
 	int i = 0;
 
-	if (fd->aie_cfg->sel_mode == FLDMODE) {
-		dev_info(fd->dev, "Blink Addr: %pad\n", &fd->dma_para->fld_blink_weight_pa);
+	dev_info(fd->dev, "%s result result1: %x, %x, %x", __func__,
+		 readl(fd->fd_base + AIE_RESULT_0_REG),
+		 readl(fd->fd_base + AIE_RESULT_1_REG),
+		 readl(fd->fd_base + AIE_DMA_CTL_REG));
+
+	dev_info(fd->dev, "%s interrupt status: %x", __func__,
+		 readl(fd->fd_base + AIE_INT_EN_REG));
+	if (fd->aie_cfg->sel_mode == ATTRIBUTEMODE) {
+		dev_info(fd->dev, "[ATTRMODE] w_idx = %d, r_idx = %d\n",
+			 fd->attr_para->w_idx, fd->attr_para->r_idx);
+	} else if (fd->aie_cfg->sel_mode == FLDMODE) {
+		dev_info(fd->dev, "Blink Addr: %llx\n", fd->dma_para->fld_blink_weight_pa);
 		for (i = 0; i < 15; i++) {
-			dev_info(fd->dev, "[%d]CV Addr: %pad\n", i, &fd->dma_para->fld_cv_pa[i]);
-			dev_info(fd->dev, "[%d]LEAFNODE Addr: %pad\n", i,
-						&fd->dma_para->fld_leafnode_pa[i]);
-			dev_info(fd->dev, "[%d]FP Addr: %pad\n", i, &fd->dma_para->fld_fp_pa[i]);
-			dev_info(fd->dev, "[%d]Tree02 Addr: %pad\n", i,
-						&fd->dma_para->fld_tree02_pa[i]);
+			dev_info(fd->dev, "[%d]CV Addr: %llx\n", i, fd->dma_para->fld_cv_pa[i]);
+			dev_info(fd->dev, "[%d]LEAFNODE Addr: %llx\n", i,
+						fd->dma_para->fld_leafnode_pa[i]);
+			dev_info(fd->dev, "[%d]FP Addr: %llx\n", i, fd->dma_para->fld_fp_pa[i]);
+			dev_info(fd->dev, "[%d]Tree02 Addr: %llx\n", i,
+						fd->dma_para->fld_tree02_pa[i]);
 			//dev_info(fd->dev, "[%d]Tree03 Addr: %x\n", i,
 			//			fd->dma_para->fld_tree13_pa[i]);
 		}
-		dev_info(fd->dev, "OUT Addr: %pad\n", &fd->dma_para->fld_output_pa);
+		dev_info(fd->dev, "OUT Addr: %llx\n", fd->dma_para->fld_output_pa);
 
 		dev_info(fd->dev, "[0x%08X %08X]\n", (unsigned int)AIE_START_REG,
 					(unsigned int)readl(fd->fd_base + AIE_START_REG));
@@ -4211,7 +4222,7 @@ static int aie_config_dram(struct mtk_aie_dev *fd, struct aie_enq_info *aie_cfg)
 	return ret;
 }
 
-void aie_reset(struct mtk_aie_dev *fd)
+static void aie_reset(struct mtk_aie_dev *fd)
 {
 	unsigned int ret = 0, counter = 0;
 
@@ -4226,7 +4237,7 @@ void aie_reset(struct mtk_aie_dev *fd)
 	writel(0x0, fd->fd_base + AIE_START_REG);
 }
 
-int aie_alloc_aie_buf(struct mtk_aie_dev *fd)
+static int aie_alloc_aie_buf(struct mtk_aie_dev *fd)
 {
 	int ret;
 	int err_tag = 0;
@@ -4305,7 +4316,7 @@ dram_fail:
 
 }
 
-int aie_init(struct mtk_aie_dev *fd)
+static int aie_init(struct mtk_aie_dev *fd)
 {
 	int err_tag = 0;
 
@@ -4380,7 +4391,7 @@ attr_para_fail:
 	return -ENOMEM;
 }
 
-void aie_uninit(struct mtk_aie_dev *fd)
+static void aie_uninit(struct mtk_aie_dev *fd)
 {
 	fd->fd_state = STATE_NA;
 
@@ -4414,7 +4425,7 @@ void aie_uninit(struct mtk_aie_dev *fd)
 #endif
 }
 
-int aie_prepare(struct mtk_aie_dev *fd, struct aie_enq_info *aie_cfg)
+static int aie_prepare(struct mtk_aie_dev *fd, struct aie_enq_info *aie_cfg)
 {
 	int ret = 0;
 
@@ -4530,57 +4541,6 @@ static void AIECmdqCB(struct cmdq_cb_data data)
 	struct mtk_aie_dev *fd = (struct mtk_aie_dev *)data.data;
 
 	queue_work(fd->frame_done_wq, &fd->req_work.work);
-}
-
-static void AIECmdqSecCB(struct cmdq_cb_data data)
-{
-	struct mtk_aie_dev *fd = (struct mtk_aie_dev *)data.data;
-
-	dev_info(fd->dev, "AIE SEC CMDQ CB\n");
-}
-
-
-static void AieSecPktCB(struct cmdq_cb_data data)
-{
-	struct cmdq_pkt *sec_pkt = (struct cmdq_pkt *)data.data;
-
-	cmdq_pkt_destroy(sec_pkt);
-	g_sec_pkt = NULL;
-
-}
-
-void config_aie_cmdq_secure_init(struct mtk_aie_dev *fd)
-{
-	g_sec_pkt = cmdq_pkt_create(fd->fdvt_secure_clt);
-
-	cmdq_sec_pkt_set_data(g_sec_pkt, 0, 0, CMDQ_SEC_DEBUG, CMDQ_METAEX_TZMP);
-	cmdq_sec_pkt_set_mtee(g_sec_pkt, true);
-	cmdq_pkt_finalize_loop(g_sec_pkt);
-	cmdq_pkt_flush_threaded(g_sec_pkt, AieSecPktCB, (void *)g_sec_pkt);
-}
-
-void aie_enable_secure_domain(struct mtk_aie_dev *fd)
-{
-	struct cmdq_pkt *pkt = NULL;
-
-	pkt = cmdq_pkt_create(fd->fdvt_clt);
-	cmdq_pkt_set_event(pkt, fd->fdvt_sec_wait);
-	cmdq_pkt_wfe(pkt, fd->fdvt_sec_set);
-	cmdq_pkt_flush_async(pkt, AIECmdqSecCB, (void *)fd);	/* flush and destry in cmdq*/
-	cmdq_pkt_wait_complete(pkt);
-	cmdq_pkt_destroy(pkt);
-}
-
-void aie_disable_secure_domain(struct mtk_aie_dev *fd)
-{
-	struct cmdq_pkt *pkt = NULL;
-
-	pkt = cmdq_pkt_create(fd->fdvt_clt);
-	cmdq_pkt_set_event(pkt, fd->fdvt_sec_wait);
-	cmdq_pkt_wfe(pkt, fd->fdvt_sec_set);
-	cmdq_pkt_flush_async(pkt, AIECmdqSecCB, (void *)fd);/* flush and destry in cmdq*/
-	cmdq_pkt_wait_complete(pkt);
-	cmdq_pkt_destroy(pkt);
 }
 
 static void config_aie_cmdq_hw(struct mtk_aie_dev *fd, struct aie_enq_info *aie_cfg)
@@ -4821,6 +4781,9 @@ static void aie_get_fd_result(struct mtk_aie_dev *fd, struct aie_enq_info *aie_c
 	fd_pym_result[0] = fd->dma_para->fd_out_hw_va[rpn0_loop_num][0];
 	fd_pym_result[1] = fd->dma_para->fd_out_hw_va[rpn1_loop_num][0];
 	fd_pym_result[2] = fd->dma_para->fd_out_hw_va[rpn2_loop_num][0];
+
+	fd->reg_cfg.hw_result = readl(fd->fd_base + AIE_RESULT_0_REG);
+	fd->reg_cfg.hw_result1 = readl(fd->fd_base + AIE_RESULT_1_REG);
 
 	fd_result_hw = fd->reg_cfg.hw_result;
 	fd_result_1_hw = fd->reg_cfg.hw_result1;

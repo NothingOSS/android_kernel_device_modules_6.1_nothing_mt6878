@@ -7,6 +7,7 @@
  */
 
 #include "mtk_aie.h"
+#include "mtk_aie_reg_7.h"
 #include <linux/delay.h>
 #include <linux/firmware.h>
 #include <linux/device.h>
@@ -743,7 +744,7 @@ static int FDVT_M4U_TranslationFault_callback(int port,
 							   dma_addr_t mva,
 							   void *data)
 {
-	pr_info("[FDVT_M4U]fault call port=%d, mva=0x%pad", port, &mva);
+	pr_info("[FDVT_M4U]fault call port=%d, mva=0x%llx", port, mva);
 
 	switch (port) {
 #if CHECK_SERVICE_IF_0
@@ -778,19 +779,29 @@ static void aie_fdvt_dump_reg(struct mtk_aie_dev *fd)
 	unsigned int loop_num = 1;
 	int i = 0;
 
-	if (fd->aie_cfg->sel_mode == 3) {
-		dev_info(fd->dev, "Blink Addr: %pad\n", &fd->dma_para->fld_blink_weight_pa);
+	dev_info(fd->dev, "%s result result1: %x, %x, %x", __func__,
+		 readl(fd->fd_base + AIE_RESULT_0_REG),
+		 readl(fd->fd_base + AIE_RESULT_1_REG),
+		 readl(fd->fd_base + AIE_DMA_CTL_REG));
+
+	dev_info(fd->dev, "%s interrupt status: %x", __func__,
+		 readl(fd->fd_base + AIE_INT_EN_REG));
+	if (fd->aie_cfg->sel_mode == ATTRIBUTEMODE) {
+		dev_info(fd->dev, "[ATTRMODE] w_idx = %d, r_idx = %d\n",
+			 fd->attr_para->w_idx, fd->attr_para->r_idx);
+	} else if (fd->aie_cfg->sel_mode == FLDMODE) {
+		dev_info(fd->dev, "Blink Addr: %llx\n", fd->dma_para->fld_blink_weight_pa);
 		for (i = 0; i < 15; i++) {
-			dev_info(fd->dev, "[%d]CV Addr: %pad\n", i, &fd->dma_para->fld_cv_pa[i]);
-			dev_info(fd->dev, "[%d]LEAFNODE Addr: %pad\n", i,
-						&fd->dma_para->fld_leafnode_pa[i]);
-			dev_info(fd->dev, "[%d]FP Addr: %pad\n", i, &fd->dma_para->fld_fp_pa[i]);
-			dev_info(fd->dev, "[%d]Tree02 Addr: %pad\n", i,
-						&fd->dma_para->fld_tree02_pa[i]);
-			dev_info(fd->dev, "[%d]Tree03 Addr: %pad\n", i,
-						&fd->dma_para->fld_shape_pa[i]);
+			dev_info(fd->dev, "[%d]CV Addr: %llx\n", i, fd->dma_para->fld_cv_pa[i]);
+			dev_info(fd->dev, "[%d]LEAFNODE Addr: %llx\n", i,
+						fd->dma_para->fld_leafnode_pa[i]);
+			dev_info(fd->dev, "[%d]FP Addr: %llx\n", i, fd->dma_para->fld_fp_pa[i]);
+			dev_info(fd->dev, "[%d]Tree02 Addr: %llx\n", i,
+						fd->dma_para->fld_tree02_pa[i]);
+			dev_info(fd->dev, "[%d]Tree03 Addr: %llx\n", i,
+						fd->dma_para->fld_shape_pa[i]);
 		}
-		dev_info(fd->dev, "OUT Addr: %pad\n", &fd->dma_para->fld_output_pa);
+		dev_info(fd->dev, "OUT Addr: %llx\n", fd->dma_para->fld_output_pa);
 
 		dev_info(fd->dev, "- E.");
 		dev_info(fd->dev, "FLD Config Info\n");
@@ -5020,9 +5031,10 @@ static void AieSecPktCB(struct cmdq_cb_data data)
 void config_aie_cmdq_secure_init(struct mtk_aie_dev *fd)
 {
 	g_sec_pkt = cmdq_pkt_create(fd->fdvt_secure_clt);
-
+#if CMDQ_SEC_READY
 	cmdq_sec_pkt_set_data(g_sec_pkt, 0, 0, CMDQ_SEC_DEBUG, CMDQ_METAEX_TZMP);
 	cmdq_sec_pkt_set_mtee(g_sec_pkt, true);
+#endif
 	cmdq_pkt_finalize_loop(g_sec_pkt);
 	cmdq_pkt_flush_threaded(g_sec_pkt, AieSecPktCB, (void *)g_sec_pkt);
 }
@@ -5262,6 +5274,9 @@ static void aie_get_fd_result(struct mtk_aie_dev *fd, struct aie_enq_info *aie_c
 	fd_pym_result[0] = fd->dma_para->fd_out_hw_va[rpn0_loop_num][0];
 	fd_pym_result[1] = fd->dma_para->fd_out_hw_va[rpn1_loop_num][0];
 	fd_pym_result[2] = fd->dma_para->fd_out_hw_va[rpn2_loop_num][0];
+
+	fd->reg_cfg.hw_result = readl(fd->fd_base + AIE_RESULT_0_REG);
+	fd->reg_cfg.hw_result1 = readl(fd->fd_base + AIE_RESULT_1_REG);
 
 	fd_result_hw = fd->reg_cfg.hw_result;
 	fd_result_1_hw = fd->reg_cfg.hw_result1;
