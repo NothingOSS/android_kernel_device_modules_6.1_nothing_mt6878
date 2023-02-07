@@ -57,6 +57,7 @@ static void gpufreq_init_external_callback(void);
 static int gpufreq_ipi_to_gpueb(struct gpufreq_ipi_data data);
 static int gpufreq_validate_target(unsigned int *target);
 static void gpufreq_dump_dvfs_status(void);
+static void gpufreq_dump_power_tracker_status(void);
 static void gpufreq_abort(void);
 
 /**
@@ -246,6 +247,7 @@ void gpufreq_dump_infra_status(void)
 {
 	gpueb_dump_footprint();
 	gpufreq_dump_dvfs_status();
+	gpufreq_dump_power_tracker_status();
 
 	/* implement on AP */
 	if (gpufreq_fp && gpufreq_fp->dump_infra_status)
@@ -1418,6 +1420,23 @@ static void gpufreq_dump_dvfs_status(void)
 			g_shared_status->avs_margin);
 		GPUFREQ_LOGI("GPU_SB_Version: 0x%04x, GPU_PTP_Version: 0x%04x",
 			g_shared_status->sb_version, g_shared_status->ptp_version);
+	}
+}
+
+/***********************************************************************************
+ * Function Name      : gpufreq_dump_power_tracker_status
+ * Description        : Dump PDC power tracker status
+ ***********************************************************************************/
+static void gpufreq_dump_power_tracker_status(void)
+{
+	/* implement on AP */
+	if (gpufreq_get_power_state() == POWER_ON) {
+		if (g_shared_status && g_shared_status->power_tracker_mode) {
+			if (gpufreq_fp && gpufreq_fp->dump_power_tracker_status)
+				gpufreq_fp->dump_power_tracker_status();
+			else
+				GPUFREQ_LOGE("null gpufreq platform function pointer (ENOENT)");
+		}
 	}
 }
 

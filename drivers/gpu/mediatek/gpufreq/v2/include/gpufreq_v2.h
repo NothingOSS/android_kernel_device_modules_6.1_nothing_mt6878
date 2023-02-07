@@ -313,6 +313,7 @@ struct gpufreq_shared_status {
 	unsigned int ptp3_mode;
 	unsigned int temper_comp_mode;
 	unsigned int ht_temper_comp_mode;
+	unsigned int power_tracker_mode;
 	struct gpufreq_reg_info reg_mfgsys[GPUFREQ_MAX_REG_NUM];
 	struct gpufreq_reg_info reg_stack_sel;
 	struct gpufreq_reg_info reg_del_sel;
@@ -344,6 +345,7 @@ struct gpufreq_platform_fp {
 	int (*power_control)(enum gpufreq_power_state power);
 	int (*active_idle_control)(enum gpufreq_power_state power);
 	void (*dump_infra_status)(void);
+	void (*dump_power_tracker_status)(void);
 	void (*update_debug_opp_info)(void);
 	void (*set_mfgsys_config)(enum gpufreq_config_target target, enum gpufreq_config_value val);
 	struct gpufreq_core_mask_info *(*get_core_mask_table)(void);
