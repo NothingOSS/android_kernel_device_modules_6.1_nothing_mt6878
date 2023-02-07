@@ -105,6 +105,7 @@ static int dsu_opp_send = 0xff;
 static int dsu_mode;
 static int dsu_perf;
 static int cm_aggr;
+static int cm_passive;
 unsigned int cm_hint;
 #endif
 int debounce_times_reset_adb;
@@ -585,6 +586,8 @@ static ssize_t dbg_cm_mgr_show(struct kobject *kobj,
 			dsu_perf);
 	len += cm_mgr_print("cm_aggr %d\n",
 			cm_aggr);
+	len += cm_mgr_print("cm_passive %d\n",
+			cm_passive);
 	len += cm_mgr_print("cm_hint %d\n",
 			cm_hint);
 	len += cm_mgr_print("cm_mgr_dram_opp_ceiling %d\n",
@@ -762,6 +765,9 @@ static ssize_t dbg_cm_mgr_store(struct  kobject *kobj,
 	} else if (!strcmp(cmd, "cm_aggr")) {
 		cm_aggr = val_1;
 		cm_mgr_to_sspm_command(IPI_CM_MGR_AGGRESSIVE, val_1);
+	} else if (!strcmp(cmd, "cm_passive")) {
+		cm_passive = val_1;
+		cm_mgr_to_sspm_command(IPI_CM_MGR_PASSIVE, val_1);
 	} else if (!strcmp(cmd, "cm_hint")) {
 		cm_hint = val_1;
 	} else if (!strcmp(cmd, "cm_mgr_dram_opp_ceiling")) {
@@ -1003,6 +1009,7 @@ struct tracepoints_table {
 static void cm_mgr_cpu_frequency_tracer(void *ignore, unsigned int frequency,
 		unsigned int cpu_id)
 {
+	int ret = 0;
 	int cpu = 0, cluster = 0;
 	struct cpufreq_policy *policy = NULL;
 	unsigned int idx = 0;
@@ -1013,8 +1020,13 @@ static void cm_mgr_cpu_frequency_tracer(void *ignore, unsigned int frequency,
 	ts[0] = sched_clock();
 #endif
 
-	if (!cm_mgr_cpu_map_dram_enable)
+	if (!cm_mgr_cpu_map_dram_enable) {
+		if (cm_work_flag && cm_mgr_cpu_to_dram_opp != cm_mgr_num_perf) {
+			cm_mgr_cpu_to_dram_opp = cm_mgr_num_perf;
+			ret = schedule_delayed_work(&cm_mgr_work, 1);
+		}
 		return;
+	}
 
 	policy = cpufreq_cpu_get(cpu_id);
 	if (!policy)
@@ -1192,8 +1204,8 @@ fail_reg_cpu_frequency_entry:
 
 	if (cm_mgr_use_cpu_to_dram_map) {
 		cm_mgr_add_cpu_opp_to_ddr_req();
-		cm_work_flag = 1;
 		INIT_DELAYED_WORK(&cm_mgr_work, cm_mgr_process);
+		cm_work_flag = 1;
 	}
 
 	return 0;
