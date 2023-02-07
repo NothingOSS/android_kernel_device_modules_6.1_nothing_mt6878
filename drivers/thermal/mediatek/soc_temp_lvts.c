@@ -1361,6 +1361,7 @@ static int of_update_lvts_data(struct lvts_data *lvts_data,
 	struct platform_ops *ops = &lvts_data->ops;
 	unsigned int i;
 	int ret;
+	int irq;
 
 	if (!lvts_data->clock_gate_no_need) {
 		lvts_data->clk = devm_clk_get(dev, "lvts_clk");
@@ -1388,12 +1389,13 @@ static int of_update_lvts_data(struct lvts_data *lvts_data,
 		}
 
 		/* Get interrupt number */
-		res = platform_get_resource(pdev, IORESOURCE_IRQ, i);
-		if (!res) {
-			dev_err(dev, "No irq resource, index %d\n", i);
-			return -EINVAL;
+		irq = platform_get_irq(pdev, i);
+		if (irq < 0) {
+			dev_err(dev, "No IRQ resource at index %d\n", i);
+			return -ENOENT;
 		}
-		domain[i].irq_num = res->start;
+		dev_info(dev, "domain[%d] irq_num=%d\n", i, irq);
+		domain[i].irq_num = irq;
 
 		if (!lvts_data->reset_no_need) {
 			/* Get reset control */
