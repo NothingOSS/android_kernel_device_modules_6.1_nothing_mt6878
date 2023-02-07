@@ -417,6 +417,16 @@ int mtk_vcodec_dec_irq_setup(struct platform_device *pdev,
 
 	for (i = 0; i < MTK_VDEC_HW_NUM; i++) {
 		dev->dec_irq[i] = platform_get_irq(pdev, i);
+		if (dev->dec_irq[i] < 0) {
+			if (i == 0) {
+				mtk_v4l2_err("Failed to platform_get_irq (%d)",
+						dev->dec_irq[i]);
+				return dev->dec_irq[i];
+			}
+			mtk_v4l2_debug(1, "Failed to platform_get_irq for hw_id %d (%d)",
+					i, dev->dec_irq[i]);
+			continue;
+		}
 		g_dec_irq[i] = dev->dec_irq[i];
 		if ((i == MTK_VDEC_CORE) || (i == MTK_VDEC_CORE1))
 			ret = devm_request_irq(&pdev->dev, dev->dec_irq[i],
@@ -459,11 +469,11 @@ int mtk_vcodec_enc_irq_setup(struct platform_device *pdev,
 	for (i = 0; i < MTK_VENC_HW_NUM; i++) {
 		dev->enc_irq[i] = platform_get_irq(pdev, i);
 		if (dev->enc_irq[i] < 0) {
-			pr_info("no IRQ resource, hw id: %d", i);
+			mtk_v4l2_debug(i == 0 ? 0 : 1, "no IRQ resource, hw id: %d", i);
 			break;
 		}
 
-		pr_info("get IRQ resource, hw id: %d irq %d", i, dev->enc_irq[i]);
+		mtk_v4l2_debug(1, "get IRQ resource, hw id: %d irq %d", i, dev->enc_irq[i]);
 
 		if (i == MTK_VENC_CORE_0)
 			ret = devm_request_irq(&pdev->dev, dev->enc_irq[i],
@@ -482,6 +492,8 @@ int mtk_vcodec_enc_irq_setup(struct platform_device *pdev,
 		}
 		disable_irq(dev->enc_irq[i]);
 	}
+	if (i == 0)
+		return dev->enc_irq[i];
 #endif
 	return 0;
 

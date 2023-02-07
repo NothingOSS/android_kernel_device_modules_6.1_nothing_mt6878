@@ -491,13 +491,6 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 		support_svp_region = 0;
 	}
 
-	// res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
-	// if (res == NULL) {
-	//	dev_info(&pdev->dev, "failed to get irq resource");
-	//	ret = -ENOENT;
-	//	goto err_res;
-	// }
-
 	ret = mtk_vcodec_dec_irq_setup(pdev, dev);
 	if (ret)
 		goto err_res;
