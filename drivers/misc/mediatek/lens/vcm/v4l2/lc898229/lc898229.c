@@ -364,9 +364,9 @@ static int lc898229_probe(struct i2c_client *client)
 	lc898229->sd.entity.function = MEDIA_ENT_F_LENS;
 #endif
 
-	/*ret = v4l2_async_register_subdev(&lc898229->sd);
+	ret = v4l2_async_register_subdev(&lc898229->sd);
 	if (ret < 0)
-		goto err_cleanup;*/
+		goto err_cleanup;
 
 	return 0;
 
