@@ -194,6 +194,11 @@ static int mtk_cam_job_pack_init(struct mtk_cam_job *job,
 
 	job->frame_cnt = 1;
 
+	job->composed = 0;
+	job->timestamp = 0;
+	job->timestamp_mono = 0;
+	job->timestamp_buf = NULL;
+
 	return ret;
 }
 
@@ -474,21 +479,27 @@ _meta1_done(struct mtk_cam_job *job)
 
 	return 0;
 }
+
 #define TIMESTAMP_LOG
+static void cpu_timestamp_to_meta(struct mtk_cam_job *job)
+{
+	(*job->timestamp_buf)[0] = job->timestamp_mono / 1000;
+	(*job->timestamp_buf)[1] = job->timestamp / 1000;
+
+#ifdef TIMESTAMP_LOG
+	dev_info(job->src_ctx->cam->dev, /*FIXME*/
+		"timestamp TS:momo %llu us boot %llu us\n",
+		(*job->timestamp_buf)[0],
+		(*job->timestamp_buf)[1]);
+#endif
+}
+
 static void convert_fho_timestamp_to_meta(struct mtk_cam_job *job)
 {
 	u32 *fho_va;
 	int subsample;
 	int i;
 	u64 hw_timestamp;
-
-	/* skip if meta0 does not exist */
-	if (!job->timestamp_buf)
-		return;
-
-	// using cpu's timestamp
-	// (*job->timestamp_buf)[0] = job->timestamp_mono;
-	// (*job->timestamp_buf)[1] = job->timestamp;
 
 	subsample = job->sub_ratio;
 	fho_va = (u32 *)(job->cq.vaddr + job->cq.size - 64 * subsample);
@@ -509,7 +520,7 @@ static void convert_fho_timestamp_to_meta(struct mtk_cam_job *job)
 			(*job->timestamp_buf)[i*2 + 1],
 			hw_timestamp);
 #endif
-		}
+	}
 }
 
 /* workqueue context */
@@ -525,8 +536,13 @@ handle_raw_frame_done(struct mtk_cam_job *job)
 	if (used_pipe == 0)
 		return 0;
 
-	if (ctx->has_raw_subdev)
-		convert_fho_timestamp_to_meta(job);
+	/* skip if meta0 does not exist */
+	if (ctx->has_raw_subdev && job->timestamp_buf) {
+		if (job->job_type == JOB_TYPE_M2M)
+			cpu_timestamp_to_meta(job);
+		else
+			convert_fho_timestamp_to_meta(job);
+	}
 
 	dev_info(cam->dev, "%s:%s:ctx(%d): seq_no:%d, state:0x%x, is_normal:%d, B/M ts:%lld/%lld\n",
 		 __func__, job->req->req.debug_str, job->src_ctx->stream_id,
@@ -2228,13 +2244,9 @@ static void job_finalize_mstream(struct mtk_cam_job *job)
 	mtk_cam_buffer_pool_return(&mjob->ipi);
 }
 
-static void singleframe_on_transit(struct mtk_cam_job_state *s, int state_type,
-				   int old_state, int new_state, int act,
-				   struct mtk_cam_ctrl_runtime_info *info)
+static void log_transit(struct mtk_cam_job_state *s, int state_type,
+			int old_state, int new_state, int act)
 {
-	struct mtk_cam_job *job =
-		container_of(s, struct mtk_cam_job, job_state);
-
 	if (CAM_DEBUG_ENABLED(STATE))
 		pr_info("%s: #%d %s: %s -> %s, act %d\n",
 			__func__, s->seq_no,
@@ -2242,6 +2254,16 @@ static void singleframe_on_transit(struct mtk_cam_job_state *s, int state_type,
 			str_state(state_type, old_state),
 			str_state(state_type, new_state),
 			act);
+}
+
+static void singleframe_on_transit(struct mtk_cam_job_state *s, int state_type,
+				   int old_state, int new_state, int act,
+				   struct mtk_cam_ctrl_runtime_info *info)
+{
+	struct mtk_cam_job *job =
+		container_of(s, struct mtk_cam_job, job_state);
+
+	log_transit(s, state_type, old_state, new_state, act);
 
 	if (state_type == ISP_STATE) {
 
@@ -2262,6 +2284,21 @@ static void singleframe_on_transit(struct mtk_cam_job_state *s, int state_type,
 			}
 			break;
 		}
+	}
+}
+
+static void m2m_on_transit(struct mtk_cam_job_state *s, int state_type,
+			   int old_state, int new_state, int act,
+			   struct mtk_cam_ctrl_runtime_info *info)
+{
+	struct mtk_cam_job *job =
+		container_of(s, struct mtk_cam_job, job_state);
+
+	log_transit(s, state_type, old_state, new_state, act);
+
+	if (act == ACTION_TRIGGER) {
+		job->timestamp = ktime_get_boottime_ns();
+		job->timestamp_mono = ktime_get_ns(); /* FIXME */
 	}
 }
 
@@ -2343,6 +2380,10 @@ static struct mtk_cam_job_ops otf_only_sv_job_ops = {
 
 static struct mtk_cam_job_state_cb sf_state_cb = {
 	.on_transit = singleframe_on_transit,
+};
+
+static struct mtk_cam_job_state_cb m2m_state_cb = {
+	.on_transit = m2m_on_transit,
 };
 
 static struct pack_job_ops_helper subsample_pack_helper = {
@@ -2435,7 +2476,7 @@ static int job_factory(struct mtk_cam_job *job)
 	case JOB_TYPE_M2M:
 		pack_helper = &m2m_pack_helper;
 
-		mtk_cam_job_state_init_m2m(&job->job_state, NULL);
+		mtk_cam_job_state_init_m2m(&job->job_state, &m2m_state_cb);
 		job->ops = &m2m_job_ops;
 		break;
 	case JOB_TYPE_MSTREAM:
