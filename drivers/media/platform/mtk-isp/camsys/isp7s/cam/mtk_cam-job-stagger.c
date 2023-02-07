@@ -486,7 +486,7 @@ int apply_cam_mux_stagger(struct mtk_cam_job *job)
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_camsv_device *sv_dev = dev_get_drvdata(ctx->hw_sv);
 	struct mtk_cam_seninf_mux_param param;
-	struct mtk_cam_seninf_mux_setting settings[3];
+	struct mtk_cam_seninf_mux_setting settings[4];
 	int type = stagger_job->switch_type;
 	int config_exposure_num = job->job_scen.scen.normal.max_exp_num;
 	int is_dc = is_dc_mode(job);
@@ -529,6 +529,13 @@ int apply_cam_mux_stagger(struct mtk_cam_job *job)
 			settings[2].camtg  = -1;
 			settings[2].tag_id = -1;
 			settings[2].enable = 0;
+
+			settings[3].seninf = ctx->seninf;
+			settings[3].source = PAD_SRC_RAW1;
+			settings[3].camtg  =
+				mtk_cam_get_sv_cammux_id(sv_dev, last_tag_idx);
+			settings[3].tag_id = last_tag_idx;
+			settings[3].enable = 1;
 			break;
 		case EXPOSURE_CHANGE_3_to_1:
 		case EXPOSURE_CHANGE_2_to_1:
@@ -553,6 +560,13 @@ int apply_cam_mux_stagger(struct mtk_cam_job *job)
 			settings[2].camtg  = -1;
 			settings[2].tag_id = -1;
 			settings[2].enable = 0;
+
+			settings[3].seninf = ctx->seninf;
+			settings[3].source = PAD_SRC_RAW0;
+			settings[3].camtg  =
+				mtk_cam_get_sv_cammux_id(sv_dev, first_tag_idx);
+			settings[3].tag_id = first_tag_idx;
+			settings[3].enable = 1;
 			break;
 		case EXPOSURE_CHANGE_2_to_3:
 		case EXPOSURE_CHANGE_1_to_3:
@@ -583,19 +597,27 @@ int apply_cam_mux_stagger(struct mtk_cam_job *job)
 				raw_tg_idx;
 			settings[2].tag_id = (is_dc) ? last_tag_idx : -1;
 			settings[2].enable = 1;
+
+			settings[3].seninf = ctx->seninf;
+			settings[3].source = PAD_SRC_RAW2;
+			settings[3].camtg  =
+				mtk_cam_get_sv_cammux_id(sv_dev, last_tag_idx);
+			settings[3].tag_id = last_tag_idx;
+			settings[3].enable = 1;
 			break;
 		default:
 			break;
 		}
 		param.settings = &settings[0];
-		param.num = 3;
+		param.num = 4;
 		mtk_cam_seninf_streaming_mux_change(&param);
 		dev_info(ctx->cam->dev,
-			"[%s] switch Req:%d, type:%d, cam_mux[0][1][2]:[%d/%d/%d][%d/%d/%d][%d/%d/%d]\n",
+			"[%s] switch Req:%d type:%d cam_mux[0-3]:[%d/%d/%d][%d/%d/%d][%d/%d/%d][%d/%d/%d]\n",
 			__func__, job->frame_seq_no, type,
 			settings[0].source, settings[0].camtg, settings[0].enable,
 			settings[1].source, settings[1].camtg, settings[1].enable,
-			settings[2].source, settings[2].camtg, settings[2].enable);
+			settings[2].source, settings[2].camtg, settings[2].enable,
+			settings[3].source, settings[3].camtg, settings[3].enable);
 	} else if (type != EXPOSURE_CHANGE_NONE && config_exposure_num == 2) {
 		switch (type) {
 		case EXPOSURE_CHANGE_2_to_1:
@@ -614,6 +636,13 @@ int apply_cam_mux_stagger(struct mtk_cam_job *job)
 			settings[1].camtg  = -1;
 			settings[1].tag_id = -1;
 			settings[1].enable = 0;
+
+			settings[2].seninf = ctx->seninf;
+			settings[2].source = PAD_SRC_RAW0;
+			settings[2].camtg  =
+				mtk_cam_get_sv_cammux_id(sv_dev, first_tag_idx);
+			settings[2].tag_id = first_tag_idx;
+			settings[2].enable = 1;
 			break;
 		case EXPOSURE_CHANGE_1_to_2:
 			first_tag_idx =
@@ -639,13 +668,14 @@ int apply_cam_mux_stagger(struct mtk_cam_job *job)
 			break;
 		}
 		param.settings = &settings[0];
-		param.num = 2;
+		param.num = 3;
 		mtk_cam_seninf_streaming_mux_change(&param);
 		dev_info(ctx->cam->dev,
-			"[%s] switch Req:%d, type:%d, cam_mux[0][1]:[%d/%d/%d][%d/%d/%d] ts:%llu\n",
+			"[%s] switch Req:%d type:%d cam_mux[0-2]:[%d/%d/%d][%d/%d/%d][%d/%d/%d] ts:%llu\n",
 			__func__, job->frame_seq_no, type,
 			settings[0].source, settings[0].camtg, settings[0].enable,
 			settings[1].source, settings[1].camtg, settings[1].enable,
+			settings[2].source, settings[2].camtg, settings[2].enable,
 			ktime_get_boottime_ns() / 1000);
 	}
 
