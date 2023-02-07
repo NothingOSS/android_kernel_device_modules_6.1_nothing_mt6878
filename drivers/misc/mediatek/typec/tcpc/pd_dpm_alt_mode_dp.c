@@ -1042,7 +1042,12 @@ bool dp_parse_svid_data(
 	pr_info("dp, svid\n");
 	svid_data->svid = USB_SID_DISPLAYPORT;
 	ufp_np = of_find_node_by_name(np, "ufp-d");
+	if (!ufp_np)
+		ufp_np = of_find_node_by_name(np, "ufp_d");
+
 	dfp_np = of_find_node_by_name(np, "dfp-d");
+	if (!dfp_np)
+		dfp_np = of_find_node_by_name(np, "dfp_d");
 
 	if (ufp_np) {
 		pr_info("dp, ufp_np\n");
