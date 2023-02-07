@@ -313,6 +313,7 @@ void cmdq_mbox_stop(struct cmdq_client *cl);
 
 void cmdq_vcp_enable(bool en);
 void *cmdq_get_vcp_buf(enum CMDQ_VCP_ENG_ENUM engine, dma_addr_t *pa_out);
+void cmdq_pkt_set_noirq(struct cmdq_pkt *pkt, const bool noirq);
 u32 cmdq_pkt_vcp_reuse_val(enum CMDQ_VCP_ENG_ENUM engine, u32 buf_offset, u16 size);
 s32 cmdq_pkt_readback(struct cmdq_pkt *pkt, enum CMDQ_VCP_ENG_ENUM engine,
 	u32 buf_offset, u16 size, u16 reg_gpr,

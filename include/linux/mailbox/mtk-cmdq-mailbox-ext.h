@@ -184,6 +184,7 @@ struct cmdq_pkt {
 	void			*user_priv; /* cmdq user use only */
 	u32			vcp_eng;
 	bool		no_pool;
+	bool		no_irq;
 	struct cmdq_append append;
 
 	struct work_struct	destroy_work;
@@ -349,4 +350,5 @@ void cmdq_chan_dump_dbg(void *chan);
 void cmdq_get_mminfra_cb(cmdq_mminfra_power cb);
 void cmdq_get_mminfra_gce_cg_cb(cmdq_mminfra_gce_cg cb);
 void cmdq_dump_usage(void);
+void cmdq_check_thread_complete(struct mbox_chan *chan);
 #endif /* __MTK_CMDQ_MAILBOX_H__ */

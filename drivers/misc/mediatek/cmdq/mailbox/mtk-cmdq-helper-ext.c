@@ -50,8 +50,10 @@ struct cmdq_sec_helper_fp *cmdq_sec_helper;
 #define CMDQ_ARG_A_WRITE_MASK	0xffff
 #define CMDQ_WRITE_ENABLE_MASK	BIT(0)
 #define CMDQ_EOC_IRQ_EN		BIT(0)
+#define CMDQ_EOC_IRQ_DIS	(0)
 #define CMDQ_EOC_CMD		((u64)((CMDQ_CODE_EOC << CMDQ_OP_CODE_SHIFT)) \
-				<< 32 | CMDQ_EOC_IRQ_EN)
+				<<32)
+#define CMDQ_EOC_MASK		GENMASK(63, 1)
 #define CMDQ_MBOX_BUF_LIMIT	16 /* default limit count */
 #define CMDQ_HW_MAX			2
 
@@ -400,6 +402,12 @@ static dma_addr_t cmdq_get_vcp_dummy(enum CMDQ_VCP_ENG_ENUM engine)
 
 	return MMINFRA_BASE + offset[engine];
 }
+
+void cmdq_pkt_set_noirq(struct cmdq_pkt *pkt, const bool noirq)
+{
+	pkt->no_irq = noirq;
+}
+EXPORT_SYMBOL(cmdq_pkt_set_noirq);
 
 u32 cmdq_pkt_vcp_reuse_val(enum CMDQ_VCP_ENG_ENUM engine, u32 buf_offset, u16 size)
 {
@@ -921,6 +929,7 @@ struct cmdq_pkt *cmdq_pkt_create(struct cmdq_client *client)
 	INIT_LIST_HEAD(&pkt->buf);
 	init_completion(&pkt->cmplt);
 	pkt->cl = (void *)client;
+	pkt->no_irq = false;
 	if (client)
 		pkt->dev = client->chan->mbox->dev;
 
@@ -1061,7 +1070,7 @@ static bool cmdq_pkt_is_finalized(struct cmdq_pkt *pkt)
 	if (((struct cmdq_instruction *)expect_eoc)->op == CMDQ_CODE_JUMP)
 		expect_eoc = cmdq_pkt_get_va_by_offset(pkt,
 			pkt->cmd_buf_size - CMDQ_INST_SIZE * 3);
-	if (expect_eoc && *expect_eoc == CMDQ_EOC_CMD)
+	if (expect_eoc && (*expect_eoc & CMDQ_EOC_MASK) == CMDQ_EOC_CMD)
 		return true;
 
 	return false;
@@ -2224,7 +2233,8 @@ s32 cmdq_pkt_eoc(struct cmdq_pkt *pkt, bool cnt_inc)
 	/* set to 1 to NOT inc exec count */
 	const u8 exec_inc = cnt_inc ? 0 : 1;
 
-	return cmdq_pkt_append_command(pkt, CMDQ_EOC_IRQ_EN,
+	return cmdq_pkt_append_command(pkt,
+		pkt->no_irq ? CMDQ_EOC_IRQ_DIS : CMDQ_EOC_IRQ_EN,
 		0, 0, exec_inc, 0, 0, 0, CMDQ_CODE_EOC);
 }
 EXPORT_SYMBOL(cmdq_pkt_eoc);

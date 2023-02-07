@@ -1038,6 +1038,7 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 	dma_addr_t curr_pa, task_end_pa;
 	s32 err = 0;
 	unsigned long flags;
+	bool task_done = false;
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	u64 start = sched_clock(), end[4];
 	u32 end_cnt = 0;
@@ -1067,10 +1068,8 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 
 	if (irq_flag & CMDQ_THR_IRQ_ERROR)
 		err = -EINVAL;
-	else if (irq_flag & CMDQ_THR_IRQ_DONE)
-		err = 0;
 	else
-		return;
+		err = 0;
 
 	if (list_empty(&thread->task_busy_list))
 		cmdq_err("empty! may we hang later?");
@@ -1151,8 +1150,10 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 		if (cmdq_task_is_current_run(curr_pa, task->pkt)) {
 			curr_task = task;
 		/* for some self trigger loop, notify it is still working */
-			if (curr_task->pkt->self_loop)
+			if (curr_task->pkt->self_loop) {
 				cmdq_task_err_callback(curr_task->pkt, -EBUSY);
+				task_done = true;
+			}
 		}
 
 		if (!curr_task || curr_pa == task_end_pa - CMDQ_INST_SIZE) {
@@ -1165,6 +1166,7 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 			spin_lock_irqsave(&cmdq->irq_removes_lock, flags);
 			list_add_tail(&task->list_entry, &cmdq->irq_removes);
 			spin_unlock_irqrestore(&cmdq->irq_removes_lock, flags);
+			task_done = true;
 		} else if (err) {
 			cmdq_err("pkt:0x%p thread:%u err:%d",
 				curr_task->pkt, thread->idx, err);
@@ -1174,6 +1176,7 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 			spin_lock_irqsave(&cmdq->irq_removes_lock, flags);
 			list_add_tail(&task->list_entry, &cmdq->irq_removes);
 			spin_unlock_irqrestore(&cmdq->irq_removes_lock, flags);
+			task_done = true;
 		}
 
 		if (curr_task)
@@ -1188,11 +1191,13 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 		cmdq_thread_disable(cmdq, thread);
 		cmdq_log("empty task thread:%u", thread->idx);
 	} else {
-		mod_timer(&thread->timeout, jiffies +
-			msecs_to_jiffies(thread->timeout_ms));
-		thread->timer_mod = sched_clock();
-		cmdq_log("mod_timer pkt:0x%p timeout:%u thread:%u",
-			task->pkt, thread->timeout_ms, thread->idx);
+		if (task_done) {
+			mod_timer(&thread->timeout, jiffies +
+				msecs_to_jiffies(thread->timeout_ms));
+			thread->timer_mod = sched_clock();
+			cmdq_log("mod_timer pkt:0x%p timeout:%u thread:%u",
+				task->pkt, thread->timeout_ms, thread->idx);
+		}
 	}
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	end[end_cnt] = sched_clock();
@@ -1915,6 +1920,23 @@ void cmdq_mbox_thread_remove_task(struct mbox_chan *chan,
 	}
 }
 EXPORT_SYMBOL(cmdq_mbox_thread_remove_task);
+
+void cmdq_check_thread_complete(struct mbox_chan *chan)
+{
+	struct cmdq *cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
+	struct cmdq_thread *thread = (struct cmdq_thread *)chan->con_priv;
+	unsigned long flags;
+
+	spin_lock_irqsave(&thread->chan->lock, flags);
+	if (list_empty(&thread->task_busy_list)) {
+		spin_unlock_irqrestore(&thread->chan->lock, flags);
+		return;
+	}
+
+	cmdq_thread_irq_handler(cmdq, thread, &cmdq->irq_removes);
+	spin_unlock_irqrestore(&thread->chan->lock, flags);
+}
+EXPORT_SYMBOL(cmdq_check_thread_complete);
 
 static void cmdq_mbox_thread_stop(struct cmdq_thread *thread)
 {
