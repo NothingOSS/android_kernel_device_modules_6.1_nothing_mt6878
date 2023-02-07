@@ -5,10 +5,12 @@
 
 #include <linux/cdev.h>
 #include <linux/debug_locks.h>
+#include <linux/debugfs.h>
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/fs.h>
 #include <linux/hardirq.h>
+#include <linux/highmem.h>
 #include <linux/init.h>
 #include <linux/jiffies.h>
 #include <linux/kthread.h>
@@ -28,16 +30,18 @@
 #include <linux/seq_file.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
+#include <linux/sysrq.h>
 #include <linux/vmalloc.h>
 #include <linux/wait.h>
 #include <linux/workqueue.h>
+#include <uapi/linux/sched/types.h>
 #include <asm/stacktrace.h>
 #include <asm/traps.h>
-#include <uapi/linux/sched/types.h>
-#include <linux/highmem.h>
 #include <asm/cacheflush.h>
-//#include <linux/android_debug_symbols.h>
-#include <linux/debugfs.h>
+
+#if IS_ENABLED(CONFIG_ANDROID_DEBUG_SYMBOLS)
+#include <linux/android_debug_symbols.h>
+#endif
 
 #include <mt-plat/aee.h>
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
@@ -1589,6 +1593,17 @@ static void show_mem_by_ads(unsigned int filter, nodemask_t *nodemask)
 }
 #endif
 
+#if IS_ENABLED(CONFIG_MAGIC_SYSRQ)
+static void show_mem_by_sysrq(void)
+{
+	int sysrq_msk = sysrq_mask();
+
+	sysrq_toggle_support(SYSRQ_ENABLE_DUMP | sysrq_msk);
+	handle_sysrq('m');
+	sysrq_toggle_support(sysrq_msk);
+}
+#endif
+
 static void show_status(int flag)
 {
 
@@ -1603,6 +1618,8 @@ static void show_status(int flag)
 
 #if IS_ENABLED(CONFIG_ANDROID_DEBUG_SYMBOLS)
 	show_mem_by_ads(0, NULL);
+#elif IS_ENABLED(CONFIG_MAGIC_SYSRQ)
+	show_mem_by_sysrq();
 #endif
 
 	show_task_backtrace();
