@@ -43,6 +43,9 @@
 
 #define RAW_DEBUG 0
 
+/* use spare register FHG/FH_SPARE_7 */
+#define REG_FRAME_SEQ_NUM					0x2c58
+
 static int reset_msgfifo(struct mtk_raw_device *dev);
 
 #define FIFO_THRESHOLD(FIFO_SIZE, HEIGHT_RATIO, LOW_RATIO) \
@@ -372,6 +375,11 @@ void immediate_stream_off(struct mtk_raw_device *dev)
 static inline void _trigger_rawi(struct mtk_raw_device *dev, u32 val)
 {
 	toggle_db(dev);
+
+	/* update fsm's cookie_inner since m2m flow has no sof to update it */
+	engine_fsm_sof(&dev->fsm,
+		       readl(dev->base_inner + REG_FRAME_SEQ_NUM));
+
 	writel(val, dev->base + REG_CAMCTL_RAWI_TRIG);
 }
 
@@ -562,9 +570,6 @@ static bool is_sub_sample_sensor_timing(struct mtk_raw_device *dev)
 {
 	return dev->cur_vsync_idx >= dev->set_sensor_idx;
 }
-
-/* use spare register FHG/FH_SPARE_7 */
-#define REG_FRAME_SEQ_NUM					0x2c58
 
 /* IRQ Error Mask */
 #define INT_ST_MASK_CAM_ERR					\
