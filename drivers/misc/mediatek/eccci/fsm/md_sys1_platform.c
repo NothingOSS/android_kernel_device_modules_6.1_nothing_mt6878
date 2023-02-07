@@ -1479,7 +1479,12 @@ static int __init modem_cd_init(void)
 	return 0;
 }
 
+static void __exit modem_cd_exit(void)
+{
+}
+
 module_init(modem_cd_init);
+module_exit(modem_cd_exit);
 
 MODULE_AUTHOR("CCCI");
 MODULE_DESCRIPTION("CCCI modem driver v0.1");

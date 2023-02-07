@@ -562,7 +562,13 @@ static int __init ccci_scp_init(void)
 	return 0;
 }
 
+static void __exit ccci_scp_exit(void)
+{
+}
+
 module_init(ccci_scp_init);
+module_exit(ccci_scp_exit);
+
 #endif
 MODULE_AUTHOR("ccci");
 MODULE_DESCRIPTION("ccci scp driver");

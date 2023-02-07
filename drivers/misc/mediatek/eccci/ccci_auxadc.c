@@ -139,7 +139,13 @@ static int __init ccci_auxadc_init(void)
 	return 0;
 }
 
+static void __exit ccci_auxadc_exit(void)
+{
+}
+
+
 module_init(ccci_auxadc_init);
+module_exit(ccci_auxadc_exit);
 
 MODULE_AUTHOR("ccci");
 MODULE_DESCRIPTION("ccci auxadc driver");
