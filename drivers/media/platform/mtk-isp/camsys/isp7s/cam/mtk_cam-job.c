@@ -495,7 +495,7 @@ static void convert_fho_timestamp_to_meta(struct mtk_cam_job *job)
 	// (*job->timestamp_buf)[0] = job->timestamp_mono;
 	// (*job->timestamp_buf)[1] = job->timestamp;
 
-	subsample = get_subsample_ratio(job) + 1;
+	subsample = job->sub_ratio;
 	fho_va = (u32 *)(job->cq.vaddr + job->cq.size - 64 * subsample);
 
 	for (i = 0; i < subsample; i++) {
@@ -1163,10 +1163,6 @@ _compose_done(struct mtk_cam_job *job,
 	job->cq_rst = *cq_ret;
 }
 
-int mtk_cam_job_get_sensor_margin(struct mtk_cam_job *job)
-{
-	return get_apply_sensor_margin_ms(job);
-}
 static int apply_raw_target_clk(struct mtk_cam_ctx *ctx,
 				struct mtk_cam_request *req)
 {
@@ -1274,7 +1270,7 @@ _job_pack_subsample(struct mtk_cam_job *job,
 	job->exp_num_prev = 1;
 	job->hardware_scenario = MTKCAM_IPI_HW_PATH_ON_THE_FLY;
 	job->sw_feature = MTKCAM_IPI_SW_FEATURE_NORMAL;
-	job->sub_ratio = get_subsample_ratio(job);
+	job->sub_ratio = get_subsample_ratio(&job->job_scen);
 	dev_info(cam->dev, "[%s] ctx:%d, type:%d, scen_id:%d, 1stonly:%d, ratio:%d, sw/scene:%d/%d",
 		__func__, ctx->stream_id, job->job_type, job->job_scen.id, first_frame_only_cur,
 		job->sub_ratio, job->sw_feature, job->hardware_scenario);
@@ -1359,7 +1355,7 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 	update_stagger_job_exp(job);
 	job->hardware_scenario = get_hw_scenario(job);
 	job->sw_feature = MTKCAM_IPI_SW_FEATURE_VHDR;
-	job->sub_ratio = get_subsample_ratio(job);
+	job->sub_ratio = get_subsample_ratio(&job->job_scen);
 	stagger_job->dcif_enable = job->exp_num_cur > 1 ? 1 : 0;
 	stagger_job->need_drv_buffer_check = is_stagger_multi_exposure(job);
 	dev_info(cam->dev, "[%s] ctx/seq:%d/%d, type:%d, scen exp:%d->%d, swi:%d,  expN:%d->%d, sw/scene:%d/0x%x",
@@ -1434,7 +1430,7 @@ _job_pack_normal(struct mtk_cam_job *job,
 	job->exp_num_prev = 1;
 	job->hardware_scenario = get_hw_scenario(job);
 	job->sw_feature = MTKCAM_IPI_SW_FEATURE_NORMAL;
-	job->sub_ratio = get_subsample_ratio(job);
+	job->sub_ratio = get_subsample_ratio(&job->job_scen);
 	dev_dbg(cam->dev, "[%s] ctx:%d, job_type:%d, scen:%d, expnum:%d->%d, sw/scene:%d/%d",
 		__func__, ctx->stream_id, job->job_type, job->job_scen.id,
 		job->exp_num_prev, job->exp_num_cur, job->sw_feature, job->hardware_scenario);
@@ -1501,7 +1497,7 @@ _job_pack_m2m(struct mtk_cam_job *job,
 	job->exp_num_prev = 1;
 	job->hardware_scenario = MTKCAM_IPI_HW_PATH_OFFLINE;
 	job->sw_feature = MTKCAM_IPI_SW_FEATURE_NORMAL;
-	job->sub_ratio = get_subsample_ratio(job);
+	job->sub_ratio = get_subsample_ratio(&job->job_scen);
 	dev_dbg(cam->dev, "[%s] ctx:%d, job_type:%d, scen:%d, expnum:%d->%d, sw/scene:%d/%d",
 		__func__, ctx->stream_id, job->job_type, job->job_scen.id,
 		job->exp_num_prev, job->exp_num_cur, job->sw_feature, job->hardware_scenario);
@@ -1924,8 +1920,6 @@ static int job_factory(struct mtk_cam_job *job)
 		mtk_cam_job_state_init_basic(&job->job_state, &otf_state_cb,
 					     !!job->sensor_hdl_obj);
 		job->ops = &otf_job_ops;
-
-		job->sensor_set_margin = SENSOR_SET_MARGIN_MS;
 		break;
 	case JOB_TYPE_STAGGER:
 		pack_helper = &stagger_pack_helper;
@@ -1933,16 +1927,12 @@ static int job_factory(struct mtk_cam_job *job)
 		mtk_cam_job_state_init_basic(&job->job_state, &otf_state_cb,
 					     !!job->sensor_hdl_obj);
 		job->ops = &otf_stagger_job_ops;
-
-		job->sensor_set_margin = SENSOR_SET_MARGIN_MS_STAGGER;
 		break;
 	case JOB_TYPE_M2M:
 		pack_helper = &m2m_pack_helper;
 
 		mtk_cam_job_state_init_m2m(&job->job_state, NULL);
 		job->ops = &m2m_job_ops;
-
-		job->sensor_set_margin = 0;
 		break;
 	case JOB_TYPE_HW_SUBSAMPLE:
 		pack_helper = &subsample_pack_helper;
@@ -1950,8 +1940,6 @@ static int job_factory(struct mtk_cam_job *job)
 		mtk_cam_job_state_init_subsample(&job->job_state, &otf_state_cb,
 					     !!job->sensor_hdl_obj);
 		job->ops = &otf_job_ops;
-
-		job->sensor_set_margin = SENSOR_SET_MARGIN_MS;
 		break;
 	case JOB_TYPE_ONLY_SV:
 		pack_helper = &only_sv_pack_helper;
@@ -1959,8 +1947,6 @@ static int job_factory(struct mtk_cam_job *job)
 		mtk_cam_job_state_init_basic(&job->job_state, &otf_state_cb,
 					     !!job->sensor_hdl_obj);
 		job->ops = &otf_only_sv_job_ops;
-
-		job->sensor_set_margin = SENSOR_SET_MARGIN_MS;
 		break;
 	default:
 		pr_info("%s: job type %d not ready\n", __func__, job->job_type);
@@ -2020,7 +2006,7 @@ static int raw_set_ipi_input_param(struct mtkcam_ipi_input_param *input,
 	input->data_pattern = MTKCAM_IPI_SENSOR_PATTERN_NORMAL;
 	input->pixel_mode = pixel_mode;
 	input->pixel_mode_before_raw = dc_sv_pixel_mode;
-	input->subsample = subsample;
+	input->subsample = subsample - 1; /* TODO(AY): remove -1 */
 	input->in_crop = v4l2_rect_to_ipi_crop(&sink->crop);
 
 	return 0;
@@ -2036,7 +2022,7 @@ static int mraw_set_ipi_input_param(struct mtkcam_ipi_input_param *input,
 	input->data_pattern = MTKCAM_IPI_SENSOR_PATTERN_NORMAL;
 	input->pixel_mode = pixel_mode;
 	input->pixel_mode_before_raw = dc_sv_pixel_mode;
-	input->subsample = subsample;
+	input->subsample = subsample - 1; /* TODO(AY): remove -1 */
 	input->in_crop = v4l2_rect_to_ipi_crop(&sink->crop);
 
 	return 0;

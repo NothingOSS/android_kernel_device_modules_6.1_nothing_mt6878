@@ -250,7 +250,8 @@ struct mtk_cam_job {
 	/* TODO(AY): rename to seq_no/job_no/... to be distinguished from real frame number */
 	int frame_seq_no;
 	bool composed;
-	int sensor_set_margin;	/* allow apply sensor before SOF + x (ms)*/
+	/* TODO: if margin is set by ctrl */
+	//int sensor_set_margin;	/* allow apply sensor before SOF + x (ms)*/
 	u64 timestamp;
 	u64 timestamp_mono;
 
@@ -389,7 +390,7 @@ static inline void mtk_cam_job_return(struct mtk_cam_job *job)
 
 int mtk_cam_job_pack(struct mtk_cam_job *job, struct mtk_cam_ctx *ctx,
 		     struct mtk_cam_request *req);
-int mtk_cam_job_get_sensor_margin(struct mtk_cam_job *job);
+
 static inline void mtk_cam_job_set_no(struct mtk_cam_job *job, int seq_no)
 {
 	job->frame_seq_no = seq_no;

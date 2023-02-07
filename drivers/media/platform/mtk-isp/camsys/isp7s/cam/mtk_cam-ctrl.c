@@ -512,12 +512,40 @@ int mtk_cam_ctrl_isr_event(struct mtk_cam_device *cam,
 	return ret;
 }
 
+static u64 query_interval_from_sensor(struct v4l2_subdev *sensor)
+{
+	struct v4l2_subdev_frame_interval fi; /* in seconds */
+	u64 frame_interval_ns;
+
+	if (!sensor) {
+		pr_info("%s: warn. without sensor\n", __func__);
+		return 0;
+	}
+
+	fi.pad = 0;
+	v4l2_subdev_call(sensor, video, g_frame_interval, &fi);
+
+	if (fi.interval.denominator)
+		frame_interval_ns = (fi.interval.numerator * 1000000000ULL) /
+			fi.interval.denominator;
+	else {
+		pr_info("%s: warn. wrong fi (%u/%u)\n", __func__,
+			fi.interval.numerator,
+			fi.interval.denominator);
+		frame_interval_ns = 1000000000ULL / 30ULL;
+	}
+
+	pr_info("%s: fi %llu ns\n", __func__, frame_interval_ns);
+	return frame_interval_ns;
+}
+
 static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 {
 	struct mtk_cam_ctrl *ctrl =
 		container_of(work, struct mtk_cam_ctrl, stream_on_work);
 	struct mtk_cam_job *job;
-	struct device *dev = ctrl->ctx->cam->dev;
+	struct mtk_cam_ctx *ctx = ctrl->ctx;
+	struct device *dev = ctx->cam->dev;
 	unsigned long timeout = msecs_to_jiffies(1000);
 	int next_job_no;
 
@@ -546,7 +574,8 @@ static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 	}
 
 	ctrl->s_params.i2c_thres_ns =
-		mtk_cam_job_get_sensor_margin(job) * 1000000LL;
+		infer_i2c_deadline_ns(&job->job_scen,
+				      query_interval_from_sensor(ctx->sensor));
 	dev_info(dev, "%s: i2c thres %llu\n",
 		 __func__, ctrl->s_params.i2c_thres_ns);
 

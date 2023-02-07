@@ -196,16 +196,16 @@ static void subsample_set_sensor_time(struct mtk_raw_device *dev,
 	u32 subsample_ratio)
 {
 	dev->sub_sensor_ctrl_en = true;
-	dev->set_sensor_idx = subsample_ratio - 1;
+	dev->set_sensor_idx = subsample_ratio - 2;
 	dev->cur_vsync_idx = -1;
 }
 
 void subsample_enable(struct mtk_raw_device *dev, int subsample_ratio)
 {
 	u32 val;
-	u32 sub_ratio = subsample_ratio;
+	u32 sub_ratio = subsample_ratio - 1;
 
-	subsample_set_sensor_time(dev, sub_ratio);
+	subsample_set_sensor_time(dev, subsample_ratio);
 
 	val = readl_relaxed(dev->base + REG_CAMCQ_CQ_EN);
 	SET_FIELD(&val, CAMCQ_SCQ_SUBSAMPLE_EN, 1);

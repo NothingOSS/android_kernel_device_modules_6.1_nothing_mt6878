@@ -721,7 +721,7 @@ void mtk_cam_sv_fill_tag_info(struct mtk_camsv_tag_info *arr_tag,
 	tag_info->cfg_in_param.in_crop.s.h = mbus_height;
 	tag_info->cfg_in_param.fmt = sensor_mbus_to_ipi_fmt(mbus_code);
 	tag_info->cfg_in_param.raw_pixel_id = sensor_mbus_to_ipi_pixel_id(mbus_code);
-	tag_info->cfg_in_param.subsample = sub_ratio;
+	tag_info->cfg_in_param.subsample = sub_ratio - 1; /* TODO(AY): remove -1 */
 }
 
 void mtk_cam_sv_reset_tag_info(struct mtk_camsv_device *sv_dev)

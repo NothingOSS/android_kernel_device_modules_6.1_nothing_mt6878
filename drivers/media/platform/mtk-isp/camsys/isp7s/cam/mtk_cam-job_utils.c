@@ -124,79 +124,49 @@ int get_hw_scenario(struct mtk_cam_job *job)
 	return hard_scenario;
 }
 
-#define SENSOR_SET_DEADLINE_MS  18
-#define SENSOR_SET_DEADLINE_MS_60FPS  6
-
-static int
-_sensor_margin_ms(int fps_ratio, int sub_sample)
+int get_subsample_ratio(struct mtk_cam_scen *scen)
 {
-	int timer_ms = 0;
-
-	if (sub_sample > 0) {
-		if (fps_ratio > 1)
-			timer_ms = SENSOR_SET_DEADLINE_MS;
-		else
-			timer_ms = SENSOR_SET_DEADLINE_MS * sub_sample;
-	} else {
-		if (fps_ratio > 2)
-			timer_ms = SENSOR_SET_DEADLINE_MS / fps_ratio;
-		else if (fps_ratio == 2)
-			timer_ms = SENSOR_SET_DEADLINE_MS_60FPS;
-		else
-			timer_ms = SENSOR_SET_DEADLINE_MS;
-	}
-
-	return timer_ms;
-}
-/* TODO(AY): use mtk_cam_scen as parameter instead */
-int get_subsample_ratio(struct mtk_cam_job *job)
-{
-	struct mtk_cam_scen *scen = &job->job_scen;
-	int sub_ratio = 0;
-
 	if (scen->id == MTK_CAM_SCEN_SMVR) {
-		switch (scen->scen.smvr.subsample_num) {
-		case MTK_CAM_SMVR_2_SUBSAMPLE:
-			sub_ratio = 1;
-			break;
-		case MTK_CAM_SMVR_4_SUBSAMPLE:
-			sub_ratio = 3;
-			break;
-		case MTK_CAM_SMVR_8_SUBSAMPLE:
-			sub_ratio = 7;
-			break;
-		case MTK_CAM_SMVR_16_SUBSAMPLE:
-			sub_ratio = 15;
-			break;
-		case MTK_CAM_SMVR_32_SUBSAMPLE:
-			sub_ratio = 31;
-			break;
-		default:
-			sub_ratio = 0;
+		int sub_num = scen->scen.smvr.subsample_num;
+
+		if (sub_num > 32 || (sub_num & (sub_num - 1))) {
+			pr_info("%s: error. wrong subsample_num %d\n",
+				__func__, sub_num);
+			return 1;
 		}
+		return sub_num;
 	}
-	return sub_ratio;
+	return 1;
 }
 
-int get_apply_sensor_margin_ms(struct mtk_cam_job *job)
+#define SENSOR_I2C_TIME_NS		(18 * 1000000ULL)
+#define SENSOR_I2C_TIME_NS_60FPS	(6 * 1000000ULL)
+#define SENSOR_I2C_TIME_NS_HIGH_FPS	(3 * 1000000ULL)
+
+#define INTERVAL_NS(fps)	(1000000000ULL / fps)
+
+static u64 reserved_i2c_time(u64 frame_interval_ns)
 {
-	struct mtk_cam_ctx *ctx = job->src_ctx;
-	struct v4l2_subdev_frame_interval fi;
-	int fps_factor = 1, sub_ratio = 0;
-	int apply_sensor_ms = 0;
+	u64 i2c_time;
 
-	fi.pad = 0;
-	v4l2_subdev_call(ctx->sensor, video, g_frame_interval, &fi);
-	fps_factor = (fi.interval.numerator > 0) ?
-		(fi.interval.denominator / fi.interval.numerator / 30) : 1;
-	sub_ratio = get_subsample_ratio(job);
+	/* > 60fps */
+	if (frame_interval_ns < INTERVAL_NS(60))
+		i2c_time = SENSOR_I2C_TIME_NS_HIGH_FPS;
+	else if (INTERVAL_NS(30) < frame_interval_ns &&
+		 frame_interval_ns <= INTERVAL_NS(60))
+		i2c_time = SENSOR_I2C_TIME_NS_60FPS;
+	else
+		i2c_time = SENSOR_I2C_TIME_NS;
+	return i2c_time;
+}
 
-	apply_sensor_ms = _sensor_margin_ms(fps_factor, sub_ratio);
+u64 infer_i2c_deadline_ns(struct mtk_cam_scen *scen, u64 frame_interval_ns)
+{
+	if (scen->id != MTK_CAM_SCEN_SMVR)
+		return frame_interval_ns - reserved_i2c_time(frame_interval_ns);
 
-	pr_info("[%s] fps_X/sub_X/apply_sensor_ms:%d/%d/%d",
-		__func__, fps_factor, sub_ratio, apply_sensor_ms);
-
-	return apply_sensor_ms;
+	/* consider vsync is subsampled */
+	return frame_interval_ns * (scen->scen.smvr.subsample_num - 1);
 }
 
 unsigned int _get_master_engines(unsigned int used_engine)
@@ -513,7 +483,7 @@ int fill_imgo_out_subsample(struct mtkcam_ipi_img_output *io,
 	/* fmt */
 	fill_img_fmt(&io->fmt, buf);
 
-	for (i = 0; i <= subsample_ratio; i++) {
+	for (i = 0; i < subsample_ratio; i++) {
 		/* FIXME: porting workaround */
 		io->buf[i][0].size = buf->image_info.size[0];
 		io->buf[i][0].iova = buf->daddr + io->buf[i][0].size;
@@ -596,7 +566,7 @@ static int mtk_cam_fill_img_out_buf_subsample(struct mtkcam_ipi_img_output *io,
 	io->buf[0][0].ccd_fd = buf->vbb.vb2_buf.planes[0].m.fd;
 
 	daddr = buf->daddr;
-	for (j = 0; j <= sub_ratio; j++) {
+	for (j = 0; j < sub_ratio; j++) {
 		for (i = 0; i < ARRAY_SIZE(img_info->bytesperline); i++) {
 			unsigned int size = img_info->size[i];
 
