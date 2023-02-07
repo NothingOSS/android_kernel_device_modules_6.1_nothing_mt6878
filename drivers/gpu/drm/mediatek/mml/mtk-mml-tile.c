@@ -418,7 +418,6 @@ static s32 calc_tile_loop(struct mml_task *task,
 	enum isp_tile_message result;
 	bool stop;
 	s32 ret;
-	u32 i;
 
 	mml_mmp(tile_calc_frame, MMPROFILE_FLAG_PULSE, pipe, mmp_calc_tile_loop);
 
@@ -442,20 +441,6 @@ static s32 calc_tile_loop(struct mml_task *task,
 		set_tile_config(task, pipe, path, &tiles[tile_cnt], tile_cnt, tile_func);
 		tile_cnt++;
 	}
-
-	mutex_lock(&task->config->hist_div_mutex);
-	for (i = 0; i < path->tile_engine_cnt; i++) {
-		if (!task->config->hist_div[i]) {
-			if (pipe == 0) {
-				task->config->hist_div[i] =
-					tiles[tile_cnt - 1].tile_engines[i].in.xe + 1;
-			} else {
-				task->config->hist_div[i] =
-					tiles[0].tile_engines[i].in.xs;
-			}
-		}
-	}
-	mutex_unlock(&task->config->hist_div_mutex);
 
 	mml_mmp(tile_calc_frame, MMPROFILE_FLAG_PULSE, pipe, mmp_tile_mode_close);
 	result = tile_mode_close(tile_reg_map, tile_func);
@@ -504,7 +489,10 @@ s32 calc_tile(struct mml_task *task, u32 pipe, struct mml_tile_cache *tile_cache
 	const struct mml_topology_path *path = get_topology_path(task, pipe);
 	struct tile_ctx ctx = {0};
 	u32 eng_cnt = path->tile_engine_cnt;
+	struct mml_tile_config *tiles;
+	u32 tile_cnt;
 	s32 ret = 0;
+	u32 i;
 
 	mml_msg("%s task %p pipe %u", __func__, task, pipe);
 
@@ -539,6 +527,22 @@ s32 calc_tile(struct mml_task *task, u32 pipe, struct mml_tile_cache *tile_cache
 		ret = calc_tile_loop(task, pipe, path, &ctx);
 	if (ret)
 		goto err_tile;
+
+	mutex_lock(&task->config->hist_div_mutex);
+	tiles = ctx.output->tiles;
+	tile_cnt = ctx.output->tile_cnt;
+	for (i = 0; i < path->tile_engine_cnt; i++) {
+		if (!task->config->hist_div[i]) {
+			if (pipe == 0) {
+				task->config->hist_div[i] =
+					tiles[tile_cnt - 1].tile_engines[i].in.xe + 1;
+			} else {
+				task->config->hist_div[i] =
+					tiles[0].tile_engines[i].in.xs;
+			}
+		}
+	}
+	mutex_unlock(&task->config->hist_div_mutex);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	if (task->config->info.mode == dump_tile) {
