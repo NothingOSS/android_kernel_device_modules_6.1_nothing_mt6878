@@ -20,7 +20,9 @@
 #define TAG "FRS"
 
 static int frs_nl_id = 31;
+static int frs_pid = -1;
 module_param(frs_nl_id, int, 0644);
+module_param(frs_pid, int, 0644);
 struct _EARA_THRM_PACKAGE {
 	__s32 type;
 	__s32 request;
@@ -32,6 +34,7 @@ struct _EARA_THRM_PACKAGE {
 	__s32 pair_diff[EARA_MAX_COUNT];
 	__s32 pair_hwui[EARA_MAX_COUNT];
 	char proc_name[EARA_MAX_COUNT][EARA_PROC_NAME_LEN];
+	__s32 pair_proc_id[EARA_MAX_COUNT];
 };
 
 struct _EARA_THRM_ENABLE {
@@ -43,7 +46,6 @@ struct _EARA_THRM_ENABLE {
 static int eara_enable;
 static DEFINE_MUTEX(pre_lock);
 static struct sock *frs_nl_sk;
-static int eara_pid = -1;
 
 static void set_tfps_diff(int max_cnt, int *pid, unsigned long long *buf_id, int *tfps, int *diff)
 {
@@ -76,7 +78,7 @@ static void switch_eara(int enable, int pid)
 	pr_debug(TAG "%s enable:%d\n", __func__, enable);
 	mutex_lock(&pre_lock);
 	eara_enable = enable;
-	eara_pid = pid;
+	frs_pid = pid;
 	mutex_unlock(&pre_lock);
 
 }
@@ -119,7 +121,7 @@ int pre_change_event(void)
 	memset(&change_msg, 0, sizeof(struct _EARA_THRM_PACKAGE));
 	eara2fstb_get_tfps(EARA_MAX_COUNT, &(change_msg.is_camera), change_msg.pair_pid,
 			change_msg.pair_bufid, change_msg.pair_tfps, change_msg.pair_rfps,
-			change_msg.pair_hwui, change_msg.proc_name);
+			change_msg.pair_hwui, change_msg.proc_name, change_msg.pair_proc_id);
 	ret = eara_nl_send_to_user((void *)&change_msg, sizeof(struct _EARA_THRM_PACKAGE));
 
 	return ret;
@@ -133,6 +135,7 @@ int eara_nl_send_to_user(void *buf, int size)
 	int len = NLMSG_SPACE(size);
 	void *data;
 	int ret;
+	static int c;
 
 	if (frs_nl_sk == NULL)
 		return -1;
@@ -148,10 +151,15 @@ int eara_nl_send_to_user(void *buf, int size)
 
 	pr_debug(TAG "Netlink_unicast size=%d\n", size);
 
-	ret = netlink_unicast(frs_nl_sk, skb, eara_pid, MSG_DONTWAIT);
-	if (ret < 0) {
-		pr_debug(TAG "Send to pid %d failed %d\n", eara_pid, ret);
-		return -1;
+	ret = netlink_unicast(frs_nl_sk, skb, frs_pid, MSG_DONTWAIT);
+	if (ret < 0 && c < 3) {
+		pr_debug(TAG "Send to pid %d failed %d, retry %d\n", frs_pid, ret, c);
+		c++;
+	} else if (ret == 0)
+		c = 0;
+	if (c >= 3) {
+		switch_eara(0, -1);
+		c = 0;
 	}
 	pr_debug(TAG "Netlink_unicast- ret=%d\n", ret);
 	return 0;
@@ -209,6 +217,16 @@ int eara_netlink_init(void)
 	return 0;
 }
 
+static ssize_t frs_pid_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+	len += snprintf(buf + len, PAGE_SIZE - len, "%d\n", frs_pid);
+
+	return len;
+}
+
 static ssize_t frs_nl_id_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
@@ -219,8 +237,10 @@ static ssize_t frs_nl_id_show(struct kobject *kobj,
 	return len;
 }
 static struct kobj_attribute frs_nl_id_attr = __ATTR_RO(frs_nl_id);
+static struct kobj_attribute frs_pid_attr = __ATTR_RO(frs_pid);
 static struct attribute *thermal_attrs[] = {
 	&frs_nl_id_attr.attr,
+	&frs_pid_attr.attr,
 	NULL
 };
 static struct attribute_group thermal_attr_group = {

@@ -47,7 +47,7 @@ void fpsgo_ctrl2fstb_dfrc_fps(int dfrc_fps);
 
 /* EARA */
 void eara2fstb_get_tfps(int max_cnt, int *is_camera, int *pid, unsigned long long *buf_id,
-				int *tfps, int *rftp, int *hwui, char name[][16]);
+				int *tfps, int *rftp, int *hwui, char name[][16], int *proc_id);
 void eara2fstb_tfps_mdiff(int pid, unsigned long long buf_id, int diff,
 				int tfps);
 
@@ -84,7 +84,7 @@ static void fpsgo_ctrl2fstb_dfrc_fps(int dfrc_fps) { }
 /* EARA */
 static inline void eara2fstb_get_tfps(int max_cnt, int *pid,
 		unsigned long long *buf_id, int *tfps, int *hwui,
-		char name[][16]) { }
+		char name[][16], int *proc_id) { }
 static inline void eara2fstb_tfps_mdiff(int pid, unsigned long long buf_id,
 		int diff, int tfps) { }
 
