@@ -34,7 +34,7 @@
 #define CURRENT_CONVERT_RATIO	95
 #define OCCB_MAX_NUM		16
 
-/* Get R_FG_VALUE/CAR_TUNE_VALUE from gauge dts node */
+/* Get r-fg-value/car-tune-value from gauge dts node */
 #define	MT6357_DEFAULT_RFG		(100)
 #define	MT6357_UNIT_FGCURRENT		(314331)
 
@@ -72,7 +72,7 @@ struct battery_oc_data_t {
 
 struct battery_oc_data_t mt6359p_battery_oc_data = {
 	.regmap_source = "parent_drvdata",
-	.gauge_node_name = "mtk_gauge",
+	.gauge_node_name = "mtk-gauge",
 	.fg_cur_hth = {MT6359P_FGADC_CUR_CON2, 0xFFFF, 1},
 	.fg_cur_lth = {MT6359P_FGADC_CUR_CON1, 0xFFFF, 1},
 	.spmi_intf = false,
@@ -81,7 +81,7 @@ struct battery_oc_data_t mt6359p_battery_oc_data = {
 
 struct battery_oc_data_t mt6375_battery_oc_data = {
 	.regmap_source = "dev_get_regmap",
-	.gauge_node_name = "mtk_gauge",
+	.gauge_node_name = "mtk-gauge",
 	.fg_cur_hth = {MT6375_FGADC_CUR_CON2, 0xFFFF, 2},
 	.fg_cur_lth = {MT6375_FGADC_CUR_CON1, 0xFFFF, 2},
 	.spmi_intf = false,
@@ -91,7 +91,7 @@ struct battery_oc_data_t mt6375_battery_oc_data = {
 
 struct battery_oc_data_t mt6377_battery_oc_data = {
 	.regmap_source = "dev_get_regmap",
-	.gauge_node_name = "mtk_gauge",
+	.gauge_node_name = "mtk-gauge",
 	.fg_cur_hth = {MT6377_FGADC_CUR_CON2_L, 0xFFFF, 2},
 	.fg_cur_lth = {MT6377_FGADC_CUR_CON1_L, 0xFFFF, 2},
 	.spmi_intf = true,
@@ -399,30 +399,30 @@ static int battery_oc_parse_dt(struct platform_device *pdev)
 	const int r_fg_val[] = { 50, 20, 10, 5 };
 	u32 regval = 0;
 
-	/* Get R_FG_VALUE/CAR_TUNE_VALUE from gauge dts node */
+	/* Get r-fg-value/car-tune-value from gauge dts node */
 	np = of_find_node_by_name(pdev->dev.parent->of_node,
 				  priv->ocdata->gauge_node_name);
 	if (!np) {
-		dev_notice(&pdev->dev, "get mtk_gauge node fail\n");
+		dev_notice(&pdev->dev, "get mtk-gauge node fail\n");
 		return -EINVAL;
 	}
 
-	ret = of_property_read_u32(np, "R_FG_VALUE", &priv->r_fg_value);
+	ret = of_property_read_u32(np, "r-fg-value", &priv->r_fg_value);
 	if (ret) {
-		dev_notice(&pdev->dev, "get R_FG_VALUE fail\n");
+		dev_notice(&pdev->dev, "get r-fg-value fail\n");
 		return -EINVAL;
 	}
 	priv->r_fg_value *= UNIT_TRANS_10;
 
-	ret = of_property_read_u32(np, "UNIT_MULTIPLE", &priv->unit_multiple);
+	ret = of_property_read_u32(np, "unit-multiple", &priv->unit_multiple);
 	if (ret) {
-		dev_notice(&pdev->dev, "get UNIT_MULTIPLE fail\n");
+		dev_notice(&pdev->dev, "get unit-multiple fail\n");
 		return -EINVAL;
 	}
 
-	ret = of_property_read_u32(np, "CAR_TUNE_VALUE", &priv->car_tune_value);
+	ret = of_property_read_u32(np, "car-tune-value", &priv->car_tune_value);
 	if (ret) {
-		dev_notice(&pdev->dev, "get CAR_TUNE_VALUE fail\n");
+		dev_notice(&pdev->dev, "get car-tune-value fail\n");
 		return -EINVAL;
 	}
 	priv->car_tune_value *= UNIT_TRANS_10;
