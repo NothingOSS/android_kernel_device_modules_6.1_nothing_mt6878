@@ -58,6 +58,7 @@ endmenu # MultiMedia, Display, Camera
 menu "Security"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/trusted_mem/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/geniezone/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/gzvm/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mkp/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/masp/Kconfig"
 endmenu # Security

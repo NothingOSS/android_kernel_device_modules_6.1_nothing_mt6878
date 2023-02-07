@@ -1,0 +1,7 @@
+config MTK_GZVM
+	tristate "MTK GZVM enable"
+	help
+	  This is used to support MTK pVM solution.
+	  It is used to control MTK_GZVM
+	  and it is used in the program for ifdef operations.
+	  Spawn VM by geniezone.
