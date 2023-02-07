@@ -111,6 +111,12 @@ static ssize_t mtk_lp_sysfs_procfs_write(struct file *filp,
 	struct mtk_lp_sysfs_op *pOp = (struct mtk_lp_sysfs_op *)
 			((struct seq_file *)filp->private_data)->private;
 
+	if (count >= MTK_LP_SYSFS_BUF_WRITESZ) {
+		pr_info("[name:mtk_lpm][P] - over MTK_LP_SYSFS_BUF_WRITESZ error (%s:%d)\n",
+			__func__, __LINE__);
+		return -EINVAL;
+	}
+
 	count = min(count, sizeof(BufFromUser));
 
 	memset(&BufFromUser[0], 0, sizeof(BufFromUser));
