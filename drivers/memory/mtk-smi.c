@@ -163,10 +163,11 @@ struct mtk_smi_larb_gen {
 	struct mtk_smi_reg_pair *misc;
 };
 
+#define SMI_MAX_CG_CTRL_NR		(6)
 struct mtk_smi {
 	struct device			*dev;
-	struct clk			*clk_apb, *clk_smi;
-	struct clk			*clk_gals0, *clk_gals1;
+	int				nr_clks;
+	struct clk			*clks[SMI_MAX_CG_CTRL_NR];
 	struct clk			*clk_async; /*only needed by mt2701*/
 	union {
 		void __iomem		*smi_ao_base; /* only for gen1 */
@@ -420,41 +421,27 @@ EXPORT_SYMBOL_GPL(mtk_smi_dump_last_pd);
 
 static int mtk_smi_clk_enable(const struct mtk_smi *smi)
 {
-	int ret;
+	int i, j, ret;
 
-	ret = clk_prepare_enable(smi->clk_apb);
-	if (ret)
-		return ret;
-
-	ret = clk_prepare_enable(smi->clk_smi);
-	if (ret)
-		goto err_disable_apb;
-
-	ret = clk_prepare_enable(smi->clk_gals0);
-	if (ret)
-		goto err_disable_smi;
-
-	ret = clk_prepare_enable(smi->clk_gals1);
-	if (ret)
-		goto err_disable_gals0;
+	for (i = 0; i < smi->nr_clks; i++) { /* without MTCMOS */
+		ret = clk_prepare_enable(smi->clks[i]);
+		if (ret) {
+			dev_info(smi->dev, "CLK%d enable failed:%d\n", i, ret);
+			for (j = i - 1; j >= 0; j--)
+				clk_disable_unprepare(smi->clks[j]);
+			return ret;
+		}
+	}
 
 	return 0;
-
-err_disable_gals0:
-	clk_disable_unprepare(smi->clk_gals0);
-err_disable_smi:
-	clk_disable_unprepare(smi->clk_smi);
-err_disable_apb:
-	clk_disable_unprepare(smi->clk_apb);
-	return ret;
 }
 
 static void mtk_smi_clk_disable(const struct mtk_smi *smi)
 {
-	clk_disable_unprepare(smi->clk_gals1);
-	clk_disable_unprepare(smi->clk_gals0);
-	clk_disable_unprepare(smi->clk_smi);
-	clk_disable_unprepare(smi->clk_apb);
+	int i;
+
+	for (i = smi->nr_clks - 1; i >= 0; i--)
+		clk_disable_unprepare(smi->clks[i]);
 }
 
 int mtk_smi_larb_ultra_dis(struct device *larbdev, bool is_dis)
@@ -2173,7 +2160,9 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 	struct device_node *smi_node;
 	struct platform_device *smi_pdev;
 	struct device_link *link;
-	int ret, i;
+	struct property *prop;
+	const char *name;
+	int ret, i = 0;
 
 	is_mpu_violation(dev, true);
 	larb = devm_kzalloc(dev, sizeof(*larb), GFP_KERNEL);
@@ -2186,22 +2175,23 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 	if (IS_ERR(larb->base))
 		return PTR_ERR(larb->base);
 
-	larb->smi.clk_apb = devm_clk_get(dev, "apb");
-	if (IS_ERR(larb->smi.clk_apb))
-		return PTR_ERR(larb->smi.clk_apb);
-
-	larb->smi.clk_smi = devm_clk_get(dev, "smi");
-	if (IS_ERR(larb->smi.clk_smi))
-		return PTR_ERR(larb->smi.clk_smi);
-
-	if (larb->larb_gen->has_gals) {
-		/* The larbs may still haven't gals even if the SoC support.*/
-		larb->smi.clk_gals0 = devm_clk_get(dev, "gals");
-		if (PTR_ERR(larb->smi.clk_gals0) == -ENOENT)
-			larb->smi.clk_gals0 = NULL;
-		else if (IS_ERR(larb->smi.clk_gals0))
-			return PTR_ERR(larb->smi.clk_gals0);
+	ret = of_property_count_strings(dev->of_node, "clock-names");
+	if (ret < 0) {
+		dev_notice(dev, "%s: can not find clk-name in dts:%d\n", __func__, ret);
+		return ret;
 	}
+	larb->smi.nr_clks = ret;
+
+	of_property_for_each_string(dev->of_node, "clock-names", prop, name) {
+		larb->smi.clks[i] = devm_clk_get(dev, name);
+		if (IS_ERR(larb->smi.clks[i])) {
+			dev_info(dev, "CLK%d:%s get failed\n", i, name);
+			return PTR_ERR(larb->smi.clks[i]);
+		}
+		dev_info(dev, "CLK%d:%s\n", i, name);
+		i += 1;
+	}
+
 	larb->smi.dev = dev;
 	atomic_set(&larb->smi.ref_count, 0);
 
@@ -3217,7 +3207,9 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 	struct device_node *smi_node;
 	struct platform_device *smi_pdev;
 	struct device_link *link;
-	int ret;
+	struct property *prop;
+	const char *name;
+	int i = 0, ret;
 
 	is_mpu_violation(dev, true);
 	common = devm_kzalloc(dev, sizeof(*common), GFP_KERNEL);
@@ -3227,22 +3219,21 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 	common->plat = of_device_get_match_data(dev);
 	atomic_set(&common->ref_count, 0);
 
-	common->clk_apb = devm_clk_get(dev, "apb");
-	if (IS_ERR(common->clk_apb))
-		return PTR_ERR(common->clk_apb);
+	ret = of_property_count_strings(dev->of_node, "clock-names");
+	if (ret < 0) {
+		dev_notice(dev, "%s: can not find clk-name in dts:%d\n", __func__, ret);
+		return ret;
+	}
+	common->nr_clks = ret;
 
-	common->clk_smi = devm_clk_get(dev, "smi");
-	if (IS_ERR(common->clk_smi))
-		return PTR_ERR(common->clk_smi);
-
-	if (common->plat->has_gals) {
-		common->clk_gals0 = devm_clk_get(dev, "gals0");
-		if (IS_ERR(common->clk_gals0))
-			return PTR_ERR(common->clk_gals0);
-
-		common->clk_gals1 = devm_clk_get(dev, "gals1");
-		if (IS_ERR(common->clk_gals1))
-			return PTR_ERR(common->clk_gals1);
+	of_property_for_each_string(dev->of_node, "clock-names", prop, name) {
+		common->clks[i] = devm_clk_get(dev, name);
+		if (IS_ERR(common->clks[i])) {
+			dev_info(dev, "CLK%d:%s get failed\n", i, name);
+			return PTR_ERR(common->clks[i]);
+		}
+		dev_info(dev, "CLK%d:%s\n", i, name);
+		i += 1;
 	}
 
 	/*
