@@ -101,6 +101,7 @@ enum mtk_tinysys_vcp_kernel_op {
 	MTK_TINYSYS_VCP_KERNEL_OP_DUMP_POLLING,
 	MTK_TINYSYS_VCP_KERNEL_OP_RESET_SET,
 	MTK_TINYSYS_VCP_KERNEL_OP_RESET_RELEASE,
+	MTK_TINYSYS_VCP_KERNEL_OP_SET_SRAMLOGBUF_INFO,
 	MTK_TINYSYS_VCP_KERNEL_OP_NUM,
 };
 
@@ -160,6 +161,12 @@ struct vcp_region_info_st {
 	uint32_t regdump_start;
 	uint32_t regdump_size;
 	uint32_t ap_params_start;
+	uint32_t sramlog_buf_offset;
+	uint32_t sramlog_end_idx_offset;
+	uint32_t sramlog_buf_maxlen;
+	uint32_t ap_loader_start_PA;
+	uint32_t coredump_offset;
+	uint32_t coredump_dram_offset;
 };
 
 /* vcp helper varriable */
@@ -184,6 +191,8 @@ extern struct bin_attribute bin_attr_vcp_dump;
 /* vcp loggger */
 extern int vcp_logger_init(phys_addr_t start, phys_addr_t limit);
 extern void vcp_logger_uninit(void);
+extern int vcp_logger_wakeup_handler(unsigned int id,
+	void *prdata, void *data, unsigned int len);
 
 extern void vcp_logger_stop(void);
 extern void vcp_logger_cleanup(void);
@@ -219,6 +228,7 @@ extern phys_addr_t vcp_mem_base_virt;
 extern phys_addr_t vcp_mem_size;
 extern atomic_t vcp_reset_status;
 extern spinlock_t vcp_awake_spinlock;
+extern struct mutex  vcp_pw_clk_mutex;
 extern struct tasklet_struct vcp_A_irq0_tasklet;
 extern struct tasklet_struct vcp_A_irq1_tasklet;
 
