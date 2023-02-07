@@ -1403,7 +1403,9 @@ static void fsm_routine_stop(struct ccci_fsm_ctl *ctl,
 	struct ccci_fsm_event *event = NULL;
 	struct ccci_fsm_event *next = NULL;
 	struct ccci_fsm_command *ee_cmd = NULL;
+	struct ccci_modem *md = ccci_get_modem();
 	unsigned long flags;
+	int ret;
 
 	/* 1. state sanity check */
 	if (ctl->curr_state == CCCI_FSM_GATED)
@@ -1447,6 +1449,16 @@ static void fsm_routine_stop(struct ccci_fsm_ctl *ctl,
 	/* 6. always end in stopped state */
 success:
 	needforcestop = 0;
+
+	/* Cleare MD WDT pending bit */
+	ret = irq_set_irqchip_state(md->md_wdt_irq_id,
+			IRQCHIP_STATE_PENDING, false);
+	if (ret)
+		CCCI_ERROR_LOG(0, FSM,
+			"clear md wdt pending irq fail %d\n", ret);
+	else
+		CCCI_NORMAL_LOG(0, FSM,
+			"clear md wdt irq(%d) success\n", md->md_wdt_irq_id);
 
 	ctl->last_state = ctl->curr_state;
 	ctl->curr_state = CCCI_FSM_GATED;
