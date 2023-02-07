@@ -39,7 +39,7 @@ extern void mtk_map_util_freq(void *data, unsigned long util, unsigned long freq
 DECLARE_PER_CPU(int, cpufreq_idle_cpu);
 DECLARE_PER_CPU(spinlock_t, cpufreq_idle_cpu_lock);
 unsigned long mtk_cpu_util(int cpu, unsigned long util_rq,
-				unsigned long max, enum cpu_util_type type,
+				enum cpu_util_type type,
 				struct task_struct *p,
 				unsigned long min_cap, unsigned long max_cap);
 int dequeue_idle_cpu(int cpu);

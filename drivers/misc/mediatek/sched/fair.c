@@ -223,7 +223,7 @@ static inline void eenv_pd_busy_time(struct energy_env *eenv,
 		unsigned long util = cpu_util_next(cpu, p, -1);
 
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
-		busy_time = mtk_cpu_util(cpu, util, eenv->cpu_cap, ENERGY_UTIL,
+		busy_time = mtk_cpu_util(cpu, util, ENERGY_UTIL,
 					NULL, eenv->min_cap, eenv->max_cap);
 #else
 		busy_time += effective_cpu_util(cpu, util, ENERGY_UTIL, NULL);
@@ -260,7 +260,7 @@ eenv_pd_max_util(struct energy_env *eenv, struct cpumask *pd_cpus,
 		 * FREQUENCY_UTIL's utilization can be max OPP.
 		 */
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
-		cpu_util = mtk_cpu_util(cpu, util, eenv->cpu_cap, FREQUENCY_UTIL, tsk,
+		cpu_util = mtk_cpu_util(cpu, util, FREQUENCY_UTIL, tsk,
 				eenv->min_cap, eenv->max_cap);
 #else
 		cpu_util = effective_cpu_util(cpu, util, FREQUENCY_UTIL, tsk);

@@ -868,12 +868,7 @@ static inline bool mtk_rt_task_fits_capacity(struct task_struct *p, int cpu,
 static inline unsigned int mtk_task_cap(struct task_struct *p, int cpu,
 					unsigned long min_cap, unsigned long max_cap)
 {
-	unsigned long cpu_cap = arch_scale_cpu_capacity(cpu);
-	unsigned long util_cfs;
-
-	util_cfs = cpu_util_cfs(cpu);
-
-	return  mtk_cpu_util(cpu, util_cfs, cpu_cap, FREQUENCY_UTIL, p, min_cap, max_cap);
+	return  mtk_cpu_util(cpu, cpu_util_cfs(cpu), FREQUENCY_UTIL, p, min_cap, max_cap);
 }
 
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
