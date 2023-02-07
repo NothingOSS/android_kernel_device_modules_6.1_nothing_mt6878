@@ -34,6 +34,7 @@
 #define BAT_ALLOC_IS_PAUSED  1
 #define BAT_ALLOC_PAUSE_SUCC 2
 
+#define MIN_SKB_ALLOC_CNT (1000)
 
 #define TAG "bat"
 
@@ -99,7 +100,7 @@ static inline int skb_alloc(
 		unsigned long long *p_base_addr,
 		unsigned int pkt_buf_sz)
 {
-	(*ppskb) = __dev_alloc_skb(pkt_buf_sz, GFP_KERNEL);
+	(*ppskb) = __dev_alloc_skb(pkt_buf_sz, GFP_ATOMIC);
 
 	if (unlikely(!(*ppskb))) {
 		CCCI_ERROR_LOG(-1, TAG,
@@ -383,7 +384,7 @@ static inline int alloc_bat_skb(
 	return 0;
 }
 
-static int dpmaif_alloc_bat_req(int update_bat_cnt, atomic_t *paused)
+static int dpmaif_alloc_bat_req(int update_bat_cnt, atomic_t *paused, unsigned int max_retry_cnt)
 {
 	struct dpmaif_bat_request *bat_req = dpmaif_ctl->bat_skb;
 	struct dpmaif_bat_skb *bat_skb, *next_skb;
@@ -391,7 +392,7 @@ static int dpmaif_alloc_bat_req(int update_bat_cnt, atomic_t *paused)
 	unsigned int buf_space, buf_used, alloc_skb_threshold = g_alloc_skb_threshold;
 	int count = 0, ret = 0, request_cnt;
 	unsigned short bat_wr_idx, next_wr_idx, pre_hw_wr_idx = 0;
-	u32 pre_time = 0, total_cnt = 0;
+	u32 pre_time = 0, total_cnt = 0, retry_cnt = 0;
 
 	if (g_dpmf_ver >= 3) {
 		atomic_set(&bat_req->bat_rd_idx, ccci_drv3_dl_get_bat_ridx());
@@ -424,25 +425,32 @@ static int dpmaif_alloc_bat_req(int update_bat_cnt, atomic_t *paused)
 	bat_wr_idx = atomic_read(&bat_req->bat_wr_idx);
 
 	while (((!paused) || (!atomic_read(paused))) && (total_cnt < request_cnt)) {
-		bat_skb = (struct dpmaif_bat_skb *)bat_req->bat_pkt_addr
-					+ bat_wr_idx;
+		bat_skb = (struct dpmaif_bat_skb *)bat_req->bat_pkt_addr + bat_wr_idx;
 		if (bat_skb->skb)
 			break;
 
-		next_wr_idx = get_ringbuf_next_idx(
-						bat_req->bat_cnt, bat_wr_idx, 1);
+		next_wr_idx = get_ringbuf_next_idx(bat_req->bat_cnt, bat_wr_idx, 1);
 
-		next_skb = (struct dpmaif_bat_skb *)bat_req->bat_pkt_addr
-					+ next_wr_idx;
+		next_skb = (struct dpmaif_bat_skb *)bat_req->bat_pkt_addr + next_wr_idx;
 		if (next_skb->skb)
 			break;
 
-		cur_bat = (struct dpmaif_bat_base *)bat_req->bat_base
-					+ bat_wr_idx;
-
+		cur_bat = (struct dpmaif_bat_base *)bat_req->bat_base + bat_wr_idx;
+		retry_cnt = 0;
+alloc_retry:
 		ret = alloc_bat_skb(bat_req->pkt_buf_sz, bat_skb, cur_bat);
-		if (ret)
+		if (unlikely(ret)) {
+			if (max_retry_cnt) {
+				retry_cnt++;
+				if (retry_cnt <= max_retry_cnt)
+					goto alloc_retry;
+				else
+					CCCI_ERROR_LOG(0, TAG,
+						"[%s] error: alloc_bat_skb() fail. retry_cnt=%u\n",
+						__func__, retry_cnt);
+			}
 			goto alloc_end;
+		}
 
 		bat_wr_idx = next_wr_idx;
 		count++;
@@ -749,8 +757,7 @@ static int dpmaif_rx_bat_alloc_thread(void *arg)
 			break;
 		}
 
-		ret_req = dpmaif_alloc_bat_req(1, &dpmaif_ctl->bat_paused_alloc);
-
+		ret_req = dpmaif_alloc_bat_req(1, &dpmaif_ctl->bat_paused_alloc, 0);
 		ret_frg = dpmaif_alloc_bat_frg(1, &dpmaif_ctl->bat_paused_alloc);
 
 		if (g_debug_flags & DEBUG_BAT_TH_WAKE) {
@@ -1009,8 +1016,8 @@ int ccci_dpmaif_bat_start(void)
 
 	dpmaif_bat_hw_init();
 
-	skb_cnt = dpmaif_alloc_bat_req(0, NULL);
-	if (skb_cnt <= 0) {
+	skb_cnt = dpmaif_alloc_bat_req(0, NULL, 20);
+	if (skb_cnt <= MIN_SKB_ALLOC_CNT) {
 		CCCI_ERROR_LOG(-1, TAG,
 			"[%s] dpmaif_alloc_bat_req fail: %d\n",
 			__func__, skb_cnt);
