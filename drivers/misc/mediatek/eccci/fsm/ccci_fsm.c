@@ -3,9 +3,6 @@
  * Copyright (C) 2016 MediaTek Inc.
  */
 
-/*
- * Author: Xiao Wang <xiao.wang@mediatek.com>
- */
 #include <linux/platform_device.h>
 #include <linux/device.h>
 #include <linux/module.h>
@@ -16,6 +13,7 @@
 #include <linux/of_irq.h>
 #include <linux/of_address.h>
 #endif
+#include <linux/sched/clock.h> /* local_clock() */
 #include <soc/mediatek/emi.h>
 
 #include "ccci_fsm_internal.h"
@@ -29,8 +27,90 @@ struct ccci_fsm_ctl *ccci_fsm_entries;
 static int needforcestop;
 static int hs2_done;
 
-static void (*s_md_state_cb)(enum MD_STATE old_state,
-				enum MD_STATE new_state);
+struct kern_md_state_cb {
+	unsigned char host_id;
+	unsigned char ch_id;
+	void (*callback)(enum MD_STATE old_state, enum MD_STATE new_state);
+};
+
+static struct kern_md_state_cb md_state_callbacks[KERN_MD_STAT_RCV_MAX];
+static spinlock_t state_broadcase_lock;
+static unsigned int kern_reg_cb_bitmap;
+
+int ccci_register_md_state_receiver(unsigned char ch_id,
+	void (*callback)(enum MD_STATE, enum MD_STATE))
+{
+	unsigned int i;
+	unsigned long flags;
+
+	if (ch_id >= KERN_MD_STAT_RCV_MAX || ch_id <= KERN_MD_STAT_RCV_NONE) {
+		CCCI_ERROR_LOG(0, FSM, "ch_id(%d) out-of-range\n", ch_id);
+		return -1;
+	}
+
+	spin_lock_irqsave(&state_broadcase_lock, flags);
+
+	for (i = 0; i < KERN_MD_STAT_RCV_MAX; i++) {
+		if (md_state_callbacks[i].ch_id == ch_id &&
+			md_state_callbacks[i].callback != NULL) {
+			spin_unlock_irqrestore(&state_broadcase_lock, flags);
+			CCCI_NORMAL_LOG(0, FSM,
+				"%s: %d, %p already registered %d\n", __func__,
+				ch_id, callback, i);
+			return 1;
+		} else if (md_state_callbacks[i].callback == NULL) {
+			md_state_callbacks[i].host_id = 0;
+			md_state_callbacks[i].ch_id = ch_id;
+			md_state_callbacks[i].callback = callback;
+			kern_reg_cb_bitmap |= (1<<i);
+			spin_unlock_irqrestore(&state_broadcase_lock, flags);
+			CCCI_NORMAL_LOG(0, FSM,
+				"%s: to %d: <%p> for user%d successfully\n", __func__, i,
+				md_state_callbacks[i].callback, md_state_callbacks[i].ch_id);
+
+			return 0;
+		}
+	}
+	spin_unlock_irqrestore(&state_broadcase_lock, flags);
+	CCCI_NORMAL_LOG(0, FSM, "register_md_state_receiver: %d, %p fail\n",
+		ch_id, callback);
+
+	return -1;
+}
+EXPORT_SYMBOL(ccci_register_md_state_receiver);
+
+static void broadcast_md_state_kernel(int old_stat, int new_stat)
+{
+	unsigned long i, bitmap, flags;
+#define KERN_MD_STAT_BD_DEBUG
+#ifdef KERN_MD_STAT_BD_DEBUG
+	u64 ts_nsec;
+
+	CCCI_NORMAL_LOG(0, FSM, "kern_broadcast_md_sate: %d start\n", new_stat);
+#endif
+
+	spin_lock_irqsave(&state_broadcase_lock, flags);
+	bitmap = kern_reg_cb_bitmap;
+	spin_unlock_irqrestore(&state_broadcase_lock, flags);
+
+	for (i = 0; i < KERN_MD_STAT_RCV_MAX; i++) {
+		if (bitmap & (1<<i)) {
+#ifdef KERN_MD_STAT_BD_DEBUG
+			ts_nsec = local_clock();
+#endif
+			md_state_callbacks[i].callback(old_stat, new_stat);
+#ifdef KERN_MD_STAT_BD_DEBUG
+			ts_nsec = local_clock() - ts_nsec;
+			CCCI_NORMAL_LOG(0, FSM, "broadcast %d to <%lu/user%d>%p cost %lld ns\n",
+				new_stat, i, md_state_callbacks[i].ch_id,
+				md_state_callbacks[i].callback, ts_nsec);
+#endif
+		} else
+			break;
+	}
+
+	CCCI_NORMAL_LOG(0, FSM, "kern_broadcast_md_sate: %d/0x%lx end\n", new_stat, bitmap);
+}
 
 static void (*s_dpmaif_debug_push_data_to_stack)(void);
 
@@ -40,14 +120,12 @@ void ccci_set_dpmaif_debug_cb(void (*dpmaif_debug_cb)(void))
 }
 EXPORT_SYMBOL(ccci_set_dpmaif_debug_cb);
 
-
 int mtk_ccci_register_md_state_cb(
 		void (*md_state_cb)(
 			enum MD_STATE old_state,
 			enum MD_STATE new_state))
 {
-	s_md_state_cb = md_state_cb;
-
+	ccci_register_md_state_receiver(KERN_MD_STAT_RCV_MDDP, md_state_cb);
 	return 0;
 }
 EXPORT_SYMBOL(mtk_ccci_register_md_state_cb);
@@ -257,26 +335,9 @@ static inline int fsm_broadcast_state(struct ccci_fsm_ctl *ctl,
 	 */
 	ccci_port_md_status_notify(state);
 	ccci_hif_state_notification(state);
-	/* kernel md state receiver: 1. scp; 2. ; 3. poller */
-#ifdef CCCI_KMODULE_ENABLE
-#ifdef FEATURE_SCP_CCCI_SUPPORT
-	if (ctl->scp_ctl) {
-		CCCI_NORMAL_LOG(0, FSM,
-			"ccci scp state sync %d, %lx, %lx\n", state,
-			(unsigned long)ctl->scp_ctl, (unsigned long)ctl->scp_ctl->md_state_sync);
-		if (ctl->scp_ctl->md_state_sync)
-			ctl->scp_ctl->md_state_sync(state);
-		else {
-			CCCI_NORMAL_LOG(0, FSM,
-				"ccci scp_work not ready %d\n", state);
-		}
-	} else
-		CCCI_NORMAL_LOG(0, FSM, "ccci scp not ready %d\n", state);
-#endif
-#endif
-	if (old_state != state && s_md_state_cb != NULL)
-		s_md_state_cb(old_state, state);
-
+	/* kernel md state receiver */
+	if (old_state != state)
+		broadcast_md_state_kernel(old_state, state);
 	return 0;
 }
 
@@ -1532,6 +1593,7 @@ int ccci_fsm_init(void)
 	spin_lock_init(&ctl->event_lock);
 	spin_lock_init(&ctl->command_lock);
 	spin_lock_init(&ctl->cmd_complete_lock);
+	spin_lock_init(&state_broadcase_lock);
 	atomic_set(&ctl->fs_ongoing, 0);
 	ret = snprintf(ctl->wakelock_name, sizeof(ctl->wakelock_name), "md_wakelock");
 	if (ret <= 0 || ret >= sizeof(ctl->wakelock_name)) {
@@ -1564,24 +1626,6 @@ int ccci_fsm_init(void)
 	return 0;
 }
 
-#ifdef CCCI_KMODULE_ENABLE
-void ccci_fsm_scp_register(struct ccci_fsm_scp *scp_ctl)
-{
-	struct ccci_fsm_ctl *ctl = ccci_fsm_entries;
-
-	if (!ctl)
-		return;
-
-	ctl->scp_ctl = scp_ctl;
-	CCCI_NORMAL_LOG(0, FSM,
-		"ccci scp register to fsm, %lx, %lx, %lx\n",
-		(unsigned long)ctl->scp_ctl,
-		(unsigned long)scp_ctl,
-		(unsigned long)&scp_ctl->md_state_sync);
-
-}
-EXPORT_SYMBOL(ccci_fsm_scp_register);
-#endif
 enum MD_STATE ccci_fsm_get_md_state(void)
 {
 	struct ccci_fsm_ctl *ctl = ccci_fsm_entries;

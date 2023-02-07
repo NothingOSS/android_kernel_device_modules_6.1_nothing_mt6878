@@ -21,25 +21,28 @@
 #ifdef FEATURE_SCP_CCCI_SUPPORT
 #include "scp_ipi.h"
 
-#ifdef CCCI_KMODULE_ENABLE
-void ccci_scp_md_state_sync(int md_state);
-
-struct ccci_fsm_scp ccci_scp_ctl = {
-	/* 1. maybe can add on parameter named md_state */
-	.md_state_sync = &ccci_scp_md_state_sync,
-};
-
 static struct ccci_clk_node scp_clk_table[] = {
 	{ NULL, "infra-ccif2-ap"},
 	{ NULL, "infra-ccif2-md"},
 };
 
-void ccci_scp_md_state_sync(int md_state)
+struct ccci_fsm_scp {
+	enum MD_STATE old_state;
+	struct work_struct scp_md_state_sync_work;
+	void __iomem *ccif2_ap_base;
+	void __iomem *ccif2_md_base;
+	unsigned int scp_clk_free_run;
+};
+
+static struct ccci_fsm_scp ccci_scp_ctl;
+
+static void ccci_scp_md_state_sync(enum MD_STATE old_state,
+	enum MD_STATE new_state)
 {
+	//ccci_scp_ctl.old_state = new_state;
 	/* 2. maybe can record the md_state to ccci_scp_ctl.md_state */
 	schedule_work(&ccci_scp_ctl.scp_md_state_sync_work);
 }
-
 
 /*
  * for debug log:
@@ -50,7 +53,6 @@ void ccci_scp_md_state_sync(int md_state)
 #define CCCI_LOG_LEVEL CCCI_LOG_CRITICAL_UART
 #endif
 unsigned int ccci_debug_enable = CCCI_LOG_LEVEL;
-#endif
 
 static atomic_t scp_state = ATOMIC_INIT(SCP_CCCI_STATE_INVALID);
 static struct ccci_ipi_msg scp_ipi_tx_msg;
@@ -392,8 +394,8 @@ static int fsm_sim_type_handler(int data)
 #ifdef FEATURE_SCP_CCCI_SUPPORT
 void fsm_scp_init0(void)
 {
-	enum MD_STATE_FOR_USER state =
-		ccci_fsm_get_md_state_for_user();
+	enum MD_STATE md_stat = ccci_fsm_get_md_state();
+
 	mutex_init(&scp_ipi_tx_mutex);
 
 	if (!init_work_done) {
@@ -417,8 +419,8 @@ void fsm_scp_init0(void)
 #endif
 	atomic_set(&scp_state, SCP_CCCI_STATE_BOOTING);
 
-	if (state != MD_STATE_INVALID)
-		ccci_scp_md_state_sync(state);
+	if (md_stat != INVALID)
+		ccci_scp_md_state_sync(INVALID, md_stat);
 }
 
 static int apsync_event(struct notifier_block *this,
@@ -522,10 +524,12 @@ int ccci_scp_probe(struct platform_device *pdev)
 		CCCI_ERROR_LOG(-1, FSM, "ccci get scp info fail");
 		return ret;
 	}
+	ret = ccci_register_md_state_receiver(KERN_MD_STAT_RCV_SCP,
+		ccci_scp_md_state_sync);
+	if (ret)
+		CCCI_ERROR_LOG(-1, FSM, "register md status receiver fail: %d", ret);
 
-	ccci_fsm_scp_register(&ccci_scp_ctl);
-
-	return 0;
+	return ret;
 }
 
 static const struct of_device_id ccci_scp_of_ids[] = {

@@ -176,16 +176,6 @@ struct ccci_ipi_msg {
 	u32 data[1];
 } __packed;
 
-struct ccci_fsm_scp {
-	struct work_struct scp_md_state_sync_work;
-#ifdef CCCI_KMODULE_ENABLE
-	void (*md_state_sync)(int);
-#endif
-	void __iomem *ccif2_ap_base;
-	void __iomem *ccif2_md_base;
-	unsigned int scp_clk_free_run;
-};
-
 struct ccci_fsm_poller {
 	enum CCCI_FSM_POLLER_STATE poller_state;
 	struct task_struct *poll_thread;
@@ -296,12 +286,6 @@ int fsm_append_command(struct ccci_fsm_ctl *ctl,
 int fsm_append_event(struct ccci_fsm_ctl *ctl, enum CCCI_FSM_EVENT event_id,
 	unsigned char *data, unsigned int length);
 void fsm_finish_event(struct ccci_fsm_ctl *ctl, struct ccci_fsm_event *event);
-
-#ifndef CCCI_KMODULE_ENABLE
-int fsm_scp_init(struct ccci_fsm_scp *scp_ctl);
-#else
-extern void ccci_fsm_scp_register(struct ccci_fsm_scp *scp_ctl);
-#endif
 int fsm_poller_init(struct ccci_fsm_poller *poller_ctl);
 int fsm_ee_init(struct ccci_fsm_ee *ee_ctl);
 int fsm_monitor_init(struct ccci_fsm_monitor *monitor_ctl);
@@ -336,5 +320,8 @@ extern void ccci_set_mem_access_protection_second_stage(void);
 #endif
 extern void mdee_set_ex_start_str(struct ccci_fsm_ee *ee_ctl,
 	const unsigned int type, const char *str);
+
+extern int ccci_register_md_state_receiver(unsigned char ch_id,
+	void (*callback)(enum MD_STATE, enum MD_STATE));
 #endif /* __CCCI_FSM_INTERNAL_H__ */
 

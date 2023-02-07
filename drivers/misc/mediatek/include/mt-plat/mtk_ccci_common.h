@@ -580,6 +580,15 @@ enum SMEM_USER_ID {
 	SMEM_USER_MAX,
 };
 
+enum KERNEL_MD_STATE_RECEIVER {
+	KERN_MD_STAT_RCV_NONE,
+	/* ../ccci_fsm_scp_c.c */
+	KERN_MD_STAT_RCV_SCP = 1,
+	/*/vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/mgmt/*/
+	KERN_MD_STAT_RCV_MDDP,
+	KERN_MD_STAT_RCV_MAX, /* <32 for static unsigned int kern_reg_cb_bitmap */
+};
+
 enum SYS_CB_ID {
 	ID_GET_FDD_THERMAL_DATA = 0,
 	ID_GET_TDD_THERMAL_DATA,
