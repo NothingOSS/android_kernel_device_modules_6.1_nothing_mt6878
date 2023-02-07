@@ -20,8 +20,6 @@ phys_addr_t sspm_reserve_mem_get_phys(unsigned int id);
 phys_addr_t sspm_reserve_mem_get_virt(unsigned int id);
 phys_addr_t sspm_reserve_mem_get_size(unsigned int id);
 int sspm_reserve_memory_init(void);
-void sspm_set_emi_mpu(phys_addr_t base, phys_addr_t size);
-void sspm_lock_emi_mpu(void);
 
 #ifdef SSPM_SHARE_BUFFER_SUPPORT
 extern struct platform_device *sspm_pdev;

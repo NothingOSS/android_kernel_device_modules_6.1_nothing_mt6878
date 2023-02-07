@@ -103,7 +103,6 @@ static int __init sspm_module_init(void)
 		goto error;
 	}
 
-	sspm_lock_emi_mpu();
 
 	pr_debug("[SSPM] sspm_module Done\n");
 

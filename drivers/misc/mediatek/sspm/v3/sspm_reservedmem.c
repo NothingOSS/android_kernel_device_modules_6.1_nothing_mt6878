@@ -167,14 +167,6 @@ int sspm_reserve_memory_init(void)
 	return 0;
 }
 
-void sspm_lock_emi_mpu(void)
-{
-#if IS_ENABLED(CONFIG_MTK_EMI)
-	if (sspm_mem_size > 0)
-		sspm_set_emi_mpu(sspm_mem_base_phys, sspm_mem_size);
-#endif
-}
-
 #ifdef SSPM_SHARE_BUFFER_SUPPORT
 void __iomem *sspm_base;
 phys_addr_t sspm_sbuf_get(unsigned int offset)
