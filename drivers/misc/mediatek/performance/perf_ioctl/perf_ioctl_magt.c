@@ -51,14 +51,14 @@ static int arch_get_nr_clusters(void)
 	for_each_possible_cpu(cpu) {
 		struct cpu_topology *cpu_topo = &cpu_topology[cpu];
 
-		if (cpu_topo->package_id > max_id)
-			max_id = cpu_topo->package_id;
+		if (cpu_topo->cluster_id > max_id)
+			max_id = cpu_topo->cluster_id;
 	}
 	__arch_nr_clusters = max_id + 1;
 	return __arch_nr_clusters;
 }
 
-void arch_get_cluster_cpus(struct cpumask *cpus, int package_id)
+void arch_get_cluster_cpus(struct cpumask *cpus, int cluster_id)
 {
 	unsigned int cpu;
 
@@ -66,7 +66,7 @@ void arch_get_cluster_cpus(struct cpumask *cpus, int package_id)
 	for_each_possible_cpu(cpu) {
 		struct cpu_topology *cpu_topo = &cpu_topology[cpu];
 
-		if (cpu_topo->package_id == package_id)
+		if (cpu_topo->cluster_id == cluster_id)
 			cpumask_set_cpu(cpu, cpus);
 	}
 }
