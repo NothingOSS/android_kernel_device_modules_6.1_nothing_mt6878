@@ -1167,7 +1167,18 @@ static void mml_record_init(struct mml_dev *mml)
 static int sys_bind(struct device *dev, struct device *master, void *data)
 {
 	struct mml_dev *mml = dev_get_drvdata(dev);
-	struct mml_sys *sys = mml->sys;
+	struct mml_sys *sys;
+
+	if (unlikely(!mml)) {
+		dev_err(dev, "mml_dev is NULL\n");
+		return -EFAULT;
+	}
+
+	sys = mml->sys;
+	if (unlikely(!sys)) {
+		dev_err(dev, "mml->sys is NULL\n");
+		return -EFAULT;
+	}
 
 	return mml_sys_bind(dev, master, sys, data);
 }
@@ -1209,11 +1220,6 @@ static int mml_probe(struct platform_device *pdev)
 	mml->sram_data.type = TP_BUFFER;
 	mml->sram_data.flag = FG_POWER;
 
-	ret = comp_master_init(dev, mml);
-	if (ret) {
-		dev_err(dev, "failed to initialize mml component master\n");
-		goto err_init_master;
-	}
 	mml->sys = mml_sys_create(pdev, &sys_comp_ops);
 	if (IS_ERR(mml->sys)) {
 		ret = PTR_ERR(mml->sys);
@@ -1262,6 +1268,12 @@ static int mml_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, mml);
 	dbg_probed = true;
 
+	ret = comp_master_init(dev, mml);
+	if (unlikely(ret)) {
+		dev_err(dev, "failed to initialize mml component master\n");
+		goto err_init_master;
+	}
+
 	mml->wake_lock = wakeup_source_register(dev, "mml_pm_lock");
 	mml_record_init(mml);
 
@@ -1271,9 +1283,10 @@ static int mml_probe(struct platform_device *pdev)
 		mml->dle_ctx = mml_dle_ctx_create(mml);
 	}
 
-	mml_msg("%s success end", __func__);
+	mml_log("%s success end", __func__);
 	return 0;
 
+err_init_master:
 err_mbox_create:
 	mml_sys_destroy(pdev, mml->sys, &sys_comp_ops);
 	for (i = 0; i < MML_MAX_CMDQ_CLTS; i++)
@@ -1282,8 +1295,6 @@ err_mbox_create:
 			mml->cmdq_clts[i] = NULL;
 		}
 err_sys_add:
-	comp_master_deinit(dev);
-err_init_master:
 	devm_kfree(dev, mml);
 	return ret;
 }
@@ -1293,11 +1304,11 @@ static int mml_remove(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mml_dev *mml = platform_get_drvdata(pdev);
 
-	mml_sys_destroy(pdev, mml->sys, &sys_comp_ops);
+	wakeup_source_unregister(mml->wake_lock);
 	comp_master_deinit(dev);
+	mml_sys_destroy(pdev, mml->sys, &sys_comp_ops);
 	devm_kfree(dev, mml);
 
-	wakeup_source_unregister(mml->wake_lock);
 	return 0;
 }
 
