@@ -1038,6 +1038,7 @@ static int mtk_raw_of_probe(struct platform_device *pdev,
 
 	larbs = of_count_phandle_with_args(
 					pdev->dev.of_node, "mediatek,larbs", NULL);
+	larbs = (larbs == -ENOENT) ? 0 : larbs;
 	dev_info(dev, "larb_num:%d\n", larbs);
 
 	raw->larb_pdev = NULL;
@@ -1454,6 +1455,7 @@ static int mtk_yuv_of_probe(struct platform_device *pdev,
 
 	larbs = of_count_phandle_with_args(
 					pdev->dev.of_node, "mediatek,larbs", NULL);
+	larbs = (larbs == -ENOENT) ? 0 : larbs;
 	dev_info(dev, "larb_num:%d\n", larbs);
 
 	drvdata->larb_pdev = NULL;

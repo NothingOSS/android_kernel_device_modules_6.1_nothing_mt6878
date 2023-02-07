@@ -163,6 +163,7 @@ int mtk_cam_translation_fault_callback(int port, dma_addr_t mva, void *data);
 
 extern struct platform_driver mtk_cam_raw_driver;
 extern struct platform_driver mtk_cam_yuv_driver;
+extern struct platform_driver mtk_cam_rms_driver;
 
 static inline u32 dmaaddr_lsb(dma_addr_t addr)
 {

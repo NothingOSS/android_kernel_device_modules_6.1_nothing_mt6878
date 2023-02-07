@@ -2479,12 +2479,14 @@ static struct component_match *mtk_cam_match_add(struct device *dev)
 	struct mtk_cam_device *cam_dev = dev_get_drvdata(dev);
 	struct mtk_cam_engines *eng = &cam_dev->engines;
 	struct component_match *match = NULL;
-	int yuv_num;
+	int yuv_num, rms_num;
 
 	eng->num_raw_devices =
 		add_match_by_driver(dev, &match, &mtk_cam_raw_driver);
 
 	yuv_num = add_match_by_driver(dev, &match, &mtk_cam_yuv_driver);
+
+	rms_num = add_match_by_driver(dev, &match, &mtk_cam_rms_driver);
 
 #ifdef REMOVE
 	eng->num_larb_devices =
@@ -2503,8 +2505,8 @@ static struct component_match *mtk_cam_match_add(struct device *dev)
 	if (IS_ERR(match) || mtk_cam_alloc_for_engine(dev))
 		mtk_cam_match_remove(dev);
 
-	dev_info(dev, "#: raw %d, yuv %d, larb %d, sv %d, seninf %d, mraw %d\n",
-		 eng->num_raw_devices, yuv_num,
+	dev_info(dev, "#: raw %d yuv %d rms %d larb %d, sv %d, seninf %d, mraw %d\n",
+		 eng->num_raw_devices, yuv_num, rms_num,
 		 eng->num_larb_devices,
 		 eng->num_camsv_devices,
 		 eng->num_seninf_devices,
@@ -2887,6 +2889,12 @@ static int register_sub_drivers(struct device *dev)
 		goto REGISTER_YUV_FAIL;
 	}
 
+	ret = platform_driver_register(&mtk_cam_rms_driver);
+	if (ret) {
+		dev_info(dev, "%s mtk_cam_rms_driver fail\n", __func__);
+		goto REGISTER_RMS_FAIL;
+	}
+
 	match = mtk_cam_match_add(dev);
 	if (IS_ERR(match)) {
 		ret = PTR_ERR(match);
@@ -2903,6 +2911,9 @@ MASTER_ADD_MATCH_FAIL:
 	mtk_cam_match_remove(dev);
 
 ADD_MATCH_FAIL:
+	platform_driver_unregister(&mtk_cam_rms_driver);
+
+REGISTER_RMS_FAIL:
 	platform_driver_unregister(&mtk_cam_yuv_driver);
 
 REGISTER_YUV_FAIL:
