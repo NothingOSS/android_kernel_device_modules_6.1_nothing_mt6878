@@ -79,6 +79,7 @@
 #define MML_SMI_LARB_GREQ	0x8dc
 #define MML_BYPASS_MUX_SHADOW	0xf00
 #define MML_MOUT_RST		0xf04
+#define MML_APU_DP_SEL		0xf08
 /* MML DL IN/OUT registers in mt6985 */
 #define MML_DL_IN_RELAY0_SIZE	0x220
 #define MML_DL_IN_RELAY1_SIZE	0x224
