@@ -43,9 +43,20 @@ static int specify_overThrhld; /*specify cpus threshold value for sent uevent*/
 static int under_threshold; /*threshold value for sent uevent*/
 static bool uevent_enable; /*sent uevent switch*/
 static int curr_cpu_loading; /*cat curr cpu loading node*/
-static int specify_cpus; /*specify cpus*/
+static int specify_cpus; /*specify cpus' scope, for example 10 means from cpu0 to cpu1*/
+static int core_cpus; /*cpus' scope, for example 6430 means core1:4~6, core0:0~3*/
+static int core_cpus_overThrhld; /*threshold value for sent uevent*/
 static int nr_cpus;/*cpu numbers*/
 static int state;
+
+struct core_cpus_struct {
+	int core_id;
+	int start;
+	int end;
+	struct core_cpus_struct *next;
+};
+
+static struct core_cpus_struct *core_cpus_head;
 
 static cpumask_t specify_cpu_mask = CPU_MASK_NONE; /*specify cpus' mask*/
 
@@ -87,6 +98,8 @@ static void init_cpu_loading_value(void)
 	over_threshold = 85;
 	specify_overThrhld = 85;
 	specify_cpus = 0;
+	core_cpus = 0;
+	core_cpus_overThrhld = 85;
 	nr_cpus = num_possible_cpus();
 	under_threshold = 20;
 	uevent_enable = 1;
@@ -98,13 +111,16 @@ static void init_cpu_loading_value(void)
 
 void perfmgr_trace_printk(char *module, char *string)
 {
+#if IS_ENABLED(CONFIG_MTK_LOAD_TRACKER_DEBUG)
 	preempt_disable();
 	trace_cpu_loading(module, string);
 	preempt_enable();
+#endif
 }
 
 void perfmgr_trace_log(char *module, const char *fmt, ...)
 {
+#if IS_ENABLED(CONFIG_MTK_LOAD_TRACKER_DEBUG)
 	char log[256];
 	va_list args;
 	int len;
@@ -116,6 +132,7 @@ void perfmgr_trace_log(char *module, const char *fmt, ...)
 		log[255] = '\0';
 	va_end(args);
 	trace_cpu_loading(module, log);
+#endif
 }
 
 static bool sentuevent(const char *src)
@@ -156,8 +173,13 @@ static bool sentuevent(const char *src)
 }
 
 /*update info*/
-static void calculat_loading_callback(int mask_loading, int loading)
+static void calculat_loading_callback(int mask_loading, int loading,
+		u64 *per_cpu_idle_time, u64 *per_cpu_wall_time)
 {
+	int cpu;
+	int core_cpus_loading;
+	u64 cpu_idle_time = 0;
+	u64 cpu_wall_time = 0;
 	cl_lock(__func__);
 
 	show_debug("update cpu_loading");
@@ -176,6 +198,29 @@ static void calculat_loading_callback(int mask_loading, int loading)
 		if (specify_cpus != 0
 				&& mask_loading >= specify_overThrhld) {
 			sentuevent("specify_over=1");
+		} else {
+			struct core_cpus_struct *core_cpus = core_cpus_head;
+
+			while (core_cpus != NULL) {
+				for (cpu = core_cpus->start;
+					cpu < nr_cpus && cpu <= core_cpus->end; cpu++) {
+					cpu_idle_time += per_cpu_idle_time[cpu];
+					cpu_wall_time += per_cpu_wall_time[cpu];
+				}
+
+				if (cpu_wall_time > 0 && cpu_wall_time >= cpu_idle_time) {
+					core_cpus_loading = div_u64(
+						(cpu_wall_time - cpu_idle_time) * 100,
+							cpu_wall_time);
+				}
+				show_debug("%s, core_cpus_loading:%d\n",
+					__func__, core_cpus_loading);
+				if (core_cpus_loading >= core_cpus_overThrhld) {
+					sentuevent("cpu_cores_over=1");
+					break;
+				}
+				core_cpus = core_cpus->next;
+			}
 		}
 	} else {
 		state = ULOAD_STATE_LOW;
@@ -236,6 +281,71 @@ static void stop_calculate_loading(void)
 	else
 		curr_cpu_loading = UNREG_FAIL;
 	perfmgr_trace_log("cpu_loading", "ret_unreg:%d\n", ret_unreg);
+}
+
+static void free_core_cpus(void)
+{
+	struct core_cpus_struct *curr_core_cpus = core_cpus_head;
+	struct core_cpus_struct *next_core_cpus;
+
+	while (curr_core_cpus) {
+		next_core_cpus = curr_core_cpus->next;
+		kfree(curr_core_cpus);
+		curr_core_cpus = next_core_cpus;
+	}
+}
+
+static struct core_cpus_struct *new_core_cpus(int start, int end)
+{
+	struct core_cpus_struct *core_cpus;
+
+	core_cpus = kzalloc(sizeof(*core_cpus), GFP_KERNEL);
+	if (!core_cpus)
+		return NULL;
+
+	core_cpus->start = start;
+	core_cpus->end = end;
+	core_cpus->next = NULL;
+
+	return core_cpus;
+}
+
+static int init_core_cpus(int val)
+{
+	int value = val;
+	int start = 0;
+	int end = 0;
+
+	int core_cpu_value = 0;
+	struct core_cpus_struct *core_cpus;
+	struct core_cpus_struct *curr_core_cpus = NULL;
+
+	while (value) {
+		core_cpu_value = value % 100;
+
+		if (core_cpu_value > 10) {
+			start = core_cpu_value % 10;
+			end = core_cpu_value / 10;
+			if (start <= end)
+				core_cpus = new_core_cpus(start, end);
+		}
+		if (!core_cpus)
+			goto new_core_cpus_alloc_err;
+
+		if (curr_core_cpus == NULL) {
+			curr_core_cpus = core_cpus;
+			core_cpus_head = curr_core_cpus;
+		} else {
+			curr_core_cpus->next = core_cpus;
+			curr_core_cpus = core_cpus;
+		}
+		value = value / 100;
+	}
+	return 0;
+
+new_core_cpus_alloc_err:
+	free_core_cpus();
+	return 1;
 }
 
 static int perfmgr_proc_open(struct inode *inode, struct file *file)
@@ -556,6 +666,95 @@ static ssize_t perfmgr_specify_overThrhld_proc_write(
 
 }
 
+static ssize_t perfmgr_core_cpus_proc_show(struct file *file,
+		char __user *ubuf, size_t count, loff_t *ppos)
+{
+	int n = 0;
+	char buffer[512];
+
+	if (*ppos != 0)
+		goto out;
+
+	n = scnprintf(buffer, 512, "%u", core_cpus);
+out:
+	if (n < 0)
+		return -EINVAL;
+
+	return simple_read_from_buffer(ubuf, count, ppos, buffer, n);
+}
+static ssize_t perfmgr_core_cpus_proc_write(
+		struct file *filp, const char *ubuf,
+		size_t cnt, loff_t *data)
+{
+	int val, ret;
+
+	ret = kstrtoint_from_user(ubuf, cnt, 10, &val);
+
+	if (ret != 0)
+		return ret;
+
+	if (val < 10)
+		return -EINVAL;
+
+	cl_lock(__func__);
+
+	core_cpus = val;
+	pr_debug("c core_cpus_value :%d\n", core_cpus);
+	ret = init_core_cpus(val);
+	if (ret != 0) {
+		cl_unlock(__func__);
+		return -EINVAL;
+	}
+
+	if (onoff) {
+		stop_calculate_loading();
+		start_calculate_loading();
+	}
+
+	cl_unlock(__func__);
+	return cnt;
+}
+static ssize_t perfmgr_core_cpus_overThrhld_proc_show(struct file *file,
+		char __user *ubuf, size_t count, loff_t *ppos)
+{
+	int n = 0;
+	char buffer[512];
+
+	if (*ppos != 0)
+		goto out;
+
+	n = scnprintf(buffer, 512, "%u", core_cpus_overThrhld);
+out:
+	if (n < 0)
+		return -EINVAL;
+
+	return simple_read_from_buffer(ubuf, count, ppos, buffer, n);
+}
+static ssize_t perfmgr_core_cpus_overThrhld_proc_write(
+		struct file *filp, const char *ubuf,
+		size_t cnt, loff_t *data)
+{
+	int val, ret;
+
+	ret = kstrtoint_from_user(ubuf, cnt, 10, &val);
+	if (ret != 0)
+		return ret;
+
+	if (val < 0 || val > 100)
+		return -EINVAL;
+
+	cl_lock(__func__);
+	core_cpus_overThrhld = val;
+	pr_debug("c core_cpus_overThrhld :%d\n", core_cpus_overThrhld);
+	if (onoff) {
+		stop_calculate_loading();
+		start_calculate_loading();
+	}
+
+	cl_unlock(__func__);
+	return cnt;
+}
+
 static ssize_t perfmgr_uevent_enable_proc_show(struct file *file,
 		char __user *ubuf, size_t count, loff_t *ppos)
 {
@@ -666,6 +865,8 @@ PROC_FOPS_RW(onoff);
 PROC_FOPS_RW(overThrhld);
 PROC_FOPS_RW(specify_cpus);
 PROC_FOPS_RW(specify_overThrhld);
+PROC_FOPS_RW(core_cpus);
+PROC_FOPS_RW(core_cpus_overThrhld);
 PROC_FOPS_RW(underThrhld);
 PROC_FOPS_RW(uevent_enable);
 PROC_FOPS_RW(debug_enable);
@@ -717,6 +918,8 @@ static int __init uload_init(void)
 		PROC_ENTRY(overThrhld),
 		PROC_ENTRY(specify_cpus),
 		PROC_ENTRY(specify_overThrhld),
+		PROC_ENTRY(core_cpus),
+		PROC_ENTRY(core_cpus_overThrhld),
 		PROC_ENTRY(underThrhld),
 		PROC_ENTRY(uevent_enable),
 		PROC_ENTRY(curr_cpu_loading),
