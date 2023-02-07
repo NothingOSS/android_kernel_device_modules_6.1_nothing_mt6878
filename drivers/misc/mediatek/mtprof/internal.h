@@ -44,5 +44,15 @@ extern const struct proc_ops irq_mon_uint_pops;
 
 #define IRQ_MON_TRACER_PROC_ENTRY(name, mode, type, dir, ptr) \
 	proc_create_data(#name, mode, dir, &irq_mon_##type##_pops, (void *)ptr)
+
+/*
+ * irq_monitor_log.c
+ */
+void irq_log_start(void);
+void irq_log_end(void);
+void irq_log_dump(unsigned int out, u64 start, u64 end);
+void irq_log_exit(void);
+int irq_log_init(void);
+
 #endif
 

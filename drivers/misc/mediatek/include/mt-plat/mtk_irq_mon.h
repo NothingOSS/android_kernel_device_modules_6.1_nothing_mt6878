@@ -8,9 +8,15 @@
 
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR)
 extern void mt_aee_dump_irq_info(void);
+void __irq_log_store(const char *func, int line);
+#define irq_log_store() __irq_log_store(__func__, __LINE__)
+
 #else
 #define mt_aee_dump_irq_info() do {} while (0)
-#endif
+static inline void __irq_log_store(const char *func, int line)
+{
+}
 
+#define irq_log_store() do {} while (0)
 #endif
-
+#endif

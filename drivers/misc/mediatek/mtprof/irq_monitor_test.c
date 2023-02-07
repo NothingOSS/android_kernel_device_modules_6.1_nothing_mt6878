@@ -11,7 +11,9 @@
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <linux/vmalloc.h>
+#include <mt-plat/mtk_irq_mon.h>
 
+#include "internal.h"
 /* TIMER_SOFTIRQ duration warning test */
 
 static struct timer_list timer;
@@ -72,7 +74,13 @@ void irq_mon_test_RCU_SOFTIRQ(void)
 static struct irq_work irq_mon_irqwork;
 static void irq_mon_irq_work(struct irq_work *work)
 {
-	mdelay(600);
+	irq_log_store();
+	mdelay(100);
+	irq_log_store();
+	mdelay(400);
+	irq_log_store();
+	mdelay(100);
+	irq_log_store();
 }
 
 void irq_mon_test_irq_work(void)

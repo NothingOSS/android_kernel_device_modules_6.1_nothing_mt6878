@@ -19,5 +19,5 @@ ccflags-y += -I$(srctree)/include/kernel
 CFLAGS_irq_monitor_main.o := -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtprof
 
 obj-$(CONFIG_MTK_IRQ_MONITOR) += irq_monitor.o
-irq_monitor-y += irq_monitor_main.o irq_monitor_test.o
+irq_monitor-y += irq_monitor_main.o irq_monitor_test.o irq_monitor_log.o
 irq_monitor-y += irq_count_tracer.o common.o

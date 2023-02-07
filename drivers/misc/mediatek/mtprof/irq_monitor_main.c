@@ -44,7 +44,6 @@ static inline void irq_mon_msg_ftrace(const char *msg)
 #define irq_mon_msg_ftrace(msg) trace_irq_mon_msg_rcuidle(msg)
 #endif
 
-
 void irq_mon_msg(unsigned int out, char *buf, ...)
 {
 	char msg[MAX_MSG_LEN];
@@ -347,6 +346,7 @@ static void probe_irq_handler_entry(void *ignore, int irq,
 				    struct irqaction *action)
 {
 	trace_stat_start(&irq_handler_tracer);
+	irq_log_start();
 }
 
 static void probe_irq_handler_exit(void *ignore, int irq,
@@ -415,6 +415,8 @@ static void probe_irq_handler_exit(void *ignore, int irq,
 				set_bit(irq, irq_aee_state);
 				scnprintf(module, sizeof(module), "IRQ LONG:%d, %pS, %llu ms"
 					, irq, (void *)action->handler, msec_high(duration));
+				irq_log_dump(out, stat->start_timestamp,
+					     stat->end_timestamp);
 				aee_kernel_warning_api(__FILE__, __LINE__,
 						       DB_OPT_DEFAULT | DB_OPT_FTRACE,
 						       module, msg);
@@ -422,6 +424,7 @@ static void probe_irq_handler_exit(void *ignore, int irq,
 		}
 	}
 
+	irq_log_end();
 	stat->tracing = 0;
 }
 
@@ -1158,8 +1161,10 @@ static int __init irq_monitor_init(void)
 		return -ENOMEM;
 	}
 
-	// tracepoint init
 	pr_info("irq monitor init start!!\n");
+	ret = irq_log_init();
+	if (ret)
+		return ret;
 	ret = irq_mon_tracepoint_init();
 	if (ret)
 		return ret;
@@ -1198,6 +1203,7 @@ static void __exit irq_monitor_exit(void)
 	remove_proc_subtree("mtmon", NULL);
 	irq_count_tracer_exit();
 	irq_mon_tracepoint_exit();
+	irq_log_exit();
 
 	free_percpu(irq_pi_stat);
 	free_percpu(preempt_pi_stat);
