@@ -12,6 +12,7 @@
 #include <linux/workqueue.h>
 #include <soc/mediatek/mmqos.h>
 #include <linux/kernel.h>
+#include "mmqos-global.h"
 
 #define MMQOS_NO_LINK			(0xffffffff)
 #define MMQOS_MAX_COMM_NUM		(3)
@@ -22,16 +23,6 @@
 #define MMQOS_MAX_DISP_VIRT_LARB_NUM	(3)
 
 #define RECORD_NUM		(10)
-
-enum mmqos_state_level {
-	MMQOS_DISABLE = 0,
-	OSTD_ENABLE = BIT(0),
-	BWL_ENABLE = BIT(1),
-	DVFSRC_ENABLE = BIT(2),
-	COMM_OSTDL_ENABLE = BIT(3),
-	DISP_BY_LARB_ENABLE = BIT(4),
-	MMQOS_ENABLE = BIT(0) | BIT(1) | BIT(2),
-};
 
 enum {
 	MD_SCEN_NONE,

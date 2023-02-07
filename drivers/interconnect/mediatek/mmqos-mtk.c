@@ -19,8 +19,10 @@
 #include <soc/mediatek/smi.h>
 #include <soc/mediatek/dramc.h>
 #include "mtk_iommu.h"
+#include "mmqos-global.h"
 #include "mmqos-mtk.h"
 #include "mtk_qos_bound.h"
+#include "mmqos-vcp.h"
 
 #define CREATE_TRACE_POINTS
 #include "mmqos_events.h"
@@ -37,8 +39,6 @@
 #define MAX_RECORD_COMM_NUM	(2)
 #define MAX_RECORD_PORT_NUM	(9)
 #define VIRT_COMM_PORT_ID	(8)
-
-static u32 mmqos_state = MMQOS_ENABLE;
 
 static int ftrace_ena;
 
@@ -107,15 +107,11 @@ struct mtk_mmqos {
 	struct proc_dir_entry *proc;
 };
 
+u32 mmqos_state = MMQOS_ENABLE;
+u32 log_level = 1 << log_vcp_pwr | 1 << log_ipi;
+
 static struct mtk_mmqos *gmmqos;
 static struct mmqos_hrt *g_hrt;
-
-static u32 log_level;
-enum mmqos_log_level {
-	log_bw = 0,
-	log_comm_freq = 1,
-	log_v2_dbg,
-};
 
 static u32 chn_hrt_r_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
 static u32 chn_srt_r_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
@@ -991,6 +987,7 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	struct device_node *np;
 	struct platform_device *comm_pdev, *larb_pdev;
 	struct proc_dir_entry *dir, *proc;
+	struct task_struct *kthr_vcp;
 
 	mmqos = devm_kzalloc(&pdev->dev, sizeof(*mmqos), GFP_KERNEL);
 	if (!mmqos)
@@ -1284,6 +1281,8 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	else
 		mmqos->proc = proc;
 
+	if (mmqos_state & VCP_ENABLE)
+		kthr_vcp = kthread_run(mmqos_vcp_init_thread, NULL, "mmqos-vcp");
 	return 0;
 err:
 	list_for_each_entry_safe(node, temp, &mmqos->prov.nodes, node_list) {

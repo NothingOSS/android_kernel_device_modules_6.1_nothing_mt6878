@@ -27,6 +27,7 @@
 #define PIN_OUT_SIZE_TEST_0		 1 /* the following will use mbox 1 */
 #define PIN_OUT_SIZE_AUDIO_ULTRA_SND_0	 9 /* the following will use mbox 1 */
 #define PIN_OUT_SIZE_MMDVFS		 2 /* the following will use mbox 1 */
+#define PIN_OUT_SIZE_MMQOS		 2 /* the following will use mbox 1 */
 #define PIN_OUT_C_SIZE_HWVOTER		 4 /* the following will use mbox 1 */
 #define PIN_OUT_R_SIZE_HWVOTER		 4 /* the following will use mbox 1 */
 
@@ -38,6 +39,7 @@
 #define PIN_IN_SIZE_AUDIO_ULTRA_SND_0	 5 /* the following will use mbox 1 */
 #define PIN_IN_SIZE_AUDIO_ULTRA_SND_ACK_0 2 /* the following will use mbox 1 */
 #define PIN_IN_SIZE_MMDVFS		 2 /* the following will use mbox 1 */
+#define PIN_IN_SIZE_MMQOS		 2 /* the following will use mbox 1 */
 /* ============================================================ */
 
 /* core1 */
@@ -94,28 +96,30 @@ enum {
 	IPI_IN_VCP_CONNSYS        = 8,
 	IPI_OUT_MMDVFS	          = 9,
 	IPI_IN_MMDVFS	          = 10,
-	IPI_OUT_C_VCP_HWVOTER_DEBUG = 11,
+	IPI_OUT_MMQOS	          = 11,
+	IPI_IN_MMQOS	          = 12,
+	IPI_OUT_C_VCP_HWVOTER_DEBUG = 13,
 
 	/* the following will use mbox2 */
-	IPI_OUT_VENC_0	          = 12,
-	IPI_IN_VENC_0	          = 13,
-	IPI_OUT_VCP_MPOOL_0       = 14,
-	IPI_IN_VCP_MPOOL_0        = 15,
+	IPI_OUT_VENC_0	          = 14,
+	IPI_IN_VENC_0	          = 15,
+	IPI_OUT_VCP_MPOOL_0       = 16,
+	IPI_IN_VCP_MPOOL_0        = 17,
 
 /* core1 */
 	/* the following will use mbox3 */
-	IPI_OUT_C_SLEEP_1         = 16,
-	IPI_OUT_TEST_1            = 17,
-	IPI_OUT_LOGGER_CTRL       = 18,
-	IPI_OUT_VCPCTL_1          = 19,
-	IPI_IN_VCP_ERROR_INFO_1   = 20,
-	IPI_IN_LOGGER_CTRL        = 21,
-	IPI_IN_VCP_READY_1        = 22,
-	IPI_IN_VCP_RAM_DUMP_1     = 23,
+	IPI_OUT_C_SLEEP_1         = 18,
+	IPI_OUT_TEST_1            = 19,
+	IPI_OUT_LOGGER_CTRL       = 20,
+	IPI_OUT_VCPCTL_1          = 21,
+	IPI_IN_VCP_ERROR_INFO_1   = 22,
+	IPI_IN_LOGGER_CTRL        = 23,
+	IPI_IN_VCP_READY_1        = 24,
+	IPI_IN_VCP_RAM_DUMP_1     = 25,
 
 	/* the following will use mbox4 */
-	IPI_OUT_VCP_MPOOL_1       = 24,
-	IPI_IN_VCP_MPOOL_1        = 25,
+	IPI_OUT_VCP_MPOOL_1       = 26,
+	IPI_IN_VCP_MPOOL_1        = 27,
 	VCP_IPI_COUNT
 };
 
@@ -157,6 +161,7 @@ enum vcp_reserve_mem_id_t {
 	VENC_VCP_LOG_INFO_ID,
 	GCE_MEM_ID,
 	MMDVFS_MEM_ID,
+	MMQOS_MEM_ID,
 	VCP_SECURE_DUMP_ID,
 	NUMS_MEM_ID,
 };
@@ -168,6 +173,7 @@ enum feature_id {
 	VENC_FEATURE_ID,
 	GCE_FEATURE_ID,
 	MMDVFS_FEATURE_ID,
+	MMQOS_FEATURE_ID,
 	NUM_FEATURE_ID,
 };
 

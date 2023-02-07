@@ -77,3 +77,15 @@ config INTERCONNECT_MTK_MMQOS_MT6985
 	select INTERCONNECT_MTK_MMQOS_COMMON
 	help
 	  Support MT6985 multimedia QoS.
+
+config MTK_MMQOS_VCP
+	tristate "MediaTek MMQOS VCP Support"
+	depends on ARCH_MEDIATEK || COMPILE_TEST
+	depends on INTERCONNECT_MTK
+	depends on DEVICE_MODULES_MTK_SMI
+	help
+	  Say yes here to add support for the MediaTek Multimedia QoS (MMQOS)
+	  for Video Control Processor (VCP). The MMQOS is used to set bw
+	  for Mediatek multimedia hardwares, such as display, camera, mdp and
+	  video codec. And VCP support is for video codec set bw in tinysys vcp.
+	  Say no if your device does not need to MMQoS support in VCP.

@@ -62,6 +62,12 @@ static struct vcp_reserve_mblock vcp_reserve_mblock[] = {
 		.size = 0x0,
 	},
 	{
+		.num = MMQOS_MEM_ID,
+		.start_phys = 0x0,
+		.start_virt = 0x0,
+		.size = 0x0,
+	},
+	{
 		.num = VCP_SECURE_DUMP_ID,
 		.start_phys = 0x0,
 		.start_virt = 0x0,

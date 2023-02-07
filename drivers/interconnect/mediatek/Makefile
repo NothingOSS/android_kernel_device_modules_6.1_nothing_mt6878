@@ -5,10 +5,12 @@ ccflags-y += -I$(srctree)/drivers/interconnect
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/qos
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/rv
 obj-$(CONFIG_INTERCONNECT_MTK_EMI) += mtk-emi.o
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_COMMON) += mmqos-common.o
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs
-mmqos-common-objs += mmqos-mtk.o mmqos-hrt.o
+mmqos-common-objs += mmqos-mtk.o mmqos-hrt.o mmqos-vcp.o
 ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6873.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6873) += mmqos-mt6873.o
 endif
@@ -27,4 +29,3 @@ endif
 ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6985.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6985) += mmqos-mt6985.o
 endif
-
