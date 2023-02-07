@@ -247,7 +247,7 @@ ssize_t vcp_A_log_read(char __user *data, size_t len)
 	r_pos = VCP_A_buf_info->r_pos;
 	w_pos = VCP_A_buf_info->w_pos;
 
-	pr_debug("[VCP] r %x w %x read log buff size:%d get size: %d\n",
+	pr_debug("[VCP] r %x w %x read log buff size:%d get size: %zu\n",
 		r_pos, w_pos, VCP_A_log_ctl->buff_size, len);
 
 	if (strcmp(current->comm, "mobile_log_d.rd") != 0) {

@@ -893,8 +893,9 @@ int vcp_disable_pm_clk(enum feature_id id)
 		vcp_wait_core_stop_timeout(1);
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT)
-		pr_info("[VCP][Debug] bus_dbg_out[0x%x]: 0x%x, waitCnt=%u\n", VCP_BUS_DEBUG_OUT,
-			readl(VCP_BUS_DEBUG_OUT), waitCnt);
+		pr_info("[VCP][Debug] VCP_BUS_DEBUG_OUT 0x%x, waitCnt=%u\n",
+			(uint32_t)readl(VCP_BUS_DEBUG_OUT),
+			waitCnt);
 #endif  // CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT
 
 		vcp_disable_dapc();
