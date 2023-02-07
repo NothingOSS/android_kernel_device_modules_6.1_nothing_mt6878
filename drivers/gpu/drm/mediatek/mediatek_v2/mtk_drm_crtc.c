@@ -4572,21 +4572,10 @@ void mtk_crtc_mode_switch_on_ap_config(struct mtk_drm_crtc *mtk_crtc,
 
 	cmdq_pkt_flush(cmdq_handle);
 	cmdq_pkt_destroy(cmdq_handle);
-	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 0, 2);
 
-	mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_TIMING_CHANGE, old_state);
-	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 0, 3);
-
-	/* adjust trigger loop in different display mode */
-	if (mtk_crtc_with_trigger_loop(crtc) &&
-			mtk_crtc_with_event_loop(crtc) &&
-			mtk_crtc_is_frame_trigger_mode(crtc)) {
-		mtk_crtc_stop_trig_loop(crtc);
-		mtk_crtc_stop_event_loop(crtc);
-
-		mtk_crtc_start_event_loop(crtc);
-		mtk_crtc_start_trig_loop(crtc);
-	}
+	mtk_crtc->old_mode_switch_state = old_state;
+	atomic_set(&mtk_crtc->singal_for_mode_switch, 1);
+	wake_up_interruptible(&mtk_crtc->mode_switch_wq);
 
 	/* set frame done */
 	mtk_crtc_pkt_create(&sevent_cmdq_handle, &mtk_crtc->base,
@@ -4749,21 +4738,10 @@ void mtk_crtc_mode_switch_config(struct mtk_drm_crtc *mtk_crtc,
 
 	cmdq_pkt_flush(cmdq_handle);
 	cmdq_pkt_destroy(cmdq_handle);
-	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 0, 2);
 
-	mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_TIMING_CHANGE, old_state);
-	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 0, 3);
-
-	/* adjust trigger loop in different display mode */
-	if (mtk_crtc_with_trigger_loop(crtc) &&
-			mtk_crtc_with_event_loop(crtc) &&
-			mtk_crtc_is_frame_trigger_mode(crtc)) {
-		mtk_crtc_stop_trig_loop(crtc);
-		mtk_crtc_stop_event_loop(crtc);
-
-		mtk_crtc_start_event_loop(crtc);
-		mtk_crtc_start_trig_loop(crtc);
-	}
+	mtk_crtc->old_mode_switch_state = old_state;
+	atomic_set(&mtk_crtc->singal_for_mode_switch, 1);
+	wake_up_interruptible(&mtk_crtc->mode_switch_wq);
 
 	/* set frame done */
 	mtk_crtc_pkt_create(&sevent_cmdq_handle, &mtk_crtc->base,
@@ -4868,20 +4846,13 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 		&& (mtk_crtc->res_switch == RES_SWITCH_ON_AP))
 		mtk_crtc_mode_switch_on_ap_config(mtk_crtc, old_state);
 	else if (output_comp) {/* Change DSI mipi clk & send LCM cmd */
-		mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_TIMING_CHANGE,
-				old_state);
-
-		/* adjust trigger loop in different display mode */
-		if (mtk_crtc_with_trigger_loop(crtc) &&
-				mtk_crtc_with_event_loop(crtc) &&
-				mtk_crtc_is_frame_trigger_mode(crtc)) {
-			mtk_crtc_stop_trig_loop(crtc);
-			mtk_crtc_stop_event_loop(crtc);
-
-			mtk_crtc_start_event_loop(crtc);
-			mtk_crtc_start_trig_loop(crtc);
-		}
+		//mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_TIMING_CHANGE, old_state);
+		/* Use thread to accelerate mode_switch */
+		mtk_crtc->old_mode_switch_state = old_state;
+		atomic_set(&mtk_crtc->singal_for_mode_switch, 1);
+		wake_up_interruptible(&mtk_crtc->mode_switch_wq);
 	}
+
 	/* scaling path */
 	oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
 	oddmr_timing.hdisplay = mtk_crtc_get_width_by_comp(__func__, crtc, oddmr_comp, false);
@@ -12691,6 +12662,14 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 	}
 
 	mtk_crtc->skip_frame = false;
+
+	if (atomic_read(&mtk_crtc->singal_for_mode_switch)) {
+		DDPINFO("Wait event from mode_switch\n");
+		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 3, 0);
+		wait_event_interruptible(mtk_crtc->mode_switch_end_wq,
+			(atomic_read(&mtk_crtc->singal_for_mode_switch) == 0));
+	}
+
 #ifdef MTK_DRM_CMDQ_ASYNC
 #ifdef MTK_DRM_ASYNC_HANDLE
 	if (gce_cb) {
@@ -14284,6 +14263,64 @@ static int mtk_drm_cwb_monitor_thread(void *data)
 	return 0;
 }
 
+static int mtk_drm_mode_switch_thread(void *data)
+{
+	int ret = 0;
+	struct mtk_drm_crtc *mtk_crtc = (struct mtk_drm_crtc *) data;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct drm_crtc_state *old_crtc_state;
+	struct mtk_ddp_comp *output_comp;
+
+	struct sched_param param = {.sched_priority = 87};
+
+	sched_setscheduler(current, SCHED_RR, &param);
+
+	while (1) {
+		ret = wait_event_interruptible(
+			mtk_crtc->mode_switch_wq,
+			atomic_read(&mtk_crtc->singal_for_mode_switch));
+
+		DDPMSG("%s++\n", __func__);
+
+		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+
+		old_crtc_state = mtk_crtc->old_mode_switch_state;
+
+		if (old_crtc_state == NULL)
+			DDPMSG("%s old_crtc_state NULL\n", __func__);
+
+		if (!output_comp || !old_crtc_state)
+			continue;
+
+		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 1, 0);
+
+		mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_TIMING_CHANGE, old_crtc_state);
+
+		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 1, 1);
+
+		if (mtk_crtc_with_event_loop(crtc) &&
+				mtk_crtc_is_frame_trigger_mode(crtc)) {
+			mtk_crtc_stop_event_loop(crtc);
+
+			mtk_crtc_start_event_loop(crtc);
+		}
+
+		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 1, 2);
+
+		atomic_set(&mtk_crtc->singal_for_mode_switch, 0);
+		wake_up_interruptible(&mtk_crtc->mode_switch_end_wq);
+
+		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 1, 3);
+
+		DDPMSG("%s--\n", __func__);
+
+		if (kthread_should_stop())
+			break;
+	}
+
+	return 0;
+}
+
 static int mtk_drm_cwb_init(struct drm_crtc *crtc)
 {
 #define LEN 50
@@ -14937,6 +14974,14 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		mtk_crtc->pf_ts_type = priv->data->pf_ts_type;
 	atomic_set(&mtk_crtc->signal_irq_for_pre_fence, 0);
 	init_waitqueue_head(&(mtk_crtc->signal_irq_for_pre_fence_wq));
+
+	mtk_crtc->mode_switch_task = kthread_create(
+		mtk_drm_mode_switch_thread, mtk_crtc, "mode_switch");
+	atomic_set(&mtk_crtc->singal_for_mode_switch, 0);
+	init_waitqueue_head(&mtk_crtc->mode_switch_wq);
+	init_waitqueue_head(&mtk_crtc->mode_switch_end_wq);
+	wake_up_process(mtk_crtc->mode_switch_task);
+
 	if (output_comp && mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_DUAL_TE))
 		mtk_ddp_comp_io_cmd(output_comp, NULL, DUAL_TE_INIT,

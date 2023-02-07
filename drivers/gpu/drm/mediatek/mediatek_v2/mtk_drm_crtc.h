@@ -944,6 +944,13 @@ struct mtk_drm_crtc {
 	int force_high_enabled;
 	struct total_tile_overhead tile_overhead;
 
+	struct task_struct *mode_switch_task;
+	wait_queue_head_t mode_switch_wq;
+	wait_queue_head_t mode_switch_end_wq;
+	atomic_t singal_for_mode_switch;
+
+	struct drm_crtc_state *old_mode_switch_state;
+
 	//discrete
 	struct cmdq_pkt *pending_handle;
 
