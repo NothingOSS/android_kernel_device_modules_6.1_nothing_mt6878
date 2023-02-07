@@ -8505,11 +8505,11 @@
 			compatible = "arm,physical-memory-group-manager";
 		};
 
-		gpu_protected_memory_allocator: protected-memory-allocator@13c00000 {
+		gpu_protected_memory_allocator: protected-memory-allocator@13c2f000 {
 			compatible = "arm,protected-memory-allocator";
-			reg = <0 0x13c00000 0 0x30000>;
+			reg = <0 0x13c2f000 0 0x1000>;
 			reg-names = "gpueb_base";
-			gpr-offset = <0x2fd1c>;
+			gpr-offset = <0xd1c>;
 			gpr-id = <6>;
 			gmpu-table-size = <0x0>;
 			protected-reserve-size = <0x800000>;
@@ -8768,13 +8768,13 @@
 			compatible = "mediatek,gpueb";
 			gpueb-support = <1>;
 			gpueb-logger-support = <0>;
-			mbox_count = <1>;
-			mbox_size = <160>; /* 160 slot * 4 = 640 byte */
-			slot_size = <4>;   /* 1 slot = 4 bytes */
-			ts_mbox = <0>; /* mbox for timersync */
+			mbox-count = <1>;
+			mbox-size = <160>; /* 160 slot * 4 = 640 byte */
+			slot-size = <4>;   /* 1 slot = 4 bytes */
+			ts-mbox = <0>; /* mbox for timersync */
 
 			/* id, mbox, send_size */
-			send_table =
+			send-table =
 				<0 0 4>,
 				<1 0 6>,
 				<2 0 3>,
@@ -8786,7 +8786,7 @@
 				<8 0 1>,
 				<9 0 4>,
 				<10 0 3>;
-			send_name_table =
+			send-name-table =
 				"IPI_ID_FAST_DVFS_EVENT",
 				"IPI_ID_GPUFREQ",
 				"IPI_ID_SLEEP",
@@ -8800,7 +8800,7 @@
 				"IPI_ID_BRISKET";
 
 			/* id, mbox, recv_size, recv_opt */
-			recv_table =
+			recv-table =
 				<0 0 4 0>,
 				<1 0 6 1>,
 				<2 0 1 0>,
@@ -8812,7 +8812,7 @@
 				<8 0 4 0>,
 				<9 0 1 1>,
 				<10 0 3 1>;
-			recv_name_table =
+			recv-name-table =
 				"IPI_ID_FAST_DVFS_EVENT",
 				"IPI_ID_GPUFREQ",
 				"IPI_ID_SLEEP",
@@ -8845,11 +8845,11 @@
 			interrupts = <GIC_SPI 588 IRQ_TYPE_LEVEL_HIGH 0>;
 			interrupt-names = "mbox0";
 
-			gpueb_mem_table =
+			gpueb-mem-table =
 				<0 0x4000>,   /* 16KB */
 				<1 0x180000>; /* 1.5MB */
 
-			gpueb_mem_name_table =
+			gpueb-mem-name-table =
 				"MEM_ID_GPUFREQ", /* GPUFREQ */
 				"MEM_ID_LOG";     /* LOGGER */
 		};
