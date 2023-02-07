@@ -63,18 +63,17 @@ struct rsz_cal_param {
 	u32 tap_adapt_var_coring;
 	u32 tap_adapt_dc_coring;
 	u32 tap_adapt_edge_thr;
-	s32 signal_enhance_mode;
+	u32 signal_enhance_mode;
 	u32 hori_tbl;
 	u32 vert_tbl;
 	bool hori_cubic_trunc_en;
-	s32 hori_luma_cubic_trunc_bit;
-	s32 hori_chroma_cubic_trunc_bit;
-	s32 vert_luma_cubic_trunc_bit;
-	s32 vert_chroma_cubic_trunc_bit;
+	u32 hori_luma_cubic_trunc_bit;
+	u32 hori_chroma_cubic_trunc_bit;
+	u32 vert_luma_cubic_trunc_bit;
+	u32 vert_chroma_cubic_trunc_bit;
 	s32 hori_trunc_bit;
 	s32 vert_trunc_bit;
 };
-
 
 /* rsz_fw - RSZ firmware calculate RSZ settings
  *
