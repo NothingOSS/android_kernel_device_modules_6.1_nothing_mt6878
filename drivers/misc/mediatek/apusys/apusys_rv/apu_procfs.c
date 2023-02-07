@@ -195,8 +195,10 @@ static void apu_mrdump_register(struct mtk_apu *apu)
 		base_va = (unsigned long) apu->coredump_buf;
 		size = coredump_size;
 	}
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 	ret = mrdump_mini_add_extra_file(base_va, base_pa, size,
 		"APUSYS_COREDUMP");
+#endif
 	if (ret)
 		dev_info(dev, "%s: APUSYS_COREDUMP add fail(%d)\n",
 			__func__, ret);
@@ -215,8 +217,10 @@ static void apu_mrdump_register(struct mtk_apu *apu)
 			size = apu->apusys_aee_coredump_info->up_xfile_sz;
 			dev_info(dev, "%s: up_xfile_sz = 0x%lx\n", __func__, size);
 		}
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 		ret = mrdump_mini_add_extra_file(base_va, base_pa, size,
 			"APUSYS_RV_XFILE");
+#endif
 		if (ret)
 			dev_info(dev, "%s: APUSYS_RV_XFILE add fail(%d)\n",
 				__func__, ret);
@@ -236,8 +240,10 @@ static void apu_mrdump_register(struct mtk_apu *apu)
 	size = apu->apusys_aee_coredump_info->regdump_sz;
 
 	if (info != NULL) {
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 		ret = mrdump_mini_add_extra_file(base_va, base_pa, size,
 			"APUSYS_REGDUMP");
+#endif
 		if (ret)
 			dev_info(dev, "%s: APUSYS_REGDUMP add fail(%d)\n",
 				__func__, ret);
@@ -251,8 +257,9 @@ static void apu_mrdump_register(struct mtk_apu *apu)
 
 	size = apu->apusys_aee_coredump_info->ce_bin_sz + apu->apusys_aee_coredump_info->are_sram_sz;
 	dev_info(dev, "%s: ce_bin_sz + are_sram_sz = 0x%lx\n", __func__, size);
-
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 	ret = mrdump_mini_add_extra_file(base_va, base_pa, size, "APUSYS_CE_FW_SRAM");
+#endif
 	if (ret)
 		dev_info(dev, "%s: APUSYS_CE_FW_SRAM add fail(%d)\n",
 			__func__, ret);

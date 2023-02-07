@@ -42,6 +42,11 @@ struct logger_init_info {
 	uint32_t aov_buf_sz;
 } __packed;
 
+struct apummu_init_info {
+	uint32_t boundary;
+	uint64_t dram[32];
+} __packed;
+
 struct reviser_init_info {
 	uint32_t boundary;
 	uint64_t dram[32];
