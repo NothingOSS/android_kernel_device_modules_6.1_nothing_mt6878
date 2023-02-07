@@ -10465,7 +10465,10 @@ static int mt6338_codec_init_reg(struct mt6338_priv *priv)
 	unsigned int value;
 
 	dev_info(priv->dev, "%s()", __func__);
-
+#if IS_ENABLED(CONFIG_MT6685_AUDCLK)
+	mt6685_set_dcxo_mode(0);
+	mt6685_set_dcxo(true);
+#endif
 	codec_gpio_init(priv);
 	//turn on CLKSQ_PMU_CON0
 	regmap_write(priv->regmap, MT6338_CLKSQ_PMU_CON0, 0xe);
