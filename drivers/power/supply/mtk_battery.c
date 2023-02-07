@@ -2033,6 +2033,8 @@ void fg_custom_init_from_dts(struct platform_device *dev,
 
 	fg_cust_data->disable_nafg =
 		of_property_read_bool(np, "DISABLE_NAFG");
+	fg_cust_data->disable_nafg |=
+		of_property_read_bool(np, "disable-nafg");
 	bm_err("disable_nafg:%d\n",
 		fg_cust_data->disable_nafg);
 
@@ -2401,6 +2403,8 @@ void fg_custom_init_from_dts(struct platform_device *dev,
 
 	gm->disableGM30 = of_property_read_bool(
 		np, "DISABLE_MTKBATTERY");
+	gm->disableGM30 |= of_property_read_bool(
+		np, "disable-mtkbattery");
 	gm->disableGM30 |= gm->is_evb_board;
 
 	fg_read_dts_val(np, "MULTI_TEMP_GAUGE0",
