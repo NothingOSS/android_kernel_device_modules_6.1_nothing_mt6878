@@ -391,24 +391,24 @@ static int __init mtk_scheduler_init(void)
 	//	pr_info("register android_rvh_tick_entry failed\n");
 
 
-	//ret = register_trace_android_vh_set_wake_flags(
-	//		mtk_set_wake_flags, NULL);
-	//if (ret)
-	//	pr_info("register android_vh_set_wake_flags failed\n");
+	ret = register_trace_android_vh_set_wake_flags(
+			mtk_set_wake_flags, NULL);
+	if (ret)
+		pr_info("register android_vh_set_wake_flags failed\n");
 
 
-	//ret = register_trace_android_rvh_update_cpu_capacity(
-	//		mtk_update_cpu_capacity, NULL);
-	//if (ret)
-	//	pr_info("register android_rvh_update_cpu_capacity failed\n");
+	ret = register_trace_android_rvh_update_cpu_capacity(
+			mtk_update_cpu_capacity, NULL);
+	if (ret)
+		pr_info("register android_rvh_update_cpu_capacity failed\n");
 
 	ret = register_trace_pelt_rt_tp(mtk_pelt_rt_tp, NULL);
 	if (ret)
 		pr_info("register mtk_pelt_rt_tp hooks failed, returned %d\n", ret);
 
-	//ret = register_trace_android_rvh_schedule(mtk_sched_switch, NULL);
-	//if (ret)
-	//	pr_info("register mtk_sched_switch hooks failed, returned %d\n", ret);
+	ret = register_trace_android_rvh_schedule(mtk_sched_switch, NULL);
+	if (ret)
+		pr_info("register mtk_sched_switch hooks failed, returned %d\n", ret);
 
 #if IS_ENABLED(CONFIG_MTK_NEWIDLE_BALANCE)
 	ret = register_trace_android_rvh_sched_newidle_balance(
@@ -436,9 +436,9 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("scheduler: register scheduler_tick hooks failed, returned %d\n", ret);
 
-	//ret = register_trace_android_rvh_after_enqueue_task(mtk_hook_after_enqueue_task, NULL);
-	//if (ret)
-	//	pr_info("register android_rvh_after_enqueue_task failed, returned %d\n", ret);
+	ret = register_trace_android_rvh_after_enqueue_task(mtk_hook_after_enqueue_task, NULL);
+	if (ret)
+		pr_info("register android_rvh_after_enqueue_task failed, returned %d\n", ret);
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_BIG_TASK_ROTATE)
 	//ret = register_trace_android_rvh_new_task_stats(rotat_task_stats, NULL);
