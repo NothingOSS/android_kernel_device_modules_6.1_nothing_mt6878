@@ -15695,7 +15695,7 @@ FLL0_out,FLL1_out,FLL2_out,FLL4_out,FLL5_out,FLL6_out";
 				val = <90>;
 			};
 		};
-		mtk_gauge: mtk_gauge {
+		mtk_gauge: mtk-gauge {
 			compatible = "mediatek,mt6375-gauge";
 			interrupt-controller;
 			#interrupt-cells = <1>;

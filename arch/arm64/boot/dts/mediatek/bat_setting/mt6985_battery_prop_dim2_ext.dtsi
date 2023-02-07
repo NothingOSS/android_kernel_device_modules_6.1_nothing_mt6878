@@ -5,9 +5,9 @@
  */
 
 /*vboot voltage for gauge 0%*/
-g_PMIC_MIN_VOL_row = <4>;
-g_PMIC_MIN_VOL_col = <10>;
-g_PMIC_MIN_VOL =
+g-pmic-min-vol-row = <4>;
+g-pmic-min-vol-col = <10>;
+g-pmic-min-vol =
 <
 	33500  33500  33500  33500
 	33000  33000  33000  33000
@@ -21,9 +21,9 @@ g_PMIC_MIN_VOL =
 	31000  31000  31000  31200
 >;
 /*boot_up current for gauge 0%*/
-g_PON_SYS_IBOOT_row = <4>;
-g_PON_SYS_IBOOT_col = <10>;
-g_PON_SYS_IBOOT =
+g-pon-sys-iboot-row = <4>;
+g-pon-sys-iboot-col = <10>;
+g-pon-sys-iboot =
 <
 	5000  5000  5000  5000
 	5000  5000  5000  5000
@@ -37,9 +37,9 @@ g_PON_SYS_IBOOT =
 	5000  5000  5000  5000
 >;
 /*Pseudo1 hide percentage*/
-g_QMAX_SYS_VOL_row = <4>;
-g_QMAX_SYS_VOL_col = <10>;
-g_QMAX_SYS_VOL =
+g-qmax-sys-vol-row = <4>;
+g-qmax-sys-vol-col = <10>;
+g-qmax-sys-vol =
 <
 	34950  34950  34950  34950
 	34950  34950  34950  34950
@@ -53,9 +53,9 @@ g_QMAX_SYS_VOL =
 	32800  32800  32800  32800
 >;
 /*Pseudo100 percentage setting*/
-g_FG_PSEUDO100_row = <4>;
-g_FG_PSEUDO100_col = <10>;
-g_FG_PSEUDO100 =
+g-fg-pseudo100-row = <4>;
+g-fg-pseudo100-col = <10>;
+g-fg-pseudo100 =
 <
 	100  100  100  100
 	100  100  100  100
@@ -70,9 +70,9 @@ g_FG_PSEUDO100 =
 >;
 
 /* charge_r  pseudo100 setting*/
-g_FG_charge_PSEUDO100_row = <4>;
-g_FG_charge_PSEUDO100_col = <10>;
-g_FG_charge_PSEUDO100 =
+g-fg-charge-pseudo100-row = <4>;
+g-fg-charge-pseudo100-col = <10>;
+g-fg-charge-pseudo100 =
 <
 	100   100  100  100
 	100   100  100  100
