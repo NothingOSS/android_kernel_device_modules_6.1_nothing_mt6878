@@ -18,7 +18,7 @@
 #define MMQOS_MAX_COMM_PORT_NUM		(10)
 #define MMQOS_COMM_CHANNEL_NUM		(2)
 #define MMQOS_MAX_DUAL_PIPE_LARB_NUM	(2)
-#define MMQOS_MAX_REPORT_LARB_NUM	(9)
+#define MMQOS_MAX_REPORT_LARB_NUM	(10)
 #define MMQOS_MAX_DISP_VIRT_LARB_NUM	(3)
 
 #define RECORD_NUM		(10)
@@ -105,6 +105,7 @@ struct larb_node {
 	u32 old_peak_bw;
 	u8 channel;
 	u8 dual_pipe_id;
+	u16 bw_ratio;
 	bool is_write;
 	bool is_report_bw_larbs;
 };
@@ -134,6 +135,7 @@ struct mtk_mmqos_desc {
 	const u8 md_scen;
 	const u32 mmqos_state;
 	const u32 report_bw_larbs[MMQOS_MAX_REPORT_LARB_NUM];
+	const u32 report_bw_real_larbs[MMQOS_MAX_REPORT_LARB_NUM];
 	const u32 disp_virt_larbs[MMQOS_MAX_DISP_VIRT_LARB_NUM];
 };
 

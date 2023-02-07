@@ -33,8 +33,6 @@
 
 #define NODE_TYPE(a)		(a >> 16)
 #define LARB_ID(a)		(MASK_8(a))
-#define W_BW_RATIO		(8)
-#define R_BW_RATIO		(7)
 
 #define MAX_RECORD_COMM_NUM	(2)
 #define MAX_RECORD_PORT_NUM	(9)
@@ -159,7 +157,7 @@ static void mmqos_update_comm_ostdl(struct device *dev, u32 comm_port,
 	u32 value;
 	u16 bw_ratio;
 
-	bw_ratio = larb_node->is_write ? W_BW_RATIO : R_BW_RATIO;
+	bw_ratio = larb_node->bw_ratio;
 	if (larb->avg_bw) {
 		value = SHIFT_ROUND(icc_to_MBps(larb->avg_bw), bw_ratio);
 		if (value > max_ratio)
@@ -1189,12 +1187,17 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 
 			larb_node->channel = node_desc->channel;
 			larb_node->is_write = node_desc->is_write;
+			larb_node->bw_ratio = node_desc->bw_ratio;
 			/* init disable dualpipe */
 			gmmqos->dual_pipe_enable = false;
 
 			for (j = 0; j < MMQOS_MAX_REPORT_LARB_NUM; j++) {
-				if (node->id == mmqos_desc->report_bw_larbs[j])
+				if (node->id == mmqos_desc->report_bw_larbs[j]) {
 					larb_node->is_report_bw_larbs = true;
+					id = mmqos_desc->report_bw_real_larbs[j];
+					larb_dev = smi_imu->larb_imu[id & (MTK_LARB_NR_MAX-1)].dev;
+					larb_node->larb_dev = larb_dev;
+				}
 			}
 			larb_node->base = base_node;
 			node->data = (void *)larb_node;
