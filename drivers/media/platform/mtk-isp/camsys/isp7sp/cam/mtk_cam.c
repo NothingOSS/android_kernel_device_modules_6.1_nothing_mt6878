@@ -1504,6 +1504,9 @@ static int mtk_cam_ctx_alloc_img_pool(struct mtk_cam_ctx *ctx)
 	struct v4l2_mbus_framefmt *mf;
 	int ret = 0;
 
+	if (!ctx->has_raw_subdev)
+		return 0;
+
 	dev_to_attach = ctx->cam->engines.raw_devs[0];
 	raw_pipe = &ctx->cam->pipelines.raw[ctx->raw_subdev_idx];
 	ctrl_data = &raw_pipe->ctrl_data;
@@ -1565,6 +1568,9 @@ static void mtk_cam_ctx_destroy_img_pool(struct mtk_cam_ctx *ctx)
 {
 	struct mtk_raw_pipeline *raw_pipe;
 	struct mtk_cam_resource_raw_v2 *raw_res;
+
+	if (!ctx->has_raw_subdev)
+		return;
 
 	raw_pipe = &ctx->cam->pipelines.raw[ctx->raw_subdev_idx];
 	raw_res = &raw_pipe->ctrl_data.resource.user_data.raw_res;
