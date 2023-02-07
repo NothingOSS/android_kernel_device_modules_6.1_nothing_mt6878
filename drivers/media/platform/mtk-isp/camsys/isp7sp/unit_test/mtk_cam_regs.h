@@ -32,6 +32,15 @@
 #define IMGO_DONE_ST			(1L << 0)
 //#define CQI_R1_DONE_ST			(1L << 8)
 
+enum topdebug_event {
+	ALL_THE_TIME	= 1 << 0,
+	TG_OVERRUN	= 1 << 1,
+	CQ_MAIN_VS_ERR	= 1 << 2,
+	CQ_SUB_VS_ERR	= 1 << 3,
+	RAW_DMA_ERR	= 1 << 4,
+	YUV_DMA_ERR	= 1 << 5,
+};
+
 /* IRQ signal mask */
 #define INT_ST_MASK_CAM (VS_INT_ST	 |\
 			 TG_INT1_ST	 |\
@@ -67,14 +76,19 @@
 #define CAMSYS_MAIN_REG_HALT5_EN(regs)			(regs + 0x00D4)
 #define CAMSYS_MAIN_REG_HALT6_EN(regs)			(regs + 0x00D8)
 
+#define CAM_REG_CTL_RAW_INT_EN(regs)			(regs + 0x0100)
 #define CAM_REG_CTL_RAW_INT_STATUS(regs)		(regs + 0x0104)
+#define CAM_REG_CTL_RAW_INT2_EN(regs)			(regs + 0x0110)
 #define CAM_REG_CTL_RAW_INT2_STATUS(regs)		(regs + 0x0114)
+#define CAM_REG_CTL_RAW_INT3_EN(regs)			(regs + 0x0120)
 #define CAM_REG_CTL_RAW_INT3_STATUS(regs)		(regs + 0x0124)
+#define CAM_REG_CTL_RAW_INT4_EN(regs)			(regs + 0x0130)
 #define CAM_REG_CTL_RAW_INT4_STATUS(regs)		(regs + 0x0134)
+#define CAM_REG_CTL_RAW_INT5_EN(regs)			(regs + 0x0140)
 #define CAM_REG_CTL_RAW_INT5_STATUS(regs)		(regs + 0x0144)
-#define CAM_REG_CTL_RAW_INT6_EN				0x0150
+#define CAM_REG_CTL_RAW_INT6_EN(regs)			(regs + 0x0150)
 #define CAM_REG_CTL_RAW_INT6_STATUS(regs)		(regs + 0x0154)
-#define CAM_REG_CTL_RAW_INT7_EN				0x0160
+#define CAM_REG_CTL_RAW_INT7_EN(regs)			(regs +	0x0160)
 #define CAM_REG_CTL_RAW_INT7_STATUS(regs)		(regs + 0x0164)
 
 #define CAM_REG_CTL_RAW_INT_STATUSX(regs)		(regs + 0x0108)
@@ -87,6 +101,11 @@
 #define CAM_REG_CTL_RAW_INT7_STATUSX(regs)		(regs + 0x0168)
 #define CTL_CQ_THRSUB_DONE_ST				BIT(4)
 
+
+#define CAM_REG_CTL2_RAW_INT_EN(regs)			(regs + 0x0100)
+#define CAM_REG_CTL2_RAW_INT2_EN(regs)			(regs + 0x0110)
+#define CAM_REG_CTL2_RAW_INT4_EN(regs)			(regs + 0x0130)
+#define CAM_REG_CTL2_RAW_INT5_EN(regs)			(regs + 0x0140)
 
 #define CAM_REG_CTL2_RAW_INT_STATUS(regs)		(regs + 0x0104)
 #define CAM_REG_CTL2_RAW_INT2_STATUS(regs)		(regs + 0x0114)
@@ -206,6 +225,13 @@
 #define REG_DRZB2NBO_R1_ERR_STAT			0x4BB4
 #define REG_DRZB2NCO_R1_ERR_STAT			0x4BF4
 
+#define REG_CTL_DBG_SET					0x03F0
+#define REG_CTL_DBG_PORT				0x03F4
+#define REG_CTL_DBG_SET2				0x03F8
+
+#define REG_DMA_DBG_SEL					0x4070
+#define REG_DMA_DBG_PORT				0x4074
+
 #define CAMCTL_INT_TRIG        0x380
 #define CAMCTL_INT_EN  0x100
 
@@ -273,6 +299,7 @@
 #define CAM_REG_AAO_ULCWDMA_BASE_ADDR(regs)			(regs + 0x4980)
 #define CAM_REG_YUVO_R1_ORIWDMA_BASE_ADDR(regs)			(regs + 0x4200)
 #define CAM_REG_YUVO_R3_ORIWDMA_BASE_ADDR(regs)			(regs + 0x44C0)
+#define CAM_REG_SMI_PORT_PSUEDO_MODE_EN(regs)			(regs + 0x4080)
 
 #define CAM_REG_FBC_IMGO_R1_CTL2(regs)			        (regs + 0x3D04)
 #define CAM_REG_FBC_YUVO_R1_CTL2(regs)			        (regs + 0x3C04)

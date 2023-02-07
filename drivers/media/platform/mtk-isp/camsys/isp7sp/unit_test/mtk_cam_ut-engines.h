@@ -192,6 +192,7 @@ extern struct platform_driver mtk_ut_seninf_driver;
 #define WITH_CAMSV_DRIVER 0
 #define SUPPORT_PM 1
 #define SUPPORT_RAWB 0
+#define WITH_POWER_DRIVER 0
 extern struct platform_driver mtk_ut_larb_driver;
 
 #endif /* __MTK_CAM_UT_ENGINES_H */

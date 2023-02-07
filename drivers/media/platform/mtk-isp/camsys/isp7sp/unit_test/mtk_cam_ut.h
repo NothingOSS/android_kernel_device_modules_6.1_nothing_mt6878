@@ -10,7 +10,7 @@
 #include <linux/rpmsg.h>
 #include <linux/wait.h>
 
-#include <cam_legacy/mtk_cam-ipi.h>
+#include <cam/mtk_cam-ipi.h>
 #include "mtk_cam_ut-event.h"
 
 #define IPI_FRAME_BUF_SIZE		ALIGN(sizeof(struct mtkcam_ipi_frame_param), SZ_1K)

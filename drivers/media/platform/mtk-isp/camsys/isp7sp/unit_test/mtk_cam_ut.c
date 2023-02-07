@@ -15,7 +15,7 @@
 #include <linux/iopoll.h>
 #include <linux/irqreturn.h>
 #include <linux/kernel.h>
-#include <uapi/linux/mtk_ccd_controls.h>
+#include <linux/mtk_ccd_controls.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_irq.h>
@@ -35,6 +35,11 @@
 #include "mtk_cam_ut-engines.h"
 
 #define CAM_DEV_NAME "mtk_cam_ut"
+
+#ifdef dev_dbg
+#undef dev_dbg
+#define dev_dbg dev_info
+#endif
 
 static int debug_testmdl_pixmode = -1;
 module_param(debug_testmdl_pixmode, int, 0644);
@@ -153,6 +158,8 @@ static int apply_req_on_composed_once(struct mtk_cam_ut *ut)
 	raw_params.subsample = ut->subsample;
 	raw_params.streamon_type = STREAM_FROM_TG;
 	raw_params.hardware_scenario = ut->hardware_scenario;
+
+	CALL_RAW_OPS(ut->raw[0], reset);
 
 	CALL_RAW_OPS(ut->raw[0], initialize, &raw_params);
 	//CALL_RAW_OPS(ut->raw[1], initialize, &raw_params);
@@ -887,10 +894,11 @@ static int cam_open(struct inode *inode, struct file *filp)
 {
 	struct mtk_cam_ut *ut =	container_of(inode->i_cdev,
 					     struct mtk_cam_ut, cdev);
+#if WITH_POWER_DRIVER
 	int i;
-
+#endif
 	get_device(ut->dev);
-
+#if WITH_POWER_DRIVER
 	pm_runtime_get_sync(ut->dev);
 
 	for (i = 0; i < ut->num_raw; i++) {
@@ -905,7 +913,7 @@ static int cam_open(struct inode *inode, struct file *filp)
 
 	/* Note: seninf's dts have no power-domains now, so do it after raw's */
 	pm_runtime_get_sync(ut->seninf);
-
+#endif
 	filp->private_data = ut;
 
 	cam_composer_init(ut);
@@ -916,10 +924,11 @@ static int cam_open(struct inode *inode, struct file *filp)
 static int cam_release(struct inode *inode, struct file *filp)
 {
 	struct mtk_cam_ut *ut = filp->private_data;
+#if WITH_POWER_DRIVER
 	int i;
-
+#endif
 	cam_composer_uninit(ut);
-
+#if WITH_POWER_DRIVER
 	pm_runtime_put(ut->seninf);
 
 	for (i = 0; i < ut->num_camsv; i++)
@@ -931,6 +940,7 @@ static int cam_release(struct inode *inode, struct file *filp)
 	pm_runtime_put(ut->dev);
 
 	put_device(ut->dev);
+ #endif
 	return 0;
 }
 
@@ -1299,10 +1309,10 @@ static int mtk_cam_ut_probe(struct platform_device *pdev)
 		dev_info(dev, "fail to register_sub_drivers\n");
 		return ret;
 	}
-
+#if WITH_POWER_DRIVER
 	pm_runtime_enable(dev);
 	pm_runtime_get_sync(dev);
-
+#endif
 	dev_info(dev, "%s: success\n", __func__);
 	return 0;
 }
@@ -1311,9 +1321,9 @@ static int mtk_cam_ut_remove(struct platform_device *pdev)
 {
 	struct mtk_cam_ut *ut =
 		(struct mtk_cam_ut *)platform_get_drvdata(pdev);
-
+#if WITH_POWER_DRIVER
 	pm_runtime_disable(ut->dev);
-
+#endif
 	cam_unreg_char_dev(ut);
 
 	return 0;
@@ -1324,14 +1334,14 @@ static int mtk_cam_ut_pm_suspend(struct device *dev)
 	int ret = 0;
 
 	dev_dbg(dev, "- %s\n", __func__);
-
+#if WITH_POWER_DRIVER
 	if (pm_runtime_suspended(dev))
 		return 0;
 
 	ret = pm_runtime_force_suspend(dev);
 	if (ret)
 		dev_dbg(dev, "failed to force suspend:%d\n", ret);
-
+#endif
 	return ret;
 }
 
@@ -1340,11 +1350,12 @@ static int mtk_cam_ut_pm_resume(struct device *dev)
 	int ret = 0;
 
 	dev_dbg(dev, "- %s\n", __func__);
-
+#if WITH_POWER_DRIVER
 	if (pm_runtime_suspended(dev))
 		return 0;
 
 	ret = pm_runtime_force_resume(dev);
+#endif
 	return ret;
 }
 

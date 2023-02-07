@@ -50,8 +50,12 @@ struct ut_debug_cmd {
 			u8	dump_fbc : 1;
 			u8	dump_dma_err : 1;
 			u8	dump_tg_err : 1;
+			u8	dump_tg_overrun : 1;
+			u8	rsv_1 : 1;
+			u8	rsv_2 : 1;
+			u8	rsv_3 : 1;
 		};
-		u32	any_debug;
+		u64	any_debug;
 	};
 };
 
@@ -79,12 +83,13 @@ static int ut_raw_reset(struct device *dev)
 	void __iomem *yuv_base = raw->yuv_base;
 	u32 ctl;
 
-	writel(0x00000fff, base + CAM_REG_CTL_RAW_MOD5_DCM_DIS);
-	writel(0x0007ffff, base + CAM_REG_CTL_RAW_MOD6_DCM_DIS);
-	writel(0xffffffff, yuv_base + CAM_REG_CTL_RAW_MOD5_DCM_DIS);
+	writel(0x00003fff, base + CAM_REG_CTL_RAW_MOD5_DCM_DIS);
+	writel(0x001fffff, base + CAM_REG_CTL_RAW_MOD6_DCM_DIS);
+	writel(0x007fffff, yuv_base + CAM_REG_CTL_RAW_MOD5_DCM_DIS);
 
 	/* Disable all DMA DCM before reset */
 	wmb(); /* TBC */
+	writel(0, base + REG_CTL_SW_CTL);
 	writel(1, base + REG_CTL_SW_CTL);
 
 	if (!readl_poll_timeout_atomic(base + REG_CTL_SW_CTL, ctl,
@@ -100,10 +105,10 @@ static int ut_raw_reset(struct device *dev)
 	writel(0x0, base + CAM_REG_CTL_RAW_MOD5_DCM_DIS);
 	writel(0x0, base + CAM_REG_CTL_RAW_MOD6_DCM_DIS);
 	writel(0x0, yuv_base + CAM_REG_CTL_RAW_MOD5_DCM_DIS);
-
+/*
 	writel_relaxed(0x0, base + REG_CTL_SW_PASS1_DONE);
 	writel_relaxed(0x0, raw->base_inner + REG_CTL_SW_PASS1_DONE);
-
+*/
 	/* make sure reset take effect */
 	wmb();
 
@@ -111,6 +116,7 @@ static int ut_raw_reset(struct device *dev)
 }
 
 static void set_steamon_handle(struct device *dev, int type);
+static void raw_set_topdebug_rdyreq(struct mtk_ut_raw_device *raw, u32 event);
 
 static int ut_raw_initialize(struct device *dev, void *ext_params)
 {
@@ -162,6 +168,8 @@ static int ut_raw_s_stream(struct device *dev, int on)
 	u32 val;
 
 	dev_info(dev, "%s: %s\n", __func__, on ? "on" : "off");
+
+	raw_set_topdebug_rdyreq(raw, TG_OVERRUN);
 
 	val = readl_relaxed(base + REG_TG_VF_CON);
 	if (on)
@@ -406,6 +414,75 @@ static void raw_handle_dma_err(struct mtk_ut_raw_device *raw)
 			   );
 }
 
+static void raw_set_topdebug_rdyreq(struct mtk_ut_raw_device *raw, u32 event)
+{
+	void __iomem *base = raw->base;
+	void __iomem *yuv_base = raw->yuv_base;
+
+	u32 val = 0xa << 12;
+
+	writel(val, base + REG_CTL_DBG_SET);
+	writel(event, base + REG_CTL_DBG_SET2);
+	writel(val, yuv_base + REG_CTL_DBG_SET);
+	dev_info(raw->dev, "set CAMCTL_DBG_SET2/CAMCTL_DBG_SET (RAW/YUV) 0x%08x/0x%08x\n",
+		event, val);
+}
+
+void raw_handle_tg_overrun(struct mtk_ut_raw_device *raw)
+{
+	static const u32 debug_sel[] = {
+		/* req group 1~7 */
+		0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6,
+		/* rdy group 1~7 */
+		0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE,
+	};
+	void __iomem *dbg_set, *dbg_set2;
+	void __iomem *dbg_port;
+	void __iomem *base = raw->base;
+	void __iomem *yuv_base = raw->yuv_base;
+	u32 set;
+	int i;
+
+	/* CAMCTL_DBG_SET
+	 *   CAMCTL_DEBUG_TOP_SEL [15:12]
+	 *   CAMCTL_DEBUG_SEL     [11: 8]
+	 *   CAMCTL_DEBUG_MOD_SEL [ 7: 0]
+	 */
+
+	/* CAMCTL_DBG_SET_2
+	 *   0x1: latch all the time
+	 *   0x2: latch when TG_OVERRUN
+	 *   0x4: latch when CQ_MAIN_VS_ERR
+	 *   0x8: latch when CQ_SUB_VS_ERR
+	 *   0x10: latch when RAW dma_err
+	 *   0x20: latch when YUV dma_err
+	 */
+
+	dbg_set = base + REG_CTL_DBG_SET;
+	dbg_set2 = base + REG_CTL_DBG_SET2;
+	dbg_port = base + REG_CTL_DBG_PORT;
+
+	set = readl(dbg_set) & 0xfff000;
+	for (i = 0; i < ARRAY_SIZE(debug_sel); i++) {
+		writel(set | debug_sel[i] << 8, dbg_set);
+		writel(0x2, dbg_set2);
+		dev_info(raw->dev, "RAW debug_set 0x%08x port 0x%08x\n",
+			 readl(dbg_set), readl(dbg_port));
+	}
+
+	dbg_set = yuv_base + REG_CTL_DBG_SET;
+	dbg_set2 = yuv_base + REG_CTL_DBG_SET2;
+	dbg_port = yuv_base + REG_CTL_DBG_PORT;
+
+	set = readl(dbg_set) & 0xfff000;
+	for (i = 0; i < ARRAY_SIZE(debug_sel); i++) {
+		writel(set | debug_sel[i] << 8, dbg_set);
+		writel(0x2, dbg_set2);
+		dev_info(raw->dev, "YUV debug_set 0x%08x port 0x%08x\n",
+			 readl(dbg_set), readl(dbg_port));
+	}
+}
+
 static void raw_dump_stx(struct mtk_ut_raw_device *raw)
 {
 	void __iomem *base = raw->base;
@@ -519,6 +596,9 @@ static irqreturn_t mtk_ut_raw_irq(int irq, void *data)
 
 		if (status.irq & TG_GBERR_ST)
 			cmd->dump_tg_err = 1;
+
+		if (status.irq & TG_OVRUN_ST)
+			cmd->dump_tg_overrun = 1;
 	}
 
 	if (raw->id != 0)
@@ -536,7 +616,7 @@ static irqreturn_t mtk_ut_raw_irq(int irq, void *data)
 		WARN_ON(len != sizeof(msg));
 
 		wake_thread = 1;
-		dev_dbg(raw->dev, "time %lld: event %x, debug %x\n",
+		dev_dbg(raw->dev, "time %lld: event %x, debug %llx\n",
 			msg.ts_ns,
 			event->mask, cmd->any_debug);
 	}
@@ -575,6 +655,9 @@ static irqreturn_t mtk_ut_raw_thread_irq(int irq, void *data)
 
 		if (cmd->dump_dma_err)
 			raw_handle_dma_err(raw);
+
+		if (cmd->dump_tg_overrun)
+			raw_handle_tg_overrun(raw);
 
 		if (event->mask) {
 			dev_dbg(raw->dev, "send event 0x%x\n", event->mask);
@@ -724,9 +807,9 @@ static int mtk_ut_raw_probe(struct platform_device *pdev)
 
 	init_event_source(&drvdata->event_src);
 	ut_raw_set_ops(dev);
-
+#if WITH_POWER_DRIVER
 	pm_runtime_enable(dev);
-
+#endif
 	ret = component_add(dev, &mtk_ut_raw_component_ops);
 	if (ret)
 		return ret;
@@ -742,8 +825,9 @@ static int mtk_ut_raw_remove(struct platform_device *pdev)
 	int i;
 
 	//dev_info(dev, "%s\n", __func__);
-
+#if WITH_POWER_DRIVER
 	pm_runtime_disable(dev);
+#endif
 	component_del(dev, &mtk_ut_raw_component_ops);
 
 	for (i = 0; i < drvdata->num_clks; i++)
@@ -762,9 +846,10 @@ static int mtk_ut_raw_pm_suspend(struct device *dev)
 
 	dev_dbg(dev, "- %s\n", __func__);
 
+#if WITH_POWER_DRIVER
 	if (pm_runtime_suspended(dev))
 		return 0;
-
+#endif
 	/* Disable ISP's view finder and wait for TG idle */
 	dev_dbg(dev, "cam suspend, disable VF\n");
 	val = readl(raw->base + REG_TG_VF_CON);
@@ -779,8 +864,10 @@ static int mtk_ut_raw_pm_suspend(struct device *dev)
 	val = readl(raw->base + REG_TG_SEN_MODE);
 	writel(val & (~TG_SEN_MODE_CMOS_EN), raw->base + REG_TG_SEN_MODE);
 
+#if WITH_POWER_DRIVER
 	/* Force ISP HW to idle */
 	ret = pm_runtime_force_suspend(dev);
+#endif
 	return ret;
 }
 
@@ -788,18 +875,17 @@ static int mtk_ut_raw_pm_resume(struct device *dev)
 {
 	struct mtk_ut_raw_device *raw = dev_get_drvdata(dev);
 	u32 val;
-	int ret;
+	int ret = 0;
 
 	dev_dbg(dev, "- %s\n", __func__);
-
+#if WITH_POWER_DRIVER
 	if (pm_runtime_suspended(dev))
 		return 0;
-
 	/* Force ISP HW to resume */
 	ret = pm_runtime_force_resume(dev);
 	if (ret)
 		return ret;
-
+#endif
 	/* Enable CMOS */
 	dev_dbg(dev, "cam resume, enable CMOS/VF\n");
 	val = readl(raw->base + REG_TG_SEN_MODE);
@@ -809,7 +895,7 @@ static int mtk_ut_raw_pm_resume(struct device *dev)
 	val = readl(raw->base + REG_TG_VF_CON);
 	writel(val | TG_VFDATA_EN, raw->base + REG_TG_VF_CON);
 
-	return 0;
+	return ret;
 }
 
 static int mtk_ut_raw_runtime_suspend(struct device *dev)
@@ -1099,9 +1185,9 @@ static int mtk_ut_yuv_probe(struct platform_device *pdev)
 		return ret;
 
 	ut_yuv_set_ops(dev);
-
+#if WITH_POWER_DRIVER
 	pm_runtime_enable(dev);
-
+#endif
 	ret = component_add(dev, &mtk_ut_yuv_component_ops);
 	if (ret)
 		return ret;
@@ -1117,9 +1203,9 @@ static int mtk_ut_yuv_remove(struct platform_device *pdev)
 	int i;
 
 	//dev_info(dev, "%s\n", __func__);
-
+#if WITH_POWER_DRIVER
 	pm_runtime_disable(dev);
-
+#endif
 	component_del(dev, &mtk_ut_yuv_component_ops);
 
 	for (i = 0; i < drvdata->num_clks; i++)
@@ -1131,24 +1217,24 @@ static int mtk_ut_yuv_remove(struct platform_device *pdev)
 
 static int mtk_ut_yuv_pm_suspend(struct device *dev)
 {
-	int ret;
+	int ret = 0;
 
 	dev_dbg(dev, "- %s\n", __func__);
-
+#if WITH_POWER_DRIVER
 	if (pm_runtime_suspended(dev))
 		return 0;
 
 	ret = pm_runtime_force_suspend(dev);
-
+#endif
 	return ret;
 }
 
 static int mtk_ut_yuv_pm_resume(struct device *dev)
 {
-	int ret;
+	int ret = 0;
 
 	dev_dbg(dev, "- %s\n", __func__);
-
+#if WITH_POWER_DRIVER
 	if (pm_runtime_suspended(dev))
 		return 0;
 
@@ -1156,8 +1242,8 @@ static int mtk_ut_yuv_pm_resume(struct device *dev)
 	ret = pm_runtime_force_resume(dev);
 	if (ret)
 		return ret;
-
-	return 0;
+#endif
+	return ret;
 }
 
 static int mtk_ut_yuv_runtime_suspend(struct device *dev)
@@ -1317,9 +1403,9 @@ static int mtk_ut_rms_probe(struct platform_device *pdev)
 		return ret;
 
 	ut_rms_set_ops(dev);
-
-	//pm_runtime_enable(dev);
-
+#if WITH_POWER_DRIVER
+	pm_runtime_enable(dev);
+#endif
 	ret = component_add(dev, &mtk_ut_rms_component_ops);
 	if (ret)
 		return ret;
@@ -1335,9 +1421,9 @@ static int mtk_ut_rms_remove(struct platform_device *pdev)
 	int i;
 
 	//dev_info(dev, "%s\n", __func__);
-
-	//pm_runtime_disable(dev);
-
+#if WITH_POWER_DRIVER
+	pm_runtime_disable(dev);
+#endif
 	component_del(dev, &mtk_ut_rms_component_ops);
 
 	for (i = 0; i < drvdata->num_clks; i++)
@@ -1475,10 +1561,10 @@ static int mtk_ut_larb_probe(struct platform_device *pdev)
 		if (ret)
 			dev_info(dev, "Failed to set DMA segment size\n");
 	}
-
+#if WITH_POWER_DRIVER
 	pm_runtime_enable(dev);
 	pm_runtime_get_sync(dev);
-
+#endif
 	ret = component_add(dev, &mtk_ut_larb_component_ops);
 	if (ret)
 		return ret;
@@ -1491,8 +1577,10 @@ static int mtk_ut_larb_remove(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 
 	dev_info(dev, "%s disable larb\n", __func__);
+#if WITH_POWER_DRIVER
 	pm_runtime_put(dev);
 	pm_runtime_disable(dev);
+#endif
 	return 0;
 }
 
