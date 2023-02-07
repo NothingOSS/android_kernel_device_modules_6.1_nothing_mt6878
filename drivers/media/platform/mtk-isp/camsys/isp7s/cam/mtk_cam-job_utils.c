@@ -139,7 +139,7 @@ int get_subsample_ratio(struct mtk_cam_scen *scen)
 	return 1;
 }
 
-#define SENSOR_I2C_TIME_NS		(18 * 1000000ULL)
+#define SENSOR_I2C_TIME_NS		(6 * 1000000ULL)
 #define SENSOR_I2C_TIME_NS_60FPS	(6 * 1000000ULL)
 #define SENSOR_I2C_TIME_NS_HIGH_FPS	(3 * 1000000ULL)
 

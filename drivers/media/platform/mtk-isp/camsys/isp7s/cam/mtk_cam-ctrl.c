@@ -184,6 +184,32 @@ static int _ctrl_apply_locked(struct mtk_cam_ctrl *ctrl)
 
 	return 0;
 }
+
+static void debug_send_event(const struct transition_param *p)
+{
+	struct mtk_cam_ctrl_runtime_info *info;
+	bool print_ts;
+
+	info = p->info;
+
+	print_ts = (p->event == CAMSYS_EVENT_ENQUE);
+
+	if (!info->apply_hw_by_FSM)
+		pr_info("[%s] runtime: by_FSM is off\n", __func__);
+
+	if (print_ts)
+		pr_info("[%s] out/in:%d/%d event: %s@%llu (sof %llu)\n",
+			__func__,
+			info->outer_seq_no, info->inner_seq_no,
+			str_event(p->event),
+			p->event_ts, info->sof_ts_ns);
+	else
+		pr_info("[%s] out/in:%d/%d event: %s\n",
+			__func__,
+			info->outer_seq_no, info->inner_seq_no,
+			str_event(p->event));
+}
+
 static int mtk_cam_ctrl_send_event(struct mtk_cam_ctrl *ctrl, int event)
 {
 	struct mtk_cam_ctrl_runtime_info local_info;
@@ -201,15 +227,11 @@ static int mtk_cam_ctrl_send_event(struct mtk_cam_ctrl *ctrl, int event)
 	p.event_ts = ktime_get_boottime_ns();
 	p.s_params = &ctrl->s_params;
 
-	if (CAM_DEBUG_ENABLED(STATE))
+	if (0 && CAM_DEBUG_ENABLED(STATE))
 		dump_runtime_info(p.info);
 
 	if (CAM_DEBUG_ENABLED(STATE))
-		dev_info(ctrl->ctx->cam->dev,
-			 "[%s] out/in:%d/%d event: %s\n",
-			 __func__,
-			 p.info->outer_seq_no, p.info->inner_seq_no,
-			 str_event(event));
+		debug_send_event(&p);
 
 	spin_lock(&ctrl->send_lock);
 
@@ -578,6 +600,9 @@ static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 				      query_interval_from_sensor(ctx->sensor));
 	dev_info(dev, "%s: i2c thres %llu\n",
 		 __func__, ctrl->s_params.i2c_thres_ns);
+
+	/* should set ts for second job's apply_sensor */
+	ctrl->r_info.sof_ts_ns = ktime_get_boottime_ns();
 
 	call_jobop(job, stream_on, true);
 
