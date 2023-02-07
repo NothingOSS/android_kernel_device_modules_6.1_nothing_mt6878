@@ -10,8 +10,7 @@
 		compatible = "mediatek,mt6368";
 		reg = <0x5 SPMI_USID>;
 		interrupts = <5>;
-		#address-cells = <1>;
-		#size-cells = <0>;
+		#address-cells = <0>;
 		interrupt-controller;
 		#interrupt-cells = <2>;
 
