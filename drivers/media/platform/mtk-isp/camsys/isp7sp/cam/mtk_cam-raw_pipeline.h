@@ -115,19 +115,6 @@ struct mtk_raw_pde_config {
 	struct mtk_cam_pde_info pde_info;
 };
 
-/* exposure for m-stream */
-struct mtk_cam_shutter_gain {
-	__u32 shutter;
-	__u32 gain;
-};
-
-/* multiple exposure for m-stream(2 exposures) */
-struct mtk_cam_mstream_exposure {
-	struct mtk_cam_shutter_gain exposure[2];
-	unsigned int valid;
-	int req_id;
-};
-
 struct mtk_raw_pad_config {
 	struct v4l2_mbus_framefmt mbus_fmt;
 	struct v4l2_rect crop;
