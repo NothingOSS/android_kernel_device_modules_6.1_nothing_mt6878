@@ -67,65 +67,16 @@ void attach_tasks_clone(struct list_head *tasks, struct rq *rq)
 	}
 }
 
-#if 0
-static void do_balance_callbacks(struct rq *rq, struct callback_head *head)
+static inline void
+rq_relock(struct rq *rq, struct rq_flags *rf)
+	__acquires(rq->lock)
 {
-	void (*func)(struct rq *rq);
-	struct callback_head *next;
-
-	lockdep_assert_rq_held(rq);
-
-	while (head) {
-		func = (void (*)(struct rq *))head->func;
-		next = head->next;
-		head->next = NULL;
-		head = next;
-
-		func(rq);
-	}
+	raw_spin_rq_lock(rq);
+	rq_repin_lock(rq, rf);
 }
-#endif
-
-static inline struct balance_callback *
-__splice_balance_callbacks(struct rq *rq, bool split)
-{
-	struct balance_callback *head = rq->balance_callback;
-
-	if (likely(!head))
-		return NULL;
-
-	lockdep_assert_rq_held(rq);
-	/*
-	 * Must not take balance_push_callback off the list when
-	 * splice_balance_callbacks() and balance_callbacks() are not
-	 * in the same rq->lock section.
-	 *
-	 * In that case it would be possible for __schedule() to interleave
-	 * and observe the list empty.
-	 */
-	if (split && head == &balance_push_callback)
-		head = NULL;
-	else
-		rq->balance_callback = NULL;
-
-	return head;
-}
-
-static inline struct balance_callback *splice_balance_callbacks(struct rq *rq)
-{
-	return __splice_balance_callbacks(rq, true);
-}
-
-#if 0
-static void __balance_callbacks(struct rq *rq)
-{
-	do_balance_callbacks(rq, __splice_balance_callbacks(rq, false));
-}
-#endif
 
 static void migrate_tasks(struct rq *dead_rq, struct rq_flags *rf)
 {
-#if 0
 	struct rq *rq = dead_rq;
 	struct task_struct *next, *stop = rq->stop;
 	LIST_HEAD(percpu_kthreads);
@@ -226,7 +177,6 @@ static void migrate_tasks(struct rq *dead_rq, struct rq_flags *rf)
 		attach_tasks_clone(&percpu_kthreads, rq);
 
 	rq->stop = stop;
-#endif
 }
 
 int drain_rq_cpu_stop(void *data)
@@ -249,8 +199,7 @@ int cpu_drain_rq(unsigned int cpu)
 	if (available_idle_cpu(cpu))
 		return 0;
 
-	//return stop_one_cpu(cpu, drain_rq_cpu_stop, NULL);
-	return 0;
+	return stop_one_cpu(cpu, drain_rq_cpu_stop, NULL);
 }
 
 int __ref try_drain_rqs(void *data)
@@ -639,13 +588,13 @@ void sched_pause_init(void)
 
 	sched_setscheduler_nocheck(pause_drain_thread, SCHED_FIFO, &param);
 
-	//register_trace_android_rvh_is_cpu_allowed(hook_rvh_is_cpus_allowed, NULL);
-	//register_trace_android_rvh_set_cpus_allowed_by_task(
-	//			hook_rvh_set_cpus_allowed_by_task, NULL);
-	//register_trace_android_rvh_rto_next_cpu(
-	//			hook_rvh_rto_next_cpu, NULL);
-	//register_trace_android_rvh_get_nohz_timer_target(
-	//			hook_rvh_get_nohz_timer_target,	NULL);
+	register_trace_android_rvh_is_cpu_allowed(hook_rvh_is_cpus_allowed, NULL);
+	register_trace_android_rvh_set_cpus_allowed_by_task(
+				hook_rvh_set_cpus_allowed_by_task, NULL);
+	register_trace_android_rvh_rto_next_cpu(
+				hook_rvh_rto_next_cpu, NULL);
+	register_trace_android_rvh_get_nohz_timer_target(
+				hook_rvh_get_nohz_timer_target,	NULL);
 	register_trace_android_rvh_can_migrate_task(hook_rvh_can_migrate_task, NULL);
 	register_trace_android_rvh_find_busiest_queue(hook_rvh_find_busiest_queue, NULL);
 	//register_trace_android_rvh_find_new_ilb(hook_rvh_find_new_ilb, NULL);
