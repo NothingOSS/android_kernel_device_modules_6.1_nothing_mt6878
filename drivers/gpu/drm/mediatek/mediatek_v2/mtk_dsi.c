@@ -4133,7 +4133,7 @@ int mtk_dsi_porch_setting(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 }
 
 /* TODO: refactor to remove duplicate code */
-static void mtk_dsi_enter_idle(struct mtk_dsi *dsi)
+static void mtk_dsi_enter_idle(struct mtk_dsi *dsi, int skip_ulps)
 {
 	mtk_dsi_poll_for_idle(dsi, NULL);
 
@@ -4141,12 +4141,17 @@ static void mtk_dsi_enter_idle(struct mtk_dsi *dsi)
 
 	mtk_dsi_reset_engine(dsi);
 
-	mtk_dsi_enter_ulps(dsi);
+	if (skip_ulps) {
+		mtk_mipi_tx_pre_oe_config(dsi->phy, 1);
+		mtk_mipi_tx_sw_control_en(dsi->phy, 1);
+	} else {
+		mtk_dsi_enter_ulps(dsi);
+	}
 
 	mtk_dsi_poweroff(dsi);
 }
 
-static void mtk_dsi_leave_idle(struct mtk_dsi *dsi)
+static void mtk_dsi_leave_idle(struct mtk_dsi *dsi, int skip_ulps)
 {
 	int ret;
 	struct mtk_panel_ext *ext = mtk_dsi_get_panel_ext(&dsi->ddp_comp);
@@ -4184,7 +4189,12 @@ static void mtk_dsi_leave_idle(struct mtk_dsi *dsi)
 	mtk_dsi_cmdq_size_sel(dsi);
 	mtk_dsi_set_interrupt_enable(dsi);
 
-	mtk_dsi_exit_ulps(dsi);
+	if (skip_ulps) {
+		mtk_mipi_tx_pre_oe_config(dsi->phy, 0);
+		mtk_mipi_tx_sw_control_en(dsi->phy, 0);
+	} else {
+		mtk_dsi_exit_ulps(dsi);
+	}
 
 	/*
 	 * TODO: It's a temp workaround for cmd mode. When set the EXT_TE_EN bit
@@ -6701,9 +6711,9 @@ void mtk_dsi_send_switch_cmd(struct mtk_dsi *dsi,
 	else /* can't find panel ext information,stop */
 		return;
 	if (dsi->slave_dsi)
-		mtk_dsi_enter_idle(dsi->slave_dsi);
+		mtk_dsi_enter_idle(dsi->slave_dsi, 0);
 	if (dsi->slave_dsi)
-		mtk_dsi_leave_idle(dsi->slave_dsi);
+		mtk_dsi_leave_idle(dsi->slave_dsi, 0);
 
 	for (i = 0; i < MAX_DYN_CMD_NUM; i++) {
 		dfps_cmd = &params->dyn_fps.dfps_cmd_table[i];
@@ -7604,7 +7614,7 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 	clk_cnt  = dsi->clk_refcnt;
 	while (dsi->clk_refcnt != 1)
 		mtk_dsi_ddp_unprepare(&dsi->ddp_comp);
-	mtk_dsi_enter_idle(dsi);
+	mtk_dsi_enter_idle(dsi, 1);
 
 	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 2);
 
@@ -7617,7 +7627,7 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 3);
 
 	/* Power on DSI */
-	mtk_dsi_leave_idle(dsi);
+	mtk_dsi_leave_idle(dsi, 1);
 	while (dsi->clk_refcnt != clk_cnt)
 		mtk_dsi_ddp_prepare(&dsi->ddp_comp);
 
@@ -8185,14 +8195,14 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	}
 		break;
 	case CONNECTOR_ENABLE:
-		mtk_dsi_leave_idle(dsi);
+		mtk_dsi_leave_idle(dsi, 0);
 		if (dsi->slave_dsi)
-			mtk_dsi_leave_idle(dsi->slave_dsi);
+			mtk_dsi_leave_idle(dsi->slave_dsi, 0);
 		break;
 	case CONNECTOR_DISABLE:
-		mtk_dsi_enter_idle(dsi);
+		mtk_dsi_enter_idle(dsi, 0);
 		if (dsi->slave_dsi)
-			mtk_dsi_enter_idle(dsi->slave_dsi);
+			mtk_dsi_enter_idle(dsi->slave_dsi, 0);
 		break;
 	case CONNECTOR_RESET:
 		mtk_dsi_reset_engine(dsi);
