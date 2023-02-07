@@ -3,6 +3,7 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 
+#include <linux/delay.h>
 #include <linux/kthread.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -319,6 +320,16 @@ int _slbc_release_buffer_scmi(void *ptr)
 }
 EXPORT_SYMBOL_GPL(_slbc_release_buffer_scmi);
 
+int slbc_sspm_sram_update(void)
+{
+	struct slbc_ipi_data slbc_ipi_d;
+
+	slbc_ipi_d.cmd = IPI_SLBC_SRAM_UPDATE;
+	slbc_ipi_d.arg = 0;
+	return slbc_scmi_set(&slbc_ipi_d, 2);
+}
+EXPORT_SYMBOL_GPL(slbc_sspm_sram_update);
+
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 static void slbc_scmi_handler(u32 r_feature_id, scmi_tinysys_report *report)
 {
@@ -386,9 +397,9 @@ int slbc_scmi_set(void *buffer, int slot)
 		goto error;
 	}
 
-	pr_info("#@# %s(%d) id 0x%x cmd 0x%x arg 0x%x\n",
-			__func__, __LINE__,
-			scmi_slbc_id, slbc_ipi_d->cmd, slbc_ipi_d->arg);
+	/* pr_info("#@# %s(%d) id 0x%x cmd 0x%x arg 0x%x\n", */
+			/* __func__, __LINE__, */
+			/* scmi_slbc_id, slbc_ipi_d->cmd, slbc_ipi_d->arg); */
 
 	slbc_sram_write(SLBC_SCMI_AP, ++scmi_id);
 
@@ -396,6 +407,7 @@ int slbc_scmi_set(void *buffer, int slot)
 			slbc_ipi_d->cmd, slbc_ipi_d->arg, 0, 0, 0);
 
 	if (ret == -ETIMEDOUT) {
+		mdelay(3);
 		if (scmi_id == slbc_sram_read(SLBC_SCMI_SSPM)) {
 			ret = 0;
 			pr_info("slbc scmi timed out!\n");
@@ -432,9 +444,9 @@ int slbc_scmi_get(void *buffer, int slot, void *ptr)
 		goto error;
 	}
 
-	pr_info("#@# %s(%d) id 0x%x cmd 0x%x arg 0x%x\n",
-			__func__, __LINE__,
-			scmi_slbc_id, slbc_ipi_d->cmd, slbc_ipi_d->arg);
+	/* pr_info("#@# %s(%d) id 0x%x cmd 0x%x arg 0x%x\n", */
+			/* __func__, __LINE__, */
+			/* scmi_slbc_id, slbc_ipi_d->cmd, slbc_ipi_d->arg); */
 
 	slbc_sram_write(SLBC_SCMI_AP, ++scmi_id);
 
@@ -442,6 +454,7 @@ int slbc_scmi_get(void *buffer, int slot, void *ptr)
 			slbc_ipi_d->cmd, rvalue);
 
 	if (ret == -ETIMEDOUT) {
+		mdelay(3);
 		if (scmi_id == slbc_sram_read(SLBC_SCMI_SSPM)) {
 			ret = 0;
 			rvalue->r1 = slbc_sram_read(SLBC_SCMI_RET1);

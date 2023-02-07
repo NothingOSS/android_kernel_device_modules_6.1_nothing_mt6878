@@ -33,6 +33,7 @@ enum {
 	IPI_SLB_DISABLE,
 	IPI_SLC_DISABLE,
 	IPI_SLBC_BUFFER_STATUS,
+	IPI_SLBC_SRAM_UPDATE,
 	NR_IPI_SLBC,
 };
 
@@ -73,6 +74,7 @@ extern int _slbc_request_buffer_scmi(void *ptr);
 extern int _slbc_release_buffer_scmi(void *ptr);
 extern void slbc_register_ipi_ops(struct slbc_ipi_ops *ops);
 extern void slbc_unregister_ipi_ops(struct slbc_ipi_ops *ops);
+extern int slbc_sspm_sram_update(void);
 #else
 __weak int slbc_suspend_resume_notify(int) {}
 __weak int slbc_scmi_init(void) { return 0; }
@@ -92,6 +94,7 @@ __weak int _slbc_request_buffer_scmi(void *ptr) {}
 __weak int _slbc_release_buffer_scmi(void *ptr) {}
 __weak void slbc_register_ipi_ops(struct slbc_ipi_ops *ops) {}
 __weak void slbc_unregister_ipi_ops(struct slbc_ipi_ops *ops) {}
+__weak int slbc_sspm_sram_update(void) {}
 #endif /* CONFIG_MTK_SLBC_IPI */
 
 #endif /* _SLBC_IPI_H_ */

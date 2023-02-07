@@ -48,6 +48,10 @@ ifneq ($(wildcard $(srctree)/$(src)/slbc_mt6886.c),)
 obj-${CONFIG_MTK_SLBC_MT6886} += slbc_mt6886.o
 endif
 
+ifneq ($(wildcard $(srctree)/$(src)/slbc_mt6897.c),)
+obj-${CONFIG_MTK_SLBC_MT6897} += slbc_mt6897.o
+endif
+
 obj-${CONFIG_MTK_SLBC_IPI} += slbc_ipi.o
 obj-${CONFIG_MTK_SLBC_MMSRAM} += mmsram.o
 
