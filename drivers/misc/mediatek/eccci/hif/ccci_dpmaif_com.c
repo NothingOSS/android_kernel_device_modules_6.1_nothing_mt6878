@@ -1087,9 +1087,10 @@ static int dpmaif_rxq_start_read_from_pit(struct dpmaif_rx_queue *rxq,
 	atomic_set(&rxq->pit_rd_idx, pit_rd_idx);
 #ifdef DPMAIF_REDUCE_RX_FLUSH
 	atomic_set(&rxq->rxq_need_flush, 1);
-#endif
-
+	if (recv_skb_cnt || ccci_dl_queue_len(rxq->index))
+#else
 	if (recv_skb_cnt)
+#endif
 		NOTIFY_RX_PUSH(rxq);
 
 	/* update to HW */
@@ -1223,20 +1224,15 @@ static int dpmaif_rxq_push_thread(void *arg)
 	int ret, hif_id = dpmaif_ctl->hif_id, qno = rxq->index;
 	struct debug_rx_push_skb_hdr hdr = {0};
 	u16 pkg_count = 0;
-#ifdef DPMAIF_REDUCE_RX_FLUSH
-	int need_rx_flush = 0;
-#endif
 
 	while (1) {
 		if (ccci_dl_queue_len(qno) == 0) {
 #ifdef DPMAIF_REDUCE_RX_FLUSH
-			need_rx_flush = atomic_read(&rxq->rxq_need_flush);
-			if (need_rx_flush || (pkg_count > g_rx_flush_pkt_cnt)) {
+			if (atomic_read(&rxq->rxq_need_flush) ||
+			   (pkg_count > g_rx_flush_pkt_cnt)) {
 				pkg_count = 0;
 				ccci_port_queue_status_notify(hif_id, qno, IN, RX_FLUSH);
 			}
-			if (!need_rx_flush)
-				continue;
 #else
 			pkg_count = 0;
 			ccci_port_queue_status_notify(hif_id, qno, IN, RX_FLUSH);
@@ -2571,7 +2567,7 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 			ccmni_set_tcp_is_need_gro(0);
 
 #ifdef DPMAIF_REDUCE_RX_FLUSH
-		g_rx_flush_pkt_cnt = 60;
+		g_rx_flush_pkt_cnt = 100;
 #endif
 	} else if (total_dl_speed > 2000000000LL) {  // dl tput > 2G
 		g_alloc_skb_threshold = MAX_ALLOC_BAT_CNT;
@@ -2583,7 +2579,7 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 			ccmni_set_tcp_is_need_gro(0);
 
 #ifdef DPMAIF_REDUCE_RX_FLUSH
-		g_rx_flush_pkt_cnt = 30;
+		g_rx_flush_pkt_cnt = 60;
 #endif
 	} else if (total_dl_speed > 1000000000LL) {  // dl tput > 1G
 		g_alloc_skb_threshold = MAX_ALLOC_BAT_CNT;
@@ -2595,7 +2591,7 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 			ccmni_set_tcp_is_need_gro(0);
 
 #ifdef DPMAIF_REDUCE_RX_FLUSH
-		g_rx_flush_pkt_cnt = 10;
+		g_rx_flush_pkt_cnt = 30;
 #endif
 	} else if (total_dl_speed > 300000000LL) {  // dl tput > 300M
 		g_alloc_skb_threshold = MAX_ALLOC_BAT_CNT;
@@ -2607,7 +2603,7 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 			ccmni_set_tcp_is_need_gro(1);
 
 #ifdef DPMAIF_REDUCE_RX_FLUSH
-		g_rx_flush_pkt_cnt = 5;
+		g_rx_flush_pkt_cnt = 20;
 #endif
 	} else if (total_dl_speed > 150000000LL) {  // dl tput > 150M
 		g_alloc_skb_threshold = MAX_ALLOC_BAT_CNT;
@@ -2619,7 +2615,7 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 			ccmni_set_tcp_is_need_gro(1);
 
 #ifdef DPMAIF_REDUCE_RX_FLUSH
-		g_rx_flush_pkt_cnt = 5;
+		g_rx_flush_pkt_cnt = 0;
 #endif
 	} else {  // dl tput < 150M
 		g_alloc_skb_threshold = MIN_ALLOC_SKB_CNT;

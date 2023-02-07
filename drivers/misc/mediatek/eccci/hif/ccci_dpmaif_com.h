@@ -33,7 +33,7 @@
 
 #define DPMAIF_TRAFFIC_MONITOR_INTERVAL 10
 
-//#define DPMAIF_REDUCE_RX_FLUSH
+#define DPMAIF_REDUCE_RX_FLUSH
 
 enum error_num {
 	LOW_MEMORY_ERR = -15,
