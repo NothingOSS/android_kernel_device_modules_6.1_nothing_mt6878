@@ -22,7 +22,6 @@
 bool has_reserved_memory;
 bool skip_logger;
 #endif
-int mbox_total_number;
 
 #if IS_ENABLED(CONFIG_MTK_CPUQOS_V3)
 #define	CPUQOS_IPI	0
@@ -38,55 +37,84 @@ struct platform_device *mcupm_pdev;
 spinlock_t mcupm_mbox_lock[MCUPM_MBOX_TOTAL];
 
 int mcupm_plt_ackdata;
-
 static int mtk_ipi_init(struct platform_device *pdev)
 {
-	int i = 0;
 	int ret;
+	u32 val, i;
 	struct device *dev = &pdev->dev;
-	void __iomem *base;
-	struct resource *res;
 	char name[32];
+	bool legacy_mbox_dt;
+	unsigned int mbox_total_number;
 
-	mcupm_mbox_table[i].mbdev = &mcupm_mboxdev;
-	mcupm_mbox_table[i].mbdev->count = mbox_total_number;
-	mcupm_mbox_table[i].mbdev->recv_count = mbox_total_number;
-	mcupm_mbox_table[i].mbdev->send_count = mbox_total_number;
-	ret = mtk_mbox_probe(pdev, mcupm_mbox_table[i].mbdev, i);
+	struct mtk_mbox_device *mbox_dev = &mcupm_mboxdev;
+
+	if (!of_property_read_u32(dev->of_node, "mbox-extend", &val)) {
+		mbox_total_number = val;
+		legacy_mbox_dt = false;
+	} else {
+		mbox_total_number = 8;
+		legacy_mbox_dt = true;
+	}
+
+	if (mbox_total_number > MCUPM_MBOX_TOTAL) {
+		pr_info("[MCUPM] mbox number out-range %d\n", mbox_total_number);
+		return -EOVERFLOW;
+	}
+
+	mbox_dev->count = mbox_total_number;
+	mbox_dev->recv_count = mbox_total_number;
+	mbox_dev->send_count = mbox_total_number;
+	ret = mtk_mbox_probe(pdev, mbox_dev, 0);
 	if (ret) {
-		pr_debug("[MCUPM] mbox(0) probe fail on mbox-0, ret %d\n", ret);
-		return ret;
+		pr_info("[MCUPM] mbox(0) probe fail on mbox-0, ret %d\n", ret);
+		return -EINVAL;
 	}
 
 	for (i = 1; i < mbox_total_number; i++) {
-		mcupm_mbox_table[i].mbdev = &mcupm_mboxdev;
-		snprintf(name, sizeof(name), "mbox%d_base", i);
-		res = platform_get_resource_byname(pdev,
+		struct resource *res;
+		resource_size_t offset, res_size;
+		void __iomem *base = NULL;
+		struct mtk_mbox_info *minfo_table = mbox_dev->info_table;
+
+		if (legacy_mbox_dt == false) {
+			res = platform_get_resource_byname(pdev,
+					IORESOURCE_MEM, "mbox0_base");
+			res_size = resource_size(res);
+			offset = res->start + (i * res_size);
+			base = devm_ioremap(dev, offset, res_size);
+		} else { //leagcy mbox
+			snprintf(name, sizeof(name), "mbox%d_base", i);
+			res = platform_get_resource_byname(pdev,
 					IORESOURCE_MEM, name);
-		base = devm_ioremap_resource(dev, res);
+			base = devm_ioremap_resource(dev, res);
+		}
 		if (IS_ERR((void const *) base)) {
 			ret = PTR_ERR(base);
-			pr_debug("mbox-%d can't remap base\n", i);
-			return ret;
+			pr_info("mbox-%d can't remap(%llu) size=%llu ret=%d\n", i,
+				offset,
+				res_size,
+				ret);
+			return -EINVAL;
 		}
-		ret = mtk_smem_init(pdev, mcupm_mbox_table[i].mbdev, i, base,
-		mcupm_mbox_table[0].mbdev->info_table[0].set_irq_reg,
-		mcupm_mbox_table[0].mbdev->info_table[0].clr_irq_reg,
-		mcupm_mbox_table[0].mbdev->info_table[0].send_status_reg,
-		mcupm_mbox_table[0].mbdev->info_table[0].recv_status_reg);
+		ret = mtk_smem_init(pdev, mbox_dev, i,
+							base,
+							minfo_table->set_irq_reg,
+							minfo_table->clr_irq_reg,
+							minfo_table->send_status_reg,
+							minfo_table->recv_status_reg);
 		if (ret) {
-			pr_debug("[MCUPM] mbox probe fail on mbox-%d, ret %d\n",
+			pr_info("[MCUPM] mbox smem init fail on mbox-%d, ret %d\n",
 				i, ret);
-			return ret;
+			return -EINVAL;
 		}
 	}
 
 	pr_debug("[MCUPM] ipi register\n");
-	ret = mtk_ipi_device_register(&mcupm_ipidev, pdev, &mcupm_mboxdev,
+	ret = mtk_ipi_device_register(&mcupm_ipidev, pdev, mbox_dev,
 				      mbox_total_number);
 	if (ret) {
-		pr_debug("[MCUPM] ipi_dev_register fail, ret %d\n", ret);
-		return ret;
+		pr_info("[MCUPM] ipi_dev_register fail, ret %d\n", ret);
+		return -EINVAL;
 	}
 
     /* Initialize mcupm ipi driver. Move to struct mtk_mcupm */
@@ -98,9 +126,14 @@ static int mtk_ipi_init(struct platform_device *pdev)
 			       (void *) &mcupm_plt_ackdata);
 #endif
 	if (ret) {
-		pr_debug("[MCUPM] ipi_register fail, ret %d\n", ret);
-		return ret;
+		pr_info("[MCUPM] ipi_register fail on ipi %d, ret %d\n", CH_S_PLATFORM, ret);
+		return -EINVAL;
 	}
+
+	/* Initialize spin_lock for MCUPM HELPER for internal use. */
+	for (i = 0; i < mbox_total_number; i++)
+		spin_lock_init(&mcupm_mbox_lock[i]);
+
 	return 0;
 }
 /* MCUPM RESERVED MEM */
@@ -490,7 +523,7 @@ int mcupm_plat_init(void)
 
 static int mcupm_device_probe(struct platform_device *pdev)
 {
-	int i, ret;
+	int ret;
 	struct device *dev = &pdev->dev;
 
 	mcupm_pdev = pdev;
@@ -501,10 +534,6 @@ static int mcupm_device_probe(struct platform_device *pdev)
 	else
 		skip_logger = false;
 
-	if (of_property_read_bool(dev->of_node, "mbox-extend-on"))
-		mbox_total_number = 16;
-	else
-		mbox_total_number = 8;
 #ifdef CONFIG_OF_RESERVED_MEM
 #if defined(MODULE)
 	if (mcupm_map_memory_region()) {
@@ -521,13 +550,9 @@ static int mcupm_device_probe(struct platform_device *pdev)
 
 	ret = mtk_ipi_init(pdev);
 	if (ret) {
-		pr_debug("[MCUPM] ipi interface init fail, ret %d\n", ret);
+		pr_info("[MCUPM] ipi interface init fail, ret %d\n", ret);
 		return ret;
 	}
-
-	/* Initialize spin_lock for MCUPM HELPER for internal use. */
-	for (i = 0; i < mbox_total_number; i++)
-		spin_lock_init(&mcupm_mbox_lock[i]);
 
 	pr_info("MCUPM is ready to service IPI\n");
 
