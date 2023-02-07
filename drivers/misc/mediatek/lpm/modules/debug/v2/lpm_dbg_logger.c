@@ -368,11 +368,10 @@ EXPORT_SYMBOL(lpm_dbg_spm_rsc_req_check);
 static void lpm_check_cg_pll(void)
 {
 	int i;
-	u32 block;
+	u64 block;
 	u32 blkcg;
 
-	block = (u32)
-		lpm_smc_spm_dbg(MT_SPM_DBG_SMC_UID_RC_DUMP_PLL,
+	block = lpm_smc_spm_dbg(MT_SPM_DBG_SMC_UID_RC_DUMP_PLL,
 				MT_LPM_SMC_ACT_GET, 0, 0);
 	if (block != 0) {
 		for (i = 0 ; i < spm_cond.pll_cnt ; i++) {

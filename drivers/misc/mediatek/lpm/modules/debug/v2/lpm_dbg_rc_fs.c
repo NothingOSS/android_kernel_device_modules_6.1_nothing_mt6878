@@ -21,6 +21,10 @@
 #include <mtk_lp_sysfs.h>
 #include <lpm_timer.h>
 
+/* these definitions must be the same as TF-A common code */
+#define SPM_COND_BLOCKED_CG_IDX		(0)
+#define SPM_COND_BLOCKED_PLL_IDX	(16)
+
 #define SPM_RC_UPDATE_COND_ID_MASK	0xffff
 #define SPM_RC_UPDATE_COND_RC_ID_MASK	0xffff
 #define SPM_RC_UPDATE_COND_RC_ID_SHIFT	(16)
@@ -38,8 +42,7 @@
 				 fmt, ##args); })
 
 #define LPM_DBG_SMC(_id, _act, _rc, _param) ({\
-	(unsigned long)lpm_smc_spm_dbg(_id, _act, _rc, _param); })
-
+	lpm_smc_spm_dbg(_id, _act, _rc, _param); })
 
 enum LPM_RC_RATIO_TYPE {
 	LPM_RC_RATIO_UNKNOWN,
@@ -125,6 +128,25 @@ struct LPM_RC_HANDLE {
 	_n.rc_id = _id;\
 	LPM_CONSTRAINT_GENERIC_OP(_n.op, &_n); })
 
+/* this string array must be the same as TF-A common code */
+static char *pll_str[] = {
+	"UNIVPLL",
+	"UNIVPLL2",
+	"MFGPLL",
+	"MFGSCPLL",
+	"SENSONPLL",
+	"MSDCPLL",
+	"UFSPLL",
+	"TVDPLL",
+	"MMPLL",
+	"MMPLL2",
+	"MAINPLL2",
+	"IMGPLL",
+	"USBPLL",
+	"ADSPPLL",
+	"APLL1",
+	"APLL2",
+};
 
 struct mtk_lp_sysfs_handle lpm_entry_rc;
 struct LPM_RC_RATIO_HANDLES rc_Ratio;
@@ -199,19 +221,19 @@ static ssize_t lpm_rc_block_info(int rc_id,
 					      char *ToUserBuf,
 					      size_t sz)
 {
-	uint32_t block, b;
+	uint64_t block;
+	uint32_t b;
 	int i;
 	ssize_t len = 0;
 
-	block = (uint32_t)
-		LPM_DBG_SMC(MT_SPM_DBG_SMC_UID_COND_BLOCK,
+	block = LPM_DBG_SMC(MT_SPM_DBG_SMC_UID_COND_BLOCK,
 				MT_LPM_SMC_ACT_GET, rc_id, 0);
 	b = (uint32_t)
 		LPM_DBG_SMC(MT_SPM_DBG_SMC_UID_COND_CHECK,
 				MT_LPM_SMC_ACT_GET, rc_id, 0);
 
 	lpm_rc_log(ToUserBuf, sz, len,
-			"blocked=%u, blocked_cond=0x%08x\n",
+			"blocked=%u, blocked_cond=0x%016llx\n",
 			b, block);
 
 	if (spm_cond.shift_config != 1) {
@@ -535,8 +557,8 @@ int spm_cond_init(void)
 	u32 rc_id = 0, cond_info = 0, ret = 0;
 	struct property *prop;
 
-	const char *cg_name = NULL, *pll_name = NULL;
-	int cg_idx = 0, pll_idx = 0, cg_cnt = 0, pll_cnt = 0;
+	const char *cg_name = NULL;
+	int cg_idx = 0, cg_cnt = 0;
 
 	if (spm_cond.init)
 		return 0;
@@ -635,43 +657,15 @@ int spm_cond_init(void)
 				}
 			}
 
-			pll_cnt = of_property_count_strings(np, "pll-name");
-			if (pll_cnt >= 1) {
-				spm_cond.pll_cnt = pll_cnt;
-				spm_cond.pll_str =
-				kcalloc(1, sizeof(char *)*(spm_cond.pll_cnt),
-						GFP_KERNEL);
+			spm_cond.pll_cnt = sizeof(pll_str)/sizeof(char *);
+			spm_cond.pll_str = pll_str;
 
-				if (!spm_cond.pll_str)
-					return -ENOMEM;
-
-				of_property_for_each_string(np, "pll-name",
-					prop, pll_name) {
-					spm_cond.pll_str[pll_idx] =
-					kcalloc(1,
-						sizeof(char) *
-						(strlen(pll_name) + 1),
-						GFP_KERNEL);
-
-					if (!spm_cond.pll_str[pll_idx]) {
-						kfree(spm_cond.pll_str);
-						return -ENOMEM;
-					}
-
-					strncat(spm_cond.pll_str[pll_idx++],
-						pll_name, strlen(pll_name));
-				}
-			}
 			of_node_put(np);
 		}
 
-		ret = of_property_read_u32(devnp, "cg-shift",
-					&spm_cond.cg_shift);
-		if (ret == 0)
-			ret = of_property_read_u32(devnp, "pll-shift",
-					&spm_cond.pll_shift);
-		if (ret == 0)
-			spm_cond.shift_config = 1;
+		spm_cond.cg_shift = SPM_COND_BLOCKED_CG_IDX;
+		spm_cond.pll_shift = SPM_COND_BLOCKED_PLL_IDX;
+		spm_cond.shift_config = 1;
 
 		of_node_put(devnp);
 	}
