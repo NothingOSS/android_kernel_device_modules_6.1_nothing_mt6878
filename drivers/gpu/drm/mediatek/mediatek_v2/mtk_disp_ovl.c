@@ -2269,7 +2269,7 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		disp_reg_ovl_pitch = DISP_REG_OVL_EL_PITCH(id);
 
 		/* ext layer is the same as attached phy layer */
-		if (!IS_ERR(comp->qos_req_other)) {
+		if (!IS_ERR_OR_NULL(comp->qos_req_other)) {
 			int val = (lye_idx % 2);
 
 			cmdq_pkt_write(handle, comp->cmdq_base,
@@ -2297,7 +2297,7 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		 * layer0 --> larb0, layer1 --> larb1
 		 * layer2 --> larb0, layer3 --> larb1
 		 */
-		if (!IS_ERR(comp->qos_req_other)) {
+		if (!IS_ERR_OR_NULL(comp->qos_req_other)) {
 			int val = (lye_idx % 2);
 
 			cmdq_pkt_write(handle, comp->cmdq_base,

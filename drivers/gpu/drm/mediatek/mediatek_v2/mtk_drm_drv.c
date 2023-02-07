@@ -5360,7 +5360,7 @@ void mtk_drm_disp_test_init(struct drm_device *dev)
 		return;
 	}
 	DDPINFO("%s[%d] test_va=0x%llx, test_pa=0x%llx\n",
-		__func__, __LINE__, test_va, test_pa);
+		__func__, __LINE__, (unsigned long long)test_va, (unsigned long long)test_pa);
 
 	for (i = 0; i < height; i++)
 		for (j = 0; j < width; j++) {

@@ -901,6 +901,8 @@ static unsigned int mtk_dsi_default_rate(struct mtk_dsi *dsi)
 		data_rate /= 1000000;
 	}
 
+	DDPDBG("%s, data rate=%d\n", __func__, data_rate);
+
 	return data_rate;
 }
 static int mtk_dsi_is_LFR_Enable(struct mtk_dsi *dsi)
@@ -1042,7 +1044,10 @@ static int mtk_dsi_set_data_rate(struct mtk_dsi *dsi)
 	dsi->data_rate = data_rate;
 
 	DDPDBG("set mipitx's data rate: %lu Hz\n", mipi_tx_rate);
-	ret = clk_set_rate(dsi->hs_clk, mipi_tx_rate);
+
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
+		ret = clk_set_rate(dsi->hs_clk, mipi_tx_rate);
+
 	return ret;
 }
 
@@ -1087,8 +1092,11 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 	struct mtk_mipi_tx *mipi_tx = phy_get_drvdata(dsi->phy);
 
 	DDPDBG("%s+\n", __func__);
-	if (++dsi->clk_refcnt != 1)
-		return 0;
+
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
+		if (++dsi->clk_refcnt != 1)
+			return 0;
+	}
 
 	if (dsi->encoder.dev)
 		priv = dsi->encoder.dev->dev_private;
@@ -1097,13 +1105,13 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 	else
 		return -1;
 
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
-		ret = mtk_dsi_set_data_rate(dsi);
-		if (ret < 0) {
-			dev_err(dev, "Failed to set data rate: %d\n", ret);
-			goto err_refcount;
-		}
+	ret = mtk_dsi_set_data_rate(dsi);
+	if (ret < 0) {
+		dev_err(dev, "Failed to set data rate: %d\n", ret);
+		goto err_refcount;
+	}
 
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		if (dsi->ext) {
 			if (dsi->ext->params->is_cphy)
 				if (priv->data->mmsys_id == MMSYS_MT6983 ||
@@ -2218,17 +2226,18 @@ static void mtk_dsi_poweroff(struct mtk_dsi *dsi)
 {
 	DDPDBG("%s +\n", __func__);
 #ifndef CONFIG_FPGA_EARLY_PORTING
-	if (dsi->clk_refcnt == 0) {
-		DDPAEE("%s:%d, invalid cnt:%d\n",
-			__func__, __LINE__,
-			dsi->clk_refcnt);
-		return;
-	}
-
-	if (--dsi->clk_refcnt != 0)
-		return;
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
+		if (dsi->clk_refcnt == 0) {
+			DDPAEE("%s:%d, invalid cnt:%d\n",
+				__func__, __LINE__,
+				dsi->clk_refcnt);
+			return;
+		}
+
+		if (--dsi->clk_refcnt != 0)
+			return;
+
 		clk_disable_unprepare(dsi->engine_clk);
 		clk_disable_unprepare(dsi->digital_clk);
 

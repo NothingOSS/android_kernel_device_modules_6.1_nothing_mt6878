@@ -315,15 +315,12 @@ int drm_show_dal(struct drm_crtc *crtc, bool enable)
 	return 0;
 #else
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_plane_state *plane_state;
 	struct mtk_ddp_comp *ovl_comp = _handle_phy_top_plane(mtk_crtc);
 	struct cmdq_pkt *cmdq_handle;
 	int layer_id;
 	int ret = 0;
 
-	if (priv->data->mmsys_id == MMSYS_MT6897)
-		return 0;
 	if (ovl_comp == NULL) {
 		DDPPR_ERR("%s: can't find ovl comp\n", __func__);
 		return 0;
