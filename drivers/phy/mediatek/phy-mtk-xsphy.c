@@ -212,6 +212,7 @@
 
 #define SSPXTP_PHYA_LN_08	((SSPXTP_SIFSLV_PHYA_LN) + 0x08)
 #define RG_XTP_LN0_TX_RXDET_HZ		BIT(13)
+#define RG_XTP_LN0_RX_CDR_RESERVE		GENMASK(23, 16)
 
 #define SSPXTP_PHYA_LN_14	((SSPXTP_SIFSLV_PHYA_LN) + 0x014)
 #define RG_XTP_LN0_RX_IMPSEL		GENMASK(4, 0)
@@ -1192,6 +1193,7 @@ static void u3_phy_instance_power_on(struct mtk_xsphy *xsphy,
 				     struct xsphy_instance *inst)
 {
 	void __iomem *pbase = inst->port_base;
+	struct device_node *np = xsphy->dev->of_node;
 
 	/* clear hz mode */
 	mtk_phy_clear_bits(pbase + SSPXTP_PHYA_LN_08, RG_XTP_LN0_TX_RXDET_HZ);
@@ -1215,6 +1217,12 @@ static void u3_phy_instance_power_on(struct mtk_xsphy *xsphy,
 
 	/* rg_sspxtp0_datf_frc_ln_rx_aeq_att, 1'b1 */
 	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_04, RG_XTP0_DAIF_FRC_LN_RX_AEQ_ATT);
+
+	/* Ponsot */
+	if (of_device_is_compatible(np, "mediatek,mt6897-xsphy")) {
+		dev_info(xsphy->dev, "%s set RG_XTP_LN0_RX_CDR_RESERVE\n", __func__);
+		mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_08, RG_XTP_LN0_RX_CDR_RESERVE, 0x8);
+	}
 
 	dev_info(xsphy->dev, "%s(%d)\n", __func__, inst->index);
 }
