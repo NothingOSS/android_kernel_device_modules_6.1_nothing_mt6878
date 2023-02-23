@@ -2164,6 +2164,17 @@ static void mtk_battery_notify_VBatTemp_check(struct mtk_charger *info)
 #endif
 }
 
+static void mtk_battery_notify_VChargerDPDM_check(struct mtk_charger *info)
+{
+	if (!info->dpdmov_stat)
+		info->notify_code &= ~CHG_DPDM_OV_STATUS;
+	else {
+		info->notify_code |= CHG_DPDM_OV_STATUS;
+		chr_err("[BATTERY] charger_DPDM_vol > 3850 mV\n");
+	}
+		mtk_chgstat_notify(info);
+}
+
 static void mtk_battery_notify_UI_test(struct mtk_charger *info)
 {
 	switch (info->notify_test_mode) {
@@ -2207,6 +2218,7 @@ static void mtk_battery_notify_check(struct mtk_charger *info)
 	if (info->notify_test_mode == 0x0000) {
 		mtk_battery_notify_VCharger_check(info);
 		mtk_battery_notify_VBatTemp_check(info);
+		mtk_battery_notify_VChargerDPDM_check(info);
 	} else {
 		mtk_battery_notify_UI_test(info);
 	}
@@ -2392,6 +2404,8 @@ static void charger_check_status(struct mtk_charger *info)
 		charging = false;
 	if (info->vbusov_stat)
 		charging = false;
+	if (info->dpdmov_stat)
+		charging = false;
 	if (info->sc.disable_charger == true)
 		charging = false;
 stop_charging:
@@ -2403,11 +2417,11 @@ stop_charging:
 		info->stop_6pin_re_en = false;
 	}
 
-	chr_err("tmp:%d (jeita:%d sm:%d cv:%d en:%d) (sm:%d) en:%d c:%d s:%d ov:%d sc:%d %d %d saf_cmd:%d bat_mon:%d %d\n",
+	chr_err("tmp:%d (jeita:%d sm:%d cv:%d en:%d) (sm:%d) en:%d c:%d s:%d ov:%d %d sc:%d %d %d saf_cmd:%d bat_mon:%d %d\n",
 		temperature, info->enable_sw_jeita, info->sw_jeita.sm,
 		info->sw_jeita.cv, info->sw_jeita.charging, thermal->sm,
 		charging, info->cmd_discharging, info->safety_timeout,
-		info->vbusov_stat, info->sc.disable_charger,
+		info->vbusov_stat, info->dpdmov_stat, info->sc.disable_charger,
 		info->can_charging, charging, info->safety_timer_cmd,
 		info->enable_vbat_mon, info->batpro_done);
 
@@ -2644,6 +2658,7 @@ static int mtk_charger_plug_out(struct mtk_charger *info)
 	info->chr_type = POWER_SUPPLY_TYPE_UNKNOWN;
 	info->charger_thread_polling = false;
 	info->pd_reset = false;
+	info->dpdmov_stat = false;
 
 	pdata1->disable_charging_count = 0;
 	pdata1->input_current_limit_by_aicl = -1;
