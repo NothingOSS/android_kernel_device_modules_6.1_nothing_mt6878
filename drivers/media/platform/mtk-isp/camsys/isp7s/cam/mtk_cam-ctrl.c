@@ -910,6 +910,8 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 	/* should wait stream-on/seamless switch finished before stopping */
 	mtk_cam_wq_ctrl_wait_finish(&cam_ctrl->highpri_wq_ctrl);
 
+	mtk_cam_ctx_engine_off(ctx);
+
 	/* disable irq first */
 	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
 		if (ctx->hw_raw[i]) {

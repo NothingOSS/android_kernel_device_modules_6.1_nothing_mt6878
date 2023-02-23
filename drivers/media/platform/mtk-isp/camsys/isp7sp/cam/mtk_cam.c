@@ -2041,14 +2041,26 @@ int mtk_cam_ctx_stream_on(struct mtk_cam_ctx *ctx)
 
 int mtk_cam_ctx_stream_off(struct mtk_cam_ctx *ctx)
 {
+	/* if already stream off */
+	if (!atomic_cmpxchg(&ctx->streaming, 1, 0))
+		return 0;
+
+	mtk_cam_ctrl_stop(&ctx->cam_ctrl);
+
+	ctx_stream_on_pipe_subdev(ctx, 0);
+
+	/* reset dvfs */
+	mtk_cam_dvfs_update(&ctx->cam->dvfs, ctx->stream_id, 0);
+
+	return 0;
+}
+
+void mtk_cam_ctx_engine_off(struct mtk_cam_ctx *ctx)
+{
 	struct mtk_raw_device *raw_dev;
 	struct mtk_camsv_device *sv_dev;
 	struct mtk_mraw_device *mraw_dev;
 	int i;
-
-	/* if already stream off */
-	if (!atomic_cmpxchg(&ctx->streaming, 1, 0))
-		return 0;
 
 	dev_info(ctx->cam->dev, "%s: ctx-%d pipe 0x%x engine 0x%x\n",
 		 __func__, ctx->stream_id,
@@ -2072,15 +2084,6 @@ int mtk_cam_ctx_stream_off(struct mtk_cam_ctx *ctx)
 			mtk_cam_mraw_dev_stream_on(mraw_dev, false);
 		}
 	}
-
-	mtk_cam_ctrl_stop(&ctx->cam_ctrl);
-
-	ctx_stream_on_pipe_subdev(ctx, 0);
-
-	/* reset dvfs */
-	mtk_cam_dvfs_update(&ctx->cam->dvfs, ctx->stream_id, 0);
-
-	return 0;
 }
 
 int mtk_cam_ctx_send_raw_event(struct mtk_cam_ctx *ctx,
