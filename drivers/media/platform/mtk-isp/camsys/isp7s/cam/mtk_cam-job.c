@@ -3001,15 +3001,12 @@ static int update_normal_scen_to_config(struct mtk_cam_scen_normal *n,
 		break;
 	}
 
-	config->frame_order = 0;
-	config->vsync_order = 0;
 	return 0;
 }
 
 static int update_mstream_scen_to_config(struct mtk_cam_scen_mstream *m,
 					 struct mtkcam_ipi_config_param *config)
 {
-
 	switch (m->type) {
 	case MTK_CAM_MSTREAM_1_EXPOSURE:
 		config->exp_order = 0;
@@ -3026,8 +3023,45 @@ static int update_mstream_scen_to_config(struct mtk_cam_scen_mstream *m,
 		break;
 	}
 
-	config->frame_order = 0;
-	config->vsync_order = 0;
+	return 0;
+}
+
+static int update_frame_order_to_config(struct mtk_cam_scen *scen,
+				       struct mtkcam_ipi_config_param *config)
+{
+	switch (scen->scen.normal.frame_order) {
+	case MTK_CAM_FRAME_BAYER_W:
+		config->frame_order = MTKCAM_IPI_ORDER_BAYER_FIRST;
+		break;
+	case MTK_CAM_FRAME_W_BAYER:
+	default:
+		config->frame_order = MTKCAM_IPI_ORDER_W_FIRST;
+		break;
+	}
+
+	if (CAM_DEBUG_ENABLED(IPI_BUF))
+		pr_info("%s: scen id %d frame order: %d\n",
+			__func__, scen->id,
+			config->frame_order);
+
+	return 0;
+}
+
+// TODO: should get vsync order from user param rather
+// than from seninf subdev?
+static int update_vsync_order_to_config(struct mtk_cam_ctx *ctx,
+						struct mtk_cam_scen *scen,
+						struct mtkcam_ipi_config_param *config)
+{
+	config->vsync_order = (ctx->seninf) ?
+		mtk_cam_seninf_get_vsync_order(ctx->seninf) :
+		MTKCAM_IPI_ORDER_BAYER_FIRST;
+
+	if (CAM_DEBUG_ENABLED(IPI_BUF))
+		pr_info("%s: scen id %d vsync order: %d\n",
+			__func__, scen->id,
+			config->vsync_order);
+
 	return 0;
 }
 
@@ -3042,8 +3076,6 @@ static int update_scen_order_to_config(struct mtk_cam_scen *scen,
 		return update_mstream_scen_to_config(&scen->scen.mstream, config);
 	default:
 		config->exp_order = 0;
-		config->frame_order = 0;
-		config->vsync_order = 0;
 	}
 
 	if (CAM_DEBUG_ENABLED(IPI_BUF))
@@ -3086,6 +3118,13 @@ static int mtk_cam_job_fill_ipi_config(struct mtk_cam_job *job,
 		config->sw_feature = job->sw_feature;
 
 		update_scen_order_to_config(&job->job_scen, config);
+		update_frame_order_to_config(&job->job_scen, config);
+		update_vsync_order_to_config(ctx, &job->job_scen, config);
+
+		if (job->job_scen.scen.normal.w_chn_supported) {
+			config->w_cac_table.iova = ctx->w_caci_buf.daddr;
+			config->w_cac_table.size = ctx->w_caci_buf.size;
+		}
 
 		raw_set_ipi_input_param(input, sink,
 			ctrl->resource.tgo_pxl_mode,

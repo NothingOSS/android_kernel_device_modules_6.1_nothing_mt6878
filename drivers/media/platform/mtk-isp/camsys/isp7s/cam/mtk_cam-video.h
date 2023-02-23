@@ -207,6 +207,12 @@ int mtk_cam_vidioc_s_selection(struct file *file, void *fh,
 int mtk_cam_vidioc_g_meta_fmt(struct file *file, void *fh,
 			      struct v4l2_format *f);
 
+int mtk_cam_vidioc_s_meta_fmt(struct file *file, void *fh,
+			      struct v4l2_format *f);
+
+int mtk_cam_vidioc_try_meta_fmt(struct file *file, void *fh,
+			      struct v4l2_format *f);
+
 /* Utility functions to convert format enum */
 int mtk_cam_get_fmt_size_factor(unsigned int ipi_fmt);
 

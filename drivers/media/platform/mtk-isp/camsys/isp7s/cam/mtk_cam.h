@@ -110,6 +110,8 @@ struct mtk_cam_ctx {
 	struct workqueue_struct *composer_wq;
 	struct workqueue_struct *frame_done_wq;
 
+	struct mtk_cam_device_buf w_caci_buf;
+
 	struct mtk_cam_device_buf cq_buffer;
 	struct mtk_cam_device_buf ipi_buffer;
 

@@ -1493,6 +1493,45 @@ static void _destroy_pool(struct mtk_cam_device_buf *buf,
 	mtk_cam_device_buf_uninit(buf);
 }
 
+#define MTK_CAM_CACI_TABLE_SIZE (50000)
+static int mtk_cam_ctx_alloc_rgbw_caci_buf(struct mtk_cam_ctx *ctx)
+{
+	int ret = 0;
+	struct device *dev_to_attach;
+	struct mtk_raw_pipeline *raw_pipe =
+		&ctx->cam->pipelines.raw[ctx->raw_subdev_idx];
+	bool is_rgbw =
+		raw_pipe->ctrl_data.resource.user_data.raw_res.scen.scen.normal.w_chn_supported;
+
+	if (is_rgbw) {
+		struct mtk_cam_device_buf *buf;
+		struct dma_buf *dbuf;
+
+		dev_to_attach = ctx->cam->engines.raw_devs[0];
+		buf = &ctx->w_caci_buf;
+
+		dbuf = _alloc_dma_buf("CAM_W_CACI_ID", MTK_CAM_CACI_TABLE_SIZE, false);
+		ret = (!dbuf) ? -1 : 0;
+
+		ret = ret || mtk_cam_device_buf_init(buf, dbuf, dev_to_attach,
+						MTK_CAM_CACI_TABLE_SIZE)
+				|| mtk_cam_device_buf_vmap(buf);
+	}
+
+	if (!ret)
+		memset(ctx->w_caci_buf.vaddr, 0, ctx->w_caci_buf.size);
+
+	return ret;
+}
+
+static int mtk_cam_ctx_destroy_rgbw_caci_buf(struct mtk_cam_ctx *ctx)
+{
+	if (ctx->w_caci_buf.size)
+		mtk_cam_device_buf_uninit(&ctx->w_caci_buf);
+
+	return 0;
+}
+
 /* for cq working buffers */
 #define CQ_BUF_SIZE  0x10000
 #define CAM_CQ_BUF_NUM  (JOB_NUM_PER_STREAM * 2) /* 2 for mstream */
@@ -1763,8 +1802,11 @@ struct mtk_cam_ctx *mtk_cam_start_ctx(struct mtk_cam_device *cam,
 	if (mtk_cam_ctx_alloc_pool(ctx))
 		goto fail_destroy_workers;
 
-	if (mtk_cam_ctx_alloc_img_pool(ctx))
+	if (mtk_cam_ctx_alloc_rgbw_caci_buf(ctx))
 		goto fail_destroy_pools;
+
+	if (mtk_cam_ctx_alloc_img_pool(ctx))
+		goto fail_destroy_caci_buf;
 
 	if (mtk_cam_ctx_prepare_session(ctx))
 		goto fail_destroy_img_pool;
@@ -1779,10 +1821,12 @@ struct mtk_cam_ctx *mtk_cam_start_ctx(struct mtk_cam_device *cam,
 
 fail_unprepare_session:
 	mtk_cam_ctx_unprepare_session(ctx);
-fail_destroy_pools:
-	mtk_cam_ctx_destroy_pool(ctx);
 fail_destroy_img_pool:
 	mtk_cam_ctx_destroy_img_pool(ctx);
+fail_destroy_caci_buf:
+	mtk_cam_ctx_destroy_rgbw_caci_buf(ctx);
+fail_destroy_pools:
+	mtk_cam_ctx_destroy_pool(ctx);
 fail_destroy_workers:
 	mtk_cam_ctx_destroy_workers(ctx);
 fail_pipeline_stop:
@@ -1808,6 +1852,7 @@ void mtk_cam_stop_ctx(struct mtk_cam_ctx *ctx, struct media_entity *entity)
 	mtk_cam_ctx_unprepare_session(ctx);
 	mtk_cam_ctx_destroy_pool(ctx);
 	mtk_cam_ctx_destroy_img_pool(ctx);
+	mtk_cam_ctx_destroy_rgbw_caci_buf(ctx);
 	mtk_cam_ctx_destroy_workers(ctx);
 	mtk_cam_ctx_pipeline_stop(ctx, entity);
 	mtk_cam_pool_destroy(&ctx->job_pool);

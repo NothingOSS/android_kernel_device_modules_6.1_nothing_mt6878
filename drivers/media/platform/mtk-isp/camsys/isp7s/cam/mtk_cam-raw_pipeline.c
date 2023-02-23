@@ -273,7 +273,7 @@ static int mtk_raw_calc_raw_mask_chk(struct device *dev,
 		dev_info(dev,
 			 "%s: error! raws_must(0x%x) has unavailable raw. raws(0x%x)\n",
 			 __func__, *raws_must, *raws);
-		return 0;
+		return -1;
 	}
 
 	if ((*raws & all_raw_mask) != *raws ||
@@ -281,7 +281,7 @@ static int mtk_raw_calc_raw_mask_chk(struct device *dev,
 		dev_info(dev,
 			 "%s: raws_must(0x%x)/raws(0x%x) have invalid raws. valid(0x%x)\n",
 			 __func__, *raws_must, *raws, all_raw_mask);
-		return 0;
+		return -1;
 	}
 
 	if (*raws_max_num > num_raws) {
@@ -293,10 +293,10 @@ static int mtk_raw_calc_raw_mask_chk(struct device *dev,
 
 	/* TODO: dc mode's raws check, we don't support twin with DC in ISP7S */
 
-	return 1;
+	return 0;
 }
 
-int mtk_raw_get_conti_raws_num(u8 raws)
+static int mtk_raw_get_conti_raws_num(u8 raws)
 {
 	int count = 0;
 
@@ -308,15 +308,32 @@ int mtk_raw_get_conti_raws_num(u8 raws)
 	return count;
 }
 
+static int mtk_raw_calc_raw_mask_chk_scen(struct mtk_cam_device *cam,
+			struct mtk_cam_resource_raw_v2 *r)
+{
+	int raws_must_cnt = mtk_raw_get_conti_raws_num(r->raws_must);
+
+	// RGBW requires a minimum of 2 raw
+	if (r->scen.scen.normal.w_chn_enabled) {
+		if (r->raws_must && raws_must_cnt != 2)
+			return -1;
+
+		r->raws_max_num = 2;
+	}
+
+	return 0;
+}
+
 /**
  * Pre-condition:
  * 1. raws can't be 0
  * 2. raws_max_num must <= real raw's number
  */
-static void mtk_raw_calc_num_raw_max_min(u8 raws, u8 raws_must,
-					 u8 raws_max_num,
-					 int *min, int *max)
+static void mtk_raw_calc_num_raw_max_min(struct mtk_cam_resource_raw_v2 *r,
+				 int *min, int *max)
 {
+	u8 raws = r->raws, raws_must = r->raws_must;
+	u8 raws_max_num = r->raws_max_num;
 	int conti_raws_num = mtk_raw_get_conti_raws_num(raws);
 	int conti_raws_must_num = mtk_raw_get_conti_raws_num(raws_must);
 
@@ -330,7 +347,13 @@ static void mtk_raw_calc_num_raw_max_min(u8 raws, u8 raws_must,
 		else
 			*max = conti_raws_num;
 	}
+}
 
+static void mtk_raw_calc_num_raw_max_min_rgbw(struct mtk_cam_resource_raw_v2 *r,
+				 int *min, int *max)
+{
+	*min = 2;
+	*max = 2;
 }
 
 static unsigned int mtk_raw_choose_raws(const int raw_count, const int num_raws,
@@ -395,6 +418,7 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 	struct raw_resource_stepper stepper;
 	int ret, final_raw_num; /* consider debug setting and calc result */
 	unsigned int raws_driver_selected;
+	bool is_rgbw = r->scen.scen.normal.w_chn_enabled;
 
 	if (debug_user_raws_must[pipeline->id] != -1) {
 		dev_info(cam->dev,
@@ -410,12 +434,12 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 		r->raws = debug_user_raws_must[pipeline->id];
 	}
 
-	if (!mtk_raw_calc_raw_mask_chk(cam->dev, cam->engines.num_raw_devices,
-				       &r->raws, &r->raws_must, &r->raws_max_num)) {
-		dev_info(cam->dev, "invlid raws(0x%x)/raw_must(0x%x)/raws_max_num(%d)\n",
-			 r->raws, r->raws_must, r->raws_max_num);
+	ret = mtk_raw_calc_raw_mask_chk(cam->dev, cam->engines.num_raw_devices,
+				       &r->raws, &r->raws_must, &r->raws_max_num)
+		|| mtk_raw_calc_raw_mask_chk_scen(cam, r);
+
+	if (ret)
 		return -EINVAL;
-	}
 
 	res_calc_fill_sensor(&c, s);
 	c.cbn_type = 0; /* 0: disable, 1: 2x2, 2: 3x3 3: 4x4 */
@@ -426,8 +450,14 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 	/* constraints */
 	stepper.pixel_mode_min = 1;
 	stepper.pixel_mode_max = 2;
-	mtk_raw_calc_num_raw_max_min(r->raws, r->raws_must, r->raws_max_num,
-				     &stepper.num_raw_min, &stepper.num_raw_max);
+
+	if (is_rgbw)
+		mtk_raw_calc_num_raw_max_min_rgbw(r,
+			&stepper.num_raw_min, &stepper.num_raw_max);
+	else
+		mtk_raw_calc_num_raw_max_min(r,
+			&stepper.num_raw_min, &stepper.num_raw_max);
+
 	stepper.opp_num = mtk_cam_dvfs_get_opp_table(&cam->dvfs, &stepper.tbl);
 
 	ret = mtk_raw_find_combination(&c, &stepper);
@@ -1496,8 +1526,8 @@ static const struct v4l2_ioctl_ops mtk_cam_v4l2_meta_cap_ioctl_ops = {
 	.vidioc_querycap = mtk_cam_vidioc_querycap,
 	.vidioc_enum_fmt_meta_cap = mtk_cam_vidioc_meta_enum_fmt,
 	.vidioc_g_fmt_meta_cap = mtk_cam_vidioc_g_meta_fmt,
-	.vidioc_s_fmt_meta_cap = mtk_cam_vidioc_g_meta_fmt,
-	.vidioc_try_fmt_meta_cap = mtk_cam_vidioc_g_meta_fmt,
+	.vidioc_s_fmt_meta_cap = mtk_cam_vidioc_s_meta_fmt,
+	.vidioc_try_fmt_meta_cap = mtk_cam_vidioc_try_meta_fmt,
 	.vidioc_reqbufs = vb2_ioctl_reqbufs,
 	.vidioc_create_bufs = vb2_ioctl_create_bufs,
 	.vidioc_prepare_buf = vb2_ioctl_prepare_buf,
@@ -1513,8 +1543,8 @@ static const struct v4l2_ioctl_ops mtk_cam_v4l2_meta_out_ioctl_ops = {
 	.vidioc_querycap = mtk_cam_vidioc_querycap,
 	.vidioc_enum_fmt_meta_out = mtk_cam_vidioc_meta_enum_fmt,
 	.vidioc_g_fmt_meta_out = mtk_cam_vidioc_g_meta_fmt,
-	.vidioc_s_fmt_meta_out = mtk_cam_vidioc_g_meta_fmt,
-	.vidioc_try_fmt_meta_out = mtk_cam_vidioc_g_meta_fmt,
+	.vidioc_s_fmt_meta_out = mtk_cam_vidioc_s_meta_fmt,
+	.vidioc_try_fmt_meta_out = mtk_cam_vidioc_try_meta_fmt,
 	.vidioc_reqbufs = vb2_ioctl_reqbufs,
 	.vidioc_create_bufs = vb2_ioctl_create_bufs,
 	.vidioc_prepare_buf = vb2_ioctl_prepare_buf,
@@ -1533,6 +1563,12 @@ static struct mtk_cam_format_desc meta_cfg_fmts[] = {
 			.buffersize = 0,
 		},
 	},
+	{
+		.vfmt.fmt.meta = {
+			.dataformat = V4L2_META_FMT_MTISP_PARAMS_RGBW,
+			.buffersize = 0,
+		},
+	},
 };
 
 static struct mtk_cam_format_desc meta_stats0_fmts[] = {
@@ -1542,12 +1578,24 @@ static struct mtk_cam_format_desc meta_stats0_fmts[] = {
 			.buffersize = 0,
 		},
 	},
+	{
+		.vfmt.fmt.meta = {
+			.dataformat = V4L2_META_FMT_MTISP_3A_RGBW,
+			.buffersize = 0,
+		},
+	},
 };
 
 static struct mtk_cam_format_desc meta_stats1_fmts[] = {
 	{
 		.vfmt.fmt.meta = {
 			.dataformat = V4L2_META_FMT_MTISP_AF,
+			.buffersize = 0,
+		},
+	},
+	{
+		.vfmt.fmt.meta = {
+			.dataformat = V4L2_META_FMT_MTISP_AF_RGBW,
 			.buffersize = 0,
 		},
 	},
@@ -3077,13 +3125,24 @@ static void update_platform_meta_size(struct mtk_cam_format_desc *fmts,
 		case  V4L2_META_FMT_MTISP_PARAMS:
 			size = GET_PLAT_V4L2(meta_cfg_size);
 			break;
+		case  V4L2_META_FMT_MTISP_PARAMS_RGBW:
+			size = GET_PLAT_V4L2(meta_cfg_size_rgbw);
+			break;
 		case  V4L2_META_FMT_MTISP_3A:
 			/* workaround */
 			size = !sv ? GET_PLAT_V4L2(meta_stats0_size) :
 				GET_PLAT_V4L2(meta_sv_ext_size);
 			break;
+		case  V4L2_META_FMT_MTISP_3A_RGBW:
+			/* workaround */
+			size = !sv ? GET_PLAT_V4L2(meta_stats0_size_rgbw) :
+				GET_PLAT_V4L2(meta_sv_ext_size);
+			break;
 		case  V4L2_META_FMT_MTISP_AF:
 			size = GET_PLAT_V4L2(meta_stats1_size);
+			break;
+		case  V4L2_META_FMT_MTISP_AF_RGBW:
+			size = GET_PLAT_V4L2(meta_stats1_size_rgbw);
 			break;
 		default:
 			size = 0;

@@ -134,6 +134,7 @@ void mtk_cam_device_buf_uninit(struct mtk_cam_device_buf *buf)
 					 DMA_BIDIRECTIONAL);
 		buf->dma_sgt = NULL;
 		buf->daddr = 0;
+		buf->size = 0;
 	}
 
 	if (buf->vaddr) {
@@ -147,18 +148,21 @@ void mtk_cam_device_buf_uninit(struct mtk_cam_device_buf *buf)
 	}
 
 	dma_heap_buffer_free(buf->dbuf);
+	buf->dbuf = NULL;
 }
 
 int mtk_cam_device_buf_vmap(struct mtk_cam_device_buf *buf)
 {
+	int ret = 0;
 	struct iosys_map map = IOSYS_MAP_INIT_VADDR(buf->vaddr);
 
 	WARN_ON(buf->vaddr);
 
-	if (!dma_buf_vmap(buf->dbuf, &map))
+	ret = dma_buf_vmap(buf->dbuf, &map);
+	if (!ret)
 		buf->vaddr = map.vaddr;
 
-	return 0;
+	return ret;
 }
 
 static inline void *

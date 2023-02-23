@@ -927,7 +927,11 @@ mtk_cam_dev_find_fmt(struct mtk_cam_dev_node_desc *desc, u32 format)
 
 	for (i = 0; i < desc->num_fmts; i++) {
 		fmt = &desc->fmts[i].vfmt;
-		if (fmt->fmt.pix_mp.pixelformat == format)
+		if (desc->buf_type == V4L2_BUF_TYPE_META_OUTPUT ||
+			desc->buf_type == V4L2_BUF_TYPE_META_CAPTURE) {
+			if (fmt->fmt.meta.dataformat == format)
+				return fmt;
+		} else if (fmt->fmt.pix_mp.pixelformat == format)
 			return fmt;
 	}
 
@@ -1085,9 +1089,9 @@ int mtk_cam_vidioc_g_meta_fmt(struct file *file, void *fh,
 	struct mtk_cam_dev_node_desc *desc = &node->desc;
 	const struct v4l2_format *default_fmt =
 		&desc->fmts[desc->default_fmt_idx].vfmt;
+	u32 extmeta_size = 0;
 	struct mtk_raw_pde_config *pde_cfg;
 	struct mtk_cam_pde_info *pde_info;
-	u32 extmeta_size = 0;
 #endif
 
 #ifdef NOT_READY
@@ -1119,9 +1123,6 @@ int mtk_cam_vidioc_g_meta_fmt(struct file *file, void *fh,
 
 #ifdef NOT_READY
 	switch (node->desc.id) {
-	case MTK_RAW_MAIN_STREAM_SV_1_OUT:
-	case MTK_RAW_MAIN_STREAM_SV_2_OUT:
-		break;
 	case MTK_RAW_META_SV_OUT_0:
 	case MTK_RAW_META_SV_OUT_1:
 	case MTK_RAW_META_SV_OUT_2:
@@ -1154,7 +1155,57 @@ int mtk_cam_vidioc_g_meta_fmt(struct file *file, void *fh,
 		log_fmt_ops(node, f, __func__);
 
 	return 0;
+}
 
+int mtk_cam_vidioc_s_meta_fmt(struct file *file, void *fh,
+			      struct v4l2_format *f)
+{
+	// TODO(Will): check PDE change update
+	struct mtk_cam_video_device *node = file_to_mtk_cam_node(file);
+	const struct v4l2_format *fmt;
+
+	switch (node->desc.dma_port) {
+	case MTKCAM_IPI_RAW_META_STATS_CFG:
+	case MTKCAM_IPI_RAW_META_STATS_0:
+	case MTKCAM_IPI_RAW_META_STATS_1:
+		fmt = mtk_cam_dev_find_fmt(&node->desc, f->fmt.meta.dataformat);
+
+		if (fmt) {
+			node->active_fmt.fmt.meta.dataformat = fmt->fmt.meta.dataformat;
+			node->active_fmt.fmt.meta.buffersize = f->fmt.meta.buffersize;
+		}
+		log_fmt_ops(node, f, __func__);
+		return (fmt) ? 0 : -EINVAL;
+	default:
+		break;
+	}
+
+	return mtk_cam_vidioc_g_meta_fmt(file, fh, f);
+}
+
+int mtk_cam_vidioc_try_meta_fmt(struct file *file, void *fh,
+			      struct v4l2_format *f)
+{
+	// TODO(Will): check PDE change update
+	struct mtk_cam_video_device *node = file_to_mtk_cam_node(file);
+	const struct v4l2_format *fmt;
+
+	switch (node->desc.dma_port) {
+	case MTKCAM_IPI_RAW_META_STATS_CFG:
+	case MTKCAM_IPI_RAW_META_STATS_0:
+	case MTKCAM_IPI_RAW_META_STATS_1:
+		fmt = mtk_cam_dev_find_fmt(&node->desc, f->fmt.meta.dataformat);
+		if (fmt) {
+			f->fmt.meta.dataformat = fmt->fmt.meta.dataformat;
+			f->fmt.meta.buffersize = fmt->fmt.meta.buffersize;
+		}
+		log_fmt_ops(node, f, __func__);
+		return (fmt) ? 0 : -EINVAL;
+	default:
+		break;
+	}
+
+	return mtk_cam_vidioc_g_meta_fmt(file, fh, f);
 }
 
 int mtk_cam_vidioc_s_selection(struct file *file, void *fh,
