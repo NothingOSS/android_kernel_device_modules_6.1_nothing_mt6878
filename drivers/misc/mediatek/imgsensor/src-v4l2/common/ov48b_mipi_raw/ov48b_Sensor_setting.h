@@ -2076,7 +2076,7 @@ u16 addr_data_pair_capture_ov48b2q[] = {
 #elif USER_DEFINE_TRIO == 2  // for dvt test case - verify Cphy 2 trio
 	0x380c, 0x18,
 #else
-	0x380c, 0x08,// HTS
+	0x380c, 0x04,// HTS
 #endif
 	0x380d, 0xb0,
 	0x380e, 0x0c,
