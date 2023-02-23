@@ -223,7 +223,7 @@ static long conn_pwr_dev_compat_ioctl(struct file *filp, unsigned int cmd, unsig
 #endif
 
 #ifdef CONN_PWR_LOW_BATTERY_ENABLE
-static void conn_pwr_low_battery_cb(enum LOW_BATTERY_LEVEL_TAG level, void *data)
+static void conn_pwr_low_battery_cb(enum LOW_BATTERY_LEVEL_TAG level)
 {
 	conn_pwr_set_battery_level(level);
 }
@@ -569,7 +569,7 @@ int conn_pwr_init(struct conn_pwr_plat_info *data)
 	conn_pwr_core_init();
 
 #ifdef CONN_PWR_LOW_BATTERY_ENABLE
-	register_low_battery_notify(&conn_pwr_low_battery_cb, LOW_BATTERY_PRIO_WIFI, NULL);
+	register_low_battery_notify(&conn_pwr_low_battery_cb, LOW_BATTERY_PRIO_WIFI);
 #endif
 	conn_pwr_dev_init();
 
