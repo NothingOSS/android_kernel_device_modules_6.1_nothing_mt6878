@@ -44,7 +44,7 @@ struct mtk_disp_tdshp {
 	struct drm_crtc *crtc;
 	const struct mtk_disp_tdshp_data *data;
 	bool is_right_pipe;
-	int path_idx;
+	int path_order;
 	struct mtk_ddp_comp *companion;
 };
 
@@ -409,6 +409,28 @@ static int disp_tdshp_wait_size(unsigned long timeout)
 
 	return ret;
 }
+static int mtk_tdshp_cfg_set_reg(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, void *data, unsigned int data_size)
+{
+
+	int ret = 0;
+	struct DISP_TDSHP_REG *config = data;
+	struct mtk_disp_tdshp *tdshp = comp_to_disp_tdshp(comp);
+
+	if (mtk_disp_tdshp_set_reg(comp, handle, config) < 0) {
+		DDPPR_ERR("%s: failed\n", __func__);
+		return -EFAULT;
+	}
+	if (comp->mtk_crtc->is_dual_pipe) {
+		struct mtk_ddp_comp *comp_tdshp1 = tdshp->companion;
+
+		if (mtk_disp_tdshp_set_reg(comp_tdshp1, handle, config) < 0) {
+			DDPPR_ERR("%s: comp_tdshp1 failed\n", __func__);
+			return -EFAULT;
+		}
+	}
+	return ret;
+}
 
 int mtk_drm_ioctl_tdshp_set_reg(struct drm_device *dev, void *data,
 		struct drm_file *file_priv)
@@ -732,7 +754,7 @@ static int mtk_tdshp_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	{
 		struct mtk_disp_tdshp *data = comp_to_disp_tdshp(comp);
 		bool *is_right_pipe = &data->is_right_pipe;
-		int ret, *path_idx = &data->path_idx;
+		int ret, *path_order = &data->path_order;
 		struct mtk_ddp_comp **companion = &data->companion;
 		struct mtk_disp_tdshp *companion_data;
 
@@ -740,11 +762,11 @@ static int mtk_tdshp_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		if (data->is_right_pipe)
 			break;
-		ret = mtk_pq_helper_fill_comp_pipe_info(comp, path_idx, is_right_pipe, companion);
+		ret = mtk_pq_helper_fill_comp_pipe_info(comp, path_order, is_right_pipe, companion);
 		if (!ret && comp->mtk_crtc->is_dual_pipe && data->companion) {
 			DDPMSG("%s,tdshp dual pipe info comp id(%d)\n", __func__, comp->id);
 			companion_data = comp_to_disp_tdshp(data->companion);
-			companion_data->path_idx = data->path_idx;
+			companion_data->path_order = data->path_order;
 			companion_data->is_right_pipe = !data->is_right_pipe;
 			companion_data->companion = comp;
 		}
@@ -763,6 +785,22 @@ void mtk_disp_tdshp_first_cfg(struct mtk_ddp_comp *comp,
 	mtk_disp_tdshp_config(comp, cfg, handle);
 }
 
+static int mtk_tdshp_pq_frame_config(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, unsigned int cmd, void *data, unsigned int data_size)
+{
+	int ret = -1;
+	/* will only call left path */
+	switch (cmd) {
+	/* TYPE1 no user cmd */
+	case PQ_TDSHP_SET_REG:
+		ret = mtk_tdshp_cfg_set_reg(comp, handle, data, data_size);
+		break;
+	default:
+		break;
+	}
+	return ret;
+}
+
 static const struct mtk_ddp_comp_funcs mtk_disp_tdshp_funcs = {
 	.config = mtk_disp_tdshp_config,
 	.first_cfg = mtk_disp_tdshp_first_cfg,
@@ -774,6 +812,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_tdshp_funcs = {
 	.unprepare = mtk_disp_tdshp_unprepare,
 	.config_overhead = mtk_disp_tdshp_config_overhead,
 	.io_cmd = mtk_tdshp_io_cmd,
+	.pq_frame_config = mtk_tdshp_pq_frame_config
 };
 
 static int mtk_disp_tdshp_bind(struct device *dev, struct device *master,

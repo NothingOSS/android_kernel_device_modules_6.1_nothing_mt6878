@@ -196,8 +196,9 @@ struct mtk_disp_ccorr {
 	struct drm_crtc *crtc;
 	const struct mtk_disp_ccorr_data *data;
 	bool is_right_pipe;
-	int path_idx;
+	int path_order;
 	struct mtk_ddp_comp *companion;
+	enum drm_disp_ccorr_linear_t is_linear;// each comp property
 };
 
 struct mtk_disp_ccorr_tile_overhead {
@@ -223,6 +224,20 @@ static void disp_ccorr_multiply_3x3(unsigned int ccorrCoef[3][3],
 	int temp_Result;
 	int signedCcorrCoef[3][3];
 	int i, j;
+
+	/* convert unsigned 12 bit ccorr coefficient to signed 12 bit format */
+	for (i = 0; i < 3; i += 1) {
+		DDPINFO("inputCcorrCoef[%d][0-2] = {%d, %d, %d}\n", i,
+			ccorrCoef[i][0],
+			ccorrCoef[i][1],
+			ccorrCoef[i][2]);
+	}
+	for (i = 0; i < 3; i += 1) {
+		DDPINFO("inputcolor_matrix[%d][0-2] = {%d, %d, %d}\n", i,
+			color_matrix[i][0],
+			color_matrix[i][1],
+			color_matrix[i][2]);
+	}
 
 	/* convert unsigned 12 bit ccorr coefficient to signed 12 bit format */
 	for (i = 0; i < 3; i += 1) {
@@ -371,15 +386,18 @@ static int disp_ccorr_write_coef_reg(struct mtk_ddp_comp *comp,
 		if (((g_prim_ccorr_force_linear && (disp_ccorr_linear&0x01)) ||
 			(g_prim_ccorr_pq_nonlinear && (disp_ccorr_linear == 0x0))) &&
 			(disp_ccorr_number == 1)) {
+			DDPINFO("%s: [%d] forcelinear\n", __func__, id);
 			disp_ccorr_multiply_3x3(ccorr->coef, g_ccorr_color_matrix[id],
 				temp_matrix);
 			disp_ccorr_multiply_3x3(temp_matrix, g_rgb_matrix[id],
 				multiply_matrix->coef);
 		} else {
 			if (disp_aosp_ccorr) {
+				DDPINFO("%s: [%d] aospccorr\n", __func__, id);
 				disp_ccorr_multiply_3x3(ccorr->coef, g_ccorr_color_matrix[id],
 					multiply_matrix->coef);//AOSP multiply
 			} else {
+				DDPINFO("%s: [%d] noaospccorr\n", __func__, id);
 				disp_ccorr_multiply_3x3(ccorr->coef, g_rgb_matrix[id],
 					multiply_matrix->coef);//PQ service multiply
 			}
@@ -1001,6 +1019,57 @@ int disp_ccorr_set_RGB_Gain(struct mtk_ddp_comp *comp,
 	return ret;
 }
 
+int mtk_ccorr_cfg_set_ccorr(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, void *data, unsigned int data_size)
+{
+	struct mtk_disp_ccorr *ccorr = comp_to_ccorr(comp);
+	struct DRM_DISP_CCORR_COEF_T *ccorr_config;
+	int ret = 0;
+	int id;
+
+	id = index_of_ccorr(comp->id);
+	ccorr_config = data;
+	DDPINFO("%s pqhal_linear = %d, comp_linear =%d ", __func__, ccorr_config->linear,
+			ccorr->is_linear);
+
+	if (ccorr_config->linear != ccorr->is_linear)
+		return -1;
+
+	if (ccorr_config->linear == true)
+		g_disp_ccorr_without_gamma = CCORR_INVERSE_GAMMA;
+	else
+		g_disp_ccorr_without_gamma = CCORR_BYASS_GAMMA;
+
+	if (disp_ccorr_set_coef(ccorr_config,
+		comp, handle) < 0) {
+		DDPPR_ERR("DISP_IOCTL_SET_CCORR: failed\n");
+		return -EFAULT;
+	}
+
+	if (comp->mtk_crtc->is_dual_pipe) {
+		struct mtk_ddp_comp *comp_ccorr1 = ccorr->companion;
+
+		if (disp_ccorr_set_coef(ccorr_config, comp_ccorr1, handle) < 0) {
+			DDPPR_ERR("DISP_IOCTL_SET_CCORR: failed\n");
+			return -EFAULT;
+		}
+	}
+
+	if (m_new_pq_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]) {
+
+		if ((ccorr_config->silky_bright_flag) == 1 &&
+			ccorr_config->FinalBacklight != 0) {
+			DDPINFO("brightness = %d, silky_bright_flag = %d",
+				ccorr_config->FinalBacklight,
+				ccorr_config->silky_bright_flag);
+			mtk_leds_brightness_set("lcd-backlight",
+				ccorr_config->FinalBacklight, 0, (0X01<<SET_BACKLIGHT_LEVEL));
+		}
+	}
+
+	return ret;
+}
+
 int mtk_drm_ioctl_set_ccorr(struct drm_device *dev, void *data,
 		struct drm_file *file_priv)
 {
@@ -1109,6 +1178,30 @@ static struct notifier_block leds_init_notifier = {
 	.notifier_call = led_brightness_changed_event_to_pq,
 };
 #endif
+
+int mtk_ccorr_cfg_eventctl(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, void *data, unsigned int data_size)
+{
+	int ret = 0;
+	/* TODO: dual pipe */
+	int *enabled = data;
+	struct mtk_disp_ccorr *ccorr = comp_to_ccorr(comp);
+
+	if (g_old_pq_backlight != g_pq_backlight)
+		mtk_crtc_check_trigger(comp->mtk_crtc, true, true);
+
+	DDPINFO("ccorr_eventctl, enabled = %d, g_pq_backlight = %d, g_old_pq_backlight = %d\n",
+		   *enabled, g_pq_backlight, g_old_pq_backlight);
+
+	if ((!atomic_read(&g_irq_backlight_change)) || (*enabled == 1)) {
+
+		mtk_disp_ccorr_set_interrupt(comp, data);
+		if (comp->mtk_crtc->is_dual_pipe)
+			mtk_disp_ccorr_set_interrupt(ccorr->companion, data);
+	}
+
+	return ret;
+}
 
 int mtk_drm_ioctl_ccorr_eventctl(struct drm_device *dev, void *data,
 		struct drm_file *file_priv)
@@ -1549,7 +1642,7 @@ static int mtk_ccorr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	{
 		struct mtk_disp_ccorr *data = comp_to_ccorr(comp);
 		bool *is_right_pipe = &data->is_right_pipe;
-		int ret, *path_idx = &data->path_idx;
+		int ret, *path_order = &data->path_order;
 		struct mtk_ddp_comp **companion = &data->companion;
 		struct mtk_disp_ccorr *companion_data;
 
@@ -1557,11 +1650,11 @@ static int mtk_ccorr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		if (data->is_right_pipe)
 			break;
-		ret = mtk_pq_helper_fill_comp_pipe_info(comp, path_idx, is_right_pipe, companion);
+		ret = mtk_pq_helper_fill_comp_pipe_info(comp, path_order, is_right_pipe, companion);
 		if (!ret && comp->mtk_crtc->is_dual_pipe && data->companion) {
 			DDPINFO("%s,c3d dual pipe info comp id(%d)\n", __func__, comp->id);
 			companion_data = comp_to_ccorr(data->companion);
-			companion_data->path_idx = data->path_idx;
+			companion_data->path_order = data->path_order;
 			companion_data->is_right_pipe = !data->is_right_pipe;
 			companion_data->companion = comp;
 		}
@@ -1579,6 +1672,27 @@ void mtk_ccorr_first_cfg(struct mtk_ddp_comp *comp,
 	mtk_ccorr_config(comp, cfg, handle);
 }
 
+
+static int mtk_ccorr_pq_frame_config(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, unsigned int cmd, void *data, unsigned int data_size)
+{
+	int ret = -1;
+
+	DDPINFO("%s CMD = %d\n", __func__, cmd);
+	switch (cmd) {
+
+	case PQ_CCORR_EVENTCTL:
+		ret = mtk_ccorr_cfg_eventctl(comp, handle, data, data_size);
+		break;
+	case PQ_CCORR_SET_CCORR:
+		ret = mtk_ccorr_cfg_set_ccorr(comp, handle, data, data_size);
+		break;
+	default:
+		break;
+	}
+	return ret;
+}
+
 static const struct mtk_ddp_comp_funcs mtk_disp_ccorr_funcs = {
 	.config = mtk_ccorr_config,
 	.first_cfg = mtk_ccorr_first_cfg,
@@ -1589,6 +1703,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_ccorr_funcs = {
 	.prepare = mtk_ccorr_prepare,
 	.unprepare = mtk_ccorr_unprepare,
 	.config_overhead = mtk_disp_ccorr_config_overhead,
+	.pq_frame_config = mtk_ccorr_pq_frame_config
 };
 
 static int mtk_disp_ccorr_bind(struct device *dev, struct device *master,
@@ -1701,6 +1816,17 @@ static void mtk_get_ccorr_property(struct device_node *node)
 
 }
 
+static void mtk_ccorr_parse_dts(struct device_node *node, struct mtk_ddp_comp *comp)
+{
+	int ret;
+	struct mtk_disp_ccorr *ccorr = comp_to_ccorr(comp);
+
+	ret = of_property_read_u32(node, "ccorr_linear", &(ccorr->is_linear));
+	if (ret)
+		DDPPR_ERR("read ccorr_linear failed\n");
+	DDPINFO("read ccorr_linear %d\n", ccorr->is_linear);
+}
+
 static int mtk_disp_ccorr_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -1733,6 +1859,8 @@ static int mtk_disp_ccorr_probe(struct platform_device *pdev)
 		g_prim_ccorr_pq_nonlinear = false;
 		mtk_get_ccorr_property(dev->of_node);
 	}
+
+	mtk_ccorr_parse_dts(dev->of_node, &priv->ddp_comp);
 
 	if (!default_comp && comp_id == DDP_COMPONENT_CCORR0)
 		default_comp = &priv->ddp_comp;
