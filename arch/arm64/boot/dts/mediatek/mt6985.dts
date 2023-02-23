@@ -8284,10 +8284,12 @@
 			compatible = "mediatek,mt6985-mml_aal",
 				"mediatek,mml-tuning-mml_aal0";
 			reg = <0 0x1f807000 0 0x1000>;
+			interrupts = <GIC_SPI 823 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_AAL0>;
 			clock-names = "aal0";
 			comp-ids = <MML_AAL0>;
 			comp-names = "aal0";
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_MDP_RDMA0)>;
 			sram-curve-base = /bits/ 32 <4608>;
 			sram-his-base = /bits/ 32 <1536>;
 		};
@@ -8296,10 +8298,12 @@
 			compatible = "mediatek,mt6985-mml_aal",
 				"mediatek,mml-tuning-mml_aal1";
 			reg = <0 0x1f808000 0 0x1000>;
+			interrupts = <GIC_SPI 823 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_AAL1>;
 			clock-names = "aal1";
 			comp-ids = <MML_AAL1>;
 			comp-names = "aal1";
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_MDP_RDMA1)>;
 			sram-curve-base = /bits/ 32 <4608>;
 			sram-his-base = /bits/ 32 <1536>;
 		};
