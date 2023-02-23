@@ -336,7 +336,7 @@ void mtk_drm_mmdvfs_init(struct device *dev)
 	mtk_drm_mmdvfs_get_avail_freq(dev);
 
 	/* MMDVFS V3 */
-	ret = of_property_read_u32(node, "dvfs_clk_idx", &index);
+	ret = of_property_read_u32(node, "dvfs-clk-idx", &index);
 	if (ret == 0) {
 		mm_clk = of_clk_get(node, index);
 		if (IS_ERR_OR_NULL(mm_clk))
@@ -421,9 +421,13 @@ void mtk_drm_set_mmclk(struct drm_crtc *crtc, int level, bool lp_mode,
 		__func__, __LINE__, final_level, freq);
 
 	if (!IS_ERR_OR_NULL(mm_clk)) {
+		if (mmdvfs_get_version())
+			mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_DISP);
 		ret = clk_set_rate(mm_clk, freq);
 		if (ret)
 			DDPPR_ERR("%s:clk_set_rate fail\n", __func__);
+		if (mmdvfs_get_version())
+			mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_DISP);
 		return;
 	}
 
