@@ -2,7 +2,7 @@
 #
 # Makefile for the touchscreen drivers.
 #
-
+obj-m += tui-common.o
 TOUCH_LISTS := $(subst ",,$(CONFIG_TOUCHSCREEN_MTK_TOUCH))
 obj-y += $(foreach TOUCH,$(TOUCH_LISTS),$(TOUCH)/)
 

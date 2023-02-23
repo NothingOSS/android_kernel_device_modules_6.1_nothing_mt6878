@@ -1417,6 +1417,12 @@ static int gt9896s_spi_probe(struct spi_device *spi)
 	spi->mode            = SPI_MODE_0;
 	spi->bits_per_word   = 8;
 	spi->max_speed_hz    = 6 * 1000 * 1000;
+	spi->cs_setup.value = 1;
+	spi->cs_setup.unit = 0;
+	spi->cs_hold.value = 1;
+	spi->cs_hold.unit = 0;
+	spi->cs_inactive.value = 1;
+	spi->cs_inactive.unit = 0;
 
 	/* init ts device data */
 	ts_device = devm_kzalloc(&spi->dev,

@@ -710,18 +710,20 @@ void goodix_ts_report_finger(struct input_dev *dev,
 void goodix_ts_esd_on(struct goodix_ts_core *cd);
 void goodix_ts_esd_off(struct goodix_ts_core *cd);
 
-
-
 #if IS_ENABLED(CONFIG_PINCTRL)
 int goodix_ts_gpio_suspend(struct goodix_ts_core *core_data);
 int goodix_ts_gpio_resume(struct goodix_ts_core *core_data);
 #endif
+
+extern void register_tpd_tui_request(int (*enter_func)(void), int (*exit_func)(void));
 
 #if IS_ENABLED(CONFIG_TRUSTONIC_TRUSTED_UI)
 extern atomic_t gt9895_tui_flag;
 extern struct goodix_ts_core *ts_core_gt9895_tui;
 extern void mt_spi_enable_master_clk(struct spi_device *spidev);
 extern void mt_spi_disable_master_clk(struct spi_device *spidev);
+extern int tpd_gt9895_enter_tui(void);
+extern int tpd_gt9895_exit_tui(void);
 #endif
 
 #endif

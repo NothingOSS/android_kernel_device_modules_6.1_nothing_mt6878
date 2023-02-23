@@ -2332,6 +2332,7 @@ static int goodix_ts_probe(struct platform_device *pdev)
 	struct goodix_ts_core *core_data = NULL;
 	struct goodix_bus_interface *bus_interface;
 	int ret;
+	struct device_node *node = NULL;
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 		void **ret_disp = NULL;
@@ -2447,6 +2448,25 @@ static int goodix_ts_probe(struct platform_device *pdev)
 	goodix_start_later_init(core_data);
 	mutex_init(&irq_info_mutex);
 	ts_info("goodix_ts_core probe success");
+
+	node = of_find_compatible_node(NULL, NULL, "mediatek,tui_common");
+	if (node) {
+		unsigned int tui_status = 0;
+
+		ret = of_property_read_u32(node, "tui-is-registered", &tui_status);
+		if (ret) {
+			ts_info("not find touch tui node %d", ret);
+		} else {
+			if (tui_status == 1) {
+				ts_info("%s: %d set tui function\n", __func__, __LINE__);
+				register_tpd_tui_request(tpd_gt9895_enter_tui,
+						tpd_gt9895_exit_tui);
+			} else {
+				ts_info("set tui function is not allowed");
+			}
+		}
+	}
+
 	return 0;
 
 err_out:

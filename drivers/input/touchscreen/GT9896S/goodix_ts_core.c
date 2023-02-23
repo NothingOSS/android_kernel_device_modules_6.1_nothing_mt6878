@@ -2200,6 +2200,8 @@ static int gt9896s_ts_probe(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	void **ret = NULL;
 #endif
+	struct device_node *node = NULL;
+
 	ts_info("%s IN", __func__);
 
 	disp_notify_reg_flag = false;
@@ -2293,6 +2295,23 @@ static int gt9896s_ts_probe(struct platform_device *pdev)
 	ts_info("core probe OUT");
 	/* wakeup ext module register work */
 	complete_all(&gt9896s_modules.core_comp);
+
+	node = of_find_compatible_node(NULL, NULL, "mediatek,tui_common");
+	if (node) {
+		unsigned int tui_status = 0;
+
+		r = of_property_read_u32(node, "tui-is-registered", &tui_status);
+		if (r) {
+			ts_err("not find touch tui node %d", r);
+		} else {
+			if (tui_status == 1) {
+				ts_info("%s: %d set tui function\n", __func__, __LINE__);
+				register_tpd_tui_request(gt9896s_tpd_enter_tui,
+						gt9896s_tpd_exit_tui);
+			}
+		}
+	}
+
 	return 0;
 
 err:
