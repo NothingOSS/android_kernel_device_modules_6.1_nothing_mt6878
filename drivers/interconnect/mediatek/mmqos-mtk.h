@@ -128,6 +128,7 @@ struct mtk_mmqos_desc {
 	const u32 report_bw_larbs[MMQOS_MAX_REPORT_LARB_NUM];
 	const u32 report_bw_real_larbs[MMQOS_MAX_REPORT_LARB_NUM];
 	const u32 disp_virt_larbs[MMQOS_MAX_DISP_VIRT_LARB_NUM];
+	const u32 freq_mode;
 };
 
 #define DEFINE_MNODE(_name, _id, _bw_ratio, _is_write, _channel, _link) {	\
@@ -149,6 +150,12 @@ enum MMQOS_PROFILE_LEVEL {
 	MMQOS_PROFILE_MET = 0,
 	MMQOS_PROFILE_SYSTRACE = 1,
 	MMQOS_PROFILE_MAX /* Always keep at the end */
+};
+
+enum mminfra_freq_mode {
+	BY_REGULATOR,
+	BY_MMDVFS,
+	BY_VMMRC,
 };
 
 /* For MET */

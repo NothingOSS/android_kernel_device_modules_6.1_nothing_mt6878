@@ -974,6 +974,7 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6985 = {
 			SLAVE_LARB(7), SLAVE_LARB(7),
 			SLAVE_LARB(8), SLAVE_LARB(37),},
 	.disp_virt_larbs = { SLAVE_LARB(38), SLAVE_LARB(41), SLAVE_LARB(42) },
+	.freq_mode = BY_REGULATOR,	// TODO: change to use MMDVFS
 };
 static const struct of_device_id mtk_mmqos_mt6985_of_ids[] = {
 	{

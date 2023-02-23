@@ -18,6 +18,7 @@
 #include <linux/sched/clock.h>
 #include <soc/mediatek/smi.h>
 #include <soc/mediatek/dramc.h>
+#include <soc/mediatek/mmdvfs_v3.h>
 #include "mtk_iommu.h"
 #include "mmqos-global.h"
 #include "mmqos-mtk.h"
@@ -123,6 +124,9 @@ static u32 v2_chn_srt_r_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
 static u32 v2_chn_hrt_w_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
 static u32 v2_chn_srt_w_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
 #endif
+
+u32 freq_mode = BY_REGULATOR;
+
 static void mmqos_update_comm_bw(struct device *dev,
 	u32 comm_port, u32 freq, u64 mix_bw, u64 bw_peak, bool qos_bound, bool max_bwl)
 {
@@ -251,17 +255,12 @@ static unsigned long get_volt_by_freq(struct device *dev, unsigned long freq)
 	return ret;
 }
 
-//static void set_comm_icc_bw_handler(struct work_struct *work)
-static void set_comm_icc_bw(struct common_node *comm_node)
+static void set_total_bw_to_emi(struct common_node *comm_node)
 {
-	struct common_port_node *comm_port_node;
-	u32 avg_bw = 0, peak_bw = 0, max_bw = 0;
+	u32 avg_bw = 0, peak_bw = 0;
 	u64 normalize_peak_bw;
-	unsigned long smi_clk = 0;
-	u32 volt, i, j, comm_id;
-	s32 ret;
+	struct common_port_node *comm_port_node;
 
-	MMQOS_SYSTRACE_BEGIN("%s %s\n", __func__, comm_node->base->icc_node->name);
 	list_for_each_entry(comm_port_node, &comm_node->comm_port_list, list) {
 		mutex_lock(&comm_port_node->bw_lock);
 		avg_bw += comm_port_node->latest_avg_bw;
@@ -274,7 +273,25 @@ static void set_comm_icc_bw(struct common_node *comm_node)
 		mutex_unlock(&comm_port_node->bw_lock);
 	}
 
-	comm_id = MASK_8(comm_node->base->icc_node->id);
+	MMQOS_SYSTRACE_BEGIN("to EMI avg %d peak %d\n", avg_bw, peak_bw);
+	icc_set_bw(comm_node->icc_path, avg_bw, 0);
+	icc_set_bw(comm_node->icc_hrt_path, peak_bw, 0);
+	MMQOS_SYSTRACE_END();
+}
+
+static u32 get_max_channel_bw(u32 comm_id)
+{
+	u32 max_bw = 0, i, j;
+
+	if (log_level & 1 << log_comm_freq) {
+		for (i = 0; i < MMQOS_MAX_COMM_NUM; i++) {
+			for (j = 0; j < MMQOS_COMM_CHANNEL_NUM; j++) {
+				MMQOS_DBG("comm(%d) chn=%d s_r=%u h_r=%u s_w=%u h_w=%u",
+				i, j, chn_srt_r_bw[i][j], chn_hrt_r_bw[i][j],
+				chn_srt_w_bw[i][j], chn_hrt_w_bw[i][j]);
+			}
+		}
+	}
 	for (i = 0; i < MMQOS_COMM_CHANNEL_NUM; i++) {
 		max_bw = max_t(u32, max_bw, chn_hrt_r_bw[comm_id][i] * 10 / 7);
 		max_bw = max_t(u32, max_bw, chn_srt_r_bw[comm_id][i]);
@@ -282,51 +299,67 @@ static void set_comm_icc_bw(struct common_node *comm_node)
 		max_bw = max_t(u32, max_bw, chn_srt_w_bw[comm_id][i]);
 	}
 
-	if (max_bw)
-		smi_clk = SHIFT_ROUND(max_bw, 4) * 1000;
-	else
-		smi_clk = 0;
+	return max_bw;
+}
 
+static void set_freq_by_regulator(struct common_node *comm_node, unsigned long smi_clk)
+{
+	u32 volt;
 
-	if (comm_node->comm_dev && smi_clk != comm_node->smi_clk) {
-		volt = get_volt_by_freq(comm_node->comm_dev, smi_clk);
-		if (volt > 0 && volt != comm_node->volt) {
-			if (log_level & 1 << log_comm_freq) {
-				for (i = 0; i < MMQOS_MAX_COMM_NUM; i++) {
-					for (j = 0; j < MMQOS_COMM_CHANNEL_NUM; j++) {
-						dev_notice(comm_node->comm_dev,
-						"comm(%d) chn=%d s_r=%u h_r=%u s_w=%u h_w=%u\n",
-						i, j, chn_srt_r_bw[i][j], chn_hrt_r_bw[i][j],
-						chn_srt_w_bw[i][j], chn_hrt_w_bw[i][j]);
-					}
-				}
-				dev_notice(comm_node->comm_dev,
-					"comm(%d) max_bw=%u smi_clk=%lu volt=%u\n",
-					comm_id, max_bw, smi_clk, volt);
-			}
-			if (IS_ERR_OR_NULL(comm_node->comm_reg)) {
-				if (IS_ERR_OR_NULL(comm_node->clk))
-					dev_notice(comm_node->comm_dev,
-						"mmdvfs clk is not ready\n");
-				else {
-					ret = clk_set_rate(comm_node->clk, smi_clk);
-					if (ret)
-						dev_notice(comm_node->comm_dev,
-							"clk_set_rate failed:%d\n", ret);
-				}
-			} else if (regulator_set_voltage(comm_node->comm_reg,
-					volt, INT_MAX))
-				dev_notice(comm_node->comm_dev,
-					"regulator_set_voltage failed volt=%u\n", volt);
-			comm_node->volt = volt;
-
-		}
-		comm_node->smi_clk = smi_clk;
+	volt = get_volt_by_freq(comm_node->comm_dev, smi_clk);
+	if (volt > 0 && volt != comm_node->volt) {
+		if (IS_ERR_OR_NULL(comm_node->comm_reg)) {
+			dev_notice(comm_node->comm_dev, "comm_reg not existed\n");
+		} else if (regulator_set_voltage(comm_node->comm_reg,
+				volt, INT_MAX))
+			dev_notice(comm_node->comm_dev,
+				"regulator_set_voltage failed volt=%u\n", volt);
+		comm_node->volt = volt;
 	}
-	MMQOS_SYSTRACE_BEGIN("to EMI avg %d peak %d\n", avg_bw, peak_bw);
-	icc_set_bw(comm_node->icc_path, avg_bw, 0);
-	icc_set_bw(comm_node->icc_hrt_path, peak_bw, 0);
-	MMQOS_SYSTRACE_END();
+}
+
+static void set_freq_by_mmdvfs(struct common_node *comm_node, unsigned long smi_clk)
+{
+	if (log_level & 1 << log_comm_freq)
+		dev_notice(comm_node->comm_dev, "set freq_rate:%lu\n", smi_clk);
+	mmdvfs_mux_set_opp("user-smi", smi_clk);
+}
+
+static void set_comm_icc_bw(struct common_node *comm_node)
+{
+	u32 max_bw = 0;
+	unsigned long smi_clk = 0;
+	u32 comm_id;
+
+	MMQOS_SYSTRACE_BEGIN("%s %s\n", __func__, comm_node->base->icc_node->name);
+	comm_id = MASK_8(comm_node->base->icc_node->id);
+
+	if (freq_mode == BY_REGULATOR || freq_mode == BY_MMDVFS) {
+		max_bw = get_max_channel_bw(comm_id);
+
+		if (max_bw)
+			smi_clk = SHIFT_ROUND(max_bw, 4) * 1000;
+		else
+			smi_clk = 0;
+
+		if (log_level & 1 << log_comm_freq)
+			dev_notice(comm_node->comm_dev,
+				"comm(%d) max_bw=%u smi_clk=%lu freq_mode=%d\n",
+				comm_id, max_bw, smi_clk, freq_mode);
+
+		if (comm_node->comm_dev && smi_clk != comm_node->smi_clk) {
+			if (freq_mode == BY_REGULATOR)
+				set_freq_by_regulator(comm_node, smi_clk);
+			else if (freq_mode == BY_MMDVFS)
+				set_freq_by_mmdvfs(comm_node, smi_clk);
+			else
+				MMQOS_ERR("freq_mode:%d is wrong", freq_mode);
+
+			comm_node->smi_clk = smi_clk;
+		}
+	}
+
+	set_total_bw_to_emi(comm_node);
 
 	MMQOS_SYSTRACE_END();
 }
@@ -1235,6 +1268,9 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 		pr_notice("[mmqos] mmqos init disable: %d", mmqos_state);
 	}
 
+	freq_mode = mmqos_desc->freq_mode ? mmqos_desc->freq_mode : freq_mode;
+	MMQOS_DBG("freq_mode:%d", freq_mode);
+
 	for (i = 0 ; i < MMQOS_MAX_DISP_VIRT_LARB_NUM ; i++)
 		mmqos->disp_virt_larbs[i] = mmqos_desc->disp_virt_larbs[i];
 
@@ -1347,6 +1383,9 @@ MODULE_PARM_DESC(log_level, "mmqos log level");
 
 module_param(mmqos_state, uint, 0644);
 MODULE_PARM_DESC(mmqos_state, "mmqos_state");
+
+module_param(freq_mode, uint, 0644);
+MODULE_PARM_DESC(freq_mode, "mminfra change frequency mode");
 
 module_param(ftrace_ena, uint, 0644);
 MODULE_PARM_DESC(ftrace_ena, "ftrace enable");
