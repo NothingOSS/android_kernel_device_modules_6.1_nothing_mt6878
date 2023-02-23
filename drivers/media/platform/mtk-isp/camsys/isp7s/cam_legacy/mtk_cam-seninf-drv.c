@@ -1687,25 +1687,6 @@ static int seninf_csi_s_stream(struct v4l2_subdev *sd, int enable)
 	return 0;
 }
 
-static int stream_sensor(struct seninf_ctx *ctx, bool enable)
-{
-	int ret;
-
-	ret = v4l2_subdev_call(ctx->sensor_sd, video, s_stream, enable);
-	if (ret) {
-		dev_info(ctx->dev, "%s sensor stream-%s fail,ret(%d)\n",
-			 __func__,
-			 enable ? "on" : "off",
-			 ret);
-	} else {
-#ifdef SENINF_UT_DUMP
-		g_seninf_ops->_debug(ctx);
-#endif
-	}
-
-	return ret;
-}
-
 static int seninf_s_stream(struct v4l2_subdev *sd, int enable)
 {
 	struct seninf_ctx *ctx = sd_to_ctx(sd);
@@ -1743,6 +1724,10 @@ static int seninf_s_stream(struct v4l2_subdev *sd, int enable)
 		dev_info(ctx->dev,
 			"[%s] is_ctx_streaming(%d)\n",
 			__func__, ctx->streaming);
+		if (!enable) {
+			// ensure forget cammux setting
+			mtk_cam_seninf_forget_camtg_setting(ctx);
+		}
 		return 0;
 	}
 
@@ -1774,11 +1759,8 @@ static int seninf_s_stream(struct v4l2_subdev *sd, int enable)
 		// notify_fsync_listen_target(ctx);
 	}
 
-	// stream on sensor after mux set
-	stream_sensor(ctx, enable);
-
 	ctx->streaming = enable;
-	notify_fsync_listen_target_with_kthread(ctx, 2);
+	notify_fsync_with_kthread_and_s_stream(ctx, 2, enable);
 
 	if (core->aov_abnormal_deinit_flag) {
 		ctx->is_aov_real_sensor = 0;
@@ -3019,6 +3001,7 @@ int mtk_cam_seninf_dump(struct v4l2_subdev *sd, u32 seq_id, bool force_check)
 	struct v4l2_ctrl *ctrl;
 	int val = 0;
 	int reset_by_user = 0;
+	bool in_reset = 0;
 
 	if (!force_check && ctx->dbg_last_dump_req != 0 &&
 		ctx->dbg_last_dump_req == seq_id) {
@@ -3042,15 +3025,22 @@ int mtk_cam_seninf_dump(struct v4l2_subdev *sd, u32 seq_id, bool force_check)
 		return ret;
 	}
 
+	/* query if sensor in reset */
+	sensor_sd->ops->core->command(sensor_sd,
+			V4L2_CMD_SENSOR_IN_RESET, &in_reset);
+
 	if (ctx->streaming) {
-		ret = g_seninf_ops->_debug(sd_to_ctx(sd));
+		if (!in_reset) {
+			ret = g_seninf_ops->_debug(sd_to_ctx(sd));
 #if ESD_RESET_SUPPORT
-		if (ret != 0) {
-			reset_by_user = is_reset_by_user(sd_to_ctx(sd));
-			if (!reset_by_user)
-				reset_sensor(sd_to_ctx(sd));
-		}
+			if (ret != 0) {
+				reset_by_user = is_reset_by_user(sd_to_ctx(sd));
+				if (!reset_by_user)
+					reset_sensor(sd_to_ctx(sd));
+			}
 #endif
+		} else
+			dev_info(ctx->dev, "%s skip dump, sensor is in resetting\n", __func__);
 	} else
 		dev_info(ctx->dev, "%s should not dump during stream off\n", __func__);
 

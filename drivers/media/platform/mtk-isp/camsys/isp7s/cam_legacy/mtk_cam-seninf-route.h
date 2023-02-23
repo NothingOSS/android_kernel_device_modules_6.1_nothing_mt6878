@@ -30,6 +30,11 @@ int mtk_cam_seninf_get_csi_param(struct seninf_ctx *ctx);
 u8 is_reset_by_user(struct seninf_ctx *ctx);
 int reset_sensor(struct seninf_ctx *ctx);
 int mtk_cam_seninf_s_stream_mux(struct seninf_ctx *ctx);
+int mtk_cam_seninf_forget_camtg_setting(struct seninf_ctx *ctx);
+
+int stream_sensor(struct seninf_ctx *ctx, int enable);
+void notify_fsync_with_kthread_and_s_stream(struct seninf_ctx *ctx,
+	const unsigned int mdelay, const int enable);
 
 #ifdef SENINF_DEBUG
 void mtk_cam_seninf_release_cam_mux(struct seninf_ctx *ctx);
@@ -37,6 +42,8 @@ int mux2mux_vr(struct seninf_ctx *ctx, int mux, int cammux, int vc_idx);
 int mux_vr2mux(struct seninf_ctx *ctx, int mux_vr);
 enum CAM_TYPE_ENUM cammux2camtype(struct seninf_ctx *ctx, int cammux);
 #endif
+
+bool has_multiple_expo_mode(struct seninf_ctx *ctx);
 
 int aov_switch_i2c_bus_scl_aux(struct seninf_ctx *ctx,
 	enum mtk_cam_sensor_i2c_bus_scl aux);
