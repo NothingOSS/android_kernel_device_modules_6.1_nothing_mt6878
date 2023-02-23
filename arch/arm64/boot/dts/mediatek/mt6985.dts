@@ -12773,11 +12773,11 @@
 	opp_table_vdec: opp-table-vdec {
 		compatible = "operating-points-v2";
 		opp-0 {
-			opp-hz = /bits/ 64 <000000000>;
+			opp-hz = /bits/ 64 <182000000>;
 			opp-microvolt = <000000>;
 		};
 		opp-1 {
-			opp-hz = /bits/ 64 <182000000>;
+			opp-hz = /bits/ 64 <182000001>;
 			opp-microvolt = <550000>;
 		};
 		opp-2 {
@@ -12805,7 +12805,7 @@
 	opp_table_cam: opp-table-cam {
 		compatible = "operating-points-v2";
 		opp-0 {
-			opp-hz = /bits/ 64 <000000000>;
+			opp-hz = /bits/ 64 <173000000>;
 			opp-microvolt = <000000>;
 		};
 		opp-1 {
@@ -12837,7 +12837,7 @@
 	opp_table_img: opp-table-img {
 		compatible = "operating-points-v2";
 		opp-0 {
-			opp-hz = /bits/ 64 <000000000>;
+			opp-hz = /bits/ 64 <173000000>;
 			opp-microvolt = <000000>;
 		};
 		opp-1 {
@@ -12913,53 +12913,25 @@
 			<&topckgen_clk CLK_TOP_IMG1_SEL>, <&topckgen_clk CLK_TOP_CAM_SEL>;
 		clock-names = "mux-dis", "mux-mdp", "mux-mml", "mux-smi", "mux-ven", "mux-vde",
 			"mux-img", "mux-cam";
-		#clock-cells = <1>;
 		mediatek,mmdvfs-opp-table = <&opp_table_disp>, <&opp_table_mdp>, <&opp_table_mdp>,
-			<&opp_table_mminfra>, <&opp_table_vdec>, <&opp_table_venc>,
+			<&opp_table_mminfra>, <&opp_table_venc>, <&opp_table_vdec>,
 			<&opp_table_img>, <&opp_table_cam>;
+		#clock-cells = <1>;
 		mediatek,mmdvfs-user-target = <MMDVFS_MUX_DIS>, <MMDVFS_MUX_MDP>, <MMDVFS_MUX_MML>,
 			<MMDVFS_MUX_SMI>, <MMDVFS_MUX_VEN>, <MMDVFS_MUX_VEN>, <MMDVFS_MUX_VEN>,
-			<MMDVFS_MUX_VDE>, <MMDVFS_MUX_IMG>, <MMDVFS_MUX_CAM>;
+			<MMDVFS_MUX_VDE>, <MMDVFS_MUX_IMG>, <MMDVFS_MUX_CAM>,
+			<MMDVFS_MUX_SMI>, <MMDVFS_MUX_CAM>, <MMDVFS_MUX_DIS>, <MMDVFS_MUX_VDE>;
 		mediatek,mmdvfs-user-names = "user-disp", "user-mdp", "user-mml", "user-smi",
 			"user-jpegdec", "user-jpegenc", "user-venc", "user-vfmt", "user-img",
-			"user-cam";
+			"user-cam", "user-vcore", "user-vmm", "user-vdisp", "user-vdec";
 		mediatek,mmdvfs-swrgo;
 	};
 
-	mmdvfs-user-smi {
-		compatible = "mediatek,mtk-mmdvfs-user-smi", "mediatek,mtk-mmdvfs-user";
-		clocks = <&mmdvfs_mux MMDVFS_USER_SMI>;
-		clock-names = "user-smi";
-	};
-
-	mmdvfs-user-jpegdec {
-		compatible = "mediatek,mtk-mmdvfs-user-jpegdec", "mediatek,mtk-mmdvfs-user";
-		clocks = <&mmdvfs_mux MMDVFS_USER_JPEGDEC>;
-		clock-names = "user-jpegdec";
-	};
-
-	mmdvfs-user-jpegenc {
-		compatible = "mediatek,mtk-mmdvfs-user-jpegenc", "mediatek,mtk-mmdvfs-user";
-		clocks = <&mmdvfs_mux MMDVFS_USER_JPEGENC>;
-		clock-names = "user-jpegenc";
-	};
-
-	mmdvfs-user-venc {
-		compatible = "mediatek,mtk-mmdvfs-user-venc", "mediatek,mtk-mmdvfs-user";
-		clocks = <&mmdvfs_mux MMDVFS_USER_VENC>;
-		clock-names = "user-venc";
-	};
-
-	mmdvfs-user-img {
-		compatible = "mediatek,mtk-mmdvfs-user-img", "mediatek,mtk-mmdvfs-user";
-		clocks = <&mmdvfs_mux MMDVFS_USER_IMG>;
-		clock-names = "user-img";
-	};
-
-	mmdvfs-user-cam {
-		compatible = "mediatek,mtk-mmdvfs-user-cam", "mediatek,mtk-mmdvfs-user";
-		clocks = <&mmdvfs_mux MMDVFS_USER_CAM>;
-		clock-names = "user-cam";
+	mmdvfs-user {
+		compatible = "mediatek,mtk-mmdvfs-user";
+		clocks = <&mmdvfs_mux MMDVFS_USER_VCORE>, <&mmdvfs_mux MMDVFS_USER_VMM>,
+			 <&mmdvfs_mux MMDVFS_USER_VDISP>, <&mmdvfs_mux MMDVFS_USER_VDEC>;
+		clock-names = "user-vcore", "user-vmm", "user-vdisp", "user-vdec";
 	};
 
 	mmdvfs_clk: mmdvfs-clk {
@@ -13080,7 +13052,7 @@
 		mediatek,mux-lp = "TOP_MAINPLL_D5_D2", "TOP_MAINPLL_D5_D2",
 				"TOP_MAINPLL_D5_D2", "TOP_MAINPLL_D5_D2",
 				"", "", "", "";
-
+		mediatek,mux-lp-vcp;
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 
 		clocks = <&topckgen_clk CLK_TOP_DISP0_SEL>,	/* 0 */
