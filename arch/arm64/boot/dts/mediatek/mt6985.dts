@@ -13719,6 +13719,7 @@
 		compatible = "mediatek,mtk-slbc";
 		reg = <0 0x00113e00 0 0x200>;
 		slbc-enable = <1>;
+		slbc-all-cache-enable = <1>;
 		apu = <2097152>;
 	};
 
