@@ -22,8 +22,8 @@
 #include <linux/string.h>
 #include <linux/iopoll.h>
 #include "soc_temp_lvts.h"
+#include "thermal_interface.h"
 #include "thermal_core.h"
-
 /*==================================================
  * LVTS debug patch
  *==================================================
@@ -185,7 +185,7 @@ static int lvts_read_all_tc_temperature(struct lvts_data *lvts_data, bool in_isr
 	return max_temp;
 }
 
-static int lvts_read_tc_temperature(struct lvts_data *lvts_data, unsigned int tz_id)
+static int lvts_read_tc_temperature(struct lvts_data *lvts_data, unsigned int tz_id, bool in_isr)
 {
 	struct tc_settings *tc = lvts_data->tc;
 	unsigned int i, j, msr_raw;
@@ -207,10 +207,13 @@ static int lvts_read_tc_temperature(struct lvts_data *lvts_data, unsigned int tz
 			else
 				current_temp = ops->lvts_raw_to_temp(&(tc[i].coeff), j, msr_raw);
 
-			mutex_lock(&lvts_data->sen_data_lock);
+			if (!in_isr)
+				mutex_lock(&lvts_data->sen_data_lock);
+
 			lvts_data->sen_data[s_index].msr_raw = msr_raw;
 			lvts_data->sen_data[s_index].temp = current_temp;
-			mutex_unlock(&lvts_data->sen_data_lock);
+			if (!in_isr)
+				mutex_unlock(&lvts_data->sen_data_lock);
 
 			return current_temp;
 		}
@@ -227,7 +230,7 @@ static int soc_temp_lvts_read_temp(struct thermal_zone_device *tz, int *temperat
 	if (lvts_tz->id == 0)
 		*temperature = lvts_read_all_tc_temperature(lvts_data, false);
 	else if (lvts_tz->id - 1 < lvts_data->num_sensor)
-		*temperature = lvts_read_tc_temperature(lvts_data, lvts_tz->id);
+		*temperature = lvts_read_tc_temperature(lvts_data, lvts_tz->id, false);
 	else
 		return -EINVAL;
 
@@ -357,6 +360,14 @@ static void device_identification_v1(struct lvts_data *lvts_data)
 	}
 }
 
+static void disable_sensing_points(struct lvts_data *lvts_data, unsigned int tc_id)
+{
+	void __iomem *base;
+
+	base = GET_BASE_ADDR(tc_id);
+	writel(DISABLE_SENSING_POINT, LVTSMONCTL0_0 + base);
+}
+
 static void disable_all_sensing_points(struct lvts_data *lvts_data)
 {
 	unsigned int i;
@@ -366,6 +377,34 @@ static void disable_all_sensing_points(struct lvts_data *lvts_data)
 		base = GET_BASE_ADDR(i);
 		writel(DISABLE_SENSING_POINT, LVTSMONCTL0_0 + base);
 	}
+}
+
+static void enable_sensing_points(struct lvts_data *lvts_data, unsigned int tc_id)
+{
+	struct device *dev = lvts_data->dev;
+	struct tc_settings *tc = lvts_data->tc;
+	unsigned int j, num;
+	void __iomem *base;
+	unsigned int flag;
+
+	base = GET_BASE_ADDR(tc_id);
+	num = tc[tc_id].num_sensor;
+
+	if (num > ALL_SENSING_POINTS) {
+		dev_info(dev,
+			"%s, LVTS%d, illegal number of sensors: %d\n",
+			__func__, tc_id, tc[tc_id].num_sensor);
+		return;
+	}
+
+	flag = LVTS_SINGLE_SENSE;
+	for (j = 0; j < tc[tc_id].num_sensor; j++) {
+		if (tc[tc_id].sensor_on_off[j] != SEN_ON)
+			continue;
+
+		flag = flag | (0x1<<j);
+	}
+	writel(flag, LVTSMONCTL0_0 + base);
 }
 
 static void enable_all_sensing_points(struct lvts_data *lvts_data)
@@ -966,6 +1005,14 @@ static int soc_temp_lvts_set_trip_temp(struct thermal_zone_device *tz,
 	struct soc_temp_tz *lvts_tz = (struct soc_temp_tz *)tz->devdata;
 	struct lvts_data *lvts_data = lvts_tz->lvts_data;
 	const struct thermal_trip *trip_points;
+	struct device *dev = lvts_data->dev;
+	int ret;
+
+	if (temp <= MIN_THERMAL_HW_REBOOT_POINT && temp != THERMAL_TEMP_INVALID) {
+		dev_info(dev, "input temperature is lower than %d\n",
+			MIN_THERMAL_HW_REBOOT_POINT);
+		return -EINVAL;
+	}
 
 	trip_points = of_thermal_get_trip_points(lvts_data->tz_dev);
 	if (!trip_points)
@@ -977,7 +1024,9 @@ static int soc_temp_lvts_set_trip_temp(struct thermal_zone_device *tz,
 	update_all_tc_hw_reboot_point(lvts_data, temp);
 	set_all_tc_hw_reboot(lvts_data);
 
-	return 0;
+	ret = set_reboot_temperature(temp);
+
+	return ret;
 }
 
 static const struct thermal_zone_device_ops soc_temp_lvts_ops = {
@@ -1453,13 +1502,76 @@ static void lvts_close(struct lvts_data *lvts_data)
 
 }
 
-static void tc_irq_handler(struct lvts_data *lvts_data, int tc_id)
+static enum interrupt_type interrupt_type_switch(struct lvts_data *lvts_data,
+	unsigned int tc_id, unsigned int interrupt_reg_status)
+{
+	void __iomem *base;
+	unsigned int interrupt_reg_val;
+	enum interrupt_type ret;
+
+	base = GET_BASE_ADDR(tc_id);
+	interrupt_reg_val = readl(LVTSMONINT_0 + base);
+
+	if (interrupt_reg_status & THERMAL_HOT_INTERRUPT_0) {
+		interrupt_reg_val = interrupt_reg_val & ~(HOT_INT0_EN);
+
+		interrupt_reg_val = interrupt_reg_val | (COLD_INT0_EN);
+
+		ret = HOT;
+	} else if (interrupt_reg_status & THERMAL_COLD_INTERRUPT_0) {
+		interrupt_reg_val = interrupt_reg_val | (HOT_INT0_EN);
+
+		interrupt_reg_val = interrupt_reg_val & ~(COLD_INT0_EN);
+
+		ret = COLD;
+	} else {
+		ret = OTHER;
+		return ret;
+	}
+
+	disable_sensing_points(lvts_data, tc_id);
+	writel(interrupt_reg_val, LVTSMONINT_0 + base);
+	enable_sensing_points(lvts_data, tc_id);
+
+	return ret;
+}
+
+static void tc_irq_handler(struct lvts_data *lvts_data, int tc_id, char thermintst_str[])
 {
 	struct device *dev = lvts_data->dev;
 	unsigned int ret = 0;
 	void __iomem *base;
 	int temp;
 
+	if (IS_ENABLE(FEATURE_SCP_OC)) {
+		if (tc_id == SCP_APPOINTED_CONTROLLER) {
+			enum interrupt_type ignore_dump_log = OTHER;
+
+			base = GET_BASE_ADDR(tc_id);
+			ret = readl(LVTSMONINTSTS_0 + base);
+			ignore_dump_log = interrupt_type_switch(lvts_data, tc_id, ret);
+			if (ignore_dump_log == HOT || ignore_dump_log == COLD) {
+				int change_cold = 0;
+#if (SCP_OC_DUMP_LOG == 1)
+				struct tc_settings *tc = lvts_data->tc;
+				int s_index = tc[tc_id].sensor_map[SCP_APPOINTED_SENSOR];
+				char *hotOrCold = (ignore_dump_log == HOT)?"hot":"cold";
+
+				temp = lvts_read_tc_temperature(lvts_data, s_index + 1, true);
+				dev_info(dev, "%s", thermintst_str);
+				dev_info(dev, "it is controller%d, sensor%d %s interrupt, temp = %d\n",
+					tc_id, SCP_APPOINTED_SENSOR, hotOrCold, temp);
+#endif
+
+				change_cold = (ignore_dump_log == HOT)?1:0;
+				set_cold_interrupt_enable_addr(change_cold);
+				/* Write back to clear interrupt status */
+				writel(ret, LVTSMONINTSTS_0 + base);
+				return;
+			}
+		}
+		dev_info(dev, "%s", thermintst_str);
+	}
 #ifdef DUMP_MORE_LOG
 	temp = lvts_read_all_tc_temperature(lvts_data, true);
 	dump_lvts_error_info(lvts_data);
@@ -1497,16 +1609,32 @@ static irqreturn_t irq_handler(int irq, void *dev_id)
 	struct tc_settings *tc = lvts_data->tc;
 	unsigned int i;
 	void __iomem *base;
+	char thermintst_str[200];
+	int thermintst_str_size = sizeof(thermintst_str);
+	int thermintst_str_offset = 0;
 
 	for (i = 0; i < lvts_data->num_domain; i++) {
 		base = lvts_data->domain[i].base;
 		lvts_data->irq_bitmap[i] = readl(THERMINTST + base);
-		dev_info(dev, "%s : THERMINTST = 0x%x\n", __func__, lvts_data->irq_bitmap[i]);
+		if (!IS_ENABLE(FEATURE_SCP_OC))
+			dev_info(dev, "%s : THERMINTST = 0x%x\n", __func__,
+				lvts_data->irq_bitmap[i]);
+		else
+			thermintst_str_offset += snprintf(thermintst_str + thermintst_str_offset,
+				thermintst_str_size - thermintst_str_offset,
+				"%s : THERMINTST = 0x%x\n", __func__, lvts_data->irq_bitmap[i]);
 	}
+	if (thermintst_str_offset < 0)
+		return -EINVAL;
+	if (thermintst_str_offset >= thermintst_str_size)
+		return -ENOMEM;
+
+	thermintst_str[thermintst_str_offset] = '\0';
 
 	for (i = 0; i < lvts_data->num_tc; i++) {
-		if ((lvts_data->irq_bitmap[tc[i].domain_index] & tc[i].irq_bit) == 0)
-			tc_irq_handler(lvts_data, i);
+		if ((lvts_data->irq_bitmap[tc[i].domain_index] & tc[i].irq_bit) == 0 &&
+			lvts_data->irq_bitmap[tc[i].domain_index] != 0)
+			tc_irq_handler(lvts_data, i, thermintst_str);
 	}
 
 	return IRQ_HANDLED;
@@ -4071,7 +4199,7 @@ static struct lvts_data mt6985_lvts_data = {
 		.check_cal_data = mt6985_check_cal_data,
 		.update_coef_data = mt6985_update_coef_data,
 	},
-	.feature_bitmap = FEATURE_DEVICE_AUTO_RCK,
+	.feature_bitmap = FEATURE_DEVICE_AUTO_RCK | FEATURE_SCP_OC,
 	.num_efuse_addr = 35,
 	.num_efuse_block = 2,
 	.cal_data = {
