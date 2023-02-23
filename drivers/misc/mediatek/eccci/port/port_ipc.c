@@ -11,6 +11,7 @@
 #include <linux/kthread.h>
 #include <linux/poll.h>
 #include <linux/bitops.h>
+#include <linux/time64.h>
 #include "mt-plat/mtk_ccci_common.h"
 #include "ccci_config.h"
 #include "ccci_common_config.h"
@@ -92,10 +93,8 @@ int port_ipc_recv_match(struct port_t *port, struct sk_buff *skb)
 	return 0;
 }
 
-#if MD_GENERATION <= (6295)
-static int send_new_time_to_md(int tz);
-#endif
 int current_time_zone;
+static int send_new_time_to_md(int tz);
 
 long port_ipc_ioctl(struct file *file, unsigned int cmd,
 	unsigned long arg)
@@ -134,11 +133,10 @@ long port_ipc_ioctl(struct file *file, unsigned int cmd,
 		CCCI_REPEAT_LOG(0, IPC,
 			"CCCI_IPC_UPDATE_TIME 0x%x\n", (unsigned int)arg);
 		current_time_zone = (int)arg;
-		#if MD_GENERATION <= (6295)
-		ret = send_new_time_to_md(0, (int)arg);
-		#else
-		ret = send_new_time_to_new_md((int)arg);
-		#endif
+		if (port_md_gen <= 6295)
+			ret = send_new_time_to_md((int)arg);
+		else
+			ret = send_new_time_to_new_md((int)arg);
 		break;
 
 	case CCCI_IPC_UPDATE_TIMEZONE:
@@ -209,7 +207,6 @@ static struct port_t *find_ipc_port_by_task_id(int task_id)
 {
 	return port_get_by_minor(task_id + CCCI_IPC_MINOR_BASE);
 }
-
 
 static const struct file_operations ipc_dev_fops = {
 	.owner = THIS_MODULE,
@@ -449,20 +446,16 @@ struct port_ops ipc_port_ops = {
 	.md_state_notify = &port_ipc_md_state_notify,
 };
 
-#if MD_GENERATION <= (6295)
 int send_new_time_to_md(int tz)
 {
 	struct ipc_ilm in_ilm;
 	char local_param[sizeof(struct local_para) + 16];
 	unsigned int timeinfo[4];
 	struct timespec64 time_spec64;
-	struct timeval tv = { 0 };
 
-	ktime_get_ts64(&time_spec64); /* ktime_get_ts64 maybe we should use */
-	tv.tv_sec = time_spec64.tv_sec;
-	tv.tv_usec = time_spec64.tv_nsec/NSEC_PER_USEC;
-	timeinfo[0] = tv.tv_sec;
-	timeinfo[1] = sizeof(tv.tv_sec) > 4 ? tv.tv_sec >> 32 : 0;
+	ktime_get_ts64(&time_spec64);
+	timeinfo[0] = time_spec64.tv_sec;
+	timeinfo[1] = sizeof(time_spec64.tv_sec) > 4 ? time_spec64.tv_sec >> 32 : 0;
 	timeinfo[2] = tz;
 	timeinfo[3] = sys_tz.tz_dsttime;
 
@@ -478,8 +471,8 @@ int send_new_time_to_md(int tz)
 	memcpy(in_ilm.local_para_ptr->data, timeinfo, 16);
 
 	CCCI_DEBUG_LOG(0, IPC,
-		"Update time(R): [sec=0x%lx][timezone=0x%08x][des=0x%08x]\n",
-		tv.tv_sec, sys_tz.tz_minuteswest, sys_tz.tz_dsttime);
+		"Update time(R): [sec=0x%llx][timezone=0x%08x][des=0x%08x]\n",
+		time_spec64.tv_sec, sys_tz.tz_minuteswest, sys_tz.tz_dsttime);
 	CCCI_DEBUG_LOG(0, IPC,
 		"Update time(A): [L:0x%08x][H:0x%08x][0x%08x][0x%08x]\n",
 		timeinfo[0], timeinfo[1], timeinfo[2], timeinfo[3]);
@@ -490,5 +483,3 @@ int send_new_time_to_md(int tz)
 	CCCI_REPEAT_LOG(0, IPC, "Update success\n");
 	return 0;
 }
-#endif
-

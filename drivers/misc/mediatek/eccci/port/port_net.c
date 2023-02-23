@@ -380,7 +380,7 @@ static int port_net_recv_skb(struct port_t *port, struct sk_buff *skb)
 
 	total_time = sched_clock();
 #endif
-	if (port->hif_id == MD1_NET_HIF) {
+	if ((port->hif_id == DPMAIF_HIF_ID) || (port->hif_id == CLDMA_HIF_ID)) {
 		skb_pull(skb, sizeof(struct lhif_header));
 		CCCI_DEBUG_LOG(0, NET,
 			"port %s recv: 0x%08X, 0x%08X, %08X, 0x%08X\n",
@@ -437,15 +437,14 @@ static void port_net_queue_state_notify(struct port_t *port, int dir,
 		return;
 	}
 
-#if MD_GENERATION > (6293)
-	if (state == TX_FULL) {
+	if ((port->hif_id == DPMAIF_HIF_ID) && (state == TX_FULL)) {
 		if (ccci_dpmaif_empty_query(qno) > 0) {
 			if (dir == OUT)
 				spin_unlock_irqrestore(&port->flag_lock, flags);
 			return;
 		}
 	}
-#endif
+
 	ccmni_ops.queue_state_callback(GET_CCMNI_IDX(port), state, is_ack);
 
 	switch (state) {

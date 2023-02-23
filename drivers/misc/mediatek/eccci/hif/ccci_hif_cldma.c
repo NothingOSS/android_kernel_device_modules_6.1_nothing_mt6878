@@ -629,7 +629,6 @@ static void cldma_timeout_timer_func(unsigned long data)
 }
 #endif
 
-//#if MD_GENERATION == (6293)
 /*
  * AP_L2RISAR0 register is different from others.
  * its valid bit is 0,8,16,24
@@ -648,6 +647,7 @@ static inline u32 cldma_reg_bit_gather(u32 reg_s)
 
 	return reg_g;
 }
+
 static inline u32 cldma_reg_bit_scatter(u32 reg_g)
 {
 	u32 reg_s = 0;
@@ -661,7 +661,6 @@ static inline u32 cldma_reg_bit_scatter(u32 reg_g)
 
 	return reg_s;
 }
-//#endif
 
 static inline void ccci_md_check_rx_seq_num(
 	struct ccci_hif_traffic *traffic_info,

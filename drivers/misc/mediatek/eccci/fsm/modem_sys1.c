@@ -465,8 +465,7 @@ static void dump_runtime_data_v2_1(struct ccci_modem *md,
 		ap_feature->tail_pattern);
 }
 
-#if (MD_GENERATION < 6297)
-static void md_cd_smem_sub_region_init(struct ccci_modem *md)
+static void md_cd_smem_sub_region_init_old(struct ccci_modem *md)
 {
 	int i;
 	int __iomem *addr;
@@ -491,11 +490,11 @@ static void md_cd_smem_sub_region_init(struct ccci_modem *md)
 
 #if IS_ENABLED(CONFIG_MTK_PBM)
 	addr += CCCI_SMEM_SIZE_DBM_GUARD;
-#endif
 	init_md_section_level(KR_MD1, addr);
+#endif
 }
-#else
-static void md_cd_smem_sub_region_init(struct ccci_modem *md)
+
+static void md_cd_smem_sub_region_init_new(struct ccci_modem *md)
 {
 #if IS_ENABLED(CONFIG_MTK_PBM)
 	int __iomem *addr;
@@ -507,7 +506,6 @@ static void md_cd_smem_sub_region_init(struct ccci_modem *md)
 	init_md_section_level(KR_MD1, addr);
 #endif
 }
-#endif
 
 static void config_ap_runtime_data_v2(struct ccci_modem *md,
 	struct ap_query_md_feature *ap_feature)
@@ -627,7 +625,10 @@ static int md_cd_send_runtime_data_v2(struct ccci_modem *md,
 		dump_runtime_data_v2(md, ap_rt_data);
 	}
 
-	md_cd_smem_sub_region_init(md);
+	if (md->hw_info->plat_val->md_gen < 6297)
+		md_cd_smem_sub_region_init_old(md);
+	else
+		md_cd_smem_sub_region_init_new(md);
 
 	ret = ccci_hif_send_data(CCIF_HIF_ID, H2D_SRAM);
 	return ret;
@@ -1315,8 +1316,12 @@ int ccci_modem_init_common(struct platform_device *plat_dev,
 
 	ret = of_property_read_u32(plat_dev->dev.of_node,
 		"mediatek,mdhif-type", &md->hif_flag);
-	if (ret != 0)
-		md->hif_flag = (1 << MD1_NET_HIF | 1 << MD1_NORMAL_HIF);
+	if (ret != 0) {
+		if (md->hw_info->plat_val->md_gen < 6295)
+			md->hif_flag = (1 << CLDMA_HIF_ID | 1 << MD1_NORMAL_HIF);
+		else
+			md->hif_flag = (1 << DPMAIF_HIF_ID | 1 << MD1_NORMAL_HIF);
+	}
 
 	/* register SYS CORE suspend resume call back */
 	register_syscore_ops(&ccci_modem_sysops);

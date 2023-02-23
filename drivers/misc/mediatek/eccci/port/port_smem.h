@@ -15,6 +15,8 @@
 #include "ccci_modem.h"
 #include "port_t.h"
 
+extern int port_md_gen;
+
 enum {
 	TYPE_RAW = 0,
 	TYPE_CCB,

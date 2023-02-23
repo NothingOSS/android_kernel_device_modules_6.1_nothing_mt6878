@@ -7,24 +7,18 @@
 #define __MDEE_DUMPER_V5_H__
 #include "ccci_fsm_internal.h"
 
-#define MD_L2SRAM_SIZE (0x1800)
-#define MD_HS1_FAIL_DUMP_SIZE  (2048)/*(512)*/
+#define MD_L2SRAM_SIZE		(0x1800)
+#define MD_HS1_FAIL_DUMP_SIZE	(2048)/*(512)*/
 
-#define EE_BUF_LEN_UMOLY		(0x700)
+#define EE_BUF_LEN_UMOLY	(0x700)
 #define AED_STR_LEN		(2048)/* 0x800 */
 #define EE_BUF_LEN		(256)/* 0x100 */
 
-#if (MD_GENERATION >= 6297)
-#define MD_CORE_TOTAL_NUM   (12)
-#elif (MD_GENERATION >= 6293)
-#define MD_CORE_TOTAL_NUM   (8)
-#else
-#define MD_CORE_TOTAL_NUM   (9)
-#endif
-#define MIPS_VPE_NUM	(12)
-#define MD_CORE_NAME_LEN    (11)
+#define MD_CORE_TOTAL_NUM	(12)
+#define MIPS_VPE_NUM		(12)
+#define MD_CORE_NAME_LEN	(11)
 /* +1 for end '\0', +5 for 16, +16 for str TDD FDD */
-#define MD_CORE_NAME_DEBUG  (MD_CORE_NAME_LEN + 1 + 5 + 16)
+#define MD_CORE_NAME_DEBUG	(MD_CORE_NAME_LEN + 1 + 5 + 16)
 #define EX_BRIEF_FATALERR_SIZE	(276)
 
 struct ex_step_v5 {

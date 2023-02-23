@@ -13,6 +13,7 @@
 #include <linux/poll.h>
 #include <linux/proc_fs.h>
 #include <linux/icmpv6.h>
+#include <linux/of.h>
 #include <net/ip.h>
 #include <net/ipv6.h>
 #include <net/ndisc.h>
@@ -30,6 +31,7 @@
 #include "ccci_modem.h"
 #include "ccci_hif.h"
 #include "ccci_port.h"
+#include "modem_sys.h"
 #include "port_proxy.h"
 #include "port_udc.h"
 #define TAG PORT
@@ -47,8 +49,8 @@ struct ccci_proc_user {
 };
 
 static spinlock_t file_lock;
-
 static struct port_t *port_list[CCCI_MAX_CH_NUM];
+int port_md_gen;
 
 static struct port_t *ccci_port_get_port_by_user_id(unsigned int user_id)
 {
@@ -69,7 +71,6 @@ char *ccci_port_get_dev_name(unsigned int rx_user_id)
 }
 EXPORT_SYMBOL(ccci_port_get_dev_name);
 
-#if MD_GENERATION > (6295)
 int send_new_time_to_new_md(int tz)
 {
 	struct timespec64 tv;
@@ -94,7 +95,6 @@ int send_new_time_to_new_md(int tz)
 
 	return ret;
 }
-#endif
 
 int port_dev_kernel_read(struct port_t *port, char *buf, int size)
 {
@@ -1501,10 +1501,10 @@ static inline void proxy_dispatch_queue_status(struct port_proxy *proxy_p,
 		}
 	}
 	/*handle ccmni tx queue or tx ack queue state change*/
-	if (!matched && hif == MD1_NET_HIF) {
+	if ((!matched && hif == DPMAIF_HIF_ID) || (!matched && hif == CLDMA_HIF_ID)) {
 		for (i = 0; i < proxy_p->port_number; i++) {
 			port = proxy_p->ports + i;
-			if (port->hif_id == MD1_NET_HIF) {
+			if ((port->hif_id == DPMAIF_HIF_ID) || (port->hif_id == CLDMA_HIF_ID)) {
 				/* consider network data/ack queue design */
 				if (dir == OUT)
 					match = qno == port->txq_index
@@ -1857,7 +1857,24 @@ static void ccci_proc_init(void)
 
 int ccci_port_init(void)
 {
+	int ret = 0;
+	struct device_node *node = NULL;
+
 	ccci_proc_init();
+
+	node = of_find_compatible_node(NULL, NULL,
+		"mediatek,mddriver");
+	if (node)
+		ret = of_property_read_u32(node,
+			"mediatek,md-generation", &port_md_gen);
+	if (ret < 0) {
+		CCCI_ERROR_LOG(0, CHAR, "%s:get md_gen from dts fail\n",
+			__func__);
+		return -1;
+	}
+
+	CCCI_NORMAL_LOG(0, TAG, "%s: port_md_gen=%d\n",
+		__func__, port_md_gen);
 
 	port_proxyp = proxy_alloc();
 	if (port_proxyp == NULL) {
@@ -2215,9 +2232,14 @@ static void receive_wakeup_src_notify(char *buf, unsigned int len)
 
 	if (len == 0) {
 		/* before spm add MD_WAKEUP_SOURCE parameter. */
-		ccci_hif_set_wakeup_src(MD1_NET_HIF, 1);
+		if (port_md_gen < 6295)
+			ccci_hif_set_wakeup_src(CLDMA_HIF_ID, 1);
+		else
+			ccci_hif_set_wakeup_src(DPMAIF_HIF_ID, 1);
+
 		ccci_hif_set_wakeup_src(CCIF_HIF_ID, 1);
 
+		return;
 	}
 
 	/* after spm add MD_WAKEUP_SOURCE parameter. */
@@ -2229,8 +2251,10 @@ static void receive_wakeup_src_notify(char *buf, unsigned int len)
 		ccci_hif_set_wakeup_src(CCIF_HIF_ID, 1);
 		break;
 	case WAKE_SRC_HIF_CLDMA:
+		ccci_hif_set_wakeup_src(CLDMA_HIF_ID, 1);
+		break;
 	case WAKE_SRC_HIF_DPMAIF:
-		ccci_hif_set_wakeup_src(MD1_NET_HIF, 1);
+		ccci_hif_set_wakeup_src(DPMAIF_HIF_ID, 1);
 		break;
 	default:
 		break;

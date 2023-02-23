@@ -6,12 +6,6 @@
 #ifndef __ECCCI_INTERNAL_OPTION__
 #define __ECCCI_INTERNAL_OPTION__
 
-/* platform info */
-#define MD_GENERATION       (6297)
-//#define CCCI_DRIVER_VER     0x20110118
-
-#define MT6297
-
 #define _HW_REORDER_SW_WORKAROUND_
 //#define CCCI_GEN98_LRO_NEW_FEATURE
 

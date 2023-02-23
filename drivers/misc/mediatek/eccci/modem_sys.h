@@ -176,15 +176,6 @@ static inline void *ccci_md_get_hw_info(void)
 	return modem_sys->hw_info;
 }
 
-static inline int ccci_md_recv_skb(unsigned char hif_id, struct sk_buff *skb)
-{
-	int flag = NORMAL_DATA;
-
-	if (hif_id == MD1_NET_HIF)
-		flag = CLDMA_NET_DATA;
-	return ccci_port_recv_skb(hif_id, skb, flag);
-}
-
 /***************************************************************************/
 /* API Region called by ccci modem object */
 /***************************************************************************/

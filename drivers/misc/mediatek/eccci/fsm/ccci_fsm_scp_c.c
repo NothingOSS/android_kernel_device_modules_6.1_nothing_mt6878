@@ -62,14 +62,14 @@ static wait_queue_head_t scp_ipi_rx_wq;
 static struct ccci_skb_queue scp_ipi_rx_skb_list;
 static unsigned int init_work_done;
 static unsigned int scp_clk_last_state;
-#if (MD_GENERATION >= 6297)
+#if !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT) //MD_GENERATION >= 6297
 static struct ccci_ipi_msg scp_ipi_rx_msg;
 #endif
 
 static int ccci_scp_ipi_send(int op_id, void *data)
 {
 	int ret = 0;
-#if (MD_GENERATION >= 6297)
+#if !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT)
 	int ipi_status = 0;
 	unsigned int cnt = 0;
 #endif
@@ -90,7 +90,7 @@ static int ccci_scp_ipi_send(int op_id, void *data)
 		"IPI send op_id=%d/data=0x%x, size=%d\n",
 		scp_ipi_tx_msg.op_id, scp_ipi_tx_msg.data[0],
 		(int)sizeof(struct ccci_ipi_msg));
-#if (MD_GENERATION >= 6297)
+#if !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT)
 	while (1) {
 		ipi_status = mtk_ipi_send(&scp_ipidev, IPI_OUT_APCCCI_0,
 		0, &scp_ipi_tx_msg, (sizeof(scp_ipi_tx_msg) / 4), 1);
@@ -304,7 +304,7 @@ static void ccci_scp_ipi_rx_work(struct work_struct *work)
 	}
 }
 
-#if (MD_GENERATION >= 6297)
+#if !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT)
 /*
  * IPI for logger init
  * @param id:   IPI id
@@ -407,7 +407,7 @@ void fsm_scp_init0(void)
 
 	CCCI_NORMAL_LOG(-1, FSM, "register IPI\n");
 
-#if (MD_GENERATION >= 6297)
+#if !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT)
 	if (mtk_ipi_register(&scp_ipidev, IPI_IN_APCCCI_0,
 		(void *)ccci_scp_ipi_handler, NULL,
 		&scp_ipi_rx_msg) != IPI_ACTION_DONE)

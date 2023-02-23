@@ -730,8 +730,8 @@ static void md_ccif_sram_rx_work(struct work_struct *work)
 	} else {
 		if (retry_cnt < 20) {
 			CCCI_ERROR_LOG(0, TAG,
-			"%s:ccci_md_recv_skb ret=%d,retry=%d\n", __func__,
-			ret, retry_cnt);
+				"%s:ccci_port_recv_skb ret=%d, retry=%d\n",
+				__func__, ret, retry_cnt);
 			udelay(5);
 			retry_cnt++;
 			goto RETRY;

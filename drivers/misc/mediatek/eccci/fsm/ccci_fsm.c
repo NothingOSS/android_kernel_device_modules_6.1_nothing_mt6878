@@ -471,9 +471,7 @@ static void config_ap_side_feature(struct ccci_modem *md,
 	struct md_query_ap_feature *md_feature)
 {
 	unsigned int udc_noncache_size = 0, udc_cache_size = 0;
-#if (MD_GENERATION >= 6297)
 	struct ccci_smem_region *region;
-#endif
 
 	md->runtime_version = AP_MD_HS_V2;
 	md_feature->feature_set[BOOT_INFO].support_mask
@@ -504,33 +502,27 @@ static void config_ap_side_feature(struct ccci_modem *md,
 	md_feature->feature_set[MD1MD3_SHARE_MEMORY].support_mask
 		= CCCI_FEATURE_NOT_SUPPORT;
 
-#if (MD_GENERATION >= 6297)
-	region = ccci_md_get_smem_by_user_id(SMEM_USER_RAW_UDC_DESCTAB);
-	if (region)
-		udc_cache_size = region->size;
-	else
-		udc_cache_size = 0;
+	if (md->hw_info->plat_val->md_gen >= 6297) {
+		region = ccci_md_get_smem_by_user_id(SMEM_USER_RAW_UDC_DESCTAB);
+		if (region)
+			udc_cache_size = region->size;
+		else
+			udc_cache_size = 0;
+		region = ccci_md_get_smem_by_user_id(SMEM_USER_RAW_UDC_DATA);
+		if (region)
+			udc_noncache_size = region->size;
+		else
+			udc_noncache_size = 0;
+	} else
+		get_md_resv_udc_info(&udc_noncache_size, &udc_cache_size);
 
-	region = ccci_md_get_smem_by_user_id(SMEM_USER_RAW_UDC_DATA);
-	if (region)
-		udc_noncache_size = region->size;
-	else
-		udc_noncache_size = 0;
 	if (udc_noncache_size > 0 && udc_cache_size > 0)
 		md_feature->feature_set[UDC_RAW_SHARE_MEMORY].support_mask
 			= CCCI_FEATURE_MUST_SUPPORT;
 	else
 		md_feature->feature_set[UDC_RAW_SHARE_MEMORY].support_mask
 			= CCCI_FEATURE_NOT_SUPPORT;
-#else
-	get_md_resv_udc_info(&udc_noncache_size, &udc_cache_size);
-	if (udc_noncache_size > 0 && udc_cache_size > 0)
-		md_feature->feature_set[UDC_RAW_SHARE_MEMORY].support_mask
-			= CCCI_FEATURE_MUST_SUPPORT;
-	else
-		md_feature->feature_set[UDC_RAW_SHARE_MEMORY].support_mask
-			= CCCI_FEATURE_NOT_SUPPORT;
-#endif
+
 	if (get_smem_amms_pos_size() > 0)
 		md_feature->feature_set[MD_POS_SHARE_MEMORY].support_mask =
 			CCCI_FEATURE_MUST_SUPPORT;
@@ -617,22 +609,18 @@ static void config_ap_side_feature(struct ccci_modem *md,
 	md_feature->feature_set[MD_MTEE_SHARE_MEMORY_ENABLE].support_mask
 		= CCCI_FEATURE_OPTIONAL_SUPPORT;
 
-#if (MD_GENERATION >= 6297)
-	md_feature->feature_set[MD_WIFI_PROXY_SHARE_MEMORY].support_mask =
-		CCCI_FEATURE_OPTIONAL_SUPPORT;
-#else
-	md_feature->feature_set[MD_WIFI_PROXY_SHARE_MEMORY].support_mask =
-		CCCI_FEATURE_NOT_SUPPORT;
-#endif
+	if (md->hw_info->plat_val->md_gen >= 6297) {
+		md_feature->feature_set[MD_WIFI_PROXY_SHARE_MEMORY].support_mask =
+			CCCI_FEATURE_OPTIONAL_SUPPORT;
+		md_feature->feature_set[NVRAM_CACHE_SHARE_MEMORY].support_mask =
+			CCCI_FEATURE_MUST_SUPPORT;
+	} else {
+		md_feature->feature_set[MD_WIFI_PROXY_SHARE_MEMORY].support_mask =
+			CCCI_FEATURE_NOT_SUPPORT;
+		md_feature->feature_set[NVRAM_CACHE_SHARE_MEMORY].support_mask =
+			CCCI_FEATURE_NOT_SUPPORT;
+	}
 
-
-#if (MD_GENERATION >= 6297)
-	md_feature->feature_set[NVRAM_CACHE_SHARE_MEMORY].support_mask =
-		CCCI_FEATURE_MUST_SUPPORT;
-#else
-	md_feature->feature_set[NVRAM_CACHE_SHARE_MEMORY].support_mask =
-		CCCI_FEATURE_NOT_SUPPORT;
-#endif
 #ifdef CCCI_SUPPORT_AP_MD_SECURE_FEATURE
 	md_feature->feature_set[SECURITY_SHARE_MEMORY].support_mask =
 		CCCI_FEATURE_MUST_SUPPORT;
@@ -641,21 +629,17 @@ static void config_ap_side_feature(struct ccci_modem *md,
 	md_feature->feature_set[SECURITY_SHARE_MEMORY].support_mask =
 		CCCI_FEATURE_NOT_SUPPORT;
 #endif
-#if (MD_GENERATION >= 6297)
+
+	if (md->hw_info->plat_val->md_gen >= 6297) {
 		md_feature->feature_set[AMMS_DRDI_COPY].support_mask =
 			CCCI_FEATURE_MUST_SUPPORT;
-#else
+		md_feature->feature_set[MD_MEM_AP_VIEW_INF].support_mask =
+			CCCI_FEATURE_OPTIONAL_SUPPORT;
+	} else
 		md_feature->feature_set[AMMS_DRDI_COPY].support_mask =
 			CCCI_FEATURE_NOT_SUPPORT;
-#endif
-
-#if (MD_GENERATION >= 6297)
-	md_feature->feature_set[MD_MEM_AP_VIEW_INF].support_mask =
-		CCCI_FEATURE_OPTIONAL_SUPPORT;
-#endif
 }
 
-#if (MD_GENERATION >= 6297)
 static void ccci_sib_region_set_runtime(struct ccci_runtime_feature *rt_feature,
 	struct ccci_runtime_share_memory *rt_shm)
 {
@@ -730,7 +714,6 @@ static void ccci_md_mem_inf_prepare(
 	rt_ft->data_len =
 		(sizeof(struct ccci_runtime_md_mem_ap_addr)) * add_num;
 }
-#endif
 
 static void ccci_smem_region_set_runtime(unsigned int id,
 	struct ccci_runtime_feature *rt_feature,
@@ -1067,9 +1050,9 @@ int ccci_md_prepare_runtime_data(unsigned char *data, int length)
 
 				if (check_rat_at_rt_setting("C"))
 					c2k_flags |= (1 << 2);
-				CCCI_NORMAL_LOG(0, FSM,
-					"c2k_flags 0x%X; MD_GENERATION: %d\n",
-					c2k_flags, MD_GENERATION);
+
+				CCCI_NORMAL_LOG(0, FSM, "c2k_flags 0x%X\n",
+					c2k_flags);
 
 				rt_f_element.feature[0] = c2k_flags;
 				append_runtime_feature(&rt_data,
@@ -1120,14 +1103,14 @@ int ccci_md_prepare_runtime_data(unsigned char *data, int length)
 				&rt_shm);
 				break;
 			case MD_PHY_CAPTURE:
-#if (MD_GENERATION >= 6297)
-				ccci_sib_region_set_runtime(&rt_feature,
-					&rt_shm);
-#else
-				ccci_smem_region_set_runtime(
-					SMEM_USER_RAW_PHY_CAP,
-					&rt_feature, &rt_shm);
-#endif
+				if (md->hw_info->plat_val->md_gen >= 6297)
+					ccci_sib_region_set_runtime(&rt_feature,
+						&rt_shm);
+				else
+					ccci_smem_region_set_runtime(
+						SMEM_USER_RAW_PHY_CAP,
+						&rt_feature, &rt_shm);
+
 				append_runtime_feature(&rt_data, &rt_feature,
 				&rt_shm);
 				break;

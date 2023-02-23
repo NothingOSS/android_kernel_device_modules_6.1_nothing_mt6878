@@ -12,13 +12,8 @@
 #include "ccci_hif.h"
 #include "ccci_modem.h"
 
-//#if (MD_GENERATION >= 6295)
 #define MAX_TXQ_NUM 16
 #define MAX_RXQ_NUM 16
-//#else
-//#define MAX_TXQ_NUM 8
-//#define MAX_RXQ_NUM 8
-//#endif
 
 #define PACKET_HISTORY_DEPTH 16	/* must be power of 2 */
 
@@ -34,24 +29,24 @@ struct ccci_log {
 
 struct ccci_hif_traffic {
 #if PACKET_HISTORY_DEPTH
-		struct ccci_log tx_history[MAX_TXQ_NUM][PACKET_HISTORY_DEPTH];
-		struct ccci_log rx_history[MAX_RXQ_NUM][PACKET_HISTORY_DEPTH];
-		int tx_history_ptr[MAX_TXQ_NUM];
-		int rx_history_ptr[MAX_RXQ_NUM];
+	struct ccci_log tx_history[MAX_TXQ_NUM][PACKET_HISTORY_DEPTH];
+	struct ccci_log rx_history[MAX_RXQ_NUM][PACKET_HISTORY_DEPTH];
+	int tx_history_ptr[MAX_TXQ_NUM];
+	int rx_history_ptr[MAX_RXQ_NUM];
 #endif
-		unsigned long logic_ch_pkt_cnt[CCCI_MAX_CH_NUM];
-		unsigned long logic_ch_pkt_pre_cnt[CCCI_MAX_CH_NUM];
-		short seq_nums[2][CCCI_MAX_CH_NUM];
+	unsigned long logic_ch_pkt_cnt[CCCI_MAX_CH_NUM];
+	unsigned long logic_ch_pkt_pre_cnt[CCCI_MAX_CH_NUM];
+	short seq_nums[2][CCCI_MAX_CH_NUM];
 
-		unsigned long long latest_isr_time;
-		unsigned long long latest_q_rx_isr_time[MAX_RXQ_NUM];
-		unsigned long long latest_q_rx_time[MAX_RXQ_NUM];
-		unsigned long long isr_cnt;
+	unsigned long long latest_isr_time;
+	unsigned long long latest_q_rx_isr_time[MAX_RXQ_NUM];
+	unsigned long long latest_q_rx_time[MAX_RXQ_NUM];
+	unsigned long long isr_cnt;
 #ifdef DEBUG_FOR_CCB
-		unsigned long long latest_ccb_isr_time;
-		unsigned int last_ccif_r_ch;
+	unsigned long long latest_ccb_isr_time;
+	unsigned int last_ccif_r_ch;
 #endif
-		struct work_struct traffic_work_struct;
+	struct work_struct traffic_work_struct;
 };
 
 
@@ -99,11 +94,11 @@ enum RX_COLLECT_RESULT {
 };
 
 void ccci_md_dump_log_history(
-		struct ccci_hif_traffic *tinfo, int dump_multi_rec,
-		int tx_queue_num, int rx_queue_num);
+	struct ccci_hif_traffic *tinfo, int dump_multi_rec,
+	int tx_queue_num, int rx_queue_num);
 void ccci_md_add_log_history(struct ccci_hif_traffic *tinfo,
-		enum DIRECTION dir, int queue_index,
-		struct ccci_header *msg, int is_dropped);
+	enum DIRECTION dir, int queue_index,
+	struct ccci_header *msg, int is_dropped);
 
 static inline void ccci_hif_queue_status_notify(int hif_id,
 	int qno, int dir, int state)
