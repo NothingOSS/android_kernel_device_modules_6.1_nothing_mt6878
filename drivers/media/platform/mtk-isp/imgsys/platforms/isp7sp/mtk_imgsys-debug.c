@@ -219,7 +219,7 @@ void imgsys_main_set_init(struct mtk_imgsys_dev *imgsys_dev)
 		}
 	}
 
-	iowrite32(0x1A, (void *)(imgsysmainRegBA + DBG_SW_CLR));
+	iowrite32(0xFF, (void *)(imgsysmainRegBA + DBG_SW_CLR));
 	iowrite32(0x0, (void *)(imgsysmainRegBA + DBG_SW_CLR));
 
 	iowrite32(0xF0, (void *)(imgsysmainRegBA + SW_RST));
@@ -228,7 +228,7 @@ void imgsys_main_set_init(struct mtk_imgsys_dev *imgsys_dev)
 	iowrite32(0xFFFFFFFF, (void *)(trawRegBA + SW_RST));
 	iowrite32(0x0, (void *)(trawRegBA + SW_RST));
 
-	iowrite32(0xFFFFFFFF, (void *)(dipRegBA + SW_RST));
+	iowrite32(0x3, (void *)(dipRegBA + SW_RST));
 	iowrite32(0x0, (void *)(dipRegBA + SW_RST));
 
 	HwIdx = 0;
