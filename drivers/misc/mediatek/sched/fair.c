@@ -5,7 +5,9 @@
 #include <linux/cpuidle.h>
 #include <linux/module.h>
 #include <linux/sched.h>
+#include <linux/cgroup.h>
 #include <trace/hooks/sched.h>
+#include <trace/hooks/cgroup.h>
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include <linux/sched/clock.h>
@@ -583,15 +585,32 @@ void _init_tg_mask(struct cgroup_subsys_state *css)
 		tg_array[BACKGROUND_ID] = tg;
 }
 
+static void soft_affinity_rvh_cpu_cgroup_online(void *unused, struct cgroup_subsys_state *css)
+{
+	struct task_group *tg = css_tg(css);
+	struct soft_affinity_tg *sa_tg = &((struct mtk_tg *) tg->android_vendor_data1)->sa_tg;
+
+	cpumask_copy(&sa_tg->soft_cpumask, cpu_possible_mask);
+}
+
 void init_tg_soft_affinity(void)
 {
 	struct cgroup_subsys_state *css = &root_task_group.css;
 	struct cgroup_subsys_state *top_css = css;
+	int ret;
 
+	/* init soft affinity related value to exist cgroups */
 	rcu_read_lock();
+	_init_tg_mask(&root_task_group.css);
 	css_for_each_child(css, top_css)
 		_init_tg_mask(css);
 	rcu_read_unlock();
+
+	/* init soft affinity related value to newly created cgroups */
+	ret = register_trace_android_rvh_cpu_cgroup_online(soft_affinity_rvh_cpu_cgroup_online,
+		NULL);
+	if (ret)
+		pr_info("register cpu_cgroup_online hooks failed, returned %d\n", ret);
 }
 
 void soft_affinity_init(void)
