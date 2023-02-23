@@ -564,6 +564,7 @@ static s32 tdshp_config_post(struct mml_comp *comp, struct mml_task *task,
 	struct mml_frame_dest *dest = &task->config->info.dest[ccfg->node->out_idx];
 	s8 mode = task->config->info.mode;
 
+	/*Skip readback, need to add flow in IR//DL*/
 	if (mode != MML_MODE_MML_DECOUPLE)
 		goto put_comp_config;
 
@@ -634,6 +635,10 @@ static s32 tdshp_config_repost(struct mml_comp *comp, struct mml_task *task,
 	struct tdshp_frame_data *tdshp_frm = tdshp_frm_data(ccfg);
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 	u8 pipe = ccfg->pipe;
+	s8 mode = task->config->info.mode;
+
+	if (mode != MML_MODE_MML_DECOUPLE)
+		goto put_comp_config;
 
 	if ((dest->pq_config.en_sharp && dest->pq_config.en_dre) ||
 		dest->pq_config.en_dc) {
@@ -643,7 +648,7 @@ static s32 tdshp_config_repost(struct mml_comp *comp, struct mml_task *task,
 		if (unlikely(!task->pq_task->tdshp_hist[pipe])) {
 			mml_pq_err("%s job_id[%d] tdshp_hist is null", __func__,
 				task->job.jobid);
-			goto comp_config_put;
+			goto put_comp_config;
 		}
 
 		mml_update(reuse, tdshp_frm->labels[TDSHP_POLLGPR_0],
@@ -652,7 +657,7 @@ static s32 tdshp_config_repost(struct mml_comp *comp, struct mml_task *task,
 			(u32)(task->pq_task->tdshp_hist[pipe]->pa >> 32));
 	}
 
-comp_config_put:
+put_comp_config:
 	if (dest->pq_config.en_sharp || dest->pq_config.en_dc)
 		mml_pq_put_comp_config_result(task);
 	return 0;

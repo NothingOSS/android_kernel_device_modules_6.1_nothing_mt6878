@@ -182,6 +182,7 @@ static void init_sub_task(struct mml_pq_sub_task *sub_task)
 s32 mml_pq_task_create(struct mml_task *task)
 {
 	struct mml_pq_task *pq_task = NULL;
+	u32 i = 0;
 
 	mml_pq_trace_ex_begin("%s pq_task kzalloc", __func__);
 	pq_task = kzalloc(sizeof(*pq_task), GFP_KERNEL);
@@ -199,8 +200,8 @@ s32 mml_pq_task_create(struct mml_task *task)
 	kref_init(&pq_task->ref);
 	mutex_init(&pq_task->buffer_mutex);
 	mutex_init(&pq_task->aal_comp_lock);
-	init_completion(&pq_task->aal_hist_done[0]);
-	init_completion(&pq_task->aal_hist_done[1]);
+	for (i = 0; i < MML_PIPE_CNT; i++)
+		init_completion(&pq_task->aal_hist_done[i]);
 	task->pq_task = pq_task;
 
 	init_sub_task(&pq_task->tile_init);

@@ -497,7 +497,7 @@ static void dump_inout(struct mml_task *task)
 	for (i = 0; i < cfg->info.dest_cnt; i++) {
 		dest = &cfg->info.dest[i];
 		get_frame_str(frame, sizeof(frame), &dest->data);
-		mml_log("out %u:%s plane:%hhu r:%hu%s%s%s%s%s%s%s",
+		mml_log("out %u:%s plane:%hhu r:%hu%s%s%s%s%s%s%s%s%s%s%s",
 			i,
 			frame,
 			task->buf.dest[i].cnt,
@@ -508,7 +508,11 @@ static void dump_inout(struct mml_task *task)
 			task->buf.dest[i].invalid ? " invalid" : "",
 			dest->pq_config.en ? " PQ" : "",
 			dest->pq_config.en_hdr ? " HDR" : "",
-			dest->pq_config.en_dre ? " DRE" : "");
+			dest->pq_config.en_dre ? " DRE" : "",
+			dest->pq_config.en_sharp ? " SHP" : "",
+			dest->pq_config.en_ur ? " UR" : "",
+			dest->pq_config.en_dc ? " DC" : "",
+			dest->pq_config.en_color ? " COLOR" : "");
 		mml_log("crop %u:(%u, %u, %u, %u) compose:(%u, %u, %u, %u)",
 			i,
 			dest->crop.r.left,

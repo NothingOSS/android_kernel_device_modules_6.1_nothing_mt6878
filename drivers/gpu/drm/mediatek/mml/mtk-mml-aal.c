@@ -234,9 +234,9 @@ static const u16 aal_reg_table_mt6897[AAL_REG_MAX_COUNT] = {
 	[AAL_BILATERAL_STATUS_CTRL] = 0x5b8
 };
 
-enum mml_pq_read_mode {
-	MML_PQ_EOF_MODE = 0,
-	MML_PQ_SOF_MODE,
+enum mml_pq_rb_mode {
+	RB_EOF_MODE = 0,
+	RB_SOF_MODE,
 };
 
 
@@ -249,7 +249,7 @@ struct aal_data {
 	u16 cpr[MML_PIPE_CNT];
 	const u16 *reg_table;
 	bool crop;
-	u8 read_mode;
+	u8 rb_mode;
 };
 
 static const struct aal_data mt6893_aal_data = {
@@ -261,7 +261,7 @@ static const struct aal_data mt6893_aal_data = {
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
-	.read_mode = MML_PQ_EOF_MODE,
+	.rb_mode = RB_EOF_MODE,
 };
 
 static const struct aal_data mt6983_aal_data = {
@@ -273,7 +273,7 @@ static const struct aal_data mt6983_aal_data = {
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
-	.read_mode = MML_PQ_EOF_MODE,
+	.rb_mode = RB_EOF_MODE,
 };
 
 static const struct aal_data mt6879_aal_data = {
@@ -285,7 +285,7 @@ static const struct aal_data mt6879_aal_data = {
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
-	.read_mode = MML_PQ_EOF_MODE,
+	.rb_mode = RB_EOF_MODE,
 };
 
 static const struct aal_data mt6895_aal0_data = {
@@ -297,7 +297,7 @@ static const struct aal_data mt6895_aal0_data = {
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
-	.read_mode = MML_PQ_EOF_MODE,
+	.rb_mode = RB_EOF_MODE,
 };
 
 static const struct aal_data mt6895_aal1_data = {
@@ -309,7 +309,7 @@ static const struct aal_data mt6895_aal1_data = {
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
-	.read_mode = MML_PQ_EOF_MODE,
+	.rb_mode = RB_EOF_MODE,
 };
 
 static const struct aal_data mt6985_aal_data = {
@@ -321,7 +321,7 @@ static const struct aal_data mt6985_aal_data = {
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6985,
 	.crop = false,
-	.read_mode = MML_PQ_EOF_MODE,
+	.rb_mode = RB_EOF_MODE,
 };
 
 static const struct aal_data mt6886_aal_data = {
@@ -333,7 +333,7 @@ static const struct aal_data mt6886_aal_data = {
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
-	.read_mode = MML_PQ_EOF_MODE,
+	.rb_mode = RB_EOF_MODE,
 };
 
 static const struct aal_data mt6897_aal_data = {
@@ -627,7 +627,7 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			aal->jobid = task->job.jobid;
 
 
-			if (aal->data->read_mode == MML_PQ_EOF_MODE) {
+			if (aal->data->rb_mode == RB_EOF_MODE) {
 				mml_clock_lock(task->config->mml);
 				mml_comp_pw_enable(comp);
 				mml_comp_clk_enable(comp);
@@ -652,7 +652,7 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			mutex_unlock(&pq_task->aal_comp_lock);
 			mutex_unlock(&aal->irq_wq_lock);
 
-			if (aal->data->read_mode == MML_PQ_EOF_MODE) {
+			if (aal->data->rb_mode == RB_EOF_MODE) {
 				cmdq_pkt_write(pkt, NULL, base_pa +
 					aal->data->reg_table[AAL_INTSTA],
 					0x0, U32_MAX);
@@ -700,6 +700,7 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	mml_pq_trace_ex_begin("%s %d", __func__, mode);
 	mml_pq_msg("%s engine_id[%d] en_dre[%d]", __func__, comp->id, dest->pq_config.en_dre);
+
 	if (aal_frm->relay_mode) {
 		/* relay mode */
 		aal_relay(comp, pkt, base_pa, 0x1);
@@ -748,28 +749,28 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 		mml_pq_msg("[aal][config][%x] = %#x mask(%#x)",
 			regs[i].offset, regs[i].value, regs[i].mask);
 	}
-	cmdq_pkt_write(pkt, NULL,
-		base_pa + aal->data->reg_table[AAL_SRAM_RW_IF_0], addr, U32_MAX);
-	cmdq_pkt_poll(pkt, NULL, (0x1 << 16),
-		base_pa + aal->data->reg_table[AAL_SRAM_STATUS], (0x1 << 16), gpr);
 
-	for (i = 0; i < AAL_CURVE_NUM; i++, addr += 4) {
-		if (mode == MML_MODE_MML_DECOUPLE)
+	if (mode == MML_MODE_MML_DECOUPLE) {
+		cmdq_pkt_write(pkt, NULL,
+			base_pa + aal->data->reg_table[AAL_SRAM_RW_IF_0], addr, U32_MAX);
+		cmdq_pkt_poll(pkt, NULL, (0x1 << 16),
+			base_pa + aal->data->reg_table[AAL_SRAM_STATUS], (0x1 << 16), gpr);
+		for (i = 0; i < AAL_CURVE_NUM; i++, addr += 4)
 			mml_write_array(pkt, base_pa + aal->data->reg_table[AAL_SRAM_RW_IF_1],
 				curve[i], U32_MAX, reuse, cache, &aal_frm->reuse_curve);
-		else {
-			do {
-				writel(addr, base + aal->data->reg_table[AAL_SRAM_RW_IF_0]);
-				if (!sram_staus && aal_reg_poll(comp, sram_status_reg,
-					(0x1 << 16), (0x1 << 16)) != true) {
-					mml_pq_log("%s idx[%d]", __func__, i);
-					break;
-				}
-				sram_staus = true;
-
+	} else if (mode == MML_MODE_DDP_ADDON || mode == MML_MODE_DIRECT_LINK) {
+		do {
+			writel(addr, base + aal->data->reg_table[AAL_SRAM_RW_IF_0]);
+			if (!sram_staus && aal_reg_poll(comp, sram_status_reg,
+				(0x1 << 16), (0x1 << 16)) != true) {
+				mml_pq_log("%s idx[%d]", __func__, i);
+				break;
+			}
+			sram_staus = true;
+		} while (0);
+		for (i = 0; i < AAL_CURVE_NUM; i++, addr += 4)
+			if (sram_staus)
 				writel(curve[i], base + aal->data->reg_table[AAL_SRAM_RW_IF_1]);
-			} while (0);
-		}
 	}
 
 	mml_pq_msg("%s is_aal_need_readback[%d] base_pa[%llx] reuses[%u]",
@@ -1225,7 +1226,7 @@ static s32 aal_config_post(struct mml_comp *comp, struct mml_task *task,
 	if (aal_frm->relay_mode)
 		goto exit;
 
-	if (mode == MML_MODE_DDP_ADDON)
+	if (mode == MML_MODE_DDP_ADDON || mode == MML_MODE_DIRECT_LINK)
 		goto put_comp_config;
 
 	if (vcp)
@@ -1242,19 +1243,28 @@ exit:
 static s32 aal_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 			      struct mml_comp_config *ccfg)
 {
+	struct mml_comp_aal *aal = comp_to_aal(comp);
 	struct aal_frame_data *aal_frm = aal_frm_data(ccfg);
 	struct mml_frame_config *cfg = task->config;
 	struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 	struct mml_pq_comp_config_result *result;
-	u32 *curve, i, j, idx;
+	u32 addr = aal->sram_curve_start;
+	u32 *curve, i = 0, j, idx;
 	s32 ret = 0;
+	s8 mode = cfg->info.mode;
+	void __iomem *base = comp->base;
+	u32 sram_status_reg = aal->data->reg_table[AAL_SRAM_STATUS];
+	bool sram_staus = false;
 
 	mml_pq_trace_ex_begin("%s", __func__);
 	mml_pq_msg("%s engine_id[%d] en_dre[%d] config_success[%d]", __func__, comp->id,
 			dest->pq_config.en_dre, aal_frm->config_success);
+
 	if (aal_frm->relay_mode)
 		goto exit;
+
+	aal_hist_ctrl(comp, task, ccfg);
 
 	do {
 		ret = mml_pq_get_comp_config_result(task, AAL_WAIT_TIMEOUT_MS);
@@ -1277,9 +1287,25 @@ static s32 aal_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 
 	curve = result->aal_curve;
 	idx = 0;
-	for (i = 0; i < aal_frm->reuse_curve.idx; i++)
-		for (j = 0; j < aal_frm->reuse_curve.offs[i].cnt; j++, idx++)
-			mml_update_array(reuse, &aal_frm->reuse_curve, i, j, curve[idx]);
+	if (mode == MML_MODE_MML_DECOUPLE) {
+		for (i = 0; i < aal_frm->reuse_curve.idx; i++)
+			for (j = 0; j < aal_frm->reuse_curve.offs[i].cnt; j++, idx++)
+				mml_update_array(reuse, &aal_frm->reuse_curve, i, j, curve[idx]);
+	} else if (mode == MML_MODE_DIRECT_LINK) {
+		do {
+			writel(addr, base + aal->data->reg_table[AAL_SRAM_RW_IF_0]);
+			if (!sram_staus && aal_reg_poll(comp, sram_status_reg,
+				(0x1 << 16), (0x1 << 16)) != true) {
+				mml_pq_log("%s idx[%d]", __func__, i);
+				break;
+			}
+			sram_staus = true;
+		} while (0);
+		for (i = 0; i < AAL_CURVE_NUM; i++, addr += 4)
+			if (sram_staus)
+				writel(curve[i], base + aal->data->reg_table[AAL_SRAM_RW_IF_1]);
+	}
+
 
 	mml_pq_msg("%s is_aal_need_readback[%d] is_clarity_need_readback[%d]",
 		__func__, result->is_aal_need_readback,
@@ -1304,12 +1330,17 @@ static s32 aal_config_repost(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_aal *aal = comp_to_aal(comp);
 	bool vcp = aal->data->vcp_readback;
 	u32 engine = CMDQ_VCP_ENG_MML_AAL0 + pipe;
+	struct mml_frame_config *cfg = task->config;
+	s8 mode = cfg->info.mode;
 
 	mml_pq_msg("%s engine_id[%d] en_dre[%d]", __func__, comp->id,
 			dest->pq_config.en_dre);
 
 	if (aal_frm->relay_mode)
 		goto exit;
+
+	if (mode == MML_MODE_DIRECT_LINK)
+		goto comp_config_put;
 
 	if (vcp) {
 		if (!(task->pq_task->aal_hist[pipe])) {
@@ -1810,7 +1841,7 @@ static void aal_readback_work(struct work_struct *work_item)
 	atomic_dec_if_positive(&aal->hist_read_cnt);
 	mutex_unlock(&aal->irq_wq_lock);
 
-	if (aal->data->read_mode == MML_PQ_EOF_MODE) {
+	if (aal->data->rb_mode == RB_EOF_MODE) {
 		mml_clock_lock(aal->mml);
 		mml_comp_pw_disable(comp);
 		mml_comp_clk_disable(comp);
@@ -1887,7 +1918,7 @@ static int probe(struct platform_device *pdev)
 		add_ddp = false;
 	}
 
-	if (priv->data->read_mode == MML_PQ_EOF_MODE) {
+	if (priv->data->rb_mode == RB_EOF_MODE) {
 		irq = platform_get_irq(pdev, 0);
 		if (irq < 0)
 			dev_info(dev, "Failed to get AAL irq: %d\n", irq);
