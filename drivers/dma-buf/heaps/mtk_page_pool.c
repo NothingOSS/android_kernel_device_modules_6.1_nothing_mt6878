@@ -125,6 +125,7 @@ long mtk_dmabuf_page_pool_size(struct dma_heap *heap)
 
 	return num_pages << PAGE_SHIFT;
 }
+EXPORT_SYMBOL_GPL(mtk_dmabuf_page_pool_size);
 
 struct mtk_dmabuf_page_pool *mtk_dmabuf_page_pool_create(gfp_t gfp_mask, unsigned int order)
 {

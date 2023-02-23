@@ -102,6 +102,8 @@ f mm/mempool.c
 f net/core/rtnetlink.c
 f security/selinux/avc.c
 f security/selinux/include/avc.h
+f include/linux/dma-buf.h
+f drivers/dma-buf/dma-buf.c
 s asix_adjust_link
 s asix_driver
 s asix_driver_exit
