@@ -99,11 +99,6 @@ static const char *skip_pattern[SKIP_PATTERN_NUM] = {
 };
 
 static const char * const ne_list[] = {
-	"u:r:system_server:s0",
-	"u:r:system_app:s0",
-	"u:r:platform_app:s0",
-	"u:r:priv_app:s0",
-	"u:r:bootanim:s0",
 };
 
 static struct tracepoint *satp;
