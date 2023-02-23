@@ -622,7 +622,7 @@ static int pt_trigger(void)
 	return 0;
 }
 
-static void pt_low_vol_callback(enum LOW_BATTERY_LEVEL_TAG level)
+static void pt_low_vol_callback(enum LOW_BATTERY_LEVEL_TAG level, void *data)
 {
 	if (level == LOW_BATTERY_LEVEL_0) {
 		pt_low_vol = LOW_BATTERY_LEVEL_0;
@@ -653,7 +653,7 @@ static void pt_low_bat_callback(enum BATTERY_PERCENT_LEVEL_TAG level)
 	}
 }
 
-static void pt_oc_callback(enum BATTERY_OC_LEVEL_TAG level)
+static void pt_oc_callback(enum BATTERY_OC_LEVEL_TAG level, void *data)
 {
 	if (level == BATTERY_OC_LEVEL_0) {
 		pt_over_cur = BATTERY_OC_LEVEL_0;
@@ -1103,9 +1103,9 @@ static ssize_t flashlight_pt_store(struct device *dev,
 
 	/* call callback function */
 	pt_strict = strict;
-	pt_low_vol_callback(low_vol);
+	pt_low_vol_callback(low_vol, NULL);
 	pt_low_bat_callback(low_bat);
-	pt_oc_callback(over_cur);
+	pt_oc_callback(over_cur, NULL);
 #endif
 
 	ret = size;
@@ -1942,13 +1942,13 @@ static int __init flashlight_init(void)
 
 #ifdef CONFIG_MTK_FLASHLIGHT_PT
 	ret = register_low_battery_notify(
-			&pt_low_vol_callback, LOW_BATTERY_PRIO_FLASHLIGHT);
+			&pt_low_vol_callback, LOW_BATTERY_PRIO_FLASHLIGHT, NULL);
 	if (ret == LOW_BATTERY_LEVEL_3)
 		max_pt_low_vol = ret;
 	register_bp_thl_notify(
 			&pt_low_bat_callback, BATTERY_PERCENT_PRIO_FLASHLIGHT);
 	register_battery_oc_notify(
-			&pt_oc_callback, BATTERY_OC_PRIO_FLASHLIGHT);
+			&pt_oc_callback, BATTERY_OC_PRIO_FLASHLIGHT, NULL);
 #endif
 
 	pr_debug("Init done\n");
