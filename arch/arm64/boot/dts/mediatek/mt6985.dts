@@ -4483,6 +4483,11 @@
 			status = "disabled";
 		};
 
+		dsi1_te: dsi1-te {
+			compatible = "mediatek, dsi1_te-eint";
+			status = "disabled";
+		};
+
 		ap-ccif0@10209000 {
 			compatible = "mediatek,ap_ccif0";
 			reg = <0 0x10209000 0 0x1000>;
