@@ -16,3 +16,4 @@ obj-$(CONFIG_MTK_V4L2_LENS)   += dw9800v/
 obj-$(CONFIG_MTK_V4L2_LENS)   += main_vcm/
 obj-$(CONFIG_MTK_V4L2_LENS)   += main2_vcm/
 obj-$(CONFIG_MTK_V4L2_LENS)   += main3_vcm/
+obj-$(CONFIG_MTK_V4L2_LENS)   += sub_vcm/
