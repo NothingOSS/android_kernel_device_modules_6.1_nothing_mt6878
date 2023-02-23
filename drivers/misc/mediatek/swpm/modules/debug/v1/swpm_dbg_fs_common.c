@@ -97,8 +97,9 @@ static ssize_t swpm_arm_dsu_pmu_read(char *ToUser, size_t sz, void *priv)
 
 	val = swpm_arm_dsu_pmu_get_status();
 
-	swpm_dbg_log("SWPM arm dsu pmu is %s\n",
-		     (val) ? "enabled" : "disabled");
+	swpm_dbg_log("SWPM arm dsu pmu is %s, type(%u)\n",
+		     (val) ? "enabled" : "disabled",
+		     swpm_arm_dsu_pmu_get_type());
 
 	return p - ToUser;
 }
@@ -146,7 +147,7 @@ static ssize_t swpm_arm_pmu_read(char *ToUser, size_t sz, void *priv)
 
 	val = swpm_arm_pmu_get_status();
 
-	swpm_dbg_log("SWPM arm pmu is %s (%d:%d)\n",
+	swpm_dbg_log("SWPM arm pmu is %s (%u:%u)\n",
 		(val & 0xFFFF) ? "enabled" : "disabled",
 		(val >> 20) & 0xF, (val >> 24) & 0xF);
 
