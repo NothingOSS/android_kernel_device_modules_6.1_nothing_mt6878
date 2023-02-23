@@ -229,6 +229,7 @@ initcall_debug=1";
 		reg = <1>;
 		pm-enable-gpios = <&pio 68 0>;
 		reset-gpios = <&pio 86 0>;
+		res-switch = <2>;
 		gate-ic = <4831>;
 		pinctrl-names = "default";
 		port {
