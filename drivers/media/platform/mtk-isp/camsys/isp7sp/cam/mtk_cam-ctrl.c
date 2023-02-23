@@ -339,15 +339,31 @@ static void ctrl_vsync_preprocess(struct mtk_cam_ctrl *ctrl,
 	spin_unlock(&ctrl->info_lock);
 }
 
-static int frame_no_to_req_no(struct mtk_cam_ctrl *ctrl, int frame_no)
+static int frame_no_to_fs_req_no(struct mtk_cam_ctrl *ctrl, int frame_no,
+				 int *req_no)
 {
 	struct mtk_cam_job *job;
+	int do_send_evnt;
 
 	job = mtk_cam_ctrl_get_job(ctrl, cond_frame_no_belong, &frame_no);
-	if (job)
-		ctrl->frame_sync_event_cnt = job->req_seq;
+	if (job) {
 
-	return ctrl->frame_sync_event_cnt;
+		if (ctrl->frame_sync_event_cnt != job->req_seq) {
+			ctrl->fs_event_subframe_cnt = job->frame_cnt;
+			ctrl->fs_event_subframe_idx = 0;
+		}
+
+		ctrl->frame_sync_event_cnt = job->req_seq;
+	}
+
+	do_send_evnt = ctrl->fs_event_subframe_idx == 0;
+	ctrl->fs_event_subframe_idx =
+		++ctrl->fs_event_subframe_idx % ctrl->fs_event_subframe_cnt;
+
+	if (req_no)
+		*req_no = ctrl->frame_sync_event_cnt;
+
+	return do_send_evnt;
 }
 
 static void handle_engine_frame_start(struct mtk_cam_ctrl *ctrl,
@@ -363,9 +379,9 @@ static void handle_engine_frame_start(struct mtk_cam_ctrl *ctrl,
 			pr_info("%s: first vsync\n", __func__);
 
 		frame_sync_no = seq_from_fh_cookie(irq_info->frame_idx_inner);
-		req_no = frame_no_to_req_no(ctrl, frame_sync_no);
 
-		mtk_cam_event_frame_sync(ctrl, req_no);
+		if (frame_no_to_fs_req_no(ctrl, frame_sync_no, &req_no))
+			mtk_cam_event_frame_sync(ctrl, req_no);
 
 		mtk_cam_ctrl_send_event(ctrl, CAMSYS_EVENT_IRQ_F_VSYNC);
 	}
@@ -801,7 +817,8 @@ void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 
 	atomic_set(&cam_ctrl->enqueued_req_cnt, 0);
 	cam_ctrl->enqueued_frame_seq_no = 0;
-	cam_ctrl->frame_sync_event_cnt = 0;
+	cam_ctrl->fs_event_subframe_cnt = 0;
+	cam_ctrl->fs_event_subframe_idx = 0;
 
 	atomic_set(&cam_ctrl->stopped, 0);
 

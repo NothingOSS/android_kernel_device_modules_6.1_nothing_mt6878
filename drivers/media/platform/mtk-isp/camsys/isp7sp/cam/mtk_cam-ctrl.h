@@ -74,6 +74,8 @@ struct mtk_cam_ctrl {
 	atomic_t enqueued_req_cnt;
 	unsigned int enqueued_frame_seq_no;	/* enque job counter - ctrl maintain */
 	unsigned int frame_sync_event_cnt;
+	int fs_event_subframe_cnt;
+	int fs_event_subframe_idx;
 
 	atomic_t stopped;
 	atomic_t ref_cnt;
