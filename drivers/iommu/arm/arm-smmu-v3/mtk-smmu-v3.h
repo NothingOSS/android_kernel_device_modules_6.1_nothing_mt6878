@@ -434,6 +434,22 @@ struct mtk_smmu_ops {
 	__le64* (*get_step_ptr)(struct arm_smmu_device *smmu, u32 sid);
 };
 
+static inline bool smmu_v3_enabled(void)
+{
+	struct device_node *node = NULL;
+	static int smmuv3_enable = -1;
+
+	if (!IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3))
+		return false;
+
+	if (smmuv3_enable == -1) {
+		node = of_find_compatible_node(NULL, NULL, "arm,smmu-v3");
+		smmuv3_enable = (node != NULL ? 1 : 0);
+	}
+
+	return (smmuv3_enable == 1);
+}
+
 static inline struct mtk_smmu_data *to_mtk_smmu_data(struct arm_smmu_device *smmu)
 {
 	return container_of(smmu, struct mtk_smmu_data, smmu);

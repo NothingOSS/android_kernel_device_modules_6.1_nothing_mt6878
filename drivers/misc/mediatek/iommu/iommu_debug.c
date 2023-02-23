@@ -101,7 +101,6 @@ struct mtk_m4u_plat_data {
 	u32				mm_tf_ccu_support;
 	int (*mm_tf_is_gce_videoup)(u32 port_tf, u32 vld_tf);
 	char *(*peri_tf_analyse)(enum peri_iommu bus_id, u32 id);
-	bool				smmu_v3_enable;
 };
 
 struct peri_iommu_data {
@@ -110,11 +109,7 @@ struct peri_iommu_data {
 };
 
 static struct mtk_m4u_data *m4u_data;
-
-static bool smmu_v3_enable(void)
-{
-	return m4u_data && m4u_data->plat_data->smmu_v3_enable;
-}
+static bool smmu_v3_enable;
 
 /**********iommu trace**********/
 #define IOMMU_EVENT_COUNT_MAX	(8000)
@@ -385,7 +380,7 @@ EXPORT_SYMBOL_GPL(mtk_iova_map_dump);
 
 static int to_smmu_hw_id(u64 tab_id)
 {
-	return smmu_v3_enable() ? tab_id >> 8 : tab_id;
+	return smmu_v3_enable ? tab_id >> 8 : tab_id;
 }
 
 static void mtk_iommu_iova_map_info_dump(struct seq_file *s,
@@ -394,7 +389,7 @@ static void mtk_iommu_iova_map_info_dump(struct seq_file *s,
 	if (!plist)
 		return;
 
-	if (smmu_v3_enable()) {
+	if (smmu_v3_enable) {
 		iommu_dump(s, "%-7u 0x%-7u 0x%-12llx 0x%-8zx %llu.%06u\n",
 			   smmu_tab_id_to_smmu_id(plist->tab_id),
 			   smmu_tab_id_to_asid(plist->tab_id),
@@ -420,7 +415,7 @@ static void mtk_iommu_iova_map_dump(struct seq_file *s, u64 iova, u64 tab_id)
 		return;
 	}
 
-	if (smmu_v3_enable()) {
+	if (smmu_v3_enable) {
 		iommu_dump(s, "smmu iova map dump:\n");
 		iommu_dump(s, "%-7s %-9s %-14s %-10s %17s\n",
 			   "smmu_id", "asid", "iova", "size", "time");
@@ -458,7 +453,7 @@ static void __iommu_trace_dump(struct seq_file *s, u64 iova)
 	if (iommu_globals.dump_enable == 0)
 		return;
 
-	if (smmu_v3_enable()) {
+	if (smmu_v3_enable) {
 		iommu_dump(s, "smmu trace dump:\n");
 		iommu_dump(s, "%-8s %-9s %-11s %-11s %-14s %-12s %-14s %17s %s\n",
 			   "action", "smmu_id", "stream_id", "asid", "iova_start",
@@ -491,7 +486,7 @@ static void __iommu_trace_dump(struct seq_file *s, u64 iova)
 				continue;
 		}
 
-		if (smmu_v3_enable()) {
+		if (smmu_v3_enable) {
 			iommu_dump(s,
 				   "%-8s 0x%-7x 0x%-9x 0x%-9x 0x%-12lx 0x%-10zx 0x%-12lx %10llu.%06u %s\n",
 				   event_mgr[event_id].name,
@@ -1469,7 +1464,7 @@ static int m4u_debug_set(void *data, u64 val)
 		mtk_iommu_iova_alloc_dump(NULL, NULL);
 		break;
 	case 18:	/* dump iova map list */
-		if (smmu_v3_enable()) {
+		if (smmu_v3_enable) {
 			mtk_iommu_iova_map_dump(NULL, 0, MM_SMMU);
 			mtk_iommu_iova_map_dump(NULL, 0, APU_SMMU);
 		} else {
@@ -1536,7 +1531,7 @@ static int mtk_iommu_dump_fops_proc_show(struct seq_file *s, void *unused)
 	mtk_iommu_iova_alloc_dump(s, NULL);
 	mtk_iommu_iova_alloc_dump_top(s, NULL);
 
-	if (smmu_v3_enable()) {
+	if (smmu_v3_enable) {
 		int i;
 
 		/* dump all smmu if exist */
@@ -1558,7 +1553,7 @@ static int mtk_iommu_iova_alloc_fops_proc_show(struct seq_file *s, void *unused)
 
 static int mtk_iommu_iova_map_fops_proc_show(struct seq_file *s, void *unused)
 {
-	if (smmu_v3_enable()) {
+	if (smmu_v3_enable) {
 		mtk_iommu_iova_map_dump(s, 0, MM_SMMU);
 		mtk_iommu_iova_map_dump(s, 0, APU_SMMU);
 	} else {
@@ -1570,7 +1565,7 @@ static int mtk_iommu_iova_map_fops_proc_show(struct seq_file *s, void *unused)
 
 static int mtk_smmu_wp_fops_proc_show(struct seq_file *s, void *unused)
 {
-	if (smmu_v3_enable()) {
+	if (smmu_v3_enable) {
 		int i;
 
 		/* dump all smmu if exist */
@@ -1582,7 +1577,7 @@ static int mtk_smmu_wp_fops_proc_show(struct seq_file *s, void *unused)
 
 static int mtk_smmu_pgtable_fops_proc_show(struct seq_file *s, void *unused)
 {
-	if (smmu_v3_enable()) {
+	if (smmu_v3_enable) {
 		int i;
 
 		/* dump all smmu if exist */
@@ -1663,7 +1658,7 @@ static void mtk_iommu_trace_rec_write(int event,
 		return;
 
 	if (event_mgr[event].dump_log) {
-		if (smmu_v3_enable())
+		if (smmu_v3_enable)
 			pr_info("[trace] %5s |0x%-9lx |%9zx |0x%x |0x%-4x |%s\n",
 				event_mgr[event].name,
 				data1,
@@ -1763,7 +1758,7 @@ static int m4u_debug_init(struct mtk_m4u_data *data)
 	if (IS_ERR_OR_NULL(debug_file))
 		pr_err("failed to proc_create iova_map file\n");
 
-	if (smmu_v3_enable()) {
+	if (smmu_v3_enable) {
 		debug_file = proc_create_data("smmu_wp",
 			S_IFREG | 0644, data->debug_root, &mtk_smmu_wp_fops, NULL);
 		if (IS_ERR_OR_NULL(debug_file))
@@ -1856,7 +1851,7 @@ static void mtk_iommu_count_iova_size(
 		return;
 	}
 
-	if (smmu_v3_enable()) {
+	if (smmu_v3_enable) {
 		tab_id = get_smmu_tab_id(dev);
 		dom_id = 0;
 	} else {
@@ -1895,7 +1890,7 @@ static void mtk_iommu_iova_alloc_dump_top(
 				  __func__, dev_name(dev));
 			return;
 		}
-		if (smmu_v3_enable()) {
+		if (smmu_v3_enable) {
 			smmu_id = get_smmu_id(dev);
 			stream_id = get_smmu_stream_id(dev);
 			tab_id = get_smmu_tab_id(dev);
@@ -1926,7 +1921,7 @@ static void mtk_iommu_iova_alloc_dump_top(
 	list_sort(NULL, &count_list.head, iova_size_cmp);
 
 	/* dump top max user */
-	if (smmu_v3_enable()) {
+	if (smmu_v3_enable) {
 		iommu_dump(s,
 			   "smmu iova alloc total:(%d/%lluKB), dom:(%d/%lluKB,%d,%d,%d) top %d user:\n",
 			   total_cnt, total_size, dom_count, dom_size,
@@ -1944,7 +1939,7 @@ static void mtk_iommu_iova_alloc_dump_top(
 	}
 
 	list_for_each_entry_safe(p_count_list, n_count, &count_list.head, list_node) {
-		if (smmu_v3_enable()) {
+		if (smmu_v3_enable) {
 			iommu_dump(s, "%-8u 0x%-8x 0x%-8x %-7u %-10u %-16llu %s\n",
 				   smmu_tab_id_to_smmu_id(p_count_list->tab_id),
 				   get_smmu_stream_id(p_count_list->dev),
@@ -1987,7 +1982,7 @@ static void mtk_iommu_iova_alloc_dump(struct seq_file *s, struct device *dev)
 				__func__, dev_name(dev));
 			return;
 		}
-		if (smmu_v3_enable()) {
+		if (smmu_v3_enable) {
 			tab_id = get_smmu_tab_id(dev);
 			dom_id = 0;
 		} else {
@@ -1996,7 +1991,7 @@ static void mtk_iommu_iova_alloc_dump(struct seq_file *s, struct device *dev)
 		}
 	}
 
-	if (smmu_v3_enable()) {
+	if (smmu_v3_enable) {
 		iommu_dump(s, "smmu iova alloc dump:\n");
 		iommu_dump(s, "%-9s %-10s %-10s %-18s %-14s %17s, %s\n",
 			   "smmu_id", "stream_id", "asid", "iova", "size", "time", "dev");
@@ -2010,7 +2005,7 @@ static void mtk_iommu_iova_alloc_dump(struct seq_file *s, struct device *dev)
 	list_for_each_entry_safe(plist, n, &iova_list.head, list_node)
 		if (dev == NULL ||
 		    (plist->dom_id == dom_id && plist->tab_id == tab_id)) {
-			if (smmu_v3_enable())
+			if (smmu_v3_enable)
 				iommu_dump(s, "%-9u 0x%-8x 0x%-8x %-18pa 0x%-12zx %10llu.%06u %s\n",
 					   smmu_tab_id_to_smmu_id(plist->tab_id),
 					   get_smmu_stream_id(plist->dev),
@@ -2047,7 +2042,7 @@ static void mtk_iova_dbg_alloc(struct device *dev,
 		return;
 	}
 
-	if (smmu_v3_enable()) {
+	if (smmu_v3_enable) {
 		tab_id = get_smmu_tab_id(dev);
 		dom_id = 0;
 	} else {
@@ -2144,7 +2139,9 @@ static int mtk_m4u_dbg_probe(struct platform_device *pdev)
 	u32 total_port;
 	int ret = 0;
 
-	pr_info("%s start\n", __func__);
+	smmu_v3_enable = smmu_v3_enabled();
+	pr_info("%s start, smmu_v3_enable:%d\n", __func__, smmu_v3_enable);
+
 	m4u_data = devm_kzalloc(dev, sizeof(struct mtk_m4u_data), GFP_KERNEL);
 	if (!m4u_data)
 		return -ENOMEM;
@@ -2158,8 +2155,6 @@ static int mtk_m4u_dbg_probe(struct platform_device *pdev)
 		sizeof(struct mtk_iommu_cb), GFP_KERNEL);
 	if (!m4u_data->m4u_cb)
 		return -ENOMEM;
-
-	pr_info("%s, smmu_v3_enable:%d\n", __func__, smmu_v3_enable());
 
 	m4u_debug_init(m4u_data);
 
@@ -2382,7 +2377,6 @@ static const struct mtk_m4u_plat_data mt6989_smmu_data = {
 	.port_list[SOC_SMMU] = soc_port_mt6989,
 	.port_nr[SOC_SMMU]   = ARRAY_SIZE(soc_port_mt6989),
 	.mm_tf_is_gce_videoup = mt6989_tf_is_gce_videoup,
-	.smmu_v3_enable = IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3),
 };
 
 static const struct of_device_id mtk_m4u_dbg_of_ids[] = {
