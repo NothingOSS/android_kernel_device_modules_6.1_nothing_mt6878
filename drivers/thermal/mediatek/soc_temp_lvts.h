@@ -10,6 +10,7 @@
  *==================================================
  */
 #define LK_LVTS_MAGIC (0x0000555)
+#define TFA_LVTS_MAGIC (0x0000777)
 
 #define DISABLE_THERMAL_HW_REBOOT (-274000)
 

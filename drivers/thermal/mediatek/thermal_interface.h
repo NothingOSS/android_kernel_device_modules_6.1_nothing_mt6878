@@ -37,11 +37,11 @@
 #define APU_ATC_NUM                   (1)
 #define UTC_COUNT_OFFSET           (0x27C)
 #define INFOB_OFFSET               (0x2C4)
-#define REBOOT_TEMPERATURE_ADDR_OFFSET (0x330)
+#define REBOOT_TEMPERATURE_ADDR_OFFSET (0x39c)
 #define GPU_COOLER_BASE             (0x3A0)
 #define CPU_COOLER_BASE             (0x3D0)
 #define DSU_AVG_TEMP_BASE_ADDR_OFFSET       (0x98)
-#define COLD_INTERRUPT_ENABLE_OFFSET (0x334)
+#define COLD_INTERRUPT_ENABLE_OFFSET (0x398)
 
 #define APU_MBOX_TTJ_OFFSET        (0x700)
 #define APU_MBOX_PB_OFFSET         (0x704)
