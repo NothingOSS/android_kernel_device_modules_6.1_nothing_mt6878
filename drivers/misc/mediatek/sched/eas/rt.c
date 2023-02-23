@@ -128,6 +128,28 @@ static inline bool mtk_rt_uclamp_boosted(struct task_struct *p)
 	return ((uclamp_eff_value(p, UCLAMP_MIN) > sysctl_rt_task_uclamp_min_th));
 }
 
+unsigned int min_highirq_load[NR_CPUS] = {
+	[0 ... NR_CPUS-1] = SCHED_CAPACITY_SCALE /* default 1024 */
+};
+
+unsigned int inv_irq_ratio[NR_CPUS] = {
+	[0 ... NR_CPUS-1] = 1 /* default irq=cpu */
+};
+
+inline int cpu_high_irqload(int cpu, unsigned long cpu_util)
+{
+	unsigned long irq_util;
+
+	irq_util = cpu_util_irq(cpu_rq(cpu));
+	if (irq_util < min_highirq_load[cpu])
+		return 0;
+
+	if (irq_util * inv_irq_ratio[cpu] < cpu_util)
+		return 0;
+
+	return 1;
+}
+
 inline unsigned int mtk_get_idle_exit_latency(struct rq *rq)
 {
 	struct cpuidle_state *idle = idle_get_state(rq);
@@ -183,8 +205,8 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			if (cpu_paused(cpu))
 				continue;
 
-			// if (sched_cpu_high_irqload(cpu))
-			//	continue;
+			if (cpu_high_irqload(cpu, cpu_util_cum))
+				continue;
 
 			// if (__cpu_overutilized(cpu, tutil))
 			//	continue;

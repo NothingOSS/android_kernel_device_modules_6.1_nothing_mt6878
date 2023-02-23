@@ -414,8 +414,10 @@ TRACE_EVENT(sched_cpu_util,
 		__field(unsigned int,	capacity)
 		__field(unsigned int,	capacity_orig)
 		__field(unsigned int,	idle_exit_latency)
+		__field(long,		irqload)
 		__field(int,		online)
 		__field(int,		paused)
+		__field(int,		high_irq_load)
 		__field(unsigned int,	nr_rtg_high_prio_tasks)
 	),
 	TP_fast_assign(
@@ -426,11 +428,13 @@ TRACE_EVENT(sched_cpu_util,
 		__entry->capacity	= capacity_of(cpu);
 		__entry->capacity_orig	= capacity_orig_of(cpu);
 		__entry->idle_exit_latency	= mtk_get_idle_exit_latency(cpu_rq(cpu));
+		__entry->irqload		= cpu_util_irq(cpu_rq(cpu));
 		__entry->online			= cpu_online(cpu);
 		__entry->paused			= cpu_paused(cpu);
+		__entry->high_irq_load	= cpu_high_irqload(cpu, cpu_util);
 		__entry->nr_rtg_high_prio_tasks = 0; //mtk_nr_rtg_high_prio(cpu);
 	),
-	TP_printk("cpu=%d nr_running=%d cpu_util=%ld cpu_util_flt=%ld capacity=%u capacity_orig=%u idle_exit_latency=%u online=%u paused=%u nr_rtg_hp=%u",
+	TP_printk("cpu=%d nr_running=%d cpu_util=%ld cpu_util_flt=%ld capacity=%u capacity_orig=%u idle_exit_latency=%u irqload=%ld online=%u paused=%u high_irq_load=%u nr_rtg_hp=%u",
 		__entry->cpu,
 		__entry->nr_running,
 		__entry->cpu_util,
@@ -438,8 +442,10 @@ TRACE_EVENT(sched_cpu_util,
 		__entry->capacity,
 		__entry->capacity_orig,
 		__entry->idle_exit_latency,
+		__entry->irqload,
 		__entry->online,
 		__entry->paused,
+		__entry->high_irq_load,
 		__entry->nr_rtg_high_prio_tasks)
 );
 

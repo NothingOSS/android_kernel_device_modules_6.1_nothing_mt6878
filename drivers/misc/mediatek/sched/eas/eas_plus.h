@@ -189,6 +189,7 @@ extern int mtk_sched_asym_cpucapacity;
 extern void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowest_mask,
 				int ret, int *lowest_cpu);
 
+extern int cpu_high_irqload(int cpu, unsigned long cpu_util);
 extern unsigned int mtk_get_idle_exit_latency(struct rq *rq);
 
 extern struct cpumask __cpu_pause_mask;
