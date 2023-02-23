@@ -13721,6 +13721,8 @@
 		slbc-enable = <1>;
 		slbc-all-cache-enable = <1>;
 		apu = <2097152>;
+		trace-dram-base = <0x0>;
+		trace-dram-size  = <0x0>;
 	};
 
 	pmic-oc-debug {
