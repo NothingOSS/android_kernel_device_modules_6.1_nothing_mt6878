@@ -426,10 +426,13 @@ static unsigned int vcp_A_log_enable_set(unsigned int enable)
 	struct vcp_logger_ctrl_msg msg;
 
 	if (vcp_A_logger_inited) {
+
+		mutex_lock(&vcp_logger_mutex);
 		if (!vcp_A_last_log) {
 			/* Allocate one more byte for the NULL character. */
 			vcp_A_last_log = vmalloc(last_log_info.vcp_log_buf_maxlen + 1);
 		}
+		mutex_unlock(&vcp_logger_mutex);
 
 		/*
 		 *send ipi to invoke vcp logger
@@ -926,13 +929,13 @@ error:
 
 void vcp_logger_uninit(void)
 {
-	char *tmp = vcp_A_last_log;
-
 	vcp_logger_wakeup_handler(0, NULL, NULL, 0);
 	vcp_A_logger_inited = 0;
+	mutex_lock(&vcp_logger_mutex);
+	if (vcp_A_last_log)
+		vfree(vcp_A_last_log);
 	vcp_A_last_log = NULL;
-	if (tmp)
-		vfree(tmp);
+	mutex_unlock(&vcp_logger_mutex);
 }
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT)
@@ -961,7 +964,6 @@ void vcp_crash_log_move_to_buf(enum vcp_core_id vcp_id)
 	char *dram_logger_limit = /* VCP log reserve limitation */
 		(char *)(vcp_get_reserve_mem_virt(VCP_A_LOGGER_MEM_ID)
 		+ vcp_get_reserve_mem_size(VCP_A_LOGGER_MEM_ID));
-	char *pre_vcp_logger_buf = NULL;
 	char *dram_logger_buf;       /* dram buffer */
 	int vcp_awake_flag;
 
@@ -969,6 +971,7 @@ void vcp_crash_log_move_to_buf(enum vcp_core_id vcp_id)
 	unsigned char *vcp_logger_buf = (unsigned char *)(VCP_TCM +
 					last_log_info.vcp_log_buf_addr);
 
+	vcp_last_logger = NULL;
 	if (!vcp_A_logger_inited && vcp_id == VCP_A_ID) {
 		pr_notice("[VCP] %s(): logger has not been init\n", __func__);
 		return;
@@ -1035,7 +1038,6 @@ void vcp_crash_log_move_to_buf(enum vcp_core_id vcp_id)
 		length = last_log_info.vcp_log_buf_maxlen;
 	}
 
-	pre_vcp_logger_buf = vcp_last_logger;
 	vcp_last_logger = vmalloc(length + strlen(crash_message) + 1);
 	if (log_start_idx > last_log_info.vcp_log_buf_maxlen) {
 		pr_debug("[VCP] %s: vcp_logger_buf +log_start_idx %x is over tcm_size %x\n",
@@ -1113,8 +1115,8 @@ exit:
 	}
 
 	mutex_unlock(&vcp_logger_mutex);
-	if (pre_vcp_logger_buf != NULL)
-		vfree(pre_vcp_logger_buf);
+	if (vcp_last_logger != NULL)
+		vfree(vcp_last_logger);
 }
 
 
