@@ -29,7 +29,7 @@ static int mr4_v1_init(struct platform_device *pdev,
 	mr4_dev_ptr->version = 1;
 
 	ret = of_property_read_u32_array(dramc_node,
-		"mr4_rg", (unsigned int *)&(mr4_dev_ptr->mr4_rg), 3);
+		"mr4-rg", (unsigned int *)&(mr4_dev_ptr->mr4_rg), 3);
 
 	return ret;
 }
@@ -46,15 +46,15 @@ static int fmeter_v1_init(struct platform_device *pdev,
 		fmeter_dev_ptr->version = 2;
 
 	ret = of_property_read_u32(dramc_node,
-		"crystal_freq", &(fmeter_dev_ptr->crystal_freq));
+		"crystal-freq", &(fmeter_dev_ptr->crystal_freq));
 	ret |= of_property_read_u32(dramc_node,
-		"shu_of", &(fmeter_dev_ptr->shu_of));
+		"shu-of", &(fmeter_dev_ptr->shu_of));
 	ret |= of_property_read_u32_array(dramc_node,
-		"shu_lv", (unsigned int *)&(fmeter_dev_ptr->shu_lv), 3);
+		"shu-lv", (unsigned int *)&(fmeter_dev_ptr->shu_lv), 3);
 	ret |= of_property_read_u32_array(dramc_node,
-		"pll_id", (unsigned int *)&(fmeter_dev_ptr->pll_id), 3);
+		"pll-id", (unsigned int *)&(fmeter_dev_ptr->pll_id), 3);
 	ret |= of_property_read_u32_array(dramc_node,
-		"pll_md", (unsigned int *)(fmeter_dev_ptr->pll_md), 6);
+		"pll-md", (unsigned int *)(fmeter_dev_ptr->pll_md), 6);
 	ret |= of_property_read_u32_array(dramc_node,
 		"sdmpcw", (unsigned int *)(fmeter_dev_ptr->sdmpcw), 6);
 	ret |= of_property_read_u32_array(dramc_node,
@@ -72,7 +72,7 @@ static int fmeter_v1_init(struct platform_device *pdev,
 	ret |= of_property_read_u32_array(dramc_node,
 		"dqopen", (unsigned int *)(fmeter_dev_ptr->dqopen), 6);
 	ret |= of_property_read_u32_array(dramc_node,
-		"ckdiv4_ca", (unsigned int *)(fmeter_dev_ptr->ckdiv4_ca), 6);
+		"ckdiv4-ca", (unsigned int *)(fmeter_dev_ptr->ckdiv4_ca), 6);
 
 	return ret;
 }
@@ -201,7 +201,7 @@ static int dramc_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	ret = of_property_read_u32(dramc_node, "mr4_version", &mr4_version);
+	ret = of_property_read_u32(dramc_node, "mr4-version", &mr4_version);
 	if (ret)
 		pr_info("%s: not support mr4\n", __func__);
 	else if (mr4_version == 1) {
@@ -333,7 +333,7 @@ static int dramc_probe(struct platform_device *pdev)
 	}
 
 	ret = of_property_read_u32(
-		dramc_node, "fmeter_version", &fmeter_version);
+		dramc_node, "fmeter-version", &fmeter_version);
 	if (ret) {
 		pr_info("%s: get fmeter_version fail\n", __func__);
 		return -EINVAL;
