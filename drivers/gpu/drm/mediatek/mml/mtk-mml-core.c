@@ -311,6 +311,7 @@ static s32 command_make(struct mml_task *task, u32 pipe)
 		return PTR_ERR(pkt);
 	}
 	task->pkts[pipe] = pkt;
+	task->pkts[pipe]->no_irq = !task->config->irq;
 	pkt->user_data = (void *)task;
 
 	if (!task->config->tile_output[pipe]) {
@@ -1255,6 +1256,7 @@ static void core_taskdone_cb(struct cmdq_cb_data data)
 {
 	struct cmdq_pkt *pkt = (struct cmdq_pkt *)data.data;
 	struct mml_task *task = (struct mml_task *)pkt->user_data;
+	struct mml_frame_config *cfg = task->config;
 	u32 pipe;
 
 	if (pkt == task->pkts[0]) {
@@ -1274,6 +1276,9 @@ static void core_taskdone_cb(struct cmdq_cb_data data)
 			((data.err & GENMASK(15, 0)) << 16) | pipe);
 	else
 		mml_mmp(irq_done, MMPROFILE_FLAG_PULSE, task->job.jobid, pipe);
+
+	if (!cfg->irq && cfg->info.mode != MML_MODE_DDP_ADDON)
+		dec_task_cnt(cfg->mml, false);
 
 	core_taskdone_check(task);
 	mml_trace_end();
@@ -1589,9 +1594,18 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 static void core_config_pipe(struct mml_task *task, u32 pipe)
 {
 	s32 err;
+	struct mml_frame_config *cfg = task->config;
+	struct cmdq_client *tp_clt = cfg->path[pipe]->clt;
 
 	mml_trace_ex_begin("%s_%u", __func__, pipe);
 	task->config_pipe_time[pipe] = sched_clock();
+
+	if (!cfg->irq) {
+		if (cfg->info.mode != MML_MODE_DDP_ADDON)
+			inc_task_cnt(cfg->mml, false);
+
+		cmdq_check_thread_complete(tp_clt->chan);
+	}
 
 	err = core_config(task, pipe);
 	if (err < 0) {
@@ -1634,6 +1648,9 @@ static void core_config_pipe(struct mml_task *task, u32 pipe)
 	mml_msg("%s task %p job %u pipe %u pkt %p done",
 		__func__, task, task->job.jobid, pipe, task->pkts[pipe]);
 exit:
+	if (!cfg->irq && err < 0)
+		dec_task_cnt(cfg->mml, false);
+
 	mml_trace_ex_end();
 }
 

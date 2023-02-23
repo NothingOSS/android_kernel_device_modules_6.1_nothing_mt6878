@@ -1374,10 +1374,15 @@ static void sys_addon_config(struct mtk_ddp_comp *ddp_comp,
 	mml_mmp(addon_addon_config, MMPROFILE_FLAG_PULSE, cfg->config_type.type, 0);
 
 	mml_msg("%s type:%d", __func__, cfg->config_type.type);
-	if (cfg->config_type.type == ADDON_DISCONNECT)
+	if (cfg->config_type.type == ADDON_DISCONNECT) {
 		sys_addon_disconnect(sys, cfg);
-	else
+		if (!cfg->task->config->irq)
+			dec_task_cnt(cfg->task->config->mml, true);
+	} else {
 		sys_addon_connect(sys, cfg, pkt);
+		if (!cfg->task->config->irq)
+			inc_task_cnt(cfg->task->config->mml, true);
+	}
 }
 
 static void sys_start(struct mtk_ddp_comp *ddp_comp, struct cmdq_pkt *pkt)

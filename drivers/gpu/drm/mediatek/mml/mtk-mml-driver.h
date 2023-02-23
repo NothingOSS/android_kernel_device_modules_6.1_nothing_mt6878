@@ -65,6 +65,9 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg, u32 throughput, u32 tput_up);
 void mml_comp_qos_clear(struct mml_comp *comp);
 
+void inc_task_cnt(struct mml_dev *mml, bool addon_task);
+void dec_task_cnt(struct mml_dev *mml, bool addon_task);
+
 /*
  * mml_sram_get - get sram addr from slbc and power on
  *

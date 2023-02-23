@@ -60,6 +60,9 @@ module_param(mml_racing, int, 0644);
 int mml_dl = 2;
 module_param(mml_dl, int, 0644);
 
+int mml_need_irq;
+module_param(mml_need_irq, int, 0644);
+
 int mml_racing_rsz = 1;
 module_param(mml_racing_rsz, int, 0644);
 
@@ -860,6 +863,13 @@ static s32 tp_select(struct mml_topology_cache *cache,
 			if (!MML_FMT_IS_ARGB(cfg->info.dest[i].data.format))
 				cfg->alpharot = false;
 	}
+
+	if (mml_need_irq ||
+	    cfg->info.mode == MML_MODE_MML_DECOUPLE ||
+	    cfg->info.mode == MML_MODE_MDP_DECOUPLE)
+		cfg->irq = true;
+	else
+		cfg->irq = false;
 
 	tp_dump_path_short(path[0]);
 	if (cfg->dual && path[1])

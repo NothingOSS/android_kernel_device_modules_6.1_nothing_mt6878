@@ -119,6 +119,8 @@ struct mml_dev {
 	struct mml_record records[MML_RECORD_NUM];
 	struct mutex record_mutex;
 	u16 record_idx;
+	atomic_t task_cnt;
+	atomic_t addon_task_cnt;
 };
 
 int mml_racing_bw;
@@ -736,6 +738,45 @@ s32 mml_comp_clk_disable(struct mml_comp *comp)
 	}
 
 	return 0;
+}
+
+void inc_task_cnt(struct mml_dev *mml, bool addon_task)
+{
+	s32 cur_task_cnt = atomic_read(&mml->task_cnt);
+	s32 cur_addon_task_cnt = atomic_read(&mml->addon_task_cnt);
+
+	if (addon_task)
+		cur_addon_task_cnt = atomic_inc_return(&mml->addon_task_cnt);
+	else
+		cur_task_cnt = atomic_inc_return(&mml->task_cnt);
+
+	if (cur_task_cnt + cur_addon_task_cnt == 1)
+		mml_msg("dpc start");
+}
+
+void dec_task_cnt(struct mml_dev *mml, bool addon_task)
+{
+	s32 cur_task_cnt = atomic_read(&mml->task_cnt);
+	s32 cur_addon_task_cnt = atomic_read(&mml->addon_task_cnt);
+
+	if (addon_task) {
+		cur_addon_task_cnt = atomic_dec_return(&mml->addon_task_cnt);
+		if (cur_addon_task_cnt < 0) {
+			cur_addon_task_cnt = 0;
+			atomic_set(&mml->addon_task_cnt, 0);
+			mml_err("%s addon task_cnt < 0", __func__);
+		}
+	} else {
+		cur_task_cnt = atomic_dec_return(&mml->task_cnt);
+		if (cur_task_cnt < 0) {
+			cur_task_cnt = 0;
+			atomic_set(&mml->task_cnt, 0);
+			mml_err("%s task_cnt < 0", __func__);
+		}
+	}
+
+	if (cur_task_cnt + cur_addon_task_cnt == 0)
+		mml_msg("dpc end");
 }
 
 /* mml_calc_bw - calculate bandwidth by giving pixel and current throughput
