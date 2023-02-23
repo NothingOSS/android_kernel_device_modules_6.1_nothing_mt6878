@@ -347,6 +347,13 @@ mem_alloc_saturation_variant(enum TRUSTED_MEM_TYPE mem_type, u8 *mem_owner,
 					pr_info("sec_handle_query_pa: sec_handle=0x%llx, pa=0x%llx\n",
 						g_mem_handle_list[chunk_num], phy_addr);
 				}
+			} else if (mem_type == TRUSTED_MEM_PROT_REGION) {
+				if (is_ffa_enabled()) {
+					tmem_query_ffa_handle_to_pa(g_mem_handle_list[chunk_num],
+						&phy_addr);
+					pr_info("ffa_handle_to_pa: ffa_handle=0x%llx, pa=0x%llx\n",
+						g_mem_handle_list[chunk_num], phy_addr);
+				}
 			}
 		}
 
