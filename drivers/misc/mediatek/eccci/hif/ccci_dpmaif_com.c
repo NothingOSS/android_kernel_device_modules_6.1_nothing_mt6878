@@ -2616,11 +2616,17 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 		g_rx_flush_pkt_cnt = 0;
 #endif
 	} else {  // dl tput < 150M
-		g_alloc_skb_threshold = MIN_ALLOC_SKB_CNT;
-		g_alloc_frg_threshold = MIN_ALLOC_FRG_CNT;
-		g_alloc_skb_tbl_threshold = MIN_ALLOC_SKB_TBL_CNT;
-		g_alloc_frg_tbl_threshold = MIN_ALLOC_FRG_TBL_CNT;
-
+		if (dpmaif_ctl->capability & DPMAIF_CAP_USE_MAX_BAT) {
+			g_alloc_skb_threshold = MAX_ALLOC_BAT_CNT;
+			g_alloc_frg_threshold = MAX_ALLOC_BAT_CNT;
+			g_alloc_skb_tbl_threshold = MAX_ALLOC_BAT_CNT;
+			g_alloc_frg_tbl_threshold = MAX_ALLOC_BAT_CNT;
+		} else {
+			g_alloc_skb_threshold = MIN_ALLOC_SKB_CNT;
+			g_alloc_frg_threshold = MIN_ALLOC_FRG_CNT;
+			g_alloc_skb_tbl_threshold = MIN_ALLOC_SKB_TBL_CNT;
+			g_alloc_frg_tbl_threshold = MIN_ALLOC_FRG_TBL_CNT;
+		}
 		if (dpmaif_ctl->support_lro == 1)
 			ccmni_set_tcp_is_need_gro(1);
 
@@ -2654,6 +2660,9 @@ static int dpmaif_init_cap(struct device *dev)
 		dpmaif_ctl->real_rxq_num = 1;
 		dpmaif_ctl->max_pit_seq = 0xFE;
 	}
+
+	if (dpmaif_ctl->capability & DPMAIF_CAP_USE_MAX_BAT)
+		g_alloc_skb_threshold = MAX_ALLOC_BAT_CNT;
 
 	if (of_property_read_u32(dev->of_node,
 			"dl_bat_entry_size", &dpmaif_ctl->dl_bat_entry_size))
