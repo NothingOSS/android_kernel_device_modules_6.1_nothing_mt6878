@@ -128,7 +128,7 @@ static inline bool mtk_rt_uclamp_boosted(struct task_struct *p)
 	return ((uclamp_eff_value(p, UCLAMP_MIN) > sysctl_rt_task_uclamp_min_th));
 }
 
-static inline unsigned int mtk_get_idle_exit_latency(struct rq *rq)
+inline unsigned int mtk_get_idle_exit_latency(struct rq *rq)
 {
 	struct cpuidle_state *idle = idle_get_state(rq);
 
@@ -173,7 +173,9 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 
 		for_each_cpu_and(cpu, lowest_mask, &cpu_array[order_index][cluster]) {
 
-			// trace_sched_cpu_util(cpu);
+			cpu_util_cum = mtk_task_cap(p, cpu, min_cap, max_cap);
+
+			trace_sched_cpu_util(cpu, cpu_util_cum);
 
 			if (!cpumask_test_cpu(cpu, p->cpus_ptr))
 				continue;
@@ -215,7 +217,6 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			 */
 			cpu_idle_exit_latency = mtk_get_idle_exit_latency(cpu_rq(cpu));
 
-			cpu_util_cum = mtk_task_cap(p, cpu, min_cap, max_cap);
 			if (best_idle_exit_latency < cpu_idle_exit_latency)
 				continue;
 

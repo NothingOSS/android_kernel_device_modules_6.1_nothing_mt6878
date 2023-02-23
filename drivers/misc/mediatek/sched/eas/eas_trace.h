@@ -12,6 +12,8 @@
 #include <linux/tracepoint.h>
 #include <linux/sched/clock.h>
 
+#include "eas_plus.h"
+
 #if IS_ENABLED(CONFIG_MTK_SCHED_BIG_TASK_ROTATE)
 /*
  * Tracepoint for big task rotation
@@ -400,6 +402,46 @@ out:
 #endif
 }
 #endif
+
+TRACE_EVENT(sched_cpu_util,
+	TP_PROTO(int cpu, unsigned long cpu_util),
+	TP_ARGS(cpu, cpu_util),
+	TP_STRUCT__entry(
+		__field(unsigned int,	cpu)
+		__field(unsigned int,	nr_running)
+		__field(long,		cpu_util)
+		__field(long,		cpu_util_flt)
+		__field(unsigned int,	capacity)
+		__field(unsigned int,	capacity_orig)
+		__field(unsigned int,	idle_exit_latency)
+		__field(int,		online)
+		__field(int,		paused)
+		__field(unsigned int,	nr_rtg_high_prio_tasks)
+	),
+	TP_fast_assign(
+		__entry->cpu		= cpu;
+		__entry->nr_running = cpu_rq(cpu)->nr_running;
+		__entry->cpu_util	= cpu_util;
+		__entry->cpu_util_flt	= 0; //cpu_util_flt(cpu);
+		__entry->capacity	= capacity_of(cpu);
+		__entry->capacity_orig	= capacity_orig_of(cpu);
+		__entry->idle_exit_latency	= mtk_get_idle_exit_latency(cpu_rq(cpu));
+		__entry->online			= cpu_online(cpu);
+		__entry->paused			= cpu_paused(cpu);
+		__entry->nr_rtg_high_prio_tasks = 0; //mtk_nr_rtg_high_prio(cpu);
+	),
+	TP_printk("cpu=%d nr_running=%d cpu_util=%ld cpu_util_flt=%ld capacity=%u capacity_orig=%u idle_exit_latency=%u online=%u paused=%u nr_rtg_hp=%u",
+		__entry->cpu,
+		__entry->nr_running,
+		__entry->cpu_util,
+		__entry->cpu_util_flt,
+		__entry->capacity,
+		__entry->capacity_orig,
+		__entry->idle_exit_latency,
+		__entry->online,
+		__entry->paused,
+		__entry->nr_rtg_high_prio_tasks)
+);
 
 TRACE_EVENT(sched_select_task_rq_rt,
 	TP_PROTO(struct task_struct *tsk, int policy,
