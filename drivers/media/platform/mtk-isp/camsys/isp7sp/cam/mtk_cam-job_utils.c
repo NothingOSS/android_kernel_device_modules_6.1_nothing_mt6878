@@ -104,7 +104,7 @@ int get_hw_scenario(struct mtk_cam_job *job)
 		if (is_w) {
 			hard_scenario = (is_dc) ? MTKCAM_IPI_HW_PATH_DC_RGBW :
 				MTKCAM_IPI_HW_PATH_OTF_RGBW;
-		} else if (scen->scen.normal.max_exp_num > 1)
+		} else if (scen->scen.normal.exp_num > 1)
 			hard_scenario = is_dc ?
 				MTKCAM_IPI_HW_PATH_DC_STAGGER :
 				MTKCAM_IPI_HW_PATH_STAGGER;

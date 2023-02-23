@@ -500,6 +500,76 @@ void trigger_adl(struct mtk_raw_device *dev)
 
 #define REG_DMA_SOFT_RST_STAT               0x4068
 #define REG_DMA_SOFT_RST_STAT2              0x406C
+#define REG_DMA_DBG_CHASING_STATUS          0x4098
+#define REG_DMA_DBG_CHASING_STATUS2         0x409c
+#define RAW_RST_STAT_CHECK		0x3fffffff
+#define RAW_RST_STAT2_CHECK		0x1ff
+#define YUV_RST_STAT_CHECK		0x1efffff
+/* check again for rawi dcif case */
+bool is_dma_idle(struct mtk_raw_device *dev)
+{
+	u32 chasing_stat = readl(dev->base + REG_DMA_DBG_CHASING_STATUS);
+	u32 chasing_stat2 = readl(dev->base + REG_DMA_DBG_CHASING_STATUS2);
+	u32 raw_rst_stat = readl(dev->base + REG_DMA_SOFT_RST_STAT);
+	u32 raw_rst_stat2 = readl(dev->base + REG_DMA_SOFT_RST_STAT2);
+	u32 yuv_rst_stat = readl(dev->yuv_base + REG_DMA_SOFT_RST_STAT);
+
+	if (READ_FIELD(raw_rst_stat,
+			CAMRAWDMATOP_RAWI_R2_SOFT_RST_STAT) == 0 &&
+		READ_FIELD(chasing_stat,
+			CAMRAWDMATOP_DC_DBG_CHASING_STATUS_RAWI_R2) == 0)
+		SET_FIELD(&raw_rst_stat, CAMRAWDMATOP_RAWI_R2_SOFT_RST_STAT, 1);
+
+	if (READ_FIELD(raw_rst_stat,
+			CAMRAWDMATOP_UFDI_R2_SOFT_RST_STAT) == 0 &&
+		READ_FIELD(chasing_stat,
+			CAMRAWDMATOP_DC_DBG_CHASING_STATUS_UFDI_R2) == 0)
+		SET_FIELD(&raw_rst_stat, CAMRAWDMATOP_UFDI_R2_SOFT_RST_STAT, 1);
+
+	if (READ_FIELD(raw_rst_stat,
+			CAMRAWDMATOP_RAWI_R3_SOFT_RST_STAT) == 0 &&
+		READ_FIELD(chasing_stat,
+			CAMRAWDMATOP_DC_DBG_CHASING_STATUS_RAWI_R3) == 0)
+		SET_FIELD(&raw_rst_stat, CAMRAWDMATOP_RAWI_R3_SOFT_RST_STAT, 1);
+
+	if (READ_FIELD(raw_rst_stat,
+			CAMRAWDMATOP_UFDI_R3_SOFT_RST_STAT) == 0 &&
+		READ_FIELD(chasing_stat,
+			CAMRAWDMATOP_DC_DBG_CHASING_STATUS_UFDI_R3) == 0)
+		SET_FIELD(&raw_rst_stat, CAMRAWDMATOP_UFDI_R3_SOFT_RST_STAT, 1);
+
+	if (READ_FIELD(raw_rst_stat2,
+			CAMRAWDMATOP_RAWI_R4_SOFT_RST_STAT) == 0 &&
+		READ_FIELD(chasing_stat2,
+			CAMRAWDMATOP_DC_DBG_CHASING_STATUS2_RAWI_R4) == 0)
+		SET_FIELD(&raw_rst_stat2, CAMRAWDMATOP_RAWI_R4_SOFT_RST_STAT, 1);
+
+	if (READ_FIELD(raw_rst_stat2,
+			CAMRAWDMATOP_UFDI_R4_SOFT_RST_STAT) == 0 &&
+		READ_FIELD(chasing_stat2,
+			CAMRAWDMATOP_DC_DBG_CHASING_STATUS2_UFDI_R4) == 0)
+		SET_FIELD(&raw_rst_stat2, CAMRAWDMATOP_UFDI_R4_SOFT_RST_STAT, 1);
+
+	if (READ_FIELD(raw_rst_stat,
+			CAMRAWDMATOP_RAWI_R5_SOFT_RST_STAT) == 0 &&
+		READ_FIELD(chasing_stat2,
+			CAMRAWDMATOP_DC_DBG_CHASING_STATUS2_RAWI_R5) == 0)
+		SET_FIELD(&raw_rst_stat, CAMRAWDMATOP_RAWI_R5_SOFT_RST_STAT, 1);
+
+	if (READ_FIELD(raw_rst_stat,
+			CAMRAWDMATOP_UFDI_R5_SOFT_RST_STAT) == 0 &&
+		READ_FIELD(chasing_stat2,
+			CAMRAWDMATOP_DC_DBG_CHASING_STATUS2_UFDI_R5) == 0)
+		SET_FIELD(&raw_rst_stat, CAMRAWDMATOP_UFDI_R5_SOFT_RST_STAT, 1);
+
+	if (raw_rst_stat == RAW_RST_STAT_CHECK ||
+		raw_rst_stat2 == RAW_RST_STAT2_CHECK ||
+		yuv_rst_stat == YUV_RST_STAT_CHECK)
+		return true;
+
+	return false;
+}
+
 void dump_dma_soft_rst_stat(struct mtk_raw_device *dev)
 {
 	int raw_rst_stat = readl(dev->base + REG_DMA_SOFT_RST_STAT);
@@ -542,7 +612,7 @@ void reset(struct mtk_raw_device *dev)
 				 sw_ctl & FBIT(CAMCTL_SW_RST_ST),
 				 1 /* delay, us */,
 				 5000 /* timeout, us */);
-	if (ret < 0) {
+	if (ret < 0 && !is_dma_idle(dev)) {
 		dev_info(dev->dev, "%s: error: reset timeout!\n",
 			 __func__);
 		dump_dma_soft_rst_stat(dev);

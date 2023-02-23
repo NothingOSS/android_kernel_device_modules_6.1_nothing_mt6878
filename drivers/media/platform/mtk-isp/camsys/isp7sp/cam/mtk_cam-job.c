@@ -1681,6 +1681,7 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 	/* config_flow_by_job_type */
 	update_job_used_engine(job);
 
+	ctx->configured = (ctx->configured && !job->seamless_switch);
 	job->do_ipi_config = false;
 	if (!ctx->configured) {
 		/* handle camsv tags */
