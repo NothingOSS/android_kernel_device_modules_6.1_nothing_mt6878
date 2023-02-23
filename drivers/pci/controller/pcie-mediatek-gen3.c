@@ -29,6 +29,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/reset.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
+#include <linux/spinlock.h>
 //#include <trace/hooks/traps.h>
 
 #include "../pci.h"
@@ -258,7 +259,7 @@ struct mtk_pcie_port {
 	struct irq_domain *msi_bottom_domain;
 	struct mtk_msi_set msi_sets[PCIE_MSI_SET_NUM];
 	struct mutex lock;
-	struct mutex vote_lock;
+	spinlock_t vote_lock;
 	bool ep_hw_mode_en;
 	bool rc_hw_mode_en;
 	DECLARE_BITMAP(msi_irq_in_use, PCIE_MSI_IRQS_NUM);
@@ -437,7 +438,7 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 	writel_relaxed(val, port->base + PCIE_PCI_IDS_1);
 
 	if (port->pextpcfg) {
-		mutex_init(&port->vote_lock);
+		spin_lock_init(&port->vote_lock);
 
 		port->vlpcfg_base = ioremap(PCIE_VLPCFG_BASE, 0x2000);
 		port->ep_hw_mode_en = false;
@@ -1583,6 +1584,7 @@ int mtk_pcie_hw_control_vote(int port, bool hw_mode_en, u8 who)
 	struct platform_device *pdev;
 	struct mtk_pcie_port *pcie_port;
 	bool vote_hw_mode_en = false, last_hw_mode = false;
+	unsigned long flags;
 	int err = 0;
 	u32 val;
 
@@ -1600,7 +1602,7 @@ int mtk_pcie_hw_control_vote(int port, bool hw_mode_en, u8 who)
 	if (!pcie_port)
 		return -ENODEV;
 
-	mutex_lock(&pcie_port->vote_lock);
+	spin_lock_irqsave(&pcie_port->vote_lock, flags);
 
 	last_hw_mode = (pcie_port->ep_hw_mode_en && pcie_port->rc_hw_mode_en)
 			? true : false;
@@ -1615,7 +1617,7 @@ int mtk_pcie_hw_control_vote(int port, bool hw_mode_en, u8 who)
 
 	if (!vote_hw_mode_en && last_hw_mode) {
 		/* Check the sleep protect ready */
-		err = readl_poll_timeout(pcie_port->vlpcfg_base +
+		err = readl_poll_timeout_atomic(pcie_port->vlpcfg_base +
 					 PCIE_VLP_AXI_PROTECT_STA, val,
 					 !(val & (PCIE_MAC0_SLP_READY_MASK |
 					 PCIE_PHY0_SLP_READY_MASK)),
@@ -1628,7 +1630,7 @@ int mtk_pcie_hw_control_vote(int port, bool hw_mode_en, u8 who)
 					       PEXTP_PWRCTL_0));
 	}
 
-	mutex_unlock(&pcie_port->vote_lock);
+	spin_unlock_irqrestore(&pcie_port->vote_lock, flags);
 
 	return err;
 }
