@@ -10126,8 +10126,12 @@
 		operating-points-v2 = <&opp_table_disp>;
 		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		lp-mmclk-freq = <218000000>;
-		interconnects = <&mmqos SLAVE_LARB(38) &mmqos SLAVE_COMMON(0)>;
-		interconnect-names = "disp_hrt_qos";
+		interconnects = <&mmqos SLAVE_LARB(38) &mmqos SLAVE_COMMON(0)>,
+				<&mmqos SLAVE_LARB(41) &mmqos SLAVE_COMMON(1)>,
+				<&mmqos SLAVE_LARB(42) &mmqos SLAVE_COMMON(1)>;
+		interconnect-names = "disp_hrt_qos",
+				"disp_hrt_by_larb",
+				"disp_dp_hrt_by_larb";
 		pre-define-bw = <0xffffffff>, <4200>, <0>;
 		crtc-ovl-usage = <7>, <4>, <8>;
 
@@ -10317,7 +10321,8 @@
 			"MTK_DRM_OPT_OVL_BW_MONITOR",
 			"MTK_DRM_OPT_GPU_CACHE",
 			"MTK_DRM_OPT_SPHRT",
-			"MTK_DRM_OPT_SDPA_OVL_SWITCH";
+			"MTK_DRM_OPT_SDPA_OVL_SWITCH",
+			"MTK_DRM_OPT_HRT_BY_LARB";
 
 		helper-value = <0>, /*MTK_DRM_OPT_STAGE*/
 			<1>, /*MTK_DRM_OPT_USE_CMDQ*/
@@ -10379,7 +10384,8 @@
 			<0>, /*MTK_DRM_OPT_OVL_BW_MONITOR*/
 			<0>, /*MTK_DRM_OPT_GPU_CACHE*/
 			<1>, /*MTK_DRM_OPT_SPHRT*/
-			<1>; /*MTK_DRM_OPT_SDPA_OVL_SWITCH*/
+			<1>, /*MTK_DRM_OPT_SDPA_OVL_SWITCH*/
+			<1>; /*MTK_DRM_OPT_HRT_BY_LARB*/
 	};
 
 	disp_ssc0_smi_2x1_sub_comm: disp-ssc0-smi-2x1-sub-comm@1e809000 {
