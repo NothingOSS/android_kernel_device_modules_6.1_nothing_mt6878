@@ -327,81 +327,9 @@ static void rt5133_gpio_set(struct gpio_chip *chip, unsigned int offset,
 	priv->gpio_output_flag = next_flag;
 }
 
-static irqreturn_t rt5133_intr_handler(int irq_number, void *data)
-{
-	struct rt5133_priv *priv = data;
-	u32 intr_evts = 0, handle_evts;
-	int i, ret;
-
-	ret = regmap_bulk_read(priv->regmap, RT5133_REG_BASE_EVT, &intr_evts,
-			       RT5133_INTR_BYTE_NR);
-	if (ret)
-		goto out_intr_handler;
-
-	handle_evts = intr_evts & RT5133_BASE_EVT_MASK;
-	/*
-	 * VREF_EVT is a special case, if base off
-	 * this event will also be trigger. Skip it
-	 */
-	if (handle_evts & ~RT5133_VREF_EVT_MASK)
-		dev_info(priv->dev, "base event occurred [0x%02x]\n",
-			 handle_evts);
-
-	handle_evts = (intr_evts & RT5133_LDO_OC_EVT_MASK) >>
-		RT5133_LDO_OC_EVT_SHIFT;
-	for (i = RT5133_REGULATOR_LDO1; i < RT5133_REGULATOR_MAX && handle_evts; i++) {
-		if (!(handle_evts & BIT(i - 1)))
-			continue;
-		regulator_notifier_call_chain(priv->rdev[i],
-					      REGULATOR_EVENT_OVER_CURRENT,
-					      &i);
-	}
-
-	handle_evts = (intr_evts & RT5133_LDO_PGB_EVT_MASK) >>
-		RT5133_LDO_PGB_EVT_SHIFT;
-	for (i = RT5133_REGULATOR_LDO1; i < RT5133_REGULATOR_MAX && handle_evts; i++) {
-		if (!(handle_evts & BIT(i - 1)))
-			continue;
-		regulator_notifier_call_chain(priv->rdev[i],
-					      REGULATOR_EVENT_FAIL, &i);
-	}
-
-	ret = regmap_bulk_write(priv->regmap, RT5133_REG_BASE_EVT, &intr_evts,
-				RT5133_INTR_BYTE_NR);
-	if (ret)
-		goto out_intr_handler;
-
-	return IRQ_HANDLED;
-
-out_intr_handler:
-	return IRQ_NONE;
-}
-
 static int rt5133_enable_interrupts(int irq_no, struct rt5133_priv *priv)
 {
-	u32 mask = RT5133_INTR_CLR_MASK;
-	int ret;
-
-	/* Force to write clear all events */
-	ret = regmap_bulk_write(priv->regmap, RT5133_REG_BASE_EVT, &mask,
-				RT5133_INTR_BYTE_NR);
-	if (ret) {
-		dev_err(priv->dev, "Failed to clear all interrupts\n");
-		return ret;
-	}
-
-	/* Unmask all interrupts */
-	mask = 0;
-	ret = regmap_bulk_write(priv->regmap, RT5133_REG_BASE_MASK, &mask,
-				RT5133_INTR_BYTE_NR);
-	if (ret) {
-		dev_err(priv->dev, "Failed to unmask all interrupts\n");
-		return ret;
-	}
-
-	return devm_request_threaded_irq(priv->dev, irq_no, NULL,
-					 rt5133_intr_handler, IRQF_ONESHOT,
-					 dev_name(priv->dev), priv);
+	return 0;
 }
 
 static int rt5133_dbg_io_read(void *drvdata, u16 reg, void *val, u16 size)
