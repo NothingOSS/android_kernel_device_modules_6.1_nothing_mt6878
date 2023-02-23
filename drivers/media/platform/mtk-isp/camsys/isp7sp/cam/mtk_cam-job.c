@@ -1891,16 +1891,73 @@ _job_pack_mstream(struct mtk_cam_job *job,
 static bool seamless_config_changed(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
-	struct mtk_raw_sink_data *sink = get_raw_sink_data(job);
+	struct mtk_raw_sink_data *raw_sink;
+	struct mtk_camsv_sink_data *sv_sink;
+	struct mtk_mraw_sink_data *mraw_sink;
 	struct mtkcam_ipi_crop sink_crop;
+	struct mtkcam_ipi_input_param *in;
+	struct mtk_camsv_device *sv_dev;
+	unsigned int tag_idx;
+	int i, j;
 
-	if (!job->seamless_switch || !ctx || !sink)
+	if (!job->seamless_switch || !ctx)
 		return false;
 
-	sink_crop = v4l2_rect_to_ipi_crop(&sink->crop);
+	/* raw */
+	raw_sink = get_raw_sink_data(job);
+	if (raw_sink) {
+		in = &ctx->ipi_config.input;
+		sink_crop = v4l2_rect_to_ipi_crop(&raw_sink->crop);
 
-	return (!ipi_crop_eq(&ctx->ipi_config.input.in_crop, &sink_crop) ||
-			ctx->ipi_config.input.fmt != sensor_mbus_to_ipi_fmt(sink->mbus_code));
+		if (!ipi_crop_eq(&in->in_crop, &sink_crop) ||
+			in->fmt != sensor_mbus_to_ipi_fmt(raw_sink->mbus_code))
+			return true;
+	}
+
+	/* camsv */
+	for (i = 0; i < ctx->num_sv_subdevs; i++) {
+		/* sink data not updated under no enque case, so bypass check */
+		if (!(job->req->used_pipe &
+			bit_map_bit(MAP_HW_CAMSV, ctx->sv_subdev_idx[i])))
+			continue;
+
+		sv_dev = dev_get_drvdata(ctx->hw_sv);
+		tag_idx = mtk_cam_get_sv_tag_index(sv_dev,
+			ctx->sv_subdev_idx[i] + MTKCAM_SUBDEV_CAMSV_START);
+		in = &ctx->ipi_config.sv_input[0][tag_idx].input;
+		sv_sink = &job->req->sv_data[ctx->sv_subdev_idx[i]].sink;
+		sink_crop = v4l2_rect_to_ipi_crop(&sv_sink->crop);
+
+		if (!ipi_crop_eq(&in->in_crop, &sink_crop) ||
+			in->fmt != sensor_mbus_to_ipi_fmt(sv_sink->mbus_code))
+			return true;
+	}
+
+	/* mraw */
+	for (i = 0; i < ctx->num_mraw_subdevs; i++) {
+		/* sink data not updated under no enque case, so bypass check */
+		if (!(job->req->used_pipe &
+			bit_map_bit(MAP_HW_MRAW, ctx->mraw_subdev_idx[i])))
+			continue;
+
+		for (j = 0; j < MRAW_MAX_PIPE_USED; j++) {
+			if (ctx->ipi_config.mraw_input[j].pipe_id ==
+				ctx->mraw_subdev_idx[i] + MTKCAM_SUBDEV_MRAW_START) {
+				in = &ctx->ipi_config.mraw_input[j].input;
+				break;
+			}
+		}
+		if (j == MRAW_MAX_PIPE_USED)
+			continue;
+
+		mraw_sink = &job->req->mraw_data[ctx->mraw_subdev_idx[i]].sink;
+		sink_crop = v4l2_rect_to_ipi_crop(&mraw_sink->crop);
+		if (!ipi_crop_eq(&in->in_crop, &sink_crop) ||
+			in->fmt != sensor_mbus_to_ipi_fmt(mraw_sink->mbus_code))
+			return true;
+	}
+
+	return false;
 }
 
 static int
