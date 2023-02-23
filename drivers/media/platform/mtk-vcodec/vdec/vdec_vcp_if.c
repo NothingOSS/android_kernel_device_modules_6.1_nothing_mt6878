@@ -214,7 +214,8 @@ static int vdec_vcp_ipi_send(struct vdec_inst *inst, void *msg, int len,
 	if (!is_ack) {
 wait_ack:
 		/* wait for VCP's ACK */
-		if (*(__u32 *)msg == AP_IPIMSG_DEC_START && inst->ctx->state == MTK_STATE_INIT) {
+		if (*(__u32 *)msg == AP_IPIMSG_DEC_START &&
+		    mtk_vcodec_get_state(inst->ctx) == MTK_STATE_INIT) {
 			timeout = msecs_to_jiffies(IPI_FIRST_DEC_START_TIMEOUT_MS);
 		} else {
 			timeout = msecs_to_jiffies(IPI_TIMEOUT_MS);
@@ -676,7 +677,7 @@ int vcp_dec_ipi_handler(void *arg)
 				break;
 			case VCU_IPIMSG_DEC_INIT_DONE:
 				handle_init_ack_msg((void *)obj->share_buf);
-				vcu->ctx->state = MTK_STATE_INIT;
+				mtk_vcodec_set_state_from(vcu->ctx, MTK_STATE_INIT, MTK_STATE_FREE);
 				fallthrough;
 			case VCU_IPIMSG_DEC_START_DONE:
 			case VCU_IPIMSG_DEC_DEINIT_DONE:
@@ -877,14 +878,13 @@ static void vdec_vcp_mmdvfs_resume(struct mtk_vcodec_ctx *ctx)
 static struct mtk_vcodec_ctx *get_valid_ctx(struct mtk_vcodec_dev *dev)
 {
 	struct list_head *p, *q;
-	struct mtk_vcodec_ctx *tmp_ctx;
+	struct mtk_vcodec_ctx *ctx;
 
 	list_for_each_safe(p, q, &dev->ctx_list) {
-		tmp_ctx = list_entry(p, struct mtk_vcodec_ctx, list);
-		if (tmp_ctx != NULL && tmp_ctx->drv_handle != 0 &&
-		    tmp_ctx->state < MTK_STATE_ABORT && tmp_ctx->state > MTK_STATE_FREE) {
-			return tmp_ctx;
-		}
+		ctx = list_entry(p, struct mtk_vcodec_ctx, list);
+		if (ctx != NULL && ctx->drv_handle != 0 &&
+		    mtk_vcodec_state_in_range(ctx, MTK_STATE_INIT, MTK_STATE_STOP))
+			return ctx;
 	}
 	return NULL;
 }
@@ -918,7 +918,7 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 		// check release all ctx lock
 		list_for_each_safe(p, q, &dev->ctx_list) {
 			ctx = list_entry(p, struct mtk_vcodec_ctx, list);
-			if (ctx != NULL && ctx->state != MTK_STATE_ABORT) {
+			if (ctx != NULL && mtk_vcodec_get_state(ctx) != MTK_STATE_ABORT) {
 				inst = (struct vdec_inst *)(ctx->drv_handle);
 				if (inst != NULL) {
 					inst->vcu.failure = VDEC_IPI_MSG_STATUS_FAIL;
@@ -943,8 +943,8 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 
 		// send backup ipi to vcp by one of any instances
 		mutex_lock(&dev->ctx_mutex);
-		ctx = get_valid_ctx(dev);
 		mtk_vcodec_alive_checker_suspend(dev);
+		ctx = get_valid_ctx(dev);
 		mutex_unlock(&dev->ctx_mutex);
 
 		mtk_v4l2_debug(0, "[%d] %sbackup (dvfs freq %d, high %d)(pw ref %d, %d %d)(hw active %d %d)",

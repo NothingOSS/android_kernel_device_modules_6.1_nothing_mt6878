@@ -149,6 +149,12 @@ EXPORT_SYMBOL_GPL(mtk_vdec_align_limit);
 struct vcu_v4l2_func vcu_func = { NULL };
 EXPORT_SYMBOL_GPL(vcu_func);
 
+int support_svp_region;
+EXPORT_SYMBOL_GPL(support_svp_region);
+
+int support_wfd_region;
+EXPORT_SYMBOL_GPL(support_wfd_region);
+
 bool mtk_vcodec_is_vcp(int type)
 {
 	if (type > MTK_INST_ENCODER || type < MTK_INST_DECODER)
@@ -157,11 +163,77 @@ bool mtk_vcodec_is_vcp(int type)
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_is_vcp);
 
-int support_svp_region;
-EXPORT_SYMBOL_GPL(support_svp_region);
+bool mtk_vcodec_state_in_range(struct mtk_vcodec_ctx *ctx, int state_a, int state_b)
+{
+	if (!ctx)
+		return false;
 
-int support_wfd_region;
-EXPORT_SYMBOL_GPL(support_wfd_region);
+	mutex_lock(&ctx->state_lock);
+	if (state_a <= ctx->state && ctx->state <= state_b) {
+		mutex_unlock(&ctx->state_lock);
+		return true;
+	}
+	mutex_unlock(&ctx->state_lock);
+	return false;
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_state_in_range);
+
+int mtk_vcodec_get_state(struct mtk_vcodec_ctx *ctx)
+{
+	int state;
+
+	if (!ctx)
+		return MTK_STATE_ABORT;
+
+	mutex_lock(&ctx->state_lock);
+	state = ctx->state;
+	mutex_unlock(&ctx->state_lock);
+	return state;
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_get_state);
+
+int mtk_vcodec_set_state_from(struct mtk_vcodec_ctx *ctx, int target, int from)
+{
+	int state;
+
+	if (!ctx)
+		return MTK_STATE_ABORT;
+
+	mutex_lock(&ctx->state_lock);
+	state = ctx->state;
+	if (ctx->state == from) {
+		ctx->state = target;
+		mtk_v4l2_debug(4, "[%d] set state %d from %d to %d",
+			ctx->id, state, from, target);
+	} else
+		mtk_v4l2_debug(1, "[%d] set state %d from %d to %d fail",
+			ctx->id, state, from, target);
+	mutex_unlock(&ctx->state_lock);
+	return state;
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_set_state_from);
+
+int mtk_vcodec_set_state_except(struct mtk_vcodec_ctx *ctx, int target, int except_state)
+{
+	int state;
+
+	if (!ctx)
+		return MTK_STATE_ABORT;
+
+	mutex_lock(&ctx->state_lock);
+	state = ctx->state;
+	if (ctx->state != except_state &&
+	   (ctx->state != MTK_STATE_ABORT || target == MTK_STATE_FREE)) {
+		ctx->state = target;
+		mtk_v4l2_debug(4, "[%d] set state %d to %d (except %d)",
+			ctx->id, state, target, except_state);
+	} else
+		mtk_v4l2_debug(2, "[%d] set state %d to %d fail (except %d)",
+			ctx->id, state, target, except_state);
+	mutex_unlock(&ctx->state_lock);
+	return state;
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_set_state_except);
 
 /* VCODEC FTRACE */
 #if VCODEC_TRACE

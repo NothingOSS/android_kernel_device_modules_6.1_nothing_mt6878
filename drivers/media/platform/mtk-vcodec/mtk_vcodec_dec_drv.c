@@ -109,6 +109,7 @@ static int fops_vcodec_open(struct file *file)
 	ctx->dev = dev;
 	for (i = 0; i < MTK_VDEC_HW_NUM; i++)
 		init_waitqueue_head(&ctx->queue[i]);
+	mutex_init(&ctx->state_lock);
 	mutex_init(&ctx->buf_lock);
 	mutex_init(&ctx->worker_lock);
 	mutex_init(&ctx->hw_status);
