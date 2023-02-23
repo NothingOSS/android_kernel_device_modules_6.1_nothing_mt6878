@@ -494,9 +494,9 @@ static int __init mtk_scheduler_init(void)
 		pr_info("register android_rvh_after_enqueue_task failed, returned %d\n", ret);
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_BIG_TASK_ROTATE)
-	//ret = register_trace_android_rvh_new_task_stats(rotat_task_stats, NULL);
-	//if (ret)
-	//	pr_info("register android_rvh_new_task_stats failed, returned %d\n", ret);
+	ret = register_trace_android_rvh_new_task_stats(rotat_task_stats, NULL);
+	if (ret)
+		pr_info("register android_rvh_new_task_stats failed, returned %d\n", ret);
 
 	ret = register_trace_task_newtask(rotat_task_newtask, NULL);
 	if (ret)
