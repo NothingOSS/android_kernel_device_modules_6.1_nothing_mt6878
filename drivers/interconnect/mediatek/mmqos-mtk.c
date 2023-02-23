@@ -260,6 +260,7 @@ static void set_total_bw_to_emi(struct common_node *comm_node)
 	u32 avg_bw = 0, peak_bw = 0;
 	u64 normalize_peak_bw;
 	struct common_port_node *comm_port_node;
+	u32 comm_id;
 
 	list_for_each_entry(comm_port_node, &comm_node->comm_port_list, list) {
 		mutex_lock(&comm_port_node->bw_lock);
@@ -283,7 +284,13 @@ static void set_total_bw_to_emi(struct common_node *comm_node)
 		mutex_unlock(&comm_port_node->bw_lock);
 	}
 
-	MMQOS_SYSTRACE_BEGIN("to EMI avg %d peak %d\n", avg_bw, peak_bw);
+	comm_id = MASK_8(comm_node->base->icc_node->id);
+	if (mmqos_met_enabled())
+		trace_mmqos__bw_to_emi(comm_id,
+			icc_to_MBps(avg_bw), icc_to_MBps(peak_bw));
+
+	MMQOS_SYSTRACE_BEGIN("to EMI avg %d peak %d\n",
+		icc_to_MBps(avg_bw), icc_to_MBps(peak_bw));
 	icc_set_bw(comm_node->icc_path, avg_bw, 0);
 	icc_set_bw(comm_node->icc_hrt_path, peak_bw, 0);
 	MMQOS_SYSTRACE_END();

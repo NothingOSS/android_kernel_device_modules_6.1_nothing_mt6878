@@ -117,6 +117,25 @@ TRACE_EVENT(mmqos__chn_bw,
 		(int)__entry->chn_id,
 		(int)__entry->h_w)
 );
+TRACE_EVENT(mmqos__bw_to_emi,
+	TP_PROTO(int comm_id, int avg_bw, int peak_bw),
+	TP_ARGS(comm_id, avg_bw, peak_bw),
+	TP_STRUCT__entry(
+		__field(int, comm_id)
+		__field(int, avg_bw)
+		__field(int, peak_bw)
+	),
+	TP_fast_assign(
+		__entry->comm_id = comm_id;
+		__entry->avg_bw = avg_bw;
+		__entry->peak_bw = peak_bw;
+	),
+	TP_printk("comm%d_avg=%d, comm%d_peak=%d",
+		(int)__entry->comm_id,
+		(int)__entry->avg_bw,
+		(int)__entry->comm_id,
+		(int)__entry->peak_bw)
+);
 #endif /* _TRACE_MMQOS_EVENTS_H */
 
 #undef TRACE_INCLUDE_FILE
