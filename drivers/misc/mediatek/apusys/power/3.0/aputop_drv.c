@@ -188,6 +188,9 @@ const struct apupwr_plat_data mt6895_plat_data;
 #ifndef MT6985_PLAT_DATA
 const struct apupwr_plat_data mt6985_plat_data;
 #endif
+#ifndef MT6989_PLAT_DATA
+const struct apupwr_plat_data mt6989_plat_data;
+#endif
 #ifndef MT6886_PLAT_DATA
 const struct apupwr_plat_data mt6886_plat_data;
 #endif
