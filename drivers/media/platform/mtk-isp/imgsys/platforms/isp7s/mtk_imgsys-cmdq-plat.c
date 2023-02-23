@@ -1938,7 +1938,10 @@ void mtk_imgsys_mmdvfs_init_plat7s(struct mtk_imgsys_dev *imgsys_dev)
 		dev_info(dvfs_info->dev,
 			"%s: [ERROR] Failed to get dvfsrc-vmm\n", __func__);
 		dvfs_info->reg = NULL;
-		dvfs_info->mmdvfs_clk = devm_clk_get(dvfs_info->dev, "mmdvfs_clk");
+		if (!mmdvfs_get_version())
+			dvfs_info->mmdvfs_clk = devm_clk_get(dvfs_info->dev, "mmdvfs_clk");
+		else
+			dvfs_info->mmdvfs_clk = devm_clk_get(dvfs_info->dev, "mmdvfs_mux");
 		if (IS_ERR_OR_NULL(dvfs_info->mmdvfs_clk)) {
 			dev_info(dvfs_info->dev,
 				"%s: [ERROR] Failed to get mmdvfs_clk\n", __func__);
