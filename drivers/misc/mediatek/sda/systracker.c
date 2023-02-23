@@ -26,7 +26,7 @@
 #include <linux/arm-smccc.h>
 #include <linux/unistd.h>
 #include <mt-plat/aee.h>
-#include <sda.h>
+#include "sda.h"
 
 /* bits in BUS_DBG_CON, show the irq flags */
 #define AR_1ST_TIMEOUT_IRQ_FLAG     (1 << 8)
@@ -205,20 +205,13 @@ static ssize_t tracker_status_show(struct device_driver *driver, char *buf)
 			}
 
 			n += snprintf(buf + n, PAGE_SIZE - n, "\n =====> IRQ Flag Bitmap <=====\n");
-			n += snprintf(buf + n, PAGE_SIZE - n, " ==> 0x01 : AR_1ST_TIMEOUT <==\n",
-					AR_1ST_TIMEOUT_IRQ_FLAG);
-			n += snprintf(buf + n, PAGE_SIZE - n, " ==> 0x02 : AW_1ST_TIMEOUT <==\n",
-					AR_1ST_TIMEOUT_IRQ_FLAG);
-			n += snprintf(buf + n, PAGE_SIZE - n, " ==> 0x04 : AW_WP_HIT      <==\n",
-					AR_1ST_TIMEOUT_IRQ_FLAG);
-			n += snprintf(buf + n, PAGE_SIZE - n, " ==> 0x08 : AR_WP_HIT      <==\n",
-					AR_1ST_TIMEOUT_IRQ_FLAG);
-			n += snprintf(buf + n, PAGE_SIZE - n, " ==> 0x10 : AR_SLV_ERR_IRQ <==\n",
-					AR_1ST_TIMEOUT_IRQ_FLAG);
-			n += snprintf(buf + n, PAGE_SIZE - n, " ==> 0x20 : AW_SLV_ERR_IRQ <==\n",
-					AR_1ST_TIMEOUT_IRQ_FLAG);
-			n += snprintf(buf + n, PAGE_SIZE - n, " =============================\n\n",
-					AR_1ST_TIMEOUT_IRQ_FLAG);
+			n += snprintf(buf + n, PAGE_SIZE - n, " ==> 0x01 : AR_1ST_TIMEOUT <==\n");
+			n += snprintf(buf + n, PAGE_SIZE - n, " ==> 0x02 : AW_1ST_TIMEOUT <==\n");
+			n += snprintf(buf + n, PAGE_SIZE - n, " ==> 0x04 : AW_WP_HIT      <==\n");
+			n += snprintf(buf + n, PAGE_SIZE - n, " ==> 0x08 : AR_WP_HIT      <==\n");
+			n += snprintf(buf + n, PAGE_SIZE - n, " ==> 0x10 : AR_SLV_ERR_IRQ <==\n");
+			n += snprintf(buf + n, PAGE_SIZE - n, " ==> 0x20 : AW_SLV_ERR_IRQ <==\n");
+			n += snprintf(buf + n, PAGE_SIZE - n, " =============================\n\n");
 		}
 	}
 
@@ -367,7 +360,7 @@ static int systracker_watchpoint_probe(struct platform_device *pdev)
 					IRQF_TRIGGER_NONE, wp->irq_name, wp->name);
 			if (ret) {
 				dev_info(dev, "[%s]: request %s tracker irq failed.\n",
-					__func__, wp->irq);
+					__func__, wp->name);
 				return -EFAULT;
 			}
 
