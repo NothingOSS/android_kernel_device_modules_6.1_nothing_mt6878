@@ -484,10 +484,11 @@ _meta1_done(struct mtk_cam_job *job)
 	if (pipe_id < 0)
 		return 0;
 
-	dev_dbg(cam->dev, "%s:%s:ctx(%d): seq_no:%d, state:0x%x\n",
-			__func__, job->req->req.debug_str, job->src_ctx->stream_id,
-			job->frame_seq_no,
-			mtk_cam_job_state_get(&job->job_state, ISP_STATE));
+	if (CAM_DEBUG_ENABLED(JOB))
+		dev_info(cam->dev, "%s:%s:ctx(%d): seq_no:%d, state:0x%x\n",
+			 __func__, job->req->req.debug_str, job->src_ctx->stream_id,
+			 job->frame_seq_no,
+			 mtk_cam_job_state_get(&job->job_state, ISP_STATE));
 
 	mtk_cam_req_buffer_done(job, pipe_id, MTKCAM_IPI_RAW_META_STATS_1,
 				VB2_BUF_STATE_DONE, job->timestamp, true);
@@ -559,11 +560,12 @@ handle_raw_frame_done(struct mtk_cam_job *job)
 			convert_fho_timestamp_to_meta(job);
 	}
 
-	dev_info(cam->dev, "%s:%s:ctx(%d): seq_no:%d, state:0x%x, is_normal:%d, B/M ts:%lld/%lld\n",
-		 __func__, job->req->req.debug_str, job->src_ctx->stream_id,
-		 job->frame_seq_no,
-		 mtk_cam_job_state_get(&job->job_state, ISP_STATE),
-		 is_normal, job->timestamp, job->timestamp_mono);
+	if (CAM_DEBUG_ENABLED(JOB))
+		dev_info(cam->dev, "%s:%s:ctx(%d): seq_no:%d, state:0x%x, is_normal:%d, B/M ts:%lld/%lld\n",
+			 __func__, job->req->req.debug_str, job->src_ctx->stream_id,
+			 job->frame_seq_no,
+			 mtk_cam_job_state_get(&job->job_state, ISP_STATE),
+			 is_normal, job->timestamp, job->timestamp_mono);
 
 	for (i = MTKCAM_SUBDEV_RAW_START; i < MTKCAM_SUBDEV_RAW_END; i++) {
 		if (used_pipe & (1 << i)) {
@@ -591,11 +593,12 @@ handle_sv_frame_done(struct mtk_cam_job *job)
 	if (used_pipe == 0)
 		return 0;
 
-	dev_info(cam->dev, "%s:%s:ctx(%d): seq_no:%d, state:0x%x, is_normal:%d, B/M ts:%lld/%lld\n",
-		 __func__, job->req->req.debug_str, job->src_ctx->stream_id,
-		 job->frame_seq_no,
-		 mtk_cam_job_state_get(&job->job_state, ISP_STATE),
-		 is_normal, job->timestamp, job->timestamp_mono);
+	if (CAM_DEBUG_ENABLED(JOB))
+		dev_info(cam->dev, "%s:%s:ctx(%d): seq_no:%d, state:0x%x, is_normal:%d, B/M ts:%lld/%lld\n",
+			 __func__, job->req->req.debug_str, job->src_ctx->stream_id,
+			 job->frame_seq_no,
+			 mtk_cam_job_state_get(&job->job_state, ISP_STATE),
+			 is_normal, job->timestamp, job->timestamp_mono);
 
 	/* sv pure raw */
 	if (ctx->has_raw_subdev && is_sv_pure_raw(job)) {
@@ -637,11 +640,12 @@ handle_mraw_frame_done(struct mtk_cam_job *job, unsigned int pipe_id)
 		return 0;
 	}
 
-	dev_info(cam->dev, "%s:%s:ctx(%d): seq_no:%d, state:0x%x, is_normal:%d, B/M ts:%lld/%lld\n",
-		 __func__, job->req->req.debug_str, job->src_ctx->stream_id,
-		 job->frame_seq_no,
-		 mtk_cam_job_state_get(&job->job_state, ISP_STATE),
-		 is_normal, job->timestamp, job->timestamp_mono);
+	if (CAM_DEBUG_ENABLED(JOB))
+		dev_info(cam->dev, "%s:%s:ctx(%d): seq_no:%d, state:0x%x, is_normal:%d, B/M ts:%lld/%lld\n",
+			 __func__, job->req->req.debug_str, job->src_ctx->stream_id,
+			 job->frame_seq_no,
+			 mtk_cam_job_state_get(&job->job_state, ISP_STATE),
+			 is_normal, job->timestamp, job->timestamp_mono);
 
 	if (is_normal)
 		mtk_cam_req_buffer_done(job, pipe_id, -1,
@@ -972,8 +976,6 @@ _apply_sensor(struct mtk_cam_job *job)
 	/* mtk_cam_tg_flash_req_setup(ctx, s_data); */
 	job_complete_sensor_ctrl_obj(job);
 
-	dev_dbg(cam->dev, "%s:%s:ctx(%d)req(%d):sensor done\n",
-		__func__, req->req.debug_str, ctx->stream_id, job->frame_seq_no);
 	return 0;
 }
 #define STAGGER_SEAMLESS_DBLOAD_FORCE 1
@@ -1065,10 +1067,11 @@ static int send_ipi_frame(struct mtk_cam_job *job,
 
 	rpmsg_send(ctx->rpmsg_dev->rpdev.ept, &event, sizeof(event));
 
-	dev_info(ctx->cam->dev,
-		 "[%s id:%d] req:%s ctx:%d seq:%d\n",
-		 __func__, session->session_id,
-		 job->req->req.debug_str, ctx->stream_id, frame_seq_no);
+	if (CAM_DEBUG_ENABLED(JOB))
+		dev_info(ctx->cam->dev,
+			 "[%s id:%d] req:%s ctx:%d seq:%d\n",
+			 __func__, session->session_id,
+			 job->req->req.debug_str, ctx->stream_id, frame_seq_no);
 	return 0;
 }
 

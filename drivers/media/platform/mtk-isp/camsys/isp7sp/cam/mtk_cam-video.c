@@ -281,7 +281,7 @@ static int refine_valid_selection(struct mtk_cam_video_device *node,
 		if (WARN_ON_ONCE(!remote_pad))
 			return -1;
 
-		if (CAM_DEBUG_ENABLED(FORMAT))
+		if (CAM_DEBUG_ENABLED(V4L2))
 			pr_info("%s: remote %s node %s: sel (%d,%d %ux%u)\n",
 				__func__,
 				remote_pad->entity->name, node->desc.name,
@@ -423,7 +423,8 @@ static int mtk_cam_vb2_start_streaming(struct vb2_queue *vq,
 	struct mtk_cam_ctx *ctx;
 	int ret;
 
-	dev_info(cam->dev, "%s: node %s\n", __func__, node->desc.name);
+	if (CAM_DEBUG_ENABLED(V4L2))
+		dev_info(cam->dev, "%s: node %s\n", __func__, node->desc.name);
 
 	ret = check_node_linked(vq);
 	if (ret)
@@ -699,14 +700,15 @@ static u32 try_fmt_mp_pixelformat(struct mtk_cam_dev_node_desc *desc,
 	/* Validate pixelformat */
 	dev_fmt = mtk_cam_dev_find_fmt(desc, pixelformat);
 	if (!dev_fmt) {
-		pr_info("%s: warn. %s not-supportd pixelformat " FMT_FOURCC "\n",
-			__func__, desc->name,
-			MEMBER_FOURCC(pixelformat));
+		pr_info_ratelimited(
+			"%s: warn. %s not-supportd pixelformat " FMT_FOURCC "\n",
+			__func__, desc->name, MEMBER_FOURCC(pixelformat));
 
 		/* use default instead */
 		dev_fmt = &desc->fmts[desc->default_fmt_idx].vfmt;
 
-		pr_info("%s: warn. use pixelformat " FMT_FOURCC " instead.\n",
+		pr_info_ratelimited(
+			"%s: warn. use pixelformat " FMT_FOURCC " instead.\n",
 			__func__, MEMBER_FOURCC(dev_fmt->fmt.pix_mp.pixelformat));
 	}
 
@@ -983,7 +985,7 @@ int mtk_cam_vidioc_g_fmt(struct file *file, void *fh,
 
 	f->fmt = node->active_fmt.fmt;
 
-	if (CAM_DEBUG_ENABLED(FORMAT))
+	if (CAM_DEBUG_ENABLED(V4L2))
 		log_fmt_ops(node, f, __func__);
 
 	return 0;
@@ -1002,7 +1004,7 @@ int mtk_cam_vidioc_s_fmt(struct file *file, void *fh,
 		mtk_cam_video_cache_fmt(node);
 	}
 
-	if (CAM_DEBUG_ENABLED(FORMAT))
+	if (CAM_DEBUG_ENABLED(V4L2))
 		log_fmt_ops(node, f, __func__);
 
 	return ret;
@@ -1050,7 +1052,7 @@ int mtk_cam_vidioc_try_fmt(struct file *file, void *fh,
 	if (is_camsv_subdev(node->uid.pipe_id))
 		ret |= mtk_cam_sv_update_image_size(node, f);
 
-	if (CAM_DEBUG_ENABLED(TRY_FORMAT))
+	if (CAM_DEBUG_ENABLED(V4L2_TRY))
 		log_fmt_ops(node, f, __func__);
 
 	return ret;
@@ -1145,7 +1147,8 @@ int mtk_cam_vidioc_g_meta_fmt(struct file *file, void *fh,
 		"%s: node:%s dataformat:%d buffersize:%d\n",
 		__func__, node->desc.name, f->fmt.meta.dataformat, f->fmt.meta.buffersize);
 
-	log_fmt_ops(node, f, __func__);
+	if (CAM_DEBUG_ENABLED(V4L2))
+		log_fmt_ops(node, f, __func__);
 
 	return 0;
 

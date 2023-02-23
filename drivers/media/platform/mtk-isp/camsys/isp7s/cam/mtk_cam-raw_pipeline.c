@@ -435,14 +435,15 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 		drv_data->raw_num = final_raw_num;
 	}
 
-	dev_info(cam->dev,
-		 "calc_resource: sensor fps %u/%u %dx%d blank %u/%u linet %ld prate %llu clk %d pxlmode %d num %d img_wbuf_num %d img_wbuf_size %d raw(0x%x,0x%x,%d)\n",
-		 s->interval.denominator, s->interval.numerator,
-		 s->width, s->height, s->hblank, s->vblank, c.line_time,
-		 s->pixel_rate,
-		 c.clk, c.raw_pixel_mode, c.raw_num,
-		 r->img_wbuf_num, r->img_wbuf_size,
-		 r->raws, r->raws_must, r->raws_max_num);
+	if (drv_data || CAM_DEBUG_ENABLED(V4L2_TRY))
+		dev_info(cam->dev,
+			 "calc_resource: sensor fps %u/%u %dx%d blank %u/%u linet %ld prate %llu clk %d pxlmode %d num %d img_wbuf %dx%d raw(0x%x,0x%x,%d)\n",
+			 s->interval.denominator, s->interval.numerator,
+			 s->width, s->height, s->hblank, s->vblank, c.line_time,
+			 s->pixel_rate,
+			 c.clk, c.raw_pixel_mode, c.raw_num,
+			 r->img_wbuf_num, r->img_wbuf_size,
+			 r->raws, r->raws_must, r->raws_max_num);
 
 	return ret;
 }
@@ -482,16 +483,11 @@ static int mtk_raw_try_ctrl(struct v4l2_ctrl *ctrl)
 							user_ctrl, NULL);
 		}
 		break;
-	case V4L2_CID_MTK_CAM_RAW_RESOURCE_UPDATE:
-		dev_info(dev,
-			 "%s:pipe(%d): skip V4L2_CID_MTK_CAM_RAW_RESOURCE_UPDATE: %d\n",
-			 __func__, pipeline->id, ctrl->val);
-		ret = 0; /* no support */
-		break;
 	case V4L2_CID_MTK_CAM_TG_FLASH_CFG:
 		ret = mtk_cam_tg_flash_try_ctrl(ctrl);
 		break;
 	/* skip control value checks */
+	case V4L2_CID_MTK_CAM_RAW_RESOURCE_UPDATE:
 	case V4L2_CID_MTK_CAM_MSTREAM_EXPOSURE:
 	case V4L2_CID_MTK_CAM_RAW_PATH_SELECT:
 	case V4L2_CID_MTK_CAM_SYNC_ID:
@@ -594,10 +590,6 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 				ret = -EINVAL;
 			} else {
 				pipeline->ctrl_data.raw_path = ctrl->val;
-				dev_info(dev,
-					 "%s:pipe(%d): raw_path(%d)\n",
-					 __func__, pipeline->id,
-					 pipeline->ctrl_data.raw_path);
 				ret = 0;
 			}
 		}
@@ -621,6 +613,8 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 		ret = mtk_cam_tg_flash_s_ctrl(ctrl);
 		break;
 #endif
+	case V4L2_CID_MTK_CAM_SYNC_ID:
+		break;
 	default:
 		dev_info_ratelimited(dev, "%s: error. ctrl(\"%s\", id:0x%x) not supported yet\n",
 				     __func__, ctrl->name, ctrl->id);
@@ -1102,7 +1096,7 @@ static int set_src_pad_fmt(struct mtk_cam_video_device *node,
 
 	*crop = fullsize_as_crop(w, h);
 
-	if (CAM_DEBUG_ENABLED(FORMAT))
+	if (CAM_DEBUG_ENABLED(V4L2))
 		pr_info("%s: %s: %ux%u\n", __func__, desc->name, w, h);
 	return 0;
 }
@@ -1167,7 +1161,7 @@ static int mtk_raw_set_sink_fmt(struct v4l2_subdev *sd,
 		ret = 0;
 	}
 
-	return ret;
+	return 0;
 }
 
 static int mtk_raw_set_src_fmt(struct v4l2_subdev *sd,
@@ -1200,10 +1194,6 @@ static int mtk_raw_set_src_fmt(struct v4l2_subdev *sd,
 			__func__);
 		return -EINVAL;
 	}
-
-	// TODO
-	//if (pad == MTK_RAW_RZH1N2TO_3_OUT) {
-	//	tmp_fmt = mtk_raw_pipeline_get_fmt(pipe, state, MTK_RAW_RZH1N2TO_1_OUT, which);
 
 	/* set fmt with constraint */
 	set_src_pad_fmt(node, mfmt, crop, sink_crop->width, sink_crop->height);
@@ -1282,7 +1272,8 @@ static int mtk_raw_set_fmt(struct v4l2_subdev *sd,
 	struct mbus_config_getter *config_getter;
 	int ret;
 
-	if (CAM_DEBUG_ENABLED(FORMAT))
+	if (CAM_DEBUG_ENABLED(V4L2_TRY) ||
+	    fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE)
 		log_raw_subdev_format(sd, fmt, __func__);
 
 	config_getter = fetch_mbus_config_getter(fmt->which);
@@ -1316,7 +1307,7 @@ static int mtk_raw_get_fmt(struct v4l2_subdev *sd,
 	fmt->format = *mf;
 	fmt->format.flags = 0; /* to remove internal enabled flag */
 
-	if (CAM_DEBUG_ENABLED(FORMAT))
+	if (CAM_DEBUG_ENABLED(V4L2))
 		log_raw_subdev_format(sd, fmt, __func__);
 
 	return 0;
@@ -1348,7 +1339,7 @@ static int mtk_raw_set_pad_selection(struct v4l2_subdev *sd,
 	struct v4l2_rect *crop;
 	struct v4l2_rect *sink_crop;
 
-	if (CAM_DEBUG_ENABLED(FORMAT))
+	if (CAM_DEBUG_ENABLED(V4L2))
 		log_raw_subdev_selection(sd, sel, __func__);
 
 	config_getter = fetch_mbus_config_getter(sel->which);
@@ -1389,7 +1380,7 @@ static int mtk_raw_get_pad_selection(struct v4l2_subdev *sd,
 	crop = config_getter->get_crop(sd, state, sel->pad);
 	sel->r = *crop;
 
-	if (CAM_DEBUG_ENABLED(FORMAT))
+	if (CAM_DEBUG_ENABLED(V4L2))
 		log_raw_subdev_selection(sd, sel, __func__);
 
 	return 0;
@@ -1402,37 +1393,12 @@ static int mtk_cam_media_link_setup(struct media_entity *entity,
 	struct mtk_raw_pipeline *pipe =
 		container_of(entity, struct mtk_raw_pipeline, subdev.entity);
 	struct device *dev = pipe->subdev.v4l2_dev->dev;
-	//u32 pad = local->index;
 
-	dev_dbg(dev, "%s: raw %d: remote:%s:%d->local:%s:%d flags:0x%x\n",
-		__func__, pipe->id, remote->entity->name, remote->index,
-		local->entity->name, local->index, flags);
-
-	//if (pad < MTK_RAW_PIPELINE_PADS_NUM && pad != MTK_RAW_SINK)
-	//	pipe->vdev_nodes[pad - MTK_RAW_SINK_NUM].enabled =
-	//		!!(flags & MEDIA_LNK_FL_ENABLED);
-
-	//if (!entity->stream_count && !(flags & MEDIA_LNK_FL_ENABLED))
-	//	memset(pipe->pad_cfg, 0, sizeof(pipe->pad_cfg));
-
-#ifdef TODO_CHECK_THIS
-	if (pad == MTK_RAW_SINK && flags & MEDIA_LNK_FL_ENABLED) {
-		struct mtk_seninf_pad_data_info result;
-
-		pipe->res_config.seninf =
-			media_entity_to_v4l2_subdev(remote->entity);
-		mtk_cam_seninf_get_pad_data_info(pipe->res_config.seninf,
-			PAD_SRC_GENERAL0, &result);
-		if (result.exp_hsize) {
-			pipe->pad_cfg[MTK_RAW_META_SV_OUT_0].mbus_fmt.width =
-				result.exp_hsize;
-			pipe->pad_cfg[MTK_RAW_META_SV_OUT_0].mbus_fmt.height =
-				result.exp_vsize;
-			dev_info(dev, "[%s:meta0] hsize/vsize:%d/%d\n",
-				__func__, result.exp_hsize, result.exp_vsize);
-		}
-	}
-#endif
+	if (CAM_DEBUG_ENABLED(V4L2))
+		dev_info(dev, "%s: raw %d: remote:%s:%d->local:%s:%d flags:0x%x\n",
+			 __func__, pipe->id,
+			 remote->entity->name, remote->index,
+			 local->entity->name, local->index, flags);
 
 	return 0;
 }
@@ -1441,8 +1407,6 @@ static int
 mtk_raw_s_frame_interval(struct v4l2_subdev *sd,
 			 struct v4l2_subdev_frame_interval *interval)
 {
-	dev_info(sd->v4l2_dev->dev, "[TODO] %s: %s\n", __func__, sd->name);
-	//TODO
 	return 0;
 }
 
@@ -3173,7 +3137,7 @@ static void mtk_raw_pipeline_ctrl_setup(struct mtk_raw_pipeline *pipe)
 	int ret = 0;
 
 	ctrl_hdlr = &pipe->ctrl_handler;
-	ret = v4l2_ctrl_handler_init(ctrl_hdlr, 5); //TODO: correct number
+	ret = v4l2_ctrl_handler_init(ctrl_hdlr, 8);
 	if (ret) {
 		pr_info("%s: v4l2_ctrl_handler init failed\n", __func__);
 		return;
@@ -3181,10 +3145,12 @@ static void mtk_raw_pipeline_ctrl_setup(struct mtk_raw_pipeline *pipe)
 	ctrl = v4l2_ctrl_new_custom(ctrl_hdlr, &hsf, NULL);
 	if (ctrl)
 		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE | V4L2_CTRL_FLAG_EXECUTE_ON_WRITE;
+
 	ctrl = v4l2_ctrl_new_custom(ctrl_hdlr, &frame_sync_id, NULL);
 	if (ctrl)
 		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE |
 			       V4L2_CTRL_FLAG_EXECUTE_ON_WRITE;
+
 	ctrl = v4l2_ctrl_new_custom(ctrl_hdlr, &raw_path, NULL);
 	if (ctrl)
 		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE |

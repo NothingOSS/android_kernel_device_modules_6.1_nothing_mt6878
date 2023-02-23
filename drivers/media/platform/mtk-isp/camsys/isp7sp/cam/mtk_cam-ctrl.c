@@ -134,7 +134,7 @@ static void mtk_cam_event_eos(struct mtk_cam_ctrl *cam_ctrl)
 	else
 		mtk_cam_ctx_send_sv_event(cam_ctrl->ctx, &event);
 
-	if (CAM_DEBUG_ENABLED(EVENT))
+	if (CAM_DEBUG_ENABLED(V4L2_EVENT))
 		pr_info("%s: ctx %d\n", __func__, cam_ctrl->ctx->stream_id);
 }
 
@@ -150,7 +150,7 @@ void mtk_cam_event_frame_sync(struct mtk_cam_ctrl *cam_ctrl,
 	else
 		mtk_cam_ctx_send_sv_event(cam_ctrl->ctx, &event);
 
-	if (CAM_DEBUG_ENABLED(EVENT))
+	if (CAM_DEBUG_ENABLED(V4L2_EVENT))
 		pr_info("%s: %u\n", __func__, frame_seq_no);
 }
 

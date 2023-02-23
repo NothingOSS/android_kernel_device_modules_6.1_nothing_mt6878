@@ -185,10 +185,9 @@ static void append_to_running_list(struct mtk_cam_device *cam,
 	list_add_tail(&req->list, &cam->running_job_list);
 	spin_unlock(&cam->running_job_lock);
 
-#if CAM_DEBUG
-	dev_info(cam->dev, "%s: req:%s ++running cnt %d\n",
-		 __func__, req->req.debug_str, cnt);
-#endif
+	if (CAM_DEBUG || cnt == 1)
+		dev_info(cam->dev, "%s: req:%s running cnt %d\n",
+			 __func__, req->req.debug_str, cnt);
 }
 
 static void remove_from_running_list(struct mtk_cam_device *cam,
@@ -201,10 +200,9 @@ static void remove_from_running_list(struct mtk_cam_device *cam,
 	list_del(&req->list);
 	spin_unlock(&cam->running_job_lock);
 
-#if CAM_DEBUG
-	dev_info(cam->dev, "%s: req:%s --running cnt %d\n",
-		 __func__, req->req.debug_str, cnt);
-#endif
+	if (CAM_DEBUG || !cnt)
+		dev_info(cam->dev, "%s: req:%s running cnt %d\n",
+			 __func__, req->req.debug_str, cnt);
 
 	media_request_put(&req->req);
 }
@@ -608,10 +606,9 @@ static void mtk_cam_req_queue(struct media_request *req)
 	vb2_request_queue(req);
 	WARN_ON(!cam_req->used_pipe);
 
-	if (mtk_cam_req_try_update_used_ctx(req)) {
+	if (mtk_cam_req_try_update_used_ctx(req))
 		dev_info(cam->dev,
 			 "req %s enqueued before stream-on\n", req->debug_str);
-	}
 
 	/* setup ctrl handler */
 	WARN_ON(mtk_cam_setup_pipe_ctrl(req));
@@ -621,6 +618,9 @@ static void mtk_cam_req_queue(struct media_request *req)
 	spin_lock(&cam->pending_job_lock);
 	list_add_tail(&cam_req->list, &cam->pending_job_list);
 	spin_unlock(&cam->pending_job_lock);
+
+	if (CAM_DEBUG_ENABLED(V4L2))
+		dev_info(cam->dev, "%s: req %s\n", __func__, req->debug_str);
 
 	mtk_cam_dev_req_try_queue(cam);
 }
@@ -764,6 +764,7 @@ void mtk_cam_req_buffer_done(struct mtk_cam_job *job,
 			     bool is_proc)
 {
 	struct mtk_cam_request *req = job->req;
+	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct device *dev = req->req.mdev->dev;
 	struct mtk_cam_video_device *node;
 	struct mtk_cam_buffer *buf, *buf_prev;
@@ -799,9 +800,9 @@ void mtk_cam_req_buffer_done(struct mtk_cam_job *job,
 
 	spin_unlock(&req->buf_lock);
 
-	dev_info(dev, "%s: req:%s pipe_id:%d, node_id:%d, ts:%lld is_empty %d\n",
-		 __func__, req->req.debug_str, pipe_id, node_id, ts,
-		 is_buf_empty);
+	dev_info(dev, "%s: ctx-%d req:%s(%d) pipe_id:%d, node_id:%d, ts:%lld is_empty %d\n",
+		 __func__, ctx->stream_id, req->req.debug_str, job->req_seq,
+		 pipe_id, node_id, ts, is_buf_empty);
 
 	if (list_empty(&done_list)) {
 		dev_info(dev,
@@ -825,7 +826,6 @@ void mtk_cam_req_buffer_done(struct mtk_cam_job *job,
 
 	if (is_buf_empty)
 		mtk_cam_req_dump_incomplete_ctrl(req);
-
 REQ_PUT:
 	media_request_put(&req->req);
 }
@@ -863,7 +863,7 @@ int isp_composer_create_session(struct mtk_cam_ctx *ctx)
 
 	ret = rpmsg_send(ctx->rpmsg_dev->rpdev.ept, &event, sizeof(event));
 	dev_info(cam->dev,
-		"%s: rpmsg_send id: %d, cq_buf(fd:%d,sz:%d, msg_buf(fd:%d,sz%d) ret(%d)\n",
+		"%s: rpmsg_send id: %d cq_buf(fd:%d,sz:%d) msg_buf(fd:%d,sz%d) ret(%d)\n",
 		__func__, event.cmd_id, session_data->workbuf.ccd_fd,
 		session_data->workbuf.size, session_data->msg_buf.ccd_fd,
 		session_data->msg_buf.size,
@@ -1093,9 +1093,10 @@ static int isp_composer_handler(struct rpmsg_device *rpdev, void *data,
 		//MTK_CAM_TRACE_BEGIN(BASIC, "ipi_frame_ack:%d",
 		//		    ipi_msg->cookie.frame_no);
 
-		if (CAM_DEBUG_ENABLED(CTRL))
-			dev_info(dev, "ipi_frame_ack:%d\n",
-				 ipi_msg->cookie.frame_no);
+		if (CAM_DEBUG_ENABLED(JOB))
+			dev_info(dev, "ipi_frame_ack: ctx-%d seq-%d\n",
+				 ctx->stream_id,
+				 (int)seq_from_fh_cookie(ipi_msg->cookie.frame_no));
 
 		mtk_cam_ctrl_job_composed(&ctx->cam_ctrl,
 					  ipi_msg->cookie.frame_no,
@@ -1174,7 +1175,6 @@ static struct mtk_cam_ctx *mtk_cam_ctx_get(struct mtk_cam_device *cam)
 	}
 
 	WARN_ON(ctx->stream_id != i);
-	dev_info(cam->dev, "ctx_get: stream_id %d\n", ctx->stream_id);
 	return ctx;
 }
 

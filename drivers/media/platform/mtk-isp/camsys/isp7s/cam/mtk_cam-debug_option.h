@@ -11,15 +11,16 @@
 /*
  * To debug format/crop related
  */
-#define CAM_DEBUG_FORMAT	0
-#define CAM_DEBUG_TRY_FORMAT	1
-#define CAM_DEBUG_IPI_BUF	2
-#define CAM_DEBUG_EVENT		3
+#define CAM_DEBUG_V4L2		0
+#define CAM_DEBUG_V4L2_TRY	1
+#define CAM_DEBUG_V4L2_EVENT	2
+#define CAM_DEBUG_IPI_BUF	3
 
 #define CAM_DEBUG_RAW_INT	4
-#define CAM_DEBUG_CTRL		7
 
-#define CAM_DEBUG_STATE		8
+#define CAM_DEBUG_CTRL		8
+#define CAM_DEBUG_JOB		9
+#define CAM_DEBUG_STATE		10
 
 unsigned int cam_debug_opts(void);
 
