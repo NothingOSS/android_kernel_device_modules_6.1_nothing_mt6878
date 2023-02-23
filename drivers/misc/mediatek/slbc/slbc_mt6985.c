@@ -20,6 +20,7 @@
 #include <slbc.h>
 #include <slbc_ops.h>
 #include <slbc_ipi.h>
+#include <slbc_trace.h>
 #include <mtk_slbc_sram.h>
 
 /* #define CREATE_TRACE_POINTS */
@@ -154,8 +155,8 @@ void slbc_sram_init(struct mtk_slbc *slbc)
 {
 	int i;
 
-	pr_info("slbc_sram addr:0x%lx len:%d\n",
-			(unsigned long)slbc->regs, slbc->regsize);
+	SLBC_TRACE_REC(LVL_QOS, TYPE_N, 0, 0,
+			"slbc_sram addr:0x%lx len:%d", (unsigned long)slbc->regs, slbc->regsize);
 
 	/* print_hex_dump(KERN_INFO, "SLBC: ", DUMP_PREFIX_OFFSET, */
 	/* 16, 4, slbc->sram_vaddr, slbc->regsize, 1); */
@@ -166,14 +167,14 @@ void slbc_sram_init(struct mtk_slbc *slbc)
 
 static void slbc_set_sram_data(struct slbc_data *d)
 {
-	pr_info("slbc: set pa:%lx va:%lx\n",
-			(unsigned long)d->paddr, (unsigned long)d->vaddr);
+	SLBC_TRACE_REC(LVL_NORM, TYPE_B, d->uid, 0,
+			"set pa:%lx va:%lx", (unsigned long)d->paddr, (unsigned long)d->vaddr);
 }
 
 static void slbc_clr_sram_data(struct slbc_data *d)
 {
-	pr_info("slbc: clr pa:%lx va:%lx\n",
-			(unsigned long)d->paddr, (unsigned long)d->vaddr);
+	SLBC_TRACE_REC(LVL_NORM, TYPE_B, d->uid, 0,
+			"clr pa:%lx va:%lx", (unsigned long)d->paddr, (unsigned long)d->vaddr);
 }
 
 static void slbc_debug_log(const char *fmt, ...)
@@ -345,8 +346,8 @@ int slbc_status(struct slbc_data *d)
 	if ((d->type) == TP_BUFFER)
 		ret = slbc_request_status(d);
 
-	pr_info("#@# %s(%d) uid 0x%x ret %d\n",
-			__func__, __LINE__, d->uid, ret);
+	SLBC_TRACE_REC(LVL_QOS, TYPE_B, d->uid, ret,
+			"uid 0x%x ret %d", d->uid, ret);
 
 	return ret;
 }
@@ -371,8 +372,9 @@ int slbc_request(struct slbc_data *d)
 	else if ((d->type) == TP_ACP)
 		ret = slbc_request_acp(d);
 
-	pr_info("#@# %s(%d) uid 0x%x ret %d d->ret %d pa 0x%lx emipa 0x%lx size 0x%lx\n",
-			__func__, __LINE__, d->uid, ret, d->ret,
+	SLBC_TRACE_REC(LVL_QOS, TYPE_B, d->uid, ret,
+			"uid 0x%x ret %d d->ret %d pa 0x%lx emipa 0x%lx size 0x%lx",
+			d->uid, ret, d->ret,
 			(unsigned long)d->paddr, (unsigned long)d->emi_paddr, d->size);
 
 	if (!ret) {
@@ -482,8 +484,9 @@ int slbc_release(struct slbc_data *d)
 	else if ((d->type) == TP_ACP)
 		ret = slbc_release_acp(d);
 
-	pr_info("#@# %s(%d) uid 0x%x ret %d d->ret %d pa 0x%lx size 0x%lx\n",
-			__func__, __LINE__, d->uid, ret, d->ret,
+	SLBC_TRACE_REC(LVL_QOS, TYPE_B, d->uid, ret,
+			"uid 0x%x ret %d d->ret %d pa 0x%lx size 0x%lx",
+			d->uid, ret, d->ret,
 			(unsigned long)d->paddr, d->size);
 
 	if (!ret) {
@@ -880,8 +883,8 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 		print_hex_dump(KERN_INFO, "SLBC: ", DUMP_PREFIX_OFFSET,
 				16, 4, slbc->sram_vaddr, slbc->regsize, 1);
 	} else {
-		pr_info("#@# %s(%d) wrong cmd %s val %ld\n",
-				__func__, __LINE__, cmd, val_1);
+		SLBC_TRACE_REC(LVL_WARN, TYPE_N, 0, 0,
+				"wrong cmd %s val %ld", cmd, val_1);
 	}
 
 out:
@@ -894,6 +897,98 @@ out:
 }
 
 PROC_FOPS_RW(dbg_slbc);
+
+static int trace_slbc_proc_show(struct seq_file *m, void *v)
+{
+	slbc_trace_dump(m);
+	return 0;
+}
+
+static ssize_t trace_slbc_proc_write(struct file *file,
+		const char __user *buffer, size_t count, loff_t *pos)
+{
+	int ret = 0;
+	char *buf = (char *) __get_free_page(GFP_USER);
+	char cmd[64];
+	unsigned long val_1;
+	unsigned long val_2;
+
+	if (!buf)
+		return -ENOMEM;
+
+	ret = -EINVAL;
+
+	if (count >= PAGE_SIZE)
+		goto out;
+
+	ret = -EFAULT;
+
+	if (copy_from_user(buf, buffer, count))
+		goto out;
+
+	buf[count] = '\0';
+
+	ret = sscanf(buf, "%63s %lx %lx", cmd, &val_1, &val_2);
+	if (ret < 1) {
+		ret = -EPERM;
+		goto out;
+	}
+
+	if (!strcmp(cmd, "enable")) {
+		slbc_trace->enable = (val_1) ? 1 : 0;
+	} else if (!strcmp(cmd, "log_enable")) {
+		slbc_trace->log_enable = (val_1) ? 1 : 0;
+	} else if (!strcmp(cmd, "rec_enable")) {
+		slbc_trace->rec_enable = (val_1) ? 1 : 0;
+	} else if (!strcmp(cmd, "log_mask")) {
+		slbc_trace->log_mask = val_1;
+	} else if (!strcmp(cmd, "rec_mask")) {
+		slbc_trace->rec_mask = val_1;
+	} else if (!strcmp(cmd, "dump_mask")) {
+		slbc_trace->dump_mask = val_1;
+	} else if (!strcmp(cmd, "focus_b")) {
+		slbc_trace->focus = 1;
+		slbc_trace->focus_type |= 1UL << TYPE_B;
+		slbc_trace->focus_id = 0;
+	} else if (!strcmp(cmd, "focus_b_id")) {
+		if (!(slbc_trace->focus_type & 1UL << TYPE_B)) {
+			slbc_trace->focus_type |= 1UL << TYPE_B;
+			slbc_trace->focus_id = 0;
+		}
+			slbc_trace->focus = 1;
+			slbc_trace->focus_id |= 1UL << val_1;
+	} else if (!strcmp(cmd, "focus_c")) {
+		slbc_trace->focus = 1;
+		slbc_trace->focus_type |= 1UL << TYPE_C;
+		slbc_trace->focus_id = 0;
+	} else if (!strcmp(cmd, "focus_c_id")) {
+		if (!(slbc_trace->focus_type & 1UL << TYPE_C)) {
+			slbc_trace->focus_type |= 1UL << TYPE_C;
+			slbc_trace->focus_id = 0;
+		}
+			slbc_trace->focus = 1;
+			slbc_trace->focus_id |= 1UL << val_1;
+	} else if (!strcmp(cmd, "focus_reset")) {
+		slbc_trace->focus_type = 0;
+		slbc_trace->focus_id = 0;
+		slbc_trace->focus = 0;
+	} else if (!strcmp(cmd, "dump_num")) {
+		slbc_trace->dump_num = (u32)val_1;
+	} else {
+		SLBC_TRACE_REC(LVL_WARN, TYPE_N, 0, 0,
+				"wrong cmd %s val %ld", cmd, val_1);
+	}
+
+out:
+	free_page((unsigned long)buf);
+
+	if (ret < 0)
+		return ret;
+
+	return count;
+}
+
+PROC_FOPS_RW(trace_slbc);
 
 static int slbc_create_debug_fs(void)
 {
@@ -908,12 +1003,14 @@ static int slbc_create_debug_fs(void)
 
 	const struct pentry entries[] = {
 		PROC_ENTRY(dbg_slbc),
+		PROC_ENTRY(trace_slbc),
 	};
 
 	/* create /proc/slbc */
 	dir = proc_mkdir("slbc", NULL);
 	if (!dir) {
-		pr_info("fail to create /proc/slbc @ %s()\n", __func__);
+		SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, -ENOMEM,
+				"fail to create /proc/slbc");
 
 		return -ENOMEM;
 	}
@@ -921,8 +1018,8 @@ static int slbc_create_debug_fs(void)
 	for (i = 0; i < ARRAY_SIZE(entries); i++) {
 		if (!proc_create_data(entries[i].name, 0660,
 					dir, entries[i].fops, entries[i].data))
-			pr_info("%s(), create /proc/slbc/%s failed\n",
-					__func__, entries[i].name);
+			SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, 0,
+					"create /proc/slbc/%s failed", entries[i].name);
 	}
 
 	return 0;
@@ -957,6 +1054,10 @@ static int slbc_probe(struct platform_device *pdev)
 	/* struct resource *res; */
 	uint32_t reg[4] = {0, 0, 0, 0};
 
+	ret = slbc_trace_init(pdev);
+	if (ret)
+		pr_info("SLBC FAILED TO CREATE TRACE MEMORY (%d)\n", ret);
+
 #if IS_ENABLED(CONFIG_MTK_SLBC_IPI)
 	ret = slbc_scmi_init();
 	if (ret < 0)
@@ -974,24 +1075,27 @@ static int slbc_probe(struct platform_device *pdev)
 		ret = of_property_read_u32(node,
 				"slbc-enable", &slbc_enable);
 		if (ret)
-			pr_info("failed to get slbc_enable from dts\n");
+			SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, ret,
+					"failed to get slbc_enable from dts");
 		else
-			pr_info("#@# %s(%d) slbc_enable %d\n", __func__, __LINE__,
-					slbc_enable);
+			SLBC_TRACE_REC(LVL_QOS, TYPE_N, 0, ret,
+					"slbc_enable %d", slbc_enable);
 	} else
-		pr_info("find slbc node failed\n");
+		SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, -1,
+				"find slbc node failed");
 #else
 	slbc_enable = 0;
 
-	pr_info("#@# %s(%d) slbc_enable %d\n", __func__, __LINE__,
-			slbc_enable);
+	SLBC_TRACE_REC(LVL_QOS, TYPE_N, 0, 0,
+			"slbc_enable %d", slbc_enable);
 #endif /* ENABLE_SLBC */
 
 	ret = of_property_read_u32_array(node, "reg", reg, 4);
 	if (ret < 0) {
 		slbc_sram_enable = 0;
 
-		pr_info("slbc of_property_read_u32_array ERR : %d\n", ret);
+		SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, ret,
+				"slbc of_property_read_u32_array ERR : %d", ret);
 	} else {
 
 		slbc->regs = (void *)(long)reg[1];
@@ -1006,8 +1110,8 @@ static int slbc_probe(struct platform_device *pdev)
 		} else {
 			slbc_sram_enable = 1;
 
-			pr_info("#@# %s(%d) slbc->regs 0x%lx slbc->regsize 0x%x\n",
-					__func__, __LINE__,
+			SLBC_TRACE_REC(LVL_QOS, TYPE_N, 0, 0,
+					"slbc->regs 0x%lx slbc->regsize 0x%x",
 					(unsigned long)slbc->regs, slbc->regsize);
 			slbc_sram_init(slbc);
 		}
@@ -1016,12 +1120,14 @@ static int slbc_probe(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_PM_SLEEP)
 	slbc->ws = wakeup_source_register(NULL, "slbc");
 	if (!slbc->ws)
-		pr_debug("slbc wakelock register fail!\n");
+		SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, 0,
+				"slbc wakelock register fail!");
 #endif /* CONFIG_PM_SLEEP */
 
 	ret = slbc_create_debug_fs();
 	if (ret) {
-		pr_info("SLBC FAILED TO CREATE DEBUG FILESYSTEM (%d)\n", ret);
+		SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, ret,
+				"SLBC FAILED TO CREATE DEBUG FILESYSTEM");
 
 		return ret;
 	}
@@ -1030,8 +1136,8 @@ static int slbc_probe(struct platform_device *pdev)
 		slbc->slbc_qos_latency = drv->states[2].exit_latency - 10;
 	else
 		slbc->slbc_qos_latency = 300;
-	pr_info("slbc_qos_latency %dus\n", slbc->slbc_qos_latency);
-
+	SLBC_TRACE_REC(LVL_QOS, TYPE_N, 0, 0,
+			"slbc_qos_latency %dus", slbc->slbc_qos_latency);
 	cpu_latency_qos_add_request(&slbc_qos_request,
 			PM_QOS_DEFAULT_VALUE);
 
@@ -1048,6 +1154,7 @@ static int slbc_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 
+	slbc_trace_exit();
 	slbc_unregister_ipi_ops(&ipi_ops);
 	slbc_unregister_common_ops(&common_ops);
 	devm_kfree(dev, slbc);
@@ -1080,15 +1187,18 @@ static int slbc_suspend_cb(struct device *dev)
 		sid = slbc_get_sid_by_uid(i);
 		if (sid != SID_NOT_FOUND && uid_ref[i]) {
 			if (sid == UID_HIFI3) {
-				pr_info("uid_ref %s %x\n",
+				SLBC_TRACE_REC(LVL_QOS, TYPE_N, 0, 0,
+						"uid_ref %s %x",
 						slbc_uid_str[i], uid_ref[i]);
 			} else if (sid == UID_AOV |
 					sid == UID_AOV_DC |
 					sid == UID_AOV_APU) {
-				pr_info("uid_ref %s %x, screen off user\n",
+				SLBC_TRACE_REC(LVL_QOS, TYPE_N, 0, 0,
+						"uid_ref %s %x, screen off user",
 						slbc_uid_str[i], uid_ref[i]);
 			} else {
-				pr_info("uid_ref %s %x, screen on user\n",
+				SLBC_TRACE_REC(LVL_QOS, TYPE_N, 0, 0,
+						"uid_ref %s %x, screen on user",
 						slbc_uid_str[i], uid_ref[i]);
 				WARN_ON(uid_ref[i]);
 			}
@@ -1107,16 +1217,19 @@ static int slbc_resume_cb(struct device *dev)
 		sid = slbc_get_sid_by_uid(i);
 		if (sid != SID_NOT_FOUND && uid_ref[i]) {
 			if (sid == UID_HIFI3) {
-				pr_info("uid_ref %s %x\n",
+				SLBC_TRACE_REC(LVL_QOS, TYPE_N, 0, 0,
+						"uid_ref %s %x",
 						slbc_uid_str[i], uid_ref[i]);
 			} else if (sid == UID_AOV |
 					sid == UID_AOV_DC |
 					sid == UID_AOV_APU) {
-				pr_info("uid_ref %s %x, screen off user\n",
+				SLBC_TRACE_REC(LVL_QOS, TYPE_N, 0, 0,
+						"uid_ref %s %x, screen off user",
 						slbc_uid_str[i], uid_ref[i]);
 				WARN_ON(uid_ref[i]);
 			} else {
-				pr_info("uid_ref %s %x, screen on user\n",
+				SLBC_TRACE_REC(LVL_QOS, TYPE_N, 0, 0,
+						"uid_ref %s %x, screen on user",
 						slbc_uid_str[i], uid_ref[i]);
 			}
 		}
