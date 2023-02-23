@@ -1329,6 +1329,13 @@ static bool ged_dvfs_policy(
 		int api_sync_flag;
 		int fallback_duration_flag;
 
+		int ultra_high = 0;
+		int high = 0;
+		int low = 0;
+		int ultra_low = 0;
+		int ultra_high_step_size = 0;
+		int ultra_low_step_size = 0;
+
 		/* set t_gpu via risky BQ analysis */
 		ged_kpi_update_t_gpu_latest_uncompleted();
 		ret_risky_bq = ged_kpi_timer_based_pick_riskyBQ(&info);
@@ -1486,12 +1493,12 @@ static bool ged_dvfs_policy(
 			_init_loading_ud_table();
 		}
 
-		int ultra_high = 95;
-		int high = loading_ud_table[ui32GPUFreq].up;
-		int low = loading_ud_table[ui32GPUFreq].down;
-		int ultra_low = 20;
-		int ultra_high_step_size = (dvfs_step_mode & 0xff);
-		int ultra_low_step_size = (dvfs_step_mode & 0xff00) >> 8;
+		ultra_high = 95;
+		high = loading_ud_table[ui32GPUFreq].up;
+		low = loading_ud_table[ui32GPUFreq].down;
+		ultra_low = 20;
+		ultra_high_step_size = (dvfs_step_mode & 0xff);
+		ultra_low_step_size = (dvfs_step_mode & 0xff00) >> 8;
 
 		if (high > ultra_high)
 			high = ultra_high;
