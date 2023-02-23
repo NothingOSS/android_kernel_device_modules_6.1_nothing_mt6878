@@ -170,6 +170,8 @@ int mux2mux_vr(struct seninf_ctx *ctx, int mux, int cammux, int vc_idx)
 	int raw_mux_second = core->mux_range[TYPE_RAW].second;
 	int num_raw_mux = raw_mux_second - raw_mux_first + 1;
 
+	int pdp_mux_first = core->mux_range[TYPE_PDP].first;
+
 	int sat_cammux_first = core->cammux_range[TYPE_CAMSV_SAT].first;
 	int sat_cammux_second = core->cammux_range[TYPE_CAMSV_SAT].second;
 
@@ -205,7 +207,7 @@ int mux2mux_vr(struct seninf_ctx *ctx, int mux, int cammux, int vc_idx)
 		if ((cammux >= raw_cammux_first) && (cammux <= raw_cammux_second))
 			mux_vr += (cammux - raw_cammux_first) % RAW_MUX_FACTOR;
 	} else {  // PDP & uISP
-		mux_vr = (mux - raw_mux_second)
+		mux_vr = (mux - pdp_mux_first)
 			   + (num_sat_mux * SAT_MUX_FACTOR)
 			   + (num_raw_mux * RAW_MUX_FACTOR)
 			   + (num_sv_normal_mux * SV_NORMAL_MUX_FACTOR);
