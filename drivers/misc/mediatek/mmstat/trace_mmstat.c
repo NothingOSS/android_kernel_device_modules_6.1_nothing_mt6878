@@ -60,6 +60,10 @@ const char * const vmstat_partial_text[] = {
 	"swpin",	/* vm events */
 	"swpout",
 	"majflt",
+	"pgsteal_kswapd",
+	"pgsteal_direct",
+	"pgsteal_anon",
+	"pgsteal_file",
 	"refault",	/* vm stats */
 };
 
@@ -214,6 +218,10 @@ static void mmstat_trace_vmstat(void)
 		v[num_entries++ % nr_vm_events] += this->event[PSWPIN];
 		v[num_entries++ % nr_vm_events] += this->event[PSWPOUT];
 		v[num_entries++ % nr_vm_events] += this->event[PGMAJFAULT];
+		v[num_entries++ % nr_vm_events] += this->event[PGSTEAL_KSWAPD];
+		v[num_entries++ % nr_vm_events] += this->event[PGSTEAL_DIRECT];
+		v[num_entries++ % nr_vm_events] += this->event[PGSTEAL_ANON];
+		v[num_entries++ % nr_vm_events] += this->event[PGSTEAL_FILE];
 	}
 
 	/* workingset_refsult */
