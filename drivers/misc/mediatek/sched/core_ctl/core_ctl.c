@@ -2010,21 +2010,33 @@ static const struct proc_ops core_ctl_Fops = {
 
 static int __init core_ctl_init(void)
 {
-	int ret, cluster_nr, i, ret_error_line;
+	int ret, cluster_nr, i, ret_error_line, hpstate_dead, hpstate_online;
 	struct cpumask cluster_cpus;
 	struct proc_dir_entry *pe, *parent;
 
-	cpuhp_setup_state(CPUHP_AP_ONLINE_DYN,
+	hpstate_dead = cpuhp_setup_state(CPUHP_AP_ONLINE_DYN,
 			"core_ctl/cpu_pause:dead",
 			NULL, core_ctl_prepare_dead_cpu);
+	pr_info("%s: hpstate_dead:%d", TAG, hpstate_dead);
+	if (hpstate_dead == -ENOSPC) {
+		pr_info("%s: fail to setup cpuhp_dead", TAG);
+		ret = -ENOSPC;
+		goto failed;
+	}
 
-	cpuhp_setup_state(CPUHP_AP_ONLINE_DYN,
+	hpstate_online = cpuhp_setup_state(CPUHP_AP_ONLINE_DYN,
 			"core_ctl/cpu_pause:online",
 			core_ctl_prepare_online_cpu, NULL);
+	pr_info("%s: hpstate_online:%d", TAG, hpstate_online);
+	if (hpstate_online == -ENOSPC) {
+		pr_info("%s: fail to setup cpuhp_online", TAG);
+		ret = -ENOSPC;
+		goto failed;
+	}
 
 	ret = init_sched_avg();
 	if (ret)
-		goto failed;
+		goto failed_remove_hpstate;
 
 	/* register traceprob */
 	ret = register_trace_android_vh_scheduler_tick(core_ctl_tick, NULL);
@@ -2064,7 +2076,9 @@ failed_deprob:
 failed_exit_sched_avg:
 	exit_sched_avg();
 	tracepoint_synchronize_unregister();
-
+failed_remove_hpstate:
+	cpuhp_remove_state(hpstate_dead);
+	cpuhp_remove_state(hpstate_online);
 failed:
 	return ret;
 }
