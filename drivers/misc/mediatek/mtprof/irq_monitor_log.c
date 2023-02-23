@@ -40,10 +40,14 @@ void irq_log_end(void)
 
 void __irq_log_store(const char *func, int line)
 {
-	struct irq_log_data *data = this_cpu_ptr(irq_log_data);
+	struct irq_log_data *data;
 	int i;
 
-	if (unlikely(!irqs_disabled() || data->count >= IRQ_LOG_ENTRY))
+	if (unlikely(!irqs_disabled()))
+		return;
+
+	data = this_cpu_ptr(irq_log_data);
+	if (data->count >= IRQ_LOG_ENTRY)
 		return;
 
 	/* irqs is disabled and there should be no race condition below
