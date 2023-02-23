@@ -640,6 +640,9 @@ static ssize_t dcs_mode_show(struct kobject *kobj,
 					"Current in use core num: %d\n", dcs_get_cur_core_num());
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 					"Available max core num: %d\n",	dcs_get_max_core_num());
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+					"DCS stress enable: %d (0:disable 1:enable 2:enable with log)\n",
+					dcs_get_dcs_stress());
 	} else {
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 					"DCS Policy is disabled\n");
@@ -702,7 +705,37 @@ static ssize_t dcs_mode_store(struct kobject *kobj,
 }
 
 static KOBJ_ATTR_RW(dcs_mode);
+
+static ssize_t dcs_stress_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%d\n", dcs_get_dcs_stress());
+}
+
+static ssize_t dcs_stress_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	int i32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				if (i32Value <= 0)
+					dcs_set_dcs_stress(0);
+				else
+					dcs_set_dcs_stress(i32Value);
+		}
+	}
+
+	return count;
+}
+
+static KOBJ_ATTR_RW(dcs_stress);
 #endif /* GED_DCS_POLICY */
+//-----------------------------------------------------------------------------
 
 #if IS_ENABLED(CONFIG_MTK_GPU_FW_IDLE)
 static ssize_t fw_idle_show(struct kobject *kobj,
@@ -1108,6 +1141,10 @@ GED_ERROR ged_hal_init(void)
 		GED_LOGE("Failed to create dcs_mode entry!\n");
 		goto ERROR;
 	}
+
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_dcs_stress);
+	if (unlikely(err != GED_OK))
+		GED_LOGE("Failed to create dcs_stress entry!\n");
 #endif /* GED_DCS_POLICY */
 
 #if IS_ENABLED(CONFIG_MTK_GPU_FW_IDLE)
@@ -1196,6 +1233,7 @@ void ged_hal_exit(void)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_fallback_frequency_adjust);
 #ifdef GED_DCS_POLICY
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_mode);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_stress);
 #endif
 #if IS_ENABLED(CONFIG_MTK_GPU_FW_IDLE)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_fw_idle);

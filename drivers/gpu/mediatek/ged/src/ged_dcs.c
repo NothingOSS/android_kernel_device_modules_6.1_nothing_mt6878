@@ -29,6 +29,7 @@ int g_cur_core_num;
 int g_max_core_num;
 int g_avail_mask_num;
 int g_virtual_opp_num;
+static int g_dcs_stress;
 
 struct gpufreq_core_mask_info *g_core_mask_table;
 struct gpufreq_core_mask_info *g_avail_mask_table;
@@ -247,3 +248,15 @@ void dcs_enable(int enable)
 	mutex_unlock(&g_DCS_lock);
 }
 EXPORT_SYMBOL(dcs_enable);
+
+int dcs_get_dcs_stress(void)
+{
+	return g_dcs_stress;
+}
+
+void dcs_set_dcs_stress(int enable)
+{
+	mutex_lock(&g_DCS_lock);
+	g_dcs_stress = enable;
+	mutex_unlock(&g_DCS_lock);
+}

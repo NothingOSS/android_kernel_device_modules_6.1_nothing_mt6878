@@ -39,6 +39,7 @@
 #define GED_DVFS_SET_BOTTOM_COMMIT      5
 #define GED_DVFS_SET_LIMIT_COMMIT       6
 #define GED_DVFS_INPUT_BOOST_COMMIT     7
+#define GED_DVFS_DCS_STRESS_COMMIT      8
 #define GED_DVFS_COMMIT_TYPE            int
 
 #define GED_DVFS_DEFAULT                0

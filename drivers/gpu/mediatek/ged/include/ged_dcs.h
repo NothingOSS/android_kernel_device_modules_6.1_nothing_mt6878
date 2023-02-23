@@ -34,4 +34,8 @@ int dcs_restore_max_core_mask(void);
 int is_dcs_enable(void);
 void dcs_enable(int enable);
 
+// for dcs_stress
+int dcs_get_dcs_stress(void);
+void dcs_set_dcs_stress(int enable);
+
 #endif /* __GED_DCS_H__ */
