@@ -4256,36 +4256,28 @@ static int aie_alloc_aie_buf(struct mtk_aie_dev *fd)
 	int err_tag = 0;
 	// struct arm_smccc_res res;
 
-	dev_info(fd->dev, "aie_reset(fd);\n");
 	aie_reset(fd);
 
-	dev_info(fd->dev, "memset(&fd->st_info, 0, sizeof(fd->st_info));\n");
 	memset(&fd->st_info, 0, sizeof(fd->st_info));
 
-	dev_info(fd->dev, "aie_init_table(fd, fd->base_para->max_pyramid_width,\n");
 	aie_init_table(fd, fd->base_para->max_pyramid_width,
 		       fd->base_para->max_pyramid_height);
 
-	dev_info(fd->dev, "aie_get_data_size(fd, fd->base_para->max_img_width,\n");
 	aie_get_data_size(fd, fd->base_para->max_img_width,
 				      fd->base_para->max_img_height);
 
-	dev_info(fd->dev, "ret = aie_alloc_dram_buf(fd);\n");
 	ret = aie_alloc_dram_buf(fd); //config
 	if (ret)
 		goto dram_fail;
 
-	dev_info(fd->dev, "ret = aie_alloc_output_buf(fd); //pyramid\n");
 	ret = aie_alloc_output_buf(fd); //pyramid
 	if (ret)
 		goto output_fail;
 
-	dev_info(fd->dev, "ret = aie_alloc_fddma_buf(fd); //inter-production\n");
 	ret = aie_alloc_fddma_buf(fd); //inter-production
 	if (ret)
 		goto fddma_fail;
 #ifdef FLD
-	dev_info(fd->dev, "ret = aie_alloc_fld_buf(fd);\n");
 	ret = aie_alloc_fld_buf(fd);
 	if (ret)
 		goto fld_fail;
