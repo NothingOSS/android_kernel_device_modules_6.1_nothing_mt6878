@@ -171,6 +171,7 @@ struct fs_perframe_st imx481_sensor_mode[] = {
 struct fs_perframe_st imx766_sensor_mode[] = {
 	/* Head */
 	{
+		/* 0 --- FDOL-3exp */
 		.sensor_idx = 0,
 		.sensor_id = 0x0766,
 		.min_fl_lc = US_TO_LC(33350, 6879),
@@ -184,6 +185,8 @@ struct fs_perframe_st imx766_sensor_mode[] = {
 			0,
 			0
 		},
+		.hdr_exp.readout_len_lc = 4742,
+		.hdr_exp.read_margin_lc = 30,
 		.flicker_en = 0,
 		.pclk = 1281600000,
 		.linelength = 8816,
@@ -193,6 +196,7 @@ struct fs_perframe_st imx766_sensor_mode[] = {
 	},
 
 	{
+		/* 1 --- FDOL-2exp */
 		.sensor_idx = 0,
 		.sensor_id = 0x0766,
 		.min_fl_lc = US_TO_LC(33350, 6879),
@@ -206,6 +210,8 @@ struct fs_perframe_st imx766_sensor_mode[] = {
 			0,
 			0
 		},
+		.hdr_exp.readout_len_lc = 4742,
+		.hdr_exp.read_margin_lc = 20,
 		.flicker_en = 0,
 		.pclk = 1281600000,
 		.linelength = 8816,
@@ -215,6 +221,7 @@ struct fs_perframe_st imx766_sensor_mode[] = {
 	},
 
 	{
+		/* 2 --- FDOL-1exp */
 		.sensor_idx = 0,
 		.sensor_id = 0x0766,
 		.min_fl_lc = US_TO_LC(33350, 6879),
@@ -228,12 +235,80 @@ struct fs_perframe_st imx766_sensor_mode[] = {
 			0,
 			0
 		},
+		.hdr_exp.readout_len_lc = 4742,
+		.hdr_exp.read_margin_lc = 10,
 		.flicker_en = 0,
 		.pclk = 1281600000,
 		.linelength = 8816,
 		.margin_lc = 48,
 		.lineTimeInNs = 6879,
 		.readout_time_us = 32000,
+	},
+
+	{
+		/* 3 --- LBMF-3exp */
+		.sensor_idx = 0,
+		.sensor_id = 0x0766,
+		.min_fl_lc = US_TO_LC(33350, 4444),
+		.hdr_exp.mode_exp_cnt = 3,
+		.hdr_exp.multi_exp_type = 1,
+		.hdr_exp.exp_order = 1,
+		.hdr_exp.ae_exp_cnt = 3,
+		.hdr_exp.exp_lc = {
+			US_TO_LC(10002, 4444),
+			US_TO_LC(5000, 4444),
+			US_TO_LC(2500, 4444),
+			0,
+			0
+		},
+		.hdr_exp.fl_lc = {
+			2304 + 48*3,
+			2304 + 48*3,
+			(US_TO_LC(33350, 4444) - (2304 + 48*3) - (2304 + 48*3)),
+			0,
+			0
+		},
+		.hdr_exp.readout_len_lc = 2304,
+		.hdr_exp.read_margin_lc = 48*3,
+		.flicker_en = 0,
+		.pclk = 3513600000,
+		.linelength = 15616,
+		.margin_lc = 48*3,
+		.lineTimeInNs = 4444,
+		.readout_time_us = 10239,
+	},
+
+	{
+		/* 4 --- LBMF-2exp */
+		.sensor_idx = 0,
+		.sensor_id = 0x0766,
+		.min_fl_lc = US_TO_LC(33350, 4444),
+		.hdr_exp.mode_exp_cnt = 2,
+		.hdr_exp.multi_exp_type = 1,
+		.hdr_exp.exp_order = 1,
+		.hdr_exp.ae_exp_cnt = 2,
+		.hdr_exp.exp_lc = {
+			US_TO_LC(9700, 4444),
+			US_TO_LC(2500, 4444),
+			0,
+			0,
+			0
+		},
+		.hdr_exp.fl_lc = {
+			2304 + 48*2,
+			(US_TO_LC(33350, 4444) - (2304 + 48*2)),
+			0,
+			0,
+			0
+		},
+		.hdr_exp.readout_len_lc = 2304,
+		.hdr_exp.read_margin_lc = 48*2,
+		.flicker_en = 0,
+		.pclk = 3513600000,
+		.linelength = 15616,
+		.margin_lc = 48*2,
+		.lineTimeInNs = 4444,
+		.readout_time_us = 10239,
 	},
 
 	/* End */

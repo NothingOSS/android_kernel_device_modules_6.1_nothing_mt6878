@@ -73,6 +73,9 @@ void frm_reset_frame_info(unsigned int idx);
 unsigned int frm_convert_cammux_tg_to_ccu_tg(unsigned int tg);
 unsigned int frm_convert_cammux_id_to_ccu_tg_id(unsigned int cammux_id);
 
+unsigned int frm_chk_and_get_tg_value(
+	const unsigned int cammux_id, const unsigned int target_tg);
+
 void frm_update_tg(unsigned int idx, unsigned int tg);
 
 

@@ -82,6 +82,9 @@ struct fs_streaming_st imx516 = {
 	.def_fl_lc = 2400,
 	.max_fl_lc = 0xfffe,
 	.def_shutter_lc = 0x029,
+	.pclk = 1041120000,
+	.linelength = 1446,
+	.lineTimeInNs = 1389,
 };
 
 

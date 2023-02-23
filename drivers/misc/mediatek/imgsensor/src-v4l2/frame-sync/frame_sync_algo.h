@@ -8,6 +8,7 @@
 
 #include "frame_sync.h"
 #include "frame_sync_util.h"
+#include "sensor_recorder.h"
 
 
 /* utility functions */
@@ -84,7 +85,8 @@ void fs_alg_reset_vsync_data(const unsigned int idx);
 void fs_alg_reset_fs_inst(unsigned int idx);
 
 void fs_alg_set_frame_record_st_data(
-	unsigned int idx, struct frame_record_st data[]);
+	unsigned int idx, struct FrameRecord *recs_ordered[],
+	const struct predicted_fl_info_st *fl_info);
 
 void fs_alg_set_frame_cell_size(unsigned int idx, unsigned int size);
 

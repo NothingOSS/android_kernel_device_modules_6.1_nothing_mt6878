@@ -25,6 +25,19 @@ enum CHECK_SENSOR_INFO_METHOD {
 /* set your choose */
 #define REGISTER_METHOD BY_SENSOR_IDX
 #define REG_INFO "SENSOR_IDX" // for log showing info
+
+
+struct SensorInfo {
+	unsigned int sensor_id;         // imx586 -> 0x0586; s5k3m5sx -> 0x30D5
+	unsigned int sensor_idx;        // main1 -> 0; sub1 -> 1;
+					// main2 -> 2; sub2 -> 3; main3 -> 4;
+	unsigned int seninf_idx;
+
+	/* for using devm functions to allocate memory */
+	void *dev;                      // adaptor/i2c client dev (ctx->dev)
+};
+
+
 /******************************************************************************/
 
 
@@ -123,9 +136,9 @@ struct fs_sa_cfg {
 
 /* callback function pointer for setting framelength */
 /* see adaptor-ctrl.h */
-typedef int (*callback_set_framelength)(void *p_ctx,
-				unsigned int cmd_id,
-				unsigned int framelength);
+typedef int (*callback_func_set_fl_info)(void *p_ctx, const unsigned int cmd_id,
+	const void *pf_info, const unsigned int fl_lc,
+	const unsigned int fl_lc_arr[], const unsigned int arr_len);
 
 
 /*******************************************************************************
@@ -163,10 +176,15 @@ struct fs_hdr_exp_st {
 	unsigned int ae_exp_cnt;         // exp cnt from ae set ctrl
 
 	unsigned int exp_lc[FS_HDR_MAX];
+	unsigned int fl_lc[FS_HDR_MAX];
 
-	/* stagger read offset change */
+	/* stagger/LB-MF readout length, read margin info */
 	unsigned int readout_len_lc;
 	unsigned int read_margin_lc;
+
+	/* see sensor recorder header */
+	unsigned int multi_exp_type;     // by pass for sensor recorder header
+	unsigned int exp_order;          // by pass for sensor recorder header
 };
 /******************************************************************************/
 
@@ -197,7 +215,7 @@ struct fs_streaming_st {
 	unsigned int lineTimeInNs;
 
 	/* callback function */
-	callback_set_framelength func_ptr;
+	callback_func_set_fl_info func_ptr;
 	void *p_ctx;
 };
 
@@ -243,7 +261,11 @@ struct fs_seamless_st {
  * Frame Sync member functions.
  ******************************************************************************/
 struct FrameSync {
-	/* according to sensor idx, register image sensor info */
+	unsigned int (*fs_register_sensor)(const struct SensorInfo *sensor_info,
+		const enum CHECK_SENSOR_INFO_METHOD method);
+	void (*fs_unregister_sensor)(const struct SensorInfo *sensor_info,
+		const enum CHECK_SENSOR_INFO_METHOD method);
+
 	unsigned int (*fs_streaming)(const unsigned int flag,
 		struct fs_streaming_st *streaming_st);
 
@@ -290,8 +312,10 @@ struct FrameSync {
 	/* update fs_perframe_st data */
 	/*     (for v4l2_ctrl_request_setup order) */
 	/*     (set_max_framerate_by_scenario is called after set_shutter) */
-	void (*fs_update_min_framelength_lc)(
-				unsigned int ident, unsigned int min_fl_lc);
+	void (*fs_update_min_fl_lc)(
+		const unsigned int ident, const unsigned int min_fl_lc,
+		const unsigned int fl_lc,
+		const unsigned int fl_lc_arr[], const unsigned int arr_len);
 
 
 	/* set extend framelength for STG sensor doing seamless switch */
@@ -348,11 +372,21 @@ struct FrameSync {
 };
 
 
+/******************************************************************************/
 #if defined(SUPPORT_FS_NEW_METHOD)
 void fs_sa_request_switch_master(unsigned int idx);
 #endif
 
 
+unsigned int fs_get_reg_sensor_id(const unsigned int idx);
+unsigned int fs_get_reg_sensor_idx(const unsigned int idx);
+unsigned int fs_get_reg_sensor_inf_idx(const unsigned int idx);
+
+void fs_setup_sensor_info_st_by_fs_streaming_st(
+	const struct fs_streaming_st *streaming_info, struct SensorInfo *info);
+
+
+/******************************************************************************/
 /*
  * Frame Sync init function.
  *

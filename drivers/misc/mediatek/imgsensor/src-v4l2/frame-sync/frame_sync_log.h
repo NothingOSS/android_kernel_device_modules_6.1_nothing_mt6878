@@ -10,13 +10,17 @@
 /******************************************************************************/
 // Special Debug Log Enable
 /******************************************************************************/
+#if defined(FS_UT)
+#define TRACE_FS_FREC_LOG
+#else
 // #define TRACE_FS_FREC_LOG
+#endif
 
 
 /******************************************************************************/
 // Log message
 /******************************************************************************/
-#define LOG_BUF_STR_LEN 512
+#define LOG_BUF_STR_LEN 1024
 
 #ifdef FS_UT
 #include <stdio.h>
@@ -52,6 +56,11 @@ do { \
 #define LOG_PR_WARN(format, args...) pr_warn(PFX "[%s] " format, __func__, ##args)
 #define LOG_PR_ERR(format, args...) pr_err(PFX "[%s] " format, __func__, ##args)
 #endif // FS_UT
+
+
+#define FS_SNPRINTF(buf, len, fmt, ...) { \
+	len += snprintf(buf + len, LOG_BUF_STR_LEN - len, fmt, ##__VA_ARGS__); \
+}
 /******************************************************************************/
 
 

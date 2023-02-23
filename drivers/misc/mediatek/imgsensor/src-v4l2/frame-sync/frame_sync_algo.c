@@ -17,6 +17,7 @@
 
 #include "frame_sync_algo.h"
 #include "frame_monitor.h"
+#include "sensor_recorder.h"
 
 #if !defined(FS_UT)
 #include "frame_sync_console.h"
@@ -207,7 +208,8 @@ struct FrameSyncInst {
 	unsigned int vsyncs_updated:1;
 
 	/* frame_record_st (record shutter and framelength settings) */
-	struct frame_record_st recs[RECORDER_DEPTH];
+	struct FrameRecord *p_frecs[RECORDER_DEPTH];
+	struct predicted_fl_info_st fl_info;
 
 	struct fs_fl_rec_st fl_rec[FS_FL_RECORD_DEPTH];
 
@@ -403,25 +405,12 @@ static inline void set_fl_us(unsigned int idx, unsigned int us)
 					fs_inst[idx].lineTimeInNs,
 					fs_inst[idx].output_fl_us);
 
-
-#ifndef REDUCE_FS_ALGO_LOG
-	LOG_INF(
-		"[%u] ID:%#x(sidx:%u), set fl:%u(%u)\n",
-		idx,
-		fs_inst[idx].sensor_id,
-		fs_inst[idx].sensor_idx,
-		fs_inst[idx].output_fl_us,
-		fs_inst[idx].output_fl_lc);
-#endif // REDUCE_FS_ALGO_LOG
-
+	frec_g_valid_min_fl_arr_val_for_lut(idx,
+		fs_inst[idx].p_frecs[0], fs_inst[idx].output_fl_lc,
+		fs_inst[idx].p_frecs[0]->fl_lc_arr, FS_HDR_MAX);
 
 	/* 2. check framelength boundary */
 	check_fl_boundary(idx);
-
-
-	/* 3. update result to frame recorder for predicted fl used */
-	// *fs_inst[idx].recs[0].framelength_lc = fs_inst[idx].output_fl_lc;
-
 
 #ifdef FS_UT
 	/* N. set frame monitor sensor_curr_fl_us for FS_UT timestamp */
@@ -445,31 +434,17 @@ static unsigned int calc_min_fl_lc(
 	unsigned int idx, unsigned int min_fl_lc)
 {
 	unsigned int output_fl_lc = 0;
-	unsigned int shutter_margin =
-			fs_inst[idx].shutter_lc + fs_inst[idx].margin_lc;
 
-
-	/* calculate appropriate min framelength */
-	if (shutter_margin > min_fl_lc)
-		output_fl_lc = shutter_margin;
-	else
-		output_fl_lc = min_fl_lc;
-
-
-	if (fs_inst[idx].hdr_exp.mode_exp_cnt > 1) {
-		/* STG FLL constraints */
-		output_fl_lc =
-			(output_fl_lc > fs_inst[idx].readout_min_fl_lc)
-			? output_fl_lc : fs_inst[idx].readout_min_fl_lc;
-	}
+	output_fl_lc = frec_g_valid_min_fl_lc_for_shutters_by_frame_rec(
+		idx, fs_inst[idx].p_frecs[0], min_fl_lc);
 
 
 	/* check extend frame length had been set */
 	if (fs_inst[idx].extend_fl_lc != 0) {
 		output_fl_lc += fs_inst[idx].extend_fl_lc;
 
-		LOG_INF(
-			"[%u] ID:%#x(sidx:%u), set fl to %u(%u) due to ext_fl:%u(%u))\n",
+		LOG_MUST(
+			"NOTICE: [%u] ID:%#x(sidx:%u), set fl to %u(%u) due to receive ext_fl:%u(%u))\n",
 			idx,
 			fs_inst[idx].sensor_id,
 			fs_inst[idx].sensor_idx,
@@ -481,10 +456,9 @@ static unsigned int calc_min_fl_lc(
 			fs_inst[idx].extend_fl_lc);
 	}
 
-
 	/* framelength boundary check */
 	if (output_fl_lc > fs_inst[idx].max_fl_lc) {
-		LOG_INF(
+		LOG_MUST(
 			"WARNING: [%u] ID:%#x(sidx:%u), set fl:%u(%u), but reaches max_fl:%u(%u)\n",
 			idx,
 			fs_inst[idx].sensor_id,
@@ -527,7 +501,8 @@ unsigned int fs_alg_write_shutter(unsigned int idx)
 
 	/* get appropriate min framelength base on shutter */
 	fs_inst[idx].output_fl_lc =
-		calc_min_fl_lc(idx, fs_inst[idx].def_min_fl_lc);
+		// calc_min_fl_lc(idx, fs_inst[idx].def_min_fl_lc);
+		calc_min_fl_lc(idx, fs_inst[idx].min_fl_lc);
 
 	/* shutter boundary check, pass for UT */
 
@@ -569,186 +544,18 @@ unsigned int fs_alg_write_shutter(unsigned int idx)
 #endif // FS_UT
 
 
-static inline unsigned int check_valid_for_using_vsyncs_recs_data(
-	unsigned int idx)
-{
-	return (fs_inst[idx].vsyncs_updated) ? 1 : 0;
-}
-
-
-static inline void set_valid_for_using_vsyncs_recs_data(
-	unsigned int idx, unsigned int flag)
-{
-	fs_inst[idx].vsyncs_updated = flag;
-}
-
-
-/*
- * predicted frame length ( current:0, next:1 )
- *
- * must ONLY be updated when
- *    setting new frame recs data and after getting vsyncs data
- *    otherwise the results will be not correct
- */
-static void calc_predicted_frame_length(unsigned int idx)
-{
-	unsigned int i = 0;
-
-	unsigned int fdelay = fs_inst[idx].fl_active_delay;
-	unsigned int *p_fl_lc = fs_inst[idx].predicted_fl_lc;
-	unsigned int *p_fl_us = fs_inst[idx].predicted_fl_us;
-
-
-	/* for error handle, check sensor fl_active_delay value */
-	if ((fdelay < 2) || (fdelay > 3)) {
-		LOG_MUST(
-			"ERROR: [%u] ID:%#x(sidx:%u), frame_time_delay_frame:%u is not valid (must be 2 or 3), plz check sensor driver for getting correct value\n",
-			idx,
-			fs_inst[idx].sensor_id,
-			fs_inst[idx].sensor_idx,
-			fs_inst[idx].fl_active_delay);
-
-		return;
-	}
-
-	/* calculate "current predicted" and "next predicted" framelength */
-	/* P.S. current:0, next:1 */
-	for (i = 0; i < 2; ++i) {
-		if (fdelay == 3) {
-			/* SONY sensor with auto-extend on */
-			unsigned int sm =
-				*fs_inst[idx].recs[1-i].shutter_lc +
-				fs_inst[idx].margin_lc;
-
-			p_fl_lc[i] =
-				(*fs_inst[idx].recs[2-i].framelength_lc > sm)
-				? *fs_inst[idx].recs[2-i].framelength_lc
-				: sm;
-
-			if (fs_inst[idx].hdr_exp.mode_exp_cnt > 1) {
-				/* STG FLL constraints */
-				if (i == 0) {
-					p_fl_lc[i] =
-						(p_fl_lc[i] > fs_inst[idx].prev_readout_min_fl_lc)
-						? p_fl_lc[i]
-						: fs_inst[idx].prev_readout_min_fl_lc;
-
-				} else { // if (i == 1)
-					p_fl_lc[i] =
-						(p_fl_lc[i] > fs_inst[idx].readout_min_fl_lc)
-						? p_fl_lc[i]
-						: fs_inst[idx].readout_min_fl_lc;
-				}
-			}
-
-
-			p_fl_us[i] = convert2TotalTime(
-						fs_inst[idx].lineTimeInNs,
-						p_fl_lc[i]);
-
-		} else { // fdelay == 2
-			/* non-SONY sensor case */
-			p_fl_lc[i] = *fs_inst[idx].recs[1-i].framelength_lc;
-
-
-			p_fl_us[i] = convert2TotalTime(
-						fs_inst[idx].lineTimeInNs,
-						p_fl_lc[i]);
-		}
-	}
-}
-
-
-static inline void calibrate_recs_data_by_vsyncs(unsigned int idx)
-{
-	if (!check_valid_for_using_vsyncs_recs_data(idx)) {
-		LOG_MUST(
-			"WARNING: [%u] ID:%#x(sidx:%u), calibrate recs failed, please update vsyncs data first\n",
-			idx,
-			fs_inst[idx].sensor_id,
-			fs_inst[idx].sensor_idx);
-
-		return;
-	}
-
-
-	/* Check how many vsyncs have passed so far, */
-	/* for syncing correct frame settings. */
-	/* EX: [0, 1, 2] -> [1, 2, temp] or [2, 2, temp] */
-	if (fs_inst[idx].vsyncs > 1) {
-		*fs_inst[idx].recs[2].framelength_lc =
-				*fs_inst[idx].recs[1].framelength_lc;
-		*fs_inst[idx].recs[2].shutter_lc =
-				*fs_inst[idx].recs[1].shutter_lc;
-
-
-#ifndef REDUCE_FS_ALGO_LOG
-		LOG_INF(
-			"[%u] ID:%#x(sidx:%u), passed vsyncs:%u, calibrate frame records data\n",
-			idx,
-			fs_inst[idx].sensor_id,
-			fs_inst[idx].sensor_idx,
-			fs_inst[idx].vsyncs);
-#endif // REDUCE_FS_ALGO_LOG
-	}
-
-	/* in the same frame case */
-	/* EX: [0, 1, 2, temp] -> [0, 0, 1, temp] */
-	if (fs_inst[idx].vsyncs == 0 && RECORDER_DEPTH == 4) {
-		*fs_inst[idx].recs[1].framelength_lc =
-				*fs_inst[idx].recs[2].framelength_lc;
-		*fs_inst[idx].recs[1].shutter_lc =
-				*fs_inst[idx].recs[2].shutter_lc;
-
-		*fs_inst[idx].recs[2].framelength_lc =
-				*fs_inst[idx].recs[3].framelength_lc;
-		*fs_inst[idx].recs[2].shutter_lc =
-				*fs_inst[idx].recs[3].shutter_lc;
-	}
-
-
-	/* update predicted frame length by new frame recorder data */
-	calc_predicted_frame_length(idx);
-
-
-	/* set NOT valid for using vsyncs / recs data for */
-	/* preventing calculation error */
-	/* (call calibrate_recs_data_by_vsyncs() API again */
-	/*  without re-query timestamp data) */
-	set_valid_for_using_vsyncs_recs_data(idx, 0);
-}
-
-
 static unsigned int calc_vts_sync_bias(unsigned int idx)
 {
 	unsigned int vts_exp_bias = 0, vts_signal_bias = 0, total_bias = 0;
-	unsigned int margin_lc_per_exp = 0;
 
-
-	if (fs_inst[idx].hdr_exp.mode_exp_cnt > 1) {
-		/* for exp sync type (sync on SE) */
-		margin_lc_per_exp =
-			fs_inst[idx].margin_lc /
-			fs_inst[idx].hdr_exp.mode_exp_cnt;
-
-		if (fs_inst[idx].sync_type & FS_SYNC_TYPE_SE) {
-			if (fs_inst[idx].hdr_exp.mode_exp_cnt == 2) {
-				/* LE / SE */
-				vts_exp_bias =
-					margin_lc_per_exp +
-					fs_inst[idx].hdr_exp.exp_lc[FS_HDR_SE];
-
-			} else if (fs_inst[idx].hdr_exp.mode_exp_cnt == 3) {
-				/* LE / ME / SE */
-				vts_exp_bias =
-					margin_lc_per_exp +
-					fs_inst[idx].hdr_exp.exp_lc[FS_HDR_ME] +
-					margin_lc_per_exp +
-					fs_inst[idx].hdr_exp.exp_lc[FS_HDR_SE];
-			}
-		}
+	if (fs_inst[idx].sync_type & FS_SYNC_TYPE_LE) {
+		vts_exp_bias =
+			fs_inst[idx].fl_info.next_exp_rd_offset_lc[FS_HDR_LE];
 	}
-
+	if (fs_inst[idx].sync_type & FS_SYNC_TYPE_SE) {
+		vts_exp_bias =
+			fs_inst[idx].fl_info.next_exp_rd_offset_lc[FS_HDR_SE];
+	}
 
 	/* for signal sync type (vsync / readout center) */
 	if (fs_inst[idx].sync_type & FS_SYNC_TYPE_READOUT_CENTER) {
@@ -904,10 +711,7 @@ static inline unsigned int check_timing_critical_section(
  */
 void fs_alg_setup_frame_monitor_fmeas_data(unsigned int idx)
 {
-	/* 1. update predicted frame length by new frame recorder data */
-	calc_predicted_frame_length(idx);
-
-	/* 2. set frame measurement predicted frame length */
+	/* set frame measurement predicted frame length */
 	frm_set_frame_measurement(
 		idx, fs_inst[idx].vsyncs,
 		fs_inst[idx].predicted_fl_us[0],
@@ -928,10 +732,10 @@ void fs_alg_get_cur_frec_data(unsigned int idx,
 	unsigned int *p_fl_lc, unsigned int *p_shut_lc)
 {
 	if (p_fl_lc != NULL)
-		*p_fl_lc = *fs_inst[idx].recs[0].framelength_lc;
+		*p_fl_lc = fs_inst[idx].p_frecs[0]->framelength_lc;
 
 	if (p_shut_lc != NULL)
-		*p_shut_lc = *fs_inst[idx].recs[0].shutter_lc;
+		*p_shut_lc = fs_inst[idx].p_frecs[0]->shutter_lc;
 }
 
 
@@ -1219,8 +1023,8 @@ static inline void fs_alg_sa_dump_dynamic_para(unsigned int idx)
 		time_after_sof,
 		fs_sa_inst.dynamic_paras[idx].cur_tick,
 		fs_sa_inst.dynamic_paras[idx].vsyncs,
-		*fs_inst[idx].recs[0].framelength_lc,
-		*fs_inst[idx].recs[0].shutter_lc,
+		fs_inst[idx].p_frecs[0]->framelength_lc,
+		fs_inst[idx].p_frecs[0]->shutter_lc,
 		fmeas_idx,
 		pr_fl_us,
 		pr_fl_lc,
@@ -1555,14 +1359,28 @@ static unsigned int fs_alg_sa_get_flk_diff_and_fl(const unsigned int idx,
 static void fs_alg_sa_update_pred_fl_and_ts_bias(const unsigned int idx,
 	struct FrameSyncDynamicPara *p_para)
 {
+	const unsigned int pr_curr_fl_us = fs_inst[idx].predicted_fl_us[0];
+	const unsigned int pr_next_fl_us = fs_inst[idx].predicted_fl_us[1];
 	unsigned int ts_bias_lc = 0;
 
 	/* calculate and get predicted frame length */
-	calc_predicted_frame_length(idx);
 	p_para->pred_fl_us[0] =
 		fs_inst[idx].predicted_fl_us[0];
 	p_para->pred_fl_us[1] =
 		fs_inst[idx].predicted_fl_us[1];
+
+	if (p_para->pred_fl_us[0] != pr_curr_fl_us || p_para->pred_fl_us[1] != pr_next_fl_us) {
+		LOG_MUST(
+			"ERROR: [%u] ID:%#x(sidx:%u), #%u, pred_fl(c:%u, n:%u) changed pr_fl(C:%u, n:%u)\n",
+			idx,
+			fs_inst[idx].sensor_id,
+			fs_inst[idx].sensor_idx,
+			p_para->magic_num,
+			p_para->pred_fl_us[0],
+			p_para->pred_fl_us[1],
+			pr_curr_fl_us,
+			pr_next_fl_us);
+	}
 
 	/* calculate and get timestamp bias */
 	ts_bias_lc = calc_vts_sync_bias(idx);
@@ -1790,7 +1608,7 @@ static void fs_alg_sa_pre_set_dynamic_paras(const unsigned int idx,
 	const unsigned int f_cell = get_valid_frame_cell_size(idx);
 	unsigned int fl_us = convert2TotalTime(
 		fs_inst[idx].lineTimeInNs,
-		*fs_inst[idx].recs[0].framelength_lc);
+		fs_inst[idx].p_frecs[0]->framelength_lc);
 
 	/* sync current settings */
 	fs_alg_sa_sync_settings_for_dynamic_paras(idx, p_para);
@@ -1806,8 +1624,8 @@ static void fs_alg_sa_pre_set_dynamic_paras(const unsigned int idx,
 		convert2LineCount(
 			fs_inst[idx].lineTimeInNs,
 			p_para->stable_fl_us),
-		*fs_inst[idx].recs[0].framelength_lc,
-		*fs_inst[idx].recs[0].shutter_lc,
+		fs_inst[idx].p_frecs[0]->framelength_lc,
+		fs_inst[idx].p_frecs[0]->shutter_lc,
 		fs_inst[idx].lineTimeInNs,
 		p_para->pred_fl_us[0],
 		convert2LineCount(
@@ -3081,15 +2899,7 @@ void fs_alg_reset_vsync_data(const unsigned int idx)
 
 void fs_alg_reset_fs_inst(unsigned int idx)
 {
-	struct FrameSyncInst clear_fs_inst_st = {0};
-
-	fs_inst[idx] = clear_fs_inst_st;
-
-
-#ifndef REDUCE_FS_ALGO_LOG
-	LOG_INF("clear idx:%u data. (all to zero)\n", idx);
-#endif // REDUCE_FS_ALGO_LOG
-
+	memset(&fs_inst[idx], 0, sizeof(fs_inst[idx]));
 
 #ifdef SUPPORT_FS_NEW_METHOD
 	fs_alg_reset_fs_sa_inst(idx);
@@ -3104,52 +2914,23 @@ void fs_alg_reset_fs_inst(unsigned int idx)
  *     next framelength when calculating vsync diff.
  */
 void fs_alg_set_frame_record_st_data(
-	unsigned int idx, struct frame_record_st data[])
+	unsigned int idx, struct FrameRecord *recs_ordered[],
+	const struct predicted_fl_info_st *fl_info)
 {
 	unsigned int i = 0;
 
-
 	/* 1. set/update frame recoder data */
 	for (i = 0; i < RECORDER_DEPTH; ++i)
-		fs_inst[idx].recs[i] = data[i];
+		fs_inst[idx].p_frecs[i] = recs_ordered[i];
 
+	memcpy(&fs_inst[idx].fl_info, fl_info, sizeof(fs_inst[idx].fl_info));
 
-	/* 2. update predicted frame length by new frame recorder data */
-	calc_predicted_frame_length(idx);
+	fs_inst[idx].predicted_fl_lc[0] = fl_info->pr_curr_fl_lc;
+	fs_inst[idx].predicted_fl_us[0] = fl_info->pr_curr_fl_us;
+	fs_inst[idx].predicted_fl_lc[1] = fl_info->pr_next_fl_lc;
+	fs_inst[idx].predicted_fl_us[1] = fl_info->pr_next_fl_us;
 
-
-	/* 3. set frame measurement predicted frame length */
-	// frm_set_frame_measurement(
-	//	idx, fs_inst[idx].vsyncs,
-	//	fs_inst[idx].predicted_fl_us[0],
-	//	fs_inst[idx].predicted_fl_lc[0],
-	//	fs_inst[idx].predicted_fl_us[1],
-	//	fs_inst[idx].predicted_fl_lc[1]);
-
-
-#if defined(TRACE_FS_FREC_LOG)
-	LOG_MUST(
-		"[%u] ID:%#x(sidx:%u), tg:%u, frecs: (0:%u/%u), (1:%u/%u), (2:%u/%u), (3:%u/%u) (fl_lc/shut_lc), pred_fl(curr:%u(%u), next:%u(%u))(%u), margin_lc:%u, fdelay:%u\n",
-		idx,
-		fs_inst[idx].sensor_id,
-		fs_inst[idx].sensor_idx,
-		fs_inst[idx].tg,
-		*fs_inst[idx].recs[0].framelength_lc,
-		*fs_inst[idx].recs[0].shutter_lc,
-		*fs_inst[idx].recs[1].framelength_lc,
-		*fs_inst[idx].recs[1].shutter_lc,
-		*fs_inst[idx].recs[2].framelength_lc,
-		*fs_inst[idx].recs[2].shutter_lc,
-		*fs_inst[idx].recs[3].framelength_lc,
-		*fs_inst[idx].recs[3].shutter_lc,
-		fs_inst[idx].predicted_fl_us[0],
-		fs_inst[idx].predicted_fl_lc[0],
-		fs_inst[idx].predicted_fl_us[1],
-		fs_inst[idx].predicted_fl_lc[1],
-		fs_inst[idx].lineTimeInNs,
-		fs_inst[idx].margin_lc,
-		fs_inst[idx].fl_active_delay);
-#endif
+	// frec_dump_predicted_fl_info_st(idx, fl_info, __func__);
 }
 
 
@@ -3266,12 +3047,8 @@ unsigned int fs_alg_get_vsync_data(unsigned int solveIdxs[], unsigned int len)
 //#endif // REDUCE_FS_ALGO_LOG
 
 
-		set_valid_for_using_vsyncs_recs_data(solveIdxs[i], 1);
-
-
-		/* using frame monitor to get new vsync information */
-		/* and make frame recorder data be correct */
-		calibrate_recs_data_by_vsyncs(solveIdxs[i]);
+		frec_notify_update_timestamp_data(solveIdxs[i],
+			vsync_recs.recs[i].timestamps, VSYNCS_MAX);
 	}
 
 
@@ -3323,7 +3100,7 @@ static void do_fps_sync(unsigned int solveIdxs[], unsigned int len)
 			fs_inst[idx].margin_lc,
 			fs_inst[idx].min_fl_lc,
 			fs_inst[idx].readout_min_fl_lc,
-			*fs_inst[idx].recs[0].framelength_lc,
+			fs_inst[idx].p_frecs[0]->framelength_lc,
 			fs_inst[idx].lineTimeInNs);
 
 		if (ret < 0)
@@ -3466,10 +3243,7 @@ static void adjust_vsync_diff(unsigned int solveIdxs[], unsigned int len)
 		unsigned int *predicted_fl_us = fs_inst[idx].predicted_fl_us;
 		unsigned int vts_bias = 0, vts_bias_us = 0;
 
-		calc_predicted_frame_length(idx);
-
 		fs_inst[idx].vdiff += predicted_fl_us[0] + predicted_fl_us[1];
-
 
 		vts_bias = calc_vts_sync_bias(idx);
 		vts_bias_us =
@@ -3708,11 +3482,6 @@ unsigned int fs_alg_solve_frame_length(
 		unsigned int idx = solveIdxs[i];
 
 		framelength_lc[idx] = fs_inst[idx].output_fl_lc;
-
-
-		/* 5. set NOT valid for using vsyncs / recs data for */
-		/*    preventing calculation error */
-		// set_valid_for_using_vsyncs_recs_data(idx, 0);
 	}
 
 
@@ -3816,7 +3585,7 @@ static void do_fps_sync_sa(
 		fs_inst[idx].margin_lc,
 		fs_inst[idx].min_fl_lc,
 		fs_inst[idx].readout_min_fl_lc,
-		*fs_inst[idx].recs[0].framelength_lc,
+		fs_inst[idx].p_frecs[0]->framelength_lc,
 		fs_inst[idx].lineTimeInNs,
 		magic_num_buf[0],
 		min_fl_us_buf[0],

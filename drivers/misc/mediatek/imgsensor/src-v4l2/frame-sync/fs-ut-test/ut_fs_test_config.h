@@ -627,6 +627,76 @@ struct ut_fs_test_sensor_cfg sensor_cfg_14[] = {
 		.mode = NULL,
 	}
 };
+
+
+/* FL_act_delay : Normal(N+2) with Normal(N+2) */
+/* LBMF 3-exp-SE */
+struct ut_fs_test_sensor_cfg sensor_cfg_15[] = {
+	{
+		.sensor_name = "imx766",
+		.sensor_idx = 0,
+		.tg = 2,
+		.sensor = &imx766,
+		.mode = imx766_sensor_mode,
+		.mode_idx = 3,
+		//.first_vts_value = 100000,
+		.first_vts_value = 110000,
+	},
+
+	{
+		.sensor_name = "imx586",
+		.sensor_idx = 2,
+		.tg = 1,
+		.sensor = &imx586,
+		.mode = imx586_sensor_mode,
+		.mode_idx = 0,
+		//.first_vts_value = 110000,
+		.first_vts_value = 100000,
+	},
+
+	/* End */
+	{
+		.sensor_idx = 255,
+		.tg = 255,
+		.sensor = NULL,
+		.mode = NULL,
+	}
+};
+
+
+/* FL_act_delay : Normal(N+2) with Normal(N+2) */
+/* LBMF 2-exp-SE */
+struct ut_fs_test_sensor_cfg sensor_cfg_16[] = {
+	{
+		.sensor_name = "imx766",
+		.sensor_idx = 0,
+		.tg = 2,
+		.sensor = &imx766,
+		.mode = imx766_sensor_mode,
+		.mode_idx = 4,
+		//.first_vts_value = 100000,
+		.first_vts_value = 110000,
+	},
+
+	{
+		.sensor_name = "imx586",
+		.sensor_idx = 2,
+		.tg = 1,
+		.sensor = &imx586,
+		.mode = imx586_sensor_mode,
+		.mode_idx = 0,
+		//.first_vts_value = 110000,
+		.first_vts_value = 100000,
+	},
+
+	/* End */
+	{
+		.sensor_idx = 255,
+		.tg = 255,
+		.sensor = NULL,
+		.mode = NULL,
+	}
+};
 /******************************************************************************/
 
 
@@ -1223,6 +1293,29 @@ struct ut_fs_test_list test_list[] = {
 		.sensor_cfg = sensor_cfg_14,
 		.env_cfg = &env_cfg_05,
 		// .env_cfg = &env_cfg_01, // (NO lock exp / No lock flk)
+	},
+
+	{
+		/* 27 */
+		.test_name =
+			"LBMF 3-exp-SE N+2 / Normal N+2, per-frame CTRL (LOCK exp-10002us / NO lock flk), SA",
+		.auto_test_must_run = 1,
+		.alg_method = 2,
+		.sync_type = {1, 1},
+		.sensor_cfg = sensor_cfg_15,
+		// .env_cfg = &env_cfg_01,
+		.env_cfg = &env_cfg_05,
+	},
+
+	{
+		/* 28 */
+		.test_name =
+			"LBMF 2-exp-SE N+2 / Normal N+2, per-frame CTRL (LOCK exp-10002us / NO lock flk), SA",
+		.auto_test_must_run = 1,
+		.alg_method = 2,
+		.sync_type = {1, 1},
+		.sensor_cfg = sensor_cfg_16,
+		.env_cfg = &env_cfg_05,
 	},
 
 	/* NOT per-frame CTRL case (auto test not must run) */

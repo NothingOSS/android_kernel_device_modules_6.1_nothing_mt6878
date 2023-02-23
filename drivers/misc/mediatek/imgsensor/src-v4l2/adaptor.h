@@ -122,6 +122,9 @@ struct adaptor_ctx {
 	struct pinctrl_state *state[STATE_MAXCNT];
 	struct adaptor_hw_ops hw_ops[HW_ID_MAXCNT];
 
+	/* seninf info */
+	int seninf_idx;
+
 	/* sensor */
 	struct subdrv_entry *subdrv;
 	struct subdrv_ctx subctx;

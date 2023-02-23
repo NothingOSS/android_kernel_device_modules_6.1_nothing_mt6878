@@ -28,12 +28,12 @@
 
 #define ALGO_AUTO_LISTEN_VSYNC 0
 
-#if !defined(FS_UT)
+// #if !defined(FS_UT)
 #define TWO_STAGE_FS 1
 #if defined(TWO_STAGE_FS)
 #define QUERY_CCU_TS_AT_SOF 1
 #endif // TWO_STAGE_FS
-#endif // FS_UT
+// #endif // FS_UT
 
 
 /*
@@ -103,12 +103,29 @@
 #define FS_MUTEX_LOCK(p)   (pthread_mutex_lock(p))
 #define FS_MUTEX_UNLOCK(p) (pthread_mutex_unlock(p))
 #define FS_CALLOC(LEN, T)  (calloc((LEN), (T)))
+#define FS_DEV_ZALLOC(dev, T)    (calloc((1), (T)))
+#define FS_DEV_CALLOC(dev, n, T) (calloc((n), (T)))
 #define FS_FREE(buf)       (free(buf))
+
+#define __same_type(a, b)  (__builtin_types_compatible_p(typeof(a), typeof(b)))
+#define __must_be_array(a) (BUILD_BUG_ON_ZERO(__same_type((a), &(a)[0])))
+#define ARRAY_SIZE(arr)    (sizeof(arr) / sizeof((arr)[0]) + __must_be_array(arr))
+
+#define do_div(n, base)    ({\
+	unsigned int __base = (base);\
+	unsigned int __rem;\
+	__rem = ((unsigned long long)(n)) % __base;\
+	(n) = ((unsigned long long)(n)) / __base;\
+	__rem;\
+})
+
 #else
 #define FS_POPCOUNT(n)     (hweight32(n))
 #define FS_MUTEX_LOCK(p)   (mutex_lock(p))
 #define FS_MUTEX_UNLOCK(p) (mutex_unlock(p))
-#define FS_CALLOC(LEN, T)  (kcalloc((LEN), (T), (GFP_KERNEL)))
+#define FS_CALLOC(LEN, T)  (kcalloc((LEN), (T), (GFP_ATOMIC)))
+#define FS_DEV_ZALLOC(dev, T)    (devm_kzalloc((dev), (T), GFP_ATOMIC))
+#define FS_DEV_CALLOC(dev, n, T) (devm_kcalloc((dev), (n), (T), GFP_ATOMIC))
 #define FS_FREE(buf)       (kfree(buf))
 #endif // FS_UT
 
@@ -119,10 +136,6 @@
 
 /* using v4l2_ctrl_request_setup */
 #define USING_V4L2_CTRL_REQUEST_SETUP
-
-
-/* for (FrameSync + Sensor Driver + CCU) Single Cam IT using */
-// #define FS_SENSOR_CCU_IT
 
 
 /*
@@ -142,15 +155,5 @@
 #include <linux/device.h>  /* for device structure */
 #endif // FS_UT
 /******************************************************************************/
-
-
-/******************************************************************************/
-// frame_record_st (record shutter and framelength settings)
-/******************************************************************************/
-#define RECORDER_DEPTH 4
-struct frame_record_st {
-	unsigned int *framelength_lc;
-	unsigned int *shutter_lc;
-};
 
 #endif

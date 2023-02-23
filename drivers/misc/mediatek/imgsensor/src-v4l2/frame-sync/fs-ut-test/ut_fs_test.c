@@ -294,6 +294,44 @@ static unsigned int print_and_select_s_mode(const int idx)
 /******************************************************************************/
 // FrameSync UT basic / utility functions
 /******************************************************************************/
+int cb_func_ut_fsync_mgr_set_fl_lc(void *p_ctx, const unsigned int cmd_id,
+	const void *pf_info, const unsigned int fl_lc,
+	const unsigned int fl_lc_arr[], const unsigned int arr_len)
+{
+	struct fs_perframe_st pf_ctrl;
+
+	/* copy full structure info */
+	memcpy(&pf_ctrl, pf_info, sizeof(pf_ctrl));
+
+	/* overwrite frame length info */
+	pf_ctrl.out_fl_lc = fl_lc;
+	memcpy(pf_ctrl.hdr_exp.fl_lc, fl_lc_arr,
+		sizeof(unsigned int) * arr_len);
+
+	printf(GREEN
+		"[%s] p_ctx:%p, cmd_id:%u, &pf_info:%p, fl_lc:%u, fl_lc_arr:(%u/%u/%u/%u/%u), arr_len:%u\n"
+		NONE,
+		__func__,
+		p_ctx, cmd_id,
+		pf_info, fl_lc,
+		fl_lc_arr[0],
+		fl_lc_arr[1],
+		fl_lc_arr[2],
+		fl_lc_arr[3],
+		fl_lc_arr[4],
+		arr_len);
+	printf(LIGHT_GREEN
+		"[%s] call fs update shutter ...\n"
+		NONE,
+		__func__);
+
+	/* call for update info */
+	frameSync->fs_update_shutter(&pf_ctrl);
+
+	return 0;
+}
+
+
 static inline unsigned int ut_auto_choose_fs_alg_method(void)
 {
 	return (g_alg_method == 0)
@@ -477,190 +515,122 @@ static inline void ut_dump_ts_diff_table_results(void)
 /******************************************************************************/
 static void test_fs_register_sensor_behavior(void)
 {
-	/* Test fs_register_sensor -> fs_push_sensor */
+	struct SensorInfo *sensor_info;
+	const unsigned int already_used = 3;
+
+	sensor_info = calloc(SENSOR_MAX_NUM, sizeof(*sensor_info));
+
 	printf(
 		"/*************************************************************/\n"
 		);
-	printf("/* --- Test fs_register_sensor function behavior. --- */\n");
+	printf("/* --- Test fs register sensor function behavior. --- */\n");
 	printf("\n\n\n");
-	printf(">>> Scenario : already register 3 sensors. (sidx:0/2/4)\n");
+	printf(">>> Scenario : already registered %u sensors. (sidx:0/2/4)\n",
+		already_used);
+
+	sensor_info[0].sensor_id = main0.sensor->sensor_id;
+	sensor_info[0].sensor_idx = main0.sensor->sensor_idx;
+	sensor_info[0].seninf_idx = 2;
+	frameSync->fs_register_sensor(&sensor_info[0], REGISTER_METHOD);
+	frameSync->fs_unregister_sensor(&sensor_info[0], REGISTER_METHOD);
+
+	sensor_info[1].sensor_id = main1.sensor->sensor_id;
+	sensor_info[1].sensor_idx = main1.sensor->sensor_idx;
+	sensor_info[1].seninf_idx = 0;
+	frameSync->fs_register_sensor(&sensor_info[1], REGISTER_METHOD);
+	frameSync->fs_unregister_sensor(&sensor_info[1], REGISTER_METHOD);
+
+	sensor_info[2].sensor_id = main2.sensor->sensor_id;
+	sensor_info[2].sensor_idx = main2.sensor->sensor_idx;
+	sensor_info[3].seninf_idx = 4;
+	frameSync->fs_register_sensor(&sensor_info[2], REGISTER_METHOD);
+	frameSync->fs_unregister_sensor(&sensor_info[2], REGISTER_METHOD);
+
 	printf("\n\n\n");
 
-	frameSync->fs_streaming(1, main0.sensor);
-	printf("\n");
-	frameSync->fs_streaming(1, main1.sensor);
-	printf("\n");
-	frameSync->fs_streaming(1, main2.sensor);
-
-	printf("\n\n\n");
-
-
-	switch (REGISTER_METHOD) {
-	case BY_SENSOR_ID:
-	{
-		printf("/* [--- REGISTER_BY_SENSOR_ID ---] */\n\n");
-
-		struct fs_streaming_st *push_sensor;
-		struct fs_streaming_st clear_st = {0};
-
-		push_sensor = calloc(SENSOR_MAX_NUM,
-					sizeof(struct fs_streaming_st));
-
-
-		for (int run = 0; run < 2; ++run) {
-			printf(
-				">>>>>>>>>>>>>>>>>>>> Test Run %d <<<<<<<<<<<<<<<<<<<<\n"
-				, run+1);
-
-			printf(
-				"[--- Already register %d sensors, register more... ---]\n\n"
-				, run+3);
-
-			for (unsigned int i = 0; i < SENSOR_MAX_NUM; ++i) {
-				printf("\n=== Test register:%2d ===\n", i);
-				push_sensor[i].sensor_id = i + run * 10;
-				frameSync->fs_streaming(1, &push_sensor[i]);
-			}
-
-			printf(
-				"\n=== Test Run %d DONE, unregister ===\n",
-				run+1);
-
-			for (unsigned int i = 0; i < SENSOR_MAX_NUM; ++i) {
-				printf("\n=== Test unregister:%2d ===\n", i);
-				clear_st.sensor_id = i + run * 10;
-				frameSync->fs_streaming(0, &clear_st);
-			}
-			printf("\n\n");
-		}
-
+	/* !!! start testing here !!! */
+	for (int run = 0; run < 2; ++run) {
 		printf(
-			">>>>>>>>>>>>>>>>>>>> Test Run 3 (register EXSIST sensor) <<<<<<<<<<<<<<<<<<<<\n\n"
-			);
-		for (unsigned int i = 0; i < SENSOR_MAX_NUM; ++i) {
-			printf("\n=== Test register:%2d ===\n", i);
-			push_sensor[i].sensor_id = i;
-			frameSync->fs_streaming(1, &push_sensor[i]);
-		}
-
-		printf("\n=== Test Run 3 DONE, unregister ===\n");
-
-		for (unsigned int i = 0; i < SENSOR_MAX_NUM; ++i) {
-			printf("\n=== Test unregister:%2d ===\n", i);
-			clear_st.sensor_id = i;
-			frameSync->fs_streaming(0, &clear_st);
-		}
-
-
-		free(push_sensor);
-	}
-		break;
-
-	case BY_SENSOR_IDX:
-	{
-		printf("/* [--- REGISTER_BY_SENSOR_IDX ---] */\n\n");
-
-		struct fs_streaming_st *push_sensor;
-		struct fs_streaming_st clear_st = {0};
-
-		push_sensor = calloc(SENSOR_MAX_NUM,
-					sizeof(struct fs_streaming_st));
-
-
-		printf(">>>>>>>>>>>>>>>>>>>> Test Run 1 <<<<<<<<<<<<<<<<<<<<\n");
+			">>>>>>>>>>>>>>>>>>>> Test Run %d (chk first & second run behavior) <<<<<<<<<<<<<<<<<<<<\n",
+			run+1);
 		printf(
-			"[--- Already register 3 sensors, register idx 1 and 3... ---]\n\n"
-			);
+			"[--- Already registered/streaming ON %d sensors, register more... ---]\n\n",
+			already_used);
 
+		/* Test fs register sensor */
 		for (unsigned int i = 0; i < SENSOR_MAX_NUM; ++i) {
-			printf("\n=== Test register:%2d ===\n", i);
-			push_sensor[i].sensor_id = 0x999;
-			push_sensor[i].sensor_idx = i * 2 + 1;
-			frameSync->fs_streaming(1, &push_sensor[i]);
-		}
+			sensor_info[i].sensor_id = i * 2 + 1;
+			sensor_info[i].sensor_idx = i * 2 + 1;
+			sensor_info[i].seninf_idx = i * 2 + 1;
 
-		printf("\n=== Test Run 1 DONE, unregister ===\n");
+			printf("\n=== Test register more sensor:%2d - %#x(sidx:%u/inf:%u) ===\n",
+				already_used + i + 1,
+				sensor_info[i].sensor_id,
+				sensor_info[i].sensor_idx,
+				sensor_info[i].seninf_idx);
 
-		for (unsigned int i = 0; i < 2; ++i) {
-			printf("\n=== Test unregister:%2d ===\n", i);
-			clear_st.sensor_idx = i * 2 + 1;
-			frameSync->fs_streaming(0, &clear_st);
-		}
-
-		printf("\n\n\n");
-
-		printf(
-			">>>>>>>>>>>>>>>>>>>> Test Run 2 (register EXSIST sensor) <<<<<<<<<<<<<<<<<<<<\n\n"
-			);
-		for (unsigned int i = 0; i < 2; ++i) {
-			printf("\n=== Test register:%2d ===\n", i);
-			push_sensor[i].sensor_idx = 3;
-			frameSync->fs_streaming(1, &push_sensor[i]);
-		}
-
-		printf("\n=== Test Run 2 DONE, unregister ===\n");
-
-		for (unsigned int i = 0; i < 2; ++i) {
-			printf("\n=== Test unregister:%2d ===\n", i);
-			clear_st.sensor_idx = 3;
-			frameSync->fs_streaming(0, &clear_st);
+			frameSync->fs_register_sensor(
+				&sensor_info[i], REGISTER_METHOD);
+			frameSync->fs_unregister_sensor(
+				&sensor_info[i], REGISTER_METHOD);
 		}
 
 		printf("\n\n");
 	}
-		break;
 
-	default:
-		printf(
-			"\n=== Run in default case, not assign register method ===\n");
-		break;
-	}
+	free(sensor_info);
 
-
-	printf("\n\n");
-
-	printf("//--- Test fs_register_sensor function behavior END! ---//\n");
+	printf("//--- Test fs register sensor function behavior END! ---//\n");
 }
 
 
 static void test_streaming_behavior(void)
 {
-	/* Test streaming */
+	struct SensorInfo reg_info;
+	struct fs_streaming_st sensor_info = {0};
+
 	printf("\n");
 	printf(
 		"/*************************************************************/\n"
 		);
 	printf("//--- Test streaming behavior. ---//\n");
 
-	// Test stream off.
-	printf("\n--- Test stream off behavior. ---\n");
-
-	struct fs_streaming_st sensor_info;
-
+	/* first, register sensor */
 	sensor_info.sensor_id = 0x30D5;
 	sensor_info.sensor_idx = 2;
+	fs_setup_sensor_info_st_by_fs_streaming_st(&sensor_info, &reg_info);
+	frameSync->fs_register_sensor(&reg_info, REGISTER_METHOD);
+
+	/* Test streaming */
+	printf("\n--- Test streaming ON behavior. ---\n");
+	frameSync->fs_streaming(1, &sensor_info);
+	printf("\n--- Test streaming OFF behavior. ---\n");
 	frameSync->fs_streaming(0, &sensor_info);
-	// restore.
-	printf("\n--- Test stream off behavior.(restore) ---\n");
+	printf("\n--- Test streaming ON behavior. (using config data) ---\n");
 	frameSync->fs_streaming(1, main1.sensor);
 
-
+	/* Test set sync */
+	printf("\n--- Test set sync behavior. (ON & OFF) ---\n");
 	switch (REGISTER_METHOD) {
 	case BY_SENSOR_ID:
 		frameSync->fs_set_sync(sensor_info.sensor_id, 1);
+		frameSync->fs_set_sync(sensor_info.sensor_id, 0);
+		frameSync->fs_set_sync(sensor_info.sensor_id, 1);
 		break;
-
 	case BY_SENSOR_IDX:
-		frameSync->fs_set_sync(sensor_info.sensor_idx, 1);
-		break;
-
 	default:
+		frameSync->fs_set_sync(sensor_info.sensor_idx, 1);
+		frameSync->fs_set_sync(sensor_info.sensor_idx, 0);
 		frameSync->fs_set_sync(sensor_info.sensor_idx, 1);
 		break;
 	}
 
+	printf("\n--- Test streaming OFF w/ enable sync behavior. ---\n");
+	frameSync->fs_streaming(0, &sensor_info);
 
-	printf("//--- Test stream off behavior END! ---//\n");
+	frameSync->fs_unregister_sensor(&reg_info, REGISTER_METHOD);
+
+	printf("//--- Test streaming behavior END! ---//\n");
 }
 
 
@@ -682,51 +652,37 @@ static void test_syncFrame_behavior(void)
 
 	switch (REGISTER_METHOD) {
 	case BY_SENSOR_ID:
+	{
 		frameSync->fs_set_sync(0x481, 0);
 		printf("\n");
 		frameSync->fs_sync_frame(1);
 		printf("\n");
 		frameSync->fs_set_sync(0x481, 1);
 		frameSync->fs_set_sync(0x481, 0);
-		frameSync->fs_set_sync(0x30D5, 0);
+		frameSync->fs_set_sync(0x586, 0);
 		printf("\n");
 		frameSync->fs_sync_frame(1);
 		printf("\n");
 		frameSync->fs_set_sync(0x481, 1);
-		frameSync->fs_set_sync(0x30D5, 1);
-
+		frameSync->fs_set_sync(0x586, 1);
+	}
 		break;
-
 	case BY_SENSOR_IDX:
-		frameSync->fs_set_sync(4, 0);
-		printf("\n");
-		frameSync->fs_sync_frame(1);
-		printf("\n");
-		frameSync->fs_set_sync(4, 1);
-		frameSync->fs_set_sync(4, 0);
-		frameSync->fs_set_sync(2, 0);
-		printf("\n");
-		frameSync->fs_sync_frame(1);
-		printf("\n");
-		frameSync->fs_set_sync(4, 1);
-		frameSync->fs_set_sync(2, 1);
-
-		break;
-
 	default:
+	{
 		frameSync->fs_set_sync(4, 0);
 		printf("\n");
 		frameSync->fs_sync_frame(1);
 		printf("\n");
 		frameSync->fs_set_sync(4, 1);
 		frameSync->fs_set_sync(4, 0);
-		frameSync->fs_set_sync(2, 0);
+		frameSync->fs_set_sync(0, 0);
 		printf("\n");
 		frameSync->fs_sync_frame(1);
 		printf("\n");
 		frameSync->fs_set_sync(4, 1);
-		frameSync->fs_set_sync(2, 1);
-
+		frameSync->fs_set_sync(0, 1);
+	}
 		break;
 	}
 
@@ -780,9 +736,8 @@ static void *ut_test_data_racing(void *ut_fs_test_sensor_cfg)
 {
 	struct ut_fs_test_sensor_cfg *arg =
 		(struct ut_fs_test_sensor_cfg *) ut_fs_test_sensor_cfg;
-
+	struct SensorInfo reg_info;
 	unsigned int ret;
-
 
 	ret = FrameSyncInit(&frameSync);
 
@@ -790,8 +745,11 @@ static void *ut_test_data_racing(void *ut_fs_test_sensor_cfg)
 		frameSync,
 		arg->sensor_idx);
 
-	//frameSync->fs_streaming(arg->sensor_idx, 1, (arg->sensor));
-	frameSync->fs_streaming(1, (arg->sensor));
+	fs_setup_sensor_info_st_by_fs_streaming_st(arg->sensor, &reg_info);
+	frameSync->fs_register_sensor(&reg_info, REGISTER_METHOD);
+	frameSync->fs_unregister_sensor(&reg_info, REGISTER_METHOD);
+
+	frameSync->fs_streaming(1, arg->sensor);
 
 	switch (REGISTER_METHOD) {
 	case BY_SENSOR_ID:
@@ -801,7 +759,6 @@ static void *ut_test_data_racing(void *ut_fs_test_sensor_cfg)
 
 		ret = frameSync->fs_is_set_sync(arg->sensor->sensor_id);
 		break;
-
 	case BY_SENSOR_IDX:
 	default:
 		ret = frameSync->fs_is_set_sync(arg->sensor->sensor_idx);
@@ -811,7 +768,6 @@ static void *ut_test_data_racing(void *ut_fs_test_sensor_cfg)
 		ret = frameSync->fs_is_set_sync(arg->sensor->sensor_idx);
 		break;
 	}
-
 
 	pthread_exit(NULL);
 }
@@ -848,19 +804,18 @@ static void run_fs_data_racing_test(void)
  */
 static void *ut_set_fs_streaming_and_synced(void *ut_fs_test_sensor_cfg)
 {
-	unsigned int ret;
-	unsigned int alg_method = 0;
 	struct ut_fs_test_sensor_cfg *sensor_cfg =
 		(struct ut_fs_test_sensor_cfg *)ut_fs_test_sensor_cfg;
 	struct fs_streaming_st s_sensor = {0};
-
+	struct SensorInfo reg_info;
+	unsigned int alg_method = 0;
+	unsigned int ret;
 
 	ret = FrameSyncInit(&frameSync);
 	if (ret != 0) {
 		printf(RED ">>> frameSync Init failed !\n" NONE);
 		pthread_exit(NULL);
 	}
-
 	printf(GREEN
 		">>> frameSync addr = %p (sensor_idx=%2d)\n"
 		NONE,
@@ -868,19 +823,23 @@ static void *ut_set_fs_streaming_and_synced(void *ut_fs_test_sensor_cfg)
 		sensor_cfg->sensor_idx);
 
 
-	/* 0. setup ut streaming data */
+	/* setup ut streaming data */
 	s_sensor = *sensor_cfg->sensor;
+	/* --- overwrite some data */
 	s_sensor.sensor_idx = sensor_cfg->sensor_idx;
-	// s_sensor.tg = sensor_cfg->tg;
 	s_sensor.cammux_id = sensor_cfg->tg;
 	s_sensor.target_tg = CAMMUX_ID_INVALID;
+	s_sensor.func_ptr = &cb_func_ut_fsync_mgr_set_fl_lc;
 
+	/* call fs register sensor */
+	fs_setup_sensor_info_st_by_fs_streaming_st(&s_sensor, &reg_info);
+	frameSync->fs_register_sensor(&reg_info, REGISTER_METHOD);
 
-	/* 1. call fs_streaming() */
+	/* call fs streaming... */
 	frameSync->fs_streaming(1, &s_sensor);
 
 
-	/* 2. call fs_set_sync() */
+	/* call fs set_sync... */
 	/* setup FrameSync algorithm for running */
 	alg_method = ut_auto_choose_fs_alg_method();
 	frameSync->fs_set_using_sa_mode(alg_method);
@@ -894,24 +853,17 @@ static void *ut_set_fs_streaming_and_synced(void *ut_fs_test_sensor_cfg)
 		s_sensor.sensor_idx,
 		sensor_cfg->sync_type);
 
-
 	switch (REGISTER_METHOD) {
 	case BY_SENSOR_ID:
 		frameSync->fs_set_sync(s_sensor.sensor_id, sensor_cfg->sync_type);
 		// ret = frameSync->fs_is_set_sync(s_sensor.sensor_id);
 		break;
-
 	case BY_SENSOR_IDX:
-		frameSync->fs_set_sync(s_sensor.sensor_idx, sensor_cfg->sync_type);
-		// ret = frameSync->fs_is_set_sync(s_sensor.sensor_idx);
-		break;
-
 	default:
 		frameSync->fs_set_sync(s_sensor.sensor_idx, sensor_cfg->sync_type);
 		// ret = frameSync->fs_is_set_sync(s_sensor.sensor_idx);
 		break;
 	}
-
 
 	pthread_exit(NULL);
 }
@@ -1133,6 +1085,9 @@ static unsigned int ut_setup_next_pf_ctrl_trigger_timing(void)
 		trigger_timing);
 
 	for (i = 0; i < SENSOR_MAX_NUM; ++i) {
+		if (g_ut_vts[i].be_triggered_at_ts == 0)
+			continue;
+
 		printf(GREEN
 			"[UT setup_next_pf_ctrl_trigger_timing] g_ut_vts[%u]: ts(at:%u):(%u/%u/%u/%u), be_triggered:(at:%u, before:%u), should be trigger:%u [target_ts(at:%u):(%u/%u/%u/%u)]\n"
 			NONE,
@@ -1951,6 +1906,7 @@ static void ut_preset_fs_update_shutter(void)
 {
 	struct fs_perframe_st pf_ctrl = {0};
 	unsigned int ret = 0;
+	unsigned int mode_idx;
 	unsigned int hdr_mode = 0;
 	unsigned int ae_exp_cnt = 0;
 	unsigned int exp_i = 0;
@@ -1971,9 +1927,8 @@ static void ut_preset_fs_update_shutter(void)
 		NONE);
 
 	/* using CLI for choise */
-	input = print_and_select_s_mode(select);
-
-	set_pf_ctrl_s_mode(select, input, &pf_ctrl);
+	mode_idx = print_and_select_s_mode(select);
+	set_pf_ctrl_s_mode(select, mode_idx, &pf_ctrl);
 
 	printf(LIGHT_PURPLE
 		">>> (Input 1 integers) [%d] ID:%#x (sidx:%u), set \"flicker_en\" : "
@@ -2002,7 +1957,7 @@ static void ut_preset_fs_update_shutter(void)
 		US_TO_LC(input, pf_ctrl.lineTimeInNs);
 
 	hdr_mode = g_streaming_sensors_modes_list[select]
-			.mode_list->hdr_exp.mode_exp_cnt;
+			.mode_list[mode_idx].hdr_exp.mode_exp_cnt;
 
 	printf(GREEN
 		">>> HDR:exp[] => LE:[0] / ME:[1] / SE:[2] / SSE:[3] / SSSE:[4], mode_exp_cnt:%u\n"
@@ -2029,10 +1984,6 @@ static void ut_preset_fs_update_shutter(void)
 
 		pf_ctrl.hdr_exp.exp_lc[hdr_idx] =
 			US_TO_LC(input, pf_ctrl.lineTimeInNs);
-
-		/* TODO: fix hdr_exp hardcode variable */
-		pf_ctrl.hdr_exp.readout_len_lc = 2374*2;
-		pf_ctrl.hdr_exp.read_margin_lc = 10*2;
 	}
 
 	frameSync->fs_update_shutter(&pf_ctrl);
@@ -2052,8 +2003,10 @@ static void ut_set_fs_streaming(void)
 
 	printf("\n\n\n");
 
-	/* for fs_streaming(), streaming on sensors */
+	/* for fs streaming..., streaming on sensors */
 	for (i = 0; ; ++i) {
+		struct SensorInfo reg_info;
+
 		/* print sensor info which in ut_fs_streaming_info.h */
 		printf(LIGHT_CYAN ">>> fs_streaming() ...\n" NONE);
 		printf(GREEN
@@ -2098,6 +2051,10 @@ static void ut_set_fs_streaming(void)
 		/* fs_set_sync() will choose wrong sensor idx */
 		/* because "fs_streaming_st" memory address is the same */
 		g_streaming_sensors[i].sensor_idx = idx;
+
+		fs_setup_sensor_info_st_by_fs_streaming_st(
+			g_streaming_sensors[i].sensor, &reg_info);
+		frameSync->fs_register_sensor(&reg_info, REGISTER_METHOD);
 
 
 		/* set sensor tg */
@@ -2187,7 +2144,7 @@ static void ut_set_fs_streaming(void)
 		}
 		printf("\n\n\n");
 	}
-	/* END for fs_streaming(), streaming on sensors */
+	/* END for fs streaming..., streaming on sensors */
 }
 
 
@@ -2296,28 +2253,22 @@ ut_set_fs_update_auto_flicker_mode(struct fs_perframe_st *pf_ctrl)
 }
 
 
-static inline void
-ut_set_fs_update_min_framelength_lc(struct fs_perframe_st *pf_ctrl)
+static void ut_set_fs_update_min_fl_lc(const struct fs_perframe_st *pf_ctrl)
 {
 	switch (REGISTER_METHOD) {
 	case BY_SENSOR_ID:
-		frameSync->fs_update_min_framelength_lc(
-				pf_ctrl->sensor_id,
-				pf_ctrl->min_fl_lc);
+		frameSync->fs_update_min_fl_lc(
+			pf_ctrl->sensor_id, pf_ctrl->min_fl_lc,
+			pf_ctrl->min_fl_lc,
+			pf_ctrl->hdr_exp.fl_lc, FS_HDR_MAX);
 
 		break;
-
 	case BY_SENSOR_IDX:
-		frameSync->fs_update_min_framelength_lc(
-				pf_ctrl->sensor_idx,
-				pf_ctrl->min_fl_lc);
-
-		break;
-
 	default:
-		frameSync->fs_update_min_framelength_lc(
-				pf_ctrl->sensor_idx,
-				pf_ctrl->min_fl_lc);
+		frameSync->fs_update_min_fl_lc(
+			pf_ctrl->sensor_idx, pf_ctrl->min_fl_lc,
+			pf_ctrl->min_fl_lc,
+			pf_ctrl->hdr_exp.fl_lc, FS_HDR_MAX);
 
 		break;
 	}
@@ -2568,6 +2519,64 @@ static int ut_fs_ctrl_request_setup_basic_pf_ctrl_data(
 }
 
 
+static void ut_notify_vsync(void)
+{
+	int user_select_idx = 2147483647, /*input = 0,*/ ret = 0;
+	unsigned int i = 0;
+
+
+	for (i = 0; ; ++i) {
+		if (g_auto_run && g_streaming_sensors[i].sensor == NULL)
+			break;
+
+		if (g_auto_run && !g_ut_vts[i].should_trigger)
+			continue;
+
+		struct fs_perframe_st pf_ctrl = {0};
+
+
+		/* 0. setup basic sensor info */
+		/*    => setup some perframe_st data for below ctrl using */
+		ret = ut_fs_ctrl_request_setup_basic_pf_ctrl_data(
+			i, &user_select_idx, &pf_ctrl);
+
+		if (ret == 1)
+			continue;
+		else if (ret == -1)
+			break;
+
+
+		printf("\n\n\n");
+		printf(GREEN
+			"[UT notify vsync] i:%u, sensor_id:%#x, sensor_idx:%u\n"
+			NONE,
+			i, pf_ctrl.sensor_id, pf_ctrl.sensor_idx);
+
+
+		/* UT test: update debug info --- sof cnt */
+		switch (REGISTER_METHOD) {
+		case BY_SENSOR_ID:
+			frameSync->fs_notify_vsync(
+				pf_ctrl.sensor_id, g_counter);
+			break;
+
+		case BY_SENSOR_IDX:
+			frameSync->fs_notify_vsync(
+				pf_ctrl.sensor_idx, g_counter);
+			break;
+
+		default:
+			printf(
+				"\n=== Run in defalut case, not assign register method ===\n");
+			break;
+		}
+
+		if (!g_auto_run)
+			printf("\n\n");
+	}
+}
+
+
 static void ut_fs_ctrl_request_setup_anti_flicker(
 	const int user_select_idx,
 	struct fs_perframe_st *p_pf_ctrl)
@@ -2606,17 +2615,26 @@ static void ut_fs_ctrl_request_setup_max_frame_rate(
 		p_pf_ctrl->min_fl_lc =
 			US_TO_LC(input, p_pf_ctrl->lineTimeInNs);
 
+		/* default using ctx->subctx.frame_length => sensor current fl_lc */
+		p_pf_ctrl->out_fl_lc = p_pf_ctrl->min_fl_lc;
+
 	} else {
 		/* TODO: change max frame rate => is it well for checking at this API */
 		if ((g_n_1_status[idx] == 1) || (g_n_1_status[idx] == 2)) {
 			p_pf_ctrl->min_fl_lc =
 				US_TO_LC(g_n_1_min_fl_us[idx],
 					p_pf_ctrl->lineTimeInNs);
+
+			/* default using ctx->subctx.frame_length => sensor current fl_lc */
+			p_pf_ctrl->out_fl_lc = p_pf_ctrl->min_fl_lc;
 		} else {
 			p_pf_ctrl->min_fl_lc =
 				g_streaming_sensors_modes_list[idx]
 					.mode_list[g_sensor_mode[idx]]
 					.min_fl_lc;
+
+			/* default using ctx->subctx.frame_length => sensor current fl_lc */
+			p_pf_ctrl->out_fl_lc = p_pf_ctrl->min_fl_lc;
 		}
 	}
 }
@@ -2693,10 +2711,6 @@ static void ut_fs_ctrl_request_setup_do_ae_ctrl(
 				US_TO_LC(
 					g_hdr_shutter[hdr_idx],
 					p_pf_ctrl->lineTimeInNs);
-
-			/* TODO: readout len & readout margin are hardcode values */
-			p_pf_ctrl->hdr_exp.readout_len_lc = 2374*2;
-			p_pf_ctrl->hdr_exp.read_margin_lc = 10*2;
 		}
 		// printf("hdr_idx:%u, exp:%u\n", hdr_idx, p_pf_ctrl->hdr_exp.exp_lc[hdr_idx]);
 	}
@@ -2722,7 +2736,6 @@ static void ut_fs_set_debug_info_sof_cnt(struct fs_perframe_st *p_pf_ctrl)
 			"\n=== Run in defalut case, not assign register method ===\n");
 		break;
 	}
-
 }
 
 
@@ -2873,7 +2886,7 @@ static void ut_ctrl_request_setup(void)
 		ut_set_fs_update_auto_flicker_mode(&pf_ctrl);
 
 		/* N-1. call fs_update_min_framelength_lc() */
-		ut_set_fs_update_min_framelength_lc(&pf_ctrl);
+		ut_set_fs_update_min_fl_lc(&pf_ctrl);
 #endif // USING_PRIVATE_CTRL_ORDER
 
 
@@ -3088,6 +3101,7 @@ RUN_PF_CTRL_AUTO_NORMAL:
 
 		/* 4. generate vsync data */
 		ut_generate_vsync_data_pf_auto(&g_v_rec);
+		ut_notify_vsync();
 
 
 		/* 5. check sync result */
@@ -3251,11 +3265,11 @@ static void test_frame_sync_proc(void)
 	ut_select_frame_sync_algorithm();
 
 
-	/* 1. fs_streaming() */
+	/* 1. fs streaming... */
 	ut_set_fs_streaming();
 
 
-	/* 2. fs_set_sync() */
+	/* 2. fs set_sync... */
 	ut_set_fs_set_sync();
 
 
@@ -3396,7 +3410,7 @@ static void exe_fs_alg_stability_test_item(unsigned int test_id)
 
 	g_query_tg_cnt = 0;
 
-	/* 1. call fs_streaming() with fs_set_sync(), by multi-thread */
+	/* 1. call fs streaming... with fs set_sync..., by multi-thread */
 	p_sensor_cfg = test_list[test_id].sensor_cfg;
 
 	for (i = 0; p_sensor_cfg[i].sensor != NULL; ++i) {
@@ -3462,6 +3476,7 @@ static void exe_fs_alg_stability_test_item(unsigned int test_id)
 
 		/* 2.2 call frm API set vsync data */
 		frm_debug_set_last_vsync_data(&g_v_rec);
+		ut_notify_vsync();
 
 
 		/* 2.3 pf ctrl auto run */
@@ -3591,11 +3606,11 @@ static void test_hw_sensor_sync_proc(void)
 	reset_ut_test_variables();
 
 
-	/* 1. fs_streaming() */
+	/* 1. fs streaming... */
 	ut_set_fs_streaming();
 
 
-	/* 2. fs_set_sync() */
+	/* 2. fs set_sync... */
 	ut_set_fs_set_sync();
 
 

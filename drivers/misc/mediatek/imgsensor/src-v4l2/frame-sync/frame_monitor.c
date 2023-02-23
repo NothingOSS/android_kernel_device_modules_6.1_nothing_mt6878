@@ -1025,6 +1025,27 @@ unsigned int frm_convert_cammux_id_to_ccu_tg_id(unsigned int cammux_id)
 }
 
 
+unsigned int frm_chk_and_get_tg_value(
+	const unsigned int cammux_id, const unsigned int target_tg)
+{
+	unsigned int tg = CAMMUX_ID_INVALID;
+
+	if ((cammux_id != 0) && (cammux_id != CAMMUX_ID_INVALID))
+		tg = frm_convert_cammux_id_to_ccu_tg_id(cammux_id);
+
+	if ((target_tg != 0) && (target_tg != CAMMUX_ID_INVALID))
+		tg = target_tg;
+
+	LOG_MUST(
+		"get cammux_id:%u, target_tg:%u, => ret tg:%u\n",
+		cammux_id,
+		target_tg,
+		tg);
+
+	return tg;
+}
+
+
 void frm_update_tg(unsigned int idx, unsigned int tg)
 {
 	frm_inst.f_info[idx].tg = tg;

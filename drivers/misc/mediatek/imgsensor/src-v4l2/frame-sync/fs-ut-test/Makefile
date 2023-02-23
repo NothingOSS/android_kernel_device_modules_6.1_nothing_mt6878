@@ -36,6 +36,7 @@ SRCS = ut_fs_test.c \
 	   ../frame_sync_algo.c \
 	   ../frame_monitor.c \
 	   ../frame_sync_util.c \
+	   ../sensor_recorder.c \
 	   ../hw_sensor_sync_algo.c \
 	   ../custom/custom_hw_sync.c \
 	   ut_fs_tsrec.c \
