@@ -21,6 +21,7 @@
 #include <linux/platform_device.h>
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
+#include <linux/list_sort.h>
 #include <linux/vmalloc.h>
 
 #include <public/trusted_mem_api.h>
@@ -48,13 +49,19 @@
 #define HYP_PMM_ASSIGN_BUFFER_V2 (0XBB00FFAB)
 #define HYP_PMM_UNASSIGN_BUFFER_V2 (0XBB00FFAC)
 
-static gfp_t order_flags[] = { HIGH_ORDER_GFP, MID_ORDER_GFP, LOW_ORDER_GFP };
+// static gfp_t order_flags[] = { HIGH_ORDER_GFP, MID_ORDER_GFP, LOW_ORDER_GFP };
+static gfp_t order_flags[] = { HIGH_ORDER_GFP, MID_ORDER_GFP };
 
-int orders[3] = { 9, 4, 0 };
+// int orders[3] = { 9, 4, 0 };
+int orders[2] = { 9, 4 };
 #define NUM_ORDERS ARRAY_SIZE(orders)
 struct dmabuf_page_pool *pools[NUM_ORDERS];
 
+#if IS_ENABLED(CONFIG_MTK_PROT_MEM_SSHEAP_V2)
 int tmem_api_ver = 2;
+#else
+int tmem_api_ver = 1;
+#endif
 
 enum sec_heap_region_type {
 	/* MM heap */
@@ -391,7 +398,7 @@ static int region_base_free(struct secure_heap_region *sec_heap,
 static int page_base_free_v2(struct secure_heap_page *sec_heap,
 			     struct mtk_sec_heap_buffer *buffer)
 {
-	struct page *page, *pmm_page, *tmp_page;
+	struct page *pmm_page, *tmp_page;
 	struct list_head *pmm_msg_list;
 	struct sg_table *table = NULL;
 	struct scatterlist *sg = NULL;
@@ -404,12 +411,12 @@ static int page_base_free_v2(struct secure_heap_page *sec_heap,
 		return -EINVAL;
 	}
 
-	// TODO need to clean pmm_page to zero
 	/* free the pmm_msg_pages */
 	pmm_page = buffer->ssheap->pmm_page;
 	pmm_msg_list = &buffer->ssheap->pmm_msg_list;
 	list_for_each_entry_safe(pmm_page, tmp_page, pmm_msg_list, lru) {
-		dmabuf_page_pool_free(pools[2], pmm_page);
+		memset(page_address(pmm_page), 0, page_size(pmm_page));
+		__free_pages(pmm_page, get_order(PAGE_SIZE));
 	}
 	kfree(buffer->ssheap);
 
@@ -418,7 +425,7 @@ static int page_base_free_v2(struct secure_heap_page *sec_heap,
 
 	table = &buffer->sg_table;
 	for_each_sgtable_sg(table, sg, i) {
-		page = sg_page(sg);
+		struct page *page = sg_page(sg);
 		for (j = 0; j < NUM_ORDERS; j++) {
 			if (compound_order(page) == orders[j])
 				break;
@@ -668,6 +675,8 @@ static int fill_sec_buffer_info(struct mtk_sec_heap_buffer *buf,
 
 static int check_map_alignment(struct sg_table *table)
 {
+#if IS_ENABLED(CONFIG_MTK_PROT_MEM_SSHEAP_V2)
+#else
 	int i;
 	struct scatterlist *sgl;
 
@@ -676,14 +685,17 @@ static int check_map_alignment(struct sg_table *table)
 		phys_addr_t s_phys = sg_phys(sgl);
 
 		if (!IS_ALIGNED(len, SZ_1M)) {
-			pr_err("%s err, size(0x%x) is not 1MB alignment\n", __func__, len);
+			pr_err("%s err, size(0x%x) is not 1MB alignment\n",
+			       __func__, len);
 			return -EINVAL;
 		}
 		if (!IS_ALIGNED(s_phys, SZ_1M)) {
-			pr_err("%s err, s_phys(%pa) is not 1MB alignment\n", __func__, &s_phys);
+			pr_err("%s err, s_phys(%pa) is not 1MB alignment\n",
+			       __func__, &s_phys);
 			return -EINVAL;
 		}
 	}
+#endif
 	return 0;
 }
 
@@ -747,6 +759,13 @@ mtk_sec_heap_page_map_dma_buf(struct dma_buf_attachment *attachment,
 		return table;
 	}
 
+	ret = check_map_alignment(table);
+	if (ret) {
+		pr_err("%s err, size or PA is not 1MB alignment, dev:%s\n",
+		       __func__, dev_name(attachment->dev));
+		mutex_unlock(&buffer->map_lock);
+		return ERR_PTR(ret);
+	}
 	ret = dma_map_sgtable(attachment->dev, table, direction, attr);
 	if (ret) {
 		pr_err("%s err, iommu-dev(%s) dma_map_sgtable failed\n",
@@ -1014,9 +1033,8 @@ static int mtk_sec_heap_dma_buf_get_flags(struct dma_buf *dmabuf,
 	return 0;
 }
 
-static int
-system_heap_dma_buf_begin_cpu_access(struct dma_buf *dmabuf,
-				     enum dma_data_direction direction)
+static int mtk_sec_heap_begin_cpu_access(struct dma_buf *dmabuf,
+					 enum dma_data_direction direction)
 {
 	struct mtk_sec_heap_buffer *buffer = dmabuf->priv;
 	struct dma_heap_attachment *a;
@@ -1038,8 +1056,8 @@ system_heap_dma_buf_begin_cpu_access(struct dma_buf *dmabuf,
 	return 0;
 }
 
-static int system_heap_dma_buf_end_cpu_access(struct dma_buf *dmabuf,
-					      enum dma_data_direction direction)
+static int mtk_sec_heap_end_cpu_access(struct dma_buf *dmabuf,
+				       enum dma_data_direction direction)
 {
 	struct mtk_sec_heap_buffer *buffer = dmabuf->priv;
 	struct dma_heap_attachment *a;
@@ -1080,8 +1098,8 @@ static const struct dma_buf_ops sec_buf_page_ops = {
 	.detach = mtk_sec_heap_detach,
 	.map_dma_buf = mtk_sec_heap_page_map_dma_buf,
 	.unmap_dma_buf = mtk_sec_heap_unmap_dma_buf,
-	.begin_cpu_access = system_heap_dma_buf_begin_cpu_access,
-	.end_cpu_access = system_heap_dma_buf_end_cpu_access,
+	.begin_cpu_access = mtk_sec_heap_begin_cpu_access,
+	.end_cpu_access = mtk_sec_heap_end_cpu_access,
 	.release = tmem_page_free,
 	.get_flags = mtk_sec_heap_dma_buf_get_flags,
 };
@@ -1191,7 +1209,7 @@ static struct page *alloc_largest_available(unsigned long size,
 	int i;
 
 	for (i = 0; i < NUM_ORDERS; i++) {
-		if (size < (PAGE_SIZE << orders[i]))
+		if (size < (PAGE_SIZE << orders[i]) && i < NUM_ORDERS - 1)
 			continue;
 		if (max_order < orders[i])
 			continue;
@@ -1214,7 +1232,7 @@ static int mtee_common_buffer_v2(struct ssheap_buf_info *ssheap, u8 pmm_attr,
 	int count = 0;
 
 	if (!ssheap || !ssheap->pmm_page) {
-		pr_err("heap info not ready!\n");
+		pr_err("ssheap info not ready!\n");
 		return -EINVAL;
 	}
 
@@ -1290,7 +1308,7 @@ struct page *alloc_pmm_msg_v2(struct sg_table *table,
 	pr_debug("%s: size_remaining=%#lx\n", __func__, size_remaining);
 
 	while (size_remaining > 0) {
-		pmm_page = alloc_largest_available(size_remaining, max_order);
+		pmm_page = alloc_pages(GFP_KERNEL | __GFP_ZERO, max_order);
 		if (!pmm_page)
 			goto free_buffer;
 		list_add_tail(&pmm_page->lru, pmm_msg_list);
@@ -1318,7 +1336,6 @@ struct page *alloc_pmm_msg_v2(struct sg_table *table,
 free_buffer:
 	list_for_each_entry_safe(pmm_page, tmp_page, pmm_msg_list, lru)
 		__free_pages(pmm_page, compound_order(pmm_page));
-
 	return NULL;
 }
 
@@ -1337,6 +1354,22 @@ struct ssheap_buf_info *create_ssheap_by_sgtable(struct sg_table *table,
 	return buf;
 }
 
+static int pa_cmp(void *priv, const struct list_head *a,
+		  const struct list_head *b)
+{
+	struct page *ia, *ib;
+
+	ia = list_entry(a, struct page, lru);
+	ib = list_entry(b, struct page, lru);
+
+	if (page_to_phys(ia) > page_to_phys(ib))
+		return 1;
+	if (page_to_phys(ia) < page_to_phys(ib))
+		return -1;
+
+	return 0;
+}
+
 static int page_base_alloc_v2(struct secure_heap_page *sec_heap,
 			      struct mtk_sec_heap_buffer *buffer,
 			      unsigned long req_sz)
@@ -1344,7 +1377,7 @@ static int page_base_alloc_v2(struct secure_heap_page *sec_heap,
 	// check input parameters
 	// if (!is_page_based_heap_type(sec_heap->tmem_type))
 	//	return -EINVAL;
-	unsigned long size_remaining = req_sz;
+	unsigned long size_remaining = 0;
 	unsigned int max_order = orders[0];
 	struct sg_table *table;
 	struct scatterlist *sg;
@@ -1352,19 +1385,25 @@ static int page_base_alloc_v2(struct secure_heap_page *sec_heap,
 	struct page *page, *tmp_page, *pmm_page;
 	int i = 0, smc_ret = 0;
 
-	pr_debug("%s: size_remaining=%#lx\n", __func__, size_remaining);
+	size_remaining = ROUNDUP(req_sz, SZ_64K);
+	pr_debug("%s: req_sz=%#lx, size_remaining=%#lx\n", __func__, req_sz,
+		 size_remaining);
 	// allocage pages by dma-poll
 	INIT_LIST_HEAD(&pages);
 
 	while (size_remaining > 0) {
 		page = alloc_largest_available(size_remaining, max_order);
-		if (!page)
+		if (!page) {
+			pr_err("%s: Failed to alloc pages!!\n", __func__);
 			goto free_pages;
+		}
 		list_add_tail(&page->lru, &pages);
 		size_remaining -= page_size(page);
 		max_order = compound_order(page);
 		i++;
 	}
+	// sort pages by pa
+	list_sort(NULL, &pages, pa_cmp);
 
 	table = &buffer->sg_table;
 	if (sg_alloc_table(table, i, GFP_KERNEL)) {
@@ -1396,7 +1435,8 @@ static int page_base_alloc_v2(struct secure_heap_page *sec_heap,
 		goto free_sg_table;
 	}
 
-	pmm_page = alloc_pmm_msg_v2(table, buffer->ssheap, orders[2]);
+	pmm_page =
+		alloc_pmm_msg_v2(table, buffer->ssheap, get_order(PAGE_SIZE));
 	if (!pmm_page) {
 		pr_err("%s: alloc_pmm_msg_v2 failed\n", __func__);
 		kfree(buffer->ssheap);
@@ -1561,11 +1601,13 @@ static struct dma_buf *tmem_page_allocate(struct dma_heap *heap,
 		ret = page_base_alloc(sec_heap, buffer, len);
 
 	if (ret) {
-		pr_err("%s: page_base_alloc ret = %d\n", __func__, ret);
+		pr_err("%s: page_base_alloc%s ret = %d\n", __func__,
+		       tmem_api_ver == 2 ? "_v2" : "", ret);
 		goto free_buffer;
 	}
 
-	trusted_mem_page_based_alloc(sec_heap->tmem_type, &buffer->sg_table,
+	// TODO: need fix cause didn't call free in free
+	ret = trusted_mem_page_based_alloc(sec_heap->tmem_type, &buffer->sg_table,
 				     &sec_handle);
 	/* store seucre handle */
 	buffer->sec_handle = sec_handle;
