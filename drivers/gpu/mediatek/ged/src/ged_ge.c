@@ -208,6 +208,8 @@ static int valid_parameters(struct GEEntry *entry, int region_id,
 
 		dump_ge_regions(entry);
 
+		if (region_id >= entry->region_num)
+			return GED_ERROR_VENDOR_NOT_SUPPORT;
 		return -EFAULT;
 	}
 	return 0;
@@ -232,10 +234,9 @@ int ged_ge_get(int ge_fd, int region_id, int u32_offset,
 
 	entry = file->private_data;
 
-	if (valid_parameters(entry, region_id, u32_offset, u32_size)) {
-		err = -EFAULT;
+	err = valid_parameters(entry, region_id, u32_offset, u32_size);
+	if (err)
 		goto err_parameter;
-	}
 
 	spin_lock_irqsave(&ge_raf_lock, flags);
 	pregion_data = entry->region_data[region_id];
@@ -274,10 +275,9 @@ int ged_ge_set(int ge_fd, int region_id, int u32_offset,
 
 	entry = file->private_data;
 
-	if (valid_parameters(entry, region_id, u32_offset, u32_size)) {
-		err = -EFAULT;
+	err = valid_parameters(entry, region_id, u32_offset, u32_size);
+	if (err)
 		goto err_parameter;
-	}
 
 	spin_lock_irqsave(&ge_raf_lock, flags);
 	while (!entry->region_data[region_id]) {
