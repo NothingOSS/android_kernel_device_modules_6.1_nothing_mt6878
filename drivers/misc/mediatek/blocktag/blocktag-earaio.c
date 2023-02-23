@@ -43,7 +43,7 @@ struct eara_iostat {
 static DEFINE_MUTEX(eara_ioctl_lock);
 
 /* mini context for major embedded storage only */
-#define MICTX_PROC_CMD_BUF_SIZE (1)
+#define MICTX_PROC_CMD_BUF_SIZE (16)
 #define PWD_WIDTH_NS 250000000 /* 250ms */
 static struct mtk_btag_earaio_control earaio_ctrl;
 static struct miscdevice earaio_obj;
@@ -200,30 +200,40 @@ static ssize_t mtk_btag_earaio_ctrl_sub_write(struct file *file,
 	int ret;
 	char cmd[MICTX_PROC_CMD_BUF_SIZE] = {0};
 
-	if (count == 0)
+	if (!count)
 		goto err;
-	else if (count > MICTX_PROC_CMD_BUF_SIZE)
-		count = MICTX_PROC_CMD_BUF_SIZE;
+
+	if (count > MICTX_PROC_CMD_BUF_SIZE) {
+		pr_info("proc_write: command too long\n");
+		goto err;
+	}
 
 	ret = copy_from_user(cmd, ubuf, count);
-
 	if (ret < 0)
 		goto err;
 
-	if (cmd[0] == '1') {
-		earaio_ctrl.enabled = true;
-		pr_info("EARA-IO QoS Enable\n");
-	} else if (cmd[0] == '0') {
+	/* remove line feed */
+	cmd[count - 1] = 0;
+
+	if (!strcmp(cmd, "0")) {
 		mtk_btag_earaio_boost(false);
 		earaio_ctrl.enabled = false;
 		pr_info("EARA-IO QoS Disable\n");
+	} else if (!strcmp(cmd, "1")) {
+		earaio_ctrl.enabled = true;
+		pr_info("EARA-IO QoS Enable\n");
+	} else if (!strcmp(cmd, "2")) {
+		mtk_btag_mictx_set_full_logging(earaio_ctrl.mictx_id, false);
+		pr_info("EARA-IO Full Logging Disable\n");
+	} else if (!strcmp(cmd, "3")) {
+		mtk_btag_mictx_set_full_logging(earaio_ctrl.mictx_id, true);
+		pr_info("EARA-IO Full Logging Enable\n");
 	} else {
-		pr_info("proc_write: invalid arg 0x%x\n", cmd[0]);
+		pr_info("proc_write: invalid cmd %s\n", cmd);
 		goto err;
 	}
 
 	return count;
-
 err:
 	return -1;
 }
@@ -240,10 +250,16 @@ static int mtk_btag_earaio_ctrl_sub_show(struct seq_file *s, void *data)
 	seq_puts(s, "<MTK EARA-IO Control Unit>\n");
 	seq_printf(s, "Monitor Storage Type: %s\n", name);
 	seq_puts(s, "Status:\n");
-	seq_printf(s, "  EARA-IO Control Enable: %d\n", earaio_ctrl.enabled);
+	seq_printf(s, "  EARA-IO Control     : %s\n",
+		   earaio_ctrl.enabled ? "Enable" : "Disable");
+	seq_printf(s, "  EARA-IO Full Loging : %s\n",
+		   mtk_btag_mictx_full_logging(earaio_ctrl.mictx_id) ?
+		   "Enable" : "Disable");
 	seq_puts(s, "Commands: echo n > earaio_ctrl, n presents\n");
-	seq_puts(s, "  Enable EARA-IO QoS  : 1\n");
-	seq_puts(s, "  Disable EARA-IO QoS : 0\n");
+	seq_puts(s, "  Disable EARA-IO QoS  : 0\n");
+	seq_puts(s, "  Enable EARA-IO QoS   : 1\n");
+	seq_puts(s, "  Disable Full Logging : 2\n");
+	seq_puts(s, "  Enable Full Logging  : 3\n");
 	return 0;
 }
 
@@ -415,6 +431,9 @@ void mtk_btag_earaio_init_mictx(
 
 	/* Enable mictx by default if EARA-IO is enabled*/
 	mtk_btag_mictx_enable(&earaio_ctrl.mictx_id, 1);
+
+	/* Disable Full Logging for earaio by default */
+	mtk_btag_mictx_set_full_logging(earaio_ctrl.mictx_id, false);
 
 	mtk_btag_eara_ioctl_init(btag_proc_root);
 	proc_entry = proc_create("earaio_ctrl", S_IFREG | 0444,

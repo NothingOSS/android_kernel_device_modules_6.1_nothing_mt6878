@@ -176,6 +176,7 @@ struct mtk_btag_mictx {
 	} tags[BTAG_MAX_TAGS];
 	__u16 queue_nr;
 	__s8 id;
+	bool full_logging;
 };
 
 struct mtk_btag_earaio_control {
@@ -237,6 +238,7 @@ struct mtk_btag_ringtrace {
 struct mtk_btag_vops {
 	size_t  (*seq_show)(char **buff, unsigned long *size,
 			    struct seq_file *seq);
+	ssize_t  (*sub_write)(const char __user *ubuf, size_t count);
 	bool	boot_device;
 	bool	earaio_enabled;
 };
@@ -246,6 +248,7 @@ struct mtk_blocktag {
 	struct list_head list;
 	char name[BTAG_NAME_LEN];
 	enum mtk_btag_storage_type storage_type;
+	bool ctx_enable;
 	struct mtk_btag_ringtrace rt;
 
 	struct context_t {
@@ -302,6 +305,9 @@ void mtk_btag_mictx_complete_command(struct mtk_blocktag *btag, __u64 end_t,
 int mtk_btag_mictx_get_data(
 	struct mtk_btag_mictx_id mictx_id,
 	struct mtk_btag_mictx_iostat_struct *iostat);
+void mtk_btag_mictx_set_full_logging(struct mtk_btag_mictx_id mictx_id,
+				     bool enable);
+int mtk_btag_mictx_full_logging(struct mtk_btag_mictx_id mictx_id);
 void mtk_btag_mictx_free_all(struct mtk_blocktag *btag);
 void mtk_btag_mictx_enable(struct mtk_btag_mictx_id *mictx_id, bool enable);
 void mtk_btag_mictx_init(struct mtk_blocktag *btag);
@@ -338,6 +344,8 @@ void mtk_btag_seq_debug_stop(struct seq_file *seq, void *v);
 #define mtk_btag_mictx_send_command(...)
 #define mtk_btag_mictx_complete_command(...)
 #define mtk_btag_mictx_get_data(...)
+#define mtk_btag_mictx_set_full_logging(...)
+#define mtk_btag_mictx_full_logging(...)
 #define mtk_btag_mictx_free_all(...)
 #define mtk_btag_mictx_enable(...)
 #define mtk_btag_mictx_init(...)

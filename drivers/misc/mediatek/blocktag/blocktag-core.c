@@ -565,10 +565,14 @@ static ssize_t mtk_btag_sub_write(struct file *file, const char __user *ubuf,
 	struct seq_file *seq = file->private_data;
 	struct mtk_blocktag *btag;
 
-	if (seq && seq->private) {
-		btag = seq->private;
-		mtk_btag_clear_trace(&btag->rt);
-	}
+	if (!seq || !seq->private)
+		return -1;
+
+	btag = seq->private;
+	if (btag->vops->sub_write)
+		return btag->vops->sub_write(ubuf, count);
+	mtk_btag_clear_trace(&btag->rt);
+
 	return count;
 }
 

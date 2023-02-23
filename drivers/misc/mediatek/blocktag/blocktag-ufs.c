@@ -188,6 +188,7 @@ static void btag_ufs_pidlog_insert(struct mtk_btag_proc_pidlogger *pidlog,
 			pid = -pid;
 		}
 
+		/* only calculate the top len and return */
 		if (!pidlog)
 			continue;
 
@@ -222,6 +223,11 @@ void mtk_btag_ufs_send_command(__u16 tid, struct scsi_cmnd *cmd)
 	if (!cmd)
 		return;
 
+	if (!ufs_mtk_btag->ctx_enable) {
+		btag_ufs_pidlog_insert(NULL, cmd, &top_len);
+		goto mictx;
+	}
+
 	ctx = btag_ufs_tid_to_ctx(tid);
 	if (!ctx)
 		return;
@@ -254,6 +260,7 @@ rcu_unlock:
 	if (window_t > BTAG_UFS_TRACE_LATENCY)
 		queue_work(ufs_mtk_btag_wq, &ufs_mtk_btag_worker);
 
+mictx:
 	/* mictx send logging */
 	mtk_btag_mictx_send_command(ufs_mtk_btag, cur_time,
 				    cmd_to_io_type(scsi_cmnd_cmd(cmd)),
@@ -274,6 +281,9 @@ void mtk_btag_ufs_transfer_req_compl(__u16 tid)
 	enum mtk_btag_io_type io_type;
 	__u64 cur_time = sched_clock();
 	__u64 window_t = 0;
+
+	if (!ufs_mtk_btag->ctx_enable)
+		goto mictx;
 
 	ctx = btag_ufs_tid_to_ctx(tid);
 	if (!ctx)
@@ -321,6 +331,7 @@ rcu_unlock:
 	if (window_t > BTAG_UFS_TRACE_LATENCY)
 		queue_work(ufs_mtk_btag_wq, &ufs_mtk_btag_worker);
 
+mictx:
 	/* mictx complete logging */
 	mtk_btag_mictx_complete_command(ufs_mtk_btag, cur_time, tid,
 					tid_to_qid(tid));
@@ -436,9 +447,58 @@ unlock:
 static size_t btag_ufs_seq_debug_show_info(char **buff, unsigned long *size,
 					   struct seq_file *seq)
 {
+	BTAG_PRINTF(buff, size, seq, "CTX Status: %s\n",
+		    ufs_mtk_btag->ctx_enable ? "Enable" : "Disable");
+	BTAG_PRINTF(buff, size, seq,
+		    "echo n > /proc/blocktag/ufs/blockio, n presents:\n");
+	BTAG_PRINTF(buff, size, seq, "  Clear all trace   : 0\n");
+	BTAG_PRINTF(buff, size, seq, "  Enable CTX trace  : 1\n");
+	BTAG_PRINTF(buff, size, seq, "  Disable CTX trace : 2\n");
 	return 0;
 }
 
+static ssize_t btag_ufs_proc_write(const char __user *ubuf, size_t count)
+{
+	struct mtk_btag_ringtrace *rt = BTAG_RT(ufs_mtk_btag);
+	unsigned long flags;
+	char cmd[16] = {0};
+	int ret;
+
+	if (!count)
+		goto err;
+
+	if (count > 16) {
+		pr_info("proc_write: command too long\n");
+		goto err;
+	}
+
+	ret = copy_from_user(cmd, ubuf, count);
+	if (ret < 0)
+		goto err;
+
+	/* remove line feed */
+	cmd[count - 1] = 0;
+
+	if (!strcmp(cmd, "0")) {
+		spin_lock_irqsave(&rt->lock, flags);
+		memset(rt->trace, 0, (sizeof(struct mtk_btag_trace) * rt->max));
+		rt->index = 0;
+		spin_unlock_irqrestore(&rt->lock, flags);
+	} else if (!strcmp(cmd, "1")) {
+		ufs_mtk_btag->ctx_enable = true;
+		pr_info("UFS CTX Enable\n");
+	} else if (!strcmp(cmd, "2")) {
+		ufs_mtk_btag->ctx_enable = false;
+		pr_info("UFS CTX Disable\n");
+	} else {
+		pr_info("proc_write: invalid cmd %s\n", cmd);
+		goto err;
+	}
+
+	return count;
+err:
+	return -1;
+}
 static void btag_ufs_init_ctx(struct mtk_blocktag *btag)
 {
 	struct btag_ufs_ctx *ctx = BTAG_CTX(btag);
@@ -460,10 +520,17 @@ static void btag_ufs_init_ctx(struct mtk_blocktag *btag)
 		ctx[qid].data[0].wl.idle_begin = time;
 		rcu_assign_pointer(ctx[qid].cur_data, &ctx[qid].data[0]);
 	}
+
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+	btag->ctx_enable = true;
+#else
+	btag->ctx_enable = false;
+#endif
 }
 
 static struct mtk_btag_vops btag_ufs_vops = {
 	.seq_show = btag_ufs_seq_debug_show_info,
+	.sub_write = btag_ufs_proc_write,
 };
 
 int mtk_btag_ufs_init(struct ufs_mtk_host *host)
