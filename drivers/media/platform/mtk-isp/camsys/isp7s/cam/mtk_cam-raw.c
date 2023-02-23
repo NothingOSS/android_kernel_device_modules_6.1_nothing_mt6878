@@ -19,15 +19,10 @@
 #include <soc/mediatek/smi.h>
 
 #include "mtk_cam.h"
-#include "mtk_cam-ctrl.h"
 #include "mtk_cam-dvfs_qos_raw.h"
-#include "mtk_cam-feature.h"
 #include "mtk_cam-raw.h"
 #include "mtk_cam-raw_regs.h"
-#include "mtk_cam-seninf-if.h"
-#include "mtk_cam-dmadbg.h"
-#include "mtk_cam-raw_debug.h"
-#include "mtk_cam-hsf.h"
+//#include "mtk_cam-hsf.h"
 #include "mtk_cam-trace.h"
 
 //static int debug_dump_fbc;

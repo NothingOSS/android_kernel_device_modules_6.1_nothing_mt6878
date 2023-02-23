@@ -127,8 +127,6 @@ struct mtk_cam_ctrl {
 	spinlock_t info_lock;
 	struct mtk_cam_ctrl_runtime_info r_info;
 	wait_queue_head_t stop_wq;
-	int sensor_set_ref;
-	int state_trans_ref;
 
 	struct vsync_collector vsync_col;
 

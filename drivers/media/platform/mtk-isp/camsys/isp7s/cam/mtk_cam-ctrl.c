@@ -11,14 +11,11 @@
 #include <media/v4l2-subdev.h>
 
 #include "mtk_cam.h"
-#include "mtk_cam-feature.h"
-
 #include "mtk_cam-ctrl.h"
 #include "mtk_cam-debug.h"
 #include "mtk_cam-dvfs_qos.h"
 #include "mtk_cam-hsf.h"
 #include "mtk_cam-pool.h"
-#include "mtk_cam-raw.h"
 //#include "mtk_cam-tg-flash.h"
 #include "mtk_camera-v4l2-controls.h"
 #include "mtk_camera-videodev2.h"
@@ -903,10 +900,6 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 	read_unlock(&cam_ctrl->list_lock);
 
 	drain_workqueue(ctx->frame_done_wq);
-
-
-	/* using func. kthread_cancel_work_sync, which contains kthread_flush_work func.*/
-	//kthread_cancel_work_sync(&cam_ctrl->work);
 	kthread_flush_worker(&ctx->sensor_worker);
 
 	write_lock(&cam_ctrl->list_lock);
@@ -923,7 +916,6 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 		list_del(&job->job_state.list);
 	}
 	write_unlock(&cam_ctrl->list_lock);
-
 
 	dev_info(ctx->cam->dev, "[%s] ctx:%d, stop status:%d\n",
 		__func__, ctx->stream_id, atomic_read(&cam_ctrl->stopped));

@@ -29,21 +29,12 @@
 #include <media/media-entity.h>
 #include <uapi/linux/sched/types.h>
 
-#include <trace/hooks/v4l2core.h>
-#include <trace/hooks/v4l2mc.h>
-
 #include <mtk_heap.h>
 
 #include "mtk_cam.h"
 #include "mtk_cam-plat.h"
-//#include "mtk_cam-ctrl.h"
 #include "mtk_cam-larb.h"
-#include "mtk_cam-tg-flash.h"
-#include "mtk_camera-v4l2-controls-7sp.h"
-#include "mtk_camera-videodev2.h"
-#include "mtk_cam-hsf.h"
 #include "mtk_cam-trace.h"
-#include "mtk_cam-ufbc-def.h"
 #include "mtk_cam-timesync.h"
 #include "mtk_cam-job.h"
 #include "mtk_cam-fmt_utils.h"
@@ -1001,7 +992,6 @@ static int mtk_cam_power_ctrl_ccu(struct device *dev, int on_off)
 
 	if (on_off) {
 
-#ifdef REMOVE
 		ret = mtk_cam_get_ccu_phandle(cam_dev);
 		if (ret)
 			goto out;
@@ -1015,7 +1005,6 @@ static int mtk_cam_power_ctrl_ccu(struct device *dev, int on_off)
 		ret = rproc_boot(cam_dev->rproc_ccu_handle);
 		if (ret)
 			dev_info(dev, "boot ccu rproc fail\n");
-#endif
 
 #ifdef DVFS_REGULATOR
 		mtk_cam_dvfs_regulator_enable(dvfs);
@@ -3019,10 +3008,8 @@ static int mtk_cam_remove(struct platform_device *pdev)
 
 	mtk_cam_debug_deinit(&cam_dev->dbg);
 
-#ifdef NOT_READY
 	platform_driver_unregister(&mtk_cam_mraw_driver);
 	platform_driver_unregister(&mtk_cam_sv_driver);
-#endif
 	platform_driver_unregister(&mtk_cam_raw_driver);
 #ifdef REMOVE
 	platform_driver_unregister(&mtk_cam_larb_driver);

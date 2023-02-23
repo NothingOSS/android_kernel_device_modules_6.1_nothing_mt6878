@@ -18,23 +18,23 @@
 #include "imgsensor-user.h"
 
 #include "mtk_cam-ctrl.h"
-#include "mtk_cam-debug_option.h"
 #include "mtk_cam-hsf-def.h"
 #include "mtk_cam-ipi.h"
 #include "mtk_cam-job.h"
-#include "mtk_cam-larb.h"
 #include "mtk_cam-pool.h"
-#include "mtk_cam-raw.h"
 #include "mtk_cam-request.h"
+
+#include "mtk_cam-dvfs_qos.h"
+#include "mtk_cam-larb.h"
+#include "mtk_cam-mraw.h"
+#include "mtk_cam-raw.h"
 #include "mtk_cam-seninf-drv.h"
 #include "mtk_cam-seninf-if.h"
 #include "mtk_cam-sv.h"
-#include "mtk_cam-mraw.h"
-#include "mtk_camera-v4l2-controls.h"
-#include "mtk_cam-dvfs_qos.h"
 
-#include "mtk_cam-raw_pipeline.h"
 #include "mtk_cam-bit_mapping.h"
+
+#include "mtk_cam-debug_option.h"
 #include "mtk_cam-debug.h"
 
 #define CCD_READY 1
@@ -230,10 +230,6 @@ struct mtk_cam_device {
 	struct mtk_camsys_dvfs dvfs;
 
 	struct mtk_cam_debug dbg;
-	//struct mtk_cam_debug_fs *debug_fs;
-	//struct workqueue_struct *debug_wq;
-	//struct workqueue_struct *debug_exception_wq;
-	//wait_queue_head_t debug_exception_waitq;
 };
 
 static inline struct device *subdev_to_cam_dev(struct v4l2_subdev *sd)

@@ -7,7 +7,6 @@
 #define __MTK_CAM_RAW_H
 
 #include <linux/kfifo.h>
-#include "mtk_cam-raw_pipeline.h"
 #include "mtk_cam-engine.h"
 #include "mtk_cam-dvfs_qos.h"
 

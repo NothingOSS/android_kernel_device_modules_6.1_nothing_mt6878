@@ -9,7 +9,6 @@
 #include <linux/kfifo.h>
 #include <linux/suspend.h>
 
-#include "mtk_cam-video.h"
 #include "mtk_cam-plat.h"
 #include "mtk_cam-engine.h"
 

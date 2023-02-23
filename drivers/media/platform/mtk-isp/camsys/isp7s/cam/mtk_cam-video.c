@@ -9,7 +9,6 @@
 #include "mtk_cam.h"
 #include "mtk_cam-video.h"
 #include "mtk_cam-fmt_utils.h"
-#include "mtk_camera-v4l2-controls.h"
 #include "mtk_camera-videodev2.h"
 #include "mtk_cam-ufbc-def.h"
 #include "mtk_cam-plat.h"

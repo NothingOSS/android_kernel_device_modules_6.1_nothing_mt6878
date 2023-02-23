@@ -10,7 +10,6 @@
 
 #include "mtk_cam.h"
 #include "mtk_cam-dvfs_qos.h"
-//#include "mtk_cam-feature.h"
 #include "mtk_cam-raw_pipeline.h"
 #include "mtk_cam-resource_calc.h"
 #include "mtk_cam-plat.h"
@@ -763,18 +762,6 @@ static const struct v4l2_ctrl_config frame_sync_id = {
 	.def = -1,
 };
 
-#ifdef REMOVE
-static const struct v4l2_ctrl_config mtk_feature = {
-	.ops = &cam_ctrl_ops,
-	.id = V4L2_CID_MTK_CAM_FEATURE,
-	.name = "Mediatek camsys feature",
-	.type = V4L2_CTRL_TYPE_INTEGER64,
-	.min = 0,
-	.max = RAW_FUNCTION_END,
-	.step = 1,
-	.def = 0,
-};
-#endif
 static struct v4l2_ctrl_config cfg_pre_alloc_mem_ctrl = {
 	.ops = &cam_ctrl_ops,
 	.id = V4L2_CID_MTK_CAM_INTERNAL_MEM_CTRL,
@@ -3180,15 +3167,9 @@ static void mtk_raw_pipeline_ctrl_setup(struct mtk_raw_pipeline *pipe)
 		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE |
 			       V4L2_CTRL_FLAG_EXECUTE_ON_WRITE;
 
+	/* TODO: remove pde later */
 	// PDE
 	ctrl = v4l2_ctrl_new_custom(ctrl_hdlr, &cfg_pde_info, NULL);
-
-#ifdef REMOVE
-	ctrl = v4l2_ctrl_new_custom(ctrl_hdlr, &mtk_feature, NULL);
-	if (ctrl)
-		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE |
-			V4L2_CTRL_FLAG_EXECUTE_ON_WRITE;
-#endif
 
 	ctrl = v4l2_ctrl_new_custom(ctrl_hdlr, &cfg_res_update, NULL);
 	if (ctrl)

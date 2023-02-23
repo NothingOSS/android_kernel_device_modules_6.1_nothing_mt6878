@@ -16,12 +16,8 @@
 #include <soc/mediatek/smi.h>
 
 #include "mtk_cam.h"
-#include "mtk_cam-feature.h"
-#include "mtk_cam-pool.h"
 #include "mtk_cam-sv-regs.h"
 #include "mtk_cam-sv.h"
-#include "mtk_camera-v4l2-controls-7sp.h"
-#include "mtk_camera-videodev2.h"
 #include "mtk_cam-fmt_utils.h"
 
 #ifdef CAMSYS_TF_DUMP_7S
