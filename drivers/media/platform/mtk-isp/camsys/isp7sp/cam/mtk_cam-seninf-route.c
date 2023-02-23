@@ -260,7 +260,7 @@ int mux_vr2mux(struct seninf_ctx *ctx, int mux_vr)
 			 (mux_vr <= sv_normal_mux_last)) {
 		mux = sat_mux_last + (mux_vr - sat_mux_vr_last);
 
-	} else if ((mux_vr >= raw_mux_first) && (mux_vr <= raw_mux_last)) {
+	} else if ((mux_vr >= raw_mux_vr_first) && (mux_vr <= raw_mux_vr_last)) {
 
 		mux = raw_mux_first
 			+ ((mux_vr - sv_normal_mux_vr_last) / RAW_MUX_FACTOR);
