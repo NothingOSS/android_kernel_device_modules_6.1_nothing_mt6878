@@ -94,6 +94,7 @@ static struct mtk_drm_helper help_info[] = {
 	{MTK_DRM_OPT_SPHRT, 1, "MTK_DRM_OPT_SPHRT"},
 	{MTK_DRM_OPT_SDPA_OVL_SWITCH, 0, "MTK_DRM_OPT_SDPA_OVL_SWITCH"},
 	{MTK_DRM_OPT_TILE_OVERHEAD, 0, "MTK_DRM_OPT_TILE_OVERHEAD"},
+	{MTK_DRM_OPT_HRT_BY_LARB, 0, "MTK_DRM_OPT_HRT_BY_LARB"},
 };
 
 enum DISP_HELPER_STAGE disp_helper_get_stage(void)

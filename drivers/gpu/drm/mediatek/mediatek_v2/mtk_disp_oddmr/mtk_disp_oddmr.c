@@ -2977,17 +2977,17 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			oddmr_priv->last_qos_srt_dmrr, oddmr_priv->qos_srt_dmrr);
 		/* process normal */
 		if (oddmr_priv->last_qos_srt_odr != oddmr_priv->qos_srt_odr) {
-			__mtk_disp_set_module_bw(oddmr_priv->qos_req_odr, comp->id,
+			__mtk_disp_set_module_srt(oddmr_priv->qos_req_odr, comp->id,
 				oddmr_priv->qos_srt_odr, DISP_BW_NORMAL_MODE);
 			oddmr_priv->last_qos_srt_odr = oddmr_priv->qos_srt_odr;
 		}
 		if (oddmr_priv->last_qos_srt_odw != oddmr_priv->qos_srt_odw) {
-			__mtk_disp_set_module_bw(oddmr_priv->qos_req_odw, comp->id,
+			__mtk_disp_set_module_srt(oddmr_priv->qos_req_odw, comp->id,
 				oddmr_priv->qos_srt_odw, DISP_BW_NORMAL_MODE);
 			oddmr_priv->last_qos_srt_odw = oddmr_priv->qos_srt_odw;
 		}
 		if (oddmr_priv->last_qos_srt_dmrr != oddmr_priv->qos_srt_dmrr) {
-			__mtk_disp_set_module_bw(oddmr_priv->qos_req_dmrr, comp->id,
+			__mtk_disp_set_module_srt(oddmr_priv->qos_req_dmrr, comp->id,
 				oddmr_priv->qos_srt_dmrr, DISP_BW_NORMAL_MODE);
 			oddmr_priv->last_qos_srt_dmrr = oddmr_priv->qos_srt_dmrr;
 		}

@@ -196,7 +196,7 @@ struct mtk_drm_private {
 	/* for rpo caps info */
 	unsigned int rsz_in_max[2];
 
-	struct icc_path *hrt_bw_request;
+	struct icc_path *hrt_bw_request, *hrt_by_larb, *dp_hrt_by_larb;
 
 	struct pinctrl *pctrl;
 

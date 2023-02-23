@@ -3609,7 +3609,7 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		ovl_bw = *(unsigned int *)(cmdq_buf->va_base +
 					    DISP_SLOT_PMQOS_BW(slot_num));
 
-		__mtk_disp_set_module_bw(comp->fbdc_qos_req, comp->id, ovl_bw,
+		__mtk_disp_set_module_srt(comp->fbdc_qos_req, comp->id, ovl_bw,
 					    DISP_BW_FBDC_MODE);
 
 		/* process normal */
@@ -3618,7 +3618,7 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		ovl_bw = *(unsigned int *)(cmdq_buf->va_base +
 					    DISP_SLOT_PMQOS_BW(slot_num));
 
-		__mtk_disp_set_module_bw(comp->qos_req, comp->id, ovl_bw,
+		__mtk_disp_set_module_srt(comp->qos_req, comp->id, ovl_bw,
 					    DISP_BW_NORMAL_MODE);
 #endif
 		break;
@@ -3650,7 +3650,7 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		/* process FBDC */
 		/* qos BW only has one port for one device, no need to separate */
-		//__mtk_disp_set_module_bw(comp->fbdc_qos_req, comp->id, comp->fbdc_bw,
+		//__mtk_disp_set_module_srt(comp->fbdc_qos_req, comp->id, comp->fbdc_bw,
 		//			    DISP_BW_FBDC_MODE);
 
 		/* process normal */
@@ -3660,12 +3660,12 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				break;
 			goto other;
 		}
-		__mtk_disp_set_module_bw(comp->qos_req, comp->id, comp->qos_bw,
+		__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw,
 					    DISP_BW_NORMAL_MODE);
 		comp->last_qos_bw = comp->qos_bw;
 other:
 		if (!IS_ERR(comp->qos_req_other)) {
-			__mtk_disp_set_module_bw(comp->qos_req_other, comp->id, comp->qos_bw_other,
+			__mtk_disp_set_module_srt(comp->qos_req_other, comp->id, comp->qos_bw_other,
 					    DISP_BW_NORMAL_MODE);
 			comp->last_qos_bw_other = comp->qos_bw_other;
 		}

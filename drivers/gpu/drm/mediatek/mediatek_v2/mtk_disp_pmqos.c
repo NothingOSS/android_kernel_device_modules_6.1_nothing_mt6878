@@ -104,10 +104,11 @@ int __mtk_disp_pmqos_slot_look_up(int comp_id, int mode)
 	return -EINVAL;
 }
 
-int __mtk_disp_set_module_bw(struct icc_path *request, int comp_id,
-			     unsigned int bandwidth, unsigned int bw_mode)
+int __mtk_disp_set_module_srt(struct icc_path *request, int comp_id,
+				unsigned int bandwidth, unsigned int bw_mode)
 {
-	DDPINFO("%s set %d bw = %u\n", __func__, comp_id, bandwidth);
+	DDPDBG("%s set %s bw = %u\n", __func__,
+			mtk_dump_comp_str_id(comp_id), bandwidth);
 	bandwidth = bandwidth * 133 / 100;
 
 	mtk_icc_set_bw(request, MBps_to_icc(bandwidth), 0);
@@ -118,7 +119,7 @@ int __mtk_disp_set_module_bw(struct icc_path *request, int comp_id,
 }
 
 void __mtk_disp_set_module_hrt(struct icc_path *request,
-			       unsigned int bandwidth)
+				unsigned int bandwidth)
 {
 	if (bandwidth > 0)
 		mtk_icc_set_bw(request, 0, MTK_MMQOS_MAX_BW);
@@ -131,9 +132,9 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_ddp_comp *comp;
-	unsigned int tmp, total = 0;
+	unsigned int tmp, total = 0, tmp1 = 0, bw_base  = 0;
 	unsigned int crtc_idx = drm_crtc_index(crtc);
-	int i, j, ret = 0;
+	int i, j, ret = 0, ovl_num = 0;
 
 	tmp = bw;
 
@@ -167,7 +168,30 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 
 	mtk_icc_set_bw(priv->hrt_bw_request, 0, MBps_to_icc(total));
 	DRM_MMP_MARK(hrt_bw, 0, tmp);
-	DDPINFO("set CRTC %d HRT bw %u %u\n", crtc_idx, tmp, total);
+
+	if (mtk_drm_helper_get_opt(priv->helper_opt,
+		MTK_DRM_OPT_HRT_BY_LARB)) {
+
+		comp = (mtk_crtc) ? mtk_ddp_comp_request_output(mtk_crtc) : NULL;
+
+		if (comp && mtk_ddp_comp_get_type(comp->id) == MTK_DISP_DPTX) {
+			tmp = tmp / (mtk_crtc->is_dual_pipe + 1);
+			mtk_icc_set_bw(priv->dp_hrt_by_larb, 0, MBps_to_icc(tmp));
+			DDPINFO("%s, CRTC%d(DP) HRT total=%u larb bw=%u dual=%d\n",
+				__func__, crtc_idx, total, tmp, mtk_crtc->is_dual_pipe);
+		} else if (comp && mtk_ddp_comp_get_type(comp->id) == MTK_DSI) {
+			if (total > 0) {
+				bw_base = mtk_drm_primary_frame_bw(crtc);
+				ovl_num = bw_base > 0 ? total / bw_base : 0;
+				tmp1 = ((bw_base / 2) > total) ? total : (ovl_num < 3) ?
+					(bw_base / 2) : (ovl_num < 5) ? bw_base : (bw_base * 3 / 2);
+			}
+			mtk_icc_set_bw(priv->hrt_by_larb, 0, MBps_to_icc(tmp1));
+			DDPINFO("%s, CRTC%d HRT bw=%u total=%u larb bw=%u ovl_num=%d bw_base=%d\n",
+				__func__, crtc_idx, tmp, total, tmp1, ovl_num, bw_base);
+		}
+	} else
+		DDPINFO("set CRTC %d HRT bw %u %u\n", crtc_idx, tmp, total);
 
 	return ret;
 }

@@ -7516,10 +7516,18 @@ SKIP_OVLSYS_CONFIG:
 	}
 
 	if (mtk_drm_helper_get_opt(private->helper_opt,
-			MTK_DRM_OPT_MMQOS_SUPPORT))
+			MTK_DRM_OPT_MMQOS_SUPPORT)) {
 		private->hrt_bw_request =
 			of_mtk_icc_get(dev, "disp_hrt_qos");
 
+		if (mtk_drm_helper_get_opt(private->helper_opt,
+				MTK_DRM_OPT_HRT_BY_LARB)) {
+			private->hrt_by_larb =
+				of_mtk_icc_get(dev, "disp_hrt_by_larb");
+			private->dp_hrt_by_larb  =
+				of_mtk_icc_get(dev, "disp_dp_hrt_by_larb");
+		}
+	}
 	/* Iterate over sibling DISP function blocks */
 	for_each_child_of_node(dev->of_node->parent, node) {
 		const struct of_device_id *of_id;
