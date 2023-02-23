@@ -8,6 +8,10 @@
 #include "mtk_cam-job_utils.h"
 #include "mtk_cam-ufbc-def.h"
 
+static unsigned int sv_pure_raw;
+module_param(sv_pure_raw, uint, 0644);
+MODULE_PARM_DESC(sv_pure_raw, "enable pure raw dump with casmsv");
+
 #define buf_printk(fmt, arg...)					\
 	do {							\
 		if (unlikely(CAM_DEBUG_ENABLED(IPI_BUF)))	\
@@ -691,8 +695,10 @@ EXIT:
 
 bool is_sv_pure_raw(struct mtk_cam_job *job)
 {
-	/* HS_TODO: hint from raw */
-	return false;
+	if (!job)
+		return false;
+
+	return job->is_sv_pure_raw && sv_pure_raw;
 }
 
 bool is_rgbw(struct mtk_cam_job *job)
