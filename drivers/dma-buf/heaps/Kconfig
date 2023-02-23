@@ -15,6 +15,16 @@ config DEVICE_MODULES_DMABUF_HEAPS_SYSTEM
 	  Choose this option to enable the system dmabuf heap. The system heap
 	  is backed by pages from the buddy allocator. If in doubt, say Y.
 
+config DEVICE_MODULES_DMABUF_HEAPS_REFILL
+	tristate "DMA-BUF heap refill"
+	depends on DEVICE_MODULES_DMABUF_HEAPS_SYSTEM
+	help
+	  Choose this option to enable heap refill. Pool has high water and low
+	  water. After executing dmabuf alloc and detecting that the current pool
+	  size is lower than the low water, the refill thread is started. The
+	  refill worker thread allocates pages to fill in the pool, and stops
+	  filling when the pool size is higher than the high water mark.
+
 config DMABUF_HEAPS_DEBUG
 	tristate "DMA-BUF debug Heap"
 	depends on DEVICE_MODULES_DMABUF_HEAPS_SYSTEM

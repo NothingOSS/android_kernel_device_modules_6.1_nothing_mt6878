@@ -16,6 +16,9 @@
 #include <linux/sched/clock.h>
 #include <dt-bindings/memory/mtk-memory-port.h>
 
+#define P2K(x) ((x) << (PAGE_SHIFT - 10))	/* Converts #Pages to KB */
+#define P2M(x) ((x) >> (20 - PAGE_SHIFT))	/* Converts #Pages to MB */
+
 #define DUMP_INFO_LEN_MAX    (400)
 
 /* Bit map */
@@ -31,6 +34,8 @@
 #define HANG_DMABUF_FILE_TAG	((void *)0x1)
 typedef void (*hang_dump_cb)(const char *fmt, ...);
 extern hang_dump_cb hang_dump_proc;
+
+typedef int (*mtk_refill_order_cb)(unsigned int order, int value);
 
 #define dmabuf_dump(file, fmt, args...)                         \
 	do {                                                    \
@@ -82,6 +87,26 @@ struct iova_cache_data {
 	struct list_head	 iova_caches;
 	u64			 tab_id;
 };
+
+const char **mtk_refill_heap_names(void);
+
+#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
+void heap_monitor_init(void);
+void heap_monitor_exit(void);
+ssize_t heap_monitor_proc_write(struct file *file, const char *buf,
+				size_t count, loff_t *data);
+int heap_monitor_proc_open(struct inode *inode, struct file *file);
+int mtk_register_refill_order_callback(mtk_refill_order_cb cb);
+#endif
+
+void dmabuf_log_alloc_time(struct mtk_dmabuf_page_pool *pool, u64 tm, u64 tm_alloc,
+			   bool success, bool from_pool);
+void dmabuf_log_allocate(struct dma_heap *heap, u64 tm, u32 nent, u32 pages, u32 inode);
+void dmabuf_log_refill(int heap_tag, u64 tm, int ret, u32 order, u32 pages_refill, u32 pages_new);
+void dmabuf_log_recycle(int heap_tag, u64 tm, u32 order, u32 pages_remove, u32 pages_new);
+void dmabuf_log_shrink(struct mtk_dmabuf_page_pool *pool, u64 tm, int freed, int scan);
+void dmabuf_log_pool_size(struct dma_heap *heap);
+void dmabuf_log_prefill(struct dma_heap *heap, u64 tm, int ret, u32 size);
 
 /* common function */
 static void __maybe_unused dmabuf_release_check(const struct dma_buf *dmabuf)

@@ -21,6 +21,7 @@
 #include <uapi/linux/dma-heap.h>
 
 #include "mtk_heap.h"
+#include "mtk_heap_priv.h"
 #include "mtk_page_pool.h"
 
 static int PREFIll_MAX_SIZE = SZ_512M;
@@ -65,6 +66,7 @@ static int fill_dma_heap_pool(void *data)
 	struct dma_buf *buffer = NULL;
 	struct dma_heap *heap;
 	struct prefill_data request_data;
+	u64 tm1, tm2;
 	int ret = 0;
 
 	while (1) {
@@ -91,6 +93,8 @@ static int fill_dma_heap_pool(void *data)
 			return -1;
 
 		if (req_cache_size > PREFIll_MAX_SIZE) {
+			dmabuf_log_prefill(heap, 0, -2, req_cache_size >> 20);
+			dma_heap_put(heap);
 			pr_info("%s, invalid buffer size %lu\n",
 				__func__, req_cache_size);
 			continue;
@@ -98,19 +102,24 @@ static int fill_dma_heap_pool(void *data)
 
 		cached_size = mtk_dmabuf_page_pool_size(heap);
 		if (cached_size >= req_cache_size) {
+			dmabuf_log_prefill(heap, 0, -3, cached_size >> 20);
+			dma_heap_put(heap);
 			pr_info("%s, skip alloc buffer: size %lu, cached %lu\n",
 				__func__, req_cache_size, cached_size);
 			continue;
 		}
 
+		tm1 = sched_clock();
 		pr_info("%s, alloc buffer(%lu) to heap(%s) pools\n", __func__, req_cache_size,
 			request_data.heap_name);
 		buffer = dma_heap_buffer_alloc(heap,
 					       req_cache_size,
 					       O_CLOEXEC | O_RDWR,
 					       DMA_HEAP_VALID_HEAP_FLAGS);
-
+		tm2 = sched_clock();
 		if (IS_ERR(buffer)) {
+			dmabuf_log_prefill(heap, tm2 - tm1, -4, req_cache_size >> 20);
+			dma_heap_put(heap);
 			pr_info("%s, err alloc buffer: size %lu, cached %lu\n",
 				__func__, req_cache_size, cached_size);
 			continue;
@@ -122,9 +131,9 @@ static int fill_dma_heap_pool(void *data)
 		buffer = NULL;
 
 		pr_info("%s, alloc done\n", __func__);
+		dmabuf_log_prefill(heap, tm2 - tm1, 0, req_cache_size >> 20);
+		dma_heap_put(heap);
 	}
-
-	dma_heap_put(heap);
 
 	return 0;
 }

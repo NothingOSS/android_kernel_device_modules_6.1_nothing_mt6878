@@ -210,6 +210,7 @@ struct proc_dir_entry *dma_heaps_dir;
 struct proc_dir_entry *dma_heaps_all_entry;
 struct proc_dir_entry *dma_heaps_stats;
 struct proc_dir_entry *dma_heaps_stat_pid;
+struct proc_dir_entry *dma_heaps_monitor;
 #endif
 
 
@@ -1864,6 +1865,16 @@ static const struct proc_ops heap_stat_pid_proc_fops = {
 	.proc_release = single_release,
 };
 
+#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
+static const struct proc_ops heap_monitor_proc_fops = {
+	.proc_open = heap_monitor_proc_open,
+	.proc_read = seq_read,
+	.proc_write = heap_monitor_proc_write,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+#endif
+
 static int dma_buf_init_dma_heaps_procfs(void)
 {
 	int i = 0;
@@ -1958,6 +1969,21 @@ static int dma_buf_init_procfs(void)
 		return -1;
 	}
 	pr_info("create debug file for stats\n");
+
+#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
+	dma_heaps_monitor = proc_create_data("monitor",
+					    S_IFREG | 0664,
+					    dma_heap_proc_root,
+					    &heap_monitor_proc_fops,
+					    NULL);
+	if (!dma_heaps_monitor) {
+		pr_info("%s failed to create procfs monitordir:%ld\n",
+			__func__, PTR_ERR(dma_heaps_monitor));
+		return -1;
+	}
+	pr_info("create debug file for monitor\n");
+	heap_monitor_init();
+#endif
 
 	dma_heaps_stat_pid = proc_create_data("rss_pid",
 					      S_IFREG | 0660,
@@ -2077,6 +2103,10 @@ static void __exit mtk_dma_heap_debug_exit(void)
 	if (Hang_Info_In_Dma != NULL)
 		unregister_hang_callback(mtk_dmabuf_dump_for_hang);
 
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
+	heap_monitor_exit();
 #endif
 
 	kfree(egl_pid_map);

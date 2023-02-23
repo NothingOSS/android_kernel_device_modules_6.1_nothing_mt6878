@@ -62,12 +62,28 @@ struct mtk_dmabuf_page_pool {
 	gfp_t gfp_mask;
 	unsigned int order;
 	struct list_head list;
+	struct mtk_dmabuf_page_pool **pool_list;
+
+	struct task_struct *refill_kthread;
+	bool (*need_refill)(struct mtk_dmabuf_page_pool *pool);
+	bool (*need_recycle)(struct mtk_dmabuf_page_pool *pool);
+
+	int order_index;
+	int heap_tag;
+	bool refilling;
+	bool recycling;
+	u64 alloc_time;
+	u64 refill_time;
+	u64 shrink_time;
+	u64 log_time;
 };
 
 struct mtk_dmabuf_page_pool *mtk_dmabuf_page_pool_create(gfp_t gfp_mask,
 						     unsigned int order);
 void mtk_dmabuf_page_pool_destroy(struct mtk_dmabuf_page_pool *pool);
+struct page *mtk_dmabuf_page_pool_fetch(struct mtk_dmabuf_page_pool *pool);
 struct page *mtk_dmabuf_page_pool_alloc(struct mtk_dmabuf_page_pool *pool);
+void mtk_dmabuf_page_pool_add(struct mtk_dmabuf_page_pool *pool, struct page *page);
 void mtk_dmabuf_page_pool_free(struct mtk_dmabuf_page_pool *pool, struct page *page);
 int mtk_dmabuf_page_pool_init_shrinker(void);
 int mtk_dmabuf_page_pool_total(struct mtk_dmabuf_page_pool *pool, bool high);

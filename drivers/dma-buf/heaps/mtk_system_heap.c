@@ -641,7 +641,7 @@ static void system_heap_buf_free(struct mtk_deferred_freelist_item *item,
 	for_each_sgtable_sg(table, sg, i) {
 		struct page *page = sg_page(sg);
 
-		if (reason == MTK_DF_UNDER_PRESSURE) {
+		if (reason == MTK_DF_UNDER_PRESSURE || !page_pools) {
 			__free_pages(page, compound_order(page));
 		} else {
 			for (j = 0; j < NUM_ORDERS; j++) {
@@ -656,6 +656,16 @@ static void system_heap_buf_free(struct mtk_deferred_freelist_item *item,
 					__func__, compound_order(page));
 		}
 	}
+
+	if (page_pools) {
+		struct mtk_dmabuf_page_pool *pool = page_pools[0];
+
+		dmabuf_log_pool_size(buffer->heap);
+		if (pool->refill_kthread && !pool->recycling &&
+		    pool->need_recycle && pool->need_recycle(pool))
+			wake_up_process(pool->refill_kthread);
+	}
+
 	sg_free_table(table);
 	kfree(buffer);
 }
@@ -737,10 +747,14 @@ static void system_heap_dma_buf_release(struct dma_buf *dmabuf)
 			if (compound_order(page) == orders[j])
 				break;
 		}
-		if (j < NUM_ORDERS)
-			mtk_dmabuf_page_pool_free(page_pools[j], page);
-		else
+		if (j < NUM_ORDERS) {
+			if (page_pools)
+				mtk_dmabuf_page_pool_free(page_pools[j], page);
+			else
+				__free_pages(page, compound_order(page));
+		} else {
 			pr_info("%s error: order %u\n", __func__, compound_order(page));
+		}
 	}
 	sg_free_table(table);
 	kfree(buffer);
@@ -929,9 +943,20 @@ static struct page *alloc_largest_available(unsigned long size,
 			continue;
 		if (max_order < orders[i])
 			continue;
-		page = mtk_dmabuf_page_pool_alloc(page_pools[i]);
-		if (!page)
-			continue;
+
+		if (likely(page_pools)) {
+			page = mtk_dmabuf_page_pool_alloc(page_pools[i]);
+			if (!page)
+				continue;
+
+			if (page_pools && page_pools[i]->refill_kthread &&
+				!page_pools[i]->refilling && page_pools[i]->need_refill &&
+				page_pools[i]->need_refill(page_pools[i]))
+				wake_up_process(page_pools[i]->refill_kthread);
+		} else {
+			page = alloc_pages(order_flags[i], orders[i]);
+		}
+
 		return page;
 	}
 	return NULL;
@@ -957,6 +982,7 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 	struct task_struct *task = current->group_leader;
 	struct mtk_dmabuf_page_pool **page_pools;
 	struct mtk_heap_priv_info *heap_priv = dma_heap_get_drvdata(heap);
+	u64 tm1, tm2;
 
 	page_pools = heap_priv->page_pools;
 	if (len / PAGE_SIZE > totalram_pages()) {
@@ -978,6 +1004,7 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 
 	INIT_LIST_HEAD(&pages);
 	i = 0;
+	tm1 = sched_clock();
 	while (size_remaining > 0) {
 		/*
 		 * Avoid trying to allocate memory if the process
@@ -1005,6 +1032,10 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 		max_order = compound_order(page);
 		i++;
 	}
+	tm2 = sched_clock();
+	dmabuf_log_allocate(heap, tm2 - tm1, i, len>>PAGE_SHIFT, 0);
+	if (page_pools)
+		dmabuf_log_pool_size(heap);
 
 	table = &buffer->sg_table;
 	if (sg_alloc_table(table, i, GFP_KERNEL))
@@ -1133,6 +1164,7 @@ static int system_buf_priv_dump(const struct dma_buf *dmabuf,
 	if (is_system_heap_dmabuf(dmabuf))
 		return 0;
 
+	mutex_lock(&buf->map_lock);
 	list_for_each(cache_node, &buf->iova_caches) {
 		cache_data = list_entry(cache_node, struct iova_cache_data, iova_caches);
 		for (k = 0; k < MTK_M4U_DOM_NR_MAX; k++) {
@@ -1152,6 +1184,7 @@ static int system_buf_priv_dump(const struct dma_buf *dmabuf,
 				    dev_name(dev));
 		}
 	}
+	mutex_unlock(&buf->map_lock);
 
 	return 0;
 }
@@ -1209,7 +1242,8 @@ static int set_heap_dev_dma(struct device *heap_dev)
 	return 0;
 }
 
-static int mtk_heap_create(const char *name, const struct dma_heap_ops *ops, bool uncached)
+static int mtk_heap_create(const char *name, const struct dma_heap_ops *ops,
+			   bool uncached, bool pool)
 {
 	struct dma_heap_export_info exp_info;
 	struct mtk_heap_priv_info *heap_priv;
@@ -1228,10 +1262,12 @@ static int mtk_heap_create(const char *name, const struct dma_heap_ops *ops, boo
 	exp_info.name = name;
 	exp_info.ops = ops;
 
-	heap_priv->page_pools = dynamic_page_pools_create(orders, NUM_ORDERS);
-	if (IS_ERR(heap_priv->page_pools)) {
-		ret = -ENOMEM;
-		goto out_free_heap;
+	if (pool) {
+		heap_priv->page_pools = dynamic_page_pools_create(orders, NUM_ORDERS);
+		if (IS_ERR(heap_priv->page_pools)) {
+			ret = -ENOMEM;
+			goto out_free_heap;
+		}
 	}
 	heap_priv->uncached = false;
 	heap_priv->buf_priv_dump = system_heap_buf_priv_dump;
@@ -1246,7 +1282,6 @@ static int mtk_heap_create(const char *name, const struct dma_heap_ops *ops, boo
 		goto out_free_pools;
 
 	pr_info("%s add heap[%s] success\n", __func__, exp_info.name);
-
 	/* Add uncached heap if need */
 	if (uncached) {
 		name_uncache = kasprintf(GFP_KERNEL, "%s-uncached", name);
@@ -1305,20 +1340,26 @@ static int mtk_system_heap_create(void)
 		orders[0] = 9;
 
 	mtk_dmabuf_page_pool_init_shrinker();
-
 	mtk_deferred_freelist_init();
 
-	mtk_heap_create("system", &system_heap_ops, true);
-
-	mtk_heap_create("mtk_mm", &mtk_mm_heap_ops, true);
-
-	//mtk_heap_create("mtk_camera", &mtk_mm_heap_ops, true);
-	mtk_heap_create("mtk_slc", &mtk_slc_heap_ops, false);
+	mtk_heap_create("system", &system_heap_ops, true, true);
+	mtk_heap_create("mtk_mm", &mtk_mm_heap_ops, true, true);
+	mtk_heap_create("mtk_slc", &mtk_slc_heap_ops, false, false);
 
 	mtk_cache_pool_init();
-
 	return 0;
 }
+
+const char *refill_heap_names[] = {
+	"mtk_mm",
+	NULL,
+};
+
+const char **mtk_refill_heap_names(void)
+{
+	return &refill_heap_names[0];
+}
+EXPORT_SYMBOL_GPL(mtk_refill_heap_names);
 
 /* ref code: dma_buf.c, dma_buf_set_name */
 long mtk_dma_buf_set_name(struct dma_buf *dmabuf, const char *buf)

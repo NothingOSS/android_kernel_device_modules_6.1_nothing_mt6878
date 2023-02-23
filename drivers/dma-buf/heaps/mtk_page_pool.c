@@ -31,7 +31,7 @@ static inline void mtk_dmabuf_page_pool_free_pages(struct mtk_dmabuf_page_pool *
 	__free_pages(page, pool->order);
 }
 
-static void mtk_dmabuf_page_pool_add(struct mtk_dmabuf_page_pool *pool, struct page *page)
+void mtk_dmabuf_page_pool_add(struct mtk_dmabuf_page_pool *pool, struct page *page)
 {
 	int index;
 
@@ -47,6 +47,7 @@ static void mtk_dmabuf_page_pool_add(struct mtk_dmabuf_page_pool *pool, struct p
 			    1 << pool->order);
 	mutex_unlock(&pool->mutex);
 }
+EXPORT_SYMBOL_GPL(mtk_dmabuf_page_pool_add);
 
 static struct page *mtk_dmabuf_page_pool_remove(struct mtk_dmabuf_page_pool *pool, int index)
 {
@@ -65,7 +66,7 @@ static struct page *mtk_dmabuf_page_pool_remove(struct mtk_dmabuf_page_pool *poo
 	return page;
 }
 
-static struct page *mtk_dmabuf_page_pool_fetch(struct mtk_dmabuf_page_pool *pool)
+struct page *mtk_dmabuf_page_pool_fetch(struct mtk_dmabuf_page_pool *pool)
 {
 	struct page *page = NULL;
 
@@ -75,18 +76,26 @@ static struct page *mtk_dmabuf_page_pool_fetch(struct mtk_dmabuf_page_pool *pool
 
 	return page;
 }
+EXPORT_SYMBOL_GPL(mtk_dmabuf_page_pool_fetch);
 
 struct page *mtk_dmabuf_page_pool_alloc(struct mtk_dmabuf_page_pool *pool)
 {
 	struct page *page = NULL;
+	u64 tm1, tm2 = 0, tm3;
 
 	if (WARN_ON(!pool))
 		return NULL;
 
+	tm1 = sched_clock();
 	page = mtk_dmabuf_page_pool_fetch(pool);
-
-	if (!page)
+	if (!page) {
+		tm2 = sched_clock();
 		page = mtk_dmabuf_page_pool_alloc_pages(pool);
+	}
+	tm3 = sched_clock();
+
+	if (tm3 - tm1 > 20000000)
+		dmabuf_log_alloc_time(pool, tm3 - tm1, (tm2 > 0)?(tm3-tm2):0, page, (tm2 == 0));
 
 	return page;
 }
@@ -108,6 +117,7 @@ int mtk_dmabuf_page_pool_total(struct mtk_dmabuf_page_pool *pool, bool high)
 
 	return count << pool->order;
 }
+EXPORT_SYMBOL_GPL(mtk_dmabuf_page_pool_total);
 
 long mtk_dmabuf_page_pool_size(struct dma_heap *heap)
 {
@@ -282,6 +292,9 @@ struct mtk_dmabuf_page_pool **dynamic_page_pools_create(unsigned int *orders,
 			ret = -ENOMEM;
 			goto free_pool_list;
 		}
+
+		pool_list[i]->order_index = i;
+		pool_list[i]->pool_list = pool_list;
 	}
 	return pool_list;
 
@@ -293,6 +306,9 @@ free_pool_list:
 void dynamic_page_pools_free(struct mtk_dmabuf_page_pool **pool_list, unsigned int num_orders)
 {
 	int i;
+
+	if (!pool_list)
+		return;
 
 	for (i = 0; i < num_orders; i++)
 		mtk_dmabuf_page_pool_destroy(pool_list[i]);
