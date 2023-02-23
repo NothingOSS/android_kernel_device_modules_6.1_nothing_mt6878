@@ -28,13 +28,6 @@
 /* vcp sub feature register API marco*/
 #define VCP_REGISTER_SUB_SENSOR          (1)
 
-/* emi mpu define*/
-#define ENABLE_VCP_EMI_PROTECTION        (0)
-
-#define MPU_REGION_ID_VCP_SMEM           7
-#define MPU_DOMAIN_D0                    0
-#define MPU_DOMAIN_D3                    3
-
 #define VCPSYS_CORE0                     0
 #define VCPSYS_CORE1                     1
 

@@ -56,10 +56,6 @@
 #include "vcp_reservedmem_define.h"
 #endif
 
-#if ENABLE_VCP_EMI_PROTECTION
-#include "soc/mediatek/emi.h"
-#endif
-
 /* vcp mbox/ipi related */
 #include <linux/soc/mediatek/mtk-mbox.h>
 #include "vcp_ipi.h"
@@ -1854,24 +1850,6 @@ static int vcp_reserve_memory_ioremap(struct platform_device *pdev)
 }
 #endif
 
-#if ENABLE_VCP_EMI_PROTECTION
-void set_vcp_mpu(void)
-{
-	struct emimpu_region_t md_region;
-
-	mtk_emimpu_init_region(&md_region, MPU_REGION_ID_VCP_SMEM);
-	mtk_emimpu_set_addr(&md_region, vcp_mem_base_phys,
-		vcp_mem_base_phys + vcp_mem_size - 1);
-	mtk_emimpu_set_apc(&md_region, MPU_DOMAIN_D0,
-		MTK_EMIMPU_NO_PROTECTION);
-	mtk_emimpu_set_apc(&md_region, MPU_DOMAIN_D3,
-		MTK_EMIMPU_NO_PROTECTION);
-	if (mtk_emimpu_set_protection(&md_region))
-		pr_notice("[VCP]mtk_emimpu_set_protection fail\n");
-	mtk_emimpu_free_region(&md_region);
-}
-#endif
-
 int vcp_register_feature(enum feature_id id)
 {
 	uint32_t i;
@@ -3015,10 +2993,6 @@ static int __init vcp_init(void)
 		pr_notice("[VCP] vcp_logger_init_fail\n");
 		goto err;
 	}
-#endif
-
-#if ENABLE_VCP_EMI_PROTECTION
-	set_vcp_mpu();
 #endif
 
 	vcp_recovery_init();
