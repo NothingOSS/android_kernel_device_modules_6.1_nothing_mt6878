@@ -14536,7 +14536,8 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	mtk_crtc->mml_ir_sram.data.uid = UID_DISP;
 
 	/* mt6886 share sram with other modules, need register cb for this*/
-	if (priv->data->mmsys_id == MMSYS_MT6886) {
+	if (priv->data->mmsys_id == MMSYS_MT6886 ||
+		priv->data->mmsys_id == MMSYS_MT6897) {
 		struct slbc_data d;
 		struct slbc_ops ops;
 

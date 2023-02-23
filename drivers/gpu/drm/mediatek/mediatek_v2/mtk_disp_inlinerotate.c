@@ -263,6 +263,10 @@ static const struct mtk_disp_inlinerotate_data inlinerotate_driver_data = {
 	.ovl_sel_mapping = &ovl_sel_mapping,
 };
 
+static const struct mtk_disp_inlinerotate_data mt6897_inlinerotate_driver_data = {
+	.ovl_sel_mapping = &ovl_sel_mapping,
+};
+
 static const struct of_device_id mtk_disp_inlinerotate_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6983-disp-inlinerotate",
 	 .data = &mt6983_inlinerotate_driver_data},
@@ -270,6 +274,8 @@ static const struct of_device_id mtk_disp_inlinerotate_driver_dt_match[] = {
 	 .data = &mt6983_inlinerotate_driver_data}, /* same as 6983 */
 	{.compatible = "mediatek,mt6985-disp-inlinerotate",
 	 .data = &inlinerotate_driver_data},
+	{.compatible = "mediatek,mt6897-disp-inlinerotate",
+	 .data = &mt6897_inlinerotate_driver_data},
 	{.compatible = "mediatek,mt6886-disp-inlinerotate",
 	 .data = &mt6983_inlinerotate_driver_data}, /* same as 6983 */
 	{},
