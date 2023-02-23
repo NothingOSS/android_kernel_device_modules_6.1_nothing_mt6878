@@ -28,6 +28,7 @@
 #define NONE DEL_NONE
 #include <linux/scmi_protocol.h>
 #undef NONE
+#include <soc/mediatek/dramc.h>
 
 #include "tinysys-scmi.h"
 #include "drm_internal.h"
@@ -6242,6 +6243,39 @@ static void mtk_drm_init_dummy_table(struct mtk_drm_private *priv)
 	}
 }
 
+static int mtk_drm_init_emi_eff_table(struct drm_device *drm_dev)
+{
+	struct device *dev = drm_dev->dev;
+	unsigned int dram_type = 0;
+	int ret = -ENODEV;
+
+	dram_type = mtk_dramc_get_ddr_type();
+	if ((dram_type == TYPE_LPDDR4) ||
+		(dram_type == TYPE_LPDDR4X) ||
+		(dram_type == TYPE_LPDDR4P)) {
+		ret = of_property_read_u32(dev->of_node, "default-emi-eff", &default_emi_eff);
+		ret = of_property_read_u32_array(dev->of_node, "emi-eff-lp4-table",
+				&emi_eff_tb[0], MAX_EMI_EFF_LEVEL);
+		if (ret == 0)
+			DDPMSG("%s use LP4 emi eff and table\n", __func__);
+
+		return ret;
+
+	} else if ((dram_type == TYPE_LPDDR5) ||
+		(dram_type == TYPE_LPDDR5X)) {
+		ret = of_property_read_u32(dev->of_node, "default-emi-eff", &default_emi_eff);
+		ret = of_property_read_u32_array(dev->of_node, "emi-eff-lp5-table",
+				&emi_eff_tb[0], MAX_EMI_EFF_LEVEL);
+		if (ret == 0)
+			DDPMSG("%s use LP5 emi eff and table\n", __func__);
+		return ret;
+
+	} else {
+		DDPMSG("%s use default emi eff and table\n", __func__);
+		return 0;
+	}
+}
+
 static int mtk_drm_kms_init(struct drm_device *drm)
 {
 	struct mtk_drm_private *private = drm->dev_private;
@@ -6420,6 +6454,10 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 		mtk_drm_mmdvfs_init(drm->dev);
 	DDPINFO("%s-\n", __func__);
 	mtk_drm_init_dummy_table(private);
+
+	if (mtk_drm_helper_get_opt(private->helper_opt,
+		MTK_DRM_OPT_OVL_BW_MONITOR))
+		mtk_drm_init_emi_eff_table(drm);
 
 	mtk_drm_first_enable(drm);
 

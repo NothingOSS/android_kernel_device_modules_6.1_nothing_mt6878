@@ -1696,6 +1696,8 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 					(fbt_layer_compress_ratio_tb[i].valid == 1) &&
 					(fbt_layer_compress_ratio_tb[i].peak_ratio != 0) &&
 					(fbt_layer_compress_ratio_tb[i].peak_ratio <= 1000)) {
+				unsigned int index = 0;
+
 				weight *= fbt_layer_compress_ratio_tb[i].peak_ratio;
 				do_div(weight, 1000);
 				last_fbt_weight = weight;
@@ -1708,6 +1710,18 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 					disp_info->disp_caps[HRT_PRIMARY] |= MTK_GLES_FBT_GET_RATIO;
 					DDPMSG("GPUC: GLES FBT ratio is valid\n");
 					have_gpu_cached = true;
+				}
+
+				/* Just from emi efficency table to find level index */
+				index = (fbt_layer_compress_ratio_tb[i].peak_ratio*256)/(1000*16);
+				if (index) {
+					weight = weight*10000/emi_eff_tb[index-1];
+					DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%d\n",
+						__LINE__, index, emi_eff_tb[index-1], weight);
+				} else {
+					weight = weight*10000/emi_eff_tb[0];
+					DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%d\n",
+							__LINE__, index, emi_eff_tb[0], weight);
 				}
 				return weight * bpp;
 			}
@@ -1731,6 +1745,8 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 				== layer_info->buffer_alloc_id) &&
 				(unchanged_compress_ratio_table[i].valid == 1) &&
 				(unchanged_compress_ratio_table[i].peak_ratio != 0)) {
+				unsigned int index = 0;
+
 				if (unchanged_compress_ratio_table[i].peak_ratio > 1000)
 					weight *= 1000;
 				else
@@ -1739,6 +1755,19 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 				DDPDBG_BWM("BWM: unchgd f_idx:%u allocid:%llu ratio:%u weight:%d\n",
 					frame_idx, layer_info->buffer_alloc_id,
 					unchanged_compress_ratio_table[i].peak_ratio, weight);
+
+				/* Just from emi efficency table to find level index */
+				index = (unchanged_compress_ratio_table[i].peak_ratio*256)/
+					(1000*16);
+				if (index) {
+					weight = weight*10000/emi_eff_tb[index-1];
+					DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%d\n",
+						__LINE__, index, emi_eff_tb[index-1], weight);
+				} else {
+					weight = weight*10000/emi_eff_tb[0];
+					DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%d\n",
+						__LINE__, index, emi_eff_tb[0], weight);
+				}
 				layer_info->layer_caps |= MTK_DISP_UNCHANGED_RATIO_VALID;
 				return weight * bpp;
 			}
@@ -1748,6 +1777,8 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 			if ((normal_layer_compress_ratio_tb[i].key_value == key_value) &&
 				(normal_layer_compress_ratio_tb[i].valid == 1) &&
 				(normal_layer_compress_ratio_tb[i].peak_ratio != 0)) {
+				unsigned int index = 0;
+
 				if (normal_layer_compress_ratio_tb[i].peak_ratio > 1000)
 					weight *= 1000;
 				else
@@ -1756,6 +1787,18 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 				DDPDBG_BWM("BWM:fidx:%u allocid:%llu key:%llu ratio:%u weight:%d\n",
 					frame_idx, layer_info->buffer_alloc_id, key_value,
 					normal_layer_compress_ratio_tb[i].peak_ratio, weight);
+
+				index = (normal_layer_compress_ratio_tb[i].peak_ratio*256)/
+					(1000*16);
+				if (index) {
+					weight = weight*10000/emi_eff_tb[index-1];
+					DDPDBG("%d BWM:index:%u eff:%u weight:%d\n",
+						__LINE__, index, emi_eff_tb[index-1], weight);
+				} else {
+					weight = weight*10000/emi_eff_tb[0];
+					DDPDBG("%d BWM:index:%u eff:%u weight:%d\n",
+						__LINE__, index, emi_eff_tb[0], weight);
+				}
 				layer_info->layer_caps |= MTK_DISP_UNCHANGED_RATIO_VALID;
 				return weight * bpp;
 			}
@@ -1767,6 +1810,9 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 		weight *= hrt_lp_switch_get();
 		do_div(weight, 100);
 	}
+
+	if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR))
+		return (weight * bpp * 10000)/default_emi_eff;
 
 	return weight * bpp;
 }

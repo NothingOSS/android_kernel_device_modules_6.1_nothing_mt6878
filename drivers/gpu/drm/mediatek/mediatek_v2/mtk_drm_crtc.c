@@ -130,6 +130,12 @@ unchanged_compress_ratio_table[MAX_LAYER_RATIO_NUMBER];
 struct layer_compress_ratio_item
 fbt_compress_ratio_table[MAX_FRAME_RATIO_NUMBER];
 
+unsigned int default_emi_eff = 8611;
+unsigned int emi_eff_tb[MAX_EMI_EFF_LEVEL] = {
+	2074, 4182, 5401, 7658, 6935, 8689, 7357, 9013,
+	7780, 8963, 7919, 8682, 8095, 8803, 7821, 8611
+};
+
 #ifndef DRM_CMDQ_DISABLE
 /* frame number index for ring buffer to record ratio */
 static unsigned int fn;
@@ -144,7 +150,6 @@ static bool g_ccorr_linear;
 #define DISP_REG_CONFIG_MMSYS_GCE_EVENT_SEL 0x308
 #define DISP_REG_CONFIG_BYPASS_MUX_SHADOW 0xf00
 #define DISP_REG_CONFIG_OVLSYS_GCE_EVENT_SEL 0x308
-
 
 #define DISP_MUTEX0_EN 0xA0
 #define DISP_MUTEX0_CTL 0xAc
@@ -3991,11 +3996,11 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
 		(crtc_idx == 0) && lyeblob_ids &&
 		(lyeblob_ids->frame_weight_of_bwm != 0))
-		DDPINFO("%s bw=%d, last_hrt_req=%d, origin overlap=%d after bwm:%d\n",
+		DDPINFO("%s bw=%u, last_hrt_req=%d, origin overlap=%d after bwm:%d\n",
 			__func__, bw, mtk_crtc->qos_ctx->last_hrt_req, frame_weight,
 			lyeblob_ids->frame_weight_of_bwm);
 	else
-		DDPINFO("%s bw=%d, last_hrt_req=%d, overlap=%d\n",
+		DDPINFO("%s bw=%u, last_hrt_req=%d, overlap=%d\n",
 			__func__, bw, mtk_crtc->qos_ctx->last_hrt_req, frame_weight);
 
 	if (atomic_read(&mtk_crtc->force_high_step) == 1) {
@@ -6372,20 +6377,23 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(unsigned int frame_idx)
 		display_fbt_compress_ratio_table.valid = 1;
 
 	/* Clear fn frame record for recording next frame */
-	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
-		unsigned int index = fn*MAX_LAYER_RATIO_NUMBER + i;
-
-		if (index >= MAX_FRAME_RATIO_NUMBER*MAX_LAYER_RATIO_NUMBER) {
-			DDPPR_ERR("%s errors due to index %d\n", __func__, index);
-			return;
-		}
-		memset(&normal_layer_compress_ratio_tb[index], 0,
+	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++)
+		memset(&unchanged_compress_ratio_table[i], 0,
 				sizeof(struct layer_compress_ratio_item));
-		memset(&unchanged_compress_ratio_table[index], 0,
+	if (g_ovl_bwm_debug) {
+		for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
+			unsigned int index = fn*MAX_LAYER_RATIO_NUMBER + i;
+
+			if (index >= MAX_FRAME_RATIO_NUMBER*MAX_LAYER_RATIO_NUMBER) {
+				DDPINFO("%s errors due to index %u\n", __func__, index);
+				return;
+			}
+			memset(&normal_layer_compress_ratio_tb[index], 0,
+					sizeof(struct layer_compress_ratio_item));
+		}
+		memset(&fbt_layer_compress_ratio_tb[fn], 0,
 				sizeof(struct layer_compress_ratio_item));
 	}
-	memset(&fbt_layer_compress_ratio_tb[fn], 0,
-			sizeof(struct layer_compress_ratio_item));
 
 	/* Copy one frame ratio to table */
 	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
