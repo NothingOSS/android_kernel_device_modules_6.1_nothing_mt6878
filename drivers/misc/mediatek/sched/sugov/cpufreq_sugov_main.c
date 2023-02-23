@@ -33,6 +33,7 @@
 #include <linux/kthread.h>
 #include <uapi/linux/sched/types.h>
 #include <thermal_interface.h>
+#include <mt-plat/mtk_irq_mon.h>
 
 #define CREATE_TRACE_POINTS
 #include "sugov_trace.h"
@@ -527,10 +528,6 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 	struct rq *rq;
 	unsigned long umin, umax;
 	unsigned int next_f;
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	u64 ts[2];
-#endif
-
 
 	raw_spin_lock(&sg_policy->update_lock);
 
@@ -571,18 +568,9 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 	 * necessary to acquire the lock in the fast switch case.
 	 */
 	if (sg_policy->policy->fast_switch_enabled) {
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-		ts[0] = sched_clock();
-#endif
+		irq_log_store();
 		cpufreq_driver_fast_switch(sg_policy->policy, next_f);
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-		ts[1] = sched_clock();
-
-		if ((ts[1] - ts[0] > 500000ULL) && in_hardirq()) {
-			printk_deferred("%s duration %llu, ts[0]=%llu, ts[1]=%llu\n",
-				__func__, ts[1] - ts[0], ts[0], ts[1]);
-		}
-#endif
+		irq_log_store();
 	} else
 		sugov_deferred_update(sg_policy);
 
@@ -630,9 +618,6 @@ sugov_update_shared(struct update_util_data *hook, u64 time, unsigned int flags)
 	struct sugov_cpu *sg_cpu = container_of(hook, struct sugov_cpu, update_util);
 	struct sugov_policy *sg_policy = sg_cpu->sg_policy;
 	unsigned int next_f;
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	u64 ts[2];
-#endif
 
 	raw_spin_lock(&sg_policy->update_lock);
 
@@ -648,18 +633,9 @@ sugov_update_shared(struct update_util_data *hook, u64 time, unsigned int flags)
 			goto unlock;
 
 		if (sg_policy->policy->fast_switch_enabled) {
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-			ts[0] = sched_clock();
-#endif
+			irq_log_store();
 			cpufreq_driver_fast_switch(sg_policy->policy, next_f);
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-			ts[1] = sched_clock();
-
-			if ((ts[1] - ts[0] > 500000ULL) && in_hardirq()) {
-				printk_deferred("%s duration %llu, ts[0]=%llu, ts[1]=%llu\n",
-					__func__, ts[1] - ts[0], ts[0], ts[1]);
-			}
-#endif
+			irq_log_store();
 		} else
 			sugov_deferred_update(sg_policy);
 	}

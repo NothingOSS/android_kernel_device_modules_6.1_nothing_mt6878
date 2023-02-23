@@ -21,6 +21,8 @@
 #include "mtk_energy_model/v1/energy_model.h"
 #endif
 #include "dsu_interface.h"
+#include <mt-plat/mtk_irq_mon.h>
+
 DEFINE_PER_CPU(unsigned int, gear_id) = -1;
 EXPORT_SYMBOL(gear_id);
 
@@ -1148,11 +1150,6 @@ void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 	int cpu = policy->cpu;
 	int offset_dsu_vote;
 	int opp;
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	u64 ts[2];
-
-	ts[0] = sched_clock();
-#endif
 
 	if (trace_sugov_ext_gear_state_enabled())
 		trace_sugov_ext_gear_state(per_cpu(gear_id, cpu),
@@ -1166,15 +1163,8 @@ void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 	if (is_gearless_support())
 		mtk_arch_set_freq_scale_gearless(policy, target_freq);
 	curr_freqs[per_cpu(gear_id, cpu)] = *target_freq;
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	ts[1] = sched_clock();
 
-	if ((ts[1] - ts[0] > 500000ULL) && in_hardirq()) {
-		printk_deferred("%s duration %llu, ts[0]=%llu, ts[1]=%llu\n",
-				__func__, ts[1] - ts[0], ts[0], ts[1]);
-
-	}
-#endif
+	irq_log_store();
 
 	if (is_wl_support()) {
 		offset_dsu_vote = per_cpu(gear_id, cpu) << 2;
@@ -1214,11 +1204,6 @@ void mtk_arch_set_freq_scale(void *data, const struct cpumask *cpus,
 	int cpu = cpumask_first(cpus);
 	unsigned long cap, max_cap;
 	struct cpufreq_policy *policy;
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	u64 ts[2];
-
-	ts[0] = sched_clock();
-#endif
 
 	policy = cpufreq_cpu_get(cpu);
 	if (policy) {
@@ -1228,15 +1213,7 @@ void mtk_arch_set_freq_scale(void *data, const struct cpumask *cpus,
 	cap = pd_X2Y(cpu, freq, FREQ, CAP, false);
 	max_cap = pd_X2Y(cpu, max, FREQ, CAP, false);
 	*scale = SCHED_CAPACITY_SCALE * cap / max_cap;
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	ts[1] = sched_clock();
-
-	if ((ts[1] - ts[0] > 500000ULL) && in_hardirq()) {
-		printk_deferred("%s duration %llu, ts[0]=%llu, ts[1]=%llu\n",
-				__func__, ts[1] - ts[0], ts[0], ts[1]);
-
-	}
-#endif
+	irq_log_store();
 }
 
 unsigned int util_scale = 1280;
