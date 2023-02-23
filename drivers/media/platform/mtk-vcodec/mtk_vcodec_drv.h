@@ -783,6 +783,7 @@ struct mtk_vcodec_dev {
 
 	struct mutex dec_dvfs_mutex;
 	struct mutex enc_dvfs_mutex;
+	bool dvfs_is_suspend_off;
 
 	struct mtk_vcodec_pm pm;
 	struct notifier_block pm_notifier;
