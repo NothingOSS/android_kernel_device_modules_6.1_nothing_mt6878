@@ -15,10 +15,6 @@
 /* Task Vendor Data Index*/
 #define T_SBB_FLG 5
 #define T_TASK_IDLE_PREFER_FLAG 7
-#define T_SBB_TG_FLG 8
-
-/* Task Group Vendor Data Index*/
-#define TG_SBB_FLG 0
 
 /*
  * Flt tracking group part id

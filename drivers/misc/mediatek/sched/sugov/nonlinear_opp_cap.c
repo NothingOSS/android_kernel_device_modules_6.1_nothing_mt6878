@@ -191,26 +191,11 @@ EXPORT_SYMBOL_GPL(init_sbb_cpu_data);
 
 void set_sbb(int flag, int pid, bool set)
 {
-	struct task_struct *p, *group_leader;
+	struct task_struct *p;
 
 	switch (flag) {
 	case SBB_ALL:
 		busy_tick_boost_all = set;
-		break;
-	case SBB_GROUP:
-		rcu_read_lock();
-		p = find_task_by_vpid(pid);
-		if (p) {
-			get_task_struct(p);
-			group_leader = p->group_leader;
-			if (group_leader) {
-				get_task_struct(group_leader);
-				group_leader->android_vendor_data1[T_SBB_TG_FLG] = set;
-				put_task_struct(group_leader);
-			}
-			put_task_struct(p);
-		}
-		rcu_read_unlock();
 		break;
 	case SBB_TASK:
 		rcu_read_lock();
@@ -228,20 +213,12 @@ EXPORT_SYMBOL_GPL(set_sbb);
 bool is_sbb_trigger(struct rq *rq)
 {
 	bool sbb_trigger = false;
-	struct task_struct *curr, *group_leader;
+	struct task_struct *curr;
 
 	rcu_read_lock();
 	curr = rcu_dereference(rq->curr);
-	if (curr) {
+	if (curr)
 		sbb_trigger |= curr->android_vendor_data1[T_SBB_FLG];
-		group_leader = curr->group_leader;
-		if (group_leader) {
-			get_task_struct(group_leader);
-			sbb_trigger |=
-				group_leader->android_vendor_data1[T_SBB_TG_FLG];
-			put_task_struct(group_leader);
-		}
-	}
 	rcu_read_unlock();
 	sbb_trigger |= busy_tick_boost_all;
 
