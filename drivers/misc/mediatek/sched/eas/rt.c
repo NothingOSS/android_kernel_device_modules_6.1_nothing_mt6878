@@ -9,6 +9,7 @@
 #include "common.h"
 #include "eas_plus.h"
 #include "eas_trace.h"
+#include <mt-plat/mtk_irq_mon.h>
 
 #if IS_ENABLED(CONFIG_RT_SOFTINT_OPTIMIZATION)
 /*
@@ -305,6 +306,8 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 	unsigned int cfs_cpus = 0;
 	unsigned int idle_cpus = 0;
 
+	irq_log_store();
+
 	/* For anything but wake ups, just return the task_cpu */
 	if (!(flags & (WF_TTWU | WF_FORK))) {
 		if (!cpu_paused(source_cpu)) {
@@ -313,6 +316,8 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 			goto out;
 		}
 	}
+
+	irq_log_store();
 
 	this_cpu = smp_processor_id();
 	this_cpu_rq = cpu_rq(this_cpu);
@@ -326,6 +331,8 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 		select_reason = LB_RT_SYNC;
 		goto out;
 	}
+
+	irq_log_store();
 
 	/* previous CPU as backup */
 	*target_cpu = source_cpu;
@@ -353,11 +360,12 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 	}
 
 	rcu_read_unlock();
-
+	irq_log_store();
 out:
 	if (trace_sched_select_task_rq_rt_enabled())
 		trace_sched_select_task_rq_rt(p, select_reason, *target_cpu, idle_cpus, cfs_cpus,
 					sd_flag, sync);
+	irq_log_store();
 }
 
 void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowest_mask,
@@ -368,11 +376,14 @@ void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowes
 	cpumask_t avail_lowest_mask;
 	int target = -1, select_reason = -1;
 
+	irq_log_store();
+
 	cpumask_andnot(&avail_lowest_mask, lowest_mask, cpu_pause_mask);
 	if (!ret) {
 		select_reason = LB_RT_NO_LOWEST_RQ;
 		goto out; /* No targets found */
 	}
+	irq_log_store();
 
 	source_cpu = task_cpu(p);
 
@@ -386,6 +397,8 @@ void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowes
 
 	mtk_rt_energy_aware_wake_cpu(p, &avail_lowest_mask, ret, &target, false);
 
+	irq_log_store();
+
 	/* best energy cpu found */
 	if (target != -1) {
 		*lowest_cpu = target;
@@ -393,12 +406,16 @@ void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowes
 		goto out;
 	}
 
+	irq_log_store();
+
 	/* use prev cpu as target */
 	if (source_cpu !=  -1) {
 		*lowest_cpu = source_cpu;
 		select_reason = LB_RT_SOURCE_CPU;
 		goto out;
 	}
+
+	irq_log_store();
 
 	/*
 	 * And finally, if there were no matches within the domains
@@ -411,6 +428,8 @@ void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowes
 		goto out;
 	}
 
+	irq_log_store();
+
 	cpu = cpumask_any_and_distribute(&avail_lowest_mask, cpu_possible_mask);
 	if (cpu < nr_cpu_ids) {
 		*lowest_cpu = cpu;
@@ -418,13 +437,19 @@ void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowes
 		goto out;
 	}
 
+	irq_log_store();
+
 	/* Let find_lowest_rq not to choose dst_cpu */
 	*lowest_cpu = -1;
 	select_reason = LB_RT_FAIL;
 	cpumask_clear(lowest_mask);
 
 out:
+	irq_log_store();
+
 	if (trace_sched_find_lowest_rq_enabled())
 		trace_sched_find_lowest_rq(p, select_reason, *lowest_cpu,
 				&avail_lowest_mask, lowest_mask);
+
+	irq_log_store();
 }

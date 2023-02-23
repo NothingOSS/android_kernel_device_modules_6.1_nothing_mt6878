@@ -1151,6 +1151,8 @@ void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 	int offset_dsu_vote;
 	int opp;
 
+	irq_log_store();
+
 	if (trace_sugov_ext_gear_state_enabled())
 		trace_sugov_ext_gear_state(per_cpu(gear_id, cpu),
 			pd_get_freq_opp(cpu, *target_freq));
@@ -1204,6 +1206,8 @@ void mtk_arch_set_freq_scale(void *data, const struct cpumask *cpus,
 	int cpu = cpumask_first(cpus);
 	unsigned long cap, max_cap;
 	struct cpufreq_policy *policy;
+
+	irq_log_store();
 
 	policy = cpufreq_cpu_get(cpu);
 	if (policy) {

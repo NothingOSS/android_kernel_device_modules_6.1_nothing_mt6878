@@ -110,6 +110,7 @@ static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct 
 {
 	int cpu = rq->cpu;
 	int type = *(int *)data;
+	irq_log_store();
 
 	if (trace_sched_queue_task_enabled()) {
 		unsigned long util = READ_ONCE(rq->cfs.avg.util_avg);

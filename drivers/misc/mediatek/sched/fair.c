@@ -707,6 +707,8 @@ int mtk_find_energy_efficient_cpu_in_interrupt(struct task_struct *p, bool laten
 	int select_reason = -1;
 	struct cpumask allowed_cpu_mask;
 
+	irq_log_store();
+
 	for (; pd; pd = pd->next) {
 		max_spare_cap_cpu_per_gear = -1;
 		max_spare_cap_per_gear = LONG_MIN;

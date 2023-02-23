@@ -448,6 +448,8 @@ void mtk_tick_entry(void *data, struct rq *rq)
 	u32 opp_ceiling;
 	//u64 idle_time, wall_time, cpu_utilize;
 
+	irq_log_store();
+
 	if (is_wl_support())
 		update_wl_tbl(this_cpu);
 /*
@@ -629,6 +631,8 @@ void check_for_migration(struct task_struct *p)
 	int cpu = task_cpu(p);
 	struct rq *rq = cpu_rq(cpu);
 
+	irq_log_store();
+
 	if (rq->misfit_task_load) {
 		struct em_perf_domain *pd;
 		struct cpufreq_policy *policy;
@@ -720,6 +724,8 @@ void mtk_hook_after_enqueue_task(void *data, struct rq *rq,
 {
 	struct update_util_data *fdata;
 	bool should_update = false;
+
+	irq_log_store();
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_BIG_TASK_ROTATE)
 	rotat_after_enqueue_task(data, rq, p);
