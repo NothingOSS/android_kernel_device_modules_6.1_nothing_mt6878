@@ -2,6 +2,17 @@
 #
 # Phy drivers for Mediatek devices
 #
+config DEVICE_MODULES_PHY_MTK_PCIE
+	tristate "MediaTek PCIe-PHY Driver"
+	depends on ARCH_MEDIATEK || COMPILE_TEST
+	depends on OF
+	select GENERIC_PHY
+	help
+	  Enable this to support the PCIe PHY for
+	  PCIe GEN3 controllers on Mediatek chips.
+	  The driver provide vendor-specific probing,
+	  initialization, power on and power off flow.
+
 config DEVICE_MODULES_PHY_MTK_TPHY
 	tristate "MediaTek T-PHY Driver"
 	depends on ARCH_MEDIATEK || COMPILE_TEST
