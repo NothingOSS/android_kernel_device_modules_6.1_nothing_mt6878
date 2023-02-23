@@ -169,6 +169,7 @@ int sspm_reserve_memory_init(void)
 
 #ifdef SSPM_SHARE_BUFFER_SUPPORT
 void __iomem *sspm_base;
+unsigned int sspm_share_region_base, sspm_share_region_size;
 phys_addr_t sspm_sbuf_get(unsigned int offset)
 {
 	if (!is_sspm_ready()) {
@@ -176,8 +177,8 @@ phys_addr_t sspm_sbuf_get(unsigned int offset)
 		return 0;
 	}
 
-	if (offset < SSPM_SHARE_REGION_BASE ||
-		offset > SSPM_SHARE_REGION_BASE + SSPM_SHARE_REGION_SIZE) {
+	if (offset < sspm_share_region_base ||
+		offset > sspm_share_region_base + sspm_share_region_size) {
 		pr_notice("[SSPM] illegal sbuf request: 0x%x\n", offset);
 		return 0;
 	} else {
@@ -190,6 +191,7 @@ int sspm_sbuf_init(void)
 {
 	struct device *dev = &sspm_pdev->dev;
 	struct resource *res;
+	u32 ret;
 
 	if (sspm_pdev) {
 		res = platform_get_resource_byname(sspm_pdev,
@@ -199,6 +201,21 @@ int sspm_sbuf_init(void)
 		if (IS_ERR((void const *) sspm_base))
 			return -1;
 	}
+
+	ret = of_property_read_u32(sspm_pdev->dev.of_node, "sspm-share-region-base",
+						&sspm_share_region_base);
+	if (ret) {
+		pr_notice("[SSPM] sspm_share_region_base is not defined.\n");
+		return -1;
+	}
+
+	ret = of_property_read_u32(sspm_pdev->dev.of_node, "sspm-share-region-size",
+						 &sspm_share_region_size);
+	if (ret) {
+		pr_notice("[SSPM] sspm_share_region_size is not defined.\n");
+		return -1;
+	}
+
 	return 0;
 }
 #endif

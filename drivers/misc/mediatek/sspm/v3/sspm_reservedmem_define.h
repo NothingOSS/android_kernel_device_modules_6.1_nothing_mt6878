@@ -62,8 +62,3 @@ static struct sspm_reserve_mblock sspm_reserve_mblock[NUMS_MEM_ID] = {
 };
 #endif
 #endif
-
-#ifdef SSPM_SHARE_BUFFER_SUPPORT
-#define SSPM_SHARE_REGION_BASE  0x20000
-#define SSPM_SHARE_REGION_SIZE  0x10000
-#endif
