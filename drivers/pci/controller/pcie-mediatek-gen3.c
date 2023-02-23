@@ -168,6 +168,11 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_DCR2_CPL_TO		GENMASK(3, 0)
 #define PCIE_CPL_TIMEOUT_4MS		0x2
 
+/* AER status */
+#define PCIE_AER_CO_STATUS		0x1210
+#define AER_CO_RE			BIT(0)
+#define AER_CO_BTLP			BIT(6)
+
 /* PHY sif register */
 #define PCIE_PHY_SIF			0x11100000
 #define PEXTP_DIG_GLB_28		0x28
@@ -1341,6 +1346,7 @@ static void pcie_android_rvh_do_serror(void *data, struct pt_regs *regs,
  *           bit[5]: DL_UP state (PCIe MAC offset 0x154 bit[8])
  *           bit[6]: Completion timeout status (PCIe MAC offset 0x184 bit[18])
  *                   AXI fetch error (PCIe MAC offset 0x184 bit[17])
+ *           bit[7]: RxErr
  */
 u32 mtk_pcie_dump_link_info(int port)
 {
@@ -1399,6 +1405,14 @@ u32 mtk_pcie_dump_link_info(int port)
 	val = readl_relaxed(pcie_port->base + PCIE_INT_STATUS_REG);
 	if (val & PCIE_AXI_READ_ERR)
 		ret_val |= BIT(6);
+
+	/* PCIe RxErr */
+	val = PCIE_CFG_FORCE_BYTE_EN | PCIE_CFG_BYTE_EN(0xf) |
+	      PCIE_CFG_HEADER(0, 0);
+	writel_relaxed(val, pcie_port->base + PCIE_CFGNUM_REG);
+	val = readl_relaxed(pcie_port->base + PCIE_AER_CO_STATUS);
+	if (val & (AER_CO_RE | AER_CO_BTLP))
+		ret_val |= BIT(7);
 
 	return ret_val;
 }
