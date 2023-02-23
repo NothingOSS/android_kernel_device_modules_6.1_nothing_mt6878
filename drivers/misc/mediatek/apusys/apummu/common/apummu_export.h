@@ -13,6 +13,7 @@ int apummu_alloc_mem(uint32_t type, uint32_t size, uint64_t *addr, uint32_t *sid
 int apummu_free_mem(uint32_t sid);
 int apummu_import_mem(uint64_t session, uint32_t sid);
 int apummu_unimport_mem(uint64_t session, uint32_t sid);
+// remap? map PA -> VA
 int apummu_map_mem(uint64_t session, uint32_t sid, uint64_t *addr);
 int apummu_unmap_mem(uint64_t session, uint32_t sid);
 

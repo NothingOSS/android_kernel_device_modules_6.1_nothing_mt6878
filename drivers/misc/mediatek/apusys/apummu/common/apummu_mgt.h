@@ -6,15 +6,18 @@
 #ifndef __APUMMU_TABLE_H__
 #define __APUMMU_TABLE_H__
 
-/* config define */
-#define AMMU_DRAM2PAGE_ARRAY		(1)
-#define DRAM_FALL_BACK_IN_RUNTIME	(1)
-
 #define APUMMU_MAX_BUF_CNT		(16)
 /* midware has max 64 SCs */
 #define APUMMU_MAX_SC_CNT		(64)
 
 #define APUMMU_MAX_TBL_ENTRY	(APUMMU_MAX_SC_CNT*APUMMU_MAX_BUF_CNT)
+
+enum mem_mask_idx {
+	DRAM_1_4G,
+	DRAM_4_16G,
+	SLB_EXT,
+	SLB_RSV_S,
+};
 
 /* NOTE: DATA_BUF, CMD_BUF aligned MDW */
 enum AMMU_BUF_TYPE {
@@ -29,24 +32,31 @@ struct apummu_adr {
 	uint32_t eva;	// the encrypted iova
 };
 
-/* apummu iova-eva mapping table */
-struct apummu_session_tbl {
+struct ammu_stable_info {
 	/* header */
 	uint64_t session;			// the session
 	uint32_t session_entry_cnt;	// max: APUMMU_MAX_TBL_ENTRY
+
+	uint32_t EXT_SLB_addr;		// SLB addr for EXT
 
 	/*
 	 * Issue: there's only 5 page arraies, so we cannot use 4 page arraies for 0-16G
 	 * 1 segment for 4-16G with page array size is 512M (24 fields)
 	 * 1~4 4~16G
 	 */
-#if AMMU_DRAM2PAGE_ARRAY
-	uint32_t page_idx_mask[2];		// 1 for 0~4G, 1 for 4~16G
-	uint8_t  page_mask_en_num[2];	// 0-1, for page_idx_mask[x] enable
-	uint8_t  dram_idx_mask;			// 0-1, for page_idx_mask[x] enable
-#else
-	uint32_t page_idx_mask;		// Whole 16G use 1 mask -> 512M for a block
-#endif
+	uint32_t DRAM_page_array_mask[2];	// 1 for 0~4G, 1 for 4~16G
+	uint8_t  DRAM_page_array_en_num[2];	// 0-1, for page_idx_mask[x] enable
+	uint8_t  mem_mask;	// bit meaning plz refer to mem_mask_idx
+
+	/* NOTE: No EXT_SLB_size since size is not important */
+	uint8_t RSV_S_SLB_page_array_start;	// SLB PA for RSV_S
+	uint8_t RSV_S_SLB_page;	// SLB size for RSV_S, shift by 512M
+};
+
+/* apummu iova-eva mapping table */
+struct apummu_session_tbl {
+	/* stuff pass to RV */
+	struct ammu_stable_info stable_info;
 
 	/* payload */
 	struct apummu_adr adr[APUMMU_MAX_TBL_ENTRY];
@@ -62,5 +72,8 @@ void dump_session_table_set(void);
 void apummu_mgt_init(void);
 void apummu_mgt_destroy(void);
 
+int ammu_session_table_add_SLB(uint64_t session, uint32_t type);
+int ammu_session_table_remove_SLB(uint64_t session, uint32_t type);
+void ammu_session_table_check_SLB(uint32_t type);
 
 #endif //Endof __APUMMU_TABLE_H__

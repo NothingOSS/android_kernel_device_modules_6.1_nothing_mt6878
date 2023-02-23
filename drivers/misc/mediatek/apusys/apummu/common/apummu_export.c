@@ -19,140 +19,154 @@ extern struct apummu_dev_info *g_adv;
 
 int apummu_alloc_mem(uint32_t type, uint32_t size, uint64_t *addr, uint32_t *sid)
 {
-	int ret = 0, check = 0;
-	uint64_t input_addr = 0, ret_addr = 0, input_size = 0;
-	uint32_t ret_id = 0;
-
+	int ret = 0;
+	uint64_t ret_addr = 0, ret_size = 0;
 
 	if (g_adv == NULL) {
 		AMMU_LOG_ERR("Invalid apummu_device\n");
 		ret = -EINVAL;
 		return ret;
 	}
-	AMMU_LOG_INFO("[Alloc] Mem (%u/0x%x)\n", type, size);
 
 	switch (type) {
 	case APUMMU_MEM_TYPE_EXT:
 	case APUMMU_MEM_TYPE_RSV_S:
-		ret = apummu_alloc_slb(type, size, &input_addr, &input_size,
-								g_adv->plat.slb_wait_time);
+		ret = apummu_alloc_slb(type, size, g_adv->plat.slb_wait_time,
+							&ret_addr, &ret_size);
 		if (ret)
-			goto out;
+			goto err;
+
+		if (type == APUMMU_MEM_TYPE_EXT) {
+			g_adv->rsc.external_SLB.iova = ret_addr;
+			g_adv->rsc.external_SLB.size = (uint32_t) ret_size;
+			g_adv->plat.is_external_SLB_alloc = true;
+		} else {
+			g_adv->rsc.internal_SLB.iova = ret_addr;
+			g_adv->rsc.internal_SLB.size = (uint32_t) ret_size;
+			g_adv->plat.is_internal_SLB_alloc = true;
+		}
+
 		break;
 	case APUMMU_MEM_TYPE_RSV_T:
-		input_addr = 0;
-		input_size = size;
+		ret_addr = g_adv->remote.TCM_base_addr;
+		ret_size = g_adv->remote.general_SRAM_size;
 		break;
-
 	case APUMMU_MEM_TYPE_VLM:
-		input_addr = 0;
-		input_size = size;
+		ret_addr = g_adv->remote.vlm_addr;
+		ret_size = g_adv->remote.vlm_size;
 		break;
 	default:
 		AMMU_LOG_ERR("Invalid type %u\n", type);
 		ret = -EINVAL;
-		goto out;
-	}
-	AMMU_LOG_INFO("[Alloc] Mem (%u/0x%x/0x%llx/0x%llx)\n",
-				type, size, input_addr, input_size);
-
-	ret = apummu_remote_alloc_mem(g_adv, type, input_addr, input_size, &ret_addr, &ret_id);
-	if (ret) {
-		AMMU_LOG_ERR("Remote Handshake fail %d\n", ret);
-
-		// Free SLB if fail
-		if ((type == APUMMU_MEM_TYPE_EXT) || (type == APUMMU_MEM_TYPE_RSV_S)) {
-			check = apummu_free_slb(type, input_addr);
-			if (check)
-				goto out;
-		}
-
-		goto out;
+		goto err;
 	}
 
 	*addr = ret_addr;
-	*sid = ret_id;
+	*sid = type;
 
-	AMMU_LOG_INFO("[Alloc][Done] Mem (%u/0x%x/0x%llx/0x%x)\n",
-			type, size, ret_addr, ret_id);
-
+	AMMU_LOG_DBG("[Alloc][Done] Mem type(%u), addr(0x%llx), size(0x%llx)\n",
+				type, ret_addr, ret_size);
 	return ret;
-out:
-	AMMU_LOG_ERR("[Alloc][Fail] Mem (%u/0x%x/0x%llx/0x%x)\n", type, size, ret_addr, ret_id);
+
+err:
+	AMMU_LOG_ERR("[Alloc][Fail] Mem type(%u), addr(0x%llx), size(0x%llx)\n",
+				type, ret_addr, ret_size);
 	return ret;
 }
 
 int apummu_free_mem(uint32_t sid)
 {
 	int ret = 0;
-	uint32_t out_type = 0, out_size = 0;
-	uint64_t out_addr = 0;
+	uint32_t type = sid;
 
 	if (g_adv == NULL) {
 		AMMU_LOG_ERR("Invalid apummu_device\n");
 		ret = -EINVAL;
 		return ret;
 	}
-	AMMU_LOG_INFO("[Free] Mem (0x%x)\n", sid);
 
-	ret = apummu_remote_free_mem(g_adv, sid, &out_type, &out_addr, &out_size);
-	if (ret) {
-		AMMU_LOG_ERR("Remote Handshake fail %d\n", ret);
-		goto out;
-	}
+	switch (type) {
+	case APUMMU_MEM_TYPE_EXT:
+	case APUMMU_MEM_TYPE_RSV_S:
+		if (type == APUMMU_MEM_TYPE_EXT) {
+			if (!g_adv->plat.is_external_SLB_alloc) {
+				AMMU_LOG_ERR("External SLB is not alloced\n");
+				goto err;
+			}
 
-	switch (out_type) {
+			g_adv->plat.is_external_SLB_alloc = false;
+			g_adv->rsc.external_SLB.iova = 0;
+			g_adv->rsc.external_SLB.size = 0;
+		} else {
+			if (!g_adv->plat.is_internal_SLB_alloc) {
+				AMMU_LOG_ERR("Internal SLB is not alloced\n");
+				goto err;
+			}
+
+			g_adv->plat.is_internal_SLB_alloc = false;
+			g_adv->rsc.internal_SLB.iova = 0;
+			g_adv->rsc.internal_SLB.size = 0;
+		}
+
+		ret = apummu_free_slb(type);
+		if (ret)
+			goto err;
+
+		ammu_session_table_check_SLB(type);
+		break;
 	case APUMMU_MEM_TYPE_VLM:
 	case APUMMU_MEM_TYPE_RSV_T:
 		break;
+	default:
+		AMMU_LOG_ERR("Invalid type %u\n", type);
+		ret = -EINVAL;
+		goto err;
+	}
+
+	AMMU_LOG_DBG("[Free][Done] Mem type(%u)\n", type);
+	return ret;
+
+err:
+	AMMU_LOG_ERR("[Free][Fail] Mem type(%u)\n", type);
+	return ret;
+}
+
+int apummu_import_mem(uint64_t session, uint32_t type)
+{
+	int ret = 0;
+
+	if (g_adv == NULL) {
+		AMMU_LOG_ERR("Invalid apummu_device\n");
+		ret = -EINVAL;
+		return ret;
+	}
+
+	switch (type) {
 	case APUMMU_MEM_TYPE_EXT:
 	case APUMMU_MEM_TYPE_RSV_S:
-		ret = apummu_free_slb(out_type, out_addr);
+		ret = ammu_session_table_add_SLB(session, type);
 		if (ret)
-			goto out;
+			goto err;
+
+		break;
+	case APUMMU_MEM_TYPE_VLM:
+	case APUMMU_MEM_TYPE_RSV_T:
 		break;
 	default:
-		AMMU_LOG_ERR("Invalid type %u\n", out_type);
+		AMMU_LOG_ERR("Invalid type %u\n", type);
 		ret = -EINVAL;
-		goto out;
+		goto err;
 	}
 
-	AMMU_LOG_INFO("[Free][Done] Mem (0x%x) (%u/0x%llx/0x%x)\n",
-				sid, out_type, out_addr, out_size);
+	AMMU_LOG_DBG("[Import][Done] Mem session(0x%llx), type(%u)\n", session, type);
 	return ret;
-out:
-	AMMU_LOG_ERR("[Free][Fail] Mem (0x%x) (%u/0x%llx/0x%x)\n",
-			sid, out_type, out_addr, out_size);
 
+err:
+	AMMU_LOG_ERR("[Import][Fail] Mem session(0x%llx), type(%u)\n", session, type);
 	return ret;
 }
 
-int apummu_import_mem(uint64_t session, uint32_t sid)
-{
-	int ret = 0;
-
-	if (g_adv == NULL) {
-		AMMU_LOG_ERR("Invalid apummu_device\n");
-		ret = -EINVAL;
-		return ret;
-	}
-	AMMU_LOG_INFO("[Import] Mem (0x%llx/0x%x)\n", session, sid);
-
-	ret = apummu_remote_import_mem(g_adv, session, sid);
-	if (ret) {
-		AMMU_LOG_ERR("Remote Handshake fail %d\n", ret);
-		goto out;
-	}
-
-	AMMU_LOG_INFO("[Import][Done] Mem (0x%llx/0x%x)\n", session, sid);
-
-	return ret;
-out:
-	AMMU_LOG_ERR("[Import][Fail] Mem (0x%llx/0x%x)\n", session, sid);
-	return ret;
-}
-
-int apummu_unimport_mem(uint64_t session, uint32_t sid)
+int apummu_unimport_mem(uint64_t session, uint32_t type)
 {
 	int ret = 0;
 
@@ -162,18 +176,28 @@ int apummu_unimport_mem(uint64_t session, uint32_t sid)
 		return ret;
 	}
 
-	AMMU_LOG_INFO("[UnImport] Mem (0x%llx/0x%x)\n", session, sid);
+	switch (type) {
+	case APUMMU_MEM_TYPE_EXT:
+	case APUMMU_MEM_TYPE_RSV_S:
+		ret = ammu_session_table_remove_SLB(session, type);
+		if (ret)
+			goto err;
 
-	ret = apummu_remote_unimport_mem(g_adv, session, sid);
-	if (ret) {
-		AMMU_LOG_ERR("Remote Handshake fail %d\n", ret);
-		goto out;
+		break;
+	case APUMMU_MEM_TYPE_VLM:
+	case APUMMU_MEM_TYPE_RSV_T:
+		break;
+	default:
+		AMMU_LOG_ERR("Invalid type %u\n", type);
+		ret = -EINVAL;
+		goto err;
 	}
 
-	AMMU_LOG_INFO("[UnImport][Done] Mem (0x%llx/0x%x)\n", session, sid);
+	AMMU_LOG_DBG("[Unimport][Done] Mem session(0x%llx), type(%u)\n", session, type);
 	return ret;
-out:
-	AMMU_LOG_ERR("[UnImport][Fail] Mem (0x%llx/0x%x)\n", session, sid);
+
+err:
+	AMMU_LOG_ERR("[Unimport][Fail] Mem session(0x%llx), type(%u)\n", session, type);
 	return ret;
 }
 
@@ -181,6 +205,7 @@ int apummu_map_mem(uint64_t session, uint32_t sid, uint64_t *addr)
 {
 	int ret = 0;
 	uint64_t ret_addr = 0;
+	uint32_t type = sid;
 
 	if (g_adv == NULL) {
 		AMMU_LOG_ERR("Invalid apummu_device\n");
@@ -188,26 +213,42 @@ int apummu_map_mem(uint64_t session, uint32_t sid, uint64_t *addr)
 		return ret;
 	}
 
-	AMMU_LOG_INFO("[Map] mem (0x%llx/0x%x/0x%llx)\n", session, sid, ret_addr);
+	switch (type) {
+	case APUMMU_MEM_TYPE_EXT:
+	case APUMMU_MEM_TYPE_RSV_S:
+		ret = ammu_session_table_add_SLB(session, type);
+		if (ret)
+			goto err;
 
-	ret = apummu_remote_map_mem(g_adv, session, sid, &ret_addr);
-	if (ret) {
-		AMMU_LOG_ERR("Remote Handshake fail %d\n", ret);
-		goto out;
+		ret_addr = (type == APUMMU_MEM_TYPE_EXT)
+				? g_adv->remote.SLB_EXT_addr
+				: g_adv->remote.vlm_addr;
+
+		break;
+	case APUMMU_MEM_TYPE_VLM:
+	case APUMMU_MEM_TYPE_RSV_T:
+		ret_addr = g_adv->remote.vlm_addr;
+		break;
+	default:
+		AMMU_LOG_ERR("Invalid type %u\n", type);
+		ret = -EINVAL;
+		goto err;
 	}
+
 	*addr = ret_addr;
 
-	AMMU_LOG_INFO("[Map][Done] Mem (0x%llx/0x%x/0x%llx)\n", session, sid, ret_addr);
+	AMMU_LOG_DBG("[Map][Done] Mem (0x%llx/0x%x/0x%llx)\n", session, type, ret_addr);
 	return ret;
-out:
 
-	AMMU_LOG_ERR("[Map][Fail] Mem (0x%llx/0x%x/0x%llx)\n", session, sid, ret_addr);
+err:
+	AMMU_LOG_ERR("[Map][Fail] Mem (0x%llx/0x%x/0x%llx)\n", session, type, ret_addr);
 	return ret;
 }
 
 int apummu_unmap_mem(uint64_t session, uint32_t sid)
 {
 	int ret = 0;
+	uint32_t type = sid;
 
 	if (g_adv == NULL) {
 		AMMU_LOG_ERR("Invalid apummu_device\n");
@@ -215,17 +256,27 @@ int apummu_unmap_mem(uint64_t session, uint32_t sid)
 		return ret;
 	}
 
-	AMMU_LOG_INFO("[Unmap] mem (0x%llx/0x%x)\n", session, sid);
+	switch (type) {
+	case APUMMU_MEM_TYPE_EXT:
+	case APUMMU_MEM_TYPE_RSV_S:
+		ret = ammu_session_table_remove_SLB(session, type);
+		if (ret)
+			goto err;
 
-	ret = apummu_remote_unmap_mem(g_adv, session, sid);
-	if (ret) {
-		AMMU_LOG_ERR("Remote Handshake fail %d\n", ret);
-		goto out;
+		break;
+	case APUMMU_MEM_TYPE_VLM:
+	case APUMMU_MEM_TYPE_RSV_T:
+		break;
+	default:
+		AMMU_LOG_ERR("Invalid type %u\n", type);
+		ret = -EINVAL;
+		goto err;
 	}
 
-	AMMU_LOG_INFO("[Unmap][Done] Mem (0x%llx/0x%x)\n", session, sid);
+	AMMU_LOG_DBG("[Unmap][Done] Mem (0x%llx/0x%x)\n", session, sid);
 	return ret;
-out:
+
+err:
 	AMMU_LOG_ERR("[Unmap][Fail] Mem (0x%llx/0x%x)\n", session, sid);
 	return ret;
 }

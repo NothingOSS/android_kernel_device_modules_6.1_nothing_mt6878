@@ -22,6 +22,7 @@
 #include "apummu_export.h"	// for verify API to MDW
 
 #include "apummu_mgt.h"
+#include "apummu_mem.h"
 
 /* All level default on */
 uint32_t g_ammu_klog = 0xF;	/* apummu kernel log level */
@@ -96,6 +97,19 @@ static const struct file_operations apummu_dbg_fops_remoteop = {
 };
 
 #if KERNEL_DBG
+
+enum apummu_UT_OP {
+	AMMU_ADD_STABLE,
+	AMMU_FREE_STABLE,
+	AMMU_DSETROY_ALL_STABLE,
+	AMMU_GET_STABLE_AND_DUMP,
+	AMMU_ALLOC_AND_MAP,
+	AMMU_UNMAP_AND_FREE,
+	AMMU_IMPORT,
+	AMMU_UNIMPORT,
+	AMMU_GET_STABLE_AND_SEND2RV,
+};
+
 /* dump interest kernel info */
 static ssize_t apummu_dbg_kernel_read(struct file *filp, char *buffer,
 			size_t length, loff_t *offset)
@@ -111,13 +125,15 @@ static ssize_t apummu_dbg_write_kernel(struct file *file, const char __user *use
 			size_t count, loff_t *ppos)
 {
 #define MAX_ARG_kernel	(4)
+	struct apummu_dev_info *adv = file->private_data;
 	char *tmp, *token, *cursor;
 	uint32_t argv[MAX_ARG_kernel];
 	int ret, i;
-	uint32_t mode, type, device_va, eva, size, j;
-	uint64_t session;
+	uint32_t mode, type, device_va, eva, j, sid, size = 0;
+	uint64_t session, addr;
 	void *tbl_kva = NULL;
 	struct apummu_session_tbl *g_ammu_session_table_ptr_DBG = NULL;
+	struct apummu_mem ammu_mem;
 
 	tmp = kzalloc(count + 1, GFP_KERNEL);
 	if (!tmp)
@@ -152,7 +168,7 @@ static ssize_t apummu_dbg_write_kernel(struct file *file, const char __user *use
 	device_va = argv[3];
 
 	switch (mode) {
-	case 0:
+	case AMMU_ADD_STABLE: // 0
 		ret = apummu_iova2eva(type, session, device_va, 0, &eva);
 		if (ret)
 			AMMU_LOG_ERR("apummu_iova2eva fail\n");
@@ -160,15 +176,15 @@ static ssize_t apummu_dbg_write_kernel(struct file *file, const char __user *use
 			AMMU_LOG_DBG("apummu_iova2eva ret IOVA = 0x%x\n", eva);
 
 		break;
-	case 1:
+	case AMMU_FREE_STABLE: // 1
 		AMMU_LOG_DBG("Free stable, session = 0x%llx\n", session);
 		apummu_table_free(session);
 		break;
-	case 2:
+	case AMMU_DSETROY_ALL_STABLE: // 2
 		AMMU_LOG_DBG("Destroy apummu stable\n");
 		apummu_mgt_destroy();
 		break;
-	case 3:
+	case AMMU_GET_STABLE_AND_DUMP: // 3
 		AMMU_LOG_DBG("apummu get stable, session = 0x%llx\n", session);
 		ret = apummu_table_get(session, &tbl_kva, &size);
 		if (ret) {
@@ -185,18 +201,23 @@ static ssize_t apummu_dbg_write_kernel(struct file *file, const char __user *use
 
 		AMMU_LOG_DBG("== APUMMU dump session table in DBG Start ==\n");
 		AMMU_LOG_DBG("== size = 0x%x\n", size);
-		AMMU_LOG_DBG("session           = 0x%llx\n", g_ammu_session_table_ptr_DBG->session);
+		AMMU_LOG_DBG("session           = 0x%llx\n",
+			g_ammu_session_table_ptr_DBG->stable_info.session);
 		AMMU_LOG_DBG("session_entry_cnt = %u\n",
-				g_ammu_session_table_ptr_DBG->session_entry_cnt);
-		AMMU_LOG_DBG("dram_idx_mask     = 0x%x\n",
-				g_ammu_session_table_ptr_DBG->dram_idx_mask);
-		AMMU_LOG_DBG("page_idx_mask     = 0x%x 0x%x\n",
-				g_ammu_session_table_ptr_DBG->page_idx_mask[0],
-				g_ammu_session_table_ptr_DBG->page_idx_mask[1]);
+			g_ammu_session_table_ptr_DBG->stable_info.session_entry_cnt);
+		AMMU_LOG_DBG("mem_mask          = 0x%x\n",
+			g_ammu_session_table_ptr_DBG->stable_info.mem_mask);
+		AMMU_LOG_DBG("DRAM_page_array_mask  = 0~4G(0x%x) 4~16G(0x%x)\n",
+			g_ammu_session_table_ptr_DBG->stable_info.DRAM_page_array_mask[0],
+			g_ammu_session_table_ptr_DBG->stable_info.DRAM_page_array_mask[1]);
+		AMMU_LOG_DBG("EXT_SLB_addr = 0x%x, RSV_S_SLB PA start = %u, page = %u\n",
+			g_ammu_session_table_ptr_DBG->stable_info.EXT_SLB_addr,
+			g_ammu_session_table_ptr_DBG->stable_info.RSV_S_SLB_page_array_start,
+			g_ammu_session_table_ptr_DBG->stable_info.RSV_S_SLB_page);
 
 		AMMU_LOG_DBG("== dump session addr table ==\n");
 		AMMU_LOG_DBG("           | type |    IOVA    |     EVA    |\n");
-		for (j = 0; j < g_ammu_session_table_ptr_DBG->session_entry_cnt; j++) {
+		for (j = 0; j < g_ammu_session_table_ptr_DBG->stable_info.session_entry_cnt; j++) {
 			if (g_ammu_session_table_ptr_DBG->adr[j].type == 1) {
 				AMMU_LOG_DBG("> entry%3u:     %u | 0x%8x | 0x%8x |\n", j,
 					g_ammu_session_table_ptr_DBG->adr[j].type,
@@ -210,6 +231,44 @@ static ssize_t apummu_dbg_write_kernel(struct file *file, const char __user *use
 			}
 		}
 		AMMU_LOG_DBG("== APUMMU dump session table End ==\n");
+		break;
+	case AMMU_ALLOC_AND_MAP: // 4
+		ret = apummu_alloc_mem(type, size, &addr, &sid);
+		if (ret)
+			break;
+
+		ret = apummu_map_mem(session, type, &addr);
+		if (ret)
+			break;
+		break;
+	case AMMU_UNMAP_AND_FREE: // 5
+		ret = apummu_unmap_mem(session, type);
+		if (ret)
+			break;
+
+		ret = apummu_free_mem(type);
+		if (ret)
+			break;
+		break;
+	case AMMU_IMPORT: // 6
+		ret = apummu_import_mem(session, type);
+		break;
+	case AMMU_UNIMPORT: // 7
+		ret = apummu_unimport_mem(session, type);
+		break;
+	case AMMU_GET_STABLE_AND_SEND2RV: // 8
+		ret = apummu_table_get(session, &tbl_kva, &size);
+		if (ret) {
+			AMMU_LOG_ERR("apummu get_session_table fail\n");
+			break;
+		}
+
+		ammu_mem.size = sizeof(size);
+		apummu_mem_alloc(adv->dev, &ammu_mem);
+		memcpy((void *) (ammu_mem.kva), tbl_kva, size);
+
+		apummu_remote_send_stable(adv, session, (uint32_t) ammu_mem.iova, (0x280000));
+		apummu_mem_free(adv->dev, &ammu_mem);
 		break;
 	}
 

@@ -30,16 +30,11 @@ int apummu_remote_handshake(void *drvinfo, void *remote);
 int apummu_remote_set_hw_default_iova(void *drvinfo, uint32_t ctx, uint64_t iova);
 int apummu_remote_set_hw_default_iova_one_shot(void *drvinfo);
 
-int apummu_remote_alloc_mem(void *drvinfo,
-		uint32_t type, uint64_t input_addr, uint32_t size,
-		uint64_t *addr, uint32_t *sid);
-int apummu_remote_free_mem(void *drvinfo, uint32_t sid, uint32_t *type,
-		uint64_t *addr, uint32_t *size);
-int apummu_remote_map_mem(void *drvinfo,
-		uint64_t session, uint32_t sid, uint64_t *addr);
-int apummu_remote_unmap_mem(void *drvinfo,
-		uint64_t session, uint32_t sid);
-int apummu_remote_import_mem(void *drvinfo, uint64_t session, uint32_t sid);
-int apummu_remote_unimport_mem(void *drvinfo, uint64_t session, uint32_t sid);
+/* General SLB add/remove pool APIs */
+int apummu_remote_mem_add_pool(void *drvinfo);
+int apummu_remote_mem_free_pool(void *drvinfo);
+
+int apummu_remote_send_stable(void *drvinfo, uint64_t session, uint32_t ammu_stable_addr,
+					uint32_t SRAM_req_size);
 
 #endif

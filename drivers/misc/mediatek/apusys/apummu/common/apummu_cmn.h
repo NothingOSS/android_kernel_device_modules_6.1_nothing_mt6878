@@ -17,7 +17,7 @@ enum {
 	AMMU_WRN = 0x2,
 	AMMU_INFO = 0x4,
 	AMMU_DBG = 0x8,
-	AMMU_VERBO = 0x8,
+	AMMU_VERBO = 0x10,
 };
 
 #define APUMMU_PREFIX "[apummu]"

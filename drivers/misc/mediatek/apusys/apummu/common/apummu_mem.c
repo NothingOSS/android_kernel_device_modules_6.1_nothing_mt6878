@@ -7,16 +7,17 @@
 
 #include "apummu_cmn.h"
 #include "apummu_mem.h"
-#include "apummu_drv.h"
+#include "apummu_import.h"
+
 
 static struct apummu_mem g_mem_sys;
 
-static void apummu_mem_free(struct device *dev, struct apummu_mem *mem)
+void apummu_mem_free(struct device *dev, struct apummu_mem *mem)
 {
 	dma_free_coherent(dev, mem->size, (void *)mem->kva, mem->iova);
 }
 
-static int apummu_mem_alloc(struct device *dev, struct apummu_mem *mem)
+int apummu_mem_alloc(struct device *dev, struct apummu_mem *mem)
 {
 	int ret = 0;
 	void *kva;
@@ -41,13 +42,14 @@ static int apummu_mem_alloc(struct device *dev, struct apummu_mem *mem)
 	mem->kva = (uint64_t)kva;
 	mem->iova = (uint64_t)iova;
 
-	AMMU_LOG_INFO("DRAM FB mem(0x%llx/0x%x/0x%llx)\n",
+	AMMU_LOG_INFO("DRAM alloc mem(0x%llx/0x%x/0x%llx)\n",
 			mem->iova, mem->size, mem->kva);
 
 out:
 	return ret;
 }
 
+#if !(DRAM_FALL_BACK_IN_RUNTIME)
 int apummu_dram_remap_alloc(void *drvinfo)
 {
 	struct apummu_dev_info *adv = NULL;
@@ -68,8 +70,8 @@ int apummu_dram_remap_alloc(void *drvinfo)
 		goto out;
 	}
 
-	adv->rsc.dram.base = (void *) g_mem_sys.kva;
-	adv->rsc.dram.size = g_mem_sys.size;
+	adv->rsc.vlm_dram.base = (void *) g_mem_sys.kva;
+	adv->rsc.vlm_dram.size = g_mem_sys.size;
 	for (i = 0; i < adv->remote.dram_max; i++)
 		adv->remote.dram[i] = g_mem_sys.iova + adv->remote.vlm_size * (uint64_t) i;
 
@@ -88,11 +90,10 @@ int apummu_dram_remap_free(void *drvinfo)
 	adv = (struct apummu_dev_info *)drvinfo;
 
 	apummu_mem_free(adv->dev, &g_mem_sys);
-	adv->rsc.dram.base = NULL;
+	adv->rsc.vlm_dram.base = NULL;
 	return 0;
 }
-
-
+#else
 int apummu_dram_remap_runtime_alloc(void *drvinfo)
 {
 	struct apummu_dev_info *adv = NULL;
@@ -118,9 +119,9 @@ int apummu_dram_remap_runtime_alloc(void *drvinfo)
 		goto out;
 	}
 
-	adv->rsc.dram.base = (void *) g_mem_sys.kva;
-	adv->rsc.dram.size = g_mem_sys.size;
-	adv->remote.dram_IOVA_base = g_mem_sys.iova;
+	adv->rsc.vlm_dram.base = (void *) g_mem_sys.kva;
+	adv->rsc.vlm_dram.size = g_mem_sys.size;
+	adv->rsc.vlm_dram.iova = g_mem_sys.iova;
 	adv->remote.is_dram_IOVA_alloc = true;
 
 out:
@@ -141,9 +142,71 @@ int apummu_dram_remap_runtime_free(void *drvinfo)
 	adv = (struct apummu_dev_info *)drvinfo;
 
 	apummu_mem_free(adv->dev, &g_mem_sys);
-	adv->rsc.dram.base = NULL;
-	adv->remote.dram_IOVA_base = 0;
+	adv->rsc.vlm_dram.base = NULL;
+	adv->rsc.vlm_dram.iova = 0;
 	adv->remote.is_dram_IOVA_alloc = false;
+
+out:
+	return ret;
+}
+#endif
+
+int apummu_alloc_general_SLB(void *drvinfo)
+{
+	struct apummu_dev_info *adv = NULL;
+	uint64_t ret_addr, ret_size;
+	uint32_t size = 0;
+	int ret = 0;
+
+	if (drvinfo == NULL) {
+		AMMU_LOG_ERR("invalid argument\n");
+		ret = -EINVAL;
+		goto out;
+	}
+	adv = (struct apummu_dev_info *)drvinfo;
+
+	if (adv->remote.is_general_SLB_alloc) {
+		AMMU_LOG_ERR("general SLB already added\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = apummu_alloc_slb(APUMMU_MEM_TYPE_GENERAL_S, size,
+			adv->plat.slb_wait_time, &ret_addr, &ret_size);
+	if (ret)
+		goto out;
+
+	adv->remote.is_general_SLB_alloc = true;
+	adv->rsc.genernal_SLB.iova = ret_addr;
+	adv->rsc.genernal_SLB.size = (uint32_t) ret_size;
+
+out:
+	return ret;
+}
+
+int apummu_free_general_SLB(void *drvinfo)
+{
+	struct apummu_dev_info *adv = NULL;
+	int ret = 0;
+
+	if (drvinfo == NULL) {
+		AMMU_LOG_ERR("invalid argument\n");
+		ret = -EINVAL;
+		goto out;
+	}
+	adv = (struct apummu_dev_info *)drvinfo;
+
+	if (!adv->remote.is_general_SLB_alloc) {
+		AMMU_LOG_ERR("No general SLB is alloced\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = apummu_free_slb(APUMMU_MEM_TYPE_GENERAL_S);
+
+	adv->remote.is_general_SLB_alloc = false;
+	adv->rsc.genernal_SLB.iova = 0;
+	adv->rsc.genernal_SLB.size = 0;
 
 out:
 	return ret;

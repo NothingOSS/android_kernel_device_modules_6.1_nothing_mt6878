@@ -126,7 +126,7 @@ int apummu_set_init_info(struct mtk_apu *apu)
 {
 	struct apummu_dev_info *adv;
 	struct apummu_init_info *rv_info;
-	int i = 0;
+	// int i = 0;
 
 	adv = g_adv;
 
@@ -142,8 +142,8 @@ int apummu_set_init_info(struct mtk_apu *apu)
 
 	/* NOTE: since alloc in runtime, this info may not be right */
 	rv_info->boundary = adv->plat.boundary;
-	for (i = 0; i < adv->remote.dram_max; i++)
-		rv_info->dram[i] = adv->remote.dram[i];
+	// for (i = 0; i < adv->remote.dram_max; i++)
+	// rv_info->dram[i] = adv->remote.dram[i];
 
 	AMMU_LOG_INFO("apummu info init\n");
 
@@ -352,7 +352,9 @@ static int apummu_remove(struct platform_device *pdev)
 	apummu_dbg_destroy(adv);
 	apummu_mgt_destroy();
 	if (mem_task) {
+	#if !(DRAM_FALL_BACK_IN_RUNTIME)
 		apummu_dram_remap_free(adv);
+	#endif
 		mem_task = NULL;
 	}
 	apummu_delete_node(adv);

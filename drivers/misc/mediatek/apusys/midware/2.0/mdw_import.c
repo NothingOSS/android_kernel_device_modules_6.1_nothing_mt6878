@@ -8,6 +8,8 @@
 #include "mdw_trace.h"
 #include "reviser_export.h"
 #include "reviser_mem_def.h"
+#include "apummu_export.h"
+#include "apummu_mem_def.h"
 #include "mnoc_api.h"
 #include "apusys_power.h"
 
@@ -61,16 +63,16 @@ static int mdw_rvs_type_convert(uint32_t type, uint32_t *out)
 {
 	switch (type) {
 	case MDW_MEM_TYPE_VLM:
-		*out = REVISER_MEM_TYPE_VLM;
+		*out = APUMMU_MEM_TYPE_VLM;
 		break;
 	case MDW_MEM_TYPE_LOCAL:
-		*out = REVISER_MEM_TYPE_RSV_T;
+		*out = APUMMU_MEM_TYPE_RSV_T;
 		break;
 	case MDW_MEM_TYPE_SYSTEM_ISP:
-		*out = REVISER_MEM_TYPE_EXT;
+		*out = APUMMU_MEM_TYPE_EXT;
 		break;
 	case MDW_MEM_TYPE_SYSTEM_APU:
-		*out = REVISER_MEM_TYPE_RSV_S;
+		*out = APUMMU_MEM_TYPE_RSV_S;
 		break;
 
 	default:
@@ -89,7 +91,7 @@ int mdw_rvs_mem_alloc(uint32_t type, uint32_t size,
 	if (mdw_rvs_type_convert(type, &mapped_type))
 		return -EINVAL;
 
-	ret = reviser_alloc_mem(mapped_type, size, addr, sid);
+	ret = apummu_alloc_mem(mapped_type, size, addr, sid);
 	mdw_flw_debug("type(%u->%u)size(%u)addr(0x%llx)sid(%u)\n",
 		type, mapped_type, size, *addr, *sid);
 
@@ -99,26 +101,26 @@ int mdw_rvs_mem_alloc(uint32_t type, uint32_t size,
 int mdw_rvs_mem_free(uint32_t sid)
 {
 	mdw_flw_debug("sid(%u)\n", sid);
-	return reviser_free_mem(sid);
+	return apummu_free_mem(sid);
 }
 
 int mdw_rvs_mem_import(uint64_t session, uint32_t sid)
 {
 	mdw_flw_debug("s(0x%llx)sid(%u)\n", (uint64_t)session, sid);
-	return reviser_import_mem(session, sid);
+	return apummu_import_mem(session, sid);
 }
 
 int mdw_rvs_mem_unimport(uint64_t session, uint32_t sid)
 {
 	mdw_flw_debug("s(0x%llx)sid(%u)\n", (uint64_t)session, sid);
-	return reviser_unimport_mem(session, sid);
+	return apummu_unimport_mem(session, sid);
 }
 
 int mdw_rvs_mem_map(uint64_t session, uint32_t sid, uint64_t *vaddr)
 {
 	int ret = 0;
 
-	ret = reviser_map_mem(session, sid, vaddr);
+	ret = apummu_map_mem(session, sid, vaddr);
 	mdw_flw_debug("s(0x%llx)sid(%u)vaddr(0x%llx)\n",
 		session, sid, *vaddr);
 
@@ -128,7 +130,7 @@ int mdw_rvs_mem_map(uint64_t session, uint32_t sid, uint64_t *vaddr)
 int mdw_rvs_mem_unmap(uint64_t session, uint32_t sid)
 {
 	mdw_flw_debug("s(0x%llx)sid(%u)\n", (uint64_t)session, sid);
-	return reviser_unmap_mem(session, sid);
+	return apummu_unmap_mem(session, sid);
 }
 
 int mdw_qos_cmd_start(uint64_t cmd_id, uint64_t sc_id,

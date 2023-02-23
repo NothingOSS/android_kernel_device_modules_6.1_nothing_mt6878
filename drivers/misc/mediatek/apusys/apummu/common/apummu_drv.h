@@ -13,31 +13,48 @@
 #include <linux/device.h>
 #include <linux/wait.h>
 
+/* config define */
+#define DRAM_FALL_BACK_IN_RUNTIME	(1)
+
 /* for RV data*/
 struct apummu_remote_data {
-	uint64_t dram_IOVA_base;
+#if !(DRAM_FALL_BACK_IN_RUNTIME)
 	uint64_t dram[32];
+#endif
 	uint32_t dram_max;
 
 	uint32_t vlm_size;
 	uint32_t vlm_addr;
+
+	uint32_t SLB_base_addr;
+	uint32_t SLB_EXT_addr;
+
+	uint32_t TCM_base_addr;
+	uint32_t general_SRAM_size; // TCM + general SLB
+
 	bool is_dram_IOVA_alloc;
+	bool is_general_SLB_alloc;
 };
 
 /* for plat data */
 struct apummu_platform {
 	uint32_t slb_wait_time;
 	uint32_t boundary;
+	bool is_internal_SLB_alloc;
+	bool is_external_SLB_alloc;
 };
 
 struct apummu_resource {
-	unsigned int addr;
-	unsigned int size;
+	uint64_t iova;
+	uint32_t size;
 	void *base;
 };
 
 struct apummu_resource_mgt {
-	struct apummu_resource dram;
+	struct apummu_resource vlm_dram;
+	struct apummu_resource internal_SLB;
+	struct apummu_resource external_SLB;
+	struct apummu_resource genernal_SLB;
 };
 
 /* apummu driver's private structure */
