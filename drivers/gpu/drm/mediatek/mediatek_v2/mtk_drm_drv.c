@@ -62,6 +62,7 @@
 #include "mtk_disp_oddmr/mtk_disp_oddmr.h"
 #include "platform/mtk_drm_platform.h"
 #include "mtk_drm_trace.h"
+#include "mtk_disp_pq_helper.h"
 
 #include "mtk_drm_mmp.h"
 /* *******Panel Master******** */
@@ -6549,6 +6550,8 @@ static const struct drm_ioctl_desc mtk_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(MTK_SET_GAMMA_MUL_DISABLE, mtk_drm_ioctl_gamma_mul_disable,
 				  DRM_UNLOCKED),
 	DRM_IOCTL_DEF_DRV(MTK_KICK_IDLE, mtk_drm_ioctl_kick_idle,
+				  DRM_UNLOCKED),
+	DRM_IOCTL_DEF_DRV(MTK_PQ_FRAME_CONFIG, mtk_drm_ioctl_pq_frame_config,
 				  DRM_UNLOCKED),
 };
 

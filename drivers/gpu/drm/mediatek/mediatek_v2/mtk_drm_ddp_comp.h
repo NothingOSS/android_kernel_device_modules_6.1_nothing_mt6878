@@ -638,6 +638,7 @@ enum mtk_ddp_io_cmd {
 	MDP_RDMA_FILL_FRAME,
 	INLINEROT_CONFIG,
 	OVL_SET_PQ_OUT,
+	PQ_FILL_COMP_PIPE_INFO,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {
@@ -749,6 +750,8 @@ struct mtk_ddp_comp_funcs {
 	void (*dump)(struct mtk_ddp_comp *comp);
 	void (*reset)(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle);
 	void (*config_overhead)(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg);
+	int (*pq_frame_config)(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+		      unsigned int cmd, void *params, unsigned int size);
 };
 
 struct mtk_ddp_comp {
@@ -977,6 +980,19 @@ mtk_ddp_comp_is_busy(struct mtk_ddp_comp *comp)
 	return ret;
 }
 
+
+static inline int mtk_ddp_comp_pq_frame_config(struct mtk_ddp_comp *comp,
+				      struct cmdq_pkt *handle,
+				      unsigned int cmd, void *params, unsigned int size)
+{
+	int ret = -EINVAL;
+
+	if (comp && comp->funcs && comp->funcs->pq_frame_config && !comp->blank_mode)
+		ret = comp->funcs->pq_frame_config(comp, handle, cmd, params, size);
+
+	return ret;
+}
+
 static inline void mtk_ddp_cpu_mask_write(struct mtk_ddp_comp *comp,
 					  unsigned int off, unsigned int val,
 					  unsigned int mask)
@@ -1050,5 +1066,14 @@ int mtk_ddp_comp_helper_get_opt(struct mtk_ddp_comp *comp,
 
 void mtk_ddp_comp_pm_enable(struct mtk_ddp_comp *comp);
 void mtk_ddp_comp_pm_disable(struct mtk_ddp_comp *comp);
-
+struct mtk_ddp_comp *mtk_ddp_comp_sel_in_cur_crtc_path(struct mtk_drm_crtc *mtk_crtc,
+	enum mtk_ddp_comp_type comp_type, int num);
+struct mtk_ddp_comp *mtk_ddp_comp_sel_in_dual_pipe(struct mtk_drm_crtc *mtk_crtc,
+	enum mtk_ddp_comp_type comp_type, int num);
+struct mtk_ddp_comp *mtk_ddp_comp_last_in_cur_crtc_path(struct mtk_drm_crtc *mtk_crtc,
+	enum mtk_ddp_comp_type comp_type);
+struct mtk_ddp_comp *mtk_ddp_comp_last_in_dual_pipe(struct mtk_drm_crtc *mtk_crtc,
+	enum mtk_ddp_comp_type comp_type);
+int mtk_ddp_comp_locate_in_cur_crtc_path(struct mtk_drm_crtc *mtk_crtc, enum mtk_ddp_comp_id id,
+	bool *is_right_pipe, int *comp_order);
 #endif /* MTK_DRM_DDP_COMP_H */

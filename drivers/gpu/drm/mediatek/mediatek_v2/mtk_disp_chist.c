@@ -203,6 +203,10 @@ int mtk_drm_ioctl_set_chist_config(struct drm_device *dev, void *data,
 	struct drm_crtc *crtc = private->crtc[0];
 	int i = 0;
 
+	if (comp == NULL) {
+		DDPPR_ERR("%s, null pointer!\n", __func__);
+		return -EINVAL;
+	}
 	if (config->config_channel_count == 0 ||
 			config->config_channel_count > DISP_CHIST_CHANNEL_COUNT) {
 		DDPPR_ERR("%s, invalid config channel count:%u\n",
@@ -260,6 +264,10 @@ static int disp_chist_copy_hist_to_user(struct drm_device *dev,
 	struct mtk_drm_private *private = dev->dev_private;
 	struct mtk_ddp_comp *comp = private->ddp_comp[DDP_COMPONENT_CHIST0];
 
+	if (comp == NULL) {
+		DDPPR_ERR("%s, null pointer!\n", __func__);
+		return -1;
+	}
 	if (comp_to_chist(comp)->data->module_count > 1
 		&& hist->caller == MTK_DRM_CHIST_CALLER_PQ
 		&& (hist->device_id & 0xffff))
@@ -927,6 +935,45 @@ void mtk_chist_first_cfg(struct mtk_ddp_comp *comp,
 	mtk_chist_config(comp, cfg, handle);
 }
 
+static int mtk_chist_frame_config(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, unsigned int cmd, void *data, unsigned int data_size)
+{
+	struct drm_mtk_chist_config *config = data;
+	int i = 0;
+
+	if (config == NULL || sizeof(struct drm_mtk_chist_config) != data_size)
+		return -EINVAL;
+
+	if (config->config_channel_count == 0 ||
+			config->config_channel_count > DISP_CHIST_CHANNEL_COUNT) {
+		DDPPR_ERR("%s, invalid config channel count:%u\n",
+				__func__, config->config_channel_count);
+		return -EINVAL;
+	}
+
+	if ((config->device_id & 0xffff) != index_of_chist(comp->id))
+		return 0;
+
+	DDPINFO("%s  chist id:%d, caller:%d, config count:%d\n", __func__,
+		config->device_id, config->caller, config->config_channel_count);
+
+	if (config->caller == MTK_DRM_CHIST_CALLER_HWC) {
+		unsigned int channel_id = DISP_CHIST_HWC_CHANNEL_INDEX;
+
+		for (; i < config->config_channel_count &&
+			channel_id < DISP_CHIST_CHANNEL_COUNT; i++) {
+			config->chist_config[i].channel_id = channel_id;
+			channel_id++;
+		}
+	}
+
+	present_fence[index_of_chist(comp->id)] = 0;
+	need_restore = 1;
+	DDPINFO("%s --\n", __func__);
+
+	return mtk_chist_user_cmd(comp, handle, CHIST_CONFIG, data);
+}
+
 /* don't need start funcs, chist will start by ioctl_set_config*/
 static const struct mtk_ddp_comp_funcs mtk_disp_chist_funcs = {
 	.config = mtk_chist_config,
@@ -935,6 +982,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_chist_funcs = {
 	.user_cmd = mtk_chist_user_cmd,
 	.prepare = mtk_chist_prepare,
 	.unprepare = mtk_chist_unprepare,
+	.pq_frame_config = mtk_chist_frame_config,
 };
 
 static int mtk_disp_chist_bind(struct device *dev, struct device *master,

@@ -147,6 +147,8 @@ struct CRTC_MMP_Events {
 	mmp_event oddmr_ctl;
 	/*dsi underrun irq check*/
 	mmp_event dsi_underrun_irq;
+	/*pq common ioctl*/
+	mmp_event pq_frame_config;
 };
 
 struct DRM_MMP_Events *get_drm_mmp_events(void);

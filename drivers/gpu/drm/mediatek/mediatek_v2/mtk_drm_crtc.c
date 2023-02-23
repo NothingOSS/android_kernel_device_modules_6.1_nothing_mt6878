@@ -10304,6 +10304,8 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 
 	/*4. Calculate total overhead */
 	for_each_comp_in_crtc_path_reverse(comp, mtk_crtc, i, j) {
+		/* Fill PQ COMP INFO */
+		mtk_ddp_comp_io_cmd(comp, cmdq_handle, PQ_FILL_COMP_PIPE_INFO, NULL);
 		mtk_ddp_comp_config_overhead(comp, &cfg);
 		DDPINFO("%s:comp %s width L:%d R:%d, overhead L:%d R:%d\n",
 			__func__, mtk_dump_comp_str(comp),

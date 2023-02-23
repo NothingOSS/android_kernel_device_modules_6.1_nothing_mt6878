@@ -332,6 +332,8 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "oddmr_ctl");
 		g_CRTC_MMP_Events[i].dsi_underrun_irq = mmprofile_register_event(
 			crtc_mmp_root, "dsi_underrun_irq");
+		g_CRTC_MMP_Events[i].pq_frame_config = mmprofile_register_event(
+			crtc_mmp_root, "pq_frame_config");
 	}
 }
 void drm_mmp_init(void)
