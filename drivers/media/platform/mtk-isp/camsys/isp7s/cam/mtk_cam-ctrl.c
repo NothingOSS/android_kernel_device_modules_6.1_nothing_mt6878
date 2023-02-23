@@ -942,6 +942,9 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 
 	mtk_cam_watchdog_stop(&cam_ctrl->watchdog);
 
+	/* this would be time consuming */
+	ctx_stream_on_seninf_sensor(ctx, 0, 0, 0);
+
 	mtk_cam_wq_ctrl_wait_finish(&cam_ctrl->highpri_wq_ctrl);
 
 	mtk_cam_ctrl_wait_all_released(cam_ctrl);

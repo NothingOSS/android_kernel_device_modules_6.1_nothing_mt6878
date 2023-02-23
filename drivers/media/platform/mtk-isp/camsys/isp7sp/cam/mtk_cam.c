@@ -1892,7 +1892,7 @@ int ctx_stream_on_seninf_sensor(struct mtk_cam_ctx *ctx,
 	int ret;
 	int i;
 
-	if (WARN_ON(!seninf))
+	if (!seninf)
 		return -1;
 
 	if (!enable) {
@@ -2016,12 +2016,9 @@ int mtk_cam_ctx_stream_off(struct mtk_cam_ctx *ctx)
 		}
 	}
 
-	// seninf
-	ctx_stream_on_seninf_sensor(ctx, 0, 0, 0);
+	mtk_cam_ctrl_stop(&ctx->cam_ctrl);
 
 	ctx_stream_on_pipe_subdev(ctx, 0);
-
-	mtk_cam_ctrl_stop(&ctx->cam_ctrl);
 
 	/* reset dvfs */
 	mtk_cam_dvfs_update(&ctx->cam->dvfs, ctx->stream_id, 0);
