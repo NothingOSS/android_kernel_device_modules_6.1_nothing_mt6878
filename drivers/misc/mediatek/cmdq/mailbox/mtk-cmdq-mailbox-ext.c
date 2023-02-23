@@ -2261,7 +2261,7 @@ static int cmdq_probe(struct platform_device *pdev)
 	struct of_phandle_args args;
 	struct cmdq *cmdq;
 	struct task_struct *kthr;
-	int err, i;
+	int err, i, smi_cnt;
 	struct gce_plat *plat_data;
 	static u8 hwid;
 
@@ -2353,19 +2353,22 @@ static int cmdq_probe(struct platform_device *pdev)
 	}
 
 	mutex_init(&cmdq->mbox_mutex);
+	smi_cnt = of_count_phandle_with_args(dev->of_node, "mediatek,smi", NULL);
+	for (i = 0; i < smi_cnt; i++) {
+		node = of_parse_phandle(dev->of_node, "mediatek,smi", i);
+		if (!node)
+			cmdq_msg("failed to get mediatek,smi");
 
-	node = of_parse_phandle(dev->of_node, "mediatek,smi", 0);
-	if (!node)
-		cmdq_msg("failed to get mediatek,smi");
-
-	smi = of_find_device_by_node(node);
-	if (!smi)
-		cmdq_msg("failed to find smi node");
-	else {
-		link = device_link_add(dev, &smi->dev,
-			DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
-		if (!link)
-			cmdq_msg("failed to create device link with smi");
+		smi = of_find_device_by_node(node);
+		if (!smi)
+			cmdq_msg("failed to find smi node");
+		else {
+			link = device_link_add(dev, &smi->dev,
+				DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
+			cmdq_msg("%s [CMDQ] device link to %s\n", __func__, dev_name(&smi->dev));
+			if (!link)
+				cmdq_msg("failed to create device link with smi");
+		}
 	}
 
 	g_cmdq[hwid] = cmdq;
