@@ -1578,6 +1578,7 @@ static void ufs_mtk_rpmb_add(void *data, async_cookie_t cookie)
 	u8 rw_size;
 	struct ufs_mtk_host *host;
 	struct ufs_hba *hba = (struct ufs_hba *)data;
+	struct scsi_device *sdev = NULL;
 
 	host = ufshcd_get_variant(hba);
 
@@ -1588,6 +1589,21 @@ static void ufs_mtk_rpmb_add(void *data, async_cookie_t cookie)
 		dev_info(hba->dev, "%s: LUNs not ready before timeout. RPMB init failed", __func__);
 		goto out;
 	}
+
+	/* add sdev_rpmb */
+	shost_for_each_device(sdev, hba->host) {
+		if (sdev->lun == ufshcd_upiu_wlun_to_scsi_wlun(UFS_UPIU_RPMB_WLUN)) { /* rpmb lun */
+			host->sdev_rpmb = sdev;
+			/* break out shost_for_each_device should call scsi_device_put(sdev) */
+			scsi_device_put(sdev);
+			goto find_exit;
+		}
+	}
+
+	dev_err(hba->dev, "%s: scsi rpmb device cannot found\n", __func__);
+		goto out;
+
+find_exit:
 
 	desc_buf = kmalloc(QUERY_DESC_MAX_SIZE, GFP_KERNEL);
 	if (!desc_buf)
