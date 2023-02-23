@@ -472,6 +472,7 @@ initcall_debug=1";
 &mali {
 	sleep-mode-enable = <1>;
 	adaptive-power-policy = <1>;
+	default-glb-pwroff-timeout-us = <300>;
 };
 
 #include "mediatek/cust_k6985_connfem.dtsi"
