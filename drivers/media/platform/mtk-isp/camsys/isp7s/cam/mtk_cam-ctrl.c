@@ -912,6 +912,9 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 	 */
 	atomic_set(&cam_ctrl->stopped, 1);
 
+	/* should wait stream-on/seamless switch finished before stopping */
+	mtk_cam_wq_ctrl_wait_finish(&cam_ctrl->highpri_wq_ctrl);
+
 	/* disable irq first */
 	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
 		if (ctx->hw_raw[i]) {
@@ -944,8 +947,6 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 
 	/* this would be time consuming */
 	ctx_stream_on_seninf_sensor(ctx, 0, 0, 0);
-
-	mtk_cam_wq_ctrl_wait_finish(&cam_ctrl->highpri_wq_ctrl);
 
 	mtk_cam_ctrl_wait_all_released(cam_ctrl);
 
