@@ -3156,6 +3156,8 @@ static int check_layering_result(struct drm_mtk_layering_info *info)
 
 	for (disp_idx = 0; disp_idx < HRT_DISP_TYPE_NUM; disp_idx++) {
 		int layer_num, max_ovl_id, ovl_layer_num;
+		struct drm_mtk_layer_config *c = NULL;
+		int i;
 
 		if (info->layer_num[disp_idx] <= 0)
 			continue;
@@ -3169,6 +3171,21 @@ static int check_layering_result(struct drm_mtk_layering_info *info)
 
 		if (max_ovl_id >= ovl_layer_num)
 			DDPAEE("Inv ovl:%d,disp:%d\n", max_ovl_id, disp_idx);
+
+		if (info->gles_head[HRT_PRIMARY] == -1)
+			continue;
+
+		for (i = info->gles_head[HRT_PRIMARY]; i <= info->gles_tail[HRT_PRIMARY]; i++) {
+			c = &info->input_config[HRT_PRIMARY][i];
+			c->ext_sel_layer = -1;
+
+			if (mtk_has_layer_cap(c, MTK_DISP_CLIENT_CLEAR_LAYER))
+				continue;
+
+			if (mtk_has_layer_cap(c, MTK_MML_DISP_DIRECT_DECOUPLE_LAYER |
+						 MTK_MML_DISP_DIRECT_LINK_LAYER))
+				c->layer_caps &= ~DISP_MML_CAPS_MASK;
+		}
 	}
 
 	return 0;
@@ -4240,8 +4257,8 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	clear_layer(&layering_info, &scn_decision_flag, dev);
 	check_gles_change(&dbg_gles, __LINE__, true);
 
-	ret = dispatch_ovl_id(&layering_info, lyeblob_ids, dev, &lye_state);
 	check_layering_result(&layering_info);
+	ret = dispatch_ovl_id(&layering_info, lyeblob_ids, dev, &lye_state);
 
 	layering_info.hrt_idx = _layering_rule_get_hrt_idx(disp_idx);
 	HRT_SET_AEE_FLAG(layering_info.hrt_num, l_rule_info->dal_enable);
