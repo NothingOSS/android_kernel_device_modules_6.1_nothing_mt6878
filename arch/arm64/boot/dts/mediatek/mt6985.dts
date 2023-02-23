@@ -8307,6 +8307,9 @@
 			clock-names = "hdr0";
 			comp-ids = <MML_HDR0>;
 			comp-names = "hdr0";
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_MDP_RDMA0)>;
+			event-frame-done = /bits/ 16
+				<CMDQ_EVENT_MMLSYS1_MDP_HDR0_FRAME_DONE>;
 		};
 
 		mml_hdr1: mml-hdr1@1f806000 {
@@ -8317,6 +8320,9 @@
 			clock-names = "hdr1";
 			comp-ids = <MML_HDR1>;
 			comp-names = "hdr1";
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_MDP_RDMA0)>;
+			event-frame-done = /bits/ 16
+				<CMDQ_EVENT_MMLSYS1_MDP_HDR1_FRAME_DONE>;
 		};
 
 		mml_aal0: mml-aal0@1f807000 {
