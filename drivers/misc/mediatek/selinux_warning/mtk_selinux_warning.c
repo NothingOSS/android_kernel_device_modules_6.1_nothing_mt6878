@@ -450,7 +450,7 @@ static void probe_selinux_audited(void *ignore, struct selinux_audit_data *sad,
 		return;
 
 	aee = scontext_filter(scontext) ||
-	      (!!strcmp("u:r:untrusted_app", scontext) && av_filter(sad));
+	      (!strstr(scontext, "u:r:untrusted_app") && av_filter(sad));
 	if (aee)
 		selinux_aee(sad, scontext, tcontext, tclass);
 
