@@ -1084,7 +1084,8 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 		}
 
 		if (clk_pwr_off) {
-			if (!ufshcd_is_clkscaling_supported(hba))
+			if (!ufshcd_is_clkscaling_supported(hba) ||
+			    !hba->clk_scaling.is_enabled)
 				ufs_mtk_pm_qos(hba, on);
 			ufs_mtk_boost_crypt(hba, on);
 			ufs_mtk_setup_ref_clk(hba, on);
@@ -1094,7 +1095,8 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 		phy_power_on(host->mphy);
 		ufs_mtk_setup_ref_clk(hba, on);
 		ufs_mtk_boost_crypt(hba, on);
-		if (!ufshcd_is_clkscaling_supported(hba))
+		if (!ufshcd_is_clkscaling_supported(hba) ||
+		    !hba->clk_scaling.is_enabled)
 			ufs_mtk_pm_qos(hba, on);
 	}
 
