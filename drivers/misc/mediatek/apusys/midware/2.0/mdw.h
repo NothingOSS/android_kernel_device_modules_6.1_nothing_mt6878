@@ -47,6 +47,11 @@ struct mdw_fpriv;
 struct mdw_device;
 struct mdw_mem;
 
+enum mdw_buf_rype {
+	MDW_DATA_BUF,
+	MDW_CMD_BUF,
+};
+
 enum mdw_mem_op {
 	MDW_MEM_OP_NONE,
 	MDW_MEM_OP_INTERNAL,
@@ -87,9 +92,11 @@ struct mdw_mem {
 	unsigned int size;
 	unsigned int align;
 	uint64_t flags;
+	uint32_t buf_type;
 
 	/* out */
 	void *vaddr;
+	uint32_t tbl_daddr;
 	struct device *mdev;
 	struct dma_buf *dbuf;
 	void *priv;
@@ -249,6 +256,8 @@ struct mdw_fpriv {
 	atomic_t active_cmds;
 	atomic_t exec_seqno;
 
+	uint64_t cb_head_device_va;
+
 	/* ref count for cmd/mem */
 	atomic_t active;
 	struct kref ref;
@@ -304,6 +313,7 @@ struct mdw_cmd {
 	struct mdw_subcmd_kinfo *ksubcmds;
 	uint32_t num_cmdbufs;
 	uint32_t size_cmdbufs;
+	uint32_t size_apummutable;
 	struct mdw_mem *cmdbufs;
 	struct mdw_mem *exec_infos;
 	struct mdw_exec_info *einfos;
@@ -329,6 +339,8 @@ struct mdw_cmd {
 	struct mdw_fence *fence;
 	struct work_struct t_wk;
 	struct dma_fence *wait_fence;
+
+	void *tbl_kva;
 };
 
 struct mdw_dev_func {

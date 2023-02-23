@@ -12,6 +12,7 @@
 #include "mdw_cmn.h"
 #include "mdw_mem.h"
 #include "mdw_mem_pool.h"
+#include "apummu_export.h"
 #include "rv/mdw_rv_tag.h"
 
 #define mdw_cmd_show(c, f) \
@@ -195,6 +196,25 @@ static int mdw_cmd_get_cmdbufs(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 			goto free_cmdbufs;
 		}
 	}
+
+	/* handle apummu table */
+	if ((c->size_apummutable + ofs) == c->size_cmdbufs) {
+		mdw_cmd_debug("apummu table kva(0x%llx) copy to cmdbuf tail kva(0x%llx)\n",
+		 (uint64_t)c->tbl_kva, (uint64_t)c->cmdbufs->vaddr + ofs);
+		mdw_trace_begin("apumdw:apummutable_copy_in|size:%u",
+			c->size_apummutable);
+		memcpy(c->cmdbufs->vaddr + ofs,
+			c->tbl_kva,
+			c->size_apummutable);
+		c->cmdbufs->tbl_daddr = (uint32_t)(long)(c->cmdbufs->device_va + ofs);
+		mdw_trace_end();
+		mdw_cmd_debug("apummu table copy done tbl iova(0x%x) cmdbuf tail iova(0x%llx)\n",
+		 c->cmdbufs->tbl_daddr, (uint64_t)c->cmdbufs->device_va + ofs);
+	} else {
+		mdw_drv_err("c->size_apummutable(%u) + ofs(%u) != c->size_cmdbufs(%u), tbl_kva(0x%llx)\n",
+		 c->size_apummutable, ofs, c->size_cmdbufs, (uint64_t)c->tbl_kva);
+	}
+
 	/* flush cmdbufs */
 	if (mdw_mem_flush(mpriv, c->cmdbufs))
 		mdw_drv_warn("s(0x%llx) c(0x%llx) flush cmdbufs(%u) fail\n",
@@ -209,6 +229,27 @@ free_cmdbufs:
 out:
 	mdw_cmd_debug("ret(%d)\n", ret);
 	mdw_trace_end();
+	return ret;
+}
+
+static unsigned int mdw_cmd_get_apummutable(struct mdw_fpriv *mpriv,
+	struct mdw_cmd *c)
+{
+	unsigned int tbl_size = 0, ret = 0;
+
+	mdw_cmd_debug("mdw call apummu_table_get priv(0x%llx) tbl_kva(0x%llx)\n",
+	 (uint64_t)c->mpriv, (uint64_t)c->tbl_kva);
+	/* get apummu table */
+	if (apummu_table_get((uint64_t)c->mpriv, &c->tbl_kva, &tbl_size)) {
+		mdw_drv_err("get apummu table fail\n");
+		return -ENOMEM;
+	}
+
+	c->size_cmdbufs += tbl_size;
+	c->size_apummutable = tbl_size;
+	mdw_cmd_debug("c->kid(0x%llx) tbl_size(%u) apummutable size(%u)\n",
+		c->kid, tbl_size, c->size_apummutable);
+
 	return ret;
 }
 
@@ -306,6 +347,12 @@ static unsigned int mdw_cmd_create_infos(struct mdw_fpriv *mpriv,
 	mdw_cmd_debug("sc(0x%llx) cb_num(%u) total size(%u)\n",
 		c->kid, c->num_cmdbufs, c->size_cmdbufs);
 
+	/* get apummu table */
+	if (mdw_cmd_get_apummutable(mpriv, c)) {
+		mdw_drv_err("get apummu table fail\n");
+		goto free_cmdbufs;
+	}
+
 	ret = mdw_cmd_get_cmdbufs(mpriv, c);
 	if (ret)
 		goto free_cmdbufs;
@@ -373,6 +420,8 @@ void mdw_cmd_mpriv_release(struct mdw_fpriv *mpriv)
 		}
 		mdw_flw_debug("s(0x%llx) release mem\n", (uint64_t)mpriv);
 		mdw_mem_mpriv_release(mpriv);
+		mdw_flw_debug("s(0x%llx) release apummu table\n", (uint64_t)mpriv);
+		apummu_table_free((uint64_t)mpriv);
 	}
 }
 

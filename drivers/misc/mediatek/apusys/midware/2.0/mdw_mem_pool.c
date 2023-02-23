@@ -13,6 +13,7 @@
 #include "mdw_mem_pool.h"
 #include "mdw_trace.h"
 #include "mdw_mem_rsc.h"
+#include "apummu_export.h"
 
 #define mdw_mem_pool_show(m) \
 	mdw_mem_debug("mem_pool(0x%llx/0x%llx/%d/0x%llx/%d/0x%llx/0x%x/0x%llx" \
@@ -48,6 +49,8 @@ static int mdw_mem_pool_chunk_add(struct mdw_mem_pool *pool, uint32_t size)
 			(uint64_t)pool->mpriv, (uint64_t)m, size);
 	}
 
+	m->buf_type = MDW_CMD_BUF;
+
 	ret = mdw_mem_map(pool->mpriv, m);
 	if (ret) {
 		mdw_drv_err("mem_pool(0x%llx) create map fail\n",
@@ -72,6 +75,9 @@ static int mdw_mem_pool_chunk_add(struct mdw_mem_pool *pool, uint32_t size)
 	m->pool = pool;
 	mdw_mem_debug("add chunk: pool: 0x%llx, mem: 0x%llx, size: %d",
 		(uint64_t)m->pool, (uint64_t)m, size);
+
+	/* record first dva for apummu */
+	pool->mpriv->cb_head_device_va = m->device_va;
 
 	goto out;
 

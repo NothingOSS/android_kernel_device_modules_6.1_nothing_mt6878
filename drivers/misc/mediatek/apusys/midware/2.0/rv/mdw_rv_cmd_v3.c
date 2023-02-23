@@ -30,6 +30,7 @@ struct mdw_rv_msg_cmd {
 	uint32_t subcmds_offset;
 	uint32_t num_cmdbufs;
 	uint32_t cmdbuf_infos_offset;
+	uint32_t apummu_tbl_infos_offset;
 	uint32_t adj_matrix_offset;
 	uint32_t exec_infos_offset;
 	uint32_t num_links;
@@ -63,6 +64,12 @@ struct mdw_rv_msg_cb {
 	uint32_t size;
 } __packed;
 
+struct mdw_rv_msg_ammu {
+	uint32_t cb_head_device_va;
+	uint32_t table_head_device_va;
+	uint32_t table_size;
+} __packed;
+
 struct mdw_rv_sc_link {
 	uint32_t producer_idx;
 	uint32_t consumer_idx;
@@ -88,6 +95,7 @@ static void mdw_rv_cmd_print(struct mdw_rv_msg_cmd *rc)
 	mdw_cmd_debug(" subcmds_offset = 0x%x\n", rc->subcmds_offset);
 	mdw_cmd_debug(" num_cmdbufs = %u\n", rc->num_cmdbufs);
 	mdw_cmd_debug(" cmdbuf_infos_offset = 0x%x\n", rc->cmdbuf_infos_offset);
+	mdw_cmd_debug(" apummu_tbl_infos_offset = 0x%x\n", rc->apummu_tbl_infos_offset);
 	mdw_cmd_debug(" adj_matrix_offset = 0x%x\n", rc->adj_matrix_offset);
 	mdw_cmd_debug(" exec_infos_offset = 0x%x\n", rc->exec_infos_offset);
 	mdw_cmd_debug(" num_links = %u\n", rc->num_links);
@@ -158,9 +166,11 @@ static struct mdw_rv_cmd *mdw_rv_cmd_create(struct mdw_fpriv *mpriv,
 	uint32_t cb_size = 0, acc_cb = 0, i = 0, j = 0;
 	uint32_t subcmds_ofs = 0, cmdbuf_infos_ofs = 0, adj_matrix_ofs = 0;
 	uint32_t exec_infos_ofs = 0, link_ofs = 0;
+	uint32_t apummu_tbl_infos_ofs = 0;
 	struct mdw_rv_msg_cmd *rmc = NULL;
 	struct mdw_rv_msg_sc *rmsc = NULL;
 	struct mdw_rv_msg_cb *rmcb = NULL;
+	struct mdw_rv_msg_ammu *rmammu = NULL;
 	struct mdw_rv_sc_link *rl = NULL;
 
 	mdw_trace_begin("apumdw:rv_cmd_create");
@@ -205,6 +215,8 @@ static struct mdw_rv_cmd *mdw_rv_cmd_create(struct mdw_fpriv *mpriv,
 			cb_size, c->num_cmdbufs, sizeof(struct mdw_rv_msg_cb));
 		goto free_rc;
 	}
+	apummu_tbl_infos_ofs = cb_size;       /* APUMMU add tail of cmd buf */
+	cb_size += sizeof(struct mdw_rv_msg_ammu);
 	exec_infos_ofs = cb_size;
 	cb_size += c->exec_infos->size;
 	if (cb_size < c->exec_infos->size) {
@@ -248,6 +260,7 @@ static struct mdw_rv_cmd *mdw_rv_cmd_create(struct mdw_fpriv *mpriv,
 	rmc->num_cmdbufs = c->num_cmdbufs;
 	rmc->subcmds_offset = subcmds_ofs;
 	rmc->cmdbuf_infos_offset = cmdbuf_infos_ofs;
+	rmc->apummu_tbl_infos_offset = apummu_tbl_infos_ofs; /* APUMMU Table offest */
 	rmc->adj_matrix_offset = adj_matrix_ofs;
 	rmc->exec_infos_offset = exec_infos_ofs;
 	rmc->num_links = c->num_links;
@@ -300,6 +313,12 @@ static struct mdw_rv_cmd *mdw_rv_cmd_create(struct mdw_fpriv *mpriv,
 		}
 		acc_cb += c->subcmds[i].num_cmdbufs;
 	}
+
+	/* assign apummu info */
+	rmammu = (void *)rmc + rmc->apummu_tbl_infos_offset;
+	rmammu->cb_head_device_va =  (uint32_t)mpriv->cb_head_device_va;
+	rmammu->table_head_device_va =  c->cmdbufs->tbl_daddr;
+	rmammu->table_size =  (uint32_t)c->size_apummutable;
 
 	/* setup internal cmd */
 	c->del_internal = mdw_rv_cmd_delete;

@@ -16,6 +16,7 @@
 #include "mdw_mem_rsc.h"
 #include "mdw_trace.h"
 #include "mdw_mem_pool.h"
+#include "apummu_export.h"
 
 #define mdw_mem_show(m) \
 	mdw_mem_debug("mem(0x%llx/0x%llx/%d/0x%llx/%d/0x%llx/0x%x/0x%llx" \
@@ -327,6 +328,7 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 	struct mdw_mem_map *map = NULL;
 	struct scatterlist *sg = NULL;
 	int ret = 0, i = 0;
+	uint32_t eva = 0;
 
 	mutex_lock(&m->mtx);
 	get_dma_buf(m->dbuf);
@@ -396,6 +398,15 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 		m->dva_size += sg_dma_len(sg);
 	}
 
+	mdw_mem_debug("mdw call apummu_iova2eva buf_type(%u) mpriv(0x%llx) device_va(%llx) dva_size(%u)\n",
+	 m->buf_type, (uint64_t)m->mpriv, m->device_va, m->dva_size);
+	/* APUMMU iova to eva */
+	if (!apummu_iova2eva(m->buf_type, (uint64_t)m->mpriv, m->device_va, m->dva_size, &eva)) {
+		m->device_va = eva;
+	} else {
+		ret = -EINVAL;
+		goto unmap_dbuf;
+	}
 	/* check dva and size */
 	if (!m->device_va || !m->dva_size) {
 		mdw_drv_err("can't get mem(0x%llx) dva(0x%llx/%u)\n",
