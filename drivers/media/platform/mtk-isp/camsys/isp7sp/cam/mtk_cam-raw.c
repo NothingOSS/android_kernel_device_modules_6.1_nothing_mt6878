@@ -1864,6 +1864,6 @@ int raw_to_tg_idx(int raw_id)
 {
 	int cammux_id_raw_start = GET_PLAT_HW(cammux_id_raw_start);
 
-	return raw_id + cammux_id_raw_start;
+	return raw_id * 2 + cammux_id_raw_start;
 }
 
