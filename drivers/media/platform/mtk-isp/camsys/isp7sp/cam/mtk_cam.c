@@ -574,23 +574,15 @@ static void mtk_cam_clone_pipe_data_to_req(struct media_request *req)
 static void mtk_cam_store_pipe_data_to_ctx(
 	struct mtk_cam_ctx *ctx, struct mtk_cam_request *req)
 {
-	struct mtk_cam_device *cam = ctx->cam;
-	struct mtk_cam_v4l2_pipelines *ppls = &cam->pipelines;
-	unsigned long used_raw_pipe = req->used_pipe;
-	int i;
+	struct mtk_raw_request_data *data;
+	unsigned long raw_pipe_idx;
 
-	used_raw_pipe = bit_map_subset_of(MAP_SUBDEV_RAW, req->used_pipe);
+	raw_pipe_idx = get_raw_subdev_idx(ctx->used_pipe);
+	if (raw_pipe_idx == -1)
+		return;
 
-	/* considering if correct when multi ctx used in media_request */
-	for (i = 0; i < ppls->num_raw; i++, used_raw_pipe >>= 1) {
-		struct mtk_raw_request_data *data;
-
-		if (!(used_raw_pipe & 0x1))
-			continue;
-
-		data = &req->raw_data[i];
-		ctx->ctldata_stored = data->ctrl;
-	}
+	data = &req->raw_data[raw_pipe_idx];
+	ctx->ctldata_stored = data->ctrl;
 }
 
 static void mtk_cam_req_queue(struct media_request *req)
