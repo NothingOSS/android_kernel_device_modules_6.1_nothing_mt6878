@@ -842,6 +842,10 @@
 		interrupt-names = "ipc";
 		sspm-res-ram-start = <0x0>;
 		sspm-res-ram-size = <0x110000>; /* 1M + 64K */
+
+		/* share region define */
+		sspm-share-region-base = <0x28000>; /* 160K */
+		sspm-share-region-size = <0x8000>; /* 32K */
 	};
 
 	teeperf {
