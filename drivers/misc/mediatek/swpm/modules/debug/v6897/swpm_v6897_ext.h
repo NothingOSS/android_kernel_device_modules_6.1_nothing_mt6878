@@ -19,10 +19,10 @@ enum pmsr_power_state {
 };
 /* #define NR_POWER_STATE (3) */
 
-/* core ip (mmsys, venc, vdec, scp */
+/* core ip (mdp, disp, venc, vdec, scp) */
 enum core_ip_state {
-	CORE_IP_DISP,
 	CORE_IP_MDP,
+	CORE_IP_DISP,
 	CORE_IP_VENC,
 	CORE_IP_VDEC,
 	CORE_IP_SCP,
@@ -98,7 +98,8 @@ struct share_index_ext {
 };
 
 struct share_ctrl_ext {
-	unsigned int lock;
+	unsigned int read_lock;
+	unsigned int write_lock;
 	unsigned int clear_flag;
 };
 

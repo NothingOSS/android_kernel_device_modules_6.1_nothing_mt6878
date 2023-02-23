@@ -181,9 +181,9 @@ static ssize_t swpm_pmsr_dbg_en_write(char *FromUser, size_t sz, void *priv)
 		goto out;
 
 	ret = -EPERM;
-
 	if (sscanf(FromUser, "%x %x", &type, &val) == 2) {
-		swpm_set_only_cmd(type, val, PMSR_SET_DBG_EN, PMSR_CMD_TYPE);
+		swpm_set_only_cmd(type, val,
+						  PMSR_SET_DBG_EN, PMSR_CMD_TYPE);
 		ret = sz;
 	}
 
@@ -210,8 +210,10 @@ static ssize_t swpm_pmsr_log_interval_write(char *FromUser,
 		goto out;
 
 	ret = -EPERM;
+
 	if (!kstrtouint(FromUser, 0, &val)) {
-		swpm_set_only_cmd(0, val, PMSR_SET_LOG_INTERVAL, PMSR_CMD_TYPE);
+		swpm_set_only_cmd(0, val,
+				  PMSR_SET_LOG_INTERVAL, PMSR_CMD_TYPE);
 		ret = sz;
 	}
 
