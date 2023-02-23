@@ -25,7 +25,7 @@
 
 #include "cam_cal.h"
 
-#define DEV_NODE_NAME_PREFIX "camera_eeprom"
+#define DEV_NODE_NAME_PREFIX "camera-eeprom"
 #define DEV_NAME_FMT "camera_eeprom%u"
 #define DEV_CLASS_NAME_FMT "camera_eepromdrv%u"
 #define EEPROM_DEVICE_NNUMBER 255
