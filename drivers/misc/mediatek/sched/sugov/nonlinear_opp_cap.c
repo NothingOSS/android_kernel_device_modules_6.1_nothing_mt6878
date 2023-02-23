@@ -26,6 +26,9 @@
 DEFINE_PER_CPU(unsigned int, gear_id) = -1;
 EXPORT_SYMBOL(gear_id);
 
+DEFINE_PER_CPU(struct sbb_cpu_data *, sbb);
+EXPORT_SYMBOL(sbb);
+
 static void __iomem *l3ctl_sram_base_addr;
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
 static struct resource *csram_res;
@@ -49,7 +52,6 @@ enum {
 	REG_FREQ_HW_STATE,
 	REG_EM_POWER_TBL,
 	REG_FREQ_LATENCY,
-
 	REG_ARRAY_SIZE,
 };
 
@@ -175,9 +177,21 @@ int init_dsu(void)
 	return 0;
 }
 
+void init_sbb_cpu_data(void)
+{
+	int cpu;
+	struct sbb_cpu_data *data;
+
+	for_each_possible_cpu(cpu) {
+		data = kcalloc(1, sizeof(struct sbb_cpu_data), GFP_KERNEL);
+		per_cpu(sbb, cpu) = data;
+	}
+}
+EXPORT_SYMBOL_GPL(init_sbb_cpu_data);
+
 void set_sbb(int flag, int pid, bool set)
 {
-	struct task_struct *p;
+	struct task_struct *p, *group_leader;
 
 	switch (flag) {
 	case SBB_ALL:
@@ -188,7 +202,12 @@ void set_sbb(int flag, int pid, bool set)
 		p = find_task_by_vpid(pid);
 		if (p) {
 			get_task_struct(p);
-			//p->sched_task_group->android_vendor_data1[TG_SBB_FLG] = set;
+			group_leader = p->group_leader;
+			if (group_leader) {
+				get_task_struct(group_leader);
+				group_leader->android_vendor_data1[T_SBB_TG_FLG] = set;
+				put_task_struct(group_leader);
+			}
 			put_task_struct(p);
 		}
 		rcu_read_unlock();
@@ -198,13 +217,37 @@ void set_sbb(int flag, int pid, bool set)
 		p = find_task_by_vpid(pid);
 		if (p) {
 			get_task_struct(p);
-			//p->android_vendor_data1[T_SBB_FLG] = set;
+			p->android_vendor_data1[T_SBB_FLG] = set;
 			put_task_struct(p);
 		}
 		rcu_read_unlock();
 	}
 }
 EXPORT_SYMBOL_GPL(set_sbb);
+
+bool is_sbb_trigger(struct rq *rq)
+{
+	bool sbb_trigger = false;
+	struct task_struct *curr, *group_leader;
+
+	rcu_read_lock();
+	curr = rcu_dereference(rq->curr);
+	if (curr) {
+		sbb_trigger |= curr->android_vendor_data1[T_SBB_FLG];
+		group_leader = curr->group_leader;
+		if (group_leader) {
+			get_task_struct(group_leader);
+			sbb_trigger |=
+				group_leader->android_vendor_data1[T_SBB_TG_FLG];
+			put_task_struct(group_leader);
+		}
+	}
+	rcu_read_unlock();
+	sbb_trigger |= busy_tick_boost_all;
+
+	return sbb_trigger;
+}
+EXPORT_SYMBOL_GPL(is_sbb_trigger);
 
 void set_sbb_active_ratio(int val)
 {
@@ -217,12 +260,6 @@ int get_sbb_active_ratio(void)
 	return sbb_active_ratio;
 }
 EXPORT_SYMBOL_GPL(get_sbb_active_ratio);
-
-int is_busy_tick_boost_all(void)
-{
-	return busy_tick_boost_all;
-}
-EXPORT_SYMBOL_GPL(is_busy_tick_boost_all);
 
 unsigned int pd_get_dsu_weighting(int wl_type, int cpu)
 {
@@ -1118,6 +1155,8 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 	entry = proc_create("pd_capacity_tbl", 0644, dir, &pd_capacity_tbl_ops);
 	if (!entry)
 		pr_info("mtk_scheduler/pd_capacity_tbl entry create failed\n");
+
+	init_sbb_cpu_data();
 
 	return ret;
 }

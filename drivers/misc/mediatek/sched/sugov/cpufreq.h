@@ -18,6 +18,15 @@
 #define SBB_GROUP 1
 #define SBB_TASK 2
 
+struct sbb_cpu_data {
+	unsigned int active;
+	unsigned int idle_time;
+	unsigned int wall_time;
+	unsigned int boost_factor;
+	unsigned int tick_start;
+	unsigned int cpu_utilize;
+};
+
 #if !IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 struct mtk_em_perf_state {
 	unsigned int freq;
@@ -146,9 +155,10 @@ extern unsigned int get_sched_capacity_margin_dvfs(void);
 extern void set_sbb(int flag, int pid, bool set);
 extern void set_sbb_active_ratio(int val);
 extern int get_sbb_active_ratio(void);
-extern int is_busy_tick_boost_all(void);
+extern bool is_sbb_trigger(struct rq *rq);
 extern unsigned int get_nr_gears(void);
 extern struct cpumask *get_gear_cpumask(unsigned int gear);
 extern bool is_gearless_support(void);
 DECLARE_PER_CPU(unsigned int, gear_id);
+DECLARE_PER_CPU(struct sbb_cpu_data *, sbb);
 #endif /* __CPUFREQ_H__ */

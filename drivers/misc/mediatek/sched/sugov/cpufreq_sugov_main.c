@@ -223,7 +223,6 @@ unsigned long mtk_cpu_util(int cpu, unsigned long util_cfs,
 {
 	unsigned long dl_util, util, irq, max;
 	unsigned long util_ori;
-	//bool sbb_trigger = false;
 	struct rq *rq = cpu_rq(cpu);
 
 	max = arch_scale_cpu_capacity(cpu);
@@ -258,20 +257,34 @@ unsigned long mtk_cpu_util(int cpu, unsigned long util_cfs,
 	util_ori = util;
 
 	if (type == FREQUENCY_UTIL) {
-		/*if ((rq->curr->android_vendor_data1[T_SBB_FLG] || is_busy_tick_boost_all() ||
-				rq->curr->sched_task_group->android_vendor_data1[TG_SBB_FLG]) &&
-				p == (struct task_struct *)UINTPTR_MAX &&
-				rq->android_vendor_data1[RQ_SBB_ACTIVE]) {
-			util = util * rq->android_vendor_data1[RQ_SBB_BOOST_FACTOR];
-			sbb_trigger = true;
-		}*/
+		bool sbb_trigger = false;
+		struct sbb_cpu_data *sbb_data = per_cpu(sbb, cpu);
+
+		if (sbb_data->active &&
+				p == (struct task_struct *)UINTPTR_MAX) {
+
+			sbb_trigger = is_sbb_trigger(rq);
+
+			if (sbb_trigger)
+				util = util * sbb_data->boost_factor;
+		}
 		if (p == (struct task_struct *)UINTPTR_MAX)
 			p = NULL;
 		util = mtk_uclamp_rq_util_with(rq, util, p, min_cap, max_cap);
-		/*if (sbb_trigger && trace_sugov_ext_sbb_enabled())
-			trace_sugov_ext_sbb(rq->cpu, rq->curr->pid,
-			rq->android_vendor_data1[RQ_SBB_BOOST_FACTOR], util_ori, util,
-			rq->android_vendor_data1[RQ_SBB_CPU_UTILIZE], get_sbb_active_ratio());*/
+		if (sbb_trigger && trace_sugov_ext_sbb_enabled()) {
+			int pid = -1;
+			struct task_struct *curr;
+
+			rcu_read_lock();
+			curr = rcu_dereference(rq->curr);
+			if (curr)
+				pid = curr->pid;
+			rcu_read_unlock();
+
+			trace_sugov_ext_sbb(cpu, pid,
+				sbb_data->boost_factor, util_ori, util,
+				sbb_data->cpu_utilize, get_sbb_active_ratio());
+		}
 	}
 
 

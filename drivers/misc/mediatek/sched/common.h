@@ -9,10 +9,16 @@
 	BUILD_BUG_ON(sizeof(mstruct) > (sizeof(u64) *		\
 		ARRAY_SIZE(((kstruct *)0)->android_vendor_data1)))
 
-/* Task Vendor Data */
+#define MTK_TASK_GROUP_FLAG 1
+#define MTK_TASK_FLAG 9
+
+/* Task Vendor Data Index*/
 #define T_SBB_FLG 5
 #define T_TASK_IDLE_PREFER_FLAG 7
-#define MTK_TASK_FLAG 9
+#define T_SBB_TG_FLG 8
+
+/* Task Group Vendor Data Index*/
+#define TG_SBB_FLG 0
 
 /*
  * Flt tracking group part id
@@ -38,10 +44,6 @@ struct mtk_task {
 	struct vip_task_struct	vip_task;
 };
 
-/* Task Group Vendor Data */
-#define TG_SBB_FLG 0
-#define MTK_TASK_GROUP_FLAG 1
-
 struct soft_affinity_tg {
 	struct cpumask soft_cpumask;
 };
@@ -50,14 +52,6 @@ struct mtk_tg {
 	u64 reserved[MTK_TASK_GROUP_FLAG];
 	struct soft_affinity_tg	sa_tg;
 };
-
-/* Run Queue Vendor Data */
-#define RQ_SBB_ACTIVE 0
-#define RQ_SBB_IDLE_TIME 1
-#define RQ_SBB_WALL_TIME 2
-#define RQ_SBB_BOOST_FACTOR 3
-#define RQ_SBB_TICK_START 4
-#define RQ_SBB_CPU_UTILIZE 15
 
 extern int num_sched_clusters;
 extern cpumask_t __read_mostly **cpu_array;

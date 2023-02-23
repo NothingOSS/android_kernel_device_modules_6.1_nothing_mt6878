@@ -446,48 +446,50 @@ void mtk_tick_entry(void *data, struct rq *rq)
 	int this_cpu = cpu_of(rq), gear_id, opp_idx, offset;
 	unsigned int freq_thermal;
 	u32 opp_ceiling;
-	//u64 idle_time, wall_time, cpu_utilize;
+	bool sbb_trigger;
+	u64 idle_time, wall_time, cpu_utilize;
+	struct sbb_cpu_data *sbb_data = per_cpu(sbb, rq->cpu);
 
 	irq_log_store();
 
 	if (is_wl_support())
 		update_wl_tbl(this_cpu);
-/*
-	if (rq->curr->android_vendor_data1[T_SBB_FLG] || is_busy_tick_boost_all() ||
-		rq->curr->sched_task_group->android_vendor_data1[TG_SBB_FLG]) {
 
-		if (rq->android_vendor_data1[RQ_SBB_TICK_START]) {
+	sbb_trigger = is_sbb_trigger(rq);
+
+	if (sbb_trigger) {
+		if (sbb_data->tick_start) {
 			idle_time = get_cpu_idle_time(rq->cpu, &wall_time, 1);
 
 			cpu_utilize = 100 - (100 * (idle_time -
-				rq->android_vendor_data1[RQ_SBB_IDLE_TIME])) /
-				(wall_time - rq->android_vendor_data1[RQ_SBB_WALL_TIME]);
+				sbb_data->idle_time)) /
+				(wall_time - sbb_data->wall_time);
 
-			rq->android_vendor_data1[RQ_SBB_IDLE_TIME] = idle_time;
-			rq->android_vendor_data1[RQ_SBB_WALL_TIME] = wall_time;
+			sbb_data->idle_time = idle_time;
+			sbb_data->wall_time = wall_time;
 
 			if (cpu_utilize >= get_sbb_active_ratio()) {
-				rq->android_vendor_data1[RQ_SBB_ACTIVE] = 1;
+				sbb_data->active = 1;
 
-				rq->android_vendor_data1[RQ_SBB_BOOST_FACTOR] =
-				min_t(u32, rq->android_vendor_data1[RQ_SBB_BOOST_FACTOR] * 2, 4);
+				sbb_data->boost_factor =
+				min_t(u32, sbb_data->boost_factor * 2, 4);
 
-				rq->android_vendor_data1[RQ_SBB_CPU_UTILIZE] = cpu_utilize;
+				sbb_data->cpu_utilize = cpu_utilize;
 			} else {
-				rq->android_vendor_data1[RQ_SBB_ACTIVE] = 0;
-				rq->android_vendor_data1[RQ_SBB_BOOST_FACTOR] = 1;
+				sbb_data->active = 0;
+				sbb_data->boost_factor = 1;
 			}
 		} else {
-			rq->android_vendor_data1[RQ_SBB_ACTIVE] = 0;
-			rq->android_vendor_data1[RQ_SBB_TICK_START] = 1;
-			rq->android_vendor_data1[RQ_SBB_BOOST_FACTOR] = 1;
+			sbb_data->active = 0;
+			sbb_data->tick_start = 1;
+			sbb_data->boost_factor = 1;
 		}
 	} else {
-		rq->android_vendor_data1[RQ_SBB_ACTIVE] = 0;
-		rq->android_vendor_data1[RQ_SBB_TICK_START] = 0;
-		rq->android_vendor_data1[RQ_SBB_BOOST_FACTOR] = 1;
+		sbb_data->active = 0;
+		sbb_data->tick_start = 0;
+		sbb_data->boost_factor = 1;
 	}
-*/
+
 #if IS_ENABLED(CONFIG_MTK_THERMAL_AWARE_SCHEDULING)
 	update_thermal_headroom(this_cpu);
 #endif
@@ -819,8 +821,9 @@ void mtk_pelt_rt_tp(void *data, struct rq *rq)
 void mtk_sched_switch(void *data, struct task_struct *prev,
 		struct task_struct *next, struct rq *rq)
 {
-	//if (next->pid == 0)
-	//	rq->android_vendor_data1[RQ_SBB_ACTIVE] = 0;
+	if (next->pid == 0)
+		per_cpu(sbb, rq->cpu)->active = 0;
+
 }
 #endif
 
