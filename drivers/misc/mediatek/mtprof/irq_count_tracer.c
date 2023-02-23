@@ -316,6 +316,7 @@ enum hrtimer_restart irq_count_tracer_hrtimer_fn(struct hrtimer *hrtimer)
 				/* Don't alloc memory if no irqs ever */
 				if (!irq_num)
 					continue;
+
 				desc = irq_count_desc_alloc(irq);
 				if (!desc)
 					continue;
@@ -514,7 +515,7 @@ static void irq_count_rec_init(void)
 	for (i = 0; i < REC_NUM; i++)
 		spin_lock_init(&irq_cpus[i].lock);
 
-	WARN_ON(!rec_indx);
+	WARN_ON(rec_indx);
 
 	/* Initialize first record. no race before the tracer start */
 	/* Disable preemption to get more precise values */
@@ -526,7 +527,14 @@ static void irq_count_rec_init(void)
 		irq_num = irq_mon_irqs(irq);
 		if (!irq_num)
 			continue;
+		/*
+		 * The irq_count_desc_alloc() might be called in
+		 * interrupt context. Let's disable irq here to
+		 * prevent inconsistent lock state.
+		 */
+		local_irq_disable();
 		desc = irq_count_desc_alloc(irq);
+		local_irq_enable();
 		if (!desc)
 			continue;
 		desc->rec[rec_indx].num = irq_num;
