@@ -15,6 +15,7 @@
 #include <linux/bits.h>
 #include <linux/dma-mapping.h>
 #include <linux/dma-direct.h>
+#include <linux/iommu.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/of_platform.h>
@@ -29,9 +30,16 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 
+MODULE_IMPORT_NS(DMA_BUF);
+
 #ifdef IOMMU_TEST_EN
 
 #include "mtk_heap.h"
+#include "iommu_debug.h"
+#include "iommu_engine.h"
+
+#include "../../../iommu/arm/arm-smmu-v3/mtk-smmu-v3.h"
+#include "../../../iommu/arm/arm-smmu-v3/arm-smmu-v3.h"
 
 #define SECURE_HANDLE_TEST
 
@@ -261,6 +269,34 @@ static int dmabuf_id, attach_id;
 static size_t test_size = 0x1800; //6K
 static enum DMABUF_HEAP test_heap = TEST_REQ_PROT_REGION;
 
+static inline phys_addr_t iova_to_phys(struct device *dev, dma_addr_t iova)
+{
+	struct iommu_domain *dom = iommu_get_domain_for_dev(dev);
+	phys_addr_t pa;
+
+	if (!dom) {
+		dev_info(dev, "Not attach to iommu\n");
+		return 0;
+	}
+
+	pa = iommu_iova_to_phys(dom, iova);
+	return pa;
+}
+
+static inline void mtk_iommu_tlb_flush_all(struct device *dev)
+{
+	struct iommu_domain *domain;
+
+	if (!dev)
+		return;
+
+	domain = iommu_get_domain_for_dev(dev);
+	if (!domain)
+		return;
+
+	iommu_flush_iotlb_all(domain);
+}
+
 static struct dmabuf_map *dmabuf_map_alloc(int id)
 {
 	struct dmabuf_map *map_obj = NULL;
@@ -372,7 +408,7 @@ static int check_dmabuf_id(struct dmabuf_data *data, int alloc_id)
 		return 0;
 	}
 	mutex_unlock(&(data->buf_lock));
-	pr_info("%s fail, alloc_id(%d) has aleady exist!! dmabuf:0x%lx, sz:0x%zx\n",
+	pr_info("%s fail, alloc_id(%d) has aleady exist!! dmabuf:%pa, sz:0x%zx\n",
 		__func__, alloc_id, obj_info->dmabuf, obj_info->size);
 
 	return -EINVAL;
@@ -553,6 +589,7 @@ static void dmabuf_heap_alloc_test(size_t size, enum DMABUF_HEAP heap, int buf_i
 				__func__);
 			return;
 		};
+		break;
 	case TEST_SAPU_ENGINE_SHM_REGION:
 		data_obj = &dmabuf_data_obj[heap];
 		data_obj->heap = dma_heap_find("mtk_sapu_engine_shm_region");
@@ -1120,6 +1157,10 @@ static int dmaheap_sec_pa_probe(struct platform_device *pdev)
 
 /******************************************************************************/
 static const size_t IOVA_SIZES[] = {
+	(SZ_1M),
+	(SZ_2M),
+	(SZ_1M),
+	(SZ_2M),
 	(SZ_1K),
 	(SZ_4K),
 	(SZ_1K * 10),
@@ -1141,6 +1182,92 @@ static const size_t IOVA_SIZES[] = {
 	(SZ_256M + SZ_4K),
 	(SZ_512M + SZ_4K)
 };
+static const int IOVA_SIZES_NUM = ARRAY_SIZE(IOVA_SIZES);
+
+static int dma_alloc(struct device *dev, int address_num, int iova_index,
+		     struct dma_device_res *res)
+{
+	dma_addr_t dma_addr;
+	phys_addr_t phys_addr;
+	void *vaddr;
+	int i;
+
+	if (address_num > IOVA_SIZES_NUM || iova_index >= IOVA_SIZES_NUM) {
+		pr_info("%s, error: address_num:%d, index:%d, iova_sizes:%d, dev:%s\n",
+			__func__, address_num, iova_index, IOVA_SIZES_NUM, dev_name(dev));
+			return -EINVAL;
+	}
+
+	pr_info("%s, address_num:%d, iova_index:%d, dev:%s\n",
+		__func__, address_num, iova_index, dev_name(dev));
+
+	dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
+	for (i = iova_index; i < address_num; i++) {
+		res[i].size = IOVA_SIZES[i];
+		res[i].attrs = DMA_ATTR_WRITE_COMBINE;
+
+		vaddr = dma_alloc_attrs(dev, res[i].size, &dma_addr,
+					      GFP_KERNEL, res[i].attrs);
+		if (!vaddr || !dma_addr) {
+			pr_info("dev:%s:%d, alloc iova fail, size:0x%zx\n",
+				dev_name(dev), i, res[i].size);
+			return -EINVAL;
+		}
+		phys_addr = iova_to_phys(dev, dma_addr);
+
+		res[i].vaddr = vaddr;
+		res[i].dma_addr = dma_addr;
+		res[i].phys_addr = phys_addr;
+
+		pr_info("%s, dev:%s:%d iova:%pa, pa:%pa, va:%pa, size:0x%zx\n",
+			__func__, dev_name(dev), i, &res[i].dma_addr,
+			&res[i].phys_addr, &res[i].vaddr, res[i].size);
+	}
+
+	return 0;
+}
+
+static int dma_free(struct device *dev, int address_num, int iova_index,
+		    struct dma_device_res *res)
+{
+	int i;
+
+	if (address_num > IOVA_SIZES_NUM || iova_index >= IOVA_SIZES_NUM) {
+		pr_info("%s, error: address_num:%d, index:%d, iova_sizes:%d, dev:%s\n",
+			__func__, address_num, iova_index, IOVA_SIZES_NUM, dev_name(dev));
+		return -EINVAL;
+	}
+
+	pr_info("%s, address_num:%d, iova_index:%d, dev:%s\n",
+		__func__, address_num, iova_index, dev_name(dev));
+
+	for (i = iova_index; i < address_num; i++) {
+		dma_free_attrs(dev, res[i].size, res[i].vaddr, res[i].dma_addr,
+				res[i].attrs);
+		pr_info("%s, dev:%s:%d iova:%pa, pa:%pa, va:%pa, size:0x%zx\n",
+			__func__, dev_name(dev), i, &res[i].dma_addr,
+			&res[i].phys_addr, &res[i].vaddr, res[i].size);
+	}
+
+	return 0;
+}
+
+static int iommu_test_translation(int dma_engine, struct platform_device *pdev)
+{
+	#define TEST_DMA_NUM	4
+	struct dma_device_res res[TEST_DMA_NUM];
+	struct device *dev = &pdev->dev;
+
+	pr_info("%s start, dev:%s\n", __func__, dev_name(dev));
+	dma_alloc(dev, TEST_DMA_NUM, 0, res);
+
+	engine_access(dma_engine, dev, res);
+
+	dma_free(dev, TEST_DMA_NUM, 0, res);
+	pr_info("%s done, dev:%s\n", __func__, dev_name(dev));
+
+	return 0;
+}
 
 static int iommu_test(struct platform_device *pdev)
 {
@@ -1242,6 +1369,370 @@ static int iommu_test_dom_probe(struct platform_device *pdev)
 
 	return 0;
 }
+
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
+#define TEST_SMMU_ADDRESS_NUM	4
+
+static inline struct arm_smmu_master *arm_smmu_get_master(struct device *dev)
+{
+	struct arm_smmu_master *master;
+
+	if (!dev->iommu) {
+		pr_info("master device driver may not be loaded!\n");
+		return NULL;
+	}
+
+	master = dev_iommu_priv_get(dev);
+	if (!master) {
+		pr_info("Failed to find master dev\n");
+		return NULL;
+	}
+
+	return master;
+}
+
+static inline struct arm_smmu_device *arm_smmu_get_device(struct device *dev)
+{
+	struct arm_smmu_master *master;
+
+	master = arm_smmu_get_master(dev);
+	if (!master)
+		return NULL;
+
+	return master->smmu;
+}
+
+static int smmu_test_translation(int dma_engine, struct platform_device *pdev)
+{
+	struct dma_device_res res[TEST_SMMU_ADDRESS_NUM];
+	struct device *dev = &pdev->dev;
+
+	pr_info("%s start, dev:%s\n", __func__, dev_name(dev));
+	dma_alloc(dev, TEST_SMMU_ADDRESS_NUM, 0, res);
+
+	engine_access(dma_engine, dev, res);
+
+	dma_free(dev, TEST_SMMU_ADDRESS_NUM, 0, res);
+	pr_info("%s done, dev:%s\n", __func__, dev_name(dev));
+
+	return 0;
+}
+
+static int smmu_test_performance(int dma_engine, struct platform_device *pdev)
+{
+	struct dma_device_res res[TEST_SMMU_ADDRESS_NUM];
+	unsigned long tcu_tot = 0, tbu_tot = 0;
+	struct device *dev = &pdev->dev;
+	int ret;
+
+	pr_info("%s start, dev:%s\n", __func__, dev_name(dev));
+	dma_alloc(dev, TEST_SMMU_ADDRESS_NUM, 0, res);
+
+	pr_info("--- Dump transaction commmand counter for performance debug ---\n");
+
+	/* Start TCU and TBU counter then translation */
+	ret = mtk_smmu_start_transaction_counter(dev);
+	if (ret)
+		goto out;
+
+	engine_access(dma_engine, dev, res);
+
+	/* TCU counters are expected to increase after 1st translation */
+	mtk_smmu_end_transaction_counter(dev, &tcu_tot, &tbu_tot);
+	ret = tcu_tot ? 0 : -1;
+	pr_info("--- TCU counters increase as expected:%d ---\n", ret);
+	if (ret)
+		goto out;
+
+	ret = mtk_smmu_start_transaction_counter(dev);
+	if (ret)
+		goto out;
+
+	pr_info("%s dma access start again, dev:%s\n", __func__, dev_name(dev));
+	engine_access(dma_engine, dev, res);
+	pr_info("%s dma access done again, dev:%s\n", __func__, dev_name(dev));
+
+	/* TBU counters are expected to increase after 2nd translation
+	 * since access data via TLB
+	 */
+	mtk_smmu_end_transaction_counter(dev, &tcu_tot, &tbu_tot);
+	ret = tbu_tot ? 0 : -1;
+	pr_info("--- TBU counters increase as expected:%d ---\n", ret);
+	if (ret)
+		goto out;
+
+	ret = mtk_smmu_start_transaction_counter(dev);
+	if (ret)
+		goto out;
+
+	mtk_iommu_tlb_flush_all(dev);
+
+	/* TCU counters are expected to increase after 3rd translation
+	 * since invalid all
+	 */
+	mtk_smmu_end_transaction_counter(dev, &tcu_tot, &tbu_tot);
+	ret = tcu_tot ? 0 : -1;
+	pr_info("--- TCU counters increase in TLB INV ALL case as expected:%d ---\n",
+		ret);
+
+out:
+	dma_free(dev, TEST_SMMU_ADDRESS_NUM, 0, res);
+	pr_info("%s done, dev:%s\n", __func__, dev_name(dev));
+
+	return ret;
+}
+
+static int smmu_test_latency(int dma_engine, struct platform_device *pdev)
+{
+	struct dma_device_res res[TEST_SMMU_ADDRESS_NUM];
+	struct device *dev = &pdev->dev;
+	int ret, mon_axiid, lat_spec;
+	unsigned int maxlat_axiid = 0;
+	unsigned long tcu_rlat_tots = 0, tbu_lat_tots = 0, oos_trans_tot = 0;
+
+	pr_info("%s start, dev:%s\n", __func__, dev_name(dev));
+	dma_alloc(dev, TEST_SMMU_ADDRESS_NUM, 0, res);
+
+	pr_info("--- Dump latency monitor for performance debug ---\n");
+
+	/* Start TCU and TBU latency monitor then translation */
+	ret = mtk_smmu_start_latency_monitor(dev, -1, -1);
+	if (ret)
+		goto out;
+
+	engine_access(dma_engine, dev, res);
+
+	/* TCU latency meters are expected to increase after 1st translation */
+	mtk_smmu_end_latency_monitor(dev, &maxlat_axiid, &tcu_rlat_tots,
+				     &tbu_lat_tots, &oos_trans_tot);
+	ret = tcu_rlat_tots ? 0 : -1;
+	pr_info("--- TCU latency meters increase as expected:%d ---\n", ret);
+	if (ret)
+		goto out;
+
+	ret = mtk_smmu_start_latency_monitor(dev, -1, -1);
+	if (ret)
+		goto out;
+
+	engine_access(dma_engine, dev, res);
+
+	/*
+	 * TBU latency meters are expected to increase after 2nd translation
+	 * since access data via TLB
+	 */
+	mtk_smmu_end_latency_monitor(dev, &maxlat_axiid, &tcu_rlat_tots,
+				     &tbu_lat_tots, &oos_trans_tot);
+	ret = tbu_lat_tots ? 0 : -1;
+	pr_info("--- TBU latency meters increase as expected:%d ---\n", ret);
+
+	/* Monitor a specified AXI id */
+	mon_axiid = maxlat_axiid;
+	ret = mtk_smmu_start_latency_monitor(dev, mon_axiid, -1);
+	if (ret)
+		goto out;
+
+	engine_access(dma_engine, dev, res);
+
+	/* TBU latency meters are expected to increase after 3rd translation */
+	mtk_smmu_end_latency_monitor(dev, &maxlat_axiid, &tcu_rlat_tots,
+				     &tbu_lat_tots, &oos_trans_tot);
+	ret = (tbu_lat_tots && (mon_axiid == maxlat_axiid)) ? 0 : -1;
+	pr_info("--- TBU latency meters increase in monitor AXI ID case as expected:%d ---\n",
+		ret);
+	if (ret)
+		goto out;
+
+	/* Set a minimum latency water level and monitor how many commands exceed */
+	lat_spec = 0;
+	ret = mtk_smmu_start_latency_monitor(dev, -1, lat_spec);
+	if (ret)
+		goto out;
+
+	mtk_iommu_tlb_flush_all(dev);
+
+	engine_access(dma_engine, dev, res);
+
+	/*
+	 * 1. TCU latency meters are expected to increase after 4th translation
+	 * since invalid all
+	 * 2. Total command count over latency water mark is not expected
+	 * to be 0 since a min walter mark is set
+	 */
+	mtk_smmu_end_latency_monitor(dev, &maxlat_axiid, &tcu_rlat_tots,
+				     &tbu_lat_tots, &oos_trans_tot);
+	ret = (tcu_rlat_tots && oos_trans_tot) ? 0 : -1;
+	pr_info("--- TCU latency meters increase & Latency water mark meters increase in TLB INV ALL case as expected:%d ---\n",
+		ret);
+
+out:
+	dma_free(dev, TEST_SMMU_ADDRESS_NUM, 0, res);
+	pr_info("%s done, dev:%s\n", __func__, dev_name(dev));
+
+	return ret;
+}
+
+static int smmu_test_stability(int dma_engine, struct platform_device *pdev)
+{
+	struct dma_device_res res[TEST_SMMU_ADDRESS_NUM];
+	struct device *dev = &pdev->dev;
+	int ret = 0;
+
+	pr_info("%s start, dev:%s\n", __func__, dev_name(dev));
+	dma_alloc(dev, TEST_SMMU_ADDRESS_NUM, 0, res);
+
+	mtk_smmu_dump_outstanding_monitor(dev);
+	mtk_smmu_dump_io_interface_signals(dev);
+
+	engine_access(dma_engine, dev, res);
+
+	mtk_smmu_dump_outstanding_monitor(dev);
+	mtk_smmu_dump_io_interface_signals(dev);
+
+	dma_free(dev, TEST_SMMU_ADDRESS_NUM, 0, res);
+	pr_info("%s done, dev:%s\n", __func__, dev_name(dev));
+
+	return ret;
+}
+
+static int smmu_test_stress(int dma_engine, struct platform_device *pdev)
+{
+	int ret, test_times = 1000;
+
+	while (test_times--) {
+		pr_info("--- SMMU stress test: %d/1000 ---\n",
+			(1000 - test_times));
+		ret = smmu_test_translation(dma_engine, pdev);
+		if (ret)
+			break;
+	}
+
+	return ret;
+}
+
+static int smmu_test_dcm_state(int dma_engine, struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	int ret = 0;
+
+	pr_info("--- Dump DCM enable state for power consumption debug ---\n");
+
+	mtk_smmu_dump_dcm_en(dev);
+
+	return ret;
+}
+
+static int smmu_test_cqdma_tf(int dma_engine, struct platform_device *pdev)
+{
+	struct dma_device_res res[TEST_SMMU_ADDRESS_NUM];
+	dma_addr_t	dma_addr0, dma_addr1;
+	struct device *dev = &pdev->dev;
+	struct arm_smmu_device *smmu;
+	int i;
+
+	pr_info("%s start, dev:%s\n", __func__, dev_name(dev));
+	smmu = arm_smmu_get_device(dev);
+	dma_alloc(dev, TEST_SMMU_ADDRESS_NUM, 0, res);
+
+	dma_free(dev, TEST_SMMU_ADDRESS_NUM, 2, res);
+
+	pr_info("%s before TF, dev:%s\n", __func__, dev_name(dev));
+	mtk_smmu_fault_dump(smmu);
+
+	/* dump all smmu if exist */
+	for (i = 0; i < SMMU_TYPE_NUM; i++)
+		mtk_smmu_wpreg_dump(NULL, i);
+
+	for (i = 0; i < SMMU_TYPE_NUM; i++)
+		mtk_smmu_pgtable_dump(NULL, i);
+
+	/* backup dma_addr */
+	dma_addr0 = res[0].dma_addr;
+	dma_addr1 = res[1].dma_addr;
+
+	/* use fault iova, to trigger TF */
+	res[0].dma_addr = res[2].dma_addr + SZ_4K;
+	res[1].dma_addr = res[3].dma_addr + SZ_4K;
+
+	pr_info("%s use fault iova(0x%llx, 0x%llx), to trigger TF start\n",
+		__func__, (res[0].dma_addr), (res[1].dma_addr));
+	engine_access(dma_engine, dev, res);
+	pr_info("%s use fault iova trigger TF done\n", __func__);
+
+	/* restore dma_addr */
+	res[0].dma_addr = dma_addr0;
+	res[1].dma_addr = dma_addr1;
+
+	pr_info("%s after TF, dev:%s\n", __func__, dev_name(dev));
+	mtk_smmu_fault_dump(smmu);
+
+	dma_free(dev, TEST_SMMU_ADDRESS_NUM - 2, 0, res);
+	pr_info("%s done, dev:%s\n", __func__, dev_name(dev));
+
+	return 0;
+}
+
+static int smmu_test_cqdma(int dma_engine, struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	int ret;
+
+	pr_info("%s start, dev:%s\n", __func__, dev_name(dev));
+
+	ret = smmu_test_dcm_state(dma_engine, pdev);
+	if (ret)
+		pr_info("ret:%d, smmu_test_dcm_state fail\n", ret);
+
+	ret = smmu_test_translation(dma_engine, pdev);
+	if (ret)
+		pr_info("ret:%d, smmu_test_trans fail\n", ret);
+
+	ret = smmu_test_cqdma_tf(dma_engine, pdev);
+	if (ret)
+		pr_info("ret:%d, smmu_test_cqdma_tf fail\n", ret);
+
+	ret = smmu_test_performance(dma_engine, pdev);
+	if (ret)
+		pr_info("ret:%d, smmu_test_performance fail\n", ret);
+
+	ret = smmu_test_latency(dma_engine, pdev);
+	if (ret)
+		pr_info("ret:%d, smmu_test_latency fail\n", ret);
+
+	ret = smmu_test_stability(dma_engine, pdev);
+	if (ret)
+		pr_info("ret:%d, smmu_test_stability fail\n", ret);
+
+	ret = smmu_test_stress(dma_engine, pdev);
+	if (ret)
+		pr_info("ret:%d, smmu_test_performance fail\n", ret);
+
+	pr_info("%s done, dev:%s\n", __func__, dev_name(dev));
+
+	return ret;
+}
+
+static int iommu_test_cqdma_probe(struct platform_device *pdev)
+{
+	int ret = 0;
+
+	pr_info("%s start dev:%s\n", __func__, dev_name(&pdev->dev));
+
+	engine_init(DMA_ENGINE_CQDMA, pdev);
+
+	iommu_test_translation(DMA_ENGINE_CQDMA, pdev);
+
+	ret = smmu_test_cqdma(DMA_ENGINE_CQDMA, pdev);
+
+	pr_info("%s done dev:%s, ret:%d\n", __func__, dev_name(&pdev->dev), ret);
+
+	return 0;
+}
+#else
+static int iommu_test_cqdma_probe(struct platform_device *pdev)
+{
+	pr_info("%s dev:%s\n", __func__, dev_name(&pdev->dev));
+}
+#endif
 
 /*************************************************************************/
 /*
@@ -1376,6 +1867,13 @@ static const struct of_device_id iommu_test_dom_match_table[] = {
 
 /*************************************************************************/
 
+static const struct of_device_id iommu_test_cqdma_match_table[] = {
+	{.compatible = "mediatek,iommu-test-cqdma"},
+	{},
+};
+
+/*************************************************************************/
+
 static const struct of_device_id dmaheap_normal_match_table[] = {
 	{.compatible = "mediatek,dmaheap-normal"},
 	{},
@@ -1464,8 +1962,17 @@ static struct platform_driver iommu_test_driver_dom = {
 	},
 };
 
+static struct platform_driver __maybe_unused iommu_test_driver_cqdma = {
+	.probe = iommu_test_cqdma_probe,
+	.driver = {
+		.name = "iommu-test-cqdma",
+		.of_match_table = iommu_test_cqdma_match_table,
+	},
+};
+
 static struct platform_driver *const iommu_test_drivers[] = {
 	&iommu_test_driver_dom,
+	&iommu_test_driver_cqdma,
 	&iommu_test_dmaheap_normal,
 	&iommu_test_dmaheap_sec_normal,
 	&iommu_test_dmaheap_sec_ccu0,
