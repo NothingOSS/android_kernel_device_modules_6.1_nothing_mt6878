@@ -7229,14 +7229,15 @@
 		};
 
 		jpgenc@17830000 {
-			compatible = "mediatek,mtk-jpgenc_c1";
+			compatible = "mediatek,mtk-jpgenc_c0_c1";
 			reg = <0 0x17830000 0 0x10000>;
 			interrupts = <GIC_SPI 478 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&venc_gcon_core1_clk CLK_VEN_C1_CKE2_JPGENC>,
+			clocks = <&venc_gcon_clk CLK_VEN_CKE2_JPGENC>,
+				 <&venc_gcon_core1_clk CLK_VEN_C1_CKE2_JPGENC>,
 				 <&mmdvfs_mux MMDVFS_USER_JPEGENC>;
-			clock-names = "jpgenc_c1", "mmdvfs_clk";
-			power-domains = <&scpsys  MT6985_POWER_DOMAIN_VEN1>;
-			mediatek,larb = <&smi_larb8>;
+			clock-names = "jpgenc", "jpgenc_c1", "mmdvfs_clk";
+			power-domains = <&scpsys  MT6985_POWER_DOMAIN_VEN0>;
+			mediatek,larb = <&smi_larb7 &smi_larb8>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			iommus = <&mdp_iommu  M4U_PORT_L8_JPGENC_Y_RDMA>,
 				 <&mdp_iommu M4U_PORT_L8_JPGENC_C_RDMA>,
