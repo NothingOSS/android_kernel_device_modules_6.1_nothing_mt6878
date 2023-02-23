@@ -17,8 +17,6 @@
 #include "mtk_cam-debug.h"
 #include "mtk_cam-timesync.h"
 
-#include "frame_sync_camsys.h"
-
 #define SENSOR_SET_MARGIN_MS  25
 #define SENSOR_SET_MARGIN_MS_STAGGER  27
 
@@ -898,86 +896,69 @@ _stream_on_only_sv(struct mtk_cam_job *job, bool on)
 	return 0;
 }
 
-static void mtk_cam_fs_sync_frame(struct mtk_cam_ctx *ctx,
-				  struct mtk_cam_request *req, int state)
+static bool mtk_cam_fs_sync_frame(struct mtk_cam_job *job, int state)
 {
-	struct mtk_cam_device *cam;
-
-	if (!ctx)
-		return;
-
-	if (!req)
-		return;
-
-	cam = ctx->cam;
-	if (!cam)
-		return;
-
-	if (ctx->sensor &&
-	    ctx->sensor->ops &&
-	    ctx->sensor->ops->core &&
-	    ctx->sensor->ops->core->command) {
-		ctx->sensor->ops->core->command(ctx->sensor,
-						V4L2_CMD_FSYNC_SYNC_FRAME_START_END,
-						&state);
-		dev_info(cam->dev, "%s:%s:fs_sync_frame(%d): ctxs:0x%x\n",
-			__func__, req->req.debug_str, state, req->used_ctx);
-	} else {
-		dev_info(cam->dev,
-			"%s:%s: find sensor command failed, state(%d)\n",
-			__func__, req->req.debug_str, state);
-	}
-}
-
-static bool frame_sync_start(struct mtk_cam_ctx *ctx,
-			     struct mtk_cam_request *req)
-{
-	struct mtk_cam_device *cam = ctx->cam;
-	struct mtk_cam_frame_sync *fs = &req->fs;
+	struct mtk_cam_request *req = job->req;
 	bool ret = false;
 
-	if (!fs->target)
-		return 0;
-
-	mutex_lock(&fs->op_lock);
-
-	++fs->on_cnt;
-	if (fs->on_cnt == 1) {
-		mtk_cam_fs_sync_frame(ctx, req, 1);
+	if (job->sensor &&
+	    job->sensor->ops &&
+	    job->sensor->ops->core &&
+	    job->sensor->ops->core->command) {
+		job->sensor->ops->core->command(job->sensor,
+						V4L2_CMD_FSYNC_SYNC_FRAME_START_END,
+						&state);
 		ret = true;
+	} else {
+		pr_info("%s:%s: find sensor command failed, state(%d)\n",
+			__func__, req->req.debug_str, state);
 	}
 
-	mutex_unlock(&fs->op_lock);
-
-	if (ret)
-		dev_dbg(cam->dev, "%s:%s:ctx(%d): sensor ctrl with frame sync - start\n",
-			__func__, req->req.debug_str, ctx->stream_id);
 	return ret;
 }
 
-static bool frame_sync_end(struct mtk_cam_ctx *ctx,
-			   struct mtk_cam_request *req)
+static bool frame_sync_start(struct mtk_cam_job *job)
 {
-	struct mtk_cam_device *cam = ctx->cam;
+	struct mtk_cam_device *cam = job->src_ctx->cam;
+	struct mtk_cam_request *req = job->req;
 	struct mtk_cam_frame_sync *fs = &req->fs;
 	bool ret = false;
 
-	if (!fs->target)
-		return 0;
+	if (!need_frame_sync(fs))
+		return ret;
 
 	mutex_lock(&fs->op_lock);
-
-	++fs->off_cnt;
-	if (fs->off_cnt == fs->target) {
-		mtk_cam_fs_sync_frame(ctx, req, 0);
-		ret = true;
-	}
-
+	++fs->on_cnt;
+	if (fs->on_cnt == 1)  /* 1st sensor setting of request */
+		ret = mtk_cam_fs_sync_frame(job, 1);
 	mutex_unlock(&fs->op_lock);
 
 	if (ret)
-		dev_dbg(cam->dev, "%s:%s:ctx(%d): sensor ctrl with frame sync - stop\n",
-			__func__, req->req.debug_str, ctx->stream_id);
+		dev_dbg(cam->dev, "req(%s) %s by ctx:%d\n",
+			req->req.debug_str, __func__, job->ctx_id);
+	return ret;
+}
+
+static bool frame_sync_end(struct mtk_cam_job *job)
+{
+	struct mtk_cam_device *cam = job->src_ctx->cam;
+	struct mtk_cam_request *req = job->req;
+	struct mtk_cam_frame_sync *fs = &req->fs;
+	bool ret = false;
+
+	if (!need_frame_sync(fs))
+		return ret;
+
+	mutex_lock(&fs->op_lock);
+	++fs->off_cnt;
+	if (fs->off_cnt == fs->target)  /* the last sensor setting of request */
+		ret = mtk_cam_fs_sync_frame(job, 0);
+	mutex_unlock(&fs->op_lock);
+
+	if (ret)
+		dev_dbg(cam->dev, "req(%s) %s by ctx:%d\n",
+			req->req.debug_str, __func__, job->ctx_id);
+
 	return ret;
 }
 
@@ -1038,9 +1019,7 @@ _apply_sensor(struct mtk_cam_job *job)
 		return 0;
 	}
 
-	//MTK_CAM_TRACE_BEGIN(BASIC, "frame_sync_start");
-	frame_sync_start(ctx, req);
-	//MTK_CAM_TRACE_END(BASIC); /* frame_sync_start */
+	frame_sync_start(job);
 
 	update_sensor_fmt(job);
 
@@ -1048,9 +1027,7 @@ _apply_sensor(struct mtk_cam_job *job)
 	dev_info(cam->dev, "[%s] ctx:%d, job: 0x%x\n",
 		 __func__, ctx->stream_id, job->frame_seq_no);
 
-	//MTK_CAM_TRACE_BEGIN(BASIC, "frame_sync_end");
-	frame_sync_end(ctx, req);
-	//MTK_CAM_TRACE_END(BASIC); /* frame_sync_end */
+	frame_sync_end(job);
 
 	/* TBC */
 	/* mtk_cam_tg_flash_req_setup(ctx, s_data); */
@@ -2421,6 +2398,8 @@ static void job_cancel(struct mtk_cam_job *job)
 
 	job_complete_sensor_ctrl_obj(job);
 
+	frame_sync_dec_target(&job->req->fs);
+
 	for (i = 0; i < MTKCAM_SUBDEV_MAX; i++) {
 		if (used_pipe & ipi_pipe_id_to_bit(i))
 			mtk_cam_req_buffer_done(job, i, -1,
@@ -2585,7 +2564,7 @@ static int apply_sensor_mstream(struct mtk_cam_job *job)
 	cur_idx = mjob->apply_sensor_idx;
 	do_request_setup = (cur_idx == 0) && job->sensor_hdl_obj;
 
-	frame_sync_start(ctx, job->req);
+	frame_sync_start(job);
 
 	/* TODO(AY): initial & switch */
 	if (job->frame_seq_no == 0)
@@ -2596,7 +2575,7 @@ static int apply_sensor_mstream(struct mtk_cam_job *job)
 	if (do_request_setup)
 		v4l2_ctrl_request_setup(&req->req, job->sensor->ctrl_handler);
 
-	frame_sync_end(ctx, job->req);
+	frame_sync_end(job);
 
 	if (do_request_setup)
 		job_complete_sensor_ctrl_obj(job);

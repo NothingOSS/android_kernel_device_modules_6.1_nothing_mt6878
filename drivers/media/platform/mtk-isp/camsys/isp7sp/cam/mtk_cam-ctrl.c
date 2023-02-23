@@ -24,8 +24,6 @@
 
 #include "imgsys/mtk_imgsys-cmdq-ext.h"
 
-#include "frame_sync_camsys.h"
-
 #define WATCHDOG_INTERVAL_MS		400
 #define WATCHDOG_MAX_SENSOR_RETRY_CNT	3
 

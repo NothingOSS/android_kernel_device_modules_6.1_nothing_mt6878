@@ -36,6 +36,28 @@ static inline void frame_sync_init(struct mtk_cam_frame_sync *fs, int ctx_cnt)
 	fs->off_cnt = 0;
 }
 
+static inline bool need_frame_sync(struct mtk_cam_frame_sync *fs)
+{
+	return !!fs->target;  /* check multi sensor stream */
+}
+
+static inline void frame_sync_dec_target(struct mtk_cam_frame_sync *fs)
+{
+	mutex_lock(&fs->op_lock);
+	if (!fs->target) {
+		mutex_unlock(&fs->op_lock);
+		return;
+	}
+
+	fs->target--;
+	if (fs->target <= 1) {
+		fs->target = 0;
+		fs->on_cnt = 0;
+		fs->off_cnt = 0;
+	}
+	mutex_unlock(&fs->op_lock);
+}
+
 struct v4l2_ctrl_handler;
 /*
  * struct mtk_cam_request - MTK camera request.
