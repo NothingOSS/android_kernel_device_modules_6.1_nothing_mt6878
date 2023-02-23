@@ -196,8 +196,8 @@ static void apu_mrdump_register(struct mtk_apu *apu)
 		size = coredump_size;
 	}
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
-	ret = mrdump_mini_add_extra_file(base_va, base_pa, size,
-		"APUSYS_COREDUMP");
+	//ret = mrdump_mini_add_extra_file(base_va, base_pa, size,
+	//	"APUSYS_COREDUMP");
 #endif
 	if (ret)
 		dev_info(dev, "%s: APUSYS_COREDUMP add fail(%d)\n",
