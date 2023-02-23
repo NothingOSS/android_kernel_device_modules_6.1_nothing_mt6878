@@ -31,6 +31,10 @@ static int debug_clk_idx = -1;
 module_param(debug_clk_idx, int, 0644);
 MODULE_PARM_DESC(debug_clk_idx, "debug: clk idx");
 
+static int debug_clk_freq_mhz = -1;
+module_param(debug_clk_freq_mhz, int, 0644);
+MODULE_PARM_DESC(debug_clk_freq_mhz, "debug: clk freq(ex. input '546' = 546MHz)");
+
 static int debug_user_raws_must[3] = {-1, -1, -1};
 module_param_array(debug_user_raws_must, int, NULL, 0644);
 MODULE_PARM_DESC(debug_user_raws_must, "debug: user raws must");
@@ -384,6 +388,12 @@ static inline int mtk_pixelmode_val(int pxl_mode)
 	return val;
 }
 
+static inline bool skip_find_resource(void)
+{
+	// TODO: refactor
+	return (debug_clk_freq_mhz != -1);
+}
+
 static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 				     struct mtk_cam_resource_v2 *user_ctrl,
 				     struct mtk_cam_resource_driver *drv_data)
@@ -430,7 +440,18 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 				     &stepper.num_raw_min, &stepper.num_raw_max);
 	stepper.opp_num = mtk_cam_dvfs_get_opp_table(&cam->dvfs, &stepper.tbl);
 
-	ret = mtk_raw_find_combination(&c, &stepper);
+	if (skip_find_resource()) {
+		ret = 0;
+		c.raw_pixel_mode = (debug_pixel_mode != -1) ?
+			debug_pixel_mode : stepper.pixel_mode_max;
+		c.raw_num = (debug_raw_num != -1) ?
+			debug_raw_num : stepper.num_raw_min;
+		c.clk = debug_clk_freq_mhz * 1000000;
+		dev_info(cam->dev, "%s: use debug clk freq: %dMHz\n",
+				 __func__, debug_clk_freq_mhz);
+	} else
+		ret = mtk_raw_find_combination(&c, &stepper);
+
 	if (ret)
 		dev_info(cam->dev, "failed to find valid resource\n");
 
@@ -438,10 +459,8 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 
 	mtk_cam_get_work_buf_num(user_ctrl);
 
-	if (debug_raw_num == -1)
-		final_raw_num = c.raw_num;
-	else
-		final_raw_num = debug_raw_num;
+	final_raw_num = (debug_raw_num == -1) ?
+		c.raw_num : debug_raw_num;
 
 	raws_driver_selected = mtk_raw_choose_raws(final_raw_num,
 						   cam->engines.num_raw_devices,
