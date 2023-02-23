@@ -78,6 +78,7 @@ enum {
 	PWM_V0, //reserve for 26MHz clk source in pwm domain not INFRA
 	PWM_V1, //pwm channel base: 0x10,0x50,0x090,0xd0,0x110,0x150
 	PWM_V2, //pwm channel base: 0x80,0xc0,0x100,0x140,0x180,0x1c0
+	PWM_V3, //pwm channel base: 0x100,0x200,0x300,0x400,0x500,0x600
 	PWM_V_NUM,
 };
 
@@ -212,6 +213,13 @@ void mt_pwm_init_power_flag(unsigned long *power_flag)
 		PWM_register[PWM4] = (unsigned long)pwm_base + 0x0140;
 		PWM_register[PWM5] = (unsigned long)pwm_base + 0x0180;
 		PWM_register[PWM6] = (unsigned long)pwm_base + 0x01c0;
+	} else if (pwm_version == PWM_V3) {
+		PWM_register[PWM1] = (unsigned long)pwm_base + 0x0100;
+		PWM_register[PWM2] = (unsigned long)pwm_base + 0x0200;
+		PWM_register[PWM3] = (unsigned long)pwm_base + 0x0300;
+		PWM_register[PWM4] = (unsigned long)pwm_base + 0x0400;
+		PWM_register[PWM5] = (unsigned long)pwm_base + 0x0500;
+		PWM_register[PWM6] = (unsigned long)pwm_base + 0x0600;
 	} else {
 		PWM_register[PWM1] = (unsigned long)pwm_base + 0x0010;
 		PWM_register[PWM2] = (unsigned long)pwm_base + 0x0050;
@@ -491,7 +499,7 @@ s32 mt_get_pwm_send_wavenum_hal(u32 pwm_no)
 
 void mt_set_intr_enable_hal(u32 pwm_intr_enable_bit)
 {
-	if (pwm_version == PWM_V2)
+	if (pwm_version >= PWM_V2)
 		SETREG32(PWM_INT_ENABLE_V2, 1 << (pwm_intr_enable_bit / 2));
 	else
 		SETREG32(PWM_INT_ENABLE, 1 << pwm_intr_enable_bit);
@@ -501,7 +509,7 @@ s32 mt_get_intr_status_hal(u32 pwm_intr_status_bit)
 {
 	unsigned long int_status;
 
-	if (pwm_version == PWM_V2) {
+	if (pwm_version >= PWM_V2) {
 		int_status = INREG32(PWM_INT_STATUS_V2);
 		int_status = (int_status >> (pwm_intr_status_bit / 2)) & 0x01;
 	} else {
@@ -513,7 +521,7 @@ s32 mt_get_intr_status_hal(u32 pwm_intr_status_bit)
 
 void mt_set_intr_ack_hal(u32 pwm_intr_ack_bit)
 {
-	if (pwm_version == PWM_V2)
+	if (pwm_version >= PWM_V2)
 		SETREG32(PWM_INT_ACK_V2, 1 << (pwm_intr_ack_bit / 2));
 	else
 		SETREG32(PWM_INT_ACK, 1 << pwm_intr_ack_bit);
@@ -590,23 +598,23 @@ void mt_pwm_dump_regs_hal(void)
 
 	reg_val = INREG32(PWM_ENABLE);
 	pr_info("[PWM_ENABLE]: 0x%lx\n ", reg_val);
-	if (pwm_version == PWM_V2)
+	if (pwm_version >= PWM_V2)
 		reg_val = INREG32(PWM_CK_26M_SEL_V2);
 	else
 		reg_val = INREG32(PWM_CK_26M_SEL);
 	pr_info("[PWM_26M_SEL]: 0x%lx\n ", reg_val);
 	/*pr_info("peri pdn0 clock: 0x%x\n", INREG32(INFRA_PDN_STA0));*/
-	if (pwm_version == PWM_V2)
+	if (pwm_version >= PWM_V2)
 		reg_val = INREG32(PWM_INT_ENABLE_V2);
 	else
 		reg_val = INREG32(PWM_INT_ENABLE);
 	pr_info("[PWM_INT_ENABLE]:0x%lx\n ", reg_val);
-	if (pwm_version == PWM_V2)
+	if (pwm_version >= PWM_V2)
 		reg_val = INREG32(PWM_INT_STATUS_V2);
 	else
 		reg_val = INREG32(PWM_INT_STATUS);
 	pr_info("[PWM_INT_STATUS]: 0x%lx\n ", reg_val);
-	if (pwm_version == PWM_V2)
+	if (pwm_version >= PWM_V2)
 		reg_val = INREG32(PWM_EN_STATUS_V2);
 	else
 		reg_val = INREG32(PWM_EN_STATUS);
@@ -632,7 +640,7 @@ void pwm_debug_show_hal(void)
  */
 void mt_set_pwm_3dlcm_enable_hal(u8 enable)
 {
-	if (pwm_version == PWM_V2)
+	if (pwm_version >= PWM_V2)
 		SETREG32(PWM_3DLCM_V2, 1 << PWM_3DLCM_ENABLE_OFFSET);
 }
 
@@ -641,7 +649,7 @@ void mt_set_pwm_3dlcm_enable_hal(u8 enable)
  */
 void mt_set_pwm_3dlcm_inv_hal(u32 pwm_no, u8 inv)
 {
-	if (pwm_version == PWM_V2) {
+	if (pwm_version >= PWM_V2) {
 		unsigned long reg_con;
 
 		reg_con = PWM_register[pwm_no] + 4 * PWM_CON;
@@ -658,7 +666,7 @@ void mt_set_pwm_3dlcm_inv_hal(u32 pwm_no, u8 inv)
 
 void mt_set_pwm_3dlcm_base_hal(u32 pwm_no)
 {
-	if (pwm_version == PWM_V2) {
+	if (pwm_version >= PWM_V2) {
 		unsigned long reg_con;
 
 		reg_con = PWM_register[pwm_no] + 4 * PWM_CON;
@@ -673,7 +681,7 @@ void mt_pwm_26M_clk_enable_hal(u32 enable)
 	unsigned long reg_con;
 
 	/* select 66M or 26M */
-	if (pwm_version == PWM_V2)
+	if (pwm_version >= PWM_V2)
 		reg_con = (unsigned long)PWM_CK_26M_SEL_V2;
 	else
 		reg_con = (unsigned long)PWM_CK_26M_SEL;
