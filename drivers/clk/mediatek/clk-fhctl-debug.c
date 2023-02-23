@@ -297,11 +297,13 @@ static int fh_dumpregs_read(struct seq_file *m, void *v)
 			readl(regs->reg_con_pcw));
 
 		seq_printf(m,
-			"dds_max:0x%08x dds_mix:0x%08x ssc(1/1000):%d\n\n",
+			"dds_max:0x%08x dds_mix:0x%08x ssc(1/1000):%d\n",
 			dds_max, dds_min, ssc_rate);
 
 		if (regs->reg_hp_en_set)
-			seq_puts(m, "Support hp_en/rst_con/clk_con SET/CLR register!\n");
+			seq_puts(m, "Support hp_en/rst_con/clk_con SET/CLR register!\n\n");
+		else
+			seq_puts(m, "\n");
 	}
 	return 0;
 }

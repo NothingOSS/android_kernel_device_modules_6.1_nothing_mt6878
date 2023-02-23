@@ -30,7 +30,7 @@ do { \
 	if (*setclr_reg == NULL) \
 		fh_set_field(reg, field, val); \
 	else \
-		fh_set_field(setclr_reg, field, 1); \
+		fh_set_field(*setclr_reg, field, 1); \
 } while (0)
 
 #define FHDBG(fmt, args...) pr_notice("[FHCTL], <%s(), %d> " fmt, __func__, __LINE__, ## args)
