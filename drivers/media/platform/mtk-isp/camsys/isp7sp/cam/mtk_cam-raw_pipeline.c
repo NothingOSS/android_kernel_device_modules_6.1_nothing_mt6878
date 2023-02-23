@@ -784,6 +784,105 @@ static int mtk_raw_dynamic_meta_try_ctrl(struct v4l2_ctrl *ctrl)
 	return CALL_PLAT_V4L2(query_meta_size, p);
 }
 
+#define HDR_TSFIFO_SIZE 4
+int mtk_raw_hdr_tsfifo_init(struct mtk_raw_pipeline *arr_pipe, int num)
+{
+	struct device *dev = mtk_cam_root_dev();
+	unsigned int i;
+
+	pr_info("%s num:%d\n", __func__, num);
+	for (i = 0; i < num; i++) {
+		struct mtk_raw_pipeline *pipe = arr_pipe + i;
+
+		pipe->hdr_ts_fifo_size =
+			roundup_pow_of_two(
+				HDR_TSFIFO_SIZE * sizeof(struct mtk_cam_hdr_timestamp_info));
+
+		pipe->hdr_ts_buffer =
+			devm_kzalloc(dev, pipe->hdr_ts_fifo_size, GFP_KERNEL);
+
+		if (!pipe->hdr_ts_buffer)
+			return -ENOMEM;
+	}
+
+	return 0;
+}
+
+int mtk_raw_hdr_tsfifo_reset(struct mtk_cam_ctx *ctx)
+{
+	struct mtk_raw_pipeline *raw_pipe;
+
+	if (!ctx->has_raw_subdev)
+		return -1;
+
+	raw_pipe = &ctx->cam->pipelines.raw[ctx->raw_subdev_idx];
+	atomic_set(&raw_pipe->is_hdr_ts_fifo_overflow, 0);
+
+	return kfifo_init(&raw_pipe->hdr_ts_fifo,
+			raw_pipe->hdr_ts_buffer, raw_pipe->hdr_ts_fifo_size);
+}
+
+void mtk_raw_hdr_tsfifo_push(struct mtk_raw_pipeline *pipe,
+				struct mtk_cam_hdr_timestamp_info *ts_info)
+{
+	struct device *dev = mtk_cam_root_dev();
+	int len;
+
+	if (unlikely(kfifo_avail(&pipe->hdr_ts_fifo) < sizeof(*ts_info)))
+		atomic_set(&pipe->is_hdr_ts_fifo_overflow, 1);
+
+	len = kfifo_in(&pipe->hdr_ts_fifo, ts_info, sizeof(*ts_info));
+
+	if (len != sizeof(*ts_info))
+		dev_info(dev, "%s: (pipe:%d) push fail\n", __func__, pipe->id);
+}
+
+void mtk_raw_hdr_tsfifo_pop(struct mtk_raw_pipeline *pipe,
+				struct mtk_cam_hdr_timestamp_info *ts_info)
+{
+	struct device *dev = mtk_cam_root_dev();
+	int len;
+
+	if (unlikely(atomic_cmpxchg(&pipe->is_hdr_ts_fifo_overflow, 1, 0)))
+		dev_info(dev, "hdr ts fifo overflow\n");
+
+	if (kfifo_len(&pipe->hdr_ts_fifo) >= sizeof(*ts_info)) {
+		len = kfifo_out(&pipe->hdr_ts_fifo, ts_info, sizeof(*ts_info));
+
+		if (len != sizeof(*ts_info))
+			dev_info(dev, "%s: (pipe:%d) pop fail\n", __func__, pipe->id);
+	}
+}
+
+static int mtk_raw_hdr_ts_get_ctrl(struct v4l2_ctrl *ctrl)
+{
+	struct mtk_raw_pipeline *pipeline;
+	struct mtk_cam_hdr_timestamp_info *hdr_ts_info_p;
+	struct device *dev;
+	int ret = 0;
+
+	pipeline = mtk_cam_ctrl_handler_to_raw_pipeline(ctrl->handler);
+	dev = subdev_to_cam_dev(&pipeline->subdev);
+	hdr_ts_info_p = ctrl->p_new.p;
+
+	switch (ctrl->id) {
+	case V4L2_CID_MTK_CAM_CAMSYS_HDR_TIMESTAMP:
+		mtk_raw_hdr_tsfifo_pop(pipeline, hdr_ts_info_p);
+		dev_info(dev, "%s [le:%lld,%lld][ne:%lld,%lld][se:%lld,%lld]\n",
+			 __func__,
+			 hdr_ts_info_p->le, hdr_ts_info_p->le_mono,
+			 hdr_ts_info_p->ne, hdr_ts_info_p->ne_mono,
+			 hdr_ts_info_p->se, hdr_ts_info_p->se_mono);
+		break;
+	default:
+		dev_info(dev, "%s(id:0x%x,val:%d) is not handled\n",
+			 __func__, ctrl->id, ctrl->val);
+		ret = -EINVAL;
+	}
+
+	return ret;
+}
+
 static const struct v4l2_ctrl_ops cam_pde_ctrl_ops = {
 	.g_volatile_ctrl = mtk_raw_pde_get_ctrl,
 	.s_ctrl = mtk_raw_pde_set_ctrl,
@@ -792,6 +891,10 @@ static const struct v4l2_ctrl_ops cam_pde_ctrl_ops = {
 
 static const struct v4l2_ctrl_ops cam_dynamic_meta_ctrl_ops = {
 	.try_ctrl = mtk_raw_dynamic_meta_try_ctrl,
+};
+
+static const struct v4l2_ctrl_ops cam_hdr_ts_info_ctrl_ops = {
+	.g_volatile_ctrl = mtk_raw_hdr_ts_get_ctrl,
 };
 
 static const struct v4l2_ctrl_config hsf = {
@@ -905,6 +1008,19 @@ static const struct v4l2_ctrl_config cfg_dynamic_meta = {
 	.max = 0x1fffffff,
 	.step = 1,
 	.dims = {sizeof(struct mtk_cam_dynamic_metadata_params)},
+};
+
+static const struct v4l2_ctrl_config cfg_hdr_timestamp_info = {
+	.ops = &cam_hdr_ts_info_ctrl_ops,
+	.id = V4L2_CID_MTK_CAM_CAMSYS_HDR_TIMESTAMP,
+	.name = "hdr timestamp information",
+	.type = V4L2_CTRL_TYPE_INTEGER,
+	.flags = V4L2_CTRL_FLAG_VOLATILE,
+	.min = 0,
+	.max = 0x1fffffff,
+	.step = 1,
+	.def = 0,
+	.dims = {sizeof_u32(struct mtk_cam_hdr_timestamp_info)},
 };
 
 struct v4l2_subdev *mtk_cam_find_sensor(struct mtk_cam_ctx *ctx,
@@ -3297,6 +3413,11 @@ static void mtk_raw_pipeline_ctrl_setup(struct mtk_raw_pipeline *pipe)
 
 	v4l2_ctrl_new_custom(ctrl_hdlr, &mstream_exposure, NULL);
 	v4l2_ctrl_new_custom(ctrl_hdlr, &cfg_dynamic_meta, NULL);
+
+	ctrl = v4l2_ctrl_new_custom(ctrl_hdlr, &cfg_hdr_timestamp_info, NULL);
+	if (ctrl)
+		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE |
+			V4L2_CTRL_FLAG_EXECUTE_ON_WRITE;
 
 	pipe->subdev.ctrl_handler = ctrl_hdlr;
 

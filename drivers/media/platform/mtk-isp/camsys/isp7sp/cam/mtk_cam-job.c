@@ -606,6 +606,16 @@ handle_raw_frame_done(struct mtk_cam_job *job)
 			convert_fho_timestamp_to_meta(job);
 	}
 
+	if (ctx->has_raw_subdev) {
+		if (job->job_type == JOB_TYPE_STAGGER ||
+			job->job_type == JOB_TYPE_MSTREAM) {
+			struct mtk_raw_pipeline *pipe =
+				&ctx->cam->pipelines.raw[ctx->raw_subdev_idx];
+
+			mtk_raw_hdr_tsfifo_push(pipe, &job->hdr_ts_cache);
+		}
+	}
+
 	if (CAM_DEBUG_ENABLED(JOB))
 		dev_info(cam->dev, "%s:%s:ctx(%d): seq_no:0x%x, state:0x%x, is_normal:%d, B/M ts:%lld/%lld\n",
 			 __func__, job->req->req.debug_str, job->src_ctx->stream_id,
@@ -2685,6 +2695,50 @@ static void singleframe_on_transit(struct mtk_cam_job_state *s, int state_type,
 			if (old_state != S_ISP_PROCESSING) {
 				job->timestamp = info->sof_ts_ns;
 				job->timestamp_mono = ktime_get_ns(); /* FIXME */
+
+				job->hdr_ts_cache.le = info->sof_ts_ns;
+				job->hdr_ts_cache.le_mono = info->sof_ts_mono_ns;
+				job->hdr_ts_cache.se = info->sof_l_ts_ns;
+				job->hdr_ts_cache.se_mono = info->sof_l_ts_mono_ns;
+			}
+			break;
+		}
+	}
+}
+
+static void mstream_on_transit(struct mtk_cam_job_state *s, int state_type,
+				   int old_state, int new_state, int act,
+				   struct mtk_cam_ctrl_runtime_info *info)
+{
+	struct mtk_cam_job *job =
+		container_of(s, struct mtk_cam_job, job_state);
+
+	log_transit(s, state_type, old_state, new_state, act);
+
+	if (state_type == ISP_STATE) {
+
+		switch (new_state) {
+
+		case S_ISP_COMPOSED:
+			complete(&job->compose_completion);
+			break;
+
+		case S_ISP_OUTER:
+			complete(&job->cq_exe_completion);
+			break;
+
+		case S_ISP_PROCESSING:
+			if (old_state != S_ISP_PROCESSING) {
+				job->timestamp = info->sof_ts_ns;
+				job->timestamp_mono = ktime_get_ns(); /* FIXME */
+
+				if (job->hdr_ts_cache.le) {
+					job->hdr_ts_cache.se = info->sof_ts_ns;
+					job->hdr_ts_cache.se_mono = info->sof_ts_mono_ns;
+				} else {
+					job->hdr_ts_cache.le = info->sof_ts_ns;
+					job->hdr_ts_cache.le_mono = info->sof_ts_mono_ns;
+				}
 			}
 			break;
 		}
@@ -2787,6 +2841,10 @@ static struct mtk_cam_job_state_cb sf_state_cb = {
 	.on_transit = singleframe_on_transit,
 };
 
+static struct mtk_cam_job_state_cb mstream_state_cb = {
+	.on_transit = mstream_on_transit,
+};
+
 static struct mtk_cam_job_state_cb m2m_state_cb = {
 	.on_transit = m2m_on_transit,
 };
@@ -2857,6 +2915,8 @@ static int job_factory(struct mtk_cam_job *job)
 	init_completion(&job->cq_exe_completion);
 	init_completion(&job->i2c_ready_completion);
 
+	memset(&job->hdr_ts_cache, 0, sizeof(job->hdr_ts_cache));
+
 	switch (job->job_type) {
 	case JOB_TYPE_BASIC:
 		pack_helper = &otf_pack_helper;
@@ -2881,7 +2941,7 @@ static int job_factory(struct mtk_cam_job *job)
 	case JOB_TYPE_MSTREAM:
 		pack_helper = &mstream_pack_helper;
 
-		mtk_cam_job_state_init_mstream(&job->job_state, &sf_state_cb);
+		mtk_cam_job_state_init_mstream(&job->job_state, &mstream_state_cb);
 		job->ops = &mstream_job_ops;
 		break;
 	case JOB_TYPE_HW_SUBSAMPLE:

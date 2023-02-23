@@ -79,7 +79,9 @@ struct mtk_cam_ctrl_runtime_info {
 	int inner_seq_no;
 
 	u64 sof_ts_ns;
-	u64 sof_hw_ts;
+	u64 sof_ts_mono_ns;
+	u64 sof_l_ts_ns;
+	u64 sof_l_ts_mono_ns;
 
 	int tmp_inner_seq_no;
 };
@@ -263,6 +265,7 @@ struct mtk_cam_job {
 	//int sensor_set_margin;	/* allow apply sensor before SOF + x (ms)*/
 	u64 timestamp;
 	u64 timestamp_mono;
+	struct mtk_cam_hdr_timestamp_info hdr_ts_cache;
 
 	/* for complete only: not null if current request has sensor ctrl */
 	struct media_request_object *sensor_hdl_obj;

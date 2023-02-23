@@ -1819,6 +1819,7 @@ struct mtk_cam_ctx *mtk_cam_start_ctx(struct mtk_cam_device *cam,
 
 	mtk_cam_update_pipe_used(ctx, &cam->pipelines);
 	mtk_cam_ctrl_start(&ctx->cam_ctrl, ctx);
+	mtk_raw_hdr_tsfifo_reset(ctx);
 
 	return ctx;
 
@@ -2415,6 +2416,9 @@ static int mtk_cam_master_bind(struct device *dev)
 
 	mtk_cam_dvfs_probe(cam_dev->dev,
 			   &cam_dev->dvfs, cam_dev->max_stream_num);
+
+	mtk_raw_hdr_tsfifo_init(cam_dev->pipelines.raw,
+					cam_dev->pipelines.num_raw);
 
 	dev_info(dev, "%s success\n", __func__);
 	return 0;

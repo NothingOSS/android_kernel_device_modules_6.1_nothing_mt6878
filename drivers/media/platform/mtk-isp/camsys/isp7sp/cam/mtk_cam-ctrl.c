@@ -389,10 +389,14 @@ static void ctrl_vsync_preprocess(struct mtk_cam_ctrl *ctrl,
 		max(ctrl->r_info.tmp_inner_seq_no,
 		    (int)seq_from_fh_cookie(irq_info->frame_idx_inner));
 
-	if (vsync_res->is_first)
+	if (vsync_res->is_first) {
 		ctrl->r_info.sof_ts_ns = irq_info->ts_ns;
+		ctrl->r_info.sof_ts_mono_ns = ktime_get_ns();
+	}
 
 	if (vsync_res->is_last) {
+		ctrl->r_info.sof_l_ts_ns = irq_info->ts_ns;
+		ctrl->r_info.sof_l_ts_mono_ns = ktime_get_ns();
 		ctrl->r_info.inner_seq_no =
 			ctrl->r_info.tmp_inner_seq_no;
 	}

@@ -6,6 +6,7 @@
 #ifndef __MTK_CAM_RAW_PIPELINE_H
 #define __MTK_CAM_RAW_PIPELINE_H
 
+#include <linux/kfifo.h>
 #include <media/v4l2-subdev.h>
 #include "mtk_cam-video.h"
 #include "mtk_cam-tg-flash.h"
@@ -202,6 +203,11 @@ struct mtk_raw_pipeline {
 	struct mtk_raw_ctrl_data ctrl_data;
 	/* pde module */
 	struct mtk_raw_pde_config pde_config;
+	/* vhdr timestamp */
+	int hdr_ts_fifo_size;
+	void *hdr_ts_buffer;
+	struct kfifo hdr_ts_fifo;
+	atomic_t is_hdr_ts_fifo_overflow;
 };
 
 static inline struct mtk_raw_pipeline *
@@ -238,5 +244,14 @@ mtk_raw_get_node(struct mtk_raw_pipeline *pipe, int pad)
 
 	return &pipe->vdev_nodes[idx];
 }
+
+/* HDR timestamp */
+int mtk_raw_hdr_tsfifo_init(struct mtk_raw_pipeline *arr_pipe, int num);
+int mtk_raw_hdr_tsfifo_reset(struct mtk_cam_ctx *ctx);
+
+void mtk_raw_hdr_tsfifo_push(struct mtk_raw_pipeline *pipex,
+						struct mtk_cam_hdr_timestamp_info *ts_info);
+void mtk_raw_hdr_tsfifo_pop(struct mtk_raw_pipeline *pipe,
+						struct mtk_cam_hdr_timestamp_info *ts_info);
 
 #endif /*__MTK_CAM_RAW_PIPELINE_H*/
