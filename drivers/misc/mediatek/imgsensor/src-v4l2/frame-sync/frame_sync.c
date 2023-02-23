@@ -3126,7 +3126,7 @@ void fs_notify_vsync(const unsigned int ident, const unsigned int sof_cnt)
 	fs_alg_sa_notify_setup_all_frame_info(idx);
 
 	frec_notify_vsync(idx);
-#if !defined(USING_TSREC)
+#if !defined(USING_TSREC) || defined(FS_UT)
 	fs_alg_sa_notify_vsync(idx);
 #endif
 #endif // QUERY_CCU_TS_AT_SOF
