@@ -1671,12 +1671,13 @@ int imgsys_cmdq_parser_plat7s(struct mtk_imgsys_dev *imgsys_dev,
 	int req_fd = 0, req_no = 0, frm_no = 0;
 	u32 event = 0;
 #ifdef MTK_IOVA_SINK2KERNEL
-	u64 iova_addr = 0;
+	u64 iova_addr = 0, cur_iova_addr = 0;
 	struct mtk_imgsys_req_fd_info *fd_info = NULL;
 	struct dma_buf *dbuf = NULL;
 	struct mtk_imgsys_request *req = NULL;
 	struct mtk_imgsys_dev_buffer *dev_b = 0;
 	bool iova_dbg = false;
+	u16 pre_fd = 0;
 #endif
 
 	req_fd = frm_info->request_fd;
@@ -1722,33 +1723,40 @@ int imgsys_cmdq_parser_plat7s(struct mtk_imgsys_dev *imgsys_dev,
 				return -1;
 			}
 			//
-			dbuf = dma_buf_get(cmd->u.fd);
-			fd_info = &imgsys_dev->req_fd_cache.info_array[req_fd];
-			req = (struct mtk_imgsys_request *) fd_info->req_addr_va;
-			dev_b = req->buf_map[is_singledev_mode(req)];
-			iova_addr = imgsys_get_iova(dbuf, cmd->u.fd, imgsys_dev, dev_b) +
-						cmd->u.ofst;
+			if (cmd->u.fd != pre_fd) {
+				dbuf = dma_buf_get(cmd->u.fd);
+				fd_info = &imgsys_dev->req_fd_cache.info_array[req_fd];
+				req = (struct mtk_imgsys_request *) fd_info->req_addr_va;
+				dev_b = req->buf_map[is_singledev_mode(req)];
+				iova_addr = imgsys_get_iova(dbuf, cmd->u.fd, imgsys_dev, dev_b);
+				pre_fd = cmd->u.fd;
+			} else
+				pr_debug(
+					"%s: Current fd(0x%08x) is the same with previous fd(0x%08x) with iova(0x%08llx), bypass map iova operation\n",
+					__func__, cmd->u.fd, pre_fd, iova_addr);
+			cur_iova_addr = iova_addr + cmd->u.ofst;
 			//
 			if (imgsys_iova_dbg_enable_plat7s() || iova_dbg) {
 				pr_info(
 					"%s: WRITE_FD with req_fd/no(%d/%d) frame_no(%d) addr(0x%08lx) value(0x%08llx)\n",
 					__func__, req_fd, req_no, frm_no,
 					(unsigned long)cmd->u.dma_addr,
-					(iova_addr >> cmd->u.right_shift));
+					(cur_iova_addr >> cmd->u.right_shift));
 			}
 			cmdq_pkt_write(pkt, NULL, cmd->u.dma_addr,
-				(iova_addr >> cmd->u.right_shift), 0xFFFFFFFF);
+				(cur_iova_addr >> cmd->u.right_shift), 0xFFFFFFFF);
 
 			if (cmd->u.dma_addr_msb_ofst) {
 				if (imgsys_iova_dbg_enable_plat7s() || iova_dbg) {
 					pr_info(
 						"%s: WRITE_FD with req_fd/no(%d/%d) frame_no(%d) addr(0x%08lx) value(0x%08llx)\n",
 						__func__, req_fd, req_no, frm_no,
-						(unsigned long)cmd->u.dma_addr, (iova_addr>>32));
+						(unsigned long)cmd->u.dma_addr,
+						(cur_iova_addr>>32));
 				}
 				cmdq_pkt_write(pkt, NULL,
 					(cmd->u.dma_addr + cmd->u.dma_addr_msb_ofst),
-					(iova_addr>>32), 0xFFFFFFFF);
+					(cur_iova_addr>>32), 0xFFFFFFFF);
 			}
 
 			break;
