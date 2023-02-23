@@ -544,7 +544,8 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 							   crtc_state->rsz_dst_roi.height << 16;
 			mtk_plane_state->pending.offset = crtc_state->rsz_dst_roi.x |
 							  crtc_state->rsz_dst_roi.y << 16;
-		}
+		} else
+			mtk_plane_state->pending.offset = dst_x | dst_y << 16;
 	}
 
 	if (mtk_drm_fb_is_secure(fb))
