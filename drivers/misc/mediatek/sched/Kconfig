@@ -91,6 +91,16 @@ config MTK_SCHED_BIG_TASK_ROTATE
 	   It can use for parallel thread at multi-core to reduce
 	   execution time.
 
+config MTK_SCHED_FAST_LOAD_TRACKING
+	bool "fast load tracking"
+	depends on MTK_SCHEDULER
+	help
+	  FLT signal.
+	  These featues include
+	   1. FLT.
+	   2. DTS config.
+	   3. API Interface.
+
 config MTK_CPUFREQ_SUGOV_EXT
 	tristate "mediatek sugov governor"
 	depends on CPU_FREQ && SMP

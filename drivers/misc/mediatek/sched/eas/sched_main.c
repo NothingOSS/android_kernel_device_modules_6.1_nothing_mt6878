@@ -31,6 +31,9 @@
 #include "sugov/dsu_interface.h"
 #include "vip.h"
 #include <mt-plat/mtk_irq_mon.h>
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+#include "flt_init.h"
+#endif
 
 #define CREATE_TRACE_POINTS
 #include "eas_trace.h"
@@ -412,6 +415,60 @@ static const struct proc_ops eas_Fops = {
 	.proc_release = single_release,
 };
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+
+static int platform_flt_probe(struct platform_device *pdev)
+{
+	int ret = 0, retval = 0;
+	u32 flt_mode = FLT_MODE_0;
+	struct device_node *node;
+
+	if (!of_have_populated_dt())
+		goto flt_exit;
+
+	node = pdev->dev.of_node;
+
+	ret = of_property_read_u32(node, "mode", &retval);
+	if (!ret)
+		flt_mode = retval;
+
+flt_exit:
+		pr_info("FLT flt_mode=%d\n", flt_mode);
+		flt_set_mode(flt_mode);
+		return 0;
+}
+
+static const struct of_device_id platform_flt_match[] = {
+	{ .compatible = "mediatek,flt", },
+	{},
+};
+
+static const struct platform_device_id platform_flt_id_table[] = {
+	{ "flt", 0},
+	{ },
+};
+
+static struct platform_driver mtk_platform_flt_driver = {
+	.probe = platform_flt_probe,
+	.driver = {
+		.name = "FLT",
+		.owner = THIS_MODULE,
+		.of_match_table = platform_flt_match,
+	},
+	.id_table = platform_flt_id_table,
+};
+
+void init_flt_platform(void)
+{
+	platform_driver_register(&mtk_platform_flt_driver);
+}
+
+void exit_flt_platform(void)
+{
+	platform_driver_unregister(&mtk_platform_flt_driver);
+}
+#endif
+
 static int __init mtk_scheduler_init(void)
 {
 	struct proc_dir_entry *pe, *parent;
@@ -537,6 +594,10 @@ static int __init mtk_scheduler_init(void)
 	vip_init();
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+	init_flt_platform();
+#endif
+
 	sched_asym_cpucapacity_init();
 
 	get_most_powerful_pd_and_util_Th();
@@ -572,7 +633,9 @@ static void __exit mtk_scheduler_exit(void)
 	unregister_trace_task_newtask(rotat_task_newtask, NULL);
 #endif
 	cleanup_sched_common_sysfs();
-
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+	exit_flt_platform();
+#endif
 	free_cpu_array();
 }
 

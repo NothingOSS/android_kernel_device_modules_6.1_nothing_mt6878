@@ -1,0 +1,18 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (c) 2021 MediaTek Inc.
+ */
+#ifndef _FLT_INIT_H
+#define _FLT_INIT_H
+
+/* FLT mode */
+enum _flt_mode {
+	FLT_MODE_0 = 0,
+	FLT_MODE_1 = 1,
+	FLT_MODE_2 = 2,
+	FLT_MODE_NUM,
+};
+
+void  flt_set_mode(u32 mode);
+u32 flt_get_mode(void);
+#endif /* _FLT_INIT_H*/
