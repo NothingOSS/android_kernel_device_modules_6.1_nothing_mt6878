@@ -8,6 +8,7 @@
 #include "mtk_cam.h"
 #include "mtk_cam-feature.h"
 #include "mtk_cam-dvfs_qos.h"
+#include "soc/mediatek/mmdvfs_v3.h"
 #include "soc/mediatek/mmqos.h"
 
 static unsigned int debug_mmqos;
@@ -295,7 +296,10 @@ void mtk_cam_dvfs_init(struct mtk_cam_device *cam)
 			 __func__, i, dvfs_info->clklv[i], dvfs_info->voltlv[i]);
 	}
 
-	dvfs_info->mmdvfs_clk = devm_clk_get(dev, "mmdvfs_clk");
+	if (!mmdvfs_get_version())
+		dvfs_info->mmdvfs_clk = devm_clk_get(dev, "mmdvfs_clk");
+	else
+		dvfs_info->mmdvfs_clk = devm_clk_get(dev, "mmdvfs_mux");
 	if (IS_ERR(dvfs_info->mmdvfs_clk)) {
 		dvfs_info->mmdvfs_clk = NULL;
 		dev_info(dvfs_info->dev, "can't get mmdvfs_clk\n");
