@@ -9610,6 +9610,8 @@
 		<39 3  4>,/* IPI_OUT_AOV_SCP */
 		<43 3  4>,/* IPI_OUT_NPU_SCP */
 		<45 3  1>,/* IPI_OUT_SCP_PM_NOTIFY_0 */
+		<47 3  2>,/* IPI_PIN_HOST_SCP_CHRE */
+		<48 3  2>,/* IPI_PIN_SCP_HOST_CHRE */
 		<29 4 16>,/* IPI_OUT_SENSOR_CTRL */
 		<31 4  7>;/* IPI_OUT_SENSOR_NOTIFY */
 
@@ -9640,6 +9642,8 @@
 		<35 3  4 1 0 0 0>,/* IPI_OUT_C_SCP_HWVOTER_DEBUG */
 		<40 3  4 0 0 0 0>,/* IPI_IN_SCP_AOV */
 		<44 3  4 0 0 0 0>,/* IPI_IN_SCP_NPU */
+		<47 3  2 1 0 0 0>,/* IPI_PIN_HOST_SCP_CHRE ack slot */
+		<48 3  2 0 0 0 1>,/* IPI_PIN_SCP_HOST_CHRE msg slot*/
 		<30 4  2 0 0 0 0>,/* IPI_IN_SENSOR_CTRL */
 		<32 4  7 0 0 0 0>;/* IPI_IN_SENSOR_NOTIFY */
 
@@ -9689,7 +9693,9 @@
 			      <11 0x100 0x0>, /* sensor custom writer */
 			      <12 0x100 0x0>, /* sensor custom reader */
 			      <13 0x480000 0x0>, /* aov */
-			      <16 0x10000 0x0>; /* connsys */
+			      <16 0x10000 0x0>, /* connsys */
+			      <17 0x8000 0x0>, /* scp chre from */
+			      <18 0x8000 0x0>; /* scp chre to */
 
 		memorydump = <0x300000>, /* l2tcm */
 			     <0x03c000>, /* l1c */
