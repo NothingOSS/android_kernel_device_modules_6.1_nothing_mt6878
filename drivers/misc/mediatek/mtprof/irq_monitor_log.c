@@ -72,7 +72,7 @@ void irq_log_dump(unsigned int out, u64 start, u64 end)
 	 */
 	for (i = 0; i < data->count; i++) {
 		irq_mon_msg(out,
-			    "cpu=%d, func=%s, line=%d, time=%llu, delta=%llu\n",
+			    "cpu=%d, func=%s, line=%d, time=%llu, delta=%llu",
 			    cpu,
 			    data->entry[i].func,
 			    data->entry[i].line,
@@ -81,7 +81,7 @@ void irq_log_dump(unsigned int out, u64 start, u64 end)
 		prev_ts = data->entry[i].ts;
 	}
 
-	irq_mon_msg(out, "cpu=%d, end of IRQ, time=%llu, delta=%llu\n",
+	irq_mon_msg(out, "cpu=%d, end of IRQ, time=%llu, delta=%llu",
 		    cpu, end, end - prev_ts);
 }
 

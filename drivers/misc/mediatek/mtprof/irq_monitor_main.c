@@ -375,6 +375,7 @@ static void probe_irq_handler_exit(void *ignore, int irq,
 			  raw_smp_processor_id());
 
 		irq_mon_msg(out, msg);
+		irq_log_dump(out, stat->start_timestamp, stat->end_timestamp);
 
 		scnprintf(handler_name, sizeof(handler_name), "%pS", (void *)action->handler);
 		if (!strncmp(handler_name, "mtk_syst_handler", strlen("mtk_syst_handler")))
@@ -415,8 +416,6 @@ static void probe_irq_handler_exit(void *ignore, int irq,
 				set_bit(irq, irq_aee_state);
 				scnprintf(module, sizeof(module), "IRQ LONG:%d, %pS, %llu ms"
 					, irq, (void *)action->handler, msec_high(duration));
-				irq_log_dump(out, stat->start_timestamp,
-					     stat->end_timestamp);
 				aee_kernel_warning_api(__FILE__, __LINE__,
 						       DB_OPT_DEFAULT | DB_OPT_FTRACE,
 						       module, msg);
@@ -619,17 +618,8 @@ static void probe_hrtimer_expire_exit(void *ignore, struct hrtimer *hrtimer)
 				irq_mon_msg(TO_FTRACE, "hrtimer duration skip in debounce period");
 			} else {
 				char module[100];
-				struct trace_stat *i_stat;
 
 				ever_dump = 1;
-
-				/*
-				 * We don't need to check the irq_handler_tracer.
-				 * If it is not tracing, then nothing will be dumped.
-				 */
-				i_stat = raw_cpu_ptr(irq_handler_tracer.stat);
-				irq_log_dump(out, i_stat->start_timestamp,
-					     stat->end_timestamp);
 
 				scnprintf(module, sizeof(module), "HRTIMER LONG: %pS, %llu ms"
 					, (void *)hrtimer->function, msec_high(duration));
