@@ -1450,7 +1450,7 @@ int _mtk_cam_seninf_set_camtg(struct v4l2_subdev *sd, int pad_id, int camtg, int
 {
 	struct seninf_ctx *ctx = container_of(sd, struct seninf_ctx, subdev);
 	struct seninf_vc *vc;
-	int set;
+	int set, i;
 
 	if (pad_id < PAD_SRC_RAW0 || pad_id >= PAD_MAXCNT)
 		return -EINVAL;
@@ -1465,6 +1465,13 @@ int _mtk_cam_seninf_set_camtg(struct v4l2_subdev *sd, int pad_id, int camtg, int
 		return -EINVAL;
 
 	set = vc->dest_cnt;
+
+	if (set == 0)
+		for (i = 0; i < MAX_DEST_NUM; i++) {
+			vc->dest[i].cam = 0xff;
+			vc->dest[i].mux = 0xff;
+			vc->dest[i].mux_vr = 0xff;
+		}
 
 	if (set < MAX_DEST_NUM) {
 		vc->dest_cnt += 1;
