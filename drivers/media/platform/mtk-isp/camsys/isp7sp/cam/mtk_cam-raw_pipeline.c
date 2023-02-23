@@ -438,6 +438,10 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 	stepper.pixel_mode_max = 2;
 	mtk_raw_calc_num_raw_max_min(r->raws, r->raws_must, r->raws_max_num,
 				     &stepper.num_raw_min, &stepper.num_raw_max);
+
+	/* TODO: remove this when twin is ready */
+	stepper.num_raw_max = 1;
+
 	stepper.opp_num = mtk_cam_dvfs_get_opp_table(&cam->dvfs, &stepper.tbl);
 
 	if (skip_find_resource()) {
