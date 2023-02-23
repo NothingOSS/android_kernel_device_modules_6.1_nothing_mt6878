@@ -1201,15 +1201,16 @@ void mtk_vdec_error_handle(struct mtk_vcodec_ctx *ctx, char *debug_str)
 		atomic_read(&dev->dec_hw_active[MTK_VDEC_LAT]),
 		atomic_read(&dev->dec_hw_active[MTK_VDEC_CORE]));
 	ctx->state = MTK_STATE_ABORT;
+	mutex_lock(&dev->dec_dvfs_mutex);
+	if (mtk_vdec_dvfs_is_pw_always_on(ctx)) {
+		mtk_vcodec_dec_pw_off(&dev->pm);
+		dev->vdec_dvfs_params.target_freq = 0;
+		dev->vdec_dvfs_params.high_loading_scenario = 0;
+	}
+	mutex_unlock(&dev->dec_dvfs_mutex);
 	vdec_check_release_lock(ctx);
 	for (i = 0; i < MTK_VDEC_HW_NUM; i++)
 		atomic_set(&dev->dec_hw_active[i], 0);
-	mutex_lock(&dev->dec_dvfs_mutex);
-	if (dev->vdec_dvfs_params.target_freq == VDEC_HIGHEST_FREQ) {
-		mtk_vcodec_dec_pw_off(&dev->pm);
-		dev->vdec_dvfs_params.target_freq = 0;
-	}
-	mutex_unlock(&dev->dec_dvfs_mutex);
 	mtk_vdec_queue_error_event(ctx);
 }
 
@@ -3964,7 +3965,7 @@ static void m2mops_vdec_job_abort(void *priv)
 		wake_up(&ctx->fm_wq);
 
 	mtk_v4l2_debug(4, "[%d]", ctx->id);
-	ctx->state = MTK_STATE_ABORT;
+	ctx->state = MTK_STATE_STOP;
 }
 
 static int vdec_set_hdr10plus_data(struct mtk_vcodec_ctx *ctx,

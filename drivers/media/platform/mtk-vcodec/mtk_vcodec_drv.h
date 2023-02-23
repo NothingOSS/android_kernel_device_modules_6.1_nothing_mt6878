@@ -100,10 +100,11 @@ enum mtk_mmdvfs_type {
  */
 enum mtk_instance_state {
 	MTK_STATE_FREE = 0,
-	MTK_STATE_INIT = 1,
-	MTK_STATE_HEADER = 2,
-	MTK_STATE_FLUSH = 3,
-	MTK_STATE_ABORT = 4,
+	MTK_STATE_INIT,
+	MTK_STATE_HEADER,
+	MTK_STATE_FLUSH,
+	MTK_STATE_STOP,
+	MTK_STATE_ABORT,
 };
 
 enum mtk_codec_type {
@@ -786,6 +787,7 @@ struct mtk_vcodec_dev {
 	struct mtk_vcodec_pm pm;
 	struct notifier_block pm_notifier;
 	bool is_codec_suspending;
+	bool codec_stop_done;
 
 	int dec_cnt;
 	int enc_cnt;
