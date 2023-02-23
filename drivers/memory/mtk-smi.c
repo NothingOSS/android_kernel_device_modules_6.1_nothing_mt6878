@@ -2358,9 +2358,9 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 	ret = of_property_count_strings(dev->of_node, "clock-names");
 	if (ret < 0) {
 		dev_notice(dev, "%s: can not find clk-name in dts:%d\n", __func__, ret);
-		return ret;
-	}
-	larb->smi.nr_clks = ret;
+		larb->smi.nr_clks = 0;
+	} else
+		larb->smi.nr_clks = ret;
 
 	of_property_for_each_string(dev->of_node, "clock-names", prop, name) {
 		larb->smi.clks[i] = devm_clk_get(dev, name);
@@ -2368,7 +2368,6 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 			dev_info(dev, "CLK%d:%s get failed\n", i, name);
 			return PTR_ERR(larb->smi.clks[i]);
 		}
-		dev_info(dev, "CLK%d:%s\n", i, name);
 		i += 1;
 	}
 
@@ -3527,9 +3526,9 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 	ret = of_property_count_strings(dev->of_node, "clock-names");
 	if (ret < 0) {
 		dev_notice(dev, "%s: can not find clk-name in dts:%d\n", __func__, ret);
-		return ret;
-	}
-	common->nr_clks = ret;
+		common->nr_clks = 0;
+	} else
+		common->nr_clks = ret;
 
 	of_property_for_each_string(dev->of_node, "clock-names", prop, name) {
 		common->clks[i] = devm_clk_get(dev, name);
@@ -3537,7 +3536,6 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 			dev_info(dev, "CLK%d:%s get failed\n", i, name);
 			return PTR_ERR(common->clks[i]);
 		}
-		dev_info(dev, "CLK%d:%s\n", i, name);
 		i += 1;
 	}
 
