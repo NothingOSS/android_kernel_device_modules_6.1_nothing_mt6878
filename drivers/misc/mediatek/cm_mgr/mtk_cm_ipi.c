@@ -92,7 +92,7 @@ void cm_ipi_init(void)
 				   &scmi_cm_id);
 	if (ret) {
 		pr_info("get scmi-cm fail, ret %d\n", ret);
-		cm_ipi_enable = -2;
+		cm_ipi_enable = 0;
 		return;
 	}
 	pr_info("%s(%d) scmi-cm_id %d\n", __func__, __LINE__, scmi_cm_id);

@@ -82,9 +82,9 @@ static int cm_mgr_loading_level = 1000;
 static int cm_mgr_loop_count;
 static int cm_mgr_num_array;
 static int cm_mgr_num_perf;
-static int cm_mgr_passive;
 static int cm_mgr_perf_enable = 1;
 static int cm_mgr_perf_force_enable;
+static int cm_passive;
 
 static int debounce_times_perf_down = 50;
 static int debounce_times_perf_force_down = 100;
@@ -493,7 +493,6 @@ static ssize_t dbg_cm_mgr_show(struct kobject *kobj,
 	len += cm_mgr_print("cm_mgr_dram_opp_floor %d\n",
 			    cm_mgr_dram_opp_floor);
 	len += cm_mgr_print("cm_mgr_dram_level %d\n", cm_mgr_dram_level);
-	len += cm_mgr_print("cm_mgr_passive %d\n", cm_mgr_passive);
 
 	if (cm_mgr_use_cpu_to_dram_map)
 		len += cm_mgr_print("cm_mgr_cpu_map_dram_enable %d\n",
@@ -510,6 +509,7 @@ static ssize_t dbg_cm_mgr_show(struct kobject *kobj,
 		len += cm_mgr_print("\n");
 	}
 
+	len += cm_mgr_print("cm_passive %d\n", cm_passive);
 	len += cm_mgr_print("cpu_power_ratio_up");
 	for (i = 0; i < cm_mgr_num_array; i++)
 		len += cm_mgr_print(" %d", cpu_power_ratio_up[i]);
@@ -744,8 +744,8 @@ static ssize_t dbg_cm_mgr_store(struct kobject *kobj,
 	} else if (!strcmp(cmd, "cm_mgr_aggr")) {
 		cm_mgr_aggr = val_1;
 		cm_mgr_to_sspm_command(IPI_CM_MGR_AGGRESSIVE, val_1);
-	} else if (!strcmp(cmd, "cm_mgr_passive")) {
-		cm_mgr_passive = val_1;
+	} else if (!strcmp(cmd, "cm_passive")) {
+		cm_passive = val_1;
 		cm_mgr_to_sspm_command(IPI_CM_MGR_PASSIVE, val_1);
 	} else if (!strcmp(cmd, "cm_hint")) {
 		cm_hint = val_1;
