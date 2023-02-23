@@ -159,7 +159,10 @@ static unsigned int fallback_duration;   // unit: ms
 
 /* overdue parameter*/
 #define OVERDUE_TH 14
-
+#define OVERDUE_LIMIT_FRAME 8
+#define OVERDUE_LIMIT_FREQ_SCALE 5
+#define OVERDUE_FREQ_TH 2
+static int overdue_counter;
 
 void ged_dvfs_last_and_target_cb(int t_gpu_target, int boost_accum_gpu)
 {
@@ -958,6 +961,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	static unsigned int force_fallback_pre;
 	static int margin_low_bound;
 	int ultra_high_step_size = (dvfs_step_mode & 0xff);
+	int ui32GPUFreq_oppidx = ged_get_cur_oppidx();
 
 	gpu_freq_pre = ged_get_cur_freq();
 
@@ -1047,6 +1051,10 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 		} else
 			t_gpu_target_hd = t_gpu_target;
 		// from this point on, t_gpu_target & t_gpu_target_hd would be > 0
+
+		if (t_gpu > (t_gpu_target * OVERDUE_TH / 10) &&
+			gpu_freq_pre > (ged_get_max_freq_in_opp() / OVERDUE_FREQ_TH))
+			overdue_counter = OVERDUE_LIMIT_FRAME;
 
 		if (t_gpu > t_gpu_target_hd) {   // previous frame overdued
 			// adjust margin
@@ -1162,6 +1170,16 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 		gpu_freq_tar = gpu_freq_pre;
 
 	gpu_freq_floor = gpu_freq_pre * GED_FB_DVFS_FERQ_DROP_RATIO_LIMIT / 100;
+
+	/* overdue_counter : 4~1, limit gpu_freq_floor 95%~80% */
+	if (overdue_counter <= 4 && overdue_counter > 0) {
+		if (gpu_freq_pre > (ged_get_max_freq_in_opp() / OVERDUE_FREQ_TH))
+			gpu_freq_floor =
+				gpu_freq_pre *
+				(100 - (OVERDUE_LIMIT_FREQ_SCALE * (5 - overdue_counter))) / 100;
+		overdue_counter--;
+	}
+
 	if (gpu_freq_tar < gpu_freq_floor)
 		gpu_freq_tar = gpu_freq_floor;
 
@@ -1189,6 +1207,15 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 
 	if (dvfs_margin_mode == VARIABLE_MARGIN_MODE_OPP_INDEX)
 		gx_fb_dvfs_margin = (ui32NewFreqID / 3)*10;
+
+	/* overdue_counter : 8~4, prevent decreasing opp if previous frame overdue too much */
+	if (overdue_counter <= 8 && overdue_counter > 4) {
+		overdue_counter--;
+		if (ui32NewFreqID > ui32GPUFreq_oppidx &&
+			gpu_freq_pre > (ged_get_max_freq_in_opp() / OVERDUE_FREQ_TH))
+			ui32NewFreqID = ui32GPUFreq_oppidx;
+	}
+
 
 	ged_log_buf_print(ghLogBuf_DVFS,
 	"[GED_K][FB_DVFS]t_gpu:%d,t_gpu_tar_hd:%d,gpu_freq_tar:%d,gpu_freq_pre:%d",
