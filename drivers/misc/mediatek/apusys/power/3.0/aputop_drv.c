@@ -203,6 +203,7 @@ static const struct of_device_id of_match_apu_top[] = {
 	{ .compatible = "mt6985,apu_top_3", .data = &mt6985_plat_data},
 	{ .compatible = "mt6886,apu_top_3", .data = &mt6886_plat_data},
 	{ .compatible = "mt8188,apu_top_3", .data = &mt8188_plat_data},
+	{ .compatible = "mt6989,apu_top_3", .data = &mt6989_plat_data},
 	{ /* end of list */},
 };
 
