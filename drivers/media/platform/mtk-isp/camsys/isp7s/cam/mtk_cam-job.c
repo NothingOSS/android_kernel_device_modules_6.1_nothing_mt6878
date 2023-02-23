@@ -37,6 +37,31 @@ static inline int job_debug_exception_dump(struct mtk_cam_job *job,
 	return job_debug_dump(job, desc, 1, -1);
 }
 
+static struct mtk_raw_sink_data *get_raw_sink_data(struct mtk_cam_job *job);
+static struct mtk_raw_ctrl_data *get_raw_ctrl_data(struct mtk_cam_job *job);
+static struct mtk_raw_request_data *req_get_raw_data(struct mtk_cam_ctx *ctx,
+						     struct mtk_cam_request *req);
+static int get_exp_switch_type(struct mtk_cam_job *job);
+
+static int subdev_set_fmt(struct v4l2_subdev *sd, int pad,
+						  const struct v4l2_mbus_framefmt *format)
+{
+	struct v4l2_subdev_format fmt;
+	int ret = 0;
+
+	fmt.which = V4L2_SUBDEV_FORMAT_ACTIVE;
+	fmt.pad = pad;
+	fmt.format = *format;
+	ret = v4l2_subdev_call(sd, pad, set_fmt, NULL, &fmt);
+
+	pr_info("%s: %s:pad(%d) %dx%d 0x%x",
+			__func__, sd->entity.name, pad,
+			fmt.format.width, fmt.format.height,
+			fmt.format.code);
+
+	return ret;
+}
+
 void _on_job_last_ref(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
@@ -939,6 +964,33 @@ static void job_complete_sensor_ctrl_obj(struct mtk_cam_job *job)
 	}
 }
 
+static int update_sensor_fmt(struct mtk_cam_job *job)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtk_cam_device *cam = ctx->cam;
+	struct mtk_cam_request *req = job->req;
+	struct mtk_raw_request_data *raw_data = req_get_raw_data(ctx, req);
+	struct v4l2_mbus_framefmt sink_mfmt;
+	bool update_fmt = job->seamless_switch;
+
+	if (!update_fmt)
+		return 0;
+
+	if (!raw_data) {
+		dev_info(cam->dev, "%s: raw_data not found: ctx-%d job %d\n",
+			 __func__, ctx->stream_id, job->frame_seq_no);
+		return 0;
+	}
+
+	sink_mfmt.width = raw_data->sink.width;
+	sink_mfmt.height = raw_data->sink.height;
+	sink_mfmt.code = raw_data->sink.mbus_code;
+
+	subdev_set_fmt(ctx->sensor, 0, &sink_mfmt);
+
+	return 0;
+}
+
 /* kthread context */
 static int
 _apply_sensor(struct mtk_cam_job *job)
@@ -947,7 +999,6 @@ _apply_sensor(struct mtk_cam_job *job)
 	struct mtk_cam_device *cam = ctx->cam;
 	struct mtk_cam_request *req = job->req;
 	unsigned long timeout = msecs_to_jiffies(1000);
-
 
 	if (!job->sensor_hdl_obj) {
 		dev_info(cam->dev, "[%s] warn. no sensor_hdl_obj to apply: ctx-%d job 0x%x\n",
@@ -965,6 +1016,8 @@ _apply_sensor(struct mtk_cam_job *job)
 	//MTK_CAM_TRACE_BEGIN(BASIC, "frame_sync_start");
 	frame_sync_start(ctx, req);
 	//MTK_CAM_TRACE_END(BASIC); /* frame_sync_start */
+
+	update_sensor_fmt(job);
 
 	v4l2_ctrl_request_setup(&req->req, job->sensor->ctrl_handler);
 	dev_info(cam->dev, "[%s] ctx:%d, job: 0x%x\n",
@@ -987,9 +1040,8 @@ static int apply_cam_switch_stagger(struct mtk_cam_job *job)
 	struct mtk_cam_device *cam = ctx->cam;
 	int raw_id = _get_master_raw_id(job->used_engine);
 	struct mtk_raw_device *raw_dev = NULL;
-	struct mtk_cam_stagger_job *stagger_job =
-			(struct mtk_cam_stagger_job *)job;
-	int type = stagger_job->switch_type;
+	int type = job->switch_type;
+	bool stagger_mode_updated = false;
 
 	if (raw_id < 0)
 		return -1;
@@ -997,27 +1049,61 @@ static int apply_cam_switch_stagger(struct mtk_cam_job *job)
 	if (type == EXPOSURE_CHANGE_3_to_1 ||
 		type == EXPOSURE_CHANGE_2_to_1) {
 		stagger_disable(raw_dev);
+		stagger_mode_updated = true;
 		dev_info(cam->dev,
 			"[%s] ctx:%d, job:0x%x, stagger_disable\n",
 			__func__, ctx->stream_id, job->frame_seq_no);
 	} else if (type == EXPOSURE_CHANGE_1_to_2 ||
 		type == EXPOSURE_CHANGE_1_to_3) {
 		stagger_enable(raw_dev);
+		stagger_mode_updated = true;
 		dev_info(cam->dev,
 			"[%s] ctx:%d, job:0x%x, stagger_enable\n",
 			__func__, ctx->stream_id, job->frame_seq_no);
 	}
-	if (STAGGER_SEAMLESS_DBLOAD_FORCE)
+
+	if (stagger_mode_updated && STAGGER_SEAMLESS_DBLOAD_FORCE)
 		dbload_force(raw_dev);
 
 	return 0;
 }
+
+static int update_seninf_fmt(struct mtk_cam_job *job)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtk_cam_device *cam = ctx->cam;
+	struct mtk_cam_request *req = job->req;
+	struct mtk_raw_request_data *raw_data = req_get_raw_data(ctx, req);
+	struct v4l2_mbus_framefmt sink_mfmt;
+	bool update_fmt = job->seamless_switch;
+
+	if (!update_fmt)
+		return 0;
+
+	if (!raw_data) {
+		dev_info(cam->dev, "%s: raw_data not found: ctx-%d job %d\n",
+			 __func__, ctx->stream_id, job->frame_seq_no);
+		return 0;
+	}
+
+	sink_mfmt.width = raw_data->sink.width;
+	sink_mfmt.height = raw_data->sink.height;
+	sink_mfmt.code = raw_data->sink.mbus_code;
+
+	subdev_set_fmt(ctx->seninf, PAD_SINK, &sink_mfmt);
+	subdev_set_fmt(ctx->seninf, PAD_SRC_RAW0, &sink_mfmt);
+
+	return 0;
+}
+
 /* kthread context */
 static int
 _apply_switch(struct mtk_cam_job *job)
 {
 	switch (job->job_type) {
+	case JOB_TYPE_BASIC:
 	case JOB_TYPE_STAGGER:
+		update_seninf_fmt(job);
 		apply_cam_mux_switch_stagger(job);
 		apply_cam_switch_stagger(job);
 		break;
@@ -1541,27 +1627,26 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_device *cam = ctx->cam;
-	struct mtk_cam_stagger_job *stagger_job =
-			(struct mtk_cam_stagger_job *)job;
+	struct mtk_cam_scen *prev_scen =
+		&job->src_ctx->ctldata_stored.resource.user_data.raw_res.scen;
 	int ret;
 
-	/* stagger job needed */
-	stagger_job->prev_scen = ctx->ctldata_stored.resource.user_data.raw_res.scen;
-	stagger_job->switch_type = get_switch_type_stagger(job);
+	job->switch_type = get_exp_switch_type(job);
 	update_stagger_job_exp(job);
+	job->seamless_switch = (job->switch_type != EXPOSURE_CHANGE_NONE);
 	job->hardware_scenario = get_hw_scenario(job);
 	job->sw_feature = MTKCAM_IPI_SW_FEATURE_VHDR;
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
 
 	dev_info(cam->dev, "[%s] ctx:%d, type:%d, scen exp:%d->%d, swi:%d,  expN:%d->%d, sw/scene:%d/0x%x",
 		__func__, ctx->stream_id, job->job_type,
-		stagger_job->prev_scen.scen.normal.exp_num,
-		job->job_scen.scen.normal.exp_num, stagger_job->switch_type,
+		prev_scen->scen.normal.exp_num,
+		job->job_scen.scen.normal.exp_num, job->switch_type,
 		job->exp_num_prev, job->exp_num_cur,
 		job->sw_feature, job->hardware_scenario);
 	job->stream_on_seninf = false;
 	job->scq_period = SCQ_DEADLINE_MS_STAGGER;
-	if (stagger_job->switch_type == EXPOSURE_CHANGE_NONE)
+	if (!job->seamless_switch)
 		complete(&job->i2c_ready_completion);
 	if (!ctx->used_engine) {
 		unsigned long selected;
@@ -1789,16 +1874,34 @@ _job_pack_mstream(struct mtk_cam_job *job,
 	return fill_1st_ipi_mstream(job);
 }
 
+static bool seamless_config_changed(struct mtk_cam_job *job)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtk_raw_sink_data *sink = get_raw_sink_data(job);
+	struct mtkcam_ipi_crop sink_crop;
+
+	if (!job->seamless_switch || !ctx || !sink)
+		return false;
+
+	sink_crop = v4l2_rect_to_ipi_crop(&sink->crop);
+
+	return (!ipi_crop_eq(&ctx->ipi_config.input.in_crop, &sink_crop) ||
+			ctx->ipi_config.input.fmt != sensor_mbus_to_ipi_fmt(sink->mbus_code));
+}
+
 static int
 _job_pack_normal(struct mtk_cam_job *job,
 	 struct pack_job_ops_helper *job_helper)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_device *cam = ctx->cam;
+	struct mtk_raw_ctrl_data *ctrl_data = get_raw_ctrl_data(job);
 	int ret;
 
 	job->exp_num_cur = 1;
 	job->exp_num_prev = 1;
+	job->seamless_switch = (ctrl_data) ?
+		ctrl_data->rc_data.sensor_mode_update : false;
 	job->hardware_scenario = get_hw_scenario(job);
 	job->sw_feature = MTKCAM_IPI_SW_FEATURE_NORMAL;
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
@@ -1806,7 +1909,10 @@ _job_pack_normal(struct mtk_cam_job *job,
 		__func__, ctx->stream_id, job->job_type, job->job_scen.id,
 		job->exp_num_prev, job->exp_num_cur, job->sw_feature, job->hardware_scenario);
 	job->stream_on_seninf = false;
-	complete(&job->i2c_ready_completion);
+
+	if (!job->seamless_switch)
+		complete(&job->i2c_ready_completion);
+
 	if (!ctx->used_engine) {
 		unsigned long selected;
 
@@ -1826,6 +1932,7 @@ _job_pack_normal(struct mtk_cam_job *job,
 	/* config_flow_by_job_type */
 	update_job_used_engine(job);
 
+	ctx->configured = (ctx->configured && !seamless_config_changed(job));
 	job->do_ipi_config = false;
 	if (!ctx->configured) {
 		/* handle camsv tags */
@@ -2195,8 +2302,7 @@ static void mtk_cam_set_sensor_mstream_mode(struct mtk_cam_ctx *ctx, bool on)
 }
 
 /* TODO(AY): move to utils */
-static struct mtk_raw_ctrl_data *get_raw_ctrl_data(struct mtk_cam_job *job,
-						   struct mtk_cam_ctx *ctx)
+static struct mtk_raw_ctrl_data *get_raw_ctrl_data(struct mtk_cam_job *job)
 {
 	struct mtk_cam_request *req = job->req;
 	int raw_pipe_idx;
@@ -2206,6 +2312,18 @@ static struct mtk_raw_ctrl_data *get_raw_ctrl_data(struct mtk_cam_job *job,
 		return NULL;
 
 	return &req->raw_data[raw_pipe_idx].ctrl;
+}
+
+static struct mtk_raw_sink_data *get_raw_sink_data(struct mtk_cam_job *job)
+{
+	struct mtk_cam_request *req = job->req;
+	int raw_pipe_idx;
+
+	raw_pipe_idx = get_raw_subdev_idx(job->src_ctx->used_pipe);
+	if (raw_pipe_idx == -1)
+		return NULL;
+
+	return &req->raw_data[raw_pipe_idx].sink;
 }
 
 static int apply_sensor_mstream_exp_gain(struct mtk_cam_ctx *ctx,
@@ -2221,7 +2339,7 @@ static int apply_sensor_mstream_exp_gain(struct mtk_cam_ctx *ctx,
 	if (WARN_ON(!ctx->sensor))
 		return -1;
 
-	ctrl = get_raw_ctrl_data(&mjob->job, ctx);
+	ctrl = get_raw_ctrl_data(&mjob->job);
 	if (!ctrl) {
 		pr_info("failed to get ctrl data\n");
 		return -1;
@@ -2413,6 +2531,7 @@ static struct mtk_cam_job_ops otf_job_ops = {
 	.mark_afo_done = job_mark_afo_done,
 	.mark_engine_done = job_mark_engine_done,
 	.handle_buffer_done = job_buffer_done,
+	.apply_switch = _apply_switch,
 };
 
 static struct mtk_cam_job_ops otf_stagger_job_ops = {
@@ -2774,14 +2893,23 @@ static int mtk_cam_job_fill_ipi_config(struct mtk_cam_job *job,
 	if (raw_pipe_idx != -1) {
 		struct mtk_raw_sink_data *sink =
 			&req->raw_data[raw_pipe_idx].sink;
+		struct mtk_raw_ctrl_data *ctrl =
+			get_raw_ctrl_data(job);
 		int raw_dev;
 
-		config->flags = MTK_CAM_IPI_CONFIG_TYPE_INIT;
+		// TODO(Will): seamless at first frame?
+		config->flags = (job->seamless_switch) ?
+			MTK_CAM_IPI_CONFIG_TYPE_INPUT_CHANGE :
+			MTK_CAM_IPI_CONFIG_TYPE_INIT;
+
 		config->sw_feature = job->sw_feature;
 
 		update_scen_order_to_config(&job->job_scen, config);
 
-		raw_set_ipi_input_param(input, sink, 1, 1, job->sub_ratio); /* TODO */
+		raw_set_ipi_input_param(input, sink,
+			ctrl->resource.tgo_pxl_mode,
+			ctrl->resource.tgo_pxl_mode_before_raw,
+			job->sub_ratio); /* TODO */
 
 		raw_dev = (int)bit_map_subset_of(MAP_HW_RAW, used_engine);
 		ipi_add_hw_map(config, MTKCAM_SUBDEV_RAW_0, raw_dev);
@@ -2880,24 +3008,54 @@ static int map_ipi_imgo_path(int v4l2_raw_path)
 	return MTKCAM_IPI_IMGO_UNPROCESSED;
 }
 
+static int map_ipi_bin_flag(int bin)
+{
+	int bin_flag;
+
+	switch (bin) {
+	case MTK_CAM_BIN_OFF:
+		bin_flag = BIN_OFF;
+		break;
+	case MTK_CAM_BIN_ON:
+		bin_flag = BIN_ON;
+		break;
+	case MTK_CAM_CBN_2X2_ON:
+		bin_flag = CBN_2X2_ON;
+		break;
+	case MTK_CAM_CBN_3X3_ON:
+		bin_flag = CBN_3X3_ON;
+		break;
+	case MTK_CAM_CBN_4X4_ON:
+		bin_flag = CBN_4X4_ON;
+		break;
+	case MTK_CAM_QBND_ON:
+		bin_flag = QBND_ON;
+		break;
+	default:
+		WARN_ON(1);
+		pr_info("%s: failed to map bin flag: bin(%d)",
+				__func__, bin);
+		bin_flag = BIN_OFF;
+		break;
+	}
+
+	return bin_flag;
+}
+
 static int update_job_raw_param_to_ipi_frame(struct mtk_cam_job *job,
 					     struct mtkcam_ipi_frame_param *fp)
 {
 	struct mtkcam_ipi_raw_frame_param *p = &fp->raw_param;
-	struct mtk_cam_request *req = job->req;
 	struct mtk_raw_ctrl_data *ctrl;
-	int raw_pipe_idx;
 
-	/* assume: at most one raw-subdev is used */
-	raw_pipe_idx = get_raw_subdev_idx(job->src_ctx->used_pipe);
-	if (raw_pipe_idx == -1)
+	ctrl = get_raw_ctrl_data(job);
+
+	if (!ctrl)
 		return 0;
-
-	ctrl = &req->raw_data[raw_pipe_idx].ctrl;
 
 	p->imgo_path_sel = map_ipi_imgo_path(ctrl->raw_path);
 	p->hardware_scenario = job->hardware_scenario;
-	p->bin_flag = BIN_OFF;
+	p->bin_flag = map_ipi_bin_flag(ctrl->resource.user_data.raw_res.bin);
 	p->exposure_num = job->exp_num_cur;
 	p->previous_exposure_num = job->exp_num_prev;
 
@@ -3433,6 +3591,42 @@ DUMP_FAILED:
 	return -1;
 }
 
+static int get_exp_switch_type(struct mtk_cam_job *job)
+{
+	int res = EXPOSURE_CHANGE_NONE;
+	int cur, prev;
+	// TODO(Will): consider to store prev_scen in job
+	struct mtk_cam_scen *prev_scen =
+		&job->src_ctx->ctldata_stored.resource.user_data.raw_res.scen;
+
+	cur = job->job_scen.scen.normal.exp_num;
+	prev = prev_scen->scen.normal.exp_num;
+
+	if (cur == prev)
+		return EXPOSURE_CHANGE_NONE;
+	if (prev == 3) {
+		if (cur == 1)
+			res = EXPOSURE_CHANGE_3_to_1;
+		else if (cur == 2)
+			res = EXPOSURE_CHANGE_3_to_2;
+	} else if (prev == 2) {
+		if (cur == 1)
+			res = EXPOSURE_CHANGE_2_to_1;
+		else if (cur == 3)
+			res = EXPOSURE_CHANGE_2_to_3;
+	} else if (prev == 1)  {
+		if (cur == 2)
+			res = EXPOSURE_CHANGE_1_to_2;
+		else if (cur == 3)
+			res = EXPOSURE_CHANGE_1_to_3;
+	}
+
+	pr_info("[%s] switch_type:%d (cur:%d prev:%d)",
+			__func__, res, cur, prev);
+
+	return res;
+}
+
 static void job_dump_raw_debug_status(struct mtk_cam_job *job,
 				      unsigned long raws)
 {
@@ -3459,3 +3653,4 @@ static void job_dump_engines_debug_status(struct mtk_cam_job *job)
 	if (subset)
 		job_dump_raw_debug_status(job, subset);
 }
+

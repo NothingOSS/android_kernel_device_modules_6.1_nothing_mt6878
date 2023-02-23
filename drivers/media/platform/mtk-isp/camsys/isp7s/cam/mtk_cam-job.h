@@ -18,7 +18,6 @@
 
 struct mtk_cam_job;
 
-
 /* new state machine */
 enum mtk_cam_sensor_state {
 	S_SENSOR_NONE,
@@ -165,7 +164,7 @@ enum EXP_CHANGE_TYPE {
 	EXPOSURE_CHANGE_2_to_1,
 	EXPOSURE_CHANGE_1_to_3,
 	EXPOSURE_CHANGE_1_to_2,
-	MSTREAM_EXPOSURE_CHANGE = (1 << 4),
+	MSTREAM_EXPOSURE_CHANGE = (1 << 4), // TODO(Will): remove this
 };
 struct mtk_cam_job_event_info {
 	int engine;
@@ -231,6 +230,7 @@ struct mtk_cam_job {
 	struct mtkcam_ipi_config_param ipi_config;
 	bool stream_on_seninf;
 	bool seamless_switch;
+	int switch_type;
 
 	struct completion compose_completion;
 	struct completion cq_exe_completion;
@@ -327,12 +327,6 @@ enum MTK_CAMSYS_JOB_TYPE {
 };
 
 /* TODO(AY): remove following xxx_job struct def. */
-struct mtk_cam_stagger_job {
-	struct mtk_cam_job job; /* always on top */
-
-	struct mtk_cam_scen prev_scen;
-	int switch_type;
-};
 struct mtk_cam_mstream_job {
 	struct mtk_cam_job job; /* always on top */
 
@@ -376,7 +370,6 @@ struct mtk_cam_job_data {
 
 	union {
 		struct mtk_cam_job job;
-		struct mtk_cam_stagger_job s;
 		struct mtk_cam_mstream_job m;
 		struct mtk_cam_subsample_job ss;
 		struct mtk_cam_timeshare_job t;

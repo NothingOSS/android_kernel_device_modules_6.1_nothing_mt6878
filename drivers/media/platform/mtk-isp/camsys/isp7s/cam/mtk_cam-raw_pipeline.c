@@ -361,6 +361,30 @@ static unsigned int mtk_raw_choose_raws(const int raw_count, const int num_raws,
 	return 0;
 }
 
+static inline int mtk_pixelmode_val(int pxl_mode)
+{
+	int val = 0;
+
+	switch (pxl_mode) {
+	case 1:
+		val = 0;
+		break;
+	case 2:
+		val = 1;
+		break;
+	case 4:
+		val = 2;
+		break;
+	case 8:
+		val = 3;
+		break;
+	default:
+		break;
+	}
+
+	return val;
+}
+
 static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 				     struct mtk_cam_resource_v2 *user_ctrl,
 				     struct mtk_cam_resource_driver *drv_data)
@@ -398,7 +422,7 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 	c.cbn_type = 0; /* 0: disable, 1: 2x2, 2: 3x3 3: 4x4 */
 	c.qbnd_en = 0;
 	c.qbn_type = 0; /* 0: disable, 1: w/2, 2: w/4 */
-	c.bin_en = 0;
+	c.bin_en = (user_ctrl->raw_res.bin == BIN_ON) ? 1 : 0;
 
 	/* constraints */
 	stepper.pixel_mode_min = 1;
@@ -435,6 +459,9 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 		drv_data->user_data = *user_ctrl;
 		drv_data->clk_target = c.clk;
 		drv_data->raw_num = final_raw_num;
+		drv_data->tgo_pxl_mode =
+			mtk_pixelmode_val(mtk_raw_overall_pixel_mode(&c));
+		drv_data->tgo_pxl_mode_before_raw = mtk_pixelmode_val(8);
 	}
 
 	if (drv_data || CAM_DEBUG_ENABLED(V4L2_TRY))
@@ -600,17 +627,12 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 		ctrl_data->mstream_exp =
 			*(struct mtk_cam_mstream_exposure *)ctrl->p_new.p;
 		break;
-#ifdef NOT_READY
 	case V4L2_CID_MTK_CAM_RAW_RESOURCE_UPDATE:
-		/**
-		 * sensor_mode_update should be reset by driver after the completion of
-		 * resource updating (seamless switch)
-		 */
-		pipeline->sensor_mode_update = ctrl->val;
-		dev_info(dev, "%s:pipe(%d):streaming(%d), sensor_mode_update(%d)\n",
-			 __func__, pipeline->id, pipeline->subdev.entity.stream_count,
-			 pipeline->sensor_mode_update);
+		ctrl_data->rc_data.sensor_mode_update = ctrl->val;
+		dev_info(dev, "%s:pipe(%d):sensor_mode_update(%d)\n",
+			 __func__, pipeline->id, ctrl_data->rc_data.sensor_mode_update);
 		break;
+#ifdef NOT_READY
 	case V4L2_CID_MTK_CAM_TG_FLASH_CFG:
 		ret = mtk_cam_tg_flash_s_ctrl(ctrl);
 		break;

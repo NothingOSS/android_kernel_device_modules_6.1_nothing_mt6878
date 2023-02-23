@@ -96,7 +96,6 @@ bool cond_frame_no_belong(struct mtk_cam_job *job, void *arg)
 
 bool cond_switch_job_first(struct mtk_cam_job *job, void *arg)
 {
-
 	return job->seamless_switch;
 }
 
@@ -110,6 +109,7 @@ mtk_cam_ctrl_get_job(struct mtk_cam_ctrl *ctrl,
 	bool found = 0;
 
 	read_lock(&ctrl->list_lock);
+
 	list_for_each_entry(state, &ctrl->camsys_state_list, list) {
 		job = container_of(state, struct mtk_cam_job, job_state);
 
@@ -119,6 +119,7 @@ mtk_cam_ctrl_get_job(struct mtk_cam_ctrl *ctrl,
 			break;
 		}
 	}
+
 	read_unlock(&ctrl->list_lock);
 
 	return found ? job : NULL;
@@ -408,6 +409,7 @@ static int mtk_cam_event_handle_raw(struct mtk_cam_ctrl *ctrl,
 		ctrl->r_info.outer_seq_no =
 			seq_from_fh_cookie(irq_info->frame_idx);
 		spin_unlock(&ctrl->info_lock);
+
 		handle_setting_done(ctrl);
 	}
 
@@ -602,16 +604,16 @@ static u64 query_interval_from_sensor(struct v4l2_subdev *sensor)
 
 static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 {
-	struct mtk_cam_ctrl *ctrl =
-		container_of(work, struct mtk_cam_ctrl, stream_on_work);
-	struct mtk_cam_job *job;
-	struct mtk_cam_ctx *ctx = ctrl->ctx;
+	struct mtk_cam_sys_wq_work *sys_wq_work =
+		container_of(work, struct mtk_cam_sys_wq_work, work);
+	struct mtk_cam_ctx *ctx = mtk_cam_wq_work_get_ctx(sys_wq_work);
+	struct mtk_cam_ctrl *ctrl = &ctx->cam_ctrl;
+	struct mtk_cam_job *job = sys_wq_work->job;
 	struct device *dev = ctx->cam->dev;
 	unsigned long timeout = msecs_to_jiffies(1000);
 
 	dev_info(dev, "[%s] ctx %d begin\n", __func__, ctrl->ctx->stream_id);
 
-	job = mtk_cam_ctrl_get_job(ctrl, cond_first_job, 0);
 	if (!job)
 		return;
 
@@ -653,19 +655,15 @@ static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 				      SENSOR_2ND_STATE, S_SENSOR_APPLYING);
 		call_jobop(job, apply_sensor);
 
-		mtk_cam_job_put(job);
 	} else {
 		int seq;
-
-		mtk_cam_job_put(job);
 
 		seq = next_frame_seq(job->frame_seq_no);
 		job = mtk_cam_ctrl_get_job(ctrl, cond_frame_no_belong, &seq);
 		if (job) {
 			mtk_cam_job_state_set(&job->job_state,
-					SENSOR_STATE, S_SENSOR_APPLYING);
+					      SENSOR_STATE, S_SENSOR_APPLYING);
 			call_jobop(job, apply_sensor);
-
 			mtk_cam_job_put(job);
 		}
 	}
@@ -677,14 +675,17 @@ static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 
 static void mtk_cam_ctrl_seamless_switch_work(struct work_struct *work)
 {
-	struct mtk_cam_ctrl *ctrl =
-		container_of(work, struct mtk_cam_ctrl, seamless_switch_work);
-	struct mtk_cam_job *job;
+	struct mtk_cam_sys_wq_work *sys_wq_work =
+		container_of(work, struct mtk_cam_sys_wq_work, work);
+	struct mtk_cam_ctx *ctx = mtk_cam_wq_work_get_ctx(sys_wq_work);
+	struct mtk_cam_ctrl *ctrl = &ctx->cam_ctrl;
+	struct mtk_cam_job *job = sys_wq_work->job;
+
 	unsigned long timeout = msecs_to_jiffies(1000);
 
-	job = mtk_cam_ctrl_get_job(ctrl, cond_switch_job_first, 0);
 	if (!job)
 		return;
+
 	dev_info(ctrl->ctx->cam->dev, "[%s] begin waiting switch no:%d\n",
 		__func__, job->frame_seq_no);
 	if (!wait_for_completion_timeout(&job->cq_exe_completion, timeout)) {
@@ -694,13 +695,10 @@ static void mtk_cam_ctrl_seamless_switch_work(struct work_struct *work)
 	}
 	/* let sensor set seamless switch */
 	complete(&job->i2c_ready_completion);
-	if (job)
-		call_jobop(job, apply_switch);
+	call_jobop(job, apply_switch);
 	vsync_set_desired(&ctrl->vsync_col, job->used_engine);
 	dev_info(ctrl->ctx->cam->dev, "[%s] finish, used_engine:0x%x\n",
 		__func__, job->used_engine);
-
-	mtk_cam_job_put(job);
 }
 
 /* request queue */
@@ -750,34 +748,14 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 	dev_dbg(ctx->cam->dev, "[%s] ctx:%d, req_no:%d frame_no:%d\n",
 		__func__, ctx->stream_id, req_seq, frame_seq);
 
-	if (job->stream_on_seninf) {
-		/*
-		 * Note: assume this function is called from user's context,
-		 *       thus, no need to consider race condition for
-		 *       stream_on_work (between enque & stream off).
-		 */
-		INIT_WORK(&cam_ctrl->stream_on_work, mtk_cam_ctrl_stream_on_work);
+	if (job->stream_on_seninf)
+		mtk_cam_wq_ctrl_queue_work(&cam_ctrl->highpri_wq_ctrl,
+			mtk_cam_ctrl_stream_on_work, job);
 
-		/* note: not sure if using system_highpri_wq is suitable */
-		queue_work(system_highpri_wq, &cam_ctrl->stream_on_work);
-	}
-	if (job->seamless_switch &&
-		!work_busy(&cam_ctrl->seamless_switch_work)) {
-		/*
-		 * Note: assume this function is called from user's context,
-		 *       thus, no need to consider race condition for
-		 *       seamless_switch (between enque & stream off).
-		 */
-		INIT_WORK(&cam_ctrl->seamless_switch_work, mtk_cam_ctrl_seamless_switch_work);
+	if (job->seamless_switch)
+		mtk_cam_wq_ctrl_queue_work(&cam_ctrl->highpri_wq_ctrl,
+			mtk_cam_ctrl_seamless_switch_work, job);
 
-		/* note: not sure if using system_highpri_wq is suitable */
-		queue_work(system_highpri_wq, &cam_ctrl->seamless_switch_work);
-	}
-	if (work_busy(&cam_ctrl->seamless_switch_work) ||
-		work_busy(&cam_ctrl->stream_on_work))
-		dev_info(ctx->cam->dev, "[%s] ctx:%d, frame_no:%d, stream on / seamless work busy:0x%x/0x%x\n",
-		__func__, ctx->stream_id, job->frame_seq_no, work_busy(&cam_ctrl->stream_on_work),
-		work_busy(&cam_ctrl->seamless_switch_work));
 	mtk_cam_ctrl_put(cam_ctrl);
 }
 
@@ -827,8 +805,6 @@ static void reset_runtime_info(struct mtk_cam_ctrl_runtime_info *info)
 void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 {
 	cam_ctrl->ctx = ctx;
-	INIT_WORK(&cam_ctrl->stream_on_work, NULL);
-	INIT_WORK(&cam_ctrl->seamless_switch_work, NULL);
 
 	atomic_set(&cam_ctrl->enqueued_req_cnt, 0);
 	cam_ctrl->enqueued_frame_seq_no = 0;
@@ -847,6 +823,12 @@ void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 	init_waitqueue_head(&cam_ctrl->stop_wq);
 
 	mtk_cam_watchdog_init(&cam_ctrl->watchdog);
+
+	// TODO(Will): create dedicated workqueue to guarantee in order
+	/* note: not sure if using system_highpri_wq is suitable */
+	mtk_cam_wq_ctrl_init(&cam_ctrl->highpri_wq_ctrl,
+		system_highpri_wq, ctx);
+
 	dev_info(ctx->cam->dev, "[%s] ctx:%d\n", __func__, ctx->stream_id);
 }
 
@@ -870,10 +852,6 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 	 */
 	atomic_set(&cam_ctrl->stopped, 1);
 
-	if (cam_ctrl->stream_on_work.func)
-		cancel_work_sync(&cam_ctrl->stream_on_work);
-	if (cam_ctrl->seamless_switch_work.func)
-		cancel_work_sync(&cam_ctrl->seamless_switch_work);
 	/* disable irq first */
 	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
 		if (ctx->hw_raw[i]) {
@@ -894,6 +872,9 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 	}
 
 	mtk_cam_watchdog_stop(&cam_ctrl->watchdog);
+
+	mtk_cam_wq_ctrl_wait_finish(&cam_ctrl->highpri_wq_ctrl);
+
 	mtk_cam_ctrl_wait_all_released(cam_ctrl);
 
 	/* reset hw */
@@ -1215,6 +1196,7 @@ static int mtk_cam_watchdog_monitor_job(struct mtk_cam_watchdog *wd)
 
 	/* job is not updated */
 	mtk_cam_watchdog_schedule_job_dump(wd);
+	return -1;
 
 SKIP_SCHEDULE_WORK:
 	dev_info_ratelimited(ctx->cam->dev,
@@ -1349,6 +1331,67 @@ void mtk_cam_watchdog_stop(struct mtk_cam_watchdog *wd)
 
 	wait_for_completion(&wd->monitor_complete);
 	wait_for_completion(&wd->work_complete);
+}
+
+static void mtk_cam_wq_ctrl_runner(struct work_struct *work)
+{
+	struct mtk_cam_sys_wq_work *sys_wq_work =
+		container_of(work, struct mtk_cam_sys_wq_work, work);
+	struct mtk_cam_sys_wq_ctrl *wq_ctrl = sys_wq_work->wq_ctrl;
+
+	if (atomic_read(&wq_ctrl->stopped)) {
+		pr_info("wq_ctrl already stopped");
+		goto EXIT;
+	}
+
+	sys_wq_work->exec(work);
+
+EXIT:
+	atomic_dec(&wq_ctrl->running);
+	mtk_cam_job_put(sys_wq_work->job);
+	complete(&wq_ctrl->work_done);
+	kfree(sys_wq_work);
+}
+
+void mtk_cam_wq_ctrl_init(struct mtk_cam_sys_wq_ctrl *wq_ctrl,
+			  struct workqueue_struct *wq,
+			  struct mtk_cam_ctx *ctx)
+{
+	wq_ctrl->wq = wq;
+	wq_ctrl->ctx = ctx;
+
+	atomic_set(&wq_ctrl->running, 0);
+	atomic_set(&wq_ctrl->stopped, 0);
+	init_completion(&wq_ctrl->work_done);
+}
+
+int mtk_cam_wq_ctrl_queue_work(struct mtk_cam_sys_wq_ctrl *wq_ctrl,
+			       void (*exec)(struct work_struct *work),
+			       struct mtk_cam_job *job)
+{
+	struct mtk_cam_sys_wq_work *sys_wq_work;
+
+	sys_wq_work = kmalloc(sizeof(*sys_wq_work), GFP_ATOMIC);
+	if (WARN_ON(!sys_wq_work))
+		return -1;
+
+	INIT_WORK(&sys_wq_work->work, mtk_cam_wq_ctrl_runner);
+	sys_wq_work->wq_ctrl = wq_ctrl;
+	sys_wq_work->exec = exec;
+	sys_wq_work->job = job;
+
+	mtk_cam_job_get(sys_wq_work->job);
+	atomic_inc(&wq_ctrl->running);
+	queue_work(wq_ctrl->wq, &sys_wq_work->work);
+
+	return 0;
+}
+
+void mtk_cam_wq_ctrl_wait_finish(struct mtk_cam_sys_wq_ctrl *wq_ctrl)
+{
+	atomic_set(&wq_ctrl->stopped, 1);
+	while (atomic_read(&wq_ctrl->running) > 0)
+		wait_for_completion(&wq_ctrl->work_done);
 }
 
 int mtk_cam_ctrl_reset_sensor(struct mtk_cam_device *cam,

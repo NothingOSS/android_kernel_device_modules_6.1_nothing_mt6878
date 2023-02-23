@@ -139,50 +139,13 @@ EXIT:
 	return ret;
 }
 
-int get_switch_type_stagger(struct mtk_cam_job *job)
-{
-	struct mtk_cam_stagger_job *stagger_job =
-			(struct mtk_cam_stagger_job *)job;
-
-	int cur = job->job_scen.scen.normal.exp_num;
-	int prev = stagger_job->prev_scen.scen.normal.exp_num;
-	int res = EXPOSURE_CHANGE_NONE;
-
-	if (cur == prev)
-		return EXPOSURE_CHANGE_NONE;
-	if (prev == 3) {
-		if (cur == 1)
-			res = EXPOSURE_CHANGE_3_to_1;
-		else if (cur == 2)
-			res = EXPOSURE_CHANGE_3_to_2;
-	} else if (prev == 2) {
-		if (cur == 1)
-			res = EXPOSURE_CHANGE_2_to_1;
-		else if (cur == 3)
-			res = EXPOSURE_CHANGE_2_to_3;
-	} else if (prev == 1)  {
-		if (cur == 2)
-			res = EXPOSURE_CHANGE_1_to_2;
-		else if (cur == 3)
-			res = EXPOSURE_CHANGE_1_to_3;
-	}
-	if (res != EXPOSURE_CHANGE_NONE)
-		job->seamless_switch = true;
-	pr_info("[%s] switch_type:%d (cur:%d prev:%d)",
-			__func__, res, cur, prev);
-
-	return res;
-}
-
 void update_stagger_job_exp(struct mtk_cam_job *job)
 {
-	struct mtk_cam_stagger_job *stagger_job =
-			(struct mtk_cam_stagger_job *)job;
 	struct mtk_cam_scen *scen = &job->job_scen;
 
 	job->exp_num_cur = scen->scen.normal.exp_num;
 
-	switch (stagger_job->switch_type) {
+	switch (job->switch_type) {
 	case EXPOSURE_CHANGE_NONE:
 		job->exp_num_prev = job->exp_num_cur;
 		break;
@@ -207,13 +170,11 @@ void update_stagger_job_exp(struct mtk_cam_job *job)
 
 int apply_cam_mux_switch_stagger(struct mtk_cam_job *job)
 {
-	struct mtk_cam_stagger_job *stagger_job =
-			(struct mtk_cam_stagger_job *)job;
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_camsv_device *sv_dev = dev_get_drvdata(ctx->hw_sv);
 	struct mtk_cam_seninf_mux_param param;
 	struct mtk_cam_seninf_mux_setting settings[4];
-	int type = stagger_job->switch_type;
+	int type = job->switch_type;
 	int config_exposure_num = job->job_scen.scen.normal.max_exp_num;
 	int is_dc = is_dc_mode(job);
 	int raw_id = _get_master_raw_id(job->used_engine);

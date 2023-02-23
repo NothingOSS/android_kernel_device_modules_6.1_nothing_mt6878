@@ -133,6 +133,8 @@ struct mtk_cam_resource_driver {
 	/* driver internally cached */
 	unsigned int clk_target; /* Hz */
 	int raw_num;
+	int tgo_pxl_mode;
+	int tgo_pxl_mode_before_raw;
 };
 
 static inline int bin_ratio(u8 bin_type)
@@ -151,6 +153,10 @@ static inline int bin_ratio(u8 bin_type)
 	return 1;
 }
 
+struct mtk_raw_ctrl_data_read_clear {
+	bool sensor_mode_update;
+};
+
 struct mtk_raw_ctrl_data {
 	struct mtk_cam_resource_driver resource;
 	int raw_path;
@@ -158,12 +164,13 @@ struct mtk_raw_ctrl_data {
 	bool enqueued_tg_flash_req; /* need a better way to collect the request */
 	struct mtk_cam_tg_flash_config tg_flash_config;
 
-	bool sensor_mode_update;
 	s64 sync_id;
 	struct mtk_cam_mstream_exposure mstream_exp;
 
 	struct mtk_cam_internal_mem pre_alloc_mem;
 	struct dma_buf *pre_alloc_dbuf;
+
+	struct mtk_raw_ctrl_data_read_clear rc_data;
 };
 
 struct mtk_raw_sink_data {

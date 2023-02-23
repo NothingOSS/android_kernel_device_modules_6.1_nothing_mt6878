@@ -472,6 +472,13 @@ v4l2_rect_to_ipi_crop(const struct v4l2_rect *r)
 	};
 }
 
+bool ipi_crop_eq(const struct mtkcam_ipi_crop *s,
+				 const struct mtkcam_ipi_crop *d)
+{
+	return ((s->p.x == d->p.x) && (s->p.y == d->p.y) &&
+		(s->s.w == d->s.w) && (s->s.h == d->s.h));
+}
+
 int fill_imgo_out_subsample(struct mtkcam_ipi_img_output *io,
 			struct mtk_cam_buffer *buf,
 			struct mtk_cam_video_device *node,

@@ -67,11 +67,43 @@ void mtk_cam_watchdog_init(struct mtk_cam_watchdog *wd);
 int mtk_cam_watchdog_start(struct mtk_cam_watchdog *wd, bool monitor_vsync);
 void mtk_cam_watchdog_stop(struct mtk_cam_watchdog *wd);
 
+/* system wq ctrl */
+struct mtk_cam_sys_wq_ctrl;
+struct mtk_cam_sys_wq_work {
+	struct work_struct work;
+	void (*exec)(struct work_struct *work);
+	struct mtk_cam_job *job;
+
+	struct mtk_cam_sys_wq_ctrl *wq_ctrl;
+};
+
+struct mtk_cam_sys_wq_ctrl {
+	struct workqueue_struct *wq;
+	atomic_t stopped;
+	atomic_t running;
+	struct completion work_done;
+
+	struct mtk_cam_ctx *ctx;
+};
+
+void mtk_cam_wq_ctrl_init(struct mtk_cam_sys_wq_ctrl *wq_ctrl,
+		struct workqueue_struct *wq,
+		struct mtk_cam_ctx *ctx);
+int mtk_cam_wq_ctrl_queue_work(struct mtk_cam_sys_wq_ctrl *wq_ctrl,
+		void (*exec)(struct work_struct *work),
+		struct mtk_cam_job *job);
+void mtk_cam_wq_ctrl_wait_finish(struct mtk_cam_sys_wq_ctrl *wq_ctrl);
+
+static inline struct mtk_cam_ctx *mtk_cam_wq_work_get_ctx(
+		struct mtk_cam_sys_wq_work *wq_work)
+{
+	return wq_work->wq_ctrl->ctx;
+}
+
+
 /*per stream (sensor) */
 struct mtk_cam_ctrl {
 	struct mtk_cam_ctx *ctx;
-	struct work_struct stream_on_work;
-	struct work_struct seamless_switch_work;
 
 	struct sensor_apply_params s_params;
 
@@ -101,6 +133,8 @@ struct mtk_cam_ctrl {
 	struct vsync_collector vsync_col;
 
 	struct mtk_cam_watchdog watchdog;
+
+	struct mtk_cam_sys_wq_ctrl highpri_wq_ctrl;
 };
 
 /* engine's callback functions */

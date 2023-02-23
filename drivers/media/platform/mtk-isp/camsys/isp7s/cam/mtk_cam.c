@@ -477,6 +477,15 @@ static int mtk_cam_setup_pipe_ctrl(struct media_request *req)
 	return ret;
 }
 
+static void mtk_cam_reset_rc_data(
+	struct mtk_raw_ctrl_data_read_clear *rc_data)
+{
+	if (!rc_data)
+		return;
+
+	memset(rc_data, 0, sizeof(struct mtk_raw_ctrl_data_read_clear));
+}
+
 static void mtk_cam_clone_pipe_data_to_req(struct media_request *req)
 {
 	struct mtk_cam_request *cam_req = to_mtk_cam_req(req);
@@ -500,6 +509,10 @@ static void mtk_cam_clone_pipe_data_to_req(struct media_request *req)
 		pad = &raw->pad_cfg[MTK_RAW_SINK];
 
 		data->ctrl = raw->ctrl_data;
+		mtk_cam_reset_rc_data(&raw->ctrl_data.rc_data);
+
+		// TODO(Will): store entire v4l2_mbus_framefmt into mtk_raw_sink_data,
+		// if other members of mbus_fmt may be changed
 		data->sink.width = pad->mbus_fmt.width;
 		data->sink.height = pad->mbus_fmt.height;
 		data->sink.mbus_code = pad->mbus_fmt.code;
