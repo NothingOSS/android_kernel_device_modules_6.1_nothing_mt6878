@@ -889,7 +889,10 @@ static irqreturn_t mtk_disp_ovl_irq_handler(int irq, void *dev_id)
 		unsigned long long aee_now_ts = sched_clock();
 
 		if (drv_priv && (!atomic_read(&drv_priv->need_recover))) {
-			atomic_set(&drv_priv->need_recover, 1);
+			struct mtk_crtc_state *state;
+
+			state = to_mtk_crtc_state(mtk_crtc->base.state);
+			atomic_set(&drv_priv->need_recover, state->lye_state.mml_ir_lye);
 			mtk_dprec_snapshot();
 		}
 

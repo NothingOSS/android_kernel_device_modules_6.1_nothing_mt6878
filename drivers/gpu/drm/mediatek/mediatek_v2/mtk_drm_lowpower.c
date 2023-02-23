@@ -535,10 +535,6 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 		return;
 	}
 
-	if (mtk_crtc->is_mml) {
-		mtk_crtc->mml_ir_state = MML_IR_IDLE;
-	}
-
 	/* 0. Waiting CLIENT_DSI_CFG/CLIENT_CFG thread done */
 	mtk_crtc_pkt_create(&cmdq_handle, crtc,
 		mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]);
@@ -560,8 +556,10 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 
 		cmdq_pkt_flush(cmdq_handle);
 
-		if (mtk_crtc->is_mml)
+		if (mtk_crtc->is_mml) {
+			mtk_crtc->mml_link_state = MML_IR_IDLE;
 			CRTC_MMP_MARK(0, mml_dbg, (unsigned long)cmdq_handle, MMP_MML_IDLE);
+		}
 
 		cmdq_pkt_destroy(cmdq_handle);
 	}
@@ -622,6 +620,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	unsigned int i, j;
 	struct mtk_ddp_comp *output_comp = NULL;
 	int en = 1;
+	struct mtk_crtc_state *crtc_state = to_mtk_crtc_state(crtc->state);
 
 	DDPINFO("crtc%d do %s+\n", crtc_id, __func__);
 
@@ -677,14 +676,13 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	/* 7. config ddp engine & set dirty for cmd mode */
 	mtk_crtc_config_default_path(mtk_crtc);
 
-	/* 8. conect addon module and config */
-	if (mtk_crtc->mml_ir_state == MML_IR_IDLE || mtk_crtc->is_mml_dl)
-		mtk_crtc_addon_connector_connect(crtc, NULL); /* config dsc only */
+	/* 8. conect addon module and config
+	 *    skip mml addon connect if kick idle by atomic commit
+	 */
+	if (crtc_state->lye_state.mml_ir_lye || crtc_state->lye_state.mml_dl_lye)
+		mtk_crtc_addon_connector_connect(crtc, NULL);
 	else
 		mtk_crtc_connect_addon_module(crtc);
-
-	if (mtk_crtc->mml_ir_sram.bk_hrt_idx)
-		mtk_crtc_alloc_sram(mtk_crtc, mtk_crtc->mml_ir_sram.bk_hrt_idx);
 
 	/* 9. restore OVL setting */
 	mtk_crtc_restore_plane_setting(mtk_crtc);

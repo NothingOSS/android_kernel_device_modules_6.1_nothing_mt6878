@@ -2088,8 +2088,12 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				mtk_crtc->last_aee_trigger_ts = aee_now_ts;
 			}
 
-			if (priv && (!atomic_read(&priv->need_recover)))
-				atomic_set(&priv->need_recover, 1);
+			if (priv && (!atomic_read(&priv->need_recover))) {
+				struct mtk_crtc_state *state;
+
+				state = to_mtk_crtc_state(mtk_crtc->base.state);
+				atomic_set(&priv->need_recover, state->lye_state.mml_ir_lye);
+			}
 
 			if (__ratelimit(&print_rate))
 				DDPPR_ERR(pr_fmt("[IRQ] %s: buffer underrun\n"),
@@ -8032,7 +8036,7 @@ u32 mtk_dsi_get_line_time_ns(struct drm_crtc *crtc)
 	}
 
 	dsi = container_of(output_comp, struct mtk_dsi, ddp_comp);
-	ps_wc = (readl(dsi->regs + DSI_PSCTRL)) & 0x7FFF;
+	ps_wc = mtk_dsi_get_ps_wc(mtk_crtc, dsi);
 	if (dsi->ext->params->is_cphy)
 		dsi_clk = dsi->data_rate / 7;
 	else

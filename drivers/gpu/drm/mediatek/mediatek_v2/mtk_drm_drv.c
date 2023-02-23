@@ -1325,7 +1325,8 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	if (ret < 0)
 		goto err_copy_submit;
 
-	submit_kernel->update = false;
+	if (submit_kernel->info.mode == MML_MODE_RACING && (!kref_read(&mtk_crtc->mml_ir_sram.ref)))
+		mtk_crtc_alloc_sram(mtk_crtc, crtc_state->prop_val[CRTC_PROP_LYE_IDX]);
 
 	for (i = 0; i < MML_MAX_OUTPUTS; ++i) {
 		for (j = 0; j < MML_MAX_PLANES; ++j) {
@@ -1333,7 +1334,6 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 			submit_kernel->buffer.dest[i].size[j] = 0;
 		}
 	}
-
 	for (i = 0; i < MML_MAX_PLANES && i < submit_kernel->buffer.src.cnt; ++i) {
 		int32_t fd = submit_kernel->buffer.src.fd[i];
 
@@ -1343,6 +1343,7 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 
 	mml_drm_split_info(submit_kernel, submit_pq);
 
+	mtk_drm_idlemgr_kick(__func__, crtc, false);
 	line_time = mtk_dsi_get_line_time_ns(crtc);
 	submit_kernel->info.act_time = line_time * submit_pq->info.dest[0].data.height;
 
@@ -1397,7 +1398,6 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 		       sizeof(struct mml_rect));
 	}
 
-	mtk_drm_idlemgr_kick(__func__, crtc, false);
 	ret = mml_drm_submit(mml_ctx, submit_kernel, &(mtk_crtc->mml_cb));
 	if (ret)
 		goto err_submit;
@@ -1428,6 +1428,7 @@ static void mtk_atomic_mml(struct drm_device *dev,
 	struct drm_crtc *crtc = NULL;
 	struct drm_crtc_state *old_crtc_state, *new_crtc_state;
 	struct mtk_crtc_state *mtk_crtc_state = NULL;
+	struct mtk_crtc_state *old_mtk_state = NULL;
 	struct drm_plane *plane;
 	struct drm_plane_state *plane_state, *old_plane_state;
 	struct mtk_plane_state *mtk_plane_state;
@@ -1442,9 +1443,10 @@ static void mtk_atomic_mml(struct drm_device *dev,
 			return;
 	}
 
-	if (new_crtc_state)
+	if (new_crtc_state) {
 		mtk_crtc_state = to_mtk_crtc_state(new_crtc_state);
-	else
+		old_mtk_state = to_mtk_crtc_state(old_crtc_state);
+	} else
 		return;
 
 	mtk_crtc = to_mtk_crtc(crtc);
@@ -1471,21 +1473,18 @@ static void mtk_atomic_mml(struct drm_device *dev,
 	mtk_crtc->is_mml = (new_mode == MML_MODE_RACING);
 	mtk_crtc->is_mml_dl = (new_mode == MML_MODE_DIRECT_LINK);
 
-	if (new_mode == MML_MODE_RACING) {
-		if ((mtk_crtc->mml_ir_state == MML_IR_IDLE) ||
-		    (mtk_crtc->mml_ir_state == MML_IR_LEAVING) ||
-		    (mtk_crtc->mml_ir_state == NOT_MML_IR))
-			mtk_crtc->mml_ir_state = MML_IR_ENTERING;
-		else if ((mtk_crtc->mml_ir_state == MML_IR_ENTERING) ||
-			 (mtk_crtc->mml_ir_state == MML_IR_RACING))
-			mtk_crtc->mml_ir_state = MML_IR_RACING;
-	} else {
-		if ((mtk_crtc->mml_ir_state == MML_IR_ENTERING) ||
-		    (mtk_crtc->mml_ir_state == MML_IR_RACING))
-			mtk_crtc->mml_ir_state = MML_IR_LEAVING;
-		else
-			mtk_crtc->mml_ir_state = NOT_MML_IR;
-	}
+	if (old_mtk_state->lye_state.mml_dl_lye && !mtk_crtc->is_mml_dl)
+		mtk_crtc->mml_link_state = MML_STOP_LINKING;
+	else if (old_mtk_state->lye_state.mml_ir_lye && !mtk_crtc->is_mml)
+		mtk_crtc->mml_link_state = MML_STOP_LINKING;
+	else if (!old_mtk_state->lye_state.mml_ir_lye && mtk_crtc->is_mml)
+		mtk_crtc->mml_link_state = MML_IR_ENTERING;
+	else if (mtk_crtc->is_mml && (mtk_crtc->mml_link_state == MML_IR_IDLE))
+		mtk_crtc->mml_link_state = MML_IR_ENTERING;
+	else if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl)
+		mtk_crtc->mml_link_state = MML_DIRECT_LINKING;
+	else
+		mtk_crtc->mml_link_state = NON_MML;
 }
 
 static void mtk_set_first_config(struct drm_device *dev,

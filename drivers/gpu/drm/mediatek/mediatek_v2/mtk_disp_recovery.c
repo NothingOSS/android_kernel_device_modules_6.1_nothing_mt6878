@@ -525,9 +525,11 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 	mtk_drm_crtc_enable(crtc);
 	CRTC_MMP_MARK(drm_crtc_index(crtc), esd_recovery, 0, 3);
 
-	if (mtk_crtc->is_mml)
+	if (mtk_crtc->is_mml) {
+		if (!kref_read(&mtk_crtc->mml_ir_sram.ref))
+			mtk_crtc_alloc_sram(mtk_crtc, mtk_crtc->mml_ir_sram.expiry_hrt_idx);
 		mtk_crtc_mml_racing_resubmit(crtc, NULL);
-
+	}
 	mtk_ddp_comp_io_cmd(output_comp, NULL, CONNECTOR_PANEL_ENABLE, NULL);
 
 	CRTC_MMP_MARK(drm_crtc_index(crtc), esd_recovery, 0, 4);

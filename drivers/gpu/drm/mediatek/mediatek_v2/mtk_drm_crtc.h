@@ -542,11 +542,11 @@ enum CWB_BUFFER_TYPE {
 	BUFFER_TYPE_NR,
 };
 
-enum MML_IR_STATE {
-	NOT_MML_IR,
+enum MML_LINK_STATE {
+	NON_MML,
 	MML_IR_ENTERING,
-	MML_IR_RACING,
-	MML_IR_LEAVING,
+	MML_DIRECT_LINKING,
+	MML_STOP_LINKING,
 	MML_IR_IDLE,
 };
 
@@ -771,8 +771,7 @@ struct mtk_drm_sram {
 	struct slbc_data data;
 	struct mutex lock;
 	struct kref ref;
-	unsigned int bk_hrt_idx;
-	struct mtk_drm_sram_list list;
+	unsigned int expiry_hrt_idx;
 };
 
 /**
@@ -932,7 +931,7 @@ struct mtk_drm_crtc {
 	bool is_force_mml_scen;
 	bool mml_cmd_ir;
 	bool mml_ir_enable;
-	enum MML_IR_STATE mml_ir_state;
+	enum MML_LINK_STATE mml_link_state;
 	enum SLBC_STATE slbc_state;
 
 	atomic_t signal_irq_for_pre_fence;

@@ -2479,7 +2479,6 @@ static void mml_addon_module_connect(struct drm_crtc *crtc, unsigned int ddp_mod
 	c->mutex.sof_src = (int)output_comp->id;
 	c->mutex.eof_src = (int)output_comp->id;
 	c->mutex.is_cmd_mode = mtk_crtc_is_frame_trigger_mode(crtc);
-	c->is_entering = mtk_crtc->mml_ir_state == MML_IR_ENTERING ? true : false;
 
 	c->submit.job = &_job;
 	for (i = 0; i < MML_MAX_OUTPUTS; ++i)
@@ -3441,8 +3440,6 @@ fail:
 bool mtk_crtc_alloc_sram(struct mtk_drm_crtc *mtk_crtc, unsigned int hrt_idx)
 {
 	int ret = 0;
-	struct slbc_data *sram = NULL;
-	struct mtk_drm_sram_list *sram_acquired;
 
 	if (!mtk_crtc)
 		return false;
@@ -3450,7 +3447,7 @@ bool mtk_crtc_alloc_sram(struct mtk_drm_crtc *mtk_crtc, unsigned int hrt_idx)
 	mutex_lock(&mtk_crtc->mml_ir_sram.lock);
 
 	if (kref_read(&mtk_crtc->mml_ir_sram.ref) < 1) {
-		sram = &mtk_crtc->mml_ir_sram.data;
+		struct slbc_data *sram = &mtk_crtc->mml_ir_sram.data;
 
 		ret = slbc_request(sram);
 		if (ret < 0) {
@@ -3463,19 +3460,16 @@ bool mtk_crtc_alloc_sram(struct mtk_drm_crtc *mtk_crtc, unsigned int hrt_idx)
 			goto done;
 		}
 
-		DRM_MMP_MARK(sram_alloc, (unsigned long)sram->paddr, sram->size);
 		DDPMSG("%s success - ret:%d address:0x%lx size:0x%lx\n", __func__, ret,
 		       (unsigned long)sram->paddr, sram->size);
 
 		kref_init(&mtk_crtc->mml_ir_sram.ref);
-		mtk_crtc->mml_ir_sram.bk_hrt_idx = 0;
 	} else {
 		kref_get(&mtk_crtc->mml_ir_sram.ref);
 	}
 
-	sram_acquired = kzalloc(sizeof(struct mtk_drm_sram_list), GFP_KERNEL);
-	sram_acquired->hrt_idx = hrt_idx;
-	list_add_tail(&sram_acquired->head, &mtk_crtc->mml_ir_sram.list.head);
+	mtk_crtc->mml_ir_sram.expiry_hrt_idx = hrt_idx;
+	DRM_MMP_MARK(sram_alloc, kref_read(&mtk_crtc->mml_ir_sram.ref), hrt_idx);
 
 done:
 	mutex_unlock(&mtk_crtc->mml_ir_sram.lock);
@@ -3490,10 +3484,14 @@ static void mtk_crtc_free_sram(struct mtk_drm_crtc *mtk_crtc)
 
 	DDPMSG("%s address:0x%lx size:0x%lx\n", __func__,
 	       (unsigned long)mtk_crtc->mml_ir_sram.data.paddr, mtk_crtc->mml_ir_sram.data.size);
+
+	mutex_lock(&mtk_crtc->mml_ir_sram.lock);
 	slbc_power_off(&mtk_crtc->mml_ir_sram.data);
 	slbc_release(&mtk_crtc->mml_ir_sram.data);
+	mutex_unlock(&mtk_crtc->mml_ir_sram.lock);
+
 	DRM_MMP_MARK(sram_free, (unsigned long)mtk_crtc->mml_ir_sram.data.paddr,
-		     mtk_crtc->mml_ir_sram.data.size);
+		     mtk_crtc->mml_ir_sram.expiry_hrt_idx);
 }
 
 static void mtk_crtc_mml_clean(struct kref *kref)
@@ -6888,19 +6886,9 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 		drm_writeback_signal_completion(&mtk_crtc->wb_connector, 0);
 	}
 
-	{
-		struct mtk_drm_sram_list *entry, *tmp;
-
-		mutex_lock(&mtk_crtc->mml_ir_sram.lock);
-		list_for_each_entry_safe(entry, tmp, &mtk_crtc->mml_ir_sram.list.head, head) {
-			if (cb_data->hrt_idx > entry->hrt_idx) {
-				list_del_init(&entry->head);
-				kfree(entry);
-				kref_put(&mtk_crtc->mml_ir_sram.ref, mtk_crtc_mml_clean);
-			}
-		}
-		mutex_unlock(&mtk_crtc->mml_ir_sram.lock);
-	}
+	if (kref_read(&mtk_crtc->mml_ir_sram.ref) &&
+	    (cb_data->hrt_idx > mtk_crtc->mml_ir_sram.expiry_hrt_idx))
+		kref_put(&mtk_crtc->mml_ir_sram.ref, mtk_crtc_mml_clean);
 
 	{	/* OVL reset debug */
 		unsigned int i;
@@ -9280,22 +9268,11 @@ skip:
 
 	/* 3.1 stop the last mml pkt */
 	if (kref_read(&mtk_crtc->mml_ir_sram.ref)) {
-		struct mtk_drm_sram_list *entry, *tmp;
-
 		if (mtk_crtc_is_frame_trigger_mode(crtc) || mtk_crtc_is_connector_enable(mtk_crtc))
 			mtk_crtc_mml_racing_stop_sync(crtc, cmdq_handle, false);
 
-		mutex_lock(&mtk_crtc->mml_ir_sram.lock);
-		entry = list_last_entry(&mtk_crtc->mml_ir_sram.list.head,
-					struct mtk_drm_sram_list, head);
-		mtk_crtc->mml_ir_sram.bk_hrt_idx = entry->hrt_idx;
-		list_for_each_entry_safe(entry, tmp, &mtk_crtc->mml_ir_sram.list.head, head) {
-			list_del_init(&entry->head);
-			kfree(entry);
-		}
 		mtk_crtc_free_sram(mtk_crtc);
 		refcount_set(&mtk_crtc->mml_ir_sram.ref.refcount, 0);
-		mutex_unlock(&mtk_crtc->mml_ir_sram.lock);
 	}
 
 	cmdq_pkt_flush(cmdq_handle);
@@ -9694,10 +9671,6 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 
 	/* 14. set CRTC SW status */
 	mtk_crtc_set_status(crtc, true);
-
-	/* 15. alloc sram if last is MML */
-	if (mtk_crtc->is_mml)
-		mtk_crtc_alloc_sram(mtk_crtc, mtk_crtc->mml_ir_sram.bk_hrt_idx);
 
 end:
 	CRTC_MMP_EVENT_END((int) crtc_id, enable,
@@ -10678,10 +10651,12 @@ void mtk_crtc_disable_secure_state(struct drm_crtc *crtc)
 void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 {
 	u8 i = 0;
+	struct mtk_addon_config_type c;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mml_drm_ctx *mml_ctx = NULL;
 	struct mtk_drm_private *priv = NULL;
 	struct mtk_ddp_comp *comp = NULL;
+	struct mtk_crtc_state *mtk_crtc_state = NULL;
 	const enum mtk_ddp_comp_id id[] = {DDP_COMPONENT_INLINE_ROTATE0,
 					   DDP_COMPONENT_INLINE_ROTATE1};
 
@@ -10691,15 +10666,12 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 	mtk_crtc = to_mtk_crtc(crtc);
 	mml_ctx = mtk_drm_get_mml_drm_ctx(crtc->dev, crtc);
 	priv = crtc->dev->dev_private;
+	mtk_crtc_state = to_mtk_crtc_state(crtc->state);
 
-	switch (mtk_crtc->mml_ir_state) {
-	case MML_IR_ENTERING: {
-		struct mtk_addon_config_type c;
-		struct mtk_crtc_state *mtk_crtc_state = to_mtk_crtc_state(crtc->state);
-		struct mtk_lye_ddp_state *lye_state = &mtk_crtc_state->lye_state;
-
+	switch (mtk_crtc->mml_link_state) {
+	case MML_IR_ENTERING:
 		DDP_PROFILE("MML_IR_ENTERING\n");
-		mtk_addon_get_comp(lye_state->mml_ir_lye, &c.tgt_comp, &c.tgt_layer);
+		mtk_addon_get_comp(mtk_crtc_state->lye_state.mml_ir_lye, &c.tgt_comp, &c.tgt_layer);
 		for (; i <= mtk_crtc->is_dual_pipe; ++i) {
 			comp = priv->ddp_comp[id[i]];
 			comp->mtk_crtc = mtk_crtc;
@@ -10708,21 +10680,14 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 			mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, id[i], false, cmdq_handle, 0);
 		}
 		fallthrough;
-	}
-	case MML_IR_RACING:
+	case MML_DIRECT_LINKING:
 		mml_drm_racing_config_sync(mml_ctx, cmdq_handle);
 		break;
-	case MML_IR_LEAVING:
-		if (!mtk_crtc->is_mml_dl) {
-			DDP_PROFILE("MML_IR_LEAVING\n");
-			mtk_crtc_mml_racing_stop_sync(crtc, cmdq_handle, false);
-		}
+	case MML_STOP_LINKING:
+		DDP_PROFILE("MML_STOP_LINKING\n");
+		mtk_crtc_mml_racing_stop_sync(crtc, cmdq_handle, false);
 		break;
 	default:
-		if (mtk_crtc->is_mml_dl) {
-			DDP_PROFILE("MML_IS_DL\n");
-			mml_drm_racing_config_sync(mml_ctx, cmdq_handle);
-		}
 		break;
 	}
 }
@@ -10742,6 +10707,9 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 			mtk_drm_get_lcm_ext_params(crtc);
 	struct mtk_ddp_comp *comp = NULL;
 
+	if (old_crtc_state != NULL)
+		old_mtk_state = to_mtk_crtc_state(old_crtc_state);
+
 	if (mtk_crtc_is_dc_mode(crtc) || mtk_crtc->is_mml)
 		mtk_crtc_pkt_create(&cmdq_handle, crtc,
 			mtk_crtc->gce_obj.client[CLIENT_SUB_CFG]);
@@ -10754,8 +10722,6 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 		need_sync_mml)
 		mml_cmdq_pkt_init(crtc, cmdq_handle);
 
-	if (old_crtc_state != NULL)
-		old_mtk_state = to_mtk_crtc_state(old_crtc_state);
 	/*Msync 2.0 change to check vfp period token instead of EOF*/
 	if (!mtk_crtc_is_frame_trigger_mode(crtc) &&
 			msync_is_on(priv, params, crtc_id,
@@ -11676,14 +11642,17 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	CRTC_MMP_MARK(index, atomic_begin, (unsigned long)mtk_crtc_state->cmdq_handle, 0);
 
 #ifndef DRM_CMDQ_DISABLE
-	/* reset mml ir ovl, TODO: support random ovl, not the first comp of the path */
-	if (((mtk_crtc->mml_ir_state == MML_IR_ENTERING) && (crtc_idx == 0)) ||
-	      atomic_read(&priv->need_recover)) {
-		comp = mtk_crtc_get_comp(crtc, mtk_crtc->ddp_mode, DDP_FIRST_PATH, 0);
-		mtk_ddp_comp_reset(comp, mtk_crtc_state->cmdq_handle);
-		if (mtk_crtc->is_dual_pipe) {
-			comp = mtk_crtc_get_dual_comp(crtc, DDP_FIRST_PATH, 0);
-			mtk_ddp_comp_reset(comp, mtk_crtc_state->cmdq_handle);
+	if (atomic_read(&priv->need_recover)) {
+		enum mtk_ddp_comp_id id = DDP_COMPONENT_ID_MAX;
+
+		mtk_addon_get_comp(atomic_read(&priv->need_recover), &id, NULL);
+		if (id != DDP_COMPONENT_ID_MAX) {
+			DDPMSG("need_recover, reset comp id %u\n", id);
+			mtk_ddp_comp_reset(priv->ddp_comp[id], mtk_crtc_state->cmdq_handle);
+			if (mtk_crtc->is_dual_pipe) {
+				id = dual_pipe_comp_mapping(mtk_get_mmsys_id(crtc), id);
+				mtk_ddp_comp_reset(priv->ddp_comp[id], mtk_crtc_state->cmdq_handle);
+			}
 		}
 	}
 
@@ -14581,7 +14550,6 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		mtk_crtc->ovlsys1_regs = priv->ovlsys1_regs;
 		mtk_crtc->ovlsys1_regs_pa = priv->ovlsys1_regs_pa;
 	}
-	INIT_LIST_HEAD(&mtk_crtc->mml_ir_sram.list.head);
 
 	for (i = 0; i < DDP_MODE_NR; i++) {
 		for (j = 0; j < DDP_PATH_NR; j++) {

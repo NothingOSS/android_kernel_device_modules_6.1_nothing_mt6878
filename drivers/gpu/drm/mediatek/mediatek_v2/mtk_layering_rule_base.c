@@ -3930,7 +3930,7 @@ static void check_is_mml_layer(const int disp_idx,
 
 		if ((MTK_MML_DISP_DECOUPLE_LAYER & c->layer_caps) &&
 		    (kref_read(&mtk_crtc->mml_ir_sram.ref) ||
-		     (mtk_crtc->mml_ir_state == MML_IR_IDLE) ||
+		     (mtk_crtc->mml_link_state == MML_IR_IDLE) ||
 		     mtk_crtc->is_mml_dl || l_rule_info->bk_mml_dl_lye)) {
 			c->layer_caps &= ~MTK_MML_DISP_DECOUPLE_LAYER;
 			c->layer_caps |= MTK_MML_DISP_MDP_LAYER;
