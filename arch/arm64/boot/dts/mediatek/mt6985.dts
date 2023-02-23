@@ -194,7 +194,7 @@
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 						&system_mem &system_pll &system_bus
 						&system_vcore &s2idle>;
-			capacity-dmips-mhz = <307>;
+			capacity-dmips-mhz = <248>;
 		};
 
 		cpu1: cpu@1 {
@@ -206,7 +206,7 @@
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 						&system_mem &system_pll &system_bus
 						&system_vcore &s2idle>;
-			capacity-dmips-mhz = <307>;
+			capacity-dmips-mhz = <248>;
 		};
 
 		cpu2: cpu@2 {
@@ -218,7 +218,7 @@
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 						&system_mem &system_pll &system_bus
 						&system_vcore &s2idle>;
-			capacity-dmips-mhz = <307>;
+			capacity-dmips-mhz = <248>;
 		};
 
 		cpu3: cpu@3 {
@@ -230,7 +230,7 @@
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 						&system_mem &system_pll &system_bus
 						&system_vcore &s2idle>;
-			capacity-dmips-mhz = <307>;
+			capacity-dmips-mhz = <248>;
 		};
 
 		cpu4: cpu@100 {
@@ -242,7 +242,7 @@
 			cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
 						&system_mem &system_pll &system_bus
 						&system_vcore &s2idle>;
-			capacity-dmips-mhz = <785>;
+			capacity-dmips-mhz = <753>;
 		};
 
 		cpu5: cpu@101 {
@@ -254,7 +254,7 @@
 			cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
 						&system_mem &system_pll &system_bus
 						&system_vcore &s2idle>;
-			capacity-dmips-mhz = <785>;
+			capacity-dmips-mhz = <753>;
 		};
 
 		cpu6: cpu@102 {
@@ -266,7 +266,7 @@
 			cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
 						&system_mem &system_pll &system_bus
 						&system_vcore &s2idle>;
-			capacity-dmips-mhz = <785>;
+			capacity-dmips-mhz = <753>;
 		};
 
 		cpu7: cpu@200 {
@@ -1075,7 +1075,8 @@
 		reg = <0 0x00114400 0 0xc00>,
 			<0 0x0011bc00 0 0x1400>,
 			<0 0x00118000 0 0x800>,
-			<0 0x00114f40 0 0xc0>;
+			<0 0x00114f40 0 0xc0>,
+			<0 0x0c0be000 0 0x10b0>;
 		reg-names = "USRAM", "CSRAM", "ESRAM";
 		cslog-range = <0x03d0>, <0x0fa0>;
 		tbl-off = <4>, <76>, <148>, <220>;
@@ -1092,6 +1093,9 @@
 		proc2-supply = <&mt6319_7_vbuck1>; //M
 		proc3-supply = <&mt6319_6_vbuck1>; //B
 		proc4-supply = <&mt6373_vbuck9>; //DSU
+
+		/* wl support */
+		// wl-support = <1>;
 
 		/* leakage info */
 		nvmem-cells = <&lkginfo>;
