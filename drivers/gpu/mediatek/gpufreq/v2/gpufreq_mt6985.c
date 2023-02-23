@@ -682,7 +682,7 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 
 	mutex_lock(&gpufreq_lock);
 
-	GPUFREQ_LOGD("+ PWR_STATUS: 0x%08x", MFG_0_19_PWR_STATUS);
+	GPUFREQ_LOGD("+ PWR_STATUS: 0x%08lx", MFG_0_19_PWR_STATUS);
 	GPUFREQ_LOGD("switch power: %s (Power: %d, Active: %d, Buck: %d, MTCMOS: %d, CG: %d)",
 		power ? "On" : "Off", g_stack.power_count,
 		g_stack.active_count, g_stack.buck_count,
@@ -838,7 +838,7 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 		__gpufreq_footprint_power_step(0x18);
 
 done_unlock:
-	GPUFREQ_LOGD("- PWR_STATUS: 0x%08x", MFG_0_19_PWR_STATUS);
+	GPUFREQ_LOGD("- PWR_STATUS: 0x%08lx", MFG_0_19_PWR_STATUS);
 
 	mutex_unlock(&gpufreq_lock);
 
@@ -5359,7 +5359,7 @@ static int __gpufreq_init_mtcmos(struct platform_device *pdev)
 	int ret = GPUFREQ_SUCCESS;
 
 #if !GPUFREQ_SELF_CTRL_MTCMOS
-	GPUFREQ_TRACE_START("pdev=0x%x", pdev);
+	GPUFREQ_TRACE_START("pdev=0x%lx", (unsigned long)pdev);
 
 	g_mtcmos = kzalloc(sizeof(struct gpufreq_mtcmos_info), GFP_KERNEL);
 	if (!g_mtcmos) {
@@ -5534,7 +5534,7 @@ static int __gpufreq_init_clk(struct platform_device *pdev)
 {
 	int ret = GPUFREQ_SUCCESS;
 
-	GPUFREQ_TRACE_START("pdev=0x%x", pdev);
+	GPUFREQ_TRACE_START("pdev=0x%lx", (unsigned long)pdev);
 
 	g_clk = kzalloc(sizeof(struct gpufreq_clk_info), GFP_KERNEL);
 	if (!g_clk) {
@@ -5596,7 +5596,7 @@ static int __gpufreq_init_pmic(struct platform_device *pdev)
 {
 	int ret = GPUFREQ_SUCCESS;
 
-	GPUFREQ_TRACE_START("pdev=0x%x", pdev);
+	GPUFREQ_TRACE_START("pdev=0x%lx", (unsigned long)pdev);
 
 	g_pmic = kzalloc(sizeof(struct gpufreq_pmic_info), GFP_KERNEL);
 	if (!g_pmic) {
