@@ -67,14 +67,18 @@ int vsync_update(struct vsync_collector *c,
 
 struct mtk_cam_watchdog {
 
-	bool started;
+	atomic_t started;
 	bool monitor_vsync;
 
 	struct timer_list timer;
+	atomic_t timer_signaled;
+	wait_queue_head_t monitor_wq;
+
 	u64 last_sof_ts;
 	int req_seq;
 	int req_seq_cnt;
 
+	struct completion monitor_complete;
 	struct completion work_complete;
 	atomic_t reset_sensor_cnt;
 	atomic_t dump_job;

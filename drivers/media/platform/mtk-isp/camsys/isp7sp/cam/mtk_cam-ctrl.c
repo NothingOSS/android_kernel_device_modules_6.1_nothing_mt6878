@@ -1215,31 +1215,80 @@ SKIP_SCHEDULE_WORK:
 	return -1;
 }
 
-static void mtk_cam_watchdog_callback(struct timer_list *t)
+static void mtk_cam_watchdog_check(struct mtk_cam_watchdog *wd)
 {
-	struct mtk_cam_watchdog *wd = from_timer(wd, t, timer);
 	int ret;
 
 	ret = wd->monitor_vsync ?
 		mtk_cam_watchdog_monitor_vsync(wd) : 0;
 	if (ret)
-		goto RENEW_TIMER;
+		return;
 
 	mtk_cam_watchdog_monitor_job(wd);
+}
 
-RENEW_TIMER:
+struct mtk_cam_watchdog_monitor {
+	struct work_struct work;
+	struct mtk_cam_watchdog *wd;
+};
+
+static bool do_monitor_check(struct mtk_cam_watchdog *wd)
+{
+	return atomic_cmpxchg(&wd->timer_signaled, 1, 0);
+}
+
+static void mtk_cam_watchdog_monitor_loop(struct work_struct *work)
+{
+	struct mtk_cam_watchdog_monitor *monitor;
+	struct mtk_cam_watchdog *wd;
+	int ret;
+
+	monitor = container_of(work, struct mtk_cam_watchdog_monitor, work);
+	wd = monitor->wd;
+
+	if (WARN_ON(!monitor->wd))
+		return;
+
+	do {
+		ret = wait_event_interruptible(wd->monitor_wq,
+					       do_monitor_check(wd));
+
+		if (!atomic_read(&wd->started))
+			break;
+
+		if (ret)
+			continue;
+
+		mtk_cam_watchdog_check(wd);
+	} while (atomic_read(&wd->started));
+
+	complete(&wd->monitor_complete);
+	pr_info("%s: existed\n", __func__);
+
+	kfree(monitor);
+}
+
+static void mtk_cam_watchdog_timer_callback(struct timer_list *t)
+{
+	struct mtk_cam_watchdog *wd = from_timer(wd, t, timer);
+
+	atomic_set(&wd->timer_signaled, 1);
+	wake_up_interruptible(&wd->monitor_wq);
+
+	// renew timer
 	wd->timer.expires = jiffies + msecs_to_jiffies(WATCHDOG_INTERVAL_MS);
 	add_timer(&wd->timer);
-
-	//pr_info("%s: ts %lld\n", __func__, wd->last_sof_ts);
 }
 
 void mtk_cam_watchdog_init(struct mtk_cam_watchdog *wd)
 {
-	wd->started = 0;
+	atomic_set(&wd->started, 0);
 
-	timer_setup(&wd->timer, mtk_cam_watchdog_callback, 0);
+	timer_setup(&wd->timer, mtk_cam_watchdog_timer_callback, 0);
+	atomic_set(&wd->timer_signaled, 0);
+	init_waitqueue_head(&wd->monitor_wq);
 
+	init_completion(&wd->monitor_complete);
 	init_completion(&wd->work_complete);
 	complete(&wd->work_complete);
 
@@ -1247,14 +1296,32 @@ void mtk_cam_watchdog_init(struct mtk_cam_watchdog *wd)
 	atomic_set(&wd->dump_job, 0);
 }
 
+static int launch_monitor_work(struct mtk_cam_watchdog *wd)
+{
+	struct mtk_cam_watchdog_monitor *monitor;
+
+	monitor = kmalloc(sizeof(*monitor), GFP_ATOMIC);
+	if (WARN_ON(!monitor))
+		return -1;
+
+	monitor->wd = wd;
+	INIT_WORK(&monitor->work, mtk_cam_watchdog_monitor_loop);
+
+	schedule_work(&monitor->work);
+	return 0;
+}
+
 int mtk_cam_watchdog_start(struct mtk_cam_watchdog *wd, bool monitor_vsync)
 {
-	wd->started = 1;
+	atomic_set(&wd->started, 1);
+
 	wd->monitor_vsync = monitor_vsync;
 
 	wd->last_sof_ts = ktime_get_boottime_ns();
 	wd->req_seq = 0;
 	wd->req_seq_cnt = 0;
+
+	launch_monitor_work(wd);
 
 	wd->timer.expires = jiffies + msecs_to_jiffies(WATCHDOG_INTERVAL_MS);
 	add_timer(&wd->timer);
@@ -1263,9 +1330,14 @@ int mtk_cam_watchdog_start(struct mtk_cam_watchdog *wd, bool monitor_vsync)
 
 void mtk_cam_watchdog_stop(struct mtk_cam_watchdog *wd)
 {
-	if (!wd->started)
+	if (!atomic_cmpxchg(&wd->started, 1, 0))
 		return;
 
 	del_timer_sync(&wd->timer);
+
+	atomic_set(&wd->timer_signaled, 1);
+	wake_up_interruptible(&wd->monitor_wq);
+
+	wait_for_completion(&wd->monitor_complete);
 	wait_for_completion(&wd->work_complete);
 }
