@@ -26,7 +26,7 @@
 #include <tinysys-scmi.h>
 #endif
 
-#include "pmsr.h"
+#include "pmsr_v2.h"
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 struct scmi_tinysys_status rvalue;
@@ -198,8 +198,8 @@ static ssize_t remote_data_write(struct file *fp, const char __user *userbuf,
 #endif
 			if (!ret) {
 				hrtimer_start(&pmsr_timer,
-					      ns_to_ktime(timer_window_len * NSEC_PER_USEC),
-					      HRTIMER_MODE_REL_PINNED);
+						ns_to_ktime(timer_window_len * NSEC_PER_USEC),
+						HRTIMER_MODE_REL_PINNED);
 			}
 		} else {
 			pmsr_cfg_init();
