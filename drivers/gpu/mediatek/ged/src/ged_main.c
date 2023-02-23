@@ -140,6 +140,7 @@ unsigned int g_fastdvfs_margin;
 unsigned int vGed_Tmp;
 unsigned int g_ged_segment_id;
 unsigned int g_ged_efuse_id;
+unsigned int g_ged_adaptive_power_policy_support;
 
 /******************************************************************************
  * GED File operations
@@ -480,6 +481,29 @@ GED_ERROR check_eb_config(void)
 	return ret;
 }
 
+GED_ERROR check_adaptive_power_policy(void)
+{
+	struct device_node *app_node;
+	int ret = GED_OK, ret_temp;
+
+	g_ged_adaptive_power_policy_support = 0;
+	app_node = of_find_compatible_node(NULL, NULL, "mediatek,mali");
+	if (!app_node) {
+		GED_LOGE("No mali node.");
+		g_ged_adaptive_power_policy_support = 0;
+	} else {
+		ret_temp = of_property_read_u32(app_node, "adaptive-power-policy",
+			&g_ged_adaptive_power_policy_support);
+		if (unlikely(ret_temp))
+			GED_LOGE("fail to read adaptive-power-policy (%d)", ret_temp);
+	}
+
+	GED_LOGI("%s. adaptive_power_policy_support: %d",
+		__func__, g_ged_adaptive_power_policy_support);
+
+	return ret;
+}
+
 /******************************************************************************
  * Module related
  *****************************************************************************/
@@ -553,6 +577,12 @@ static int ged_pdrv_probe(struct platform_device *pdev)
 	err = check_eb_config();
 	if (unlikely(err != GED_OK)) {
 		GED_LOGE("Failed to check ged config!\n");
+		goto ERROR;
+	}
+
+	err = check_adaptive_power_policy();
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("Failed to check adaptive power policy!\n");
 		goto ERROR;
 	}
 

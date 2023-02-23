@@ -746,7 +746,11 @@ static GED_BOOL ged_kpi_update_TargetTimeAndTargetFps(
 		break;
 	}
 #if IS_ENABLED(CONFIG_MTK_GPU_FW_IDLE)
-	if (g_is_fw_idle_enable > 0) {
+	if (mtk_adaptive_power_notify())
+		mtk_set_gpu_idle(5);
+
+
+	else if (g_is_fw_idle_enable > 0) {
 		/* update fw idle timer value */
 		switch (g_fw_idle_mode) {
 		case FW_IDLE_MODE_DEFAULT:
@@ -769,7 +773,8 @@ static GED_BOOL ged_kpi_update_TargetTimeAndTargetFps(
 			g_fw_idle_timer = idle_timer_ms;
 			g_is_panel_hz_change = 0;
 		}
-	}
+	} else
+		mtk_set_gpu_idle(0);
 #endif /* MTK_GPU_FW_IDLE */
 
 	psHead->target_fps = target_fps;

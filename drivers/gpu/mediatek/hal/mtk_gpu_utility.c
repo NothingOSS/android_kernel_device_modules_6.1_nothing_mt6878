@@ -688,6 +688,19 @@ bool mtk_set_gpu_idle(unsigned int val)
 }
 EXPORT_SYMBOL(mtk_set_gpu_idle);
 
+/* -----------------------------adaptive power notify--------------------------------- */
+
+bool (*mtk_adaptive_power_notify_fp)(void) = NULL;
+EXPORT_SYMBOL(mtk_adaptive_power_notify_fp);
+
+bool mtk_adaptive_power_notify(void)
+{
+	if (mtk_adaptive_power_notify_fp != NULL)
+		return mtk_adaptive_power_notify_fp();
+	return false;
+
+}
+EXPORT_SYMBOL(mtk_adaptive_power_notify);
 
 /* ----------------------gpufreq change notify fp-------------------------- */
 void (*mtk_notify_gpu_freq_change_fp)(u32 clk_idx, u32 gpufreq) = NULL;

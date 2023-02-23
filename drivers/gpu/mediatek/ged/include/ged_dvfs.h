@@ -147,6 +147,11 @@ enum ged_gpu_power_state {
 };
 void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state);
 
+void ged_get_active_time(void);
+void ged_get_idle_time(void);
+void ged_check_power_duration(void);
+bool ged_gpu_adaptive_power_notify(void);
+
 GED_ERROR ged_dvfs_system_init(void);
 void ged_dvfs_system_exit(void);
 unsigned long ged_dvfs_get_last_commit_idx(void);

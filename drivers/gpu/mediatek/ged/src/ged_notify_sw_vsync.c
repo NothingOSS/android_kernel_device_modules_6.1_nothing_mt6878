@@ -196,22 +196,29 @@ static void ged_notify_sw_sync_work_handle(struct work_struct *psWork)
 	}
 #if IS_ENABLED(CONFIG_MTK_GPU_FW_IDLE)
 	/* set initial idle time to 5ms if runtime policy stay default flavor */
-	if (ged_kpi_is_fw_idle_policy_enable() == -1)
+	if ((ged_kpi_is_fw_idle_policy_enable() == -1) ||
+		(mtk_adaptive_power_notify()))
 		mtk_set_gpu_idle(5);
+	else if (!mtk_adaptive_power_notify())
+		mtk_set_gpu_idle(0);
 #endif /* MTK_GPU_FW_IDLE */
 }
 
 #define GED_VSYNC_MISS_QUANTUM_NS 16666666
+#define GED_POWER_DURATION_NS 3000000
 
 #ifdef ENABLE_COMMON_DVFS
 static unsigned long long hw_vsync_ts;
 #endif
 static unsigned long long g_ns_gpu_on_ts;
 static unsigned long long g_ns_gpu_off_ts;
+static unsigned long long g_ns_gpu_active_ts;
+static unsigned long long g_ns_gpu_idle_ts;
 
 static bool g_timer_on;
 static unsigned long long g_timer_on_ts;
 static bool g_bGPUClock;
+static bool g_bGPUAdaptivePower;
 
 /*
  * void timer_switch(bool bTock)
@@ -493,6 +500,38 @@ enum hrtimer_restart ged_sw_vsync_check_cb(struct hrtimer *timer)
 	return HRTIMER_NORESTART;
 }
 
+void ged_get_active_time(void)
+{
+	g_ns_gpu_active_ts = ged_get_time();
+}
+EXPORT_SYMBOL(ged_get_active_time);
+
+void ged_get_idle_time(void)
+{
+	g_ns_gpu_idle_ts = ged_get_time();
+}
+EXPORT_SYMBOL(ged_get_idle_time);
+
+void ged_check_power_duration(void)
+{
+	long long llDiff = 0;
+
+	llDiff = (long long)(g_ns_gpu_active_ts - g_ns_gpu_idle_ts);
+	if ((llDiff > 0) && (llDiff < GED_POWER_DURATION_NS))
+		g_bGPUAdaptivePower = true;
+	else
+		g_bGPUAdaptivePower = false;
+}
+EXPORT_SYMBOL(ged_check_power_duration);
+
+bool ged_gpu_adaptive_power_notify(void)
+{
+	if (g_ged_adaptive_power_policy_support)
+		return g_bGPUAdaptivePower;
+	else
+		return false;
+}
+EXPORT_SYMBOL(ged_gpu_adaptive_power_notify);
 
 void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state)
 {
