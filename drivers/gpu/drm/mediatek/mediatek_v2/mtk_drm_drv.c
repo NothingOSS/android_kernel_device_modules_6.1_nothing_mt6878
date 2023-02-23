@@ -6455,8 +6455,8 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	DDPINFO("%s-\n", __func__);
 	mtk_drm_init_dummy_table(private);
 
-	if (mtk_drm_helper_get_opt(private->helper_opt,
-		MTK_DRM_OPT_OVL_BW_MONITOR))
+	/* Load emi efficiency table for ovl bandwidht monitor */
+	if (private->data->mmsys_id == MMSYS_MT6897)
 		mtk_drm_init_emi_eff_table(drm);
 
 	mtk_drm_first_enable(drm);

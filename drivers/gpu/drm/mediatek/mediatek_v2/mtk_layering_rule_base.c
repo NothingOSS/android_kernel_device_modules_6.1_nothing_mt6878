@@ -1641,6 +1641,7 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 		unsigned int frame_idx, bool is_gles)
 {
 	int bpp, weight;
+	struct mtk_drm_private *priv = dev->dev_private;
 
 	if (layer_info)
 		bpp = mtk_get_format_bpp(layer_info->src_fmt);
@@ -1811,7 +1812,7 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 		do_div(weight, 100);
 	}
 
-	if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR))
+	if (priv->data->mmsys_id == MMSYS_MT6897)
 		return (weight * bpp * 10000)/default_emi_eff;
 
 	return weight * bpp;
@@ -2376,14 +2377,14 @@ static int check_is_force_gpu(struct drm_device *dev,
 	if (get_layering_opt(LYE_OPT_SPHRT) && disp_info->disp_idx != 0)
 		return 0;
 
-	DDPMSG("BWM: Disp_caps:%u\n", disp_info->disp_caps[HRT_PRIMARY]);
+	DDPMSG("GPUC: Disp_caps:%u\n", disp_info->disp_caps[HRT_PRIMARY]);
 	if ((disp_info->gles_head[disp_idx] == -1) &&
 			(disp_info->gles_tail[disp_idx] == -1)) {
 		have_force_gpu_layer = 0;
-		DDPMSG("BWM: no force gpu layer\n");
+		DDPMSG("GPUC: no force gpu layer\n");
 	} else {
 		have_force_gpu_layer = 1;
-		DDPMSG("BWM: have force gpu layer\n");
+		DDPMSG("GPUC: have force gpu layer\n");
 	}
 
 	return 0;
@@ -4209,7 +4210,8 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	/* BWM + GPU Cache */
 	/* check have force gpu layer or not */
 	have_force_gpu_layer = 0;
-	check_is_force_gpu(dev, &layering_info);
+	if (get_layering_opt(LYE_OPT_GPU_CACHE))
+		check_is_force_gpu(dev, &layering_info);
 
 	if (l_rule_ops->rollback_to_gpu_by_hw_limitation)
 		ret = l_rule_ops->rollback_to_gpu_by_hw_limitation(
