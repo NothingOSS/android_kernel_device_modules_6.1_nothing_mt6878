@@ -72,7 +72,7 @@ struct afe_offload_service_t {
 	bool needdata;
 	bool decode_error;
 	unsigned int pcmdump;
-	unsigned int volume;
+	unsigned int offload_volume[2];
 	uint8_t scene;
 };
 

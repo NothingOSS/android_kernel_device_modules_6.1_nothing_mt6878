@@ -46,7 +46,7 @@ static struct afe_offload_service_t afe_offload_service = {
 	.tswait          = false,
 	.needdata        = false,
 	.decode_error    = false,
-	.volume          = 0x10000,
+	.offload_volume  = {0x10000, 0x10000},
 	.scene           = TASK_SCENE_PLAYBACK_MP3,
 };
 
@@ -115,22 +115,31 @@ static void offloadservice_releasewriteblocked(void)
 }
 
 static int offloadservice_setvolume(struct snd_kcontrol *kcontrol,
-				    struct snd_ctl_elem_value *ucontrol)
+				    const unsigned int __user *data,
+				    unsigned int size)
 {
-	afe_offload_service.volume =
-		(unsigned int)ucontrol->value.integer.value[0];
+	if (copy_from_user(&afe_offload_service.offload_volume,
+			   data,
+			   sizeof(afe_offload_service.offload_volume))) {
+		pr_info("%s() copy fail, data=%p, size=%d\n", __func__, data, size);
+		return -EFAULT;
+	}
 	mtk_scp_ipi_send(get_dspscene_by_dspdaiid(ID),
 			 AUDIO_IPI_MSG_ONLY,
 			 AUDIO_IPI_MSG_BYPASS_ACK,
-			 OFFLOAD_VOLUME, afe_offload_service.volume,
-			 afe_offload_service.volume, NULL);
+			 OFFLOAD_VOLUME, afe_offload_service.offload_volume[0],
+			 afe_offload_service.offload_volume[1], NULL);
 	return 0;
 }
 
 static int offloadservice_getvolume(struct snd_kcontrol *kcontrol,
-				    struct snd_ctl_elem_value *ucontrol)
+				    unsigned int __user *data, unsigned int size)
 {
-	ucontrol->value.integer.value[0] = afe_offload_service.volume;
+	if (copy_to_user(data, &afe_offload_service.offload_volume,
+			 sizeof(afe_offload_service.offload_volume))) {
+		pr_info("%s(), copy_to_user fail", __func__);
+		return -EFAULT;
+	}
 	return 0;
 }
 
@@ -184,7 +193,7 @@ static int offloadservice_gettargetrate(struct snd_kcontrol *kcontrol,
 }
 
 static const struct snd_kcontrol_new Audio_snd_dloffload_controls[] = {
-	SOC_SINGLE_EXT("offload digital volume", SND_SOC_NOPM, 0, 0x1000000, 0,
+	SND_SOC_BYTES_TLV("offload digital volume", sizeof(afe_offload_service.offload_volume),
 	offloadservice_getvolume, offloadservice_setvolume),
 	SOC_SINGLE_EXT("offload set format", SND_SOC_NOPM, 0,
 	TASK_SCENE_PLAYBACK_MP3, 0,
