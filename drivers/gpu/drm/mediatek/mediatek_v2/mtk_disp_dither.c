@@ -22,6 +22,7 @@
 #include "mtk_dump.h"
 #include "mtk_disp_dither.h"
 #include "platform/mtk_drm_platform.h"
+#include "mtk_disp_pq_helper.h"
 
 #define DISP_DITHER_EN 0x0
 #define DISP_DITHER_INTEN 0x08
@@ -94,6 +95,9 @@ struct mtk_disp_dither {
 	int pwr_sta;
 	unsigned int cfg_reg;
 	const struct mtk_disp_dither_data *data;
+	bool is_right_pipe;
+	int path_idx;
+	struct mtk_ddp_comp *companion;
 };
 
 struct mtk_disp_dither_tile_overhead {
@@ -575,6 +579,41 @@ static void mtk_dither_bypass(struct mtk_ddp_comp *comp, int bypass,
 
 }
 
+static int mtk_dither_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+							enum mtk_ddp_io_cmd cmd, void *params)
+{
+
+	switch (cmd) {
+	case PQ_FILL_COMP_PIPE_INFO:
+	{
+
+		struct mtk_disp_dither *data = comp_to_dither(comp);
+		bool *is_right_pipe = &data->is_right_pipe;
+		int ret, *path_idx = &data->path_idx;
+		struct mtk_ddp_comp **companion = &data->companion;
+		struct mtk_disp_dither *companion_data;
+
+		DDPMSG("%s,dither pipe info comp id(%d)\n", __func__, comp->id);
+
+		if (data->is_right_pipe)
+			break;
+		ret = mtk_pq_helper_fill_comp_pipe_info(comp, path_idx, is_right_pipe, companion);
+		if (!ret && comp->mtk_crtc->is_dual_pipe && data->companion) {
+
+			DDPMSG("%s,dither dual pipe info comp id(%d)\n", __func__, comp->id);
+			companion_data = comp_to_dither(data->companion);
+			companion_data->path_idx = data->path_idx;
+			companion_data->is_right_pipe = !data->is_right_pipe;
+			companion_data->companion = comp;
+		}
+	}
+		break;
+	default:
+		break;
+	}
+	return 0;
+}
+
 struct dither_backup {
 	unsigned int REG_DITHER_CFG;
 };
@@ -867,6 +906,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_dither_funcs = {
 	/* partial update
 	 * .io_cmd = mtk_dither_io_cmd,
 	 */
+	.io_cmd = mtk_dither_io_cmd,
 };
 
 static int mtk_disp_dither_bind(struct device *dev, struct device *master,

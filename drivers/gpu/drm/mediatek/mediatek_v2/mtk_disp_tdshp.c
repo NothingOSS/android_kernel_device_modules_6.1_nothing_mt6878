@@ -4,6 +4,7 @@
  */
 
 #include "mtk_disp_tdshp.h"
+#include "mtk_disp_pq_helper.h"
 
 static DECLARE_WAIT_QUEUE_HEAD(g_tdshp_size_wq);
 static bool g_tdshp_get_size_available;
@@ -42,6 +43,9 @@ struct mtk_disp_tdshp {
 	struct mtk_ddp_comp ddp_comp;
 	struct drm_crtc *crtc;
 	const struct mtk_disp_tdshp_data *data;
+	bool is_right_pipe;
+	int path_idx;
+	struct mtk_ddp_comp *companion;
 };
 
 struct mtk_disp_tdshp_tile_overhead {
@@ -719,6 +723,39 @@ static void mtk_disp_tdshp_unprepare(struct mtk_ddp_comp *comp)
 	mtk_ddp_comp_clk_unprepare(comp);
 }
 
+static int mtk_tdshp_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+							enum mtk_ddp_io_cmd cmd, void *params)
+{
+
+	switch (cmd) {
+	case PQ_FILL_COMP_PIPE_INFO:
+	{
+		struct mtk_disp_tdshp *data = comp_to_disp_tdshp(comp);
+		bool *is_right_pipe = &data->is_right_pipe;
+		int ret, *path_idx = &data->path_idx;
+		struct mtk_ddp_comp **companion = &data->companion;
+		struct mtk_disp_tdshp *companion_data;
+
+		DDPMSG("%s,tdshp pipe info comp id(%d)\n", __func__, comp->id);
+
+		if (data->is_right_pipe)
+			break;
+		ret = mtk_pq_helper_fill_comp_pipe_info(comp, path_idx, is_right_pipe, companion);
+		if (!ret && comp->mtk_crtc->is_dual_pipe && data->companion) {
+			DDPMSG("%s,tdshp dual pipe info comp id(%d)\n", __func__, comp->id);
+			companion_data = comp_to_disp_tdshp(data->companion);
+			companion_data->path_idx = data->path_idx;
+			companion_data->is_right_pipe = !data->is_right_pipe;
+			companion_data->companion = comp;
+		}
+	}
+		break;
+	default:
+		break;
+	}
+	return 0;
+}
+
 void mtk_disp_tdshp_first_cfg(struct mtk_ddp_comp *comp,
 		struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
@@ -736,6 +773,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_tdshp_funcs = {
 	.prepare = mtk_disp_tdshp_prepare,
 	.unprepare = mtk_disp_tdshp_unprepare,
 	.config_overhead = mtk_disp_tdshp_config_overhead,
+	.io_cmd = mtk_tdshp_io_cmd,
 };
 
 static int mtk_disp_tdshp_bind(struct device *dev, struct device *master,

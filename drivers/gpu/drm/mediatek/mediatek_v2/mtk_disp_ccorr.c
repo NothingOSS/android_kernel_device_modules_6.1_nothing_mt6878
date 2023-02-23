@@ -25,6 +25,7 @@
 #include "mtk_dump.h"
 #include "mtk_drm_helper.h"
 #include "platform/mtk_drm_platform.h"
+#include "mtk_disp_pq_helper.h"
 
 #ifdef CONFIG_LEDS_MTK_MODULE
 #define CONFIG_LEDS_BRIGHTNESS_CHANGED
@@ -194,6 +195,9 @@ struct mtk_disp_ccorr {
 	struct mtk_ddp_comp ddp_comp;
 	struct drm_crtc *crtc;
 	const struct mtk_disp_ccorr_data *data;
+	bool is_right_pipe;
+	int path_idx;
+	struct mtk_ddp_comp *companion;
 };
 
 struct mtk_disp_ccorr_tile_overhead {
@@ -1532,12 +1536,39 @@ static int mtk_ccorr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 {
 	int enable = 1;
 
-	if (comp->id != DDP_COMPONENT_CCORR0 || !g_is_aibld_cv_mode)
-		return 0;
-
-	if (cmd == FRAME_DIRTY) {
+	switch (cmd) {
+	case FRAME_DIRTY:
+	{
+		if (comp->id != DDP_COMPONENT_CCORR0 || !g_is_aibld_cv_mode)
+			break;
 		DDPDBG("%s FRAME_DIRTY comp id:%d\n", __func__, comp->id);
 		mtk_disp_ccorr_set_interrupt(comp, &enable);
+	}
+		break;
+	case PQ_FILL_COMP_PIPE_INFO:
+	{
+		struct mtk_disp_ccorr *data = comp_to_ccorr(comp);
+		bool *is_right_pipe = &data->is_right_pipe;
+		int ret, *path_idx = &data->path_idx;
+		struct mtk_ddp_comp **companion = &data->companion;
+		struct mtk_disp_ccorr *companion_data;
+
+		DDPINFO("%s,ccorr pipe info comp id(%d)\n", __func__, comp->id);
+
+		if (data->is_right_pipe)
+			break;
+		ret = mtk_pq_helper_fill_comp_pipe_info(comp, path_idx, is_right_pipe, companion);
+		if (!ret && comp->mtk_crtc->is_dual_pipe && data->companion) {
+			DDPINFO("%s,c3d dual pipe info comp id(%d)\n", __func__, comp->id);
+			companion_data = comp_to_ccorr(data->companion);
+			companion_data->path_idx = data->path_idx;
+			companion_data->is_right_pipe = !data->is_right_pipe;
+			companion_data->companion = comp;
+		}
+	}
+		break;
+	default:
+		break;
 	}
 	return 0;
 }

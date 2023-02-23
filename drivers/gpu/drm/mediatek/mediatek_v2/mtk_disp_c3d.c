@@ -10,7 +10,7 @@
 #else
 #include "mtk-cmdq-ext.h"
 #endif
-
+#include "mtk_disp_pq_helper.h"
 #define HW_ENGINE_NUM (2)
 
 #define C3D_3DLUT_SIZE_17BIN (17 * 17 * 17 * 3)
@@ -111,6 +111,9 @@ struct mtk_disp_c3d {
 	struct mtk_ddp_comp ddp_comp;
 	struct drm_crtc *crtc;
 	const struct mtk_disp_c3d_data *data;
+	bool is_right_pipe;
+	int path_idx;
+	struct mtk_ddp_comp *companion;
 };
 static struct mtk_disp_c3d *g_c3d_data;
 
@@ -1101,6 +1104,36 @@ void mtk_disp_c3d_first_cfg(struct mtk_ddp_comp *comp,
 	mtk_disp_c3d_config(comp, cfg, handle);
 }
 
+static int mtk_c3d_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+							enum mtk_ddp_io_cmd cmd, void *params)
+{
+
+	switch (cmd) {
+	case PQ_FILL_COMP_PIPE_INFO:
+	{
+		struct mtk_disp_c3d *data = comp_to_c3d(comp);
+		bool *is_right_pipe = &data->is_right_pipe;
+		int ret, *path_idx = &data->path_idx;
+		struct mtk_ddp_comp **companion = &data->companion;
+		struct mtk_disp_c3d *companion_data;
+
+		if (data->is_right_pipe)
+			break;
+		ret = mtk_pq_helper_fill_comp_pipe_info(comp, path_idx,
+							is_right_pipe, companion);
+		if (!ret && comp->mtk_crtc->is_dual_pipe && data->companion) {
+			companion_data = comp_to_c3d(data->companion);
+			companion_data->path_idx = data->path_idx;
+			companion_data->is_right_pipe = !data->is_right_pipe;
+			companion_data->companion = comp;
+		}
+	}
+		break;
+	default:
+		break;
+	}
+	return 0;
+}
 static const struct mtk_ddp_comp_funcs mtk_disp_c3d_funcs = {
 	.config = mtk_disp_c3d_config,
 	.first_cfg = mtk_disp_c3d_first_cfg,
@@ -1111,6 +1144,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_c3d_funcs = {
 	.prepare = mtk_disp_c3d_prepare,
 	.unprepare = mtk_disp_c3d_unprepare,
 	.config_overhead = mtk_disp_c3d_config_overhead,
+	.io_cmd = mtk_c3d_io_cmd,
 };
 
 static int mtk_disp_c3d_bind(struct device *dev, struct device *master,

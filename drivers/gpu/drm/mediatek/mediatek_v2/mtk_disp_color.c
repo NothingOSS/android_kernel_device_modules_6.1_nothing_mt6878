@@ -25,6 +25,7 @@
 #include "mtk_dump.h"
 #include "platform/mtk_drm_platform.h"
 #include "mtk_disp_ccorr.h"
+#include "mtk_disp_pq_helper.h"
 
 #define UNUSED(expr) (void)(expr)
 #define index_of_color(module) ((module == DDP_COMPONENT_COLOR0) ? 0 : 1)
@@ -130,6 +131,9 @@ struct mtk_disp_color {
 	struct mtk_ddp_comp ddp_comp;
 	struct drm_crtc *crtc;
 	const struct mtk_disp_color_data *data;
+	bool is_right_pipe;
+	int path_idx;
+	struct mtk_ddp_comp *companion;
 };
 
 struct mtk_disp_color_tile_overhead {
@@ -3256,6 +3260,39 @@ int mtk_drm_ioctl_pq_set_window(struct drm_device *dev, void *data,
 }
 
 
+static int mtk_color_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+							enum mtk_ddp_io_cmd cmd, void *params)
+{
+
+	switch (cmd) {
+	case PQ_FILL_COMP_PIPE_INFO:
+	{
+		struct mtk_disp_color *data = comp_to_color(comp);
+		bool *is_right_pipe = &data->is_right_pipe;
+		int ret, *path_idx = &data->path_idx;
+		struct mtk_ddp_comp **companion = &data->companion;
+		struct mtk_disp_color *companion_data;
+
+		DDPMSG("%s,color pipe info comp id(%d)\n", __func__, comp->id);
+
+		if (data->is_right_pipe)
+			break;
+		ret = mtk_pq_helper_fill_comp_pipe_info(comp, path_idx, is_right_pipe, companion);
+		if (!ret && comp->mtk_crtc->is_dual_pipe && data->companion) {
+			DDPMSG("%s,color dual pipe info comp id(%d)\n", __func__, comp->id);
+			companion_data = comp_to_color(data->companion);
+			companion_data->path_idx = data->path_idx;
+			companion_data->is_right_pipe = !data->is_right_pipe;
+			companion_data->companion = comp;
+		}
+	}
+		break;
+	default:
+		break;
+	}
+	return 0;
+}
+
 static void mtk_color_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	//struct mtk_disp_color *color = comp_to_color(comp);
@@ -3559,6 +3596,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_color_funcs = {
 	.prepare = mtk_color_prepare,
 	.unprepare = mtk_color_unprepare,
 	.config_overhead = mtk_disp_color_config_overhead,
+	.io_cmd = mtk_color_io_cmd,
 };
 
 void mtk_color_dump(struct mtk_ddp_comp *comp)
