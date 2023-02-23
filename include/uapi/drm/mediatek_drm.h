@@ -808,6 +808,7 @@ struct mtk_drm_wb_caps {
 
 struct mtk_drm_conn_caps {
 	unsigned int lcm_degree;
+	int lcm_color_mode;
 };
 
 #define MAX_MODES 30
