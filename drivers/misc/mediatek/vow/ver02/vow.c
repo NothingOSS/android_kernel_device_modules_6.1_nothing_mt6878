@@ -79,6 +79,7 @@ static int init_flag = -1;
 static const uint32_t kReadVowDumpSize = 0xA00 * 2; // 320(10ms) x 8 x 2ch= 5120 = 0x1400
 static const uint32_t kReadVowDumpSize_Big = 0x1F40 * 2; // 320(10ms) x 25 x 2ch= 16000 = 0x3E80
 
+static bool dual_ch_transfer;
 /*****************************************************************************
  * Function  Declaration
  ****************************************************************************/
@@ -613,6 +614,9 @@ static void vow_service_Init(void)
 	vowserv.voicedata_scp_addr =
 		scp_get_reserve_mem_phys(VOW_MEM_ID)
 		+ VOW_VOICEDATA_OFFSET;
+	/*init L/R ch audio data in DRAM*/
+	/* if open dual ch transfer and "ABF support = no" in scp, we can get R ch sample = 0x101*/
+	memset(vowserv.voicedata_scp_ptr, 1, VOW_VOICEDATA_SIZE * VOW_MAX_MIC_NUM);
 	/*Extra data*/
 	vowserv.extradata_ptr =
 		(char *)(scp_get_reserve_mem_virt(VOW_MEM_ID))
@@ -1230,7 +1234,13 @@ static bool vow_service_SetApDumpAddr(unsigned long arg)
 static bool vow_service_SetApAddr(unsigned long arg)
 {
 	unsigned long vow_info[MAX_VOW_INFO_LEN];
+	unsigned int vow_vbuf_length = 0;
 
+	if (dual_ch_transfer == false) {
+		vow_vbuf_length = VOW_VBUF_LENGTH;
+	} else {
+		vow_vbuf_length = VOW_VBUF_LENGTH * 2;
+	}
 	if (copy_from_user((void *)(&vow_info[0]), (const void __user *)(arg),
 			   sizeof(vow_info))) {
 		VOWDRV_DEBUG("vow check parameter fail\n");
@@ -1238,7 +1248,7 @@ static bool vow_service_SetApAddr(unsigned long arg)
 	}
 
 	/* add return condition */
-	if ((vow_info[2] == 0) || (vow_info[3] != VOW_VBUF_LENGTH) ||
+	if ((vow_info[2] == 0) || (vow_info[3] != vow_vbuf_length) ||
 	    (vow_info[4] == 0)) {
 		VOWDRV_DEBUG("%s(), vow SetVBufAddr error!\n", __func__);
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_DEBUG_SUPPORT)
@@ -1261,11 +1271,17 @@ static bool vow_service_SetApAddr(unsigned long arg)
 static bool vow_service_SetVBufAddr(unsigned long arg)
 {
 	unsigned long vow_info[MAX_VOW_INFO_LEN];
+	unsigned int vow_vbuf_length = 0;
 
 	if (copy_from_user((void *)(&vow_info[0]), (const void __user *)(arg),
 			   sizeof(vowserv.vow_info_apuser))) {
 		VOWDRV_DEBUG("vow check parameter fail\n");
 		return false;
+	}
+	if (dual_ch_transfer == false) {
+		vow_vbuf_length = VOW_VBUF_LENGTH;
+	} else {
+		vow_vbuf_length = VOW_VBUF_LENGTH * 2;
 	}
 
 	/* add return condition */
@@ -1283,12 +1299,7 @@ static bool vow_service_SetVBufAddr(unsigned long arg)
 		vfree(vowserv.voicedata_kernel_ptr);
 		vowserv.voicedata_kernel_ptr = NULL;
 	}
-
-	if (vow_info[3] != VOW_VBUF_LENGTH) {
-		mutex_unlock(&vow_vmalloc_lock);
-		return false;
-	}
-	vowserv.voicedata_kernel_ptr = vmalloc(VOW_VBUF_LENGTH);
+	vowserv.voicedata_kernel_ptr = vmalloc(vow_vbuf_length);
 	mutex_unlock(&vow_vmalloc_lock);
 	return true;
 }
@@ -1380,6 +1391,15 @@ static void vow_service_ReadPayloadDumpData(unsigned int buf_length)
 }
 #endif
 
+static void vow_service_SetDualChannelTransfer(unsigned long arg)
+{
+	//arg = 0: dual ch transfer is off, arg = 1: dual ch transfer is on
+	if (arg > 1)
+		VOWDRV_DEBUG("dual ch transfer setting error, %lu", arg);
+
+	dual_ch_transfer = (bool)arg;
+}
+
 static void vow_interleaving(short *out_buf,
 			     short *l_sample,
 			     short *r_sample,
@@ -1399,8 +1419,15 @@ static int vow_service_ReadVoiceData_Internal(unsigned int buf_offset,
 					      unsigned int buf_length)
 {
 	int stop_condition = 0;
+	unsigned int vow_vbuf_length = 0;
 
+	if (dual_ch_transfer == false) {
+		vow_vbuf_length = VOW_VBUF_LENGTH;
+	} else {
+		vow_vbuf_length = VOW_VBUF_LENGTH * 2;
+	}
 	if (buf_length != 0) {
+		unsigned int buffer_bound = 0;
 		if ((vowserv.kernel_voicedata_idx + (buf_length >> 1))
 		  > (vowserv.voicedata_user_size >> 1)) {
 			VOWDRV_DEBUG(
@@ -1416,18 +1443,23 @@ static int vow_service_ReadVoiceData_Internal(unsigned int buf_offset,
 			mutex_unlock(&vow_vmalloc_lock);
 		}
 
-		if ((vowserv.kernel_voicedata_idx + buf_length) > VOW_VBUF_LENGTH) {
+		if ((vowserv.kernel_voicedata_idx + buf_length) > vow_vbuf_length) {
 			VOWDRV_DEBUG(
-			"%s(), kernel_voicedata_idx=0x%x, buf_length=0x%x, VOW_VBUF_LENGTH=0x%x",
+			"%s(), kernel_voicedata_idx=0x%x, buf_length=0x%x, vow_vbuf_length=0x%x",
 				__func__,
 				vowserv.kernel_voicedata_idx,
 				buf_length,
-				VOW_VBUF_LENGTH);
+				vow_vbuf_length);
 			stop_condition = 1;
 			return stop_condition;
 		}
-#if IS_ENABLED(CONFIG_DUAL_CH_TRANSFER)
-		if (buf_offset > (VOW_MAX_MIC_NUM * VOW_VOICEDATA_SIZE)) {
+
+		if (dual_ch_transfer == true) {
+			buffer_bound = VOW_MAX_MIC_NUM * VOW_VOICEDATA_SIZE;
+		} else {
+			buffer_bound = VOW_VOICEDATA_SIZE;
+		}
+		if (buf_offset > buffer_bound) {
 			VOWDRV_DEBUG(
 			"%s(), buf_offset=0x%x, buf_length=0x%x, VOW_VOICEDATA_SIZE=0x%x\n",
 				__func__,
@@ -1438,30 +1470,19 @@ static int vow_service_ReadVoiceData_Internal(unsigned int buf_offset,
 			return stop_condition;
 		}
 		mutex_lock(&vow_vmalloc_lock);
-		/* start interleaving L+R */
-		vow_interleaving(
-			&vowserv.voicedata_kernel_ptr[vowserv.kernel_voicedata_idx],
-			(short *)(vowserv.voicedata_scp_ptr + buf_offset),
-			(short *)(vowserv.voicedata_scp_ptr + buf_offset +
-				VOW_VOICEDATA_SIZE), buf_length);
-		/* end interleaving*/
-		mutex_unlock(&vow_vmalloc_lock);
-#else
-		if (buf_offset > VOW_VOICEDATA_SIZE) {
-			VOWDRV_DEBUG(
-			"%s(), buf_offset=0x%x, buf_length=0x%x, VOW_VOICEDATA_SIZE=0x%x\n",
-				__func__,
-				buf_offset,
-				buf_length,
-				VOW_VOICEDATA_SIZE);
-			stop_condition = 1;
-			return stop_condition;
+		if (dual_ch_transfer == true) {
+			/* start interleaving L+R */
+			vow_interleaving(
+				&vowserv.voicedata_kernel_ptr[vowserv.kernel_voicedata_idx],
+				(short *)(vowserv.voicedata_scp_ptr + buf_offset),
+				(short *)(vowserv.voicedata_scp_ptr + buf_offset +
+					VOW_VOICEDATA_SIZE), buf_length);
+			/* end interleaving*/
+		} else {
+			memcpy(&vowserv.voicedata_kernel_ptr[vowserv.kernel_voicedata_idx],
+				vowserv.voicedata_scp_ptr + buf_offset, buf_length);
 		}
-		mutex_lock(&vow_vmalloc_lock);
-		memcpy(&vowserv.voicedata_kernel_ptr[vowserv.kernel_voicedata_idx],
-			vowserv.voicedata_scp_ptr + buf_offset, buf_length);
 		mutex_unlock(&vow_vmalloc_lock);
-#endif
 		if (buf_length > VOW_VOICE_RECORD_BIG_THRESHOLD) {
 			/* means now is start to transfer */
 			/* keyword buffer(64kB) to AP */
@@ -1472,13 +1493,13 @@ static int vow_service_ReadVoiceData_Internal(unsigned int buf_offset,
 			vowserv.tx_keyword_start = true;
 		}
 		mutex_lock(&vow_vmalloc_lock);
-#if IS_ENABLED(CONFIG_DUAL_CH_TRANSFER)
-		/* 2 Channels */
-		vowserv.kernel_voicedata_idx += buf_length;
-#else
-		/* 1 Channel */
-		vowserv.kernel_voicedata_idx += (buf_length >> 1);
-#endif
+		if (dual_ch_transfer == true) {
+			/* 2 Channels */
+			vowserv.kernel_voicedata_idx += buf_length;
+		} else {
+			/* 1 Channel */
+			vowserv.kernel_voicedata_idx += (buf_length >> 1);
+		}
 		mutex_unlock(&vow_vmalloc_lock);
 	}
 	if (vowserv.kernel_voicedata_idx >= (VOW_VOICE_RECORD_BIG_THRESHOLD >> 1))
@@ -1513,7 +1534,7 @@ static int vow_service_ReadVoiceData_Internal(unsigned int buf_offset,
 			tmp = (vowserv.kernel_voicedata_idx << 1)
 			      - vowserv.transfer_length;
 			idx = (vowserv.transfer_length >> 1);
-			vow_check_boundary(tmp + idx, VOW_VBUF_LENGTH);
+			vow_check_boundary(tmp + idx, vow_vbuf_length);
 			mutex_lock(&vow_vmalloc_lock);
 			memmove(&vowserv.voicedata_kernel_ptr[0],
 			       &vowserv.voicedata_kernel_ptr[idx],
@@ -2921,6 +2942,10 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 	}
 		break;
 #endif
+	case VOW_SET_VOW_DUAL_CH_TRANSFER:
+		VOWDRV_DEBUG("VOW_SET_VOW_DUAL_CH_TRANSFER(%lu)", arg);
+		vow_service_SetDualChannelTransfer(arg);
+		break;
 	default:
 		VOWDRV_DEBUG("vow WrongParameter(%lu)", arg);
 		break;
