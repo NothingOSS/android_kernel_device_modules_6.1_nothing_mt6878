@@ -118,8 +118,10 @@ mtk_cam_ctrl_get_job(struct mtk_cam_ctrl *ctrl,
 		job = container_of(state, struct mtk_cam_job, job_state);
 
 		found = cond_func(job, arg);
-		if (found)
+		if (found) {
+			mtk_cam_job_get(job);
 			break;
+		}
 	}
 	read_unlock(&ctrl->list_lock);
 
@@ -273,6 +275,8 @@ static void handle_meta1_done(struct mtk_cam_ctrl *ctrl, int seq_no)
 	}
 
 	call_jobop(job, mark_afo_done, seq_no);
+
+	mtk_cam_job_put(job);
 }
 
 static void handle_frame_done(struct mtk_cam_ctrl *ctrl,
@@ -304,6 +308,8 @@ static void handle_frame_done(struct mtk_cam_ctrl *ctrl,
 		/* last done: trigger FSM */
 		mtk_cam_ctrl_send_event(ctrl, CAMSYS_EVENT_IRQ_FRAME_DONE);
 	}
+
+	mtk_cam_job_put(job);
 }
 static void handle_ss_try_set_sensor(struct mtk_cam_ctrl *cam_ctrl)
 {
@@ -357,6 +363,8 @@ static int frame_no_to_fs_req_no(struct mtk_cam_ctrl *ctrl, int frame_no,
 		}
 
 		ctrl->frame_sync_event_cnt = job->req_seq;
+
+		mtk_cam_job_put(job);
 	}
 
 	do_send_evnt = ctrl->fs_event_subframe_idx == 0;
@@ -654,8 +662,12 @@ static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 		mtk_cam_job_state_set(&job->job_state,
 				      SENSOR_2ND_STATE, S_SENSOR_APPLYING);
 		call_jobop(job, apply_sensor);
+
+		mtk_cam_job_put(job);
 	} else {
 		int seq;
+
+		mtk_cam_job_put(job);
 
 		seq = next_frame_seq(job->frame_seq_no);
 		job = mtk_cam_ctrl_get_job(ctrl, cond_frame_no_belong, &seq);
@@ -663,6 +675,8 @@ static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 			mtk_cam_job_state_set(&job->job_state,
 					SENSOR_STATE, S_SENSOR_APPLYING);
 			call_jobop(job, apply_sensor);
+
+			mtk_cam_job_put(job);
 		}
 	}
 
@@ -695,6 +709,8 @@ static void mtk_cam_ctrl_seamless_switch_work(struct work_struct *work)
 	vsync_set_desired(&ctrl->vsync_col, job->used_engine);
 	dev_info(ctrl->ctx->cam->dev, "[%s] finish, used_engine:0x%x\n",
 		__func__, job->used_engine);
+
+	mtk_cam_job_put(job);
 }
 
 /* request queue */
@@ -798,6 +814,7 @@ void mtk_cam_ctrl_job_composed(struct mtk_cam_ctrl *cam_ctrl,
 	}
 
 	call_jobop(job_composed, compose_done, cq_ret, ack_ret);
+	mtk_cam_job_put(job_composed);
 
 	spin_lock(&cam_ctrl->info_lock);
 	cam_ctrl->r_info.ack_seq_no = seq;
