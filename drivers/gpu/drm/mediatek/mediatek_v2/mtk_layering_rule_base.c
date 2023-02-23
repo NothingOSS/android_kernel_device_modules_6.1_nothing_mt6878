@@ -3773,14 +3773,13 @@ static void resizing_rule(struct drm_device *dev,
 }
 
 static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc *crtc,
-					struct mml_frame_info *mml_info)
+					struct mml_frame_info *mml_info, const u32 line_time_ns)
 {
 	enum mml_mode mode = MML_MODE_UNKNOWN;
 	enum MTK_LAYERING_CAPS ret = MTK_MML_DISP_NOT_SUPPORT;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_drm_private *priv = NULL;
 	struct drm_crtc *crtcx = NULL;
-	u32 line_time_ns = 0;
 
 	if (!dev || !crtc) {
 		DDPMSG("%s !dev, !crtc\n", __func__);
@@ -3804,17 +3803,6 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 		mode = g_mml_mode;
 		goto mode_mapping;
 	}
-
-	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
-	line_time_ns = mtk_dsi_get_line_time_ns(crtc);
-
-	if (mtk_crtc->slbc_state == SLBC_NEED_FREE) {
-		if (kref_read(&mtk_crtc->mml_ir_sram.ref))
-			mml_info->mode = MML_MODE_MML_DECOUPLE;
-		else
-			mtk_crtc->slbc_state = SLBC_CAN_ALLOC;
-	}
-	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 
 	mml_info->act_time = mml_info->dest[0].data.height * line_time_ns;
 
@@ -3879,6 +3867,10 @@ static void check_is_mml_layer(const int disp_idx,
 	struct drm_mtk_layer_config *c = NULL;
 	int i = 0;
 	enum MTK_LAYERING_CAPS mml_capacity = DISP_MML_CAPS_MASK;
+	struct mtk_drm_private *priv = NULL;
+	struct mml_frame_info *mml_info = NULL;
+	struct mtk_ddp_comp *output_comp = NULL;
+	u32 ns = 0;
 
 	if (!dev || !disp_info)
 		return;
@@ -3887,13 +3879,34 @@ static void check_is_mml_layer(const int disp_idx,
 		if (drm_crtc_index(crtc) == disp_idx)
 			break;
 	mtk_crtc = to_mtk_crtc(crtc);
+	priv = dev->dev_private;
 
 	for (i = 0; i < disp_info->layer_num[disp_idx]; i++) {
 		c = &disp_info->input_config[disp_idx][i];
 		if (!(MTK_MML_OVL_LAYER & c->layer_caps))
 			continue;
 
-		c->layer_caps |= query_MML(dev, crtc, &(disp_info->mml_cfg[disp_idx][i]));
+		mml_info = &(disp_info->mml_cfg[disp_idx][i]);
+		if (!mml_info)
+			continue;
+
+		if (!output_comp) {
+			/* Check line time and slbc state once per HRT */
+			DDP_MUTEX_LOCK(&priv->commit.lock, __func__, hrt_idx);
+			output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+			if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI))
+				mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_LINE_TIME_NS, &ns);
+
+			if (mtk_crtc->slbc_state == SLBC_NEED_FREE) {
+				if (kref_read(&mtk_crtc->mml_ir_sram.ref))
+					mml_info->mode = MML_MODE_MML_DECOUPLE;
+				else
+					mtk_crtc->slbc_state = SLBC_CAN_ALLOC;
+			}
+			DDP_MUTEX_UNLOCK(&priv->commit.lock, __func__, hrt_idx);
+		}
+
+		c->layer_caps |= query_MML(dev, crtc, mml_info, ns);
 
 		if (MML_FMT_IS_YUV(disp_info->mml_cfg[disp_idx][i].src.format))
 			c->layer_caps |= MTK_DISP_SRC_YUV_LAYER;

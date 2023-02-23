@@ -619,6 +619,7 @@ enum mtk_ddp_io_cmd {
 	/*Msync 2.0 cmd end*/
 	DUAL_TE_INIT,
 	OVL_GET_SOURCE_BPC,
+	DSI_GET_LINE_TIME_NS,
 	DSI_DUMP_LCM_INFO,
 	DSI_SET_TARGET_LINE,
 	DSI_READ_PANELID,

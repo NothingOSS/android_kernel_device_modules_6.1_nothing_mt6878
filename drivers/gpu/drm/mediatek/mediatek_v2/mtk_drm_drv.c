@@ -1298,6 +1298,7 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	unsigned int fps = 0;
 	unsigned int vtotal = 0;
 	unsigned int line_time = 0;
+	struct mtk_ddp_comp *output_comp = NULL;
 
 	if (!mtk_plane_state->prop_val[PLANE_PROP_IS_MML])
 		return MML_MODE_UNKNOWN;
@@ -1343,8 +1344,10 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 
 	mml_drm_split_info(submit_kernel, submit_pq);
 
-	mtk_drm_idlemgr_kick(__func__, crtc, false);
-	line_time = mtk_dsi_get_line_time_ns(crtc);
+	mtk_drm_idlemgr_kick(__func__, crtc, false); /* power on dsi */
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI))
+		mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_LINE_TIME_NS, &line_time);
 	submit_kernel->info.act_time = line_time * submit_pq->info.dest[0].data.height;
 
 #define _ATOMIC_MML_FMT \

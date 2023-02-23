@@ -8011,31 +8011,23 @@ static void mtk_dsi_set_targetline(struct mtk_ddp_comp *comp,
 	}
 }
 
-u32 mtk_dsi_get_line_time_ns(struct drm_crtc *crtc)
+static u32 mtk_dsi_get_line_time_ns(struct mtk_dsi *dsi, struct mtk_drm_crtc *mtk_crtc)
 {
-	struct mtk_dsi *dsi = NULL;
-	struct mtk_ddp_comp *output_comp = NULL;
-	struct mtk_drm_crtc *mtk_crtc = NULL;
 	u32 ps_wc = 0;
 	u32 dsi_clk = 0;
 	u32 line_time = 0;
 	u32 line_time_ns = 0;
 
-	if (!crtc)
-		return 0;
-	mtk_crtc = to_mtk_crtc(crtc);
-	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
-	if (!output_comp)
+	if (!mtk_crtc)
 		return 0;
 
-	if (!mtk_crtc_is_frame_trigger_mode(crtc)) {
-		struct drm_display_mode *mode = &crtc->state->adjusted_mode;
+	if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
+		struct drm_display_mode *mode = &mtk_crtc->base.state->adjusted_mode;
 
 		line_time_ns = 1000000000 / drm_mode_vrefresh(mode) / mode->vtotal;
 		return line_time_ns;
 	}
 
-	dsi = container_of(output_comp, struct mtk_dsi, ddp_comp);
 	ps_wc = mtk_dsi_get_ps_wc(mtk_crtc, dsi);
 	if (dsi->ext->params->is_cphy)
 		dsi_clk = dsi->data_rate / 7;
@@ -9037,6 +9029,14 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	case DUAL_TE_INIT:
 	{
 		dual_te_init((struct drm_crtc *)params);
+	}
+		break;
+	case DSI_GET_LINE_TIME_NS:
+	{
+		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+		unsigned int *line_time = (unsigned int *)params;
+
+		*line_time = mtk_dsi_get_line_time_ns(dsi, mtk_crtc);
 	}
 		break;
 	case DSI_DUMP_LCM_INFO:
