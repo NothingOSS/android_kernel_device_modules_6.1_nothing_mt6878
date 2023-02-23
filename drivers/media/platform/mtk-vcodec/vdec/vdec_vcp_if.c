@@ -956,10 +956,11 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 			atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_CORE]),
 			atomic_read(&dev->dec_hw_active[MTK_VDEC_LAT]),
 			atomic_read(&dev->dec_hw_active[MTK_VDEC_CORE]));
+
+		mutex_lock(&dev->dec_dvfs_mutex);
 		if (ctx)
 			vdec_vcp_backup((struct vdec_inst *)ctx->drv_handle);
 
-		mutex_lock(&dev->dec_dvfs_mutex);
 		// if power always on, put pw ref cnt before suspend
 		if (mtk_vdec_dvfs_is_pw_always_on(dev))
 			mtk_vcodec_dec_pw_off(&dev->pm);
