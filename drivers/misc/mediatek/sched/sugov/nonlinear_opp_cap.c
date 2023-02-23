@@ -20,10 +20,11 @@
 #else
 #include "mtk_energy_model/v1/energy_model.h"
 #endif
-
+#include "dsu_interface.h"
 DEFINE_PER_CPU(unsigned int, gear_id) = -1;
 EXPORT_SYMBOL(gear_id);
 
+static void __iomem *l3ctl_sram_base_addr;
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
 static void __iomem *sram_base_addr;
 static struct pd_capacity_info *pd_capacity_tbl;
@@ -69,13 +70,17 @@ static DEFINE_SPINLOCK(update_wl_tbl_lock);
 
 void update_wl_tbl(int cpu)
 {
+	int tmp = 0;
+
 	if (spin_trylock(&update_wl_tbl_lock)) {
 		unsigned long tmp_jiffies = jiffies;
 
 		if (last_jiffies !=  tmp_jiffies) {
 			last_jiffies =  tmp_jiffies;
 			spin_unlock(&update_wl_tbl_lock);
-			// wl_type_curr = get_wl(0);
+			tmp = get_wl(0);
+			if (tmp >= 0 && tmp < nr_wl_type)
+				wl_type_curr = tmp;
 			if (last_wl_type != wl_type_curr && wl_type_curr >= 0
 					&& wl_type_curr < nr_wl_type) {
 				int i, j;
@@ -1080,8 +1085,11 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 		set_turn_point_freq(i, 0);
 	}
 
-	if (is_wl_support())
+	if (is_wl_support()) {
+		dsu_pwr_swpm_init();
+		l3ctl_sram_base_addr = get_l3ctl_sram_base_addr();
 		init_dsu();
+	}
 
 	entry = proc_create("pd_capacity_tbl", 0644, dir, &pd_capacity_tbl_ops);
 	if (!entry)
@@ -1114,7 +1122,10 @@ static inline void mtk_arch_set_freq_scale_gearless(struct cpufreq_policy *polic
 void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 		unsigned int *target_freq, unsigned int old_target_freq)
 {
+	struct mtk_em_perf_state *ps;
 	int cpu = policy->cpu;
+	int offset_dsu_vote;
+	int opp;
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	u64 ts[2];
 
@@ -1142,6 +1153,16 @@ void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 
 	}
 #endif
+
+	if (is_wl_support()) {
+		offset_dsu_vote = per_cpu(gear_id, cpu) << 2;
+		ps = pd_get_freq_ps(get_em_wl(), cpu, *target_freq, &opp);
+		iowrite32(ps->dsu_freq,
+			l3ctl_sram_base_addr + DSU_DVFS_VOTE_EAS_1 + offset_dsu_vote);
+		if (trace_sugov_ext_dsu_freq_vote_enabled())
+			trace_sugov_ext_dsu_freq_vote(per_cpu(gear_id, cpu),
+				*target_freq, ps->dsu_freq);
+	}
 }
 
 unsigned int get_dsu_target_freq(void)
