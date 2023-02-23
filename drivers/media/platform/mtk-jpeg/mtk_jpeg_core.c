@@ -1283,12 +1283,15 @@ static int mtk_jpeg_queue_init(void *priv, struct vb2_queue *src_vq,
 
 static void mtk_jpeg_clk_on(struct mtk_jpeg_dev *jpeg)
 {
-	int ret;
+	int ret, i;
 
-	ret = pm_runtime_resume_and_get(jpeg->larb);
-	if (ret)
-		dev_err(jpeg->dev, "mtk_smi_larb_get larbvdec fail %d\n", ret);
+	for (i = 0; i < jpeg->variant->num_clks; i++) {
+		ret = pm_runtime_resume_and_get(jpeg->larb[i]);
+		if (ret)
+			pr_info("clk on jpeg clk %d fail %d\n", i, ret);
+	}
 
+	pr_info("%s %d jpeg->variant->num_clks %d\n", __func__, __LINE__, jpeg->variant->num_clks);
 	ret = clk_bulk_prepare_enable(jpeg->variant->num_clks,
 				      jpeg->variant->clks);
 	if (ret)
@@ -1297,9 +1300,12 @@ static void mtk_jpeg_clk_on(struct mtk_jpeg_dev *jpeg)
 
 static void mtk_jpeg_clk_off(struct mtk_jpeg_dev *jpeg)
 {
+	int i;
 	clk_bulk_disable_unprepare(jpeg->variant->num_clks,
 				   jpeg->variant->clks);
-	pm_runtime_put_sync(jpeg->larb);
+
+	for (i = 0; i < jpeg->variant->num_clks; i++)
+		pm_runtime_put_sync(jpeg->larb[i]);
 }
 
 static irqreturn_t mtk_jpeg_enc_done(struct mtk_jpeg_dev *jpeg)
@@ -1526,35 +1532,45 @@ static struct clk_bulk_data mtk_jpeg_clocks_c1[] = {
 	{ .id = "jpgenc_c1" },
 };
 
+static struct clk_bulk_data mtk_jpeg_clocks_c0_c1[] = {
+	{ .id = "jpgenc" },
+	{ .id = "jpgenc_c1" },
+};
+
 
 static int mtk_jpeg_clk_init(struct mtk_jpeg_dev *jpeg)
 {
 	struct device_node *node;
 	struct platform_device *pdev;
 	int ret;
+	int larb_index;
 
-	node = of_parse_phandle(jpeg->dev->of_node, "mediatek,larb", 0);
-	if (!node)
-		return -EINVAL;
-	pdev = of_find_device_by_node(node);
-	if (WARN_ON(!pdev)) {
-		of_node_put(node);
-		return -EINVAL;
+	for (larb_index = 0; larb_index < jpeg->variant->num_clks; larb_index++) {
+		node = of_parse_phandle(jpeg->dev->of_node, "mediatek,larb", larb_index);
+		if (!node)
+			return -EINVAL;
+
+		pdev = of_find_device_by_node(node);
+		if (WARN_ON(!pdev)) {
+			of_node_put(node);
+			return -EINVAL;
+		}
+
+		jpeg->larb[larb_index] = &pdev->dev;
+		if (!device_link_add(jpeg->dev, jpeg->larb[larb_index],
+					DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS)) {
+			pr_info("%s larb device link fail %d\n", __func__, larb_index);
+			return -EINVAL;
+		}
 	}
-	of_node_put(node);
 
-	jpeg->larb = &pdev->dev;
-
-	if (!device_link_add(jpeg->dev, jpeg->larb, DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS)) {
-		pr_info("%s larb device link fail\n", __func__);
-		return -EINVAL;
-	}
-
+	pr_info("jpeg->variant->num_clks %d\n", jpeg->variant->num_clks);
 	ret = devm_clk_bulk_get(jpeg->dev, jpeg->variant->num_clks,
 				jpeg->variant->clks);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to get jpeg clock:%d\n", ret);
-		put_device(&pdev->dev);
+		for (larb_index = 0; larb_index < jpeg->variant->num_clks; larb_index++)
+			put_device(jpeg->larb[larb_index]);
 		return ret;
 	}
 
@@ -1583,7 +1599,10 @@ static void mtk_jpeg_job_timeout_work(struct work_struct *work)
 
 static inline void mtk_jpeg_clk_release(struct mtk_jpeg_dev *jpeg)
 {
-	put_device(jpeg->larb);
+	int i;
+
+	for (i = 0; i < jpeg->variant->num_clks; i++)
+		put_device(jpeg->larb[i]);
 }
 
 static int mtk_jpeg_probe(struct platform_device *pdev)
@@ -1807,6 +1826,20 @@ static const struct mtk_jpeg_variant mtk_jpeg_drvdata_c1 = {
 	.cap_q_default_fourcc = V4L2_PIX_FMT_JPEG,
 };
 
+static const struct mtk_jpeg_variant mtk_jpeg_drvdata_c0_c1 = {
+	.clks = mtk_jpeg_clocks_c0_c1,
+	.num_clks = ARRAY_SIZE(mtk_jpeg_clocks_c0_c1),
+	.formats = mtk_jpeg_enc_formats,
+	.num_formats = MTK_JPEG_ENC_NUM_FORMATS,
+	.qops = &mtk_jpeg_enc_qops,
+	.irq_handler = mtk_jpeg_enc_irq,
+	.hw_reset = mtk_jpeg_enc_reset,
+	.m2m_ops = &mtk_jpeg_enc_m2m_ops,
+	.dev_name = "mtk-jpeg-enc",
+	.ioctl_ops = &mtk_jpeg_enc_ioctl_ops,
+	.out_q_default_fourcc = V4L2_PIX_FMT_YUYV,
+	.cap_q_default_fourcc = V4L2_PIX_FMT_JPEG,
+};
 
 static const struct of_device_id mtk_jpeg_match[] = {
 	{
@@ -1824,6 +1857,10 @@ static const struct of_device_id mtk_jpeg_match[] = {
 	{
 		.compatible = "mediatek,mtk-jpgenc_c1",
 		.data = &mtk_jpeg_drvdata_c1,
+	},
+	{
+		.compatible = "mediatek,mtk-jpgenc_c0_c1",
+		.data = &mtk_jpeg_drvdata_c0_c1,
 	},
 	{},
 };

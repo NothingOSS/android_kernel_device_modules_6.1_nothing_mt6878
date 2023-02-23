@@ -19,6 +19,7 @@
 
 #define MTK_JPEG_COMP_MAX		3
 #define MTK_JPEG_MAX_FREQ		8
+#define MTK_JPEG_MAX_LARB_COUNT		2
 
 #define MTK_JPEG_FMT_FLAG_OUTPUT	BIT(0)
 #define MTK_JPEG_FMT_FLAG_CAPTURE	BIT(1)
@@ -107,7 +108,7 @@ struct mtk_jpeg_dev {
 	struct video_device	*vdev;
 	void __iomem		*reg_base;
 	void __iomem		*gcon_base;
-	struct device		*larb;
+	struct device		*larb[MTK_JPEG_MAX_LARB_COUNT];
 	struct delayed_work job_timeout_work;
 	const struct mtk_jpeg_variant *variant;
 	struct icc_path *path_y_rdma;
