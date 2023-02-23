@@ -40,7 +40,7 @@ enum {
 
 static inline bool raw_is_sink_pad(unsigned int id)
 {
-	return id >= MTK_RAW_SINK && id < MTK_RAW_SOURCE_BEGIN;
+	return id < MTK_RAW_SOURCE_BEGIN; /* && id >= MTK_RAW_SINK_BEGIN */
 }
 
 static inline bool raw_is_valid_pad(unsigned int id)

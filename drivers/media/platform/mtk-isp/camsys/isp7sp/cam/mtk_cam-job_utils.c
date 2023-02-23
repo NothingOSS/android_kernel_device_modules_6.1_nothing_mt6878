@@ -153,8 +153,8 @@ static u64 reserved_i2c_time(u64 frame_interval_ns)
 	/* > 60fps */
 	if (frame_interval_ns < INTERVAL_NS(60))
 		i2c_time = SENSOR_I2C_TIME_NS_HIGH_FPS;
-	else if (INTERVAL_NS(30) < frame_interval_ns &&
-		 frame_interval_ns <= INTERVAL_NS(60))
+	else if (INTERVAL_NS(60) <= frame_interval_ns &&
+		 frame_interval_ns < INTERVAL_NS(30))
 		i2c_time = SENSOR_I2C_TIME_NS_60FPS;
 	else
 		i2c_time = SENSOR_I2C_TIME_NS;

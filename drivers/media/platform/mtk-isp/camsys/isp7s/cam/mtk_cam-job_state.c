@@ -77,7 +77,7 @@ const char *str_state(int state_type, int state)
 	if (WARN_ON((unsigned int)state_type >= ARRAY_SIZE(str_fn)))
 		return "(not-found)";
 
-	return str_fn[state_type](state);
+	return str_fn[(unsigned int)state_type](state);
 }
 
 const char *str_state_type(int state_type)

@@ -2916,7 +2916,9 @@ static void ipi_add_hw_map(struct mtkcam_ipi_config_param *config,
 {
 	int n_maps = config->n_maps;
 
-	WARN_ON(n_maps >= ARRAY_SIZE(config->maps));
+	if (WARN_ON(n_maps >= ARRAY_SIZE(config->maps)))
+		return;
+
 	WARN_ON(!dev_mask);
 
 	config->maps[n_maps] = (struct mtkcam_ipi_hw_mapping) {
