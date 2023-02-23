@@ -3994,6 +3994,10 @@
 			share-buck = <0>;
 		};
 
+		wl_info: wl-info {
+			compatible = "mediatek,wl-info";
+		};
+
 		cpu_mcucfg: mcusys_ao_cfg@c530000 {
 			reg = <0 0x0c000000 0 0x10000>; /* 64KB */
 		};
