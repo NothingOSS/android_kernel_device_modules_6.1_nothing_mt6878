@@ -24,6 +24,7 @@
 #include <media/v4l2-ioctl.h>
 #include <media/videobuf2-core.h>
 #include <media/videobuf2-dma-contig.h>
+#include <soc/mediatek/mmdvfs_v3.h>
 #include <soc/mediatek/smi.h>
 
 #include "mtk-interconnect.h"
@@ -719,12 +720,16 @@ static void mtk_jpeg_dvfs_begin(struct mtk_jpeg_ctx *ctx)
 		pr_info("%s  volt: %d\n", __func__, volt);
 	} else if (jpeg->jpegenc_mmdvfs_clk) {
 		pr_info("%s set mmdvfs clk\n", __func__);
+		if (mmdvfs_get_version())
+			mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_JPEGENC);
 		ret = clk_set_rate(jpeg->jpegenc_mmdvfs_clk, active_freq);
 		if (ret) {
 			pr_info("%s Failed to set freq %lu\n",
 				 __func__, active_freq);
 		}
 		pr_info("%s  freq: %lu\n", __func__, active_freq);
+		if (mmdvfs_get_version())
+			mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_JPEGENC);
 	}
 }
 
