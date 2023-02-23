@@ -606,11 +606,11 @@ bool is_svp_enabled(void)
 bool is_ffa_enabled(void)
 {
 #if IS_ENABLED(CONFIG_ARM_FFA_TRANSPORT)
-//	struct device_node *dt_node;
-//
-//	dt_node = of_find_node_by_name(NULL, FFA_ENABLED_DT_UNAME);
-//	if (!dt_node)
-//		return false;
+	struct device_node *dt_node;
+
+	dt_node = of_find_node_by_name(NULL, FFA_ENABLED_DT_UNAME);
+	if (!dt_node)
+		return false;
 
 	return true;
 #else
