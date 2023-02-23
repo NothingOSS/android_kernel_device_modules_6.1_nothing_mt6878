@@ -125,6 +125,23 @@ TRACE_EVENT(sugov_ext_sbb,
 		__entry->active_ratio,
 		__entry->threshold)
 );
+
+TRACE_EVENT(sugov_adaptive_margin,
+	TP_PROTO(unsigned int gear_id, unsigned int margin),
+	TP_ARGS(gear_id, margin),
+	TP_STRUCT__entry(
+		__field(unsigned int, gear_id)
+		__field(unsigned int, margin)
+	),
+	TP_fast_assign(
+		__entry->gear_id = gear_id;
+		__entry->margin = margin;
+	),
+	TP_printk(
+		"gear_id=%u margin=%u",
+		__entry->gear_id,
+		__entry->margin)
+);
 #endif /* _TRACE_SCHEDULER_H */
 
 #undef TRACE_INCLUDE_PATH

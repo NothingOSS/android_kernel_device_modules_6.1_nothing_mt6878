@@ -159,6 +159,7 @@ extern bool is_sbb_trigger(struct rq *rq);
 extern unsigned int get_nr_gears(void);
 extern struct cpumask *get_gear_cpumask(unsigned int gear);
 extern bool is_gearless_support(void);
+extern unsigned int get_adaptive_margin(int cpu);
 DECLARE_PER_CPU(unsigned int, gear_id);
 DECLARE_PER_CPU(struct sbb_cpu_data *, sbb);
 #endif /* __CPUFREQ_H__ */
