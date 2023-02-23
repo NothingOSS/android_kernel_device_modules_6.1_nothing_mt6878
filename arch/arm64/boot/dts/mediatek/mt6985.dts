@@ -9025,8 +9025,8 @@
 			#cooling-cells = <2>;
 			ged-supply = <&ged>;
 			firmware-idle-hysteresis-time-ms = <0>;
-			sleep-mode-enable = <0>;
-			default-glb-pwroff-timeout-us = <300>;
+			sleep-mode-enable = <0xff>;
+			pending-submission-mode = <1>;
 		};
 
 		gpu_mali_opp: opp-table0 {

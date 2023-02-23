@@ -469,6 +469,11 @@ initcall_debug=1";
 	pd_vbus_upper_bound = <12000000>;
 };
 
+&mali {
+	sleep-mode-enable = <1>;
+	adaptive-power-policy = <1>;
+};
+
 #include "mediatek/cust_k6985_connfem.dtsi"
 #include "mediatek/cust_mt6985_camera_v4l2.dtsi"
 #include <k6985v1_64_for_dx3/cust.dtsi>
