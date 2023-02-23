@@ -461,8 +461,11 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 	stepper.opp_num = mtk_cam_dvfs_get_opp_table(&cam->dvfs, &stepper.tbl);
 
 	ret = mtk_raw_find_combination(&c, &stepper);
-	if (ret)
+	if (ret) {
 		dev_info(cam->dev, "failed to find valid resource\n");
+		ret = -EINVAL;
+		goto EXIT;
+	}
 
 	r->raw_pixel_mode = c.raw_pixel_mode;
 
@@ -493,6 +496,7 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 		drv_data->tgo_pxl_mode_before_raw = mtk_pixelmode_val(8);
 	}
 
+EXIT:
 	if (drv_data || CAM_DEBUG_ENABLED(V4L2_TRY))
 		dev_info(cam->dev,
 			 "calc_resource: sensor fps %u/%u %dx%d blank %u/%u linet %ld prate %llu clk %d pxlmode %d num %d img_wbuf %dx%d raw(0x%x,0x%x,%d)\n",
