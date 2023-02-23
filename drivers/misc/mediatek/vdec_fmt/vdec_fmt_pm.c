@@ -96,7 +96,10 @@ void fmt_prepare_dvfs_emi_bw(struct mtk_vdec_fmt *fmt)
 						"mmdvfs-dvfsrc-vcore");
 	if (IS_ERR_OR_NULL(fmt->fmt_reg)) {
 		fmt_debug(0, "Failed to get regulator\n");
-		fmt->dvfs_clk = devm_clk_get(fmt->dev, "mmdvfs_clk");
+		if (!mmdvfs_get_version())
+			fmt->dvfs_clk = devm_clk_get(fmt->dev, "mmdvfs_clk");
+		else
+			fmt->dvfs_clk = devm_clk_get(fmt->dev, "mmdvfs_mux");
 		if (IS_ERR_OR_NULL(fmt->dvfs_clk)) {
 			fmt_debug(0, "Failed to get mmdvfs clk\n");
 			return;
