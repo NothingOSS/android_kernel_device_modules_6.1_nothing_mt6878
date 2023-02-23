@@ -36,6 +36,7 @@
 #include "mtk-interconnect.h"
 #include <linux/pm_opp.h>
 #include <linux/regulator/consumer.h>
+#include <soc/mediatek/mmdvfs_v3.h>
 #include <soc/mediatek/smi.h>
 
 #ifdef CMDQ_SECURE_PATH_SUPPORT
@@ -2555,10 +2556,14 @@ static void mdp_request_voltage(unsigned long frequency, bool is_mdp)
 			if (IS_ERR_OR_NULL(mdp_mmdvfs_clk))
 				CMDQ_ERR("%s wrong mdp_mmdvfs_clk\n", __func__);
 			else {
+				if (mmdvfs_get_version())
+					mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MDP);
 				ret = clk_set_rate(mdp_mmdvfs_clk, frequency * 1000000);
 				if (ret)
 					CMDQ_ERR("%s clk_set_rate(mdp) fail ret:%d\n",
 						__func__, ret);
+				if (mmdvfs_get_version())
+					mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MDP);
 			}
 		} else {
 			ret = regulator_set_voltage(mdp_mmdvfs_reg, low_volt, INT_MAX);
