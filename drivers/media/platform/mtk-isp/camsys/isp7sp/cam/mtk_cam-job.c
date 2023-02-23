@@ -2245,6 +2245,8 @@ static int fill_raw_img_buffer_to_ipi_frame(
 			++helper->io_idx;
 
 			ret = fill_img_out(out, buf, node);
+			if (!ret && is_rgbw(job))
+				ret = fill_img_out_w(out, buf, node);
 		}
 	} else {
 		struct mtkcam_ipi_img_input *in;

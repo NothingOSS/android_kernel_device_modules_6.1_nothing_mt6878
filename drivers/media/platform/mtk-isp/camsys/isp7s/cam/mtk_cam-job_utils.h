@@ -106,13 +106,16 @@ int fill_img_in(struct mtkcam_ipi_img_input *ii,
 int fill_img_out(struct mtkcam_ipi_img_output *io,
 		 struct mtk_cam_buffer *buf,
 		 struct mtk_cam_video_device *node);
+int fill_img_out_w(struct mtkcam_ipi_img_output *io,
+		 struct mtk_cam_buffer *buf,
+		 struct mtk_cam_video_device *node);
 int fill_img_out_hdr(struct mtkcam_ipi_img_output *io,
 		     struct mtk_cam_buffer *buf,
 		     struct mtk_cam_video_device *node,
-		     int index);
+		     int index, int id);
 int fill_img_in_hdr(struct mtkcam_ipi_img_input *ii,
 		    struct mtk_cam_buffer *buf,
-		    struct mtk_cam_video_device *node);
+		    struct mtk_cam_video_device *node, int index, int id);
 int fill_imgo_out_subsample(struct mtkcam_ipi_img_output *io,
 			    struct mtk_cam_buffer *buf,
 			    struct mtk_cam_video_device *node,
@@ -131,6 +134,9 @@ int get_hw_scenario(struct mtk_cam_job *job);
 bool is_dc_mode(struct mtk_cam_job *job);
 bool is_sv_pure_raw(struct mtk_cam_job *job);
 bool is_rgbw(struct mtk_cam_job *job);
+int raw_video_id_w_port(int rawi_id);
+void get_stagger_rawi_table(struct mtk_cam_job *job,
+	const int **rawi_table, int *cnt);
 
 #endif //__MTK_CAM_JOB_UTILS_H
 

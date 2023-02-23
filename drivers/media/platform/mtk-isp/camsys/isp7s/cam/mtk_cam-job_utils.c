@@ -95,23 +95,30 @@ EXIT:
 int get_hw_scenario(struct mtk_cam_job *job)
 {
 	struct mtk_cam_scen *scen = &job->job_scen;
-	int isDC = is_dc_mode(job);
+	int is_dc = is_dc_mode(job);
+	int is_w = is_rgbw(job);
 	int hard_scenario = 0;
 
 	switch (scen->id) {
 	case MTK_CAM_SCEN_NORMAL:
-		if (scen->scen.normal.max_exp_num > 1)
-			hard_scenario = isDC ?
+		if (is_w) {
+			hard_scenario = (is_dc) ? MTKCAM_IPI_HW_PATH_DC_RGBW :
+				MTKCAM_IPI_HW_PATH_OTF_RGBW;
+		} else if (scen->scen.normal.max_exp_num > 1)
+			hard_scenario = is_dc ?
 				MTKCAM_IPI_HW_PATH_DC_STAGGER :
 				MTKCAM_IPI_HW_PATH_STAGGER;
 		else
-			hard_scenario = isDC ?
-				MTKCAM_IPI_HW_PATH_DC_STAGGER :
+			hard_scenario = is_dc ?
+				MTKCAM_IPI_HW_PATH_DC :
 				MTKCAM_IPI_HW_PATH_ON_THE_FLY;
+		break;
+	case MTK_CAM_SCEN_MSTREAM:
+		hard_scenario = MTKCAM_IPI_HW_PATH_MSTREAM;
 		break;
 	default:
 		pr_info("[%s] un-support scen id:%d",
-			__func__, scen->id);
+		__func__, scen->id);
 		break;
 	}
 
@@ -290,9 +297,8 @@ static int fill_img_out_driver_buf(struct mtkcam_ipi_img_output *io,
 
 static int fill_sv_img_fp_working_buffer(struct req_buffer_helper *helper,
 	struct mtk_cam_driver_buf_desc *desc,
-	struct mtk_cam_pool_buffer *buf, int exp_no)
+	struct mtk_cam_pool_buffer *buf, int exp_no, bool is_w)
 {
-	// TODO: select RGBW tag
 	struct mtkcam_ipi_frame_param *fp = helper->fp;
 	struct mtk_cam_job *job = helper->job;
 	struct mtk_cam_ctx *ctx = job->src_ctx;
@@ -310,8 +316,8 @@ static int fill_sv_img_fp_working_buffer(struct req_buffer_helper *helper,
 
 	job_exp_no = job->exp_num_cur;
 	tag_idx = (is_dc_mode(job) && job_exp_no > 1 && (exp_no + 1) == job_exp_no) ?
-		get_sv_tag_idx_hdr(job_exp_no, MTKCAM_IPI_ORDER_LAST_TAG, false) :
-		get_sv_tag_idx_hdr(job_exp_no, exp_no, false);
+		get_sv_tag_idx_hdr(job_exp_no, MTKCAM_IPI_ORDER_LAST_TAG, is_w) :
+		get_sv_tag_idx_hdr(job_exp_no, exp_no, is_w);
 	if (tag_idx == -1) {
 		ret = -1;
 		pr_info("%s: tag_idx not found(exp_no:%d)", __func__, job_exp_no);
@@ -348,9 +354,11 @@ static const int dc_3exp_rawi[3] = {
 	MTKCAM_IPI_RAW_RAWI_2, MTKCAM_IPI_RAW_RAWI_3, MTKCAM_IPI_RAW_RAWI_5
 };
 
-static inline int rawi_w_port(int rawi_ipi)
+int raw_video_id_w_port(int rawi_id)
 {
-	switch (rawi_ipi) {
+	switch (rawi_id) {
+	case MTKCAM_IPI_RAW_IMGO:
+		return MTKCAM_IPI_RAW_IMGO_W;
 	case MTKCAM_IPI_RAW_RAWI_2:
 		return MTKCAM_IPI_RAW_RAWI_2_W;
 	case MTKCAM_IPI_RAW_RAWI_3:
@@ -364,7 +372,7 @@ static inline int rawi_w_port(int rawi_ipi)
 }
 
 static int fill_sv_to_rawi_wbuf(struct req_buffer_helper *helper,
-		__u8 pipe_id, __u8 ipi, int exp_no,
+		__u8 pipe_id, __u8 ipi, int exp_no, bool is_w,
 		struct mtk_cam_driver_buf_desc *buf_desc,
 		struct mtk_cam_pool_buffer *buf)
 {
@@ -382,10 +390,33 @@ static int fill_sv_to_rawi_wbuf(struct req_buffer_helper *helper,
 
 	if (helper->job->job_type != JOB_TYPE_MSTREAM) {
 		/* HS_TODO: dc? */
-		ret = ret || fill_sv_img_fp_working_buffer(helper, buf_desc, buf, exp_no);
+		ret = ret || fill_sv_img_fp_working_buffer(helper, buf_desc, buf, exp_no, is_w);
 	}
 
 	return ret;
+}
+
+void get_stagger_rawi_table(struct mtk_cam_job *job,
+		const int **rawi_table, int *cnt)
+{
+	switch (job->exp_num_cur) {
+	case 1:
+		(*rawi_table) = is_dc_mode(job) ? dc_1exp_rawi : NULL;
+		*cnt = is_dc_mode(job) ? ARRAY_SIZE(dc_1exp_rawi) : 0;
+		break;
+	case 2:
+		(*rawi_table) = is_dc_mode(job) ? dc_2exp_rawi : otf_2exp_rawi;
+		*cnt = is_dc_mode(job) ?
+			ARRAY_SIZE(dc_2exp_rawi) : ARRAY_SIZE(otf_2exp_rawi);
+		break;
+	case 3:
+		(*rawi_table) = is_dc_mode(job) ? dc_3exp_rawi : otf_3exp_rawi;
+		*cnt = is_dc_mode(job) ?
+			ARRAY_SIZE(dc_3exp_rawi) : ARRAY_SIZE(otf_3exp_rawi);
+		break;
+	default:
+		break;
+	}
 }
 
 int update_work_buffer_to_ipi_frame(struct req_buffer_helper *helper)
@@ -400,26 +431,11 @@ int update_work_buffer_to_ipi_frame(struct req_buffer_helper *helper)
 	if (helper->filled_hdr_buffer)
 		return 0;
 
-	switch (job->exp_num_cur) {
-	case 1:
-		rawi_table = is_dc_mode(job) ? dc_1exp_rawi : NULL;
-		break;
-	case 2:
-		rawi_table = is_dc_mode(job) ? dc_2exp_rawi : otf_2exp_rawi;
-		break;
-	case 3:
-		rawi_table = is_dc_mode(job) ? dc_3exp_rawi : otf_3exp_rawi;
-		break;
-	default:
-		return ret;
-	}
+	get_stagger_rawi_table(job, &rawi_table, &raw_table_size);
 
 	/* no need img working buffer */
 	if (!rawi_table)
 		return ret;
-
-	raw_table_size = is_dc_mode(job) ?
-			job->exp_num_cur : job->exp_num_cur - 1;
 
 	for (i = 0 ; i < raw_table_size; i++) {
 		ret = mtk_cam_buffer_pool_fetch(&ctx->img_work_pool, &job->img_work_buf);
@@ -429,7 +445,7 @@ int update_work_buffer_to_ipi_frame(struct req_buffer_helper *helper)
 		}
 
 		ret = fill_sv_to_rawi_wbuf(helper, get_raw_subdev_idx(ctx->used_pipe),
-				rawi_table[i], i,
+				rawi_table[i], i, false,
 				&ctx->img_work_buf_desc, &job->img_work_buf);
 
 		mtk_cam_buffer_pool_return(&job->img_work_buf);
@@ -442,7 +458,7 @@ int update_work_buffer_to_ipi_frame(struct req_buffer_helper *helper)
 			}
 
 			ret = fill_sv_to_rawi_wbuf(helper, get_raw_subdev_idx(ctx->used_pipe),
-					rawi_w_port(rawi_table[i]), i,
+					raw_video_id_w_port(rawi_table[i]), i, true,
 					&ctx->img_work_buf_desc, &job->img_work_buf);
 
 			mtk_cam_buffer_pool_return(&job->img_work_buf);
@@ -472,21 +488,21 @@ static int fill_img_fmt(struct mtkcam_ipi_pix_fmt *ipi_pfmt,
 
 int fill_img_in_hdr(struct mtkcam_ipi_img_input *ii,
 			struct mtk_cam_buffer *buf,
-			struct mtk_cam_video_device *node)
+			struct mtk_cam_video_device *node, int index, int id)
 {
 	/* uid */
-	ii->uid = node->uid;
-	ii->uid.id = MTKCAM_IPI_RAW_RAWI_2;
+	ii->uid.pipe_id = node->uid.pipe_id;
+	ii->uid.id = id;
 	/* fmt */
 	fill_img_fmt(&ii->fmt, buf);
 
 	/* FIXME: porting workaround */
 	ii->buf[0].size = buf->image_info.size[0];
-	ii->buf[0].iova = buf->daddr;
+	ii->buf[0].iova = buf->daddr + index * buf->image_info.size[0];
 	ii->buf[0].ccd_fd = buf->vbb.vb2_buf.planes[0].m.fd;
 
-	buf_printk("buf->daddr:0x%llx, io->buf[0][0].iova:0x%llx, size%d",
-		   buf->daddr, ii->buf[0].iova, ii->buf[0].size);
+	buf_printk("id:%d idx:%d buf->daddr:0x%llx, io->buf[0][0].iova:0x%llx, size:%d",
+		   id, index, buf->daddr, ii->buf[0].iova, ii->buf[0].size);
 
 	return 0;
 }
@@ -545,13 +561,15 @@ int fill_imgo_out_subsample(struct mtkcam_ipi_img_output *io,
 
 	return 0;
 }
+
 int fill_img_out_hdr(struct mtkcam_ipi_img_output *io,
 		     struct mtk_cam_buffer *buf,
 		     struct mtk_cam_video_device *node,
-		     int index)
+		     int index, int id)
 {
 	/* uid */
-	io->uid = node->uid;
+	io->uid.pipe_id = node->uid.pipe_id;
+	io->uid.id = id;
 
 	/* fmt */
 	fill_img_fmt(&io->fmt, buf);
@@ -575,7 +593,7 @@ int fill_img_out_hdr(struct mtkcam_ipi_img_output *io,
 }
 
 static int mtk_cam_fill_img_out_buf(struct mtkcam_ipi_img_output *io,
-				    struct mtk_cam_buffer *buf)
+				    struct mtk_cam_buffer *buf, int index)
 {
 	struct mtk_cam_cached_image_info *img_info = &buf->image_info;
 	dma_addr_t daddr;
@@ -589,6 +607,8 @@ static int mtk_cam_fill_img_out_buf(struct mtkcam_ipi_img_output *io,
 
 		if (!size)
 			break;
+
+		daddr += index * size;
 
 		io->buf[0][i].iova = daddr;
 		io->buf[0][i].size = size;
@@ -677,9 +697,9 @@ int fill_img_in(struct mtkcam_ipi_img_input *ii,
 	return 0;
 }
 
-int fill_img_out(struct mtkcam_ipi_img_output *io,
+static int _fill_img_out(struct mtkcam_ipi_img_output *io,
 			struct mtk_cam_buffer *buf,
-			struct mtk_cam_video_device *node)
+			struct mtk_cam_video_device *node, int index)
 {
 	/* uid */
 	io->uid = node->uid;
@@ -687,7 +707,7 @@ int fill_img_out(struct mtkcam_ipi_img_output *io,
 	/* fmt */
 	fill_img_fmt(&io->fmt, buf);
 
-	mtk_cam_fill_img_out_buf(io, buf);
+	mtk_cam_fill_img_out_buf(io, buf, index);
 
 	/* crop */
 	io->crop = v4l2_rect_to_ipi_crop(&buf->image_info.crop);
@@ -697,6 +717,20 @@ int fill_img_out(struct mtkcam_ipi_img_output *io,
 		   io->fmt.s.w, io->fmt.s.h,
 		   io->crop.p.x, io->crop.p.y, io->crop.s.w, io->crop.s.h);
 	return 0;
+}
+
+int fill_img_out(struct mtkcam_ipi_img_output *io,
+			struct mtk_cam_buffer *buf,
+			struct mtk_cam_video_device *node)
+{
+	return _fill_img_out(io, buf, node, 0);
+}
+
+int fill_img_out_w(struct mtkcam_ipi_img_output *io,
+			struct mtk_cam_buffer *buf,
+			struct mtk_cam_video_device *node)
+{
+	return _fill_img_out(io, buf, node, 1);
 }
 
 int get_sv_tag_idx(unsigned int exp_no, unsigned int tag_order, bool is_w)

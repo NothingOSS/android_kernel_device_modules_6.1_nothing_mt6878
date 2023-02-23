@@ -1493,6 +1493,7 @@ static void _destroy_pool(struct mtk_cam_device_buf *buf,
 	mtk_cam_device_buf_uninit(buf);
 }
 
+// TODO(Will): get offset from rgb path?
 #define MTK_CAM_CACI_TABLE_SIZE (50000)
 static int mtk_cam_ctx_alloc_rgbw_caci_buf(struct mtk_cam_ctx *ctx)
 {

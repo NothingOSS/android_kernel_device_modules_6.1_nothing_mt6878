@@ -28,42 +28,52 @@ int fill_imgo_img_buffer_to_ipi_frame_stagger(
 	struct req_buffer_helper *helper, struct mtk_cam_buffer *buf,
 	struct mtk_cam_video_device *node)
 {
-	struct mtk_cam_job *job = helper->job;
 	struct mtkcam_ipi_frame_param *fp = helper->fp;
 	struct mtkcam_ipi_img_output *out;
 	struct mtkcam_ipi_img_input *in;
-	int isneedrawi = is_stagger_multi_exposure(helper->job);
-	int ret = -1;
+	struct mtk_cam_job *job = helper->job;
+	bool is_w = is_rgbw(job);
+	bool is_otf = !is_dc_mode(job);
+	const int *rawi_table = NULL;
+	int rawi_cnt = 0;
+	int i = 0, index = 0, ret = -1;
 	bool bypass_imgo;
+
+	helper->filled_hdr_buffer = true;
 
 	bypass_imgo =
 		(node->desc.id == MTK_RAW_MAIN_STREAM_OUT) &&
 		is_sv_pure_raw(job);
 
-	if (isneedrawi) {
-		if (!bypass_imgo) {
-			out = &fp->img_outs[helper->io_idx];
-			++helper->io_idx;
-			ret = fill_img_out_hdr(out, buf, node, 1); /* TODO: by exp-order */
+	get_stagger_rawi_table(job, &rawi_table, &rawi_cnt);
+
+	for (i = 1; i <= rawi_cnt; i++) {
+		in = &fp->img_ins[helper->ii_idx++];
+		ret = fill_img_in_hdr(in, buf, node, index++, rawi_table[i]);
+
+		if (is_w) {
+			in = &fp->img_ins[helper->ii_idx++];
+			ret = fill_img_in_hdr(in, buf, node, index++,
+					raw_video_id_w_port(rawi_table[i]));
 		}
+	}
 
-		in = &fp->img_ins[helper->ii_idx];
-		++helper->ii_idx;
-		ret = fill_img_in_hdr(in, buf, node);
+	if (is_otf && !bypass_imgo) {
+		// OTF, raw outputs last exp
+		out = &fp->img_outs[helper->io_idx++];
+		ret = fill_img_out_hdr(out, buf, node,
+				index++, MTKCAM_IPI_RAW_IMGO);
 
-		helper->filled_hdr_buffer = true;
-	} else {
-		if (!bypass_imgo) {
-			out = &fp->img_outs[helper->io_idx];
-			++helper->io_idx;
-			ret = fill_img_out(out, buf, node);
+		if (is_w) {
+			out = &fp->img_outs[helper->io_idx++];
+			ret = fill_img_out_hdr(out, buf, node,
+					index++, raw_video_id_w_port(MTKCAM_IPI_RAW_IMGO));
 		}
 	}
 
 	if (bypass_imgo && CAM_DEBUG_ENABLED(JOB))
-		pr_info("%s:req:%s bypass raw imgo, is_need_rawi:%d\n",
-			__func__, job->req->req.debug_str, isneedrawi);
-
+		pr_info("%s:req:%s bypass raw imgo\n",
+			__func__, job->req->req.debug_str);
 	/* fill sv image fp */
 	ret = fill_sv_img_fp(helper, buf, node);
 
