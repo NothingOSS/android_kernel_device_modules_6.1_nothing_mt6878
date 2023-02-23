@@ -145,6 +145,12 @@ static void dump_cq_setting(struct mtk_raw_device *dev)
 		 readl(dev->base + REG_CAMCQ_SCQ_START_PERIOD));
 }
 
+static void dump_interrupt(struct mtk_raw_device *dev)
+{
+	dev_info(dev->dev, "CAMCTL INT_EN 0x%08x\n",
+		 readl_relaxed(dev->base + REG_CAMCTL_INT_EN));
+}
+
 static void dump_tg_setting(struct mtk_raw_device *dev, const char *msg)
 {
 	dev_info(dev->dev,
@@ -2008,4 +2014,5 @@ void raw_dump_debug_status(struct mtk_raw_device *dev)
 	dump_seqence(dev);
 	dump_cq_setting(dev);
 	dump_tg_setting(dev, "debug");
+	dump_interrupt(dev);
 }
