@@ -92,7 +92,7 @@ static void tmem_do_gettimeofday(struct timespec64 *tv)
 #define PAGED_BASED_FFA_FLAGS 0x80000000
 
 /* receiver numbers */
-#define ATTRS_NUM 12
+#define ATTRS_NUM 14
 /* receiver should be a VM at normal world */
 #define VM_HA_1   0x2
 #define VM_HA_2   0x3
@@ -105,6 +105,8 @@ static void tmem_do_gettimeofday(struct timespec64 *tv)
 #define VM_HA_9   0xa
 #define VM_HA_10  0xb
 #define VM_HA_11  0xc
+#define VM_HA_12  0xd
+#define VM_HA_13  0xe
 /* receiver should be a SP at secure world */
 #define SP_TA_1   0x8001
 
@@ -248,7 +250,15 @@ static void set_memory_region_attrs(enum MTEE_MCHUNKS_ID mchunk_id,
 			.receiver = VM_HA_11,
 			.attrs = FFA_MEM_RW
 		};
-		ffa_args->nattrs = 11;
+		mem_region_attrs[11] = (struct ffa_mem_region_attributes) {
+			.receiver = VM_HA_12,
+			.attrs = FFA_MEM_RW
+		};
+		mem_region_attrs[12] = (struct ffa_mem_region_attributes) {
+			.receiver = VM_HA_13,
+			.attrs = FFA_MEM_RW
+		};
+		ffa_args->nattrs = 13;
 		pr_info("%s: mchunk_id = MTEE_MCHUNKS_PROT\n", __func__);
 		break;
 
