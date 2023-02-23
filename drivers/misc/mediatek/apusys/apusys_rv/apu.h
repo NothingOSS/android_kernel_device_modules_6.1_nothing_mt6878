@@ -225,7 +225,7 @@ struct mtk_apu {
 #define DRAM_OFFSET (0x00000UL)
 #define TCM_OFFSET (0x1d000000UL)
 #define CODE_BUF_DA (DRAM_OFFSET)
-#define APU_SEC_FW_IOVA (0x200000UL)
+#define APU_SEC_FW_IOVA (0x00000UL)//(0x200000UL)// todo
 
 int apu_mem_init(struct mtk_apu *apu);
 void apu_mem_remove(struct mtk_apu *apu);
