@@ -3211,6 +3211,7 @@ static int mtk_dsi_create_connector(struct drm_device *drm, struct mtk_dsi *dsi)
 	}
 
 	dsi->connector_caps.conn_caps.lcm_degree = params->lcm_degree;
+	dsi->connector_caps.conn_caps.lcm_color_mode = params->lcm_color_mode;
 	drm_connector_helper_add(&dsi->conn, &mtk_dsi_conn_helper_funcs);
 	mtk_drm_connector_attach_property(&dsi->conn);
 
