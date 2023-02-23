@@ -79,6 +79,16 @@ static struct mtk_jpeg_fmt mtk_jpeg_enc_formats[] = {
 		.v_align	= 3,
 		.flags		= MTK_JPEG_FMT_FLAG_OUTPUT,
 	},
+	{
+		.fourcc		= V4L2_PIX_FMT_NV12_AFBC,
+		.hw_format	= JPEG_ENC_YUV_FORMAT_NV12,
+		.h_sample	= {4},
+		.v_sample	= {4},
+		.colplanes	= 1,
+		.h_align	= 4,
+		.v_align	= 4,
+		.flags		= MTK_JPEG_FMT_FLAG_OUTPUT,
+	},
 };
 
 static struct mtk_jpeg_fmt mtk_jpeg_dec_formats[] = {
@@ -303,8 +313,20 @@ static int mtk_jpeg_try_fmt_mplane(struct v4l2_pix_format_mplane *pix_mp,
 		u32 stride = pix_mp->width * fmt->h_sample[i] / 4;
 		u32 h = pix_mp->height * fmt->v_sample[i] / 4;
 
-		pfmt->bytesperline = stride;
-		pfmt->sizeimage = stride * h;
+		if (pix_mp->pixelformat == V4L2_PIX_FMT_NV12_AFBC) {
+			unsigned int block_w = 16;
+			unsigned int block_h = 16;
+			unsigned int bitsPP = 12;
+			unsigned int block_count =
+					((pix_mp->width + (block_w - 1))/block_w)
+					*((pix_mp->height + (block_h - 1))/block_h);
+			pfmt->bytesperline = stride;
+			pfmt->sizeimage = (block_count << 4) +
+					(block_count * block_w * block_h  * bitsPP / 8);
+		} else {
+			pfmt->bytesperline = stride;
+			pfmt->sizeimage = stride * h;
+		}
 	}
 	return 0;
 }

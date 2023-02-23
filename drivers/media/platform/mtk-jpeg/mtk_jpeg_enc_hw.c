@@ -124,7 +124,8 @@ void mtk_jpeg_set_enc_params(struct mtk_jpeg_ctx *ctx,  void __iomem *base)
 	writel(value, base + JPEG_ENC_IMG_SIZE);
 
 	if (enc_format == V4L2_PIX_FMT_NV12M ||
-	    enc_format == V4L2_PIX_FMT_NV21M)
+		enc_format == V4L2_PIX_FMT_NV21M ||
+		enc_format == V4L2_PIX_FMT_NV12_AFBC)
 	    /*
 	     * Total 8 x 8 block number of luma and chroma.
 	     * The number of blocks is counted from 0.
@@ -137,7 +138,8 @@ void mtk_jpeg_set_enc_params(struct mtk_jpeg_ctx *ctx,  void __iomem *base)
 	writel(blk_num, base + JPEG_ENC_BLK_NUM);
 
 	if (enc_format == V4L2_PIX_FMT_NV12M ||
-	    enc_format == V4L2_PIX_FMT_NV21M) {
+		enc_format == V4L2_PIX_FMT_NV21M ||
+		enc_format == V4L2_PIX_FMT_NV12_AFBC) {
 		/* 4:2:0 */
 		img_stride = round_up(width, 16);
 		mem_stride = bytesperline;
@@ -148,6 +150,20 @@ void mtk_jpeg_set_enc_params(struct mtk_jpeg_ctx *ctx,  void __iomem *base)
 	}
 	writel(img_stride, base + JPEG_ENC_IMG_STRIDE);
 	writel(mem_stride, base + JPEG_ENC_STRIDE);
+
+	if (enc_format == V4L2_PIX_FMT_NV12_AFBC) {
+		value = (1U << 0) +   //enable
+		(4U << 4) +   //disable SMI command grouping
+		(3U << 8) +   //SMI command grouping number of plane 0 (payload)
+		(4U << 12) +  //SMI command grouping number of plane 2 (header)
+		(15U << 16) +  //SMI gburst type selection
+				//0:Single access
+				//1:Burst 2 access
+				//7:Burst 8 access
+				//15:Burst 16 access
+		(1U << 24);   // support YUV_transform
+		writel(value, base + JPGENC_AFBC_CONFIG_0);
+	}
 
 	enc_quality = JPEG_ENC_QUALITY_Q24;
 	for (i = ARRAY_SIZE(mtk_jpeg_enc_quality)-1; i >= 0; i--) {
