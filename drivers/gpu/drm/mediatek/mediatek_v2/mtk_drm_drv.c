@@ -61,6 +61,7 @@
 #include "mtk_lease.h"
 #include "mtk_disp_oddmr/mtk_disp_oddmr.h"
 #include "platform/mtk_drm_platform.h"
+#include "mtk_drm_trace.h"
 
 #include "mtk_drm_mmp.h"
 /* *******Panel Master******** */
@@ -1888,8 +1889,10 @@ static int mtk_atomic_commit(struct drm_device *drm,
 		atomic_set(&(mtk_crtc->wait_mml_last_job_is_flushed), 0);
 
 		DRM_MMP_MARK(mutex_lock, (unsigned long)&mtk_crtc->lock, i);
+
 		DDP_MUTEX_LOCK_NESTED(&mtk_crtc->lock, i, __func__, __LINE__);
 		CRTC_MMP_EVENT_START((int)drm_crtc_index(crtc), atomic_commit, 0, 0);
+		drm_trace_tag_mark_bycrtc("atomic_commit", drm_crtc_index(crtc));
 	}
 	mutex_nested_time_start = sched_clock();
 

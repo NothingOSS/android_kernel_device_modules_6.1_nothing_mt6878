@@ -49,6 +49,7 @@
 #include "mtk_disp_notify.h"
 #include "mtk_dsi.h"
 #include "platform/mtk_drm_platform.h"
+#include "mtk_drm_trace.h"
 
 /* ************ Panel Master ********** */
 #include "mtk_fbconfig_kdebug.h"
@@ -2320,10 +2321,11 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 
 		if ((status & TE_RDY_INT_FLAG) && mtk_crtc &&
 				(atomic_read(&mtk_crtc->d_te.te_switched) != 1)) {
+
+			drm_trace_tag_mark("TE_RDY");
 			if (dsi->ddp_comp.id == DDP_COMPONENT_DSI0 ||
 				dsi->ddp_comp.id == DDP_COMPONENT_DSI1) {
 				unsigned long long ext_te_time = sched_clock();
-
 				lcm_fps_ctx_update(ext_te_time, 0, 0);
 			}
 
@@ -2369,6 +2371,8 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 		}
 
 		if (status & FRAME_DONE_INT_FLAG) {
+			drm_trace_tag_mark("dsi_frame_done");
+
 			if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
 							   MTK_DRM_OPT_HBM))
 				wakeup_dsi_wq(&dsi->frame_done);
@@ -2395,6 +2399,10 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				} else
 					mtk_crtc_vblank_irq(&mtk_crtc->base);
 			}
+		}
+		if (status & CMD_DONE_INT_FLAG) {
+			DDPDBG("dsi cmd done!\n");
+			drm_trace_tag_mark("dsi_cmd_done");
 		}
 	}
 
