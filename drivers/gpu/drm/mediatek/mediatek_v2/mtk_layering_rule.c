@@ -538,7 +538,8 @@ static uint16_t get_mapping_table(struct drm_device *dev, int disp_idx, int disp
 
 	switch (tb_type) {
 	case DISP_HW_OVL_TB:
-		if (priv->data->mmsys_id == MMSYS_MT6985)
+		if (priv->data->mmsys_id == MMSYS_MT6985 ||
+			priv->data->mmsys_id == MMSYS_MT6897)
 			if (get_layering_opt(LYE_OPT_SPDA_OVL_SWITCH))
 				map = get_dynamic_mapping_table(dev, disp_idx, disp_list,
 						DISP_HW_OVL_TB, addon_data->hrt_type);
@@ -560,7 +561,8 @@ static uint16_t get_mapping_table(struct drm_device *dev, int disp_idx, int disp
 		break;
 	case DISP_HW_LAYER_TB:
 		if (param <= MAX_PHY_OVL_CNT && param >= 0) {
-			if (priv->data->mmsys_id == MMSYS_MT6985)
+			if (priv->data->mmsys_id == MMSYS_MT6985 ||
+				priv->data->mmsys_id == MMSYS_MT6897)
 				if (get_layering_opt(LYE_OPT_SPDA_OVL_SWITCH))
 					tmp_map = get_dynamic_mapping_table(dev, disp_idx,
 						disp_list, DISP_HW_LAYER_TB, addon_data->hrt_type);
