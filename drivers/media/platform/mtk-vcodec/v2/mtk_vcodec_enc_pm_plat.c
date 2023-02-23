@@ -8,6 +8,7 @@
 #include <linux/of_platform.h>
 #include <linux/pm_runtime.h>
 #include <linux/delay.h>
+#include <soc/mediatek/mmdvfs_v3.h>
 #include <soc/mediatek/smi.h>
 
 #include "mtk_vcodec_enc_pm.h"
@@ -298,7 +299,7 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 
 	dev->venc_reg = devm_regulator_get_optional(&dev->plat_dev->dev,
 						"mmdvfs-dvfsrc-vcore");
-	if (!dev->venc_reg) {
+	if (IS_ERR_OR_NULL(dev->venc_reg)) {
 		mtk_v4l2_debug(0, "[VENC] Failed to get regulator");
 		dev->venc_reg = 0;
 		dev->venc_mmdvfs_clk = devm_clk_get(&dev->plat_dev->dev, "mmdvfs_clk");
@@ -392,11 +393,15 @@ void set_venc_opp(struct mtk_vcodec_dev *dev, u32 freq)
 		dev_pm_opp_put(opp);
 
 		if (dev->venc_mmdvfs_clk) {
+			if (mmdvfs_get_version())
+				mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_VENC);
 			ret = clk_set_rate(dev->venc_mmdvfs_clk, freq_64);
 			if (ret) {
 				mtk_v4l2_err("[VENC] Failed to set mmdvfs rate %lu\n",
 						freq_64);
 			}
+			if (mmdvfs_get_version())
+				mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_VENC);
 			mtk_v4l2_debug(8, "[VENC] freq %u, find_freq %lu", freq, freq_64);
 		} else if (dev->venc_reg) {
 			ret = regulator_set_voltage(dev->venc_reg, volt, INT_MAX);
