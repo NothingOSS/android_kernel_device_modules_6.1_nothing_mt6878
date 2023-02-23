@@ -524,7 +524,116 @@ static void mtk_dsi_post_cmd(struct mtk_dsi *dsi,
 	}
 }
 
-static void mtk_dsi_dphy_timconfig(struct mtk_dsi *dsi, void *handle)
+
+static void mtk_dsi_dphy_timconfig_v2(struct mtk_dsi *dsi, void *handle)
+{
+	struct mtk_dsi_phy_timcon *phy_timcon = NULL;
+	u32 lpx;
+	u32 da_hs_prep, da_hs_zero, da_hs_trail, da_hs_exit, da_hs_sync;
+	u32 clk_hs_prep, clk_hs_zero, clk_hs_trail, clk_hs_post, clk_hs_exit;
+	u32 ta_go, ta_get, ta_sure;
+	u32 cont_det;
+	u32 value = 0;
+	struct mtk_ddp_comp *comp = &dsi->ddp_comp;
+
+	DDPINFO("%s, line: %d, data rate=%d\n", __func__, __LINE__, dsi->data_rate);
+
+
+	lpx = (dsi->data_rate * 80) / 8000 + 1;
+	lpx = (lpx % 2) ? lpx + 1 : lpx;  //lpx must be even
+	da_hs_prep = (dsi->data_rate * 59 + 4000) / 8000 + 1;
+	da_hs_prep = (da_hs_prep % 2) ? da_hs_prep + 1 : da_hs_prep;  //da_hs_prep must be even
+	da_hs_zero = (dsi->data_rate * 163 + 11000) / 8000 + 1 - da_hs_prep;
+	if (dsi->data_rate < 740)
+		da_hs_trail = (dsi->data_rate * 66 + 44300) / 8000 + 1;
+	else
+		da_hs_trail = (dsi->data_rate * 66 + 42000) / 8000 + 1;
+	da_hs_exit = (dsi->data_rate * 118) / 8000 + 1;
+	da_hs_exit = (da_hs_exit % 2) ? da_hs_exit : da_hs_exit + 1;  //da_hs_exit must be odd
+
+	clk_hs_prep = (dsi->data_rate * 57) / 8000 + 1;
+	clk_hs_prep = (clk_hs_prep % 2) ? clk_hs_prep + 1 : clk_hs_prep;  //clk_hs_prep must be even
+	clk_hs_zero = (dsi->data_rate * 330) / 8000 + 1 - clk_hs_prep;
+	clk_hs_trail = (dsi->data_rate * 65 + 52000) / 8000 + 1;
+	clk_hs_post = (dsi->data_rate * 65 + 53000) / 8000 + 1;
+	clk_hs_exit = (dsi->data_rate * 118) / 8000 + 1;
+
+	ta_go = 4 * lpx;
+	ta_get = 5 * lpx;
+	ta_sure = 3 * lpx / 2;
+	da_hs_sync = 1;
+	cont_det = 0;
+
+	if (!(dsi->ext && dsi->ext->params))
+		goto CONFIG_REG;
+
+	phy_timcon = &dsi->ext->params->phy_timcon;
+
+	lpx = CHK_SWITCH(phy_timcon->lpx, lpx);
+	da_hs_prep = CHK_SWITCH(phy_timcon->hs_prpr, da_hs_prep);
+	da_hs_zero = CHK_SWITCH(phy_timcon->hs_zero, da_hs_zero);
+	da_hs_trail = CHK_SWITCH(phy_timcon->hs_trail, da_hs_trail);
+
+	ta_get = CHK_SWITCH(phy_timcon->ta_get, ta_get);
+	ta_sure = CHK_SWITCH(phy_timcon->ta_sure, ta_sure);
+	ta_go = CHK_SWITCH(phy_timcon->ta_go, ta_go);
+	da_hs_exit = CHK_SWITCH(phy_timcon->da_hs_exit, da_hs_exit);
+
+	clk_hs_zero = CHK_SWITCH(phy_timcon->clk_zero, clk_hs_zero);
+	clk_hs_trail = CHK_SWITCH(phy_timcon->clk_trail, clk_hs_trail);
+	da_hs_sync = CHK_SWITCH(phy_timcon->da_hs_sync, da_hs_sync);
+
+	clk_hs_prep = CHK_SWITCH(phy_timcon->clk_hs_prpr, clk_hs_prep);
+	clk_hs_exit = CHK_SWITCH(phy_timcon->clk_hs_exit, clk_hs_exit);
+	clk_hs_post = CHK_SWITCH(phy_timcon->clk_hs_post, clk_hs_post);
+
+CONFIG_REG:
+
+	value = REG_FLD_VAL(FLD_LPX, lpx)
+		| REG_FLD_VAL(FLD_HS_PREP, da_hs_prep)
+		| REG_FLD_VAL(FLD_HS_ZERO, da_hs_zero)
+		| REG_FLD_VAL(FLD_HS_TRAIL, da_hs_trail);
+
+	if (handle)
+		cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
+			comp->regs_pa+DSI_PHY_TIMECON0, value, ~0);
+	else
+		writel(value, dsi->regs + DSI_PHY_TIMECON0);
+
+	value = REG_FLD_VAL(FLD_TA_GO, ta_go)
+		| REG_FLD_VAL(FLD_TA_SURE, ta_sure)
+		| REG_FLD_VAL(FLD_TA_GET, ta_get)
+		| REG_FLD_VAL(FLD_DA_HS_EXIT, da_hs_exit);
+
+	if (handle)
+		cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
+			comp->regs_pa+DSI_PHY_TIMECON1, value, ~0);
+	else
+		writel(value, dsi->regs + DSI_PHY_TIMECON1);
+
+	value = REG_FLD_VAL(FLD_CONT_DET, cont_det)
+		| REG_FLD_VAL(FLD_DA_HS_SYNC, da_hs_sync)
+		| REG_FLD_VAL(FLD_CLK_HS_ZERO, clk_hs_zero)
+		| REG_FLD_VAL(FLD_CLK_HS_TRAIL, clk_hs_trail);
+
+	if (handle)
+		cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
+			comp->regs_pa+DSI_PHY_TIMECON2, value, ~0);
+	else
+		writel(value, dsi->regs + DSI_PHY_TIMECON2);
+
+	value = REG_FLD_VAL(FLD_CLK_HS_PREP, clk_hs_prep)
+		| REG_FLD_VAL(FLD_CLK_HS_POST, clk_hs_post)
+		| REG_FLD_VAL(FLD_CLK_HS_EXIT, clk_hs_exit);
+
+	if (handle)
+		cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
+			comp->regs_pa+DSI_PHY_TIMECON3, value, ~0);
+	else
+		writel(value, dsi->regs + DSI_PHY_TIMECON3);
+}
+
+static void mtk_dsi_dphy_timconfig_v1(struct mtk_dsi *dsi, void *handle)
 {
 	struct mtk_dsi_phy_timcon *phy_timcon = NULL;
 	u32 lpx = 0, hs_prpr = 0, hs_zero = 0, hs_trail = 0;
@@ -650,7 +759,79 @@ CONFIG_REG:
 		writel(value, dsi->regs + DSI_PHY_TIMECON3);
 }
 
-static void mtk_dsi_cphy_timconfig(struct mtk_dsi *dsi, void *handle)
+
+static void mtk_dsi_cphy_timconfig_v2(struct mtk_dsi *dsi, void *handle)
+{
+	struct mtk_dsi_phy_timcon *phy_timcon = NULL;
+	u32 lpx;
+	u32 da_hs_prep, da_hs_zero, da_hs_trail, da_hs_exit;
+	u32 ta_go, ta_get, ta_sure;
+	u32 value = 0;
+	struct mtk_ddp_comp *comp = &dsi->ddp_comp;
+
+	DDPINFO("%s+\n", __func__);
+	DDPMSG("%s, line: %d, data rate=%d\n", __func__, __LINE__, dsi->data_rate);
+
+	lpx = (dsi->data_rate * 80) / 7000 + 1;
+	lpx = (lpx % 2) ? lpx + 1 : lpx;  //lpx must be even
+	da_hs_prep = (dsi->data_rate * 50) / 7000 + 1;
+	da_hs_prep = (da_hs_prep % 2) ? da_hs_prep + 1 : da_hs_prep;  //da_hs_prep must be even
+	da_hs_zero = 48;
+	da_hs_trail = 32;
+	da_hs_exit = (dsi->data_rate * 118) / 7000 + 1;
+	da_hs_exit = (da_hs_exit % 2) ? da_hs_exit : da_hs_exit + 1;  //da_hs_exit must be odd
+
+	ta_go = 4 * lpx;
+	ta_get = 5 * lpx;
+	ta_sure = 3 * lpx / 2;
+
+	if (!(dsi->ext && dsi->ext->params))
+		goto CONFIG_REG;
+
+	phy_timcon = &dsi->ext->params->phy_timcon;
+
+	lpx = CHK_SWITCH(phy_timcon->lpx, lpx);
+	da_hs_prep = CHK_SWITCH(phy_timcon->hs_prpr, da_hs_prep);
+	da_hs_zero = CHK_SWITCH(phy_timcon->hs_zero, da_hs_zero);
+	da_hs_trail = CHK_SWITCH(phy_timcon->hs_trail, da_hs_trail);
+
+	ta_get = CHK_SWITCH(phy_timcon->ta_get, ta_get);
+	ta_sure = CHK_SWITCH(phy_timcon->ta_sure, ta_sure);
+	ta_go = CHK_SWITCH(phy_timcon->ta_go, ta_go);
+	da_hs_exit = CHK_SWITCH(phy_timcon->da_hs_exit, da_hs_exit);
+
+CONFIG_REG:
+
+	dsi->data_phy_cycle = da_hs_prep + da_hs_zero + da_hs_exit + lpx + 5;
+
+	value = REG_FLD_VAL(FLD_LPX, lpx)
+		| REG_FLD_VAL(FLD_HS_PREP, da_hs_prep)
+		| REG_FLD_VAL(FLD_HS_ZERO, da_hs_zero)
+		| REG_FLD_VAL(FLD_HS_TRAIL, da_hs_exit);
+
+	if (handle)
+		cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
+			comp->regs_pa+DSI_PHY_TIMECON0, value, ~0);
+	else
+		writel(value, dsi->regs + DSI_PHY_TIMECON0);
+
+	value = REG_FLD_VAL(FLD_TA_GO, ta_go)
+		| REG_FLD_VAL(FLD_TA_SURE, ta_sure)
+		| REG_FLD_VAL(FLD_TA_GET, ta_get)
+		| REG_FLD_VAL(FLD_DA_HS_EXIT, da_hs_exit);
+	if (handle)
+		cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
+			comp->regs_pa+DSI_PHY_TIMECON1, value, ~0);
+	else
+		writel(value, dsi->regs + DSI_PHY_TIMECON1);
+	if (handle)
+		cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
+			comp->regs_pa+DSI_CPHY_CON0, 0x012c0003, ~0);
+	else
+		writel(0x012c0003, dsi->regs + DSI_CPHY_CON0);
+}
+
+static void mtk_dsi_cphy_timconfig_v1(struct mtk_dsi *dsi, void *handle)
 {
 	struct mtk_drm_private *priv = dsi->ddp_comp.mtk_crtc->base.dev->dev_private;
 	struct mtk_dsi_phy_timcon *phy_timcon = NULL;
@@ -740,6 +921,26 @@ CONFIG_REG:
 			comp->regs_pa+DSI_CPHY_CON0, 0x012c0003, ~0);
 	else
 		writel(0x012c0003, dsi->regs + DSI_CPHY_CON0);
+}
+
+static void mtk_dsi_dphy_timconfig(struct mtk_dsi *dsi, void *handle)
+{
+	if (dsi && dsi->driver_data) {
+		if (dsi->driver_data->n_verion <= VER_N6)
+			mtk_dsi_dphy_timconfig_v1(dsi, handle);
+		else
+			mtk_dsi_dphy_timconfig_v2(dsi, handle);
+	}
+}
+
+static void mtk_dsi_cphy_timconfig(struct mtk_dsi *dsi, void *handle)
+{
+	if (dsi && dsi->driver_data) {
+		if (dsi->driver_data->n_verion <= VER_N6)
+			mtk_dsi_cphy_timconfig_v1(dsi, handle);
+		else
+			mtk_dsi_cphy_timconfig_v2(dsi, handle);
+	}
 }
 
 static void mtk_dsi_phy_timconfig(struct mtk_dsi *dsi,
@@ -9307,6 +9508,7 @@ static const struct mtk_dsi_driver_data mt6897_dsi_driver_data = {
 	.urgent_hi_fifo_us = 15,
 	.max_vfp = 0xffe,
 	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V2,
+	.n_verion = VER_N4,
 };
 
 static const struct mtk_dsi_driver_data mt6895_dsi_driver_data = {
