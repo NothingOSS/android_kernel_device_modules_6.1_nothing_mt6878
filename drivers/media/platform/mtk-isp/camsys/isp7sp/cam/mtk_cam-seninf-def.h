@@ -345,6 +345,8 @@ enum TG_FORMAT_ENUM {
 enum {
 	/* cam cg */
 	CLK_CAM_SENINF = 0,
+	CLK_CAM_CAM,
+	CLK_CAM_CAMTG,
 	/* csi clk */
 	CLK_TOP_SENINF,
 	CLK_TOP_SENINF1,
@@ -367,6 +369,8 @@ enum {
 
 #define SENINF_CLK_NAMES \
 	"clk_cam_seninf", \
+	"clk_cam_cam", \
+	"clk_cam_camtg", \
 	"clk_top_seninf", \
 	"clk_top_seninf1", \
 	"clk_top_seninf2", \

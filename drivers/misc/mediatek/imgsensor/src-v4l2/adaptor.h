@@ -146,6 +146,10 @@ struct adaptor_ctx {
 	struct FrameSync *fsync_mgr;
 	unsigned int fsync_out_fl;
 
+	/* tsrec */
+	struct mtk_cam_seninf_tsrec_vsync_info vsync_info;
+	struct mtk_cam_seninf_tsrec_timestamp_info ts_info;
+
 	/* flags */
 	unsigned int is_streaming:1;
 	unsigned int is_sensor_inited:1;

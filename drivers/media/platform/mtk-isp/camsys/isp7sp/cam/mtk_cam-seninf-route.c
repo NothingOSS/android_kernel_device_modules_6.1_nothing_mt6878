@@ -21,6 +21,7 @@
 #include "mtk_cam-seninf-route.h"
 #include "mtk_cam-seninf-if.h"
 #include "mtk_cam-seninf-hw.h"
+#include "mtk_cam-seninf-tsrec.h"
 #include "imgsensor-user.h"
 #include "mtk_cam-seninf-ca.h"
 #include <aee.h>
@@ -814,7 +815,11 @@ int mtk_cam_seninf_get_vcinfo(struct seninf_ctx *ctx)
 	if (!vcid_map)
 		return -EINVAL;
 
+	mtk_cam_seninf_tsrec_reset_vc_dt_info(ctx->seninfIdx);
+
 	for (i = 0; i < fd.num_entries; i++) {
+		struct mtk_cam_seninf_tsrec_vc_dt_info tsrec_vc_dt_info = {0};
+
 		vc = &vcinfo->vc[vcinfo->cnt];
 		vc->vc = fd.entry[i].bus.csi2.channel;
 		vc->dt = fd.entry[i].bus.csi2.data_type;
@@ -1049,9 +1054,21 @@ int mtk_cam_seninf_get_vcinfo(struct seninf_ctx *ctx)
 			ctx->fmt[vc->out_pad].format.code,
 			fsync_ext_vsync_pad_code);
 
+		/* update final vc dt info to tsrec */
+		tsrec_vc_dt_info.vc = vc->vc;
+		tsrec_vc_dt_info.dt = vc->dt;
+		tsrec_vc_dt_info.out_pad = vc->out_pad;
+		tsrec_vc_dt_info.cust_assign_to_tsrec_exp_id =
+			fd.entry[i].bus.csi2.cust_assign_to_tsrec_exp_id;
+		tsrec_vc_dt_info.is_sensor_hw_pre_latch_exp = (u32)
+			fd.entry[i].bus.csi2.is_sensor_hw_pre_latch_exp;
+		mtk_cam_seninf_tsrec_update_vc_dt_info(
+			ctx->seninfIdx, &tsrec_vc_dt_info);
+
 		vcinfo->cnt++;
 	}
 
+	mtk_cam_seninf_tsrec_dbg_dump_vc_dt_info(ctx->seninfIdx, __func__);
 	setup_fsync_vsync_src_pad(ctx, fsync_ext_vsync_pad_code);
 
 	kfree(vcid_map);
@@ -1245,6 +1262,9 @@ static struct seninf_mux *get_mux(struct seninf_ctx *ctx, struct seninf_vc *vc,
 
 		//TODO
 		//mtk_cam_seninf_set_mux_crop(ctx, mux->idx, 0, 2327, 0);
+
+		/* notify tsrec seninf_csi/seninf_mux relationship & start tsrec */
+		mtk_cam_seninf_tsrec_n_start(ctx->seninfIdx, mux->idx);
 	}
 
 	return mux;

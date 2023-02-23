@@ -34,10 +34,11 @@
 #include "mtk_cam-seninf.h"
 #include "mtk_cam-seninf-hw.h"
 #include "mtk_cam-seninf-route.h"
+#include "mtk_cam-seninf-tsrec.h"
 #include "imgsensor-user.h"
 #include "mtk_cam-seninf-ca.h"
 
-#define is_irq_ready 0
+#define is_irq_ready 1
 
 #define ESD_RESET_SUPPORT 1
 #define V4L2_CID_MTK_SENINF_BASE	(V4L2_CID_USER_BASE | 0xf000)
@@ -784,22 +785,36 @@ static int seninf_core_probe(struct platform_device *pdev)
 	}
 	mtk_cam_seninf_init_res(core);
 
+	mtk_cam_seninf_tsrec_init(dev, core->reg_if);
+
 	spin_lock_init(&core->spinlock_irq);
 
 #if is_irq_ready
-	irq = platform_get_irq(pdev, 0);
-	if (!irq) {
-		dev_info(dev, "failed to get irq\n");
+	/* Return: non-zero IRQ number on success, negative error number on failure. */
+	irq = platform_get_irq_byname(pdev, "seninf-irq");
+	if (irq <= 0) {
+		dev_info(dev,
+			"failed to get seninf-irq number, ret:%d\n",
+			irq);
 		//return -ENODEV;
 	} else {
 		ret = devm_request_irq(dev, irq, mtk_irq_seninf, 0,
 					dev_name(dev), core);
 		if (ret) {
-			dev_info(dev, "failed to request irq=%d\n", irq);
+			dev_info(dev, "failed to request seninf-irq=%d\n", irq);
 			return ret;
 		}
-		dev_info(dev, "registered irq=%d\n", irq);
+		dev_info(dev, "registered seninf-irq=%d\n", irq);
 	}
+
+	irq = platform_get_irq_byname(pdev, "tsrec-irq");
+	if (irq <= 0) {
+		dev_info(dev,
+			"failed to get tsrec-irq number, ret:%d\n",
+			irq);
+		//return -ENODEV;
+	} else
+		mtk_cam_seninf_tsrec_irq_init(core, irq);
 #endif
 
 	/* default platform properties */
@@ -888,6 +903,8 @@ static int seninf_core_remove(struct platform_device *pdev)
 	device_remove_file(dev, &dev_attr_status);
 	device_remove_file(dev, &dev_attr_debug_ops);
 	device_remove_file(dev, &dev_attr_err_status);
+
+	mtk_cam_seninf_tsrec_uninit();
 
 	if (core->seninf_kworker_task)
 		kthread_stop(core->seninf_kworker_task);
@@ -1252,6 +1269,7 @@ static int set_test_model(struct seninf_ctx *ctx, char enable)
 	} else {
 		g_seninf_ops->_set_idle(ctx);
 		mtk_cam_seninf_release_mux(ctx);
+		mtk_cam_seninf_tsrec_n_reset(ctx->seninfIdx);
 		if (dfs->cnt)
 			seninf_dfs_set(ctx, 0);
 
@@ -1704,6 +1722,7 @@ static int seninf_csi_s_stream(struct v4l2_subdev *sd, int enable)
 #endif
 		g_seninf_ops->_set_idle(ctx);
 		mtk_cam_seninf_release_mux(ctx);
+		mtk_cam_seninf_tsrec_n_reset(ctx->seninfIdx);
 		seninf_dfs_set(ctx, 0);
 		g_seninf_ops->_poweroff(ctx);
 		ctx->dbg_last_dump_req = 0;
@@ -2611,6 +2630,7 @@ static int runtime_suspend(struct device *dev)
 {
 	struct seninf_ctx *ctx = dev_get_drvdata(dev);
 	struct seninf_core *core = ctx->core;
+	int i = 0;
 
 	mutex_lock(&core->mutex);
 
@@ -2662,18 +2682,30 @@ static int runtime_suspend(struct device *dev)
 				dev_info(dev, "invalid seninfIdx(%d)\n", ctx->seninfIdx);
 				return -EINVAL;
 			}
-		} else {
-			if (core->clk[CLK_TOP_CAMTM]) {
-				clk_disable_unprepare(core->clk[CLK_TOP_CAMTM]);
-				dev_info(dev,
-					"[%s] clk_disable_unprepare CLK_TOP_CAMTM\n", __func__);
-			}
+		}
+
+		/* one of the source clk of TSREC */
+		if (core->clk[CLK_TOP_CAMTM]) {
+			clk_disable_unprepare(core->clk[CLK_TOP_CAMTM]);
+			dev_info(dev,
+				"[%s] clk_disable_unprepare CLK_TOP_CAMTM\n", __func__);
 		}
 
 		if (core->refcnt == 0) {
-			/* disable seninf cg */
-			if (core->clk[CLK_CAM_SENINF])
-				clk_disable_unprepare(core->clk[CLK_CAM_SENINF]);
+			/* disable tsrec timer clk */
+			mtk_cam_seninf_tsrec_timer_enable(0);
+
+			/* disable cam main cg (seninf, cam, camtg) */
+			for (i = CLK_TOP_SENINF - 1; i >= 0; --i) {
+				if (core->clk[i]) {
+					clk_disable_unprepare(core->clk[i]);
+
+					dev_dbg(dev,
+						"[%s] clk_disable_unprepare clk[%d]:%s\n",
+						__func__, i, clk_names[i]);
+				}
+			}
+
 			/* disable camtg_sel as phya clk */
 			disable_phya_clk(core);
 			/* power-domains disable */
@@ -2693,6 +2725,7 @@ static int runtime_resume(struct device *dev)
 {
 	struct seninf_ctx *ctx = dev_get_drvdata(dev);
 	struct seninf_core *core = ctx->core;
+	unsigned int i = 0;
 	int ret = 0;
 
 	mutex_lock(&core->mutex);
@@ -2718,20 +2751,25 @@ static int runtime_resume(struct device *dev)
 					"[%s] enable_phya_clk(fail),ret(%d)\n",
 					__func__, ret);
 			/* enable seninf cg */
-			if (core->clk[CLK_CAM_SENINF]) {
-				ret = clk_prepare_enable(core->clk[CLK_CAM_SENINF]);
-				if (ret < 0) {
-					dev_info(dev,
-						"[%s] clk_prepare_enable clk[CLK_CAM_SENINF:%u]:%s(fail),ret(%d)\n",
-						__func__, CLK_CAM_SENINF,
-						clk_names[CLK_CAM_SENINF], ret);
-					return ret;
+			/* including seninf, cam, camtg */
+			for (i = 0; i < CLK_TOP_SENINF; ++i) {
+				if (core->clk[i]) {
+					ret = clk_prepare_enable(core->clk[i]);
+					if (ret < 0) {
+						dev_info(dev,
+							"[%s] clk_prepare_enable clk[%u]:%s(fail),ret(%d)\n",
+							__func__, i, clk_names[i], ret);
+						return ret;
+					}
+
+					dev_dbg(dev,
+						"[%s] clk_prepare_enable clk[%u]:%s(success),ret(%d)\n",
+						__func__, i, clk_names[i], ret);
 				}
-				dev_dbg(dev,
-					"[%s] clk_prepare_enable clk[CLK_CAM_SENINF:%u]:%s(success),ret(%d)\n",
-					__func__, CLK_CAM_SENINF,
-					clk_names[CLK_CAM_SENINF], ret);
 			}
+
+			/* enable tsrec timer clk */
+			mtk_cam_seninf_tsrec_timer_enable(1);
 		} else
 			dev_info(dev,
 				"[%s] multi user(%d),cnt(%d)\n",
@@ -2935,21 +2973,22 @@ static int runtime_resume(struct device *dev)
 				dev_info(dev, "invalid seninfIdx %d\n", ctx->seninfIdx);
 				return -EINVAL;
 			}
-		} else {
-			if (core->clk[CLK_TOP_CAMTM]) {
-				ret = clk_prepare_enable(core->clk[CLK_TOP_CAMTM]);
-				if (ret < 0) {
-					dev_info(dev,
-						"[%s] clk_prepare_enable clk[CLK_TOP_CAMTM:%u]:%s(fail),ret(%d)\n",
-						__func__, CLK_TOP_CAMTM,
-						clk_names[CLK_TOP_CAMTM], ret);
-					return ret;
-				}
-				dev_dbg(dev,
-					"[%s] clk_prepare_enable clk[CLK_TOP_CAMTM:%u]:%s(success),ret(%d)\n",
+		}
+
+		/* one of the source clk of TSREC */
+		if (core->clk[CLK_TOP_CAMTM]) {
+			ret = clk_prepare_enable(core->clk[CLK_TOP_CAMTM]);
+			if (ret < 0) {
+				dev_info(dev,
+					"[%s] clk_prepare_enable clk[CLK_TOP_CAMTM:%u]:%s(fail),ret(%d)\n",
 					__func__, CLK_TOP_CAMTM,
 					clk_names[CLK_TOP_CAMTM], ret);
+				return ret;
 			}
+			dev_dbg(dev,
+				"[%s] clk_prepare_enable clk[CLK_TOP_CAMTM:%u]:%s(success),ret(%d)\n",
+				__func__, CLK_TOP_CAMTM,
+				clk_names[CLK_TOP_CAMTM], ret);
 		}
 
 		if (core->refcnt == 1) {
@@ -2990,6 +3029,7 @@ static int seninf_remove(struct platform_device *pdev)
 	if (ctx->streaming) {
 		g_seninf_ops->_set_idle(ctx);
 		mtk_cam_seninf_release_mux(ctx);
+		mtk_cam_seninf_tsrec_n_reset(ctx->seninfIdx);
 	}
 
 	pm_runtime_disable(ctx->dev);

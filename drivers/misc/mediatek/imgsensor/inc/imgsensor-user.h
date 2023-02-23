@@ -338,6 +338,13 @@ struct mtk_sensor_static_param {
 	__u32 grab_h;
 };
 
+enum mtk_cam_seninf_tsrec_exp_id {
+	TSREC_EXP_ID_AUTO = 0,
+	TSREC_EXP_ID_1,
+	TSREC_EXP_ID_2,
+	TSREC_EXP_ID_3,
+};
+
 enum mtk_mbus_frame_desc_dt_remap_type {
 	MTK_MBUS_FRAME_DESC_REMAP_NONE = 0,
 	MTK_MBUS_FRAME_DESC_REMAP_TO_RAW10,
@@ -353,6 +360,8 @@ struct mtk_mbus_frame_desc_entry_csi2 {
 	u16 hsize;
 	u16 vsize;
 	u16 user_data_desc;
+	u8 is_sensor_hw_pre_latch_exp;
+	enum mtk_cam_seninf_tsrec_exp_id cust_assign_to_tsrec_exp_id;
 };
 
 struct mtk_mbus_frame_desc_entry {

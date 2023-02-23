@@ -254,6 +254,59 @@ enum mtk_cam_sensor_pm_ops {
 #define V4L2_CMD_SENSOR_IN_RESET \
 	(V4L2_CMD_USER_MTK_SENSOR_BASE + 3)
 
+#define V4L2_CMD_TSREC_NOTIFY_SENSOR_HW_PRE_LATCH \
+	(V4L2_CMD_USER_MTK_SENSOR_BASE + 4)
+
+#define V4L2_CMD_TSREC_NOTIFY_VSYNC \
+	(V4L2_CMD_USER_MTK_SENSOR_BASE + 5)
+
+#define V4L2_CMD_TSREC_SEND_TIMESTAMP_INFO \
+	(V4L2_CMD_USER_MTK_SENSOR_BASE + 6)
+
+
+/**
+ * TSREC - notify vsync structure
+ *         V4L2_CMD_TSREC_NOTIFY_VSYNC
+ */
+struct mtk_cam_seninf_tsrec_vsync_info {
+	/* source info */
+	__u32 tsrec_no;
+	__u32 seninf_idx;
+
+	__u64 irq_sys_time_ns; // ktime_get_boottime_ns()
+	__u64 irq_tsrec_ts_us;
+};
+
+
+/**
+ * TSREC - timestamp info structure / define
+ *         V4L2_CMD_TSREC_SEND_TIMESTAMP_INFO
+ */
+#define TSREC_TS_REC_MAX_CNT (4)
+#define TSREC_EXP_MAX_CNT    (3)
+
+struct mtk_cam_seninf_tsrec_timestamp_exp {
+	__u64 ts_us[TSREC_TS_REC_MAX_CNT];
+};
+
+struct mtk_cam_seninf_tsrec_timestamp_info {
+	/* source info */
+	__u32 tsrec_no;
+	__u32 seninf_idx;
+
+	/* basic info */
+	__u32 tick_factor; // MHz
+
+	/* record when receive a interrupt (top-half) */
+	__u64 irq_sys_time_ns; // ktime_get_boottime_ns()
+	__u64 irq_tsrec_ts_us;
+
+	/* current tick when query/send tsrec timestamp info */
+	__u64 tsrec_curr_tick;
+	struct mtk_cam_seninf_tsrec_timestamp_exp exp_recs[TSREC_EXP_MAX_CNT];
+};
+
+
 /* S E N I N F */
 #define V4L2_CID_MTK_SENINF_S_STREAM \
 		(V4L2_CID_USER_MTK_SENINF_BASE + 1)
