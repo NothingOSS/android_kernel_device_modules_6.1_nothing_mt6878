@@ -12538,8 +12538,12 @@
 		clock-output-names = "mipi_tx1_pll";
 	};
 
-	touch_panel0: touch_panel@0 {
+	touch_panel0: touch-panel0 {
 		compatible = "mediatek,touch-panel";
+	};
+
+	touch_tui0: touch-tui0 {
+		compatible = "mediatek,tui_common";
 	};
 
 	gateic0: gateic@0 {
