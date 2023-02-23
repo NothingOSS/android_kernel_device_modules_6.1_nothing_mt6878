@@ -168,6 +168,9 @@ source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/rps/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/task_turbo/Kconfig"
 endmenu # Performance
 
+
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/wlcdrv/Kconfig"
+
 menu "Config File"
 config BUILD_CONFIG_FILE
 	string "build config file"
