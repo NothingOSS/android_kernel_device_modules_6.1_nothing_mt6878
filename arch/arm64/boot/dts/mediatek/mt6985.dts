@@ -5814,11 +5814,6 @@
 				mtk,rpmsg-name = "apu_top_3_rpmsg";
 			};
 
-			apu-mdw-rpmsg {
-				compatible = "mediatek,apu-mdw-rpmsg";
-				mtk,rpmsg-name = "apu-mdw-rpmsg";
-			};
-
 			apu-reviser {
 				compatible = "mediatek,apu-reviser-rpmsg";
 				mtk,rpmsg-name = "apu-reviser-rpmsg";
