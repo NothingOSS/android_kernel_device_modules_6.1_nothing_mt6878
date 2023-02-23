@@ -117,10 +117,11 @@ struct battery_oc_priv {
 static int g_battery_oc_stop;
 
 struct battery_oc_callback_table {
-	void (*occb)(enum BATTERY_OC_LEVEL_TAG);
+	void (*occb)(enum BATTERY_OC_LEVEL_TAG, void *data);
+	void *data;
 };
 
-static struct battery_oc_callback_table occb_tb[OCCB_MAX_NUM] = { {0} };
+static struct battery_oc_callback_table occb_tb[OCCB_MAX_NUM] = { {0}, {0} };
 
 static int __regmap_update_bits(struct regmap *regmap, const struct reg_t *reg,
 				unsigned int val)
@@ -148,7 +149,7 @@ static int __regmap_read(struct regmap *regmap, const struct reg_t *reg,
 }
 
 void register_battery_oc_notify(battery_oc_callback oc_cb,
-				enum BATTERY_OC_PRIO_TAG prio_val)
+				enum BATTERY_OC_PRIO_TAG prio_val, void *data)
 {
 	if (prio_val >= OCCB_MAX_NUM) {
 		pr_info("[%s] prio_val=%d, out of boundary\n",
@@ -156,6 +157,7 @@ void register_battery_oc_notify(battery_oc_callback oc_cb,
 		return;
 	}
 	occb_tb[prio_val].occb = oc_cb;
+	occb_tb[prio_val].data = data;
 	pr_info("[%s] prio_val=%d\n", __func__, prio_val);
 }
 EXPORT_SYMBOL(register_battery_oc_notify);
@@ -170,7 +172,7 @@ void exec_battery_oc_callback(enum BATTERY_OC_LEVEL_TAG battery_oc_level)
 	} else {
 		for (i = 0; i < OCCB_MAX_NUM; i++) {
 			if (occb_tb[i].occb)
-				occb_tb[i].occb(battery_oc_level);
+				occb_tb[i].occb(battery_oc_level, occb_tb[i].data);
 		}
 		pr_info("[%s] battery_oc_level=%d\n", __func__, battery_oc_level);
 	}
