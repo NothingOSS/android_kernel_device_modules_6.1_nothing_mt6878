@@ -237,8 +237,7 @@ static inline void eenv_init(struct energy_env *eenv,
 		dsu = &(eenv->dsu);
 		dsu->dsu_bw = get_pelt_dsu_bw();
 		dsu->emi_bw = get_pelt_emi_bw();
-	/*	dsu->temp = get_dsu_temp()/1000; */
-		dsu->temp = (eenv->cpu_temp[1] + eenv->cpu_temp[3])/2000;
+		dsu->temp = get_dsu_temp()/1000;
 		eenv->dsu_freq_base = mtk_get_dsu_freq();
 		dsu_opp = dsu_get_freq_opp(eenv->wl_type, eenv->dsu_freq_base);
 		dsu_ps = dsu_get_opp_ps(eenv->wl_type, dsu_opp);
