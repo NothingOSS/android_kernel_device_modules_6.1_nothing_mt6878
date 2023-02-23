@@ -1330,8 +1330,8 @@ static const struct dvfsrc_opp dvfsrc_opp_mt6897_lp5x[] = {
 	{2, 5}, {3, 5}, {4, 5}, {5, 5},
 	{3, 6}, {4, 6}, {5, 6},
 	{4, 7}, {5, 7},
-	{5, 8},
-	{5, 9},
+	{4, 7}, {5, 8},
+	{4, 7}, {5, 9},
 };
 
 static const struct dvfsrc_opp dvfsrc_opp_mt6897_lp5[] = {
