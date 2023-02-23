@@ -497,7 +497,11 @@ static int __init trace_mmstat_init(void)
 	INIT_DELAYED_WORK(&mmstat_work, mmstat_work_handler);
 	queue_delayed_work(system_unbound_wq, &mmstat_work, timer_intval);
 
-	//mmstat_available_swap_pages = android_debug_symbol(ADS_NR_SWAP_PAGES);
+#if IS_ENABLED(CONFIG_ANDROID_DEBUG_SYMBOLS)
+	mmstat_available_swap_pages = android_debug_symbol(ADS_NR_SWAP_PAGES);
+#else
+	mmstat_available_swap_pages = &nr_swap_pages;
+#endif
 	if (IS_ERR(mmstat_available_swap_pages))
 		pr_info("%s: failed to initialize mmstat_available_swap_pages\n", __func__);
 
