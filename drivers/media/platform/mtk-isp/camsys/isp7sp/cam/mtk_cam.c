@@ -283,8 +283,7 @@ static int mtk_cam_get_reqs_to_enque(struct mtk_cam_device *cam,
 			continue;
 
 		cnt++;
-		list_del(&req->list);
-		list_add_tail(&req->list, enqueue_list);
+		list_move_tail(&req->list, enqueue_list);
 	}
 	spin_unlock(&cam->pending_job_lock);
 
@@ -623,7 +622,7 @@ static void mtk_cam_req_queue(struct media_request *req)
 	list_add_tail(&cam_req->list, &cam->pending_job_list);
 	spin_unlock(&cam->pending_job_lock);
 
-	if (CAM_DEBUG_ENABLED(V4L2))
+	if (1 || CAM_DEBUG_ENABLED(V4L2))
 		dev_info(cam->dev, "%s: req %s\n", __func__, req->debug_str);
 
 	mtk_cam_dev_req_try_queue(cam);
@@ -774,6 +773,7 @@ void mtk_cam_req_buffer_done(struct mtk_cam_job *job,
 	struct mtk_cam_buffer *buf, *buf_prev;
 	struct list_head done_list;
 	bool is_buf_empty;
+	unsigned long ids = 0;
 
 	INIT_LIST_HEAD(&done_list);
 	is_buf_empty = false;
@@ -804,16 +804,16 @@ void mtk_cam_req_buffer_done(struct mtk_cam_job *job,
 			continue;
 		}
 
-		list_del(&buf->list);
-		list_add_tail(&buf->list, &done_list);
+		ids |= BIT(node->uid.id);
+		list_move_tail(&buf->list, &done_list);
 	}
 	is_buf_empty = list_empty(&req->buf_list);
 
 	spin_unlock(&req->buf_lock);
 
-	dev_info(dev, "%s: ctx-%d req:%s(%d) pipe_id:%d, node_id:%d, ts:%lld is_empty %d\n",
+	dev_info(dev, "%s: ctx-%d req:%s(%d) pipe_id:%d, node_id:%d bufs: 0x%lx ts:%lld is_empty %d\n",
 		 __func__, ctx->stream_id, req->req.debug_str, job->req_seq,
-		 pipe_id, node_id, ts, is_buf_empty);
+		 pipe_id, node_id, ids, ts, is_buf_empty);
 
 	if (list_empty(&done_list)) {
 		dev_info(dev,
