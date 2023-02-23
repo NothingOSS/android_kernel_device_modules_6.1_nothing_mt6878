@@ -106,6 +106,16 @@ config PINCTRL_MT6985
 	  paris and eint core driver.
 	  Say Y here to enable it.
 
+config PINCTRL_MT6989
+	tristate "Mediatek MT6989 pin control"
+	depends on OF || COMPILE_TEST
+	select DEVICE_MODULES_PINCTRL_MTK_PARIS
+	help
+	  This is the pin controller and gpio driver for mediatek
+	  mt6989 chipset. It will enable mediatek common v2,
+	  paris and eint core driver.
+	  Say Y here to enable it.
+
 config DEVICE_MODULES_PINCTRL_MT8188
 	tristate "Mediatek MT8188 pin control"
 	depends on OF
