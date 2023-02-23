@@ -28,6 +28,7 @@
 #include <swpm_module_ext.h>
 #include <swpm_v6985.h>
 #include <swpm_v6985_ext.h>
+#include <swpm_v6985_subsys.h>
 
 #undef swpm_dbg_log
 #define swpm_dbg_log(fmt, args...) \
