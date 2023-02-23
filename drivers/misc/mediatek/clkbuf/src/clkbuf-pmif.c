@@ -205,12 +205,12 @@ ssize_t __dump_pmif_status(void *data, char *buf)
 
 		if (!buf)
 			CLKBUF_DBG(
-				"PMIF_M regs: %s Addr: 0x%08x Vals: 0x%08x\n",
+				"PMIF_M reg: %s Addr: 0x%08x Val: 0x%08x\n",
 				reg_p->name, reg_p->ofs, out);
 		else
 			len += snprintf(
 				buf + len, PAGE_SIZE - len,
-				"PMIF_M regs: %s Addr: 0x%08x Vals: 0x%08x\n",
+				"PMIF_M reg: %s Addr: 0x%08x Val: 0x%08x\n",
 				reg_p->name, reg_p->ofs, out);
 	}
 

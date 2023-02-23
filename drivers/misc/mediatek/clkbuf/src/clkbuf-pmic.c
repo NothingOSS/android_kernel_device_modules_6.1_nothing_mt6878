@@ -616,12 +616,12 @@ int __dump_pmic_debug_regs(void *data, char *buf, int len)
 
 		if (!buf)
 			CLKBUF_DBG(
-				"PMIC DBG regs: %s Addr: 0x%08x Vals: 0x%08x\n",
+				"PMIC DBG reg: %s Addr: 0x%08x Val: 0x%08x\n",
 				(*reg_p).name, (*reg_p).ofs, out);
 		else
 			len += snprintf(
 				buf + len, PAGE_SIZE - len,
-				"PMIC DBG regs: %s Addr: 0x%08x Vals: 0x%08x\n",
+				"PMIC DBG reg: %s Addr: 0x%08x Val: 0x%08x\n",
 				(*reg_p).name, (*reg_p).ofs, out);
 	}
 

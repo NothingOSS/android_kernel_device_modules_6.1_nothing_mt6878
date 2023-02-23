@@ -257,7 +257,12 @@ static int dump_all(struct device *dev)
 	struct plat_rcdata *rcpd;
 	int pmic_dump = WAIT_TO_DUMP, rc_dump = WAIT_TO_DUMP, pmif_dump = WAIT_TO_DUMP;
 	int nums, i, ret = 0;
+	char *buf = NULL;
 	u32 out = 0;
+
+	buf = vmalloc(CLKBUF_STATUS_INFO_SIZE);
+	if (!buf)
+		return -ENOMEM;
 
 	if (!array)
 		return -ENODEV;
@@ -276,7 +281,6 @@ static int dump_all(struct device *dev)
 			ret = hdlr->ops->get_pmrcen(xopd, &out);
 			if (ret)
 				break;
-			CLKBUF_DBG("pmrcen: <0x%08x>\n", out);
 			pmic_dump = DUMP_DONE;
 			break;
 		case SRCLKEN_STA:
@@ -284,7 +288,8 @@ static int dump_all(struct device *dev)
 			if ((rc_dump == DUMP_DONE) | !(hdlr->ops->dump_srclken_trace))
 				break;
 			rcpd = (struct plat_rcdata *)hdlr->data;
-			hdlr->ops->dump_srclken_trace(rcpd, 2, 0, NULL);
+			hdlr->ops->dump_srclken_trace(rcpd, buf, 0);
+			CLKBUF_DBG("%s\n", buf);
 			rc_dump = DUMP_DONE;
 			break;
 		case PMIF_M:
@@ -297,18 +302,19 @@ static int dump_all(struct device *dev)
 			break;
 		}
 	}
+
+	vfree(buf);
+
 	return 0;
 }
 
 static int clk_buf_dev_pm_suspend(struct device *dev)
 {
-	CLKBUF_DBG("-suspend\n");
 	return dump_all(dev);
 }
 
 static int clk_buf_dev_pm_resume(struct device *dev)
 {
-	CLKBUF_DBG("-resume\n");
 	return dump_all(dev);
 }
 

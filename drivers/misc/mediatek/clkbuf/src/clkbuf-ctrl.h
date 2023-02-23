@@ -10,6 +10,8 @@
 #include <linux/platform_device.h>
 #include "clkbuf-util.h"
 
+#define CLKBUF_STATUS_INFO_SIZE 2048
+
 struct clkbuf_operation {
 	/*xo call back functions*/
 	int (*get_pmrcen)(void *data, u32 *out);
@@ -20,8 +22,7 @@ struct clkbuf_operation {
 
 	/*src call back functions*/
 	ssize_t (*dump_srclken_status)(void *data, char *buf);
-	ssize_t (*dump_srclken_trace)(void *data, u32 num_dump, u32 num_timer,
-				      char *buf);
+	ssize_t (*dump_srclken_trace)(void *data, char *buf, int is_dump_max);
 	int (*srclken_subsys_ctrl)(void *data, int cmd, int sub_id,
 				      int perms);
 	int (*get_rc_MXX_req_sta)(void *data, int sub_id, char *buf);

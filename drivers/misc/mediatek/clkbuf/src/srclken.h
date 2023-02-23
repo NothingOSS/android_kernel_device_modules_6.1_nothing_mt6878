@@ -10,8 +10,6 @@
 #include "clkbuf-util.h"
 #include "clkbuf-ctrl.h"
 
-#define RC_HW_TRACE_MAX_DUMP 8
-
 #define RC_MAX_REQ (sizeof(rc_api_cmd)\
 	/ sizeof(const char *))
 enum SRCLKEN_RC_REQ {
@@ -21,6 +19,7 @@ enum SRCLKEN_RC_REQ {
 	RC_BBLPM_REQ = 0x0008,
 };
 
+/*srclken_rc_cfg only allow registers*/
 struct srclken_rc_cfg {
 	struct reg_t _rc_cfg_reg;
 	struct reg_t _central_cfg1;
@@ -44,6 +43,7 @@ struct srclken_rc_cfg {
 	struct reg_t _sw_bblpm_en;
 };
 
+/*srclken_rc_sta only allow registers*/
 struct srclken_rc_sta {
 	struct reg_t _cmd_sta_0;
 	struct reg_t _cmd_sta_1;
@@ -61,13 +61,22 @@ struct srclken_rc_sta {
 	struct reg_t _trace_p_lsb;
 	struct reg_t _timer_p_msb;
 	struct reg_t _timer_p_lsb;
+};
+
+struct srclken_meta_data {
 	/*keep this info because (sta base != cfg base)@CODA*/
 	u32 sta_base_ofs;
+
+	int max_dump_trace;
+	int max_dump_timer;
+	int num_dump_trace;
+	int num_dump_timer;
 };
 
 struct plat_rcdata {
 	struct srclken_rc_cfg *cfg;
 	struct srclken_rc_sta *sta;
+	struct srclken_meta_data *meta;
 	/*rc hw type could change to be sta or cfg*/
 	struct clkbuf_hw hw;
 	spinlock_t *lock;

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2020 MediaTek Inc.
+ * Copyright (c) 2023 MediaTek Inc.
  * Author: Kuan-Hsin Lee <Kuan-Hsin.Lee@mediatek.com>
  */
 #include <linux/device.h>
@@ -239,11 +239,11 @@ int __get_rc_MXX_cfg(void *data, int sub_id, char *buf)
 	}
 
 	if (!buf)
-		CLKBUF_DBG("CFG reg addr: 0x%08x Vals: 0x%08x\n",
+		CLKBUF_DBG("CFG reg addr: 0x%08x Val: 0x%08x\n",
 			   m00_cfg.ofs + (sub_id * 4), out);
 	else
 		len += snprintf(buf + len, PAGE_SIZE - len,
-				"CFG reg addr: 0x%08x Vals: 0x%08x\n",
+				"CFG reg addr: 0x%08x Val: 0x%08x\n",
 				m00_cfg.ofs + (sub_id * 4), out);
 
 	return len;
@@ -254,6 +254,7 @@ int __get_rc_MXX_req_sta(void *data, int sub_id, char *buf)
 	struct plat_rcdata *pd = (struct plat_rcdata *)data;
 	struct clkbuf_hw hw;
 	struct srclken_rc_sta *sta;
+	struct srclken_meta_data *meta;
 	struct reg_t m00_sta;
 	int len = 0;
 	int ret = 0;
@@ -272,9 +273,15 @@ int __get_rc_MXX_req_sta(void *data, int sub_id, char *buf)
 		CLKBUF_DBG("sta is null");
 		return len;
 	}
-
-	sta_ofs = sta->sta_base_ofs;
 	m00_sta = sta->_m00_sta;
+
+	meta = pd->meta;
+	if (!meta) {
+		CLKBUF_DBG("meta data is null");
+		return len;
+	}
+	sta_ofs = meta->sta_base_ofs;
+
 	ret = read_with_ofs(&hw, &m00_sta, &out, sub_id * 4);
 	if (ret) {
 		CLKBUF_DBG("read m00_sta fail\n");
@@ -282,11 +289,11 @@ int __get_rc_MXX_req_sta(void *data, int sub_id, char *buf)
 	}
 
 	if (!buf)
-		CLKBUF_DBG("STA reg addr: 0x%08x Vals: 0x%08x\n",
+		CLKBUF_DBG("STA reg addr: 0x%08x Val: 0x%08x\n",
 			   m00_sta.ofs + (sub_id * 4) + sta_ofs, out);
 	else
 		len += snprintf(buf + len, PAGE_SIZE - len,
-				"STA reg addr: 0x%08x Vals: 0x%08x\n",
+				"STA reg addr: 0x%08x Val: 0x%08x\n",
 				m00_sta.ofs + (sub_id * 4) + sta_ofs, out);
 
 	return len;
@@ -339,7 +346,7 @@ int __srclken_subsys_ctrl(void *data, int cmd, int sub_id, int perms)
 	val &= (~(sw_srclken_rc_en.mask << sw_srclken_rc_en.shift));
 	val |= (sw_srclken_rc_en.mask << sw_srclken_rc_en.shift);
 
-	CLKBUF_DBG("re_req: %x, perms: %x\n", cmd, perms);
+	CLKBUF_DBG("rc_req: %x, perms: %x\n", cmd, perms);
 	switch (cmd & perms) {
 	case RC_FPM_REQ:
 		val &= (~(sw_rc_req.mask << sw_rc_req.shift));
@@ -388,6 +395,7 @@ ssize_t __dump_srclken_status(void *data, char *buf)
 	struct clkbuf_hw hw;
 	struct srclken_rc_sta *sta;
 	struct srclken_rc_cfg *cfg;
+	struct srclken_meta_data *meta;
 	struct reg_t *reg_p;
 	u32 sta_ofs = 0, out;
 	int i;
@@ -416,12 +424,12 @@ ssize_t __dump_srclken_status(void *data, char *buf)
 			goto DUMP_FAIL;
 
 		if (!buf)
-			CLKBUF_DBG("CFG regs: %s Addr: 0x%08x Vals: 0x%08x\n",
+			CLKBUF_DBG("CFG reg: %s Addr: 0x%08x Val: 0x%08x\n",
 				   reg_p->name, reg_p->ofs, out);
 		else
 			len += snprintf(
 				buf + len, PAGE_SIZE - len,
-				"CFG regs: %s Addr: 0x%08x Vals: 0x%08x\n",
+				"CFG reg: %s Addr: 0x%08x Val: 0x%08x\n",
 				reg_p->name, reg_p->ofs, out);
 	}
 
@@ -432,7 +440,13 @@ ssize_t __dump_srclken_status(void *data, char *buf)
 		CLKBUF_DBG("sta is null");
 		goto DUMP_FAIL;
 	}
-	sta_ofs = sta->sta_base_ofs;
+
+	meta = pd->meta;
+	if (!meta) {
+		CLKBUF_DBG("meta data is null");
+		goto DUMP_FAIL;
+	}
+	sta_ofs = meta->sta_base_ofs;
 
 	for (i = 0; i < sizeof(struct srclken_rc_sta) / sizeof(struct reg_t);
 	     ++i) {
@@ -445,12 +459,12 @@ ssize_t __dump_srclken_status(void *data, char *buf)
 			goto DUMP_FAIL;
 
 		if (!buf)
-			CLKBUF_DBG("STA regs: %s Addr: 0x%08x Vals: 0x%08x\n",
+			CLKBUF_DBG("STA reg: %s Addr: 0x%08x Val: 0x%08x\n",
 				   reg_p->name, reg_p->ofs + sta_ofs, out);
 		else
 			len += snprintf(
 				buf + len, PAGE_SIZE - len,
-				"STA regs: %s Addr: 0x%08x Vals: 0x%08x\n",
+				"STA reg: %s Addr: 0x%08x Val: 0x%08x\n",
 				reg_p->name, reg_p->ofs + sta_ofs, out);
 	}
 	return len;
@@ -460,15 +474,16 @@ DUMP_FAIL:
 	return len;
 }
 
-ssize_t __dump_srclken_trace(void *data, u32 num_dump, u32 num_timer, char *buf)
+ssize_t __dump_srclken_trace(void *data, char *buf, int is_dump_max)
 {
 	struct plat_rcdata *pd = (struct plat_rcdata *)data;
 	struct clkbuf_hw hw;
 	struct srclken_rc_sta *sta;
+	struct srclken_meta_data *meta;
 	struct reg_t reg_msb, reg_lsb;
-	int i;
-	int len = 0;
+	int i, len = 0, num_dump_trace = 0, num_dump_timer = 0;
 	u32 out_msb = 0, out_lsb = 0, sta_ofs = 0, msb_ofs, lsb_ofs;
+	char *newline;
 
 	if (!IS_RC_HW((pd->hw).hw_type))
 		goto DUMP_FAIL;
@@ -482,11 +497,29 @@ ssize_t __dump_srclken_trace(void *data, u32 num_dump, u32 num_timer, char *buf)
 		goto DUMP_FAIL;
 	}
 
-	sta_ofs = sta->sta_base_ofs;
-	num_dump = (num_dump < RC_HW_TRACE_MAX_DUMP) ? num_dump :
-						       RC_HW_TRACE_MAX_DUMP;
+	meta = pd->meta;
+	if (!meta) {
+		CLKBUF_DBG("meta data is null");
+		goto DUMP_FAIL;
+	}
+	sta_ofs = meta->sta_base_ofs;
 
-	for (i = 0, msb_ofs = 0, lsb_ofs = 0; i < num_dump;
+	if (is_dump_max) {
+		newline = "\n";
+		num_dump_trace = meta->max_dump_trace;
+		num_dump_timer = meta->max_dump_timer;
+	} else {
+		/*avoid print_too_much settings*/
+		newline = "";
+		num_dump_trace = meta->num_dump_trace;
+		num_dump_timer = meta->num_dump_timer;
+	}
+
+/*
+ * if ((num_dump_trace > RC_HW_TRACE_MAX_DUMP) || (num_dump_timer > RC_HW_TRACE_MAX_DUMP))
+ * goto DUMP_FAIL;
+ */
+	for (i = 0, msb_ofs = 0, lsb_ofs = 0; i < num_dump_trace;
 	     ++i, msb_ofs += 8, lsb_ofs += 8) {
 		reg_msb = sta->_trace_msb;
 		reg_lsb = sta->_trace_lsb;
@@ -498,24 +531,19 @@ ssize_t __dump_srclken_trace(void *data, u32 num_dump, u32 num_timer, char *buf)
 			goto DUMP_FAIL;
 
 		if (!buf) {
-			CLKBUF_DBG("trace msb addr: 0x%08x Vals: 0x%08x\n",
-				   reg_msb.ofs + msb_ofs + sta_ofs, out_msb);
-			CLKBUF_DBG("trace lsb addr: 0x%08x Vals: 0x%08x\n",
-				   reg_lsb.ofs + lsb_ofs + sta_ofs, out_lsb);
+			CLKBUF_DBG("msb addr: 0x%08x Val: 0x%08x lsb addr: 0x%08x Val: 0x%08x\n",
+				reg_msb.ofs + msb_ofs + sta_ofs, out_msb,
+				reg_lsb.ofs + lsb_ofs + sta_ofs, out_lsb);
 		} else {
 			len += snprintf(buf + len, PAGE_SIZE - len,
-					"trace msb addr: 0x%08x Vals: 0x%08x\n",
-					reg_msb.ofs + msb_ofs + sta_ofs, out_msb);
-			len += snprintf(buf + len, PAGE_SIZE - len,
-					"trace lsb addr: 0x%08x Vals: 0x%08x\n",
-					reg_lsb.ofs + lsb_ofs + sta_ofs, out_lsb);
+				"msb addr: 0x%08x Val: 0x%08x lsb addr: 0x%08x Val: 0x%08x %s",
+				reg_msb.ofs + msb_ofs + sta_ofs, out_msb,
+				reg_lsb.ofs + lsb_ofs + sta_ofs, out_lsb,
+				newline);
 		}
 	}
 
-	num_timer = (num_timer < RC_HW_TRACE_MAX_DUMP) ? num_timer :
-							 RC_HW_TRACE_MAX_DUMP;
-
-	for (i = 0, msb_ofs = 0, lsb_ofs = 0; i < num_timer;
+	for (i = 0, msb_ofs = 0, lsb_ofs = 0; i < num_dump_timer;
 	     ++i, msb_ofs += 8, lsb_ofs += 8) {
 		reg_msb = sta->_timer_msb;
 		reg_lsb = sta->_timer_lsb;
@@ -527,17 +555,15 @@ ssize_t __dump_srclken_trace(void *data, u32 num_dump, u32 num_timer, char *buf)
 			goto DUMP_FAIL;
 
 		if (!buf) {
-			CLKBUF_DBG("timer msb addr: 0x%08x Vals: 0x%08x\n",
-				   reg_msb.ofs + msb_ofs + sta_ofs, out_msb);
-			CLKBUF_DBG("timer lsb addr: 0x%08x Vals: 0x%08x\n",
-				   reg_lsb.ofs + lsb_ofs + sta_ofs, out_lsb);
+			CLKBUF_DBG("time msb addr: 0x%08x Val: 0x%08x lsb addr: 0x%08x Val: 0x%08x\n",
+				reg_msb.ofs + msb_ofs + sta_ofs, out_msb,
+				reg_lsb.ofs + lsb_ofs + sta_ofs, out_lsb);
 		} else {
 			len += snprintf(buf + len, PAGE_SIZE - len,
-					"timer msb addr: 0x%08x Vals: 0x%08x\n",
-					reg_msb.ofs + msb_ofs + sta_ofs, out_msb);
-			len += snprintf(buf + len, PAGE_SIZE - len,
-					"timer lsb addr: 0x%08x Vals: 0x%08x\n",
-					reg_lsb.ofs + lsb_ofs + sta_ofs, out_lsb);
+				"time msb addr: 0x%08x Val: 0x%08x lsb addr: 0x%08x Val: 0x%08x %s",
+				reg_msb.ofs + msb_ofs + sta_ofs, out_msb,
+				reg_lsb.ofs + lsb_ofs + sta_ofs, out_lsb,
+				newline);
 		}
 	}
 

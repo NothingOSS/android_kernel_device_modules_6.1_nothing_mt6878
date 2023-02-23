@@ -109,7 +109,7 @@ static ssize_t dump_srclken_trace_show(struct kobject *kobj,
 	struct plat_rcdata *pd;
 	struct clkbuf_hdlr *hdlr;
 	struct clkbuf_hw hw;
-	int len = 0, nums = 0, i;
+	int len = 0, nums = 0, dump_max = 1, i;
 
 	if (!array)
 		return sprintf(buf, "array is null\n");
@@ -129,8 +129,7 @@ static ssize_t dump_srclken_trace_show(struct kobject *kobj,
 
 			pd = (struct plat_rcdata *)hdlr->data;
 			len = hdlr->ops->dump_srclken_trace(
-				pd, RC_HW_TRACE_MAX_DUMP, RC_HW_TRACE_MAX_DUMP,
-				buf);
+				pd, buf, dump_max);
 			break;
 		}
 	}
@@ -462,17 +461,26 @@ static ssize_t dump_clkbuf_dts_show(struct kobject *kobj,
 
 	nums = array->nums;
 
+	len += snprintf(
+		buf + len, PAGE_SIZE - len,
+		"%16s, %16s, %13s, %11s, %2s, ",
+		"array", "hdlr", "xo_name", "rc_sub_name", "HW");
+
+	len += snprintf(
+		buf + len, PAGE_SIZE - len,
+		"%5s, %6s, %8s\n",
+		"xo_id", "sub_id", "perms");
+
 	for (i = 0; i < nums; i++, array++) {
 		len += snprintf(
 			buf + len, PAGE_SIZE - len,
-			"array<%lx>, hdlr<%lx>, xo:%s, sub:%s, type:%d, num_xo:%d, ",
+			"%16lx, %16lx, %13s, %11s, %2d, ",
 			(unsigned long)array, (unsigned long)array->hdlr,
-			array->xo_name, array->subsys_name, array->hw.hw_type,
-			array->num_xo);
+			array->xo_name, array->subsys_name, array->hw.hw_type);
 		len += snprintf(
 			buf + len, PAGE_SIZE - len,
-			"num_sub:%d, nums:%d, xo_id<%d>, sub_id:<%d>, perms:<%x>\n",
-			array->num_sub, array->nums, array->xo_id, array->sub_id, array->perms);
+			"%5d, %6d, %8x\n",
+			array->xo_id, array->sub_id, array->perms);
 
 	}
 	return len;

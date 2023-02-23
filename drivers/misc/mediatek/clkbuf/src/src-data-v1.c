@@ -435,10 +435,18 @@ struct srclken_rc_sta rc_sta = {
 	SET_REG(trace_p_lsb, TRACE_P_0_MSB, 0xFFFFFFFF, 0)
 	SET_REG(timer_p_msb, TIMER_P_0_LSB, 0xFFFFFFFF, 0)
 	SET_REG(timer_p_lsb, TIMER_P_0_MSB, 0xFFFFFFFF, 0)
+};
+
+struct srclken_meta_data rc_meta = {
 	.sta_base_ofs = V1_STA_BASE_FROM_CODA_BEFORE_IOREMAP,
+	.max_dump_trace = 8,
+	.max_dump_timer = 8,
+	.num_dump_trace = 2,
+	.num_dump_timer = 2,
 };
 
 struct plat_rcdata rc_data_v1 = {
 	.cfg = &rc_cfg,
 	.sta = &rc_sta,
+	.meta = &rc_meta,
 };
