@@ -23,5 +23,10 @@ int mtk_drm_ioctl_gamma_mul_disable(struct drm_device *dev, void *data,
 
 void disp_gamma_on_start_of_frame(void);
 
+void mtk_trans_gain_to_gamma(struct drm_crtc *crtc,
+	unsigned int gain[3], unsigned int bl, void *param);
+int mtk_cfg_trans_gain_to_gamma(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *handle, unsigned int gain[3], unsigned int bl, void *param);
+
 #endif
 
