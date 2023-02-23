@@ -405,8 +405,12 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 			slice_group_width = (enc_slice_width + 2) / 3;
 		}
 		if (dsc->data->need_obuf_sw && enc_pic_width < 1440) {
-			mtk_ddp_write_relaxed(comp,
-				0x800002d9, DISP_REG_DSC_OBUF, handle);
+			if (dsc->data->decrease_outstream_buf)
+				mtk_ddp_write_relaxed(comp,
+					0x80000200, DISP_REG_DSC_OBUF, handle);
+			else
+				mtk_ddp_write_relaxed(comp,
+					0x800002d9, DISP_REG_DSC_OBUF, handle);
 		}
 		pad_num = (chrunk_size * (dsc_params->slice_mode + 1) + 2) / 3 * 3
 			- chrunk_size * (dsc_params->slice_mode + 1);
@@ -883,6 +887,15 @@ static const struct mtk_disp_dsc_data mt6985_dsc_driver_data = {
 	.shadow_ctrl_reg = 0x0228,
 };
 
+static const struct mtk_disp_dsc_data mt6897_dsc_driver_data = {
+	.support_shadow     = false,
+	.need_bypass_shadow = false,
+	.need_obuf_sw = true,
+	.dsi_buffer = true,
+	.shadow_ctrl_reg = 0x0228,
+	.decrease_outstream_buf = true,
+};
+
 static const struct mtk_disp_dsc_data mt6895_dsc_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = false,
@@ -934,6 +947,8 @@ static const struct of_device_id mtk_disp_dsc_driver_dt_match[] = {
 	  .data = &mt6983_dsc_driver_data},
 	{ .compatible = "mediatek,mt6985-disp-dsc",
 	  .data = &mt6985_dsc_driver_data},
+	{ .compatible = "mediatek,mt6897-disp-dsc",
+	  .data = &mt6897_dsc_driver_data},
 	{ .compatible = "mediatek,mt6895-disp-dsc",
 	  .data = &mt6895_dsc_driver_data},
 	{ .compatible = "mediatek,mt6886-disp-dsc",

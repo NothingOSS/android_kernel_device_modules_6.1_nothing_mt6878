@@ -2444,7 +2444,8 @@ void mtk_sodi_ddren(struct drm_crtc *crtc, struct cmdq_pkt *_cmdq_handle, bool e
 	mtk_crtc = to_mtk_crtc(crtc);
 	priv = crtc->dev->dev_private;
 
-	if (priv->data->mmsys_id == MMSYS_MT6985) {
+	if (priv->data->mmsys_id == MMSYS_MT6985 ||
+		priv->data->mmsys_id == MMSYS_MT6897) {
 		val = MT6985_SODI_REQ_VAL;
 		en = BIT(8) | BIT(11) | BIT(14) | BIT(17);
 	} else

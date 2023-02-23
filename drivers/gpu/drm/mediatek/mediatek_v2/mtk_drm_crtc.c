@@ -2031,7 +2031,8 @@ void mtk_crtc_prepare_dual_pipe(struct mtk_drm_crtc *mtk_crtc)
 	if (comp)
 		mtk_ddp_comp_io_cmd(comp, NULL, SET_MMCLK_BY_DATARATE, &en);
 
-	if (drm_crtc_index(&mtk_crtc->base) == 0)
+	if (drm_crtc_index(&mtk_crtc->base) == 0 &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
 		mtk_mmqos_is_dualpipe_enable(mtk_crtc->is_dual_pipe);
 }
 
@@ -12888,7 +12889,8 @@ static void mtk_drm_crtc_enable_fake_layer(struct drm_crtc *crtc,
 			continue;
 		}
 
-		if (priv->data->mmsys_id == MMSYS_MT6985) {
+		if (priv->data->mmsys_id == MMSYS_MT6985 ||
+			priv->data->mmsys_id == MMSYS_MT6897) {
 			layer_num2 = mtk_ovl_layer_num(
 					priv->ddp_comp[DDP_COMPONENT_OVL1_2L]);
 
@@ -13008,7 +13010,8 @@ static void mtk_drm_crtc_disable_fake_layer(struct drm_crtc *crtc,
 			continue;
 		}
 
-		if (priv->data->mmsys_id == MMSYS_MT6985) {
+		if (priv->data->mmsys_id == MMSYS_MT6985 ||
+			priv->data->mmsys_id == MMSYS_MT6897) {
 			layer_num2 = mtk_ovl_layer_num(
 					priv->ddp_comp[DDP_COMPONENT_OVL1_2L]);
 

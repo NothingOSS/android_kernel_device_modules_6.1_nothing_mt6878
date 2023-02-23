@@ -1751,7 +1751,8 @@ static void mtk_drm_cwb_info_init(struct drm_crtc *crtc)
 	if (crtc_idx == 0) {
 		if (cwb_info->scn == WDMA_WRITE_BACK)
 			cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_WDMA0];
-		else if (priv->data->mmsys_id == MMSYS_MT6985
+		else if ((priv->data->mmsys_id == MMSYS_MT6985 ||
+					priv->data->mmsys_id == MMSYS_MT6897)
 			&& cwb_info->scn == WDMA_WRITE_BACK_OVL)
 			cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_OVLSYS_WDMA1];
 	}

@@ -440,6 +440,7 @@ static void mtk_wdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 			void __iomem *ovl0_2l_reg_addr;
 			switch (priv->data->mmsys_id) {
 			case MMSYS_MT6985:
+			case MMSYS_MT6897:
 				ovl0_2l_reg_addr =
 					comp->mtk_crtc->ovlsys0_regs + MT6985_OVLSYS_DUMMY_OFFSET;
 				if (output_comp->id == DDP_COMPONENT_WDMA0)

@@ -80,7 +80,8 @@ static void mtk_merge_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	if (comp->mtk_crtc && comp->mtk_crtc->base.dev->dev_private)
 		priv = comp->mtk_crtc->base.dev->dev_private;
 
-	if (priv && priv->data && priv->data->mmsys_id == MMSYS_MT6985) {
+	if (priv && priv->data && (priv->data->mmsys_id == MMSYS_MT6985 ||
+		priv->data->mmsys_id == MMSYS_MT6897)) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + DISP_REG_VPP_MERGE_ENABLE, 0x1, ~0);
 	} else {
@@ -99,7 +100,8 @@ static void mtk_merge_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 
-	if (priv->data->mmsys_id == MMSYS_MT6985) {
+	if (priv->data->mmsys_id == MMSYS_MT6985 ||
+		priv->data->mmsys_id == MMSYS_MT6897) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_VPP_MERGE_ENABLE, 0x0, ~0);
 	} else {
@@ -138,7 +140,8 @@ static void mtk_merge_config(struct mtk_ddp_comp *comp,
 
 	DDPMSG("%s, mmsys_id=0x%x\n", __func__, priv->data->mmsys_id);
 
-	if (priv->data->mmsys_id == MMSYS_MT6985) {
+	if (priv->data->mmsys_id == MMSYS_MT6985 ||
+		priv->data->mmsys_id == MMSYS_MT6897) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_VPP_MERGE_CFG_0,
 			merge_config.width_left | (merge_config.height << 16),

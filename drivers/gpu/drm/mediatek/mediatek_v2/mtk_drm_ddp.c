@@ -17195,20 +17195,20 @@ void mtk_ddp_insert_dsc_prim_mt6897(struct mtk_drm_crtc *mtk_crtc,
 	unsigned int addr, value;
 
 	/* PANEL_COMP_OUT_CROSSBAR1_MOUT to  DISP_DSC_WRAP0 */
-#ifndef DRM_BYPASS_PQ
-	addr = MT6897_PANEL_COMP_OUT_CROSSBAR0_MOUT_EN;
-#else
+//#ifndef DRM_BYPASS_PQ
+//	addr = MT6897_PANEL_COMP_OUT_CROSSBAR0_MOUT_EN;
+//#else
 	addr = MT6897_PANEL_COMP_OUT_CROSSBAR1_MOUT_EN;
-#endif
+//#endif
 	value = DISP_PQ_OUT_CROSSBAR1_TO_DSC_0;
 	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 		       mtk_crtc->config_regs_pa + addr, value, ~0);
 	addr =  MT6897_PANEL_COMP_OUT_CROSSBAR1_SEL_IN;
-#ifndef DRM_BYPASS_PQ
-	value = DISP_PANEL_COMP_OUT_CROSSBAR0_SEL_IN;
-#else
+//#ifndef DRM_BYPASS_PQ
+//	value = DISP_PANEL_COMP_OUT_CROSSBAR0_SEL_IN;
+//#else
 	value = DISP_PANEL_COMP_OUT_CROSSBAR1_SEL_IN;
-#endif
+//#endif
 	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 		       mtk_crtc->config_regs_pa + addr, value, ~0);
 	addr =  MT6897_PANEL_COMP_OUT_CROSSBAR3_SEL_IN;
@@ -17772,7 +17772,8 @@ void mtk_disp_mutex_src_set(struct mtk_drm_crtc *mtk_crtc, bool is_cmd_mode)
 		val = DDP_MUTEX_SOF_DSI1;
 	else if ((id == DDP_COMPONENT_DPI0) ||
 		(id == DDP_COMPONENT_DP_INTF0)) {
-		if (priv->data->mmsys_id == MMSYS_MT6985)
+		if (priv->data->mmsys_id == MMSYS_MT6985 ||
+			priv->data->mmsys_id == MMSYS_MT6897)
 			val = DDP_MUTEX_SOF_DPI0;
 		else
 			val = DDP_MUTEX_SOF_DPI1;
@@ -17810,7 +17811,8 @@ void mtk_disp_mutex_src_set(struct mtk_drm_crtc *mtk_crtc, bool is_cmd_mode)
 			val = DDP_MUTEX_SOF_DSI0;
 		else if (val == DDP_MUTEX_SOF_DPI0) {
 			if (mtk_crtc->is_dual_pipe &&
-				priv->data->mmsys_id == MMSYS_MT6985)
+				(priv->data->mmsys_id == MMSYS_MT6985 ||
+				priv->data->mmsys_id == MMSYS_MT6897))
 				val = DDP_MUTEX_SOF_DPI1;
 		} else if (val == DDP_MUTEX_SOF_DPI1)
 			val = DDP_MUTEX_SOF_DPI0;
