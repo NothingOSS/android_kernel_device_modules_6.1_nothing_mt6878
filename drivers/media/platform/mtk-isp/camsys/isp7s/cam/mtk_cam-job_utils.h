@@ -61,6 +61,11 @@ struct req_buffer_helper {
 	int mi_idx; /* meta in */
 	int mo_idx; /* meta out */
 
+	/* cached metadata buffer for later */
+	struct mtk_cam_buffer *meta_cfg_buf;
+	struct mtk_cam_buffer *meta_stats0_buf;
+	struct mtk_cam_buffer *meta_stats1_buf;
+
 	/* for stagger case */
 	bool filled_hdr_buffer;
 };

@@ -2970,30 +2970,26 @@ static int update_raw_meta_buf_to_ipi_frame(struct req_buffer_helper *helper,
 			++helper->mi_idx;
 
 			FILL_META_IN_OUT(in, buf, node->uid);
+
+			/* cache info for later */
+			helper->meta_cfg_buf = buf;
 		}
 		break;
 	case MTKCAM_IPI_RAW_META_STATS_0:
 	case MTKCAM_IPI_RAW_META_STATS_1:
 		{
 			struct mtkcam_ipi_meta_output *out;
-			void *vaddr;
 
 			out = &fp->meta_outputs[helper->mo_idx];
 			++helper->mo_idx;
 
 			FILL_META_IN_OUT(out, buf, node->uid);
 
-			vaddr = vb2_plane_vaddr(&buf->vbb.vb2_buf, 0);
-			ret = CALL_PLAT_V4L2(set_meta_stats_info,
-					     node->desc.dma_port,
-					     vaddr);
-
+			/* cache info for later */
 			if (node->desc.dma_port == MTKCAM_IPI_RAW_META_STATS_0) {
-				struct mtk_cam_job *job = helper->job;
-
-				job->timestamp_buf = vaddr +
-					GET_PLAT_V4L2(timestamp_buffer_ofst);
-			}
+				helper->meta_stats0_buf = buf;
+			} else
+				helper->meta_stats1_buf = buf;
 		}
 		break;
 	default:
@@ -3089,6 +3085,88 @@ static void reset_unused_io_of_ipi_frame(struct req_buffer_helper *helper)
 	}
 }
 
+/* TODO: cache raw_data in helper */
+static struct mtk_raw_request_data *req_get_raw_data(struct mtk_cam_ctx *ctx,
+						     struct mtk_cam_request *req)
+{
+	if (ctx->raw_subdev_idx < 0)
+		return NULL;
+
+	return &req->raw_data[ctx->raw_subdev_idx];
+}
+
+static int fill_raw_stats_header(struct mtk_cam_buffer *buf,
+				 struct set_meta_stats_info_param *p,
+				 void **addr)
+{
+	struct mtk_cam_video_device *node;
+	void *vaddr;
+	int ret;
+
+	node = mtk_cam_buf_to_vdev(buf);
+
+	vaddr = vb2_plane_vaddr(&buf->vbb.vb2_buf, 0);
+	if (WARN_ON(!vaddr))
+		return -1;
+
+	ret = CALL_PLAT_V4L2(set_meta_stats_info,
+			     node->desc.dma_port,
+			     vaddr, buf->meta_info.buffersize,
+			     p);
+
+	if (addr)
+		*addr = vaddr;
+
+	return ret;
+}
+
+static int fill_raw_meta_header(struct req_buffer_helper *helper)
+{
+	struct mtk_cam_job *job = helper->job;
+	struct set_meta_stats_info_param p;
+	struct mtk_cam_buffer *buf;
+	int ret = 0;
+
+	memset(&p, 0, sizeof(p));
+
+	if (helper->meta_cfg_buf) {
+		struct mtk_raw_request_data *raw_data;
+
+		buf = helper->meta_cfg_buf;
+		p.cfg_dataformat = buf->meta_info.v4l2_pixelformat;
+		p.meta_cfg = vb2_plane_vaddr(&buf->vbb.vb2_buf, 0);
+		p.meta_cfg_size = buf->meta_info.buffersize;
+
+		raw_data = req_get_raw_data(job->src_ctx, job->req);
+		if (!raw_data) {
+			pr_info("%s: failed to get raw_data\n", __func__);
+			return -1;
+		}
+
+		p.width = raw_data->sink.width;
+		p.height = raw_data->sink.height;
+	}
+
+	if (helper->meta_stats0_buf) {
+		void *vaddr = NULL;
+
+		ret = ret || fill_raw_stats_header(helper->meta_stats0_buf, &p,
+						   &vaddr);
+
+		job->timestamp_buf = vaddr ?
+			(vaddr + GET_PLAT_V4L2(timestamp_buffer_ofst)) : NULL;
+	}
+
+	if (helper->meta_stats1_buf)
+		ret = ret || fill_raw_stats_header(helper->meta_stats1_buf, &p,
+						   NULL);
+
+	if (ret)
+		pr_info("%s: failed. ret = %d\n", __func__, ret);
+
+	return ret;
+}
+
 static int update_job_buffer_to_ipi_frame(struct mtk_cam_job *job,
 	struct mtkcam_ipi_frame_param *fp, struct pack_job_ops_helper *job_helper)
 {
@@ -3104,6 +3182,9 @@ static int update_job_buffer_to_ipi_frame(struct mtk_cam_job *job,
 	list_for_each_entry(buf, &req->buf_list, list) {
 		ret = ret || update_cam_buf_to_ipi_frame(&helper, buf, job_helper);
 	}
+
+	/* update raw metadata header */
+	ret = ret || fill_raw_meta_header(&helper);
 
 	/* update necessary working buffer */
 	if (job_helper->append_work_buf_to_ipi)

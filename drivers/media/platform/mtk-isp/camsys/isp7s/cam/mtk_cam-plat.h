@@ -52,6 +52,16 @@ struct dma_info {
 	u32 stride;
 };
 
+struct set_meta_stats_info_param {
+	unsigned int cfg_dataformat;
+	void *meta_cfg;
+	size_t meta_cfg_size;
+
+	/* raw input size */
+	unsigned int width;
+	unsigned int height;
+};
+
 struct plat_v4l2_data {
 	int raw_pipeline_num;
 	int camsv_pipeline_num;
@@ -69,7 +79,8 @@ struct plat_v4l2_data {
 	int timestamp_buffer_ofst;
 	int reserved_camsv_dev_id;
 
-	int (*set_meta_stats_info)(int ipi_id, void *addr);
+	int (*set_meta_stats_info)(int ipi_id, void *addr, size_t size,
+				   const struct set_meta_stats_info_param *p);
 	int (*set_sv_meta_stats_info)(int ipi_id, void *addr, struct dma_info *info);
 	int (*set_mraw_meta_stats_info)(int ipi_id, void *addr, struct dma_info *info);
 	int (*get_mraw_stats_cfg_param)(void *addr, struct mraw_stats_cfg_param *param);

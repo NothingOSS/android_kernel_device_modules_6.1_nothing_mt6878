@@ -40,9 +40,48 @@ static void set_payload(struct mtk_cam_uapi_meta_hw_buf *buf,
 	*offset += size;
 }
 
-static int set_meta_stat0_info(struct mtk_cam_uapi_meta_raw_stats_0 *stats)
+static void meta_state0_reset_all(struct mtk_cam_uapi_meta_raw_stats_0 *stats)
 {
 	size_t offset = sizeof(*stats);
+
+	set_payload(&stats->ae_awb_stats.aao_buf, 0, &offset);
+	set_payload(&stats->ae_awb_stats.aaho_buf, 0, &offset);
+	set_payload(&stats->ltm_stats.ltmso_buf, 0, &offset);
+	set_payload(&stats->ltm_stats.ltmsho_buf, 0, &offset);
+	set_payload(&stats->flk_stats.flko_buf, 0, &offset);
+	set_payload(&stats->tsf_stats.tsfo_r1_buf, 0, &offset);
+	set_payload(&stats->tsf_stats.tsfo_r2_buf, 0, &offset);
+	set_payload(&stats->tcys_stats.tcyso_buf, 0, &offset);
+	set_payload(&stats->pde_stats.pdo_buf, 0, &offset);
+
+	set_payload(&stats->ae_awb_stats_w.aao_buf, 0, &offset);
+	set_payload(&stats->ae_awb_stats_w.aaho_buf, 0, &offset);
+	set_payload(&stats->ltm_stats_w.ltmso_buf, 0, &offset);
+	set_payload(&stats->ltm_stats_w.ltmsho_buf, 0, &offset);
+	set_payload(&stats->flk_stats_w.flko_buf, 0, &offset);
+	set_payload(&stats->tsf_stats_w.tsfo_r1_buf, 0, &offset);
+	set_payload(&stats->tsf_stats_w.tsfo_r2_buf, 0, &offset);
+	set_payload(&stats->tcys_stats_w.tcyso_buf, 0, &offset);
+	set_payload(&stats->pde_stats_w.pdo_buf, 0, &offset);
+}
+
+static int set_meta_stat0_info(struct mtk_cam_uapi_meta_raw_stats_0 *stats,
+			       const struct set_meta_stats_info_param *p)
+{
+	size_t offset = sizeof(*stats);
+	unsigned int flko_size;
+
+	if (!p->meta_cfg || !p->meta_cfg_size) {
+		meta_state0_reset_all(stats);
+		return 0;
+	}
+
+#ifdef DYNAMIC_SIZE
+	flko_size = p->height *
+		MTK_CAM_UAPI_FLK_BLK_SIZE * MTK_CAM_UAPI_FLK_MAX_STAT_BLK_NUM;
+#else
+	flko_size = MTK_CAM_UAPI_FLK_MAX_BUF_SIZE;
+#endif
 
 	set_payload(&stats->ae_awb_stats.aao_buf,
 		    MTK_CAM_UAPI_AAO_MAX_BUF_SIZE, &offset);
@@ -52,8 +91,7 @@ static int set_meta_stat0_info(struct mtk_cam_uapi_meta_raw_stats_0 *stats)
 		    MTK_CAM_UAPI_LTMSO_SIZE, &offset);
 	set_payload(&stats->ltm_stats.ltmsho_buf,
 		    MTK_CAM_UAPI_LTMSHO_SIZE, &offset);
-	set_payload(&stats->flk_stats.flko_buf,
-		    MTK_CAM_UAPI_FLK_MAX_BUF_SIZE, &offset);
+	set_payload(&stats->flk_stats.flko_buf, flko_size, &offset);
 	set_payload(&stats->tsf_stats.tsfo_r1_buf,
 		    MTK_CAM_UAPI_TSFSO_SIZE, &offset);
 	set_payload(&stats->tsf_stats.tsfo_r2_buf,
@@ -75,7 +113,8 @@ static int set_meta_stat0_info(struct mtk_cam_uapi_meta_raw_stats_0 *stats)
 	return 0;
 }
 
-static int set_meta_stat1_info(struct mtk_cam_uapi_meta_raw_stats_1 *stats)
+static int set_meta_stat1_info(struct mtk_cam_uapi_meta_raw_stats_1 *stats,
+			       const struct set_meta_stats_info_param *p)
 {
 	size_t offset = sizeof(*stats);
 
@@ -84,14 +123,23 @@ static int set_meta_stat1_info(struct mtk_cam_uapi_meta_raw_stats_1 *stats)
 	return 0;
 }
 
-static int set_meta_stats_info(int ipi_id, void *addr)
+static int set_meta_stats_info(int ipi_id, void *addr, size_t size,
+			       const struct set_meta_stats_info_param *p)
 {
 	if (WARN_ON(!addr))
 		return -1;
 
 	switch (ipi_id) {
-	case MTKCAM_IPI_RAW_META_STATS_0: return set_meta_stat0_info(addr);
-	case MTKCAM_IPI_RAW_META_STATS_1: return set_meta_stat1_info(addr);
+	case MTKCAM_IPI_RAW_META_STATS_0:
+		if (WARN_ON(size < sizeof(struct mtk_cam_uapi_meta_raw_stats_0)))
+			return -1;
+
+		return set_meta_stat0_info(addr, p);
+	case MTKCAM_IPI_RAW_META_STATS_1:
+		if (WARN_ON(size < sizeof(struct mtk_cam_uapi_meta_raw_stats_1)))
+			return -1;
+
+		return set_meta_stat1_info(addr, p);
 	default:
 		pr_info("%s: %s: not supported: %d\n",
 			__FILE__, __func__, ipi_id);
