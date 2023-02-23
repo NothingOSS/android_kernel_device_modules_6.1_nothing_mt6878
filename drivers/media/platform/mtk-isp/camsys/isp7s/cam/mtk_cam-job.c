@@ -3297,6 +3297,8 @@ int mtk_cam_job_fill_dump_param(struct mtk_cam_job *job,
 		return -1;
 	}
 
+	memset(p, 0, sizeof(*p));
+
 	/* Common Debug Information*/
 	strncpy(p->desc, desc, sizeof(p->desc) - 1);
 
@@ -3323,6 +3325,7 @@ int mtk_cam_job_fill_dump_param(struct mtk_cam_job *job,
 	} else
 		pr_info("%s: meta_in not found\n", __func__);
 
+#ifdef DUMP_META_STATS
 	/* meta out 0 */
 	buf = mtk_cam_req_find_buffer(req, pipe_id, MTK_RAW_META_OUT_0);
 	if (buf) {
@@ -3345,6 +3348,7 @@ int mtk_cam_job_fill_dump_param(struct mtk_cam_job *job,
 	p->meta_out_2_cpu_addr		= NULL;
 	p->meta_out_2_dump_buf_size	= 0;
 	p->meta_out_2_iova		= 0;
+#endif
 
 	/* ipi frame param */
 	p->frame_params		= job->ipi.vaddr;
