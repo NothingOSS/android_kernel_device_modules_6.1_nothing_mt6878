@@ -153,7 +153,7 @@ extern int mml_racing_ut;
 extern int mml_racing_urgent;
 extern int mml_racing_eoc;
 
-#define MML_MAX_PATH_NODES	18 /* must align MAX_TILE_FUNC_NO in tile_driver.h */
+#define MML_MAX_PATH_NODES	19 /* must align MAX_TILE_FUNC_NO in tile_driver.h */
 #define MML_MAX_PATH_CACHES	20 /* must >= PATH_MML_MAX in all mtk-mml-mtxxxx.c */
 #define MML_MAX_CMDQ_CLTS	4
 #define MML_MAX_OPPS		5

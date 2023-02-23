@@ -325,20 +325,26 @@ static s32 sys_config_frame(struct mml_comp *comp, struct mml_task *task,
 	struct mml_sys *sys = comp_to_sys(comp);
 	struct mml_frame_config *cfg = task->config;
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	u32 misc_reg = 0, misc_reg_mask = 0;
 
 	if (cfg->info.mode == MML_MODE_RACING) {
 		sys_config_frame_racing(comp, task, ccfg);
 	} else if (cfg->info.mode == MML_MODE_DDP_ADDON) {
 		/* use hw reset flow */
-		cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_MISC_REG, 0, 0x80000000);
+		misc_reg_mask = 0x80000000;
 	} else if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
 		/* use hw reset flow */
-		cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_MISC_REG, 0, 0x80000000);
+		misc_reg_mask = 0x80000000;
 		sys_config_frame_dl(comp, task, ccfg);
 	} else if (cfg->info.mode == MML_MODE_APUDC) {
 		if (ccfg->pipe == 0)
 			sys_apu_enable(pkt, sys->apu_base, task->buf.src.apu_handle);
 	}
+
+	/* always disable DDREN_DMA_BLOCK_DISABLE */
+	misc_reg = misc_reg | BIT(4);
+	misc_reg_mask = misc_reg_mask | BIT(4);
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_MISC_REG, misc_reg, misc_reg_mask);
 
 	/* config aid sel by platform */
 	sys->data->aid_sel(comp, task, ccfg);
@@ -2067,6 +2073,10 @@ const struct of_device_id mtk_mml_of_ids[] = {
 	},
 	{
 		.compatible = "mediatek,mt6897-mml",
+		.data = &mt6985_mml_data,
+	},
+	{
+		.compatible = "mediatek,mt6989-mml",
 		.data = &mt6985_mml_data,
 	},
 	{},

@@ -61,6 +61,9 @@ mtk-mml-objs += mtk-mml-pq-birsz-fw.o
 mtk-mml-objs += mtk-mml-tcc.o
 mtk-mml-objs += mtk-mml-tdshp.o
 mtk-mml-objs += mtk-mml-wrot.o
+mtk-mml-objs += mtk-mml-rrot.o
+mtk-mml-objs += mtk-mml-merge.o
+mtk-mml-objs += mtk-mml-c3d.o
 
 # mml call sspm support
 mtk-mml-objs += mtk-mml-scmi.o
@@ -89,6 +92,11 @@ endif
 ifneq ($(wildcard $(srctree)/$(src)/mtk-mml-tp-mt6897.c),)
 obj-$(CONFIG_MTK_MML) += mtk-mml-mt6897.o
 mtk-mml-mt6897-objs := mtk-mml-tp-mt6897.o
+endif
+
+ifneq ($(wildcard $(srctree)/$(src)/mtk-mml-tp-mt6989.c),)
+obj-$(CONFIG_MTK_MML) += mtk-mml-mt6989.o
+mtk-mml-mt6989-objs := mtk-mml-tp-mt6989.o
 endif
 
 # for unit test

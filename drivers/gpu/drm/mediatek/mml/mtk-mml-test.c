@@ -336,7 +336,7 @@ static void case_general_submit(struct mml_test *test,
 
 	mml_ctx = mml_drm_get_context(mml_pdev, &disp);
 	if (IS_ERR_OR_NULL(mml_ctx)) {
-		mml_err("[test]get mml context failed %ld", PTR_ERR(mml_ctx));
+		mml_err("[test]get mml context failed %pe", mml_ctx);
 		return;
 	}
 
@@ -1677,8 +1677,8 @@ static struct dma_buf *mml_test_create_buf(struct dma_heap *heap, u32 size)
 	frame_buf = dma_heap_buffer_alloc(heap, size,
 		O_RDWR | O_CLOEXEC, DMA_HEAP_VALID_HEAP_FLAGS);
 	if (IS_ERR_OR_NULL(frame_buf)) {
-		mml_err("[test]buffer alloc fail %ld heap %p size %u",
-			PTR_ERR(frame_buf), heap, size);
+		mml_err("[test]buffer alloc fail %pe heap %p size %u",
+			frame_buf, heap, size);
 		return frame_buf;
 	}
 
@@ -1809,12 +1809,12 @@ static void mml_test_krun(u32 case_num)
 		goto end;
 	}
 
-	cur.cfg_src_format = mml_test_in_fmt;
-	cur.cfg_src_w = mml_test_w;
-	cur.cfg_src_h = mml_test_h;
-	cur.cfg_dest_format = mml_test_out_fmt;
-	cur.cfg_dest_w = mml_test_out_w;
-	cur.cfg_dest_h = mml_test_out_h;
+	memset(&the_case, 0, sizeof(the_case));
+	mml_case = case_num;
+	if (case_num < ARRAY_SIZE(cases) && cases[case_num].config)
+		cases[case_num].config();
+
+	cur = the_case;
 	cur.buf_src[0] = src_buf.dmabuf[0];
 	cur.dma_size_in[0] = src_buf.size[0];
 	cur.buf_dest[0] = dest_buf.dmabuf[0];
@@ -2067,7 +2067,7 @@ static ssize_t dumpsrv_read(struct file *filp, char __user *buf, size_t size,
 	int ret;
 
 	if (size != sizeof(struct mml_dump_job)) {
-		mml_err("[dumpsrv]size not match %lu %zu",
+		mml_err("[dumpsrv]size not match %zu %zu",
 			size, sizeof(struct mml_dump_job));
 		return -EFAULT;
 	}
@@ -2202,7 +2202,7 @@ static ssize_t apu_ut_write(struct file *filp, const char __user *buf, size_t le
 	char handle[20] = {0};
 	int ret;
 
-	mml_log("%s len %lu", __func__, len);
+	mml_log("%s len %zu", __func__, len);
 
 	if (copy_from_user(&handle, buf, min(len, sizeof(handle)))) {
 		mml_err("%s copy apu ut handle fail", __func__);
@@ -2336,7 +2336,7 @@ struct platform_driver mtk_mml_test_drv = {
 	.probe = probe,
 	.remove = remove,
 	.driver = {
-		.name = "mml_test",
+		.name = "mml-test",
 		.of_match_table = test_of_ids,
 	},
 };

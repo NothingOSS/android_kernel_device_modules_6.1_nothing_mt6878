@@ -546,6 +546,12 @@ static s32 comp_init(struct platform_device *pdev, struct mml_comp *comp,
 			 clkpropname, node->full_name);
 	}
 
+#ifdef MML_FPGA
+	if (ret < 0) {
+		mml_log("%s result %d and continue for fpga", __func__, ret);
+		return 0;
+	}
+#endif
 	return ret;
 }
 
@@ -1453,6 +1459,9 @@ static struct platform_driver *mml_drivers[] = {
 	&mml_tcc_driver,
 	&mml_tdshp_driver,
 	&mml_wrot_driver,
+	&mml_rrot_driver,
+	&mml_merge_driver,
+	&mml_c3d_driver,
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	&mtk_mml_test_drv,

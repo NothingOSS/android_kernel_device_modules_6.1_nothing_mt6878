@@ -277,6 +277,9 @@ extern struct platform_driver mml_pq_birsz_driver;
 extern struct platform_driver mml_tcc_driver;
 extern struct platform_driver mml_tdshp_driver;
 extern struct platform_driver mml_wrot_driver;
+extern struct platform_driver mml_rrot_driver;
+extern struct platform_driver mml_merge_driver;
+extern struct platform_driver mml_c3d_driver;
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 extern struct platform_driver mtk_mml_test_drv;

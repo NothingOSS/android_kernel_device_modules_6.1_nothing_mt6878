@@ -1951,13 +1951,13 @@ static s32 wrot_post(struct mml_comp *comp, struct mml_task *task,
 			wrot_crc_va[ccfg->pipe] =
 				cmdq_mbox_buf_alloc(task->config->path[ccfg->pipe]->clt,
 					&wrot_crc_pa[ccfg->pipe]);
-			mml_log("%s wrot component %u job %u pipe %u va[%p] pa[%llx]",
+			mml_log("%s wrot component %u job %u pipe %u va %p pa %llx",
 				__func__, comp->id, task->job.jobid,
 				ccfg->pipe, wrot_crc_va[ccfg->pipe], wrot_crc_pa[ccfg->pipe]);
 		}
 
 		if (unlikely(!wrot_crc_va[ccfg->pipe]) || unlikely(!wrot_crc_pa[ccfg->pipe])) {
-			mml_err("%s wrot component %u job %u pipe %u get dram va[%p] pa[%llx] failed",
+			mml_err("%s wrot component %u job %u pipe %u get dram va %p pa %llx failed",
 				__func__, comp->id, task->job.jobid,
 				ccfg->pipe, wrot_crc_va[ccfg->pipe], wrot_crc_pa[ccfg->pipe]);
 		} else {
@@ -2334,7 +2334,7 @@ static int probe(struct platform_device *pdev)
 	if (ret) {
 		if (ret == -EPROBE_DEFER)
 			return ret;
-		dev_err(dev, "fail to init component %u larb ret %d",
+		dev_err(dev, "fail to init component %u larb ret %d\n",
 			priv->comp.id, ret);
 	}
 
@@ -2428,6 +2428,10 @@ const struct of_device_id mml_wrot_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6897-mml_wrot",
+		.data = &mt6985_wrot_data,
+	},
+	{
+		.compatible = "mediatek,mt6989-mml_wrot",
 		.data = &mt6985_wrot_data,
 	},
 	{},

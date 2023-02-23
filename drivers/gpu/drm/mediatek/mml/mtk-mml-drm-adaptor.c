@@ -1396,7 +1396,7 @@ s32 mml_drm_racing_config_sync(struct mml_drm_ctx *ctx, struct cmdq_pkt *pkt)
 
 	/* debug current task idx */
 	cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX3,
-		atomic_read(&ctx->job_serial));
+		atomic_read(&ctx->job_serial) << 16);
 
 	if (ctx->disp_vdo && event_target) {
 		/* non-racing to racing case, force clear target line
@@ -1435,7 +1435,7 @@ s32 mml_drm_racing_stop_sync(struct mml_drm_ctx *ctx, struct cmdq_pkt *pkt)
 
 	/* debug current task idx */
 	cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX3,
-		atomic_read(&ctx->job_serial));
+		atomic_read(&ctx->job_serial) << 16);
 
 	/* set NEXT bit on, to let mml know should jump next */
 	lhs.reg = true;

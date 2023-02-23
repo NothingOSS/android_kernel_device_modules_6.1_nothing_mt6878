@@ -581,6 +581,10 @@ const struct of_device_id mml_pq_birsz_driver_dt_match[] = {
 		.compatible = "mediatek,mt6897-mml_birsz",
 		.data = &mt6985_birsz_data,
 	},
+	{
+		.compatible = "mediatek,mt6989-mml_birsz",
+		.data = &mt6985_birsz_data,
+	},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mml_pq_birsz_driver_dt_match);

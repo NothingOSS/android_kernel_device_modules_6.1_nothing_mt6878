@@ -45,6 +45,9 @@ struct mml_comp_fg {
 	const struct fg_data *data;
 };
 
+static const struct fg_data mt6989_fg_data = {
+};
+
 /* meta data for each different frame config */
 struct fg_frame_data {
 	u8 out_idx;
@@ -280,6 +283,10 @@ const struct of_device_id mml_fg_driver_dt_match[] = {
 	{
 		.compatible = "mediatek,mt6897-mml_fg",
 		.data = &mt6897_fg_data
+	},
+	{
+		.compatible = "mediatek,mt6989-mml_fg",
+		.data = &mt6989_fg_data
 	},
 	{},
 };
