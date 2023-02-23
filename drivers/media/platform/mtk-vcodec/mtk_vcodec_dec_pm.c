@@ -175,6 +175,7 @@ void mtk_vcodec_dec_pw_on(struct mtk_vcodec_pm *pm)
 	struct mtk_vcodec_dev *dev = container_of(pm, struct mtk_vcodec_dev, pm);
 
 	atomic_inc(&dev->dec_larb_ref_cnt);
+	mtk_v4l2_debug(8, "dec_larb_ref_cnt: %d", atomic_read(&dev->dec_larb_ref_cnt));
 	for (larb_index = 0; larb_index < MTK_VDEC_MAX_LARB_COUNT; larb_index++) {
 		if (pm->larbvdecs[larb_index]) {
 			ret = pm_runtime_resume_and_get(pm->larbvdecs[larb_index]);
@@ -209,6 +210,7 @@ void mtk_vcodec_dec_pw_off(struct mtk_vcodec_pm *pm)
 		// return;
 	}
 	atomic_dec(&dev->dec_larb_ref_cnt);
+	mtk_v4l2_debug(8, "dec_larb_ref_cnt: %d", atomic_read(&dev->dec_larb_ref_cnt));
 	for (larb_index = 0; larb_index < MTK_VDEC_MAX_LARB_COUNT; larb_index++) {
 		if (pm->larbvdecs[larb_index])
 			pm_runtime_put_sync(pm->larbvdecs[larb_index]);
@@ -470,9 +472,12 @@ void mtk_vcodec_dec_clock_on(struct mtk_vcodec_pm *pm, int hw_id)
 
 	clks_data = &pm->vdec_clks_data;
 	dev = container_of(pm, struct mtk_vcodec_dev, pm);
-	atomic_inc(&dev->dec_clk_ref_cnt[hw_id]);
 
 	mtk_vcodec_dec_pw_on(pm);
+
+	atomic_inc(&dev->dec_clk_ref_cnt[hw_id]);
+	mtk_v4l2_debug(8, "dec_clk_ref_cnt[%d]: %d",
+		hw_id, atomic_read(&dev->dec_clk_ref_cnt[hw_id]));
 
 	// enable main clocks
 	for (j = 0; j < clks_data->main_clks_len; j++) {
@@ -593,6 +598,8 @@ void mtk_vcodec_dec_clock_off(struct mtk_vcodec_pm *pm, int hw_id)
 		// return;
 	}
 	atomic_dec(&dev->dec_clk_ref_cnt[hw_id]);
+	mtk_v4l2_debug(8, "dec_clk_ref_cnt[%d]: %d",
+		hw_id, atomic_read(&dev->dec_clk_ref_cnt[hw_id]));
 
 	if (pm->mtkdev->vdec_hw_ipm == VCODEC_IPM_V2) {
 		mutex_lock(&pm->dec_racing_info_mutex);

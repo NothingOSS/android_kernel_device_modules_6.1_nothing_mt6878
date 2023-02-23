@@ -272,13 +272,21 @@ int vcu_dec_ipi_handler(void *data, unsigned int len, void *priv)
 			ret = 1;
 			break;
 		case VCU_IPIMSG_DEC_LOCK_CORE:
-			vdec_decode_prepare(vcu->ctx, MTK_VDEC_CORE);
-			atomic_set(&dev->dec_hw_active[MTK_VDEC_CORE], 1);
+			if (msg->payload)
+				mtk_vcodec_dec_pw_on(&vcu->ctx->dev->pm);
+			else {
+				vdec_decode_prepare(vcu->ctx, MTK_VDEC_CORE);
+				atomic_set(&dev->dec_hw_active[MTK_VDEC_CORE], 1);
+			}
 			ret = 1;
 			break;
 		case VCU_IPIMSG_DEC_UNLOCK_CORE:
-			atomic_set(&dev->dec_hw_active[MTK_VDEC_CORE], 0);
-			vdec_decode_unprepare(vcu->ctx, MTK_VDEC_CORE);
+			if (msg->payload)
+				mtk_vcodec_dec_pw_off(&vcu->ctx->dev->pm);
+			else {
+				atomic_set(&dev->dec_hw_active[MTK_VDEC_CORE], 0);
+				vdec_decode_unprepare(vcu->ctx, MTK_VDEC_CORE);
+			}
 			ret = 1;
 			break;
 		case VCU_IPIMSG_DEC_GET_FRAME_BUFFER:

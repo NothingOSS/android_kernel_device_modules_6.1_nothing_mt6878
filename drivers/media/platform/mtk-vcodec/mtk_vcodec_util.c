@@ -143,7 +143,7 @@ struct VENC_SLB_CB_T mtk_venc_slb_cb = {0};
 EXPORT_SYMBOL(mtk_venc_slb_cb);
 
 /* For vcp vdec align mode force setting limit grouping count */
-int mtk_vdec_align_limit;
+int mtk_vdec_align_limit = MTK_VDEC_GROUP_CNT;
 EXPORT_SYMBOL_GPL(mtk_vdec_align_limit);
 
 struct vcu_v4l2_func vcu_func = { NULL };

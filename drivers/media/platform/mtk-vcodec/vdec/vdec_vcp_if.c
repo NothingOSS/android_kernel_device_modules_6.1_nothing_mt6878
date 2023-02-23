@@ -98,7 +98,11 @@ static void get_dpb_size(struct vdec_inst *inst, unsigned int *dpb_sz)
 	if (inst->vsi == NULL)
 		return;
 
-	*dpb_sz = inst->vsi->dec.dpb_sz + 1U;
+	*dpb_sz = inst->vsi->dec.dpb_sz;
+	if (inst->vsi->align_mode)
+		*dpb_sz += mtk_vdec_align_limit;
+		//if (!inst->vsi.input_driven)
+		//	*dpb_sz -= MTK_VDEC_DRV_OUTPUT_OVERHEAD;
 	mtk_vcodec_debug(inst, "sz=%d", *dpb_sz);
 }
 
@@ -725,16 +729,24 @@ int vcp_dec_ipi_handler(void *arg)
 				vdec_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 				break;
 			case VCU_IPIMSG_DEC_LOCK_CORE:
-				get_dvfs_data(vcu->ctx->dev, msg->no_need_put);
-				vdec_decode_prepare(vcu->ctx, MTK_VDEC_CORE);
-				atomic_set(&dev->dec_hw_active[MTK_VDEC_CORE], 1);
+				if (msg->payload)
+					mtk_vcodec_dec_pw_on(&vcu->ctx->dev->pm);
+				else {
+					get_dvfs_data(vcu->ctx->dev, msg->no_need_put);
+					vdec_decode_prepare(vcu->ctx, MTK_VDEC_CORE);
+					atomic_set(&dev->dec_hw_active[MTK_VDEC_CORE], 1);
+				}
 				msg->msg_id = AP_IPIMSG_DEC_LOCK_CORE_DONE;
 				vdec_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 				break;
 			case VCU_IPIMSG_DEC_UNLOCK_CORE:
-				get_dvfs_data(vcu->ctx->dev, msg->no_need_put);
-				atomic_set(&dev->dec_hw_active[MTK_VDEC_CORE], 0);
-				vdec_decode_unprepare(vcu->ctx, MTK_VDEC_CORE);
+				if (msg->payload)
+					mtk_vcodec_dec_pw_off(&vcu->ctx->dev->pm);
+				else {
+					get_dvfs_data(vcu->ctx->dev, msg->no_need_put);
+					atomic_set(&dev->dec_hw_active[MTK_VDEC_CORE], 0);
+					vdec_decode_unprepare(vcu->ctx, MTK_VDEC_CORE);
+				}
 				msg->msg_id = AP_IPIMSG_DEC_UNLOCK_CORE_DONE;
 				vdec_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 				break;
@@ -1586,6 +1598,11 @@ static int vdec_vcp_set_param(unsigned long h_vdec,
 		msg.data[0] = (__u32)(*param_ptr);
 		mtk_v4l2_debug(4, "[VDVFS][VDEC] msg data: %u", msg.data[0]);
 		ret = vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, true);
+		break;
+	case SET_PARAM_VDEC_IN_GROUP:
+		if (inst->vsi == NULL)
+			return -EINVAL;
+		inst->vsi->in_group = (bool)in;
 		break;
 	default:
 		mtk_vcodec_err(inst, "invalid set parameter type=%d\n", type);

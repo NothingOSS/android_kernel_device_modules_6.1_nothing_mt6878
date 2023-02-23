@@ -11,6 +11,10 @@
 #include <media/videobuf2-core.h>
 #include <media/videobuf2-v4l2.h>
 #include "mtk_vcodec_util.h"
+
+#define MTK_VDEC_GROUP_CNT		6
+#define MTK_VDEC_DRV_OUTPUT_OVERHEAD	3 // need sync with driver (vdec_wrap_srv.c)
+
 /**
  * struct vdec_fb  - decoder frame buffer
  * @fb_base     : frame buffer plane memory info

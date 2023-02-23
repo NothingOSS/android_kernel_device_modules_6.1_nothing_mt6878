@@ -222,11 +222,9 @@ static void update_dst_cnt(struct mtk_vcodec_ctx *ctx)
 
 static int mtk_vdec_get_align_limit(struct mtk_vcodec_ctx *ctx)
 {
-	if (mtk_vdec_align_limit > 0)
-		return mtk_vdec_align_limit;
 	if (ctx->dec_params.svp_mode || ctx->picinfo.buf_w * ctx->picinfo.buf_h > MTK_VDEC_4K_WH)
-		return MIN(ctx->dpb_size - 6, 2);
-	return MIN(ctx->dpb_size - 6, 4);
+		return mtk_vdec_align_limit - 2;
+	return mtk_vdec_align_limit;
 }
 
 static struct mtk_video_fmt *mtk_vdec_find_format(struct mtk_vcodec_ctx *ctx,
@@ -1698,6 +1696,45 @@ static void mtk_vdec_worker(struct work_struct *work)
 			= src_buf_info->vb.timecode;
 	}
 
+	if (ctx->align_mode) {
+		pair_cnt = MIN((*ctx->src_cnt), (*ctx->dst_cnt));
+		mtk_v4l2_debug(8, "[%d] pair cnt %d(%d,%d) align_type(%d) wait_align(%d) align_start_cnt %d",
+			ctx->id, pair_cnt, (*ctx->src_cnt), (*ctx->dst_cnt),
+			atomic_read(&ctx->align_type), (*ctx->wait_align), ctx->align_start_cnt);
+		if (ctx->align_start_cnt > 0) {
+			ctx->align_start_cnt--;
+			if (ctx->align_start_cnt == 0) {
+				limit_cnt = mtk_vdec_get_align_limit(ctx);
+				if (pair_cnt >= limit_cnt)
+					mtk_v4l2_debug(2, "[%d] pair cnt %d(%d,%d) >= %d when align mode, need to set align_type(%d)",
+						ctx->id, pair_cnt,
+						(*ctx->src_cnt), (*ctx->dst_cnt),
+						limit_cnt, atomic_read(&ctx->align_type));
+				else if (atomic_cmpxchg(&ctx->align_type, VDEC_ALIGN_FULL,
+						VDEC_ALIGN_WAIT) == VDEC_ALIGN_FULL) { // 1->0
+					mtk_v4l2_debug(2, "[%d] align_start_cnt done set align_type to WAIT(%d)(pair cnt %d(%d,%d))",
+						ctx->id, VDEC_ALIGN_WAIT, pair_cnt,
+						(*ctx->src_cnt), (*ctx->dst_cnt));
+					(*ctx->wait_align) = true;
+				}
+			}
+		} else if (pair_cnt <= 1) {
+			if (atomic_cmpxchg(&ctx->align_type,
+				VDEC_ALIGN_FULL, VDEC_ALIGN_WAIT) == VDEC_ALIGN_FULL) // 1->0
+				mtk_v4l2_debug(2, "[%d] pair cnt %d(%d,%d) set align_type to WAIT(%d)",
+					ctx->id, pair_cnt, (*ctx->src_cnt), (*ctx->dst_cnt),
+					VDEC_ALIGN_WAIT);
+			(*ctx->wait_align) = true;
+		}
+		if (!ctx->in_group)
+			ctx->in_group = true;
+		if (atomic_read(&ctx->align_type) == VDEC_ALIGN_WAIT && (*ctx->wait_align))
+			ctx->in_group = false;
+		if (vdec_if_set_param(ctx, SET_PARAM_VDEC_IN_GROUP, (void *)ctx->in_group) != 0)
+			mtk_v4l2_err("[%d] Error!! Cannot set param SET_PARAM_VDEC_IN_GROUP(%d)",
+				ctx->id, SET_PARAM_VDEC_IN_GROUP);
+	}
+
 	if (src_buf_info->used == false)
 		mtk_vdec_ts_insert(ctx, ctx->dec_params.timestamp);
 	src_buf_info->used = true;
@@ -1828,43 +1865,7 @@ static void mtk_vdec_worker(struct work_struct *work)
 				 ctx->id, ret);
 		}
 	}
-
 	update_src_cnt(ctx);
-
-	if (ctx->input_driven == NON_INPUT_DRIVEN && ctx->align_mode) {
-		pair_cnt = MIN((*ctx->src_cnt), (*ctx->dst_cnt));
-		mtk_v4l2_debug(8, "[%d] pair cnt %d(%d,%d) align_type(%d) wait_align(%d) align_start_cnt %d",
-			ctx->id, pair_cnt, (*ctx->src_cnt), (*ctx->dst_cnt),
-			atomic_read(&ctx->align_type), (*ctx->wait_align), ctx->align_start_cnt);
-		if (ctx->align_start_cnt > 0) {
-			ctx->align_start_cnt--;
-			if (ctx->align_start_cnt == 0) {
-				atomic_cmpxchg(&ctx->align_type, VDEC_ALIGN_FULL, VDEC_ALIGN_WAIT);
-				(*ctx->wait_align) = true;
-
-				limit_cnt = mtk_vdec_get_align_limit(ctx);
-				if (pair_cnt >= limit_cnt) {
-					mtk_v4l2_debug(2, "[%d] pair cnt %d(%d,%d) >= %d when align mode, need to set align_type(%d)",
-						ctx->id, pair_cnt,
-						(*ctx->src_cnt), (*ctx->dst_cnt),
-						limit_cnt, atomic_read(&ctx->align_type));
-					atomic_cmpxchg(&ctx->align_type,
-						VDEC_ALIGN_WAIT, VDEC_ALIGN_FULL); // 0->1
-				}
-			}
-		} else if (pair_cnt == 0) {
-			if (atomic_cmpxchg(&ctx->align_type,
-				VDEC_ALIGN_FULL, VDEC_ALIGN_WAIT) == VDEC_ALIGN_FULL) // 1->0
-				mtk_v4l2_debug(2, "[%d] pair cnt %d(%d,%d) set align_type to WAIT(%d)",
-					ctx->id, pair_cnt, (*ctx->src_cnt), (*ctx->dst_cnt),
-					VDEC_ALIGN_WAIT);
-			if (!(*ctx->wait_align)) {
-				mtk_v4l2_debug(2, "[%d] pair cnt %d(%d,%d) wait align",
-					ctx->id, pair_cnt, (*ctx->src_cnt), (*ctx->dst_cnt));
-				(*ctx->wait_align) = true;
-			}
-		}
-	}
 
 	v4l2_m2m_job_finish(dev->m2m_dev_dec, ctx->m2m_ctx);
 	mtk_vdec_do_gettimeofday(&vputvend);
@@ -3771,6 +3772,7 @@ static int vb2ops_vdec_start_streaming(struct vb2_queue *q, unsigned int count)
 			*(ctx->dst_cnt) = 0;
 		atomic_set(&ctx->align_type, VDEC_ALIGN_FULL);
 		ctx->align_start_cnt = ctx->dpb_size;
+		ctx->in_group = true;
 
 		total_frame_bufq_count = q->num_buffers;
 		if (vdec_if_set_param(ctx,

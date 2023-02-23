@@ -182,7 +182,9 @@ enum vdec_set_param_type {
 	SET_PARAM_NO_REORDER,
 	SET_PARAM_DECODE_ERROR_HANDLE_MODE,
 	SET_PARAM_MMDVFS,
+	/** only for kernel **/
 	SET_PARAM_VDEC_VCU_VPUD_LOG,
+	SET_PARAM_VDEC_IN_GROUP,
 	SET_PARAM_MAX = 0xFFFFFFFF
 };
 
@@ -441,9 +443,10 @@ struct vdec_vsi {
 	__u32 fix_buffers_svp;
 	__u32 interlacing;
 	__u32 codec_type;
-	__u32 input_driven;
+	__u8 input_driven;
 	__u8 align_mode;
 	__u8 wait_align;
+	__u8 in_group;
 	__u8 src_cnt;
 	__u8 dst_cnt;
 	__s8 crc_path[256];

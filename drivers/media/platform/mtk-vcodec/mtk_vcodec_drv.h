@@ -638,6 +638,7 @@ struct mtk_vcodec_ctx {
 	unsigned int *ipi_blocked;
 	enum vdec_input_driven_mode input_driven;
 	bool align_mode;
+	bool in_group;
 	atomic_t align_type; // flag for enum vdec_align_status
 	unsigned char *wait_align; // flag for waiting display vsync
 	int align_start_cnt;

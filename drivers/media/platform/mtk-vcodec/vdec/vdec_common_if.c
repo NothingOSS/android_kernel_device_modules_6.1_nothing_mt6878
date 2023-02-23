@@ -76,7 +76,11 @@ static void get_dpb_size(struct vdec_inst *inst, unsigned int *dpb_sz)
 	if (inst->vsi == NULL)
 		return;
 
-	*dpb_sz = inst->vsi->dec.dpb_sz + 1U;
+	*dpb_sz = inst->vsi->dec.dpb_sz;
+	if (inst->vsi->align_mode)
+		*dpb_sz += mtk_vdec_align_limit;
+		//if (!inst->vsi.input_driven)
+		//	*dpb_sz -= MTK_VDEC_DRV_OUTPUT_OVERHEAD;
 	mtk_vcodec_debug(inst, "sz=%d", *dpb_sz);
 }
 
@@ -711,6 +715,11 @@ static int vdec_set_param(unsigned long h_vdec,
 		break;
 	case SET_PARAM_VDEC_VCU_VPUD_LOG:
 		ret = VCU_FPTR(vcu_set_log)((char *) in);
+		break;
+	case SET_PARAM_VDEC_IN_GROUP:
+		if (inst->vsi == NULL)
+			return -EINVAL;
+		inst->vsi->in_group = (bool)in;
 		break;
 	default:
 		mtk_vcodec_err(inst, "invalid set parameter type=%d\n", type);
