@@ -51,3 +51,8 @@ ifneq ($(wildcard $(srctree)/$(src)/devapc-mt6985.c),)
 obj-$(CONFIG_DEVAPC_MT6985) += device-apc-mt6985.o
 device-apc-mt6985-$(CONFIG_DEVAPC_MT6985) += devapc-mt6985.o
 endif
+
+ifneq ($(wildcard $(srctree)/$(src)/devapc-mt6989.c),)
+obj-$(CONFIG_DEVAPC_MT6989) += device-apc-mt6989.o
+device-apc-mt6989-$(CONFIG_DEVAPC_MT6989) += devapc-mt6989.o
+endif

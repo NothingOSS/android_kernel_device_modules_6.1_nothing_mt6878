@@ -31,6 +31,7 @@ enum devapc_type {
 	DEVAPC_TYPE_MMINFRA,
 	DEVAPC_TYPE_MMUP,
 	DEVAPC_TYPE_GPU,
+	DEVAPC_TYPE_GPU1,
 };
 
 enum devapc_cb_status {

@@ -17,7 +17,7 @@
 #define DEAD			0xdeadbeaf
 #define RANDOM_OFFSET		0x88
 #define PFX			"[DEVAPC]: "
-#define SLAVE_TYPE_NUM_MAX	8
+#define SLAVE_TYPE_NUM_MAX	9
 #define IRQ_TYPE_NUM_MAX	7
 #define IRQ_TYPE_NUM_DEFAULT	1
 #define VIO_ADDR_HIGH_MASK	0xFFFFFFFF
