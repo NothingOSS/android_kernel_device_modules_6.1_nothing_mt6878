@@ -233,7 +233,7 @@ static int cmd_hist_get_entry(void)
 	cmd_hist[ptr].cpu = smp_processor_id();
 	cmd_hist[ptr].duration = 0;
 	cmd_hist[ptr].pid = current->pid;
-	cmd_hist[ptr].time = div_u64(local_clock(), 1000);
+	cmd_hist[ptr].time = local_clock();
 
 	return ptr;
 }
@@ -373,8 +373,7 @@ static void probe_ufshcd_command(void *data, const char *dev_name,
 		while (1) {
 			if (cmd_hist[ptr].cmd.utp.tag == tag) {
 				cmd_hist[cmd_hist_ptr].duration =
-					div_u64(local_clock(), 1000) -
-					cmd_hist[ptr].time;
+					local_clock() - cmd_hist[ptr].time;
 				break;
 			}
 			ptr = cmd_hist_get_prev_ptr(ptr);
@@ -413,8 +412,7 @@ static void probe_ufshcd_uic_command(void *data, const char *dev_name,
 		while (1) {
 			if (cmd_hist[ptr].cmd.uic.cmd == cmd) {
 				cmd_hist[cmd_hist_ptr].duration =
-					div_u64(local_clock(), 1000) -
-					cmd_hist[ptr].time;
+					local_clock() - cmd_hist[ptr].time;
 				break;
 			}
 			ptr = cmd_hist_get_prev_ptr(ptr);
