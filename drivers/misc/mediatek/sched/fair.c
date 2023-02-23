@@ -386,16 +386,15 @@ int init_share_buck(void)
 	int ret;
 	struct device_node *eas_node;
 
-	eas_node = of_find_node_by_name(NULL, "eas_info");
-	if (eas_node == NULL) {
-		pr_info("failed to find node @ %s\n", __func__);
-		return -ENODEV;
-	}
-
 	share_buck.gear_idx = 0;
-	ret = of_property_read_u32(eas_node, "share-buck", &share_buck.gear_idx);
-	if (ret < 0)
-		pr_info("no share_buck err_code=%d %s\n", ret,  __func__);
+	eas_node = of_find_node_by_name(NULL, "eas_info");
+	if (eas_node == NULL)
+		pr_info("failed to find node @ %s\n", __func__);
+	else {
+		ret = of_property_read_u32(eas_node, "share-buck", &share_buck.gear_idx);
+		if (ret < 0)
+			pr_info("no share_buck err_code=%d %s\n", ret,  __func__);
+	}
 
 	preempt_disable();
 	rd = cpu_rq(smp_processor_id())->rd;
