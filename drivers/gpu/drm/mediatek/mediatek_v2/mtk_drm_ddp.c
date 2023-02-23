@@ -12825,7 +12825,7 @@ static int mtk_ddp_mout_en_MT6897(const struct mtk_mmsys_reg_data *data,
 		value = DISP_PQ_IN_CROSSBAR2_TO_PQ_OUT_CHIST1;
 	} else if ((cur == DDP_COMPONENT_GAMMA0 &&
 		next == DDP_COMPONENT_POSTMASK0) ||
-		(cur == DDP_COMPONENT_GAMMA1 &&
+		(cur == DDP_COMPONENT_GAMMA2 &&
 		next == DDP_COMPONENT_POSTMASK1)) {
 		/* PQ_IN_CROSSBAR */
 		*addr = MT6985_PQ_PATH_SEL;
