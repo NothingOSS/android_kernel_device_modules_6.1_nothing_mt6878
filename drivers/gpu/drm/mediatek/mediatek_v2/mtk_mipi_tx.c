@@ -2300,7 +2300,7 @@ static int mtk_mipi_tx_pll_prepare_mt6897(struct clk_hw *hw)
 
 	/* value different from MT6983 */
 	if (rate < 2500)
-		writel(0xFFFF0070, mipi_tx->regs + MIPITX_PRESERVED_MT6983);
+		writel(0xFFFF00F0, mipi_tx->regs + MIPITX_PRESERVED_MT6983);
 	else
 		writel(0xFFFF0030, mipi_tx->regs + MIPITX_PRESERVED_MT6983);
 
