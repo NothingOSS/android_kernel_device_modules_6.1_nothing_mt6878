@@ -371,6 +371,10 @@ enum disp_ccorr_id_t {
 	DISP_CCORR3,
 	DISP_CCORR_TOTAL
 };
+enum drm_disp_ccorr_linear_t {
+	DRM_DISP_NONLINEAR = 0,
+	DRM_DISP_LINEAR,
+};
 
 struct DISP_CCORR_COEF_T {
 	enum disp_ccorr_id_t hw_id;
@@ -842,7 +846,10 @@ enum drm_disp_ccorr_id_t {
 };
 
 struct DRM_DISP_CCORR_COEF_T {
-	enum drm_disp_ccorr_id_t hw_id;
+	union {
+		enum drm_disp_ccorr_id_t hw_id;
+		enum drm_disp_ccorr_linear_t linear;
+	};
 	unsigned int coef[3][3];
 	unsigned int offset[3];
 	int FinalBacklight;
