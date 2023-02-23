@@ -278,5 +278,14 @@ void vdec_check_release_lock(void *ctx_check)
 				ctx->id, i);
 		}
 	}
+	if (ctx->dev->dec_cnt == 1) {
+		for (i = 0; i < MTK_VDEC_HW_NUM; i++)
+			if (atomic_read(&ctx->dev->dec_clk_ref_cnt[i]))
+				mtk_v4l2_err("[%d] hw_id %d: dec_clk_ref_cnt %d",
+					ctx->id, i, atomic_read(&ctx->dev->dec_clk_ref_cnt[i]));
+		if (atomic_read(&ctx->dev->dec_larb_ref_cnt))
+			mtk_v4l2_err("[%d] dec_larb_ref_cnt %d",
+				ctx->id, atomic_read(&ctx->dev->dec_larb_ref_cnt));
+	}
 }
 
