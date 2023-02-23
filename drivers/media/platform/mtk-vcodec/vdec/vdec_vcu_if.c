@@ -296,11 +296,12 @@ int vcu_dec_ipi_handler(void *data, unsigned int len, void *priv)
 			while (pfb == NULL) {
 				ret = wait_event_interruptible_timeout(
 					vcu->ctx->fm_wq,
-					v4l2_m2m_num_dst_bufs_ready(vcu->ctx->m2m_ctx) > 0 ||
-						vcu->ctx->state == MTK_STATE_FLUSH,
-					timeout_jiff);
+					 v4l2_m2m_num_dst_bufs_ready(
+						 vcu->ctx->m2m_ctx) > 0 ||
+					 vcu->ctx->state == MTK_STATE_FLUSH,
+					 timeout_jiff);
 				pfb = mtk_vcodec_get_fb(vcu->ctx);
-				if (mtk_vcodec_get_state(vcu->ctx) == MTK_STATE_FLUSH)
+				if (vcu->ctx->state == MTK_STATE_FLUSH)
 					mtk_vcodec_debug(vcu, "get fm fail: state == FLUSH (pfb=0x%p)\n",
 						pfb);
 				else if (ret == 0)
@@ -310,7 +311,8 @@ int vcu_dec_ipi_handler(void *data, unsigned int len, void *priv)
 					mtk_vcodec_debug(vcu, "get fm fail: unknown (ret = %d)\n",
 						ret);
 
-				if (mtk_vcodec_get_state(vcu->ctx) == MTK_STATE_FLUSH || ret != 0)
+				if (vcu->ctx->state == MTK_STATE_FLUSH ||
+					ret != 0)
 					break;
 			}
 			mtk_vcodec_debug(vcu, "- wait get fm pfb=0x%p\n", pfb);

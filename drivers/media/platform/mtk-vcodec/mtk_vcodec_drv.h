@@ -589,7 +589,6 @@ struct mtk_vcodec_ctx {
 	struct mtk_q_data q_data[2];
 	int id;
 	enum mtk_instance_state state;
-	struct mutex state_lock;
 	enum mtk_dec_param dec_param_change;
 	struct mtk_dec_params dec_params;
 	enum mtk_encode_param param_change;

@@ -108,7 +108,6 @@ static int fops_vcodec_open(struct file *file)
 	ctx->dev = dev;
 	init_waitqueue_head(&ctx->queue[0]);
 	init_waitqueue_head(&ctx->queue[1]);
-	mutex_init(&ctx->state_lock);
 	mutex_init(&ctx->buf_lock);
 	mutex_init(&ctx->worker_lock);
 	mutex_init(&ctx->hw_status);
