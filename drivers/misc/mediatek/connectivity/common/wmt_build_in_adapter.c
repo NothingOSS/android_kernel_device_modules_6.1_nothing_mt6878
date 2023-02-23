@@ -13,6 +13,9 @@
 #include <linux/proc_fs.h>
 #include <linux/ctype.h>
 #include <linux/cdev.h>
+#include <linux/sched/clock.h>
+#include <linux/sysfs.h>
+#include "conn_dbg.h"
 
 /*device tree mode*/
 #ifdef CONFIG_OF
@@ -68,6 +71,16 @@ do { \
 #define CONN_DBG_DEVICE_NAME "conn_dbg_dev"
 #define CONN_DBG_DEV_MAJOR 156
 
+struct conn_dbg_record {
+	char *log;
+	u64 num;
+	u64 first_sec;
+	unsigned long first_nsec;
+	u64 last_sec;
+	unsigned long last_nsec;
+	struct conn_dbg_record *next;
+};
+
 /* device node related */
 static int gConnDbgMajor = CONN_DBG_DEV_MAJOR;
 static struct class *pConnDbgClass;
@@ -79,6 +92,173 @@ static struct cdev gConnDbgdev;
  ******************************************************************************/
 static struct wmt_platform_bridge bridge;
 static struct wmt_platform_dbg_bridge g_dbg_bridge;
+
+#define CONN_DBG_LOG_BUF_SIZE 1024
+#define CONN_DBG_MAX_LOG_LEN 128
+#define CONN_DBG_MAX_REC_NUM 32
+static spinlock_t conn_dbg_log_lock;
+static struct conn_dbg_record *g_conn_dbg_record_p;
+static int conn_dbg_record_num;
+
+static void conn_dbg_get_local_time(u64 *sec, unsigned long *nsec)
+{
+	if (sec != NULL && nsec != NULL) {
+		*sec = local_clock();
+		*nsec = do_div(*sec, 1000000000)/1000;
+	} else
+		pr_info("The input parameters error when get local time\n");
+}
+
+int conn_dbg_add_log(enum conn_dbg_log_type type, const char *buf)
+{
+	unsigned long flag;
+	u64 sec;
+	unsigned long nsec;
+	struct conn_dbg_record *rec;
+	int ret = 0;
+	unsigned int len;
+
+	if (type >= CONN_DBG_LOG_TYPE_NUM || buf == NULL ||
+		strnlen(buf, CONN_DBG_MAX_LOG_LEN) == 0) {
+		pr_notice("%s type %d or buf %p is invalid\n", __func__, type, buf);
+		return -1;
+	}
+
+	pr_info("%s type = %d, log = %s\n", __func__, type, buf);
+	conn_dbg_get_local_time(&sec, &nsec);
+
+	spin_lock_irqsave(&conn_dbg_log_lock, flag);
+	/* search for an existing record */
+	rec = g_conn_dbg_record_p;
+	while (rec != NULL && rec->log != NULL) {
+		if (strncmp(rec->log, buf, CONN_DBG_MAX_LOG_LEN) == 0)
+			break;
+		rec = rec->next;
+	}
+
+	/* create a new record for a new log */
+	if (rec == NULL) {
+		if (conn_dbg_record_num >= CONN_DBG_MAX_REC_NUM) {
+			pr_notice("%s number of log record is over maximum.\n", __func__);
+			ret = -3;
+			goto exit;
+		}
+		rec = kmalloc(sizeof(struct conn_dbg_record), GFP_ATOMIC);
+		if (rec == NULL) {
+			ret = -4;
+			pr_notice("%s failed to allocate record\n", __func__);
+			goto exit;
+		}
+
+		len = strnlen(buf, CONN_DBG_MAX_LOG_LEN);
+		rec->log = kmalloc(len + 1, GFP_ATOMIC);
+		if (rec->log == NULL) {
+			kfree(rec);
+			ret = -5;
+			pr_notice("%s failed to allocate log buffer\n", __func__);
+			goto exit;
+		}
+		strncpy(rec->log, buf, len);
+		rec->log[len] = '\0';
+		rec->num = 0;
+		rec->first_sec = sec;
+		rec->first_nsec = nsec;
+		rec->next = g_conn_dbg_record_p;
+		g_conn_dbg_record_p = rec;
+		conn_dbg_record_num++;
+	}
+	rec->num++;
+	rec->last_sec = sec;
+	rec->last_nsec = nsec;
+exit:
+	spin_unlock_irqrestore(&conn_dbg_log_lock, flag);
+	return ret;
+}
+EXPORT_SYMBOL(conn_dbg_add_log);
+
+static void conn_dbg_dump_log(char *buf)
+{
+	struct conn_dbg_record *rec;
+	char temp[64];
+	unsigned long flag;
+
+	buf[0] = '\0';
+	spin_lock_irqsave(&conn_dbg_log_lock, flag);
+	rec = g_conn_dbg_record_p;
+	while (rec != NULL) {
+		if (snprintf(temp, sizeof(temp), "[%llu.%06lu~%llu.%06lu][%llu]",
+			rec->first_sec, rec->first_nsec,
+			rec->last_sec, rec->last_nsec, rec->num) > 0) {
+			strncat(buf, temp, CONN_DBG_LOG_BUF_SIZE);
+			strncat(buf, rec->log, CONN_DBG_LOG_BUF_SIZE);
+			strncat(buf, "\n", CONN_DBG_LOG_BUF_SIZE);
+		}
+		rec = rec->next;
+	}
+	spin_unlock_irqrestore(&conn_dbg_log_lock, flag);
+	buf[CONN_DBG_LOG_BUF_SIZE - 1] = '\0';
+}
+
+static ssize_t hw_monitor_show(
+	struct kobject *kobj,
+	struct kobj_attribute *attr,
+	char *buf)
+{
+	conn_dbg_dump_log(buf);
+	return strlen(buf);
+}
+
+static ssize_t hw_monitor_store(
+	struct kobject *kobj,
+	struct kobj_attribute *attr,
+	const char *buf,
+	size_t count)
+{
+	return 0;
+}
+
+static struct kobject *conn_kobj;
+static struct kobj_attribute hw_monitor_attr
+	= __ATTR(hw_monitor, 0664, hw_monitor_show, hw_monitor_store);
+
+static int conn_dbg_log_init(void)
+{
+	int ret;
+
+	spin_lock_init(&conn_dbg_log_lock);
+
+	conn_kobj = kobject_create_and_add("conn", NULL);
+	kobject_get(conn_kobj);
+	kobject_uevent(conn_kobj, KOBJ_ADD);
+
+	ret = sysfs_create_file(conn_kobj, &hw_monitor_attr.attr);
+	if (ret)
+		pr_notice("%s sysfs_create_file failed. (%d)\n", __func__, ret);
+
+	return ret;
+}
+
+static void conn_dbg_log_deinit(void)
+{
+	struct conn_dbg_record *rec;
+	unsigned long flag;
+
+	spin_lock_irqsave(&conn_dbg_log_lock, flag);
+	rec = g_conn_dbg_record_p;
+	while (rec != NULL) {
+		g_conn_dbg_record_p = rec->next;
+		if (rec->log != NULL)
+			kfree(rec->log);
+		kfree(rec);
+		rec = g_conn_dbg_record_p;
+	}
+	conn_dbg_record_num = 0;
+	spin_unlock_irqrestore(&conn_dbg_log_lock, flag);
+
+	sysfs_remove_file(conn_kobj, &hw_monitor_attr.attr);
+	kobject_put(conn_kobj);
+	conn_kobj = NULL;
+}
 
 ssize_t conn_dbg_dev_write(struct file *filp, const char __user *buffer,
 				size_t count, loff_t *f_pos)
@@ -92,10 +272,12 @@ ssize_t conn_dbg_dev_write(struct file *filp, const char __user *buffer,
 ssize_t conn_dbg_dev_read(struct file *filp, char __user *buffer,
 				size_t count, loff_t *f_pos)
 {
-	if (g_dbg_bridge.read_cb)
-		return g_dbg_bridge.read_cb(filp, buffer, count, f_pos);
+	ssize_t ret = 0;
 
-	return 0;
+	if (g_dbg_bridge.read_cb)
+		ret = g_dbg_bridge.read_cb(filp, buffer, count, f_pos);
+
+	return ret;
 }
 
 static const struct file_operations gConnDbgDevFops = {
@@ -184,6 +366,8 @@ void wmt_export_platform_bridge_register(struct wmt_platform_bridge *cb)
 	bridge.conninfra_reg_readable_cb = cb->conninfra_reg_readable_cb;
 	bridge.conninfra_reg_is_bus_hang_cb = cb->conninfra_reg_is_bus_hang_cb;
 
+	conn_dbg_dev_init();
+	conn_dbg_log_init();
 	CONNADP_INFO_FUNC("\n");
 }
 EXPORT_SYMBOL(wmt_export_platform_bridge_register);
@@ -197,10 +381,11 @@ EXPORT_SYMBOL(wmt_export_platform_bridge_unregister);
 
 void wmt_export_platform_dbg_bridge_register(const struct wmt_platform_dbg_bridge *cb)
 {
+	if (unlikely(!cb))
+		return;
 	if (cb->write_cb != NULL && cb->read_cb != NULL) {
 		g_dbg_bridge.write_cb = cb->write_cb;
 		g_dbg_bridge.read_cb = cb->read_cb;
-		conn_dbg_dev_init();
 	}
 }
 EXPORT_SYMBOL(wmt_export_platform_dbg_bridge_register);
@@ -210,6 +395,7 @@ void wmt_export_platform_dbg_bridge_unregister(void)
 	if (g_dbg_bridge.write_cb && g_dbg_bridge.read_cb)
 		conn_dbg_dev_deinit();
 	memset(&g_dbg_bridge, 0, sizeof(struct wmt_platform_dbg_bridge));
+	conn_dbg_log_deinit();
 }
 EXPORT_SYMBOL(wmt_export_platform_dbg_bridge_unregister);
 
