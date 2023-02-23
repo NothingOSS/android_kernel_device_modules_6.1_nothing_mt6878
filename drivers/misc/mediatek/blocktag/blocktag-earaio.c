@@ -324,15 +324,17 @@ static bool mtk_btag_earaio_send_uevt(bool boost)
 static int __mtk_btag_earaio_boost(bool boost)
 {
 	int changed = 0;
+	__u32 *top = earaio_ctrl.pwd_top_pages;
 
 	if (!(boost ^ earaio_ctrl.boosted))
 		return changed;
 
 	if (boost) {
 		/* Establish threshold to avoid lousy uevents */
-		if ((earaio_ctrl.pwd_top_r_pages >= EARAIO_UEVT_THRESHOLD_PAGES) ||
-			(earaio_ctrl.pwd_top_w_pages >= EARAIO_UEVT_THRESHOLD_PAGES))
+		if (top[BTAG_IO_READ] >= EARAIO_UEVT_THRESHOLD_PAGES ||
+		    top[BTAG_IO_WRITE] >= EARAIO_UEVT_THRESHOLD_PAGES)
 			changed = mtk_btag_earaio_send_uevt(true);
+
 	} else {
 		changed = mtk_btag_earaio_send_uevt(false);
 		changed = 1;
@@ -359,8 +361,8 @@ void mtk_btag_earaio_boost(bool boost)
 	changed = __mtk_btag_earaio_boost(boost);
 	if (boost || changed == 1) {
 		earaio_ctrl.pwd_begin = sched_clock();
-		earaio_ctrl.pwd_top_r_pages = 0;
-		earaio_ctrl.pwd_top_w_pages = 0;
+		earaio_ctrl.pwd_top_pages[BTAG_IO_READ] = 0;
+		earaio_ctrl.pwd_top_pages[BTAG_IO_WRITE] = 0;
 	}
 	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
 
@@ -374,15 +376,12 @@ void mtk_btag_earaio_check_pwd(void)
 		mtk_btag_earaio_boost(true);
 }
 
-void mtk_btag_earaio_update_pwd(bool write, __u32 size)
+void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 size)
 {
 	unsigned long flags;
 
 	spin_lock_irqsave(&earaio_ctrl.lock, flags);
-	if (write)
-		earaio_ctrl.pwd_top_w_pages += (size >> 12);
-	else
-		earaio_ctrl.pwd_top_r_pages += (size >> 12);
+	earaio_ctrl.pwd_top_pages[type] += (size >> 12);
 	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
 }
 
@@ -404,8 +403,8 @@ void mtk_btag_earaio_init_mictx(
 		spin_lock_init(&earaio_ctrl.lock);
 		earaio_ctrl.enabled = true;
 		earaio_ctrl.pwd_begin = sched_clock();
-		earaio_ctrl.pwd_top_r_pages = 0;
-		earaio_ctrl.pwd_top_w_pages = 0;
+		earaio_ctrl.pwd_top_pages[BTAG_IO_READ] = 0;
+		earaio_ctrl.pwd_top_pages[BTAG_IO_WRITE] = 0;
 		earaio_ctrl.mictx_id.storage = storage_type;
 	}
 

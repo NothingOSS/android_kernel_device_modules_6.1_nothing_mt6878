@@ -17,11 +17,11 @@
 
 #define MICTX_RESET_NS 1000000000
 
-void mtk_btag_mictx_eval_tp(struct mtk_blocktag *btag, __u32 idx, bool write,
+void mtk_btag_mictx_eval_tp(struct mtk_blocktag *btag, __u32 idx,
+			    enum mtk_btag_io_type io_type,
 			    __u64 usage, __u32 size)
 {
 	struct mtk_btag_mictx *mictx;
-	struct mtk_btag_throughput_rw *tprw;
 	unsigned long flags;
 	__u64 cur_time = sched_clock();
 	__u64 req_begin_time;
@@ -31,26 +31,25 @@ void mtk_btag_mictx_eval_tp(struct mtk_blocktag *btag, __u32 idx, bool write,
 
 	rcu_read_lock();
 	list_for_each_entry_rcu(mictx, &btag->ctx.mictx.list, list) {
-		struct mtk_btag_mictx_data *data = mictx->data;
+		struct mtk_btag_mictx_data *data = &mictx->data[idx];
 
-		spin_lock_irqsave(&data[idx].lock, flags);
-		tprw = (write) ? &data[idx].tp.w : &data[idx].tp.r;
-		tprw->size += size;
-		tprw->usage += usage;
-		data[idx].tp_max_time = cur_time;
+		spin_lock_irqsave(&data->lock, flags);
+		data->tp[io_type].size += size;
+		data->tp[io_type].usage += usage;
+		data->tp_max_time = cur_time;
 		req_begin_time = cur_time - usage;
-		if (!data[idx].tp_min_time || req_begin_time < data[idx].tp_min_time)
-			data[idx].tp_min_time = req_begin_time;
-		spin_unlock_irqrestore(&data[idx].lock, flags);
+		if (!data->tp_min_time || req_begin_time < data->tp_min_time)
+			data->tp_min_time = req_begin_time;
+		spin_unlock_irqrestore(&data->lock, flags);
 	}
 	rcu_read_unlock();
 }
 
-void mtk_btag_mictx_eval_req(struct mtk_blocktag *btag, __u32 idx, bool write,
+void mtk_btag_mictx_eval_req(struct mtk_blocktag *btag, __u32 idx,
+			     enum mtk_btag_io_type io_type,
 			     __u32 total_len, __u32 top_len)
 {
 	struct mtk_btag_mictx *mictx;
-	struct mtk_btag_req_rw *reqrw;
 	unsigned long flags;
 
 	if (idx >= btag->ctx.count)
@@ -58,19 +57,18 @@ void mtk_btag_mictx_eval_req(struct mtk_blocktag *btag, __u32 idx, bool write,
 
 	rcu_read_lock();
 	list_for_each_entry_rcu(mictx, &btag->ctx.mictx.list, list) {
-		struct mtk_btag_mictx_data *data = mictx->data;
+		struct mtk_btag_mictx_data *data = &mictx->data[idx];
 
-		spin_lock_irqsave(&data[idx].lock, flags);
-		reqrw = (write) ? &data[idx].req.w : &data[idx].req.r;
-		reqrw->count++;
-		reqrw->size += total_len;
-		reqrw->size_top += top_len;
-		spin_unlock_irqrestore(&data[idx].lock, flags);
+		spin_lock_irqsave(&data->lock, flags);
+		data->req[io_type].count++;
+		data->req[io_type].size += total_len;
+		data->req[io_type].size_top += top_len;
+		spin_unlock_irqrestore(&data->lock, flags);
 	}
 	rcu_read_unlock();
 
 	if (top_len && btag->vops->earaio_enabled)
-		mtk_btag_earaio_update_pwd(write, top_len);
+		mtk_btag_earaio_update_pwd(io_type, top_len);
 }
 
 void mtk_btag_mictx_accumulate_weight_qd(struct mtk_blocktag *btag, __u32 idx,
@@ -144,8 +142,10 @@ static void mtk_btag_mictx_reset(struct mtk_btag_mictx_data *data,
 	data->idle_total = 0;
 	data->tp_min_time = data->tp_max_time = 0;
 	data->weighted_qd = 0;
-	memset(&data->tp, 0, sizeof(struct mtk_btag_throughput));
-	memset(&data->req, 0, sizeof(struct mtk_btag_req));
+	memset(data->tp, 0,
+	       sizeof(struct mtk_btag_throughput) * BTAG_IO_TYPE_NR);
+	memset(data->req, 0,
+	       sizeof(struct mtk_btag_req) * BTAG_IO_TYPE_NR);
 }
 
 static struct mtk_btag_mictx *mtk_btag_mictx_find(struct mtk_blocktag *btag,
@@ -249,22 +249,24 @@ int mtk_btag_mictx_get_data(struct mtk_btag_mictx_id mictx_id,
 
 		/* calculate throughput (per-request) */
 		iostat->tp_req_r += mtk_btag_eval_tp_speed(
-			tmp_data.tp.r.size, tmp_data.tp.r.usage);
+			tmp_data.tp[BTAG_IO_READ].size,
+			tmp_data.tp[BTAG_IO_READ].usage);
 		iostat->tp_req_w += mtk_btag_eval_tp_speed(
-			tmp_data.tp.w.size, tmp_data.tp.w.usage);
+			tmp_data.tp[BTAG_IO_WRITE].size,
+			tmp_data.tp[BTAG_IO_WRITE].usage);
 
 		/* calculate throughput (overlapped, not 100% precise) */
 		tp_dur = tmp_data.tp_max_time - tmp_data.tp_min_time;
 		iostat->tp_all_r += mtk_btag_eval_tp_speed(
-			tmp_data.tp.r.size, tp_dur);
+			tmp_data.tp[BTAG_IO_READ].size, tp_dur);
 		iostat->tp_all_w += mtk_btag_eval_tp_speed(
-			tmp_data.tp.w.size, tp_dur);
+			tmp_data.tp[BTAG_IO_WRITE].size, tp_dur);
 
 		/* provide request count and size */
-		iostat->reqcnt_r += tmp_data.req.r.count;
-		iostat->reqsize_r += tmp_data.req.r.size;
-		iostat->reqcnt_w += tmp_data.req.w.count;
-		iostat->reqsize_w += tmp_data.req.w.size;
+		iostat->reqcnt_r += tmp_data.req[BTAG_IO_READ].count;
+		iostat->reqsize_r += tmp_data.req[BTAG_IO_READ].size;
+		iostat->reqcnt_w += tmp_data.req[BTAG_IO_WRITE].count;
+		iostat->reqsize_w += tmp_data.req[BTAG_IO_WRITE].size;
 
 		/* calculate idle total */
 		if (tmp_data.idle_begin)
@@ -272,13 +274,16 @@ int mtk_btag_mictx_get_data(struct mtk_btag_mictx_id mictx_id,
 		idle_total += tmp_data.idle_total;
 
 		/* calculate top_total and rw_total */
-		if (tmp_data.req.r.size || tmp_data.req.w.size) {
-			tmp_data.req.r.size >>= 12;
-			tmp_data.req.w.size >>= 12;
-			tmp_data.req.r.size_top >>= 12;
-			tmp_data.req.w.size_top >>= 12;
-			top_total += tmp_data.req.r.size_top + tmp_data.req.w.size_top;
-			rw_total += tmp_data.req.r.size + tmp_data.req.w.size;
+		if (tmp_data.req[BTAG_IO_READ].size ||
+		    tmp_data.req[BTAG_IO_WRITE].size) {
+			tmp_data.req[BTAG_IO_READ].size >>= 12;
+			tmp_data.req[BTAG_IO_READ].size_top >>= 12;
+			tmp_data.req[BTAG_IO_WRITE].size >>= 12;
+			tmp_data.req[BTAG_IO_WRITE].size_top >>= 12;
+			top_total += tmp_data.req[BTAG_IO_READ].size_top +
+				     tmp_data.req[BTAG_IO_WRITE].size_top;
+			rw_total += tmp_data.req[BTAG_IO_READ].size +
+				    tmp_data.req[BTAG_IO_WRITE].size;
 		}
 
 		/* fill-in cmdq depth */

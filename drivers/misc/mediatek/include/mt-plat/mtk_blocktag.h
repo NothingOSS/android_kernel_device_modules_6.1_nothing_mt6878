@@ -100,26 +100,16 @@ struct mtk_btag_workload {
 	__u32 count;   /* access count */
 };
 
-struct mtk_btag_throughput_rw {
+struct mtk_btag_throughput {
 	__u64 usage;  /* busy time (ns) */
 	__u32 size;   /* transferred bytes */
 	__u32 speed;  /* KB/s */
 };
 
-struct mtk_btag_throughput {
-	struct mtk_btag_throughput_rw r;  /* read */
-	struct mtk_btag_throughput_rw w;  /* write */
-};
-
-struct mtk_btag_req_rw {
+struct mtk_btag_req {
 	__u16 count;
 	__u64 size; /* bytes */
 	__u64 size_top; /* bytes */
-};
-
-struct mtk_btag_req {
-	struct mtk_btag_req_rw r; /* read */
-	struct mtk_btag_req_rw w; /* write */
 };
 
 /*
@@ -149,8 +139,8 @@ struct mtk_btag_mictx_iostat_struct {
  * other performance analysis tools.
  */
 struct mtk_btag_mictx_data {
-	struct mtk_btag_throughput tp;
-	struct mtk_btag_req req;
+	struct mtk_btag_throughput tp[BTAG_IO_TYPE_NR];
+	struct mtk_btag_req req[BTAG_IO_TYPE_NR];
 	__u64 window_begin;
 	__u64 tp_min_time;
 	__u64 tp_max_time;
@@ -176,8 +166,7 @@ struct mtk_btag_earaio_control {
 
 	/* peeking window */
 	__u64 pwd_begin;
-	__u32 pwd_top_r_pages;
-	__u32 pwd_top_w_pages;
+	__u32 pwd_top_pages[BTAG_IO_TYPE_NR];
 
 	bool boosted;
 	bool uevt_req;
@@ -211,7 +200,7 @@ struct mtk_btag_trace {
 	__u32 qid;
 	__s16 pid;
 	struct mtk_btag_workload workload;
-	struct mtk_btag_throughput throughput;
+	struct mtk_btag_throughput throughput[BTAG_IO_TYPE_NR];
 	struct mtk_btag_vmstat vmstat;
 	struct mtk_btag_proc_pidlogger pidlog;
 	struct mtk_btag_cpu cpu;
@@ -287,10 +276,12 @@ void mtk_btag_free(struct mtk_blocktag *btag);
 void mtk_btag_get_aee_buffer(unsigned long *vaddr, unsigned long *size);
 
 void mtk_btag_mictx_check_window(struct mtk_btag_mictx_id mictx_id);
-void mtk_btag_mictx_eval_tp(struct mtk_blocktag *btag, __u32 idx, bool write,
+void mtk_btag_mictx_eval_tp(struct mtk_blocktag *btag, __u32 idx,
+			    enum mtk_btag_io_type io_type,
 			    __u64 usage, __u32 size);
-void mtk_btag_mictx_eval_req(struct mtk_blocktag *btag, __u32 idx, bool write,
-				__u32 total_len, __u32 top_len);
+void mtk_btag_mictx_eval_req(struct mtk_blocktag *btag, __u32 idx,
+			     enum mtk_btag_io_type io_type,
+			     __u32 total_len, __u32 top_len);
 void mtk_btag_mictx_accumulate_weight_qd(struct mtk_blocktag *btag, __u32 idx,
 					 __u64 t_begin, __u64 t_cur);
 void mtk_btag_mictx_update(struct mtk_blocktag *btag, __u32 idx, __u32 q_depth,
@@ -309,7 +300,7 @@ void mtk_btag_earaio_init_mictx(
 int mtk_btag_earaio_init(void);
 void mtk_btag_earaio_boost(bool boost);
 void mtk_btag_earaio_check_pwd(void);
-void mtk_btag_earaio_update_pwd(bool write, __u32 size);
+void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 size);
 
 int mtk_btag_ufs_init(struct ufs_mtk_host *host);
 int mtk_btag_ufs_exit(void);

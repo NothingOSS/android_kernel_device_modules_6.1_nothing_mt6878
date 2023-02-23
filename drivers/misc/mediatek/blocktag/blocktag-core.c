@@ -279,29 +279,23 @@ void mtk_btag_cpu_eval(struct mtk_btag_cpu *cpu)
 	cpu->softirq = softirq;
 }
 
-static void mtk_btag_throughput_rw_eval(struct mtk_btag_throughput_rw *rw)
-{
-	__u64 usage;
-
-	usage = rw->usage;
-
-	do_div(usage, 1000000); /* convert ns to ms */
-
-	if (usage && rw->size) {
-		rw->speed = (rw->size) / (__u32)usage;  /* bytes/ms */
-		rw->speed = (rw->speed*1000) >> 10; /* KB/s */
-		rw->usage = usage;
-	} else {
-		rw->speed = 0;
-		rw->size = 0;
-		rw->usage = 0;
-	}
-}
 /* calculate throughput */
 void mtk_btag_throughput_eval(struct mtk_btag_throughput *tp)
 {
-	mtk_btag_throughput_rw_eval(&tp->r);
-	mtk_btag_throughput_rw_eval(&tp->w);
+	int type;
+
+	for (type = 0; type < BTAG_IO_TYPE_NR; type++) {
+		do_div(tp[type].usage, 1000000);
+		if (tp[type].usage && tp[type].size) {
+			tp[type].speed =
+				(__u32)div64_u64(1000 * (tp[type].size >> 10),
+						 tp[type].usage);
+		} else {
+			tp[type].usage = 0;
+			tp[type].size = 0;
+			tp[type].speed = 0;
+		}
+	}
 }
 
 /* get current trace in debugfs ring buffer */
@@ -361,16 +355,16 @@ static void mtk_btag_seq_trace(char **buff, unsigned long *size,
 	mtk_btag_seq_time(buff, size, seq, tr->time);
 	BTAG_PRINTF(buff, size, seq, "%s.q:%d.", name, tr->qid);
 
-	if (tr->throughput.r.usage)
+	if (tr->throughput[BTAG_IO_READ].usage)
 		BTAG_PRINTF(buff, size, seq, biolog_fmt_rt,
-			    tr->throughput.r.speed,
-			    tr->throughput.r.size,
-			    tr->throughput.r.usage);
-	if (tr->throughput.w.usage)
+			    tr->throughput[BTAG_IO_READ].speed,
+			    tr->throughput[BTAG_IO_READ].size,
+			    tr->throughput[BTAG_IO_READ].usage);
+	if (tr->throughput[BTAG_IO_WRITE].usage)
 		BTAG_PRINTF(buff, size, seq, biolog_fmt_wt,
-			    tr->throughput.w.speed,
-			    tr->throughput.w.size,
-			    tr->throughput.w.usage);
+			    tr->throughput[BTAG_IO_WRITE].speed,
+			    tr->throughput[BTAG_IO_WRITE].size,
+			    tr->throughput[BTAG_IO_WRITE].usage);
 
 	BTAG_PRINTF(buff, size, seq, biolog_fmt,
 		    tr->workload.percent,

@@ -200,9 +200,8 @@ void mmc_mtk_biolog_transfer_req_compl(struct mmc_host *mmc,
 {
 	struct mmc_mtk_bio_context *ctx;
 	struct mmc_mtk_bio_context_task *tsk;
-	struct mtk_btag_throughput_rw *tp = NULL;
 	unsigned long flags;
-	bool write;
+	enum mtk_btag_io_type io_type;
 	__u64 busy_time;
 	__u32 size;
 	bool is_sd;
@@ -226,13 +225,7 @@ void mmc_mtk_biolog_transfer_req_compl(struct mmc_host *mmc,
 
 	tsk->t[tsk_req_compl] = sched_clock();
 
-	if (tsk->dir) {
-		write = false;
-		tp = &ctx->throughput.r;
-	} else {
-		write = true;
-		tp = &ctx->throughput.w;
-	}
+	io_type = tsk->dir ? BTAG_IO_WRITE : BTAG_IO_READ;
 
 	/* throughput usage := duration of handling this request */
 	busy_time = tsk->t[tsk_req_compl] - tsk->t[tsk_send_cmd];
@@ -240,11 +233,11 @@ void mmc_mtk_biolog_transfer_req_compl(struct mmc_host *mmc,
 	/* workload statistics */
 	ctx->workload.count++;
 
-	if (tp) {
+	if (io_type < BTAG_IO_TYPE_NR) {
 		size = tsk->len;
-		tp->usage += busy_time;
-		tp->size += size;
-		mtk_btag_mictx_eval_tp(mmc_mtk_btag, 0, write, busy_time,
+		ctx->throughput[io_type].usage += busy_time;
+		ctx->throughput[io_type].size += size;
+		mtk_btag_mictx_eval_tp(mmc_mtk_btag, 0, io_type, busy_time,
 				       size);
 	}
 
@@ -279,7 +272,7 @@ static void mmc_mtk_bio_context_eval(struct mmc_mtk_bio_context *ctx)
 		ctx->workload.percent =
 			(__u32)ctx->workload.usage / (__u32)period;
 	}
-	mtk_btag_throughput_eval(&ctx->throughput);
+	mtk_btag_throughput_eval(ctx->throughput);
 }
 
 /* print context to trace ring buffer */
@@ -305,8 +298,8 @@ static struct mtk_btag_trace *mmc_mtk_bio_print_trace(
 	mtk_btag_pidlog_eval(&tr->pidlog, &ctx->pidlog);
 	mtk_btag_vmstat_eval(&tr->vmstat);
 	mtk_btag_cpu_eval(&tr->cpu);
-	memcpy(&tr->throughput, &ctx->throughput,
-		sizeof(struct mtk_btag_throughput));
+	memcpy(tr->throughput, ctx->throughput,
+	       sizeof(struct mtk_btag_throughput) * BTAG_IO_TYPE_NR);
 	memcpy(&tr->workload, &ctx->workload, sizeof(struct mtk_btag_workload));
 
 	tr->time = sched_clock();
@@ -368,7 +361,8 @@ void mmc_mtk_biolog_check(struct mmc_host *mmc, unsigned long req_mask)
 		ctx->period_start_t = end_time;
 		ctx->period_end_t = 0;
 		ctx->period_usage = 0;
-		memset(&ctx->throughput, 0, sizeof(struct mtk_btag_throughput));
+		memset(ctx->throughput, 0,
+		       sizeof(struct mtk_btag_throughput) * BTAG_IO_TYPE_NR);
 		memset(&ctx->workload, 0, sizeof(struct mtk_btag_workload));
 	}
 	spin_unlock_irqrestore(&ctx->lock, flags);

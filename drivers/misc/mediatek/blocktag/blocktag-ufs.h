@@ -49,7 +49,7 @@ struct mtk_btag_ufs_ctx {
 	__u16 q_depth;
 	struct mtk_btag_ufs_task task[BTAG_UFS_QD];
 	struct mtk_btag_workload workload;
-	struct mtk_btag_throughput throughput;
+	struct mtk_btag_throughput throughput[BTAG_IO_TYPE_NR];
 	struct mtk_btag_proc_pidlogger pidlog;
 };
 

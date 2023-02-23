@@ -193,8 +193,7 @@ void mtk_btag_ufs_send_command(__u16 task_id, struct scsi_cmnd *cmd)
 
 	btag_ufs_pidlog_insert(&ctx->pidlog, cmd, &top_len, io_type);
 	mtk_btag_mictx_eval_req(ufs_mtk_btag, BTAG_UFS_QUEUE_ID(task_id),
-				io_type == BTAG_IO_WRITE,
-				tsk->len << SECTOR_SHIFT, top_len);
+				io_type, tsk->len << SECTOR_SHIFT, top_len);
 
 	spin_lock_irqsave(&ctx->lock, flags);
 
@@ -227,9 +226,8 @@ void mtk_btag_ufs_transfer_req_compl(__u16 task_id, unsigned long req_mask)
 {
 	struct mtk_btag_ufs_ctx *ctx;
 	struct mtk_btag_ufs_task *tsk;
-	struct mtk_btag_throughput_rw *tp = NULL;
 	unsigned long flags;
-	bool write;
+	enum mtk_btag_io_type io_type;
 	__u64 busy_time;
 	__u32 size;
 
@@ -245,15 +243,7 @@ void mtk_btag_ufs_transfer_req_compl(__u16 task_id, unsigned long req_mask)
 
 	tsk->t[tsk_req_compl] = sched_clock();
 
-	if (tsk->cmd == READ_6 || tsk->cmd == READ_10 ||
-	    tsk->cmd == READ_16) {
-		write = false;
-		tp = &ctx->throughput.r;
-	} else if (tsk->cmd == WRITE_6 || tsk->cmd == WRITE_10 ||
-		   tsk->cmd == WRITE_16) {
-		write = true;
-		tp = &ctx->throughput.w;
-	}
+	io_type = cmd_to_io_type(tsk->cmd);
 
 	/* throughput usage := duration of handling this request */
 	busy_time = tsk->t[tsk_req_compl] - tsk->t[tsk_send_cmd];
@@ -261,12 +251,12 @@ void mtk_btag_ufs_transfer_req_compl(__u16 task_id, unsigned long req_mask)
 	/* workload statistics */
 	ctx->workload.count++;
 
-	if (tp) {
+	if (io_type < BTAG_IO_TYPE_NR) {
 		size = tsk->len << SECTOR_SHIFT;
-		tp->usage += busy_time;
-		tp->size += size;
+		ctx->throughput[io_type].usage += busy_time;
+		ctx->throughput[io_type].size += size;
 		mtk_btag_mictx_eval_tp(ufs_mtk_btag, BTAG_UFS_QUEUE_ID(task_id),
-				       write, busy_time, size);
+				       io_type, busy_time, size);
 	}
 
 	ctx->sum_of_inflight_start -= tsk->t[tsk_send_cmd];
@@ -331,14 +321,15 @@ static void mtk_btag_ufs_work(struct work_struct *work)
 		mtk_btag_pidlog_eval(&tr->pidlog, &ctx->pidlog);
 		mtk_btag_vmstat_eval(&tr->vmstat);
 		mtk_btag_cpu_eval(&tr->cpu);
-		memcpy(&tr->throughput, &ctx->throughput,
-			sizeof(struct mtk_btag_throughput));
+		memcpy(tr->throughput, ctx->throughput,
+		       sizeof(struct mtk_btag_throughput) * BTAG_IO_TYPE_NR);
 		memcpy(&tr->workload, &ctx->workload, sizeof(struct mtk_btag_workload));
 
 		ctx->period_start_t = tr->time;
 		ctx->period_end_t = 0;
 		ctx->period_usage = 0;
-		memset(&ctx->throughput, 0, sizeof(struct mtk_btag_throughput));
+		memset(ctx->throughput, 0,
+		       sizeof(struct mtk_btag_throughput) * BTAG_IO_TYPE_NR);
 		memset(&ctx->workload, 0, sizeof(struct mtk_btag_workload));
 		spin_unlock(&ctx->lock);
 
@@ -362,7 +353,7 @@ static void mtk_btag_ufs_ctx_eval(struct mtk_btag_ufs_ctx *ctx)
 		ctx->workload.percent =
 			(__u32)ctx->workload.usage / (__u32)period;
 	}
-	mtk_btag_throughput_eval(&ctx->throughput);
+	mtk_btag_throughput_eval(ctx->throughput);
 }
 
 static void mtk_btag_ufs_ctx_count_usage(struct mtk_btag_ufs_ctx *ctx,

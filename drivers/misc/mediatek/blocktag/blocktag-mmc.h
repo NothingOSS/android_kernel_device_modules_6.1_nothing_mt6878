@@ -54,7 +54,7 @@ struct mmc_mtk_bio_context {
 	uint64_t period_usage;
 	struct mmc_mtk_bio_context_task task[MMC_BIOLOG_CONTEXT_TASKS];
 	struct mtk_btag_workload workload;
-	struct mtk_btag_throughput throughput;
+	struct mtk_btag_throughput throughput[BTAG_IO_TYPE_NR];
 	struct mtk_btag_proc_pidlogger pidlog;
 };
 
