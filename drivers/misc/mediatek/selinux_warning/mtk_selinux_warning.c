@@ -33,6 +33,7 @@
 #define MOD		"SELINUX"
 #define SCONTEXT_FILTER
 #define AV_FILTER
+#define NE_FILTER
 /* #define ENABLE_CURRENT_NE_CORE_DUMP */
 
 
@@ -97,6 +98,15 @@ static const char *skip_pattern[SKIP_PATTERN_NUM] = {
 	"scontext=u:r:untrusted_app"
 };
 
+static const char * const ne_list[] = {
+	"u:r:system_server:s0",
+	"u:r:system_app:s0",
+	"u:r:platform_app:s0",
+	"u:r:priv_app:s0",
+	"u:r:bootanim:s0",
+};
+
+static struct tracepoint *satp;
 
 static int mtk_check_filter(char *scontext);
 static int mtk_get_scontext(char *data, char *buf);
@@ -306,21 +316,75 @@ void mtk_audit_hook(char *data)
 #endif
 }
 
+static void trigger_ne(void)
+{
+	/*
+	 * delay after signal sent
+	 * block current thread
+	 * let other thread to handle stack
+	 */
+	send_sig(SIGABRT, current, 0);
+	mdelay(1000);
+}
+
+static bool mtk_check_ne(char *scontext)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(ne_list); i++) {
+		if (!strcmp(scontext, ne_list[i]))
+			return true;
+	}
+	return false;
+}
+
+/* reference avc_audit_pre_callback */
+static size_t gen_avc_audit_pre_log(char *data, size_t size, struct selinux_audit_data *sad)
+{
+	const char *const *perms;
+	int i, perm;
+	u32 av = sad->audited;
+	size_t len = 0;
+
+	len += scnprintf(data, size, "avc: denied ");
+
+	if (!av) {
+		len += scnprintf(data + len, size - len, "null");
+		return len;
+	}
+
+	len += scnprintf(data + len, size - len, " {");
+	perms = secclass_map[sad->tclass - 1].perms;
+	for (i = 0, perm = 1; i < (sizeof(av) * 8); i++, perm <<= 1) {
+		if (!(perm & av) || !perms[i])
+			continue;
+
+		len += scnprintf(data + len, size - len, " %s", perms[i]);
+		av &= ~perm;
+	}
+
+	if (av)
+		len += scnprintf(data + len, size - len, " 0x%x", av);
+
+	len += scnprintf(data + len, size - len, " }");
+	return len;
+}
+
 static void selinux_aee(struct selinux_audit_data *sad, char *scontext,
 			char *tcontext, const char *tclass)
 {
 	char pname[AEE_FILTER_LEN];
 	char printbuf[PRINT_BUF_LEN];
 	char data[PRINT_BUF_LEN];
-	int ret;
+	size_t len;
 
-	ret = mtk_get_pname(scontext, pname);
-	if (!ret)
+	if (!mtk_get_pname(scontext, pname))
 		return;
 
-	snprintf(data, sizeof(data),
-		 "avc: denied, requested=0x%x denied=0x%x audited=0x%x result=%d scontext=%s tcontext=%s tclass=%s\n",
-		 sad->requested, sad->denied, sad->audited, sad->result,
+	len = gen_avc_audit_pre_log(data, sizeof(data), sad);
+
+	snprintf(data + len, sizeof(data) - len,
+		 " scontext=%s tcontext=%s tclass=%s\n",
 		 scontext, tcontext, tclass);
 
 	snprintf(printbuf, sizeof(printbuf),
@@ -328,68 +392,71 @@ static void selinux_aee(struct selinux_audit_data *sad, char *scontext,
 		 MOD, pname);
 
 	aee_kernel_warning_api(__FILE__, __LINE__,
-			       DB_OPT_DEFAULT | DB_OPT_NATIVE_BACKTRACE,
-			       printbuf, data);
+			       DB_OPT_DEFAULT, printbuf, data);
 }
 
-static void scontext_filter(struct selinux_audit_data *sad, char *scontext,
-			    char *tcontext, const char *tclass)
+static bool scontext_filter(char *scontext)
 {
 #ifdef SCONTEXT_FILTER
 	int ret;
 
 	/*check scontext is in warning list */
 	ret = mtk_check_filter(scontext);
-	if (ret < 0)
-		return;
-
-	pr_debug("[%s], In AEE Warning List scontext: %s\n", MOD, scontext);
-	selinux_aee(sad, scontext, tcontext, tclass);
+	if (ret >= 0) {
+		pr_debug("[%s], In AEE Warning List scontext: %s\n",
+			 MOD, scontext);
+		return true;
+	}
 #endif
+	return false;
 }
 
-static void av_filter(struct selinux_audit_data *sad, char *scontext,
-		      char *tcontext, const char *tclass)
+static bool av_filter(struct selinux_audit_data *sad)
 {
 #ifdef AV_FILTER
 	const char *const *perms;
 	int i, j, perm;
 	u32 av = sad->audited;
 
-	if (!av || !strcmp("u:r:untrusted_app", scontext))
-		return;
+	if (!av)
+		return false;
 
 	perms = secclass_map[sad->tclass - 1].perms;
 
-	/*  reference avc_audit_pre_callback */
+	/* reference avc_audit_pre_callback */
 	for (i = 0, perm = 1; i < (sizeof(av) * 8); i++, perm <<= 1) {
 		if (!(perm & av) || !perms[i])
 			continue;
 
 		for (j = 0; j < AEE_AV_FILTER_NUM && aee_av_filter_list[j];
 		     j++) {
-			if (strcmp(perms[i], aee_av_filter_list[j]))
-				continue;
-			selinux_aee(sad, scontext, tcontext, tclass);
+			if (!strcmp(perms[i], aee_av_filter_list[j]))
+				return true;
 		}
 	}
 #endif
+	return false;
 }
 
 static void probe_selinux_audited(void *ignore, struct selinux_audit_data *sad,
 				  char *scontext, char *tcontext,
 				  const char *tclass)
 {
+	bool aee = false;
+
 	if (!sad || !sad->denied || !enforcing_enabled(sad->state))
 		return;
 	if (!scontext)
 		return;
 
-	scontext_filter(sad, scontext, tcontext, tclass);
-	av_filter(sad, scontext, tcontext, tclass);
-}
+	aee = scontext_filter(scontext) ||
+	      (!!strcmp("u:r:untrusted_app", scontext) && av_filter(sad));
+	if (aee)
+		selinux_aee(sad, scontext, tcontext, tclass);
 
-static struct tracepoint *satp;
+	if (mtk_check_ne(scontext))
+		trigger_ne();
+}
 
 static void register_tracepoint(struct tracepoint *tp, void *ignore)
 {
