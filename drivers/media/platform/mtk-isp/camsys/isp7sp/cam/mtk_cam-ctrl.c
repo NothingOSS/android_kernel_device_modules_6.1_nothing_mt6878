@@ -439,12 +439,17 @@ static void handle_engine_frame_start(struct mtk_cam_ctrl *ctrl,
 	if (is_first) {
 		int frame_sync_no;
 		int req_no;
+		struct mtk_seninf_sof_notify_param param;
 
 		frame_sync_no = seq_from_fh_cookie(irq_info->frame_idx_inner);
 
-		if (frame_no_to_fs_req_no(ctrl, frame_sync_no, &req_no))
+		if (frame_no_to_fs_req_no(ctrl, frame_sync_no, &req_no)) {
 			mtk_cam_event_frame_sync(ctrl, req_no);
-
+			/* notify sof to sensor*/
+			param.sd = ctrl->ctx->seninf;
+			param.sof_cnt = req_no;
+			mtk_cam_seninf_sof_notify(&param);
+		}
 		mtk_cam_ctrl_send_event(ctrl, CAMSYS_EVENT_IRQ_F_VSYNC);
 	}
 
