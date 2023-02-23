@@ -530,23 +530,80 @@ static void attach_one_task(struct rq *rq, struct task_struct *p)
 }
 
 #if IS_ENABLED(CONFIG_MTK_EAS)
-struct cpumask system_cpumask;
-
-void init_system_cpumask(void)
+static void __sched_fork_init(struct task_struct *p)
 {
-	cpumask_copy(&system_cpumask, cpu_possible_mask);
+	struct soft_affinity_task *sa_task = &((struct mtk_task *)
+		p->android_vendor_data1)->sa_task;
+
+	sa_task->need_idle = false;
+	cpumask_copy(&sa_task->soft_cpumask, cpu_possible_mask);
 }
 
-void set_system_cpumask(const struct cpumask *srcp)
+static void android_rvh_sched_fork_init(void *unused, struct task_struct *p)
 {
-	cpumask_copy(&system_cpumask, srcp);
+	__sched_fork_init(p);
 }
-EXPORT_SYMBOL_GPL(set_system_cpumask);
 
-void set_system_cpumask_int(unsigned int cpumask_val)
+void init_task_soft_affinity(void)
 {
-	struct cpumask cpumask_setting;
+	struct task_struct *g, *p;
+	int ret;
+
+	/* init soft affinity related value to exist tasks */
+	read_lock(&tasklist_lock);
+	do_each_thread(g, p) {
+		__sched_fork_init(p);
+	} while_each_thread(g, p);
+	read_unlock(&tasklist_lock);
+
+	/* init soft affinity related value to newly forked tasks */
+	ret = register_trace_android_rvh_sched_fork_init(android_rvh_sched_fork_init, NULL);
+	if (ret)
+		pr_info("register sched_fork_init hooks failed, returned %d\n", ret);
+}
+
+static inline struct task_group *css_tg(struct cgroup_subsys_state *css)
+{
+	return css ? container_of(css, struct task_group, css) : NULL;
+}
+
+struct task_group *tg_array[TG_NUM];
+void _init_tg_mask(struct cgroup_subsys_state *css)
+{
+	struct task_group *tg = css_tg(css);
+	struct soft_affinity_tg *sa_tg = &((struct mtk_tg *) tg->android_vendor_data1)->sa_tg;
+
+	cpumask_copy(&sa_tg->soft_cpumask, cpu_possible_mask);
+
+	if (!strcmp(css->cgroup->kn->name, "top-app"))
+		tg_array[TOPAPP_ID] = tg;
+	else if (!strcmp(css->cgroup->kn->name, "foreground"))
+		tg_array[FOREGROUND_ID] = tg;
+	else if (!strcmp(css->cgroup->kn->name, "background"))
+		tg_array[BACKGROUND_ID] = tg;
+}
+
+void init_tg_soft_affinity(void)
+{
+	struct cgroup_subsys_state *css = &root_task_group.css;
+	struct cgroup_subsys_state *top_css = css;
+
+	rcu_read_lock();
+	css_for_each_child(css, top_css)
+		_init_tg_mask(css);
+	rcu_read_unlock();
+}
+
+void soft_affinity_init(void)
+{
+	init_task_soft_affinity();
+	init_tg_soft_affinity();
+}
+
+struct cpumask bit_to_cpumask(unsigned int cpumask_val)
+{
 	unsigned long cpumask_ulval = cpumask_val;
+	struct cpumask cpumask_setting;
 	int cpu;
 
 	cpumask_clear(&cpumask_setting);
@@ -554,16 +611,94 @@ void set_system_cpumask_int(unsigned int cpumask_val)
 		if (test_bit(cpu, &cpumask_ulval))
 			cpumask_set_cpu(cpu, &cpumask_setting);
 	}
-
-	cpumask_copy(&system_cpumask, &cpumask_setting);
+	return cpumask_setting;
 }
-EXPORT_SYMBOL_GPL(set_system_cpumask_int);
 
-struct cpumask *get_system_cpumask(void)
+void set_task_group_cpumask_int(struct soft_affinity_tg_for_user *soft_affinity_tg_val)
 {
-	return &system_cpumask;
+	struct task_group *tg = tg_array[soft_affinity_tg_val->tg_id];
+	struct cpumask *tg_mask = &(((struct mtk_tg *)
+		tg->android_vendor_data1)->sa_tg.soft_cpumask);
+	struct cpumask soft_cpumask = bit_to_cpumask(soft_affinity_tg_val->soft_cpumask);
+
+	cpumask_copy(tg_mask, &soft_cpumask);
 }
-EXPORT_SYMBOL_GPL(get_system_cpumask);
+
+struct cpumask *get_task_group_cpumask(int tg_id)
+{
+	struct task_group *tg = tg_array[tg_id];
+	struct cpumask *tg_mask = &((struct mtk_tg *) tg->android_vendor_data1)->sa_tg.soft_cpumask;
+
+	return tg_mask;
+}
+
+void __set_task_ls_with_softmask(struct task_struct *p, bool latency_sensitive,
+		struct cpumask soft_cpumask)
+{
+	struct soft_affinity_task *sa_task;
+
+	sa_task = &((struct mtk_task *) p->android_vendor_data1)->sa_task;
+	sa_task->need_idle = latency_sensitive;
+	cpumask_copy(&sa_task->soft_cpumask, &soft_cpumask);
+}
+EXPORT_SYMBOL_GPL(__set_task_ls_with_softmask);
+
+void set_task_ls_with_softmask(struct soft_affinity_task_for_user *soft_affinity_task_val)
+{
+	int pid = soft_affinity_task_val->pid;
+	bool latency_sensitive = soft_affinity_task_val->latency_sensitive;
+	struct cpumask soft_cpumask = bit_to_cpumask(soft_affinity_task_val->soft_cpumask);
+	struct task_struct *p;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (p) {
+		get_task_struct(p);
+		__set_task_ls_with_softmask(p, latency_sensitive, soft_cpumask);
+		put_task_struct(p);
+	}
+	rcu_read_unlock();
+}
+
+inline bool is_task_latency_sensitive(struct task_struct *p)
+{
+	struct soft_affinity_task *sa_task;
+	bool latency_sensitive = false;
+
+	sa_task = &((struct mtk_task *) p->android_vendor_data1)->sa_task;
+	rcu_read_lock();
+	latency_sensitive = sa_task->need_idle || uclamp_latency_sensitive(p);
+	rcu_read_unlock();
+
+	return latency_sensitive;
+}
+
+static inline void compute_effective_softmask(struct task_struct *p,
+		bool *latency_sensitive, struct cpumask *dst_mask)
+{
+	struct cgroup_subsys_state *css;
+	struct task_group *tg;
+	struct cpumask task_mask;
+	struct cpumask tg_mask;
+
+	css = task_css(p, cpu_cgrp_id);
+	tg = container_of(css, struct task_group, css);
+	tg_mask = ((struct mtk_tg *) tg->android_vendor_data1)->sa_tg.soft_cpumask;
+
+	task_mask = ((struct mtk_task *) p->android_vendor_data1)->sa_task.soft_cpumask;
+
+	*latency_sensitive = is_task_latency_sensitive(p);
+	/* not latency_sensitive task */
+	if (!*latency_sensitive) {
+		cpumask_copy(dst_mask, &tg_mask);
+		return;
+	}
+
+	if (!cpumask_and(dst_mask, &task_mask, &tg_mask)) {
+		cpumask_copy(dst_mask, &tg_mask);
+		return;
+	}
+}
 
 __read_mostly int num_sched_clusters;
 cpumask_t __read_mostly **cpu_array;
@@ -683,7 +818,8 @@ static inline bool task_can_skip_this_cpu(struct task_struct *p, unsigned long p
 }
 
 int mtk_find_energy_efficient_cpu_in_interrupt(struct task_struct *p, bool latency_sensitive,
-		struct perf_domain *pd, unsigned long min_cap, unsigned long max_cap)
+		struct perf_domain *pd, unsigned long min_cap,
+		unsigned long max_cap, struct cpumask *effective_softmask)
 {
 	int target_cpu = -1, cpu;
 	unsigned long cpu_util;
@@ -737,7 +873,7 @@ int mtk_find_energy_efficient_cpu_in_interrupt(struct task_struct *p, bool laten
 			spare_cap = cpu_cap;
 			lsub_positive(&spare_cap, util);
 			not_in_softmask = (latency_sensitive &&
-						!cpumask_test_cpu(cpu, &system_cpumask));
+						!cpumask_test_cpu(cpu, effective_softmask));
 
 			if (not_in_softmask)
 				continue;
@@ -944,17 +1080,10 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	unsigned long min_cap = uclamp_eff_value(p, UCLAMP_MIN);
 	unsigned long max_cap = uclamp_eff_value(p, UCLAMP_MAX);
 	struct energy_env eenv;
+	struct cpumask effective_softmask;
 
 	rcu_read_lock();
-	if (!uclamp_min_ls)
-		latency_sensitive = uclamp_latency_sensitive(p);
-	else {
-		latency_sensitive = (p->uclamp_req[UCLAMP_MIN].value > 0 ? 1 : 0) ||
-					uclamp_latency_sensitive(p);
-	}
-
-	if (!latency_sensitive)
-		latency_sensitive = get_task_idle_prefer_by_task(p);
+	compute_effective_softmask(p, &latency_sensitive, &effective_softmask);
 
 	pd = rcu_dereference(rd->pd);
 	if (!pd || READ_ONCE(rd->overutilized)) {
@@ -966,7 +1095,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	if (sync && cpu_rq(cpu)->nr_running == 1 &&
 	    cpumask_test_cpu(cpu, p->cpus_ptr) &&
 	    task_fits_capacity(p, capacity_of(cpu)) &&
-	    !(latency_sensitive && !cpumask_test_cpu(cpu, &system_cpumask))) {
+	    !(latency_sensitive && !cpumask_test_cpu(cpu, &effective_softmask))) {
 		rcu_read_unlock();
 		*new_cpu = cpu;
 		select_reason = LB_SYNC;
@@ -975,7 +1104,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 
 	if (unlikely(in_interrupt())) {
 		*new_cpu = mtk_find_energy_efficient_cpu_in_interrupt(p, latency_sensitive, pd,
-					min_cap, max_cap);
+					min_cap, max_cap, &effective_softmask);
 		rcu_read_unlock();
 		select_reason = LB_IN_INTERRUPT;
 		goto done;
@@ -1037,12 +1166,12 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 			lsub_positive(&spare_cap, util);
 
 			if ((spare_cap > sys_max_spare_cap) &&
-			    !(latency_sensitive && !cpumask_test_cpu(cpu, &system_cpumask))) {
+			    !(latency_sensitive && !cpumask_test_cpu(cpu, &effective_softmask))) {
 				sys_max_spare_cap = spare_cap;
 				sys_max_spare_cap_cpu = cpu;
 			}
 
-			if (latency_sensitive && !cpumask_test_cpu(cpu, &system_cpumask))
+			if (latency_sensitive && !cpumask_test_cpu(cpu, &effective_softmask))
 				continue;
 
 			/*
@@ -1175,7 +1304,7 @@ done:
 	if (trace_sched_select_task_rq_enabled())
 		trace_sched_select_task_rq(p, select_reason, prev_cpu, *new_cpu,
 				task_util(p), task_util_est(p), uclamp_task_util(p),
-				latency_sensitive, sync);
+				latency_sensitive, sync, &effective_softmask);
 
 }
 #endif
@@ -1190,6 +1319,7 @@ static struct task_struct *detach_a_hint_task(struct rq *src_rq, int dst_cpu)
 	int dst_capacity;
 	unsigned int task_util;
 	bool latency_sensitive = false;
+	struct cpumask effective_softmask;
 
 	lockdep_assert_rq_held(src_rq);
 
@@ -1206,17 +1336,9 @@ static struct task_struct *detach_a_hint_task(struct rq *src_rq, int dst_cpu)
 
 		task_util = uclamp_task_util(p);
 
-		if (!uclamp_min_ls)
-			latency_sensitive = uclamp_latency_sensitive(p);
-		else {
-			latency_sensitive = (p->uclamp_req[UCLAMP_MIN].value > 0 ? 1 : 0) ||
-					uclamp_latency_sensitive(p);
-		}
+		compute_effective_softmask(p, &latency_sensitive, &effective_softmask);
 
-		if (!latency_sensitive)
-			latency_sensitive = get_task_idle_prefer_by_task(p);
-
-		if (latency_sensitive && !cpumask_test_cpu(dst_cpu, &system_cpumask))
+		if (latency_sensitive && !cpumask_test_cpu(dst_cpu, &effective_softmask))
 			continue;
 
 		if (latency_sensitive &&
@@ -1237,25 +1359,6 @@ static struct task_struct *detach_a_hint_task(struct rq *src_rq, int dst_cpu)
 	return p;
 }
 #endif
-
-inline bool is_task_latency_sensitive(struct task_struct *p)
-{
-	bool latency_sensitive = false;
-
-	rcu_read_lock();
-	if (!uclamp_min_ls)
-		latency_sensitive = uclamp_latency_sensitive(p);
-	else {
-		latency_sensitive = (p->uclamp_req[UCLAMP_MIN].value > 0 ? 1 : 0) ||
-					uclamp_latency_sensitive(p);
-	}
-	if (!latency_sensitive)
-		latency_sensitive = get_task_idle_prefer_by_task(p);
-
-	rcu_read_unlock();
-
-	return latency_sensitive;
-}
 
 static int mtk_active_load_balance_cpu_stop(void *data)
 {
@@ -1316,11 +1419,14 @@ int migrate_running_task(int this_cpu, struct task_struct *p, struct rq *target,
 {
 	int active_balance = false;
 	unsigned long flags;
+	bool latency_sensitive = false;
+	struct cpumask effective_softmask;
 
+	compute_effective_softmask(p, &latency_sensitive, &effective_softmask);
 	raw_spin_rq_lock_irqsave(target, flags);
 	if (!target->active_balance &&
 		(task_rq(p) == target) && p->__state != TASK_DEAD &&
-		 !(is_task_latency_sensitive(p) && !cpumask_test_cpu(this_cpu, &system_cpumask))) {
+		 !(latency_sensitive && !cpumask_test_cpu(this_cpu, &effective_softmask))) {
 		target->active_balance = 1;
 		target->push_cpu = this_cpu;
 		active_balance = true;
@@ -1349,6 +1455,8 @@ void mtk_sched_newidle_balance(void *data, struct rq *this_rq, struct rq_flags *
 	int this_cpu = this_rq->cpu;
 	unsigned long misfit_load = 0;
 	u64 now_ns;
+	bool latency_sensitive = false;
+	struct cpumask effective_softmask;
 
 	if (cpu_paused(this_cpu)) {
 		*done = 1;
@@ -1408,10 +1516,11 @@ void mtk_sched_newidle_balance(void *data, struct rq *this_rq, struct rq_flags *
 		if (src_rq->misfit_task_load > misfit_load &&
 			capacity_orig_of(this_cpu) > capacity_orig_of(cpu)) {
 			p = src_rq->curr;
+			compute_effective_softmask(p, &latency_sensitive, &effective_softmask);
 			if (p && p->policy == SCHED_NORMAL &&
 				cpumask_test_cpu(this_cpu, p->cpus_ptr) &&
-				!(is_task_latency_sensitive(p) &&
-				!cpumask_test_cpu(this_cpu, &system_cpumask))) {
+				!(latency_sensitive &&
+				!cpumask_test_cpu(this_cpu, &effective_softmask))) {
 
 				misfit_task_rq = src_rq;
 				misfit_load = src_rq->misfit_task_load;

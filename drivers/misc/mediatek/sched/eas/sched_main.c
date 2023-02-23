@@ -231,6 +231,9 @@ static long eas_ioctl_impl(struct file *filp,
 	unsigned int sync;
 	unsigned int val;
 	struct cpumask *cpumask_ptr;
+	struct soft_affinity_tg_for_user soft_affinity_tg_val;
+	struct soft_affinity_task_for_user soft_affinity_task_val;
+	int tg_id;
 
 	switch (cmd) {
 	case EAS_SYNC_SET:
@@ -278,13 +281,22 @@ static long eas_ioctl_impl(struct file *filp,
 		if (easctl_copy_to_user((void *)arg, &val, sizeof(unsigned int)))
 			return -1;
 		break;
-	case EAS_SET_SYSTEM_MASK:
-		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+	case EAS_SET_TASK_SOFT_AFFINITY:
+		if (easctl_copy_from_user(&soft_affinity_task_val,
+				(void *)arg, sizeof(struct soft_affinity_task_for_user)))
 			return -1;
-		set_system_cpumask_int(val);
+		set_task_ls_with_softmask(&soft_affinity_task_val);
 		break;
-	case EAS_GET_SYSTEM_MASK:
-		cpumask_ptr = get_system_cpumask();
+	case EAS_SET_TASK_GROUP_SOFT_AFFINITY:
+		if (easctl_copy_from_user(&soft_affinity_tg_val,
+				(void *)arg, sizeof(struct soft_affinity_tg_for_user)))
+			return -1;
+		set_task_group_cpumask_int(&soft_affinity_tg_val);
+		break;
+	case EAS_GET_TASK_GROUP_SOFT_AFFINITY:
+		if (easctl_copy_from_user(&tg_id, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		cpumask_ptr = get_task_group_cpumask(tg_id);
 		val = cpumask_ptr->bits[0];
 		if (easctl_copy_to_user((void *)arg, &val, sizeof(unsigned int)))
 			return -1;
@@ -466,7 +478,7 @@ static int __init mtk_scheduler_init(void)
 		pr_info("register android_rvh_sched_newidle_balance failed\n");
 #endif
 
-	init_system_cpumask();
+	soft_affinity_init();
 
 	pr_debug(TAG"Start to init eas_ioctl driver\n");
 	parent = proc_mkdir("easmgr", NULL);

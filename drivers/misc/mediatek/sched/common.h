@@ -39,9 +39,15 @@ struct vip_task_struct {
 	int				vip_prio;
 };
 
+struct soft_affinity_task {
+	bool need_idle;
+	struct cpumask soft_cpumask;
+};
+
 struct mtk_task {
 	u64 reserved0[MTK_TASK_FLAG];
 	struct vip_task_struct	vip_task;
+	struct soft_affinity_task sa_task;
 };
 
 struct soft_affinity_tg {

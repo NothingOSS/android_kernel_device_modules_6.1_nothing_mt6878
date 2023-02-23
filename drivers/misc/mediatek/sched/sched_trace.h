@@ -93,15 +93,15 @@ TRACE_EVENT(sched_find_cpu_in_irq,
 		__entry->max_spare_cap)
 );
 
-extern struct cpumask system_cpumask;
 TRACE_EVENT(sched_select_task_rq,
 
 	TP_PROTO(struct task_struct *tsk,
 		int policy, int prev_cpu, int target_cpu,
-		int task_util, int task_util_est, int boost, bool prefer, int sync_flag),
+		int task_util, int task_util_est, int boost, bool prefer,
+		int sync_flag, struct cpumask *effective_softmask),
 
 	TP_ARGS(tsk, policy, prev_cpu, target_cpu, task_util, task_util_est, boost,
-		prefer, sync_flag),
+		prefer, sync_flag, effective_softmask),
 
 	TP_STRUCT__entry(
 		__field(pid_t, pid)
@@ -113,7 +113,7 @@ TRACE_EVENT(sched_select_task_rq,
 		__field(int, task_util_est)
 		__field(int, boost)
 		__field(long, task_mask)
-		__field(long, system_cpumask)
+		__field(long, effective_softmask)
 		__field(bool, prefer)
 		__field(int, sync_flag)
 		__field(int, cpuctl_grp_id)
@@ -130,7 +130,7 @@ TRACE_EVENT(sched_select_task_rq,
 		__entry->task_util_est  = task_util_est;
 		__entry->boost          = boost;
 		__entry->task_mask      = tsk->cpus_ptr->bits[0];
-		__entry->system_cpumask    = system_cpumask.bits[0];
+		__entry->effective_softmask = effective_softmask->bits[0];
 		__entry->prefer         = prefer;
 		__entry->sync_flag     = sync_flag;
 		__entry->cpuctl_grp_id = sched_cgroup_state(tsk, cpu_cgrp_id);
@@ -138,7 +138,7 @@ TRACE_EVENT(sched_select_task_rq,
 		),
 
 	TP_printk(
-		"pid=%4d 32-bit=%d policy=0x%08x pre-cpu=%d target=%d util=%d util_est=%d uclamp=%d mask=0x%lx sys_mask=0x%lx latency_sensitive=%d sync=%d cpuctl=%d cpuset=%d",
+		"pid=%4d 32-bit=%d policy=0x%08x pre-cpu=%d target=%d util=%d util_est=%d uclamp=%d mask=0x%lx eff_mask=0x%lx latency_sensitive=%d sync=%d cpuctl=%d cpuset=%d",
 		__entry->pid,
 		__entry->compat_thread,
 		__entry->policy,
@@ -148,7 +148,7 @@ TRACE_EVENT(sched_select_task_rq,
 		__entry->task_util_est,
 		__entry->boost,
 		__entry->task_mask,
-		__entry->system_cpumask,
+		__entry->effective_softmask,
 		__entry->prefer,
 		__entry->sync_flag,
 		__entry->cpuctl_grp_id,
