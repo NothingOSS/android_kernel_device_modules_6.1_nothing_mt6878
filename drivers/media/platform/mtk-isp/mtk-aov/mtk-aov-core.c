@@ -462,7 +462,7 @@ int aov_core_send_cmd(struct mtk_aov *aov_dev, uint32_t cmd,
 
 				dev_dbg(aov_dev->dev, "mtk_fld_aov_memcpy+\n");
 				AOV_TRACE_BEGIN("AOV Copy FLD");
-				// mtk_fld_aov_memcpy((void *)&(start->fld_info));
+				mtk_fld_aov_memcpy((void *)&(start->fld_info));
 				AOV_TRACE_END();
 				dev_dbg(aov_dev->dev, "mtk_fld_aov_memcpy-\n");
 

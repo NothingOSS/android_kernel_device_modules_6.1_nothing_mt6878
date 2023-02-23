@@ -36,6 +36,7 @@ mtk_aov-objs := \
 	mtk-aov-queue.o \
 	mtk-aov-mtee.o \
 	mtk-aie-model.o \
+	mtk-fld-model.o \
 	alloc/tlsf/tlsf_alloc.o
 
 obj-${CONFIG_VIDEO_MTK_ISP_AOV} += mtk_aov.o

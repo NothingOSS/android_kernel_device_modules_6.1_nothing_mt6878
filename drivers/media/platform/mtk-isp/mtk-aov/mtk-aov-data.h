@@ -54,7 +54,7 @@
 #define AOV_MAX_AAA_SIZE          (32 * 1024)
 #define AOV_MAX_TUNING_SIZE       (2 * 1024)
 #define AOV_MAX_AIE_SIZE          (162 * 1024)
-#define AOV_MAX_FLD_SIZE          (6 * 1024 * 1024)
+#define AOV_MAX_FLD_SIZE          (3 * 1024 * 1024)	// 3MB
 
 #define AOV_MAX_YUVO1_OUTPUT      (737280 + 32)  // 640 x 480, nv12 12-bit
 #define AOV_MAX_YUVO2_OUTPUT      (184320 + 32)  // 320 x 240, nv12 12-bit
@@ -303,7 +303,7 @@ struct aov_start {
 	struct aie_start aie_info;
 
 	///fld info
-	// struct fld_start fld_info;
+	struct fld_start fld_info;
 
 	// aov event
 	union {
