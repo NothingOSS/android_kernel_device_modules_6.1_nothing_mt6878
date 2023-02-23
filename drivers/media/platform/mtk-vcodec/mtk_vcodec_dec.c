@@ -2051,6 +2051,7 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 
 	if (caws->ctx != NULL) { // ctx retrigger case
 		ctx = caws->ctx;
+		valid_ctx = ctx;
 		// cur ctx should be in dvfs list
 		list_for_each(item, &dev->vdec_dvfs_inst) {
 			inst = list_entry(item, struct vcodec_inst, list);
