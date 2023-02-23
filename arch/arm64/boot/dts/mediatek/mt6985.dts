@@ -7068,7 +7068,8 @@
 				<&imgsys_main_clk CLK_IMG_IPE>,
 				<&imgsys_main_clk CLK_IMG_ME>,
 				<&imgsys_main_clk CLK_IMG_MMG>,
-				<&mmdvfs_clk CLK_MMDVFS_IMG>;
+				<&mmdvfs_clk CLK_MMDVFS_IMG>,
+				<&mmdvfs_mux MMDVFS_USER_IMG>;
 			clock-names = "IMGSYS_CG_IMG_TRAW0",
 			      "IMGSYS_CG_IMG_TRAW1",
 			      "IMGSYS_CG_IMG_VCORE_GALS",
@@ -7090,7 +7091,8 @@
 			      "IMGSYS_CG_IMG_IPE",
 			      "ME_CG",
 			      "MMG_CG",
-			      "mmdvfs_clk";
+			      "mmdvfs_clk",
+			      "mmdvfs_mux";
 			operating-points-v2 = <&opp_table_img>;
 #if 0
 			dvfsrc-vmm-supply = <&vmm_proxy_label>;
@@ -7163,8 +7165,9 @@
 			compatible = "mediatek,mtk-jpgenc";
 			reg = <0 0x17030000 0 0x10000>;
 			interrupts = <GIC_SPI 473 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&venc_gcon_clk CLK_VEN_CKE2_JPGENC>;
-			clock-names = "jpgenc";
+			clocks = <&venc_gcon_clk CLK_VEN_CKE2_JPGENC>,
+				 <&mmdvfs_mux MMDVFS_USER_JPEGENC>;
+			clock-names = "jpgenc", "mmdvfs_clk";
 			power-domains = <&scpsys  MT6985_POWER_DOMAIN_VEN0>;
 			mediatek,larb = <&smi_larb7>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
@@ -7185,7 +7188,7 @@
 				"path_jpegenc_q_table",
 				"path_jpegenc_bsdma";
 			operating-points-v2 = <&opp_table_venc>;
-			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		};
 
 		jpgdec0@17040000 {
@@ -7198,12 +7201,11 @@
 			operating-points-v2 = <&opp_table_venc>;
 			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			clocks = <&venc_gcon_clk CLK_VEN_CKE3_JPGDEC>,
-				<&venc_gcon_clk CLK_VEN_CKE4_JPGDEC_C1>;
-			clock-names = "MT_CG_VENC_JPGDEC",
-						"MT_CG_VENC_JPGDEC_C1";
+				<&venc_gcon_clk CLK_VEN_CKE4_JPGDEC_C1>,
+				<&mmdvfs_mux MMDVFS_USER_JPEGDEC>;
+			clock-names = "MT_CG_VENC_JPGDEC", "MT_CG_VENC_JPGDEC_C1", "mmdvfs_clk";
 			power-domains = <&scpsys MT6985_POWER_DOMAIN_VEN0>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
-			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			iommus = <&disp_iommu M4U_PORT_L7_JPGDEC_WDMA_0>,
 				 <&disp_iommu M4U_PORT_L7_JPGDEC_BSDMA_0>,
 				 <&disp_iommu M4U_PORT_L7_JPGDEC_WDMA_1>,
@@ -7221,8 +7223,9 @@
 			compatible = "mediatek,mtk-jpgenc_c1";
 			reg = <0 0x17830000 0 0x10000>;
 			interrupts = <GIC_SPI 478 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&venc_gcon_core1_clk CLK_VEN_C1_CKE2_JPGENC>;
-			clock-names = "jpgenc_c1";
+			clocks = <&venc_gcon_core1_clk CLK_VEN_C1_CKE2_JPGENC>,
+				 <&mmdvfs_mux MMDVFS_USER_JPEGENC>;
+			clock-names = "jpgenc_c1", "mmdvfs_clk";
 			power-domains = <&scpsys  MT6985_POWER_DOMAIN_VEN1>;
 			mediatek,larb = <&smi_larb8>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
@@ -7243,7 +7246,7 @@
 				"path_jpegenc_q_table",
 				"path_jpegenc_bsdma";
 			operating-points-v2 = <&opp_table_venc>;
-			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		};
 
 		mbist@17860000 {
@@ -7819,7 +7822,9 @@
 				"mdp_wrot1";
 			mdp-opp = <&opp_table_mdp>;
 			operating-points-v2 = <&opp_table_mdp>;
-			mdp-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			clocks = <&mmdvfs_mux MMDVFS_USER_MDP>;
+			clock-names = "mmdvfs_clk";
 			dre30-hist-sram-start = /bits/ 16 <1536>;
 		};
 
@@ -7978,8 +7983,9 @@
 				<&mdpsys1_config_clk CLK_MDP1_MDP_DLI_ASYNC0>,
 				<&mdpsys1_config_clk CLK_MDP1_MDP_DLI_ASYNC1>,
 				<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC0>,
-				<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC1>;
-			clock-names = "apb_bus", "dli0", "dli1", "dlo0", "dlo1";
+				<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC1>,
+				<&mmdvfs_mux MMDVFS_USER_MML>;
+			clock-names = "apb_bus", "dli0", "dli1", "dlo0", "dlo1", "mmdvfs_clk";
 			/* as mml device */
 			comp-count = <MML_ENGINE_TOTAL>;
 			topology = "mt6985";
@@ -8196,7 +8202,7 @@
 			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_DISP_FAKE0)>;
 			sspm-aid-enable;
 			operating-points-v2 = <&opp_table_mdp>;
-			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			apu = <&apusys_rv>;
 		};
 
@@ -10156,11 +10162,13 @@
 			 <&ovlsys1_config_clk CLK_OVL1_DISP_DLO_ASYNC3>,
 			 <&ovlsys1_config_clk CLK_OVL1_DISP_DLO_ASYNC4>,
 			 <&ovlsys1_config_clk CLK_OVL1_DISP_DLO_ASYNC5>,
-			 <&ovlsys1_config_clk CLK_OVL1_DISP_DLO_ASYNC6>;
+			 <&ovlsys1_config_clk CLK_OVL1_DISP_DLO_ASYNC6>,
+			 <&mmdvfs_mux MMDVFS_USER_DISP>;
 		clock-num = <48>;
+		dvfs-clk-idx = <48>;
 		condition-num = <2>;
 		operating-points-v2 = <&opp_table_disp>;
-		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		lp-mmclk-freq = <218000000>;
 		interconnects = <&mmqos SLAVE_LARB(38) &mmqos SLAVE_COMMON(0)>,
 				<&mmqos SLAVE_LARB(41) &mmqos SLAVE_COMMON(1)>,
@@ -10522,7 +10530,7 @@
 		mediatek,smi-supply = <&disp_ssc0_smi_2x1_sub_comm &disp_ssc1_smi_2x1_sub_comm>;
 		mediatek,common-id = <0>;
 		emimpu-check;
-		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		operating-points-v2 = <&opp_table_mminfra>;
 		smi-common;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_MM_INFRA>;
@@ -10540,7 +10548,7 @@
 		mediatek,smi-supply = <&mdp_ssc4_smi_2x1_sub_comm &mdp_ssc5_smi_2x1_sub_comm>;
 		mediatek,common-id = <1>;
 		emimpu-check;
-		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		operating-points-v2 = <&opp_table_mminfra>;
 		smi-common;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_MM_INFRA>;
@@ -11119,8 +11127,9 @@
 			<0 0x1600f000 0 0x10000>; /* VDEC_SOC_GCON */
 		clocks = <&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_CKEN>,
 			<&vdec_soc_gcon_base_clk CLK_VDE1_MINI_MDP_EN>,
-			<&mmdvfs_clk CLK_MMDVFS_VFMT>;
-		clock-names = "MT_CG_VDEC","MT_CG_MINI_MDP","mmdvfs_clk";
+			<&mmdvfs_clk CLK_MMDVFS_VFMT>,
+			<&mmdvfs_mux MMDVFS_USER_VFMT>;
+		clock-names = "MT_CG_VDEC","MT_CG_MINI_MDP","mmdvfs_clk", "mmdvfs_mux";
 		mediatek,fmt-gce-th-num = <2>; /* FMT GCE HW THREAD NUM */
 		mboxes = <&gce_m 6 0 CMDQ_THR_PRIO_1>,
 				<&gce_m 7 0 CMDQ_THR_PRIO_1>;
@@ -13335,14 +13344,14 @@
 		mediatek,vcu = <&vcu>;
 		clocks = <&venc_gcon_clk CLK_VEN_CKE1_VENC>,
 			<&venc_gcon_core1_clk CLK_VEN_C1_CKE1_VENC>,
-			<&venc_gcon_core2_clk CLK_VEN_C2_CKE1_VENC>,
-			<&mmdvfs_clk CLK_MMDVFS_VENC>;
+			<&venc_gcon_core2_clk CLK_VEN_C2_CKE1_VENC>;
+			// <&mmdvfs_mux MMDVFS_USER_VENC>; <&mmdvfs_clk CLK_MMDVFS_VENC>;
 		clock-names = "MT_CG_VENC0",
 			"MT_CG_VENC1",
-			"MT_CG_VENC2",
-			"mmdvfs_clk";
+			"MT_CG_VENC2";
+			// "mmdvfs_clk";
 		operating-points-v2 = <&opp_table_venc>;
-		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		port-arg-num = <3>;
 		port-def = <0 M4U_PORT_L7_VENC_RCPU 0>,
 			<0 M4U_PORT_L7_VENC_REC 0>,
@@ -14513,8 +14522,8 @@
 			<GIC_SPI 511 IRQ_TYPE_LEVEL_HIGH 0>;
 		operating-points-v2 = <&opp_table_cam>;
 		mboxes = <&gce_m 24 0 CMDQ_THR_PRIO_1>;
-		clocks = <&mmdvfs_clk CLK_MMDVFS_CAM>;
-		clock-names = "mmdvfs_clk";
+		clocks = <&mmdvfs_clk CLK_MMDVFS_CAM>, <&mmdvfs_mux MMDVFS_USER_CAM>;
+		clock-names = "mmdvfs_clk", "mmdvfs_mux";
 		vmm-pmic-supply = <&mt6319_6_vbuck3>;
 	};
 
