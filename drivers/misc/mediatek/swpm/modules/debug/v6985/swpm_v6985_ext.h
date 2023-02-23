@@ -98,7 +98,8 @@ struct share_index_ext {
 };
 
 struct share_ctrl_ext {
-	unsigned int lock;
+	unsigned int read_lock;
+	unsigned int write_lock;
 	unsigned int clear_flag;
 };
 

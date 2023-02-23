@@ -38,7 +38,7 @@
 	} while (0)
 
 
-#define SWPM_EXT_DBG (0)
+#define SWPM_EXT_DBG (1)
 
 static struct swpm_pmsr_data *swpm_pmsr_data_ptr;
 static struct swpm_pmsr_data default_data;

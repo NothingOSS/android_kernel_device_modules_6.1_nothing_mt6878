@@ -24,6 +24,7 @@
 
 #define SWPM_INTERNAL_TEST (0)
 #define DEFAULT_UPDATE_MS (10000)
+#define RETRY_UPDATE_MS (1000)
 #define CORE_SRAM (share_idx_ref_ext->core_idx_ext)
 #define DDR_SRAM (share_idx_ref_ext->mem_idx_ext)
 #define SUSPEND_SRAM (share_idx_ref_ext->suspend)
@@ -66,6 +67,8 @@ static char ddr_bc_ip_str[NR_DDR_BC_IP][MAX_IP_NAME_LENGTH] = {
 	"TOTAL_R", "TOTAL_W", "CPU", "GPU", "MM", "OTHERS",
 };
 
+/* static unsigned int retry_cnt = 0; */
+
 /* critical section function */
 static void swpm_sp_internal_update(void)
 {
@@ -78,6 +81,13 @@ static void swpm_sp_internal_update(void)
 
 		if (share_idx_ctrl_ext->clear_flag)
 			return;
+
+		if (share_idx_ctrl_ext->write_lock) {
+			update_interval_ms = RETRY_UPDATE_MS;
+			/* retry_cnt++; */
+			return;
+		}
+		share_idx_ctrl_ext->read_lock = 1;
 
 		for (i = 0; i < NR_CORE_VOLT; i++) {
 			core_vol_duration[i].duration +=
@@ -122,6 +132,7 @@ static void swpm_sp_internal_update(void)
 			suspend_time.time_L;
 
 		share_idx_ctrl_ext->clear_flag = 1;
+		share_idx_ctrl_ext->read_lock = 0;
 	}
 }
 
@@ -133,7 +144,16 @@ static void swpm_sp_routine(struct timer_list *t)
 	swpm_sp_internal_update();
 	spin_unlock_irqrestore(&swpm_sp_spinlock, flags);
 
+/*	if (update_interval_ms == DEFAULT_UPDATE_MS)
+ *		pr_notice("swpm_sp_routine regular update(%d), total_suspend(%llu)\n",
+ *				  retry_cnt, total_suspend_us);
+ *	else
+ *		pr_notice("swpm_sp_routine retry update(%d), total_suspend(%llu)\n",
+ *				  retry_cnt, total_suspend_us);
+ */
+
 	mod_timer(t, jiffies + msecs_to_jiffies(update_interval_ms));
+	update_interval_ms = DEFAULT_UPDATE_MS;
 }
 
 static void swpm_sp_dispatcher(unsigned int type,
