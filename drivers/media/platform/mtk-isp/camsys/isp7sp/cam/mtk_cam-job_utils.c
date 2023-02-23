@@ -318,6 +318,7 @@ static int fill_sv_img_fp_working_buffer(struct req_buffer_helper *helper,
 		get_sv_tag_idx_hdr(job_exp_no, MTKCAM_IPI_ORDER_LAST_TAG, false) :
 		get_sv_tag_idx_hdr(job_exp_no, exp_no, false);
 	if (tag_idx == -1) {
+		ret = -1;
 		pr_info("%s: tag_idx not found(exp_no:%d)", __func__, job_exp_no);
 		goto EXIT;
 	}
@@ -406,7 +407,6 @@ int update_work_buffer_to_ipi_frame(struct req_buffer_helper *helper)
 				&job->img_work_buf);
 
 		if (job->job_type != JOB_TYPE_MSTREAM) {
-			/* HS_TODO: dc? */
 			ret = fill_sv_img_fp_working_buffer(helper,
 					&ctx->img_work_buf_desc,
 					&job->img_work_buf, i);
@@ -680,5 +680,23 @@ int get_sv_tag_idx(unsigned int exp_no, unsigned int tag_order, bool is_w)
 
 EXIT:
 	return tag_idx;
+}
+
+bool is_sv_pure_raw(struct mtk_cam_job *job)
+{
+	/* HS_TODO: hint from raw */
+	return false;
+}
+
+bool is_rgbw(struct mtk_cam_job *job)
+{
+	struct mtk_cam_scen *scen = &job->job_scen;
+
+	if (scen->id == MTK_CAM_SCEN_NORMAL ||
+		scen->id == MTK_CAM_SCEN_ODT_NORMAL ||
+		scen->id == MTK_CAM_SCEN_M2M_NORMAL)
+		return !!(scen->scen.normal.w_chn_enabled);
+
+	return false;
 }
 

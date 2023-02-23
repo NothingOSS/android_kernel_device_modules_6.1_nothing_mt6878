@@ -328,8 +328,8 @@ int mtk_cam_dev_req_enqueue(struct mtk_cam_device *cam,
 			    struct mtk_cam_request *req);
 
 /* use ipi pipe/node id */
-void mtk_cam_req_buffer_done(struct mtk_cam_request *req,
-			     int pipe_id, int buf_state, int node_id, u64 ts);
+void mtk_cam_req_buffer_done(struct mtk_cam_job *job,
+			     int pipe_id, int buf_state, int node_id, u64 ts, bool is_proc);
 //void mtk_cam_dev_req_cleanup(struct mtk_cam_ctx *ctx, int pipe_id, int buf_state);
 //void mtk_cam_dev_req_clean_pending(struct mtk_cam_device *cam, int pipe_id,
 //				   int buf_state);

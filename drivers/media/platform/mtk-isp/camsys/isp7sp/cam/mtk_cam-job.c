@@ -489,8 +489,8 @@ _meta1_done(struct mtk_cam_job *job)
 			job->frame_seq_no,
 			mtk_cam_job_state_get(&job->job_state, ISP_STATE));
 
-	mtk_cam_req_buffer_done(job->req, pipe_id, MTKCAM_IPI_RAW_META_STATS_1,
-				VB2_BUF_STATE_DONE, job->timestamp);
+	mtk_cam_req_buffer_done(job, pipe_id, MTKCAM_IPI_RAW_META_STATS_1,
+				VB2_BUF_STATE_DONE, job->timestamp, true);
 
 	return 0;
 }
@@ -568,11 +568,11 @@ handle_raw_frame_done(struct mtk_cam_job *job)
 	for (i = MTKCAM_SUBDEV_RAW_START; i < MTKCAM_SUBDEV_RAW_END; i++) {
 		if (used_pipe & (1 << i)) {
 			if (is_normal)
-				mtk_cam_req_buffer_done(job->req, i, -1,
-					VB2_BUF_STATE_DONE, job->timestamp);
+				mtk_cam_req_buffer_done(job, i, -1,
+					VB2_BUF_STATE_DONE, job->timestamp, true);
 			else
-				mtk_cam_req_buffer_done(job->req, i, -1,
-					VB2_BUF_STATE_ERROR, job->timestamp);
+				mtk_cam_req_buffer_done(job, i, -1,
+					VB2_BUF_STATE_ERROR, job->timestamp, true);
 		}
 	}
 
@@ -597,14 +597,26 @@ handle_sv_frame_done(struct mtk_cam_job *job)
 		 mtk_cam_job_state_get(&job->job_state, ISP_STATE),
 		 is_normal, job->timestamp, job->timestamp_mono);
 
+	/* sv pure raw */
+	if (ctx->has_raw_subdev && is_sv_pure_raw(job)) {
+		if (is_normal)
+			mtk_cam_req_buffer_done(job, ctx->raw_subdev_idx,
+				MTKCAM_IPI_RAW_IMGO, VB2_BUF_STATE_DONE,
+				job->timestamp, true);
+		else
+			mtk_cam_req_buffer_done(job, ctx->raw_subdev_idx,
+				MTKCAM_IPI_RAW_IMGO, VB2_BUF_STATE_ERROR,
+				job->timestamp, true);
+	}
+
 	for (i = MTKCAM_SUBDEV_CAMSV_START; i < MTKCAM_SUBDEV_CAMSV_END; i++) {
 		if (used_pipe & (1 << i)) {
 			if (is_normal)
-				mtk_cam_req_buffer_done(job->req, i, -1,
-					VB2_BUF_STATE_DONE, job->timestamp);
+				mtk_cam_req_buffer_done(job, i, -1,
+					VB2_BUF_STATE_DONE, job->timestamp, true);
 			else
-				mtk_cam_req_buffer_done(job->req, i, -1,
-					VB2_BUF_STATE_ERROR, job->timestamp);
+				mtk_cam_req_buffer_done(job, i, -1,
+					VB2_BUF_STATE_ERROR, job->timestamp, true);
 		}
 	}
 
@@ -632,11 +644,11 @@ handle_mraw_frame_done(struct mtk_cam_job *job, unsigned int pipe_id)
 		 is_normal, job->timestamp, job->timestamp_mono);
 
 	if (is_normal)
-		mtk_cam_req_buffer_done(job->req, pipe_id, -1,
-			VB2_BUF_STATE_DONE, job->timestamp);
+		mtk_cam_req_buffer_done(job, pipe_id, -1,
+			VB2_BUF_STATE_DONE, job->timestamp, true);
 	else
-		mtk_cam_req_buffer_done(job->req, pipe_id, -1,
-			VB2_BUF_STATE_ERROR, job->timestamp);
+		mtk_cam_req_buffer_done(job, pipe_id, -1,
+			VB2_BUF_STATE_ERROR, job->timestamp, true);
 
 	return 0;
 }
@@ -2004,9 +2016,7 @@ static int fill_raw_img_buffer_to_ipi_frame(
 	}
 
 	/* fill sv image fp */
-#ifdef SV_PURE_RAW_DUMP
 	ret = fill_sv_img_fp(helper, buf, node);
-#endif
 
 	if (ret)
 		pr_info("%s: failed\n", __func__);
@@ -2077,8 +2087,8 @@ static void job_cancel(struct mtk_cam_job *job)
 
 	for (i = 0; i < MTKCAM_SUBDEV_MAX; i++) {
 		if (used_pipe & ipi_pipe_id_to_bit(i))
-			mtk_cam_req_buffer_done(job->req, i, -1,
-				VB2_BUF_STATE_ERROR, job->timestamp);
+			mtk_cam_req_buffer_done(job, i, -1,
+				VB2_BUF_STATE_ERROR, job->timestamp, false);
 	}
 }
 

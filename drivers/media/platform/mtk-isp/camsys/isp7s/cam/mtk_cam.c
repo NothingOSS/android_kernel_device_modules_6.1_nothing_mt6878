@@ -47,6 +47,7 @@
 #include "mtk_cam-timesync.h"
 #include "mtk_cam-job.h"
 #include "mtk_cam-fmt_utils.h"
+#include "mtk_cam-job_utils.h"
 
 #ifdef CONFIG_VIDEO_MTK_ISP_CAMSYS_DUBUG
 static unsigned int debug_ae = 1;
@@ -756,9 +757,11 @@ int mtk_cam_dev_req_enqueue(struct mtk_cam_device *cam,
 	return 0;
 }
 
-void mtk_cam_req_buffer_done(struct mtk_cam_request *req,
-			     int pipe_id, int node_id, int buf_state, u64 ts)
+void mtk_cam_req_buffer_done(struct mtk_cam_job *job,
+			     int pipe_id, int node_id, int buf_state, u64 ts,
+			     bool is_proc)
 {
+	struct mtk_cam_request *req = job->req;
 	struct device *dev = req->req.mdev->dev;
 	struct mtk_cam_video_device *node;
 	struct mtk_cam_buffer *buf, *buf_prev;
@@ -780,6 +783,11 @@ void mtk_cam_req_buffer_done(struct mtk_cam_request *req,
 			continue;
 
 		if (node_id != -1 && node->uid.id != node_id)
+			continue;
+
+		/* sv pure raw */
+		if (node_id == -1 && is_sv_pure_raw(job) &&
+			node->uid.id == MTKCAM_IPI_RAW_IMGO && is_proc)
 			continue;
 
 		list_del(&buf->list);

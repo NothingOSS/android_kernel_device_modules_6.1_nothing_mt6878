@@ -43,12 +43,12 @@ int fill_imgo_img_buffer_to_ipi_frame_stagger(
 		ret = fill_img_in_hdr(in, buf, node);
 
 		helper->filled_hdr_buffer = true;
-
-		/* fill sv image fp */
-		ret = fill_sv_img_fp(helper, buf, node);
 	} else {
 		ret = fill_img_out(out, buf, node);
 	}
+
+	/* fill sv image fp */
+	ret = fill_sv_img_fp(helper, buf, node);
 
 	return ret;
 
@@ -84,9 +84,13 @@ int fill_sv_img_fp(
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_scen *scen = &job->job_scen;
 	struct mtk_camsv_device *sv_dev;
-	unsigned int pipe_id, exp_no, buf_ofset;
-	int tag_idx, i;
-	int ret = -1;
+	unsigned int pipe_id, exp_no, buf_cnt, buf_ofset = 0;
+	int tag_idx, i, j;
+	bool is_w;
+	int ret = 0;
+
+	if (node->desc.dma_port != MTKCAM_IPI_RAW_IMGO)
+		goto EXIT;
 
 	if (ctx->hw_sv == NULL)
 		goto EXIT;
@@ -94,27 +98,41 @@ int fill_sv_img_fp(
 	sv_dev = dev_get_drvdata(ctx->hw_sv);
 	pipe_id = sv_dev->id + MTKCAM_SUBDEV_CAMSV_START;
 
-	if (is_stagger_2_exposure(scen))
+	if (is_stagger_2_exposure(scen)) {
 		exp_no = 2;
-	else if (is_stagger_3_exposure(scen))
+		buf_cnt = is_rgbw(job) ? 2 : 1;
+	} else if (is_stagger_3_exposure(scen)) {
 		exp_no = 3;
-	else
-		exp_no = 1;
-
-	for (i = 0; i < exp_no; i++) {
-#ifndef SV_PURE_RAW_DUMP
-		if (!is_dc_mode(job) && (i + 1) == exp_no)
-			continue;
-#endif
-		tag_idx = (is_dc_mode(job) && exp_no > 1 && (i + 1) == exp_no) ?
-			get_sv_tag_idx(exp_no, MTKCAM_IPI_ORDER_LAST_TAG, false) :
-			get_sv_tag_idx(exp_no, i, false);
-		if (tag_idx == -1) {
-			pr_info("%s: tag_idx not found(exp_no:%d)", __func__, exp_no);
+		if (is_rgbw(job)) {
+			ret = -1;
+			pr_info("%s: rgbw not supported under 3-exp stagger case",
+				__func__);
 			goto EXIT;
 		}
-		buf_ofset = buf->image_info.size[0] * i;
-		ret = fill_sv_fp(helper, buf, node, tag_idx, pipe_id, buf_ofset);
+	} else {
+		exp_no = 1;
+		buf_cnt = is_rgbw(job) ? 2 : 1;
+	}
+
+	for (i = 0; i < exp_no; i++) {
+		if (!is_sv_pure_raw(job) &&
+			!is_dc_mode(job) &&
+			(i + 1) == exp_no)
+			continue;
+		for (j = 0; j < buf_cnt; j++) {
+			is_w = (j % 2) ? true : false;
+			tag_idx = (is_dc_mode(job) && exp_no > 1 && (i + 1) == exp_no) ?
+				get_sv_tag_idx(exp_no, MTKCAM_IPI_ORDER_LAST_TAG, is_w) :
+				get_sv_tag_idx(exp_no, i, is_w);
+			if (tag_idx == -1) {
+				ret = -1;
+				pr_info("%s: tag_idx not found(exp_no:%d is_w:%d)",
+					__func__, exp_no, (is_w) ? 1 : 0);
+				goto EXIT;
+			}
+			ret = fill_sv_fp(helper, buf, node, tag_idx, pipe_id, buf_ofset);
+			buf_ofset += buf->image_info.size[0];
+		}
 	}
 
 EXIT:
@@ -411,16 +429,23 @@ int handle_sv_tag(struct mtk_cam_job *job)
 	/* img tag(s) */
 	if (is_stagger_2_exposure(&job->job_scen)) {
 		exp_no = req_amount = 2;
+		req_amount *= is_rgbw(job) ? 2 : 1;
 		hw_scen = is_dc_mode(job) ?
 			(1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_DC_STAGGER)) :
 			(1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_STAGGER));
 	} else if (is_stagger_3_exposure(&job->job_scen)) {
 		exp_no = req_amount = 3;
+		if (is_rgbw(job)) {
+			pr_info("[%s] rgbw not supported under 3-exp stagger case",
+				__func__);
+			return 1;
+		}
 		hw_scen = is_dc_mode(job) ?
 			(1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_DC_STAGGER)) :
 			(1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_STAGGER));
 	} else {
 		exp_no = req_amount = 1;
+		req_amount *= is_rgbw(job) ? 2 : 1;
 		hw_scen = is_dc_mode(job) ?
 			(1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_DC_STAGGER)) :
 			(1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_ON_THE_FLY));

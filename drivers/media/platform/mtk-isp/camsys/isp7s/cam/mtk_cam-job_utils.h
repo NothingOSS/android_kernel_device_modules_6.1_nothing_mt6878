@@ -130,6 +130,8 @@ int get_sv_tag_idx(unsigned int exp_no, unsigned int tag_order, bool is_w);
 
 int get_hw_scenario(struct mtk_cam_job *job);
 bool is_dc_mode(struct mtk_cam_job *job);
+bool is_sv_pure_raw(struct mtk_cam_job *job);
+bool is_rgbw(struct mtk_cam_job *job);
 
 #endif //__MTK_CAM_JOB_UTILS_H
 
