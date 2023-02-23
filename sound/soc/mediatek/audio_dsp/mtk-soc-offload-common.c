@@ -110,7 +110,10 @@ static void offloadservice_releasewriteblocked(void)
 		return;
 	}
 
-	offload_stream->runtime->state = SNDRV_PCM_STATE_RUNNING;
+	if (afe_offload_block.state == OFFLOAD_STATE_DRAIN &&
+	    afe_offload_block.drain_state == AUDIO_DRAIN_ALL) {
+		offload_stream->runtime->state = SNDRV_PCM_STATE_RUNNING;
+	}
 	wake_up(&offload_stream->runtime->sleep);
 }
 
