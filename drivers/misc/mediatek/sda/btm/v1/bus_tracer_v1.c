@@ -30,10 +30,6 @@ static int start(struct bus_tracer_plt *plt)
 		return -1;
 	}
 
-	if (of_property_read_u32(node, "mediatek,err-flag",
-				&plt->err_flag) != 0)
-		plt->err_flag = 0xFFF8FFFF;
-
 	if (of_property_read_u32(node, "mediatek,num-tracer",
 				&num_tracer) != 0) {
 		pr_notice("can't find property \"mediatek,num-tracer\"\n");
