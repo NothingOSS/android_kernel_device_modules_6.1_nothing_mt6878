@@ -21,31 +21,13 @@
 
 #define DEBUGLINE dcm_pr_info("%s %d\n", __func__, __LINE__)
 
-static short dcm_cpu_cluster_stat;
+unsigned int init_dcm_type = ALL_DCM_TYPE;
 
-
-unsigned int all_dcm_type =
-		(ARMCORE_DCM_TYPE | MCUSYS_DCM_TYPE |
-		INFRA_DCM_TYPE | PERI_DCM_TYPE | VLP_DCM_TYPE |
-		UFS0_DCM_TYPE | PEXTP_DCM_TYPE | MCUSYS_ACP_DCM_TYPE |
-		MCUSYS_ADB_DCM_TYPE | MCUSYS_BUS_DCM_TYPE |
-		MCUSYS_CBIP_DCM_TYPE | MCUSYS_CORE_DCM_TYPE |
-		MCUSYS_IO_DCM_TYPE | MCUSYS_CPC_PBI_DCM_TYPE |
-		MCUSYS_CPC_TURBO_DCM_TYPE | MCUSYS_STALL_DCM_TYPE |
-		MCUSYS_APB_DCM_TYPE | MCUSYS_BKR_DCM_TYPE |
-		MCUSYS_DSU_STALL_DCM_TYPE | MCUSYS_MISC_DCM_TYPE);
-unsigned int init_dcm_type =
-		(ARMCORE_DCM_TYPE | MCUSYS_DCM_TYPE |
-		INFRA_DCM_TYPE | PERI_DCM_TYPE | VLP_DCM_TYPE |
-		UFS0_DCM_TYPE | PEXTP_DCM_TYPE | MCUSYS_ACP_DCM_TYPE |
-		MCUSYS_ADB_DCM_TYPE | MCUSYS_BUS_DCM_TYPE |
-		MCUSYS_CBIP_DCM_TYPE | MCUSYS_CORE_DCM_TYPE |
-		MCUSYS_IO_DCM_TYPE | MCUSYS_CPC_PBI_DCM_TYPE |
-		MCUSYS_CPC_TURBO_DCM_TYPE | MCUSYS_STALL_DCM_TYPE |
-		MCUSYS_APB_DCM_TYPE | MCUSYS_BKR_DCM_TYPE |
-		MCUSYS_DSU_STALL_DCM_TYPE | MCUSYS_MISC_DCM_TYPE);
-
-#if defined(__KERNEL__) && defined(CONFIG_OF)
+#if defined(__KERNEL__) && IS_ENABLED(CONFIG_OF)
+unsigned long dcm_mcusys_par_wrap_base;
+unsigned long dcm_mcusys_cpc_base;
+unsigned long dcm_mcusys_par_wrap_complex0_base;
+unsigned long dcm_mcusys_par_wrap_complex1_base;
 unsigned long dcm_ifrbus_ao_base;
 unsigned long dcm_ifrrsi_base;
 unsigned long dcm_ifriommu_base;
@@ -53,14 +35,10 @@ unsigned long dcm_peri_ao_bcrm_base;
 unsigned long dcm_ufs0_ao_bcrm_base;
 unsigned long dcm_pcie0_ao_bcrm_base;
 unsigned long dcm_vlp_ao_bcrm_base;
-unsigned long dcm_mcusys_par_wrap_base;
-unsigned long dcm_mcusys_cpc_base;
-unsigned long dcm_mcusys_par_wrap_complex0_base;
-unsigned long dcm_mcusys_par_wrap_complex1_base;
 
 #define DCM_NODE "mediatek,mt6985-dcm"
 
-#endif /* #if defined(__KERNEL__) && defined(CONFIG_OF) */
+#endif /* #if defined(__KERNEL__) && IS_ENABLED(CONFIG_OF) */
 
 short is_dcm_bringup(void)
 {
@@ -72,21 +50,19 @@ short is_dcm_bringup(void)
 #endif
 }
 
-/* SMC call for mcusys_par_wrap_big_dcm initializations */
-static int dcm_smc_call_control(int onoff, unsigned int mask);
+static int dcm_smc_call_control(int onoff, unsigned int mask)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(MTK_SIP_KERNEL_DCM, onoff, mask, 0, 0, 0, 0, 0, &res);
+
+	return 0;
+}
+
 /*****************************************
  * following is implementation per DCM module.
  * 1. per-DCM function is 1-argu with ON/OFF/MODE option.
  *****************************************/
-int dcm_topckg(int on)
-{
-	return 0;
-}
-
-void dcm_infracfg_ao_emi_indiv(int on)
-{
-}
-
 int dcm_infra_preset(int on)
 {
 	return 0;
@@ -94,10 +70,9 @@ int dcm_infra_preset(int on)
 
 int dcm_infra(int on)
 {
+	dcm_ifrbus_ao_infra_bus_dcm(on);
 	dcm_topckgen_infra_iommu_dcm(on);
 	dcm_topckgen_infra_rsi_dcm(on);
-	dcm_ifrbus_ao_infra_bus_dcm(on);
-
 	return 0;
 }
 
@@ -157,10 +132,9 @@ int dcm_mcusys_cpc_turbo(int on)
 
 int dcm_mcusys_stall(int on)
 {
+	dcm_mcusys_par_wrap_mcu_dsu_stalldcm(0);
 	dcm_mcusys_par_wrap_mcu_stalldcm(on);
-	dcm_smc_call_control(on, MCUSYS_LCPU_STALL_DCM_TYPE);
-	dcm_smc_call_control(on, MCUSYS_MCPU_STALL_DCM_TYPE);
-	dcm_smc_call_control(on, MCUSYS_BCPU_STALL_DCM_TYPE);
+	dcm_smc_call_control(on, MCUSYS_STALL_DCM_TYPE);
 	return 0;
 }
 
@@ -176,39 +150,35 @@ int dcm_mcusys_bkr(int on)
 	return 0;
 }
 
-int dcm_mcusys_dsu_stall(int on)
-{
-	dcm_mcusys_par_wrap_mcu_dsu_stalldcm(0);
-	return 0;
-}
-
 int dcm_mcusys_misc(int on)
 {
 	dcm_mcusys_par_wrap_mcu_misc_dcm(on);
 	return 0;
 }
 
-int dcm_mcusys_lcpu_stall(int on)
-{
-	dcm_smc_call_control(on, MCUSYS_LCPU_STALL_DCM_TYPE);
-	return 0;
-}
-
-int dcm_mcusys_mcpu_stall(int on)
-{
-	dcm_smc_call_control(on, MCUSYS_MCPU_STALL_DCM_TYPE);
-	return 0;
-}
-
-int dcm_mcusys_bcpu_stall(int on)
-{
-	dcm_smc_call_control(on, MCUSYS_BCPU_STALL_DCM_TYPE);
-	return 0;
-}
-
 int dcm_vlp(int on)
 {
 	dcm_vlp_ao_bcrm_vlp_bus_dcm(on);
+	return 0;
+}
+
+int dcm_armcore(int on)
+{
+	return 0;
+}
+
+int dcm_mcusys(int on)
+{
+	return 0;
+}
+
+int dcm_mcusys_mcupm(int on)
+{
+	return 0;
+}
+
+int dcm_mcusys_preset(int on)
+{
 	return 0;
 }
 
@@ -224,130 +194,40 @@ int dcm_pextp(int on)
 	return 0;
 }
 
-int dcm_armcore(int on)
-{
-
-	return 0;
-}
-
-int dcm_mcusys(int on)
-{
-
-	return 0;
-}
-
-int dcm_mcusys_preset(int on)
-{
-	return 0;
-}
-
-int dcm_big_core_preset(void)
-{
-	return 0;
-}
-
-int dcm_big_core(int on)
-{
-	return 0;
-}
-
-int dcm_stall_preset(int on)
-{
-	return 0;
-}
-
-int dcm_stall(int on)
-{
-
-	return 0;
-}
-
-int dcm_gic_sync(int on)
-{
-	return 0;
-}
-
-int dcm_last_core(int on)
-{
-	return 0;
-}
-
-int dcm_rgu(int on)
-{
-	return 0;
-}
-
-int dcm_dramc_ao(int on)
-{
-
-	return 0;
-}
-
-int dcm_ddrphy(int on)
-{
-
-	return 0;
-}
-
-int dcm_emi(int on)
-{
-
-	return 0;
-}
-
-int dcm_lpdma(int on)
-{
-	return 0;
-}
-
-int dcm_pwrap(int on)
-{
-	return 0;
-}
-
-int dcm_mcsi_preset(int on)
-{
-	return 0;
-}
-
-int dcm_mcsi(int on)
-{
-	return 0;
-}
-
 void dcm_dump_regs(void)
 {
-	dcm_pr_info("\n******** dcm dump register-kernel *********\n");
-	REG_DUMP(MCUSYS_PAR_WRAP_MP_ADB_DCM_CFG0);
+	dcm_pr_info("\n******** dcm dump register *********\n");
+
+	REG_DUMP(DCM_SET_RW_0);
 	REG_DUMP(MCUSYS_PAR_WRAP_ADB_FIFO_DCM_EN);
+	REG_DUMP(MCUSYS_PAR_WRAP_CBIP_CABGEN_1TO2_CONFIG);
+	REG_DUMP(MCUSYS_PAR_WRAP_CBIP_CABGEN_2TO1_CONFIG);
+	REG_DUMP(MCUSYS_PAR_WRAP_CBIP_CABGEN_2TO5_CONFIG);
+	REG_DUMP(MCUSYS_PAR_WRAP_CBIP_CABGEN_3TO1_CONFIG);
+	REG_DUMP(MCUSYS_PAR_WRAP_CBIP_CABGEN_4TO2_CONFIG);
+	REG_DUMP(MCUSYS_PAR_WRAP_CBIP_P2P_CONFIG0);
+	REG_DUMP(MCUSYS_PAR_WRAP_CI700_DCM_CTRL);
+	REG_DUMP(MCUSYS_PAR_WRAP_COMPLEX0_STALL_DCM_CONF);
+	REG_DUMP(MCUSYS_PAR_WRAP_COMPLEX1_STALL_DCM_CONF);
+	REG_DUMP(MCUSYS_PAR_WRAP_CPC_DCM_Enable);
+	REG_DUMP(MCUSYS_PAR_WRAP_L3GIC_ARCH_CG_CONFIG);
 	REG_DUMP(MCUSYS_PAR_WRAP_MP0_DCM_CFG0);
+	REG_DUMP(MCUSYS_PAR_WRAP_MP0_DCM_CFG1);
+	REG_DUMP(MCUSYS_PAR_WRAP_MP_ADB_DCM_CFG0);
+	REG_DUMP(MCUSYS_PAR_WRAP_MP_CENTRAL_FABRIC_SUB_CHANNEL_CG);
 	REG_DUMP(MCUSYS_PAR_WRAP_QDCM_CONFIG0);
 	REG_DUMP(MCUSYS_PAR_WRAP_QDCM_CONFIG1);
 	REG_DUMP(MCUSYS_PAR_WRAP_QDCM_CONFIG2);
 	REG_DUMP(MCUSYS_PAR_WRAP_QDCM_CONFIG3);
-	REG_DUMP(MCUSYS_PAR_WRAP_L3GIC_ARCH_CG_CONFIG);
-	REG_DUMP(MCUSYS_PAR_WRAP_CI700_DCM_CTRL);
-	REG_DUMP(MCUSYS_PAR_WRAP_MP0_DCM_CFG1);
-	REG_DUMP(MCUSYS_PAR_WRAP_CBIP_CABGEN_3TO1_CONFIG);
-	REG_DUMP(MCUSYS_PAR_WRAP_CBIP_CABGEN_2TO1_CONFIG);
-	REG_DUMP(MCUSYS_PAR_WRAP_CBIP_CABGEN_4TO2_CONFIG);
-	REG_DUMP(MCUSYS_PAR_WRAP_CBIP_CABGEN_1TO2_CONFIG);
-	REG_DUMP(MCUSYS_PAR_WRAP_CBIP_CABGEN_2TO5_CONFIG);
-	REG_DUMP(MCUSYS_PAR_WRAP_CBIP_P2P_CONFIG0);
-	REG_DUMP(MCUSYS_PAR_WRAP_MP_CENTRAL_FABRIC_SUB_CHANNEL_CG);
-	REG_DUMP(MCUSYS_PAR_WRAP_CPC_DCM_Enable);
-	REG_DUMP(MCUSYS_PAR_WRAP_COMPLEX0_STALL_DCM_CONF);
-	REG_DUMP(MCUSYS_PAR_WRAP_COMPLEX1_STALL_DCM_CONF);
-	REG_DUMP(DCM_SET_RW_0);
-	REG_DUMP(TOPCKGEN_RSI_DCM_CON);
 	REG_DUMP(TOPCKGEN_MMU_DCM_DIS);
+	REG_DUMP(TOPCKGEN_RSI_DCM_CON);
 	REG_DUMP(VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_0);
 	REG_DUMP(VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_1);
 	REG_DUMP(VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_2);
-	REG_DUMP(VDNR_DCM_TOP_UFS_BUS_u_UFS_BUS_CTRL_0);
-	REG_DUMP(VDNR_DCM_TOP_UFS_BUS_u_UFS_BUS_CTRL_1);
 	REG_DUMP(VDNR_DCM_TOP_PEXTP_BUS_u_PEXTP_BUS_CTRL_0);
 	REG_DUMP(VDNR_DCM_TOP_PEXTP_BUS_u_PEXTP_BUS_CTRL_1);
+	REG_DUMP(VDNR_DCM_TOP_UFS_BUS_u_UFS_BUS_CTRL_0);
+	REG_DUMP(VDNR_DCM_TOP_UFS_BUS_u_UFS_BUS_CTRL_1);
 	REG_DUMP(VDNR_DCM_TOP_VLP_PAR_BUS_u_VLP_PAR_BUS_CTRL_0);
 }
 
@@ -358,7 +238,7 @@ void get_default(unsigned int *type, int *state)
 	*type = init_dcm_type;
 	*state = DCM_DEFAULT;
 #else /* DCM_DEFAULT_ALL_OFF */
-	*type = all_dcm_type;
+	*type = ALL_DCM_TYPE;
 	*state = DCM_OFF;
 #endif /* #ifndef DCM_DEFAULT_ALL_OFF */
 }
@@ -369,7 +249,7 @@ void get_init_type(unsigned int *type)
 }
 void get_all_type(unsigned int *type)
 {
-	*type = all_dcm_type;
+	*type = ALL_DCM_TYPE;
 }
 void get_init_by_k_type(unsigned int *type)
 {
@@ -389,6 +269,10 @@ struct DCM_OPS dcm_ops = {
 };
 
 struct DCM_BASE dcm_base_array[] = {
+	DCM_BASE_INFO(dcm_mcusys_par_wrap_base),
+	DCM_BASE_INFO(dcm_mcusys_cpc_base),
+	DCM_BASE_INFO(dcm_mcusys_par_wrap_complex0_base),
+	DCM_BASE_INFO(dcm_mcusys_par_wrap_complex1_base),
 	DCM_BASE_INFO(dcm_ifrbus_ao_base),
 	DCM_BASE_INFO(dcm_ifrrsi_base),
 	DCM_BASE_INFO(dcm_ifriommu_base),
@@ -396,17 +280,13 @@ struct DCM_BASE dcm_base_array[] = {
 	DCM_BASE_INFO(dcm_ufs0_ao_bcrm_base),
 	DCM_BASE_INFO(dcm_pcie0_ao_bcrm_base),
 	DCM_BASE_INFO(dcm_vlp_ao_bcrm_base),
-	DCM_BASE_INFO(dcm_mcusys_par_wrap_base),
-	DCM_BASE_INFO(dcm_mcusys_cpc_base),
-	DCM_BASE_INFO(dcm_mcusys_par_wrap_complex0_base),
-	DCM_BASE_INFO(dcm_mcusys_par_wrap_complex1_base),
 };
 
-struct DCM dcm_array[] = {
+static struct DCM dcm_array[] = {
 	{
 	 .typeid = ARMCORE_DCM_TYPE,
 	 .name = "ARMCORE_DCM",
-	 .func = (DCM_FUNC) dcm_armcore,
+	 .func = dcm_armcore,
 	 .current_state = ARMCORE_DCM_MODE1,
 	 .default_state = ARMCORE_DCM_MODE1,
 	 .disable_refcnt = 0,
@@ -414,7 +294,7 @@ struct DCM dcm_array[] = {
 	{
 	 .typeid = MCUSYS_DCM_TYPE,
 	 .name = "MCUSYS_DCM",
-	 .func = (DCM_FUNC) dcm_mcusys,
+	 .func = dcm_mcusys,
 	 .current_state = MCUSYS_DCM_ON,
 	 .default_state = MCUSYS_DCM_ON,
 	 .disable_refcnt = 0,
@@ -422,7 +302,7 @@ struct DCM dcm_array[] = {
 	{
 	 .typeid = INFRA_DCM_TYPE,
 	 .name = "INFRA_DCM",
-	 .func = (DCM_FUNC) dcm_infra,
+	 .func = dcm_infra,
 	 .current_state = INFRA_DCM_ON,
 	 .default_state = INFRA_DCM_ON,
 	 .disable_refcnt = 0,
@@ -430,7 +310,7 @@ struct DCM dcm_array[] = {
 	{
 	 .typeid = PERI_DCM_TYPE,
 	 .name = "PERI_DCM",
-	 .func = (DCM_FUNC) dcm_peri,
+	 .func = dcm_peri,
 	 .current_state = PERI_DCM_ON,
 	 .default_state = PERI_DCM_ON,
 	 .disable_refcnt = 0,
@@ -438,7 +318,7 @@ struct DCM dcm_array[] = {
 	{
 	 .typeid = MCUSYS_ACP_DCM_TYPE,
 	 .name = "MCU_ACP_DCM",
-	 .func = (DCM_FUNC) dcm_mcusys_acp,
+	 .func = dcm_mcusys_acp,
 	 .current_state = MCUSYS_ACP_DCM_ON,
 	 .default_state = MCUSYS_ACP_DCM_ON,
 	 .disable_refcnt = 0,
@@ -446,7 +326,7 @@ struct DCM dcm_array[] = {
 	{
 	 .typeid = MCUSYS_ADB_DCM_TYPE,
 	 .name = "MCU_ADB_DCM",
-	 .func = (DCM_FUNC) dcm_mcusys_adb,
+	 .func = dcm_mcusys_adb,
 	 .current_state = MCUSYS_ADB_DCM_ON,
 	 .default_state = MCUSYS_ADB_DCM_ON,
 	 .disable_refcnt = 0,
@@ -454,7 +334,7 @@ struct DCM dcm_array[] = {
 	{
 	 .typeid = MCUSYS_BUS_DCM_TYPE,
 	 .name = "MCU_BUS_DCM",
-	 .func = (DCM_FUNC) dcm_mcusys_bus,
+	 .func = dcm_mcusys_bus,
 	 .current_state = MCUSYS_BUS_DCM_ON,
 	 .default_state = MCUSYS_BUS_DCM_ON,
 	 .disable_refcnt = 0,
@@ -462,7 +342,7 @@ struct DCM dcm_array[] = {
 	{
 	 .typeid = MCUSYS_CBIP_DCM_TYPE,
 	 .name = "MCU_CBIP_DCM",
-	 .func = (DCM_FUNC) dcm_mcusys_cbip,
+	 .func = dcm_mcusys_cbip,
 	 .current_state = MCUSYS_CBIP_DCM_ON,
 	 .default_state = MCUSYS_CBIP_DCM_ON,
 	 .disable_refcnt = 0,
@@ -470,7 +350,7 @@ struct DCM dcm_array[] = {
 	{
 	 .typeid = MCUSYS_CORE_DCM_TYPE,
 	 .name = "MCU_CORE_DCM",
-	 .func = (DCM_FUNC) dcm_mcusys_core,
+	 .func = dcm_mcusys_core,
 	 .current_state = MCUSYS_CORE_DCM_ON,
 	 .default_state = MCUSYS_CORE_DCM_ON,
 	 .disable_refcnt = 0,
@@ -478,7 +358,7 @@ struct DCM dcm_array[] = {
 	{
 	 .typeid = MCUSYS_IO_DCM_TYPE,
 	 .name = "MCU_IO_DCM",
-	 .func = (DCM_FUNC) dcm_mcusys_io,
+	 .func = dcm_mcusys_io,
 	 .current_state = MCUSYS_IO_DCM_ON,
 	 .default_state = MCUSYS_IO_DCM_ON,
 	 .disable_refcnt = 0,
@@ -486,7 +366,7 @@ struct DCM dcm_array[] = {
 	{
 	 .typeid = MCUSYS_CPC_PBI_DCM_TYPE,
 	 .name = "MCU_CPC_PBI_DCM",
-	 .func = (DCM_FUNC) dcm_mcusys_cpc_pbi,
+	 .func = dcm_mcusys_cpc_pbi,
 	 .current_state = MCUSYS_CPC_PBI_DCM_ON,
 	 .default_state = MCUSYS_CPC_PBI_DCM_ON,
 	 .disable_refcnt = 0,
@@ -494,7 +374,7 @@ struct DCM dcm_array[] = {
 	{
 	 .typeid = MCUSYS_CPC_TURBO_DCM_TYPE,
 	 .name = "MCU_CPC_TURBO_DCM",
-	 .func = (DCM_FUNC) dcm_mcusys_cpc_turbo,
+	 .func = dcm_mcusys_cpc_turbo,
 	 .current_state = MCUSYS_CPC_TURBO_DCM_ON,
 	 .default_state = MCUSYS_CPC_TURBO_DCM_ON,
 	 .disable_refcnt = 0,
@@ -502,7 +382,7 @@ struct DCM dcm_array[] = {
 	{
 	 .typeid = MCUSYS_STALL_DCM_TYPE,
 	 .name = "MCU_STALL_DCM",
-	 .func = (DCM_FUNC) dcm_mcusys_stall,
+	 .func = dcm_mcusys_stall,
 	 .current_state = MCUSYS_STALL_DCM_ON,
 	 .default_state = MCUSYS_STALL_DCM_ON,
 	 .disable_refcnt = 0,
@@ -510,7 +390,7 @@ struct DCM dcm_array[] = {
 	{
 	 .typeid = MCUSYS_APB_DCM_TYPE,
 	 .name = "MCU_APB_DCM",
-	 .func = (DCM_FUNC) dcm_mcusys_apb,
+	 .func = dcm_mcusys_apb,
 	 .current_state = MCUSYS_APB_DCM_ON,
 	 .default_state = MCUSYS_APB_DCM_ON,
 	 .disable_refcnt = 0,
@@ -524,14 +404,6 @@ struct DCM dcm_array[] = {
 	 .disable_refcnt = 0,
 	},
 	{
-	 .typeid = MCUSYS_DSU_STALL_DCM_TYPE,
-	 .name = "MCU_DSU_STALL_DCM",
-	 .func = dcm_mcusys_dsu_stall,
-	 .current_state = MCUSYS_DSU_STALL_DCM_ON,
-	 .default_state = MCUSYS_DSU_STALL_DCM_ON,
-	 .disable_refcnt = 0,
-	},
-	{
 	 .typeid = MCUSYS_MISC_DCM_TYPE,
 	 .name = "MCU_MISC_DCM",
 	 .func = dcm_mcusys_misc,
@@ -540,33 +412,17 @@ struct DCM dcm_array[] = {
 	 .disable_refcnt = 0,
 	},
 	{
-	 .typeid = MCUSYS_LCPU_STALL_DCM_TYPE,
-	 .name = "MCU_LCPU_STALL_DCM",
-	 .func = dcm_mcusys_lcpu_stall,
-	 .current_state = MCUSYS_LCPU_STALL_DCM_ON,
-	 .default_state = MCUSYS_LCPU_STALL_DCM_ON,
-	 .disable_refcnt = 0,
-	},
-	{
-	 .typeid = MCUSYS_MCPU_STALL_DCM_TYPE,
-	 .name = "MCU_MCPU_STALL_DCM",
-	 .func = dcm_mcusys_mcpu_stall,
-	 .current_state = MCUSYS_MCPU_STALL_DCM_ON,
-	 .default_state = MCUSYS_MCPU_STALL_DCM_ON,
-	 .disable_refcnt = 0,
-	},
-	{
-	 .typeid = MCUSYS_BCPU_STALL_DCM_TYPE,
-	 .name = "MCU_BCPU_STALL_DCM",
-	 .func = dcm_mcusys_bcpu_stall,
-	 .current_state = MCUSYS_BCPU_STALL_DCM_ON,
-	 .default_state = MCUSYS_BCPU_STALL_DCM_ON,
+	 .typeid = MCUSYS_MCUPM_DCM_TYPE,
+	 .name = "MCUSYS_MCUPM_DCM",
+	 .func = dcm_mcusys_mcupm,
+	 .current_state = MCUSYS_MCUPM_DCM_ON,
+	 .default_state = MCUSYS_MCUPM_DCM_ON,
 	 .disable_refcnt = 0,
 	},
 	{
 	 .typeid = VLP_DCM_TYPE,
 	 .name = "VLP_DCM",
-	 .func = (DCM_FUNC) dcm_vlp,
+	 .func = dcm_vlp,
 	 .current_state = VLP_DCM_ON,
 	 .default_state = VLP_DCM_ON,
 	 .disable_refcnt = 0,
@@ -590,13 +446,6 @@ struct DCM dcm_array[] = {
 	/* Keep this NULL element for array traverse */
 	{0},
 };
-
-void dcm_set_hotplug_nb(void) {}
-
-short dcm_get_cpu_cluster_stat(void)
-{
-	return dcm_cpu_cluster_stat;
-}
 
 /**/
 void dcm_array_register(void)
@@ -636,57 +485,12 @@ int mt_dcm_dts_map(void)
 {
 	return 0;
 }
-#endif /* #if IS_ENABLED(CONFIG_PM) */
+#endif /* #if IS_ENABLED(CONFIG_OF) */
 
 
 void dcm_pre_init(void)
 {
 	dcm_pr_info("weak function of %s\n", __func__);
-}
-
-static int dcm_smc_call_control(int onoff, unsigned int mask)
-{
-	struct arm_smccc_res res;
-
-	arm_smccc_smc(MTK_SIP_KERNEL_DCM, onoff, mask, 0, 0, 0, 0, 0, &res);
-
-	return 0;
-}
-
-static void disabled_by_dts(void)
-{
-	struct device_node *node;
-	int infra_err, mcu_err, infra_disable, mcu_disable;
-
-	node = of_find_compatible_node(NULL, NULL, "mediatek,mt6985-dcm");
-	if (node) {
-		unsigned int dcm_mcusys_all_type = (MCUSYS_DCM_TYPE | MCUSYS_ACP_DCM_TYPE |
-			MCUSYS_ADB_DCM_TYPE | MCUSYS_BUS_DCM_TYPE | MCUSYS_CBIP_DCM_TYPE |
-			MCUSYS_CORE_DCM_TYPE | MCUSYS_IO_DCM_TYPE | MCUSYS_CPC_PBI_DCM_TYPE |
-			MCUSYS_CPC_TURBO_DCM_TYPE | MCUSYS_STALL_DCM_TYPE | MCUSYS_APB_DCM_TYPE |
-			MCUSYS_BKR_DCM_TYPE | MCUSYS_DSU_STALL_DCM_TYPE | MCUSYS_MISC_DCM_TYPE);
-		unsigned int dcm_infra_mcusys = (INFRA_DCM_TYPE | dcm_mcusys_all_type);
-
-		infra_err = of_property_read_u32(node, "infra_disable", &infra_disable);
-		mcu_err = of_property_read_u32(node, "mcu_disable", &mcu_disable);
-
-		if ((!infra_err && infra_disable) && (!mcu_err && mcu_disable)) {
-			dcm_pr_notice("[DCM] mediatek,dcm infra_disable, mcu_disable found in DTS!\n");
-			dcm_disable(dcm_infra_mcusys);
-			dcm_disable(dcm_mcusys_all_type);
-		} else if (!infra_err && infra_disable) {
-			dcm_pr_notice("[DCM] mediatek,dcm only infra_disable found in DTS!\n");
-			dcm_disable(INFRA_DCM_TYPE);
-		} else if (!mcu_err && mcu_disable) {
-			dcm_pr_notice("[DCM] mediatek,dcm only mcu_disable found in DTS!\n");
-			dcm_disable(dcm_mcusys_all_type);
-		} else {
-			dcm_pr_notice("[DCM] mediatek,dcm no disable found in DTS!\n");
-		}
-		dcm_dump_state(dcm_infra_mcusys);
-	} else {
-		dcm_pr_notice("[DCM] mediatek,mt6985-dcm not found in DTS!\n");
-	}
 }
 
 static int __init mt6985_dcm_init(void)
@@ -708,8 +512,6 @@ static int __init mt6985_dcm_init(void)
 
 	ret = mt_dcm_common_init();
 
-	disabled_by_dts();
-
 	return ret;
 }
 
@@ -720,5 +522,5 @@ MODULE_SOFTDEP("pre:mtk_dcm.ko");
 module_init(mt6985_dcm_init);
 module_exit(mt6985_dcm_exit);
 
-MODULE_LICENSE("GPL v2");
+MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("MediaTek DCM driver");
