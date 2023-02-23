@@ -29,9 +29,7 @@
 #include "mtk_heap_priv.h"
 #include "mtk_heap.h"
 #include "mtk_page_pool.h"
-
-//#include "../../iommu/arm/arm-smmu-v3/arm-smmu-v3.h"
-//#include "../../iommu/arm/arm-smmu-v3/mtk-smmu-v3.h"
+#include "mtk-smmu-v3.h"
 
 atomic64_t dma_heap_normal_total = ATOMIC64_INIT(0);
 EXPORT_SYMBOL(dma_heap_normal_total);
@@ -63,7 +61,6 @@ struct system_heap_buffer {
 	int gid; /* slc */
 };
 
-//static bool smmu_v3_enable = IS_ENABLED(CONFIG_ARM_SMMU_V3);
 static bool smmu_v3_enable;
 
 static struct iova_cache_data *get_iova_cache(struct system_heap_buffer *buffer, u64 tab_id)
@@ -1303,6 +1300,7 @@ out:
 static int mtk_system_heap_create(void)
 {
 	// smmu support 4K/2M/1G granule
+	smmu_v3_enable = smmu_v3_enabled();
 	if (smmu_v3_enable)
 		orders[0] = 9;
 
