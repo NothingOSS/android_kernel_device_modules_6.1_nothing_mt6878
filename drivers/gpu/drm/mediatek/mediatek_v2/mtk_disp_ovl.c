@@ -4749,6 +4749,7 @@ static const struct mtk_disp_ovl_data mt6897_ovl_driver_data = {
 	.mmsys_mapping = &mtk_ovl_mmsys_mapping_MT6985,
 	.source_bpc = 10,
 	.support_pq_selfloop = true, /* pq in out self loop */
+	.is_right_ovl_comp = &is_right_ovl_comp_MT6985,
 };
 
 static const struct compress_info compr_info_mt6895  = {
