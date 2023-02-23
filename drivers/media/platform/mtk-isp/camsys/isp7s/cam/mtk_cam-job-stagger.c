@@ -121,7 +121,7 @@ int fill_sv_img_fp(
 			continue;
 		for (j = 0; j < buf_cnt; j++) {
 			is_w = (j % 2) ? true : false;
-			tag_idx = (is_dc_mode(job) && exp_no > 1 && (i + 1) == exp_no) ?
+			tag_idx = (exp_no > 1 && (i + 1) == exp_no) ?
 				get_sv_tag_idx(exp_no, MTKCAM_IPI_ORDER_LAST_TAG, is_w) :
 				get_sv_tag_idx(exp_no, i, is_w);
 			if (tag_idx == -1) {
