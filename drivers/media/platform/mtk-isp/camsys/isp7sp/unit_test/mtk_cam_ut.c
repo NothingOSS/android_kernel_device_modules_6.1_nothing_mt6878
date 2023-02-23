@@ -702,15 +702,17 @@ static int set_test_mdl(struct mtk_cam_ut *ut,
 #endif
 	case MTKCAM_IPI_HW_PATH_OTF_RGBW:
 		width *= 2;
-        break;
+		fallthrough;
 	default:
 		if (ut->with_testmdl == 1) {
-			if (ut->isp_hardware & 0x1)
+			if (ut->isp_hardware & 0x1) {
+				tag = 255;
 				CALL_SENINF_OPS(seninf, set_size,
 						width, height,
 						pixel_mode, pattern,
-						seninf_mux_raw(seninf, 0),
-						seninf_cammux_raw(seninf, 0));
+						raw_tg_0,
+						tag);
+			}
 			if (ut->isp_hardware & 0x2) {
 				tag = 0;
 				CALL_SENINF_OPS(seninf, set_size,
@@ -933,6 +935,9 @@ static long cam_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		}
 
 		buf_entry = kzalloc(sizeof(*buf_entry), GFP_KERNEL);
+		if (!buf_entry)
+			return -ENOMEM;
+
 		event.cmd_id = CAM_CMD_FRAME;
 		event.cookie = enque.cookie;
 		//event.frame_data = enque.frame_param;

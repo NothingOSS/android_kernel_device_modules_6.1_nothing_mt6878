@@ -119,6 +119,11 @@ struct mtk_cam_ut_buf_list {
 	spinlock_t lock;
 };
 
+struct dma_debug_item {
+	unsigned int	debug_sel;
+	const char	*msg;
+};
+
 struct mtk_cam_ut;
 struct mtk_cam_ut_event_handler {
 	int (*on_ipi_composed)(struct mtk_cam_ut *ut);

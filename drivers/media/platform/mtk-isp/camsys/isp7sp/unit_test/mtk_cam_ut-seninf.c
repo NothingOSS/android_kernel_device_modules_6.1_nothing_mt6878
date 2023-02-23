@@ -426,7 +426,10 @@ static int ut_seninf_set_testmdl(struct device *dev,
 
 	/* set seninf_mux */
 	mux_base = seninf->base + mux_idx * SENINF_OFFSET;
-	writel(0x1f << 16 | pixmode_lg2 << 8 | 0x1, ISP_SENINF_MUX_CTRL_1(mux_base));
+	if ((tg_idx >= raw_tg_0) && (tg_idx <= raw_tg_2))
+		writel(0x1f << 16 | 3 << 8 | 0x1, ISP_SENINF_MUX_CTRL_1(mux_base));
+	else
+		writel(0x1f << 16 | pixmode_lg2 << 8 | 0x1, ISP_SENINF_MUX_CTRL_1(mux_base));
 	writel(0x1, ISP_SENINF_MUX_CTRL_0(mux_base));
 	writel(0x1 << 3, ISP_SENINF_MUX_OPT(mux_base));  // EN VC split
 
@@ -448,7 +451,10 @@ static int ut_seninf_set_testmdl(struct device *dev,
 	cam_mux_ctrl = readl(cam_mux_ctrl_addr);
 	cam_mux_ctrl &= 0xFFFF7800;
 	cam_mux_ctrl |= mux_vr;
-	cam_mux_ctrl |= (pixmode_lg2 << 8); /* chk pix mode */
+	if ((tg_idx >= raw_tg_0) && (tg_idx <= raw_tg_2))
+		cam_mux_ctrl |= (2 << 8); /* chk pix mode */
+	else
+		cam_mux_ctrl |= (pixmode_lg2 << 8); /* chk pix mode */
 	cam_mux_ctrl |= 0x80; /* cam mux en */
 	cam_mux_ctrl |= 0x8000; /* cam mux check en */
 	writel(cam_mux_ctrl, cam_mux_ctrl_addr);

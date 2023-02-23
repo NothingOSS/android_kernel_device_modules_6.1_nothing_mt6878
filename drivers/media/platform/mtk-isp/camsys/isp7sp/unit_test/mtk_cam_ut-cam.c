@@ -367,6 +367,93 @@ static void raw_handle_tg_grab_err(struct mtk_ut_raw_device *raw)
 		readl_relaxed(CAM_REG_TG_SEN_GRAB_LIN(base)));
 }
 
+
+static struct dma_debug_item dbg_TSFSO_R1[] = {
+	{0x0000001F, "32(hex) 0000"},
+	{0x0000011F, "state_checksum"},
+	{0x0000021F, "line_pix_cnt_tmp"},
+	{0x0000031F, "line_pix_cnt"},
+	{0x0000041F, "important_status"},
+	{0x0000051F, "cmd_data_cnt"},
+	{0x0000061F, "cmd_cnt_for_bvalid_phase"},
+	{0x0000071F, "input_h_cnt"},
+	{0x0000081F, "input_v_cnt"},
+	{0x0000091F, "xfer_y_cnt"},
+};
+
+static struct dma_debug_item dbg_data_3[] = {
+	{0x00003000, "FUS_R1"},
+	{0x00003001, "BPS_R1"},
+	{0x00003002, "CAC_R1"},
+	{0x00003003, "DGN_R1"},
+	{0x00003004, "LSC_R1"},
+	{0x00003005, "WB_R1"},
+	{0x00003006, "HLR_R1"},
+	{0x00003007, "LTM_R1"},
+	{0x00003008, "QBN_R4"},
+	{0x00003009, "QBN_R5"},
+	{0x0000300a, "MRG_R4"},
+	{0x0000300b, "LTMS_R1"},
+	{0x0000300c, "CRP_R1"},
+	{0x0000300d, "QBN_R6"},
+	{0x0000300e, "AF_R1"},
+	{0x0000300f, "CRP_R6"},
+	{0x00003010, "QBN_R1"},
+	{0x00003011, "AA_R1"},
+	{0x00003012, "CRP_R7"},
+	{0x00003013, "QBN_R2"},
+	{0x00003014, "TSFS_R1"},
+};
+
+void mtk_ut_dump_dma_debug(struct device *dev,
+		void __iomem *top_base,
+		const char *dma_name,
+		struct dma_debug_item *items, int n)
+{
+#define MAX_DEBUG_SIZE (32)
+	void __iomem *dbg_sel = top_base  + REG_DMA_DBG_SEL;
+	void __iomem *dbg_port = top_base + REG_DMA_DBG_PORT;
+	int i = 0;
+	unsigned int vals[MAX_DEBUG_SIZE];
+
+	if (n >= MAX_DEBUG_SIZE) {
+		dev_info(dev, "%s: should enlarge array size for n(%d)\n",
+			__func__, n);
+		return;
+	}
+	for (i = 0; i < n; i++) {
+		writel(items[i].debug_sel, dbg_sel);
+		if (readl(dbg_sel) != items[i].debug_sel)
+			dev_info(dev, "failed to write dbg_sel %08x\n",
+				items[i].debug_sel);
+		vals[i] = readl(dbg_port);
+	};
+
+	dev_info(dev, "%s: %s\n", __func__, dma_name);
+	for (i = 0; i < n; i++) {
+		dev_info(dev, "%08x: %08x [%s]\n",
+			items[i].debug_sel, vals[i], items[i].msg);
+	}
+}
+
+void mtk_ut_dump_module_dbg_data(struct device *dev,
+		void __iomem *top_base, const char *module_name,
+		struct dma_debug_item item)
+{
+	void __iomem *dbg_set = top_base + REG_CTL_DBG_SET;
+	void __iomem *dbg_port = top_base + REG_CTL_DBG_PORT;
+	unsigned int val;
+
+	writel(item.debug_sel, dbg_set);
+	if (readl(dbg_set) != item.debug_sel) {
+		dev_info(dev, "failed to write dbg_sel %08x\n",
+			item.debug_sel);
+	}
+	val = readl(dbg_port);
+	dev_info(dev, "%s: %s\n", __func__, module_name);
+	dev_info(dev, "%08x: %08x [%s]\n",
+		item.debug_sel, val, item.msg);
+}
 static void raw_handle_dma_err(struct mtk_ut_raw_device *raw)
 {
 	void __iomem *base = raw->base;
@@ -653,9 +740,13 @@ static irqreturn_t mtk_ut_raw_thread_irq(int irq, void *data)
 		if (cmd->dump_tg_err)
 			raw_handle_tg_grab_err(raw);
 
-		if (cmd->dump_dma_err)
+		if (cmd->dump_dma_err) {
 			raw_handle_dma_err(raw);
-
+			mtk_ut_dump_dma_debug(raw->dev, raw->base,
+				"TSFSO_R1", dbg_TSFSO_R1, 10);
+			mtk_ut_dump_module_dbg_data(raw->dev, raw->base,
+				"TSFS_R1", dbg_data_3[20]);
+		}
 		if (cmd->dump_tg_overrun)
 			raw_handle_tg_overrun(raw);
 
