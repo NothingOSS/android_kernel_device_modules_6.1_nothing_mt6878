@@ -9,54 +9,56 @@ config MTK_SLBC
 config MTK_SLBC_MT6886
 	tristate "MTK SLBC MT6886"
 	help
-	  This kernel config can be used to enable SLBC
-	  at mt6886. When enable this option, we will
-	  use system buffer to improve performance
+	  This kernel config can be used to enable SLBC at mt6886. When enable
+	  this option, we will use system buffer to improve performance
 	  and power.
 	  If unsure, say N.
 
 config MTK_SLBC_MT6893
 	tristate "MTK SLBC MT6893"
 	help
-	  This kernel config can be used to enable SLBC
-	  at mt6893. When enable this option, we will
-	  use system buffer to improve performance
+	  This kernel config can be used to enable SLBC at mt6893. When enable
+	  this option, we will use system buffer to improve performance
 	  and power.
 	  If unsure, say N.
 
 config MTK_SLBC_MT6895
 	tristate "MTK SLBC MT6895"
 	help
-	  This kernel config can be used to enable SLBC
-	  at mt6895. When enable this option, we will
-	  use system buffer to improve performance
+	  This kernel config can be used to enable SLBC at mt6895. When enable
+	  this option, we will use system buffer to improve performance
 	  and power.
 	  If unsure, say N.
 
 config MTK_SLBC_MT6897
 	tristate "MTK SLBC MT6897"
 	help
-	  This kernel config can be used to enable SLBC
-	  at mt6897. When enable this option, we will
-	  use system buffer to improve performance
+	  This kernel config can be used to enable SLBC at mt6897. When enable
+	  this option, we will use system buffer to improve performance
 	  and power.
 	  If unsure, say N.
 
 config MTK_SLBC_MT6983
 	tristate "MTK SLBC MT6983"
 	help
-	  This kernel config can be used to enable SLBC
-	  at mt6983. When enable this option, we will
-	  use system buffer to improve performance
+	  This kernel config can be used to enable SLBC at mt6983. When enable
+	  this option, we will use system buffer to improve performance
 	  and power.
 	  If unsure, say N.
 
 config MTK_SLBC_MT6985
 	tristate "MTK SLBC MT6985"
 	help
-	  This kernel config can be used to enable SLBC
-	  at mt6985. When enable this option, we will
-	  use system buffer to improve performance
+	  This kernel config can be used to enable SLBC at mt6985. When enable
+	  this option, we will use system buffer to improve performance
+	  and power.
+	  If unsure, say N.
+
+config MTK_SLBC_MT6989
+	tristate "MTK SLBC MT6989"
+	help
+	  This kernel config can be used to enable SLBC at mt6985. When enable
+	  this option, we will use system buffer to improve performance
 	  and power.
 	  If unsure, say N.
 

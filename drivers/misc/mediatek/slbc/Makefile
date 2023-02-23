@@ -16,6 +16,7 @@ ccflags-y += \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/ \
+	-I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps \
 	-I$(srctree)/include \
 	-I$(srctree)/$(src) \
 
@@ -52,6 +53,9 @@ ifneq ($(wildcard $(srctree)/$(src)/slbc_mt6897.c),)
 obj-${CONFIG_MTK_SLBC_MT6897} += slbc_mt6897.o
 endif
 
+ifneq ($(wildcard $(srctree)/$(src)/slbc_mt6989.c),)
+obj-${CONFIG_MTK_SLBC_MT6989} += slbc_mt6989.o
+endif
 obj-${CONFIG_MTK_SLBC_IPI} += slbc_ipi.o
 obj-${CONFIG_MTK_SLBC_MMSRAM} += mmsram.o
 

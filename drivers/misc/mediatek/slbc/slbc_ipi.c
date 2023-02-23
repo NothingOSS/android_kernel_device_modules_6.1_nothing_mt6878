@@ -13,7 +13,7 @@
 #include <linux/module.h>
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 #include <tinysys-scmi.h>
-#endif /* CONFIG_MTK_L3C_PART */
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 
 #include "slbc_ipi.h"
 #include "slbc_ops.h"
@@ -25,7 +25,7 @@ static int slbc_sspm_ready;
 static int scmi_slbc_id;
 static struct scmi_tinysys_info_st *_tinfo;
 static unsigned int scmi_id;
-#endif /* CONFIG_MTK_L3C_PART */
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 static struct slbc_ipi_ops *ipi_ops;
 
 
@@ -35,9 +35,10 @@ int slbc_sspm_slb_disable(int disable)
 
 	pr_info("#@# %s(%d) disable %d\n", __func__, __LINE__, disable);
 
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
 	slbc_ipi_d.cmd = IPI_SLB_DISABLE;
 	slbc_ipi_d.arg = disable;
-	return slbc_scmi_set(&slbc_ipi_d, 2);
+	return slbc_scmi_set(&slbc_ipi_d);
 }
 EXPORT_SYMBOL_GPL(slbc_sspm_slb_disable);
 
@@ -47,9 +48,10 @@ int slbc_sspm_slc_disable(int disable)
 
 	pr_info("#@# %s(%d) disable %d\n", __func__, __LINE__, disable);
 
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
 	slbc_ipi_d.cmd = IPI_SLC_DISABLE;
 	slbc_ipi_d.arg = disable;
-	return slbc_scmi_set(&slbc_ipi_d, 2);
+	return slbc_scmi_set(&slbc_ipi_d);
 }
 EXPORT_SYMBOL_GPL(slbc_sspm_slc_disable);
 
@@ -59,9 +61,10 @@ int slbc_sspm_enable(int enable)
 
 	pr_info("#@# %s(%d) enable %d\n", __func__, __LINE__, enable);
 
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
 	slbc_ipi_d.cmd = IPI_SLBC_ENABLE;
 	slbc_ipi_d.arg = enable;
-	return slbc_scmi_set(&slbc_ipi_d, 2);
+	return slbc_scmi_set(&slbc_ipi_d);
 }
 EXPORT_SYMBOL_GPL(slbc_sspm_enable);
 
@@ -69,10 +72,11 @@ int slbc_force_scmi_cmd(unsigned int force)
 {
 	struct slbc_ipi_data slbc_ipi_d;
 
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
 	slbc_ipi_d.cmd = IPI_SLBC_FORCE;
 	slbc_ipi_d.arg = force;
 
-	return slbc_scmi_set(&slbc_ipi_d, 2);
+	return slbc_scmi_set(&slbc_ipi_d);
 }
 EXPORT_SYMBOL_GPL(slbc_force_scmi_cmd);
 
@@ -80,10 +84,11 @@ int slbc_mic_num_cmd(unsigned int num)
 {
 	struct slbc_ipi_data slbc_ipi_d;
 
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
 	slbc_ipi_d.cmd = IPI_SLBC_MIC_NUM;
 	slbc_ipi_d.arg = num;
 
-	return slbc_scmi_set(&slbc_ipi_d, 2);
+	return slbc_scmi_set(&slbc_ipi_d);
 }
 EXPORT_SYMBOL_GPL(slbc_mic_num_cmd);
 
@@ -91,10 +96,11 @@ int slbc_inner_cmd(unsigned int inner)
 {
 	struct slbc_ipi_data slbc_ipi_d;
 
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
 	slbc_ipi_d.cmd = IPI_SLBC_INNER;
 	slbc_ipi_d.arg = inner;
 
-	return slbc_scmi_set(&slbc_ipi_d, 2);
+	return slbc_scmi_set(&slbc_ipi_d);
 }
 EXPORT_SYMBOL_GPL(slbc_inner_cmd);
 
@@ -102,10 +108,11 @@ int slbc_outer_cmd(unsigned int outer)
 {
 	struct slbc_ipi_data slbc_ipi_d;
 
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
 	slbc_ipi_d.cmd = IPI_SLBC_OUTER;
 	slbc_ipi_d.arg = outer;
 
-	return slbc_scmi_set(&slbc_ipi_d, 2);
+	return slbc_scmi_set(&slbc_ipi_d);
 }
 EXPORT_SYMBOL_GPL(slbc_outer_cmd);
 
@@ -113,9 +120,10 @@ int slbc_suspend_resume_notify(int suspend)
 {
 	struct slbc_ipi_data slbc_ipi_d;
 
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
 	slbc_ipi_d.cmd = IPI_SLBC_SUSPEND_RESUME_NOTIFY;
 	slbc_ipi_d.arg = suspend;
-	return slbc_scmi_set(&slbc_ipi_d, 2);
+	return slbc_scmi_set(&slbc_ipi_d);
 }
 EXPORT_SYMBOL_GPL(slbc_suspend_resume_notify);
 
@@ -127,10 +135,11 @@ int _slbc_request_cache_scmi(void *ptr)
 	struct scmi_tinysys_status rvalue = {0};
 	int ret = 0;
 
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
 	slbc_ipi_d.cmd = SLBC_IPI(IPI_SLBC_CACHE_REQUEST_FROM_AP, d->uid);
 	slbc_ipi_d.arg = slbc_data_to_ui(d);
 	if (d->type == TP_CACHE) {
-		ret = slbc_scmi_get(&slbc_ipi_d, 1, &rvalue);
+		ret = slbc_scmi_get(&slbc_ipi_d, &rvalue);
 		if (!ret) {
 			d->paddr = (void __iomem *)(long long)rvalue.r1;
 			d->slot_used = rvalue.r2;
@@ -149,7 +158,7 @@ int _slbc_request_cache_scmi(void *ptr)
 	return ret;
 #else
 	return 0;
-#endif /* CONFIG_MTK_L3C_PART */
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(_slbc_request_cache_scmi);
 
@@ -161,10 +170,11 @@ int _slbc_release_cache_scmi(void *ptr)
 	struct scmi_tinysys_status rvalue = {0};
 	int ret = 0;
 
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
 	slbc_ipi_d.cmd = SLBC_IPI(IPI_SLBC_CACHE_RELEASE_FROM_AP, d->uid);
 	slbc_ipi_d.arg = slbc_data_to_ui(d);
 	if (d->type == TP_CACHE) {
-		ret = slbc_scmi_get(&slbc_ipi_d, 1, &rvalue);
+		ret = slbc_scmi_get(&slbc_ipi_d, &rvalue);
 		if (!ret) {
 			d->paddr = (void __iomem *)(long long)rvalue.r1;
 			d->slot_used = rvalue.r2;
@@ -183,7 +193,7 @@ int _slbc_release_cache_scmi(void *ptr)
 	return ret;
 #else
 	return 0;
-#endif /* CONFIG_MTK_L3C_PART */
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(_slbc_release_cache_scmi);
 
@@ -195,10 +205,11 @@ int _slbc_buffer_status_scmi(void *ptr)
 	struct scmi_tinysys_status rvalue = {0};
 	int ret = 0;
 
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
 	slbc_ipi_d.cmd = SLBC_IPI(IPI_SLBC_BUFFER_STATUS, d->uid);
 	slbc_ipi_d.arg = slbc_data_to_ui(d);
 	if (d->type == TP_BUFFER) {
-		ret = slbc_scmi_get(&slbc_ipi_d, 1, &rvalue);
+		ret = slbc_scmi_get(&slbc_ipi_d, &rvalue);
 		if (!ret) {
 			ret = rvalue.r1;
 			pr_info("#@# %s(%d) uid %d return ref(%d)\n",
@@ -217,7 +228,7 @@ int _slbc_buffer_status_scmi(void *ptr)
 	return ret;
 #else
 	return 0;
-#endif /* CONFIG_MTK_L3C_PART */
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(_slbc_buffer_status_scmi);
 
@@ -229,10 +240,11 @@ int _slbc_request_buffer_scmi(void *ptr)
 	struct scmi_tinysys_status rvalue = {0};
 	int ret = 0;
 
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
 	slbc_ipi_d.cmd = SLBC_IPI(IPI_SLBC_BUFFER_REQUEST_FROM_AP, d->uid);
 	slbc_ipi_d.arg = slbc_data_to_ui(d);
 	if (d->type == TP_BUFFER) {
-		ret = slbc_scmi_set(&slbc_ipi_d, 2);
+		ret = slbc_scmi_set(&slbc_ipi_d);
 		if (ret) {
 			pr_info("#@# %s(%d) return fail(%d)\n",
 					__func__, __LINE__, ret);
@@ -241,7 +253,7 @@ int _slbc_request_buffer_scmi(void *ptr)
 			return ret;
 		}
 
-		ret = slbc_scmi_get(&slbc_ipi_d, 1, &rvalue);
+		ret = slbc_scmi_get(&slbc_ipi_d, &rvalue);
 		if (!ret) {
 			d->paddr = (void __iomem *)(long long)rvalue.r1;
 			d->slot_used = rvalue.r2;
@@ -260,7 +272,7 @@ int _slbc_request_buffer_scmi(void *ptr)
 	return ret;
 #else
 	return 0;
-#endif /* CONFIG_MTK_L3C_PART */
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(_slbc_request_buffer_scmi);
 
@@ -272,10 +284,11 @@ int _slbc_release_buffer_scmi(void *ptr)
 	struct scmi_tinysys_status rvalue = {0};
 	int ret = 0;
 
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
 	slbc_ipi_d.cmd = SLBC_IPI(IPI_SLBC_BUFFER_RELEASE_FROM_AP, d->uid);
 	slbc_ipi_d.arg = slbc_data_to_ui(d);
 	if (d->type == TP_BUFFER) {
-		ret = slbc_scmi_set(&slbc_ipi_d, 2);
+		ret = slbc_scmi_set(&slbc_ipi_d);
 		if (ret) {
 			pr_info("#@# %s(%d) return fail(%d)\n",
 					__func__, __LINE__, ret);
@@ -284,7 +297,7 @@ int _slbc_release_buffer_scmi(void *ptr)
 			return ret;
 		}
 
-		ret = slbc_scmi_get(&slbc_ipi_d, 1, &rvalue);
+		ret = slbc_scmi_get(&slbc_ipi_d, &rvalue);
 		if (!ret) {
 			d->paddr = (void __iomem *)(long long)rvalue.r1;
 			d->slot_used = rvalue.r2;
@@ -303,17 +316,58 @@ int _slbc_release_buffer_scmi(void *ptr)
 	return ret;
 #else
 	return 0;
-#endif /* CONFIG_MTK_L3C_PART */
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(_slbc_release_buffer_scmi);
+
+int _slbc_ach_scmi(unsigned int cmd, enum slc_ach_uid uid, int gid, struct slbc_gid_data *data)
+{
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+	struct slbc_ipi_data slbc_ipi_d;
+	struct scmi_tinysys_status rvalue = {0};
+	int ret = 0;
+
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
+	slbc_ipi_d.cmd		= SLBC_IPI(cmd, uid);
+	slbc_ipi_d.arg		= gid;
+	if (cmd == IPI_SLBC_GID_REQUEST_FROM_AP || cmd == IPI_SLBC_ROI_UPDATE_FROM_AP) {
+		slbc_ipi_d.arg2		= data->bw;
+		slbc_ipi_d.arg3		= data->dma_size;
+	} else if (cmd == IPI_SLBC_GID_READ_INVALID_FROM_AP) {
+		slbc_ipi_d.arg2		= data->bw;	// re-use bw as enable argument
+	}
+
+	ret = slbc_scmi_set(&slbc_ipi_d);
+	if (ret) {
+		pr_info("#@# %s(%d) return fail(%d)\n",
+				__func__, __LINE__, ret);
+		ret = -1;
+
+		return ret;
+	}
+
+	ret = slbc_scmi_get(&slbc_ipi_d, &rvalue);
+	if (ret) {
+		pr_info("#@# %s(%d) return fail(%d)\n",
+				__func__, __LINE__, ret);
+		ret = -1;
+	}
+
+	return ret;
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
+}
+EXPORT_SYMBOL_GPL(_slbc_ach_scmi);
 
 int slbc_sspm_sram_update(void)
 {
 	struct slbc_ipi_data slbc_ipi_d;
 
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
 	slbc_ipi_d.cmd = IPI_SLBC_SRAM_UPDATE;
 	slbc_ipi_d.arg = 0;
-	return slbc_scmi_set(&slbc_ipi_d, 2);
+	return slbc_scmi_set(&slbc_ipi_d);
 }
 EXPORT_SYMBOL_GPL(slbc_sspm_sram_update);
 
@@ -366,9 +420,9 @@ static void slbc_scmi_handler(u32 r_feature_id, scmi_tinysys_report *report)
 				cmd);
 	}
 }
-#endif /* CONFIG_MTK_L3C_PART */
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 
-int slbc_scmi_set(void *buffer, int slot)
+int slbc_scmi_set(void *buffer)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	int ret;
@@ -386,7 +440,7 @@ int slbc_scmi_set(void *buffer, int slot)
 	slbc_sram_write(SLBC_SCMI_AP, ++scmi_id);
 
 	ret = scmi_tinysys_common_set(_tinfo->ph, scmi_slbc_id,
-			slbc_ipi_d->cmd, slbc_ipi_d->arg, 0, 0, 0);
+			slbc_ipi_d->cmd, slbc_ipi_d->arg, slbc_ipi_d->arg2, slbc_ipi_d->arg3, 0);
 
 	if (ret == -ETIMEDOUT) {
 		mdelay(3);
@@ -405,11 +459,11 @@ int slbc_scmi_set(void *buffer, int slot)
 
 	return ret;
 error:
-#endif /* CONFIG_MTK_L3C_PART */
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 	return -1;
 }
 
-int slbc_scmi_get(void *buffer, int slot, void *ptr)
+int slbc_scmi_get(void *buffer, void *ptr)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	int ret;
@@ -453,7 +507,7 @@ int slbc_scmi_get(void *buffer, int slot, void *ptr)
 
 	return ret;
 error:
-#endif /* CONFIG_MTK_L3C_PART */
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 	return -1;
 }
 
@@ -493,7 +547,7 @@ int slbc_scmi_init(void)
 
 	pr_info("slbc scmi is ready!\n");
 
-#endif /* CONFIG_MTK_L3C_PART */
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 	return 0;
 }
 EXPORT_SYMBOL_GPL(slbc_scmi_init);

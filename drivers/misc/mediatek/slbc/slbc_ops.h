@@ -8,6 +8,7 @@
 
 #include <linux/list.h>
 #include <linux/bitops.h>
+#include <linux/dma-buf.h>
 
 /* error code */
 #define EWAIT_RELEASE		1 /* wait for release */
@@ -19,6 +20,8 @@
 #define EREF_NOT_ZERO		7 /* ref not zero */
 #define EREQ_TIMEOUT		8 /* req timeout */
 #define EREQ_WAIT_FAIL		9 /* req wait fail */
+#define EREQ_GID_RUN_OUT	10 /* req wait fail */
+
 
 /* call back return value */
 #define CB_DONE			0 /* no need to use*/
@@ -31,6 +34,14 @@
 
 /* sid status */
 #define SID_NOT_FOUND		0xffff
+
+/* SLC all cache mode magic num */
+#define SLC_DATA_MAGIC		0x51ca11ca
+
+/* maximum number of GID */
+#define GID_MAX				64
+
+
 
 /* need to modify slbc_uid_str  */
 enum slbc_uid {
@@ -100,6 +111,15 @@ enum slbc_flag {
 	FG_ACP_4_4 = BIT(ACP_ONLY_BIT + 4),
 };
 
+/* SLC all cache mode user id */
+enum slc_ach_uid {
+	ID_VDEC,
+	ID_GPU,
+	ID_GPU_W,
+	ID_OVL_R,
+	ID_MAX,
+};
+
 #define FG_ACP_BITS (FG_ACP_1_4 | FG_ACP_2_4 | FG_ACP_3_4 | FG_ACP_4_4)
 
 #define SLBC_TRY_FLAG_BIT(d, bit) (((d)->flag & (bit)) == (bit))
@@ -126,6 +146,18 @@ struct slbc_data {
 	);
 };
 
+struct slbc_gid_data {
+	unsigned int sign;
+	unsigned int buffer_fd;
+	unsigned int producer;
+	unsigned int consumer;
+	unsigned int height;	//unit: pixel
+	unsigned int width;	//unit: pixel
+	unsigned int dma_size;	//unit: MB
+	unsigned int bw;	//unit: MBps
+	unsigned int fps;	//unit: frames per sec
+};
+
 #define ui_to_slbc_data(d, ui) \
 	do { \
 		(d)->uid = ((ui) >> 24 & 0xff); \
@@ -146,6 +178,7 @@ struct slbc_ops {
 };
 
 extern unsigned int slbc_enable;
+extern unsigned int slbc_all_cache_mode;
 extern char *slbc_uid_str[UID_MAX + 1];
 extern int popcount(unsigned int x);
 
@@ -163,6 +196,13 @@ extern void slbc_update_mm_bw(unsigned int bw);
 extern void slbc_update_mic_num(unsigned int num);
 extern void slbc_update_inner(unsigned int inner);
 extern void slbc_update_outer(unsigned int outer);
+void slbc_get_gid_for_dma(struct dma_buf *dmabuf);
+int slbc_gid_request(enum slc_ach_uid uid, int *gid, struct slbc_gid_data *data);
+int slbc_gid_release(enum slc_ach_uid uid, int gid);
+int slbc_roi_update(enum slc_ach_uid uid, int gid, struct slbc_gid_data *data);
+int slbc_validate(enum slc_ach_uid uid, int gid);
+int slbc_invalidate(enum slc_ach_uid uid, int gid);
+int slbc_read_invalidate(enum slc_ach_uid uid, int gid, int enable);
 #else
 __weak int slbc_status(struct slbc_data *d)
 {
@@ -204,6 +244,30 @@ __weak void slbc_update_mm_bw(unsigned int bw) {}
 __weak void slbc_update_mic_num(unsigned int num) {}
 __weak void slbc_update_inner(unsigned int inner) {}
 __weak void slbc_update_outer(unsigned int outer) {}
+__weak int slbc_gid_request(enum slc_ach_uid uid, int *gid, struct slbc_gid_data *data)
+{
+	return -EDISABLED;
+};
+__weak int slbc_gid_release(enum slc_ach_uid uid, int gid)
+{
+	return -EDISABLED;
+};
+__weak int slbc_roi_update(enum slc_ach_uid uid, int gid, struct slbc_gid_data *data)
+{
+	return -EDISABLED;
+};
+__weak int slbc_validate(enum slc_ach_uid uid, int gid)
+{
+	return -EDISABLED;
+};
+__weak int slbc_invalidate(enum slc_ach_uid uid, int gid)
+{
+	return -EDISABLED;
+};
+__weak int slbc_read_invalidate(enum slc_ach_uid uid, int gid, int enable)
+{
+	return -EDISABLED;
+};
 #endif /* CONFIG_MTK_SLBC */
 
 #endif /* _SLBC_OPS_H_ */

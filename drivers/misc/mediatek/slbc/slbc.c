@@ -17,11 +17,16 @@
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
 #include <linux/errno.h>
+#include <linux/dma-buf.h>
 
 #include <slbc.h>
 
 unsigned int slbc_enable;
+unsigned int slbc_all_cache_mode;
+
 EXPORT_SYMBOL_GPL(slbc_enable);
+EXPORT_SYMBOL_GPL(slbc_all_cache_mode);
+
 
 struct slbc_common_ops *common_ops;
 
@@ -191,6 +196,60 @@ void slbc_update_mic_num(unsigned int num)
 		return;
 }
 EXPORT_SYMBOL_GPL(slbc_update_mic_num);
+
+int slbc_gid_request(enum slc_ach_uid uid, int *gid, struct slbc_gid_data *d)
+{
+	if (common_ops && common_ops->slbc_gid_request)
+		return common_ops->slbc_gid_request(uid, gid, d);
+	else
+		return -ENODEV;
+}
+EXPORT_SYMBOL_GPL(slbc_gid_request);
+
+int slbc_gid_release(enum slc_ach_uid uid, int gid)
+{
+	if (common_ops && common_ops->slbc_gid_release)
+		return common_ops->slbc_gid_release(uid, gid);
+	else
+		return -ENODEV;
+}
+EXPORT_SYMBOL_GPL(slbc_gid_release);
+
+int slbc_roi_update(enum slc_ach_uid uid, int gid, struct slbc_gid_data *d)
+{
+	if (common_ops && common_ops->slbc_roi_update)
+		return common_ops->slbc_roi_update(uid, gid, d);
+	else
+		return -ENODEV;
+}
+EXPORT_SYMBOL_GPL(slbc_roi_update);
+
+int slbc_validate(enum slc_ach_uid uid, int gid)
+{
+	if (common_ops && common_ops->slbc_validate)
+		return common_ops->slbc_validate(uid, gid);
+	else
+		return -ENODEV;
+}
+EXPORT_SYMBOL_GPL(slbc_validate);
+
+int slbc_invalidate(enum slc_ach_uid uid, int gid)
+{
+	if (common_ops && common_ops->slbc_invalidate)
+		return common_ops->slbc_invalidate(uid, gid);
+	else
+		return -ENODEV;
+}
+EXPORT_SYMBOL_GPL(slbc_invalidate);
+
+int slbc_read_invalidate(enum slc_ach_uid uid, int gid, int enable)
+{
+	if (common_ops && common_ops->slbc_read_invalidate)
+		return common_ops->slbc_read_invalidate(uid, gid, enable);
+	else
+		return -ENODEV;
+}
+EXPORT_SYMBOL_GPL(slbc_read_invalidate);
 
 void slbc_register_common_ops(struct slbc_common_ops *ops)
 {

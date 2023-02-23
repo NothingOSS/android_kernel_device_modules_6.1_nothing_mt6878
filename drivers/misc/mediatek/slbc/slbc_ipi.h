@@ -6,6 +6,8 @@
 #ifndef _SLBC_IPI_H_
 #define _SLBC_IPI_H_
 
+#include <slbc_ops.h>
+
 enum {
 	IPI_SLBC_ENABLE,
 	IPI_SLBC_SYNC_FROM_AP,
@@ -34,12 +36,20 @@ enum {
 	IPI_SLC_DISABLE,
 	IPI_SLBC_BUFFER_STATUS,
 	IPI_SLBC_SRAM_UPDATE,
+	IPI_SLBC_GID_REQUEST_FROM_AP,
+	IPI_SLBC_GID_RELEASE_FROM_AP,
+	IPI_SLBC_ROI_UPDATE_FROM_AP,
+	IPI_SLBC_GID_VALID_FROM_AP,
+	IPI_SLBC_GID_INVALID_FROM_AP,
+	IPI_SLBC_GID_READ_INVALID_FROM_AP,
 	NR_IPI_SLBC,
 };
 
 struct slbc_ipi_data {
 	unsigned int cmd;
 	unsigned int arg;
+	unsigned int arg2;
+	unsigned int arg3;
 };
 
 struct slbc_ipi_ops {
@@ -48,8 +58,8 @@ struct slbc_ipi_ops {
 	void (*slbc_mem_barrier)(void);
 };
 
-extern int slbc_scmi_set(void *buffer, int slot);
-extern int slbc_scmi_get(void *buffer, int slot, void *ptr);
+extern int slbc_scmi_set(void *buffer);
+extern int slbc_scmi_get(void *buffer, void *ptr);
 
 #define SLBC_IPI(x, y)			((x) & 0xffff | ((y) & 0xffff) << 16)
 #define SLBC_IPI_CMD_GET(x)		((x) & 0xffff)
@@ -73,6 +83,9 @@ extern int _slbc_release_buffer_scmi(void *ptr);
 extern void slbc_register_ipi_ops(struct slbc_ipi_ops *ops);
 extern void slbc_unregister_ipi_ops(struct slbc_ipi_ops *ops);
 extern int slbc_sspm_sram_update(void);
+extern int _slbc_ach_scmi(unsigned int cmd, enum slc_ach_uid uid, int gid,
+			struct slbc_gid_data *data);
+
 #else
 __weak int slbc_suspend_resume_notify(int) {}
 __weak int slbc_scmi_init(void) { return 0; }
@@ -91,6 +104,11 @@ __weak int _slbc_release_buffer_scmi(void *ptr) {}
 __weak void slbc_register_ipi_ops(struct slbc_ipi_ops *ops) {}
 __weak void slbc_unregister_ipi_ops(struct slbc_ipi_ops *ops) {}
 __weak int slbc_sspm_sram_update(void) {}
+__weak int _slbc_ach_scmi(unsigned int cmd, enum slc_ach_uid uid, int gid,
+			struct slbc_gid_data *data)
+{
+	return -EDISABLED;
+}
 #endif /* CONFIG_MTK_SLBC_IPI */
 
 #endif /* _SLBC_IPI_H_ */
