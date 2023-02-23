@@ -23,6 +23,7 @@ config DEVICE_MODULES_VIDEO_MEDIATEK_JPEG
 source "$(KCONFIG_EXT_PREFIX)drivers/media/platform/mtk-vcodec/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/media/platform/mtk-isp/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/media/platform/mtk-aie/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/media/platform/mtk-dpe/Kconfig"
 
 config DEVICE_MODULES_VIDEO_MEDIATEK_VCODEC
 	tristate "Mediatek Video Codec driver"
