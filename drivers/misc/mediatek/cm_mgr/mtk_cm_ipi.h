@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2019 MediaTek Inc.
+ * Copyright (c) 2023 MediaTek Inc.
  */
 
 #ifndef __MTK_CM_IPI_H__
@@ -57,17 +57,14 @@ enum {
 	NR_IPI_CM_MGR,
 };
 
-
 struct cm_ipi_data {
 	unsigned int cmd;
 	unsigned int arg;
 };
 
-unsigned int cm_mgr_to_sspm_command(unsigned int cmd, unsigned int val);
+extern int cm_mgr_to_sspm_command(unsigned int cmd, unsigned int val);
 extern void cm_ipi_init(void);
-extern void cm_sspm_enable(int enable);
 extern int cm_get_ipi_enable(void);
 extern void cm_set_ipi_enable(int enable);
 
 #endif /* __MTK_CM_MGR_IPI_H__ */
-
