@@ -581,6 +581,7 @@ void fpsgo_reset_pid_attr(struct fpsgo_boost_attr *boost_attr)
 		boost_attr->light_loading_policy_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->loading_th_by_pid = BY_PID_DEFAULT_VAL;
 
+		boost_attr->rescue_enable_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->rescue_second_enable_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->rescue_second_time_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->rescue_second_group_by_pid = BY_PID_DEFAULT_VAL;
@@ -832,7 +833,8 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 		return 0;
 
 	boost_attr = fpsgo_attr->attr;
-	if	(boost_attr.rescue_second_enable_by_pid == BY_PID_DEFAULT_VAL &&
+	if	(boost_attr.rescue_enable_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.rescue_second_enable_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.rescue_second_time_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.rescue_second_group_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.llf_task_policy_by_pid == BY_PID_DEFAULT_VAL &&
@@ -870,7 +872,8 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 			boost_attr.gcc_up_step_by_pid == BY_PID_DEFAULT_VAL) {
 		return 1;
 	}
-	if (boost_attr.rescue_second_enable_by_pid == BY_PID_DELETE_VAL ||
+	if (boost_attr.rescue_enable_by_pid == BY_PID_DELETE_VAL ||
+			boost_attr.rescue_second_enable_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.rescue_second_time_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.rescue_second_group_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.llf_task_policy_by_pid == BY_PID_DELETE_VAL ||
@@ -1717,7 +1720,7 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 	pos += length;
 
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-				" qr_enable, qr_t2wnt_x, qr_t2wnt_y_p, qr_t2wnt_y_n\n");
+				" rescue_enable, qr_enable, qr_t2wnt_x, qr_t2wnt_y_p, qr_t2wnt_y_n\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 				" gcc_enable, gcc_fps_margin, gcc_up_sec_pct, gcc_up_step, gcc_reserved_up_quota_pct\n");
@@ -1791,7 +1794,8 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 			pos += length;
 
 			length = scnprintf(temp + pos,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d\n",
+				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d\n",
+				attr_item.rescue_enable_by_pid,
 				attr_item.qr_enable_by_pid,
 				attr_item.qr_t2wnt_x_by_pid,
 				attr_item.qr_t2wnt_y_p_by_pid,

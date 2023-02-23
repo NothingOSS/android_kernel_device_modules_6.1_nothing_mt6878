@@ -171,6 +171,7 @@ struct fpsgo_boost_attr {
 	int light_loading_policy_by_pid;
 
 	/*    rescue    */
+	int rescue_enable_by_pid;
 	int rescue_second_enable_by_pid;
 	int rescue_second_time_by_pid;
 	int rescue_second_group_by_pid;

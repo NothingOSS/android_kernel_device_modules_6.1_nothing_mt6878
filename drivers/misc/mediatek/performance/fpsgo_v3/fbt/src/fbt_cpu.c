@@ -68,6 +68,7 @@
 #define DEF_RESCUE_NS_TH 0
 #define INVALID_NUM -1
 #define SBE_RESCUE_MODE_UNTIL_QUEUE_END 2
+#define DEFAULT_RESCUE_ENABLE 0
 #define DEFAULT_QR_T2WNT_X 0
 #define DEFAULT_QR_T2WNT_Y_P 100
 #define DEFAULT_QR_T2WNT_Y_N 0
@@ -209,6 +210,7 @@ static int bhr;
 static int bhr_opp;
 static int bhr_opp_l;
 static int isolation_limit_cap;
+static int rescue_enable;
 static int rescue_opp_f;
 static int rescue_enhance_f;
 static int sbe_enhance_f;
@@ -2039,6 +2041,7 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 		return;
 
 	render_attr = &(thr->attr);
+	render_attr->rescue_enable_by_pid = rescue_enable;
 	render_attr->rescue_second_enable_by_pid = rescue_second_enable;
 	render_attr->rescue_second_group_by_pid = rescue_second_group;
 	render_attr->rescue_second_time_by_pid = rescue_second_time;
@@ -2085,6 +2088,9 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 		return;
 
 	pid_attr = fpsgo_attr->attr;
+	if (pid_attr.rescue_enable_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->rescue_enable_by_pid =
+			pid_attr.rescue_enable_by_pid;
 	if (pid_attr.rescue_second_enable_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->rescue_second_enable_by_pid =
 			pid_attr.rescue_second_enable_by_pid;
@@ -3981,6 +3987,7 @@ static int fbt_boost_policy(
 	int ff_kmin = thread_info->attr.filter_frame_kmin_by_pid;
 	int separate_aa_final = thread_info->attr.separate_aa_by_pid;
 	int max_cap = 100, max_cap_b = 100, max_cap_m = 100;
+	int rescue_enable_final = thread_info->attr.rescue_enable_by_pid;
 	int qr_enable_active = thread_info->attr.qr_enable_by_pid;
 	int gcc_enable_active = thread_info->attr.gcc_enable_by_pid;
 	int qr_t2wnt_x_final = thread_info->attr.qr_t2wnt_x_by_pid;
@@ -4216,7 +4223,7 @@ static int fbt_boost_policy(
 	}
 	mutex_unlock(&blc_mlock);
 
-	if (blc_wt) {
+	if (blc_wt & rescue_enable_final) {
 		 /* ignore hwui hint || not hwui */
 		if (qr_enable_active && (!qr_hwui_hint ||
 			thread_info->hwui != RENDER_INFO_HWUI_TYPE)) {
@@ -6526,7 +6533,12 @@ static ssize_t fbt_attr_by_pid_store(struct kobject *kobj,
 		goto delete_pid;
 	}
 
-	if (!strcmp(cmd, "rescue_second_enable")) {
+	if (!strcmp(cmd, "rescue_enable")) {
+		if ((val == 0 || val == 1) && action == 's')
+			boost_attr->rescue_enable_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->rescue_enable_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "rescue_second_enable")) {
 		if ((val == 0 || val == 1) && action == 's')
 			boost_attr->rescue_second_enable_by_pid = val;
 		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
@@ -6823,6 +6835,48 @@ out:
 }
 
 static KOBJ_ATTR_RW(llf_task_policy);
+
+static ssize_t rescue_enable_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int val = -1;
+
+	mutex_lock(&fbt_mlock);
+	val = rescue_enable;
+	mutex_unlock(&fbt_mlock);
+	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
+}
+
+static ssize_t rescue_enable_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	int val = -1;
+	char *acBuffer = NULL;
+	int arg;
+
+	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!acBuffer)
+		goto out;
+
+	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &arg) == 0) {
+				val = !!arg;
+				mutex_lock(&fbt_mlock);
+				rescue_enable = val;
+				mutex_unlock(&fbt_mlock);
+			}
+		}
+	}
+
+out:
+	kfree(acBuffer);
+	return count;
+}
+
+static KOBJ_ATTR_RW(rescue_enable);
 
 static ssize_t enable_ceiling_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -7868,6 +7922,8 @@ void __exit fbt_cpu_exit(void)
 	fpsgo_sysfs_remove_file(fbt_kobj,
 			&kobj_attr_enable_switch_down_throttle);
 	fpsgo_sysfs_remove_file(fbt_kobj,
+			&kobj_attr_rescue_enable);
+	fpsgo_sysfs_remove_file(fbt_kobj,
 			&kobj_attr_ultra_rescue);
 	fpsgo_sysfs_remove_file(fbt_kobj,
 			&kobj_attr_llf_task_policy);
@@ -7951,6 +8007,7 @@ int __init fbt_cpu_init(void)
 	bhr_opp = 0;
 	bhr_opp_l = fbt_get_l_min_bhropp();
 	isolation_limit_cap = 1;
+	rescue_enable = DEFAULT_RESCUE_ENABLE;
 	rescue_opp_c = (nr_freq_cpu - 1);
 	rescue_opp_f = 5;
 	rescue_percent = DEF_RESCUE_PERCENT;
@@ -8085,6 +8142,8 @@ int __init fbt_cpu_init(void)
 				&kobj_attr_table_cap);
 		fpsgo_sysfs_create_file(fbt_kobj,
 				&kobj_attr_enable_switch_down_throttle);
+		fpsgo_sysfs_create_file(fbt_kobj,
+				&kobj_attr_rescue_enable);
 		fpsgo_sysfs_create_file(fbt_kobj,
 				&kobj_attr_ultra_rescue);
 		fpsgo_sysfs_create_file(fbt_kobj,
