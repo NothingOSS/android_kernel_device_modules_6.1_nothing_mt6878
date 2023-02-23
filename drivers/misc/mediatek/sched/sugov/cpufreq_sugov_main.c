@@ -180,7 +180,8 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 	unsigned int freq = policy->cpuinfo.max_freq;
 	unsigned long next_freq = 0;
 
-	mtk_map_util_freq((void *)sg_policy, util, freq, policy->related_cpus, &next_freq);
+	mtk_map_util_freq((void *)sg_policy, util, freq, policy->related_cpus, &next_freq,
+		get_em_wl());
 	if (next_freq) {
 		freq = next_freq;
 	} else {
@@ -474,7 +475,7 @@ void mtk_set_cpu_min_opp(int cpu, unsigned long min_util)
 
 	gear_id = pd_get_cpu_gear_id(cpu);
 	min_util = map_util_perf(min_util);
-	min_opp = pd_get_util_opp_legacy(cpu, min_util);
+	min_opp = pd_X2Y(cpu, min_util, CAP, OPP, true);
 	set_cpu_min_opp(gear_id, min_opp);
 }
 

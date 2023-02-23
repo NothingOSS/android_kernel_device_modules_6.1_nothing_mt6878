@@ -35,6 +35,26 @@ TRACE_EVENT(sugov_ext_util,
 		__entry->max)
 );
 
+TRACE_EVENT(sugov_ext_wl_type,
+	TP_PROTO(unsigned int gear_id, unsigned int cpu, int wl_type),
+	TP_ARGS(gear_id, cpu, wl_type),
+	TP_STRUCT__entry(
+		__field(unsigned int, gear_id)
+		__field(unsigned int, cpu)
+		__field(unsigned int, wl_type)
+	),
+	TP_fast_assign(
+		__entry->gear_id = gear_id;
+		__entry->cpu = cpu;
+		__entry->wl_type = wl_type;
+	),
+	TP_printk(
+		"gear_id=%u cpu=%u wl_type=%u",
+		__entry->gear_id,
+		__entry->cpu,
+		__entry->wl_type)
+);
+
 TRACE_EVENT(sugov_ext_gear_state,
 	TP_PROTO(unsigned int gear_id, unsigned int state),
 	TP_ARGS(gear_id, state),

@@ -282,7 +282,7 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 	scale_cpu = arch_scale_cpu_capacity(cpu);
 	ps = &pd->table[pd->nr_perf_states - 1];
 #if IS_ENABLED(CONFIG_NONLINEAR_FREQ_CTL)
-	mtk_map_util_freq(NULL, max_util, ps->frequency, to_cpumask(pd->cpus), &freq);
+	mtk_map_util_freq(NULL, max_util, ps->frequency, to_cpumask(pd->cpus), &freq, get_em_wl());
 #else
 	max_util = map_util_perf(max_util);
 	max_util = min(max_util, allowed_cpu_cap);
@@ -291,7 +291,7 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 	freq = max(freq, per_cpu(min_freq, cpu));
 
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
-	mtk_ps = pd_get_freq_ps(cpu, freq, &opp);
+	mtk_ps = pd_get_freq_ps(get_em_wl(), cpu, freq, &opp);
 	pwr_eff = mtk_ps->pwr_eff;
 	cap = mtk_ps->capacity;
 	freq_legacy = pd_get_opp_freq_legacy(cpu, pd_get_freq_opp_legacy(cpu, freq));
@@ -411,7 +411,7 @@ void mtk_tick_entry(void *data, struct rq *rq)
 
 	void __iomem *base = sram_base_addr;
 	struct em_perf_domain *pd;
-	int this_cpu, gear_id, opp_idx, offset;
+	int this_cpu = cpu_of(rq), gear_id, opp_idx, offset;
 	unsigned int freq_thermal;
 	u32 opp_ceiling;
 	//u64 idle_time, wall_time, cpu_utilize;
@@ -420,6 +420,8 @@ void mtk_tick_entry(void *data, struct rq *rq)
 
 	ts[0] = sched_clock();
 #endif
+	if (is_wl_support())
+		update_wl_tbl(this_cpu);
 /*
 	if (rq->curr->android_vendor_data1[T_SBB_FLG] || is_busy_tick_boost_all() ||
 		rq->curr->sched_task_group->android_vendor_data1[TG_SBB_FLG]) {
@@ -456,7 +458,6 @@ void mtk_tick_entry(void *data, struct rq *rq)
 		rq->android_vendor_data1[RQ_SBB_BOOST_FACTOR] = 1;
 	}
 */
-	this_cpu = cpu_of(rq);
 #if IS_ENABLED(CONFIG_MTK_THERMAL_AWARE_SCHEDULING)
 	update_thermal_headroom(this_cpu);
 #endif

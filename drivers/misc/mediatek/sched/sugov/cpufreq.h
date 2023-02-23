@@ -27,7 +27,17 @@ struct mtk_em_perf_state {
 };
 #endif
 
+enum sugov_type {
+	OPP,
+	CAP,
+	FREQ,
+	PWR_EFF,
+};
+
 struct pd_capacity_info {
+	unsigned int type;
+	unsigned int dsu_weighting;
+	unsigned int emi_weighting;
 	int nr_caps;
 	unsigned int freq_max;
 	unsigned int freq_min;
@@ -35,6 +45,7 @@ struct pd_capacity_info {
 	 * table[0].capacity => the max capacity.
 	 */
 	struct mtk_em_perf_state *table;
+	struct mtk_em_perf_state *table_legacy;
 	struct cpumask cpus;
 
 	// for util mapping in O(1)
@@ -82,14 +93,31 @@ struct sugov_policy {
 	bool			need_freq_update;
 };
 
+struct dsu_state {
+	unsigned int freq;
+	unsigned int volt;
+	unsigned int dyn_pwr;
+	unsigned int BW;
+	unsigned int EMI_BW;
+};
+
+extern struct dsu_state *dsu_get_opp_ps(int wl_type, int opp);
+extern unsigned int dsu_get_freq_opp(int wl_type, unsigned int freq);
+extern int init_dsu(void);
+extern void update_wl_tbl(int cpu);
+extern int get_curr_wl(void);
+extern int get_em_wl(void);
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
 int init_opp_cap_info(struct proc_dir_entry *dir);
 void clear_opp_cap_info(void);
+extern unsigned long pd_X2Y(int cpu, unsigned long input, enum sugov_type in_type,
+		enum sugov_type out_type, bool quant);
 extern unsigned long pd_get_opp_capacity(int cpu, int opp);
 extern unsigned long pd_get_opp_capacity_legacy(int cpu, int opp);
 extern unsigned long pd_get_opp_freq(int cpu, int opp);
 extern unsigned long pd_get_opp_freq_legacy(int cpu, int opp);
-extern struct mtk_em_perf_state *pd_get_freq_ps(int cpu, unsigned long freq, int *opp);
+extern struct mtk_em_perf_state *pd_get_freq_ps(int wl_type, int cpu, unsigned long freq,
+		int *opp);
 extern unsigned long pd_get_freq_util(int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_opp(int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_pwr_eff(int cpu, unsigned long freq);
@@ -104,6 +132,9 @@ extern unsigned int pd_get_cpu_opp(int cpu);
 extern unsigned int pd_get_cpu_gear_id(int cpu);
 extern unsigned int pd_get_opp_leakage(unsigned int cpu, unsigned int opp,
 	unsigned int temperature);
+extern unsigned int pd_get_dsu_weighting(int wl_type, int cpu);
+extern unsigned int pd_get_emi_weighting(int wl_type, int cpu);
+extern unsigned int get_dsu_target_freq(void);
 #if IS_ENABLED(CONFIG_NONLINEAR_FREQ_CTL)
 void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 				unsigned int *target_freq, unsigned int old_target_freq);
