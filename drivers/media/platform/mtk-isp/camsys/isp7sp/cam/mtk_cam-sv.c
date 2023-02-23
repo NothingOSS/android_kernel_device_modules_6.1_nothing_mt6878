@@ -190,7 +190,7 @@ static int sv_process_fsm(struct mtk_camsv_device *sv_dev,
 		/* when first tag comes: 1. update used group 2. update last done tag */
 		if (irq_info->sof_tags & sv_dev->first_tag) {
 			for (i = 0; i < MAX_SV_HW_GROUPS; i++) {
-				if (sv_dev->enque_tags & sv_dev->active_group_info[i]) {
+				if (sv_dev->active_group_info[i]) {
 					sv_dev->used_group |= (1 << i);
 					sv_dev->last_done_tag =
 						get_last_done_tag(sv_dev->active_group_info[i]);
@@ -333,11 +333,9 @@ void sv_reset_by_camsys_top(struct mtk_camsv_device *sv_dev)
 		dev_info(sv_dev->dev, "%s: timeout\n", __func__);
 
 		dev_info(sv_dev->dev,
-			 "tg_sen_mode: 0x%x, cq_dma_sw_ctl:0x%x, frame_no:0x%x\n",
+			 "tg_sen_mode: 0x%x, cq_dma_sw_ctl:0x%x\n",
 			 readl(sv_dev->base + REG_CAMSVCENTRAL_SEN_MODE),
-			 readl(sv_dev->base_scq + REG_CAMSVCQTOP_SW_RST_CTL),
-			 readl(sv_dev->base + REG_CAMSVCENTRAL_FRAME_SEQ_NO)
-			);
+			 readl(sv_dev->base_scq + REG_CAMSVCQTOP_SW_RST_CTL));
 		mtk_smi_dbg_hang_detect("camsys-camsv");
 		goto RESET_FAILURE;
 	}
@@ -371,11 +369,9 @@ void sv_reset(struct mtk_camsv_device *sv_dev)
 		dev_info(sv_dev->dev, "%s: timeout\n", __func__);
 
 		dev_info(sv_dev->dev,
-			 "tg_sen_mode: 0x%x, dma_sw_ctl:0x%x, frame_no:0x%x\n",
+			 "tg_sen_mode: 0x%x, dma_sw_ctl:0x%x\n",
 			 readl(sv_dev->base + REG_CAMSVCENTRAL_SEN_MODE),
-			 readl(sv_dev->base_dma + REG_CAMSVDMATOP_SW_RST_CTL),
-			 readl(sv_dev->base + REG_CAMSVCENTRAL_FRAME_SEQ_NO)
-			);
+			 readl(sv_dev->base_dma + REG_CAMSVDMATOP_SW_RST_CTL));
 		mtk_smi_dbg_hang_detect("camsys-camsv");
 		goto RESET_FAILURE;
 	}
@@ -403,11 +399,9 @@ void sv_reset(struct mtk_camsv_device *sv_dev)
 		dev_info(sv_dev->dev, "%s: timeout\n", __func__);
 
 		dev_info(sv_dev->dev,
-			 "tg_sen_mode: 0x%x, cq_dma_sw_ctl:0x%x, frame_no:0x%x\n",
+			 "tg_sen_mode: 0x%x, cq_dma_sw_ctl:0x%x\n",
 			 readl(sv_dev->base + REG_CAMSVCENTRAL_SEN_MODE),
-			 readl(sv_dev->base_scq + REG_CAMSVCQTOP_SW_RST_CTL),
-			 readl(sv_dev->base + REG_CAMSVCENTRAL_FRAME_SEQ_NO)
-			);
+			 readl(sv_dev->base_scq + REG_CAMSVCQTOP_SW_RST_CTL));
 		mtk_smi_dbg_hang_detect("camsys-camsv");
 		goto RESET_FAILURE;
 	}
@@ -669,11 +663,6 @@ void mtk_cam_sv_check_fbc_cnt(struct mtk_camsv_device *sv_dev,
 	}
 }
 
-int mtk_cam_sv_frame_no_inner(struct mtk_camsv_device *sv_dev)
-{
-	return readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_FRAME_SEQ_NO);
-}
-
 void apply_camsv_cq(struct mtk_camsv_device *sv_dev,
 	struct apply_cq_ref *ref,
 	dma_addr_t cq_addr, unsigned int cq_size,
@@ -743,7 +732,6 @@ int mtk_cam_sv_dev_config(struct mtk_camsv_device *sv_dev)
 	engine_fsm_reset(&sv_dev->fsm);
 	sv_dev->cq_ref = NULL;
 
-	sv_dev->enque_tags = 0;
 	sv_dev->first_tag = 0;
 	sv_dev->last_tag = 0;
 	sv_dev->last_done_tag = 0;
@@ -752,7 +740,6 @@ int mtk_cam_sv_dev_config(struct mtk_camsv_device *sv_dev)
 	sv_dev->used_group = 0;
 
 	sv_dev->streaming_tag_cnt = 0;
-	sv_dev->sof_count = 0;
 	sv_dev->tg_cnt = 0;
 	mtk_camsv_register_iommu_tf_callback(sv_dev);
 
@@ -1130,40 +1117,54 @@ static irqreturn_t mtk_irq_camsv_done(int irq, void *data)
 {
 	struct mtk_camsv_device *sv_dev = (struct mtk_camsv_device *)data;
 	struct mtk_camsys_irq_info irq_info;
-	unsigned int dequeued_imgo_seq_no, dequeued_imgo_seq_no_inner;
-	unsigned int irq_done_status;
-	unsigned int irq_flag = 0;
-	bool wake_thread = 0;
+	unsigned int frm_seq_no, frm_seq_no_inner;
+	unsigned int irq_done_status, i;
+	unsigned int first_tag, addr_frm_seq_no = REG_CAMSVCENTRAL_FH_SPARE_TAG_1;
+	bool wake_thread = false;
 
 	memset(&irq_info, 0, sizeof(irq_info));
-	dequeued_imgo_seq_no =
-		readl_relaxed(sv_dev->base + REG_CAMSVCENTRAL_FRAME_SEQ_NO);
-	dequeued_imgo_seq_no_inner =
-		readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_FRAME_SEQ_NO);
+
+	first_tag =
+		readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_FIRST_TAG);
+	for (i = 0; i < MAX_SV_HW_TAGS; i++) {
+		if (first_tag & (1 << i)) {
+			addr_frm_seq_no = REG_CAMSVCENTRAL_FH_SPARE_TAG_1 +
+				REG_CAMSVCENTRAL_FH_SPARE_SHIFT * i;
+			break;
+		}
+	}
+
+	frm_seq_no =
+		readl_relaxed(sv_dev->base + addr_frm_seq_no);
+	frm_seq_no_inner =
+		readl_relaxed(sv_dev->base_inner + addr_frm_seq_no);
 	irq_done_status	=
 		readl_relaxed(sv_dev->base + REG_CAMSVCENTRAL_DONE_STATUS);
 
 	dev_dbg(sv_dev->dev, "camsv-%d: done status:0x%x seq_no:%d_%d",
 		sv_dev->id, irq_done_status,
-		dequeued_imgo_seq_no_inner, dequeued_imgo_seq_no);
+		frm_seq_no_inner, frm_seq_no);
 
-	irq_info.irq_type = 0;
+	irq_info.irq_type = (1 << CAMSYS_IRQ_FRAME_DONE);
 	irq_info.ts_ns = ktime_get_boottime_ns();
-	irq_info.frame_idx = dequeued_imgo_seq_no;
-	irq_info.frame_idx_inner = dequeued_imgo_seq_no_inner;
+	irq_info.frame_idx = frm_seq_no;
+	irq_info.frame_idx_inner = frm_seq_no_inner;
 
-	if (irq_done_status & CAMSVCENTRAL_SW_GP_PASS1_DONE_0_ST)
+	if (irq_done_status & CAMSVCENTRAL_SW_GP_PASS1_DONE_0_ST ||
+		irq_done_status & CAMSVCENTRAL_GP_PASS1_DONE_0_ST)
 		irq_info.done_tags |= sv_dev->active_group_info[0];
-	if (irq_done_status & CAMSVCENTRAL_SW_GP_PASS1_DONE_1_ST)
+	if (irq_done_status & CAMSVCENTRAL_SW_GP_PASS1_DONE_1_ST ||
+		irq_done_status & CAMSVCENTRAL_GP_PASS1_DONE_1_ST)
 		irq_info.done_tags |= sv_dev->active_group_info[1];
-	if (irq_done_status & CAMSVCENTRAL_SW_GP_PASS1_DONE_2_ST)
+	if (irq_done_status & CAMSVCENTRAL_SW_GP_PASS1_DONE_2_ST ||
+		irq_done_status & CAMSVCENTRAL_GP_PASS1_DONE_2_ST)
 		irq_info.done_tags |= sv_dev->active_group_info[2];
-	if (irq_done_status & CAMSVCENTRAL_SW_GP_PASS1_DONE_3_ST)
+	if (irq_done_status & CAMSVCENTRAL_SW_GP_PASS1_DONE_3_ST ||
+		irq_done_status & CAMSVCENTRAL_GP_PASS1_DONE_3_ST)
 		irq_info.done_tags |= sv_dev->active_group_info[3];
-	irq_info.irq_type |= (1 << CAMSYS_IRQ_FRAME_DONE);
-	irq_flag = irq_info.irq_type;
-	if (irq_flag && push_msgfifo(sv_dev, &irq_info) == 0)
-		wake_thread = 1;
+
+	if (push_msgfifo(sv_dev, &irq_info) == 0)
+		wake_thread = true;
 
 	return wake_thread ? IRQ_WAKE_THREAD : IRQ_HANDLED;
 }
@@ -1172,18 +1173,30 @@ static irqreturn_t mtk_irq_camsv_sof(int irq, void *data)
 {
 	struct mtk_camsv_device *sv_dev = (struct mtk_camsv_device *)data;
 	struct mtk_camsys_irq_info irq_info;
-	unsigned int dequeued_imgo_seq_no, dequeued_imgo_seq_no_inner;
+	unsigned int frm_seq_no, frm_seq_no_inner;
 	unsigned int tg_cnt;
-	unsigned int irq_sof_status;
-	unsigned int irq_flag = 0;
-	bool wake_thread = 0;
-	unsigned int i;
+	unsigned int irq_sof_status, i;
+	unsigned int addr_frm_seq_no = REG_CAMSVCENTRAL_FH_SPARE_TAG_1;
+	bool wake_thread = false;
 
 	memset(&irq_info, 0, sizeof(irq_info));
-	dequeued_imgo_seq_no =
-		readl_relaxed(sv_dev->base + REG_CAMSVCENTRAL_FRAME_SEQ_NO);
-	dequeued_imgo_seq_no_inner =
-		readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_FRAME_SEQ_NO);
+
+	sv_dev->first_tag =
+		readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_FIRST_TAG);
+	sv_dev->last_tag =
+		readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_LAST_TAG);
+	for (i = 0; i < MAX_SV_HW_TAGS; i++) {
+		if (sv_dev->first_tag & (1 << i)) {
+			addr_frm_seq_no = REG_CAMSVCENTRAL_FH_SPARE_TAG_1 +
+				REG_CAMSVCENTRAL_FH_SPARE_SHIFT * i;
+			break;
+		}
+	}
+
+	frm_seq_no =
+		readl_relaxed(sv_dev->base + addr_frm_seq_no);
+	frm_seq_no_inner =
+		readl_relaxed(sv_dev->base_inner + addr_frm_seq_no);
 	irq_sof_status	=
 		readl_relaxed(sv_dev->base + REG_CAMSVCENTRAL_SOF_STATUS);
 	for (i = 0; i < MAX_SV_HW_GROUPS; i++) {
@@ -1191,60 +1204,53 @@ static irqreturn_t mtk_irq_camsv_sof(int irq, void *data)
 			readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_GROUP_TAG0 +
 				REG_CAMSVCENTRAL_GROUP_TAG_SHIFT * i);
 	}
-	sv_dev->enque_tags =
-		readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_ENQUE_TAGS);
-	sv_dev->first_tag =
-		readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_FIRST_TAG);
-	sv_dev->last_tag =
-		readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_LAST_TAG);
+
 	tg_cnt =
 		readl_relaxed(sv_dev->base + REG_CAMSVCENTRAL_VF_ST_TAG1 +
 				CAMSVCENTRAL_VF_ST_TAG_SHIFT * 3);
 	tg_cnt = (sv_dev->tg_cnt & 0xffffff00) + ((tg_cnt & 0xff000000) >> 24);
+
 	if (CAM_DEBUG_ENABLED(RAW_INT))
-		dev_info(sv_dev->dev, "camsv-%d: sof status:0x%x seq_no:%d_%d group_tags:0x%x_%x_%x_%x enque_tags:0x%x first_tag:0x%x last_tag:0x%x VF_ST_TAG4:%d",
+		dev_info(sv_dev->dev, "camsv-%d: sof status:0x%x seq_no:%d_%d group_tags:0x%x_%x_%x_%x first_tag:0x%x last_tag:0x%x VF_ST_TAG4:%d",
 		sv_dev->id, irq_sof_status,
-		dequeued_imgo_seq_no_inner, dequeued_imgo_seq_no,
+		frm_seq_no_inner, frm_seq_no,
 		sv_dev->active_group_info[0],
 		sv_dev->active_group_info[1],
 		sv_dev->active_group_info[2],
 		sv_dev->active_group_info[3],
-		sv_dev->enque_tags,
 		sv_dev->first_tag,
 		sv_dev->last_tag,
 		tg_cnt);
 
-	irq_info.irq_type = 0;
+	irq_info.irq_type = (1 << CAMSYS_IRQ_FRAME_START);
 	irq_info.ts_ns = ktime_get_boottime_ns();
-	irq_info.frame_idx = dequeued_imgo_seq_no;
-	irq_info.frame_idx_inner = dequeued_imgo_seq_no_inner;
+	irq_info.frame_idx = frm_seq_no;
+	irq_info.frame_idx_inner = frm_seq_no_inner;
 
 	if (irq_sof_status & CAMSVCENTRAL_SOF_ST_TAG1)
-		irq_info.sof_tags |= (1 << 0);
+		irq_info.sof_tags |= (1 << SVTAG_0);
 	if (irq_sof_status & CAMSVCENTRAL_SOF_ST_TAG2)
-		irq_info.sof_tags |= (1 << 1);
+		irq_info.sof_tags |= (1 << SVTAG_1);
 	if (irq_sof_status & CAMSVCENTRAL_SOF_ST_TAG3)
-		irq_info.sof_tags |= (1 << 2);
+		irq_info.sof_tags |= (1 << SVTAG_2);
 	if (irq_sof_status & CAMSVCENTRAL_SOF_ST_TAG4)
-		irq_info.sof_tags |= (1 << 3);
+		irq_info.sof_tags |= (1 << SVTAG_3);
 	if (irq_sof_status & CAMSVCENTRAL_SOF_ST_TAG5)
-		irq_info.sof_tags |= (1 << 4);
+		irq_info.sof_tags |= (1 << SVTAG_4);
 	if (irq_sof_status & CAMSVCENTRAL_SOF_ST_TAG6)
-		irq_info.sof_tags |= (1 << 5);
+		irq_info.sof_tags |= (1 << SVTAG_5);
 	if (irq_sof_status & CAMSVCENTRAL_SOF_ST_TAG7)
-		irq_info.sof_tags |= (1 << 6);
+		irq_info.sof_tags |= (1 << SVTAG_6);
 	if (irq_sof_status & CAMSVCENTRAL_SOF_ST_TAG8)
-		irq_info.sof_tags |= (1 << 7);
-	irq_info.irq_type |= (1 << CAMSYS_IRQ_FRAME_START);
-	sv_dev->sof_count++;
+		irq_info.sof_tags |= (1 << SVTAG_7);
+
 	if (tg_cnt < sv_dev->tg_cnt)
 		sv_dev->tg_cnt = tg_cnt + BIT(8);
 	else
 		sv_dev->tg_cnt = tg_cnt;
-	sv_dev->sof_timestamp = ktime_get_boottime_ns();
-	irq_flag = irq_info.irq_type;
-	if (irq_flag && push_msgfifo(sv_dev, &irq_info) == 0)
-		wake_thread = 1;
+
+	if (push_msgfifo(sv_dev, &irq_info) == 0)
+		wake_thread = true;
 
 	return wake_thread ? IRQ_WAKE_THREAD : IRQ_HANDLED;
 }
@@ -1252,55 +1258,60 @@ static irqreturn_t mtk_irq_camsv_sof(int irq, void *data)
 static irqreturn_t mtk_irq_camsv_err(int irq, void *data)
 {
 	struct mtk_camsv_device *sv_dev = (struct mtk_camsv_device *)data;
-	struct mtk_camsys_irq_info irq_info;
-	unsigned int dequeued_imgo_seq_no, dequeued_imgo_seq_no_inner;
-	unsigned int err_status;
-	bool wake_thread = 0;
+	struct mtk_camsys_irq_info err_info;
+	unsigned int frm_seq_no, frm_seq_no_inner;
+	unsigned int err_status, i;
+	unsigned int first_tag, addr_frm_seq_no = REG_CAMSVCENTRAL_FH_SPARE_TAG_1;
+	bool wake_thread = false;
 
-	dequeued_imgo_seq_no =
-		readl_relaxed(sv_dev->base + REG_CAMSVCENTRAL_FRAME_SEQ_NO);
-	dequeued_imgo_seq_no_inner =
-		readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_FRAME_SEQ_NO);
+	memset(&err_info, 0, sizeof(err_info));
+
+	first_tag =
+		readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_FIRST_TAG);
+	for (i = 0; i < MAX_SV_HW_TAGS; i++) {
+		if (first_tag & (1 << i)) {
+			addr_frm_seq_no = REG_CAMSVCENTRAL_FH_SPARE_TAG_1 +
+				REG_CAMSVCENTRAL_FH_SPARE_SHIFT * i;
+			break;
+		}
+	}
+
+	frm_seq_no =
+		readl_relaxed(sv_dev->base + addr_frm_seq_no);
+	frm_seq_no_inner =
+		readl_relaxed(sv_dev->base_inner + addr_frm_seq_no);
 	err_status =
 		readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_ERR_STATUS);
 
 	dev_dbg(sv_dev->dev, "camsv-%d: error status:0x%x seq_no:%d_%d",
 		sv_dev->id, err_status,
-		dequeued_imgo_seq_no_inner, dequeued_imgo_seq_no);
+		frm_seq_no_inner, frm_seq_no);
 
-	irq_info.irq_type = 0;
-	irq_info.ts_ns = ktime_get_boottime_ns();
-	irq_info.frame_idx = dequeued_imgo_seq_no;
-	irq_info.frame_idx_inner = dequeued_imgo_seq_no_inner;
+	err_info.irq_type = (1 << CAMSYS_IRQ_ERROR);
+	err_info.ts_ns = ktime_get_boottime_ns();
+	err_info.frame_idx = frm_seq_no;
+	err_info.frame_idx_inner = frm_seq_no_inner;
+	err_info.e.err_status = err_status;
 
-	if (err_status) {
-		struct mtk_camsys_irq_info err_info;
-		memset(&err_info, 0, sizeof(err_info));
-		if (err_status & ERR_ST_MASK_TAG1_ERR)
-			err_info.err_tags |= (1 << 0);
-		if (err_status & ERR_ST_MASK_TAG2_ERR)
-			err_info.err_tags |= (1 << 1);
-		if (err_status & ERR_ST_MASK_TAG3_ERR)
-			err_info.err_tags |= (1 << 2);
-		if (err_status & ERR_ST_MASK_TAG4_ERR)
-			err_info.err_tags |= (1 << 3);
-		if (err_status & ERR_ST_MASK_TAG5_ERR)
-			err_info.err_tags |= (1 << 4);
-		if (err_status & ERR_ST_MASK_TAG6_ERR)
-			err_info.err_tags |= (1 << 5);
-		if (err_status & ERR_ST_MASK_TAG7_ERR)
-			err_info.err_tags |= (1 << 6);
-		if (err_status & ERR_ST_MASK_TAG8_ERR)
-			err_info.err_tags |= (1 << 7);
-		err_info.irq_type = 1 << CAMSYS_IRQ_ERROR;
-		err_info.ts_ns = irq_info.ts_ns;
-		err_info.frame_idx = irq_info.frame_idx;
-		err_info.frame_idx_inner = irq_info.frame_idx_inner;
-		err_info.e.err_status = err_status;
+	if (err_status & ERR_ST_MASK_TAG1_ERR)
+		err_info.err_tags |= (1 << SVTAG_0);
+	if (err_status & ERR_ST_MASK_TAG2_ERR)
+		err_info.err_tags |= (1 << SVTAG_1);
+	if (err_status & ERR_ST_MASK_TAG3_ERR)
+		err_info.err_tags |= (1 << SVTAG_2);
+	if (err_status & ERR_ST_MASK_TAG4_ERR)
+		err_info.err_tags |= (1 << SVTAG_3);
+	if (err_status & ERR_ST_MASK_TAG5_ERR)
+		err_info.err_tags |= (1 << SVTAG_4);
+	if (err_status & ERR_ST_MASK_TAG6_ERR)
+		err_info.err_tags |= (1 << SVTAG_5);
+	if (err_status & ERR_ST_MASK_TAG7_ERR)
+		err_info.err_tags |= (1 << SVTAG_6);
+	if (err_status & ERR_ST_MASK_TAG8_ERR)
+		err_info.err_tags |= (1 << SVTAG_7);
 
-		if (push_msgfifo(sv_dev, &err_info) == 0)
-			wake_thread = 1;
-	}
+	if (push_msgfifo(sv_dev, &err_info) == 0)
+		wake_thread = true;
 
 	return wake_thread ? IRQ_WAKE_THREAD : IRQ_HANDLED;
 }
@@ -1309,34 +1320,45 @@ static irqreturn_t mtk_irq_camsv_cq_done(int irq, void *data)
 {
 	struct mtk_camsv_device *sv_dev = (struct mtk_camsv_device *)data;
 	struct mtk_camsys_irq_info irq_info;
-	unsigned int dequeued_imgo_seq_no, dequeued_imgo_seq_no_inner;
-	unsigned int cq_done_status;
-	unsigned int irq_flag = 0;
-	bool wake_thread = 0;
+	unsigned int frm_seq_no, frm_seq_no_inner;
+	unsigned int cq_done_status, i;
+	unsigned int first_tag, addr_frm_seq_no = REG_CAMSVCENTRAL_FH_SPARE_TAG_1;
+	bool wake_thread = false;
 
-	dequeued_imgo_seq_no =
-		readl_relaxed(sv_dev->base + REG_CAMSVCENTRAL_FRAME_SEQ_NO);
-	dequeued_imgo_seq_no_inner =
-		readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_FRAME_SEQ_NO);
+	memset(&irq_info, 0, sizeof(irq_info));
+
+	first_tag =
+		readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_FIRST_TAG);
+	for (i = 0; i < MAX_SV_HW_TAGS; i++) {
+		if (first_tag & (1 << i)) {
+			addr_frm_seq_no = REG_CAMSVCENTRAL_FH_SPARE_TAG_1 +
+				REG_CAMSVCENTRAL_FH_SPARE_SHIFT * i;
+			break;
+		}
+	}
+
+	frm_seq_no =
+		readl_relaxed(sv_dev->base + addr_frm_seq_no);
+	frm_seq_no_inner =
+		readl_relaxed(sv_dev->base_inner + addr_frm_seq_no);
 	cq_done_status =
 		readl_relaxed(sv_dev->base_scq + REG_CAMSVCQTOP_INT_0_STATUS);
 
 	dev_dbg(sv_dev->dev, "camsv-%d: cq done status:0x%x seq_no:%d_%d",
 		sv_dev->id, cq_done_status,
-		dequeued_imgo_seq_no_inner, dequeued_imgo_seq_no);
+		frm_seq_no_inner, frm_seq_no);
 
-	irq_info.irq_type = 0;
-	irq_info.ts_ns = ktime_get_boottime_ns();
-	irq_info.frame_idx = dequeued_imgo_seq_no;
-	irq_info.frame_idx_inner = dequeued_imgo_seq_no_inner;
+	if (cq_done_status & CAMSVCQTOP_SCQ_SUB_THR_DONE) {
+		if (engine_handle_cq_done(&sv_dev->cq_ref)) {
+			irq_info.irq_type = (1 << CAMSYS_IRQ_SETTING_DONE);
+			irq_info.ts_ns = ktime_get_boottime_ns();
+			irq_info.frame_idx = frm_seq_no;
+			irq_info.frame_idx_inner = frm_seq_no_inner;
+		}
 
-	if (cq_done_status & CAMSVCQTOP_SCQ_SUB_THR_DONE)
-		if (engine_handle_cq_done(&sv_dev->cq_ref))
-			irq_info.irq_type |= 1 << CAMSYS_IRQ_SETTING_DONE;
-
-	irq_flag = irq_info.irq_type;
-	if (irq_flag && push_msgfifo(sv_dev, &irq_info) == 0)
-		wake_thread = 1;
+		if (push_msgfifo(sv_dev, &irq_info) == 0)
+			wake_thread = true;
+	}
 
 	return wake_thread ? IRQ_WAKE_THREAD : IRQ_HANDLED;
 }

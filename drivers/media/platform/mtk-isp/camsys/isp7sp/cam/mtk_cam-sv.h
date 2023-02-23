@@ -159,7 +159,6 @@ struct mtk_camsv_device {
 	unsigned int enabled_tags;
 	struct mtk_camsv_tag_info tag_info[MAX_SV_HW_TAGS];
 	unsigned int active_group_info[MAX_SV_HW_GROUPS];
-	unsigned int enque_tags;
 	unsigned int first_tag;
 	unsigned int last_tag;
 	unsigned int last_done_tag;
@@ -175,12 +174,10 @@ struct mtk_camsv_device {
 	struct engine_fsm fsm;
 	struct apply_cq_ref *cq_ref;
 
-	unsigned int sof_count;
 	/* for preisp - for sof counter sync.*/
 	int tg_cnt;
 	unsigned int frame_wait_to_process;
 	struct notifier_block notifier_blk;
-	u64 sof_timestamp;
 };
 
 void sv_reset(struct mtk_camsv_device *sv_dev);
@@ -207,7 +204,6 @@ void mtk_cam_sv_vf_reset(struct mtk_camsv_device *sv_dev);
 bool mtk_cam_sv_is_zero_fbc_cnt(struct mtk_camsv_device *sv_dev, unsigned int tag_idx);
 void mtk_cam_sv_check_fbc_cnt(
 	struct mtk_camsv_device *sv_dev, unsigned int tag_idx);
-int mtk_cam_sv_frame_no_inner(struct mtk_camsv_device *sv_dev);
 void mtk_cam_sv_fill_tag_info(struct mtk_camsv_tag_info *tag_info,
 	struct mtk_camsv_tag_param *tag_param, unsigned int hw_scen,
 	unsigned int pixelmode, unsigned int sub_ratio,
