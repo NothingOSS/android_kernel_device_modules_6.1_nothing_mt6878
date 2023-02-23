@@ -26,6 +26,7 @@ EXPORT_SYMBOL(gear_id);
 
 static void __iomem *l3ctl_sram_base_addr;
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
+static struct resource *csram_res;
 static void __iomem *sram_base_addr;
 static struct pd_capacity_info *pd_capacity_tbl;
 static struct pd_capacity_info **pd_wl_type;
@@ -899,7 +900,7 @@ static int alloc_capacity_table(void)
 
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	sram_base_addr_freq_scaling =
-		ioremap(DVFS_TBL_BASE_PHYS + REG_FREQ_SCALING, LUT_ROW_SIZE);
+		ioremap(csram_res->start + REG_FREQ_SCALING, LUT_ROW_SIZE);
 	if (!sram_base_addr_freq_scaling) {
 		pr_info("Remap sram_base_addr_freq_scaling failed!\n");
 		return -EIO;
@@ -996,11 +997,32 @@ static int alloc_capacity_table(void)
 
 static int init_sram_mapping(void)
 {
-	sram_base_addr = ioremap(DVFS_TBL_BASE_PHYS + CAPACITY_TBL_OFFSET, CAPACITY_TBL_SIZE);
+	struct device_node *dvfs_node;
+	struct platform_device *pdev_temp;
+
+	dvfs_node = of_find_node_by_name(NULL, "cpuhvfs");
+	if (dvfs_node == NULL) {
+		pr_info("failed to find node @ %s\n", __func__);
+		return -ENODEV;
+	}
+
+	pdev_temp = of_find_device_by_node(dvfs_node);
+	if (pdev_temp == NULL) {
+		pr_info("failed to find pdev @ %s\n", __func__);
+		return -EINVAL;
+	}
+
+	csram_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 1);
+
+	if (csram_res)
+		sram_base_addr = ioremap(csram_res->start + CAPACITY_TBL_OFFSET, CAPACITY_TBL_SIZE);
+	else {
+		pr_info("%s can't get resource\n", __func__);
+		return -ENODEV;
+	}
 
 	if (!sram_base_addr) {
 		pr_info("Remap capacity table failed!\n");
-
 		return -EIO;
 	}
 	return 0;

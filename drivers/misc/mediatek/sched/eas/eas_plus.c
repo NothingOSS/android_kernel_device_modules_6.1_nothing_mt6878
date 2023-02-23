@@ -414,15 +414,37 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 	return energy;
 }
 
-#define CSRAM_BASE 0x0011BC00
 #define OFFS_THERMAL_LIMIT_S 0x1208
 #define THERMAL_INFO_SIZE 200
 
 static void __iomem *sram_base_addr;
 int init_sram_info(void)
 {
-	sram_base_addr =
-		ioremap(CSRAM_BASE + OFFS_THERMAL_LIMIT_S, THERMAL_INFO_SIZE);
+	struct device_node *dvfs_node;
+	struct platform_device *pdev_temp;
+	struct resource *csram_res;
+
+	dvfs_node = of_find_node_by_name(NULL, "cpuhvfs");
+	if (dvfs_node == NULL) {
+		pr_info("failed to find node @ %s\n", __func__);
+		return -ENODEV;
+	}
+
+	pdev_temp = of_find_device_by_node(dvfs_node);
+	if (pdev_temp == NULL) {
+		pr_info("failed to find pdev @ %s\n", __func__);
+		return -EINVAL;
+	}
+
+	csram_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 1);
+
+	if (csram_res)
+		sram_base_addr =
+			ioremap(csram_res->start + OFFS_THERMAL_LIMIT_S, THERMAL_INFO_SIZE);
+	else {
+		pr_info("%s can't get resource\n", __func__);
+		return -ENODEV;
+	}
 
 	if (!sram_base_addr) {
 		pr_info("Remap thermal info failed\n");
