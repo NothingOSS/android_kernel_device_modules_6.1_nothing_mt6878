@@ -18,17 +18,42 @@
 #include "apu_regdump.h"
 
 enum apusys_assert_module {
-	assert_apusys_ce_1 = 0,
-	assert_apusys_ce_2,
-	assert_apusys_ce_3,
+	//job id
+	assert_apusys_ce_TPPA_plus_BW_acc = 0,
+	assert_apusys_ce_norm2lp,
+	assert_apusys_ce_lp2norm,
+	assert_apusys_ce_RCX_Wakeup,
+	assert_apusys_ce_RCX_Sleep,
+	assert_apusys_ce_TPPA_plus_PSC,
+	assert_apusys_ce_BW_Prediction,
+	assert_apusys_ce_QoS_event_driven,
+	assert_apusys_ce_sMMU_restore,
+	assert_apusys_ce_RCX_NoC_BW_acc,
+	assert_apusys_ce_ACX0_NoC_BW_acc,
+	assert_apusys_ce_ACX1_NoC_BW_acc,
+	assert_apusys_ce_NCX_NoC_BW_acc,
+	assert_apusys_ce_DVFS,
+	assert_apusys_ce_no_module,
 
 	assert_ce_module_max,
 };
 
 static const char * const apusys_ce_assert_module_name[assert_ce_module_max] = {
-	"APUSYS_CE_1",
-	"APUSYS_CE_2",
-	"APUSYS_CE_3",
+	"APUSYS_CE_TPPA_PLUS_BW_ACC",
+	"APUSYS_CE_NORM2LP",
+	"APUSYS_CE_LP2NORM",
+	"APUSYS_CE_RCX_WAKEUP",
+	"APUSYS_CE_RCX_SLEEP",
+	"APUSYS_CE_TPPA_PLUS_PSC",
+	"APUSYS_CE_BW_PREDICTION",
+	"APUSYS_CE_QOS_EVENT_DRIVEN",
+	"APUSYS_CE_SMMU_RESTORE",
+	"APUSYS_CE_RCX_NOC_BW_ACC",
+	"APUSYS_CE_ACX0_NOC_BW_ACC",
+	"APUSYS_CE_ACX1_NOC_BW_ACC",
+	"APUSYS_CE_NCX_NOC_BW_ACC",
+	"APUSYS_CE_DVFS",
+	"APUSYS_CE_NO_MODULE",
 };
 
 struct apu_coredump_work_struct {
@@ -58,6 +83,43 @@ static uint32_t apusys_rv_smc_call(struct device *dev, uint32_t smc_id,
 	return res.a0;
 }
 
+static const char *job_id_mapping(uint32_t job_id)
+{
+	switch (job_id) {
+	case 0:
+		return apusys_ce_assert_module_name[assert_apusys_ce_TPPA_plus_BW_acc];
+	case 1:
+		return apusys_ce_assert_module_name[assert_apusys_ce_norm2lp];
+	case 2:
+		return apusys_ce_assert_module_name[assert_apusys_ce_lp2norm];
+	case 16:
+		return apusys_ce_assert_module_name[assert_apusys_ce_RCX_Wakeup];
+	case 17:
+		return apusys_ce_assert_module_name[assert_apusys_ce_RCX_Sleep];
+	case 18:
+		return apusys_ce_assert_module_name[assert_apusys_ce_TPPA_plus_PSC];
+	case 22:
+		return apusys_ce_assert_module_name[assert_apusys_ce_BW_Prediction];
+	case 23:
+		return apusys_ce_assert_module_name[assert_apusys_ce_QoS_event_driven];
+	case 26:
+		return apusys_ce_assert_module_name[assert_apusys_ce_sMMU_restore];
+	case 27:
+		return apusys_ce_assert_module_name[assert_apusys_ce_RCX_NoC_BW_acc];
+	case 28:
+		return apusys_ce_assert_module_name[assert_apusys_ce_ACX0_NoC_BW_acc];
+	case 29:
+		return apusys_ce_assert_module_name[assert_apusys_ce_ACX1_NoC_BW_acc];
+	case 30:
+		return apusys_ce_assert_module_name[assert_apusys_ce_NCX_NoC_BW_acc];
+	case 31:
+		return apusys_ce_assert_module_name[assert_apusys_ce_DVFS];
+	default:
+		return apusys_ce_assert_module_name[assert_apusys_ce_no_module];
+	}
+
+}
+
 static void apu_ce_coredump_work_func(struct work_struct *p_work)
 {
 	struct apu_coredump_work_struct *apu_coredump_work =
@@ -73,12 +135,8 @@ static void apu_ce_coredump_work_func(struct work_struct *p_work)
     //return CE job id
 	ret = apusys_rv_smc_call(dev,
 				MTK_APUSYS_KERNEL_OP_APUSYS_CE_RESET, 0);
-	if (ret >= assert_ce_module_max) {
-		dev_info(dev, "%s error, ret >= assert_ce_module_max\n", __func__);
-		return;
-	}
 
-	apusys_ce_exception_aee_warn(apusys_ce_assert_module_name[ret]);
+	apusys_ce_exception_aee_warn(job_id_mapping(ret));
 
 	apusys_rv_smc_call(dev,
 				MTK_APUSYS_KERNEL_OP_APUSYS_CE_MASK_INIT, 0);
