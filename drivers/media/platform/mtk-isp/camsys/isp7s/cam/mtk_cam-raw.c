@@ -403,7 +403,7 @@ void stream_on(struct mtk_raw_device *dev, int on)
 		// TODO: reset_reg
 	}
 
-	dev_info(dev->dev, "%s: %d\n", __func__, on);
+	//dev_info(dev->dev, "%s: %d\n", __func__, on);
 }
 
 void immediate_stream_off(struct mtk_raw_device *dev)

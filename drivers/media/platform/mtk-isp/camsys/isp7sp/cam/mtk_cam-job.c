@@ -3817,30 +3817,10 @@ static int get_exp_switch_type(struct mtk_cam_job *job)
 	return res;
 }
 
-static void job_dump_raw_debug_status(struct mtk_cam_job *job,
-				      unsigned long raws)
-{
-	struct mtk_cam_device *cam = job->src_ctx->cam;
-	struct mtk_raw_device *dev;
-	int i;
-
-	for (i = 0; i < cam->engines.num_raw_devices; i++) {
-
-		if (raws & BIT(i)) {
-			dev = dev_get_drvdata(cam->engines.raw_devs[i]);
-
-			raw_dump_debug_status(dev);
-		}
-	}
-}
-
 static void job_dump_engines_debug_status(struct mtk_cam_job *job)
 {
-	unsigned long used_engine = job->used_engine;
-	unsigned long subset;
+	struct mtk_cam_device *cam = job->src_ctx->cam;
 
-	subset = bit_map_subset_of(MAP_HW_RAW, used_engine);
-	if (subset)
-		job_dump_raw_debug_status(job, subset);
+	mtk_engine_dump_debug_status(cam, job->used_engine);
 }
 

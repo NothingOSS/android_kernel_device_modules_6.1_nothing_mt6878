@@ -1962,7 +1962,7 @@ int mtk_cam_ctx_stream_on(struct mtk_cam_ctx *ctx)
 {
 	int ret;
 
-	dev_info(ctx->cam->dev, "%s: stream %d\n", __func__, ctx->stream_id);
+	dev_info(ctx->cam->dev, "%s: ctx-%d\n", __func__, ctx->stream_id);
 
 	/* if already stream on */
 	if (atomic_cmpxchg(&ctx->streaming, 0, 1))
@@ -1994,7 +1994,10 @@ int mtk_cam_ctx_stream_off(struct mtk_cam_ctx *ctx)
 	if (!atomic_cmpxchg(&ctx->streaming, 1, 0))
 		return 0;
 
-	/* TODO */
+	dev_info(ctx->cam->dev, "%s: ctx-%d pipe 0x%x engine 0x%x\n",
+		 __func__, ctx->stream_id,
+		 ctx->used_pipe, ctx->used_engine);
+
 	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
 		if (ctx->hw_raw[i]) {
 			raw_dev = dev_get_drvdata(ctx->hw_raw[i]);
@@ -2790,6 +2793,24 @@ int mtk_cam_pm_runtime_engines(struct mtk_cam_engines *eng,
 		loop_each_engine(eng, engine_mask, pm_runtime_put_sync);
 
 	return 0;
+}
+
+void mtk_engine_dump_debug_status(struct mtk_cam_device *cam,
+				  unsigned long engines)
+{
+	struct mtk_raw_device *dev;
+	unsigned long subset;
+	int i;
+
+	subset = bit_map_subset_of(MAP_HW_RAW, engines);
+	for (i = 0; i < cam->engines.num_raw_devices; i++) {
+
+		if (subset & BIT(i)) {
+			dev = dev_get_drvdata(cam->engines.raw_devs[i]);
+
+			raw_dump_debug_status(dev);
+		}
+	}
 }
 
 static int register_sub_drivers(struct device *dev)

@@ -347,4 +347,7 @@ int mtk_cam_mraw_link_validate(struct v4l2_subdev *sd,
 			  struct v4l2_subdev_format *source_fmt,
 			  struct v4l2_subdev_format *sink_fmt);
 
+void mtk_engine_dump_debug_status(struct mtk_cam_device *cam,
+				  unsigned long engines);
+
 #endif /*__MTK_CAM_H*/

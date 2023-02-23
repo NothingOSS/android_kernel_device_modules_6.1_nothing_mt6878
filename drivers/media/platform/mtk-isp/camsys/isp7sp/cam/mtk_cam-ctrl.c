@@ -1056,6 +1056,23 @@ static void mtk_cam_ctrl_dump_first_job(struct mtk_cam_ctrl *ctrl, int *seq)
 		pr_info("%s: no job to dump", __func__);
 }
 
+static void mtk_dump_debug_for_no_vsync(struct mtk_cam_ctx *ctx)
+{
+	struct mtk_cam_device *cam = ctx->cam;
+	struct mtk_cam_ctrl *ctrl = &ctx->cam_ctrl;
+	struct mtk_cam_job *job;
+
+	dump_runtime_info(&ctrl->r_info);
+
+	job = mtk_cam_ctrl_get_job(ctrl, cond_first_job, 0);
+	if (job) {
+		mtk_engine_dump_debug_status(cam, job->used_engine);
+		mtk_cam_job_put(job);
+	} else {
+		mtk_engine_dump_debug_status(cam, ctx->used_engine);
+	}
+}
+
 static void mtk_cam_watchdog_sensor_worker(struct work_struct *work)
 {
 	struct watchdog_debug_work *dbg_work;
@@ -1071,7 +1088,7 @@ static void mtk_cam_watchdog_sensor_worker(struct work_struct *work)
 
 	ctrl = container_of(wd, struct mtk_cam_ctrl, watchdog);
 	ctx = ctrl->ctx;
-	if (!ctx || !ctx->seninf)
+	if (!ctx || !ctx->seninf || atomic_read(&ctrl->stopped))
 		goto EXIT_WORK;
 
 	if (dbg_work->seninf_check_timeout) {
@@ -1099,9 +1116,8 @@ static void mtk_cam_watchdog_sensor_worker(struct work_struct *work)
 	if (atomic_read(&wd->reset_sensor_cnt) < WATCHDOG_MAX_SENSOR_RETRY_CNT)
 		goto EXIT_WORK;
 
-	dump_runtime_info(&ctrl->r_info);
-
-	pr_info("%s: TODO. dump INT_EN/VS status for debug\n", __func__);
+	dev_info(ctx->cam->dev, "ctx-%d reset sensor failed\n", ctx->stream_id);
+	mtk_dump_debug_for_no_vsync(ctx);
 
 	mtk_cam_event_error(ctrl, MSG_VSYNC_TIMEOUT);
 	WRAP_AEE_EXCEPTION(MSG_VSYNC_TIMEOUT, "watchdog timeout");
@@ -1126,7 +1142,7 @@ static void mtk_cam_watchdog_job_worker(struct work_struct *work)
 
 	ctrl = container_of(wd, struct mtk_cam_ctrl, watchdog);
 	ctx = ctrl->ctx;
-	if (!ctx)
+	if (!ctx || atomic_read(&ctrl->stopped))
 		goto EXIT_WORK;
 
 	mtk_cam_ctrl_dump_first_job(ctrl, NULL);
@@ -1187,6 +1203,8 @@ static int try_launch_watchdog_sensor_worker(struct mtk_cam_watchdog *wd,
 		goto SKIP_SCHEDULE_WORK;
 	}
 
+	dev_info(ctx->cam->dev, "schedule work for sensor_reset: ctx-%d\n",
+		 ctx->stream_id);
 	mtk_cam_watchdog_schedule_sensor_reset(wd, check_timeout);
 	return 0;
 
@@ -1263,6 +1281,8 @@ static int mtk_cam_watchdog_monitor_job(struct mtk_cam_watchdog *wd)
 	}
 
 	/* job is not updated */
+	dev_info(ctx->cam->dev, "schedule work for job_dump: ctx-%d\n",
+		 ctx->stream_id);
 	mtk_cam_watchdog_schedule_job_dump(wd);
 	return -1;
 
