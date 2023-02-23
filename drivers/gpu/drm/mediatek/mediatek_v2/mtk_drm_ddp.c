@@ -4275,6 +4275,8 @@ static const struct mtk_disp_ddp_data mt6897_ddp_driver_data = {
 	.mutex_mod_reg = MT6983_DISP_MUTEX0_MOD0,
 	.mutex_sof_reg = MT6983_DISP_MUTEX0_SOF,
 	.dispsys_map = mt6897_dispsys_map,
+	.wakeup_pf_wq = 1,
+	.wakeup_esd_wq = 1,
 };
 
 static const struct mtk_disp_ddp_data mt6895_ddp_driver_data = {
@@ -14604,8 +14606,6 @@ void mtk_ddp_add_comp_to_path(struct mtk_drm_crtc *mtk_crtc,
 	case MMSYS_MT6897:
 		addr = MT6897_DISPSYS_BYPASS_MUX_SHADOW;
 		reg = 0xFF0001;
-		addr1 = MT6897_OVLSYS_CROSSBAR_CON;
-		reg1 = 0;
 		/* decide which dispsys need to config */
 		if (mtk_crtc->dispsys_num > 1 && reg_data->dispsys_map &&
 				reg_data->dispsys_map[cur] == 1)
@@ -14615,25 +14615,17 @@ void mtk_ddp_add_comp_to_path(struct mtk_drm_crtc *mtk_crtc,
 			reg_data->dispsys_map[next] == OVLSYS0)) {
 			config_regs = mtk_crtc->ovlsys0_regs;
 			addr = MT6897_OVLSYS_BYPASS_MUX_SHADOW;
-			reg = 0x1;
-			reg1 = 0xFF0000;
+			reg = 0xFF0001;
 		} else if (mtk_crtc->ovlsys_num > 1 && reg_data->dispsys_map &&
 				(reg_data->dispsys_map[cur] == OVLSYS1 ||
 			reg_data->dispsys_map[next] == OVLSYS1)) {
 			config_regs = mtk_crtc->ovlsys1_regs;
 			addr = MT6897_OVLSYS_BYPASS_MUX_SHADOW;
-			reg = 0x1;
-			reg1 = 0xFF0000;
+			reg = 0xFF0001;
 		}
 		reg = readl_relaxed(config_regs +
 			addr) | reg;
 		writel_relaxed(reg, config_regs + addr);
-
-		if (reg1) {
-			reg1 = readl_relaxed(config_regs +
-				addr1) | reg1;
-			writel_relaxed(reg1, config_regs + addr1);
-		}
 
 		value = mtk_ddp_ovl_con_MT6897(cur, next, &addr);
 		if (value >= 0) {
@@ -15004,8 +14996,6 @@ void mtk_ddp_add_comp_to_path_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 	case MMSYS_MT6897:
 		addr = MT6897_DISPSYS_BYPASS_MUX_SHADOW;
 		reg = 0xFF0001;
-		addr1 = MT6897_OVLSYS_CROSSBAR_CON;
-		reg1 = 0;
 		/* decide which dispsys need to config */
 		if (mtk_crtc->dispsys_num > 1 && reg_data->dispsys_map &&
 				reg_data->dispsys_map[cur] == 1)
@@ -15016,23 +15006,18 @@ void mtk_ddp_add_comp_to_path_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 				reg_data->dispsys_map[next] == OVLSYS0)) {
 				config_regs_pa = mtk_crtc->ovlsys0_regs_pa;
 				addr = MT6897_OVLSYS_BYPASS_MUX_SHADOW;
-				reg = 0x1;
-				reg1 = 0xFF0000;
+				reg = 0xFF0001;
 			} else if (mtk_crtc->ovlsys_num > 1 && reg_data->dispsys_map &&
 				(reg_data->dispsys_map[cur] == OVLSYS1 ||
 				reg_data->dispsys_map[next] == OVLSYS1)) {
 				config_regs_pa = mtk_crtc->ovlsys1_regs_pa;
 				addr = MT6897_OVLSYS_BYPASS_MUX_SHADOW;
-				reg = 0x1;
-				reg1 = 0xFF0000;
+				reg = 0xFF0001;
 			}
 		}
 
 		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 			config_regs_pa + addr, reg, ~0);
-		if (reg1)
-			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
-				config_regs_pa + addr1, reg1, reg1);
 
 		value = mtk_ddp_ovl_con_MT6897(cur, next, &addr);
 		if (value >= 0)
@@ -16787,11 +16772,7 @@ static void mtk_ddp_ext_insert_dual_pipe_MT6897(struct mtk_drm_crtc *mtk_crtc,
 	writel_relaxed(reg, side_config_regs + addr);
 
 	addr = MT6897_OVLSYS_BYPASS_MUX_SHADOW;
-	reg = readl_relaxed(ovlsys1_regs + addr) | 0x1;
-	writel_relaxed(reg, ovlsys1_regs + addr);
-
-	addr = MT6897_OVLSYS_CROSSBAR_CON;
-	reg = readl_relaxed(ovlsys1_regs + addr) | 0xFF0000;
+	reg = readl_relaxed(ovlsys1_regs + addr) | 0xFF0001;
 	writel_relaxed(reg, ovlsys1_regs + addr);
 }
 

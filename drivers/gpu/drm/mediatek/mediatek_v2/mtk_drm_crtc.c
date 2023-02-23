@@ -4000,7 +4000,9 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 		mtk_crtc->force_high_enabled--;
 
 		if (mtk_crtc->force_high_enabled > 0) {
-			mtk_drm_set_mmclk(crtc, step_size - 1, false, __func__);
+			if (mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_MMDVFS_SUPPORT))
+				mtk_drm_set_mmclk(crtc, step_size - 1, false, __func__);
 		} else {
 			en = 1;
 			output_comp = mtk_ddp_comp_request_output(mtk_crtc);
