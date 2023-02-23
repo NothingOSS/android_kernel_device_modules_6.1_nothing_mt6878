@@ -272,8 +272,7 @@ static int mtk_set_hw_brightness(struct mt_led_data *led_dat, int brightness,
 		led_dat->conf.cdev.name, led_dat->hw_brightness, brightness);
 	ret = led_dat->mtk_hw_brightness_set(led_dat, brightness, params, params_flag);
 	if (ret >= 0) {
-		if (brightness != led_dat->hw_brightness &&
-			(params_flag & (1 << SET_BACKLIGHT_LEVEL))) {
+		if (brightness != led_dat->hw_brightness) {
 			led_dat->hw_brightness = brightness;
 #ifdef CONFIG_LEDS_MT_BRIGHTNESS_HW_CHANGED
 			mt_leds_notify_brightness_hw_changed(&led_dat->conf, brightness);
