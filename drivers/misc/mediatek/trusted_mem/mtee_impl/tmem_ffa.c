@@ -92,173 +92,47 @@ static void tmem_do_gettimeofday(struct timespec64 *tv)
 #define PAGED_BASED_FFA_FLAGS 0x80000000
 
 /* receiver numbers */
-#define ATTRS_NUM 14
-/* receiver should be a VM at normal world */
-#define VM_HA_1   0x2
-#define VM_HA_2   0x3
-#define VM_HA_3   0x4
-#define VM_HA_4   0x5
-#define VM_HA_5   0x6
-#define VM_HA_6   0x7
-#define VM_HA_7   0x8
-#define VM_HA_8   0x9
-#define VM_HA_9   0xa
-#define VM_HA_10  0xb
-#define VM_HA_11  0xc
-#define VM_HA_12  0xd
-#define VM_HA_13  0xe
-/* receiver should be a SP at secure world */
+#define VM_HA_NUM   0x64
+#define ATTRS_NUM (VM_HA_NUM + 1)
+/* HA receiver id should be a VM at normal world */
+#define VM_HA_BASE   0x2
+/* TA receiver id should be a SP at secure world */
 #define SP_TA_1   0x8001
 
 static void set_memory_region_attrs(enum MTEE_MCHUNKS_ID mchunk_id,
 						struct ffa_mem_ops_args *ffa_args,
 						struct ffa_mem_region_attributes *mem_region_attrs)
 {
+	int i;
+
+	for (i = 0; i < VM_HA_NUM; i++) {
+		mem_region_attrs[i] = (struct ffa_mem_region_attributes) {
+			.receiver = VM_HA_BASE + i,
+			.attrs = FFA_MEM_RW
+		};
+	}
+
 	switch (mchunk_id) {
 	case MTEE_MCHUNKS_SVP:
-		mem_region_attrs[0] = (struct ffa_mem_region_attributes) {
+		mem_region_attrs[VM_HA_NUM] = (struct ffa_mem_region_attributes) {
 			.receiver = SP_TA_1,
 			.attrs = FFA_MEM_RW
 		};
-		mem_region_attrs[1] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_1,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[2] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_2,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[3] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_3,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[4] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_4,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[5] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_5,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[6] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_6,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[7] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_7,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[8] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_8,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[9] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_9,
-			.attrs = FFA_MEM_RW
-		};
-		ffa_args->nattrs = 10;
+		ffa_args->nattrs = VM_HA_NUM + 1;
 		pr_info("%s: mchunk_id = MTEE_MCHUNKS_SVP\n", __func__);
 		break;
 
 	case MTEE_MCHUNKS_WFD:
-		mem_region_attrs[0] = (struct ffa_mem_region_attributes) {
+		mem_region_attrs[VM_HA_NUM] = (struct ffa_mem_region_attributes) {
 			.receiver = SP_TA_1,
 			.attrs = FFA_MEM_RW
 		};
-		mem_region_attrs[1] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_1,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[2] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_2,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[3] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_3,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[4] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_4,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[5] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_5,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[6] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_6,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[7] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_7,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[8] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_8,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[9] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_9,
-			.attrs = FFA_MEM_RW
-		};
-		ffa_args->nattrs = 10;
+		ffa_args->nattrs = VM_HA_NUM + 1;
 		pr_info("%s: mchunk_id = MTEE_MCHUNKS_WFD\n", __func__);
 		break;
 
 	case MTEE_MCHUNKS_PROT:
-		mem_region_attrs[0] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_1,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[1] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_2,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[2] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_3,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[3] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_4,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[4] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_5,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[5] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_6,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[6] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_7,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[7] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_8,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[8] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_9,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[9] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_10,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[10] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_11,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[11] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_12,
-			.attrs = FFA_MEM_RW
-		};
-		mem_region_attrs[12] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_13,
-			.attrs = FFA_MEM_RW
-		};
-		ffa_args->nattrs = 13;
+		ffa_args->nattrs = VM_HA_NUM;
 		pr_info("%s: mchunk_id = MTEE_MCHUNKS_PROT\n", __func__);
 		break;
 
@@ -273,7 +147,7 @@ static void set_memory_region_attrs(enum MTEE_MCHUNKS_ID mchunk_id,
 
 	case MTEE_MCUHNKS_INVALID:
 		mem_region_attrs[0] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_1,
+			.receiver = VM_HA_BASE,
 			.attrs = FFA_MEM_RW
 		};
 		ffa_args->nattrs = 1;
