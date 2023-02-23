@@ -20,6 +20,7 @@
 #include <linux/arm-smccc.h>
 #include "mtk_iommu.h"
 #include "iommu_secure.h"
+#include "iommu_debug.h"
 
 /*
  * IOMMU TF-A SMC cmd format:
@@ -328,6 +329,80 @@ int mtk_iommu_sec_bk_pgtable_dump(uint32_t type, uint32_t id, uint32_t bank,
 EXPORT_SYMBOL_GPL(mtk_iommu_sec_bk_pgtable_dump);
 #endif
 
+static int mtk_iommu_sec_debug_set(void *data, u64 val)
+{
+	int ret = 0;
+
+	pr_info("%s:val=%llu\n", __func__, val);
+
+#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
+	switch (val) {
+	case 1:
+		ret = mtk_iommu_sec_bk_init_by_atf(MM_IOMMU, DISP_IOMMU);
+		break;
+	case 2:
+		ret = mtk_iommu_sec_bk_irq_en_by_atf(MM_IOMMU, DISP_IOMMU, 1);
+		break;
+	case 3:
+		ret = mtk_iommu_secure_bk_backup_by_atf(MM_IOMMU, DISP_IOMMU);
+		break;
+	case 4:
+		ret = mtk_iommu_secure_bk_restore_by_atf(MM_IOMMU, DISP_IOMMU);
+		break;
+	case 5:
+		ret = ao_secure_dbg_switch_by_atf(MM_IOMMU, DISP_IOMMU, 1);
+		break;
+	case 6:
+		ret = ao_secure_dbg_switch_by_atf(MM_IOMMU, DISP_IOMMU, 0);
+		break;
+	case 7:
+		mtk_iommu_dump_bank_base();
+		break;
+	case 8:
+		ret = mtk_iommu_dump_bk0_val(MM_IOMMU, DISP_IOMMU);
+		break;
+	case 9:	/* dump DISP_IOMMU bank1 pagetable */
+		ret = mtk_iommu_sec_bk_pgtable_dump(MM_IOMMU, DISP_IOMMU,
+				IOMMU_BK1, 0);
+		break;
+	default:
+		pr_info("%s error,val=%llu\n", __func__, val);
+		break;
+	}
+#endif
+
+	if (ret)
+		pr_info("%s failed:val=%llu, ret=%d\n", __func__, val, ret);
+
+	return 0;
+}
+
+static int mtk_iommu_sec_debug_get(void *data, u64 *val)
+{
+	*val = 0;
+	return 0;
+}
+
+DEFINE_PROC_ATTRIBUTE(mtk_iommu_sec_debug_fops, mtk_iommu_sec_debug_get,
+		      mtk_iommu_sec_debug_set, "%llu\n");
+
+static int mtk_iommu_sec_debug_init(void)
+{
+	struct proc_dir_entry *debug_root;
+	struct proc_dir_entry *debug_file;
+
+	debug_root = proc_mkdir("iommu_sec", NULL);
+	if (IS_ERR_OR_NULL(debug_root))
+		pr_info("%s failed to create debug dir\n", __func__);
+
+	debug_file = proc_create_data("debug",
+		S_IFREG | 0644, debug_root, &mtk_iommu_sec_debug_fops, NULL);
+	if (IS_ERR_OR_NULL(debug_file))
+		pr_info("%s failed to create debug file\n", __func__);
+
+	return 0;
+}
+
 static int mtk_iommu_sec_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -631,6 +706,9 @@ static int __init mtk_iommu_sec_init(void)
 	int i;
 
 	pr_info("%s+\n", __func__);
+
+	mtk_iommu_sec_debug_init();
+
 	for (i = 0; i < ARRAY_SIZE(mtk_iommu_bk_drivers); i++) {
 		ret = platform_driver_register(mtk_iommu_bk_drivers[i]);
 		if (ret < 0) {

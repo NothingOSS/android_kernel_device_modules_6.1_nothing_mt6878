@@ -29,7 +29,6 @@
 #include <aee.h>
 #endif
 #include "mtk_iommu.h"
-#include "iommu_secure.h"
 #include "iommu_debug.h"
 #include "iommu_port.h"
 #include "io-pgtable-arm.h"
@@ -1354,23 +1353,14 @@ static int mtk_iommu_debug_help(struct seq_file *s)
 	iommu_dump(s, "echo 2 > /proc/iommu_debug/debug: mm translation fault test\n");
 	iommu_dump(s, "echo 3 > /proc/iommu_debug/debug: apu translation fault test\n");
 	iommu_dump(s, "echo 4 > /proc/iommu_debug/debug: peri translation fault test\n");
-	iommu_dump(s, "echo 5 > /proc/iommu_debug/debug: secure bank init\n");
-	iommu_dump(s, "echo 6 > /proc/iommu_debug/debug: secure bank irq enable\n");
-	iommu_dump(s, "echo 7 > /proc/iommu_debug/debug: secure bank backup\n");
-	iommu_dump(s, "echo 8 > /proc/iommu_debug/debug: secure bank restore\n");
-	iommu_dump(s, "echo 9 > /proc/iommu_debug/debug: secure switch enable\n");
-	iommu_dump(s, "echo 10 > /proc/iommu_debug/debug: secure switch disable\n");
-	iommu_dump(s, "echo 11 > /proc/iommu_debug/debug: enable trace log\n");
-	iommu_dump(s, "echo 12 > /proc/iommu_debug/debug: disable trace log\n");
-	iommu_dump(s, "echo 13 > /proc/iommu_debug/debug: enable trace dump\n");
-	iommu_dump(s, "echo 14 > /proc/iommu_debug/debug: disable trace dump\n");
-	iommu_dump(s, "echo 15 > /proc/iommu_debug/debug: reset to default trace log & dump\n");
-	iommu_dump(s, "echo 16 > /proc/iommu_debug/debug: dump iova trace\n");
-	iommu_dump(s, "echo 17 > /proc/iommu_debug/debug: dump iova alloc list\n");
-	iommu_dump(s, "echo 18 > /proc/iommu_debug/debug: dump iova map list\n");
-	iommu_dump(s, "echo 19 > /proc/iommu_debug/debug: dump bank base address\n");
-	iommu_dump(s, "echo 20 > /proc/iommu_debug/debug: dump DISP_IOMMU bank0 value\n");
-	iommu_dump(s, "echo 21 > /proc/iommu_debug/debug: dump DISP_IOMMU bank1 page table\n");
+	iommu_dump(s, "echo 5 > /proc/iommu_debug/debug: enable trace log\n");
+	iommu_dump(s, "echo 6 > /proc/iommu_debug/debug: disable trace log\n");
+	iommu_dump(s, "echo 7 > /proc/iommu_debug/debug: enable trace dump\n");
+	iommu_dump(s, "echo 8 > /proc/iommu_debug/debug: disable trace dump\n");
+	iommu_dump(s, "echo 9 > /proc/iommu_debug/debug: reset to default trace log & dump\n");
+	iommu_dump(s, "echo 10 > /proc/iommu_debug/debug: dump iova trace\n");
+	iommu_dump(s, "echo 11 > /proc/iommu_debug/debug: dump iova alloc list\n");
+	iommu_dump(s, "echo 12 > /proc/iommu_debug/debug: dump iova map list\n");
 
 	return 0;
 }
@@ -1396,39 +1386,19 @@ static int m4u_debug_set(void *data, u64 val)
 	case 4: /* peri translation fault test */
 		report_custom_iommu_fault(0, 0, 0x102, PERI_IOMMU, 0);
 		break;
-#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
-	case 5:
-		ret = mtk_iommu_sec_bk_init_by_atf(MM_IOMMU, DISP_IOMMU);
-		break;
-	case 6:
-		ret = mtk_iommu_sec_bk_irq_en_by_atf(MM_IOMMU, DISP_IOMMU, 1);
-		break;
-	case 7:
-		ret = mtk_iommu_secure_bk_backup_by_atf(MM_IOMMU, DISP_IOMMU);
-		break;
-	case 8:
-		ret = mtk_iommu_secure_bk_restore_by_atf(MM_IOMMU, DISP_IOMMU);
-		break;
-	case 9:
-		ret = ao_secure_dbg_switch_by_atf(MM_IOMMU, DISP_IOMMU, 1);
-		break;
-	case 10:
-		ret = ao_secure_dbg_switch_by_atf(MM_IOMMU, DISP_IOMMU, 0);
-		break;
-#endif
-	case 11:	/* enable trace log */
+	case 5:	/* enable trace log */
 		event_mgr[IOMMU_ALLOC].dump_log = 1;
 		event_mgr[IOMMU_FREE].dump_log = 1;
 		event_mgr[IOMMU_MAP].dump_log = 1;
 		event_mgr[IOMMU_UNMAP].dump_log = 1;
 		break;
-	case 12:	/* disable trace log */
+	case 6:	/* disable trace log */
 		event_mgr[IOMMU_ALLOC].dump_log = 0;
 		event_mgr[IOMMU_FREE].dump_log = 0;
 		event_mgr[IOMMU_MAP].dump_log = 0;
 		event_mgr[IOMMU_UNMAP].dump_log = 0;
 		break;
-	case 13:	/* enable trace dump */
+	case 7:	/* enable trace dump */
 		event_mgr[IOMMU_ALLOC].dump_trace = 1;
 		event_mgr[IOMMU_FREE].dump_trace = 1;
 		event_mgr[IOMMU_MAP].dump_trace = 1;
@@ -1436,7 +1406,7 @@ static int m4u_debug_set(void *data, u64 val)
 		event_mgr[IOMMU_SYNC].dump_trace = 1;
 		event_mgr[IOMMU_UNSYNC].dump_trace = 1;
 		break;
-	case 14:	/* disable trace dump */
+	case 8:	/* disable trace dump */
 		event_mgr[IOMMU_ALLOC].dump_trace = 0;
 		event_mgr[IOMMU_FREE].dump_trace = 0;
 		event_mgr[IOMMU_MAP].dump_trace = 0;
@@ -1444,7 +1414,7 @@ static int m4u_debug_set(void *data, u64 val)
 		event_mgr[IOMMU_SYNC].dump_trace = 0;
 		event_mgr[IOMMU_UNSYNC].dump_trace = 0;
 		break;
-	case 15:	/* reset to default trace log & dump */
+	case 9:	/* reset to default trace log & dump */
 		event_mgr[IOMMU_ALLOC].dump_trace = 1;
 		event_mgr[IOMMU_FREE].dump_trace = 1;
 		event_mgr[IOMMU_SYNC].dump_trace = 1;
@@ -1456,14 +1426,14 @@ static int m4u_debug_set(void *data, u64 val)
 		event_mgr[IOMMU_MAP].dump_log = 0;
 		event_mgr[IOMMU_UNMAP].dump_log = 0;
 		break;
-	case 16:	/* dump iova trace */
+	case 10:	/* dump iova trace */
 		mtk_iommu_trace_dump(NULL);
 		break;
-	case 17:	/* dump iova alloc list */
+	case 11:	/* dump iova alloc list */
 		mtk_iommu_iova_alloc_dump_top(NULL, NULL);
 		mtk_iommu_iova_alloc_dump(NULL, NULL);
 		break;
-	case 18:	/* dump iova map list */
+	case 12:	/* dump iova map list */
 		if (smmu_v3_enable) {
 			mtk_iommu_iova_map_dump(NULL, 0, MM_SMMU);
 			mtk_iommu_iova_map_dump(NULL, 0, APU_SMMU);
@@ -1472,18 +1442,6 @@ static int m4u_debug_set(void *data, u64 val)
 			mtk_iommu_iova_map_dump(NULL, 0, APU_TABLE);
 		}
 		break;
-#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
-	case 19:
-		mtk_iommu_dump_bank_base();
-		break;
-	case 20:
-		ret = mtk_iommu_dump_bk0_val(MM_IOMMU, DISP_IOMMU);
-		break;
-	case 21:	/* dump DISP_IOMMU bank1 pagetable */
-		ret = mtk_iommu_sec_bk_pgtable_dump(MM_IOMMU, DISP_IOMMU,
-				IOMMU_BK1, 0);
-		break;
-#endif
 	default:
 		pr_err("%s error,val=%llu\n", __func__, val);
 		break;
