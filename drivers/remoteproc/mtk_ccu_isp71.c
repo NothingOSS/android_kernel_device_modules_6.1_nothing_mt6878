@@ -848,6 +848,8 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 	static struct lock_class_key ccu_lock_key;
 	const char *ccu_lock_name = "ccu_lock_class";
 	struct device_link *link;
+	struct device_node *node_cammainpwr;
+	phandle phandle_cammainpwr;
 #if defined(CCU1_DEVICE)
 	struct device_node *node1;
 	phandle ccu_rproc1_phandle;
@@ -907,6 +909,21 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 		LOG_DBG("spm_base va: 0x%llx\n", (uint64_t)ccu->spm_base);
 	}
 
+	/* Get other power node if needed. */
+	if (ccu->ccu_version == CCU_VER_ISP7SP) {
+		ret = of_property_read_u32(node, "mediatek,cammainpwr",
+			&phandle_cammainpwr);
+		node_cammainpwr = of_find_node_by_phandle(phandle_cammainpwr);
+		if (node_cammainpwr)
+			ccu->pdev_cammainpwr = of_find_device_by_node(node_cammainpwr);
+		if (WARN_ON(!ccu->pdev_cammainpwr)) {
+			dev_err(ccu->dev, "failed to get ccu cammainpwr pdev\n");
+		} else {
+			ccu->dev_cammainpwr = &ccu->pdev_cammainpwr->dev;
+			pm_runtime_enable(ccu->dev_cammainpwr);
+		}
+		of_node_put(node_cammainpwr);
+	}
 	/* get Clock control from device tree.  */
 	/*
 	 * SMI definition is usually not ready at bring-up stage of new platform.
@@ -1061,6 +1078,8 @@ static int mtk_ccu_remove(struct platform_device *pdev)
 #endif
 	rproc_del(ccu->rproc);
 	rproc_free(ccu->rproc);
+	if (ccu->ccu_version == CCU_VER_ISP7SP)
+		pm_runtime_disable(ccu->dev_cammainpwr);
 	pm_runtime_disable(ccu->dev);
 #if IS_ENABLED(CONFIG_MTK_CCU_DEBUG)
 	mtk_ccu_unreg_chardev(ccu);
@@ -1116,12 +1135,23 @@ static int mtk_ccu1_remove(struct platform_device *pdev)
 static int mtk_ccu_get_power(struct mtk_ccu *ccu, struct device *dev)
 {
 	uint8_t *sram_con;
-	int ret = pm_runtime_get_sync(dev);
+	int rc, ret = pm_runtime_get_sync(dev);
 
-	if (ret != 0)
+	if (ret != 0) {
 		dev_err(dev, "pm_runtime_get_sync failed %d", ret);
+		return ret;
+	}
 
-	else if (ccu->ccu_version == CCU_VER_ISP7SP) {
+	if (ccu->ccu_version == CCU_VER_ISP7SP) {
+		ret = pm_runtime_get_sync(ccu->dev_cammainpwr);
+		if (ret != 0) {
+			dev_err(dev, "pm_runtime_get_sync cammainpwr failed %d", ret);
+			rc = pm_runtime_put_sync(dev);
+			if (rc != 0)
+				dev_err(dev, "pm_runtime_put_sync ao failed %d", ret);
+			return ret;
+		}
+
 		sram_con = ((uint8_t *)ccu->spm_base)+CCU_SLEEP_SRAM_CON;
 		writel(readl(sram_con) & ~CCU_SLEEP_SRAM_PDN, sram_con);
 	}
@@ -1137,10 +1167,13 @@ static void mtk_ccu_put_power(struct mtk_ccu *ccu, struct device *dev)
 	if (ccu->ccu_version == CCU_VER_ISP7SP) {
 		sram_con = ((uint8_t *)ccu->spm_base)+CCU_SLEEP_SRAM_CON;
 		writel(readl(sram_con) | CCU_SLEEP_SRAM_PDN, sram_con);
+
+		ret = pm_runtime_put_sync(ccu->dev_cammainpwr);
+		if (ret != 0)
+			dev_err(dev, "pm_runtime_put_sync cammainpwr failed %d", ret);
 	}
 
 	ret = pm_runtime_put_sync(dev);
-
 	if (ret != 0)
 		dev_err(dev, "pm_runtime_put_sync failed %d", ret);
 }

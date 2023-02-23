@@ -129,7 +129,9 @@ struct ap2ccu_ipc {
 struct mtk_ccu {
 	struct platform_device *pdev;
 	struct platform_device *pdev1;
+	struct platform_device *pdev_cammainpwr;
 	struct device *dev;
+	struct device *dev_cammainpwr;
 	struct device *ccu_cdev_dev;
 	struct class *ccu_class;
 	struct cdev ccu_cdev;
