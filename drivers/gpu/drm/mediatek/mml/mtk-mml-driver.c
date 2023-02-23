@@ -18,6 +18,7 @@
 #include <linux/debugfs.h>
 #include <linux/minmax.h>
 
+#include <soc/mediatek/mmdvfs_v3.h>
 #include <soc/mediatek/smi.h>
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
 #include <slbc_ops.h>
@@ -221,7 +222,7 @@ u32 mml_qos_update_tput(struct mml_dev *mml)
 	u32 tput = 0, i;
 	int volt, ret;
 
-	if (!tp || !tp->reg)
+	if (!tp || (!tp->reg && !tp->dvfs_clk))
 		return 0;
 
 	for (i = 0; i < ARRAY_SIZE(tp->path_clts); i++) {
@@ -235,6 +236,7 @@ u32 mml_qos_update_tput(struct mml_dev *mml)
 	}
 	i = min(i, tp->opp_cnt - 1);
 	volt = tp->opp_volts[i];
+
 	if (mml->current_volt == volt)	/* skip for better performance */
 		goto done;
 
@@ -250,6 +252,8 @@ u32 mml_qos_update_tput(struct mml_dev *mml)
 			mml_msg("%s volt %d (%u) tput %u", __func__, volt, i, tput);
 	} else if (tp->dvfs_clk) {
 		/* set dvfs clock rate by unit Hz */
+		if (mmdvfs_get_version())
+			mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MML);
 		ret = clk_set_rate(tp->dvfs_clk, tp->opp_speeds[i] * 1000000);
 		if (ret)
 			mml_err("%s fail to set rate %uMHz error %d",
@@ -257,6 +261,8 @@ u32 mml_qos_update_tput(struct mml_dev *mml)
 		else
 			mml_msg("%s rate %uMHz (%u) tput %u",
 				__func__, tp->opp_speeds[i], i, tput);
+		if (mmdvfs_get_version())
+			mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MML);
 	}
 	mml_trace_end();
 
