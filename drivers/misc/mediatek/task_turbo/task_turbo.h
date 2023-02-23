@@ -37,17 +37,18 @@ struct task_turbo_t {
 	atomic_t inherit_types;
 };
 
-struct futex_q {
-	struct plist_node list;
+enum rwsem_waiter_type {
+	RWSEM_WAITING_FOR_WRITE,
+	RWSEM_WAITING_FOR_READ
+};
 
+struct rwsem_waiter {
+	struct list_head list;
 	struct task_struct *task;
-	spinlock_t *lock_ptr;
-	union futex_key key;
-	struct futex_pi_state *pi_state;
-	struct rt_mutex_waiter *rt_waiter;
-	union futex_key *requeue_pi_key;
-	u32 bitset;
-} __randomize_layout;
+	enum rwsem_waiter_type type;
+	unsigned long timeout;
+	bool handoff_set;
+};
 
 struct hmp_domain {
 	struct cpumask cpus;

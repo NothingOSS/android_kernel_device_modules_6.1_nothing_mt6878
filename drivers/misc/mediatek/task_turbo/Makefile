@@ -10,5 +10,6 @@
 # See http://www.gnu.org/licenses/gpl-2.0.html for more details.
 #
 #
+ccflags-y += -I$(srctree)
 ccflags-y += -I$(srctree)/$(src)              # needed for trace events
 obj-$(CONFIG_MTK_TASK_TURBO) += task_turbo.o

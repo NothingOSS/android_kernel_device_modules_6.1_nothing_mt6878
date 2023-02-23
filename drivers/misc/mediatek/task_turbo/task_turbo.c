@@ -6,6 +6,7 @@
 #undef pr_fmt
 #define pr_fmt(fmt) "Task-Turbo: " fmt
 
+#include <linux/sched/cputime.h>
 #include <linux/sched.h>
 #include <linux/module.h>
 #include <linux/printk.h>
@@ -15,14 +16,16 @@
 #include <linux/plist.h>
 #include <linux/percpu-defs.h>
 
+#include <kernel/futex/futex.h>
+#include <kernel/sched/sched.h>
+#include <drivers/android/binder_internal.h>
+
 #include <trace/hooks/vendor_hooks.h>
 #include <trace/hooks/sched.h>
-//#include <trace/hooks/dtask.h>
 #include <trace/hooks/binder.h>
-//#include <trace/hooks/rwsem.h>
-//#include <trace/hooks/futex.h>
+#include <trace/hooks/rwsem.h>
+#include <trace/hooks/futex.h>
 #include <trace/hooks/fpsimd.h>
-#include <trace/hooks/topology.h>
 #include <trace/hooks/debug.h>
 #include <trace/hooks/wqlockup.h>
 #include <trace/hooks/sysrqcrash.h>
@@ -112,20 +115,16 @@ static unsigned int task_turbo_feats;
 
 static bool is_turbo_task(struct task_struct *p);
 static void set_load_weight(struct task_struct *p, bool update_load);
-#if 0
 static void rwsem_stop_turbo_inherit(struct rw_semaphore *sem);
 static void rwsem_list_add(struct task_struct *task, struct list_head *entry,
 				struct list_head *head);
-#endif
 static bool binder_start_turbo_inherit(struct task_struct *from,
 					struct task_struct *to);
 static void binder_stop_turbo_inherit(struct task_struct *p);
 static inline struct task_struct *rwsem_owner(struct rw_semaphore *sem);
 static inline bool rwsem_test_oflags(struct rw_semaphore *sem, long flags);
 static inline bool is_rwsem_reader_owned(struct rw_semaphore *sem);
-#if 0
 static void rwsem_start_turbo_inherit(struct rw_semaphore *sem);
-#endif
 static bool sub_feat_enable(int type);
 static bool start_turbo_inherit(struct task_struct *task, int type, int cnt);
 static bool stop_turbo_inherit(struct task_struct *task, int type);
@@ -141,14 +140,14 @@ static int find_best_turbo_cpu(struct task_struct *p);
 static void init_hmp_domains(void);
 static void hmp_cpu_mask_setup(void);
 static int arch_get_nr_clusters(void);
-static void arch_get_cluster_cpus(struct cpumask *cpus, int package_id);
+static void arch_get_cluster_cpus(struct cpumask *cpus, int cluster_id);
 static int hmp_compare(void *priv, const struct list_head *a, const struct list_head *b);
 static inline void fillin_cluster(struct cluster_info *cinfo,
 		struct hmp_domain *hmpd);
 static void sys_set_turbo_task(struct task_struct *p);
 static unsigned long capacity_of(int cpu);
 static void init_turbo_attr(struct task_struct *p);
-static inline unsigned long cpu_util(int cpu);
+static unsigned long cpu_util_next(int cpu, struct task_struct *p, int dst_cpu);
 static inline unsigned long task_util(struct task_struct *p);
 static inline unsigned long _task_util_est(struct task_struct *p);
 
@@ -279,7 +278,6 @@ static void probe_android_rvh_setscheduler(void *ignore, struct task_struct *p)
 	}
 }
 
-#if 0
 static void probe_android_vh_rwsem_write_finished(void *ignore, struct rw_semaphore *sem)
 {
 	rwsem_stop_turbo_inherit(sem);
@@ -289,9 +287,7 @@ static void probe_android_vh_rwsem_init(void *ignore, struct rw_semaphore *sem)
 {
 	sem->android_vendor_data1 = 0;
 }
-#endif
 
-#if 0
 static void probe_android_vh_alter_rwsem_list_add(void *ignore, struct rwsem_waiter *waiter,
 							struct rw_semaphore *sem,
 							bool *already_on_list)
@@ -304,7 +300,6 @@ static void probe_android_vh_rwsem_wake(void *ignore, struct rw_semaphore *sem)
 {
 	rwsem_start_turbo_inherit(sem);
 }
-#endif
 
 static void probe_android_vh_binder_transaction_init(void *ignore, struct binder_transaction *t)
 {
@@ -335,7 +330,6 @@ static void probe_android_vh_binder_restore_priority(void *ignore,
 		binder_stop_turbo_inherit(cur);
 }
 
-#if 0
 static void probe_android_vh_alter_futex_plist_add(void *ignore, struct plist_node *q_list,
 						struct plist_head *hb_chain, bool *already_on_hb)
 {
@@ -367,7 +361,6 @@ static void probe_android_vh_alter_futex_plist_add(void *ignore, struct plist_no
 
 	*already_on_hb = false;
 }
-#endif
 
 static void probe_android_rvh_select_task_rq_fair(void *ignore, struct task_struct *p,
 							int prev_cpu, int sd_flag,
@@ -421,92 +414,73 @@ static unsigned long capacity_of(int cpu)
  */
 static unsigned long cpu_util_without(int cpu, struct task_struct *p)
 {
-	struct cfs_rq *cfs_rq;
-	unsigned int util;
-
 	/* Task has no contribution or is new */
 	if (cpu != task_cpu(p) || !READ_ONCE(p->se.avg.last_update_time))
-		return cpu_util(cpu);
+		return cpu_util_cfs(cpu);
 
-	cfs_rq = &cpu_rq(cpu)->cfs;
-	util = READ_ONCE(cfs_rq->avg.util_avg);
-
-	/* Discount task's util from CPU's util */
-	lsub_positive(&util, task_util(p));
-
-	/*
-	 * Covered cases:
-	 *
-	 * a) if *p is the only task sleeping on this CPU, then:
-	 *      cpu_util (== task_util) > util_est (== 0)
-	 *    and thus we return:
-	 *      cpu_util_without = (cpu_util - task_util) = 0
-	 *
-	 * b) if other tasks are SLEEPING on this CPU, which is now exiting
-	 *    IDLE, then:
-	 *      cpu_util >= task_util
-	 *      cpu_util > util_est (== 0)
-	 *    and thus we discount *p's blocked utilization to return:
-	 *      cpu_util_without = (cpu_util - task_util) >= 0
-	 *
-	 * c) if other tasks are RUNNABLE on that CPU and
-	 *      util_est > cpu_util
-	 *    then we use util_est since it returns a more restrictive
-	 *    estimation of the spare capacity on that CPU, by just
-	 *    considering the expected utilization of tasks already
-	 *    runnable on that CPU.
-	 *
-	 * Cases a) and b) are covered by the above code, while case c) is
-	 * covered by the following code when estimated utilization is
-	 * enabled.
-	 */
-	if (sched_feat(UTIL_EST) && is_util_est_enable()) {
-		unsigned int estimated =
-			READ_ONCE(cfs_rq->avg.util_est.enqueued);
-
-		/*
-		 * Despite the following checks we still have a small window
-		 * for a possible race, when an execl's select_task_rq_fair()
-		 * races with LB's detach_task():
-		 *
-		 *   detach_task()
-		 *     p->on_rq = TASK_ON_RQ_MIGRATING;
-		 *     ---------------------------------- A
-		 *     deactivate_task()                   \
-		 *       dequeue_task()                     + RaceTime
-		 *         util_est_dequeue()              /
-		 *     ---------------------------------- B
-		 *
-		 * The additional check on "current == p" it's required to
-		 * properly fix the execl regression and it helps in further
-		 * reducing the chances for the above race.
-		 */
-		if (unlikely(task_on_rq_queued(p) || current == p))
-			lsub_positive(&estimated, _task_util_est(p));
-
-		util = max(util, estimated);
-	}
-
-	/*
-	 * Utilization (estimated) can exceed the CPU capacity, thus let's
-	 * clamp to the maximum CPU capacity to ensure consistency with
-	 * the cpu_util call.
-	 */
-	return min_t(unsigned long, util, capacity_orig_of(cpu));
+	return cpu_util_next(cpu, p, -1);
 }
 
-static inline unsigned long cpu_util(int cpu)
+/*
+ * Predicts what cpu_util(@cpu) would return if @p was removed from @cpu
+ * (@dst_cpu = -1) or migrated to @dst_cpu.
+ */
+static unsigned long cpu_util_next(int cpu, struct task_struct *p, int dst_cpu)
 {
-	struct cfs_rq *cfs_rq;
-	unsigned int util;
+	struct cfs_rq *cfs_rq = &cpu_rq(cpu)->cfs;
+	unsigned long util = READ_ONCE(cfs_rq->avg.util_avg);
 
-	cfs_rq = &cpu_rq(cpu)->cfs;
-	util = READ_ONCE(cfs_rq->avg.util_avg);
+	/*
+	 * If @dst_cpu is -1 or @p migrates from @cpu to @dst_cpu remove its
+	 * contribution. If @p migrates from another CPU to @cpu add its
+	 * contribution. In all the other cases @cpu is not impacted by the
+	 * migration so its util_avg is already correct.
+	 */
+	if (task_cpu(p) == cpu && dst_cpu != cpu)
+		lsub_positive(&util, task_util(p));
+	else if (task_cpu(p) != cpu && dst_cpu == cpu)
+		util += task_util(p);
 
-	if (sched_feat(UTIL_EST) && is_util_est_enable())
-		util = max(util, READ_ONCE(cfs_rq->avg.util_est.enqueued));
+	if (sched_feat(UTIL_EST) && is_util_est_enable()) {
+		unsigned long util_est;
 
-	return min_t(unsigned long, util, capacity_orig_of(cpu));
+		util_est = READ_ONCE(cfs_rq->avg.util_est.enqueued);
+
+		/*
+		 * During wake-up @p isn't enqueued yet and doesn't contribute
+		 * to any cpu_rq(cpu)->cfs.avg.util_est.enqueued.
+		 * If @dst_cpu == @cpu add it to "simulate" cpu_util after @p
+		 * has been enqueued.
+		 *
+		 * During exec (@dst_cpu = -1) @p is enqueued and does
+		 * contribute to cpu_rq(cpu)->cfs.util_est.enqueued.
+		 * Remove it to "simulate" cpu_util without @p's contribution.
+		 *
+		 * Despite the task_on_rq_queued(@p) check there is still a
+		 * small window for a possible race when an exec
+		 * select_task_rq_fair() races with LB's detach_task().
+		 *
+		 *   detach_task()
+		 *     deactivate_task()
+		 *       p->on_rq = TASK_ON_RQ_MIGRATING;
+		 *       -------------------------------- A
+		 *       dequeue_task()                    \
+		 *         dequeue_task_fair()              + Race Time
+		 *           util_est_dequeue()            /
+		 *       -------------------------------- B
+		 *
+		 * The additional check "current == p" is required to further
+		 * reduce the race window.
+		 */
+		if (dst_cpu == cpu)
+			util_est += _task_util_est(p);
+		else if (unlikely(task_on_rq_queued(p) || current == p))
+			lsub_positive(&util_est, _task_util_est(p));
+
+		util = max(util, util_est);
+	}
+
+	return min(util, capacity_orig_of(cpu));
 }
 
 static inline unsigned long task_util(struct task_struct *p)
@@ -634,7 +608,6 @@ int idle_cpu(int cpu)
 	return 1;
 }
 
-#if 0
 static void rwsem_stop_turbo_inherit(struct rw_semaphore *sem)
 {
 	unsigned long flags;
@@ -649,9 +622,7 @@ static void rwsem_stop_turbo_inherit(struct rw_semaphore *sem)
 	}
 	raw_spin_unlock_irqrestore(&sem->wait_lock, flags);
 }
-#endif
 
-#if 0
 static void rwsem_list_add(struct task_struct *task,
 			   struct list_head *entry,
 			   struct list_head *head)
@@ -678,9 +649,7 @@ static void rwsem_list_add(struct task_struct *task,
 	}
 	list_add_tail(entry, head);
 }
-#endif
 
-#if 0
 static void rwsem_start_turbo_inherit(struct rw_semaphore *sem)
 {
 	bool should_inherit;
@@ -706,7 +675,6 @@ static void rwsem_start_turbo_inherit(struct rw_semaphore *sem)
 		}
 	}
 }
-#endif
 
 static bool start_turbo_inherit(struct task_struct *task,
 				int type,
@@ -1321,24 +1289,24 @@ int arch_get_nr_clusters(void)
 
 	/* assume socket id is monotonic increasing without gap. */
 	for_each_possible_cpu(cpu) {
-		struct cpu_topology *cpu_topo = &cpu_topology[cpu];
+		int cpu_cluster_id = topology_cluster_id(cpu);
 
-		if (cpu_topo->package_id > max_id)
-			max_id = cpu_topo->package_id;
+		if (cpu_cluster_id > max_id)
+			max_id = cpu_cluster_id;
 	}
 	__arch_nr_clusters = max_id + 1;
 	return __arch_nr_clusters;
 }
 
-void arch_get_cluster_cpus(struct cpumask *cpus, int package_id)
+void arch_get_cluster_cpus(struct cpumask *cpus, int cluster_id)
 {
 	unsigned int cpu;
 
 	cpumask_clear(cpus);
 	for_each_possible_cpu(cpu) {
-		struct cpu_topology *cpu_topo = &cpu_topology[cpu];
+		int cpu_cluster_id = topology_cluster_id(cpu);
 
-		if (cpu_topo->package_id == package_id)
+		if (cpu_cluster_id == cluster_id)
 			cpumask_set_cpu(cpu, cpus);
 	}
 }
@@ -1421,40 +1389,40 @@ static int __init init_task_turbo(void)
 		goto failed;
 	}
 
-	//ret = register_trace_android_vh_rwsem_init(
-	//		probe_android_vh_rwsem_init, NULL);
-	//if (ret) {
-	//	ret_erri_line = __LINE__;
-	//	goto failed;
-	//}
+	ret = register_trace_android_vh_rwsem_init(
+			probe_android_vh_rwsem_init, NULL);
+	if (ret) {
+		ret_erri_line = __LINE__;
+		goto failed;
+	}
 
-	//ret = register_trace_android_vh_rwsem_wake(
-	//		probe_android_vh_rwsem_wake, NULL);
-	//if (ret) {
-	//	ret_erri_line = __LINE__;
-	//	goto failed;
-	//}
+	ret = register_trace_android_vh_rwsem_wake(
+			probe_android_vh_rwsem_wake, NULL);
+	if (ret) {
+		ret_erri_line = __LINE__;
+		goto failed;
+	}
 
-	//ret = register_trace_android_vh_rwsem_write_finished(
-	//		probe_android_vh_rwsem_write_finished, NULL);
-	//if (ret) {
-	//	ret_erri_line = __LINE__;
-	//	goto failed;
-	//}
+	ret = register_trace_android_vh_rwsem_write_finished(
+			probe_android_vh_rwsem_write_finished, NULL);
+	if (ret) {
+		ret_erri_line = __LINE__;
+		goto failed;
+	}
 
-	//ret = register_trace_android_vh_alter_rwsem_list_add(
-	//		probe_android_vh_alter_rwsem_list_add, NULL);
-	//if (ret) {
-	//	ret_erri_line = __LINE__;
-	//	goto failed;
-	//}
+	ret = register_trace_android_vh_alter_rwsem_list_add(
+			probe_android_vh_alter_rwsem_list_add, NULL);
+	if (ret) {
+		ret_erri_line = __LINE__;
+		goto failed;
+	}
 
-	//ret = register_trace_android_vh_alter_futex_plist_add(
-	//		probe_android_vh_alter_futex_plist_add, NULL);
-	//if (ret) {
-	//	ret_erri_line = __LINE__;
-	//	goto failed;
-	//}
+	ret = register_trace_android_vh_alter_futex_plist_add(
+			probe_android_vh_alter_futex_plist_add, NULL);
+	if (ret) {
+		ret_erri_line = __LINE__;
+		goto failed;
+	}
 
 	ret = register_trace_android_rvh_select_task_rq_fair(
 			probe_android_rvh_select_task_rq_fair, NULL);
