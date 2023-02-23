@@ -70,7 +70,7 @@ static DEFINE_MUTEX(fpsgo_render_lock);
 long long fpsgo_task_sched_runtime(struct task_struct *p)
 {
 	//return task_sched_runtime(p);
-	return 0;
+	return p ? p->se.sum_exec_runtime : 0;
 }
 
 long fpsgo_sched_setaffinity(pid_t pid, const struct cpumask *in_mask)
@@ -160,18 +160,26 @@ int fpsgo_arch_nr_clusters(void)
 
 int fpsgo_arch_nr_get_opp_cpu(int cpu)
 {
-	struct cpufreq_policy curr_policy;
+	struct cpufreq_policy *curr_policy = NULL;
 	struct cpufreq_frequency_table *pos, *table;
 	int idx;
 	int nr_opp = 0;
+	int ret = 0;
 
-	cpufreq_get_policy(&curr_policy, cpu);
-	table = curr_policy.freq_table;
+	curr_policy = kzalloc(sizeof(struct cpufreq_policy), GFP_KERNEL);
+	if (!curr_policy)
+		goto out;
 
-	cpufreq_for_each_valid_entry_idx(pos, table, idx) {
-		nr_opp++;
+	ret = cpufreq_get_policy(curr_policy, cpu);
+	if (ret == 0) {
+		table = curr_policy->freq_table;
+		cpufreq_for_each_valid_entry_idx(pos, table, idx) {
+			nr_opp++;
+		}
 	}
 
+out:
+	kfree(curr_policy);
 	return nr_opp;
 }
 
@@ -189,19 +197,29 @@ int fpsgo_arch_nr_get_cap_cpu(int cpu, int opp)
 
 int fpsgo_arch_nr_max_opp_cpu(void)
 {
-	struct cpufreq_policy curr_policy;
 	int num_opp = 0, max_opp = 0;
 	int cpu;
+	int ret = 0;
+	struct cpufreq_policy *curr_policy = NULL;
+
+	curr_policy = kzalloc(sizeof(struct cpufreq_policy), GFP_KERNEL);
+	if (!curr_policy)
+		goto out;
 
 	for_each_possible_cpu(cpu) {
-		cpufreq_get_policy(&curr_policy, cpu);
+		ret = cpufreq_get_policy(curr_policy, cpu);
+		if (ret != 0)
+			continue;
+
 		num_opp = fpsgo_arch_nr_get_opp_cpu(cpu);
-		cpu = cpumask_last(curr_policy.related_cpus);
+		cpu = cpumask_last(curr_policy->related_cpus);
 
 		if (max_opp < num_opp)
 			max_opp = num_opp;
 	}
 
+out:
+	kfree(curr_policy);
 	return max_opp;
 }
 
@@ -222,20 +240,29 @@ int fpsgo_arch_nr_freq_cpu(void)
 unsigned int fpsgo_cpufreq_get_freq_by_idx(
 	int cpu, unsigned int opp)
 {
-	struct cpufreq_policy curr_policy;
+	struct cpufreq_policy *curr_policy = NULL;
 	struct cpufreq_frequency_table *pos, *table;
 	int idx;
+	int ret = 0;
 	unsigned int max_freq = 0;
 
-	cpufreq_get_policy(&curr_policy, cpu);
-	table = curr_policy.freq_table;
+	curr_policy = kzalloc(sizeof(struct cpufreq_policy), GFP_KERNEL);
+	if (!curr_policy)
+		return 0;
 
-	cpufreq_for_each_valid_entry_idx(pos, table, idx) {
-		max_freq = max(pos->frequency, max_freq);
-		if (idx == opp)
-			return pos->frequency;
+	ret = cpufreq_get_policy(curr_policy, cpu);
+	if (ret == 0) {
+		table = curr_policy->freq_table;
+		cpufreq_for_each_valid_entry_idx(pos, table, idx) {
+			max_freq = max(pos->frequency, max_freq);
+			if (idx == opp) {
+				kfree(curr_policy);
+				return pos->frequency;
+			}
+		}
 	}
 
+	kfree(curr_policy);
 	return max_freq;
 }
 

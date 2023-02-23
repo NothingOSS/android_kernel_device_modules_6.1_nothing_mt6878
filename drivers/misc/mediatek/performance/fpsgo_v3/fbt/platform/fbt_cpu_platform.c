@@ -3,15 +3,18 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 
-#include "fbt_cpu_platform.h"
-#include <sched/sched.h>
-#include <mt-plat/fpsgo_common.h>
 #include <linux/cpumask.h>
 #include <linux/interconnect.h>
 #include <linux/platform_device.h>
+#include <linux/of.h>
+#include <linux/mod_devicetable.h>
+#include <linux/sched/cputime.h>
+#include <sched/sched.h>
 #include <uapi/linux/sched/types.h>
+#include <mt-plat/fpsgo_common.h>
 #include "dvfsrc-exp.h"
 #include "fpsgo_base.h"
+#include "fbt_cpu_platform.h"
 
 static int mask_int[FPSGO_PREFER_TOTAL];
 static struct cpumask mask[FPSGO_PREFER_TOTAL];

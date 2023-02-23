@@ -3,6 +3,7 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 #include <linux/kthread.h>
+#include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include <linux/unistd.h>
 #include <linux/module.h>

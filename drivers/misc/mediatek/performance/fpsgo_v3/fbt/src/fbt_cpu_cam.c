@@ -31,6 +31,7 @@
 #include <linux/kernel.h>
 #include <linux/bsearch.h>
 #include <linux/sched/task.h>
+#include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include <linux/cpufreq.h>
 #include "sugov/cpufreq.h"

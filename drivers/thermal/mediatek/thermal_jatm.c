@@ -145,7 +145,7 @@ static void recycle_jatm_budget(void)
 	/* elapsed more than jatm_interval since end time of last trigger,
 	 * jatm budget is fully recovered, recycle all entries
 	 */
-	pr_debug("%s jatm_budget=%d elapsed=%d jatm_interval=%d\n", __func__,
+	pr_debug("%s jatm_budget=%d elapsed=%lu jatm_interval=%d\n", __func__,
 		j_info.budget, ms, j_info.interval);
 	if (ms >= j_info.interval) {
 		pr_debug("Budget is fully recoveried\n");
@@ -305,7 +305,7 @@ static void disable_jatm(enum jatm_stop_reason reason)
 	real_usage = calculate_timeval_diff(&j_info.last_jatm_enable, &now_tv);
 
 	if (real_usage < 5) {
-		pr_debug("JATM usage %d < min usage 5\n", real_usage);
+		pr_debug("JATM usage %lu < min usage 5\n", real_usage);
 		jatm_usage = 5;
 	} else
 		jatm_usage = real_usage;
@@ -321,7 +321,7 @@ static void disable_jatm(enum jatm_stop_reason reason)
 
 	cpu_force_max_freq(0);
 	mutex_unlock(&jatm_mutex);
-	pr_info("stop reason=%s, frame_length=%d, real_usage=%d, remaining=%d\n",
+	pr_info("stop reason=%s, frame_length=%lu, real_usage=%lu, remaining=%d\n",
 		jatm_stop_reason_string[reason], frame_length, real_usage, j_info.budget);
 	trace_jatm_disable(reason, frame_length, real_usage, j_info.budget);
 }

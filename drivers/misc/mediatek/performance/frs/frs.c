@@ -264,7 +264,7 @@ int __init eara_thrm_pre_init(void)
 
 	ret = sysfs_merge_group(kernel_kobj, &thermal_attr_group);
 	if (ret) {
-		pr_info(TAG, "failed to create thermal sysfs, ret=%d!\n", ret);
+		pr_info("%s failed to create thermal sysfs, ret=%d!\n", TAG, ret);
 		return ret;
 	}
 	return 0;

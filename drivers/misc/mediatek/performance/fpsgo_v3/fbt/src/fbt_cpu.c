@@ -31,8 +31,10 @@
 #include <linux/kernel.h>
 #include <linux/bsearch.h>
 #include <linux/sched/task.h>
+#include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include <linux/cpufreq.h>
+#include <linux/irq_work.h>
 #include "sugov/cpufreq.h"
 
 #include <mt-plat/fpsgo_common.h>
@@ -1192,29 +1194,6 @@ static void fbt_reset_task_setting(struct fpsgo_loading *fl, int reset_boost)
 	fbt_set_task_policy(fl, FPSGO_TPOLICY_NONE, FPSGO_PREFER_NONE, 0);
 }
 
-static void fbt_dep_list_filter(struct fpsgo_loading *arr, int size)
-{
-	struct task_struct *tsk;
-	int i;
-
-	rcu_read_lock();
-
-	for (i = 0; i < size; i++) {
-		tsk = find_task_by_vpid(arr[i].pid);
-		if (!tsk) {
-			arr[i].pid = 0;
-			continue;
-		}
-
-		get_task_struct(tsk);
-		if ((tsk->flags & PF_KTHREAD) || rt_task(tsk) || dl_task(tsk))
-			arr[i].pid = 0;
-		put_task_struct(tsk);
-	}
-
-	rcu_read_unlock();
-}
-
 static int __cmp1(const void *a, const void *b)
 {
 	return (((struct fpsgo_loading *)a)->pid)
@@ -1293,7 +1272,6 @@ static int fbt_get_dep_list(struct render_info *thr)
 		goto EXIT;
 	}
 
-	fbt_dep_list_filter(dep_new, count);
 	sort(dep_new, count, sizeof(struct fpsgo_loading), __cmp1, NULL);
 
 	dep_a_except_b(
@@ -4360,7 +4338,11 @@ static void fbt_check_max_blc_locked(int pid)
 	int temp_blc_pid = 0;
 	unsigned long long temp_blc_buffer_id = 0;
 	int temp_blc_dep_num = 0;
-	struct fpsgo_loading temp_blc_dep[MAX_DEP_NUM];
+	struct fpsgo_loading *temp_blc_dep = NULL;
+
+	temp_blc_dep = kcalloc(MAX_DEP_NUM, sizeof(struct fpsgo_loading), GFP_KERNEL);
+	if (!temp_blc_dep)
+		return;
 
 	fbt_find_max_blc(&temp_blc, &temp_blc_pid,
 		&temp_blc_buffer_id, &temp_blc_dep_num, temp_blc_dep);
@@ -4373,6 +4355,7 @@ static void fbt_check_max_blc_locked(int pid)
 	max_blc_dep_num = temp_blc_dep_num;
 	memcpy(max_blc_dep, temp_blc_dep,
 		max_blc_dep_num * sizeof(struct fpsgo_loading));
+	kfree(temp_blc_dep);
 
 	fpsgo_systrace_c_fbt_debug(-100, 0, max_blc, "max_blc");
 	fpsgo_systrace_c_fbt_debug(-100, 0, max_blc_pid, "max_blc_pid");

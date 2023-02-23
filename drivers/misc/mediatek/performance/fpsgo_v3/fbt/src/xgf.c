@@ -16,9 +16,10 @@
 #include <linux/tracepoint.h>
 #include <linux/sched/task.h>
 #include <linux/kernel.h>
+#include <linux/sched/rt.h>
+#include <linux/sched/deadline.h>
 #include <trace/trace.h>
 #include <trace/events/sched.h>
-#include <trace/events/ipi.h>
 #include <trace/events/irq.h>
 #include <trace/events/timer.h>
 #include <mt-plat/fpsgo_common.h>
@@ -65,6 +66,7 @@ static int xgf_cfg_spid;
 static int xgf_ema2_enable;
 static int xgf_display_rate = DEFAULT_DFRC;
 static int is_xgff_mips_exp_enable;
+static int total_xgf_policy_cmd_num;
 
 int fstb_frame_num = 20;
 EXPORT_SYMBOL(fstb_frame_num);
@@ -72,7 +74,7 @@ int fstb_no_stable_thr = 5;
 EXPORT_SYMBOL(fstb_no_stable_thr);
 int fstb_can_update_thr = 60;
 EXPORT_SYMBOL(fstb_can_update_thr);
-int fstb_target_fps_margin_low_fps = 3;
+int fstb_target_fps_margin_low_fps = 5;
 EXPORT_SYMBOL(fstb_target_fps_margin_low_fps);
 int fstb_target_fps_margin_high_fps = 5;
 EXPORT_SYMBOL(fstb_target_fps_margin_high_fps);
@@ -517,11 +519,44 @@ void xgf_free(void *pvBuf, int cmd)
 }
 EXPORT_SYMBOL(xgf_free);
 
+static void xgf_delete_policy_cmd(struct xgf_policy_cmd *iter)
+{
+	unsigned long long min_ts = ULLONG_MAX;
+	struct xgf_policy_cmd *tmp_iter = NULL, *min_iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	if (iter) {
+		min_iter = iter;
+		goto delete;
+	}
+
+	if (RB_EMPTY_ROOT(&xgf_policy_cmd_tree))
+		return;
+
+	rbn = rb_first(&xgf_policy_cmd_tree);
+	while (rbn) {
+		tmp_iter = rb_entry(rbn, struct xgf_policy_cmd, rb_node);
+		if (tmp_iter->ts < min_ts) {
+			min_ts = tmp_iter->ts;
+			min_iter = tmp_iter;
+		}
+		rbn = rb_next(rbn);
+	}
+
+	if (!min_iter)
+		return;
+
+delete:
+	rb_erase(&min_iter->rb_node, &xgf_policy_cmd_tree);
+	kfree(min_iter);
+	total_xgf_policy_cmd_num--;
+}
+
 static struct xgf_policy_cmd *xgf_get_policy_cmd(int tgid, int ema2_enable,
 	unsigned long long ts, int force)
 {
 	struct rb_node **p = &xgf_policy_cmd_tree.rb_node;
-	struct rb_node *parent;
+	struct rb_node *parent = NULL;
 	struct xgf_policy_cmd *iter;
 
 	while (*p) {
@@ -549,6 +584,10 @@ static struct xgf_policy_cmd *xgf_get_policy_cmd(int tgid, int ema2_enable,
 
 	rb_link_node(&iter->rb_node, parent, p);
 	rb_insert_color(&iter->rb_node, &xgf_policy_cmd_tree);
+	total_xgf_policy_cmd_num++;
+
+	if (total_xgf_policy_cmd_num > MAX_XGF_POLICY_CMD_NUM)
+		xgf_delete_policy_cmd(NULL);
 
 	return iter;
 }
@@ -1399,6 +1438,29 @@ int has_xgf_dep(pid_t tid)
 	return ret;
 }
 
+static int xgf_filter_dep_task(int tid)
+{
+	int ret = 0;
+	struct task_struct *tsk = NULL;
+
+	rcu_read_lock();
+
+	tsk = find_task_by_vpid(tid);
+	if (!tsk) {
+		ret = 1;
+		goto out;
+	}
+
+	get_task_struct(tsk);
+	if ((tsk->flags & PF_KTHREAD) || rt_task(tsk) || dl_task(tsk))
+		ret = 1;
+	put_task_struct(tsk);
+
+out:
+	rcu_read_unlock();
+	return ret;
+}
+
 int gbe2xgf_get_dep_list_num(int pid, unsigned long long bufID)
 {
 	struct xgf_render *render_iter;
@@ -1510,15 +1572,16 @@ int fpsgo_fbt2xgf_get_dep_list_num(int pid, unsigned long long bufID)
 			pre_iter = rb_entry(pre_rbn, struct xgf_dep, rb_node);
 
 			if (out_iter->tid < pre_iter->tid) {
-				if (out_iter->render_dep)
+				if (out_iter->render_dep && !xgf_filter_dep_task(out_iter->tid))
 					counts++;
 				out_rbn = rb_next(out_rbn);
 			} else if (out_iter->tid > pre_iter->tid) {
-				if (pre_iter->render_dep)
+				if (pre_iter->render_dep && !xgf_filter_dep_task(pre_iter->tid))
 					counts++;
 				pre_rbn = rb_next(pre_rbn);
 			} else {
-				if ((out_iter->render_dep || pre_iter->render_dep))
+				if ((out_iter->render_dep || pre_iter->render_dep) &&
+					!xgf_filter_dep_task(out_iter->tid))
 					counts++;
 				out_rbn = rb_next(out_rbn);
 				pre_rbn = rb_next(pre_rbn);
@@ -1527,14 +1590,14 @@ int fpsgo_fbt2xgf_get_dep_list_num(int pid, unsigned long long bufID)
 
 		while (out_rbn != NULL) {
 			out_iter = rb_entry(out_rbn, struct xgf_dep, rb_node);
-			if (out_iter->render_dep)
+			if (out_iter->render_dep && !xgf_filter_dep_task(out_iter->tid))
 				counts++;
 			out_rbn = rb_next(out_rbn);
 		}
 
 		while (pre_rbn != NULL) {
 			pre_iter = rb_entry(pre_rbn, struct xgf_dep, rb_node);
-			if (pre_iter->render_dep)
+			if (pre_iter->render_dep && !xgf_filter_dep_task(pre_iter->tid))
 				counts++;
 			pre_rbn = rb_next(pre_rbn);
 		}
@@ -1669,14 +1732,16 @@ int fpsgo_fbt2xgf_get_dep_list(int pid, int count,
 			pre_iter = rb_entry(pre_rbn, struct xgf_dep, rb_node);
 
 			if (out_iter->tid < pre_iter->tid) {
-				if (out_iter->render_dep && index < count) {
+				if (out_iter->render_dep && index < count &&
+					!xgf_filter_dep_task(out_iter->tid)) {
 					arr[index].pid = out_iter->tid;
 					arr[index].action = out_iter->action;
 					index++;
 				}
 				out_rbn = rb_next(out_rbn);
 			} else if (out_iter->tid > pre_iter->tid) {
-				if (pre_iter->render_dep && index < count) {
+				if (pre_iter->render_dep && index < count &&
+					!xgf_filter_dep_task(pre_iter->tid)) {
 					arr[index].pid = pre_iter->tid;
 					arr[index].action = pre_iter->action;
 					index++;
@@ -1684,7 +1749,8 @@ int fpsgo_fbt2xgf_get_dep_list(int pid, int count,
 				pre_rbn = rb_next(pre_rbn);
 			} else {
 				if ((out_iter->render_dep || pre_iter->render_dep)
-					&& index < count) {
+					&& index < count &&
+					!xgf_filter_dep_task(out_iter->tid)) {
 					arr[index].pid = out_iter->tid;
 					arr[index].action = out_iter->action;
 					index++;
@@ -1696,7 +1762,8 @@ int fpsgo_fbt2xgf_get_dep_list(int pid, int count,
 
 		while (out_rbn != NULL) {
 			out_iter = rb_entry(out_rbn, struct xgf_dep, rb_node);
-			if (out_iter->render_dep && index < count) {
+			if (out_iter->render_dep && index < count &&
+				!xgf_filter_dep_task(out_iter->tid)) {
 				arr[index].pid = out_iter->tid;
 				arr[index].action = out_iter->action;
 				index++;
@@ -1706,7 +1773,8 @@ int fpsgo_fbt2xgf_get_dep_list(int pid, int count,
 
 		while (pre_rbn != NULL) {
 			pre_iter = rb_entry(pre_rbn, struct xgf_dep, rb_node);
-			if (pre_iter->render_dep && index < count) {
+			if (pre_iter->render_dep && index < count &&
+				!xgf_filter_dep_task(pre_iter->tid)) {
 				arr[index].pid = pre_iter->tid;
 				arr[index].action = pre_iter->action;
 				index++;
@@ -2927,7 +2995,7 @@ static ssize_t runtime_show(struct kobject *kobj,
 	hlist_for_each_entry_safe(r_iter, r_tmp, &xgf_renders, hlist) {
 		length = scnprintf(temp + pos,
 			FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-			"rtid:%d bid:0x%llx cpu_runtime:%d (%d)\n",
+			"rtid:%d bid:0x%llx cpu_runtime:%llu (%llu)\n",
 			r_iter->render, r_iter->bufID,
 			r_iter->ema_runtime,
 			r_iter->raw_runtime);
@@ -3029,6 +3097,7 @@ static ssize_t xgf_ema2_enable_by_pid_show(struct kobject *kobj,
 		char *buf)
 {
 	char *temp = NULL;
+	int i = 1;
 	int pos = 0;
 	int length = 0;
 	struct xgf_policy_cmd *iter;
@@ -3046,9 +3115,10 @@ static ssize_t xgf_ema2_enable_by_pid_show(struct kobject *kobj,
 		iter = rb_entry(rbn, struct xgf_policy_cmd, rb_node);
 		length = scnprintf(temp + pos,
 			FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-			"tgid:%d\tema2_enable:%d\tts:%llu\n",
-			iter->tgid, iter->ema2_enable, iter->ts);
+			"%dth\ttgid:%d\tema2_enable:%d\tts:%llu\n",
+			i, iter->tgid, iter->ema2_enable, iter->ts);
 		pos += length;
+		i++;
 	}
 
 	mutex_unlock(&xgf_policy_cmd_lock);
@@ -3082,10 +3152,8 @@ static ssize_t xgf_ema2_enable_by_pid_store(struct kobject *kobj,
 					iter = xgf_get_policy_cmd(tgid, !!ema2_enable, ts, 1);
 				else {
 					iter = xgf_get_policy_cmd(tgid, ema2_enable, ts, 0);
-					if (iter) {
-						rb_erase(&iter->rb_node, &xgf_policy_cmd_tree);
-						kfree(iter);
-					}
+					if (iter)
+						xgf_delete_policy_cmd(iter);
 				}
 				mutex_unlock(&xgf_policy_cmd_lock);
 			}
@@ -3153,10 +3221,11 @@ Reget:
 	fte->note = note;
 	fte->state = state;
 	fte->pid = data;
+	fte->addr = 0;
 }
 
 static void fstb_buffer_record_waking_timer(int cpu, int event,
-	int data, int note, unsigned long long ts)
+	int data, int note, unsigned long long ts, unsigned long long addr)
 {
 	int index;
 	struct fpsgo_trace_event *fte;
@@ -3191,6 +3260,7 @@ Reget:
 	fte->note = note;
 	fte->pid = data;
 	fte->state = 0;
+	fte->addr = addr;
 }
 
 static void xgf_irq_handler_entry_tracer(void *ignore,
@@ -3238,11 +3308,11 @@ out:
 static void xgf_sched_switch_tracer(void *ignore,
 				bool preempt,
 				struct task_struct *prev,
-				struct task_struct *next)
+				struct task_struct *next,
+				unsigned int prev_state)
 {
-	long prev_state;
+	long local_prev_state;
 	long temp_state;
-	int skip = 0;
 	unsigned long long ts = xgf_get_time();
 	int c_wake_cpu = xgf_get_task_wake_cpu(current);
 	int prev_pid;
@@ -3253,11 +3323,8 @@ static void xgf_sched_switch_tracer(void *ignore,
 
 	prev_pid = xgf_get_task_pid(prev);
 	next_pid = xgf_get_task_pid(next);
-	prev_state = xgf_trace_sched_switch_state(preempt, prev);
-	temp_state = prev_state & (TASK_STATE_MAX-1);
-
-	if (!temp_state)
-		skip = 1;
+	local_prev_state = xgf_trace_sched_switch_state(preempt, prev);
+	temp_state = local_prev_state & (TASK_STATE_MAX-1);
 
 	if (temp_state)
 		xgf_buffer_record_irq_waking_switch(c_wake_cpu, SCHED_SWITCH,
@@ -3282,7 +3349,7 @@ static void xgf_sched_waking_tracer(void *ignore, struct task_struct *p)
 	xgf_buffer_record_irq_waking_switch(c_wake_cpu, SCHED_WAKING,
 		p_pid, c_pid, 512, ts);
 	fstb_buffer_record_waking_timer(c_wake_cpu, SCHED_WAKING,
-		p_pid, c_pid, ts);
+		p_pid, c_pid, ts, 0);
 }
 
 static void xgf_hrtimer_expire_entry_tracer(void *ignore,
@@ -3291,10 +3358,10 @@ static void xgf_hrtimer_expire_entry_tracer(void *ignore,
 	unsigned long long ts = xgf_get_time();
 	int c_wake_cpu = xgf_get_task_wake_cpu(current);
 	int c_pid = xgf_get_task_pid(current);
+	unsigned long long timer_addr = (unsigned long long)hrtimer;
 
 	fstb_buffer_record_waking_timer(c_wake_cpu, HRTIMER_ENTRY,
-		0, c_pid, ts);
-
+		0, c_pid, ts, timer_addr);
 }
 
 static void xgf_hrtimer_expire_exit_tracer(void *ignore, struct hrtimer *hrtimer)
@@ -3302,9 +3369,10 @@ static void xgf_hrtimer_expire_exit_tracer(void *ignore, struct hrtimer *hrtimer
 	unsigned long long ts = xgf_get_time();
 	int c_wake_cpu = xgf_get_task_wake_cpu(current);
 	int c_pid = xgf_get_task_pid(current);
+	unsigned long long timer_addr = (unsigned long long)hrtimer;
 
 	fstb_buffer_record_waking_timer(c_wake_cpu, HRTIMER_EXIT,
-		0, c_pid, ts);
+		0, c_pid, ts, timer_addr);
 }
 
 struct tracepoints_table {
