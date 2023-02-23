@@ -19,6 +19,7 @@ enum mmqos_state_level {
 	COMM_OSTDL_ENABLE = BIT(3),
 	DISP_BY_LARB_ENABLE = BIT(4),
 	VCP_ENABLE = BIT(5),
+	VCODEC_BW_BYPASS = BIT(6),
 	MMQOS_ENABLE = BIT(0) | BIT(2),
 };
 extern u32 mmqos_state;

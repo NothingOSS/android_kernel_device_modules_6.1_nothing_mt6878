@@ -956,9 +956,9 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6985 = {
 		{ 0x1, 0x2, 0x1, 0x1, 0x2, 0x1, 0x2, 0x2, 0x3 }
 	},
 	.comm_port_hrt_types = {
-		{ HRT_MAX_BWL, HRT_MAX_BWL, HRT_NONE, HRT_NONE, HRT_NONE,
-			HRT_NONE, HRT_CAM, HRT_NONE, HRT_DISP },
-		{ HRT_MAX_BWL, HRT_MAX_BWL, HRT_NONE, HRT_NONE, HRT_NONE,
+		{ HRT_MAX_BWL, HRT_MAX_BWL, HRT_NONE, SRT_VDEC, SRT_VENC,
+			HRT_NONE, HRT_CAM, SRT_VDEC, HRT_DISP },
+		{ HRT_MAX_BWL, HRT_MAX_BWL, HRT_NONE, SRT_VDEC, SRT_VENC,
 			HRT_NONE, HRT_CAM, HRT_NONE, HRT_DISP_BY_LARB },
 	},
 	//.dual_pipe_larbs = { SLAVE_LARB(1), SLAVE_LARB(20) },

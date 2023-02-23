@@ -263,7 +263,17 @@ static void set_total_bw_to_emi(struct common_node *comm_node)
 
 	list_for_each_entry(comm_port_node, &comm_node->comm_port_list, list) {
 		mutex_lock(&comm_port_node->bw_lock);
-		avg_bw += comm_port_node->latest_avg_bw;
+		if (mmqos_state & VCODEC_BW_BYPASS
+			&& comm_port_node->hrt_type == SRT_VDEC) {
+			if (log_level & 1 << log_bw)
+				pr_notice("ignore SRT_VDEC comm port bw\n");
+		} else if (mmqos_state & VCODEC_BW_BYPASS
+			&& comm_port_node->hrt_type == SRT_VENC) {
+			if (log_level & 1 << log_bw)
+				pr_notice("ignore SRT_VENC comm port bw\n");
+		} else {
+			avg_bw += comm_port_node->latest_avg_bw;
+		}
 		if (comm_port_node->hrt_type < HRT_TYPE_NUM) {
 			normalize_peak_bw = MULTIPLY_RATIO(comm_port_node->latest_peak_bw)
 						/ mtk_mmqos_get_hrt_ratio(
@@ -635,9 +645,22 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 				mmqos->qos_bound, comm_port_node->hrt_type == HRT_MAX_BWL);
 
 		if ((mmqos_state & COMM_OSTDL_ENABLE)
-			&& larb_node->is_report_bw_larbs)
-			mmqos_update_comm_ostdl(comm_port_node->larb_dev,
-				port_id, mmqos->max_ratio, src);
+			&& larb_node->is_report_bw_larbs) {
+			if (mmqos_state & VCODEC_BW_BYPASS
+				&& comm_port_node->hrt_type == SRT_VDEC) {
+				if (log_level & 1 << log_bw)
+					pr_notice("ignore SRT_VDEC comm port:%#x OSTDL\n", dst->id);
+			} else if (mmqos_state & VCODEC_BW_BYPASS
+				&& comm_port_node->hrt_type == SRT_VENC) {
+				if (log_level & 1 << log_bw)
+					pr_notice("ignore SRT_VENC comm port:%#x OSTDL\n", dst->id);
+			} else {
+				if (log_level & 1 << log_bw)
+					pr_notice("set comm port:%d\n", MASK_8(dst->id));
+				mmqos_update_comm_ostdl(comm_port_node->larb_dev,
+					port_id, mmqos->max_ratio, src);
+			}
+		}
 
 		comm_id = COMM_PORT_COMM_ID(dst->id);
 		if (port_id != VIRT_COMM_PORT_ID)

@@ -21,6 +21,8 @@ enum hrt_type {
 	HRT_NONE = HRT_TYPE_NUM,
 	HRT_MAX_BWL,
 	HRT_DISP_BY_LARB,
+	SRT_VDEC,
+	SRT_VENC,
 };
 
 enum {
