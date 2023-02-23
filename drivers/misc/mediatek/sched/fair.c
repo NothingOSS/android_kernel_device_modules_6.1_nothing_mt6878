@@ -381,7 +381,7 @@ mtk_compute_energy_cpu(int gear_idx, struct energy_env *eenv, struct perf_domain
 struct share_buck_info share_buck;
 int init_share_buck(void)
 {
-	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
+	struct root_domain *rd;
 	struct perf_domain *pd;
 	int ret;
 	struct device_node *eas_node;
@@ -397,6 +397,9 @@ int init_share_buck(void)
 	if (ret < 0)
 		pr_info("no share_buck err_code=%d %s\n", ret,  __func__);
 
+	preempt_disable();
+	rd = cpu_rq(smp_processor_id())->rd;
+	preempt_enable();
 	rcu_read_lock();
 	pd = rcu_dereference(rd->pd);
 	if (!pd)
