@@ -35,7 +35,7 @@
 #include "public/mtee_regions.h"
 /* clang-format off */
 #include "mtee_impl/mtee_ops.h"
-#include "mtee_impl/tmem_carveout_heap.h"
+#include "mtee_impl/tmem_ffa.h"
 /* clang-format on */
 #include "tee_impl/tee_invoke.h"
 #include "memory_ssmr.h"
@@ -291,7 +291,7 @@ static int mtee_mem_reg_add(u64 pa, u32 size, void *peer_data, void *dev_desc)
 			return TMEM_KPOOL_APPEND_MEMORY_FAILED;
 		}
 
-		pr_info("[%d] tmem_carveout_heap[%d] created PASS: PA=0x%llx, size=0x%x\n",
+		pr_info("[%d] tmem_ff_heap[%d] created PASS: PA=0x%llx, size=0x%x\n",
 				mtee_dev_desc->kern_tmem_type, mtee_dev_desc->mtee_chunks_id,
 				pa, size);
 	}
@@ -342,7 +342,7 @@ static int mtee_mem_reg_remove(void *peer_data, void *dev_desc)
 			return TMEM_KPOOL_APPEND_MEMORY_FAILED;
 		}
 
-		pr_info("[%d] tmem_carveout_heap[%d] destroy PASS\n",
+		pr_info("[%d] tmem_ffa_heap[%d] destroy PASS\n",
 				mtee_dev_desc->kern_tmem_type, mtee_dev_desc->mtee_chunks_id);
 	}
 

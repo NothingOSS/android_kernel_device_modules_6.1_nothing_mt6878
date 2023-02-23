@@ -18,7 +18,7 @@
 #include "private/tmem_utils.h"
 #include "public/trusted_mem_api.h"
 #include "public/mtee_regions.h"
-#include "mtee_impl/tmem_carveout_heap.h"
+#include "mtee_impl/tmem_ffa.h"
 
 static inline void trusted_mem_type_enum_validate(void)
 {

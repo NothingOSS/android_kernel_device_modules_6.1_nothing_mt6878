@@ -33,7 +33,7 @@
 #include "private/ut_cmd.h"
 #include "tee_impl/tee_invoke.h"
 #include "public/mtee_regions.h"
-#include "mtee_impl/tmem_carveout_heap.h"
+#include "mtee_impl/tmem_ffa.h"
 
 #include "memory_ssmr.h"
 #include "memory_ssheap.h"

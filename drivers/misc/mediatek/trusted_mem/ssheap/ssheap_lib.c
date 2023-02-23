@@ -33,7 +33,7 @@
 #include <ssmr/memory_ssmr.h>
 
 #include "public/mtee_regions.h"
-#include "mtee_impl/tmem_carveout_heap.h"
+#include "mtee_impl/tmem_ffa.h"
 
 #define independent_ssheap 0
 

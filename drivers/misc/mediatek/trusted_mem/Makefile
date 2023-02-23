@@ -29,6 +29,18 @@ trusted_mem-y += alloc_api.o
 trusted_mem-y += ssmr/memory_ssmr.o
 trusted_mem-y += ssheap/ssheap_lib.o
 
+obj-$(CONFIG_ARM_FFA_TRANSPORT) += tmem_ffa.o
+tmem_ffa-y += dev_mgr.o
+tmem_ffa-y += entry.o
+tmem_ffa-y += region_mgr.o
+tmem_ffa-y += ssmr_mgr.o
+tmem_ffa-y += peer_mgr.o
+tmem_ffa-y += proc.o
+tmem_ffa-y += ssheap_proc.o
+tmem_ffa-y += alloc_api.o
+tmem_ffa-y += ssmr/memory_ssmr.o
+tmem_ffa-y += ssheap/ssheap_lib.o
+
 ifeq ($(TCORE_PROFILING_SUPPORT),y)
 trusted_mem-y += profiler.o
 ccflags-y += -DTCORE_PROFILING_SUPPORT
@@ -39,6 +51,9 @@ endif # !TCORE_PROFILING_SUPPORT
 
 ifeq ($(TCORE_MEMORY_LEAK_DETECTION_SUPPORT),y)
 trusted_mem-y += mld_helper.o
+ifeq ($(CONFIG_ARM_FFA_TRANSPORT),m)
+tmem_ffa-y += mld_helper.o
+endif # !CONFIG_ARM_FFA_TRANSPORT
 ccflags-y += -DTCORE_MEMORY_LEAK_DETECTION_SUPPORT
 endif # !TCORE_KERN_MEMORY_LEAK_DETECTION_SUPPORT
 
@@ -48,6 +63,13 @@ trusted_mem-y += tests/ut_server.o
 trusted_mem-y += tests/ut_cases.o
 trusted_mem-y += tests/ut_ssheap.o
 endif # !CONFIG_TEST_MTK_TRUSTED_MEMORY
+
+ifeq ($(CONFIG_ARM_FFA_TRANSPORT),m)
+tmem_ffa-y += tests/ut_common.o
+tmem_ffa-y += tests/ut_server.o
+tmem_ffa-y += tests/ut_cases.o
+tmem_ffa-y += tests/ut_ssheap.o
+endif # !CONFIG_ARM_FFA_TRANSPORT
 
 ifneq ($(filter y m,$(CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM)),)
 #==========================================================================
@@ -60,9 +82,17 @@ trusted_mem-y += tee_devices.o
 ccflags-y += -DTEE_DEVICES_SUPPORT
 trusted_mem-y += tee_impl/tee_invoke.o
 
+ifeq ($(CONFIG_ARM_FFA_TRANSPORT),m)
+tmem_ffa-y += tee_devices.o
+tmem_ffa-y += tee_impl/tee_invoke.o
+endif
+
 ifneq ($(filter y m,$(CONFIG_MICROTRUST_TEE_SUPPORT)\
 				  $(CONFIG_TRUSTONIC_TEE_SUPPORT)),)
 trusted_mem-y += tee_impl/tee_ops.o
+ifeq ($(CONFIG_ARM_FFA_TRANSPORT),m)
+tmem_ffa-y += tee_impl/tee_ops.o
+endif
 endif
 
 endif
@@ -74,12 +104,20 @@ ifneq ($(filter y m,$(CONFIG_MTK_PROT_MEM_SUPPORT)\
 					$(CONFIG_MTK_MTEE_MULTI_CHUNK_SUPPORT)\
 					$(CONFIG_MTK_SECURE_MEM_SUPPORT)),)
 trusted_mem-y += mtee_devices.o
+ifeq ($(CONFIG_ARM_FFA_TRANSPORT),m)
+tmem_ffa-y += mtee_devices.o
+endif
 ccflags-y += -DMTEE_DEVICES_SUPPORT
 endif
 ifneq ($(filter y m,$(CONFIG_MTK_GZ_KREE)),)
 trusted_mem-y += mtee_impl/mtee_ops.o
 trusted_mem-y += mtee_impl/mtee_invoke.o
 trusted_mem-y += mtee_impl/tmem_carveout_heap.o
+ifeq ($(CONFIG_ARM_FFA_TRANSPORT),m)
+tmem_ffa-y += mtee_impl/mtee_ops.o
+tmem_ffa-y += mtee_impl/mtee_invoke.o
+tmem_ffa-y += mtee_impl/tmem_ffa.o
+endif
 endif
 endif # !CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM
 
