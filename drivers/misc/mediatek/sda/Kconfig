@@ -76,4 +76,19 @@ config MTK_BTM_V1
 	  BTMv1 driver for specific plaforms.
 	  It contains ap/infra/peri bus tracers.
 	  It need to enable MTK_BTM_SUPPORT for basic functions.
+
+config MTK_LAST_BUS
+	tristate "MediaTek LAST BUS"
+	help
+	  This selects the device driver for the last bus module.
+	  The module detects errors of last bus in the Mediatek SoC.
+	  Enable this to get the report on detection or correction
+	  of errors.
+
+config MTK_LASTBUS_DEBUG
+	tristate "MediaTek LASTBUS DEBUG"
+	help
+	  This kernel config can be used to enable Platform
+	  lastbus feature, it's only enable in eng/userdebug load.
+	  For /proc/last_bus node debug.
 endif

@@ -7,4 +7,5 @@ obj-$(CONFIG_MTK_IRQ_DBG) += irq-dbg.o
 obj-$(CONFIG_MTK_BUS_PARITY_CHECK) += bus-parity.o
 # obj-$(CONFIG_MTK_SYSTRACKER_WATCHPOINT) += systracker.o
 obj-$(CONFIG_MTK_BUS_PARITY_CHECK) += dbg_error_flag.o
+obj-$(CONFIG_MTK_LAST_BUS) += last_bus.o
 obj-$(CONFIG_MTK_BTM_SUPPORT) += btm/
