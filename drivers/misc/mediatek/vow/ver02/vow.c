@@ -1285,8 +1285,9 @@ static bool vow_service_SetVBufAddr(unsigned long arg)
 	}
 
 	/* add return condition */
-	if ((vow_info[2] == 0) || (vow_info[3] != VOW_VBUF_LENGTH) ||
+	if ((vow_info[2] == 0) || (vow_info[3] != vow_vbuf_length) ||
 	    (vow_info[4] == 0)) {
+		VOWDRV_DEBUG("%s(), vow SetVBufAddr error!\n", __func__);
 		VOWDRV_DEBUG("vow SetVBufAddr:addr_%x, size_%x, addr_%x\n",
 		 (unsigned int)vow_info[2],
 		 (unsigned int)vow_info[3],
@@ -2663,6 +2664,7 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;
 	int timeout = 0;
+	char ioctl_type[50] = {0};
 
 	timeout = 0;
 	while (vowserv.vow_recovering) {
@@ -2760,12 +2762,16 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	case VOW_GET_SCP_RECOVER_STATUS:
-		if (!vow_service_get_scp_recover(arg))
+		if (!vow_service_get_scp_recover(arg)) {
+			strcpy(ioctl_type, "VOW_GET_SCP_RECOVER_STATUS");
 			ret = -EFAULT;
+		}
 		break;
 	case VOW_READ_VOICE_DATA:
-		if (!vow_service_SetApAddr(arg))
+		if (!vow_service_SetApAddr(arg)) {
+			strcpy(ioctl_type, "VOW_READ_VOICE_DATA");
 			ret = -EFAULT;
+		}
 		if ((vowserv.recording_flag == true)
 		    && (vowserv.firstRead == true)) {
 			vowserv.firstRead = false;
@@ -2775,38 +2781,52 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 		break;
 	case VOW_SET_SPEAKER_MODEL:
 		VOWDRV_DEBUG("VOW_SET_SPEAKER_MODEL(%lu)", arg);
-		if (!vow_service_SetSpeakerModel(arg))
+		if (!vow_service_SetSpeakerModel(arg)) {
+			strcpy(ioctl_type, "VOW_SET_SPEAKER_MODEL");
 			ret = -EFAULT;
+		}
 		break;
 	case VOW_CLR_SPEAKER_MODEL:
 		VOWDRV_DEBUG("VOW_CLR_SPEAKER_MODEL(%lu)", arg);
-		if (!vow_service_ReleaseSpeakerModel((int)arg))
+		if (!vow_service_ReleaseSpeakerModel((int)arg)) {
+			strcpy(ioctl_type, "VOW_CLR_SPEAKER_MODEL");
 			ret = -EFAULT;
+		}
 		break;
 	case VOW_SET_DSP_AEC_PARAMETER:
 		VOWDRV_DEBUG("VOW_SET_DSP_AEC_PARAMETER(%lu)", arg);
-		if (!vow_service_SetCustomModel(arg))
+		if (!vow_service_SetCustomModel(arg)) {
+			strcpy(ioctl_type, "VOW_SET_DSP_AEC_PARAMETER");
 			ret = -EFAULT;
+		}
 		break;
 	case VOW_SET_APREG_INFO:
 		VOWDRV_DEBUG("VOW_SET_APREG_INFO(%lu)", arg);
-		if (!vow_service_SetVBufAddr(arg))
+		if (!vow_service_SetVBufAddr(arg)) {
+			strcpy(ioctl_type, "VOW_SET_APREG_INFO");
 			ret = -EFAULT;
+		}
 		break;
 	case VOW_SET_VOW_DUMP_DATA:
 		//VOWDRV_DEBUG("VOW_SET_VOW_DUMP_DATA(%lu)", arg);
-		if (!vow_service_SetApDumpAddr(arg))
+		if (!vow_service_SetApDumpAddr(arg)) {
+			strcpy(ioctl_type, "VOW_SET_VOW_DUMP_DATA");
 			ret = -EFAULT;
+		}
 		break;
 	case VOW_BARGEIN_ON:
 		VOWDRV_DEBUG("VOW_BARGEIN_ON, irq: %d", (unsigned int)arg);
-		if (!VowDrv_SetBargeIn(1, (unsigned int)arg))
+		if (!VowDrv_SetBargeIn(1, (unsigned int)arg)) {
+			strcpy(ioctl_type, "VOW_BARGEIN_ON");
 			ret = -EFAULT;
+		}
 		break;
 	case VOW_BARGEIN_OFF:
 		VOWDRV_DEBUG("VOW_BARGEIN_OFF, irq: %d", (unsigned int)arg);
-		if (!VowDrv_SetBargeIn(0, (unsigned int)arg))
+		if (!VowDrv_SetBargeIn(0, (unsigned int)arg)) {
+			strcpy(ioctl_type, "VOW_BARGEIN_OFF");
 			ret = -EFAULT;
+		}
 		break;
 	case VOW_CHECK_STATUS:
 		if (arg != 0) {
@@ -2936,6 +2956,7 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 			vowserv.payloaddump_kernel_ptr =
 			    vmalloc(vowserv.payloaddump_user_max_size);
 		} else {
+			strcpy(ioctl_type, "VOW_SET_PAYLOADDUMP_INFO");
 			ret = -EFAULT;
 		}
 		mutex_unlock(&vow_payloaddump_mutex);
@@ -2950,6 +2971,8 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 		VOWDRV_DEBUG("vow WrongParameter(%lu)", arg);
 		break;
 	}
+	if (ret != 0)
+		VOWDRV_DEBUG("vow handle ioctl: %s with arg: %lu error", ioctl_type, arg);
 	return ret;
 }
 
