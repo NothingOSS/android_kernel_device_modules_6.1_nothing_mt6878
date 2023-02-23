@@ -612,6 +612,10 @@ int vcu_enc_set_param(struct venc_vcu_inst *vcu,
 		out.data_item = 1;
 		out.data[0] = enc_param->dummynal;
 		break;
+	case VENC_SET_PARAM_ENABLE_LOW_LATENCY_WFD:
+		out.data_item = 1;
+		out.data[0] = enc_param->lowlatencywfd;
+		break;
 	case VENC_SET_PARAM_TEMPORAL_LAYER_CNT:
 		out.data_item = 2;
 		out.data[0] = enc_param->temporal_layer_pcount;

@@ -122,7 +122,8 @@ enum venc_set_param_type {
 	VENC_SET_PARAM_ADJUST_QP_CONTROL_MODE,
 	VENC_SET_PARAM_TEMPORAL_LAYER_CNT,
 	VENC_SET_PARAM_RELEASE_SLB,
-	VENC_SET_PARAM_VCU_VPUD_LOG
+	VENC_SET_PARAM_VCU_VPUD_LOG,
+	VENC_SET_PARAM_ENABLE_LOW_LATENCY_WFD
 };
 
 #define VENC_MSG_AP_SEND_PREFIX	\
@@ -435,6 +436,7 @@ struct venc_vcu_config {
 	__u32 profile;
 	__u32 level;
 	__u32 wfd;
+	__u32 lowlatencywfd;
 	__u32 operationrate;
 	__u32 scenario;
 	__u32 prependheader;

@@ -688,6 +688,13 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 			ctrl->val);
 		p->max_ltr_num = ctrl->val;
 		break;
+	case V4L2_CID_MPEG_MTK_ENCODE_LOW_LATENCY_WFD:
+		mtk_v4l2_debug(2,
+			"V4L2_CID_MPEG_MTK_ENCODE_LOW_LATENCY_WFD: %d",
+			ctrl->val);
+		p->lowlatencywfd = ctrl->val;
+		ctx->param_change |= MTK_ENCODE_PARAM_LOW_LATENCY_WFD;
+		break;
 	default:
 		mtk_v4l2_debug(4, "ctrl-id=%d not support!", ctrl->id);
 		ret = -EINVAL;
@@ -1284,6 +1291,7 @@ static void mtk_venc_set_param(struct mtk_vcodec_ctx *ctx,
 	param->tsvc = enc_params->tsvc;
 	param->highquality = enc_params->highquality;
 	param->dummynal = enc_params->dummynal;
+	param->lowlatencywfd = enc_params->lowlatencywfd;
 
 	param->max_qp = enc_params->max_qp;
 	param->min_qp = enc_params->min_qp;
@@ -2824,12 +2832,24 @@ static int mtk_venc_param_change(struct mtk_vcodec_ctx *ctx)
 	if (!ret &&
 	mtk_buf->param_change & MTK_ENCODE_PARAM_DUMMY_NAL) {
 		enc_prm.dummynal = mtk_buf->enc_params.dummynal;
-		mtk_v4l2_debug(1, "[%d] idx=%d, tsvc=%d",
+		mtk_v4l2_debug(1, "[%d] idx=%d, dummynal=%d",
 				ctx->id,
 				mtk_buf->vb.vb2_buf.index,
 				mtk_buf->enc_params.dummynal);
 		ret |= venc_if_set_param(ctx,
 					VENC_SET_PARAM_ENABLE_DUMMY_NAL,
+					&enc_prm);
+	}
+
+	if (!ret &&
+	mtk_buf->param_change & MTK_ENCODE_PARAM_LOW_LATENCY_WFD) {
+		enc_prm.lowlatencywfd = mtk_buf->enc_params.lowlatencywfd;
+		mtk_v4l2_debug(1, "[%d] idx=%d, lowlatencywfd=%d",
+				ctx->id,
+				mtk_buf->vb.vb2_buf.index,
+				mtk_buf->enc_params.lowlatencywfd);
+		ret |= venc_if_set_param(ctx,
+					VENC_SET_PARAM_ENABLE_LOW_LATENCY_WFD,
 					&enc_prm);
 	}
 
@@ -3677,6 +3697,18 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode enable dummynal";
+	cfg.min = 0;
+	cfg.max = 1;
+	cfg.step = 1;
+	cfg.def = 0;
+	cfg.ops = ops;
+	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_LOW_LATENCY_WFD;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
+	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
+	cfg.name = "Video encode enable lowlatencywfd";
 	cfg.min = 0;
 	cfg.max = 1;
 	cfg.step = 1;

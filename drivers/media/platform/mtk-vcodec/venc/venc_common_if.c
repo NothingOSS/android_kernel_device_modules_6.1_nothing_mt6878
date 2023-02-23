@@ -483,6 +483,7 @@ static int venc_set_param(unsigned long handle,
 		inst->vsi->config.qp_control_mode = enc_prm->qp_control_mode;
 		inst->vsi->config.frame_level_qp = enc_prm->framelvl_qp;
 		inst->vsi->config.dummynal = enc_prm->dummynal;
+		inst->vsi->config.lowlatencywfd = enc_prm->lowlatencywfd;
 		inst->vsi->config.hier_ref_layer = enc_prm->hier_ref_layer;
 		inst->vsi->config.hier_ref_type = enc_prm->hier_ref_type;
 		inst->vsi->config.temporal_layer_pcount = enc_prm->temporal_layer_pcount;
