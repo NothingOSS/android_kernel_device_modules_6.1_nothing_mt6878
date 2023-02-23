@@ -339,7 +339,12 @@ static void set_freq_by_mmdvfs(struct common_node *comm_node, unsigned long smi_
 {
 	if (log_level & 1 << log_comm_freq)
 		dev_notice(comm_node->comm_dev, "set freq_rate:%lu\n", smi_clk);
-	mmdvfs_mux_set_opp("user-smi", smi_clk);
+
+	if (mmdvfs_get_version()) {
+		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
+		mmdvfs_mux_set_opp("user-smi", smi_clk);
+		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
+	}
 }
 
 static void set_comm_icc_bw(struct common_node *comm_node)
