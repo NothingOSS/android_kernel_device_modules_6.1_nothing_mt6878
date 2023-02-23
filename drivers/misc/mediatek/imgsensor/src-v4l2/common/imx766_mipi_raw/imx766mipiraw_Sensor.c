@@ -620,6 +620,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.csi_param = {
 			.cphy_settle = 73,
 		},
+		.dpc_enabled = true, /* reg 0x0b06 */
 	},
 	{
 		.frame_desc = frame_desc_cap,
@@ -667,6 +668,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.csi_param = {
 			.cphy_settle = 73,
 		},
+		.dpc_enabled = true,
 	},
 	{
 		.frame_desc = frame_desc_vid,
@@ -714,6 +716,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.csi_param = {
 			.cphy_settle = 73,
 		},
+		.dpc_enabled = true,
 	},
 	{
 		.frame_desc = frame_desc_hs_vid,
@@ -761,6 +764,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.csi_param = {
 			.cphy_settle = 76,
 		},
+		.dpc_enabled = true,
 	},
 	{
 		.frame_desc = frame_desc_slim_vid,
@@ -808,6 +812,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.csi_param = {
 			.cphy_settle = 73,
 		},
+		.dpc_enabled = true,
 	},
 	{
 		.frame_desc = frame_desc_cus1,
@@ -855,6 +860,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.csi_param = {
 			.cphy_settle = 84,
 		},
+		.dpc_enabled = true,
 	},
 	{
 		.frame_desc = frame_desc_cus2,
@@ -902,6 +908,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.csi_param = {
 			.cphy_settle = 65,
 		},
+		.dpc_enabled = true,
 	},
 	{
 		.frame_desc = frame_desc_cus3,
@@ -950,6 +957,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 			.cphy_settle = 69,
 		},
 		.ana_gain_max = BASEGAIN * 16,
+		.dpc_enabled = true,
 	},
 	{
 		.frame_desc = frame_desc_cus4,
@@ -997,6 +1005,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.csi_param = {
 			.cphy_settle = 73,
 		},
+		.dpc_enabled = true,
 	},
 	{
 		.frame_desc = frame_desc_cus5,
@@ -1044,6 +1053,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.csi_param = {
 			.cphy_settle = 69,
 		},
+		.dpc_enabled = true,
 	},
 	{
 		.frame_desc = frame_desc_cus6,
@@ -1091,6 +1101,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.csi_param = {
 			.cphy_settle = 69,
 		},
+		.dpc_enabled = true,
 	},
 	{
 		.frame_desc = frame_desc_cus7,
@@ -1138,6 +1149,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.csi_param = {
 			.cphy_settle = 68,
 		},
+		.dpc_enabled = true,
 	},
 	{
 		.frame_desc = frame_desc_cus8,
@@ -1185,6 +1197,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.csi_param = {
 			.cphy_settle = 64,
 		},
+		.dpc_enabled = true,
 	},
 	{
 		.frame_desc = frame_desc_cus9,
@@ -1232,6 +1245,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.csi_param = {
 			.cphy_settle = 65,
 		},
+		.dpc_enabled = true,
 	},
 	{
 		.frame_desc = frame_desc_cus10,
@@ -1280,6 +1294,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 			.cphy_settle = 65,
 		},
 		.ana_gain_max = BASEGAIN * 16,
+		.dpc_enabled = true,
 	},
 	{
 		.frame_desc = frame_desc_cus11,
@@ -1328,6 +1343,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 			.cphy_settle = 65,
 		},
 		.ana_gain_max = BASEGAIN * 16,
+		.dpc_enabled = true,
 	},
 	{
 		.frame_desc = frame_desc_cus12,
@@ -1375,6 +1391,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.csi_param = {
 			.cphy_settle = 65,
 		},
+		.dpc_enabled = true,
 	},
 	{
 		.frame_desc = frame_desc_cus13,
@@ -1422,6 +1439,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.csi_param = {
 			.cphy_settle = 71,
 		},
+		.dpc_enabled = true,
 	},
 	{
 		.frame_desc = frame_desc_cus14,
@@ -1471,6 +1489,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		},
 		.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_4CELL_Gb,
 		.ana_gain_max = BASEGAIN * 16,
+		.dpc_enabled = true,
 	},
 	{
 		.frame_desc = frame_desc_cus15,
@@ -1518,6 +1537,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.csi_param = {
 			.cphy_settle = 64,
 		},
+		.dpc_enabled = true,
 	},
 	{
 		.frame_desc = frame_desc_cus16,
@@ -1565,6 +1585,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.csi_param = {
 			.cphy_settle = 64,
 		},
+		.dpc_enabled = true,
 	},
 	{
 		.frame_desc = frame_desc_cus17,
@@ -1611,6 +1632,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.csi_param = {
 			.cphy_settle = 64,
 		},
+		.dpc_enabled = true,
 	},
 };
 

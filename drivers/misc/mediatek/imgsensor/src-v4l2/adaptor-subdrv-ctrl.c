@@ -1704,8 +1704,11 @@ int common_get_info(struct subdrv_ctx *ctx,
 	sensor_info->MIPIsensorType = ctx->s_ctx.mipi_sensor_type;
 	sensor_info->SensorOutputDataFormat =
 		ctx->s_ctx.mode[scenario_id].sensor_output_dataformat;
-	for (i = 0; i < ctx->s_ctx.sensor_mode_num; i++)
+	for (i = 0; i < ctx->s_ctx.sensor_mode_num; i++) {
 		sensor_info->DelayFrame[i] = ctx->s_ctx.mode[i].delay_frame;
+		sensor_info->ModeInfo[i].SensorDpcEnabled = ctx->s_ctx.mode[i].dpc_enabled;
+		sensor_info->ModeInfo[i].SensorPdcEnabled = ctx->s_ctx.mode[i].pdc_enabled;
+	}
 	sensor_info->SensorDrivingCurrent = ctx->s_ctx.isp_driving_current;
 	sensor_info->IHDR_Support = 0;
 	sensor_info->IHDR_LE_FirstLine = 0;
@@ -1722,6 +1725,7 @@ int common_get_info(struct subdrv_ctx *ctx,
 	sensor_info->SensorPacketECCOrder = 1;
 	sensor_info->FrameTimeDelayFrame = ctx->s_ctx.frame_time_delay_frame;
 	sensor_info->OB_pedestal = ctx->s_ctx.ob_pedestal;
+	sensor_info->Def_MirrorFlip = ctx->s_ctx.mirror;
 
 	return ERROR_NONE;
 }

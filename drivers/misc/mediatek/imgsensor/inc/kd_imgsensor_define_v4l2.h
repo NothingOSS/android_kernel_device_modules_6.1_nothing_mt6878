@@ -492,6 +492,10 @@ struct ACDK_SENSOR_RESOLUTION_INFO_STRUCT {
 	MUINT16 SensorHeight[SENSOR_SCENARIO_ID_MAX];
 };
 
+struct ACDK_SENSOR_MODE_INFO_STRUCT {
+	MUINT8 SensorDpcEnabled; /* defect pixel correction */
+	MUINT8 SensorPdcEnabled; /* pd correction */
+};
 
 struct ACDK_SENSOR_INFO_STRUCT {
 
@@ -569,6 +573,8 @@ struct ACDK_SENSOR_INFO_STRUCT {
 	 * 0: not support; 1: support
 	 */
 	MUINT8 Mode_AE_Ctrl_Support[SENSOR_SCENARIO_ID_MAX];
+	struct ACDK_SENSOR_MODE_INFO_STRUCT ModeInfo[SENSOR_SCENARIO_ID_MAX];
+	MUINT8 Def_MirrorFlip;
 };
 
 #define ACDK_SENSOR_INFO2_STRUCT struct ACDK_SENSOR_INFO_STRUCT

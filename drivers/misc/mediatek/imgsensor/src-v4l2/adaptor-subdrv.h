@@ -169,6 +169,9 @@ struct subdrv_mode_struct {
 	u32 dig_gain_min;
 	u32 dig_gain_max;
 	u32 dig_gain_step;
+
+	bool dpc_enabled; /* defect pixel correction */
+	bool pdc_enabled; /* pd correction */
 };
 
 #define REG_ADDR_MAXCNT 3
