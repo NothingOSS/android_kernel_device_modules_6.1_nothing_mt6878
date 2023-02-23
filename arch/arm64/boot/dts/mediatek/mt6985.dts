@@ -645,6 +645,10 @@
 		memory-region = <&ssmr_cma_mem>;
 	};
 
+	ffa: memory-ffa-enabled {
+		compatible = "mediatek,memory-ffa-enabled";
+	};
+
 	ssheap {
 		compatible = "mediatek,trusted_mem_ssheap";
 		memory-region = <&ssheap_cma_mem>;
