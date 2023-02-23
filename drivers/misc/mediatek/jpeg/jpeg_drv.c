@@ -14,6 +14,7 @@
 #include <linux/io.h>
 #include <linux/suspend.h>
 #include <linux/timer.h>
+#include <soc/mediatek/mmdvfs_v3.h>
 #include <soc/mediatek/smi.h>
 #include <linux/of.h>
 #include <linux/of_irq.h>
@@ -258,12 +259,16 @@ void jpeg_drv_hybrid_dec_start_dvfs(unsigned int id)
 	} else if (gJpegqDev.jpeg_dvfs[id]) {
 		JPEG_LOG(1, "request freq %lu",
 				gJpegqDev.jpeg_freqs[id][gJpegqDev.jpeg_freq_cnt[id]-1]);
+		if (mmdvfs_get_version())
+			mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_JPEGDEC);
 		ret = clk_set_rate(gJpegqDev.jpeg_dvfs[id],
 			gJpegqDev.jpeg_freqs[id][gJpegqDev.jpeg_freq_cnt[id]-1]);
 		if (ret) {
 			JPEG_LOG(0, "Failed to set freq %lu",
 			gJpegqDev.jpeg_freqs[id][gJpegqDev.jpeg_freq_cnt[id]-1]);
 		}
+		if (mmdvfs_get_version())
+			mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_JPEGDEC);
 	}
 
 }
