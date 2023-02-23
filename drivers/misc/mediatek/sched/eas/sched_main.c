@@ -29,6 +29,7 @@
 #include "mtk_energy_model/v1/energy_model.h"
 #endif
 #include "sugov/dsu_interface.h"
+#include "vip.h"
 
 #define CREATE_TRACE_POINTS
 #include "eas_trace.h"
@@ -520,6 +521,10 @@ static int __init mtk_scheduler_init(void)
 	//ret = register_trace_android_vh_check_uninterruptible_tasks(mtk_check_d_tasks, NULL);
 	//if (ret)
 	//	pr_info("register mtk_check_d_tasks hooks failed, returned %d\n", ret);
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+	vip_init();
 #endif
 
 	sched_asym_cpucapacity_init();

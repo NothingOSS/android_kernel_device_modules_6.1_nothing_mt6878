@@ -14,6 +14,18 @@
 #define T_TASK_IDLE_PREFER_FLAG 7
 #define MTK_TASK_FLAG 9
 
+/*
+ * Flt tracking group part id
+ * copy from flt for the use of VIP (need FLT_GROUP_NUM to initialize VIP_task_group)
+ */
+enum flt_group {
+	FLT_GROUP1,
+	FLT_GROUP2,
+	FLT_GROUP3,
+	FLT_GROUP4,
+	FLT_GROUP_NUM,
+};
+
 struct vip_task_struct {
 	struct list_head		vip_list;
 	u64				sum_exec_snapshot;
@@ -21,15 +33,9 @@ struct vip_task_struct {
 	int				vip_prio;
 };
 
-struct soft_affinity_task {
-	bool need_idle;
-	struct cpumask soft_cpumask;
-};
-
 struct mtk_task {
 	u64 reserved0[MTK_TASK_FLAG];
 	struct vip_task_struct	vip_task;
-	struct soft_affinity_task	sa_task;
 };
 
 /* Task Group Vendor Data */
