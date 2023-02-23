@@ -1226,6 +1226,14 @@ static phys_addr_t mtee_smmu_iova_to_phys(u64 iova, u32 sid, u32 ssid)
 	return 0;
 }
 
+static u64 smmu_iova_to_iopte(struct arm_smmu_master *master, u64 iova)
+{
+	if (!master || !master->domain || !master->domain->pgtbl_ops)
+		return 0;
+
+	return mtk_smmu_iova_to_iopte(master->domain->pgtbl_ops, iova);
+}
+
 static phys_addr_t smmu_iova_to_phys(struct arm_smmu_master *master, u64 iova)
 {
 	struct arm_smmu_domain *smmu_domain = master->domain;
@@ -1245,17 +1253,22 @@ static void mtk_smmu_fault_iova_dump(struct arm_smmu_master *master,
 	phys_addr_t fake_pa;
 	phys_addr_t hw_pa;
 	u64 tf_iova_tmp;
+	u64 pte;
 	int i;
 
 	for (i = 0, tf_iova_tmp = fault_iova; i < SMMU_TF_IOVA_DUMP_NUM; i++) {
 		if (i > 0)
 			tf_iova_tmp -= SZ_4K;
 
+		pte = smmu_iova_to_iopte(master, tf_iova_tmp);
 		fake_pa = smmu_iova_to_phys(master, tf_iova_tmp);
 		hw_pa = mtee_smmu_iova_to_phys(tf_iova_tmp, sid, ssid);
 
-		pr_info("error, tab_id:0x%llx, index:%d, falut_iova:0x%llx, fault_pa:0x%llx, 0x%llx\n",
-			tab_id, i, tf_iova_tmp, fake_pa, hw_pa);
+		pr_info("error, tab_id:0x%llx, index:%d, pte:0x%llx, falut_iova:0x%llx, fault_pa:0x%llx, 0x%llx\n",
+			tab_id, i, pte, tf_iova_tmp, fake_pa, hw_pa);
+
+		if (tf_iova_tmp == 0 || (!fake_pa && i > 0))
+			break;
 	}
 
 #ifdef MTK_SMMU_DEBUG

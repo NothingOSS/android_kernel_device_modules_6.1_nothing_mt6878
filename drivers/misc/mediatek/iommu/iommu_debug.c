@@ -861,8 +861,36 @@ EXPORT_SYMBOL_GPL(mtk_smmu_wpreg_dump);
 //=====================================================
 #define ARM_LPAE_MAX_LEVELS		4
 
+/* Struct accessors */
+#define io_pgtable_to_data(x)						\
+	container_of((x), struct arm_lpae_io_pgtable, iop)
+
+#define io_pgtable_ops_to_data(x)					\
+	io_pgtable_to_data(io_pgtable_ops_to_pgtable(x))
+
+/*
+ * Calculate the right shift amount to get to the portion describing level l
+ * in a virtual address mapped by the pagetable in d.
+ */
+#define ARM_LPAE_LVL_SHIFT(l, d)					\
+	(((ARM_LPAE_MAX_LEVELS - (l)) * (d)->bits_per_level) +		\
+	ilog2(sizeof(arm_lpae_iopte)))
+
 #define ARM_LPAE_GRANULE(d)						\
 	(sizeof(arm_lpae_iopte) << (d)->bits_per_level)
+#define ARM_LPAE_PGD_SIZE(d)						\
+	(sizeof(arm_lpae_iopte) << (d)->pgd_bits)
+
+/*
+ * Calculate the index at level l used to map virtual address a using the
+ * pagetable in d.
+ */
+#define ARM_LPAE_PGD_IDX(l, d)						\
+	((l) == (d)->start_level ? (d)->pgd_bits - (d)->bits_per_level : 0)
+
+#define ARM_LPAE_LVL_IDX(a, l, d)					\
+	(((u64)(a) >> ARM_LPAE_LVL_SHIFT(l, d)) &			\
+	 ((1 << ((d)->bits_per_level + ARM_LPAE_PGD_IDX(l, d))) - 1))
 
 /* Page table bits */
 #define ARM_LPAE_PTE_TYPE_SHIFT		0
@@ -874,6 +902,12 @@ EXPORT_SYMBOL_GPL(mtk_smmu_wpreg_dump);
 
 #define ARM_LPAE_PTE_ADDR_MASK		GENMASK_ULL(47, 12)
 
+/* IOPTE accessors */
+#define iopte_deref(pte, d) __va(iopte_to_paddr(pte, d))
+
+#define iopte_type(pte)					\
+	(((pte) >> ARM_LPAE_PTE_TYPE_SHIFT) & ARM_LPAE_PTE_TYPE_MASK)
+
 struct arm_lpae_io_pgtable {
 	struct io_pgtable	iop;
 
@@ -883,33 +917,6 @@ struct arm_lpae_io_pgtable {
 
 	void			*pgd;
 };
-
-/* Struct accessors */
-#define io_pgtable_to_data(x)						\
-	container_of((x), struct arm_lpae_io_pgtable, iop)
-
-#define io_pgtable_ops_to_data(x)					\
-	io_pgtable_to_data(io_pgtable_ops_to_pgtable(x))
-
-/* IOPTE accessors */
-#define iopte_deref(pte, d) __va(iopte_to_paddr(pte, d))
-
-#define iopte_type(pte)					\
-	(((pte) >> ARM_LPAE_PTE_TYPE_SHIFT) & ARM_LPAE_PTE_TYPE_MASK)
-
-/*
- * Calculate the index at level l used to map virtual address a using the
- * pagetable in d.
- */
-#define ARM_LPAE_PGD_IDX(l, d)						\
-	((l) == (d)->start_level ? (d)->pgd_bits - (d)->bits_per_level : 0)
-/*
- * Calculate the right shift amount to get to the portion describing level l
- * in a virtual address mapped by the pagetable in d.
- */
-#define ARM_LPAE_LVL_SHIFT(l, d)					\
-	(((ARM_LPAE_MAX_LEVELS - (l)) * (d)->bits_per_level) +		\
-	ilog2(sizeof(arm_lpae_iopte)))
 
 typedef u64 arm_lpae_iopte;
 
@@ -932,6 +939,65 @@ static phys_addr_t iopte_to_paddr(arm_lpae_iopte pte,
 
 	/* Rotate the packed high-order bits back to the top */
 	return (paddr | (paddr << (48 - 12))) & (ARM_LPAE_PTE_ADDR_MASK << 4);
+}
+
+static u64 arm_lpae_iova_to_iopte(struct io_pgtable_ops *ops, unsigned long iova)
+{
+	struct arm_lpae_io_pgtable *data = io_pgtable_ops_to_data(ops);
+	arm_lpae_iopte pte, *ptep = data->pgd;
+	int lvl = data->start_level;
+
+	do {
+		/* Valid IOPTE pointer? */
+		if (!ptep)
+			return 0;
+
+		/* Grab the IOPTE we're interested in */
+		ptep += ARM_LPAE_LVL_IDX(iova, lvl, data);
+		pte = READ_ONCE(*ptep);
+
+		/* Valid entry? */
+		if (!pte)
+			return 0;
+
+		/* Leaf entry? */
+		if (iopte_leaf(pte, lvl, data->iop.fmt))
+			goto found_translation;
+
+		/* Take it to the next level */
+		ptep = iopte_deref(pte, data);
+	} while (++lvl < ARM_LPAE_MAX_LEVELS);
+
+	/* Ran out of page tables to walk */
+	return 0;
+
+found_translation:
+	return pte;
+}
+
+static void arm_lpae_ops_dump(struct seq_file *s, struct io_pgtable_ops *ops)
+{
+	struct arm_lpae_io_pgtable *data = io_pgtable_ops_to_data(ops);
+	struct io_pgtable_cfg *cfg = &data->iop.cfg;
+
+	iommu_dump(s, "SMMU OPS values:");
+	iommu_dump(s,
+		   "ops cfg: quirks 0x%lx, pgsize_bitmap 0x%lx, ias %u-bit, oas %u-bit, coherent_walk:%d\n",
+		   cfg->quirks, cfg->pgsize_bitmap, cfg->ias, cfg->oas, cfg->coherent_walk);
+	iommu_dump(s,
+		   "ops data: %d levels, 0x%zx pgd_size, %u pg_shift, %u bits_per_level, pgd @ %p\n",
+		   ARM_LPAE_MAX_LEVELS - data->start_level, ARM_LPAE_PGD_SIZE(data),
+		   ilog2(ARM_LPAE_GRANULE(data)), data->bits_per_level, data->pgd);
+}
+
+static void dump_pgtable_ops(struct seq_file *s, struct arm_smmu_master *master)
+{
+	if (!master || !master->domain || !master->domain->pgtbl_ops) {
+		pr_info("%s, ERROR", __func__);
+		return;
+	}
+
+	arm_lpae_ops_dump(s, master->domain->pgtbl_ops);
 }
 
 static inline bool is_valid_ste(__le64 *ste)
@@ -1211,6 +1277,7 @@ static void smmu_pgtable_dump(struct seq_file *s, struct arm_smmu_device *smmu)
 	for (n = rb_first(&smmu->streams); n; n = rb_next(n)) {
 		stream = rb_entry(n, struct arm_smmu_stream, node);
 		if (stream != NULL && stream->master != NULL) {
+			dump_pgtable_ops(s, stream->master);
 			dump_ste_cd_info(s, stream->master);
 			dump_io_pgtable(s, stream->master);
 		}
@@ -1228,6 +1295,18 @@ void mtk_smmu_pgtable_dump(struct seq_file *s, int smmu_type)
 	}
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_pgtable_dump);
+
+void mtk_smmu_pgtable_ops_dump(struct seq_file *s, struct io_pgtable_ops *ops)
+{
+	arm_lpae_ops_dump(s, ops);
+}
+EXPORT_SYMBOL_GPL(mtk_smmu_pgtable_ops_dump);
+
+u64 mtk_smmu_iova_to_iopte(struct io_pgtable_ops *ops, u64 iova)
+{
+	return arm_lpae_iova_to_iopte(ops, iova);
+}
+EXPORT_SYMBOL_GPL(mtk_smmu_iova_to_iopte);
 #endif /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 */
 
 /* peri_iommu */
