@@ -711,6 +711,19 @@ static inline unsigned int check_timing_critical_section(
  */
 void fs_alg_setup_frame_monitor_fmeas_data(unsigned int idx)
 {
+#if defined(FS_UT)
+	LOG_INF(
+		"[%u] ID:%#x(sidx:%u), call set frame measurement data for pr(c:%u(%u)/n:%u(%u)), vsyncs:%u\n",
+		idx,
+		fs_inst[idx].sensor_id,
+		fs_inst[idx].sensor_idx,
+		fs_inst[idx].predicted_fl_us[0],
+		fs_inst[idx].predicted_fl_lc[0],
+		fs_inst[idx].predicted_fl_us[1],
+		fs_inst[idx].predicted_fl_lc[1],
+		fs_inst[idx].vsyncs);
+#endif
+
 	/* set frame measurement predicted frame length */
 	frm_set_frame_measurement(
 		idx, fs_inst[idx].vsyncs,
@@ -775,10 +788,11 @@ void fs_alg_get_fs_inst_ts_data(unsigned int idx,
 static inline void fs_alg_dump_streaming_data(unsigned int idx)
 {
 	LOG_MUST(
-		"[%u] ID:%#x(sidx:%u), tg:%u, fl_delay:%u, fl_lc(def/max):%u/%u, def_shut_lc:%u, lineTime:%u(linelength:%u/pclk:%u), hdr_exp: c(%u/%u/%u/%u/%u, %u/%u), prev(%u/%u/%u/%u/%u, %u/%u), cnt:(mode/ae)\n",
+		"[%u] ID:%#x(sidx:%u/inf:%u), tg:%u, fl_delay:%u, fl_lc(def/max):%u/%u, def_shut_lc:%u, lineTime:%u(linelength:%u/pclk:%u), hdr_exp: c(%u/%u/%u/%u/%u, %u/%u), prev(%u/%u/%u/%u/%u, %u/%u), cnt:(mode/ae)\n",
 		idx,
-		fs_inst[idx].sensor_id,
-		fs_inst[idx].sensor_idx,
+		fs_get_reg_sensor_id(idx),
+		fs_get_reg_sensor_idx(idx),
+		fs_get_reg_sensor_inf_idx(idx),
 		fs_inst[idx].tg,
 		fs_inst[idx].fl_active_delay,
 		fs_inst[idx].def_min_fl_lc,
@@ -807,10 +821,11 @@ static inline void fs_alg_dump_streaming_data(unsigned int idx)
 static inline void fs_alg_dump_perframe_data(unsigned int idx)
 {
 	LOG_INF(
-		"[%u] ID:%#x(sidx:%u), flk_en:%u, min_fl:%u(%u), shutter:%u(%u), margin:%u(%u), lineTime(ns):%u(%u/%u), hdr_exp: c(%u(%u)/%u(%u)/%u(%u)/%u(%u)/%u(%u), %u/%u), prev(%u(%u)/%u(%u)/%u(%u)/%u(%u)/%u(%u), %u/%u)\n",
+		"[%u] ID:%#x(sidx:%u/inf:%u), flk_en:%u, min_fl:%u(%u), shutter:%u(%u), margin:%u(%u), lineTime(ns):%u(%u/%u), hdr_exp: c(%u(%u)/%u(%u)/%u(%u)/%u(%u)/%u(%u), %u/%u), prev(%u(%u)/%u(%u)/%u(%u)/%u(%u)/%u(%u), %u/%u)\n",
 		idx,
-		fs_inst[idx].sensor_id,
-		fs_inst[idx].sensor_idx,
+		fs_get_reg_sensor_id(idx),
+		fs_get_reg_sensor_idx(idx),
+		fs_get_reg_sensor_inf_idx(idx),
 		fs_inst[idx].flicker_en,
 		convert2TotalTime(
 			fs_inst[idx].lineTimeInNs,
@@ -878,10 +893,11 @@ static inline void fs_alg_dump_perframe_data(unsigned int idx)
 void fs_alg_dump_fs_inst_data(const unsigned int idx)
 {
 	LOG_MUST(
-		"[%u] ID:%#x(sidx:%u), (%d/%u), tg:%u, fdelay:%u, fl_lc(def/min/max/out):%u/%u/%u/%u(%u), pred_fl(c:%u(%u)/n:%u(%u)), shut_lc:%u(def:%u), margin_lc:%u, flk_en:%u, lineTime:%u(%u/%u), readout(us):%u, f_cell:%u, f_tag:%u, n_1:%u, hdr_exp(c(%u/%u/%u/%u/%u, %u/%u, %u/%u), prev(%u/%u/%u/%u/%u, %u/%u, %u/%u), cnt:(mode/ae), read(len/margin)), ts(%llu/%llu/%llu/%llu, %llu/+(%llu)/%u)\n",
+		"[%u] ID:%#x(sidx:%u/inf:%u), (%d/%u), tg:%u, fdelay:%u, fl_lc(def/min/max/out):%u/%u/%u/%u(%u), pred_fl(c:%u(%u)/n:%u(%u)), shut_lc:%u(def:%u), margin_lc:%u, flk_en:%u, lineTime:%u(%u/%u), readout(us):%u, f_cell:%u, f_tag:%u, n_1:%u, hdr_exp(c(%u/%u/%u/%u/%u, %u/%u, %u/%u), prev(%u/%u/%u/%u/%u, %u/%u, %u/%u), cnt:(mode/ae), read(len/margin)), ts(%llu/%llu/%llu/%llu, %llu/+(%llu)/%u)\n",
 		idx,
-		fs_inst[idx].sensor_id,
-		fs_inst[idx].sensor_idx,
+		fs_get_reg_sensor_id(idx),
+		fs_get_reg_sensor_idx(idx),
+		fs_get_reg_sensor_inf_idx(idx),
 		fs_inst[idx].req_id,
 		fs_inst[idx].sof_cnt,
 		fs_inst[idx].tg,
@@ -945,7 +961,7 @@ void fs_alg_dump_all_fs_inst_data(void)
 
 
 #ifdef SUPPORT_FS_NEW_METHOD
-static inline void fs_alg_sa_dump_dynamic_para(unsigned int idx)
+void fs_alg_sa_dump_dynamic_para(unsigned int idx)
 {
 #if defined(USING_TSREC)
 	const struct mtk_cam_seninf_tsrec_timestamp_info
@@ -980,10 +996,14 @@ static inline void fs_alg_sa_dump_dynamic_para(unsigned int idx)
 
 	/* print sensor basic info */
 	len += snprintf(log_buf + len, LOG_BUF_STR_LEN - len,
-		"[%u] ID:%#x(sidx:%u), #%u, (%d/%u)",
-		idx, fs_inst[idx].sensor_id, fs_inst[idx].sensor_idx,
+		"[%u] ID:%#x(sidx:%u/inf:%u), #%u, (req:%d/%u)",
+		idx,
+		fs_get_reg_sensor_id(idx),
+		fs_get_reg_sensor_idx(idx),
+		fs_get_reg_sensor_inf_idx(idx),
 		fs_sa_inst.dynamic_paras[idx].magic_num,
-		fs_inst[idx].req_id, fs_inst[idx].sof_cnt);
+		fs_inst[idx].req_id,
+		fs_inst[idx].sof_cnt);
 
 	/* print per-frame based info */
 	len += snprintf(log_buf + len, LOG_BUF_STR_LEN - len,
@@ -1635,8 +1655,6 @@ static void fs_alg_sa_update_seamless_dynamic_para(const unsigned int idx,
 		p_para->tag_bias_us,
 		p_para->delta,
 		fs_inst[idx].fl_active_delay);
-
-	fs_alg_sa_dump_dynamic_para(idx);
 #endif // REDUCE_FS_ALGO_LOG
 
 
@@ -1647,31 +1665,20 @@ static void fs_alg_sa_update_seamless_dynamic_para(const unsigned int idx,
 static unsigned int fs_alg_sa_get_timestamp_info(const unsigned int idx,
 	struct FrameSyncDynamicPara *p_para)
 {
-#if !defined(QUERY_CCU_TS_AT_SOF)
-	unsigned int query_ts_idx[1] = {0};
-
-
-	query_ts_idx[0] = idx;
-	if (fs_alg_get_vsync_data(query_ts_idx, 1)) {
-#else
 	if (fs_inst[idx].is_nonvalid_ts) {
-#endif // QUERY_CCU_TS_AT_SOF
 		LOG_INF(
 			"ERROR: [%u] ID:%#x(sidx:%u), get Vsync data ERROR, SA ctrl mag_num:%u\n",
 			idx,
 			fs_inst[idx].sensor_id,
 			fs_inst[idx].sensor_idx,
 			p_para->magic_num);
-
 		return 1;
 	}
-
 
 	/* write back newest last_ts and cur_tick data */
 	p_para->last_ts = fs_inst[idx].last_vts;
 	p_para->cur_tick = fs_inst[idx].cur_tick;
 	p_para->vsyncs = fs_inst[idx].vsyncs;
-
 
 	return 0;
 }
@@ -2214,11 +2221,6 @@ static inline void fs_alg_sa_update_dynamic_para(
 	fs_sa_inst.dynamic_paras[idx] = *p_para;
 
 	FS_MUTEX_UNLOCK(&fs_algo_sa_proc_mutex_lock);
-
-
-#if !defined(TWO_STAGE_FS)
-	fs_alg_sa_dump_dynamic_para(idx);
-#endif // TWO_STAGE_FS
 }
 
 
@@ -3034,7 +3036,7 @@ void fs_alg_sa_notify_vsync(unsigned int idx)
 	}
 #endif // REDUCE_FS_ALGO_LOG
 
-	fs_alg_sa_dump_dynamic_para(idx);
+	// fs_alg_sa_dump_dynamic_para(idx);
 }
 /******************************************************************************/
 
@@ -3116,7 +3118,7 @@ unsigned int fs_alg_get_vsync_data(unsigned int solveIdxs[], unsigned int len)
 		}
 
 
-//#ifndef REDUCE_FS_ALGO_LOG
+#if !defined(REDUCE_FS_ALGO_LOG) || defined(FS_UT)
 		LOG_PF_INF(
 			"[%u] ID:%#x(sidx:%u), tg:%u, vsyncs:%u, last_vts:%llu, cur_tick:%llu, ts(%llu/%llu/%llu/%llu)\n",
 			solveIdxs[i],
@@ -3130,7 +3132,7 @@ unsigned int fs_alg_get_vsync_data(unsigned int solveIdxs[], unsigned int len)
 			fs_inst[solveIdxs[i]].timestamps[1],
 			fs_inst[solveIdxs[i]].timestamps[2],
 			fs_inst[solveIdxs[i]].timestamps[3]);
-//#endif // REDUCE_FS_ALGO_LOG
+#endif
 
 
 		frec_notify_update_timestamp_data(solveIdxs[i],

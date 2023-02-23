@@ -20,14 +20,13 @@ void notify_fsync_mgr_streaming(struct adaptor_ctx *ctx,
 
 
 /*******************************************************************************
- * per-frame ctrl
+ * frame ctrl
  ******************************************************************************/
 /*
  * return:
  *     1 => fsync_mgr will use set multi shutter frame length
  *          to set exposure and frame length simultaneously.
  *     0 => sensor adaptor directly set this ctrls to driver.
- *          #ifndef (TWO_STAGE_FS) => must return 0
  *          long exposure => must return 0
  */
 int chk_s_exp_with_fl_by_fsync_mgr(struct adaptor_ctx *ctx,
@@ -72,6 +71,9 @@ void notify_fsync_mgr_sync_frame(struct adaptor_ctx *ctx,
 /*******************************************************************************
  * ext ctrl
  ******************************************************************************/
+void notify_fsync_mgr_update_sof_cnt(struct adaptor_ctx *ctx,
+	const u32 sof_cnt);
+
 void notify_fsync_mgr_vsync(struct adaptor_ctx *ctx);
 
 void notify_fsync_mgr_vsync_by_tsrec(struct adaptor_ctx *ctx);

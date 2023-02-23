@@ -339,8 +339,7 @@ static unsigned int query_ccu_vsync_data(struct vsync_rec (*pData))
 /******************************************************************************/
 // frame measurement function
 /******************************************************************************/
-static void frm_dump_measurement_data(
-	unsigned int idx, unsigned int passed_vsyncs)
+void frm_dump_measurement_data(unsigned int idx, unsigned int passed_vsyncs)
 {
 	struct FrameMeasurement *p_fmeas = &frm_inst.f_info[idx].fmeas;
 
@@ -529,11 +528,10 @@ void frm_set_frame_measurement(
 
 
 	if (!frm_inst.f_info[idx].wait_for_setting_predicted_fl) {
-
-#ifndef REDUCE_FRM_LOG
-		LOG_PR_WARN("Error: not wait for setting predicted fl, return\n");
+#if !defined(REDUCE_FRM_LOG) || defined(FS_UT)
+		LOG_MUST(
+			"ERROR: check flag, not wait for setting predicted fl, return\n");
 #endif
-
 		return;
 	}
 
@@ -581,7 +579,7 @@ void frm_set_frame_measurement(
 
 
 	/* 4. dump frame measurement */
-	frm_dump_measurement_data(idx, passed_vsyncs);
+	// frm_dump_measurement_data(idx, passed_vsyncs);
 
 
 	/* 5. update newest predict fl (lc / us) */

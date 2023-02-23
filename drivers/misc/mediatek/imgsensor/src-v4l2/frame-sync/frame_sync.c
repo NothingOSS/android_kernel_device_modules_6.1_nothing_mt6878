@@ -727,31 +727,6 @@ static unsigned int fs_g_registered_idx(
 
 	return fs_g_registered_idx_by_ident(ident, p_idx, caller);
 }
-
-
-/*
- * TODO: remove this function
- *     remain this function due to decoupling TSREC patch and sensor recorder patch
- */
-unsigned int fs_get_reg_sensor_pos(const unsigned int ident)
-{
-	struct SensorInfo info = {0};
-	unsigned int idx = 0;
-
-	switch (REGISTER_METHOD) {
-	case BY_SENSOR_ID:
-		info.sensor_id = ident;
-		break;
-	case BY_SENSOR_IDX:
-	default:
-		info.sensor_idx = ident;
-		break;
-	}
-
-	idx = fs_search_reg_sensors(&info, REGISTER_METHOD);
-
-	return idx;
-}
 /******************************************************************************/
 
 
@@ -2000,10 +1975,6 @@ static inline void fs_try_set_auto_frame_tag(unsigned int idx)
 
 void fs_set_frame_tag(unsigned int ident, unsigned int f_tag)
 {
-#if defined(TWO_STAGE_FS) && !defined(QUERY_CCU_TS_AT_SOF)
-	unsigned int f_cell;
-#endif // TWO_STAGE_FS && !QUERY_CCU_TS_AT_SOF
-
 	unsigned int idx;
 
 	/* get registered idx and check if it is valid */
@@ -2014,24 +1985,8 @@ void fs_set_frame_tag(unsigned int ident, unsigned int f_tag)
 	if ((fs_mgr.hdr_ft_mode[idx] & FS_HDR_FT_MODE_ASSIGN_FRAME_TAG)
 		&& (fs_mgr.hdr_ft_mode[idx] & FS_HDR_FT_MODE_FRAME_TAG)) {
 		/* M-Stream case */
-#if !defined(TWO_STAGE_FS) || defined(QUERY_CCU_TS_AT_SOF)
 		fs_mgr.frame_tag[idx] = f_tag;
-#else // TWO_STAGE_FS
-		f_cell = fs_mgr.frame_cell_size[idx];
-
-		if (f_cell != 0)
-			fs_mgr.frame_tag[idx] = (f_tag + 1) % f_cell;
-		else {
-			fs_mgr.frame_tag[idx] = 0;
-
-			LOG_MUST(
-				"WARNING: [%u] input f_tag:%u, re-set to %u, because f_cell:%u (TWO_STAGE_FS)\n",
-				idx, f_tag, fs_mgr.frame_tag[idx], f_cell);
-		}
-#endif // !TWO_STAGE_FS || QUERY_CCU_TS_AT_SOF
-
 		fs_alg_set_frame_tag(idx, fs_mgr.frame_tag[idx]);
-
 	} else {
 		LOG_MUST(
 			"WARNING: [%u] call set frame_tag:%u, but feature_mode:%u not allow\n",
@@ -2082,7 +2037,6 @@ void fs_n_1_en(unsigned int ident, unsigned int n, unsigned int en)
 
 
 	/* reset frame tag cnt */
-	// fs_set_frame_tag(idx, 0);
 	fs_reset_frame_tag(idx);
 
 
@@ -2933,9 +2887,7 @@ static void fs_check_frame_sync_ctrl(
  */
 void fs_set_shutter(struct fs_perframe_st (*pf_ctrl))
 {
-#if defined(QUERY_CCU_TS_AT_SOF)
 	struct FrameRecord frame_rec;
-#endif
 	unsigned int idx;
 
 	/* get registered idx and check if it is valid */
@@ -2986,14 +2938,9 @@ void fs_set_shutter(struct fs_perframe_st (*pf_ctrl))
 	hw_fs_alg_set_perframe_st_data(idx, pf_ctrl);
 
 
-#if !defined(QUERY_CCU_TS_AT_SOF)
-	/* 3. push frame settings into frame recorder */
-	frec_push_record(idx);
-#else
 	/* 3. update frame recorder data */
 	frec_setup_frame_rec_by_fs_perframe_st(&frame_rec, pf_ctrl);
 	frec_update_record(idx, &frame_rec);
-#endif // QUERY_CCU_TS_AT_SOF
 
 
 	/* 4. frame sync ctrl */
@@ -3064,10 +3011,8 @@ static void fs_debug_hw_sync(unsigned int idx)
 	fs_alg_setup_frame_monitor_fmeas_data(idx);
 	frec_notify_vsync(idx);
 	fs_alg_get_vsync_data(arr, 1);
-	// fs_alg_sa_notify_vsync(idx);
-
 	hw_fs_dump_dynamic_para(idx);
-#endif // !FS_UT
+#endif
 }
 
 
@@ -3080,147 +3025,108 @@ void fs_set_debug_info_sof_cnt(const unsigned int ident,
 	if (unlikely(fs_g_registered_idx_by_ident(ident, &idx, __func__)))
 		return;
 
-	/* update debug info */
+	/* update debug info --- p1 sof cnt immediately */
 	fs_mgr.sof_cnt_arr[idx] = sof_cnt;
-
-#if defined(USING_CCU) && !defined(USING_TSREC)
-	/* USING_CCU	=> p1 vsync notify flow => NOW */
-	/* USING_TSREC	=> TSREC receive timstamp info flow */
 	fs_alg_set_debug_info_sof_cnt(idx, sof_cnt);
-#endif // USING_CCU && !USING_TSREC
 
+#ifndef REDUCE_FS_DRV_LOG
+	LOG_MUST("NOTICE: [%u] ID:%#x(sidx:%u/inf:%u), get sof_cnt:%u\n",
+		idx,
+		fs_get_reg_sensor_id(idx),
+		fs_get_reg_sensor_idx(idx),
+		fs_get_reg_sensor_inf_idx(idx),
+		sof_cnt);
+#endif
+
+	/* check special ctrl that using p1 sof cnt (e.g., seamless switch) */
+	fs_chk_exit_seamless_switch_frame(ident);
 }
 
 
-void fs_notify_vsync(const unsigned int ident, const unsigned int sof_cnt)
+void fs_notify_vsync(const unsigned int ident)
 {
-#if !defined(FS_UT)
-	unsigned int listen_vsync_usr = fs_con_get_usr_listen_ext_vsync();
-	unsigned int listen_vsync_alg = fs_con_get_listen_vsync_alg_cfg();
-#endif
 	unsigned int idx;
 
 	/* get registered idx and check if it is valid */
 	if (unlikely(fs_g_registered_idx_by_ident(ident, &idx, __func__)))
 		return;
-
-	/* check case */
 	if (!FS_CHECK_BIT(idx, &fs_mgr.validSync_bits))
 		return;
 	if (FS_CHECK_BIT(idx, &fs_mgr.hw_sync_bits)) {
-		/* using hw sensor sync, not doing sw sync flow */
 		fs_debug_hw_sync(idx);
 		return;
 	}
 
-#if !defined(FS_UT)
-	/* check listen to ext vysnc or not */
-	if (!(listen_vsync_usr || listen_vsync_alg))
-		return;
-#endif
 
-
-#if !defined(QUERY_CCU_TS_AT_SOF)
-	fs_set_shutter(&fs_mgr.pf_ctrl[idx]);
-#else
-	fs_alg_sa_notify_setup_all_frame_info(idx);
-
-	frec_notify_vsync(idx);
 #if !defined(USING_TSREC) || defined(FS_UT)
+	fs_alg_sa_notify_setup_all_frame_info(idx);
+	frec_notify_vsync(idx);
 	fs_alg_sa_notify_vsync(idx);
+	fs_alg_sa_dump_dynamic_para(idx);
 #endif
-#endif // QUERY_CCU_TS_AT_SOF
 
 
-	/* update debug info --- sof cnt */
-	fs_set_debug_info_sof_cnt(ident, sof_cnt);
-
-
-	/* check special ctrl (e.g., seamless switch) */
+	/* check special ctrl that using p1 sof cnt (e.g., seamless switch) */
 	fs_chk_valid_for_doing_seamless_switch(ident);
-	fs_chk_exit_seamless_switch_frame(ident);
 }
 
 
 void fs_notify_vsync_by_tsrec(const unsigned int ident)
 {
-	const unsigned int idx = fs_get_reg_sensor_pos(ident);
+	unsigned int idx;
 
-	/* error handling (unexpected case) */
-	if (unlikely(check_idx_valid(idx) == 0)) {
-		LOG_MUST(
-			"NOTICE: [%u] %s is not register, ident:%u, return\n",
-			idx, REG_INFO, ident);
+	/* get registered idx and check if it is valid */
+	if (unlikely(fs_g_registered_idx_by_ident(ident, &idx, __func__)))
 		return;
-	}
 	if (FS_CHECK_BIT(idx, &fs_mgr.streaming_bits) == 0)
-		return;
-	if (FS_CHECK_BIT(idx, &fs_mgr.validSync_bits) == 0)
 		return;
 }
 
 
 void fs_notify_sensor_hw_pre_latch_by_tsrec(const unsigned int ident)
 {
-	const unsigned int idx = fs_get_reg_sensor_pos(ident);
+	unsigned int idx;
 
-	/* error handling (unexpected case) */
-	if (unlikely(check_idx_valid(idx) == 0)) {
-		LOG_MUST(
-			"NOTICE: [%u] %s is not register, ident:%u, return\n",
-			idx, REG_INFO, ident);
+	/* get registered idx and check if it is valid */
+	if (unlikely(fs_g_registered_idx_by_ident(ident, &idx, __func__)))
 		return;
-	}
 	if (FS_CHECK_BIT(idx, &fs_mgr.streaming_bits) == 0)
 		return;
-	if (FS_CHECK_BIT(idx, &fs_mgr.validSync_bits) == 0)
-		return;
+
+
+	fs_alg_sa_notify_setup_all_frame_info(idx);
+	frec_notify_vsync(idx); // sensor recorder hw pre-latch
 }
 
 
 void fs_receive_tsrec_timestamp_info(const unsigned int ident,
 	const struct mtk_cam_seninf_tsrec_timestamp_info *ts_info)
 {
-	const unsigned int idx = fs_get_reg_sensor_pos(ident);
-#if defined(USING_TSREC)
-	unsigned int p1_sof_cnt = 0;
-#endif // USING_TSREC
+	unsigned int idx;
 
-	/* error handling (unexpected case) */
-	if (unlikely(check_idx_valid(idx) == 0)) {
-		LOG_MUST(
-			"NOTICE: [%u] %s is not register, ident:%u, return\n",
-			idx, REG_INFO, ident);
+	/* get registered idx and check if it is valid */
+	if (unlikely(fs_g_registered_idx_by_ident(ident, &idx, __func__)))
 		return;
-	}
+	if (FS_CHECK_BIT(idx, &fs_mgr.streaming_bits) == 0)
+		return;
 	if (unlikely(ts_info == NULL)) {
 		LOG_MUST(
 			"ERROR: get non-valid input, ts_info:%p, return\n",
 			ts_info);
 		return;
 	}
-	if (FS_CHECK_BIT(idx, &fs_mgr.streaming_bits) == 0)
-		return;
-
-#if defined(USING_TSREC)
-	/* get debug info */
-	p1_sof_cnt = fs_mgr.sof_cnt_arr[idx];
-#endif // USING_TSREC
 
 	/* save tsrec timestamp info */
 	frm_receive_tsrec_timestamp_info(idx, ts_info);
 
 
-	/* check enable Frame-Sync or not */
-	if (FS_CHECK_BIT(idx, &fs_mgr.validSync_bits) == 0)
-		return;
-
-	/* call this function after receive TSREC timestamp info */
 #if defined(USING_TSREC)
+	/* call this function after receive TSREC timestamp info */
 	fs_alg_sa_notify_vsync(idx);
-	fs_alg_set_debug_info_sof_cnt(idx, p1_sof_cnt);
-#endif // USING_TSREC
 
+	if (FS_CHECK_BIT(idx, &fs_mgr.enSync_bits))
+		fs_alg_sa_dump_dynamic_para(idx);
+#endif
 }
 
 

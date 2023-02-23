@@ -444,7 +444,7 @@ void notify_fsync_mgr_streaming(struct adaptor_ctx *ctx, unsigned int flag)
 
 
 /*******************************************************************************
- * per-frame ctrls
+ * frame ctrls
  ******************************************************************************/
 void fsync_mgr_dump_fs_perframe_st(struct adaptor_ctx *ctx,
 	const struct fs_perframe_st *pf_ctrl, const unsigned int mode_id,
@@ -893,6 +893,20 @@ void notify_fsync_mgr_sync_frame(struct adaptor_ctx *ctx,
 /*******************************************************************************
  * ext ctrls
  ******************************************************************************/
+void notify_fsync_mgr_update_sof_cnt(struct adaptor_ctx *ctx, const u32 sof_cnt)
+{
+	/* not expected case */
+	if (unlikely(ctx->fsync_mgr == NULL)) {
+		FSYNC_MGR_LOGI(ctx,
+			"ERROR: sidx:%d, ctx->fsync_mgr:%p is NULL, get sof_cnt:%u, return\n",
+			ctx->idx, ctx->fsync_mgr, sof_cnt);
+		return;
+	}
+
+	ctx->fsync_mgr->fs_set_debug_info_sof_cnt(ctx->idx, sof_cnt);
+}
+
+
 void notify_fsync_mgr_vsync(struct adaptor_ctx *ctx)
 {
 	/* not expected case */
@@ -903,7 +917,7 @@ void notify_fsync_mgr_vsync(struct adaptor_ctx *ctx)
 		return;
 	}
 
-	ctx->fsync_mgr->fs_notify_vsync(ctx->idx, ctx->sof_cnt);
+	ctx->fsync_mgr->fs_notify_vsync(ctx->idx);
 }
 
 

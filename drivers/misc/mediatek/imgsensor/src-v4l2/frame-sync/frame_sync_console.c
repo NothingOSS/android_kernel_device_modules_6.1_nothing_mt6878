@@ -143,7 +143,7 @@ static inline void fs_console_init_def_value(void)
 
 	// two stage frame-sync:
 	// => use seninf-worker to trigger frame length calculation
-	fs_con_mgr.listen_ext_vsync = TWO_STAGE_FS;
+	fs_con_mgr.listen_ext_vsync = 1;
 	fs_con_mgr.listen_vsync_alg = 0;
 }
 

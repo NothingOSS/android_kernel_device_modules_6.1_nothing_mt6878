@@ -2605,13 +2605,11 @@ static void ut_notify_vsync(void)
 		/* UT test: update debug info --- sof cnt */
 		switch (REGISTER_METHOD) {
 		case BY_SENSOR_ID:
-			frameSync->fs_notify_vsync(
-				pf_ctrl.sensor_id, g_counter);
+			frameSync->fs_notify_vsync(pf_ctrl.sensor_id);
 			break;
 
 		case BY_SENSOR_IDX:
-			frameSync->fs_notify_vsync(
-				pf_ctrl.sensor_idx, g_counter);
+			frameSync->fs_notify_vsync(pf_ctrl.sensor_idx);
 			break;
 
 		default:

@@ -350,9 +350,7 @@ struct FrameSync {
 	void (*fs_set_debug_info_sof_cnt)(const unsigned int ident,
 		const unsigned int sof_cnt);
 
-
-	void (*fs_notify_vsync)(const unsigned int ident,
-		const unsigned int sof_cnt);
+	void (*fs_notify_vsync)(const unsigned int ident);
 
 	void (*fs_notify_vsync_by_tsrec)(const unsigned int ident);
 
