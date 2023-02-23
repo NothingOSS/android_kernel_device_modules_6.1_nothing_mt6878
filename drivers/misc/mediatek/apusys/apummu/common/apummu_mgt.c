@@ -315,6 +315,7 @@ static void free_DRAM(struct kref *kref)
 #if DRAM_FALL_BACK_IN_RUNTIME
 	apummu_dram_remap_runtime_free(g_adv);
 #endif
+	g_ammu_table_set.is_stable_exist = false;
 }
 
 /* free session table by session */
