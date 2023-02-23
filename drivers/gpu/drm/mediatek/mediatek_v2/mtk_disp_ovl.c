@@ -142,6 +142,7 @@ int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
 #define L_PITCH_MSB_FLD_2ND_SUBBUF REG_FLD_MSB_LSB(16, 16)
 #define L_PITCH_MSB_FLD_SRC_PITCH_MSB REG_FLD_MSB_LSB(3, 0)
 #define DISP_REG_OVL_PITCH(n) (0x0044 + 0x20 * (n))
+#define DISP_OVL_LAYER_CONST_BLD BIT(28)
 #define DISP_REG_OVL_CLIP(n) (0x04CUL + 0x20 * (n))
 #define OVL_L_CLIP_FLD_LEFT REG_FLD_MSB_LSB(7, 0)
 #define OVL_L_CLIP_FLD_RIGHT REG_FLD_MSB_LSB(15, 8)
@@ -2324,11 +2325,13 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 	if (pixel_blend_mode == DRM_MODE_BLEND_PIXEL_NONE)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + disp_reg_ovl_pitch,
-			1 << 28, 1 << 28);
+			DISP_OVL_LAYER_CONST_BLD,
+			DISP_OVL_LAYER_CONST_BLD);
 	else
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + disp_reg_ovl_pitch,
-			0 << 28, 1 << 28);
+			0,
+			DISP_OVL_LAYER_CONST_BLD);
 
 	if (pending->enable) {
 		u32 vrefresh;
