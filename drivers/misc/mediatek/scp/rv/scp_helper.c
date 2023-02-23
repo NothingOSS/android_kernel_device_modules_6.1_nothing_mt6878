@@ -63,6 +63,9 @@
 
 #define DEBUG_CMD_BUFFER_SZ  0x40000
 
+/* scp resume apmcu ipi debug flag */
+bool scp_ipi_resume_dbg;
+
 /* scp pm notify flag*/
 unsigned int scp_pm_notify_support;
 
@@ -177,10 +180,25 @@ static int scp_resume_cb(struct device *dev)
 {
 	int i = 0;
 	int ret = 0;
+	int mbox, j;
+	uint32_t ipi_index = 0;
 	bool state = false;
 	unsigned int msg;
 
 	pr_notice("[SCP] %s\n", __func__);
+
+	if (scp_ipi_resume_dbg)	{
+		for (mbox = 0; mbox < 5; mbox++) {
+			ipi_index = mtk_mbox_get_index_record(&scp_mboxdev, mbox);
+			for (j = 0; j < scp_mboxdev.recv_count; j++) {
+				if ((ipi_index & (0x1 << scp_mbox_pin_recv[j].pin_index))
+						&& scp_mbox_pin_recv[j].mbox == mbox)
+					pr_notice("[SCP] resume mbox%d ipi id =%d\n",
+						mbox,
+						scp_mbox_pin_recv[j].chan_id);
+			}
+		}
+	}
 
 	for (i = 0; i < IRQ_NUMBER; i++) {
 		ret = irq_get_irqchip_state(scp_ipi_irqs[i].irq_no,
@@ -210,9 +228,14 @@ static int scp_resume_cb(struct device *dev)
 static int scp_suspend_cb(struct device *dev)
 {
 	int ret;
+	int mbox = 0;
 	unsigned int msg;
 
 	pr_notice("[SCP] %s\n", __func__);
+	if (scp_ipi_resume_dbg) {
+		for (mbox = 0; mbox < 5; mbox++)
+			mtk_mbox_clr_index_record(&scp_mboxdev, mbox);
+	}
 	if (scp_pm_notify_support) {
 		msg = PM_AP_SUSPEND;
 		ret = mtk_ipi_send(&scp_ipidev, IPI_OUT_SCP_PM_NOTIFY_0,
@@ -1024,29 +1047,19 @@ enum ipi_debug_opt {
 	IPI_TRACKING_OFF,
 	IPI_TRACKING_ON,
 	IPIMON_SHOW,
+	IPI_TEST,
+	IPI_RESUME_DEBUG_ON,
+	IPI_RESUME_DEBUG_OFF,
 };
-
-static inline ssize_t scp_ipi_test_show(struct device *kobj
-			, struct device_attribute *attr, char *buf)
-{
-	unsigned int value = 0x5A5A;
-	int ret;
-
-	if (scp_ready[SCP_A_ID]) {
-		ret = mtk_ipi_send(&scp_ipidev, IPI_OUT_TEST_0, 0, &value,
-				   PIN_OUT_SIZE_TEST_0, 0);
-		return scnprintf(buf, PAGE_SIZE
-			, "SCP A ipi send ret=%d\n", ret);
-	} else
-		return scnprintf(buf, PAGE_SIZE, "SCP A is not ready\n");
-}
 
 static inline ssize_t scp_ipi_test_store(struct device *kobj
 		, struct device_attribute *attr, const char *buf, size_t n)
 {
 	unsigned int opt;
+	unsigned int value = 0x5A5A;
+	int ret, magic;
 
-	if (kstrtouint(buf, 10, &opt) != 0)
+	if (sscanf(buf, "%d %d", &magic, &opt) != 2)
 		return -EINVAL;
 
 	switch (opt) {
@@ -1057,6 +1070,26 @@ static inline ssize_t scp_ipi_test_store(struct device *kobj
 	case IPIMON_SHOW:
 		ipi_monitor_dump(&scp_ipidev);
 		break;
+	case IPI_TEST:
+		if (magic != 666)
+			return -EINVAL;
+
+		if (scp_ready[SCP_A_ID]) {
+			ret = mtk_ipi_send(&scp_ipidev, IPI_OUT_TEST_0, 0, &value,
+					PIN_OUT_SIZE_TEST_0, 0);
+		} else
+			return -EPERM;
+		break;
+	case IPI_RESUME_DEBUG_ON:
+		if (magic != 666)
+			return -EINVAL;
+		scp_ipi_resume_dbg = true;
+		break;
+	case IPI_RESUME_DEBUG_OFF:
+		if (magic != 666)
+			return -EINVAL;
+		scp_ipi_resume_dbg = false;
+		break;
 	default:
 		pr_info("cmd '%d' is not supported.\n", opt);
 		break;
@@ -1065,7 +1098,7 @@ static inline ssize_t scp_ipi_test_store(struct device *kobj
 	return n;
 }
 
-DEVICE_ATTR_RW(scp_ipi_test);
+DEVICE_ATTR_WO(scp_ipi_test);
 
 #endif
 
@@ -2832,6 +2865,7 @@ static int __init scp_init(void)
 {
 	int ret = 0;
 	int i = 0;
+	scp_ipi_resume_dbg = false;
 #if SCP_BOOT_TIME_OUT_MONITOR
 	scp_ready_timer[SCP_A_ID].tid = SCP_A_TIMER;
 	timer_setup(&(scp_ready_timer[SCP_A_ID].tl), scp_wait_ready_timeout, 0);

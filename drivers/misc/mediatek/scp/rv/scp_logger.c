@@ -727,8 +727,10 @@ static void scp_logger_notify_ws(struct work_struct *ws)
 		pr_notice("[SCP]logger initial fail, ipi ret=%d\n", ret);
 	}
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_DEBUG_SUPPORT)
-	if (scp_A_logger_enable)
+	if (scp_A_logger_enable) {
 		ret = scp_A_log_enable_set(scp_A_logger_enable);
+		scp_A_log_wakeup_set(scp_A_logger_enable);
+	}
 #endif
 	pr_notice("[SCP]logger re-enable ret=%d\n", ret);
 

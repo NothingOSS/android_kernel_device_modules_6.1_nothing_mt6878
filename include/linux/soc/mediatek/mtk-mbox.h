@@ -57,11 +57,13 @@ struct mtk_mbox_send_record {
  * write_count    :mbox write success count
  * busy_count     :mbox read success count
  * trig_irq_count :mbox trigger irq success count
+ * irq_record     :mbox isr receive record
  */
 struct mtk_mbox_record {
 	uint32_t write_count;
 	uint32_t busy_count;
 	uint32_t trig_irq_count;
+	uint32_t irq_record;
 };
 
 /*
@@ -297,6 +299,10 @@ int mtk_mbox_set_base_addr(struct mtk_mbox_device *mbdev, unsigned int mbox,
 unsigned int mtk_mbox_check_send_irq(struct mtk_mbox_device *mbdev,
 		unsigned int mbox, unsigned int pin_index);
 int mtk_mbox_probe(struct platform_device *pdev, struct mtk_mbox_device *mbdev,
+		unsigned int mbox);
+void mtk_mbox_clr_index_record(struct mtk_mbox_device *mbdev,
+		unsigned int mbox);
+unsigned int mtk_mbox_get_index_record(struct mtk_mbox_device *mbdev,
 		unsigned int mbox);
 int mtk_mbox_cb_register(struct mtk_mbox_device *mbdev, unsigned int pin_offset,
 		mbox_pin_cb_t mbox_pin_cb, void *prdata);

@@ -519,6 +519,8 @@ static irqreturn_t mtk_mbox_isr(int irq, void *dev_id)
 	mtk_mbox_set_lock(mbdev, MBOX_PIN_BUSY);
 	/*get irq status*/
 	irq_status = mtk_mbox_read_recv_irq(mbdev, mbox);
+	if (!minfo->record.irq_record)
+		minfo->record.irq_record = (uint32_t)irq_status;
 	irq_temp = 0;
 	spin_unlock_irqrestore(&minfo->mbox_lock, flags);
 
@@ -799,6 +801,34 @@ mtk_mbox_probe_fail:
 	return MBOX_CONFIG_ERR;
 }
 EXPORT_SYMBOL_GPL(mtk_mbox_probe);
+
+void mtk_mbox_clr_index_record(struct mtk_mbox_device *mbdev, unsigned int mbox)
+{
+	struct mtk_mbox_info *minfo;
+
+	if (!mbdev)
+		return;
+	if (mbox >= mbdev->count)
+		return;
+
+	minfo = &(mbdev->info_table[mbox]);
+	minfo->record.irq_record = 0;
+}
+EXPORT_SYMBOL_GPL(mtk_mbox_clr_index_record);
+
+unsigned int mtk_mbox_get_index_record(struct mtk_mbox_device *mbdev, unsigned int mbox)
+{
+	struct mtk_mbox_info *minfo;
+
+	if (!mbdev)
+		return 0;
+	if (mbox >= mbdev->count)
+		return 0;
+
+	minfo = &(mbdev->info_table[mbox]);
+	return minfo->record.irq_record;
+}
+EXPORT_SYMBOL_GPL(mtk_mbox_get_index_record);
 
 /*
  *mbox print receive pin function
