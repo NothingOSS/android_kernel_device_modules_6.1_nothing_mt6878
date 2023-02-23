@@ -587,6 +587,7 @@ static int battery_oc_throttling_probe(struct platform_device *pdev)
 			     to_fg_code(priv, priv->oc_thd_h));
 	__regmap_update_bits(priv->regmap, &priv->ocdata->fg_cur_lth,
 			     to_fg_code(priv, priv->oc_thd_l));
+	g_battery_oc_stop = 1;
 	dev_info(&pdev->dev, "%dmA(0x%x), %dmA(0x%x) Done\n",
 		 priv->oc_thd_h, to_fg_code(priv, priv->oc_thd_h),
 		 priv->oc_thd_l, to_fg_code(priv, priv->oc_thd_l));
