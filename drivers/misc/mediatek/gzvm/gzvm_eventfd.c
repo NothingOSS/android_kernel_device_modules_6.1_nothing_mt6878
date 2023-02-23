@@ -5,15 +5,11 @@
 
 #include <linux/eventfd.h>
 #include <linux/file.h>
-#include <linux/kvm.h>
-#include <linux/workqueue.h>
 #include <linux/syscalls.h>
 #include <linux/wait.h>
 #include <linux/poll.h>
 #include <linux/module.h>
 #include <linux/slab.h>
-#include <linux/version.h>
-#include <kvm/arm_vgic.h>
 
 #include "gzvm.h"
 
@@ -58,16 +54,10 @@ struct gzvm_kernel_irqfd_resampler {
 };
 
 struct gzvm_kernel_irqfd {
-	/* Used for MSI fast-path */
 	struct gzvm *gzvm;
 	wait_queue_entry_t wait;
 	/* Used for level IRQ fast-path */
-	/* Update side is protected by irqfds.lock */
-	struct kvm_kernel_irq_routing_entry irq_entry;
-	seqcount_spinlock_t irq_entry_sc;
-	/* Used for level IRQ fast-path */
 	int gsi;
-	struct work_struct inject;
 	/* The resampler used by this irqfd (resampler-only) */
 	struct gzvm_kernel_irqfd_resampler *resampler;
 	/* Eventfd notified on resample (resampler-only) */
@@ -85,35 +75,14 @@ static struct workqueue_struct *irqfd_cleanup_wq;
 
 /**
  * @brief irqfd to inject virtual interrupt
- *
- * @param gzvm
- * @param irq_source_id
  * @param irq This is spi interrupt number (starts from 0 instead of 32)
- * @param level
- * @param line_status
  */
 static void irqfd_set_irq(struct gzvm *gzvm, int irq_source_id, u32 irq,
 			       int level, bool line_status)
 {
 	if (level)
-		gzvm_vgic_inject_irq(gzvm, 0, KVM_ARM_IRQ_TYPE_SPI,
+		gzvm_vgic_inject_irq(gzvm, 0, GZVM_IRQ_TYPE_SPI,
 				     irq + VGIC_NR_PRIVATE_IRQS, level);
-}
-
-static void irqfd_inject(struct work_struct *work)
-{
-	struct gzvm_kernel_irqfd *irqfd =
-		container_of(work, struct gzvm_kernel_irqfd, inject);
-	struct gzvm *gzvm = irqfd->gzvm;
-
-	if (!irqfd->resampler) {
-		irqfd_set_irq(gzvm, KVM_USERSPACE_IRQ_SOURCE_ID, irqfd->gsi, 1,
-			      false);
-		irqfd_set_irq(gzvm, KVM_USERSPACE_IRQ_SOURCE_ID, irqfd->gsi, 0,
-			      false);
-	} else
-		irqfd_set_irq(gzvm, KVM_IRQFD_RESAMPLE_IRQ_SOURCE_ID,
-			      irqfd->gsi, 1, false);
 }
 
 /*
@@ -133,17 +102,13 @@ irqfd_resampler_ack(struct gzvm_irq_ack_notifier *ian)
 			struct gzvm_kernel_irqfd_resampler, notifier);
 	gzvm = resampler->gzvm;
 
-	GZVM_DEBUG("%s gsi=%u(%u)\n", __func__, resampler->notifier.gsi,
-		   resampler->notifier.gsi + VGIC_NR_PRIVATE_IRQS);
-
-	irqfd_set_irq(gzvm, KVM_IRQFD_RESAMPLE_IRQ_SOURCE_ID,
+	irqfd_set_irq(gzvm, GZVM_IRQFD_RESAMPLE_IRQ_SOURCE_ID,
 		      resampler->notifier.gsi, 0, false);
 
 	idx = srcu_read_lock(&gzvm->irq_srcu);
 
 	list_for_each_entry_srcu(irqfd, &resampler->list, resampler_link,
 	    srcu_read_lock_held(&gzvm->irq_srcu)) {
-		GZVM_DEBUG("eventfd_signal resamplefd\n");
 		eventfd_signal(irqfd->resamplefd, 1);
 	}
 
@@ -156,8 +121,6 @@ static void gzvm_register_irq_ack_notifier(struct gzvm *gzvm,
 	mutex_lock(&gzvm->irq_lock);
 	hlist_add_head_rcu(&ian->link, &gzvm->irq_ack_notifier_list);
 	mutex_unlock(&gzvm->irq_lock);
-	/* for x86 */
-	// gzvm_arch_post_irq_ack_notifier_list_update(gzvm);
 }
 
 static void gzvm_unregister_irq_ack_notifier(struct gzvm *gzvm,
@@ -167,8 +130,6 @@ static void gzvm_unregister_irq_ack_notifier(struct gzvm *gzvm,
 	hlist_del_init_rcu(&ian->link);
 	mutex_unlock(&gzvm->irq_lock);
 	synchronize_srcu(&gzvm->irq_srcu);
-	/* for x86 */
-	// gzvm_arch_post_irq_ack_notifier_list_update(gzvm);
 }
 
 static void
@@ -185,7 +146,7 @@ irqfd_resampler_shutdown(struct gzvm_kernel_irqfd *irqfd)
 	if (list_empty(&resampler->list)) {
 		list_del(&resampler->link);
 		gzvm_unregister_irq_ack_notifier(gzvm, &resampler->notifier);
-		irqfd_set_irq(gzvm, KVM_IRQFD_RESAMPLE_IRQ_SOURCE_ID,
+		irqfd_set_irq(gzvm, GZVM_IRQFD_RESAMPLE_IRQ_SOURCE_ID,
 			      resampler->notifier.gsi, 0, false);
 		kfree(resampler);
 	}
@@ -212,12 +173,6 @@ irqfd_shutdown(struct work_struct *work)
 	 * further events.
 	 */
 	eventfd_ctx_remove_wait_queue(irqfd->eventfd, &irqfd->wait, &cnt);
-
-	/*
-	 * We know no new events will be scheduled at this point, so block
-	 * until all previously outstanding events have completed
-	 */
-	flush_work(&irqfd->inject);
 
 	if (irqfd->resampler) {
 		irqfd_resampler_shutdown(irqfd);
@@ -250,8 +205,6 @@ irqfd_deactivate(struct gzvm_kernel_irqfd *irqfd)
 	if (!irqfd_is_active(irqfd))
 		return;
 
-	GZVM_DEBUG("%s (gsi=%u(%u))\n", __func__, irqfd->gsi,
-		   irqfd->gsi + VGIC_NR_PRIVATE_IRQS);
 	list_del_init(&irqfd->list);
 
 	queue_work(irqfd_cleanup_wq, &irqfd->shutdown);
@@ -266,34 +219,23 @@ irqfd_wakeup(wait_queue_entry_t *wait, unsigned int mode, int sync, void *key)
 	struct gzvm_kernel_irqfd *irqfd =
 		container_of(wait, struct gzvm_kernel_irqfd, wait);
 	__poll_t flags = key_to_poll(key);
-	// struct kvm_kernel_irq_routing_entry irq;
-	// unsigned seq;
-	// int idx;
 	struct gzvm *gzvm = irqfd->gzvm;
 	int ret = 0;
 
 	if (flags & EPOLLIN) {
-#ifdef eventfd_ctx_do_read
-		/* FIXME: b59e00dd8cda7 drain this eventfd, 5.10 does not have
-		 * this function exported, disable it for 5.10 workaround,
-		 * looks like not necessary to drain it.
-		 */
 		u64 cnt;
 
 		eventfd_ctx_do_read(irqfd->eventfd, &cnt);
-#endif
 		/* gzvm's irq injection is not blocked, don't need workq */
-		irqfd_set_irq(gzvm, KVM_USERSPACE_IRQ_SOURCE_ID, irqfd->gsi, 1,
+		irqfd_set_irq(gzvm, GZVM_USERSPACE_IRQ_SOURCE_ID, irqfd->gsi, 1,
 			      false);
 		ret = 1;
 	}
 
 	if (flags & EPOLLHUP) {
-		/* The eventfd is closing, detach from KVM */
+		/* The eventfd is closing, detach from GZVM */
 		unsigned long iflags;
 
-		GZVM_DEBUG("irqfd (gsi=%u(%u)) is closing\n", irqfd->gsi,
-			   irqfd->gsi + VGIC_NR_PRIVATE_IRQS);
 		spin_lock_irqsave(&gzvm->irqfds.lock, iflags);
 
 		/*
@@ -327,15 +269,8 @@ irqfd_ptable_queue_proc(struct file *file, wait_queue_head_t *wqh,
 #endif
 }
 
-/* Must be called under irqfds.lock */
-static void irqfd_update(struct gzvm *gzvm, struct gzvm_kernel_irqfd *irqfd)
-{
-	/* TODO: ? */
-	// GZVM_ERR("%s %d\n", __func__, __LINE__);
-}
-
 static int
-gzvm_irqfd_assign(struct gzvm *gzvm, struct kvm_irqfd *args)
+gzvm_irqfd_assign(struct gzvm *gzvm, struct gzvm_irqfd *args)
 {
 	struct gzvm_kernel_irqfd *irqfd, *tmp;
 	struct fd f;
@@ -353,12 +288,10 @@ gzvm_irqfd_assign(struct gzvm *gzvm, struct kvm_irqfd *args)
 	irqfd->gzvm = gzvm;
 	irqfd->gsi = args->gsi;
 	INIT_LIST_HEAD(&irqfd->list);
-	INIT_WORK(&irqfd->inject, irqfd_inject);
 	INIT_WORK(&irqfd->shutdown, irqfd_shutdown);
-	seqcount_spinlock_init(&irqfd->irq_entry_sc, &gzvm->irqfds.lock);
 
 	GZVM_DEBUG("%s gsi=%d fd=%d resample_fd=%d\n", __func__, args->gsi,
-		  args->fd, args->resamplefd);
+		 args->fd, args->resamplefd);
 
 	f = fdget(args->fd);
 	if (!f.file) {
@@ -374,7 +307,7 @@ gzvm_irqfd_assign(struct gzvm *gzvm, struct kvm_irqfd *args)
 
 	irqfd->eventfd = eventfd;
 
-	if (args->flags & KVM_IRQFD_FLAG_RESAMPLE) {
+	if (args->flags & GZVM_IRQFD_FLAG_RESAMPLE) {
 		struct gzvm_kernel_irqfd_resampler *resampler;
 
 		resamplefd = eventfd_ctx_fdget(args->resamplefd);
@@ -444,7 +377,6 @@ gzvm_irqfd_assign(struct gzvm *gzvm, struct kvm_irqfd *args)
 	}
 
 	idx = srcu_read_lock(&gzvm->irq_srcu);
-	irqfd_update(gzvm, irqfd);
 
 	list_add_tail(&irqfd->list, &gzvm->irqfds.items);
 
@@ -456,8 +388,10 @@ gzvm_irqfd_assign(struct gzvm *gzvm, struct kvm_irqfd *args)
 	 */
 	events = vfs_poll(f.file, &irqfd->pt);
 
+	/* In case there is already a pending event */
 	if (events & EPOLLIN)
-		schedule_work(&irqfd->inject);
+		irqfd_set_irq(gzvm, GZVM_IRQFD_RESAMPLE_IRQ_SOURCE_ID,
+			      irqfd->gsi, 1, false);
 
 	srcu_read_unlock(&gzvm->irq_srcu, idx);
 
@@ -514,7 +448,7 @@ void gzvm_notify_acked_irq(struct gzvm *gzvm, unsigned int gsi)
 /*
  * shutdown any irqfd's that match fd+gsi
  */
-static int gzvm_irqfd_deassign(struct gzvm *gzvm, struct kvm_irqfd *args)
+static int gzvm_irqfd_deassign(struct gzvm *gzvm, struct gzvm_irqfd *args)
 {
 	struct gzvm_kernel_irqfd *irqfd, *tmp;
 	struct eventfd_ctx *eventfd;
@@ -523,24 +457,11 @@ static int gzvm_irqfd_deassign(struct gzvm *gzvm, struct kvm_irqfd *args)
 	if (IS_ERR(eventfd))
 		return PTR_ERR(eventfd);
 
-	GZVM_DEBUG("%s gsi=%d fd=%d resample_fd=%d\n", __func__, args->gsi,
-		   args->fd, args->resamplefd);
-
 	spin_lock_irq(&gzvm->irqfds.lock);
 
 	list_for_each_entry_safe(irqfd, tmp, &gzvm->irqfds.items, list) {
-		if (irqfd->eventfd == eventfd && irqfd->gsi == args->gsi) {
-			/*
-			 * This clearing of irq_entry.type is needed for when
-			 * another thread calls kvm_irq_routing_update before
-			 * we flush workqueue below (we synchronize with
-			 * kvm_irq_routing_update using irqfds.lock).
-			 */
-			write_seqcount_begin(&irqfd->irq_entry_sc);
-			irqfd->irq_entry.type = 0;
-			write_seqcount_end(&irqfd->irq_entry_sc);
+		if (irqfd->eventfd == eventfd && irqfd->gsi == args->gsi)
 			irqfd_deactivate(irqfd);
-		}
 	}
 
 	spin_unlock_irq(&gzvm->irqfds.lock);
@@ -556,19 +477,20 @@ static int gzvm_irqfd_deassign(struct gzvm *gzvm, struct kvm_irqfd *args)
 	return 0;
 }
 
-int gzvm_irqfd(struct gzvm *gzvm, struct kvm_irqfd *args)
+int gzvm_irqfd(struct gzvm *gzvm, struct gzvm_irqfd *args)
 {
-	if (args->flags & ~(KVM_IRQFD_FLAG_DEASSIGN | KVM_IRQFD_FLAG_RESAMPLE))
+	if (args->flags &
+	    ~(GZVM_IRQFD_FLAG_DEASSIGN | GZVM_IRQFD_FLAG_RESAMPLE))
 		return -EINVAL;
 
-	if (args->flags & KVM_IRQFD_FLAG_DEASSIGN)
+	if (args->flags & GZVM_IRQFD_FLAG_DEASSIGN)
 		return gzvm_irqfd_deassign(gzvm, args);
 
 	return gzvm_irqfd_assign(gzvm, args);
 }
 
 /*
- * This function is called as the kvm VM fd is being released. Shutdown all
+ * This function is called as the gzvm VM fd is being released. Shutdown all
  * irqfds that still remain open
  */
 void gzvm_irqfd_release(struct gzvm *gzvm)
@@ -590,30 +512,13 @@ void gzvm_irqfd_release(struct gzvm *gzvm)
 }
 
 /*
- * Take note of a change in irq routing.
- * Caller must invoke synchronize_srcu(&gzvm->irq_srcu) afterwards.
- */
-void gzvm_irq_routing_update(struct gzvm *gzvm)
-{
-	struct gzvm_kernel_irqfd *irqfd;
-
-	spin_lock_irq(&gzvm->irqfds.lock);
-
-	list_for_each_entry(irqfd, &gzvm->irqfds.items, list) {
-		irqfd_update(gzvm, irqfd);
-	}
-
-	spin_unlock_irq(&gzvm->irqfds.lock);
-}
-
-/*
  * create a host-wide workqueue for issuing deferred shutdown requests
  * aggregated from all vm* instances. We need our own isolated
  * queue to ease flushing work items when a VM exits.
  */
 int gzvm_irqfd_init(void)
 {
-	irqfd_cleanup_wq = alloc_workqueue("kvm-irqfd-cleanup", 0, 0);
+	irqfd_cleanup_wq = alloc_workqueue("gzvm-irqfd-cleanup", 0, 0);
 	if (!irqfd_cleanup_wq)
 		return -ENOMEM;
 
@@ -694,7 +599,8 @@ gzvm_ioevent_in_range(struct gzvm_ioevent *p, gpa_t addr, int len, const void *v
 	return _val == p->datamatch;
 }
 
-static int gzvm_deassign_ioeventfd(struct gzvm *gzvm, struct kvm_ioeventfd *args)
+static int gzvm_deassign_ioeventfd(struct gzvm *gzvm,
+				   struct gzvm_ioeventfd *args)
 {
 	struct gzvm_ioevent *p, *tmp;
 	struct eventfd_ctx *evt_ctx;
@@ -705,7 +611,7 @@ static int gzvm_deassign_ioeventfd(struct gzvm *gzvm, struct kvm_ioeventfd *args
 	if (IS_ERR(evt_ctx))
 		return PTR_ERR(evt_ctx);
 
-	wildcard = !(args->flags & KVM_IOEVENTFD_FLAG_DATAMATCH);
+	wildcard = !(args->flags & GZVM_IOEVENTFD_FLAG_DATAMATCH);
 
 	mutex_lock(&gzvm->lock);
 
@@ -732,7 +638,7 @@ static int gzvm_deassign_ioeventfd(struct gzvm *gzvm, struct kvm_ioeventfd *args
 	return ret;
 }
 
-static int gzvm_assign_ioeventfd(struct gzvm *gzvm, struct kvm_ioeventfd *args)
+static int gzvm_assign_ioeventfd(struct gzvm *gzvm, struct gzvm_ioeventfd *args)
 {
 	struct eventfd_ctx *evt_ctx;
 	struct gzvm_ioevent *evt;
@@ -748,7 +654,7 @@ static int gzvm_assign_ioeventfd(struct gzvm *gzvm, struct kvm_ioeventfd *args)
 		.len = args->len,
 		.evt_ctx = evt_ctx,
 	};
-	if (args->flags & KVM_IOEVENTFD_FLAG_DATAMATCH) {
+	if (args->flags & GZVM_IOEVENTFD_FLAG_DATAMATCH) {
 		evt->datamatch = args->datamatch;
 		evt->wildcard = false;
 	} else {
@@ -779,7 +685,7 @@ err_free:
  * @retval true valid arguments
  * @retval false invalid arguments
  */
-static bool gzvm_ioeventfd_check_valid(struct kvm_ioeventfd *args)
+static bool gzvm_ioeventfd_check_valid(struct gzvm_ioeventfd *args)
 {
 	/* must be natural-word sized, or 0 to ignore length */
 	switch (args->len) {
@@ -798,36 +704,32 @@ static bool gzvm_ioeventfd_check_valid(struct kvm_ioeventfd *args)
 		return false;
 
 	/* check for extra flags that we don't understand */
-	if (args->flags & ~KVM_IOEVENTFD_VALID_FLAG_MASK)
+	if (args->flags & ~GZVM_IOEVENTFD_VALID_FLAG_MASK)
 		return false;
 
 	/* ioeventfd with no length can't be combined with DATAMATCH */
-	if (!args->len && (args->flags & KVM_IOEVENTFD_FLAG_DATAMATCH))
+	if (!args->len && (args->flags & GZVM_IOEVENTFD_FLAG_DATAMATCH))
 		return false;
 
 	/* gzvm does not support pio bus ioeventfd */
-	if (args->flags & KVM_IOEVENTFD_FLAG_PIO)
+	if (args->flags & GZVM_IOEVENTFD_FLAG_PIO)
 		return -EINVAL;
 
 	return true;
 }
 
 /**
- * @brief KVM_IOEVENTFD, register ioevent to ioevent list
- *
- * @param gzvm
- * @param kvm_ioevent
- * @return long
+ * @brief GZVM_IOEVENTFD, register ioevent to ioevent list
  */
-int gzvm_ioeventfd(struct gzvm *gzvm, struct kvm_ioeventfd *args)
+int gzvm_ioeventfd(struct gzvm *gzvm, struct gzvm_ioeventfd *args)
 {
-	pr_info("%s ioaddr=0x%llx, iolen=%x, eventfd=%d, flags=%x\n", __func__,
-		args->addr, args->len, args->fd, args->flags);
+	GZVM_DEBUG("%s ioaddr=0x%llx, iolen=%x, eventfd=%d, flags=%x\n", __func__,
+		 args->addr, args->len, args->fd, args->flags);
 
 	if (gzvm_ioeventfd_check_valid(args) == false)
 		return -EINVAL;
 
-	if (args->flags & KVM_IOEVENTFD_FLAG_DEASSIGN)
+	if (args->flags & GZVM_IOEVENTFD_FLAG_DEASSIGN)
 		return gzvm_deassign_ioeventfd(gzvm, args);
 	return gzvm_assign_ioeventfd(gzvm, args);
 }
@@ -845,7 +747,7 @@ bool gzvm_ioevent_write(struct gzvm_vcpu *vcpu, __u64 addr, int len,
 
 	list_for_each_entry(e, &vcpu->gzvm->ioevents, list) {
 		if (gzvm_ioevent_in_range(e, addr, len, val)) {
-			eventfd_signal(e->evt_ctx, 92);
+			eventfd_signal(e->evt_ctx, 1);
 			return true;
 		}
 	}

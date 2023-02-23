@@ -1,7 +1,12 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 config MTK_GZVM
-	tristate "MTK GZVM enable"
+	tristate "GenieZone Hypervisor driver for guest VM operation"
+	depends on ARM64
+	depends on KVM
 	help
-	  This is used to support MTK pVM solution.
-	  It is used to control MTK_GZVM
-	  and it is used in the program for ifdef operations.
-	  Spawn VM by geniezone.
+	  This is a driver for running guest VMs on MTK GenieZone hypervisor.
+	  This driver exports kvm-like interfaces for VMM (e.g., crosvm) in
+	  order to operate guest VMs on GenieZone hypervisor.
+
+	  If unsure, say N.

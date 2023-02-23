@@ -15,23 +15,9 @@
 #include <kvm/arm_vgic.h>
 
 #include "gzvm.h"
-#include "gzvm_ioctl.h"
 
 static DEFINE_MUTEX(gzvm_list_lock);
 static LIST_HEAD(gzvm_list);
-
-/* FIXME: fpga's kernel config CONFIG_KVM=0 and cause missing symbol.
- * create another copy to workaround this.
- */
-#ifndef CONFIG_KVM
-static inline kvm_pfn_t gzvm_gfn_to_pfn_memslot(struct kvm_memory_slot *slot, gfn_t gfn)
-{
-	GZVM_ERR("we don't support gzvm without CONFIG_KVM\n");
-	return (kvm_pfn_t)(~(kvm_pfn_t)0);
-}
-
-#define gfn_to_pfn_memslot gzvm_gfn_to_pfn_memslot
-#endif
 
 /**
  * @brief Populate pa to buffer until full
@@ -92,28 +78,28 @@ static int fill_constituents(struct mem_region_addr_range *consti,
  * @param memslot
  * @return int
  */
-static int register_memslot_addr_range(struct gzvm *gzvm, struct gzvm_memslot *memslot)
+static int
+register_memslot_addr_range(struct gzvm *gzvm, struct gzvm_memslot *memslot)
 {
-	/* TODO */
-	struct gzvm_memory_region *region;
+	struct gzvm_memory_region_ranges *region;
 	u32 buf_size;
 	int max_nr_consti, remain_pages;
 	gfn_t gfn, gfn_end;
 
-	buf_size = PAGE_SIZE;
+	/* TODO: a proper size? */
+	buf_size = PAGE_SIZE * 2;
 	region = alloc_pages_exact(buf_size, GFP_KERNEL);
 	if (!region)
 		return -ENOMEM;
 	max_nr_consti = (buf_size - sizeof(*region)) /
 			sizeof(struct mem_region_addr_range);
-	GZVM_DEBUG("buf_size=%u, max_nr_consti=%d\n", buf_size, max_nr_consti);
 
 	region->slot = memslot->slot.id;
 	remain_pages = memslot->slot.npages;
 	gfn = memslot->slot.base_gfn;
 	gfn_end = gfn + remain_pages;
-	GZVM_DEBUG("%s %d ipa=%llx, ipa_end=%llx, remain_pages=%d\n", __func__, __LINE__,
-		gfn_to_phys(gfn), gfn_to_phys(gfn_end), remain_pages);
+	GZVM_DEBUG("%s ipa=%llx, ipa_end=%llx, remain_pages=%d\n", __func__,
+		 gfn_to_phys(gfn), gfn_to_phys(gfn_end), remain_pages);
 	while (gfn < gfn_end) {
 		struct arm_smccc_res res;
 		int nr_pages;
@@ -128,10 +114,9 @@ static int register_memslot_addr_range(struct gzvm *gzvm, struct gzvm_memslot *m
 		remain_pages -= nr_pages;
 		gfn += nr_pages;
 
-		gzvm_hypcall_wrapper(MT_SMC_FC_GZVM_SET_MEMREGION, gzvm->vm_id,
+		gzvm_hypcall_wrapper(MT_HVC_GZVM_SET_MEMREGION, gzvm->vm_id,
 			     buf_size, virt_to_phys(region), 0, 0, 0, 0, &res);
-		GZVM_DEBUG("%s a0=%lx, a1=%lx, a2=%lx, a3=%lx\n", __func__,
-			res.a0, res.a1, res.a2, res.a3);
+
 		if (res.a0 != 0) {
 			GZVM_ERR("Failed to register memregion to hypervisor\n");
 			free_pages_exact(region, buf_size);
@@ -146,13 +131,13 @@ static int register_memslot_addr_range(struct gzvm *gzvm, struct gzvm_memslot *m
  * @brief Set memory region of guest
  *
  * @param gzvm struct gzvm
- * @param mem struct kvm_userspace_memory_region: input from user
+ * @param mem struct gzvm_userspace_memory_region: input from user
  * @retval -EXIO memslot is out-of-range
  * @retval -EFAULT  cannot find corresponding vma
  * @retval -EINVAL  region size and vma size does not match
  */
 static int gzvm_vm_ioctl_set_memory_region(struct gzvm *gzvm,
-					struct kvm_userspace_memory_region *mem)
+				struct gzvm_userspace_memory_region *mem)
 {
 	struct vm_area_struct *vma;
 	struct gzvm_memslot *memslot;
@@ -160,11 +145,11 @@ static int gzvm_vm_ioctl_set_memory_region(struct gzvm *gzvm,
 	__u32 slot;
 
 	GZVM_DEBUG("slot=%u, flags=%x, gpa=%llx, size=%llu, uva=%llx\n",
-		mem->slot, mem->flags, mem->guest_phys_addr, mem->memory_size,
-		mem->userspace_addr);
+		 mem->slot, mem->flags, mem->guest_phys_addr, mem->memory_size,
+		 mem->userspace_addr);
 
 	slot = mem->slot;
-	if (slot > GZVM_MAX_MEM_REGION)
+	if (slot >= GZVM_MAX_MEM_REGION)
 		return -ENXIO;
 	memslot = &gzvm->memslot[slot];
 
@@ -197,20 +182,17 @@ static int gzvm_vm_ioctl_set_memory_region(struct gzvm *gzvm,
 static bool is_irq_valid(u32 irq, u32 irq_type)
 {
 	switch (irq_type) {
-	case KVM_ARM_IRQ_TYPE_CPU:	/*  0 ~ 15: SGI */
-		if (likely(irq <= KVM_ARM_IRQ_CPU_FIQ))
+	case GZVM_IRQ_TYPE_CPU:	/*  0 ~ 15: SGI */
+		if (likely(irq <= GZVM_IRQ_CPU_FIQ))
 			return true;
-		GZVM_ERR("KVM_ARM_IRQ_TYPE_CPU w/ irq = %u\n", irq);
 		break;
-	case KVM_ARM_IRQ_TYPE_PPI:	/* 16 ~ 31: PPI */
+	case GZVM_IRQ_TYPE_PPI:	/* 16 ~ 31: PPI */
 		if (likely(irq >= VGIC_NR_SGIS && irq < VGIC_NR_PRIVATE_IRQS))
 			return true;
-		GZVM_ERR("KVM_ARM_IRQ_TYPE_PPI w/ irq = %u\n", irq);
 		break;
-	case KVM_ARM_IRQ_TYPE_SPI:	/* 32 ~ : SPT */
+	case GZVM_IRQ_TYPE_SPI:	/* 32 ~ : SPT */
 		if (likely(irq >= VGIC_NR_PRIVATE_IRQS))
 			return true;
-		GZVM_ERR("KVM_ARM_IRQ_TYPE_SPI w/ irq = %u\n", irq);
 		break;
 	default:
 		return false;
@@ -230,16 +212,16 @@ static bool is_irq_valid(u32 irq, u32 irq_type)
 int gzvm_vgic_inject_irq(struct gzvm *gzvm, unsigned int vcpu_idx, u32 irq_type,
 			 u32 irq, bool level)
 {
-	unsigned long a1 = assembel_vm_vcpu_tuple(gzvm->vm_id, vcpu_idx);
+	unsigned long a1 = assemble_vm_vcpu_tuple(gzvm->vm_id, vcpu_idx);
 	struct arm_smccc_res res;
 
-	pr_info("%s vcpu=%u irq=%u irq_type=%d level=%d\n", __func__,
+	GZVM_DEBUG("%s vcpu=%u irq=%u irq_type=%d level=%d\n", __func__,
 		 vcpu_idx, irq, irq_type, level);
 
 	if (!unlikely(is_irq_valid(irq, irq_type)))
 		return -EINVAL;
 
-	gzvm_hypcall_wrapper(MT_SMC_FC_GZVM_IRQ_LINE, a1, irq, level,
+	gzvm_hypcall_wrapper(MT_HVC_GZVM_IRQ_LINE, a1, irq, level,
 			     0, 0, 0, 0, &res);
 	if (res.a0) {
 		GZVM_ERR("Failed to set IRQ level (%d) to irq#%u on vcpu %d with ret=%d\n",
@@ -251,17 +233,17 @@ int gzvm_vgic_inject_irq(struct gzvm *gzvm, unsigned int vcpu_idx, u32 irq_type,
 }
 
 static int gzvm_vm_ioctl_irq_line(struct gzvm *gzvm,
-				  struct kvm_irq_level *irq_level)
+				  struct gzvm_irq_level *irq_level)
 {
 	u32 irq = irq_level->irq;
 	unsigned int irq_type, vcpu_idx, irq_num;
 	bool level = irq_level->level;
 
-	irq_type = (irq >> KVM_ARM_IRQ_TYPE_SHIFT) & KVM_ARM_IRQ_TYPE_MASK;
-	vcpu_idx = (irq >> KVM_ARM_IRQ_VCPU_SHIFT) & KVM_ARM_IRQ_VCPU_MASK;
-	vcpu_idx += ((irq >> KVM_ARM_IRQ_VCPU2_SHIFT) & KVM_ARM_IRQ_VCPU2_MASK) *
-		(KVM_ARM_IRQ_VCPU_MASK + 1);
-	irq_num = (irq >> KVM_ARM_IRQ_NUM_SHIFT) & KVM_ARM_IRQ_NUM_MASK;
+	irq_type = (irq >> GZVM_IRQ_TYPE_SHIFT) & GZVM_IRQ_TYPE_MASK;
+	vcpu_idx = (irq >> GZVM_IRQ_VCPU_SHIFT) & GZVM_IRQ_VCPU_MASK;
+	vcpu_idx += ((irq >> GZVM_IRQ_VCPU2_SHIFT) & GZVM_IRQ_VCPU2_MASK) *
+		(GZVM_IRQ_VCPU_MASK + 1);
+	irq_num = (irq >> GZVM_IRQ_NUM_SHIFT) & GZVM_IRQ_NUM_MASK;
 
 	return gzvm_vgic_inject_irq(gzvm, vcpu_idx, irq_num, irq_type, level);
 }
@@ -283,7 +265,8 @@ static int gzvm_vm_ioctl_create_device(struct gzvm *gzvm, void __user *argp)
 	}
 
 	GZVM_DEBUG("%s type:%d addr:0x%llx, size=0x%llx", __func__,
-		 gzvm_dev->type, gzvm_dev->dev_addr, gzvm_dev->dev_reg_size);
+		 gzvm_dev->dev_type, gzvm_dev->dev_addr,
+		 gzvm_dev->dev_reg_size);
 	if (gzvm_dev->attr_addr != 0 && gzvm_dev->attr_size != 0) {
 		dev_data = alloc_pages_exact(gzvm_dev->attr_size, GFP_KERNEL);
 		if (!dev_data) {
@@ -298,7 +281,7 @@ static int gzvm_vm_ioctl_create_device(struct gzvm *gzvm, void __user *argp)
 		gzvm_dev->attr_addr = virt_to_phys(dev_data);
 	}
 
-	gzvm_hypcall_wrapper(MT_SMC_FC_GZVM_CREATE_DEVICE, gzvm->vm_id,
+	gzvm_hypcall_wrapper(MT_HVC_GZVM_CREATE_DEVICE, gzvm->vm_id,
 			     virt_to_phys(gzvm_dev), 0, 0, 0, 0, 0, &res);
 	ret = res.a0;
 err_free_dev_data:
@@ -318,31 +301,28 @@ err_free_dev:
  * @return long
  */
 static long gzvm_vm_ioctl(struct file *filp, unsigned int ioctl,
-			 unsigned long arg)
+			  unsigned long arg)
 {
 	long ret = 0;
 	void __user *argp = (void __user *)arg;
 	struct gzvm *gzvm = filp->private_data;
 
 	switch (ioctl) {
-	case KVM_CREATE_VCPU:
 	case GZVM_CREATE_VCPU:
 		ret = gzvm_vm_ioctl_create_vcpu(gzvm, arg);
 		break;
-	case KVM_SET_USER_MEMORY_REGION:
 	case GZVM_SET_USER_MEMORY_REGION: {
-		struct kvm_userspace_memory_region kvm_userspace_mem;
+		struct gzvm_userspace_memory_region userspace_mem;
 
 		ret = -EFAULT;
-		if (copy_from_user(&kvm_userspace_mem, argp,
-						sizeof(kvm_userspace_mem)))
+		if (copy_from_user(&userspace_mem, argp,
+						sizeof(userspace_mem)))
 			goto out;
-		ret = gzvm_vm_ioctl_set_memory_region(gzvm, &kvm_userspace_mem);
+		ret = gzvm_vm_ioctl_set_memory_region(gzvm, &userspace_mem);
 		break;
 	}
-	case KVM_IRQ_LINE:
 	case GZVM_IRQ_LINE: {
-		struct kvm_irq_level irq_event;
+		struct gzvm_irq_level irq_event;
 
 		ret = -EFAULT;
 		if (copy_from_user(&irq_event, argp, sizeof(irq_event)))
@@ -351,28 +331,17 @@ static long gzvm_vm_ioctl(struct file *filp, unsigned int ioctl,
 		ret = gzvm_vm_ioctl_irq_line(gzvm, &irq_event);
 		break;
 	}
-	case KVM_CREATE_DEVICE:
 	case GZVM_CREATE_DEVICE: {
 		ret = gzvm_vm_ioctl_create_device(gzvm, argp);
 		if (ret)
 			goto out;
 		break;
 	}
-	case KVM_ARM_PREFERRED_TARGET: {
-		/* TODO: remove this */
-		GZVM_DEBUG("%s %d KVM_ARM_PREFERRED_TARGET\n", __func__, __LINE__);
-		ret = 0;
-		break;
-	}
-	case KVM_CHECK_EXTENSION: {
-		/* TODO: remove this */
-		GZVM_DEBUG("%s %d KVM_CHECK_EXTENSION\n", __func__, __LINE__);
-		ret = 0;
-		break;
-	}
-	case KVM_IOEVENTFD:
+	case GZVM_CHECK_EXTENSION:
+		return gzvm_dev_ioctl_check_extension(gzvm, arg);
+
 	case GZVM_IOEVENTFD: {
-		struct kvm_ioeventfd data;
+		struct gzvm_ioeventfd data;
 
 		ret = -EFAULT;
 		if (copy_from_user(&data, argp, sizeof(data)))
@@ -380,9 +349,8 @@ static long gzvm_vm_ioctl(struct file *filp, unsigned int ioctl,
 		ret = gzvm_ioeventfd(gzvm, &data);
 		break;
 	}
-	case KVM_IRQFD:
 	case GZVM_IRQFD: {
-		struct kvm_irqfd data;
+		struct gzvm_irqfd data;
 
 		ret = -EFAULT;
 		if (copy_from_user(&data, argp, sizeof(data)))
@@ -390,8 +358,32 @@ static long gzvm_vm_ioctl(struct file *filp, unsigned int ioctl,
 		ret = gzvm_irqfd(gzvm, &data);
 		break;
 	}
+	case GZVM_ARM_PREFERRED_TARGET:
+		return 0;
+	case GZVM_SET_MEMORY_REGION:
+	case GZVM_GET_DIRTY_LOG:
+	case GZVM_SET_NR_MMU_PAGES:
+	case GZVM_GET_NR_MMU_PAGES:
+	case GZVM_CREATE_IRQCHIP:
+	case GZVM_IRQ_LINE_STATUS:
+	case GZVM_REGISTER_COALESCED_MMIO:
+	case GZVM_UNREGISTER_COALESCED_MMIO:
+	case GZVM_ASSIGN_PCI_DEVICE:
+	case GZVM_SET_GSI_ROUTING:
+	case GZVM_ASSIGN_DEV_IRQ:
+	case GZVM_DEASSIGN_PCI_DEVICE:
+	case GZVM_DEASSIGN_DEV_IRQ:
+	case GZVM_ARM_MTE_COPY_TAGS:
+	case GZVM_ENABLE_CAP:
+	case GZVM_MEMORY_ENCRYPT_OP:
+	case GZVM_MEMORY_ENCRYPT_REG_REGION:
+	case GZVM_MEMORY_ENCRYPT_UNREG_REGION:
+	case GZVM_CLEAR_DIRTY_LOG:
+		/* TODO */
+		return -EOPNOTSUPP;
+
 	default:
-		// ret = gzvm_arch_vm_ioctl(filp, ioctl, arg);
+		GZVM_ERR("%s invalid ioctl=0x%x\n", __func__, ioctl);
 		ret = -EINVAL;
 	}
 out:
@@ -407,31 +399,27 @@ static void gzvm_destroy_vcpus(struct gzvm *gzvm)
 {
 	int i;
 
-	GZVM_DEBUG("%s %d", __func__, __LINE__);
-	for (i = 0; i < KVM_MAX_VCPUS; i++) {
+	for (i = 0; i < GZVM_MAX_VCPUS; i++) {
 		gzvm_destroy_vcpu(gzvm->vcpus[i]);
 		gzvm->vcpus[i] = NULL;
 	}
 }
 
-static int gzvm_destroy_vm_smc(gzvm_id_t vm_id)
+static int gzvm_destroy_vm_hyp(gzvm_id_t vm_id)
 {
 	struct arm_smccc_res res;
 
-	gzvm_hypcall_wrapper(MT_SMC_FC_GZVM_DESTROY_VM, vm_id, 0, 0, 0, 0, 0, 0,
+	gzvm_hypcall_wrapper(MT_HVC_GZVM_DESTROY_VM, vm_id, 0, 0, 0, 0, 0, 0,
 			     &res);
 
-	GZVM_DEBUG("%s a0=%lx, a1=%lx, a2=%lx, a3=%lx\n", __func__,
-		res.a0, res.a1, res.a2, res.a3);
 	return 0;
 }
 
 static void gzvm_destroy_vm(struct gzvm *gzvm)
 {
+	GZVM_INFO("VM-%u is going to be destroyed\n", gzvm->vm_id);
 	gzvm_destroy_vcpus(gzvm);
-	gzvm_destroy_vm_smc(gzvm->vm_id);
-	if (gzvm->mem_ptr)
-		free_pages_exact(gzvm->mem_ptr, 0);
+	gzvm_destroy_vm_hyp(gzvm->vm_id);
 	mutex_lock(&gzvm_list_lock);
 	list_del(&gzvm->vm_list);
 	mutex_unlock(&gzvm_list_lock);
@@ -453,15 +441,12 @@ static const struct file_operations gzvm_vm_fops = {
 	.llseek		= noop_llseek,
 };
 
-static int gzvm_create_vm_smc(void)
+static int gzvm_create_vm_hyp(void)
 {
 	struct arm_smccc_res res;
 
-	gzvm_hypcall_wrapper(MT_SMC_FC_GZVM_CREATE_VM, 0, 0, 0, 0, 0, 0, 0,
-			     &res);
+	gzvm_hypcall_wrapper(MT_HVC_GZVM_CREATE_VM, 0, 0, 0, 0, 0, 0, 0, &res);
 
-	GZVM_DEBUG("%s a0=%lx, a1=%lx, a2=%lx, a3=%lx\n", __func__,
-		res.a0, res.a1, res.a2, res.a3);
 	if (res.a0 != 0)
 		return -EFAULT;
 	return res.a1;
@@ -476,11 +461,10 @@ static struct gzvm *gzvm_create_vm(unsigned long vm_type)
 	if (IS_ERR(gzvm))
 		return ERR_PTR(-ENOMEM);
 
-	ret = gzvm_create_vm_smc();
-	if (ret < 0) {
-		GZVM_ERR("Failed to create vm in gz hypervisor.\n");
+	ret = gzvm_create_vm_hyp();
+	if (ret < 0)
 		goto err;
-	}
+
 	gzvm->vm_id = ret;
 	gzvm->mm = current->mm;
 	mutex_init(&gzvm->lock);
@@ -491,7 +475,7 @@ static struct gzvm *gzvm_create_vm(unsigned long vm_type)
 		GZVM_ERR("Failed to initialize eventfd\n");
 		goto err;
 	}
-	GZVM_DEBUG("%s got vmid=%u\n", __func__, gzvm->vm_id);
+	GZVM_INFO("VM-%u is created\n", gzvm->vm_id);
 
 	mutex_lock(&gzvm_list_lock);
 	list_add(&gzvm->vm_list, &gzvm_list);
@@ -511,7 +495,7 @@ err:
  * @param vm_type
  * @return int fd of vm, negative if error
  */
-int gzvm_dev_ioctl_creat_vm(unsigned long vm_type)
+int gzvm_dev_ioctl_create_vm(unsigned long vm_type)
 {
 	struct gzvm *gzvm;
 	int ret;

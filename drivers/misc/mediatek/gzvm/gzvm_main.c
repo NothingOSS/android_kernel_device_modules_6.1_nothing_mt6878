@@ -8,23 +8,64 @@
 #include <linux/device.h>
 #include <linux/file.h>
 #include <linux/kdev_t.h>
-#include <linux/kvm.h>
-#include <linux/kvm_host.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/slab.h>
 
 #include "gzvm.h"
-#include "gzvm_ioctl.h"
 
-void gzvm_hypcall_wrapper(unsigned long a0, unsigned long a1,
-			unsigned long a2, unsigned long a3, unsigned long a4,
-			unsigned long a5, unsigned long a6, unsigned long a7,
-			struct arm_smccc_res *res)
+static void (*invoke_gzvm_fn)(unsigned long, unsigned long, unsigned long,
+			      unsigned long, unsigned long, unsigned long,
+			      unsigned long, unsigned long,
+			      struct arm_smccc_res *);
+
+static void gzvm_hvc(unsigned long a0, unsigned long a1, unsigned long a2,
+		      unsigned long a3, unsigned long a4, unsigned long a5,
+		      unsigned long a6, unsigned long a7,
+		      struct arm_smccc_res *res)
+{
+	arm_smccc_hvc(a0, a1, a2, a3, a4, a5, a6, a7, res);
+}
+
+static void gzvm_smc(unsigned long a0, unsigned long a1, unsigned long a2,
+		      unsigned long a3, unsigned long a4, unsigned long a5,
+		      unsigned long a6, unsigned long a7,
+		      struct arm_smccc_res *res)
 {
 	arm_smccc_smc(a0, a1, a2, a3, a4, a5, a6, a7, res);
-	//arm_smccc_1_1_hvc();
-	// arm_smccc_1_2_smc(&args, &res);
+}
+
+static void probe_gzvm_conduit(void)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_hvc(MT_HVC_GZVM_PROBE, 0, 0, 0, 0, 0, 0, 0, &res);
+	if (res.a0 == 0)
+		invoke_gzvm_fn = gzvm_hvc;
+	else {
+		GZVM_DEBUG("Using smc conduit\n");
+		invoke_gzvm_fn = gzvm_smc;
+	}
+}
+
+void gzvm_hypcall_wrapper(unsigned long a0, unsigned long a1, unsigned long a2,
+			  unsigned long a3, unsigned long a4, unsigned long a5,
+			  unsigned long a6, unsigned long a7,
+			  struct arm_smccc_res *res)
+{
+	invoke_gzvm_fn(a0, a1, a2, a3, a4, a5, a6, a7, res);
+}
+
+/**
+ * @brief Check if given capability is support or not
+ *
+ * @param user_args GZVM_CAP_*
+ * @return 1: support, 0: not support
+ */
+long gzvm_dev_ioctl_check_extension(struct gzvm *gzvm, unsigned long args)
+{
+	/* TODO */
+	return 0;
 }
 
 static long gzvm_dev_ioctl(struct file *filp, unsigned int cmd,
@@ -33,18 +74,18 @@ static long gzvm_dev_ioctl(struct file *filp, unsigned int cmd,
 	long ret = -EINVAL;
 
 	switch (cmd) {
-	case KVM_CREATE_VM:
+	case GZVM_GET_API_VERSION:
+		return GZVM_DRIVER_VERSION;
 	case GZVM_CREATE_VM:
-		ret = gzvm_dev_ioctl_creat_vm(user_args);
+		ret = gzvm_dev_ioctl_create_vm(user_args);
 		break;
-	// Need to know the size to allocate
-	case KVM_GET_VCPU_MMAP_SIZE:
-		/* TODO: remove this */
-		GZVM_DEBUG("KVM_GET_VCPU_MMAP_SIZE\n");
+	case GZVM_GET_VCPU_MMAP_SIZE:
 		if (user_args)
 			goto out;
 		ret = GZVM_VCPU_MMAP_SIZE;
 		break;
+	case GZVM_CHECK_EXTENSION:
+		return gzvm_dev_ioctl_check_extension(NULL, user_args);
 	default:
 		ret = -EINVAL;
 	}
@@ -68,6 +109,7 @@ static int gzvm_init(void)
 {
 	int ret;
 
+	/* TODO: Using device tree to enable this driver */
 	/* TODO: probe if gz can support gzvm commands */
 	ret = gzvm_irqfd_init();
 	if (ret) {
@@ -77,9 +119,12 @@ static int gzvm_init(void)
 	ret = misc_register(&gzvm_dev);
 	if (ret) {
 		GZVM_ERR("misc device register failed\n");
-		// goto out_unreg;
+		return ret;
 	}
-	GZVM_INFO("%s %s completes\n", __FILE__, __func__);
+
+	probe_gzvm_conduit();
+
+	GZVM_INFO("gzvm driver init completes\n");
 
 	return ret;
 }
@@ -94,5 +139,5 @@ module_init(gzvm_init);
 module_exit(gzvm_exit);
 
 MODULE_AUTHOR("MediaTek");
-MODULE_DESCRIPTION("GenieZone kvm-like interface");
+MODULE_DESCRIPTION("GenieZone interface for VMM");
 MODULE_LICENSE("GPL");
