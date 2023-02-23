@@ -531,30 +531,31 @@ static int push_msgfifo(struct mtk_raw_device *dev,
 }
 
 static void raw_handle_tg_grab_err(struct mtk_raw_device *raw_dev,
-				   int frame_seq_no);
-static void raw_handle_dma_err(struct mtk_raw_device *raw_dev);
+				   unsigned int fh_cookie);
+static void raw_handle_dma_err(struct mtk_raw_device *raw_dev,
+			       unsigned int fh_cookie);
 static void raw_handle_tg_overrun_err(struct mtk_raw_device *raw_dev,
-				      int frame_seq_no);
+				      unsigned int fh_cookie);
+
 static void raw_handle_error(struct mtk_raw_device *raw_dev,
 			     struct mtk_camsys_irq_info *data)
 {
 	int err_status = data->e.err_status;
-	int frame_idx = data->frame_idx_inner;
+	unsigned int fh_cookie = data->frame_idx_inner;
 
 	/* Show DMA errors in detail */
 	if (err_status & FBIT(CAMCTL_DMA_ERR_ST))
-		raw_handle_dma_err(raw_dev);
+		raw_handle_dma_err(raw_dev, fh_cookie);
 
 	/* Show TG register for more error detail*/
 	if (err_status & FBIT(CAMCTL_TG_GRABERR_ST))
-		raw_handle_tg_grab_err(raw_dev, frame_idx);
+		raw_handle_tg_grab_err(raw_dev, fh_cookie);
 
 	if (err_status & FBIT(CAMCTL_TG_OVRUN_ST))
-		raw_handle_tg_overrun_err(raw_dev, frame_idx);
+		raw_handle_tg_overrun_err(raw_dev, fh_cookie);
 
-	if (err_status)
-		dev_info(raw_dev->dev, "%s: err_status:0x%x\n",
-			 __func__, err_status);
+	dev_info(raw_dev->dev, "%s: err_status:0x%x\n",
+			__func__, err_status);
 }
 
 static bool is_sub_sample_sensor_timing(struct mtk_raw_device *dev)
@@ -823,14 +824,14 @@ static irqreturn_t mtk_thread_irq_raw(int irq, void *data)
 
 #define MAX_RETRY_SENSOR_CNT	2
 static void raw_handle_tg_grab_err(struct mtk_raw_device *raw_dev,
-				   int frame_seq_no)
+				   unsigned int fh_cookie)
 {
 	int cnt;
 
 	cnt = raw_dev->tg_grab_err_handle_cnt++;
 
 	dev_info_ratelimited(raw_dev->dev, "%s: cnt=%d, seq 0x%x\n",
-			     __func__, cnt, frame_seq_no);
+			     __func__, cnt, fh_cookie);
 
 	if (cnt <= MAX_RETRY_SENSOR_CNT)
 		dump_tg_setting(raw_dev, "GRAB_ERR");
@@ -838,36 +839,37 @@ static void raw_handle_tg_grab_err(struct mtk_raw_device *raw_dev,
 	if (cnt < MAX_RETRY_SENSOR_CNT)
 		do_engine_callback(raw_dev->engine_cb, reset_sensor,
 				   raw_dev->cam, CAMSYS_ENGINE_RAW, raw_dev->id,
-				   frame_seq_no);
+				   fh_cookie);
 	else if (cnt == MAX_RETRY_SENSOR_CNT)
 		do_engine_callback(raw_dev->engine_cb, dump_request,
 				   raw_dev->cam, CAMSYS_ENGINE_RAW, raw_dev->id,
-				   frame_seq_no);
+				   fh_cookie);
 }
 
-static void raw_handle_dma_err(struct mtk_raw_device *raw_dev)
+static void raw_handle_dma_err(struct mtk_raw_device *raw_dev,
+			       unsigned int fh_cookie)
 {
 	// TODO
 }
 
 static void raw_handle_tg_overrun_err(struct mtk_raw_device *raw_dev,
-				      int frame_seq_no)
+				      unsigned int fh_cookie)
 {
 	int cnt;
 
 	cnt = raw_dev->tg_overrun_handle_cnt++;
 
 	dev_info_ratelimited(raw_dev->dev, "%s: cnt=%d, seq 0x%x\n",
-			     __func__, cnt, frame_seq_no);
+			     __func__, cnt, fh_cookie);
 
 	if (cnt < MAX_RETRY_SENSOR_CNT)
 		do_engine_callback(raw_dev->engine_cb, reset_sensor,
 				   raw_dev->cam, CAMSYS_ENGINE_RAW, raw_dev->id,
-				   frame_seq_no);
+				   fh_cookie);
 	else if (cnt == MAX_RETRY_SENSOR_CNT)
 		do_engine_callback(raw_dev->engine_cb, dump_request,
 				   raw_dev->cam, CAMSYS_ENGINE_RAW, raw_dev->id,
-				   frame_seq_no);
+				   fh_cookie);
 }
 
 static int mtk_raw_pm_suspend_prepare(struct mtk_raw_device *dev)

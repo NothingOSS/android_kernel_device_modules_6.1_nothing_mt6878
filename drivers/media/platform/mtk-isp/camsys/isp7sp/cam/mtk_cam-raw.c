@@ -26,7 +26,6 @@
 #include "mtk_cam-raw_regs.h"
 #include "mtk_cam-seninf-if.h"
 #include "mtk_cam-dmadbg.h"
-#include "mtk_cam-raw_debug.h"
 #include "mtk_cam-hsf.h"
 #include "mtk_cam-trace.h"
 
@@ -391,6 +390,51 @@ void update_scq_start_period(struct mtk_raw_device *dev, int scq_ms)
 		__func__, val, readl(dev->base + REG_CAMCQ_SCQ_START_PERIOD), scq_ms);
 }
 
+void set_topdebug_rdyreq(struct mtk_raw_device *dev, u32 event)
+{
+	u32 val = event << 16 | 0xa << 12;
+
+	writel(val, dev->base + REG_CAMCTL_DBG_SET);
+	writel(event, dev->base + REG_CAMCTL_DBG_SET2);
+	writel(val, dev->yuv_base + REG_CAMCTL_DBG_SET);
+	writel(event, dev->yuv_base + REG_CAMCTL_DBG_SET2);
+}
+
+void dump_topdebug_rdyreq(struct mtk_raw_device *dev)
+{
+	static const u32 debug_sel[] = {
+		/* req group 1~7 */
+		0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6,
+		/* rdy group 1~7 */
+		0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE,
+		/* latched_events */
+		0xF,
+	};
+	void __iomem *dbg_set, *dbg_port;
+	u32 set;
+	int i;
+
+	dbg_set = dev->base + REG_CAMCTL_DBG_SET;
+	dbg_port = dev->base + REG_CAMCTL_DBG_PORT;
+
+	set = (readl(dbg_set) & 0xfff000) | 0x1;
+	for (i = 0; i < ARRAY_SIZE(debug_sel); i++) {
+		writel(set | debug_sel[i] << 8, dbg_set);
+		dev_info(dev->dev, "RAW debug_set 0x%08x port 0x%08x\n",
+			 readl(dbg_set), readl(dbg_port));
+	}
+
+	dbg_set = dev->yuv_base + REG_CAMCTL_DBG_SET;
+	dbg_port = dev->yuv_base + REG_CAMCTL_DBG_PORT;
+
+	set = (readl(dbg_set) & 0xfff000) | 0x1;
+	for (i = 0; i < ARRAY_SIZE(debug_sel); i++) {
+		writel(set | debug_sel[i] << 8, dbg_set);
+		dev_info(dev->dev, "YUV debug_set 0x%08x port 0x%08x\n",
+			 readl(dbg_set), readl(dbg_port));
+	}
+}
+
 void stream_on(struct mtk_raw_device *dev, int on)
 {
 	if (on) {
@@ -401,6 +445,7 @@ void stream_on(struct mtk_raw_device *dev, int on)
 			toggle_db(dev);
 
 			set_tg_vfdata_en(dev, 1);
+			set_topdebug_rdyreq(dev, TG_OVERRUN);
 		} else
 			toggle_db(dev);
 	} else {
@@ -533,31 +578,91 @@ static int push_msgfifo(struct mtk_raw_device *dev,
 	return 0;
 }
 
+struct reg_to_dump {
+	const char *name;
+	unsigned int reg;
+};
+
+#define ADD_DMA(name)	{ #name, REG_ ## name ## _BASE + DMA_OFFSET_ERR_STAT }
+
+static void dump_raw_dma_err_st(struct mtk_raw_device *raw)
+{
+	static const struct reg_to_dump raw_dma_list[] = {
+		ADD_DMA(RAWI_R2), ADD_DMA(UFDI_R2),
+		ADD_DMA(RAWI_R5), ADD_DMA(UFDI_R5),
+		ADD_DMA(BPCI_R1), ADD_DMA(BPCI_R2),
+		ADD_DMA(LSCI_R1), ADD_DMA(PDI_R1),
+		ADD_DMA(AAI_R1), ADD_DMA(CACI_R1),
+		ADD_DMA(IMGO_R1), ADD_DMA(FHO_R1),
+		ADD_DMA(UFEO_R1), ADD_DMA(FLKO_R1),
+		ADD_DMA(PDO_R1), ADD_DMA(AAO_R1),
+		ADD_DMA(AAHO_R1), ADD_DMA(AFO_R1),
+		ADD_DMA(TSFSO_R1), ADD_DMA(LTMSO_R1),
+		ADD_DMA(LTMSHO_R1), ADD_DMA(DRZB2NO_R1),
+		ADD_DMA(DRZB2NBO_R1), ADD_DMA(DRZB2NCO_R1),
+	};
+	int i = 0, err_st;
+
+	for (i = 0; i < ARRAY_SIZE(raw_dma_list); i++) {
+		err_st = readl_relaxed(raw->base + raw_dma_list[i].reg);
+		if (err_st & 0xffff) {
+			dev_info(raw->dev, "%s: %s: 0x%x\n",  __func__,
+				raw_dma_list[i].name, err_st);
+		}
+	}
+}
+
+static void dump_yuv_dma_err_st(struct mtk_yuv_device *yuv)
+{
+	static const struct reg_to_dump yuv_dma_list[] = {
+		ADD_DMA(YUVO_R1), ADD_DMA(YUVBO_R1),
+		ADD_DMA(YUVCO_R1), ADD_DMA(YUVDO_R1),
+		ADD_DMA(YUVO_R3), ADD_DMA(YUVBO_R3),
+		ADD_DMA(YUVCO_R3), ADD_DMA(YUVDO_R3),
+		ADD_DMA(YUVO_R2), ADD_DMA(YUVBO_R2),
+		ADD_DMA(YUVO_R4), ADD_DMA(YUVBO_R4),
+		ADD_DMA(YUVO_R5), ADD_DMA(YUVBO_R5),
+		ADD_DMA(RZH1N2TBO_R1), ADD_DMA(RZH1N2TBO_R3),
+		ADD_DMA(TCYSO_R1), ADD_DMA(RZH1N2TO_R2),
+		ADD_DMA(DRZS4NO_R1), ADD_DMA(DRZH2NO_R8),
+		ADD_DMA(DRZS4NO_R3), ADD_DMA(RZH1N2TO_R3),
+		ADD_DMA(RZH1N2TO_R1), ADD_DMA(RGBWI_R1),
+	};
+	int i = 0, err_st;
+
+	for (i = 0; i < ARRAY_SIZE(yuv_dma_list); i++) {
+		err_st = readl_relaxed(yuv->base + yuv_dma_list[i].reg);
+		if (err_st & 0xffff) {
+			dev_info(yuv->dev, "%s: %s: 0x%x\n",  __func__,
+				yuv_dma_list[i].name, err_st);
+		}
+	}
+}
+
 static void raw_handle_tg_grab_err(struct mtk_raw_device *raw_dev,
-				   int frame_seq_no);
-static void raw_handle_dma_err(struct mtk_raw_device *raw_dev);
+				   unsigned int fh_cookie);
+static void raw_handle_dma_err(struct mtk_raw_device *raw_dev,
+			       unsigned int fh_cookie);
 static void raw_handle_tg_overrun_err(struct mtk_raw_device *raw_dev,
-				      int frame_seq_no);
+				      unsigned int fh_cookie);
+
 static void raw_handle_error(struct mtk_raw_device *raw_dev,
 			     struct mtk_camsys_irq_info *data)
 {
 	int err_status = data->e.err_status;
-	int frame_idx = data->frame_idx_inner;
+	unsigned int fh_cookie = data->frame_idx_inner;
 
-	/* Show DMA errors in detail */
 	if (err_status & FBIT(CAMCTL_DMA_ERR_ST))
-		raw_handle_dma_err(raw_dev);
+		raw_handle_dma_err(raw_dev, fh_cookie);
 
-	/* Show TG register for more error detail*/
 	if (err_status & FBIT(CAMCTL_TG_GRABERR_ST))
-		raw_handle_tg_grab_err(raw_dev, frame_idx);
+		raw_handle_tg_grab_err(raw_dev, fh_cookie);
 
 	if (err_status & FBIT(CAMCTL_TG_OVRUN_ST))
-		raw_handle_tg_overrun_err(raw_dev, frame_idx);
+		raw_handle_tg_overrun_err(raw_dev, fh_cookie);
 
-	if (err_status)
-		dev_info(raw_dev->dev, "%s: err_status:0x%x\n",
-			 __func__, err_status);
+	dev_info(raw_dev->dev, "%s: err_status:0x%x\n",
+			__func__, err_status);
 }
 
 static bool is_sub_sample_sensor_timing(struct mtk_raw_device *dev)
@@ -826,14 +931,14 @@ static irqreturn_t mtk_thread_irq_raw(int irq, void *data)
 
 #define MAX_RETRY_SENSOR_CNT	2
 static void raw_handle_tg_grab_err(struct mtk_raw_device *raw_dev,
-				   int frame_seq_no)
+				   unsigned int fh_cookie)
 {
 	int cnt;
 
 	cnt = raw_dev->tg_grab_err_handle_cnt++;
 
 	dev_info_ratelimited(raw_dev->dev, "%s: cnt=%d, seq 0x%x\n",
-			     __func__, cnt, frame_seq_no);
+			     __func__, cnt, fh_cookie);
 
 	if (cnt <= MAX_RETRY_SENSOR_CNT)
 		dump_tg_setting(raw_dev, "GRAB_ERR");
@@ -841,36 +946,42 @@ static void raw_handle_tg_grab_err(struct mtk_raw_device *raw_dev,
 	if (cnt < MAX_RETRY_SENSOR_CNT)
 		do_engine_callback(raw_dev->engine_cb, reset_sensor,
 				   raw_dev->cam, CAMSYS_ENGINE_RAW, raw_dev->id,
-				   frame_seq_no);
+				   fh_cookie);
 	else if (cnt == MAX_RETRY_SENSOR_CNT)
 		do_engine_callback(raw_dev->engine_cb, dump_request,
 				   raw_dev->cam, CAMSYS_ENGINE_RAW, raw_dev->id,
-				   frame_seq_no);
+				   fh_cookie);
 }
 
-static void raw_handle_dma_err(struct mtk_raw_device *raw_dev)
+static void raw_handle_dma_err(struct mtk_raw_device *raw_dev,
+			       unsigned int fh_cookie)
 {
 	// TODO
+	dump_raw_dma_err_st(raw_dev);
 }
 
+#define OVERRUN_DUMP_CNT 3
 static void raw_handle_tg_overrun_err(struct mtk_raw_device *raw_dev,
-				      int frame_seq_no)
+				      unsigned int fh_cookie)
 {
 	int cnt;
 
 	cnt = raw_dev->tg_overrun_handle_cnt++;
 
 	dev_info_ratelimited(raw_dev->dev, "%s: cnt=%d, seq 0x%x\n",
-			     __func__, cnt, frame_seq_no);
+			     __func__, cnt, fh_cookie);
+
+	if (cnt < OVERRUN_DUMP_CNT)
+		dump_topdebug_rdyreq(raw_dev);
 
 	if (cnt < MAX_RETRY_SENSOR_CNT)
 		do_engine_callback(raw_dev->engine_cb, reset_sensor,
 				   raw_dev->cam, CAMSYS_ENGINE_RAW, raw_dev->id,
-				   frame_seq_no);
+				   fh_cookie);
 	else if (cnt == MAX_RETRY_SENSOR_CNT)
 		do_engine_callback(raw_dev->engine_cb, dump_request,
 				   raw_dev->cam, CAMSYS_ENGINE_RAW, raw_dev->id,
-				   frame_seq_no);
+				   fh_cookie);
 }
 
 static int mtk_raw_pm_suspend_prepare(struct mtk_raw_device *dev)
@@ -1303,10 +1414,14 @@ static irqreturn_t mtk_irq_yuv(int irq, void *data)
 
 	//if (unlikely(debug_raw))
 	if (CAM_DEBUG_ENABLED(RAW_INT))
-		if (irq_status || err_status || err_status)
+		if (irq_status || err_status)
 			dev_info(yuv->dev, "YUV-INT:0x%x(err:0x%x) INT2/4/5 0x%x/0x%x/0x%x\n",
 			irq_status, err_status,
 			wdma_done_status, drop_status, dma_ofl_status);
+
+	if (CAM_DEBUG_ENABLED(RAW_INT))
+		if (err_status)
+			dump_yuv_dma_err_st(yuv);
 
 	/* trace */
 	if (irq_status || wdma_done_status)
