@@ -669,7 +669,7 @@ static int job_buffer_done(struct mtk_cam_job *job)
 	int ret;
 	int i;
 
-	timeout = msecs_to_jiffies(100);
+	timeout = msecs_to_jiffies(250);
 	engine_to_handle = _get_master_engines(job->used_engine);
 
 	do {
@@ -1322,6 +1322,7 @@ static int job_print_warn_desc(struct mtk_cam_job *job, const char *desc,
 
 static void trigger_error_dump(struct mtk_cam_job *job, const char *desc)
 {
+	struct mtk_cam_ctx *ctx = job->src_ctx;
 	char warn_desc[64];
 
 	job_print_warn_desc(job, desc, warn_desc);
@@ -1331,6 +1332,7 @@ static void trigger_error_dump(struct mtk_cam_job *job, const char *desc)
 
 		job_dump_engines_debug_status(job);
 
+		mtk_cam_event_error(&ctx->cam_ctrl, desc);
 		WRAP_AEE_EXCEPTION(desc, warn_desc);
 	}
 }
@@ -1359,6 +1361,11 @@ static void job_dump(struct mtk_cam_job *job, int seq_no)
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct device *dev = ctx->cam->dev;
 
+	if (atomic_read(&ctx->cam_ctrl.stopped)) {
+		dev_info(dev, "%s: stopped, skip dump\n", __func__);
+		return;
+	}
+
 	dump_job_info(job);
 	dev_info(dev, "%s: (dump seq 0x%x) ISP_STATE %s\n",
 		 __func__, seq_no,
@@ -1371,6 +1378,11 @@ static void job_dump_mstream(struct mtk_cam_job *job, int seq_no)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct device *dev = ctx->cam->dev;
+
+	if (atomic_read(&ctx->cam_ctrl.stopped)) {
+		dev_info(dev, "%s: stopped, skip dump\n", __func__);
+		return;
+	}
 
 	dump_job_info(job);
 	dev_info(dev, "%s: (dump seq 0x%x) ISP_STATE = %s/%s\n",
@@ -3688,14 +3700,9 @@ static int job_debug_dump(struct mtk_cam_job *job, const char *desc,
 	} else {
 		if (mtk_cam_debug_dump(dbg, raw_pipe_idx, &p))
 			goto DUMP_FAILED;
-		else {
-			struct v4l2_event event = {
-				.type = V4L2_EVENT_REQUEST_DUMPED,
-			};
-
-			event.u.frame_sync.frame_sequence = p.sequence;
-			mtk_cam_ctx_send_raw_event(ctx, &event);
-		}
+		else
+			mtk_cam_event_request_dumped(&ctx->cam_ctrl,
+						     p.sequence);
 	}
 
 	return 0;

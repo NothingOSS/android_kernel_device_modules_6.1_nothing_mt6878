@@ -127,6 +127,7 @@ int mtk_cam_debug_exp_dump(struct mtk_cam_debug *dbg,
 
 #endif //IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 
+#define MSG_VSYNC_TIMEOUT	"Camsys: Vsync timeout"
 #define MSG_COMPOSE_ERROR	"Camsys: compose error"
 #define MSG_DEQUE_ERROR		"Camsys: No P1 done"
 #define MSG_NORMAL_DUMP		"Camsys: normal dump"

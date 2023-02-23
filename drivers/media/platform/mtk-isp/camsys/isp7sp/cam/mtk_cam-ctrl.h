@@ -55,7 +55,7 @@ struct mtk_cam_watchdog {
 
 	u64 last_sof_ts;
 	int req_seq;
-	int req_seq_cnt;
+	int req_repeat_cnt;
 
 	struct completion monitor_complete;
 	struct completion work_complete;
@@ -162,6 +162,9 @@ void mtk_cam_ctrl_job_composed(struct mtk_cam_ctrl *cam_ctrl,
 
 void mtk_cam_event_frame_sync(struct mtk_cam_ctrl *cam_ctrl,
 			      unsigned int frame_seq_no);
+void mtk_cam_event_error(struct mtk_cam_ctrl *cam_ctrl, const char *msg);
+void mtk_cam_event_request_dumped(struct mtk_cam_ctrl *cam_ctrl,
+				  unsigned int frame_seq_no);
 
 static inline
 void mtk_cam_ctrl_apply_by_state(struct mtk_cam_ctrl *ctrl, int enable)

@@ -122,34 +122,91 @@ mtk_cam_ctrl_get_job(struct mtk_cam_ctrl *ctrl,
 	return found ? job : NULL;
 }
 
+static void log_event(const char *func, int ctx_id, struct v4l2_event *e)
+{
+	switch (e->type) {
+	case V4L2_EVENT_EOS:
+		pr_info("%s: ctx-%d\n", func, ctx_id);
+		break;
+	case V4L2_EVENT_FRAME_SYNC:
+	case V4L2_EVENT_REQUEST_DUMPED:
+		pr_info("%s: ctx-%d seq %u\n", func, ctx_id,
+			e->u.frame_sync.frame_sequence);
+		break;
+	case V4L2_EVENT_ERROR:
+		pr_info("%s: ctx-%d %s\n", func, ctx_id, e->u.data);
+		break;
+	default:
+		pr_info("%s: ctx-%d event type %d\n", func, ctx_id, e->type);
+		break;
+	}
+}
+
 static void mtk_cam_event_eos(struct mtk_cam_ctrl *cam_ctrl)
 {
+	struct mtk_cam_ctx *ctx = cam_ctrl->ctx;
 	struct v4l2_event event = {
 		.type = V4L2_EVENT_EOS,
 	};
-	if (cam_ctrl->ctx->has_raw_subdev)
-		mtk_cam_ctx_send_raw_event(cam_ctrl->ctx, &event);
+
+	if (ctx->has_raw_subdev)
+		mtk_cam_ctx_send_raw_event(ctx, &event);
 	else
-		mtk_cam_ctx_send_sv_event(cam_ctrl->ctx, &event);
+		mtk_cam_ctx_send_sv_event(ctx, &event);
 
 	if (CAM_DEBUG_ENABLED(V4L2_EVENT))
-		pr_info("%s: ctx %d\n", __func__, cam_ctrl->ctx->stream_id);
+		log_event(__func__, ctx->stream_id, &event);
 }
 
 void mtk_cam_event_frame_sync(struct mtk_cam_ctrl *cam_ctrl,
 			      unsigned int frame_seq_no)
 {
+	struct mtk_cam_ctx *ctx = cam_ctrl->ctx;
 	struct v4l2_event event = {
 		.type = V4L2_EVENT_FRAME_SYNC,
 		.u.frame_sync.frame_sequence = frame_seq_no,
 	};
-	if (cam_ctrl->ctx->has_raw_subdev)
-		mtk_cam_ctx_send_raw_event(cam_ctrl->ctx, &event);
+
+	if (ctx->has_raw_subdev)
+		mtk_cam_ctx_send_raw_event(ctx, &event);
 	else
-		mtk_cam_ctx_send_sv_event(cam_ctrl->ctx, &event);
+		mtk_cam_ctx_send_sv_event(ctx, &event);
 
 	if (CAM_DEBUG_ENABLED(V4L2_EVENT))
-		pr_info("%s: %u\n", __func__, frame_seq_no);
+		log_event(__func__, ctx->stream_id, &event);
+}
+
+void mtk_cam_event_request_dumped(struct mtk_cam_ctrl *cam_ctrl,
+				  unsigned int frame_seq_no)
+{
+	struct mtk_cam_ctx *ctx = cam_ctrl->ctx;
+	struct v4l2_event event = {
+		.type = V4L2_EVENT_REQUEST_DUMPED,
+		.u.frame_sync.frame_sequence = frame_seq_no,
+	};
+
+	if (ctx->has_raw_subdev)
+		mtk_cam_ctx_send_raw_event(ctx, &event);
+
+	if (CAM_DEBUG_ENABLED(V4L2_EVENT))
+		log_event(__func__, ctx->stream_id, &event);
+}
+
+void mtk_cam_event_error(struct mtk_cam_ctrl *cam_ctrl, const char *msg)
+{
+	struct mtk_cam_ctx *ctx = cam_ctrl->ctx;
+	struct v4l2_event event = {
+		.type = V4L2_EVENT_ERROR,
+	};
+
+	strncpy(event.u.data, msg, min(strlen(msg), sizeof(event.u.data)));
+	event.u.data[63] = '\0';
+
+	if (ctx->has_raw_subdev)
+		mtk_cam_ctx_send_raw_event(ctx, &event);
+
+	if (CAM_DEBUG_ENABLED(V4L2_EVENT))
+		log_event(__func__, ctx->stream_id, &event);
 }
 
 static void dump_runtime_info(struct mtk_cam_ctrl_runtime_info *info)
@@ -157,8 +214,10 @@ static void dump_runtime_info(struct mtk_cam_ctrl_runtime_info *info)
 	if (!info->apply_hw_by_FSM)
 		pr_info("runtime: by_FSM is off\n");
 
-	pr_info("runtime: ack 0x%x out/in 0x%x/0x%x\n",
+	pr_info("[%s] ack 0x%x out/in 0x%x/0x%x\n", __func__,
 		info->ack_seq_no, info->outer_seq_no, info->inner_seq_no);
+	pr_info("[%s] sof_ts_ns %lld tmp_inner_seq_no 0x%x\n", __func__,
+		info->sof_ts_ns, info->tmp_inner_seq_no);
 }
 
 static void _ctrl_send_event_locked(struct mtk_cam_ctrl *ctrl,
@@ -315,7 +374,6 @@ static void ctrl_vsync_preprocess(struct mtk_cam_ctrl *ctrl,
 				  struct mtk_camsys_irq_info *irq_info,
 				  struct vsync_result *vsync_res)
 {
-
 	if (vsync_update(&ctrl->vsync_col, engine_type, engine_id, vsync_res))
 		return;
 
@@ -797,6 +855,11 @@ PUT_CTRL:
 static void reset_runtime_info(struct mtk_cam_ctrl_runtime_info *info)
 {
 	memset(info, 0, sizeof(*info));
+
+	info->ack_seq_no = -1;
+	info->outer_seq_no = -1;
+	info->inner_seq_no = -1;
+	info->tmp_inner_seq_no = -1;
 }
 
 void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
@@ -1033,7 +1096,12 @@ static void mtk_cam_watchdog_sensor_worker(struct work_struct *work)
 	if (atomic_read(&wd->reset_sensor_cnt) < WATCHDOG_MAX_SENSOR_RETRY_CNT)
 		goto EXIT_WORK;
 
+	dump_runtime_info(&ctrl->r_info);
+
 	pr_info("%s: TODO. dump INT_EN/VS status for debug\n", __func__);
+
+	mtk_cam_event_error(ctrl, MSG_VSYNC_TIMEOUT);
+	WRAP_AEE_EXCEPTION(MSG_VSYNC_TIMEOUT, "watchdog timeout");
 
 EXIT_WORK:
 	complete(&wd->work_complete);
@@ -1144,6 +1212,10 @@ static int mtk_cam_watchdog_monitor_vsync(struct mtk_cam_watchdog *wd)
 		return 0;
 	}
 
+	dev_info_ratelimited(ctx->cam->dev,
+			     "%s: vsync may timeout, last ts = %lld\n",
+			     __func__, wd->last_sof_ts);
+
 	try_launch_watchdog_sensor_worker(wd, 1);
 	return -1;
 }
@@ -1169,13 +1241,13 @@ static int mtk_cam_watchdog_monitor_job(struct mtk_cam_watchdog *wd)
 
 	if (req_seq != wd->req_seq) {
 		wd->req_seq = req_seq;
-		wd->req_seq_cnt = 0;
+		wd->req_repeat_cnt = 0;
 		return 0;
 	}
 
 	/* note: to avoid long exposure issue */
-	++wd->req_seq_cnt;
-	if (wd->req_seq_cnt < 2)
+	++wd->req_repeat_cnt;
+	if (wd->req_repeat_cnt < 2)
 		return 0;
 
 	completed = try_wait_for_completion(&wd->work_complete);
@@ -1193,8 +1265,8 @@ static int mtk_cam_watchdog_monitor_job(struct mtk_cam_watchdog *wd)
 
 SKIP_SCHEDULE_WORK:
 	dev_info_ratelimited(ctx->cam->dev,
-		 "%s:ctx-%d req_seq %d skip schedule watchdog work running %d, dumped %d\n",
-		 __func__, ctx->stream_id, req_seq,
+		 "%s:ctx-%d req_seq %d(repeat %d) skip schedule watchdog work running %d, dumped %d\n",
+		 __func__, ctx->stream_id, req_seq, wd->req_repeat_cnt,
 		 !completed, atomic_read(&wd->dump_job));
 	return -1;
 }
@@ -1297,13 +1369,17 @@ static int launch_monitor_work(struct mtk_cam_watchdog *wd)
 
 int mtk_cam_watchdog_start(struct mtk_cam_watchdog *wd, bool monitor_vsync)
 {
+	struct mtk_cam_ctrl *ctrl =
+		container_of(wd, struct mtk_cam_ctrl, watchdog);
+
 	atomic_set(&wd->started, 1);
 
 	wd->monitor_vsync = monitor_vsync;
 
-	wd->last_sof_ts = ktime_get_boottime_ns();
+	wd->last_sof_ts = mtk_cam_ctrl_latest_sof(ctrl);
+
 	wd->req_seq = 0;
-	wd->req_seq_cnt = 0;
+	wd->req_repeat_cnt = 0;
 
 	launch_monitor_work(wd);
 
