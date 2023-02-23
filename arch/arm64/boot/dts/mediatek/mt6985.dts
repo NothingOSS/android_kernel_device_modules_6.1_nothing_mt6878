@@ -831,6 +831,11 @@
 		enable = <1>;
 	};
 
+	flt: flt {
+		compatible = "mediatek,flt";
+		mode = <1>;
+	};
+
 	sspm: sspm@1c340000 {
 		compatible = "mediatek,sspm";
 		reg = <0 0x1c300000 0 0x30000>,
