@@ -91,7 +91,7 @@
 #define CALI_CONFIG_ELEM_CNT           (3)
 #define PROPNAME_SCP_CLK_DBG_VER       "clk-dbg-ver"
 #define PROPNAME_U2_FM_SUPPORT         "ccf-fmeter-support"
-#define PROPNAME_ONLY_SUPPORT_CKGEN_FM "only-support-ckgen-fmeter"
+#define PROPNAME_NOT_SUPPORT_VLP_FM    "not-support-vlp-fmeter"
 #define PROPNAME_SCP_DVFS_SECURE       "secure-access"
 #define PROPNAME_SCP_DVFS_FLAG         "scp-dvfs-flag"
 
@@ -1593,7 +1593,7 @@ static unsigned int __init _get_ulposc_clk_by_fmeter_wrapper(void)
 	return FM_FREQ2CNT(result_freq) / 1000;
 }
 
-static unsigned int __init get_ulposc_clk_by_fmeter_ckgen(void)
+static unsigned int __init get_ulposc_clk_by_fmeter_topck_abist(void)
 {
 	unsigned int result = 0;
 	unsigned int clk26cali_0_bk = 0, clk26cali_1_bk = 0;
@@ -1687,8 +1687,8 @@ static unsigned int __init get_ulposc_clk_by_fmeter_vlp(void)
 
 static unsigned int __init get_vlp_ulposc_clk_by_fmeter(void)
 {
-	if (g_dvfs_dev.only_support_ckgen_fmeter)
-		return get_ulposc_clk_by_fmeter_ckgen();
+	if (g_dvfs_dev.not_support_vlp_fmeter)
+		return get_ulposc_clk_by_fmeter_topck_abist();
 	return get_ulposc_clk_by_fmeter_vlp();
 }
 
@@ -2667,16 +2667,14 @@ static int __init mt_scp_dts_init(struct platform_device *pdev)
 	 * 2. Only wehn mt_get_fmeter_freq havn't been provide, get_ulposc_clk_by_fmeter*() can
 	 * be used temporarily.
 	 */
-	g_dvfs_dev.only_support_ckgen_fmeter = of_property_read_bool(node,
-					PROPNAME_ONLY_SUPPORT_CKGEN_FM);
+	g_dvfs_dev.not_support_vlp_fmeter = of_property_read_bool(node,
+					PROPNAME_NOT_SUPPORT_VLP_FM);
 	g_dvfs_dev.ccf_fmeter_support = of_property_read_bool(node, PROPNAME_U2_FM_SUPPORT);
 	if (!g_dvfs_dev.ccf_fmeter_support) {
 		pr_notice("[%s]: fmeter api havn't been provided, use legacy one\n", __func__);
 	} else {
 		/* enum FMETER_TYPE */
-		if (g_dvfs_dev.only_support_ckgen_fmeter)
-			g_dvfs_dev.ccf_fmeter_type = CKGEN;
-		else if (g_dvfs_dev.vlpck_support)
+		if (g_dvfs_dev.vlpck_support && !g_dvfs_dev.not_support_vlp_fmeter)
 			g_dvfs_dev.ccf_fmeter_type = VLPCK;
 		else
 			g_dvfs_dev.ccf_fmeter_type = ABIST;

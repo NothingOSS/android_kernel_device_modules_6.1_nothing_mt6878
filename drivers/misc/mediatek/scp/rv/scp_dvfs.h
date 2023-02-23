@@ -247,7 +247,7 @@ struct scp_dvfs_hw {
 	struct ulposc_cali_hw ulposc_hw;
 	struct scp_clk_hw *clk_hw;
 	bool ccf_fmeter_support; /* Has CCF provided fmeter api to use? */
-	bool only_support_ckgen_fmeter;
+	bool not_support_vlp_fmeter;
 	int ccf_fmeter_id;
 	int ccf_fmeter_type;
 	bool vlpck_support; /* Using 2-phase calibration if vlpck_bypass_phase1 not set */
