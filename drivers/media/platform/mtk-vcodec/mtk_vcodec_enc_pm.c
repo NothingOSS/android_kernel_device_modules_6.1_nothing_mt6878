@@ -148,10 +148,8 @@ int mtk_vcodec_init_enc_pm(struct mtk_vcodec_dev *mtkdev)
 	dev = &pdev->dev;
 
 	node = of_parse_phandle(dev->of_node, "mediatek,larbs", 0);
-	if (!node) {
+	if (!node)
 		mtk_v4l2_err("no mediatek,larb found");
-		return -1;
-	}
 	for (larb_index = 0; larb_index < MTK_VENC_MAX_LARB_COUNT; larb_index++) {
 		node = of_parse_phandle(pdev->dev.of_node, "mediatek,larbs", larb_index);
 		if (!node)
