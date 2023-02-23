@@ -186,7 +186,7 @@ struct mtk_cam_ctx;
 struct mtk_cam_job_ops {
 	/* job control */
 	void (*cancel)(struct mtk_cam_job *job);
-	int (*dump)(struct mtk_cam_job *job /*, ... */);
+	void (*dump)(struct mtk_cam_job *job, int seq_no);
 
 	/* should alway be called for clean-up resources */
 	void (*finalize)(struct mtk_cam_job *job);

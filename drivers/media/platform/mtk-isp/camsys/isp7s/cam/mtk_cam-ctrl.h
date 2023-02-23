@@ -8,6 +8,7 @@
 
 #include <linux/hrtimer.h>
 #include <linux/timer.h>
+#include <linux/completion.h>
 
 #include "mtk_cam-job.h"
 
@@ -67,17 +68,20 @@ int vsync_update(struct vsync_collector *c,
 struct mtk_cam_watchdog {
 
 	bool started;
+	bool monitor_vsync;
 
 	struct timer_list timer;
 	u64 last_sof_ts;
+	int req_seq;
+	int req_seq_cnt;
 
-	struct work_struct work;
-	atomic_t work_running;
-	atomic_t retry_cnt;
+	struct completion work_complete;
+	atomic_t reset_sensor_cnt;
+	atomic_t dump_job;
 };
 
 void mtk_cam_watchdog_init(struct mtk_cam_watchdog *wd);
-int mtk_cam_watchdog_start(struct mtk_cam_watchdog *wd);
+int mtk_cam_watchdog_start(struct mtk_cam_watchdog *wd, bool monitor_vsync);
 void mtk_cam_watchdog_stop(struct mtk_cam_watchdog *wd);
 
 /*per stream (sensor) */

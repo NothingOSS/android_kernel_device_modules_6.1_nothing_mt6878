@@ -123,7 +123,7 @@ int mtk_cam_debug_exp_dump(struct mtk_cam_debug *dbg,
 #endif //IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 
 #define MSG_COMPOSE_ERROR	"Camsys: compose error"
-
+#define MSG_DEQUE_ERROR		"Camsys: Camsys: No P1 done"
 
 #endif /* __MTK_CAM_DEBUG__ */
 

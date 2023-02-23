@@ -1238,22 +1238,44 @@ static int job_print_warn_desc(struct mtk_cam_job *job, const char *desc,
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 
-	return snprintf(warn_desc, 64, "%s:ctx(%d):req(%d):%s",
+	return snprintf(warn_desc, 64, "%s:ctx-%d:req-%d:seq-%d:%s",
 			job->req->req.debug_str, ctx->stream_id,
-			job->frame_seq_no, desc);
+			job->req_seq, job->frame_seq_no, desc);
 }
 
-static void trigger_compose_error_dump(struct mtk_cam_job *job)
+static void trigger_error_dump(struct mtk_cam_job *job, const char *desc)
 {
-	const char *desc = MSG_COMPOSE_ERROR;
 	char warn_desc[64];
 
 	job_print_warn_desc(job, desc, warn_desc);
-
-	pr_info("%s: compose failed: %s\n", __func__, warn_desc);
+	pr_info("%s: desc=%s warn_desc=%s\n", __func__, desc, warn_desc);
 
 	if (!job_debug_dump(job, desc))
 		WRAP_AEE_EXCEPTION(desc, warn_desc);
+}
+
+static void job_dump(struct mtk_cam_job *job, int seq_no)
+{
+	pr_info("%s: job req-%d seq-%d (vs. seq-%d)\n", __func__,
+		job->req_seq, job->frame_seq_no, seq_no);
+	pr_info("%s: ISP_STATE = %s\n", __func__,
+		mtk_cam_job_state_str(&job->job_state, ISP_STATE));
+	pr_info("%s: done status: %lx(handled %lx)/afo %lx\n", __func__,
+		atomic_long_read(&job->done_set), job->done_handled,
+		atomic_long_read(&job->afo_done));
+
+	trigger_error_dump(job, MSG_DEQUE_ERROR);
+}
+
+static void job_dump_mstream(struct mtk_cam_job *job, int seq_no)
+{
+	pr_info("%s: job req-%d seq-%d fcnt-%d (vs. seq-%d)\n", __func__,
+		job->req_seq, job->frame_seq_no, job->frame_cnt, seq_no);
+	pr_info("%s: ISP_STATE = %s/%s\n", __func__,
+		mtk_cam_job_state_str(&job->job_state, ISP_1ST_STATE),
+		mtk_cam_job_state_str(&job->job_state, ISP_2ND_STATE));
+
+	trigger_error_dump(job, MSG_DEQUE_ERROR);
 }
 
 static void
@@ -1264,7 +1286,7 @@ _compose_done(struct mtk_cam_job *job,
 	job->cq_rst = *cq_ret;
 
 	if (compose_ret)
-		trigger_compose_error_dump(job);
+		trigger_error_dump(job, MSG_COMPOSE_ERROR);
 }
 
 static int apply_raw_target_clk(struct mtk_cam_ctx *ctx,
@@ -2077,7 +2099,7 @@ static void compose_done_mstream(struct mtk_cam_job *job,
 
 	/* TODO: add compose failed dump for 1st frame */
 	if (compose_ret)
-		trigger_compose_error_dump(job);
+		trigger_error_dump(job, MSG_COMPOSE_ERROR);
 }
 
 static void mtk_cam_set_sensor_mstream_mode(struct mtk_cam_ctx *ctx, bool on)
@@ -2311,7 +2333,7 @@ static void m2m_on_transit(struct mtk_cam_job_state *s, int state_type,
 
 static struct mtk_cam_job_ops otf_job_ops = {
 	.cancel = job_cancel,
-	//.dump
+	.dump = job_dump,
 	.finalize = job_finalize,
 	.compose_done = _compose_done,
 	.compose = _compose,
@@ -2326,7 +2348,7 @@ static struct mtk_cam_job_ops otf_job_ops = {
 
 static struct mtk_cam_job_ops otf_stagger_job_ops = {
 	.cancel = job_cancel,
-	//.dump
+	.dump = job_dump,
 	.finalize = job_finalize,
 	.compose_done = _compose_done,
 	.compose = _compose,
@@ -2342,7 +2364,7 @@ static struct mtk_cam_job_ops otf_stagger_job_ops = {
 
 static struct mtk_cam_job_ops m2m_job_ops = {
 	.cancel = job_cancel,
-	//.dump
+	.dump = job_dump,
 	.finalize = job_finalize,
 	.compose_done = _compose_done,
 	.compose = _compose,
@@ -2358,7 +2380,7 @@ static struct mtk_cam_job_ops m2m_job_ops = {
 
 static struct mtk_cam_job_ops mstream_job_ops = {
 	.cancel = job_cancel,
-	//.dump
+	.dump = job_dump_mstream,
 	.finalize = job_finalize_mstream,
 	.compose_done = compose_done_mstream,
 	.compose = compose_mstream,

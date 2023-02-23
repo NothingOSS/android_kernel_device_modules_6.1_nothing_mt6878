@@ -322,8 +322,7 @@ static void ctrl_vsync_preprocess(struct mtk_cam_ctrl *ctrl,
 				  struct vsync_result *vsync_res)
 {
 
-	if (vsync_update(&ctrl->vsync_col,
-		     engine_type, engine_id, vsync_res))
+	if (vsync_update(&ctrl->vsync_col, engine_type, engine_id, vsync_res))
 		return;
 
 	spin_lock(&ctrl->info_lock);
@@ -333,6 +332,7 @@ static void ctrl_vsync_preprocess(struct mtk_cam_ctrl *ctrl,
 	 *   this is used to handle for case that some engine is not enqueued,
 	 *   so fh_cookie won't be updated.
 	 */
+	/* FIXME: should remove 'max' and handle hw incomplete & counter overflow */
 	ctrl->r_info.tmp_inner_seq_no =
 		max(ctrl->r_info.tmp_inner_seq_no,
 		    (int)seq_from_fh_cookie(irq_info->frame_idx_inner));
@@ -655,7 +655,7 @@ static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 
 	call_jobop(job, stream_on, true);
 
-	mtk_cam_watchdog_start(&ctrl->watchdog);
+	mtk_cam_watchdog_start(&ctrl->watchdog, 1);
 
 	/* non multi-frame job: e.g., mstream */
 	if (job->frame_cnt > 1) {
@@ -748,8 +748,11 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 
 		/* TODO(AY): refine this */
 		if (job->job_scen.id == MTK_CAM_SCEN_M2M_NORMAL ||
-		    job->job_scen.id == MTK_CAM_SCEN_ODT_NORMAL)
+		    job->job_scen.id == MTK_CAM_SCEN_ODT_NORMAL) {
 			mtk_cam_ctrl_apply_by_state(cam_ctrl, 1);
+
+			mtk_cam_watchdog_start(&cam_ctrl->watchdog, 0);
+		}
 	}
 
 	call_jobop(job, compose);
@@ -994,26 +997,40 @@ static inline u64 mtk_cam_ctrl_latest_sof(struct mtk_cam_ctrl *ctrl)
 	return ts_ns;
 }
 
-static void mtk_cam_watchdog_worker(struct work_struct *work)
+struct watchdog_debug_work {
+	struct work_struct work;
+	struct mtk_cam_watchdog *wd;
+	bool seninf_check_timeout;
+};
+
+static void mtk_cam_watchdog_sensor_worker(struct work_struct *work)
 {
+	struct watchdog_debug_work *dbg_work;
 	struct mtk_cam_watchdog *wd;
 	struct mtk_cam_ctrl *ctrl;
 	struct mtk_cam_ctx *ctx;
-	int timeout = 0;
-	u64 diff_ns;
 	int seq_no;
 
-	wd = container_of(work, struct mtk_cam_watchdog, work);
+	dbg_work = container_of(work, struct watchdog_debug_work, work);
+	wd = dbg_work->wd;
+	if (!wd)
+		goto FREE_WORK;
+
 	ctrl = container_of(wd, struct mtk_cam_ctrl, watchdog);
 	ctx = ctrl->ctx;
 	if (!ctx || !ctx->seninf)
 		goto EXIT_WORK;
 
-	diff_ns = ktime_get_boottime_ns() - mtk_cam_ctrl_latest_sof(ctrl);
-	timeout = mtk_cam_seninf_check_timeout(ctx->seninf, diff_ns);
+	if (dbg_work->seninf_check_timeout) {
+		u64 diff_ns;
+		int timeout;
 
-	if (!timeout)
-		goto EXIT_WORK;
+		diff_ns = ktime_get_boottime_ns() - mtk_cam_ctrl_latest_sof(ctrl);
+		timeout = mtk_cam_seninf_check_timeout(ctx->seninf, diff_ns);
+
+		if (!timeout)
+			goto EXIT_WORK;
+	}
 
 	spin_lock(&ctrl->info_lock);
 	seq_no = ctrl->r_info.inner_seq_no;
@@ -1026,47 +1043,192 @@ static void mtk_cam_watchdog_worker(struct work_struct *work)
 
 	}
 
-	if (atomic_read(&wd->retry_cnt) < WATCHDOG_MAX_SENSOR_RETRY_CNT)
+	if (atomic_read(&wd->reset_sensor_cnt) < WATCHDOG_MAX_SENSOR_RETRY_CNT)
 		goto EXIT_WORK;
 
 	pr_info("%s: TODO. dump INT_EN/VS status for debug\n", __func__);
 
 EXIT_WORK:
-	atomic_set(&wd->work_running, 0);
+	complete(&wd->work_complete);
+FREE_WORK:
+	kfree(dbg_work);
 }
 
-static void mtk_cam_watchdog_callback(struct timer_list *t)
+static void mtk_cam_watchdog_job_worker(struct work_struct *work)
 {
-	struct mtk_cam_watchdog *wd = from_timer(wd, t, timer);
+	struct watchdog_debug_work *dbg_work;
+	struct mtk_cam_watchdog *wd;
+	struct mtk_cam_ctrl *ctrl;
+	struct mtk_cam_ctx *ctx;
+	struct mtk_cam_job *job;
+
+	dbg_work = container_of(work, struct watchdog_debug_work, work);
+	wd = dbg_work->wd;
+	if (!wd)
+		goto FREE_WORK;
+
+	ctrl = container_of(wd, struct mtk_cam_ctrl, watchdog);
+	ctx = ctrl->ctx;
+	if (!ctx)
+		goto EXIT_WORK;
+
+	job = mtk_cam_ctrl_get_job(ctrl, cond_first_job, 0);
+	if (job) {
+		int seq_no;
+
+		spin_lock(&ctrl->info_lock);
+		seq_no = ctrl->r_info.inner_seq_no;
+		spin_unlock(&ctrl->info_lock);
+
+		pr_info("%s: dump job req%d seq%d\n",
+			__func__, job->req_seq, seq_no);
+
+		call_jobop(job, dump, seq_no);
+	}
+	mtk_cam_job_put(job);
+
+EXIT_WORK:
+	complete(&wd->work_complete);
+FREE_WORK:
+	kfree(dbg_work);
+}
+
+static int watchdog_schedule_debug_work(struct mtk_cam_watchdog *wd,
+					void (*func)(struct work_struct *work),
+					bool seninf_check_timeout)
+{
+	struct watchdog_debug_work *work;
+
+	work = kmalloc(sizeof(*work), GFP_ATOMIC);
+	if (WARN_ON(!work))
+		return -1;
+
+	work->wd = wd;
+	INIT_WORK(&work->work, func);
+	work->seninf_check_timeout = seninf_check_timeout;
+
+	schedule_work(&work->work);
+	return 0;
+}
+
+
+static int mtk_cam_watchdog_schedule_sensor_reset(struct mtk_cam_watchdog *wd,
+						  bool check_timeout)
+{
+	return watchdog_schedule_debug_work(wd, mtk_cam_watchdog_sensor_worker,
+					    check_timeout);
+}
+
+static int mtk_cam_watchdog_schedule_job_dump(struct mtk_cam_watchdog *wd)
+{
+	return watchdog_schedule_debug_work(wd, mtk_cam_watchdog_job_worker, 0);
+}
+
+static int mtk_cam_watchdog_monitor_vsync(struct mtk_cam_watchdog *wd)
+{
 	struct mtk_cam_ctrl *ctrl =
 		container_of(wd, struct mtk_cam_ctrl, watchdog);
+	struct mtk_cam_ctx *ctx = ctrl->ctx;
 	u64 new_sof;
+	bool completed;
+	int reset_cnt = -1;
+
+	if (!ctx)
+		return -1;
 
 	new_sof = mtk_cam_ctrl_latest_sof(ctrl);
 	if (new_sof != wd->last_sof_ts) {
 		wd->last_sof_ts = new_sof;
 
-		atomic_set(&wd->retry_cnt, 0);
-		goto RENEW_TIMER;
+		atomic_set(&wd->reset_sensor_cnt, 0);
+		return 0;
 	}
 
-	if (atomic_cmpxchg(&wd->work_running, 0, 1) ||
-	    atomic_inc_return(&wd->retry_cnt) > WATCHDOG_MAX_SENSOR_RETRY_CNT) {
-		struct mtk_cam_ctx *ctx = ctrl->ctx;
+	completed = try_wait_for_completion(&wd->work_complete);
+	if (!completed)
+		goto SKIP_SCHEDULE_WORK;
 
-		dev_info_ratelimited(ctx->cam->dev,
-				     "%s:ctx-%d skip schedule watchdog work running %d, retry cnt %d\n",
-				     __func__, ctx->stream_id,
-				     atomic_read(&wd->work_running),
-				     atomic_read(&wd->retry_cnt));
-		goto RENEW_TIMER;
+	reset_cnt = atomic_inc_return(&wd->reset_sensor_cnt);
+	if (reset_cnt > WATCHDOG_MAX_SENSOR_RETRY_CNT) {
+		complete(&wd->work_complete);
+		goto SKIP_SCHEDULE_WORK;
 	}
 
-	schedule_work(&wd->work);
+	mtk_cam_watchdog_schedule_sensor_reset(wd, 1);
+	return -1;
+
+SKIP_SCHEDULE_WORK:
+	dev_info(ctx->cam->dev,
+		 "%s:ctx-%d skip schedule watchdog work running %d, retry cnt %d\n",
+		 __func__, ctx->stream_id,
+		 !completed, reset_cnt);
+	return -1;
+}
+
+static int mtk_cam_watchdog_monitor_job(struct mtk_cam_watchdog *wd)
+{
+	struct mtk_cam_ctrl *ctrl =
+		container_of(wd, struct mtk_cam_ctrl, watchdog);
+	struct mtk_cam_ctx *ctx = ctrl->ctx;
+	struct mtk_cam_job *job;
+	int req_seq;
+	bool completed;
+
+	if (!ctx)
+		return -1;
+
+	job = mtk_cam_ctrl_get_job(ctrl, cond_first_job, 0);
+	if (!job)
+		return 0;
+
+	req_seq = job->req_seq;
+	mtk_cam_job_put(job);
+
+	if (req_seq != wd->req_seq) {
+		wd->req_seq = req_seq;
+		wd->req_seq_cnt = 0;
+		return 0;
+	}
+
+	/* note: to avoid long exposure issue */
+	++wd->req_seq_cnt;
+	if (wd->req_seq_cnt < 2)
+		return 0;
+
+	completed = try_wait_for_completion(&wd->work_complete);
+	if (!completed)
+		goto SKIP_SCHEDULE_WORK;
+
+	if (atomic_cmpxchg(&wd->dump_job, 0, 1)) {
+		complete(&wd->work_complete);
+		goto SKIP_SCHEDULE_WORK;
+	}
+
+	/* job is not updated */
+	mtk_cam_watchdog_schedule_job_dump(wd);
+
+SKIP_SCHEDULE_WORK:
+	dev_info(ctx->cam->dev,
+		 "%s:ctx-%d req_seq %d skip schedule watchdog work running %d, dumped %d\n",
+		 __func__, ctx->stream_id, req_seq,
+		 !completed, atomic_read(&wd->dump_job));
+	return -1;
+}
+
+static void mtk_cam_watchdog_callback(struct timer_list *t)
+{
+	struct mtk_cam_watchdog *wd = from_timer(wd, t, timer);
+	int ret;
+
+	ret = wd->monitor_vsync ?
+		mtk_cam_watchdog_monitor_vsync(wd) : 0;
+	if (ret)
+		goto RENEW_TIMER;
+
+	mtk_cam_watchdog_monitor_job(wd);
 
 RENEW_TIMER:
-	wd->timer.expires =
-		jiffies + msecs_to_jiffies(WATCHDOG_INTERVAL_MS);
+	wd->timer.expires = jiffies + msecs_to_jiffies(WATCHDOG_INTERVAL_MS);
 	add_timer(&wd->timer);
 
 	//pr_info("%s: ts %lld\n", __func__, wd->last_sof_ts);
@@ -1078,19 +1240,23 @@ void mtk_cam_watchdog_init(struct mtk_cam_watchdog *wd)
 
 	timer_setup(&wd->timer, mtk_cam_watchdog_callback, 0);
 
-	wd->timer.expires =
-		jiffies + msecs_to_jiffies(WATCHDOG_INTERVAL_MS);
+	init_completion(&wd->work_complete);
+	complete(&wd->work_complete);
 
-	INIT_WORK(&wd->work, mtk_cam_watchdog_worker);
-	atomic_set(&wd->work_running, 0);
-	atomic_set(&wd->retry_cnt, 0);
+	atomic_set(&wd->reset_sensor_cnt, 0);
+	atomic_set(&wd->dump_job, 0);
 }
 
-int mtk_cam_watchdog_start(struct mtk_cam_watchdog *wd)
+int mtk_cam_watchdog_start(struct mtk_cam_watchdog *wd, bool monitor_vsync)
 {
 	wd->started = 1;
+	wd->monitor_vsync = monitor_vsync;
 
 	wd->last_sof_ts = ktime_get_boottime_ns();
+	wd->req_seq = 0;
+	wd->req_seq_cnt = 0;
+
+	wd->timer.expires = jiffies + msecs_to_jiffies(WATCHDOG_INTERVAL_MS);
 	add_timer(&wd->timer);
 	return 0;
 }
@@ -1101,5 +1267,5 @@ void mtk_cam_watchdog_stop(struct mtk_cam_watchdog *wd)
 		return;
 
 	del_timer_sync(&wd->timer);
-	cancel_work_sync(&wd->work);
+	wait_for_completion(&wd->work_complete);
 }
