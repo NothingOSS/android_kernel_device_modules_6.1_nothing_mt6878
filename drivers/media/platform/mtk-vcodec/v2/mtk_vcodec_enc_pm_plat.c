@@ -15,6 +15,7 @@
 #include "mtk_vcodec_enc_pm_plat.h"
 #include "mtk_vcodec_util.h"
 #include "mtk_vcu.h"
+#include "venc_drv_if.h"
 
 #define USE_GCE 0
 #if ENC_DVFS
@@ -22,6 +23,7 @@
 #include <linux/regulator/consumer.h>
 #include "vcodec_dvfs.h"
 #define STD_VENC_FREQ 250000000
+#define BW_FACTOR_DENOMINATOR 1000000
 #endif
 
 #if ENC_EMI_BW
@@ -306,8 +308,8 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 		if (IS_ERR_OR_NULL(dev->venc_mmdvfs_clk)) {
 			mtk_v4l2_debug(0, "[VENC] Failed to mmdvfs_clk");
 			dev->venc_mmdvfs_clk = 0;
-		}
-		mtk_v4l2_debug(0, "[VENC] get venc_mmdvfs_clk successfully");
+		} else
+			mtk_v4l2_debug(0, "[VENC] get venc_mmdvfs_clk successfully");
 	} else {
 		mtk_v4l2_debug(0, "[VENC] get regulator successfully");
 	}
@@ -413,6 +415,25 @@ void set_venc_opp(struct mtk_vcodec_dev *dev, u32 freq)
 		}
 	}
 }
+void mtk_venc_dvfs_reset_vsi_data(struct mtk_vcodec_dev *dev)
+{
+	dev->venc_dvfs_params.target_freq = 0;
+	dev->venc_dvfs_params.target_bw_factor = 0;
+}
+
+void mtk_venc_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)
+{
+	struct mtk_vcodec_dev *dev = ctx->dev;
+	struct venc_inst *inst = (struct venc_inst *) ctx->drv_handle;
+
+	if (ctx->state == MTK_STATE_ABORT)
+		return;
+	mtk_v4l2_debug(0, "[VDVFS][%d] sync vsi: (%d, %d)",
+		ctx->id, dev->venc_dvfs_params.target_freq, inst->vsi->config.target_freq);
+	dev->venc_dvfs_params.target_freq = inst->vsi->config.target_freq;
+	dev->venc_dvfs_params.target_bw_factor = inst->vsi->config.target_bw_factor;
+
+}
 
 void mtk_venc_dvfs_begin_inst(struct mtk_vcodec_ctx *ctx)
 {
@@ -446,8 +467,8 @@ void mtk_venc_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx)
 	mtk_v4l2_debug(4, "[VENC] ctx:%p", ctx);
 
 	for (i = 0; i < dev->venc_larb_cnt; i++) {
-		target_bw = (dev->venc_larb_bw[i].larb_base_bw / 100)
-			* (dev->venc_dvfs_params.target_bw_factor / (100 * 100));
+		target_bw = (u64) dev->venc_larb_bw[i].larb_base_bw
+			* dev->venc_dvfs_params.target_bw_factor / BW_FACTOR_DENOMINATOR;
 		if (dev->venc_larb_bw[i].larb_type < VCODEC_LARB_SUM) {
 			mtk_icc_set_bw(dev->venc_qos_req[i],
 					MBps_to_icc((u32)target_bw), 0);
@@ -469,8 +490,8 @@ void mtk_venc_pmqos_end_inst(struct mtk_vcodec_ctx *ctx)
 	dev = ctx->dev;
 
 	for (i = 0; i < dev->venc_larb_cnt; i++) {
-		target_bw = (dev->venc_larb_bw[i].larb_base_bw / 100)
-			* (dev->venc_dvfs_params.target_bw_factor / (100 * 100));
+		target_bw = (u64) dev->venc_larb_bw[i].larb_base_bw
+			* dev->venc_dvfs_params.target_bw_factor / BW_FACTOR_DENOMINATOR;
 
 		if (list_empty(&dev->venc_dvfs_inst)) /* no more instances */
 			target_bw = 0;

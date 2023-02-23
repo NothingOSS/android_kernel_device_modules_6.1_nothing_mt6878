@@ -299,8 +299,8 @@ void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 		if (IS_ERR_OR_NULL(dev->vdec_mmdvfs_clk)) {
 			mtk_v4l2_debug(0, "[VDEC] Failed to get mmdvfs_clk");
 			dev->vdec_mmdvfs_clk = 0;
-		}
-		mtk_v4l2_debug(0, "[VDEC] get vdec_mmdvfs_clk successfully");
+		} else
+			mtk_v4l2_debug(0, "[VDEC] get vdec_mmdvfs_clk successfully");
 	} else {
 		mtk_v4l2_debug(0, "[VDEC] get regulator successfully");
 	}

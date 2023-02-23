@@ -228,6 +228,31 @@ void mtk_venc_deinit_ctx_pm(struct mtk_vcodec_ctx *ctx)
 		atomic_read(&mtk_venc_slb_cb.later_cnt));
 }
 
+void mtk_vcodec_enc_pw_on(struct mtk_vcodec_pm *pm)
+{
+	int larb_index;
+	int ret;
+
+	for (larb_index = 0; larb_index < MTK_VENC_MAX_LARB_COUNT; larb_index++) {
+		if (pm->larbvencs[larb_index]) {
+			ret = pm_runtime_resume_and_get(pm->larbvencs[larb_index]);
+			if (ret)
+				mtk_v4l2_err("Failed to get venc larb. index: %d",
+					larb_index);
+		}
+	}
+}
+
+void mtk_vcodec_enc_pw_off(struct mtk_vcodec_pm *pm)
+{
+	int larb_index;
+
+	for (larb_index = 0; larb_index < MTK_VENC_MAX_LARB_COUNT; larb_index++) {
+		if (pm->larbvencs[larb_index])
+			pm_runtime_put_sync(pm->larbvencs[larb_index]);
+	}
+}
+
 void mtk_vcodec_enc_clock_on(struct mtk_vcodec_ctx *ctx, int core_id)
 {
 	struct mtk_vcodec_pm *pm = &ctx->dev->pm;
@@ -236,7 +261,6 @@ void mtk_vcodec_enc_clock_on(struct mtk_vcodec_ctx *ctx, int core_id)
 #ifdef CONFIG_MTK_PSEUDO_M4U
 	struct M4U_PORT_STRUCT port;
 #endif
-	int larb_index;
 	int j;
 	struct mtk_venc_clks_data *clks_data;
 	struct mtk_vcodec_dev *dev = NULL;
@@ -253,14 +277,7 @@ void mtk_vcodec_enc_clock_on(struct mtk_vcodec_ctx *ctx, int core_id)
 
 	clks_data = &pm->venc_clks_data;
 	smi_start_time = jiffies_to_msecs(jiffies);
-	for (larb_index = 0; larb_index < MTK_VENC_MAX_LARB_COUNT; larb_index++) {
-		if (pm->larbvencs[larb_index]) {
-			ret = pm_runtime_resume_and_get(pm->larbvencs[larb_index]);
-			if (ret)
-				mtk_v4l2_err("Failed to get venc larb. index: %d, core_id: %d",
-					larb_index, core_id);
-		}
-	}
+	mtk_vcodec_enc_pw_on(&ctx->dev->pm);
 	smi_end_time = jiffies_to_msecs(jiffies);
 	ccf_start_time = jiffies_to_msecs(jiffies);
 	if (core_id == MTK_VENC_CORE_0 ||
@@ -475,7 +492,6 @@ void mtk_vcodec_enc_clock_off(struct mtk_vcodec_ctx *ctx, int core_id)
 {
 	struct mtk_vcodec_pm *pm = &ctx->dev->pm;
 	int i;
-	int larb_index;
 	struct mtk_venc_clks_data *clks_data;
 	struct mtk_vcodec_dev *dev = NULL;
 	unsigned long flags;
@@ -508,10 +524,8 @@ void mtk_vcodec_enc_clock_off(struct mtk_vcodec_ctx *ctx, int core_id)
 		}
 	} else
 		mtk_v4l2_err("invalid core_id %d", core_id);
-	for (larb_index = 0; larb_index < MTK_VENC_MAX_LARB_COUNT; larb_index++) {
-		if (pm->larbvencs[larb_index])
-			pm_runtime_put_sync(pm->larbvencs[larb_index]);
-	}
+
+	mtk_vcodec_enc_pw_off(pm);
 #endif
 }
 

@@ -461,6 +461,10 @@ struct venc_enc_param {
 	unsigned int temporal_layer_bcount;
 	unsigned int max_ltr_num;
 	unsigned int slice_header_spacing;
+	unsigned int venc_dvfs_state;
+	unsigned int ctx_id;
+	unsigned int priority;
+	unsigned int codec_fmt;
 	struct mtk_venc_multi_ref *multi_ref;
 	struct mtk_venc_vui_info *vui_info;
 	char *log;

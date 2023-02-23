@@ -16,7 +16,8 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev);
 void mtk_unprepare_venc_dvfs(struct mtk_vcodec_dev *dev);
 void mtk_prepare_venc_emi_bw(struct mtk_vcodec_dev *dev);
 void mtk_unprepare_venc_emi_bw(struct mtk_vcodec_dev *dev);
-
+void mtk_venc_dvfs_reset_vsi_data(struct mtk_vcodec_dev *dev);
+void mtk_venc_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx);
 void mtk_venc_dvfs_begin_inst(struct mtk_vcodec_ctx *ctx);
 void mtk_venc_dvfs_end_inst(struct mtk_vcodec_ctx *ctx);
 void mtk_venc_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx);

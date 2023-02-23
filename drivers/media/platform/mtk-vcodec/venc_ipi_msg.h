@@ -123,7 +123,8 @@ enum venc_set_param_type {
 	VENC_SET_PARAM_TEMPORAL_LAYER_CNT,
 	VENC_SET_PARAM_RELEASE_SLB,
 	VENC_SET_PARAM_VCU_VPUD_LOG,
-	VENC_SET_PARAM_ENABLE_LOW_LATENCY_WFD
+	VENC_SET_PARAM_ENABLE_LOW_LATENCY_WFD,
+	VENC_SET_PARAM_MMDVFS,
 };
 
 #define VENC_MSG_AP_SEND_PREFIX	\
@@ -471,6 +472,11 @@ struct venc_vcu_config {
 	__u32 max_ltr_num;
 	__u32 slice_header_spacing;
 	__u32 sysram_enable;
+	__u32 ctx_id;
+	__s32 priority;
+	__u32 codec_fmt;
+	__s32 target_freq;
+	__u32 target_bw_factor;
 	__u32 reserved;
 	struct mtk_color_desc color_desc;
 	struct mtk_venc_multi_ref multi_ref;

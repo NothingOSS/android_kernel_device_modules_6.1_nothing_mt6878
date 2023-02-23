@@ -14,6 +14,7 @@
 #include "mtk_vcodec_enc_pm_plat.h"
 #include "mtk_vcodec_util.h"
 #include "mtk_vcu.h"
+#include "venc_drv_if.h"
 
 #define USE_GCE 0
 #if ENC_DVFS
@@ -283,15 +284,15 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 
 	dev->venc_reg = devm_regulator_get_optional(&dev->plat_dev->dev,
 						"mmdvfs-dvfsrc-vcore");
-	if (!dev->venc_reg) {
+	if (IS_ERR_OR_NULL(dev->venc_reg)) {
 		mtk_v4l2_debug(0, "[VENC] Failed to get regulator");
 		dev->venc_reg = 0;
 		dev->venc_mmdvfs_clk = devm_clk_get(&dev->plat_dev->dev, "mmdvfs_clk");
-		if (!dev->venc_mmdvfs_clk) {
+		if (IS_ERR_OR_NULL(dev->venc_mmdvfs_clk)) {
 			mtk_v4l2_debug(0, "[VENC] Failed to mmdvfs_clk");
 			dev->venc_mmdvfs_clk = 0;
-		}
-		mtk_v4l2_debug(0, "[VENC] get venc_mmdvfs_clk successfully");
+		} else
+			mtk_v4l2_debug(0, "[VENC] get venc_mmdvfs_clk successfully");
 	} else {
 		mtk_v4l2_debug(0, "[VENC] get regulator successfully");
 	}
@@ -392,6 +393,22 @@ void set_venc_opp(struct mtk_vcodec_dev *dev, u32 freq)
 			mtk_v4l2_debug(8, "[VENC] freq %u, voltage %d", freq, volt);
 		}
 	}
+}
+
+void mtk_venc_dvfs_reset_vsi_data(struct mtk_vcodec_dev *dev)
+{
+	dev->venc_dvfs_params.target_freq = 0;
+}
+
+void mtk_venc_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)
+{
+	struct mtk_vcodec_dev *dev = ctx->dev;
+	struct venc_inst *inst = (struct venc_inst *) ctx->drv_handle;
+
+	if (ctx->state == MTK_STATE_ABORT)
+		return;
+
+	dev->venc_dvfs_params.target_freq = inst->vsi->config.target_freq;
 }
 
 void mtk_venc_dvfs_begin_inst(struct mtk_vcodec_ctx *ctx)

@@ -106,7 +106,7 @@ int venc_if_get_param(struct mtk_vcodec_ctx *ctx, enum venc_get_param_type type,
 }
 
 int venc_if_set_param(struct mtk_vcodec_ctx *ctx,
-	enum venc_set_param_type type, struct venc_enc_param *in)
+	enum venc_set_param_type type, struct venc_enc_param *enc_prm)
 {
 	struct venc_inst *inst = NULL;
 	int ret = 0;
@@ -125,7 +125,7 @@ int venc_if_set_param(struct mtk_vcodec_ctx *ctx,
 			__func__, ctx->drv_handle);
 	}
 	if (ctx->enc_if)
-		ret = ctx->enc_if->set_param(ctx->drv_handle, type, in);
+		ret = ctx->enc_if->set_param(ctx->drv_handle, type, enc_prm);
 	else
 		ret = -EINVAL;
 

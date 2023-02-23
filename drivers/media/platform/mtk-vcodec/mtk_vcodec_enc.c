@@ -1307,6 +1307,9 @@ static void mtk_venc_set_param(struct mtk_vcodec_ctx *ctx,
 	param->slice_header_spacing = enc_params->slice_header_spacing;
 	param->multi_ref = &enc_params->multi_ref;
 	param->vui_info = &enc_params->vui_info;
+	param->ctx_id = ctx->id;
+	param->priority = ctx->enc_params.priority;
+	param->codec_fmt = ctx->q_data[MTK_Q_DATA_DST].fmt->fourcc;
 }
 
 static int vidioc_venc_subscribe_evt(struct v4l2_fh *fh,
@@ -2368,7 +2371,21 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 	}
 
 	mutex_lock(&ctx->dev->enc_dvfs_mutex);
-	mtk_venc_dvfs_begin_inst(ctx);
+	if (ctx->dev->venc_reg == 0 && ctx->dev->venc_mmdvfs_clk == 0) {
+		mtk_vcodec_enc_pw_on(&ctx->dev->pm);
+		param.venc_dvfs_state = MTK_INST_START;
+		if (venc_if_set_param(ctx, VENC_SET_PARAM_MMDVFS, &param) != 0)
+			mtk_v4l2_err("[VDVFS][%d] stream on ipi fail", ctx->id);
+		mtk_venc_dvfs_sync_vsi_data(ctx);
+		mtk_vcodec_enc_pw_off(&ctx->dev->pm);
+		mtk_v4l2_debug(0, "[VDVFS][%d(%d)] start DVFS(UP):freq:%d, bw_factor:%d",
+			ctx->id, ctx->state,
+			ctx->dev->venc_dvfs_params.target_freq,
+			ctx->dev->venc_dvfs_params.target_bw_factor);
+	} else {
+		mtk_venc_dvfs_begin_inst(ctx);
+		mtk_v4l2_debug(0, "[%d][VDVFS][VENC] start ctrl DVFS in AP", ctx->id);
+	}
 	mtk_venc_pmqos_begin_inst(ctx);
 	mutex_unlock(&ctx->dev->enc_dvfs_mutex);
 
@@ -2396,6 +2413,7 @@ static void vb2ops_venc_stop_streaming(struct vb2_queue *q)
 	struct mtk_video_enc_buf *srcbuf, *dstbuf;
 	struct vb2_queue *srcq, *dstq;
 	struct venc_done_result enc_result;
+	struct venc_enc_param param;
 	int i, ret;
 
 	mtk_v4l2_debug(2, "[%d]-> type=%d", ctx->id, q->type);
@@ -2460,7 +2478,20 @@ static void vb2ops_venc_stop_streaming(struct vb2_queue *q)
 
 		ctx->enc_flush_buf->lastframe = NON_EOS;
 		mutex_lock(&ctx->dev->enc_dvfs_mutex);
-		mtk_venc_dvfs_end_inst(ctx);
+		if (ctx->dev->venc_reg == 0 && ctx->dev->venc_mmdvfs_clk == 0) {
+			mtk_vcodec_enc_pw_on(&ctx->dev->pm);
+			param.venc_dvfs_state = MTK_INST_END;
+			if (venc_if_set_param(ctx, VENC_SET_PARAM_MMDVFS, &param) != 0)
+				mtk_v4l2_err("[VDVFS][%d] stream off ipi fail", ctx->id);
+			mtk_venc_dvfs_sync_vsi_data(ctx);
+			mtk_vcodec_enc_pw_off(&ctx->dev->pm);
+			mtk_v4l2_debug(0, "[VDVFS][%d(%d)] stop DVFS(UP):freq:%d, bw_factor%d",
+				ctx->id, ctx->state, ctx->dev->venc_dvfs_params.target_freq,
+				ctx->dev->venc_dvfs_params.target_bw_factor);
+		} else {
+			mtk_v4l2_debug(0, "[%d][VDVFS][VENC] stop ctrl DVFS in AP", ctx->id);
+			mtk_venc_dvfs_end_inst(ctx);
+		}
 		mtk_venc_pmqos_end_inst(ctx);
 		mutex_unlock(&ctx->dev->enc_dvfs_mutex);
 	}

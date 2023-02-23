@@ -697,11 +697,38 @@ static int venc_vcp_backup(struct venc_inst *inst)
 	msg.msg_id = AP_IPIMSG_ENC_BACKUP;
 	msg.ap_inst_addr = inst->vcu_inst.inst_addr;
 	msg.ctx_id = inst->ctx->id;
-
+	mtk_v4l2_debug(0, "[VDVFS] VENC suspend");
 	err = venc_vcp_ipi_send(inst, &msg, sizeof(msg), 0);
 	mtk_vcodec_debug(inst, "- ret=%d", err);
 
 	return err;
+}
+static int venc_vcp_mmdvfs_resume(struct mtk_vcodec_ctx *ctx)
+{
+	int err = 0;
+	struct venc_enc_param enc_param;
+
+	mtk_v4l2_debug(0, "[VDVFS] VENC resume");
+	memset(&enc_param, 0, sizeof(enc_param));
+	enc_param.venc_dvfs_state = MTK_INST_RESUME;
+	err = venc_if_set_param(ctx, VENC_SET_PARAM_MMDVFS, &enc_param);
+
+	return err;
+}
+
+static struct mtk_vcodec_ctx *get_valid_ctx(struct mtk_vcodec_dev *dev)
+{
+	struct list_head *p, *q;
+	struct mtk_vcodec_ctx *tmp_ctx;
+
+	list_for_each_safe(p, q, &dev->ctx_list) {
+		tmp_ctx = list_entry(p, struct mtk_vcodec_ctx, list);
+		if (tmp_ctx != NULL && tmp_ctx->drv_handle != 0 &&
+		    tmp_ctx->state < MTK_STATE_ABORT && tmp_ctx->state > MTK_STATE_FREE) {
+			return tmp_ctx;
+		}
+	}
+	return NULL;
 }
 
 static int vcp_venc_notify_callback(struct notifier_block *this,
@@ -777,6 +804,17 @@ static int vcp_venc_notify_callback(struct notifier_block *this,
 			}
 		}
 	break;
+	case VCP_EVENT_RESUME:
+		mutex_lock(&dev->ctx_mutex);
+		ctx = get_valid_ctx(dev);
+		mutex_unlock(&dev->ctx_mutex);
+
+		mutex_lock(&dev->enc_dvfs_mutex);
+		if (ctx)
+			venc_vcp_mmdvfs_resume(ctx);
+		mutex_unlock(&dev->enc_dvfs_mutex);
+
+		break;
 	}
 	return NOTIFY_DONE;
 }
@@ -1615,6 +1653,11 @@ int vcp_enc_set_param(struct venc_inst *inst,
 		out.data[0] = enc_param->temporal_layer_pcount;
 		out.data[1] = enc_param->temporal_layer_bcount;
 		break;
+	case VENC_SET_PARAM_MMDVFS:
+		out.data_item = 1;
+		out.data[0] = enc_param->venc_dvfs_state;
+		mtk_v4l2_debug(4, "[VDVFS][VENC] data VENC_SET_PARAM_MMDVFS");
+		break;
 	default:
 		mtk_vcodec_err(inst, "id %d not supported", id);
 		return -EINVAL;
@@ -1690,6 +1733,10 @@ static int venc_vcp_set_param(unsigned long handle,
 		inst->vsi->config.temporal_layer_pcount = enc_prm->temporal_layer_pcount;
 		inst->vsi->config.temporal_layer_bcount = enc_prm->temporal_layer_bcount;
 		inst->vsi->config.max_ltr_num = enc_prm->max_ltr_num;
+		inst->vsi->config.ctx_id = enc_prm->ctx_id;
+		inst->vsi->config.priority = enc_prm->priority;
+		inst->vsi->config.codec_fmt = enc_prm->codec_fmt;
+
 
 		if (enc_prm->color_desc) {
 			memcpy(&inst->vsi->config.color_desc,
@@ -1765,6 +1812,10 @@ static int venc_vcp_set_param(unsigned long handle,
 	case VENC_SET_PARAM_VCP_LOG_INFO:
 		mtk_vcodec_debug(inst, "enc_prm->set_vcp_buf:%s", enc_prm->set_vcp_buf);
 		set_venc_vcp_data(inst, VENC_VCP_LOG_INFO_ID, enc_prm->set_vcp_buf);
+		break;
+	case VENC_SET_PARAM_MMDVFS:
+		mtk_v4l2_debug(4, "[VDVFS][VENC] VENC_SET_PARAM_MMDVFS");
+		ret = vcp_enc_set_param(inst, type, enc_prm);
 		break;
 	default:
 		if (inst->vsi == NULL)
