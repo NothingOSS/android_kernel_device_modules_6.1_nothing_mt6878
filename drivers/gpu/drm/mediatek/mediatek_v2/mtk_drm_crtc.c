@@ -3988,7 +3988,14 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 		return;
 	}
 
-	DDPINFO("%s bw=%d, last_hrt_req=%d, overlap=%d\n",
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
+		(crtc_idx == 0) && lyeblob_ids &&
+		(lyeblob_ids->frame_weight_of_bwm != 0))
+		DDPINFO("%s bw=%d, last_hrt_req=%d, origin overlap=%d after bwm:%d\n",
+			__func__, bw, mtk_crtc->qos_ctx->last_hrt_req, frame_weight,
+			lyeblob_ids->frame_weight_of_bwm);
+	else
+		DDPINFO("%s bw=%d, last_hrt_req=%d, overlap=%d\n",
 			__func__, bw, mtk_crtc->qos_ctx->last_hrt_req, frame_weight);
 
 	if (atomic_read(&mtk_crtc->force_high_step) == 1) {
@@ -6086,25 +6093,23 @@ static void mtk_drm_ovl_bw_monitor_ratio_prework(struct drm_crtc *crtc,
 		int is_active = 0;
 		int need_skip = 0;
 
-		DDPDBG("BWM: layer caps:0x%08x\n", plane_state->comp_state.layer_caps);
+		DDPDBG_BWM("BWM: layer caps:0x%08x\n", plane_state->comp_state.layer_caps);
 		if ((plane_state->comp_state.layer_caps & MTK_HWC_UNCHANGED_LAYER) ||
 			(plane_state->comp_state.layer_caps & MTK_HWC_INACTIVE_LAYER) ||
 			(plane_state->comp_state.layer_caps & MTK_HWC_UNCHANGED_FBT_LAYER)) {
 			is_active = 0;
-			if (!g_ovl_bwm_debug)
-				need_skip = 0;
+			need_skip = 0;
 		} else {
 			is_active = 1;
-			if (!g_ovl_bwm_debug)
-				need_skip = 1;
+			need_skip = 1;
 		}
 
 		if (((plane_state->comp_state.layer_caps & MTK_DISP_UNCHANGED_RATIO_VALID) ||
 			(plane_state->comp_state.layer_caps & MTK_DISP_FBT_RATIO_VALID)) &&
-			(need_skip == 0) && !g_ovl_bwm_debug)
+			(need_skip == 0))
 			need_skip = 1;
 
-		DDPDBG("BWM: need skip:%d\n", need_skip);
+		DDPDBG_BWM("BWM: need skip:%d\n", need_skip);
 		if ((fbt_gles_head != -1) && (fbt_gles_tail != -1) && (need_skip != 1)) {
 
 			if ((plane_index == fbt_layer_id) &&
@@ -6154,10 +6159,10 @@ static void mtk_drm_ovl_bw_monitor_ratio_prework(struct drm_crtc *crtc,
 				display_compress_ratio_table[index].active = 1;
 		}
 
-		DDPDBG("BWM: frame idx:%u alloc_id:%llu plane_index:%u enable:%u\n",
+		DDPDBG_BWM("BWM: frame idx:%d alloc_id:%llu plane_index:%u enable:%u\n",
 				frame_idx, plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID],
 				plane_index, plane_state->pending.enable);
-		DDPDBG("BWM: fn:%u index:%d fbt_layer_id:%d fbt_head:%d fbt_tail:%d\n",
+		DDPDBG_BWM("BWM: fn:%u index:%d fbt_layer_id:%d fbt_head:%d fbt_tail:%d\n",
 				fn, index, fbt_layer_id, fbt_gles_head, fbt_gles_tail);
 	}
 }
@@ -6201,27 +6206,22 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 		unsigned int peak_inter_value = 0;
 		struct cmdq_operand lop;
 		struct cmdq_operand rop;
-		int is_active = 0;
 		int need_skip = 0;
 
-		DDPDBG("BWM: layer caps:0x%08x\n", plane_state->comp_state.layer_caps);
+		DDPDBG_BWM("BWM: layer caps:0x%08x\n", plane_state->comp_state.layer_caps);
 		if ((plane_state->comp_state.layer_caps & MTK_HWC_UNCHANGED_LAYER) ||
 			(plane_state->comp_state.layer_caps & MTK_HWC_INACTIVE_LAYER) ||
 			(plane_state->comp_state.layer_caps & MTK_HWC_UNCHANGED_FBT_LAYER)) {
-			is_active = 0;
-			if (!g_ovl_bwm_debug)
-				need_skip = 0;
+			need_skip = 0;
 		} else {
-			is_active = 1;
-			if (!g_ovl_bwm_debug)
-				need_skip = 1;
+			need_skip = 1;
 		}
 
 		if (((plane_state->comp_state.layer_caps & MTK_DISP_UNCHANGED_RATIO_VALID) ||
 			(plane_state->comp_state.layer_caps & MTK_DISP_FBT_RATIO_VALID)) &&
-			(need_skip == 0) && !g_ovl_bwm_debug)
+			(need_skip == 0))
 			need_skip = 1;
-		DDPDBG("BWM: need skip:%d\n", need_skip);
+		DDPDBG_BWM("BWM: need skip:%d\n", need_skip);
 
 		if (!comp) {
 			DDPPR_ERR("%s run next plane with NULL comp\n", __func__);
@@ -6239,28 +6239,34 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 		 * ((BURST_ACC_WIN_MAX*16*2^24)/(src_w*win_h*bpp))/2^14
 		 * Attention: win_h = (reg_BURST_ACC_WIN_SIZE+1)*(fbdc_en?4:1)
 		 */
-		if (src_w * src_h * bpp)
-			avg_inter_value = (16 * expand)/(src_w * src_h * bpp);
-		else {
+		if (!bpp) {
 			need_skip = 1;
-			DDPDBG("BWM: division by zero, need skip:%d\n", need_skip);
-		}
-		if (src_w * ovl_win_size * (is_compress?4:1) * bpp)
-			peak_inter_value = (16 * expand)/
-				(src_w * ovl_win_size * (is_compress?4:1) * bpp);
-		else {
-			need_skip = 1;
-			DDPDBG("BWM: division by zero, need skip:%d\n", need_skip);
+		} else {
+			if (src_w * src_h * bpp)
+				avg_inter_value = (16 * expand)/(src_w * src_h * bpp);
+			else {
+				need_skip = 1;
+				DDPPR_ERR("BWM: division by zero, src_w:%u src_h:%u\n",
+						src_w, src_h);
+			}
+			if (src_w * ovl_win_size * (is_compress?4:1) * bpp)
+				peak_inter_value = (16 * expand)/
+					(src_w * ovl_win_size * (is_compress?4:1) * bpp);
+			else {
+				need_skip = 1;
+				DDPPR_ERR("BWM: division by zero, src_w:%u ovl_win_size:%u\n",
+						src_w, ovl_win_size);
+			}
 		}
 
-		DDPDBG("BWM: plane_index:%u fn:%u index:%d lye_id:%d ext_lye_id:%d\n",
+		DDPDBG_BWM("BWM: plane_index:%u fn:%u index:%d lye_id:%d ext_lye_id:%d\n",
 			plane_index, fn, index, lye_id, ext_lye_id);
-		DDPDBG("BWM: win_size:%d compress:%d bpp:%d src_w:%d src_h:%d\n",
+		DDPDBG_BWM("BWM: win_size:%d compress:%d bpp:%d src_w:%d src_h:%d\n",
 			ovl_win_size, is_compress, bpp, src_w, src_h);
-		DDPDBG("BWM: avg_inter_value:%u peak_inter_value:%u\n",
+		DDPDBG_BWM("BWM: avg_inter_value:%u peak_inter_value:%u\n",
 			avg_inter_value, peak_inter_value);
 		if (!comp) {
-			DDPINFO("comp is NULL");
+			DDPPR_ERR("%s:%d comp is NULL\n", __func__, __LINE__);
 			return;
 		}
 		if ((ext_lye_id) &&
@@ -6365,26 +6371,25 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(unsigned int frame_idx)
 	if (display_fbt_compress_ratio_table.key_value)
 		display_fbt_compress_ratio_table.valid = 1;
 
-	if (g_ovl_bwm_debug) {
-		/* Clear fn frame record for recording next frame */
-		for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
-			unsigned int index = fn*MAX_LAYER_RATIO_NUMBER + i;
+	/* Clear fn frame record for recording next frame */
+	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
+		unsigned int index = fn*MAX_LAYER_RATIO_NUMBER + i;
 
-			if (index >= MAX_FRAME_RATIO_NUMBER*MAX_LAYER_RATIO_NUMBER) {
-				DDPPR_ERR("%s errors due to index %d\n", __func__, index);
-				return;
-			}
-			memset(&normal_layer_compress_ratio_tb[index], 0,
-				sizeof(struct layer_compress_ratio_item));
+		if (index >= MAX_FRAME_RATIO_NUMBER*MAX_LAYER_RATIO_NUMBER) {
+			DDPPR_ERR("%s errors due to index %d\n", __func__, index);
+			return;
 		}
-		memset(&fbt_layer_compress_ratio_tb[fn], 0,
-			sizeof(struct layer_compress_ratio_item));
+		memset(&normal_layer_compress_ratio_tb[index], 0,
+				sizeof(struct layer_compress_ratio_item));
+		memset(&unchanged_compress_ratio_table[index], 0,
+				sizeof(struct layer_compress_ratio_item));
 	}
+	memset(&fbt_layer_compress_ratio_tb[fn], 0,
+			sizeof(struct layer_compress_ratio_item));
 
 	/* Copy one frame ratio to table */
 	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
 		unsigned int index = fn * MAX_LAYER_RATIO_NUMBER + i;
-		DDPDBG("BWM: fn:%u frame_idx:%u index:%d\n", fn, frame_idx, index);
 
 		if (index >= MAX_FRAME_RATIO_NUMBER*MAX_LAYER_RATIO_NUMBER) {
 			DDPPR_ERR("%s errors due to index %d\n", __func__, index);
@@ -6394,7 +6399,6 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(unsigned int frame_idx)
 		if ((display_compress_ratio_table[i].key_value) &&
 			(display_compress_ratio_table[i].average_ratio != NULL) &&
 			(display_compress_ratio_table[i].peak_ratio != NULL)) {
-			DDPDBG("BWM: fn:%u frame_idx:%u index:%d i:%d\n", fn, frame_idx, index, i);
 
 			normal_layer_compress_ratio_tb[index].frame_idx =
 				display_compress_ratio_table[i].frame_idx;
@@ -6443,6 +6447,8 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(unsigned int frame_idx)
 			display_fbt_compress_ratio_table.active;
 	}
 
+/* This section is for debugging */
+#ifndef BWMT_DEBUG
 	DDPDBG("BWM: fn:%u frame_idx:%u\n", fn, frame_idx);
 
 	DDPDBG("BWMT===== normal_layer_compress_ratio_tb =====\n");
@@ -6482,15 +6488,13 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(unsigned int frame_idx)
 				unchanged_compress_ratio_table[i].valid,
 				unchanged_compress_ratio_table[i].active);
 	}
-
+#endif
 
 	fn++;
 	/* Ring buffer config */
 	if (fn >= MAX_FRAME_RATIO_NUMBER)
 		fn = 0;
 }
-
-
 #endif
 
 int mtk_crtc_fill_fb_para(struct mtk_drm_crtc *mtk_crtc)

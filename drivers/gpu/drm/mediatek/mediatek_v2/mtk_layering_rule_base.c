@@ -57,6 +57,9 @@ static unsigned int roll_gpu_for_idle;
 static int g_emi_bound_table[HRT_LEVEL_NUM];
 int have_force_gpu_layer;
 int sum_overlap_w_of_bwm;
+bool need_rollback_to_gpu_before_gpuc;
+static bool have_gpu_cached;
+static int last_fbt_weight;
 
 static DEFINE_MUTEX(layering_info_lock);
 
@@ -353,7 +356,7 @@ static int get_phy_ovl_layer_cnt_after_gc(struct drm_mtk_layering_info *info,
 					j++;
 				}
 				*layerset_tail = i;
-				DDPDBG("%s:%d GPUC: Inactive layer:%d\n",
+				DDPDBG_BWM("%s:%d GPUC: Inactive layer:%d\n",
 					__func__, __LINE__, i);
 			}
 		}
@@ -370,7 +373,7 @@ static int get_phy_ovl_layer_cnt_after_gc(struct drm_mtk_layering_info *info,
 					total_cnt--;
 			}
 		}
-		DDPDBG("%s:%d GPUC: total_cnt layer:%d layer set head:%d tail:%d\n",
+		DDPDBG_BWM("%s:%d GPUC: total_cnt layer:%d layer set head:%d tail:%d\n",
 				__func__, __LINE__, total_cnt, *layerset_head, *layerset_tail);
 	}
 	return total_cnt;
@@ -969,17 +972,21 @@ retry:
 	if (get_layering_opt(LYE_OPT_GPU_CACHE) && (disp_idx == HRT_PRIMARY)) {
 		if ((layerset_head != -1) && (layerset_tail != -1) &&
 			(phy_ovl_cnt_after_gc <= ovl_num_limit)) {
-			DDPDBG("GPUC: %s:%d after gpu cache not hrt bound\n",
+			DDPDBG_BWM("GPUC: %s:%d after gpu cache not hrt bound\n",
 				__func__, __LINE__);
-			DDPDBG("GPUC: %s:%d head;%d tail:%d phy_ovl_cnt:%d limition:%d\n",
+			DDPDBG_BWM("GPUC: %s:%d head;%d tail:%d phy_ovl_cnt:%d limition:%d\n",
 				__func__, __LINE__, layerset_head, layerset_tail,
 				phy_ovl_cnt_after_gc, ovl_num_limit);
+			if (phy_ovl_cnt > ovl_num_limit)
+				need_rollback_to_gpu_before_gpuc = true;
+			else
+				need_rollback_to_gpu_before_gpuc = false;
 			return 0;
 		}
 
-		DDPDBG("GPUC: %s:%d Default HRT or After gpu cache be hrt bound\n",
+		DDPDBG_BWM("GPUC: %s:%d Default HRT or After gpu cache be hrt bound\n",
 			__func__, __LINE__);
-		DDPDBG("GPUC: %s:%d head;%d tail:%d phy_ovl_cnt:%d limition:%d\n",
+		DDPDBG_BWM("GPUC: %s:%d head;%d tail:%d phy_ovl_cnt:%d limition:%d\n",
 			__func__, __LINE__, layerset_head, layerset_tail,
 			phy_ovl_cnt_after_gc, ovl_num_limit);
 	}
@@ -1491,6 +1498,7 @@ static int scan_y_overlap_for_compare(struct drm_mtk_layering_info *disp_info,
 	tmp_entry = y_entry_list_for_compare;
 	while (tmp_entry) {
 		overlap_w_sum += tmp_entry->overlap_w;
+
 		if (tmp_entry->overlap_w > 0) {
 			add_layer_entry_for_compare(tmp_entry->layer_info, false,
 					tmp_entry->overlap_w);
@@ -1662,18 +1670,27 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 
 	weight = HRT_UINT_WEIGHT;
 
+#define BWM_GPUC_TUNING_FRAME (5)
+
 	if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR) && frame_idx && is_gles &&
 			get_layering_opt(LYE_OPT_GPU_CACHE) && (disp_idx == HRT_PRIMARY)
 			&& (have_force_gpu_layer == 0)) {
-		uint64_t key_value = frame_idx -
-			MAX_FRAME_RATIO_NUMBER;
+		uint64_t key_value = frame_idx - BWM_GPUC_TUNING_FRAME;
 		int i = 0;
+		struct drm_mtk_layering_info *disp_info = &layering_info;
 
-		DDPDBG("BWM: line:%d fbt layer frame_idx:%u key:%llu\n",
-				__LINE__, frame_idx, key_value);
+		DDPDBG_BWM("GPUC: %s:%d fbt layer frame_idx:%u key:%llu\n",
+				__func__, __LINE__, frame_idx, key_value);
 #ifdef HRT_DEBUG_LEVEL1
 		print_bwm_table();
 #endif
+		if (have_gpu_cached) {
+			disp_info->disp_caps[HRT_PRIMARY] |= MTK_GLES_FBT_GET_RATIO;
+			DDPMSG("GPUC: FBT ratio use last ratio:%d bpp:%d\n",
+				last_fbt_weight, bpp);
+			return last_fbt_weight * bpp;
+		}
+
 		for (i = 0; i < MAX_FRAME_RATIO_NUMBER; i++) {
 			if ((fbt_layer_compress_ratio_tb[i].key_value == key_value) &&
 					(fbt_layer_compress_ratio_tb[i].valid == 1) &&
@@ -1681,10 +1698,17 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 					(fbt_layer_compress_ratio_tb[i].peak_ratio <= 1000)) {
 				weight *= fbt_layer_compress_ratio_tb[i].peak_ratio;
 				do_div(weight, 1000);
-				DDPDBG("BWM: fbt layer frame_idx:%u key:%llu\n",
+				last_fbt_weight = weight;
+				DDPDBG_BWM("GPUC: fbt layer frame_idx:%u key:%llu\n",
 					frame_idx, key_value);
-				DDPDBG("BWM: ratio:%u weight:%d\n",
+				DDPDBG_BWM("GPUC: ratio:%u weight:%d\n",
 					fbt_layer_compress_ratio_tb[i].peak_ratio, weight);
+
+				if (disp_info->disp_caps[HRT_PRIMARY] & MTK_GLES_FBT_UNCHANGED) {
+					disp_info->disp_caps[HRT_PRIMARY] |= MTK_GLES_FBT_GET_RATIO;
+					DDPMSG("GPUC: GLES FBT ratio is valid\n");
+					have_gpu_cached = true;
+				}
 				return weight * bpp;
 			}
 		}
@@ -1692,13 +1716,12 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 
 	if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR) && frame_idx &&
 		(disp_idx == HRT_PRIMARY) && (layer_info != NULL) &&
-		(layer_info->layer_caps & MTK_HWC_UNCHANGED_LAYER) &&
-		!(layer_info->layer_caps & MTK_HWC_INACTIVE_LAYER)) {
+		(layer_info->layer_caps & MTK_HWC_UNCHANGED_LAYER)) {
 		uint64_t key_value = frame_idx + layer_info->buffer_alloc_id -
-			MAX_FRAME_RATIO_NUMBER;
+			BWM_GPUC_TUNING_FRAME;
 		int i = 0;
 
-		DDPDBG("BWM: line:%d fbt layer frame_idx:%u key:%llu\n",
+		DDPDBG_BWM("BWM: line:%d unchanged layer frame_idx:%u key:%llu\n",
 				__LINE__, frame_idx, key_value);
 #ifdef HRT_DEBUG_LEVEL1
 		print_bwm_table();
@@ -1713,7 +1736,7 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 				else
 					weight *= unchanged_compress_ratio_table[i].peak_ratio;
 				do_div(weight, 1000);
-				DDPDBG("BWM: unchanged f_idx:%u alloc_id:%llu ratio:%u weight:%d\n",
+				DDPDBG_BWM("BWM: unchgd f_idx:%u allocid:%llu ratio:%u weight:%d\n",
 					frame_idx, layer_info->buffer_alloc_id,
 					unchanged_compress_ratio_table[i].peak_ratio, weight);
 				layer_info->layer_caps |= MTK_DISP_UNCHANGED_RATIO_VALID;
@@ -1730,7 +1753,7 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 				else
 					weight *= normal_layer_compress_ratio_tb[i].peak_ratio;
 				do_div(weight, 1000);
-				DDPDBG("BWM:f_idx:%u alloc_id:%llu key:%llu ratio:%u weight:%d\n",
+				DDPDBG_BWM("BWM:fidx:%u allocid:%llu key:%llu ratio:%u weight:%d\n",
 					frame_idx, layer_info->buffer_alloc_id, key_value,
 					normal_layer_compress_ratio_tb[i].peak_ratio, weight);
 				layer_info->layer_caps |= MTK_DISP_UNCHANGED_RATIO_VALID;
@@ -1850,15 +1873,15 @@ static bool _calc_gpu_cache_layerset_hrt_num(struct drm_device *dev,
 		layer_info = &disp_info->input_config[disp][i];
 		if ((layer_info != NULL) &&
 				(layer_info->layer_caps & MTK_HWC_INACTIVE_LAYER)) {
-			DDPDBG("GPUC: Inactiver layer %d\n", i);
+			DDPDBG_BWM("GPUC: Inactiver layer %d\n", i);
 			j++;
 		}
 	}
 	if (j <= 1) {
-		DDPDBG("GPUC: Inactiver layer is less than or equal 1\n");
+		DDPMSG("GPUC: Inactiver layer is less than or equal 1\n");
 		return false;
 	}
-	DDPDBG("GPUC: Have %d Inactiver layer gles head:%d tail:%d\n", j,
+	DDPMSG("GPUC: Have %d Inactiver layer gles head:%d tail:%d\n", j,
 		disp_info->gles_head[disp], disp_info->gles_tail[disp]);
 
 	for (i = 0; i < disp_info->layer_num[disp]; i++) {
@@ -1866,7 +1889,7 @@ static bool _calc_gpu_cache_layerset_hrt_num(struct drm_device *dev,
 		int skipped = 0;
 
 		layer_info = &disp_info->input_config[disp][i];
-		DDPDBG("GPUC: layer idx %d\n", i);
+		DDPDBG_BWM("GPUC: layer idx %d\n", i);
 		if (disp_info->gles_head[disp] == -1 ||
 		    (i < disp_info->gles_head[disp] ||
 		     i > disp_info->gles_tail[disp])) {
@@ -1884,12 +1907,12 @@ static bool _calc_gpu_cache_layerset_hrt_num(struct drm_device *dev,
 				    hrt_type)
 					continue;
 			}
-			DDPDBG("GPUC: layer idx %d\n", i);
+			DDPDBG_BWM("GPUC: layer idx %d\n", i);
 			overlap_w = get_layer_weight(dev, disp, layer_info, 0, false);
 			if (bw_monitor_is_on) {
 				overlap_w_of_bwm = get_layer_weight(dev, disp, layer_info,
 					disp_info->frame_idx[disp], false);
-				DDPDBG("GPUC line:%d overlap_w:%d overlap_w_of_bwm:%d\n",
+				DDPDBG_BWM("GPUC line:%d overlap_w:%d overlap_w_of_bwm:%d\n",
 					__LINE__, overlap_w, overlap_w_of_bwm);
 			}
 
@@ -1899,27 +1922,32 @@ static bool _calc_gpu_cache_layerset_hrt_num(struct drm_device *dev,
 				if ((disp == HRT_PRIMARY) && bw_monitor_is_on) {
 					calc_mml_layer_weight(disp_info,
 						disp, i, &overlap_w_of_bwm);
-					DDPDBG("GPUC line:%d overlap_w:%d overlap_w_of_bwm:%d\n",
+					DDPDBG_BWM("GPUC line:%d overlap_w:%d overlapw_of_bwm:%d\n",
 						__LINE__, overlap_w, overlap_w_of_bwm);
 				}
 			}
 
 			if (layer_info->src_width > 40 || skipped == 1) {
-				sum_overlap_w += overlap_w;
-				add_layer_entry(layer_info, true, overlap_w);
-				DDPDBG("GPUC: layer idx:%d caps:0x%08x\n",
+				if (!bw_monitor_is_on) {
+					sum_overlap_w += overlap_w;
+					add_layer_entry(layer_info, true, overlap_w);
+				} else {
+					sum_overlap_w += overlap_w_of_bwm;
+					add_layer_entry(layer_info, true, overlap_w_of_bwm);
+				}
+				DDPDBG_BWM("GPUC: layer idx:%d caps:0x%08x\n",
 					i, layer_info->layer_caps);
 				if ((!bw_monitor_is_on) &&
 					!(layer_info->layer_caps & MTK_HWC_INACTIVE_LAYER)) {
 					sum_overlap_w_gc += overlap_w;
-					DDPDBG("GPUC line:%d sum_o_w:%d sum_overlap_w_gc:%d\n",
+					DDPDBG_BWM("GPUC line:%d sum_o_w:%d sum_overlap_w_gc:%d\n",
 						__LINE__, sum_overlap_w, sum_overlap_w_gc);
 					add_layer_entry_for_compare(layer_info, true, overlap_w);
 				}
 				if ((bw_monitor_is_on) &&
 					!(layer_info->layer_caps & MTK_HWC_INACTIVE_LAYER)) {
 					sum_overlap_w_gc += overlap_w_of_bwm;
-					DDPDBG("GPUC line:%d sum_o_w:%d sum_overlap_w_gc_bwm:%d\n",
+					DDPDBG_BWM("GPUC line:%d sumow:%d sum_overlap_w_gcbwm:%d\n",
 						__LINE__, sum_overlap_w, sum_overlap_w_gc);
 					add_layer_entry_for_compare(layer_info, true,
 						overlap_w_of_bwm);
@@ -1949,23 +1977,23 @@ static bool _calc_gpu_cache_layerset_hrt_num(struct drm_device *dev,
 
 	}
 
-	DDPDBG("GPUC line:%d default:%d gc:%d overlap bound:%d\n",
+	DDPDBG_BWM("GPUC line:%d default:%d gc:%d overlap bound:%d\n",
 		__LINE__, sum_overlap_w,
 		sum_overlap_w_gc, overlap_l_bound);
 
 	/* Add overlap weight of Gles layer and Assert layer. */
-	if (has_gles)
+	if (has_gles || need_rollback_to_gpu_before_gpuc)
 		sum_overlap_w += get_layer_weight(dev, disp, NULL, 0, has_gles);
 
 	sum_overlap_w_gc += get_layer_weight(dev, disp, NULL,
 		disp_info->frame_idx[disp], true);
-	DDPDBG("GPUC line:%d sum_overlap_w:%d sum_overlap_w_gc:%d\n",
+	DDPDBG_BWM("GPUC line:%d sum_overlap_w:%d sum_overlap_w_gc:%d\n",
 		__LINE__, sum_overlap_w, sum_overlap_w_gc);
 
 	if (has_dal_layer) {
 		sum_overlap_w += HRT_AEE_WEIGHT;
 		sum_overlap_w_gc += HRT_AEE_WEIGHT;
-		DDPDBG("GPUC line:%d sum_overlap_w:%d sum_overlap_w_gc:%d\n",
+		DDPDBG_BWM("GPUC line:%d sum_overlap_w:%d sum_overlap_w_gc:%d\n",
 			__LINE__, sum_overlap_w, sum_overlap_w_gc);
 	}
 
@@ -1979,29 +2007,29 @@ static bool _calc_gpu_cache_layerset_hrt_num(struct drm_device *dev,
 			scan_y_overlap(disp_info, disp, overlap_l_bound);
 		sum_overlap_w_gc =
 			scan_y_overlap_for_compare(disp_info, disp, overlap_l_bound);
-		DDPDBG("GPUC line:%d sum_overlap_w:%d sum_overlap_w_gc:%d\n",
+		DDPDBG_BWM("GPUC line:%d sum_overlap_w:%d sum_overlap_w_gc:%d\n",
 			__LINE__, sum_overlap_w, sum_overlap_w_gc);
 
 		/* Add overlap weight of Gles layer and Assert layer. */
-		if (has_gles)
+		if (has_gles || need_rollback_to_gpu_before_gpuc)
 			sum_overlap_w += get_layer_weight(dev, disp, NULL, 0, has_gles);
 
 		sum_overlap_w_gc += get_layer_weight(dev, disp, NULL,
 			disp_info->frame_idx[disp], true);
-		DDPDBG("GPUC line:%d sum_overlap_w:%d sum_overlap_w_gc:%d\n",
+		DDPDBG_BWM("GPUC line:%d sum_overlap_w:%d sum_overlap_w_gc:%d\n",
 			__LINE__, sum_overlap_w, sum_overlap_w_gc);
 
 		if (has_dal_layer) {
 			sum_overlap_w += HRT_AEE_WEIGHT;
 			sum_overlap_w_gc += HRT_AEE_WEIGHT;
-			DDPDBG("GPUC line:%d sum_overlap_w:%d sum_overlap_w_gc:%d\n",
+			DDPDBG_BWM("GPUC line:%d sum_overlap_w:%d sum_overlap_w_gc:%d\n",
 				__LINE__, sum_overlap_w, sum_overlap_w_gc);
 		}
 	}
 
-	DDPDBG("GPUC %s disp:%d, disp:%d, hrt_type:%d, sum_overlap_w:%d\n", __func__,
-			disp, disp, hrt_type, sum_overlap_w);
-	DDPDBG("GPUC sum_overlap_w:%d sum_overlap_w_gc:%d max:%d\n",
+	DDPDBG_BWM("GPUC %s disp:%d, hrt_type:%d, sum_overlap_w:%d\n", __func__,
+			disp, hrt_type, sum_overlap_w);
+	DDPMSG("GPUC sum_overlap_w:%d sum_overlap_w_gc:%d max:%d\n",
 			sum_overlap_w, sum_overlap_w_gc, overlap_l_bound);
 
 	free_all_layer_entry(true);
@@ -2014,19 +2042,19 @@ static bool _calc_gpu_cache_layerset_hrt_num(struct drm_device *dev,
 	/* 3. N & M need less than or equal max HRT BW(bound). */
 	if (sum_overlap_w > 400) {
 		if (sum_overlap_w_gc > sum_overlap_w) {
-			DDPDBG("GPUC: %s:%d M > N\n", __func__, __LINE__);
+			DDPMSG("GPUC: %s:%d M > N\n", __func__, __LINE__);
 			return false;
 		}
 		if (sum_overlap_w_gc > overlap_l_bound) {
-			DDPDBG("GPUC: %s:%d max<M<N\n", __func__, __LINE__);
+			DDPMSG("GPUC: %s:%d max<M<N\n", __func__, __LINE__);
 			return false;
 		}
 
-		DDPDBG("GPUC: %s:%d M<=max<N or M<N<=max\n", __func__, __LINE__);
+		DDPMSG("GPUC: %s:%d M<=max<N or M<N<=max\n", __func__, __LINE__);
 		return true;
 	}
 
-	DDPDBG("GPUC: %s:%d N<1 uncompress layer\n", __func__, __LINE__);
+	DDPMSG("GPUC: %s:%d N<1 uncompress layer\n", __func__, __LINE__);
 	return false;
 }
 
@@ -2092,7 +2120,8 @@ static int _calc_hrt_num(struct drm_device *dev,
 		(have_force_gpu_layer == 0) && need_gpu_cache &&
 			(disp_info->gles_head[disp] == -1) &&
 			(disp_info->gles_tail[disp] == -1)) {
-		DDPDBG("GPUC: 1 layerset head:%d tail:%d\n", layerset_head, layerset_tail);
+		DDPDBG_BWM("GPUC: 1 layerset head:%d tail:%d\n",
+			layerset_head, layerset_tail);
 		for (i = 0; i < disp_info->layer_num[disp]; i++) {
 			layer_info = &disp_info->input_config[disp][i];
 			if ((layer_info != NULL) &&
@@ -2105,30 +2134,22 @@ static int _calc_hrt_num(struct drm_device *dev,
 				layer_info->layer_caps |= MTK_DISP_CLIENT_LAYER;
 				layerset_tail = i;
 				mtk_rollback_layer_to_GPU(disp_info, disp, i);
-				DDPDBG("GPUC: Inactive layer:%d\n", i);
+				DDPDBG_BWM("GPUC: Inactive layer:%d\n", i);
 			}
-
-			if ((layer_info != NULL) &&
-				(layer_info->layer_caps & MTK_HWC_UNCHANGED_FBT_LAYER)) {
-				layer_info->layer_caps |= MTK_DISP_FBT_RATIO_VALID;
-				DDPDBG("GPUC: gpu layer is ok\n");
-			}
-
 		}
 
-		DDPDBG("GPUC: 2 layerset head:%d tail:%d\n", layerset_head, layerset_tail);
-
-		if (disp_info->disp_caps[HRT_PRIMARY] & MTK_GLES_FBT_UNCHANGED) {
-			disp_info->disp_caps[HRT_PRIMARY] |= MTK_GLES_FBT_GET_RATIO;
-			DDPDBG("GPUC: GLES FBT ratio is valid\n");
-		}
+		DDPDBG_BWM("GPUC: 2 layerset head:%d tail:%d\n",
+			layerset_head, layerset_tail);
 
 		/* If use GPU cache need inactive layer >= 2 layers */
 		if (layerset_head != layerset_tail) {
 			disp_info->gles_head[disp] = layerset_head;
 			disp_info->gles_tail[disp] = layerset_tail;
+			if (!(disp_info->disp_caps[HRT_PRIMARY] & MTK_GLES_FBT_UNCHANGED))
+				have_gpu_cached = false;
 		}
-		DDPDBG("GPUC: 3 layerset head:%d tail:%d\n", layerset_head, layerset_tail);
+		DDPDBG_BWM("GPUC: 3 layerset head:%d tail:%d\n",
+			layerset_head, layerset_tail);
 	}
 
 	for (i = 0; i < disp_info->layer_num[disp]; i++) {
@@ -2157,7 +2178,7 @@ static int _calc_hrt_num(struct drm_device *dev,
 			if ((disp == HRT_PRIMARY) && bw_monitor_is_on) {
 				overlap_w_of_bwm = get_layer_weight(dev, disp, layer_info,
 					disp_info->frame_idx[disp], false);
-				DDPDBG("BWM line:%d overlap_w:%d overlap_w_of_bwm:%d\n",
+				DDPDBG_BWM("BWM line:%d overlap_w:%d overlap_w_of_bwm:%d\n",
 					__LINE__, overlap_w, overlap_w_of_bwm);
 			}
 
@@ -2167,7 +2188,7 @@ static int _calc_hrt_num(struct drm_device *dev,
 				if ((disp == HRT_PRIMARY) && bw_monitor_is_on) {
 					calc_mml_layer_weight(disp_info,
 						disp, i, &overlap_w_of_bwm);
-					DDPDBG("BWM line:%d overlap_w:%d overlap_w_of_bwm:%d\n",
+					DDPDBG_BWM("BWM line:%d overlap_w:%d overlap_w_of_bwm:%d\n",
 						__LINE__, overlap_w, overlap_w_of_bwm);
 				}
 			}
@@ -2177,7 +2198,7 @@ static int _calc_hrt_num(struct drm_device *dev,
 				add_layer_entry(layer_info, true, overlap_w);
 				if ((disp == HRT_PRIMARY) && bw_monitor_is_on) {
 					sum_overlap_w_of_bwm += overlap_w_of_bwm;
-					DDPDBG("BWM line:%d sum_o_w:%d sum_o_w_of_bwm:%d\n",
+					DDPDBG_BWM("BWM line:%d sum_o_w:%d sum_o_w_of_bwm:%d\n",
 						__LINE__, sum_overlap_w, sum_overlap_w_of_bwm);
 					add_layer_entry_for_compare(layer_info, true,
 						overlap_w_of_bwm);
@@ -2206,7 +2227,7 @@ static int _calc_hrt_num(struct drm_device *dev,
 		}
 	}
 
-	DDPDBG("BWM line:%d sum_overlap_w:%d sum_overlap_w_of_bwm:%d overlap bound:%d\n",
+	DDPDBG_BWM("BWM line:%d sum_overlap_w:%d sum_overlap_w_of_bwm:%d overlap bound:%d\n",
 		__LINE__, sum_overlap_w, sum_overlap_w_of_bwm, overlap_l_bound);
 
 	/* Add overlap weight of Gles layer and Assert layer. */
@@ -2215,7 +2236,7 @@ static int _calc_hrt_num(struct drm_device *dev,
 		if ((disp == HRT_PRIMARY) && bw_monitor_is_on) {
 			sum_overlap_w_of_bwm += get_layer_weight(dev, disp, NULL,
 				disp_info->frame_idx[disp], need_gpu_cache);
-			DDPDBG("BWM line:%d sum_overlap_w:%d sum_overlap_w_of_bwm:%d\n",
+			DDPDBG_BWM("BWM line:%d sum_overlap_w:%d sum_overlap_w_of_bwm:%d\n",
 				__LINE__, sum_overlap_w, sum_overlap_w_of_bwm);
 		}
 	}
@@ -2224,7 +2245,7 @@ static int _calc_hrt_num(struct drm_device *dev,
 		sum_overlap_w += HRT_AEE_WEIGHT;
 		if ((disp == HRT_PRIMARY) && bw_monitor_is_on) {
 			sum_overlap_w_of_bwm += HRT_AEE_WEIGHT;
-			DDPDBG("BWM line:%d sum_overlap_w:%d sum_overlap_w_of_bwm:%d\n",
+			DDPDBG_BWM("BWM line:%d sum_overlap_w:%d sum_overlap_w_of_bwm:%d\n",
 				__LINE__, sum_overlap_w, sum_overlap_w_of_bwm);
 		}
 	}
@@ -2240,7 +2261,7 @@ static int _calc_hrt_num(struct drm_device *dev,
 		if ((disp == HRT_PRIMARY) && bw_monitor_is_on) {
 			sum_overlap_w_of_bwm =
 				scan_y_overlap_for_compare(disp_info, disp, overlap_l_bound);
-			DDPDBG("BWM line:%d sum_overlap_w:%d sum_overlap_w_of_bwm:%d\n",
+			DDPDBG_BWM("BWM line:%d sum_overlap_w:%d sum_overlap_w_of_bwm:%d\n",
 				__LINE__, sum_overlap_w, sum_overlap_w_of_bwm);
 		}
 
@@ -2250,7 +2271,7 @@ static int _calc_hrt_num(struct drm_device *dev,
 			if ((disp == HRT_PRIMARY) && bw_monitor_is_on) {
 				sum_overlap_w_of_bwm += get_layer_weight(dev, disp, NULL,
 						disp_info->frame_idx[disp], need_gpu_cache);
-				DDPDBG("BWM line:%d sum_overlap_w:%d sum_overlap_w_of_bwm:%d\n",
+				DDPDBG_BWM("BWM line:%d sum_overlap_w:%d sum_overlap_w_of_bwm:%d\n",
 					__LINE__, sum_overlap_w, sum_overlap_w_of_bwm);
 			}
 		}
@@ -2258,7 +2279,7 @@ static int _calc_hrt_num(struct drm_device *dev,
 			sum_overlap_w += HRT_AEE_WEIGHT;
 			if ((disp == HRT_PRIMARY) && bw_monitor_is_on) {
 				sum_overlap_w_of_bwm += HRT_AEE_WEIGHT;
-				DDPDBG("BWM line:%d sum_ow:%d sum_ow_of_bwm:%d bound:%d\n",
+				DDPDBG_BWM("BWM line:%d sum_ow:%d sum_ow_of_bwm:%d bound:%d\n",
 					__LINE__, sum_overlap_w,
 					sum_overlap_w_of_bwm, overlap_l_bound);
 			}
@@ -2309,14 +2330,14 @@ static int check_is_force_gpu(struct drm_device *dev,
 	if (get_layering_opt(LYE_OPT_SPHRT) && disp_info->disp_idx != 0)
 		return 0;
 
-	DDPINFO("BWM: Disp_caps:%u\n", disp_info->disp_caps[HRT_PRIMARY]);
+	DDPMSG("BWM: Disp_caps:%u\n", disp_info->disp_caps[HRT_PRIMARY]);
 	if ((disp_info->gles_head[disp_idx] == -1) &&
 			(disp_info->gles_tail[disp_idx] == -1)) {
 		have_force_gpu_layer = 0;
-		DDPINFO("BWM: no force gpu layer\n");
+		DDPMSG("BWM: no force gpu layer\n");
 	} else {
 		have_force_gpu_layer = 1;
-		DDPINFO("BWM: have force gpu layer\n");
+		DDPMSG("BWM: have force gpu layer\n");
 	}
 
 	return 0;
@@ -2343,14 +2364,16 @@ static int calc_hrt_num(struct drm_device *dev,
 		if (get_layering_opt(LYE_OPT_GPU_CACHE)) {
 			if (g_gpuc_direct_push) {
 				need_gpu_cache = true;
-				DDPDBG("GPUC: layerset direct push to gpu cache\n");
+				DDPMSG("GPUC: layerset direct push to gpu cache\n");
 			} else {
-				DDPDBG("GPUC: layerset need to cal gain\n");
+				DDPMSG("GPUC: layerset need to cal gain\n");
 				need_gpu_cache =
 					_calc_gpu_cache_layerset_hrt_num(dev, disp_info,
 					HRT_PRIMARY, HRT_TYPE_EMI,
 					scan_overlap, l_rule_info->dal_enable);
 			}
+			if (!need_gpu_cache)
+				have_gpu_cached = false;
 		}
 		sum_overlap_w =
 			_calc_hrt_num(dev, disp_info, HRT_PRIMARY, HRT_TYPE_EMI,

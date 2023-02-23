@@ -68,6 +68,15 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 			pr_info("[DISP]" pr_fmt(fmt), ##arg);     \
 	} while (0)
 
+#define DDPDBG_BWM(fmt, arg...)                                                    \
+	do {                                                                   \
+		if (!g_ovl_bwm_debug)                                             \
+			break;                                                 \
+		mtk_dprec_logger_pr(DPREC_LOGGER_DEBUG, fmt, ##arg);           \
+		if (g_mobile_log)                                              \
+			pr_info("[DISP]" pr_fmt(fmt), ##arg);     \
+	} while (0)
+
 #define DDP_PROFILE(fmt, arg...)                                               \
 	do {                                                                   \
 		if (!g_profile_log)                                            \
