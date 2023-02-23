@@ -13,3 +13,12 @@ config MTK_USB_OFFLOAD
 
 	  Choose M here to compile this driver as a module, and it
 	  will be called usb_offload.ko
+
+config MTK_USB_OFFLOAD_DEBUG
+	bool "Enable Medaitek USB Offload Debug Feature"
+	help
+	  Say Y if you need this feature while
+	  the trace points of specific function in alsa,
+	  ex usb_audio_probe, have not merged into upstream
+
+	  Otherwise say N.

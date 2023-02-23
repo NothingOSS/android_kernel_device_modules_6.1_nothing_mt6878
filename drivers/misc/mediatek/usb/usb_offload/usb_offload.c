@@ -32,8 +32,6 @@
 #include <linux/dma-mapping.h>
 #include <adsp_helper.h>
 
-//#include <trace/hooks/audio_usboffload.h>
-
 #include "clk-mtk.h"
 
 #if IS_ENABLED(CONFIG_SND_USB_AUDIO)
@@ -86,7 +84,11 @@ static struct usb_audio_dev uadev[SNDRV_CARDS];
 static struct usb_offload_dev *uodev;
 static struct snd_usb_audio *usb_chip[SNDRV_CARDS];
 
-//static void uaudio_disconnect_cb(struct snd_usb_audio *chip);
+#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
+static struct snd_offload_operations offload_ops;
+
+static void uaudio_disconnect_cb(struct snd_usb_audio *chip);
+#endif
 
 static void adsp_ee_recovery(void)
 {
@@ -215,8 +217,8 @@ err:
 	return subs;
 }
 
-#if 0
-static void sound_usb_connect(void *data, struct usb_interface *intf, struct snd_usb_audio *chip)
+#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
+static void sound_usb_connect(struct usb_interface *intf, struct snd_usb_audio *chip)
 {
 	struct device_node *node_xhci_host;
 	struct platform_device *pdev_xhci_host = NULL;
@@ -259,7 +261,7 @@ static void sound_usb_connect(void *data, struct usb_interface *intf, struct snd
 	}
 }
 
-static void sound_usb_disconnect(void *data, struct usb_interface *intf)
+static void sound_usb_disconnect(struct usb_interface *intf)
 {
 	struct snd_usb_audio *chip = usb_get_intfdata(intf);
 	unsigned int card_num;
@@ -292,11 +294,15 @@ static void sound_usb_disconnect(void *data, struct usb_interface *intf)
 
 static int sound_usb_trace_init(void)
 {
-	//WARN_ON(register_trace_android_vh_audio_usb_offload_connect(sound_usb_connect, NULL));
-	//WARN_ON(register_trace_android_rvh_audio_usb_offload_disconnect(
-	//	sound_usb_disconnect, NULL));
+#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
+	offload_ops.connect_cb = sound_usb_connect;
+	offload_ops.disconnect_cb = sound_usb_disconnect;
+	offload_ops.suspend_cb = NULL;
 
+	return snd_usb_register_offload_ops(&offload_ops);
+#else
 	return 0;
+#endif
 }
 
 static bool is_support_format(snd_pcm_format_t fmt)
@@ -487,7 +493,7 @@ int send_disconnect_ipi_msg_to_adsp(void)
 	return send_result;
 }
 
-#if 0
+#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
 static void uaudio_disconnect_cb(struct snd_usb_audio *chip)
 {
 	int ret;
@@ -2210,7 +2216,11 @@ static int usb_offload_probe(struct platform_device *pdev)
 		adsp_register_notify(&adsp_usb_offload_notifier);
 #endif
 
-		sound_usb_trace_init();
+		ret = sound_usb_trace_init();
+		if (ret != 0) {
+			USB_OFFLOAD_ERR("Fail to register offload_ops\n");
+			goto REG_SSUSB_OFFLOAD_FAIL;
+		}
 	} else {
 		USB_OFFLOAD_ERR("No 'xhci_host' node, NOT support USB_OFFLOAD\n");
 		ret = -ENODEV;
@@ -2240,6 +2250,10 @@ static int usb_offload_remove(struct platform_device *pdev)
 
 	if (uodev->default_use_sram)
 		iounmap((void *) usb_offload_mem_buffer[USB_OFFLOAD_MEM_SRAM_ID].va_addr);
+
+#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
+	snd_usb_unregister_offload_ops();
+#endif
 	return 0;
 }
 
