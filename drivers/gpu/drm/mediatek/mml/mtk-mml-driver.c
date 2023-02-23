@@ -199,6 +199,10 @@ static void mml_qos_init(struct mml_dev *mml)
 
 	i = 0;
 	while (!IS_ERR(opp = dev_pm_opp_find_freq_ceil(dev, &freq))) {
+
+		if (i >= tp->opp_cnt)
+			break;
+
 		/* available freq from table, store in MHz */
 		tp->opp_speeds[i] = (u32)div_u64(freq, 1000000) - 5;
 		tp->opp_volts[i] = dev_pm_opp_get_voltage(opp);
