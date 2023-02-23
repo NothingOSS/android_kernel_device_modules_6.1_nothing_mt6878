@@ -5,12 +5,45 @@
 #ifndef _SCHED_COMMON_H
 #define _SCHED_COMMON_H
 
+#define MTK_VENDOR_DATA_SIZE_TEST(mstruct, kstruct)		\
+	BUILD_BUG_ON(sizeof(mstruct) > (sizeof(u64) *		\
+		ARRAY_SIZE(((kstruct *)0)->android_vendor_data1)))
+
 /* Task Vendor Data */
 #define T_SBB_FLG 5
 #define T_TASK_IDLE_PREFER_FLAG 7
+#define MTK_TASK_FLAG 9
+
+struct vip_task_struct {
+	struct list_head		vip_list;
+	u64				sum_exec_snapshot;
+	u64				total_exec;
+	int				vip_prio;
+};
+
+struct soft_affinity_task {
+	bool need_idle;
+	struct cpumask soft_cpumask;
+};
+
+struct mtk_task {
+	u64 reserved0[MTK_TASK_FLAG];
+	struct vip_task_struct	vip_task;
+	struct soft_affinity_task	sa_task;
+};
 
 /* Task Group Vendor Data */
 #define TG_SBB_FLG 0
+#define MTK_TASK_GROUP_FLAG 1
+
+struct soft_affinity_tg {
+	struct cpumask soft_cpumask;
+};
+
+struct mtk_tg {
+	u64 reserved[MTK_TASK_GROUP_FLAG];
+	struct soft_affinity_tg	sa_tg;
+};
 
 /* Run Queue Vendor Data */
 #define RQ_SBB_ACTIVE 0
