@@ -566,6 +566,76 @@ struct cpumask *get_system_cpumask(void)
 }
 EXPORT_SYMBOL_GPL(get_system_cpumask);
 
+__read_mostly int num_sched_clusters;
+cpumask_t __read_mostly **cpu_array;
+
+void init_cpu_array(void)
+{
+	int i;
+	int num_sched_clusters = get_nr_gears();
+
+	cpu_array = kcalloc(num_sched_clusters, sizeof(cpumask_t *),
+			GFP_ATOMIC | __GFP_NOFAIL);
+	if (!cpu_array)
+		free_cpu_array();
+
+	for (i = 0; i < num_sched_clusters; i++) {
+		cpu_array[i] = kcalloc(num_sched_clusters, sizeof(cpumask_t),
+				GFP_ATOMIC | __GFP_NOFAIL);
+		if (!cpu_array[i])
+			free_cpu_array();
+	}
+}
+
+void build_cpu_array(void)
+{
+	int i;
+
+	if (!cpu_array)
+		free_cpu_array();
+
+	/* Construct cpu_array row by row */
+	for (i = 0; i < num_sched_clusters; i++) {
+		int j, k = 1;
+
+		/* Fill out first column with appropriate cpu arrays */
+		cpumask_copy(&cpu_array[i][0], get_gear_cpumask(i));
+		/*
+		 * k starts from column 1 because 0 is filled
+		 * Fill clusters for the rest of the row,
+		 * above i in ascending order
+		 */
+		for (j = i + 1; j < num_sched_clusters; j++) {
+			cpumask_copy(&cpu_array[i][k], get_gear_cpumask(j));
+			k++;
+		}
+
+		/*
+		 * k starts from where we left off above.
+		 * Fill cluster below i in descending order.
+		 */
+		for (j = i - 1; j >= 0; j--) {
+			cpumask_copy(&cpu_array[i][k], get_gear_cpumask(j));
+			k++;
+		}
+	}
+}
+
+void free_cpu_array(void)
+{
+	int i;
+
+	if (!cpu_array)
+		return;
+
+	for (i = 0; i < num_sched_clusters; i++) {
+		kfree(cpu_array[i]);
+		cpu_array[i] = NULL;
+	}
+	kfree(cpu_array);
+	cpu_array = NULL;
+}
+
 static struct cpumask bcpus;
 static unsigned long util_Th;
 

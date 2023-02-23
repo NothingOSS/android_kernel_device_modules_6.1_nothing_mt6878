@@ -20,6 +20,12 @@
 #define RQ_SBB_TICK_START 4
 #define RQ_SBB_CPU_UTILIZE 15
 
+extern int num_sched_clusters;
+extern cpumask_t __read_mostly **cpu_array;
+extern void init_cpu_array(void);
+extern void build_cpu_array(void);
+extern void free_cpu_array(void);
+
 struct util_rq {
 	unsigned long util_cfs;
 	unsigned long dl_util;

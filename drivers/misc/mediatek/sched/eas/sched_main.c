@@ -533,6 +533,9 @@ static int __init mtk_scheduler_init(void)
 		update_pelt_data(939, 12329);
 	}
 
+	init_cpu_array();
+	build_cpu_array();
+
 out_wq:
 	return ret;
 
@@ -546,6 +549,8 @@ static void __exit mtk_scheduler_exit(void)
 	unregister_trace_task_newtask(rotat_task_newtask, NULL);
 #endif
 	cleanup_sched_common_sysfs();
+
+	free_cpu_array();
 }
 
 module_init(mtk_scheduler_init);
