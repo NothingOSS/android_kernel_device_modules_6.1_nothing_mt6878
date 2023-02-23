@@ -30,7 +30,12 @@
 #define MMDVFS_USER_VFMT	7
 #define MMDVFS_USER_IMG		8
 #define MMDVFS_USER_CAM		9
-#define MMDVFS_USER_NUM		10
+
+#define MMDVFS_USER_VCORE	10
+#define MMDVFS_USER_VMM		11
+#define MMDVFS_USER_VDISP	12
+#define MMDVFS_USER_VDEC	13
+#define MMDVFS_USER_NUM		14
 
 /* clock consumer */
 #define CLK_MMDVFS_DISP		0
