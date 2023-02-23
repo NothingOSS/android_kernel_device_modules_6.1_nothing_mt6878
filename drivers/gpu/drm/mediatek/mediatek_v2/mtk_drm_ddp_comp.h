@@ -639,6 +639,7 @@ enum mtk_ddp_io_cmd {
 	INLINEROT_CONFIG,
 	OVL_SET_PQ_OUT,
 	PQ_FILL_COMP_PIPE_INFO,
+	DSI_NULL_PKT_SET,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {

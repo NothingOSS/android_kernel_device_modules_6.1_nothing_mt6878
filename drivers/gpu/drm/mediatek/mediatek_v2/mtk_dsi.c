@@ -1253,7 +1253,8 @@ static int mtk_dsi_set_data_rate(struct mtk_dsi *dsi)
 	return ret;
 }
 
-void mtk_dsi_config_null_packet(struct mtk_dsi *dsi)
+void mtk_dsi_config_null_packet(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
+	void *handle)
 {
 	u32 null_packet_len;
 
@@ -1268,19 +1269,36 @@ void mtk_dsi_config_null_packet(struct mtk_dsi *dsi)
 		dsi->ext->params->cmd_null_pkt_en) {
 		// hs mode
 		null_packet_len = dsi->ext->params->cmd_null_pkt_len;
-		mtk_dsi_mask(dsi, DSI_CMD_TYPE1_HS,
+		if (handle == NULL) {
+			mtk_dsi_mask(dsi, DSI_CMD_TYPE1_HS,
 				CMD_HS_HFP_BLANKING_NULL_EN,
 				CMD_HS_HFP_BLANKING_NULL_EN);
 
-		mtk_dsi_mask(dsi, DSI_CMD_TYPE1_HS,
+			mtk_dsi_mask(dsi, DSI_CMD_TYPE1_HS,
 				CMD_HS_HFP_BLANKING_NULL_LEN,
 				null_packet_len);
+		} else {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DSI_CMD_TYPE1_HS, CMD_HS_HFP_BLANKING_NULL_EN,
+				CMD_HS_HFP_BLANKING_NULL_EN);
+
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DSI_CMD_TYPE1_HS, null_packet_len,
+				CMD_HS_HFP_BLANKING_NULL_LEN);
+		}
+
 		DDPINFO("%s, cmd_null_pkt_en, null_packet_len is %d\n",
 			__func__, null_packet_len);
 	} else {
-		mtk_dsi_mask(dsi, DSI_CMD_TYPE1_HS,
+		if (handle == NULL) {
+			mtk_dsi_mask(dsi, DSI_CMD_TYPE1_HS,
 				CMD_HS_HFP_BLANKING_NULL_EN,
 				0);
+		} else {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DSI_CMD_TYPE1_HS, 0,
+				CMD_HS_HFP_BLANKING_NULL_EN);
+		}
 	}
 }
 
@@ -1371,7 +1389,7 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 		}
 	}
 
-	mtk_dsi_config_null_packet(dsi);
+	mtk_dsi_config_null_packet(dsi, NULL, NULL);
 
 	mtk_dsi_set_LFR(dsi, NULL, NULL, 1);
 
@@ -7747,6 +7765,7 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	unsigned int check_panel_cmd = 0;
 	unsigned int check_ms_work = 0;
+	struct drm_display_mode *old_mode, *adjust_mode;
 
 	if (!dsi) {
 		DDPPR_ERR("%s, %d, invalid parameter\n", __func__, __LINE__);
@@ -7755,6 +7774,9 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 
 	comp = dsi->is_slave ?
 		(&dsi->master_dsi->ddp_comp) : (&dsi->ddp_comp);
+
+	old_mode = &(mtk_crtc->avail_modes[src_mode]);
+	adjust_mode = &(mtk_crtc->avail_modes[dst_mode]);
 
 	/* use no mipi clk change solution */
 	if (mtk_crtc && mtk_crtc->base.dev)
@@ -7832,7 +7854,13 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 
 	if (need_mipi_change == 0) {
 		DDPINFO("skip mipi chg\n");
-		mtk_dsi_config_null_packet(dsi);
+		if ((drm_mode_vrefresh(old_mode) > drm_mode_vrefresh(adjust_mode)) &&
+			mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
+			mtk_crtc->dsi_null_pkt_postpone = true;
+		} else {
+			mtk_crtc->dsi_null_pkt_postpone = false;
+			mtk_dsi_config_null_packet(dsi, NULL, NULL);
+		}
 		goto skip_change_mipi;
 	}
 
