@@ -61,8 +61,6 @@ extern int slbc_scmi_init(void);
 extern int slbc_sspm_slb_disable(int disable);
 extern int slbc_sspm_slc_disable(int disable);
 extern int slbc_sspm_enable(int enable);
-extern int slbc_get_scmi_enable(void);
-extern void slbc_set_scmi_enable(int enable);
 extern int slbc_force_scmi_cmd(unsigned int force);
 extern int slbc_mic_num_cmd(unsigned int num);
 extern int slbc_inner_cmd(unsigned int inner);
@@ -81,8 +79,6 @@ __weak int slbc_scmi_init(void) { return 0; }
 __weak int slbc_sspm_slb_disable(int disable) {}
 __weak int slbc_sspm_slc_disable(int disable) {}
 __weak int slbc_sspm_enable(int enable) {}
-__weak int slbc_get_scmi_enable(void) { return 0; }
-__weak void slbc_set_scmi_enable(int enable) {}
 __weak int slbc_force_scmi_cmd(unsigned int force) {}
 __weak int slbc_mic_num_cmd(unsigned int num) {}
 __weak int slbc_inner_cmd(unsigned int inner) {}

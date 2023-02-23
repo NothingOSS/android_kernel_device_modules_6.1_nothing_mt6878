@@ -716,7 +716,6 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 	seq_printf(m, "slb_disable %x\n", slb_disable);
 	seq_printf(m, "slc_disable %x\n", slc_disable);
 	seq_printf(m, "slbc_sram_enable %x\n", slbc_sram_enable);
-	seq_printf(m, "slbc_scmi_enable %x\n", slbc_get_scmi_enable());
 	seq_printf(m, "slbc_uid_used 0x%lx\n", slbc_uid_used);
 	seq_printf(m, "slbc_sid_mask 0x%lx\n", slbc_sid_mask);
 	seq_printf(m, "slbc_sid_req_q 0x%lx\n", slbc_sid_req_q);
