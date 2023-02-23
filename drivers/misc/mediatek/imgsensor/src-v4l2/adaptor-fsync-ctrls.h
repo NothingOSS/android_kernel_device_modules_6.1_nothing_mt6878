@@ -74,6 +74,13 @@ void notify_fsync_mgr_sync_frame(struct adaptor_ctx *ctx,
  ******************************************************************************/
 void notify_fsync_mgr_vsync(struct adaptor_ctx *ctx);
 
+void notify_fsync_mgr_vsync_by_tsrec(struct adaptor_ctx *ctx);
+
+void notify_fsync_mgr_sensor_hw_pre_latch_by_tsrec(struct adaptor_ctx *ctx);
+
+void notify_fsync_mgr_receive_tsrec_timestamp_info(struct adaptor_ctx *ctx,
+	const struct mtk_cam_seninf_tsrec_timestamp_info *ts_info);
+
 
 void notify_fsync_mgr_g_fl_record_info(struct adaptor_ctx *ctx,
 	struct mtk_fs_frame_length_info *p_fl_info);

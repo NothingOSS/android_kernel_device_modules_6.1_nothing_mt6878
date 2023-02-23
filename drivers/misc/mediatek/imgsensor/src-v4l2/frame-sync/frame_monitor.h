@@ -29,7 +29,7 @@ struct vsync_time {
 	unsigned int id;        // tg (min is 1, start from 1)
 	unsigned int vsyncs;    // how many vsyncs have been passed
 				// since last call to CCU ?
-	unsigned int timestamps[VSYNCS_MAX];
+	fs_timestamp_t timestamps[VSYNCS_MAX];
 };
 
 /* for per Rproc IPC send */
@@ -38,7 +38,7 @@ struct vsync_time {
 #define TG_MAX_NUM (6)
 struct vsync_rec {
 	unsigned int ids;
-	unsigned int cur_tick;
+	fs_timestamp_t cur_tick;
 	unsigned int tick_factor;
 	struct vsync_time recs[TG_MAX_NUM];
 };
@@ -90,6 +90,19 @@ unsigned int frm_query_vsync_data(
 	unsigned int tgs[], unsigned int len, struct vsync_rec *pData);
 
 
+void frm_query_vsync_data_by_tsrec(
+	const unsigned int idxs[], const unsigned int len,
+	struct vsync_rec *pData);
+
+
+void frm_receive_tsrec_timestamp_info(const unsigned int idx,
+	const struct mtk_cam_seninf_tsrec_timestamp_info *ts_info);
+
+
+const struct mtk_cam_seninf_tsrec_timestamp_info *
+frm_get_tsrec_timestamp_info_ptr(const unsigned int idx);
+
+
 void frm_set_frame_measurement(
 	unsigned int idx, unsigned int passed_vsyncs,
 	unsigned int curr_fl_us, unsigned int curr_fl_lc,
@@ -99,7 +112,7 @@ void frm_set_frame_measurement(
 void frm_get_curr_frame_mesurement_and_ts_data(
 	const unsigned int idx, unsigned int *p_fmeas_idx,
 	unsigned int *p_pr_fl_us, unsigned int *p_pr_fl_lc,
-	unsigned int *p_act_fl_us, unsigned int *p_ts_arr);
+	unsigned long long *p_act_fl_us, unsigned long long *p_ts_arr);
 
 
 #ifdef FS_UT

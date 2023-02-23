@@ -50,9 +50,10 @@ void
 hw_fs_dump_dynamic_para(unsigned int idx)
 {
 	unsigned int tg = 0, fl_lc = 0, shut_lc = 0;
-	unsigned int fmeas_idx = 0, pr_fl_us = 0, pr_fl_lc = 0, act_fl_us = 0;
-	unsigned int last_vts = 0, time_after_sof = 0, cur_tick = 0, vsyncs = 0;
-	unsigned int fmeas_ts[VSYNCS_MAX] = {0}, ts_arr[VSYNCS_MAX] = {0};
+	unsigned int fmeas_idx = 0, pr_fl_us = 0, pr_fl_lc = 0, vsyncs = 0;
+	unsigned long long last_vts = 0, time_after_sof = 0, cur_tick = 0;
+	unsigned long long fmeas_ts[VSYNCS_MAX] = {0}, ts_arr[VSYNCS_MAX] = {0};
+	unsigned long long act_fl_us = 0;
 
 	fs_alg_get_cur_frec_data(idx, &fl_lc, &shut_lc);
 
@@ -63,7 +64,7 @@ hw_fs_dump_dynamic_para(unsigned int idx)
 		&fmeas_idx, &pr_fl_us, &pr_fl_lc, &act_fl_us, fmeas_ts);
 
 	LOG_MUST(
-		"ID:%#x(sidx:%u), #%u(act:%u:%u), out_fl:%u(%u), (%u/%u/%u(%u), %u), flk_en:%u, hw_sync(%u(N:0/M:1/S:2), groupID:%u), fdelay:%u [frec(0:%u/%u)(fl_lc/shut_lc), tg:%u, fmeas:%u(pr:%u(%u)/act:%u), fmeas_ts(%u/%u/%u/%u), fs_inst_ts(%u/%u/%u/%u, %u/+%u(%u)/%u)]\n",
+		"ID:%#x(sidx:%u), #%u(act:%u:%u), out_fl:%u(%u), (%u/%u/%u(%u), %u), flk_en:%u, hw_sync(%u(N:0/M:1/S:2), groupID:%u), fdelay:%u [frec(0:%u/%u)(fl_lc/shut_lc), tg:%u, fmeas:%u(pr:%u(%u)/act:%llu), fmeas_ts(%llu/%llu/%llu/%llu), fs_inst_ts(%llu/%llu/%llu/%llu, %llu/+%llu(%llu)/%u)]\n",
 		sensor_infos[idx].sensor_id,
 		sensor_infos[idx].sensor_idx,
 		sensor_infos[idx].magic_num,

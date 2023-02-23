@@ -66,23 +66,23 @@ inline unsigned int convert2LineCount(
 }
 
 
-inline unsigned int convert_timestamp_2_tick(
-	const unsigned int timestamp, const unsigned int tick_factor)
+inline unsigned long long convert_timestamp_2_tick(
+	const unsigned long long timestamp, const unsigned int tick_factor)
 {
 	return (tick_factor) ? (timestamp * tick_factor) : timestamp;
 }
 
 
-inline unsigned int convert_tick_2_timestamp(
-	const unsigned int tick, const unsigned int tick_factor)
+inline unsigned long long convert_tick_2_timestamp(
+	const unsigned long long tick, const unsigned int tick_factor)
 {
 	return (tick_factor) ? (tick / tick_factor) : tick;
 }
 
 
-inline unsigned int calc_time_after_sof(
-	const unsigned int timestamp,
-	const unsigned int tick, const unsigned int tick_factor)
+inline unsigned long long calc_time_after_sof(
+	const unsigned long long timestamp,
+	const unsigned long long tick, const unsigned int tick_factor)
 {
 	return (tick_factor != 0)
 		? ((tick - convert_timestamp_2_tick(timestamp, tick_factor))
@@ -96,10 +96,17 @@ inline unsigned int calc_time_after_sof(
  * @0: tick_a is after tick_b (assuming the interval is a short period)
  */
 inline unsigned int check_tick_b_after_a(
-	const unsigned int tick_a, const unsigned int tick_b)
+	const unsigned long long tick_a_, const unsigned long long tick_b_)
 {
+#if defined(TS_TICK_64_BITS)
+	unsigned long long tick_a = tick_a_, tick_b = tick_b_;
+	unsigned long long tick_diff = (tick_b - tick_a);
+	unsigned long long tick_half = 0, tick_max = (unsigned long long)(-1);
+#else
+	unsigned int tick_a = tick_a_, tick_b = tick_b_;
 	unsigned int tick_diff = (tick_b - tick_a);
-	unsigned int tick_half = 0, tick_max = (0 - 1); // 0xFFFFFFFF
+	unsigned int tick_half = 0, tick_max = (unsigned int)(-1);
+#endif
 
 	if (tick_a == tick_b)
 		return 0;
@@ -109,7 +116,11 @@ inline unsigned int check_tick_b_after_a(
 
 #if !defined(REDUCE_FS_UTIL_LOG)
 	LOG_INF(
+#if defined(TS_TICK_64_BITS)
+		"[Tick] (b-a)=%llu (a:%llu/b:%llu), max:%llu, half:%llu, ret:%u\n",
+#else
 		"[Tick] (b-a)=%u (a:%u/b:%u), max:%u, half:%u, ret:%u\n",
+#endif
 		(tick_b-tick_a), tick_a, tick_b,
 		tick_max, tick_half,
 		(tick_diff < tick_half) ? 1 : 0
@@ -121,10 +132,10 @@ inline unsigned int check_tick_b_after_a(
 
 
 inline unsigned int check_timestamp_b_after_a(
-	const unsigned int ts_a, const unsigned int ts_b,
+	const unsigned long long ts_a, const unsigned long long ts_b,
 	const unsigned int tick_factor)
 {
-	unsigned int tick_a, tick_b;
+	unsigned long long tick_a, tick_b;
 
 	tick_a = convert_timestamp_2_tick(ts_a, tick_factor);
 	tick_b = convert_timestamp_2_tick(ts_b, tick_factor);
@@ -133,11 +144,11 @@ inline unsigned int check_timestamp_b_after_a(
 }
 
 
-inline unsigned int get_two_timestamp_diff(
-	const unsigned int ts_a, const unsigned int ts_b,
+inline unsigned long long get_two_timestamp_diff(
+	const unsigned long long ts_a, const unsigned long long ts_b,
 	const unsigned int tick_factor)
 {
-	unsigned int tick_a, tick_b;
+	unsigned long long tick_a, tick_b;
 
 	if (tick_factor == 0) {
 		LOG_MUST(
@@ -156,9 +167,9 @@ inline unsigned int get_two_timestamp_diff(
 
 
 void get_array_data_from_new_to_old(
-	const unsigned int *in_data,
+	const unsigned long long *in_data,
 	const unsigned int newest_idx, const unsigned int len,
-	unsigned int *res_data)
+	unsigned long long *res_data)
 {
 	unsigned int i = 0, idx = 0;
 
@@ -191,10 +202,10 @@ int get_ts_diff_table_idx(const unsigned int idx_a, const unsigned int idx_b)
 
 
 static void find_latest_n_timestamps(
-	const unsigned int *ts_a_arr, const unsigned int *ts_b_arr,
+	const unsigned long long *ts_a_arr, const unsigned long long *ts_b_arr,
 	const unsigned int ts_arr_len, const unsigned int ts_ordered_cnt,
 	const unsigned int tick_factor,
-	unsigned int *ts_ordered_arr, unsigned int *ts_label_arr)
+	unsigned long long *ts_ordered_arr, unsigned long long *ts_label_arr)
 {
 	unsigned int i = 0, j = 0, k = 0;
 
@@ -243,13 +254,14 @@ static void find_latest_n_timestamps(
  *     positive: find out two target timestamp diff.
  *     negative: can NOT find out target timestamp diff.
  */
-int find_two_sensor_timestamp_diff(
-	const unsigned int *ts_a_arr, const unsigned int *ts_b_arr,
+long long find_two_sensor_timestamp_diff(
+	const unsigned long long *ts_a_arr, const unsigned long long *ts_b_arr,
 	const unsigned int ts_arr_len, const unsigned int tick_factor)
 {
-	int i = 0, diff[3] = {-1}, out_diff = 0, min_diff = 2147483647;
-	unsigned int ts_ordered[4] = {0}, ts_label[4] = {0};
+	long long diff[3] = {-1}, out_diff = 0, min_diff = 0x7FFFFFFFFFFFFFFF;
+	unsigned long long ts_ordered[4] = {0}, ts_label[4] = {0};
 	unsigned int valid = 1;
+	int i = 0;
 
 
 	/* non-valid input checking */
@@ -273,7 +285,7 @@ int find_two_sensor_timestamp_diff(
 				ts_ordered[i], ts_ordered[i+1], tick_factor)) {
 
 			LOG_MUST(
-				"WARNING: ts_arr data seems not from new to old, ts_ordered:(%u/%u/%u/%u), ts_label:(%u/%u/%u/%u), skip for updating TS diff, return -1 [ts(a:(%u/%u/%u/%u)/(b:(%u/%u/%u/%u)), a:1/b:2]\n",
+				"WARNING: ts_arr data seems not from new to old, ts_ordered:(%llu/%llu/%llu/%llu), ts_label:(%llu/%llu/%llu/%llu), skip for updating TS diff, return -1 [ts(a:(%llu/%llu/%llu/%llu)/(b:(%llu/%llu/%llu/%llu)), a:1/b:2]\n",
 				ts_ordered[0], ts_ordered[1], ts_ordered[2], ts_ordered[3],
 				ts_label[0], ts_label[1], ts_label[2], ts_label[3],
 				ts_a_arr[0], ts_a_arr[1], ts_a_arr[2], ts_a_arr[3],
@@ -297,7 +309,7 @@ int find_two_sensor_timestamp_diff(
 	out_diff = (valid) ? min_diff : (-1);
 
 	LOG_INF(
-		"diff:%d(%u/%u/%u, min_diff:%u(valid:%u)), ts_ordered:(%u/%u/%u/%u), ts_label:(%u/%u/%u/%u) [ts(a:(%u/%u/%u/%u)/(b:(%u/%u/%u/%u)), a:1/b:2, len/factor:(%u/%u)]\n",
+		"diff:%lld(%llu/%llu/%llu, min_diff:%llu(valid:%u)), ts_ordered:(%llu/%llu/%llu/%llu), ts_label:(%llu/%llu/%llu/%llu) [ts(a:(%llu/%llu/%llu/%llu)/(b:(%llu/%llu/%llu/%llu)), a:1/b:2, len/factor:(%u/%u)]\n",
 		out_diff, diff[0], diff[1], diff[2], min_diff, valid,
 		ts_ordered[0], ts_ordered[1], ts_ordered[2], ts_ordered[3],
 		ts_label[0], ts_label[1], ts_label[2], ts_label[3],
@@ -320,7 +332,7 @@ int find_two_sensor_timestamp_diff(
  *     len: default it should be equal to TS_DIFF_TABLE_LEN.
  */
 int check_sync_result(
-	const int *ts_diff_table_arr, const unsigned int mask,
+	const long long *ts_diff_table_arr, const unsigned int mask,
 	const unsigned int len, const unsigned int threshold)
 {
 	int ret = -1;

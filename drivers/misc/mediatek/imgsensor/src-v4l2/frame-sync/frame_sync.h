@@ -8,10 +8,6 @@
 
 #include "frame_sync_def.h"
 
-#ifndef FS_UT
-#include "imgsensor-user.h"
-#endif // !FS_UT
-
 
 /*******************************************************************************
  * The Method for FrameSync Register Sensor (default pls using sensor_idx).
@@ -357,6 +353,14 @@ struct FrameSync {
 
 	void (*fs_notify_vsync)(const unsigned int ident,
 		const unsigned int sof_cnt);
+
+	void (*fs_notify_vsync_by_tsrec)(const unsigned int ident);
+
+	void (*fs_notify_sensor_hw_pre_latch_by_tsrec)(
+		const unsigned int ident);
+
+	void (*fs_receive_tsrec_timestamp_info)(const unsigned int ident,
+		const struct mtk_cam_seninf_tsrec_timestamp_info *ts_info);
 
 
 	/**********************************************************************/

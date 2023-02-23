@@ -9,10 +9,14 @@
 #ifdef FS_UT
 #include <string.h>
 #include <stdlib.h>         /* Needed by memory allocate */
+
+#include "fs-ut-test/ut_fs_tsrec.h"
 #else
 /* INSTEAD of using stdio.h, you have to use the following include */
 #include <linux/slab.h>     /* Needed by memory allocate */
 #include <linux/string.h>
+
+#include "imgsensor-user.h"
 #endif // FS_UT
 
 
@@ -36,9 +40,12 @@
 // #endif // FS_UT
 
 
+/******************************************************************************/
+// timestamp source HW / timestamp data type
+/******************************************************************************/
 /*
- * get timestamp by using bellow method
- * e.g. CCU / N3D / TSREC / etc.
+ * (choose ONE) timestamp by using bellow method.
+ * e.g. CCU / N3D / TSREC (default) / etc.
  */
 //#define USING_CCU
 #ifdef USING_CCU
@@ -52,7 +59,31 @@
 #define DELAY_CCU_OP
 #endif // USING_CCU
 
+
 // #define USING_N3D
+
+
+#define USING_TSREC
+#ifdef USING_TSREC
+/*
+ * ISP7s  : 32-bits;
+ * ISP7s+ : if use global timer => 64-bits timestamp
+ *          if use local timer => 32-bits timestamp
+ */
+// #define TS_TICK_64_BITS // for using global timer => 64-bits timestamp
+#endif // USING_TSREC
+#define TSREC_1ST_EXP_ID 0
+
+
+/*
+ * timestamp data type define macro
+ */
+#if defined(TS_TICK_64_BITS)
+#define fs_timestamp_t unsigned long long
+#else
+#define fs_timestamp_t unsigned int
+#endif
+/******************************************************************************/
 
 
 #define SUPPORT_FS_NEW_METHOD
@@ -100,6 +131,8 @@
 #define likely(x)          (__builtin_expect((x), 1))
 #define unlikely(x)        (__builtin_expect((x), 0))
 #define FS_POPCOUNT(n)     (__builtin_popcount(n))
+#define FS_SPIN_LOCK(p)
+#define FS_SPIN_UNLOCK(p)
 #define FS_MUTEX_LOCK(p)   (pthread_mutex_lock(p))
 #define FS_MUTEX_UNLOCK(p) (pthread_mutex_unlock(p))
 #define FS_CALLOC(LEN, T)  (calloc((LEN), (T)))
@@ -121,6 +154,8 @@
 
 #else
 #define FS_POPCOUNT(n)     (hweight32(n))
+#define FS_SPIN_LOCK(p)    (spin_lock(p))
+#define FS_SPIN_UNLOCK(p)  (spin_unlock(p))
 #define FS_MUTEX_LOCK(p)   (mutex_lock(p))
 #define FS_MUTEX_UNLOCK(p) (mutex_unlock(p))
 #define FS_CALLOC(LEN, T)  (kcalloc((LEN), (T), (GFP_ATOMIC)))

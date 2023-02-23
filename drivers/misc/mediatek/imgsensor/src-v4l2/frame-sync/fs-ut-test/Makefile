@@ -5,6 +5,7 @@
 # CFLAGS = -DFS_UT -Werror -Wall -Wframe-larger-than=512 --static
 ASAN = -fsanitize=kernel-address,leak,undefined
 CFLAGS = -DFS_UT -Werror -Wall $(ASAN) -Wframe-larger-than=512 -Walloc-zero -Walloca -Wnonnull
+# CFLAGS = -DFS_UT -Werror -Wall -Wextra -Wconversion -Wno-unused-parameter $(ASAN) -Wframe-larger-than=512 -Walloc-zero -Walloca -Wnonnull
 LDFLAGS = --static
 LIBS = -static-libasan -lasan -lpthread
 $(info ASAN = $(ASAN))

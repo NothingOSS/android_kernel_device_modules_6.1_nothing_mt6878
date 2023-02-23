@@ -108,41 +108,6 @@ static int s_cmd_fsync_sync_frame_start_end(struct adaptor_ctx *ctx, void *arg)
 }
 
 
-static int s_cmd_tsrec_notify_sensor_hw_pre_latch(
-	struct adaptor_ctx *ctx, void *arg)
-{
-	struct mtk_cam_seninf_tsrec_vsync_info *buf = NULL;
-	int ret = 0;
-
-	/* error handling (unexpected case) */
-	if (unlikely(ctx == NULL))
-		return -EINVAL;
-	if (unlikely(arg == NULL)) {
-		ret = -EINVAL;
-		adaptor_logi(ctx,
-			"ERROR: V4L2_CMD_TSREC_NOTIFY_VSYNC, idx:%d, input arg is nullptr, return:%d\n",
-			ctx->idx, ret);
-		return ret;
-	}
-
-	buf = (struct mtk_cam_seninf_tsrec_vsync_info *)arg;
-
-	adaptor_logd(ctx,
-		"V4L2_CMD_TSREC_NOTIFY_SENSOR_HW_PRE_LATCH, idx:%d, vsync_info(tsrec_no:%u, seninf_idx:%u, sys_ts%llu(ns), tsrec_ts:%llu(us))\n",
-		ctx->idx,
-		buf->tsrec_no,
-		buf->seninf_idx,
-		buf->irq_sys_time_ns,
-		buf->irq_tsrec_ts_us);
-
-
-	/* tsrec notify sensor hw pre-latch, call all APIs that needed this info */
-	// TODO: add functions here !
-
-	return ret;
-}
-
-
 static int s_cmd_tsrec_notify_vsync(struct adaptor_ctx *ctx, void *arg)
 {
 	struct mtk_cam_seninf_tsrec_vsync_info *buf = NULL;
@@ -175,6 +140,43 @@ static int s_cmd_tsrec_notify_vsync(struct adaptor_ctx *ctx, void *arg)
 
 	/* tsrec notify vsync, call all APIs that needed this info */
 	// TODO: add functions here !
+	notify_fsync_mgr_vsync_by_tsrec(ctx);
+
+	return ret;
+}
+
+
+static int s_cmd_tsrec_notify_sensor_hw_pre_latch(
+	struct adaptor_ctx *ctx, void *arg)
+{
+	struct mtk_cam_seninf_tsrec_vsync_info *buf = NULL;
+	int ret = 0;
+
+	/* error handling (unexpected case) */
+	if (unlikely(ctx == NULL))
+		return -EINVAL;
+	if (unlikely(arg == NULL)) {
+		ret = -EINVAL;
+		adaptor_logi(ctx,
+			"ERROR: V4L2_CMD_TSREC_NOTIFY_SENSOR_HW_PRE_LATCH, idx:%d, input arg is nullptr, return:%d\n",
+			ctx->idx, ret);
+		return ret;
+	}
+
+	buf = (struct mtk_cam_seninf_tsrec_vsync_info *)arg;
+
+	adaptor_logd(ctx,
+		"V4L2_CMD_TSREC_NOTIFY_SENSOR_HW_PRE_LATCH, idx:%d, vsync_info(tsrec_no:%u, seninf_idx:%u, sys_ts%llu(ns), tsrec_ts:%llu(us))\n",
+		ctx->idx,
+		buf->tsrec_no,
+		buf->seninf_idx,
+		buf->irq_sys_time_ns,
+		buf->irq_tsrec_ts_us);
+
+
+	/* tsrec notify sensor hw pre-latch, call all APIs that needed this info */
+	// TODO: add functions here !
+	notify_fsync_mgr_sensor_hw_pre_latch_by_tsrec(ctx);
 
 	return ret;
 }
@@ -226,6 +228,7 @@ static int s_cmd_tsrec_send_timestamp_info(struct adaptor_ctx *ctx, void *arg)
 
 	/* tsrec send timestamp info, call all APIs that needed this info */
 	// TODO: add functions here !
+	notify_fsync_mgr_receive_tsrec_timestamp_info(ctx, &ctx->ts_info);
 
 	return ret;
 }
@@ -246,9 +249,9 @@ static const struct command_entry command_list[] = {
 
 	/* SET */
 	{V4L2_CMD_FSYNC_SYNC_FRAME_START_END, s_cmd_fsync_sync_frame_start_end},
+	{V4L2_CMD_TSREC_NOTIFY_VSYNC, s_cmd_tsrec_notify_vsync},
 	{V4L2_CMD_TSREC_NOTIFY_SENSOR_HW_PRE_LATCH,
 		s_cmd_tsrec_notify_sensor_hw_pre_latch},
-	{V4L2_CMD_TSREC_NOTIFY_VSYNC, s_cmd_tsrec_notify_vsync},
 	{V4L2_CMD_TSREC_SEND_TIMESTAMP_INFO, s_cmd_tsrec_send_timestamp_info},
 };
 

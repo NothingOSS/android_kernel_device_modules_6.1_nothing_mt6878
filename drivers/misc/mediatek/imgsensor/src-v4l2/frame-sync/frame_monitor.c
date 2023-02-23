@@ -4,6 +4,7 @@
  */
 
 #include "frame_monitor.h"
+#include "frame_sync_util.h"
 
 
 #ifndef FS_UT
@@ -52,7 +53,7 @@ struct FrameResult {
 	unsigned int predicted_fl_lc;
 
 	/* actual framelength (by timestamp's diff) */
-	unsigned int actual_fl_us;
+	unsigned long long actual_fl_us;
 };
 
 
@@ -67,7 +68,7 @@ struct FrameMeasurement {
 	unsigned int idx;
 	struct FrameResult results[VSYNCS_MAX];
 
-	unsigned int timestamps[VSYNCS_MAX];
+	unsigned long long timestamps[VSYNCS_MAX];
 };
 //----------------------------------------------------------------------------//
 
@@ -83,9 +84,9 @@ struct FrameInfo {
 	/* vsync data information obtained by query */
 	/* - vsync for sensor FL */
 	struct vsync_time rec;
-	unsigned int query_ts_at_tick;
-	unsigned int query_ts_at_us;
-	unsigned int time_after_vsync;
+	unsigned long long query_ts_at_tick;
+	unsigned long long query_ts_at_us;
+	unsigned long long time_after_vsync;
 
 
 #ifdef FS_UT
@@ -112,10 +113,13 @@ struct FrameMonitorInst {
 
 //----------------------------------------------------------------------------//
 
-	unsigned int cur_tick;
+	unsigned long long cur_tick;
 	unsigned int tick_factor;
 
 	struct FrameInfo f_info[SENSOR_MAX_NUM];
+
+	/* TSREC timestamp data */
+	struct mtk_cam_seninf_tsrec_timestamp_info ts_info[SENSOR_MAX_NUM];
 
 //----------------------------------------------------------------------------//
 
@@ -153,7 +157,11 @@ void dump_frame_info(const unsigned int idx, const char *caller)
 	struct FrameInfo *p_f_info = &frm_inst.f_info[idx];
 
 	LOG_MUST(
-		"[%s]: [%u] ID:%#x(sidx:%u), tg:%u, rec:(id:%u, vsyncs:%u, ts:(%u/%u/%u/%u)), query at:(%u/+%u(%u))\n",
+#if defined(TS_TICK_64_BITS)
+		"[%s]: [%u] ID:%#x(sidx:%u), tg:%u, rec:(id:%u, vsyncs:%u, ts:(%llu/%llu/%llu/%llu)), query at:(%llu/+%llu(%llu))\n",
+#else
+		"[%s]: [%u] ID:%#x(sidx:%u), tg:%u, rec:(id:%u, vsyncs:%u, ts:(%u/%u/%u/%u)), query at:(%llu/+%llu(%llu))\n",
+#endif
 		caller, idx,
 		p_f_info->sensor_id,
 		p_f_info->sensor_idx,
@@ -175,7 +183,11 @@ void dump_vsync_recs(const struct vsync_rec (*pData), const char *caller)
 	unsigned int i = 0;
 
 	LOG_MUST(
+#if defined(TS_TICK_64_BITS)
+		"[%s]: ids:%u, cur_tick:%llu, tick_factor:%u\n",
+#else
 		"[%s]: ids:%u, cur_tick:%u, tick_factor:%u\n",
+#endif
 		caller,
 		pData->ids,
 		pData->cur_tick,
@@ -183,7 +195,11 @@ void dump_vsync_recs(const struct vsync_rec (*pData), const char *caller)
 
 	for (i = 0; i < pData->ids; ++i) {
 		LOG_MUST(
+#if defined(TS_TICK_64_BITS)
+			"[%s]: recs[%u]: id:%u (TG), vsyncs:%u, ts:(%llu/%llu/%llu/%llu)\n",
+#else
 			"[%s]: recs[%u]: id:%u (TG), vsyncs:%u, ts:(%u/%u/%u/%u)\n",
+#endif
 			caller,
 			i,
 			pData->recs[i].id,
@@ -331,7 +347,7 @@ static void frm_dump_measurement_data(
 
 	if (p_fmeas->idx == 0) {
 		LOG_PF_INF(
-			"[%u] ID:%#x (sidx:%u), tg:%d, vsync:%u, pred/act fl:(curr:%u,*0:%u(%u)/%u, 1:%u(%u)/%u, 2:%u(%u)/%u, 3:%u(%u)/%u), ts_tg_%u:(%u/%u/%u/%u), query_vts_at:%u (SOF + %u)\n",
+			"[%u] ID:%#x (sidx:%u), tg:%d, vsync:%u, pred/act fl:(curr:%u,*0:%u(%u)/%llu, 1:%u(%u)/%llu, 2:%u(%u)/%llu, 3:%u(%u)/%llu), ts_tg_%u:(%llu/%llu/%llu/%llu), query_vts_at:%llu (SOF + %llu)\n",
 			idx,
 			frm_inst.f_info[idx].sensor_id,
 			frm_inst.f_info[idx].sensor_idx,
@@ -359,7 +375,7 @@ static void frm_dump_measurement_data(
 			frm_inst.f_info[idx].time_after_vsync);
 	} else if (p_fmeas->idx == 1) {
 		LOG_PF_INF(
-			"[%u] ID:%#x (sidx:%u), tg:%d, vsync:%u, pred/act fl:(curr:%u, 0:%u(%u)/%u,*1:%u(%u)/%u, 2:%u(%u)/%u, 3:%u(%u)/%u), ts_tg_%u:(%u/%u/%u/%u), query_vts_at:%u (SOF + %u)\n",
+			"[%u] ID:%#x (sidx:%u), tg:%d, vsync:%u, pred/act fl:(curr:%u, 0:%u(%u)/%llu,*1:%u(%u)/%llu, 2:%u(%u)/%llu, 3:%u(%u)/%llu), ts_tg_%u:(%llu/%llu/%llu/%llu), query_vts_at:%llu (SOF + %llu)\n",
 			idx,
 			frm_inst.f_info[idx].sensor_id,
 			frm_inst.f_info[idx].sensor_idx,
@@ -387,7 +403,7 @@ static void frm_dump_measurement_data(
 			frm_inst.f_info[idx].time_after_vsync);
 	} else if (p_fmeas->idx == 2) {
 		LOG_PF_INF(
-			"[%u] ID:%#x (sidx:%u), tg:%d, vsync:%u, pred/act fl:(curr:%u, 0:%u(%u)/%u, 1:%u(%u)/%u,*2:%u(%u)/%u, 3:%u(%u)/%u), ts_tg_%u:(%u/%u/%u/%u), query_vts_at:%u (SOF + %u)\n",
+			"[%u] ID:%#x (sidx:%u), tg:%d, vsync:%u, pred/act fl:(curr:%u, 0:%u(%u)/%llu, 1:%u(%u)/%llu,*2:%u(%u)/%llu, 3:%u(%u)/%llu), ts_tg_%u:(%llu/%llu/%llu/%llu), query_vts_at:%llu (SOF + %llu)\n",
 			idx,
 			frm_inst.f_info[idx].sensor_id,
 			frm_inst.f_info[idx].sensor_idx,
@@ -415,7 +431,7 @@ static void frm_dump_measurement_data(
 			frm_inst.f_info[idx].time_after_vsync);
 	} else if (p_fmeas->idx == 3) {
 		LOG_PF_INF(
-			"[%u] ID:%#x (sidx:%u), tg:%d, vsync:%u, pred/act fl:(curr:%u, 0:%u(%u)/%u, 1:%u(%u)/%u, 2:%u(%u)/%u,*3:%u(%u)/%u), ts_tg_%u:(%u/%u/%u/%u), query_vts_at:%u (SOF + %u)\n",
+			"[%u] ID:%#x (sidx:%u), tg:%d, vsync:%u, pred/act fl:(curr:%u, 0:%u(%u)/%llu, 1:%u(%u)/%llu, 2:%u(%u)/%llu,*3:%u(%u)/%llu), ts_tg_%u:(%llu/%llu/%llu/%llu), query_vts_at:%llu (SOF + %llu)\n",
 			idx,
 			frm_inst.f_info[idx].sensor_id,
 			frm_inst.f_info[idx].sensor_idx,
@@ -484,7 +500,7 @@ static inline void frm_init_measurement(
 
 
 static void frm_prepare_frame_measurement_info(
-	const unsigned int idx, unsigned int vdiff[])
+	const unsigned int idx, unsigned long long vdiff[])
 {
 	struct FrameInfo *p_f_info = &frm_inst.f_info[idx];
 	unsigned int i = 0;
@@ -507,9 +523,9 @@ void frm_set_frame_measurement(
 	unsigned int next_fl_us, unsigned int next_fl_lc)
 {
 	struct FrameMeasurement *p_fmeas = &frm_inst.f_info[idx].fmeas;
-	unsigned int i = 0;
+	unsigned long long vdiff[VSYNCS_MAX] = {0};
 	unsigned int meas_idx = 0, vts_idx = 0;
-	unsigned int vdiff[VSYNCS_MAX] = {0};
+	unsigned int i = 0;
 
 
 	if (!frm_inst.f_info[idx].wait_for_setting_predicted_fl) {
@@ -585,7 +601,7 @@ void frm_set_frame_measurement(
 void frm_get_curr_frame_mesurement_and_ts_data(
 	const unsigned int idx, unsigned int *p_fmeas_idx,
 	unsigned int *p_pr_fl_us, unsigned int *p_pr_fl_lc,
-	unsigned int *p_act_fl_us, unsigned int *p_ts_arr)
+	unsigned long long *p_act_fl_us, unsigned long long *p_ts_arr)
 {
 	struct FrameMeasurement *p_fmeas = &frm_inst.f_info[idx].fmeas;
 	unsigned int fmeas_idx = 0;
@@ -883,6 +899,19 @@ static void frm_set_wait_for_setting_fmeas_by_tg(
 }
 
 
+static void frm_set_wait_for_setting_fmeas_by_idx(const unsigned int idxs[],
+	const unsigned int len)
+{
+	unsigned int i;
+
+	for (i = 0; (i < len) && (i < SENSOR_MAX_NUM); ++i) {
+		const unsigned int idx = idxs[i];
+
+		frm_inst.f_info[idx].wait_for_setting_predicted_fl = 1;
+	}
+}
+
+
 static unsigned int frm_get_camsv0_tg(void)
 {
 #if !defined(FS_UT)
@@ -1162,6 +1191,121 @@ unsigned int frm_query_vsync_data(
 
 	return 0;
 }
+
+
+void frm_query_vsync_data_by_tsrec(
+	const unsigned int idxs[], const unsigned int len,
+	struct vsync_rec *pData)
+{
+	const unsigned int exp_id = TSREC_1ST_EXP_ID;   /* 1st exp => FL exp */
+	unsigned long long latest_curr_tick = 0;
+	unsigned int tick_factor = 0;
+	unsigned int i, j;
+
+	/* manually copy/setup info for vsync_time struct */
+	for (i = 0; (i < len) && (i < SENSOR_MAX_NUM); ++i) {
+		const unsigned int idx = idxs[i];
+		const struct mtk_cam_seninf_tsrec_timestamp_info
+			*p_ts_info = &frm_inst.ts_info[idx];
+
+		/* tick factor (each one must be the same value) */
+		tick_factor = p_ts_info->tick_factor;
+
+		/* setup info to vsync_time struct */
+		/* TODO: !!! FIX ME !!! this is workaround, */
+		/*       using tg number to let sw flow can be run. */
+		// pData->recs[i].id = p_ts_info->seninf_idx;
+		pData->recs[i].id = frm_inst.f_info[idx].tg;
+		pData->recs[i].vsyncs = 1; // for TSREC case.
+		for (j = 0; j < VSYNCS_MAX; ++j) {
+			pData->recs[i].timestamps[j] =
+				p_ts_info->exp_recs[exp_id].ts_us[j];
+		}
+
+		/* use first curr_tick to init this variable */
+		if (latest_curr_tick == 0)
+			latest_curr_tick = p_ts_info->tsrec_curr_tick;
+		/* , then find out latest curr_tick */
+		if (check_tick_b_after_a(
+				latest_curr_tick,
+				p_ts_info->tsrec_curr_tick))
+			latest_curr_tick = p_ts_info->tsrec_curr_tick;
+	}
+
+	/* manually copy/setup info for vsync_rec struct */
+	pData->ids = len;
+	pData->cur_tick = latest_curr_tick;
+	pData->tick_factor = tick_factor;
+
+	/* save data into frame monitor */
+	frm_save_vsync_timestamp(pData);
+
+
+#if !defined(REDUCE_FRM_LOG)
+	/* for debugging */
+	dump_vsync_recs(pData, __func__);
+#endif // !REDUCE_FRM_LOG
+
+
+	frm_set_wait_for_setting_fmeas_by_idx(idxs, len);
+}
+
+
+void frm_receive_tsrec_timestamp_info(const unsigned int idx,
+	const struct mtk_cam_seninf_tsrec_timestamp_info *ts_info)
+{
+	/* error handling (unexpected case) */
+	if (unlikely(idx >= SENSOR_MAX_NUM)) {
+		LOG_MUST(
+			"ERROR: non-valid idx:%u (SENSOR_MAX_NUM:%u), return\n",
+			idx, SENSOR_MAX_NUM);
+		return;
+	}
+
+	memcpy(&frm_inst.ts_info[idx], ts_info, sizeof(frm_inst.ts_info[idx]));
+
+#if !defined(REDUCE_FRM_LOG)
+	LOG_MUST(
+		"[%u] ID:%#x(sidx:%u), ts_info(tsrec_no:%u, seninf_idx:%u, irq(sys_ts:%llu(ns), tsrec_ts:%llu(us)), query at tsrec tick:%llu(%uMHz), exp_ts_us(0:(%llu/%llu/%llu/%llu), 1:(%llu/%llu/%llu/%llu), 2:(%llu/%llu/%llu/%llu)))\n",
+		idx,
+		frm_inst.f_info[idx].sensor_id,
+		frm_inst.f_info[idx].sensor_idx,
+		frm_inst.ts_info[idx].tsrec_no,
+		frm_inst.ts_info[idx].seninf_idx,
+		frm_inst.ts_info[idx].irq_sys_time_ns,
+		frm_inst.ts_info[idx].irq_tsrec_ts_us,
+		frm_inst.ts_info[idx].tsrec_curr_tick,
+		frm_inst.ts_info[idx].tick_factor,
+		frm_inst.ts_info[idx].exp_recs[0].ts_us[0],
+		frm_inst.ts_info[idx].exp_recs[0].ts_us[1],
+		frm_inst.ts_info[idx].exp_recs[0].ts_us[2],
+		frm_inst.ts_info[idx].exp_recs[0].ts_us[3],
+		frm_inst.ts_info[idx].exp_recs[1].ts_us[0],
+		frm_inst.ts_info[idx].exp_recs[1].ts_us[1],
+		frm_inst.ts_info[idx].exp_recs[1].ts_us[2],
+		frm_inst.ts_info[idx].exp_recs[1].ts_us[3],
+		frm_inst.ts_info[idx].exp_recs[2].ts_us[0],
+		frm_inst.ts_info[idx].exp_recs[2].ts_us[1],
+		frm_inst.ts_info[idx].exp_recs[2].ts_us[2],
+		frm_inst.ts_info[idx].exp_recs[2].ts_us[3]);
+#endif // !REDUCE_FRM_LOG
+}
+
+
+const struct mtk_cam_seninf_tsrec_timestamp_info *
+frm_get_tsrec_timestamp_info_ptr(const unsigned int idx)
+{
+	/* error handling (unexpected case) */
+	if (unlikely(idx >= SENSOR_MAX_NUM)) {
+		LOG_MUST(
+			"ERROR: non-valid idx:%u (SENSOR_MAX_NUM:%u), return\n",
+			idx, SENSOR_MAX_NUM);
+		return NULL;
+	}
+
+	return (const struct mtk_cam_seninf_tsrec_timestamp_info *)
+		&frm_inst.ts_info[idx];
+}
 /******************************************************************************/
 
 
@@ -1327,7 +1471,11 @@ void frm_debug_copy_frame_info_vsync_rec_data(struct vsync_rec (*p_vsync_res))
 
 #if !defined(REDUCE_FRM_LOG)
 				LOG_MUST(
+#if defined(TS_TICK_64_BITS)
+					"rec_id:%u/tg:%u, sync data vsyncs:%u, ts:(%llu/%llu/%llu/%llu)\n",
+#else
 					"rec_id:%u/tg:%u, sync data vsyncs:%u, ts:(%u/%u/%u/%u)\n",
+#endif
 					p_vsync_res->recs[i].id,
 					frm_inst.f_info[j].tg,
 					p_vsync_res->recs[i].vsyncs,

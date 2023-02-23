@@ -65,7 +65,7 @@ struct FrameSyncDynamicPara {
 
 	/* per-frame status variables */
 	int master_idx;
-	int ref_m_idx_magic_num;
+	unsigned int ref_m_idx_magic_num;
 	unsigned int ask_for_chg;       // if finally ask FS DRV switch to master
 	unsigned int chg_master;        // if request to change to master
 	long long adj_diff_m;
@@ -93,8 +93,8 @@ struct FrameSyncDynamicPara {
 	unsigned int delta;
 
 	/* timestamp info */
-	unsigned int cur_tick;          // current tick at querying data
-	unsigned int last_ts;           // last timestamp at querying data
+	unsigned long long cur_tick;    // current tick at querying data
+	unsigned long long last_ts;     // last timestamp at querying data
 	unsigned int vsyncs;            // passed vsync counts
 
 	/* fs SA mode cfg */
@@ -216,9 +216,9 @@ struct FrameSyncInst {
 
 	/* frame monitor data */
 	unsigned int vsyncs;
-	unsigned int last_vts;
-	unsigned int timestamps[VSYNCS_MAX];
-	unsigned int cur_tick;
+	unsigned long long last_vts;
+	unsigned long long timestamps[VSYNCS_MAX];
+	unsigned long long cur_tick;
 	unsigned int vdiff;
 
 	unsigned int is_nonvalid_ts:1;
@@ -237,7 +237,7 @@ static unsigned int target_min_fl_us;
 
 
 /* frame monitor data */
-static unsigned int cur_tick;
+static unsigned long long cur_tick;
 static unsigned int tick_factor;
 
 
@@ -363,7 +363,7 @@ static inline unsigned int check_fs_inst_vsync_data_valid(
 
 #if !defined(REDUCE_FS_ALGO_LOG)
 			LOG_PR_ERR(
-				"ERROR: [%u] ID:%#x(sidx:%u), last vts:%u\n",
+				"ERROR: [%u] ID:%#x(sidx:%u), last vts:%llu\n",
 				idx,
 				fs_inst[idx].sensor_id,
 				fs_inst[idx].sensor_idx,
@@ -740,9 +740,9 @@ void fs_alg_get_cur_frec_data(unsigned int idx,
 
 
 void fs_alg_get_fs_inst_ts_data(unsigned int idx,
-	unsigned int *p_tg, unsigned int ts_arr[],
-	unsigned int *p_last_vts, unsigned int *p_time_after_sof,
-	unsigned int *p_cur_tick, unsigned int *p_vsyncs)
+	unsigned int *p_tg, unsigned long long ts_arr[],
+	unsigned long long *p_last_vts, unsigned long long *p_time_after_sof,
+	unsigned long long *p_cur_tick, unsigned int *p_vsyncs)
 {
 	unsigned int i = 0;
 
@@ -878,7 +878,7 @@ static inline void fs_alg_dump_perframe_data(unsigned int idx)
 void fs_alg_dump_fs_inst_data(const unsigned int idx)
 {
 	LOG_MUST(
-		"[%u] ID:%#x(sidx:%u), (%d/%u), tg:%u, fdelay:%u, fl_lc(def/min/max/out):%u/%u/%u/%u(%u), pred_fl(c:%u(%u)/n:%u(%u)), shut_lc:%u(def:%u), margin_lc:%u, flk_en:%u, lineTime:%u(%u/%u), readout(us):%u, f_cell:%u, f_tag:%u, n_1:%u, hdr_exp(c(%u/%u/%u/%u/%u, %u/%u, %u/%u), prev(%u/%u/%u/%u/%u, %u/%u, %u/%u), cnt:(mode/ae), read(len/margin)), ts(%u/%u/%u/%u, %u/+(%u)/%u)\n",
+		"[%u] ID:%#x(sidx:%u), (%d/%u), tg:%u, fdelay:%u, fl_lc(def/min/max/out):%u/%u/%u/%u(%u), pred_fl(c:%u(%u)/n:%u(%u)), shut_lc:%u(def:%u), margin_lc:%u, flk_en:%u, lineTime:%u(%u/%u), readout(us):%u, f_cell:%u, f_tag:%u, n_1:%u, hdr_exp(c(%u/%u/%u/%u/%u, %u/%u, %u/%u), prev(%u/%u/%u/%u/%u, %u/%u, %u/%u), cnt:(mode/ae), read(len/margin)), ts(%llu/%llu/%llu/%llu, %llu/+(%llu)/%u)\n",
 		idx,
 		fs_inst[idx].sensor_id,
 		fs_inst[idx].sensor_idx,
@@ -947,33 +947,47 @@ void fs_alg_dump_all_fs_inst_data(void)
 #ifdef SUPPORT_FS_NEW_METHOD
 static inline void fs_alg_sa_dump_dynamic_para(unsigned int idx)
 {
-	unsigned int time_after_sof = 0, time_after_sof_cur = 0;
-	unsigned int fmeas_idx = 0, pr_fl_us = 0, pr_fl_lc = 0, act_fl_us = 0;
-	unsigned int fmeas_ts[VSYNCS_MAX] = {0};
+#if defined(USING_TSREC)
+	const struct mtk_cam_seninf_tsrec_timestamp_info
+		*p_ts_info = frm_get_tsrec_timestamp_info_ptr(idx);
+#endif
+	unsigned long long fmeas_ts[VSYNCS_MAX] = {0};
+	unsigned long long act_fl_us = 0;
+	unsigned long long time_after_sof = 0, time_after_sof_cur = 0;
+	unsigned int fmeas_idx = 0, pr_fl_us = 0, pr_fl_lc = 0;
+	int len = 0;
+	char *log_buf = NULL;
+
+	log_buf = FS_CALLOC(LOG_BUF_STR_LEN, sizeof(char));
+	if (unlikely(log_buf == NULL)) {
+		LOG_MUST("ERROR: log_buf allocate memory failed\n");
+		return;
+	}
+	log_buf[0] = '\0';
 
 
-	time_after_sof =
-		calc_time_after_sof(
-			fs_sa_inst.dynamic_paras[idx].last_ts,
-			fs_sa_inst.dynamic_paras[idx].cur_tick, tick_factor);
+	time_after_sof = calc_time_after_sof(
+		fs_sa_inst.dynamic_paras[idx].last_ts,
+		fs_sa_inst.dynamic_paras[idx].cur_tick, tick_factor);
 
-	time_after_sof_cur =
-		calc_time_after_sof(
-			fs_inst[idx].last_vts,
-			fs_inst[idx].cur_tick, tick_factor);
+	time_after_sof_cur = calc_time_after_sof(
+		fs_inst[idx].last_vts,
+		fs_inst[idx].cur_tick, tick_factor);
 
 	frm_get_curr_frame_mesurement_and_ts_data(idx,
 		&fmeas_idx, &pr_fl_us, &pr_fl_lc, &act_fl_us, fmeas_ts);
 
 
-	LOG_MUST(
-		"[%u] ID:%#x(sidx:%u), #%u, (%d/%u), out_fl:%u(%u), (%u/%u/%u/%u(%u/%u), %u, %u(%u)), pr_fl(c:%u(%u)/n:%u(%u)), ts_bias(exp:%u/tag:%u(%u/%u)), readout_time:%u, delta:%u(fdelay:%u), m_idx:%u(ref:%d)/chg:%u(%u), adj_diff(s:%lld(%u)/m:%lld), flk_en:%u, sa_cfg(idx:%u/m_idx:%d/async_m_idx:%d/async_s:%#x/valid_sync:%#x/method:%u), tg:%u, ts(%u/+%u(%u)/%u), [frec(0:%u/%u)(fl_lc/shut_lc), fmeas:%u(pr:%u(%u)/act:%u), fmeas_ts(%u/%u/%u/%u), fs_inst_ts(%u/%u/%u/%u, %u/+%u(%u)/%u)]\n",
-		idx,
-		fs_inst[idx].sensor_id,
-		fs_inst[idx].sensor_idx,
+	/* print sensor basic info */
+	len += snprintf(log_buf + len, LOG_BUF_STR_LEN - len,
+		"[%u] ID:%#x(sidx:%u), #%u, (%d/%u)",
+		idx, fs_inst[idx].sensor_id, fs_inst[idx].sensor_idx,
 		fs_sa_inst.dynamic_paras[idx].magic_num,
-		fs_inst[idx].req_id,
-		fs_inst[idx].sof_cnt,
+		fs_inst[idx].req_id, fs_inst[idx].sof_cnt);
+
+	/* print per-frame based info */
+	len += snprintf(log_buf + len, LOG_BUF_STR_LEN - len,
+		", out_fl:%u(%u), (%u/%u/%u/%u(%u/%u), %u, %u(%u)), pr_fl(c:%u(%u)/n:%u(%u)), ts_bias(exp:%u/tag:%u(%u/%u)), rout_t:%u, delta:%u(fdelay:%u), m_idx:%u(ref:%d)/chg:%u(%u), adj_diff(s:%lld(%u)/m:%lld), flk_en:%u",
 		fs_sa_inst.dynamic_paras[idx].stable_fl_us,
 		convert2LineCount(
 			fs_inst[idx].lineTimeInNs,
@@ -1011,13 +1025,21 @@ static inline void fs_alg_sa_dump_dynamic_para(unsigned int idx)
 		fs_sa_inst.dynamic_paras[idx].adj_diff_s,
 		fs_sa_inst.dynamic_paras[idx].adj_or_not,
 		fs_sa_inst.dynamic_paras[idx].adj_diff_m,
-		fs_inst[idx].flicker_en,
+		fs_inst[idx].flicker_en);
+
+	/* print per-frame config info */
+	len += snprintf(log_buf + len, LOG_BUF_STR_LEN - len,
+		", sa_cfg(idx:%u/m_idx:%d/async_m_idx:%d/async_s:%#x/valid_sync:%#x/method:%u)",
 		fs_sa_inst.dynamic_paras[idx].sa_cfg.idx,
 		fs_sa_inst.dynamic_paras[idx].sa_cfg.m_idx,
 		fs_sa_inst.dynamic_paras[idx].sa_cfg.async_m_idx,
 		fs_sa_inst.dynamic_paras[idx].sa_cfg.async_s_bits,
 		fs_sa_inst.dynamic_paras[idx].sa_cfg.valid_sync_bits,
-		fs_sa_inst.dynamic_paras[idx].sa_cfg.sa_method,
+		fs_sa_inst.dynamic_paras[idx].sa_cfg.sa_method);
+
+	/* print timestamp related info */
+	len += snprintf(log_buf + len, LOG_BUF_STR_LEN - len,
+		", tg:%u, ts(%llu/+%llu(%llu)/%u), [frec(0:%u/%u)(fl_lc/shut_lc), fmeas:%u(pr:%u(%u)/act:%llu), fmeas_ts(%llu/%llu/%llu/%llu), fs_inst_ts(%llu/%llu/%llu/%llu, %llu/+%llu(%llu)/%u)]",
 		fs_inst[idx].tg,
 		fs_sa_inst.dynamic_paras[idx].last_ts,
 		time_after_sof,
@@ -1041,6 +1063,59 @@ static inline void fs_alg_sa_dump_dynamic_para(unsigned int idx)
 		time_after_sof_cur,
 		fs_inst[idx].cur_tick,
 		fs_inst[idx].vsyncs);
+
+#if defined(USING_TSREC)
+	if (unlikely(p_ts_info == NULL)) {
+		FS_SPIN_LOCK(&fs_log_concurrency_lock);
+		LOG_MUST(
+			"ERROR: USING_TSREC timestamp, but get p_ts_info:%p, skip dump tsrec ts info part\n",
+			p_ts_info);
+		LOG_MUST("%s\n", log_buf);
+		FS_SPIN_UNLOCK(&fs_log_concurrency_lock);
+
+		FS_FREE(log_buf);
+		return;
+	}
+
+	/* print TSREC info */
+	len += snprintf(log_buf + len, LOG_BUF_STR_LEN - len,
+		", tsrec(no:%u, seninf_idx:%u, irq_ts(%llu(ns, %llu(us))), exp(0:(%llu/%llu/%llu/%llu), 1:(%llu/%llu/%llu/%llu), 2:(%llu/%llu/%llu/%llu)), act_fl:(%llu/%llu/%llu), %llu(+%llu))",
+		p_ts_info->tsrec_no, p_ts_info->seninf_idx,
+		p_ts_info->irq_sys_time_ns, p_ts_info->irq_tsrec_ts_us,
+		p_ts_info->exp_recs[0].ts_us[0],
+		p_ts_info->exp_recs[0].ts_us[1],
+		p_ts_info->exp_recs[0].ts_us[2],
+		p_ts_info->exp_recs[0].ts_us[3],
+		p_ts_info->exp_recs[1].ts_us[0],
+		p_ts_info->exp_recs[1].ts_us[1],
+		p_ts_info->exp_recs[1].ts_us[2],
+		p_ts_info->exp_recs[1].ts_us[3],
+		p_ts_info->exp_recs[2].ts_us[0],
+		p_ts_info->exp_recs[2].ts_us[1],
+		p_ts_info->exp_recs[2].ts_us[2],
+		p_ts_info->exp_recs[2].ts_us[3],
+		(p_ts_info->exp_recs[TSREC_1ST_EXP_ID].ts_us[0]
+			- p_ts_info->exp_recs[TSREC_1ST_EXP_ID].ts_us[1]),
+		(p_ts_info->exp_recs[TSREC_1ST_EXP_ID].ts_us[1]
+			- p_ts_info->exp_recs[TSREC_1ST_EXP_ID].ts_us[2]),
+		(p_ts_info->exp_recs[TSREC_1ST_EXP_ID].ts_us[2]
+			- p_ts_info->exp_recs[TSREC_1ST_EXP_ID].ts_us[3]),
+		p_ts_info->exp_recs[TSREC_1ST_EXP_ID].ts_us[0],
+		(convert_tick_2_timestamp(
+				p_ts_info->tsrec_curr_tick,
+				p_ts_info->tick_factor)
+			- p_ts_info->exp_recs[TSREC_1ST_EXP_ID].ts_us[0]));
+#endif // USING_TSREC
+
+	if (unlikely(len < 0))
+		LOG_MUST("ERROR: LOG snprintf error, len:%d\n", len);
+
+
+	FS_SPIN_LOCK(&fs_log_concurrency_lock);
+	LOG_MUST("%s\n", log_buf);
+	FS_SPIN_UNLOCK(&fs_log_concurrency_lock);
+
+	FS_FREE(log_buf);
 }
 #endif // SUPPORT_FS_NEW_METHOD
 /******************************************************************************/
@@ -1618,7 +1693,7 @@ static void fs_alg_sa_pre_set_dynamic_paras(const unsigned int idx,
 	fs_alg_sa_get_timestamp_info(idx, p_para);
 
 	LOG_MUST(
-		"NOTICE: #%u, out_fl:%u(%u), frec(0:%u/%u), %u, pr_fl(c:%u(%u)/n:%u(%u)), ts_bias(exp:%u/tag:%u(%u/%u)), delta:%u(fdelay:%u), tg:%u, ts(%u/%u/%u)\n",
+		"NOTICE: #%u, out_fl:%u(%u), frec(0:%u/%u), %u, pr_fl(c:%u(%u)/n:%u(%u)), ts_bias(exp:%u/tag:%u(%u/%u)), delta:%u(fdelay:%u), tg:%u, ts(%llu/%llu/%u)\n",
 		p_para->magic_num,
 		p_para->stable_fl_us,
 		convert2LineCount(
@@ -1668,7 +1743,7 @@ static unsigned int fs_alg_sa_dynamic_paras_checker(
 	/* check if last timestamp equal to zero */
 	if (check_fs_inst_vsync_data_valid(query_ts_idx, 2) == 0) {
 		LOG_MUST(
-			"NOTICE: [%u] ID:%#x(sidx:%u), #%u/#%u(m_idx:%u), set shutter before first vsync, latest timestamp is/are ZERO (s:%u/m:%u), fs_inst(s(%u/%u/%u/%u), m(%u/%u/%u/%u)), p_para_ts(s:%u/m:%u)\n",
+			"NOTICE: [%u] ID:%#x(sidx:%u), #%u/#%u(m_idx:%u), set shutter before first vsync, latest timestamp is/are ZERO (s:%llu/m:%llu), fs_inst(s(%llu/%llu/%llu/%llu), m(%llu/%llu/%llu/%llu)), p_para_ts(s:%llu/m:%llu)\n",
 			s_idx,
 			fs_inst[s_idx].sensor_id,
 			fs_inst[s_idx].sensor_idx,
@@ -1738,8 +1813,8 @@ static void fs_alg_sa_calc_m_s_ts_diff(
 	const struct FrameSyncDynamicPara *p_para_s,
 	long long *p_ts_diff_m, long long *p_ts_diff_s)
 {
-	unsigned int cur_tick = 0;
-	unsigned int ts_diff_m = 0, ts_diff_s = 0;
+	unsigned long long cur_tick = 0;
+	unsigned long long ts_diff_m = 0, ts_diff_s = 0;
 
 
 	if (tick_factor == 0) {
@@ -1852,7 +1927,7 @@ static long long fs_alg_sa_calc_adjust_diff_slave(
 
 #if !defined(REDUCE_FS_ALGO_LOG)
 	LOG_INF(
-		"[%u] ID:%#x(sidx:%u), #%u/#%u(m_idx:%u), adjust_diff_s:%lld(ts:%lld/%lld(%u/%u), delta:%u/%u), pure_min_fl(%u/%u), stable_fl(%u/%u), f_cell(%u/%u), fdely(%u/%u)\n",
+		"[%u] ID:%#x(sidx:%u), #%u/#%u(m_idx:%u), adjust_diff_s:%lld(ts:%lld/%lld(%llu/%llu), delta:%u/%u), pure_min_fl(%u/%u), stable_fl(%u/%u), f_cell(%u/%u), fdely(%u/%u)\n",
 		s_idx,
 		fs_inst[s_idx].sensor_id,
 		fs_inst[s_idx].sensor_idx,
@@ -1943,7 +2018,7 @@ static long long fs_alg_sa_calc_adjust_diff_async(
 
 #if !defined(REDUCE_FS_ALGO_LOG)
 	LOG_INF(
-		"[%u] ID:%#x(sidx:%u), #%u/#%u(m_idx:%u), adjust_diff_s:%lld(ts:%lld/%lld(%u/%u), delta:%u/%u), pure_min_fl(%u/%u), stable_fl(%u/%u), f_cell(%u/%u), fdely(%u/%u)\n",
+		"[%u] ID:%#x(sidx:%u), #%u/#%u(m_idx:%u), adjust_diff_s:%lld(ts:%lld/%lld(%llu/%llu), delta:%u/%u), pure_min_fl(%u/%u), stable_fl(%u/%u), f_cell(%u/%u), fdely(%u/%u)\n",
 		s_idx,
 		fs_inst[s_idx].sensor_id,
 		fs_inst[s_idx].sensor_idx,
@@ -1987,7 +2062,7 @@ static inline unsigned int fs_alg_sa_calc_sync_delay(
 }
 
 
-static unsigned int fs_alg_sa_adjust_slave_diff_resolver(
+static long long fs_alg_sa_adjust_slave_diff_resolver(
 	const unsigned int m_idx, const unsigned int s_idx,
 	const struct FrameSyncDynamicPara *p_para_m,
 	struct FrameSyncDynamicPara *p_para_s)
@@ -2077,7 +2152,7 @@ static unsigned int fs_alg_sa_adjust_slave_diff_resolver(
 
 
 	LOG_INF(
-		"[%u] ID:%#x(sidx:%u), #%u/#%u(m_idx:%u), ask_switch(%u), s/m adjust_diff(%lld(%u)/%lld), ts(%lld/%lld), delta(%u/%u), sync_delay(%u/%u) [(c:%u/n:%u/s:%u/e:%u/t:%u) / (c:%u/n:%u/s:%u/e:%u/t:%u)], f_cell(%u/%u), fdelay(%u/%u), ts_abs(%u/%u)\n",
+		"[%u] ID:%#x(sidx:%u), #%u/#%u(m_idx:%u), ask_switch(%u), s/m adjust_diff(%lld(%u)/%lld), ts(%lld/%lld), delta(%u/%u), sync_delay(%d/%d) [(c:%u/n:%u/s:%u/e:%u/t:%u) / (c:%u/n:%u/s:%u/e:%u/t:%u)], f_cell(%u/%u), fdelay(%u/%u), ts_abs(%llu/%llu)\n",
 		s_idx,
 		fs_inst[s_idx].sensor_id,
 		fs_inst[s_idx].sensor_idx,
@@ -2974,10 +3049,13 @@ void fs_alg_sa_notify_vsync(unsigned int idx)
 /* return "0" -> done; "non 0" -> error ? */
 unsigned int fs_alg_get_vsync_data(unsigned int solveIdxs[], unsigned int len)
 {
+	struct vsync_rec vsync_recs = {0};
 	unsigned int i = 0, j = 0;
 
+#if defined(USING_CCU) || defined(USING_N3D)
+
+	/* => USING_CCU */
 	unsigned int query_tg_ts[TG_MAX_NUM];
-	struct vsync_rec vsync_recs = {0};
 
 
 	/* according to "solve Idx", get correct "TG / sensor_idx" */
@@ -2991,6 +3069,14 @@ unsigned int fs_alg_get_vsync_data(unsigned int solveIdxs[], unsigned int len)
 		return 1;
 	}
 
+#else
+
+	/* => USING_TSREC */
+	/* call Frame Monitor API to get timestamp data received from TSREC */
+	frm_query_vsync_data_by_tsrec(solveIdxs, len, &vsync_recs);
+
+#endif // !USING_TSREC
+
 
 	/* keep cur_tick and tick_factor value */
 	cur_tick = vsync_recs.cur_tick;
@@ -2998,7 +3084,7 @@ unsigned int fs_alg_get_vsync_data(unsigned int solveIdxs[], unsigned int len)
 
 
 #ifndef REDUCE_FS_ALGO_LOG
-	LOG_INF("cur_tick:%u, tick_factor:%u\n",
+	LOG_INF("cur_tick:%llu, tick_factor:%u\n",
 		cur_tick,
 		tick_factor);
 #endif // REDUCE_FS_ALGO_LOG
@@ -3032,7 +3118,7 @@ unsigned int fs_alg_get_vsync_data(unsigned int solveIdxs[], unsigned int len)
 
 //#ifndef REDUCE_FS_ALGO_LOG
 		LOG_PF_INF(
-			"[%u] ID:%#x(sidx:%u), tg:%u, vsyncs:%u, last_vts:%u, cur_tick:%u, ts(%u/%u/%u/%u)\n",
+			"[%u] ID:%#x(sidx:%u), tg:%u, vsyncs:%u, last_vts:%llu, cur_tick:%llu, ts(%llu/%llu/%llu/%llu)\n",
 			solveIdxs[i],
 			fs_inst[solveIdxs[i]].sensor_id,
 			fs_inst[solveIdxs[i]].sensor_idx,
@@ -3829,7 +3915,7 @@ static void adjust_async_vsync_diff_sa(
 
 
 	LOG_MUST(
-		"[%u] ID:%#x(sidx:%u), #%u/#%u(async_m_idx:%u), adjust_diff:%lld, flk_en:%u(+%u), ts(%lld/%lld), delta(%u/%u), [(c:%u/n:%u/s:%u/e:%u/t:%u) / (c:%u/n:%u/s:%u/e:%u/t:%u)], f_cell(%u/%u), fdelay(%u/%u), ts_abs(%u/%u)\n",
+		"[%u] ID:%#x(sidx:%u), #%u/#%u(async_m_idx:%u), adjust_diff:%lld, flk_en:%u(+%u), ts(%lld/%lld), delta(%u/%u), [(c:%u/n:%u/s:%u/e:%u/t:%u) / (c:%u/n:%u/s:%u/e:%u/t:%u)], f_cell(%u/%u), fdelay(%u/%u), ts_abs(%llu/%llu)\n",
 		idx,
 		fs_inst[idx].sensor_id,
 		fs_inst[idx].sensor_idx,

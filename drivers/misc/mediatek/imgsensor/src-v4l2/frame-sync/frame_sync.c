@@ -3082,7 +3082,13 @@ void fs_set_debug_info_sof_cnt(const unsigned int ident,
 
 	/* update debug info */
 	fs_mgr.sof_cnt_arr[idx] = sof_cnt;
+
+#if defined(USING_CCU) && !defined(USING_TSREC)
+	/* USING_CCU	=> p1 vsync notify flow => NOW */
+	/* USING_TSREC	=> TSREC receive timstamp info flow */
 	fs_alg_set_debug_info_sof_cnt(idx, sof_cnt);
+#endif // USING_CCU && !USING_TSREC
+
 }
 
 
@@ -3120,7 +3126,9 @@ void fs_notify_vsync(const unsigned int ident, const unsigned int sof_cnt)
 	fs_alg_sa_notify_setup_all_frame_info(idx);
 
 	frec_notify_vsync(idx);
+#if !defined(USING_TSREC)
 	fs_alg_sa_notify_vsync(idx);
+#endif
 #endif // QUERY_CCU_TS_AT_SOF
 
 
@@ -3131,6 +3139,88 @@ void fs_notify_vsync(const unsigned int ident, const unsigned int sof_cnt)
 	/* check special ctrl (e.g., seamless switch) */
 	fs_chk_valid_for_doing_seamless_switch(ident);
 	fs_chk_exit_seamless_switch_frame(ident);
+}
+
+
+void fs_notify_vsync_by_tsrec(const unsigned int ident)
+{
+	const unsigned int idx = fs_get_reg_sensor_pos(ident);
+
+	/* error handling (unexpected case) */
+	if (unlikely(check_idx_valid(idx) == 0)) {
+		LOG_MUST(
+			"NOTICE: [%u] %s is not register, ident:%u, return\n",
+			idx, REG_INFO, ident);
+		return;
+	}
+	if (FS_CHECK_BIT(idx, &fs_mgr.streaming_bits) == 0)
+		return;
+	if (FS_CHECK_BIT(idx, &fs_mgr.validSync_bits) == 0)
+		return;
+}
+
+
+void fs_notify_sensor_hw_pre_latch_by_tsrec(const unsigned int ident)
+{
+	const unsigned int idx = fs_get_reg_sensor_pos(ident);
+
+	/* error handling (unexpected case) */
+	if (unlikely(check_idx_valid(idx) == 0)) {
+		LOG_MUST(
+			"NOTICE: [%u] %s is not register, ident:%u, return\n",
+			idx, REG_INFO, ident);
+		return;
+	}
+	if (FS_CHECK_BIT(idx, &fs_mgr.streaming_bits) == 0)
+		return;
+	if (FS_CHECK_BIT(idx, &fs_mgr.validSync_bits) == 0)
+		return;
+}
+
+
+void fs_receive_tsrec_timestamp_info(const unsigned int ident,
+	const struct mtk_cam_seninf_tsrec_timestamp_info *ts_info)
+{
+	const unsigned int idx = fs_get_reg_sensor_pos(ident);
+#if defined(USING_TSREC)
+	unsigned int p1_sof_cnt = 0;
+#endif // USING_TSREC
+
+	/* error handling (unexpected case) */
+	if (unlikely(check_idx_valid(idx) == 0)) {
+		LOG_MUST(
+			"NOTICE: [%u] %s is not register, ident:%u, return\n",
+			idx, REG_INFO, ident);
+		return;
+	}
+	if (unlikely(ts_info == NULL)) {
+		LOG_MUST(
+			"ERROR: get non-valid input, ts_info:%p, return\n",
+			ts_info);
+		return;
+	}
+	if (FS_CHECK_BIT(idx, &fs_mgr.streaming_bits) == 0)
+		return;
+
+#if defined(USING_TSREC)
+	/* get debug info */
+	p1_sof_cnt = fs_mgr.sof_cnt_arr[idx];
+#endif // USING_TSREC
+
+	/* save tsrec timestamp info */
+	frm_receive_tsrec_timestamp_info(idx, ts_info);
+
+
+	/* check enable Frame-Sync or not */
+	if (FS_CHECK_BIT(idx, &fs_mgr.validSync_bits) == 0)
+		return;
+
+	/* call this function after receive TSREC timestamp info */
+#if defined(USING_TSREC)
+	fs_alg_sa_notify_vsync(idx);
+	fs_alg_set_debug_info_sof_cnt(idx, p1_sof_cnt);
+#endif // USING_TSREC
+
 }
 
 
@@ -3253,6 +3343,9 @@ static struct FrameSync frameSync = {
 	fs_mstream_en,
 	fs_set_debug_info_sof_cnt,
 	fs_notify_vsync,
+	fs_notify_vsync_by_tsrec,
+	fs_notify_sensor_hw_pre_latch_by_tsrec,
+	fs_receive_tsrec_timestamp_info,
 	fs_is_set_sync,
 	fs_is_hw_sync,
 	fs_get_fl_record_info

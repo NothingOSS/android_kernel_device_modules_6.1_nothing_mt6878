@@ -907,6 +907,61 @@ void notify_fsync_mgr_vsync(struct adaptor_ctx *ctx)
 }
 
 
+void notify_fsync_mgr_vsync_by_tsrec(struct adaptor_ctx *ctx)
+{
+	/* not expected case */
+	if (unlikely(ctx->fsync_mgr == NULL)) {
+
+#if !defined(FORCE_DISABLE_FSYNC_MGR) && !defined(REDUCE_FSYNC_CTRLS_LOG)
+		dev_info(ctx->dev,
+			"%s: sidx:%d, NOTICE: notify vsync, but ctx->fsync_mgr is NULL, return\n",
+			__func__, ctx->idx);
+#endif
+
+		return;
+	}
+
+	ctx->fsync_mgr->fs_notify_vsync_by_tsrec(ctx->idx);
+}
+
+
+void notify_fsync_mgr_sensor_hw_pre_latch_by_tsrec(struct adaptor_ctx *ctx)
+{
+	/* not expected case */
+	if (unlikely(ctx->fsync_mgr == NULL)) {
+
+#if !defined(FORCE_DISABLE_FSYNC_MGR) && !defined(REDUCE_FSYNC_CTRLS_LOG)
+		dev_info(ctx->dev,
+			"%s: sidx:%d, NOTICE: notify sensor hw pre-latch, but ctx->fsync_mgr is NULL, return\n",
+			__func__, ctx->idx);
+#endif
+
+		return;
+	}
+
+	ctx->fsync_mgr->fs_notify_sensor_hw_pre_latch_by_tsrec(ctx->idx);
+}
+
+
+void notify_fsync_mgr_receive_tsrec_timestamp_info(struct adaptor_ctx *ctx,
+	const struct mtk_cam_seninf_tsrec_timestamp_info *ts_info)
+{
+	/* not expected case */
+	if (unlikely(ctx->fsync_mgr == NULL)) {
+
+#if !defined(FORCE_DISABLE_FSYNC_MGR) && !defined(REDUCE_FSYNC_CTRLS_LOG)
+		dev_info(ctx->dev,
+			"%s: sidx:%d, NOTICE: notify vsync, but ctx->fsync_mgr is NULL, return\n",
+			__func__, ctx->idx);
+#endif
+
+		return;
+	}
+
+	ctx->fsync_mgr->fs_receive_tsrec_timestamp_info(ctx->idx, ts_info);
+}
+
+
 void notify_fsync_mgr_g_fl_record_info(struct adaptor_ctx *ctx,
 	struct mtk_fs_frame_length_info *p_fl_info)
 {

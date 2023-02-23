@@ -76,22 +76,22 @@ static struct ut_fs_test_ext_ctrl_cfg g_ext_ctrls[SENSOR_MAX_NUM] = {0};
 /******************************************************************************/
 struct UT_Timestamp {
 	unsigned int idx;   // idx: last data in timestamp[VSYNC_MAX] array
-	unsigned int timestamp[VSYNCS_MAX];
-	unsigned int target_ts[VSYNCS_MAX];
+	unsigned long long timestamp[VSYNCS_MAX];
+	unsigned long long target_ts[VSYNCS_MAX];
 
-	unsigned int ts_diff[SENSOR_MAX_NUM];
+	unsigned long long ts_diff[SENSOR_MAX_NUM];
 
 	unsigned int curr_bias;
 	unsigned int next_bias;
 
 	/* for UT cross frame trigger frame-sync */
-	unsigned int should_be_triggered_before;
-	unsigned int be_triggered_at_ts;
+	unsigned long long should_be_triggered_before;
+	unsigned long long be_triggered_at_ts;
 	unsigned int should_trigger;
 };
 static struct UT_Timestamp g_ut_vts[SENSOR_MAX_NUM] = {0};
 
-static int g_ut_ts_diff_table[TS_DIFF_TABLE_LEN] = {-1};
+static long long g_ut_ts_diff_table[TS_DIFF_TABLE_LEN] = {-1};
 
 #define VDIFF_SYNC_SUCCESS_TH 1000
 static unsigned int g_vdiff_sync_success_th;
@@ -439,7 +439,11 @@ static inline void ut_dump_vsync_rec(const struct vsync_rec (*pData))
 	unsigned int i = 0;
 
 	printf(GREEN
+#if defined(TS_TICK_64_BITS)
+		"[UT dump_vsync_rec] buf->ids:%u, buf->cur_tick:%llu, buf->tick_factor:%u\n"
+#else
 		"[UT dump_vsync_rec] buf->ids:%u, buf->cur_tick:%u, buf->tick_factor:%u\n"
+#endif
 		NONE,
 		pData->ids,
 		pData->cur_tick,
@@ -447,7 +451,11 @@ static inline void ut_dump_vsync_rec(const struct vsync_rec (*pData))
 
 	for (i = 0; i < pData->ids; ++i) {
 		printf(GREEN
+#if defined(TS_TICK_64_BITS)
+			"[UT dump_vsync_rec] buf->recs[%u]: id:%u (TG), vsyncs:%u, vts:(%llu/%llu/%llu/%llu)\n"
+#else
 			"[UT dump_vsync_rec] buf->recs[%u]: id:%u (TG), vsyncs:%u, vts:(%u/%u/%u/%u)\n"
+#endif
 			NONE,
 			i,
 			pData->recs[i].id,
@@ -463,7 +471,7 @@ static inline void ut_dump_vsync_rec(const struct vsync_rec (*pData))
 static inline void ut_dump_ut_vts_data(const unsigned int idx)
 {
 	printf(GREEN
-		"[UT dump_ut_vts_data] [%u] vts:(last idx:%u, ts:%u/%u/%u/%u, bias(c:%u, n:%u), target_ts:(%u/%u/%u/%u), trigger:(%u, at:%u, before:%u)), ts_diff:(%u/%u/%u/%u)\n"
+		"[UT dump_ut_vts_data] [%u] vts:(last idx:%u, ts:%llu/%llu/%llu/%llu, bias(c:%u, n:%u), target_ts:(%llu/%llu/%llu/%llu), trigger:(%u, at:%llu, before:%llu)), ts_diff:(%llu/%llu/%llu/%llu)\n"
 		NONE,
 		idx,
 		g_ut_vts[idx].idx,
@@ -497,7 +505,7 @@ static inline void ut_dump_ts_diff_table_results(void)
 
 	for (i = 0; i < TS_DIFF_TABLE_LEN; ++i) {
 		printf(CYAN
-			"[%u]:%d   "
+			"[%u]:%lld   "
 			NONE,
 			i, g_ut_ts_diff_table[i]);
 	}
@@ -924,10 +932,10 @@ static void ut_gen_timestamps_data(
 	unsigned int idx, unsigned int vsyncs,
 	struct vsync_rec *(p_v_rec))
 {
+	unsigned long long cur_tick = 0;
 	unsigned int i = 0, index = 0, choose = 0;
 	unsigned int fl_us[2] = {0}, sensor_curr_fl_us = 0;
 	unsigned int ref_idx = 0, ref_idx_next = 0;
-	unsigned int cur_tick = 0;
 	unsigned int trigger_timing_bias = UT_SENSOR_TRIGGER_BIAS;
 
 
@@ -1008,7 +1016,11 @@ static void ut_gen_timestamps_data(
 
 #if defined(REDUCE_UT_DEBUG_PRINTF)
 	printf(LIGHT_CYAN
-		"[UT][gen_timestamps_data] [%u] FRM pr_fl(c:%u, n:%u)/vts_bias(c:%u, n:%u), g_ut_vts[%u]:(idx:%u, ts:(%u/%u/%u/%u), target_ts:(%u/%u/%u/%u)), vsyncs:%u, cur_tick:%u, be_triggered:(at:%u, before:%u, bias:%u)  [p_v_rec->recs[%u].id:%u (TG)]\n"
+#if defined(TS_TICK_64_BITS)
+		"[UT][gen_timestamps_data] [%u] FRM pr_fl(c:%u, n:%u)/vts_bias(c:%u, n:%u), g_ut_vts[%u]:(idx:%u, ts:(%llu/%llu/%llu/%llu), target_ts:(%llu/%llu/%llu/%llu)), vsyncs:%u, cur_tick:%llu, be_triggered:(at:%llu, before:%llu, bias:%u)  [p_v_rec->recs[%u].id:%u (TG)]\n"
+#else
+		"[UT][gen_timestamps_data] [%u] FRM pr_fl(c:%u, n:%u)/vts_bias(c:%u, n:%u), g_ut_vts[%u]:(idx:%u, ts:(%llu/%llu/%llu/%llu), target_ts:(%llu/%llu/%llu/%llu)), vsyncs:%u, cur_tick:%u, be_triggered:(at:%llu, before:%llu, bias:%u)  [p_v_rec->recs[%u].id:%u (TG)]\n"
+#endif
 		NONE,
 		idx,
 		fl_us[0], fl_us[1],
@@ -1053,8 +1065,8 @@ static void ut_gen_timestamps_data(
 
 static unsigned int ut_setup_next_pf_ctrl_trigger_timing(void)
 {
+	unsigned long long trigger_timing = 0;
 	unsigned int i = 0;
-	unsigned int trigger_timing = (unsigned int)(0-1);
 
 
 	/* find the earlist be triggered timing */
@@ -1062,9 +1074,18 @@ static unsigned int ut_setup_next_pf_ctrl_trigger_timing(void)
 		if (g_ut_vts[i].be_triggered_at_ts == 0)
 			continue;
 
-		if (g_ut_vts[i].be_triggered_at_ts < trigger_timing)
+		/* take first non-zero timing for init */
+		if (trigger_timing == 0)
+			trigger_timing = g_ut_vts[i].be_triggered_at_ts;
+
+		// if (g_ut_vts[i].be_triggered_at_ts < trigger_timing)
+		if (check_timestamp_b_after_a(
+				g_ut_vts[i].be_triggered_at_ts,
+				trigger_timing,
+				TICK_FACTOR))
 			trigger_timing = g_ut_vts[i].be_triggered_at_ts;
 	}
+	trigger_timing++;
 
 
 	/* check should be trigger set ctrl or not */
@@ -1073,14 +1094,22 @@ static unsigned int ut_setup_next_pf_ctrl_trigger_timing(void)
 			continue;
 
 		g_ut_vts[i].should_trigger =
-			(g_ut_vts[i].timestamp[g_ut_vts[i].idx] < trigger_timing)
-			&& (trigger_timing >= g_ut_vts[i].be_triggered_at_ts)
+			// (g_ut_vts[i].timestamp[g_ut_vts[i].idx] < trigger_timing)
+			// && (trigger_timing >= g_ut_vts[i].be_triggered_at_ts)
+			((check_timestamp_b_after_a(
+					g_ut_vts[i].timestamp[g_ut_vts[i].idx],
+					trigger_timing,
+					TICK_FACTOR))
+				&& (check_timestamp_b_after_a(
+					g_ut_vts[i].be_triggered_at_ts,
+					trigger_timing,
+					TICK_FACTOR)))
 			? 1 : 0;
 	}
 
 
 	printf(GREEN
-		"[UT setup_next_pf_ctrl_trigger_timing] trigger timing:%u\n"
+		"[UT setup_next_pf_ctrl_trigger_timing] trigger timing:%llu\n"
 		NONE,
 		trigger_timing);
 
@@ -1089,7 +1118,7 @@ static unsigned int ut_setup_next_pf_ctrl_trigger_timing(void)
 			continue;
 
 		printf(GREEN
-			"[UT setup_next_pf_ctrl_trigger_timing] g_ut_vts[%u]: ts(at:%u):(%u/%u/%u/%u), be_triggered:(at:%u, before:%u), should be trigger:%u [target_ts(at:%u):(%u/%u/%u/%u)]\n"
+			"[UT setup_next_pf_ctrl_trigger_timing] g_ut_vts[%u]: ts(at:%u):(%llu/%llu/%llu/%llu), be_triggered:(at:%llu, before:%llu), should be trigger:%u [target_ts(at:%u):(%llu/%llu/%llu/%llu)]\n"
 			NONE,
 			i,
 			g_ut_vts[i].idx,
@@ -1347,7 +1376,8 @@ static inline void reset_ut_test_variables(void)
 
 /*static*/ bool ut_check_pf_sync_result(struct vsync_rec *(p_v_rec))
 {
-	unsigned int i = 0, biggest_vts = 0, ts_last_idx = 0;
+	unsigned long long biggest_vts = 0, ts_last_idx = 0;
+	unsigned int i = 0;
 	unsigned int vdiff[SENSOR_MAX_NUM] = {0};
 	bool is_success = true;
 
@@ -1387,7 +1417,7 @@ static inline void reset_ut_test_variables(void)
 
 #if !defined(REDUCE_UT_DEBUG_PRINTF)
 			printf(RED
-				"[UT check_pf_sync_result] [%u] target_vts(idx:%u):(%u/%u/%u/%u)\n"
+				"[UT check_pf_sync_result] [%u] target_vts(idx:%u):(%llu/%llu/%llu/%llu)\n"
 				NONE,
 				i,
 				ts_last_idx,
@@ -1404,7 +1434,11 @@ static inline void reset_ut_test_variables(void)
 
 #if !defined(REDUCE_UT_DEBUG_PRINTF)
 		printf(RED
-			">>> UT: [%u] vdiff:%u, biggest_vts:%u, vts:%u, bias(c:%u, n:%u)\n\n\n"
+#if defined(TS_TICK_64_BITS)
+			">>> UT: [%u] vdiff:%u, biggest_vts:%llu, vts:%llu, bias(c:%u, n:%u)\n\n\n"
+#else
+			">>> UT: [%u] vdiff:%u, biggest_vts:%llu, vts:%u, bias(c:%u, n:%u)\n\n\n"
+#endif
 			NONE,
 			i, vdiff[i], biggest_vts,
 			p_v_rec->recs[i].timestamps[0],
@@ -1425,7 +1459,11 @@ static inline void reset_ut_test_variables(void)
 
 		for (i = 0; i < TG_MAX_NUM; ++i) {
 			printf(RED
+#if defined(TS_TICK_64_BITS)
+				">>> UT: [%u] tg:%u, vsyncs:%u, vdiff:%u, vts:%llu, bias(c:%u, n:%u)\n"
+#else
 				">>> UT: [%u] tg:%u, vsyncs:%u, vdiff:%u, vts:%u, bias(c:%u, n:%u)\n"
+#endif
 				NONE,
 				i,
 				p_v_rec->recs[i].id,
@@ -1503,7 +1541,7 @@ static void ut_try_update_ts_diff(unsigned int idx)
 					convert_timestamp_2_tick(ts_cmp_prev, TICK_FACTOR))
 			)) {
 				printf(RED
-					"[UT try_update_ts_diff] [%u] TS cross vsync/sof [(ts_cmp:%u < ts:%u) && (ts_cmp_prev:%u > ts_prev:%u)], break. (point:[%u] idx:%u, %u/%u/%u/%u), (ref:[%u] idx:%u, %u/%u/%u/%u)\n"
+					"[UT try_update_ts_diff] [%u] TS cross vsync/sof [(ts_cmp:%u < ts:%u) && (ts_cmp_prev:%u > ts_prev:%u)], break. (point:[%u] idx:%u, %llu/%llu/%llu/%llu), (ref:[%u] idx:%u, %llu/%llu/%llu/%llu)\n"
 					NONE,
 					idx,
 					ts_cmp, ts, ts_cmp_prev, ts_prev,
@@ -1537,7 +1575,7 @@ static void ut_try_update_ts_diff(unsigned int idx)
 					(diff_r < diff_l) ? diff_r : diff_l;
 
 				printf(LIGHT_GREEN
-					"[UT try_update_ts_diff] [%u] diff:%u(%u/%u), ts:(c:%u, t:%u, p:%u) (point:[%u] idx:%u/%u, %u/%u/%u/%u), (ref:[%u] idx:%u, %u/%u/%u/%u)\n"
+					"[UT try_update_ts_diff] [%u] diff:%llu(%u/%u), ts:(c:%u, t:%u, p:%u) (point:[%u] idx:%u/%u, %llu/%llu/%llu/%llu), (ref:[%u] idx:%u, %llu/%llu/%llu/%llu)\n"
 					NONE,
 					idx,
 					g_ut_vts[idx].ts_diff[i],
@@ -1560,7 +1598,7 @@ static void ut_try_update_ts_diff(unsigned int idx)
 			}
 
 			printf(PURPLE
-				"[UT try_update_ts_diff] [%u] diff:%u(%u/%u), ts:(c:%u, t:%u, p:%u) (point:[%u] idx:%u/%u, %u/%u/%u/%u), (ref:[%u] idx:%u, %u/%u/%u/%u)\n"
+				"[UT try_update_ts_diff] [%u] diff:%llu(%u/%u), ts:(c:%u, t:%u, p:%u) (point:[%u] idx:%u/%u, %llu/%llu/%llu/%llu), (ref:[%u] idx:%u, %llu/%llu/%llu/%llu)\n"
 				NONE,
 				idx,
 				g_ut_vts[idx].ts_diff[i],
@@ -1603,12 +1641,12 @@ static void ut_try_update_ts_diff(unsigned int idx)
 
 /*static*/ bool ut_check_pf_sync_result_v2(const struct vsync_rec *(p_v_rec))
 {
-	int ret = 0, map_idx = -1, ts_diff = -1;
+	unsigned long long ts_a_ordered[VSYNCS_MAX], ts_b_ordered[VSYNCS_MAX];
+	unsigned long long trigger_timing = (unsigned long long)(0-1);
+	long long ts_diff = -1;
 	unsigned int i = 0, j = 0;
 	unsigned int ts_a_from_idx = 0, ts_b_from_idx = 0;
-	unsigned int ts_a_ordered[VSYNCS_MAX], ts_b_ordered[VSYNCS_MAX];
-	unsigned int trigger_timing = (unsigned int)(0-1);
-
+	int ret = 0, map_idx = -1;
 
 	/* 1. try to update timestamp diff of all sensors combination */
 	for (i = 0; i < SENSOR_MAX_NUM-1; ++i) {
@@ -1638,8 +1676,12 @@ static void ut_try_update_ts_diff(unsigned int idx)
 			/* using trigger timing to check */
 			/* which timestamp should be took account of */
 			ts_a_from_idx =
-				(trigger_timing
-					> g_ut_vts[i].timestamp[g_ut_vts[i].idx])
+				(check_timestamp_b_after_a(
+					g_ut_vts[i].timestamp[g_ut_vts[i].idx],
+					trigger_timing,
+					TICK_FACTOR))
+				// (trigger_timing
+				//	> g_ut_vts[i].timestamp[g_ut_vts[i].idx])
 				?
 					// (g_ut_vts[i].idx + (VSYNCS_MAX-1)) % VSYNCS_MAX;
 					g_ut_vts[i].idx % VSYNCS_MAX
@@ -1669,7 +1711,7 @@ static void ut_try_update_ts_diff(unsigned int idx)
 
 #if defined(REDUCE_UT_DEBUG_PRINTF)
 			printf(PURPLE
-				"ts_a_ordered:(%u/%u/%u/%u, %u/%u/%u/%u, from:%u(at:%u)), ts_b_ordered:(%u/%u/%u/%u, %u/%u/%u/%u, from:%u(at:%u))\n"
+				"ts_a_ordered:(%llu/%llu/%llu/%llu, %llu/%llu/%llu/%llu, from:%u(at:%u)), ts_b_ordered:(%llu/%llu/%llu/%llu, %llu/%llu/%llu/%llu, from:%u(at:%u))\n"
 				NONE,
 				ts_a_ordered[0],
 				ts_a_ordered[1],
@@ -1703,7 +1745,7 @@ static void ut_try_update_ts_diff(unsigned int idx)
 
 #if !defined(REDUCE_UT_DEBUG_PRINTF)
 			printf(PURPLE
-				"(%u,%u) => %d, :%d, g_ut_ts_diff_table[%d]:%d\n"
+				"(%u,%u) => %d, :%lld, g_ut_ts_diff_table[%d]:%d\n"
 				NONE,
 				i, j, map_idx, ts_diff,
 				map_idx, g_ut_ts_diff_table[map_idx]);
@@ -1724,8 +1766,8 @@ static void ut_try_update_ts_diff(unsigned int idx)
 static void
 ut_generate_vsync_data_pf_auto(struct vsync_rec *(p_v_rec))
 {
-	unsigned int i = 0;
-	unsigned int biggest_vts = 0, passed_vsyncs = 0;
+	unsigned long long biggest_vts = 0;
+	unsigned int i = 0, passed_vsyncs = 0;
 
 
 	passed_vsyncs = rand() % 100;
@@ -1751,7 +1793,11 @@ ut_generate_vsync_data_pf_auto(struct vsync_rec *(p_v_rec))
 
 
 	printf(GREEN
+#if defined(TS_TICK_64_BITS)
+		"[UT generate_vsync_data_pf_auto] query ids:%u, p_v_rec->cur_tick:%llu, tick_factor:%u\n"
+#else
 		"[UT generate_vsync_data_pf_auto] query ids:%u, p_v_rec->cur_tick:%u, tick_factor:%u\n"
+#endif
 		NONE,
 		p_v_rec->ids,
 		p_v_rec->cur_tick,
@@ -1775,9 +1821,10 @@ ut_generate_vsync_data_manually(
 	struct ut_fs_streaming_sensor_list     s_list[],
 	struct ut_fs_perframe_sensor_mode_list m_list[])
 {
+	unsigned long long biggest_vts = 0, input_ts = 0;
 	unsigned int i = 0, j = 0;
-	unsigned int idx = 0, biggest_vts = 0;
-	long long input = 0;
+	unsigned int idx = 0;
+	int input = 0;
 
 	struct vsync_rec v_rec = {0};
 
@@ -1820,7 +1867,7 @@ ut_generate_vsync_data_manually(
 		printf(LIGHT_PURPLE
 			">>> (Input 1 integer) \"set passed vsync count (min:1)\" : "
 			NONE);
-		scanf("%lld", &input);
+		scanf("%d", &input);
 
 		if (input <= 0) {
 			printf(RED
@@ -1840,14 +1887,16 @@ ut_generate_vsync_data_manually(
 			printf(LIGHT_PURPLE
 				">>> (Input 1 integer) \"timestamps[%d]\" : "
 				NONE, j);
-			scanf("%lld", &input);
-			v_rec.recs[idx].timestamps[j] = input;
-			g_ut_vts[idx].timestamp[j] = input;
-			g_ut_vts[idx].target_ts[j] = input;
+			scanf("%llu", &input_ts);
+			v_rec.recs[idx].timestamps[j] = input_ts;
+			g_ut_vts[idx].timestamp[j] = input_ts;
+			g_ut_vts[idx].target_ts[j] = input_ts;
+			g_ut_vts[idx].be_triggered_at_ts =
+				g_ut_vts[idx].timestamp[0] + UT_SENSOR_TRIGGER_BIAS;
 
 			//if (input > biggest_vts)
-			if (check_tick_b_after_a(biggest_vts, input))
-				biggest_vts = input;
+			if (check_tick_b_after_a(biggest_vts, input_ts))
+				biggest_vts = input_ts;
 		}
 
 
@@ -1862,7 +1911,7 @@ ut_generate_vsync_data_manually(
 		NONE);
 	for (j = 0; s_list[j].sensor != NULL; ++j) {
 		printf(GREEN
-			"[%d] %s, last Vsync timestamp:%u\n"
+			"[%d] %s, last Vsync timestamp:%llu\n"
 			NONE,
 			j, s_list[j].sensor_name, v_rec.recs[j].timestamps[0]);
 	}
@@ -1870,9 +1919,9 @@ ut_generate_vsync_data_manually(
 	printf(LIGHT_PURPLE
 		">>> (Input 1 integer) \"set current timestamp\" : "
 		NONE);
-	scanf("%lld", &input);
+	scanf("%llu", &input_ts);
 
-	v_rec.cur_tick = input * v_rec.tick_factor;
+	v_rec.cur_tick = input_ts * v_rec.tick_factor;
 
 #else // END manual set current timestamp
 
@@ -3388,9 +3437,9 @@ static void ut_setup_fs_alg_stability_test_env_cfg(const unsigned int test_id)
 
 static void exe_fs_alg_stability_test_item(unsigned int test_id)
 {
-	unsigned int i = 0;
 	struct ut_fs_test_sensor_cfg *p_sensor_cfg = NULL;
-	unsigned int biggest_vts = 0;
+	unsigned long long biggest_vts = 0;
+	unsigned int i = 0;
 
 	pthread_t thread[SENSOR_MAX_NUM];
 

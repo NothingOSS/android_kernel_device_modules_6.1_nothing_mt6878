@@ -78,6 +78,8 @@ enum fs_console_cmd_id {
 
 
 /* log control */
+DEFINE_SPINLOCK(fs_log_concurrency_lock);
+
 unsigned int log_tracer;
 unsigned int pf_log_tracer;
 
