@@ -49,7 +49,7 @@ static const struct mtk_node_desc node_descs_mt6985[] = {
 	DEFINE_MNODE(mdp_common0_port7,
 		MASTER_COMMON_PORT(1, 7), 0, false, 0x12, SLAVE_COMMON(1)),
 	DEFINE_MNODE(mdp_common0_port8,
-		MASTER_COMMON_PORT(1, 8), 0, false, 0x0, SLAVE_COMMON(1)),
+		MASTER_COMMON_PORT(1, 8), 0, false, 0x11, SLAVE_COMMON(1)),
 	/* SMI COMMON */
 	DEFINE_MNODE(larb0, SLAVE_LARB(0), 0, false, 0x0, MASTER_COMMON_PORT(0, 0)),
 	DEFINE_MNODE(larb21, SLAVE_LARB(21), 0, false, 0x0, MASTER_COMMON_PORT(0, 1)),
@@ -959,7 +959,7 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6985 = {
 		{ HRT_MAX_BWL, HRT_MAX_BWL, HRT_NONE, HRT_NONE, HRT_NONE,
 			HRT_NONE, HRT_CAM, HRT_NONE, HRT_DISP },
 		{ HRT_MAX_BWL, HRT_MAX_BWL, HRT_NONE, HRT_NONE, HRT_NONE,
-			HRT_NONE, HRT_CAM, HRT_NONE, HRT_NONE },
+			HRT_NONE, HRT_CAM, HRT_NONE, HRT_DISP_BY_LARB },
 	},
 	//.dual_pipe_larbs = { SLAVE_LARB(1), SLAVE_LARB(20) },
 	.mmqos_state = MMQOS_ENABLE | COMM_OSTDL_ENABLE | VCP_ENABLE,

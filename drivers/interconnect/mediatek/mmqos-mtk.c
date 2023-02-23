@@ -443,53 +443,72 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 		chnn_id = comm_port_node->channel_v2 & 0xf;
 		if (chnn_id) {
 			chnn_id -= 1;
-			v2_chn_hrt_w_bw[comm_id][chnn_id] -= comm_port_node->old_peak_w_bw;
-			v2_chn_srt_w_bw[comm_id][chnn_id] -= comm_port_node->old_avg_w_bw;
-			v2_chn_hrt_w_bw[comm_id][chnn_id] += src->v2_peak_w_bw;
-			v2_chn_srt_w_bw[comm_id][chnn_id] += src->v2_avg_w_bw;
-			comm_port_node->old_peak_w_bw = src->v2_peak_w_bw;
-			comm_port_node->old_avg_w_bw = src->v2_avg_w_bw;
-			if (comm_port_node->hrt_type == HRT_DISP
-				&& gmmqos->dual_pipe_enable) {
-				v2_chn_hrt_r_bw[comm_id][chnn_id] -= comm_port_node->old_peak_r_bw;
-				v2_chn_hrt_r_bw[comm_id][chnn_id] += (src->v2_peak_r_bw / 2);
-				comm_port_node->old_peak_r_bw = (src->v2_peak_r_bw / 2);
+			if (mmqos_state & DISP_BY_LARB_ENABLE
+				&& comm_port_node->hrt_type == HRT_DISP) {
+				if (log_level & 1 << log_bw)
+					pr_notice("ignore HRT_DISP comm port:%#x\n", src->id);
+			} else if (!(mmqos_state & DISP_BY_LARB_ENABLE)
+				&& comm_port_node->hrt_type == HRT_DISP_BY_LARB) {
+				if (log_level & 1 << log_bw)
+					pr_notice("ignore HRT_DISP_BY_LARB comm port:%#x\n",
+							src->id);
 			} else {
-				v2_chn_hrt_r_bw[comm_id][chnn_id] -= comm_port_node->old_peak_r_bw;
-				v2_chn_hrt_r_bw[comm_id][chnn_id] += src->v2_peak_r_bw;
-				comm_port_node->old_peak_r_bw = src->v2_peak_r_bw;
-			}
-			v2_chn_srt_r_bw[comm_id][chnn_id] -= comm_port_node->old_avg_r_bw;
-			v2_chn_srt_r_bw[comm_id][chnn_id] += src->v2_avg_r_bw;
-			comm_port_node->old_avg_r_bw = src->v2_avg_r_bw;
+				v2_chn_hrt_w_bw[comm_id][chnn_id] -= comm_port_node->old_peak_w_bw;
+				v2_chn_srt_w_bw[comm_id][chnn_id] -= comm_port_node->old_avg_w_bw;
+				v2_chn_srt_r_bw[comm_id][chnn_id] -= comm_port_node->old_avg_r_bw;
+				v2_chn_hrt_w_bw[comm_id][chnn_id] += src->v2_peak_w_bw;
+				v2_chn_srt_w_bw[comm_id][chnn_id] += src->v2_avg_w_bw;
+				v2_chn_srt_r_bw[comm_id][chnn_id] += src->v2_avg_r_bw;
+				comm_port_node->old_peak_w_bw = src->v2_peak_w_bw;
+				comm_port_node->old_avg_w_bw = src->v2_avg_w_bw;
+				comm_port_node->old_avg_r_bw = src->v2_avg_r_bw;
+				if (comm_port_node->hrt_type == HRT_DISP
+					&& gmmqos->dual_pipe_enable) {
+					v2_chn_hrt_r_bw[comm_id][chnn_id]
+						-= comm_port_node->old_peak_r_bw;
+					v2_chn_hrt_r_bw[comm_id][chnn_id]
+						+= (src->v2_peak_r_bw / 2);
+					comm_port_node->old_peak_r_bw = (src->v2_peak_r_bw / 2);
+				} else {
+					v2_chn_hrt_r_bw[comm_id][chnn_id]
+						-= comm_port_node->old_peak_r_bw;
+					v2_chn_hrt_r_bw[comm_id][chnn_id]
+						+= src->v2_peak_r_bw;
+					comm_port_node->old_peak_r_bw = src->v2_peak_r_bw;
+				}
 
 #ifdef ENABLE_INTERCONNECT_V1
-			if (chn_hrt_w_bw[comm_id][chnn_id] != v2_chn_hrt_w_bw[comm_id][chnn_id] ||
-			chn_hrt_r_bw[comm_id][chnn_id] != v2_chn_hrt_r_bw[comm_id][chnn_id] ||
-			chn_srt_w_bw[comm_id][chnn_id] != v2_chn_srt_w_bw[comm_id][chnn_id] ||
-			chn_srt_r_bw[comm_id][chnn_id] != v2_chn_srt_r_bw[comm_id][chnn_id]) {
-				pr_notice("[mmqos][dbg][new]v1_hrt_w_bw:%d  v1_hrt_r_bw:%d v1_srt_w_bw:%d v1_srt_r_bw:%d\n",
-					 chn_hrt_w_bw[comm_id][chnn_id],
-					 chn_hrt_r_bw[comm_id][chnn_id],
-					 chn_srt_w_bw[comm_id][chnn_id],
-					 chn_srt_r_bw[comm_id][chnn_id]);
-				pr_notice("[mmqos][dbg][new]v2_hrt_w_bw:%d  v2_hrt_r_bw:%d v2_srt_w_bw:%d v2_srt_r_bw:%d\n",
-					 v2_chn_hrt_w_bw[comm_id][chnn_id],
-					 v2_chn_hrt_r_bw[comm_id][chnn_id],
-					 v2_chn_srt_w_bw[comm_id][chnn_id],
-					 v2_chn_srt_r_bw[comm_id][chnn_id]);
-			}
+				if ((chn_hrt_w_bw[comm_id][chnn_id]
+					!= v2_chn_hrt_w_bw[comm_id][chnn_id]) ||
+				(chn_hrt_r_bw[comm_id][chnn_id]
+					!= v2_chn_hrt_r_bw[comm_id][chnn_id]) ||
+				(chn_srt_w_bw[comm_id][chnn_id]
+					!= v2_chn_srt_w_bw[comm_id][chnn_id]) ||
+				(chn_srt_r_bw[comm_id][chnn_id]
+					!= v2_chn_srt_r_bw[comm_id][chnn_id])) {
+					pr_notice("[mmqos][dbg][new]v1_hrt_w_bw:%d  v1_hrt_r_bw:%d v1_srt_w_bw:%d v1_srt_r_bw:%d\n",
+						 chn_hrt_w_bw[comm_id][chnn_id],
+						 chn_hrt_r_bw[comm_id][chnn_id],
+						 chn_srt_w_bw[comm_id][chnn_id],
+						 chn_srt_r_bw[comm_id][chnn_id]);
+					pr_notice("[mmqos][dbg][new]v2_hrt_w_bw:%d  v2_hrt_r_bw:%d v2_srt_w_bw:%d v2_srt_r_bw:%d\n",
+						 v2_chn_hrt_w_bw[comm_id][chnn_id],
+						 v2_chn_hrt_r_bw[comm_id][chnn_id],
+						 v2_chn_srt_w_bw[comm_id][chnn_id],
+						 v2_chn_srt_r_bw[comm_id][chnn_id]);
+				}
 #endif
-			chn_hrt_w_bw[comm_id][chnn_id] = v2_chn_hrt_w_bw[comm_id][chnn_id];
-			chn_srt_w_bw[comm_id][chnn_id] = v2_chn_srt_w_bw[comm_id][chnn_id];
-			chn_hrt_r_bw[comm_id][chnn_id] = v2_chn_hrt_r_bw[comm_id][chnn_id];
-			chn_srt_r_bw[comm_id][chnn_id] = v2_chn_srt_r_bw[comm_id][chnn_id];
-			if (log_level & 1 << log_v2_dbg)
-				pr_notice("[mmqos][dbg][new] hrt_w_bw:%d  hrt_r_bw:%d srt_w_bw:%d srt_r_bw:%d\n",
-					chn_hrt_w_bw[comm_id][chnn_id],
-					chn_hrt_r_bw[comm_id][chnn_id],
-					chn_srt_w_bw[comm_id][chnn_id],
-					chn_srt_r_bw[comm_id][chnn_id]);
+				chn_hrt_w_bw[comm_id][chnn_id] = v2_chn_hrt_w_bw[comm_id][chnn_id];
+				chn_srt_w_bw[comm_id][chnn_id] = v2_chn_srt_w_bw[comm_id][chnn_id];
+				chn_hrt_r_bw[comm_id][chnn_id] = v2_chn_hrt_r_bw[comm_id][chnn_id];
+				chn_srt_r_bw[comm_id][chnn_id] = v2_chn_srt_r_bw[comm_id][chnn_id];
+				if (log_level & 1 << log_v2_dbg)
+					pr_notice("[mmqos][dbg][new] hrt_w_bw:%d  hrt_r_bw:%d srt_w_bw:%d srt_r_bw:%d\n",
+						chn_hrt_w_bw[comm_id][chnn_id],
+						chn_hrt_r_bw[comm_id][chnn_id],
+						chn_srt_w_bw[comm_id][chnn_id],
+						chn_srt_r_bw[comm_id][chnn_id]);
+			}
 
 			record_chn_bw(comm_id, chnn_id,
 				chn_srt_r_bw[comm_id][chnn_id],
