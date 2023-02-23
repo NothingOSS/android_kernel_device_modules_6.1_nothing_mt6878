@@ -1089,10 +1089,6 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 			ufs_mtk_boost_crypt(hba, on);
 			ufs_mtk_setup_ref_clk(hba, on);
 			phy_power_off(host->mphy);
-#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-			if (host->qos_enabled)
-				mtk_btag_ufs_clk_gating(on);
-#endif
 		}
 	} else if (on && status == POST_CHANGE) {
 		phy_power_on(host->mphy);
@@ -1100,10 +1096,6 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 		ufs_mtk_boost_crypt(hba, on);
 		if (!ufshcd_is_clkscaling_supported(hba))
 			ufs_mtk_pm_qos(hba, on);
-#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-		if (host->qos_enabled)
-			mtk_btag_ufs_clk_gating(on);
-#endif
 	}
 
 	return ret;
@@ -1229,14 +1221,12 @@ static void ufs_mtk_trace_vh_send_command(void *data, struct ufs_hba *hba, struc
 		return;
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-	if (ufs_mtk_is_data_cmd(cmd)) {
+	if (ufs_mtk_is_data_cmd(cmd))
 		mtk_btag_ufs_send_command(lrbp->task_tag, cmd);
-		mtk_btag_ufs_check(lrbp->task_tag, 1);
-	}
 #endif
 }
 
-#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER) || defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE)
 static void ufs_mtk_get_outstanding_reqs(struct ufs_hba *hba,
 				unsigned long **outstanding_reqs, int *nr_tag)
 {
@@ -1264,16 +1254,9 @@ static void ufs_mtk_trace_vh_compl_command(void *data, struct ufs_hba *hba, stru
 #if defined(CONFIG_UFSFEATURE)
 	unsigned long outstanding_tasks;
 	struct ufsf_feature *ufsf;
-#endif
-
-#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER) || defined(CONFIG_UFSFEATURE)
 	unsigned long *outstanding_reqs;
 	unsigned long ongoing_cnt = 0;
 	int tmp_tag, nr_tag;
-#endif
-
-#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-	int tag = lrbp->task_tag;
 #endif
 
 	if (!cmd)
@@ -1287,7 +1270,7 @@ static void ufs_mtk_trace_vh_compl_command(void *data, struct ufs_hba *hba, stru
 		ufs_mtk_mphy_record(hba, UFS_MPHY_INIT);
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER) || defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE)
 	ufs_mtk_get_outstanding_reqs(hba, &outstanding_reqs, &nr_tag);
 	for_each_set_bit(tmp_tag, outstanding_reqs, nr_tag) {
 		ongoing_cnt = 1;
@@ -1296,10 +1279,8 @@ static void ufs_mtk_trace_vh_compl_command(void *data, struct ufs_hba *hba, stru
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-	if (ufs_mtk_is_data_cmd(cmd)) {
-		mtk_btag_ufs_transfer_req_compl(tag, ongoing_cnt);
-		mtk_btag_ufs_check(tag, ongoing_cnt);
-	}
+	if (ufs_mtk_is_data_cmd(cmd))
+		mtk_btag_ufs_transfer_req_compl(lrbp->task_tag);
 #endif
 
 #if defined(CONFIG_UFSFEATURE)

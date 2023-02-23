@@ -304,10 +304,8 @@ void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 size);
 
 int mtk_btag_ufs_init(struct ufs_mtk_host *host);
 int mtk_btag_ufs_exit(void);
-void mtk_btag_ufs_send_command(__u16 task_id, struct scsi_cmnd *cmd);
-void mtk_btag_ufs_transfer_req_compl(__u16 task_id, unsigned long req_mask);
-void mtk_btag_ufs_check(__u16 task_id, unsigned long req_mask);
-void mtk_btag_ufs_clk_gating(bool gated);
+void mtk_btag_ufs_send_command(__u16 tid, struct scsi_cmnd *cmd);
+void mtk_btag_ufs_transfer_req_compl(__u16 tid);
 
 int mmc_mtk_biolog_init(struct mmc_host *mmc);
 int mmc_mtk_biolog_exit(void);

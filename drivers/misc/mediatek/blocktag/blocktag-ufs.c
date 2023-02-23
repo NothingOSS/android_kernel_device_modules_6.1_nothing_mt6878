@@ -7,7 +7,6 @@
  */
 
 #define DEBUG 1
-#define SECTOR_SHIFT 12
 #define BTAG_UFS_TRACE_LATENCY ((unsigned long long)(1000000000))
 
 #include <linux/debugfs.h>
@@ -52,8 +51,6 @@ static inline __u32 chbe32_to_u32(const char *str)
 	return ret;
 }
 
-#define scsi_cmnd_lba(cmd)  chbe32_to_u32(&cmd->cmnd[2])
-#define scsi_cmnd_len(cmd)  chbe16_to_u16(&cmd->cmnd[7])
 #define scsi_cmnd_cmd(cmd)  (cmd->cmnd[0])
 
 static enum mtk_btag_io_type cmd_to_io_type(__u16 cmd)
@@ -77,40 +74,81 @@ static enum mtk_btag_io_type cmd_to_io_type(__u16 cmd)
 	}
 }
 
-static struct mtk_btag_ufs_ctx *mtk_btag_ufs_curr_ctx(__u16 task_id)
+static __u32 scsi_cmnd_len(struct scsi_cmnd *cmd)
 {
-	struct mtk_btag_ufs_ctx *ctx = BTAG_CTX(ufs_mtk_btag);
+	__u32 len;
+
+	switch (scsi_cmnd_cmd(cmd)) {
+	case READ_6:
+	case WRITE_6:
+		len = cmd->cmnd[4];
+		break;
+
+	case READ_10:
+	case WRITE_10:
+		len = chbe16_to_u16(&cmd->cmnd[7]);
+		break;
+
+	case READ_16:
+	case WRITE_16:
+		len = chbe32_to_u32(&cmd->cmnd[10]);
+		break;
+
+#if IS_ENABLED(CONFIG_SCSI_UFS_HPB)
+	case UFSHPB_READ:
+		len = cmd->cmnd[14];
+		break;
+#endif
+
+	default:
+		return 0;
+	}
+	return len << UFS_LOGBLK_SHIFT;
+}
+
+static struct btag_ufs_ctx *btag_ufs_ctx(__u16 qid)
+{
+	struct btag_ufs_ctx *ctx = BTAG_CTX(ufs_mtk_btag);
 
 	if (!ctx)
 		return NULL;
 
-	if (BTAG_UFS_QUEUE_ID(task_id) >= ufs_mtk_btag->ctx.count) {
-		pr_notice("[BLOCK_TAG] %s: invalid task id %d\n",
-			__func__, task_id);
+	if (qid >= ufs_mtk_btag->ctx.count) {
+		pr_notice("[BLOCKTAG] %s: invalid queue id %d\n",
+			  __func__, qid);
+		return NULL;
+	}
+	return &ctx[qid];
+}
+
+static struct btag_ufs_ctx *btag_ufs_tid_to_ctx(__u16 tid)
+{
+	if (tid >= BTAG_UFS_TAGS) {
+		pr_notice("[BLOCKTAG] %s: invalid tag id %d\n",
+			  __func__, tid);
 		return NULL;
 	}
 
-	return &ctx[BTAG_UFS_QUEUE_ID(task_id)];
+	return btag_ufs_ctx(tid_to_qid(tid));
 }
 
-static struct mtk_btag_ufs_task *mtk_btag_ufs_curr_task(__u16 task_id,
-		struct mtk_btag_ufs_ctx **curr_ctx)
+static struct btag_ufs_tag *btag_ufs_tag(struct btag_ufs_ctx *ctx,
+					 __u16 tid)
 {
-	struct mtk_btag_ufs_ctx *ctx;
-	struct mtk_btag_ufs_task *tsk;
-
-	ctx = mtk_btag_ufs_curr_ctx(task_id);
 	if (!ctx)
 		return NULL;
 
-	*curr_ctx = ctx;
-	tsk = &ctx->task[BTAG_UFS_TAG_ID(task_id)];
-	return tsk;
+	if (tid >= BTAG_UFS_TAGS) {
+		pr_notice("[BLOCKTAG] %s: invalid tag id %d\n",
+			  __func__, tid);
+		return NULL;
+	}
+
+	return &ctx->tags[tid % BTAG_UFS_QUEUE_TAGS];
 }
 
 static void btag_ufs_pidlog_insert(struct mtk_btag_proc_pidlogger *pidlog,
-				   struct scsi_cmnd *cmd, __u32 *top_len,
-				   enum mtk_btag_io_type io_type)
+				   struct scsi_cmnd *cmd, __u32 *top_len)
 {
 	struct req_iterator rq_iter;
 	struct bio_vec bvec;
@@ -118,10 +156,15 @@ static void btag_ufs_pidlog_insert(struct mtk_btag_proc_pidlogger *pidlog,
 	__u16 insert_pid[BTAG_PIDLOG_ENTRIES] = {0};
 	__u32 insert_len[BTAG_PIDLOG_ENTRIES] = {0};
 	__u32 insert_cnt = 0;
+	enum mtk_btag_io_type io_type;
 
 	*top_len = 0;
 	rq = scsi_cmd_to_rq(cmd);
 	if (!rq)
+		return;
+
+	io_type = cmd_to_io_type(scsi_cmnd_cmd(cmd));
+	if (io_type == BTAG_IO_UNKNOWN)
 		return;
 
 	rq_for_each_segment(bvec, rq, rq_iter) {
@@ -163,135 +206,176 @@ static void btag_ufs_pidlog_insert(struct mtk_btag_proc_pidlogger *pidlog,
 				       insert_cnt, io_type);
 }
 
-void mtk_btag_ufs_clk_gating(bool clk_on)
+void mtk_btag_ufs_send_command(__u16 tid, struct scsi_cmnd *cmd)
 {
-}
-EXPORT_SYMBOL_GPL(mtk_btag_ufs_clk_gating);
-
-void mtk_btag_ufs_send_command(__u16 task_id, struct scsi_cmnd *cmd)
-{
-	struct mtk_btag_ufs_ctx *ctx;
-	struct mtk_btag_ufs_task *tsk;
-	enum mtk_btag_io_type io_type;
-	__u32 top_len;
+	struct btag_ufs_ctx *ctx;
+	struct btag_ufs_tag *tag;
 	unsigned long flags;
+	__u64 cur_time = sched_clock();
+	__u64 window_t = 0;
+	__u32 top_len;
 
 	if (!cmd)
 		return;
 
-	io_type = cmd_to_io_type(scsi_cmnd_cmd(cmd));
-	if (io_type >= BTAG_IO_TYPE_NR)
+	ctx = btag_ufs_tid_to_ctx(tid);
+	if (!ctx)
 		return;
 
-	tsk = mtk_btag_ufs_curr_task(task_id, &ctx);
-	if (!tsk || !ctx)
+	/* tag */
+	tag = btag_ufs_tag(ctx, tid);
+	if (!tag)
 		return;
+	tag->len = scsi_cmnd_len(cmd);
+	tag->cmd = scsi_cmnd_cmd(cmd);
+	tag->start_t = cur_time;
 
-	tsk->lba = scsi_cmnd_lba(cmd);
-	tsk->len = scsi_cmnd_len(cmd);
-	tsk->cmd = scsi_cmnd_cmd(cmd);
+	/* workload */
+	spin_lock_irqsave(&ctx->wl.lock, flags);
+	if (!ctx->wl.depth++) {
+		ctx->wl.idle_total += cur_time - ctx->wl.idle_begin;
+		ctx->wl.idle_begin = 0;
+	}
+	window_t = cur_time - ctx->wl.window_begin;
+	spin_unlock_irqrestore(&ctx->wl.lock, flags);
 
-	btag_ufs_pidlog_insert(&ctx->pidlog, cmd, &top_len, io_type);
-	mtk_btag_mictx_eval_req(ufs_mtk_btag, BTAG_UFS_QUEUE_ID(task_id),
-				io_type, tsk->len << SECTOR_SHIFT, top_len);
+	/* pidlog */
+	btag_ufs_pidlog_insert(&ctx->pidlog, cmd, &top_len);
 
-	spin_lock_irqsave(&ctx->lock, flags);
-
-	tsk->t[tsk_send_cmd] = sched_clock();
-	tsk->t[tsk_req_compl] = 0;
-
-	ctx->sum_of_inflight_start += tsk->t[tsk_send_cmd];
-	if (!ctx->period_start_t)
-		ctx->period_start_t = tsk->t[tsk_send_cmd];
-
-	ctx->q_depth++;
-	mtk_btag_mictx_update(ufs_mtk_btag, BTAG_UFS_QUEUE_ID(task_id),
-			      ctx->q_depth, ctx->sum_of_inflight_start);
-
-	spin_unlock_irqrestore(&ctx->lock, flags);
+	if (window_t > BTAG_UFS_TRACE_LATENCY)
+		queue_work(ufs_mtk_btag_wq, &ufs_mtk_btag_worker);
 }
 EXPORT_SYMBOL_GPL(mtk_btag_ufs_send_command);
 
-__u16 mtk_btag_ufs_mictx_eval_wqd(struct mtk_btag_mictx_data *data,
-				  u64 t_cur)
+void mtk_btag_ufs_transfer_req_compl(__u16 tid)
 {
-	__u64 compl = data->weighted_qd;
-	__u64 inflight = t_cur * data->q_depth - data->sum_of_inflight_start;
-	__u64 dur = t_cur - data->window_begin;
-
-	return DIV64_U64_ROUND_UP(compl + inflight, dur);
-}
-
-void mtk_btag_ufs_transfer_req_compl(__u16 task_id, unsigned long req_mask)
-{
-	struct mtk_btag_ufs_ctx *ctx;
-	struct mtk_btag_ufs_task *tsk;
+	struct btag_ufs_ctx *ctx;
+	struct btag_ufs_tag *tag;
 	unsigned long flags;
 	enum mtk_btag_io_type io_type;
-	__u64 busy_time;
-	__u32 size;
+	__u64 cur_time = sched_clock();
+	__u64 window_t = 0;
 
-	tsk = mtk_btag_ufs_curr_task(task_id, &ctx);
-	if (!tsk || !ctx)
+	ctx = btag_ufs_tid_to_ctx(tid);
+	if (!ctx)
 		return;
 
-	/* return if there's no on-going request  */
-	if (!tsk->t[tsk_send_cmd])
+	tag = btag_ufs_tag(ctx, tid);
+	if (!tag)
 		return;
 
-	spin_lock_irqsave(&ctx->lock, flags);
-
-	tsk->t[tsk_req_compl] = sched_clock();
-
-	io_type = cmd_to_io_type(tsk->cmd);
-
-	/* throughput usage := duration of handling this request */
-	busy_time = tsk->t[tsk_req_compl] - tsk->t[tsk_send_cmd];
-
-	/* workload statistics */
-	ctx->workload.count++;
-
+	/* throughput */
+	io_type = cmd_to_io_type(tag->cmd);
 	if (io_type < BTAG_IO_TYPE_NR) {
-		size = tsk->len << SECTOR_SHIFT;
-		ctx->throughput[io_type].usage += busy_time;
-		ctx->throughput[io_type].size += size;
-		mtk_btag_mictx_eval_tp(ufs_mtk_btag, BTAG_UFS_QUEUE_ID(task_id),
-				       io_type, busy_time, size);
+		spin_lock_irqsave(&ctx->tp.lock, flags);
+		ctx->tp.usage[io_type] += (cur_time - tag->start_t);
+		ctx->tp.size[io_type] += tag->len;
+		spin_unlock_irqrestore(&ctx->tp.lock, flags);
 	}
 
-	ctx->sum_of_inflight_start -= tsk->t[tsk_send_cmd];
-	if (!req_mask)
-		ctx->q_depth = 0;
-	else
-		ctx->q_depth--;
-	mtk_btag_mictx_update(ufs_mtk_btag, BTAG_UFS_QUEUE_ID(task_id),
-			      ctx->q_depth, ctx->sum_of_inflight_start);
-	mtk_btag_mictx_accumulate_weight_qd(ufs_mtk_btag,
-					    BTAG_UFS_QUEUE_ID(task_id),
-					    tsk->t[tsk_send_cmd],
-					    tsk->t[tsk_req_compl]);
+	/* workload */
+	spin_lock_irqsave(&ctx->wl.lock, flags);
+	ctx->wl.req_cnt++;
+	if (!tag->start_t) {
+		ctx->wl.idle_total = 0;
+		ctx->wl.idle_begin = ctx->wl.depth ? 0 : cur_time;
+	} else if (!--ctx->wl.depth) {
+		ctx->wl.idle_begin = cur_time;
+	}
+	window_t = cur_time - ctx->wl.window_begin;
+	spin_unlock_irqrestore(&ctx->wl.lock, flags);
 
-	/* clear this task */
-	tsk->t[tsk_send_cmd] = tsk->t[tsk_req_compl] = 0;
+	/* clear tag */
+	tag->start_t = 0;
+	tag->cmd = 0;
+	tag->len = 0;
 
-	spin_unlock_irqrestore(&ctx->lock, flags);
+	if (window_t > BTAG_UFS_TRACE_LATENCY)
+		queue_work(ufs_mtk_btag_wq, &ufs_mtk_btag_worker);
 }
 EXPORT_SYMBOL_GPL(mtk_btag_ufs_transfer_req_compl);
 
-/* print context to trace ring buffer */
-static void mtk_btag_ufs_work(struct work_struct *work)
+/* evaluate throughput, workload and pidlog of given context */
+static void btag_ufs_ctx_eval(struct btag_ufs_ctx *ctx,
+			      struct mtk_btag_trace *tr)
+{
+	struct mtk_btag_throughput *tp = tr->throughput;
+	struct mtk_btag_workload *wl = &tr->workload;
+	enum mtk_btag_io_type io_type;
+	__u64 cur_time, idle_total, window_begin;
+
+	/* throughput */
+	spin_lock(&ctx->tp.lock);
+	for (io_type = 0; io_type < BTAG_IO_TYPE_NR; io_type++) {
+		tp[io_type].usage = ctx->tp.usage[io_type];
+		tp[io_type].size = ctx->tp.size[io_type];
+		ctx->tp.usage[io_type] = 0;
+		ctx->tp.size[io_type] = 0;
+	}
+	spin_unlock(&ctx->tp.lock);
+	mtk_btag_throughput_eval(tp);
+
+	/* workload */
+	spin_lock(&ctx->wl.lock);
+	cur_time = sched_clock();
+	idle_total = ctx->wl.idle_total;
+	wl->count = ctx->wl.req_cnt;
+	window_begin = ctx->wl.window_begin;
+	if (ctx->wl.idle_begin) {
+		idle_total += cur_time - ctx->wl.idle_begin;
+		ctx->wl.idle_begin = cur_time;
+	}
+	ctx->wl.idle_total = 0;
+	ctx->wl.req_cnt = 0;
+	ctx->wl.window_begin = cur_time;
+	spin_unlock(&ctx->wl.lock);
+
+	tr->time = cur_time;
+	wl->period = cur_time - window_begin;
+	wl->usage = wl->period - idle_total;
+	if (!wl->usage)
+		wl->percent = 0;
+	else if (wl->period > wl->usage * 100)
+		wl->percent = 1;
+	else
+		wl->percent = (__u32)div64_u64(wl->usage * 100, wl->period);
+
+	/* pidlog */
+	spin_lock(&ctx->pidlog.lock);
+	memcpy(&tr->pidlog.info, &ctx->pidlog.info,
+	       sizeof(struct mtk_btag_proc_pidlogger_entry) *
+	       BTAG_PIDLOG_ENTRIES);
+	memset(&ctx->pidlog.info, 0,
+	       sizeof(struct mtk_btag_proc_pidlogger_entry) *
+	       BTAG_PIDLOG_ENTRIES);
+	spin_unlock(&ctx->pidlog.lock);
+}
+
+/* evaluate context to trace ring buffer */
+static void btag_ufs_work(struct work_struct *work)
 {
 	struct mtk_btag_ringtrace *rt = BTAG_RT(ufs_mtk_btag);
-	struct mtk_btag_ufs_ctx *ctx;
 	struct mtk_btag_trace *tr;
+	struct btag_ufs_ctx *ctx;
 	unsigned long flags;
-	__u64 time;
-	__u32 idx;
+	__u32 qid;
 
 	if (!rt)
 		return;
 
-	for (idx = 0; idx < ufs_mtk_btag->ctx.count; idx++) {
+	for (qid = 0; qid < ufs_mtk_btag->ctx.count; qid++) {
+		ctx = btag_ufs_ctx(qid);
+		if (!ctx)
+			break;
+
+		spin_lock_irqsave(&ctx->wl.lock, flags);
+		if (sched_clock() - ctx->wl.window_begin <=
+		    BTAG_UFS_TRACE_LATENCY) {
+			spin_unlock_irqrestore(&ctx->wl.lock, flags);
+			continue;
+		}
+		spin_unlock_irqrestore(&ctx->wl.lock, flags);
+
 		spin_lock_irqsave(&rt->lock, flags);
 		tr = mtk_btag_curr_trace(rt);
 		if (!tr) {
@@ -299,157 +383,45 @@ static void mtk_btag_ufs_work(struct work_struct *work)
 			break;
 		}
 
-		memset(tr, 0, sizeof(struct mtk_btag_trace));
+		tr->time = sched_clock();
 		tr->pid = 0;
-		tr->qid = idx;
-
-		ctx = mtk_btag_ufs_curr_ctx(idx);
-		if (!ctx) {
-			spin_unlock_irqrestore(&rt->lock, flags);
-			break;
-		}
-
-		spin_lock(&ctx->lock);
-		time = sched_clock();
-		if (time - ctx->period_start_t < BTAG_UFS_TRACE_LATENCY) {
-			spin_unlock(&ctx->lock);
-			spin_unlock_irqrestore(&rt->lock, flags);
-			continue;
-		}
-
-		tr->time = time;
-		mtk_btag_pidlog_eval(&tr->pidlog, &ctx->pidlog);
+		tr->qid = qid;
+		btag_ufs_ctx_eval(ctx, tr);
 		mtk_btag_vmstat_eval(&tr->vmstat);
 		mtk_btag_cpu_eval(&tr->cpu);
-		memcpy(tr->throughput, ctx->throughput,
-		       sizeof(struct mtk_btag_throughput) * BTAG_IO_TYPE_NR);
-		memcpy(&tr->workload, &ctx->workload, sizeof(struct mtk_btag_workload));
-
-		ctx->period_start_t = tr->time;
-		ctx->period_end_t = 0;
-		ctx->period_usage = 0;
-		memset(ctx->throughput, 0,
-		       sizeof(struct mtk_btag_throughput) * BTAG_IO_TYPE_NR);
-		memset(&ctx->workload, 0, sizeof(struct mtk_btag_workload));
-		spin_unlock(&ctx->lock);
 
 		mtk_btag_next_trace(rt);
 		spin_unlock_irqrestore(&rt->lock, flags);
 	}
 }
 
-/* evaluate throughput and workload of given context */
-static void mtk_btag_ufs_ctx_eval(struct mtk_btag_ufs_ctx *ctx)
-{
-	__u64 period;
-
-	ctx->workload.usage = ctx->period_usage;
-
-	if (ctx->workload.period > (ctx->workload.usage * 100)) {
-		ctx->workload.percent = 1;
-	} else {
-		period = ctx->workload.period;
-		do_div(period, 100);
-		ctx->workload.percent =
-			(__u32)ctx->workload.usage / (__u32)period;
-	}
-	mtk_btag_throughput_eval(ctx->throughput);
-}
-
-static void mtk_btag_ufs_ctx_count_usage(struct mtk_btag_ufs_ctx *ctx,
-					 __u64 start, __u64 end)
-{
-	__u64 busy_in_period;
-
-	if (start < ctx->period_start_t)
-		busy_in_period = end - ctx->period_start_t;
-	else
-		busy_in_period = end - start;
-
-	ctx->period_usage += busy_in_period;
-}
-
-/* Check requests after set/clear mask. */
-void mtk_btag_ufs_check(__u16 task_id, unsigned long req_mask)
-{
-	struct mtk_btag_ufs_ctx *ctx;
-	__u64 end_time, period_time;
-	unsigned long flags;
-
-	ctx = mtk_btag_ufs_curr_ctx(task_id);
-	if (!ctx)
-		return;
-
-	end_time = sched_clock();
-
-	spin_lock_irqsave(&ctx->lock, flags);
-
-	if (ctx->busy_start_t)
-		mtk_btag_ufs_ctx_count_usage(ctx, ctx->busy_start_t, end_time);
-
-	ctx->busy_start_t = (req_mask) ? end_time : 0;
-
-	period_time = end_time - ctx->period_start_t;
-
-	if (period_time >= BTAG_UFS_TRACE_LATENCY) {
-		ctx->period_end_t = end_time;
-		ctx->workload.period = period_time;
-		mtk_btag_ufs_ctx_eval(ctx);
-		queue_work(ufs_mtk_btag_wq, &ufs_mtk_btag_worker);
-	}
-	spin_unlock_irqrestore(&ctx->lock, flags);
-}
-EXPORT_SYMBOL_GPL(mtk_btag_ufs_check);
-
-/*
- * snprintf may return a value of size or "more" to indicate
- * that the output was truncated, thus be careful of "more"
- * case.
- */
-#define SPREAD_PRINTF(buff, size, evt, fmt, args...) \
-do { \
-	if (buff && size && *(size)) { \
-		unsigned long var = snprintf(*(buff), *(size), fmt, ##args); \
-		if (var > 0) { \
-			if (var > *(size)) \
-				var = *(size); \
-			*(size) -= var; \
-			*(buff) += var; \
-		} \
-	} \
-	if (evt) \
-		seq_printf(evt, fmt, ##args); \
-	if (!buff && !evt) { \
-		pr_info(fmt, ##args); \
-	} \
-} while (0)
-
-static size_t mtk_btag_ufs_seq_debug_show_info(char **buff, unsigned long *size,
-					       struct seq_file *seq)
+static size_t btag_ufs_seq_debug_show_info(char **buff, unsigned long *size,
+					   struct seq_file *seq)
 {
 	return 0;
 }
 
-static void mtk_btag_ufs_init_ctx(struct mtk_blocktag *btag)
+static void btag_ufs_init_ctx(struct mtk_blocktag *btag)
 {
-	struct mtk_btag_ufs_ctx *ctx = BTAG_CTX(btag);
+	struct btag_ufs_ctx *ctx = BTAG_CTX(btag);
 	__u64 time = sched_clock();
 	int i;
 
 	if (!ctx)
 		return;
 
-	memset(ctx, 0, sizeof(struct mtk_btag_ufs_ctx) * btag->ctx.count);
+	memset(ctx, 0, sizeof(struct btag_ufs_ctx) * btag->ctx.count);
 	for (i = 0; i < btag->ctx.count; i++) {
-		spin_lock_init(&ctx[i].lock);
+		spin_lock_init(&ctx[i].tp.lock);
+		spin_lock_init(&ctx[i].wl.lock);
 		spin_lock_init(&ctx[i].pidlog.lock);
-		ctx[i].period_start_t = time;
+		ctx[i].wl.window_begin = time;
+		ctx[i].wl.idle_begin = time;
 	}
 }
 
-static struct mtk_btag_vops mtk_btag_ufs_vops = {
-	.seq_show = mtk_btag_ufs_seq_debug_show_info,
-	.mictx_eval_wqd = mtk_btag_ufs_mictx_eval_wqd,
+static struct mtk_btag_vops btag_ufs_vops = {
+	.seq_show = btag_ufs_seq_debug_show_info,
 };
 
 int mtk_btag_ufs_init(struct ufs_mtk_host *host)
@@ -464,10 +436,10 @@ int mtk_btag_ufs_init(struct ufs_mtk_host *host)
 		return -1;
 
 	if (host->qos_allowed)
-		mtk_btag_ufs_vops.earaio_enabled = true;
+		btag_ufs_vops.earaio_enabled = true;
 
 	if (host->boot_device)
-		mtk_btag_ufs_vops.boot_device = true;
+		btag_ufs_vops.boot_device = true;
 
 #if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
 	hba_priv = (struct ufs_hba_private *)host->hba->android_vendor_data1;
@@ -475,17 +447,18 @@ int mtk_btag_ufs_init(struct ufs_mtk_host *host)
 		max_queue = hba_priv->mcq_nr_hw_queue;
 #endif
 
-	ufs_mtk_btag_wq = alloc_workqueue("ufs_mtk_btag", WQ_FREEZABLE, 1);
-	INIT_WORK(&ufs_mtk_btag_worker, mtk_btag_ufs_work);
+	ufs_mtk_btag_wq = alloc_workqueue("ufs_mtk_btag",
+					  WQ_FREEZABLE | WQ_UNBOUND, 1);
+	INIT_WORK(&ufs_mtk_btag_worker, btag_ufs_work);
 
 	btag = mtk_btag_alloc("ufs",
 			      BTAG_STORAGE_UFS,
 			      BTAG_UFS_RINGBUF_MAX,
-			      sizeof(struct mtk_btag_ufs_ctx),
-			      max_queue, &mtk_btag_ufs_vops);
+			      sizeof(struct btag_ufs_ctx),
+			      max_queue, &btag_ufs_vops);
 
 	if (btag) {
-		mtk_btag_ufs_init_ctx(btag);
+		btag_ufs_init_ctx(btag);
 		ufs_mtk_btag = btag;
 	}
 	return 0;
