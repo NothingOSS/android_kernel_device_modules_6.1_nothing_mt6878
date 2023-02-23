@@ -60,42 +60,32 @@ do { \
 extern void *extmem_malloc_page_align(size_t bytes);
 #endif
 
-enum {
-	PIDLOG_MODE_BLK_BIO_QUEUE,
-	PIDLOG_MODE_MM_MARK_DIRTY
-};
-
 enum mtk_btag_storage_type {
 	BTAG_STORAGE_UFS     = 0,
 	BTAG_STORAGE_MMC     = 1,
 	BTAG_STORAGE_UNKNOWN = 2
 };
 
+enum mtk_btag_io_type {
+	BTAG_IO_READ = 0,
+	BTAG_IO_WRITE,
+	BTAG_IO_TYPE_NR,
+	BTAG_IO_UNKNOWN
+};
+
 struct page_pidlogger {
 	__s16 pid;
 };
 
-struct mtk_btag_proc_pidlogger_entry_rw {
-	__u16 count;
-	__u32 length;
-};
-
 struct mtk_btag_proc_pidlogger_entry {
 	__u16 pid;
-	struct mtk_btag_proc_pidlogger_entry_rw r; /* read */
-	struct mtk_btag_proc_pidlogger_entry_rw w; /* write */
+	__u32 cnt[BTAG_IO_TYPE_NR];
+	__u32 len[BTAG_IO_TYPE_NR];
 };
 
 struct mtk_btag_proc_pidlogger {
+	spinlock_t lock;
 	struct mtk_btag_proc_pidlogger_entry info[BTAG_PIDLOG_ENTRIES];
-};
-
-struct tmp_proc_pidlogger_entry {
-	__u16 pid;
-	__u32 length;
-};
-struct tmp_proc_pidlogger {
-	struct tmp_proc_pidlogger_entry info[BTAG_PIDLOG_ENTRIES];
 };
 
 struct mtk_btag_mictx_id {
@@ -273,15 +263,11 @@ struct mtk_blocktag {
 
 struct mtk_blocktag *mtk_btag_find_by_type(
 	enum mtk_btag_storage_type storage_type);
-
-void mtk_btag_pidlog_insert(struct mtk_btag_proc_pidlogger *pidlog, bool write,
-				struct tmp_proc_pidlogger *tmplog);
-int mtk_btag_pidlog_add_ufs(__u16 task_id, bool write, __u32 total_len,
-			    __u32 top_len, struct tmp_proc_pidlogger *pidlog);
-int mtk_btag_pidlog_add_mmc(bool is_sd, bool write, __u32 total_len,
-			    __u32 top_len, struct tmp_proc_pidlogger *pidlog);
-void mtk_btag_commit_req(__u16 task_id, struct request *rq, bool is_sd);
-
+short mtk_btag_page_pidlog_get(struct page *p);
+void mtk_btag_page_pidlog_set(struct page *p, short pid);
+void mtk_btag_pidlog_insert(struct mtk_btag_proc_pidlogger *pidlog,
+			    __u16 *insert_pid, __u32 *insert_len,
+			    __u32 insert_cnt, enum mtk_btag_io_type io_type);
 void mtk_btag_vmstat_eval(struct mtk_btag_vmstat *vm);
 void mtk_btag_pidlog_eval(
 	struct mtk_btag_proc_pidlogger *pl,

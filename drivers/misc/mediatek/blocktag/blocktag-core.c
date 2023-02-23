@@ -120,30 +120,35 @@ static size_t mtk_btag_seq_pidlog_usedmem(char **buff, unsigned long *size,
 	return size_l;
 }
 
-void mtk_btag_pidlog_insert(struct mtk_btag_proc_pidlogger *pidlog, bool write,
-				struct tmp_proc_pidlogger *tmplog)
+void mtk_btag_pidlog_insert(struct mtk_btag_proc_pidlogger *pidlog,
+			    __u16 *insert_pid, __u32 *insert_len,
+			    __u32 insert_cnt, enum mtk_btag_io_type io_type)
 {
-	struct mtk_btag_proc_pidlogger_entry *pe;
-	struct mtk_btag_proc_pidlogger_entry_rw *prw;
-	struct tmp_proc_pidlogger_entry *te;
-	int pe_idx, te_idx;
-	int last_te_idx = BTAG_PIDLOG_ENTRIES - 1;
+	unsigned long flags;
+	int insert_i, pidlog_i;
 
-	for (; last_te_idx >= 0; last_te_idx--)
-		if (tmplog->info[last_te_idx].pid)
-			break;
+	for (insert_i = 0; insert_i < insert_cnt; insert_i++) {
+		if (!insert_pid[insert_i] || !insert_len[insert_i])
+			continue;
 
-	for (te_idx = 0; te_idx <= last_te_idx; te_idx++) {
-		te = &tmplog->info[te_idx];
-		for (pe_idx = 0; pe_idx < BTAG_PIDLOG_ENTRIES; pe_idx++) {
-			pe = &pidlog->info[pe_idx];
-			if (te->pid == pe->pid || pe->pid == 0) {
-				pe->pid = te->pid;
-				prw = (write) ? &pe->w : &pe->r;
-				prw->count++;
-				prw->length += te->length;
+		for (pidlog_i = 0; pidlog_i < BTAG_PIDLOG_ENTRIES; pidlog_i++) {
+			struct mtk_btag_proc_pidlogger_entry *e;
+
+			e = &pidlog->info[pidlog_i];
+			spin_lock_irqsave(&pidlog->lock, flags);
+			if (!e->pid) {
+				e->pid = insert_pid[insert_i];
+				e->len[io_type] += insert_len[insert_i];
+				e->cnt[io_type]++;
+				spin_unlock_irqrestore(&pidlog->lock, flags);
+				break;
+			} else if (e->pid == insert_pid[insert_i]) {
+				e->len[io_type] += insert_len[insert_i];
+				e->cnt[io_type]++;
+				spin_unlock_irqrestore(&pidlog->lock, flags);
 				break;
 			}
+			spin_unlock_irqrestore(&pidlog->lock, flags);
 		}
 	}
 }
@@ -158,77 +163,6 @@ static int mtk_btag_get_storage_type(struct bio *bio)
 		return BTAG_STORAGE_MMC;
 	else
 		return BTAG_STORAGE_UNKNOWN;
-}
-
-/*
- * pidlog: hook function for __blk_bios_map_sg()
- * rw: 0=read, 1=write
- */
-static void mtk_btag_pidlog_commit_bio(struct bio_vec *bvec, __u32 *total_len,
-					__u32 *top_len,
-					struct tmp_proc_pidlogger *tmplog)
-{
-	struct page_pidlogger *ppl;
-	__u32 idx;
-	__s16 pid;
-	int i;
-	struct tmp_proc_pidlogger_entry *te;
-
-	idx = mtk_btag_pidlog_index(bvec->bv_page);
-	ppl = mtk_btag_pidlog_entry(idx);
-	pid = ppl->pid;
-	ppl->pid = 0;
-
-	*total_len += bvec->bv_len;
-	if (pid < 0)
-		*top_len += bvec->bv_len;
-
-	pid = abs(pid);
-	for (i = 0; i < BTAG_PIDLOG_ENTRIES; i++) {
-		te = &tmplog->info[i];
-		if ((te->pid == pid) || (te->pid == 0)) {
-			te->pid = pid;
-			te->length += bvec->bv_len;
-			break;
-		}
-	}
-}
-
-void mtk_btag_commit_req(__u16 task_id, struct request *rq, bool is_sd)
-{
-	struct bio *bio = rq->bio;
-	struct bio_vec bvec;
-	struct req_iterator rq_iter;
-	int type;
-	bool write;
-	struct tmp_proc_pidlogger tmplog;
-	__u32 total_len = 0;
-	__u32 top_len = 0;
-
-	if (unlikely(!mtk_btag_pagelogger) || !bio)
-		return;
-
-	if (bio_op(bio) != REQ_OP_READ && bio_op(bio) != REQ_OP_WRITE)
-		return;
-
-	type = mtk_btag_get_storage_type(bio);
-	if (type == BTAG_STORAGE_UNKNOWN)
-		return;
-
-	memset(&tmplog, 0, sizeof(struct tmp_proc_pidlogger));
-	rq_for_each_segment(bvec, rq, rq_iter) {
-		if (bvec.bv_page)
-			mtk_btag_pidlog_commit_bio(&bvec, &total_len,
-						&top_len, &tmplog);
-	}
-
-	write  = (bio_data_dir(bio) == WRITE) ? true : false;
-	if (type == BTAG_STORAGE_UFS)
-		mtk_btag_pidlog_add_ufs(task_id, write, total_len, top_len,
-					&tmplog);
-	else if (type == BTAG_STORAGE_MMC)
-		mtk_btag_pidlog_add_mmc(is_sd, write, total_len, top_len,
-					&tmplog);
 }
 
 /* evaluate vmstat trace from global_node_page_state() */
@@ -258,22 +192,28 @@ void mtk_btag_vmstat_eval(struct mtk_btag_vmstat *vm)
 }
 
 /* evaluate pidlog trace from context */
-void mtk_btag_pidlog_eval(struct mtk_btag_proc_pidlogger *pl,
-	struct mtk_btag_proc_pidlogger *ctx_pl)
+void mtk_btag_pidlog_eval(struct mtk_btag_proc_pidlogger *to,
+			  struct mtk_btag_proc_pidlogger *from)
 {
+	unsigned long flags;
 	int i;
 
+	spin_lock_irqsave(&from->lock, flags);
 	for (i = 0; i < BTAG_PIDLOG_ENTRIES; i++) {
-		if (ctx_pl->info[i].pid == 0)
+		if (from->info[i].pid == 0)
 			break;
 	}
 
-	if (i != 0) {
-		int size = i * sizeof(struct mtk_btag_proc_pidlogger_entry);
+	if (i) {
+		int entry_size = sizeof(struct mtk_btag_proc_pidlogger_entry);
 
-		memcpy(&pl->info[0], &ctx_pl->info[0], size);
-		memset(&ctx_pl->info[0], 0, size);
+		memcpy(&to->info[0], &from->info[0], i * entry_size);
+		memset(&from->info[0], 0, i * entry_size);
+		if (i < BTAG_PIDLOG_ENTRIES)
+			memset(&to->info[i], 0,
+			       (BTAG_PIDLOG_ENTRIES - i) * entry_size);
 	}
+	spin_unlock_irqrestore(&from->lock, flags);
 }
 
 static __u64 mtk_btag_cpu_idle_time(int cpu)
@@ -462,10 +402,10 @@ static void mtk_btag_seq_trace(char **buff, unsigned long *size,
 
 		BTAG_PRINTF(buff, size, seq, pidlog_fmt,
 			    pe->pid,
-			    pe->w.count,
-			    pe->w.length,
-			    pe->r.count,
-			    pe->r.length);
+			    pe->cnt[BTAG_IO_WRITE],
+			    pe->len[BTAG_IO_WRITE],
+			    pe->cnt[BTAG_IO_READ],
+			    pe->len[BTAG_IO_READ]);
 	}
 	BTAG_PRINTF(buff, size, seq, ".\n");
 }
@@ -855,7 +795,7 @@ static bool mtk_btag_is_top_in_cgrp(struct task_struct *t)
 		return false;
 }
 
-static bool mtk_btag_is_top_task(struct task_struct *task, int mode)
+static bool mtk_btag_is_top_task(struct task_struct *task)
 {
 	struct task_struct *t_tgid = NULL;
 
@@ -876,45 +816,44 @@ static bool mtk_btag_is_top_task(struct task_struct *task, int mode)
 }
 
 #else
-static inline bool mtk_btag_is_top_task(struct task_struct *task,
-					int mode)
+static inline bool mtk_btag_is_top_task(struct task_struct *task)
 {
 	return false;
 }
 #endif
 
-static void mtk_btag_pidlog_set_pid(struct page *p, int mode, bool write)
+short mtk_btag_page_pidlog_get(struct page *p)
 {
 	struct page_pidlogger *ppl;
-	short pid = current->pid;
 	unsigned long idx;
-	bool top;
 
+	/* we do lockless operation here to favor performance */
+	idx = mtk_btag_pidlog_index(p);
+	if (idx >= mtk_btag_pidlog_max_entry())
+		return 0;
+
+	ppl = mtk_btag_pidlog_entry(idx);
+	return ppl->pid;
+}
+
+void mtk_btag_page_pidlog_set(struct page *p, short pid)
+{
+	struct page_pidlogger *ppl;
+	unsigned long idx;
+
+	/* we do lockless operation here to favor performance */
 	idx = mtk_btag_pidlog_index(p);
 	if (idx >= mtk_btag_pidlog_max_entry())
 		return;
 	ppl = mtk_btag_pidlog_entry(idx);
-
-	/* Using negative pid for taks with "TOP_APP" schedtune cgroup */
-	top = mtk_btag_is_top_task(current, mode);
-	pid = (top) ? -pid : pid;
-
-	/* we do lockless operation here to favor performance */
-
-	if (mode == PIDLOG_MODE_MM_MARK_DIRTY) {
-		/* keep real requester anyway */
-		ppl->pid = pid;
-	} else {
-		/* do not overwrite the real owner set before */
-		if (ppl->pid == 0)
-			ppl->pid = pid;
-	}
+	ppl->pid = pid;
 }
 
 static void btag_trace_block_bio_queue(void *data, struct bio *bio)
 {
 	struct bvec_iter iter;
 	struct bio_vec bvec;
+	short pid = current->pid;
 	int type;
 
 	if (unlikely(!mtk_btag_pagelogger) || !bio)
@@ -927,32 +866,31 @@ static void btag_trace_block_bio_queue(void *data, struct bio *bio)
 	if (type == BTAG_STORAGE_UNKNOWN)
 		return;
 
+	/* Using negative pid for task with "TOP_APP" schedtune cgroup */
+	pid = mtk_btag_is_top_task(current) ? -pid : pid;
+
 	for_each_bio(bio) {
 		bio_for_each_segment(bvec, bio, iter) {
-			if (bvec.bv_page) {
-				mtk_btag_pidlog_set_pid(bvec.bv_page,
-					PIDLOG_MODE_BLK_BIO_QUEUE,
-					(bio_op(bio) == REQ_OP_WRITE) ?
-					true : false);
-			}
+			if (bvec.bv_page &&
+			    !mtk_btag_page_pidlog_get(bvec.bv_page))
+				mtk_btag_page_pidlog_set(bvec.bv_page, pid);
 		}
 	}
 }
 
-static void btag_trace_writeback_dirty_page(void *data,
-					struct page *page,
-					struct address_space *mapping)
+static void btag_trace_writeback_dirty_folio(void *data,
+					     struct folio *folio,
+					     struct address_space *mapping)
 {
 	/*
 	 * Dirty pages may be written by writeback thread later.
 	 * To get real requester of this page, we shall keep it
 	 * before writeback takes over.
 	 */
-	if (unlikely(!mtk_btag_pagelogger) || unlikely(!page))
+	if (unlikely(!mtk_btag_pagelogger) || unlikely(!folio))
 		return;
 
-	mtk_btag_pidlog_set_pid(page, PIDLOG_MODE_MM_MARK_DIRTY, true);
-
+	mtk_btag_page_pidlog_set(&folio->page, current->pid);
 }
 
 struct tracepoints_table {
@@ -968,8 +906,8 @@ static struct tracepoints_table interests[] = {
 		.func = btag_trace_block_bio_queue
 	},
 	{
-		.name = "writeback_dirty_page",
-		.func = btag_trace_writeback_dirty_page
+		.name = "writeback_dirty_folio",
+		.func = btag_trace_writeback_dirty_folio
 	},
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_PM_DEBUG)
 	{

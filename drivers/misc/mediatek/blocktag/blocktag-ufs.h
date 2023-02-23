@@ -9,6 +9,10 @@
 #include <linux/types.h>
 #include "mtk_blocktag.h"
 
+#if IS_ENABLED(CONFIG_SCSI_UFS_HPB)
+#include "ufshpb.h"
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
 
 #define BTAG_UFS_RINGBUF_MAX    120

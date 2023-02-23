@@ -61,22 +61,65 @@ static struct mmc_mtk_bio_context_task *mmc_mtk_bio_curr_task(
 	return mmc_mtk_bio_get_task(ctx, task_id);
 }
 
-int mtk_btag_pidlog_add_mmc(bool is_sd, bool write, __u32 total_len,
-			    __u32 top_len, struct tmp_proc_pidlogger *tmplog)
+static void btag_mmc_pidlog_insert(struct request *rq, bool is_sd)
 {
-	unsigned long flags;
 	struct mmc_mtk_bio_context *ctx;
+	struct req_iterator rq_iter;
+	struct bio_vec bvec;
+	__u16 insert_pid[BTAG_PIDLOG_ENTRIES] = {0};
+	__u32 insert_len[BTAG_PIDLOG_ENTRIES] = {0};
+	__u32 insert_cnt = 0, tot_len = 0, top_len = 0;
+	enum mtk_btag_io_type io_type;
+	unsigned long flags;
+
+	if (!rq)
+		return;
 
 	ctx = mmc_mtk_bio_curr_ctx(is_sd);
 	if (!ctx)
-		return 0;
+		return;
+
+	if (req_op(rq) == REQ_OP_READ)
+		io_type = BTAG_IO_READ;
+	else if (req_op(rq) == REQ_OP_WRITE)
+		io_type = BTAG_IO_WRITE;
+	else
+		return;
+
+	rq_for_each_segment(bvec, rq, rq_iter) {
+		short pid;
+		int idx;
+
+		if (!bvec.bv_page)
+			continue;
+
+		pid = mtk_btag_page_pidlog_get(bvec.bv_page);
+		mtk_btag_page_pidlog_set(bvec.bv_page, 0);
+
+		tot_len += bvec.bv_len;
+		if (pid < 0) {
+			top_len += bvec.bv_len;
+			pid = -pid;
+		}
+
+		for (idx = 0; idx < BTAG_PIDLOG_ENTRIES; idx++) {
+			if (insert_pid[idx] == 0) {
+				insert_pid[idx] = pid;
+				insert_len[idx] = bvec.bv_len;
+				insert_cnt++;
+				break;
+			} else if (insert_pid[idx] == pid) {
+				insert_len[idx] += bvec.bv_len;
+				break;
+			}
+		}
+	}
 
 	spin_lock_irqsave(&ctx->lock, flags);
-	mtk_btag_pidlog_insert(&ctx->pidlog, write, tmplog);
-	mtk_btag_mictx_eval_req(mmc_mtk_btag, 0, write, total_len, top_len);
+	mtk_btag_pidlog_insert(&ctx->pidlog, insert_pid, insert_len,
+			       insert_cnt, io_type);
+	mtk_btag_mictx_eval_req(mmc_mtk_btag, 0, io_type, tot_len, top_len);
 	spin_unlock_irqrestore(&ctx->lock, flags);
-
-	return 1;
 }
 
 void mmc_mtk_biolog_send_command(__u16 task_id, struct mmc_request *mrq)
@@ -127,8 +170,7 @@ void mmc_mtk_biolog_send_command(__u16 task_id, struct mmc_request *mrq)
 	} else
 		return;
 
-	if (req)
-		mtk_btag_commit_req(0, req, is_sd);
+	btag_mmc_pidlog_insert(req, is_sd);
 
 	if (is_sd && mrq->cmd->data) {
 		tsk->len = mrq->cmd->data->blksz * mrq->cmd->data->blocks;
@@ -363,6 +405,7 @@ static void mmc_mtk_bio_init_ctx(struct mmc_mtk_bio_context *ctx)
 	for (i = 0; i < MMC_BIOLOG_CONTEXTS; i++) {
 		memset(ctx + i, 0, sizeof(struct mmc_mtk_bio_context));
 		spin_lock_init(&(ctx + i)->lock);
+		spin_lock_init(&(ctx + i)->pidlog.lock);
 		(ctx + i)->period_start_t = sched_clock();
 		(ctx + i)->qid = i;
 	}

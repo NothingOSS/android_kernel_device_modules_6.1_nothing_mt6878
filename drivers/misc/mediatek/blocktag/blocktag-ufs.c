@@ -56,6 +56,27 @@ static inline __u32 chbe32_to_u32(const char *str)
 #define scsi_cmnd_len(cmd)  chbe16_to_u16(&cmd->cmnd[7])
 #define scsi_cmnd_cmd(cmd)  (cmd->cmnd[0])
 
+static enum mtk_btag_io_type cmd_to_io_type(__u16 cmd)
+{
+	switch (cmd) {
+	case READ_6:
+	case READ_10:
+	case READ_16:
+#if IS_ENABLED(CONFIG_SCSI_UFS_HPB)
+	case UFSHPB_READ:
+#endif
+		return BTAG_IO_READ;
+
+	case WRITE_6:
+	case WRITE_10:
+	case WRITE_16:
+		return BTAG_IO_WRITE;
+
+	default:
+		return BTAG_IO_UNKNOWN;
+	}
+}
+
 static struct mtk_btag_ufs_ctx *mtk_btag_ufs_curr_ctx(__u16 task_id)
 {
 	struct mtk_btag_ufs_ctx *ctx = BTAG_CTX(ufs_mtk_btag);
@@ -87,23 +108,59 @@ static struct mtk_btag_ufs_task *mtk_btag_ufs_curr_task(__u16 task_id,
 	return tsk;
 }
 
-int mtk_btag_pidlog_add_ufs(__u16 task_id, bool write, __u32 total_len,
-			    __u32 top_len, struct tmp_proc_pidlogger *tmplog)
+static void btag_ufs_pidlog_insert(struct mtk_btag_proc_pidlogger *pidlog,
+				   struct scsi_cmnd *cmd, __u32 *top_len,
+				   enum mtk_btag_io_type io_type)
 {
-	unsigned long flags;
-	struct mtk_btag_ufs_ctx *ctx;
+	struct req_iterator rq_iter;
+	struct bio_vec bvec;
+	struct request *rq;
+	__u16 insert_pid[BTAG_PIDLOG_ENTRIES] = {0};
+	__u32 insert_len[BTAG_PIDLOG_ENTRIES] = {0};
+	__u32 insert_cnt = 0;
 
-	ctx = mtk_btag_ufs_curr_ctx(task_id);
-	if (!ctx)
-		return 0;
+	*top_len = 0;
+	rq = scsi_cmd_to_rq(cmd);
+	if (!rq)
+		return;
 
-	spin_lock_irqsave(&ctx->lock, flags);
-	mtk_btag_pidlog_insert(&ctx->pidlog, write, tmplog);
-	mtk_btag_mictx_eval_req(ufs_mtk_btag, BTAG_UFS_QUEUE_ID(task_id),
-				write, total_len, top_len);
-	spin_unlock_irqrestore(&ctx->lock, flags);
+	rq_for_each_segment(bvec, rq, rq_iter) {
+		short pid;
+		int idx;
 
-	return 1;
+		if (!bvec.bv_page)
+			continue;
+
+		pid = mtk_btag_page_pidlog_get(bvec.bv_page);
+		mtk_btag_page_pidlog_set(bvec.bv_page, 0);
+
+		if (!pid)
+			continue;
+
+		if (pid < 0) {
+			*top_len += bvec.bv_len;
+			pid = -pid;
+		}
+
+		if (!pidlog)
+			continue;
+
+		for (idx = 0; idx < BTAG_PIDLOG_ENTRIES; idx++) {
+			if (insert_pid[idx] == 0) {
+				insert_pid[idx] = pid;
+				insert_len[idx] = bvec.bv_len;
+				insert_cnt++;
+				break;
+			} else if (insert_pid[idx] == pid) {
+				insert_len[idx] += bvec.bv_len;
+				break;
+			}
+		}
+	}
+
+	if (pidlog)
+		mtk_btag_pidlog_insert(pidlog, insert_pid, insert_len,
+				       insert_cnt, io_type);
 }
 
 void mtk_btag_ufs_clk_gating(bool clk_on)
@@ -115,21 +172,29 @@ void mtk_btag_ufs_send_command(__u16 task_id, struct scsi_cmnd *cmd)
 {
 	struct mtk_btag_ufs_ctx *ctx;
 	struct mtk_btag_ufs_task *tsk;
+	enum mtk_btag_io_type io_type;
+	__u32 top_len;
 	unsigned long flags;
 
 	if (!cmd)
+		return;
+
+	io_type = cmd_to_io_type(scsi_cmnd_cmd(cmd));
+	if (io_type >= BTAG_IO_TYPE_NR)
 		return;
 
 	tsk = mtk_btag_ufs_curr_task(task_id, &ctx);
 	if (!tsk || !ctx)
 		return;
 
-	if (scsi_cmd_to_rq(cmd))
-		mtk_btag_commit_req(task_id, scsi_cmd_to_rq(cmd), false);
-
 	tsk->lba = scsi_cmnd_lba(cmd);
 	tsk->len = scsi_cmnd_len(cmd);
 	tsk->cmd = scsi_cmnd_cmd(cmd);
+
+	btag_ufs_pidlog_insert(&ctx->pidlog, cmd, &top_len, io_type);
+	mtk_btag_mictx_eval_req(ufs_mtk_btag, BTAG_UFS_QUEUE_ID(task_id),
+				io_type == BTAG_IO_WRITE,
+				tsk->len << SECTOR_SHIFT, top_len);
 
 	spin_lock_irqsave(&ctx->lock, flags);
 
@@ -386,6 +451,7 @@ static void mtk_btag_ufs_init_ctx(struct mtk_blocktag *btag)
 	memset(ctx, 0, sizeof(struct mtk_btag_ufs_ctx) * btag->ctx.count);
 	for (i = 0; i < btag->ctx.count; i++) {
 		spin_lock_init(&ctx[i].lock);
+		spin_lock_init(&ctx[i].pidlog.lock);
 		ctx[i].period_start_t = time;
 	}
 }

@@ -13,11 +13,12 @@
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/mrdump/
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/scsi/ufs
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/scsi/ufs/
 ccflags-y += -I$(srctree)/include/
 ccflags-y += -I$(srctree)/include/scsi/
 ccflags-y += -I$(srctree)/include/ufs/
 ccflags-y += -I$(srctree)/drivers/mmc/core
+ccflags-y += -I$(srctree)/drivers/ufs/core
 
 obj-$(CONFIG_MTK_BLOCK_IO_TRACER)	+= blocktag.o
 blocktag-y				+= blocktag-mictx.o blocktag-core.o blocktag-earaio.o blocktag-ufs.o blocktag-mmc.o
