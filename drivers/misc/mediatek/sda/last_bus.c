@@ -33,6 +33,7 @@
 static struct cfg_lastbus my_cfg_lastbus;
 static char dump_buf[DUMP_BUFF_SIZE];
 static int dump_buf_size;
+static int aee_dump;
 #if IS_ENABLED(CONFIG_MTK_LASTBUS_DEBUG)
 static struct proc_dir_entry *entry;
 #endif
@@ -87,7 +88,7 @@ static void lastbus_dump_monitor(const struct lastbus_monitor *m, void __iomem *
 		"timestamp: 0x%llx\n", bin_code);
 }
 
-static int lastbus_dump(int force_dump)
+int lastbus_dump(int force_dump)
 {
 	unsigned int monitors_num = 0, i;
 	unsigned int buf_point = 0;
@@ -113,8 +114,11 @@ static int lastbus_dump(int force_dump)
 		is_timeout = value & LASTBUS_TIMEOUT;
 
 		if (is_timeout || force_dump) {
-			pr_info("%s: lastbus timeout happened(%d) (%s)\n",
-				__func__, is_timeout, m->name);
+			pr_info("%s: %s lastbus timeout: %d, force_dump: %d.\n",
+				__func__, m->name, is_timeout, force_dump);
+			dump_buf_size += snprintf(dump_buf + buf_point, DUMP_BUFF_SIZE - buf_point,
+				"%s lastbus timeout: %d, force_dump: %d.\n",
+				m->name, is_timeout, force_dump);
 			lastbus_dump_monitor(m, base);
 		}
 		iounmap(base);
@@ -137,10 +141,11 @@ static int last_bus_dump_event(struct notifier_block *this,
 			err_flag_status, last_bus_err_status);
 		return 0;
 	}
-	lastbus_dump(0);
+	lastbus_dump(TIMEOUT_DUMP);
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-	aee_kernel_exception("last_bus_timeout", "last bus timeout detect");
+	if (aee_dump != 0)
+		aee_kernel_exception("last_bus_timeout", "last bus timeout detect");
 #endif
 
 	return 0;
@@ -190,6 +195,13 @@ static int last_bus_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		dev_err(dev, "couldn't find property timeout-type(%d)\n", ret);
 		my_cfg_lastbus.timeout_type = LASTBUS_TIMEOUT_FIRST;
+	}
+
+	/* get timeout-warning */
+	ret = of_property_read_u32(np, "timeout-warning", &aee_dump);
+	if (ret < 0) {
+		dev_err(dev, "couldn't find property timeout-warning(%d), default disable.\n", ret);
+		aee_dump = 0;
 	}
 
 	parts_node = of_get_child_by_name(np, "monitors");
@@ -330,10 +342,12 @@ static ssize_t last_bus_write(struct file *filp,
 
 	switch (val) {
 	case 0:
-		lastbus_dump(0);
+		/* dump last bus timeout information */
+		lastbus_dump(TIMEOUT_DUMP);
 		break;
 	case 1:
-		lastbus_dump(1);
+		/* force dump last bus timeout information */
+		lastbus_dump(FORCE_DUMP);
 		break;
 	default:
 		break;
