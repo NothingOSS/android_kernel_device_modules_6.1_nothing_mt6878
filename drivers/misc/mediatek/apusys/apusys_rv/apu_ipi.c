@@ -1047,3 +1047,9 @@ void apu_ipi_remove(struct mtk_apu *apu)
 	if (apu->platdata->flags & F_APU_IPI_UT_SUPPORT)
 		apu_ipi_ut_exit();
 }
+
+struct mtk_apu *get_mtk_apu(void)
+{
+	return g_apu;
+}
+
