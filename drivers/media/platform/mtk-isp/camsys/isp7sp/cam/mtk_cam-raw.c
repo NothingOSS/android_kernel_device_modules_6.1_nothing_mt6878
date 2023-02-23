@@ -182,8 +182,9 @@ static void dump_seqence(struct mtk_raw_device *dev)
 
 static void reset_error_handling(struct mtk_raw_device *dev)
 {
-	dev->tg_overrun_handle_cnt = 0;
 	dev->tg_grab_err_handle_cnt = 0;
+	dev->dma_err_handle_cnt = 0;
+	dev->tg_overrun_handle_cnt = 0;
 }
 
 void initialize(struct mtk_raw_device *dev, int is_slave,
@@ -956,8 +957,12 @@ static void raw_handle_tg_grab_err(struct mtk_raw_device *raw_dev,
 static void raw_handle_dma_err(struct mtk_raw_device *raw_dev,
 			       unsigned int fh_cookie)
 {
-	// TODO
-	dump_raw_dma_err_st(raw_dev);
+	int cnt;
+
+	cnt = raw_dev->dma_err_handle_cnt++;
+
+	if (cnt <= 3)
+		dump_raw_dma_err_st(raw_dev);
 }
 
 #define OVERRUN_DUMP_CNT 3

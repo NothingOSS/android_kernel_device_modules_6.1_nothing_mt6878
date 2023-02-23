@@ -76,8 +76,9 @@ struct mtk_raw_device {
 	atomic_t vf_en;
 
 	/* error handling related */
-	int tg_overrun_handle_cnt;
 	int tg_grab_err_handle_cnt;
+	int dma_err_handle_cnt;
+	int tg_overrun_handle_cnt;
 
 	int default_printk_cnt;
 };
