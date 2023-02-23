@@ -26,6 +26,9 @@
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
 #include "iommu_debug.h"
 #endif
+#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
+#include "smmu_secure.h"
+#endif
 
 #include "arm-smmu-v3.h"
 #include "mtk-smmu-v3.h"
@@ -38,6 +41,7 @@
 #define HAS_SMI_SUB_COMM		BIT(3)
 #define SAME_SUBSYS			BIT(4)
 #define SMMU_DELAY_HW_INIT		BIT(5)
+#define SMMU_SEC_EN			BIT(6)
 
 #define SMMU_IRQ_COUNT_MAX		(5)
 #define SMMU_IRQ_DISABLE_TIME		(10) /* 10s */
@@ -437,6 +441,27 @@ static int mtk_smmu_hw_deinit(struct arm_smmu_device *smmu)
 		 get_smmu_name(plat_data->smmu_type));
 
 	ret = smmu_deinit_wpcfg(smmu);
+
+	return ret;
+}
+
+static int mtk_smmu_hw_sec_init(struct arm_smmu_device *smmu)
+{
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+	const struct mtk_smmu_plat_data *plat_data = data->plat_data;
+	int ret = 0;
+
+	if (!MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_SEC_EN))
+		return 0;
+
+	dev_info(smmu->dev,
+		 "[%s] plat_data{smmu_plat:%d, flags:0x%x, smmu:%s}\n",
+		 __func__, plat_data->smmu_plat, plat_data->flags,
+		 get_smmu_name(plat_data->smmu_type));
+
+#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
+	ret = mtk_smmu_sec_init(plat_data->smmu_type);
+#endif
 
 	return ret;
 }
@@ -1377,6 +1402,7 @@ static const struct arm_smmu_impl mtk_smmu_impl = {
 	.delay_hw_init = mtk_delay_hw_init,
 	.smmu_hw_init = mtk_smmu_hw_init,
 	.smmu_hw_deinit = mtk_smmu_hw_deinit,
+	.smmu_hw_sec_init = mtk_smmu_hw_sec_init,
 	.smmu_power_get = mtk_smmu_power_get,
 	.smmu_power_put = mtk_smmu_power_put,
 	.smmu_runtime_suspend = mtk_smmu_runtime_suspend,

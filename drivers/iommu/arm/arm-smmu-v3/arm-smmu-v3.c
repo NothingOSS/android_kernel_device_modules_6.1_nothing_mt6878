@@ -2829,6 +2829,12 @@ static struct iommu_device *arm_smmu_probe_device(struct device *dev)
 			if (ret)
 				goto out_runtime_put;
 
+			if (smmu->impl->smmu_hw_sec_init) {
+				ret = smmu->impl->smmu_hw_sec_init(smmu);
+				if (ret)
+					goto out_runtime_put;
+			}
+
 			arm_smmu_rpm_put(smmu);
 			dev_info(smmu->dev, "[%s] delay_hw_init dev:%s, done\n",
 				 __func__, dev_name(dev));
@@ -4103,6 +4109,12 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 		ret = arm_smmu_device_reset(smmu, bypass);
 		if (ret)
 			goto out_runtime_put;
+
+		if (smmu->impl && smmu->impl->smmu_hw_sec_init) {
+			ret = smmu->impl->smmu_hw_sec_init(smmu);
+			if (ret)
+				goto out_runtime_put;
+		}
 	}
 
 	/* And we're up. Go go go! */

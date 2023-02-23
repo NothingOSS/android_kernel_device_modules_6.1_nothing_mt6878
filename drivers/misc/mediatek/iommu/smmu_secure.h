@@ -1,0 +1,22 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (C) 2023 MediaTek Inc.
+ */
+
+#ifndef SMMU_SECURE_H
+#define SMMU_SECURE_H
+
+#define SMC_SMMU_SUCCESS			(0)
+#define SMC_SMMU_FAIL				(1)
+#define SMC_SMMU_NOSUPPORT			(-1)
+
+#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
+int mtk_smmu_sec_init(u32 smmu_type);
+#else
+static inline int mtk_smmu_sec_init(u32 smmu_type)
+{
+	pr_info("%s not support\n", __func__);
+	return 0;
+}
+#endif /* CONFIG_MTK_IOMMU_MISC_SECURE */
+#endif /* SMMU_SECURE_H */
