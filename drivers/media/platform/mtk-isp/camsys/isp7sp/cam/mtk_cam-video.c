@@ -1002,6 +1002,10 @@ int mtk_cam_vidioc_s_fmt(struct file *file, void *fh,
 		node->active_fmt = *f;
 
 		mtk_cam_video_cache_fmt(node);
+
+		/* display ic */
+		if (is_camsv_subdev(node->uid.pipe_id))
+			mtk_cam_sv_update_feature(node);
 	}
 
 	if (CAM_DEBUG_ENABLED(V4L2))

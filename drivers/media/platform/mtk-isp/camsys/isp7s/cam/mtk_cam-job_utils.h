@@ -83,9 +83,6 @@ struct pack_job_ops_helper {
 	int (*update_raw_imgo_to_ipi)(struct req_buffer_helper *helper,
 				      struct mtk_cam_buffer *buf,
 				      struct mtk_cam_video_device *node);
-	int (*update_sv_imgo_to_ipi)(struct req_buffer_helper *helper,
-				     struct mtk_cam_buffer *buf,
-				     struct mtk_cam_video_device *node);
 	int (*update_raw_yuvo_to_ipi)(struct req_buffer_helper *helper,
 				      struct mtk_cam_buffer *buf,
 				      struct mtk_cam_video_device *node);

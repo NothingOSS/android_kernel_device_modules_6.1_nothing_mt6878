@@ -115,6 +115,27 @@ static const struct mtk_camsv_tag_param sv_tag_param_3exp_stagger[3] = {
 	},
 };
 
+static const struct mtk_camsv_tag_param sv_tag_param_display_ic[3] = {
+	{
+		.tag_idx = SVTAG_0,
+		.seninf_padidx = PAD_SRC_RAW0,
+		.tag_order = MTKCAM_IPI_ORDER_FIRST_TAG,
+		.is_w = false,
+	},
+	{
+		.tag_idx = SVTAG_1,
+		.seninf_padidx = PAD_SRC_RAW1,
+		.tag_order = MTKCAM_IPI_ORDER_FIRST_TAG,
+		.is_w = false,
+	},
+	{
+		.tag_idx = SVTAG_2,
+		.seninf_padidx = PAD_SRC_GENERAL0,
+		.tag_order = MTKCAM_IPI_ORDER_FIRST_TAG,
+		.is_w = false,
+	},
+};
+
 static unsigned int get_last_done_tag(unsigned int group_tag)
 {
 	unsigned int rst = 0, i;
@@ -682,14 +703,14 @@ void apply_camsv_cq(struct mtk_camsv_device *sv_dev,
 
 bool mtk_cam_is_display_ic(struct mtk_cam_ctx *ctx)
 {
-#ifdef NOT_READY
-	if (!ctx->used_sv_num)
+	struct mtk_camsv_pipeline *sv_pipe;
+
+	if (!ctx->num_sv_subdevs)
 		return false;
 
-	return (ctx->sv_pipe[0]->feature_pending & DISPLAY_IC) != 0;
-#else
-	return 0;
-#endif
+	sv_pipe = &ctx->cam->pipelines.camsv[ctx->sv_subdev_idx[0]];
+
+	return (sv_pipe->feature_pending & DISPLAY_IC) ? true : false;
 }
 
 unsigned int mtk_cam_get_sv_tag_index(struct mtk_camsv_device *sv_dev,
@@ -797,6 +818,9 @@ int mtk_cam_sv_get_tag_param(struct mtk_camsv_tag_param *arr_tag_param,
 	} else if (hw_scen == (1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_ON_THE_FLY)) ||
 		hw_scen == (1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_DC))) {
 		memcpy(arr_tag_param, sv_tag_param_normal,
+			sizeof(struct mtk_camsv_tag_param) * req_amount);
+	} else if (hw_scen == (1 << MTKCAM_SV_SPECIAL_SCENARIO_DISPLAY_IC)) {
+		memcpy(arr_tag_param, sv_tag_param_display_ic,
 			sizeof(struct mtk_camsv_tag_param) * req_amount);
 	} else {
 		pr_info("failed to get tag param(hw_scen:0x%x/exp_no:%d)",

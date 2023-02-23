@@ -243,40 +243,6 @@ static int mtk_cam_job_pack_init(struct mtk_cam_job *job,
 	return ret;
 }
 
-/* TODO(AY): may be removed? */
-static int mtk_cam_select_hw_only_sv(struct mtk_cam_job *job)
-{
-	struct mtk_cam_ctx *ctx = job->src_ctx;
-	struct mtk_cam_device *cam = ctx->cam;
-	struct device *sv = NULL;
-	unsigned long available, sv_available;
-	unsigned long selected;
-	int rsv_id = GET_PLAT_V4L2(reserved_camsv_dev_id);
-	int i;
-
-	selected = 0;
-	available = mtk_cam_get_available_engine(cam);
-	sv_available = bit_map_subset_of(MAP_HW_CAMSV, available);
-
-	/* HS_TODO: more rules */
-	if (sv_available & BIT(rsv_id)) {
-		selected |= bit_map_bit(MAP_HW_CAMSV, rsv_id);
-		sv = cam->engines.sv_devs[rsv_id];
-	} else {
-		dev_info(cam->dev, "select hw failed\n");
-		return -1;
-	}
-
-	ctx->hw_sv = sv;
-
-	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++)
-		ctx->hw_raw[i] = NULL;
-	for (i = 0; i < ARRAY_SIZE(ctx->hw_mraw); i++)
-		ctx->hw_mraw[i] = NULL;
-
-	return selected;
-}
-
 static unsigned long mtk_cam_select_hw(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
@@ -401,7 +367,6 @@ static int update_job_used_engine(struct mtk_cam_job *job)
 		}
 	}
 
-	/* HS_TODO: sv pure raw dump case? */
 	if (ctx->hw_sv) {
 		sv_dev = dev_get_drvdata(ctx->hw_sv);
 		if (is_sv_img_tag_used(job))
@@ -2027,6 +1992,68 @@ _job_pack_m2m(struct mtk_cam_job *job,
 }
 
 static int
+_handle_sv_tag_display_ic(struct mtk_cam_job *job)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtk_camsv_device *sv_dev;
+	struct mtk_camsv_pipeline *sv_pipe;
+	struct mtk_camsv_tag_param tag_param[3];
+	struct v4l2_format *img_fmt;
+	unsigned int width, height, mbus_code;
+	unsigned int hw_scen;
+	int ret = 0, i, sv_pipe_idx;
+
+	/* reset tag info */
+	sv_dev = dev_get_drvdata(ctx->hw_sv);
+	mtk_cam_sv_reset_tag_info(sv_dev);
+
+	if (ctx->num_sv_subdevs != 1)
+		return 1;
+
+	sv_pipe_idx = ctx->sv_subdev_idx[0];
+	sv_pipe = &ctx->cam->pipelines.camsv[sv_pipe_idx];
+	hw_scen = (1 << MTKCAM_SV_SPECIAL_SCENARIO_DISPLAY_IC);
+	mtk_cam_sv_get_tag_param(tag_param, hw_scen, 1, 3);
+
+	for (i = 0; i < ARRAY_SIZE(tag_param); i++) {
+		if (tag_param[i].tag_idx == SVTAG_0) {
+			img_fmt = &sv_pipe->vdev_nodes[
+				MTK_CAMSV_MAIN_STREAM_OUT - MTK_CAMSV_SINK_NUM].active_fmt;
+			width = img_fmt->fmt.pix_mp.width;
+			height = img_fmt->fmt.pix_mp.height;
+			if (img_fmt->fmt.pix_mp.pixelformat == V4L2_PIX_FMT_NV21)
+				mbus_code = MEDIA_BUS_FMT_SBGGR8_1X8;
+			else
+				mbus_code = MEDIA_BUS_FMT_SBGGR10_1X10;
+		} else if (tag_param[i].tag_idx == SVTAG_1) {
+			img_fmt = &sv_pipe->vdev_nodes[
+				MTK_CAMSV_MAIN_STREAM_OUT - MTK_CAMSV_SINK_NUM].active_fmt;
+			width = img_fmt->fmt.pix_mp.width;
+			height = img_fmt->fmt.pix_mp.height / 2;
+			if (img_fmt->fmt.pix_mp.pixelformat == V4L2_PIX_FMT_NV21)
+				mbus_code = MEDIA_BUS_FMT_SBGGR8_1X8;
+			else
+				mbus_code = MEDIA_BUS_FMT_SBGGR10_1X10;
+		} else {
+			img_fmt = &sv_pipe->vdev_nodes[
+				MTK_CAMSV_EXT_STREAM_OUT - MTK_CAMSV_SINK_NUM].active_fmt;
+			width = img_fmt->fmt.pix_mp.width;
+			height = img_fmt->fmt.pix_mp.height;
+			mbus_code = MEDIA_BUS_FMT_SBGGR8_1X8;
+		}
+		mtk_cam_sv_fill_tag_info(sv_dev->tag_info,
+			&tag_param[i], 1, 3, job->sub_ratio,
+			width, height,
+			mbus_code, sv_pipe);
+
+		sv_dev->used_tag_cnt++;
+		sv_dev->enabled_tags |= (1 << tag_param[i].tag_idx);
+	}
+
+	return ret;
+}
+
+static int
 _handle_sv_tag_only_sv(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
@@ -2086,7 +2113,7 @@ _job_pack_only_sv(struct mtk_cam_job *job,
 	if (!ctx->used_engine) {
 		int selected;
 
-		selected = mtk_cam_select_hw_only_sv(job);
+		selected = mtk_cam_select_hw(job);
 		if (!selected)
 			return -1;
 
@@ -2106,9 +2133,16 @@ _job_pack_only_sv(struct mtk_cam_job *job,
 	job->do_ipi_config = false;
 	if (!ctx->configured) {
 		/* handle camsv tags */
-		if (_handle_sv_tag_only_sv(job)) {
-			dev_info(cam->dev, "tag handle failed");
-			return -1;
+		if (mtk_cam_is_display_ic(ctx)) {
+			if (_handle_sv_tag_display_ic(job)) {
+				dev_info(cam->dev, "tag handle failed");
+				return -1;
+			}
+		} else {
+			if (_handle_sv_tag_only_sv(job)) {
+				dev_info(cam->dev, "tag handle failed");
+				return -1;
+			}
 		}
 
 		/* if has sv */
@@ -2162,7 +2196,7 @@ static int fill_raw_img_buffer_to_ipi_frame(
 	return ret;
 }
 
-static int fill_sv_imgo_img_buffer_to_ipi_frame(
+static int fill_sv_img_buffer_to_ipi_frame(
 	struct req_buffer_helper *helper, struct mtk_cam_buffer *buf,
 	struct mtk_cam_video_device *node)
 {
@@ -2203,6 +2237,86 @@ static int fill_sv_imgo_img_buffer_to_ipi_frame(
 	info.stride = buf->image_info.bytesperline[0];
 	CALL_PLAT_V4L2(
 		set_sv_meta_stats_info, node->desc.dma_port, vaddr, &info);
+
+	return ret;
+}
+
+static int fill_sv_img_buffer_to_ipi_frame_display_ic(
+	struct req_buffer_helper *helper, struct mtk_cam_buffer *buf,
+	struct mtk_cam_video_device *node)
+{
+	struct mtk_cam_ctx *ctx = helper->job->src_ctx;
+	struct mtkcam_ipi_frame_param *fp = helper->fp;
+	struct mtkcam_ipi_img_output *out;
+	struct mtk_camsv_device *sv_dev;
+	const unsigned int proc_tag[2] = {SVTAG_0, SVTAG_1};
+	unsigned int tag_idx, buf_offset = 0;
+	int i, ret = -1;
+
+	if (ctx->hw_sv == NULL)
+		return ret;
+
+	sv_dev = dev_get_drvdata(ctx->hw_sv);
+
+	for (i = 0; i < ARRAY_SIZE(proc_tag); i++) {
+		tag_idx = proc_tag[i];
+
+		out = &fp->camsv_param[0][tag_idx].camsv_img_outputs[0];
+		ret = fill_img_out(out, buf, node);
+
+		fp->camsv_param[0][tag_idx].pipe_id =
+			sv_dev->id + MTKCAM_SUBDEV_CAMSV_START;
+		fp->camsv_param[0][tag_idx].tag_id = tag_idx;
+		fp->camsv_param[0][tag_idx].hardware_scenario = 0;
+		out->uid.id = MTKCAM_IPI_CAMSV_MAIN_OUT;
+		out->uid.pipe_id =
+			sv_dev->id + MTKCAM_SUBDEV_CAMSV_START;
+		out->buf[0][0].iova =
+			((((buf->daddr + buf_offset) + 15) >> 4) << 4);
+
+		/* override fmt */
+		if (node->active_fmt.fmt.pix_mp.pixelformat == V4L2_PIX_FMT_NV21)
+			out->fmt.format = MTKCAM_IPI_IMG_FMT_BAYER8;
+		else
+			out->fmt.format = MTKCAM_IPI_IMG_FMT_BAYER10;
+
+		if (tag_idx == SVTAG_1)
+			out->fmt.s.h = out->fmt.s.h / 2;
+
+		buf_offset = out->fmt.stride[0] * out->fmt.s.h;
+	}
+
+	return ret;
+}
+
+static int fill_sv_ext_img_buffer_to_ipi_frame_display_ic(
+	struct req_buffer_helper *helper, struct mtk_cam_buffer *buf,
+	struct mtk_cam_video_device *node)
+{
+	struct mtk_cam_ctx *ctx = helper->job->src_ctx;
+	struct mtkcam_ipi_frame_param *fp = helper->fp;
+	struct mtkcam_ipi_img_output *out;
+	struct mtk_camsv_device *sv_dev;
+	unsigned int tag_idx;
+	int ret = -1;
+
+	if (ctx->hw_sv == NULL)
+		return ret;
+
+	sv_dev = dev_get_drvdata(ctx->hw_sv);
+	tag_idx = SVTAG_2;
+
+	out = &fp->camsv_param[0][tag_idx].camsv_img_outputs[0];
+	ret = fill_img_out(out, buf, node);
+
+	fp->camsv_param[0][tag_idx].pipe_id =
+		sv_dev->id + MTKCAM_SUBDEV_CAMSV_START;
+	fp->camsv_param[0][tag_idx].tag_id = tag_idx;
+	fp->camsv_param[0][tag_idx].hardware_scenario = 0;
+	out->uid.id = MTKCAM_IPI_CAMSV_MAIN_OUT;
+	out->uid.pipe_id =
+		sv_dev->id + MTKCAM_SUBDEV_CAMSV_START;
+	out->buf[0][0].iova = buf->daddr;
 
 	return ret;
 }
@@ -2607,7 +2721,6 @@ static struct pack_job_ops_helper subsample_pack_helper = {
 	.pack_job = _job_pack_subsample,
 	.update_raw_bufs_to_ipi = fill_raw_img_buffer_to_ipi_frame,
 	.update_raw_imgo_to_ipi = fill_imgo_img_buffer_to_ipi_frame_subsample,
-	.update_sv_imgo_to_ipi = fill_sv_imgo_img_buffer_to_ipi_frame,
 	.update_raw_yuvo_to_ipi = fill_yuvo_img_buffer_to_ipi_frame_subsample,
 	.append_work_buf_to_ipi = NULL,
 };
@@ -2616,7 +2729,6 @@ static struct pack_job_ops_helper otf_pack_helper = {
 	.pack_job = _job_pack_normal,
 	.update_raw_bufs_to_ipi = fill_raw_img_buffer_to_ipi_frame,
 	.update_raw_imgo_to_ipi = NULL,
-	.update_sv_imgo_to_ipi = fill_sv_imgo_img_buffer_to_ipi_frame,
 	.update_raw_yuvo_to_ipi = NULL,
 	.append_work_buf_to_ipi = update_work_buffer_to_ipi_frame,
 };
@@ -2625,7 +2737,6 @@ static struct pack_job_ops_helper stagger_pack_helper = {
 	.pack_job = _job_pack_otf_stagger,
 	.update_raw_bufs_to_ipi = fill_raw_img_buffer_to_ipi_frame,
 	.update_raw_imgo_to_ipi = fill_imgo_img_buffer_to_ipi_frame_stagger,
-	.update_sv_imgo_to_ipi = fill_sv_imgo_img_buffer_to_ipi_frame,
 	.update_raw_yuvo_to_ipi = NULL,
 	.append_work_buf_to_ipi = update_work_buffer_to_ipi_frame,
 };
@@ -2634,7 +2745,6 @@ static struct pack_job_ops_helper m2m_pack_helper = {
 	.pack_job = _job_pack_m2m,
 	.update_raw_bufs_to_ipi = fill_raw_img_buffer_to_ipi_frame,
 	.update_raw_imgo_to_ipi = NULL,
-	.update_sv_imgo_to_ipi = fill_sv_imgo_img_buffer_to_ipi_frame,
 	.update_raw_yuvo_to_ipi = NULL,
 	.append_work_buf_to_ipi = NULL,
 };
@@ -2645,14 +2755,12 @@ static struct pack_job_ops_helper mstream_pack_helper = {
 	.pack_job = _job_pack_mstream,
 	.update_raw_bufs_to_ipi = fill_raw_img_buffer_to_ipi_frame,
 	.update_raw_imgo_to_ipi = NULL,
-	.update_sv_imgo_to_ipi = fill_sv_imgo_img_buffer_to_ipi_frame,
 	.update_raw_yuvo_to_ipi = NULL,
 	.append_work_buf_to_ipi = update_work_buffer_to_ipi_frame,
 };
 
 static struct pack_job_ops_helper only_sv_pack_helper = {
 	.pack_job = _job_pack_only_sv,
-	.update_sv_imgo_to_ipi = fill_sv_imgo_img_buffer_to_ipi_frame,
 };
 
 static int job_factory(struct mtk_cam_job *job)
@@ -3109,11 +3217,18 @@ static int update_sv_image_buf_to_ipi_frame(struct req_buffer_helper *helper,
 		struct mtk_cam_buffer *buf, struct mtk_cam_video_device *node,
 		struct pack_job_ops_helper *job_helper)
 {
+	struct mtk_cam_ctx *ctx = helper->job->src_ctx;
 	int ret = -1;
 
-	switch (node->desc.dma_port) {
-	case MTKCAM_IPI_CAMSV_MAIN_OUT:
-		ret = job_helper->update_sv_imgo_to_ipi(helper, buf, node);
+	switch (node->desc.id) {
+	case MTK_CAMSV_MAIN_STREAM_OUT:
+		if (mtk_cam_is_display_ic(ctx))
+			ret = fill_sv_img_buffer_to_ipi_frame_display_ic(helper, buf, node);
+		else
+			ret = fill_sv_img_buffer_to_ipi_frame(helper, buf, node);
+		break;
+	case MTK_CAMSV_EXT_STREAM_OUT:
+		ret = fill_sv_ext_img_buffer_to_ipi_frame_display_ic(helper, buf, node);
 		break;
 	default:
 		pr_info("%s %s: not supported port: %d\n",
