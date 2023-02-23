@@ -109,7 +109,7 @@ bool is_adsp_axibus_idle(u32 *backup)
 
 bool is_infrabus_timeout(void)
 {
-	return readl(ADSP_A_INTR_STATUS) & INFRABUS_TIMEOUT_IRQ;
+	return 0;
 }
 
 void adsp_mt_toggle_semaphore(u32 bit)

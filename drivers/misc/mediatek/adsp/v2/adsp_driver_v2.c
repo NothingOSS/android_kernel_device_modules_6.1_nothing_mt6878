@@ -109,6 +109,7 @@ static const struct of_device_id adspsys_of_ids[] = {
 	{ .compatible = "mediatek,mt6895-adspsys", .data = &mt6895_adspsys_desc},
 	{ .compatible = "mediatek,mt6985-adspsys", .data = &mt6983_adspsys_desc},
 	{ .compatible = "mediatek,mt6886-adspsys", .data = &mt6879_adspsys_desc},
+	{ .compatible = "mediatek,mt6897-adspsys", .data = &mt6983_adspsys_desc},
 	{}
 };
 
@@ -121,6 +122,8 @@ static const struct of_device_id adsp_core_of_ids[] = {
 	{ .compatible = "mediatek,mt6985-adsp_core_0", .data = &mt6983_adsp_c0_desc},
 	{ .compatible = "mediatek,mt6985-adsp_core_1", .data = &mt6983_adsp_c1_desc},
 	{ .compatible = "mediatek,mt6886-adsp_core_0", .data = &mt6879_adsp_c0_desc},
+	{ .compatible = "mediatek,mt6897-adsp_core_0", .data = &mt6983_adsp_c0_desc},
+	{ .compatible = "mediatek,mt6897-adsp_core_1", .data = &mt6983_adsp_c1_desc},
 	{}
 };
 
