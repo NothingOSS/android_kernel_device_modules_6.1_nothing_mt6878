@@ -1111,6 +1111,7 @@ static int mt6985_adsp_mem_get(struct snd_kcontrol *kcontrol,
 	case AUDIO_TASK_ECHO_REF_DL_ID:
 	case AUDIO_TASK_USBDL_ID:
 	case AUDIO_TASK_MDUL_ID:
+	case AUDIO_TASK_CALLDL_ID:
 		memif_num = get_dsp_task_attr(task_id,
 					      ADSP_TASK_ATTR_MEMDL);
 		break;
@@ -1120,6 +1121,7 @@ static int mt6985_adsp_mem_get(struct snd_kcontrol *kcontrol,
 	case AUDIO_TASK_ECHO_REF_ID:
 	case AUDIO_TASK_USBUL_ID:
 	case AUDIO_TASK_MDDL_ID:
+	case AUDIO_TASK_CALLUL_ID:
 		memif_num = get_dsp_task_attr(task_id,
 					      ADSP_TASK_ATTR_MEMUL);
 		break;
@@ -1159,6 +1161,7 @@ static int mt6985_adsp_mem_set(struct snd_kcontrol *kcontrol,
 	case AUDIO_TASK_ECHO_REF_DL_ID:
 	case AUDIO_TASK_USBDL_ID:
 	case AUDIO_TASK_MDUL_ID:
+	case AUDIO_TASK_CALLDL_ID:
 		dl_memif_num = get_dsp_task_attr(task_id,
 						 ADSP_TASK_ATTR_MEMDL);
 		break;
@@ -1171,6 +1174,7 @@ static int mt6985_adsp_mem_set(struct snd_kcontrol *kcontrol,
 						 ADSP_TASK_ATTR_MEMUL);
 		break;
 	case AUDIO_TASK_BTUL_ID:
+	case AUDIO_TASK_CALLUL_ID:
 		ul_memif_num = get_dsp_task_attr(task_id,
 						 ADSP_TASK_ATTR_MEMUL);
 		ref_memif_num = get_dsp_task_attr(task_id,
@@ -1474,6 +1478,14 @@ static const struct snd_kcontrol_new mt6985_pcm_kcontrols[] = {
 		       SND_SOC_NOPM, 0, 0xffffffff, 0,
 		       mt6985_ul_mmap_fd_get,
 		       mt6985_ul_mmap_fd_set),
+	SOC_SINGLE_EXT("adsp_calldl_sharemem_scenario",
+		       SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6985_adsp_mem_get,
+		       mt6985_adsp_mem_set),
+	SOC_SINGLE_EXT("adsp_callul_sharemem_scenario",
+		       SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6985_adsp_mem_get,
+		       mt6985_adsp_mem_set),
 };
 
 static int ul_tinyconn_event(struct snd_soc_dapm_widget *w,

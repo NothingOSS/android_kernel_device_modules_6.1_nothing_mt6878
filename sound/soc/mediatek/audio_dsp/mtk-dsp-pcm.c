@@ -71,6 +71,8 @@ static char *dsp_task_dsp_name[AUDIO_TASK_DAI_NUM] = {
 	[AUDIO_TASK_USBUL_ID]       = "mtk-dsp-usbul",
 	[AUDIO_TASK_MDDL_ID]        = "mtk-dsp-mddl",
 	[AUDIO_TASK_MDUL_ID]        = "mtk-dsp-mdul",
+	[AUDIO_TASK_CALLDL_ID]      = "mtk-dsp-calldl",
+	[AUDIO_TASK_CALLUL_ID]      = "mtk-dsp-callul",
 };
 
 static int dsp_pcm_taskattr_init(struct platform_device *pdev)

@@ -293,6 +293,28 @@ static struct snd_soc_dai_driver mtk_dai_dsp_driver[] = {
 				.formats = MTK_I2S_FORMATS,
 			},
 	},
+	{
+		.name = "audio_task_calldl_dai",
+		.id = AUDIO_TASK_CALLDL_ID,
+		.playback = {
+				.stream_name = "DSP_Playback_CALLDL",
+				.channels_min = 1,
+				.channels_max = 2,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+	{
+		.name = "audio_task_callul_dai",
+		.id = AUDIO_TASK_CALLUL_ID,
+		.capture = {
+				.stream_name = "DSP_Capture_CALLUL",
+				.channels_min = 1,
+				.channels_max = 4,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
 };
 
 int dai_dsp_register(struct platform_device *pdev, struct mtk_base_dsp *dsp)
