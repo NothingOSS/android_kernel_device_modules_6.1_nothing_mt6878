@@ -7,6 +7,7 @@
 #include <linux/regulator/consumer.h>
 
 #include <mtk-interconnect.h>
+#include <soc/mediatek/mmdvfs_v3.h>
 #include <soc/mediatek/mmqos.h>
 #include "mtk_cam-dvfs_qos.h"
 
@@ -76,7 +77,8 @@ int mtk_cam_dvfs_probe(struct device *dev,
 		dev_info(dev, "[%s] idx=%d, clk=%d volt=%d\n", __func__,
 			 i, dvfs->opp[i].freq_hz, dvfs->opp[i].volt_uv);
 
-	dvfs->mmdvfs_clk = devm_clk_get(dev, "mmdvfs_clk");
+	dvfs->mmdvfs_clk = devm_clk_get(dev, !mmdvfs_get_version() ?
+					"mmdvfs_clk" : "mmdvfs_mux");
 	if (IS_ERR(dvfs->mmdvfs_clk)) {
 		dvfs->mmdvfs_clk = NULL;
 		dev_info(dev, "failed to get mmdvfs_clk\n");
