@@ -22,60 +22,10 @@
 #include <linux/dma-heap.h>
 #include <uapi/linux/dma-heap.h>
 
-#include <memory_ssmr.h>
 
-static struct dma_buf *tui_dma_buf;
-#define TUI_BUF_SIZE 0x4000000
+static struct dma_buf *tui_dma_buf[MAX_DCI_BUFFER_NUMBER];
 
-#define TUI_MEMPOOL_SIZE 0
-
-struct tui_mempool {
-	void *va;
-	unsigned long pa;
-	size_t size;
-};
-
-static __always_unused struct tui_mempool g_tui_mem_pool;
-
-/* basic implementation of a memory pool for TUI framebuffer.  This
- * implementation is using kmalloc, for the purpose of demonstration only.
- * A real implementation might prefer using more advanced allocator, like ION,
- * in order not to exhaust memory available to kmalloc
- */
-static bool __always_unused allocate_tui_memory_pool(
-	struct tui_mempool *pool, size_t size)
-{
-	bool ret = false;
-	void *tui_mem_pool = NULL;
-
-	pr_info("%s %s:%d\n", __func__, __FILE__, __LINE__);
-	if (!size) {
-		pr_debug("TUI frame buffer: nothing to allocate.");
-		return true;
-	}
-
-	tui_mem_pool = kmalloc(size, GFP_KERNEL);
-	if (!tui_mem_pool) {
-		return ret;
-	} else if (ksize(tui_mem_pool) < size) {
-		pr_notice("TUI mem pool size too small: req'd=%zu alloc'd=%zu",
-		       size, ksize(tui_mem_pool));
-		kfree(tui_mem_pool);
-	} else {
-		pool->va = tui_mem_pool;
-		pool->pa = virt_to_phys(tui_mem_pool);
-		pool->size = ksize(tui_mem_pool);
-		ret = true;
-	}
-	return ret;
-}
-
-static void __always_unused free_tui_memory_pool(struct tui_mempool *pool)
-{
-	kfree(pool->va);
-	memset(pool, 0, sizeof(*pool));
-}
-
+#ifdef TUI_LOCK_I2C
 static int i2c_tui_clock_enable(int id)
 {
 	int ret = 0;
@@ -144,6 +94,7 @@ static int i2c_tui_clock_disable(int id)
 	}
 	return ret;
 }
+#endif
 
 /**
  * hal_tui_init() - integrator specific initialization for kernel module
@@ -210,64 +161,69 @@ uint32_t hal_tui_alloc(
 {
 	uint32_t ret = TUI_DCI_ERR_INTERNAL_ERROR;
 	uint64_t pa = 0;
-	u64 sec_handle = 0;
+	uint64_t sec_handle = 0;
 	struct dma_heap *dma_heap;
+	uint32_t i = 0;
 
 	if (!allocbuffer) {
 		pr_notice("%s(%d): allocbuffer is null\n", __func__, __LINE__);
 		return TUI_DCI_ERR_INTERNAL_ERROR;
 	}
 
-	pr_debug("%s(%d): Requested size=0x%zx x %u chunks\n",
+	pr_info("%s(%d): Requested size=0x%zx x %u chunks\n",
 		 __func__, __LINE__, allocsize, number);
 
-	if ((size_t)allocsize == 0) {
+	if ((size_t)allocsize == 0 || number > MAX_DCI_BUFFER_NUMBER) {
 		pr_notice("%s(%d): Nothing to allocate\n", __func__, __LINE__);
-		return TUI_DCI_OK;
+		return TUI_DCI_ERR_INTERNAL_ERROR;
 	}
 
 	dma_heap = dma_heap_find("mtk_tui_region-aligned");
 	if (!dma_heap) {
-		pr_info("heap find failed!\n");
+		pr_notice("heap find failed!\n");
 		return TUI_DCI_ERR_INTERNAL_ERROR;
 	}
 
-	tui_dma_buf = dma_heap_buffer_alloc(dma_heap, TUI_BUF_SIZE,
-		DMA_HEAP_VALID_FD_FLAGS, DMA_HEAP_VALID_HEAP_FLAGS);
-	if (IS_ERR(tui_dma_buf)) {
-		pr_info("%s, alloc buffer fail, heap:%s", __func__, dma_heap_get_name(dma_heap));
-		return TUI_DCI_ERR_INTERNAL_ERROR;
-	}
+	for (i = 0; i < number; i++) {
+		tui_dma_buf[i] = dma_heap_buffer_alloc(dma_heap, allocsize,
+					DMA_HEAP_VALID_FD_FLAGS, DMA_HEAP_VALID_HEAP_FLAGS);
+		if (IS_ERR(tui_dma_buf[i])) {
+			pr_notice("%s, alloc buffer fail, heap:%s", __func__,
+						dma_heap_get_name(dma_heap));
+			ret = TUI_DCI_ERR_INTERNAL_ERROR;
+			goto error;
+		}
 
-	sec_handle = dmabuf_to_secure_handle(tui_dma_buf);
-	if (!sec_handle) {
-		pr_info("%s, get tui frame buffer secure handle failed!\n", __func__);
-		ret = TUI_DCI_ERR_INTERNAL_ERROR;
-		goto error;
-	}
+		sec_handle = dmabuf_to_secure_handle(tui_dma_buf[i]);
+		if (!sec_handle) {
+			pr_notice("%s, get tui frame buffer secure handle failed!\n", __func__);
+			ret =  TUI_DCI_ERR_INTERNAL_ERROR;
+			goto error;
+		}
 
-	ret = trusted_mem_api_query_pa(0, 0, 0, 0, &sec_handle, 0, 0, 0, &pa);
-	if (ret == 0) {
-		pr_info("ret: %d, pa: 0x%llx\n", ret, pa);
-		allocbuffer[0].pa = (uint64_t) pa;
-		allocbuffer[1].pa = (uint64_t) (pa + allocsize);
-		allocbuffer[2].pa = (uint64_t) (pa + allocsize*2);
-
-		pr_info("%s(%d): buf_1 0x%llx, buf_2 0x%llx, buf_3 0x%llx\n",
-			__func__, __LINE__, allocbuffer[0].pa,
-			allocbuffer[1].pa, allocbuffer[2].pa);
-	} else {
-		pr_notice("%s(%d): tui_region_offline failed!\n",
-			 __func__, __LINE__);
-		ret = TUI_DCI_ERR_INTERNAL_ERROR;
-		goto error;
+		ret = trusted_mem_api_query_pa(0, 0, 0, 0, &sec_handle, 0, 0, 0, &pa);
+		if (ret == 0) {
+			allocbuffer[i].pa = (uint64_t) pa;
+			allocbuffer[i].ffa_handle = (uint64_t)sec_handle;
+			pr_info("%s(%d):%d: buf 0x%llx, handle 0x%llx\n",
+			__func__, __LINE__, i, allocbuffer[i].pa, allocbuffer[i].ffa_handle);
+		} else {
+			pr_notice("%s(%d): trusted_mem_api_query_pa failed!\n",
+							 __func__, __LINE__);
+			ret = TUI_DCI_ERR_INTERNAL_ERROR;
+			goto error;
+		}
 	}
 
 	return TUI_DCI_OK;
 
 error:
-	if (!IS_ERR(tui_dma_buf))
-		dma_heap_buffer_free(tui_dma_buf);
+	for (i = 0; i < MAX_DCI_BUFFER_NUMBER; i++) {
+		if (tui_dma_buf[i] != NULL) {
+			dma_heap_buffer_free(tui_dma_buf[i]);
+			tui_dma_buf[i] = NULL;
+		}
+	}
 
 	return ret;
 }
@@ -281,9 +237,16 @@ error:
  */
 void hal_tui_free(void)
 {
+	int i = 0;
+
 	pr_debug("[TUI-HAL] %s\n", __func__);
-	if (!IS_ERR(tui_dma_buf))
-		dma_heap_buffer_free(tui_dma_buf);
+
+	for (i = 0; i < MAX_DCI_BUFFER_NUMBER; i++) {
+		if (tui_dma_buf[i] != NULL) {
+			dma_heap_buffer_free(tui_dma_buf[i]);
+			tui_dma_buf[i] = NULL;
+		}
+	}
 }
 
 /**
@@ -312,12 +275,9 @@ uint32_t hal_tui_deactivate(void)
 	 */
 
 #ifdef TUI_ENABLE_TOUCH
-#ifdef TUI_SUPPORT_GT9895
-	tpd_gt9895_enter_tui();
-#else
 	tpd_enter_tui();
 #endif
-#endif
+
 #ifdef TUI_LOCK_I2C
 	i2c_tui_clock_enable(0);
 #endif
@@ -329,6 +289,7 @@ uint32_t hal_tui_deactivate(void)
 		ret = TUI_DCI_ERR_OUT_OF_DISPLAY;
 	}
 #endif
+
 	trustedui_set_mask(TRUSTEDUI_MODE_VIDEO_SECURED|
 			   TRUSTEDUI_MODE_INPUT_SECURED);
 
@@ -361,11 +322,7 @@ uint32_t hal_tui_activate(void)
 	 */
 	/* Clear linux TUI flag */
 #ifdef TUI_ENABLE_TOUCH
-#ifdef TUI_SUPPORT_GT9895
-	tpd_gt9895_exit_tui();
-#else
 	tpd_exit_tui();
-#endif
 #endif
 
 #ifdef TUI_LOCK_I2C
@@ -375,6 +332,7 @@ uint32_t hal_tui_activate(void)
 #ifdef TUI_ENABLE_DISPLAY
 	display_exit_tui();
 #endif
+
 	trustedui_set_mode(TRUSTEDUI_MODE_OFF);
 	return TUI_DCI_OK;
 }
