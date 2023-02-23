@@ -21,9 +21,6 @@
 /* option for ldvt */
 #define AOV_READY 0
 #define CMDQ_SEC_READY 0
-#define LARB_READY 0
-#define CLK_READY 0
-#define POWER_READY 0
 
 #define AIE_IOVA_BITS_SHIFT 4
 #define AIE_IOVA(IOVA) (IOVA >> AIE_IOVA_BITS_SHIFT)
@@ -688,6 +685,9 @@ struct mtk_aie_dev {
 
 	struct workqueue_struct *frame_done_wq;
 	struct mtk_aie_req_work req_work;
+
+	/* option for ldvt */
+	bool larb_clk_ready;
 };
 
 struct mtk_aie_ctx {
@@ -710,7 +710,9 @@ extern const struct mtk_aie_drv_ops aie_ops_isp7sp;
 void config_aie_cmdq_secure_init(struct mtk_aie_dev *fd);
 void aie_enable_secure_domain(struct mtk_aie_dev *fd);
 void aie_disable_secure_domain(struct mtk_aie_dev *fd);
+
 #if AOV_READY
 extern int mtk_aov_notify(struct platform_device *pdev, unsigned int notify, unsigned int status);
 #endif
+
 #endif /*__MTK_AIE_H__*/

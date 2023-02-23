@@ -4568,10 +4568,12 @@ static void AieSecPktCB(struct cmdq_cb_data data)
 void config_aie_cmdq_secure_init(struct mtk_aie_dev *fd)
 {
 	g_sec_pkt = cmdq_pkt_create(fd->fdvt_secure_clt);
+
 #if CMDQ_SEC_READY
 	cmdq_sec_pkt_set_data(g_sec_pkt, 0, 0, CMDQ_SEC_DEBUG, CMDQ_METAEX_TZMP);
 	cmdq_sec_pkt_set_mtee(g_sec_pkt, true);
 #endif
+
 	cmdq_pkt_finalize_loop(g_sec_pkt);
 	cmdq_pkt_flush_threaded(g_sec_pkt, AieSecPktCB, (void *)g_sec_pkt);
 }

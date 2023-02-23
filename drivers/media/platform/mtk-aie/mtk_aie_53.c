@@ -86,6 +86,7 @@ struct aie_data {
 	struct clk_bulk_data *clks;
 	unsigned int clk_num;
 	const struct mtk_aie_drv_ops *drv_ops;
+	bool larb_clk_ready;
 };
 
 static struct clk_bulk_data ipesys_isp7_aie_clks[] = {
@@ -116,18 +117,21 @@ static struct aie_data data_isp71 = {
 	.clks = ipesys_isp7_aie_clks,
 	.clk_num = ARRAY_SIZE(ipesys_isp7_aie_clks),
 	.drv_ops = &aie_ops_isp71,
+	.larb_clk_ready = true,
 };
 
 static struct aie_data data_isp7s = {
 	.clks = ipesys_isp7s_aie_clks,
 	.clk_num = ARRAY_SIZE(ipesys_isp7s_aie_clks),
 	.drv_ops = &aie_ops_isp7s,
+	.larb_clk_ready = true,
 };
 
 static struct aie_data data_isp7sp = {
 	.clks = ipesys_isp7sp_aie_clks,
 	.clk_num = ARRAY_SIZE(ipesys_isp7sp_aie_clks),
 	.drv_ops = &aie_ops_isp7sp,
+	.larb_clk_ready = false,
 };
 
 static int mtk_aie_suspend(struct device *dev)
@@ -135,10 +139,10 @@ static int mtk_aie_suspend(struct device *dev)
 	struct mtk_aie_dev *fd = dev_get_drvdata(dev);
 	int ret, num;
 
-#if POWER_READY
-	if (pm_runtime_suspended(dev))
-		return 0;
-#endif
+	if (fd->larb_clk_ready)
+		if (pm_runtime_suspended(dev))
+			return 0;
+
 
 	num = atomic_read(&fd->num_composing);
 	dev_dbg(dev, "%s: suspend aie job start, num(%d)\n", __func__, num);
@@ -156,46 +160,48 @@ static int mtk_aie_suspend(struct device *dev)
 
 	dev_dbg(dev, "%s: suspend aie job end, num(%d)\n", __func__, num);
 
-#if POWER_READY
-	ret = pm_runtime_put_sync(dev);
-	if (ret) {
-		dev_info(dev, "%s: pm_runtime_put_sync failed:(%d)\n",
-			__func__, ret);
-		return ret;
+	if (fd->larb_clk_ready) {
+		ret = pm_runtime_put_sync(dev);
+		if (ret) {
+			dev_info(dev, "%s: pm_runtime_put_sync failed:(%d)\n",
+				__func__, ret);
+			return ret;
+		}
 	}
-#endif
 
 	return 0;
 }
 
 static int mtk_aie_resume(struct device *dev)
 {
-#if POWER_READY
+	struct mtk_aie_dev *fd = dev_get_drvdata(dev);
 	int ret;
 
 	dev_dbg(dev, "%s: resume aie job start)\n", __func__);
 
-	if (pm_runtime_suspended(dev)) {
-		dev_dbg(dev, "%s: pm_runtime_suspended is true, no action\n",
-			__func__);
-		return 0;
+	if (fd->larb_clk_ready) {
+		if (pm_runtime_suspended(dev)) {
+			dev_dbg(dev, "%s: pm_runtime_suspended is true, no action\n",
+				__func__);
+			return 0;
+		}
 	}
-#endif
 
 #if AOV_READY
-	mtk_aov_notify(gaov_dev, AOV_NOTIFY_AIE_AVAIL, 0); //unavailable: 0 available: 1
+		mtk_aov_notify(gaov_dev, AOV_NOTIFY_AIE_AVAIL, 0); //unavailable: 0 available: 1
 #endif
 
-#if POWER_READY
-	ret = pm_runtime_get_sync(dev);
-	if (ret) {
-		dev_info(dev, "%s: pm_runtime_get_sync failed:(%d)\n",
-			__func__, ret);
-		return ret;
+	if (fd->larb_clk_ready) {
+		ret = pm_runtime_get_sync(dev);
+		if (ret) {
+			dev_info(dev, "%s: pm_runtime_get_sync failed:(%d)\n",
+				__func__, ret);
+			return ret;
+		}
 	}
 
 	dev_dbg(dev, "%s: resume aie job end)\n", __func__);
-#endif
+
 	return 0;
 }
 
@@ -529,13 +535,14 @@ static int mtk_aie_ccf_disable(struct device *dev)
 static int mtk_aie_hw_connect(struct mtk_aie_dev *fd)
 {
 	int ret = 0;
+
 #if AOV_READY
-	mtk_aov_notify(gaov_dev, AOV_NOTIFY_AIE_AVAIL, 0); //unavailable: 0 available: 1
+		mtk_aov_notify(gaov_dev, AOV_NOTIFY_AIE_AVAIL, 0); //unavailable: 0 available: 1
 #endif
 
-#if POWER_READY
-	pm_runtime_get_sync((fd->dev));
-#endif
+	if (fd->larb_clk_ready)
+		pm_runtime_get_sync((fd->dev));
+
 
 	fd->fd_stream_count++;
 	if (fd->fd_stream_count == 1) {
@@ -561,9 +568,8 @@ static void mtk_aie_hw_disconnect(struct mtk_aie_dev *fd)
 #endif
 	}
 
-#if POWER_READY
-	pm_runtime_put_sync(fd->dev);
-#endif
+	if (fd->larb_clk_ready)
+		pm_runtime_put_sync(fd->dev);
 
 	dev_info(fd->dev, "[%s] stream_count:%d map_count%d\n", __func__,
 			fd->fd_stream_count, fd->map_count);
@@ -1291,7 +1297,6 @@ err_free_dev:
 	return ret;
 }
 
-#if LARB_READY
 static int mtk_aie_dev_larb_init(struct mtk_aie_dev *fd)
 {
 	struct device_node *node;
@@ -1319,7 +1324,6 @@ static int mtk_aie_dev_larb_init(struct mtk_aie_dev *fd)
 
 	return 0;
 }
-#endif
 
 static int mtk_aie_dev_v4l2_init(struct mtk_aie_dev *fd)
 {
@@ -1430,6 +1434,7 @@ static int mtk_aie_probe(struct platform_device *pdev)
 		return PTR_ERR(data);
 	}
 	fd->drv_ops = data->drv_ops;
+	fd->larb_clk_ready = data->larb_clk_ready;
 
 	if (dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34)))
 		dev_info(dev, "%s: No suitable DMA available\n", __func__);
@@ -1457,25 +1462,25 @@ static int mtk_aie_probe(struct platform_device *pdev)
 		return PTR_ERR(fd->fd_base);
 	}
 
-#if LARB_READY
-	ret = mtk_aie_dev_larb_init(fd);
-	if (ret) {
-		dev_info(dev, "Failed to init larb : %d\n", ret);
-		return ret;
+	if (fd->larb_clk_ready) {
+		ret = mtk_aie_dev_larb_init(fd);
+		if (ret) {
+			dev_info(dev, "Failed to init larb : %d\n", ret);
+			return ret;
+		}
 	}
-#endif
 
-#if CLK_READY
-	fd->aie_clk.clk_num = data->clk_num;
-	fd->aie_clk.clks = data->clks;
-	ret = devm_clk_bulk_get(dev,
-			fd->aie_clk.clk_num,
-			fd->aie_clk.clks);
-	if (ret) {
-		dev_info(dev, "Failed to get clks: %d\n", ret);
-		return ret;
+	if (fd->larb_clk_ready) {
+		fd->aie_clk.clk_num = data->clk_num;
+		fd->aie_clk.clks = data->clks;
+		ret = devm_clk_bulk_get(dev,
+				fd->aie_clk.clk_num,
+				fd->aie_clk.clks);
+		if (ret) {
+			dev_info(dev, "Failed to get clks: %d\n", ret);
+			return ret;
+		}
 	}
-#endif
 
 	fd->fdvt_clt = cmdq_mbox_create(dev, 0);
 	if (!fd->fdvt_clt)
@@ -1526,9 +1531,8 @@ static int mtk_aie_probe(struct platform_device *pdev)
 	fd->aov_pdev = pdev;
 	gaov_dev = pdev;
 
-#if POWER_READY
-	pm_runtime_enable(dev);
-#endif
+	if (fd->larb_clk_ready)
+		pm_runtime_enable(dev);
 
 	ret = mtk_aie_dev_v4l2_init(fd);
 	if (ret) {
@@ -1578,12 +1582,13 @@ static int mtk_aie_remove(struct platform_device *pdev)
 
 static int mtk_aie_runtime_suspend(struct device *dev)
 {
-
 	dev_info(dev, "%s: runtime suspend aie job)\n", __func__);
 	mtk_aie_ccf_disable(dev);
+
 #if AOV_READY
-	mtk_aov_notify(gaov_dev, AOV_NOTIFY_AIE_AVAIL, 1); //unavailable: 0 available: 1
+		mtk_aov_notify(gaov_dev, AOV_NOTIFY_AIE_AVAIL, 1); //unavailable: 0 available: 1
 #endif
+
 	return 0;
 }
 
