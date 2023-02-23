@@ -1062,7 +1062,9 @@ static struct dvfsrc_opp dvfsrc_opp_mt6897_lp5x[] = {
 	{5, 6, 0, 0},
 	{4, 7, 0, 0},
 	{5, 7, 0, 0},
+	{4, 7, 0, 0},
 	{5, 8, 0, 0},
+	{4, 7, 0, 0},
 	{5, 9, 0, 0},
 };
 
@@ -1118,7 +1120,7 @@ static struct dvfsrc_opp_desc dvfsrc_opp_mt6897_desc[] = {
 
 static const struct dvfsrc_debug_data mt6897_data = {
 	.version = 0x6897,
-	.config = &mt6983_dvfsrc_config,
+	.config = &mt6897_dvfsrc_config,
 	.opps_desc = dvfsrc_opp_mt6897_desc,
 	.num_opp_desc = ARRAY_SIZE(dvfsrc_opp_mt6897_desc),
 };

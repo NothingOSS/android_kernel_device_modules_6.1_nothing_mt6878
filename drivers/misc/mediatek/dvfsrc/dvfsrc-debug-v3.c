@@ -173,6 +173,21 @@ static const int mt6877_spm_regs[] = {
 	[SPM_TIMER_LATCH] = 0x514,
 };
 
+static const int mt6897_spm_regs[] = {
+	[POWERON_CONFIG_EN] = 0x0,
+	[SPM_PC_STA] = 0x0194,
+	[SPM_SW_FLAG] = 0x600,
+	[SPM_DVFS_LEVEL] = 0x03A0,
+	[SPM_DVFS_STA] = 0x0398,
+	[SPM_DVS_DFS_LEVEL] = 0x039C,
+	[SPM_DVFS_CMD0] = 0x0310,
+	[SPM_DVFS_CMD1] = 0x0314,
+	[SPM_DVFS_CMD2] = 0x0318,
+	[SPM_DVFS_CMD3] = 0x031C,
+	[SPM_DVFS_CMD4] = 0x0320,
+	[SPM_TIMER_LATCH] = 0x514,
+};
+
 static u32 dvfsrc_read(struct mtk_dvfsrc *dvfs, u32 reg, u32 offset)
 {
 	return readl(dvfs->regs + dvfs->dvd->config->regs[reg] + offset);
@@ -848,6 +863,21 @@ const struct dvfsrc_config mt6983_dvfsrc_config = {
 	.ip_version = 3, /*mt6983 series*/
 	.regs = mt6983_regs,
 	.spm_regs = mt6877_spm_regs,
+	.dump_record = dvfsrc_dump_record,
+	.dump_reg = dvfsrc_dump_reg,
+	.dump_spm_info = dvfsrc_dump_mt6873_spm_info,
+	.dump_vmode_info = dvfsrc_dump_mt6873_vmode_info,
+	.query_request = dvfsrc_query_request_status,
+	.query_dvfs_time = dvfsrc_query_dvfs_time,
+	.dump_spm_cmd = dvfsrc_dump_mt6983_spm_cmd,
+	.dump_spm_timer_latch = dvfsrc_dump_mt6983_spm_timer_latch,
+	.dump_md_floor_table = dvfsrc_dump_mt6983_md_floor_table,
+};
+
+const struct dvfsrc_config mt6897_dvfsrc_config = {
+	.ip_version = 3, /*mt6983 series*/
+	.regs = mt6983_regs,
+	.spm_regs = mt6897_spm_regs,
 	.dump_record = dvfsrc_dump_record,
 	.dump_reg = dvfsrc_dump_reg,
 	.dump_spm_info = dvfsrc_dump_mt6873_spm_info,
