@@ -67,9 +67,9 @@ $(CAM_MODULE)-objs := \
     mtk_cam-ctrl.o \
     mtk_cam-dvfs_qos.o \
     mtk_cam-debug_option.o \
-    mtk_cam-size_assertion.o \
     mtk_cam-debug.o
 
+    #mtk_cam-size_assertion.o \
     #mtk_cam-raw_debug.o \
 
     #mtk_cam-smem.o \
