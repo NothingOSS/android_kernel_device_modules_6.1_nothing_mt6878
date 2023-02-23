@@ -365,12 +365,10 @@ static void set_comm_icc_bw(struct common_node *comm_node)
 				comm_id, max_bw, smi_clk, freq_mode);
 
 		if (comm_node->comm_dev && smi_clk != comm_node->smi_clk) {
-			if (freq_mode == BY_REGULATOR)
+			if (!mmdvfs_get_version())
 				set_freq_by_regulator(comm_node, smi_clk);
-			else if (freq_mode == BY_MMDVFS)
-				set_freq_by_mmdvfs(comm_node, smi_clk);
 			else
-				MMQOS_ERR("freq_mode:%d is wrong", freq_mode);
+				set_freq_by_mmdvfs(comm_node, smi_clk);
 
 			comm_node->smi_clk = smi_clk;
 		}
