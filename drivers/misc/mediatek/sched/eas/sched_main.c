@@ -165,6 +165,13 @@ static void mtk_check_d_tasks(void *data, struct task_struct *p,
 #endif
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+static void sched_irq_mon_init(void)
+{
+	mtk_register_irq_log_store(__irq_log_store);
+}
+#endif
+
 static void mtk_sched_trace_init(void)
 {
 	int ret = 0;
@@ -547,6 +554,10 @@ static int __init mtk_scheduler_init(void)
 
 	init_cpu_array();
 	build_cpu_array();
+
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	sched_irq_mon_init();
+#endif
 
 out_wq:
 	return ret;
