@@ -4570,9 +4570,9 @@ static irqreturn_t vbat_h_irq(int irq, void *data)
 {
 	struct mtk_battery *gm = data;
 
-	if (fg_interrupt_check(gm) == false)
-		return IRQ_HANDLED;
-	sw_vbat_h_irq_handler(gm);
+	disable_gauge_irq(gm->gauge, VBAT_H_IRQ);
+	disable_gauge_irq(gm->gauge, VBAT_L_IRQ);
+	wake_up_bat_irq_controller(&gm->irq_ctrl, VBAT_H_FLAG);
 	return IRQ_HANDLED;
 }
 
@@ -4592,10 +4592,9 @@ static irqreturn_t vbat_l_irq(int irq, void *data)
 {
 	struct mtk_battery *gm = data;
 
-	if (fg_interrupt_check(gm) == false)
-		return IRQ_HANDLED;
-	sw_vbat_l_irq_handler(gm);
-
+	disable_gauge_irq(gm->gauge, VBAT_H_IRQ);
+	disable_gauge_irq(gm->gauge, VBAT_L_IRQ);
+	wake_up_bat_irq_controller(&gm->irq_ctrl, VBAT_L_FLAG);
 	return IRQ_HANDLED;
 }
 
@@ -4656,18 +4655,16 @@ static irqreturn_t nafg_irq(int irq, void *data)
 {
 	struct mtk_battery *gm = data;
 
-	if (fg_interrupt_check(gm) == false)
-		return IRQ_HANDLED;
-	nafg_irq_handler(gm);
+	disable_gauge_irq(gm->gauge, NAFG_IRQ);
+	wake_up_bat_irq_controller(&gm->irq_ctrl, NAFG_FLAG);
 	return IRQ_HANDLED;
 }
 
 /* ============================================================ */
 /* battery plug out interrupt handler */
 /* ============================================================ */
-static irqreturn_t bat_plugout_irq(int irq, void *data)
+static void bat_plugout_irq_handler(struct mtk_battery *gm)
 {
-	struct mtk_battery *gm = data;
 	int is_bat_exist;
 
 	gauge_get_property_control(gm, GAUGE_PROP_BATTERY_EXIST,
@@ -4676,9 +4673,6 @@ static irqreturn_t bat_plugout_irq(int irq, void *data)
 	bm_err("[%s]is_bat %d miss:%d\n",
 		__func__,
 		is_bat_exist, gm->plug_miss_count);
-
-	if (fg_interrupt_check(gm) == false)
-		return IRQ_HANDLED;
 
 	/* avoid battery plug status mismatch case*/
 	if (is_bat_exist == 1) {
@@ -4704,22 +4698,25 @@ static irqreturn_t bat_plugout_irq(int irq, void *data)
 		fg_int_event(gm, EVT_INT_BAT_PLUGOUT);
 		kernel_power_off();
 	}
-	return IRQ_HANDLED;
 }
 
+static irqreturn_t bat_plugout_irq(int irq, void *data)
+{
+	struct mtk_battery *gm = data;
+
+	disable_gauge_irq(gm->gauge, BAT_PLUGOUT_IRQ);
+	wake_up_bat_irq_controller(&gm->irq_ctrl, BAT_PLUG_FLAG);
+	return IRQ_HANDLED;
+}
 /* ============================================================ */
 /* zcv interrupt handler */
 /* ============================================================ */
-static irqreturn_t zcv_irq(int irq, void *data)
+static void zcv_irq_handler(struct mtk_battery *gm)
 {
-	struct mtk_battery *gm = data;
 	int fg_coulomb = 0;
 	int zcv_intr_en = 0;
 	int zcv_intr_curr = 0;
 	int zcv;
-
-	if (fg_interrupt_check(gm) == false)
-		return IRQ_HANDLED;
 
 	fg_coulomb = gauge_get_int_property(GAUGE_PROP_COULOMB);
 	zcv_intr_curr = gauge_get_int_property(GAUGE_PROP_ZCV_CURRENT);
@@ -4737,6 +4734,14 @@ static irqreturn_t zcv_irq(int irq, void *data)
 
 	fg_int_event(gm, EVT_INT_ZCV);
 	sw_check_bat_plugout(gm);
+}
+
+static irqreturn_t zcv_irq(int irq, void *data)
+{
+	struct mtk_battery *gm = data;
+
+	disable_gauge_irq(gm->gauge, ZCV_IRQ);
+	wake_up_bat_irq_controller(&gm->irq_ctrl, ZCV_FLAG);
 	return IRQ_HANDLED;
 }
 
@@ -4784,31 +4789,27 @@ void fg_sw_bat_cycle_accu(struct mtk_battery *gm)
 		}
 	}
 }
+static void cycle_irq_handler(struct mtk_battery *gm)
+{
+	wakeup_fg_algo(gm, FG_INTR_BAT_CYCLE);
+	fg_int_event(gm, EVT_INT_BAT_CYCLE);
+	sw_check_bat_plugout(gm);
+}
 
 static irqreturn_t cycle_irq(int irq, void *data)
 {
 	struct mtk_battery *gm = data;
 
-	if (fg_interrupt_check(gm) == false)
-		return IRQ_HANDLED;
-
 	disable_gauge_irq(gm->gauge, FG_N_CHARGE_L_IRQ);
-	wakeup_fg_algo(gm, FG_INTR_BAT_CYCLE);
-	fg_int_event(gm, EVT_INT_BAT_CYCLE);
-	sw_check_bat_plugout(gm);
-
+	wake_up_bat_irq_controller(&gm->irq_ctrl, CYCLE_FLAG);
 	return IRQ_HANDLED;
 }
 
 /* ============================================================ */
 /* hw iavg interrupt handler */
 /* ============================================================ */
-static irqreturn_t iavg_h_irq(int irq, void *data)
+static void iavg_irq_handler(struct mtk_battery *gm)
 {
-	struct mtk_battery *gm = data;
-
-	if (fg_interrupt_check(gm) == false)
-		return IRQ_HANDLED;
 	gm->gauge->hw_status.iavg_intr_flag = 0;
 	disable_gauge_irq(gm->gauge, FG_IAVG_H_IRQ);
 	disable_gauge_irq(gm->gauge, FG_IAVG_L_IRQ);
@@ -4819,6 +4820,15 @@ static irqreturn_t iavg_h_irq(int irq, void *data)
 	wakeup_fg_algo(gm, FG_INTR_IAVG);
 	fg_int_event(gm, EVT_INT_IAVG);
 	sw_check_bat_plugout(gm);
+}
+
+static irqreturn_t iavg_h_irq(int irq, void *data)
+{
+	struct mtk_battery *gm = data;
+
+	disable_gauge_irq(gm->gauge, FG_IAVG_H_IRQ);
+	disable_gauge_irq(gm->gauge, FG_IAVG_L_IRQ);
+	wake_up_bat_irq_controller(&gm->irq_ctrl, IAVG_H_FLAG);
 	return IRQ_HANDLED;
 }
 
@@ -4826,18 +4836,9 @@ static irqreturn_t iavg_l_irq(int irq, void *data)
 {
 	struct mtk_battery *gm = data;
 
-	if (fg_interrupt_check(gm) == false)
-		return IRQ_HANDLED;
-	gm->gauge->hw_status.iavg_intr_flag = 0;
 	disable_gauge_irq(gm->gauge, FG_IAVG_H_IRQ);
 	disable_gauge_irq(gm->gauge, FG_IAVG_L_IRQ);
-
-	bm_debug("[%s]iavg_intr_flag %d\n",
-		__func__,
-		gm->gauge->hw_status.iavg_intr_flag);
-	wakeup_fg_algo(gm, FG_INTR_IAVG);
-	fg_int_event(gm, EVT_INT_IAVG);
-	sw_check_bat_plugout(gm);
+	wake_up_bat_irq_controller(&gm->irq_ctrl, IAVG_L_FLAG);
 	return IRQ_HANDLED;
 }
 
@@ -4848,12 +4849,10 @@ static irqreturn_t bat_temp_irq(int irq, void *data)
 {
 	struct mtk_battery *gm = data;
 
-	if (fg_interrupt_check(gm) == false)
-		return IRQ_HANDLED;
+	disable_gauge_irq(gm->gauge, BAT_TMP_H_IRQ);
+	disable_gauge_irq(gm->gauge, BAT_TMP_L_IRQ);
 
-	bm_debug("[%s]\n", __func__);
-	fg_bat_temp_int_internal(gm);
-
+	wake_up_bat_irq_controller(&gm->irq_ctrl, BAT_TEMP_FLAG);
 	return IRQ_HANDLED;
 }
 
@@ -4986,6 +4985,118 @@ int wakeup_fg_daemon(unsigned int flow_state, int cmd, int para1)
 	} else
 		return -1;
 
+}
+
+/* ============================================================ */
+/* irq_routine_thread */
+/* ============================================================ */
+void wake_up_bat_irq_controller(struct irq_controller *irq_ctrl, int irq_flags)
+{
+	unsigned long flags = 0;
+
+	spin_lock_irqsave(&irq_ctrl->irq_lock, flags);
+	irq_ctrl->irq_flags = irq_ctrl->irq_flags | (1 << irq_flags);
+	irq_ctrl->do_irq = true;
+	spin_unlock_irqrestore(&irq_ctrl->irq_lock, flags);
+	wake_up(&irq_ctrl->wait_que);
+}
+
+static void irq_thread_handler(struct mtk_battery *gm)
+{
+	int val = 0;
+	unsigned long flags = 0;
+	struct irq_controller *irq_ctrl = &gm->irq_ctrl;
+	int pending_flag, irq_bit;
+
+	spin_lock_irqsave(&irq_ctrl->irq_lock, flags);
+	pending_flag = irq_ctrl->irq_flags;
+	irq_ctrl->irq_flags = 0;
+	spin_unlock_irqrestore(&irq_ctrl->irq_lock, flags);
+
+	if (fg_interrupt_check(gm) == false)
+		goto _out;
+
+	while ((irq_bit = ffs(pending_flag))) {
+		val += irq_bit;
+		bm_debug("[%s] do bat irq handler: %d\n", __func__, val-1);
+		switch (val-1) {
+		/*vbat_l*/
+		case VBAT_L_FLAG:
+			sw_vbat_l_irq_handler(gm);
+			break;
+
+		/*vbat_h*/
+		case VBAT_H_FLAG:
+			sw_vbat_h_irq_handler(gm);
+			break;
+
+		/*bat_temp*/
+		case BAT_TEMP_FLAG:
+			fg_bat_temp_int_internal(gm);
+			break;
+
+		/*iavg_l, iavg_h*/
+		case IAVG_L_FLAG:
+		case IAVG_H_FLAG:
+			iavg_irq_handler(gm);
+			break;
+
+		/*cycle*/
+		case CYCLE_FLAG:
+			cycle_irq_handler(gm);
+			break;
+
+		/*coulomb*/
+		case COULOMB_FLAG:
+			wake_up_gauge_coulomb(gm);
+			break;
+
+		/*zcv*/
+		case ZCV_FLAG:
+			zcv_irq_handler(gm);
+			break;
+
+		/*nafg*/
+		case NAFG_FLAG:
+			nafg_irq_handler(gm);
+			break;
+
+		/*bat_plug*/
+		case BAT_PLUG_FLAG:
+			bat_plugout_irq_handler(gm);
+		break;
+		}
+		pending_flag = pending_flag >> irq_bit;
+	}
+
+_out:
+	spin_lock_irqsave(&irq_ctrl->irq_lock, flags);
+	pending_flag = irq_ctrl->irq_flags;
+	irq_ctrl->do_irq = (pending_flag) ? true : false;
+	spin_unlock_irqrestore(&irq_ctrl->irq_lock, flags);
+}
+
+static int irq_routine_thread(void *arg)
+{
+	struct mtk_battery *gm = arg;
+	struct irq_controller *irq_ctrl = &gm->irq_ctrl;
+	int ret = 0;
+
+	while (1) {
+		ret = wait_event_interruptible(irq_ctrl->wait_que, irq_ctrl->do_irq == true);
+		irq_thread_handler(gm);
+	}
+	return 0;
+}
+
+void mtk_irq_thread_init(struct mtk_battery *gm)
+{
+	struct irq_controller *irq_ctrl = &gm->irq_ctrl;
+
+	init_waitqueue_head(&irq_ctrl->wait_que);
+	spin_lock_init(&irq_ctrl->irq_lock);
+	kthread_run(irq_routine_thread, gm, "mtk_bat_irq_thread");
+	irq_ctrl->irq_flags = 0;
 }
 
 void fg_drv_update_daemon(struct mtk_battery *gm)
@@ -5137,6 +5248,8 @@ int mtk_battery_daemon_init(struct platform_device *pdev)
 	gm->suspend = mtk_battery_suspend;
 	gm->resume = mtk_battery_resume;
 	fg_cust_data = &gm->fg_cust_data;
+
+	mtk_irq_thread_init(gm);
 
 	if (hw_version == GAUGE_NO_HW) {
 		gm->gauge->sw_nafg_irq = nafg_irq_handler;

@@ -842,6 +842,26 @@ struct simulator_log {
 
 };
 
+enum irq_handler_flag {
+	VBAT_L_FLAG,
+	VBAT_H_FLAG,
+	BAT_TEMP_FLAG,
+	IAVG_L_FLAG,
+	IAVG_H_FLAG,
+	CYCLE_FLAG,
+	COULOMB_FLAG,
+	ZCV_FLAG,
+	NAFG_FLAG,
+	BAT_PLUG_FLAG,
+	NUMBER_IRQ_HANDLER,
+};
+
+struct irq_controller {
+	wait_queue_head_t  wait_que;
+	spinlock_t irq_lock;
+	int irq_flags;
+	int do_irq;
+};
 /* ============================================================ */
 /* power misc related */
 /* ============================================================ */
@@ -944,6 +964,9 @@ struct mtk_battery {
 	struct mtk_battery_algo algo;
 
 	u_int fgd_pid;
+
+	/*for irq thread*/
+	struct irq_controller irq_ctrl;
 
 	/*for bat prop*/
 	int no_prop_timeout_control;
@@ -1142,6 +1165,7 @@ extern void gauge_coulomb_stop(struct mtk_battery *gm,
 extern void gauge_coulomb_dump_list(struct mtk_battery *gm);
 extern void gauge_coulomb_before_reset(struct mtk_battery *gm);
 extern void gauge_coulomb_after_reset(struct mtk_battery *gm);
+extern void wake_up_gauge_coulomb(struct mtk_battery *gm);
 /* coulomb sub system end */
 
 /*mtk_battery.c */
@@ -1198,4 +1222,7 @@ extern void fg_bat_temp_int_internal(struct mtk_battery *gm);
 /* mtk_battery_algo.c end */
 extern void disable_all_irq(struct mtk_battery *gm);
 
+/*mtk_battery_daemon.c*/
+extern void wake_up_bat_irq_controller(struct irq_controller *irq_ctrl, int flags);
+/*mtk_battery_daemon.c end*/
 #endif /* __MTK_BATTERY_INTF_H__ */

@@ -14,7 +14,7 @@
 #include <linux/suspend.h>
 #include "mtk_battery.h"
 
-static void wake_up_gauge_coulomb(struct mtk_battery *gm)
+void wake_up_gauge_coulomb(struct mtk_battery *gm)
 {
 	unsigned long flags = 0;
 	struct mtk_coulomb_service *cs;
@@ -443,8 +443,9 @@ static irqreturn_t coulomb_irq(int irq, void *data)
 	if (fg_interrupt_check(gm) == false)
 		return IRQ_HANDLED;
 
-	bm_debug("%s\n", __func__);
-	wake_up_gauge_coulomb(gm);
+	disable_gauge_irq(gm->gauge, COULOMB_H_IRQ);
+	disable_gauge_irq(gm->gauge, COULOMB_L_IRQ);
+	wake_up_bat_irq_controller(&gm->irq_ctrl, COULOMB_FLAG);
 	return IRQ_HANDLED;
 }
 
