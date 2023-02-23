@@ -868,6 +868,15 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 		}
 	}
 
+	/* note: after hw disabled, stop buffer_done worker */
+	read_lock(&cam_ctrl->list_lock);
+	list_for_each_entry(job_s, &cam_ctrl->camsys_state_list, list) {
+		job = container_of(job_s, struct mtk_cam_job, job_state);
+
+		mtk_cam_job_mark_cancelled(job);
+	}
+	read_unlock(&cam_ctrl->list_lock);
+
 	mtk_cam_watchdog_stop(&cam_ctrl->watchdog);
 
 	mtk_cam_wq_ctrl_wait_finish(&cam_ctrl->highpri_wq_ctrl);
@@ -890,14 +899,6 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 		}
 	}
 	mtk_cam_event_eos(cam_ctrl);
-
-	read_lock(&cam_ctrl->list_lock);
-	list_for_each_entry(job_s, &cam_ctrl->camsys_state_list, list) {
-		job = container_of(job_s, struct mtk_cam_job, job_state);
-
-		mtk_cam_job_mark_cancelled(job);
-	}
-	read_unlock(&cam_ctrl->list_lock);
 
 	drain_workqueue(ctx->frame_done_wq);
 	kthread_flush_worker(&ctx->sensor_worker);
