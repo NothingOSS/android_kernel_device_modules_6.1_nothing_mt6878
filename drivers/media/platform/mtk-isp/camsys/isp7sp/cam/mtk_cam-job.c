@@ -26,7 +26,15 @@
 static void reset_unused_io_of_ipi_frame(struct req_buffer_helper *helper);
 static int update_cq_buffer_to_ipi_frame(struct mtk_cam_pool_buffer *cq,
 					 struct mtkcam_ipi_frame_param *fp);
-static int job_debug_dump(struct mtk_cam_job *job, const char *desc);
+static int job_debug_dump(struct mtk_cam_job *job, const char *desc,
+			  bool is_exception, int raw_pipe_idx);
+
+static inline int job_debug_exception_dump(struct mtk_cam_job *job,
+					   const char *desc)
+{
+	/* don't care raw_pipe_idx */
+	return job_debug_dump(job, desc, 1, -1);
+}
 
 void _on_job_last_ref(struct mtk_cam_job *job)
 {
@@ -1250,7 +1258,7 @@ static void trigger_error_dump(struct mtk_cam_job *job, const char *desc)
 	job_print_warn_desc(job, desc, warn_desc);
 	pr_info("%s: desc=%s warn_desc=%s\n", __func__, desc, warn_desc);
 
-	if (!job_debug_dump(job, desc))
+	if (!job_debug_exception_dump(job, desc))
 		WRAP_AEE_EXCEPTION(desc, warn_desc);
 }
 
@@ -1278,6 +1286,22 @@ static void job_dump_mstream(struct mtk_cam_job *job, int seq_no)
 	trigger_error_dump(job, MSG_DEQUE_ERROR);
 }
 
+static void normal_dump_if_enable(struct mtk_cam_job *job)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtk_cam_debug *dbg = &ctx->cam->dbg;
+	int pipe_idx;
+
+	if (!ctx->has_raw_subdev)
+		return;
+
+	pipe_idx = get_raw_subdev_idx(ctx->used_pipe);
+	if (!mtk_cam_debug_dump_enabled(dbg, pipe_idx))
+		return;
+
+	job_debug_dump(job, MSG_NORMAL_DUMP, 0, pipe_idx);
+}
+
 static void
 _compose_done(struct mtk_cam_job *job,
 	      struct mtkcam_ipi_frame_ack_result *cq_ret, int compose_ret)
@@ -1287,6 +1311,8 @@ _compose_done(struct mtk_cam_job *job,
 
 	if (compose_ret)
 		trigger_error_dump(job, MSG_COMPOSE_ERROR);
+	else
+		normal_dump_if_enable(job);
 }
 
 static int apply_raw_target_clk(struct mtk_cam_ctx *ctx,
@@ -2100,6 +2126,8 @@ static void compose_done_mstream(struct mtk_cam_job *job,
 	/* TODO: add compose failed dump for 1st frame */
 	if (compose_ret)
 		trigger_error_dump(job, MSG_COMPOSE_ERROR);
+	else
+		normal_dump_if_enable(job);
 }
 
 static void mtk_cam_set_sensor_mstream_mode(struct mtk_cam_ctx *ctx, bool on)
@@ -3262,7 +3290,7 @@ int mtk_cam_job_fill_dump_param(struct mtk_cam_job *job,
 	p->request_fd = -1; /* TODO */
 	p->stream_id = job->src_ctx->stream_id;
 	p->timestamp = job->timestamp;
-	p->sequence = job->frame_seq_no + job->frame_cnt - 1;
+	p->sequence = job->req_seq;
 
 	/* CQ dump */
 	p->cq_cpu_addr	= job->cq.vaddr;
@@ -3316,7 +3344,8 @@ int mtk_cam_job_fill_dump_param(struct mtk_cam_job *job,
 	return 0;
 }
 
-static int job_debug_dump(struct mtk_cam_job *job, const char *desc)
+static int job_debug_dump(struct mtk_cam_job *job, const char *desc,
+			  bool is_exception, int raw_pipe_idx)
 {
 	struct mtk_cam_dump_param p;
 	struct mtk_cam_ctx *ctx;
@@ -3330,8 +3359,21 @@ static int job_debug_dump(struct mtk_cam_job *job, const char *desc)
 		goto DUMP_FAILED;
 
 	dbg = &job->src_ctx->cam->dbg;
-	if (mtk_cam_debug_exp_dump(dbg, &p))
-		goto DUMP_FAILED;
+	if (is_exception) {
+		if (mtk_cam_debug_exp_dump(dbg, &p))
+			goto DUMP_FAILED;
+	} else {
+		if (mtk_cam_debug_dump(dbg, raw_pipe_idx, &p))
+			goto DUMP_FAILED;
+		else {
+			struct v4l2_event event = {
+				.type = V4L2_EVENT_REQUEST_DUMPED,
+			};
+
+			event.u.frame_sync.frame_sequence = p.sequence;
+			mtk_cam_ctx_send_raw_event(ctx, &event);
+		}
+	}
 
 	return 0;
 

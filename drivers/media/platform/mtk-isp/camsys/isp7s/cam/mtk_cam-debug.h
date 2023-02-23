@@ -6,8 +6,8 @@
 #ifndef __MTK_CAM_DEBUG__
 #define __MTK_CAM_DEBUG__
 
-#include <linux/types.h>
 #include <linux/mutex.h>
+#include <linux/types.h>
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #include <aee.h>
@@ -73,10 +73,13 @@ struct mtk_cam_exception {
 };
 
 /* normal dump */
-struct mtk_cam_dump {
-	//uint force_dump;
-	//struct proc_dir_entry *dbg_entry;
-	//struct mtk_cam_dump_buf_ctrl ctrl[MTKCAM_SUBDEV_MAX];
+struct dump_ctrl;
+struct mtk_cam_normal_dump {
+	struct proc_dir_entry *dbg_entry;
+	int num_ctrls;
+	struct dump_ctrl *ctrls;
+
+	atomic_long_t enabled;
 };
 
 #ifdef MAYBE_LATER
@@ -95,15 +98,17 @@ struct mtk_cam_debug {
 	struct mtk_cam_device *cam;
 
 	struct mtk_cam_exception exp;
-	//struct mtk_cam_dump dump;
+	struct mtk_cam_normal_dump dump;
 };
 
 int mtk_cam_debug_init(struct mtk_cam_debug *dbg, struct mtk_cam_device *cam);
 void mtk_cam_debug_deinit(struct mtk_cam_debug *dbg);
 
 /* normal dump */
-//int mtk_cam_debug_dump(struct mtk_cam_debug *dbg,
-//                       struct mtk_cam_dump_param *param);
+bool mtk_cam_debug_dump_enabled(struct mtk_cam_debug *dbg, int pipe_id);
+
+int mtk_cam_debug_dump(struct mtk_cam_debug *dbg,
+		       int raw_pipe_id, struct mtk_cam_dump_param *param);
 
 /* exception dump */
 void mtk_cam_debug_exp_reset(struct mtk_cam_debug *dbg);
@@ -123,7 +128,8 @@ int mtk_cam_debug_exp_dump(struct mtk_cam_debug *dbg,
 #endif //IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 
 #define MSG_COMPOSE_ERROR	"Camsys: compose error"
-#define MSG_DEQUE_ERROR		"Camsys: Camsys: No P1 done"
+#define MSG_DEQUE_ERROR		"Camsys: No P1 done"
+#define MSG_NORMAL_DUMP		"Camsys: normal dump"
 
 #endif /* __MTK_CAM_DEBUG__ */
 
