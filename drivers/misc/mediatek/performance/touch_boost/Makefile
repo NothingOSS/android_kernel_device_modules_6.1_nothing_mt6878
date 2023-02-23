@@ -10,4 +10,7 @@
 # GNU General Public License for more details.
 #
 
+ccflags-y += -I$(srctree)/include/
+CFLAGS_touch_boost.o := -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/touch_boost
+
 obj-$(CONFIG_MTK_PERFORMANCE_MODULE) += touch_boost.o

@@ -27,8 +27,10 @@
 #include "perf_ioctl.h"
 #include "touch_boost.h"
 
-//#define CREATE_TRACE_POINTS
-//#include "touch_boost_trace_event.h"
+#ifndef CREATE_TRACE_POINTS
+#define CREATE_TRACE_POINTS
+#endif
+#include "touch_boost_trace_event.h"
 
 #define PROC_FOPS_RW(name) \
 static const struct proc_ops perfmgr_ ## name ## _proc_fops = { \
@@ -100,7 +102,7 @@ static void _cpu_ctrl_systrace(int val, const char *fmt, ...)
 	else if (unlikely(len == 256))
 		buf[255] = '\0';
 
-	//trace_touch_boost(buf);
+	trace_touch_boost(buf);
 }
 
 struct k_list {
