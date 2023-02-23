@@ -7092,4 +7092,61 @@ static inline u32 _set_field(u32 *val, int pos, int width, u32 fval)
 /* camsv_c/d/e/f */
 #define HALT13_EN		0xFF
 
+/* CAMSYS_RAW */
+#define REG_RAWI_R2_BASE       0x42c0
+#define REG_UFDI_R2_BASE       0x4330
+#define REG_RAWI_R3_BASE       0x43a0
+#define REG_UFDI_R3_BASE       0x4410
+#define REG_RAWI_R5_BASE       0x4480
+#define REG_UFDI_R5_BASE       0x44f0
+#define REG_BPCI_R1_BASE       0x4560
+#define REG_BPCI_R2_BASE       0x45a0
+#define REG_BPCI_R3_BASE       0x45e0
+#define REG_LSCI_R1_BASE       0x4660
+#define REG_PDI_R1_BASE        0x46a0
+#define REG_AAI_R1_BASE        0x46e0
+#define REG_CACI_R1_BASE       0x4720
+#define REG_IMGO_R1_BASE       0x4760
+#define REG_FHO_R1_BASE        0x4810
+#define REG_UFEO_R1_BASE       0x48c0
+#define REG_FLKO_R1_BASE       0x4900
+#define REG_PDO_R1_BASE        0x4940
+#define REG_AAO_R1_BASE        0x4980
+#define REG_AAHO_R1_BASE       0x49c0
+#define REG_AFO_R1_BASE        0x4a00
+#define REG_TSFSO_R1_BASE      0x4a40
+#define REG_TSFSO_R2_BASE      0x4a80
+#define REG_LTMSO_R1_BASE      0x4ac0
+#define REG_LTMSHO_R1_BASE     0x4b00
+#define REG_DRZB2NO_R1_BASE    0x4b40
+#define REG_DRZB2NBO_R1_BASE   0x4b80
+#define REG_DRZB2NCO_R1_BASE   0x4bc0
+
+/* CAMSYS_YUV */
+#define REG_YUVO_R1_BASE       0x4200
+#define REG_YUVBO_R1_BASE      0x42b0
+#define REG_YUVCO_R1_BASE      0x4360
+#define REG_YUVDO_R1_BASE      0x4410
+#define REG_YUVO_R3_BASE       0x44c0
+#define REG_YUVBO_R3_BASE      0x4570
+#define REG_YUVCO_R3_BASE      0x4620
+#define REG_YUVDO_R3_BASE      0x46d0
+#define REG_YUVO_R2_BASE       0x4780
+#define REG_YUVBO_R2_BASE      0x47c0
+#define REG_YUVO_R4_BASE       0x4800
+#define REG_YUVBO_R4_BASE      0x4840
+#define REG_YUVO_R5_BASE       0x4880
+#define REG_YUVBO_R5_BASE      0x48c0
+#define REG_RZH1N2TBO_R1_BASE  0x4900
+#define REG_RZH1N2TBO_R3_BASE  0x4940
+#define REG_TCYSO_R1_BASE      0x4980
+#define REG_RZH1N2TO_R2_BASE   0x49c0
+#define REG_DRZS4NO_R1_BASE    0x4a00
+#define REG_DRZH2NO_R8_BASE    0x4a40
+#define REG_DRZS4NO_R3_BASE    0x4a80
+#define REG_RZH1N2TO_R3_BASE   0x4ac0
+#define REG_RZH1N2TO_R1_BASE   0x4b00
+#define REG_RGBWI_R1_BASE      0x4b40
+
+
 #endif	/* _MTK_CAM_RAW_REGS_H */

@@ -94,6 +94,10 @@ struct plat_v4l2_data {
 struct plat_data_hw {
 	u32 camsys_axi_mux;
 	int cammux_id_raw_start;
+	int camsys_dma_group_size;
+
+	int (*query_raw_dma_group)(int m4u_id, u32 *group);
+	int (*query_yuv_dma_group)(int m4u_id, u32 *group);
 };
 
 struct camsys_platform_data {
@@ -109,7 +113,12 @@ void set_platform_data(const struct camsys_platform_data *platform_data);
 	((cur_platform && cur_platform->v4l2 && cur_platform->v4l2->ops) ? \
 	 cur_platform->v4l2->ops(__VA_ARGS__) : -EINVAL)
 
+#define CALL_PLAT_HW(ops, ...) \
+	((cur_platform && cur_platform->hw && cur_platform->hw->ops) ? \
+	 cur_platform->hw->ops(__VA_ARGS__) : -EINVAL)
+
 #define GET_PLAT_V4L2(member) (cur_platform->v4l2->member)
+
 #define GET_PLAT_HW(member) (cur_platform->hw->member)
 
 /* platform data list */

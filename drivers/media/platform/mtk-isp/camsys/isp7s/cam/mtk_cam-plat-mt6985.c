@@ -5,6 +5,7 @@
 #include <linux/module.h>
 
 #include "mtk_cam-plat.h"
+#include "mtk_cam-raw_regs.h"
 #include "mtk_cam-meta-mt6985.h"
 #include "mtk_cam-ipi.h"
 
@@ -283,6 +284,75 @@ static int get_mraw_stats_cfg_param(
 	return 0;
 }
 
+#define RAW_M4U_PORT_NUM 12
+#define YUV_M4U_PORT_NUM 7
+#define DMA_GROUP_SIZE 4
+static u32 raw_dma_group[RAW_M4U_PORT_NUM][DMA_GROUP_SIZE] = {
+	/* port-0 */
+	{0x0, 0x0, 0x0, 0x0},
+	/* port-1 */
+	{REG_RAWI_R2_BASE, REG_UFDI_R2_BASE, 0x0, 0x0},
+	/* port-2 */
+	{REG_RAWI_R3_BASE, REG_UFDI_R3_BASE, 0x0, 0x0},
+	/* port-3 */
+	{REG_RAWI_R5_BASE, REG_UFDI_R5_BASE, 0x0, 0x0},
+	/* port-4 */
+	{REG_IMGO_R1_BASE, REG_FHO_R1_BASE, 0x0, 0x0},
+	/* port-5 */
+	{REG_BPCI_R1_BASE, REG_BPCI_R2_BASE, REG_BPCI_R3_BASE, REG_CACI_R1_BASE},
+	/* port-6 */
+	{REG_LSCI_R1_BASE, REG_PDI_R1_BASE, REG_AAI_R1_BASE, 0x0},
+	/* port-7 */
+	{REG_UFEO_R1_BASE, REG_FLKO_R1_BASE, REG_PDO_R1_BASE, 0x0},
+	/* port-8*/
+	{REG_LTMSO_R1_BASE, REG_LTMSHO_R1_BASE, 0x0, 0x0},
+	/* port-9  */
+	{REG_DRZB2NO_R1_BASE, REG_DRZB2NBO_R1_BASE, REG_DRZB2NCO_R1_BASE, 0x0},
+	/* port-10 */
+	{REG_AFO_R1_BASE, REG_TSFSO_R1_BASE, REG_TSFSO_R2_BASE, 0x0},
+	/* port-11 */
+	{REG_AAO_R1_BASE, REG_AAHO_R1_BASE, 0x0, 0x0},
+};
+
+static u32 yuv_dma_group[YUV_M4U_PORT_NUM][DMA_GROUP_SIZE] = {
+	/* port-0 */
+	{REG_YUVO_R1_BASE, REG_YUVBO_R1_BASE, REG_YUVCO_R1_BASE, REG_YUVDO_R1_BASE},
+	/* port-1 */
+	{REG_YUVO_R3_BASE, REG_YUVBO_R3_BASE, REG_YUVCO_R3_BASE, REG_YUVDO_R3_BASE},
+	/* port-2 */
+	{REG_YUVO_R2_BASE, REG_YUVBO_R2_BASE, REG_YUVO_R4_BASE, REG_YUVBO_R4_BASE},
+	/* port-3 */
+	{REG_YUVO_R5_BASE, REG_YUVBO_R5_BASE, REG_RZH1N2TBO_R1_BASE, REG_RZH1N2TBO_R3_BASE},
+	/* port-4 */
+	{REG_RGBWI_R1_BASE, 0x0, 0x0, 0x0},
+	/* port-5 */
+	{REG_TCYSO_R1_BASE, REG_RZH1N2TO_R2_BASE, REG_DRZS4NO_R1_BASE, REG_DRZH2NO_R8_BASE},
+	/* port-6 */
+	{REG_DRZS4NO_R3_BASE, REG_RZH1N2TO_R3_BASE, REG_RZH1N2TO_R1_BASE, 0x0},
+};
+
+static int query_raw_dma_group(int m4u_id, u32 *group)
+{
+	if (m4u_id < RAW_M4U_PORT_NUM)
+		memcpy(group, raw_dma_group[m4u_id], sizeof(u32)*DMA_GROUP_SIZE);
+	else
+		pr_info("%s: %s: not supported: %d\n",
+			__FILE__, __func__, m4u_id);
+
+	return 0;
+}
+
+static int query_yuv_dma_group(int m4u_id, u32 *group)
+{
+	if (m4u_id < YUV_M4U_PORT_NUM)
+		memcpy(group, yuv_dma_group[m4u_id], sizeof(u32)*DMA_GROUP_SIZE);
+	else
+		pr_info("%s: %s: not supported: %d\n",
+			__FILE__, __func__, m4u_id);
+
+	return 0;
+}
+
 static const struct plat_v4l2_data mt6985_v4l2_data = {
 	.raw_pipeline_num = 3,
 	.camsv_pipeline_num = 16,
@@ -311,6 +381,10 @@ static const struct plat_v4l2_data mt6985_v4l2_data = {
 static const struct plat_data_hw mt6985_hw_data = {
 	.camsys_axi_mux = 0x3,
 	.cammux_id_raw_start = 34,
+	.camsys_dma_group_size = DMA_GROUP_SIZE,
+
+	.query_raw_dma_group = query_raw_dma_group,
+	.query_yuv_dma_group = query_yuv_dma_group,
 };
 
 struct camsys_platform_data mt6985_data = {

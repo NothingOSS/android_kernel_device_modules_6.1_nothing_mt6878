@@ -149,7 +149,9 @@ void reset(struct mtk_raw_device *dev);
 void dump_aa_info(struct mtk_cam_ctx *ctx,
 		  struct mtk_ae_debug_data *ae_info);
 
-int mtk_cam_translation_fault_callback(int port, dma_addr_t mva, void *data);
+/* iommu debug */
+int mtk_raw_translation_fault_cb(int port, dma_addr_t mva, void *data);
+int mtk_yuv_translation_fault_cb(int port, dma_addr_t mva, void *data);
 
 extern struct platform_driver mtk_cam_raw_driver;
 extern struct platform_driver mtk_cam_yuv_driver;

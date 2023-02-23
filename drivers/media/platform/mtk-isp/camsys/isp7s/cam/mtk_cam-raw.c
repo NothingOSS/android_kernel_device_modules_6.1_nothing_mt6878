@@ -24,6 +24,7 @@
 #include "mtk_cam-raw_regs.h"
 //#include "mtk_cam-hsf.h"
 #include "mtk_cam-trace.h"
+#include "iommu_debug.h"
 
 //static int debug_dump_fbc;
 //module_param(debug_dump_fbc, int, 0644);
@@ -967,9 +968,10 @@ static int mtk_raw_of_probe(struct platform_device *pdev,
 	struct platform_device *larb_pdev;
 	struct device_node *larb_node;
 	struct device_link *link;
+	struct of_phandle_args args;
 	struct resource *res;
 	unsigned int i;
-	int clks, larbs, ret;
+	int clks, larbs, iommus, ret;
 
 	ret = of_property_read_u32(dev->of_node, "mediatek,cam-id",
 				   &raw->id);
@@ -1099,6 +1101,19 @@ static int mtk_raw_of_probe(struct platform_device *pdev,
 		return ret;
 	}
 #endif
+
+	iommus = of_count_phandle_with_args(
+		pdev->dev.of_node, "iommus", "#iommu-cells");
+	iommus = (iommus == -ENOENT) ? 0 : iommus;
+	for (i = 0; i < iommus; i++) {
+		if (!of_parse_phandle_with_args(pdev->dev.of_node,
+			"iommus", "#iommu-cells", i, &args)) {
+			mtk_iommu_register_fault_callback(
+				args.args[0], mtk_raw_translation_fault_cb,
+				(void *)raw, false);
+		}
+	}
+
 	return 0;
 }
 
@@ -1523,7 +1538,8 @@ static int mtk_yuv_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct mtk_yuv_device *drvdata;
-	int ret;
+	struct of_phandle_args args;
+	int i, iommus, ret;
 
 	drvdata = devm_kzalloc(dev, sizeof(*drvdata), GFP_KERNEL);
 	if (!drvdata)
@@ -1547,6 +1563,18 @@ static int mtk_yuv_probe(struct platform_device *pdev)
 #endif
 
 	pm_runtime_enable(dev);
+
+	iommus = of_count_phandle_with_args(
+		pdev->dev.of_node, "iommus", "#iommu-cells");
+	iommus = (iommus == -ENOENT) ? 0 : iommus;
+	for (i = 0; i < iommus; i++) {
+		if (!of_parse_phandle_with_args(pdev->dev.of_node,
+			"iommus", "#iommu-cells", i, &args)) {
+			mtk_iommu_register_fault_callback(
+				args.args[0], mtk_yuv_translation_fault_cb,
+				(void *)drvdata, false);
+		}
+	}
 
 	return component_add(dev, &mtk_yuv_component_ops);
 }
@@ -1608,9 +1636,87 @@ static int mtk_yuv_runtime_resume(struct device *dev)
 	return 0;
 }
 
-int mtk_cam_translation_fault_callback(int port, dma_addr_t mva, void *data)
+void print_cq_settings(void __iomem *base)
 {
-	// TODO
+	unsigned int inner_addr, inner_addr_msb, size;
+
+	inner_addr = readl_relaxed(base + REG_CAMCQ_CQ_THR0_BASEADDR);
+	inner_addr_msb = readl_relaxed(base + REG_CAMCQ_CQ_THR0_BASEADDR_MSB);
+	size = readl_relaxed(base + REG_CAMCQ_CQ_THR0_DESC_SIZE);
+
+	pr_info("CQ_THR0_inner_addr_msb:0x%x, CQ_THR0_inner_addr:%08x, size:0x%x\n",
+		inner_addr_msb, inner_addr, size);
+
+	inner_addr = readl_relaxed(base + REG_CAMCQ_CQ_SUB_THR0_BASEADDR_2);
+	inner_addr_msb = readl_relaxed(base + REG_CAMCQ_CQ_SUB_THR0_BASEADDR_2_MSB);
+	size = readl_relaxed(base + REG_CAMCQ_CQ_SUB_THR0_DESC_SIZE_2);
+
+	pr_info("CQ_SUB_THR0_2: inner_addr_msb:0x%x, inner_addr:%08x, size:0x%x\n",
+		inner_addr_msb, inner_addr, size);
+}
+
+void print_dma_settings(void __iomem *base, u32 dmao_base)
+{
+#define REG_MSB          0x4
+#define REG_OFFSET       0x8
+#define REG_OFFSET_MSB   0xC
+#define REG_XSIZE        0x10
+#define REG_YSIZE        0x14
+#define REG_STRIDE       0x18
+
+	pr_info("0x%x: addr:0x%08x, addr_msb:%08x, addr_offset:0x%08x, addr_msb_offset:%08x, xsize:0x%08x, ysize:0x%08x, stride:0x%08x\n",
+		dmao_base,
+		readl_relaxed(base + dmao_base),
+		readl_relaxed(base + dmao_base + REG_MSB),
+		readl_relaxed(base + dmao_base + REG_OFFSET),
+		readl_relaxed(base + dmao_base + REG_OFFSET_MSB),
+		readl_relaxed(base + dmao_base + REG_XSIZE),
+		readl_relaxed(base + dmao_base + REG_YSIZE),
+		readl_relaxed(base + dmao_base + REG_STRIDE));
+}
+
+int mtk_raw_translation_fault_cb(int port, dma_addr_t mva, void *data)
+{
+	struct mtk_raw_device *raw_dev = (struct mtk_raw_device *)data;
+	unsigned int m4u_port = MTK_M4U_TO_PORT(port);
+	unsigned int group_size = GET_PLAT_HW(camsys_dma_group_size);
+	u32 *group = kzalloc(sizeof(u32)*group_size, GFP_KERNEL);
+	int i;
+
+	if (m4u_port == 0) { /* cq info */
+		print_cq_settings(raw_dev->base_inner);
+		return 0;
+	}
+
+	CALL_PLAT_HW(query_raw_dma_group, m4u_port, group);
+	for (i = 0; i < group_size; i++) {
+		if (group[i] == 0x0)
+			continue;
+
+		print_dma_settings(raw_dev->base_inner, group[i]);
+	}
+
+	kfree(group);
+	return 0;
+}
+
+int mtk_yuv_translation_fault_cb(int port, dma_addr_t mva, void *data)
+{
+	struct mtk_yuv_device *yuv_dev = (struct mtk_yuv_device *)data;
+	unsigned int m4u_port = MTK_M4U_TO_PORT(port);
+	unsigned int group_size = GET_PLAT_HW(camsys_dma_group_size);
+	u32 *group = kzalloc(sizeof(u32)*group_size, GFP_KERNEL);
+	int i;
+
+	CALL_PLAT_HW(query_yuv_dma_group, m4u_port, group);
+	for (i = 0; i < group_size; i++) {
+		if (group[i] == 0x0)
+			continue;
+
+		print_dma_settings(yuv_dev->base_inner, group[i]);
+	}
+
+	kfree(group);
 	return 0;
 }
 
