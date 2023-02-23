@@ -179,13 +179,6 @@ int mux2mux_vr(struct seninf_ctx *ctx, int mux, int cammux, int vc_idx)
 	int raw_cammux_first = core->cammux_range[TYPE_RAW].first;
 	int raw_cammux_second = core->cammux_range[TYPE_RAW].second;
 
-	dev_info(ctx->dev,
-				"[%s] num_sat_mux %d num_sv_normal_mux %d num_raw_mux %d\n",
-				__func__,
-				num_sat_mux,
-				num_sv_normal_mux,
-				num_raw_mux);
-
 	if (mux < sat_mux_first)
 		mux_vr = mux;
 	else if ((mux >= sat_mux_first) && (mux <= sat_mux_second)) {  // sat camsv
@@ -206,7 +199,7 @@ int mux2mux_vr(struct seninf_ctx *ctx, int mux, int cammux, int vc_idx)
 			   + (num_sv_normal_mux * SV_NORMAL_MUX_FACTOR);
 
 		if ((cammux >= raw_cammux_first) && (cammux <= raw_cammux_second))
-			mux_vr += (cammux - raw_cammux_first) % RAW_MUX_FACTOR;
+			mux_vr += vc_idx;
 	} else {  // PDP & uISP
 		mux_vr = (mux - pdp_mux_first)
 			   + (num_sat_mux * SAT_MUX_FACTOR)
@@ -215,8 +208,11 @@ int mux2mux_vr(struct seninf_ctx *ctx, int mux, int cammux, int vc_idx)
 	}
 
 	dev_info(ctx->dev,
-				"[%s] sat_based %d sv_based %d raw_based %d, raw_based %d\n",
+				"[%s] num_sat_mux %d num_sv_normal_mux %d num_raw_mux %d sat_based %d sv_based %d raw_based %d, raw_based %d\n",
 				__func__,
+				num_sat_mux,
+				num_sv_normal_mux,
+				num_raw_mux,
 				sat_mux_first,
 				(num_sat_mux * SAT_MUX_FACTOR),
 				(num_sat_mux * SAT_MUX_FACTOR) +
@@ -270,10 +266,6 @@ int mux_vr2mux(struct seninf_ctx *ctx, int mux_vr)
 			+ ((mux_vr - sv_normal_mux_vr_last) / RAW_MUX_FACTOR);
 	} else
 		mux = raw_mux_last + (mux_vr - raw_mux_vr_last);
-
-	dev_info(ctx->dev,
-				"[%s] Input(mux_vr %d), Output(mux %d)\n",
-				__func__, mux_vr, mux);
 
 	return mux;
 }
