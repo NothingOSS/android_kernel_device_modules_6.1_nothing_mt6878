@@ -29,11 +29,11 @@ enum LOW_BATTERY_PRIO_TAG {
 	LOW_BATTERY_PRIO_UT = 15
 };
 
-typedef void (*low_battery_callback)(enum LOW_BATTERY_LEVEL_TAG tag, void *data);
+typedef void (*low_battery_callback)(enum LOW_BATTERY_LEVEL_TAG tag);
 
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
 int register_low_battery_notify(low_battery_callback lb_cb,
-				enum LOW_BATTERY_PRIO_TAG prio_val, void *data);
+				enum LOW_BATTERY_PRIO_TAG prio_val);
 #endif
 
 #endif /* __MTK_LOW_BATTERY_THROTTLING_H__ */
