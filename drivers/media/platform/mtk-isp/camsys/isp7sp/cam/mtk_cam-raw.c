@@ -375,6 +375,8 @@ static void set_tg_vfdata_en(struct mtk_raw_device *dev, int on)
 {
 	u32 val;
 
+	atomic_set(&dev->vf_en, !!on);
+
 	val = readl(dev->base + REG_TG_VF_CON);
 	SET_FIELD(&val, TG_VFDATA_EN, on);
 	writel(val, dev->base + REG_TG_VF_CON);
@@ -938,6 +940,11 @@ static void raw_handle_tg_grab_err(struct mtk_raw_device *raw_dev,
 				   unsigned int fh_cookie)
 {
 	int cnt;
+
+	if (atomic_read(&raw_dev->vf_en)) {
+		dev_info(raw_dev->dev, "%s: skipped since vf is off\n", __func__);
+		return;
+	}
 
 	cnt = raw_dev->tg_grab_err_handle_cnt++;
 

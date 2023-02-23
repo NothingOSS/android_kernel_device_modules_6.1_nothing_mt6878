@@ -1281,8 +1281,8 @@ static int mtk_cam_watchdog_monitor_job(struct mtk_cam_watchdog *wd)
 	}
 
 	/* job is not updated */
-	dev_info(ctx->cam->dev, "schedule work for job_dump: ctx-%d\n",
-		 ctx->stream_id);
+	dev_info(ctx->cam->dev, "schedule work for job_dump: ctx-%d req %d repeat_cnt %d\n",
+		 ctx->stream_id, wd->req_seq, wd->req_repeat_cnt);
 	mtk_cam_watchdog_schedule_job_dump(wd);
 	return -1;
 
