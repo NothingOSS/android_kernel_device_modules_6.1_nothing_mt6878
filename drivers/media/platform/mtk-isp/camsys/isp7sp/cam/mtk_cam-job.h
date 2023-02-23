@@ -276,10 +276,6 @@ struct mtk_cam_job {
 	unsigned int sub_ratio;
 	int scq_period;
 	u64 (*timestamp_buf)[128];
-
-	/* TODO(AY): in switch case, may not use devs in ctx */
-	/* hw devices */
-	//struct device *hw_raw;
 };
 
 static inline void mtk_cam_job_get(struct mtk_cam_job *job)

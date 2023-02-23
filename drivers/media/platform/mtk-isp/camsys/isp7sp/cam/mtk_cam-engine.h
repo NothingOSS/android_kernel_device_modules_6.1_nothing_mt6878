@@ -10,6 +10,71 @@
 
 #include "mtk_cam-engine_fsm.h"
 
+enum MTK_CAMSYS_IRQ_EVENT {
+	/* with normal_data */
+	CAMSYS_IRQ_SETTING_DONE = 0,
+	CAMSYS_IRQ_FRAME_START,
+	CAMSYS_IRQ_AFO_DONE,
+	CAMSYS_IRQ_FRAME_DONE,
+	CAMSYS_IRQ_TRY_SENSOR_SET,
+	CAMSYS_IRQ_FRAME_DROP,
+	CAMSYS_IRQ_FRAME_START_DCIF_MAIN,
+	CAMSYS_IRQ_FRAME_SKIPPED,
+	/* with error_data */
+	CAMSYS_IRQ_ERROR,
+};
+
+enum MTK_CAMSYS_ENGINE_TYPE {
+	CAMSYS_ENGINE_RAW,
+	CAMSYS_ENGINE_MRAW,
+	CAMSYS_ENGINE_CAMSV,
+	CAMSYS_ENGINE_SENINF,
+};
+
+struct mtk_camsys_irq_normal_data {
+};
+
+struct mtk_camsys_irq_error_data {
+	int err_status;
+};
+
+struct mtk_camsys_irq_info {
+	enum MTK_CAMSYS_IRQ_EVENT irq_type;
+	u64 ts_ns;
+	int frame_idx;
+	int frame_idx_inner;
+	int cookie_done;
+	int write_cnt;
+	int fbc_cnt;
+	unsigned int sof_tags;
+	unsigned int done_tags;
+	unsigned int err_tags;
+	union {
+		struct mtk_camsys_irq_normal_data	n;
+		struct mtk_camsys_irq_error_data	e;
+	};
+};
+
+struct mtk_cam_device;
+struct engine_callback {
+	int (*isr_event)(struct mtk_cam_device *cam,
+			 int engine_type, unsigned int engine_id,
+			 struct mtk_camsys_irq_info *irq_info);
+
+	int (*reset_sensor)(struct mtk_cam_device *cam,
+			    int engine_type, unsigned int engine_id,
+			    int inner_cookie);
+	int (*dump_request)(struct mtk_cam_device *cam,
+			    int engine_type, unsigned int engine_id,
+			    int inner_cookie);
+};
+
+#define do_engine_callback(cb, func, ...) \
+({\
+	typeof(cb) _cb = (cb);\
+	_cb && _cb->func ? _cb->func(__VA_ARGS__) : -1;\
+})
+
 struct apply_cq_ref {
 	atomic_t cnt;
 };

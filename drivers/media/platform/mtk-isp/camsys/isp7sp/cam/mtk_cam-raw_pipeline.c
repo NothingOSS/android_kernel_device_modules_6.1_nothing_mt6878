@@ -40,6 +40,8 @@ static int debug_user_raws[3] = {-1, -1, -1};
 module_param_array(debug_user_raws, int, NULL, 0644);
 MODULE_PARM_DESC(debug_user_raws, "debug: user raws");
 
+#define RAW_PIPELINE_NUM 3
+
 #define MTK_CAMSYS_RES_IDXMASK		0xF0
 #define MTK_CAMSYS_RES_BIN_TAG		0x10
 #define MTK_CAMSYS_RES_FRZ_TAG		0x20

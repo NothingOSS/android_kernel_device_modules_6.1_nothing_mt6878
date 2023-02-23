@@ -140,7 +140,55 @@ static void init_camsys_settings(struct mtk_raw_device *dev, bool is_srt)
 		readl_relaxed(cam_dev->base + REG_CAMSYS_AXI_MUX));
 }
 
-void initialize(struct mtk_raw_device *dev, int is_slave)
+static void dump_cq_setting(struct mtk_raw_device *dev)
+{
+	dev_info(dev->dev, "CQ_EN 0x%08x THR_CTL 0x%08x 0x%08x, 0x%08x\n",
+		 readl(dev->base + REG_CAMCQ_CQ_EN),
+		 readl(dev->base + REG_CAMCQ_CQ_THR0_CTL),
+		 readl(dev->base + REG_CAMCQ_CQ_SUB_THR0_CTL),
+		 readl(dev->base + REG_CAMCQ_SCQ_START_PERIOD));
+}
+
+static void dump_tg_setting(struct mtk_raw_device *dev, const char *msg)
+{
+	dev_info(dev->dev,
+		 "%s [outer] TG SENMODE/VFCON/PATHCFG/VSEOL_SUB: FRMSIZE/R GRABPXL/LIN :%x/%x/%x/%x: %x/%x %x/%x\n",
+		 msg,
+		 readl_relaxed(dev->base + REG_TG_SEN_MODE),
+		 readl_relaxed(dev->base + REG_TG_VF_CON),
+		 readl_relaxed(dev->base + REG_TG_PATH_CFG),
+		 readl_relaxed(dev->base + REG_TG_VSEOL_SUB_CTL),
+		 readl_relaxed(dev->base + REG_TG_FRMSIZE_ST),
+		 readl_relaxed(dev->base + REG_TG_FRMSIZE_ST_R),
+		 readl_relaxed(dev->base + REG_TG_SEN_GRAB_PXL),
+		 readl_relaxed(dev->base + REG_TG_SEN_GRAB_LIN));
+
+	dev_info(dev->dev,
+		 "%s [inner] TG SENMODE/VFCON/PATHCFG/VSEOL_SUB: GRABPXL/LIN :%x/%x/%x/%x: %x/%x\n",
+		 msg,
+		 readl_relaxed(dev->base_inner + REG_TG_SEN_MODE),
+		 readl_relaxed(dev->base_inner + REG_TG_VF_CON),
+		 readl_relaxed(dev->base_inner + REG_TG_PATH_CFG),
+		 readl_relaxed(dev->base_inner + REG_TG_VSEOL_SUB_CTL),
+		 readl_relaxed(dev->base_inner + REG_TG_SEN_GRAB_PXL),
+		 readl_relaxed(dev->base_inner + REG_TG_SEN_GRAB_LIN));
+}
+
+static void dump_seqence(struct mtk_raw_device *dev)
+{
+	dev_info(dev->dev, "in 0x%08x out 0x%08x\n",
+		 readl_relaxed(dev->base_inner + REG_FRAME_SEQ_NUM),
+		 readl_relaxed(dev->base + REG_FRAME_SEQ_NUM));
+}
+
+static void reset_error_handling(struct mtk_raw_device *dev)
+{
+	dev->tg_overrun_handle_cnt = 0;
+	dev->tg_grab_err_handle_cnt = 0;
+}
+
+void initialize(struct mtk_raw_device *dev, int is_slave,
+		struct engine_callback *cb)
 {
 	bool is_srt = false; /* TODO(AY): move to args */
 	u32 val;
@@ -161,11 +209,7 @@ void initialize(struct mtk_raw_device *dev, int is_slave)
 	writel_relaxed(val, dev->base + REG_CAMCTL_INT6_EN);
 
 #if RAW_DEBUG
-	dev_info(dev->dev, "CQ_EN 0x%08x THR_CTL 0x%08x 0x%08x, 0x%08x\n",
-		 readl(dev->base + REG_CAMCQ_CQ_EN),
-		 readl(dev->base + REG_CAMCQ_CQ_THR0_CTL),
-		 readl(dev->base + REG_CAMCQ_CQ_SUB_THR0_CTL),
-		 readl(dev->base + REG_CAMCQ_SCQ_START_PERIOD));
+	dump_cq_setting(dev);
 #endif
 
 	dev->is_slave = is_slave;
@@ -178,8 +222,12 @@ void initialize(struct mtk_raw_device *dev, int is_slave)
 
 	init_camsys_settings(dev, is_srt);
 
+	dev->engine_cb = cb;
 	engine_fsm_reset(&dev->fsm);
 	dev->cq_ref = NULL;
+
+	reset_error_handling(dev);
+
 #ifdef DISABLE_FLKO_ERROR
 	/* Workaround: disable FLKO error_sof: double sof error
 	 *   HW will send FLKO dma error when
@@ -482,86 +530,32 @@ static int push_msgfifo(struct mtk_raw_device *dev,
 	return 0;
 }
 
-/* TODO: check this */
-int get_fps_ratio(int fps)
-{
-	int fps_ratio;
-
-	return (fps + 30) / 30;
-	if (fps <= 30)
-		fps_ratio = 1;
-	else if (fps <= 60)
-		fps_ratio = 2;
-	else
-		fps_ratio = 1;
-
-	return fps_ratio;
-}
-
-//static void subsample_set_sensor_time(struct mtk_raw_device *dev)
-//{
-//	dev->sub_sensor_ctrl_en = true;
-//	dev->set_sensor_idx = dev->subsample_ratio - 1;
-//	dev->cur_vsync_idx = -1;
-//}
-
-#ifdef NOT_READY
-static void raw_irq_handle_tg_grab_err(struct mtk_raw_device *raw_dev,
-				       int dequeued_frame_seq_no);
-static void raw_irq_handle_dma_err(struct mtk_raw_device *raw_dev,
-				       int dequeued_frame_seq_no);
-static void raw_irq_handle_tg_overrun_err(struct mtk_raw_device *raw_dev,
-					  int dequeued_frame_seq_no);
+static void raw_handle_tg_grab_err(struct mtk_raw_device *raw_dev,
+				   int frame_seq_no);
+static void raw_handle_dma_err(struct mtk_raw_device *raw_dev);
+static void raw_handle_tg_overrun_err(struct mtk_raw_device *raw_dev,
+				      int frame_seq_no);
 static void raw_handle_error(struct mtk_raw_device *raw_dev,
 			     struct mtk_camsys_irq_info *data)
 {
 	int err_status = data->e.err_status;
-	int frame_idx_inner = data->frame_idx_inner;
+	int frame_idx = data->frame_idx_inner;
 
 	/* Show DMA errors in detail */
-	if (err_status & DMA_ERR_ST) {
+	if (err_status & FBIT(CAMCTL_DMA_ERR_ST))
+		raw_handle_dma_err(raw_dev);
 
-		/*
-		 * mtk_cam_dump_topdebug_rdyreq(dev,
-		 *                              raw_dev->base, raw_dev->yuv_base);
-		 */
-
-		raw_irq_handle_dma_err(raw_dev, frame_idx_inner);
-
-		/*
-		 * mtk_cam_dump_req_rdy_status(raw_dev->dev, raw_dev->base,
-		 *		    raw_dev->yuv_base);
-		 */
-
-		/*
-		 * mtk_cam_dump_dma_debug(raw_dev->dev, raw_dev->base + CAMDMATOP_BASE,
-		 *                        "IMGO_R1",
-		 *                        dbg_IMGO_R1, ARRAY_SIZE(dbg_IMGO_R1));
-		 */
-	}
 	/* Show TG register for more error detail*/
-	if (err_status & TG_GBERR_ST)
-		raw_irq_handle_tg_grab_err(raw_dev, frame_idx_inner);
+	if (err_status & FBIT(CAMCTL_TG_GRABERR_ST))
+		raw_handle_tg_grab_err(raw_dev, frame_idx);
 
-	if (err_status & TG_OVRUN_ST) {
-		if (raw_dev->overrun_debug_dump_cnt < 4) {
-			mtk_cam_dump_topdebug_rdyreq(raw_dev->dev,
-				raw_dev->base, raw_dev->yuv_base);
-			raw_dev->overrun_debug_dump_cnt++;
-		} else {
-			dev_dbg(raw_dev->dev, "%s: TG_OVRUN_ST repeated skip dump raw_id:%d\n",
-				__func__, raw_dev->id);
-		}
-		raw_irq_handle_tg_overrun_err(raw_dev, frame_idx_inner);
-	}
+	if (err_status & FBIT(CAMCTL_TG_OVRUN_ST))
+		raw_handle_tg_overrun_err(raw_dev, frame_idx);
 
-	if (err_status & INT_ST_MASK_CAM_DBG) {
+	if (err_status)
 		dev_info(raw_dev->dev, "%s: err_status:0x%x\n",
-			__func__, err_status);
-	}
-
+			 __func__, err_status);
 }
-#endif
 
 static bool is_sub_sample_sensor_timing(struct mtk_raw_device *dev)
 {
@@ -672,10 +666,8 @@ static irqreturn_t mtk_irq_raw(int irq, void *data)
 		irq_info.irq_type |= 1 << CAMSYS_IRQ_FRAME_SKIPPED;
 
 	/* Frame done */
-	if (irq_status & FBIT(CAMCTL_SW_PASS1_DONE_ST)) {
+	if (irq_status & FBIT(CAMCTL_SW_PASS1_DONE_ST))
 		irq_info.irq_type |= 1 << CAMSYS_IRQ_FRAME_DONE;
-		raw_dev->overrun_debug_dump_cnt = 0;
-	}
 
 	/* Frame start */
 	if (irq_status & FBIT(CAMCTL_TG_SOF_INT_ST) ||
@@ -811,45 +803,72 @@ static irqreturn_t mtk_thread_irq_raw(int irq, void *data)
 
 		/* error case */
 		if (unlikely(irq_info.irq_type == (1 << CAMSYS_IRQ_ERROR))) {
-#ifdef NOT_READY
 			raw_handle_error(raw_dev, &irq_info);
-#else
-			dev_info(raw_dev->dev, "TODO: raw_handle_error\n");
-#endif
 			continue;
 		}
 
-		/* normal case */
+		if (irq_info.irq_type & (1 << CAMSYS_IRQ_FRAME_DONE))
+			reset_error_handling(raw_dev);
 
+		/* normal case */
 		raw_process_fsm(raw_dev, &irq_info);
 
-		/* inform interrupt information to camsys controller */
-		mtk_cam_ctrl_isr_event(raw_dev->cam,
-				       CAMSYS_ENGINE_RAW, raw_dev->id,
-				       &irq_info);
+		do_engine_callback(raw_dev->engine_cb, isr_event,
+				   raw_dev->cam,
+				   CAMSYS_ENGINE_RAW, raw_dev->id, &irq_info);
 	}
 
 	return IRQ_HANDLED;
 }
 
-#ifdef NOT_READY
-void raw_irq_handle_tg_grab_err(struct mtk_raw_device *raw_dev,
-				int dequeued_frame_seq_no)
+#define MAX_RETRY_SENSOR_CNT	2
+static void raw_handle_tg_grab_err(struct mtk_raw_device *raw_dev,
+				   int frame_seq_no)
+{
+	int cnt;
+
+	cnt = raw_dev->tg_grab_err_handle_cnt++;
+
+	dev_info_ratelimited(raw_dev->dev, "%s: cnt=%d, seq 0x%x\n",
+			     __func__, cnt, frame_seq_no);
+
+	if (cnt <= MAX_RETRY_SENSOR_CNT)
+		dump_tg_setting(raw_dev, "GRAB_ERR");
+
+	if (cnt < MAX_RETRY_SENSOR_CNT)
+		do_engine_callback(raw_dev->engine_cb, reset_sensor,
+				   raw_dev->cam, CAMSYS_ENGINE_RAW, raw_dev->id,
+				   frame_seq_no);
+	else if (cnt == MAX_RETRY_SENSOR_CNT)
+		do_engine_callback(raw_dev->engine_cb, dump_request,
+				   raw_dev->cam, CAMSYS_ENGINE_RAW, raw_dev->id,
+				   frame_seq_no);
+}
+
+static void raw_handle_dma_err(struct mtk_raw_device *raw_dev)
 {
 	// TODO
 }
 
-void raw_irq_handle_dma_err(struct mtk_raw_device *raw_dev, int dequeued_frame_seq_no)
+static void raw_handle_tg_overrun_err(struct mtk_raw_device *raw_dev,
+				      int frame_seq_no)
 {
-	// TODO
-}
+	int cnt;
 
-static void raw_irq_handle_tg_overrun_err(struct mtk_raw_device *raw_dev,
-					  int dequeued_frame_seq_no)
-{
-	// TODO
+	cnt = raw_dev->tg_overrun_handle_cnt++;
+
+	dev_info_ratelimited(raw_dev->dev, "%s: cnt=%d, seq 0x%x\n",
+			     __func__, cnt, frame_seq_no);
+
+	if (cnt < MAX_RETRY_SENSOR_CNT)
+		do_engine_callback(raw_dev->engine_cb, reset_sensor,
+				   raw_dev->cam, CAMSYS_ENGINE_RAW, raw_dev->id,
+				   frame_seq_no);
+	else if (cnt == MAX_RETRY_SENSOR_CNT)
+		do_engine_callback(raw_dev->engine_cb, dump_request,
+				   raw_dev->cam, CAMSYS_ENGINE_RAW, raw_dev->id,
+				   frame_seq_no);
 }
-#endif
 
 static int mtk_raw_pm_suspend_prepare(struct mtk_raw_device *dev)
 {
@@ -1613,3 +1632,9 @@ int raw_to_tg_idx(int raw_id)
 	return raw_id + cammux_id_raw_start;
 }
 
+void raw_dump_debug_status(struct mtk_raw_device *dev)
+{
+	dump_seqence(dev);
+	dump_cq_setting(dev);
+	dump_tg_setting(dev, "debug");
+}

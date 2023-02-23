@@ -2655,52 +2655,6 @@ int mtk_cam_mraw_link_validate(struct v4l2_subdev *sd,
 	return ret;
 }
 
-#ifdef NOT_READY
-static int mtk_cam_debug_fs_init(struct mtk_cam_device *cam)
-{
-	/**
-	 * The dump buffer size depdends on the meta buffer size
-	 * which is variable among devices using different type of sensors
-	 * , e.g. PD's statistic buffers.
-	 */
-	int dump_mem_size = MTK_CAM_DEBUG_DUMP_HEADER_MAX_SIZE +
-			    CQ_BUF_SIZE +
-			    mtk_cam_get_meta_size(MTKCAM_IPI_RAW_META_STATS_CFG) +
-			    RAW_STATS_CFG_VARIOUS_SIZE +
-			    sizeof(struct mtkcam_ipi_frame_param) +
-			    sizeof(struct mtkcam_ipi_config_param) *
-			    RAW_PIPELINE_NUM;
-
-	cam->debug_fs = mtk_cam_get_debugfs();
-	if (!cam->debug_fs)
-		return 0;
-
-	cam->debug_fs->ops->init(cam->debug_fs, cam, dump_mem_size);
-	cam->debug_wq = alloc_ordered_workqueue(dev_name(cam->dev),
-						__WQ_LEGACY | WQ_MEM_RECLAIM |
-						WQ_FREEZABLE);
-	cam->debug_exception_wq = alloc_ordered_workqueue(dev_name(cam->dev),
-						__WQ_LEGACY | WQ_MEM_RECLAIM |
-						WQ_FREEZABLE);
-	init_waitqueue_head(&cam->debug_exception_waitq);
-
-	if (!cam->debug_wq || !cam->debug_exception_wq)
-		return -EINVAL;
-	return 0;
-}
-
-static void mtk_cam_debug_fs_deinit(struct mtk_cam_device *cam)
-{
-	drain_workqueue(cam->debug_wq);
-	destroy_workqueue(cam->debug_wq);
-	drain_workqueue(cam->debug_exception_wq);
-	destroy_workqueue(cam->debug_exception_wq);
-
-	if (cam->debug_fs)
-		cam->debug_fs->ops->deinit(cam->debug_fs);
-}
-#endif
-
 bool mtk_cam_is_any_streaming(struct mtk_cam_device *cam)
 {
 	bool res;

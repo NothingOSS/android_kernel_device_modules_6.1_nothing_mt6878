@@ -13,7 +13,6 @@
 
 struct mtk_cam_request_stream_data;
 
-#define RAW_PIPELINE_NUM 3 //TODO: remove
 #define SCQ_DEADLINE_MS  15 // ~1/2 frame length
 #define SCQ_DEADLINE_MS_STAGGER  30 // ~1/2 frame length
 #define SCQ_DEFAULT_CLK_RATE 208 // default 208MHz
@@ -52,6 +51,7 @@ struct mtk_raw_device {
 	struct kfifo	msg_fifo;
 	atomic_t	is_fifo_overflow;
 
+	struct engine_callback *engine_cb;
 	struct engine_fsm fsm;
 	struct apply_cq_ref *cq_ref;
 
@@ -72,7 +72,10 @@ struct mtk_raw_device {
 	u8 time_shared_busy;
 	u8 time_shared_busy_ctx_id;
 	atomic_t vf_en;
-	int overrun_debug_dump_cnt;
+
+	/* error handling related */
+	int tg_overrun_handle_cnt;
+	int tg_grab_err_handle_cnt;
 
 	int default_printk_cnt;
 };
@@ -100,23 +103,9 @@ struct mtk_ae_debug_data {
 	u64 LTM_Sum[4];
 };
 
-#ifdef NOT_READY
-/*
- * struct mtk_raw - the raw information
- *
- * //FIXME for raw info comments
- *
- */
-struct mtk_raw {
-	struct device *cam_dev;
-	struct device *devs[RAW_PIPELINE_NUM];
-	struct device *yuvs[RAW_PIPELINE_NUM];
-	struct mtk_raw_pipeline pipelines[RAW_PIPELINE_NUM];
-};
-#endif
-
 /* CQ setting */
-void initialize(struct mtk_raw_device *dev, int is_slave);
+void initialize(struct mtk_raw_device *dev, int is_slave,
+		struct engine_callback *cb);
 void subsample_enable(struct mtk_raw_device *dev, int ratio);
 void stagger_enable(struct mtk_raw_device *dev);
 void stagger_disable(struct mtk_raw_device *dev);
@@ -138,6 +127,7 @@ void immediate_stream_off(struct mtk_raw_device *dev);
 void trigger_rawi_r2(struct mtk_raw_device *dev);
 void trigger_rawi_r5(struct mtk_raw_device *dev);
 void trigger_adl(struct mtk_raw_device *dev);
+void raw_dump_debug_status(struct mtk_raw_device *dev);
 
 /* reset */
 void reset(struct mtk_raw_device *dev);

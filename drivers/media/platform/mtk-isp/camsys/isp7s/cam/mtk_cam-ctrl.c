@@ -159,7 +159,7 @@ static void dump_runtime_info(struct mtk_cam_ctrl_runtime_info *info)
 	if (!info->apply_hw_by_FSM)
 		pr_info("runtime: by_FSM is off\n");
 
-	pr_info("runtime: ack %d out/in %d/%d\n",
+	pr_info("runtime: ack 0x%x out/in 0x%x/0x%x\n",
 		info->ack_seq_no, info->outer_seq_no, info->inner_seq_no);
 }
 
@@ -205,13 +205,13 @@ static void debug_send_event(const struct transition_param *p)
 		pr_info("[%s] runtime: by_FSM is off\n", __func__);
 
 	if (print_ts)
-		pr_info("[%s] out/in:%d/%d event: %s@%llu (sof %llu)\n",
+		pr_info("[%s] out/in:0x%x/0x%x event: %s@%llu (sof %llu)\n",
 			__func__,
 			info->outer_seq_no, info->inner_seq_no,
 			str_event(p->event),
 			p->event_ts, info->sof_ts_ns);
 	else
-		pr_info("[%s] out/in:%d/%d event: %s\n",
+		pr_info("[%s] out/in:0x%x/0x%x event: %s\n",
 			__func__,
 			info->outer_seq_no, info->inner_seq_no,
 			str_event(p->event));
@@ -265,7 +265,7 @@ static void handle_meta1_done(struct mtk_cam_ctrl *ctrl, int seq_no)
 	job = mtk_cam_ctrl_get_job(ctrl, cond_frame_no_belong, &seq_no);
 
 	if (!job) {
-		pr_info("%s: warn. job not found seq %d\n",
+		pr_info("%s: warn. job not found seq 0x%x\n",
 			__func__,  seq_no);
 		return;
 	}
@@ -293,7 +293,7 @@ static void handle_frame_done(struct mtk_cam_ctrl *ctrl,
 	 *    need to send_event IRQ_FRAME_DONE for m2m trigger
 	 */
 	if (!job) {
-		pr_info("%s: warn. job not found seq %d\n",
+		pr_info("%s: warn. job not found seq 0x%x\n",
 			__func__,  seq_no);
 		return;
 	}
@@ -382,9 +382,6 @@ static void handle_engine_frame_start(struct mtk_cam_ctrl *ctrl,
 		int frame_sync_no;
 		int req_no;
 
-		if (CAM_DEBUG_ENABLED(CTRL))
-			pr_info("%s: first vsync\n", __func__);
-
 		frame_sync_no = seq_from_fh_cookie(irq_info->frame_idx_inner);
 
 		if (frame_no_to_fs_req_no(ctrl, frame_sync_no, &req_no))
@@ -393,11 +390,9 @@ static void handle_engine_frame_start(struct mtk_cam_ctrl *ctrl,
 		mtk_cam_ctrl_send_event(ctrl, CAMSYS_EVENT_IRQ_F_VSYNC);
 	}
 
-	if (is_last) {
-		if (CAM_DEBUG_ENABLED(CTRL))
-			pr_info("%s: last vsync\n", __func__);
+	if (is_last)
 		mtk_cam_ctrl_send_event(ctrl, CAMSYS_EVENT_IRQ_L_SOF);
-	}
+
 }
 
 static int mtk_cam_event_handle_raw(struct mtk_cam_ctrl *ctrl,
@@ -525,9 +520,8 @@ static int mtk_camsys_event_handle_mraw(struct mtk_cam_ctrl *ctrl,
 }
 
 int mtk_cam_ctrl_isr_event(struct mtk_cam_device *cam,
-			 enum MTK_CAMSYS_ENGINE_TYPE engine_type,
-			 unsigned int engine_id,
-			 struct mtk_camsys_irq_info *irq_info)
+			   int engine_type, unsigned int engine_id,
+			   struct mtk_camsys_irq_info *irq_info)
 {
 	unsigned int ctx_id = ctx_from_fh_cookie(irq_info->frame_idx);
 	struct mtk_cam_ctrl *cam_ctrl = &cam->ctxs[ctx_id].cam_ctrl;
@@ -973,6 +967,7 @@ int vsync_update(struct vsync_collector *c,
 	if (CAM_DEBUG_ENABLED(CTRL))
 		pr_info("%s: vsync desired/collected/coming %x/%x/%x\n",
 			__func__, c->desired, c->collected, (coming & c->desired));
+
 	res->is_first = !(c->collected & (c->collected - 1));
 	res->is_last = c->collected == c->desired;
 
@@ -998,6 +993,28 @@ struct watchdog_debug_work {
 	struct mtk_cam_watchdog *wd;
 	bool seninf_check_timeout;
 };
+
+static void mtk_cam_ctrl_dump_first_job(struct mtk_cam_ctrl *ctrl, int *seq)
+{
+	struct mtk_cam_job *job;
+
+	job = mtk_cam_ctrl_get_job(ctrl, cond_first_job, 0);
+	if (job) {
+		int seq_no;
+
+		if (seq)
+			seq_no = *seq;
+		else {
+			spin_lock(&ctrl->info_lock);
+			seq_no = ctrl->r_info.inner_seq_no;
+			spin_unlock(&ctrl->info_lock);
+		}
+
+		call_jobop(job, dump, seq_no);
+		mtk_cam_job_put(job);
+	} else
+		pr_info("%s: no job to dump", __func__);
+}
 
 static void mtk_cam_watchdog_sensor_worker(struct work_struct *work)
 {
@@ -1056,7 +1073,6 @@ static void mtk_cam_watchdog_job_worker(struct work_struct *work)
 	struct mtk_cam_watchdog *wd;
 	struct mtk_cam_ctrl *ctrl;
 	struct mtk_cam_ctx *ctx;
-	struct mtk_cam_job *job;
 
 	dbg_work = container_of(work, struct watchdog_debug_work, work);
 	wd = dbg_work->wd;
@@ -1068,20 +1084,7 @@ static void mtk_cam_watchdog_job_worker(struct work_struct *work)
 	if (!ctx)
 		goto EXIT_WORK;
 
-	job = mtk_cam_ctrl_get_job(ctrl, cond_first_job, 0);
-	if (job) {
-		int seq_no;
-
-		spin_lock(&ctrl->info_lock);
-		seq_no = ctrl->r_info.inner_seq_no;
-		spin_unlock(&ctrl->info_lock);
-
-		pr_info("%s: dump job req%d seq%d\n",
-			__func__, job->req_seq, seq_no);
-
-		call_jobop(job, dump, seq_no);
-	}
-	mtk_cam_job_put(job);
+	mtk_cam_ctrl_dump_first_job(ctrl, NULL);
 
 EXIT_WORK:
 	complete(&wd->work_complete);
@@ -1120,14 +1123,41 @@ static int mtk_cam_watchdog_schedule_job_dump(struct mtk_cam_watchdog *wd)
 	return watchdog_schedule_debug_work(wd, mtk_cam_watchdog_job_worker, 0);
 }
 
+static int try_launch_watchdog_sensor_worker(struct mtk_cam_watchdog *wd,
+					     bool check_timeout)
+{
+	struct mtk_cam_ctrl *ctrl =
+		container_of(wd, struct mtk_cam_ctrl, watchdog);
+	struct mtk_cam_ctx *ctx = ctrl->ctx;
+	bool completed;
+	int reset_cnt = -1;
+
+	completed = try_wait_for_completion(&wd->work_complete);
+	if (!completed)
+		goto SKIP_SCHEDULE_WORK;
+
+	reset_cnt = atomic_inc_return(&wd->reset_sensor_cnt);
+	if (reset_cnt > WATCHDOG_MAX_SENSOR_RETRY_CNT) {
+		complete(&wd->work_complete);
+		goto SKIP_SCHEDULE_WORK;
+	}
+
+	mtk_cam_watchdog_schedule_sensor_reset(wd, check_timeout);
+	return 0;
+
+SKIP_SCHEDULE_WORK:
+	dev_info_ratelimited(ctx->cam->dev,
+		 "%s:ctx-%d skip schedule watchdog work running %d, retry cnt %d\n",
+		 __func__, ctx->stream_id, !completed, reset_cnt);
+	return -1;
+}
+
 static int mtk_cam_watchdog_monitor_vsync(struct mtk_cam_watchdog *wd)
 {
 	struct mtk_cam_ctrl *ctrl =
 		container_of(wd, struct mtk_cam_ctrl, watchdog);
 	struct mtk_cam_ctx *ctx = ctrl->ctx;
 	u64 new_sof;
-	bool completed;
-	int reset_cnt = -1;
 
 	if (!ctx)
 		return -1;
@@ -1140,24 +1170,7 @@ static int mtk_cam_watchdog_monitor_vsync(struct mtk_cam_watchdog *wd)
 		return 0;
 	}
 
-	completed = try_wait_for_completion(&wd->work_complete);
-	if (!completed)
-		goto SKIP_SCHEDULE_WORK;
-
-	reset_cnt = atomic_inc_return(&wd->reset_sensor_cnt);
-	if (reset_cnt > WATCHDOG_MAX_SENSOR_RETRY_CNT) {
-		complete(&wd->work_complete);
-		goto SKIP_SCHEDULE_WORK;
-	}
-
-	mtk_cam_watchdog_schedule_sensor_reset(wd, 1);
-	return -1;
-
-SKIP_SCHEDULE_WORK:
-	dev_info(ctx->cam->dev,
-		 "%s:ctx-%d skip schedule watchdog work running %d, retry cnt %d\n",
-		 __func__, ctx->stream_id,
-		 !completed, reset_cnt);
+	try_launch_watchdog_sensor_worker(wd, 1);
 	return -1;
 }
 
@@ -1204,7 +1217,7 @@ static int mtk_cam_watchdog_monitor_job(struct mtk_cam_watchdog *wd)
 	mtk_cam_watchdog_schedule_job_dump(wd);
 
 SKIP_SCHEDULE_WORK:
-	dev_info(ctx->cam->dev,
+	dev_info_ratelimited(ctx->cam->dev,
 		 "%s:ctx-%d req_seq %d skip schedule watchdog work running %d, dumped %d\n",
 		 __func__, ctx->stream_id, req_seq,
 		 !completed, atomic_read(&wd->dump_job));
@@ -1336,4 +1349,44 @@ void mtk_cam_watchdog_stop(struct mtk_cam_watchdog *wd)
 
 	wait_for_completion(&wd->monitor_complete);
 	wait_for_completion(&wd->work_complete);
+}
+
+int mtk_cam_ctrl_reset_sensor(struct mtk_cam_device *cam,
+			      int engine_type, unsigned int engine_id,
+			      int inner_cookie)
+{
+	unsigned int ctx_id = ctx_from_fh_cookie(inner_cookie);
+	struct mtk_cam_ctrl *ctrl = &cam->ctxs[ctx_id].cam_ctrl;
+	bool check_timeout = 0; /* not to check if timeout */
+
+	dev_info(cam->dev, "%s: engine %d id %d seq 0x%x\n",
+		 __func__, engine_type, engine_id, inner_cookie);
+
+	if (mtk_cam_ctrl_get(ctrl))
+		return 0;
+
+	try_launch_watchdog_sensor_worker(&ctrl->watchdog, check_timeout);
+
+	mtk_cam_ctrl_put(ctrl);
+	return 0;
+}
+
+int mtk_cam_ctrl_dump_request(struct mtk_cam_device *cam,
+			      int engine_type, unsigned int engine_id,
+			      int inner_cookie)
+{
+	unsigned int ctx_id = ctx_from_fh_cookie(inner_cookie);
+	int seq = seq_from_fh_cookie(inner_cookie);
+	struct mtk_cam_ctrl *ctrl = &cam->ctxs[ctx_id].cam_ctrl;
+
+	dev_info(cam->dev, "%s: engine %d id %d seq 0x%x\n",
+		 __func__, engine_type, engine_id, inner_cookie);
+
+	if (mtk_cam_ctrl_get(ctrl))
+		return 0;
+
+	mtk_cam_ctrl_dump_first_job(ctrl, &seq);
+
+	mtk_cam_ctrl_put(ctrl);
+	return 0;
 }
