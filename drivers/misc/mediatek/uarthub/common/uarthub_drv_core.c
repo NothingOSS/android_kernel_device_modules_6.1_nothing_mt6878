@@ -299,6 +299,7 @@ static int uarthub_core_init(void)
 	intfhub_base_remap_addr =
 		(void __iomem *) UARTHUB_INTFHUB_BASE_ADDR(reg_base_addr.vir_addr);
 
+	uarthub_core_assert_state_ctrl(1);
 	uarthub_fb_notifier.notifier_call = uarthub_fb_notifier_callback;
 	ret = mtk_disp_notifier_register("uarthub_driver", &uarthub_fb_notifier);
 	if (ret)
