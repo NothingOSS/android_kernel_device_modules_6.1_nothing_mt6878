@@ -699,7 +699,7 @@ static int scpsys_power_off(struct generic_pm_domain *genpd)
 	u32 val;
 	int ret, tmp;
 
-	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_BYPASS_INIT_OFF)) {
+	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_BYPASS_OFF)) {
 		dev_err(scp->dev, "bypass power off %s for bringup\n", genpd->name);
 		return 0;
 	}
