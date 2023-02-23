@@ -1394,7 +1394,7 @@ static irqreturn_t mtk_irq_mraw(int irq, void *data)
 		irq_info.fbc_cnt = (fbc_ctrl2_imgo & 0x1FF0000) >> 16;
 		irq_info.write_cnt = (fbc_ctrl2_imgo & 0xFF00) >> 8;
 #endif
-		dev_info(dev, "sof block cnt:%d\n", mraw_dev->sof_count);
+		dev_dbg(dev, "sof cnt:%d\n", mraw_dev->sof_count);
 	}
 	/* CQ done */
 	if (irq_status6 & MRAWCTL_CQ_SUB_THR0_DONE_ST) {
