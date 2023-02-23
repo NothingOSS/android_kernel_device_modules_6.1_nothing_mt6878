@@ -26,12 +26,35 @@
  */
 #define MTK_BTAG_FEATURE_MICTX_IOSTAT
 
-#define BLOCKTAG_PIDLOG_ENTRIES 50
-#define BLOCKTAG_NAME_LEN      16
-#define BLOCKTAG_PRINT_LEN     4096
+#define BTAG_PIDLOG_ENTRIES 50
+#define BTAG_NAME_LEN      16
+#define BTAG_PRINT_LEN     4096
 
 #define BTAG_RT(btag)     (btag ? &btag->rt : NULL)
 #define BTAG_CTX(btag)    (btag ? btag->ctx.priv : NULL)
+
+/*
+ * snprintf may return a value of size or "more" to indicate
+ * that the output was truncated, thus be careful of "more"
+ * case.
+ */
+#define BTAG_PRINTF(buff, size, evt, fmt, args...) \
+do { \
+	if ((buff) && (size) && *(size)) { \
+		unsigned long var = snprintf(*(buff), *(size), fmt, ##args); \
+		if (var > 0) { \
+			if (var > *(size)) \
+				var = *(size); \
+			*(size) -= var; \
+			*(buff) += var; \
+		} \
+	} \
+	if (evt) \
+		seq_printf(evt, fmt, ##args); \
+	if (!(buff) && !(evt)) { \
+		pr_info(fmt, ##args); \
+	} \
+} while (0)
 
 #if IS_ENABLED(CONFIG_MTK_USE_RESERVED_EXT_MEM)
 extern void *extmem_malloc_page_align(size_t bytes);
@@ -64,7 +87,7 @@ struct mtk_btag_proc_pidlogger_entry {
 };
 
 struct mtk_btag_proc_pidlogger {
-	struct mtk_btag_proc_pidlogger_entry info[BLOCKTAG_PIDLOG_ENTRIES];
+	struct mtk_btag_proc_pidlogger_entry info[BTAG_PIDLOG_ENTRIES];
 };
 
 struct tmp_proc_pidlogger_entry {
@@ -72,7 +95,7 @@ struct tmp_proc_pidlogger_entry {
 	__u32 length;
 };
 struct tmp_proc_pidlogger {
-	struct tmp_proc_pidlogger_entry info[BLOCKTAG_PIDLOG_ENTRIES];
+	struct tmp_proc_pidlogger_entry info[BTAG_PIDLOG_ENTRIES];
 };
 
 struct mtk_btag_mictx_id {
@@ -224,7 +247,7 @@ struct mtk_btag_vops {
 /* BlockTag */
 struct mtk_blocktag {
 	struct list_head list;
-	char name[BLOCKTAG_NAME_LEN];
+	char name[BTAG_NAME_LEN];
 	enum mtk_btag_storage_type storage_type;
 	struct mtk_btag_ringtrace rt;
 

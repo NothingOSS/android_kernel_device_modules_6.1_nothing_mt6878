@@ -6,23 +6,6 @@
 #include <linux/sched/clock.h>
 #include "blocktag-pm-trace.h"
 
-#define SPREAD_PRINTF(buff, size, evt, fmt, args...) \
-do { \
-	if (buff && size && *(size)) { \
-		unsigned long var = snprintf(*(buff), *(size), fmt, ##args); \
-		if (var > 0) { \
-			if (var > *(size)) \
-				var = *(size); \
-			*(size) -= var; \
-			*(buff) += var; \
-		} \
-	} \
-	if (evt) { \
-		seq_printf(evt, fmt, ##args); \
-	} \
-} while (0)
-
-
 struct blk_pm_logs_s pm_traces;
 
 static const char *event_name(int event)
@@ -306,20 +289,20 @@ void mtk_btag_blk_pm_show(char **buff, unsigned long *size,
 	spin_lock_irqsave(&pm_traces.lock, flags);
 	idx = pm_traces.tail;
 
-	SPREAD_PRINTF(buff, size, seq,
-		"time,pid,func,rpm_status,pm_only,freeze_depth,dying,ret/err\n");
+	BTAG_PRINTF(buff, size, seq,
+		    "time,pid,func,rpm_status,pm_only,freeze_depth,dying,ret/err\n");
 	while (idx >= 0) {
 		tr = &pm_traces.trace[idx];
-		SPREAD_PRINTF(buff, size, seq,
-			"%lld,%d,%s,%s,%d,%d,%d,%d\n",
-			tr->ns_time,
-			tr->pid,
-			event_name(tr->event_type),
-			rpm_status_str(tr->rpm_status),
-			tr->pm_only,
-			tr->mq_freeze_depth,
-			tr->dying,
-			tr->ret);
+		BTAG_PRINTF(buff, size, seq,
+			    "%lld,%d,%s,%s,%d,%d,%d,%d\n",
+			    tr->ns_time,
+			    tr->pid,
+			    event_name(tr->event_type),
+			    rpm_status_str(tr->rpm_status),
+			    tr->pm_only,
+			    tr->mq_freeze_depth,
+			    tr->dying,
+			    tr->ret);
 		if (idx == pm_traces.head)
 			break;
 		idx = idx ? idx - 1 : BLK_PM_MAX_LOG - 1;

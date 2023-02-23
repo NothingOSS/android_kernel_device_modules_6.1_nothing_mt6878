@@ -228,11 +228,11 @@ err:
 static int mtk_btag_earaio_ctrl_sub_show(struct seq_file *s, void *data)
 {
 	struct mtk_blocktag *btag;
-	char name[BLOCKTAG_NAME_LEN] = {' '};
+	char name[BTAG_NAME_LEN] = {' '};
 
 	btag = mtk_btag_find_by_type(earaio_ctrl.mictx_id.storage);
 	if (btag)
-		strncpy(name, btag->name, BLOCKTAG_NAME_LEN-1);
+		strncpy(name, btag->name, BTAG_NAME_LEN - 1);
 
 	seq_puts(s, "<MTK EARA-IO Control Unit>\n");
 	seq_printf(s, "Monitor Storage Type: %s\n", name);

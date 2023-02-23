@@ -39,29 +39,6 @@
 #include "blocktag-pm-trace.h"
 #endif
 
-/*
- * snprintf may return a value of size or "more" to indicate
- * that the output was truncated, thus be careful of "more"
- * case.
- */
-#define SPREAD_PRINTF(buff, size, evt, fmt, args...) \
-do { \
-	if (buff && size && *(size)) { \
-		unsigned long var = snprintf(*(buff), *(size), fmt, ##args); \
-		if (var > 0) { \
-			if (var > *(size)) \
-				var = *(size); \
-			*(size) -= var; \
-			*(buff) += var; \
-		} \
-	} \
-	if (evt) \
-		seq_printf(evt, fmt, ##args); \
-	if (!buff && !evt) { \
-		pr_info(fmt, ##args); \
-	} \
-} while (0)
-
 #define mtk_btag_pidlog_index(p) \
 	((unsigned long)(__page_to_pfn(p)) - \
 	(dram_start_addr >> PAGE_SHIFT))
@@ -95,7 +72,7 @@ static struct mtk_blocktag *mtk_btag_find_by_name(const char *name)
 
 	rcu_read_lock();
 	list_for_each_entry_rcu(btag, &mtk_btag_list, list) {
-		if (!strncmp(btag->name, name, BLOCKTAG_NAME_LEN-1)) {
+		if (!strncmp(btag->name, name, BTAG_NAME_LEN - 1)) {
 			rcu_read_unlock();
 			return btag;
 		}
@@ -134,7 +111,7 @@ static size_t mtk_btag_seq_pidlog_usedmem(char **buff, unsigned long *size,
 	if (!IS_ERR_OR_NULL(mtk_btag_pagelogger)) {
 		size_l = (sizeof(struct page_pidlogger)
 			* (mtk_btag_system_dram_size >> PAGE_SHIFT));
-		SPREAD_PRINTF(buff, size, seq,
+		BTAG_PRINTF(buff, size, seq,
 		"page pid logger buffer: %llu entries * %zu = %zu bytes\n",
 			(mtk_btag_system_dram_size >> PAGE_SHIFT),
 			sizeof(struct page_pidlogger),
@@ -150,7 +127,7 @@ void mtk_btag_pidlog_insert(struct mtk_btag_proc_pidlogger *pidlog, bool write,
 	struct mtk_btag_proc_pidlogger_entry_rw *prw;
 	struct tmp_proc_pidlogger_entry *te;
 	int pe_idx, te_idx;
-	int last_te_idx = BLOCKTAG_PIDLOG_ENTRIES - 1;
+	int last_te_idx = BTAG_PIDLOG_ENTRIES - 1;
 
 	for (; last_te_idx >= 0; last_te_idx--)
 		if (tmplog->info[last_te_idx].pid)
@@ -158,7 +135,7 @@ void mtk_btag_pidlog_insert(struct mtk_btag_proc_pidlogger *pidlog, bool write,
 
 	for (te_idx = 0; te_idx <= last_te_idx; te_idx++) {
 		te = &tmplog->info[te_idx];
-		for (pe_idx = 0; pe_idx < BLOCKTAG_PIDLOG_ENTRIES; pe_idx++) {
+		for (pe_idx = 0; pe_idx < BTAG_PIDLOG_ENTRIES; pe_idx++) {
 			pe = &pidlog->info[pe_idx];
 			if (te->pid == pe->pid || pe->pid == 0) {
 				pe->pid = te->pid;
@@ -207,7 +184,7 @@ static void mtk_btag_pidlog_commit_bio(struct bio_vec *bvec, __u32 *total_len,
 		*top_len += bvec->bv_len;
 
 	pid = abs(pid);
-	for (i = 0; i < BLOCKTAG_PIDLOG_ENTRIES; i++) {
+	for (i = 0; i < BTAG_PIDLOG_ENTRIES; i++) {
 		te = &tmplog->info[i];
 		if ((te->pid == pid) || (te->pid == 0)) {
 			te->pid = pid;
@@ -286,7 +263,7 @@ void mtk_btag_pidlog_eval(struct mtk_btag_proc_pidlogger *pl,
 {
 	int i;
 
-	for (i = 0; i < BLOCKTAG_PIDLOG_ENTRIES; i++) {
+	for (i = 0; i < BTAG_PIDLOG_ENTRIES; i++) {
 		if (ctx_pl->info[i].pid == 0)
 			break;
 	}
@@ -423,8 +400,8 @@ static void mtk_btag_seq_time(char **buff, unsigned long *size,
 	__u32 nsec;
 
 	nsec = do_div(time, 1000000000);
-	SPREAD_PRINTF(buff, size, seq, "[%5lu.%06lu]", (unsigned long)time,
-		(unsigned long)nsec/1000);
+	BTAG_PRINTF(buff, size, seq, "[%5lu.%06lu]", (unsigned long)time,
+		    (unsigned long)nsec/1000);
 }
 
 #define biolog_fmt "wl:%d%%,%lld,%lld,%d.vm:%lld,%lld,%lld,%lld,%lld,%lld." \
@@ -442,40 +419,40 @@ static void mtk_btag_seq_trace(char **buff, unsigned long *size,
 		return;
 
 	mtk_btag_seq_time(buff, size, seq, tr->time);
-	SPREAD_PRINTF(buff, size, seq, "%s.q:%d.", name, tr->qid);
+	BTAG_PRINTF(buff, size, seq, "%s.q:%d.", name, tr->qid);
 
 	if (tr->throughput.r.usage)
-		SPREAD_PRINTF(buff, size, seq, biolog_fmt_rt,
-			tr->throughput.r.speed,
-			tr->throughput.r.size,
-			tr->throughput.r.usage);
+		BTAG_PRINTF(buff, size, seq, biolog_fmt_rt,
+			    tr->throughput.r.speed,
+			    tr->throughput.r.size,
+			    tr->throughput.r.usage);
 	if (tr->throughput.w.usage)
-		SPREAD_PRINTF(buff, size, seq, biolog_fmt_wt,
-			tr->throughput.w.speed,
-			tr->throughput.w.size,
-			tr->throughput.w.usage);
+		BTAG_PRINTF(buff, size, seq, biolog_fmt_wt,
+			    tr->throughput.w.speed,
+			    tr->throughput.w.size,
+			    tr->throughput.w.usage);
 
-	SPREAD_PRINTF(buff, size, seq, biolog_fmt,
-		tr->workload.percent,
-		tr->workload.usage,
-		tr->workload.period,
-		tr->workload.count,
-		tr->vmstat.file_pages,
-		tr->vmstat.file_dirty,
-		tr->vmstat.dirtied,
-		tr->vmstat.writeback,
-		tr->vmstat.written,
-		tr->vmstat.fmflt,
-		tr->cpu.user,
-		tr->cpu.nice,
-		tr->cpu.system,
-		tr->cpu.idle,
-		tr->cpu.iowait,
-		tr->cpu.irq,
-		tr->cpu.softirq,
-		tr->pid);
+	BTAG_PRINTF(buff, size, seq, biolog_fmt,
+		    tr->workload.percent,
+		    tr->workload.usage,
+		    tr->workload.period,
+		    tr->workload.count,
+		    tr->vmstat.file_pages,
+		    tr->vmstat.file_dirty,
+		    tr->vmstat.dirtied,
+		    tr->vmstat.writeback,
+		    tr->vmstat.written,
+		    tr->vmstat.fmflt,
+		    tr->cpu.user,
+		    tr->cpu.nice,
+		    tr->cpu.system,
+		    tr->cpu.idle,
+		    tr->cpu.iowait,
+		    tr->cpu.irq,
+		    tr->cpu.softirq,
+		    tr->pid);
 
-	for (i = 0; i < BLOCKTAG_PIDLOG_ENTRIES; i++) {
+	for (i = 0; i < BTAG_PIDLOG_ENTRIES; i++) {
 		struct mtk_btag_proc_pidlogger_entry *pe;
 
 		pe = &tr->pidlog.info[i];
@@ -483,14 +460,14 @@ static void mtk_btag_seq_trace(char **buff, unsigned long *size,
 		if (pe->pid == 0)
 			break;
 
-		SPREAD_PRINTF(buff, size, seq, pidlog_fmt,
-			pe->pid,
-			pe->w.count,
-			pe->w.length,
-			pe->r.count,
-			pe->r.length);
+		BTAG_PRINTF(buff, size, seq, pidlog_fmt,
+			    pe->pid,
+			    pe->w.count,
+			    pe->w.length,
+			    pe->r.count,
+			    pe->r.length);
 	}
-	SPREAD_PRINTF(buff, size, seq, ".\n");
+	BTAG_PRINTF(buff, size, seq, ".\n");
 }
 
 static void mtk_btag_seq_debug_show_ringtrace(char **buff, unsigned long *size,
@@ -506,8 +483,8 @@ static void mtk_btag_seq_debug_show_ringtrace(char **buff, unsigned long *size,
 	if (rt->index >= rt->max || rt->index < 0)
 		rt->index = 0;
 
-	SPREAD_PRINTF(buff, size, seq, "<%s: blocktag trace %s>\n",
-		btag->name, BLOCKIO_MIN_VER);
+	BTAG_PRINTF(buff, size, seq, "<%s: blocktag trace %s>\n",
+		    btag->name, BLOCKIO_MIN_VER);
 
 	spin_lock_irqsave(&rt->lock, flags);
 	end = (rt->index > 0) ? rt->index-1 : rt->max-1;
@@ -526,15 +503,15 @@ static size_t mtk_btag_seq_sub_show_usedmem(char **buff, unsigned long *size,
 	size_t used_mem = 0;
 	size_t size_l;
 
-	SPREAD_PRINTF(buff, size, seq, "<%s: memory usage>\n", btag->name);
-	SPREAD_PRINTF(buff, size, seq, "%s blocktag: %zu bytes\n", btag->name,
-		sizeof(struct mtk_blocktag));
+	BTAG_PRINTF(buff, size, seq, "<%s: memory usage>\n", btag->name);
+	BTAG_PRINTF(buff, size, seq, "%s blocktag: %zu bytes\n", btag->name,
+		    sizeof(struct mtk_blocktag));
 	used_mem += sizeof(struct mtk_blocktag);
 
 	if (BTAG_RT(btag)) {
 		size_l = (sizeof(struct mtk_btag_trace) * BTAG_RT(btag)->max);
-		SPREAD_PRINTF(buff, size, seq,
-		"%s debug ring buffer: %d traces * %zu = %zu bytes\n",
+		BTAG_PRINTF(buff, size, seq,
+			"%s debug ring buffer: %d traces * %zu = %zu bytes\n",
 			btag->name,
 			BTAG_RT(btag)->max,
 			sizeof(struct mtk_btag_trace),
@@ -544,29 +521,29 @@ static size_t mtk_btag_seq_sub_show_usedmem(char **buff, unsigned long *size,
 
 	if (BTAG_CTX(btag)) {
 		size_l = btag->ctx.size * btag->ctx.count;
-		SPREAD_PRINTF(buff, size, seq,
-			"%s queue context: %d contexts * %d = %zu bytes\n",
-			btag->name,
-			btag->ctx.count,
-			btag->ctx.size,
-			size_l);
+		BTAG_PRINTF(buff, size, seq,
+			    "%s queue context: %d contexts * %d = %zu bytes\n",
+			    btag->name,
+			    btag->ctx.count,
+			    btag->ctx.size,
+			    size_l);
 		used_mem += size_l;
 	}
 
 	size_l = btag->ctx.mictx.nr_list * (sizeof(struct mtk_btag_mictx) +
 			sizeof(struct mtk_btag_mictx_data) * btag->ctx.count);
-	SPREAD_PRINTF(buff, size, seq,
-		"%s mictx list: %d mictx * (%zu + %d * %zu) = %zu bytes\n",
-			btag->name,
-			btag->ctx.mictx.nr_list,
-			sizeof(struct mtk_btag_mictx),
-			btag->ctx.count,
-			sizeof(struct mtk_btag_mictx_data),
-			size_l);
+	BTAG_PRINTF(buff, size, seq,
+		    "%s mictx list: %d mictx * (%zu + %d * %zu) = %zu bytes\n",
+		    btag->name,
+		    btag->ctx.mictx.nr_list,
+		    sizeof(struct mtk_btag_mictx),
+		    btag->ctx.count,
+		    sizeof(struct mtk_btag_mictx_data),
+		    size_l);
 	used_mem += size_l;
 
-	SPREAD_PRINTF(buff, size, seq,
-		"%s sub-total: %zu KB\n", btag->name, used_mem >> 10);
+	BTAG_PRINTF(buff, size, seq,
+		    "%s sub-total: %zu KB\n", btag->name, used_mem >> 10);
 	return used_mem;
 }
 
@@ -670,65 +647,65 @@ static void mtk_btag_seq_main_info(char **buff, unsigned long *size,
 	size_t used_mem = 0;
 	struct mtk_blocktag *btag;
 
-	SPREAD_PRINTF(buff, size, seq, "[Trace]\n");
+	BTAG_PRINTF(buff, size, seq, "[Trace]\n");
 	rcu_read_lock();
 	list_for_each_entry_rcu(btag, &mtk_btag_list, list)
 		mtk_btag_seq_debug_show_ringtrace(buff, size, seq, btag);
 	rcu_read_unlock();
 
-	SPREAD_PRINTF(buff, size, seq, "[Info]\n");
+	BTAG_PRINTF(buff, size, seq, "[Info]\n");
 	rcu_read_lock();
 	list_for_each_entry_rcu(btag, &mtk_btag_list, list)
 		if (btag->vops->seq_show) {
-			SPREAD_PRINTF(buff, size, seq, "<%s: context info>\n",
-					btag->name);
+			BTAG_PRINTF(buff, size, seq, "<%s: context info>\n",
+				    btag->name);
 			btag->vops->seq_show(buff, size, seq);
 		}
 	rcu_read_unlock();
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_PM_DEBUG)
-	SPREAD_PRINTF(buff, size, seq, "[BLK_PM]\n");
+	BTAG_PRINTF(buff, size, seq, "[BLK_PM]\n");
 	mtk_btag_blk_pm_show(buff, size, seq);
 #endif
 #if IS_ENABLED(CONFIG_MTK_FSCMD_TRACER)
 	if (!buff) {
-		SPREAD_PRINTF(buff, size, seq, "[FS_CMD]\n");
+		BTAG_PRINTF(buff, size, seq, "[FS_CMD]\n");
 		mtk_fscmd_show(buff, size, seq);
 	}
 #endif
 
-	SPREAD_PRINTF(buff, size, seq, "[Memory Usage]\n");
+	BTAG_PRINTF(buff, size, seq, "[Memory Usage]\n");
 	rcu_read_lock();
 	list_for_each_entry_rcu(btag, &mtk_btag_list, list)
 		used_mem += mtk_btag_seq_sub_show_usedmem(buff, size,
 				seq, btag);
 	rcu_read_unlock();
 
-	SPREAD_PRINTF(buff, size, seq, "<blocktag core>\n");
+	BTAG_PRINTF(buff, size, seq, "<blocktag core>\n");
 	used_mem += mtk_btag_seq_pidlog_usedmem(buff, size, seq);
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_PM_DEBUG)
-	SPREAD_PRINTF(buff, size, seq, "blk pm log: %d bytes\n",
+	BTAG_PRINTF(buff, size, seq, "blk pm log: %d bytes\n",
 			sizeof(struct blk_pm_logs_s));
 	used_mem += sizeof(struct blk_pm_logs_s);
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_FSCMD_TRACER)
-	SPREAD_PRINTF(buff, size, seq, "fscmd history: %d bytes\n",
+	BTAG_PRINTF(buff, size, seq, "fscmd history: %d bytes\n",
 			mtk_fscmd_used_mem());
 	used_mem += mtk_fscmd_used_mem();
 #endif
 
-	SPREAD_PRINTF(buff, size, seq, "aee buffer: %d bytes\n",
+	BTAG_PRINTF(buff, size, seq, "aee buffer: %d bytes\n",
 			BLOCKIO_AEE_BUFFER_SIZE);
 	used_mem += BLOCKIO_AEE_BUFFER_SIZE;
 
-	SPREAD_PRINTF(buff, size, seq, "earaio control unit: %lu bytes\n",
+	BTAG_PRINTF(buff, size, seq, "earaio control unit: %lu bytes\n",
 			sizeof(struct mtk_btag_earaio_control));
 	used_mem += sizeof(struct mtk_btag_earaio_control);
 
-	SPREAD_PRINTF(buff, size, seq, "--------------------------------\n");
-	SPREAD_PRINTF(buff, size, seq, "Total: %zu KB\n", used_mem >> 10);
+	BTAG_PRINTF(buff, size, seq, "--------------------------------\n");
+	BTAG_PRINTF(buff, size, seq, "Total: %zu KB\n", used_mem >> 10);
 }
 
 static int mtk_btag_seq_main_show(struct seq_file *seq, void *v)
@@ -805,7 +782,7 @@ struct mtk_blocktag *mtk_btag_alloc(const char *name,
 		kfree(btag);
 		return NULL;
 	}
-	strncpy(btag->name, name, BLOCKTAG_NAME_LEN-1);
+	strncpy(btag->name, name, BTAG_NAME_LEN - 1);
 	btag->storage_type = storage_type;
 
 	/* context */

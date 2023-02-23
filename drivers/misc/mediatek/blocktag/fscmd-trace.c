@@ -19,21 +19,6 @@
 #define MAX_RW_LOG_NR    (1000) /* entries size of total log */
 #define MAX_OTHER_LOG_NR (8000) /* entries size of total log */
 #define MAX_F2FS_LOG_NR  (4000) /* entries size of total log */
-#define SPREAD_PRINTF(buff, size, evt, fmt, args...) \
-do { \
-	if (buff && size && *(size)) { \
-		unsigned long var = snprintf(*(buff), *(size), fmt, ##args); \
-		if (var > 0) { \
-			if (var > *(size)) \
-				var = *(size); \
-			*(size) -= var; \
-			*(buff) += var; \
-		} \
-	} \
-	if (evt) { \
-		seq_printf(evt, fmt, ##args); \
-	} \
-} while (0)
 
 enum {
 	FSCMD_SYSCALL_ENTRY = 0,
@@ -235,13 +220,13 @@ static void syscall_dump(struct fscmd_s *fscmd_log, char **buff, unsigned long *
 	if (!pt)
 		return;
 
-	SPREAD_PRINTF(buff, size, seq,
-		"%llu,%s,%s,%d,%s\n",
-		log->time,
-		(log->type == FSCMD_SYSCALL_ENTRY)?"i":"o",
-		pt->name,
-		log->pid,
-		log->comm);
+	BTAG_PRINTF(buff, size, seq,
+		    "%llu,%s,%s,%d,%s\n",
+		    log->time,
+		    (log->type == FSCMD_SYSCALL_ENTRY)?"i":"o",
+		    pt->name,
+		    log->pid,
+		    log->comm);
 }
 
 void fscmd_trace_sys_enter(void *data,
@@ -343,29 +328,29 @@ static void f2fs_dump_log(struct fscmd_s *fscmd_log, char **buff, unsigned long 
 		return;
 
 	if (pt->id == F2FS_TBLID_CK) {
-		SPREAD_PRINTF(buff, size, seq,
-			"%llu,%s,%d,%d,%d,%s\n",
-			log->time,
-			pt->name,
-			log->type,
-			log->cp_reason,
-			log->pid,
-			log->comm);
+		BTAG_PRINTF(buff, size, seq,
+			    "%llu,%s,%d,%d,%d,%s\n",
+			    log->time,
+			    pt->name,
+			    log->type,
+			    log->cp_reason,
+			    log->pid,
+			    log->comm);
 	} else if (pt->id == F2FS_TBLID_GC) {
-		SPREAD_PRINTF(buff, size, seq,
-			"%llu,%s,%d,%d,%s\n",
-			log->time,
-			pt->name,
-			log->type,
-			log->pid,
-			log->comm);
+		BTAG_PRINTF(buff, size, seq,
+			    "%llu,%s,%d,%d,%s\n",
+			    log->time,
+			    pt->name,
+			    log->type,
+			    log->pid,
+			    log->comm);
 	} else if (pt->id == F2FS_TBLID_RWSEM) {
-		SPREAD_PRINTF(buff, size, seq,
-			"%llu,%s,%d,%d\n",
-			log->time,
-			pt->name,
-			log->cp_reason,
-			log->type);
+		BTAG_PRINTF(buff, size, seq,
+			    "%llu,%s,%d,%d\n",
+			    log->time,
+			    pt->name,
+			    log->cp_reason,
+			    log->type);
 	}
 }
 
@@ -456,8 +441,8 @@ void mtk_fscmd_show(char **buff, unsigned long *size,
 
 	// start dump the farthest log in ring-buffer
 	spin_lock_irqsave(&ghis_spinlock, flags);
-	SPREAD_PRINTF(buff, size, seq,
-		"time,entry/exit,syscall,pid,func,\n");
+	BTAG_PRINTF(buff, size, seq,
+		    "time,entry/exit,syscall,pid,func,\n");
 	for (log_type = 0; log_type < LOG_TYPE_ENTRY; log_type++) {
 		for (i = 0, idx = 0; i < (ghistory_log[log_type].max_count); i++) {
 			idx = (ghistory_log[log_type].cur_idx + i + 1);

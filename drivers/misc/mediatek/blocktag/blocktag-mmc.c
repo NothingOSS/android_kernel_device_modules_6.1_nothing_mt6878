@@ -333,29 +333,6 @@ void mmc_mtk_biolog_check(struct mmc_host *mmc, unsigned long req_mask)
 }
 EXPORT_SYMBOL_GPL(mmc_mtk_biolog_check);
 
-/*
- * snprintf may return a value of size or "more" to indicate
- * that the output was truncated, thus be careful of "more"
- * case.
- */
-#define SPREAD_PRINTF(buff, size, evt, fmt, args...) \
-do { \
-	if (buff && size && *(size)) { \
-		unsigned long var = snprintf(*(buff), *(size), fmt, ##args); \
-		if (var > 0) { \
-			if (var > *(size)) \
-				var = *(size); \
-			*(size) -= var; \
-			*(buff) += var; \
-		} \
-	} \
-	if (evt) \
-		seq_printf(evt, fmt, ##args); \
-	if (!buff && !evt) { \
-		pr_info(fmt, ##args); \
-	} \
-} while (0)
-
 static size_t mmc_mtk_bio_seq_debug_show_info(char **buff, unsigned long *size,
 	struct seq_file *seq)
 {
@@ -368,12 +345,12 @@ static size_t mmc_mtk_bio_seq_debug_show_info(char **buff, unsigned long *size,
 	for (i = 0; i < MMC_BIOLOG_CONTEXTS; i++)	{
 		if (ctx[i].pid == 0)
 			continue;
-		SPREAD_PRINTF(buff, size, seq,
-			"ctx[%d]=ctx_map[%d],pid:%4d,q:%d\n",
-			i,
-			ctx[i].id,
-			ctx[i].pid,
-			ctx[i].qid);
+		BTAG_PRINTF(buff, size, seq,
+			    "ctx[%d]=ctx_map[%d],pid:%4d,q:%d\n",
+			    i,
+			    ctx[i].id,
+			    ctx[i].pid,
+			    ctx[i].qid);
 	}
 
 	return 0;
