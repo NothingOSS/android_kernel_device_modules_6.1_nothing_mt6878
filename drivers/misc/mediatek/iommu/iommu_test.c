@@ -1157,11 +1157,9 @@ static int dmaheap_sec_pa_probe(struct platform_device *pdev)
 
 /******************************************************************************/
 static const size_t IOVA_SIZES[] = {
-	(SZ_1M),
-	(SZ_2M),
-	(SZ_1M),
-	(SZ_2M),
-	(SZ_1K),
+	(SZ_4K),
+	(SZ_4K),
+	(SZ_4K),
 	(SZ_4K),
 	(SZ_1K * 10),
 	(SZ_1K * 40),
@@ -1252,7 +1250,8 @@ static int dma_free(struct device *dev, int address_num, int iova_index,
 	return 0;
 }
 
-static int iommu_test_translation(int dma_engine, struct platform_device *pdev)
+static int __maybe_unused iommu_test_translation(int dma_engine,
+						 struct platform_device *pdev)
 {
 	#define TEST_DMA_NUM	4
 	struct dma_device_res res[TEST_DMA_NUM];
@@ -1727,12 +1726,13 @@ static int iommu_test_cqdma_probe(struct platform_device *pdev)
 
 	return 0;
 }
-#else
+#else /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 */
 static int iommu_test_cqdma_probe(struct platform_device *pdev)
 {
 	pr_info("%s dev:%s\n", __func__, dev_name(&pdev->dev));
+	return 0;
 }
-#endif
+#endif /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 */
 
 /*************************************************************************/
 /*
@@ -1954,7 +1954,7 @@ static struct platform_driver iommu_test_dmaheap_sec_pa = {
 /*************************************************************************/
 
 /* iova region test */
-static struct platform_driver iommu_test_driver_dom = {
+static struct platform_driver __maybe_unused iommu_test_driver_dom = {
 	.probe = iommu_test_dom_probe,
 	.driver = {
 		.name = "iommu-test-dom",
@@ -2021,7 +2021,7 @@ static void __exit iommu_test_exit(void)
 	for (i = ARRAY_SIZE(iommu_test_drivers) - 1; i >= 0; i--)
 		platform_driver_unregister(iommu_test_drivers[i]);
 }
-#else
+#else /* IOMMU_TEST_EN */
 static int __init iommu_test_init(void)
 {
 	return 0;
@@ -2030,7 +2030,7 @@ static int __init iommu_test_init(void)
 static void __exit iommu_test_exit(void)
 {
 }
-#endif
+#endif /* IOMMU_TEST_EN */
 
 module_init(iommu_test_init);
 module_exit(iommu_test_exit);
