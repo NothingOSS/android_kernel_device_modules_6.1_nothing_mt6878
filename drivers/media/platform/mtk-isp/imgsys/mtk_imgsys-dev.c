@@ -16,6 +16,7 @@
 #include "mtk_imgsys-dev.h"
 #include "mtk-img-ipi.h"
 #include "mtk_header_desc.h"
+#include "mtk_imgsys-requesttrack.h"
 #include "mtk_imgsys-trace.h"
 
 struct fd_kva_list_t fd_kva_info_list = {
@@ -1592,6 +1593,7 @@ void mtk_imgsys_singledevice_ipi_params_config(struct mtk_imgsys_request *req)
 	struct mtk_imgsys_dev_buffer *buf_in;
 	struct singlenode_desc *singledevice_desc_dma = NULL;
 	struct singlenode_desc_norm *singledevice_desc_norm = NULL;
+	union request_track *req_track;
 	void *tuning_meta, *ctrl_meta;
 	int i = 0;
 	bool isMENode = false;
@@ -1633,6 +1635,7 @@ void mtk_imgsys_singledevice_ipi_params_config(struct mtk_imgsys_request *req)
 			(struct singlenode_desc *)buf_in->va_daddr[0];
 		tuning_meta = (void *) &singledevice_desc_dma->tuning_meta;
 		ctrl_meta = (void *) &singledevice_desc_dma->ctrl_meta;
+		req->req_stat = &singledevice_desc_dma->req_state;
 		break;
 	/* NORM */
 	default:
@@ -1641,7 +1644,12 @@ void mtk_imgsys_singledevice_ipi_params_config(struct mtk_imgsys_request *req)
 			(struct singlenode_desc_norm *)buf_in->va_daddr[0];
 		tuning_meta = (void *) &singledevice_desc_norm->tuning_meta;
 		ctrl_meta = (void *) &singledevice_desc_norm->ctrl_meta;
+		req->req_stat = &singledevice_desc_norm->req_state;
 		break;
+	}
+	{
+		req_track = (union request_track *)req->req_stat;
+		req_track->mainflow_to = REQUEST_FROM_IMGSTREAM_TO_KERNEL;
 	}
 	mtk_imgsys_sd_fill_dmas(pipe,
 			MTK_IMGSYS_VIDEO_NODE_TUNING_OUT,

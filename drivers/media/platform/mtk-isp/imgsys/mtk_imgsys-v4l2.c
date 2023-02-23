@@ -24,6 +24,7 @@
 #include "mtk_imgsys_v4l2.h"
 #include "mtk_imgsys-dev.h"
 #include "mtk_imgsys-hw.h"
+#include "mtk_imgsys-requesttrack.h"
 #include "mtk-hcp.h"
 #include "mtk-hcp_kernelfence.h"
 #include "mtkdip.h"
@@ -2051,6 +2052,13 @@ static void mtk_imgsys_vb2_request_queue(struct media_request *req)
 	#endif
 #endif
 	vb2_request_queue(req);
+
+	if (imgsys_req->req_stat) {
+		union request_track *req_track = (union request_track *)imgsys_req->req_stat;
+
+		req_track->subflow_kernel++;
+		req_track->mainflow_from = REQUEST_FROM_KERNEL_TO_IMGSTREAM;
+	}
 }
 
 int mtk_imgsys_v4l2_fh_open(struct file *filp)

@@ -23,6 +23,7 @@
 #include "mtk_imgsys-sys.h"
 #include "mtk_imgsys-cmdq.h"
 #include "mtk_imgsys-module.h"
+#include "mtk_imgsys-requesttrack.h"
 #include "mtk_imgsys-trace.h"
 #include "mtk-hcp_kernelfence.h"
 #include "mtk_imgsys-engine.h"
@@ -756,6 +757,7 @@ static void imgsys_mdp_cb_func(struct cmdq_cb_data data,
 	struct mtk_imgsys_pipe *pipe;
 	struct mtk_imgsys_request *req;
 	struct mtk_imgsys_dev *imgsys_dev;
+	union request_track *req_track = NULL;
 	//struct swfrm_info_t *frm_info_cb;
 	struct swfrm_info_t *swfrminfo_cb;
 	struct imgsys_event_status ev;
@@ -790,8 +792,11 @@ static void imgsys_mdp_cb_func(struct cmdq_cb_data data,
 
 	if (swfrminfo_cb->is_lastfrm && isLastTaskInReq
 		&& (swfrminfo_cb->fail_isHWhang == -1)
-		&& (pipe->streaming))
-		*(req->req_stat) = *(req->req_stat) + 1;
+		&& (pipe->streaming)) {
+		req_track = (union request_track *)req->req_stat;
+		req_track->mainflow_from = REQUEST_DONE_FROM_KERNEL_TO_IMGSTREAM;
+		req_track->subflow_kernel++;
+	}
 
 	IMGSYS_SYSTRACE_BEGIN("ReqFd:%d Own:%s\n", req->tstate.req_fd,
 							((char *)&swfrminfo_cb->frm_owner));
@@ -1376,6 +1381,7 @@ static void imgsys_runner_func(void *data)
 	struct gce_work *work = container_of(iwork, struct gce_work, work);
 	struct mtk_imgsys_request *req = work->req;
 	struct mtk_imgsys_dev *imgsys_dev = req->imgsys_pipe->imgsys_dev;
+	union request_track *req_track = NULL;
 	struct swfrm_info_t *frm_info;
 	int swfrm_cnt, stime;
 	int ret;
@@ -1388,8 +1394,10 @@ static void imgsys_runner_func(void *data)
 	 */
 	frm_info = (struct swfrm_info_t *)(work->req_sbuf_kva);
 	frm_info->is_sent = true;
-	if (frm_info->is_lastfrm)
-		*(req->req_stat) = *(req->req_stat) + 1;
+	if (frm_info->is_lastfrm) {
+		req_track = (union request_track *)req->req_stat;
+		req_track->subflow_kernel++;
+	}
 
 #ifdef MTK_IOVA_SINK2KERNEL
 	for (subfidx = 0 ; subfidx < frm_info->total_frmnum ; subfidx++) {
@@ -1429,8 +1437,8 @@ static void imgsys_runner_func(void *data)
 			"%s: imgsys_cmdq_sendtask fail(%d)\n", __func__, ret);
 	}
 
-	if (frm_info->is_lastfrm)
-		*(req->req_stat) = *(req->req_stat) + 1;
+	if (req_track)
+		req_track->subflow_kernel++;
 
 	put_gce_work(work);
 	mtk_hcp_put_gce_buffer(imgsys_dev->scp_pdev);
@@ -1457,6 +1465,7 @@ static void imgsys_scp_handler(void *data, unsigned int len, void *priv)
 	bool reqfd_find = false;
 	int f_lop_idx = 0, fence_num = 0;
 	struct fence_event *fence_evt = NULL;
+	union request_track *req_track = NULL;
 #ifdef MTK_IOVA_SINK2KERNEL
     struct mtk_imgsys_req_fd_list *fd_list = &imgsys_dev->req_fd_cache;
 	u32	req_fd = 0;
@@ -1582,8 +1591,11 @@ static void imgsys_scp_handler(void *data, unsigned int len, void *priv)
 		return;
 	}
 
-	if (swfrm_info->is_lastfrm)
-		*(req->req_stat) = *(req->req_stat) + 1;
+	if (swfrm_info->is_lastfrm) {
+		req_track = (union request_track *)req->req_stat;
+		req_track->mainflow_to = REQUEST_FROM_DAEMON_TO_KERNEL;
+		req_track->subflow_kernel++;
+	}
 
 	IMGSYS_SYSTRACE_BEGIN("MWFrame:#%d MWReq:#%d ReqFd:%d owner:%s subfrm_idx:%d\n",
 			swfrm_info->frame_no, swfrm_info->request_no, req->tstate.req_fd,
@@ -1757,13 +1769,13 @@ static void imgsys_scp_handler(void *data, unsigned int len, void *priv)
 	gwork->req_sbuf_kva = (void *)swfrm_info;
 	gwork->work.run = imgsys_runner_func;
 #ifdef MTK_IOVA_SINK2KERNEL
-	if (swfrm_info->is_lastfrm)
-		*(req->req_stat) = *(req->req_stat) + 1;
+	if (req_track)
+		req_track->subflow_kernel++;
 	imgsys_runner_func((void *)(&gwork->work));
 #else
 	imgsys_queue_add(&imgsys_dev->runnerque, &gwork->work);
-	if (swfrm_info->is_lastfrm)
-		*(req->req_stat) = *(req->req_stat) + 1;
+	if (req_track)
+		req_track->subflow_kernel++;
 #endif
 
 	IMGSYS_SYSTRACE_END();
