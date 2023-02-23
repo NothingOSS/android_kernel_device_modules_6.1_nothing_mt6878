@@ -1252,7 +1252,7 @@ static void trigger_compose_error_dump(struct mtk_cam_job *job)
 
 	pr_info("%s: compose failed: %s\n", __func__, warn_desc);
 
-	if (job_debug_dump(job, desc))
+	if (!job_debug_dump(job, desc))
 		WRAP_AEE_EXCEPTION(desc, warn_desc);
 }
 
