@@ -19,7 +19,11 @@
 #include <linux/platform_device.h>
 #include <linux/module.h>
 #include <linux/signal.h>
+#include <linux/tracepoint.h>
 #include "mtk_selinux_warning.h"
+#include <avc.h>
+#include <avc_ss.h>
+#include <classmap.h>
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #include <mt-plat/aee.h>
@@ -210,6 +214,30 @@ static int mtk_get_scontext(char *data, char *buf)
 	return 1;
 }
 
+static int mtk_get_pname(char *scontext, char *buf)
+{
+	char *t1 = scontext, *t2;
+	int diff, i;
+
+	/* Omit two ':' */
+	for (i = 0; i < 2; i++) {
+		t1 = strchr(t1, ':');
+		if (!t1)
+			return 0;
+		t1 = t1 + 1;
+	}
+
+	t2 = strchr(t1, ':');
+	if (!t2)
+		return 0;
+
+	diff = t2 - t1;
+	if (diff >= AEE_FILTER_LEN)
+		return 0;
+
+	strscpy(buf, t1, diff);
+	return 1;
+}
 
 static char *mtk_get_process(char *in)
 {
@@ -277,9 +305,106 @@ void mtk_audit_hook(char *data)
 	mtk_check_av(data);
 #endif
 }
+
+static void selinux_aee(struct selinux_audit_data *sad, char *scontext,
+			char *tcontext, const char *tclass)
+{
+	char pname[AEE_FILTER_LEN];
+	char printbuf[PRINT_BUF_LEN];
+	char data[PRINT_BUF_LEN];
+	int ret;
+
+	ret = mtk_get_pname(scontext, pname);
+	if (!ret)
+		return;
+
+	snprintf(data, sizeof(data),
+		 "avc: denied, requested=0x%x denied=0x%x audited=0x%x result=%d scontext=%s tcontext=%s tclass=%s\n",
+		 sad->requested, sad->denied, sad->audited, sad->result,
+		 scontext, tcontext, tclass);
+
+	snprintf(printbuf, sizeof(printbuf),
+		 "[%s][WARNING]\nCR_DISPATCH_PROCESSNAME:%s\n",
+		 MOD, pname);
+
+	aee_kernel_warning_api(__FILE__, __LINE__,
+			       DB_OPT_DEFAULT | DB_OPT_NATIVE_BACKTRACE,
+			       printbuf, data);
+}
+
+static void scontext_filter(struct selinux_audit_data *sad, char *scontext,
+			    char *tcontext, const char *tclass)
+{
+#ifdef SCONTEXT_FILTER
+	int ret;
+
+	/*check scontext is in warning list */
+	ret = mtk_check_filter(scontext);
+	if (ret < 0)
+		return;
+
+	pr_debug("[%s], In AEE Warning List scontext: %s\n", MOD, scontext);
+	selinux_aee(sad, scontext, tcontext, tclass);
+#endif
+}
+
+static void av_filter(struct selinux_audit_data *sad, char *scontext,
+		      char *tcontext, const char *tclass)
+{
+#ifdef AV_FILTER
+	const char *const *perms;
+	int i, j, perm;
+	u32 av = sad->audited;
+
+	if (!av || !strcmp("u:r:untrusted_app", scontext))
+		return;
+
+	perms = secclass_map[sad->tclass - 1].perms;
+
+	/*  reference avc_audit_pre_callback */
+	for (i = 0, perm = 1; i < (sizeof(av) * 8); i++, perm <<= 1) {
+		if (!(perm & av) || !perms[i])
+			continue;
+
+		for (j = 0; j < AEE_AV_FILTER_NUM && aee_av_filter_list[j];
+		     j++) {
+			if (strcmp(perms[i], aee_av_filter_list[j]))
+				continue;
+			selinux_aee(sad, scontext, tcontext, tclass);
+		}
+	}
+#endif
+}
+
+static void probe_selinux_audited(void *ignore, struct selinux_audit_data *sad,
+				  char *scontext, char *tcontext,
+				  const char *tclass)
+{
+	if (!sad || !sad->denied || !enforcing_enabled(sad->state))
+		return;
+	if (!scontext)
+		return;
+
+	scontext_filter(sad, scontext, tcontext, tclass);
+	av_filter(sad, scontext, tcontext, tclass);
+}
+
+static struct tracepoint *satp;
+
+static void register_tracepoint(struct tracepoint *tp, void *ignore)
+{
+	if (!strcmp(tp->name, "selinux_audited"))
+		satp = tp;
+}
+
 static int __init selinux_init(void)
 {
-	mtk_audit_hook_set(mtk_audit_hook);
+	int ret;
+
+	for_each_kernel_tracepoint(register_tracepoint, NULL);
+	ret = tracepoint_probe_register(satp, probe_selinux_audited, NULL);
+	if (ret)
+		return ret;
 	pr_info("[SELinux] MTK SELinux init done\n");
 
 	return 0;
@@ -287,6 +412,8 @@ static int __init selinux_init(void)
 
 static void __exit selinux_exit(void)
 {
+	tracepoint_probe_unregister(satp, probe_selinux_audited, NULL);
+	tracepoint_synchronize_unregister();
 	pr_info("[SELinux] MTK SELinux func exit\n");
 }
 
