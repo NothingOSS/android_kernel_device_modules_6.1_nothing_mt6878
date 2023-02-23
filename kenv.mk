@@ -57,6 +57,7 @@ endif
         KERNEL_ZIMAGE_OUT := $(KERNEL_OUT)/arch/$(KERNEL_TARGET_ARCH)/boot/zImage
       endif
     endif
+    TARGET_KERNEL_CONFIG := $(KERNEL_OUT)/.config
     endif#BUILD_KERNEL
 
     BUILT_KERNEL_TARGET := $(KERNEL_ZIMAGE_OUT).bin

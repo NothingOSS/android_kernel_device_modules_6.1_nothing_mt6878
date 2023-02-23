@@ -115,11 +115,11 @@ def main(**args):
     if project_defconfig_name != 'gki_defconfig':
         kernel_defconfig_overlays_files = ''
         for name in kernel_defconfig_overlays.split():
-            kernel_defconfig_overlays_files = '%s %s/kernel/configs/%s' % (kernel_defconfig_overlays_files, abs_kernel_dir, name)
-        all_defconfig = '%s %s' % (project_defconfig, kernel_defconfig_overlays_files)
+            kernel_defconfig_overlays_files = '%s ${ROOT_DIR}/%s/kernel/configs/%s' % (kernel_defconfig_overlays_files, kernel_dir, name)
+        all_defconfig = '${ROOT_DIR}/%s/%s/%s %s' % (kernel_dir, defconfig_dir, project_defconfig_name, kernel_defconfig_overlays_files)
     if mode_config:
-        all_defconfig = '%s %s/kernel/configs/%s' % (all_defconfig, abs_kernel_dir, mode_config)
-    pre_defconfig_cmds = '%s && cd ${OUT_DIR} && bash ${ROOT_DIR}/${KERNEL_DIR}/scripts/kconfig/merge_config.sh -m .config %s && cd ${ROOT_DIR}' % (pre_defconfig_cmds, all_defconfig)
+        all_defconfig = '%s ${ROOT_DIR}/%s/kernel/configs/%s' % (all_defconfig, kernel_dir, mode_config)
+    pre_defconfig_cmds = '%s && mkdir -p ${OUT_DIR} && cd ${OUT_DIR} && bash ${ROOT_DIR}/${KERNEL_DIR}/scripts/kconfig/merge_config.sh -m .config %s && cd ${ROOT_DIR}' % (pre_defconfig_cmds, all_defconfig)
     pre_defconfig_cmds = 'PRE_DEFCONFIG_CMDS=\'if [ -f ${OUT_DIR}/.config ]; then cp -f -p ${OUT_DIR}/.config ${OUT_DIR}/.config.timestamp; else touch ${OUT_DIR}/.config.timestamp; fi; %s\'' % (pre_defconfig_cmds)
     file_text.append(pre_defconfig_cmds)
 
