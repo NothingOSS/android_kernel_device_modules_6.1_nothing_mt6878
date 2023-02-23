@@ -1188,7 +1188,7 @@ unsigned long engines_to_trigger_cq(struct mtk_cam_job *job,
 	int dev_idx;
 	int i;
 
-	used_engine = job->used_engine;
+	used_engine = ctx->used_engine;
 	cq_engine = 0;
 
 	/* raw */
@@ -1208,14 +1208,16 @@ unsigned long engines_to_trigger_cq(struct mtk_cam_job *job,
 			}
 
 	/* camsv */
-	for (i = 0; i < ARRAY_SIZE(cq_ret->camsv); ++i)
-		if (is_valid_cq(&cq_ret->camsv[i])) {
-			dev_idx = find_first_bit_set(subset);
-			cq_engine |= bit_map_bit(MAP_HW_CAMSV, dev_idx);
+	subset = bit_map_subset_of(MAP_HW_CAMSV, used_engine);
+	if (subset)
+		for (i = 0; i < ARRAY_SIZE(cq_ret->camsv); ++i)
+			if (is_valid_cq(&cq_ret->camsv[i])) {
+				dev_idx = find_first_bit_set(subset);
+				cq_engine |= bit_map_bit(MAP_HW_CAMSV, dev_idx);
 
-			/* only single sv device */
-			break;
-		}
+				/* only single sv device */
+				break;
+			}
 
 	return cq_engine;
 }
@@ -2157,6 +2159,7 @@ _job_pack_only_sv(struct mtk_cam_job *job,
 		__func__, ctx->stream_id, job->job_type, job->job_scen.id,
 		job->exp_num_prev, job->exp_num_cur, job->sw_feature, job->hardware_scenario);
 	job->stream_on_seninf = false;
+	complete(&job->i2c_ready_completion);
 	if (!ctx->used_engine) {
 		int selected;
 

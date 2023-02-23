@@ -1501,9 +1501,14 @@ static int mtk_cam_ctx_alloc_rgbw_caci_buf(struct mtk_cam_ctx *ctx)
 {
 	int ret = 0;
 	struct device *dev_to_attach;
-	struct mtk_raw_pipeline *raw_pipe =
-		&ctx->cam->pipelines.raw[ctx->raw_subdev_idx];
-	bool is_rgbw =
+	struct mtk_raw_pipeline *raw_pipe;
+	bool is_rgbw;
+
+	if (!ctx->has_raw_subdev)
+		return 0;
+
+	raw_pipe = &ctx->cam->pipelines.raw[ctx->raw_subdev_idx];
+	is_rgbw =
 		raw_pipe->ctrl_data.resource.user_data.raw_res.scen.scen.normal.w_chn_supported;
 
 	if (is_rgbw) {
@@ -1529,6 +1534,9 @@ static int mtk_cam_ctx_alloc_rgbw_caci_buf(struct mtk_cam_ctx *ctx)
 
 static int mtk_cam_ctx_destroy_rgbw_caci_buf(struct mtk_cam_ctx *ctx)
 {
+	if (!ctx->has_raw_subdev)
+		return 0;
+
 	if (ctx->w_caci_buf.size)
 		mtk_cam_device_buf_uninit(&ctx->w_caci_buf);
 

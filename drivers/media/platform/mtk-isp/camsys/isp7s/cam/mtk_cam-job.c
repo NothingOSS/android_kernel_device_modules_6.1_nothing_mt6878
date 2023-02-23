@@ -1178,7 +1178,7 @@ unsigned long engines_to_trigger_cq(struct mtk_cam_job *job,
 	int dev_idx;
 	int i;
 
-	used_engine = job->used_engine;
+	used_engine = ctx->used_engine;
 	cq_engine = 0;
 
 	/* raw */
@@ -2147,6 +2147,7 @@ _job_pack_only_sv(struct mtk_cam_job *job,
 		__func__, ctx->stream_id, job->job_type, job->job_scen.id,
 		job->exp_num_prev, job->exp_num_cur, job->sw_feature, job->hardware_scenario);
 	job->stream_on_seninf = false;
+	complete(&job->i2c_ready_completion);
 	if (!ctx->used_engine) {
 		int selected;
 
