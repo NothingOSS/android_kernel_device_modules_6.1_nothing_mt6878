@@ -135,6 +135,21 @@ struct mtk_cam_resource_driver {
 	int raw_num;
 };
 
+static inline int bin_ratio(u8 bin_type)
+{
+	if (bin_type == MTK_CAM_BIN_ON ||
+	    bin_type == MTK_CAM_CBN_2X2_ON ||
+	    bin_type == MTK_CAM_QBND_ON)
+		return 2;
+
+	if (bin_type == MTK_CAM_CBN_3X3_ON)
+		return 3;
+
+	if (bin_type == MTK_CAM_CBN_4X4_ON)
+		return 4;
+
+	return 1;
+}
 
 struct mtk_raw_ctrl_data {
 	struct mtk_cam_resource_driver resource;

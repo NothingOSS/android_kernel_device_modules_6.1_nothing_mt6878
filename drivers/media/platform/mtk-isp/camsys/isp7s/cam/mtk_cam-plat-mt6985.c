@@ -32,6 +32,8 @@
 #define MRAW_STATS_0_SIZE \
 	sizeof(struct mtk_cam_uapi_meta_mraw_stats_0)
 
+#define DYNAMIC_SIZE
+
 static void set_payload(struct mtk_cam_uapi_meta_hw_buf *buf,
 			unsigned int size, size_t *offset)
 {
@@ -66,6 +68,7 @@ static void meta_state0_reset_all(struct mtk_cam_uapi_meta_raw_stats_0 *stats)
 }
 
 static int set_meta_stat0_info(struct mtk_cam_uapi_meta_raw_stats_0 *stats,
+			       size_t size,
 			       const struct set_meta_stats_info_param *p)
 {
 	size_t offset = sizeof(*stats);
@@ -77,7 +80,7 @@ static int set_meta_stat0_info(struct mtk_cam_uapi_meta_raw_stats_0 *stats,
 	}
 
 #ifdef DYNAMIC_SIZE
-	flko_size = p->height *
+	flko_size = (p->height / p->bin_ratio) *
 		MTK_CAM_UAPI_FLK_BLK_SIZE * MTK_CAM_UAPI_FLK_MAX_STAT_BLK_NUM;
 #else
 	flko_size = MTK_CAM_UAPI_FLK_MAX_BUF_SIZE;
@@ -110,16 +113,31 @@ static int set_meta_stat0_info(struct mtk_cam_uapi_meta_raw_stats_0 *stats,
 	set_payload(&stats->tsf_stats_w.tsfo_r2_buf, 0, &offset);
 	set_payload(&stats->tcys_stats_w.tcyso_buf, 0, &offset);
 	set_payload(&stats->pde_stats_w.pdo_buf, 0, &offset);
+
+	if (offset > size) {
+		pr_info("%s: required %zu > buffer size %zu\n",
+			__func__, offset, size);
+		return -1;
+	}
+
 	return 0;
 }
 
 static int set_meta_stat1_info(struct mtk_cam_uapi_meta_raw_stats_1 *stats,
+			       size_t size,
 			       const struct set_meta_stats_info_param *p)
 {
 	size_t offset = sizeof(*stats);
 
 	set_payload(&stats->af_stats.afo_buf,
 		    MTK_CAM_UAPI_AFO_MAX_BUF_SIZE, &offset);
+
+	if (offset > size) {
+		pr_info("%s: required %zu > buffer size %zu\n",
+			__func__, offset, size);
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -134,12 +152,12 @@ static int set_meta_stats_info(int ipi_id, void *addr, size_t size,
 		if (WARN_ON(size < sizeof(struct mtk_cam_uapi_meta_raw_stats_0)))
 			return -1;
 
-		return set_meta_stat0_info(addr, p);
+		return set_meta_stat0_info(addr, size, p);
 	case MTKCAM_IPI_RAW_META_STATS_1:
 		if (WARN_ON(size < sizeof(struct mtk_cam_uapi_meta_raw_stats_1)))
 			return -1;
 
-		return set_meta_stat1_info(addr, p);
+		return set_meta_stat1_info(addr, size, p);
 	default:
 		pr_info("%s: %s: not supported: %d\n",
 			__FILE__, __func__, ipi_id);

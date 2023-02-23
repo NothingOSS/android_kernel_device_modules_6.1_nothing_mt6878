@@ -3194,6 +3194,7 @@ static int fill_raw_meta_header(struct req_buffer_helper *helper)
 
 	if (helper->meta_cfg_buf) {
 		struct mtk_raw_request_data *raw_data;
+		struct mtk_cam_resource_v2 *res;
 
 		buf = helper->meta_cfg_buf;
 		p.cfg_dataformat = buf->meta_info.v4l2_pixelformat;
@@ -3208,6 +3209,9 @@ static int fill_raw_meta_header(struct req_buffer_helper *helper)
 
 		p.width = raw_data->sink.width;
 		p.height = raw_data->sink.height;
+
+		res = &raw_data->ctrl.resource.user_data;
+		p.bin_ratio = bin_ratio(res->raw_res.bin);
 	}
 
 	if (helper->meta_stats0_buf) {

@@ -60,6 +60,8 @@ struct set_meta_stats_info_param {
 	/* raw input size */
 	unsigned int width;
 	unsigned int height;
+
+	int bin_ratio; /* 1/2/3/... */
 };
 
 struct mtk_cam_dynamic_metadata_params;
