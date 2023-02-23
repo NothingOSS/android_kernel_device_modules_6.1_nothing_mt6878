@@ -19,6 +19,7 @@
 #include <linux/iommu.h>
 #include <linux/workqueue.h>
 
+#include "clk-fmeter.h"
 #include "clk-mtk.h"
 #include "mtk-mmdvfs-v3.h"
 
@@ -150,7 +151,7 @@ int mtk_mmdvfs_enable_vcp(const bool enable, const u8 idx)
 
 enable_vcp_end:
 	if (ret || (log_level & (1 << log_pwr)))
-		MMDVFS_DBG("ret:%d enable:%d vcp_power:%d idx:%hhu usage:%d",
+		MMDVFS_ERR("ret:%d enable:%d vcp_power:%d idx:%hhu usage:%d",
 			ret, enable, vcp_power, idx, vcp_pwr_usage[idx]);
 	mutex_unlock(&mmdvfs_vcp_pwr_mutex);
 	return ret;
@@ -248,6 +249,9 @@ static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *d
 	case FUNC_VOTE_OPP:
 		writel(opp, MEM_VOTE_OPP_USR(idx));
 		break;
+	case FUNC_MMDVFS_LP_MODE:
+		writel(idx, MEM_MMDVFS_LP_MODE);
+		break;
 	}
 	val = readl(MEM_IPI_SYNC_FUNC);
 	mutex_unlock(&mmdvfs_vcp_ipi_mutex);
@@ -299,7 +303,7 @@ ipi_lock_end:
 
 ipi_send_end:
 	if (ret || (log_level & (1 << log_ipi)))
-		MMDVFS_DBG(
+		MMDVFS_ERR(
 			"ret:%d retry:%d ready:%d cb_ready:%d slot:%#llx vcp_power:%d unfinish func:%#x",
 			ret, retry, is_vcp_ready_ex(VCP_A_ID), mmdvfs_vcp_cb_ready,
 			*(u64 *)&slot, vcp_power, val);
@@ -849,8 +853,9 @@ struct mmdvfs_mux {
 	u64 freq[MAX_OPP];
 	u64 rate;
 	s8 opp;
+	s8 last;
 	u8 user_num;
-	struct mtk_mux_user *user;
+	struct mtk_mux_user *user[MMDVFS_USER_NUM];
 };
 
 static struct mmdvfs_mux mmdvfs_mux[MMDVFS_MUX_NUM];
@@ -858,38 +863,45 @@ static struct mtk_mux_user mmdvfs_user[MMDVFS_USER_NUM];
 static struct clk *mmdvfs_user_clk[MMDVFS_USER_NUM];
 
 static DEFINE_SPINLOCK(mmdvfs_mux_lock);
+
+static rc_enable dpc_fp;
+static bool mmdvfs_lp_mode;
+static bool mmdvfs_vcp_stop;
+static bool mmdvfs_mux_version;
 static bool mmdvfs_swrgo;
+static bool mmdvfs_swrgo_init;
 
-static int mmdvfs_mux_get_by_user_name(const char *name, int *id)
+int mmdvfs_set_lp_mode_by_vcp(const bool enable)
 {
-	const char *target;
-	int i;
+	int ret = 0;
 
-	for (i = 0; i < ARRAY_SIZE(mmdvfs_user); i++)
-		if (!strncmp(mmdvfs_user[i].name, name, 16)) {
-			target = mmdvfs_user[i].target_name;
-			if (id)
-				*id = i; // MMDVFS_USER
-			break;
-		}
+	mmdvfs_lp_mode = enable;
+	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_DISP);
+	ret = mmdvfs_vcp_ipi_send(FUNC_MMDVFS_LP_MODE, enable ? 1 : 0, MAX_OPP, NULL);
+	if (ret)
+		MMDVFS_ERR("failed:%d enable:%d", ret, enable);
+	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_DISP);
 
-	if (i >= ARRAY_SIZE(mmdvfs_user))
-		return -EINVAL;
-
-	for (i = 0; i < ARRAY_SIZE(mmdvfs_mux); i++)
-		if (!strncmp(mmdvfs_mux[i].name, target, 16))
-			break;
-
-	if (i >= ARRAY_SIZE(mmdvfs_mux))
-		return -EINVAL;
-
-	return i; // MMDVFS_MUX
+	return ret;
 }
+EXPORT_SYMBOL_GPL(mmdvfs_set_lp_mode_by_vcp);
+
+void mmdvfs_rc_enable_set_fp(rc_enable fp)
+{
+	dpc_fp = fp;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_rc_enable_set_fp);
+
+int mmdvfs_get_version(void)
+{
+	return mmdvfs_mux_version;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_get_version);
 
 int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 {
-	u8 func, idx;
-	s8 opp;
+	u8 func, idx, mux_id;
+	s8 opp, level;
 	int ret;
 
 	ret = sscanf(val, "%hhu %hhu %hhd", &func, &idx, &opp);
@@ -904,29 +916,24 @@ int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 			return -EINVAL;
 		}
 
-		ret = mmdvfs_mux_get_by_user_name(mmdvfs_user[idx].name, NULL);
-		if (ret < 0) {
-			MMDVFS_ERR("failed:%d name:%s idx:%hhu", ret, mmdvfs_user[idx].name, idx);
-			return ret;
-		}
-
-		if (opp >= mmdvfs_mux[ret].freq_num) {
-			MMDVFS_ERR("invalid opp:%hhd idx:%hhu mux:%d", opp, idx, ret);
+		mux_id = mmdvfs_user[idx].target_id;
+		if (opp >= mmdvfs_mux[mux_id].freq_num) {
+			MMDVFS_ERR("invalid opp:%hhd idx:%hhu mux:%d", opp, idx, mux_id);
 			return -EINVAL;
 		}
-		opp = mmdvfs_mux[ret].freq_num - 1 - opp;
+		level = mmdvfs_mux[mux_id].freq_num - 1 - opp;
 	}
 
 	switch (func) {
 	case TEST_AP_SET_OPP:
-		ret = mmdvfs_mux_set_opp(mmdvfs_user[idx].name, mmdvfs_mux[ret].freq[opp]);
+		ret = mmdvfs_mux_set_opp(mmdvfs_user[idx].name, mmdvfs_mux[mux_id].freq[level]);
 		break;
 	case TEST_AP_SET_USER_RATE:
 		if (!mmdvfs_user_clk[idx]) {
-			MMDVFS_ERR("invalid idx:%hhu opp:%hhd", idx, opp);
+			MMDVFS_ERR("invalid idx:%hhu opp:%hhd level:%hhd", idx, opp, level);
 			return -EINVAL;
 		}
-		ret = clk_set_rate(mmdvfs_user_clk[idx], mmdvfs_mux[ret].freq[opp]);
+		ret = clk_set_rate(mmdvfs_user_clk[idx], mmdvfs_mux[mux_id].freq[level]);
 		break;
 	default:
 		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_GENPD);
@@ -972,6 +979,9 @@ static inline void mmdvfs_reset_vcp(void)
 {
 	int i, ret;
 
+	if (mmdvfs_swrgo)
+		return;
+
 	mutex_lock(&mmdvfs_vcp_pwr_mutex);
 	for (i = 0; i < VCP_PWR_USR_NUM; i++) {
 		if (vcp_pwr_usage[i])
@@ -1012,19 +1022,60 @@ static struct notifier_block mmdvfs_pm_notifier_block = {
 	.priority = 0,
 };
 
+static void mmdvfs_fmeter_dump(void)
+{
+	const u8 fmeter_id[13] = {5, 6, 7, 8, 9, 10, 11, 58, 57, 58, 69, 70, 71};
+	const u8 fmeter_type[13] = {2, 2, 2, 2, 2, 2, 2, 2, 5, 5, 5, 5, 5};
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(fmeter_id); i++)
+		MMDVFS_DBG("i:%d id:%hu type:%hu freq:%u", i, fmeter_id[i], fmeter_type[i],
+			mt_get_fmeter_freq(fmeter_id[i], fmeter_type[i]));
+}
+
 static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long action, void *data)
 {
 	switch (action) {
 	case VCP_EVENT_READY:
-		MMDVFS_DBG("receive VCP_EVENT_READY IPI_SYNC_FUNC=%#x IPI_SYNC_DATA=%#x",
-			readl(MEM_IPI_SYNC_FUNC), readl(MEM_IPI_SYNC_DATA));
 		mmdvfs_vcp_ipi_send(FUNC_MMDVFS_INIT, MAX_OPP, MAX_OPP, NULL);
-		// TODO : DPC
+		if (dpc_fp)
+			dpc_fp(true, mmdvfs_vcp_stop);
+		mmdvfs_vcp_stop = false;
 		mmdvfs_vcp_ipi_send(FUNC_MMDVFSRC_INIT, MAX_OPP, MAX_OPP, NULL);
 		mmdvfs_vcp_cb_ready = true;
 		break;
 	case VCP_EVENT_STOP:
+		if (dpc_fp)
+			dpc_fp(false, true);
+		mmdvfs_vcp_stop = true;
+		mmdvfs_vcp_cb_ready = false;
+		break;
 	case VCP_EVENT_SUSPEND:
+		if (dpc_fp)
+			dpc_fp(false, false);
+		if (mmdvfs_swrgo && mmdvfs_swrgo_init) {
+			bool dump = false;
+			int i, ret;
+
+			for (i = 0; i < ARRAY_SIZE(mmdvfs_user); i++) {
+				u64 freq = mmdvfs_mux[mmdvfs_user[i].target_id].freq[0];
+
+				if (mmdvfs_user[i].rate < freq)
+					continue;
+				freq = freq ? freq : mmdvfs_mux[mmdvfs_user[i].target_id].freq[1];
+				if (mmdvfs_user[i].rate > freq) {
+					MMDVFS_DBG("user:%d name:%s rate:%lu", mmdvfs_user[i].id,
+						mmdvfs_user[i].name, mmdvfs_user[i].rate);
+					mmdvfs_mux_set_opp(mmdvfs_user[i].name, 26000000UL);
+					dump = true;
+				}
+			}
+			if (dump)
+				mmdvfs_fmeter_dump();
+			ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_DEINIT, MAX_OPP, MAX_OPP, NULL);
+			if (!ret)
+				mmdvfs_swrgo_init = false;
+		}
 		mmdvfs_vcp_cb_ready = false;
 		break;
 	}
@@ -1080,12 +1131,16 @@ static int mmdvfs_vcp_init_thread(void *data)
 		writel_relaxed(MAX_OPP, MEM_FORCE_OPP_PWR(i));
 		writel_relaxed(MAX_OPP, MEM_VOTE_OPP_PWR(i));
 		writel_relaxed(MAX_OPP, MEM_PWR_OPP(i));
+		writel_relaxed(MAX_OPP, MEM_PWR_CUR_GEAR(i));
 	}
 	for (i = 0; i < USER_NUM; i++) {
 		writel_relaxed(MAX_OPP, MEM_VOTE_OPP_USR(i));
 		writel_relaxed(MAX_OPP, MEM_MUX_OPP(i));
 		writel_relaxed(MAX_OPP, MEM_USR_OPP(i));
 	}
+
+	if (mmdvfs_lp_mode)
+		writel_relaxed(1, MEM_MMDVFS_LP_MODE);
 
 	mmdvfs_init_done = true;
 	MMDVFS_DBG("iova:%pa pa:%pa va:%#lx init_done:%d",
@@ -1105,6 +1160,11 @@ static int mmdvfs_vcp_init_thread(void *data)
 
 	force_on_notifier.notifier_call = mmdvfs_force_on_callback;
 	mtk_smi_dbg_register_force_on_notifier(&force_on_notifier);
+
+	if (mmdvfs_swrgo)
+		for (i = 0; i < ARRAY_SIZE(mmdvfs_user); i++)
+			if (mmdvfs_user[i].undo_rate > 26000000UL)
+				mmdvfs_mux_set_opp(mmdvfs_user[i].name, mmdvfs_user[i].undo_rate);
 	return 0;
 }
 
@@ -1347,44 +1407,78 @@ static struct platform_driver clk_mmdvfs_drv = {
 
 int mmdvfs_mux_set_opp(const char *name, unsigned long rate)
 {
+	struct mtk_mux_user *user;
 	struct mmdvfs_mux *mux;
-	int i, id, ret;
+	int i, ret = 0;
 
-	ret = mmdvfs_mux_get_by_user_name(name, &id);
-	if (ret < 0) {
-		MMDVFS_ERR("failed:%d name:%s id:%d rate:%lu", ret, name, id, rate);
-		return ret;
+	for (i = 0; i < ARRAY_SIZE(mmdvfs_user); i++)
+		if (!strncmp(mmdvfs_user[i].name, name, 16))
+			break;
+
+	if (i >= ARRAY_SIZE(mmdvfs_user)) {
+		MMDVFS_ERR("invalid name:%s rate:%lu", name, rate);
+		return -EINVAL;
 	}
-	mux = &mmdvfs_mux[ret];
 
-	if (mmdvfs_user[id].rate == rate)
-		goto set_opp_end;
-	mmdvfs_user[id].rate = rate;
+	user = &mmdvfs_user[i];
+	mux = &mmdvfs_mux[user->target_id];
 
+	if (user->undo_rate <= 26000000UL && user->rate == rate)
+		return 0;
+
+	user->rate = rate;
 	mux->rate = 0ULL;
+
 	for (i = 0; i < mux->user_num; i++)
-		if (mux->rate < mux->user[i].rate)
-			mux->rate = mux->user[i].rate;
+		if (mux->rate < mux->user[i]->rate)
+			mux->rate = mux->user[i]->rate;
 
 	for (i = 0; i < mux->freq_num; i++)
 		if (mux->rate <= mux->freq[i])
 			break;
+
 	mux->opp = (mux->freq_num - ((i == mux->freq_num) ? (i - 1) : i) - 1);
+	if (mux->opp == mux->last)
+		return 0;
 
 	if (mmdvfs_swrgo) {
 		const u8 vcp_mux_id[MMDVFS_MUX_NUM] = {0, 4, 5, 6, 7, 9, 10, 12};
+		static bool flags;
 
-		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_GENPD);
+		if (!flags) {
+			ret = mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_GENPD);
+			if (ret)
+				goto set_opp_end;
+			flags = true;
+		}
+		if (!mmdvfs_swrgo_init) {
+			ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_INIT, MAX_OPP, MAX_OPP, NULL);
+			if (ret)
+				goto set_opp_end;
+			mmdvfs_swrgo_init = true;
+		}
+		if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
+			mux->opp < dpsw_thr && mux->last >= dpsw_thr)
+			mtk_mmdvfs_enable_vmm(true);
 		ret = mmdvfs_vcp_ipi_send(TEST_SET_MUX, vcp_mux_id[mux->id], mux->opp, NULL);
-		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_GENPD);
+		if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
+			mux->opp >= dpsw_thr && mux->last < dpsw_thr)
+			mtk_mmdvfs_enable_vmm(false);
+	}
+	if (!ret) {
+		user->undo_rate = 0UL;
+		mux->last = mux->opp;
 	}
 
 set_opp_end:
-	if (log_level & (1 << log_clk_ops))
-		MMDVFS_DBG(
-			"name:%s rate:%lu user:%d name:%s rate:%lu mux:%hhu name:%s rate:%llu opp:%hhd",
-			name, rate, mmdvfs_user[id].id, mmdvfs_user[id].name, mmdvfs_user[id].rate,
-			mux->id, mux->name, mux->rate, mux->opp);
+	if (ret)
+		user->undo_rate = user->rate;
+
+	if (ret || log_level & (1 << log_clk_ops))
+		MMDVFS_ERR(
+			"ret:%d name:%s rate:%lu user:%d name:%s rate:%lu undo:%lu mux:%hhu name:%s rate:%llu freq_num:%hhu opp:%hhd last:%hhd",
+			ret, name, rate, user->id, user->name, user->rate, user->undo_rate,
+			mux->id, mux->name, mux->rate, mux->freq_num, mux->opp, mux->last);
 	return 0;
 }
 EXPORT_SYMBOL(mmdvfs_mux_set_opp);
@@ -1411,21 +1505,22 @@ static int mmdvfs_mux_get_opp(const char *name)
 
 static unsigned long mmdvfs_mux_get_rate(const char *name)
 {
-	int id, ret;
+	int i;
 
-	ret = mmdvfs_mux_get_by_user_name(name, &id);
-	if (ret < 0) {
-		MMDVFS_ERR("failed:%d name:%s id:%d", ret, name, id);
-		return ret;
+	for (i = 0; i < ARRAY_SIZE(mmdvfs_user); i++)
+		if (!strncmp(mmdvfs_user[i].name, name, 16))
+			break;
+
+	if (i >= ARRAY_SIZE(mmdvfs_user)) {
+		MMDVFS_ERR("invalid name:%s", name);
+		return -EINVAL;
 	}
 
 	if (log_level & (1 << log_clk_ops))
-		MMDVFS_DBG("name:%s user:%d name:%s rate:%lu mux:%hhu name:%s rate:%llu opp:%hhd",
-			name, mmdvfs_user[id].id, mmdvfs_user[id].name, mmdvfs_user[id].rate,
-			mmdvfs_mux[ret].id, mmdvfs_mux[ret].name, mmdvfs_mux[ret].rate,
-			mmdvfs_mux[ret].opp);
+		MMDVFS_DBG("name:%s user:%d name:%s rate:%lu",
+			name, mmdvfs_user[i].id, mmdvfs_user[i].name, mmdvfs_user[i].rate);
 
-	return mmdvfs_user[id].rate;
+	return mmdvfs_user[i].rate;
 }
 
 static struct dfs_ops mmdvfs_mux_dfs_ops = {
@@ -1441,6 +1536,7 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 	const char *name;
 	int i, j, ret;
 
+	mmdvfs_mux_version = true;
 	mmdvfs_swrgo = of_property_read_bool(node, "mediatek,mmdvfs-swrgo");
 
 	for (i = 0; i < ARRAY_SIZE(mmdvfs_mux); i++) {
@@ -1499,6 +1595,7 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 		mmdvfs_mux[i].freq_num = j;
 		mmdvfs_mux[i].rate = 26000000UL;
 		mmdvfs_mux[i].opp = MAX_OPP;
+		mmdvfs_mux[i].last = MAX_OPP;
 	}
 
 	for (i = 0; i < ARRAY_SIZE(mmdvfs_user); i++) {
@@ -1518,17 +1615,18 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 			return ret;
 		}
 		mmdvfs_user[i].target_name = mmdvfs_mux[j].name;
+		mmdvfs_user[i].target_id = j;
 
-		if (!mmdvfs_mux[j].user_num)
-			mmdvfs_mux[j].user = &mmdvfs_user[i];
+		mmdvfs_mux[j].user[mmdvfs_mux[j].user_num] = &mmdvfs_user[i];
 		mmdvfs_mux[j].user_num += 1;
 
 		mmdvfs_user[i].rate = 26000000UL;
+		mmdvfs_user[i].undo_rate = 26000000UL;
 		mmdvfs_user[i].ops = &mtk_mux_user_ops;
 		mmdvfs_user[i].flags = 0;
 
 		MMDVFS_DBG(
-			"user:%u name:%12s target:%8s mux:%hhu name:%8s target:%12s freq_num:%hhu user_num:%hhu",
+			"user:%2u name:%12s target:%8s mux:%hhu name:%8s target:%12s freq_num:%hhu user_num:%hhu",
 			mmdvfs_user[i].id, mmdvfs_user[i].name, mmdvfs_user[i].target_name,
 			mmdvfs_mux[j].id, mmdvfs_mux[j].name, mmdvfs_mux[j].target_name,
 			mmdvfs_mux[j].freq_num, mmdvfs_mux[j].user_num);
@@ -1561,26 +1659,34 @@ static int mmdvfs_user_probe(struct platform_device *pdev)
 	struct device_node *node = pdev->dev.of_node;
 	const char *name;
 	struct clk *clk;
-	int i;
+	int i, j, ret;
 
-	clk = of_clk_get(node, 0);
-	if (IS_ERR_OR_NULL(clk)) {
-		MMDVFS_ERR("failed:%d", PTR_ERR_OR_ZERO(clk));
-		return PTR_ERR_OR_ZERO(clk);
+	ret = of_property_count_strings(node, "clock-names");
+	if (ret <= 0) {
+		MMDVFS_ERR("clock-names invalid:%d", ret);
+		return ret;
 	}
 
-	name = __clk_get_name(clk);
-	if (!name) {
-		MMDVFS_ERR("failed:%d name:%s clk:%p", PTR_ERR_OR_ZERO(name), name, clk);
-		return PTR_ERR_OR_ZERO(clk);
-	}
-
-	for (i = 0; i < ARRAY_SIZE(mmdvfs_user); i++)
-		if (!strncmp(mmdvfs_user[i].name, name, 16)) {
-			mmdvfs_user_clk[i] = clk;
-			MMDVFS_DBG("user:%d name:%12s", i, name);
-			break;
+	for (i = 0; i < ret; i++) {
+		clk = of_clk_get(node, i);
+		if (IS_ERR_OR_NULL(clk)) {
+			MMDVFS_ERR("failed:%d i:%d", PTR_ERR_OR_ZERO(clk), i);
+			return PTR_ERR_OR_ZERO(clk);
 		}
+
+		name = __clk_get_name(clk);
+		if (!name) {
+			MMDVFS_ERR("failed:%d name:%s clk:%p", PTR_ERR_OR_ZERO(name), name, clk);
+			return PTR_ERR_OR_ZERO(clk);
+		}
+
+		for (j = 0; j < ARRAY_SIZE(mmdvfs_user); j++)
+			if (!strncmp(mmdvfs_user[j].name, name, 16)) {
+				mmdvfs_user_clk[j] = clk;
+				MMDVFS_DBG("user:%2d name:%12s", j, name);
+				break;
+			}
+	}
 
 	return 0;
 }

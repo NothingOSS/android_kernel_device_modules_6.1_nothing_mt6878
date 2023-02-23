@@ -12,6 +12,8 @@
 #include <linux/clk-provider.h>
 #include <linux/platform_device.h>
 
+#include <soc/mediatek/mmdvfs_v3.h>
+
 /* hw voter timeout configures */
 #define MTK_WAIT_HWV_PREPARE_CNT	200
 #define MTK_WAIT_HWV_PREPARE_US		1
@@ -290,15 +292,6 @@ struct mtk_clk_user {
 	struct clk_hw hw;
 	struct clk_hw *target_hw;
 	spinlock_t *lock;
-	unsigned int flags;
-};
-
-struct mtk_mux_user {
-	int id;
-	const char *name;
-	const char *target_name;
-	unsigned long rate;
-	const struct clk_ops *ops;
 	unsigned int flags;
 };
 

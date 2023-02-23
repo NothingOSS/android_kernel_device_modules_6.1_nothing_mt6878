@@ -6,11 +6,26 @@
 #ifndef MTK_MMDVFS_V3_H
 #define MTK_MMDVFS_V3_H
 
+#include <linux/clk-provider.h>
+
 #include <linux/remoteproc/mtk_ccu.h>
+
+struct mtk_mux_user {
+	int id;
+	const char *name;
+	const char *target_name;
+	unsigned long rate;
+	const struct clk_ops *ops;
+	unsigned int flags;
+	u8 target_id;
+	unsigned long undo_rate;
+};
 
 typedef int (*call_ccu)(struct platform_device *pdev,
 	enum mtk_ccu_feature_type featureType,
 	uint32_t msgId, void *inDataPtr, uint32_t inDataSize);
+
+typedef int (*rc_enable)(const bool enable, const bool wdt);
 
 enum {
 	CCU_PWR_USR_MMDVFS,
@@ -32,6 +47,12 @@ enum {
 	VCP_PWR_USR_VDEC,
 	VCP_PWR_USR_VFMT,
 	VCP_PWR_USR_SMI,
+	VCP_PWR_USR_DISP,
+	VCP_PWR_USR_MDP,
+	VCP_PWR_USR_MML,
+	VCP_PWR_USR_VENC,
+	VCP_PWR_USR_JPEGDEC,
+	VCP_PWR_USR_JPEGENC,
 	VCP_PWR_USR_NUM
 };
 
@@ -75,7 +96,10 @@ int mtk_mmdvfs_v3_set_vote_step(const u16 pwr_idx, const s16 opp);
 
 void mmdvfs_set_lp_mode(bool lp_mode);
 void mmdvfs_call_ccu_set_fp(call_ccu fp);
+void mmdvfs_rc_enable_set_fp(rc_enable fp);
 
+int mmdvfs_set_lp_mode_by_vcp(const bool enable);
+int mmdvfs_get_version(void);
 int mmdvfs_mux_set_opp(const char *name, unsigned long rate);
 #else
 static inline int mtk_mmdvfs_get_ipi_status(void) { return 0; }
@@ -91,7 +115,10 @@ static inline int mtk_mmdvfs_v3_set_vote_step(const u16 pwr_idx, const s16 opp) 
 
 static inline void mmdvfs_set_lp_mode(bool lp_mode) { return; }
 static inline void mmdvfs_call_ccu_set_fp(call_ccu fp) {return; }
+static inline void mmdvfs_rc_enable_set_fp(rc_enable fp) { return; }
 
+static inline int mmdvfs_set_lp_mode_by_vcp(const bool enable) { return 0; }
+static inline int mmdvfs_get_version(void) { return 0; }
 static inline int mmdvfs_mux_set_opp(const char *name, unsigned long rate) { return 0; }
 #endif
 

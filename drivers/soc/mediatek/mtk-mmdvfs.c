@@ -14,6 +14,7 @@
 #include <linux/soc/mediatek/mtk_mmdvfs.h>
 #include "../../misc/mediatek/smi/mtk-smi-dbg.h"
 
+#include <soc/mediatek/mmdvfs_v3.h>
 #define MAX_OPP_NUM (6)
 #define MAX_MUX_NUM (10)
 #define MAX_HOPPING_CLK_NUM (2)
@@ -64,6 +65,7 @@ struct mmdvfs_drv_data {
 	u32 num_voltages;
 	struct mutex lp_mutex;
 	bool lp_mode;
+	bool lp_mode_vcp;
 	u32 last_opp_level;
 };
 
@@ -345,6 +347,12 @@ void mmdvfs_set_lp_mode(bool lp_mode)
 			break;
 
 		drv_data->lp_mode = lp_mode;
+
+		if (drv_data->lp_mode_vcp) {
+			mmdvfs_set_lp_mode_by_vcp(lp_mode);
+			break;
+		}
+
 		for (i = 0; i < drv_data->num_muxes; i++) {
 			mux = &drv_data->muxes[i];
 			if (!mux->clk_src_lp)
@@ -727,6 +735,8 @@ static int mmdvfs_probe(struct platform_device *pdev)
 		}
 		num_lp_clksrc++;
 	}
+	if (of_property_read_bool(dev->of_node, "mediatek,mux-lp-vcp"))
+		drv_data->lp_mode_vcp = true;
 	mutex_init(&drv_data->lp_mutex);
 	drv_data->last_opp_level = MAX_OPP_NUM;
 	mmdvfs_dbg = kzalloc(sizeof(*mmdvfs_dbg), GFP_KERNEL);

@@ -33,8 +33,9 @@ static inline bool mmdvfs_is_init_done(void) { return false; }
 #define MEM_FRESH_CNT_USR(x)	(MEM_BASE + 0x28 + 0x4 * (x)) // CAM, IMG
 #define MEM_FORCE_OPP_PWR(x)	(MEM_BASE + 0x30 + 0x4 * (x)) // POWER_NUM
 #define MEM_VOTE_OPP_PWR(x)	(MEM_BASE + 0x40 + 0x4 * (x)) // POWER_NUM
-#define MEM_VOTE_OPP_USR(x)	(MEM_BASE + 0x50 + 0x4 * (x)) // USER_NUM
+#define MEM_VOTE_OPP_USR(x)	(MEM_BASE + 0x50 + 0x4 * (x)) // USER_NUM(14)
 
+#define MEM_MMDVFS_LP_MODE	(MEM_BASE + 0x88)
 #define MEM_VMM_CEIL_ENABLE	(MEM_BASE + 0x8C)
 
 #define MEM_CLKMUX_ENABLE	(MEM_BASE + 0x90)
