@@ -141,19 +141,23 @@ struct mtk_disp_oddmr {
 	unsigned int spr_enable;
 	unsigned int spr_relay;
 	unsigned int spr_format;
-	struct icc_path *qos_req_dmrr;
 	uint32_t qos_srt_dmrr;
 	uint32_t last_qos_srt_dmrr;
-	struct icc_path *qos_req_odr;
 	uint32_t qos_srt_odr;
 	uint32_t last_qos_srt_odr;
-	struct icc_path *qos_req_odw;
 	uint32_t qos_srt_odw;
 	uint32_t last_qos_srt_odw;
+	struct icc_path *qos_req_dmrr;
+	struct icc_path *qos_req_odr;
+	struct icc_path *qos_req_odw;
 	struct icc_path *qos_req_dmrr_hrt;
 	struct icc_path *qos_req_odr_hrt;
 	struct icc_path *qos_req_odw_hrt;
 	uint32_t irq_status;
+	/* larb_cons idx */
+	uint32_t larb_dmrr;
+	uint32_t larb_odr;
+	uint32_t larb_odw;
 	/* only use in pipe0 */
 	enum ODDMR_STATE od_state;
 	enum ODDMR_STATE dmr_state;

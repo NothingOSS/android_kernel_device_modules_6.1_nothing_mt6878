@@ -1070,49 +1070,49 @@ static void mtk_disp_gamma_dts_parse(const struct device_node *np,
 {
 	struct gamma_color_protect_mode color_protect_mode;
 
-	if (of_property_read_u32(np, "gamma_data_mode",
+	if (of_property_read_u32(np, "gamma-data-mode",
 		&g_gamma_data_mode)) {
 		DDPPR_ERR("comp_id: %d, gamma_data_mode = %d\n",
 			comp_id, g_gamma_data_mode);
 		g_gamma_data_mode = HW_8BIT;
 	}
 
-	if (of_property_read_u32(np, "color_protect_lsb",
+	if (of_property_read_u32(np, "color-protect-lsb",
 		&g_gamma_color_protect.gamma_color_protect_lsb)) {
 		DDPPR_ERR("comp_id: %d, color_protect_lsb = %d\n",
 			comp_id, g_gamma_color_protect.gamma_color_protect_lsb);
 		g_gamma_color_protect.gamma_color_protect_lsb = 0;
 	}
 
-	if (of_property_read_u32(np, "color_protect_red",
+	if (of_property_read_u32(np, "color-protect-red",
 		&color_protect_mode.red_support)) {
 		DDPPR_ERR("comp_id: %d, color_protect_red = %d\n",
 			comp_id, color_protect_mode.red_support);
 		color_protect_mode.red_support = 0;
 	}
 
-	if (of_property_read_u32(np, "color_protect_green",
+	if (of_property_read_u32(np, "color-protect-green",
 		&color_protect_mode.green_support)) {
 		DDPPR_ERR("comp_id: %d, color_protect_green = %d\n",
 			comp_id, color_protect_mode.green_support);
 		color_protect_mode.green_support = 0;
 	}
 
-	if (of_property_read_u32(np, "color_protect_blue",
+	if (of_property_read_u32(np, "color-protect-blue",
 		&color_protect_mode.blue_support)) {
 		DDPPR_ERR("comp_id: %d, color_protect_blue = %d\n",
 			comp_id, color_protect_mode.blue_support);
 		color_protect_mode.blue_support = 0;
 	}
 
-	if (of_property_read_u32(np, "color_protect_black",
+	if (of_property_read_u32(np, "color-protect-black",
 		&color_protect_mode.black_support)) {
 		DDPPR_ERR("comp_id: %d, color_protect_black = %d\n",
 			comp_id, color_protect_mode.black_support);
 		color_protect_mode.black_support = 0;
 	}
 
-	if (of_property_read_u32(np, "color_protect_white",
+	if (of_property_read_u32(np, "color-protect-white",
 		&color_protect_mode.white_support)) {
 		DDPPR_ERR("comp_id: %d, color_protect_white = %d\n",
 			comp_id, color_protect_mode.white_support);
@@ -1211,6 +1211,7 @@ static const struct of_device_id mtk_disp_gamma_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6985-disp-gamma",},
 	{ .compatible = "mediatek,mt6886-disp-gamma",},
 	{ .compatible = "mediatek,mt6835-disp-gamma",},
+	{ .compatible = "mediatek,mt6897-disp-gamma",},
 	{},
 };
 

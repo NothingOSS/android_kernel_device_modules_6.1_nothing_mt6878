@@ -636,7 +636,7 @@ static int mtk_dmdp_aal_probe(struct platform_device *pdev)
 	}
 
 	aal_node = of_find_compatible_node(NULL, NULL, "mediatek,disp_aal0");
-	if (of_property_read_u32(aal_node, "mtk_dre30_support",
+	if (of_property_read_u32(aal_node, "mtk-dre30-support",
 		&g_dre30_support)) {
 		DDPMSG("comp_id: %d, mtk_dre30_support = %d\n",
 			comp_id, g_dre30_support);
@@ -708,6 +708,12 @@ static const struct mtk_dmdp_aal_data mt6985_dmdp_aal_driver_data = {
 	.block_info_00_mask = 0xFFFFFFFF,
 };
 
+static const struct mtk_dmdp_aal_data mt6897_dmdp_aal_driver_data = {
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+	.block_info_00_mask = 0xFFFFFFFF,
+};
+
 static const struct of_device_id mtk_dmdp_aal_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6885-dmdp-aal",
 	  .data = &mt6885_dmdp_aal_driver_data},
@@ -719,6 +725,8 @@ static const struct of_device_id mtk_dmdp_aal_driver_dt_match[] = {
 	  .data = &mt6895_dmdp_aal_driver_data},
 	{ .compatible = "mediatek,mt6985-dmdp-aal",
 	  .data = &mt6985_dmdp_aal_driver_data},
+	{ .compatible = "mediatek,mt6897-dmdp-aal",
+	  .data = &mt6897_dmdp_aal_driver_data},
 	{},
 };
 

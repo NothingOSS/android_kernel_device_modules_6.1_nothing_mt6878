@@ -648,6 +648,12 @@ static const struct mtk_ddp_comp_match mtk_ddp_matches[DDP_COMPONENT_ID_MAX] = {
 	{DDP_COMPONENT_OVL7_2L_VIRTUAL0, MTK_DISP_VIRTUAL, -1, NULL, 0},
 	{DDP_COMPONENT_MDP_RSZ0, MTK_DISP_MDP_RSZ, 0, NULL, 0},
 	{DDP_COMPONENT_MDP_RSZ1, MTK_DISP_MDP_RSZ, 1, NULL, 0},
+	{DDP_COMPONENT_CCORR4, MTK_DISP_CCORR, 4, NULL, 0},
+	{DDP_COMPONENT_CCORR5, MTK_DISP_CCORR, 5, NULL, 0},
+/* 330 */	{DDP_COMPONENT_CCORR6, MTK_DISP_CCORR, 6, NULL, 0},
+	{DDP_COMPONENT_CCORR7, MTK_DISP_CCORR, 7, NULL, 0},
+	{DDP_COMPONENT_GAMMA2, MTK_DISP_GAMMA, 2, NULL, 0},
+	{DDP_COMPONENT_GAMMA3, MTK_DISP_GAMMA, 3, NULL, 0},
 	{DDP_COMPONENT_TDSHP_VIRTUAL0, MTK_DISP_VIRTUAL, -1, NULL, 0},
 	{DDP_COMPONENT_MAIN0_TX_VIRTUAL0, MTK_DISP_VIRTUAL, -1, NULL, 0},
 };
@@ -779,7 +785,7 @@ static void mtk_ddp_comp_set_larb(struct device *dev, struct device_node *node,
 
 	/* check if this module need larb_dev */
 	if (type != MTK_DISP_OVL && type != MTK_DISP_RDMA && type != MTK_DISP_WDMA &&
-		type != MTK_DISP_POSTMASK && type != MTK_DISP_MDP_RDMA)
+		type != MTK_DISP_POSTMASK && type != MTK_DISP_MDP_RDMA && type != MTK_DISP_ODDMR)
 		return;
 
 	count = of_property_count_u32_elems(node, "mediatek,larb");

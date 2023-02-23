@@ -3184,8 +3184,6 @@ static int mtk_oddmr_user_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 		uint32_t value = *(uint32_t *)data;
 
 		mtk_oddmr_set_od_weight_dual(comp, value, handle);
-		if (atomic_read(&g_oddmr_od_weight_trigger) > 0)
-			atomic_dec(&g_oddmr_od_weight_trigger);
 		break;
 	}
 	case ODDMR_CMD_OD_ENABLE:
@@ -3272,15 +3270,19 @@ static void disp_oddmr_wait_sof_irq(void)
 	CRTC_MMP_MARK(0, oddmr_sof_thread, atomic_read(&g_oddmr_od_weight_trigger), 0);
 	if (g_oddmr_priv->od_enable) {
 		/* 1. restore user weight */
-		if (atomic_read(&g_oddmr_od_weight_trigger) == 1) {
-			sel = g_oddmr_priv->od_data.od_sram_read_sel;
-			mtk_oddmr_od_gain_lookup(g_oddmr_current_timing.vrefresh,
-					g_oddmr_current_timing.bl_level,
-					g_oddmr_priv->od_data.od_sram_table_idx[sel], &weight);
-			ODDMRFLOW_LOG("weight restore %u\n", weight);
-			mtk_crtc_user_cmd(&default_comp->mtk_crtc->base,
-				default_comp, ODDMR_CMD_OD_SET_WEIGHT, &weight);
-			CRTC_MMP_MARK(0, oddmr_sof_thread, weight, 1);
+		if (atomic_read(&g_oddmr_od_weight_trigger) > 0) {
+			atomic_dec(&g_oddmr_od_weight_trigger);
+			if (atomic_read(&g_oddmr_od_weight_trigger) == 0) {
+				sel = g_oddmr_priv->od_data.od_sram_read_sel;
+				mtk_oddmr_od_gain_lookup(g_oddmr_current_timing.vrefresh,
+						g_oddmr_current_timing.bl_level,
+						g_oddmr_priv->od_data.od_sram_table_idx[sel],
+						&weight);
+				ODDMRFLOW_LOG("weight restore %u\n", weight);
+				mtk_crtc_user_cmd(&default_comp->mtk_crtc->base,
+					default_comp, ODDMR_CMD_OD_SET_WEIGHT, &weight);
+				CRTC_MMP_MARK(0, oddmr_sof_thread, weight, 1);
+			}
 		}
 		/* 2. wait until near next frame te */
 		frame_req_trig = (atomic_read(&g_oddmr_frame_dirty) == 1);
@@ -4381,6 +4383,21 @@ static int mtk_disp_oddmr_probe(struct platform_device *pdev)
 		dev_err(dev, "Failed to initialize component: %d\n", ret);
 		goto err;
 	}
+	ret = of_property_read_u32(dev->of_node, "mediatek,larb-oddmr-dmrr", &priv->larb_dmrr);
+	if (ret) {
+		dev_err(dev, "Failed to initialize oddmr-dmrr: %d\n", ret);
+		goto err;
+	}
+	ret = of_property_read_u32(dev->of_node, "mediatek,larb-oddmr-odr", &priv->larb_odr);
+	if (ret) {
+		dev_err(dev, "Failed to initialize oddmr-odr: %d\n", ret);
+		goto err;
+	}
+	ret = of_property_read_u32(dev->of_node, "mediatek,larb-oddmr-odw", &priv->larb_odw);
+	if (ret) {
+		dev_err(dev, "Failed to initialize oddmr-odw: %d\n", ret);
+		goto err;
+	}
 
 	priv->data = of_device_get_match_data(dev);
 	platform_set_drvdata(pdev, priv);
@@ -4465,6 +4482,7 @@ static int mtk_disp_oddmr_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
 static const struct mtk_disp_oddmr_data mt6985_oddmr_driver_data = {
 	.is_od_support_table_update = false,
 	.is_support_rtff = false,
@@ -4480,9 +4498,26 @@ static const struct mtk_disp_oddmr_data mt6985_oddmr_driver_data = {
 	.irq_handler = mtk_oddmr_check_framedone,
 };
 
+static const struct mtk_disp_oddmr_data mt6897_oddmr_driver_data = {
+	.is_od_support_table_update = false,
+	.is_support_rtff = false,
+	.is_od_support_hw_skip_first_frame = false,
+	.is_od_need_crop_garbage = false,
+	.is_od_need_force_clk = false,
+	.is_od_support_sec = false,
+	.is_od_merge_lines = true,
+	.tile_overhead = 8,
+	.dmr_buffer_size = 458,
+	.odr_buffer_size = 264,
+	.odw_buffer_size = 264,
+	.irq_handler = mtk_oddmr_check_framedone,
+};
+
 static const struct of_device_id mtk_disp_oddmr_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6985-disp-oddmr",
-		.data = &mt6985_oddmr_driver_data},
+	  .data = &mt6985_oddmr_driver_data},
+	{ .compatible = "mediatek,mt6897-disp-oddmr",
+	  .data = &mt6897_oddmr_driver_data},
 	{},
 };
 

@@ -3964,21 +3964,21 @@ static int mtk_disp_aal_probe(struct platform_device *pdev)
 				g_tdshp_clarity_support);
 		}
 
-		if (of_property_read_u32(dev->of_node, "mtk_aal_support",
+		if (of_property_read_u32(dev->of_node, "mtk-aal-support",
 			&g_aal_fo->mtk_aal_support)) {
 			AALERR("comp_id: %d, mtk_aal_support = %d\n",
 				comp_id, g_aal_fo->mtk_aal_support);
 			g_aal_fo->mtk_aal_support = 0;
 		}
 
-		if (of_property_read_u32(dev->of_node, "mtk_dre30_support",
+		if (of_property_read_u32(dev->of_node, "mtk-dre30-support",
 			&g_aal_fo->mtk_dre30_support)) {
 			AALERR("comp_id: %d, mtk_dre30_support = %d\n",
 				comp_id, g_aal_fo->mtk_dre30_support);
 			g_aal_fo->mtk_dre30_support = 0;
 		} else {
 			if (g_aal_fo->mtk_dre30_support) {
-				if (of_property_read_u32(dev->of_node, "aal_dre3_en",
+				if (of_property_read_u32(dev->of_node, "aal-dre3-en",
 					&g_aal_dre30_en)) {
 					gDre30Enabled = true;
 				} else
@@ -4031,7 +4031,7 @@ static int mtk_disp_aal_probe(struct platform_device *pdev)
 			break;
 		}
 		dre3_dev_node = of_parse_phandle(
-			pdev->dev.of_node, "aal_dre3", 0);
+			pdev->dev.of_node, "aal-dre3", 0);
 		if (dre3_dev_node)
 			pr_notice("found dre3 aal node, it's another hw\n");
 		else
@@ -4210,6 +4210,16 @@ static const struct mtk_disp_aal_data mt6985_aal_driver_data = {
 	.bitShift = 16,
 };
 
+static const struct mtk_disp_aal_data mt6897_aal_driver_data = {
+	.support_shadow     = false,
+	.need_bypass_shadow = true,
+	.aal_dre_hist_start = 1536,
+	.aal_dre_hist_end   = 4604,
+	.aal_dre_gain_start = 4608,
+	.aal_dre_gain_end   = 6780,
+	.bitShift = 16,
+};
+
 static const struct mtk_disp_aal_data mt6886_aal_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
@@ -4243,6 +4253,8 @@ static const struct of_device_id mtk_disp_aal_driver_dt_match[] = {
 	  .data = &mt6886_aal_driver_data},
 	{ .compatible = "mediatek,mt6835-disp-aal",
 	  .data = &mt6835_aal_driver_data},
+	{ .compatible = "mediatek,mt6897-disp-aal",
+	  .data = &mt6897_aal_driver_data},
 	{},
 };
 

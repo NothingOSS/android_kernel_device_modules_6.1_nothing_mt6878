@@ -2397,192 +2397,173 @@ static bool color_get_MDP_AAL0_REG(struct resource *res)
 	return true;
 }
 
-static bool color_get_DISP_COLOR1_REG(struct resource *res)
+static bool color_get_DISP1_COLOR0_REG(struct resource *res)
 {
 	int rc = 0;
 	struct device_node *node = NULL;
 
-	node = of_find_compatible_node(NULL, NULL, "mediatek,disp_color1");
+	node = of_find_compatible_node(NULL, NULL, "mediatek,disp1_color0");
 	rc = of_address_to_resource(node, 0, res);
 
 	// check if fail to get reg.
 	if (rc)	{
-		DDPINFO("Fail to get disp_color1 REG\n");
+		DDPINFO("Fail to get disp1_color0 REG\n");
 		return false;
 	}
 
-	DDPDBG("disp_color1 REG: 0x%llx ~ 0x%llx\n", res->start, res->end);
+	DDPDBG("disp1_color0 REG: 0x%llx ~ 0x%llx\n", res->start, res->end);
 
 	return true;
 }
 
-static bool color_get_DISP_CCORR1_REG(struct resource *res)
+static bool color_get_DISP1_CCORR0_REG(struct resource *res)
 {
 	int rc = 0;
 	struct device_node *node = NULL;
 
-	node = of_find_compatible_node(NULL, NULL, "mediatek,disp_ccorr1");
+	node = of_find_compatible_node(NULL, NULL, "mediatek,disp1_ccorr0");
 	rc = of_address_to_resource(node, 0, res);
 
 	// check if fail to get reg.
 	if (rc)	{
-		DDPINFO("Fail to get disp_ccorr1 REG\n");
+		DDPINFO("Fail to get disp1_ccorr0 REG\n");
 		return false;
 	}
 
-	DDPDBG("disp_ccorr1 REG: 0x%llx ~ 0x%llx\n", res->start, res->end);
+	DDPDBG("disp1_ccorr0 REG: 0x%llx ~ 0x%llx\n", res->start, res->end);
 
 	return true;
 }
 
-static bool color_get_DISP_AAL1_REG(struct resource *res)
+static bool color_get_DISP1_AAL0_REG(struct resource *res)
 {
 	int rc = 0;
 	struct device_node *node = NULL;
 
-	node = of_find_compatible_node(NULL, NULL, "mediatek,disp_aal1");
+	node = of_find_compatible_node(NULL, NULL, "mediatek,disp1_aal0");
 	rc = of_address_to_resource(node, 0, res);
 
 	// check if fail to get reg.
 	if (rc)	{
-		DDPINFO("Fail to get disp_aal1 REG\n");
+		DDPINFO("Fail to get disp1_aal0 REG\n");
 		return false;
 	}
 
-	DDPDBG("disp_aal1 REG: 0x%llx ~ 0x%llx\n", res->start, res->end);
+	DDPDBG("disp1_aal0 REG: 0x%llx ~ 0x%llx\n", res->start, res->end);
 
 	return true;
 }
 
-static bool color_get_DISP_GAMMA1_REG(struct resource *res)
+static bool color_get_DISP1_GAMMA0_REG(struct resource *res)
 {
 	int rc = 0;
 	struct device_node *node = NULL;
 
-	node = of_find_compatible_node(NULL, NULL, "mediatek,disp_gamma1");
+	node = of_find_compatible_node(NULL, NULL, "mediatek,disp1_gamma0");
 	rc = of_address_to_resource(node, 0, res);
 
 	// check if fail to get reg.
 	if (rc)	{
-		DDPINFO("Fail to get disp_gamma1 REG\n");
+		DDPINFO("Fail to get disp1_gamma0 REG\n");
 		return false;
 	}
 
-	DDPDBG("disp_gamma1 REG: 0x%llx ~ 0x%llx\n", res->start, res->end);
+	DDPDBG("disp1_gamma0 REG: 0x%llx ~ 0x%llx\n", res->start, res->end);
 
 	return true;
 }
 
-static bool color_get_DISP_DITHER1_REG(struct resource *res)
+static bool color_get_DISP1_DITHER0_REG(struct resource *res)
 {
 	int rc = 0;
 	struct device_node *node = NULL;
 
-	node = of_find_compatible_node(NULL, NULL, "mediatek,disp_dither1");
+	node = of_find_compatible_node(NULL, NULL, "mediatek,disp1_dither0");
 	rc = of_address_to_resource(node, 0, res);
 
 	// check if fail to get reg.
 	if (rc)	{
-		DDPINFO("Fail to get disp_dither1 REG\n");
+		DDPINFO("Fail to get disp1_dither0 REG\n");
 		return false;
 	}
 
-	DDPDBG("disp_dither1 REG: 0x%llx ~ 0x%llx\n", res->start, res->end);
+	DDPDBG("disp1_dither0 REG: 0x%llx ~ 0x%llx\n", res->start, res->end);
 
 	return true;
 }
 
-static bool color_get_DISP_CCORR2_REG(struct resource *res)
+static bool color_get_DISP1_CCORR1_REG(struct resource *res)
 {
 	int rc = 0;
 	struct device_node *node = NULL;
 
-	node = of_find_compatible_node(NULL, NULL, "mediatek,disp_ccorr3");
+	node = of_find_compatible_node(NULL, NULL, "mediatek,disp1_ccorr1");
 	rc = of_address_to_resource(node, 0, res);
 
 	// check if fail to get reg.
 	if (rc)	{
-		DDPINFO("Fail to get disp_ccorr2 REG\n");
+		DDPINFO("Fail to get disp1_ccorr1 REG\n");
 		return false;
 	}
 
-	DDPDBG("disp_ccorr2 REG: 0x%llx ~ 0x%llx\n", res->start, res->end);
+	DDPDBG("disp1_ccorr1 REG: 0x%llx ~ 0x%llx\n", res->start, res->end);
 
 	return true;
 }
 
-static bool color_get_DISP_TDSHP1_REG(struct resource *res)
+static bool color_get_DISP1_TDSHP0_REG(struct resource *res)
 {
 	int rc = 0;
 	struct device_node *node = NULL;
 
-	node = of_find_compatible_node(NULL, NULL, "mediatek,disp_tdshp1");
+	node = of_find_compatible_node(NULL, NULL, "mediatek,disp1_tdshp0");
 	rc = of_address_to_resource(node, 0, res);
 
 	// check if fail to get reg.
 	if (rc)	{
-		DDPINFO("Fail to get disp_tdshp1 REG\n");
+		DDPINFO("Fail to get disp1_tdshp0 REG\n");
 		return false;
 	}
 
-	DDPDBG("disp_tdshp1 REG: 0x%llx ~ 0x%llx\n", res->start, res->end);
+	DDPDBG("disp1_tdshp0 REG: 0x%llx ~ 0x%llx\n", res->start, res->end);
 
 	return true;
 }
 
-static bool color_get_DISP_TDSHP2_REG(struct resource *res)
+static bool color_get_DISP1_C3D0_REG(struct resource *res)
 {
 	int rc = 0;
 	struct device_node *node = NULL;
 
-	node = of_find_compatible_node(NULL, NULL, "mediatek,disp_tdshp2");
+	node = of_find_compatible_node(NULL, NULL, "mediatek,disp1_c3d0");
 	rc = of_address_to_resource(node, 0, res);
 
 	// check if fail to get reg.
 	if (rc)	{
-		DDPINFO("Fail to get disp_tdshp1 REG\n");
+		DDPINFO("Fail to get disp1_c3d0 REG\n");
 		return false;
 	}
 
-	DDPDBG("disp_tdshp2 REG: 0x%llx ~ 0x%llx\n", res->start, res->end);
+	DDPDBG("disp1_c3d0 REG: 0x%llx ~ 0x%llx\n", res->start, res->end);
 
 	return true;
 }
 
-static bool color_get_DISP_C3D1_REG(struct resource *res)
+static bool color_get_DISP1_DMDP_AAL0_REG(struct resource *res)
 {
 	int rc = 0;
 	struct device_node *node = NULL;
 
-	node = of_find_compatible_node(NULL, NULL, "mediatek,disp_c3d1");
+	node = of_find_compatible_node(NULL, NULL, "mediatek,disp1_mdp_aal0");
 	rc = of_address_to_resource(node, 0, res);
 
 	// check if fail to get reg.
 	if (rc)	{
-		DDPINFO("Fail to get disp_c3d1 REG\n");
+		DDPINFO("Fail to get disp1_mdp_aal0 REG\n");
 		return false;
 	}
 
-	DDPDBG("disp_c3d1 REG: 0x%llx ~ 0x%llx\n", res->start, res->end);
-
-	return true;
-}
-
-static bool color_get_DISP_DMDP_AAL_REG(struct resource *res)
-{
-	int rc = 0;
-	struct device_node *node = NULL;
-
-	node = of_find_compatible_node(NULL, NULL, "mediatek,disp_mdp_aal1");
-	rc = of_address_to_resource(node, 0, res);
-
-	// check if fail to get reg.
-	if (rc)	{
-		DDPINFO("Fail to get disp_c3d1 REG\n");
-		return false;
-	}
-
-	DDPDBG("disp_mdp_aal1 REG: 0x%llx ~ 0x%llx\n", res->start, res->end);
+	DDPDBG("disp1_mdp_aal0 REG: 0x%llx ~ 0x%llx\n", res->start, res->end);
 
 	return true;
 }
@@ -3425,7 +3406,7 @@ static int mtk_color_user_cmd(struct mtk_ddp_comp *comp,
 			tablet_index = get_tuning_reg_table_idx_and_offset(comp, pa, &offset);
 			do {
 				if (tablet_index == TUNING_DISP_COLOR) {
-					if (color_get_DISP_COLOR1_REG(&res))
+					if (color_get_DISP1_COLOR0_REG(&res))
 						pa1 =  res.start + offset;
 					if (offset == DISP_COLOR_POS_MAIN) {
 						disp_color_write_pos_main_for_dual_pipe(comp,
@@ -3433,38 +3414,28 @@ static int mtk_color_user_cmd(struct mtk_ddp_comp *comp,
 						break;
 					}
 				} else if (tablet_index == TUNING_DISP_CCORR) {
-					if (color_get_DISP_CCORR2_REG(&res))
+					if (color_get_DISP1_CCORR0_REG(&res))
 						pa1 = res.start + offset;
-					else if (color_get_DISP_CCORR1_REG(&res))
-						pa1 =  res.start + offset;
-
 				} else if (tablet_index == TUNING_DISP_AAL) {
-					if (color_get_DISP_AAL1_REG(&res))
+					if (color_get_DISP1_AAL0_REG(&res))
 						pa1 =  res.start + offset;
-
 				} else if (tablet_index == TUNING_DISP_GAMMA) {
-					if (color_get_DISP_GAMMA1_REG(&res))
+					if (color_get_DISP1_GAMMA0_REG(&res))
 						pa1 =  res.start + offset;
-
 				} else if (tablet_index == TUNING_DISP_DITHER) {
-					if (color_get_DISP_DITHER1_REG(&res))
+					if (color_get_DISP1_DITHER0_REG(&res))
 						pa1 =  res.start + offset;
 				} else if (tablet_index == TUNING_DISP_TDSHP) {
-					if (color_get_DISP_TDSHP2_REG(&res))
+					if (color_get_DISP1_TDSHP0_REG(&res))
 						pa1 =  res.start + offset;
-					else if (color_get_DISP_TDSHP1_REG(&res))
-						pa1 =  res.start + offset;
-
 				} else if (tablet_index == TUNING_DISP_C3D) {
-					if (color_get_DISP_C3D1_REG(&res))
+					if (color_get_DISP1_C3D0_REG(&res))
 						pa1 =  res.start + offset;
 				} else if (tablet_index == TUNING_DISP_CCORR1) {
-					if (color_get_DISP_CCORR2_REG(&res))
+					if (color_get_DISP1_CCORR1_REG(&res))
 						pa1 = res.start + offset;
-					else if (color_get_DISP_CCORR1_REG(&res))
-						pa1 =  res.start + offset;
 				} else if (tablet_index == TUNING_DISP_MDP_AAL) {
-					if (color_get_DISP_DMDP_AAL_REG(&res))
+					if (color_get_DISP1_DMDP_AAL0_REG(&res))
 						pa1 =  res.start + offset;
 				} else if (tablet_index == TUNING_DISP_ODDMR_TOP) {
 					if (color_get_DISP1_ODDMR0_REG(&res))
@@ -3854,6 +3825,18 @@ static const struct mtk_disp_color_data mt6985_color_driver_data = {
 	.need_bypass_shadow = true,
 };
 
+static const struct mtk_disp_color_data mt6897_color_driver_data = {
+	.color_offset = DISP_COLOR_START_MT6873,
+	.support_color21 = true,
+	.support_color30 = true,
+	.reg_table = {0x14008000, 0x14004000, 0x14002000, 0x1400E000,
+			0x14009000, 0x14005000, 0x14018000, 0x14003000,
+			0x1400F000, 0x14013000, 0x14014000},
+	.color_window = 0x40185E57,
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+};
+
 static const struct mtk_disp_color_data mt6886_color_driver_data = {
 	.color_offset = DISP_COLOR_START_MT6873,
 	.support_color21 = true,
@@ -3895,6 +3878,8 @@ static const struct of_device_id mtk_disp_color_driver_dt_match[] = {
 	 .data = &mt6886_color_driver_data},
 	{.compatible = "mediatek,mt6835-disp-color",
 	 .data = &mt6835_color_driver_data},
+	{.compatible = "mediatek,mt6897-disp-color",
+	 .data = &mt6897_color_driver_data},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_color_driver_dt_match);

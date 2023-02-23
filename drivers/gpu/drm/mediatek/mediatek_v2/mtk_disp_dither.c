@@ -951,21 +951,21 @@ void mtk_dither_regdump(void)
 static void mtk_disp_dither_dts_parse(const struct device_node *np,
 	enum mtk_ddp_comp_id comp_id)
 {
-	if (of_property_read_u32(np, "pure_clr_det",
+	if (of_property_read_u32(np, "pure-clr-det",
 		&g_pure_clr_param->pure_clr_det)) {
 		DDPPR_ERR("comp_id: %d, pure_clr_det = %d\n",
 			comp_id, g_pure_clr_param->pure_clr_det);
 		g_pure_clr_param->pure_clr_det = 0;
 	}
 
-	if (of_property_read_u32(np, "pure_clr_num",
+	if (of_property_read_u32(np, "pure-clr-num",
 		&g_pure_clr_param->pure_clr_num)) {
 		DDPPR_ERR("comp_id: %d, pure_clr_num = %d\n",
 			comp_id, g_pure_clr_param->pure_clr_num);
 		g_pure_clr_param->pure_clr_num = 0;
 	}
 
-	if (of_property_read_u32_array(np, "pure_clr_rgb",
+	if (of_property_read_u32_array(np, "pure-clr-rgb",
 		&g_pure_clr_param->pure_clr[0][0],
 		PURE_CLR_RGB * g_pure_clr_param->pure_clr_num)) {
 		DDPPR_ERR("comp_id: %d, get pure_clr error\n", comp_id);
@@ -1116,6 +1116,12 @@ static const struct mtk_disp_dither_data mt6985_dither_driver_data = {
 	.single_pipe_dither_num = 2,
 };
 
+static const struct mtk_disp_dither_data mt6897_dither_driver_data = {
+	.support_shadow     = false,
+	.need_bypass_shadow = true,
+	.single_pipe_dither_num = 2,
+};
+
 static const struct mtk_disp_dither_data mt6886_dither_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
@@ -1148,6 +1154,8 @@ static const struct of_device_id mtk_disp_dither_driver_dt_match[] = {
 	  .data = &mt6886_dither_driver_data},
 	{ .compatible = "mediatek,mt6835-disp-dither",
 	  .data = &mt6835_dither_driver_data},
+	{ .compatible = "mediatek,mt6897-disp-dither",
+	  .data = &mt6897_dither_driver_data},
 	{},
 };
 

@@ -1638,19 +1638,19 @@ static void mtk_get_ccorr_property(struct device_node *node)
 	int ret;
 	int ccorr0_force_linear = 0;
 
-	ret = of_property_read_u32(node, "ccorr_bit", &disp_ccorr_caps.ccorr_bit);
+	ret = of_property_read_u32(node, "ccorr-bit", &disp_ccorr_caps.ccorr_bit);
 	if (ret)
 		DDPPR_ERR("read ccorr_bit failed\n");
 
-	ret = of_property_read_u32(node, "ccorr_num_per_pipe", &disp_ccorr_caps.ccorr_number);
+	ret = of_property_read_u32(node, "ccorr-num-per-pipe", &disp_ccorr_caps.ccorr_number);
 	if (ret)
 		DDPPR_ERR("read ccorr_number failed\n");
 
-	ret = of_property_read_u32(node, "ccorr_linear_per_pipe", &disp_ccorr_caps.ccorr_linear);
+	ret = of_property_read_u32(node, "ccorr-linear-per-pipe", &disp_ccorr_caps.ccorr_linear);
 	if (ret)
 		DDPPR_ERR("read ccorr_linear failed\n");
 
-	ret = of_property_read_u32(node, "ccorr_prim_force_linear", &ccorr0_force_linear);
+	ret = of_property_read_u32(node, "ccorr-prim-force-linear", &ccorr0_force_linear);
 	if (ret)
 		DDPPR_ERR("read ccorr_prim_force_linear failed\n");
 
@@ -1818,6 +1818,12 @@ static const struct mtk_disp_ccorr_data mt6985_ccorr_driver_data = {
 	.single_pipe_ccorr_num = 2,
 };
 
+static const struct mtk_disp_ccorr_data mt6897_ccorr_driver_data = {
+	.support_shadow     = false,
+	.need_bypass_shadow = true,
+	.single_pipe_ccorr_num = 2,
+};
+
 static const struct mtk_disp_ccorr_data mt6886_ccorr_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
@@ -1850,6 +1856,8 @@ static const struct of_device_id mtk_disp_ccorr_driver_dt_match[] = {
 	  .data = &mt6886_ccorr_driver_data},
 	{ .compatible = "mediatek,mt6835-disp-ccorr",
 	  .data = &mt6835_ccorr_driver_data},
+	{ .compatible = "mediatek,mt6897-disp-ccorr",
+	  .data = &mt6897_ccorr_driver_data},
 	{},
 };
 
