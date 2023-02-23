@@ -3529,7 +3529,7 @@
 				gpu1_crit: gpu1-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -3541,7 +3541,7 @@
 				gpu2_crit: gpu2-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -3553,7 +3553,7 @@
 				gpu3_crit: gpu3-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -3565,7 +3565,7 @@
 				gpu4_crit: gpu4-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -3577,7 +3577,7 @@
 				gpu5_crit: gpu5-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
