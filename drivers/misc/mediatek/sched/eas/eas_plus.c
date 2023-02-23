@@ -259,7 +259,7 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 {
 	unsigned long freq, scale_cpu;
 	struct em_perf_state *ps;
-	int cpu, opp = -1;
+	int cpu, this_cpu, opp = -1;
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
 	unsigned long pwr_eff, cap, freq_legacy, sum_cap = 0;
 	struct mtk_em_perf_state *mtk_ps;
@@ -269,6 +269,10 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 	unsigned long dyn_pwr = 0, static_pwr = 0;
 	unsigned long energy;
 	int *cpu_temp = eenv->cpu_temp;
+	unsigned int share_volt = 0, cpu_volt = 0;
+	struct dsu_info *dsu = &eenv->dsu;
+	unsigned int dsu_opp;
+	struct dsu_state *dsu_ps;
 
 	if (!sum_util)
 		return 0;
@@ -278,11 +282,12 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 	 * the most utilized CPU of the performance domain to a requested
 	 * frequency, like schedutil.
 	 */
-	cpu = cpumask_first(to_cpumask(pd->cpus));
+	this_cpu = cpu = cpumask_first(to_cpumask(pd->cpus));
 	scale_cpu = arch_scale_cpu_capacity(cpu);
 	ps = &pd->table[pd->nr_perf_states - 1];
 #if IS_ENABLED(CONFIG_NONLINEAR_FREQ_CTL)
-	mtk_map_util_freq(NULL, max_util, ps->frequency, to_cpumask(pd->cpus), &freq, get_em_wl());
+	mtk_map_util_freq(NULL, max_util, ps->frequency, to_cpumask(pd->cpus), &freq,
+			eenv->wl_type);
 #else
 	max_util = map_util_perf(max_util);
 	max_util = min(max_util, allowed_cpu_cap);
@@ -291,10 +296,9 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 	freq = max(freq, per_cpu(min_freq, cpu));
 
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
-	mtk_ps = pd_get_freq_ps(get_em_wl(), cpu, freq, &opp);
+	mtk_ps = pd_get_freq_ps(eenv->wl_type, cpu, freq, &opp);
 	pwr_eff = mtk_ps->pwr_eff;
 	cap = mtk_ps->capacity;
-	freq_legacy = pd_get_opp_freq_legacy(cpu, pd_get_freq_opp_legacy(cpu, freq));
 #else
 	/*
 	 * Find the lowest performance state of the Energy Model above the
@@ -371,10 +375,33 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
 	dyn_pwr = pwr_eff * sum_util;
 
+	if (eenv->wl_support) {
+		if (share_buck.gear_idx == gear_idx) {
+			cpu_volt = mtk_ps->volt;
+			share_volt = (dsu->dsu_volt > cpu_volt) ? dsu->dsu_volt : cpu_volt;
+		}
+
+		eenv->dsu_freq_new = mtk_ps->dsu_freq;
+		dsu_opp = dsu_get_freq_opp(eenv->wl_type, eenv->dsu_freq_new);
+		dsu_ps = dsu_get_opp_ps(eenv->wl_type, dsu_opp);
+		eenv->dsu_volt_new = dsu_ps->volt;
+
+		if (trace_sched_dsu_freq_enabled())
+			trace_sched_dsu_freq(gear_idx, eenv->dsu_freq_new, eenv->dsu_volt_new, freq,
+					mtk_ps->freq);
+
+		if (share_volt > cpu_volt)
+			dyn_pwr = (unsigned long long)dyn_pwr * (unsigned long long)share_volt *
+				(unsigned long long)share_volt / cpu_volt / cpu_volt;
+	}
+
 	/* for pd_opp_capacity is scaled based on maximum scale 1024, so cost = pwr_eff * 1024 */
-	if (trace_sched_em_cpu_energy_enabled())
+	if (trace_sched_em_cpu_energy_enabled()) {
+		freq_legacy = pd_get_opp_freq_legacy(this_cpu, pd_get_freq_opp_legacy(this_cpu,
+											freq));
 		trace_sched_em_cpu_energy(opp, freq_legacy, "pwr_eff", pwr_eff,
 			scale_cpu, dyn_pwr, static_pwr);
+	}
 #else
 	dyn_pwr = (ps->cost * sum_util / scale_cpu);
 	if (trace_sched_em_cpu_energy_enabled())

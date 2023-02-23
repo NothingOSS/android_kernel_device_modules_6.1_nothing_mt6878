@@ -6,6 +6,7 @@
 #ifndef _EAS_PLUS_H
 #define _EAS_PLUS_H
 #include <linux/ioctl.h>
+#include "eas/dsu_pwr.h"
 
 #define MIGR_IDLE_BALANCE               1
 #define MIGR_IDLE_PULL_MISFIT_RUNNING   2
@@ -61,13 +62,22 @@ struct energy_env {
 	unsigned long pd_busy_time;       /* CPUs total util */
 
 	unsigned int gear_idx;
-	unsigned long pds_busy_time[4];
-	unsigned long pds_max_util[4][2]; /* 0: dst_cpu=-1 1: with dst_cpu*/
-	unsigned long pds_cpu_cap[4];
-	unsigned long pds_cap[4];
+	unsigned long pds_busy_time[NR_CPUS];
+	unsigned long pds_max_util[NR_CPUS][2]; /* 0: dst_cpu=-1 1: with dst_cpu*/
+	unsigned long pds_cpu_cap[NR_CPUS];
+	unsigned long pds_cap[NR_CPUS];
 
 	/* temperature for each cpu*/
 	unsigned int cpu_temp[NR_CPUS];
+
+	/* WL-based CPU+DSU ctrl */
+	unsigned int wl_support;
+	unsigned int wl_type;
+	struct dsu_info dsu;
+	unsigned int dsu_freq_base;
+	unsigned int dsu_freq_new;
+	unsigned int dsu_volt_base;
+	unsigned int dsu_volt_new;
 };
 
 #ifdef CONFIG_SMP
@@ -100,6 +110,7 @@ extern unsigned int thermal_headroom_interval_tick;
 
 extern void mtk_freq_limit_notifier_register(void);
 extern int init_sram_info(void);
+extern int init_share_buck(void);
 extern void mtk_tick_entry(void *data, struct rq *rq);
 extern void mtk_set_wake_flags(void *data, int *wake_flags, unsigned int *mode);
 extern void mtk_update_cpu_capacity(void *data, int cpu, unsigned long *capacity);
@@ -195,5 +206,12 @@ extern int set_util_est_ctrl(bool enable);
 extern int set_task_idle_prefer(int pid, bool prefer);
 extern bool get_task_idle_prefer_by_pid(int pid);
 extern bool get_task_idle_prefer_by_task(struct task_struct *task);
+struct share_buck_info {
+	int gear_idx;
+	struct perf_domain *pd;
+	struct cpumask *cpus;
+};
+
+extern struct share_buck_info share_buck;
 
 #endif

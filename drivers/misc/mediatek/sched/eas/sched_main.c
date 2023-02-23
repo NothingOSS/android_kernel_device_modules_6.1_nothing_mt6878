@@ -410,6 +410,10 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		return ret;
 
+	ret = init_share_buck();
+	if (ret)
+		return ret;
+
 #if IS_ENABLED(CONFIG_MTK_EAS)
 	mtk_freq_limit_notifier_register();
 

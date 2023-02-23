@@ -185,23 +185,26 @@ TRACE_EVENT(sched_energy_init,
 
 TRACE_EVENT(sched_eenv_init,
 
-	TP_PROTO(unsigned int dsu_freq_base, unsigned int dsu_volt_base),
+	TP_PROTO(unsigned int dsu_freq_base, unsigned int dsu_volt_base, unsigned int gear_idx),
 
-	TP_ARGS(dsu_freq_base, dsu_volt_base),
+	TP_ARGS(dsu_freq_base, dsu_volt_base, gear_idx),
 
 	TP_STRUCT__entry(
 		__field(unsigned int, dsu_freq_base)
 		__field(unsigned int, dsu_volt_base)
+		__field(unsigned int, gear_idx)
 		),
 
 	TP_fast_assign(
 		__entry->dsu_freq_base = dsu_freq_base;
 		__entry->dsu_volt_base = dsu_volt_base;
+		__entry->gear_idx = gear_idx;
 		),
 
-	TP_printk("dsu_freq_base=%u dsu_volt_base=%u",
+	TP_printk("dsu_freq_base=%u dsu_volt_base=%u share_buck_idx=%u",
 		__entry->dsu_freq_base,
-		__entry->dsu_volt_base)
+		__entry->dsu_volt_base,
+		__entry->gear_idx)
 );
 
 TRACE_EVENT(sched_max_util,
@@ -270,6 +273,96 @@ TRACE_EVENT(sched_compute_energy,
 		__entry->energy,
 		__entry->max_util,
 		__entry->sum_util)
+);
+
+TRACE_EVENT(sched_compute_energy_dsu,
+
+	TP_PROTO(int dst_cpu, unsigned long task_util, unsigned long sum_util,
+		unsigned int dsu_bw, unsigned int emi_bw, int temp, unsigned int dsu_freq,
+		unsigned int dsu_volt),
+
+	TP_ARGS(dst_cpu, task_util, sum_util, dsu_bw, emi_bw, temp, dsu_freq, dsu_volt),
+
+	TP_STRUCT__entry(
+		__field(int, dst_cpu)
+		__field(unsigned long, task_util)
+		__field(unsigned long, sum_util)
+		__field(unsigned int, dsu_bw)
+		__field(unsigned int, emi_bw)
+		__field(int, temp)
+		__field(unsigned int, dsu_freq)
+		__field(unsigned int, dsu_volt)
+		),
+
+	TP_fast_assign(
+		__entry->dst_cpu    = dst_cpu;
+		__entry->task_util  = task_util;
+		__entry->sum_util   = sum_util;
+		__entry->dsu_bw     = dsu_bw;
+		__entry->emi_bw     = emi_bw;
+		__entry->temp       = temp;
+		__entry->dsu_freq   = dsu_freq;
+		__entry->dsu_volt   = dsu_volt;
+		),
+
+	TP_printk("dst_cpu=%d task_util=%lu sum_util=%lu dsu_bw=%u emi_bw=%u temp=%d dsu_freq=%u dsu_volt=%u",
+		__entry->dst_cpu,
+		__entry->task_util,
+		__entry->sum_util,
+		__entry->dsu_bw,
+		__entry->emi_bw,
+		__entry->temp,
+		__entry->dsu_freq,
+		__entry->dsu_volt)
+);
+
+TRACE_EVENT(sched_compute_energy_cpu_dsu,
+
+	TP_PROTO(int dst_cpu, unsigned long cpu_pwr, unsigned long delta_share_pwr,
+		unsigned long dsu_pwr, unsigned long sum_pwr),
+
+	TP_ARGS(dst_cpu, cpu_pwr, delta_share_pwr, dsu_pwr, sum_pwr),
+
+	TP_STRUCT__entry(
+		__field(int, dst_cpu)
+		__field(unsigned long, cpu_pwr)
+		__field(unsigned long, delta_share_pwr)
+		__field(unsigned long, dsu_pwr)
+		__field(unsigned long, sum_pwr)
+		),
+
+	TP_fast_assign(
+		__entry->dst_cpu    = dst_cpu;
+		__entry->cpu_pwr    = cpu_pwr;
+		__entry->delta_share_pwr = delta_share_pwr;
+		__entry->dsu_pwr    = dsu_pwr;
+		__entry->sum_pwr    = sum_pwr;
+		),
+
+	TP_printk("dst_cpu=%d cpu_pwr=%lu delta_share_pwr=%lu dsu_pwr=%lu sum=%lu",
+		__entry->dst_cpu,
+		__entry->cpu_pwr,
+		__entry->delta_share_pwr,
+		__entry->dsu_pwr,
+		__entry->sum_pwr)
+);
+
+TRACE_EVENT(sched_energy_delta,
+
+	TP_PROTO(unsigned long pwr_delta),
+
+	TP_ARGS(pwr_delta),
+
+	TP_STRUCT__entry(
+		__field(unsigned long, pwr_delta)
+		),
+
+	TP_fast_assign(
+		__entry->pwr_delta  = pwr_delta;
+		),
+
+	TP_printk("pwr_delta=%lu",
+		__entry->pwr_delta)
 );
 
 TRACE_EVENT(sched_find_energy_efficient_cpu,

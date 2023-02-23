@@ -11,6 +11,7 @@
 #include <linux/sched/clock.h>
 #include "eas/eas_plus.h"
 #include "sugov/cpufreq.h"
+#include "sugov/dsu_interface.h"
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 #include "mtk_energy_model/v2/energy_model.h"
 #else
@@ -183,6 +184,9 @@ static inline void eenv_init(struct energy_env *eenv,
 	unsigned int cpu, pd_idx, pd_cnt;
 	struct perf_domain *pd_ptr = pd;
 	unsigned int gear_idx;
+	struct dsu_info *dsu;
+	unsigned int dsu_opp;
+	struct dsu_state *dsu_ps;
 
 	eenv_task_busy_time(eenv, p, prev_cpu);
 
@@ -214,13 +218,34 @@ static inline void eenv_init(struct energy_env *eenv,
 			eenv->pds_cap[gear_idx] += cpu_thermal_cap;
 		}
 
-		trace_sched_energy_init(cpus, gear_idx, eenv->pds_cpu_cap[gear_idx],
+		if (trace_sched_energy_init_enabled()) {
+			trace_sched_energy_init(cpus, gear_idx, eenv->pds_cpu_cap[gear_idx],
 				eenv->pds_cap[gear_idx]);
+		}
 	}
 
 	for_each_cpu(cpu, cpu_possible_mask) {
 		eenv->cpu_temp[cpu] = get_cpu_temp(cpu);
 		eenv->cpu_temp[cpu] /= 1000;
+	}
+
+	eenv->wl_support = is_wl_support();
+	if (eenv->wl_support) {
+		eenv->wl_type = get_em_wl();
+
+		dsu = &(eenv->dsu);
+		dsu->dsu_bw = get_pelt_dsu_bw();
+		dsu->emi_bw = get_pelt_emi_bw();
+	/*	dsu->temp = get_dsu_temp()/1000; */
+		dsu->temp = (eenv->cpu_temp[1] + eenv->cpu_temp[3])/2000;
+		eenv->dsu_freq_base = mtk_get_dsu_freq();
+		dsu_opp = dsu_get_freq_opp(eenv->wl_type, eenv->dsu_freq_base);
+		dsu_ps = dsu_get_opp_ps(eenv->wl_type, dsu_opp);
+		eenv->dsu_volt_base = dsu_ps->volt;
+
+		if (trace_sched_eenv_init_enabled())
+			trace_sched_eenv_init(eenv->dsu_freq_base, eenv->dsu_volt_base,
+					share_buck.gear_idx);
 	}
 }
 
@@ -321,7 +346,8 @@ eenv_pd_max_util(int gear_idx, struct energy_env *eenv, struct cpumask *pd_cpus,
 
 		max_util = max(max_util, cpu_util);
 
-		trace_sched_max_util(gear_idx, dst_cpu, max_util, cpu, util, cpu_util);
+		if (trace_sched_max_util_enabled())
+			trace_sched_max_util(gear_idx, dst_cpu, max_util, cpu, util, cpu_util);
 	}
 
 	eenv->pds_max_util[gear_idx][dst_idx] =  min(max_util, eenv->pds_cpu_cap[gear_idx]);
@@ -346,9 +372,103 @@ mtk_compute_energy_cpu(int gear_idx, struct energy_env *eenv, struct perf_domain
 	energy =  mtk_em_cpu_energy(gear_idx, pd->em_pd, max_util, busy_time,
 			eenv->pds_cpu_cap[gear_idx], eenv);
 
-	trace_sched_compute_energy(dst_cpu, gear_idx, pd_cpus, energy, max_util, busy_time);
+	if (trace_sched_compute_energy_enabled())
+		trace_sched_compute_energy(dst_cpu, gear_idx, pd_cpus, energy, max_util, busy_time);
 
 	return energy;
+}
+
+struct share_buck_info share_buck;
+int init_share_buck(void)
+{
+	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
+	struct perf_domain *pd;
+	int ret;
+	struct device_node *eas_node;
+
+	eas_node = of_find_node_by_name(NULL, "eas_info");
+	if (eas_node == NULL) {
+		pr_info("failed to find node @ %s\n", __func__);
+		return -ENODEV;
+	}
+
+	share_buck.gear_idx = 0;
+	ret = of_property_read_u32(eas_node, "share-buck", &share_buck.gear_idx);
+	if (ret < 0)
+		pr_info("no share_buck err_code=%d %s\n", ret,  __func__);
+
+	rcu_read_lock();
+	pd = rcu_dereference(rd->pd);
+	if (!pd)
+		goto unlock;
+
+	share_buck.cpus = get_gear_cpumask(share_buck.gear_idx);
+	for (; pd; pd = pd->next) {
+		struct cpumask *pd_mask = perf_domain_span(pd);
+		int cpu = cpumask_first(pd_mask);
+
+		if (share_buck.gear_idx == per_cpu(gear_id, cpu)) {
+			share_buck.pd = pd;
+			break;
+		}
+	}
+unlock:
+	rcu_read_unlock();
+
+	return 0;
+}
+
+static inline int shared_gear(int gear_idx)
+{
+	return gear_idx == share_buck.gear_idx;
+}
+
+static inline unsigned long
+mtk_compute_energy_cpu_dsu(struct energy_env *eenv, struct perf_domain *pd,
+	       struct cpumask *pd_cpus, struct task_struct *p, int dst_cpu)
+{
+	unsigned long cpu_pwr = 0, dsu_pwr = 0;
+	unsigned long shared_pwr_base, shared_pwr_new, delta_share_pwr = 0;
+	struct dsu_info *dsu = &eenv->dsu;
+
+	dsu->dsu_freq = eenv->dsu_freq_base;
+	dsu->dsu_volt = eenv->dsu_volt_base;
+	cpu_pwr = mtk_compute_energy_cpu(eenv->gear_idx, eenv, pd, pd_cpus, p, dst_cpu);
+
+	if ((eenv->dsu_freq_new  > eenv->dsu_freq_base) && !(shared_gear(eenv->gear_idx))
+			&& share_buck.gear_idx != -1) {
+
+		eenv_pd_busy_time(share_buck.gear_idx, eenv, share_buck.cpus, p);
+
+		/* calculate share_buck gear pwr with new DSU freq */
+		dsu->dsu_freq  = eenv->dsu_freq_new;
+		dsu->dsu_volt = eenv->dsu_volt_new;
+		shared_pwr_new = mtk_compute_energy_cpu(share_buck.gear_idx, eenv, share_buck.pd,
+							share_buck.cpus, p, -1);
+
+		/* calculate share_buck gear pwr with new old freq */
+		dsu->dsu_freq = eenv->dsu_freq_base;
+		dsu->dsu_volt = eenv->dsu_volt_base;
+		shared_pwr_base = mtk_compute_energy_cpu(share_buck.gear_idx, eenv, share_buck.pd,
+							share_buck.cpus, p, -1);
+
+		delta_share_pwr = shared_pwr_new - shared_pwr_base;
+	}
+
+	if (dst_cpu != -1) {
+		if (trace_sched_compute_energy_dsu_enabled())
+			trace_sched_compute_energy_dsu(dst_cpu, eenv->task_busy_time,
+				eenv->pd_busy_time, dsu->dsu_bw, dsu->emi_bw, dsu->temp,
+				dsu->dsu_freq, dsu->dsu_volt);
+
+		dsu_pwr = get_dsu_pwr(eenv->wl_type, dst_cpu, eenv->task_busy_time,
+					eenv->pd_busy_time, dsu);
+		if (trace_sched_compute_energy_cpu_dsu_enabled())
+			trace_sched_compute_energy_cpu_dsu(dst_cpu, cpu_pwr, delta_share_pwr,
+						dsu_pwr, cpu_pwr + delta_share_pwr + dsu_pwr);
+	}
+
+	return cpu_pwr + delta_share_pwr + dsu_pwr;
 }
 
 /*
@@ -361,7 +481,10 @@ mtk_compute_energy(struct energy_env *eenv, struct perf_domain *pd,
 	       struct cpumask *pd_cpus, struct task_struct *p, int dst_cpu)
 {
 
-	return mtk_compute_energy_cpu(eenv->gear_idx, eenv, pd, pd_cpus, p, dst_cpu);
+	if (eenv->wl_support)
+		return mtk_compute_energy_cpu_dsu(eenv, pd, pd_cpus, p, dst_cpu);
+	else
+		return mtk_compute_energy_cpu(eenv->gear_idx, eenv, pd, pd_cpus, p, dst_cpu);
 }
 #endif
 

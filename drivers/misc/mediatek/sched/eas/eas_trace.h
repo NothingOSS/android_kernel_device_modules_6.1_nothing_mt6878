@@ -80,6 +80,37 @@ TRACE_EVENT(sched_leakage,
 		__entry->sum_cap)
 );
 
+TRACE_EVENT(sched_dsu_freq,
+
+	TP_PROTO(int gear_id, int dsu_freq_new, int dsu_volt_new, unsigned long cpu_freq,
+			unsigned long freq),
+
+	TP_ARGS(gear_id, dsu_freq_new, dsu_volt_new, cpu_freq, freq),
+
+	TP_STRUCT__entry(
+		__field(int, gear_id)
+		__field(int, dsu_freq_new)
+		__field(int, dsu_volt_new)
+		__field(unsigned long, cpu_freq)
+		__field(unsigned long, freq)
+		),
+
+	TP_fast_assign(
+		__entry->gear_id    = gear_id;
+		__entry->dsu_freq_new   = dsu_freq_new;
+		__entry->dsu_volt_new   = dsu_volt_new;
+		__entry->cpu_freq  = cpu_freq;
+		__entry->freq      = freq;
+		),
+
+	TP_printk("gear_id=%d dsu_freq_new=%d dsu_volt_new=%d cpu_freq=%lu freq=%lu",
+		__entry->gear_id,
+		__entry->dsu_freq_new,
+		__entry->dsu_volt_new,
+		__entry->cpu_freq,
+		__entry->freq)
+);
+
 TRACE_EVENT(sched_em_cpu_energy,
 
 	TP_PROTO(int idx, unsigned long freq, const char *cost_type, unsigned long cost,
