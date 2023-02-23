@@ -597,9 +597,11 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 #endif
 			if (mmqos_met_enabled()) {
 				trace_mmqos__larb_avg_bw(
+					src->name,
 					LARB_ID(src->id),
 					icc_to_MBps(src->avg_bw));
 				trace_mmqos__larb_peak_bw(
+					src->name,
 					LARB_ID(src->id),
 					icc_to_MBps(src->peak_bw));
 #ifdef ENABLE_INTERCONNECT_V1
@@ -763,9 +765,11 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 
 		if (mmqos_met_enabled()) {
 			trace_mmqos__larb_port_avg_bw(
+				src->name,
 				MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
 				icc_to_MBps(larb_port_node->base->icc_node->avg_bw));
 			trace_mmqos__larb_port_peak_bw(
+				src->name,
 				MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
 				icc_to_MBps(larb_port_node->base->icc_node->peak_bw));
 #ifdef ENABLE_INTERCONNECT_V1
