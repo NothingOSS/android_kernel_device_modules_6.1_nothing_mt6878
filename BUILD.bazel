@@ -525,6 +525,7 @@ mgk_64_k61_device_modules = [
     "drivers/soc/mediatek/devapc/device-apc-mt6897.ko",
     "drivers/soc/mediatek/devapc/device-apc-mt6983.ko",
     "drivers/soc/mediatek/devapc/device-apc-mt6985.ko",
+    "drivers/soc/mediatek/devapc/device-apc-mt6989.ko",
     "drivers/soc/mediatek/mtk-dvfsrc-start.ko",
     "drivers/soc/mediatek/mtk-dvfsrc.ko",
     "drivers/soc/mediatek/mtk-mbox.ko",
