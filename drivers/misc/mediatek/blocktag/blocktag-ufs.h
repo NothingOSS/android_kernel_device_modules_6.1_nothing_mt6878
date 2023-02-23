@@ -43,11 +43,16 @@ struct btag_ufs_workload {
 	__u16 depth;
 };
 
-struct btag_ufs_ctx {
+struct btag_ufs_ctx_data {
 	struct btag_ufs_tag tags[BTAG_UFS_QUEUE_TAGS];
 	struct btag_ufs_throughput tp;
 	struct btag_ufs_workload wl;
 	struct mtk_btag_proc_pidlogger pidlog;
+};
+
+struct btag_ufs_ctx {
+	struct btag_ufs_ctx_data __rcu *cur_data;
+	struct btag_ufs_ctx_data data[2];
 };
 
 #endif
