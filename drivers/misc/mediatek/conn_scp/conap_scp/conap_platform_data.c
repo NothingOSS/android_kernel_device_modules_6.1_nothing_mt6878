@@ -3,8 +3,10 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 
-#include <linux/types.h>
 #include <linux/io.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/types.h>
 #include "conap_platform_data.h"
 
 /* 6893 */
@@ -38,104 +40,74 @@ struct conap_scp_shm_config g_adp_shm_mt6886 = {
 };
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_COMBO_CHIP_CONSYS_6985)
-struct conap_scp_shm_config g_adp_shm_mt6985 = {
-	.conap_scp_shm_offset = 0,
-	.conap_scp_shm_size = 0,
-	.conap_scp_ipi_mbox_size = 64,
-};
-
-struct conap_scp_batching_config g_adp_batching_mt6985 = {
-	.buff_offset = 0x445000,
-	.buff_size = 0x4B000,
-};
-#endif
-
-
-uint32_t g_plt_chip_info;
-phys_addr_t g_emi_phy_base;
-struct conap_scp_shm_config *g_adp_shm_ptr;
-struct conap_scp_batching_config *g_adp_batching_ptr;
+struct conap_scp_shm_config g_adp_shm;
+struct conap_scp_batching_config g_adp_batching;
 
 uint32_t connsys_scp_shm_get_addr(void)
 {
-	if (g_adp_shm_ptr == NULL)
-		return 0;
-	return (g_emi_phy_base + g_adp_shm_ptr->conap_scp_shm_offset) & 0xFFFFFFFF;
+	return 0;
 }
 
 uint32_t connsys_scp_shm_get_size(void)
 {
-	if (g_adp_shm_ptr == NULL)
-		return 0;
-	return g_adp_shm_ptr->conap_scp_shm_size;
+	return 0;
 }
-
-struct conap_scp_shm_config *conap_scp_get_shm_info(void)
-{
-	return g_adp_shm_ptr;
-}
-
 
 uint32_t connsys_scp_ipi_mbox_size(void)
 {
-	if (g_adp_shm_ptr == NULL)
-		return 0;
-	return g_adp_shm_ptr->conap_scp_ipi_mbox_size;
+	return g_adp_shm.conap_scp_ipi_mbox_size;
 }
 
 phys_addr_t connsys_scp_shm_get_batching_addr(void)
 {
-	if (g_adp_shm_ptr == NULL)
-		return 0;
-	return (g_emi_phy_base + g_adp_batching_ptr->buff_offset) & 0xFFFFFFFF;
+	return (g_adp_batching.buff_offset & 0xFFFFFFFF);
 }
 
 uint32_t connsys_scp_shm_get_batching_size(void)
 {
-	if (g_adp_batching_ptr == NULL)
-		return 0;
-	return g_adp_batching_ptr->buff_size;
+	return g_adp_batching.buff_size;
 }
 
-int connsys_scp_platform_data_init(unsigned int chip_info, phys_addr_t emi_phy_addr)
+int connsys_scp_plt_data_init(struct platform_device *pdev)
 {
-	g_plt_chip_info = chip_info;
-	g_emi_phy_base = emi_phy_addr;
+	int ret;
+	struct device_node *node;
+	u32 value;
+	u32 ipi_mbox_size = 0;
+	u32 batching_buf_sz = 0;
+	u64 value64, batching_buf_addr = 0;
 
-#if IS_ENABLED(CONFIG_MTK_COMBO_CHIP_CONSYS_6893)
-	if (chip_info == 0x6893) {
-		g_adp_shm_ptr = &g_adp_shm_mt6893;
-		return 0;
-	}
-#endif
-#if IS_ENABLED(CONFIG_MTK_COMBO_CHIP_CONSYS_6983)
-	if (chip_info == 0x6983) {
-		g_adp_shm_ptr = &g_adp_shm_mt6983;
-		return 0;
-	}
-#endif
-#if IS_ENABLED(CONFIG_MTK_COMBO_CHIP_CONSYS_6895)
-	if (chip_info == 0x6895) {
-		g_adp_shm_ptr = &g_adp_shm_mt6895;
-		return 0;
-	}
-#endif
-#if IS_ENABLED(CONFIG_MTK_COMBO_CHIP_CONSYS_6886)
-	if (chip_info == 0x6886) {
-		g_adp_shm_ptr = &g_adp_shm_mt6886;
-		return 0;
-	}
-#endif
+	node = pdev->dev.of_node;
 
-#if IS_ENABLED(CONFIG_MTK_COMBO_CHIP_CONSYS_6985)
-	if (chip_info == 0x6985) {
-		g_adp_shm_ptr = &g_adp_shm_mt6985;
-		g_adp_batching_ptr = &g_adp_batching_mt6985;
-		return 0;
-	}
-#endif
+	/* ipi mbox setting */
+	ret = of_property_read_u32(node, "ipi-mbox-size", &value);
+	if (ret < 0)
+		pr_notice("[%s] prop ipi-mbox-size fail %d", __func__, ret);
+	else
+		ipi_mbox_size = value;
 
-	pr_info("[%s] chip=[%x] not support", __func__, chip_info);
-	return -1;
+	/* report location setting */
+	ret = of_property_read_u32(node, "report-buf-size", &value);
+	if (ret < 0)
+		pr_notice("[%s] prop batching-buf-size fail %d", __func__, ret);
+	else
+		batching_buf_sz = value;
+
+	ret = of_property_read_u64(node, "report-buf-addr", &value64);
+	if (ret < 0)
+		pr_notice("[%s] prop batching-buf-addr fail %d", __func__, ret);
+	else
+		batching_buf_addr = value64;
+
+	pr_info("[%s] ipi_mbox_size=[%x] batching=[%x][%llx]", __func__,
+			ipi_mbox_size, batching_buf_sz, batching_buf_addr);
+
+	memset(&g_adp_shm, 0, sizeof(g_adp_shm));
+	memset(&g_adp_batching, 0, sizeof(g_adp_batching));
+
+	g_adp_shm.conap_scp_ipi_mbox_size = ipi_mbox_size;
+	g_adp_batching.buff_offset = batching_buf_addr;
+	g_adp_batching.buff_size = batching_buf_sz;
+
+	return 0;
 }

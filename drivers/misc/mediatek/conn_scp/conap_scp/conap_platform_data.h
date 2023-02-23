@@ -6,6 +6,8 @@
 #ifndef __CONAP_SCP_PLATFORM_DATA_H__
 #define __CONAP_SCP_PLATFORM_DATA_H__
 
+#include <linux/of.h>
+#include <linux/platform_device.h>
 
 struct conap_scp_shm_config {
 	uint32_t conap_scp_shm_offset;
@@ -18,8 +20,8 @@ struct conap_scp_batching_config {
 	uint32_t buff_size;
 };
 
+int connsys_scp_plt_data_init(struct platform_device *pdev);
 
-int connsys_scp_platform_data_init(unsigned int chip_info, phys_addr_t emi_phy_addr);
 struct conap_scp_shm_config *conap_scp_get_shm_info(void);
 
 /* connsys shared buffer */

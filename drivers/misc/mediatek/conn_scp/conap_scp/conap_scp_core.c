@@ -5,11 +5,12 @@
 
 #include <linux/errno.h>
 #include <linux/kthread.h>
-#include <linux/delay.h>
-#include <linux/workqueue.h>
-#include <linux/atomic.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/platform_device.h>
 #include <linux/spinlock.h>
 #include <linux/string.h>
+#include <linux/workqueue.h>
 
 #include "conap_scp.h"
 #include "conap_scp_priv.h"
@@ -20,6 +21,32 @@
 #include "connectivity_build_in_adapter.h"
 
 #define MAX_MSG_SZ_BY_IPI	512
+
+/* platform driver */
+const struct of_device_id conn_scp_of_ids[] = {
+	{
+		.compatible = "mediatek,mt6985-conn_scp",
+	#if IS_ENABLED(CONFIG_MTK_COMBO_CHIP_CONSYS_6985)
+		.data = NULL,
+	#endif
+	},
+	{}
+};
+
+
+static int conn_scp_probe(struct platform_device *pdev);
+static int conn_scp_remove(struct platform_device *pdev);
+
+static struct platform_driver g_connscp_dev_drv = {
+	.probe = conn_scp_probe,
+	.remove = conn_scp_remove,
+	.driver = {
+		   .name = "conn_scp",
+		   .owner = THIS_MODULE,
+		   .of_match_table = conn_scp_of_ids,
+		   .probe_type = PROBE_FORCE_SYNCHRONOUS,
+		   },
+};
 
 struct conap_scp_drv_user g_drv_user[CONAP_SCP_DRV_NUM];
 struct conap_scp_core_ctx {
@@ -242,11 +269,9 @@ static int opfunc_scp_state_change(struct msg_op_data *op)
 	pr_info("[%s] type=[%d] state=[%d] conn=[%d] scp ready=[%d]", __func__,
 				drv_type, cur_state, g_core_ctx.enable,
 				conap_scp_ipi_is_scp_ready());
-	if (g_core_ctx.enable == 0) {
-		pr_info("[%s] conn not enable yet", __func__);
-		return 0;
-	}
+
 	if (cur_state == 1 && conap_scp_ipi_is_scp_ready() == 0) {
+		g_core_ctx.enable = 0;
 		pr_info("[%s] scp not enable yet", __func__);
 		return 0;
 	}
@@ -261,6 +286,11 @@ static int opfunc_scp_state_change(struct msg_op_data *op)
 			return -1;
 		}
 	}
+
+	if (cur_state == 1)
+		g_core_ctx.enable = 1;
+	else
+		g_core_ctx.enable = 0;
 
 	g_core_ctx.state = cur_state;
 
@@ -482,40 +512,12 @@ static void conap_scp_ipi_ctrl_notify(unsigned int state)
 int conn_state_event_handler(struct notifier_block *this,
 			unsigned long event, void *ptr)
 {
-	struct connsys_state_info *info;
 	int ret = 0;
 	struct conn_drv_state state;
 
 	if (event == conn_pwr_on || event == conn_pwr_off) {
-
-		info = (struct connsys_state_info *)ptr;
-		if (event == 0) {
-			g_core_ctx.enable = 0;
-			return 0;
-		}
-
-		pr_info("[%s] ========= event =[%lu] [%x][%llu]",
-					__func__, event, info->chip_info, info->emi_phy_addr);
-
-		g_core_ctx.chip_info = info->chip_info;
-		g_core_ctx.emi_phy_addr = info->emi_phy_addr;
-
-		ret = connsys_scp_platform_data_init(info->chip_info, info->emi_phy_addr);
-		/* check if platform support */
-		pr_info("[%s] chip_info=[%x] addr[%pa] ret=[%d]", __func__,
-							info->chip_info, &info->emi_phy_addr, ret);
-
-		if (ret) {
-			pr_info("[%s] conap not support", __func__);
-			return 0;
-		}
-		g_core_ctx.enable = 1;
-
-		ret = msg_thread_send_2(&g_core_ctx.tx_msg_thread,
-				CONAP_SCP_OPID_STATE_CHANGE, STATE_CHG_DRV_CONN, 1);
-		if (ret)
-			pr_notice("[%s] msg_send fail [%d]", __func__, ret);
-
+		pr_info("[%s] ========= event =[%lu]",
+					__func__, event);
 		return 0;
 	}
 
@@ -698,12 +700,31 @@ void conap_scp_cmd_handler(int drv_type, int cmd, int param)
 /*********************************************************************/
 /* init/deinit */
 /*********************************************************************/
+
+
+int conn_scp_probe(struct platform_device *pdev)
+{
+	connsys_scp_plt_data_init(pdev);
+	return 0;
+}
+
+int conn_scp_remove(struct platform_device *pdev)
+{
+	return 0;
+}
+
+
 int conap_scp_init(void)
 {
 	int ret, i;
 	struct conap_scp_ipi_cb ipi_cb;
 
 	memset(&g_core_ctx, 0, sizeof(struct conap_scp_core_ctx));
+
+	/* platform driver register */
+	ret = platform_driver_register(&g_connscp_dev_drv);
+	if (ret)
+		pr_notice("platform driver registered failed(%d)\n", ret);
 
 	/* init drv_user */
 	for (i = 0; i < CONAP_SCP_DRV_NUM; i++) {
@@ -748,6 +769,8 @@ int conap_scp_deinit(void)
 	conap_scp_ipi_deinit();
 	msg_thread_deinit(&g_core_ctx.tx_msg_thread);
 	mutex_destroy(&g_core_ctx.lock);
+
+	platform_driver_unregister(&g_connscp_dev_drv);
 	return 0;
 }
 
