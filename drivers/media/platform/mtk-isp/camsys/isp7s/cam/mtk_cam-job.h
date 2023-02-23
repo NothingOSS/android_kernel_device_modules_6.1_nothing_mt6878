@@ -268,6 +268,8 @@ struct mtk_cam_job {
 	struct media_request_object *sensor_hdl_obj;
 	struct v4l2_subdev *sensor;
 
+	bool is_sv_pure_raw;
+
 	struct mtk_cam_scen job_scen;		/* job 's scen by res control */
 	int exp_num_cur;		/* for ipi */
 	int exp_num_prev;		/* for ipi */

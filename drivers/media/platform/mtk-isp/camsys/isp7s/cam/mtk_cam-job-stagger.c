@@ -28,30 +28,46 @@ int fill_imgo_img_buffer_to_ipi_frame_stagger(
 	struct req_buffer_helper *helper, struct mtk_cam_buffer *buf,
 	struct mtk_cam_video_device *node)
 {
+	struct mtk_cam_job *job = helper->job;
 	struct mtkcam_ipi_frame_param *fp = helper->fp;
 	struct mtkcam_ipi_img_output *out;
 	struct mtkcam_ipi_img_input *in;
 	int isneedrawi = is_stagger_multi_exposure(helper->job);
 	int ret = -1;
+	bool bypass_imgo;
 
-	out = &fp->img_outs[helper->io_idx];
-	++helper->io_idx;
+	bypass_imgo =
+		(node->desc.id == MTK_RAW_MAIN_STREAM_OUT) &&
+		is_sv_pure_raw(job);
+
 	if (isneedrawi) {
-		ret = fill_img_out_hdr(out, buf, node, 1); /* TODO: by exp-order */
+		if (!bypass_imgo) {
+			out = &fp->img_outs[helper->io_idx];
+			++helper->io_idx;
+			ret = fill_img_out_hdr(out, buf, node, 1); /* TODO: by exp-order */
+		}
+
 		in = &fp->img_ins[helper->ii_idx];
 		++helper->ii_idx;
 		ret = fill_img_in_hdr(in, buf, node);
 
 		helper->filled_hdr_buffer = true;
 	} else {
-		ret = fill_img_out(out, buf, node);
+		if (!bypass_imgo) {
+			out = &fp->img_outs[helper->io_idx];
+			++helper->io_idx;
+			ret = fill_img_out(out, buf, node);
+		}
 	}
+
+	if (bypass_imgo && CAM_DEBUG_ENABLED(JOB))
+		pr_info("%s:req:%s bypass raw imgo, is_need_rawi:%d\n",
+			__func__, job->req->req.debug_str, isneedrawi);
 
 	/* fill sv image fp */
 	ret = fill_sv_img_fp(helper, buf, node);
 
 	return ret;
-
 }
 
 int fill_sv_fp(

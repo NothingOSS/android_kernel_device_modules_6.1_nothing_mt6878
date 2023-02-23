@@ -186,6 +186,53 @@ static int map_job_type(const struct mtk_cam_scen *scen)
 
 	return job_type;
 }
+
+static int map_ipi_imgo_path(int v4l2_raw_path);
+static bool update_sv_pure_raw(struct mtk_cam_job *job)
+{
+	struct mtk_cam_request *req = job->req;
+	//struct mtk_cam_scen *scen = &job->job_scen;
+	struct mtk_cam_buffer *buf;
+	struct mtk_cam_video_device *node;
+	struct mtk_raw_ctrl_data *ctrl;
+	bool has_imgo, is_pure, is_supported_scen, is_sv_pure_raw;
+	int raw_pipe_idx;
+
+	raw_pipe_idx = get_raw_subdev_idx(job->src_ctx->used_pipe);
+	if (raw_pipe_idx == -1)
+		return false;
+
+	ctrl = &req->raw_data[raw_pipe_idx].ctrl;
+
+	has_imgo = false;
+	list_for_each_entry(buf, &req->buf_list, list) {
+		node = mtk_cam_buf_to_vdev(buf);
+
+		if (node->desc.id == MTK_RAW_MAIN_STREAM_OUT)
+			has_imgo = true;
+	}
+
+	is_pure =
+		map_ipi_imgo_path(ctrl->raw_path) == MTKCAM_IPI_IMGO_UNPROCESSED;
+
+	/* TODO: scen help func */
+	is_supported_scen =
+		(job->job_type != JOB_TYPE_M2M) &&
+		(job->job_type != JOB_TYPE_MSTREAM) &&
+		(job->job_type != JOB_TYPE_HW_PREISP) &&
+		(job->job_type != JOB_TYPE_HW_SUBSAMPLE) &&
+		(job->job_type != JOB_TYPE_ONLY_SV);
+
+	is_sv_pure_raw = has_imgo && is_pure && is_supported_scen;
+
+	if (CAM_DEBUG_ENABLED(JOB))
+		pr_info("%s has_imgo:%d is_pure:%d is_supported_scen: %d sv_pure_raw:%d",
+			__func__, has_imgo, is_pure, is_supported_scen,
+			is_sv_pure_raw);
+
+	return is_sv_pure_raw;
+}
+
 static int mtk_cam_job_fill_ipi_config(struct mtk_cam_job *job,
 	struct mtkcam_ipi_config_param *config);
 static int mtk_cam_job_fill_ipi_config_only_sv(struct mtk_cam_job *job,
@@ -465,6 +512,7 @@ update_job_type_feature(struct mtk_cam_job *job)
 		/* TODO(AY): refine this deep access: job->.....raw_res.scen */
 		job->job_scen = job->req->raw_data[pipe_idx].ctrl.resource.user_data.raw_res.scen;
 		job->job_type = map_job_type(&job->job_scen);
+		job->is_sv_pure_raw = update_sv_pure_raw(job);
 	} else
 		job->job_type = JOB_TYPE_ONLY_SV;
 
@@ -586,7 +634,7 @@ handle_sv_frame_done(struct mtk_cam_job *job)
 	struct mtk_cam_device *cam = ctx->cam;
 	unsigned int used_pipe = job->req->used_pipe & job->src_ctx->used_pipe;
 	bool is_normal = true;
-	int i;
+	int i, pipe_id;
 
 	if (used_pipe == 0)
 		return 0;
@@ -600,12 +648,13 @@ handle_sv_frame_done(struct mtk_cam_job *job)
 
 	/* sv pure raw */
 	if (ctx->has_raw_subdev && is_sv_pure_raw(job)) {
+		pipe_id = get_raw_subdev_idx(ctx->used_pipe);
 		if (is_normal)
-			mtk_cam_req_buffer_done(job, ctx->raw_subdev_idx,
+			mtk_cam_req_buffer_done(job, pipe_id,
 				MTKCAM_IPI_RAW_IMGO, VB2_BUF_STATE_DONE,
 				job->timestamp, true);
 		else
-			mtk_cam_req_buffer_done(job, ctx->raw_subdev_idx,
+			mtk_cam_req_buffer_done(job, pipe_id,
 				MTKCAM_IPI_RAW_IMGO, VB2_BUF_STATE_ERROR,
 				job->timestamp, true);
 	}
@@ -1172,16 +1221,14 @@ unsigned long engines_to_trigger_cq(struct mtk_cam_job *job,
 			}
 
 	/* camsv */
-	subset = bit_map_subset_of(MAP_HW_CAMSV, used_engine);
-	if (subset)
-		for (i = 0; i < ARRAY_SIZE(cq_ret->camsv); ++i)
-			if (is_valid_cq(&cq_ret->camsv[i])) {
-				dev_idx = find_first_bit_set(subset);
-				cq_engine |= bit_map_bit(MAP_HW_CAMSV, dev_idx);
+	for (i = 0; i < ARRAY_SIZE(cq_ret->camsv); ++i)
+		if (is_valid_cq(&cq_ret->camsv[i])) {
+			dev_idx = find_first_bit_set(subset);
+			cq_engine |= bit_map_bit(MAP_HW_CAMSV, dev_idx);
 
-				/* only single sv device */
-				break;
-			}
+			/* only single sv device */
+			break;
+		}
 
 	return cq_engine;
 }
@@ -2181,16 +2228,24 @@ static int fill_raw_img_buffer_to_ipi_frame(
 	struct req_buffer_helper *helper, struct mtk_cam_buffer *buf,
 	struct mtk_cam_video_device *node)
 {
+	struct mtk_cam_job *job = helper->job;
 	struct mtkcam_ipi_frame_param *fp = helper->fp;
 	int ret = -1;
+	bool bypass_imgo;
+
+	bypass_imgo =
+		(node->desc.id == MTK_RAW_MAIN_STREAM_OUT) &&
+		is_sv_pure_raw(job);
 
 	if (V4L2_TYPE_IS_CAPTURE(buf->vbb.vb2_buf.type)) {
 		struct mtkcam_ipi_img_output *out;
 
-		out = &fp->img_outs[helper->io_idx];
-		++helper->io_idx;
+		if (!bypass_imgo) {
+			out = &fp->img_outs[helper->io_idx];
+			++helper->io_idx;
 
-		ret = fill_img_out(out, buf, node);
+			ret = fill_img_out(out, buf, node);
+		}
 	} else {
 		struct mtkcam_ipi_img_input *in;
 
@@ -2199,6 +2254,10 @@ static int fill_raw_img_buffer_to_ipi_frame(
 
 		ret = fill_img_in(in, buf, node);
 	}
+
+	if (bypass_imgo && CAM_DEBUG_ENABLED(JOB))
+		pr_info("%s:req:%s bypass raw imgo\n",
+			__func__, job->req->req.debug_str);
 
 	/* fill sv image fp */
 	ret = fill_sv_img_fp(helper, buf, node);
@@ -2870,6 +2929,7 @@ int mtk_cam_job_pack(struct mtk_cam_job *job, struct mtk_cam_ctx *ctx,
 
 	return ret;
 }
+
 static void ipi_add_hw_map(struct mtkcam_ipi_config_param *config,
 				   int pipe_id, int dev_mask)
 {
@@ -3181,10 +3241,11 @@ static int update_job_raw_param_to_ipi_frame(struct mtk_cam_job *job,
 	p->previous_exposure_num = job->exp_num_prev;
 
 	if (CAM_DEBUG_ENABLED(IPI_BUF))
-		pr_info("[%s] job_type:%d scen:%d exp:%d/%d", __func__,
+		pr_info("[%s] job_type:%d scen:%d exp:%d/%d raw_path:%d", __func__,
 			job->job_type,
 			ctrl->resource.user_data.raw_res.scen.id,
-			p->exposure_num, p->previous_exposure_num);
+			p->exposure_num, p->previous_exposure_num,
+			p->imgo_path_sel);
 	return 0;
 }
 
