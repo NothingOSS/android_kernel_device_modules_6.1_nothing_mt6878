@@ -27,6 +27,7 @@
 
 #define MMDVFS_DBG_VER1	BIT(0)
 #define MMDVFS_DBG_VER3	BIT(1)
+#define MMDVFS_DBG_VER4	BIT(2)
 
 #define MMDVFS_DBG(fmt, args...) \
 	pr_notice("[mmdvfs_dbg][dbg]%s: "fmt"\n", __func__, ##args)
@@ -86,12 +87,13 @@ EXPORT_SYMBOL_GPL(mtk_mmdvfs_debug_release_step0);
 static int mmdvfs_debug_set_force_step(const char *val,
 	const struct kernel_param *kp)
 {
-	u8 idx = 0, opp = 0;
+	u8 idx = 0;
+	s8 opp = 0;
 	int ret;
 
-	ret = sscanf(val, "%hhu %hhu", &idx, &opp);
+	ret = sscanf(val, "%hhu %hhd", &idx, &opp);
 	if (ret != 2 || idx >= PWR_MMDVFS_NUM) {
-		MMDVFS_DBG("failed:%d idx:%hhu opp:%hhu", ret, idx, opp);
+		MMDVFS_DBG("failed:%d idx:%hhu opp:%hhd", ret, idx, opp);
 		return -EINVAL;
 	}
 
@@ -101,6 +103,9 @@ static int mmdvfs_debug_set_force_step(const char *val,
 
 	if (g_mmdvfs->debug_version & MMDVFS_DBG_VER3)
 		mtk_mmdvfs_v3_set_force_step(idx, opp);
+
+	if (g_mmdvfs->debug_version & MMDVFS_DBG_VER4)
+		mmdvfs_force_step_by_vcp(idx, opp);
 
 	return 0;
 }
@@ -114,12 +119,13 @@ MODULE_PARM_DESC(force_step, "force mmdvfs to specified step");
 static int mmdvfs_debug_set_vote_step(const char *val,
 	const struct kernel_param *kp)
 {
-	u8 idx = 0, opp = 0;
+	u8 idx = 0;
+	s8 opp = 0;
 	int ret;
 
-	ret = sscanf(val, "%hhu %hhu", &idx, &opp);
+	ret = sscanf(val, "%hhu %hhd", &idx, &opp);
 	if (ret != 2 || idx >= PWR_MMDVFS_NUM) {
-		MMDVFS_DBG("failed:%d idx:%hhu opp:%hhu", ret, idx, opp);
+		MMDVFS_DBG("failed:%d idx:%hhu opp:%hhd", ret, idx, opp);
 		return -EINVAL;
 	}
 
@@ -129,6 +135,9 @@ static int mmdvfs_debug_set_vote_step(const char *val,
 
 	if (g_mmdvfs->debug_version & MMDVFS_DBG_VER3)
 		mtk_mmdvfs_v3_set_vote_step(idx, opp);
+
+	if (g_mmdvfs->debug_version & MMDVFS_DBG_VER4)
+		mmdvfs_vote_step_by_vcp(idx, opp);
 
 	return 0;
 }
@@ -620,11 +629,6 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 
 		g_mmdvfs->user_pwr[spec.args[2]] = spec.args[1];
 	}
-
-	for (i = 0; i < USER_NUM; i++)
-		MMDVFS_DBG(
-			"g_mmdvfs->user_pwr i(user):%d pwr:%hhu",
-			i, g_mmdvfs->user_pwr[i]);
 
 	ret = of_property_count_u8_elems(g_mmdvfs->dev->of_node, "fmeter-id");
 	if (ret < 0) {

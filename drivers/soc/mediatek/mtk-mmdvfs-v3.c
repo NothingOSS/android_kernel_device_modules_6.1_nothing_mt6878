@@ -898,9 +898,67 @@ int mmdvfs_get_version(void)
 }
 EXPORT_SYMBOL_GPL(mmdvfs_get_version);
 
+int mmdvfs_force_step_by_vcp(const u8 pwr_idx, const s8 opp)
+{
+	u8 idx = pwr_idx + MMDVFS_USER_VCORE, mux_idx;
+	int ret;
+
+	if (!mmdvfs_mux_version || idx >= ARRAY_SIZE(mmdvfs_user)) {
+		MMDVFS_ERR("invalid:%d pwr_idx:%hhu idx:%hhu", mmdvfs_mux_version, pwr_idx, idx);
+		return -EINVAL;
+	}
+	mux_idx = mmdvfs_user[idx].target_id;
+
+	if (opp >= MAX_OPP || opp >= mmdvfs_mux[mux_idx].freq_num) {
+		MMDVFS_ERR("invalid opp:%hhd idx:%hhu mux:%hhu freq_num:%hhu",
+			opp, idx, mux_idx, mmdvfs_mux[mux_idx].freq_num);
+		return -EINVAL;
+	}
+
+	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_FORCE);
+	ret = mmdvfs_vcp_ipi_send(FUNC_FORCE_OPP, pwr_idx, opp, NULL);
+	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_FORCE);
+
+	if (ret || log_level & (1 << log_adb))
+		MMDVFS_DBG("pwr_idx:%hhu idx:%hhu mux_idx:%hhu opp:%hhd",
+			pwr_idx, idx, mux_idx, opp);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_force_step_by_vcp);
+
+int mmdvfs_vote_step_by_vcp(const u8 pwr_idx, const s8 opp)
+{
+	u8 idx = pwr_idx + MMDVFS_USER_VCORE, mux_idx;
+	s8 level;
+	int ret;
+
+	if (!mmdvfs_mux_version || idx >= ARRAY_SIZE(mmdvfs_user)) {
+		MMDVFS_ERR("invalid:%d pwr_idx:%hhu idx:%hhu", mmdvfs_mux_version, pwr_idx, idx);
+		return -EINVAL;
+	}
+	mux_idx = mmdvfs_user[idx].target_id;
+
+	if (opp >= MAX_OPP || opp >= mmdvfs_mux[mux_idx].freq_num) {
+		MMDVFS_ERR("invalid opp:%hhd idx:%hhu mux:%hhu freq_num:%hhu",
+			opp, idx, mux_idx, mmdvfs_mux[mux_idx].freq_num);
+		return -EINVAL;
+	}
+	level = mmdvfs_mux[mux_idx].freq_num - 1 - opp;
+
+	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_VOTE);
+	ret = clk_set_rate(mmdvfs_user_clk[idx], mmdvfs_mux[mux_idx].freq[level]);
+	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_VOTE);
+
+	if (ret || log_level & (1 << log_adb))
+		MMDVFS_DBG("pwr_idx:%hhu idx:%hhu mux_idx:%hhu opp:%hhd level:%hhd",
+			pwr_idx, idx, mux_idx, opp, level);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_vote_step_by_vcp);
+
 int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 {
-	u8 func, idx, mux_id;
+	u8 func, idx, mux_idx;
 	s8 opp, level;
 	int ret;
 
@@ -916,24 +974,25 @@ int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 			return -EINVAL;
 		}
 
-		mux_id = mmdvfs_user[idx].target_id;
-		if (opp >= mmdvfs_mux[mux_id].freq_num) {
-			MMDVFS_ERR("invalid opp:%hhd idx:%hhu mux:%d", opp, idx, mux_id);
+		mux_idx = mmdvfs_user[idx].target_id;
+		if (opp >= mmdvfs_mux[mux_idx].freq_num) {
+			MMDVFS_ERR("invalid opp:%hhd idx:%hhu mux:%hhu freq_num:%hhu",
+				opp, idx, mux_idx, mmdvfs_mux[mux_idx].freq_num);
 			return -EINVAL;
 		}
-		level = mmdvfs_mux[mux_id].freq_num - 1 - opp;
+		level = mmdvfs_mux[mux_idx].freq_num - 1 - opp;
 	}
 
 	switch (func) {
 	case TEST_AP_SET_OPP:
-		ret = mmdvfs_mux_set_opp(mmdvfs_user[idx].name, mmdvfs_mux[mux_id].freq[level]);
+		ret = mmdvfs_mux_set_opp(mmdvfs_user[idx].name, mmdvfs_mux[mux_idx].freq[level]);
 		break;
 	case TEST_AP_SET_USER_RATE:
 		if (!mmdvfs_user_clk[idx]) {
 			MMDVFS_ERR("invalid idx:%hhu opp:%hhd level:%hhd", idx, opp, level);
 			return -EINVAL;
 		}
-		ret = clk_set_rate(mmdvfs_user_clk[idx], mmdvfs_mux[mux_id].freq[level]);
+		ret = clk_set_rate(mmdvfs_user_clk[idx], mmdvfs_mux[mux_idx].freq[level]);
 		break;
 	default:
 		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_GENPD);
@@ -1072,7 +1131,7 @@ static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long
 			}
 			if (dump)
 				mmdvfs_fmeter_dump();
-			ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_DEINIT, MAX_OPP, MAX_OPP, NULL);
+			ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_INIT, 0, MAX_OPP, NULL);
 			if (!ret)
 				mmdvfs_swrgo_init = false;
 		}
@@ -1452,7 +1511,7 @@ int mmdvfs_mux_set_opp(const char *name, unsigned long rate)
 			flags = true;
 		}
 		if (!mmdvfs_swrgo_init) {
-			ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_INIT, MAX_OPP, MAX_OPP, NULL);
+			ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_INIT, 1, MAX_OPP, NULL);
 			if (ret)
 				goto set_opp_end;
 			mmdvfs_swrgo_init = true;
