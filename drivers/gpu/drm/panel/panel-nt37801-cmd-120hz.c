@@ -78,6 +78,53 @@
 
 #define MODE_SWITCH_CMDQ_ENABLE 1
 
+struct mtk_mode_switch_cmd cmd_table_120fps[] = {
+	{2, {0x2F, 0x00}}
+};
+
+struct mtk_mode_switch_cmd cmd_table_90fps[] = {
+	{2, {0x2F, 0x01}},
+	{6, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00}},
+	{2, {0x6F, 0x07}},
+	{3, {0xBA, 0x00, 0x4f}}
+};
+
+struct mtk_mode_switch_cmd cmd_table_60fps[] = {
+	{2, {0x2F, 0x00}},
+	{6, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00}},
+	{2, {0x6F, 0x1C}},
+	{9, {0xBA, 0x91, 0x01, 0x01, 0x00, 0x01, 0x01, 0x01, 0x00}},
+	{2, {0x5A, 0x01}},
+	{2, {0x2F, 0x30}}
+};
+
+struct mtk_mode_switch_cmd cmd_table_30fps[] = {
+	{2, {0x2F, 0x00}},
+	{6, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00}},
+	{2, {0x6F, 0x1C}},
+	{9, {0xBA, 0x91, 0x03, 0x03, 0x00, 0x01, 0x03, 0x03, 0x00}},
+	{2, {0x5A, 0x00}},
+	{2, {0x2F, 0x30}}
+};
+
+struct mtk_mode_switch_cmd cmd_table_24fps[] = {
+	{2, {0x2F, 0x00}},
+	{6, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00}},
+	{2, {0x6F, 0x1C}},
+	{9, {0xBA, 0x91, 0x04, 0x04, 0x00, 0x01, 0x04, 0x04, 0x00}},
+	{2, {0x5A, 0x00}},
+	{2, {0x2F, 0x30}}
+};
+
+struct mtk_mode_switch_cmd cmd_table_10fps[] = {
+	{2, {0x2F, 0x00}},
+	{6, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00}},
+	{2, {0x6F, 0x1C}},
+	{9, {0xBA, 0x91, 0x0B, 0x0B, 0x00, 0x01, 0x0B, 0x0B, 0x00}},
+	{2, {0x5A, 0x00}},
+	{2, {0x2F, 0x30}}
+};
+
 static enum RES_SWITCH_TYPE res_switch_type = RES_SWITCH_NO_USE;
 static int current_fps = 120;
 
@@ -1046,155 +1093,36 @@ enum RES_SWITCH_TYPE mtk_get_res_switch_type(void)
 	return res_switch_type;
 }
 
-static void mode_switch_to_120(struct drm_panel *panel)
+static void mode_switch_working(struct drm_panel *panel, int fps,
+	struct mtk_mode_switch_cmd *mode_switch_cmd, size_t len)
 {
 #if MODE_SWITCH_CMDQ_ENABLE
-	struct mtk_mode_switch_cmd cmd_table = {2, {0x2F, 0x00}};
-
-	memset(&ext_params.mode_switch_cmd, 0, sizeof(struct mode_switch_params));
-	ext_params.mode_switch_cmd.num_cmd = 1;
-	memcpy(&ext_params.mode_switch_cmd.ms_table, &cmd_table,
-		sizeof(struct mtk_mode_switch_cmd));
+	if (fps == 120 || fps == 30 || fps == 24 || fps == 10) {
+		memset(&ext_params.mode_switch_cmd, 0,
+			sizeof(struct mode_switch_params));
+		ext_params.mode_switch_cmd.num_cmd = len;
+		memcpy(&ext_params.mode_switch_cmd.ms_table, mode_switch_cmd,
+			sizeof(struct mtk_mode_switch_cmd) * len);
+	} else if (fps == 90) {
+		memset(&ext_params_90hz.mode_switch_cmd, 0,
+			sizeof(struct mode_switch_params));
+		ext_params_90hz.mode_switch_cmd.num_cmd = len;
+		memcpy(&ext_params_90hz.mode_switch_cmd.ms_table, mode_switch_cmd,
+			sizeof(struct mtk_mode_switch_cmd) * len);
+	} else if (fps == 60) {
+		memset(&ext_params_60hz.mode_switch_cmd, 0,
+			sizeof(struct mode_switch_params));
+		ext_params_60hz.mode_switch_cmd.num_cmd = len;
+		memcpy(&ext_params_60hz.mode_switch_cmd.ms_table, mode_switch_cmd,
+			sizeof(struct mtk_mode_switch_cmd) * len);
+	}
 #else
+	int i;
 	struct lcm *ctx = panel_to_lcm(panel);
-
-	lcm_dcs_write_seq_static(ctx, 0x2F, 0x00);
-#endif
-}
-
-static void mode_switch_to_90(struct drm_panel *panel)
-{
-#if MODE_SWITCH_CMDQ_ENABLE
-	struct mtk_mode_switch_cmd cmd_table[4] = {
-		{2, {0x2F, 0x01}},
-		{6, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00}},
-		{2, {0x6F, 0x07}},
-		{3, {0xBA, 0x00, 0x4f}}
-	};
-
-	memset(&ext_params_90hz.mode_switch_cmd, 0, sizeof(struct mode_switch_params));
-	ext_params_90hz.mode_switch_cmd.num_cmd = 4;
-	memcpy(&ext_params_90hz.mode_switch_cmd.ms_table, &cmd_table,
-		sizeof(struct mtk_mode_switch_cmd)*4);
-#else
-	struct lcm *ctx = panel_to_lcm(panel);
-
-	lcm_dcs_write_seq_static(ctx, 0x2F, 0x01);
-	lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00);
-	lcm_dcs_write_seq_static(ctx, 0x6F, 0x07);
-	lcm_dcs_write_seq_static(ctx, 0xBA, 0x00, 0x4f);
-#endif
-}
-
-static void mode_switch_to_60(struct drm_panel *panel)
-{
-#if MODE_SWITCH_CMDQ_ENABLE
-	struct mtk_mode_switch_cmd cmd_table[6] = {
-		{2, {0x2F, 0x00}},
-		{6, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00}},
-		{2, {0x6F, 0x1C}},
-		{9, {0xBA, 0x91, 0x01, 0x01, 0x00, 0x01, 0x01, 0x01, 0x00}},
-		{2, {0x5A, 0x01}},
-		{2, {0x2F, 0x30}}
-	};
-
-	memset(&ext_params_60hz.mode_switch_cmd, 0, sizeof(struct mode_switch_params));
-	ext_params_60hz.mode_switch_cmd.num_cmd = 6;
-	memcpy(&ext_params_60hz.mode_switch_cmd.ms_table, &cmd_table,
-		sizeof(struct mtk_mode_switch_cmd)*6);
-#else
-	struct lcm *ctx = panel_to_lcm(panel);
-
-	lcm_dcs_write_seq_static(ctx, 0x2F, 0x00);
-	lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00);
-	lcm_dcs_write_seq_static(ctx, 0x6F, 0x1C);
-	lcm_dcs_write_seq_static(ctx, 0xBA, 0x91, 0x01, 0x01, 0x00, 0x01, 0x01, 0x01, 0x00);
-	lcm_dcs_write_seq_static(ctx, 0x5A, 0x01);
-	lcm_dcs_write_seq_static(ctx, 0x2F, 0x30);
-#endif
-}
-
-static void mode_switch_to_30(struct drm_panel *panel)
-{
-#if MODE_SWITCH_CMDQ_ENABLE
-	struct mtk_mode_switch_cmd cmd_table[6] = {
-		{2, {0x2F, 0x00}},
-		{6, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00}},
-		{2, {0x6F, 0x1C}},
-		{9, {0xBA, 0x91, 0x03, 0x03, 0x00, 0x01, 0x03, 0x03, 0x00}},
-		{2, {0x5A, 0x00}},
-		{2, {0x2F, 0x30}}
-	};
-
-	memset(&ext_params.mode_switch_cmd, 0, sizeof(struct mode_switch_params));
-	ext_params.mode_switch_cmd.num_cmd = 6;
-	memcpy(&ext_params.mode_switch_cmd.ms_table, &cmd_table,
-		sizeof(struct mtk_mode_switch_cmd)*6);
-#else
-	struct lcm *ctx = panel_to_lcm(panel);
-
-	lcm_dcs_write_seq_static(ctx, 0x2F, 0x00);
-	lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00);
-	lcm_dcs_write_seq_static(ctx, 0x6F, 0x1C);
-	lcm_dcs_write_seq_static(ctx, 0xBA, 0x91, 0x03, 0x03, 0x00, 0x01, 0x03, 0x03, 0x00);
-	lcm_dcs_write_seq_static(ctx, 0x5A, 0x00);
-	lcm_dcs_write_seq_static(ctx, 0x2F, 0x30);
-#endif
-}
-
-static void mode_switch_to_24(struct drm_panel *panel)
-{
-#if MODE_SWITCH_CMDQ_ENABLE
-	struct mtk_mode_switch_cmd cmd_table[6] = {
-		{2, {0x2F, 0x00}},
-		{6, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00}},
-		{2, {0x6F, 0x1C}},
-		{9, {0xBA, 0x91, 0x04, 0x04, 0x00, 0x01, 0x04, 0x04, 0x00}},
-		{2, {0x5A, 0x00}},
-		{2, {0x2F, 0x30}}
-	};
-
-	memset(&ext_params.mode_switch_cmd, 0, sizeof(struct mode_switch_params));
-	ext_params.mode_switch_cmd.num_cmd = 6;
-	memcpy(&ext_params.mode_switch_cmd.ms_table, &cmd_table,
-		sizeof(struct mtk_mode_switch_cmd)*6);
-#else
-	struct lcm *ctx = panel_to_lcm(panel);
-
-	lcm_dcs_write_seq_static(ctx, 0x2F, 0x00);
-	lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00);
-	lcm_dcs_write_seq_static(ctx, 0x6F, 0x1C);
-	lcm_dcs_write_seq_static(ctx, 0xBA, 0x91, 0x04, 0x04, 0x00, 0x01, 0x04, 0x04, 0x00);
-	lcm_dcs_write_seq_static(ctx, 0x5A, 0x00);
-	lcm_dcs_write_seq_static(ctx, 0x2F, 0x30);
-#endif
-}
-
-static void mode_switch_to_10(struct drm_panel *panel)
-{
-#if MODE_SWITCH_CMDQ_ENABLE
-	struct mtk_mode_switch_cmd cmd_table[6] = {
-		{2, {0x2F, 0x00}},
-		{6, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00}},
-		{2, {0x6F, 0x1C}},
-		{9, {0xBA, 0x91, 0x0B, 0x0B, 0x00, 0x01, 0x0B, 0x0B, 0x00}},
-		{2, {0x5A, 0x00}},
-		{2, {0x2F, 0x30}}
-	};
-
-	memset(&ext_params.mode_switch_cmd, 0, sizeof(struct mode_switch_params));
-	ext_params.mode_switch_cmd.num_cmd = 6;
-	memcpy(&ext_params.mode_switch_cmd.ms_table, &cmd_table,
-		sizeof(struct mtk_mode_switch_cmd)*6);
-#else
-	struct lcm *ctx = panel_to_lcm(panel);
-
-	lcm_dcs_write_seq_static(ctx, 0x2F, 0x00);
-	lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00);
-	lcm_dcs_write_seq_static(ctx, 0x6F, 0x1C);
-	lcm_dcs_write_seq_static(ctx, 0xBA, 0x91, 0x0B, 0x0B, 0x00, 0x01, 0x0B, 0x0B, 0x00);
-	lcm_dcs_write_seq_static(ctx, 0x5A, 0x00);
-	lcm_dcs_write_seq_static(ctx, 0x2F, 0x30);
+	for (i = 0; i < len; i++) {
+		lcm_dcs_write(ctx, mode_switch_cmd[i].para_list,
+			mode_switch_cmd[i].cmd_num);
+	}
 #endif
 }
 
@@ -1213,17 +1141,17 @@ static int mode_switch(struct drm_panel *panel,
 	pr_info("%s cur_mode = %d dst_mode %d\n", __func__, cur_mode, dst_mode);
 
 	if (drm_mode_vrefresh(m) == 120)
-		mode_switch_to_120(panel);
+		mode_switch_working(panel, 120, cmd_table_120fps, ARRAY_SIZE(cmd_table_120fps));
 	else if (drm_mode_vrefresh(m) == 90)
-		mode_switch_to_90(panel);
+		mode_switch_working(panel, 90, cmd_table_90fps, ARRAY_SIZE(cmd_table_90fps));
 	else if (drm_mode_vrefresh(m) == 60)
-		mode_switch_to_60(panel);
+		mode_switch_working(panel, 60, cmd_table_60fps, ARRAY_SIZE(cmd_table_60fps));
 	else if (drm_mode_vrefresh(m) == 30)
-		mode_switch_to_30(panel);
+		mode_switch_working(panel, 30, cmd_table_30fps, ARRAY_SIZE(cmd_table_30fps));
 	else if (drm_mode_vrefresh(m) == 24)
-		mode_switch_to_24(panel);
+		mode_switch_working(panel, 24, cmd_table_24fps, ARRAY_SIZE(cmd_table_24fps));
 	else if (drm_mode_vrefresh(m) == 10)
-		mode_switch_to_10(panel);
+		mode_switch_working(panel, 10, cmd_table_10fps, ARRAY_SIZE(cmd_table_10fps));
 	else
 		ret = 1;
 
