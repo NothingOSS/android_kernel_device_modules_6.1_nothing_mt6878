@@ -272,7 +272,8 @@ static int mtk_set_hw_brightness(struct mt_led_data *led_dat, int brightness,
 		led_dat->conf.cdev.name, led_dat->hw_brightness, brightness);
 	ret = led_dat->mtk_hw_brightness_set(led_dat, brightness, params, params_flag);
 	if (ret >= 0) {
-		if (brightness != led_dat->hw_brightness) {
+		if (brightness != led_dat->hw_brightness &&
+		   (params_flag & (1 << SET_BACKLIGHT_LEVEL))) {
 			led_dat->hw_brightness = brightness;
 #ifdef CONFIG_LEDS_MT_BRIGHTNESS_HW_CHANGED
 			mt_leds_notify_brightness_hw_changed(&led_dat->conf, brightness);
@@ -341,7 +342,7 @@ static int mtk_set_brightness(struct led_classdev *led_cdev,
 	call_notifier(LED_BRIGHTNESS_CHANGED, led_conf);
 	mutex_lock(&led_dat->led_access);
 	if (!led_conf->aal_enable) {
-		mtk_set_hw_brightness(led_dat, trans_level, 0, 0);
+		mtk_set_hw_brightness(led_dat, trans_level, 0, 1);
 		led_dat->last_hw_brightness = trans_level;
 	}
 	mutex_unlock(&led_dat->led_access);
@@ -381,7 +382,7 @@ int setMaxBrightness(char *name, int percent, bool enable)
 	}
 
 	if (led_dat->conf.cdev.brightness != 0)
-		mtk_set_hw_brightness(led_dat, cur_l, 0, 0);
+		mtk_set_hw_brightness(led_dat, cur_l, 0, 1);
 
 	pr_info("after: name: %s, cur_l : %d, max_brightness : %d",
 		led_dat->conf.cdev.name, cur_l, led_dat->conf.limit_hw_brightness);
@@ -542,7 +543,7 @@ int mt_leds_classdev_register(struct device *parent,
 	led_dat->last_brightness = led_dat->conf.cdev.brightness;
 
 	mtk_set_hw_brightness(led_dat,
-		brightness_maptolevel(&led_dat->conf, led_dat->last_brightness), 0, 0);
+		brightness_maptolevel(&led_dat->conf, led_dat->last_brightness), 0, 1);
 
 	pr_info("%s devm_led_classdev_register end! ", led_dat->conf.cdev.name);
 
