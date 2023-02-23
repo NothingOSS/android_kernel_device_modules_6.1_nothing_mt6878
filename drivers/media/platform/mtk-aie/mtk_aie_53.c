@@ -107,7 +107,10 @@ static struct clk_bulk_data ipesys_isp7s_aie_clks[] = {
 };
 
 static struct clk_bulk_data ipesys_isp7sp_aie_clks[] = {
-	{ .id = "VCORE_GALS" },
+	{ .id = "VCORE_SUB1_CON_0" },
+	{ .id = "VCORE_SUB0_CON_0" },
+	{ .id = "VCORE_MAIN_CON_0" },
+	{ .id = "VCORE_GALS_DISP_CON_0" },
 	{ .id = "IPE_FDVT" },
 	{ .id = "IPE_SMI_LARB12" },
 	{ .id = "IMG_IPE" },
@@ -131,7 +134,7 @@ static struct aie_data data_isp7sp = {
 	.clks = ipesys_isp7sp_aie_clks,
 	.clk_num = ARRAY_SIZE(ipesys_isp7sp_aie_clks),
 	.drv_ops = &aie_ops_isp7sp,
-	.larb_clk_ready = false,
+	.larb_clk_ready = true,
 };
 
 static int mtk_aie_suspend(struct device *dev)
