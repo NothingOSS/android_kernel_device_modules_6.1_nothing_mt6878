@@ -169,10 +169,7 @@ void mtk_vcodec_release_dec_pm(struct mtk_vcodec_dev *dev)
 void mtk_vcodec_dec_pw_on(struct mtk_vcodec_pm *pm)
 {
 	int ret, larb_index;
-	struct mtk_vcodec_dev *dev = container_of(pm, struct mtk_vcodec_dev, pm);
 
-	mutex_lock(&dev->dec_larb_mutex);
-	dev->dec_larb_ref_cnt++;
 	for (larb_index = 0; larb_index < MTK_VDEC_MAX_LARB_COUNT; larb_index++) {
 		if (pm->larbvdecs[larb_index]) {
 			ret = pm_runtime_resume_and_get(pm->larbvdecs[larb_index]);
@@ -181,23 +178,16 @@ void mtk_vcodec_dec_pw_on(struct mtk_vcodec_pm *pm)
 					larb_index);
 		}
 	}
-	mutex_unlock(&dev->dec_larb_mutex);
 }
 
 void mtk_vcodec_dec_pw_off(struct mtk_vcodec_pm *pm)
 {
 	int larb_index;
-	struct mtk_vcodec_dev *dev = container_of(pm, struct mtk_vcodec_dev, pm);
 
-	mutex_lock(&dev->dec_larb_mutex);
-	if (dev->dec_larb_ref_cnt > 0) {
-		dev->dec_larb_ref_cnt--;
-		for (larb_index = 0; larb_index < MTK_VDEC_MAX_LARB_COUNT; larb_index++) {
-			if (pm->larbvdecs[larb_index])
-				pm_runtime_put_sync(pm->larbvdecs[larb_index]);
-		}
+	for (larb_index = 0; larb_index < MTK_VDEC_MAX_LARB_COUNT; larb_index++) {
+		if (pm->larbvdecs[larb_index])
+			pm_runtime_put_sync(pm->larbvdecs[larb_index]);
 	}
-	mutex_unlock(&dev->dec_larb_mutex);
 }
 
 static void mtk_vdec_hw_break_dump(
@@ -442,6 +432,7 @@ void mtk_vcodec_dec_clock_on(struct mtk_vcodec_pm *pm, int hw_id)
 	int j, ret;
 	struct mtk_vcodec_dev *dev;
 	void __iomem *vdec_racing_addr;
+	int larb_index;
 	int clk_id;
 	struct mtk_vdec_clks_data *clks_data;
 	unsigned long flags;
@@ -450,10 +441,14 @@ void mtk_vcodec_dec_clock_on(struct mtk_vcodec_pm *pm, int hw_id)
 
 	clks_data = &pm->vdec_clks_data;
 
-	dev = container_of(pm, struct mtk_vcodec_dev, pm);
-	dev->dec_clk_ref_cnt[hw_id]++;
-
-	mtk_vcodec_dec_pw_on(pm);
+	for (larb_index = 0; larb_index < MTK_VDEC_MAX_LARB_COUNT; larb_index++) {
+		if (pm->larbvdecs[larb_index]) {
+			ret = pm_runtime_resume_and_get(pm->larbvdecs[larb_index]);
+			if (ret)
+				mtk_v4l2_err("Failed to get vdec larb. index: %d, hw_id: %d",
+					larb_index, hw_id);
+		}
+	}
 
 	// enable main clocks
 	for (j = 0; j < clks_data->main_clks_len; j++) {
@@ -498,6 +493,7 @@ void mtk_vcodec_dec_clock_on(struct mtk_vcodec_pm *pm, int hw_id)
 		return;
 	}
 
+	dev = container_of(pm, struct mtk_vcodec_dev, pm);
 	if (!ret) {
 		spin_lock_irqsave(&dev->dec_power_lock[hw_id], flags);
 		dev->dec_is_power_on[hw_id] = true;
@@ -561,6 +557,7 @@ void mtk_vcodec_dec_clock_off(struct mtk_vcodec_pm *pm, int hw_id)
 	struct mtk_vcodec_dev *dev;
 	void __iomem *vdec_racing_addr;
 	int i;
+	int larb_index;
 	int clk_id;
 	struct mtk_vdec_clks_data *clks_data;
 	unsigned long flags;
@@ -568,8 +565,6 @@ void mtk_vcodec_dec_clock_off(struct mtk_vcodec_pm *pm, int hw_id)
 	clks_data = &pm->vdec_clks_data;
 
 	dev = container_of(pm, struct mtk_vcodec_dev, pm);
-	dev->dec_clk_ref_cnt[hw_id]--;
-
 	if (pm->mtkdev->vdec_hw_ipm == VCODEC_IPM_V2) {
 		mutex_lock(&pm->dec_racing_info_mutex);
 		if (atomic_dec_and_test(&pm->dec_active_cnt)) {
@@ -626,7 +621,11 @@ void mtk_vcodec_dec_clock_off(struct mtk_vcodec_pm *pm, int hw_id)
 		}
 	}
 
-	mtk_vcodec_dec_pw_off(pm);
+	for (larb_index = 0; larb_index < MTK_VDEC_MAX_LARB_COUNT; larb_index++) {
+		if (pm->larbvdecs[larb_index])
+			pm_runtime_put_sync(pm->larbvdecs[larb_index]);
+	}
+
 #endif
 }
 
