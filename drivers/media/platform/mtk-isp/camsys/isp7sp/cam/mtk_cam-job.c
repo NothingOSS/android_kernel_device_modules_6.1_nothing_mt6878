@@ -222,6 +222,7 @@ static int mtk_cam_job_pack_init(struct mtk_cam_job *job,
 		return ret;
 	}
 
+	INIT_LIST_HEAD(&job->job_state.list);
 	apply_cq_ref_reset(&job->cq_ref);
 
 	kthread_init_work(&job->sensor_work, mtk_cam_sensor_work);
