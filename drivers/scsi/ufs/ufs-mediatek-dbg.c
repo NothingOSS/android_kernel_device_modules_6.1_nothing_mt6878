@@ -107,10 +107,11 @@ static void ufs_mtk_dbg_print_info(char **buff, unsigned long *size,
 		      hba->auto_bkops_enabled,
 		      hba->host->host_self_blocked);
 	SPREAD_PRINTF(buff, size, m,
-		      "Clk scale sup./en=%d/%d, min g.=G%d, polling_ms=%d, upthr=%d, downthr=%d\n",
+		      "Clk scale sup./en.=%d/%d, min/max g.=G%d/G%d, polling_ms=%d, upthr=%d, downthr=%d\n",
 		    !!ufshcd_is_clkscaling_supported(hba),
 			hba->clk_scaling.is_enabled,
 			hba->clk_scaling.min_gear,
+			hba->clk_scaling.saved_pwr_info.info.gear_rx,
 			hba->vps->devfreq_profile.polling_ms,
 			hba->vps->ondemand_data.upthreshold,
 			hba->vps->ondemand_data.downdifferential
@@ -141,8 +142,8 @@ static void ufs_mtk_dbg_print_info(char **buff, unsigned long *size,
 		      "quirks=0x%x, dev. quirks=0x%x\n", hba->quirks,
 		      hba->dev_quirks);
 	SPREAD_PRINTF(buff, size, m,
-		      "hba->ufs_version = 0x%x, hba->capabilities = 0x%x\n",
-		      hba->ufs_version, hba->capabilities);
+		      "hba->ufs_version = 0x%x, wspecversion=0x%x, capabilities = 0x%x\n",
+		      hba->ufs_version, hba->dev_info.wspecversion, hba->capabilities);
 	SPREAD_PRINTF(buff, size, m,
 		      "last_hibern8_exit_tstamp at %lld us, hibern8_exit_cnt = %d\n",
 		      ktime_to_us(hba->ufs_stats.last_hibern8_exit_tstamp),
@@ -447,8 +448,15 @@ static void probe_ufshcd_clk_gating(void *data, const char *dev_name,
 		cmd_hist[ptr].cmd.clk_gating.arg2 =
 			readl(host->mphy_base + 0xA19C);
 		writel(0, host->mphy_base + 0x20C0);
+	} else if (state == REQ_CLKS_OFF && host->mphy_base) {
+		writel(0xC1000200, host->mphy_base + 0x20C0);
+		cmd_hist[ptr].cmd.clk_gating.arg1 =
+			readl(host->mphy_base + 0xA09C);
+		cmd_hist[ptr].cmd.clk_gating.arg2 =
+			readl(host->mphy_base + 0xA19C);
+		writel(0, host->mphy_base + 0x20C0);
 
-		/* when clock on, clear 2 line hw status */
+		/* when req clk off, clear 2 line hw status */
 		val = readl(host->mphy_base + 0xA800) | 0x02;
 		writel(val, host->mphy_base + 0xA800);
 		writel(val, host->mphy_base + 0xA800);
@@ -460,6 +468,18 @@ static void probe_ufshcd_clk_gating(void *data, const char *dev_name,
 		writel(val, host->mphy_base + 0xA900);
 		val = val & (~0x02);
 		writel(val, host->mphy_base + 0xA900);
+
+		val = readl(host->mphy_base + 0xA804) | 0x02;
+		writel(val, host->mphy_base + 0xA804);
+		writel(val, host->mphy_base + 0xA804);
+		val = val & (~0x02);
+		writel(val, host->mphy_base + 0xA804);
+
+		val = readl(host->mphy_base + 0xA904) | 0x02;
+		writel(val, host->mphy_base + 0xA904);
+		writel(val, host->mphy_base + 0xA904);
+		val = val & (~0x02);
+		writel(val, host->mphy_base + 0xA904);
 	} else {
 		cmd_hist[ptr].cmd.clk_gating.arg1 = 0;
 		cmd_hist[ptr].cmd.clk_gating.arg2 = 0;
@@ -647,7 +667,7 @@ static void ufs_mtk_dbg_print_clk_gating_event(char **buff,
 
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-c(%d),%6llu.%lu,%5d,%2d,%13s,arg1=0x%X,arg2=0x%X,arg3=0x%X\n",
+		"%3d-c(%d),%6llu.%09lu,%5d,%2d,%13s,arg1=0x%X,arg2=0x%X,arg3=0x%X\n",
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -680,7 +700,7 @@ static void ufs_mtk_dbg_print_clk_scaling_event(char **buff,
 
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-c(%d),%6llu.%lu,%5d,%2d,%15s, err:%d\n",
+		"%3d-c(%d),%6llu.%09lu,%5d,%2d,%15s, err:%d\n",
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -716,7 +736,7 @@ static void ufs_mtk_dbg_print_pm_event(char **buff,
 
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-c(%d),%6llu.%lu,%5d,%2d,%3s, ret=%d, time_us=%8lu, pwr_mode=%d, link_status=%d\n",
+		"%3d-c(%d),%6llu.%09lu,%5d,%2d,%3s, ret=%d, time_us=%8lu, pwr_mode=%d, link_status=%d\n",
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -742,7 +762,7 @@ static void ufs_mtk_dbg_print_device_reset_event(char **buff,
 
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-c(%d),%6llu.%lu,%5d,%2d,%13s\n",
+		"%3d-c(%d),%6llu.%09lu,%5d,%2d,%13s\n",
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -759,7 +779,7 @@ static void ufs_mtk_dbg_print_uic_event(char **buff, unsigned long *size,
 
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-u(%d),%6llu.%lu,%5d,%2d,0x%2x,arg1=0x%X,arg2=0x%X,arg3=0x%X,\t%llu\n",
+		"%3d-u(%d),%6llu.%09lu,%5d,%2d,0x%2x,arg1=0x%X,arg2=0x%X,arg3=0x%X,\t%llu\n",
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -782,7 +802,7 @@ static void ufs_mtk_dbg_print_utp_event(char **buff, unsigned long *size,
 	if (cmd_hist[ptr].cmd.utp.lba == 0xFFFFFFFFFFFFFFFF)
 		cmd_hist[ptr].cmd.utp.lba = 0;
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-r(%d),%6llu.%lu,%5d,%2d,0x%2x,t=%2d,db:0x%8x,is:0x%8x,crypt:%d,%d,lba=%10llu,len=%6d,\t%llu\n",
+		"%3d-r(%d),%6llu.%09lu,%5d,%2d,0x%2x,t=%2d,db:0x%8x,is:0x%8x,crypt:%d,%d,lba=%10llu,len=%6d,\t%llu\n",
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -808,7 +828,7 @@ static void ufs_mtk_dbg_print_dev_event(char **buff, unsigned long *size,
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-r(%d),%6llu.%lu,%5d,%2d,%4u,t=%2d,op:%u,idn:%u,idx:%u,sel:%u\n",
+		"%3d-r(%d),%6llu.%09lu,%5d,%2d,%4u,t=%2d,op:%u,idn:%u,idx:%u,sel:%u\n",
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -832,7 +852,7 @@ static void ufs_mtk_dbg_print_tm_event(char **buff, unsigned long *size,
 	if (cmd_hist[ptr].cmd.utp.lba == 0xFFFFFFFFFFFFFFFF)
 		cmd_hist[ptr].cmd.utp.lba = 0;
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-r(%d),%6llu.%lu,%5d,%2d,0x%2x,lun=%d,tag=%d,task_tag=%d\n",
+		"%3d-r(%d),%6llu.%09lu,%5d,%2d,0x%2x,lun=%d,tag=%d,task_tag=%d\n",
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,

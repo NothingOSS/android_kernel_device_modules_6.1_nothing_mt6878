@@ -227,6 +227,7 @@ struct ufs_mtk_host {
 
 	struct semaphore rpmb_sem;
 	struct scsi_device *sdev_rpmb;
+	struct device *phy_dev;
 #if defined(CONFIG_UFSFEATURE)
 	struct ufsf_feature ufsf;
 #endif

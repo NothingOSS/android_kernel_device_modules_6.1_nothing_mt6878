@@ -51,6 +51,7 @@ static int ufs_abort_aee_count;
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+static void ufs_mtk_mphy_dump(struct ufs_hba *hba);
 static void ufs_mtk_mphy_record(struct ufs_hba *hba, u8 stage);
 static const u32 mphy_reg_dump[] = {
 	0xA09C, /* RON */ /* 0 */
@@ -153,53 +154,65 @@ static const u32 mphy_reg_dump[] = {
 	0x00B0, /* CL */ /* 91 */
 	0x00B0, /* CL */ /* 92 */
 	0x00B0, /* CL */ /* 93 */
+
 	0x00B0, /* CL */ /* 94 */
 	0x00B0, /* CL */ /* 95 */
 	0x00B0, /* CL */ /* 96 */
 	0x00B0, /* CL */ /* 97 */
 	0x00B0, /* CL */ /* 98 */
-	0x3080, /* CL */ /* 99 */
+	0x00B0, /* CL */ /* 99 */
+	0x00B0, /* CL */ /* 100 */
+	0x00B0, /* CL */ /* 101 */
+	0x00B0, /* CL */ /* 102 */
+	0x00B0, /* CL */ /* 103 */
 
-	0xC210, /* CL */ /* 100 */
-	0xC280, /* CL */ /* 101 */
-	0xC268, /* CL */ /* 102 */
-	0xC228, /* CL */ /* 103 */
-	0xC22C, /* CL */ /* 104 */
-	0xC220, /* CL */ /* 105 */
-	0xC224, /* CL */ /* 106 */
-	0xC284, /* CL */ /* 107 */
-	0xC274, /* CL */ /* 108 */
-	0xC278, /* CL */ /* 109 */
+	0x00B0, /* CL */ /* 104 */
+	0x00B0, /* CL */ /* 105 */
+	0x00B0, /* CL */ /* 106 */
+	0x00B0, /* CL */ /* 107 */
+	0x00B0, /* CL */ /* 108 */
+	0x3080, /* CL */ /* 109 */
+
+	0xC210, /* CL */ /* 110 */
+	0xC280, /* CL */ /* 111 */
+	0xC268, /* CL */ /* 112 */
+	0xC228, /* CL */ /* 113 */
+	0xC22C, /* CL */ /* 114 */
+	0xC220, /* CL */ /* 115 */
+	0xC224, /* CL */ /* 116 */
+	0xC284, /* CL */ /* 117 */
+	0xC274, /* CL */ /* 118 */
+	0xC278, /* CL */ /* 119 */
 	0xC29C, /* CL */ /* 110 */
-	0xC214, /* CL */ /* 111 */
-	0xC218, /* CL */ /* 112 */
-	0xC21C, /* CL */ /* 113 */
-	0xC234, /* CL */ /* 114 */
-	0xC230, /* CL */ /* 115 */
-	0xC244, /* CL */ /* 116 */
-	0xC250, /* CL */ /* 117 */
-	0xC270, /* CL */ /* 118 */
-	0xC26C, /* CL */ /* 119 */
-	0xC310, /* CL */ /* 110 */
-	0xC380, /* CL */ /* 121 */
-	0xC368, /* CL */ /* 122 */
-	0xC328, /* CL */ /* 123 */
-	0xC32C, /* CL */ /* 124 */
-	0xC320, /* CL */ /* 125 */
-	0xC324, /* CL */ /* 126 */
-	0xC384, /* CL */ /* 127 */
-	0xC374, /* CL */ /* 128 */
-	0xC378, /* CL */ /* 129 */
-	0xC39C, /* CL */ /* 120 */
-	0xC314, /* CL */ /* 131 */
-	0xC318, /* CL */ /* 132 */
-	0xC31C, /* CL */ /* 133 */
-	0xC334, /* CL */ /* 134 */
-	0xC330, /* CL */ /* 135 */
-	0xC344, /* CL */ /* 136 */
-	0xC350, /* CL */ /* 137 */
-	0xC370, /* CL */ /* 138 */
-	0xC36C  /* CL */ /* 139 */
+	0xC214, /* CL */ /* 121 */
+	0xC218, /* CL */ /* 122 */
+	0xC21C, /* CL */ /* 123 */
+	0xC234, /* CL */ /* 124 */
+	0xC230, /* CL */ /* 125 */
+	0xC244, /* CL */ /* 126 */
+	0xC250, /* CL */ /* 127 */
+	0xC270, /* CL */ /* 128 */
+	0xC26C, /* CL */ /* 129 */
+	0xC310, /* CL */ /* 120 */
+	0xC380, /* CL */ /* 131 */
+	0xC368, /* CL */ /* 132 */
+	0xC328, /* CL */ /* 133 */
+	0xC32C, /* CL */ /* 134 */
+	0xC320, /* CL */ /* 135 */
+	0xC324, /* CL */ /* 136 */
+	0xC384, /* CL */ /* 137 */
+	0xC374, /* CL */ /* 138 */
+	0xC378, /* CL */ /* 139 */
+	0xC39C, /* CL */ /* 140 */
+	0xC314, /* CL */ /* 141 */
+	0xC318, /* CL */ /* 142 */
+	0xC31C, /* CL */ /* 143 */
+	0xC334, /* CL */ /* 144 */
+	0xC330, /* CL */ /* 145 */
+	0xC344, /* CL */ /* 146 */
+	0xC350, /* CL */ /* 147 */
+	0xC370, /* CL */ /* 148 */
+	0xC36C  /* CL */ /* 149 */
 };
 #define MPHY_DUMP_NUM    (sizeof(mphy_reg_dump) / sizeof(u32))
 enum {
@@ -212,6 +225,7 @@ enum {
 struct ufs_mtk_mphy_struct {
 	u32 record[MPHY_DUMP_NUM];
 	u64 time;
+	u64 time_done;
 };
 static struct ufs_mtk_mphy_struct mphy_record[UFS_MPHY_STAGE_NUM];
 static const u8 *mphy_str[] = {
@@ -310,28 +324,29 @@ static const u8 *mphy_str[] = {
 	"CL IPATH CODE", /* 86 */
 	"CL IPATH CODE", /* 87 */
 	"CL IPATH CODE", /* 88 */
-	"CL PI CODE", /* 89 */
-	"CL PI CODE", /* 90 */
-	"CL PI CODE", /* 91 */
-	"CL PI CODE", /* 92 */
-	"CL PI CODE", /* 93 */
-	"CL RXPLL_BAND", /* 94 */
-	"CL RXPLL_BAND", /* 95 */
-	"CL RXPLL_BAND", /* 96 */
-	"CL RXPLL_BAND", /* 97 */
-	"CL RXPLL_BAND", /* 98 */
-	"CL", /* 99 */
+	"CL IPATH CODE", /* 89 */
+	"CL IPATH CODE", /* 90 */
+	"CL IPATH CODE", /* 91 */
+	"CL IPATH CODE", /* 92 */
+	"CL IPATH CODE", /* 93 */
+	"CL PI CODE", /* 94 */
+	"CL PI CODE", /* 95 */
+	"CL PI CODE", /* 96 */
+	"CL PI CODE", /* 97 */
+	"CL PI CODE", /* 98 */
+	"CL PI CODE", /* 99 */
+	"CL PI CODE", /* 100 */
+	"CL PI CODE", /* 101 */
+	"CL PI CODE", /* 102 */
+	"CL PI CODE", /* 103 */
 
-	"CL", /* 100 */
-	"CL", /* 101 */
-	"CL", /* 102 */
-	"CL", /* 103 */
-	"CL", /* 104 */
-	"CL", /* 105 */
-	"CL", /* 106 */
-	"CL", /* 107 */
-	"CL", /* 108 */
+	"CL RXPLL_BAND", /* 104 */
+	"CL RXPLL_BAND", /* 105 */
+	"CL RXPLL_BAND", /* 106 */
+	"CL RXPLL_BAND", /* 107 */
+	"CL RXPLL_BAND", /* 108 */
 	"CL", /* 109 */
+
 	"CL", /* 110 */
 	"CL", /* 111 */
 	"CL", /* 112 */
@@ -362,27 +377,38 @@ static const u8 *mphy_str[] = {
 	"CL", /* 137 */
 	"CL", /* 138 */
 	"CL", /* 139 */
+	"CL", /* 140 */
+	"CL", /* 141 */
+	"CL", /* 142 */
+	"CL", /* 143 */
+	"CL", /* 144 */
+	"CL", /* 145 */
+	"CL", /* 146 */
+	"CL", /* 147 */
+	"CL", /* 148 */
+	"CL", /* 149 */
 };
 
 #endif
 
 extern void mt_irq_dump_status(unsigned int irq);
-static void ufs_mtk_auto_hibern8_disable(struct ufs_hba *hba);
+static int ufs_mtk_auto_hibern8_disable(struct ufs_hba *hba);
 
 #define CREATE_TRACE_POINTS
 #include "ufs-mediatek-trace.h"
 #undef CREATE_TRACE_POINTS
 
-#if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
-static struct ufs_dev_fix ufs_mtk_dev_fixups[] = {
-	UFS_FIX(UFS_ANY_VENDOR, UFS_ANY_MODEL,
-		UFS_DEVICE_QUIRK_DELAY_BEFORE_LPM |
-		UFS_DEVICE_QUIRK_DELAY_AFTER_LPM),
-	UFS_FIX(UFS_VENDOR_SKHYNIX, "H9HQ21AFAMZDAR",
-		UFS_DEVICE_QUIRK_SUPPORT_EXTENDED_FEATURES),
-	END_FIX
+
+static struct ufs_dev_quirk ufs_mtk_dev_fixups[] = {
+	{ .wmanufacturerid = UFS_ANY_VENDOR,
+	  .model = UFS_ANY_MODEL,
+	  .quirk = UFS_DEVICE_QUIRK_DELAY_BEFORE_LPM |
+		UFS_DEVICE_QUIRK_DELAY_AFTER_LPM },
+	{ .wmanufacturerid = UFS_VENDOR_SKHYNIX,
+	  .model = "H9HQ21AFAMZDAR",
+	  .quirk = UFS_DEVICE_QUIRK_SUPPORT_EXTENDED_FEATURES },
+	{ }
 };
-#endif
 
 static const struct of_device_id ufs_mtk_of_match[] = {
 	{ .compatible = "mediatek,mt8183-ufshci" },
@@ -533,8 +559,10 @@ static void ufs_mtk_init_reset(struct ufs_hba *hba)
 				   "unipro_rst");
 	ufs_mtk_init_reset_control(hba, &host->crypto_reset,
 				   "crypto_rst");
+	/*
 	ufs_mtk_init_reset_control(hba, &host->mphy_reset,
 				   "mphy_rst");
+	*/
 }
 
 static int ufs_mtk_hce_enable_notify(struct ufs_hba *hba,
@@ -645,7 +673,16 @@ static int ufs_mtk_setup_ref_clk(struct ufs_hba *hba, bool on)
 
 	dev_err(hba->dev, "missing ack of refclk req, reg: 0x%x\n", value);
 
-	ufs_mtk_ref_clk_notify(host->ref_clk_enabled, POST_CHANGE, res);
+	/*
+	 * If clock on timeout, assume clock is off, notify tfa do clock
+	 * off setting.(keep DIFN disable, release resource)
+	 * If clock off timeout, assume clock will off finally,
+	 * set ref_clk_enabled directly.(keep DIFN disable, keep resource)
+	 */
+	if (on)
+		ufs_mtk_ref_clk_notify(false, POST_CHANGE, res);
+	else
+		host->ref_clk_enabled = false;
 
 	return -ETIMEDOUT;
 
@@ -1220,14 +1257,6 @@ static void ufs_mtk_trace_vh_compl_command(void *data, struct ufs_hba *hba, stru
 
 	if (!cmd)
 		return;
-
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
-	/* record burst mode mphy status after resume ssu complete */
-	if (hba->pm_op_in_progress &&
-		(cmd->cmnd[0] == START_STOP) &&
-		(cmd->cmnd[4] == UFS_ACTIVE_PWR_MODE << 4))
-		ufs_mtk_mphy_record(hba, UFS_MPHY_INIT);
-#endif
 
 #if defined(CONFIG_UFSFEATURE)
 	ufs_mtk_get_outstanding_reqs(hba, &outstanding_reqs, &nr_tag);
@@ -2418,7 +2447,7 @@ static void ufs_mtk_mphy_record(struct ufs_hba *hba, u8 stage)
 	if (mphy_record[stage].time)
 		return;
 
-	mphy_record[stage].time = div_u64(local_clock(), 1000);
+	mphy_record[stage].time = local_clock();
 
 	writel(0xC1000200, host->mphy_base + 0x20C0);
 	for (i = 0; i < 2; i++) {
@@ -2444,6 +2473,7 @@ static void ufs_mtk_mphy_record(struct ufs_hba *hba, u8 stage)
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
+	/* DA Probe */
 	writel(0x0, host->mphy_base + 0x0);
 	writel(0x7, host->mphy_base + 0x4);
 	for (i = 49; i < 50; i++) {
@@ -2451,213 +2481,216 @@ static void ufs_mtk_mphy_record(struct ufs_hba *hba, u8 stage)
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
+	/* Lane 0 */
 	writel(0xc, host->mphy_base + 0x0);
-	writel(0x45, host->mphy_base + 0x4);
+	writel(0x45, host->mphy_base + 0xA000);
 	for (i = 50; i < 51; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x5f, host->mphy_base + 0x4);
+	writel(0x5f, host->mphy_base + 0xA000);
+	for (i = 51; i < 52; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x85, host->mphy_base + 0xA000);
 	for (i = 52; i < 53; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x85, host->mphy_base + 0x4);
+	writel(0x8a, host->mphy_base + 0xA000);
 	for (i = 53; i < 54; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x8a, host->mphy_base + 0x4);
+	writel(0x8b, host->mphy_base + 0xA000);
 	for (i = 54; i < 55; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x8b, host->mphy_base + 0x4);
+	writel(0x8c, host->mphy_base + 0xA000);
 	for (i = 55; i < 56; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x8c, host->mphy_base + 0x4);
+	writel(0x8d, host->mphy_base + 0xA000);
 	for (i = 56; i < 57; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x8d, host->mphy_base + 0x4);
+	writel(0x8e, host->mphy_base + 0xA000);
 	for (i = 57; i < 58; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x8e, host->mphy_base + 0x4);
+	writel(0x94, host->mphy_base + 0xA000);
 	for (i = 58; i < 59; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x94, host->mphy_base + 0x4);
+	writel(0x95, host->mphy_base + 0xA000);
 	for (i = 59; i < 60; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x95, host->mphy_base + 0x4);
+	writel(0x97, host->mphy_base + 0xA000);
 	for (i = 60; i < 61; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x97, host->mphy_base + 0x4);
+	writel(0x98, host->mphy_base + 0xA000);
 	for (i = 61; i < 62; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x98, host->mphy_base + 0x4);
+	writel(0x99, host->mphy_base + 0xA000);
 	for (i = 62; i < 63; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x99, host->mphy_base + 0x4);
+	writel(0x9c, host->mphy_base + 0xA000);
 	for (i = 63; i < 64; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x9c, host->mphy_base + 0x4);
+	writel(0x9d, host->mphy_base + 0xA000);
 	for (i = 64; i < 65; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x9d, host->mphy_base + 0x4);
+	writel(0xbd, host->mphy_base + 0xA000);
 	for (i = 65; i < 66; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0xbd, host->mphy_base + 0x4);
-	for (i = 65; i < 66; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0xca, host->mphy_base + 0x4);
+	writel(0xca, host->mphy_base + 0xA000);
 	for (i = 66; i < 67; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
+	/* Lane 1 */
 	writel(0xd, host->mphy_base + 0x0);
-	writel(0x45, host->mphy_base + 0x4);
+	writel(0x45, host->mphy_base + 0xA100);
 	for (i = 67; i < 68; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x5f, host->mphy_base + 0x4);
+	writel(0x5f, host->mphy_base + 0xA100);
 	for (i = 68; i < 69; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x85, host->mphy_base + 0x4);
+	writel(0x85, host->mphy_base + 0xA100);
 	for (i = 69; i < 70; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x8a, host->mphy_base + 0x4);
+	writel(0x8a, host->mphy_base + 0xA100);
 	for (i = 70; i < 71; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x8b, host->mphy_base + 0x4);
+	writel(0x8b, host->mphy_base + 0xA100);
 	for (i = 71; i < 72; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x8c, host->mphy_base + 0x4);
+	writel(0x8c, host->mphy_base + 0xA100);
 	for (i = 72; i < 73; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x8d, host->mphy_base + 0x4);
+	writel(0x8d, host->mphy_base + 0xA100);
 	for (i = 73; i < 74; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x8e, host->mphy_base + 0x4);
+	writel(0x8e, host->mphy_base + 0xA100);
 	for (i = 74; i < 75; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x94, host->mphy_base + 0x4);
+	writel(0x94, host->mphy_base + 0xA100);
 	for (i = 75; i < 76; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x95, host->mphy_base + 0x4);
+	writel(0x95, host->mphy_base + 0xA100);
 	for (i = 76; i < 77; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x97, host->mphy_base + 0x4);
+	writel(0x97, host->mphy_base + 0xA100);
 	for (i = 77; i < 78; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x98, host->mphy_base + 0x4);
+	writel(0x98, host->mphy_base + 0xA100);
 	for (i = 78; i < 79; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x99, host->mphy_base + 0x4);
+	writel(0x99, host->mphy_base + 0xA100);
 	for (i = 79; i < 80; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x9c, host->mphy_base + 0x4);
+	writel(0x9c, host->mphy_base + 0xA100);
 	for (i = 80; i < 81; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0x9d, host->mphy_base + 0x4);
+	writel(0x9d, host->mphy_base + 0xA100);
 	for (i = 81; i < 82; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0xbd, host->mphy_base + 0x4);
+	writel(0xbd, host->mphy_base + 0xA100);
 	for (i = 82; i < 83; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	writel(0xca, host->mphy_base + 0x4);
+	writel(0xca, host->mphy_base + 0xA100);
 	for (i = 83; i < 84; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
-	for (j = 0; j < 5; j++) {
+	/* IPATH CODE */
+	for (j = 0; j < 10; j++) {
 		writel(0x00000000, host->mphy_base + 0x0000);
 		writel(0x2F2E2D2C, host->mphy_base + 0x0004);
 		writel(0x00000001, host->mphy_base + 0xB024);
@@ -2666,13 +2699,13 @@ static void ufs_mtk_mphy_record(struct ufs_hba *hba, u8 stage)
 		writel(0x00061003, host->mphy_base + 0xB100);
 		writel(0x00000101, host->mphy_base + 0xB024);
 		writel(0x00000101, host->mphy_base + 0xB124);
-		writel(0x00000041, host->mphy_base + 0xB024);
+		writel(0x00000141, host->mphy_base + 0xB024);
 		writel(0x400E1003, host->mphy_base + 0xB000);
-		writel(0x00000041, host->mphy_base + 0xB124);
+		writel(0x00000141, host->mphy_base + 0xB124);
 		writel(0x400E1003, host->mphy_base + 0xB100);
-		writel(0x00000001, host->mphy_base + 0xB024);
+		writel(0x00000101, host->mphy_base + 0xB024);
 		writel(0x000E1003, host->mphy_base + 0xB000);
-		writel(0x00000001, host->mphy_base + 0xB124);
+		writel(0x00000101, host->mphy_base + 0xB124);
 		writel(0x000E1003, host->mphy_base + 0xB100);
 		for (i = (84 + j); i < (85 + j); i++) {
 			mphy_record[stage].record[i] =
@@ -2680,7 +2713,7 @@ static void ufs_mtk_mphy_record(struct ufs_hba *hba, u8 stage)
 		}
 	}
 
-	for (j = 0; j < 5; j++) {
+	for (j = 0; j < 10; j++) {
 		writel(0x00000000, host->mphy_base + 0x0000);
 		writel(0x2F2E2D2C, host->mphy_base + 0x0004);
 		writel(0x00000001, host->mphy_base + 0xB024);
@@ -2697,7 +2730,7 @@ static void ufs_mtk_mphy_record(struct ufs_hba *hba, u8 stage)
 		writel(0x000E1003, host->mphy_base + 0xB000);
 		writel(0x00000001, host->mphy_base + 0xB124);
 		writel(0x000E1003, host->mphy_base + 0xB100);
-		for (i = (89 + j); i < (90 + j); i++) {
+		for (i = (94 + j); i < (95 + j); i++) {
 			mphy_record[stage].record[i] =
 				readl(host->mphy_base + mphy_reg_dump[i]);
 		}
@@ -2705,14 +2738,14 @@ static void ufs_mtk_mphy_record(struct ufs_hba *hba, u8 stage)
 
 	writel(0x00000000, host->mphy_base + 0x0000);
 	writel(0x2A << 8 | 0x28, host->mphy_base + 0x4);
-	for (i = 94; i < 99; i++) {
+	for (i = 104; i < 109; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
 	writel(readl(host->mphy_base + 0x1044) | 0x20,
 		host->mphy_base + 0x1044);
-	for (i = 99; i < 100; i++) {
+	for (i = 109; i < 110; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
@@ -2733,7 +2766,7 @@ static void ufs_mtk_mphy_record(struct ufs_hba *hba, u8 stage)
 		host->mphy_base + 0xA738);
 
 	/* Dump [Lane0] RX RG */
-	for (i = 100; i < 102; i++) {
+	for (i = 110; i < 112; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
@@ -2745,7 +2778,7 @@ static void ufs_mtk_mphy_record(struct ufs_hba *hba, u8 stage)
 	writel(readl(host->mphy_base + 0xC0DC) & ~(0x1 << 25),
 		host->mphy_base + 0xC0DC);
 
-	for (i = 102; i < 110; i++) {
+	for (i = 112; i < 120; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
@@ -2757,13 +2790,13 @@ static void ufs_mtk_mphy_record(struct ufs_hba *hba, u8 stage)
 	writel(readl(host->mphy_base + 0xC0C0) & ~(0x1 << 27),
 		host->mphy_base + 0xC0C0);
 
-	for (i = 110; i < 120; i++) {
+	for (i = 120; i < 130; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
 
 	/* Dump [Lane1] RX RG */
-	for (i = 120; i < 122; i++) {
+	for (i = 130; i < 132; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
@@ -2775,7 +2808,7 @@ static void ufs_mtk_mphy_record(struct ufs_hba *hba, u8 stage)
 	writel(readl(host->mphy_base + 0xC1DC) & ~(0x1 << 25),
 		host->mphy_base + 0xC1DC);
 
-	for (i = 122; i < 130; i++) {
+	for (i = 132; i < 140; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
@@ -2788,7 +2821,7 @@ static void ufs_mtk_mphy_record(struct ufs_hba *hba, u8 stage)
 		host->mphy_base + 0xC1C0);
 
 
-	for (i = 130; i < 140; i++) {
+	for (i = 140; i < 150; i++) {
 		mphy_record[stage].record[i] =
 			readl(host->mphy_base + mphy_reg_dump[i]);
 	}
@@ -2806,6 +2839,8 @@ static void ufs_mtk_mphy_record(struct ufs_hba *hba, u8 stage)
 		host->mphy_base + 0xA7C8);
 	writel(readl(host->mphy_base + 0xA738) & ~(0x1 << 10),
 		host->mphy_base + 0xA738);
+
+	mphy_record[stage].time_done = local_clock();
 }
 #endif
 
@@ -2826,9 +2861,13 @@ static void ufs_mtk_mphy_dump(struct ufs_hba *hba)
 
 		dur = ns_to_timespec64(mphy_record[i].time);
 
-		pr_info("%s: MPHY record at %6llu.%lu\n", __func__,
+		pr_info("%s: MPHY record start at %6llu.%lu\n", __func__,
 			dur.tv_sec, dur.tv_nsec);
 
+		dur = ns_to_timespec64(mphy_record[i].time_done);
+
+		pr_info("%s: MPHY record end at %6llu.%lu\n", __func__,
+			dur.tv_sec, dur.tv_nsec);
 
 		for (j = 0; j < MPHY_DUMP_NUM; j++) {
 			pr_info("%s: 0x112a%04X=0x%x, %s\n", __func__,
@@ -2860,6 +2899,74 @@ static int ufs_mtk_pwr_change_notify(struct ufs_hba *hba,
 
 	return ret;
 }
+
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+static void ufs_mtk_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
+				    enum ufs_notify_change_status status)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	u32 val;
+	static bool boot_mphy_dump;
+
+	/* clear before hibern8 enter in suspend  */
+	if (status == PRE_CHANGE && cmd == UIC_CMD_DME_HIBER_ENTER &&
+		(hba->pm_op_in_progress)) {
+
+		if (host->mphy_base) {
+			/*
+			 * in middle of ssu sleep and hibern8 enter,
+			 * clear 2 line hw status.
+			 */
+			val = readl(host->mphy_base + 0xA800) | 0x02;
+			writel(val, host->mphy_base + 0xA800);
+			writel(val, host->mphy_base + 0xA800);
+			val = val & (~0x02);
+			writel(val, host->mphy_base + 0xA800);
+
+			val = readl(host->mphy_base + 0xA900) | 0x02;
+			writel(val, host->mphy_base + 0xA900);
+			writel(val, host->mphy_base + 0xA900);
+			val = val & (~0x02);
+			writel(val, host->mphy_base + 0xA900);
+
+			val = readl(host->mphy_base + 0xA804) | 0x02;
+			writel(val, host->mphy_base + 0xA804);
+			writel(val, host->mphy_base + 0xA804);
+			val = val & (~0x02);
+			writel(val, host->mphy_base + 0xA804);
+
+			val = readl(host->mphy_base + 0xA904) | 0x02;
+			writel(val, host->mphy_base + 0xA904);
+			writel(val, host->mphy_base + 0xA904);
+			val = val & (~0x02);
+			writel(val, host->mphy_base + 0xA904);
+
+			/* check status is already clear */
+			if (readl(host->mphy_base + 0xA808) ||
+				readl(host->mphy_base + 0xA908)) {
+
+				pr_info("%s: [%d] clear fail 0x%x 0x%x\n",
+					__func__, __LINE__,
+					readl(host->mphy_base + 0xA808),
+					readl(host->mphy_base + 0xA908)
+					);
+			}
+		}
+	}
+
+	/* record burst mode mphy status after resume exit hibern8 complete */
+	if (status == POST_CHANGE && cmd == UIC_CMD_DME_HIBER_EXIT &&
+		(hba->pm_op_in_progress)) {
+
+		ufs_mtk_mphy_record(hba, UFS_MPHY_INIT);
+
+		if (!boot_mphy_dump) {
+			ufs_mtk_mphy_dump(hba);
+			boot_mphy_dump = true;
+		}
+	}
+}
+#endif
 
 static int ufs_mtk_unipro_set_lpm(struct ufs_hba *hba, bool lpm)
 {
@@ -3152,8 +3259,7 @@ static int ufs_mtk_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
 
 		if (!ufshcd_is_auto_hibern8_supported(hba))
 			return 0;
-		ufs_mtk_auto_hibern8_disable(hba);
-		return 0;
+		return ufs_mtk_auto_hibern8_disable(hba);
 	}
 
 	if (ufshcd_is_link_hibern8(hba)) {
@@ -3194,7 +3300,6 @@ static int ufs_mtk_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 {
 	int err;
 	struct arm_smccc_res res;
-	unsigned long flags;
 
 	if (hba->ufshcd_state != UFSHCD_STATE_OPERATIONAL)
 		ufs_mtk_dev_vreg_set_lpm(hba, false);
@@ -3214,19 +3319,31 @@ static int ufs_mtk_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 
 	return 0;
 fail:
-	spin_lock_irqsave(hba->host->host_lock, flags);
-	hba->force_reset = true;
-	hba->ufshcd_state = UFSHCD_STATE_EH_SCHEDULED_FATAL;
-	schedule_work(&hba->eh_work);
-	spin_unlock_irqrestore(hba->host->host_lock, flags);
-	flush_work(&hba->eh_work);
 
-	return 0;
+	/*
+	 * Should not return fail if platform(parent) dev is resume,
+	 * which power, clock and mtcmos is all turn on.
+	 */
+	err = ufshcd_link_recovery(hba);
+	if (err) {
+		dev_err(hba->dev, "Device PM: req=%d, status:%d, err:%d\n",
+			hba->dev->power.request,
+			hba->dev->power.runtime_status,
+			hba->dev->power.runtime_error);
+	}
+
+	return 0; /* cannot return fail, else IO hang */
 }
 
 static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 {
 	int i;
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+	static int err_count;
+	static ktime_t err_ktime;
+	ktime_t delta_ktime;
+	s64 delta_msecs;
+#endif
 
 	mt_irq_dump_status(hba->irq);
 
@@ -3284,9 +3401,28 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
-	aee_kernel_warning_api(__FILE__,
-		__LINE__, DB_OPT_FS_IO_LOG | DB_OPT_FTRACE,
-		"ufs", "error dump");
+	delta_ktime = ktime_sub(local_clock(), err_ktime);
+	delta_msecs = ktime_to_ms(delta_ktime);
+
+	/* If last error happen more than 72 hrs, clear error count */
+	if (delta_msecs >= 72 * 60 * 60 * 1000)
+		err_count = 0;
+
+	/* Treat errors happen in 3000 ms as one time error */
+	if (delta_msecs >= 3000) {
+		err_ktime = local_clock();
+		err_count++;
+	}
+
+	/*
+	 * Most uic error is recoverable, it should be minor.
+	 * Only dump db if uic error heppen frequently(>=6) in 72 hrs.
+	 */
+	if (err_count >= 6) {
+		aee_kernel_warning_api(__FILE__,
+			__LINE__, DB_OPT_FS_IO_LOG | DB_OPT_FTRACE,
+			"ufs", "error dump %d", err_count);
+	}
 #endif
 }
 
@@ -3330,7 +3466,7 @@ static void ufs_mtk_fixup_dev_quirks(struct ufs_hba *hba)
 	struct ufs_dev_info *dev_info = &hba->dev_info;
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
-	//ufshcd_fixup_dev_quirks(hba, ufs_mtk_dev_fixups);
+	ufshcd_fixup_dev_quirks(hba, ufs_mtk_dev_fixups);
 
 	if (STR_PRFX_EQUAL("H9HQ15AFAMBDAR", dev_info->model))
 		host->caps |= UFS_MTK_CAP_BROKEN_VCC | UFS_MTK_CAP_FORCE_VSx_LPM;
@@ -3424,7 +3560,7 @@ static void ufs_mtk_event_notify(struct ufs_hba *hba,
 #endif
 }
 
-static void ufs_mtk_auto_hibern8_disable(struct ufs_hba *hba)
+static int ufs_mtk_auto_hibern8_disable(struct ufs_hba *hba)
 {
 	unsigned long flags;
 	int ret;
@@ -3446,13 +3582,12 @@ static void ufs_mtk_auto_hibern8_disable(struct ufs_hba *hba)
 		hba->ufshcd_state = UFSHCD_STATE_EH_SCHEDULED_FATAL;
 		schedule_work(&hba->eh_work);
 		spin_unlock_irqrestore(hba->host->host_lock, flags);
-		flush_work(&hba->eh_work);
 
-		/* disable auto-hibern8 */
-		spin_lock_irqsave(hba->host->host_lock, flags);
-		ufshcd_writel(hba, 0, REG_AUTO_HIBERNATE_IDLE_TIMER);
-		spin_unlock_irqrestore(hba->host->host_lock, flags);
+		/* trigger error handler and break suspend */
+		ret = -EBUSY;
 	}
+
+	return ret;
 }
 
 void ufs_mtk_setup_task_mgmt(struct ufs_hba *hba, int tag, u8 tm_function)
@@ -3583,6 +3718,9 @@ static const struct ufs_hba_variant_ops ufs_hba_mtk_vops = {
 	.hce_enable_notify   = ufs_mtk_hce_enable_notify,
 	.link_startup_notify = ufs_mtk_link_startup_notify,
 	.pwr_change_notify   = ufs_mtk_pwr_change_notify,
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+	.hibern8_notify      = ufs_mtk_hibern8_notify,
+#endif
 	.apply_dev_quirks    = ufs_mtk_apply_dev_quirks,
 	.fixup_dev_quirks    = ufs_mtk_fixup_dev_quirks,
 	.suspend             = ufs_mtk_suspend,
@@ -3604,11 +3742,12 @@ static const struct ufs_hba_variant_ops ufs_hba_mtk_vops = {
 static int ufs_mtk_probe(struct platform_device *pdev)
 {
 	int err = 0;
-	struct device *dev = &pdev->dev, *phy_dev;
+	struct device *dev = &pdev->dev, *phy_dev = NULL;
 	struct device_node *reset_node, *phy_node = NULL;
 	struct platform_device *reset_pdev, *phy_pdev = NULL;
-	struct device_link *link, *phy_link;
+	struct device_link *link;
 	struct ufs_hba *hba;
+	struct ufs_mtk_host *host;
 
 	reset_node = of_find_compatible_node(NULL, NULL,
 					     "ti,syscon-reset");
@@ -3644,12 +3783,9 @@ skip_reset:
 		phy_dev = &phy_pdev->dev;
 
 		pm_runtime_set_active(phy_dev);
-		phy_link = device_link_add(dev, phy_dev, DL_FLAG_PM_RUNTIME);
-		if (!phy_link) {
-			dev_notice(dev, "add phys device_link fail\n");
-			goto skip_phy;
-		}
 		pm_runtime_enable(phy_dev);
+		pm_runtime_get_sync(phy_dev);
+
 		dev_info(dev, "phys node found\n");
 	} else {
 		dev_notice(dev, "phys node not found\n");
@@ -3678,6 +3814,11 @@ skip_phy:
 #if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
 	ufs_mtk_mcq_set_irq_affinity(hba);
 #endif
+
+	if ((phy_node) && (phy_dev)) {
+		host = ufshcd_get_variant(hba);
+		host->phy_dev = phy_dev;
+	}
 
 	/*
 	 * Because the default power setting of VSx (the upper layer of
@@ -3802,6 +3943,7 @@ int ufs_mtk_system_resume(struct device *dev)
 int ufs_mtk_runtime_suspend(struct device *dev)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	int ret = 0;
 
 #if defined(CONFIG_UFSFEATURE)
@@ -3821,6 +3963,9 @@ int ufs_mtk_runtime_suspend(struct device *dev)
 		ufsf_resume(ufsf, true);
 #endif
 
+	if (!ret && (host->phy_dev))
+		pm_runtime_put_sync(host->phy_dev);
+
 	return ret;
 }
 
@@ -3828,11 +3973,16 @@ int ufs_mtk_runtime_resume(struct device *dev)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 	int ret = 0;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
 #if defined(CONFIG_UFSFEATURE)
 	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
 	bool is_link_off = ufshcd_is_link_off(hba);
 #endif
+
+	if (host->phy_dev)
+		pm_runtime_get_sync(host->phy_dev);
+
 	ufs_mtk_dev_vreg_set_lpm(hba, false);
 
 	ret = ufshcd_runtime_resume(dev);
