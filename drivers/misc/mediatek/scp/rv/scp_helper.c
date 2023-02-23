@@ -54,6 +54,9 @@
 
 #include "mtk-afe-external.h"
 
+/* scp chre manager header */
+#include "scp_chre_manager.h"
+
 /* scp semaphore timeout count definition */
 #define SEMAPHORE_TIMEOUT 5000
 #define SEMAPHORE_3WAY_TIMEOUT 5000
@@ -2229,6 +2232,10 @@ static bool scp_ipi_table_init(struct mtk_mbox_device *scp_mboxdev, struct platf
 			pr_notice("[SCP]%s:Cannot get pin size (%d):%d\n", __func__, i, __LINE__);
 			return false;
 		}
+
+		if (scp_mbox_pin_send[i].chan_id == IPI_IN_SCP_HOST_CHRE)
+			scp_mbox_pin_send[i].send_opt = 1;  //CHRE ack pin
+
 	}
 	/* alloc and init recv table */
 	scp_mboxdev->pin_recv_table = vzalloc(sizeof(struct mtk_mbox_pin_recv) * scp_mboxdev->recv_count);
@@ -2971,6 +2978,8 @@ static int __init scp_init(void)
 		goto err;
 	}
 #endif
+	/* scp chre manager init for channel and device node */
+	scp_chre_manager_init();
 
 	scp_recovery_init();
 
@@ -3028,6 +3037,7 @@ static void __exit scp_exit(void)
 	free_irq(scpreg.irq0, NULL);
 	free_irq(scpreg.irq1, NULL);
 	misc_deregister(&scp_device);
+	scp_chre_manager_exit();
 
 	flush_workqueue(scp_workqueue);
 	destroy_workqueue(scp_workqueue);

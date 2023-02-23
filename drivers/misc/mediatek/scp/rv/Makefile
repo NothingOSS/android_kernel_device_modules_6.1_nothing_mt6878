@@ -6,6 +6,7 @@ scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_irq.o
 scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_logger.o
 scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_l1c.o
 scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_scpctl.o
+scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_chre_manager.o
 
 scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_feature_table.o
 scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_awake.o
