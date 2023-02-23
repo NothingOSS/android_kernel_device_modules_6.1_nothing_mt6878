@@ -330,6 +330,19 @@ int get_cpu_temp(int cpu_id)
 }
 EXPORT_SYMBOL(get_cpu_temp);
 
+int get_dsu_temp(void)
+{
+	int temp = 25000;
+
+	if (!tm_data.sw_ready)
+		return temp;
+
+	temp = therm_intf_read_csram_s32(DSU_AVG_TEMP_BASE_ADDR_OFFSET);
+
+	return temp;
+}
+EXPORT_SYMBOL(get_dsu_temp);
+
 static ssize_t headroom_info_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
