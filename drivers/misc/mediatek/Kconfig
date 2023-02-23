@@ -73,6 +73,15 @@ endmenu # Tinysys
 
 menu "Debug, log, trace"
 
+config MTK_KASAN_DEBUG
+	bool "Test Kasan temp patch"
+	depends on KASAN
+	help
+	  To prevent gki breaking, we introduce MTK KASAN DEBUG config
+	  for those Kasan temporary patch only in eng/userdebug build.
+	  Say Y in eng/userdebug build.
+	  If unsure, say N.
+
 config MTK_ATF_LOGGER
 	tristate "atf logger kernel driver"
 	depends on HAVE_ARM_SMCCC && ARCH_MEDIATEK && OF
