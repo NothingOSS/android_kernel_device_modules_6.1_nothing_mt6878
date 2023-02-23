@@ -353,8 +353,8 @@ static ssize_t dbg_ctrl_write(struct file *file, const char __user *data,
 	char *cmd_str;
 	char *param_str_0;
 	char *param_str_1;
-	char cmd;
-	char sub_cmd;
+	char cmd = 0;
+	char sub_cmd = 0;
 	unsigned long seq = 0;
 
 	ctrl = file->private_data;
