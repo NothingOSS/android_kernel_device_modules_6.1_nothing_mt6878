@@ -470,14 +470,14 @@ static size_t mtk_btag_seq_sub_show_usedmem(char **buff, unsigned long *size,
 	}
 
 	size_l = btag->ctx.mictx.nr_list * (sizeof(struct mtk_btag_mictx) +
-			sizeof(struct mtk_btag_mictx_data) * btag->ctx.count);
+			sizeof(struct mtk_btag_mictx_queue) * btag->ctx.count);
 	BTAG_PRINTF(buff, size, seq,
 		    "%s mictx list: %d mictx * (%zu + %d * %zu) = %zu bytes\n",
 		    btag->name,
 		    btag->ctx.mictx.nr_list,
 		    sizeof(struct mtk_btag_mictx),
 		    btag->ctx.count,
-		    sizeof(struct mtk_btag_mictx_data),
+		    sizeof(struct mtk_btag_mictx_queue),
 		    size_l);
 	used_mem += size_l;
 

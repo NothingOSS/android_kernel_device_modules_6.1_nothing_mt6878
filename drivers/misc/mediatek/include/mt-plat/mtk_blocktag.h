@@ -30,9 +30,10 @@
  */
 #define MTK_BTAG_FEATURE_MICTX_IOSTAT
 
-#define BTAG_PIDLOG_ENTRIES 50
-#define BTAG_NAME_LEN      16
-#define BTAG_PRINT_LEN     4096
+#define BTAG_PIDLOG_ENTRIES     50
+#define BTAG_NAME_LEN           16
+#define BTAG_PRINT_LEN          4096
+#define BTAG_MAX_TAGS           256
 
 #define BTAG_RT(btag)     (btag ? &btag->rt : NULL)
 #define BTAG_CTX(btag)    (btag ? btag->ctx.priv : NULL)
@@ -142,23 +143,37 @@ struct mtk_btag_mictx_iostat_struct {
  * mini context for integration with
  * other performance analysis tools.
  */
-struct mtk_btag_mictx_data {
-	struct mtk_btag_throughput tp[BTAG_IO_TYPE_NR];
-	struct mtk_btag_req req[BTAG_IO_TYPE_NR];
-	__u64 window_begin;
-	__u64 tp_min_time;
-	__u64 tp_max_time;
-	__u64 idle_begin;
-	__u64 idle_total;
-	__u64 weighted_qd;
-	__u64 sum_of_inflight_start;
-	__u16 q_depth;
+struct mtk_btag_mictx_queue {
 	spinlock_t lock;
+	__u64 rq_size[BTAG_IO_TYPE_NR];
+	__u64 rq_cnt[BTAG_IO_TYPE_NR];
+	__u64 top_len;
+	__u64 tp_size[BTAG_IO_TYPE_NR];
+	__u64 tp_time[BTAG_IO_TYPE_NR];
 };
 
 struct mtk_btag_mictx {
 	struct list_head list;
-	struct mtk_btag_mictx_data __rcu *data;
+	struct mtk_btag_mictx_queue *q;
+	struct __mictx_workload {
+		spinlock_t lock;
+		__u64 idle_begin;
+		__u64 idle_total;
+		__u64 window_begin;
+		__u16 depth;
+	} wl;
+	struct __mictx_average_queue_depth {
+		spinlock_t lock;
+		__u64 latency;
+		__u64 last_depth_chg;
+		__u16 depth;
+	} avg_qd;
+	struct __mictx_tag {
+		__u64 start_t;
+		enum mtk_btag_io_type io_type;
+		__u32 len;
+	} tags[BTAG_MAX_TAGS];
+	__u16 queue_nr;
 	__s8 id;
 };
 
@@ -221,8 +236,6 @@ struct mtk_btag_ringtrace {
 struct mtk_btag_vops {
 	size_t  (*seq_show)(char **buff, unsigned long *size,
 			    struct seq_file *seq);
-	__u16   (*mictx_eval_wqd)(struct mtk_btag_mictx_data *data,
-				  __u64 t_cur);
 	bool	boot_device;
 	bool	earaio_enabled;
 };
@@ -280,16 +293,11 @@ void mtk_btag_free(struct mtk_blocktag *btag);
 void mtk_btag_get_aee_buffer(unsigned long *vaddr, unsigned long *size);
 
 void mtk_btag_mictx_check_window(struct mtk_btag_mictx_id mictx_id);
-void mtk_btag_mictx_eval_tp(struct mtk_blocktag *btag, __u32 idx,
-			    enum mtk_btag_io_type io_type,
-			    __u64 usage, __u32 size);
-void mtk_btag_mictx_eval_req(struct mtk_blocktag *btag, __u32 idx,
-			     enum mtk_btag_io_type io_type,
-			     __u32 total_len, __u32 top_len);
-void mtk_btag_mictx_accumulate_weight_qd(struct mtk_blocktag *btag, __u32 idx,
-					 __u64 t_begin, __u64 t_cur);
-void mtk_btag_mictx_update(struct mtk_blocktag *btag, __u32 idx, __u32 q_depth,
-			   __u64 sum_of_start);
+void mtk_btag_mictx_send_command(struct mtk_blocktag *btag, __u64 start_t,
+				 enum mtk_btag_io_type io_type, __u64 tot_len,
+				 __u64 top_len, __u32 tid, __u16 qid);
+void mtk_btag_mictx_complete_command(struct mtk_blocktag *btag, __u64 end_t,
+				     __u32 tid, __u16 qid);
 int mtk_btag_mictx_get_data(
 	struct mtk_btag_mictx_id mictx_id,
 	struct mtk_btag_mictx_iostat_struct *iostat);
@@ -326,8 +334,12 @@ void mtk_btag_seq_debug_stop(struct seq_file *seq, void *v);
 
 #else
 
-#define mtk_btag_mictx_enable(...)
+#define mtk_btag_mictx_send_command(...)
+#define mtk_btag_mictx_complete_command(...)
 #define mtk_btag_mictx_get_data(...)
+#define mtk_btag_mictx_free_all(...)
+#define mtk_btag_mictx_enable(...)
+#define mtk_btag_mictx_init(...)
 
 #define mtk_btag_ufs_init(...)
 #define mtk_btag_ufs_exit(...)

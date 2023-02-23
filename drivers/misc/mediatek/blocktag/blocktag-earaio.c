@@ -373,7 +373,7 @@ void mtk_btag_earaio_boost(bool boost)
 		mtk_btag_mictx_check_window(earaio_ctrl.mictx_id);
 }
 
-void mtk_btag_earaio_check_pwd(void)
+static void earaio_check_pwd(void)
 {
 	if ((sched_clock() - earaio_ctrl.pwd_begin) >= PWD_WIDTH_NS)
 		mtk_btag_earaio_boost(true);
@@ -386,6 +386,7 @@ void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 size)
 	spin_lock_irqsave(&earaio_ctrl.lock, flags);
 	earaio_ctrl.pwd_top_pages[type] += (size >> 12);
 	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
+	earaio_check_pwd();
 }
 
 void mtk_btag_earaio_init_mictx(

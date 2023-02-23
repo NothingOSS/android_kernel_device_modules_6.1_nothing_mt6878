@@ -127,7 +127,7 @@ static struct btag_ufs_ctx *btag_ufs_ctx(__u16 qid)
 
 static struct btag_ufs_ctx *btag_ufs_tid_to_ctx(__u16 tid)
 {
-	if (tid >= BTAG_UFS_TAGS) {
+	if (tid >= BTAG_MAX_TAGS) {
 		pr_notice("%s: invalid tag id %d\n", __func__, tid);
 		return NULL;
 	}
@@ -141,7 +141,7 @@ static struct btag_ufs_tag *btag_ufs_tag(struct btag_ufs_ctx_data *data,
 	if (!data)
 		return NULL;
 
-	if (tid >= BTAG_UFS_TAGS) {
+	if (tid >= BTAG_MAX_TAGS) {
 		pr_notice("%s: invalid tag id %d\n", __func__, tid);
 		return NULL;
 	}
@@ -216,7 +216,7 @@ void mtk_btag_ufs_send_command(__u16 tid, struct scsi_cmnd *cmd)
 	unsigned long flags;
 	__u64 cur_time = sched_clock();
 	__u64 window_t = 0;
-	__u32 top_len;
+	__u32 top_len = 0;
 
 	if (!cmd)
 		return;
@@ -252,6 +252,12 @@ rcu_unlock:
 	rcu_read_unlock();
 	if (window_t > BTAG_UFS_TRACE_LATENCY)
 		queue_work(ufs_mtk_btag_wq, &ufs_mtk_btag_worker);
+
+	/* mictx send logging */
+	mtk_btag_mictx_send_command(ufs_mtk_btag, cur_time,
+				    cmd_to_io_type(scsi_cmnd_cmd(cmd)),
+				    scsi_cmnd_len(cmd), top_len, tid,
+				    tid_to_qid(tid));
 }
 EXPORT_SYMBOL_GPL(mtk_btag_ufs_send_command);
 
@@ -310,6 +316,10 @@ rcu_unlock:
 	rcu_read_unlock();
 	if (window_t > BTAG_UFS_TRACE_LATENCY)
 		queue_work(ufs_mtk_btag_wq, &ufs_mtk_btag_worker);
+
+	/* mictx complete logging */
+	mtk_btag_mictx_complete_command(ufs_mtk_btag, cur_time, tid,
+					tid_to_qid(tid));
 }
 EXPORT_SYMBOL_GPL(mtk_btag_ufs_transfer_req_compl);
 

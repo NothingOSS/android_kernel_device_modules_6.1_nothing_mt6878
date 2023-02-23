@@ -18,8 +18,6 @@
 #define BTAG_UFS_RINGBUF_MAX    1000
 #define UFS_LOGBLK_SHIFT        12
 #define BTAG_UFS_QUEUE_TAGS     32
-#define BTAG_UFS_QUEUES         8
-#define BTAG_UFS_TAGS           (BTAG_UFS_QUEUE_TAGS * BTAG_UFS_QUEUES)
 #define tid_to_qid(tid)         ((tid) >> 5)
 
 struct btag_ufs_tag {
