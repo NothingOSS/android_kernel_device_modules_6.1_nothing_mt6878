@@ -55,6 +55,7 @@
 #define LOG_DEFAULT_LEVEL 4
 #define LOG_DEFAULT_TAG   0x021182A6
 #define LOG_BUF_IDX_MAX   2
+#define SYSCTRL_IPC_MAGICNO  0x18CD18EC
 
 struct mtk_ccu_ipc_desc {
 	mtk_ccu_ipc_handle_t handler;
@@ -144,9 +145,7 @@ struct mtk_ccu {
 	void __iomem *dmem_base;
 	void __iomem *pmem_base;
 	void __iomem *ddrmem_base;
-#ifdef CCU_RAW_CAMSV_UT
-	void __iomem *cam_base;
-#endif
+	void __iomem *spm_base;
 	unsigned int irq_num;
 	struct icc_path *path_ccug;
 	struct icc_path *path_ccuo;
@@ -169,7 +168,6 @@ struct mtk_ccu {
 	bool poweron;
 	bool disirq;
 	bool bWaitCond;
-	bool ccu_fpga;
 	int g_LogBufIdx;
 	int log_level;
 	int log_taglevel;
@@ -204,6 +202,9 @@ struct mtk_ccu_mem_info *mtk_ccu_get_meminfo(struct mtk_ccu *ccu,
 void mtk_ccu_rproc_ipc_init(struct mtk_ccu *ccu);
 void mtk_ccu_rproc_ipc_uninit(struct mtk_ccu *ccu);
 irqreturn_t mtk_ccu_isr_handler(int irq, void *priv);
+int mtk_ccu_rproc_ipc_send(struct platform_device *pdev,
+	enum mtk_ccu_feature_type featureType,
+	uint32_t msgId, void *inDataPtr, uint32_t inDataSize);
 
 /*---------------------------------------------------------------------------*/
 /*  System IPC FUNCTIONS                                                     */
