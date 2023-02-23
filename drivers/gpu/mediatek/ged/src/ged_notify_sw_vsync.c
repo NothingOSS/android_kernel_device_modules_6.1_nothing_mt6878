@@ -194,6 +194,11 @@ static void ged_notify_sw_sync_work_handle(struct work_struct *psWork)
 		}
 		mutex_unlock(&gsPolicyLock);
 	}
+#if IS_ENABLED(CONFIG_MTK_GPU_FW_IDLE)
+	/* set initial idle time to 5ms if runtime policy stay default flavor */
+	if (ged_kpi_is_fw_idle_policy_enable() == -1)
+		mtk_set_gpu_idle(5);
+#endif /* MTK_GPU_FW_IDLE */
 }
 
 #define GED_VSYNC_MISS_QUANTUM_NS 16666666
