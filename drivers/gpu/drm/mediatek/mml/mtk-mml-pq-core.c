@@ -33,6 +33,9 @@ module_param(mml_pq_set_msg, int, 0644);
 int mml_pq_debug_mode;
 module_param(mml_pq_debug_mode, int, 0644);
 
+int mml_pq_ir_log;
+module_param(mml_pq_ir_log, int, 0644);
+
 struct mml_pq_chan {
 	struct wait_queue_head msg_wq;
 	atomic_t msg_cnt;
@@ -200,10 +203,12 @@ s32 mml_pq_task_create(struct mml_task *task)
 	kref_init(&pq_task->ref);
 	mutex_init(&pq_task->buffer_mutex);
 	mutex_init(&pq_task->aal_comp_lock);
+	mutex_init(&pq_task->hdr_comp_lock);
+
 	for (i = 0; i < MML_PIPE_CNT; i++)
 		init_completion(&pq_task->aal_hist_done[i]);
-	task->pq_task = pq_task;
 
+	task->pq_task = pq_task;
 	init_sub_task(&pq_task->tile_init);
 	init_sub_task(&pq_task->comp_config);
 	init_sub_task(&pq_task->aal_readback);
@@ -233,6 +238,11 @@ s32 mml_pq_task_create(struct mml_task *task)
 	pq_task->dc_readback.readback_data.pipe1_hist =
 		kzalloc(sizeof(u32)*TDSHP_CONTOUR_HIST_NUM, GFP_KERNEL);
 
+	init_completion(&pq_task->hdr_curve_ready[0]);
+	init_completion(&pq_task->hdr_curve_ready[1]);
+
+	init_completion(&pq_task->hdr_hist_ready[0]);
+	init_completion(&pq_task->hdr_hist_ready[1]);
 
 	mml_pq_trace_ex_end();
 	return 0;
@@ -1029,7 +1039,31 @@ int mml_pq_dc_aal_readback(struct mml_task *task, u8 pipe, u32 *phist)
 	return ret;
 }
 
-int mml_pq_hdr_readback(struct mml_task *task, u8 pipe, u32 *phist)
+int mml_pq_ir_hdr_readback(struct mml_pq_task *pq_task, struct mml_pq_frame_data frame_data,
+			u8 pipe, u32 *phist, u32 mml_jobid,
+			bool dual)
+{
+	struct mml_pq_sub_task *sub_task = &pq_task->hdr_readback;
+	struct mml_pq_chan *chan = &pq_mbox->hdr_readback_chan;
+	int ret = 0;
+
+	mml_pq_trace_ex_begin("%s pipe[%d]", __func__, pipe);
+	mml_pq_msg("%s called job_id[%d] pipe[%d] sub_task->job_id[%llu]",
+		__func__, mml_jobid, pipe, sub_task->job_id);
+
+	if (unlikely(!pq_task))
+		return -EINVAL;
+
+	if (set_hist(sub_task, dual, pipe, phist, 0, HDR_HIST_NUM, 1))
+		ret = set_readback_sub_task(pq_task, sub_task, chan,
+			frame_data, dual, mml_jobid, true);
+
+	mml_pq_msg("%s end job_id[%d]", __func__, mml_jobid);
+	mml_pq_trace_ex_end();
+	return ret;
+}
+
+int mml_pq_dc_hdr_readback(struct mml_task *task, u8 pipe, u32 *phist)
 {
 	struct mml_pq_task *pq_task = task->pq_task;
 	struct mml_pq_sub_task *sub_task = &pq_task->hdr_readback;

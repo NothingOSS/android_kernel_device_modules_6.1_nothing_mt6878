@@ -21,6 +21,7 @@
 #include "tile_driver.h"
 #include "mtk-mml-tile.h"
 #include "tile_mdp_func.h"
+#include "mtk-mml-pq-core.h"
 
 #define SYS_MISC_REG		0x0f0
 #define SYS_SW0_RST_B_REG	0x700
@@ -1327,6 +1328,16 @@ static void sys_addon_connect(struct mml_sys *sys,
 	sys_ddp_enable(sys, cfg->task, cfg->pipe);
 
 	ddp_command_make(cfg->task, cfg->pipe, pkt);
+
+	if (cfg->task->config->info.mode == MML_MODE_DDP_ADDON &&
+		cfg->task->config->info.dest[0].pq_config.en_hdr) {
+		mml_log("%s Aaron_0 task %p pipe %u pkt %p job %u",
+			__func__, cfg->task, cfg->pipe, pkt, cfg->task->job.jobid);
+		wait_for_completion(&cfg->task->pq_task->hdr_curve_ready[cfg->pipe]);
+		/*wait_for_completion(&task->pq_task->hdr_hist_flush[pipe]);*/
+		mml_log("%s Aaron_1 task %p pipe %u pkt %p job %u",
+			__func__, cfg->task, cfg->pipe, pkt, cfg->task->job.jobid);
+	}
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	if (mml_dle_delay)

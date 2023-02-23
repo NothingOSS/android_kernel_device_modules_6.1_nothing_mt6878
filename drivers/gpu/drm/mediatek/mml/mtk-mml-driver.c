@@ -977,6 +977,11 @@ u16 mml_ir_get_target_event(struct mml_dev *mml)
 	return mml->event_mml_target;
 }
 
+struct cmdq_client *mml_get_cmdq_clt(struct mml_dev *mml, u32 id)
+{
+	return mml->cmdq_clts[id];
+}
+
 void mml_dump_thread(struct mml_dev *mml)
 {
 	u32 i;

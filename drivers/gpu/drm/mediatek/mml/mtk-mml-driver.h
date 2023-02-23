@@ -139,6 +139,16 @@ u16 mml_ir_get_mml_stop_event(struct mml_dev *mml);
 u16 mml_ir_get_target_event(struct mml_dev *mml);
 
 /*
+ * mml_ir_get_cmdq_clt - get cmdq clt
+ *
+ * @mml:	The mml driver instance
+ * @id:     The clt id of mml dev
+ *
+ * Return:	The one of clts in mml dev
+ */
+struct cmdq_client *mml_get_cmdq_clt(struct mml_dev *mml, u32 id);
+
+/*
  * mml_dump_thread - dump cmdq threads hold by mml
  *
  * @mml:	The mml driver instance

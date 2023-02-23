@@ -475,9 +475,10 @@ static void dump_inout(struct mml_task *task)
 	s32 ret;
 
 	get_frame_str(frame, sizeof(frame), &cfg->info.src);
-	mml_log("in:%s plane:%hhu%s%s%s job:%u mode:%hhu acttime %u",
+	mml_log("in:%s sec:%d plane:%hhu%s%s%s job:%u mode:%hhu acttime %u",
 		frame,
 		task->buf.src.cnt,
+		cfg->info.src.secure,
 		cfg->info.alpha ? " alpha" : "",
 		task->buf.src.fence ? " fence" : "",
 		task->buf.src.flush ? " flush" : "",
@@ -981,8 +982,8 @@ done:
 		bandwidth = task_pipe_cur->bandwidth;
 	}
 keep:
-	mml_msg_qos("task dvfs end %s %s task %p throughput %u bandwidth %u pixel %u",
-		racing_mode ? "racing" : "update",
+	mml_msg_qos("%s task dvfs end %s %s task %p throughput %u bandwidth %u pixel %u",
+		__func__, racing_mode ? "racing" : "update",
 		task_pipe_cur ? "new" : "last",
 		task_pipe_cur ? task_pipe_cur->task : task,
 		throughput, bandwidth, max_pixel);

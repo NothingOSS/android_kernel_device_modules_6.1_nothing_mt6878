@@ -59,6 +59,15 @@
 	} while (0)
 #endif
 
+extern int mml_pq_ir_log;
+
+#define mml_pq_ir_log(fmt, args...) \
+do { \
+	if (mml_pq_ir_log) \
+		pr_notice("[flow]" fmt "\n", ##args); \
+} while (0)
+
+
 extern int mml_pq_msg;
 
 #define mml_pq_msg(fmt, args...) \
@@ -192,11 +201,14 @@ struct mml_pq_task {
 	struct mml_task *task;
 	struct mutex buffer_mutex;
 	struct mutex aal_comp_lock;
+	struct mutex hdr_comp_lock;
 	struct completion aal_hist_done[MML_PIPE_CNT];
 	struct mml_pq_readback_buffer *aal_hist[MML_PIPE_CNT];
 	struct mml_pq_readback_buffer *hdr_hist[MML_PIPE_CNT];
 	struct mml_pq_readback_buffer *tdshp_hist[MML_PIPE_CNT];
 	struct mml_pq_read_status read_status;
+	struct completion hdr_curve_ready[MML_PIPE_CNT];
+	struct completion hdr_hist_ready[MML_PIPE_CNT];
 	struct kref ref;
 	struct mml_pq_sub_task tile_init;
 	struct mml_pq_sub_task comp_config;
@@ -366,6 +378,23 @@ int mml_pq_ir_aal_readback(struct mml_pq_task *pq_task,
  */
 int mml_pq_dc_aal_readback(struct mml_task *task, u8 pipe, u32 *phist);
 
+/*
+ * mml_pq_ir_aal_readback - noify from MML core through MML PQ driver
+ *	to update histogram in IR/DL
+ *
+ * @pq_task:	pq task data, include sub_task info
+ * @frame_data: frame related data
+ * @pipe:	pipe id
+ * @phist:	Histogram result
+ * @mml_jobid: mml jobid
+ * @dual: dual pipe flag
+ *
+ * Return:	if value < 0, means PQ update failed should debug
+ */
+int mml_pq_ir_hdr_readback(struct mml_pq_task *pq_task,
+			 struct mml_pq_frame_data frame_data,
+			 u8 pipe, u32 *phist, u32 mml_jobid,
+			 bool dual);
 
 /*
  * mml_pq_hdr_readback - noify from MML core through MML PQ driver
@@ -378,8 +407,7 @@ int mml_pq_dc_aal_readback(struct mml_task *task, u8 pipe, u32 *phist);
  * Return:	if value < 0, means PQ update failed should debug
  */
 
-
-int mml_pq_hdr_readback(struct mml_task *task, u8 pipe, u32 *phist);
+int mml_pq_dc_hdr_readback(struct mml_task *task, u8 pipe, u32 *phist);
 
 
 /*
