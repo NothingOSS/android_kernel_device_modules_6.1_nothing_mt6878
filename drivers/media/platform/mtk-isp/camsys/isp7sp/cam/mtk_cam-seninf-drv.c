@@ -2751,6 +2751,20 @@ static int runtime_resume(struct device *dev)
 							clk_names[CLK_TOP_SENINF], ret);
 						return ret;
 					}
+
+					ret = clk_set_parent(core->clk[CLK_TOP_SENINF],
+							core->clk[CLK_TOP_MAINPLL2_D9]);
+					if (ret < 0) {
+						dev_info(dev,
+							"[%s] clk_set_parent(core->clk[CLK_TOP_SENINF:%u]:%s, core->clk[CLK_TOP_MAINPLL2_D9:%u]:%s, ret(%d)\n",
+							__func__,
+							CLK_TOP_SENINF,
+							clk_names[CLK_TOP_SENINF],
+							CLK_TOP_MAINPLL2_D9,
+							clk_names[CLK_TOP_MAINPLL2_D9],
+							ret);
+						return ret;
+					}
 					dev_dbg(dev,
 						"[%s] clk_prepare_enable clk[CLK_TOP_SENINF:%u]:%s(success),ret(%d)\n",
 						__func__, CLK_TOP_SENINF,
@@ -2768,6 +2782,21 @@ static int runtime_resume(struct device *dev)
 							clk_names[CLK_TOP_SENINF1], ret);
 						return ret;
 					}
+
+					ret = clk_set_parent(core->clk[CLK_TOP_SENINF1],
+							core->clk[CLK_TOP_MAINPLL2_D9]);
+					if (ret < 0) {
+						dev_info(dev,
+							"[%s] clk_set_parent(core->clk[CLK_TOP_SENINF1:%u]:%s, core->clk[CLK_TOP_MAINPLL2_D9:%u]:%s, ret(%d)\n",
+							__func__,
+							CLK_TOP_SENINF1,
+							clk_names[CLK_TOP_SENINF1],
+							CLK_TOP_MAINPLL2_D9,
+							clk_names[CLK_TOP_MAINPLL2_D9],
+							ret);
+						return ret;
+					}
+
 					dev_dbg(dev,
 						"[%s] clk_prepare_enable clk[CLK_TOP_SENINF1:%u]:%s(success),ret(%d)\n",
 						__func__, CLK_TOP_SENINF1,
@@ -2785,6 +2814,21 @@ static int runtime_resume(struct device *dev)
 							clk_names[CLK_TOP_SENINF2], ret);
 						return ret;
 					}
+
+					ret = clk_set_parent(core->clk[CLK_TOP_SENINF2],
+							core->clk[CLK_TOP_MAINPLL2_D9]);
+					if (ret < 0) {
+						dev_info(dev,
+							"[%s] clk_set_parent(core->clk[CLK_TOP_SENINF2:%u]:%s, core->clk[CLK_TOP_MAINPLL2_D9:%u]:%s, ret(%d)\n",
+							__func__,
+							CLK_TOP_SENINF2,
+							clk_names[CLK_TOP_SENINF2],
+							CLK_TOP_MAINPLL2_D9,
+							clk_names[CLK_TOP_MAINPLL2_D9],
+							ret);
+						return ret;
+					}
+
 					dev_dbg(dev,
 						"[%s] clk_prepare_enable clk[CLK_TOP_SENINF2:%u]:%s(success),ret(%d)\n",
 						__func__, CLK_TOP_SENINF2,
@@ -2802,6 +2846,21 @@ static int runtime_resume(struct device *dev)
 							clk_names[CLK_TOP_SENINF3], ret);
 						return ret;
 					}
+
+					ret = clk_set_parent(core->clk[CLK_TOP_SENINF3],
+							core->clk[CLK_TOP_MAINPLL2_D9]);
+					if (ret < 0) {
+						dev_info(dev,
+							"[%s] clk_set_parent(core->clk[CLK_TOP_SENINF3:%u]:%s, core->clk[CLK_TOP_MAINPLL2_D9:%u]:%s, ret(%d)\n",
+							__func__,
+							CLK_TOP_SENINF3,
+							clk_names[CLK_TOP_SENINF3],
+							CLK_TOP_MAINPLL2_D9,
+							clk_names[CLK_TOP_MAINPLL2_D9],
+							ret);
+						return ret;
+					}
+
 					dev_dbg(dev,
 						"[%s] clk_prepare_enable clk[CLK_TOP_SENINF3:%u]:%s(success),ret(%d)\n",
 						__func__, CLK_TOP_SENINF3,
@@ -2819,6 +2878,21 @@ static int runtime_resume(struct device *dev)
 							clk_names[CLK_TOP_SENINF4], ret);
 						return ret;
 					}
+
+					ret = clk_set_parent(core->clk[CLK_TOP_SENINF4],
+							core->clk[CLK_TOP_MAINPLL2_D9]);
+					if (ret < 0) {
+						dev_info(dev,
+							"[%s] clk_set_parent(core->clk[CLK_TOP_SENINF4:%u]:%s, core->clk[CLK_TOP_MAINPLL2_D9:%u]:%s, ret(%d)\n",
+							__func__,
+							CLK_TOP_SENINF4,
+							clk_names[CLK_TOP_SENINF4],
+							CLK_TOP_MAINPLL2_D9,
+							clk_names[CLK_TOP_MAINPLL2_D9],
+							ret);
+						return ret;
+					}
+
 					dev_dbg(dev,
 						"[%s] clk_prepare_enable clk[CLK_TOP_SENINF4:%u]:%s(success),ret(%d)\n",
 						__func__, CLK_TOP_SENINF4,
@@ -2836,6 +2910,21 @@ static int runtime_resume(struct device *dev)
 							clk_names[CLK_TOP_SENINF5], ret);
 						return ret;
 					}
+
+					ret = clk_set_parent(core->clk[CLK_TOP_SENINF5],
+							core->clk[CLK_TOP_MAINPLL2_D9]);
+					if (ret < 0) {
+						dev_info(dev,
+							"[%s] clk_set_parent(core->clk[CLK_TOP_SENINF5:%u]:%s, core->clk[CLK_TOP_MAINPLL2_D9:%u]:%s, ret(%d)\n",
+							__func__,
+							CLK_TOP_SENINF5,
+							clk_names[CLK_TOP_SENINF5],
+							CLK_TOP_MAINPLL2_D9,
+							clk_names[CLK_TOP_MAINPLL2_D9],
+							ret);
+						return ret;
+					}
+
 					dev_dbg(dev,
 						"[%s] clk_prepare_enable clk[CLK_TOP_SENINF5:%u]:%s(success),ret(%d)\n",
 						__func__, CLK_TOP_SENINF5,
@@ -2862,9 +2951,6 @@ static int runtime_resume(struct device *dev)
 					clk_names[CLK_TOP_CAMTM], ret);
 			}
 		}
-
-		clk_set_parent(core->clk[CLK_TOP_SENINF],
-						core->clk[CLK_TOP_MAINPLL2_D9]);
 
 		if (core->refcnt == 1) {
 			if (core->pwr_refcnt_for_aov &&
