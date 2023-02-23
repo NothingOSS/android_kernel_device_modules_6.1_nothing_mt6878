@@ -3,9 +3,6 @@
  * Copyright (c) 2022 MediaTek Inc.
  */
 
-#define MODULE_NAME	"gzvm"
-#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
-
 #include <linux/anon_inodes.h>
 #include <linux/arm-smccc.h>
 #include <linux/device.h>
@@ -18,9 +15,7 @@
 #include <linux/slab.h>
 
 #include "gzvm.h"
-
-#define GZVM_DEBUG(fmt...) pr_info("[GZVM]" fmt)
-#define GZVM_ERR(fmt...) pr_info("[GZVM][ERR]" fmt)
+#include "gzvm_ioctl.h"
 
 void gzvm_hypcall_wrapper(unsigned long a0, unsigned long a1,
 			unsigned long a2, unsigned long a3, unsigned long a4,
@@ -39,14 +34,16 @@ static long gzvm_dev_ioctl(struct file *filp, unsigned int cmd,
 
 	switch (cmd) {
 	case KVM_CREATE_VM:
+	case GZVM_CREATE_VM:
 		ret = gzvm_dev_ioctl_creat_vm(user_args);
 		break;
 	// Need to know the size to allocate
 	case KVM_GET_VCPU_MMAP_SIZE:
+		/* TODO: remove this */
 		GZVM_DEBUG("KVM_GET_VCPU_MMAP_SIZE\n");
 		if (user_args)
 			goto out;
-		ret = gzvm_VCPU_MMAP_SIZE;
+		ret = GZVM_VCPU_MMAP_SIZE;
 		break;
 	default:
 		ret = -EINVAL;
@@ -71,19 +68,25 @@ static int gzvm_init(void)
 {
 	int ret;
 
-	GZVM_DEBUG("%s %s\n", __FILE__, __func__);
+	/* TODO: probe if gz can support gzvm commands */
+	ret = gzvm_irqfd_init();
+	if (ret) {
+		GZVM_ERR("Failed to initial irqfd\n");
+		return ret;
+	}
 	ret = misc_register(&gzvm_dev);
-	GZVM_DEBUG("ret=%d\n", ret);
 	if (ret) {
 		GZVM_ERR("misc device register failed\n");
 		// goto out_unreg;
 	}
+	GZVM_INFO("%s %s completes\n", __FILE__, __func__);
 
 	return ret;
 }
 
 static void gzvm_exit(void)
 {
+	gzvm_irqfd_exit();
 	misc_deregister(&gzvm_dev);
 }
 

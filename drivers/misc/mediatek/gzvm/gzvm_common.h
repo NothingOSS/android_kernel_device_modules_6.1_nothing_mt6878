@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 /*
  * Copyright (c) 2022 MediaTek Inc.
  */
@@ -41,9 +41,11 @@ struct kvm_debug_exit_arch {
 	__u64 far;	/* used for watchpoints */
 };
 
-#endif
+#endif /* WITH_EL2 */
 
-#ifndef WITH_EL2
+#ifndef WITH_EL2 /* for kernel and userspace */
+
+#include <linux/kvm.h>
 
 #ifndef __KERNEL__
 
@@ -52,7 +54,7 @@ struct kvm_debug_exit_arch {
 typedef __u32 u32;
 typedef __u64 u64;
 typedef __u8 u8;
-#endif
+#endif	/* __KERNEL__ */
 
 #define __DECL_REG(n64, n32) union {		\
 	uint64_t n64;				\
@@ -154,7 +156,19 @@ struct cpu_user_regs {
 	/* For context corruption check */
 	struct vcontext_guard context_guard;
 };
-#endif /* WITH_EL2 */
+
+struct gzvm_create_device;
+
+/* flags used in IRQFD */
+#define GZVM_IRQFD_FLAG_DEASSIGN      KVM_IRQFD_FLAG_DEASSIGN
+#define GZVM_IRQFD_FLAG_RESAMPLE      KVM_IRQFD_FLAG_RESAMPLE
+
+/* flags used in ioeventfd */
+#define GZVM_IOEVENTFD_FLAG_DATAMATCH KVM_IOEVENTFD_FLAG_DATAMATCH
+#define GZVM_IOEVENTFD_FLAG_PIO       KVM_IOEVENTFD_FLAG_PIO
+#define GZVM_IOEVENTFD_FLAG_DEASSIGN  KVM_IOEVENTFD_FLAG_DEASSIGN
+
+#endif /* !WITH_EL2 */
 
 _Static_assert(sizeof(struct cpu_user_regs) == 872,
 	       "sizeof(struct cpu_user_regs) must be 872 bytes, change must be synced with gz");
@@ -176,6 +190,7 @@ enum {
 struct gzvm_vcpu_run {
 	/* to userspace */
 	__u32 exit_reason;
+	__u8 immediate_exit;
 	/* union structure of collection of guest exit reason */
 	union {
 		/* GZVM_EXIT_MMIO */
@@ -195,6 +210,13 @@ struct gzvm_vcpu_run {
 };
 _Static_assert(sizeof(struct gzvm_vcpu_run) == 40,
 	       "sizeof(struct gzvm_vcpu_run) must be 40 bytes, change must be also synced with gz");
+
+#define GIC_V3_NR_LRS		16
+
+struct gzvm_vcpu_hwstate {
+	uint32_t nr_lrs;
+	uint64_t lr[GIC_V3_NR_LRS];
+};
 
 #define GZVM_MAX_MEM_REGION 1
 

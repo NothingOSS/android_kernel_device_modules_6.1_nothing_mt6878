@@ -7,13 +7,20 @@
 #define __GZVM_H__
 
 #include <linux/kvm_host.h>
+#include <linux/srcu.h>
 
 #include "gzvm_common.h"
+
+#define MODULE_NAME	"gzvm"
+
+#define GZVM_INFO(fmt...) pr_info("[GZVM]" fmt)
+#define GZVM_DEBUG(fmt...) pr_info("[GZVM][DBG]" fmt)
+#define GZVM_ERR(fmt...) pr_info("[GZVM][ERR]" fmt)
 
 /* Worst case buffer size needed for holding an integer. */
 #define ITOA_MAX_LEN 12
 
-#define gzvm_VCPU_MMAP_SIZE  PAGE_SIZE
+#define GZVM_VCPU_MMAP_SIZE  PAGE_SIZE
 
 #define INVALID_VM_ID   0xffff
 
@@ -41,6 +48,15 @@ struct gzvm {
 	gzvm_id_t vm_id;
 
 	struct list_head ioevents;
+	struct {
+		spinlock_t        lock;
+		struct list_head  items;
+		struct list_head  resampler_list;
+		struct mutex      resampler_lock;
+	} irqfds;
+	struct hlist_head irq_ack_notifier_list;
+	struct srcu_struct irq_srcu;
+	struct mutex irq_lock;
 };
 
 struct gzvm_vcpu {
@@ -49,6 +65,7 @@ struct gzvm_vcpu {
 	struct mutex lock;
 	struct gzvm_vcpu_run *run;
 	struct cpu_user_regs *vm_regs;
+	struct gzvm_vcpu_hwstate *hwstate;
 };
 
 struct gzvm_device {
@@ -92,7 +109,16 @@ void gzvm_hypcall_wrapper(unsigned long a0, unsigned long a1,
 	asm volatile("mrs  %0, "__stringify(name) : "=r" (_r));         \
 	_r; })
 
+void gzvm_notify_acked_irq(struct gzvm *gzvm, unsigned int gsi);
+int gzvm_init_eventfd(struct gzvm *gzvm);
 int gzvm_ioeventfd(struct gzvm *gzvm, struct kvm_ioeventfd *args);
 bool gzvm_ioevent_write(struct gzvm_vcpu *vcpu, __u64 addr, int len,
 			const void *val);
+int gzvm_irqfd(struct gzvm *gzvm, struct kvm_irqfd *args);
+int gzvm_irqfd_init(void);
+void gzvm_irqfd_exit(void);
+
+int gzvm_vgic_inject_irq(struct gzvm *gzvm, unsigned int vcpu_idx, u32 irq_type,
+			 u32 irq, bool level);
+
 #endif /* __GZVM_H__ */

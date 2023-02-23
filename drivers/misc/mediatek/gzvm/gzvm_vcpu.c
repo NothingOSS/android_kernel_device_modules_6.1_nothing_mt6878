@@ -2,13 +2,11 @@
 /*
  * Copyright (c) 2022 MediaTek Inc.
  */
-
-#define MODULE_NAME	"gzvm"
-#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
-
+#include <asm/sysreg.h>
 #include <linux/anon_inodes.h>
 #include <linux/arm-smccc.h>
 #include <linux/file.h>
+#include <linux/irqchip/arm-gic-v3.h>
 #include <linux/kdev_t.h>
 #include <linux/kvm_host.h>
 #include <linux/miscdevice.h>
@@ -17,30 +15,7 @@
 #include <linux/slab.h>
 
 #include "gzvm.h"
-
-#define GZVM_DEBUG(fmt...) pr_info("[GZVM VCPU]" fmt)
-#define GZVM_ERR(fmt...) pr_info("[GZVM VCPU][ERR]" fmt)
-
-// static int gzvm_reset_vcpu(struct gzvm_vcpu *vcpu)
-// {
-//	return 0;
-// }
-
-// static long gzvm_arm_vcpu_init(struct gzvm_vcpu *vcpu, struct kvm_vcpu_init *init)
-// {
-//	int ret;
-
-//	ret = gzvm_reset_vcpu(vcpu);
-
-//	return ret;
-// }
-
-static inline void wait_for_debug(void)
-{
-	GZVM_ERR("[GZVM] wait for code viser\n");
-	isb();
-	asm("b .\n\t");
-}
+#include "gzvm_ioctl.h"
 
 static long gzvm_vcpu_update_regs(struct file *filp, unsigned long ioctl,
 				  void * __user argp)
@@ -163,6 +138,43 @@ static bool gzvm_vcpu_handle_mmio(struct gzvm_vcpu *vcpu)
 	return gzvm_ioevent_write(vcpu, addr, len, val_ptr);
 }
 
+static bool lr_signals_eoi(uint64_t lr_val)
+{
+	return !(lr_val & ICH_LR_STATE) && (lr_val & ICH_LR_EOI) &&
+	       !(lr_val & ICH_LR_HW);
+}
+
+/**
+ * @brief check all LRs synced from gz hypervisor
+ * Traverse all LRs, see if any EOIed vint, notify_acked_irq if any.
+ * GZ does not fold/unfold everytime KVM_RUN, so we have to traverse all saved
+ * LRs. It will not takes much more time comparing to fold/unfold everytime
+ * GZVM_RUN, because there are only few LRs.
+ */
+static void gzvm_sync_vgic_state(struct gzvm_vcpu *vcpu)
+{
+	int i;
+
+	for (i = 0; i < vcpu->hwstate->nr_lrs; i++) {
+		uint32_t vintid;
+		uint64_t lr_val = vcpu->hwstate->lr[i];
+		/* 0 means unused */
+		if (!lr_val)
+			continue;
+		vintid = lr_val & ICH_LR_VIRTUAL_ID_MASK;
+		GZVM_DEBUG("%s %d vint=%u %llx\n", __func__, i, vintid, lr_val);
+		if (lr_signals_eoi(lr_val)) {
+			gzvm_notify_acked_irq(vcpu->gzvm,
+					      vintid - VGIC_NR_PRIVATE_IRQS);
+		}
+	}
+}
+
+static void gzvm_sync_hwstate(struct gzvm_vcpu *vcpu)
+{
+	gzvm_sync_vgic_state(vcpu);
+}
+
 /**
  * @brief Handle vcpu run ioctl, entry point to guest and exit point from guest
  *
@@ -177,6 +189,12 @@ static long gzvm_vcpu_run(struct file *filp, void * __user argp)
 	struct arm_smccc_res res;
 	bool need_userspace = false;
 
+	if (copy_from_user(vcpu->run, argp, sizeof(struct gzvm_vcpu_run)))
+		return -EFAULT;
+
+	if (vcpu->run->immediate_exit == 1)
+		return -EINTR;
+
 	/* TODO: TBD: update vcpu reg if last_exit is mmio read:
 	 * (1) copy_from_user when mmio read, (2) VMM will call SET_ONE_REG.
 	 */
@@ -189,10 +207,8 @@ static long gzvm_vcpu_run(struct file *filp, void * __user argp)
 	}
 
 	a1 = assembel_vm_vcpu_tuple(vcpu->gzvm->vm_id, vcpu->vcpuid);
-	while (!need_userspace) {
+	do {
 		gzvm_hypcall_wrapper(MT_SMC_FC_GZVM_RUN, a1, 0, 0, 0, 0, 0, 0, &res);
-		GZVM_DEBUG("%s VM_EXIT a0=%lx, a1=%lx, a2=%lx, a3=%lx\n", __func__,
-			res.a0, res.a1, res.a2, res.a3);
 		switch (res.a1) {
 		case GZVM_EXIT_MMIO:
 			if (!gzvm_vcpu_handle_mmio(vcpu))
@@ -209,7 +225,11 @@ static long gzvm_vcpu_run(struct file *filp, void * __user argp)
 			need_userspace = true;
 			goto out;
 		}
-	}
+
+		gzvm_sync_hwstate(vcpu);
+	} while (!need_userspace);
+	// GZVM_DEBUG("%s VM_EXIT a0=%lx, a1=%lx, a2=%lx, a3=%lx\n", __func__,
+	//	   res.a0, res.a1, res.a2, res.a3);
 out:
 	if (copy_to_user(argp, vcpu->run, sizeof(struct gzvm_vcpu_run)))
 		return -EFAULT;
@@ -224,23 +244,25 @@ static long gzvm_vcpu_ioctl(struct file *filp, unsigned int ioctl,
 
 	switch (ioctl) {
 	case KVM_RUN:
-		GZVM_DEBUG("%s %d KVM_RUN\n", __func__, __LINE__);
+	case GZVM_RUN:
 		return gzvm_vcpu_run(filp, argp);
-	case KVM_GET_REGS: {
-		GZVM_DEBUG("%s %d KVM_GET_REGS\n", __func__, __LINE__);
+	case KVM_GET_REGS:
+	case GZVM_GET_REGS: {
 		ret = 0;
 		break;
 	}
-	case KVM_SET_REGS: {
-		GZVM_DEBUG("%s %d KVM_SET_REGS\n", __func__, __LINE__);
+	case KVM_SET_REGS:
+	case GZVM_SET_REGS: {
 		return gzvm_vcpu_update_regs(filp, ioctl, argp);
 	}
-	case KVM_GET_ONE_REG: {
-		GZVM_DEBUG("%s %d KVM_GET_REGS\n", __func__, __LINE__);
+	case KVM_GET_ONE_REG:
+	case GZVM_GET_ONE_REG: {
+		GZVM_DEBUG("%s %d TODO:KVM_GET_ONE_REG\n", __func__, __LINE__);
 		ret = 0;
 		break;
 	}
-	case KVM_SET_ONE_REG: {
+	case KVM_SET_ONE_REG:
+	case GZVM_SET_ONE_REG: {
 		struct kvm_one_reg reg;
 
 		ret = -EFAULT;
@@ -249,6 +271,7 @@ static long gzvm_vcpu_ioctl(struct file *filp, unsigned int ioctl,
 		return gzvm_vcpu_access_one_reg(filp, ioctl, &reg);
 	}
 	case KVM_ARM_VCPU_INIT: {
+		/* TODO: remove this */
 		GZVM_DEBUG("%s %d KVM_ARM_VCPU_INIT\n", __func__, __LINE__);
 		ret = 0;
 		break;
@@ -260,27 +283,6 @@ static long gzvm_vcpu_ioctl(struct file *filp, unsigned int ioctl,
 	return ret;
 }
 
-#ifdef VCPU_MMAP
-static int gzvm_vcpu_mmap(struct file *file, struct vm_area_struct *vma)
-{
-	struct gzvm_vcpu *vcpu = file->private_data;
-	int ret;
-	unsigned long size = vma->vm_end - vma->vm_start;
-
-	pr_debug("%s %d start=%lx, end=%lx, size=%lu\n", __func__, __LINE__,
-		 vma->vm_start, vma->vm_end, size);
-
-	if ((vma->vm_flags & VM_EXEC) || !(vma->vm_flags & VM_SHARED))
-		return -EINVAL;
-	if (size != gzvm_VCPU_MMAP_SIZE)
-		return -EINVAL;
-
-	ret = remap_pfn_range(vma, vma->vm_start, virt_to_pfn(vcpu->run), size,
-			      vma->vm_page_prot);
-	return ret;
-}
-#endif
-
 static int gzvm_vcpu_release(struct inode *inode, struct file *filp)
 {
 	return 0;
@@ -289,9 +291,6 @@ static int gzvm_vcpu_release(struct inode *inode, struct file *filp)
 static const struct file_operations gzvm_vcpu_fops = {
 	.release        = gzvm_vcpu_release,
 	.unlocked_ioctl = gzvm_vcpu_ioctl,
-#ifdef VCPU_MMAP
-	.mmap		= gzvm_vcpu_mmap,
-#endif
 	.llseek		= noop_llseek,
 };
 
@@ -309,6 +308,12 @@ static int gzvm_destroy_vcpu_smc(gzvm_id_t vm_id, int vcpuid)
 	return 0;
 }
 
+/**
+ * @brief call smc to gz hypervisor to create vcpu
+ *
+ * @param run virtual address of vcpu->run
+ * @return int
+ */
 static int gzvm_create_vcpu_smc(gzvm_id_t vm_id, int vcpuid, void *run)
 {
 	struct arm_smccc_res res;
@@ -331,7 +336,7 @@ void gzvm_destroy_vcpu(struct gzvm_vcpu *vcpu)
 
 	GZVM_DEBUG("%s %d\n", __func__, __LINE__);
 	gzvm_destroy_vcpu_smc(vcpu->gzvm->vm_id, vcpu->vcpuid);
-	free_page((unsigned long)vcpu->run);
+	free_pages_exact(vcpu->run, PAGE_SIZE * 2);
 	kfree(vcpu);
 }
 
@@ -355,10 +360,9 @@ static int create_vcpu_fd(struct gzvm_vcpu *vcpu)
 int gzvm_vm_ioctl_create_vcpu(struct gzvm *gzvm, u32 cpuid)
 {
 	struct gzvm_vcpu *vcpu;
-	struct page *page;
 	int ret;
 
-	if (cpuid >= KVM_MAX_VCPU_IDS)
+	if (cpuid >= KVM_MAX_VCPUS)
 		return -EINVAL;
 
 	vcpu = kzalloc(sizeof(*vcpu), GFP_KERNEL);
@@ -367,14 +371,16 @@ int gzvm_vm_ioctl_create_vcpu(struct gzvm *gzvm, u32 cpuid)
 		goto error;
 	}
 
-	BUILD_BUG_ON(sizeof(struct kvm_run) > PAGE_SIZE);
-	page = alloc_page(GFP_KERNEL_ACCOUNT | __GFP_ZERO);
-	if (!page) {
+	BUILD_BUG_ON(sizeof(struct gzvm_vcpu_run) > PAGE_SIZE);
+	BUILD_BUG_ON(sizeof(struct gzvm_vcpu_hwstate) > PAGE_SIZE);
+	vcpu->run = alloc_pages_exact(PAGE_SIZE * 2,
+				      GFP_KERNEL_ACCOUNT | __GFP_ZERO);
+	if (!vcpu->run) {
 		ret = -ENOMEM;
 		goto free_vcpu;
 	}
-	vcpu->run = page_address(page);
 	vcpu->vm_regs = (void *)vcpu->run + sizeof(struct gzvm_vcpu_run);
+	vcpu->hwstate = (void *)vcpu->run + PAGE_SIZE;
 	vcpu->vcpuid = cpuid;
 	vcpu->gzvm = gzvm;
 	mutex_init(&vcpu->lock);
@@ -390,7 +396,7 @@ int gzvm_vm_ioctl_create_vcpu(struct gzvm *gzvm, u32 cpuid)
 
 	return ret;
 free_vcpu_run:
-	free_page((unsigned long)vcpu->run);
+	free_pages_exact(vcpu->run, PAGE_SIZE * 2);
 free_vcpu:
 	kfree(vcpu);
 error:
