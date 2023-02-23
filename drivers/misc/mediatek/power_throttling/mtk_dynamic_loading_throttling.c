@@ -253,8 +253,9 @@ static int dlpt_check_power_off(void)
 {
 	int ret = 0;
 	static int dlpt_power_off_cnt;
+	enum LOW_BATTERY_LEVEL_TAG dlpt_power_off_lv = LOW_BATTERY_LEVEL_3;
 
-	if (dlpt.lbat_level == LOW_BATTERY_LEVEL_2 && dlpt.tag->bootmode != 8) {
+	if (dlpt.lbat_level == dlpt_power_off_lv && dlpt.tag->bootmode != 8) {
 		if (dlpt_power_off_cnt == 0)
 			ret = 0; /* 1st time get VBAT < 3.1V, record it */
 		else
@@ -271,7 +272,7 @@ static int dlpt_check_power_off(void)
 }
 
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
-static void dlpt_low_battery_cb(enum LOW_BATTERY_LEVEL_TAG level)
+static void dlpt_low_battery_cb(enum LOW_BATTERY_LEVEL_TAG level, void *data)
 {
 	dlpt.lbat_level = level;
 }
@@ -461,11 +462,13 @@ static int dlpt_notify_handler(void *unused)
 		}
 		pre_ui_soc = cur_ui_soc;
 
-		/* Check low battery volt < 3.1V */
-		if (dlpt_check_power_off()) {
-			/* notify battery driver to power off by SOC=0 */
-			dlpt_set_shutdown_condition();
-			pr_info("[DLPT] notify battery SOC=0 to power off.\n");
+		if (cur_ui_soc == 1) {
+			/* Check low battery volt < level 3 throttle volt */
+			if (dlpt_check_power_off()) {
+				/* notify battery driver to power off by SOC=0 */
+				dlpt_set_shutdown_condition();
+				pr_info("[DLPT] notify battery SOC=0 to power off.\n");
+			}
 		}
 bypass:
 		dlpt.notify_flag = false;
@@ -505,7 +508,7 @@ static void dlpt_notify_init(void)
 
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
 	register_low_battery_notify(&dlpt_low_battery_cb,
-				    LOW_BATTERY_PRIO_DLPT);
+				    LOW_BATTERY_PRIO_DLPT, NULL);
 #endif
 }
 
