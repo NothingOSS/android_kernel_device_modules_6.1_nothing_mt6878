@@ -112,7 +112,7 @@ mtk_cam_ctrl_get_job(struct mtk_cam_ctrl *ctrl,
 
 		found = cond_func(job, arg);
 		if (found) {
-			mtk_cam_job_get(job);
+			job = mtk_cam_job_get(job);
 			break;
 		}
 	}
@@ -773,9 +773,6 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 		add_frame_seq(cam_ctrl->enqueued_frame_seq_no, job->frame_cnt);
 
 	req_seq = atomic_inc_return(&cam_ctrl->enqueued_req_cnt);
-
-	/* get before adding to list */
-	mtk_cam_job_get(job);
 
 	/* EnQ this request's state element to state_list (STATE:READY) */
 	write_lock(&cam_ctrl->list_lock);

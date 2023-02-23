@@ -280,9 +280,12 @@ struct mtk_cam_job {
 	u64 (*timestamp_buf)[128];
 };
 
-static inline void mtk_cam_job_get(struct mtk_cam_job *job)
+static inline struct mtk_cam_job *mtk_cam_job_get(struct mtk_cam_job *job)
 {
-	atomic_inc(&job->refs);
+	if (atomic_add_unless(&job->refs, 1, 0) == 0)
+		return NULL;
+
+	return job;
 }
 
 void _on_job_last_ref(struct mtk_cam_job *job);

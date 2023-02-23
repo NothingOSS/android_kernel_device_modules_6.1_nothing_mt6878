@@ -70,12 +70,6 @@ void _on_job_last_ref(struct mtk_cam_job *job)
 
 	write_lock(&ctrl->list_lock);
 
-	/* check again to avoid refs being increased after check */
-	if (atomic_read(&job->refs)) {
-		write_unlock(&ctrl->list_lock);
-		return;
-	}
-
 	list_del(&job->job_state.list);
 	is_last = list_empty(&ctrl->camsys_state_list);
 
@@ -254,7 +248,7 @@ static int mtk_cam_job_pack_init(struct mtk_cam_job *job,
 	struct device *dev = ctx->cam->dev;
 	int ret;
 
-	atomic_set(&job->refs, 0);
+	atomic_set(&job->refs, 1);
 	INIT_LIST_HEAD(&job->list);
 
 	job->req = req;
