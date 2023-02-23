@@ -4650,6 +4650,7 @@ static const struct mtk_mmsys_driver_data mt6897_mmsys_driver_data = {
 	.third_path_data = &mt6897_mtk_dp_wo_tdshp_path_data,
 	.mmsys_id = MMSYS_MT6897,
 	.mode_tb = mt6897_mode_tb,
+	.sodi_config = mt6985_mtk_sodi_config,
 	.has_smi_limitation = false,
 	.doze_ctrl_pmic = true,
 	.can_compress_rgb565 = false,
