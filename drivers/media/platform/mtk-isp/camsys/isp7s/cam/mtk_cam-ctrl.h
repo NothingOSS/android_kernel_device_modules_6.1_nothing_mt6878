@@ -10,6 +10,7 @@
 #include <linux/timer.h>
 
 #include "mtk_cam-job.h"
+
 struct mtk_cam_device;
 struct mtk_raw_device;
 struct mtk_camsv_device;
@@ -63,6 +64,22 @@ int vsync_update(struct vsync_collector *c,
 		  int engine_type, int idx,
 		  struct vsync_result *res);
 
+struct mtk_cam_watchdog {
+
+	bool started;
+
+	struct timer_list timer;
+	u64 last_sof_ts;
+
+	struct work_struct work;
+	atomic_t work_running;
+	atomic_t retry_cnt;
+};
+
+void mtk_cam_watchdog_init(struct mtk_cam_watchdog *wd);
+int mtk_cam_watchdog_start(struct mtk_cam_watchdog *wd);
+void mtk_cam_watchdog_stop(struct mtk_cam_watchdog *wd);
+
 /*per stream (sensor) */
 struct mtk_cam_ctrl {
 	struct mtk_cam_ctx *ctx;
@@ -95,6 +112,8 @@ struct mtk_cam_ctrl {
 	int state_trans_ref;
 
 	struct vsync_collector vsync_col;
+
+	struct mtk_cam_watchdog watchdog;
 };
 
 struct mtk_camsys_irq_normal_data {
