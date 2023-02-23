@@ -303,7 +303,7 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 		mtk_v4l2_debug(0, "[VENC] Failed to get regulator");
 		dev->venc_reg = 0;
 		dev->venc_mmdvfs_clk = devm_clk_get(&dev->plat_dev->dev, "mmdvfs_clk");
-		if (!dev->venc_mmdvfs_clk) {
+		if (IS_ERR_OR_NULL(dev->venc_mmdvfs_clk)) {
 			mtk_v4l2_debug(0, "[VENC] Failed to mmdvfs_clk");
 			dev->venc_mmdvfs_clk = 0;
 		}
