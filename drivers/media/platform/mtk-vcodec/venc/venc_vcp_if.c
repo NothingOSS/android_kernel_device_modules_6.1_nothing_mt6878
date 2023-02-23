@@ -108,7 +108,8 @@ static struct device *get_dev_by_mem_type(struct venc_inst *inst, struct vcodec_
 		return NULL;
 }
 
-static int venc_vcp_ipi_send(struct venc_inst *inst, void *msg, int len, bool is_ack)
+static int venc_vcp_ipi_send(struct venc_inst *inst, void *msg, int len,
+	bool is_ack, bool need_wait_suspend, bool has_lock_dvfs)
 {
 	int ret, ipi_size;
 	unsigned long timeout = 0;
@@ -122,10 +123,11 @@ static int venc_vcp_ipi_send(struct venc_inst *inst, void *msg, int len, bool is
 
 	if (!is_ack) {
 		mutex_lock(&inst->ctx->dev->ipi_mutex);
-
-		if (*(u32 *)msg != AP_IPIMSG_ENC_BACKUP) {
+		if (need_wait_suspend) {
 			while (inst->ctx->dev->is_codec_suspending == 1) {
 				mutex_unlock(&inst->ctx->dev->ipi_mutex);
+				if (has_lock_dvfs)
+					mutex_unlock(&inst->ctx->dev->enc_dvfs_mutex);
 
 				suspend_block_cnt++;
 				if (suspend_block_cnt > SUSPEND_TIMEOUT_CNT) {
@@ -134,9 +136,12 @@ static int venc_vcp_ipi_send(struct venc_inst *inst, void *msg, int len, bool is
 				}
 				usleep_range(10000, 20000);
 
+				if (has_lock_dvfs)
+					mutex_lock(&inst->ctx->dev->enc_dvfs_mutex);
 				mutex_lock(&inst->ctx->dev->ipi_mutex);
 			}
 		}
+
 	}
 
 	if (inst->vcu_inst.abort || inst->vcu_inst.daemon_pid != get_vcp_generation())
@@ -565,17 +570,19 @@ int vcp_enc_ipi_handler(void *arg)
 		case VCU_IPIMSG_ENC_PUT_BUFFER:
 			mtk_enc_put_buf(ctx);
 			msg->msg_id = AP_IPIMSG_ENC_PUT_BUFFER_DONE;
-			venc_vcp_ipi_send(inst, msg, sizeof(*msg), 1);
+			venc_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 			break;
 		case VCU_IPIMSG_ENC_MEM_ALLOC:
 			handle_venc_mem_alloc((void *)obj->share_buf);
 			msg->msg_id = AP_IPIMSG_ENC_MEM_ALLOC_DONE;
-			venc_vcp_ipi_send(inst, msg, sizeof(struct venc_vcu_ipi_mem_op), 1);
+			venc_vcp_ipi_send(inst, msg, sizeof(struct venc_vcu_ipi_mem_op),
+				true, false, false);
 			break;
 		case VCU_IPIMSG_ENC_MEM_FREE:
 			handle_venc_mem_free((void *)obj->share_buf);
 			msg->msg_id = AP_IPIMSG_ENC_MEM_FREE_DONE;
-			venc_vcp_ipi_send(inst, msg, sizeof(struct venc_vcu_ipi_mem_op), 1);
+			venc_vcp_ipi_send(inst, msg, sizeof(struct venc_vcu_ipi_mem_op),
+				true, false, false);
 			break;
 		// TODO: need remove HW locks /power ipis
 		case VCU_IPIMSG_ENC_WAIT_ISR:
@@ -599,19 +606,19 @@ int vcp_enc_ipi_handler(void *arg)
 				vcodec_trace_count("VENC_HW_CORE_1", 1);
 
 			msg->msg_id = AP_IPIMSG_ENC_WAIT_ISR_DONE;
-			venc_vcp_ipi_send(inst, msg, sizeof(*msg), 1);
+			venc_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 			break;
 		case VCU_IPIMSG_ENC_POWER_ON:
 			ctx->sysram_enable = vsi->config.sysram_enable;
 			venc_encode_prepare(ctx, msg->status, &flags);
 			msg->msg_id = AP_IPIMSG_ENC_POWER_ON_DONE;
-			venc_vcp_ipi_send(inst, msg, sizeof(*msg), 1);
+			venc_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 			break;
 		case VCU_IPIMSG_ENC_POWER_OFF:
 			ctx->sysram_enable = vsi->config.sysram_enable;
 			venc_encode_unprepare(ctx, msg->status, &flags);
 			msg->msg_id = AP_IPIMSG_ENC_POWER_OFF_DONE;
-			venc_vcp_ipi_send(inst, msg, sizeof(*msg), 1);
+			venc_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 			break;
 		case VCU_IPIMSG_ENC_TRACE:
 		{
@@ -631,14 +638,14 @@ int vcp_enc_ipi_handler(void *arg)
 				msg->status = -1;
 
 			msg->msg_id = AP_IPIMSG_ENC_CHECK_CODEC_ID_DONE;
-			venc_vcp_ipi_send(inst, msg, sizeof(*msg), 1);
+			venc_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 		}
 			break;
 		case VCU_IPIMSG_ENC_GET_BS_BUFFER:
 		{
 			handle_enc_get_bs_buf(vcu, (void *)obj->share_buf);
 			msg->msg_id = AP_IPIMSG_ENC_GET_BS_BUFFER_DONE;
-			venc_vcp_ipi_send(inst, msg, sizeof(*msg), 1);
+			venc_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 		}
 			break;
 		default:
@@ -698,7 +705,7 @@ static int venc_vcp_backup(struct venc_inst *inst)
 	msg.ap_inst_addr = inst->vcu_inst.inst_addr;
 	msg.ctx_id = inst->ctx->id;
 	mtk_v4l2_debug(0, "[VDVFS] VENC suspend");
-	err = venc_vcp_ipi_send(inst, &msg, sizeof(msg), 0);
+	err = venc_vcp_ipi_send(inst, &msg, sizeof(msg), false, false, false);
 	mtk_vcodec_debug(inst, "- ret=%d", err);
 
 	return err;
@@ -706,12 +713,17 @@ static int venc_vcp_backup(struct venc_inst *inst)
 static int venc_vcp_mmdvfs_resume(struct mtk_vcodec_ctx *ctx)
 {
 	int err = 0;
-	struct venc_enc_param enc_param;
+	struct venc_inst *inst = (struct venc_inst *) ctx->drv_handle;
+	struct venc_ap_ipi_msg_set_param msg;
 
 	mtk_v4l2_debug(0, "[VDVFS] VENC resume");
-	memset(&enc_param, 0, sizeof(enc_param));
-	enc_param.venc_dvfs_state = MTK_INST_RESUME;
-	err = venc_if_set_param(ctx, VENC_SET_PARAM_MMDVFS, &enc_param);
+	memset(&msg, 0, sizeof(msg));
+	msg.msg_id = AP_IPIMSG_ENC_SET_PARAM;
+	msg.vcu_inst_addr = inst->vcu_inst.inst_addr;
+	msg.ctx_id = inst->ctx->id;
+	msg.param_id = VENC_SET_PARAM_MMDVFS;
+
+	err = venc_vcp_ipi_send(inst, &msg, sizeof(msg), false, false, true);
 
 	return err;
 }
@@ -813,7 +825,7 @@ static int vcp_venc_notify_callback(struct notifier_block *this,
 		if (ctx)
 			venc_vcp_mmdvfs_resume(ctx);
 		mutex_unlock(&dev->enc_dvfs_mutex);
-
+		dev->is_codec_suspending = 0;
 		break;
 	}
 	return NOTIFY_DONE;
@@ -1062,7 +1074,7 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 		out_slb.data_item = 2;
 		out_slb.data[0] = 1; //release_slb 1
 		out_slb.data[1] = 0x0; //slbc_addr
-		ret_slb = venc_vcp_ipi_send(inst, &out_slb, sizeof(out_slb), 0);
+		ret_slb = venc_vcp_ipi_send(inst, &out_slb, sizeof(out_slb), false, true, false);
 
 		if (ret_slb)
 			mtk_vcodec_err(inst, "set VENC_SET_PARAM_RELEASE_SLB fail %d", ret_slb);
@@ -1115,7 +1127,8 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 			out_slb.data_item = 2;
 			out_slb.data[0] = 0; //release_slb 0
 			out_slb.data[1] = inst->ctx->slbc_addr;
-			ret_slb = venc_vcp_ipi_send(inst, &out_slb, sizeof(out_slb), 0);
+			ret_slb = venc_vcp_ipi_send(inst, &out_slb, sizeof(out_slb),
+				false, true, false);
 			if (ret_slb) {
 				mtk_vcodec_err(inst, "set VENC_SET_PARAM_RELEASE_SLB fail %d",
 					ret_slb);
@@ -1133,7 +1146,7 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 			atomic_read(&mtk_venc_slb_cb.later_cnt));
 	}
 
-	ret = venc_vcp_ipi_send(inst, &out, sizeof(out), 0);
+	ret = venc_vcp_ipi_send(inst, &out, sizeof(out), false, true, false);
 	if (ret) {
 		mtk_vcodec_err(inst, "AP_IPIMSG_ENC_ENCODE %d fail %d",
 					   bs_mode, ret);
@@ -1284,7 +1297,7 @@ static int venc_vcp_init(struct mtk_vcodec_ctx *ctx, unsigned long *handle)
 
 	mtk_vcodec_add_ctx_list(ctx);
 
-	ret = venc_vcp_ipi_send(inst, &out, sizeof(out), 0);
+	ret = venc_vcp_ipi_send(inst, &out, sizeof(out), false, true, false);
 	inst->vsi = (struct venc_vsi *)inst->vcu_inst.vsi;
 
 	mtk_vcodec_debug_leave(inst);
@@ -1450,7 +1463,7 @@ static int venc_vcp_get_param(unsigned long handle,
 		msg.ap_data_addr = (uintptr_t)out;
 		msg.ctx_id = inst->ctx->id;
 		inst->vcu_inst.daemon_pid = get_vcp_generation();
-		ret = venc_vcp_ipi_send(inst, &msg, sizeof(msg), 0);
+		ret = venc_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
 		break;
 	case GET_PARAM_FREE_BUFFERS:
 		if (inst->vsi == NULL)
@@ -1663,7 +1676,7 @@ int vcp_enc_set_param(struct venc_inst *inst,
 		return -EINVAL;
 	}
 
-	if (venc_vcp_ipi_send(inst, &out, sizeof(out), 0)) {
+	if (venc_vcp_ipi_send(inst, &out, sizeof(out), false, true, false)) {
 		mtk_vcodec_err(inst,
 			"AP_IPIMSG_ENC_SET_PARAM %d fail", id);
 		return -EINVAL;
@@ -1846,7 +1859,7 @@ static int venc_vcp_deinit(unsigned long handle)
 	out.ctx_id = inst->ctx->id;
 
 	mtk_vcodec_debug_enter(inst);
-	ret = venc_vcp_ipi_send(inst, &out, sizeof(out), 0);
+	ret = venc_vcp_ipi_send(inst, &out, sizeof(out), false, true, false);
 	mtk_vcodec_debug_leave(inst);
 
 	mtk_vcodec_del_ctx_list(inst->ctx);
