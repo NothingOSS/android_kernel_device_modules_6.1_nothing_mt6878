@@ -350,6 +350,13 @@ int apply_cam_mux_switch_stagger(struct mtk_cam_job *job)
 				raw_tg_idx;
 			settings[1].tag_id = (is_dc) ? last_tag_idx : -1;
 			settings[1].enable = 1;
+
+			settings[2].seninf = ctx->seninf;
+			settings[2].source = PAD_SRC_RAW1;
+			settings[2].camtg  =
+				mtk_cam_get_sv_cammux_id(sv_dev, last_tag_idx);
+			settings[2].tag_id = last_tag_idx;
+			settings[2].enable = 1;
 			break;
 		default:
 			break;
