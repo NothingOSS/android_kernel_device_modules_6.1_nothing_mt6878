@@ -877,9 +877,18 @@ EXPORT_SYMBOL_GPL(mtk_icc_link_destroy);
  */
 void mtk_icc_node_add(struct icc_node *node, struct icc_provider *provider)
 {
+	struct icc_node *n;
 	mutex_lock(&icc_lock);
 
 	node->provider = provider;
+
+	list_for_each_entry(n, &provider->nodes, node_list) {
+		if (node == n) {
+			mutex_unlock(&icc_lock);
+			return;
+		}
+	}
+
 	list_add_tail(&node->node_list, &provider->nodes);
 
 	mutex_unlock(&icc_lock);
