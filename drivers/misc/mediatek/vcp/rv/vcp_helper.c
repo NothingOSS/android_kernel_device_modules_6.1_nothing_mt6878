@@ -712,7 +712,7 @@ void trigger_vcp_halt(enum vcp_core_id id)
 
 		/* trigger halt isr, force vcp enter wfi */
 		pr_notice("[VCP] %s VCP EE coredump...\n", __func__);
-		writel(B_GIPC4_SETCLR_0, R_GIPC_IN_SET);
+		writel(B_GIPC3_SETCLR_0, R_GIPC_IN_SET);
 		for (j = 0; j < NUM_FEATURE_ID; j++)
 			if (feature_table[j].enable)
 				pr_info("[VCP] Active feature id %d cnt %d\n",
@@ -905,7 +905,7 @@ int vcp_disable_pm_clk(enum feature_id id)
 		vcp_ready[VCP_A_ID] = 0;
 
 		/* trigger halt isr, force vcp enter wfi */
-		writel(B_GIPC4_SETCLR_1, R_GIPC_IN_SET);
+		writel(B_GIPC3_SETCLR_1, R_GIPC_IN_SET);
 		wait_vcp_ready_to_reboot();
 
 #if VCP_LOGGER_ENABLE
@@ -971,7 +971,7 @@ static int vcp_pm_event(struct notifier_block *notifier
 			vcp_ready[VCP_A_ID] = 0;
 
 			/* trigger halt isr, force vcp enter wfi */
-			writel(B_GIPC4_SETCLR_1, R_GIPC_IN_SET);
+			writel(B_GIPC3_SETCLR_1, R_GIPC_IN_SET);
 			wait_vcp_ready_to_reboot();
 
 #if VCP_LOGGER_ENABLE
