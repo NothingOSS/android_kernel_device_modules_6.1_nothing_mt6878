@@ -28,6 +28,7 @@
 #define MTK_SCPD_PEXTP_PHY_RTFF		BIT(13)
 #define MTK_SCPD_IPI_OPS		BIT(14)
 #define MTK_SCPD_BYPASS_OFF		BIT(15)
+#define MTK_SCPD_RTFF_DELAY		BIT(16)
 
 #define MAX_CLKS	5
 #define MAX_SUBSYS_CLKS 20
@@ -90,7 +91,7 @@ struct scp_domain_data {
 	const char *basic_lp_clk_name[MAX_CLKS];
 	const char *subsys_clk_prefix;
 	const char *subsys_lp_clk_prefix;
-	u16 caps;
+	u32 caps;
 	struct bus_prot bp_table[MAX_STEPS];
 	struct sram_ctl sram_table[MAX_SRAM_STEPS];
 	u32 child[MAX_CHILDREN];

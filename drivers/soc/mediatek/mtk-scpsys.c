@@ -612,7 +612,7 @@ static int scpsys_power_on(struct generic_pm_domain *genpd)
 	val &= ~PWR_ISO_BIT;
 	writel(val, ctl_addr);
 
-	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_PEXTP_PHY_RTFF) && scpd->rtff_flag)
+	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_RTFF_DELAY) && scpd->rtff_flag)
 		udelay(10);
 
 	val |= PWR_RST_B_BIT;
@@ -750,6 +750,9 @@ static int scpsys_power_off(struct generic_pm_domain *genpd)
 	/* subsys power off */
 	val |= PWR_ISO_BIT;
 	writel(val, ctl_addr);
+
+	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_RTFF_DELAY) && scpd->rtff_flag)
+		udelay(1);
 
 	val &= ~PWR_RST_B_BIT;
 	writel(val, ctl_addr);
