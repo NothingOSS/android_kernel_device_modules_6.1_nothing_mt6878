@@ -1010,6 +1010,12 @@ struct mtk_battery {
 	int d_saved_car;
 	struct zcv_filter zcvf;
 
+	/*ai */
+	int quse;
+	int qmaxt;
+	int precise_soc;
+	int precise_uisoc;
+
 	/*battery health*/
 	struct ag_center_data_st bh_data;
 

@@ -4153,6 +4153,10 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 		struct fgd_cmd_param_t_8 param;
 		char *rcv;
 		struct fgd_cmd_param_t_4 *prcv;
+		struct power_supply *psy;
+		int socc, quse, qmaxt, uisocc;
+		int ret;
+		union power_supply_propval prop;
 
 		rcv = &msg->fgd_data[0];
 		prcv = (struct fgd_cmd_param_t_4 *)rcv;
@@ -4170,6 +4174,34 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 				param.data[8],
 				param.data[9],
 				param.data[4] * param.data[6] / 10000);
+
+		psy = power_supply_get_by_name("mtk-gauge");
+		if (psy == NULL) {
+			bm_err("[%s] get mtk-gauge power supply fail\n", __func__);
+			return;
+		}
+
+		if (param.data[4] != 0) {
+			prop.intval = param.data[0];
+			ret = power_supply_set_property(psy,
+					POWER_SUPPLY_PROP_ENERGY_FULL_DESIGN, &prop);
+			qmaxt = prop.intval;
+
+			prop.intval = param.data[4];
+			ret = power_supply_set_property(psy,
+					POWER_SUPPLY_PROP_ENERGY_FULL, &prop);
+			quse = prop.intval;
+
+			prop.intval = param.data[6];
+			ret = power_supply_set_property(psy,
+					POWER_SUPPLY_PROP_ENERGY_NOW, &prop);
+			socc = prop.intval;
+
+			prop.intval = param.data[5];
+			ret = power_supply_set_property(psy,
+					POWER_SUPPLY_PROP_CAPACITY_LEVEL, &prop);
+			uisocc = prop.intval;
+		}
 	}
 	break;
 	case FG_DAEMON_CMD_GET_BH_DATA:

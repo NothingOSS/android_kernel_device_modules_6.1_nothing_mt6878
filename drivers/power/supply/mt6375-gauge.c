@@ -3784,6 +3784,10 @@ static enum power_supply_property gauge_properties[] = {
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_ENERGY_EMPTY,
 	POWER_SUPPLY_PROP_ENERGY_EMPTY_DESIGN,
+	POWER_SUPPLY_PROP_ENERGY_FULL_DESIGN,
+	POWER_SUPPLY_PROP_ENERGY_FULL,
+	POWER_SUPPLY_PROP_ENERGY_NOW,
+	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
 };
 
 static int get_ptim_current(struct mtk_gauge *gauge)
@@ -3841,6 +3845,26 @@ static int psy_gauge_get_property(struct power_supply *psy,
 		if (gm != NULL)
 			val->intval = gm->sdc.shutdown_status.is_dlpt_shutdown;
 		break;
+	case POWER_SUPPLY_PROP_ENERGY_FULL_DESIGN:
+		gm = gauge->gm;
+		if (gm != NULL)
+			val->intval = gm->qmaxt;
+		break;
+	case POWER_SUPPLY_PROP_ENERGY_FULL:
+		gm = gauge->gm;
+		if (gm != NULL)
+			val->intval = gm->quse;
+		break;
+	case POWER_SUPPLY_PROP_ENERGY_NOW:
+		gm = gauge->gm;
+		if (gm != NULL)
+			val->intval = gm->precise_soc;
+		break;
+	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
+		gm = gauge->gm;
+		if (gm != NULL)
+			val->intval = gm->precise_uisoc;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -3875,6 +3899,26 @@ static int psy_gauge_set_property(struct power_supply *psy,
 					val->intval);
 			}
 		}
+		break;
+	case POWER_SUPPLY_PROP_ENERGY_FULL_DESIGN:
+		gm = gauge->gm;
+		if (gm != NULL && val->intval != 0)
+			gm->qmaxt = val->intval;
+		break;
+	case POWER_SUPPLY_PROP_ENERGY_FULL:
+		gm = gauge->gm;
+		if (gm != NULL && val->intval != 0)
+			gm->quse = val->intval;
+		break;
+	case POWER_SUPPLY_PROP_ENERGY_NOW:
+		gm = gauge->gm;
+		if (gm != NULL && val->intval != 0)
+			gm->precise_soc = val->intval;
+		break;
+	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
+		gm = gauge->gm;
+		if (gm != NULL && val->intval != 0)
+			gm->precise_uisoc = val->intval;
 		break;
 	default:
 		ret = -EINVAL;
