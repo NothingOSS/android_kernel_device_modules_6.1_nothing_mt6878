@@ -95,6 +95,7 @@ struct mtk_btag_proc_pidlogger {
 
 struct mtk_btag_mictx_id {
 	enum mtk_btag_storage_type storage;
+	char name[BTAG_NAME_LEN];
 	__s8 id;
 };
 

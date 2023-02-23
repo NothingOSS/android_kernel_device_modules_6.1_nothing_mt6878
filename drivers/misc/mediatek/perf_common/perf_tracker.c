@@ -44,7 +44,8 @@ static DEFINE_MUTEX(perf_ctl_mutex);
 
 static struct mtk_btag_mictx_iostat_struct iostat;
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-static struct mtk_btag_mictx_id ufs_mictx_id = {.storage = BTAG_STORAGE_UFS};
+static struct mtk_btag_mictx_id ufs_mictx_id = {.storage = BTAG_STORAGE_UFS,
+						.name = "perf_tracker"};
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_GPU_SWPM_SUPPORT)

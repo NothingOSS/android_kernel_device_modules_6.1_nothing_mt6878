@@ -28,6 +28,7 @@
 #include <linux/vmalloc.h>
 #include <scsi/scsi_cmnd.h>
 #include <scsi/scsi_proto.h>
+#include "blocktag-trace.h"
 #include "mtk_blocktag.h"
 #include "blocktag-ufs.h"
 
@@ -258,6 +259,9 @@ rcu_unlock:
 				    cmd_to_io_type(scsi_cmnd_cmd(cmd)),
 				    scsi_cmnd_len(cmd), top_len, tid,
 				    tid_to_qid(tid));
+
+	trace_blocktag_ufs_send(sched_clock() - cur_time, tid, tid_to_qid(tid),
+				scsi_cmnd_cmd(cmd), scsi_cmnd_len(cmd));
 }
 EXPORT_SYMBOL_GPL(mtk_btag_ufs_send_command);
 
@@ -320,6 +324,9 @@ rcu_unlock:
 	/* mictx complete logging */
 	mtk_btag_mictx_complete_command(ufs_mtk_btag, cur_time, tid,
 					tid_to_qid(tid));
+
+	trace_blocktag_ufs_complete(sched_clock() - cur_time, tid,
+				    tid_to_qid(tid));
 }
 EXPORT_SYMBOL_GPL(mtk_btag_ufs_transfer_req_compl);
 

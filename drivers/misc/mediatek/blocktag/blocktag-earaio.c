@@ -410,6 +410,7 @@ void mtk_btag_earaio_init_mictx(
 		earaio_ctrl.pwd_top_pages[BTAG_IO_READ] = 0;
 		earaio_ctrl.pwd_top_pages[BTAG_IO_WRITE] = 0;
 		earaio_ctrl.mictx_id.storage = storage_type;
+		strncpy(earaio_ctrl.mictx_id.name, "earaio", BTAG_NAME_LEN - 1);
 	}
 
 	/* Enable mictx by default if EARA-IO is enabled*/

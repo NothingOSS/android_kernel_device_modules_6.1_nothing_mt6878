@@ -17,6 +17,8 @@
 #include <linux/sched/clock.h>
 #include <linux/spinlock.h>
 #include <linux/math64.h>
+#define CREATE_TRACE_POINTS
+#include "blocktag-trace.h"
 #include "mtk_blocktag.h"
 
 #define MICTX_RESET_NS 1000000000
@@ -340,6 +342,8 @@ int mtk_btag_mictx_get_data(struct mtk_btag_mictx_id mictx_id,
 	mictx_evaluate_queue(mictx, iostat);
 	mictx_evaluate_avg_qd(mictx, iostat);
 	rcu_read_unlock();
+
+	trace_blocktag_mictx_get_data(mictx_id.name, iostat);
 
 	return 0;
 }
