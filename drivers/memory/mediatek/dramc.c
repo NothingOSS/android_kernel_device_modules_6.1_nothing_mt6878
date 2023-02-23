@@ -118,6 +118,12 @@ static ssize_t dram_data_rate_show(struct device_driver *driver, char *buf)
 		mtk_dramc_get_data_rate());
 }
 
+static ssize_t dram_type_show(struct device_driver *driver, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "DRAM tpye = %d\n",
+		mtk_dramc_get_ddr_type());
+}
+
 __weak int mtk_dramc_binning_test(void)
 {
 	return 0;
@@ -140,6 +146,7 @@ static DRIVER_ATTR_RO(mr);
 static DRIVER_ATTR_RO(mr4);
 static DRIVER_ATTR_RO(dram_data_rate);
 static DRIVER_ATTR_RO(binning_test);
+static DRIVER_ATTR_RO(dram_type);
 
 static int dramc_probe(struct platform_device *pdev)
 {
@@ -383,6 +390,13 @@ static int dramc_probe(struct platform_device *pdev)
 			pr_info("%s: fail to create mr4 sysfs\n", __func__);
 			return ret;
 		}
+	}
+
+	ret = driver_create_file(
+		pdev->dev.driver, &driver_attr_dram_type);
+	if (ret) {
+		pr_info("%s: fail to create dram_type sysfs\n", __func__);
+		return ret;
 	}
 
 	platform_set_drvdata(pdev, dramc_dev_ptr);
