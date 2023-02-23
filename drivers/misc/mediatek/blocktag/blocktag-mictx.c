@@ -8,6 +8,11 @@
 
 #define DEBUG 1
 
+#ifdef pr_fmt
+#undef pr_fmt
+#endif
+#define pr_fmt(fmt) "[blocktag][mictx]" fmt
+
 #include <linux/sched.h>
 #include <linux/sched/clock.h>
 #include <linux/spinlock.h>

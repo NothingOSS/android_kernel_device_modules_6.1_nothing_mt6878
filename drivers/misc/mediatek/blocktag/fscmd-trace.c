@@ -3,6 +3,11 @@
  * Copyright (C) 2021 MediaTek Inc.
  */
 
+#ifdef pr_fmt
+#undef pr_fmt
+#endif
+#define pr_fmt(fmt) "[blocktag][fscmd]" fmt
+
 #include <linux/fs.h>
 #include "fake_f2fs.h"
 #include <linux/f2fs_fs.h>

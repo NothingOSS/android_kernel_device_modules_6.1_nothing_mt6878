@@ -6,6 +6,11 @@
  *	Stanley Chu <stanley.chu@mediatek.com>
  */
 
+#ifdef pr_fmt
+#undef pr_fmt
+#endif
+#define pr_fmt(fmt) "[blocktag][earaio]" fmt
+
 #include <linux/sched.h>
 #include <linux/sched/clock.h>
 #include <linux/mutex.h>
@@ -145,8 +150,7 @@ static long mtk_btag_eara_ioctl(struct file *filp,
 		mtk_btag_eara_switch_collect(msgKM->cmd);
 		break;
 	default:
-		pr_debug("[BLOCK TAG] %s %d: unknown cmd %x\n",
-				__FILE__, __LINE__, cmd);
+		pr_debug("proc_ioctl: unknown cmd %x\n", cmd);
 		ret = -EINVAL;
 		goto ret_ioctl;
 	}
@@ -183,9 +187,8 @@ static int mtk_btag_eara_ioctl_init(struct proc_dir_entry *parent)
 		0664, parent, &mtk_btag_eara_ioctl_fops);
 
 	if (IS_ERR(proc_entry)) {
-		pr_debug("[BLOCK TAG] Creating file node failed with %d\n Creating file node ",
-				ret);
-		ret = -ENOMEM;
+		ret = PTR_ERR(proc_entry);
+		pr_debug("failed to create proc entry (%d)\n", ret);
 	}
 
 	return ret;
@@ -209,13 +212,13 @@ static ssize_t mtk_btag_earaio_ctrl_sub_write(struct file *file,
 
 	if (cmd[0] == '1') {
 		earaio_ctrl.enabled = true;
-		pr_info("[BLOCK_TAG] EARA-IO QoS: allowed\n");
+		pr_info("EARA-IO QoS Enable\n");
 	} else if (cmd[0] == '0') {
 		mtk_btag_earaio_boost(false);
 		earaio_ctrl.enabled = false;
-		pr_info("[BLOCK_TAG] EARA-IO QoS: disallowed\n");
+		pr_info("EARA-IO QoS Disable\n");
 	} else {
-		pr_info("[BLOCK_TAG] invalid arg: 0x%x\n", cmd[0]);
+		pr_info("proc_write: invalid arg 0x%x\n", cmd[0]);
 		goto err;
 	}
 
@@ -238,7 +241,7 @@ static int mtk_btag_earaio_ctrl_sub_show(struct seq_file *s, void *data)
 	seq_printf(s, "Monitor Storage Type: %s\n", name);
 	seq_puts(s, "Status:\n");
 	seq_printf(s, "  EARA-IO Control Enable: %d\n", earaio_ctrl.enabled);
-	seq_puts(s, "Commands: echo n > blockio_mictx, n presents\n");
+	seq_puts(s, "Commands: echo n > earaio_ctrl, n presents\n");
 	seq_puts(s, "  Enable EARA-IO QoS  : 1\n");
 	seq_puts(s, "  Disable EARA-IO QoS : 0\n");
 	return 0;
@@ -298,7 +301,7 @@ start:
 			&earaio_obj.this_device->kobj,
 			KOBJ_CHANGE, envp);
 	if (ret)
-		pr_info("[BLOCK_TAG] uevt: %s sent fail:%d", event_string, ret);
+		pr_info("failed to send uevent %s (%d)\n", event_string, ret);
 	else
 		earaio_ctrl.uevt_state = boost;
 
@@ -424,7 +427,7 @@ int mtk_btag_earaio_init(void)
 	earaio_obj.minor = MISC_DYNAMIC_MINOR;
 	ret = misc_register(&earaio_obj);
 	if (ret) {
-		pr_info("[BLOCK_TAG] register earaio obj error:%d\n", ret);
+		pr_info("failed to register earaio obj (%d)\n", ret);
 		earaio_obj.minor = 0;
 		return ret;
 	}
@@ -432,7 +435,7 @@ int mtk_btag_earaio_init(void)
 	ret = kobject_uevent(&earaio_obj.this_device->kobj, KOBJ_ADD);
 	if (ret) {
 		misc_deregister(&earaio_obj);
-		pr_info("[BLOCK_TAG] add uevent fail:%d\n", ret);
+		pr_info("failed to add uevent (%d)\n", ret);
 		earaio_obj.minor = 0;
 		return ret;
 	}

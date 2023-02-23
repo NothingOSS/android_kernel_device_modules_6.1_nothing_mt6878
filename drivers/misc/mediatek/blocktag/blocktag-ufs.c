@@ -6,6 +6,11 @@
  *	Stanley Chu <stanley.chu@mediatek.com>
  */
 
+#ifdef pr_fmt
+#undef pr_fmt
+#endif
+#define pr_fmt(fmt) "[blocktag][ufs]" fmt
+
 #define DEBUG 1
 #define BTAG_UFS_TRACE_LATENCY ((unsigned long long)(1000000000))
 
@@ -114,8 +119,7 @@ static struct btag_ufs_ctx *btag_ufs_ctx(__u16 qid)
 		return NULL;
 
 	if (qid >= ufs_mtk_btag->ctx.count) {
-		pr_notice("[BLOCKTAG] %s: invalid queue id %d\n",
-			  __func__, qid);
+		pr_notice("invalid queue id %d\n", qid);
 		return NULL;
 	}
 	return &ctx[qid];
@@ -124,8 +128,7 @@ static struct btag_ufs_ctx *btag_ufs_ctx(__u16 qid)
 static struct btag_ufs_ctx *btag_ufs_tid_to_ctx(__u16 tid)
 {
 	if (tid >= BTAG_UFS_TAGS) {
-		pr_notice("[BLOCKTAG] %s: invalid tag id %d\n",
-			  __func__, tid);
+		pr_notice("%s: invalid tag id %d\n", __func__, tid);
 		return NULL;
 	}
 
@@ -139,8 +142,7 @@ static struct btag_ufs_tag *btag_ufs_tag(struct btag_ufs_ctx *ctx,
 		return NULL;
 
 	if (tid >= BTAG_UFS_TAGS) {
-		pr_notice("[BLOCKTAG] %s: invalid tag id %d\n",
-			  __func__, tid);
+		pr_notice("%s: invalid tag id %d\n", __func__, tid);
 		return NULL;
 	}
 

@@ -8,6 +8,11 @@
 
 #define DEBUG 1
 
+#ifdef pr_fmt
+#undef pr_fmt
+#endif
+#define pr_fmt(fmt) "[blocktag][core]" fmt
+
 #include <linux/memblock.h>
 #include <linux/module.h>
 #include <linux/proc_fs.h>
@@ -543,9 +548,9 @@ static int mtk_btag_sub_open(struct inode *inode, struct file *file)
 			struct dentry, d_u.d_alias);
 
 		if (entry && entry->d_parent) {
-			pr_notice("[BLOCK_TAG] %s: %s/%s\n", __func__,
-				entry->d_parent->d_name.name,
-				entry->d_name.name);
+			pr_notice("proc_open: %s/%s\n",
+				  entry->d_parent->d_name.name,
+				  entry->d_name.name);
 			m->private = mtk_btag_find_by_name(
 						entry->d_parent->d_name.name);
 		}
@@ -695,8 +700,7 @@ struct mtk_blocktag *mtk_btag_alloc(const char *name,
 
 	btag = mtk_btag_find_by_type(storage_type);
 	if (btag) {
-		pr_notice("[BLOCK_TAG] %s: blocktag %s already exists.\n",
-			__func__, name);
+		pr_notice("blocktag %s already exists\n", name);
 		return NULL;
 	}
 
@@ -1025,7 +1029,7 @@ static int mtk_btag_install_tracepoints(void)
 
 	FOR_EACH_INTEREST(i) {
 		if (interests[i].tp == NULL) {
-			pr_info("Error: %s not found\n",
+			pr_info("tracepoints %s not found\n",
 				interests[i].name);
 			/* Unload previously loaded */
 			mtk_btag_uninstall_tracepoints();
@@ -1048,8 +1052,8 @@ static void mtk_btag_init_memory(void)
 	dram_start_addr = start = 0;
 	dram_end_addr = end = memblock_end_of_DRAM();
 	mtk_btag_system_dram_size = (unsigned long long)(end - start);
-	pr_debug("[BLOCK_TAG] DRAM: %pa - %pa, size: 0x%llx\n", &start,
-		&end, (unsigned long long)(end - start));
+	pr_debug("dram: %pa - %pa, size: 0x%llx\n", &start, &end,
+		 (unsigned long long)(end - start));
 	blockio_aee_buffer = kzalloc(BLOCKIO_AEE_BUFFER_SIZE,
 			     GFP_KERNEL);
 }
@@ -1071,9 +1075,6 @@ static void mtk_btag_init_pidlogger(void)
 init:
 	if (mtk_btag_pagelogger)
 		memset(mtk_btag_pagelogger, 0, size);
-	else
-		pr_info(
-		"[BLOCK_TAG] blockio: fail to allocate mtk_btag_pagelogger\n");
 }
 
 static int mtk_btag_init_procfs(void)
@@ -1096,7 +1097,7 @@ static int mtk_btag_init_procfs(void)
 	if (proc_entry)
 		proc_set_user(proc_entry, uid, gid);
 	else
-		pr_info("[BLOCK_TAG} %s: failed to initialize procfs", __func__);
+		pr_info("failed to initialize procfs\n");
 
 	return 0;
 }

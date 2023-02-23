@@ -2,6 +2,12 @@
 /*
  * Copyright (C) 2021 MediaTek Inc.
  */
+
+#ifdef pr_fmt
+#undef pr_fmt
+#endif
+#define pr_fmt(fmt) "[blocktag][mmc]" fmt
+
 #include <linux/debugfs.h>
 #include <linux/kernel.h>
 #include <linux/mutex.h>
@@ -30,8 +36,7 @@ static struct mmc_mtk_bio_context_task *mmc_mtk_bio_get_task(
 		return NULL;
 
 	if (task_id >= MMC_BIOLOG_CONTEXT_TASKS) {
-		pr_notice("[BLOCK_TAG] %s: invalid task id %d\n",
-			__func__, task_id);
+		pr_notice("invalid task id %d\n", task_id);
 		return NULL;
 	}
 

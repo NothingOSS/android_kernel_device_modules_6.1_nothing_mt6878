@@ -6,6 +6,10 @@
 #ifndef _MTK_BLOCKTAG_H
 #define _MTK_BLOCKTAG_H
 
+#ifndef pr_fmt
+#define pr_fmt(fmt) "[blocktag]" fmt
+#endif
+
 #include <linux/blk_types.h>
 #include <linux/mmc/core.h>
 #include <linux/proc_fs.h>

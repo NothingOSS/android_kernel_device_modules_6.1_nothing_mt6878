@@ -3,6 +3,11 @@
  * Copyright (C) 2021 MediaTek Inc.
  */
 
+#ifdef pr_fmt
+#undef pr_fmt
+#endif
+#define pr_fmt(fmt) "[blocktag][pm]" fmt
+
 #include <linux/sched/clock.h>
 #include "blocktag-pm-trace.h"
 
