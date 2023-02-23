@@ -584,6 +584,8 @@ static struct vb2_buffer *get_display_buffer(struct mtk_vcodec_ctx *ctx,
 			ctx->eos_type = NON_EOS; // clear flag
 		}
 		dstbuf->vb.field = disp_frame_buffer->field;
+		if (ctx->input_driven && !no_output)
+			dstbuf->flags |= COLOR_ASPECT_CHANGED;
 
 		mtk_v4l2_debug(2,
 			"[%d]status=%x queue id=%d to done_list %d %d flag=%x field %d pts=%llu",
@@ -1687,6 +1689,7 @@ static void mtk_vdec_worker(struct work_struct *work)
 		src_buf_info->vb.vb2_buf.timestamp);
 	if (!ctx->input_driven) {
 		dst_buf_info->flags &= ~CROP_CHANGED;
+		dst_buf_info->flags &= ~COLOR_ASPECT_CHANGED;
 		dst_buf_info->flags &= ~REF_FREED;
 
 		dst_buf_info->vb.vb2_buf.timestamp
@@ -1712,7 +1715,9 @@ static void mtk_vdec_worker(struct work_struct *work)
 	if ((src_chg & VDEC_CROP_CHANGED) &&
 		(!ctx->input_driven) && dst_buf_info != NULL)
 		dst_buf_info->flags |= CROP_CHANGED;
-
+	if ((src_chg & VDEC_COLOR_ASPECT_CHANGED) &&
+		(!ctx->input_driven) && dst_buf_info != NULL)
+		dst_buf_info->flags |= COLOR_ASPECT_CHANGED;
 
 	if (src_chg & VDEC_OUTPUT_NOT_GENERATED)
 		src_vb2_v4l2->flags |= V4L2_BUF_FLAG_OUTPUT_NOT_GENERATED;
@@ -2476,6 +2481,8 @@ static int vidioc_vdec_dqbuf(struct file *file, void *priv,
 
 		if (mtkbuf->flags & CROP_CHANGED)
 			buf->flags |= V4L2_BUF_FLAG_CROP_CHANGED;
+		if (mtkbuf->flags & COLOR_ASPECT_CHANGED)
+			buf->flags |= V4L2_BUF_FLAG_COLOR_ASPECT_CHANGED;
 		if (mtkbuf->flags & REF_FREED)
 			buf->flags |= V4L2_BUF_FLAG_REF_FREED;
 		if (mtkbuf->general_user_fd < 0)
@@ -3340,6 +3347,7 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 		}
 		if (ctx->input_driven) {
 			buf->flags &= ~CROP_CHANGED;
+			buf->flags &= ~COLOR_ASPECT_CHANGED;
 			buf->flags &= ~REF_FREED;
 		}
 

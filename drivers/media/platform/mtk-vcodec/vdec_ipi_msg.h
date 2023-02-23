@@ -31,6 +31,7 @@ enum vdec_src_chg_type {
 	VDEC_NEED_MORE_OUTPUT_BUF   = (1 << 4),
 	VDEC_CROP_CHANGED           = (1 << 5),
 	VDEC_OUTPUT_NOT_GENERATED   = (1 << 6),
+	VDEC_COLOR_ASPECT_CHANGED   = (1 << 7),
 };
 
 enum vdec_ipi_msg_status {

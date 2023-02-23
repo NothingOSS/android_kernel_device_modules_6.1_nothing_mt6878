@@ -89,7 +89,8 @@ enum mtk_vcodec_flags {
 	NO_CAHCE_CLEAN = 1,
 	NO_CAHCE_INVALIDATE = 1 << 1,
 	CROP_CHANGED = 1 << 2,
-	REF_FREED = 1 << 3
+	REF_FREED = 1 << 3,
+	COLOR_ASPECT_CHANGED = 1 << 4
 };
 
 struct mtk_vcodec_msgq {
