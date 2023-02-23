@@ -123,8 +123,12 @@ struct msg_op *msg_evt_get_free_op(struct msg_thread_ctx *ctx)
 	struct msg_op *op = NULL;
 
 	op = msg_evt_get_op_from_q(&ctx->free_op_q);
-	if (op)
-		memset(op, 0, sizeof(struct msg_op));
+	if (op) {
+		memset(&(op->op), 0, sizeof(struct msg_op_data));
+		op->result = 0;
+		atomic_set(&op->ref_count, 0);
+		atomic_set(&op->op_state, 0);
+	}
 	return op;
 }
 
@@ -132,13 +136,15 @@ int msg_evt_put_op_to_active(struct msg_thread_ctx *ctx, struct msg_op *op)
 {
 	struct msg_op_signal *signal = NULL;
 	int wait_ret = -1;
-	int ret = 0;
+	int ret = 0, cnt = 0;
 
 	do {
 		if (!op) {
 			pr_err("msg_thread_ctx op(0x%p)\n", op);
 			break;
 		}
+
+		atomic_inc(&op->op_state);
 
 		signal = &op->signal;
 		if (signal->timeoutValue) {
@@ -177,13 +183,24 @@ int msg_evt_put_op_to_active(struct msg_thread_ctx *ctx, struct msg_op *op)
 				msecs_to_jiffies(5000)); // 5 sec
 
 		if (wait_ret == 0)
-			pr_warn("opId(%d) completion timeout\n", op->op.op_id);
+			pr_notice("[%s] opId(%d) completion timeout", __func__, op->op.op_id);
 		else if (op->result)
-			pr_info("opId(%d) result:%d\n",
-					op->op.op_id, op->result);
+			pr_info("[%s] opId(%d) result:%d", __func__,
+							op->op.op_id, op->result);
+
+		atomic_dec(&op->op_state);
+		cnt = 0;
+		while (atomic_read(&op->op_state) >= 1) {
+			msleep(20);
+			if (((++cnt) % 50) == 0) {
+				pr_notice("[%s] op[%d] state=[%d] in_use", __func__,
+						op->op.op_id, atomic_read(&op->op_state));
+			}
+		}
 
 		/* op completes, check result */
 		ret = op->result;
+
 	} while (0);
 
 	if (op != NULL && signal != NULL &&
@@ -235,6 +252,13 @@ int msg_thread_send_3(struct msg_thread_ctx *ctx, int opid, size_t param1,
 	ret = msg_evt_put_op_to_active(ctx, op);
 
 	return ret;
+}
+
+int msg_thread_send_4(struct msg_thread_ctx *ctx, int opid, size_t param1,
+							size_t param2, size_t param3,
+							size_t param4)
+{
+	return msg_thread_send_5(ctx, opid, param1, param2, param3, param4, 0);
 }
 
 int msg_thread_send_5(struct msg_thread_ctx *ctx, int opid, size_t param1,
@@ -388,7 +412,7 @@ static int msg_evt_thread(void *pvData)
 	struct msg_thread_ctx *ctx = (struct msg_thread_ctx *)pvData;
 	struct task_struct *p_thread = NULL;
 	struct msg_op *op;
-	int ret;
+	int ret = 0, state;
 
 	if (ctx == NULL || ctx->pThread == NULL) {
 		pr_err("[%s] ctx is NULL", __func__);
@@ -417,9 +441,16 @@ static int msg_evt_thread(void *pvData)
 
 		/* TODO: save op history */
 		//msg_op_history_save(&ctx->op_history, op);
-		msg_evt_set_current_op(ctx, op);
-		ret = msg_evt_opid_handler(ctx, &op->op);
-		msg_evt_set_current_op(ctx, NULL);
+		state = atomic_inc_return(&op->op_state);
+
+		if (state == 2) {
+			msg_evt_set_current_op(ctx, op);
+			ret = msg_evt_opid_handler(ctx, &op->op);
+			msg_evt_set_current_op(ctx, NULL);
+		} else
+			pr_notice("[%s] op not in_use, give up [%d]", __func__, state);
+
+		atomic_dec(&op->op_state);
 
 		if (ret)
 			pr_warn("opid (0x%x) failed, ret(%d)\n",
