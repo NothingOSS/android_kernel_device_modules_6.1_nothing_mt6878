@@ -4,12 +4,13 @@
  *
  */
 
-#ifndef _MTK_DMABUFHEAP_DEBUG_H
-#define _MTK_DMABUFHEAP_DEBUG_H
+#ifndef _MTK_DMABUFHEAP_PRIV_H
+#define _MTK_DMABUFHEAP_PRIV_H
 
 #include <linux/dma-heap.h>
 #include <linux/dma-buf.h>
 #include <linux/dma-resv.h>
+#include <linux/iommu.h>
 
 #include <linux/seq_file.h>
 #include <linux/sched/clock.h>
@@ -43,6 +44,11 @@ extern hang_dump_cb hang_dump_proc;
 
 /* mtk_heap private info, used for dump */
 struct mtk_heap_priv_info {
+	int uncached;
+
+	/* heap specific page pool */
+	struct mtk_dmabuf_page_pool **page_pools;
+
 	/* used for heap dump */
 	void (*show)(struct dma_heap *heap, void *seq_file, int flag);
 
@@ -67,8 +73,16 @@ struct mtk_heap_dev_info {
 	unsigned long           map_attrs;
 };
 
+struct iova_cache_data {
+	struct mtk_heap_dev_info dev_info[MTK_M4U_DOM_NR_MAX];
+	struct sg_table          *mapped_table[MTK_M4U_DOM_NR_MAX];
+	bool			 mapped[MTK_M4U_DOM_NR_MAX];
+	struct list_head	 iova_caches;
+	u64			 tab_id;
+};
+
 /* common function */
-void dmabuf_release_check(const struct dma_buf *dmabuf)
+static void __maybe_unused dmabuf_release_check(const struct dma_buf *dmabuf)
 {
 	dma_addr_t iova = 0x0;
 	const char *device_name = NULL;
@@ -109,4 +123,4 @@ void dmabuf_release_check(const struct dma_buf *dmabuf)
 	dma_resv_unlock(dmabuf->resv);
 }
 
-#endif /* _MTK_DMABUFHEAP_DEBUG_H */
+#endif /* _MTK_DMABUFHEAP_PRIV_H */
