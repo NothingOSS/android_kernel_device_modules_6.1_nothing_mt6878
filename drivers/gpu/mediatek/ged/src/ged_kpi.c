@@ -83,6 +83,9 @@
 #define GED_KPI_FRC_SW_VSYNC_MODE   3
 #define GED_KPI_FRC_MODE_TYPE       int
 
+/* overdue parameter*/
+#define t_gpu_store_count 4
+
 struct GED_KPI_HEAD {
 	int pid;
 	int i32Count;   // number of KPI object still in the KPI pool
@@ -96,6 +99,8 @@ struct GED_KPI_HEAD {
 	long long t_gpu_remained;
 	long long t_cpu_latest;
 	long long t_gpu_latest;   // recent completed GPU time
+	long long t_gpu_latest_store[t_gpu_store_count];   //store 4 completed GPU time
+	int t_gpu_latest_index;   //store array index
 	long long t_gpu_latest_uncompleted;   // largest uncomplete GPU time
 	struct list_head sList;
 	spinlock_t sListLock;
@@ -1246,6 +1251,10 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		if (psHead->last_TimeStamp2 > ullTimeStampTemp)
 			ullTimeStampTemp = psHead->last_TimeStamp2;
 		psHead->t_gpu_latest = psKPI->ullTimeStamp2 - ullTimeStampTemp;
+		psHead->t_gpu_latest_store[psHead->t_gpu_latest_index] = psHead->t_gpu_latest;
+		psHead->t_gpu_latest_index++;
+		if (psHead->t_gpu_latest_index >= t_gpu_store_count)
+			psHead->t_gpu_latest_index = 0;
 
 		/* gpu info to KPI TAG*/
 		psKPI->t_gpu = psHead->t_gpu_latest;
@@ -2054,17 +2063,21 @@ static GED_BOOL ged_kpi_find_riskyBQ_func(unsigned long ulID,
 	if (psHead && info &&
 			psHead->t_gpu_latest > 0 &&
 			psHead->t_gpu_target > 0) {
-		long long t_gpu_latest, t_gpu_latest_uncompleted;
+		long long t_gpu_latest = 0;
+		long long t_gpu_latest_uncompleted = 0;
 		int t_gpu_target;
 		int uncomplete_flag;
 		unsigned long long risk_completed, risk_uncompleted,
 			max_risk_completed, max_risk_uncompleted;
+		int i = 0;
 
 		// aggregate GPU completed count
 		info->total_gpu_completed_count += psHead->gpu_completed_count;
 
 		// calculate risk factor for current BQ
-		t_gpu_latest = psHead->t_gpu_latest;
+		for (i = 0 ; i < t_gpu_store_count ; i++)
+			t_gpu_latest = MAX(psHead->t_gpu_latest_store[i], t_gpu_latest);
+
 		t_gpu_latest_uncompleted = psHead->t_gpu_latest_uncompleted;
 		t_gpu_target = psHead->t_gpu_target;
 		risk_completed = t_gpu_latest * 100 / t_gpu_target;

@@ -157,6 +157,10 @@ static int is_fb_dvfs_triggered;
 static int is_fallback_mode_triggered;
 static unsigned int fallback_duration;   // unit: ms
 
+/* overdue parameter*/
+#define OVERDUE_TH 14
+
+
 void ged_dvfs_last_and_target_cb(int t_gpu_target, int boost_accum_gpu)
 {
 	g_ui32TargetPeriod_us = t_gpu_target;
@@ -1399,8 +1403,12 @@ static bool ged_dvfs_policy(
 						// frame already done, so update once per frame done
 						gx_tb_dvfs_margin += g_tb_dvfs_margin_step;
 				} else {   // in time
-					/* decrease margin flow */
-					if (gpu_completed_count != prev_gpu_completed_count)
+					/* increase margin when t_gpu_uncomplete increase */
+					/* else decrease margin */
+					if (t_gpu_uncomplete > t_gpu_complete &&
+						t_gpu_uncomplete > (t_gpu_target_hd / 2)) {
+						gx_tb_dvfs_margin += g_tb_dvfs_margin_step;
+					} else if (gpu_completed_count != prev_gpu_completed_count)
 						gx_tb_dvfs_margin -= g_tb_dvfs_margin_step;
 				}
 
@@ -1425,7 +1433,8 @@ static bool ged_dvfs_policy(
 		if (policy_state == POLICY_STATE_LB ||
 				policy_state == POLICY_STATE_LB_FALLBACK) {
 			// overwrite state & timeout value set prior to ged_dvfs_run
-			if (uncomplete_flag || api_sync_flag) {
+			if (uncomplete_flag || api_sync_flag ||
+				t_gpu > (t_gpu_target * OVERDUE_TH / 10)) {
 				ged_set_policy_state(POLICY_STATE_LB_FALLBACK);
 				ged_set_backup_timer_timeout(ged_get_fallback_time());
 			} else {
