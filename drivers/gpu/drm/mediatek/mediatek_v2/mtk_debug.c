@@ -2391,6 +2391,8 @@ static bool is_disp_reg(uint32_t addr, char *comp_name, uint32_t comp_name_len)
 	struct drm_crtc *crtc;
 	struct mtk_drm_crtc *mtk_crtc;
 	struct mtk_ddp_comp *comp;
+	struct mtk_ddp *ddp;
+	struct mtk_disp_mutex *mutex;
 	int i, j;
 
 	if (IS_ERR_OR_NULL(drm_dev)) {
@@ -2407,6 +2409,57 @@ static bool is_disp_reg(uint32_t addr, char *comp_name, uint32_t comp_name_len)
 		mtk_crtc = to_mtk_crtc(crtc);
 		if (!crtc->enabled || mtk_crtc->ddp_mode == DDP_NO_USE)
 			continue;
+
+		if (mtk_crtc->config_regs_pa &&
+				addr >= mtk_crtc->config_regs_pa &&
+				addr < mtk_crtc->config_regs_pa + 0x1000) {
+			strncpy(comp_name, "mmsys0_config", comp_name_len - 1);
+			return true;
+		}
+		if (mtk_crtc->side_config_regs_pa &&
+				addr >= mtk_crtc->side_config_regs_pa &&
+				addr < mtk_crtc->side_config_regs_pa + 0x1000) {
+			strncpy(comp_name, "mmsys1_config", comp_name_len - 1);
+			return true;
+		}
+		if (mtk_crtc->ovlsys0_regs_pa &&
+				addr >= mtk_crtc->ovlsys0_regs_pa &&
+				addr < mtk_crtc->ovlsys0_regs_pa + 0x1000) {
+			strncpy(comp_name, "ovlsys0_config", comp_name_len - 1);
+			return true;
+		}
+		if (mtk_crtc->ovlsys1_regs_pa &&
+				addr >= mtk_crtc->ovlsys1_regs_pa &&
+				addr < mtk_crtc->ovlsys1_regs_pa + 0x1000) {
+			strncpy(comp_name, "ovlsys1_config", comp_name_len - 1);
+			return true;
+		}
+		mutex = mtk_crtc->mutex[0];
+		ddp = container_of(mutex, struct mtk_ddp, mutex[mutex->id]);
+		if (ddp->regs_pa &&
+				addr >= ddp->regs_pa &&
+				addr < ddp->regs_pa + 0x1000) {
+			strncpy(comp_name, "disp0_mutex", comp_name_len - 1);
+			return true;
+		}
+		if (ddp->side_regs_pa &&
+				addr >= ddp->side_regs_pa &&
+				addr < ddp->side_regs_pa + 0x1000) {
+			strncpy(comp_name, "disp1_mutex", comp_name_len - 1);
+			return true;
+		}
+		if (ddp->ovlsys0_regs_pa &&
+				addr >= ddp->ovlsys0_regs_pa &&
+				addr < ddp->ovlsys0_regs_pa + 0x1000) {
+			strncpy(comp_name, "ovlsys0_mutex", comp_name_len - 1);
+			return true;
+		}
+		if (ddp->ovlsys1_regs_pa &&
+				addr >= ddp->ovlsys1_regs_pa &&
+				addr < ddp->ovlsys1_regs_pa + 0x1000) {
+			strncpy(comp_name, "ovlsys1_mutex", comp_name_len - 1);
+			return true;
+		}
 
 		for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 			if (is_comp_addr(addr, comp)) {
