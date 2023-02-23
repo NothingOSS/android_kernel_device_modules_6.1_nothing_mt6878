@@ -70,6 +70,12 @@ void _on_job_last_ref(struct mtk_cam_job *job)
 
 	write_lock(&ctrl->list_lock);
 
+	/* check again to avoid refs being increased after check */
+	if (atomic_read(&job->refs)) {
+		write_unlock(&ctrl->list_lock);
+		return;
+	}
+
 	list_del(&job->job_state.list);
 	is_last = list_empty(&ctrl->camsys_state_list);
 
