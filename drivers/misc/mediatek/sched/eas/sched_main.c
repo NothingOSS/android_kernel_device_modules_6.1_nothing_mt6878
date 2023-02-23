@@ -23,6 +23,12 @@
 #include "eas_plus.h"
 #include "sched_sys_common.h"
 #include "sugov/cpufreq.h"
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
+#include "mtk_energy_model/v2/energy_model.h"
+#else
+#include "mtk_energy_model/v1/energy_model.h"
+#endif
+#include "sugov/dsu_interface.h"
 
 #define CREATE_TRACE_POINTS
 #include "eas_trace.h"
@@ -518,6 +524,10 @@ static int __init mtk_scheduler_init(void)
 	sched_pause_init();
 #endif
 
+	if (is_wl_support()) {
+		/* default value for pelt8 */
+		update_pelt_data(939, 12329);
+	}
 
 out_wq:
 	return ret;
