@@ -305,6 +305,62 @@ TRACE_EVENT(sched_find_energy_efficient_cpu,
 		__entry->sys_max_spare_cap_cpu)
 );
 
+TRACE_EVENT(dsu_pwr_cal,
+
+	TP_PROTO(int dst_cpu, unsigned long task_util, unsigned long total_util,
+		unsigned int dsu_bw, unsigned int emi_bw, int temp,
+		unsigned int dsu_freq, unsigned int dsu_volt, unsigned int dsu_dyn_pwr,
+		unsigned int dsu_lkg_pwr, unsigned int mcusys_dyn_pwr,
+		unsigned int dsu_tal_pwr),
+
+	TP_ARGS(dst_cpu, task_util, total_util, dsu_bw, emi_bw, temp, dsu_freq,
+		dsu_volt, dsu_dyn_pwr, dsu_lkg_pwr, mcusys_dyn_pwr, dsu_tal_pwr),
+
+	TP_STRUCT__entry(
+		__field(int, dst_cpu)
+		__field(unsigned long, task_util)
+		__field(unsigned long, total_util)
+		__field(unsigned int, dsu_bw)
+		__field(unsigned int, emi_bw)
+		__field(int, temp)
+		__field(unsigned int, dsu_freq)
+		__field(unsigned int, dsu_volt)
+		__field(unsigned int, dsu_dyn_pwr)
+		__field(unsigned int, dsu_lkg_pwr)
+		__field(unsigned int, mcusys_dyn_pwr)
+		__field(unsigned int, dsu_tal_pwr)
+	),
+
+	TP_fast_assign(
+		__entry->dst_cpu    = dst_cpu;
+		__entry->task_util   = task_util;
+		__entry->total_util     = total_util;
+		__entry->dsu_bw   = dsu_bw;
+		__entry->emi_bw   = emi_bw;
+		__entry->temp    = temp;
+		__entry->dsu_freq   = dsu_freq;
+		__entry->dsu_volt     = dsu_volt;
+		__entry->dsu_dyn_pwr   = dsu_dyn_pwr;
+		__entry->dsu_lkg_pwr   = dsu_lkg_pwr;
+		__entry->mcusys_dyn_pwr   = mcusys_dyn_pwr;
+		__entry->dsu_tal_pwr   = dsu_tal_pwr;
+	),
+
+	TP_printk("dst_cpu=%d task_util=%lu total_util=%lu dsu_bw=%u emi_bw=%u temp=%d dsu_freq=%u dsu_volt=%u dsu_dyn_pwr=%u dsu_lkg_pwr=%u mcusys_dyn_pwr=%u dsu_tal_pwr=%u",
+		__entry->dst_cpu,
+		__entry->task_util,
+		__entry->total_util,
+		__entry->dsu_bw,
+		__entry->emi_bw,
+		__entry->temp,
+		__entry->dsu_freq,
+		__entry->dsu_volt,
+		__entry->dsu_dyn_pwr,
+		__entry->dsu_lkg_pwr,
+		__entry->mcusys_dyn_pwr,
+		__entry->dsu_tal_pwr)
+);
+
 /*
  * Tracepoint for task force migrations.
  */

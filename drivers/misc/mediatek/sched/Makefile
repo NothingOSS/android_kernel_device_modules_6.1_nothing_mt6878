@@ -3,6 +3,7 @@ scheduler-y += eas/sched_main.o
 scheduler-y += eas/sched_sys_common.o
 scheduler-y += eas/eas_plus.o
 scheduler-y += eas/topology.o
+scheduler-y += eas/dsu_pwr.o
 scheduler-y += common.o
 scheduler-y += fair.o
 scheduler-$(CONFIG_MTK_CORE_PAUSE)+= eas/core_pause.o
@@ -19,6 +20,7 @@ else
 	endif
 endif
 cpufreq_sugov_ext-y += sugov/nonlinear_opp_cap.o
+cpufreq_sugov_ext-y += sugov/dsu_interface.o
 cpufreq_sugov_ext-y += common.o
 
 subdir-ccflags-y += -I$(srctree)/kernel/
