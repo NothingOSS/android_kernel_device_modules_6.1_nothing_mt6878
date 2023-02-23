@@ -162,6 +162,7 @@ struct mtk_camsv_device {
 	unsigned int enque_tags;
 	unsigned int first_tag;
 	unsigned int last_tag;
+	unsigned int last_done_tag;
 
 	unsigned int group_handled;
 	unsigned int used_group;

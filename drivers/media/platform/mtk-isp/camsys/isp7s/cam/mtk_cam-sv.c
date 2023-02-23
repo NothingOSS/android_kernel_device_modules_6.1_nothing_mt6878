@@ -115,49 +115,82 @@ static const struct mtk_camsv_tag_param sv_tag_param_3exp_stagger[3] = {
 	},
 };
 
+static unsigned int get_last_done_tag(unsigned int group_tag)
+{
+	unsigned int rst = 0, i;
+
+	for (i = 0; i < MAX_SV_HW_TAGS; i++) {
+		if (group_tag & (1 << i)) {
+			rst = (1 << i);
+			break;
+		}
+	}
+
+	return rst;
+}
+
 static int sv_process_fsm(struct mtk_camsv_device *sv_dev,
 			   struct mtk_camsys_irq_info *irq_info)
 {
 	struct engine_fsm *fsm = &sv_dev->fsm;
-	int done_type, sof_type, i;
+	unsigned int done_type, sof_type, i;
 
 	done_type = irq_info->irq_type & BIT(CAMSYS_IRQ_FRAME_DONE);
 	if (done_type) {
 		int cookie_done;
 		int ret;
 
-		ret = engine_fsm_hw_done(fsm, &cookie_done);
 		for (i = 0; i < MAX_SV_HW_GROUPS; i++) {
 			if (irq_info->done_tags & sv_dev->active_group_info[i])
-				sv_dev->group_handled |= (1 << i);
+				sv_dev->group_handled |= (1 << i) & sv_dev->used_group;
 		}
-		sv_dev->group_handled &= sv_dev->used_group;
 
-		if (ret ||
-			sv_dev->group_handled != sv_dev->used_group) {
-			dev_info(sv_dev->dev, "%s: fake done or not all group done(frame_no:%d_%d/group:0x%x_0x%x/cookie_done:%d)\n",
-				 __func__,
-				 irq_info->frame_idx,
-				 irq_info->frame_idx_inner,
-				 sv_dev->used_group,
-				 sv_dev->group_handled,
-				 cookie_done);
+		if (irq_info->done_tags & sv_dev->last_done_tag) {
+			ret = engine_fsm_hw_done(fsm, &cookie_done);
+			if (ret ||
+				sv_dev->group_handled != sv_dev->used_group) {
+				dev_info(sv_dev->dev, "%s: fake done or not all group done(frame_no:%d_%d/group:0x%x_0x%x/cookie_done:%d)\n",
+					__func__,
+					irq_info->frame_idx,
+					irq_info->frame_idx_inner,
+					sv_dev->used_group,
+					sv_dev->group_handled,
+					cookie_done);
+				irq_info->irq_type &= ~done_type;
+				irq_info->cookie_done = 0;
+			} else {
+				irq_info->cookie_done = cookie_done;
+				sv_dev->group_handled = 0;
+			}
+		} else {
 			irq_info->irq_type &= ~done_type;
 			irq_info->cookie_done = 0;
-		} else
-			irq_info->cookie_done = cookie_done;
+		}
 	}
 
 	sof_type = irq_info->irq_type & BIT(CAMSYS_IRQ_FRAME_START);
 	if (sof_type) {
+		/* when first tag comes: 1. update used group 2. update last done tag */
 		if (irq_info->sof_tags & sv_dev->first_tag) {
 			for (i = 0; i < MAX_SV_HW_GROUPS; i++) {
-				if (sv_dev->enque_tags & sv_dev->active_group_info[i])
+				if (sv_dev->enque_tags & sv_dev->active_group_info[i]) {
 					sv_dev->used_group |= (1 << i);
+					sv_dev->last_done_tag =
+						get_last_done_tag(sv_dev->active_group_info[i]);
+				}
 			}
-			engine_fsm_sof(fsm, irq_info->frame_idx_inner);
 		} else
 			irq_info->irq_type &= ~sof_type;
+
+		/* update fsm */
+		if (irq_info->sof_tags & sv_dev->last_done_tag) {
+			for (i = 0; i < MAX_SV_HW_GROUPS; i++) {
+				if (sv_dev->last_done_tag & sv_dev->active_group_info[i]) {
+					engine_fsm_sof(&sv_dev->fsm, irq_info->frame_idx_inner);
+					break;
+				}
+			}
+		}
 	}
 
 	return 0;
@@ -682,6 +715,11 @@ int mtk_cam_sv_dev_config(struct mtk_camsv_device *sv_dev)
 {
 	engine_fsm_reset(&sv_dev->fsm);
 	sv_dev->cq_ref = NULL;
+
+	sv_dev->enque_tags = 0;
+	sv_dev->first_tag = 0;
+	sv_dev->last_tag = 0;
+	sv_dev->last_done_tag = 0;
 
 	sv_dev->group_handled = 0;
 	sv_dev->used_group = 0;
