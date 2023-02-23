@@ -163,7 +163,7 @@ struct mtk_smi_larb_gen {
 	struct mtk_smi_reg_pair *misc;
 };
 
-#define SMI_MAX_CG_CTRL_NR		(6)
+#define SMI_MAX_CG_CTRL_NR		(7)
 struct mtk_smi {
 	struct device			*dev;
 	int				nr_clks;
