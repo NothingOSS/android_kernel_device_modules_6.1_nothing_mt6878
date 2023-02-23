@@ -229,11 +229,16 @@ static int fill_buffer_info(struct system_heap_buffer *buffer,
 		return ret;
 	}
 
-	cache_data = kzalloc(sizeof(*cache_data), GFP_KERNEL);
-	if (!cache_data)
-		return -ENOMEM;
-	cache_data->tab_id = tab_id;
-	list_add(&cache_data->iova_caches, &buffer->iova_caches);
+	if (!cache_data) {
+		cache_data = kzalloc(sizeof(*cache_data), GFP_KERNEL);
+		if (!cache_data) {
+			kfree(new_table);
+			return -ENOMEM;
+		}
+		cache_data->tab_id = tab_id;
+		list_add(&cache_data->iova_caches, &buffer->iova_caches);
+	}
+
 	cache_data->mapped_table[dom_id] = new_table;
 	cache_data->mapped[dom_id] = true;
 	cache_data->dev_info[dom_id].dev = a->dev;
