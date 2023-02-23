@@ -108,8 +108,8 @@ struct mtk_mmqos {
 	struct proc_dir_entry *proc;
 };
 
-u32 mmqos_state = MMQOS_ENABLE;
-u32 log_level = 1 << log_vcp_pwr | 1 << log_ipi;
+u32 mmqos_state;
+u32 log_level;
 
 static struct mtk_mmqos *gmmqos;
 static struct mmqos_hrt *g_hrt;
@@ -1316,13 +1316,11 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 
 	mmqos->max_ratio = mmqos_desc->max_ratio;
 
-	mmqos_state = mmqos_desc->mmqos_state ?
-			mmqos_desc->mmqos_state : mmqos_state;
-	pr_notice("[mmqos] mmqos probe state: %d", mmqos_state);
-	if (of_property_read_bool(pdev->dev.of_node, "disable-mmqos")) {
-		mmqos_state = MMQOS_DISABLE;
-		pr_notice("[mmqos] mmqos init disable: %d", mmqos_state);
-	}
+	of_property_read_u32(pdev->dev.of_node, "mmqos-state", &mmqos_state);
+	pr_notice("[mmqos] mmqos probe state: %#x\n", mmqos_state);
+
+	of_property_read_u32(pdev->dev.of_node, "mmqos-log-level", &log_level);
+	pr_notice("[mmqos] mmqos log level: %#x\n", log_level);
 
 	freq_mode = mmqos_desc->freq_mode ? mmqos_desc->freq_mode : freq_mode;
 	MMQOS_DBG("freq_mode:%d", freq_mode);

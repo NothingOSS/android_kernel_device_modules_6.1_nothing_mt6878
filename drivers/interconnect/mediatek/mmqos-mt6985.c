@@ -975,7 +975,6 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6985 = {
 			HRT_NONE, HRT_CAM, HRT_NONE, HRT_DISP_BY_LARB },
 	},
 	//.dual_pipe_larbs = { SLAVE_LARB(1), SLAVE_LARB(20) },
-	.mmqos_state = MMQOS_ENABLE | COMM_OSTDL_ENABLE | VCP_ENABLE,
 	.report_bw_larbs = { SLAVE_LARB(9), SLAVE_LARB(10),
 			SLAVE_LARB(15), SLAVE_LARB(22),
 			SLAVE_LARB(4), SLAVE_LARB(5),
