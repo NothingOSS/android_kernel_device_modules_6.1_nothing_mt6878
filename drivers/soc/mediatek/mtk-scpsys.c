@@ -831,10 +831,13 @@ static int scpsys_md_power_on(struct generic_pm_domain *genpd)
 	if (ret)
 		goto err_clk;
 
-	/* for md subsys, reset_b is prior to power_on bit */
 	val = readl(ctl_addr);
-	val |= PWR_RST_B_BIT;
-	writel(val, ctl_addr);
+
+	/* for md subsys, reset_b is prior to power_on bit */
+	if (!MTK_SCPD_CAPS(scpd, MTK_SCPD_REMOVE_MD_RSTB)) {
+		val |= PWR_RST_B_BIT;
+		writel(val, ctl_addr);
+	}
 
 	/* subsys power on */
 	val |= PWR_ON_BIT;
@@ -911,9 +914,10 @@ static int scpsys_md_power_off(struct generic_pm_domain *genpd)
 
 	/* for md subsys, the isolation is prior to RST_B operation */
 	scpsys_extb_iso_up(scpd);
-
-	val &= ~PWR_RST_B_BIT;
-	writel(val, ctl_addr);
+	if (!MTK_SCPD_CAPS(scpd, MTK_SCPD_REMOVE_MD_RSTB)) {
+		val &= ~PWR_RST_B_BIT;
+		writel(val, ctl_addr);
+	}
 
 	scpsys_clk_disable(scpd->clk, MAX_CLKS);
 
