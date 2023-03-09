@@ -106,14 +106,15 @@ enum gpufreq_config_target {
 	CONFIG_IMAX_GPU         = 6,
 	CONFIG_IMAX_STACK       = 7,
 	CONFIG_IMAX_SRAM        = 8,
-	CONFIG_DYN_GPU          = 9,
-	CONFIG_DYN_STACK        = 10,
-	CONFIG_DYN_SRAM_GPU     = 11,
-	CONFIG_DYN_SRAM_STACK   = 12,
-	CONFIG_IPS              = 13,
-	CONFIG_FAKE_MTCMOS_CTRL = 14,
-	CONFIG_MCUETM_CLK       = 15,
-	CONFIG_PTP3             = 16,
+	CONFIG_PMAX_STACK       = 9,
+	CONFIG_DYN_GPU          = 10,
+	CONFIG_DYN_STACK        = 11,
+	CONFIG_DYN_SRAM_GPU     = 12,
+	CONFIG_DYN_SRAM_STACK   = 13,
+	CONFIG_IPS              = 14,
+	CONFIG_FAKE_MTCMOS_CTRL = 15,
+	CONFIG_MCUETM_CLK       = 16,
+	CONFIG_PTP3             = 17,
 };
 
 enum gpufreq_config_value {
@@ -229,6 +230,7 @@ struct gpufreq_gpm3_info {
 	int ceiling;
 	unsigned int i_stack;
 	unsigned int i_sram;
+	unsigned int p_stack;
 };
 
 struct gpufreq_reg_info {
