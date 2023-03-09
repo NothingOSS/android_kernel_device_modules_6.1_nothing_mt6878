@@ -40,6 +40,7 @@ enum {
 	HW_ID_AFVDD1,
 	HW_ID_AVDD1,
 	HW_ID_AVDD2,
+	HW_ID_AVDD3,
 	HW_ID_PDN,
 	HW_ID_RST,
 	HW_ID_MCLK,
@@ -64,6 +65,7 @@ enum {
 	"HW_ID_AFVDD1", \
 	"HW_ID_AVDD1", \
 	"HW_ID_AVDD2", \
+	"HW_ID_AVDD3", \
 	"HW_ID_PDN", \
 	"HW_ID_RST", \
 	"HW_ID_MCLK", \

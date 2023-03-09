@@ -78,6 +78,8 @@ enum {
 	STATE_AVDD1_ON,
 	STATE_AVDD2_OFF,
 	STATE_AVDD2_ON,
+	STATE_AVDD3_OFF,
+	STATE_AVDD3_ON,
 	STATE_MCLK1_OFF,
 	STATE_MCLK1_2MA,
 	STATE_MCLK1_4MA,
@@ -123,6 +125,8 @@ enum {
 	"avdd1_on", \
 	"avdd2_off", \
 	"avdd2_on", \
+	"avdd3_off", \
+	"avdd3_on", \
 	"mclk1_off", \
 	"mclk1_2mA", \
 	"mclk1_4mA", \
@@ -148,6 +152,7 @@ enum {
 	REGULATOR_AFVDD1,
 	REGULATOR_AVDD1,
 	REGULATOR_AVDD2,
+	REGULATOR_AVDD3,
 	REGULATOR_DVDD1,
 	REGULATOR_RST,
 	REGULATOR_MAXCNT,
@@ -161,6 +166,7 @@ enum {
 	"afvdd1", \
 	"avdd1", \
 	"avdd2", \
+	"avdd3", \
 	"dvdd1", \
 	"rst", \
 
