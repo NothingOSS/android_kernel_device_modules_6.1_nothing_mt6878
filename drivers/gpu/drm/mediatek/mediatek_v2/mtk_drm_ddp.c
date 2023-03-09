@@ -18351,6 +18351,7 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 
 #ifndef DRM_BYPASS_PQ
 			/* oddmr should be first */
+			mtk_disp_pq_on_start_of_frame();
 			irq_debug[5] = sched_clock();
 			disp_oddmr_on_start_of_frame();
 			irq_debug[6] = sched_clock();

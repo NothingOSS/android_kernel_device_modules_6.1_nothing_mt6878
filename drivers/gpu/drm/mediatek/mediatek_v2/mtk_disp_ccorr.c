@@ -73,7 +73,7 @@ bool disp_aosp_ccorr;
 static bool g_prim_ccorr_force_linear;
 static bool g_prim_ccorr_pq_nonlinear;
 static bool g_is_aibld_cv_mode;
-static atomic_t g_ccorr_irq_en = ATOMIC_INIT(0);
+atomic_t g_ccorr_irq_en = ATOMIC_INIT(0);
 
 #define index_of_ccorr(module) ((module == DDP_COMPONENT_CCORR0) ? 0 : \
 		((module == DDP_COMPONENT_CCORR1) ? 1 : \
@@ -162,8 +162,8 @@ static atomic_t g_ccorr_get_irq = ATOMIC_INIT(0);
 
 /* FOR TRANSITION */
 static DEFINE_SPINLOCK(g_pq_bl_change_lock);
-static int g_old_pq_backlight;
-static int g_pq_backlight;
+int g_old_pq_backlight;
+int g_pq_backlight;
 static int g_pq_backlight_db;
 static atomic_t g_ccorr_is_init_valid = ATOMIC_INIT(0);
 

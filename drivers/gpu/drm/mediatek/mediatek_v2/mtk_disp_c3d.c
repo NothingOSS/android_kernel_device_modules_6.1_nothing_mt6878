@@ -72,7 +72,7 @@ static atomic_t g_c3d_force_sram_apb[HW_ENGINE_NUM] = {
 			ATOMIC_INIT(0), ATOMIC_INIT(0) };
 
 static atomic_t g_c3d_get_irq = ATOMIC_INIT(0);
-static atomic_t g_c3d_eventctl = ATOMIC_INIT(0);
+atomic_t g_c3d_eventctl = ATOMIC_INIT(0);
 static DECLARE_WAIT_QUEUE_HEAD(g_c3d_get_irq_wq);
 
 // For GCE Program
@@ -709,9 +709,6 @@ int mtk_drm_ioctl_c3d_eventctl(struct drm_device *dev, void *data,
 
 	atomic_set(&g_c3d_eventctl, *enabled);
 	C3DFLOW_LOG("%d\n", atomic_read(&g_c3d_eventctl));
-
-	if (atomic_read(&g_c3d_eventctl) == 1)
-		wake_up_interruptible(&g_c3d_get_irq_wq);
 
 	if (*enabled)
 		mtk_crtc_check_trigger(comp->mtk_crtc, true, true);

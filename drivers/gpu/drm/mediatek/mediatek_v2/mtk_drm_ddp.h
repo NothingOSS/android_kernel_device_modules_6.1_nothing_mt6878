@@ -127,6 +127,8 @@ struct mtk_mmsys_reg_data {
 	const unsigned int *dispsys_map;
 };
 
+extern void mtk_disp_pq_on_start_of_frame(void);
+
 #define MT6983_DUMMY_REG_CNT 85
 extern struct dummy_mapping mt6983_dispsys_dummy_register[MT6983_DUMMY_REG_CNT];
 
