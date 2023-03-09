@@ -51,10 +51,10 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 {
 	enum table_item_num {
 		send_item_num = 3,
-		recv_item_num = 4
+		recv_item_num = 5
 	};
 	int ret;
-	u32 i, mbox_id, recv_opt, pin_name_size, cnt_elems;
+	u32 i, mbox_id, recv_opt, cb_opt, pin_name_size, cnt_elems;
 
 	gpueb_mboxdev.name = GPUEB_MBOXDEV_NAME;
 
@@ -194,8 +194,9 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 			gpueb_pr_debug("Cannot get mbox id (%d):%d\n", i, __LINE__);
 			return false;
 		}
-		// Because mbox and recv_opt is a bit-field
+		/* Because mbox is a bit-field */
 		gpueb_mbox_pin_send[i].mbox = mbox_id;
+
 		ret = of_property_read_u32_index(pdev->dev.of_node,
 				"send-table",
 				i * send_item_num + 2,
@@ -231,9 +232,9 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 			gpueb_pr_debug("Cannot get mbox id (%d):%d\n", i, __LINE__);
 			return false;
 		}
-
-		// Because mbox and recv_opt(0:receive ,1: response) is a bit-field
+		/* Because mbox is a bit-field */
 		gpueb_mbox_pin_recv[i].mbox = mbox_id;
+
 		ret = of_property_read_u32_index(pdev->dev.of_node,
 				"recv-table",
 				i * recv_item_num + 2,
@@ -242,6 +243,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 			gpueb_pr_debug("Cannot get pin size (%d):%d\n", i, __LINE__);
 			return false;
 		}
+
 		ret = of_property_read_u32_index(pdev->dev.of_node,
 				"recv-table",
 				i * recv_item_num + 3,
@@ -250,8 +252,19 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 			gpueb_pr_debug("Cannot get recv opt (%d):%d\n", i, __LINE__);
 			return false;
 		}
-		/* because mbox and recv_opt is a bit-field */
+		/* because recv_opt(0:receive ,1: response) is a bit-field */
 		gpueb_mbox_pin_recv[i].recv_opt = recv_opt;
+
+		ret = of_property_read_u32_index(pdev->dev.of_node,
+				"recv-table",
+				i * recv_item_num + 4,
+				&cb_opt);
+		if (ret) {
+			gpueb_pr_debug("Cannot get callback opt (%d):%d\n", i, __LINE__);
+			return false;
+		}
+		/* because cb_ctx_opt(0:isr context, 1:process context) is a bit-field */
+		gpueb_mbox_pin_recv[i].cb_ctx_opt = cb_opt;
 	}
 
 	return true;
