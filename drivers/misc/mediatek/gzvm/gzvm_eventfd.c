@@ -287,6 +287,7 @@ gzvm_irqfd_assign(struct gzvm *gzvm, struct gzvm_irqfd *args)
 
 	irqfd->gzvm = gzvm;
 	irqfd->gsi = args->gsi;
+	irqfd->resampler = NULL;
 	INIT_LIST_HEAD(&irqfd->list);
 	INIT_WORK(&irqfd->shutdown, irqfd_shutdown);
 
