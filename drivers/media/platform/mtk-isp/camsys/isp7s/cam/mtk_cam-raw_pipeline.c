@@ -244,7 +244,8 @@ static void mtk_cam_get_work_buf_num(struct mtk_cam_resource_v2 *user_ctrl)
 
 	/* TODO: check pure raw fmt for DC */
 	r->img_wbuf_size =
-		mtk_cam_dmao_xsize(s->width, s->code, 4) * s->height;
+		mtk_cam_dmao_xsize(s->width,
+			sensor_mbus_to_ipi_fmt(s->code), 4) * s->height;
 	r->img_wbuf_num = buf_require;
 }
 

@@ -1049,6 +1049,7 @@ static int apply_cam_switch_stagger(struct mtk_cam_job *job)
 	struct mtk_raw_device *raw_dev = NULL;
 	int type = job->switch_type;
 	bool stagger_mode_updated = false;
+	bool is_dc = is_dc_mode(job);
 
 	if (raw_id < 0)
 		return -1;
@@ -1062,7 +1063,7 @@ static int apply_cam_switch_stagger(struct mtk_cam_job *job)
 			__func__, ctx->stream_id, job->frame_seq_no);
 	} else if (type == EXPOSURE_CHANGE_1_to_2 ||
 		type == EXPOSURE_CHANGE_1_to_3) {
-		stagger_enable(raw_dev);
+		stagger_enable(raw_dev, is_dc);
 		stagger_mode_updated = true;
 		dev_info(cam->dev,
 			"[%s] ctx:%d, job:0x%x, stagger_enable\n",
@@ -1662,9 +1663,10 @@ _job_pack_subsample(struct mtk_cam_job *job,
 int master_raw_set_stagger(struct device *dev, struct mtk_cam_job *job)
 {
 	struct mtk_raw_device *raw;
+	bool is_dc = is_dc_mode(job);
 
 	raw = dev_get_drvdata(dev);
-	stagger_enable(raw);
+	stagger_enable(raw, is_dc);
 
 	return 0;
 }

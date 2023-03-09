@@ -121,7 +121,7 @@ struct mtk_ae_debug_data {
 void initialize(struct mtk_raw_device *dev, int is_slave,
 		struct engine_callback *cb);
 void subsample_enable(struct mtk_raw_device *dev, int ratio);
-void stagger_enable(struct mtk_raw_device *dev);
+void stagger_enable(struct mtk_raw_device *dev, bool is_dc);
 void stagger_disable(struct mtk_raw_device *dev);
 void update_scq_start_period(struct mtk_raw_device *dev, int scq_ms);
 void apply_cq(struct mtk_raw_device *dev,

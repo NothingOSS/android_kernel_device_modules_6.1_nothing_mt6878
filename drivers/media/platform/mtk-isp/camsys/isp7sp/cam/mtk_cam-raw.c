@@ -271,12 +271,13 @@ void subsample_enable(struct mtk_raw_device *dev, int subsample_ratio)
 }
 
 /* TODO: cq_set_stagger_mode(dev, 0/1) */
-void stagger_enable(struct mtk_raw_device *dev)
+void stagger_enable(struct mtk_raw_device *dev, bool is_dc)
 {
 	u32 val;
 
 	val = readl_relaxed(dev->base + REG_CAMCQ_CQ_EN);
 	SET_FIELD(&val, CAMCQ_SCQ_STAGGER_MODE, 1);
+	SET_FIELD(&val, CAMCQ_SCQ_INVLD_CLR_CHK, is_dc ? 1 : 0);
 	writel_relaxed(val, dev->base + REG_CAMCQ_CQ_EN);
 
 	if (CAM_DEBUG_ENABLED(RAW_INT))
@@ -291,6 +292,7 @@ void stagger_disable(struct mtk_raw_device *dev)
 
 	val = readl_relaxed(dev->base + REG_CAMCQ_CQ_EN);
 	SET_FIELD(&val, CAMCQ_SCQ_STAGGER_MODE, 0);
+	SET_FIELD(&val, CAMCQ_SCQ_INVLD_CLR_CHK, 0);
 	writel_relaxed(val, dev->base + REG_CAMCQ_CQ_EN);
 
 	if (CAM_DEBUG_ENABLED(RAW_INT))
@@ -870,7 +872,8 @@ static irqreturn_t mtk_irq_raw(int irq, void *data)
 
 	/* Frame start */
 	if (irq_status & FBIT(CAMCTL_TG_SOF_INT_ST) ||
-	    dcif_status & FBIT(CAMCTL_DCIF_LAST_SOF_INT_ST)) {
+		dcif_status & FBIT(CAMCTL_DCIF_LAST_SOF_INT_ST) ||
+		dcif_status & FBIT(CAMCTL_DCIF_LAST_CQ_START_INT_ST)) {
 		irq_info.irq_type |= 1 << CAMSYS_IRQ_FRAME_START;
 		raw_dev->sof_count++;
 		raw_dev->cur_vsync_idx = 0;

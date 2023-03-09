@@ -110,7 +110,7 @@ int get_hw_scenario(struct mtk_cam_job *job)
 				MTKCAM_IPI_HW_PATH_STAGGER;
 		else
 			hard_scenario = is_dc ?
-				MTKCAM_IPI_HW_PATH_DC :
+				MTKCAM_IPI_HW_PATH_DC_STAGGER :
 				MTKCAM_IPI_HW_PATH_ON_THE_FLY;
 		break;
 	case MTK_CAM_SCEN_MSTREAM:
