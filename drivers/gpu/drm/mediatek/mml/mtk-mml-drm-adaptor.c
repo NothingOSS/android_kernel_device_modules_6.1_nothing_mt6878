@@ -986,7 +986,6 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 	if (submit->job && ctx->timeline &&
 		submit->info.mode != MML_MODE_RACING &&
 		submit->info.mode != MML_MODE_DIRECT_LINK &&
-		cfg->irq &&
 		mtk_sync_fence_create(ctx->timeline, &fence) >= 0) {
 		task->job.fence = fence.fence;
 		task->fence = sync_file_get_fence(task->job.fence);
