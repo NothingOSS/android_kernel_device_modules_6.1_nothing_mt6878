@@ -521,6 +521,8 @@ struct DISP_AAL_TRIG_STATE {
 
 #define DRM_MTK_PQ_FRAME_CONFIG 0x5c
 
+#define DRM_MTK_DISP_PQ_GET_IRQ 0x5d
+
 /* C3D */
 #define DISP_C3D_1DLUT_SIZE 32
 
@@ -1503,6 +1505,16 @@ struct mtk_drm_panels_info {
 	unsigned int *panel_id;
 };
 
+enum mtk_disp_pq_irq_trig {
+	TRIG_BY_CCORR = 1,
+	TRIG_BY_C3D   = 2,
+};
+
+struct mtk_disp_pq_irq_data {
+	__u32 backlight;
+	enum mtk_disp_pq_irq_trig irq_src;
+};
+
 #define DRM_IOCTL_MTK_GEM_CREATE	DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_MTK_GEM_CREATE, struct drm_mtk_gem_create)
 
@@ -1686,6 +1698,9 @@ struct mtk_drm_panels_info {
 
 #define DRM_IOCTL_MTK_PQ_FRAME_CONFIG    DRM_IOWR(DRM_COMMAND_BASE + \
 				DRM_MTK_PQ_FRAME_CONFIG, struct mtk_drm_pq_config_ctl)
+
+#define DRM_IOCTL_MTK_DISP_PQ_GET_IRQ    DRM_IOWR(DRM_COMMAND_BASE + \
+			DRM_MTK_DISP_PQ_GET_IRQ, struct mtk_disp_pq_irq_data)
 
 
 /* AAL IOCTL */
