@@ -6,11 +6,15 @@
 #include "ccci_fsm_internal.h"
 #include "modem_sys.h"
 #include "md_sys1_platform.h"
+#include <soc/mediatek/emi.h>
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #include <mt-plat/aee.h>
 #endif
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 #include <linux/soc/mediatek/devapc_public.h>
+#endif
+#if IS_ENABLED(CONFIG_MTK_EMI)
+#include <soc/mediatek/smpu.h>
 #endif
 
 static int s_is_normal_mdee;
@@ -390,8 +394,10 @@ void fsm_md_normal_ee_handler(struct ccci_fsm_ctl *ctl)
 	 * so we do it here
 	 */
 	ccci_md_exception_handshake(MD_EX_CCIF_TIMEOUT);
-#ifdef ENABLE_EMIMPU_CB
+#if IS_ENABLED(CONFIG_MTK_EMI)
+	CCCI_NORMAL_LOG(0, FSM, "normal_ee_handler mtk_clear_md_violation\n");
 	mtk_clear_md_violation();
+	smpu_clear_md_violation();
 #endif
 	count = 0;
 	while (count < MD_EX_REC_OK_TIMEOUT/EVENT_POLL_INTEVAL) {

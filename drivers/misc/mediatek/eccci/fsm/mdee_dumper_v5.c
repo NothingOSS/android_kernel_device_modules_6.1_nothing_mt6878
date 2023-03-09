@@ -10,6 +10,9 @@
 #include <mt-plat/aee.h>
 #endif
 #include <soc/mediatek/emi.h>
+#if IS_ENABLED(CONFIG_MTK_EMI)
+#include <soc/mediatek/smpu.h>
+#endif
 
 #include "mdee_dumper_v5.h"
 #include "ccci_config.h"
@@ -191,14 +194,14 @@ static void mdee_output_debug_info_to_buf(struct ccci_fsm_ee *mdee,
 				return;
 			}
 			val = snprintf(ex_info, EE_BUF_LEN_UMOLY,
-			"%s\n%s\nMD base = 0x%08X\n\n", ex_info_temp,
-			mdee->ex_mpu_string,
+			"%s\n%s\n%s\nMD base = 0x%08X\n\n", ex_info_temp,
+			mdee->ex_mpu_string, mdee->ex_smpu_string,
 			(unsigned int)mem_layout->md_bank0.base_ap_view_phy);
 			if (val < 0 || val >= EE_BUF_LEN_UMOLY)
 				CCCI_ERROR_LOG(0, FSM,
 					"%s-%d:snprintf fail,val = %d\n", __func__, __LINE__, val);
-			memset(mdee->ex_mpu_string, 0x0,
-				sizeof(mdee->ex_mpu_string));
+			memset(mdee->ex_mpu_string, 0x0, sizeof(mdee->ex_mpu_string));
+			memset(mdee->ex_smpu_string, 0x0, sizeof(mdee->ex_smpu_string));
 		}
 		CCCI_ERROR_LOG(0, FSM,
 			"fatal error code 1,2,3 = [0x%08X, 0x%08X, 0x%08X]%s\n",
@@ -907,6 +910,35 @@ static void mdee_dumper_v5_emimpu_callback(
 	return;
 }
 
+static void mdee_dumper_v5_smpu_callback(const char *vio_msg)
+{
+	int md_state;
+	struct ccci_fsm_ctl *ctl = ccci_fsm_entries;
+	struct ccci_modem *md = ccci_get_modem();
+
+	if (vio_msg)
+		CCCI_MEM_LOG_TAG(0, FSM, "%s: %s\n", __func__, vio_msg);
+	else {
+		CCCI_ERROR_LOG(0, FSM, "%s: msg is null\n", __func__);
+		return;
+	}
+
+	if (md) {
+		md_state = ccci_fsm_get_md_state();
+		if (md_state != INVALID && md_state != GATED &&
+			md_state != WAITING_TO_STOP) {
+			if (md->ops->dump_info)
+				md->ops->dump_info(md, DUMP_FLAG_REG, NULL, 0);
+		}
+	}
+
+	if (ctl) {
+		memset(ctl->ee_ctl.ex_smpu_string, 0x0,
+			sizeof(ctl->ee_ctl.ex_smpu_string));
+		scnprintf(&ctl->ee_ctl.ex_smpu_string[0],
+			MD_EX_MPU_STR_LEN, "%s\n", vio_msg);
+	}
+}
 #endif
 
 int mdee_dumper_v5_alloc(struct ccci_fsm_ee *mdee)
@@ -914,12 +946,14 @@ int mdee_dumper_v5_alloc(struct ccci_fsm_ee *mdee)
 	struct mdee_dumper_v5 *dumper = NULL;
 
 #if IS_ENABLED(CONFIG_MTK_EMI)
-	if (mtk_emimpu_md_handling_register(
-			&mdee_dumper_v5_emimpu_callback))
-		CCCI_ERROR_LOG(0, FSM,
-			"%s: mtk_emimpu_md_handling_register fail\n",
+	if (mtk_emimpu_md_handling_register(&mdee_dumper_v5_emimpu_callback))
+		CCCI_ERROR_LOG(0, FSM, "%s: mtk_emimpu_md_handling_register fail\n",
+			__func__);
+	if (mtk_smpu_md_handling_register(&mdee_dumper_v5_smpu_callback))
+		CCCI_ERROR_LOG(0, FSM, "%s: mtk_smpu_md_handling_register fail\n",
 			__func__);
 #endif
+
 	/* Allocate port_proxy obj and set all member zero */
 	dumper = kzalloc(sizeof(struct mdee_dumper_v5), GFP_KERNEL);
 	if (dumper == NULL) {

@@ -201,6 +201,7 @@ struct ccci_fsm_ee {
 	char ex_mpu_string[MD_EX_MPU_STR_LEN];
 	char ex_start_time[MD_EX_START_TIME_LEN];
 	unsigned int mdlog_dump_done;
+	char ex_smpu_string[MD_EX_MPU_STR_LEN];
 };
 
 struct ccci_fsm_monitor {

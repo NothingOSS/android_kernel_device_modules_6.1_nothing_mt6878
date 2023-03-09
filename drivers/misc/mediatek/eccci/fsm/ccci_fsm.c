@@ -15,6 +15,9 @@
 #endif
 #include <linux/sched/clock.h> /* local_clock() */
 #include <soc/mediatek/emi.h>
+#if IS_ENABLED(CONFIG_MTK_EMI)
+#include <soc/mediatek/smpu.h>
+#endif
 
 #include "ccci_fsm_internal.h"
 #include "ccci_fsm_sys.h"
@@ -1286,6 +1289,7 @@ static void fsm_routine_start(struct ccci_fsm_ctl *ctl,
 #if IS_ENABLED(CONFIG_MTK_EMI)
 	CCCI_NORMAL_LOG(0, FSM, "mtk_clear_md_violation\n");
 	mtk_clear_md_violation();
+	smpu_clear_md_violation();
 #endif
 	ret = ccci_md_start();
 	if (ret)
