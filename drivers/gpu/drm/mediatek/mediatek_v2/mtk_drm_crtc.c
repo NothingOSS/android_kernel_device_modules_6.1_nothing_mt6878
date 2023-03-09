@@ -4301,6 +4301,22 @@ void mtk_drm_crtc_mode_check(struct drm_crtc *crtc,
 		mtk_crtc->mode_chg = true;
 }
 
+void mtk_crtc_skip_merge_trigger(struct mtk_drm_crtc *mtk_crtc)
+{
+#define NUM_SKIP_FRAME 2
+	struct cmdq_pkt *handle;
+
+	handle = cmdq_pkt_create(
+			mtk_crtc->gce_obj.client[CLIENT_EVENT_LOOP]);
+
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		mtk_get_gce_backup_slot_pa(mtk_crtc,
+		DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE), NUM_SKIP_FRAME, ~0);
+
+	cmdq_pkt_flush(handle);
+	cmdq_pkt_destroy(handle);
+}
+
 void mtk_crtc_load_round_corner_pattern(struct drm_crtc *crtc,
 					struct cmdq_pkt *handle);
 
@@ -4877,6 +4893,8 @@ static void mtk_crtc_msync2_switch_begin(struct drm_crtc *crtc)
 	if (mtk_crtc_with_trigger_loop(crtc) && mtk_crtc_with_event_loop(crtc)) {
 		mtk_crtc_stop_trig_loop(crtc);
 		mtk_crtc_stop_event_loop(crtc);
+
+		mtk_crtc_skip_merge_trigger(mtk_crtc);
 
 		mtk_crtc_start_event_loop(crtc);
 		mtk_crtc_start_trig_loop(crtc);
@@ -7259,6 +7277,7 @@ void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 	unsigned long crtc_id = (unsigned long)drm_crtc_index(crtc);
 	unsigned int cur_fps = 0;
 	unsigned int dsi_pll_check_off_offset = 500;
+	unsigned int skip_merge_trigger_offset = 1000;
 	unsigned int v_idle_power_off_offset = 300;
 	unsigned int merge_trigger_offset = 150;
 	unsigned int prefetch_te_offset = 150;
@@ -7375,8 +7394,31 @@ void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 		return;
 	}
 
+	lop.reg = true;
+	lop.idx = var1;
+	rop.reg = false;
+	rop.value = 0;
+
+	cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base,
+		mtk_get_gce_backup_slot_pa(mtk_crtc,
+		DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE), var1);
+
+	/*mark condition jump */
+	inst_condi_jump = cmdq_handle->cmd_buf_size;
+	cmdq_pkt_assign_command(cmdq_handle, reg_jump, 0);
+
+	cmdq_pkt_cond_jump_abs(cmdq_handle, reg_jump, &lop, &rop,
+		CMDQ_NOT_EQUAL);
+
+	/* if condition false, will jump here */
 	cmdq_pkt_clear_event(cmdq_handle,
 		mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_TE]);
+
+	/* if condition true, will jump curreent postzion */
+	inst = cmdq_pkt_get_va_by_offset(cmdq_handle,  inst_condi_jump);
+	jump_pa = cmdq_pkt_get_pa_by_offset(cmdq_handle,
+				cmdq_handle->cmd_buf_size);
+	*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
 
 	cmdq_pkt_clear_event(cmdq_handle,
 			mtk_crtc->gce_obj.event[EVENT_TE]);
@@ -7433,6 +7475,28 @@ void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 		*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
 	}
 
+	if (mtk_crtc->pre_te_cfg.merge_trigger_en == true) {
+		cmdq_pkt_sleep(cmdq_handle,
+			CMDQ_US_TO_TICK(skip_merge_trigger_offset), CMDQ_GPR_R07);
+
+		rop.reg = false;
+		rop.value = 0;
+
+		cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base,
+			mtk_get_gce_backup_slot_pa(mtk_crtc,
+			DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE), var1);
+
+		/*mark condition jump */
+		inst_condi_jump = cmdq_handle->cmd_buf_size;
+		cmdq_pkt_assign_command(cmdq_handle, reg_jump, 0);
+
+		cmdq_pkt_cond_jump_abs(cmdq_handle, reg_jump, &lop, &rop,
+			CMDQ_NOT_EQUAL);
+
+		/* if condition false, will jump here */
+		frame_time -= skip_merge_trigger_offset;
+	}
+
 	/* set VIDLE_POWER_OFF event after TE event T_Vtotal - 150us - 300us */
 	cmdq_pkt_sleep(cmdq_handle, CMDQ_US_TO_TICK(
 					(frame_time
@@ -7476,6 +7540,14 @@ void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 	if (mtk_crtc->pre_te_cfg.prefetch_te_en) {
 		cmdq_pkt_set_event(cmdq_handle,
 			mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_PREFETCH_TE]);
+	}
+
+	if (mtk_crtc->pre_te_cfg.merge_trigger_en == true) {
+		/* if condition true, will jump curreent postzion */
+		inst = cmdq_pkt_get_va_by_offset(cmdq_handle,  inst_condi_jump);
+		jump_pa = cmdq_pkt_get_pa_by_offset(cmdq_handle,
+					cmdq_handle->cmd_buf_size);
+		*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
 	}
 
 	cmdq_pkt_finalize_loop(cmdq_handle);
@@ -7787,9 +7859,34 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 		cmdq_pkt_wfe(cmdq_handle,
 			     mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
 
-		if (mtk_crtc->pre_te_cfg.merge_trigger_en == false)
+		if (mtk_crtc->pre_te_cfg.merge_trigger_en == false) {
 			cmdq_pkt_clear_event(cmdq_handle,
 				mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
+		} else {
+			rop.reg = false;
+			rop.value = 0;
+
+			cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base,
+				mtk_get_gce_backup_slot_pa(mtk_crtc,
+				DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE), var1);
+
+			/*mark condition jump */
+			inst_condi_jump = cmdq_handle->cmd_buf_size;
+			cmdq_pkt_assign_command(cmdq_handle, reg_jump, 0);
+
+			cmdq_pkt_cond_jump_abs(cmdq_handle, reg_jump, &lop, &rop,
+				CMDQ_EQUAL);
+
+			/* if condition false, will jump here */
+			cmdq_pkt_clear_event(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
+
+			/* if condition true, will jump curreent postzion */
+			inst = cmdq_pkt_get_va_by_offset(cmdq_handle,  inst_condi_jump);
+			jump_pa = cmdq_pkt_get_pa_by_offset(cmdq_handle,
+						cmdq_handle->cmd_buf_size);
+			*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
+		}
 
 		if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 			cmdq_pkt_wfe(cmdq_handle,
@@ -7832,6 +7929,21 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 				}
 
 				if (mtk_crtc->pre_te_cfg.merge_trigger_en == true) {
+					rop.reg = false;
+					rop.value = 0;
+
+					cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base,
+						mtk_get_gce_backup_slot_pa(mtk_crtc,
+						DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE), var1);
+
+					/*mark condition jump */
+					inst_condi_jump = cmdq_handle->cmd_buf_size;
+					cmdq_pkt_assign_command(cmdq_handle, reg_jump, 0);
+
+					cmdq_pkt_cond_jump_abs(cmdq_handle, reg_jump, &lop, &rop,
+						CMDQ_NOT_EQUAL);
+
+					/* if condition false, will jump here */
 					cmdq_pkt_clear_event(cmdq_handle,
 					mtk_crtc->gce_obj.event[
 						EVENT_SYNC_TOKEN_CHECK_TRIGGER_MERGE]);
@@ -7841,6 +7953,13 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 
 					cmdq_pkt_clear_event(cmdq_handle,
 						mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
+
+					/* if condition true, will jump curreent postzion */
+					inst = cmdq_pkt_get_va_by_offset(cmdq_handle,
+									inst_condi_jump);
+					jump_pa = cmdq_pkt_get_pa_by_offset(cmdq_handle,
+								cmdq_handle->cmd_buf_size);
+					*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
 				}
 
 				if (mtk_crtc->pre_te_cfg.prefetch_te_en == true) {
@@ -7885,8 +8004,60 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 			mtk_crtc->pre_te_cfg.prefetch_te_en == true ||
 			mtk_crtc->pre_te_cfg.merge_trigger_en == true
 			) {
-			cmdq_pkt_wfe(cmdq_handle,
-					mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_TE]);
+			if (mtk_crtc->pre_te_cfg.merge_trigger_en == true) {
+				rop.reg = false;
+				rop.value = 0;
+
+				cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base,
+					mtk_get_gce_backup_slot_pa(mtk_crtc,
+					DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE), var1);
+
+				/*mark condition jump */
+				inst_condi_jump = cmdq_handle->cmd_buf_size;
+				cmdq_pkt_assign_command(cmdq_handle, reg_jump, 0);
+
+				cmdq_pkt_cond_jump_abs(cmdq_handle, reg_jump, &lop, &rop,
+					CMDQ_EQUAL);
+
+				/* if condition false, will jump here */
+				cmdq_pkt_clear_event(cmdq_handle,
+						mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_TE]);
+
+				/* if condition true, will jump curreent postzion */
+				inst = cmdq_pkt_get_va_by_offset(cmdq_handle,  inst_condi_jump);
+				jump_pa = cmdq_pkt_get_pa_by_offset(cmdq_handle,
+							cmdq_handle->cmd_buf_size);
+				*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
+
+				cmdq_pkt_wfe(cmdq_handle,
+						mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_TE]);
+
+				/*mark condition jump */
+				inst_condi_jump = cmdq_handle->cmd_buf_size;
+				cmdq_pkt_assign_command(cmdq_handle, reg_jump, 0);
+
+				cmdq_pkt_cond_jump_abs(cmdq_handle, reg_jump, &lop, &rop,
+					CMDQ_EQUAL);
+
+				rop.reg = false;
+				rop.value = 1;
+				cmdq_pkt_logic_command(cmdq_handle,
+						CMDQ_LOGIC_SUBTRACT, var1, &lop, &rop);
+
+				/* if condition false, will jump here */
+				cmdq_pkt_write_reg_addr(cmdq_handle,
+					mtk_get_gce_backup_slot_pa(mtk_crtc,
+					DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE), var1, ~0);
+
+			      /* if condition true, will jump curreent postzion */
+				inst = cmdq_pkt_get_va_by_offset(cmdq_handle,  inst_condi_jump);
+				jump_pa = cmdq_pkt_get_pa_by_offset(cmdq_handle,
+							cmdq_handle->cmd_buf_size);
+				*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
+			} else {
+				cmdq_pkt_wfe(cmdq_handle,
+						mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_TE]);
+			}
 		}
 
 		if (mtk_crtc->pre_te_cfg.prefetch_te_en == false) {
@@ -14261,6 +14432,8 @@ static int mtk_drm_mode_switch_thread(void *data)
 		if (mtk_crtc_with_event_loop(crtc) &&
 				mtk_crtc_is_frame_trigger_mode(crtc)) {
 			mtk_crtc_stop_event_loop(crtc);
+
+			mtk_crtc_skip_merge_trigger(mtk_crtc);
 
 			mtk_crtc_start_event_loop(crtc);
 		}
