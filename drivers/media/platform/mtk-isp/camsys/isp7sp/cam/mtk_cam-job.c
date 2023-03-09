@@ -1640,6 +1640,7 @@ _job_pack_subsample(struct mtk_cam_job *job,
 
 	subsample_job->prev_scen = ctx->ctldata_stored.resource.user_data.raw_res.scen;
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
+	job->scq_period = SCQ_DEADLINE_MS / job->sub_ratio;
 	dev_info(cam->dev, "[%s] ctx:%d, type:%d, scen_id:%d, 1stonly:%d, ratio:%d",
 		__func__, ctx->stream_id, job->job_type, job->job_scen.id, first_frame_only_cur,
 		job->sub_ratio);

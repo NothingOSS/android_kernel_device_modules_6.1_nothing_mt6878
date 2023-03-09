@@ -36,7 +36,6 @@
 
 #define KERNEL_LOG_MAX	                400
 
-#define REG_FLKO_R1_BASE	0x4900
 #define DMA_OFFSET_ERR_STAT	0x34
 
 #define RAW_DEBUG 0
@@ -245,6 +244,14 @@ void initialize(struct mtk_raw_device *dev, int is_slave,
 	writel_relaxed(0xFFFE0000,
 		       dev->base + REG_FLKO_R1_BASE + DMA_OFFSET_ERR_STAT);
 #endif
+	/* Workaround: disable AAO/AAHO error: double sof error for smvr
+	 *  HW would send double sof to aao/aaho in subsample mode
+	 *  disable it to bypass
+	 */
+	writel_relaxed(0xFFFE0000,
+		       dev->base + REG_AAO_R1_BASE + DMA_OFFSET_ERR_STAT);
+	writel_relaxed(0xFFFE0000,
+		       dev->base + REG_AAHO_R1_BASE + DMA_OFFSET_ERR_STAT);
 }
 static void subsample_set_sensor_time(struct mtk_raw_device *dev,
 	u32 subsample_ratio)
@@ -269,6 +276,13 @@ void subsample_enable(struct mtk_raw_device *dev, int subsample_ratio)
 	SET_FIELD(&val, CAMCTL_DOWN_SAMPLE_PERIOD, sub_ratio);
 	writel_relaxed(val, dev->base + REG_CAMCTL_SW_PASS1_DONE);
 	writel_relaxed(val, dev->base_inner + REG_CAMCTL_SW_PASS1_DONE);
+
+	if (CAM_DEBUG_ENABLED(RAW_INT))
+		dev_info(dev->dev,
+			 "[%s] raw%d - CQ_EN:0x%x ratio %d\n",
+			 __func__, dev->id,
+			 readl_relaxed(dev->base + REG_CAMCQ_CQ_EN),
+			 subsample_ratio);
 }
 
 /* TODO: cq_set_stagger_mode(dev, 0/1) */
@@ -389,9 +403,17 @@ static void set_tg_vfdata_en(struct mtk_raw_device *dev, int on)
 		 __func__, readl(dev->base + REG_TG_VF_CON));
 }
 
+static u32 scq_cnt_rate_khz(u32 time_stamp_cnt)
+{
+	return SCQ_DEFAULT_CLK_RATE * 1000 / ((time_stamp_cnt + 1) * 2);
+}
+
 void update_scq_start_period(struct mtk_raw_device *dev, int scq_ms)
 {
-	writel_relaxed(scq_ms * 1000 * SCQ_DEFAULT_CLK_RATE,
+	u32 val;
+
+	val = readl_relaxed(dev->base + REG_TG_TIME_STAMP_CNT);
+	writel_relaxed(scq_ms * scq_cnt_rate_khz(val),
 		       dev->base + REG_CAMCQ_SCQ_START_PERIOD);
 	dev_info(dev->dev, "[%s] REG_CAMCQ_SCQ_START_PERIOD:%d (%dms)\n",
 		 __func__, readl(dev->base + REG_CAMCQ_SCQ_START_PERIOD), scq_ms);
