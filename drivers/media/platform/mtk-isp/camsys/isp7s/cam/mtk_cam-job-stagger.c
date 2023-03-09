@@ -18,6 +18,11 @@ is_stagger_3_exposure(struct mtk_cam_scen *scen)
 	return scen->scen.normal.exp_num == 3;
 }
 
+static unsigned int get_stagger_max_exp_num(struct mtk_cam_scen *scen)
+{
+	return scen->scen.normal.max_exp_num;
+}
+
 bool
 is_stagger_multi_exposure(struct mtk_cam_job *job)
 {
@@ -410,13 +415,13 @@ int handle_sv_tag(struct mtk_cam_job *job)
 	mtk_cam_sv_reset_tag_info(sv_dev);
 
 	/* img tag(s) */
-	if (is_stagger_2_exposure(&job->job_scen)) {
+	if (get_stagger_max_exp_num(&job->job_scen) == 2) {
 		exp_no = req_amount = 2;
 		req_amount *= is_rgbw(job) ? 2 : 1;
 		hw_scen = is_dc_mode(job) ?
 			(1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_DC_STAGGER)) :
 			(1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_STAGGER));
-	} else if (is_stagger_3_exposure(&job->job_scen)) {
+	} else if (get_stagger_max_exp_num(&job->job_scen) == 3) {
 		exp_no = req_amount = 3;
 		if (is_rgbw(job)) {
 			pr_info("[%s] rgbw not supported under 3-exp stagger case",
