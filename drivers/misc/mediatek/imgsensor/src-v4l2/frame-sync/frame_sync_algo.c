@@ -3143,9 +3143,14 @@ unsigned int fs_alg_get_vsync_data(unsigned int solveIdxs[], unsigned int len)
 		}
 
 
+		frec_notify_update_timestamp_data(solveIdxs[i],
+			vsync_recs.tick_factor,
+			vsync_recs.recs[i].timestamps, VSYNCS_MAX);
+
+
 #if !defined(REDUCE_FS_ALGO_LOG) || defined(FS_UT)
 		LOG_PF_INF(
-			"[%u] ID:%#x(sidx:%u), tg:%u, vsyncs:%u, last_vts:%llu, cur_tick:%llu, ts(%llu/%llu/%llu/%llu)\n",
+			"[%u] ID:%#x(sidx:%u), tg:%u, vsyncs:%u, last_vts:%llu, cur_tick:%llu, ts(%llu/%llu/%llu/%llu), tick_factor:%u\n",
 			solveIdxs[i],
 			fs_inst[solveIdxs[i]].sensor_id,
 			fs_inst[solveIdxs[i]].sensor_idx,
@@ -3156,12 +3161,9 @@ unsigned int fs_alg_get_vsync_data(unsigned int solveIdxs[], unsigned int len)
 			fs_inst[solveIdxs[i]].timestamps[0],
 			fs_inst[solveIdxs[i]].timestamps[1],
 			fs_inst[solveIdxs[i]].timestamps[2],
-			fs_inst[solveIdxs[i]].timestamps[3]);
+			fs_inst[solveIdxs[i]].timestamps[3],
+			vsync_recs.tick_factor);
 #endif
-
-
-		frec_notify_update_timestamp_data(solveIdxs[i],
-			vsync_recs.recs[i].timestamps, VSYNCS_MAX);
 	}
 
 

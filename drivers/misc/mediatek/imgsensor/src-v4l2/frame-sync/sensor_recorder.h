@@ -213,6 +213,7 @@ void frec_init_recorder(const unsigned int idx,
 void frec_notify_vsync(const unsigned int idx);
 
 void frec_notify_update_timestamp_data(const unsigned int idx,
+	const unsigned int tick_factor,
 	const SenRec_TS_T ts_us[], const unsigned int length);
 /*----------------------------------------------------------------------------*/
 

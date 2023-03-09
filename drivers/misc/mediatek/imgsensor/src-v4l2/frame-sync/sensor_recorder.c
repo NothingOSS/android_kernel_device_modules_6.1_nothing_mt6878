@@ -1831,9 +1831,11 @@ void frec_notify_vsync(const unsigned int idx)
 
 
 void frec_notify_update_timestamp_data(const unsigned int idx,
+	const unsigned int tick_factor,
 	const SenRec_TS_T ts_us[], const unsigned int arr_len)
 {
 	struct FrameRecorder *pfrec = frec_g_recorder_ctx(idx, __func__);
+	SenRec_TS_T tick_a, tick_b;
 
 	/* error handle */
 	if (unlikely(pfrec == NULL))
@@ -1849,7 +1851,10 @@ void frec_notify_update_timestamp_data(const unsigned int idx,
 	}
 
 	/* update actual frame length by timestamp diff */
-	pfrec->act_fl_us = (pfrec->ts_exp_0[0] - pfrec->ts_exp_0[1]);
+	tick_a = pfrec->ts_exp_0[0] * tick_factor;
+	tick_b = pfrec->ts_exp_0[1] * tick_factor;
+	pfrec->act_fl_us = divide_num(idx,
+		(tick_a - tick_b), tick_factor, __func__);
 
 	/* !!! set flag to notify ts info is updated !!! */
 	pfrec->is_ts_info_updated = 1;
