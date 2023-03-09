@@ -156,7 +156,7 @@ static struct mtk_mbus_frame_desc_entry frame_desc_hs_vid[] = {
 			.user_data_desc = VC_STAGGER_NE,
 		},
 	},
-	/* {
+	{
 		.bus.csi2 = {
 			.channel = 0,
 			.data_type = 0x30,
@@ -166,7 +166,6 @@ static struct mtk_mbus_frame_desc_entry frame_desc_hs_vid[] = {
 			.user_data_desc = VC_PDAF_STATS_NE_PIX_1,
 		},
 	},
-	*/
 };
 static struct mtk_mbus_frame_desc_entry frame_desc_slim_vid[] = {
 	{
@@ -302,7 +301,7 @@ static struct mtk_mbus_frame_desc_entry frame_desc_cus5[] = {
 			.user_data_desc = VC_STAGGER_NE,
 		},
 	},
-	/* {
+	{
 		.bus.csi2 = {
 			.channel = 0,
 			.data_type = 0x30,
@@ -312,7 +311,6 @@ static struct mtk_mbus_frame_desc_entry frame_desc_cus5[] = {
 			.user_data_desc = VC_PDAF_STATS_NE_PIX_1,
 		},
 	},
-	*/
 };
 static struct mtk_mbus_frame_desc_entry frame_desc_cus6[] = {
 	{
@@ -799,7 +797,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 			.w2_tg_size = 2048,
 			.h2_tg_size = 1152,
 		},
-		.pdaf_cap = FALSE,
+		.pdaf_cap = TRUE,
 		.imgsensor_pd_info = &imgsensor_pd_info,
 		.ae_binning_ratio = 1465,
 		.fine_integ_line = 2555,
@@ -1088,7 +1086,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 			.w2_tg_size = 2048,
 			.h2_tg_size = 1152,
 		},
-		.pdaf_cap = FALSE,
+		.pdaf_cap = TRUE,
 		.imgsensor_pd_info = &imgsensor_pd_info,
 		.ae_binning_ratio = 1465,
 		.fine_integ_line = 2555,
