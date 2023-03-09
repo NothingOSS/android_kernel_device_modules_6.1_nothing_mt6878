@@ -669,6 +669,52 @@ TRACE_EVENT(sched_find_lowest_rq,
 );
 #endif
 
+TRACE_EVENT(sched_get_pelt_group_util,
+
+	TP_PROTO(int grp_idx, unsigned long long delta),
+
+	TP_ARGS(grp_idx, delta),
+
+	TP_STRUCT__entry(
+		__field(int,		grp_idx)
+		__field(unsigned long long,	delta)
+	),
+
+	TP_fast_assign(
+		__entry->grp_idx		= grp_idx;
+		__entry->delta		= delta;
+	),
+
+	TP_printk("grp_idx[%d] delta[%llu] ",
+		__entry->grp_idx, __entry->delta)
+);
+
+TRACE_EVENT(sched_cgroup_attach,
+
+	TP_PROTO(struct task_struct *p, unsigned int grp_id, int ret),
+
+	TP_ARGS(p, grp_id, ret),
+
+	TP_STRUCT__entry(
+		__array(char,		comm, TASK_COMM_LEN)
+		__field(pid_t,		pid)
+		__field(unsigned int,	grp_id)
+		__field(int,		ret)
+	),
+
+	TP_fast_assign(
+		memcpy(__entry->comm, p->comm, TASK_COMM_LEN);
+		__entry->pid	= p->pid;
+		__entry->grp_id = grp_id;
+		__entry->ret = ret;
+	),
+
+	TP_printk("comm=%s pid=%d grp_id=%u ret=%d",
+			__entry->comm, __entry->pid,
+			__entry->grp_id, __entry->ret)
+
+);
+
 #endif /* _TRACE_SCHEDULER_H */
 
 #undef TRACE_INCLUDE_PATH

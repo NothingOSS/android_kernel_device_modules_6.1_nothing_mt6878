@@ -34,6 +34,7 @@
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 #include "flt_init.h"
 #endif
+#include "group.h"
 
 #define CREATE_TRACE_POINTS
 #include "eas_trace.h"
@@ -597,6 +598,7 @@ static int __init mtk_scheduler_init(void)
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	init_flt_platform();
 #endif
+	group_init();
 
 	sched_asym_cpucapacity_init();
 
@@ -636,6 +638,7 @@ static void __exit mtk_scheduler_exit(void)
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	exit_flt_platform();
 #endif
+	group_exit();
 	free_cpu_array();
 }
 

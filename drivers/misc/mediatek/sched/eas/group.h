@@ -1,0 +1,69 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (c) 2021 MediaTek Inc.
+ */
+#ifndef _EAS_GROUP_H
+#define _EAS_GROUP_H
+
+#define DEFAULT_SCHED_RAVG_WINDOW 4000000
+#define GROUP_RAVG_HIST_SIZE_MAX (5)
+
+#define mts_to_ts(mts) ({ \
+		void *__mptr = (void *)(mts); \
+		((struct task_struct *)(__mptr - \
+			offsetof(struct task_struct, android_vendor_data1))); })
+
+/* gp mode */
+enum _GP_mode {
+	GP_MODE_0 = 0,
+	GP_MODE_1 = 1,
+	GP_MODE_2 = 2,
+	GP_MODE_NUM,
+};
+
+/* gp id */
+enum _GP_ID {
+	GROUP_ID_1 = 0,
+	GROUP_ID_2 = 1,
+	GROUP_ID_3 = 2,
+	GROUP_ID_4 = 3,
+	GROUP_ID_RECORD_MAX
+};
+
+enum _wp {
+	WP_MODE_0 = 0,
+	WP_MODE_1 = 1,
+	WP_MODE_2 = 2,
+	WP_MODE_3 = 3,
+	WP_MODE_4 = 4,
+	WP_MODE_NUM,
+};
+
+struct rq_group {
+	unsigned long	pelt_group_util[GROUP_ID_RECORD_MAX];
+};
+
+struct grp {
+	int			id;
+	raw_spinlock_t		lock;
+	struct list_head		tasks;
+	struct list_head		list;
+	struct rcu_head		rcu;
+	int			ws;
+	int			wp;
+	int			wc;
+};
+
+void group_init(void);
+void group_exit(void);
+void  group_set_mode(u32 mode);
+u32 group_get_mode(void);
+int snapshot_pelt_group_status(void);
+int __sched_set_grp_id(struct task_struct *p, int group_id);
+inline struct grp *lookup_grp(int grp_id);
+inline struct grp *task_grp(struct task_struct *p);
+int get_grp_id(struct task_struct *p);
+int set_task_to_group(int pid, int grp_id);
+inline bool check_and_get_grp_id(struct task_struct *p, int *grp_id);
+int get_group_count(int grp_id);
+#endif /* _EAS_GROUP_H*/

@@ -28,19 +28,31 @@ struct soft_affinity_task {
 	struct cpumask soft_cpumask;
 };
 
+struct gp_task_struct {
+	struct grp __rcu	*grp;
+	struct list_head	grp_list;
+};
+
 struct mtk_task {
 	u64 reserved0[MTK_TASK_FLAG];
 	struct vip_task_struct	vip_task;
 	struct soft_affinity_task sa_task;
+	struct gp_task_struct	gp_task;
 };
 
 struct soft_affinity_tg {
 	struct cpumask soft_cpumask;
 };
 
+struct cgrp_tg {
+	bool colocate;
+	int groupid;
+};
+
 struct mtk_tg {
 	u64 reserved[MTK_TASK_GROUP_FLAG];
 	struct soft_affinity_tg	sa_tg;
+	struct cgrp_tg		cgrp_tg;
 };
 
 extern int num_sched_clusters;
