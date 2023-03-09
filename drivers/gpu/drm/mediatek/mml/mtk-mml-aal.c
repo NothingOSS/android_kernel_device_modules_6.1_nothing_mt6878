@@ -345,6 +345,7 @@ static const struct aal_data mt6897_aal_data = {
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6897,
 	.crop = true,
+	.rb_mode = RB_EOF_MODE,
 };
 
 static const struct aal_data mt6989_aal_data = {

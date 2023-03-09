@@ -138,6 +138,18 @@ static const struct rsz_data mt6985_rsz2_data = {
 	/* .aal_crop = false, */
 };
 
+static const struct rsz_data mt6897_rsz_data = {
+	.tile_width = 1674,
+	.add_ddp = true,
+	.aal_crop = true,
+};
+
+static const struct rsz_data mt6897_rsz2_data = {
+	.tile_width = 544,
+	.add_ddp = true,
+	.aal_crop = true,
+};
+
 static const struct rsz_data mt6989_rsz_data = {
 	.tile_width = 3348,
 	.add_ddp = true,
@@ -858,11 +870,11 @@ const struct of_device_id mml_rsz_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6897-mml_rsz",
-		.data = &mt6985_rsz_data,
+		.data = &mt6897_rsz_data,
 	},
 	{
 		.compatible = "mediatek,mt6897-mml_rsz2",
-		.data = &mt6985_rsz2_data,
+		.data = &mt6897_rsz2_data,
 	},
 	{
 		.compatible = "mediatek,mt6989-mml_rsz",
