@@ -1685,9 +1685,6 @@ static int mtkdip_ioc_add_iova(struct v4l2_subdev *subdev, void *arg)
 
 	}
 
-	mtk_hcp_send_async(pipe->imgsys_dev->scp_pdev,
-				HCP_IMGSYS_IOVA_FDS_ADD_ID, (void *)&fd_info,
-				sizeof(struct fd_info), 0);
 
 	vfree(kfd);
 
@@ -1761,9 +1758,6 @@ static int mtkdip_ioc_del_iova(struct v4l2_subdev *subdev, void *arg)
 
 	}
 
-	mtk_hcp_send_async(pipe->imgsys_dev->scp_pdev,
-				HCP_IMGSYS_IOVA_FDS_DEL_ID, (void *)&fd_info,
-				sizeof(struct fd_info), 0);
 
 	vfree(kfd);
 
