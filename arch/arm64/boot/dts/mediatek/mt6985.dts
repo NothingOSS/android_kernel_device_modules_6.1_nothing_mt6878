@@ -13033,6 +13033,7 @@
 		mediatek,mmdvfs-opp-table = <&opp_table_disp>, <&opp_table_mdp>, <&opp_table_mdp>,
 			<&opp_table_mminfra>, <&opp_table_venc>, <&opp_table_vdec>,
 			<&opp_table_img>, <&opp_table_cam>;
+		power-domains = <&scpsys MT6985_POWER_DOMAIN_DIS0_SHUTDOWN>;
 		#clock-cells = <1>;
 		mediatek,mmdvfs-user-target = <MMDVFS_MUX_DIS>, <MMDVFS_MUX_MDP>, <MMDVFS_MUX_MML>,
 			<MMDVFS_MUX_SMI>, <MMDVFS_MUX_VEN>, <MMDVFS_MUX_VEN>, <MMDVFS_MUX_VEN>,
