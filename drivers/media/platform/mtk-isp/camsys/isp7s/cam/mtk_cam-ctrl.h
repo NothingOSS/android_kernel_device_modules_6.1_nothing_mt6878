@@ -55,7 +55,6 @@ struct mtk_cam_watchdog {
 
 	u64 last_sof_ts;
 	int req_seq;
-	int req_repeat_cnt;
 
 	struct completion monitor_complete;
 	struct completion work_complete;

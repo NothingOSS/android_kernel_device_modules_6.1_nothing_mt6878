@@ -25,6 +25,7 @@
 #include "imgsys/mtk_imgsys-cmdq-ext.h"
 
 #define WATCHDOG_INTERVAL_MS		400
+#define WATCHDOG_MAX_HWTIME_MS		400
 #define WATCHDOG_MAX_SENSOR_RETRY_CNT	3
 
 unsigned long engine_idx_to_bit(int engine_type, int idx)
@@ -1229,6 +1230,11 @@ static int mtk_cam_watchdog_monitor_vsync(struct mtk_cam_watchdog *wd)
 	return -1;
 }
 
+static bool in_valid_hw_processing_time(u64 diff_ns)
+{
+	return (diff_ns / 1000000ULL) < WATCHDOG_MAX_HWTIME_MS;
+}
+
 static int mtk_cam_watchdog_monitor_job(struct mtk_cam_watchdog *wd)
 {
 	struct mtk_cam_ctrl *ctrl =
@@ -1236,6 +1242,8 @@ static int mtk_cam_watchdog_monitor_job(struct mtk_cam_watchdog *wd)
 	struct mtk_cam_ctx *ctx = ctrl->ctx;
 	struct mtk_cam_job *job;
 	int req_seq;
+	u64 job_ts;
+	u64 ts;
 	bool completed;
 
 	if (!ctx)
@@ -1246,18 +1254,20 @@ static int mtk_cam_watchdog_monitor_job(struct mtk_cam_watchdog *wd)
 		return 0;
 
 	req_seq = job->req_seq;
+	job_ts = job->timestamp;
 	mtk_cam_job_put(job);
 
 	if (req_seq != wd->req_seq) {
 		wd->req_seq = req_seq;
-		wd->req_repeat_cnt = 0;
 		return 0;
 	}
 
-	/* note: to avoid long exposure issue */
-	++wd->req_repeat_cnt;
-	if (wd->req_repeat_cnt < 2)
+	ts = ktime_get_boottime_ns();
+	if (!job_ts || in_valid_hw_processing_time(ts - job_ts)) {
+		dev_info(ctx->cam->dev, "job #%d job_ts %llu ts %llu, skip\n",
+			 req_seq, job_ts, ts);
 		return 0;
+	}
 
 	completed = try_wait_for_completion(&wd->work_complete);
 	if (!completed)
@@ -1269,15 +1279,15 @@ static int mtk_cam_watchdog_monitor_job(struct mtk_cam_watchdog *wd)
 	}
 
 	/* job is not updated */
-	dev_info(ctx->cam->dev, "schedule work for job_dump: ctx-%d req %d repeat_cnt %d\n",
-		 ctx->stream_id, wd->req_seq, wd->req_repeat_cnt);
+	dev_info(ctx->cam->dev, "schedule work for job_dump: ctx-%d req %d\n",
+		 ctx->stream_id, wd->req_seq);
 	mtk_cam_watchdog_schedule_job_dump(wd);
 	return -1;
 
 SKIP_SCHEDULE_WORK:
 	dev_info_ratelimited(ctx->cam->dev,
-		 "%s:ctx-%d req_seq %d(repeat %d) skip schedule watchdog work running %d, dumped %d\n",
-		 __func__, ctx->stream_id, req_seq, wd->req_repeat_cnt,
+		 "%s:ctx-%d req_seq %d skip schedule watchdog work running %d, dumped %d\n",
+		 __func__, ctx->stream_id, req_seq,
 		 !completed, atomic_read(&wd->dump_job));
 	return -1;
 }
@@ -1390,7 +1400,6 @@ int mtk_cam_watchdog_start(struct mtk_cam_watchdog *wd, bool monitor_vsync)
 	wd->last_sof_ts = mtk_cam_ctrl_latest_sof(ctrl);
 
 	wd->req_seq = 0;
-	wd->req_repeat_cnt = 0;
 
 	launch_monitor_work(wd);
 
