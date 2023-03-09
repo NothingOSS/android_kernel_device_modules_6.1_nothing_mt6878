@@ -504,6 +504,7 @@ u32 mtk_vcodec_get_bw_factor(struct mtk_vcodec_dev *dev, int codec_type)
 	u32 bw_factor_bit, bw_factor_afbc;
 	u32 inst_bw_factor, target_bw_factor = 0;
 	u32 freq_sum = dev->venc_dvfs_params.target_freq;
+	u32 freq_scale = 1;
 
 	if (codec_type == MTK_INST_DECODER) {
 		/*Todo: decoder use bw factor*/
@@ -519,11 +520,13 @@ u32 mtk_vcodec_get_bw_factor(struct mtk_vcodec_dev *dev, int codec_type)
 			for (i = 0 ; i < dev->venc_tput_cnt; i++) {
 				if (inst->config == dev->venc_tput[i].config &&
 				    inst->codec_fmt == dev->venc_tput[i].codec_fmt) {
+					freq_scale = (u64)freq_sum*100/dev->venc_tput[i].base_freq;
 					inst_bw_factor = dev->venc_tput[i].bw_factor * bw_factor_bit
-					* bw_factor_afbc * (freq_sum / dev->venc_tput[i].base_freq);
+						* bw_factor_afbc * freq_scale / 100;
+					mtk_v4l2_debug(4, "[VDVFS] %d, %d, %d, %d, %d",
+					dev->venc_tput[i].bw_factor, dev->venc_tput[i].base_freq,
+					bw_factor_bit, bw_factor_afbc, freq_sum);
 					if (inst_bw_factor > target_bw_factor) {
-						mtk_v4l2_debug(8, "[VDVFS] ctx %d, bw_fac:%d",
-						inst->id, inst_bw_factor);
 						target_bw_factor = inst_bw_factor;
 					}
 				}

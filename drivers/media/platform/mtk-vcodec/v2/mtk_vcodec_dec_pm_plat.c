@@ -130,15 +130,15 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 
 	mtk_v4l2_debug(8, "[VDEC] tput table elements %u, %d per line",
 			cnt, tp_item_num);
-	if (!dev->vdec_tput_cnt) {
-		mtk_v4l2_debug(0, "[VDEC] throughtput table not exist");
-		return false;
-	}
-
-	dev->vdec_tput = vzalloc(sizeof(struct vcodec_perf) * dev->vdec_tput_cnt);
-
-	mtk_v4l2_debug(8, "[VDEC] vzalloc %zu x %d res %p",
+	if (dev->vdec_tput_cnt > 0) {
+		dev->vdec_tput = vzalloc(sizeof(struct vcodec_perf) * dev->vdec_tput_cnt);
+		mtk_v4l2_debug(8, "[VDEC] vzalloc %zu x %d res %p",
 			sizeof(struct vcodec_perf), dev->vdec_tput_cnt, dev->vdec_tput);
+	} else
+		mtk_v4l2_debug(0, "[VDEC] throughtput table not exist");
+
+
+
 	if (!dev->vdec_tput) {
 		mtk_v4l2_debug(0, "[VDEC] vzalloc vdec_tput table failed");
 		return false;
