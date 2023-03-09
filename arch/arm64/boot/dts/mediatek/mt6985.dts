@@ -9280,6 +9280,8 @@
 		gpu_qos: gpu-qos {
 			compatible = "mediatek,gpu_qos";
 			qos-sysram-support = <1>;
+			qos-mode = <0>;
+			qos-value = <0>;
 		};
 
 		gpu_dcs: gpu-dcs {
@@ -15846,6 +15848,8 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-77 = "SSPM_SWPM_CORE__SLC_IDX",
 				"pmu_17,pmu_18,pmu_19,pmu_20,pmu_21,pmu_22,pmu_23,pmu_24,",
 				"pmu_25,pmu_26,pmu_27,pmu_28,pmu_29";
+			node-78 = "SSPM_GPU_BM",
+				"bw,bw_max,predict,ctx,freq,frame,job_id";
 		};
 
 		gpueb_rts_header:gpueb-rts-header {
