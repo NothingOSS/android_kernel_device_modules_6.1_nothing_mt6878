@@ -29,7 +29,7 @@ int seninf_ca_open_session(void)
 	pca = kmalloc(sizeof(struct SENINF_CA), GFP_KERNEL);
 
 	memset(pca, 0, sizeof(struct SENINF_CA));
-	//ret_tz = KREE_CreateSession(imgsensor_srv_name, &pca->session);
+	ret_tz = KREE_CreateSession(imgsensor_srv_name, &pca->session);
 	if (ret_tz != TZ_RESULT_SUCCESS) {
 		LOG_INF("[%s] CreateSession fail. ret: %d. ", __func__, ret_tz);
 		ret = SENINF_CA_RETURN_ERROR;
@@ -47,7 +47,7 @@ int seninf_ca_close_session(void)
 	if (pca == NULL)
 		return ret;
 
-	//ret_tz = KREE_CloseSession(pca->session);
+	ret_tz = KREE_CloseSession(pca->session);
 	memset(&pca->session, 0, sizeof(KREE_SESSION_HANDLE));
 
 	if (ret_tz != TZ_RESULT_SUCCESS) {
@@ -61,7 +61,7 @@ int seninf_ca_close_session(void)
 
 
 
-int seninf_ca_checkpipe(unsigned int SecInfo_addr)
+int seninf_ca_checkpipe(u64 SecInfo_addr)
 {
 
 	int types = 0;
@@ -69,12 +69,13 @@ int seninf_ca_checkpipe(unsigned int SecInfo_addr)
 	TZ_RESULT ret_tz = TZ_RESULT_SUCCESS;
 	union MTEEC_PARAM param[PARAM_SIZE];
 
-	LOG_INF("[%s] +", __func__);
+	LOG_INF("[%s] +, secInfo_addr 0x%llx", __func__, SecInfo_addr);
 
 	param[0].value.a = ret;
-	param[0].value.b = SecInfo_addr;
+	param[0].value.b = SecInfo_addr & 0xFFFFFFFF;
+	param[1].value.b = (SecInfo_addr >> 32) & 0xFFFFFFFF;
 	types = TZ_ParamTypes4(TZPT_VALUE_OUTPUT, TZPT_NONE, TZPT_NONE, TZPT_NONE);
-	//ret_tz = KREE_TeeServiceCall(pca->session, SENINF_TEE_CMD_CHECKPIPE, types, param);
+	ret_tz = KREE_TeeServiceCall(pca->session, SENINF_TEE_CMD_CHECKPIPE, types, param);
 
 	if (ret_tz != TZ_RESULT_SUCCESS && param[0].value.a) {
 		LOG_INF("[%s]checkpipe failed.", __func__);
@@ -105,7 +106,7 @@ int seninf_ca_free(void)
 
 	param[0].value.a = ret;
 	types = TZ_ParamTypes4(TZPT_VALUE_OUTPUT, TZPT_NONE, TZPT_NONE, TZPT_NONE);
-	//ret_tz = KREE_TeeServiceCall(pca->session, SENINF_TEE_CMD_FREE, types, param);
+	ret_tz = KREE_TeeServiceCall(pca->session, SENINF_TEE_CMD_FREE, types, param);
 
 	if (ret_tz != TZ_RESULT_SUCCESS && param[0].value.a) {
 		LOG_INF("[%s]free failed.", __func__);

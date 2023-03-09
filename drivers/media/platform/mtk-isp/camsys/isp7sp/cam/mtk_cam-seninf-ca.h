@@ -42,7 +42,7 @@ struct SENINF_CA {
 
 int seninf_ca_open_session(void);
 int seninf_ca_close_session(void);
-int seninf_ca_checkpipe(unsigned int SecInfo_addr);
+int seninf_ca_checkpipe(u64 SecInfo_addr);
 int seninf_ca_free(void);
 
 #endif
