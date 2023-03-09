@@ -458,7 +458,7 @@ static struct gzvm *gzvm_create_vm(unsigned long vm_type)
 	struct gzvm *gzvm;
 
 	gzvm = kzalloc(sizeof(struct gzvm), GFP_KERNEL);
-	if (IS_ERR(gzvm))
+	if (!gzvm)
 		return ERR_PTR(-ENOMEM);
 
 	ret = gzvm_create_vm_hyp();
@@ -486,7 +486,6 @@ static struct gzvm *gzvm_create_vm(unsigned long vm_type)
 err:
 	kfree(gzvm);
 	return ERR_PTR(ret);
-
 }
 
 /**

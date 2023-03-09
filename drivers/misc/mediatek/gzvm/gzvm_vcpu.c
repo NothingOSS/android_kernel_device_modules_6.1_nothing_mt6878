@@ -326,10 +326,8 @@ int gzvm_vm_ioctl_create_vcpu(struct gzvm *gzvm, u32 cpuid)
 		return -EINVAL;
 
 	vcpu = kzalloc(sizeof(*vcpu), GFP_KERNEL);
-	if (IS_ERR(gzvm)) {
-		ret = PTR_ERR(gzvm);
-		goto error;
-	}
+	if (!vcpu)
+		return -ENOMEM;
 
 	BUILD_BUG_ON((sizeof(*vcpu->run) + sizeof(*vcpu->vm_regs)) > PAGE_SIZE);
 	BUILD_BUG_ON(sizeof(struct gzvm_vcpu_hwstate) > PAGE_SIZE);
@@ -360,10 +358,10 @@ int gzvm_vm_ioctl_create_vcpu(struct gzvm *gzvm, u32 cpuid)
 	gzvm->vcpus[cpuid] = vcpu;
 
 	return ret;
+
 free_vcpu_run:
 	free_pages_exact(vcpu->run, PAGE_SIZE * 2);
 free_vcpu:
 	kfree(vcpu);
-error:
 	return ret;
 }
