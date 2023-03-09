@@ -100,10 +100,40 @@ bool cond_job_with_action(struct mtk_cam_job *job, void *arg)
 	return mtk_cam_job_has_pending_action(job);
 }
 
-static struct mtk_cam_job *
-mtk_cam_ctrl_get_job(struct mtk_cam_ctrl *ctrl,
-		     bool (*cond_func)(struct mtk_cam_job *, void *arg),
-		     void *arg)
+static int ctrl_enable_job_fsm(struct mtk_cam_job *job, void *arg)
+{
+	if (CAM_DEBUG_ENABLED(CTRL))
+		pr_info("%s: #%d\n", __func__,  job->req_seq);
+	mtk_cam_job_set_fsm(job, 1);
+	return 0;
+}
+
+typedef int (*for_each_func_t)(struct mtk_cam_job *, void *);
+static int mtk_cam_ctrl_loop_job(struct mtk_cam_ctrl *ctrl,
+				 for_each_func_t func, void *arg)
+{
+	struct mtk_cam_job *job;
+	struct mtk_cam_job_state *state;
+	int ret = 0;
+
+	read_lock(&ctrl->list_lock);
+
+	list_for_each_entry(state, &ctrl->camsys_state_list, list) {
+		job = container_of(state, struct mtk_cam_job, job_state);
+
+		/* skip if return non-zero */
+		ret = ret || func(job, arg);
+	}
+
+	read_unlock(&ctrl->list_lock);
+
+	return ret;
+}
+
+typedef bool (*cond_func_t)(struct mtk_cam_job *, void *);
+static struct mtk_cam_job *mtk_cam_ctrl_get_job(struct mtk_cam_ctrl *ctrl,
+						cond_func_t cond_func,
+						void *arg)
 {
 	struct mtk_cam_job *job;
 	struct mtk_cam_job_state *state;
@@ -215,9 +245,6 @@ void mtk_cam_event_error(struct mtk_cam_ctrl *cam_ctrl, const char *msg)
 
 static void dump_runtime_info(struct mtk_cam_ctrl_runtime_info *info)
 {
-	if (!info->apply_hw_by_FSM)
-		pr_info("runtime: by_FSM is off\n");
-
 	pr_info("[%s] ack 0x%x out/in 0x%x/0x%x\n", __func__,
 		info->ack_seq_no, info->outer_seq_no, info->inner_seq_no);
 	pr_info("[%s] sof_ts_ns %lld\n", __func__, info->sof_ts_ns);
@@ -268,9 +295,6 @@ static void debug_send_event(const struct transition_param *p)
 	info = p->info;
 
 	print_ts = (p->event == CAMSYS_EVENT_ENQUE);
-
-	if (!info->apply_hw_by_FSM)
-		pr_info("[%s] runtime: by_FSM is off\n", __func__);
 
 	if (print_ts)
 		pr_info("[%s] out/in:0x%x/0x%x event: %s@%llu (sof %llu)\n",
@@ -737,7 +761,8 @@ static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 		}
 	}
 
-	mtk_cam_ctrl_apply_by_state(ctrl, 1);
+	atomic_set(&ctrl->stream_on_done, 1);
+	mtk_cam_ctrl_loop_job(ctrl,  ctrl_enable_job_fsm, NULL);
 
 	dev_info(dev, "[%s] ctx %d finish\n", __func__, ctrl->ctx->stream_id);
 }
@@ -804,10 +829,17 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 		if (job->job_scen.id == MTK_CAM_SCEN_M2M_NORMAL ||
 		    job->job_scen.id == MTK_CAM_SCEN_ODT_NORMAL ||
 		    job->job_scen.id == MTK_CAM_SCEN_ODT_MSTREAM) {
-			mtk_cam_ctrl_apply_by_state(cam_ctrl, 1);
 
+			atomic_set(&cam_ctrl->stream_on_done, 1);
 			mtk_cam_watchdog_start(&cam_ctrl->watchdog, 0);
 		}
+	}
+
+	if (!atomic_read(&cam_ctrl->stream_on_done)) {
+
+		mtk_cam_job_set_fsm(job, 0);
+		if (CAM_DEBUG_ENABLED(CTRL))
+			pr_info("disable job #%d's fsm\n", job->req_seq);
 	}
 
 	call_jobop(job, compose);
@@ -888,6 +920,7 @@ void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 	cam_ctrl->fs_event_subframe_idx = 0;
 
 	atomic_set(&cam_ctrl->stopped, 0);
+	atomic_set(&cam_ctrl->stream_on_done, 0);
 
 	spin_lock_init(&cam_ctrl->send_lock);
 	rwlock_init(&cam_ctrl->list_lock);

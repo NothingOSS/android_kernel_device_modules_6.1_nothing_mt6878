@@ -67,13 +67,6 @@ const char *str_event(int event);
 
 struct mtk_cam_ctrl_runtime_info {
 
-	/*
-	 * apply sensor/isp by state machine
-	 * if this is disabled, statemachine will skip transitions with hw
-	 * action
-	 */
-	bool apply_hw_by_FSM;
-
 	int ack_seq_no;
 	int outer_seq_no;
 	int inner_seq_no;
@@ -138,6 +131,13 @@ struct mtk_cam_job_state {
 	atomic_t todo_action;
 
 	const struct mtk_cam_job_state_cb *cb;
+
+	/*
+	 * apply sensor/isp by state machine
+	 * if this is disabled, statemachine will skip transitions with hw
+	 * action
+	 */
+	bool apply_by_fsm;
 };
 
 #define ops_call(s, func, ...) \
@@ -445,6 +445,11 @@ static inline void mtk_cam_job_set_no(struct mtk_cam_job *job,
 	job->req_seq = req_no;
 	job->frame_seq_no = seq_no;
 	job->job_state.seq_no = seq_no;
+}
+
+static inline void mtk_cam_job_set_fsm(struct mtk_cam_job *job, bool enable)
+{
+	job->job_state.apply_by_fsm = enable;
 }
 
 struct mtk_cam_dump_param;

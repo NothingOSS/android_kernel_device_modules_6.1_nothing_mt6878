@@ -134,10 +134,9 @@ static inline int prev_isp_state_ge(struct mtk_cam_job_state *s,
 	return !prv_s || mtk_cam_job_state_get(prv_s, ISP_STATE) >= state;
 }
 
-/* TODO(AY): may move apply_hw_by_FSM into job? */
-static inline bool allow_applying_hw(struct transition_param *p)
+static inline bool allow_applying_hw(struct state_accessor *s_acc)
 {
-	return p->info->apply_hw_by_FSM;
+	return s_acc->s->apply_by_fsm;
 }
 
 static inline bool valid_i2c_period(struct transition_param *p)
@@ -152,14 +151,14 @@ static inline int guard_apply_sensor_subsample(struct state_accessor *s_acc,
 					       struct transition_param *p)
 {
 	/* TODO: add ts check */
-	return allow_applying_hw(p) &&
+	return allow_applying_hw(s_acc) &&
 		ops_call(s_acc, cur_isp_state) >= S_ISP_APPLYING;
 }
 
 static inline int guard_apply_sensor(struct state_accessor *s_acc,
 				     struct transition_param *p)
 {
-	return allow_applying_hw(p) &&
+	return allow_applying_hw(s_acc) &&
 		ops_call(s_acc, prev_allow_apply_sensor) &&
 		valid_i2c_period(p);
 }
@@ -189,7 +188,7 @@ static inline bool current_sensor_ready(struct state_accessor *s_acc)
 static inline int guard_apply_isp(struct state_accessor *s_acc,
 				  struct transition_param *p)
 {
-	return allow_applying_hw(p) &&
+	return allow_applying_hw(s_acc) &&
 		ops_call(s_acc, prev_allow_apply_isp) &&
 		current_sensor_ready(s_acc);
 }
@@ -197,13 +196,13 @@ static inline int guard_apply_isp(struct state_accessor *s_acc,
 static inline int guard_apply_m2m(struct state_accessor *s_acc,
 				  struct transition_param *p)
 {
-	return allow_applying_hw(p) &&
+	return allow_applying_hw(s_acc) &&
 		ops_call(s_acc, prev_allow_apply_isp);
 }
 static inline int guard_apply_isp_subsample(struct state_accessor *s_acc,
 				  struct transition_param *p)
 {
-	return allow_applying_hw(p) &&
+	return allow_applying_hw(s_acc) &&
 		ops_call(s_acc, prev_allow_apply_isp);
 }
 

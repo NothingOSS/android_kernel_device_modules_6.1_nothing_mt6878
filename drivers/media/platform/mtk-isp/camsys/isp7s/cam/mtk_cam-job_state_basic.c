@@ -187,6 +187,8 @@ int mtk_cam_job_state_init_basic(struct mtk_cam_job_state *s,
 	mtk_cam_job_state_set(s, ISP_STATE, S_ISP_NOT_SET);
 
 	s->cb = cb;
+	s->apply_by_fsm = 1;
+
 	return 0;
 }
 

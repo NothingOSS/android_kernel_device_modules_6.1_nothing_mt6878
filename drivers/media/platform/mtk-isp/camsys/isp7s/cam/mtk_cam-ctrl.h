@@ -116,6 +116,7 @@ struct mtk_cam_ctrl {
 	atomic_t stopped;
 	atomic_t ref_cnt;
 
+	atomic_t stream_on_done;
 	/* note:
 	 *   this send_lock is only used in send_event func to guarantee that send_event
 	 *   is executed in an exclusive manner.
@@ -166,13 +167,5 @@ void mtk_cam_event_frame_sync(struct mtk_cam_ctrl *cam_ctrl,
 void mtk_cam_event_error(struct mtk_cam_ctrl *cam_ctrl, const char *msg);
 void mtk_cam_event_request_dumped(struct mtk_cam_ctrl *cam_ctrl,
 				  unsigned int frame_seq_no);
-
-static inline
-void mtk_cam_ctrl_apply_by_state(struct mtk_cam_ctrl *ctrl, int enable)
-{
-	spin_lock(&ctrl->info_lock);
-	ctrl->r_info.apply_hw_by_FSM = !!enable;
-	spin_unlock(&ctrl->info_lock);
-}
 
 #endif
