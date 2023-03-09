@@ -777,7 +777,7 @@ static void mtk_cam_ctrl_seamless_switch_work(struct work_struct *work)
 	/* let sensor set seamless switch */
 	complete(&job->i2c_ready_completion);
 	call_jobop(job, apply_switch);
-	vsync_set_desired(&ctrl->vsync_col, job->used_engine);
+	vsync_set_desired(&ctrl->vsync_col, _get_master_engines(job->used_engine));
 	dev_info(ctrl->ctx->cam->dev, "[%s] finish, used_engine:0x%x\n",
 		__func__, job->used_engine);
 }
