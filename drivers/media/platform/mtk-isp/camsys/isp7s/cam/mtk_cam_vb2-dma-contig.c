@@ -16,7 +16,9 @@
 
 #include "mtk_cam_vb2-dma-contig.h"
 
+#include "mtk_cam-debug_option.h"
 #include "mtk_cam-trace.h"
+#include "mtk_cam-video.h"
 
 struct mtk_cam_vb2_buf {
 	struct device			*dev;
@@ -37,6 +39,7 @@ struct mtk_cam_vb2_buf {
 	/* DMABUF related */
 	struct dma_buf_attachment	*db_attach;
 	struct iosys_map map;
+	struct vb2_buffer *vb;
 };
 
 /*********************************************/
@@ -94,10 +97,14 @@ static void mtk_cam_vb2_prepare(void *buf_priv)
 {
 	struct mtk_cam_vb2_buf *buf = buf_priv;
 	struct sg_table *sgt = buf->dma_sgt;
+	struct mtk_cam_video_device *node = mtk_cam_vbq_to_vdev(buf->vb->vb2_queue);
 
+	if (buf->vb->skip_cache_sync_on_prepare)
+		return;
 	if (!sgt)
 		return;
-
+	if (CAM_DEBUG_ENABLED(V4L2))
+		pr_info("%s: %s\n", __func__, node->desc.name);
 	dma_sync_sgtable_for_device(buf->dev, sgt, buf->dma_dir);
 }
 
@@ -105,10 +112,14 @@ static void mtk_cam_vb2_finish(void *buf_priv)
 {
 	struct mtk_cam_vb2_buf *buf = buf_priv;
 	struct sg_table *sgt = buf->dma_sgt;
+	struct mtk_cam_video_device *node = mtk_cam_vbq_to_vdev(buf->vb->vb2_queue);
 
+	if (buf->vb->skip_cache_sync_on_finish)
+		return;
 	if (!sgt)
 		return;
-
+	if (CAM_DEBUG_ENABLED(V4L2))
+		pr_info("%s: %s\n", __func__, node->desc.name);
 	dma_sync_sgtable_for_cpu(buf->dev, sgt, buf->dma_dir);
 }
 
@@ -227,6 +238,8 @@ static void *mtk_cam_vb2_attach_dmabuf(
 	//buf->dma_dir = dma_dir;
 	buf->size = size;
 	buf->db_attach = dba;
+	buf->vb = vb;
+
 	return buf;
 }
 
@@ -256,10 +269,12 @@ void mtk_cam_vb2_sync_for_device(void *buf_priv)
 {
 	struct mtk_cam_vb2_buf *buf = buf_priv;
 	struct sg_table *sgt = buf->dma_sgt;
+	struct mtk_cam_video_device *node = mtk_cam_vbq_to_vdev(buf->vb->vb2_queue);
 
 	if (!sgt)
 		return;
-
+	if (CAM_DEBUG_ENABLED(V4L2))
+		pr_info("%s: %s\n", __func__, node->desc.name);
 	dma_sync_sgtable_for_device(buf->dev, sgt, buf->dma_dir);
 }
 
@@ -267,10 +282,12 @@ void mtk_cam_vb2_sync_for_cpu(void *buf_priv)
 {
 	struct mtk_cam_vb2_buf *buf = buf_priv;
 	struct sg_table *sgt = buf->dma_sgt;
+	struct mtk_cam_video_device *node = mtk_cam_vbq_to_vdev(buf->vb->vb2_queue);
 
 	if (!sgt)
 		return;
-
+	if (CAM_DEBUG_ENABLED(V4L2))
+		pr_info("%s: %s\n", __func__, node->desc.name);
 	dma_sync_sgtable_for_cpu(buf->dev, sgt, buf->dma_dir);
 }
 

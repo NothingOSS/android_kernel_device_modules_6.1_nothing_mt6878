@@ -37,6 +37,7 @@ struct mtk_cam_vb2_buf {
 	/* DMABUF related */
 	struct dma_buf_attachment	*db_attach;
 	struct iosys_map map;
+	struct vb2_buffer *vb;
 };
 
 /*********************************************/
@@ -95,6 +96,8 @@ static void mtk_cam_vb2_prepare(void *buf_priv)
 	struct mtk_cam_vb2_buf *buf = buf_priv;
 	struct sg_table *sgt = buf->dma_sgt;
 
+	if (buf->vb->skip_cache_sync_on_prepare)
+		return;
 	if (!sgt)
 		return;
 
@@ -106,6 +109,8 @@ static void mtk_cam_vb2_finish(void *buf_priv)
 	struct mtk_cam_vb2_buf *buf = buf_priv;
 	struct sg_table *sgt = buf->dma_sgt;
 
+	if (buf->vb->skip_cache_sync_on_finish)
+		return;
 	if (!sgt)
 		return;
 
@@ -227,6 +232,8 @@ static void *mtk_cam_vb2_attach_dmabuf(
 	//buf->dma_dir = dma_dir;
 	buf->size = size;
 	buf->db_attach = dba;
+	buf->vb = vb;
+
 	return buf;
 }
 

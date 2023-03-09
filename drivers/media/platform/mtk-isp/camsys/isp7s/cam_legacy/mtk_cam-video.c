@@ -220,8 +220,10 @@ static int mtk_cam_vb2_buf_prepare(struct vb2_buffer *vb)
 		size = fmt->fmt.pix_mp.plane_fmt[0].sizeimage;
 
 	if (vb2_plane_size(vb, 0) < size) {
-		dev_info(vb->vb2_queue->dev, "plane size is too small:%lu<%u\n",
-			vb2_plane_size(vb, 0), size);
+		dev_info_ratelimited(vb->vb2_queue->dev, "%s: plane size is too small:%lu<%u\n",
+			 node->desc.name, vb2_plane_size(vb, 0), size);
+		/* avoid extra mips on warn_on_once in vb2_set_plane_payload following */
+		size = vb2_plane_size(vb, 0);
 		/* return -EINVAL; */
 	}
 
