@@ -409,9 +409,9 @@ int handle_sv_tag(struct mtk_cam_job *job)
 	struct mtk_camsv_sink_data *sv_sink;
 	struct mtk_camsv_tag_param img_tag_param[SVTAG_IMG_END];
 	struct mtk_camsv_tag_param meta_tag_param;
-	unsigned int tag_idx, hw_scen;
+	unsigned int tag_idx, sv_pipe_idx, hw_scen;
 	unsigned int exp_no, req_amount;
-	int ret = 0, i, sv_pipe_idx;
+	int ret = 0, i;
 
 	/* reset tag info */
 	sv_dev = dev_get_drvdata(ctx->hw_sv);
@@ -471,7 +471,7 @@ int handle_sv_tag(struct mtk_cam_job *job)
 		if (tag_idx >= SVTAG_END)
 			return 1;
 		sv_pipe_idx = ctx->sv_subdev_idx[i];
-		if ((unsigned int)sv_pipe_idx >= ctx->cam->pipelines.num_camsv)
+		if (sv_pipe_idx >= ctx->cam->pipelines.num_camsv)
 			return 1;
 
 		sv_pipe = &ctx->cam->pipelines.camsv[sv_pipe_idx];

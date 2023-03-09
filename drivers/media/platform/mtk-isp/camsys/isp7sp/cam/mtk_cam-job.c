@@ -2211,8 +2211,8 @@ _handle_sv_tag_only_sv(struct mtk_cam_job *job)
 	struct mtk_camsv_pipeline *sv_pipe;
 	struct mtk_camsv_sink_data *sv_sink;
 	struct mtk_camsv_tag_param tag_param;
-	unsigned int tag_idx;
-	int ret = 0, i, sv_pipe_idx;
+	unsigned int tag_idx, sv_pipe_idx;
+	int ret = 0, i;
 
 	/* reset tag info */
 	sv_dev = dev_get_drvdata(ctx->hw_sv);
@@ -2224,7 +2224,7 @@ _handle_sv_tag_only_sv(struct mtk_cam_job *job)
 		if (tag_idx >= SVTAG_END)
 			return 1;
 		sv_pipe_idx = ctx->sv_subdev_idx[i];
-		if ((unsigned int)sv_pipe_idx >= ctx->cam->pipelines.num_camsv)
+		if (sv_pipe_idx >= ctx->cam->pipelines.num_camsv)
 			return 1;
 		sv_pipe = &ctx->cam->pipelines.camsv[sv_pipe_idx];
 		sv_sink = &job->req->sv_data[sv_pipe_idx].sink;
@@ -3073,9 +3073,9 @@ int mtk_cam_job_pack(struct mtk_cam_job *job, struct mtk_cam_ctx *ctx,
 static void ipi_add_hw_map(struct mtkcam_ipi_config_param *config,
 				   int pipe_id, int dev_mask)
 {
-	int n_maps = config->n_maps;
+	unsigned int n_maps = config->n_maps;
 
-	if (WARN_ON((unsigned int)n_maps >= ARRAY_SIZE(config->maps)))
+	if (WARN_ON(n_maps >= ARRAY_SIZE(config->maps)))
 		return;
 
 	WARN_ON(!dev_mask);
@@ -3552,7 +3552,7 @@ static int update_mraw_meta_buf_to_ipi_frame(
 		}
 	}
 
-	if (param_idx < 0) {
+	if (param_idx < 0 || param_idx >= ARRAY_SIZE(fp->mraw_param)) {
 		ret = -1;
 		pr_info("%s %s: mraw subdev idx not found(pipe_id:%d)\n",
 			__FILE__, __func__, node->uid.pipe_id);

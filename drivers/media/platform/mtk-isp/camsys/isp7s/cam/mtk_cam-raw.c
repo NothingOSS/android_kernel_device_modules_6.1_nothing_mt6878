@@ -1809,11 +1809,12 @@ int mtk_raw_translation_fault_cb(int port, dma_addr_t mva, void *data)
 	if (m4u_port == 0) { /* cq info */
 		print_cq_settings(raw_dev->base_inner);
 
-		kfree(group);
-		return 0;
+		goto FREE_GROUP;
 	}
 
-	CALL_PLAT_HW(query_raw_dma_group, m4u_port, group);
+	if (CALL_PLAT_HW(query_raw_dma_group, m4u_port, group))
+		goto FREE_GROUP;
+
 	for (i = 0; i < group_size; i++) {
 		if (group[i] == 0x0)
 			continue;
@@ -1821,6 +1822,7 @@ int mtk_raw_translation_fault_cb(int port, dma_addr_t mva, void *data)
 		print_dma_settings(raw_dev->base_inner, group[i]);
 	}
 
+FREE_GROUP:
 	kfree(group);
 	return 0;
 }
@@ -1833,7 +1835,9 @@ int mtk_yuv_translation_fault_cb(int port, dma_addr_t mva, void *data)
 	u32 *group = kzalloc(sizeof(u32)*group_size, GFP_KERNEL);
 	int i;
 
-	CALL_PLAT_HW(query_yuv_dma_group, m4u_port, group);
+	if (CALL_PLAT_HW(query_yuv_dma_group, m4u_port, group))
+		goto FREE_GROUP;
+
 	for (i = 0; i < group_size; i++) {
 		if (group[i] == 0x0)
 			continue;
@@ -1841,6 +1845,7 @@ int mtk_yuv_translation_fault_cb(int port, dma_addr_t mva, void *data)
 		print_dma_settings(yuv_dev->base_inner, group[i]);
 	}
 
+FREE_GROUP:
 	kfree(group);
 	return 0;
 }

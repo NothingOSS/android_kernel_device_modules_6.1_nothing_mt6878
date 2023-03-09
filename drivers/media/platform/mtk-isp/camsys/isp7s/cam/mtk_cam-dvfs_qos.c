@@ -162,7 +162,7 @@ static int mtk_cam_dvfs_update_opp(struct mtk_camsys_dvfs *dvfs,
 		return -1;
 	}
 
-	if ((unsigned int)opp_idx >= ARRAY_SIZE(dvfs->opp)) {
+	if (opp_idx < 0 || opp_idx >= ARRAY_SIZE(dvfs->opp)) {
 		dev_info(dvfs->dev, "%s: invalid opp_idx %d\n", __func__,
 			 opp_idx);
 		return -1;
