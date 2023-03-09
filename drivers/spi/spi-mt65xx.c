@@ -20,6 +20,8 @@
 #include <linux/spi/spi.h>
 #include <linux/dma-mapping.h>
 #include <linux/pm_qos.h>
+#include <linux/time.h>
+#include <linux/timekeeping.h>
 
 #define SPI_CFG0_REG                      0x0000
 #define SPI_CFG1_REG                      0x0004
@@ -112,6 +114,9 @@
 #define MTK_SPI_IPM_PACKET_LOOP SZ_256
 #define DMA_ADDR_EXT_BITS (36)
 #define DMA_ADDR_DEF_BITS (32)
+
+/*Reference to core layer timeout (ns) */
+#define SPI_FIFO_POLLING_TIMEOUT (200000000)
 
 struct mtk_spi_compatible {
 	bool need_pad_sel;
@@ -525,12 +530,6 @@ static int mtk_spi_prepare_message(struct spi_master *master,
 			reg_val &= ~SPI_CMD_SAMPLE_SEL;
 	}
 
-	if (mdata->dev_comp->sw_cs)
-		/* set finish interrupt enable */
-		reg_val |= SPI_CMD_FINISH_IE;
-	else
-		/* set finish and pause interrupt always enable */
-		reg_val |= SPI_CMD_FINISH_IE | SPI_CMD_PAUSE_IE;
 
 	/* disable dma mode */
 	reg_val &= ~(SPI_CMD_TX_DMA | SPI_CMD_RX_DMA);
@@ -785,33 +784,80 @@ static int mtk_spi_fifo_transfer(struct spi_master *master,
 				 struct spi_device *spi,
 				 struct spi_transfer *xfer)
 {
-	int cnt, remainder;
-	u32 reg_val;
+	u32 reg_val, cnt, remainder, len, irq_status;
+	u64 cur_time;
 	struct mtk_spi *mdata = spi_master_get_devdata(master);
 
 	mdata->cur_transfer = xfer;
-	mdata->xfer_len = min(MTK_SPI_MAX_FIFO_SIZE, xfer->len);
 	mdata->num_xfered = 0;
 	mtk_spi_prepare_transfer(master, xfer);
-	mtk_spi_setup_packet(master);
 
-	if (xfer->tx_buf) {
-		cnt = xfer->len / 4;
-		iowrite32_rep(mdata->base + SPI_TX_DATA_REG, xfer->tx_buf, cnt);
-		remainder = xfer->len % 4;
-		if (remainder > 0) {
-			reg_val = 0;
-			memcpy(&reg_val, xfer->tx_buf + (cnt * 4), remainder);
-			writel(reg_val, mdata->base + SPI_TX_DATA_REG);
+	//disable irq
+	reg_val = readl(mdata->base + SPI_CMD_REG);
+	reg_val &= ~(SPI_CMD_FINISH_IE | SPI_CMD_PAUSE_IE);
+	writel(reg_val, mdata->base + SPI_CMD_REG);
+
+	while (1) {
+		len = xfer->len - mdata->num_xfered;
+		mdata->xfer_len = min(MTK_SPI_MAX_FIFO_SIZE, len);
+		mtk_spi_setup_packet(master);
+
+		if (xfer->tx_buf) {
+			cnt = mdata->xfer_len / 4;
+			iowrite32_rep(mdata->base + SPI_TX_DATA_REG,
+					xfer->tx_buf + mdata->num_xfered, cnt);
+
+			remainder = mdata->xfer_len % 4;
+			if (remainder > 0) {
+				reg_val = 0;
+				memcpy(&reg_val,
+				xfer->tx_buf + (cnt * 4) + mdata->num_xfered,
+				remainder);
+				writel(reg_val, mdata->base + SPI_TX_DATA_REG);
+			}
 		}
+		spi_debug("spi setting Done.Dump reg before Transfer start:\n");
+		spi_dump_reg(mdata, master);
+
+		mtk_spi_enable_transfer(master);
+
+		cur_time = ktime_get_ns();
+		do {
+			irq_status = readl(mdata->base+SPI_STATUS1_REG);
+			if ((ktime_get_ns() - cur_time)
+				> SPI_FIFO_POLLING_TIMEOUT) {
+				return -ETIMEDOUT;
+			}
+			cpu_relax();
+		} while (!irq_status);
+
+		reg_val = readl(mdata->base + SPI_STATUS0_REG);
+		if (reg_val & MTK_SPI_PAUSE_INT_STATUS)
+			mdata->state = MTK_SPI_PAUSED;
+		else
+			mdata->state = MTK_SPI_IDLE;
+
+		if (xfer->rx_buf) {
+			cnt = mdata->xfer_len / 4;
+			ioread32_rep(mdata->base + SPI_RX_DATA_REG,
+					xfer->rx_buf + mdata->num_xfered, cnt);
+			remainder = mdata->xfer_len % 4;
+			if (remainder > 0) {
+				reg_val = readl(mdata->base + SPI_RX_DATA_REG);
+				memcpy(xfer->rx_buf +
+					mdata->num_xfered +
+					(cnt * 4),
+					&reg_val,
+					remainder);
+			}
+		}
+
+		mdata->num_xfered += mdata->xfer_len;
+		if (mdata->num_xfered == xfer->len)
+			break;
 	}
 
-	spi_debug("spi setting Done.Dump reg before Transfer start:\n");
-	spi_dump_reg(mdata, master);
-
-	mtk_spi_enable_transfer(master);
-
-	return 1;
+	return 0;
 }
 
 static int mtk_spi_dma_transfer(struct spi_master *master,
@@ -858,6 +904,16 @@ static int mtk_spi_dma_transfer(struct spi_master *master,
 	spi_debug("spi setting Done.Dump reg before Transfer start:\n");
 	spi_dump_reg(mdata, master);
 
+	//enable irq
+	if (mdata->dev_comp->sw_cs)
+		/* set finish interrupt enable */
+		cmd |= SPI_CMD_FINISH_IE;
+	else
+		/* set finish and pause interrupt always enable */
+		cmd |= SPI_CMD_FINISH_IE | SPI_CMD_PAUSE_IE;
+
+	writel(cmd, mdata->base + SPI_CMD_REG);
+
 	mtk_spi_enable_transfer(master);
 
 	return 1;
@@ -898,7 +954,7 @@ static int mtk_spi_setup(struct spi_device *spi)
 
 static irqreturn_t mtk_spi_interrupt(int irq, void *dev_id)
 {
-	u32 cmd, reg_val, cnt, remainder, len;
+	u32 cmd, reg_val;
 	struct spi_master *master = dev_id;
 	struct mtk_spi *mdata = spi_master_get_devdata(master);
 	struct spi_transfer *trans = mdata->cur_transfer;
@@ -909,52 +965,7 @@ static irqreturn_t mtk_spi_interrupt(int irq, void *dev_id)
 	else
 		mdata->state = MTK_SPI_IDLE;
 
-	if (!master->can_dma(master, NULL, trans)) {
-		if (trans->rx_buf) {
-			cnt = mdata->xfer_len / 4;
-			ioread32_rep(mdata->base + SPI_RX_DATA_REG,
-				     trans->rx_buf + mdata->num_xfered, cnt);
-			remainder = mdata->xfer_len % 4;
-			if (remainder > 0) {
-				reg_val = readl(mdata->base + SPI_RX_DATA_REG);
-				memcpy(trans->rx_buf +
-					mdata->num_xfered +
-					(cnt * 4),
-					&reg_val,
-					remainder);
-			}
-		}
 
-		mdata->num_xfered += mdata->xfer_len;
-		if (mdata->num_xfered == trans->len) {
-			spi_finalize_current_transfer(master);
-			return IRQ_HANDLED;
-		}
-
-		len = trans->len - mdata->num_xfered;
-		mdata->xfer_len = min(MTK_SPI_MAX_FIFO_SIZE, len);
-		mtk_spi_setup_packet(master);
-
-		if (trans->tx_buf) {
-			cnt = mdata->xfer_len / 4;
-			iowrite32_rep(mdata->base + SPI_TX_DATA_REG,
-					trans->tx_buf + mdata->num_xfered, cnt);
-
-			remainder = mdata->xfer_len % 4;
-			if (remainder > 0) {
-				reg_val = 0;
-				memcpy(&reg_val,
-				trans->tx_buf + (cnt * 4) + mdata->num_xfered,
-				remainder);
-				writel(reg_val, mdata->base + SPI_TX_DATA_REG);
-			}
-		}
-
-		mtk_spi_enable_transfer(master);
-		spi_debug("The last fifo transfer Done.\n");
-
-		return IRQ_HANDLED;
-	}
 
 	if (mdata->tx_sgl)
 		trans->tx_dma += mdata->xfer_len;
@@ -1176,7 +1187,7 @@ static int mtk_spi_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		dev_info(&pdev->dev,
 				"get 'mediatek,autosuspend_delay' fail[%d], set 0\n", ret);
-		mdata->auto_suspend_delay = 0;
+		mdata->auto_suspend_delay = 10;
 	}
 	pm_runtime_set_autosuspend_delay(&pdev->dev, mdata->auto_suspend_delay);
 	dev_info(&pdev->dev, "SPI probe, set auto_suspend delay = %dmS!\n",
