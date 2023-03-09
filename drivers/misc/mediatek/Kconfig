@@ -25,6 +25,14 @@ source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/eemgpu/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/leakage_table/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mdpm/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/pbm/Kconfig"
+
+config MTK_WWAN_PWRCTL_SUPPORT
+	bool "Thin modem Power Control driver"
+	help
+	  Used for control the power of Thin modem.
+	  Inluce power on/off, warm/cold reset, and soft on.
+	  Provides the commands with ioctl for user space.
+	  If unsure, say N
 endmenu # Power
 
 menu "SSPM"
