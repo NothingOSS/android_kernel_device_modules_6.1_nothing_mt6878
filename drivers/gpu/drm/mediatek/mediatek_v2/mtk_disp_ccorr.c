@@ -1029,8 +1029,8 @@ int mtk_ccorr_cfg_set_ccorr(struct mtk_ddp_comp *comp,
 
 	id = index_of_ccorr(comp->id);
 	ccorr_config = data;
-	DDPINFO("%s pqhal_linear = %d, comp_linear =%d ", __func__, ccorr_config->linear,
-			ccorr->is_linear);
+	DDPINFO("%s pqhal_linear = %d, comp_linear =%d, id=%d ", __func__,
+		ccorr_config->linear, ccorr->is_linear, id);
 
 	if (ccorr_config->linear != ccorr->is_linear)
 		return -1;
@@ -1821,7 +1821,7 @@ static void mtk_ccorr_parse_dts(struct device_node *node, struct mtk_ddp_comp *c
 	int ret;
 	struct mtk_disp_ccorr *ccorr = comp_to_ccorr(comp);
 
-	ret = of_property_read_u32(node, "ccorr_linear", &(ccorr->is_linear));
+	ret = of_property_read_u32(node, "ccorr-linear", &(ccorr->is_linear));
 	if (ret)
 		DDPPR_ERR("read ccorr_linear failed\n");
 	DDPINFO("read ccorr_linear %d\n", ccorr->is_linear);
