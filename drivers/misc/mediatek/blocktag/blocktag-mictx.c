@@ -101,7 +101,7 @@ void mtk_btag_mictx_send_command(struct mtk_blocktag *btag, __u64 start_t,
 {
 	struct mtk_btag_mictx *mictx;
 
-	if (!btag || io_type == BTAG_IO_UNKNOWN)
+	if (!btag || tid >= BTAG_MAX_TAG || io_type == BTAG_IO_UNKNOWN)
 		return;
 
 	rcu_read_lock();
@@ -158,7 +158,7 @@ void mtk_btag_mictx_complete_command(struct mtk_blocktag *btag, __u64 end_t,
 {
 	struct mtk_btag_mictx *mictx;
 
-	if (!btag)
+	if (!btag || tid >= BTAG_MAX_TAG)
 		return;
 
 	rcu_read_lock();

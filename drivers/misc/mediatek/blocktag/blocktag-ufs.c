@@ -34,6 +34,9 @@
 
 /* ring trace for debugfs */
 struct mtk_blocktag *ufs_mtk_btag;
+static int tag_per_queue;
+static int nr_queue;
+static int nr_tag;
 struct workqueue_struct *ufs_mtk_btag_wq;
 struct work_struct ufs_mtk_btag_worker;
 
@@ -119,7 +122,7 @@ static struct btag_ufs_ctx *btag_ufs_ctx(__u16 qid)
 	if (!ctx)
 		return NULL;
 
-	if (qid >= ufs_mtk_btag->ctx.count) {
+	if (qid >= nr_queue) {
 		pr_notice("invalid queue id %d\n", qid);
 		return NULL;
 	}
@@ -128,26 +131,33 @@ static struct btag_ufs_ctx *btag_ufs_ctx(__u16 qid)
 
 static struct btag_ufs_ctx *btag_ufs_tid_to_ctx(__u16 tid)
 {
-	if (tid >= BTAG_MAX_TAGS) {
+	struct btag_ufs_ctx *ctx = BTAG_CTX(ufs_mtk_btag);
+
+	if (!ctx)
+		return NULL;
+
+	if (tid >= nr_tag) {
 		pr_notice("%s: invalid tag id %d\n", __func__, tid);
 		return NULL;
 	}
 
-	return btag_ufs_ctx(tid_to_qid(tid));
+	return btag_ufs_ctx(tid_to_qid(ctx, tid));
 }
 
 static struct btag_ufs_tag *btag_ufs_tag(struct btag_ufs_ctx_data *data,
 					 __u16 tid)
 {
-	if (!data)
+	struct btag_ufs_ctx *ctx = BTAG_CTX(ufs_mtk_btag);
+
+	if (!ctx || !data)
 		return NULL;
 
-	if (tid >= BTAG_MAX_TAGS) {
+	if (tid >= nr_tag) {
 		pr_notice("%s: invalid tag id %d\n", __func__, tid);
 		return NULL;
 	}
 
-	return &data->tags[tid % BTAG_UFS_QUEUE_TAGS];
+	return &data->tags[tid % nr_queue];
 }
 
 static void btag_ufs_pidlog_insert(struct mtk_btag_proc_pidlogger *pidlog,
@@ -223,14 +233,14 @@ void mtk_btag_ufs_send_command(__u16 tid, struct scsi_cmnd *cmd)
 	if (!cmd)
 		return;
 
+	ctx = btag_ufs_tid_to_ctx(tid);
+	if (!ctx)
+		return;
+
 	if (!ufs_mtk_btag->ctx_enable) {
 		btag_ufs_pidlog_insert(NULL, cmd, &top_len);
 		goto mictx;
 	}
-
-	ctx = btag_ufs_tid_to_ctx(tid);
-	if (!ctx)
-		return;
 
 	rcu_read_lock();
 	data = rcu_dereference(ctx->cur_data);
@@ -265,9 +275,9 @@ mictx:
 	mtk_btag_mictx_send_command(ufs_mtk_btag, cur_time,
 				    cmd_to_io_type(scsi_cmnd_cmd(cmd)),
 				    scsi_cmnd_len(cmd), top_len, tid,
-				    tid_to_qid(tid));
+				    tid_to_qid(ctx, tid));
 
-	trace_blocktag_ufs_send(sched_clock() - cur_time, tid, tid_to_qid(tid),
+	trace_blocktag_ufs_send(sched_clock() - cur_time, tid, tid_to_qid(ctx, tid),
 				scsi_cmnd_cmd(cmd), scsi_cmnd_len(cmd));
 }
 EXPORT_SYMBOL_GPL(mtk_btag_ufs_send_command);
@@ -282,12 +292,12 @@ void mtk_btag_ufs_transfer_req_compl(__u16 tid)
 	__u64 cur_time = sched_clock();
 	__u64 window_t = 0;
 
-	if (!ufs_mtk_btag->ctx_enable)
-		goto mictx;
-
 	ctx = btag_ufs_tid_to_ctx(tid);
 	if (!ctx)
 		return;
+
+	if (!ufs_mtk_btag->ctx_enable)
+		goto mictx;
 
 	rcu_read_lock();
 	data = rcu_dereference(ctx->cur_data);
@@ -334,10 +344,10 @@ rcu_unlock:
 mictx:
 	/* mictx complete logging */
 	mtk_btag_mictx_complete_command(ufs_mtk_btag, cur_time, tid,
-					tid_to_qid(tid));
+					tid_to_qid(ctx, tid));
 
 	trace_blocktag_ufs_complete(sched_clock() - cur_time, tid,
-				    tid_to_qid(tid));
+				    tid_to_qid(ctx, tid));
 }
 EXPORT_SYMBOL_GPL(mtk_btag_ufs_transfer_req_compl);
 
@@ -464,7 +474,7 @@ static ssize_t btag_ufs_proc_write(const char __user *ubuf, size_t count)
 	char cmd[16] = {0};
 	int ret;
 
-	if (!count)
+	if (!count || !ufs_mtk_btag || !rt)
 		goto err;
 
 	if (count > 16) {
@@ -521,11 +531,7 @@ static void btag_ufs_init_ctx(struct mtk_blocktag *btag)
 		rcu_assign_pointer(ctx[qid].cur_data, &ctx[qid].data[0]);
 	}
 
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 	btag->ctx_enable = true;
-#else
-	btag->ctx_enable = false;
-#endif
 }
 
 static struct mtk_btag_vops btag_ufs_vops = {
@@ -539,7 +545,6 @@ int mtk_btag_ufs_init(struct ufs_mtk_host *host)
 	struct ufs_hba_private *hba_priv;
 #endif
 	struct mtk_blocktag *btag;
-	int max_queue = 1;
 
 	if (!host)
 		return -1;
@@ -549,6 +554,16 @@ int mtk_btag_ufs_init(struct ufs_mtk_host *host)
 
 	if (host->boot_device)
 		btag_ufs_vops.boot_device = true;
+
+	tag_per_queue = 32;
+	nr_queue = 1;
+	nr_tag = nr_queue * tag_per_queue;
+
+	if (tag_per_queue > BTAG_UFS_MAX_TAG_PER_QUEUE ||
+	    nr_queue > BTAG_UFS_MAX_QUEUE ||
+	    nr_tag > BTAG_UFS_MAX_TAG || nr_tag > BTAG_MAX_TAG)
+		return -1;
+
 
 #if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
 	hba_priv = (struct ufs_hba_private *)host->hba->android_vendor_data1;
@@ -564,7 +579,7 @@ int mtk_btag_ufs_init(struct ufs_mtk_host *host)
 			      BTAG_STORAGE_UFS,
 			      BTAG_UFS_RINGBUF_MAX,
 			      sizeof(struct btag_ufs_ctx),
-			      max_queue, &btag_ufs_vops);
+			      nr_queue, &btag_ufs_vops);
 
 	if (btag) {
 		btag_ufs_init_ctx(btag);

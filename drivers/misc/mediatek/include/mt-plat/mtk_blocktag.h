@@ -33,7 +33,7 @@
 #define BTAG_PIDLOG_ENTRIES     50
 #define BTAG_NAME_LEN           16
 #define BTAG_PRINT_LEN          4096
-#define BTAG_MAX_TAGS           256
+#define BTAG_MAX_TAG            512
 
 #define BTAG_RT(btag)     (btag ? &btag->rt : NULL)
 #define BTAG_CTX(btag)    (btag ? btag->ctx.priv : NULL)
@@ -173,7 +173,7 @@ struct mtk_btag_mictx {
 		__u64 start_t;
 		enum mtk_btag_io_type io_type;
 		__u32 len;
-	} tags[BTAG_MAX_TAGS];
+	} tags[BTAG_MAX_TAG];
 	__u16 queue_nr;
 	__s8 id;
 	bool full_logging;

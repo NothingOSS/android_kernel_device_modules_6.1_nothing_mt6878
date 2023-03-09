@@ -15,10 +15,13 @@
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
 
-#define BTAG_UFS_RINGBUF_MAX    1000
-#define UFS_LOGBLK_SHIFT        12
-#define BTAG_UFS_QUEUE_TAGS     32
-#define tid_to_qid(tid)         ((tid) >> 5)
+#define BTAG_UFS_RINGBUF_MAX            1000
+#define UFS_LOGBLK_SHIFT                12
+#define BTAG_UFS_MAX_TAG_PER_QUEUE      64
+#define BTAG_UFS_MAX_QUEUE              8
+#define BTAG_UFS_MAX_TAG \
+	((BTAG_UFS_MAX_TAG_PER_QUEUE) *	(BTAG_UFS_MAX_QUEUE))
+#define tid_to_qid(ctx, tid)         ((tid) / (ctx->nr_queue))
 
 struct btag_ufs_tag {
 	__u64 start_t;
@@ -42,7 +45,7 @@ struct btag_ufs_workload {
 };
 
 struct btag_ufs_ctx_data {
-	struct btag_ufs_tag tags[BTAG_UFS_QUEUE_TAGS];
+	struct btag_ufs_tag tags[BTAG_UFS_MAX_TAG_PER_QUEUE];
 	struct btag_ufs_throughput tp;
 	struct btag_ufs_workload wl;
 	struct mtk_btag_proc_pidlogger pidlog;
@@ -51,6 +54,9 @@ struct btag_ufs_ctx_data {
 struct btag_ufs_ctx {
 	struct btag_ufs_ctx_data __rcu *cur_data;
 	struct btag_ufs_ctx_data data[2];
+	int tag_per_queue;
+	int nr_queue;
+	int nr_tag;
 };
 
 #endif
