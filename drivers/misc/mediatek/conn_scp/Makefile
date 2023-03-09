@@ -28,6 +28,7 @@ ifneq ($(KERNELRELEASE),)
 	# Aoltest
     ifeq ($(CONFIG_MTK_AOL_DEBUG),y)
         subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/conn_scp/aoltest/
+        subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/conn_scp/aoltest_v2/
     endif
 
     MODULE_NAME := connscp
@@ -46,6 +47,10 @@ ifneq ($(KERNELRELEASE),)
         $(MODULE_NAME)-objs += aoltest/aoltest_core.o
         $(MODULE_NAME)-objs += aoltest/aoltest_netlink.o
         $(MODULE_NAME)-objs += aoltest/aoltest_ring_buffer.o
+
+        $(MODULE_NAME)-objs += aoltest_v2/aoltestv2_core.o
+        $(MODULE_NAME)-objs += aoltest_v2/aoltestv2_netlink.o
+        #$(MODULE_NAME)-objs += aoltest_v2/aoltestv2_ring_buffer.o
     endif
     #endif
 
