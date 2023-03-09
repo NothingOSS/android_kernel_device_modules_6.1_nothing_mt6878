@@ -467,6 +467,9 @@
 	#define CRC_RDY BIT(16)
 #define DISP_REG_SPR_DITHER_18		0x0348
 	#define SPR_FUNC_DCM_DIS BIT(0)
+
+/* MTK SPRv2 Registers define start */
+/* TODO: The following SPRv2 registers need to be redefined when used */
 //MT6985
 #define MT6985_DISP_REG_SPR_V_BLANK        0x0028
 	#define VBP                            REG_FLD_MSB_LSB(4, 0)
@@ -475,7 +478,7 @@
 #define MT6985_DISP_REG_SPR_EN_BF_HS       0x002C
 	#define EN_BF_HS                       REG_FLD_MSB_LSB(7, 0)
 
-#define MT6985_DISP_REG_SPR_ROI_SIZE       0x0030
+#define DISP_REG_V2_SPR_ROI_SIZE       0x0030
 
 #define MT6985_DISP_REG_SPR_FRAME_DONE_DEL 0x0034
 
@@ -507,9 +510,11 @@
 
 #define MT6985_DISP_REG_SPR_ARRANGE1       0x007C
 
-#define MT6985_SPR_IP_PARAMS_NUM           832
+#define DISP_V2_SPR_IP_PARAMS_NUM           (832)
 
-#define MT6985_DISP_REG_SPR_IP_CFG_0       0x0080
+#define DISP_V2_SPR_IP_SHRINK_PARAMS_NUM    (123)
+
+#define DISP_REG_V2_SPR_IP_CFG_0       0x0080
 
 #define MT6985_DISP_REG_SPR_IP_CFG_831     0x0D7C
 
@@ -573,6 +578,7 @@
 
 #define MT6985_DISP_REG_SPR_CUP_SRAM_R_IF_MSB   0x0DE4
 	#define SPR_CUP_SRAM_RDATA_MSB              REG_FLD_MSB_LSB(15, 0)
+/* MTK SPRv2 Registers define end */
 
 //dispsys
 #define DISP_REG_POSTALIGN0_CON0                0x050
@@ -614,6 +620,7 @@ struct mtk_disp_spr_data {
 	bool support_shadow;
 	bool need_bypass_shadow;
 	enum mtk_spr_version version;
+	bool shrink_cfg;
 };
 
 /**
@@ -676,12 +683,21 @@ static void mtk_spr_prepare(struct mtk_ddp_comp *comp)
 			unsigned int i;
 
 			spr_params = &comp->mtk_crtc->panel_ext->params->spr_params;
-			if (spr_params->enable == 1 && spr_params->relay == 0) {
+			if ((spr_params->enable == 1) && (spr_params->relay == 0)
+			 && (spr->data->shrink_cfg == false)) {
 				DDPINFO("%s: spr ip config\n", __func__);
-				for (i = 1; i < MT6985_SPR_IP_PARAMS_NUM; i++)
+				for (i = 1; i < DISP_V2_SPR_IP_PARAMS_NUM; i++)
 					mtk_ddp_write_relaxed(comp,
 						*(spr_params->spr_ip_params + i),
-						(MT6985_DISP_REG_SPR_IP_CFG_0 + 0x4 * i), NULL);
+						(DISP_REG_V2_SPR_IP_CFG_0 + 0x4 * i), NULL);
+			}
+			if ((spr_params->enable == 1) && (spr_params->relay == 0)
+			 && (spr->data->shrink_cfg == true)) {
+				DDPINFO("%s: spr ip shrink config\n", __func__);
+				for (i = 1; i < DISP_V2_SPR_IP_SHRINK_PARAMS_NUM; i++)
+					mtk_ddp_write_relaxed(comp,
+						*(spr_params->spr_ip_params + i),
+						(DISP_REG_V2_SPR_IP_CFG_0 + 0x4 * i), NULL);
 			}
 		}
 	}
@@ -1024,7 +1040,6 @@ static void mtk_disp_spr_config_overhead(struct mtk_ddp_comp *comp,
 
 	spr_params = &comp->mtk_crtc->panel_ext->params->spr_params;
 
-	DDPMSG("line: %d\n", __LINE__);
 	g_left_pipe_overhead[0] = cfg->tile_overhead.left_overhead;
 	g_right_pipe_overhead[0] = cfg->tile_overhead.right_overhead;
 	if (cfg->tile_overhead.is_support && spr->data && spr->data->version == MTK_SPR_V2) {
@@ -1062,9 +1077,6 @@ static void mtk_disp_spr_config_overhead(struct mtk_ddp_comp *comp,
 	}
 }
 
-
-
-
 static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 				 struct mtk_ddp_config *cfg,
 				 struct cmdq_pkt *handle)
@@ -1078,7 +1090,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 	unsigned int crop_hoffset = 0;
 	unsigned int crop_out_hsize = 0;
 
-	if (!comp->mtk_crtc || !comp->mtk_crtc->panel_ext)
+	if (!comp || !comp->mtk_crtc || !comp->mtk_crtc->panel_ext)
 		return;
 
 	if (comp->id == DDP_COMPONENT_SPR0) {
@@ -1093,6 +1105,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 
 	if (comp->mtk_crtc->is_dual_pipe == true) {
 		postalign_width = cfg->w / 2;
+		width = cfg->w / 2;
 		if (cfg->tile_overhead.is_support) {
 			if (comp->id == DDP_COMPONENT_SPR0) {
 				width = spr_tile_overhead.left_in_width;
@@ -1132,7 +1145,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 
 	//roi size config
 	mtk_ddp_write_relaxed(comp, height << 16 | width,
-		MT6985_DISP_REG_SPR_ROI_SIZE, handle);
+		DISP_REG_V2_SPR_ROI_SIZE, handle);
 
 	//relay mode: roi size, crop_out_size, spr_en, spr_lut_en
 	if (disp_spr_bypass) {
@@ -1208,7 +1221,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 				config_regs + DISP_REG_POSTALIGN0_CON2);
 
 		mtk_ddp_write_relaxed(comp, height << 12 | width,
-		MT6985_DISP_REG_SPR_IP_CFG_0, handle);
+		DISP_REG_V2_SPR_IP_CFG_0, handle);
 
 		reg_val = (!!spr_params->bypass_dither << 5) |
 			(!!spr_params->rgb_swap << 4) |
@@ -1292,7 +1305,7 @@ void mtk_spr_dump(struct mtk_ddp_comp *comp)
 	else
 		num = 0x350;
 
-	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
+	DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
 	for (i = 0; i < num; i += 16) {
 		DDPDUMP("0x%x: 0x%08x 0x%08x 0x%08x 0x%08x\n", i,
 			readl(baddr + i), readl(baddr + i + 0x4),
@@ -1320,7 +1333,7 @@ int mtk_spr_analysis(struct mtk_ddp_comp *comp)
 		return 0;
 	}
 
-	DDPDUMP("== %s ANALYSIS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
+	DDPDUMP("== %s ANALYSIS:0x%llx ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
 	DDPDUMP("en=%d, spr_bypass=%d\n",
 		DISP_REG_GET_FIELD(CON_FLD_SPR_EN,
 			baddr + DISP_REG_SPR_EN),
@@ -1433,42 +1446,49 @@ static const struct mtk_disp_spr_data mt6853_spr_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
 	.version = MTK_SPR_V1,
+	.shrink_cfg = false,
 };
 
 static const struct mtk_disp_spr_data mt6983_spr_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
 	.version = MTK_SPR_V1,
+	.shrink_cfg = false,
 };
 
 static const struct mtk_disp_spr_data mt6985_spr_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
 	.version = MTK_SPR_V2,
+	.shrink_cfg = false,
 };
 
 static const struct mtk_disp_spr_data mt6897_spr_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
 	.version = MTK_SPR_V2,
+	.shrink_cfg = true,
 };
 
 static const struct mtk_disp_spr_data mt6895_spr_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
 	.version = MTK_SPR_V1,
+	.shrink_cfg = false,
 };
 
 static const struct mtk_disp_spr_data mt6886_spr_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
 	.version = MTK_SPR_V1,
+	.shrink_cfg = false,
 };
 
 static const struct mtk_disp_spr_data mt6879_spr_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
 	.version = MTK_SPR_V1,
+	.shrink_cfg = false,
 };
 
 static const struct of_device_id mtk_disp_spr_driver_dt_match[] = {
