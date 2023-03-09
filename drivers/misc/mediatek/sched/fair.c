@@ -679,6 +679,38 @@ void set_task_ls_with_softmask(struct soft_affinity_task_for_user *soft_affinity
 	rcu_read_unlock();
 }
 
+#if IS_ENABLED(CONFIG_UCLAMP_TASK_GROUP)
+static inline bool cloned_uclamp_latency_sensitive(struct task_struct *p)
+{
+	struct cgroup_subsys_state *css = task_css(p, cpu_cgrp_id);
+	struct task_group *tg;
+
+	if (!css)
+		return false;
+	tg = container_of(css, struct task_group, css);
+
+	return tg->latency_sensitive;
+}
+#else
+static inline bool cloned_uclamp_latency_sensitive(struct task_struct *p)
+{
+	return false;
+}
+#endif /* CONFIG_UCLAMP_TASK_GROUP */
+
+bool is_task_ls_uclamp(struct task_struct *p)
+{
+	bool latency_sensitive = false;
+
+	if (!uclamp_min_ls)
+		latency_sensitive = cloned_uclamp_latency_sensitive(p);
+	else {
+		latency_sensitive = (p->uclamp_req[UCLAMP_MIN].value > 0 ? 1 : 0) ||
+					cloned_uclamp_latency_sensitive(p);
+	}
+	return latency_sensitive;
+}
+
 inline bool is_task_latency_sensitive(struct task_struct *p)
 {
 	struct soft_affinity_task *sa_task;
@@ -686,7 +718,7 @@ inline bool is_task_latency_sensitive(struct task_struct *p)
 
 	sa_task = &((struct mtk_task *) p->android_vendor_data1)->sa_task;
 	rcu_read_lock();
-	latency_sensitive = sa_task->need_idle || uclamp_latency_sensitive(p);
+	latency_sensitive = sa_task->need_idle || is_task_ls_uclamp(p);
 	rcu_read_unlock();
 
 	return latency_sensitive;
