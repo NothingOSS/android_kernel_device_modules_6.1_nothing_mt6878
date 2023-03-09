@@ -1089,10 +1089,14 @@ int mtk_memif_set_format(struct mtk_base_afe *afe,
 			__func__, format);
 		break;
 	}
-
-	ret = mtk_regmap_update_bits(afe->regmap, memif->data->hd_reg,
-				     memif->data->hd_mask, hd_audio,
-				     memif->data->hd_shift);
+	if (memif->data->hd_mask <= 0)
+		ret = mtk_regmap_update_bits(afe->regmap, memif->data->hd_reg,
+					     0x3, hd_audio,
+					     memif->data->hd_shift);
+	else
+		ret = mtk_regmap_update_bits(afe->regmap, memif->data->hd_reg,
+					     memif->data->hd_mask, hd_audio,
+					     memif->data->hd_shift);
 	if (ret)
 		dev_err(afe->dev, "%s() error set memif->data->hd_reg %d\n",
 			__func__, ret);
