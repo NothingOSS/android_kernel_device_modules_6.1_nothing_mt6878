@@ -18,13 +18,13 @@ const char *mtk_dump_comp_str(struct mtk_ddp_comp *comp)
 		DDPPR_ERR("%s: Invalid ddp comp id:%d\n", __func__, comp->id);
 		return "invalid";
 	}
-	return ddp_comp_str[comp->id]+14;
+	return ddp_comp_str[comp->id]+14;	/* skip prefix DDP_COMPONENT_ for shorter log */
 }
 
 const char *mtk_dump_comp_str_id(unsigned int id)
 {
 	if (likely(id < DDP_COMPONENT_ID_MAX))
-		return ddp_comp_str[id]+14;
+		return ddp_comp_str[id]+14;	/* skip prefix DDP_COMPONENT_ for shorter log */
 
 	return "invalid";
 }

@@ -34,7 +34,8 @@ void mtk_disp_pmqos_get_icc_path_name(char *buf, int buf_len,
 {
 	int len;
 
-	len = snprintf(buf, buf_len, "%s_%s", mtk_dump_comp_str(comp), qos_event);
+	/* mtk_dump_comp_str return shorter comp name, add prefix to match icc name in dts */
+	len = snprintf(buf, buf_len, "DDP_COMPONENT_%s_%s", mtk_dump_comp_str(comp), qos_event);
 	if (!(len > -1 && len < buf_len))
 		DDPINFO("%s: snprintf return error", __func__);
 }
