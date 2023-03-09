@@ -543,12 +543,13 @@ int apu_power_on_off(struct platform_device *pdev, u32 id, u32 on, u32 off)
 	if (!apu)
 		return -EINVAL;
 
+	dev = apu->dev;
+
 	if (id >= APU_IPI_MAX) {
 		dev_info(dev, "%s: invalid ipi id = %d", __func__, id);
 		return -EINVAL;
 	}
 
-	dev = apu->dev;
 	hw_ops = &apu->platdata->ops;
 
 	if ((apu->platdata->flags & F_BYPASS_PM_RUNTIME) == 0 ||
