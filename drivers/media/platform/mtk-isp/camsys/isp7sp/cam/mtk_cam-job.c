@@ -2306,23 +2306,18 @@ static int fill_raw_img_buffer_to_ipi_frame(
 	struct mtk_cam_job *job = helper->job;
 	struct mtkcam_ipi_frame_param *fp = helper->fp;
 	int ret = -1;
-	bool bypass_imgo;
+	bool is_imgo = (node->desc.id == MTK_RAW_MAIN_STREAM_OUT);
 
-	bypass_imgo =
-		(node->desc.id == MTK_RAW_MAIN_STREAM_OUT) &&
-		is_sv_pure_raw(job);
-
-	if (V4L2_TYPE_IS_CAPTURE(buf->vbb.vb2_buf.type)) {
+	if (is_imgo && is_sv_pure_raw(job)) {
+		if (CAM_DEBUG_ENABLED(JOB))
+			pr_info("%s:req:%s bypass raw imgo\n",
+				__func__, job->req->req.debug_str);
+	} else if (V4L2_TYPE_IS_CAPTURE(buf->vbb.vb2_buf.type)) {
 		struct mtkcam_ipi_img_output *out;
 
-		if (!bypass_imgo) {
-			out = &fp->img_outs[helper->io_idx];
-			++helper->io_idx;
+		out = &fp->img_outs[helper->io_idx++];
 
-			ret = fill_img_out(out, buf, node);
-			if (!ret && is_rgbw(job))
-				ret = fill_img_out_w(out, buf, node);
-		}
+		ret = fill_img_out(out, buf, node);
 	} else {
 		struct mtkcam_ipi_img_input *in;
 
@@ -2332,10 +2327,6 @@ static int fill_raw_img_buffer_to_ipi_frame(
 		ret = fill_img_in(in, buf, node, -1);
 	}
 
-	if (bypass_imgo && CAM_DEBUG_ENABLED(JOB))
-		pr_info("%s:req:%s bypass raw imgo\n",
-			__func__, job->req->req.debug_str);
-
 	/* fill sv image fp */
 	ret = fill_sv_img_fp(helper, buf, node);
 
@@ -2344,6 +2335,21 @@ static int fill_raw_img_buffer_to_ipi_frame(
 
 	return ret;
 }
+
+static int fill_imgo_to_ipi_normal(struct req_buffer_helper *helper,
+			struct mtk_cam_buffer *buf,
+			struct mtk_cam_video_device *node)
+{
+	int ret = 0;
+
+	if (is_dc_mode(helper->job))
+		ret = fill_imgo_img_buffer_to_ipi_frame_stagger(helper, buf, node);
+	else
+		ret = fill_raw_img_buffer_to_ipi_frame(helper, buf, node);
+
+	return ret;
+}
+
 
 static int fill_sv_img_buffer_to_ipi_frame(
 	struct req_buffer_helper *helper, struct mtk_cam_buffer *buf,
@@ -2904,7 +2910,7 @@ static struct pack_job_ops_helper otf_pack_helper = {
 	.pack_job = _job_pack_normal,
 	.update_raw_bufs_to_ipi = fill_raw_img_buffer_to_ipi_frame,
 	.update_raw_rawi_to_ipi = NULL,
-	.update_raw_imgo_to_ipi = NULL,
+	.update_raw_imgo_to_ipi = fill_imgo_to_ipi_normal,
 	.update_raw_yuvo_to_ipi = NULL,
 	.append_work_buf_to_ipi = update_work_buffer_to_ipi_frame,
 };
@@ -3765,6 +3771,8 @@ static int fill_raw_meta_header(struct req_buffer_helper *helper)
 
 		res = &raw_data->ctrl.resource.user_data;
 		p.bin_ratio = bin_ratio(res->raw_res.bin);
+
+		p.rgbw = is_rgbw(job);
 	}
 
 	if (helper->meta_stats0_buf) {

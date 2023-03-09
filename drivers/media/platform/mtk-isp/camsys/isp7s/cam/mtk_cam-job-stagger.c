@@ -93,6 +93,9 @@ int fill_sv_fp(
 	out->uid.pipe_id = pipe_id;
 	out->buf[0][tag_idx].iova = buf->daddr + buf_ofset;
 
+	pr_info("%s: tag_idx %d, iova %llx",
+			__func__, tag_idx, out->buf[0][tag_idx].iova);
+
 	return ret;
 }
 

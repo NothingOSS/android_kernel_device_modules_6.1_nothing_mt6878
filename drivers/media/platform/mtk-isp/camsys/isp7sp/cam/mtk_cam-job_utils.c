@@ -825,10 +825,11 @@ static int _fill_img_out(struct mtkcam_ipi_img_output *io,
 	/* crop */
 	io->crop = v4l2_rect_to_ipi_crop(&buf->image_info.crop);
 
-	buf_printk("%s %dx%d @%d,%d-%dx%d\n",
+	buf_printk("%s %dx%d @%d,%d-%dx%d\n index %d, iova %llx",
 		   node->desc.name,
 		   io->fmt.s.w, io->fmt.s.h,
-		   io->crop.p.x, io->crop.p.y, io->crop.s.w, io->crop.s.h);
+		   io->crop.p.x, io->crop.p.y, io->crop.s.w, io->crop.s.h,
+		   index, io->buf[0][0].iova);
 	return 0;
 }
 

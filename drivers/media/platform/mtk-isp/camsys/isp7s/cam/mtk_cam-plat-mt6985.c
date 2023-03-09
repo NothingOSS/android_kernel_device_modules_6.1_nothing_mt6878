@@ -183,6 +183,11 @@ static int set_meta_stat1_info(struct mtk_cam_uapi_meta_raw_stats_1 *stats,
 	set_payload(&stats->af_stats.afo_buf,
 		MTK_CAM_UAPI_AFO_MAX_BUF_SIZE, &offset);
 
+	/* w part */
+	set_payload(&stats->af_stats_w.afo_buf,
+			(p->rgbw) ? MTK_CAM_UAPI_AFO_MAX_BUF_SIZE : 0,
+			&offset);
+
 	if (offset > size) {
 		pr_info("%s: required %zu > buffer size %zu\n",
 			__func__, offset, size);
