@@ -64,7 +64,6 @@ void apummu_remote_exit(void)
 
 int apummu_remote_send_cmd_sync(void *drvinfo, void *request, void *reply, uint32_t timeout)
 {
-	// TODO No timeout
 	struct apummu_dev_info *rdv = NULL;
 	int ret = 0;
 	unsigned long flags;

@@ -446,7 +446,7 @@ int apummu_add_map(uint32_t vsid_idx, uint8_t seg_idx, uint32_t input_adr, uint3
 	apummu_set_segment_offset0(vsid_idx, seg_idx, input_adr, 0, page_sel, page_len);
 	apummu_set_segment_offset1(vsid_idx, seg_idx, output_adr, 0, 1, 0);
 	apummu_set_segment_offset2(vsid_idx, seg_idx, 0, domain,
-					0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, ns);
+					0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ns);
 	apummu_set_segment_offset3(vsid_idx, seg_idx, 1, 0);
 
 #ifdef COMMENT_SHOW //ndef linux_ep

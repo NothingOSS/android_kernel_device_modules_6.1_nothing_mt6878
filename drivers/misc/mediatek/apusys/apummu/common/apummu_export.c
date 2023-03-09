@@ -286,15 +286,29 @@ err:
  *  type		-> input buffer type, plz refer to enum AMMU_BUF_TYPE
  *  session		-> input session
  *  device_va	-> input device_va (gonna encode to eva)
+ *  buf_size	-> size of the buffer
  *  eva			-> output eva
  * @description:
  *  encode input addr to eva according to buffer type
  *  for apummu, we also record translate info into session table
  */
 int apummu_iova2eva(uint32_t type, uint64_t session, uint64_t device_va,
-		uint32_t buf_size, uint32_t *eva)
+		uint32_t buf_size, uint64_t *eva)
 {
 	return addr_encode_and_write_stable(type, session, device_va, buf_size, eva);
+}
+
+/**
+ * @para:
+ *  session		-> input session
+ *  device_va	-> input device_va
+ *  buf_size	-> size of the buffer
+ * @description:
+ *  remove the mapping setting of the given buffer
+ */
+int apummu_buffer_remove(uint64_t session, uint64_t device_va, uint32_t buf_size)
+{
+	return apummu_stable_buffer_remove(session, device_va, buf_size);
 }
 
 /**

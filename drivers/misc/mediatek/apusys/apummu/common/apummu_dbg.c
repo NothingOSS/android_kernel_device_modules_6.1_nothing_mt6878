@@ -129,8 +129,8 @@ static ssize_t apummu_dbg_write_kernel(struct file *file, const char __user *use
 	char *tmp, *token, *cursor;
 	uint32_t argv[MAX_ARG_kernel];
 	int ret, i;
-	uint32_t mode, type, device_va, eva, j, sid, size = 0;
-	uint64_t session, addr;
+	uint32_t mode, type, device_va, sid, size = 0;
+	uint64_t session, addr, eva;
 	void *tbl_kva = NULL;
 	struct apummu_session_tbl *g_ammu_session_table_ptr_DBG = NULL;
 	struct apummu_mem ammu_mem;
@@ -173,7 +173,7 @@ static ssize_t apummu_dbg_write_kernel(struct file *file, const char __user *use
 		if (ret)
 			AMMU_LOG_ERR("apummu_iova2eva fail\n");
 		else
-			AMMU_LOG_DBG("apummu_iova2eva ret IOVA = 0x%x\n", eva);
+			AMMU_LOG_DBG("apummu_iova2eva ret IOVA = 0x%llx\n", eva);
 
 		break;
 	case AMMU_FREE_STABLE: // 1
@@ -201,36 +201,20 @@ static ssize_t apummu_dbg_write_kernel(struct file *file, const char __user *use
 
 		AMMU_LOG_DBG("== APUMMU dump session table in DBG Start ==\n");
 		AMMU_LOG_DBG("== size = 0x%x\n", size);
-		AMMU_LOG_DBG("session           = 0x%llx\n",
-			g_ammu_session_table_ptr_DBG->stable_info.session);
-		AMMU_LOG_DBG("session_entry_cnt = %u\n",
-			g_ammu_session_table_ptr_DBG->stable_info.session_entry_cnt);
-		AMMU_LOG_DBG("mem_mask          = 0x%x\n",
+		AMMU_LOG_DBG("session              = 0x%llx\n",
+			g_ammu_session_table_ptr_DBG->session);
+		AMMU_LOG_DBG("mem_mask             = 0x%x\n",
 			g_ammu_session_table_ptr_DBG->stable_info.mem_mask);
-		AMMU_LOG_DBG("DRAM_page_array_mask  = 0~4G(0x%x) 4~16G(0x%x)\n",
+		AMMU_LOG_DBG("DRAM_page_array_mask = 0x%x 0x%x\n",
 			g_ammu_session_table_ptr_DBG->stable_info.DRAM_page_array_mask[0],
 			g_ammu_session_table_ptr_DBG->stable_info.DRAM_page_array_mask[1]);
+		AMMU_LOG_DBG("DRAM_page_array_en_num = %u, %u\n",
+			g_ammu_session_table_ptr_DBG->stable_info.DRAM_page_array_en_num[0],
+			g_ammu_session_table_ptr_DBG->stable_info.DRAM_page_array_en_num[1]);
 		AMMU_LOG_DBG("EXT_SLB_addr = 0x%x, RSV_S_SLB PA start = %u, page = %u\n",
 			g_ammu_session_table_ptr_DBG->stable_info.EXT_SLB_addr,
 			g_ammu_session_table_ptr_DBG->stable_info.RSV_S_SLB_page_array_start,
 			g_ammu_session_table_ptr_DBG->stable_info.RSV_S_SLB_page);
-
-		AMMU_LOG_DBG("== dump session addr table ==\n");
-		AMMU_LOG_DBG("           | type |    IOVA    |     EVA    |\n");
-		for (j = 0; j < g_ammu_session_table_ptr_DBG->stable_info.session_entry_cnt; j++) {
-			if (g_ammu_session_table_ptr_DBG->adr[j].type == 1) {
-				AMMU_LOG_DBG("> entry%3u:     %u | 0x%8x | 0x%8x |\n", j,
-					g_ammu_session_table_ptr_DBG->adr[j].type,
-					g_ammu_session_table_ptr_DBG->adr[j].iova,
-					g_ammu_session_table_ptr_DBG->adr[j].eva);
-			} else {
-				AMMU_LOG_DBG("> entry%3u:     %u | 0x%8x | 0x%8x |\n", j,
-					g_ammu_session_table_ptr_DBG->adr[j].type,
-					g_ammu_session_table_ptr_DBG->adr[j].iova,
-					g_ammu_session_table_ptr_DBG->adr[j].eva);
-			}
-		}
-		AMMU_LOG_DBG("== APUMMU dump session table End ==\n");
 		break;
 	case AMMU_ALLOC_AND_MAP: // 4
 		ret = apummu_alloc_mem(type, size, &addr, &sid);

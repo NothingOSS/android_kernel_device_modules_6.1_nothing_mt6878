@@ -8,7 +8,6 @@
 #define __APUSYS_APUMMU_EXPORT_H__
 #include <linux/types.h>
 
-/* TODO: reorignaize below */
 int apummu_alloc_mem(uint32_t type, uint32_t size, uint64_t *addr, uint32_t *sid);
 int apummu_free_mem(uint32_t sid);
 int apummu_import_mem(uint64_t session, uint32_t sid);
@@ -32,7 +31,17 @@ int apummu_unmap_mem(uint64_t session, uint32_t sid);
  *  for apummu, we also record translate info into session table
  */
 int apummu_iova2eva(uint32_t type, uint64_t session, uint64_t device_va,
-			uint32_t buf_size, uint32_t *eva);
+			uint32_t buf_size, uint64_t *eva);
+
+/**
+ * @para:
+ *  session	-> input session
+ *  device_va	-> input device_va
+ *  buf_size	-> size of the buffer
+ * @description:
+ *  remove the mapping setting of the given buffer
+ */
+int apummu_buffer_remove(uint64_t session, uint64_t device_va, uint32_t buf_size);
 
 /**
  * @para:

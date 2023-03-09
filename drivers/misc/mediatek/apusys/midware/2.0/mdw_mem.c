@@ -328,7 +328,7 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 	struct mdw_mem_map *map = NULL;
 	struct scatterlist *sg = NULL;
 	int ret = 0, i = 0;
-	uint32_t eva = 0;
+	uint64_t eva = 0;
 
 	mutex_lock(&m->mtx);
 	get_dma_buf(m->dbuf);

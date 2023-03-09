@@ -26,17 +26,7 @@ enum AMMU_BUF_TYPE {
 	AMMU_VLM_BUF,	// (1-1 mapping)
 };
 
-struct apummu_adr {
-	enum AMMU_BUF_TYPE type;
-	uint32_t iova;	// the frist 22~ 24bits due to 4k alignment(shift 10)
-	uint32_t eva;	// the encrypted iova
-};
-
 struct ammu_stable_info {
-	/* header */
-	uint64_t session;			// the session
-	uint32_t session_entry_cnt;	// max: APUMMU_MAX_TBL_ENTRY
-
 	uint32_t EXT_SLB_addr;		// SLB addr for EXT
 
 	/*
@@ -57,15 +47,18 @@ struct ammu_stable_info {
 struct apummu_session_tbl {
 	/* stuff pass to RV */
 	struct ammu_stable_info stable_info;
+	uint64_t session;
 
-	/* payload */
-	struct apummu_adr adr[APUMMU_MAX_TBL_ENTRY];
+	uint32_t DRAM_1_4G_mask_cnter[32];
+	uint32_t DRAM_4_16G_mask_cnter[32];
 
 	struct list_head list;
 };
 
 int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session,
-			uint64_t iova, uint32_t buf_size, uint32_t *eva);
+			uint64_t iova, uint32_t buf_size, uint64_t *eva);
+int apummu_stable_buffer_remove(uint64_t session, uint64_t device_va,
+			uint32_t buf_size);
 int get_session_table(uint64_t session, void **tbl_kva, uint32_t *size);
 int session_table_free(uint64_t session);
 void dump_session_table_set(void);
