@@ -220,6 +220,7 @@ static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *d
 	struct mmdvfs_ipi_data slot = {
 		func, idx, opp, mmdvfs_memory_iova >> 32, (u32)mmdvfs_memory_iova};
 	int gen, ret = 0, retry = 0;
+	static u8 times;
 	u32 val;
 
 	if (!mmdvfs_is_init_done())
@@ -296,8 +297,11 @@ static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *d
 
 	if (!ret)
 		writel(val & ~readl(MEM_IPI_SYNC_DATA), MEM_IPI_SYNC_FUNC);
-	else if (gen == vcp_cmd_ex(VCP_GET_GEN))
-		vcp_cmd_ex(VCP_SET_HALT);
+	else if (gen == vcp_cmd_ex(VCP_GET_GEN)) {
+		if (!times)
+			vcp_cmd_ex(VCP_SET_HALT);
+		times += 1;
+	}
 
 ipi_lock_end:
 	val = readl(MEM_IPI_SYNC_FUNC);
@@ -1083,18 +1087,31 @@ static struct notifier_block mmdvfs_pm_notifier_block = {
 	.priority = 0,
 };
 
+static void disp_pd_swrgo_init(const bool enable)
+{
+	int ret = 0;
+
+	if (enable && !mmdvfs_swrgo_init) {
+		ret = mtk_mmdvfs_enable_vcp(enable, VCP_PWR_USR_MMDVFS_GENPD);
+		if (!ret) {
+			ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_INIT, enable ? 1 : 0, MAX_OPP, NULL);
+			if (!ret)
+				mmdvfs_swrgo_init = true;
+		}
+	} else if (!enable && mmdvfs_swrgo_init) {
+		ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_INIT, enable ? 1 : 0, MAX_OPP, NULL);
+		if (!ret)
+			mmdvfs_swrgo_init = false;
+		ret = mtk_mmdvfs_enable_vcp(enable, VCP_PWR_USR_MMDVFS_GENPD);
+	}
+	MMDVFS_DBG("ret:%d enable:%d swrgo:%d", ret, enable, mmdvfs_swrgo_init);
+}
+
 void disp_pd_notify_work(struct work_struct *_work)
 {
 	struct mmdvfs_vmm_notify_work *work = container_of(_work, typeof(*work), vmm_notify_work);
-	int ret;
 
-	if (!work->enable && mmdvfs_swrgo_init) {
-		ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_INIT, 0, MAX_OPP, NULL);
-		if (!ret)
-			mmdvfs_swrgo_init = false;
-		ret = mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_GENPD);
-		MMDVFS_DBG("ret:%d enable:%d swrgo:%d", ret, work->enable, mmdvfs_swrgo_init);
-	}
+	disp_pd_swrgo_init(work->enable);
 	kfree(work);
 }
 
@@ -1110,11 +1127,12 @@ static int disp_pd_callback(struct notifier_block *nb, unsigned long pd_flags, v
 		return -ENOMEM;
 
 	switch (pd_flags) {
+	case GENPD_NOTIFY_PRE_ON:
+		work->enable = true;
+		break;
 	case GENPD_NOTIFY_OFF:
 		work->enable = false;
 		break;
-	case GENPD_NOTIFY_PRE_ON:
-		// work->enable = true;
 	default:
 		return 0;
 	}
@@ -1260,10 +1278,12 @@ static int mmdvfs_vcp_init_thread(void *data)
 	force_on_notifier.notifier_call = mmdvfs_force_on_callback;
 	mtk_smi_dbg_register_force_on_notifier(&force_on_notifier);
 
-	if (mmdvfs_swrgo)
+	if (mmdvfs_swrgo) {
+		disp_pd_swrgo_init(true);
 		for (i = 0; i < ARRAY_SIZE(mmdvfs_user); i++)
 			if (mmdvfs_user[i].undo_rate > 26000000UL)
 				mmdvfs_mux_set_opp(mmdvfs_user[i].name, mmdvfs_user[i].undo_rate);
+	}
 	return 0;
 }
 
@@ -1550,14 +1570,8 @@ int mmdvfs_mux_set_opp(const char *name, unsigned long rate)
 		}
 
 		if (!mmdvfs_swrgo_init) {
-			ret = mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_GENPD);
-			if (ret)
-				goto set_opp_end;
-			ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_INIT, 1, MAX_OPP, NULL);
-			if (ret)
-				goto set_opp_end;
-			mmdvfs_swrgo_init = true;
-			MMDVFS_DBG("ret:%d enable:%d swrgo:%d", ret, true, mmdvfs_swrgo_init);
+			MMDVFS_ERR("swrgo:%d not ready", mmdvfs_swrgo_init);
+			goto set_opp_end;
 		}
 
 		if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
