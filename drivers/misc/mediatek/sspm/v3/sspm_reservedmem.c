@@ -200,6 +200,8 @@ int sspm_sbuf_init(void)
 
 		if (IS_ERR((void const *) sspm_base))
 			return -1;
+	} else {
+		return -1;
 	}
 
 	ret = of_property_read_u32(sspm_pdev->dev.of_node, "sspm-share-region-base",
