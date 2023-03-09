@@ -45,8 +45,12 @@ enum ddr_bc_ip {
 /* #define NR_DDR_BC_IP (6) */
 
 /* core extension ip state */
-struct core_ip_pwr_sta {
+struct core_ip_vol_pwr_sta {
 	unsigned int state[NR_CORE_VOLT][NR_POWER_STATE];
+};
+
+struct core_ip_pwr_sta {
+	unsigned int state[NR_POWER_STATE];
 };
 
 /* core extension index structure */
@@ -55,6 +59,7 @@ struct core_index_ext {
 	unsigned int acc_time[NR_CORE_VOLT];
 
 	/* core ip power state distribution */
+	struct core_ip_vol_pwr_sta vol_pwr_state[NR_CORE_IP];
 	struct core_ip_pwr_sta pwr_state[NR_CORE_IP];
 };
 

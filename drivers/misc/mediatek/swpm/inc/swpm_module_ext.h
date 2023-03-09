@@ -25,9 +25,16 @@ struct ip_vol_times {
 	int64_t idle_time;
 	int64_t off_time;
 };
+
+struct ip_times {
+	int64_t active_time;
+	int64_t idle_time;
+	int64_t off_time;
+};
 struct ip_stats {
 	char ip_name[MAX_IP_NAME_LENGTH];
 	struct ip_vol_times *vol_times;
+	struct ip_times *times;
 };
 struct vol_duration {
 	int32_t vol;
