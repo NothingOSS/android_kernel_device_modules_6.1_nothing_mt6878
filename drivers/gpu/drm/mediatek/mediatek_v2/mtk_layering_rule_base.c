@@ -3915,7 +3915,7 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 
 	if (!(mtk_crtc->mml_debug & DISP_MML_MMCLK_UNLIMIT)) {
 		/* ratio boundary is 194 for IR, 225 for DL */
-		if (calc_mml_rsz_ratio(mml_info) >= 160)
+		if (calc_mml_rsz_ratio(mml_info) >= 110)
 			mml_info->mode = MML_MODE_MML_DECOUPLE;
 	}
 
