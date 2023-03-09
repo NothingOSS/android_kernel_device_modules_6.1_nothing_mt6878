@@ -55,11 +55,35 @@
 /* DRE 3.0 */
 #define DISP_AAL_CFG_MAIN                       (0x200)
 #define DISP_AAL_SRAM_CFG                       (0x0c4)
+#define REG_HIST_SRAM_PP_HALT     REG_FLD_MSB_LSB(1, 1)
+#define REG_FORCE_HIST_SRAM_EN    REG_FLD_MSB_LSB(4, 4)
+#define REG_FORCE_HIST_SRAM_APB   REG_FLD_MSB_LSB(5, 5)
+#define REG_FORCE_HIST_SRAM_INT   REG_FLD_MSB_LSB(6, 6)
+#define REG_CURVE_SRAM_PP_HALT    REG_FLD_MSB_LSB(7, 7)
+#define REG_FORCE_CURVE_SRAM_EN   REG_FLD_MSB_LSB(8, 8)
+#define REG_FORCE_CURVE_SRAM_APB  REG_FLD_MSB_LSB(9, 9)
+#define REG_FORCE_CURVE_SRAM_INT  REG_FLD_MSB_LSB(10, 10)
+#define REG_CURVE_SRAM_RREQ_EN    REG_FLD_MSB_LSB(11, 14)
+#define REG_SRAM_RREQ_EN          REG_FLD_MSB_LSB(16, 19)
+#define REG_SRAM_WREQ_EN          REG_FLD_MSB_LSB(20, 21)
+#define REG_SRAM_8X1_RREQ_EN      REG_FLD_MSB_LSB(24, 24)
+#define REG_SRAM_8X1_WREQ_EN      REG_FLD_MSB_LSB(25, 25)
+#define REG_SRAM_RW_SEL           REG_FLD_MSB_LSB(26, 26)
+#define REG_CURVE_SRAM_WREQ_EN    REG_FLD_MSB_LSB(27, 28)
+#define REG_SRAM_SOF_RST_SEL      REG_FLD_MSB_LSB(29, 29)
 #define DISP_AAL_SRAM_STATUS                    (0x0c8)
 #define DISP_AAL_SRAM_RW_IF_0                   (0x0cc)
 #define DISP_AAL_SRAM_RW_IF_1                   (0x0d0)
 #define DISP_AAL_SRAM_RW_IF_2                   (0x0d4)
 #define DISP_AAL_SRAM_RW_IF_3                   (0x0d8)
+#define MDP_AAL_CURVE_SRAM_RW_IF_0              (0x690)
+#define MDP_AAL_CURVE_SRAM_RW_IF_1              (0x694)
+#define MDP_AAL_CURVE_SRAM_RW_IF_2              (0x698)
+#define MDP_AAL_CURVE_SRAM_RW_IF_3              (0x69c)
+#define MDP_AAL_CURVE_SRAM_WADDR      MDP_AAL_CURVE_SRAM_RW_IF_0
+#define MDP_AAL_CURVE_SRAM_WDATA      MDP_AAL_CURVE_SRAM_RW_IF_1
+#define MDP_AAL_CURVE_SRAM_RADDR      MDP_AAL_CURVE_SRAM_RW_IF_2
+#define MDP_AAL_CURVE_SRAM_RDATA      MDP_AAL_CURVE_SRAM_RW_IF_3
 #define DISP_AAL_WIN_X_MAIN                     (0x460)
 #define DISP_AAL_WIN_Y_MAIN                     (0x464)
 #define DISP_AAL_DRE_BLOCK_INFO_00              (0x468)
@@ -214,6 +238,8 @@ struct mtk_disp_aal_data {
 	int aal_dre_hist_end;
 	int aal_dre_gain_start;
 	int aal_dre_gain_end;
+	bool aal_dre3_curve_sram;
+	bool aal_dre3_auto_inc;
 	int bitShift;
 };
 

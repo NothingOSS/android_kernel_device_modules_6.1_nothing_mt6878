@@ -327,7 +327,8 @@ static int mtk_gamma_write_12bit_lut_reg(struct mtk_ddp_comp *comp,
 		block_num = DISP_GAMMA_LUT_SIZE / DISP_GAMMA_BLOCK_SIZE;
 	} else {
 		DDPINFO("%s: g_gamma_data_mode is error\n", __func__);
-		return -1;
+		ret = -EFAULT;
+		goto gamma_write_lut_unlock;
 	}
 
 	if (readl(comp->regs + DISP_GAMMA_SHADOW_SRAM) & 0x2) {
@@ -392,14 +393,14 @@ static int mtk_gamma_write_gain_reg(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_CFG, 0x0 << 3, 0x8);
 		DDPINFO("all gain == 8192\n");
-		return ret;
+		goto unlock;
 	}
 
 	if ((g_sb_param.gain[0] == 0) && (g_sb_param.gain[1] == 0) && (g_sb_param.gain[2] == 0)) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_CFG, 0x0 << 3, 0x8);
 		DDPINFO("all gain == 0\n");
-		return ret;
+		goto unlock;
 	}
 
 	for (i = 0; i < DISP_GAMMA_GAIN_SIZE; i++) {
@@ -415,6 +416,7 @@ static int mtk_gamma_write_gain_reg(struct mtk_ddp_comp *comp,
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_GAMMA_CFG, 0x1 << 3, 0x8);
 
+unlock:
 	if (lock)
 		mutex_unlock(&g_gamma_global_lock);
 	return ret;
