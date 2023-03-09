@@ -184,10 +184,10 @@ enum {
 unsigned int uart_reg_buf[LOG_BUF_SIZE];
 struct mtk8250_info_dump rx_record;
 
-#if IS_ENABLED(CONFIG_MTK_UARTHUB)
 static struct mtk8250_reset_data peri_reset = {0};
 static struct mtk8250_reg_data peri_wakeup = {0};
 
+#if IS_ENABLED(CONFIG_MTK_UARTHUB)
 static void mtk8250_clear_wakeup(void)
 {
 	/*clear wakeup*/
@@ -627,12 +627,13 @@ int mtk8250_uart_dump(struct tty_struct *tty)
 		ret = -EINVAL;
 		goto err_unlock_exit;
 	}
+#if IS_ENABLED(CONFIG_MTK_UARTHUB)
 	if (data->support_hub != 1) {
 		pr_info("%s: current port is not hub port\n", __func__);
 		ret = -EINVAL;
 		goto err_unlock_exit;
 	}
-
+#endif
 	memset(uart_reg_buf, 0, LOG_BUF_SIZE);
 	memset(apdma_rx_reg_buf, 0, LOG_BUF_SIZE);
 	memset(apdma_tx_reg_buf, 0, LOG_BUF_SIZE);
@@ -1097,6 +1098,21 @@ static void mtk8250_dma_rx_complete(void *param)
 		}
 	}
 
+	if (((of_device_get_match_data(up->port.dev) != NULL) && !data->support_hub)
+		&& rx_record.rec_total) {
+		//first assign as last record idx
+		idx = (unsigned int)((rx_record.rec_total - 1) % UART_DUMP_RECORE_NUM);
+
+		while (polling_cnt) {
+			if (!rx_record.rec[idx].r_copied)
+				msleep(TTY_BUF_POLLING_INTERVAL);
+			else
+				break;
+
+			polling_cnt--;
+		}
+	}
+
 	spin_lock_irqsave(&up->port.lock, flags);
 
 	dmaengine_tx_status(dma->rxchan, dma->rx_cookie, &state);
@@ -1106,6 +1122,24 @@ static void mtk8250_dma_rx_complete(void *param)
 	mtk8250_uart_get_apdma_rpt(dma->rxchan, &(data->rx_pos));
 
 	if (data->support_hub == 1) {
+		//reassign to the new record
+		idx = (unsigned int)(rx_record.rec_total % UART_DUMP_RECORE_NUM);
+		rx_record.rec_total++;
+		rx_record.rec[idx].trans_len = total;
+		rx_record.rec[idx].trans_time = sched_clock();
+		rx_record.rec[idx].r_rx_pos = data->rx_pos;
+		rx_record.rec[idx].cur_pid = current->pid;
+		memcpy(rx_record.rec[idx].cur_comm, current->comm,
+			sizeof(rx_record.rec[idx].cur_comm));
+		rx_record.rec[idx].cur_comm[15] = 0;
+#if defined(CONFIG_SMP) && defined(CONFIG_THREAD_INFO_IN_TASK)
+		rx_record.rec[idx].cur_cpu = 0xff;
+#else
+		rx_record.rec[idx].cur_cpu = 0xff;
+#endif
+	}
+
+	if ((of_device_get_match_data(up->port.dev) != NULL) && !data->support_hub) {
 		//reassign to the new record
 		idx = (unsigned int)(rx_record.rec_total % UART_DUMP_RECORE_NUM);
 		rx_record.rec_total++;
@@ -1135,12 +1169,24 @@ static void mtk8250_dma_rx_complete(void *param)
 		if (total <= UART_DUMP_BUF_LEN)
 			memcpy(rx_record.rec[idx].rec_buf, ptr, cnt);
 	}
+
+	if ((of_device_get_match_data(up->port.dev) != NULL) && !data->support_hub) {
+		if (total <= UART_DUMP_BUF_LEN)
+			memcpy(rx_record.rec[idx].rec_buf, ptr, cnt);
+	}
 #endif
 
 	if ((copied == cnt) && (total > cnt)) {
 		ptr = (unsigned char *)(dma->rx_buf);
 #ifdef CONFIG_UART_DATA_RECORD
 	if (data->support_hub == 1) {
+		if (total <= UART_DUMP_BUF_LEN)
+			memcpy(rx_record.rec[idx].rec_buf + cnt, ptr, total - cnt);
+		else
+			is_exceed_buf_size = true;
+	}
+
+	if ((of_device_get_match_data(up->port.dev) != NULL) && !data->support_hub) {
 		if (total <= UART_DUMP_BUF_LEN)
 			memcpy(rx_record.rec[idx].rec_buf + cnt, ptr, total - cnt);
 		else
@@ -1154,6 +1200,11 @@ static void mtk8250_dma_rx_complete(void *param)
 	}
 
 	if (data->support_hub == 1) {
+		rx_record.rec[idx].r_copied = copied;
+		rx_record.rec[idx].tty_port_addr = (unsigned long long)tty_port;
+	}
+
+	if ((of_device_get_match_data(up->port.dev) != NULL) && !data->support_hub) {
 		rx_record.rec[idx].r_copied = copied;
 		rx_record.rec[idx].tty_port_addr = (unsigned long long)tty_port;
 	}
@@ -1662,6 +1713,7 @@ static int mtk8250_probe_of(struct platform_device *pdev, struct uart_port *p,
 #endif
 
 	void __iomem *peri_remap_addr = NULL;
+	void __iomem *peri_remap_pinmux = NULL;
 	unsigned int peri_addr = 0, peri_mask = 0, peri_val = 0;
 	int index = -1;
 	int uart_line = -1;
@@ -1680,6 +1732,23 @@ static int mtk8250_probe_of(struct platform_device *pdev, struct uart_port *p,
 		}
 
 		return 0;
+	}
+
+	if ((of_device_get_match_data(&pdev->dev) != NULL) && !data->support_hub) {
+		dev_info(&pdev->dev, "Setting clk for clk_wo_uarthub!\n");
+		data->uart_clk = devm_clk_get(&pdev->dev, "clk_wo_uarthub");
+		if (IS_ERR(data->uart_clk)) {
+			/*
+			 * For compatibility with older device trees try unnamed
+			 * clk when no baud clk can be found.
+			 */
+			data->uart_clk = devm_clk_get(&pdev->dev, NULL);
+			if (IS_ERR(data->uart_clk)) {
+				dev_info(&pdev->dev, "Can't get clk_wo_uarthub clock\n");
+				return PTR_ERR(data->uart_clk);
+			}
+			return 0;
+		}
 	}
 
 		err = of_property_read_u32(pdev->dev.of_node, "uart-line", &uart_line);
@@ -1709,6 +1778,25 @@ static int mtk8250_probe_of(struct platform_device *pdev, struct uart_port *p,
 		data->dma->txconf.dst_maxburst = MTK_UART_TX_TRIGGER;
 	}
 #endif
+
+	if ((of_device_get_match_data(&pdev->dev) != NULL) && !data->support_hub) {
+		index = of_property_read_u32_index(pdev->dev.of_node,
+			"peri-wakeup", 0, &peri_wakeup.addr);
+		if (index) {
+			pr_notice("[%s] get peri-wakeup addr fail\n", __func__);
+			return -1;
+		}
+
+		peri_remap_pinmux = ioremap(peri_wakeup.addr, 0x10);
+		if (!peri_remap_pinmux) {
+			pr_notice("[%s] peri_remap_pinmux(%x) ioremap fail\n",
+				__func__, peri_wakeup.addr);
+			return -1;
+		}
+		UART_REG_WRITE(peri_remap_pinmux,
+			((UART_REG_READ(peri_remap_pinmux) & (~0x11)) | 0x10));
+		dev_info(&pdev->dev, "PERSYS set as 0x%x\n", (UART_REG_READ(peri_remap_pinmux)));
+	}
 
 	if (data->support_hub) {
 		/*switch clock*/
@@ -1872,8 +1960,13 @@ static int mtk8250_probe(struct platform_device *pdev)
 	if (comp == NULL) {
 		dev_info(&pdev->dev, "No compatiable data\n");
 		data->support_hub = 0;
-	} else
+	} else {
+#if IS_ENABLED(CONFIG_MTK_UARTHUB)
 		data->support_hub = comp->support_hub;
+#else
+		data->support_hub = 0;
+#endif
+	}
 
 	dev_info(&pdev->dev,
 			"uart support uarthub: %d\n", data->support_hub);

@@ -1157,12 +1157,18 @@ static int mtk_uart_apdma_probe(struct platform_device *pdev)
 			 MTK_UART_APDMA_NR_VCHANS);
 	}
 
+
+#if IS_ENABLED(CONFIG_MTK_UARTHUB)
 	if (of_property_read_u32(np, "support-hub", &mtkd->support_hub)) {
 		mtkd->support_hub = 0;
 		dev_info(&pdev->dev,
 			 "Using %u as missing support-hub property\n",
 			 mtkd->support_hub);
 	}
+#else
+	mtkd->support_hub = 0;
+	dev_info(&pdev->dev, "CONFIG_MTK_UARTHUB is disabled.\n");
+#endif
 
 	if (mtkd->support_hub) {
 		clk_count = 0;
