@@ -649,6 +649,8 @@ static int gzvm_assign_ioeventfd(struct gzvm *gzvm, struct gzvm_ioeventfd *args)
 		return PTR_ERR(evt_ctx);
 
 	evt = kmalloc(sizeof(*evt), GFP_KERNEL);
+	if (!evt)
+		return -ENOMEM;
 	*evt = (struct gzvm_ioevent) {
 		.addr = args->addr,
 		.len = args->len,
