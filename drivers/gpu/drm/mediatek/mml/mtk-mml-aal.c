@@ -250,6 +250,7 @@ struct aal_data {
 	const u16 *reg_table;
 	bool crop;
 	u8 rb_mode;
+	bool is_linear;
 };
 
 static const struct aal_data mt6893_aal_data = {
@@ -262,6 +263,7 @@ static const struct aal_data mt6893_aal_data = {
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
 	.rb_mode = RB_EOF_MODE,
+	.is_linear = false,
 };
 
 static const struct aal_data mt6983_aal_data = {
@@ -274,6 +276,7 @@ static const struct aal_data mt6983_aal_data = {
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
 	.rb_mode = RB_EOF_MODE,
+	.is_linear = false,
 };
 
 static const struct aal_data mt6879_aal_data = {
@@ -286,6 +289,7 @@ static const struct aal_data mt6879_aal_data = {
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
 	.rb_mode = RB_EOF_MODE,
+	.is_linear = false,
 };
 
 static const struct aal_data mt6895_aal0_data = {
@@ -298,6 +302,7 @@ static const struct aal_data mt6895_aal0_data = {
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
 	.rb_mode = RB_EOF_MODE,
+	.is_linear = false,
 };
 
 static const struct aal_data mt6895_aal1_data = {
@@ -310,6 +315,7 @@ static const struct aal_data mt6895_aal1_data = {
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
 	.rb_mode = RB_EOF_MODE,
+	.is_linear = false,
 };
 
 static const struct aal_data mt6985_aal_data = {
@@ -322,6 +328,7 @@ static const struct aal_data mt6985_aal_data = {
 	.reg_table = aal_reg_table_mt6985,
 	.crop = false,
 	.rb_mode = RB_EOF_MODE,
+	.is_linear = true,
 };
 
 static const struct aal_data mt6886_aal_data = {
@@ -334,6 +341,7 @@ static const struct aal_data mt6886_aal_data = {
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
 	.rb_mode = RB_EOF_MODE,
+	.is_linear = false,
 };
 
 static const struct aal_data mt6897_aal_data = {
@@ -346,6 +354,7 @@ static const struct aal_data mt6897_aal_data = {
 	.reg_table = aal_reg_table_mt6897,
 	.crop = true,
 	.rb_mode = RB_EOF_MODE,
+	.is_linear = false,
 };
 
 static const struct aal_data mt6989_aal_data = {
@@ -357,6 +366,8 @@ static const struct aal_data mt6989_aal_data = {
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6985,
 	.crop = false,
+	.rb_mode = RB_EOF_MODE,
+	.is_linear = false,
 };
 
 struct mml_comp_aal {
@@ -761,6 +772,9 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 		mml_pq_msg("[aal][config][%x] = %#x mask(%#x)",
 			regs[i].offset, regs[i].value, regs[i].mask);
 	}
+
+	if (aal->data->is_linear)
+		cmdq_pkt_write(pkt, NULL, base_pa + 0x3b4, 0x18, U32_MAX);
 
 	if (mode == MML_MODE_MML_DECOUPLE) {
 		cmdq_pkt_write(pkt, NULL,
@@ -1297,7 +1311,6 @@ static s32 aal_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 			goto exit;
 		}
 	} while ((mml_pq_debug_mode & MML_PQ_SET_TEST) && result->is_set_test);
-
 
 	curve = result->aal_curve;
 	idx = 0;

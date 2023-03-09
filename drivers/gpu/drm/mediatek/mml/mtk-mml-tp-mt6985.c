@@ -986,11 +986,8 @@ static enum mml_mode tp_query_mode_racing(struct mml_dev *mml, struct mml_frame_
 	}
 
 	/* no pq support for racing mode */
-	if (info->dest[0].pq_config.en_dc ||
-		info->dest[0].pq_config.en_color ||
-		info->dest[0].pq_config.en_hdr ||
+	if (info->dest[0].pq_config.en_hdr ||
 		info->dest[0].pq_config.en_ccorr ||
-		info->dest[0].pq_config.en_dre ||
 		info->dest[0].pq_config.en_region_pq) {
 		*reason = mml_query_pqen;
 		goto decouple;
