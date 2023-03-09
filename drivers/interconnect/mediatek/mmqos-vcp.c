@@ -46,6 +46,7 @@ int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
 	struct mmqos_ipi_data slot = {
 		func, idx, mmqos_memory_iova >> 32, (u32)mmqos_memory_iova};
 	int gen, ret = 0, retry = 0;
+	static u8 times;
 	u32 val;
 
 	if (!mmqos_is_init_done())
@@ -108,8 +109,13 @@ int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
 
 	if (!ret)
 		writel(val & ~readl(MEM_IPI_SYNC_DATA), MEM_IPI_SYNC_FUNC);
-	else if (gen == vcp_cmd_ex(VCP_GET_GEN))
-		vcp_cmd_ex(VCP_SET_HALT);
+	else if (gen == vcp_cmd_ex(VCP_GET_GEN)) {
+		if (!times) {
+			MMQOS_ERR("VCP_SET_HALT");
+			vcp_cmd_ex(VCP_SET_HALT);
+		}
+		times += 1;
+	}
 
 ipi_lock_end:
 	val = readl(MEM_IPI_SYNC_FUNC);
