@@ -29,11 +29,82 @@ void __iomem *get_l3ctl_sram_base_addr(void)
 }
 EXPORT_SYMBOL_GPL(get_l3ctl_sram_base_addr);
 
-void dsu_pwr_swpm_init(void)
+int dsu_pwr_swpm_init(void)
 {
-	l3ctl_sram_base_addr = ioremap(L3CTL_SRAM_BASE, L3CTL_SRAM_SIZE);
-	wlc_sram_base_addr = ioremap(WLC_SRAM_ADDR, WLC_SRAM_SIZE);
-	clkg_sram_base_addr = ioremap(CLKG_SRAM_BASE, CLKG_SRAM_SIZE);
+
+	struct device_node *dev_node;
+	struct platform_device *pdev_temp;
+	struct resource *sram_res;
+	int ret = 0;
+
+	/* init l3ctl sram*/
+	dev_node = of_find_node_by_name(NULL, "cpuqos-v3");
+	if (!dev_node) {
+		pr_info("failed to find node cpuqos-v3 @ %s\n", __func__);
+		return -ENODEV;
+	}
+
+	pdev_temp = of_find_device_by_node(dev_node);
+	if (!pdev_temp) {
+		pr_info("failed to find cpuqos_v3 pdev @ %s\n", __func__);
+		return -EINVAL;
+	}
+
+	sram_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 0);
+	if (sram_res) {
+		l3ctl_sram_base_addr = ioremap(sram_res->start,
+				resource_size(sram_res));
+	} else {
+		pr_info("%s can't get cpuqos_v3 resource\n", __func__);
+		return -EINVAL;
+	}
+
+	/* init wlc sram */
+	dev_node = of_find_node_by_name(NULL, "wl-info");
+	if (!dev_node) {
+		pr_info("failed to find node wl_info @ %s\n", __func__);
+		return -ENODEV;
+	}
+
+	pdev_temp = of_find_device_by_node(dev_node);
+	if (!pdev_temp) {
+		pr_info("failed to find wl_info pdev @ %s\n", __func__);
+		return -EINVAL;
+	}
+
+	sram_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 0);
+	if (sram_res) {
+		wlc_sram_base_addr = ioremap(sram_res->start,
+				resource_size(sram_res));
+	} else {
+		pr_info("%s can't get wl_info resource\n", __func__);
+		return -EINVAL;
+	}
+
+	/* init clkg sram */
+	dev_node = of_find_node_by_name(NULL, "cpuhvfs");
+	if (!dev_node) {
+		pr_info("failed to find node cpuhvfs @ %s\n", __func__);
+		return -ENODEV;
+	}
+
+	pdev_temp = of_find_device_by_node(dev_node);
+	if (!pdev_temp) {
+		pr_info("failed to find cpuhvfs pdev @ %s\n", __func__);
+		return -EINVAL;
+	}
+
+	sram_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 0);
+
+	if (sram_res)
+		clkg_sram_base_addr = ioremap(sram_res->start,
+				resource_size(sram_res));
+	else {
+		pr_info("%s can't get cpuhvfs resource\n", __func__);
+		return -ENODEV;
+	}
+
+	return ret;
 }
 
 unsigned int get_pelt_dsu_bw(void)
