@@ -1603,9 +1603,7 @@ signed int dpe_enque_cb(struct frame *frames, void *req)
 			}
 			#ifdef IOVA_TO_PA
 			iova_temp = _req->m_pDpeConfig[ucnt].Dpe_InBuf_SrcImg_Y_L | iova_temp;
-			if (domain != NULL)
-				pgpa = iommu_iova_to_phys(domain, iova_temp);
-
+			pgpa = iommu_iova_to_phys(domain, iova_temp);
 			LOG_INF("Dpe_InBuf_SrcImg_Y_L pgpa = %llu\n", pgpa);
 			iova_temp = 0x200000000;
 			#endif
@@ -1665,9 +1663,7 @@ signed int dpe_enque_cb(struct frame *frames, void *req)
 			//}
 			#ifdef IOVA_TO_PA
 			iova_temp = _req->m_pDpeConfig[ucnt].Dpe_OutBuf_OCC | iova_temp;
-			if (domain != NULL)
-				pgpa = iommu_iova_to_phys(domain, iova_temp);
-
+			pgpa = iommu_iova_to_phys(domain, iova_temp);
 			LOG_INF("Dpe_InBuf_SrcImg_Y_L pgpa = %llx\n", pgpa);
 			iova_temp = 0x200000000;
 			#endif
