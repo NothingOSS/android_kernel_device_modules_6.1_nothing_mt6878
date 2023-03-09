@@ -101,7 +101,8 @@ static void tmem_do_gettimeofday(struct timespec64 *tv)
 
 static void set_memory_region_attrs(enum MTEE_MCHUNKS_ID mchunk_id,
 						struct ffa_mem_ops_args *ffa_args,
-						struct ffa_mem_region_attributes *mem_region_attrs)
+						struct ffa_mem_region_attributes *mem_region_attrs,
+						int show_attr)
 {
 	int i;
 
@@ -133,7 +134,8 @@ static void set_memory_region_attrs(enum MTEE_MCHUNKS_ID mchunk_id,
 
 	case MTEE_MCHUNKS_PROT:
 		ffa_args->nattrs = VM_HA_NUM;
-		pr_info("%s: mchunk_id = MTEE_MCHUNKS_PROT\n", __func__);
+		if (show_attr)
+			pr_info("%s: mchunk_id = MTEE_MCHUNKS_PROT\n", __func__);
 		break;
 
 	case MTEE_MCHUNKS_TUI:
@@ -182,7 +184,7 @@ int tmem_ffa_page_alloc(struct sg_table *sg_tbl, u64 *handle)
 	mutex_lock(&tmem_block_mutex);
 
 	/* set ffa_mem_ops_args */
-	set_memory_region_attrs(mchunk_id, &ffa_args, mem_region_attrs);
+	set_memory_region_attrs(mchunk_id, &ffa_args, mem_region_attrs, 0);
 	ffa_args.use_txbuf = true;
 	/* set bit[31]=1 then ffa_lend will do retrieve_req */
 	ffa_args.flags = PAGED_BASED_FFA_FLAGS;
@@ -282,7 +284,7 @@ int tmem_ffa_region_alloc(enum MTEE_MCHUNKS_ID mchunk_id,
 	sg_dma_address(tmem_sgl) = paddr;
 
 	/* set ffa_mem_ops_args */
-	set_memory_region_attrs(mchunk_id, &ffa_args, mem_region_attrs);
+	set_memory_region_attrs(mchunk_id, &ffa_args, mem_region_attrs, 1);
 	ffa_args.use_txbuf = true;
 	ffa_args.flags = 0;
 	ffa_args.tag = 0;

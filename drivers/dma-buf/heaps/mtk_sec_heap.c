@@ -1608,7 +1608,7 @@ static struct dma_buf *tmem_page_allocate(struct dma_heap *heap,
 
 	// TODO: need fix cause didn't call free in free
 	ret = trusted_mem_page_based_alloc(sec_heap->tmem_type, &buffer->sg_table,
-				     &sec_handle);
+				     &sec_handle, len);
 	/* store seucre handle */
 	buffer->sec_handle = sec_handle;
 	pr_info("%s: ret = %d\n", __func__, ret);
