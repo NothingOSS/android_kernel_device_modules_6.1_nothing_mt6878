@@ -241,6 +241,7 @@ struct mtk_cam_job {
 	struct mtkcam_ipi_config_param ipi_config;
 	bool stream_on_seninf;
 	bool seamless_switch;
+	bool first_frm_switch;
 	int switch_type;
 
 	struct completion compose_completion;
