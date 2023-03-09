@@ -107,13 +107,13 @@ static struct clk_bulk_data ipesys_isp7s_aie_clks[] = {
 };
 
 static struct clk_bulk_data ipesys_isp7sp_aie_clks[] = {
-	{ .id = "VCORE_SUB1_CON_0" },
-	{ .id = "VCORE_SUB0_CON_0" },
 	{ .id = "VCORE_MAIN_CON_0" },
 	{ .id = "VCORE_GALS_DISP_CON_0" },
+	{ .id = "VCORE_SUB1_CON_0" },
+	{ .id = "VCORE_SUB0_CON_0" },
+	{ .id = "IMG_IPE" },
 	{ .id = "IPE_FDVT" },
 	{ .id = "IPE_SMI_LARB12" },
-	{ .id = "IMG_IPE" },
 };
 
 static struct aie_data data_isp71 = {
