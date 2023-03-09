@@ -1066,10 +1066,10 @@ int fill_sv_fp(
 	fp->camsv_param[0][tag_idx].hardware_scenario = 0;
 	out->uid.id = MTKCAM_IPI_CAMSV_MAIN_OUT;
 	out->uid.pipe_id = pipe_id;
-	out->buf[0][tag_idx].iova = buf->daddr + buf_ofset;
+	out->buf[0][0].iova = buf->daddr + buf_ofset;
 
 	pr_info("%s: tag_idx %d, iova %llx",
-			__func__, tag_idx, out->buf[0][tag_idx].iova);
+			__func__, tag_idx, out->buf[0][0].iova);
 
 	return ret;
 }
