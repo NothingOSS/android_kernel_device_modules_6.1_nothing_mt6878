@@ -61,7 +61,7 @@ static long gzvm_vcpu_update_one_reg(struct gzvm_vcpu *vcpu, void * __user argp,
 				     bool is_write)
 {
 	long ret;
-	__u64 data, reg_size;
+	__u64 reg_size, data = 0;
 	struct gzvm_one_reg reg;
 	void __user *reg_addr;
 
