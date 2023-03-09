@@ -11,6 +11,8 @@
 /* GPUEB side set CFG_AP_EB_IPI_TEST=yes to do IPI test */
 #define IPI_TEST           0
 
+#define GPUEB_MBOXDEV_NAME "gpueb_mboxdev"
+
 extern struct mtk_mbox_device   gpueb_mboxdev;
 extern struct mtk_ipi_device    gpueb_ipidev;
 extern struct mtk_mbox_info     *gpueb_mbox_info;
