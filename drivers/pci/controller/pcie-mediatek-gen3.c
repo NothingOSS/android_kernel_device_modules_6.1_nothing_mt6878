@@ -411,6 +411,9 @@ static void mtk_pcie_mt6985_phy_fixup(struct mtk_pcie_port *port)
 	u32 val;
 	u32 phy_sif_base, phy_ckm_base;
 
+	if (port->port_num >= MTK_PCIE_MAX_PORT)
+		return;
+
 	if (port->port_num == 0) {
 		phy_sif_base = PCIE_PHY_SIF;
 		phy_ckm_base = PCIE_PHY_CKM;
@@ -1211,9 +1214,11 @@ static int mtk_pcie_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, port);
 
 	err = mtk_pcie_setup(port);
-	pdev_list[port->port_num] = pdev;
 	if (err)
 		goto err_probe;
+
+	if (port->port_num < MTK_PCIE_MAX_PORT)
+		pdev_list[port->port_num] = pdev;
 
 	host->ops = &mtk_pcie_ops;
 	host->sysdata = port;
@@ -1265,7 +1270,7 @@ static struct platform_device *mtk_pcie_find_pdev_by_port(int port)
 {
 	struct platform_device *pdev = NULL;
 
-	if (pdev_list[port] && (port < MTK_PCIE_MAX_PORT))
+	if (pdev_list[port] && (port < MTK_PCIE_MAX_PORT) && (port >= 0))
 		pdev = pdev_list[port];
 
 	return pdev;
@@ -1672,6 +1677,9 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 	int err;
 	u32 val;
 
+	if (!pdev)
+		return -ENODEV;
+
 	if (port->suspend_mode == LINK_STATE_L12) {
 		dev_info(port->dev, "pcie LTSSM=%#x, pcie L1SS_pm=%#x\n",
 			 readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
@@ -1735,6 +1743,9 @@ static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 	struct pci_dev *pdev = pci_get_slot(host->bus, 0);
 	int err;
 	u32 val;
+
+	if (!pdev)
+		return -ENODEV;
 
 	if (port->suspend_mode == LINK_STATE_L12) {
 		/* Software enable BBCK2 */
@@ -1805,6 +1816,10 @@ int mtk_pcie_soft_off(struct pci_bus *bus)
 	}
 
 	port = bus->sysdata;
+	host = pci_host_bridge_from_priv(port);
+	dev = pci_get_slot(host->bus, 0);
+	if (!dev)
+		return -ENODEV;
 
 	/* Trigger link to L2 state */
 	ret = mtk_pcie_turn_off_link(port);
@@ -1822,11 +1837,8 @@ int mtk_pcie_soft_off(struct pci_bus *bus)
 
 	dev_info(port->dev, "entered L2 states successfully\n");
 
-	host = pci_host_bridge_from_priv(port);
-	dev = pci_get_slot(host->bus, 0);
 	pci_save_state(dev);
 	pci_dev_put(dev);
-
 	mtk_pcie_irq_save(port);
 	mtk_pcie_power_down(port);
 	port->soft_off = true;
@@ -1850,6 +1862,10 @@ int mtk_pcie_soft_on(struct pci_bus *bus)
 	}
 
 	port = bus->sysdata;
+	host = pci_host_bridge_from_priv(port);
+	dev = pci_get_slot(host->bus, 0);
+	if (!dev)
+		return -ENODEV;
 
 	if (!port->soft_off) {
 		pr_info("The soft_off is false, can't soft on\n");
@@ -1865,9 +1881,6 @@ int mtk_pcie_soft_on(struct pci_bus *bus)
 		return ret;
 
 	mtk_pcie_irq_restore(port);
-
-	host = pci_host_bridge_from_priv(port);
-	dev = pci_get_slot(host->bus, 0);
 	pci_restore_state(dev);
 	pci_dev_put(dev);
 
