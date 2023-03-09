@@ -1106,6 +1106,17 @@ DEVICE_ATTR_WO(scp_ipi_test);
 #endif
 
 #if SCP_RECOVERY_SUPPORT
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_DEBUG_SUPPORT)
+static inline ssize_t scp_reset_counts_show(struct device *kobj
+		, struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE
+			, "%d\n", scp_reset_counts);
+}
+DEVICE_ATTR_RO(scp_reset_counts);
+#endif
+
 void scp_wdt_reset(int cpu_id)
 {
 #if SCP_RESERVED_MEM && IS_ENABLED(CONFIG_OF_RESERVED_MEM)
@@ -1362,6 +1373,14 @@ static int create_files(void)
 		return ret;
 
 #if SCP_RECOVERY_SUPPORT
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_DEBUG_SUPPORT)
+	ret = device_create_file(scp_device.this_device
+			, &dev_attr_scp_reset_counts);
+	if (unlikely(ret != 0))
+		return ret;
+#endif
+
 	ret = device_create_file(scp_device.this_device
 					, &dev_attr_wdt_reset);
 	if (unlikely(ret != 0))
