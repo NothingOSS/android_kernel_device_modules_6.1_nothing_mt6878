@@ -840,14 +840,6 @@ static int mtk_raw_pde_set_ctrl(struct v4l2_ctrl *ctrl)
 	return ret;
 }
 
-static int mtk_raw_dynamic_meta_try_ctrl(struct v4l2_ctrl *ctrl)
-{
-	struct mtk_cam_dynamic_metadata_params *p;
-
-	p = ctrl->p_new.p;
-	return CALL_PLAT_V4L2(query_meta_size, p);
-}
-
 #define HDR_TSFIFO_SIZE 4
 int mtk_raw_hdr_tsfifo_init(struct mtk_raw_pipeline *arr_pipe, int num)
 {
@@ -951,10 +943,6 @@ static const struct v4l2_ctrl_ops cam_pde_ctrl_ops = {
 	.g_volatile_ctrl = mtk_raw_pde_get_ctrl,
 	.s_ctrl = mtk_raw_pde_set_ctrl,
 	.try_ctrl = mtk_raw_pde_set_ctrl,
-};
-
-static const struct v4l2_ctrl_ops cam_dynamic_meta_ctrl_ops = {
-	.try_ctrl = mtk_raw_dynamic_meta_try_ctrl,
 };
 
 static const struct v4l2_ctrl_ops cam_hdr_ts_info_ctrl_ops = {
@@ -1073,18 +1061,6 @@ static const struct v4l2_ctrl_config cfg_pde_info = {
 	.step = 1,
 	.def = 0,
 	.dims = {sizeof_u32(struct mtk_cam_pde_info)},
-};
-
-static const struct v4l2_ctrl_config cfg_dynamic_meta = {
-	.ops = &cam_dynamic_meta_ctrl_ops,
-	.id = V4L2_CID_MTK_CAM_CAMSYS_DYNAMIC_METADATA,
-	.name = "dynamic metadata size",
-	.type = V4L2_CTRL_COMPOUND_TYPES,
-	.flags = V4L2_CTRL_FLAG_EXECUTE_ON_WRITE,
-	.min = 0,
-	.max = 0x1fffffff,
-	.step = 1,
-	.dims = {sizeof(struct mtk_cam_dynamic_metadata_params)},
 };
 
 static const struct v4l2_ctrl_config cfg_hdr_timestamp_info = {
@@ -3490,7 +3466,6 @@ static void mtk_raw_pipeline_ctrl_setup(struct mtk_raw_pipeline *pipe)
 		ctrl->flags |= V4L2_CTRL_FLAG_EXECUTE_ON_WRITE;
 
 	v4l2_ctrl_new_custom(ctrl_hdlr, &mstream_exposure, NULL);
-	v4l2_ctrl_new_custom(ctrl_hdlr, &cfg_dynamic_meta, NULL);
 
 	/* APU */
 	v4l2_ctrl_new_custom(ctrl_hdlr, &cfg_apu_info, NULL);

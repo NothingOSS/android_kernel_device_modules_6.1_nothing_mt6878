@@ -79,7 +79,6 @@ struct set_meta_stats_info_param {
 	int rgbw;
 };
 
-struct mtk_cam_dynamic_metadata_params;
 struct plat_v4l2_data {
 	int raw_pipeline_num;
 	int camsv_pipeline_num;
@@ -107,8 +106,6 @@ struct plat_v4l2_data {
 	int (*set_sv_meta_stats_info)(int ipi_id, void *addr, struct dma_info *info);
 	int (*set_mraw_meta_stats_info)(int ipi_id, void *addr, struct dma_info *info);
 	int (*get_mraw_stats_cfg_param)(void *addr, struct mraw_stats_cfg_param *param);
-
-	int (*query_meta_size)(struct mtk_cam_dynamic_metadata_params *p);
 };
 
 struct plat_data_hw {
