@@ -268,13 +268,20 @@ static int gzvm_vm_ioctl_create_device(struct gzvm *gzvm, void __user *argp)
 		 gzvm_dev->dev_type, gzvm_dev->dev_addr,
 		 gzvm_dev->dev_reg_size);
 	if (gzvm_dev->attr_addr != 0 && gzvm_dev->attr_size != 0) {
-		dev_data = alloc_pages_exact(gzvm_dev->attr_size, GFP_KERNEL);
+		size_t attr_size = gzvm_dev->attr_size;
+		void __user *attr_addr = (void __user *) gzvm_dev->attr_addr;
+
+		/* Size of device specific data should not be over a page. */
+		if (attr_size > PAGE_SIZE)
+			return -EINVAL;
+
+		dev_data = alloc_pages_exact(attr_size, GFP_KERNEL);
 		if (!dev_data) {
 			ret = -ENOMEM;
 			goto err_free_dev;
 		}
-		if (copy_from_user(dev_data, (void __user *)gzvm_dev->attr_addr,
-				   gzvm_dev->attr_size)) {
+
+		if (copy_from_user(dev_data, attr_addr, attr_size)) {
 			ret = -EFAULT;
 			goto err_free_dev_data;
 		}
