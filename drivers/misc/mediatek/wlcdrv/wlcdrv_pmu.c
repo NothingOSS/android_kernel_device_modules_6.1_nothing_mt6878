@@ -16,8 +16,8 @@ static int nr_ignored_arg[NR_CPUS];
 int wlc_perf_cpupmu_status;
 
 /* max number of pmu counter for armv9 is 20+1 */
-#define MXNR_PMU_EVENTS          22
-/* a roughly large enough size for pmu events buffers,       */
+#define MXNR_PMU_EVENTS			 22
+/* a roughly large enough size for pmu events buffers,		 */
 /* if an input length is rediculously too many, we drop them */
 #define MXNR_PMU_EVT_SZ ((MXNR_PMU_EVENTS) + 16)
 
@@ -94,10 +94,11 @@ int wlc_mcu_pmu_init(void)
 	int nr_counters;
 	int offset;
 	unsigned int arg_nr;
-	int     event_no;
-	int     is_cpu_cycle_evt;
+	int		event_no;
+	int		is_cpu_cycle_evt;
 
 	struct pmu_data_info *pmu;
+	int max_nr_cpus = 8;
 
 	/* init */
 	g_cpu_pmu = cpu_pmu_hw_init();
@@ -112,14 +113,16 @@ int wlc_mcu_pmu_init(void)
 
 	/* for each cpu in cpu_list, add all the events in event_list */
 	for_each_online_cpu(cpu) {
+		if (cpu < 0 || cpu >= max_nr_cpus)
+			continue;
 		pmu = g_cpu_pmu->pmu[cpu];
 		/*
 		 * restore `nr_arg' from previous iteration,
 		 * for cases when certain core's arguments consists more than one clauses
 		 * e.g.,
-		 *     --pmu-cpu-evt=0:0x2b
-		 *     --pmu-cpu-evt=0:0x08
-		 *     --pmu-cpu-evt=0:0x16
+		 *	   --pmu-cpu-evt=0:0x2b
+		 *	   --pmu-cpu-evt=0:0x08
+		 *	   --pmu-cpu-evt=0:0x16
 		 */
 		arg_nr = nr_arg[cpu];
 
@@ -144,9 +147,9 @@ int wlc_mcu_pmu_init(void)
 
 			/*
 			 * there're three possible cause of a failed pmu allocation:
-			 *     1. user asked more events than chip's capability
-			 *     2. part of the pmu registers was occupied by other users
-			 *     3. the requested cpu has been offline
+			 *	   1. user asked more events than chip's capability
+			 *	   2. part of the pmu registers was occupied by other users
+			 *	   3. the requested cpu has been offline
 			 *
 			 * (we treat 1 and 2 as different cases for easier trouble shooting)
 			 */
@@ -219,9 +222,10 @@ int wlc_mcu_pmu_init(void)
 
 int wlc_mcu_pmu_deinit(void)
 {
-	int     cpu, i;
-	int     event_count;
+	int		cpu, i;
+	int		event_count;
 	struct pmu_data_info *pmu;
+	int max_nr_cpus = 8;
 
 #if IS_ENABLED(CONFIG_CPU_PM)
 	if (use_cpu_pm_pmu_notifier) {
@@ -230,7 +234,14 @@ int wlc_mcu_pmu_deinit(void)
 	}
 #endif
 
+	if (g_cpu_pmu == NULL) {
+		pr_debug("[WLCDrv]CPU PMU HW is not initialized!!\n");
+		return 0;
+	}
+
 	for_each_possible_cpu(cpu) {
+		if (cpu < 0 || cpu >= max_nr_cpus)
+			continue;
 
 		event_count = g_cpu_pmu->event_count[cpu];
 		pmu = g_cpu_pmu->pmu[cpu];
@@ -252,7 +263,8 @@ int wlc_mcu_pmu_start(void)
 	int cpu = raw_smp_processor_id();
 
 	pr_info("[wlc]%s(%d)\n", __func__, cpu);
-	g_cpu_pmu->start(g_cpu_pmu->pmu[cpu], g_cpu_pmu->event_count[cpu]);
+	if (g_cpu_pmu)
+		g_cpu_pmu->start(g_cpu_pmu->pmu[cpu], g_cpu_pmu->event_count[cpu]);
 
 	wlc_perf_cpupmu_status = 1;
 	return 0;
@@ -265,7 +277,8 @@ int wlc_mcu_pmu_stop(void)
 	wlc_perf_cpupmu_status = 0;
 
 	pr_info("[wlc]%s(%d)\n", __func__, cpu);
-	g_cpu_pmu->stop(g_cpu_pmu->event_count[cpu]);
+	if (g_cpu_pmu)
+		g_cpu_pmu->stop(g_cpu_pmu->event_count[cpu]);
 
 	return 0;
 }

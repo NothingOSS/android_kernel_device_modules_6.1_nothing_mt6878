@@ -10,26 +10,26 @@
 
 
 /*******************************
- *      ARM v8 operations      *
+ *		ARM v8 operations	   *
  *******************************/
 /*
  * Per-CPU PMCR: config reg
  */
-#define ARMV8_PMCR_E        (1 << 0)    /* Enable all counters */
-#define ARMV8_PMCR_P        (1 << 1)    /* Reset all counters */
-#define ARMV8_PMCR_C        (1 << 2)    /* Cycle counter reset */
-#define ARMV8_PMCR_D        (1 << 3)    /* CCNT counts every 64th cpu cycle */
-#define ARMV8_PMCR_X        (1 << 4)    /* Export to ETM */
-#define ARMV8_PMCR_DP       (1 << 5)    /* Disable CCNT if non-invasive debug */
-#define PMCR_N_SHIFT  11      /* Number of counters supported */
-#define PMCR_N_MASK   0x1f
-#define PMCR_MASK     0x3f        /* Mask for writable bits */
+#define ARMV8_PMCR_E		(1 << 0)	/* Enable all counters */
+#define ARMV8_PMCR_P		(1 << 1)	/* Reset all counters */
+#define ARMV8_PMCR_C		(1 << 2)	/* Cycle counter reset */
+#define ARMV8_PMCR_D		(1 << 3)	/* CCNT counts every 64th cpu cycle */
+#define ARMV8_PMCR_X		(1 << 4)	/* Export to ETM */
+#define ARMV8_PMCR_DP		(1 << 5)	/* Disable CCNT if non-invasive debug */
+#define PMCR_N_SHIFT  11	  /* Number of counters supported */
+#define PMCR_N_MASK	  0x1f
+#define PMCR_MASK	  0x3f		  /* Mask for writable bits */
 
 /*
  * PMOVSR: counters overflow flag status reg
  */
-#define ARMV8_OVSR_MASK     0xffffffff  /* Mask for writable bits */
-#define ARMV8_OVERFLOWED_MASK   ARMV8_OVSR_MASK
+#define ARMV8_OVSR_MASK		0xffffffff	/* Mask for writable bits */
+#define ARMV8_OVERFLOWED_MASK	ARMV8_OVSR_MASK
 
 static inline void armv8_pmu_counter_select(unsigned int idx)
 {
@@ -100,9 +100,9 @@ static inline unsigned int armv8_pmu_overflow(void)
 {
 	unsigned int val;
 
-	asm volatile ("mrs %x0, pmovsclr_el0":"=r" (val));    /* read */
+	asm volatile ("mrs %x0, pmovsclr_el0":"=r" (val));	  /* read */
 	val &= ARMV8_OVSR_MASK;
-	asm volatile ("msr pmovsclr_el0, %x0"::"r" (val));    /* write to clear */
+	asm volatile ("msr pmovsclr_el0, %x0"::"r" (val));	  /* write to clear */
 
 	return val;
 }
@@ -136,11 +136,11 @@ static void armv8_pmu_hw_reset_all(int generic_counters)
 	/* cycle counter */
 	armv8_pmu_disable_intr(31);
 	armv8_pmu_disable_count(31);
-	armv8_pmu_overflow();   /* clear overflow */
+	armv8_pmu_overflow();	/* clear overflow */
 }
 
 /***********************************
- *      PMU ARM v8 operations      *
+ *		PMU ARM v8 operations	   *
  ***********************************/
 static int armv8_pmu_hw_check_event(struct pmu_data_info *pmu, int idx, int event)
 {
@@ -172,7 +172,7 @@ static void armv8_pmu_hw_start(struct pmu_data_info *pmu, int count)
 			armv8_pmu_enable_count(i);
 		}
 	}
-	if (pmu[count - 1].mode == MODE_POLLING) {  /* cycle counter */
+	if (pmu[count - 1].mode == MODE_POLLING) {	/* cycle counter */
 		armv8_pmu_enable_count(31);
 	}
 	armv8_pmu_control_write(ARMV8_PMCR_E);
@@ -256,10 +256,13 @@ static void init_pmus(void)
 
 struct cpu_pmu_hw *cpu_pmu_hw_init(void)
 {
-	int cpu;
+	int cpu = 0;
+	int max_nr_cpus = 8;
 
 	init_pmus();
 	for_each_possible_cpu(cpu) {
+		if (cpu < 0 || cpu >= max_nr_cpus)
+			continue;
 		arm_pmu.pmu[cpu] = pmus_info[cpu];
 	}
 

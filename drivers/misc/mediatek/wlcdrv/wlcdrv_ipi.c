@@ -40,19 +40,20 @@ int wlc_ipi_to_mcupm_send(int ctrl_cmd)
 
 	pr_info("[WLCDrv]%s cmd:0x%x\n", __func__, ctrl_cmd);
 	switch (ctrl_cmd) {
-	case WLCIPI_CMD_SUSPEND:
+	case WLCIPI_CMD_RESET:
+		cmd_packet.cmd = IPI_WLC_RESET;
 		wlc_mcu_pmu_deinit();
+		wlc_sampler_stop();
+		break;
+	case WLCIPI_CMD_SUSPEND:
 		cmd_packet.cmd = IPI_WLC_SUSPEND;
-		pr_info("[WLCDrv]2.%s cmd:0x%x\n", __func__, ctrl_cmd);
-
+		wlc_mcu_pmu_deinit();
 		wlc_sampler_stop();
 		break;
 	case WLCIPI_CMD_RESUME:
+		cmd_packet.cmd = IPI_WLC_RESUME;
 		wlc_mcu_pmu_init();
 		wlc_sampler_start();
-
-		cmd_packet.cmd = IPI_WLC_RESUME;
-		pr_info("[WLCDrv]3.%s cmd:0x%x\n", __func__, ctrl_cmd);
 		break;
 	default:
 		pr_info("[WLCDrv]default cmd:0x%x\n", ctrl_cmd);

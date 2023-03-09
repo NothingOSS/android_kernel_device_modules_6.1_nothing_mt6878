@@ -13,13 +13,13 @@
  */
 
 #define WLCIPI_CMD_DEFAULT         0xFFFFFFFF
-#define WLCIPI_CMD_INIT            0x00000001
+#define WLCIPI_CMD_RESET           0x00000001
 #define WLCIPI_CMD_SUSPEND         0x00000002
 #define WLCIPI_CMD_RESUME          0x00000003
 
 /* IPI Parameter Enum (from ap-side to mcupm wlc) */
 enum {
-	IPI_WLC_INIT    = 0xA1, //magic enum init to avoid conflict with other feature
+	IPI_WLC_RESET   = 0xA1, //magic enum init to avoid conflict with other feature
 	IPI_WLC_SUSPEND = 0xA2,
 	IPI_WLC_RESUME  = 0xA3,
 	NR_WLC_IPI,

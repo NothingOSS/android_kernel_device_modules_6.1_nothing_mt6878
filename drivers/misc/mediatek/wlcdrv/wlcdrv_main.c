@@ -45,12 +45,13 @@ static int g_wlc_latest_send_cmd	 = WLCIPI_CMD_DEFAULT;
 
 #define WLCDRV_SRAM_OFFSET_DBG_CNT 4
 
-static void __iomem *wl_type_io_addr_mapped;
+static void __iomem *wl_sram_addr_iomapped;
 static int g_wl_support;
-static int g_wl_type_addr;
-static int g_wl_sram_addr_sz;
-static int g_wl_type_addr_mapped;
+static int g_wl_sram_addr;
+static int g_wl_sram_sz;
 
+static int g_wl_tbl_addr;
+static int g_wl_tbl_sz;
 /******************************************************************************
  * WLC driver Procfs file operations
  *****************************************************************************/
@@ -60,15 +61,15 @@ static int _wlc_proc_show(struct seq_file *m, void *v)
 
 	seq_puts(m, "=== wlc status ===\n");
 	seq_printf(m, "Enable:%d\n", g_wl_support);
-	seq_printf(m, "sram addr:0x%x, sz:%d\n", g_wl_type_addr, g_wl_sram_addr_sz);
-	seq_printf(m, "sram addr_mapped:0x%x\n", g_wl_type_addr_mapped);
-	seq_printf(m, "sram io_mapped:0x%lx\n",	 (unsigned long)wl_type_io_addr_mapped);
+	seq_printf(m, "sram addr:0x%x, sz:%d\n", g_wl_sram_addr, g_wl_sram_sz);
+	seq_printf(m, "sram io_mapped:0x%lx\n",	 (unsigned long)wl_sram_addr_iomapped);
+	seq_printf(m, "tbl base:0x%x, sz:%d\n", g_wl_tbl_addr, g_wl_tbl_sz);
 
-	seq_printf(m, "curr ctrl cmd: 0x%x\n", g_wlc_latest_send_cmd);
-	value = ioread32(wl_type_io_addr_mapped + 0);
+	seq_printf(m, "curr ctrl cmd: 0x%x\n\n", g_wlc_latest_send_cmd);
+	value = ioread32(wl_sram_addr_iomapped + 0);
 	seq_printf(m, "inf scenario: 0x%x\n", value);
 
-	value = ioread32(wl_type_io_addr_mapped + WLCDRV_SRAM_OFFSET_DBG_CNT);
+	value = ioread32(wl_sram_addr_iomapped + WLCDRV_SRAM_OFFSET_DBG_CNT);
 	seq_printf(m, "sram inf count: 0x%x\n", value);
 
 	seq_puts(m, "=== wlc status ===\n\n");
@@ -84,12 +85,12 @@ static int _wlc_proc_open(struct inode *inode, struct file *file)
 static ssize_t _wlc_proc_write(struct file *fp, const char __user *userbuf,
 				 size_t count, loff_t *f_pos)
 {
-	unsigned long val;
+	unsigned long val = 0;
 	ssize_t ret;
 	size_t length = count;
 
 	if (length > WLC_CMD_BUFFER_SIZE)
-		length = WLC_CMD_BUFFER_SIZE;
+		length = WLC_CMD_BUFFER_SIZE - 1;
 	ret = length;
 
 	if (copy_from_user(&cmd_buf, userbuf, length))
@@ -141,22 +142,7 @@ static ssize_t _wlcdrv_read(struct file *filp, char __user *buf,
 static ssize_t _wlcdrv_write(struct file *filp, const char __user *ubuf,
 		size_t count, loff_t *f_pos)
 {
-	unsigned long val;
-	ssize_t ret;
-	size_t length = count;
-
-	if (length > 127)
-		length = 127;
-	ret = length;
-
-	if (copy_from_user(&cmd_buf, ubuf, length))
-		return -EFAULT;
-
-	cmd_buf[length] = 0;
-
-	ret = kstrtoul(cmd_buf, 10, (unsigned long *)&val);
-
-	return count;
+	return 0;
 }
 
 
@@ -176,10 +162,14 @@ static int wlcdrv_probe(void)
 {
 	int ret;
 	struct device_node *wl_node;
+	struct platform_device *pdev;
+	struct resource *sram_res;
 	int wl_support = 0;
-	int wl_type_addr = 0;
-	int wl_sram_addr_sz = 0;
-	int wl_type_addr_mapped = 0;
+	int wl_sram_addr = 0;
+	int wl_sram_sz	 = 0;
+	int wl_tbl_addr = 0;
+	int wl_tbl_sz	= 0;
+
 	/* Create debugfs */
 	struct proc_dir_entry *procfs_wlc_dir = NULL;
 
@@ -218,28 +208,48 @@ static int wlcdrv_probe(void)
 		return -ENODEV;
 	}
 
+	pdev = of_find_device_by_node(wl_node);
+	if (pdev == NULL) {
+		pr_info("failed to find pdev @ %s\n", __func__);
+		return -EINVAL;
+	}
+
 	ret = of_property_read_u32(wl_node, "wl-support", &wl_support);
 	if (ret < 0)
 		pr_info("no wl-support found in wl-info node: %s\n",  __func__);
 
-	ret = of_property_read_u32(wl_node, "wl-type-sram", &wl_type_addr);
-	if (ret < 0)
-		pr_info("no wl-type-sram found in wl-info node %s\n",  __func__);
+	sram_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "wl_sram_base");
 
-	ret = of_property_read_u32(wl_node, "wl-sram-size", &wl_sram_addr_sz);
-	if (ret < 0)
-		pr_info("no wl-type-sram found in wl-info node %s\n",  __func__);
+	if (sram_res) {
+		wl_sram_addr = sram_res->start;
+		wl_sram_sz	 = resource_size(sram_res);
+		wl_sram_addr_iomapped = ioremap(sram_res->start, resource_size(sram_res));
+	} else {
+		pr_info("%s can't get resource\n", __func__);
+		return -ENODEV;
+	}
 
-	wl_type_addr_mapped = wl_type_addr + AP_VIEW_TCM_BASE;
-	wl_type_io_addr_mapped = ioremap(wl_type_addr_mapped, WLCDRV_SRAM_SIZE);
+	sram_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "wl_tbl_base");
+
+	if (sram_res) {
+		wl_tbl_addr = sram_res->start;
+		wl_tbl_sz	 = resource_size(sram_res);
+	} else {
+		pr_info("%s can't get resource\n", __func__);
+		return -ENODEV;
+	}
 
 	g_wl_support = wl_support;
-	g_wl_type_addr = wl_type_addr;
-	g_wl_sram_addr_sz = wl_sram_addr_sz;
-	g_wl_type_addr_mapped = wl_type_addr_mapped;
+	g_wl_sram_addr = wl_sram_addr;
+	g_wl_sram_sz = wl_sram_sz;
+
+	g_wl_tbl_addr = wl_tbl_addr;
+	g_wl_tbl_sz = wl_tbl_sz;
+
 	pr_info("[wl-info dts]enable:%d\n", wl_support);
-	pr_info("[wl-info sram:0x%x, sz:0x%x\n", wl_type_addr, wl_sram_addr_sz);
-	pr_info("[wl-info io_mapped:0x%lx\n", (unsigned long)wl_type_io_addr_mapped);
+	pr_info("[wl-info wl sram base:0x%x, sz:0x%x\n", wl_sram_addr, wl_sram_sz);
+	pr_info("[wl-info wl tbl base:0x%x, sz:0x%x\n", wl_tbl_addr, wl_tbl_sz);
+	pr_info("[wl-info io_mapped:0x%lx\n", (unsigned long)wl_sram_addr_iomapped);
 
 	return 0;
 }
@@ -250,8 +260,8 @@ static int wlcdrv_remove(void)
 	misc_deregister(wlcdrv_device);
 	kfree(wlcdrv_device);
 
-	if (wl_type_io_addr_mapped)
-		iounmap(wl_type_io_addr_mapped);
+	if (wl_sram_addr_iomapped)
+		iounmap(wl_sram_addr_iomapped);
 
 	return 0;
 }
