@@ -26,7 +26,7 @@
 /* WL Setting(TCM) */
 #define DEFAULT_TYPE	0
 #define DEFAULT_NR_TYPE	1
-#define WL_MEM_RES_IND	4
+#define WL_MEM_RES_IND	1
 #define WL_TBL_BASE_PHYS 0x0C0BE000
 #define WL_TBL_START_OFFSET 0x40
 #define WL_OFFSET 0x318

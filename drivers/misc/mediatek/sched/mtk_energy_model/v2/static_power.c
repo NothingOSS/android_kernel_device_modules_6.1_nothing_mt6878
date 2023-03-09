@@ -257,17 +257,31 @@ nomem:
 	return -ENOENT;
 }
 
-static int check_wl_support(struct device_node *dvfs_node,
-							struct platform_device *pdev_temp)
+static int check_wl_support(void)
 {
-	struct resource *res;
+	struct device_node *np;
+	struct platform_device *pdev;
 	int ret = 0, support;
+	struct resource *res;
 
-	ret = of_property_read_u32(dvfs_node, "wl-support", &support);
+	np = of_find_node_by_name(NULL, "wl-info");
+	if (!np) {
+		pr_info("failed to find node @ %s\n", __func__);
+		goto wl_disable;
+	}
+
+	pdev = of_find_device_by_node(np);
+	if (!pdev) {
+		pr_info("failed to find pdev @ %s\n", __func__);
+		of_node_put(np);
+		return -EINVAL;
+	}
+
+	ret = of_property_read_u32(np, "wl-support", &support);
 	if (ret || support == 0)
 		goto wl_disable;
 
-	res = platform_get_resource(pdev_temp, IORESOURCE_MEM, WL_MEM_RES_IND);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, WL_MEM_RES_IND);
 	if (!res) {
 		ret = -ENODEV;
 		goto no_res;
@@ -282,6 +296,7 @@ static int check_wl_support(struct device_node *dvfs_node,
 
 	wl_support = true;
 	pr_info("%s: wl supports\n", __func__);
+	of_node_put(np);
 
 	return 0;
 release_region:
@@ -291,6 +306,7 @@ no_res:
 wl_disable:
 	pr_info("%s wl-support is disabled: %d\n", __func__, ret);
 	wl_support = false;
+	of_node_put(np);
 
 	return ret;
 }
@@ -981,11 +997,12 @@ static int mtk_static_power_probe(struct platform_device *pdev)
 	if (eem_res)
 		eemsn_log = ioremap(eem_res->start, resource_size(eem_res));
 	else {
-		pr_info("%s can't get resource, ret: %d\n", __func__, err);
-		return -ENODEV;
+		ret = -ENODEV;
+		pr_info("%s can't get EEM resource, ret: %d\n", __func__, ret);
+		goto error;
 	}
 
-	ret = check_wl_support(dvfs_node, pdev_temp);
+	ret = check_wl_support();
 	if (ret)
 		pr_info("%s: Failed to check wl support: %d\n", __func__, ret);
 
