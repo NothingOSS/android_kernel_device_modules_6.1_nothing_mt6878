@@ -343,7 +343,7 @@ void mtk_pool_refill_create(struct dma_heap *heap)
 	int i;
 
 	heap_priv = dma_heap_get_drvdata(heap);
-	if (!heap_priv->page_pools) {
+	if (!heap_priv || !heap_priv->page_pools) {
 		pr_info("%s %s no page pools\n", __func__, dma_heap_get_name(heap));
 		return;
 	}
