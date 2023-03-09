@@ -1100,6 +1100,11 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 		goto decouple_user;
 	}
 
+	if (!MML_FMT_COMPRESS(info->src.format)) {
+		*reason = mml_query_format;
+		return MML_MODE_MML_DECOUPLE;
+	}
+
 	/* no rotate, go to direct link */
 	if (info->dest[0].rotate == MML_ROT_0)
 		return tp_query_mode_dl(mml, info, reason);
