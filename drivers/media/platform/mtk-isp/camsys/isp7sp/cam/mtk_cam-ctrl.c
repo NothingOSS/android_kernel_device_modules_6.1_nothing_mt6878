@@ -969,6 +969,7 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 	mtk_cam_event_eos(cam_ctrl);
 
 	drain_workqueue(ctx->frame_done_wq);
+	drain_workqueue(ctx->aa_dump_wq);
 	kthread_flush_worker(&ctx->sensor_worker);
 
 	INIT_LIST_HEAD(&job_list);

@@ -1857,6 +1857,12 @@ int mtk_yuv_translation_fault_cb(int port, dma_addr_t mva, void *data)
 	u32 *group = kzalloc(sizeof(u32)*group_size, GFP_KERNEL);
 	int i;
 
+	if (!group) {
+		dev_info(yuv_dev->dev, "%s: failed to kzalloc for goup_size %d\n",
+			 __func__, group_size);
+		return 0;
+	}
+
 	if (CALL_PLAT_HW(query_yuv_dma_group, m4u_port, group))
 		goto FREE_GROUP;
 
@@ -1870,6 +1876,74 @@ int mtk_yuv_translation_fault_cb(int port, dma_addr_t mva, void *data)
 FREE_GROUP:
 	kfree(group);
 	return 0;
+}
+
+void fill_aa_info(struct mtk_raw_device *raw_dev,
+				  struct mtk_ae_debug_data *ae_info)
+{
+	ae_info->OBC_R1_Sum[0] +=
+		((u64)readl(raw_dev->base + OFFSET_OBC_R1_R_SUM_H) << 32) |
+		readl(raw_dev->base + OFFSET_OBC_R1_R_SUM_L);
+	ae_info->OBC_R2_Sum[0] +=
+		((u64)readl(raw_dev->base + OFFSET_OBC_R2_R_SUM_H) << 32) |
+		readl(raw_dev->base + OFFSET_OBC_R2_R_SUM_L);
+	ae_info->OBC_R3_Sum[0] +=
+		((u64)readl(raw_dev->base + OFFSET_OBC_R3_R_SUM_H) << 32) |
+		readl(raw_dev->base + OFFSET_OBC_R3_R_SUM_L);
+	ae_info->LTM_Sum[0] +=
+		((u64)readl(raw_dev->base + REG_LTM_AE_DEBUG_R_MSB) << 32) |
+		readl(raw_dev->base + REG_LTM_AE_DEBUG_R_LSB);
+	ae_info->AA_Sum[0] +=
+		((u64)readl(raw_dev->base + REG_AA_R_SUM_H) << 32) |
+		readl(raw_dev->base + REG_AA_R_SUM_L);
+
+	ae_info->OBC_R1_Sum[1] +=
+		((u64)readl(raw_dev->base + OFFSET_OBC_R1_B_SUM_H) << 32) |
+		readl(raw_dev->base + OFFSET_OBC_R1_B_SUM_L);
+	ae_info->OBC_R2_Sum[1] +=
+		((u64)readl(raw_dev->base + OFFSET_OBC_R2_B_SUM_H) << 32) |
+		readl(raw_dev->base + OFFSET_OBC_R2_B_SUM_L);
+	ae_info->OBC_R3_Sum[1] +=
+		((u64)readl(raw_dev->base + OFFSET_OBC_R3_B_SUM_H) << 32) |
+		readl(raw_dev->base + OFFSET_OBC_R3_B_SUM_L);
+	ae_info->LTM_Sum[1] +=
+		((u64)readl(raw_dev->base + REG_LTM_AE_DEBUG_B_MSB) << 32) |
+		readl(raw_dev->base + REG_LTM_AE_DEBUG_B_LSB);
+	ae_info->AA_Sum[1] +=
+		((u64)readl(raw_dev->base + REG_AA_B_SUM_H) << 32) |
+		readl(raw_dev->base + REG_AA_B_SUM_L);
+
+	ae_info->OBC_R1_Sum[2] +=
+		((u64)readl(raw_dev->base + OFFSET_OBC_R1_GR_SUM_H) << 32) |
+		readl(raw_dev->base + OFFSET_OBC_R1_GR_SUM_L);
+	ae_info->OBC_R2_Sum[2] +=
+		((u64)readl(raw_dev->base + OFFSET_OBC_R2_GR_SUM_H) << 32) |
+		readl(raw_dev->base + OFFSET_OBC_R2_GR_SUM_L);
+	ae_info->OBC_R3_Sum[2] +=
+		((u64)readl(raw_dev->base + OFFSET_OBC_R3_GR_SUM_H) << 32) |
+		readl(raw_dev->base + OFFSET_OBC_R3_GR_SUM_L);
+	ae_info->LTM_Sum[2] +=
+		((u64)readl(raw_dev->base + REG_LTM_AE_DEBUG_GR_MSB) << 32) |
+		readl(raw_dev->base + REG_LTM_AE_DEBUG_GR_LSB);
+	ae_info->AA_Sum[2] +=
+		((u64)readl(raw_dev->base + REG_AA_GR_SUM_H) << 32) |
+		readl(raw_dev->base + REG_AA_GR_SUM_L);
+
+	ae_info->OBC_R1_Sum[3] +=
+		((u64)readl(raw_dev->base + OFFSET_OBC_R1_GB_SUM_H) << 32) |
+		readl(raw_dev->base + OFFSET_OBC_R1_GB_SUM_L);
+	ae_info->OBC_R2_Sum[3] +=
+		((u64)readl(raw_dev->base + OFFSET_OBC_R2_GB_SUM_H) << 32) |
+		readl(raw_dev->base + OFFSET_OBC_R2_GB_SUM_L);
+	ae_info->OBC_R3_Sum[3] +=
+		((u64)readl(raw_dev->base + OFFSET_OBC_R3_GB_SUM_H) << 32) |
+		readl(raw_dev->base + OFFSET_OBC_R3_GB_SUM_L);
+	ae_info->LTM_Sum[3] +=
+		((u64)readl(raw_dev->base + REG_LTM_AE_DEBUG_GB_MSB) << 32) |
+		readl(raw_dev->base + REG_LTM_AE_DEBUG_GB_LSB);
+	ae_info->AA_Sum[3] +=
+		((u64)readl(raw_dev->base + REG_AA_GB_SUM_H) << 32) |
+		readl(raw_dev->base + REG_AA_GB_SUM_L);
 }
 
 static const struct dev_pm_ops mtk_yuv_pm_ops = {

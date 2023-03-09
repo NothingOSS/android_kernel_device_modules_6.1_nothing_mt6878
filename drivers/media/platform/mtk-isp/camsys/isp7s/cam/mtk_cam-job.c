@@ -38,6 +38,7 @@ static inline int job_debug_exception_dump(struct mtk_cam_job *job,
 static struct mtk_raw_request_data *req_get_raw_data(struct mtk_cam_ctx *ctx,
 						     struct mtk_cam_request *req);
 static int get_exp_switch_type(struct mtk_cam_job *job);
+static void mtk_cam_aa_dump_work(struct work_struct *work);
 
 static int subdev_set_fmt(struct v4l2_subdev *sd, int pad,
 						  const struct v4l2_mbus_framefmt *format)
@@ -272,6 +273,9 @@ static int mtk_cam_job_pack_init(struct mtk_cam_job *job,
 	atomic_long_set(&job->afo_done, 0);
 	atomic_long_set(&job->done_set, 0);
 	job->done_handled = 0;
+
+	/* aa dump info */
+	INIT_WORK(&job->aa_dump_work, mtk_cam_aa_dump_work);
 
 	job->frame_cnt = 1;
 
@@ -822,6 +826,9 @@ static int job_mark_engine_done(struct mtk_cam_job *job,
 		handle_done_async(job, &job->frame_done_work);
 	else
 		wake_up_interruptible(&job->done_wq);
+
+	if (CAM_DEBUG_ENABLED(AA))
+		call_jobop(job, dump_aa_info, engine_type);
 
 	return (old | coming) == master_engine;
 }
@@ -1537,6 +1544,19 @@ static int apply_raw_target_clk(struct mtk_cam_ctx *ctx,
 	return mtk_cam_dvfs_update(&ctx->cam->dvfs, ctx->stream_id,
 				   res->clk_target);
 }
+
+static int job_dump_aa_info(struct mtk_cam_job *job, int engine_type)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+
+	if (engine_type != CAMSYS_ENGINE_RAW)
+		return 0;
+
+	mtk_cam_job_get(job);
+
+	return mtk_cam_ctx_queue_aa_dump_wq(ctx, &job->aa_dump_work);
+}
+
 #ifdef NOT_READY
 static int
 alloc_image_work_buffer(struct mtk_cam_device_buf *buf, int size,
@@ -2811,6 +2831,7 @@ static struct mtk_cam_job_ops otf_job_ops = {
 	.mark_engine_done = job_mark_engine_done,
 	.handle_buffer_done = job_buffer_done,
 	.apply_switch = _apply_switch,
+	.dump_aa_info = job_dump_aa_info,
 };
 
 static struct mtk_cam_job_ops otf_stagger_job_ops = {
@@ -2827,6 +2848,7 @@ static struct mtk_cam_job_ops otf_stagger_job_ops = {
 	.mark_engine_done = job_mark_engine_done,
 	.handle_buffer_done = job_buffer_done,
 	.apply_switch = _apply_switch,
+	.dump_aa_info = job_dump_aa_info,
 };
 
 static struct mtk_cam_job_ops m2m_job_ops = {
@@ -2843,6 +2865,7 @@ static struct mtk_cam_job_ops m2m_job_ops = {
 	.mark_afo_done = job_mark_afo_done,
 	.mark_engine_done = job_mark_engine_done,
 	.handle_buffer_done = job_buffer_done,
+	.dump_aa_info = 0,
 };
 
 static struct mtk_cam_job_ops mstream_job_ops = {
@@ -2858,6 +2881,7 @@ static struct mtk_cam_job_ops mstream_job_ops = {
 	.mark_afo_done = job_mark_afo_done,
 	.mark_engine_done = job_mark_engine_done_mstream,
 	.handle_buffer_done = job_buffer_done,
+	.dump_aa_info = job_dump_aa_info,
 };
 
 static struct mtk_cam_job_ops otf_only_sv_job_ops = {
@@ -2872,6 +2896,7 @@ static struct mtk_cam_job_ops otf_only_sv_job_ops = {
 	.apply_isp = _apply_cq,
 	.mark_engine_done = job_mark_engine_done,
 	.handle_buffer_done = job_buffer_done,
+	.dump_aa_info = 0,
 };
 
 static struct mtk_cam_job_state_cb sf_state_cb = {
@@ -3980,5 +4005,77 @@ static void job_dump_engines_debug_status(struct mtk_cam_job *job)
 	struct mtk_cam_device *cam = job->src_ctx->cam;
 
 	mtk_engine_dump_debug_status(cam, job->used_engine);
+}
+
+static void mtk_cam_aa_dump_work(struct work_struct *work)
+{
+	struct mtk_cam_job *job =
+		container_of(work, struct mtk_cam_job, aa_dump_work);
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtk_cam_engines *eng = &ctx->cam->engines;
+	struct mtk_raw_sink_data *sink = get_raw_sink_data(job);
+	struct mtk_raw_device *raw_dev;
+	struct mtk_ae_debug_data ae_data, ae_data_w;
+	unsigned long submask;
+	int i;
+
+	if (WARN_ON(!sink))
+		goto PUT_JOB;
+
+	memset(&ae_data, 0, sizeof(ae_data));
+	memset(&ae_data_w, 0, sizeof(ae_data_w));
+
+	if (is_rgbw(job)) {
+		submask = bit_map_subset_of(MAP_HW_RAW, ctx->used_engine);
+		for (i = 0; i < eng->num_raw_devices && submask;
+				i++, submask >>= 1) {
+			if (!(submask & 0x1))
+				continue;
+
+			raw_dev = dev_get_drvdata(eng->raw_devs[i]);
+			if (raw_dev->is_slave)
+				fill_aa_info(raw_dev, &ae_data_w);
+			else
+				fill_aa_info(raw_dev, &ae_data);
+		}
+	} else {
+		submask = bit_map_subset_of(MAP_HW_RAW, ctx->used_engine);
+		for (i = 0; i < eng->num_raw_devices && submask;
+				i++, submask >>= 1) {
+			if (!(submask & 0x1))
+				continue;
+
+			raw_dev = dev_get_drvdata(eng->raw_devs[i]);
+			fill_aa_info(raw_dev, &ae_data);
+		}
+	}
+
+	pr_info("%s:%s:ctx(%d),seq(%d),size(%d,%d),(0x%llx,0x%llx,0x%llx,0x%llx)(0x%llx,0x%llx,0x%llx,0x%llx)(0x%llx,0x%llx,0x%llx,0x%llx)(0x%llx,0x%llx,0x%llx,0x%llx)(0x%llx,0x%llx,0x%llx,0x%llx)|(0x%llx,0x%llx,0x%llx,0x%llx)(0x%llx,0x%llx,0x%llx,0x%llx)(0x%llx,0x%llx,0x%llx,0x%llx)(0x%llx,0x%llx,0x%llx,0x%llx)(0x%llx,0x%llx,0x%llx,0x%llx)\n",
+		__func__, job->req->req.debug_str,
+		ctx->stream_id, job->req_seq,
+		sink->width, sink->height,
+		ae_data.OBC_R1_Sum[0], ae_data.OBC_R1_Sum[1],
+		ae_data.OBC_R1_Sum[2], ae_data.OBC_R1_Sum[3],
+		ae_data.OBC_R2_Sum[0], ae_data.OBC_R2_Sum[1],
+		ae_data.OBC_R2_Sum[2], ae_data.OBC_R2_Sum[3],
+		ae_data.OBC_R3_Sum[0], ae_data.OBC_R3_Sum[1],
+		ae_data.OBC_R3_Sum[2], ae_data.OBC_R3_Sum[3],
+		ae_data.AA_Sum[0], ae_data.AA_Sum[1],
+		ae_data.AA_Sum[2], ae_data.AA_Sum[3],
+		ae_data.LTM_Sum[0], ae_data.LTM_Sum[1],
+		ae_data.LTM_Sum[2], ae_data.LTM_Sum[3],
+		ae_data_w.OBC_R1_Sum[0], ae_data_w.OBC_R1_Sum[1],
+		ae_data_w.OBC_R1_Sum[2], ae_data_w.OBC_R1_Sum[3],
+		ae_data_w.OBC_R2_Sum[0], ae_data_w.OBC_R2_Sum[1],
+		ae_data_w.OBC_R2_Sum[2], ae_data_w.OBC_R2_Sum[3],
+		ae_data_w.OBC_R3_Sum[0], ae_data_w.OBC_R3_Sum[1],
+		ae_data_w.OBC_R3_Sum[2], ae_data_w.OBC_R3_Sum[3],
+		ae_data_w.AA_Sum[0], ae_data_w.AA_Sum[1],
+		ae_data_w.AA_Sum[2], ae_data_w.AA_Sum[3],
+		ae_data_w.LTM_Sum[0], ae_data_w.LTM_Sum[1],
+		ae_data_w.LTM_Sum[2], ae_data_w.LTM_Sum[3]);
+
+PUT_JOB:
+	mtk_cam_job_put(job);
 }
 

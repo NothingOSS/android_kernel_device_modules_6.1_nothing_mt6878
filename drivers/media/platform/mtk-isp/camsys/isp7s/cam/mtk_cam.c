@@ -1424,13 +1424,24 @@ static int mtk_cam_ctx_alloc_workers(struct mtk_cam_ctx *ctx)
 		goto fail_uninit_composer_wq;
 	}
 
+	ctx->aa_dump_wq =
+			alloc_ordered_workqueue(dev_name(dev),
+						WQ_HIGHPRI | WQ_FREEZABLE);
+	if (!ctx->aa_dump_wq) {
+		dev_info(dev, "failed to alloc aa_dump workqueue\n");
+		goto fail_uninit_frame_done_wq;
+	}
+
 	return 0;
 
+fail_uninit_frame_done_wq:
+	destroy_workqueue(ctx->frame_done_wq);
 fail_uninit_composer_wq:
 	destroy_workqueue(ctx->composer_wq);
 fail_uninit_sensor_worker_task:
 	kthread_stop(ctx->sensor_worker_task);
 	ctx->sensor_worker_task = NULL;
+
 	return -1;
 }
 
@@ -1441,6 +1452,7 @@ static void mtk_cam_ctx_destroy_workers(struct mtk_cam_ctx *ctx)
 
 	destroy_workqueue(ctx->composer_wq);
 	destroy_workqueue(ctx->frame_done_wq);
+	destroy_workqueue(ctx->aa_dump_wq);
 }
 
 static struct dma_buf *_alloc_dma_buf(const char *name,
@@ -2198,6 +2210,20 @@ int mtk_cam_ctx_queue_done_wq(struct mtk_cam_ctx *ctx, struct work_struct *work)
 		return -1;
 
 	ret = queue_work(ctx->frame_done_wq, work) ? 0 : -1;
+	if (ret)
+		pr_info("%s: failed\n", __func__);
+
+	return ret;
+}
+
+int mtk_cam_ctx_queue_aa_dump_wq(struct mtk_cam_ctx *ctx, struct work_struct *work)
+{
+	int ret;
+
+	if (WARN_ON(!ctx || !ctx->aa_dump_wq))
+		return -1;
+
+	ret = queue_work(ctx->aa_dump_wq, work) ? 0 : -1;
 	if (ret)
 		pr_info("%s: failed\n", __func__);
 

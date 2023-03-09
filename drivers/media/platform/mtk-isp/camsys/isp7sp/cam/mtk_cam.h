@@ -105,6 +105,7 @@ struct mtk_cam_ctx {
 	struct kthread_worker sensor_worker;
 	struct workqueue_struct *composer_wq;
 	struct workqueue_struct *frame_done_wq;
+	struct workqueue_struct *aa_dump_wq;
 
 	struct mtk_cam_device_buf w_caci_buf;
 
@@ -310,6 +311,8 @@ int mtk_cam_ctx_send_sv_event(struct mtk_cam_ctx *ctx,
 int mtk_cam_ctx_queue_sensor_worker(struct mtk_cam_ctx *ctx,
 				    struct kthread_work *work);
 int mtk_cam_ctx_queue_done_wq(struct mtk_cam_ctx *ctx,
+			      struct work_struct *work);
+int mtk_cam_ctx_queue_aa_dump_wq(struct mtk_cam_ctx *ctx,
 			      struct work_struct *work);
 
 int mtk_cam_ctx_fetch_devices(struct mtk_cam_ctx *ctx, unsigned long engines);

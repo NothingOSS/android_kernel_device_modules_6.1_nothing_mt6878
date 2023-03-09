@@ -7148,5 +7148,62 @@ static inline u32 _set_field(u32 *val, int pos, int width, u32 fval)
 #define REG_RZH1N2TO_R1_BASE   0x4b00
 #define REG_RGBWI_R1_BASE      0x4b40
 
+/* aa debug info */
+#define REG_OBC_R1A                    0x1380
+#define OFFSET_OBC_R1_R_SUM_L          (REG_OBC_R1A + 0x4)
+#define OFFSET_OBC_R1_R_SUM_H          (REG_OBC_R1A + 0x8)
+#define OFFSET_OBC_R1_B_SUM_L          (REG_OBC_R1A + 0xC)
+#define OFFSET_OBC_R1_B_SUM_H          (REG_OBC_R1A + 0x10)
+#define OFFSET_OBC_R1_GR_SUM_L         (REG_OBC_R1A + 0x14)
+#define OFFSET_OBC_R1_GR_SUM_H         (REG_OBC_R1A + 0x18)
+#define OFFSET_OBC_R1_GB_SUM_L         (REG_OBC_R1A + 0x1C)
+#define OFFSET_OBC_R1_GB_SUM_H         (REG_OBC_R1A + 0x20)
+#define OFFSET_OBC_R1_ACT_WIN_X        (REG_OBC_R1A + 0x64)
+#define OFFSET_OBC_R1_ACT_WIN_Y        (REG_OBC_R1A + 0x68)
 
+#define REG_OBC_R2A                    0x1840
+#define OFFSET_OBC_R2_R_SUM_L          (REG_OBC_R2A + 0x4)
+#define OFFSET_OBC_R2_R_SUM_H          (REG_OBC_R2A + 0x8)
+#define OFFSET_OBC_R2_B_SUM_L          (REG_OBC_R2A + 0xC)
+#define OFFSET_OBC_R2_B_SUM_H          (REG_OBC_R2A + 0x10)
+#define OFFSET_OBC_R2_GR_SUM_L         (REG_OBC_R2A + 0x14)
+#define OFFSET_OBC_R2_GR_SUM_H         (REG_OBC_R2A + 0x18)
+#define OFFSET_OBC_R2_GB_SUM_L         (REG_OBC_R2A + 0x1C)
+#define OFFSET_OBC_R2_GB_SUM_H         (REG_OBC_R2A + 0x20)
+#define OFFSET_OBC_R2_ACT_WIN_X        (REG_OBC_R2A + 0x64)
+#define OFFSET_OBC_R2_ACT_WIN_Y        (REG_OBC_R2A + 0x68)
+
+#define REG_OBC_R3A                    0x1D00
+#define OFFSET_OBC_R3_R_SUM_L          (REG_OBC_R3A + 0x4)
+#define OFFSET_OBC_R3_R_SUM_H          (REG_OBC_R3A + 0x8)
+#define OFFSET_OBC_R3_B_SUM_L          (REG_OBC_R3A + 0xC)
+#define OFFSET_OBC_R3_B_SUM_H          (REG_OBC_R3A + 0x10)
+#define OFFSET_OBC_R3_GR_SUM_L         (REG_OBC_R3A + 0x14)
+#define OFFSET_OBC_R3_GR_SUM_H         (REG_OBC_R3A + 0x18)
+#define OFFSET_OBC_R3_GB_SUM_L         (REG_OBC_R3A + 0x1C)
+#define OFFSET_OBC_R3_GB_SUM_H         (REG_OBC_R3A + 0x20)
+#define OFFSET_OBC_R3_ACT_WIN_X        (REG_OBC_R3A + 0x64)
+#define OFFSET_OBC_R3_ACT_WIN_Y        (REG_OBC_R3A + 0x68)
+
+#define REG_LTM_AE_DEBUG_B_MSB         0x23f0
+#define REG_LTM_AE_DEBUG_B_LSB         0x23f4
+#define REG_LTM_AE_DEBUG_GB_MSB        0x23f8
+#define REG_LTM_AE_DEBUG_GB_LSB        0x23fc
+#define REG_LTM_AE_DEBUG_GR_MSB        0x2400
+#define REG_LTM_AE_DEBUG_GR_LSB        0x2404
+#define REG_LTM_AE_DEBUG_R_MSB         0x2408
+#define REG_LTM_AE_DEBUG_R_LSB         0x240c
+#define REG_LTMS_ACT_WIN_X             0x2410
+#define REG_LTMS_ACT_WIN_Y             0x2414
+
+#define REG_AA_R_SUM_L                 0x2a68
+#define REG_AA_R_SUM_H                 0x2a6c
+#define REG_AA_B_SUM_L                 0x2a70
+#define REG_AA_B_SUM_H                 0x2a74
+#define REG_AA_GR_SUM_L                0x2a78
+#define REG_AA_GR_SUM_H                0x2a7c
+#define REG_AA_GB_SUM_L                0x2a80
+#define REG_AA_GB_SUM_H                0x2a84
+#define REG_AA_ACT_WIN_X               0x2a88
+#define REG_AA_ACT_WIN_Y               0x2a8c
 #endif	/* _MTK_CAM_RAW_REGS_H */

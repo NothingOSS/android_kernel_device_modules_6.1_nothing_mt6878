@@ -93,7 +93,7 @@ struct mtk_yuv_device {
 	struct mtk_camsys_qos qos;
 };
 
-/* AE information */
+/* aa debug info */
 struct mtk_ae_debug_data {
 	u64 OBC_R1_Sum[4];
 	u64 OBC_R2_Sum[4];
@@ -131,12 +131,13 @@ void raw_dump_debug_status(struct mtk_raw_device *dev);
 /* reset */
 void reset(struct mtk_raw_device *dev);
 
-void dump_aa_info(struct mtk_cam_ctx *ctx,
-		  struct mtk_ae_debug_data *ae_info);
-
 /* iommu debug */
 int mtk_raw_translation_fault_cb(int port, dma_addr_t mva, void *data);
 int mtk_yuv_translation_fault_cb(int port, dma_addr_t mva, void *data);
+
+/* aa debug info */
+void fill_aa_info(struct mtk_raw_device *raw_dev,
+				  struct mtk_ae_debug_data *ae_info);
 
 extern struct platform_driver mtk_cam_raw_driver;
 extern struct platform_driver mtk_cam_yuv_driver;

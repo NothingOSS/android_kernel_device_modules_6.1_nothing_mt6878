@@ -205,6 +205,7 @@ struct mtk_cam_job_ops {
 				int seq_no);
 	int (*handle_buffer_done)(struct mtk_cam_job *s);
 	int (*apply_switch)(struct mtk_cam_job *s);
+	int (*dump_aa_info)(struct mtk_cam_job *s, int engine_type);
 };
 struct mtk_cam_job {
 	/* note: to manage life-cycle in state list */
@@ -249,6 +250,9 @@ struct mtk_cam_job {
 	atomic_long_t afo_done; /* bit 0: not handled, bit 1: handled */
 	atomic_long_t done_set;
 	unsigned long done_handled;
+
+	/* aa debug info */
+	struct work_struct aa_dump_work;
 
 	int job_type;	/* job type - only job layer */
 	int ctx_id;
