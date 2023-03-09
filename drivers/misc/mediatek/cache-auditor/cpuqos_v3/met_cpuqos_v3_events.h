@@ -4,14 +4,14 @@
  */
 
 #undef TRACE_SYSTEM
-#define TRACE_SYSTEM mtk_mpam_events
+#define TRACE_SYSTEM mtk_cpuqos_v3_events
 
-#if !defined(_MET_MPAM_EVENTS_H) || defined(TRACE_HEADER_MULTI_READ)
-#define _MET_MPAM_EVENTS_H
+#if !defined(_MET_CPUQOS_V3_EVENTS_H) || defined(TRACE_HEADER_MULTI_READ)
+#define _MET_CPUQOS_V3_EVENTS_H
 
 #include <linux/tracepoint.h>
 // coverity[var_deref_op : FALSE]
-TRACE_EVENT(MPAM_CT_task_leave,
+TRACE_EVENT(CPUQOS_V3_CT_task_leave,
 	TP_PROTO(int pid, char *comm),
 	TP_ARGS(pid, comm),
 	TP_STRUCT__entry(
@@ -26,7 +26,7 @@ TRACE_EVENT(MPAM_CT_task_leave,
 );
 
 // coverity[var_deref_op : FALSE]
-TRACE_EVENT(MPAM_CT_task_enter,
+TRACE_EVENT(CPUQOS_V3_CT_task_enter,
 	TP_PROTO(int pid, char *comm),
 	TP_ARGS(pid, comm),
 	TP_STRUCT__entry(
@@ -40,13 +40,13 @@ TRACE_EVENT(MPAM_CT_task_enter,
 	TP_printk("pid=%d, taskname=%s", __entry->pid, __entry->comm)
 );
 
-#endif /* _MET_MPAM_EVENTS_H */
+#endif /* _MET_CPUQOS_V3_EVENTS_H */
 
 #undef TRACE_INCLUDE_PATH
 #undef TRACE_INCLUDE_FILE
 
 #define TRACE_INCLUDE_PATH .
-#define TRACE_INCLUDE_FILE met_mpam_events
+#define TRACE_INCLUDE_FILE met_cpuqos_v3_events
 
 /* This part must be outside protection */
 #include <trace/define_trace.h>
