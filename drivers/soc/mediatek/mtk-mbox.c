@@ -11,6 +11,9 @@
 #include <linux/sched/clock.h>
 #include <linux/soc/mediatek/mtk-mbox.h>
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/mbox.h>
+
 /*
  * memory copy to tiny
  * @param dest: dest address
@@ -456,6 +459,7 @@ int mtk_mbox_polling(struct mtk_mbox_device *mbdev, unsigned int mbox,
 	irq_state = (reg & (0x1 << recv_pin_index));
 
 	if (irq_state > 0) {
+		trace_mtk_mbox_polling(mbdev->name, reg, recv_pin_index);
 		/*clear bit*/
 		ret = mtk_mbox_clr_irq(mbdev, mbox, irq_state);
 	} else {
@@ -523,6 +527,8 @@ static irqreturn_t mtk_mbox_isr(int irq, void *dev_id)
 		minfo->record.irq_record = (uint32_t)irq_status;
 	irq_temp = 0;
 	spin_unlock_irqrestore(&minfo->mbox_lock, flags);
+
+	trace_mtk_mbox_isr_entry(mbdev->name, irq_status);
 
 	if (mbdev->pre_cb && mbdev->pre_cb(mbdev->prdata)) {
 		ret = MBOX_PRE_CB_ERR;
@@ -619,6 +625,8 @@ static irqreturn_t mtk_mbox_isr(int irq, void *dev_id)
 	if (mbdev->post_cb && mbdev->post_cb(mbdev->prdata))
 		ret = MBOX_POST_CB_ERR;
 skip:
+	trace_mtk_mbox_isr_exit(mbdev->name, irq_status);
+
 	if (ret == MBOX_PRE_CB_ERR)
 		pr_notice("[MBOX ISR] pre_cb error, skip cb handle, dev=%s ret=%d",
 			mbdev->name, ret);
