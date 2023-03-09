@@ -39,13 +39,12 @@ struct mtk_camsys_irq_error_data {
 };
 
 struct mtk_camsys_irq_info {
-	enum MTK_CAMSYS_IRQ_EVENT irq_type;
+	int irq_type;
 	u64 ts_ns;
 	int frame_idx;
 	int frame_idx_inner;
 	int cookie_done;
-	int write_cnt;
-	int fbc_cnt;
+	int fbc_empty;
 	unsigned int sof_tags;
 	unsigned int done_tags;
 	unsigned int err_tags;

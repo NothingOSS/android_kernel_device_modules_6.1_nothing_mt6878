@@ -465,16 +465,6 @@ static int mtk_cam_event_handle_raw(struct mtk_cam_ctrl *ctrl,
 
 	MTK_CAM_TRACE_FUNC_BEGIN(BASIC);
 
-	/* raw's CQ done */
-	if (irq_info->irq_type & BIT(CAMSYS_IRQ_SETTING_DONE)) {
-		spin_lock(&ctrl->info_lock);
-		ctrl->r_info.outer_seq_no =
-			seq_from_fh_cookie(irq_info->frame_idx);
-		spin_unlock(&ctrl->info_lock);
-
-		handle_setting_done(ctrl);
-	}
-
 	/* raw's DMA done, we only allow AFO done here */
 	if (irq_info->irq_type & BIT(CAMSYS_IRQ_AFO_DONE))
 		handle_meta1_done(ctrl,
@@ -503,6 +493,17 @@ static int mtk_cam_event_handle_raw(struct mtk_cam_ctrl *ctrl,
 					  vsync_res.is_last);
 	}
 
+	/* note: should handle SOF before CQ done for trigger delay cases */
+	/* raw's CQ done */
+	if (irq_info->irq_type & BIT(CAMSYS_IRQ_SETTING_DONE)) {
+		spin_lock(&ctrl->info_lock);
+		ctrl->r_info.outer_seq_no =
+			seq_from_fh_cookie(irq_info->frame_idx);
+		spin_unlock(&ctrl->info_lock);
+
+		handle_setting_done(ctrl);
+	}
+
 	/* DCIF' SOF (dc link engine frame start (first exposure) ) */
 	//if (irq_info->irq_type & (1 << CAMSYS_IRQ_FRAME_START_DCIF_MAIN)) {
 		// handle_dcif_frame_start(); - TBC
@@ -516,15 +517,6 @@ static int mtk_camsys_event_handle_camsv(struct mtk_cam_ctrl *ctrl,
 				       unsigned int engine_id,
 				       struct mtk_camsys_irq_info *irq_info)
 {
-
-	/* camsv's CQ done */
-	if (irq_info->irq_type & BIT(CAMSYS_IRQ_SETTING_DONE)) {
-		spin_lock(&ctrl->info_lock);
-		ctrl->r_info.outer_seq_no =
-			seq_from_fh_cookie(irq_info->frame_idx);
-		spin_unlock(&ctrl->info_lock);
-		handle_setting_done(ctrl);
-	}
 
 	/* camsv's SW done */
 	if (irq_info->irq_type & BIT(CAMSYS_IRQ_FRAME_DONE))
@@ -545,15 +537,8 @@ static int mtk_camsys_event_handle_camsv(struct mtk_cam_ctrl *ctrl,
 					  vsync_res.is_last);
 	}
 
-	return 0;
-}
-
-static int mtk_camsys_event_handle_mraw(struct mtk_cam_ctrl *ctrl,
-					unsigned int engine_id,
-					struct mtk_camsys_irq_info *irq_info)
-{
-
-	/* mraw's CQ done */
+	/* note: should handle SOF before CQ done for trigger delay cases */
+	/* camsv's CQ done */
 	if (irq_info->irq_type & BIT(CAMSYS_IRQ_SETTING_DONE)) {
 		spin_lock(&ctrl->info_lock);
 		ctrl->r_info.outer_seq_no =
@@ -561,6 +546,14 @@ static int mtk_camsys_event_handle_mraw(struct mtk_cam_ctrl *ctrl,
 		spin_unlock(&ctrl->info_lock);
 		handle_setting_done(ctrl);
 	}
+
+	return 0;
+}
+
+static int mtk_camsys_event_handle_mraw(struct mtk_cam_ctrl *ctrl,
+					unsigned int engine_id,
+					struct mtk_camsys_irq_info *irq_info)
+{
 
 	/* mraw's SW done */
 	if (irq_info->irq_type & BIT(CAMSYS_IRQ_FRAME_DONE))
@@ -580,6 +573,17 @@ static int mtk_camsys_event_handle_mraw(struct mtk_cam_ctrl *ctrl,
 					  vsync_res.is_first,
 					  vsync_res.is_last);
 	}
+
+	/* note: should handle SOF before CQ done for trigger delay cases */
+	/* mraw's CQ done */
+	if (irq_info->irq_type & BIT(CAMSYS_IRQ_SETTING_DONE)) {
+		spin_lock(&ctrl->info_lock);
+		ctrl->r_info.outer_seq_no =
+			seq_from_fh_cookie(irq_info->frame_idx);
+		spin_unlock(&ctrl->info_lock);
+		handle_setting_done(ctrl);
+	}
+
 	return 0;
 }
 

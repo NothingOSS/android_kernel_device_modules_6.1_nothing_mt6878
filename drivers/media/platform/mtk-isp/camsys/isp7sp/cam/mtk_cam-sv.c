@@ -147,10 +147,12 @@ static unsigned int get_last_done_tag(unsigned int group_tag)
 }
 
 static int sv_process_fsm(struct mtk_camsv_device *sv_dev,
-			   struct mtk_camsys_irq_info *irq_info)
+			  struct mtk_camsys_irq_info *irq_info,
+			  int *recovered_done)
 {
 	struct engine_fsm *fsm = &sv_dev->fsm;
 	unsigned int done_type, sof_type, i;
+	int recovered = 0;
 
 	done_type = irq_info->irq_type & BIT(CAMSYS_IRQ_FRAME_DONE);
 	if (done_type) {
@@ -164,8 +166,10 @@ static int sv_process_fsm(struct mtk_camsv_device *sv_dev,
 
 		if (irq_info->done_tags & sv_dev->last_done_tag) {
 			ret = engine_fsm_hw_done(fsm, &cookie_done);
-			if (ret ||
-				sv_dev->group_handled != sv_dev->used_group) {
+			if (ret > 0 && sv_dev->group_handled == sv_dev->used_group) {
+				irq_info->cookie_done = cookie_done;
+				sv_dev->group_handled = 0;
+			} else {
 				dev_info(sv_dev->dev, "%s: fake done or not all group done(frame_no:%d_%d/group:0x%x_0x%x/cookie_done:%d)\n",
 					__func__,
 					irq_info->frame_idx,
@@ -175,9 +179,6 @@ static int sv_process_fsm(struct mtk_camsv_device *sv_dev,
 					cookie_done);
 				irq_info->irq_type &= ~done_type;
 				irq_info->cookie_done = 0;
-			} else {
-				irq_info->cookie_done = cookie_done;
-				sv_dev->group_handled = 0;
 			}
 		} else {
 			irq_info->irq_type &= ~done_type;
@@ -203,14 +204,25 @@ static int sv_process_fsm(struct mtk_camsv_device *sv_dev,
 		if (irq_info->sof_tags & sv_dev->last_done_tag) {
 			for (i = 0; i < MAX_SV_HW_GROUPS; i++) {
 				if (sv_dev->last_done_tag & sv_dev->active_group_info[i]) {
-					engine_fsm_sof(&sv_dev->fsm, irq_info->frame_idx_inner);
+
+					recovered =
+						engine_fsm_sof(&sv_dev->fsm,
+							       irq_info->frame_idx_inner,
+							       irq_info->fbc_empty,
+							       recovered_done);
 					break;
 				}
 			}
 		}
 	}
 
-	return 0;
+	if (recovered)
+		dev_info(sv_dev->dev, "recovered done 0x%x in/out: 0x%x 0x%x\n",
+			 *recovered_done,
+			 irq_info->frame_idx_inner,
+			 irq_info->frame_idx);
+
+	return recovered;
 }
 
 static void mtk_camsv_register_iommu_tf_callback(struct mtk_camsv_device *sv_dev)
@@ -729,7 +741,7 @@ unsigned int mtk_cam_get_sv_tag_index(struct mtk_camsv_device *sv_dev,
 
 int mtk_cam_sv_dev_config(struct mtk_camsv_device *sv_dev)
 {
-	engine_fsm_reset(&sv_dev->fsm);
+	engine_fsm_reset(&sv_dev->fsm, sv_dev->dev);
 	sv_dev->cq_ref = NULL;
 
 	sv_dev->first_tag = 0;
@@ -1226,6 +1238,7 @@ static irqreturn_t mtk_irq_camsv_sof(int irq, void *data)
 	irq_info.ts_ns = ktime_get_boottime_ns();
 	irq_info.frame_idx = frm_seq_no;
 	irq_info.frame_idx_inner = frm_seq_no_inner;
+	irq_info.fbc_empty = 0; /* TODO */
 
 	if (irq_sof_status & CAMSVCENTRAL_SOF_ST_TAG1)
 		irq_info.sof_tags |= (1 << SVTAG_0);
@@ -1349,6 +1362,7 @@ static irqreturn_t mtk_irq_camsv_cq_done(int irq, void *data)
 		frm_seq_no_inner, frm_seq_no);
 
 	if (cq_done_status & CAMSVCQTOP_SCQ_SUB_THR_DONE) {
+
 		if (engine_handle_cq_done(&sv_dev->cq_ref)) {
 			irq_info.irq_type = (1 << CAMSYS_IRQ_SETTING_DONE);
 			irq_info.ts_ns = ktime_get_boottime_ns();
@@ -1367,6 +1381,8 @@ static irqreturn_t mtk_thread_irq_camsv(int irq, void *data)
 {
 	struct mtk_camsv_device *sv_dev = (struct mtk_camsv_device *)data;
 	struct mtk_camsys_irq_info irq_info;
+	int recovered_done;
+	int do_recover;
 
 	if (unlikely(atomic_cmpxchg(&sv_dev->is_fifo_overflow, 1, 0)))
 		dev_info(sv_dev->dev, "msg fifo overflow\n");
@@ -1389,12 +1405,22 @@ static irqreturn_t mtk_thread_irq_camsv(int irq, void *data)
 		}
 
 		/* normal case */
-		sv_process_fsm(sv_dev, &irq_info);
+		do_recover = sv_process_fsm(sv_dev, &irq_info,
+					    &recovered_done);
 
 		/* inform interrupt information to camsys controller */
 		mtk_cam_ctrl_isr_event(sv_dev->cam,
-					CAMSYS_ENGINE_CAMSV, sv_dev->id,
-					&irq_info);
+				       CAMSYS_ENGINE_CAMSV, sv_dev->id,
+				       &irq_info);
+
+		if (do_recover) {
+			irq_info.irq_type = BIT(CAMSYS_IRQ_FRAME_DONE);
+			irq_info.cookie_done = recovered_done;
+
+			mtk_cam_ctrl_isr_event(sv_dev->cam,
+					       CAMSYS_ENGINE_CAMSV, sv_dev->id,
+					       &irq_info);
+		}
 	}
 
 	return IRQ_HANDLED;

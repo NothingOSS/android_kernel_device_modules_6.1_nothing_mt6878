@@ -225,7 +225,7 @@ void initialize(struct mtk_raw_device *dev, int is_slave,
 	init_camsys_settings(dev, is_srt);
 
 	dev->engine_cb = cb;
-	engine_fsm_reset(&dev->fsm);
+	engine_fsm_reset(&dev->fsm, dev->dev);
 	dev->cq_ref = NULL;
 
 	reset_error_handling(dev);
@@ -423,11 +423,13 @@ void immediate_stream_off(struct mtk_raw_device *dev)
 
 static inline void trigger_rawi(struct mtk_raw_device *dev, u32 val)
 {
+	int cookie;
+
 	toggle_db(dev);
 
 	/* update fsm's cookie_inner since m2m flow has no sof to update it */
-	engine_fsm_sof(&dev->fsm,
-		       readl(dev->base_inner + REG_FRAME_SEQ_NUM));
+	cookie = readl(dev->base_inner + REG_FRAME_SEQ_NUM);
+	engine_fsm_sof(&dev->fsm, cookie, 0, NULL);
 
 	engine_handle_sof(&dev->cq_ref, cookie);
 
@@ -692,6 +694,13 @@ static void mtk_raw_log_tg_timestamp(struct mtk_raw_device *raw_dev)
 }
 #endif
 
+static inline int is_fbc_empty(struct mtk_raw_device *raw_dev)
+{
+	int ctl2 = readl_relaxed(raw_dev->base + REG_FBC_FHO_R1_CTL2);
+
+	return !((ctl2 >> 16) & 0xFF);
+}
+
 static irqreturn_t mtk_irq_raw(int irq, void *data)
 {
 	struct mtk_raw_device *raw_dev = (struct mtk_raw_device *)data;
@@ -727,11 +736,14 @@ static irqreturn_t mtk_irq_raw(int irq, void *data)
 	irq_info.ts_ns = ktime_get_boottime_ns();
 	irq_info.frame_idx = frame_idx;
 	irq_info.frame_idx_inner = frame_idx_inner;
+	irq_info.fbc_empty = 0;
 
 	/* CQ done */
-	if (cq_done_status & FBIT(CAMCTL_CQ_THR0_DONE_ST))
+	if (cq_done_status & FBIT(CAMCTL_CQ_THR0_DONE_ST)) {
+
 		if (engine_handle_cq_done(&raw_dev->cq_ref))
 			irq_info.irq_type |= 1 << CAMSYS_IRQ_SETTING_DONE;
+	}
 
 	/* DMAO done, only for AFO */
 	if (dmao_done_status & FBIT(CAMCTL_AFO_R1_DONE_ST)) {
@@ -753,6 +765,8 @@ static irqreturn_t mtk_irq_raw(int irq, void *data)
 		irq_info.irq_type |= 1 << CAMSYS_IRQ_FRAME_START;
 		raw_dev->sof_count++;
 		raw_dev->cur_vsync_idx = 0;
+
+		irq_info.fbc_empty = is_fbc_empty(raw_dev);
 	}
 
 	/* DCIF main sof */
@@ -828,40 +842,58 @@ static irqreturn_t mtk_irq_raw(int irq, void *data)
 }
 
 static int raw_process_fsm(struct mtk_raw_device *raw_dev,
-			   struct mtk_camsys_irq_info *irq_info)
+			   struct mtk_camsys_irq_info *irq_info,
+			   int *recovered_done)
 {
 	struct engine_fsm *fsm = &raw_dev->fsm;
 	int done_type;
+	int cookie_done;
+	int ret;
+	int recovered = 0;
 
 	done_type = irq_info->irq_type &
 	    (BIT(CAMSYS_IRQ_AFO_DONE) | BIT(CAMSYS_IRQ_FRAME_DONE));
-	if (done_type) {
-		int cookie_done;
-		int ret;
+
+	if (done_type == BIT(CAMSYS_IRQ_AFO_DONE)) {
+		/* special case: should not update state */
+		ret = engine_fsm_partial_done(fsm, &cookie_done);
+		if (!ret)
+			irq_info->cookie_done = cookie_done;
+	} else if (done_type) {
 
 		ret = engine_fsm_hw_done(fsm, &cookie_done);
-		/* handle for fake p1 done */
-		if (ret) {
-			dev_info(raw_dev->dev, "warn: fake done 0x%x out/in: 0x%x 0x%x\n",
-				 done_type,
-				 irq_info->frame_idx,
-				 irq_info->frame_idx_inner);
+		if (ret > 0)
+			irq_info->cookie_done = cookie_done;
+		else {
+			/* handle for fake p1 done */
+			dev_info_ratelimited(raw_dev->dev, "warn: fake done in/out: 0x%x 0x%x\n",
+					     irq_info->frame_idx_inner,
+					     irq_info->frame_idx);
 			irq_info->irq_type &= ~done_type;
 			irq_info->cookie_done = 0;
-		} else
-			irq_info->cookie_done = cookie_done;
+		}
 	}
 
 	if (irq_info->irq_type & BIT(CAMSYS_IRQ_FRAME_START))
-		engine_fsm_sof(fsm, irq_info->frame_idx_inner);
+		recovered = engine_fsm_sof(fsm, irq_info->frame_idx_inner,
+					   irq_info->fbc_empty,
+					   recovered_done);
 
-	return 0;
+	if (recovered)
+		dev_info(raw_dev->dev, "recovered done 0x%x in/out: 0x%x 0x%x\n",
+			 *recovered_done,
+			 irq_info->frame_idx_inner,
+			 irq_info->frame_idx);
+
+	return recovered;
 }
 
 static irqreturn_t mtk_thread_irq_raw(int irq, void *data)
 {
 	struct mtk_raw_device *raw_dev = (struct mtk_raw_device *)data;
 	struct mtk_camsys_irq_info irq_info;
+	int recovered_done;
+	int do_recover;
 
 	if (unlikely(atomic_cmpxchg(&raw_dev->is_fifo_overflow, 1, 0)))
 		dev_info(raw_dev->dev, "msg fifo overflow\n");
@@ -889,11 +921,22 @@ static irqreturn_t mtk_thread_irq_raw(int irq, void *data)
 			reset_error_handling(raw_dev);
 
 		/* normal case */
-		raw_process_fsm(raw_dev, &irq_info);
+		do_recover = raw_process_fsm(raw_dev, &irq_info,
+					     &recovered_done);
 
 		do_engine_callback(raw_dev->engine_cb, isr_event,
 				   raw_dev->cam,
 				   CAMSYS_ENGINE_RAW, raw_dev->id, &irq_info);
+
+		if (do_recover) {
+			irq_info.irq_type = BIT(CAMSYS_IRQ_FRAME_DONE);
+			irq_info.cookie_done = recovered_done;
+
+			do_engine_callback(raw_dev->engine_cb, isr_event,
+					   raw_dev->cam,
+					   CAMSYS_ENGINE_RAW, raw_dev->id,
+					   &irq_info);
+		}
 	}
 
 	return IRQ_HANDLED;
