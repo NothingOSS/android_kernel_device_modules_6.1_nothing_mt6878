@@ -151,9 +151,9 @@ struct mtk_camsv_device {
 	void __iomem *base;
 	void __iomem *base_inner;
 	void __iomem *base_dma;
-	void __iomem *base_inner_dma;
+	void __iomem *base_dma_inner;
 	void __iomem *base_scq;
-	void __iomem *base_inner_scq;
+	void __iomem *base_scq_inner;
 	unsigned int num_clks;
 	struct clk **clks;
 	unsigned int cammux_id;
@@ -189,6 +189,7 @@ struct mtk_camsv_device {
 };
 
 void sv_reset(struct mtk_camsv_device *sv_dev);
+void mtk_cam_sv_debug_dump(struct mtk_camsv_device *sv_dev, unsigned int dump_tags);
 int mtk_cam_sv_dev_config(struct mtk_camsv_device *sv_dev);
 int mtk_cam_sv_cq_config(struct mtk_camsv_device *sv_dev);
 int mtk_cam_sv_cq_enable(struct mtk_camsv_device *sv_dev);

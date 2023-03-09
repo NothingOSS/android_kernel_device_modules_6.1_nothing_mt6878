@@ -2956,6 +2956,8 @@ void mtk_engine_dump_debug_status(struct mtk_cam_device *cam,
 				  unsigned long engines)
 {
 	struct mtk_raw_device *dev;
+	struct mtk_camsv_device *sv_dev;
+	struct mtk_mraw_device *mraw_dev;
 	unsigned long subset;
 	int i;
 
@@ -2966,6 +2968,26 @@ void mtk_engine_dump_debug_status(struct mtk_cam_device *cam,
 			dev = dev_get_drvdata(cam->engines.raw_devs[i]);
 
 			raw_dump_debug_status(dev);
+		}
+	}
+
+	subset = bit_map_subset_of(MAP_HW_CAMSV, engines);
+	for (i = 0; i < cam->engines.num_camsv_devices; i++) {
+
+		if (subset & BIT(i)) {
+			sv_dev = dev_get_drvdata(cam->engines.sv_devs[i]);
+
+			mtk_cam_sv_debug_dump(sv_dev, 0);
+		}
+	}
+
+	subset = bit_map_subset_of(MAP_HW_MRAW, engines);
+	for (i = 0; i < cam->engines.num_mraw_devices; i++) {
+
+		if (subset & BIT(i)) {
+			mraw_dev = dev_get_drvdata(cam->engines.mraw_devs[i]);
+
+			mtk_cam_mraw_debug_dump(mraw_dev);
 		}
 	}
 }

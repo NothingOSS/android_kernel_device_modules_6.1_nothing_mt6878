@@ -4074,9 +4074,11 @@ static int get_exp_switch_type(struct mtk_cam_job *job)
 
 static void job_dump_engines_debug_status(struct mtk_cam_job *job)
 {
-	struct mtk_cam_device *cam = job->src_ctx->cam;
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtk_cam_device *cam = ctx->cam;
 
 	mtk_engine_dump_debug_status(cam, job->used_engine);
+	mtk_cam_seninf_dump(ctx->seninf, job->frame_seq_no, false);
 }
 
 static void mtk_cam_aa_dump_work(struct work_struct *work)

@@ -210,13 +210,13 @@ int mtk_camsv_translation_fault_callback(int port, dma_addr_t mva, void *data)
 	int index;
 	struct mtk_camsv_device *sv_dev = (struct mtk_camsv_device *)data;
 
-	dev_info(sv_dev->dev, "tg_sen_mode:0x%x tg_vf_con:0x%x tg_path_cfg:0x%x",
+	dev_info_ratelimited(sv_dev->dev, "tg_sen_mode:0x%x tg_vf_con:0x%x tg_path_cfg:0x%x",
 		readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_SEN_MODE),
 		readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_VF_CON),
 		readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_PATH_CFG));
 
 	for (index = 0; index < MAX_SV_HW_TAGS; index++) {
-		dev_info(sv_dev->dev, "tag:%d tg_grab_pxl:0x%x tg_grab_lin:0x%x fmt:0x%x imgo_fbc0: 0x%x imgo_fbc1: 0x%x",
+		dev_info_ratelimited(sv_dev->dev, "tag:%d tg_grab_pxl:0x%x tg_grab_lin:0x%x fmt:0x%x imgo_fbc0: 0x%x imgo_fbc1: 0x%x",
 		index,
 		readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_GRAB_PXL_TAG1 +
 			index * CAMSVCENTRAL_GRAB_PXL_TAG_SHIFT),
@@ -231,15 +231,15 @@ int mtk_camsv_translation_fault_callback(int port, dma_addr_t mva, void *data)
 	}
 
 	for (index = 0; index < MAX_SV_HW_TAGS; index++) {
-		dev_info(sv_dev->dev, "tag:%d imgo_stride_img:0x%x imgo_addr_img:0x%x_%x",
+		dev_info_ratelimited(sv_dev->dev, "tag:%d imgo_stride_img:0x%x imgo_addr_img:0x%x_%x",
 			index,
-			readl_relaxed(sv_dev->base_inner_dma +
+			readl_relaxed(sv_dev->base_dma_inner +
 				REG_CAMSVDMATOP_WDMA_BASIC_IMG1 +
 				index * CAMSVDMATOP_WDMA_BASIC_IMG_SHIFT),
-			readl_relaxed(sv_dev->base_inner_dma +
+			readl_relaxed(sv_dev->base_dma_inner +
 				REG_CAMSVDMATOP_WDMA_BASE_ADDR_IMG1 +
 				index * CAMSVDMATOP_WDMA_BASE_ADDR_IMG_SHIFT),
-			readl_relaxed(sv_dev->base_inner_dma +
+			readl_relaxed(sv_dev->base_dma_inner +
 				REG_CAMSVDMATOP_WDMA_BASE_ADDR_MSB_IMG1 +
 				index * CAMSVDMATOP_WDMA_BASE_ADDR_MSB_IMG_SHIFT));
 	}
@@ -925,9 +925,6 @@ int mtk_cam_sv_dev_pertag_stream_on(
 	unsigned int tag_idx,
 	bool on)
 {
-#ifdef HS_TODO
-	struct mtk_camsv_pipeline *sv_pipe;
-#endif
 	int ret = 0;
 
 	if (on) {
@@ -941,15 +938,6 @@ int mtk_cam_sv_dev_pertag_stream_on(
 			ret |= mtk_cam_sv_cq_disable(sv_dev);
 			ret |= mtk_cam_sv_central_common_disable(sv_dev);
 		}
-#ifdef HS_TODO
-		if (watchdog_scenario(ctx) &&
-			(tag_idx >= SVTAG_META_START &&
-			tag_idx < SVTAG_META_END)) {
-			sv_pipe = sv_dev->tag_info[tag_idx].sv_pipe;
-			if (sv_pipe)
-				mtk_ctx_watchdog_stop(ctx, sv_pipe->id);
-		}
-#endif
 
 		ret |= mtk_cam_sv_fbc_disable(sv_dev, tag_idx);
 		sv_dev->streaming_tag_cnt--;
@@ -1006,121 +994,102 @@ void camsv_dump_dma_debug_data(struct mtk_camsv_device *sv_dev)
 		cmd_cnt_len1);
 }
 
-void camsv_irq_handle_err(
-	struct mtk_camsv_device *sv_dev,
-	unsigned int dequeued_frame_seq_no, unsigned int tag_idx)
+void mtk_cam_sv_debug_dump(struct mtk_camsv_device *sv_dev, unsigned int dump_tags)
 {
-#ifdef NOT_READY
-	struct mtk_cam_request_stream_data *s_data;
-	struct mtk_cam_device *cam = sv_dev->cam;
-	struct mtk_cam_ctx *ctx;
-	struct mtk_camsv_tag_info tag_info = sv_dev->tag_info[tag_idx];
-	unsigned int stream_id;
+	unsigned int i;
+	unsigned int tg_sen_mode, tg_vf_con, tg_path_cfg;
+	unsigned int fbc_imgo_status, imgo_addr, imgo_addr_msb;
+	unsigned int frm_size, frm_size_r, grab_pix, grab_lin;
+	unsigned int dcif_set, dcif_sel;
+	unsigned int first_tag, last_tag, group_info;
 
-	writel_relaxed((tag_idx << 22) + (tag_idx << 27),
-		sv_dev->base + REG_CAMSVCENTRAL_TAG_R_SEL);
+	dump_tags = (dump_tags) ? dump_tags : BIT(MAX_SV_HW_TAGS) - 1;
+
+	/* check tg setting */
+	tg_sen_mode = readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_SEN_MODE);
+	tg_vf_con = readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_VF_CON);
+	tg_path_cfg = readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_PATH_CFG);
 	dev_info_ratelimited(sv_dev->dev,
-		"TAG_IDX:%d TG PATHCFG/SENMODE FRMSIZE/R RGRABPXL/LIN:0x%x/%x 0x%x/%x 0x%x/%x\n",
-		tag_idx,
-		readl_relaxed(sv_dev->base + REG_CAMSVCENTRAL_PATH_CFG),
-		readl_relaxed(sv_dev->base + REG_CAMSVCENTRAL_SEN_MODE),
-		readl_relaxed(sv_dev->base + REG_CAMSVCENTRAL_FRMSIZE_ST),
-		readl_relaxed(sv_dev->base + REG_CAMSVCENTRAL_FRMSIZE_ST_R),
-		readl_relaxed(sv_dev->base + REG_CAMSVCENTRAL_GRAB_PXL_TAG1 +
-			CAMSVCENTRAL_GRAB_PXL_TAG_SHIFT * tag_idx),
-		readl_relaxed(sv_dev->base + REG_CAMSVCENTRAL_GRAB_LIN_TAG1 +
-			CAMSVCENTRAL_GRAB_LIN_TAG_SHIFT * tag_idx));
+		"tg_sen_mode:0x%x tg_vf_con:0x%x tg_path_cfg:0x%x\n",
+		tg_sen_mode, tg_vf_con, tg_path_cfg);
 
-	if (sv_dev->tag_info[tag_idx].hw_scen &
-		MTK_CAMSV_SUPPORTED_SPECIAL_HW_SCENARIO) {
-		if (sv_dev->ctx_stream_id >= MTKCAM_SUBDEV_CAMSV_END) {
-			dev_info(sv_dev->dev, "stream id out of range : %d",
-					sv_dev->ctx_stream_id);
-			return;
-		}
-		ctx = &cam->ctxs[sv_dev->ctx_stream_id];
-		if (!ctx) {
-			dev_info(sv_dev->dev, "%s: cannot find ctx\n", __func__);
-			return;
-		}
-		stream_id = sv_dev->ctx_stream_id;
-	} else {
-		if (sv_dev->ctx_stream_id >= MTKCAM_SUBDEV_CAMSV_END) {
-			dev_info(sv_dev->dev, "stream id out of range : %d",
-					sv_dev->ctx_stream_id);
-			return;
-		}
-		ctx = &cam->ctxs[sv_dev->ctx_stream_id];
-		if (!ctx) {
-			dev_info(sv_dev->dev, "%s: cannot find ctx\n", __func__);
-			return;
-		}
-		if (!tag_info.sv_pipe) {
-			dev_info(sv_dev->dev, "%s: tag_idx:%d is not controlled by user\n",
-				__func__, tag_idx);
-			return;
-		}
-		stream_id = tag_info.sv_pipe->id;
+	/* check frame setting and status for each tag */
+	for (i = 0; i < MAX_SV_HW_TAGS; i++) {
+		if (!(dump_tags & (1 << i)))
+			continue;
+
+		writel_relaxed((i << 22) + (i << 27),
+			sv_dev->base_inner + REG_CAMSVCENTRAL_TAG_R_SEL);
+
+		fbc_imgo_status =
+		readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_FBC1_TAG1 + i *
+			CAMSVCENTRAL_FBC1_TAG_SHIFT);
+		imgo_addr_msb =
+			readl_relaxed(sv_dev->base_dma_inner +
+			REG_CAMSVDMATOP_WDMA_BASE_ADDR_MSB_IMG1 +  i *
+			CAMSVDMATOP_WDMA_BASE_ADDR_MSB_IMG_SHIFT);
+		imgo_addr =
+			readl_relaxed(sv_dev->base_dma_inner + REG_CAMSVDMATOP_WDMA_BASE_ADDR_IMG1
+			+ i * CAMSVDMATOP_WDMA_BASE_ADDR_IMG_SHIFT);
+		frm_size =
+			readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_FRMSIZE_ST);
+		frm_size_r =
+			readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_FRMSIZE_ST_R);
+		grab_pix =
+			readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_GRAB_PXL_TAG1 +
+			CAMSVCENTRAL_GRAB_PXL_TAG_SHIFT * i);
+		grab_lin =
+			readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_GRAB_LIN_TAG1 +
+			CAMSVCENTRAL_GRAB_LIN_TAG_SHIFT * i);
+
+		dev_info_ratelimited(sv_dev->dev,
+			"tag_idx:%d fbc_status:0x%x imgo_addr:0x%x_%x frm_size:0x%x frm_size_r:0x%x grab_pix:0x%x grab_lin:0x%x\n",
+			i, fbc_imgo_status, imgo_addr_msb, imgo_addr,
+			frm_size, frm_size_r, grab_pix, grab_lin);
 	}
 
-	s_data = mtk_cam_get_req_s_data(ctx, stream_id, dequeued_frame_seq_no);
-	if (s_data) {
-		mtk_cam_debug_seninf_dump(s_data);
-	} else {
-		dev_info(sv_dev->dev,
-			 "%s: req(%d) can't be found for seninf dump\n",
-			 __func__, dequeued_frame_seq_no);
+	/* check dcif setting */
+	dcif_set = readl_relaxed(sv_dev->base_inner + REG_E_CAMSVCENTRAL_DCIF_SET);
+	dcif_sel = readl_relaxed(sv_dev->base_inner + REG_E_CAMSVCENTRAL_DCIF_SEL);
+	dev_info_ratelimited(sv_dev->dev, "dcif_set:0x%x dcif_sel:0x%x\n",
+		dcif_set, dcif_sel);
+
+	/* check tag/group setting */
+	first_tag = readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_FIRST_TAG);
+	last_tag = readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_LAST_TAG);
+	for (i = 0; i < MAX_SV_HW_GROUPS; i++) {
+		group_info = readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_GROUP_TAG0 +
+			REG_CAMSVCENTRAL_GROUP_TAG_SHIFT * i);
+		dev_info_ratelimited(sv_dev->dev, "group[%d]:0x%x\n", i, group_info);
 	}
-#endif
+	dev_info_ratelimited(sv_dev->dev, "first_tag:0x%x last_tag:0x%x\n",
+		first_tag, last_tag);
+
+	/* dump dma debug data */
+	camsv_dump_dma_debug_data(sv_dev);
 }
 
 void camsv_handle_err(
 	struct mtk_camsv_device *sv_dev,
 	struct mtk_camsys_irq_info *data)
 {
+	struct mtk_cam_ctx *ctx;
+	unsigned int ctx_id;
 	int err_status = data->e.err_status;
 	int frame_idx_inner = data->frame_idx_inner;
-	int tag_idx;
-	unsigned int fbc_imgo_status, imgo_addr, imgo_addr_msb, dcif_set, tg_vf_con;
-	unsigned int first_tag, last_tag, group_info, i;
-	/* camsv todo: show more error detail */
-	for (tag_idx = 0; tag_idx < MAX_SV_HW_TAGS; tag_idx++) {
-		if (!(data->err_tags & (1 << tag_idx)))
-			continue;
-		fbc_imgo_status =
-		readl_relaxed(sv_dev->base + REG_CAMSVCENTRAL_FBC1_TAG1 + tag_idx *
-			CAMSVCENTRAL_FBC1_TAG_SHIFT);
-		imgo_addr =
-			readl_relaxed(sv_dev->base_dma + REG_CAMSVDMATOP_WDMA_BASE_ADDR_IMG1
-			+ tag_idx * CAMSVDMATOP_WDMA_BASE_ADDR_IMG_SHIFT);
-		imgo_addr_msb =
-			readl_relaxed(sv_dev->base_dma +
-			REG_CAMSVDMATOP_WDMA_BASE_ADDR_MSB_IMG1 +  tag_idx *
-			CAMSVDMATOP_WDMA_BASE_ADDR_MSB_IMG_SHIFT);
-		dcif_set =
-			readl_relaxed(sv_dev->base_inner + REG_E_CAMSVCENTRAL_DCIF_SET);
-		tg_vf_con =
-			readl_relaxed(sv_dev->base_inner + REG_CAMSVCENTRAL_VF_CON);
-		dev_info_ratelimited(sv_dev->dev,
-			"camsv_id:%d tag_idx:%d error_status:0x%x fbc_status:0x%x imgo_addr:0x%x%08x dcif_set:0x%x tg_vf:0x%x\n",
-			sv_dev->id, tag_idx, err_status, fbc_imgo_status, imgo_addr_msb,
-			imgo_addr, dcif_set, tg_vf_con);
-		camsv_irq_handle_err(sv_dev, frame_idx_inner, tag_idx);
-	}
-	first_tag = readl_relaxed(sv_dev->base + REG_CAMSVCENTRAL_FIRST_TAG);
-	last_tag = readl_relaxed(sv_dev->base + REG_CAMSVCENTRAL_LAST_TAG);
-	for (i = 0; i < MAX_SV_HW_GROUPS; i++) {
-		group_info = readl_relaxed(sv_dev->base + REG_CAMSVCENTRAL_GROUP_TAG0 +
-			REG_CAMSVCENTRAL_GROUP_TAG_SHIFT * i);
-		dev_info_ratelimited(sv_dev->dev, "group%d: group_info:%x", i, group_info);
-	}
-	dev_info_ratelimited(sv_dev->dev, "first_tag:0x%x last_tag:0x%x",
-		first_tag, last_tag);
+
+	ctx_id = ctx_from_fh_cookie(frame_idx_inner);
+	ctx = &sv_dev->cam->ctxs[ctx_id];
+
+	/* dump error status */
+	dev_info_ratelimited(sv_dev->dev, "error_status:0x%x\n", err_status);
+
+	/* dump camsv debug data */
+	mtk_cam_sv_debug_dump(sv_dev, data->err_tags);
+
+	/* check dma fifo status */
 	if (!(data->err_tags) && (err_status & CAMSVCENTRAL_DMA_SRAM_FULL_ST))
-		dev_info_ratelimited(sv_dev->dev, "camsv_id:%d camsv dma full error_status:0x%x",
-			sv_dev->id, err_status);
-	/* dump dma debug data */
-	camsv_dump_dma_debug_data(sv_dev);
+		dev_info_ratelimited(sv_dev->dev, "camsv dma fifo full\n");
 }
 
 static irqreturn_t mtk_irq_camsv_done(int irq, void *data)
@@ -1610,12 +1579,12 @@ static int mtk_camsv_of_probe(struct platform_device *pdev,
 		return -ENODEV;
 	}
 
-	sv_dev->base_inner_dma = devm_ioremap_resource(dev, res);
-	if (IS_ERR(sv_dev->base_inner_dma)) {
+	sv_dev->base_dma_inner = devm_ioremap_resource(dev, res);
+	if (IS_ERR(sv_dev->base_dma_inner)) {
 		dev_dbg(dev, "failed to map register inner base dma\n");
-		return PTR_ERR(sv_dev->base_inner_dma);
+		return PTR_ERR(sv_dev->base_dma_inner);
 	}
-	dev_dbg(dev, "camsv, map_addr(inner dma)=0x%pK\n", sv_dev->base_inner_dma);
+	dev_dbg(dev, "camsv, map_addr(inner dma)=0x%pK\n", sv_dev->base_dma_inner);
 
 	/* base inner scq register */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "inner_base_SCQ");
@@ -1624,12 +1593,12 @@ static int mtk_camsv_of_probe(struct platform_device *pdev,
 		return -ENODEV;
 	}
 
-	sv_dev->base_inner_scq = devm_ioremap_resource(dev, res);
-	if (IS_ERR(sv_dev->base_inner_scq)) {
+	sv_dev->base_scq_inner = devm_ioremap_resource(dev, res);
+	if (IS_ERR(sv_dev->base_scq_inner)) {
 		dev_dbg(dev, "failed to map register inner base\n");
-		return PTR_ERR(sv_dev->base_inner_scq);
+		return PTR_ERR(sv_dev->base_scq_inner);
 	}
-	dev_dbg(dev, "camsv, map_addr(inner scq)=0x%pK\n", sv_dev->base_inner_scq);
+	dev_dbg(dev, "camsv, map_addr(inner scq)=0x%pK\n", sv_dev->base_scq_inner);
 
 	for (i = 0; i < CAMSV_IRQ_NUM; i++) {
 		sv_dev->irq[i] = platform_get_irq(pdev, i);

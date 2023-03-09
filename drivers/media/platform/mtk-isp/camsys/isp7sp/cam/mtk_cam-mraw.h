@@ -181,6 +181,7 @@ void mtk_cam_mraw_get_cpi_size(struct mtk_cam_device *cam, unsigned int pipe_id,
 	unsigned int *width, unsigned int *height);
 int mtk_cam_mraw_is_zero_fbc_cnt(struct mtk_mraw_device *mraw_dev);
 int mtk_mraw_translation_fault_callback(int port, dma_addr_t mva, void *data);
+void mtk_cam_mraw_debug_dump(struct mtk_mraw_device *mraw_dev);
 
 extern struct platform_driver mtk_cam_mraw_driver;
 
