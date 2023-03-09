@@ -1108,14 +1108,14 @@ static void disp_pd_swrgo_init(const bool enable)
 	if (enable && !mmdvfs_swrgo_init) {
 		ret = mtk_mmdvfs_enable_vcp(enable, VCP_PWR_USR_MMDVFS_GENPD);
 		if (!ret) {
-			ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_INIT, enable ? 1 : 0, MAX_OPP, NULL);
+			ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_INIT, 1, MAX_OPP, NULL);
 			if (!ret)
-				mmdvfs_swrgo_init = true;
+				mmdvfs_swrgo_init = enable;
 		}
 	} else if (!enable && mmdvfs_swrgo_init) {
-		ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_INIT, enable ? 1 : 0, MAX_OPP, NULL);
+		ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_INIT, 0, MAX_OPP, NULL);
 		if (!ret)
-			mmdvfs_swrgo_init = false;
+			mmdvfs_swrgo_init = enable;
 		ret = mtk_mmdvfs_enable_vcp(enable, VCP_PWR_USR_MMDVFS_GENPD);
 	}
 	MMDVFS_DBG("ret:%d enable:%d swrgo:%d", ret, enable, mmdvfs_swrgo_init);
@@ -1584,7 +1584,7 @@ int mmdvfs_mux_set_opp(const char *name, unsigned long rate)
 			return -EINVAL;
 		}
 
-		if (!mmdvfs_swrgo_init) {
+		if (!mmdvfs_swrgo_init && mux->id < MMDVFS_MUX_VDE) {
 			MMDVFS_ERR("swrgo:%d not ready", mmdvfs_swrgo_init);
 			goto set_opp_end;
 		}
