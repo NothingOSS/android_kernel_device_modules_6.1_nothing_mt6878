@@ -14111,8 +14111,8 @@
 		mtk-dsp-btul = <0x1 0xffffffff 0x19 0x1a 0x20000>;
 	};
 
-	mt_soc_offload_common {
-		compatible = "mediatek,mt_soc_offload_common";
+	mt-soc-offload-common {
+		compatible = "mediatek,mt-soc-offload-common";
 	};
 
 	speech_usip_mem: speech-usip-mem {
