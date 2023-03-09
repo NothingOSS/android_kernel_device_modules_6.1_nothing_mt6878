@@ -30,7 +30,6 @@ struct charger_properties {
 /* Data of notifier from charger device */
 struct chgdev_notify {
 	bool vbusov_stat;
-	bool dpdmov_stat;
 };
 
 /* charger_dev notify */
@@ -48,7 +47,6 @@ enum {
 	CHARGER_DEV_NOTIFY_VOUTOVP,
 	CHARGER_DEV_NOTIFY_VDROVP,
 	CHARGER_DEV_NOTIFY_BATPRO_DONE,
-	CHARGER_DEV_NOTIFY_DPDM_OVP,
 };
 
 struct charger_device {

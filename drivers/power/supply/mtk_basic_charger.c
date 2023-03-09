@@ -623,10 +623,6 @@ static int charger_dev_event(struct notifier_block *nb, unsigned long event,
 		}
 		pr_info("%s: batpro_done = %d\n", __func__, info->batpro_done);
 		break;
-	case CHARGER_DEV_NOTIFY_DPDM_OVP:
-		info->dpdmov_stat = data->dpdmov_stat;
-		pr_info("%s: DPDM ovp = %d\n", __func__, info->dpdmov_stat);
-		break;
 	default:
 		return NOTIFY_DONE;
 	}
