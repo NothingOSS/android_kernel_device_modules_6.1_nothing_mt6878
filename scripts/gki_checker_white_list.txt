@@ -360,3 +360,6 @@ s __typeid__ZTSFiP6usbnethtttPvE_global_addr
 s usbnet_get_link
 s usbnet_nway_reset
 s vermagic
+s mas_rev_awalk
+s check_empty_area_window
+s maple_tree_seed
