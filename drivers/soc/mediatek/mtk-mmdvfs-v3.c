@@ -263,7 +263,8 @@ static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *d
 		if (!mmdvfs_vcp_cb_ready &&
 			(func == FUNC_MMDVFS_INIT || func == FUNC_MMDVFSRC_INIT))
 			break;
-		if (func == FUNC_VMM_GENPD_NOTIFY || func == FUNC_VMM_CEIL_ENABLE)
+		if (func == FUNC_VMM_GENPD_NOTIFY || func == FUNC_VMM_CEIL_ENABLE ||
+			func == FUNC_MMDVFS_LP_MODE)
 			goto ipi_send_end;
 		if (++retry > 100) {
 			ret = -ETIMEDOUT;
@@ -882,11 +883,9 @@ int mmdvfs_set_lp_mode_by_vcp(const bool enable)
 	int ret = 0;
 
 	mmdvfs_lp_mode = enable;
-	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_DISP);
 	ret = mmdvfs_vcp_ipi_send(FUNC_MMDVFS_LP_MODE, enable ? 1 : 0, MAX_OPP, NULL);
 	if (ret)
 		MMDVFS_ERR("failed:%d enable:%d", ret, enable);
-	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_DISP);
 
 	return ret;
 }
