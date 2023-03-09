@@ -262,6 +262,7 @@
 
 /* MSDC_PATCH_BIT mask */
 #define MSDC_PATCH_BIT_ODDSUPP    (0x1 <<  1)	/* RW */
+#define MSDC_PATCH_BIT_RD_DAT_SEL (0x1 << 3)    /* RW */
 #define MSDC_INT_DAT_LATCH_CK_SEL (0x7 <<  7)
 #define MSDC_CKGEN_MSDC_DLY_SEL   (0x1f << 10)
 #define MSDC_PATCH_BIT_IODSSEL    (0x1 << 16)	/* RW */
@@ -285,6 +286,7 @@
 #define MSDC_PB2_RESPWAIT         (0x3 << 2)    /* RW */
 #define MSDC_PB2_RESPSTSENSEL     (0x7 << 16)   /* RW */
 #define MSDC_PB2_POP_EN_CNT       (0xf << 20)   /* RW */
+#define MSDC_PB2_CFGCRCSTSEDGE    (0x1 << 25)   /* RW */
 #define MSDC_PB2_CRCSTSENSEL      (0x7 << 29)   /* RW */
 
 #define MSDC_PAD_TUNE_DATWRDLY	  (0x1f <<  0)	/* RW */
@@ -362,7 +364,8 @@
 
 #define DEFAULT_DEBOUNCE	(8)	/* 8 cycles CD debounce */
 
-#define PAD_DELAY_MAX	32 /* PAD delay cells */
+#define PAD_DELAY_1CELL_MAX	32 /* PAD delay cells */
+#define PAD_DELAY_2CELL_MAX	64 /* PAD delay cells * 2 */
 #if IS_ENABLED(CONFIG_FPGA_EARLY_PORTING)
 #define MSDC_OCR_AVAIL\
 	(MMC_VDD_28_29 | MMC_VDD_29_30 | MMC_VDD_30_31 \
