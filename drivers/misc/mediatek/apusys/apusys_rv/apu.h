@@ -151,6 +151,7 @@ struct mtk_apu {
 	void *apu_sec_mem_base;
 	void *apu_aee_coredump_mem_base;
 	void *coredump_buf;
+	uint64_t coredump_buf_pa;
 	void *are_reg_base;
 	struct apu_coredump *coredump;
 	dma_addr_t coredump_da;

@@ -5,6 +5,7 @@
 
 #include <linux/dma-mapping.h>
 #include <linux/slab.h>
+#include <linux/iommu.h>
 #include <apu.h>
 #include <apu_excep.h>
 
@@ -22,6 +23,7 @@ int apu_coredump_init(struct mtk_apu *apu)
 {
 	struct device *dev = apu->dev;
 	int ret = 0;
+	void *domain;
 	uint32_t coredump_size = apu->up_code_buf_sz + REG_SIZE +
 		TBUF_SIZE + CACHE_DUMP_SIZE;
 
@@ -40,6 +42,18 @@ int apu_coredump_init(struct mtk_apu *apu)
 		return -ENOMEM;
 	}
 
+	if ((apu->platdata->flags & F_BYPASS_IOMMU) == 0) {
+		domain = iommu_get_domain_for_dev(apu->dev);
+		if (domain == NULL) {
+			dev_info(dev, "%s: iommu_get_domain_for_dev fail\n", __func__);
+			return -ENOMEM;
+		}
+		apu->coredump_buf_pa = iommu_iova_to_phys(domain,
+			apu->coredump_da);
+	} else {
+		apu->coredump_buf_pa = apu->coredump_da;
+	}
+
 	apu->coredump->tcmdump = (char *) apu->coredump_buf;
 	apu->coredump->ramdump = (char *) ((void *)apu->coredump->tcmdump + apu->md32_tcm_sz);
 	apu->coredump->regdump = (char *) ((void *)apu->coredump->tcmdump + apu->up_code_buf_sz);
@@ -49,6 +63,9 @@ int apu_coredump_init(struct mtk_apu *apu)
 	dev_info(dev, "%s: apu->coredump_buf = 0x%llx, apu->coredump_da = 0x%llx\n",
 		__func__, (uint64_t) apu->coredump_buf,
 		(uint64_t) apu->coredump_da);
+
+	dev_info(dev, "%s: apu->coredump_buf_pa = 0x%llx\n",
+		__func__, apu->coredump_buf_pa);
 
 	memset(apu->coredump_buf, 0, coredump_size);
 

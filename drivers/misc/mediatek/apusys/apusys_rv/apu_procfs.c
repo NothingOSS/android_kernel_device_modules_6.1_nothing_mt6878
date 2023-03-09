@@ -191,13 +191,16 @@ static void apu_mrdump_register(struct mtk_apu *apu)
 			apu->apusys_aee_coredump_info->up_coredump_ofs;
 		size = coredump_size;
 	} else {
-		base_pa = __pa_nodebug(apu->coredump_buf);
+		base_pa = apu->coredump_buf_pa;
 		base_va = (unsigned long) apu->coredump_buf;
 		size = coredump_size;
+
+		dev_info(dev, "%s: base_va = 0x%lx, base_pa = 0x%lx\n",
+			__func__, base_va, base_pa);
 	}
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
-	//ret = mrdump_mini_add_extra_file(base_va, base_pa, size,
-	//	"APUSYS_COREDUMP");
+	ret = mrdump_mini_add_extra_file(base_va, base_pa, size,
+		"APUSYS_COREDUMP");
 #endif
 	if (ret)
 		dev_info(dev, "%s: APUSYS_COREDUMP add fail(%d)\n",
