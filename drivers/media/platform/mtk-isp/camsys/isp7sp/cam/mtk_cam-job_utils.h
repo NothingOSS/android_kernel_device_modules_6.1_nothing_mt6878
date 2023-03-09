@@ -80,6 +80,9 @@ struct pack_job_ops_helper {
 				      struct mtk_cam_buffer *buf,
 				      struct mtk_cam_video_device *node);
 	/* special flow */
+	int (*update_raw_rawi_to_ipi)(struct req_buffer_helper *helper,
+				      struct mtk_cam_buffer *buf,
+				      struct mtk_cam_video_device *node);
 	int (*update_raw_imgo_to_ipi)(struct req_buffer_helper *helper,
 				      struct mtk_cam_buffer *buf,
 				      struct mtk_cam_video_device *node);
@@ -91,6 +94,7 @@ struct pack_job_ops_helper {
 void _set_timestamp(struct mtk_cam_job *job,
 	u64 time_boot, u64 time_mono);
 
+int get_hw_offline_exp_num(struct mtk_cam_scen *scen);
 int get_subsample_ratio(struct mtk_cam_scen *scen);
 u64 infer_i2c_deadline_ns(struct mtk_cam_scen *scen, u64 frame_interval_ns);
 
@@ -117,6 +121,12 @@ int fill_img_out_hdr(struct mtkcam_ipi_img_output *io,
 int fill_img_in_hdr(struct mtkcam_ipi_img_input *ii,
 		    struct mtk_cam_buffer *buf,
 		    struct mtk_cam_video_device *node, int index, int id);
+int fill_img_in_by_exposure(struct req_buffer_helper *helper,
+	struct mtk_cam_buffer *buf,
+	struct mtk_cam_video_device *node);
+int fill_m2m_rawi_to_img_in_ipi(struct req_buffer_helper *helper,
+	struct mtk_cam_buffer *buf,
+	struct mtk_cam_video_device *node);
 int fill_imgo_out_subsample(struct mtkcam_ipi_img_output *io,
 			    struct mtk_cam_buffer *buf,
 			    struct mtk_cam_video_device *node,
@@ -133,12 +143,14 @@ bool ipi_crop_eq(const struct mtkcam_ipi_crop *s,
 int get_sv_tag_idx(unsigned int exp_no, unsigned int tag_order, bool is_w);
 
 int get_hw_scenario(struct mtk_cam_job *job);
+bool is_vhdr(struct mtk_cam_job *job);
 bool is_dc_mode(struct mtk_cam_job *job);
 bool is_sv_pure_raw(struct mtk_cam_job *job);
 bool is_vhdr(struct mtk_cam_job *job);
 bool is_rgbw(struct mtk_cam_job *job);
 bool is_m2m(struct mtk_cam_job *job);
 bool is_m2m_apu(struct mtk_cam_job *job);
+bool is_hw_offline(struct mtk_cam_job *job);
 int raw_video_id_w_port(int rawi_id);
 void get_stagger_rawi_table(struct mtk_cam_job *job,
 	const int **rawi_table, int *cnt);

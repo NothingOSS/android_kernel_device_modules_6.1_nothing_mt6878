@@ -793,7 +793,8 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 
 		/* TODO(AY): refine this */
 		if (job->job_scen.id == MTK_CAM_SCEN_M2M_NORMAL ||
-		    job->job_scen.id == MTK_CAM_SCEN_ODT_NORMAL) {
+		    job->job_scen.id == MTK_CAM_SCEN_ODT_NORMAL ||
+		    job->job_scen.id == MTK_CAM_SCEN_ODT_MSTREAM) {
 			mtk_cam_ctrl_apply_by_state(cam_ctrl, 1);
 
 			mtk_cam_watchdog_start(&cam_ctrl->watchdog, 0);

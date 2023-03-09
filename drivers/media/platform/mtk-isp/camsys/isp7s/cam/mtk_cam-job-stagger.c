@@ -30,13 +30,10 @@ int fill_imgo_img_buffer_to_ipi_frame_stagger(
 {
 	struct mtkcam_ipi_frame_param *fp = helper->fp;
 	struct mtkcam_ipi_img_output *out;
-	struct mtkcam_ipi_img_input *in;
 	struct mtk_cam_job *job = helper->job;
 	bool is_w = is_rgbw(job);
 	bool is_otf = !is_dc_mode(job);
-	const int *rawi_table = NULL;
-	int rawi_cnt = 0;
-	int i = 0, index = 0, ret = -1;
+	int index = 0, ii_inc = 0, ret = 0;
 	bool bypass_imgo;
 
 	helper->filled_hdr_buffer = true;
@@ -45,18 +42,10 @@ int fill_imgo_img_buffer_to_ipi_frame_stagger(
 		(node->desc.id == MTK_RAW_MAIN_STREAM_OUT) &&
 		is_sv_pure_raw(job);
 
-	get_stagger_rawi_table(job, &rawi_table, &rawi_cnt);
-
-	for (i = 1; i <= rawi_cnt; i++) {
-		in = &fp->img_ins[helper->ii_idx++];
-		ret = fill_img_in_hdr(in, buf, node, index++, rawi_table[i]);
-
-		if (is_w) {
-			in = &fp->img_ins[helper->ii_idx++];
-			ret = fill_img_in_hdr(in, buf, node, index++,
-					raw_video_id_w_port(rawi_table[i]));
-		}
-	}
+	ii_inc = helper->ii_idx;
+	fill_img_in_by_exposure(helper, buf, node);
+	ii_inc = helper->ii_idx - ii_inc;
+	index += ii_inc;
 
 	if (is_otf && !bypass_imgo) {
 		// OTF, raw outputs last exp
@@ -64,7 +53,7 @@ int fill_imgo_img_buffer_to_ipi_frame_stagger(
 		ret = fill_img_out_hdr(out, buf, node,
 				index++, MTKCAM_IPI_RAW_IMGO);
 
-		if (is_w) {
+		if (!ret && is_w) {
 			out = &fp->img_outs[helper->io_idx++];
 			ret = fill_img_out_hdr(out, buf, node,
 					index++, raw_video_id_w_port(MTKCAM_IPI_RAW_IMGO));
@@ -75,7 +64,7 @@ int fill_imgo_img_buffer_to_ipi_frame_stagger(
 		pr_info("%s:req:%s bypass raw imgo\n",
 			__func__, job->req->req.debug_str);
 	/* fill sv image fp */
-	ret = fill_sv_img_fp(helper, buf, node);
+	ret = ret || fill_sv_img_fp(helper, buf, node);
 
 	return ret;
 }
@@ -497,7 +486,7 @@ bool is_sv_img_tag_used(struct mtk_cam_job *job)
 
 	/* HS_TODO: check all features */
 	if (is_stagger_multi_exposure(job))
-		rst = true;
+		rst = !is_hw_offline(job);
 	if (is_dc_mode(job))
 		rst = true;
 	if (is_sv_pure_raw(job))

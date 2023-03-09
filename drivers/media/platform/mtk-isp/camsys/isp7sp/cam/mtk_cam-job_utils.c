@@ -134,10 +134,11 @@ int get_hw_scenario(struct mtk_cam_job *job)
 					__func__, ctrl->apu_info.apu_path);
 				return -1;
 			}
-		} else
+		} else if (is_vhdr(job))
+			hard_scenario = MTKCAM_IPI_HW_PATH_OFFLINE_STAGGER;
+		else
 			hard_scenario = MTKCAM_IPI_HW_PATH_OFFLINE;
 		break;
-
 	case MTK_CAM_SCEN_ODT_MSTREAM:
 		hard_scenario = MTKCAM_IPI_HW_PATH_OFFLINE_STAGGER;
 		break;
@@ -148,6 +149,37 @@ int get_hw_scenario(struct mtk_cam_job *job)
 	}
 
 	return hard_scenario;
+}
+
+int get_hw_offline_exp_num(struct mtk_cam_scen *scen)
+{
+	int exp = 0;
+
+	switch (scen->id) {
+	case MTK_CAM_SCEN_ODT_NORMAL:
+	case MTK_CAM_SCEN_M2M_NORMAL:
+		exp = scen->scen.normal.exp_num;
+		break;
+	case MTK_CAM_SCEN_ODT_MSTREAM:
+		{
+			switch (scen->scen.mstream.type) {
+			case MTK_CAM_MSTREAM_NE_SE:
+			case MTK_CAM_MSTREAM_SE_NE:
+				exp = 2;
+				break;
+			case MTK_CAM_MSTREAM_1_EXPOSURE:
+				exp = 1;
+				break;
+			default:
+				break;
+			}
+		}
+		break;
+	default:
+		break;
+	}
+
+	return exp;
 }
 
 int get_subsample_ratio(struct mtk_cam_scen *scen)
@@ -424,19 +456,21 @@ static int fill_sv_to_rawi_wbuf(struct req_buffer_helper *helper,
 void get_stagger_rawi_table(struct mtk_cam_job *job,
 		const int **rawi_table, int *cnt)
 {
+	bool without_tg = is_dc_mode(job) || is_hw_offline(job);
+
 	switch (job->exp_num_cur) {
 	case 1:
-		(*rawi_table) = is_dc_mode(job) ? dc_1exp_rawi : NULL;
-		*cnt = is_dc_mode(job) ? ARRAY_SIZE(dc_1exp_rawi) : 0;
+		(*rawi_table) = without_tg ? dc_1exp_rawi : NULL;
+		*cnt = without_tg ? ARRAY_SIZE(dc_1exp_rawi) : 0;
 		break;
 	case 2:
-		(*rawi_table) = is_dc_mode(job) ? dc_2exp_rawi : otf_2exp_rawi;
-		*cnt = is_dc_mode(job) ?
+		(*rawi_table) = without_tg ? dc_2exp_rawi : otf_2exp_rawi;
+		*cnt = without_tg ?
 			ARRAY_SIZE(dc_2exp_rawi) : ARRAY_SIZE(otf_2exp_rawi);
 		break;
 	case 3:
-		(*rawi_table) = is_dc_mode(job) ? dc_3exp_rawi : otf_3exp_rawi;
-		*cnt = is_dc_mode(job) ?
+		(*rawi_table) = without_tg ? dc_3exp_rawi : otf_3exp_rawi;
+		*cnt = without_tg ?
 			ARRAY_SIZE(dc_3exp_rawi) : ARRAY_SIZE(otf_3exp_rawi);
 		break;
 	default:
@@ -530,6 +564,55 @@ int fill_img_in_hdr(struct mtkcam_ipi_img_input *ii,
 		   id, index, buf->daddr, ii->buf[0].iova, ii->buf[0].size);
 
 	return 0;
+}
+
+int fill_img_in_by_exposure(struct req_buffer_helper *helper,
+	struct mtk_cam_buffer *buf,
+	struct mtk_cam_video_device *node)
+{
+	int ret = 0;
+	struct mtkcam_ipi_frame_param *fp = helper->fp;
+	struct mtkcam_ipi_img_input *in;
+	struct mtk_cam_job *job = helper->job;
+	bool is_w = is_rgbw(job);
+	const int *rawi_table = NULL;
+	int i = 0, rawi_cnt = 0;
+	int index = 0;
+
+	get_stagger_rawi_table(job, &rawi_table, &rawi_cnt);
+	for (i = 0; i < rawi_cnt; i++) {
+		in = &fp->img_ins[helper->ii_idx++];
+
+		ret = fill_img_in_hdr(in, buf, node, index++, rawi_table[i]);
+
+		if (!ret && is_w) {
+			in = &fp->img_ins[helper->ii_idx++];
+			ret = fill_img_in_hdr(in, buf, node, index++,
+					raw_video_id_w_port(rawi_table[i]));
+		}
+	}
+
+	return ret;
+}
+
+int fill_m2m_rawi_to_img_in_ipi(struct req_buffer_helper *helper,
+	struct mtk_cam_buffer *buf,
+	struct mtk_cam_video_device *node)
+{
+	int ret = 0;
+	struct mtk_cam_job *job = helper->job;
+
+	if (is_m2m_apu(job)) {
+		struct mtkcam_ipi_frame_param *fp = helper->fp;
+		struct mtkcam_ipi_img_input *in;
+
+		in = &fp->img_ins[helper->ii_idx++];
+
+		ret = fill_img_in(in, buf, node, MTKCAM_IPI_RAW_IPUI);
+	} else
+		ret = fill_img_in_by_exposure(helper, buf, node);
+
+	return ret;
 }
 
 struct mtkcam_ipi_crop
@@ -881,5 +964,14 @@ struct mtk_raw_sink_data *get_raw_sink_data(struct mtk_cam_job *job)
 		return NULL;
 
 	return &req->raw_data[raw_pipe_idx].sink;
+}
+
+bool is_hw_offline(struct mtk_cam_job *job)
+{
+	int scen_id = job->job_scen.id;
+
+	return (scen_id == MTK_CAM_SCEN_ODT_MSTREAM ||
+		scen_id == MTK_CAM_SCEN_ODT_NORMAL ||
+		scen_id == MTK_CAM_SCEN_M2M_NORMAL);
 }
 

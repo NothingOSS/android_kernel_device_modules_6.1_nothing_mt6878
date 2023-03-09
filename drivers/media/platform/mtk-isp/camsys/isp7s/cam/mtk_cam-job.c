@@ -159,6 +159,7 @@ static int map_job_type(const struct mtk_cam_scen *scen)
 		break;
 	case MTK_CAM_SCEN_M2M_NORMAL:
 	case MTK_CAM_SCEN_ODT_NORMAL:
+	case MTK_CAM_SCEN_ODT_MSTREAM:
 		job_type = JOB_TYPE_M2M;
 		break;
 
@@ -334,8 +335,11 @@ static unsigned long mtk_cam_select_hw(struct mtk_cam_job *job)
 	}
 
 	/* camsv */
-	/* if has raw */
-	if (selected) {
+	if (is_hw_offline(job)) {
+		dev_info(cam->dev, "skip camsv select in hw offline scen(%d)\n",
+				 job->job_scen.id);
+	} else if (selected) {
+		/* if has raw */
 		int raw_idx = _get_master_raw_id(selected);
 
 		dev_info(cam->dev,
@@ -1334,7 +1338,7 @@ static int trigger_m2m(struct mtk_cam_job *job)
 	if (is_apu_trig)
 		trigger_adl(raw_dev);
 	else
-		trigger_rawi_r2(raw_dev);
+		trigger_rawi_r5(raw_dev);
 
 	dev_info(raw_dev->dev, "%s [ctx:%d] seq 0x%x is_apu=%d\n",
 		 __func__, ctx->stream_id, job->frame_seq_no, is_apu_trig);
@@ -2039,9 +2043,11 @@ _job_pack_m2m(struct mtk_cam_job *job,
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_device *cam = ctx->cam;
 	int ret;
+	struct mtk_cam_scen *prev_scen =
+		&job->src_ctx->ctldata_stored.resource.user_data.raw_res.scen;
 
-	job->exp_num_cur = 1;
-	job->exp_num_prev = 1;
+	job->exp_num_cur = get_hw_offline_exp_num(&job->job_scen);
+	job->exp_num_prev = get_hw_offline_exp_num(prev_scen);
 	job->hardware_scenario = get_hw_scenario(job);
 	job->sw_feature = is_vhdr(job) ?
 		MTKCAM_IPI_SW_FEATURE_VHDR : MTKCAM_IPI_SW_FEATURE_NORMAL;
@@ -2299,10 +2305,7 @@ static int fill_raw_img_buffer_to_ipi_frame(
 		in = &fp->img_ins[helper->ii_idx];
 		++helper->ii_idx;
 
-		if (is_m2m_apu(job))
-			ret = fill_img_in(in, buf, node, MTKCAM_IPI_RAW_IPUI);
-		else
-			ret = fill_img_in(in, buf, node, -1);
+		ret = fill_img_in(in, buf, node, -1);
 	}
 
 	if (bypass_imgo && CAM_DEBUG_ENABLED(JOB))
@@ -2819,6 +2822,7 @@ static struct mtk_cam_job_state_cb m2m_state_cb = {
 static struct pack_job_ops_helper subsample_pack_helper = {
 	.pack_job = _job_pack_subsample,
 	.update_raw_bufs_to_ipi = fill_raw_img_buffer_to_ipi_frame,
+	.update_raw_rawi_to_ipi = NULL,
 	.update_raw_imgo_to_ipi = fill_imgo_img_buffer_to_ipi_frame_subsample,
 	.update_raw_yuvo_to_ipi = fill_yuvo_img_buffer_to_ipi_frame_subsample,
 	.append_work_buf_to_ipi = NULL,
@@ -2827,6 +2831,7 @@ static struct pack_job_ops_helper subsample_pack_helper = {
 static struct pack_job_ops_helper otf_pack_helper = {
 	.pack_job = _job_pack_normal,
 	.update_raw_bufs_to_ipi = fill_raw_img_buffer_to_ipi_frame,
+	.update_raw_rawi_to_ipi = NULL,
 	.update_raw_imgo_to_ipi = NULL,
 	.update_raw_yuvo_to_ipi = NULL,
 	.append_work_buf_to_ipi = update_work_buffer_to_ipi_frame,
@@ -2835,6 +2840,7 @@ static struct pack_job_ops_helper otf_pack_helper = {
 static struct pack_job_ops_helper stagger_pack_helper = {
 	.pack_job = _job_pack_otf_stagger,
 	.update_raw_bufs_to_ipi = fill_raw_img_buffer_to_ipi_frame,
+	.update_raw_rawi_to_ipi = fill_img_in_by_exposure,
 	.update_raw_imgo_to_ipi = fill_imgo_img_buffer_to_ipi_frame_stagger,
 	.update_raw_yuvo_to_ipi = NULL,
 	.append_work_buf_to_ipi = update_work_buffer_to_ipi_frame,
@@ -2843,6 +2849,7 @@ static struct pack_job_ops_helper stagger_pack_helper = {
 static struct pack_job_ops_helper m2m_pack_helper = {
 	.pack_job = _job_pack_m2m,
 	.update_raw_bufs_to_ipi = fill_raw_img_buffer_to_ipi_frame,
+	.update_raw_rawi_to_ipi = fill_m2m_rawi_to_img_in_ipi,
 	.update_raw_imgo_to_ipi = NULL,
 	.update_raw_yuvo_to_ipi = NULL,
 	.append_work_buf_to_ipi = NULL,
@@ -2853,6 +2860,7 @@ static struct pack_job_ops_helper mstream_pack_helper = {
 	.job_init = job_init_mstream,
 	.pack_job = _job_pack_mstream,
 	.update_raw_bufs_to_ipi = fill_raw_img_buffer_to_ipi_frame,
+	.update_raw_rawi_to_ipi = NULL,
 	.update_raw_imgo_to_ipi = NULL,
 	.update_raw_yuvo_to_ipi = NULL,
 	.append_work_buf_to_ipi = update_work_buffer_to_ipi_frame,
@@ -3355,6 +3363,8 @@ static int update_raw_image_buf_to_ipi_frame(struct req_buffer_helper *helper,
 
 	switch (node->desc.dma_port) {
 	case MTKCAM_IPI_RAW_RAWI_2:
+		if (job_helper->update_raw_rawi_to_ipi)
+			update_fn = job_helper->update_raw_rawi_to_ipi;
 		break;
 	case MTKCAM_IPI_RAW_IMGO:
 		if (job_helper->update_raw_imgo_to_ipi)
