@@ -12,7 +12,7 @@
 #define CFG_RECOVERY_SUPPORT
 
 /* ipi share buffer size: it will remove later */
-#define SHARE_BUF_SIZE  256
+#define SHARE_BUF_SIZE  240
 
 /* adsp feature PRI list */
 /* The higher number, higher priority */
@@ -191,6 +191,9 @@ extern int release_adsp_semaphore(unsigned int flags);
 extern void adsp_register_notify(struct notifier_block *nb);
 extern void adsp_unregister_notify(struct notifier_block *nb);
 extern void reset_hal_feature_table(void);
+
+/* API for video playback sync signal */
+extern enum adsp_ipi_status adsp_send_vp_irq(unsigned int busy_wait);
 
 /* API for audio_ipi */
 extern enum adsp_ipi_status adsp_send_message(enum adsp_ipi_id id, void *buf,

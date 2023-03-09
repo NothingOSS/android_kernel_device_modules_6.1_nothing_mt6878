@@ -222,6 +222,26 @@ enum adsp_ipi_status adsp_send_message(enum adsp_ipi_id id, void *buf,
 }
 EXPORT_SYMBOL(adsp_send_message);
 
+enum adsp_ipi_status adsp_send_vp_irq(unsigned int busy_wait)
+{
+	struct mtk_mbox_pin_send *pin_send = NULL;
+
+	if (get_adsp_core_total() == 0)
+		return ADSP_IPI_ERROR;
+
+	if (!is_adsp_ready(ADSP_A_ID)) {
+		pr_notice("%s, adsp is not active", __func__);
+		return ADSP_IPI_ERROR;
+	}
+
+	pin_send = get_adsp_mbox_pin_send(ADSP_MBOX1_CH_ID);
+	if (IS_ERR(pin_send))
+		return ADSP_IPI_ERROR;
+
+	return adsp_mbox_send_irq(pin_send, busy_wait);
+}
+EXPORT_SYMBOL(adsp_send_vp_irq);
+
 static irqreturn_t adsp_irq_top_handler(int irq, void *data)
 {
 	struct irq_t *pdata = (struct irq_t *)data;

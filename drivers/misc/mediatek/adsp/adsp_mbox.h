@@ -19,9 +19,9 @@
 
 #define ADSP_MBOX_SEND_IDX      0
 #define ADSP_MBOX_RECV_IDX      1
-#define ADSP_TOTAL_SEND_PIN     2
+#define ADSP_TOTAL_SEND_PIN     3
 #define ADSP_TOTAL_RECV_PIN     2
-#define ADSP_IPI_CH_CNT         (ADSP_TOTAL_SEND_PIN + ADSP_TOTAL_RECV_PIN)
+#define ADSP_IPI_CH_CNT         4
 #define ADSP_MBOX_SLOT_COUNT    64
 
 #define ADSP_MBOX_SEND_SLOT_OFFSET  0
@@ -32,6 +32,7 @@ extern void mt_irq_dump_status(int irq);
 #endif
 
 void adsp_mbox_dump(void);
+int adsp_mbox_send_irq(struct mtk_mbox_pin_send *pin_send, unsigned int wait);
 int adsp_mbox_send(struct mtk_mbox_pin_send *pin_send, void *msg,
 		   unsigned int wait);
 int adsp_mbox_probe(struct platform_device *pdev);

@@ -37,32 +37,38 @@ struct mtk_mbox_info adsp_mbox_table[ADSP_IPI_CH_CNT] = {
 struct mtk_mbox_pin_send adsp_mbox_pin_send[ADSP_TOTAL_SEND_PIN] = {
 	{
 		.mbox = ADSP_MBOX0_CH_ID,
-		.offset = ADSP_MBOX_SEND_SLOT_OFFSET,
-		.msg_size = ADSP_MBOX_SLOT_COUNT,
+		.offset = 0,
+		.msg_size = 64,
+		.pin_index = 0,
+	},
+	{
+		.mbox = ADSP_MBOX1_CH_ID,
+		.offset = 60,
+		.msg_size = 4,  /* only for header */
 		.pin_index = 0,
 	},
 	{
 		.mbox = ADSP_MBOX2_CH_ID,
-		.offset = ADSP_MBOX_SEND_SLOT_OFFSET,
-		.msg_size = ADSP_MBOX_SLOT_COUNT,
+		.offset = 0,
+		.msg_size = 64,
 		.pin_index = 0,
-	}
+	},
 };
 
 struct mtk_mbox_pin_recv adsp_mbox_pin_recv[ADSP_TOTAL_RECV_PIN] = {
 	{
 		.mbox = ADSP_MBOX1_CH_ID,
-		.offset = ADSP_MBOX_RECV_SLOT_OFFSET,
+		.offset = 0,
 		.cb_ctx_opt = MBOX_CB_IN_PROCESS,
-		.msg_size = ADSP_MBOX_SLOT_COUNT,
+		.msg_size = 60,
 		.pin_index = 0,
 		.mbox_pin_cb = adsp_mbox_pin_cb,
 	},
 	{
 		.mbox = ADSP_MBOX3_CH_ID,
-		.offset = ADSP_MBOX_RECV_SLOT_OFFSET,
+		.offset = 0,
 		.cb_ctx_opt = MBOX_CB_IN_PROCESS,
-		.msg_size = ADSP_MBOX_SLOT_COUNT,
+		.msg_size = 60,
 		.pin_index = 0,
 		.mbox_pin_cb = adsp_mbox_pin_cb,
 	}
@@ -164,6 +170,45 @@ EXIT:
 	return result;
 }
 
+int adsp_mbox_send_irq(struct mtk_mbox_pin_send *pin_send, unsigned int wait)
+{
+	int result = MBOX_DONE;
+	struct mtk_mbox_device *mbdev = &adsp_mboxdev;
+	ktime_t start_time;
+	s64 time_ipc_us;
+	unsigned long flags = 0;
+	int msg[4] = {0};
+
+	spin_lock_irqsave(&pin_send->pin_lock, flags);
+
+	if (mtk_mbox_check_send_irq(mbdev, pin_send->mbox, pin_send->pin_index)) {
+		result = MBOX_PIN_BUSY;
+		goto EXIT;
+	}
+
+	result = mtk_mbox_write(mbdev, pin_send->mbox, pin_send->offset, msg, pin_send->msg_size);
+	if (result != MBOX_DONE)
+		goto EXIT;
+
+	result = mtk_mbox_trigger_irq(mbdev, pin_send->mbox, 0x1 << pin_send->pin_index);
+	if (result != MBOX_DONE)
+		goto EXIT;
+
+	if (wait) {
+		start_time = ktime_get();
+		while (mtk_mbox_check_send_irq(mbdev, pin_send->mbox, pin_send->pin_index)) {
+			time_ipc_us = ktime_us_delta(ktime_get(), start_time);
+			if (time_ipc_us > 1000) {/* 1 ms */
+				pr_debug("%s, time_ipc_us > 1000 (%lld us)", __func__, time_ipc_us);
+				break;
+			}
+		}
+	}
+EXIT:
+	spin_unlock_irqrestore(&pin_send->pin_lock, flags);
+	return result;
+}
+
 static int adsp_mbox_pin_cb(unsigned int id, void *prdata, void *buf,
 			    unsigned int len)
 {
@@ -240,8 +285,10 @@ int adsp_mbox_probe(struct platform_device *pdev)
 			break;
 	}
 
-	for (idx = 0; idx < mbdev->send_count; idx++)
+	for (idx = 0; idx < mbdev->send_count; idx++) {
 		mutex_init(&mbdev->pin_send_table[idx].mutex_send);
+		spin_lock_init(&mbdev->pin_send_table[idx].pin_lock);
+	}
 
 	for (idx = 0; idx < mbdev->recv_count; idx++) {
 		size = mbdev->pin_recv_table[idx].msg_size * MBOX_SLOT_SIZE;
