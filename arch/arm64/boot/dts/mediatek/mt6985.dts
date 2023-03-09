@@ -7637,7 +7637,7 @@
 				<GIC_SPI 737 IRQ_TYPE_LEVEL_HIGH 0>;
 			mboxes = <&adspsys 0>, /*channel 0*/
 				<&adspsys 1>; /*channel 1*/
-			feature-control-bits = <0xa8e78fff>;
+			feature-control-bits = /bits/ 64 <0x00000000a8e78fff>;
 		};
 
 		adsp_core1: adsp-core1@1e090000 {
@@ -7651,7 +7651,7 @@
 				<GIC_SPI 738 IRQ_TYPE_LEVEL_HIGH 0>;
 			mboxes = <&adspsys 2>, /*channel 2*/
 				<&adspsys 3>; /*channel 3*/
-			feature-control-bits = <0x5118700f>;
+			feature-control-bits = /bits/ 64 <0x000000005118700f>;
 		};
 
 		disp_iommu_bank1: iommu@1e803000 {
