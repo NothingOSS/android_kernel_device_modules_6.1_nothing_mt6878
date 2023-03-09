@@ -48,6 +48,7 @@
 #define VFF_4G_SUPPORT_CLR_B	0
 #define VFF_ORI_ADDR_BITS_NUM    32
 #define VFF_RX_FLOWCTL_THRE_SIZE 0xc00
+#define VFF_RX_TRANS_FINISH_MASK 0x7F  /*bit 0~7*/
 /*
  * interrupt trigger level for tx
  * if threshold is n, no polling is required to start tx.
@@ -95,6 +96,7 @@ struct uart_info {
 	unsigned int trans_len;
 	unsigned long long trans_time;
 	unsigned long long trans_duration_time;
+	unsigned long long complete_time;
 	unsigned char rec_buf[UART_RECORD_MAXLEN];
 	unsigned int copy_wpt_reg;
 	unsigned int vff_dbg_reg;
@@ -149,11 +151,13 @@ struct mtk_chan {
 	unsigned int start_en;
 	unsigned int start_int_buf_size;
 	unsigned long long start_record_time;
+	unsigned int peri_dbg;
 	struct uart_info rec_info[UART_RECORD_COUNT];
 };
 
 static unsigned long long num;
 static unsigned int res_status;
+static unsigned int peri_0_axi_dbg;
 
 static inline struct mtk_uart_apdmadev *
 to_mtk_uart_apdma_dev(struct dma_device *d)
@@ -216,6 +220,27 @@ void mtk_save_uart_apdma_reg(struct dma_chan *chan, unsigned int *reg_buf)
 }
 EXPORT_SYMBOL(mtk_save_uart_apdma_reg);
 
+static unsigned int mtk_uart_apdma_get_peri_axi_status(void)
+{
+	void __iomem *peri_remap_0_axi_dbg = NULL;
+	unsigned int ret = 0;
+
+	if (peri_0_axi_dbg == 0)
+		return 0;
+	peri_remap_0_axi_dbg = ioremap(peri_0_axi_dbg, 0x10);
+	if (!peri_remap_0_axi_dbg) {
+		pr_info("[%s] peri_remap_0_axi_dbg(%x) ioremap fail\n",
+			__func__, peri_0_axi_dbg);
+		return 0;
+	}
+	ret = readl(peri_remap_0_axi_dbg);
+
+	if (peri_remap_0_axi_dbg)
+		iounmap(peri_remap_0_axi_dbg);
+
+	return ret;
+}
+
 void mtk_uart_apdma_start_record(struct dma_chan *chan)
 {
 	struct mtk_chan *c = to_mtk_uart_apdma_chan(chan);
@@ -227,6 +252,7 @@ void mtk_uart_apdma_start_record(struct dma_chan *chan)
 	c->start_en =  mtk_uart_apdma_read(c, VFF_EN);
 	c->start_int_buf_size =  mtk_uart_apdma_read(c, VFF_INT_BUF_SIZE);
 	c->start_record_time = sched_clock();
+	c->peri_dbg = mtk_uart_apdma_get_peri_axi_status();
 }
 EXPORT_SYMBOL(mtk_uart_apdma_start_record);
 
@@ -243,20 +269,24 @@ void mtk_uart_apdma_end_record(struct dma_chan *chan)
 	unsigned long long endtime = sched_clock();
 	unsigned long ns1 = do_div(starttime, 1000000000);
 	unsigned long ns2 = do_div(endtime, 1000000000);
+	unsigned int peri_dbg = mtk_uart_apdma_get_peri_axi_status();
 
 	dev_info(c->vc.chan.device->dev,
 			"[%s] [%s] [start %5lu.%06lu] start_wpt=0x%x, start_rpt=0x%x,\n"
-			"start_int_flag=0x%x, start_int_en=0x%x, start_en=0x%x, start_int_buf_size=0x%x\n",
+			"start_int_flag=0x%x, start_int_en=0x%x, start_en=0x%x,\n"
+			"start_int_buf_size=0x%x, 0x%x = 0x%x\n",
 			__func__, c->dir == DMA_DEV_TO_MEM ? "dma_rx" : "dma_tx",
 			(unsigned long)starttime, ns1 / 1000,
 			c->start_record_wpt, c->start_record_rpt, c->start_int_flag,
-			c->start_int_en, c->start_en, c->start_int_buf_size);
+			c->start_int_en, c->start_en, c->start_int_buf_size,
+			peri_0_axi_dbg, c->peri_dbg);
 	dev_info(c->vc.chan.device->dev,
 			"[%s] [%s] [end %5lu.%06lu] end_wpt=0x%x, end_rpt=0x%x\n"
-			"end_int_flag=0x%x, end_int_en=0x%x, end_en=0x%x, end_int_buf_size=0x%x\n",
+			"end_int_flag=0x%x, end_int_en=0x%x, end_en=0x%x, end_int_buf_size=0x%x,\n"
+			"0x%x = 0x%x\n",
 			__func__, c->dir == DMA_DEV_TO_MEM ? "dma_rx" : "dma_tx",
 			(unsigned long)endtime, ns2 / 1000, _wpt, _rpt, _int_flag,
-			_int_en, _en, _int_buf_size);
+			_int_en, _en, _int_buf_size, peri_0_axi_dbg, peri_dbg);
 
 }
 EXPORT_SYMBOL(mtk_uart_apdma_end_record);
@@ -274,6 +304,8 @@ void mtk_uart_apdma_data_dump(struct dma_chan *chan)
 		unsigned long long durationtime = c->rec_info[idx].trans_duration_time;
 		unsigned long ns = 0;
 		unsigned long long elapseNs = do_div(durationtime, 1000000000);
+		unsigned long long complete_time = c->rec_info[idx].complete_time;
+		unsigned long complete_ns = do_div(complete_time, 1000000000);
 #ifdef CONFIG_UART_DMA_DATA_RECORD
 		unsigned int cnt = 0;
 		unsigned int cyc = 0;
@@ -284,13 +316,15 @@ void mtk_uart_apdma_data_dump(struct dma_chan *chan)
 
 		ns = do_div(endtime, 1000000000);
 		dev_info(c->vc.chan.device->dev,
-			"[%s] [%s] [begin %5lu.%06lu] [%s time %5lu.%06llu] total=%llu,idx=%d,\n"
+			"[%s] [%s] [begin %5lu.%06lu] [%s time %5lu.%06llu]\n"
+			"[complete_time:%5lu.%06lu] total=%llu,idx=%d,\n"
 			"wpt=0x%x,rpt=0x%x,len=%d,poll_cnt_rx=%d,vff_dbg=0x%x,copy_wpt=0x%x,\n"
 			"irq_handler cpu:%d, pid:%d, comm:%s\n",
 			__func__, c->dir == DMA_DEV_TO_MEM ? "dma_rx" : "dma_tx",
 			(unsigned long)endtime, ns / 1000,
 			c->dir == DMA_DEV_TO_MEM ? "rx_handler" : "elapsed",
 			(unsigned long)durationtime, elapseNs/1000,
+			(unsigned long)complete_time, complete_ns / 1000,
 			c->rec_total, idx,
 			c->rec_info[idx].wpt_reg, c->rec_info[idx].rpt_reg,
 			c->rec_info[idx].trans_len, c->rec_info[idx].poll_cnt_rx,
@@ -333,8 +367,10 @@ void mtk_uart_rx_setting(struct dma_chan *chan, int copied, int total)
 		rpt_new = rpt_old + (unsigned int)copied;
 		if ((rpt_new & vff_sz) == vff_sz)
 			rpt_new = (rpt_new - vff_sz) ^ VFF_RING_WRAP;
+
 		pr_info("%s: copied=%d,total=%d,rpt_old=0x%x,wpt_old=0x%x,rpt_new=0x%x\n",
-			__func__, copied, total, rpt_old, c->irq_wg, rpt_new);
+				__func__, copied, total, rpt_old, c->irq_wg, rpt_new);
+
 		c->irq_wg = rpt_new;
 	}
 	/* Flush before update vff_rpt */
@@ -368,6 +404,23 @@ void mtk_uart_get_apdma_rpt(struct dma_chan *chan, unsigned int *rpt)
 	c->rec_info[idx].copy_wpt_reg = mtk_uart_apdma_read(c, VFF_WPT);
 }
 EXPORT_SYMBOL(mtk_uart_get_apdma_rpt);
+
+void mtk_uart_apdma_polling_rx_finish(struct mtk_chan *chan)
+{
+	unsigned int rx_status = 0, poll_cnt = MAX_POLL_CNT_RX;
+
+	rx_status = mtk_uart_apdma_read(chan, VFF_DEBUG_STATUS);
+	while ((rx_status & VFF_RX_TRANS_FINISH_MASK) && poll_cnt) {
+		udelay(1);
+		rx_status = mtk_uart_apdma_read(chan, VFF_DEBUG_STATUS);
+		poll_cnt--;
+	}
+
+	rx_status = mtk_uart_apdma_read(chan, VFF_DEBUG_STATUS);
+	if (!poll_cnt && (rx_status & VFF_RX_TRANS_FINISH_MASK))
+		pr_info("[WARN]poll cnt is exhausted, DEBUG_STATUS:0x%x\n", rx_status);
+}
+EXPORT_SYMBOL(mtk_uart_apdma_polling_rx_finish);
 
 static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 {
@@ -534,6 +587,7 @@ static irqreturn_t vchan_complete_thread_irq(int irq, void *dev_id)
 	struct virt_dma_chan *vc = to_virt_chan(d->vd.tx.chan);
 	struct virt_dma_desc *vd, *_vd;
 	struct dmaengine_desc_callback cb;
+	unsigned int idx = 0;
 	LIST_HEAD(head);
 
 	spin_lock_irq(&vc->lock);
@@ -556,6 +610,9 @@ static irqreturn_t vchan_complete_thread_irq(int irq, void *dev_id)
 		dmaengine_desc_callback_invoke(&cb, &vd->tx_result);
 		vchan_vdesc_fini(vd);
 	}
+	idx = (unsigned int)((c->rec_idx-1) % UART_RECORD_COUNT);
+	c->rec_info[idx].complete_time = sched_clock();
+
 	return IRQ_HANDLED;
 }
 
@@ -634,7 +691,7 @@ static int mtk_uart_apdma_rx_handler(struct mtk_chan *c)
 		sizeof(c->rec_info[idx].irq_cur_comm));
 	c->rec_info[idx].irq_cur_comm[15] = 0;
 #if defined(CONFIG_SMP) && defined(CONFIG_THREAD_INFO_IN_TASK)
-	c->rec_info[idx].irq_cur_cpu = task_thread_info(current)->cpu;
+	c->rec_info[idx].irq_cur_cpu = 0xff;
 #else
 	c->rec_info[idx].irq_cur_cpu = 0xff;
 #endif
@@ -679,7 +736,7 @@ static irqreturn_t mtk_uart_apdma_irq_handler(int irq, void *dev_id)
 	spin_unlock(&c->vc.lock);
 	if (current_dir == DMA_DEV_TO_MEM) {
 		if (num % 5000 == 2)
-			pr_info("debug: %s: VFF_VALID_SIZE=0, num[%llu]\n", __func__, num);
+			pr_debug("debug: %s: VFF_VALID_SIZE=0, num[%llu]\n", __func__, num);
 	} else if (current_dir == DMA_MEM_TO_DEV) {
 		if (dump_tx_err)
 			pr_info("debug: %s: TX[%d] FIX ME!", __func__, current_irq);
@@ -696,10 +753,11 @@ static int mtk_uart_apdma_alloc_chan_resources(struct dma_chan *chan)
 	unsigned int status;
 	int ret;
 	if (mtkd->support_hub) {
-		pr_info("debug: %s: clk_count[%d]\n", __func__, clk_count);
+		pr_debug("debug: %s: clk_count[%d]\n", __func__, clk_count);
 		if (c->dir == DMA_MEM_TO_DEV) {
-			pr_info("INT_EN[0x%x] INT_FLAG[0x%x],\n"
+			pr_info("[%s]:INT_EN[0x%x] INT_FLAG[0x%x],"
 						"WPT[0x%x] RPT[0x%x] THRE[0x%x] LEN[0x%x]\n",
+				__func__,
 				mtk_uart_apdma_read(c, VFF_INT_EN),
 				mtk_uart_apdma_read(c, VFF_INT_FLAG),
 				mtk_uart_apdma_read(c, VFF_WPT),
@@ -1115,6 +1173,11 @@ static int mtk_uart_apdma_probe(struct platform_device *pdev)
 		mtk_uart_apdma_parse_peri(pdev);
 	}
 
+	if (mtkd->support_hub) {
+		if (of_property_read_u32_index(pdev->dev.of_node,
+			"peri-axi-dbg", 0, &peri_0_axi_dbg))
+			pr_notice("[%s] get peri-axi-dbg fail\n", __func__);
+	}
 	for (i = 0; i < mtkd->dma_requests; i++) {
 		c = devm_kzalloc(mtkd->ddev.dev, sizeof(*c), GFP_KERNEL);
 		if (!c) {
