@@ -143,6 +143,7 @@ extern unsigned int pd_get_opp_leakage(unsigned int cpu, unsigned int opp,
 extern unsigned int pd_get_dsu_weighting(int wl_type, int cpu);
 extern unsigned int pd_get_emi_weighting(int wl_type, int cpu);
 extern unsigned int get_dsu_target_freq(void);
+extern unsigned int get_curr_cap(int cpu);
 #if IS_ENABLED(CONFIG_NONLINEAR_FREQ_CTL)
 void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 				unsigned int *target_freq, unsigned int old_target_freq);

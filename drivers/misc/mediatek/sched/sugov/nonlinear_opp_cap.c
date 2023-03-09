@@ -1159,6 +1159,13 @@ static inline void mtk_arch_set_freq_scale_gearless(struct cpufreq_policy *polic
 	}
 }
 
+static unsigned int curr_cap[NR_CPUS];
+unsigned int get_curr_cap(int cpu)
+{
+	return curr_cap[per_cpu(gear_id, cpu)];
+}
+EXPORT_SYMBOL_GPL(get_curr_cap);
+
 void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 		unsigned int *target_freq, unsigned int old_target_freq)
 {
@@ -1177,6 +1184,9 @@ void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 		policy->cached_target_freq = *target_freq;
 		policy->cached_resolved_idx = pd_X2Y(cpu, *target_freq, FREQ, OPP, true);
 	}
+
+	curr_cap[per_cpu(gear_id, cpu)] = pd_get_opp_capacity_legacy(policy->cpu,
+		policy->cached_resolved_idx);
 
 	if (is_gearless_support())
 		mtk_arch_set_freq_scale_gearless(policy, target_freq);
