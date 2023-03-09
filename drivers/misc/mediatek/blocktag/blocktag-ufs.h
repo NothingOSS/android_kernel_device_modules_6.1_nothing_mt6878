@@ -21,7 +21,6 @@
 #define BTAG_UFS_MAX_QUEUE              8
 #define BTAG_UFS_MAX_TAG \
 	((BTAG_UFS_MAX_TAG_PER_QUEUE) *	(BTAG_UFS_MAX_QUEUE))
-#define tid_to_qid(ctx, tid)         ((tid) / (ctx->nr_queue))
 
 struct btag_ufs_tag {
 	__u64 start_t;
@@ -54,9 +53,6 @@ struct btag_ufs_ctx_data {
 struct btag_ufs_ctx {
 	struct btag_ufs_ctx_data __rcu *cur_data;
 	struct btag_ufs_ctx_data data[2];
-	int tag_per_queue;
-	int nr_queue;
-	int nr_tag;
 };
 
 #endif

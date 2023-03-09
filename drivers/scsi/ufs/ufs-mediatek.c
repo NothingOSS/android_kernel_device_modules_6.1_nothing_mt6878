@@ -1218,7 +1218,7 @@ static void ufs_mtk_trace_vh_send_command(void *data, struct ufs_hba *hba, struc
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
 	if (ufs_mtk_is_data_cmd(cmd))
-		mtk_btag_ufs_send_command(lrbp->task_tag, cmd);
+		mtk_btag_ufs_send_command(lrbp->task_tag, 0, cmd);
 #endif
 }
 
@@ -1268,7 +1268,7 @@ static void ufs_mtk_trace_vh_compl_command(void *data, struct ufs_hba *hba, stru
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
 	if (ufs_mtk_is_data_cmd(cmd))
-		mtk_btag_ufs_transfer_req_compl(lrbp->task_tag);
+		mtk_btag_ufs_transfer_req_compl(lrbp->task_tag, 0);
 #endif
 
 #if defined(CONFIG_UFSFEATURE)
@@ -2315,7 +2315,7 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	init_completion(&host->luns_added);
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-	mtk_btag_ufs_init(host);
+	mtk_btag_ufs_init(host, 1, 32);
 #endif
 
 #if IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK_DBG)

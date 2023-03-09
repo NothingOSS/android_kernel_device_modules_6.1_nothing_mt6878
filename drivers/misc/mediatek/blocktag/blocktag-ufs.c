@@ -39,6 +39,7 @@ static int nr_queue;
 static int nr_tag;
 struct workqueue_struct *ufs_mtk_btag_wq;
 struct work_struct ufs_mtk_btag_worker;
+#define tid_to_qid(tid) ((tag_per_queue) ? (tid) / (tag_per_queue) : -1)
 
 static inline __u16 chbe16_to_u16(const char *str)
 {
@@ -131,25 +132,18 @@ static struct btag_ufs_ctx *btag_ufs_ctx(__u16 qid)
 
 static struct btag_ufs_ctx *btag_ufs_tid_to_ctx(__u16 tid)
 {
-	struct btag_ufs_ctx *ctx = BTAG_CTX(ufs_mtk_btag);
-
-	if (!ctx)
-		return NULL;
-
 	if (tid >= nr_tag) {
 		pr_notice("%s: invalid tag id %d\n", __func__, tid);
 		return NULL;
 	}
 
-	return btag_ufs_ctx(tid_to_qid(ctx, tid));
+	return btag_ufs_ctx(tid_to_qid(tid));
 }
 
 static struct btag_ufs_tag *btag_ufs_tag(struct btag_ufs_ctx_data *data,
 					 __u16 tid)
 {
-	struct btag_ufs_ctx *ctx = BTAG_CTX(ufs_mtk_btag);
-
-	if (!ctx || !data)
+	if (!data)
 		return NULL;
 
 	if (tid >= nr_tag) {
@@ -157,7 +151,7 @@ static struct btag_ufs_tag *btag_ufs_tag(struct btag_ufs_ctx_data *data,
 		return NULL;
 	}
 
-	return &data->tags[tid % nr_queue];
+	return &data->tags[tid % tag_per_queue];
 }
 
 static void btag_ufs_pidlog_insert(struct mtk_btag_proc_pidlogger *pidlog,
@@ -220,7 +214,7 @@ static void btag_ufs_pidlog_insert(struct mtk_btag_proc_pidlogger *pidlog,
 				       insert_cnt, io_type);
 }
 
-void mtk_btag_ufs_send_command(__u16 tid, struct scsi_cmnd *cmd)
+void mtk_btag_ufs_send_command(__u16 tid, __u16 qid, struct scsi_cmnd *cmd)
 {
 	struct btag_ufs_ctx *ctx;
 	struct btag_ufs_ctx_data *data;
@@ -232,6 +226,8 @@ void mtk_btag_ufs_send_command(__u16 tid, struct scsi_cmnd *cmd)
 
 	if (!cmd)
 		return;
+
+	tid += qid * tag_per_queue;
 
 	ctx = btag_ufs_tid_to_ctx(tid);
 	if (!ctx)
@@ -275,14 +271,14 @@ mictx:
 	mtk_btag_mictx_send_command(ufs_mtk_btag, cur_time,
 				    cmd_to_io_type(scsi_cmnd_cmd(cmd)),
 				    scsi_cmnd_len(cmd), top_len, tid,
-				    tid_to_qid(ctx, tid));
+				    tid_to_qid(tid));
 
-	trace_blocktag_ufs_send(sched_clock() - cur_time, tid, tid_to_qid(ctx, tid),
+	trace_blocktag_ufs_send(sched_clock() - cur_time, tid, tid_to_qid(tid),
 				scsi_cmnd_cmd(cmd), scsi_cmnd_len(cmd));
 }
 EXPORT_SYMBOL_GPL(mtk_btag_ufs_send_command);
 
-void mtk_btag_ufs_transfer_req_compl(__u16 tid)
+void mtk_btag_ufs_transfer_req_compl(__u16 tid, __u16 qid)
 {
 	struct btag_ufs_ctx *ctx;
 	struct btag_ufs_ctx_data *data;
@@ -291,6 +287,8 @@ void mtk_btag_ufs_transfer_req_compl(__u16 tid)
 	enum mtk_btag_io_type io_type;
 	__u64 cur_time = sched_clock();
 	__u64 window_t = 0;
+
+	tid += qid * tag_per_queue;
 
 	ctx = btag_ufs_tid_to_ctx(tid);
 	if (!ctx)
@@ -344,10 +342,10 @@ rcu_unlock:
 mictx:
 	/* mictx complete logging */
 	mtk_btag_mictx_complete_command(ufs_mtk_btag, cur_time, tid,
-					tid_to_qid(ctx, tid));
+					tid_to_qid(tid));
 
 	trace_blocktag_ufs_complete(sched_clock() - cur_time, tid,
-				    tid_to_qid(ctx, tid));
+				    tid_to_qid(tid));
 }
 EXPORT_SYMBOL_GPL(mtk_btag_ufs_transfer_req_compl);
 
@@ -539,11 +537,9 @@ static struct mtk_btag_vops btag_ufs_vops = {
 	.sub_write = btag_ufs_proc_write,
 };
 
-int mtk_btag_ufs_init(struct ufs_mtk_host *host)
+int mtk_btag_ufs_init(struct ufs_mtk_host *host, __u32 ufs_nr_queue,
+		      __u32 ufs_nutrs)
 {
-#if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
-	struct ufs_hba_private *hba_priv;
-#endif
 	struct mtk_blocktag *btag;
 
 	if (!host)
@@ -555,21 +551,18 @@ int mtk_btag_ufs_init(struct ufs_mtk_host *host)
 	if (host->boot_device)
 		btag_ufs_vops.boot_device = true;
 
-	tag_per_queue = 32;
-	nr_queue = 1;
+	tag_per_queue = ufs_nutrs;
+	nr_queue = ufs_nr_queue;
 	nr_tag = nr_queue * tag_per_queue;
 
 	if (tag_per_queue > BTAG_UFS_MAX_TAG_PER_QUEUE ||
 	    nr_queue > BTAG_UFS_MAX_QUEUE ||
-	    nr_tag > BTAG_UFS_MAX_TAG || nr_tag > BTAG_MAX_TAG)
+	    nr_tag > BTAG_UFS_MAX_TAG || nr_tag > BTAG_MAX_TAG) {
+		tag_per_queue = 0;
+		nr_queue = 0;
+		nr_tag = 0;
 		return -1;
-
-
-#if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
-	hba_priv = (struct ufs_hba_private *)host->hba->android_vendor_data1;
-	if (hba_priv->is_mcq_enabled)
-		max_queue = hba_priv->mcq_nr_hw_queue;
-#endif
+	}
 
 	ufs_mtk_btag_wq = alloc_workqueue("ufs_mtk_btag",
 					  WQ_FREEZABLE | WQ_UNBOUND, 1);

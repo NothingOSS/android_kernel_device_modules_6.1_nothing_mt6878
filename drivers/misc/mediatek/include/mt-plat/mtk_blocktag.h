@@ -321,10 +321,11 @@ void mtk_btag_earaio_boost(bool boost);
 void mtk_btag_earaio_check_pwd(void);
 void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 size);
 
-int mtk_btag_ufs_init(struct ufs_mtk_host *host);
+int mtk_btag_ufs_init(struct ufs_mtk_host *host, __u32 ufs_nr_queue,
+		      __u32 ufs_nutrs);
 int mtk_btag_ufs_exit(void);
-void mtk_btag_ufs_send_command(__u16 tid, struct scsi_cmnd *cmd);
-void mtk_btag_ufs_transfer_req_compl(__u16 tid);
+void mtk_btag_ufs_send_command(__u16 tid, __u16 qid, struct scsi_cmnd *cmd);
+void mtk_btag_ufs_transfer_req_compl(__u16 tid, __u16 qid);
 
 int mmc_mtk_biolog_init(struct mmc_host *mmc);
 int mmc_mtk_biolog_exit(void);
