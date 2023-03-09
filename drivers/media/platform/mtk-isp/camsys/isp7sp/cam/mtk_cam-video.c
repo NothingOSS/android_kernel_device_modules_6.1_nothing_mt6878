@@ -812,7 +812,7 @@ int mtk_cam_video_register(struct mtk_cam_video_device *video,
 	} else {
 		if (video->uid.pipe_id >= MTKCAM_SUBDEV_CAMSV_START &&
 			video->uid.pipe_id < MTKCAM_SUBDEV_CAMSV_END) {
-			q->dev = cam->engines.sv_devs[0];
+			q->dev = cam->engines.larb_devs[0];
 		} else if (video->uid.pipe_id >= MTKCAM_SUBDEV_MRAW_START &&
 			video->uid.pipe_id < MTKCAM_SUBDEV_MRAW_END) {
 			q->dev =

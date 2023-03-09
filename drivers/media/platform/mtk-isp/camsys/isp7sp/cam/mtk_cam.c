@@ -2560,10 +2560,8 @@ static struct component_match *mtk_cam_match_add(struct device *dev)
 
 	rms_num = add_match_by_driver(dev, &match, &mtk_cam_rms_driver);
 
-#ifdef REMOVE
 	eng->num_larb_devices =
 		add_match_by_driver(dev, &match, &mtk_cam_larb_driver);
-#endif
 
 	eng->num_camsv_devices =
 		add_match_by_driver(dev, &match, &mtk_cam_sv_driver);
@@ -2886,13 +2884,11 @@ static int register_sub_drivers(struct device *dev)
 	struct component_match *match = NULL;
 	int ret;
 
-#ifdef REMOVE
 	ret = platform_driver_register(&mtk_cam_larb_driver);
 	if (ret) {
 		dev_info(dev, "%s mtk_cam_larb_driver fail\n", __func__);
 		goto REGISTER_LARB_FAIL;
 	}
-#endif
 
 	ret = platform_driver_register(&seninf_pdrv);
 	if (ret) {
@@ -2974,11 +2970,9 @@ REGISTER_SENINF_CORE_FAIL:
 	platform_driver_unregister(&seninf_pdrv);
 
 REGISTER_SENINF_FAIL:
-#ifdef REMOVE
 	platform_driver_unregister(&mtk_cam_larb_driver);
 
 REGISTER_LARB_FAIL:
-#endif
 	return ret;
 }
 
@@ -3090,9 +3084,7 @@ static int mtk_cam_remove(struct platform_device *pdev)
 	platform_driver_unregister(&mtk_cam_mraw_driver);
 	platform_driver_unregister(&mtk_cam_sv_driver);
 	platform_driver_unregister(&mtk_cam_raw_driver);
-#ifdef REMOVE
 	platform_driver_unregister(&mtk_cam_larb_driver);
-#endif
 	platform_driver_unregister(&seninf_core_pdrv);
 	platform_driver_unregister(&seninf_pdrv);
 
