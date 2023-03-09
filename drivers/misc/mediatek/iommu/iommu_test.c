@@ -10,6 +10,7 @@
  * define "IOMMU_TEST_EN" as below and add dts node.
  */
 /* #define IOMMU_TEST_EN */
+/* #define SMMU_V3_TEST_EN */
 
 #include <linux/bitfield.h>
 #include <linux/bits.h>
@@ -1369,7 +1370,7 @@ static int iommu_test_dom_probe(struct platform_device *pdev)
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
+#ifdef SMMU_V3_TEST_EN
 #define TEST_SMMU_ADDRESS_NUM	4
 
 static inline struct arm_smmu_master *arm_smmu_get_master(struct device *dev)
@@ -1726,13 +1727,13 @@ static int iommu_test_cqdma_probe(struct platform_device *pdev)
 
 	return 0;
 }
-#else /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 */
+#else /* SMMU_V3_TEST_EN */
 static int iommu_test_cqdma_probe(struct platform_device *pdev)
 {
 	pr_info("%s dev:%s\n", __func__, dev_name(&pdev->dev));
 	return 0;
 }
-#endif /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 */
+#endif /* SMMU_V3_TEST_EN */
 
 /*************************************************************************/
 /*
