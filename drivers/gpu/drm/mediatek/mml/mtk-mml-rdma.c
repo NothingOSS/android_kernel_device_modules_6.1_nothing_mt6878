@@ -1857,6 +1857,13 @@ static s32 rdma_config_tile(struct mml_comp *comp, struct mml_task *task,
 		   (mf_offset_h_1 << 16) + mf_offset_w_1, write_sec);
 
 	if (cfg->info.mode != MML_MODE_APUDC) {
+		if (MML_FMT_COMPRESS(src->format)) {
+			u32 xs = round_down(in_xs, 32);
+			u32 xe = round_up(in_xe, 32);
+
+			mf_src_w = xe - xs;
+		}
+
 		/* qos accumulate tile pixel */
 		rdma_frm->pixel_acc += mf_src_w * mf_src_h;
 

@@ -1604,7 +1604,7 @@ static void mml_drm_split_info_racing(struct mml_submit *submit, struct mml_subm
 	 */
 	if (dest->data.y_stride & 0xf &&
 		(dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)) {
-		u32 align_w = align_up(dest->data.width, 16);
+		u32 align_w = round_up(dest->data.width, 16);
 
 		dest->data.y_stride = mml_color_get_min_y_stride(
 			dest->data.format, align_w);
