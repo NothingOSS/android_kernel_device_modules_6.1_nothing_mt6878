@@ -50,6 +50,7 @@ enum addon_module {
 	DISP_WDMA0,
 	DISP_WDMA0_v2,
 	DISP_WDMA0_v3,
+	DISP_WDMA0_v4,
 	DISP_WDMA1,
 	DISP_WDMA1_v2,
 	DISP_WDMA2,

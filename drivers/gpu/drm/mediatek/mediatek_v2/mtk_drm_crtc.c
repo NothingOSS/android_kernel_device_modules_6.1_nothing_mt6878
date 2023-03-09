@@ -2696,6 +2696,8 @@ void _mtk_crtc_wb_addon_module_disconnect(
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v3) ||
 			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA0_v4) ||
+			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_OVLSYS_WDMA0)) {
 			if (mtk_crtc->is_dual_pipe) {
 				/* disconnect left pipe */
@@ -2759,6 +2761,8 @@ static void _mtk_crtc_cwb_addon_module_disconnect(
 			addon_module->module == DISP_WDMA0_v2) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v3) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA0_v4) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_OVLSYS_WDMA0)) {
 			if (mtk_crtc->is_dual_pipe) {
@@ -2925,6 +2929,8 @@ _mtk_crtc_wb_addon_module_connect(
 			addon_module->module == DISP_WDMA0_v2) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v3) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA0_v4) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_OVLSYS_WDMA0)) {
 			struct mtk_rect src_roi = {0};
@@ -3093,6 +3099,8 @@ _mtk_crtc_cwb_addon_module_connect(
 			addon_module->module == DISP_WDMA0_v2) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v3) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA0_v4) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_OVLSYS_WDMA0)) {
 			buf_idx = cwb_info->buf_idx;
