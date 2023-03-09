@@ -114,10 +114,11 @@ static int subsample_send_event(struct mtk_cam_job_state *s,
 	ret = loop_each_transition(&subsample_sensor_tbl,
 				   &s_acc, SENSOR_STATE, p);
 
-	ret = ret || loop_each_transition(&subsample_isp_tbl,
-					  &s_acc, ISP_STATE, p);
+	if (!ret)
+		loop_each_transition(&subsample_isp_tbl,
+				     &s_acc, ISP_STATE, p);
 
-	return ret < 0 ? -1 : 0;
+	return 0;
 }
 
 static int _is_next_sensor_applicable(struct mtk_cam_job_state *s)

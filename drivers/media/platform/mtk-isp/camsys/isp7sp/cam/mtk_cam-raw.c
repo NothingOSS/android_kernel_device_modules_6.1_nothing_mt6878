@@ -1925,8 +1925,16 @@ int mtk_raw_translation_fault_cb(int port, dma_addr_t mva, void *data)
 	u32 *group = kzalloc(sizeof(u32)*group_size, GFP_KERNEL);
 	int i;
 
+	if (!group) {
+		dev_info(raw_dev->dev, "%s: failed to kzalloc for goup_size %d\n",
+			 __func__, group_size);
+		return 0;
+	}
+
 	if (m4u_port == 0) { /* cq info */
 		print_cq_settings(raw_dev->base_inner);
+
+		kfree(group);
 		return 0;
 	}
 

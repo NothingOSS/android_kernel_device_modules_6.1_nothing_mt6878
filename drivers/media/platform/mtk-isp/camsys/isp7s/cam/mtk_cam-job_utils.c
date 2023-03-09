@@ -25,13 +25,13 @@ static struct mtk_cam_resource_v2 *_get_job_res(struct mtk_cam_job *job)
 	struct mtk_cam_resource_v2 *res = NULL;
 
 	if (ctx->has_raw_subdev) {
-		int p_idx;
+		struct mtk_raw_ctrl_data *ctrl;
 
-		p_idx = get_raw_subdev_idx(ctx->used_pipe);
-		if (p_idx == -1)
+		ctrl = get_raw_ctrl_data(job);
+		if (!ctrl)
 			return NULL;
 
-		res = &job->req->raw_data[p_idx].ctrl.resource.user_data;
+		res = &ctrl->resource.user_data;
 	}
 
 	return res;
@@ -557,7 +557,7 @@ int fill_img_in_hdr(struct mtkcam_ipi_img_input *ii,
 
 	/* FIXME: porting workaround */
 	ii->buf[0].size = buf->image_info.size[0];
-	ii->buf[0].iova = buf->daddr + index * buf->image_info.size[0];
+	ii->buf[0].iova = buf->daddr + index * (dma_addr_t)buf->image_info.size[0];
 	ii->buf[0].ccd_fd = buf->vbb.vb2_buf.planes[0].m.fd;
 
 	buf_printk("id:%d idx:%d buf->daddr:0x%llx, io->buf[0][0].iova:0x%llx, size:%d",
@@ -684,7 +684,7 @@ int fill_img_out_hdr(struct mtkcam_ipi_img_output *io,
 
 	/* FIXME: porting workaround */
 	io->buf[0][0].size = buf->image_info.size[0];
-	io->buf[0][0].iova = buf->daddr + index * io->buf[0][0].size;
+	io->buf[0][0].iova = buf->daddr + index * (dma_addr_t)io->buf[0][0].size;
 	io->buf[0][0].ccd_fd = buf->vbb.vb2_buf.planes[0].m.fd;
 
 	/* crop */
@@ -716,7 +716,7 @@ static int mtk_cam_fill_img_out_buf(struct mtkcam_ipi_img_output *io,
 		if (!size)
 			break;
 
-		daddr += index * size;
+		daddr += index * (dma_addr_t)size;
 
 		io->buf[0][i].iova = daddr;
 		io->buf[0][i].size = size;
@@ -948,7 +948,7 @@ struct mtk_raw_ctrl_data *get_raw_ctrl_data(struct mtk_cam_job *job)
 	int raw_pipe_idx;
 
 	raw_pipe_idx = get_raw_subdev_idx(job->src_ctx->used_pipe);
-	if (raw_pipe_idx == -1)
+	if (raw_pipe_idx < 0)
 		return NULL;
 
 	return &req->raw_data[raw_pipe_idx].ctrl;
@@ -960,7 +960,7 @@ struct mtk_raw_sink_data *get_raw_sink_data(struct mtk_cam_job *job)
 	int raw_pipe_idx;
 
 	raw_pipe_idx = get_raw_subdev_idx(job->src_ctx->used_pipe);
-	if (raw_pipe_idx == -1)
+	if (raw_pipe_idx < 0)
 		return NULL;
 
 	return &req->raw_data[raw_pipe_idx].sink;

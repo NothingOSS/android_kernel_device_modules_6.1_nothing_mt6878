@@ -162,6 +162,12 @@ static int mtk_cam_dvfs_update_opp(struct mtk_camsys_dvfs *dvfs,
 		return -1;
 	}
 
+	if ((unsigned int)opp_idx >= ARRAY_SIZE(dvfs->opp)) {
+		dev_info(dvfs->dev, "%s: invalid opp_idx %d\n", __func__,
+			 opp_idx);
+		return -1;
+	}
+
 	ret = clk_set_rate(dvfs->mmdvfs_clk, dvfs->opp[opp_idx].freq_hz);
 	if (ret < 0) {
 		dev_info(dvfs->dev, "[%s] clk set rate %u fail",

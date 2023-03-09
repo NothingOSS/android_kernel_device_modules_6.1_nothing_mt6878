@@ -8,14 +8,14 @@
 
 #include <linux/types.h>
 
-#define FMT_FOURCC		"%u(%c%c%c%c%s)"
+#define FMT_FOURCC		"%u(%c%c%c%c)"
 #define MEMBER_FOURCC(pfmt)			\
 	(pfmt),					\
 	(char)((pfmt) & 0x7f),			\
 	(char)(((pfmt) >> 8) & 0x7f),		\
 	(char)(((pfmt) >> 16) & 0x7f),		\
-	(char)(((pfmt) >> 24) & 0x7f),		\
-	((pfmt) & (1UL << 32)) ? "-BE" : ""
+	(char)(((pfmt) >> 24) & 0x7f)
+
 struct v4l2_format;
 struct v4l2_fmtdesc;
 void fill_ext_mtkcam_fmtdesc(struct v4l2_fmtdesc *f);

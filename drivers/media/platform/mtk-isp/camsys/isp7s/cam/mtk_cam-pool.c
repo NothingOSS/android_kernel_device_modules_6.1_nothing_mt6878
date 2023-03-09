@@ -180,8 +180,12 @@ element_priv(void *element)
 int mtk_cam_pool_alloc(struct mtk_cam_pool *pool,
 		       size_t element_size, int n_element)
 {
-	WARN_ON(!pool || !n_element || !element_size);
-	WARN_ON(n_element >= (1 << 7)); /* max 2^7 */
+	if (WARN_ON(!pool || !n_element || !element_size))
+		return -1;
+
+	/* max 2^7 */
+	if (WARN_ON(n_element >= (1 << 7)))
+		return -1;
 
 	pool->n_element = n_element;
 	pool->element_size = element_size;

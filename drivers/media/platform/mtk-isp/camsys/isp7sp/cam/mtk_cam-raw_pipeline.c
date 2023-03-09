@@ -430,6 +430,9 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 	unsigned int raws_driver_selected;
 	bool is_rgbw = r->scen.scen.normal.w_chn_enabled;
 
+	memset(&c, 0, sizeof(c));
+	memset(&stepper, 0, sizeof(stepper));
+
 	if (debug_user_raws_must[pipeline->id] != -1) {
 		dev_info(cam->dev,
 			 "debug:pipe(%d):replace raws_must, 0x%x--> 0x%x\n",
@@ -3469,7 +3472,7 @@ static int mtk_raw_pipeline_register(const char *str, unsigned int id,
 {
 	struct v4l2_subdev *sd = &pipe->subdev;
 	struct mtk_cam_video_device *video;
-	unsigned int i;
+	int i;
 	int ret;
 
 	pipe->id = id;
@@ -3479,7 +3482,7 @@ static int mtk_raw_pipeline_register(const char *str, unsigned int id,
 	sd->entity.function = MEDIA_ENT_F_PROC_VIDEO_PIXEL_FORMATTER;
 	sd->entity.ops = &mtk_cam_media_entity_ops;
 	sd->flags = V4L2_SUBDEV_FL_HAS_DEVNODE | V4L2_SUBDEV_FL_HAS_EVENTS;
-	snprintf(sd->name, sizeof(sd->name), "%s-%d", str, pipe->id);
+	(void)snprintf(sd->name, sizeof(sd->name), "%s-%d", str, pipe->id);
 	v4l2_set_subdevdata(sd, pipe);
 	mtk_raw_pipeline_ctrl_setup(pipe);
 	pr_info("%s: %s\n", __func__, sd->name);

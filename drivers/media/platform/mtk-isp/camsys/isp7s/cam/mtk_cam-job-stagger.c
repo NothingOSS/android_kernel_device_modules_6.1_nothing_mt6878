@@ -99,7 +99,7 @@ int fill_sv_img_fp(
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_scen *scen = &job->job_scen;
 	struct mtk_camsv_device *sv_dev;
-	unsigned int pipe_id, exp_no, buf_cnt, buf_ofset = 0;
+	unsigned int pipe_id, exp_no, buf_cnt = 0, buf_ofset = 0;
 	int tag_idx, i, j;
 	bool is_w;
 	int ret = 0;
@@ -403,7 +403,7 @@ int handle_sv_tag(struct mtk_cam_job *job)
 	struct mtk_camsv_tag_param meta_tag_param;
 	unsigned int tag_idx, hw_scen;
 	unsigned int exp_no, req_amount;
-	int ret = 0, i, raw_pipe_idx, sv_pipe_idx;
+	int ret = 0, i, sv_pipe_idx;
 
 	/* reset tag info */
 	sv_dev = dev_get_drvdata(ctx->hw_sv);
@@ -438,8 +438,10 @@ int handle_sv_tag(struct mtk_cam_job *job)
 	if (mtk_cam_sv_get_tag_param(img_tag_param, hw_scen, exp_no, req_amount))
 		return 1;
 
-	raw_pipe_idx = ctx->raw_subdev_idx;
-	raw_sink = &job->req->raw_data[raw_pipe_idx].sink;
+	raw_sink = get_raw_sink_data(job);
+	if (WARN_ON(!raw_sink))
+		return -1;
+
 	for (i = 0; i < req_amount; i++) {
 		mtk_cam_sv_fill_tag_info(sv_dev->tag_info,
 					 &img_tag_param[i], hw_scen, 3,
@@ -461,6 +463,9 @@ int handle_sv_tag(struct mtk_cam_job *job)
 		if (tag_idx >= SVTAG_END)
 			return 1;
 		sv_pipe_idx = ctx->sv_subdev_idx[i];
+		if ((unsigned int)sv_pipe_idx >= ctx->cam->pipelines.num_camsv)
+			return 1;
+
 		sv_pipe = &ctx->cam->pipelines.camsv[sv_pipe_idx];
 		sv_sink = &job->req->sv_data[sv_pipe_idx].sink;
 		meta_tag_param.tag_idx = tag_idx;

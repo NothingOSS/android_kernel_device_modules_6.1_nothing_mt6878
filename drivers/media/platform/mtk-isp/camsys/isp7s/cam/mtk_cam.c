@@ -909,7 +909,7 @@ static int isp_composer_init(struct mtk_cam_ctx *ctx)
 
 	ctx->ipi_id = ipi_id;
 
-	snprintf(msg->name, RPMSG_NAME_SIZE, "mtk-camsys\%d", ctx->stream_id);
+	(void)snprintf(msg->name, RPMSG_NAME_SIZE, "mtk-camsys\%d", ctx->stream_id);
 	msg->src = ctx->ipi_id;
 
 	ctx->rpmsg_dev = mtk_create_client_msgdevice(rpmsg_subdev, msg);
@@ -1039,7 +1039,8 @@ static int mtk_cam_initialize(struct mtk_cam_device *cam)
 
 	mtk_cam_dvfs_reset_runtime_info(&cam->dvfs);
 
-	pm_runtime_resume_and_get(cam->dev);
+	if (WARN_ON(pm_runtime_resume_and_get(cam->dev)))
+		return -1;
 
 	ret = mtk_cam_power_rproc(cam, 1);
 	if (ret)
@@ -1401,11 +1402,11 @@ static int mtk_cam_ctx_alloc_workers(struct mtk_cam_ctx *ctx)
 
 	return 0;
 
+fail_uninit_composer_wq:
+	destroy_workqueue(ctx->composer_wq);
 fail_uninit_sensor_worker_task:
 	kthread_stop(ctx->sensor_worker_task);
 	ctx->sensor_worker_task = NULL;
-fail_uninit_composer_wq:
-	destroy_workqueue(ctx->composer_wq);
 	return -1;
 }
 
@@ -2344,8 +2345,8 @@ static int mtk_cam_master_bind(struct device *dev)
 	media_dev->dev = cam_dev->dev;
 	strscpy(media_dev->model, dev_driver_string(dev),
 		sizeof(media_dev->model));
-	snprintf(media_dev->bus_info, sizeof(media_dev->bus_info),
-		 "platform:%s", dev_name(dev));
+	(void)snprintf(media_dev->bus_info, sizeof(media_dev->bus_info),
+		       "platform:%s", dev_name(dev));
 	media_dev->hw_revision = 0;
 	media_dev->ops = &mtk_cam_dev_ops;
 	media_device_init(media_dev);

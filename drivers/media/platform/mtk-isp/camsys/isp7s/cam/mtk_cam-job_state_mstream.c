@@ -73,8 +73,9 @@ static int mstream_send_event(struct mtk_cam_job_state *s,
 	ret = loop_each_transition(&basic_sensor_tbl, &s_acc,
 				   SENSOR_1ST_STATE, p);
 
-	ret = ret || loop_each_transition(&basic_isp_tbl, &s_acc,
-					  ISP_1ST_STATE, p);
+	if (!ret)
+		loop_each_transition(&basic_isp_tbl, &s_acc,
+				     ISP_1ST_STATE, p);
 
 	s_acc.seq_no = next_frame_seq(s->seq_no);
 	s_acc.ops = &_acc_ops_2nd;
@@ -82,9 +83,11 @@ static int mstream_send_event(struct mtk_cam_job_state *s,
 	ret = loop_each_transition(&basic_sensor_tbl, &s_acc,
 				   SENSOR_2ND_STATE, p);
 
-	ret = ret || loop_each_transition(&basic_isp_tbl, &s_acc,
-					  ISP_2ND_STATE, p);
-	return ret < 0 ? -1 : 0;
+	if (!ret)
+		loop_each_transition(&basic_isp_tbl, &s_acc,
+				     ISP_2ND_STATE, p);
+
+	return 0;
 }
 
 static int _is_next_sensor_applicable(struct mtk_cam_job_state *s)

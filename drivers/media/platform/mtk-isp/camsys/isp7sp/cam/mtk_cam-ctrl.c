@@ -429,7 +429,7 @@ static int frame_no_to_fs_req_no(struct mtk_cam_ctrl *ctrl, int frame_no,
 
 	do_send_evnt = ctrl->fs_event_subframe_idx == 0;
 	ctrl->fs_event_subframe_idx =
-		++ctrl->fs_event_subframe_idx % ctrl->fs_event_subframe_cnt;
+		(ctrl->fs_event_subframe_idx + 1) % ctrl->fs_event_subframe_cnt;
 
 	if (req_no)
 		*req_no = ctrl->frame_sync_event_cnt;
@@ -657,6 +657,8 @@ static u64 query_interval_from_sensor(struct v4l2_subdev *sensor)
 		return 0;
 	}
 
+	memset(&fi, 0, sizeof(fi));
+
 	fi.pad = 0;
 	v4l2_subdev_call(sensor, video, g_frame_interval, &fi);
 
@@ -867,13 +869,18 @@ PUT_CTRL:
 	mtk_cam_ctrl_put(cam_ctrl);
 }
 
-static void reset_runtime_info(struct mtk_cam_ctrl_runtime_info *info)
+static void reset_runtime_info(struct mtk_cam_ctrl *ctrl)
 {
-	memset(info, 0, sizeof(*info));
+	struct mtk_cam_ctrl_runtime_info *info = &ctrl->r_info;
 
+	spin_lock(&ctrl->info_lock);
+
+	memset(info, 0, sizeof(*info));
 	info->ack_seq_no = -1;
 	info->outer_seq_no = -1;
 	info->inner_seq_no = -1;
+
+	spin_unlock(&ctrl->info_lock);
 }
 
 void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
@@ -892,7 +899,7 @@ void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 	INIT_LIST_HEAD(&cam_ctrl->camsys_state_list);
 
 	spin_lock_init(&cam_ctrl->info_lock);
-	reset_runtime_info(&cam_ctrl->r_info);
+	reset_runtime_info(cam_ctrl);
 
 	init_waitqueue_head(&cam_ctrl->stop_wq);
 

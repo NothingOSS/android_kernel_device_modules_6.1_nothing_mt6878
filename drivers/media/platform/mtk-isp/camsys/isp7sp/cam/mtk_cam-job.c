@@ -193,13 +193,10 @@ static bool update_sv_pure_raw(struct mtk_cam_job *job)
 	struct mtk_cam_video_device *node;
 	struct mtk_raw_ctrl_data *ctrl;
 	bool has_imgo, is_pure, is_supported_scen, is_sv_pure_raw;
-	int raw_pipe_idx;
 
-	raw_pipe_idx = get_raw_subdev_idx(job->src_ctx->used_pipe);
-	if (raw_pipe_idx == -1)
+	ctrl = get_raw_ctrl_data(job);
+	if (!ctrl)
 		return false;
-
-	ctrl = &req->raw_data[raw_pipe_idx].ctrl;
 
 	has_imgo = false;
 	list_for_each_entry(buf, &req->buf_list, list) {
@@ -304,11 +301,16 @@ static unsigned long mtk_cam_select_hw(struct mtk_cam_job *job)
 
 	/* todo: more rules */
 	if (ctx->has_raw_subdev) {
-		struct mtk_raw_ctrl_data *ctrl =
-			&job->req->raw_data[ctx->raw_subdev_idx].ctrl;
-		int raw_required = ctrl->resource.raw_num;
-		int raws = ctrl->resource.user_data.raw_res.raws;
+		struct mtk_raw_ctrl_data *ctrl;
+		int raw_required, raws;
 		int raw_cnt = 0;
+
+		ctrl = get_raw_ctrl_data(job);
+		if (WARN_ON(!ctrl))
+			goto SELECT_HW_FAILED;
+
+		raw_required = ctrl->resource.raw_num;
+		raws = ctrl->resource.user_data.raw_res.raws;
 
 		if (!raw_required) {
 			dev_info(cam->dev, "%s: no raw_requried\n", __func__);
@@ -503,14 +505,15 @@ static int
 update_job_type_feature(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
-	int pipe_idx;
 
 	if (ctx->has_raw_subdev) {
-		pipe_idx = get_raw_subdev_idx(ctx->used_pipe);
-		if (pipe_idx == -1)
+		struct mtk_raw_ctrl_data *ctrl;
+
+		ctrl = get_raw_ctrl_data(job);
+		if (!ctrl)
 			return -1;
-		/* TODO(AY): refine this deep access: job->.....raw_res.scen */
-		job->job_scen = job->req->raw_data[pipe_idx].ctrl.resource.user_data.raw_res.scen;
+
+		job->job_scen = ctrl->resource.user_data.raw_res.scen;
 		job->job_type = map_job_type(&job->job_scen);
 		job->is_sv_pure_raw = update_sv_pure_raw(job);
 	} else
@@ -1093,6 +1096,13 @@ static int update_seninf_fmt(struct mtk_cam_job *job)
 	sink_mfmt.width = raw_data->sink.width;
 	sink_mfmt.height = raw_data->sink.height;
 	sink_mfmt.code = raw_data->sink.mbus_code;
+	sink_mfmt.field = V4L2_FIELD_NONE,
+	sink_mfmt.colorspace = V4L2_COLORSPACE_SRGB,
+	sink_mfmt.ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT,
+	sink_mfmt.quantization = V4L2_QUANTIZATION_DEFAULT,
+	sink_mfmt.xfer_func = V4L2_XFER_FUNC_DEFAULT,
+	sink_mfmt.flags = 0,
+	memset(sink_mfmt.reserved, 0, sizeof(sink_mfmt.reserved));
 
 	subdev_set_fmt(ctx->seninf, PAD_SINK, &sink_mfmt);
 	subdev_set_fmt(ctx->seninf, PAD_SRC_RAW0, &sink_mfmt);
@@ -2196,6 +2206,8 @@ _handle_sv_tag_only_sv(struct mtk_cam_job *job)
 		if (tag_idx >= SVTAG_END)
 			return 1;
 		sv_pipe_idx = ctx->sv_subdev_idx[i];
+		if ((unsigned int)sv_pipe_idx >= ctx->cam->pipelines.num_camsv)
+			return 1;
 		sv_pipe = &ctx->cam->pipelines.camsv[sv_pipe_idx];
 		sv_sink = &job->req->sv_data[sv_pipe_idx].sink;
 		tag_param.tag_idx = tag_idx;
@@ -3032,7 +3044,7 @@ static void ipi_add_hw_map(struct mtkcam_ipi_config_param *config,
 {
 	int n_maps = config->n_maps;
 
-	if (WARN_ON(n_maps >= ARRAY_SIZE(config->maps)))
+	if (WARN_ON((unsigned int)n_maps >= ARRAY_SIZE(config->maps)))
 		return;
 
 	WARN_ON(!dev_mask);
@@ -3195,19 +3207,18 @@ static int mtk_cam_job_fill_ipi_config(struct mtk_cam_job *job,
 	struct mtkcam_ipi_input_param *input = &config->input;
 	struct mtkcam_ipi_sv_input_param *sv_input;
 	struct mtkcam_ipi_mraw_input_param *mraw_input;
-	int raw_pipe_idx;
 	int i;
 
 	memset(config, 0, sizeof(*config));
 
 	/* assume: at most one raw-subdev is used */
-	raw_pipe_idx = get_raw_subdev_idx(ctx->used_pipe);
-	if (raw_pipe_idx != -1) {
-		struct mtk_raw_sink_data *sink =
-			&req->raw_data[raw_pipe_idx].sink;
-		struct mtk_raw_ctrl_data *ctrl =
-			get_raw_ctrl_data(job);
+	if (ctx->has_raw_subdev) {
+		struct mtk_raw_sink_data *sink = get_raw_sink_data(job);
+		struct mtk_raw_ctrl_data *ctrl = get_raw_ctrl_data(job);
 		int raw_dev;
+
+		if (WARN_ON(!sink || !ctrl))
+			return -1;
 
 		// TODO(Will): seamless at first frame?
 		config->flags = (job->seamless_switch) ?
@@ -3499,7 +3510,7 @@ static int update_mraw_meta_buf_to_ipi_frame(
 	struct mtk_cam_ctx *ctx = helper->job->src_ctx;
 	struct mtkcam_ipi_frame_param *fp = helper->fp;
 	struct mtk_mraw_pipeline *mraw_pipe = NULL;
-	int ret = 0, i, param_idx;
+	int ret = 0, i, param_idx = -1;
 
 	for (i = 0; i < ctx->num_mraw_subdevs; i++) {
 		mraw_pipe = &ctx->cam->pipelines.mraw[ctx->mraw_subdev_idx[i]];
@@ -3508,7 +3519,8 @@ static int update_mraw_meta_buf_to_ipi_frame(
 			break;
 		}
 	}
-	if (i == ctx->num_mraw_subdevs) {
+
+	if (param_idx < 0) {
 		ret = -1;
 		pr_info("%s %s: mraw subdev idx not found(pipe_id:%d)\n",
 			__FILE__, __func__, node->uid.pipe_id);
@@ -3609,8 +3621,6 @@ static int update_raw_meta_buf_to_ipi_frame(struct req_buffer_helper *helper,
 static bool belong_to_current_ctx(struct mtk_cam_job *job, int ipi_pipe_id)
 {
 	unsigned long ctx_used_pipe;
-
-	WARN_ON(!job->src_ctx);
 
 	ctx_used_pipe = job->src_ctx->used_pipe;
 	return ctx_used_pipe & ipi_pipe_id_to_bit(ipi_pipe_id);
@@ -3782,7 +3792,7 @@ static int update_job_buffer_to_ipi_frame(struct mtk_cam_job *job,
 	struct req_buffer_helper helper;
 	struct mtk_cam_request *req = job->req;
 	struct mtk_cam_buffer *buf;
-	int ret;
+	int ret = 0;
 
 	memset(&helper, 0, sizeof(helper));
 	helper.job = job;
