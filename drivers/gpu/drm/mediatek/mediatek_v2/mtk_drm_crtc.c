@@ -1896,6 +1896,8 @@ bool mtk_crtc_is_dual_pipe(struct drm_crtc *crtc)
 		panel_ext->dsc_params.slice_mode == 1) {
 		return true;
 	}
+	if (priv->data->mmsys_id == MMSYS_MT6897 && (drm_crtc_index(crtc) == 2))
+		return true;
 
 	return false;
 }
@@ -5540,6 +5542,7 @@ bool mtk_crtc_is_mem_mode(struct drm_crtc *crtc)
 
 	if (comp->id == DDP_COMPONENT_WDMA0 ||
 		comp->id == DDP_COMPONENT_WDMA1 ||
+		comp->id == DDP_COMPONENT_OVLSYS_WDMA0 ||
 		comp->id == DDP_COMPONENT_OVLSYS_WDMA2)
 		return true;
 
@@ -5561,6 +5564,8 @@ int get_comp_wait_event(struct mtk_drm_crtc *mtk_crtc,
 		return mtk_crtc->gce_obj.event[EVENT_WDMA0_EOF];
 	} else if (comp->id == DDP_COMPONENT_WDMA1) {
 		return mtk_crtc->gce_obj.event[EVENT_WDMA1_EOF];
+	} else if (comp->id == DDP_COMPONENT_OVLSYS_WDMA0) {
+		return mtk_crtc->gce_obj.event[EVENT_OVLSYS_WDMA0_EOF];
 	} else if (comp->id == DDP_COMPONENT_OVLSYS_WDMA2) {
 		return mtk_crtc->gce_obj.event[EVENT_OVLSYS1_WDMA0_EOF];
 	} else if (comp->id == DDP_COMPONENT_MDP_RDMA0) {
@@ -5667,8 +5672,15 @@ void mtk_crtc_wait_frame_done(struct mtk_drm_crtc *mtk_crtc,
 		if (mtk_crtc_is_dc_mode(&mtk_crtc->base))
 			cmdq_pkt_wfe(cmdq_handle, gce_event);
 	} else  if (gce_event == mtk_crtc->gce_obj.event[EVENT_OVLSYS1_WDMA0_EOF]) {
-		if (mtk_crtc_is_dc_mode(&mtk_crtc->base))
+		struct mtk_drm_private *priv;
+
+		priv = mtk_crtc->base.dev->dev_private;
+		if (mtk_crtc_is_dc_mode(&mtk_crtc->base)) {
 			cmdq_pkt_wfe(cmdq_handle, gce_event);
+			if (priv->data->mmsys_id == MMSYS_MT6897)
+				cmdq_pkt_wfe(cmdq_handle,
+					mtk_crtc->gce_obj.event[EVENT_OVLSYS_WDMA0_EOF]);
+		}
 	} else
 		DDPPR_ERR("The output component has not frame done event\n");
 }
@@ -10397,6 +10409,7 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 	unsigned int crtc_id = drm_crtc_index(&mtk_crtc->base);
 	struct mtk_ddp_comp *comp = NULL;
 	struct mtk_ddp_comp *output_comp = NULL;
+	int i, j;
 #ifndef DRM_CMDQ_DISABLE
 	struct cmdq_client *client;
 #endif
@@ -10482,9 +10495,20 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 					DDP_COMPONENT_WDMA1);
 		if (!comp)
 			comp = mtk_ddp_comp_find_by_id(crtc,
+					DDP_COMPONENT_OVLSYS_WDMA0);
+		if (!comp)
+			comp = mtk_ddp_comp_find_by_id(crtc,
 					DDP_COMPONENT_OVLSYS_WDMA2);
 		if (comp)
 			comp->fb = NULL;
+		if (mtk_crtc->is_dual_pipe) {
+			for_each_comp_in_dual_pipe_reverse(comp, mtk_crtc, i, j) {
+				if (mtk_ddp_comp_is_output(comp)) {
+					comp->fb = NULL;
+					break;
+				}
+			}
+		}
 	}
 
 	/* 11. set CRTC SW status */
@@ -12044,7 +12068,6 @@ void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 		DDPINFO("%s plane:%d first_comp:%s plane_comp:%s\n", __func__,
 			plane->index, mtk_dump_comp_str_id(comp->id),
 			mtk_dump_comp_str_id(plane_state->comp_state.comp_id));
-
 	if (plane_state->pending.enable) {
 		u32 tgt_comp = 0;
 		u8 tgt_layer = 0;
@@ -12153,13 +12176,15 @@ static void mtk_crtc_wb_comp_config(struct drm_crtc *crtc,
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_crtc_state *state = to_mtk_crtc_state(crtc->state);
-	struct mtk_ddp_comp *comp = NULL;
+	struct mtk_ddp_comp *comp = NULL, *comp_dual = NULL;
 	struct mtk_crtc_ddp_ctx *ddp_ctx = NULL;
-	struct mtk_ddp_config cfg;
+	struct mtk_ddp_config cfg, cfg_l, cfg_r;
 
 	comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_WDMA0);
 	if (!comp)
 		comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_WDMA1);
+	if (!comp)
+		comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVLSYS_WDMA0);
 	if (!comp)
 		comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVLSYS_WDMA2);
 	if (!comp) {
@@ -12231,7 +12256,30 @@ static void mtk_crtc_wb_comp_config(struct drm_crtc *crtc,
 				__get_golden_setting_context(mtk_crtc);
 	}
 
-	mtk_ddp_comp_config(comp, &cfg, cmdq_handle);
+	if (mtk_crtc->is_dual_pipe && state->prop_val[CRTC_PROP_OUTPUT_ENABLE]) {
+		int i, j;
+
+		memcpy(&cfg_l, &cfg, sizeof(struct mtk_ddp_config));
+		memcpy(&cfg_r, &cfg, sizeof(struct mtk_ddp_config));
+		for_each_comp_in_dual_pipe_reverse(comp_dual, mtk_crtc, i, j) {
+			if (mtk_ddp_comp_is_output(comp_dual))
+				break;
+		}
+		comp_dual->fb = comp->fb;
+		cfg_l.w = state->prop_val[CRTC_PROP_OUTPUT_WIDTH] / 2;
+		cfg_l.h = state->prop_val[CRTC_PROP_OUTPUT_HEIGHT];
+		cfg_l.x = state->prop_val[CRTC_PROP_OUTPUT_X];
+		cfg_l.y = state->prop_val[CRTC_PROP_OUTPUT_Y];
+		cfg_r.w = state->prop_val[CRTC_PROP_OUTPUT_WIDTH] - cfg_l.w;
+		cfg_r.h = state->prop_val[CRTC_PROP_OUTPUT_HEIGHT];
+		cfg_r.x = state->prop_val[CRTC_PROP_OUTPUT_X];
+		cfg_r.y = state->prop_val[CRTC_PROP_OUTPUT_Y];
+		DDPDBG("%s l.w%d l.h%d l.x%d l.y%d r.w%d r.h%d\n", __func__,
+			cfg_l.w, cfg_l.h, cfg_l.x, cfg_l.y, cfg_r.w, cfg_r.h);
+		mtk_ddp_comp_config(comp, &cfg_l, cmdq_handle);
+		mtk_ddp_comp_config(comp_dual, &cfg_r, cmdq_handle);
+	} else
+		mtk_ddp_comp_config(comp, &cfg, cmdq_handle);
 }
 
 static void mtk_crtc_wb_backup_to_slot(struct drm_crtc *crtc,
@@ -12283,6 +12331,7 @@ int mtk_crtc_gec_flush_check(struct drm_crtc *crtc)
 		switch (output_comp->id) {
 		case DDP_COMPONENT_WDMA0:
 		case DDP_COMPONENT_WDMA1:
+		case DDP_COMPONENT_OVLSYS_WDMA0:
 		case DDP_COMPONENT_OVLSYS_WDMA2:
 			if (!state->prop_val[CRTC_PROP_OUTPUT_ENABLE])
 				return -EINVAL;
@@ -14615,6 +14664,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 
 		if ((p_mode == DDP_MAJOR) && (comp_id == DDP_COMPONENT_WDMA0 ||
 					      comp_id == DDP_COMPONENT_WDMA1 ||
+					      comp_id == DDP_COMPONENT_OVLSYS_WDMA0 ||
 					      comp_id == DDP_COMPONENT_OVLSYS_WDMA2)) {
 			ret = mtk_wb_connector_init(drm_dev, mtk_crtc);
 			if (ret != 0)
@@ -15518,6 +15568,7 @@ static void mtk_crtc_create_wb_path_cmdq(struct drm_crtc *crtc,
 		comp = ddp_ctx->wb_comp[i];
 		if (comp->id == DDP_COMPONENT_WDMA0 ||
 		    comp->id == DDP_COMPONENT_WDMA1 ||
+		    comp->id == DDP_COMPONENT_OVLSYS_WDMA0 ||
 		    comp->id == DDP_COMPONENT_OVLSYS_WDMA2) {
 			comp->fb = ddp_ctx->wb_fb;
 			break;
@@ -15585,6 +15636,7 @@ static void mtk_crtc_config_wb_path_cmdq(struct drm_crtc *crtc,
 		comp = ddp_ctx->wb_comp[i];
 		if (comp->id == DDP_COMPONENT_WDMA0 ||
 		    comp->id == DDP_COMPONENT_WDMA1 ||
+		    comp->id == DDP_COMPONENT_OVLSYS_WDMA0 ||
 		    comp->id == DDP_COMPONENT_OVLSYS_WDMA2) {
 			fb = comp->fb;
 			break;
@@ -15778,6 +15830,9 @@ static void __mtk_crtc_old_sub_path_destroy(struct drm_crtc *crtc,
 		if (!comp)
 			comp = mtk_ddp_comp_find_by_id(crtc,
 					DDP_COMPONENT_WDMA1);
+		if (!comp)
+			comp = mtk_ddp_comp_find_by_id(crtc,
+					DDP_COMPONENT_OVLSYS_WDMA0);
 		if (!comp)
 			comp = mtk_ddp_comp_find_by_id(crtc,
 					DDP_COMPONENT_OVLSYS_WDMA2);

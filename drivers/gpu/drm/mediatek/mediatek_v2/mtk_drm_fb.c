@@ -55,7 +55,7 @@ dma_addr_t mtk_fb_get_dma(struct drm_framebuffer *fb)
 	struct mtk_drm_fb *mtk_fb = to_mtk_fb(fb);
 	struct mtk_drm_gem_obj *mtk_gem = NULL;
 
-	if (!mtk_fb->gem_obj)
+	if ((!mtk_fb) || (!mtk_fb->gem_obj))
 		return 0;
 
 	mtk_gem = to_mtk_gem_obj(mtk_fb->gem_obj);

@@ -234,6 +234,20 @@ struct mtk_disp_wdma {
 	int wdma_sec_cur_state_chk;
 };
 
+
+bool is_right_wdma_comp_MT6897(struct mtk_ddp_comp *comp)
+{
+	switch (comp->id) {
+	case DDP_COMPONENT_OVLSYS_WDMA0:
+		return false;
+	case DDP_COMPONENT_OVLSYS_WDMA2:
+		return true;
+	default:
+		DDPPR_ERR("%s invalid wdma module=%d\n", __func__, comp->id);
+		return false;
+	}
+}
+
 static irqreturn_t mtk_wdma_irq_handler(int irq, void *dev_id)
 {
 	struct mtk_disp_wdma *priv = dev_id;
@@ -1084,7 +1098,7 @@ static void mtk_wdma_config(struct mtk_ddp_comp *comp,
 
 	addr += comp->fb->offsets[0];
 	con = wdma_fmt_convert(comp->fb->format->format);
-	DDPINFO("%s fmt:0x%x, con:0x%x addr:0x%lx\n", __func__,
+	DDPINFO("%s comp_id:%d fmt:0x%x, con:0x%x addr:0x%lx\n", __func__, comp->id,
 		comp->fb->format->format, con, (unsigned long)addr);
 	if (!addr) {
 		DDPPR_ERR("%s wdma dst addr is zero\n", __func__);
@@ -1161,8 +1175,20 @@ static void mtk_wdma_config(struct mtk_ddp_comp *comp,
 					0, BIT(0));
 		}
 	}
-
 	write_dst_addr(comp, handle, 0, addr);
+
+	if (comp->mtk_crtc->is_dual_pipe && wdma->data->is_right_wdma_comp(comp)) {
+		if (comp->fb->format->format == DRM_FORMAT_YUV420 ||
+			comp->fb->format->format == DRM_FORMAT_YVU420) {
+			mtk_ddp_write(comp, cfg->w, DISP_REG_WDMA_DST_ADDR_OFFSETX(0),  handle);
+			mtk_ddp_write(comp, cfg->w / 2, DISP_REG_WDMA_DST_ADDR_OFFSETX(1),  handle);
+			mtk_ddp_write(comp, cfg->w / 2, DISP_REG_WDMA_DST_ADDR_OFFSETX(2),  handle);
+		} else if (comp->fb->format->format == DRM_FORMAT_NV12 ||
+					comp->fb->format->format == DRM_FORMAT_NV21) {
+			mtk_ddp_write(comp, cfg->w, DISP_REG_WDMA_DST_ADDR_OFFSETX(0),  handle);
+			mtk_ddp_write(comp, cfg->w, DISP_REG_WDMA_DST_ADDR_OFFSETX(1),  handle);
+		}
+	}
 
 	mtk_ddp_write(comp, frame_cnt, DISP_REG_WDMA_DUMMY, handle);
 
@@ -1981,7 +2007,8 @@ static const struct mtk_disp_wdma_data mt6897_wdma_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
 	.is_support_34bits = true,
-	.use_larb_control_sec = true,
+	.use_larb_control_sec = false,
+	.is_right_wdma_comp = &is_right_wdma_comp_MT6897,
 };
 
 static const struct of_device_id mtk_disp_wdma_driver_dt_match[] = {

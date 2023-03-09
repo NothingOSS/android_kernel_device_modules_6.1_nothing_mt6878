@@ -23,6 +23,7 @@ struct mtk_disp_wdma_data {
 	bool need_bypass_shadow;
 	bool is_support_34bits;
 	bool use_larb_control_sec;
+	bool (*is_right_wdma_comp)(struct mtk_ddp_comp *comp);
 };
 
 #endif
