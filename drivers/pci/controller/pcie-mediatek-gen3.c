@@ -415,7 +415,7 @@ static void mtk_pcie_mt6985_phy_fixup(struct mtk_pcie_port *port)
 	u32 val;
 	u32 phy_sif_base, phy_ckm_base;
 
-	if (port->port_num >= MTK_PCIE_MAX_PORT)
+	if (port->port_num >= MTK_PCIE_MAX_PORT || port->port_num < 0)
 		return;
 
 	if (port->port_num == 0) {
@@ -1274,7 +1274,7 @@ static struct platform_device *mtk_pcie_find_pdev_by_port(int port)
 {
 	struct platform_device *pdev = NULL;
 
-	if (pdev_list[port] && (port < MTK_PCIE_MAX_PORT) && (port >= 0))
+	if ((port >= 0) && (port < MTK_PCIE_MAX_PORT) && pdev_list[port])
 		pdev = pdev_list[port];
 
 	return pdev;
