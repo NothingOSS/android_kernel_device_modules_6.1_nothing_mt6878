@@ -881,14 +881,15 @@ void mtk_disp_tdshp_dump(struct mtk_ddp_comp *comp)
 	mtk_cust_dump_reg(baddr, 0x664, 0x668, 0x66C, 0x670);
 }
 
-void mtk_disp_tdshp_regdump(void)
+void mtk_tdshp_regdump(struct mtk_ddp_comp *comp)
 {
-	void __iomem *baddr = default_comp->regs;
+	struct mtk_disp_tdshp *tdshp = comp_to_disp_tdshp(comp);
+	void __iomem *baddr = comp->regs;
 	int k;
 
-	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(default_comp),
-			&default_comp->regs_pa);
-	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(default_comp));
+	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp),
+			&comp->regs_pa);
+	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(comp));
 	for (k = 0; k <= 0x67c; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
 			readl(baddr + k),
@@ -896,12 +897,12 @@ void mtk_disp_tdshp_regdump(void)
 			readl(baddr + k + 0x8),
 			readl(baddr + k + 0xc));
 	}
-	DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(default_comp));
-	if (default_comp->mtk_crtc->is_dual_pipe && tdshp1_default_comp) {
-		baddr = tdshp1_default_comp->regs;
-		DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(tdshp1_default_comp),
-				&tdshp1_default_comp->regs_pa);
-		DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(tdshp1_default_comp));
+	DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(comp));
+	if (comp->mtk_crtc->is_dual_pipe && tdshp->companion) {
+		baddr = tdshp->companion->regs;
+		DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(tdshp->companion),
+				&tdshp->companion->regs_pa);
+		DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(tdshp->companion));
 		for (k = 0; k <= 0x67c; k += 16) {
 			DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
 				readl(baddr + k),
@@ -909,7 +910,7 @@ void mtk_disp_tdshp_regdump(void)
 				readl(baddr + k + 0x8),
 				readl(baddr + k + 0xc));
 		}
-		DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(tdshp1_default_comp));
+		DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(tdshp->companion));
 	}
 }
 

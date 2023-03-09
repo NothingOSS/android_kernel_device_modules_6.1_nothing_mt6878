@@ -1407,14 +1407,15 @@ void mtk_c3d_dump(struct mtk_ddp_comp *comp)
 	mtk_cust_dump_reg(baddr, 0x7C, 0x80, 0x84, 0x88);
 }
 
-void mtk_c3d_regdump(void)
+void mtk_c3d_regdump(struct mtk_ddp_comp *comp)
 {
-	void __iomem  *baddr = default_comp->regs;
+	struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
+	void __iomem  *baddr = comp->regs;
 	int k;
 
-	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(default_comp),
-			&default_comp->regs_pa);
-	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(default_comp));
+	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp),
+			&comp->regs_pa);
+	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(comp));
 	for (k = 0; k <= 0x94; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
 			readl(baddr + k),
@@ -1422,12 +1423,12 @@ void mtk_c3d_regdump(void)
 			readl(baddr + k + 0x8),
 			readl(baddr + k + 0xc));
 	}
-	DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(default_comp));
-	if (default_comp->mtk_crtc->is_dual_pipe && c3d1_default_comp) {
-		baddr = c3d1_default_comp->regs;
-		DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(c3d1_default_comp),
-				&c3d1_default_comp->regs_pa);
-		DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(c3d1_default_comp));
+	DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(comp));
+	if (comp->mtk_crtc->is_dual_pipe && c3d_data->companion) {
+		baddr = c3d_data->companion->regs;
+		DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(c3d_data->companion),
+				&c3d_data->companion->regs_pa);
+		DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(c3d_data->companion));
 		for (k = 0; k <= 0x94; k += 16) {
 			DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
 				readl(baddr + k),
@@ -1435,7 +1436,7 @@ void mtk_c3d_regdump(void)
 				readl(baddr + k + 0x8),
 				readl(baddr + k + 0xc));
 		}
-		DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(c3d1_default_comp));
+		DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(c3d_data->companion));
 	}
 }
 

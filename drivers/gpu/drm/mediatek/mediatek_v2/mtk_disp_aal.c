@@ -4347,14 +4347,15 @@ void mtk_aal_dump(struct mtk_ddp_comp *comp)
 	mtk_cust_dump_reg(baddr, 0x24, 0x28, 0x200, 0x10);
 }
 
-void mtk_aal_regdump(void)
+void mtk_aal_regdump(struct mtk_ddp_comp *comp)
 {
-	void __iomem  *baddr = default_comp->regs;
+	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
+	void __iomem  *baddr = comp->regs;
 	int k;
 
-	DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(default_comp),
-			default_comp->regs_pa);
-	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(default_comp));
+	DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(comp),
+			comp->regs_pa);
+	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(comp));
 	for (k = 0; k <= 0x580; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
 			readl(baddr + k),
@@ -4362,12 +4363,12 @@ void mtk_aal_regdump(void)
 			readl(baddr + k + 0x8),
 			readl(baddr + k + 0xc));
 	}
-	DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(default_comp));
-	if (isDualPQ && aal1_default_comp) {
-		baddr = aal1_default_comp->regs;
-		DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(aal1_default_comp),
-				aal1_default_comp->regs_pa);
-		DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(aal1_default_comp));
+	DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(comp));
+	if (isDualPQ && aal_data->companion) {
+		baddr = aal_data->companion->regs;
+		DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(aal_data->companion),
+				aal_data->companion->regs_pa);
+		DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(aal_data->companion));
 		for (k = 0; k <= 0x580; k += 16) {
 			DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
 				readl(baddr + k),
@@ -4375,7 +4376,7 @@ void mtk_aal_regdump(void)
 				readl(baddr + k + 0x8),
 				readl(baddr + k + 0xc));
 		}
-		DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(aal1_default_comp));
+		DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(aal_data->companion));
 	}
 }
 

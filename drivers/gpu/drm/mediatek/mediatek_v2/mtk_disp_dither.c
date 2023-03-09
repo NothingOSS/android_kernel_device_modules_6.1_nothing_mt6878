@@ -997,14 +997,15 @@ void mtk_dither_dump(struct mtk_ddp_comp *comp)
 	mtk_cust_dump_reg(baddr, 0x24, 0x28, -1, -1);
 }
 
-void mtk_dither_regdump(void)
+void mtk_dither_regdump(struct mtk_ddp_comp *comp)
 {
-	void __iomem *baddr = default_comp->regs;
+	struct mtk_disp_dither *dither = comp_to_dither(comp);
+	void __iomem *baddr = comp->regs;
 	int k;
 
-	DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(default_comp),
-			default_comp->regs_pa);
-	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(default_comp));
+	DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(comp),
+			comp->regs_pa);
+	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(comp));
 	for (k = 0; k <= 0x164; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
 			readl(baddr + k),
@@ -1012,12 +1013,12 @@ void mtk_dither_regdump(void)
 			readl(baddr + k + 0x8),
 			readl(baddr + k + 0xc));
 	}
-	DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(default_comp));
-	if (default_comp->mtk_crtc->is_dual_pipe && default_comp1) {
-		baddr = default_comp1->regs;
-		DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(default_comp1),
-				default_comp1->regs_pa);
-		DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(default_comp1));
+	DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(comp));
+	if (comp->mtk_crtc->is_dual_pipe && dither->companion) {
+		baddr = dither->companion->regs;
+		DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(dither->companion),
+				dither->companion->regs_pa);
+		DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(dither->companion));
 		for (k = 0; k <= 0x164; k += 16) {
 			DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
 				readl(baddr + k),
@@ -1025,7 +1026,7 @@ void mtk_dither_regdump(void)
 				readl(baddr + k + 0x8),
 				readl(baddr + k + 0xc));
 		}
-		DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(default_comp1));
+		DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(dither->companion));
 	}
 }
 

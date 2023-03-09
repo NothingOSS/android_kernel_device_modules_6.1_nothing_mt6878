@@ -2045,15 +2045,16 @@ void disp_ccorr_set_bypass(struct drm_crtc *crtc, int bypass)
 	DDPINFO("%s : ret = %d", __func__, ret);
 }
 
-void mtk_ccorr_regdump(void)
+void mtk_ccorr_regdump(struct mtk_ddp_comp *comp)
 {
-	void __iomem *baddr = default_comp->regs;
-	bool isDualPQ = default_comp->mtk_crtc->is_dual_pipe;
+	struct mtk_disp_ccorr *ccorr = comp_to_ccorr(comp);
+	void __iomem *baddr = comp->regs;
+	bool isDualPQ = comp->mtk_crtc->is_dual_pipe;
 	int k;
 
-	DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(default_comp),
-			default_comp->regs_pa);
-	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(default_comp));
+	DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(comp),
+			comp->regs_pa);
+	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(comp));
 	for (k = 0; k <= 0x110; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
 			readl(baddr + k),
@@ -2061,12 +2062,12 @@ void mtk_ccorr_regdump(void)
 			readl(baddr + k + 0x8),
 			readl(baddr + k + 0xc));
 	}
-	DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(default_comp));
-	if ((disp_ccorr_number == 2 || isDualPQ) && ccorr1_default_comp) {
-		baddr = ccorr1_default_comp->regs;
-		DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(ccorr1_default_comp),
-				ccorr1_default_comp->regs_pa);
-		DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(ccorr1_default_comp));
+	DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(comp));
+	if (isDualPQ && ccorr->companion) {
+		baddr = ccorr->companion->regs;
+		DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(ccorr->companion),
+				ccorr->companion->regs_pa);
+		DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(ccorr->companion));
 		for (k = 0; k < 0x110; k += 16) {
 			DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
 				readl(baddr + k),
@@ -2074,34 +2075,6 @@ void mtk_ccorr_regdump(void)
 				readl(baddr + k + 0x8),
 				readl(baddr + k + 0xc));
 		}
-		DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(ccorr1_default_comp));
-	}
-	if (isDualPQ && disp_ccorr_number == 2 && ccorr2_default_comp) {
-		baddr = ccorr2_default_comp->regs;
-		DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(ccorr2_default_comp),
-				ccorr2_default_comp->regs_pa);
-		DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(ccorr2_default_comp));
-		for (k = 0; k < 0x110; k += 16) {
-			DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
-				readl(baddr + k),
-				readl(baddr + k + 0x4),
-				readl(baddr + k + 0x8),
-				readl(baddr + k + 0xc));
-		}
-		DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(ccorr2_default_comp));
-	}
-	if (isDualPQ && disp_ccorr_number == 2 && ccorr3_default_comp) {
-		baddr = ccorr3_default_comp->regs;
-		DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(ccorr3_default_comp),
-				ccorr3_default_comp->regs_pa);
-		DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(ccorr3_default_comp));
-		for (k = 0; k < 0x110; k += 16) {
-			DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
-				readl(baddr + k),
-				readl(baddr + k + 0x4),
-				readl(baddr + k + 0x8),
-				readl(baddr + k + 0xc));
-		}
-		DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(ccorr3_default_comp));
+		DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(ccorr->companion));
 	}
 }

@@ -72,6 +72,7 @@ struct mtk_dmdp_aal {
 	struct mtk_ddp_comp ddp_comp;
 	struct drm_crtc *crtc;
 	const struct mtk_dmdp_aal_data *data;
+	struct mtk_ddp_comp *companion;
 };
 
 struct mtk_disp_mdp_aal_tile_overhead {
@@ -583,14 +584,15 @@ void mtk_dmdp_aal_dump(struct mtk_ddp_comp *comp)
 	mtk_cust_dump_reg(baddr, 0x4ec, 0x4f0, 0x528, 0x52c);
 }
 
-void mtk_dmdp_aal_regdump(void)
+void mtk_dmdp_aal_regdump(struct mtk_ddp_comp *comp)
 {
-	void __iomem *baddr = default_comp->regs;
+	struct mtk_dmdp_aal *dmdp_aal = comp_to_dmdp_aal(comp);
+	void __iomem *baddr = comp->regs;
 	int k;
 
-	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(default_comp),
-			&default_comp->regs_pa);
-	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(default_comp));
+	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp),
+			&comp->regs_pa);
+	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(comp));
 	for (k = 0; k <= 0x600; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
 			readl(baddr + k),
@@ -598,12 +600,12 @@ void mtk_dmdp_aal_regdump(void)
 			readl(baddr + k + 0x8),
 			readl(baddr + k + 0xc));
 	}
-	DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(default_comp));
-	if (default_comp->mtk_crtc->is_dual_pipe && default_comp1) {
-		baddr = default_comp1->regs;
-		DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(default_comp1),
-				&default_comp1->regs_pa);
-		DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(default_comp1));
+	DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(comp));
+	if (comp->mtk_crtc->is_dual_pipe && dmdp_aal->companion) {
+		baddr = dmdp_aal->companion->regs;
+		DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(dmdp_aal->companion),
+				&dmdp_aal->companion->regs_pa);
+		DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(dmdp_aal->companion));
 		for (k = 0; k <= 0x600; k += 16) {
 			DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
 				readl(baddr + k),
@@ -611,7 +613,7 @@ void mtk_dmdp_aal_regdump(void)
 				readl(baddr + k + 0x8),
 				readl(baddr + k + 0xc));
 		}
-		DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(default_comp1));
+		DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(dmdp_aal->companion));
 	}
 }
 
