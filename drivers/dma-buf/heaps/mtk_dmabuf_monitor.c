@@ -227,7 +227,7 @@ void heap_monitor_init(void)
 		pr_info("%s:%d find heap name:%s, tag:%d\n", __func__, __LINE__,
 			dump_heap_list[i].heap_name, dump_heap_list[i].heap_tag);
 		heap_priv = dma_heap_get_drvdata(dump_heap_list[i].heap);
-		pool = heap_priv->page_pools;
+		pool = heap_priv ? heap_priv->page_pools : NULL;
 		if (!pool || heap_priv->uncached)
 			continue;
 
@@ -310,15 +310,15 @@ ssize_t heap_monitor_proc_write(struct file *file, const char *buf,
 				if (monitor_helper[i].cmd_type == MONITOR_CMD_REFILL_HIGH &&
 					refill_order_callback &&
 					sscanf(cmdline, "refill_high_water8:%u\n", &vlu) == 1)
-					refill_order_callback(vlu, 0);
+					refill_order_callback(0, vlu);
 				else if (monitor_helper[i].cmd_type == MONITOR_CMD_REFILL_HIGH &&
 					 refill_order_callback &&
 					 sscanf(cmdline, "refill_high_water4:%u\n", &vlu) == 1)
-					refill_order_callback(vlu, 1);
+					refill_order_callback(1, vlu);
 				else if (monitor_helper[i].cmd_type == MONITOR_CMD_REFILL_HIGH &&
 					 refill_order_callback &&
 					 sscanf(cmdline, "refill_high_water0:%u\n", &vlu) == 1)
-					refill_order_callback(vlu, 2);
+					refill_order_callback(2, vlu);
 				else if (monitor_helper[i].cmd_type == MONITOR_CMD_POOL_TIME &&
 					 sscanf(cmdline, "log_pool_interval:%u\n", &vlu) == 1)
 					monitor_globals.log_pool_interval = vlu;
@@ -777,7 +777,7 @@ void dmabuf_log_pool_size(struct dma_heap *heap)
 		return;
 
 	heap_priv = dma_heap_get_drvdata(heap);
-	pools = heap_priv->page_pools;
+	pools = heap_priv ? heap_priv->page_pools : NULL;
 	if (!pools)
 		return;
 

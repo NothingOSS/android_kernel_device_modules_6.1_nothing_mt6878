@@ -42,7 +42,7 @@ static unsigned long total_high_wmark_pages;
 
 int mtk_refill_order(unsigned int order, int value)
 {
-	if (order > NUM_ORDERS)
+	if (order >= NUM_ORDERS)
 		return -1;
 
 	if (value >= 0) {
@@ -178,9 +178,6 @@ unsigned long total_high_wmark_pages_get(void)
 
 		for (i = 0; i < MAX_NR_ZONES; i++) {
 			zone = &contig_page_data.node_zones[i];
-			if (!zone)
-				break;
-
 			total += high_wmark_pages(zone);
 		}
 		total_high_wmark_pages = total;

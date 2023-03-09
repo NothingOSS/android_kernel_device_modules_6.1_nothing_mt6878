@@ -630,7 +630,7 @@ static void system_heap_buf_free(struct mtk_deferred_freelist_item *item,
 
 	buffer = container_of(item, struct system_heap_buffer, deferred_free);
 	heap_priv = dma_heap_get_drvdata(buffer->heap);
-	page_pools = heap_priv->page_pools;
+	page_pools = heap_priv ? heap_priv->page_pools : NULL;
 
 	/* Zero the buffer pages before adding back to the pool */
 	if (reason == MTK_DF_NORMAL)
@@ -734,7 +734,7 @@ static void system_heap_dma_buf_release(struct dma_buf *dmabuf)
 	dmabuf_release_check(dmabuf);
 
 	heap_priv = dma_heap_get_drvdata(buffer->heap);
-	page_pools = heap_priv->page_pools;
+	page_pools = heap_priv ? heap_priv->page_pools : NULL;
 
 	/* Zero the buffer pages before adding back to the pool */
 	system_heap_zero_buffer(buffer);
@@ -984,7 +984,7 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 	struct mtk_heap_priv_info *heap_priv = dma_heap_get_drvdata(heap);
 	u64 tm1, tm2;
 
-	page_pools = heap_priv->page_pools;
+	page_pools = heap_priv ? heap_priv->page_pools : NULL;
 	if (len / PAGE_SIZE > totalram_pages()) {
 		pr_info("%s error: len %ld is more than %ld\n",
 			__func__, len, totalram_pages() * PAGE_SIZE);
@@ -1108,7 +1108,7 @@ static struct dma_buf *system_heap_allocate(struct dma_heap *heap,
 	struct mtk_heap_priv_info *heap_priv = dma_heap_get_drvdata(heap);
 
 	return system_heap_do_allocate(heap, len, fd_flags, heap_flags,
-				       heap_priv->uncached,
+				       heap_priv ? heap_priv->uncached : false,
 				       &system_heap_buf_ops);
 }
 
@@ -1120,7 +1120,7 @@ static struct dma_buf *mtk_mm_heap_allocate(struct dma_heap *heap,
 	struct mtk_heap_priv_info *heap_priv = dma_heap_get_drvdata(heap);
 
 	return system_heap_do_allocate(heap, len, fd_flags, heap_flags,
-				       heap_priv->uncached,
+				       heap_priv ? heap_priv->uncached : false,
 				       &mtk_mm_heap_buf_ops);
 }
 

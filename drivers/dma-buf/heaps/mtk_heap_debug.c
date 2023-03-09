@@ -1388,7 +1388,7 @@ static void dmabuf_rbtree_dump_egl(struct seq_file *s, int pid)
 
 		map_cnt = 1;
 		map = kzalloc(sizeof(*map), DMA_HEAP_DUMP_ALLOC_GFP);
-		if (IS_ERR_OR_NULL(map)) {
+		if (!map) {
 			spin_unlock_irqrestore(&egl_cache_lock, flags);
 			dmabuf_dump(s, "[%s]err: no memory map\n", __func__);
 			return;
@@ -1506,7 +1506,7 @@ void dma_heap_default_show(struct dma_heap *heap,
 		    get_dma_heap_buffer_total(heap) * 4 / PAGE_SIZE);
 
 	/* pool data show */
-	heap_priv = dma_heap_get_drvdata(heap);
+	heap_priv = heap ? dma_heap_get_drvdata(heap) : NULL;
 	if (heap_priv && !heap_priv->uncached) {
 		long pool_size = mtk_dmabuf_page_pool_size(heap);
 
@@ -2063,25 +2063,21 @@ static int __init mtk_dma_heap_debug(void)
 		IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 
 	Hang_Info_In_Dma = kzalloc(MAX_HANG_INFO_SIZE, GFP_KERNEL);
-	if (IS_ERR_OR_NULL(Hang_Info_In_Dma)) {
+	if (!Hang_Info_In_Dma) {
 		pr_info("%s Hang_Info_In_Dma kmalloc fail\n", __func__);
-		Hang_Info_In_Dma = NULL;
-		return 0;
+	} else {
+		mrdump_mini_add_extra_file((unsigned long)Hang_Info_In_Dma,
+					   __pa_nodebug(Hang_Info_In_Dma),
+					   MaxHangInfoSize, "DMA_HEAP");
+
+		hang_dump_proc = hang_dmabuf_dump;
+		register_hang_callback(mtk_dmabuf_dump_for_hang);
 	}
-
-	mrdump_mini_add_extra_file((unsigned long)Hang_Info_In_Dma,
-				   __pa_nodebug(Hang_Info_In_Dma),
-				   MaxHangInfoSize, "DMA_HEAP");
-
-	hang_dump_proc = hang_dmabuf_dump;
-	register_hang_callback(mtk_dmabuf_dump_for_hang);
 #endif
 
 	egl_pid_map = kzalloc(sizeof(*egl_pid_map) * TOTAL_PID_CNT, GFP_KERNEL);
-	if (IS_ERR_OR_NULL(egl_pid_map)) {
+	if (!egl_pid_map)
 		pr_info("%s create egl_pid_map fail\n", __func__);
-		egl_pid_map = NULL;
-	}
 
 	return 0;
 }
@@ -2100,8 +2096,11 @@ static void __exit mtk_dma_heap_debug_exit(void)
 		IS_ENABLED(CONFIG_MTK_HANG_DETECT_DB) && \
 		IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 
-	if (Hang_Info_In_Dma != NULL)
+	if (Hang_Info_In_Dma) {
+		hang_dump_proc = NULL;
 		unregister_hang_callback(mtk_dmabuf_dump_for_hang);
+		kfree(Hang_Info_In_Dma);
+	}
 
 #endif
 

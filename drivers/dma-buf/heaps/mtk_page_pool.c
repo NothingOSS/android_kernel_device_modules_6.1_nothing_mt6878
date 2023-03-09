@@ -126,7 +126,7 @@ long mtk_dmabuf_page_pool_size(struct dma_heap *heap)
 	long num_pages = 0, i;
 
 	heap_priv = dma_heap_get_drvdata(heap);
-	pools = heap_priv->page_pools;
+	pools = heap_priv ? heap_priv->page_pools : NULL;
 	if (!pools)
 		return 0;
 
