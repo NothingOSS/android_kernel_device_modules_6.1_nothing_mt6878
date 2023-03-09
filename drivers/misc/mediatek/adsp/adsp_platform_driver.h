@@ -54,7 +54,7 @@ struct adsp_priv {
 	u32 id;
 	const char *name;
 	int state;
-	unsigned int feature_set;
+	u64 feature_set;
 
 	/* address & size */
 	void __iomem *itcm;

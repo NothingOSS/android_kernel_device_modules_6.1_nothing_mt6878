@@ -12,7 +12,7 @@ enum {
 
 struct adsp_feature_control {
 	int total;
-	unsigned int feature_set; /* from dts */
+	u64 feature_set; /* from dts */
 	struct mutex lock;
 	struct workqueue_struct *wq;
 	struct delayed_work suspend_work;
@@ -30,7 +30,7 @@ bool flush_suspend_work(u32 cid);
 int _adsp_register_feature(u32 cid, u32 fid, u32 opt);
 int _adsp_deregister_feature(u32 cid, u32 fid, u32 opt);
 
-int init_adsp_feature_control(u32 cid, u32 feature_set, int delay_ms,
+int init_adsp_feature_control(u32 cid, u64 feature_set, int delay_ms,
 			struct workqueue_struct *wq,
 			int (*_suspend)(void),
 			int (*_resume)(void));

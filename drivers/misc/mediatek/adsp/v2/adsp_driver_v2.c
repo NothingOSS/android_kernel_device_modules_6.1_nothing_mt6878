@@ -255,7 +255,7 @@ static int adsp_core_drv_probe(struct platform_device *pdev)
 		return -ENODEV;
 	pdata->sysram = ioremap_wc(pdata->sysram_phys, pdata->sysram_size);
 
-	of_property_read_u32(dev->of_node, "feature-control-bits",
+	of_property_read_u64(dev->of_node, "feature-control-bits",
 			     &pdata->feature_set);
 
 	/* mailbox channel parsing */

@@ -42,7 +42,7 @@ static inline ssize_t dev_dump_show(struct device *dev,
 			pdata->irq[0].seq, pdata->irq[1].seq,
 			pdata->irq[2].seq);
 	n +=  scnprintf(buf + n, PAGE_SIZE - n,
-			"status = %d, feature_set = %X\n",
+			"status = %d, feature_set = %llX\n",
 			pdata->state, pdata->feature_set);
 
 	if (pdata->send_mbox)

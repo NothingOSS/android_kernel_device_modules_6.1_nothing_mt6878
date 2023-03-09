@@ -89,7 +89,7 @@ ssize_t adsp_dump_feature_state(u32 cid, char *buffer, int size)
 			continue;
 		n += scnprintf(buffer + n, size - n, "%-20s %-8d %-3d\n",
 			unit->name,
-			(ctrl->feature_set >> i) & 0x1,
+			(u32)((ctrl->feature_set >> i) & 0x1),
 			unit->counter[cid]);
 	}
 
@@ -286,7 +286,7 @@ bool flush_suspend_work(u32 cid)
 	return false;
 }
 
-int init_adsp_feature_control(u32 cid, u32 feature_set, int delay_ms,
+int init_adsp_feature_control(u32 cid, u64 feature_set, int delay_ms,
 			struct workqueue_struct *wq,
 			int (*_suspend)(void),
 			int (*_resume)(void))
