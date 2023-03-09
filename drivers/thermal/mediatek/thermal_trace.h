@@ -12,6 +12,7 @@
 #if IS_ENABLED(CONFIG_MTK_MD_THERMAL)
 #include "md_cooling.h"
 #endif
+#include <linux/thermal.h>
 #include "thermal_interface.h"
 #include "thermal_trace_local.h"
 
