@@ -316,7 +316,7 @@ static int system_heap_zero_buffer(struct mtk_sec_heap_buffer *buffer)
 
 	for_each_sgtable_page(sgt, &piter, 0) {
 		p = sg_page_iter_page(&piter);
-		vaddr = kmap_local_page(p);
+		vaddr = kmap_atomic(p);
 		memset(vaddr, 0, PAGE_SIZE);
 		kunmap_atomic(vaddr);
 	}
