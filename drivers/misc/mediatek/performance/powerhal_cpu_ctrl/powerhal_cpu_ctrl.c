@@ -305,8 +305,8 @@ static ssize_t perfmgr_perfserv_freq_proc_show(struct file *file,
 		char __user *ubuf, size_t count, loff_t *ppos)
 {
 	int i, n = 0;
-	char buffer[512];
-	char _buf[64];
+	char buffer[512] = "";
+	char _buf[64] = "";
 
 	if (*ppos != 0)
 		goto out;
