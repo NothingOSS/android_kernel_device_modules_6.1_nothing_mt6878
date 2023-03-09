@@ -95,17 +95,18 @@ TRACE_EVENT(sched_find_cpu_in_irq,
 
 TRACE_EVENT(sched_select_task_rq,
 
-	TP_PROTO(struct task_struct *tsk,
+	TP_PROTO(struct task_struct *tsk, bool in_irq,
 		int policy, int prev_cpu, int target_cpu,
 		int task_util, int task_util_est, int boost, bool prefer,
 		int sync_flag, struct cpumask *effective_softmask),
 
-	TP_ARGS(tsk, policy, prev_cpu, target_cpu, task_util, task_util_est, boost,
+	TP_ARGS(tsk, in_irq, policy, prev_cpu, target_cpu, task_util, task_util_est, boost,
 		prefer, sync_flag, effective_softmask),
 
 	TP_STRUCT__entry(
 		__field(pid_t, pid)
 		__field(int, compat_thread)
+		__field(bool, in_irq)
 		__field(int, policy)
 		__field(int, prev_cpu)
 		__field(int, target_cpu)
@@ -123,6 +124,7 @@ TRACE_EVENT(sched_select_task_rq,
 	TP_fast_assign(
 		__entry->pid        = tsk->pid;
 		__entry->compat_thread = is_compat_thread(task_thread_info(tsk));
+		__entry->in_irq     = in_irq;
 		__entry->policy     = policy;
 		__entry->prev_cpu   = prev_cpu;
 		__entry->target_cpu = target_cpu;
@@ -138,9 +140,10 @@ TRACE_EVENT(sched_select_task_rq,
 		),
 
 	TP_printk(
-		"pid=%4d 32-bit=%d policy=0x%08x pre-cpu=%d target=%d util=%d util_est=%d uclamp=%d mask=0x%lx eff_mask=0x%lx latency_sensitive=%d sync=%d cpuctl=%d cpuset=%d",
+		"pid=%4d 32-bit=%d in_irq=%d policy=0x%08x pre-cpu=%d target=%d util=%d util_est=%d uclamp=%d mask=0x%lx eff_mask=0x%lx latency_sensitive=%d sync=%d cpuctl=%d cpuset=%d",
 		__entry->pid,
 		__entry->compat_thread,
+		__entry->in_irq,
 		__entry->policy,
 		__entry->prev_cpu,
 		__entry->target_cpu,
@@ -367,14 +370,15 @@ TRACE_EVENT(sched_energy_delta,
 
 TRACE_EVENT(sched_find_energy_efficient_cpu,
 
-	TP_PROTO(unsigned long best_delta,
+	TP_PROTO(bool in_irq, unsigned long best_delta,
 		int best_energy_cpu, int best_idle_cpu, int idle_max_spare_cap_cpu,
 		int sys_max_spare_cap_cpu),
 
-	TP_ARGS(best_delta, best_energy_cpu, best_idle_cpu,
+	TP_ARGS(in_irq, best_delta, best_energy_cpu, best_idle_cpu,
 		idle_max_spare_cap_cpu, sys_max_spare_cap_cpu),
 
 	TP_STRUCT__entry(
+		__field(bool, in_irq)
 		__field(unsigned long, best_delta)
 		__field(int, best_energy_cpu)
 		__field(int, best_idle_cpu)
@@ -383,6 +387,7 @@ TRACE_EVENT(sched_find_energy_efficient_cpu,
 		),
 
 	TP_fast_assign(
+		__entry->in_irq          = in_irq;
 		__entry->best_delta      = best_delta;
 		__entry->best_energy_cpu = best_energy_cpu;
 		__entry->best_idle_cpu   = best_idle_cpu;
@@ -390,7 +395,8 @@ TRACE_EVENT(sched_find_energy_efficient_cpu,
 		__entry->sys_max_spare_cap_cpu = sys_max_spare_cap_cpu;
 		),
 
-	TP_printk("best_delta=%lu best_energy_cpu=%d best_idle_cpu=%d idle_max_spare_cap_cpu=%d sys_max_spare_cpu=%d",
+	TP_printk("in_irq=%d best_delta=%lu best_energy_cpu=%d best_idle_cpu=%d idle_max_spare_cap_cpu=%d sys_max_spare_cpu=%d",
+		__entry->in_irq,
 		__entry->best_delta,
 		__entry->best_energy_cpu,
 		__entry->best_idle_cpu,

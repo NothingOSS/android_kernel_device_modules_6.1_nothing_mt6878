@@ -183,7 +183,7 @@ static void update_thermal_headroom(int this_cpu)
 	trace_sched_next_update_thermal_headroom(jiffies, next_update_thermal);
 }
 
-int sort_thermal_headroom(struct cpumask *cpus, int *cpu_order)
+int sort_thermal_headroom(struct cpumask *cpus, int *cpu_order, bool in_irq)
 {
 	int i, j, cpu, cnt = 0;
 	int headroom_order[NR_CPUS] ____cacheline_aligned;
@@ -193,6 +193,12 @@ int sort_thermal_headroom(struct cpumask *cpus, int *cpu_order)
 		*cpu_order = cpu;
 
 		return 1;
+	}
+
+	if (in_irq) {
+		cpu_order[0] = cpumask_first(cpus);
+
+		return cpumask_weight(cpus);
 	}
 
 	spin_lock(&thermal_headroom_lock);

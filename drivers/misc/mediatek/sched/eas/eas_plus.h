@@ -105,7 +105,7 @@ extern unsigned long mtk_em_cpu_energy(int gear_id, struct em_perf_domain *pd,
 		unsigned long allowed_cpu_cap, struct energy_env *eenv);
 extern unsigned int new_idle_balance_interval_ns;
 #if IS_ENABLED(CONFIG_MTK_THERMAL_AWARE_SCHEDULING)
-extern int sort_thermal_headroom(struct cpumask *cpus, int *cpu_order);
+extern int sort_thermal_headroom(struct cpumask *cpus, int *cpu_order, bool in_irq);
 extern unsigned int thermal_headroom_interval_tick;
 #endif
 
