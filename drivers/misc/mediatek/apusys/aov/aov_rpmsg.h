@@ -7,14 +7,13 @@
 #define __AOV_RPMSG_H__
 
 #include <linux/types.h>
-#include "apusys_core.h"
 #include "npu_scp_ipi.h"
 
 #define MDW_SCP_IPI_BUSY (16)
 
 int scp_mdw_handler(struct npu_scp_ipi_param *recv_msg);
 
-int aov_rpmsg_init(struct apusys_core_info *info);
+int aov_rpmsg_init(void);
 
 void aov_rpmsg_exit(void);
 

@@ -17,10 +17,10 @@
 #include <linux/kthread.h>
 
 #include "scp.h"
-#include "apusys_core.h"
-#include "aov_recovery.h"
 #include "apu_ipi.h"
 #include "apu_hw_sema.h"
+
+#include "aov_recovery.h"
 
 #define RECOVERY_TIMEOUT_MS (100)
 
@@ -305,7 +305,7 @@ static struct rpmsg_driver aov_recovery_driver = {
 	.remove = aov_recovery_remove,
 };
 
-int aov_recovery_init(struct apusys_core_info *info)
+int aov_recovery_init(void)
 {
 	int ret = 0;
 

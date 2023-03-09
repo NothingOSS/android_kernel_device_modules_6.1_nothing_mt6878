@@ -292,14 +292,18 @@ apusys-objs += aps/aps_sysfs.o
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/hw_logger/
 apusys-objs += hw_logger/hw_logger.o
 
-# aov
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include
-apusys-objs += aov/aov_init.o
-apusys-objs += aov/aov_rpmsg.o
-apusys-objs += aov/aov_recovery.o
-
 # sapu
 obj-$(CONFIG_MTK_APUSYS_SUPPORT) += sapu/
 
 # hw_sema
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/power/3.0/inc/
+
+# aov
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc
+AOV_SRC := aov/aov_init.o
+AOV_SRC += aov/aov_rpmsg.o
+AOV_SRC += aov/aov_recovery.o
+
+obj-$(CONFIG_MTK_APUSYS_SUPPORT) += apu_aov.o
+apu_aov-objs = $(AOV_SRC)

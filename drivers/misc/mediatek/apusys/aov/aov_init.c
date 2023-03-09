@@ -12,10 +12,8 @@
 #include <linux/miscdevice.h>
 #include <linux/platform_device.h>
 #include <linux/debugfs.h>
-#include <apusys_core.h>
-#include <apusys_device.h>
-#include <scp.h>
 
+#include <scp.h>
 #include "slbc_ops.h"
 
 #include "npu_scp_ipi.h"
@@ -553,20 +551,17 @@ static struct platform_driver apusys_aov_driver = {
 	},
 };
 
-int aov_init(struct apusys_core_info *info)
+static int __init aov_init(void)
 {
-	int ret;
-
-	if (info)
-		apusys_dbg_root = info->dbg_root;
+	int ret = 0;
 
 	ret = platform_driver_register(&apusys_aov_driver);
 	if (ret)
 		pr_info("%s driver register fail\n", __func__);
 
-	aov_recovery_init(info);
+	aov_recovery_init();
 
-	aov_rpmsg_init(info);
+	aov_rpmsg_init();
 
 	return ret;
 }
@@ -579,3 +574,7 @@ void aov_exit(void)
 
 	platform_driver_unregister(&apusys_aov_driver);
 }
+
+module_init(aov_init);
+module_exit(aov_exit);
+MODULE_LICENSE("GPL");

@@ -7,7 +7,6 @@
 #define __AOV_RECOVERY_H__
 
 #include <linux/types.h>
-#include "apusys_core.h"
 #include "npu_scp_ipi.h"
 
 enum aov_apu_recovery_status {
@@ -18,7 +17,7 @@ enum aov_apu_recovery_status {
 
 int aov_recovery_handler(struct npu_scp_ipi_param *recv_msg);
 
-int aov_recovery_init(struct apusys_core_info *info);
+int aov_recovery_init(void);
 
 enum aov_apu_recovery_status get_aov_recovery_state(void);
 

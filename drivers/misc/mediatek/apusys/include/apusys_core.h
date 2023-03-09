@@ -42,8 +42,6 @@ int hw_logger_init(struct apusys_core_info *info);
 void hw_logger_exit(void);
 int apu_rproc_init(struct apusys_core_info *info);
 void apu_rproc_exit(void);
-int aov_init(struct apusys_core_info *info);
-void aov_exit(void);
 
 /*
  * init function at other modulses
@@ -71,7 +69,6 @@ static int (*apusys_init_func[])(struct apusys_core_info *) = {
 #endif
 	mvpu_init,
 	apu_rproc_init,
-	aov_init,
 };
 
 /*
@@ -79,7 +76,6 @@ static int (*apusys_init_func[])(struct apusys_core_info *) = {
  * call exit function in order at apusys.ko exit stage
  */
 static void (*apusys_exit_func[])(void) = {
-	aov_exit,
 	apu_rproc_exit,
 #if IS_ENABLED(CONFIG_MTK_APUSYS_DEBUG)
 	mvpu_exit,

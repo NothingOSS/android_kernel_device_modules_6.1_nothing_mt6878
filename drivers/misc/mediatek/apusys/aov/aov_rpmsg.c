@@ -16,11 +16,10 @@
 #include <linux/completion.h>
 #include <linux/kthread.h>
 
-#include "apusys_core.h"
-#include "aov_rpmsg.h"
-#include "apu_ipi.h"
 #include "mdw_rv_msg.h"
+#include "apu_ipi.h"
 
+#include "aov_rpmsg.h"
 #include "aov_recovery.h"
 
 #define MDW_TIMEOUT_MS (100)
@@ -289,7 +288,7 @@ static struct rpmsg_driver aov_rpmsg_driver = {
 	.remove = aov_rpmsg_remove,
 };
 
-int aov_rpmsg_init(struct apusys_core_info *info)
+int aov_rpmsg_init(void)
 {
 	int ret = 0;
 
