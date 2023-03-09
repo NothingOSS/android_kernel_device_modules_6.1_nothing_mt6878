@@ -204,7 +204,7 @@ static int emiisu_probe(struct platform_device *pdev)
 		isu->con_addr = NULL;
 
 	ret = of_property_read_u32(emiisu_node,
-		"ctrl_intf", &(isu->ctrl_intf));
+		"ctrl-intf", &(isu->ctrl_intf));
 	if (ret) {
 		dev_err(&pdev->dev, "No ctrl_intf\n");
 		return -EINVAL;
