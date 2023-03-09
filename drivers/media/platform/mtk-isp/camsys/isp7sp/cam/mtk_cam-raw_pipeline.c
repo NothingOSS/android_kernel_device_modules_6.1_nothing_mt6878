@@ -488,7 +488,7 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 
 	if (ret) {
 		dev_info(cam->dev, "failed to find valid resource\n");
-		ret = -EINVAL;
+		ret = -EBUSY;
 		goto EXIT;
 	}
 
