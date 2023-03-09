@@ -238,7 +238,7 @@ static void sound_usb_connect(struct usb_interface *intf, struct snd_usb_audio *
 	uodev->opened = false;
 	uodev->adsp_exception = false;
 
-	node_xhci_host = of_parse_phandle(uodev->dev->of_node, "xhci_host", 0);
+	node_xhci_host = of_parse_phandle(uodev->dev->of_node, "xhci-host", 0);
 	if (node_xhci_host) {
 		pdev_xhci_host = of_find_device_by_node(node_xhci_host);
 		if (!pdev_xhci_host) {
@@ -2171,7 +2171,7 @@ static int usb_offload_probe(struct platform_device *pdev)
 	USB_OFFLOAD_INFO("default_use_sram:%d, current_mem_mode:%d, mem_id:%d\n",
 		uodev->default_use_sram, uodev->current_mem_mode, uodev->mem_id);
 
-	node_xhci_host = of_parse_phandle(uodev->dev->of_node, "xhci_host", 0);
+	node_xhci_host = of_parse_phandle(uodev->dev->of_node, "xhci-host", 0);
 	if (node_xhci_host) {
 		ret = mtk_init_usb_offload_sharemem(ADSP_XHCI_MEM_ID, USB_OFFLOAD_MEM_DRAM_ID);
 		if (ret == -EPROBE_DEFER)
