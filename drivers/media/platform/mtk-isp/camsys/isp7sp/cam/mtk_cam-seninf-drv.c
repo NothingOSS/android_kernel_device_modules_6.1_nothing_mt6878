@@ -1106,8 +1106,8 @@ static int csi_efuse_value_verify(struct seninf_ctx *ctx)
 	checksum += ((csi_efuse_val >> 12) & 0x1f);
 	checksum += ((csi_efuse_val >> 7) & 0x1f);
 	checksum += csi_port;
-	dev_info(ctx->dev, "Efuse Data: 0x%08x, csi_port: %d\n",
-		ctx->m_csi_efuse, csi_port);
+	dev_info(ctx->dev, "Efuse Data: 0x%08x, csi_port: %d, checksum: 0x%08x\n",
+		ctx->m_csi_efuse, csi_port, checksum);
 
 	if (checksum == csi_port) {
 		dev_info(ctx->dev, "All value == 0 skip verify\n");
@@ -1120,6 +1120,9 @@ static int csi_efuse_value_verify(struct seninf_ctx *ctx)
 		dev_info(ctx->dev, "Efuse verify fail VerifyBit: 0x%08x, ChecksumToVerify: 0x%08x\n",
 			csi_verify_bit, checksum2verify);
 		return -1;
+	} else {
+		dev_info(ctx->dev, "Efuse verify pass VerifyBit: 0x%08x, ChecksumToVerify: 0x%08x\n",
+			csi_verify_bit, checksum2verify);
 	}
 	return 0;
 }
@@ -2680,8 +2683,11 @@ static int seninf_probe(struct platform_device *pdev)
 	}
 	ctx->m_csi_efuse = csi_temp;
 #endif  /*CSI_EFUSE_VERIFY_GORDAN_TABLE_EN*/
-	if (csi_efuse_value_verify(ctx) < 0)
+	if (csi_efuse_value_verify(ctx) < 0) {
 		dev_info(dev, "Failed to verify efuse data\n");
+		aee_kernel_warning_api(__FILE__, __LINE__, DB_OPT_DEFAULT,
+		"seninf", "Failed to verify efuse data");
+	}
 #endif  /*CSI_EFUSE_VERIFY_EN*/
 #endif  /*CSI_EFUSE_SET*/
 
