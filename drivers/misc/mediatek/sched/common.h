@@ -14,7 +14,6 @@
 
 /* Task Vendor Data Index*/
 #define T_SBB_FLG 5
-#define T_TASK_IDLE_PREFER_FLAG 7
 
 struct vip_task_struct {
 	struct list_head		vip_list;
