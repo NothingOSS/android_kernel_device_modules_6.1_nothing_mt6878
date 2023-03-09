@@ -78,6 +78,7 @@ f include/trace/hooks/traps.h
 f include/trace/hooks/ufshcd.h
 f init/main.c
 f kernel/audit.c
+f kernel/context_tracking.c
 f kernel/fork.c
 f kernel/irq_work.c
 f kernel/printk/printk.c
