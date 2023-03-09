@@ -1532,7 +1532,7 @@ static inline bool __init is_ulposc_cali_pass(unsigned int cur,
 
 static unsigned int __init _get_freq_by_fmeter(void)
 {
-	unsigned int result;
+	unsigned int result = 0;
 	unsigned int i = 0;
 	unsigned int wait_for_measure = 0;
 	int is_fmeter_timeout = 0;
