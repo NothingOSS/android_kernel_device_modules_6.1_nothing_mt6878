@@ -616,11 +616,16 @@ int vcu_enc_set_param(struct venc_vcu_inst *vcu,
 		out.data_item = 1;
 		out.data[0] = enc_param->lowlatencywfd;
 		break;
+	case VENC_SET_PARAM_SLICE_CNT:
+		out.data_item = 1;
+		out.data[0] = enc_param->slice_count;
+		break;
 	case VENC_SET_PARAM_TEMPORAL_LAYER_CNT:
 		out.data_item = 2;
 		out.data[0] = enc_param->temporal_layer_pcount;
 		out.data[1] = enc_param->temporal_layer_bcount;
 		break;
+
 	default:
 		mtk_vcodec_err(vcu, "id %d not supported", id);
 		return -EINVAL;

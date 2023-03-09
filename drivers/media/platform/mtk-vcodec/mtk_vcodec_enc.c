@@ -695,6 +695,13 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 		p->lowlatencywfd = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_LOW_LATENCY_WFD;
 		break;
+	case V4L2_CID_MPEG_MTK_ENCODE_SLICE_CNT:
+		mtk_v4l2_debug(2,
+			"V4L2_CID_MPEG_MTK_ENCODE_SLICE_CNT: %d",
+			ctrl->val);
+		p->slice_count = ctrl->val;
+		ctx->param_change |= MTK_ENCODE_PARAM_SLICE_CNT;
+		break;
 	default:
 		mtk_v4l2_debug(4, "ctrl-id=%d not support!", ctrl->id);
 		ret = -EINVAL;
@@ -1292,6 +1299,7 @@ static void mtk_venc_set_param(struct mtk_vcodec_ctx *ctx,
 	param->highquality = enc_params->highquality;
 	param->dummynal = enc_params->dummynal;
 	param->lowlatencywfd = enc_params->lowlatencywfd;
+	param->slice_count = enc_params->slice_count;
 
 	param->max_qp = enc_params->max_qp;
 	param->min_qp = enc_params->min_qp;
@@ -2890,6 +2898,18 @@ static int mtk_venc_param_change(struct mtk_vcodec_ctx *ctx)
 	}
 
 	if (!ret &&
+	mtk_buf->param_change & MTK_ENCODE_PARAM_SLICE_CNT) {
+		enc_prm.slice_count = mtk_buf->enc_params.slice_count;
+		mtk_v4l2_debug(1, "[%d] idx=%d, slice_count=%d",
+				ctx->id,
+				mtk_buf->vb.vb2_buf.index,
+				mtk_buf->enc_params.slice_count);
+		ret |= venc_if_set_param(ctx,
+					VENC_SET_PARAM_SLICE_CNT,
+					&enc_prm);
+	}
+
+	if (!ret &&
 	mtk_buf->param_change & MTK_ENCODE_PARAM_QP_CTRL_MODE) {
 		enc_prm.qp_control_mode = mtk_buf->enc_params.qp_control_mode;
 		mtk_v4l2_err("[%d] idx=%d, qp_control_mode=%d",
@@ -3850,6 +3870,17 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.dims[0] = sizeof(struct venc_resolution_change)/sizeof(u32);
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_SLICE_CNT;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
+	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
+	cfg.name = "Video encode set slice count";
+	cfg.min = 1;
+	cfg.max = 8;
+	cfg.step = 1;
+	cfg.def = 1;
+	cfg.ops = ops;
+	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 	return 0;
 }
 

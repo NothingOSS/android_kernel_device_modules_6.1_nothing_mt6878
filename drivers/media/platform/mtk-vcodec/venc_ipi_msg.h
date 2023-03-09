@@ -125,6 +125,7 @@ enum venc_set_param_type {
 	VENC_SET_PARAM_VCU_VPUD_LOG,
 	VENC_SET_PARAM_ENABLE_LOW_LATENCY_WFD,
 	VENC_SET_PARAM_MMDVFS,
+	VENC_SET_PARAM_SLICE_CNT,
 };
 
 #define VENC_MSG_AP_SEND_PREFIX	\
@@ -465,6 +466,7 @@ struct venc_vcu_config {
 	__u32 slbc_addr;
 	__u32 wpp_mode;
 	__u32 low_latency_mode;
+	__u32 slice_count;
 	__u32 hier_ref_layer;
 	__u32 hier_ref_type;
 	__u32 temporal_layer_pcount;

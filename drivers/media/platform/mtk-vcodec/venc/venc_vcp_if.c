@@ -1661,6 +1661,10 @@ int vcp_enc_set_param(struct venc_inst *inst,
 		out.data_item = 1;
 		out.data[0] = enc_param->lowlatencywfd;
 		break;
+	case VENC_SET_PARAM_SLICE_CNT:
+		out.data_item = 1;
+		out.data[0] = enc_param->slice_count;
+		break;
 	case VENC_SET_PARAM_TEMPORAL_LAYER_CNT:
 		out.data_item = 2;
 		out.data[0] = enc_param->temporal_layer_pcount;
@@ -1740,6 +1744,7 @@ static int venc_vcp_set_param(unsigned long handle,
 		inst->vsi->config.frame_level_qp = enc_prm->framelvl_qp;
 		inst->vsi->config.dummynal = enc_prm->dummynal;
 		inst->vsi->config.lowlatencywfd = enc_prm->lowlatencywfd;
+		inst->vsi->config.slice_count = enc_prm->slice_count;
 
 		inst->vsi->config.hier_ref_layer = enc_prm->hier_ref_layer;
 		inst->vsi->config.hier_ref_type = enc_prm->hier_ref_type;

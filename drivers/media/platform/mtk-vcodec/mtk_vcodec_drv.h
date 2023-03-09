@@ -162,7 +162,8 @@ enum mtk_encode_param {
 	MTK_ENCODE_PARAM_QP_CTRL_MODE = (1 << 23),
 	MTK_ENCODE_PARAM_DUMMY_NAL = (1 << 24),
 	MTK_ENCODE_PARAM_FRAME_LEVEL_QP = (1 << 25),
-	MTK_ENCODE_PARAM_LOW_LATENCY_WFD = (1 << 26)
+	MTK_ENCODE_PARAM_LOW_LATENCY_WFD = (1 << 26),
+	MTK_ENCODE_PARAM_SLICE_CNT = (1 << 27)
 };
 
 /*
@@ -379,6 +380,7 @@ struct mtk_enc_params {
 	unsigned int	qp_control_mode;
 	unsigned int	dummynal;
 	unsigned int	lowlatencywfd;
+	unsigned int	slice_count;
 	int             priority;
 	unsigned int    wpp_mode;
 	unsigned int    low_latency_mode;
@@ -451,6 +453,7 @@ struct venc_enc_param {
 	unsigned int ip_qpdelta;
 	unsigned int dummynal;
 	unsigned int lowlatencywfd;
+	unsigned int slice_count;
 	unsigned int slbc_addr;
 	char *set_vcp_buf;
 	unsigned int wpp_mode;
