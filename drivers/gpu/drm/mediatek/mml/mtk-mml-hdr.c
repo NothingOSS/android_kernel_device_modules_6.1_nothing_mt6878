@@ -597,6 +597,9 @@ static s32 hdr_config_tile(struct mml_comp *comp, struct mml_task *task,
 		hdr_last_tile = 0;
 	}
 
+	task->pq_task->hdr_readback.readback_data.cut_pos_x =
+		hdr_frm->cut_pos_x;
+
 	cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_TOP],
 		(hdr_first_tile << 5) | (hdr_last_tile << 6), 0x00000060);
 	cmdq_pkt_write(pkt, NULL,
@@ -859,6 +862,8 @@ static s32 hdr_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	mml_pq_msg("%s is_hdr_need_readback[%d]",
 		__func__, result->is_hdr_need_readback);
 	hdr_frm->is_hdr_need_readback = result->is_hdr_need_readback;
+	task->pq_task->hdr_readback.readback_data.cut_pos_x =
+		hdr_frm->cut_pos_x;
 
 	return 0;
 

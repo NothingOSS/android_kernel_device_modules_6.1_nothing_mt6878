@@ -1760,8 +1760,7 @@ static int mml_pq_aal_readback_ioctl(unsigned long data)
 	}
 
 	readback->is_dual = new_sub_task->readback_data.is_dual;
-	readback->cut_pos_x =
-		(new_sub_task->frame_data.info.dest[0].crop.r.width / 2) - 1;
+	readback->cut_pos_x = new_sub_task->readback_data.cut_pos_x;
 
 	mml_pq_msg("%s is_dual[%d] cut_pos_x[%d]", __func__,
 		readback->is_dual, readback->cut_pos_x);
@@ -1895,8 +1894,7 @@ static int mml_pq_hdr_readback_ioctl(unsigned long data)
 	}
 
 	readback->is_dual = new_sub_task->readback_data.is_dual;
-	readback->cut_pos_x =
-		(new_sub_task->frame_data.info.dest[0].crop.r.width / 2) - 1;
+	readback->cut_pos_x = new_sub_task->readback_data.cut_pos_x;
 
 	ret = copy_to_user(&job->result->is_dual, &readback->is_dual, sizeof(bool));
 	if (unlikely(ret)) {

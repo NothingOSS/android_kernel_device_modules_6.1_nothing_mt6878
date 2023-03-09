@@ -967,6 +967,8 @@ static s32 aal_config_tile(struct mml_comp *comp, struct mml_task *task,
 	win_x_end = tile_pxl_x_end - tile_pxl_x_start + 1;
 	win_y_start = 0;
 	win_y_end = tile_pxl_y_end - tile_pxl_y_start + 1;
+	task->pq_task->aal_readback.readback_data.cut_pos_x =
+		aal_frm->cut_pos_x;
 
 	mml_pq_msg("%s %d: %d: %d:[act_win][xs, xe] = [%d, %d], [ys, ye] = [%d, %d]",
 			__func__, task->job.jobid, comp->id, idx, act_win_x_start, act_win_x_end,
@@ -1323,6 +1325,8 @@ static s32 aal_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 		result->is_clarity_need_readback);
 	aal_frm->is_aal_need_readback = result->is_aal_need_readback;
 	aal_frm->is_clarity_need_readback = result->is_clarity_need_readback;
+	task->pq_task->aal_readback.readback_data.cut_pos_x =
+		aal_frm->cut_pos_x;
 exit:
 	mml_pq_trace_ex_end();
 	return ret;
