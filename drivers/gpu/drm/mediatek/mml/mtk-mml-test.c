@@ -314,7 +314,7 @@ static void case_general_submit(struct mml_test *test,
 	struct platform_device *mml_pdev;
 	struct mml_drm_ctx *mml_ctx;
 	struct mml_job job = {};
-	struct mml_pq_param pq_param = {};
+	struct mml_pq_param *pq_param;
 	struct mml_submit task = {.job = &job};
 	u32 run_cnt = mml_test_round <= 0 ? 1 : (u32)mml_test_round;
 	struct mml_drm_param disp = {
@@ -327,6 +327,10 @@ static void case_general_submit(struct mml_test *test,
 	int8_t mode;
 
 	mml_log("[test]%s begin case %d", __func__, mml_case);
+
+	pq_param = kzalloc(sizeof(struct mml_pq_param), GFP_KERNEL);
+	if (!pq_param)
+		goto err;
 
 	mml_pdev = mml_get_plat_device(test->pdev);
 	if (!mml_pdev) {
@@ -376,11 +380,11 @@ static void case_general_submit(struct mml_test *test,
 	task.buffer.dest[1].fence = -1;
 
 	if (mml_test_pq) {
-		pq_param.enable = 1;
-		pq_param.scenario = MML_PQ_MEDIA_VIDEO;
-		pq_param.src_hdr_video_mode = MML_PQ_NORMAL;
-		pq_param.video_param.video_id = 0x546;
-		task.pq_param[0] = &pq_param;
+		pq_param->enable = 1;
+		pq_param->scenario = MML_PQ_MEDIA_VIDEO;
+		pq_param->src_hdr_video_mode = MML_PQ_NORMAL;
+		pq_param->video_param.video_id = 0x546;
+		task.pq_param[0] = pq_param;
 		task.info.dest[0].pq_config.en = 1;
 		task.info.dest[0].pq_config.en_dre = (mml_test_pq & MML_PQ_DRE_EN) ? 1 : 0;
 		task.info.dest[0].pq_config.en_hdr = (mml_test_pq & MML_PQ_VIDEO_HDR_EN) ? 1 : 0;
@@ -390,7 +394,7 @@ static void case_general_submit(struct mml_test *test,
 		task.info.dest[0].pq_config.en_region_pq =
 			(mml_test_pq & MML_PQ_AI_SCENE_PQ_EN) ? 1 : 0;
 		if (task.info.dest[0].pq_config.en_hdr)
-			pq_param.src_hdr_video_mode = MML_PQ_HDR10;
+			pq_param->src_hdr_video_mode = MML_PQ_HDR10;
 		mml_log("[test] %s open PQ", __func__);
 	}
 
@@ -460,6 +464,8 @@ err_done:
 		mml_drm_put_context(mml_ctx);
 	else
 		mml_err("[test]fail to put ctx");
+	kfree(pq_param);
+err:
 	mml_log("[test]%s end", __func__);
 }
 

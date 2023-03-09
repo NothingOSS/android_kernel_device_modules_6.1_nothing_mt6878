@@ -7,7 +7,7 @@
 #include <linux/module.h>
 #include <linux/miscdevice.h>
 #include <linux/delay.h>
-
+#include <linux/dma-mapping.h>
 
 #include "mtk-mml-pq.h"
 #include "mtk-mml-pq-core.h"
@@ -56,6 +56,13 @@ struct mml_pq_mbox {
 	struct mml_pq_chan clarity_readback_chan;
 	struct mml_pq_chan dc_readback_chan;
 };
+
+#define FG_BUF_NUM 2
+#define FG_BUF_SIZE 39024 //luma_grain_size + cb_grain_size + cr_grain_size + SCALING_LUT_SIZE * 3
+
+static struct mutex fg_buf_list_mutex;
+static struct list_head fg_buf_list;
+static u32 fg_buffer_num;
 
 static struct mml_pq_mbox *pq_mbox;
 static struct mutex rb_buf_list_mutex;
@@ -204,6 +211,7 @@ s32 mml_pq_task_create(struct mml_task *task)
 	mutex_init(&pq_task->buffer_mutex);
 	mutex_init(&pq_task->aal_comp_lock);
 	mutex_init(&pq_task->hdr_comp_lock);
+	mutex_init(&pq_task->fg_buffer_mutex);
 
 	for (i = 0; i < MML_PIPE_CNT; i++)
 		init_completion(&pq_task->aal_hist_done[i]);
@@ -463,6 +471,62 @@ void mml_pq_put_readback_buffer(struct mml_task *task, u8 pipe,
 	list_add_tail(&((*hist)->buffer_list), &rb_buf_list);
 	mutex_unlock(&rb_buf_list_mutex);
 	*hist = NULL;
+}
+
+void mml_pq_get_fg_buffer(struct mml_task *task, u8 pipe, struct mml_pq_dma_buffer **lut_buf)
+{
+	struct device *dev = task->config->path[pipe]->clt->chan->mbox->dev;
+	struct mml_pq_dma_buffer *temp_buffer = NULL;
+
+	mml_pq_msg("%s job_id[%d]", __func__, task->job.jobid);
+
+	mutex_lock(&fg_buf_list_mutex);
+	temp_buffer = list_first_entry_or_null(&fg_buf_list,
+		typeof(*temp_buffer), buffer_list);
+	if (temp_buffer) {
+		*lut_buf = temp_buffer;
+		list_del(&temp_buffer->buffer_list);
+		mml_pq_msg("%s aal get buffer from list jobid[%d] va[%p] pa[%p]",
+			__func__, task->job.jobid, temp_buffer->va, &temp_buffer->pa);
+	} else {
+		temp_buffer = kzalloc(sizeof(struct mml_pq_dma_buffer), GFP_KERNEL);
+
+		if (unlikely(!temp_buffer)) {
+			mml_pq_err("%s create buffer failed", __func__);
+			mutex_unlock(&fg_buf_list_mutex);
+			return;
+		}
+		INIT_LIST_HEAD(&temp_buffer->buffer_list);
+		fg_buffer_num++;
+
+		mutex_lock(&task->pq_task->fg_buffer_mutex);
+		*lut_buf = temp_buffer;
+		temp_buffer->va =
+			dma_alloc_coherent(dev, FG_BUF_SIZE, &temp_buffer->pa, GFP_KERNEL);
+		mutex_unlock(&task->pq_task->fg_buffer_mutex);
+
+		mml_pq_msg("%s aal reallocate jobid[%d] va[%p] pa[%p]", __func__,
+			task->job.jobid, temp_buffer->va, &temp_buffer->pa);
+	}
+	mutex_unlock(&fg_buf_list_mutex);
+
+	mml_pq_msg("%s job_id[%d] va[%p] pa[%llx] fg_buffer_num[%d]", __func__,
+		task->job.jobid, temp_buffer->va, temp_buffer->pa, fg_buffer_num);
+}
+
+void mml_pq_put_fg_buffer(struct mml_task *task, u8 pipe, struct mml_pq_dma_buffer **lut_buf)
+{
+	if (!(*lut_buf)) {
+		mml_pq_err("%s buffer lut_buf is null jobid[%d]", __func__, task->job.jobid);
+		return;
+	}
+
+	mml_pq_msg("%s all end job_id[%d] lut_buf_va[%p] lut_buf_pa[%llx]",
+		__func__, task->job.jobid, (*lut_buf)->va, (*lut_buf)->pa);
+	mutex_lock(&fg_buf_list_mutex);
+	list_add_tail(&((*lut_buf)->buffer_list), &fg_buf_list);
+	mutex_unlock(&fg_buf_list_mutex);
+	*lut_buf = NULL;
 }
 
 void mml_pq_task_release(struct mml_task *task)
@@ -2357,7 +2421,9 @@ int mml_pq_core_init(void)
 
 
 	INIT_LIST_HEAD(&rb_buf_list);
+	INIT_LIST_HEAD(&fg_buf_list);
 	mutex_init(&rb_buf_list_mutex);
+	mutex_init(&fg_buf_list_mutex);
 	mutex_init(&rb_buf_pool_mutex);
 
 	pq_mbox = kzalloc(sizeof(*pq_mbox), GFP_KERNEL);
@@ -2371,6 +2437,7 @@ int mml_pq_core_init(void)
 	init_pq_chan(&pq_mbox->clarity_readback_chan);
 	init_pq_chan(&pq_mbox->dc_readback_chan);
 	buffer_num = 0;
+	fg_buffer_num = 0;
 
 	for (buf_idx = 0; buf_idx < TOTAL_RB_BUF_NUM; buf_idx++)
 		rb_buf_pool[buf_idx] = buf_idx*4096;

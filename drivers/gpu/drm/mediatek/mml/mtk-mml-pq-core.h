@@ -162,6 +162,12 @@ struct mml_pq_readback_buffer {
 	struct list_head buffer_list;
 };
 
+struct mml_pq_dma_buffer {
+	u32 *va;
+	dma_addr_t pa;
+	struct list_head buffer_list;
+};
+
 struct mml_pq_readback_data {
 	bool is_dual;
 	atomic_t pipe_cnt;
@@ -202,10 +208,12 @@ struct mml_pq_task {
 	struct mutex buffer_mutex;
 	struct mutex aal_comp_lock;
 	struct mutex hdr_comp_lock;
+	struct mutex fg_buffer_mutex;
 	struct completion aal_hist_done[MML_PIPE_CNT];
 	struct mml_pq_readback_buffer *aal_hist[MML_PIPE_CNT];
 	struct mml_pq_readback_buffer *hdr_hist[MML_PIPE_CNT];
 	struct mml_pq_readback_buffer *tdshp_hist[MML_PIPE_CNT];
+	struct mml_pq_dma_buffer *fg_table;
 	struct mml_pq_read_status read_status;
 	struct completion hdr_curve_ready[MML_PIPE_CNT];
 	struct completion hdr_hist_ready[MML_PIPE_CNT];
@@ -285,6 +293,25 @@ void mml_pq_get_readback_buffer(struct mml_task *task, u8 pipe,
  */
 void mml_pq_put_readback_buffer(struct mml_task *task, u8 pipe,
 				struct mml_pq_readback_buffer **hist);
+
+/*
+ * mml_pq_get_fg_buffer - get fg buffer
+ *
+ * @task:	task data, include pq_task inside
+ * @pipe:	pipe id, use in dual pipe
+ * @engine	engine id, fg engine
+ */
+void mml_pq_get_fg_buffer(struct mml_task *task, u8 pipe,
+				struct mml_pq_dma_buffer **lut_buf);
+
+/*
+ * mml_pq_put_fg_buffer - put fg buffer
+ *
+ * @task:	task data, include pq_task inside
+ * @engine	engine id, fg engine
+ */
+void mml_pq_put_fg_buffer(struct mml_task *task, u8 pipe,
+				struct mml_pq_dma_buffer **lut_buf);
 
 /*
  * mml_pq_set_tile_init - noify from MML core through MML PQ driver

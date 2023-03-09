@@ -50,6 +50,7 @@ mtk-mml-objs += DpTileScaler.o
 mtk-mml-objs += mtk-mml-aal.o
 mtk-mml-objs += mtk-mml-color.o
 mtk-mml-objs += mtk-mml-fg.o
+mtk-mml-objs += mtk-mml-fg-fw.o
 mtk-mml-objs += mtk-mml-hdr.o
 mtk-mml-objs += mtk-mml-mutex.o
 mtk-mml-objs += mtk-mml-rdma.o

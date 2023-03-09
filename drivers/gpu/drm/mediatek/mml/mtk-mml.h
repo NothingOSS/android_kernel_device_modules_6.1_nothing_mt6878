@@ -50,6 +50,38 @@ enum mml_pq_scenario {
 	MML_PQ_MEDIA_ISP_PREVIEW = 0x10001
 };
 
+struct mml_pq_film_grain_params {
+	unsigned char apply_grain;
+	unsigned int grain_seed;
+	unsigned char update_grain;
+	unsigned char film_grain_params_ref_idx;
+	unsigned char num_y_points;
+	unsigned char point_y_value[16];
+	unsigned char point_y_scaling[16];
+	unsigned char chroma_scaling_from_luma;
+	unsigned char num_cb_points;
+	unsigned char point_cb_value[16];
+	unsigned char point_cb_scaling[16];
+	unsigned char num_cr_points;
+	unsigned char point_cr_value[16];
+	unsigned char point_cr_scaling[16];
+	unsigned char grain_scaling;
+	unsigned char ar_coeff_lag;
+	int ar_coeffs_y[25];
+	int ar_coeffs_cb[25];
+	int ar_coeffs_cr[25];
+	unsigned char ar_coeff_shift;
+	unsigned char grain_scale_shift;
+	unsigned short cb_mult;
+	unsigned short cb_luma_mult;
+	unsigned short cb_offset;
+	unsigned short cr_mult;
+	unsigned short cr_luma_mult;
+	unsigned short cr_offset;
+	unsigned char overlap_flag;
+	unsigned char clip_to_restricted_range;
+};
+
 struct mml_pq_video_param {
 	uint32_t video_id;
 	uint32_t  time_stamp;
@@ -58,6 +90,7 @@ struct mml_pq_video_param {
 	int32_t xml_mode_id;
 	int32_t buffer_fd;
 	int32_t qpsum;
+	struct mml_pq_film_grain_params fg_meta;
 };
 
 struct mml_pq_config {
@@ -70,6 +103,7 @@ struct mml_pq_config {
 	bool en_ccorr:1;
 	bool en_dre:1;
 	bool en_region_pq:1;
+	bool en_fg:1;
 };
 
 enum mml_pq_enable_flag {
