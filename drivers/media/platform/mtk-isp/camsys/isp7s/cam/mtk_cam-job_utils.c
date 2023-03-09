@@ -869,6 +869,155 @@ int fill_img_out_w(struct mtkcam_ipi_img_output *io,
 	return _fill_img_out(io, buf, node, 1);
 }
 
+int fill_sv_fp(
+	struct req_buffer_helper *helper, struct mtk_cam_buffer *buf,
+	struct mtk_cam_video_device *node, unsigned int tag_idx,
+	unsigned int pipe_id, unsigned int buf_ofset)
+{
+	struct mtkcam_ipi_frame_param *fp = helper->fp;
+	struct mtkcam_ipi_img_output *out =
+		&fp->camsv_param[0][tag_idx].camsv_img_outputs[0];
+	int ret = -1;
+
+	ret = fill_img_out(out, buf, node);
+
+	fp->camsv_param[0][tag_idx].pipe_id = pipe_id;
+	fp->camsv_param[0][tag_idx].tag_id = tag_idx;
+	fp->camsv_param[0][tag_idx].hardware_scenario = 0;
+	out->uid.id = MTKCAM_IPI_CAMSV_MAIN_OUT;
+	out->uid.pipe_id = pipe_id;
+	out->buf[0][tag_idx].iova = buf->daddr + buf_ofset;
+
+	pr_info("%s: tag_idx %d, iova %llx",
+			__func__, tag_idx, out->buf[0][tag_idx].iova);
+
+	return ret;
+}
+
+static bool
+is_stagger_2_exposure(struct mtk_cam_scen *scen)
+{
+	return scen->scen.normal.exp_num == 2;
+}
+
+static bool
+is_stagger_3_exposure(struct mtk_cam_scen *scen)
+{
+	return scen->scen.normal.exp_num == 3;
+}
+
+int fill_sv_img_fp(
+	struct req_buffer_helper *helper, struct mtk_cam_buffer *buf,
+	struct mtk_cam_video_device *node)
+{
+	struct mtk_cam_job *job = helper->job;
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtk_cam_scen *scen = &job->job_scen;
+	struct mtk_camsv_device *sv_dev;
+	unsigned int pipe_id, exp_no, buf_cnt = 0, buf_ofset = 0;
+	int tag_idx, i, j;
+	bool is_w;
+	int ret = 0;
+
+	if (node->desc.dma_port != MTKCAM_IPI_RAW_IMGO)
+		goto EXIT;
+
+	if (ctx->hw_sv == NULL)
+		goto EXIT;
+
+	sv_dev = dev_get_drvdata(ctx->hw_sv);
+	pipe_id = sv_dev->id + MTKCAM_SUBDEV_CAMSV_START;
+
+	if (is_stagger_2_exposure(scen)) {
+		exp_no = 2;
+		buf_cnt = is_rgbw(job) ? 2 : 1;
+	} else if (is_stagger_3_exposure(scen)) {
+		exp_no = 3;
+		if (is_rgbw(job)) {
+			ret = -1;
+			pr_info("%s: rgbw not supported under 3-exp stagger case",
+				__func__);
+			goto EXIT;
+		}
+	} else {
+		exp_no = 1;
+		buf_cnt = is_rgbw(job) ? 2 : 1;
+	}
+
+	for (i = 0; i < exp_no; i++) {
+		if (!is_sv_pure_raw(job) &&
+			!is_dc_mode(job) &&
+			(i + 1) == exp_no)
+			continue;
+		for (j = 0; j < buf_cnt; j++) {
+			is_w = (j % 2) ? true : false;
+			tag_idx = (exp_no > 1 && (i + 1) == exp_no) ?
+				get_sv_tag_idx(exp_no, MTKCAM_IPI_ORDER_LAST_TAG, is_w) :
+				get_sv_tag_idx(exp_no, i, is_w);
+			if (tag_idx == -1) {
+				ret = -1;
+				pr_info("%s: tag_idx not found(exp_no:%d is_w:%d)",
+					__func__, exp_no, (is_w) ? 1 : 0);
+				goto EXIT;
+			}
+			ret = fill_sv_fp(helper, buf, node, tag_idx, pipe_id, buf_ofset);
+			buf_ofset += buf->image_info.size[0];
+		}
+	}
+
+EXIT:
+	return ret;
+}
+
+int fill_imgo_buf_as_working_buf(
+	struct req_buffer_helper *helper, struct mtk_cam_buffer *buf,
+	struct mtk_cam_video_device *node)
+{
+	struct mtkcam_ipi_frame_param *fp = helper->fp;
+	struct mtkcam_ipi_img_output *out;
+	struct mtk_cam_job *job = helper->job;
+	bool is_w = is_rgbw(job);
+	bool is_otf = !is_dc_mode(job);
+	int index = 0, ii_inc = 0, ret = 0;
+	bool sv_pure_raw;
+
+	if (node->desc.id != MTK_RAW_MAIN_STREAM_OUT) {
+		pr_info("%s: expect IMGO node only", __func__);
+		WARN_ON(1);
+		return -1;
+	}
+
+	helper->filled_hdr_buffer = true;
+
+	sv_pure_raw = is_sv_pure_raw(job);
+
+	ii_inc = helper->ii_idx;
+	fill_img_in_by_exposure(helper, buf, node);
+	ii_inc = helper->ii_idx - ii_inc;
+	index += ii_inc;
+
+	if (is_otf && !sv_pure_raw) {
+		// OTF, raw outputs last exp
+		out = &fp->img_outs[helper->io_idx++];
+		ret = fill_img_out_hdr(out, buf, node,
+				index++, MTKCAM_IPI_RAW_IMGO);
+
+		if (!ret && is_w) {
+			out = &fp->img_outs[helper->io_idx++];
+			ret = fill_img_out_hdr(out, buf, node,
+					index++, raw_video_id_w_port(MTKCAM_IPI_RAW_IMGO));
+		}
+	}
+
+	if (sv_pure_raw && CAM_DEBUG_ENABLED(JOB))
+		pr_info("%s:req:%s bypass raw imgo\n",
+			__func__, job->req->req.debug_str);
+	/* fill sv image fp */
+	ret = ret || fill_sv_img_fp(helper, buf, node);
+
+	return ret;
+}
+
 int get_sv_tag_idx(unsigned int exp_no, unsigned int tag_order, bool is_w)
 {
 	struct mtk_camsv_tag_param img_tag_param[SVTAG_IMG_END];
@@ -963,6 +1112,40 @@ int map_ipi_vpu_point(int vpu_point)
 		break;
 	}
 	return -1;
+}
+
+int map_ipi_imgo_path(int v4l2_raw_path)
+{
+	switch (v4l2_raw_path) {
+	case V4L2_MTK_CAM_RAW_PATH_SELECT_BPC: return MTKCAM_IPI_IMGO_AFTER_BPC;
+	case V4L2_MTK_CAM_RAW_PATH_SELECT_FUS: return MTKCAM_IPI_IMGO_AFTER_FUS;
+	case V4L2_MTK_CAM_RAW_PATH_SELECT_DGN: return MTKCAM_IPI_IMGO_AFTER_DGN;
+	case V4L2_MTK_CAM_RAW_PATH_SELECT_LSC: return MTKCAM_IPI_IMGO_AFTER_LSC;
+	case V4L2_MTK_CAM_RAW_PATH_SELECT_LTM: return MTKCAM_IPI_IMGO_AFTER_LTM;
+	default:
+		break;
+	}
+	/* un-processed raw frame */
+	return MTKCAM_IPI_IMGO_UNPROCESSED;
+}
+
+bool require_proccessed_raw(struct mtk_cam_job *job)
+{
+	struct mtk_raw_ctrl_data *ctrl =
+		get_raw_ctrl_data(job);
+
+	if (!ctrl) {
+		pr_info("%s: failed to get job ctrl data", __func__);
+		return false;
+	}
+
+	return (map_ipi_imgo_path(ctrl->raw_path) !=
+		MTKCAM_IPI_IMGO_UNPROCESSED);
+}
+
+bool require_pure_raw(struct mtk_cam_job *job)
+{
+	return !require_proccessed_raw(job);
 }
 
 struct mtk_raw_ctrl_data *get_raw_ctrl_data(struct mtk_cam_job *job)

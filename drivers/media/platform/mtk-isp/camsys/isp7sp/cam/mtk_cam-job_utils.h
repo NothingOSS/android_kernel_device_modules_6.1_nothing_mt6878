@@ -136,6 +136,12 @@ int fill_yuvo_out_subsample(struct mtkcam_ipi_img_output *io,
 			    struct mtk_cam_buffer *buf,
 			    struct mtk_cam_video_device *node,
 			    int sub_ratio);
+int fill_sv_img_fp(struct req_buffer_helper *helper,
+	struct mtk_cam_buffer *buf, struct mtk_cam_video_device *node);
+int fill_imgo_buf_as_working_buf(
+	struct req_buffer_helper *helper, struct mtk_cam_buffer *buf,
+	struct mtk_cam_video_device *node);
+
 int update_work_buffer_to_ipi_frame(struct req_buffer_helper *helper);
 
 struct mtkcam_ipi_crop v4l2_rect_to_ipi_crop(const struct v4l2_rect *r);
@@ -157,6 +163,9 @@ void get_stagger_rawi_table(struct mtk_cam_job *job,
 	const int **rawi_table, int *cnt);
 
 int map_ipi_vpu_point(int vpu_point);
+int map_ipi_imgo_path(int v4l2_raw_path);
+bool require_pure_raw(struct mtk_cam_job *job);
+bool require_proccessed_raw(struct mtk_cam_job *job);
 
 struct mtk_raw_ctrl_data *get_raw_ctrl_data(struct mtk_cam_job *job);
 struct mtk_raw_sink_data *get_raw_sink_data(struct mtk_cam_job *job);

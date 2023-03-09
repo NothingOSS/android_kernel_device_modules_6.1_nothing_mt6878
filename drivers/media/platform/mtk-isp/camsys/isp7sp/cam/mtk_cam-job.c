@@ -184,19 +184,15 @@ static int map_job_type(const struct mtk_cam_scen *scen)
 	return job_type;
 }
 
-static int map_ipi_imgo_path(int v4l2_raw_path);
 static bool update_sv_pure_raw(struct mtk_cam_job *job)
 {
 	struct mtk_cam_request *req = job->req;
 	//struct mtk_cam_scen *scen = &job->job_scen;
 	struct mtk_cam_buffer *buf;
 	struct mtk_cam_video_device *node;
-	struct mtk_raw_ctrl_data *ctrl;
-	bool has_imgo, is_pure, is_supported_scen, is_sv_pure_raw;
+	bool has_imgo, req_pure_raw, is_supported_scen, is_sv_pure_raw;
 
-	ctrl = get_raw_ctrl_data(job);
-	if (!ctrl)
-		return false;
+	req_pure_raw = require_pure_raw(job);
 
 	has_imgo = false;
 	list_for_each_entry(buf, &req->buf_list, list) {
@@ -206,19 +202,16 @@ static bool update_sv_pure_raw(struct mtk_cam_job *job)
 			has_imgo = true;
 	}
 
-	is_pure =
-		map_ipi_imgo_path(ctrl->raw_path) == MTKCAM_IPI_IMGO_UNPROCESSED;
-
 	/* TODO: scen help func */
 	is_supported_scen =
 		(job->job_type == JOB_TYPE_BASIC) ||
 		(job->job_type == JOB_TYPE_STAGGER);
 
-	is_sv_pure_raw = has_imgo && is_pure && is_supported_scen;
+	is_sv_pure_raw = has_imgo && req_pure_raw && is_supported_scen;
 
 	if (CAM_DEBUG_ENABLED(JOB))
-		pr_info("%s: has_imgo:%d is_pure:%d is_supported_scen:%d sv_pure_raw:%d",
-			__func__, has_imgo, is_pure, is_supported_scen,
+		pr_info("%s has_imgo:%d req_pure_raw:%d is_supported_scen: %d sv_pure_raw:%d",
+			__func__, has_imgo, req_pure_raw, is_supported_scen,
 			is_sv_pure_raw);
 
 	return is_sv_pure_raw;
@@ -2354,14 +2347,15 @@ static int fill_raw_img_buffer_to_ipi_frame(
 	return ret;
 }
 
-static int fill_imgo_to_ipi_normal(struct req_buffer_helper *helper,
+static int fill_imgo_buf_to_ipi_normal(struct req_buffer_helper *helper,
 			struct mtk_cam_buffer *buf,
 			struct mtk_cam_video_device *node)
 {
 	int ret = 0;
+	struct mtk_cam_job *job = helper->job;
 
-	if (is_dc_mode(helper->job))
-		ret = fill_imgo_img_buffer_to_ipi_frame_stagger(helper, buf, node);
+	if (is_dc_mode(job) && require_pure_raw(job))
+		ret = fill_imgo_buf_as_working_buf(helper, buf, node);
 	else
 		ret = fill_raw_img_buffer_to_ipi_frame(helper, buf, node);
 
@@ -2932,7 +2926,7 @@ static struct pack_job_ops_helper otf_pack_helper = {
 	.pack_job = _job_pack_normal,
 	.update_raw_bufs_to_ipi = fill_raw_img_buffer_to_ipi_frame,
 	.update_raw_rawi_to_ipi = NULL,
-	.update_raw_imgo_to_ipi = fill_imgo_to_ipi_normal,
+	.update_raw_imgo_to_ipi = fill_imgo_buf_to_ipi_normal,
 	.update_raw_yuvo_to_ipi = NULL,
 	.append_work_buf_to_ipi = update_work_buffer_to_ipi_frame,
 };
@@ -2941,7 +2935,7 @@ static struct pack_job_ops_helper stagger_pack_helper = {
 	.pack_job = _job_pack_otf_stagger,
 	.update_raw_bufs_to_ipi = fill_raw_img_buffer_to_ipi_frame,
 	.update_raw_rawi_to_ipi = fill_img_in_by_exposure,
-	.update_raw_imgo_to_ipi = fill_imgo_img_buffer_to_ipi_frame_stagger,
+	.update_raw_imgo_to_ipi = fill_imgo_buf_to_ipi_stagger,
 	.update_raw_yuvo_to_ipi = NULL,
 	.append_work_buf_to_ipi = update_work_buffer_to_ipi_frame,
 };
@@ -3349,22 +3343,6 @@ static int update_cq_buffer_to_ipi_frame(struct mtk_cam_pool_buffer *cq,
 	fp->cur_workbuf_offset = cq->size * cq->priv.index;
 	fp->cur_workbuf_size = cq->size;
 	return 0;
-}
-
-
-static int map_ipi_imgo_path(int v4l2_raw_path)
-{
-	switch (v4l2_raw_path) {
-	case V4L2_MTK_CAM_RAW_PATH_SELECT_BPC: return MTKCAM_IPI_IMGO_AFTER_BPC;
-	case V4L2_MTK_CAM_RAW_PATH_SELECT_FUS: return MTKCAM_IPI_IMGO_AFTER_FUS;
-	case V4L2_MTK_CAM_RAW_PATH_SELECT_DGN: return MTKCAM_IPI_IMGO_AFTER_DGN;
-	case V4L2_MTK_CAM_RAW_PATH_SELECT_LSC: return MTKCAM_IPI_IMGO_AFTER_LSC;
-	case V4L2_MTK_CAM_RAW_PATH_SELECT_LTM: return MTKCAM_IPI_IMGO_AFTER_LTM;
-	default:
-		break;
-	}
-	/* un-processed raw frame */
-	return MTKCAM_IPI_IMGO_UNPROCESSED;
 }
 
 static int map_ipi_bin_flag(int bin)

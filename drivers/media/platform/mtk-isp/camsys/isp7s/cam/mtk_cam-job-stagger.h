@@ -27,11 +27,10 @@ void update_frame_start_event_stagger(struct mtk_cam_job *job,
 int apply_cam_mux_switch_stagger(struct mtk_cam_job *job);
 int wait_apply_sensor_stagger(struct mtk_cam_job *job);
 
-int fill_imgo_img_buffer_to_ipi_frame_stagger(
+int fill_imgo_buf_to_ipi_stagger(
 	struct req_buffer_helper *helper, struct mtk_cam_buffer *buf,
 	struct mtk_cam_video_device *node);
-int fill_sv_img_fp(struct req_buffer_helper *helper,
-	struct mtk_cam_buffer *buf, struct mtk_cam_video_device *node);
+
 int handle_sv_tag(struct mtk_cam_job *job);
 bool is_sv_img_tag_used(struct mtk_cam_job *job);
 
