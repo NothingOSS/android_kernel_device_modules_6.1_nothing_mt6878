@@ -10,8 +10,18 @@
 #include "adaptor-command.h"
 
 
+/*---------------------------------------------------------------------------*/
+// define
+/*---------------------------------------------------------------------------*/
 #define sd_to_ctx(__sd) container_of(__sd, struct adaptor_ctx, sd)
 
+
+#define REDUCE_ADAPTOR_COMMAND_LOG
+
+
+/*---------------------------------------------------------------------------*/
+// utilities / static functions
+/*---------------------------------------------------------------------------*/
 static int get_sensor_mode_info(struct adaptor_ctx *ctx, u32 mode_id,
 				struct mtk_sensor_mode_info *info)
 {
@@ -34,6 +44,7 @@ static int get_sensor_mode_info(struct adaptor_ctx *ctx, u32 mode_id,
 
 	return 0;
 }
+
 
 /*---------------------------------------------------------------------------*/
 // functions that called by in-kernel drivers.
@@ -146,10 +157,11 @@ static int s_cmd_tsrec_notify_vsync(struct adaptor_ctx *ctx, void *arg)
 	}
 
 	buf = (struct mtk_cam_seninf_tsrec_vsync_info *)arg;
-	/* TODO: check source/caller is valid or not by checking seninf idx */
 
 	memcpy(&ctx->vsync_info, buf, sizeof(ctx->vsync_info));
 
+
+#ifndef REDUCE_ADAPTOR_COMMAND_LOG
 	adaptor_logd(ctx,
 		"V4L2_CMD_TSREC_NOTIFY_VSYNC, idx:%d, vsync_info(tsrec_no:%u, seninf_idx:%u, sys_ts%llu(ns), tsrec_ts:%llu(us))\n",
 		ctx->idx,
@@ -157,10 +169,10 @@ static int s_cmd_tsrec_notify_vsync(struct adaptor_ctx *ctx, void *arg)
 		ctx->vsync_info.seninf_idx,
 		ctx->vsync_info.irq_sys_time_ns,
 		ctx->vsync_info.irq_tsrec_ts_us);
+#endif
 
 
 	/* tsrec notify vsync, call all APIs that needed this info */
-	// TODO: add functions here !
 	notify_fsync_mgr_vsync_by_tsrec(ctx);
 
 	return ret;
@@ -186,6 +198,8 @@ static int s_cmd_tsrec_notify_sensor_hw_pre_latch(
 
 	buf = (struct mtk_cam_seninf_tsrec_vsync_info *)arg;
 
+
+// #ifndef REDUCE_ADAPTOR_COMMAND_LOG
 	adaptor_logd(ctx,
 		"V4L2_CMD_TSREC_NOTIFY_SENSOR_HW_PRE_LATCH, idx:%d, vsync_info(tsrec_no:%u, seninf_idx:%u, sys_ts%llu(ns), tsrec_ts:%llu(us))\n",
 		ctx->idx,
@@ -193,10 +207,10 @@ static int s_cmd_tsrec_notify_sensor_hw_pre_latch(
 		buf->seninf_idx,
 		buf->irq_sys_time_ns,
 		buf->irq_tsrec_ts_us);
+// #endif
 
 
 	/* tsrec notify sensor hw pre-latch, call all APIs that needed this info */
-	// TODO: add functions here !
 	notify_fsync_mgr_sensor_hw_pre_latch_by_tsrec(ctx);
 
 	return ret;
@@ -220,10 +234,11 @@ static int s_cmd_tsrec_send_timestamp_info(struct adaptor_ctx *ctx, void *arg)
 	}
 
 	buf = (struct mtk_cam_seninf_tsrec_timestamp_info *)arg;
-	/* TODO: check source/caller is valid or not by checking seninf idx */
 
 	memcpy(&ctx->ts_info, buf, sizeof(ctx->ts_info));
 
+
+#ifndef REDUCE_ADAPTOR_COMMAND_LOG
 	adaptor_logd(ctx,
 		"V4L2_CMD_TSREC_SEND_TIMESTAMP_INFO, idx:%d, ts_info(tsrec_no:%u, seninf_idx:%u, tick_factor:%u, sys_ts:%llu(ns), tsrec_ts:%llu(us), tick:%llu, ts(0:(%llu/%llu/%llu/%llu), 1:(%llu/%llu/%llu/%llu), 2:(%llu/%llu/%llu/%llu))\n",
 		ctx->idx,
@@ -245,10 +260,10 @@ static int s_cmd_tsrec_send_timestamp_info(struct adaptor_ctx *ctx, void *arg)
 		ctx->ts_info.exp_recs[2].ts_us[1],
 		ctx->ts_info.exp_recs[2].ts_us[2],
 		ctx->ts_info.exp_recs[2].ts_us[3]);
+#endif
 
 
 	/* tsrec send timestamp info, call all APIs that needed this info */
-	// TODO: add functions here !
 	notify_fsync_mgr_receive_tsrec_timestamp_info(ctx, &ctx->ts_info);
 
 	return ret;
