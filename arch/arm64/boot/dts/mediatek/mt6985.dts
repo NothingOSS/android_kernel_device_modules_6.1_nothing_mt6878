@@ -663,8 +663,11 @@
 		compatible = "medaitek,svp";
 	};
 
-	aod_scp: aod_scp {
-		compatible = "medaitek,aod_scp";
+	aod_scp: aod-scp {
+		compatible = "mediatek,aod_scp";
+		dsi0 = <&dsi0 0x1000>;
+		dsc0 = <&disp_dsc_wrap0 0x1000>;
+		mipitx0 = <&mipi_tx_config0 0x1000>;
 	};
 
 	qos:qos@11bb00 {
@@ -9714,6 +9717,7 @@
 			      <11 0x100 0x0>, /* sensor custom writer */
 			      <12 0x100 0x0>, /* sensor custom reader */
 			      <13 0x780000 0x0>, /* aov */
+			      <15 0x10000 0x0>, /* aod */
 			      <16 0x10000 0x0>, /* connsys */
 			      <17 0x8000 0x0>, /* scp chre from */
 			      <18 0x8000 0x0>; /* scp chre to */
