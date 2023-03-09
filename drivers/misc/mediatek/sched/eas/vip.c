@@ -6,14 +6,39 @@
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include <trace/hooks/sched.h>
-#include "vip.h"
 #include "common.h"
+#include "vip.h"
+#include "eas_trace.h"
 
 bool vip_enable = true;
 bool allow_VIP_task_group;
 bool allow_VIP_ls;
 
 DEFINE_PER_CPU(struct list_head *, vip_tasks_per_cpu);
+
+struct task_struct *vts_to_ts(struct vip_task_struct *vts)
+{
+	struct mtk_task *mts = container_of(vts, struct mtk_task, vip_task);
+	struct task_struct *ts = mts_to_ts(mts);
+	return ts;
+}
+
+pid_t list_head_to_pid(struct list_head *lh)
+{
+	pid_t pid = vts_to_ts(container_of(lh, struct vip_task_struct, vip_list))->pid;
+
+	/* means list_head is from rq */
+	if (!pid)
+		pid = 0;
+	return pid;
+}
+
+bool task_is_vip(struct task_struct *p)
+{
+	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+
+	return (vts->vip_prio == -1) ? 0 : 1;
+}
 
 static inline unsigned int vip_task_limit(struct task_struct *p)
 {
@@ -26,9 +51,8 @@ static inline unsigned int vip_task_limit(struct task_struct *p)
 	return VIP_TIME_LIMIT;
 }
 
-
 static void insert_vip_task(struct rq *rq, struct vip_task_struct *vts,
-				     bool at_front)
+					bool at_front, bool requeue)
 {
 	struct list_head *pos;
 	struct list_head *vip_tasks = per_cpu(vip_tasks_per_cpu, cpu_of(rq));
@@ -45,6 +69,16 @@ static void insert_vip_task(struct rq *rq, struct vip_task_struct *vts,
 		}
 	}
 	list_add(&vts->vip_list, pos->prev);
+
+	/* vip inserted trace event */
+	if (trace_sched_insert_vip_task_enabled()) {
+		pid_t prev_pid = list_head_to_pid(vts->vip_list.prev);
+		pid_t next_pid = list_head_to_pid(vts->vip_list.next);
+		bool is_first_entry = (prev_pid == 0) ? true : false;
+
+		trace_sched_insert_vip_task(vts_to_ts(vts)->pid, cpu_of(rq), at_front,
+			prev_pid, next_pid, requeue, is_first_entry);
+	}
 }
 
 int VIP_task_group[VIP_GROUP_NUM] = {0};
@@ -108,7 +142,7 @@ void vip_enqueue_task(struct rq *rq, struct task_struct *p)
 		return;
 
 	vts->vip_prio = vip_prio;
-	insert_vip_task(rq, vts, task_on_cpu(rq, p));
+	insert_vip_task(rq, vts, task_on_cpu(rq, p), false);
 
 	/*
 	 * We inserted the task at the appropriate position. Take the
@@ -122,9 +156,18 @@ void vip_enqueue_task(struct rq *rq, struct task_struct *p)
 static void deactivate_vip_task(struct task_struct *p)
 {
 	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+	struct list_head *prev = vts->vip_list.prev;
+	struct list_head *next = vts->vip_list.next;
 
 	list_del_init(&vts->vip_list);
 	vts->vip_prio = NOT_VIP;
+
+	if (trace_sched_deactivate_vip_task_enabled()) {
+		pid_t prev_pid = list_head_to_pid(prev);
+		pid_t next_pid = list_head_to_pid(next);
+
+		trace_sched_deactivate_vip_task(p->pid, task_cpu(p), prev_pid, next_pid);
+	}
 }
 
 /*
@@ -177,7 +220,7 @@ static void account_vip_runtime(struct rq *rq, struct task_struct *curr)
 	}
 	/* slice expired. re-queue the task */
 	list_del(&vts->vip_list);
-	insert_vip_task(rq, vts, false);
+	insert_vip_task(rq, vts, false, true);
 }
 
 void vip_check_preempt_wakeup(void *unused, struct rq *rq, struct task_struct *p,
@@ -276,7 +319,16 @@ void vip_scheduler_tick(void *unused, struct rq *rq)
 
 	vip_lb_tick(rq);
 }
+#if IS_ENABLED(CONFIG_FAIR_GROUP_SCHED)
+/* Walk up scheduling entities hierarchy */
+#define for_each_sched_entity(se) \
+	for (; se; se = se->parent)
+#else
+#define for_each_sched_entity(se) \
+	for (; se; se = NULL)
+#endif
 
+extern void set_next_entity(struct cfs_rq *cfs_rq, struct sched_entity *se);
 void vip_replace_next_task_fair(void *unused, struct rq *rq, struct task_struct **p,
 				struct sched_entity **se, bool *repick, bool simple,
 				struct task_struct *prev)
@@ -299,6 +351,11 @@ void vip_replace_next_task_fair(void *unused, struct rq *rq, struct task_struct 
 	*p = vip;
 	*se = &vip->se;
 	*repick = true;
+
+	if (simple) {
+		for_each_sched_entity((*se))
+			set_next_entity(cfs_rq_of(*se), *se);
+	}
 }
 
 void vip_dequeue_task(void *unused, struct rq *rq, struct task_struct *p, int flags)

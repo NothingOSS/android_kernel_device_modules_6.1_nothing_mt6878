@@ -570,6 +570,64 @@ TRACE_EVENT(sched_headroom_interval_tick,
 		__entry->tick)
 );
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+TRACE_EVENT(sched_insert_vip_task,
+	TP_PROTO(pid_t pid, int cpu, bool at_front,
+			pid_t prev_pid, pid_t next_pid, bool requeue, bool is_first_entry),
+
+	TP_ARGS(pid, cpu, at_front, prev_pid, next_pid, requeue, is_first_entry),
+
+	TP_STRUCT__entry(
+		__field(int, pid)
+		__field(int, cpu)
+		__field(bool, at_front)
+		__field(int, prev_pid)
+		__field(int, next_pid)
+		__field(bool, requeue)
+		__field(bool, is_first_entry)
+	),
+
+	TP_fast_assign(
+		__entry->pid       = pid;
+		__entry->cpu       = cpu;
+		__entry->at_front  = at_front;
+		__entry->prev_pid  = prev_pid;
+		__entry->next_pid  = next_pid;
+		__entry->requeue   = requeue;
+		__entry->is_first_entry = is_first_entry;
+	),
+
+	TP_printk("pid=%d cpu=%d at_front=%d prev_pid=%d next_pid=%d requeue=%d, is_first_entry=%d",
+		  __entry->pid, __entry->cpu, __entry->at_front, __entry->prev_pid,
+		  __entry->next_pid, __entry->requeue, __entry->is_first_entry)
+);
+
+TRACE_EVENT(sched_deactivate_vip_task,
+	TP_PROTO(pid_t pid, int cpu, pid_t prev_pid,
+			pid_t next_pid),
+
+	TP_ARGS(pid, cpu, prev_pid, next_pid),
+
+	TP_STRUCT__entry(
+		__field(int, pid)
+		__field(int, cpu)
+		__field(int, prev_pid)
+		__field(int, next_pid)
+	),
+
+	TP_fast_assign(
+		__entry->pid       = pid;
+		__entry->cpu       = cpu;
+		__entry->prev_pid  = prev_pid;
+		__entry->next_pid  = next_pid;
+	),
+
+	TP_printk("pid=%d cpu=%d orig_prev_pid=%d orig_next_pid=%d",
+		  __entry->pid, __entry->cpu, __entry->prev_pid,
+		  __entry->next_pid)
+);
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_CORE_PAUSE)
 TRACE_EVENT(sched_pause_cpus,
 	TP_PROTO(struct cpumask *req_cpus, struct cpumask *last_cpus,

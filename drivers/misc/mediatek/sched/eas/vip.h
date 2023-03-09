@@ -16,9 +16,8 @@ extern bool vip_enable;
 #define TASK_BOOST_VIP     2
 #define NOT_VIP           -1
 
-#define is_vip(ftsk) (ftsk->vip_prio != NOT_VIP)
-#define vts_to_ts(vts) ({ \
-		void *__mptr = (void *)(vts); \
+#define mts_to_ts(mts) ({ \
+		void *__mptr = (void *)(mts); \
 		((struct task_struct *)(__mptr - \
 			offsetof(struct task_struct, android_vendor_data1))); })
 
