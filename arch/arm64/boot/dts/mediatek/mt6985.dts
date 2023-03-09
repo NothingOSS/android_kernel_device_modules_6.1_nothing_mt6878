@@ -10292,7 +10292,10 @@
 			"disp_dsi0_targetline0",
 			"disp_ovlsys_wdma0_eof0",
 			"disp_token_disp_v_idle_power_on0",
-			"disp_token_disp_check_trigger_merge0";
+			"disp_token_disp_check_trigger_merge0",
+			"disp_ovlsys_wdma1_eof0",
+			"disp_mdp_rdma0_eof3",
+			"disp_mdp_rdma1_eof3";
 
 		gce-events =
 			<&gce CMDQ_EVENT_OVLSYS_STREAM_DONE_ENG_EVENT_0>,
@@ -10336,7 +10339,10 @@
 			<&gce CMDQ_EVENT_DISPSYS_DISP_DSI0_TARGET_LINE_ENG_EVENT>,
 			<&gce CMDQ_EVENT_OVLSYS_DISP_WDMA0_FRAME_DONE>,
 			<&gce CMDQ_SYNC_TOKEN_VIDLE_POWER_ON>,
-			<&gce CMDQ_SYNC_TOKEN_CHECK_TRIGGER_MERGE>;
+			<&gce CMDQ_SYNC_TOKEN_CHECK_TRIGGER_MERGE>,
+			<&gce CMDQ_EVENT_OVLSYS_DISP_WDMA2_FRAME_DONE>,
+			<&gce CMDQ_EVENT_DISPSYS_DISP_MDP_RDMA0_FRAME_DONE>,
+			<&gce CMDQ_EVENT_DISPSYS1_DISP_MDP_RDMA0_FRAME_DONE>;
 
 		helper-name = "MTK_DRM_OPT_STAGE",
 			"MTK_DRM_OPT_USE_CMDQ",
@@ -10358,7 +10364,8 @@
 			"MTK_DRM_OPT_PRESENT_FENCE",
 			"MTK_DRM_OPT_RDMA_UNDERFLOW_AEE",
 			"MTK_DRM_OPT_DSI_UNDERRUN_AEE",
-			"MTK_DRM_OPT_ODDMR_UNDERRUN_AEE",
+			"MTK_DRM_OPT_ODDMR_OD_AEE",
+			"MTK_DRM_OPT_ODDMR_DMR_AEE",
 			"MTK_DRM_OPT_HRT",
 			"MTK_DRM_OPT_HRT_MODE",
 			"MTK_DRM_OPT_DELAYED_TRIGGER",
@@ -10400,7 +10407,8 @@
 			"MTK_DRM_OPT_GPU_CACHE",
 			"MTK_DRM_OPT_SPHRT",
 			"MTK_DRM_OPT_SDPA_OVL_SWITCH",
-			"MTK_DRM_OPT_HRT_BY_LARB";
+			"MTK_DRM_OPT_HRT_BY_LARB",
+			"MTK_DRM_OPT_TILE_OVERHEAD";
 
 		helper-value = <0>, /*MTK_DRM_OPT_STAGE*/
 			<1>, /*MTK_DRM_OPT_USE_CMDQ*/
@@ -10422,7 +10430,8 @@
 			<1>, /*MTK_DRM_OPT_PRESENT_FENCE*/
 			<0>, /*MTK_DRM_OPT_RDMA_UNDERFLOW_AEE*/
 			<0>, /*MTK_DRM_OPT_DSI_UNDERRUN_AEE*/
-			<0>, /*MTK_DRM_OPT_ODDMR_UNDERRUN_AEE*/
+			<0>, /*MTK_DRM_OPT_ODDMR_OD_AEE*/
+			<0>, /*MTK_DRM_OPT_ODDMR_DMR_AEE*/
 			<1>, /*MTK_DRM_OPT_HRT*/
 			<1>, /*MTK_DRM_OPT_HRT_MODE*/
 			<0>, /*MTK_DRM_OPT_DELAYED_TRIGGER*/
@@ -10464,7 +10473,8 @@
 			<0>, /*MTK_DRM_OPT_GPU_CACHE*/
 			<1>, /*MTK_DRM_OPT_SPHRT*/
 			<1>, /*MTK_DRM_OPT_SDPA_OVL_SWITCH*/
-			<1>; /*MTK_DRM_OPT_HRT_BY_LARB*/
+			<1>, /*MTK_DRM_OPT_HRT_BY_LARB*/
+			<0>; /*MTK_DRM_OPT_TILE_OVERHEAD*/
 	};
 
 	disp_ssc0_smi_2x1_sub_comm: disp-ssc0-smi-2x1-sub-comm@1e809000 {
