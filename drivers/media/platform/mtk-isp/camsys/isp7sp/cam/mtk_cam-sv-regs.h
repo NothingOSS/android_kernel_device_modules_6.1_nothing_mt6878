@@ -375,6 +375,9 @@ union CAMSVCENTRAL_PATH_CFG {
 	unsigned int Raw;
 };
 
+/* CAMSV TAG SEL */
+#define REG_CAMSVCENTRAL_TAG_R_SEL				0x0174
+
 /* TG DB */
 #define REG_CAMSVCENTRAL_MODULE_DB				0x01B4
 union CAMSVCENTRAL_MODULE_DB {

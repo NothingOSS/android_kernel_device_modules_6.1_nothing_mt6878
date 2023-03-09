@@ -413,6 +413,7 @@ void sv_reset(struct mtk_camsv_device *sv_dev)
 	CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQ_CQ_EN,
 		CAMSVCQ_CQ_EN, CAMSVCQ_CQ_RESET, 0);
 
+	wmb(); /* make sure committed */
 
 RESET_FAILURE:
 	return;
@@ -528,9 +529,6 @@ int mtk_cam_sv_central_common_enable(struct mtk_camsv_device *sv_dev)
 {
 	int ret = 0;
 
-	mtk_cam_sv_toggle_db(sv_dev);
-	mtk_cam_sv_toggle_tg_db(sv_dev);
-
 	CAMSV_WRITE_BITS(sv_dev->base + REG_CAMSVCENTRAL_SEN_MODE,
 		CAMSVCENTRAL_SEN_MODE, CMOS_EN, 1);
 	CAMSV_WRITE_BITS(sv_dev->base + REG_CAMSVCENTRAL_VF_CON,
@@ -564,10 +562,23 @@ int mtk_cam_sv_print_fbc_status(struct mtk_camsv_device *sv_dev)
 
 int mtk_cam_sv_central_common_disable(struct mtk_camsv_device *sv_dev)
 {
-	int ret = 0;
+	int ret = 0, i;
 
 	/* disable dma dcm before do dma reset */
-	writel(1, sv_dev->base + REG_CAMSVCENTRAL_DCM_DIS);
+	CAMSV_WRITE_REG(sv_dev->base + REG_CAMSVCENTRAL_DCM_DIS, 1);
+
+	/* turn off interrupt */
+	CAMSV_WRITE_REG(sv_dev->base + REG_CAMSVCENTRAL_DONE_STATUS_EN, 0);
+	CAMSV_WRITE_REG(sv_dev->base + REG_CAMSVCENTRAL_ERR_STATUS_EN, 0);
+	CAMSV_WRITE_REG(sv_dev->base + REG_CAMSVCENTRAL_SOF_STATUS_EN, 0);
+
+	/* avoid camsv tag data leakage */
+	for (i = SVTAG_START; i < SVTAG_END; i++) {
+		CAMSV_WRITE_REG(sv_dev->base_inner + REG_CAMSVCENTRAL_GRAB_PXL_TAG1 +
+			CAMSVCENTRAL_GRAB_PXL_TAG_SHIFT * i, 0);
+		CAMSV_WRITE_REG(sv_dev->base_inner + REG_CAMSVCENTRAL_GRAB_LIN_TAG1 +
+			CAMSVCENTRAL_GRAB_LIN_TAG_SHIFT * i, 0);
+	}
 
 	/* bypass tg_mode function before vf off */
 	CAMSV_WRITE_BITS(sv_dev->base + REG_CAMSVCENTRAL_SEN_MODE,
@@ -578,15 +589,13 @@ int mtk_cam_sv_central_common_disable(struct mtk_camsv_device *sv_dev)
 
 	mtk_cam_sv_toggle_tg_db(sv_dev);
 
-	CAMSV_WRITE_REG(sv_dev->base + REG_CAMSVCENTRAL_DONE_STATUS_EN, 0);
-	CAMSV_WRITE_REG(sv_dev->base + REG_CAMSVCENTRAL_ERR_STATUS_EN, 0);
-	CAMSV_WRITE_REG(sv_dev->base + REG_CAMSVCENTRAL_SOF_STATUS_EN, 0);
-
 	CAMSV_WRITE_BITS(sv_dev->base + REG_CAMSVCENTRAL_SEN_MODE,
 		CAMSVCENTRAL_SEN_MODE, CMOS_EN, 0);
 
 	sv_reset(sv_dev);
 	CAMSV_WRITE_REG(sv_dev->base + REG_CAMSVCENTRAL_DMA_EN_IMG, 0);
+	CAMSV_WRITE_REG(sv_dev->base + REG_E_CAMSVCENTRAL_DCIF_SET, 0);
+	CAMSV_WRITE_REG(sv_dev->base + REG_E_CAMSVCENTRAL_DCIF_SEL, 0);
 	mtk_cam_sv_toggle_db(sv_dev);
 
 	return ret;
@@ -686,11 +695,14 @@ void apply_camsv_cq(struct mtk_camsv_device *sv_dev,
 	CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQTOP_THR_START,
 		CAMSVCQTOP_THR_START, CAMSVCQTOP_CSR_CQ_THR0_START, 1);
 
-	if (initial)
+	if (initial) {
+		/* enable stagger mode for multiple vsync(s) */
+		CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQ_CQ_EN,
+			CAMSVCQ_CQ_EN, CAMSVCQ_SCQ_STAGGER_MODE, 1);
 		dev_info(sv_dev->dev, "apply 1st camsv scq: addr_msb:0x%x addr_lsb:0x%x size:%d cq_en(0x%x))",
 			cq_addr_msb, cq_addr_lsb, cq_size,
-			readl_relaxed(sv_dev->base_scq + REG_CAMSVCQTOP_THR_START));
-	else
+			readl_relaxed(sv_dev->base_scq + REG_CAMSVCQ_CQ_EN));
+	} else
 		dev_dbg(sv_dev->dev, "apply camsv scq: addr_msb:0x%x addr_lsb:0x%x size:%d",
 			cq_addr_msb, cq_addr_lsb, cq_size);
 }
@@ -826,9 +838,9 @@ int mtk_cam_sv_cq_config(struct mtk_camsv_device *sv_dev)
 {
 	CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQ_CQ_EN,
 		CAMSVCQ_CQ_EN, CAMSVCQ_CQ_DB_EN, 0);
-	/* always enable stagger mode for multiple vsync(s) */
+	/* reset stagger mode */
 	CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQ_CQ_EN,
-		CAMSVCQ_CQ_EN, CAMSVCQ_SCQ_STAGGER_MODE, 1);
+		CAMSVCQ_CQ_EN, CAMSVCQ_SCQ_STAGGER_MODE, 0);
 	CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQ_CQ_SUB_THR0_CTL,
 		CAMSVCQ_CQ_SUB_THR0_CTL, CAMSVCQ_CQ_SUB_THR0_MODE, 1);
 	/* camsv todo: start period need to be calculated */
@@ -1007,6 +1019,8 @@ void camsv_irq_handle_err(
 	struct mtk_camsv_tag_info tag_info = sv_dev->tag_info[tag_idx];
 	unsigned int stream_id;
 
+	writel_relaxed((tag_idx << 22) + (tag_idx << 27),
+		sv_dev->base + REG_CAMSVCENTRAL_TAG_R_SEL);
 	dev_info_ratelimited(sv_dev->dev,
 		"TAG_IDX:%d TG PATHCFG/SENMODE FRMSIZE/R RGRABPXL/LIN:0x%x/%x 0x%x/%x 0x%x/%x\n",
 		tag_idx,

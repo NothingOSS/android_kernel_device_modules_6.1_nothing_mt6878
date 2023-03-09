@@ -125,6 +125,7 @@ struct mtk_mraw_device {
 	int irq;
 	void __iomem *base;
 	void __iomem *base_inner;
+	void __iomem *top;
 	unsigned int num_clks;
 	struct clk **clks;
 	struct mtk_mraw_pipeline *pipeline;
@@ -148,7 +149,6 @@ struct mtk_mraw_device {
 void mraw_reset(struct mtk_mraw_device *mraw_dev);
 int mtk_cam_mraw_dev_config(struct mtk_mraw_device *mraw_dev);
 int mtk_cam_mraw_dev_stream_on(struct mtk_mraw_device *mraw_dev, bool on);
-int mtk_cam_mraw_tg_config(struct mtk_mraw_device *mraw_dev);
 int mtk_cam_mraw_top_config(struct mtk_mraw_device *mraw_dev);
 int mtk_cam_mraw_dma_config(struct mtk_mraw_device *mraw_dev);
 int mtk_cam_mraw_fbc_config(struct mtk_mraw_device *mraw_dev);

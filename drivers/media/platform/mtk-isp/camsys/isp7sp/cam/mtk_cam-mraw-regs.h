@@ -155,8 +155,8 @@ union MRAW_TG_VF_CON {
 #define REG_MRAW_TG_SEN_GRAB_LIN				0x050C
 #define MRAW_TG_PATH_TG_FULL_SEL				BIT(15)
 #define REG_MRAW_TG_PATH_CFG					0x0510
-//[todo]: implement LOAD_HOLD
-union MRAW_TG_PATH_CFG // only for db_load test
+
+union MRAW_TG_PATH_CFG
 {
 	struct {
 		unsigned int TG_SEN_IN_LSB        :  3;    /*  0.. 2, 0x00000007 */
