@@ -320,11 +320,6 @@ MEM_ALLOCATE_DONE:
 		 substream->runtime->dma_area,
 		 substream->runtime->dma_bytes);
 
-	if (strstr(memif->data->name, "DL11"))
-		afe->memif_32bit_supported = 0;
-	else
-		afe->memif_32bit_supported = 1;
-
 	memset_io(substream->runtime->dma_area, 0,
 		  substream->runtime->dma_bytes);
 
@@ -955,8 +950,15 @@ int mtk_memif_set_channel(struct mtk_base_afe *afe,
 	struct mtk_base_afe_memif *memif = &afe->memif[id];
 	unsigned int mono;
 
-	if (memif->data->mono_shift < 0)
-		return 0;
+
+	if (memif->data->mono_invert)
+		mono = (channel == 1) ? 0 : 1;
+	else
+		mono = (channel == 1) ? 1 : 0;
+
+	if (memif->data->mono_shift > 0)
+		mtk_regmap_update_bits(afe->regmap, memif->data->mono_reg,
+				       0x1, mono, memif->data->mono_shift);
 
 	if (memif->data->quad_ch_mask) {
 		unsigned int quad_ch = (channel == 4) ? 1 : 0;
@@ -965,11 +967,6 @@ int mtk_memif_set_channel(struct mtk_base_afe *afe,
 				       memif->data->quad_ch_mask,
 				       quad_ch, memif->data->quad_ch_shift);
 	}
-
-	if (memif->data->mono_invert)
-		mono = (channel == 1) ? 0 : 1;
-	else
-		mono = (channel == 1) ? 1 : 0;
 
 	/* for specific configuration of memif mono mode */
 	if (memif->data->int_odd_flag_reg)
@@ -987,8 +984,7 @@ int mtk_memif_set_channel(struct mtk_base_afe *afe,
 	/* save channel value for cm get*/
 	g_channel = channel;
 
-	return mtk_regmap_update_bits(afe->regmap, memif->data->mono_reg,
-				      1, mono, memif->data->mono_shift);
+	return 0;
 }
 EXPORT_SYMBOL_GPL(mtk_memif_set_channel);
 
@@ -1067,8 +1063,13 @@ int mtk_memif_set_format(struct mtk_base_afe *afe,
 	case SNDRV_PCM_FORMAT_S32_LE:
 	case SNDRV_PCM_FORMAT_U32_LE:
 		if (afe->memif_32bit_supported) {
-			hd_audio = 2;
-			hd_align = 0;
+			if (memif->data->hd_msb_shift > 0) {
+				hd_audio = 1;
+				hd_align = 0;
+			} else {
+				hd_audio = 2;
+				hd_align = 0;
+			}
 		} else {
 			hd_audio = 1;
 			hd_align = 1;
@@ -1076,7 +1077,12 @@ int mtk_memif_set_format(struct mtk_base_afe *afe,
 		break;
 	case SNDRV_PCM_FORMAT_S24_LE:
 	case SNDRV_PCM_FORMAT_U24_LE:
-		hd_audio = 1;
+		if (memif->data->hd_msb_shift > 0) {
+			hd_audio = 1;
+			hd_align = 1;
+		} else {
+			hd_audio = 1;
+		}
 		break;
 	default:
 		dev_err(afe->dev, "%s() error: unsupported format %d\n",
@@ -1085,7 +1091,8 @@ int mtk_memif_set_format(struct mtk_base_afe *afe,
 	}
 
 	ret = mtk_regmap_update_bits(afe->regmap, memif->data->hd_reg,
-				     0x3, hd_audio, memif->data->hd_shift);
+				     memif->data->hd_mask, hd_audio,
+				     memif->data->hd_shift);
 	if (ret)
 		dev_err(afe->dev, "%s() error set memif->data->hd_reg %d\n",
 			__func__, ret);
