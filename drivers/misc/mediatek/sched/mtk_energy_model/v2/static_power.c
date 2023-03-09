@@ -72,7 +72,7 @@ static int init_mtk_weighting(void)
 	unsigned long offset = WL_WEIGHTING_OFFSET;
 	struct mtk_em_perf_domain *pd_public;
 
-	for (cluster = 0; cluster < total_cluster; cluster++) {
+	for (cluster = 0, type = 0; cluster < total_cluster; cluster++) {
 		pd_public = &mtk_em_pd_ptr_public[cluster];
 		pd_public->mtk_weighting =
 			kcalloc(mtk_mapping.nr_dsu_type, sizeof(struct mtk_weighting),
@@ -188,12 +188,6 @@ static int init_dsu_em(void)
 		goto out;
 
 	mtk_dsu_em.nr_dsu_type = mtk_mapping.nr_dsu_type;
-	mtk_dsu_em.dsu_table =
-		kcalloc(MAX_NR_FREQ, sizeof(struct mtk_em_perf_state),
-				GFP_KERNEL);
-	if (!mtk_dsu_em.dsu_table)
-		goto nomem;
-
 	mtk_dsu_em.dsu_wl_table =
 		kcalloc(mtk_dsu_em.nr_dsu_type, sizeof(struct mtk_dsu_em_perf_state *),
 				GFP_KERNEL);
@@ -648,7 +642,7 @@ static int init_public_table(void)
 	total_cluster = cluster;
 	total_cpu = cpu + 1;
 
-	for (type = 0; type < pd_public->nr_wl_tables; type++) {
+	for (type = 0; type < mtk_mapping.nr_cpu_type; type++) {
 		wl_offset = WL_TBL_START_OFFSET + WL_OFFSET * type;
 		for (cluster = 0; cluster < total_cluster; cluster++) {
 			pd_public = &mtk_em_pd_ptr_public[cluster];
@@ -954,7 +948,7 @@ static int mtk_static_power_probe(struct platform_device *pdev)
 	struct platform_device *pdev_temp;
 	struct resource *usram_res, *csram_res, *eem_res;
 
-	pr_info("[Static Power v2.1.1] Start to parse DTS 12313213\n");
+	pr_info("[Static Power v2.1.1] Start to parse DTS\n");
 	dvfs_node = of_find_node_by_name(NULL, "cpuhvfs");
 	if (dvfs_node == NULL) {
 		pr_info("failed to find node @ %s\n", __func__);
