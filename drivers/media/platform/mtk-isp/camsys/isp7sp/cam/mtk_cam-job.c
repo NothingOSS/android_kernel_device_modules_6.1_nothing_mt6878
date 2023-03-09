@@ -259,6 +259,7 @@ static int mtk_cam_job_pack_init(struct mtk_cam_job *job,
 		mtk_cam_buffer_pool_return(&job->cq);
 		return ret;
 	}
+	memset(job->ipi.vaddr, 0, sizeof(struct mtkcam_ipi_frame_param));
 
 	INIT_LIST_HEAD(&job->job_state.list);
 	apply_cq_ref_reset(&job->cq_ref);
@@ -1823,6 +1824,7 @@ static int job_init_mstream(struct mtk_cam_job *job)
 		mtk_cam_buffer_pool_return(&job->cq);
 		return ret;
 	}
+	memset(mjob->ipi.vaddr, 0, sizeof(struct mtkcam_ipi_frame_param));
 
 	return ret;
 }
