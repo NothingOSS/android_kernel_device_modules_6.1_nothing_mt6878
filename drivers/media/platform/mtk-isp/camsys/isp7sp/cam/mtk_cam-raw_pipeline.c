@@ -80,12 +80,17 @@ static inline struct v4l2_rect fullsize_as_crop(unsigned int w, unsigned int h)
 	};
 }
 
+#define DC_MODE_VB_MARGIN 100
 static int res_calc_fill_sensor(struct mtk_cam_res_calc *c,
-				const struct mtk_cam_resource_sensor_v2 *s)
+				const struct mtk_cam_resource_sensor_v2 *s,
+				const struct mtk_cam_resource_raw_v2 *r)
 {
+	u32 vb = (r->hw_mode != HW_MODE_DIRECT_COUPLED) ?
+			s->vblank : DC_MODE_VB_MARGIN;
+
 	c->line_time = 1000000000L
 		* s->interval.numerator / s->interval.denominator
-		/ (s->height + s->vblank);
+		/ (s->height + vb);
 	c->width = s->width;
 	c->height = s->height;
 	return 0;
@@ -388,6 +393,35 @@ static unsigned int mtk_raw_choose_raws(const int raw_count, const int num_raws,
 	return 0;
 }
 
+#define M2M_PROCESS_MARGIN_N 11550
+#define M2M_PROCESS_MARGIN_D 10000
+static void res_fill_m2m_sensor_info(
+		struct mtk_cam_resource_sensor_v2 *s,
+		struct mtk_cam_resource_raw_v2 *r)
+{
+	struct mtk_cam_scen *scen = &r->scen;
+	s64 prate = 0;
+
+	if (scen->id == MTK_CAM_SCEN_M2M_NORMAL ||
+		scen->id == MTK_CAM_SCEN_ODT_NORMAL) {
+
+		if (s->interval.denominator == 0)
+			s->interval.denominator = 300;
+		if (s->interval.numerator == 0)
+			s->interval.numerator = 10;
+
+		prate = s->width * s->height * s->interval.denominator * M2M_PROCESS_MARGIN_N;
+		do_div(prate, s->interval.numerator * M2M_PROCESS_MARGIN_D);
+		s->pixel_rate = prate;
+
+		pr_info("%s:width:%u height:%u interval:%u/%u prate:%lld\n",
+			__func__,
+			s->width, s->height,
+			s->interval.denominator,
+			s->interval.numerator, prate);
+	}
+}
+
 static inline int mtk_pixelmode_val(int pxl_mode)
 {
 	int val = 0;
@@ -455,7 +489,8 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 	if (ret)
 		return -EINVAL;
 
-	res_calc_fill_sensor(&c, s);
+	res_fill_m2m_sensor_info(s, r);
+	res_calc_fill_sensor(&c, s, r);
 	c.cbn_type = 0; /* 0: disable, 1: 2x2, 2: 3x3 3: 4x4 */
 	c.qbnd_en = 0;
 	c.qbn_type = 0; /* 0: disable, 1: w/2, 2: w/4 */
