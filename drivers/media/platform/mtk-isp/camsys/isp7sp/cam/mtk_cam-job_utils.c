@@ -8,7 +8,7 @@
 #include "mtk_cam-job_utils.h"
 #include "mtk_cam-ufbc-def.h"
 
-static unsigned int sv_pure_raw;
+static unsigned int sv_pure_raw = 1;
 module_param(sv_pure_raw, uint, 0644);
 MODULE_PARM_DESC(sv_pure_raw, "enable pure raw dump with casmsv");
 

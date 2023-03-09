@@ -211,16 +211,13 @@ static bool update_sv_pure_raw(struct mtk_cam_job *job)
 
 	/* TODO: scen help func */
 	is_supported_scen =
-		(job->job_type != JOB_TYPE_M2M) &&
-		(job->job_type != JOB_TYPE_MSTREAM) &&
-		(job->job_type != JOB_TYPE_HW_PREISP) &&
-		(job->job_type != JOB_TYPE_HW_SUBSAMPLE) &&
-		(job->job_type != JOB_TYPE_ONLY_SV);
+		(job->job_type == JOB_TYPE_BASIC) ||
+		(job->job_type == JOB_TYPE_STAGGER);
 
 	is_sv_pure_raw = has_imgo && is_pure && is_supported_scen;
 
 	if (CAM_DEBUG_ENABLED(JOB))
-		pr_info("%s has_imgo:%d is_pure:%d is_supported_scen: %d sv_pure_raw:%d",
+		pr_info("%s: has_imgo:%d is_pure:%d is_supported_scen:%d sv_pure_raw:%d",
 			__func__, has_imgo, is_pure, is_supported_scen,
 			is_sv_pure_raw);
 
