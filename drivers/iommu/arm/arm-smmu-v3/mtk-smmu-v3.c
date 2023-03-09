@@ -214,17 +214,24 @@ static const char *get_fault_reason_str(__u32 reason)
 static struct iommu_group *mtk_smmu_device_group(struct device *dev)
 {
 	struct arm_smmu_master *master = dev_iommu_priv_get(dev);
-	struct mtk_smmu_data *data = to_mtk_smmu_data(master->smmu);
-	const struct mtk_smmu_plat_data *plat_data = data->plat_data;
+	const struct mtk_smmu_plat_data *plat_data;
 	struct iommu_group *group = NULL;
 	struct device_node *group_node;
+	struct mtk_smmu_data *data;
 	int i, sid;
 
+	if (!master) {
+		dev_info(dev, "get smmu master fail\n");
+		return ERR_PTR(-ENODEV);
+	}
+
+	data = to_mtk_smmu_data(master->smmu);
 	if (!data) {
 		dev_info(dev, "get smmu data fail\n");
 		return ERR_PTR(-ENODEV);
 	}
 
+	plat_data = data->plat_data;
 	sid = get_smmu_stream_id(dev);
 	dev_info(dev, "[%s] sid:0x%x\n", __func__, sid);
 	if (sid < 0)
@@ -292,8 +299,7 @@ static void mtk_iotlb_sync_map(struct iommu_domain *domain, unsigned long iova,
 	u64 tab_id;
 
 	tab_id = get_smmu_tab_id_by_domain(domain);
-	if (tab_id >= 0)
-		mtk_iova_map(tab_id, iova, size);
+	mtk_iova_map(tab_id, iova, size);
 #endif
 }
 
@@ -311,10 +317,8 @@ static void mtk_iotlb_sync(struct iommu_domain *domain,
 	}
 
 	tab_id = get_smmu_tab_id_by_domain(domain);
-	if (tab_id >= 0) {
-		if (gather->start > 0 && gather->start != ULONG_MAX)
-			mtk_iova_unmap(tab_id, gather->start, length);
-	}
+	if (gather->start > 0 && gather->start != ULONG_MAX)
+		mtk_iova_unmap(tab_id, gather->start, length);
 #endif
 }
 
@@ -326,8 +330,7 @@ static void mtk_tlb_flush(struct arm_smmu_domain *smmu_domain,
 	u64 tab_id;
 
 	tab_id = get_smmu_tab_id_by_domain(&smmu_domain->domain);
-	if (tab_id >= 0)
-		mtk_iommu_tlb_sync_trace(iova, size, tab_id);
+	mtk_iommu_tlb_sync_trace(iova, size, tab_id);
 #endif
 }
 
@@ -461,9 +464,12 @@ static int mtk_smmu_hw_sec_init(struct arm_smmu_device *smmu)
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 	ret = mtk_smmu_sec_init(plat_data->smmu_type);
+	if (ret)
+		dev_info(smmu->dev, "[%s] smmu:%s fail\n", __func__,
+			 get_smmu_name(plat_data->smmu_type));
 #endif
 
-	return ret;
+	return 0;
 }
 
 static int mtk_smmu_power_get(struct arm_smmu_device *smmu)
@@ -799,12 +805,12 @@ static bool is_dev_bypass_smmu_s1_enabled(struct device *dev)
 static int set_dev_bypass_smmu_s1(struct device *dev, bool enable)
 {
 	struct arm_smmu_master *master = dev_iommu_priv_get(dev);
-	__le64 *steptr;
-	u64 val;
-	bool enabled;
-	int i;
-	u32 sid;
 	struct arm_smmu_cmdq_ent prefetch_cmd;
+	__le64 *steptr;
+	bool enabled;
+	u64 val;
+	u32 sid;
+	int i;
 
 	if (!master)
 		return -1;
@@ -888,6 +894,7 @@ static bool mtk_smmu_dev_has_feature(struct device *dev,
 
 	if (!master)
 		return false;
+
 	smmu = master->smmu;
 
 	switch (mtk_iommu_feat) {
@@ -1885,7 +1892,7 @@ static struct mtk_smmu_fault_param *smmuwp_process_tf(
 {
 	struct arm_smmu_device *smmu = master->smmu;
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
-	struct mtk_smmu_fault_param *first_fault_param;
+	struct mtk_smmu_fault_param *first_fault_param = NULL;
 	void __iomem *wp_base = smmu->wp_base;
 	unsigned int sid, ssid, secsidv, ssidv;
 	u32 i, regval, va35_32, axiid;
@@ -2093,7 +2100,7 @@ static void smmuwp_check_latency_counter(struct arm_smmu_device *smmu,
 		*tbu_lat_tots += tbu_rlat_tot[i] + tbu_wlat_tot[i];
 	}
 
-	if (*tbu_lat_tots > 0 || *tbu_lat_tots > 0) {
+	if (*tcu_rlat_tots > 0 || *tbu_lat_tots > 0 || *oos_trans_tot > 0) {
 		pr_info("---- %s start ----\n", __func__);
 		pr_info("\tTCU read cmd max latency(0x%x[15:0]):%uT\n",
 			SMMUWP_TCU_MON1, tcu_lat_max);
@@ -2277,7 +2284,7 @@ static int smmuwp_start_latency_monitor(struct arm_smmu_device *smmu,
 	/* Both TCU and TBU latency count are expected to be 0 now */
 	smmuwp_check_latency_counter(smmu, &maxlat_axiid, &tcu_rlat_tots,
 				     &tbu_lat_tots, &oos_trans_tot);
-	if (tcu_rlat_tots || tbu_lat_tots) {
+	if (tcu_rlat_tots || tbu_lat_tots || oos_trans_tot) {
 		pr_info("%s clear counter failed\n", __func__);
 		return -1;
 	}
