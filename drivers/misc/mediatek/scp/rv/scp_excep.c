@@ -26,6 +26,7 @@
 #include <linux/of_reserved_mem.h>
 #include "scp_reservedmem_define.h"
 #endif
+#include "sap.h"
 
 #define SCP_SECURE_DUMP_MEASURE 0
 #define POLLING_RETRY 200
@@ -546,7 +547,7 @@ static unsigned int scp_crash_dump(enum scp_core_id id)
 			dram_size = scp_region_info_copy.ap_dram_size;
 			scp_dump_size += roundup(dram_size, 4);
 		}
-
+		scp_dump_size += sap_get_secure_dump_size();
 	} else {
 #else
 	{
@@ -574,6 +575,9 @@ static unsigned int scp_crash_dump(enum scp_core_id id)
 			scp_ap_dram_virt, dram_size);
 		scp_dump_size += roundup(dram_size, 4);
 	}
+
+	scp_dump_size += sap_crash_dump(
+		(uint8_t *)get_MDUMP_addr(MDUMP_DRAM) + scp_dump_size);
 	}
 
 	dsb(SY); /* may take lot of time */
@@ -602,6 +606,8 @@ static void scp_prepare_aed_dump(char *aed_str,
 	pr_debug("[SCP] %s begins:%s\n", __func__, aed_str);
 	scp_dump_last_regs();
 	scp_show_last_regs();
+	sap_dump_last_regs();
+	sap_show_last_regs();
 
 	scp_A_log = scp_pickup_log_for_aee();
 
@@ -644,6 +650,9 @@ core1:
 		"hart1 pc=0x%08x, lr=0x%08x, sp=0x%08x\n",
 		c1_t1_m->pc, c1_t1_m->lr, c1_t1_m->sp), offset);
 end:
+		offset += SCP_CHECK_AED_STR_LEN(sap_dump_detail_buff(scp_dump.detail_buff
+			+ offset, SCP_AED_STR_LEN - offset), offset);
+
 		offset += SCP_CHECK_AED_STR_LEN(snprintf(scp_dump.detail_buff + offset,
 			SCP_AED_STR_LEN - offset, "last log:\n%s", scp_A_log), offset);
 
@@ -824,7 +833,8 @@ int scp_excep_init(void)
 #else
 	{
 #endif
-	scp_dump.ramdump = vmalloc(get_MDUMP_size_accumulate(MDUMP_DRAM));
+	scp_dump.ramdump = vmalloc(get_MDUMP_size_accumulate(MDUMP_DRAM)
+		+ sap_get_coredump_size());
 	if (!scp_dump.ramdump)
 		return -1;
 	}

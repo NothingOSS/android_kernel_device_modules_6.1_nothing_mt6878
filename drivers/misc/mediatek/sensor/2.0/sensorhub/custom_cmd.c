@@ -13,6 +13,8 @@
 #include "sensor_comm.h"
 #include "custom_cmd.h"
 #include "share_memory.h"
+#include "sap_custom_cmd.h"
+#include "sap.h"
 
 static DEFINE_MUTEX(bus_user_lock);
 static atomic_t cust_cmd_sequence;
@@ -230,6 +232,11 @@ int custom_cmd_comm_with(int sensor_type, struct custom_cmd *cust_cmd)
 	uint16_t tx_len = header_len + cust_cmd->tx_len;
 	uint16_t rx_len = header_len + cust_cmd->rx_len;
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SAP_SUPPORT)
+	if (sap_enabled() && sensor_type == SENSOR_TYPE_OIS)
+		return sap_custom_cmd_comm(sensor_type, cust_cmd);
+#endif
+
 	if (tx_len > sizeof(rx_fast_notify.value) ||
 		rx_len > sizeof(rx_fast_notify.value))
 		ret = custom_cmd_slow_comm(sensor_type, cust_cmd);
@@ -281,6 +288,7 @@ int custom_cmd_init(void)
 		custom_cmd_w_shm_cfg, NULL);
 	share_mem_config_handler_register(SHARE_MEM_CUSTOM_R_PAYLOAD_TYPE,
 		custom_cmd_r_shm_cfg, NULL);
+	return sap_custom_cmd_init();
 	return 0;
 }
 
@@ -290,4 +298,5 @@ void custom_cmd_exit(void)
 	sensor_comm_notify_handler_unregister(SENS_COMM_NOTIFY_FAST_CUST_CMD);
 	share_mem_config_handler_unregister(SHARE_MEM_CUSTOM_W_PAYLOAD_TYPE);
 	share_mem_config_handler_unregister(SHARE_MEM_CUSTOM_R_PAYLOAD_TYPE);
+	sap_custom_cmd_exit();
 }

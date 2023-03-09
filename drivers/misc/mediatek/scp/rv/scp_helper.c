@@ -53,6 +53,7 @@
 #include "scp_hwvoter_dbg.h"
 
 #include "mtk-afe-external.h"
+#include "sap.h"
 
 /* scp chre manager header */
 #include "scp_chre_manager.h"
@@ -911,6 +912,9 @@ static inline ssize_t scp_A_reg_status_show(struct device *kobj
 
 	scp_dump_last_regs();
 	scp_show_last_regs();
+	sap_dump_last_regs();
+	sap_show_last_regs();
+
 	len += scnprintf(buf + len, PAGE_SIZE - len,
 		"c0h0_status = %08x\n", c0_m->status);
 	len += scnprintf(buf + len, PAGE_SIZE - len,
@@ -972,6 +976,7 @@ core1:
 		"c1h1_sp_latch = %08x\n", c1_t1_m->sp_latch);
 
 end:
+	len += sap_print_last_regs(buf + len, PAGE_SIZE - len);
 	return len;
 }
 
@@ -1129,6 +1134,9 @@ void scp_wdt_reset(int cpu_id)
 			scp_do_wdt_set(1);
 			break;
 		}
+
+		if (sap_enabled() && cpu_id == sap_get_core_id())
+			scp_do_wdt_set(cpu_id);
 	} else {
 #else
 	{
@@ -1141,6 +1149,10 @@ void scp_wdt_reset(int cpu_id)
 		writel(V_INSTANT_WDT, R_CORE1_WDT_CFG);
 		break;
 	}
+
+	if (sap_enabled() && cpu_id == sap_get_core_id())
+		sap_wdt_reset();
+
 	}
 }
 EXPORT_SYMBOL(scp_wdt_reset);
@@ -1174,6 +1186,8 @@ static ssize_t wdt_reset_store(struct device *dev
 			scp_wdt_reset(0);
 		else if (value == 667)
 			scp_wdt_reset(1);
+		else if (value == 668)
+			scp_wdt_reset(sap_get_core_id());
 	}
 	return count;
 }
@@ -1553,6 +1567,7 @@ static int scp_reserve_memory_ioremap(struct platform_device *pdev)
 			ret = of_property_read_u32(pdev->dev.of_node,
 					"secure-dump-size",
 					&m_size);
+			m_size += sap_get_secure_dump_size();
 		} else {
 			ret = of_property_read_u32_index(pdev->dev.of_node,
 					"scp-mem-tbl",
@@ -1852,13 +1867,17 @@ void scp_reset_wait_timeout(void)
 {
 	uint32_t core0_halt = 0;
 	uint32_t core1_halt = 0;
+	uint32_t sap_halt = 1;
+
 	/* make sure scp is in idle state */
 	int timeout = 50; /* max wait 1s */
 
 	while (timeout--) {
 		core0_halt = readl(R_CORE0_STATUS) & B_CORE_HALT;
 		core1_halt = scpreg.core_nums == 2? readl(R_CORE1_STATUS) & B_CORE_HALT: 1;
-		if (core0_halt && core1_halt) {
+		if (sap_enabled())
+			sap_halt = sap_cfg_reg_read(CFG_STATUS_OFFSET) & B_CORE_HALT;
+		if (core0_halt && core1_halt && sap_halt) {
 			/* SCP stops any activities
 			 * and parks at wfi
 			 */
@@ -1951,9 +1970,14 @@ void scp_sys_reset_ws(struct work_struct *ws)
 		/* stop scp */
 		writel(1, R_CORE0_SW_RSTN_SET);
 		writel(1, R_CORE1_SW_RSTN_SET);
+		if (sap_enabled())
+			sap_cfg_reg_write(CFG_SW_RSTN_OFFSET, 1);
 		dsb(SY); /* may take lot of time */
 		pr_notice("[SCP] rstn core0 %x core1 %x\n",
-		readl(R_CORE0_SW_RSTN_SET), readl(R_CORE1_SW_RSTN_SET));
+			readl(R_CORE0_SW_RSTN_SET), readl(R_CORE1_SW_RSTN_SET));
+		if (sap_enabled())
+			pr_notice("[SCP] rstn sap %x\n",
+				sap_cfg_reg_read(CFG_SW_RSTN_OFFSET));
 	} else {
 		/* reset type scp WDT or CMD*/
 		/* make sure scp is in idle state */
@@ -1962,9 +1986,16 @@ void scp_sys_reset_ws(struct work_struct *ws)
 		writel(1, R_CORE1_SW_RSTN_SET);
 		writel(CORE_REBOOT_OK, SCP_GPR_CORE0_REBOOT);
 		writel(CORE_REBOOT_OK, SCP_GPR_CORE1_REBOOT);
+		if (sap_enabled()) {
+			sap_cfg_reg_write(CFG_SW_RSTN_OFFSET, 1);
+			sap_cfg_reg_write(CFG_GPR5_OFFSET, CORE_REBOOT_OK);
+		}
 		dsb(SY); /* may take lot of time */
 		pr_notice("[SCP] rstn core0 %x core1 %x\n",
 		readl(R_CORE0_SW_RSTN_SET), readl(R_CORE1_SW_RSTN_SET));
+		if (sap_enabled())
+			pr_notice("[SCP] rstn sap %x\n",
+				sap_cfg_reg_read(CFG_SW_RSTN_OFFSET));
 	}
 	}
 
@@ -1999,7 +2030,7 @@ void scp_sys_reset_ws(struct work_struct *ws)
 	writel((unsigned int)scp_mem_size, DRAM_RESV_SIZE_REG);
 	/* start scp */
 	pr_notice("[SCP] start scp\n");
-	writel(1, R_CORE0_SW_RSTN_CLR);
+	//writel(1, R_CORE0_SW_RSTN_CLR);
 	pr_notice("[SCP] rstn core0 %x\n", readl(R_CORE0_SW_RSTN_CLR));
 	dsb(SY); /* may take lot of time */
 	}
@@ -2934,6 +2965,7 @@ static int __init scp_init(void)
 		pr_notice("[SCP] scp disabled!!\n");
 		goto err;
 	}
+	sap_init();
 	/* scp platform initialise */
 	scp_region_info_init();
 	pr_debug("[SCP] platform init\n");

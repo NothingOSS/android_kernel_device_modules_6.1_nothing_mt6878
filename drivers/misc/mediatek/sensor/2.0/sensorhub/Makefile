@@ -15,4 +15,6 @@ sensorhub-objs += debug.o
 sensorhub-objs += custom_cmd.o
 sensorhub-objs += sensor_freq.o
 
+sensorhub-$(CONFIG_MTK_TINYSYS_SAP_SUPPORT) += sap_custom_cmd.o
+
 #obj-y += test/

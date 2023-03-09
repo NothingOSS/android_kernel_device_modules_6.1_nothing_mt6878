@@ -15,6 +15,7 @@
 
 enum mtk_ipi_dev {
 	IPI_DEV_SCP,
+	IPI_DEV_SAP,
 	IPI_DEV_SSPM,
 	IPI_DEV_ADSP,
 	IPI_DEV_MCUPM,

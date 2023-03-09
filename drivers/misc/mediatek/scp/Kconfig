@@ -30,3 +30,12 @@ config MTK_TINYSYS_SCP_DEBUG_SUPPORT
 	  Set Y to enable this feature.
 	  Set N to disable this feature.
 	  If unsure, Set N to disable it.
+
+config MTK_TINYSYS_SAP_SUPPORT
+	bool "Specify Interface Support SAP"
+	depends on MTK_TINYSYS_SCP_SUPPORT
+	help
+	  SAP is a MediaTek in-house DSP which
+	  can receive command from IPI interface.
+	  Set Y to enable this feature.
+	  If unsure, set N to stay with legacy feature.

@@ -36,6 +36,7 @@
 #include "scp_excep.h"
 #include "scp_dvfs.h"
 #include "scp.h"
+#include "sap.h"
 
 #define SCP_SECURE_DUMP_MEASURE 0
 #if SCP_RESERVED_MEM && IS_ENABLED(CONFIG_OF_RESERVED_MEM) && SCP_SECURE_DUMP_MEASURE
@@ -333,6 +334,7 @@ int scp_sys_full_reset(void)
 	/*set info to sram*/
 	memcpy_to_scp(scp_region_info, (const void *)&scp_region_info_copy
 			, sizeof(scp_region_info_copy));
+	sap_restore_l2tcm();
 	}
 
 #if SCP_RESERVED_MEM && IS_ENABLED(CONFIG_OF_RESERVED_MEM)
