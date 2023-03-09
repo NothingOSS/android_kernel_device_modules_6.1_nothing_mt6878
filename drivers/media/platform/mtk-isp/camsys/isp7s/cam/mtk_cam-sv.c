@@ -688,7 +688,7 @@ void apply_camsv_cq(struct mtk_camsv_device *sv_dev,
 	if (cq_size == 0)
 		return;
 
-	if (WARN_ON(apply_cq_ref_set(&sv_dev->cq_ref, ref)))
+	if (WARN_ON(assign_apply_cq_ref(&sv_dev->cq_ref, ref)))
 		return;
 
 	CAMSV_WRITE_REG(sv_dev->base_scq  + REG_CAMSVCQ_CQ_SUB_THR0_DESC_SIZE_2,
@@ -1246,6 +1246,9 @@ static irqreturn_t mtk_irq_camsv_sof(int irq, void *data)
 		sv_dev->tg_cnt = tg_cnt;
 	sv_dev->sof_timestamp = ktime_get_boottime_ns();
 	irq_flag = irq_info.irq_type;
+
+	engine_handle_sof(&sv_dev->cq_ref, irq_info.frame_idx_inner);
+
 	if (irq_flag && push_msgfifo(sv_dev, &irq_info) == 0)
 		wake_thread = 1;
 

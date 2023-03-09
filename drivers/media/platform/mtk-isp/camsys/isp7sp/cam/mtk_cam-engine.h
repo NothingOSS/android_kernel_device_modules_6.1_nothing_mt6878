@@ -75,23 +75,52 @@ struct engine_callback {
 })
 
 struct apply_cq_ref {
-	atomic_t cnt;
+	int cookie;
+	atomic_t cq_done_cnt;
+	atomic_t inner_cnt;
 };
 
 static inline void apply_cq_ref_reset(struct apply_cq_ref *ref)
 {
-	atomic_set(&ref->cnt, 0);
+	ref->cookie = -1;
+	atomic_set(&ref->cq_done_cnt, 0);
+	atomic_set(&ref->inner_cnt, 0);
 }
 
-static inline void apply_cq_ref_set_cnt(struct apply_cq_ref *ref, int cnt)
+static inline void apply_cq_ref_init(struct apply_cq_ref *ref,
+				     int cookie, int cnt)
 {
 	/* it's abnormal if cnt is not zero */
-	WARN_ON(atomic_read(&ref->cnt));
-	atomic_set(&ref->cnt, cnt);
+	WARN_ON(atomic_read(&ref->cq_done_cnt));
+
+	ref->cookie = cookie;
+	atomic_set(&ref->cq_done_cnt, cnt);
+	atomic_set(&ref->inner_cnt, cnt);
 }
 
-static inline int apply_cq_ref_set(struct apply_cq_ref **ref,
-				   struct apply_cq_ref *target)
+static inline bool apply_cq_ref_handle_cq_done(struct apply_cq_ref *ref)
+{
+	return atomic_dec_and_test(&ref->cq_done_cnt);
+}
+
+static inline bool apply_cq_ref_handle_sof(struct apply_cq_ref *ref,
+					   int inner_cookie)
+{
+	if (ref && ref->cookie == inner_cookie) {
+		atomic_dec(&ref->inner_cnt);
+		return 1;
+	}
+	return 0;
+}
+
+static inline bool apply_cq_ref_is_to_inner(struct apply_cq_ref *ref)
+{
+	return  atomic_read(&ref->inner_cnt) == 0;
+}
+
+
+static inline int assign_apply_cq_ref(struct apply_cq_ref **ref,
+				      struct apply_cq_ref *target)
 {
 	if (*ref)
 		return -1;
@@ -99,17 +128,17 @@ static inline int apply_cq_ref_set(struct apply_cq_ref **ref,
 	return 0;
 }
 
-static inline bool apply_cq_ref_handle_cq_done(struct apply_cq_ref *ref)
-{
-	return atomic_dec_and_test(&ref->cnt);
-}
-
 static inline bool engine_handle_cq_done(struct apply_cq_ref **ref)
 {
-	struct apply_cq_ref *_ref = *ref;
+	return apply_cq_ref_handle_cq_done(*ref);
+}
 
-	*ref = NULL;
-	return apply_cq_ref_handle_cq_done(_ref);
+static inline void engine_handle_sof(struct apply_cq_ref **ref, int inner_cookie)
+{
+	bool reset_ref = apply_cq_ref_handle_sof(*ref, inner_cookie);
+
+	if (reset_ref)
+		*ref = NULL;
 }
 
 #endif //__MTK_CAM_ENGINE_H

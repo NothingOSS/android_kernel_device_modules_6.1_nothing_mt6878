@@ -214,8 +214,7 @@ static void dump_runtime_info(struct mtk_cam_ctrl_runtime_info *info)
 
 	pr_info("[%s] ack 0x%x out/in 0x%x/0x%x\n", __func__,
 		info->ack_seq_no, info->outer_seq_no, info->inner_seq_no);
-	pr_info("[%s] sof_ts_ns %lld tmp_inner_seq_no 0x%x\n", __func__,
-		info->sof_ts_ns, info->tmp_inner_seq_no);
+	pr_info("[%s] sof_ts_ns %lld\n", __func__, info->sof_ts_ns);
 }
 
 static void _ctrl_send_event_locked(struct mtk_cam_ctrl *ctrl,
@@ -372,30 +371,34 @@ static void ctrl_vsync_preprocess(struct mtk_cam_ctrl *ctrl,
 				  struct mtk_camsys_irq_info *irq_info,
 				  struct vsync_result *vsync_res)
 {
+	bool hint_inner_err = 0;
+	int cookie;
+
 	if (vsync_update(&ctrl->vsync_col, engine_type, engine_id, vsync_res))
 		return;
 
 	spin_lock(&ctrl->info_lock);
 
-	/*
-	 * note:
-	 *   this is used to handle for case that some engine is not enqueued,
-	 *   so fh_cookie won't be updated.
-	 */
-	/* FIXME: should remove 'max' and handle hw incomplete & counter overflow */
-	ctrl->r_info.tmp_inner_seq_no =
-		max(ctrl->r_info.tmp_inner_seq_no,
-		    (int)seq_from_fh_cookie(irq_info->frame_idx_inner));
-
 	if (vsync_res->is_first)
 		ctrl->r_info.sof_ts_ns = irq_info->ts_ns;
 
-	if (vsync_res->is_last) {
-		ctrl->r_info.inner_seq_no =
-			ctrl->r_info.tmp_inner_seq_no;
+	if (vsync_res->is_last && ctrl->cur_cq_ref) {
+		struct apply_cq_ref *cq_ref = ctrl->cur_cq_ref;
+
+		if (apply_cq_ref_is_to_inner(cq_ref)) {
+			ctrl->r_info.inner_seq_no =
+				seq_from_fh_cookie(cq_ref->cookie);
+			ctrl->cur_cq_ref = 0;
+		} else {
+			hint_inner_err = 1;
+			cookie = cq_ref->cookie;
+		}
 	}
 
 	spin_unlock(&ctrl->info_lock);
+
+	if (hint_inner_err)
+		pr_info("%s: inner not updated to 0x%x\n", __func__, cookie);
 }
 
 static int frame_no_to_fs_req_no(struct mtk_cam_ctrl *ctrl, int frame_no,
@@ -858,7 +861,6 @@ static void reset_runtime_info(struct mtk_cam_ctrl_runtime_info *info)
 	info->ack_seq_no = -1;
 	info->outer_seq_no = -1;
 	info->inner_seq_no = -1;
-	info->tmp_inner_seq_no = -1;
 }
 
 void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
@@ -880,6 +882,9 @@ void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 	reset_runtime_info(&cam_ctrl->r_info);
 
 	init_waitqueue_head(&cam_ctrl->stop_wq);
+
+	vsync_reset(&cam_ctrl->vsync_col);
+	cam_ctrl->cur_cq_ref = 0;
 
 	mtk_cam_watchdog_init(&cam_ctrl->watchdog);
 

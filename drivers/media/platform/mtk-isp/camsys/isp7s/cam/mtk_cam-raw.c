@@ -311,7 +311,7 @@ void apply_cq(struct mtk_raw_device *dev,
 	if (WARN_ON(!cq_size || !sub_cq_size))
 		return;
 
-	if (WARN_ON(apply_cq_ref_set(&dev->cq_ref, ref)))
+	if (WARN_ON(assign_apply_cq_ref(&dev->cq_ref, ref)))
 		return;
 
 	main = cq_addr + cq_offset;
@@ -383,13 +383,10 @@ static void set_tg_vfdata_en(struct mtk_raw_device *dev, int on)
 
 void update_scq_start_period(struct mtk_raw_device *dev, int scq_ms)
 {
-	u32 val;
-
-	val = readl_relaxed(dev->base + REG_TG_TIME_STAMP_CNT);
-	writel_relaxed(scq_ms * 1000 * SCQ_DEFAULT_CLK_RATE /
-			(val * 2), dev->base + REG_CAMCQ_SCQ_START_PERIOD);
-	dev_info(dev->dev, "[%s] val:%d, REG_CAMCQ_SCQ_START_PERIOD:%d (%dms)\n",
-		__func__, val, readl(dev->base + REG_CAMCQ_SCQ_START_PERIOD), scq_ms);
+	writel_relaxed(scq_ms * 1000 * SCQ_DEFAULT_CLK_RATE,
+		       dev->base + REG_CAMCQ_SCQ_START_PERIOD);
+	dev_info(dev->dev, "[%s] REG_CAMCQ_SCQ_START_PERIOD:%d (%dms)\n",
+		 __func__, readl(dev->base + REG_CAMCQ_SCQ_START_PERIOD), scq_ms);
 }
 
 void stream_on(struct mtk_raw_device *dev, int on)
@@ -767,6 +764,8 @@ static irqreturn_t mtk_irq_raw(int irq, void *data)
 		raw_dev->cur_vsync_idx = 0;
 
 		irq_info.fbc_empty = is_fbc_empty(raw_dev);
+
+		engine_handle_sof(&raw_dev->cq_ref, irq_info.frame_idx_inner);
 	}
 
 	/* DCIF main sof */

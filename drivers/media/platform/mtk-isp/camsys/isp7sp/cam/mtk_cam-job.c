@@ -1296,10 +1296,14 @@ static int apply_engines_cq(struct mtk_cam_job *job,
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	unsigned long cq_engine;
 	unsigned long subset;
+	int cq_cnt;
 
 	cq_engine = engines_to_trigger_cq(job, cq_rst);
+	cq_cnt = hweight_long(cq_engine);
 
-	apply_cq_ref_set_cnt(&job->cq_ref, hweight_long(cq_engine));
+	apply_cq_ref_init(&job->cq_ref,
+			  to_fh_cookie(ctx->stream_id, frame_seq_no), cq_cnt);
+	ctx->cam_ctrl.cur_cq_ref = &job->cq_ref;
 
 	subset = bit_map_subset_of(MAP_HW_RAW, cq_engine);
 	if (subset)

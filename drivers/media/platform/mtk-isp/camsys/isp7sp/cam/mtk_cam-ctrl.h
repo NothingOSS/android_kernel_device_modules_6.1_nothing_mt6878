@@ -129,6 +129,7 @@ struct mtk_cam_ctrl {
 	wait_queue_head_t stop_wq;
 
 	struct vsync_collector vsync_col;
+	struct apply_cq_ref *cur_cq_ref;
 
 	struct mtk_cam_watchdog watchdog;
 

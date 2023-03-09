@@ -82,8 +82,6 @@ struct mtk_cam_ctrl_runtime_info {
 	u64 sof_ts_mono_ns;
 	u64 sof_l_ts_ns;
 	u64 sof_l_ts_mono_ns;
-
-	int tmp_inner_seq_no;
 };
 
 struct sensor_apply_params {

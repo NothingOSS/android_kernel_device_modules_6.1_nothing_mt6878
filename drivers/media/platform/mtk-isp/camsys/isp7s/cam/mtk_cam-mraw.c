@@ -201,7 +201,7 @@ void apply_mraw_cq(struct mtk_mraw_device *mraw_dev,
 	if (cq_size == 0)
 		return;
 
-	if (WARN_ON(apply_cq_ref_set(&mraw_dev->cq_ref, ref)))
+	if (WARN_ON(assign_apply_cq_ref(&mraw_dev->cq_ref, ref)))
 		return;
 
 	writel_relaxed(cq_addr_lsb, mraw_dev->base + REG_MRAWCQ_CQ_SUB_THR0_BASEADDR_2);
@@ -1399,6 +1399,7 @@ static irqreturn_t mtk_irq_mraw(int irq, void *data)
 
 		/* TODO: check if mraw's fbc is empty */
 		// irq_info.fbc_empty = 1;
+		engine_handle_sof(&mraw_dev->cq_ref, irq_info.frame_idx_inner);
 	}
 
 	/* CQ done */
