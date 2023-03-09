@@ -43,6 +43,31 @@ enum V3_DBG_LOG_MASK {
 	NR_V3_DBG_LOG_MASK
 };
 
+/*************************
+ *    HW Version : v5    *
+ *************************/
+/* Same as uP v5 enum MDLA_DBG_LOG_MASK */
+enum V5_DBG_LOG_MASK {
+	V5_DBG_DRV,
+	V5_DBG_CMD_LOW,
+	V5_DBG_CMD_HIGH,
+	V5_DBG_PMU,
+	V5_DBG_PERF,
+	V5_DBG_TASK,
+	V5_DBG_PWR,
+	V5_DBG_MEM,
+	V5_DBG_IPI,
+	V5_DBG_QUEUE,
+	V5_DBG_LOCK,
+	V5_DBG_TMR,
+	V5_DBG_FW,
+	V5_DBG_ISR,
+	V5_DBG_UTIL,
+	V5_DBG_CMD_QUEUE,
+
+	NR_V5_DBG_LOG_MASK
+};
+
 int mdla_plat_load_data(struct device *dev, unsigned int *cfg0, unsigned int *cfg1);
 void mdla_plat_unload_data(struct device *dev);
 

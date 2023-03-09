@@ -95,33 +95,33 @@ struct mdla_dbgfs_ipi_file {
 };
 
 static struct mdla_dbgfs_ipi_file ipi_dbgfs_file[] = {
-	{MDLA_IPI_PWR_TIME,       0, 0xC, 0660,  "poweroff_time",        &pwrtime_fops, 0},
-	{MDLA_IPI_TIMEOUT,        0, 0xC, 0660,        "timeout",        &timeout_fops, 0},
-	{MDLA_IPI_ULOG,           0, 0xC, 0660,           "ulog",           &ulog_fops, 0},
-	{MDLA_IPI_CMD_CHECK,      0, 0x4, 0660,      "cmd_check",      &cmd_check_fops, 0},
-	{MDLA_IPI_TRACE_ENABLE,   0, 0xC, 0660,      "pmu_trace",      &pmu_trace_fops, 0},
-	{MDLA_IPI_PMU_COUNT,      1, 0x4, 0660,             "c1",             &C1_fops, 0},
-	{MDLA_IPI_PMU_COUNT,      2, 0x4, 0660,             "c2",             &C2_fops, 0},
-	{MDLA_IPI_PMU_COUNT,      3, 0x4, 0660,             "c3",             &C3_fops, 0},
-	{MDLA_IPI_PMU_COUNT,      4, 0x4, 0660,             "c4",             &C4_fops, 0},
-	{MDLA_IPI_PMU_COUNT,      5, 0x4, 0660,             "c5",             &C5_fops, 0},
-	{MDLA_IPI_PMU_COUNT,      6, 0x4, 0660,             "c6",             &C6_fops, 0},
-	{MDLA_IPI_PMU_COUNT,      7, 0x4, 0660,             "c7",             &C7_fops, 0},
-	{MDLA_IPI_PMU_COUNT,      8, 0x4, 0660,             "c8",             &C8_fops, 0},
-	{MDLA_IPI_PMU_COUNT,      9, 0x4, 0660,             "c9",             &C9_fops, 0},
-	{MDLA_IPI_PMU_COUNT,     10, 0x4, 0660,            "c10",            &C10_fops, 0},
-	{MDLA_IPI_PMU_COUNT,     11, 0x4, 0660,            "c11",            &C11_fops, 0},
-	{MDLA_IPI_PMU_COUNT,     12, 0x4, 0660,            "c12",            &C12_fops, 0},
-	{MDLA_IPI_PMU_COUNT,     13, 0x4, 0660,            "c13",            &C13_fops, 0},
-	{MDLA_IPI_PMU_COUNT,     14, 0x4, 0660,            "c14",            &C14_fops, 0},
-	{MDLA_IPI_PMU_COUNT,     15, 0x4, 0660,            "c15",            &C15_fops, 0},
-	{MDLA_IPI_PREEMPT_CNT,    0, 0xC, 0660,  "preempt_times",  &preempt_times_fops, 0},
-	{MDLA_IPI_FORCE_PWR_ON,   0, 0xC, 0660,   "force_pwr_on",   &force_pwr_on_fops, 0},
-	{MDLA_IPI_PROFILE_EN,     0, 0x8, 0660,      "profiling",      &profiling_fops, 0},
-	{MDLA_IPI_DUMP_CMDBUF_EN, 0, 0xC, 0660, "dump_cmdbuf_en", &dump_cmdbuf_en_fops, 0},
-	{MDLA_IPI_INFO,           0, 0xC, 0660,           "info",           &info_fops, 0},
-	{MDLA_IPI_HALT_STA,       0, 0x8, 0660,        "dbg_brk",        &dbg_brk_fops, 0},
-	{NF_MDLA_IPI_TYPE_0,      0,   0,    0,             NULL,                 NULL, 0}
+	{MDLA_IPI_PWR_TIME,       0, 0x2C, 0660,  "poweroff_time",        &pwrtime_fops, 0},
+	{MDLA_IPI_TIMEOUT,        0, 0x2C, 0660,        "timeout",        &timeout_fops, 0},
+	{MDLA_IPI_ULOG,           0, 0x2C, 0660,           "ulog",           &ulog_fops, 0},
+	{MDLA_IPI_CMD_CHECK,      0, 0x04, 0660,      "cmd_check",      &cmd_check_fops, 0},
+	{MDLA_IPI_TRACE_ENABLE,   0, 0x2C, 0660,      "pmu_trace",      &pmu_trace_fops, 0},
+	{MDLA_IPI_PMU_COUNT,      1, 0x04, 0660,             "c1",             &C1_fops, 0},
+	{MDLA_IPI_PMU_COUNT,      2, 0x04, 0660,             "c2",             &C2_fops, 0},
+	{MDLA_IPI_PMU_COUNT,      3, 0x04, 0660,             "c3",             &C3_fops, 0},
+	{MDLA_IPI_PMU_COUNT,      4, 0x04, 0660,             "c4",             &C4_fops, 0},
+	{MDLA_IPI_PMU_COUNT,      5, 0x04, 0660,             "c5",             &C5_fops, 0},
+	{MDLA_IPI_PMU_COUNT,      6, 0x04, 0660,             "c6",             &C6_fops, 0},
+	{MDLA_IPI_PMU_COUNT,      7, 0x04, 0660,             "c7",             &C7_fops, 0},
+	{MDLA_IPI_PMU_COUNT,      8, 0x04, 0660,             "c8",             &C8_fops, 0},
+	{MDLA_IPI_PMU_COUNT,      9, 0x04, 0660,             "c9",             &C9_fops, 0},
+	{MDLA_IPI_PMU_COUNT,     10, 0x04, 0660,            "c10",            &C10_fops, 0},
+	{MDLA_IPI_PMU_COUNT,     11, 0x04, 0660,            "c11",            &C11_fops, 0},
+	{MDLA_IPI_PMU_COUNT,     12, 0x04, 0660,            "c12",            &C12_fops, 0},
+	{MDLA_IPI_PMU_COUNT,     13, 0x04, 0660,            "c13",            &C13_fops, 0},
+	{MDLA_IPI_PMU_COUNT,     14, 0x04, 0660,            "c14",            &C14_fops, 0},
+	{MDLA_IPI_PMU_COUNT,     15, 0x04, 0660,            "c15",            &C15_fops, 0},
+	{MDLA_IPI_PREEMPT_CNT,    0, 0x2C, 0660,  "preempt_times",  &preempt_times_fops, 0},
+	{MDLA_IPI_FORCE_PWR_ON,   0, 0x2C, 0660,   "force_pwr_on",   &force_pwr_on_fops, 0},
+	{MDLA_IPI_PROFILE_EN,     0, 0x28, 0660,      "profiling",      &profiling_fops, 0},
+	{MDLA_IPI_DUMP_CMDBUF_EN, 0, 0x2C, 0660, "dump_cmdbuf_en", &dump_cmdbuf_en_fops, 0},
+	{MDLA_IPI_INFO,           0, 0x2C, 0660,           "info",           &info_fops, 0},
+	{MDLA_IPI_HALT_STA,       0, 0x28, 0660,        "dbg_brk",        &dbg_brk_fops, 0},
+	{NF_MDLA_IPI_TYPE_0,      0, 0x00,    0,             NULL,                 NULL, 0}
 };
 
 static u32 cfg0;
@@ -178,7 +178,6 @@ static void mdla_plat_v2_dbgfs_usage(struct seq_file *s, void *data)
 	seq_printf(s, "echo [size(dec)] > /d/mdla/%s\n", DBGFS_MEM_NAME);
 }
 
-
 static void mdla_plat_v3_dbgfs_usage(struct seq_file *s, void *data)
 {
 	seq_puts(s, "\n----------- Set uP debug log mask -----------\n");
@@ -219,6 +218,50 @@ static void mdla_plat_v3_dbgfs_usage(struct seq_file *s, void *data)
 	seq_printf(s, "echo [size(dec)] > /d/mdla/%s\n", DBGFS_MEM_NAME);
 }
 
+static void mdla_plat_v5_dbgfs_usage(struct seq_file *s, void *data)
+{
+	seq_puts(s, "\n----------- Set uP debug log mask -----------\n");
+	seq_printf(s, "echo [mask(hex)] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_ULOG));
+	seq_printf(s, "\tMDLA_DBG_DRV       = 0x%x\n", 1U << V5_DBG_DRV);
+	seq_printf(s, "\tMDLA_DBG_CMD_LOW   = 0x%x\n", 1U << V5_DBG_CMD_LOW);
+	seq_printf(s, "\tMDLA_DBG_CMD_HIGH  = 0x%x\n", 1U << V5_DBG_CMD_HIGH);
+	seq_printf(s, "\tMDLA_DBG_PMU       = 0x%x\n", 1U << V5_DBG_PMU);
+	seq_printf(s, "\tMDLA_DBG_PERF      = 0x%x\n", 1U << V5_DBG_PERF);
+	seq_printf(s, "\tMDLA_DBG_TASK      = 0x%x\n", 1U << V5_DBG_TASK);
+	seq_printf(s, "\tMDLA_DBG_PWR       = 0x%x\n", 1U << V5_DBG_PWR);
+	seq_printf(s, "\tMDLA_DBG_MEM       = 0x%x\n", 1U << V5_DBG_MEM);
+	seq_printf(s, "\tMDLA_DBG_IPI       = 0x%x\n", 1U << V5_DBG_IPI);
+	seq_printf(s, "\tMDLA_DBG_QUEUE     = 0x%x\n", 1U << V5_DBG_QUEUE);
+	seq_printf(s, "\tMDLA_DBG_LOCK      = 0x%x\n", 1U << V5_DBG_LOCK);
+	seq_printf(s, "\tMDLA_DBG_TMR       = 0x%x\n", 1U << V5_DBG_TMR);
+	seq_printf(s, "\tMDLA_DBG_FW        = 0x%x\n", 1U << V5_DBG_FW);
+	seq_printf(s, "\tMDLA_DBG_ISR       = 0x%x\n", 1U << V5_DBG_ISR);
+	seq_printf(s, "\tMDLA_DBG_UTIL      = 0x%x\n", 1U << V5_DBG_UTIL);
+	seq_printf(s, "\tMDLA_DBG_CMD_QUEUE = 0x%x\n", 1U << V5_DBG_CMD_QUEUE);
+
+	seq_puts(s, "\n--------------- power control ---------------\n");
+	seq_printf(s, "echo [0|1] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_FORCE_PWR_ON));
+	seq_puts(s, "\t0: force power down and reset command queue\n");
+	seq_puts(s, "\t1: force power up and keep power on\n");
+
+	seq_puts(s, "\n--------------- profile control ---------------\n");
+	seq_printf(s, "echo [0|1] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_PROFILE_EN));
+	seq_puts(s, "\t0: stop profiling\n");
+	seq_puts(s, "\t1: start to profile\n");
+
+	seq_puts(s, "\n------------- show information -------------\n");
+	seq_printf(s, "echo [item] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_INFO));
+	seq_puts(s, "and then cat /proc/apusys_logger/seq_log\n");
+	seq_printf(s, "\t%d: show power status\n", MDLA_IPI_INFO_PWR);
+	seq_printf(s, "\t%d: show register value\n", MDLA_IPI_INFO_REG);
+	seq_printf(s, "\t%d: show the last cmdbuf (if dump_cmdbuf_en != 0)\n",
+				MDLA_IPI_INFO_CMDBUF);
+	seq_printf(s, "\t%d: show profiling result\n", MDLA_IPI_INFO_PROF);
+
+	seq_puts(s, "\n----------- allocate debug memory -----------\n");
+	seq_printf(s, "echo [size(dec)] > /d/mdla/%s\n", DBGFS_MEM_NAME);
+}
+
 static int mdla_plat_dbgfs_usage(struct seq_file *s, void *data)
 {
 	/* Common */
@@ -233,6 +276,8 @@ static int mdla_plat_dbgfs_usage(struct seq_file *s, void *data)
 		mdla_plat_v2_dbgfs_usage(s, data);
 	else if (get_major_num(mdla_plat_get_version()) == 3)
 		mdla_plat_v3_dbgfs_usage(s, data);
+	else if (get_major_num(mdla_plat_get_version()) == 5)
+		mdla_plat_v5_dbgfs_usage(s, data);
 
 	return 0;
 }
