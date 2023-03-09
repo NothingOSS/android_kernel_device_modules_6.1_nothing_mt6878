@@ -9,6 +9,12 @@
 #include <linux/module.h>
 #include <linux/suspend.h>
 
+#ifdef CONFIG_PM_WAKELOCKS
+#include <linux/pm_wakeup.h>
+#else
+#include <linux/wakelock.h>
+#endif
+
 #include "mtk-aov-config.h"
 #include "mtk-aov-drv.h"
 #include "mtk-aov-core.h"
@@ -19,6 +25,13 @@
 
 #include "mtk-vmm-notifier.h"
 #include "mtk_mmdvfs.h"
+
+uint32_t g_frame_mode;
+#ifdef CONFIG_PM_WAKELOCKS
+struct wakeup_source *aov_wake_lock;
+#else
+struct wake_lock aov_wake_lock;
+#endif
 
 static struct mtk_aov *query_aov_dev(struct platform_device *pdev)
 {
@@ -118,6 +131,27 @@ static long mtk_aov_ioctl(struct file *file, unsigned int cmd,
 		vmm_isp_ctrl_notify(1);
 		mtk_mmdvfs_aov_enable(1);
 
+		g_frame_mode = 0;
+		if (arg) {
+			struct aov_user user;
+
+			ret = copy_from_user((void *)&user, (void *)arg, sizeof(struct aov_user));
+			if (ret) {
+				dev_info(aov_dev->dev, "%s: failed to copy aov user data: %d\n",
+					__func__, ret);
+				return -EFAULT;
+			}
+			g_frame_mode = user.frame_mode;
+		}
+		if (g_frame_mode & ~eOBJECT_FACE_SIMPLE) {
+			dev_info(aov_dev->dev, "AOV enable wake lock, mode(%#x)\n", g_frame_mode);
+#ifdef CONFIG_PM_WAKELOCKS
+			__pm_stay_awake(aov_wake_lock);
+#else
+			wake_lock(&aov_wake_lock);
+#endif
+		}
+
 		AOV_TRACE_FORCE_BEGIN("AOV start");
 		ret = aov_core_send_cmd(aov_dev, AOV_SCP_CMD_START,
 			(void *)arg, sizeof(struct aov_user), true);
@@ -169,6 +203,16 @@ static long mtk_aov_ioctl(struct file *file, unsigned int cmd,
 			mtk_mmdvfs_aov_enable(0);
 			dev_info(aov_dev->dev, "AOV disable vmm-\n");
 		}
+
+		if (g_frame_mode & ~eOBJECT_FACE_SIMPLE) {
+			dev_info(aov_dev->dev, "AOV disable wake lock, mode(%#x)\n", g_frame_mode);
+#ifdef CONFIG_PM_WAKELOCKS
+			__pm_relax(aov_wake_lock);
+#else
+			wake_unlock(&aov_wake_lock);
+#endif
+		}
+
 		dev_info(aov_dev->dev, "AOV stop-(%d)\n", ret);
 		break;
 	default:
@@ -260,6 +304,13 @@ static int mtk_aov_probe(struct platform_device *pdev)
 	aov_dev = devm_kzalloc(&pdev->dev, sizeof(*aov_dev), GFP_KERNEL);
 	if (aov_dev == NULL)
 		return -ENOMEM;
+
+	g_frame_mode = 0;
+#ifdef CONFIG_PM_WAKELOCKS
+	aov_wake_lock = wakeup_source_register(&pdev->dev, "aov_lock_wakelock");
+#else
+	wake_lock_init(&aov_wake_lock, WAKE_LOCK_SUSPEND, "aov_lock_wakelock");
+#endif
 
 	aov_dev->is_open = false;
 	aov_dev->user_cnt = 0;

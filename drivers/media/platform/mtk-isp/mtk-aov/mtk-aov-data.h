@@ -73,6 +73,49 @@
 extern void mtk_aie_aov_memcpy(char *buffer);
 extern void mtk_fld_aov_memcpy(char *buffer);
 
+/**
+ * Detection objects.
+ * Detection modes.
+ */
+enum AovDetectionObject : uint32_t {
+	/**
+	 * No event will be returned.
+	 */
+	eOBJECT_NONE = 0x0,
+
+	/**
+	 * The simple face information.
+	 * Face frame information.
+	 */
+	eOBJECT_FACE_SIMPLE = (0x1 << 0),
+
+	/**
+	 * The full face information.
+	 * Face frame and facial features information.
+	 */
+	eOBJECT_FACE_FULL = (0x1 << 1),
+
+	/**
+	 * The gaze information.
+	 */
+	eOBJECT_GAZE = (0x1 << 2),
+
+	/**
+	 * The gesture information.
+	 */
+	eOBJECT_GESTURE = (0x1 << 3),
+
+	/**
+	 * The QR code scanner information.
+	 */
+	eOBJECT_QRCODE_SCANNER = (0x1 << 4),
+
+	/**
+	 * The face recognition information.
+	 */
+	eOBJECT_FACE_RECOGNITION = (0x1 << 5)
+};
+
 struct sensor_notify {
 	uint32_t count;
 	int32_t sensor[AOV_MAX_SENSOR_COUNT];
