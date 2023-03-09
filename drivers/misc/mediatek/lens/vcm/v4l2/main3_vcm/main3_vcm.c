@@ -191,7 +191,7 @@ static int main3_vcm_set_position(struct main3_vcm_device *main3_vcm, u16 val)
 	struct i2c_client *client = v4l2_get_subdevdata(&main3_vcm->sd);
 	int ret = -1;
 	char puSendCmd[3] = {0};
-	int nArrayIndex = 0;
+	unsigned int nArrayIndex = 0;
 	int i = 0, j = 0;
 	int retry = 3;
 
