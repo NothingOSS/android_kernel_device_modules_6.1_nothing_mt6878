@@ -161,11 +161,21 @@ static struct bin_attribute disp_plat_dbg_buf_attr = {
 	.attr = {.name = "disp_plat_dbg_buf", .mode = 0444},
 	.read = read_disp_plat_dbg_buf,
 };
+int scmi_set(void *buffer)
+{
+	int ret = 0;
+	struct disp_plat_dbg_scmi_data *scmi_data = buffer;
 
+	DDPMSG("%s: cmd:%d (%d,%d,%d,%d)\n", __func__, scmi_data->cmd,
+			scmi_data->p1, scmi_data->p2, scmi_data->p3, scmi_data->p4);
+	ret = scmi_tinysys_common_set(tinfo->ph, feature_id, scmi_data->cmd,
+			scmi_data->p1, scmi_data->p2, scmi_data->p3, scmi_data->p4);
+	return ret;
+}
 void disp_plat_dbg_init(void)
 {
-
 	int err;
+	struct disp_plat_dbg_scmi_data scmi_data;
 
 	DDPMSG("addr=0x%x, size=0x%x, %s\n", g_disp_plat_dbg_addr, g_disp_plat_dbg_size, __func__);
 
@@ -182,8 +192,11 @@ void disp_plat_dbg_init(void)
 					DDPMSG("%s: get scmi_smi succeed id=%d!!\n",
 						__func__, feature_id);
 
-					err = scmi_tinysys_common_set(tinfo->ph, feature_id,
-					g_disp_plat_dbg_addr, g_disp_plat_dbg_size, 0, 0, 0);
+					scmi_data.cmd = DISP_PLAT_DBG_INIT;
+					scmi_data.p1 = g_disp_plat_dbg_addr;
+					scmi_data.p2 = g_disp_plat_dbg_size;
+
+					err = scmi_set(&scmi_data);
 					if (err)
 						DDPMSG("%s: call scmi_tinysys_common_set err=%d\n",
 						__func__, err);

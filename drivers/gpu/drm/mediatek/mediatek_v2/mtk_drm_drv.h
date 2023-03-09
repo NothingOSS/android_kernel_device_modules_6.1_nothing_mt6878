@@ -298,6 +298,21 @@ struct layer_compress_ratio_item {
 	__u32 active;
 };
 
+enum {
+	DISP_PLAT_DBG_INIT,
+	DISP_PLAT_DBG_ENABLE,
+	DISP_PLAT_DBG_DSIUNDERRUN,
+	DISP_PLAT_MAX,
+};
+
+struct disp_plat_dbg_scmi_data {
+	unsigned int cmd;
+	unsigned int p1;
+	unsigned int p2;
+	unsigned int p3;
+	unsigned int p4;
+};
+
 static const struct mtk_addon_module_data addon_rsz_data[] = {
 	{DISP_RSZ, ADDON_BETWEEN, DDP_COMPONENT_OVL0_2L},
 };
@@ -426,4 +441,5 @@ void **mtk_drm_disp_sec_cb_init(void);
 void mtk_crtc_v_idle_apsrc_control(struct drm_crtc *crtc,
 	struct cmdq_pkt *_cmdq_handle, bool reset, bool condition_check,
 	unsigned int crtc_id, bool enable);
+int scmi_set(void *buffer);
 #endif /* MTK_DRM_DRV_H */

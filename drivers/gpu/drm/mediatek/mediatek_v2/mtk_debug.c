@@ -3928,6 +3928,24 @@ static void process_dbg_opt(const char *opt)
 
 		if (mtk_crtc)
 			mtk_crtc->is_force_mml_scen = force_mml_scen;
+	} else if (strncmp(opt, "disp_plat_dbg:", 14) == 0) {
+		int err = 0;
+		struct disp_plat_dbg_scmi_data scmi_data;
+
+		scmi_data.cmd = DISP_PLAT_DBG_ENABLE;
+
+		if (strncmp(opt + 14, "1", 1) == 0)
+			scmi_data.p1 = 1;
+		else if (strncmp(opt + 14, "0", 1) == 0)
+			scmi_data.p1 = 0;
+		DDPMSG("disp_plat_dbg:%d", scmi_data.p1);
+
+		err = scmi_set(&scmi_data);
+		if (err) {
+			pr_info("call scmi_tinysys_common_set err=%d\n", err);
+			return;
+		}
+
 	} else if (strncmp(opt, "mml_cmd_ir:", 11) == 0) {
 		struct drm_crtc *crtc;
 		struct mtk_drm_crtc *mtk_crtc;
