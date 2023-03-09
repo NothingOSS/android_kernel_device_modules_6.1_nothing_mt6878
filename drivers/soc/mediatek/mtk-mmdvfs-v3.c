@@ -13,6 +13,7 @@
 #include <linux/suspend.h>
 #include <soc/mediatek/mmdvfs_v3.h>
 #include <soc/mediatek/smi.h>
+#include <linux/pm_domain.h>
 #include <linux/pm_runtime.h>
 #include <linux/rpmsg.h>
 #include <linux/rpmsg/mtk_rpmsg.h>
@@ -55,6 +56,7 @@ static DEFINE_MUTEX(mmdvfs_vcp_ipi_mutex);
 static struct ipi_callbacks clkmux_cb;
 static struct notifier_block vcp_ready_notifier;
 static struct notifier_block force_on_notifier;
+static struct notifier_block disp_pd_notifier;
 
 static int ccu_power;
 static int ccu_pwr_usage[CCU_PWR_USR_NUM];
@@ -1081,6 +1083,47 @@ static struct notifier_block mmdvfs_pm_notifier_block = {
 	.priority = 0,
 };
 
+void disp_pd_notify_work(struct work_struct *_work)
+{
+	struct mmdvfs_vmm_notify_work *work = container_of(_work, typeof(*work), vmm_notify_work);
+	int ret;
+
+	if (!work->enable && mmdvfs_swrgo_init) {
+		ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_INIT, 0, MAX_OPP, NULL);
+		if (!ret)
+			mmdvfs_swrgo_init = false;
+		ret = mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_GENPD);
+		MMDVFS_DBG("ret:%d enable:%d swrgo:%d", ret, work->enable, mmdvfs_swrgo_init);
+	}
+	kfree(work);
+}
+
+static int disp_pd_callback(struct notifier_block *nb, unsigned long pd_flags, void *data)
+{
+	struct mmdvfs_vmm_notify_work *work;
+
+	if (!mmdvfs_swrgo || !vmm_notify_wq)
+		return 0;
+
+	work = kzalloc(sizeof(*work), GFP_KERNEL);
+	if (!work)
+		return -ENOMEM;
+
+	switch (pd_flags) {
+	case GENPD_NOTIFY_OFF:
+		work->enable = false;
+		break;
+	case GENPD_NOTIFY_PRE_ON:
+		// work->enable = true;
+	default:
+		return 0;
+	}
+
+	INIT_WORK(&work->vmm_notify_work, disp_pd_notify_work);
+	queue_work(vmm_notify_wq, &work->vmm_notify_work);
+	return 0;
+}
+
 static void mmdvfs_fmeter_dump(void)
 {
 	const u8 fmeter_id[13] = {5, 6, 7, 8, 9, 10, 11, 58, 57, 58, 69, 70, 71};
@@ -1112,9 +1155,9 @@ static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long
 	case VCP_EVENT_SUSPEND:
 		if (dpc_fp)
 			dpc_fp(false, false);
-		if (mmdvfs_swrgo && mmdvfs_swrgo_init) {
+		if (mmdvfs_swrgo) {
 			bool dump = false;
-			int i, ret;
+			int i;
 
 			for (i = 0; i < ARRAY_SIZE(mmdvfs_user); i++) {
 				u64 freq = mmdvfs_mux[mmdvfs_user[i].target_id].freq[0];
@@ -1131,9 +1174,6 @@ static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long
 			}
 			if (dump)
 				mmdvfs_fmeter_dump();
-			ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_INIT, 0, MAX_OPP, NULL);
-			if (!ret)
-				mmdvfs_swrgo_init = false;
 		}
 		mmdvfs_vcp_cb_ready = false;
 		break;
@@ -1415,7 +1455,8 @@ static int mmdvfs_v3_probe(struct platform_device *pdev)
 			mmdvfs_pwr_clk[i] = clk;
 	}
 
-	vmm_notify_wq = create_singlethread_workqueue("vmm_notify_wq");
+	if (!vmm_notify_wq)
+		vmm_notify_wq = create_singlethread_workqueue("vmm_notify_wq");
 	register_pm_notifier(&mmdvfs_pm_notifier_block);
 
 	clkmux_cb.clk_enable = mtk_mmdvfs_clk_enable;
@@ -1502,20 +1543,23 @@ int mmdvfs_mux_set_opp(const char *name, unsigned long rate)
 
 	if (mmdvfs_swrgo) {
 		const u8 vcp_mux_id[MMDVFS_MUX_NUM] = {0, 4, 5, 6, 7, 9, 10, 12};
-		static bool flags;
 
-		if (!flags) {
+		if (mux->id >= ARRAY_SIZE(vcp_mux_id)) {
+			MMDVFS_ERR("invalid mux_id:%hhu user_id:%hhu", mux->id, user->id);
+			return -EINVAL;
+		}
+
+		if (!mmdvfs_swrgo_init) {
 			ret = mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_GENPD);
 			if (ret)
 				goto set_opp_end;
-			flags = true;
-		}
-		if (!mmdvfs_swrgo_init) {
 			ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_INIT, 1, MAX_OPP, NULL);
 			if (ret)
 				goto set_opp_end;
 			mmdvfs_swrgo_init = true;
+			MMDVFS_DBG("ret:%d enable:%d swrgo:%d", ret, true, mmdvfs_swrgo_init);
 		}
+
 		if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
 			mux->opp < dpsw_thr && mux->last >= dpsw_thr)
 			mtk_mmdvfs_enable_vmm(true);
@@ -1592,7 +1636,7 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
 	struct clk_onecell_data *data;
-	const char *name;
+	const char *name = NULL;
 	int i, j, ret;
 
 	mmdvfs_mux_version = true;
@@ -1710,6 +1754,16 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 	}
 
 	mtk_clk_mux_register_callback(&mmdvfs_mux_dfs_ops);
+
+	if (!vmm_notify_wq)
+		vmm_notify_wq = create_singlethread_workqueue("vmm_notify_wq");
+
+	if (mmdvfs_swrgo) {
+		pm_runtime_enable(&pdev->dev);
+		disp_pd_notifier.notifier_call = disp_pd_callback;
+		ret = dev_pm_genpd_add_notifier(&pdev->dev, &disp_pd_notifier);
+	}
+
 	return ret;
 }
 
