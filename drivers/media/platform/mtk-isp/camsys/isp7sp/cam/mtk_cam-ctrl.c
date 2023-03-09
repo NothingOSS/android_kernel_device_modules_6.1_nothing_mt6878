@@ -611,10 +611,9 @@ int mtk_cam_ctrl_isr_event(struct mtk_cam_device *cam,
 	if (mtk_cam_ctrl_get(cam_ctrl))
 		return 0;
 
-	/* TBC
-	 *  MTK_CAM_TRACE_BEGIN(BASIC, "irq_type %d, inner %d",
-	 *  irq_info->irq_type, irq_info->frame_idx_inner);
-	 */
+	MTK_CAM_TRACE_BEGIN(BASIC, "irq_type %d, inner 0x%x",
+			    irq_info->irq_type, irq_info->frame_idx_inner);
+
 	/**
 	 * Here it will be implemented dispatch rules for some scenarios
 	 * like twin/stagger/m-stream,
@@ -648,9 +647,8 @@ int mtk_cam_ctrl_isr_event(struct mtk_cam_device *cam,
 
 	mtk_cam_ctrl_put(cam_ctrl);
 
-	/* TBC
-	 * MTK_CAM_TRACE_END(BASIC);
-	 */
+	MTK_CAM_TRACE_END(BASIC);
+
 	return ret;
 }
 

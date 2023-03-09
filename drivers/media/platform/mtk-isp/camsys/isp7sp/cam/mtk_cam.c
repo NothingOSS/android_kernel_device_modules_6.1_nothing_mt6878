@@ -1116,8 +1116,9 @@ static int isp_composer_handler(struct rpmsg_device *rpdev, void *data,
 
 	if (ipi_msg->ack_data.ack_cmd_id == CAM_CMD_FRAME) {
 		ctx = &cam->ctxs[ipi_msg->cookie.session_id];
-		//MTK_CAM_TRACE_BEGIN(BASIC, "ipi_frame_ack:%d",
-		//		    ipi_msg->cookie.frame_no);
+
+		MTK_CAM_TRACE_BEGIN(BASIC, "ipi_frame_ack:%d",
+				    ipi_msg->cookie.frame_no);
 
 		if (CAM_DEBUG_ENABLED(JOB))
 			dev_info(dev, "ipi_frame_ack: ctx-%d seq-%d\n",
@@ -1129,7 +1130,7 @@ static int isp_composer_handler(struct rpmsg_device *rpdev, void *data,
 					  &ipi_msg->ack_data.frame_result,
 					  ipi_msg->ack_data.ret);
 
-		//MTK_CAM_TRACE_END(BASIC);
+		MTK_CAM_TRACE_END(BASIC);
 		return 0;
 
 	} else if (ipi_msg->ack_data.ack_cmd_id == CAM_CMD_DESTROY_SESSION) {

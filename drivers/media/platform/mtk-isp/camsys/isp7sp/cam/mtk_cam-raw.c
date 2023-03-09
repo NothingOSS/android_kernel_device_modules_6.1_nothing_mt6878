@@ -843,6 +843,7 @@ static irqreturn_t mtk_irq_raw(int irq, void *data)
 	unsigned int frame_idx, frame_idx_inner;
 	unsigned int irq_status, err_status, dmao_done_status, dmai_done_status;
 	unsigned int drop_status, dma_ofl_status, cq_done_status, dcif_status;
+	unsigned int dma_ufl_status;
 	bool wake_thread = 0;
 
 	irq_status	 = readl_relaxed(raw_dev->base + REG_CAMCTL_INT_STATUS);
@@ -852,6 +853,7 @@ static irqreturn_t mtk_irq_raw(int irq, void *data)
 	dma_ofl_status	 = readl_relaxed(raw_dev->base + REG_CAMCTL_INT5_STATUS);
 	cq_done_status	 = readl_relaxed(raw_dev->base + REG_CAMCTL_INT6_STATUS);
 	dcif_status	 = readl_relaxed(raw_dev->base + REG_CAMCTL_INT7_STATUS);
+	dma_ufl_status	 = readl_relaxed(raw_dev->base + REG_CAMCTL_INT8_STATUS);
 
 	frame_idx	= readl_relaxed(raw_dev->base + REG_FRAME_SEQ_NUM);
 	frame_idx_inner	= readl_relaxed(raw_dev->base_inner + REG_FRAME_SEQ_NUM);
@@ -948,12 +950,10 @@ static irqreturn_t mtk_irq_raw(int irq, void *data)
 	//	mtk_cam_raw_dump_fbc(raw_dev->dev, raw_dev->base, raw_dev->yuv_base);
 
 	/* trace */
-	if (irq_status || dmao_done_status || dmai_done_status)
-		MTK_CAM_TRACE(HW_IRQ,
-			      "%s: irq=0x%08x dmao=0x%08x dmai=0x%08x has_err=%d",
-			      dev_name(dev),
-			      irq_status, dmao_done_status, dmai_done_status,
-			      !!err_status);
+	trace_raw_irq(dev, frame_idx_inner,
+		      irq_status, dmao_done_status, dmai_done_status,
+		      cq_done_status, dcif_status);
+	trace_raw_dma_status(dev, drop_status, dma_ofl_status, dma_ufl_status);
 
 #ifdef NOT_READY
 	if (MTK_CAM_TRACE_ENABLED(FBC) && (irq_status & TG_VS_INT_ORG_ST)) {
@@ -966,14 +966,6 @@ static irqreturn_t mtk_irq_raw(int irq, void *data)
 		mtk_cam_raw_dump_fbc(dev, raw_dev->base, raw_dev->yuv_base);
 	}
 #endif
-
-	if (drop_status)
-		MTK_CAM_TRACE(HW_IRQ, "%s: drop=0x%08x",
-			      dev_name(dev), drop_status);
-
-	if (cq_done_status)
-		MTK_CAM_TRACE(HW_IRQ, "%s: cq=0x%08x",
-			      dev_name(dev), cq_done_status);
 
 	return wake_thread ? IRQ_WAKE_THREAD : IRQ_HANDLED;
 }
@@ -1594,17 +1586,9 @@ static irqreturn_t mtk_irq_yuv(int irq, void *data)
 			dump_yuv_dma_err_st(yuv);
 
 	/* trace */
-	if (irq_status || wdma_done_status)
-		MTK_CAM_TRACE(HW_IRQ, "%s: irq=0x%08x wdma=0x%08x rdma=0x%08x has_err=%d",
-			      dev_name(yuv->dev),
-			      irq_status,
-			      wdma_done_status,
-			      rdma_done_status,
-			      !!err_status);
-
-	if (drop_status)
-		MTK_CAM_TRACE(HW_IRQ, "%s: drop=0x%08x",
-			      dev_name(yuv->dev), drop_status);
+	trace_yuv_irq(yuv->dev, irq_status, wdma_done_status, rdma_done_status);
+	trace_raw_dma_status(yuv->dev, drop_status,
+			     dma_ofl_status, dma_ufl_status);
 
 	return IRQ_HANDLED;
 }
