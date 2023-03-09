@@ -102,6 +102,11 @@
 #define P2A4_USB20_GPIO_MODE		BIT(8)
 #define P2A4_U2_GPIO_CTR_MSK (P2A4_RG_USB20_GPIO_CTL | P2A4_USB20_GPIO_MODE)
 
+#define XSP_USBPHYMON0		((SSUSB_SIFSLV_U2PHY_COM) + 0x024)
+#define USB20_GPIO_DM_RO		BIT(1)
+#define USB20_GPIO_DP_RO		BIT(0)
+#define USB20_GPIO_DM_DP_MASK (USB20_GPIO_DM_RO | USB20_GPIO_DP_RO)
+
 #define XSP_USBPHYA_RESERVE	((SSUSB_SIFSLV_U2PHY_COM) + 0x030)
 #define P2AR_RG_INTR_CAL		GENMASK(29, 24)
 #define P2AR_RG_INTR_CAL_MASK		(0x3f)
@@ -476,15 +481,17 @@ static int proc_jtag_show(struct seq_file *s, void *unused)
 {
 	struct xsphy_instance *inst = s->private;
 	void __iomem *pbase = inst->port_base;
-	u32 cr4, cr6, cr0, cr2;
+	u32 cr4, cr6, cr0, cr2, mon0;
 
 	cr4 = readl(pbase + XSP_USBPHYACR4);
 	cr6 = readl(pbase + XSP_USBPHYACR6);
 	cr0 = readl(pbase + XSP_USBPHYACR0);
 	cr2 = readl(pbase + XSP_USBPHYACR2);
+	mon0 = readl(pbase + XSP_USBPHYMON0);
 
-	seq_printf(s, "<0x20, 0x18, 0x00, 0x08>=<%x, %x, %x, %x>\n",
-		cr4, cr6, cr0, cr2);
+	seq_printf(s, "<0x20, 0x18, 0x00, 0x08, 0x24>=<0x%x, 0x%x, 0x%x, 0x%x, 0x%x>\n",
+		cr4, cr6, cr0, cr2, mon0);
+
 	return 0;
 }
 
