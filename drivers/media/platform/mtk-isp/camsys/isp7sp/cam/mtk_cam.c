@@ -786,7 +786,7 @@ void mtk_cam_req_buffer_done(struct mtk_cam_job *job,
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct device *dev = req->req.mdev->dev;
 	struct mtk_cam_video_device *node;
-	struct mtk_cam_buffer *buf, *buf_prev;
+	struct mtk_cam_buffer *buf, *buf_next;
 	struct list_head done_list;
 	bool is_buf_empty;
 	unsigned long ids = 0;
@@ -798,7 +798,7 @@ void mtk_cam_req_buffer_done(struct mtk_cam_job *job,
 
 	spin_lock(&req->buf_lock);
 
-	list_for_each_entry_safe(buf, buf_prev, &req->buf_list, list) {
+	list_for_each_entry_safe(buf, buf_next, &req->buf_list, list) {
 
 		node = mtk_cam_buf_to_vdev(buf);
 
@@ -846,7 +846,7 @@ void mtk_cam_req_buffer_done(struct mtk_cam_job *job,
 		remove_from_running_list(dev_get_drvdata(dev), req);
 	}
 
-	list_for_each_entry(buf, &done_list, list) {
+	list_for_each_entry_safe(buf, buf_next, &done_list, list) {
 		buf->vbb.vb2_buf.timestamp = ts;
 		vb2_buffer_done(&buf->vbb.vb2_buf, buf_state);
 	}
