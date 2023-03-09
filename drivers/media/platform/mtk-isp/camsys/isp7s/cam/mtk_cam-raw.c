@@ -429,6 +429,8 @@ static inline void trigger_rawi(struct mtk_raw_device *dev, u32 val)
 	engine_fsm_sof(&dev->fsm,
 		       readl(dev->base_inner + REG_FRAME_SEQ_NUM));
 
+	engine_handle_sof(&dev->cq_ref, cookie);
+
 	dev_info(dev->dev, "%s: 0x%x\n", __func__, val);
 	writel(val, dev->base + REG_CAMCTL_RAWI_TRIG);
 }
