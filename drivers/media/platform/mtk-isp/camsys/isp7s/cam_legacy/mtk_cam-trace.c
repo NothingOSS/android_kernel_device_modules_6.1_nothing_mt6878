@@ -3,6 +3,7 @@
  * Copyright (c) 2021 MediaTek Inc.
  */
 
+#define CREATE_TRACE_POINTS
 #include "mtk_cam-trace.h"
 
 #include <linux/module.h>
@@ -17,24 +18,12 @@ int mtk_cam_trace_enabled_tags(void)
 	return ftrace_tags;
 }
 
-static noinline
-int tracing_mark_write(const char *buf)
-{
-	trace_puts(buf);
-	return 0;
-}
-
 void mtk_cam_trace(const char *fmt, ...)
 {
-	char buf[256];
 	va_list args;
-	int ret = 0;
 
 	va_start(args, fmt);
-	ret = vsnprintf(buf, sizeof(buf), fmt, args);
+	trace_tracing_mark_write(fmt, &args);
 	va_end(args);
-
-	if (ret != -1)
-		tracing_mark_write(buf);
 }
 

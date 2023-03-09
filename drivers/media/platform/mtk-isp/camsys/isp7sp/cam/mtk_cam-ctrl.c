@@ -245,6 +245,8 @@ static int ctrl_apply_actions(struct mtk_cam_ctrl *ctrl)
 {
 	struct mtk_cam_job *job;
 
+	MTK_CAM_TRACE_FUNC_BEGIN(BASIC);
+
 	do {
 		job = mtk_cam_ctrl_get_job(ctrl, cond_job_with_action, NULL);
 		if (job) {
@@ -252,6 +254,8 @@ static int ctrl_apply_actions(struct mtk_cam_ctrl *ctrl)
 			mtk_cam_job_put(job);
 		}
 	} while (job);
+
+	MTK_CAM_TRACE_END(BASIC);
 
 	return 0;
 }
@@ -286,8 +290,6 @@ static int mtk_cam_ctrl_send_event(struct mtk_cam_ctrl *ctrl, int event)
 	struct mtk_cam_ctrl_runtime_info local_info;
 	struct transition_param p;
 
-	MTK_CAM_TRACE_FUNC_BEGIN(BASIC);
-
 	spin_lock(&ctrl->info_lock);
 	local_info = ctrl->r_info;
 	spin_unlock(&ctrl->info_lock);
@@ -309,7 +311,6 @@ static int mtk_cam_ctrl_send_event(struct mtk_cam_ctrl *ctrl, int event)
 
 	ctrl_apply_actions(ctrl);
 
-	MTK_CAM_TRACE_END(BASIC);
 	return 0;
 }
 

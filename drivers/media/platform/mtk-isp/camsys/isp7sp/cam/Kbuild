@@ -2,7 +2,7 @@
 
 CAM_MODULE := mtk-cam-isp7sp
 
-CAMSYS_TRACE_ENABLE = n
+CAMSYS_TRACE_ENABLE = y
 
 subdir-ccflags-y += \
     -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-isp \
