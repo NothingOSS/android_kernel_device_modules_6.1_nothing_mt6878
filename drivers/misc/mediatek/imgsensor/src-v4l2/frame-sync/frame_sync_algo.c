@@ -1845,8 +1845,8 @@ static void fs_alg_sa_calc_m_s_ts_diff(
 	const struct FrameSyncDynamicPara *p_para_s,
 	long long *p_ts_diff_m, long long *p_ts_diff_s)
 {
-	unsigned long long cur_tick = 0;
-	unsigned long long ts_diff_m = 0, ts_diff_s = 0;
+	fs_timestamp_t cur_tick = 0;
+	fs_timestamp_t ts_diff_m = 0, ts_diff_s = 0;
 
 
 	if (tick_factor == 0) {

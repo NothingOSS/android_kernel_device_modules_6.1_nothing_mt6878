@@ -509,9 +509,14 @@ static void frm_prepare_frame_measurement_info(
 		p_f_info->fmeas.timestamps[i] = p_f_info->rec.timestamps[i];
 
 	for (i = 0; i < VSYNCS_MAX-1; ++i) {
-		vdiff[i] =
-			p_f_info->fmeas.timestamps[i] -
-			p_f_info->fmeas.timestamps[i+1];
+		/* correctly show info for debugging */
+		const fs_timestamp_t tick_a =
+			p_f_info->fmeas.timestamps[i] * frm_inst.tick_factor;
+		const fs_timestamp_t tick_b =
+			p_f_info->fmeas.timestamps[i+1] * frm_inst.tick_factor;
+
+		vdiff[i] = (frm_inst.tick_factor)
+			? ((tick_a - tick_b) / frm_inst.tick_factor) : 0;
 	}
 }
 
