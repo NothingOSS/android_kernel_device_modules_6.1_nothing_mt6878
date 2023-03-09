@@ -39,6 +39,10 @@ static int debug_user_raws[3] = {-1, -1, -1};
 module_param_array(debug_user_raws, int, NULL, 0644);
 MODULE_PARM_DESC(debug_user_raws, "debug: user raws");
 
+static int debug_disable_twin;
+module_param(debug_disable_twin, int, 0644);
+MODULE_PARM_DESC(debug_disable_twin, "debug: disable twin");
+
 #define RAW_PIPELINE_NUM 3
 
 #define MTK_CAMSYS_RES_IDXMASK		0xF0
@@ -76,6 +80,7 @@ static inline struct v4l2_rect fullsize_as_crop(unsigned int w, unsigned int h)
 	};
 }
 
+#define USE_CTRL_PIXEL_RATE 0
 #define DC_MODE_VB_MARGIN 100
 static int res_calc_fill_sensor(struct mtk_cam_res_calc *c,
 				const struct mtk_cam_resource_sensor_v2 *s,
@@ -84,9 +89,18 @@ static int res_calc_fill_sensor(struct mtk_cam_res_calc *c,
 	u32 vb = (r->hw_mode != HW_MODE_DIRECT_COUPLED) ?
 			s->vblank : DC_MODE_VB_MARGIN;
 
-	c->line_time = 1000000000L
+#if USE_CTRL_PIXEL_RATE
+	c->mipi_pixel_rate = s->pixel_rate;
+#else
+	c->mipi_pixel_rate =
+		(s64)(s->width + s->hblank)
+		* (s->height + s->vblank)
+		* s->interval.denominator / s->interval.numerator;
+#endif
+	c->line_time =
+		1000000000L
 		* s->interval.numerator / s->interval.denominator
-		/ (s->height + vb);
+		/ max(s->height + vb, 1U);
 	c->width = s->width;
 	c->height = s->height;
 	return 0;
@@ -261,25 +275,16 @@ static int mtk_raw_calc_raw_mask_chk(struct device *dev,
 	int all_raw_mask;
 
 	/* consider raw numbers in runtime */
-	all_raw_mask = bit_map_subset_of(MAP_HW_RAW, bit_map_subset_mask(MAP_HW_RAW));
-	all_raw_mask = all_raw_mask >> (MTKCAM_SUBDEV_RAW_NUM - num_raws);
+	all_raw_mask = (1 << num_raws) - 1;
 
 	/**
-	 * That both raws and raws_must are 0 is a special case, it means all raws
-	 * can be selected by driver.
+	 * That raws with 0 is a special case, it means all raws can be selected by driver.
 	 */
-	if (!(*raws) && (!*raws_must)) {
-		dev_info(dev,
-			 "warning! raws can't be 0, reset it to 0x7\n");
+	if (!(*raws)) {
+		if (CAM_DEBUG_ENABLED(V4L2))
+			dev_info(dev, "warning! raws can't be 0, reset it to 0x%x\n",
+				 all_raw_mask);
 		*raws = all_raw_mask;
-	}
-
-	/* Error can't be recovered since raws_must has bits which is not enabled in raws */
-	if ((*raws & *raws_must) != *raws_must) {
-		dev_info(dev,
-			 "%s: error! raws_must(0x%x) has unavailable raw. raws(0x%x)\n",
-			 __func__, *raws_must, *raws);
-		return -1;
 	}
 
 	if ((*raws & all_raw_mask) != *raws ||
@@ -287,6 +292,14 @@ static int mtk_raw_calc_raw_mask_chk(struct device *dev,
 		dev_info(dev,
 			 "%s: raws_must(0x%x)/raws(0x%x) have invalid raws. valid(0x%x)\n",
 			 __func__, *raws_must, *raws, all_raw_mask);
+		return -1;
+	}
+
+	/* Error can't be recovered since raws_must has bits which is not enabled in raws */
+	if ((*raws & *raws_must) != *raws_must) {
+		dev_info(dev,
+			 "%s: error! raws_must(0x%x) has unavailable raw. raws(0x%x)\n",
+			 __func__, *raws_must, *raws);
 		return -1;
 	}
 
@@ -302,27 +315,29 @@ static int mtk_raw_calc_raw_mask_chk(struct device *dev,
 	return 0;
 }
 
-static int mtk_raw_get_conti_raws_num(u8 raws)
+static int max_num_conti_bits(u8 bits)
 {
 	int count = 0;
 
-	while (raws) {
-		raws &= raws << 1;
+	while (bits) {
+		bits &= bits << 1;
 		count++;
 	}
-
 	return count;
 }
 
 static int mtk_raw_calc_raw_mask_chk_scen(struct mtk_cam_device *cam,
-			struct mtk_cam_resource_raw_v2 *r)
+					  struct mtk_cam_resource_raw_v2 *r)
 {
-	int raws_must_cnt = mtk_raw_get_conti_raws_num(r->raws_must);
-
 	// RGBW requires a minimum of 2 raw
 	if (r->scen.scen.normal.w_chn_enabled) {
-		if (r->raws_must && raws_must_cnt != 2)
+		int raws_must_cnt = max_num_conti_bits(r->raws_must);
+
+		if (r->raws_must && raws_must_cnt != 2) {
+			dev_info(cam->dev, "w_chn_enabled, wrong raws_must 0x%x\n",
+				 r->raws_must);
 			return -1;
+		}
 
 		r->raws_max_num = 2;
 	}
@@ -336,53 +351,40 @@ static int mtk_raw_calc_raw_mask_chk_scen(struct mtk_cam_device *cam,
  * 2. raws_max_num must <= real raw's number
  */
 static void mtk_raw_calc_num_raw_max_min(struct mtk_cam_resource_raw_v2 *r,
-				 int *min, int *max)
+					 int *n_min, int *n_max)
 {
-	u8 raws = r->raws, raws_must = r->raws_must;
-	u8 raws_max_num = r->raws_max_num;
-	int conti_raws_num = mtk_raw_get_conti_raws_num(raws);
-	int conti_raws_must_num = mtk_raw_get_conti_raws_num(raws_must);
+	bool is_rgbw = r->scen.scen.normal.w_chn_enabled;
 
-	if (raws_must) {
-		*min = conti_raws_must_num;
-		*max = conti_raws_num;
-	} else {
-		*min = 1;
-		if (raws_max_num > 0)
-			*max = raws_max_num;
-		else
-			*max = conti_raws_num;
+	if (is_rgbw) {
+		*n_min = 2;
+		*n_max = 2;
+		return;
 	}
-}
 
-static void mtk_raw_calc_num_raw_max_min_rgbw(struct mtk_cam_resource_raw_v2 *r,
-				 int *min, int *max)
-{
-	*min = 2;
-	*max = 2;
+	*n_min = max(1, max_num_conti_bits(r->raws_must));
+	*n_max = min3(1, (int)r->raws_max_num, max_num_conti_bits(r->raws));
+
+	if (debug_disable_twin)
+		*n_max = 1;
 }
 
 static unsigned int mtk_raw_choose_raws(const int raw_count, const int num_raws,
 					const u8 raws, const u8 raws_must)
 {
-	u8 raw_mask, try_raw_count, raws_test;
-	int i, runs;
+	u8 raws_test;
+	int i;
 
-	raw_mask = (u8) bit_map_subset_of(MAP_HW_RAW, bit_map_subset_mask(MAP_HW_RAW));
-	/* keep the raws detected in runtime*/
-	raw_mask = raw_mask >> (MTKCAM_SUBDEV_RAW_NUM - num_raws);
+	if (raw_count <= 0)
+		return 0;
 
-	/* try all raw combination has raws more than raw_count */
-	for (try_raw_count = raw_count; try_raw_count <= num_raws; try_raw_count++) {
-		runs =  num_raws - try_raw_count;
-		for (i = 0; i <= runs; i++) {
-			raws_test = raw_mask >> (num_raws - try_raw_count);
-			raws_test = raws_test << i;
-			/* must cover raws_must and raws*/
-			if ((raws_test & raws) == raws_test &&
-			    (raws_test & raws_must) == raws_must) {
-				return raws_test;
-			}
+	raws_test = (u8)((1 << raw_count) - 1);
+
+	for (i = 0; i < num_raws - raw_count + 1; i++, raws_test <<= 1) {
+
+		/* must cover raws_must and raws*/
+		if ((raws_test & raws_must) == raws_must &&
+		    (raws_test & raws) == raws_test) {
+			return raws_test;
 		}
 	}
 
@@ -391,7 +393,7 @@ static unsigned int mtk_raw_choose_raws(const int raw_count, const int num_raws,
 
 #define M2M_PROCESS_MARGIN_N 11550
 #define M2M_PROCESS_MARGIN_D 10000
-static void res_fill_m2m_sensor_info(
+static void res_sensor_info_validate(
 		struct mtk_cam_resource_sensor_v2 *s,
 		struct mtk_cam_resource_raw_v2 *r)
 {
@@ -401,21 +403,33 @@ static void res_fill_m2m_sensor_info(
 	if (scen->id == MTK_CAM_SCEN_M2M_NORMAL ||
 		scen->id == MTK_CAM_SCEN_ODT_NORMAL) {
 
-		if (s->interval.denominator == 0)
+		if (s->interval.numerator == 0 ||
+		    s->interval.denominator == 0) {
 			s->interval.denominator = 300;
-		if (s->interval.numerator == 0)
 			s->interval.numerator = 10;
+		}
 
-		prate = (u64)(s->width * s->height *
-				s->interval.denominator * M2M_PROCESS_MARGIN_N);
+		prate = (u64)s->width * s->height *
+				s->interval.denominator * M2M_PROCESS_MARGIN_N;
 		do_div(prate, s->interval.numerator * M2M_PROCESS_MARGIN_D);
 		s->pixel_rate = prate;
 
-		pr_info("%s:width:%u height:%u interval:%u/%u prate:%lld\n",
+		pr_info("%s:width:%u height:%u fps:%u/%u prate:%lld\n",
 			__func__,
 			s->width, s->height,
 			s->interval.denominator,
 			s->interval.numerator, prate);
+	} else {
+		if (s->interval.numerator == 0 ||
+		    s->interval.denominator == 0) {
+			pr_info("%s: wrong fps(%u/%u) use (300/10) instead\n",
+				__func__,
+				s->interval.denominator,
+				s->interval.numerator);
+
+			s->interval.denominator = 300;
+			s->interval.numerator = 10;
+		}
 	}
 }
 
@@ -454,7 +468,6 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 	struct raw_resource_stepper stepper;
 	int ret, final_raw_num; /* consider debug setting and calc result */
 	unsigned int raws_driver_selected;
-	bool is_rgbw = r->scen.scen.normal.w_chn_enabled;
 
 	memset(&c, 0, sizeof(c));
 	memset(&stepper, 0, sizeof(stepper));
@@ -480,7 +493,7 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 	if (ret)
 		return -EINVAL;
 
-	res_fill_m2m_sensor_info(s, r);
+	res_sensor_info_validate(s, r);
 	res_calc_fill_sensor(&c, s, r);
 	c.cbn_type = 0; /* 0: disable, 1: 2x2, 2: 3x3 3: 4x4 */
 	c.qbnd_en = 0;
@@ -491,12 +504,9 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 	stepper.pixel_mode_min = 1;
 	stepper.pixel_mode_max = 2;
 
-	if (is_rgbw)
-		mtk_raw_calc_num_raw_max_min_rgbw(r,
-			&stepper.num_raw_min, &stepper.num_raw_max);
-	else
-		mtk_raw_calc_num_raw_max_min(r,
-			&stepper.num_raw_min, &stepper.num_raw_max);
+	mtk_raw_calc_num_raw_max_min(r,
+				     &stepper.num_raw_min,
+				     &stepper.num_raw_max);
 
 	stepper.opp_num = mtk_cam_dvfs_get_opp_table(&cam->dvfs, &stepper.tbl);
 
@@ -511,10 +521,7 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 
 	mtk_cam_get_work_buf_num(user_ctrl);
 
-	if (debug_raw_num == -1)
-		final_raw_num = c.raw_num;
-	else
-		final_raw_num = debug_raw_num;
+	final_raw_num = (debug_raw_num == -1) ? c.raw_num : debug_raw_num;
 
 	raws_driver_selected = mtk_raw_choose_raws(final_raw_num,
 						   cam->engines.num_raw_devices,
