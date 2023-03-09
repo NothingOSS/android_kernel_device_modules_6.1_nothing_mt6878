@@ -95,7 +95,6 @@ module_param(dbg_log_en, bool, 0644);
 #define FAST_CHARGING_CURR_UA	1500000
 #define RECHG_THRESHOLD		100
 #define DEFAULT_PMIC_UVLO_mV	2000
-#define DPDM_OV_THRESHOLD_mV	3850
 
 enum mt6375_chg_reg_field {
 	/* MT6375_REG_CORE_CTRL2 */
@@ -830,33 +829,6 @@ static int mt6375_get_chg_status(struct mt6375_chg_data *ddata)
 	}
 }
 
-static void mt6375_chg_check_dpdm_ov(struct mt6375_chg_data *ddata, int attach)
-{
-	struct chgdev_notify *mtk_chg_noti = &(ddata->chgdev->noti);
-	int ret, vdp, vdm;
-
-	if (attach == ATTACH_TYPE_NONE)
-		return;
-
-	/* Check if USB DPDM is Over Voltage */
-	ret = iio_read_channel_processed(&ddata->iio_adcs[ADC_CHAN_USBDP], &vdp);
-	if (ret < 0)
-		dev_notice(ddata->dev, "%s: Failed to read USB DP voltage\n", __func__);
-
-	ret = iio_read_channel_processed(&ddata->iio_adcs[ADC_CHAN_USBDM], &vdm);
-	if (ret < 0)
-		dev_notice(ddata->dev, "%s: Failed to read USB DM voltage\n", __func__);
-
-	vdp = U_TO_M(vdp);
-	vdm = U_TO_M(vdm);
-	if (vdp >= DPDM_OV_THRESHOLD_mV || vdm >= DPDM_OV_THRESHOLD_mV) {
-		dev_notice(ddata->dev, "%s: USB DPDM OV! valid: %dmV vdp: %dmV,vdm: %dmV\n",
-			   __func__, DPDM_OV_THRESHOLD_mV, vdp, vdm);
-		mtk_chg_noti->dpdmov_stat = true;
-		charger_dev_notify(ddata->chgdev, CHARGER_DEV_NOTIFY_DPDM_OVP);
-	}
-}
-
 static void mt6375_chg_attach_pre_process(struct mt6375_chg_data *ddata,
 					  enum mt6375_attach_trigger trig,
 					  int attach)
@@ -884,8 +856,6 @@ static void mt6375_chg_attach_pre_process(struct mt6375_chg_data *ddata,
 
 	if (attach > ATTACH_TYPE_PD && bc12_dn)
 		return;
-
-	mt6375_chg_check_dpdm_ov(ddata, attach);
 
 	if (!queue_work(ddata->wq, &ddata->bc12_work))
 		dev_notice(ddata->dev, "%s bc12 work already queued\n", __func__);
