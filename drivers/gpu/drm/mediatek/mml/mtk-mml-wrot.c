@@ -1337,7 +1337,7 @@ static void wrot_tile_calc_comp(const struct mml_frame_dest *dest,
 static void wrot_tile_calc(const struct mml_task *task,
 			   const struct mml_comp_wrot *wrot,
 			   const struct mml_frame_dest *dest,
-			   const struct mml_tile_output *tout,
+			   const struct mml_frame_tile *tout,
 			   const struct mml_tile_engine *tile,
 			   const u32 idx,
 			   const enum mml_mode mode,
@@ -1686,7 +1686,7 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	const u32 dest_fmt = dest->data.format;
 
 	struct mml_tile_engine *tile = config_get_tile(cfg, ccfg, idx);
-	const struct mml_tile_output *tout = cfg->tile_output[ccfg->pipe];
+	const struct mml_frame_tile *tout = cfg->frame_tile[ccfg->pipe];
 	/* Following data retrieve from tile result */
 	const u32 in_xs = tile->in.xs;
 	const u32 in_xe = tile->in.xe;

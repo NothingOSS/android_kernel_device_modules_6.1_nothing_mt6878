@@ -817,7 +817,7 @@ static s32 aal_config_tile(struct mml_comp *comp, struct mml_task *task,
 	struct mml_tile_engine *tile = config_get_tile(cfg, ccfg, idx);
 	u32 src_frame_width = cfg->info.src.width;
 	u32 src_frame_height = cfg->info.src.height;
-	u16 tile_cnt = cfg->tile_output[ccfg->pipe]->tile_cnt;
+	u16 tile_cnt = cfg->frame_tile[ccfg->pipe]->tile_cnt;
 
 	u32 aal_input_w;
 	u32 aal_input_h;

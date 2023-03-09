@@ -1213,7 +1213,7 @@ static void sys_mml_calc_cfg(struct mtk_ddp_comp *ddp_comp,
 	struct mml_dle_ctx *ctx;
 	struct mml_dle_param dl;
 	struct mml_dle_frame_info info = {0};
-	struct mml_tile_output **outputs;
+	struct mml_frame_tile **frame_tile;
 	struct mml_frame_config *frame_cfg;
 	s32 i, pipe_cnt = cfg->dual ? 2 : 1;
 	s32 ret;
@@ -1267,7 +1267,7 @@ static void sys_mml_calc_cfg(struct mtk_ddp_comp *ddp_comp,
 		mml_err("%s pipe_cnt <=0 %d", __func__, pipe_cnt);
 		return;
 	}
-	if (!cfg->task || !cfg->task->config->tile_output[pipe_cnt - 1]) {
+	if (!cfg->task || !cfg->task->config->frame_tile[pipe_cnt - 1]) {
 		mml_err("%s no tiles for task %p pipe_cnt %d", __func__,
 			cfg->task, pipe_cnt);
 		/* avoid disp exception */
@@ -1277,13 +1277,13 @@ static void sys_mml_calc_cfg(struct mtk_ddp_comp *ddp_comp,
 	}
 
 	frame_cfg = cfg->task->config;
-	outputs = cfg->task->config->tile_output;
+	frame_tile = cfg->task->config->frame_tile;
 	src_offset = cfg->submit.info.dest[0].crop.r.left;
 	for (i = 0; i < pipe_cnt; i++) {
-		cfg->mml_src_roi[i].x = outputs[i]->src_crop.left + src_offset;
-		cfg->mml_src_roi[i].y = outputs[i]->src_crop.top;
-		cfg->mml_src_roi[i].width = outputs[i]->src_crop.width;
-		cfg->mml_src_roi[i].height = outputs[i]->src_crop.height;
+		cfg->mml_src_roi[i].x = frame_tile[i]->src_crop.left + src_offset;
+		cfg->mml_src_roi[i].y = frame_tile[i]->src_crop.top;
+		cfg->mml_src_roi[i].width = frame_tile[i]->src_crop.width;
+		cfg->mml_src_roi[i].height = frame_tile[i]->src_crop.height;
 
 		mml_mmp2(addon_dle_config, MMPROFILE_FLAG_PULSE,
 			cfg->mml_src_roi[i].x,
@@ -1294,7 +1294,7 @@ static void sys_mml_calc_cfg(struct mtk_ddp_comp *ddp_comp,
 		if (frame_cfg->dl_in[i].width || frame_cfg->dl_in[i].height)
 			continue;
 
-		frame_cfg->dl_in[i] = outputs[i]->src_crop;
+		frame_cfg->dl_in[i] = frame_tile[i]->src_crop;
 		frame_cfg->dl_in[i].left = cfg->mml_src_roi[i].x;
 
 		if (sz >= sizeof(frame))
@@ -1319,7 +1319,7 @@ static void sys_addon_connect(struct mml_sys *sys,
 			      struct mtk_addon_mml_config *cfg,
 			      struct cmdq_pkt *pkt)
 {
-	if (!cfg->task || !cfg->task->config->tile_output[cfg->pipe]) {
+	if (!cfg->task || !cfg->task->config->frame_tile[cfg->pipe]) {
 		mml_err("%s no tile for task %p pipe %u", __func__,
 			cfg->task, cfg->pipe);
 		return;

@@ -1636,7 +1636,7 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 static bool rdma_check_ultra_tile(struct mml_comp_config *ccfg,
 	struct mml_frame_config *cfg, u32 tile_idx)
 {
-	const struct mml_tile_output *tout = cfg->tile_output[ccfg->pipe];
+	const struct mml_frame_tile *tout = cfg->frame_tile[ccfg->pipe];
 	/* sram always out0 */
 	const struct mml_frame_dest *dest = &cfg->info.dest[0];
 	u32 cur_tile_idx;

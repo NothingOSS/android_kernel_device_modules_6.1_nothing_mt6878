@@ -409,7 +409,7 @@ static s32 tdshp_config_tile(struct mml_comp *comp, struct mml_task *task,
 	struct tdshp_frame_data *tdshp_frm = tdshp_frm_data(ccfg);
 	struct mml_tile_engine *tile = config_get_tile(cfg, ccfg, idx);
 	struct mml_comp_tdshp *tdshp = comp_to_tdshp(comp);
-	u16 tile_cnt = cfg->tile_output[ccfg->pipe]->tile_cnt;
+	u16 tile_cnt = cfg->frame_tile[ccfg->pipe]->tile_cnt;
 	struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 
 	u32 tdshp_input_w = 0;

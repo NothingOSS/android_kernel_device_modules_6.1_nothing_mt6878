@@ -501,7 +501,7 @@ static s32 hdr_config_tile(struct mml_comp *comp, struct mml_task *task,
 
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	struct mml_tile_engine *tile = config_get_tile(cfg, ccfg, idx);
-	u16 tile_cnt = cfg->tile_output[ccfg->pipe]->tile_cnt;
+	u16 tile_cnt = cfg->frame_tile[ccfg->pipe]->tile_cnt;
 	u32 hdr_input_w;
 	u32 hdr_input_h;
 	u32 hdr_crop_xs;

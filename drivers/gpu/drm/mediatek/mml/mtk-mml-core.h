@@ -167,7 +167,7 @@ extern int mml_racing_eoc;
 struct mml_topology_cache;
 struct mml_frame_config;
 struct mml_task;
-struct mml_tile_output;
+struct mml_frame_tile;
 
 struct mml_task_ops {
 	void (*queue)(struct mml_task *task, u32 pipe);
@@ -382,7 +382,7 @@ struct mml_frame_config {
 	bool irq:1;
 
 	/* tile */
-	struct mml_tile_output *tile_output[MML_PIPE_CNT];
+	struct mml_frame_tile *frame_tile[MML_PIPE_CNT];
 	u32 hist_div[MML_MAX_PATH_NODES];
 	struct mutex hist_div_mutex;
 	struct timespec64 dvfs_boost_time;
@@ -659,7 +659,7 @@ struct mml_tile_cache {
 	bool ready;
 };
 
-struct mml_tile_output {
+struct mml_frame_tile {
 	/* total tile number */
 	u16 tile_cnt;
 	/* total horizontal tile number */
@@ -682,9 +682,9 @@ struct mml_frm_dump_data {
 /* config_get_tile - helper inline func which uses tile index to get
  * mml_tile_engine instance inside config.
  *
- * @cfg:	The mml_frame_config contains tile output.
+ * @cfg:	The mml_frame_config contains tile.
  * @ccfg:	The mml_comp_config of which tile engine.
- * @idx:	Tile index to mml_tile_output->tiles array.
+ * @idx:	Tile index to mml_frame_tile->tiles array.
  *
  * Return:	mml_tile_engine struct pointer to related tile and engine.
  */
@@ -692,7 +692,7 @@ static inline struct mml_tile_engine *config_get_tile(
 	struct mml_frame_config *cfg, struct mml_comp_config *ccfg, u32 idx)
 {
 	struct mml_tile_engine *engines =
-		cfg->tile_output[ccfg->pipe]->tiles[idx].tile_engines;
+		cfg->frame_tile[ccfg->pipe]->tiles[idx].tile_engines;
 
 	return &engines[ccfg->tile_eng_idx];
 }
@@ -700,9 +700,9 @@ static inline struct mml_tile_engine *config_get_tile(
 /* config_get_next_node_tile - helper inline func which uses tile index to get
  * next node mml_tile_engine instance inside config.
  *
- * @cfg:	The mml_frame_config contains tile output.
+ * @cfg:	The mml_frame_config contains tile.
  * @ccfg:	The mml_comp_config of which tile engine.
- * @idx:	Tile index to mml_tile_output->tiles array.
+ * @idx:	Tile index to mml_frame_tile->tiles array.
  *
  * Return:	mml_tile_engine struct pointer to related tile and engine.
  */
@@ -710,7 +710,7 @@ static inline struct mml_tile_engine *config_get_next_node_tile(
 	struct mml_frame_config *cfg, struct mml_comp_config *ccfg, u32 idx)
 {
 	struct mml_tile_engine *engines =
-		cfg->tile_output[ccfg->pipe]->tiles[idx].tile_engines;
+		cfg->frame_tile[ccfg->pipe]->tiles[idx].tile_engines;
 
 	return &engines[ccfg->node->next[0]->tile_eng_idx];
 }

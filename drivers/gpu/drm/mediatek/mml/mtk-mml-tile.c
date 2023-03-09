@@ -242,7 +242,7 @@ static s32 tile_message_to_errno(enum isp_tile_message result)
 
 struct tile_ctx {
 	/* output */
-	struct mml_tile_output *output;
+	struct mml_frame_tile *output;
 	/* working */
 	union mml_tile_data *tile_datas;
 	struct tile_reg_map *tile_reg_map;
@@ -462,7 +462,7 @@ static s32 calc_frame_mode(struct mml_task *task,
 	const struct mml_topology_path *path,
 	struct tile_ctx *ctx)
 {
-	struct mml_tile_output *output = ctx->output;
+	struct mml_frame_tile *output = ctx->output;
 	struct mml_tile_config *tiles = output->tiles;
 	struct tile_func_block *func = ctx->tile_func->func_list[0];
 
@@ -497,7 +497,7 @@ s32 calc_tile(struct mml_task *task, u32 pipe, struct mml_tile_cache *tile_cache
 
 	if (task->config->info.mode == MML_MODE_RACING) {
 		if (task->config->info.dest_cnt > 1)
-			mml_err("Racing mode but output count > 1");
+			mml_err("Racing mode but destination count > 1");
 
 		if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)
 			tile_max = MAX_RACING_90_270_TILE_NUM;
@@ -549,30 +549,30 @@ s32 calc_tile(struct mml_task *task, u32 pipe, struct mml_tile_cache *tile_cache
 		mml_log("%s task %p pipe %u mode %u",
 			__func__, task, pipe, task->config->info.mode);
 		dump_tile_working(&ctx);
-		dump_tile_output(ctx.output);
+		dump_frame_tile(ctx.output);
 		mutex_unlock(&tile_dump_mutex);
 	}
 #endif
 
-	/* put tile_output to task */
-	task->config->tile_output[pipe] = ctx.output;
+	/* put tile output to task */
+	task->config->frame_tile[pipe] = ctx.output;
 	goto free_working;
 
 err_tile:
 	dump_tile_working(&ctx);
-	dump_tile_output(ctx.output);
+	dump_frame_tile(ctx.output);
 free_output:
 	mml_err("%s free output %d", __func__, ret);
-	destroy_tile_output(ctx.output);
+	destroy_frame_tile(ctx.output);
 free_working:
 	destroy_tile_working(&ctx);
 	mml_mmp(tile_calc, MMPROFILE_FLAG_PULSE, pipe, 1);
 	return ret;
 }
 
-void destroy_tile_output(struct mml_tile_output *output)
+void destroy_frame_tile(struct mml_frame_tile *frame_tile)
 {
-	kfree(output);
+	kfree(frame_tile);
 }
 
 static void dump_tile_region(char *prefix, struct mml_tile_region *region)
@@ -616,14 +616,14 @@ static void dump_tile_config(struct mml_tile_config *tile)
 		dump_tile_engine(&tile->tile_engines[i]);
 }
 
-void dump_tile_output(struct mml_tile_output *output)
+void dump_frame_tile(struct mml_frame_tile *frame_tile)
 {
-	u32 tile_cnt = output->tile_cnt;
+	u32 tile_cnt = frame_tile->tile_cnt;
 	u32 i;
 
 	mml_log("tile_cnt:%u (h:%u v:%u)",
-		tile_cnt, output->h_tile_cnt, output->v_tile_cnt);
+		tile_cnt, frame_tile->h_tile_cnt, frame_tile->v_tile_cnt);
 	for (i = 0; i < tile_cnt; i++)
-		dump_tile_config(&output->tiles[i]);
+		dump_tile_config(&frame_tile->tiles[i]);
 }
 

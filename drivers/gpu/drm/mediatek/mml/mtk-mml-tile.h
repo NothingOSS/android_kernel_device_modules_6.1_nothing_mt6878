@@ -75,7 +75,7 @@ union mml_tile_data {
 };
 
 s32 calc_tile(struct mml_task *task, u32 pipe, struct mml_tile_cache *tile_cache);
-void destroy_tile_output(struct mml_tile_output *output);
-void dump_tile_output(struct mml_tile_output *output);
+void destroy_frame_tile(struct mml_frame_tile *frame_tile);
+void dump_frame_tile(struct mml_frame_tile *frame_tile);
 
 #endif	/* __MTK_MML_TILE_H__ */

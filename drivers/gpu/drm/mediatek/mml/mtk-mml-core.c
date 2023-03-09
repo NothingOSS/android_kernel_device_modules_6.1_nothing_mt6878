@@ -314,12 +314,12 @@ static s32 command_make(struct mml_task *task, u32 pipe)
 	task->pkts[pipe]->no_irq = !task->config->irq;
 	pkt->user_data = (void *)task;
 
-	if (!task->config->tile_output[pipe]) {
+	if (!task->config->frame_tile[pipe]) {
 		mml_err("%s no tile for input pipe %u", __func__, pipe);
 		ret = -EINVAL;
 		goto err;
 	}
-	tile_cnt = task->config->tile_output[pipe]->tile_cnt;
+	tile_cnt = task->config->frame_tile[pipe]->tile_cnt;
 
 	/* get total label count to create label array */
 	cache->label_cnt = 0;
@@ -1312,9 +1312,9 @@ static s32 core_config(struct mml_task *task, u32 pipe)
 			return ret;
 		}
 
-		/* dump tile output for debug */
+		/* dump frame tile for debug */
 		if (mtk_mml_msg)
-			dump_tile_output(task->config->tile_output[pipe]);
+			dump_frame_tile(task->config->frame_tile[pipe]);
 	} else {
 		if (task->state == MML_TASK_DUPLICATE) {
 			/* task need duplcicate before reuse */
@@ -1847,7 +1847,7 @@ void mml_core_deinit_config(struct mml_frame_config *cfg)
 			continue;
 		for (i = 0; i < cfg->path[pipe]->node_cnt; i++)
 			kfree(cfg->cache[pipe].cfg[i].data);
-		destroy_tile_output(cfg->tile_output[pipe]);
+		destroy_frame_tile(cfg->frame_tile[pipe]);
 	}
 	core_destroy_wq(&cfg->wq_done);
 }
