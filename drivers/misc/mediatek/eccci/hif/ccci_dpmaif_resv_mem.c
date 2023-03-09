@@ -48,10 +48,11 @@ static unsigned int  g_resv_nocache_mem_offs;
 
 static unsigned int  g_use_cache_mem_from_dts;
 
-
 #define USE_RESV_CACHE_MEM     0x1
 #define USE_RESV_NOCACHE_MEM   0x2
-
+#ifdef RX_PAGE_POOL
+#define RESV_POOL_MEM    (MAX_POOL_SIZE * PAGE_SIZE)
+#endif
 #define TAG "resv"
 
 void ccci_dpmaif_resv_mem_init(void)
@@ -79,9 +80,19 @@ void ccci_dpmaif_resv_mem_init(void)
 			"[%s] error: cannot lookup reserved cache memory.\n", __func__);
 		return;
 	}
-
-	g_resv_cache_phy_addr = rmem->base;
-	g_resv_cache_mem_size = rmem->size;
+#ifdef RX_PAGE_POOL
+	if (rmem->size > RESV_POOL_MEM) {
+		g_page_pool_is_on = 1;
+		resv_skb_mem[POOL_NUMBER-1] = rmem->base;
+		g_resv_cache_phy_addr = rmem->base + RESV_POOL_MEM;
+		g_resv_cache_mem_size = rmem->size - RESV_POOL_MEM;
+	} else {
+#endif
+		g_resv_cache_phy_addr = rmem->base;
+		g_resv_cache_mem_size = rmem->size;
+#ifdef RX_PAGE_POOL
+	}
+#endif
 	g_resv_cache_mem_offs = 0;
 
 	g_resv_cache_vir_addr = phys_to_virt(g_resv_cache_phy_addr);

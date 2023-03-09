@@ -86,6 +86,93 @@ static unsigned int g_alloc_bat_frg_flag;
 
 static atomic_t g_bat_alloc_thread_wakeup_cnt;
 
+#ifdef RX_PAGE_POOL
+unsigned int g_page_pool_is_on;
+phys_addr_t resv_skb_mem[POOL_NUMBER] = {0};
+atomic_t   alloc_from_kernel;
+/*
+ * Register the sysctl to set threshold of allocing skb from kernel.
+ */
+static int sysctl_devalloc_threshold = 2000;
+static struct ctl_table devalloc_threshold_table[] = {
+	{
+		.procname	= "devalloc_threshold",
+		.data		= &sysctl_devalloc_threshold,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec_minmax,
+	},
+	{}
+};
+static struct ctl_table devalloc_threshold_root[] = {
+	{
+		.procname	= "net",
+		.mode		= 0555,
+		.child		= devalloc_threshold_table,
+	},
+	{}
+};
+
+static struct ctl_table_header *sysctl_header;
+static int register_devalloc_threshold_sysctl(void)
+{
+	sysctl_header = register_sysctl_table(devalloc_threshold_root);
+	if (sysctl_header == NULL) {
+		pr_info("CCCI:dpmaif:register devalloc_threshold failed\n");
+		return -1;
+	}
+	return 0;
+}
+
+static inline int skb_alloc_from_pool(
+		struct sk_buff **ppskb,
+		unsigned long long *p_base_addr,
+		unsigned int pkt_buf_sz)
+{
+	struct page *page = NULL;
+	int index_usable = 0;
+
+	index_usable = ccci_dpmaif_page_pool_empty_index();
+	if (index_usable != POOL_NUMBER)
+		page = page_pool_alloc_pages(dpmaif_ctl->g_page_pool[index_usable], GFP_ATOMIC);
+	if (!page) {
+		CCCI_ERROR_LOG(-1, TAG,
+			"[%s] error: alloc page fail!\n", __func__);
+		return LOW_MEMORY_SKB;
+	}
+
+	(*ppskb) = build_skb(page_to_virt(page), PAGE_SIZE);
+
+	if (!(*ppskb)) {
+		page_pool_recycle_direct(dpmaif_ctl->g_page_pool[index_usable], page);
+		CCCI_ERROR_LOG(-1, TAG,
+			"[%s:%d] error: alloc skb fail!\n", __func__, __LINE__);
+		return LOW_MEMORY_SKB;
+	}
+
+	skb_reserve(*ppskb, NET_SKB_PAD);
+	skb_mark_for_recycle(*ppskb);
+
+	(*p_base_addr) = dma_map_single(
+		dpmaif_ctl->dev, (*ppskb)->data,
+		1500, DMA_FROM_DEVICE);
+
+	if (dma_mapping_error(dpmaif_ctl->dev, (*p_base_addr))) {
+		CCCI_ERROR_LOG(-1, TAG,
+			"[%s] error: dma mapping fail: %ld!\n",
+			__func__, skb_data_size(*ppskb));
+
+		dev_kfree_skb_any(*ppskb);
+		(*ppskb) = NULL;
+
+		return DMA_MAPPING_ERR;
+	}
+
+	return 0;
+}
+#endif
+
+
 static inline void ccci_dpmaif_skb_wakeup_thread(void)
 {
 	if (dpmaif_ctl->skb_alloc_thread &&
@@ -102,6 +189,14 @@ static inline int skb_alloc(
 {
 	(*ppskb) = __dev_alloc_skb(pkt_buf_sz, GFP_ATOMIC);
 
+#ifdef RX_PAGE_POOL
+	if (g_page_pool_is_on) {
+		if (atomic_read(&alloc_from_kernel) >= sysctl_devalloc_threshold)
+			atomic_set(&alloc_from_kernel, 0);
+		else
+			atomic_inc(&alloc_from_kernel);
+	}
+#endif
 	if (unlikely(!(*ppskb))) {
 		CCCI_ERROR_LOG(-1, TAG,
 			"[%s] error: alloc skb fail. (%u)\n",
@@ -151,9 +246,24 @@ static inline void alloc_skb_to_tbl(int skb_cnt)
 
 	for (i = 0; i < alloc_cnt; i++) {
 		skb_info = &g_skb_tbl[skb_tbl_wdx];
-
+#ifdef RX_PAGE_POOL
+		if (g_page_pool_is_on) {
+			if (!atomic_read(&alloc_from_kernel)) {
+				if (skb_alloc_from_pool(&skb_info->skb,
+					&skb_info->base_addr, pkt_buf_sz))
+					if (skb_alloc(&skb_info->skb,
+						&skb_info->base_addr,
+						pkt_buf_sz))
+						break;
+				goto update;
+			}
+		}
+#endif
 		if (skb_alloc(&skb_info->skb, &skb_info->base_addr, pkt_buf_sz))
 			break;
+#ifdef RX_PAGE_POOL
+update:
+#endif
 		/*
 		 * The wmb() flushes writes to dram before read g_skb_tbl data.
 		 */
@@ -1059,6 +1169,88 @@ start_err:
 
 	return ret;
 }
+#ifdef RX_PAGE_POOL
+void ccci_dpmaif_allocmem_page_pool(int pool_size, phys_addr_t physAddr, int index)
+{
+	struct page *page = NULL;
+	int i = 0;
+
+	if (!physAddr)
+		return;
+
+	for (; i < pool_size/(PAGE_SIZE/4096); i++) {
+		page = phys_to_page(physAddr+PAGE_SIZE*i);
+		if (!page) {
+			CCCI_ERROR_LOG(0, TAG, "alloc page for page_pool failed\n");
+			continue;
+		}
+		ccci_dpmaif_put_page_pool(dpmaif_ctl->g_page_pool[index], page);
+	}
+}
+
+int ccci_dpmaif_create_page_pool(int pool_size)
+{
+	struct page_pool_params pp = { 0 };
+	struct page_pool *g_page_pool = NULL;
+	int index = 0;
+	phys_addr_t resv_skb_mem_dts = 0;
+
+	pp.max_len = PAGE_SIZE;
+	//pp.flags = PP_FLAG_DMA_MAP | PP_FLAG_DMA_SYNC_DEV | PP_FLAG_PAGE_FRAG;
+	pp.flags = 0;
+	pp.pool_size = pool_size;
+	pp.nid = dev_to_node(dpmaif_ctl->dev);
+	pp.dev = dpmaif_ctl->dev;
+	pp.dma_dir = DMA_FROM_DEVICE;
+
+	for (; index < POOL_NUMBER; index++) {
+		resv_skb_mem_dts = resv_skb_mem[index];
+		if (resv_skb_mem_dts) {
+			g_page_pool = page_pool_create(&pp);
+			if (!g_page_pool) {
+				CCCI_ERROR_LOG(0, TAG,
+					"[%s] error: create page pool fail.\n",
+					__func__);
+				dpmaif_ctl->g_page_pool[index] = NULL;
+				continue;
+			}
+
+			dpmaif_ctl->g_page_pool[index] = g_page_pool;
+			ccci_dpmaif_allocmem_page_pool(pool_size, resv_skb_mem_dts, index);
+			ccmni_set_page_pool_is_on(g_page_pool_is_on);
+		}
+	}
+
+	return 0;
+}
+
+void ccci_dpmaif_put_page_pool(struct page_pool *pool, struct page *page)
+{
+	init_page_count(page);
+	page->pp = pool;
+	page->pp_magic = PP_SIGNATURE;
+	page_pool_recycle_direct(pool, page);
+	pool->pages_state_hold_cnt++;
+}
+
+
+void ccci_dpmaif_destroy_page_pool(struct page_pool *g_page_pool)
+{
+	page_pool_destroy(g_page_pool);
+}
+
+int ccci_dpmaif_page_pool_empty_index(void)
+{
+	int i = 0;
+
+	for (; i < POOL_NUMBER; i++)
+		if (dpmaif_ctl->g_page_pool[i])
+			if (dpmaif_ctl->g_page_pool[i]->alloc.count ||
+				!__ptr_ring_empty(&dpmaif_ctl->g_page_pool[i]->ring))
+				return i;
+	return i;
+}
+#endif
 
 int ccci_dpmaif_bat_late_init(void)
 {
@@ -1078,6 +1270,15 @@ int ccci_dpmaif_bat_late_init(void)
 		if (!g_skb_tbl)
 			CCCI_ERROR_LOG(0, TAG,
 				"[%s] error: alloc g_skb_tbl fail.\n", __func__);
+#ifdef RX_PAGE_POOL
+		else {
+			if (g_page_pool_is_on) {
+				ccci_dpmaif_create_page_pool(MAX_POOL_SIZE);
+				atomic_set(&alloc_from_kernel, 0);
+				register_devalloc_threshold_sysctl();
+			}
+		}
+#endif
 	}
 
 	if (g_frg_tbl_cnt) {

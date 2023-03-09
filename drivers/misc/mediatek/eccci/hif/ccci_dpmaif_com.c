@@ -468,6 +468,9 @@ static inline void dpmaif_rxq_lro_end(struct dpmaif_rx_queue *rxq)
 	unsigned int total_len = 0, lro_num = 0;
 	unsigned int hof, max_mss = 0, first_skb_len = 0, no_need_gro = 0;
 	struct dpmaif_rx_lro_info *lro_info = &rxq->lro_info;
+#ifdef RX_PAGE_POOL
+	int pp_recycle_last = -1;
+#endif
 
 	if (rxq->pit_dp) {
 		dpmaif_rxq_lro_handle_bid(rxq, 1);
@@ -489,7 +492,10 @@ lro_continue:
 
 			if ((lro_info->count - i) == 1)
 				break;
-
+#ifdef RX_PAGE_POOL
+			if (g_page_pool_is_on)
+				pp_recycle_last = skb0->pp_recycle;
+#endif
 			total_len = skb0->len;
 			NAPI_GRO_CB(skb0)->data_offset = 0;
 			NAPI_GRO_CB(skb0)->last = skb0;
@@ -502,14 +508,18 @@ lro_continue:
 		}
 
 		skb1 = lro_info->data[i].skb;
+#ifdef RX_PAGE_POOL
+		if (unlikely(skb1->len > first_skb_len) || (g_page_pool_is_on &&
+			skb1->pp_recycle != pp_recycle_last)) {
+#else
 		if (unlikely(skb1->len > first_skb_len)) {
+#endif
 			/* this is a wrong lro skb, push the previous lro skb */
 			start_idx = i;
 			if (lro_num == 1) {
 				dpmaif_calc_ip_len_and_check(skb0);
 				NAPI_GRO_CB(skb0)->last = NULL;
 			}
-
 			goto gro_too_much_skb;
 		}
 		if (unlikely(skb1->len < first_skb_len))
@@ -2624,7 +2634,12 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 		} else {
 			g_alloc_skb_threshold = MIN_ALLOC_SKB_CNT;
 			g_alloc_frg_threshold = MIN_ALLOC_FRG_CNT;
-			g_alloc_skb_tbl_threshold = MIN_ALLOC_SKB_TBL_CNT;
+#ifdef RX_PAGE_POOL
+			if (g_page_pool_is_on)
+				g_alloc_skb_tbl_threshold = MAX_ALLOC_BAT_CNT;
+			else
+#endif
+				g_alloc_skb_tbl_threshold = MIN_ALLOC_SKB_TBL_CNT;
 			g_alloc_frg_tbl_threshold = MIN_ALLOC_FRG_TBL_CNT;
 		}
 		if (dpmaif_ctl->support_lro == 1)

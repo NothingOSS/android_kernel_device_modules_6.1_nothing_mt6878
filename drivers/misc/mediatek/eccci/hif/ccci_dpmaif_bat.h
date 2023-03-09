@@ -41,6 +41,8 @@ extern unsigned int g_alloc_frg_threshold;
 extern unsigned int g_alloc_skb_tbl_threshold;
 extern unsigned int g_alloc_frg_tbl_threshold;
 extern unsigned int g_max_bat_skb_cnt_for_md;
-
+#ifdef RX_PAGE_POOL
+extern void ccmni_set_page_pool_is_on(u32 page_pool_is_on);
+#endif
 #endif /* __CCCI_DPMA_BAT_H__ */
 
