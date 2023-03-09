@@ -225,7 +225,7 @@ int trusted_mem_page_based_alloc(enum TRUSTED_MEM_REQ_TYPE req_mem_type,
 {
 	enum TRUSTED_MEM_TYPE mem_type = get_mem_type(req_mem_type);
 
-	if (is_ffa_enabled()) {
+	if (is_ffa_enabled() && (mem_type == TRUSTED_MEM_PROT_PAGE)) {
 		pr_info("[TMEM][%d] page-based: size = 0x%x\n", mem_type, size);
 		return tmem_ffa_page_alloc(sg_tbl, handle);
 	}
@@ -235,7 +235,7 @@ EXPORT_SYMBOL(trusted_mem_page_based_alloc);
 
 int trusted_mem_page_based_free(u64 handle)
 {
-	if (is_ffa_enabled())
+	if (is_ffa_enabled() && (handle != 0))
 		return tmem_ffa_page_free(handle);
 	return 0;
 }

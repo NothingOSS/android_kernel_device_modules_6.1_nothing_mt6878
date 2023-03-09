@@ -1611,7 +1611,6 @@ static struct dma_buf *tmem_page_allocate(struct dma_heap *heap,
 				     &sec_handle, len);
 	/* store seucre handle */
 	buffer->sec_handle = sec_handle;
-	pr_info("%s: ret = %d\n", __func__, ret);
 
 	dmabuf = alloc_dmabuf(heap, buffer, &sec_buf_page_ops, fd_flags);
 	if (IS_ERR(dmabuf)) {
