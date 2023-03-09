@@ -148,6 +148,7 @@ struct adaptor_ctx {
 	/* frame-sync */
 	struct FrameSync *fsync_mgr;
 	unsigned int fsync_out_fl;
+	unsigned int fsync_out_fl_arr[IMGSENSOR_STAGGER_EXPOSURE_CNT];
 
 	/* tsrec */
 	struct mtk_cam_seninf_tsrec_vsync_info vsync_info;

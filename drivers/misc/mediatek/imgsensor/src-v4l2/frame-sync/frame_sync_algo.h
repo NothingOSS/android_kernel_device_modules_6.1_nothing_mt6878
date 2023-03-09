@@ -12,6 +12,10 @@
 
 
 /* utility functions */
+void fs_alg_get_out_fl_info(const unsigned int idx,
+	unsigned int *p_out_fl_lc,
+	unsigned int p_out_fl_lc_arr[], const unsigned int arr_len);
+
 unsigned int fs_alg_get_vsync_data(unsigned int solveIdxs[], unsigned int len);
 
 

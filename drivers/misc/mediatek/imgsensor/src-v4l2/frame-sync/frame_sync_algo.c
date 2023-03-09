@@ -272,6 +272,31 @@ static unsigned int fs_flicker_table[FLICKER_TABLE_SIZE][2] = {
 /******************************************************************************/
 // utility functions
 /******************************************************************************/
+void fs_alg_get_out_fl_info(const unsigned int idx,
+	unsigned int *p_out_fl_lc,
+	unsigned int p_out_fl_lc_arr[], const unsigned int arr_len)
+{
+	if (unlikely((p_out_fl_lc == NULL) || (p_out_fl_lc_arr == NULL))) {
+		LOG_MUST(
+			"ERROR: [%u] ID:%#x(sidx:%u/inf:%u), #%u, (req:%d/%u), get nullptr of p_out_fl_lc:%p/p_out_fl_lc_arr:%p, return\n",
+			idx,
+			fs_get_reg_sensor_id(idx),
+			fs_get_reg_sensor_idx(idx),
+			fs_get_reg_sensor_inf_idx(idx),
+			fs_sa_inst.dynamic_paras[idx].magic_num,
+			fs_inst[idx].req_id,
+			fs_inst[idx].sof_cnt,
+			p_out_fl_lc,
+			p_out_fl_lc_arr);
+		return;
+	}
+
+	*p_out_fl_lc = fs_inst[idx].output_fl_lc;
+	memcpy(p_out_fl_lc_arr, &fs_inst[idx].hdr_exp.fl_lc,
+		sizeof(unsigned int) * FS_HDR_MAX);
+}
+
+
 static inline unsigned int get_anti_flicker_fl(unsigned int framelength)
 {
 	unsigned int i = 0;
@@ -407,7 +432,7 @@ static inline void set_fl_us(unsigned int idx, unsigned int us)
 
 	frec_g_valid_min_fl_arr_val_for_lut(idx,
 		fs_inst[idx].p_frecs[0], fs_inst[idx].output_fl_lc,
-		fs_inst[idx].p_frecs[0]->fl_lc_arr, FS_HDR_MAX);
+		fs_inst[idx].hdr_exp.fl_lc, FS_HDR_MAX);
 
 	/* 2. check framelength boundary */
 	check_fl_boundary(idx);

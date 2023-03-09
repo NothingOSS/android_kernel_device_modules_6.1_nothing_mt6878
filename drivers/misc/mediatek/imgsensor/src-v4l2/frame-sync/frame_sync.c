@@ -1630,6 +1630,7 @@ static void fs_call_sensor_driver_setup_fl_info(const unsigned int idx,
 	const unsigned int fl_lc)
 {
 	const struct callback_info_st *cb_info = &fs_mgr.cb_info[idx];
+	unsigned int out_fl_lc;
 	int ret;
 
 	if (unlikely(cb_info->func_ptr == NULL)) {
@@ -1644,6 +1645,9 @@ static void fs_call_sensor_driver_setup_fl_info(const unsigned int idx,
 	if (unlikely(fl_lc == 0))
 		return;
 
+	/* get fs algo output fl info */
+	fs_alg_get_out_fl_info(idx,
+		&out_fl_lc, fs_mgr.pf_ctrl[idx].hdr_exp.fl_lc, FS_HDR_MAX);
 
 	/* use callback function to call to sensor driver for setup fl info */
 	ret = cb_info->func_ptr(cb_info->p_ctx, cb_info->cmd_id,

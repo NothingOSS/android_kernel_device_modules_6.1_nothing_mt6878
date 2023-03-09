@@ -4,6 +4,7 @@
  */
 
 #include "frame-sync/frame_sync.h"
+#include "frame-sync/sensor_recorder.h"
 #include <linux/atomic.h>
 
 #include "kd_imgsensor_define_v4l2.h"
@@ -19,6 +20,7 @@
  * fsync mgr log ctrl
  ******************************************************************************/
 #define REDUCE_FSYNC_CTRLS_LOG
+#define REDUCE_FSYNC_CTRLS_DBG_LOG
 
 #define PFX "AdaptorFsyncCtrls"
 
@@ -45,6 +47,9 @@
 /*******************************************************************************
  * fsync mgr define/enum/structure
  ******************************************************************************/
+#define WAIT_SENSOR_SUPPORT_LBMF
+
+
 enum fsync_mgr_set_fl_cmd_type {
 	FSYNC_MGR_SET_FL_CMD_TYPE_NONE = 0,
 	FSYNC_MGR_SET_FL_CMD_TYPE_EXP_WITH_FL = 1,
@@ -111,8 +116,10 @@ static void fsync_mgr_s_frame_length(struct adaptor_ctx *ctx)
 
 static void fsync_mgr_s_multi_shutter_frame_length(
 	struct adaptor_ctx *ctx,
-	u32 *ae_exp_arr, u32 ae_exp_cnt)
+	u32 *ae_exp_arr, u32 ae_exp_cnt,
+	const unsigned int multi_exp_type)
 {
+	enum ACDK_SENSOR_FEATURE_ENUM cmd;
 	union feature_para para;
 	u32 fsync_exp[IMGSENSOR_STAGGER_EXPOSURE_CNT] = {0};
 	u32 len = 0;
@@ -128,9 +135,18 @@ static void fsync_mgr_s_multi_shutter_frame_length(
 	para.u64[0] = (u64)fsync_exp;
 	para.u64[1] = min_t(u32, ae_exp_cnt, (u32)IMGSENSOR_STAGGER_EXPOSURE_CNT);
 	para.u64[2] = ctx->fsync_out_fl;
+#ifndef WAIT_SENSOR_SUPPORT_LBMF
+	para.u64[3] = (u64)ctx->fsync_out_fl_arr;
+
+	cmd = (multi_exp_type == MULTI_EXP_TYPE_LBMF)
+		? SENSOR_FEATURE_SET_MULTI_SHUTTER_FRAME_TIME_IN_LUT
+		: SENSOR_FEATURE_SET_MULTI_SHUTTER_FRAME_TIME;
+#else
+	cmd = SENSOR_FEATURE_SET_MULTI_SHUTTER_FRAME_TIME;
+#endif
 
 	subdrv_call(ctx, feature_control,
-		SENSOR_FEATURE_SET_MULTI_SHUTTER_FRAME_TIME,
+		cmd,
 		para.u8, &len);
 }
 
@@ -138,6 +154,33 @@ static void fsync_mgr_s_multi_shutter_frame_length(
 /*******************************************************************************
  * fsync mgr static functions
  ******************************************************************************/
+static void fsync_mgr_update_sensor_actual_fl_info(struct adaptor_ctx *ctx,
+	struct fs_perframe_st *p_pf_ctrl)
+{
+	const unsigned int mode_exp_cnt = p_pf_ctrl->hdr_exp.mode_exp_cnt;
+	unsigned int i;
+
+	p_pf_ctrl->out_fl_lc = ctx->subctx.frame_length;
+
+	if (p_pf_ctrl->hdr_exp.multi_exp_type == MULTI_EXP_TYPE_LBMF) {
+		for (i = 0; i < mode_exp_cnt; ++i) {
+#ifdef FL_ARR_IN_LUT_ORDER
+			const int fl_idx = i;
+#else
+			const int fl_idx = hdr_exp_idx_map[mode_exp_cnt][i];
+#endif
+
+			p_pf_ctrl->hdr_exp.fl_lc[fl_idx] =
+#ifndef WAIT_SENSOR_SUPPORT_LBMF
+				ctx->subctx.frame_length_in_lut[i];
+#else
+				0;
+#endif
+		}
+	}
+}
+
+
 static void fsync_mgr_chk_long_exposure(struct adaptor_ctx *ctx,
 	const u32 *ae_exp_arr, const u32 ae_exp_cnt)
 {
@@ -174,6 +217,109 @@ static void fsync_mgr_chk_long_exposure(struct adaptor_ctx *ctx,
 #endif
 }
 
+
+#ifndef WAIT_SENSOR_SUPPORT_LBMF
+static void fsync_mgr_setup_sensor_hdr_info(struct adaptor_ctx *ctx,
+	struct fs_hdr_exp_st *p_hdr_exp, const u32 mode_id)
+{
+	const struct subdrv_ctx *subctx = &ctx->subctx;
+	const enum IMGSENSOR_HDR_MODE_ENUM sensor_hdr_type =
+		subctx->s_ctx.mode[mode_id].hdr_mode;
+	union feature_para para;
+	u32 len = 0;
+
+	/* !!! get needed information from sensor driver !!! */
+
+	/* get sensor mode exposure cnt */
+	para.u64[0] = mode_id;
+	para.u64[1] = 0;
+	subdrv_call(ctx, feature_control,
+		SENSOR_FEATURE_GET_EXPOSURE_COUNT_BY_SCENARIO,
+		para.u8, &len);
+	if (unlikely(para.u64[1] == 0)) {
+		FSYNC_MGR_LOGI(ctx,
+			"ERROR: sidx:%d, at get sensor exposure cnt, exp_cnt:%u(bigger than 1), abort\n",
+			ctx->idx, para.u64[1]);
+		return;
+	}
+	/* TODO: if using this method to replace g stagger info, */
+	/*       think about trying to skip "1" exp type */
+
+
+	/* !!! setup information for Frame-Sync module using !!! */
+
+	/* setup mode exp cnt (e.g., stagger: 1 ~ 3) */
+	p_hdr_exp->mode_exp_cnt = (u32)para.u64[1];
+
+	/* setup multi exp type (HDR type, e.g., stagger, LB-MF, etc.) */
+	switch (sensor_hdr_type) {
+	case HDR_RAW_LBMF_MIN:
+	case HDR_RAW_LBMF_MAX:
+	{
+		/* setup exp order (e.g., LB-MF:(SE first / LE first), etc.) */
+		const u32 exp_order =
+			subctx->s_ctx.mode[mode_id].exposure_order_in_lbmf;
+
+		switch (exp_order) {
+		case IMGSENSOR_LBMF_EXPOSURE_LE_FIRST:
+			p_hdr_exp->exp_order = EXP_ORDER_LE_1ST;
+			break;
+		case IMGSENSOR_LBMF_EXPOSURE_SE_FIRST:
+			p_hdr_exp->exp_order = EXP_ORDER_SE_1ST;
+			break;
+		case IMGSENSOR_LBMF_EXPOSURE_ORDER_SUPPORT_NONE:
+			FSYNC_MGR_LOGI(ctx,
+				"ERROR: sidx:%d, detect sensor mode is LBMF HDR, but exp order is SUPPORT NONE, treat as SE first\n",
+				ctx->idx);
+			p_hdr_exp->exp_order = EXP_ORDER_SE_1ST;
+			break;
+		default:
+			FSYNC_MGR_LOGI(ctx,
+				"ERROR: sidx:%d, detect sensor mode is LBMF HDR, but exp order is unknown (%d), treat as SE first\n",
+				ctx->idx, exp_order);
+			p_hdr_exp->exp_order = EXP_ORDER_SE_1ST;
+			break;
+		}
+
+		p_hdr_exp->multi_exp_type = MULTI_EXP_TYPE_LBMF;
+	}
+		break;
+	case HDR_RAW_DCG_MIN:
+	case HDR_RAW_DCG_MAX:
+	case HDR_RAW_STAGGER_MIN:
+	case HDR_RAW_STAGGER_MAX:
+	{
+		p_hdr_exp->multi_exp_type = MULTI_EXP_TYPE_STG;
+	}
+		break;
+	default:
+
+#ifndef REDUCE_FSYNC_CTRLS_LOG
+		/* reduce this log due to sensor driver frame desc <=> .hdr_mode value miss match */
+		/* e.g., imx888 scenario 0 preview mode */
+		FSYNC_MGR_LOGI(ctx,
+			"ERROR: sidx:%d, g_stagger_info return hdr type, but sensor hdr type is unknown (%d), treat as stagger type\n",
+			ctx->idx, sensor_hdr_type);
+#endif
+
+		p_hdr_exp->multi_exp_type = MULTI_EXP_TYPE_STG;
+		break;
+	}
+
+
+#ifndef REDUCE_FSYNC_CTRLS_DBG_LOG
+	FSYNC_MGR_LOGI(ctx,
+		"sidx:%d, set p_hdr_exp(multi_exp_type:%u(STG:%d/LBMF:%d)/mode_exp_cnt:%u/exp_order:%u)\n",
+		ctx->idx,
+		p_hdr_exp->multi_exp_type,
+		MULTI_EXP_TYPE_STG,
+		MULTI_EXP_TYPE_LBMF,
+		p_hdr_exp->mode_exp_cnt,
+		p_hdr_exp->exp_order);
+#endif
+}
+#endif // !WAIT_SENSOR_SUPPORT_LBMF
+
 static void fsync_mgr_set_hdr_exp_data(struct adaptor_ctx *ctx,
 	struct fs_hdr_exp_st *p_hdr_exp,
 	u32 *ae_exp_arr, u32 ae_exp_cnt,
@@ -198,15 +344,27 @@ static void fsync_mgr_set_hdr_exp_data(struct adaptor_ctx *ctx,
 	// ret = g_stagger_info(ctx, ctx->cur_mode->id, &info);
 	ret = g_stagger_info(ctx, mode_id, &info);
 	if (!ret) {
+#ifndef WAIT_SENSOR_SUPPORT_LBMF
+		fsync_mgr_setup_sensor_hdr_info(ctx, p_hdr_exp, mode_id);
+#endif
+
 		p_hdr_exp->mode_exp_cnt = info.count;
 		p_hdr_exp->ae_exp_cnt = ae_exp_cnt;
 		p_hdr_exp->readout_len_lc = ctx->subctx.readout_length;
 		p_hdr_exp->read_margin_lc = ctx->subctx.read_margin;
 
 		for (i = 0; i < ae_exp_cnt; ++i) {
-			int idx = hdr_exp_idx_map[ae_exp_cnt][i];
+			const int idx = hdr_exp_idx_map[ae_exp_cnt][i];
 
-			if (idx >= 0) {
+#ifndef WAIT_SENSOR_SUPPORT_LBMF
+#ifdef FL_ARR_IN_LUT_ORDER
+			const int fl_idx = i;
+#else
+			const int fl_idx = idx;
+#endif
+#endif // !WAIT_SENSOR_SUPPORT_LBMF
+
+			if (likely(idx >= 0)) {
 				p_hdr_exp->exp_lc[idx] = ae_exp_arr[i];
 				if (fine_integ_line) {
 					p_hdr_exp->exp_lc[idx] =
@@ -214,11 +372,20 @@ static void fsync_mgr_set_hdr_exp_data(struct adaptor_ctx *ctx,
 							fine_integ_line);
 				}
 
-#ifndef REDUCE_FSYNC_CTRLS_LOG
+#ifndef WAIT_SENSOR_SUPPORT_LBMF
+				if (p_hdr_exp->multi_exp_type ==
+						MULTI_EXP_TYPE_LBMF) {
+					p_hdr_exp->fl_lc[fl_idx] =
+						ctx->subctx.frame_length_in_lut[i];
+				}
+#endif
+
+#ifndef REDUCE_FSYNC_CTRLS_DBG_LOG
 				FSYNC_MGR_LOGI(ctx,
-					"ae_exp_arr[%u]:%u, fine_integ_line:%u, p_hdr_exp->exp_lc[%d]:%u\n",
+					"ae_exp_arr[%u]:%u, fine_integ_line:%u, p_hdr_exp(exp_lc[%d]:%u, fl_lc[%d]:%u)\n",
 					i, ae_exp_arr[i], fine_integ_line,
-					idx, p_hdr_exp->exp_lc[idx]);
+					idx, p_hdr_exp->exp_lc[idx],
+					fl_idx, p_hdr_exp->fl_lc[fl_idx]);
 #endif
 
 			} else {
@@ -268,6 +435,8 @@ int cb_func_fsync_mgr_set_fl_info(void *p_ctx, const unsigned int cmd_id,
 	struct adaptor_ctx *ctx;
 	enum ACDK_SENSOR_FEATURE_ENUM cmd = 0;
 	// int cmd_type = FSYNC_MGR_SET_FL_CMD_TYPE_NONE;
+	const unsigned int cnt = min_t(u32, arr_len, FS_HDR_MAX);
+	unsigned int i;
 	int ret = 0;
 
 	/* error handle */
@@ -304,6 +473,29 @@ int cb_func_fsync_mgr_set_fl_info(void *p_ctx, const unsigned int cmd_id,
 
 	/* update fl info to ctx */
 	ctx->fsync_out_fl = fl_lc;
+	for (i = 0; i < cnt; ++i) {
+#ifdef FL_ARR_IN_LUT_ORDER
+		const int fl_idx = i;
+#else
+		const int fl_idx = hdr_exp_idx_map[mode_exp_cnt][i];
+#endif
+
+		ctx->fsync_out_fl_arr[fl_idx] = fl_lc_arr[i];
+	}
+
+
+#ifndef REDUCE_FSYNC_CTRLS_DBG_LOG
+	FSYNC_MGR_LOGI(ctx,
+		"sidx:%d, update fsync_out_fl(lc):(%u, %u/%u/%u/%u/%u)\n",
+		ctx->idx,
+		ctx->fsync_out_fl,
+		ctx->fsync_out_fl_arr[0],
+		ctx->fsync_out_fl_arr[1],
+		ctx->fsync_out_fl_arr[2],
+		ctx->fsync_out_fl_arr[3],
+		ctx->fsync_out_fl_arr[4]);
+#endif
+
 
 	cmd = (enum ACDK_SENSOR_FEATURE_ENUM)cmd_id;
 	switch (cmd) {
@@ -437,7 +629,7 @@ void notify_fsync_mgr_streaming(struct adaptor_ctx *ctx, unsigned int flag)
 	}
 
 
-#ifndef REDUCE_FSYNC_CTRLS_LOG
+#ifndef REDUCE_FSYNC_CTRLS_DBG_LOG
 	fsync_mgr_dump_fs_streaming_st(ctx, &s_info, flag, __func__);
 #endif
 }
@@ -452,8 +644,8 @@ void fsync_mgr_dump_fs_perframe_st(struct adaptor_ctx *ctx,
 	const unsigned int mode_linetime_readout_ns,
 	const int do_set_exp_with_fl, const char *caller)
 {
-	FSYNC_MGR_LOGI(ctx,
-		"[%s] sof_cnt:%u, ID:%#x(sidx:%u), req_id:%d, (a:%u/m:%u(%u/%u)), fl(%u, %u/%u/%u/%u/%u), exp(%u, %u/%u/%u/%u/%u), rout_l:%u, margin:%u(r:%u), min_fl_lc:%u, flk:%u, lineT:%u(ns)(pclk:%u/ll:%u), rout_T(us):%u(mode_id:%u/height:%u/linetime_readout_ns:%u), set_exp_with_fl(%u, %u/%u), cmd_id:%d\n",
+	FSYNC_MGR_LOGD(ctx,
+		"[%s] sof_cnt:%u, ID:%#x(sidx:%u), req_id:%d, (a:%u/m:%u(%u/%u)), fl(%u, %u/%u/%u/%u/%u), exp(%u, %u/%u/%u/%u/%u), rout_l:%u, margin:%u(r:%u), min_fl_lc:%u, flk:%u, lineT:%u(ns)(pclk:%u/ll:%u), rout_T(us):%u(mode_id:%u/height:%u/linetime_readout_ns:%u), set_exp_with_fl(%u => %u/%u, %u/%u/%u/%u/%u / %u/%u/%u/%u/%u), cmd_id:%d\n",
 		caller,
 		ctx->sof_cnt,
 		pf_ctrl->sensor_id,
@@ -490,6 +682,20 @@ void fsync_mgr_dump_fs_perframe_st(struct adaptor_ctx *ctx,
 		do_set_exp_with_fl,
 		ctx->fsync_out_fl,
 		ctx->subctx.frame_length,
+		ctx->fsync_out_fl_arr[0],
+		ctx->fsync_out_fl_arr[1],
+		ctx->fsync_out_fl_arr[2],
+		ctx->fsync_out_fl_arr[3],
+		ctx->fsync_out_fl_arr[4],
+#ifndef WAIT_SENSOR_SUPPORT_LBMF
+		ctx->subctx.frame_length_in_lut[0],
+		ctx->subctx.frame_length_in_lut[1],
+		ctx->subctx.frame_length_in_lut[2],
+		ctx->subctx.frame_length_in_lut[3],
+		ctx->subctx.frame_length_in_lut[4],
+#else
+		0, 0, 0, 0, 0,
+#endif
 		pf_ctrl->cmd_id);
 }
 
@@ -760,7 +966,7 @@ void notify_fsync_mgr_seamless_switch(struct adaptor_ctx *ctx,
 		&seamless_info, ctx->sof_cnt);
 
 
-#ifndef REDUCE_FSYNC_CTRLS_LOG
+#ifndef REDUCE_FSYNC_CTRLS_DBG_LOG
 	fsync_mgr_dump_fs_seamless_st(ctx, &seamless_info,
 		target_scenario_id, mode_crop_height, mode_linetime_readout_ns,
 		-1, __func__);
@@ -856,20 +1062,22 @@ void notify_fsync_mgr_set_shutter(struct adaptor_ctx *ctx,
 		/* Enable frame-sync && using SW sync (SA algo) solution */
 		/* set exp with fl (ctx->fsync_out_fl) */
 		fsync_mgr_s_multi_shutter_frame_length(ctx,
-			ae_exp_arr, ae_exp_cnt);
+			ae_exp_arr, ae_exp_cnt,
+			pf_ctrl.hdr_exp.multi_exp_type);
 
 		/* update sensor current fl_lc */
-		pf_ctrl.out_fl_lc = ctx->subctx.frame_length;
+		fsync_mgr_update_sensor_actual_fl_info(ctx, &pf_ctrl);
+		// pf_ctrl.out_fl_lc = ctx->subctx.frame_length;
 	}
 	/* update sensor current fl_lc to Frame-Sync */
 	ctx->fsync_mgr->fs_update_shutter(&pf_ctrl);
 
 
-#ifndef REDUCE_FSYNC_CTRLS_LOG
+// #ifndef REDUCE_FSYNC_CTRLS_DBG_LOG
 	fsync_mgr_dump_fs_perframe_st(ctx, &pf_ctrl,
 		mode_id, mode_crop_height, mode_linetime_readout_ns,
 		do_set_exp_with_fl, __func__);
-#endif
+// #endif
 }
 
 
@@ -925,13 +1133,9 @@ void notify_fsync_mgr_vsync_by_tsrec(struct adaptor_ctx *ctx)
 {
 	/* not expected case */
 	if (unlikely(ctx->fsync_mgr == NULL)) {
-
-#if !defined(FORCE_DISABLE_FSYNC_MGR) && !defined(REDUCE_FSYNC_CTRLS_LOG)
-		dev_info(ctx->dev,
-			"%s: sidx:%d, NOTICE: notify vsync, but ctx->fsync_mgr is NULL, return\n",
-			__func__, ctx->idx);
-#endif
-
+		FSYNC_MGR_LOGI(ctx,
+			"ERROR: sidx:%d, ctx->fsync_mgr:%p is NULL, return\n",
+			ctx->idx, ctx->fsync_mgr);
 		return;
 	}
 
@@ -943,13 +1147,9 @@ void notify_fsync_mgr_sensor_hw_pre_latch_by_tsrec(struct adaptor_ctx *ctx)
 {
 	/* not expected case */
 	if (unlikely(ctx->fsync_mgr == NULL)) {
-
-#if !defined(FORCE_DISABLE_FSYNC_MGR) && !defined(REDUCE_FSYNC_CTRLS_LOG)
-		dev_info(ctx->dev,
-			"%s: sidx:%d, NOTICE: notify sensor hw pre-latch, but ctx->fsync_mgr is NULL, return\n",
-			__func__, ctx->idx);
-#endif
-
+		FSYNC_MGR_LOGI(ctx,
+			"ERROR: sidx:%d, ctx->fsync_mgr:%p is NULL, return\n",
+			ctx->idx, ctx->fsync_mgr);
 		return;
 	}
 
@@ -962,13 +1162,9 @@ void notify_fsync_mgr_receive_tsrec_timestamp_info(struct adaptor_ctx *ctx,
 {
 	/* not expected case */
 	if (unlikely(ctx->fsync_mgr == NULL)) {
-
-#if !defined(FORCE_DISABLE_FSYNC_MGR) && !defined(REDUCE_FSYNC_CTRLS_LOG)
-		dev_info(ctx->dev,
-			"%s: sidx:%d, NOTICE: notify vsync, but ctx->fsync_mgr is NULL, return\n",
-			__func__, ctx->idx);
-#endif
-
+		FSYNC_MGR_LOGI(ctx,
+			"ERROR: sidx:%d, ctx->fsync_mgr:%p is NULL, return\n",
+			ctx->idx, ctx->fsync_mgr);
 		return;
 	}
 
