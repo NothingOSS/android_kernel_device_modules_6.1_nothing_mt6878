@@ -17,6 +17,7 @@
 #include <mtk_printk_ctrl.h>
 
 #include <soc/mediatek/smi.h>
+#include <soc/mediatek/mmdvfs_v3.h>
 
 #include "mtk_cam.h"
 #include "mtk_cam-dvfs_qos.h"
@@ -1450,6 +1451,8 @@ static int mtk_raw_runtime_suspend(struct device *dev)
 	for (i = 0; i < drvdata->num_clks; i++)
 		clk_disable_unprepare(drvdata->clks[i]);
 
+	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_CAM);
+
 	return 0;
 }
 
@@ -1474,6 +1477,7 @@ static int mtk_raw_runtime_resume(struct device *dev)
 
 	dev_info(dev, "%s:enable clock\n", __func__);
 
+	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_CAM);
 	for (i = 0; i < drvdata->num_clks; i++) {
 		ret = clk_prepare_enable(drvdata->clks[i]);
 		if (ret) {
