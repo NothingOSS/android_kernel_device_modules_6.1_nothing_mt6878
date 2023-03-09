@@ -1380,7 +1380,14 @@ static void sys_addon_config(struct mtk_ddp_comp *ddp_comp,
 			     struct cmdq_pkt *pkt)
 {
 	struct mml_sys *sys = ddp_comp_to_sys(ddp_comp);
-	struct mtk_addon_mml_config *cfg = &addon_config->addon_mml_config;
+	struct mtk_addon_mml_config *cfg;
+
+	if (IS_ERR_OR_NULL(addon_config)) {
+		mml_err("%s addon config fail %pe", __func__, addon_config);
+		return;
+	}
+
+	cfg = &addon_config->addon_mml_config;
 
 	mml_mmp(addon_addon_config, MMPROFILE_FLAG_PULSE, cfg->config_type.type, 0);
 
