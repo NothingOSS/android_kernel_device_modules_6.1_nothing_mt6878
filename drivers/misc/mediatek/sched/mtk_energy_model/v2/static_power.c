@@ -665,18 +665,8 @@ static int init_public_table(void)
 					pd_public->wl_table[0][opp].freq;
 				pd_public->wl_table[type][opp].volt =
 					pd_public->wl_table[0][opp].volt;
-				pd_public->wl_table[type][opp].capacity =
-					pd_public->wl_table[0][opp].capacity;
-				pd_public->wl_table[type][opp].dyn_pwr =
-					pd_public->wl_table[0][opp].dyn_pwr;
 				pd_public->wl_table[type][opp].leakage_para =
 					pd_public->wl_table[0][opp].leakage_para;
-				/* Init for power efficiency(e.g., dyn_pwr / capacity) */
-				if (pd_public->wl_table[type][opp].capacity == 0)
-					pd_public->wl_table[type][opp].capacity = 1;
-				pd_public->wl_table[type][opp].pwr_eff =
-					pd_public->wl_table[type][opp].dyn_pwr /
-					pd_public->wl_table[type][opp].capacity;
 
 				if (is_wl_support()) {
 					/* Init for CPU to DSU relationship */
@@ -695,7 +685,21 @@ static int init_public_table(void)
 									next_dyn_pwr, pd_public);
 						wl_offset += 0x8;
 					}
+				} else {
+					pd_public->wl_table[type][opp].capacity =
+						pd_public->wl_table[0][opp].capacity;
+					pd_public->wl_table[type][opp].dyn_pwr =
+						pd_public->wl_table[0][opp].dyn_pwr;
 				}
+
+				/* Init for power efficiency(e.g., dyn_pwr / capacity) */
+				if (pd_public->wl_table[type][opp].capacity == 0)
+					pd_public->wl_table[type][opp].capacity = 1;
+				if (pd_public->wl_table[type][opp].capacity > 1024)
+					pd_public->wl_table[type][opp].capacity = 1024;
+				pd_public->wl_table[type][opp].pwr_eff =
+					pd_public->wl_table[type][opp].dyn_pwr /
+					pd_public->wl_table[type][opp].capacity;
 			}
 		}
 	}
