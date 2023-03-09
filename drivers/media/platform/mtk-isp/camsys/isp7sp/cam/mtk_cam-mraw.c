@@ -1717,6 +1717,10 @@ static int mtk_mraw_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	ret = mtk_cam_qos_probe(dev, &mraw_dev->qos, SMI_PORT_MRAW_NUM);
+	if (ret)
+		return ret;
+
 	mraw_dev->fifo_size =
 		roundup_pow_of_two(8 * sizeof(struct mtk_camsys_irq_info));
 	mraw_dev->msg_buffer = devm_kzalloc(dev, mraw_dev->fifo_size, GFP_KERNEL);
@@ -1731,8 +1735,11 @@ static int mtk_mraw_probe(struct platform_device *pdev)
 static int mtk_mraw_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
+	struct mtk_mraw_device *mraw_dev = dev_get_drvdata(dev);
 
 	pm_runtime_disable(dev);
+
+	mtk_cam_qos_remove(&mraw_dev->qos);
 
 	component_del(dev, &mtk_mraw_component_ops);
 	return 0;
@@ -1744,6 +1751,9 @@ static int mtk_mraw_runtime_suspend(struct device *dev)
 	int i;
 
 	dev_dbg(dev, "%s:disable clock\n", __func__);
+
+	mtk_cam_reset_qos(dev, &mraw_dev->qos);
+
 	for (i = 0; i < mraw_dev->num_clks; i++)
 		clk_disable_unprepare(mraw_dev->clks[i]);
 

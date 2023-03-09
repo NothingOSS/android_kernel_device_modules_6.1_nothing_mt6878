@@ -719,6 +719,44 @@ bool mtk_cam_is_display_ic(struct mtk_cam_ctx *ctx)
 	return (sv_pipe->feature_pending & DISPLAY_IC) ? true : false;
 }
 
+void mtk_cam_update_sensor_resource(struct mtk_cam_ctx *ctx)
+{
+	struct mtk_camsv_device *sv_dev;
+	struct v4l2_subdev_frame_interval fi;
+	struct v4l2_ctrl *ctrl;
+	struct v4l2_subdev_format sd_fmt;
+	unsigned long vblank = 0;
+
+	if (ctx->hw_sv == NULL)
+		return;
+	sv_dev = dev_get_drvdata(ctx->hw_sv);
+	memset(&sv_dev->sensor_res, 0, sizeof(struct mtk_cam_resource_sensor_v2));
+
+	if (ctx->sensor) {
+		fi.pad = 0;
+		fi.reserved[0] = V4L2_SUBDEV_FORMAT_ACTIVE;
+		v4l2_subdev_call(ctx->sensor, video, g_frame_interval, &fi);
+
+		ctrl = v4l2_ctrl_find(ctx->sensor->ctrl_handler, V4L2_CID_VBLANK);
+		if (!ctrl)
+			dev_info(ctx->cam->dev, "[%s] ctrl is NULL\n", __func__);
+		else
+			vblank = v4l2_ctrl_g_ctrl(ctrl);
+
+		sd_fmt.which = V4L2_SUBDEV_FORMAT_ACTIVE;
+		sd_fmt.pad = PAD_SRC_RAW0;
+		v4l2_subdev_call(ctx->seninf, pad, get_fmt, NULL, &sd_fmt);
+
+		/* update sensor resource */
+		sv_dev->sensor_res.width = sd_fmt.format.width;
+		sv_dev->sensor_res.height = sd_fmt.format.height;
+		sv_dev->sensor_res.code = sd_fmt.format.code;
+		sv_dev->sensor_res.interval.numerator = fi.interval.numerator;
+		sv_dev->sensor_res.interval.denominator = fi.interval.denominator;
+		sv_dev->sensor_res.vblank = vblank;
+	}
+}
+
 unsigned int mtk_cam_get_sv_tag_index(struct mtk_camsv_device *sv_dev,
 		unsigned int pipe_id)
 {
@@ -1772,6 +1810,16 @@ static int mtk_camsv_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	if (sv_dev->id < MULTI_SMI_SV_HW_NUM) {
+		ret = mtk_cam_qos_probe(dev, &sv_dev->qos, SMI_PORT_SV_TYPE0_NUM);
+		if (ret)
+			return ret;
+	} else {
+		ret = mtk_cam_qos_probe(dev, &sv_dev->qos, SMI_PORT_SV_TYPE1_NUM);
+		if (ret)
+			return ret;
+	}
+
 	sv_dev->fifo_size =
 		roundup_pow_of_two(8 * sizeof(struct mtk_camsys_irq_info));
 	sv_dev->msg_buffer = devm_kzalloc(dev, sv_dev->fifo_size,
@@ -1787,8 +1835,11 @@ static int mtk_camsv_probe(struct platform_device *pdev)
 static int mtk_camsv_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
+	struct mtk_camsv_device *sv_dev = dev_get_drvdata(dev);
 
 	pm_runtime_disable(dev);
+
+	mtk_cam_qos_remove(&sv_dev->qos);
 
 	component_del(dev, &mtk_camsv_component_ops);
 	return 0;
@@ -1800,6 +1851,8 @@ static int mtk_camsv_runtime_suspend(struct device *dev)
 	int i;
 
 	dev_dbg(dev, "%s:disable clock\n", __func__);
+
+	mtk_cam_reset_qos(dev, &sv_dev->qos);
 
 	for (i = 0; i < sv_dev->num_clks; i++)
 		clk_disable_unprepare(sv_dev->clks[i]);

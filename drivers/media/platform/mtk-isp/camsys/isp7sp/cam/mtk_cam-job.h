@@ -17,6 +17,12 @@
 #include "mtk_cam-engine.h"
 #include "mtk_cam-dvfs_qos.h"
 
+#define JOB_NUM_PER_STREAM 5
+#define MAX_PIPES_PER_STREAM 5
+#define MAX_RAW_PER_STREAM 3 // twin, 3raw
+#define MAX_SV_PIPES_PER_STREAM (MAX_PIPES_PER_STREAM - 1)
+#define MAX_MRAW_PIPES_PER_STREAM (MAX_PIPES_PER_STREAM - 1)
+
 struct mtk_cam_job;
 
 /* new state machine */
@@ -286,6 +292,8 @@ struct mtk_cam_job {
 	u64 (*timestamp_buf)[128];
 	struct mmqos_bw raw_mmqos[SMI_PORT_RAW_NUM];
 	struct mmqos_bw yuv_mmqos[SMI_PORT_YUV_NUM];
+	struct mmqos_bw sv_mmqos[SMI_PORT_SV_NUM];
+	struct mmqos_bw mraw_mmqos[MAX_MRAW_PIPES_PER_STREAM][SMI_PORT_MRAW_NUM];
 };
 
 static inline struct mtk_cam_job *mtk_cam_job_get(struct mtk_cam_job *job)

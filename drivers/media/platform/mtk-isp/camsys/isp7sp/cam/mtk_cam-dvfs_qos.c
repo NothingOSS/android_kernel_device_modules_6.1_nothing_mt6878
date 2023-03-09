@@ -487,23 +487,184 @@ static int fill_raw_stats_qos(struct mtk_cam_job *job,
 	return 0;
 }
 
+static int fill_sv_qos(struct mtk_cam_job *job,
+						struct mtkcam_ipi_frame_param *fp,
+						u32 sensor_h, u32 sensor_vb, u64 linet,
+						u32 sensor_fps)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtkcam_ipi_camsv_frame_param *sv_param;
+	struct mtkcam_ipi_img_output *in;
+	struct mtk_camsv_device *sv_dev;
+	unsigned int i, x_size, img_h, avg_bw, peak_bw;
+
+	if (ctx->hw_sv == NULL)
+		return 0;
+	sv_dev = dev_get_drvdata(ctx->hw_sv);
+
+	/* wdma */
+	for (i = 0; i < CAMSV_MAX_TAGS; i++) {
+		sv_param = &fp->camsv_param[0][i];
+		in = &sv_param->camsv_img_outputs[0];
+
+		x_size = in->fmt.stride[0];
+		img_h = in->fmt.s.h;
+
+		if (i < SVTAG_IMG_END) {
+			avg_bw =
+				calc_bw(x_size * img_h, linet, img_h + sensor_vb);
+			peak_bw =
+				calc_bw(x_size * img_h, linet, img_h);
+		} else {
+			avg_bw =
+				calc_bw(x_size * img_h, linet, sensor_h + img_h + sensor_vb);
+			peak_bw =
+				calc_bw(x_size * img_h, linet, sensor_h + img_h);
+		}
+
+		/* only first two camsv devices support two smi out */
+		if (sv_dev->id < MULTI_SMI_SV_HW_NUM) {
+			job->sv_mmqos[SMI_PORT_SV_DISP_WDMA_0].avg_bw +=
+				to_qos_icc_ratio(avg_bw / 2);
+			job->sv_mmqos[SMI_PORT_SV_DISP_WDMA_0].peak_bw +=
+				to_qos_icc(peak_bw / 2);
+			job->sv_mmqos[SMI_PORT_SV_MDP_WDMA_1].avg_bw +=
+				to_qos_icc_ratio(avg_bw / 2);
+			job->sv_mmqos[SMI_PORT_SV_MDP_WDMA_1].peak_bw +=
+				to_qos_icc(peak_bw / 2);
+		} else {
+			job->sv_mmqos[SMI_PORT_SV_DISP_WDMA_0].avg_bw +=
+				to_qos_icc_ratio(avg_bw);
+			job->sv_mmqos[SMI_PORT_SV_DISP_WDMA_0].peak_bw +=
+				to_qos_icc(peak_bw);
+		}
+
+		if (CAM_DEBUG_ENABLED(MMQOS))
+			pr_info("%s: xsize:%u/height:%u sensor_h:%u/vb:%u/linet:%llu/fps:%u avg_bw:%u_%u_%u_%u_%u/peak_bw:%u_%u_%u_%u_%u\n",
+				__func__, x_size, img_h,
+				sensor_h, sensor_vb, linet, sensor_fps,
+				avg_bw, job->sv_mmqos[SMI_PORT_SV_DISP_WDMA_0].avg_bw,
+				job->sv_mmqos[SMI_PORT_SV_MDP_WDMA_0].avg_bw,
+				job->sv_mmqos[SMI_PORT_SV_DISP_WDMA_1].avg_bw,
+				job->sv_mmqos[SMI_PORT_SV_MDP_WDMA_1].avg_bw,
+				peak_bw, job->sv_mmqos[SMI_PORT_SV_DISP_WDMA_0].peak_bw,
+				job->sv_mmqos[SMI_PORT_SV_MDP_WDMA_0].peak_bw,
+				job->sv_mmqos[SMI_PORT_SV_DISP_WDMA_1].peak_bw,
+				job->sv_mmqos[SMI_PORT_SV_MDP_WDMA_1].peak_bw);
+	}
+
+	/* cqi */
+	avg_bw = peak_bw = CQ_BUF_SIZE * sensor_fps;
+	job->sv_mmqos[SMI_PORT_SV_CQI].avg_bw += to_qos_icc_ratio(avg_bw);
+	job->sv_mmqos[SMI_PORT_SV_CQI].peak_bw += to_qos_icc(peak_bw);
+	if (CAM_DEBUG_ENABLED(MMQOS))
+		pr_info("%s: sensor_h:%u/vb:%u/linet:%llu/fps:%u avg_bw:%u_%u/peak_bw:%u_%u\n",
+			__func__,
+			sensor_h, sensor_vb, linet, sensor_fps,
+			avg_bw, job->sv_mmqos[SMI_PORT_SV_CQI].avg_bw,
+			peak_bw, job->sv_mmqos[SMI_PORT_SV_CQI].peak_bw);
+
+	return 0;
+}
+
+static int fill_mraw_qos(struct mtk_cam_job *job,
+						struct mtkcam_ipi_frame_param *fp,
+						u32 sensor_h, u32 sensor_vb, u64 linet,
+						u32 sensor_fps)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtkcam_ipi_mraw_frame_param *mraw_param;
+	struct mtkcam_ipi_img_output *in;
+	struct mtk_mraw_device *mraw_dev;
+	unsigned int i, j, k, port_id, x_size, img_h, avg_bw, peak_bw;
+
+	for (i = 0 ; i < MRAW_MAX_PIPE_USED; i++) {
+		mraw_param = &fp->mraw_param[i];
+
+		if (!is_mraw_subdev(mraw_param->pipe_id))
+			continue;
+
+		for (j = 0; j < MAX_MRAW_PIPES_PER_STREAM; j++) {
+			if (ctx->hw_mraw[j] == NULL)
+				continue;
+
+			mraw_dev = dev_get_drvdata(ctx->hw_mraw[j]);
+			if (mraw_dev->pipeline->id == mraw_param->pipe_id) {
+				/* wdma */
+				for (k = 0; k < MRAW_MAX_IMAGE_OUTPUT; k++) {
+					if (k == 0)
+						port_id = SMI_PORT_MRAW_IMGO;
+					else
+						port_id = SMI_PORT_MRAW_IMGBO;
+
+					in = &mraw_param->mraw_img_outputs[k];
+					x_size = in->fmt.stride[0];
+					img_h = in->fmt.s.h;
+					avg_bw =
+						calc_bw(x_size * img_h, linet,
+							sensor_h + img_h + sensor_vb);
+					peak_bw =
+						calc_bw(x_size * img_h, linet, sensor_h + img_h);
+
+					job->mraw_mmqos[j][port_id].avg_bw +=
+						to_qos_icc_ratio(avg_bw);
+					job->mraw_mmqos[j][port_id].peak_bw +=
+						to_qos_icc(peak_bw);
+
+					if (CAM_DEBUG_ENABLED(MMQOS))
+						pr_info("%s: id:%d port_id:%d xsize:%u/height:%u sensor_h:%u/vb:%u/linet:%llu avg_bw:%u_%u/peak_bw:%u_%u\n",
+							__func__, k, port_id, x_size, img_h,
+							sensor_h, sensor_vb, linet,
+							avg_bw,
+							job->mraw_mmqos[j][port_id].avg_bw,
+							peak_bw,
+							job->mraw_mmqos[j][port_id].peak_bw);
+				}
+
+				/* cqi */
+				avg_bw = peak_bw = CQ_BUF_SIZE * sensor_fps;
+				job->mraw_mmqos[j][SMI_PORT_MRAW_CQI].avg_bw +=
+					to_qos_icc_ratio(avg_bw);
+				job->mraw_mmqos[j][SMI_PORT_MRAW_CQI].peak_bw +=
+					to_qos_icc(peak_bw);
+				if (CAM_DEBUG_ENABLED(MMQOS))
+					pr_info("%s: sensor_h:%u/vb:%u/linet:%llu/fps:%u avg_bw:%u_%u/peak_bw:%u_%u\n",
+						__func__,
+						sensor_h, sensor_vb, linet, sensor_fps,
+						avg_bw,
+						job->mraw_mmqos[j][SMI_PORT_MRAW_CQI].avg_bw,
+						peak_bw,
+						job->mraw_mmqos[j][SMI_PORT_MRAW_CQI].peak_bw);
+				break;
+			}
+		}
+	}
+
+	return 0;
+}
+
 void mtk_cam_fill_qos(struct req_buffer_helper *helper)
 {
 	struct mtkcam_ipi_frame_param *fp = helper->fp;
 	struct mtk_cam_job *job = helper->job;
-	u32 senser_vb, sensor_h;
+	u32 senser_vb, sensor_h, sensor_fps;
 	u64 avg_linet;
 	int i;
 
 	memset(job->raw_mmqos, 0, sizeof(job->raw_mmqos));
 	memset(job->yuv_mmqos, 0, sizeof(job->yuv_mmqos));
+	memset(job->sv_mmqos, 0, sizeof(job->sv_mmqos));
+	memset(job->mraw_mmqos, 0, sizeof(job->mraw_mmqos));
+
 	avg_linet = get_line_time(job);
 	senser_vb = get_sensor_vb(job);
 	sensor_h = get_sensor_h(job);
+	sensor_fps = get_sensor_fps(job);
 
-	if (avg_linet == 0 || senser_vb == 0 || sensor_h == 0) {
-		pr_info("%s: wrong sensor param h/vb/linetime: %d/%d/%llu",
-			__func__, sensor_h, senser_vb, avg_linet);
+	if (avg_linet == 0 || senser_vb == 0 ||
+		sensor_h == 0 || sensor_fps == 0) {
+		pr_info("%s: wrong sensor param h/vb/linetime/fps: %d/%d/%llu/%d",
+			__func__, sensor_h, senser_vb, avg_linet, sensor_fps);
 		return;
 	}
 
@@ -514,6 +675,12 @@ void mtk_cam_fill_qos(struct req_buffer_helper *helper)
 		fill_raw_in_qos(job, &fp->img_ins[i], sensor_h, senser_vb, avg_linet);
 
 	fill_raw_stats_qos(job, sensor_h, senser_vb, avg_linet);
+
+	/* camsv */
+	fill_sv_qos(job, fp, sensor_h, senser_vb, avg_linet, sensor_fps);
+
+	/* mraw */
+	fill_mraw_qos(job, fp, sensor_h, senser_vb, avg_linet, sensor_fps);
 }
 
 static bool apply_qos_chk(
@@ -548,11 +715,13 @@ int mtk_cam_apply_qos(struct mtk_cam_job *job)
 	struct mtk_cam_engines *eng = &cam->engines;
 	struct mtk_raw_device *raw_dev;
 	struct mtk_yuv_device *yuv_dev;
+	struct mtk_camsv_device *sv_dev;
+	struct mtk_mraw_device *mraw_dev;
 	int raw_num = eng->num_raw_devices;
 	unsigned long submask;
 	u32 a_bw, p_bw, used_raw_num;
 	bool apply;
-	int i, j;
+	int i, j, port_num;
 
 	used_raw_num = get_used_raw_num(job);
 	submask = bit_map_subset_of(MAP_HW_RAW, ctx->used_engine);
@@ -596,6 +765,55 @@ int mtk_cam_apply_qos(struct mtk_cam_job *job)
 						yuv_dev->qos.cam_path[j].name, a_bw, p_bw,
 						yuv_dev->qos.cam_path[j].applied_bw,
 						yuv_dev->qos.cam_path[j].pending_bw);
+		}
+	}
+
+	if (ctx->hw_sv) {
+		sv_dev = dev_get_drvdata(ctx->hw_sv);
+		if (sv_dev->id < MULTI_SMI_SV_HW_NUM)
+			port_num = SMI_PORT_SV_TYPE0_NUM;
+		else
+			port_num = SMI_PORT_SV_TYPE1_NUM;
+
+		for (i = 0; i < port_num; i++) {
+			a_bw = job->sv_mmqos[i].avg_bw;
+			p_bw = job->sv_mmqos[i].peak_bw;
+			apply = apply_qos_chk(a_bw, p_bw,
+					&sv_dev->qos.cam_path[i].applied_bw,
+					&sv_dev->qos.cam_path[i].pending_bw);
+			if (apply)
+				mtk_icc_set_bw(sv_dev->qos.cam_path[i].path, a_bw, p_bw);
+
+			if (CAM_DEBUG_ENABLED(MMQOS))
+				pr_info("%s: req_seq:%d %s sv-%d icc_path:%s avg/peak:%u/%u applied/pending:%u/%u\n",
+						__func__, job->req_seq,
+						apply ? "APPLY" : "BYPASS", sv_dev->id,
+						sv_dev->qos.cam_path[i].name, a_bw, p_bw,
+						sv_dev->qos.cam_path[i].applied_bw,
+						sv_dev->qos.cam_path[i].pending_bw);
+		}
+	}
+
+	for (i = 0; i < MAX_MRAW_PIPES_PER_STREAM; i++) {
+		if (ctx->hw_mraw[i]) {
+			mraw_dev = dev_get_drvdata(ctx->hw_mraw[i]);
+			for (j = 0; j < SMI_PORT_MRAW_NUM; j++) {
+				a_bw = job->mraw_mmqos[i][j].avg_bw;
+				p_bw = job->mraw_mmqos[i][j].peak_bw;
+				apply = apply_qos_chk(a_bw, p_bw,
+						&mraw_dev->qos.cam_path[j].applied_bw,
+						&mraw_dev->qos.cam_path[j].pending_bw);
+				if (apply)
+					mtk_icc_set_bw(mraw_dev->qos.cam_path[j].path, a_bw, p_bw);
+
+				if (CAM_DEBUG_ENABLED(MMQOS))
+					pr_info("%s: req_seq:%d %s mraw-%d icc_path:%s avg/peak:%u/%u applied/pending:%u/%u\n",
+							__func__, job->req_seq,
+							apply ? "APPLY" : "BYPASS", mraw_dev->id,
+							mraw_dev->qos.cam_path[j].name, a_bw, p_bw,
+							mraw_dev->qos.cam_path[j].applied_bw,
+							mraw_dev->qos.cam_path[j].pending_bw);
+			}
 		}
 	}
 

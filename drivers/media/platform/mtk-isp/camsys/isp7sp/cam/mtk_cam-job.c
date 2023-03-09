@@ -2278,6 +2278,9 @@ _job_pack_only_sv(struct mtk_cam_job *job,
 
 		initialize_engines(ctx, job, NULL);
 
+		/* update sensor resource */
+		mtk_cam_update_sensor_resource(ctx);
+
 		job->stream_on_seninf = true;
 	}
 	/* config_flow_by_job_type */

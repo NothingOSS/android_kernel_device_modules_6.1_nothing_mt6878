@@ -37,6 +37,34 @@ static struct mtk_cam_resource_v2 *_get_job_res(struct mtk_cam_job *job)
 	return res;
 }
 
+static struct mtk_cam_resource_sensor_v2 *_get_job_sensor_res(
+									struct mtk_cam_job *job)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtk_cam_resource_sensor_v2 *sensor_res = NULL;
+
+	if (ctx->has_raw_subdev) {
+		int p_idx;
+
+		p_idx = get_raw_subdev_idx(ctx->used_pipe);
+		if (p_idx == -1)
+			return NULL;
+
+		sensor_res =
+			&job->req->raw_data[p_idx].ctrl.resource.user_data.sensor_res;
+	} else {
+		struct mtk_camsv_device *sv_dev;
+
+		if (ctx->hw_sv == NULL)
+			return NULL;
+		sv_dev = dev_get_drvdata(ctx->hw_sv);
+
+		sensor_res = &sv_dev->sensor_res;
+	}
+
+	return sensor_res;
+}
+
 bool is_dc_mode(struct mtk_cam_job *job)
 {
 	struct mtk_cam_resource_v2 *res;
@@ -66,20 +94,20 @@ u32 get_used_raw_num(struct mtk_cam_job *job)
 
 u64 get_line_time(struct mtk_cam_job *job)
 {
-	struct mtk_cam_resource_v2 *res;
+	struct mtk_cam_resource_sensor_v2 *sensor_res;
 	u64 linet = 0;
 
-	res = _get_job_res(job);
-	if (res) {
-		linet = 1000000000L * res->sensor_res.interval.numerator
-			/ res->sensor_res.interval.denominator
-			/ (res->sensor_res.height + res->sensor_res.vblank);
+	sensor_res = _get_job_sensor_res(job);
+	if (sensor_res) {
+		linet = 1000000000L * sensor_res->interval.numerator
+			/ sensor_res->interval.denominator
+			/ (sensor_res->height + sensor_res->vblank);
 
 		pr_info("%s: interval:(%d/%d) height:%d, vb:%d, line_time:%llu\n",
 			__func__,
-			res->sensor_res.interval.numerator,
-			res->sensor_res.interval.denominator,
-			res->sensor_res.height, res->sensor_res.vblank, linet);
+			sensor_res->interval.numerator,
+			sensor_res->interval.denominator,
+			sensor_res->height, sensor_res->vblank, linet);
 	}
 
 	return linet;
@@ -87,25 +115,41 @@ u64 get_line_time(struct mtk_cam_job *job)
 
 u32 get_sensor_h(struct mtk_cam_job *job)
 {
-	struct mtk_cam_resource_v2 *res;
+	struct mtk_cam_resource_sensor_v2 *sensor_res;
 
-	res = _get_job_res(job);
-	if (res)
-		return res->sensor_res.height;
+	sensor_res = _get_job_sensor_res(job);
+	if (sensor_res)
+		return sensor_res->height;
 
 	return 0;
 }
 
 u32 get_sensor_vb(struct mtk_cam_job *job)
 {
-	struct mtk_cam_resource_v2 *res;
+	struct mtk_cam_resource_sensor_v2 *sensor_res;
 
-	res = _get_job_res(job);
-	if (res)
-		return res->sensor_res.vblank;
+	sensor_res = _get_job_sensor_res(job);
+	if (sensor_res)
+		return sensor_res->vblank;
 
 	return 0;
 }
+
+u32 get_sensor_fps(struct mtk_cam_job *job)
+{
+	struct mtk_cam_resource_sensor_v2 *sensor_res;
+	u32 fps = 0;
+
+	sensor_res = _get_job_sensor_res(job);
+	if (sensor_res) {
+		fps = sensor_res->interval.denominator /
+			sensor_res->interval.numerator;
+		return fps;
+	}
+
+	return 0;
+}
+
 
 void _set_timestamp(struct mtk_cam_job *job,
 	u64 time_boot, u64 time_mono)

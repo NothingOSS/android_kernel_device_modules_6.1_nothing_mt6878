@@ -11,6 +11,7 @@
 
 #include "mtk_cam-plat.h"
 #include "mtk_cam-engine.h"
+#include "mtk_cam-dvfs_qos.h"
 
 #define USING_MRAW_SCQ 1
 #define MRAW_TG_PIXEL_MODE 3
@@ -144,6 +145,9 @@ struct mtk_mraw_device {
 	struct notifier_block notifier_blk;
 
 	atomic_t is_enqueued;
+
+	/* mmqos */
+	struct mtk_camsys_qos qos;
 };
 
 void mraw_reset(struct mtk_mraw_device *mraw_dev);

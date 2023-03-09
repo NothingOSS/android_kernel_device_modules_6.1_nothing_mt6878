@@ -49,12 +49,8 @@ struct mtk_mraw_pipeline;
 struct mtk_cam_device;
 struct mtk_rpmsg_device;
 
-
-#define JOB_NUM_PER_STREAM 5
-#define MAX_PIPES_PER_STREAM 5
-#define MAX_RAW_PER_STREAM 3 // twin, 3raw
-#define MAX_SV_PIPES_PER_STREAM (MAX_PIPES_PER_STREAM - 1)
-#define MAX_MRAW_PIPES_PER_STREAM (MAX_PIPES_PER_STREAM - 1)
+#define CQ_BUF_SIZE  0x10000
+#define CAM_CQ_BUF_NUM  (JOB_NUM_PER_STREAM * 2) /* 2 for mstream */
 
 struct mtk_cam_driver_buf_desc {
 	int ipi_fmt;

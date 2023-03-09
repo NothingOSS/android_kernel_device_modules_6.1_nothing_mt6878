@@ -10,7 +10,10 @@
 #include <linux/suspend.h>
 
 #include "mtk_cam-engine.h"
+#include "mtk_cam-dvfs_qos.h"
+#include "mtk_cam-resource_calc.h"
 
+#define MULTI_SMI_SV_HW_NUM 2
 #define MAX_SV_HW_TAGS 8
 #define MAX_SV_HW_GROUPS 4
 #define CAMSV_IRQ_NUM 4
@@ -177,6 +180,12 @@ struct mtk_camsv_device {
 	int tg_cnt;
 	unsigned int frame_wait_to_process;
 	struct notifier_block notifier_blk;
+
+	/* mmqos */
+	struct mtk_camsys_qos qos;
+
+	/* sensor resource data */
+	struct mtk_cam_resource_sensor_v2 sensor_res;
 };
 
 void sv_reset(struct mtk_camsv_device *sv_dev);
@@ -217,6 +226,8 @@ void apply_camsv_cq(struct mtk_camsv_device *sv_dev,
 	      dma_addr_t cq_addr, unsigned int cq_size, unsigned int cq_offset,
 	      int initial);
 bool mtk_cam_is_display_ic(struct mtk_cam_ctx *ctx);
+void mtk_cam_update_sensor_resource(struct mtk_cam_ctx *ctx);
+
 #ifdef CAMSYS_TF_DUMP_7S
 int mtk_camsv_translation_fault_callback(int port, dma_addr_t mva, void *data);
 #endif

@@ -165,6 +165,7 @@ u32 get_used_raw_num(struct mtk_cam_job *job);
 u64 get_line_time(struct mtk_cam_job *job);
 u32 get_sensor_h(struct mtk_cam_job *job);
 u32 get_sensor_vb(struct mtk_cam_job *job);
+u32 get_sensor_fps(struct mtk_cam_job *job);
 
 #endif //__MTK_CAM_JOB_UTILS_H
 
