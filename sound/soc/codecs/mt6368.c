@@ -5511,6 +5511,10 @@ static int audio_vow_periodic_parm_set(struct snd_kcontrol *kcontrol,
 		return -EINVAL;
 	vow_param_cfg = (struct mt6368_vow_periodic_on_off_data *)
 			get_vow_coeff_by_name(priv, kcontrol->id.name);
+	if (!vow_param_cfg) {
+		dev_err(priv->dev, "%s(), vow_param_cfg == NULL\n", __func__);
+		return -EINVAL;
+	}
 	if (copy_from_user(vow_param_cfg, data,
 			   sizeof(struct mt6368_vow_periodic_on_off_data))) {
 		dev_info(priv->dev, "%s(),Fail copy to user Ptr:%p,r_sz:%zu\n",
