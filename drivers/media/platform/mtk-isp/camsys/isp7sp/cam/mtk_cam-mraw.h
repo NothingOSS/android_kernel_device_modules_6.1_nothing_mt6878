@@ -151,7 +151,7 @@ struct mtk_mraw_device {
 };
 
 void mraw_reset(struct mtk_mraw_device *mraw_dev);
-int mtk_cam_mraw_dev_config(struct mtk_mraw_device *mraw_dev);
+int mtk_cam_mraw_dev_config(struct mtk_mraw_device *mraw_dev, unsigned int sub_ratio);
 int mtk_cam_mraw_dev_stream_on(struct mtk_mraw_device *mraw_dev, bool on);
 int mtk_cam_mraw_top_config(struct mtk_mraw_device *mraw_dev);
 int mtk_cam_mraw_dma_config(struct mtk_mraw_device *mraw_dev);

@@ -493,7 +493,7 @@ static int initialize_engines(struct mtk_cam_ctx *ctx,
 			struct mtk_mraw_device *mraw =
 				dev_get_drvdata(ctx->hw_mraw[i]);
 
-			mtk_cam_mraw_dev_config(mraw);
+			mtk_cam_mraw_dev_config(mraw, job->sub_ratio - 1); /* TODO(AY): remove -1 */
 		}
 	}
 
@@ -3342,7 +3342,6 @@ static int mtk_cam_job_fill_ipi_config(struct mtk_cam_job *job,
 		pipe->res_config.tg_crop = v4l2_rect_to_ipi_crop(&sink->crop);
 		pipe->res_config.tg_fmt = sensor_mbus_to_ipi_pixel_id(sink->mbus_code);
 		pipe->res_config.pixel_mode = MRAW_TG_PIXEL_MODE;
-		pipe->res_config.subsample = job->sub_ratio - 1; /* TODO(AY): remove -1 */
 		atomic_set(&pipe->res_config.is_fmt_change, 1);
 
 		mraw_set_ipi_input_param(&mraw_input->input,

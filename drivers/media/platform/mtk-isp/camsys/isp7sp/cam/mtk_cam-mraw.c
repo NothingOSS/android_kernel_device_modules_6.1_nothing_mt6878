@@ -887,7 +887,7 @@ EXIT:
 }
 
 int mtk_cam_mraw_cq_config(struct mtk_mraw_device *mraw_dev,
-	unsigned int subsample)
+	unsigned int sub_ratio)
 {
 	int ret = 0;
 #if USING_MRAW_SCQ
@@ -895,7 +895,7 @@ int mtk_cam_mraw_cq_config(struct mtk_mraw_device *mraw_dev,
 
 	val = readl_relaxed(mraw_dev->base + REG_MRAW_CQ_EN);
 	val = val | CQ_DB_EN;
-	if (subsample) {
+	if (sub_ratio) {
 		val = val | SCQ_SUBSAMPLE_EN;
 		val = val | CQ_SOF_SEL;
 	} else {
@@ -1064,7 +1064,8 @@ int mtk_cam_mraw_is_vf_on(struct mtk_mraw_device *mraw_dev)
 		return 0;
 }
 
-int mtk_cam_mraw_dev_config(struct mtk_mraw_device *mraw_dev)
+int mtk_cam_mraw_dev_config(struct mtk_mraw_device *mraw_dev,
+	unsigned int sub_ratio)
 {
 	engine_fsm_reset(&mraw_dev->fsm, mraw_dev->dev);
 	mraw_dev->cq_ref = NULL;
@@ -1078,8 +1079,7 @@ int mtk_cam_mraw_dev_config(struct mtk_mraw_device *mraw_dev)
 	mtk_cam_mraw_dma_config(mraw_dev);
 	mtk_cam_mraw_fbc_config(mraw_dev);
 	mtk_cam_mraw_fbc_enable(mraw_dev);
-	mtk_cam_mraw_cq_config(mraw_dev,
-		mraw_dev->pipeline->res_config.subsample);
+	mtk_cam_mraw_cq_config(mraw_dev, sub_ratio);
 
 	dev_info(mraw_dev->dev, "mraw %d %s done\n", mraw_dev->id, __func__);
 
@@ -1391,9 +1391,10 @@ static irqreturn_t mtk_irq_mraw(int irq, void *data)
 
 	/* CQ done */
 	if (irq_status6 & MRAWCTL_CQ_SUB_THR0_DONE_ST) {
-
-		if (engine_handle_cq_done(&mraw_dev->cq_ref))
-			irq_info.irq_type |= 1 << CAMSYS_IRQ_SETTING_DONE;
+		if (mraw_dev->cq_ref != NULL) {
+			if (engine_handle_cq_done(&mraw_dev->cq_ref))
+				irq_info.irq_type |= 1 << CAMSYS_IRQ_SETTING_DONE;
+		}
 		dev_dbg(dev, "CQ done:%d\n", mraw_dev->sof_count);
 	}
 	irq_flag = irq_info.irq_type;
