@@ -118,7 +118,8 @@ int mtk_cam_debug_exp_dump(struct mtk_cam_debug *dbg,
 /* AEE */
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #define WRAP_AEE_EXCEPTION(module, msg)					\
-	aee_kernel_exception_api(__FILE__, __LINE__, DB_OPT_DEFAULT,	\
+	aee_kernel_exception_api(__FILE__, __LINE__,			\
+				 DB_OPT_DEFAULT | DB_OPT_FTRACE,	\
 				 module, msg)
 
 #else
