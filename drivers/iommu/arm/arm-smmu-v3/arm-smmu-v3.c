@@ -419,7 +419,7 @@ static void __arm_smmu_cmdq_skip_err(struct arm_smmu_device *smmu,
 
 	dev_info(smmu->dev, "[%s] CMDQ error: cons_reg:0x%llx=0x%x, idx:0x%x\n",
 		 __func__, (unsigned long long)q->cons_reg, cons, idx);
-	if (smmu && smmu->impl && smmu->impl->fault_dump)
+	if (smmu->impl && smmu->impl->fault_dump)
 		smmu->impl->fault_dump(smmu);
 
 	/* Convert the erroneous command into a CMD_SYNC */
@@ -863,7 +863,7 @@ static int arm_smmu_cmdq_issue_cmdlist(struct arm_smmu_device *smmu,
 					    readl_relaxed(cmdq->q.prod_reg),
 					    readl_relaxed(cmdq->q.cons_reg));
 
-			if (smmu && smmu->impl && smmu->impl->fault_dump)
+			if (smmu->impl && smmu->impl->fault_dump)
 				smmu->impl->fault_dump(smmu);
 		}
 
