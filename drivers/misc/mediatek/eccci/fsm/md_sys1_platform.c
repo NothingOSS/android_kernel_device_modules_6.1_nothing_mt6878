@@ -636,6 +636,13 @@ static int md_cd_power_off(struct ccci_modem *md, unsigned int timeout)
 	CCCI_NORMAL_LOG(0, TAG,
 		"[POWER OFF] MD MTCMOS OFF end: ret = %d\n", ret);
 
+	/* mtcmos off done, then delay 4ms, gen99 spec request */
+	if (md_cd_plat_val_ptr.md_gen == 6299) {
+		mdelay(4);
+		CCCI_BOOTUP_LOG(0, TAG, "[POWER OFF] OFF done delay 4ms\n");
+		CCCI_NORMAL_LOG(0, TAG, "[POWER OFF] OFF done delay 4ms\n");
+	}
+
 	/* 1. power off srclkena for gen97 */
 	if (md_cd_plat_val_ptr.md_gen == 6297 &&
 	    (md_cd_plat_val_ptr.power_flow_config & (1 << SRCCLKENA_SETTING_BIT))) {
