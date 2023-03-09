@@ -89,7 +89,7 @@ EXPORT_SYMBOL_GPL(get_dbg_error_flag_mask);
 static void dbg_error_flag_irq_work(struct work_struct *w)
 {
 	unsigned int num_error_flag, i;
-	unsigned int unmask_status;
+	unsigned int unmask_status = 0;
 	struct arm_smccc_res res;
 
 	num_error_flag = dbg_error_flag.nr_error_flag;
