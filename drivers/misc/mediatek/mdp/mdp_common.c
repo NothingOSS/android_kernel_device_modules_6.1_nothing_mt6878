@@ -318,10 +318,7 @@ static void cmdq_mdp_enable_common_clock(bool enable, u64 engine_flag)
 	}
 
 	if (cmdq_mdp_get_func()->mdpVcpPQReadbackSupport()) {
-		if (enable)
-			cmdq_vcp_enable(enable);
-		else
-			cmdq_vcp_enable(enable);
+		cmdq_vcp_enable(enable);
 	}
 #endif
 }
