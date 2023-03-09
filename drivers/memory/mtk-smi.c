@@ -195,8 +195,8 @@ struct mtk_smi_larb { /* larb: local arbiter */
 #define MAX_COMMON_FOR_CLAMP		(3)
 #define MAX_LARB_FOR_CLAMP		(6)
 #define RESET_CELL_NUM			(2)
-#define MAX_PD_CHECK_DEV_NUM	(3)
-#define SMI_OSTD_CNT_MASK	(0x7FFE000)
+#define MAX_PD_CHECK_DEV_NUM		(4)
+#define SMI_OSTD_CNT_MASK		(0x7FFE000)
 
 struct mtk_smi_pd_log {
 	u8 power_status;
