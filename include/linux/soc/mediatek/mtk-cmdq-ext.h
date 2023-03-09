@@ -580,6 +580,8 @@ void cmdq_buf_print_wfe(char *text, u32 txt_sz,
 void cmdq_buf_cmd_parse(u64 *buf, u32 cmd_nr, dma_addr_t buf_pa,
 	dma_addr_t cur_pa, const char *info, void *chan);
 
+void cmdq_set_alldump(bool on);
+
 s32 cmdq_pkt_dump_buf(struct cmdq_pkt *pkt, dma_addr_t curr_pa);
 
 int cmdq_dump_pkt(struct cmdq_pkt *pkt, dma_addr_t pc, bool dump_inst);

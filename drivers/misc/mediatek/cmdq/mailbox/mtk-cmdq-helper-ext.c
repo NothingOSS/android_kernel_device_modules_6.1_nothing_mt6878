@@ -3323,6 +3323,14 @@ void cmdq_buf_cmd_parse(u64 *buf, u32 cmd_nr, dma_addr_t buf_pa,
 }
 EXPORT_SYMBOL(cmdq_buf_cmd_parse);
 
+bool alldump;
+
+void cmdq_set_alldump(bool on)
+{
+	alldump = on;
+}
+EXPORT_SYMBOL(cmdq_set_alldump);
+
 s32 cmdq_pkt_dump_buf(struct cmdq_pkt *pkt, dma_addr_t curr_pa)
 {
 	struct cmdq_client *client;
@@ -3343,7 +3351,7 @@ s32 cmdq_pkt_dump_buf(struct cmdq_pkt *pkt, dma_addr_t curr_pa)
 		if (list_is_last(&buf->list_entry, &pkt->buf)) {
 			size = CMDQ_CMD_BUFFER_SIZE - pkt->avail_buf_size;
 		} else if (cnt > 0 && !(curr_pa >= CMDQ_BUF_ADDR(buf) &&
-			curr_pa < CMDQ_BUF_ADDR(buf) + CMDQ_BUF_ALLOC_SIZE)) {
+			curr_pa < CMDQ_BUF_ADDR(buf) + CMDQ_BUF_ALLOC_SIZE) && !alldump) {
 			cmdq_util_user_msg(client ? client->chan : NULL,
 				"buffer %u:%p va:0x%p pa:%pa iova:%pa alloc_time:%llu %#018llx (skip detail) %#018llx",
 				cnt, buf, buf->va_base, &buf->pa_base,
