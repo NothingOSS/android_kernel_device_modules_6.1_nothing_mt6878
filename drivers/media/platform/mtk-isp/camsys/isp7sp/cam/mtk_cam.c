@@ -334,7 +334,7 @@ static struct media_request *mtk_cam_req_alloc(struct media_device *mdev)
 	cam_req = vzalloc(sizeof(*cam_req));
 
 	spin_lock_init(&cam_req->buf_lock);
-	mutex_init(&cam_req->fs.op_lock);
+	frame_sync_init(&cam_req->fs);
 
 	return &cam_req->req;
 }
@@ -765,7 +765,7 @@ int mtk_cam_dev_req_enqueue(struct mtk_cam_device *cam,
 		++job_cnt;
 	}
 
-	frame_sync_init(&req->fs, job_cnt);
+	frame_sync_set(&req->fs, job_cnt);
 
 	list_for_each_entry(job, &job_list, list) {
 
@@ -2107,6 +2107,61 @@ void mtk_cam_ctx_engine_off(struct mtk_cam_ctx *ctx)
 		if (ctx->hw_mraw[i]) {
 			mraw_dev = dev_get_drvdata(ctx->hw_mraw[i]);
 			mtk_cam_mraw_dev_stream_on(mraw_dev, false);
+		}
+	}
+}
+
+void mtk_cam_ctx_engine_disable_irq(struct mtk_cam_ctx *ctx)
+{
+	struct mtk_raw_device *raw_dev;
+	struct mtk_camsv_device *sv_dev;
+	struct mtk_mraw_device *mraw_dev;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
+		if (ctx->hw_raw[i]) {
+			raw_dev = dev_get_drvdata(ctx->hw_raw[i]);
+			disable_irq(raw_dev->irq);
+		}
+	}
+
+	if (ctx->hw_sv) {
+		sv_dev = dev_get_drvdata(ctx->hw_sv);
+		for (i = 0; i < ARRAY_SIZE(sv_dev->irq); i++)
+			disable_irq(sv_dev->irq[i]);
+	}
+
+	for (i = 0; i < ARRAY_SIZE(ctx->hw_mraw); i++) {
+		if (ctx->hw_mraw[i]) {
+			mraw_dev = dev_get_drvdata(ctx->hw_mraw[i]);
+			disable_irq(mraw_dev->irq);
+		}
+	}
+}
+
+void mtk_cam_ctx_engine_reset(struct mtk_cam_ctx *ctx)
+{
+	struct mtk_raw_device *raw_dev;
+	struct mtk_camsv_device *sv_dev;
+	struct mtk_mraw_device *mraw_dev;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
+		if (ctx->hw_raw[i]) {
+			raw_dev = dev_get_drvdata(ctx->hw_raw[i]);
+			reset(raw_dev);
+		}
+	}
+
+	if (ctx->hw_sv) {
+		sv_dev = dev_get_drvdata(ctx->hw_sv);
+		sv_reset(sv_dev);
+	}
+
+	for (i = 0; i < ARRAY_SIZE(ctx->hw_mraw); i++) {
+		if (ctx->hw_mraw[i]) {
+			mraw_dev = dev_get_drvdata(ctx->hw_mraw[i]);
+			mraw_reset(mraw_dev);
 		}
 	}
 }

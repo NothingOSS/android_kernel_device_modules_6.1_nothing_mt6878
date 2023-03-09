@@ -919,12 +919,9 @@ void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 {
 	struct mtk_cam_ctx *ctx = cam_ctrl->ctx;
-	struct mtk_cam_job_state *job_s, *job_s_prev;
+	struct mtk_cam_job_state *job_s;
 	struct mtk_cam_job *job;
-	struct mtk_raw_device *raw_dev;
-	struct mtk_camsv_device *sv_dev;
-	struct mtk_mraw_device *mraw_dev;
-	int i, j;
+	struct list_head job_list;
 
 	/* stop procedure
 	 * 1. mark 'stopped' status to skip further processing
@@ -942,30 +939,14 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 	mtk_cam_ctx_engine_off(ctx);
 
 	/* disable irq first */
-	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
-		if (ctx->hw_raw[i]) {
-			raw_dev = dev_get_drvdata(ctx->hw_raw[i]);
-			disable_irq(raw_dev->irq);
-		}
-	}
-	if (ctx->hw_sv) {
-		sv_dev = dev_get_drvdata(ctx->hw_sv);
-		for (j = 0; j < ARRAY_SIZE(sv_dev->irq); j++)
-			disable_irq(sv_dev->irq[j]);
-	}
-	for (i = 0; i < ARRAY_SIZE(ctx->hw_mraw); i++) {
-		if (ctx->hw_mraw[i]) {
-			mraw_dev = dev_get_drvdata(ctx->hw_mraw[i]);
-			disable_irq(mraw_dev->irq);
-		}
-	}
+	mtk_cam_ctx_engine_disable_irq(ctx);
 
 	/* note: after hw disabled, stop buffer_done worker */
 	read_lock(&cam_ctrl->list_lock);
 	list_for_each_entry(job_s, &cam_ctrl->camsys_state_list, list) {
 		job = container_of(job_s, struct mtk_cam_job, job_state);
 
-		mtk_cam_job_mark_cancelled(job);
+		call_jobop(job, cancel);
 	}
 	read_unlock(&cam_ctrl->list_lock);
 
@@ -977,42 +958,29 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 	mtk_cam_ctrl_wait_all_released(cam_ctrl);
 
 	/* reset hw */
-	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
-		if (ctx->hw_raw[i]) {
-			raw_dev = dev_get_drvdata(ctx->hw_raw[i]);
-			reset(raw_dev);
-		}
-	}
-	if (ctx->hw_sv)
-		sv_reset(sv_dev);
-	for (i = 0; i < ARRAY_SIZE(ctx->hw_mraw); i++) {
-		if (ctx->hw_mraw[i]) {
-			mraw_dev = dev_get_drvdata(ctx->hw_mraw[i]);
-			mraw_reset(mraw_dev);
-		}
-	}
+	mtk_cam_ctx_engine_reset(ctx);
+
 	mtk_cam_event_eos(cam_ctrl);
 
 	drain_workqueue(ctx->frame_done_wq);
 	kthread_flush_worker(&ctx->sensor_worker);
 
+	INIT_LIST_HEAD(&job_list);
+
 	write_lock(&cam_ctrl->list_lock);
-	list_for_each_entry_safe(job_s, job_s_prev,
-				 &cam_ctrl->camsys_state_list, list) {
-		job = container_of(job_s, struct mtk_cam_job, job_state);
-
-		call_jobop(job, cancel);
-		mtk_cam_ctx_job_finish(job);
-
-		/* note: call list_del directly here to avoid deadlock in
-		 * _on_job_last_ref
-		 */
-		list_del(&job->job_state.list);
-	}
+	list_splice_init(&cam_ctrl->camsys_state_list, &job_list);
 	write_unlock(&cam_ctrl->list_lock);
 
-	dev_info(ctx->cam->dev, "[%s] ctx:%d, stop status:%d\n",
-		__func__, ctx->stream_id, atomic_read(&cam_ctrl->stopped));
+	list_for_each_entry(job_s, &job_list, list) {
+		job = container_of(job_s, struct mtk_cam_job, job_state);
+
+		/*
+		 * note: call mtk_cam_ctx_job_finish directly here
+		 */
+		mtk_cam_ctx_job_finish(job);
+	}
+
+	dev_info(ctx->cam->dev, "[%s] ctx:%d\n", __func__, ctx->stream_id);
 }
 
 int vsync_update(struct vsync_collector *c,

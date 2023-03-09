@@ -933,8 +933,7 @@ static bool frame_sync_start(struct mtk_cam_job *job)
 		return ret;
 
 	mutex_lock(&fs->op_lock);
-	++fs->on_cnt;
-	if (fs->on_cnt == 1)  /* 1st sensor setting of request */
+	if (is_first_sensor(fs)) /* 1st sensor setting of request */
 		ret = mtk_cam_fs_sync_frame(job, 1);
 	mutex_unlock(&fs->op_lock);
 
@@ -955,8 +954,7 @@ static bool frame_sync_end(struct mtk_cam_job *job)
 		return ret;
 
 	mutex_lock(&fs->op_lock);
-	++fs->off_cnt;
-	if (fs->off_cnt == fs->target)  /* the last sensor setting of request */
+	if (is_last_sensor(fs)) /* the last sensor setting of request */
 		ret = mtk_cam_fs_sync_frame(job, 0);
 	mutex_unlock(&fs->op_lock);
 
@@ -2494,6 +2492,9 @@ static int fill_sv_ext_img_buffer_to_ipi_frame_display_ic(
 	return ret;
 }
 
+/*
+ *  Note: this function will be called with spin_lock held. Can't sleep.
+ */
 static void job_cancel(struct mtk_cam_job *job)
 {
 	int i, used_pipe = 0;
@@ -2503,12 +2504,10 @@ static void job_cancel(struct mtk_cam_job *job)
 
 	pr_info("%s: #%d\n", __func__, job->req_seq);
 
-	kthread_cancel_work_sync(&job->sensor_work);
-	cancel_work_sync(&job->frame_done_work);
+	job->cancel_done_work = 1;
+	wake_up_interruptible(&job->done_wq);
 
 	used_pipe = job->req->used_pipe & job->src_ctx->used_pipe;
-
-	job_complete_sensor_ctrl_obj(job);
 
 	frame_sync_dec_target(&job->req->fs);
 
@@ -2521,6 +2520,9 @@ static void job_cancel(struct mtk_cam_job *job)
 
 static void job_finalize(struct mtk_cam_job *job)
 {
+	/* complete it if not applied yet */
+	job_complete_sensor_ctrl_obj(job);
+
 	mtk_cam_buffer_pool_return(&job->cq);
 	mtk_cam_buffer_pool_return(&job->ipi);
 }

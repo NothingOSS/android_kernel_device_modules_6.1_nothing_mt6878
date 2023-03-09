@@ -447,13 +447,6 @@ static inline void mtk_cam_job_set_no(struct mtk_cam_job *job,
 	job->job_state.seq_no = seq_no;
 }
 
-static inline void mtk_cam_job_mark_cancelled(struct mtk_cam_job *job)
-{
-	/* to assure done_work could exit properly */
-	job->cancel_done_work = 1;
-	wake_up_interruptible(&job->done_wq);
-}
-
 struct mtk_cam_dump_param;
 int mtk_cam_job_fill_dump_param(struct mtk_cam_job *job,
 				struct mtk_cam_dump_param *p,

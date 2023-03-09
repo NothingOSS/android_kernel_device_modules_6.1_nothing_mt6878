@@ -304,6 +304,8 @@ int mtk_cam_ctx_all_nodes_idle(struct mtk_cam_ctx *ctx);
 int mtk_cam_ctx_stream_on(struct mtk_cam_ctx *ctx);
 int mtk_cam_ctx_stream_off(struct mtk_cam_ctx *ctx);
 void mtk_cam_ctx_engine_off(struct mtk_cam_ctx *ctx);
+void mtk_cam_ctx_engine_disable_irq(struct mtk_cam_ctx *ctx);
+void mtk_cam_ctx_engine_reset(struct mtk_cam_ctx *ctx);
 int mtk_cam_ctx_send_raw_event(struct mtk_cam_ctx *ctx,
 			       struct v4l2_event *event);
 int mtk_cam_ctx_send_sv_event(struct mtk_cam_ctx *ctx,

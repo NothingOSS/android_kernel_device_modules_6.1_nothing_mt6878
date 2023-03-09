@@ -60,6 +60,8 @@ UNLOCK_RETURN:
 
 int mtk_cam_req_complete_ctrl_obj(struct media_request_object *obj)
 {
+	might_sleep();
+
 	if (!obj)
 		return 0;
 

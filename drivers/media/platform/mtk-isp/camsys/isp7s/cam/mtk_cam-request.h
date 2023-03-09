@@ -23,13 +23,22 @@
  * @op_lock: protect frame sync state variables
  */
 struct mtk_cam_frame_sync {
+
+	spinlock_t lock;
 	unsigned int target;
 	unsigned int on_cnt;
 	unsigned int off_cnt;
+
 	struct mutex op_lock;
 };
 
-static inline void frame_sync_init(struct mtk_cam_frame_sync *fs, int ctx_cnt)
+static inline void frame_sync_init(struct mtk_cam_frame_sync *fs)
+{
+	spin_lock_init(&fs->lock);
+	mutex_init(&fs->op_lock);
+}
+
+static inline void frame_sync_set(struct mtk_cam_frame_sync *fs, int ctx_cnt)
 {
 	fs->target = ctx_cnt > 1 ? ctx_cnt : 0;
 	fs->on_cnt = 0;
@@ -38,14 +47,42 @@ static inline void frame_sync_init(struct mtk_cam_frame_sync *fs, int ctx_cnt)
 
 static inline bool need_frame_sync(struct mtk_cam_frame_sync *fs)
 {
-	return !!fs->target;  /* check multi sensor stream */
+	bool ret;
+
+	spin_lock(&fs->lock);
+	ret = !!fs->target;
+	spin_unlock(&fs->lock);
+	return ret;  /* check multi sensor stream */
+}
+
+static inline bool is_first_sensor(struct mtk_cam_frame_sync *fs)
+{
+	bool ret;
+
+	spin_lock(&fs->lock);
+	ret = !fs->on_cnt;
+	++fs->on_cnt;
+	spin_unlock(&fs->lock);
+	return ret;
+}
+
+static inline bool is_last_sensor(struct mtk_cam_frame_sync *fs)
+{
+	bool ret;
+
+	spin_lock(&fs->lock);
+	++fs->off_cnt;
+	ret = fs->off_cnt == fs->target;
+	spin_unlock(&fs->lock);
+
+	return ret;
 }
 
 static inline void frame_sync_dec_target(struct mtk_cam_frame_sync *fs)
 {
-	mutex_lock(&fs->op_lock);
+	spin_lock(&fs->lock);
 	if (!fs->target) {
-		mutex_unlock(&fs->op_lock);
+		spin_unlock(&fs->lock);
 		return;
 	}
 
@@ -55,7 +92,7 @@ static inline void frame_sync_dec_target(struct mtk_cam_frame_sync *fs)
 		fs->on_cnt = 0;
 		fs->off_cnt = 0;
 	}
-	mutex_unlock(&fs->op_lock);
+	spin_unlock(&fs->lock);
 }
 
 struct v4l2_ctrl_handler;
