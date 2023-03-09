@@ -75,22 +75,22 @@ void set_afe_dl_irq_target(int scp_enable)
 
 	if (scp_enable) {
 		regmap_update_bits(afe->regmap,
-				irq_data->irq_ap_en_reg,
-				0x1 << irq_data->irq_ap_en_shift,
-				0x0);
+				   irq_data->irq_ap_en_reg,
+				   0x1 << irq_data->id,
+				   0x0);
 		regmap_update_bits(afe->regmap,
-				irq_data->irq_scp_en_reg,
-				0x1 << irq_data->irq_scp_en_shift,
-				0x1 << irq_data->irq_scp_en_shift);
+				   irq_data->irq_scp_en_reg,
+				   0x1 << irq_data->irq_scp_en_shift,
+				   0x1 << irq_data->irq_scp_en_shift);
 	} else {
 		regmap_update_bits(afe->regmap,
-				irq_data->irq_scp_en_reg,
-				0x1 << irq_data->irq_scp_en_shift,
-				0);
+				   irq_data->irq_scp_en_reg,
+				   0x1 << irq_data->irq_scp_en_shift,
+				   0);
 		regmap_update_bits(afe->regmap,
 				   irq_data->irq_ap_en_reg,
-				   0x1 << irq_data->irq_ap_en_shift,
-				   0x1 << irq_data->irq_ap_en_shift);
+				   0x1 << irq_data->id,
+				   0x1 << irq_data->id);
 	}
 	pr_debug("%s(), scp_en=%d,memif=%d,ap_en_reg:0x%x,scp_en_reg:0x%x\n",
 		 __func__,
