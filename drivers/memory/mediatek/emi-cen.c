@@ -228,7 +228,7 @@ EXPORT_SYMBOL(mtk_emicen_get_rk_cnt);
  *
  * Returns the rank size of target rank
  */
-unsigned int mtk_emicen_get_rk_size(unsigned int rk_id)
+unsigned long long mtk_emicen_get_rk_size(unsigned int rk_id)
 {
 	if (rk_id < mtk_emicen_get_rk_cnt())
 		return (global_emi_cen) ? global_emi_cen->rk_size[rk_id] : 0;

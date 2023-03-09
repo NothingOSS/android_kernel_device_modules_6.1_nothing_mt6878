@@ -91,7 +91,7 @@ struct emimpu_dbg_cb {
 /* mtk emicen api */
 unsigned int mtk_emicen_get_ch_cnt(void);
 unsigned int mtk_emicen_get_rk_cnt(void);
-unsigned int mtk_emicen_get_rk_size(unsigned int rk_id);
+unsigned long long mtk_emicen_get_rk_size(unsigned int rk_id);
 int mtk_emicen_addr2dram(unsigned long addr, struct emi_addr_map *map);
 
 /* mtk emidbg api */
