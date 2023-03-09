@@ -2384,6 +2384,59 @@ mtk_crtc_get_plane_comp(struct drm_crtc *crtc,
 	return comp;
 }
 
+static struct mtk_ddp_comp *
+mtk_crtc_get_plane_comp_for_bwm(struct drm_crtc *crtc,
+			struct mtk_plane_state *plane_state, bool need_dual_pipe)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_ddp_comp *comp = NULL;
+	enum mtk_ddp_comp_id comp_id = plane_state->comp_state.comp_id;
+	unsigned int dst_x = plane_state->pending.dst_x;
+	unsigned int width = crtc->state->adjusted_mode.hdisplay;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	int i, j;
+
+	DDPINFO("%s dst_x:%u, width:%u, comp id:%u\n",
+		__func__, dst_x, width, comp_id);
+
+	if (mtk_drm_helper_get_opt(priv->helper_opt,
+		MTK_DRM_OPT_PRIM_DUAL_PIPE) && ((dst_x >= (width/2)) ||
+		need_dual_pipe)) {
+
+		if (plane_state->comp_state.comp_id == 0)
+			return mtk_crtc_get_dual_comp(crtc, 0, 0);
+
+		/* mt6897 OVL4_2l - OVL0_2L = 8 */
+		if (priv->data->mmsys_id == MMSYS_MT6897)
+			comp_id += 8;
+
+		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j)
+			if (comp->id == comp_id) {
+				DDPINFO("%s:%d i:%d, ovl_id:%d lye_id:%d, ext_lye_id:%d\n",
+					__func__, __LINE__, i,
+					comp_id,
+					plane_state->comp_state.lye_id,
+					plane_state->comp_state.ext_lye_id);
+				return comp;
+			}
+	}
+
+	if (plane_state->comp_state.comp_id == 0)
+		return mtk_crtc_get_comp(crtc, mtk_crtc->ddp_mode, 0, 0);
+
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
+		if (comp->id == comp_id) {
+			DDPINFO("%s:%d i:%d, ovl_id:%d lye_id:%d, ext_lye_id:%d\n",
+				__func__, __LINE__, i,
+				comp_id,
+				plane_state->comp_state.lye_id,
+				plane_state->comp_state.ext_lye_id);
+			return comp;
+		}
+
+	return comp;
+}
+
 static int mtk_crtc_get_dc_fb_size(struct drm_crtc *crtc)
 {
 	/* DC buffer color format is RGB888 */
@@ -6231,11 +6284,12 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 			to_mtk_plane_state(plane->state);
 		int index = plane_index;
 		struct mtk_ddp_comp *comp =
-			mtk_crtc_get_plane_comp(crtc, plane_state);
+			mtk_crtc_get_plane_comp_for_bwm(crtc, plane_state, false);
 		int lye_id = plane_state->comp_state.lye_id;
 		int ext_lye_id = plane_state->comp_state.ext_lye_id;
 		unsigned int src_w = plane_state->pending.width;
 		unsigned int src_h = plane_state->pending.height;
+		unsigned int dst_x = plane_state->pending.dst_x;
 		unsigned int bpp =
 			mtk_get_format_bpp(plane_state->pending.format);
 		unsigned int is_compress =
@@ -6251,6 +6305,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 		struct cmdq_operand lop;
 		struct cmdq_operand rop;
 		int need_skip = 0;
+		struct mtk_ddp_comp *comp_right_pipe = NULL;
 
 		DDPDBG_BWM("BWM: layer caps:0x%08x\n", plane_state->comp_state.layer_caps);
 		if ((plane_state->comp_state.layer_caps & MTK_HWC_UNCHANGED_LAYER) ||
@@ -6270,15 +6325,6 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 		if (!comp) {
 			DDPPR_ERR("%s run next plane with NULL comp\n", __func__);
 			break;
-		}
-
-		if (mtk_drm_helper_get_opt(priv->helper_opt,
-				MTK_DRM_OPT_PRIM_DUAL_PIPE)) {
-			/* 1. For case of layer: width > lcm_width/2 */
-			/* 2. For case of layer: width <= lcm_width/2 */
-			/* 3. For case of vertical line */
-			if ((src_w > 1) && (src_w > (width / 2)))
-				src_w = src_w / 2;
 		}
 
 		/*
@@ -6314,10 +6360,22 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 			ovl_win_size, is_compress, bpp, src_w, src_h);
 		DDPDBG_BWM("BWM: avg_inter_value:%u peak_inter_value:%u\n",
 			avg_inter_value, peak_inter_value);
+
 		if (!comp) {
 			DDPPR_ERR("%s:%d comp is NULL\n", __func__, __LINE__);
 			return;
 		}
+
+		if (mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_PRIM_DUAL_PIPE) &&
+			(dst_x < width / 2) &&
+			(dst_x + src_w >= width / 2)) {
+			comp_right_pipe =
+				mtk_crtc_get_plane_comp_for_bwm(crtc, plane_state, true);
+			if (!comp_right_pipe)
+				DDPPR_ERR("%s:%d comp_right_pipe is NULL\n", __func__, __LINE__);
+		}
+
 		if ((ext_lye_id) &&
 			(plane_state->pending.enable) && (need_skip != 1)) {
 			cmdq_pkt_read(state->cmdq_handle, NULL,
@@ -6337,6 +6395,34 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 			rop.value = narrow;
 			cmdq_pkt_logic_command(state->cmdq_handle,
 				CMDQ_LOGIC_RIGHT_SHIFT, CMDQ_THR_SPR_IDX1, &lop, &rop);
+
+			if (comp_right_pipe) {
+				cmdq_pkt_read(state->cmdq_handle, NULL,
+					comp_right_pipe->regs_pa +
+					DISP_REG_OVL_ELX_BURST_ACC(ext_lye_id-1),
+					CMDQ_THR_SPR_IDX2);
+
+				lop.reg = true;
+				lop.idx = CMDQ_THR_SPR_IDX2;
+				rop.reg = false;
+				rop.value = avg_inter_value;
+				cmdq_pkt_logic_command(state->cmdq_handle,
+					CMDQ_LOGIC_MULTIPLY, CMDQ_THR_SPR_IDX2, &lop, &rop);
+
+				lop.reg = true;
+				lop.idx = CMDQ_THR_SPR_IDX2;
+				rop.reg = false;
+				rop.value = narrow;
+				cmdq_pkt_logic_command(state->cmdq_handle,
+					CMDQ_LOGIC_RIGHT_SHIFT, CMDQ_THR_SPR_IDX2, &lop, &rop);
+
+				lop.reg = true;
+				lop.idx = CMDQ_THR_SPR_IDX1;
+				rop.reg = true;
+				rop.value = CMDQ_THR_SPR_IDX2;
+				cmdq_pkt_logic_command(state->cmdq_handle,
+					CMDQ_LOGIC_ADD, CMDQ_THR_SPR_IDX1, &lop, &rop);
+			}
 
 			cmdq_pkt_write_indriect(state->cmdq_handle, comp->cmdq_base,
 				avg_slot, CMDQ_THR_SPR_IDX1, ~0);
@@ -6358,6 +6444,34 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 			rop.value = narrow;
 			cmdq_pkt_logic_command(state->cmdq_handle,
 				CMDQ_LOGIC_RIGHT_SHIFT, CMDQ_THR_SPR_IDX1, &lop, &rop);
+
+			if (comp_right_pipe) {
+				cmdq_pkt_read(state->cmdq_handle, NULL,
+					comp_right_pipe->regs_pa +
+					DISP_REG_OVL_ELX_BURST_ACC_WIN_MAX(ext_lye_id-1),
+					CMDQ_THR_SPR_IDX2);
+
+				lop.reg = true;
+				lop.idx = CMDQ_THR_SPR_IDX2;
+				rop.reg = false;
+				rop.value = peak_inter_value;
+				cmdq_pkt_logic_command(state->cmdq_handle,
+						CMDQ_LOGIC_MULTIPLY, CMDQ_THR_SPR_IDX2, &lop, &rop);
+
+				lop.reg = true;
+				lop.idx = CMDQ_THR_SPR_IDX2;
+				rop.reg = false;
+				rop.value = narrow;
+				cmdq_pkt_logic_command(state->cmdq_handle,
+					CMDQ_LOGIC_RIGHT_SHIFT, CMDQ_THR_SPR_IDX2, &lop, &rop);
+
+				lop.reg = true;
+				lop.idx = CMDQ_THR_SPR_IDX1;
+				rop.reg = true;
+				rop.value = CMDQ_THR_SPR_IDX2;
+				cmdq_pkt_logic_command(state->cmdq_handle,
+					CMDQ_LOGIC_ADD, CMDQ_THR_SPR_IDX1, &lop, &rop);
+			}
 
 			cmdq_pkt_write_indriect(state->cmdq_handle, comp->cmdq_base,
 				peak_slot, CMDQ_THR_SPR_IDX1, ~0);
@@ -6381,6 +6495,34 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 			cmdq_pkt_logic_command(state->cmdq_handle,
 				CMDQ_LOGIC_RIGHT_SHIFT, CMDQ_THR_SPR_IDX1, &lop, &rop);
 
+			if (comp_right_pipe) {
+				cmdq_pkt_read(state->cmdq_handle, NULL,
+					comp_right_pipe->regs_pa +
+					DISP_REG_OVL_LX_BURST_ACC(lye_id),
+					CMDQ_THR_SPR_IDX2);
+
+				lop.reg = true;
+				lop.idx = CMDQ_THR_SPR_IDX2;
+				rop.reg = false;
+				rop.value = avg_inter_value;
+				cmdq_pkt_logic_command(state->cmdq_handle,
+					CMDQ_LOGIC_MULTIPLY, CMDQ_THR_SPR_IDX2, &lop, &rop);
+
+				lop.reg = true;
+				lop.idx = CMDQ_THR_SPR_IDX2;
+				rop.reg = false;
+				rop.value = narrow;
+				cmdq_pkt_logic_command(state->cmdq_handle,
+					CMDQ_LOGIC_RIGHT_SHIFT, CMDQ_THR_SPR_IDX2, &lop, &rop);
+
+				lop.reg = true;
+				lop.idx = CMDQ_THR_SPR_IDX1;
+				rop.reg = true;
+				rop.value = CMDQ_THR_SPR_IDX2;
+				cmdq_pkt_logic_command(state->cmdq_handle,
+					CMDQ_LOGIC_ADD, CMDQ_THR_SPR_IDX1, &lop, &rop);
+			}
+
 			cmdq_pkt_write_indriect(state->cmdq_handle, comp->cmdq_base,
 				avg_slot, CMDQ_THR_SPR_IDX1, ~0);
 
@@ -6401,6 +6543,34 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 			rop.value = narrow;
 			cmdq_pkt_logic_command(state->cmdq_handle,
 				CMDQ_LOGIC_RIGHT_SHIFT, CMDQ_THR_SPR_IDX1, &lop, &rop);
+
+			if (comp_right_pipe) {
+				cmdq_pkt_read(state->cmdq_handle, NULL,
+					comp_right_pipe->regs_pa +
+					DISP_REG_OVL_LX_BURST_ACC_WIN_MAX(lye_id),
+					CMDQ_THR_SPR_IDX2);
+
+				lop.reg = true;
+				lop.idx = CMDQ_THR_SPR_IDX2;
+				rop.reg = false;
+				rop.value = peak_inter_value;
+				cmdq_pkt_logic_command(state->cmdq_handle,
+						CMDQ_LOGIC_MULTIPLY, CMDQ_THR_SPR_IDX2, &lop, &rop);
+
+				lop.reg = true;
+				lop.idx = CMDQ_THR_SPR_IDX2;
+				rop.reg = false;
+				rop.value = narrow;
+				cmdq_pkt_logic_command(state->cmdq_handle,
+					CMDQ_LOGIC_RIGHT_SHIFT, CMDQ_THR_SPR_IDX2, &lop, &rop);
+
+				lop.reg = true;
+				lop.idx = CMDQ_THR_SPR_IDX1;
+				rop.reg = true;
+				rop.value = CMDQ_THR_SPR_IDX2;
+				cmdq_pkt_logic_command(state->cmdq_handle,
+					CMDQ_LOGIC_ADD, CMDQ_THR_SPR_IDX1, &lop, &rop);
+			}
 
 			cmdq_pkt_write_indriect(state->cmdq_handle, comp->cmdq_base,
 				peak_slot, CMDQ_THR_SPR_IDX1, ~0);
@@ -6424,6 +6594,18 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(unsigned int frame_idx)
 	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++)
 		memset(&unchanged_compress_ratio_table[i], 0,
 				sizeof(struct layer_compress_ratio_item));
+	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
+		unsigned int index = fn*MAX_LAYER_RATIO_NUMBER + i;
+
+		if (index >= MAX_FRAME_RATIO_NUMBER*MAX_LAYER_RATIO_NUMBER) {
+			DDPINFO("%s errors due to index %u\n", __func__, index);
+			return;
+		}
+		memset(&normal_layer_compress_ratio_tb[index], 0,
+			sizeof(struct layer_compress_ratio_item));
+	}
+	memset(&fbt_layer_compress_ratio_tb[fn], 0,
+		sizeof(struct layer_compress_ratio_item));
 
 	/* Copy one frame ratio to table */
 	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
