@@ -22,6 +22,11 @@ extern bool vip_enable;
 		((struct task_struct *)(__mptr - \
 			offsetof(struct task_struct, android_vendor_data1))); })
 
+enum vip_group {
+	VIP_GROUP1,
+	VIP_GROUP_NUM
+};
+
 extern void vip_enqueue_task(struct rq *rq, struct task_struct *p);
 
 extern void vip_init(void);

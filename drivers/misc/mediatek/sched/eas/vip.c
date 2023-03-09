@@ -47,7 +47,7 @@ static void insert_vip_task(struct rq *rq, struct vip_task_struct *vts,
 	list_add(&vts->vip_list, pos->prev);
 }
 
-int VIP_task_group[FLT_GROUP_NUM] = {0};
+int VIP_task_group[VIP_GROUP_NUM] = {0};
 void set_task_group_VIP(int group_id)
 {
 	VIP_task_group[group_id] = 1;

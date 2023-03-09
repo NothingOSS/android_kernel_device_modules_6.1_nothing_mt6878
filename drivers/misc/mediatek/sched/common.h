@@ -16,18 +16,6 @@
 #define T_SBB_FLG 5
 #define T_TASK_IDLE_PREFER_FLAG 7
 
-/*
- * Flt tracking group part id
- * copy from flt for the use of VIP (need FLT_GROUP_NUM to initialize VIP_task_group)
- */
-enum flt_group {
-	FLT_GROUP1,
-	FLT_GROUP2,
-	FLT_GROUP3,
-	FLT_GROUP4,
-	FLT_GROUP_NUM,
-};
-
 struct vip_task_struct {
 	struct list_head		vip_list;
 	u64				sum_exec_snapshot;
