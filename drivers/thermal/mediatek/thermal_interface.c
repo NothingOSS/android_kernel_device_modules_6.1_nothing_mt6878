@@ -869,13 +869,17 @@ static ssize_t gpu_atc_show(struct kobject *kobj, struct kobj_attribute *attr,
 static ssize_t apu_atc_show(struct kobject *kobj, struct kobj_attribute *attr,
 	char *buf)
 {
-	int len = 0, val;
+	int len = 0, val, i;
 
 	if (thermal_apu_mbox_base) {
 		val =  therm_intf_read_apu_mbox_s32(APU_MBOX_ATC_MAX_TTJ_ADDR);
 		len += snprintf(buf + len, PAGE_SIZE - len, "%d\n", val);
 	} else {
-		val = therm_intf_read_csram_s32(APU_ATC_OFFSET);
+		for (i = 0; i < APU_ATC_NUM - 1; i++) {
+			val = therm_intf_read_csram_s32(APU_ATC_OFFSET + i * 0x4);
+			len += snprintf(buf + len, PAGE_SIZE - len, "%d,", val);
+		}
+		val = therm_intf_read_csram_s32(APU_ATC_OFFSET + i * 0x4);
 		len += snprintf(buf + len, PAGE_SIZE - len, "%d\n", val);
 	}
 

@@ -34,7 +34,7 @@
 #define APU_ATC_OFFSET                 (0x2D4)
 #define CPU_ATC_NUM                   (17)
 #define GPU_ATC_NUM                   (3)
-#define APU_ATC_NUM                   (1)
+#define APU_ATC_NUM                   (3)
 #define UTC_COUNT_OFFSET           (0x27C)
 #define INFOB_OFFSET               (0x2C4)
 #define REBOOT_TEMPERATURE_ADDR_OFFSET (0x39c)
