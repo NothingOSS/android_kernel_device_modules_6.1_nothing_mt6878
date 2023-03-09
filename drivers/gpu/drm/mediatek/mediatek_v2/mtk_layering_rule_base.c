@@ -472,7 +472,7 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 	"HRT hrt_num:0x%x/disp_idx:%x/disp_list:%x/mod:%d/dal:%d/addon_scn:(%d, %d, %d)/bd_tb:%d/i:%d\n"
 #define _L_FMT \
 	"L%d->%d/(%d,%d,%d,%d)/(%d,%d,%d,%d)/f0x%x/ds%d/e%d/cap0x%x" \
-	"/compr%d/secure%d/frame:%u\n"
+	"/compr%d/secure%d/frame:%u/AID:%llu\n"
 
 	if (debug_level < DISP_DEBUG_LEVEL_INFO) {
 		DDPMSG(_HRT_FMT,
@@ -544,7 +544,8 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 				       layer_info->layer_caps,
 				       layer_info->compress,
 				       layer_info->secure,
-				       disp_info->frame_idx[i]);
+				       disp_info->frame_idx[i],
+				       layer_info->buffer_alloc_id);
 			}
 		}
 	} else {
@@ -616,7 +617,8 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 					layer_info->layer_caps,
 					layer_info->compress,
 					layer_info->secure,
-					disp_info->frame_idx[i]);
+					disp_info->frame_idx[i],
+					layer_info->buffer_alloc_id);
 			}
 		}
 	}
@@ -1765,10 +1767,12 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 				unsigned int index = 0;
 				unsigned int peak_ratio =
 					unchanged_compress_ratio_table[i].peak_ratio;
+				struct drm_mtk_layering_info *disp_info = &layering_info;
 
 				/* Due to the problem of calculation accuracy use 1024 */
-				if (peak_ratio > 1024) {
+				if (peak_ratio > 1000) {
 					print_bwm_table();
+					dump_disp_info(disp_info, DISP_DEBUG_LEVEL_CRITICAL);
 					DDPAEE("%s:%d gets ratio:%u > 1000\n",
 					__func__, __LINE__, peak_ratio);
 					weight *= 1000;
@@ -1804,10 +1808,12 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 				unsigned int index = 0;
 				unsigned int peak_ratio =
 					normal_layer_compress_ratio_tb[i].peak_ratio;
+				struct drm_mtk_layering_info *disp_info = &layering_info;
 
 				/* Due to the problem of calculation accuracy use 1024 */
-				if (peak_ratio > 1024) {
+				if (peak_ratio > 1000) {
 					print_bwm_table();
+					dump_disp_info(disp_info, DISP_DEBUG_LEVEL_CRITICAL);
 					DDPAEE("%s:%d gets ratio:%u > 1000\n",
 					__func__, __LINE__, peak_ratio);
 					weight *= 1000;

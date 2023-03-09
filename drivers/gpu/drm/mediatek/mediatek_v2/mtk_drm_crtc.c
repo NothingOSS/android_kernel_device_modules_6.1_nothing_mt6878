@@ -6197,6 +6197,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 	unsigned int plane_mask = 0;
 	struct mtk_crtc_state *state = mtk_crtc_state;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	unsigned int width = crtc->state->adjusted_mode.hdisplay;
 
 	plane_mask = old_crtc_state->plane_mask;
 
@@ -6248,8 +6249,13 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 		}
 
 		if (mtk_drm_helper_get_opt(priv->helper_opt,
-			    MTK_DRM_OPT_PRIM_DUAL_PIPE))
-			src_w = src_w/2;
+				MTK_DRM_OPT_PRIM_DUAL_PIPE)) {
+			/* 1. For case of layer: width > lcm_width/2 */
+			/* 2. For case of layer: width <= lcm_width/2 */
+			/* 3. For case of vertical line */
+			if ((src_w > 1) && (src_w > (width / 2)))
+				src_w = src_w / 2;
+		}
 
 		/*
 		 * Layer SRT compress ratio =
@@ -6258,7 +6264,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 		 * ((BURST_ACC_WIN_MAX*16*2^24)/(src_w*win_h*bpp))/2^14
 		 * Attention: win_h = (reg_BURST_ACC_WIN_SIZE+1)*(fbdc_en?4:1)
 		 */
-		if (!bpp) {
+		if (!bpp || !is_compress) {
 			need_skip = 1;
 		} else {
 			if (src_w * src_h * bpp)
