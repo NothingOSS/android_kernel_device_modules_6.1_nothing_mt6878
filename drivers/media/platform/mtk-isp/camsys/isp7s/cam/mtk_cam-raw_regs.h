@@ -10,7 +10,7 @@
 
 static inline u32 _read_field(u32 val, int pos, int width)
 {
-	return (val >> pos) & FMASK(pos, width);
+	return (val & FMASK(pos, width)) >> pos;
 }
 
 static inline u32 _set_field(u32 *val, int pos, int width, u32 fval)
