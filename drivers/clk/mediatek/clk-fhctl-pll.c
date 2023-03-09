@@ -779,10 +779,10 @@ static struct match mt6985_match = {
 #define REG_6989_CONVERT(_fhctl, _con_pcw) {	\
 		.offset_fhctl = _fhctl,				\
 		.offset_con_pcw = _con_pcw,			\
+		.offset_con_postdiv = _con_pcw,		\
 		.offset_hp_en = 0x0,                \
 		.offset_hp_en_set = 0x168,          \
-		.offset_con_postdiv = _con_pcw,		\
-		.offset_hp_en = 0x0,				\
+		.offset_hp_en_clr = 0x16c,			\
 		.offset_clk_con = 0x8,				\
 		.offset_clk_con_set = 0x170,        \
 		.offset_clk_con_clr = 0x174,        \
@@ -819,10 +819,10 @@ static struct match mt6985_match = {
 static struct fh_pll_data mt6989_top0_data[] = {
 	DATA_6989_CONVERT("mainpll2"),
 	DATA_6989_CONVERT("mmpll2"),
-	DATA_6989_CONVERT("nouse-mempll"),
-	DATA_6989_CONVERT("nouse-emipll2"),
-	DATA_6989_CONVERT("nouse-emipll"),
-	DATA_6989_CONVERT("mpll"),
+	DATA_6989_CONVERT("noHW-mempll"),
+	DATA_6989_CONVERT("emipll2"),
+	DATA_6989_CONVERT("emipll"),
+	DATA_6989_CONVERT("noHW-mpll"),
 	DATA_6989_CONVERT("mmpll"),
 	DATA_6989_CONVERT("mainpll"),
 	DATA_6989_CONVERT("msdcpll"),
