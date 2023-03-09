@@ -56,6 +56,7 @@ struct disp_input_config {
 	unsigned int aen;
 	unsigned char alpha;
 	unsigned char time_digit;
+	unsigned char blend_mode;
 };
 
 struct disp_frame_config {
@@ -110,6 +111,15 @@ enum OVL_INPUT_FORMAT {
 	OVL_INPUT_FORMAT_RGBA4444   = 12,
 	OVL_INPUT_FORMAT_BGRA4444   = 13,
 	OVL_INPUT_FORMAT_UNKNOWN    = 32,
+};
+
+enum OVL_BLEND_MODE {
+	BLD_MODE_NONE,
+	BLD_MODE_PREMULTIPLIED,
+	BLD_MODE_COVERAGE,
+	BLD_MODE_SRC_ATOP,
+	BLD_MODE_DST_ATOP,
+	BLD_MODE_DST_OVER,
 };
 
 void mtk_module_backup(struct drm_crtc *crtc)
@@ -239,7 +249,8 @@ void mtk_prepare_config_map(void)
 	input[0]->dst_h		= CFG_DISPLAY_HEIGHT;
 	input[0]->aen		= 1;
 	input[0]->alpha		= 0xff;
-	input[1]->time_digit = 0;
+	input[0]->time_digit = 0;
+	input[0]->blend_mode = BLD_MODE_PREMULTIPLIED;
 
 	memcpy(input[1], input[0], sizeof(struct disp_input_config));
 	input[1]->layer	= 1;
