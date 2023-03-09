@@ -2,7 +2,6 @@
 /*
  * Copyright (c) 2023 MediaTek Inc.
  */
-
 #include <linux/cpu.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
@@ -60,7 +59,7 @@ static uint64_t total_suspend_us;
 
 /* core ip (mmsys, venc, vdec, scp )*/
 static char core_ip_str[NR_CORE_IP][MAX_IP_NAME_LENGTH] = {
-	"MDP", "DISP", "VENC", "VDEC", "SCP",
+	"DISP0", "DISP1", "VENC0", "VENC1", "VDEC0", "VDEC1", "SCP",
 };
 /* ddr bw ip (total r/total w/cpu/gpu/mm/md) */
 static char ddr_bc_ip_str[NR_DDR_BC_IP][MAX_IP_NAME_LENGTH] = {
@@ -102,17 +101,15 @@ static void swpm_sp_internal_update(void)
 		ddr_sr_pd_duration.pd_time +=
 			DDR_SRAM.acc_pd_time / 1000;
 		for (i = 0; i < NR_CORE_IP; i++) {
-			if (!core_ip_stats[i].vol_times)
+			if (!core_ip_stats[i].times)
 				continue;
 			core_ip_sta_ptr = &(CORE_SRAM.pwr_state[i]);
-			for (j = 0; j < NR_CORE_VOLT; j++) {
-				core_ip_stats[i].vol_times[j].active_time +=
-				core_ip_sta_ptr->state[j][PMSR_ACTIVE] / 1000;
-				core_ip_stats[i].vol_times[j].idle_time +=
-				core_ip_sta_ptr->state[j][PMSR_IDLE] / 1000;
-				core_ip_stats[i].vol_times[j].off_time +=
-				core_ip_sta_ptr->state[j][PMSR_OFF] / 1000;
-			}
+			core_ip_stats[i].times->active_time +=
+			core_ip_sta_ptr->state[PMSR_ACTIVE] / 1000;
+			core_ip_stats[i].times->idle_time +=
+			core_ip_sta_ptr->state[PMSR_IDLE] / 1000;
+			core_ip_stats[i].times->off_time +=
+			core_ip_sta_ptr->state[PMSR_OFF] / 1000;
 		}
 		for (i = 0; i < NR_DDR_BC_IP; i++) {
 			if (!ddr_ip_stats[i].bc_stats)
@@ -226,13 +223,13 @@ static int32_t swpm_vcore_ip_vol_stats(int32_t ip_num,
 
 	if (p && ip_num == NR_CORE_IP && vol_num == NR_CORE_VOLT) {
 		spin_lock_irqsave(&swpm_sp_spinlock, flags);
-		for (i = 0; i < NR_CORE_IP && p[i].vol_times; i++) {
+		for (i = 0; i < NR_CORE_IP && p[i].times; i++) {
 			strncpy(p[i].ip_name,
 				core_ip_stats[i].ip_name,
 				MAX_IP_NAME_LENGTH - 1);
-			memcpy(p[i].vol_times,
-			       core_ip_stats[i].vol_times,
-			       sizeof(struct ip_vol_times) * NR_CORE_VOLT);
+			memcpy(p[i].times,
+			       core_ip_stats[i].times,
+			       sizeof(struct ip_times));
 		}
 		spin_unlock_irqrestore(&swpm_sp_spinlock, flags);
 	}
@@ -318,17 +315,12 @@ void swpm_v6897_ext_init(void)
 	for (i = 0; i < NR_CORE_IP; i++) {
 		strncpy(core_ip_stats[i].ip_name,
 			core_ip_str[i], MAX_IP_NAME_LENGTH - 1);
-		core_ip_stats[i].vol_times =
-		kmalloc(sizeof(struct ip_vol_times) * NR_CORE_VOLT, GFP_KERNEL);
-		if (core_ip_stats[i].vol_times) {
-			for (j = 0; core_swpm_data_ptr &&
-			     j < NR_CORE_VOLT; j++) {
-				core_ip_stats[i].vol_times[j].active_time = 0;
-				core_ip_stats[i].vol_times[j].idle_time = 0;
-				core_ip_stats[i].vol_times[j].off_time = 0;
-				core_ip_stats[i].vol_times[j].vol =
-					core_swpm_data_ptr->core_volt_tbl[j];
-			}
+		core_ip_stats[i].times =
+		kmalloc(sizeof(struct ip_vol_times), GFP_KERNEL);
+		if (core_ip_stats[i].times) {
+			core_ip_stats[i].times->active_time = 0;
+			core_ip_stats[i].times->idle_time = 0;
+			core_ip_stats[i].times->off_time = 0;
 		}
 	}
 	/* core duration initialize */

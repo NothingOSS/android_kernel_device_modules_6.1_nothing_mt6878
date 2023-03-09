@@ -281,7 +281,7 @@ static const struct mtk_swpm_sysfs_op swpm_pmsr_sig_sel_fops = {
 static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 {
 	char *p = ToUser;
-	int i, j;
+	int i;
 	int32_t core_vol_num, core_ip_num;
 
 	struct ip_stats *core_ip_stats_ptr;
@@ -298,9 +298,8 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 	core_ip_stats_ptr =
 	kmalloc_array(core_ip_num, sizeof(struct ip_stats), GFP_KERNEL);
 	for (i = 0; i < core_ip_num; i++)
-		core_ip_stats_ptr[i].vol_times =
-		kmalloc_array(core_vol_num,
-			      sizeof(struct ip_vol_times), GFP_KERNEL);
+		core_ip_stats_ptr[i].times =
+		kmalloc(sizeof(struct ip_vol_times), GFP_KERNEL);
 
 	sync_latest_data();
 
@@ -316,34 +315,19 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 	get_vcore_ip_vol_stats(core_ip_num, core_vol_num,
 			       core_ip_stats_ptr);
 
-	swpm_dbg_log("VCORE_VOL_NUM = %d\n", core_vol_num);
-	swpm_dbg_log("VCORE_IP_NUM = %d\n", core_ip_num);
-
-
-	for (i = 0; i < core_vol_num; i++) {
-		swpm_dbg_log("VCORE %d mV : %lld ms\n",
-			     core_duration_ptr[i].vol,
-			     core_duration_ptr[i].duration);
-	}
 	for (i = 0; i < core_ip_num; i++) {
-		swpm_dbg_log("VCORE IP %s\n",
+		swpm_dbg_log("%s ",
 			     core_ip_stats_ptr[i].ip_name);
-		for (j = 0; j < core_vol_num; j++) {
-			swpm_dbg_log("%d mV",
-			core_ip_stats_ptr[i].vol_times[j].vol);
-			swpm_dbg_log("\t active_time : %lld ms",
-			core_ip_stats_ptr[i].vol_times[j].active_time);
-			swpm_dbg_log("\t idle_time : %lld ms",
-			core_ip_stats_ptr[i].vol_times[j].idle_time);
-			swpm_dbg_log("\t off_time : %lld ms\n",
-			core_ip_stats_ptr[i].vol_times[j].off_time);
-		}
+		swpm_dbg_log("active/idle/off (ms) : %lld/%lld/%lld\n",
+		core_ip_stats_ptr[i].times->active_time,
+		core_ip_stats_ptr[i].times->idle_time,
+		core_ip_stats_ptr[i].times->off_time);
 	}
 End:
 	kfree(core_duration_ptr);
 
 	for (i = 0; i < core_ip_num; i++)
-		kfree(core_ip_stats_ptr[i].vol_times);
+		kfree(core_ip_stats_ptr[i].times);
 	kfree(core_ip_stats_ptr);
 
 	return p - ToUser;
