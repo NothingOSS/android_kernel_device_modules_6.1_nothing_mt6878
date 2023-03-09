@@ -3445,8 +3445,8 @@ char *cmdq_pkt_parse_buf(struct cmdq_pkt *pkt, u32 *size_out)
 		else
 			size = CMDQ_CMD_BUFFER_SIZE - CMDQ_INST_SIZE;
 
+		cur_inst = 0;
 		if (buf == list_first_entry(&pkt->buf, typeof(*buf), list_entry)) {
-			cur_inst = 0;
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 			if (cmdq_util_helper->is_feature_en(CMDQ_LOG_FEAT_PERF))
 				cur_inst = 2;
