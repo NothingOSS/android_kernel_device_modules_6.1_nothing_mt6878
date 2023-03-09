@@ -27,6 +27,9 @@
 #include <thermal_interface.h>
 #endif
 #include <mt-plat/mtk_irq_mon.h>
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+#include "eas/vip.h"
+#endif
 
 #define CREATE_TRACE_POINTS
 #include "sched_trace.h"
@@ -944,6 +947,12 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	bool not_in_softmask;
 	struct cpumask allowed_cpu_mask;
 	int this_cpu = smp_processor_id();
+	bool min_vip_overwrite = false;
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+	unsigned int num_vip;
+	unsigned int min_num_vip = UINT_MAX;
+	struct vip_task_struct *vts;
+#endif
 
 	cpumask_clear(&allowed_cpu_mask);
 
@@ -951,6 +960,11 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 
 	rcu_read_lock();
 	compute_effective_softmask(p, &latency_sensitive, &effective_softmask);
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+	vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+	vts->vip_prio = get_vip_task_prio(p);
+#endif
 
 	pd = rcu_dereference(rd->pd);
 	if (!pd || READ_ONCE(rd->overutilized)) {
@@ -1000,6 +1014,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 		int pd_max_spare_cap_cpu = -1;
 		int pd_max_spare_cap_cpu_ls_idle = -1;
 		int gear_idx;
+		bool min_vip_overwrite_pd = false;
 #if IS_ENABLED(CONFIG_MTK_THERMAL_AWARE_SCHEDULING)
 		int cpu_order[NR_CPUS]  ____cacheline_aligned, cnt, i;
 
@@ -1048,7 +1063,21 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 			if (not_in_softmask)
 				continue;
 
-			if (spare_cap > sys_max_spare_cap) {
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+			if (task_is_vip(p)) {
+				min_vip_overwrite = false;
+				num_vip = num_vip_in_cpu(cpu);
+				if (num_vip < min_num_vip) {
+					min_num_vip = num_vip;
+					min_vip_overwrite = true;
+					min_vip_overwrite_pd = true;
+				} else if (num_vip > min_num_vip)
+					continue;
+			}
+#endif
+
+			if (min_vip_overwrite ||
+				(spare_cap > sys_max_spare_cap)) {
 				sys_max_spare_cap = spare_cap;
 				sys_max_spare_cap_cpu = cpu;
 			}
@@ -1081,7 +1110,8 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 			 * Find the CPU with the maximum spare capacity in
 			 * the performance domain
 			 */
-			if (spare_cap > pd_max_spare_cap) {
+			if (min_vip_overwrite ||
+				(spare_cap > pd_max_spare_cap)) {
 				pd_max_spare_cap = spare_cap;
 				pd_max_spare_cap_cpu = cpu;
 			}
@@ -1125,7 +1155,8 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 				base_energy = mtk_compute_energy(&eenv, pd, cpus, p, -1);
 			}
 			cur_delta = cur_delta - base_energy;
-			if (cur_delta <= best_delta) {
+			if (min_vip_overwrite_pd ||
+				(cur_delta <= best_delta)) {
 				best_delta = cur_delta;
 				best_energy_cpu = pd_max_spare_cap_cpu;
 				max_spare_cap = pd_max_spare_cap;

@@ -21,10 +21,20 @@ extern bool vip_enable;
 		((struct task_struct *)(__mptr - \
 			offsetof(struct task_struct, android_vendor_data1))); })
 
+struct vip_rq {
+	struct list_head vip_tasks;
+	int num_vip_tasks;
+};
+
 enum vip_group {
 	VIP_GROUP1,
 	VIP_GROUP_NUM
 };
+
+extern inline int get_vip_task_prio(struct task_struct *p);
+extern bool task_is_vip(struct task_struct *p);
+extern inline unsigned int num_vip_in_cpu(int cpu);
+extern inline bool is_task_latency_sensitive(struct task_struct *p);
 
 extern void vip_enqueue_task(struct rq *rq, struct task_struct *p);
 
