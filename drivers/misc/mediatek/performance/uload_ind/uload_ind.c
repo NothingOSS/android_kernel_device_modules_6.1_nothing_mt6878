@@ -177,7 +177,7 @@ static void calculat_loading_callback(int mask_loading, int loading,
 		u64 *per_cpu_idle_time, u64 *per_cpu_wall_time)
 {
 	int cpu;
-	int core_cpus_loading;
+	int core_cpus_loading = 0;
 	u64 cpu_idle_time = 0;
 	u64 cpu_wall_time = 0;
 	cl_lock(__func__);
@@ -317,7 +317,7 @@ static int init_core_cpus(int val)
 	int end = 0;
 
 	int core_cpu_value = 0;
-	struct core_cpus_struct *core_cpus;
+	struct core_cpus_struct *core_cpus = NULL;
 	struct core_cpus_struct *curr_core_cpus = NULL;
 
 	while (value) {
