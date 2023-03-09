@@ -8608,7 +8608,7 @@
 
 		usb_offload: usb_offload {
 			compatible = "mediatek,usb-offload";
-			xhci_host = <&usb_host>;
+			xhci-host = <&usb_host>;
 		};
 
 		ssusb: usb0@11201000 {
