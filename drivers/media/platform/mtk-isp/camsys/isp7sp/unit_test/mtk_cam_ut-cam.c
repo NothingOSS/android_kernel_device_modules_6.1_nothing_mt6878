@@ -710,9 +710,9 @@ static irqreturn_t mtk_ut_raw_irq(int irq, void *data)
 
 nomem:
 
-	dev_info(raw->dev, "INT1-7 0x%x/0x%x/0x%x/0x%x/0x%x/0x%x/0x%x\n",
+	dev_info(raw->dev, "INT1-7 0x%x/0x%x/0x%x/0x%x/0x%x/0x%x\n",
 		 status.irq, status.wdma, status.rdma, status.drop,
-		 status.ofl, status.cq_done, status.cq_done2);
+		 status.ofl, status.cq_done);
 
 	return wake_thread ? IRQ_WAKE_THREAD : IRQ_HANDLED;
 }

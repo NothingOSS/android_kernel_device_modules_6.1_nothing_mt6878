@@ -353,7 +353,7 @@ static int trigger_rawi(struct mtk_cam_ut *ut)
 
 static void setup_hanlder(struct mtk_cam_ut *ut)
 {
-	memset(&ut->hdl, 0, sizeof(struct mtk_cam_ut_event_handler));
+	(void)memset(&ut->hdl, 0, sizeof(struct mtk_cam_ut_event_handler));
 
 	dev_info(ut->dev,
 		"ut->with_testmdl(%d) ut->isp_hardware(%d)\n",
@@ -618,6 +618,10 @@ static int set_test_mdl(struct mtk_cam_ut *ut,
 		pixel_mode = debug_testmdl_pixmode;
 	}
 
+	if (!seninf) {
+		dev_info(dev, "seninf is null, testmdl fail!\n");
+		return -1;
+	}
 	if (testmdl->mode == testmdl_disable)
 		dev_info(dev, "without testmdl\n");
 	else {
@@ -972,7 +976,7 @@ static long cam_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		frame_data = (struct mtkcam_ipi_frame_param *)buf_entry->msg_buffer.va;
 
 
-		memcpy(frame_data, &enque.frame_param,
+		(void)memcpy(frame_data, &enque.frame_param,
 				sizeof(enque.frame_param));
 		/* ipi msg end */
 
