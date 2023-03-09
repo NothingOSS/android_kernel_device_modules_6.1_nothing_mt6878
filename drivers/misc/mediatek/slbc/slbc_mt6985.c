@@ -355,13 +355,18 @@ int slbc_status(struct slbc_data *d)
 int slbc_request(struct slbc_data *d)
 {
 	int ret = 0;
+	int sid;
 	u64 begin, val;
 
 	begin = ktime_get_ns();
 
 	if ((d->type) == TP_BUFFER) {
 		ret = slbc_request_buffer(d);
-		d->size = SLBC_WAY_SIZE * popcount(d->slot_used);
+
+		sid = slbc_get_sid_by_uid((enum slbc_uid)d->uid);
+		if (sid != SID_NOT_FOUND)
+			d->slot_used = p_config[sid].res_slot;
+
 		if (!d->paddr)
 			ret = -1;
 		else

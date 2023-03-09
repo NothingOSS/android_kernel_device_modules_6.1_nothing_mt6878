@@ -142,7 +142,7 @@ int _slbc_request_cache_scmi(void *ptr)
 		ret = slbc_scmi_get(&slbc_ipi_d, &rvalue);
 		if (!ret) {
 			d->paddr = (void __iomem *)(long long)rvalue.r1;
-			d->slot_used = rvalue.r2;
+			d->size = rvalue.r2;
 			ret = d->ret = rvalue.r3;
 		} else {
 			pr_info("#@# %s(%d) return fail(%d)\n",
@@ -177,7 +177,7 @@ int _slbc_release_cache_scmi(void *ptr)
 		ret = slbc_scmi_get(&slbc_ipi_d, &rvalue);
 		if (!ret) {
 			d->paddr = (void __iomem *)(long long)rvalue.r1;
-			d->slot_used = rvalue.r2;
+			d->size = rvalue.r2;
 			ret = d->ret = rvalue.r3;
 		} else {
 			pr_info("#@# %s(%d) return fail(%d)\n",
@@ -256,7 +256,7 @@ int _slbc_request_buffer_scmi(void *ptr)
 		ret = slbc_scmi_get(&slbc_ipi_d, &rvalue);
 		if (!ret) {
 			d->paddr = (void __iomem *)(long long)rvalue.r1;
-			d->slot_used = rvalue.r2;
+			d->size = rvalue.r2;
 			ret = d->ret = rvalue.r3;
 		} else {
 			pr_info("#@# %s(%d) return fail(%d)\n",
@@ -300,7 +300,7 @@ int _slbc_release_buffer_scmi(void *ptr)
 		ret = slbc_scmi_get(&slbc_ipi_d, &rvalue);
 		if (!ret) {
 			d->paddr = (void __iomem *)(long long)rvalue.r1;
-			d->slot_used = rvalue.r2;
+			d->size = rvalue.r2;
 			ret = d->ret = rvalue.r3;
 		} else {
 			pr_info("#@# %s(%d) return fail(%d)\n",
@@ -377,12 +377,16 @@ static void slbc_scmi_handler(u32 r_feature_id, scmi_tinysys_report *report)
 	struct slbc_data d;
 	unsigned int cmd;
 	unsigned int arg;
+	unsigned int arg2;
+	unsigned int arg3;
 
 	if (scmi_slbc_id != r_feature_id)
 		return;
 
 	cmd = report->p1;
 	arg = report->p2;
+	arg2 = report->p3;
+	arg3 = report->p4;
 	/* pr_info("#@# %s(%d) report 0x%x 0x%x 0x%x 0x%x\n", __func__, __LINE__, */
 			/* report->p1, report->p2, report->p3, report->p4); */
 
