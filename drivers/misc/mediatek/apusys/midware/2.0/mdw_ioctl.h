@@ -160,6 +160,7 @@ enum mdw_cmd_ioctl_op {
 	MDW_CMD_IOCTL_RUN,
 	MDW_CMD_IOCTL_RUN_STALE,
 	MDW_CMD_IOCTL_DEL,
+	MDW_CMD_IOCTL_ENQ,
 };
 
 enum {

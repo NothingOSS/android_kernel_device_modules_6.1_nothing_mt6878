@@ -1086,7 +1086,6 @@ static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 		ret = -EINVAL;
 		goto out;
 	}
-	memset(args, 0, sizeof(*args));
 
 	/* alloc idr */
 	c->id = idr_alloc(&mpriv->cmds, c, MDW_CMD_IDR_MIN, MDW_CMD_IDR_MAX, GFP_KERNEL);
@@ -1094,6 +1093,16 @@ static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 		mdw_drv_err("alloc idr fail(%d)\n", c->id);
 		goto delete_cmd;
 	}
+
+	if (in->op == MDW_CMD_IOCTL_ENQ) {
+		/* return input fence fd (enq no use fence) */
+		memset(args, 0, sizeof(*args));
+		args->out.exec.fence = wait_fd;
+		args->out.exec.id = c->id;
+		goto out;
+	}
+
+	memset(args, 0, sizeof(*args));
 
 exec:
 	mutex_lock(&c->mtx);
@@ -1184,6 +1193,7 @@ int mdw_cmd_ioctl(struct mdw_fpriv *mpriv, void *data)
 	switch (args->in.op) {
 	case MDW_CMD_IOCTL_RUN:
 	case MDW_CMD_IOCTL_RUN_STALE:
+	case MDW_CMD_IOCTL_ENQ:
 		ret = mdw_cmd_ioctl_run(mpriv, args);
 		break;
 	case MDW_CMD_IOCTL_DEL:
