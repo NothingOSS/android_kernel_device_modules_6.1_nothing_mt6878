@@ -2182,6 +2182,7 @@ static void init_dsi_wq(struct mtk_dsi *dsi)
 	atomic_set(&dsi->exit_ulps_done.condition, 0);
 	atomic_set(&dsi->te_rdy.condition, 0);
 	atomic_set(&dsi->frame_done.condition, 0);
+	atomic_set(&dsi->ulps_async, 0);
 }
 
 static void reset_dsi_wq(struct t_condition_wq *wq)
@@ -2204,6 +2205,31 @@ static int wait_dsi_wq(struct t_condition_wq *wq, int timeout)
 	atomic_set(&wq->condition, 0);
 
 	return ret;
+}
+
+static void mtk_dsi_ulps_enter_end(struct mtk_dsi *dsi)
+{
+	/* reset related setting */
+	mtk_dsi_mask(dsi, DSI_INTEN, SLEEPIN_ULPS_DONE_INT_FLAG, 0);
+
+	mtk_mipi_tx_pre_oe_config(dsi->phy, 0);
+	mtk_mipi_tx_sw_control_en(dsi->phy, 1);
+
+	/* set lane num = 0 */
+	mtk_dsi_mask(dsi, DSI_TXRX_CTRL, LANE_NUM, 0);
+
+}
+
+static void mtk_dsi_ulps_exit_end(struct mtk_dsi *dsi)
+{
+	/* reset related setting */
+	mtk_dsi_mask(dsi, DSI_INTEN, SLEEPOUT_DONE_INT_FLAG, 0);
+	mtk_dsi_mask(dsi, DSI_PHY_LD0CON, LDX_ULPM_AS_L0, 0);
+	mtk_dsi_mask(dsi, DSI_MODE_CTRL, SLEEP_MODE, 0);
+	mtk_dsi_mask(dsi, DSI_START, SLEEPOUT_START, 0);
+
+	/* do DSI reset after exit ULPS*/
+	mtk_dsi_reset_engine(dsi);
 }
 
 static unsigned int dsi_underrun_trigger = 1;
@@ -2232,6 +2258,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 	static unsigned int cnt;
 	static unsigned int underrun_cnt;
 	struct mtk_drm_private *priv = NULL;
+	struct drm_crtc *crtc = NULL;
 
 	if (IS_ERR_OR_NULL(dsi))
 		return IRQ_NONE;
@@ -2331,11 +2358,32 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			//DDPPR_ERR("[IRQ] %s: input relay unfinish\n",
 				  //mtk_dump_comp_str(&dsi->ddp_comp));
 
-		if (status & SLEEPOUT_DONE_INT_FLAG)
-			wakeup_dsi_wq(&dsi->exit_ulps_done);
+		if (status & SLEEPOUT_DONE_INT_FLAG) {
+			if (atomic_read(&dsi->ulps_async) == 0) {
+				wakeup_dsi_wq(&dsi->exit_ulps_done);
+			} else {
+				mtk_dsi_ulps_exit_end(dsi);
+				if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
+					mtk_dsi_mask(dsi, DSI_TXRX_CTRL, (EXT_TE_EN | HSTX_CKLP_EN),
+								(EXT_TE_EN | HSTX_CKLP_EN));
+				mtk_dsi_set_mode(dsi);
+				mtk_dsi_clk_hs_mode(dsi, 1);
+				atomic_set(&dsi->ulps_async, 0);
+				crtc = dsi->encoder.crtc;
+				mtk_drm_idlemgr_async_put(crtc, "dsi_ulps");
+			}
+		}
 
-		if (status & SLEEPIN_ULPS_DONE_INT_FLAG)
-			wakeup_dsi_wq(&dsi->enter_ulps_done);
+		if (status & SLEEPIN_ULPS_DONE_INT_FLAG) {
+			if (atomic_read(&dsi->ulps_async) == 0) {
+				wakeup_dsi_wq(&dsi->enter_ulps_done);
+			} else {
+				mtk_dsi_ulps_enter_end(dsi);
+				atomic_set(&dsi->ulps_async, 0);
+				crtc = dsi->encoder.crtc;
+				mtk_drm_idlemgr_async_put(crtc, "dsi_ulps");
+			}
+		}
 
 		if ((status & TE_RDY_INT_FLAG) && mtk_crtc &&
 				(atomic_read(&mtk_crtc->d_te.te_switched) != 1)) {
@@ -2482,7 +2530,16 @@ static void mtk_dsi_poweroff(struct mtk_dsi *dsi)
 	DDPDBG("%s -\n", __func__);
 }
 
-static void mtk_dsi_enter_ulps(struct mtk_dsi *dsi)
+static void mtk_dsi_wait_ulps_event_async(struct mtk_dsi *dsi)
+{
+	struct drm_crtc *crtc = dsi->encoder.crtc;
+
+	atomic_set(&dsi->ulps_async, 1);
+	mtk_drm_idlemgr_async_get(crtc, "dsi_ulps");
+	DDPINFO("%s, trig async ulps ops\n", __func__);
+}
+
+static void mtk_dsi_enter_ulps(struct mtk_dsi *dsi, bool async)
 {
 	unsigned int ret = 0;
 
@@ -2492,45 +2549,43 @@ static void mtk_dsi_enter_ulps(struct mtk_dsi *dsi)
 	mtk_dsi_mask(dsi, DSI_INTEN, SLEEPIN_ULPS_DONE_INT_FLAG,
 		     SLEEPIN_ULPS_DONE_INT_FLAG);
 	mtk_dsi_mask(dsi, DSI_PHY_LCCON, LC_HS_TX_EN, 0);
+
+	if (async == true)
+		mtk_dsi_wait_ulps_event_async(dsi);
+
 	mtk_dsi_mask(dsi, DSI_PHY_LD0CON, LDX_ULPM_AS_L0, LDX_ULPM_AS_L0);
 	mtk_dsi_mask(dsi, DSI_PHY_LD0CON, LD0_ULPM_EN, LD0_ULPM_EN);
 	mtk_dsi_mask(dsi, DSI_PHY_LCCON, LC_ULPM_EN, LC_ULPM_EN);
 
-	/* wait enter_ulps_done */
-	ret = wait_dsi_wq(&dsi->enter_ulps_done, 2 * HZ);
+	if (async == false) {
+		/* wait enter_ulps_done */
+		ret = wait_dsi_wq(&dsi->enter_ulps_done, 2 * HZ);
 
-	if (ret)
-		DDPDBG("%s success\n", __func__);
-	else {
-		/* IRQ maybe be un-expectedly disabled for long time,
-		 * which makes false alarm timeout...
-		 */
-		u32 status = readl(dsi->regs + DSI_INTSTA);
-
-		if (status & SLEEPIN_ULPS_DONE_INT_FLAG)
-			DDPPR_ERR("%s success but IRQ is blocked\n",
-				__func__);
+		if (ret)
+			DDPDBG("%s success\n", __func__);
 		else {
-			mtk_dsi_dump(&dsi->ddp_comp);
-			DDPAEE("%s fail\n", __func__);
+			/* IRQ maybe be un-expectedly disabled for long time,
+			 * which makes false alarm timeout...
+			 */
+			u32 status = readl(dsi->regs + DSI_INTSTA);
+
+			if (status & SLEEPIN_ULPS_DONE_INT_FLAG)
+				DDPPR_ERR("%s success but IRQ is blocked\n",
+					__func__);
+			else {
+				mtk_dsi_dump(&dsi->ddp_comp);
+				DDPAEE("%s fail\n", __func__);
+			}
 		}
+
+		mtk_dsi_ulps_enter_end(dsi);
 	}
-
-	/* reset related setting */
-	mtk_dsi_mask(dsi, DSI_INTEN, SLEEPIN_ULPS_DONE_INT_FLAG, 0);
-
-	mtk_mipi_tx_pre_oe_config(dsi->phy, 0);
-	mtk_mipi_tx_sw_control_en(dsi->phy, 1);
-
-	/* set lane num = 0 */
-	mtk_dsi_mask(dsi, DSI_TXRX_CTRL, LANE_NUM, 0);
-
 }
 
-static void mtk_dsi_exit_ulps(struct mtk_dsi *dsi)
+static void mtk_dsi_exit_ulps(struct mtk_dsi *dsi, bool async)
 {
 	int wake_up_prd = (dsi->data_rate * 1000) / (1024 * 8) + 1;
-	unsigned int ret = 0;
+	int ret = 0;
 
 	mtk_dsi_phy_reset(dsi);
 	/* set pre oe */
@@ -2548,37 +2603,34 @@ static void mtk_dsi_exit_ulps(struct mtk_dsi *dsi)
 	/* free sw control */
 	mtk_mipi_tx_sw_control_en(dsi->phy, 0);
 
+	if (async == true)
+		mtk_dsi_wait_ulps_event_async(dsi);
+
 	mtk_dsi_mask(dsi, DSI_START, SLEEPOUT_START, 0);
 	mtk_dsi_mask(dsi, DSI_START, SLEEPOUT_START, SLEEPOUT_START);
 
-	/* wait exit_ulps_done */
-	ret = wait_dsi_wq(&dsi->exit_ulps_done, 2 * HZ);
-
-	if (ret)
-		DDPDBG("%s success\n", __func__);
-	else {
-		/* IRQ maybe be un-expectedly disabled for long time,
-		 * which makes false alarm timeout...
-		 */
-		u32 status = readl(dsi->regs + DSI_INTSTA);
-
-		if (status & SLEEPOUT_DONE_INT_FLAG)
-			DDPPR_ERR("%s success but IRQ is blocked\n",
-				__func__);
+	if (async == false) {
+		/* wait exit_ulps_done */
+		ret = wait_dsi_wq(&dsi->exit_ulps_done, 2 * HZ);
+		if (ret)
+			DDPDBG("%s success\n", __func__);
 		else {
-			mtk_dsi_dump(&dsi->ddp_comp);
-			DDPAEE("%s fail\n", __func__);
+			/* IRQ maybe be un-expectedly disabled for long time,
+			 * which makes false alarm timeout...
+			 */
+			u32 status = readl(dsi->regs + DSI_INTSTA);
+
+			if (status & SLEEPOUT_DONE_INT_FLAG)
+				DDPPR_ERR("%s success but IRQ is blocked\n",
+					__func__);
+			else {
+				mtk_dsi_dump(&dsi->ddp_comp);
+				DDPAEE("%s fail\n", __func__);
+			}
 		}
+
+		mtk_dsi_ulps_exit_end(dsi);
 	}
-
-	/* reset related setting */
-	mtk_dsi_mask(dsi, DSI_INTEN, SLEEPOUT_DONE_INT_FLAG, 0);
-	mtk_dsi_mask(dsi, DSI_PHY_LD0CON, LDX_ULPM_AS_L0, 0);
-	mtk_dsi_mask(dsi, DSI_MODE_CTRL, SLEEP_MODE, 0);
-	mtk_dsi_mask(dsi, DSI_START, SLEEPOUT_START, 0);
-
-	/* do DSI reset after exit ULPS */
-	mtk_dsi_reset_engine(dsi);
 }
 
 static int mtk_dsi_stop_vdo_mode(struct mtk_dsi *dsi, void *handle);
@@ -2728,7 +2780,7 @@ static int mtk_preconfig_dsi_enable(struct mtk_dsi *dsi)
 
 	mtk_dsi_set_interrupt_enable(dsi);
 
-	mtk_dsi_exit_ulps(dsi);
+	mtk_dsi_exit_ulps(dsi, false);
 	mtk_dsi_clk_hs_mode(dsi, 0);
 
 	return 0;
@@ -3104,7 +3156,7 @@ SKIP_WAIT_FRAME_DONE:
 
 	/* set DSI into ULPS mode */
 	mtk_dsi_reset_engine(dsi);
-	mtk_dsi_enter_ulps(dsi);
+	mtk_dsi_enter_ulps(dsi, false);
 	mtk_dsi_disable(dsi);
 	mtk_dsi_stop(dsi);
 	mtk_dsi_poweroff(dsi);
@@ -3112,7 +3164,7 @@ SKIP_WAIT_FRAME_DONE:
 	if (dsi->slave_dsi) {
 		/* set DSI into ULPS mode */
 		mtk_dsi_reset_engine(dsi->slave_dsi);
-		mtk_dsi_enter_ulps(dsi->slave_dsi);
+		mtk_dsi_enter_ulps(dsi->slave_dsi, false);
 		mtk_dsi_disable(dsi->slave_dsi);
 		mtk_dsi_stop(dsi->slave_dsi);
 		mtk_dsi_poweroff(dsi->slave_dsi);
@@ -4197,6 +4249,9 @@ static void mtk_dsi_ddp_prepare(struct mtk_ddp_comp *comp)
 {
 	struct mtk_dsi *dsi = container_of(comp, struct mtk_dsi, ddp_comp);
 
+	if (atomic_read(&dsi->ulps_async) != 0)
+		DDPINFO("%s: ulps exit not finished yet\n", __func__);
+
 	mtk_dsi_poweron(dsi);
 
 	if (dsi->slave_dsi)
@@ -4206,6 +4261,9 @@ static void mtk_dsi_ddp_prepare(struct mtk_ddp_comp *comp)
 static void mtk_dsi_ddp_unprepare(struct mtk_ddp_comp *comp)
 {
 	struct mtk_dsi *dsi = container_of(comp, struct mtk_dsi, ddp_comp);
+
+	if (atomic_read(&dsi->ulps_async) != 0)
+		DDPINFO("%s: ulps enter not finished yet\n", __func__);
 
 	if (dsi->slave_dsi)
 		mtk_dsi_poweroff(dsi->slave_dsi);
@@ -4373,8 +4431,10 @@ int mtk_dsi_porch_setting(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	return ret;
 }
 
-/* TODO: refactor to remove duplicate code */
-static void mtk_dsi_enter_idle(struct mtk_dsi *dsi, int skip_ulps)
+/* TODO: refactor to remove duplicate code
+ * async is only applied for home screen idle scenario
+ */
+static void mtk_dsi_enter_idle(struct mtk_dsi *dsi, int skip_ulps, bool async)
 {
 	mtk_dsi_poll_for_idle(dsi, NULL);
 
@@ -4386,13 +4446,16 @@ static void mtk_dsi_enter_idle(struct mtk_dsi *dsi, int skip_ulps)
 		mtk_mipi_tx_pre_oe_config(dsi->phy, 1);
 		mtk_mipi_tx_sw_control_en(dsi->phy, 1);
 	} else {
-		mtk_dsi_enter_ulps(dsi);
+		//mtk_drm_trace_begin("ulps enter");
+		mtk_dsi_enter_ulps(dsi, async);
+		//mtk_drm_trace_end();
 	}
 
-	mtk_dsi_poweroff(dsi);
+	if (skip_ulps == true || async == false)
+		mtk_dsi_poweroff(dsi);
 }
 
-static void mtk_dsi_leave_idle(struct mtk_dsi *dsi, int skip_ulps)
+static void mtk_dsi_leave_idle(struct mtk_dsi *dsi, int skip_ulps, bool async)
 {
 	int ret;
 	struct mtk_panel_ext *ext = mtk_dsi_get_panel_ext(&dsi->ddp_comp);
@@ -4434,7 +4497,9 @@ static void mtk_dsi_leave_idle(struct mtk_dsi *dsi, int skip_ulps)
 		mtk_mipi_tx_pre_oe_config(dsi->phy, 0);
 		mtk_mipi_tx_sw_control_en(dsi->phy, 0);
 	} else {
-		mtk_dsi_exit_ulps(dsi);
+		//mtk_drm_trace_begin("ulps exit %d", async);
+		mtk_dsi_exit_ulps(dsi, async);
+		//mtk_drm_trace_end();
 	}
 
 	/*
@@ -4443,12 +4508,13 @@ static void mtk_dsi_leave_idle(struct mtk_dsi *dsi, int skip_ulps)
 	 * after
 	 * lcm initialize.
 	 */
-	if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
-		mtk_dsi_mask(dsi, DSI_TXRX_CTRL, (EXT_TE_EN | HSTX_CKLP_EN),
-							(EXT_TE_EN | HSTX_CKLP_EN));
-
-	mtk_dsi_set_mode(dsi);
-	mtk_dsi_clk_hs_mode(dsi, 1);
+	if (skip_ulps == true || async == false) {
+		if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
+			mtk_dsi_mask(dsi, DSI_TXRX_CTRL, (EXT_TE_EN | HSTX_CKLP_EN),
+								(EXT_TE_EN | HSTX_CKLP_EN));
+		mtk_dsi_set_mode(dsi);
+		mtk_dsi_clk_hs_mode(dsi, 1);
+	}
 }
 
 static void mtk_dsi_clk_change(struct mtk_dsi *dsi, int en)
@@ -6952,9 +7018,9 @@ void mtk_dsi_send_switch_cmd(struct mtk_dsi *dsi,
 	else /* can't find panel ext information,stop */
 		return;
 	if (dsi->slave_dsi)
-		mtk_dsi_enter_idle(dsi->slave_dsi, 0);
+		mtk_dsi_enter_idle(dsi->slave_dsi, 0, false);
 	if (dsi->slave_dsi)
-		mtk_dsi_leave_idle(dsi->slave_dsi, 0);
+		mtk_dsi_leave_idle(dsi->slave_dsi, 0, false);
 
 	for (i = 0; i < MAX_DYN_CMD_NUM; i++) {
 		dfps_cmd = &params->dyn_fps.dfps_cmd_table[i];
@@ -7873,7 +7939,7 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 	clk_cnt  = dsi->clk_refcnt;
 	while (dsi->clk_refcnt != 1)
 		mtk_dsi_ddp_unprepare(&dsi->ddp_comp);
-	mtk_dsi_enter_idle(dsi, 1);
+	mtk_dsi_enter_idle(dsi, 1, false);
 
 	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 2);
 
@@ -7886,7 +7952,7 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 3);
 
 	/* Power on DSI */
-	mtk_dsi_leave_idle(dsi, 1);
+	mtk_dsi_leave_idle(dsi, 1, false);
 	while (dsi->clk_refcnt != clk_cnt)
 		mtk_dsi_ddp_prepare(&dsi->ddp_comp);
 
@@ -8367,7 +8433,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	void **out_params;
 	struct mtk_panel_ext *panel_ext = NULL;
 	struct drm_display_mode **mode;
-	bool *enable;
+	bool *enable, *async;
 	unsigned int vfp_low_power = 0;
 
 	switch (cmd) {
@@ -8412,14 +8478,24 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	}
 		break;
 	case CONNECTOR_ENABLE:
-		mtk_dsi_leave_idle(dsi, 0);
+		async = (bool *)params;
+		mtk_dsi_leave_idle(dsi, 0, *async);
 		if (dsi->slave_dsi)
-			mtk_dsi_leave_idle(dsi->slave_dsi, 0);
+			mtk_dsi_leave_idle(dsi->slave_dsi, 0, *async);
 		break;
 	case CONNECTOR_DISABLE:
-		mtk_dsi_enter_idle(dsi, 0);
+		async = (bool *)params;
+		mtk_dsi_enter_idle(dsi, 0, *async);
 		if (dsi->slave_dsi)
-			mtk_dsi_enter_idle(dsi->slave_dsi, 0);
+			mtk_dsi_enter_idle(dsi->slave_dsi, 0, *async);
+		break;
+	case CONNECTOR_POWEROFF:
+		if (atomic_read(&dsi->ulps_async) != 0)
+			DDPMSG("%s: ulps ongoing before power off\n",
+				__func__);
+		mtk_dsi_poweroff(dsi);
+		if (dsi->slave_dsi)
+			mtk_dsi_poweroff(dsi->slave_dsi);
 		break;
 	case CONNECTOR_RESET:
 		mtk_dsi_reset_engine(dsi);

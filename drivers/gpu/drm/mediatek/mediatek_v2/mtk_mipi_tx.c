@@ -1515,7 +1515,7 @@ static int mtk_mipi_tx_pll_dphy_config_mt6985(struct mtk_mipi_tx *mipi_tx)
 	/* step 1: SDM_RWR_ON / SDM_ISO_EN */
 	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_PWR,
 				FLD_AD_DSI_PLL_SDM_PWR_ON, 1);
-	usleep_range(30, 100);
+	udelay(30);
 	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_PWR,
 				FLD_AD_DSI_PLL_SDM_ISO_EN, 0);
 
@@ -1533,7 +1533,7 @@ static int mtk_mipi_tx_pll_dphy_config_mt6985(struct mtk_mipi_tx *mipi_tx)
 	mtk_mipi_tx_set_bits(mipi_tx, MIPITX_PLL_CON1,
 				   mipi_tx->driver_data->dsi_pll_en);
 
-	usleep_range(50, 100);
+	udelay(50);
 
 	DDPINFO("%s-\n", __func__);
 	return 0;
