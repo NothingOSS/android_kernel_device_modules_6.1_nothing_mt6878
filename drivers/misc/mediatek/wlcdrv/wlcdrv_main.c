@@ -12,6 +12,12 @@
 #include <linux/io.h>
 #include "wlcdrv_ipi.h"
 
+#include <linux/of_address.h>
+#include <linux/of_device.h>
+#include <linux/platform_device.h>
+#include <linux/types.h>
+
+
 #define WLC_CMD_BUFFER_SIZE 256
 struct miscdevice *wlcdrv_device;
 static char cmd_buf[WLC_CMD_BUFFER_SIZE];
@@ -19,40 +25,60 @@ static char cmd_buf[WLC_CMD_BUFFER_SIZE];
 #define MAX_CPU_CORE_NUMBER 8
 #define TEST_PMU_INPUT_SIZE 8
 #define MAX_PMU_ARRAY_SIZE (MAX_CPU_CORE_NUMBER * TEST_PMU_INPUT_SIZE)
-static int g_wlc_latest_send_cmd     = WLCIPI_CMD_DEFAULT;
+static int g_wlc_latest_send_cmd	 = WLCIPI_CMD_DEFAULT;
 
-#define WLC_SHARE_EB_BASE        (0x0003F000)
-#define WLC_SHARE_AP_BASE        (WLC_SHARE_EB_BASE + 0x0C080000)
 
-#define SCENARIO_TYPE_BIT_OFFSET     (0)
-#define LCPUCLUSTER_TYPE_BIT_OFFSET  (8)
-#define MCPUCLUSTER_TYPE_BIT_OFFSET  (16)
-#define BCPUCLUSTER_TYPE_BIT_OFFSET  (24)
+#define SCENARIO_TYPE_BIT_OFFSET	 (0)
+#define LCPUCLUSTER_TYPE_BIT_OFFSET	 (8)
+#define MCPUCLUSTER_TYPE_BIT_OFFSET	 (16)
+#define BCPUCLUSTER_TYPE_BIT_OFFSET	 (24)
 
-#define SCENARIO_TYPE_BITMASK    (0x000000FF << SCENARIO_TYPE_BIT_OFFSET)
+#define SCENARIO_TYPE_BITMASK	 (0x000000FF << SCENARIO_TYPE_BIT_OFFSET)
 #define LCPUCLUSTER_TYPE_BITMASK (0x000000FF << LCPUCLUSTER_TYPE_BIT_OFFSET)
 #define MCPUCLUSTER_TYPE_BITMASK (0x000000FF << MCPUCLUSTER_TYPE_BIT_OFFSET)
 #define BCPUCLUSTER_TYPE_BITMASK (0x000000FF << BCPUCLUSTER_TYPE_BIT_OFFSET)
+
+#define WLC_SRAM_BASE		0x0003f000
+#define AP_VIEW_TCM_BASE	0x0c080000
+#define WLCDRV_SRAM_ADDR	(AP_VIEW_TCM_BASE+WLC_SRAM_BASE)
+#define WLCDRV_SRAM_SIZE	16
+
+#define WLCDRV_SRAM_OFFSET_DBG_CNT 4
+
+static void __iomem *wl_type_io_addr_mapped;
+static int g_wl_support;
+static int g_wl_type_addr;
+static int g_wl_sram_addr_sz;
+static int g_wl_type_addr_mapped;
 
 /******************************************************************************
  * WLC driver Procfs file operations
  *****************************************************************************/
 static int _wlc_proc_show(struct seq_file *m, void *v)
 {
+	int value = -1;
+
+	seq_puts(m, "=== wlc status ===\n");
+	seq_printf(m, "Enable:%d\n", g_wl_support);
+	seq_printf(m, "sram addr:0x%x, sz:%d\n", g_wl_type_addr, g_wl_sram_addr_sz);
+	seq_printf(m, "sram addr_mapped:0x%x\n", g_wl_type_addr_mapped);
+	seq_printf(m, "sram io_mapped:0x%lx\n",	 (unsigned long)wl_type_io_addr_mapped);
+
+	seq_printf(m, "curr ctrl cmd: 0x%x\n", g_wlc_latest_send_cmd);
+	value = ioread32(wl_type_io_addr_mapped + 0);
+	seq_printf(m, "inf scenario: 0x%x\n", value);
+
+	value = ioread32(wl_type_io_addr_mapped + WLCDRV_SRAM_OFFSET_DBG_CNT);
+	seq_printf(m, "sram inf count: 0x%x\n", value);
+
+	seq_puts(m, "=== wlc status ===\n\n");
+
 	return 0;
 }
-
 
 static int _wlc_proc_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, _wlc_proc_show, NULL);
-}
-
-
-static ssize_t _wlc_proc_read(struct file *file, char __user *buf, size_t len,
-			   loff_t *ppos)
-{
-	return 0;
 }
 
 static ssize_t _wlc_proc_write(struct file *fp, const char __user *userbuf,
@@ -83,103 +109,12 @@ static ssize_t _wlc_proc_write(struct file *fp, const char __user *userbuf,
 
 static const struct proc_ops _wlc_proc_fops = {
 	.proc_open = _wlc_proc_open,
-	.proc_read  = _wlc_proc_read,
 	.proc_write = _wlc_proc_write,
-	.proc_lseek   = seq_lseek,
+	.proc_read	= seq_read,
+	.proc_lseek	  = seq_lseek,
 	.proc_release = single_release,
 };
 
-
-/******************************************************************************
- * WLC driver Procfs file operations
- *****************************************************************************/
-static int _wlc_proc_param_show(struct seq_file *m, void *v)
-{
-	return 0;
-}
-
-
-static int _wlc_proc_param_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, _wlc_proc_param_show, NULL);
-}
-
-
-static ssize_t _wlc_proc_param_read(struct file *file, char __user *buf, size_t len,
-			   loff_t *ppos)
-{
-	uint32_t counts = 0;
-
-	return counts;
-}
-
-static ssize_t _wlc_proc_param_write(struct file *fp, const char __user *userbuf,
-				 size_t count, loff_t *f_pos)
-{
-	return count;
-}
-
-
-static int _wlc_proc_wlctype_show(struct seq_file *m, void *v)
-{
-	return 0;
-}
-
-
-static int _wlc_proc_wlctype_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, _wlc_proc_wlctype_show, NULL);
-}
-
-
-static ssize_t _wlc_proc_wlctype_read(struct file *file, char __user *buf, size_t len,
-			   loff_t *ppos)
-{
-	return 0;
-}
-
-static ssize_t _wlc_proc_wlctype_write(struct file *fp, const char __user *userbuf,
-				 size_t count, loff_t *f_pos)
-{
-	int ret;
-	int force_type = 0;
-	size_t length = count;
-	char *cmd_str;
-
-	if (length > WLC_CMD_BUFFER_SIZE)
-		length = WLC_CMD_BUFFER_SIZE;
-	ret = length;
-
-	if (copy_from_user(&cmd_buf, userbuf, length))
-		return -EFAULT;
-
-	cmd_buf[length] = '\0';
-	cmd_str = &cmd_buf[0];
-
-	if (kstrtouint(cmd_str, 10, &force_type))
-		pr_info("%s Failed to get %s wl type number\n", __func__, cmd_str);
-
-	return count;
-}
-
-
-static const struct proc_ops _wlc_proc_param_fops = {
-	.proc_open  = _wlc_proc_param_open,
-	.proc_read  = _wlc_proc_param_read,
-	.proc_write = _wlc_proc_param_write,
-	.proc_lseek   = seq_lseek,
-	.proc_release = single_release,
-};
-
-
-
-static const struct proc_ops _wlc_proc_wlctype_fops = {
-	.proc_open  = _wlc_proc_wlctype_open,
-	.proc_read  = _wlc_proc_wlctype_read,
-	.proc_write = _wlc_proc_wlctype_write,
-	.proc_lseek   = seq_lseek,
-	.proc_release = single_release,
-};
 
 /******************************************************************************
  * WLC driver Debugfs file operations
@@ -226,19 +161,25 @@ static ssize_t _wlcdrv_write(struct file *filp, const char __user *ubuf,
 
 
 static const struct file_operations _wlcdrv_debugfs_file_fops = {
-	.open   = _wlcdrv_open,
+	.open	= _wlcdrv_open,
 	.release = _wlcdrv_release,
-	.write  = _wlcdrv_write,
-	.read   = _wlcdrv_read,
+	.write	= _wlcdrv_write,
+	.read	= _wlcdrv_read,
 	.llseek = seq_lseek,
 	.release = single_release,
 };
+
 
 
 /* -------------------------- */
 static int wlcdrv_probe(void)
 {
 	int ret;
+	struct device_node *wl_node;
+	int wl_support = 0;
+	int wl_type_addr = 0;
+	int wl_sram_addr_sz = 0;
+	int wl_type_addr_mapped = 0;
 	/* Create debugfs */
 	struct proc_dir_entry *procfs_wlc_dir = NULL;
 
@@ -250,12 +191,6 @@ static int wlcdrv_probe(void)
 
 	if (!proc_create("cmd", 0664, procfs_wlc_dir, &_wlc_proc_fops))
 		pr_info("@%s: create /proc/wlcdrv/cmd failed\n", __func__);
-
-	if (!proc_create("parameters", 0664, procfs_wlc_dir, &_wlc_proc_param_fops))
-		pr_info("@%s: create /proc/wlcdrv/parameters failed\n", __func__);
-
-	if (!proc_create("wltype", 0664, procfs_wlc_dir, &_wlc_proc_wlctype_fops))
-		pr_info("@%s: create /proc/wlcdrv/wltype failed\n", __func__);
 
 	wlcdrv_device = kzalloc(sizeof(*wlcdrv_device), GFP_KERNEL);
 	if (!wlcdrv_device)
@@ -274,8 +209,37 @@ static int wlcdrv_probe(void)
 
 	dev_set_drvdata(wlcdrv_device->this_device, procfs_wlc_dir);
 
-	pr_info("[WLCDrv]Init the IPI from TinySys to mcupm\n");
+	pr_info("[WLCDrv]Init the IPI from tinysys to mcupm\n");
 	wlc_ipi_to_mcupm_init();
+
+	wl_node = of_find_node_by_name(NULL, "wl-info");
+	if (wl_node == NULL) {
+		pr_info("failed to find node wl-info @ %s\n", __func__);
+		return -ENODEV;
+	}
+
+	ret = of_property_read_u32(wl_node, "wl-support", &wl_support);
+	if (ret < 0)
+		pr_info("no wl-support found in wl-info node: %s\n",  __func__);
+
+	ret = of_property_read_u32(wl_node, "wl-type-sram", &wl_type_addr);
+	if (ret < 0)
+		pr_info("no wl-type-sram found in wl-info node %s\n",  __func__);
+
+	ret = of_property_read_u32(wl_node, "wl-sram-size", &wl_sram_addr_sz);
+	if (ret < 0)
+		pr_info("no wl-type-sram found in wl-info node %s\n",  __func__);
+
+	wl_type_addr_mapped = wl_type_addr + AP_VIEW_TCM_BASE;
+	wl_type_io_addr_mapped = ioremap(wl_type_addr_mapped, WLCDRV_SRAM_SIZE);
+
+	g_wl_support = wl_support;
+	g_wl_type_addr = wl_type_addr;
+	g_wl_sram_addr_sz = wl_sram_addr_sz;
+	g_wl_type_addr_mapped = wl_type_addr_mapped;
+	pr_info("[wl-info dts]enable:%d\n", wl_support);
+	pr_info("[wl-info sram:0x%x, sz:0x%x\n", wl_type_addr, wl_sram_addr_sz);
+	pr_info("[wl-info io_mapped:0x%lx\n", (unsigned long)wl_type_io_addr_mapped);
 
 	return 0;
 }
@@ -285,6 +249,9 @@ static int wlcdrv_remove(void)
 {
 	misc_deregister(wlcdrv_device);
 	kfree(wlcdrv_device);
+
+	if (wl_type_io_addr_mapped)
+		iounmap(wl_type_io_addr_mapped);
 
 	return 0;
 }
