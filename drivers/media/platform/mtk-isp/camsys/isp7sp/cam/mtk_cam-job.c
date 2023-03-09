@@ -876,7 +876,7 @@ _stream_on(struct mtk_cam_job *job, bool on)
 	if (job->stream_on_seninf) {
 		int exp_num;
 
-		exp_num = job->job_scen.scen.normal.max_exp_num;
+		exp_num = scen_max_exp_num(&job->job_scen);
 		ctx_stream_on_seninf_sensor(job->src_ctx, on,
 					    exp_num, raw_tg_idx);
 	}
@@ -2084,8 +2084,8 @@ _job_pack_m2m(struct mtk_cam_job *job,
 	struct mtk_cam_scen *prev_scen =
 		&job->src_ctx->ctldata_stored.resource.user_data.raw_res.scen;
 
-	job->exp_num_cur = get_hw_offline_exp_num(&job->job_scen);
-	job->exp_num_prev = get_hw_offline_exp_num(prev_scen);
+	job->exp_num_cur = scen_exp_num(&job->job_scen);
+	job->exp_num_prev = scen_exp_num(prev_scen);
 	job->hardware_scenario = get_hw_scenario(job);
 	job->sw_feature = is_vhdr(job) ?
 		MTKCAM_IPI_SW_FEATURE_VHDR : MTKCAM_IPI_SW_FEATURE_NORMAL;

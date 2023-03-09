@@ -151,34 +151,56 @@ int get_hw_scenario(struct mtk_cam_job *job)
 	return hard_scenario;
 }
 
-int get_hw_offline_exp_num(struct mtk_cam_scen *scen)
+int scen_exp_num(struct mtk_cam_scen *scen)
 {
-	int exp = 0;
+	int exp = 1;
 
 	switch (scen->id) {
+	case MTK_CAM_SCEN_NORMAL:
 	case MTK_CAM_SCEN_ODT_NORMAL:
 	case MTK_CAM_SCEN_M2M_NORMAL:
 		exp = scen->scen.normal.exp_num;
 		break;
+	case MTK_CAM_SCEN_MSTREAM:
 	case MTK_CAM_SCEN_ODT_MSTREAM:
-		{
-			switch (scen->scen.mstream.type) {
-			case MTK_CAM_MSTREAM_NE_SE:
-			case MTK_CAM_MSTREAM_SE_NE:
-				exp = 2;
-				break;
-			case MTK_CAM_MSTREAM_1_EXPOSURE:
-				exp = 1;
-				break;
-			default:
-				break;
-			}
+		switch (scen->scen.mstream.type) {
+		case MTK_CAM_MSTREAM_NE_SE:
+		case MTK_CAM_MSTREAM_SE_NE:
+			exp = 2;
+			break;
+		case MTK_CAM_MSTREAM_1_EXPOSURE:
+			exp = 1;
+			break;
+		default:
+			break;
 		}
 		break;
+	//case MTK_CAM_SCEN_SMVR:
 	default:
 		break;
 	}
 
+	return exp;
+}
+
+int scen_max_exp_num(struct mtk_cam_scen *scen)
+{
+	int exp = 1;
+
+	switch (scen->id) {
+	case MTK_CAM_SCEN_NORMAL:
+	case MTK_CAM_SCEN_ODT_NORMAL:
+	case MTK_CAM_SCEN_M2M_NORMAL:
+		exp = scen->scen.normal.max_exp_num;
+		break;
+	case MTK_CAM_SCEN_MSTREAM:
+	case MTK_CAM_SCEN_ODT_MSTREAM:
+		exp = 2;
+		break;
+	//case MTK_CAM_SCEN_SMVR:
+	default:
+		break;
+	}
 	return exp;
 }
 

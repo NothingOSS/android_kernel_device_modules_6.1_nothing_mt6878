@@ -94,7 +94,8 @@ struct pack_job_ops_helper {
 void _set_timestamp(struct mtk_cam_job *job,
 	u64 time_boot, u64 time_mono);
 
-int get_hw_offline_exp_num(struct mtk_cam_scen *scen);
+int scen_exp_num(struct mtk_cam_scen *scen);
+int scen_max_exp_num(struct mtk_cam_scen *scen);
 int get_subsample_ratio(struct mtk_cam_scen *scen);
 u64 infer_i2c_deadline_ns(struct mtk_cam_scen *scen, u64 frame_interval_ns);
 

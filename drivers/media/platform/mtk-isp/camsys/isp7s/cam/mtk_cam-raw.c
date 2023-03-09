@@ -489,6 +489,7 @@ bool is_dma_idle(struct mtk_raw_device *dev)
 			CAMRAWDMATOP_DC_DBG_CHASING_STATUS_UFDI_R3) == 0)
 		SET_FIELD(&raw_rst_stat, CAMRAWDMATOP_UFDI_R3_SOFT_RST_STAT, 1);
 
+#ifdef NOT_EXIST
 	if (READ_FIELD(raw_rst_stat2,
 			CAMRAWDMATOP_RAWI_R4_SOFT_RST_STAT) == 0 &&
 		READ_FIELD(chasing_stat2,
@@ -500,6 +501,7 @@ bool is_dma_idle(struct mtk_raw_device *dev)
 		READ_FIELD(chasing_stat2,
 			CAMRAWDMATOP_DC_DBG_CHASING_STATUS2_UFDI_R4) == 0)
 		SET_FIELD(&raw_rst_stat2, CAMRAWDMATOP_UFDI_R4_SOFT_RST_STAT, 1);
+#endif /* NOT_EXIST */
 
 	if (READ_FIELD(raw_rst_stat,
 			CAMRAWDMATOP_RAWI_R5_SOFT_RST_STAT) == 0 &&
