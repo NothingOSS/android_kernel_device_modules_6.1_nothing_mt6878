@@ -306,7 +306,7 @@ void mhal_DPTx_SPKG_VSC_EXT_CEA(struct mtk_dp *mtk_dp, bool bEnable,
 BYTE mhal_DPTx_GetHPDIRQStatus(struct mtk_dp *mtk_dp);
 void mhal_DPTx_Audio_PG_EN(struct mtk_dp *mtk_dp, BYTE Channel, BYTE Fs,
 	BYTE bEnable);
-void mhal_DPTx_Audio_PG_EN(struct mtk_dp *mtk_dp, BYTE Channel, BYTE Fs,
+void mhal_DPTx_Audio_TDM_PG_EN(struct mtk_dp *mtk_dp, BYTE Channel, BYTE Fs,
 	BYTE bEnable);
 WORD mhal_DPTx_GetSWIRQStatus(struct mtk_dp *mtk_dp);
 void mhal_DPTx_Audio_Ch_Status_Set(struct mtk_dp *mtk_dp, BYTE Channel,

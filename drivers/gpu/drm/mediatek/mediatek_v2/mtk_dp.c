@@ -155,7 +155,7 @@ int dptx_uevent_dev_register(struct notify_dev *sdev)
 		ret = create_switch_class();
 
 		if (ret == 0)
-			DPTXMSG("create_switch_class susesess\n");
+			DPTXMSG("create_switch_class success\n");
 		else {
 			DPTXERR("create_switch_class fail\n");
 			return ret;
@@ -216,6 +216,20 @@ int notify_uevent_user(struct notify_dev *sdev, int state)
 	kobject_uevent_env(&sdev->dev->kobj, KOBJ_CHANGE, envp);
 
 	return 0;
+}
+
+void dptx_dump_reg(void)
+{
+	mhal_dump_reg(g_mtk_dp);
+}
+
+void dptx_write_reg(u32 offset, u32 val)
+{
+	u32 value = 0;
+
+	mtk_dp_write(g_mtk_dp, offset, val);
+	value = mtk_dp_read(g_mtk_dp, offset);
+	DPTXMSG("addr = 0x%x, value = 0x%x\n", offset, value);
 }
 
 bool mdrv_DPTx_AuxWrite_Bytes(struct mtk_dp *mtk_dp, u8 ubCmd,
@@ -2369,6 +2383,11 @@ int mdrv_DPTx_Handle(struct mtk_dp *mtk_dp)
 		break;
 
 	case DPTXSTATE_PREPARE:
+		DPTXMSG("bPatternGen %d, video_enable %d\n",
+			mtk_dp->info.bPatternGen, mtk_dp->video_enable);
+		DPTXMSG("audio_enable %d, info.audio_caps %d\n",
+			mtk_dp->audio_enable, mtk_dp->info.audio_caps);
+
 		if (mtk_dp->info.bPatternGen) {
 			mtk_dp->video_enable = true;
 			mtk_dp->info.input_src = DPTX_SRC_PG;
@@ -2635,7 +2654,11 @@ void mdrv_DPTx_I2S_Audio_Config(struct mtk_dp *mtk_dp)
 	mdrv_DPTx_I2S_Audio_Ch_Status_Set(mtk_dp, ucChannel,
 		ucFs, ucWordlength);
 
-	mhal_DPTx_Audio_PG_EN(mtk_dp, ucChannel, ucFs, false);
+	if (g_mtk_dp->priv->data->mmsys_id != MMSYS_MT6897)
+		mhal_DPTx_Audio_PG_EN(mtk_dp, ucChannel, ucFs, false);
+	else
+		mhal_DPTx_Audio_TDM_PG_EN(mtk_dp, ucChannel, ucFs, false);//DPTX audio for TDM
+
 	mdrv_DPTx_I2S_Audio_Set_MDiv(mtk_dp, 4);
 }
 
@@ -3955,8 +3978,6 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 	}
 
 	DPTXMSG("%s, status:%d[2:DISCONNECT, 4:CONNECT, 8:IRQ] Power:%d, uevent=%d\n",
-		__func__, bstatus, g_mtk_dp->bPowerOn, g_mtk_dp->bUeventToHwc);
-	DDPFUNC("%s, status:%d[2:DISCONNECT, 4:CONNECT, 8:IRQ] Power:%d, uevent=%d\n",
 		__func__, bstatus, g_mtk_dp->bPowerOn, g_mtk_dp->bUeventToHwc);
 
 	if ((bstatus == HPD_CONNECT && !g_mtk_dp->bPowerOn)

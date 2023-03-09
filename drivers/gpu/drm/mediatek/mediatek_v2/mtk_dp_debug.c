@@ -6,6 +6,7 @@
 #include "mtk_dp_debug.h"
 #include "mtk_dp.h"
 #include "mtk_dp_api.h"
+#include "mtk_dp_hal.h"
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 #include <linux/debugfs.h>
 #endif
@@ -132,9 +133,9 @@ void mtk_dp_debug(const char *opt)
 			mtk_dp_hdcp_enable(false);
 	} else if (strncmp(opt, "adjust_phy:", 11) == 0) {
 		int ret = 0;
-		uint8_t index, c0, cp1;
+		int index, c0, cp1;
 
-		ret = sscanf(opt, "adjust_phy:%c,%c,%c\n", &index, &c0, &cp1);
+		ret = sscanf(opt, "adjust_phy:%d,%d,%d\n", &index, &c0, &cp1);
 		if (ret != 3) {
 			DPTXERR("ret = %d\n", ret);
 			return;
@@ -147,9 +148,9 @@ void mtk_dp_debug(const char *opt)
 		mtk_dp_SWInterruptSet(4);
 	} else if (strncmp(opt, "pattern:", 8) == 0) {
 		int ret = 0;
-		uint8_t enable, resolution;
+		int enable, resolution;
 
-		ret = sscanf(opt, "pattern:%c,%c\n", &enable, &resolution);
+		ret = sscanf(opt, "pattern:%d,%d\n", &enable, &resolution);
 		if (ret != 2) {
 			DPTXMSG("ret = %d\n", ret);
 			return;
@@ -160,9 +161,9 @@ void mtk_dp_debug(const char *opt)
 		mdrv_DPTx_PatternSet(enable, resolution);
 	} else if (strncmp(opt, "maxlinkrate:", 12) == 0) {
 		int ret = 0;
-		uint8_t enable, maxlinkrate;
+		int enable, maxlinkrate;
 
-		ret = sscanf(opt, "maxlinkrate:%c,%c\n", &enable, &maxlinkrate);
+		ret = sscanf(opt, "maxlinkrate:%d,%d\n", &enable, &maxlinkrate);
 		if (ret != 2) {
 			DPTXMSG("ret = %d\n", ret);
 			return;
@@ -173,9 +174,9 @@ void mtk_dp_debug(const char *opt)
 		mdrv_DPTx_set_maxlinkrate(enable, maxlinkrate);
 	} else if (strncmp(opt, "max2lane:", 9) == 0) {
 		int ret = 0;
-		uint8_t enable;
+		int enable;
 
-		ret = sscanf(opt, "max2lane:%c\n", &enable);
+		ret = sscanf(opt, "max2lane:%d\n", &enable);
 		if (ret != 1) {
 			DPTXMSG("ret = %d\n", ret);
 			return;
@@ -188,15 +189,28 @@ void mtk_dp_debug(const char *opt)
 		unsigned int clksrc;
 		unsigned int con1;
 
-		ret = sscanf(opt, "video_clock:%d,%d\n", &clksrc, &con1);
+		ret = sscanf(opt, "video_clock:%x,%x\n", &clksrc, &con1);
 		if (ret != 2) {
 			DPTXERR("ret = %d\n", ret);
 			return;
 		}
 		mtk_dp_clock_debug(clksrc, con1);
+	} else if (strncmp(opt, "dump:", 5) == 0) {
+		dptx_dump_reg();
+	} else if (strncmp(opt, "write_reg:", 10) == 0) {
+		unsigned int offset, value;
+		int ret = 0;
+
+		ret = sscanf(opt, "write_reg:%x,%x\n", &offset, &value);
+		if (ret != 2) {
+			DPTXMSG("ret = %d\n", ret);
+			return;
+		}
+		dptx_write_reg(offset, value);
 	}
 
 }
+
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 static struct dentry *mtkdp_dbgfs;

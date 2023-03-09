@@ -2013,7 +2013,10 @@ void mtk_crtc_prepare_dual_pipe(struct mtk_drm_crtc *mtk_crtc)
 			//to do: dp in 6983 4k60 can use merge, only 8k30 must use dsc
 			if ((drm_crtc_index(&mtk_crtc->base) == 1) &&
 				(drm_mode_vrefresh(&crtc->state->adjusted_mode) == 30)) {
-				comp = priv->ddp_comp[DDP_COMPONENT_MERGE1];
+				if (priv->data->mmsys_id == MMSYS_MT6985)
+					comp = priv->ddp_comp[DDP_COMPONENT_MERGE1];
+				else
+					comp = priv->ddp_comp[DDP_COMPONENT_MERGE0];
 				if (mtk_crtc->dual_pipe_ddp_ctx.ovl_comp_nr[i] &&
 						j < mtk_crtc->dual_pipe_ddp_ctx.ovl_comp_nr[i]) {
 					mtk_crtc->dual_pipe_ddp_ctx.ovl_comp[i][j] = comp;

@@ -1831,6 +1831,19 @@
 #define AUDIO_SAMPLE_PRSENT_REGEN_DP_ENCODER1_P0_FLDMASK_POS              12
 #define AUDIO_SAMPLE_PRSENT_REGEN_DP_ENCODER1_P0_FLDMASK_LEN              1
 
+#define REG_331C_DP_ENCODER1_P0              (0x331C)
+#define TDM_AUDIO_DATA_EN_DP_ENCODER1_P0_FLDMASK                          0x1
+#define TDM_AUDIO_DATA_EN_DP_ENCODER1_P0_FLDMASK_POS                      0
+#define TDM_AUDIO_DATA_EN_DP_ENCODER1_P0_FLDMASK_LEN                      1
+
+#define TDM_AUDIO_RST_DP_ENCODER1_P0_FLDMASK                              0x2
+#define TDM_AUDIO_RST_DP_ENCODER1_P0_FLDMASK_POS                          1
+#define TDM_AUDIO_RST_DP_ENCODER1_P0_FLDMASK_LEN                          1
+
+#define TDM_AUDIO_DATA_CH_NUM_DP_ENCODER1_P0_FLDMASK                      0x70
+#define TDM_AUDIO_DATA_CH_NUM_DP_ENCODER1_P0_FLDMASK_POS                  4
+#define TDM_AUDIO_DATA_CH_NUM_DP_ENCODER1_P0_FLDMASK_LEN                  3
+
 #define REG_3320_DP_ENCODER1_P0              (0x3320)
 #define AUDIO_PATTERN_GEN_DSTB_CNT_THRD_DP_ENCODER1_P0_FLDMASK            0x1ff
 #define AUDIO_PATTERN_GEN_DSTB_CNT_THRD_DP_ENCODER1_P0_FLDMASK_POS        0

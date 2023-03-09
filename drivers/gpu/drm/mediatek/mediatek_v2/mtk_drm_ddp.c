@@ -16602,9 +16602,8 @@ static void mtk_ddp_ext_remove_dual_pipe_MT6897(struct mtk_drm_crtc *mtk_crtc,
 	void __iomem *config_regs = mtk_crtc->config_regs;
 	void __iomem *side_config_regs = mtk_crtc->side_config_regs;
 
-	DDPFUNC();
 
-	/* DDP_COMPONENT_COMP1_OUT_CB4 -> DDP_COMPONENT_MERGE1_OUT_CB1 */
+	/* DDP_COMPONENT_COMP1_OUT_CB4 -> DDP_COMPONENT_MERGE0_OUT_CB1 */
 	addr = MT6897_COMP_OUT_CROSSBAR4_MOUT_EN;
 	value = 0;
 	writel_relaxed(value, side_config_regs + addr);
@@ -16615,18 +16614,18 @@ static void mtk_ddp_ext_remove_dual_pipe_MT6897(struct mtk_drm_crtc *mtk_crtc,
 	writel_relaxed(value, side_config_regs + addr);
 
 	//DISPSYS0
-	/* DDP_COMPONENT_DLI_ASYNC5 -> DISP_PANEL_COMP_OUT_CROSSBAR4_TO_MERGE1_1 */
+	/* DDP_COMPONENT_DLI_ASYNC5 -> DISP_PANEL_COMP_OUT_CROSSBAR4_TO_MERGE0_1 */
 	addr = MT6897_COMP_OUT_CROSSBAR6_MOUT_EN;
 	value = 0;
 	writel_relaxed(value, config_regs + addr);
 
-	/* DDP_COMPONENT_COMP0_OUT_CB4 -> DISP_PANEL_COMP_OUT_CROSSBAR4_TO_MERGE1_0 */
+	/* DDP_COMPONENT_COMP0_OUT_CB4 -> DISP_PANEL_COMP_OUT_CROSSBAR4_TO_MERGE0_0 */
 	addr = MT6897_COMP_OUT_CROSSBAR4_MOUT_EN;
 	value = 0;
 	writel_relaxed(value, config_regs + addr);
 
-	/* DDP_COMPONENT_MERGE1 -> DDP_COMPONENT_DP_INTF0 */
-	addr = MT6897_MERGE_OUT_CROSSBAR6_MOUT_EN;
+	/* DDP_COMPONENT_MERGE0 -> DDP_COMPONENT_DP_INTF0 */
+	addr = MT6897_MERGE_OUT_CROSSBAR4_MOUT_EN;
 	value = 0;
 	writel_relaxed(value, config_regs + addr);
 
@@ -16634,6 +16633,7 @@ static void mtk_ddp_ext_remove_dual_pipe_MT6897(struct mtk_drm_crtc *mtk_crtc,
 	value = 0;
 	writel_relaxed(value, config_regs + addr);
 }
+
 
 static void mtk_ddp_ext_insert_dual_pipe_MT6897(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_disp_mutex *mutex)
@@ -16643,21 +16643,20 @@ static void mtk_ddp_ext_insert_dual_pipe_MT6897(struct mtk_drm_crtc *mtk_crtc,
 	void __iomem *side_config_regs = mtk_crtc->side_config_regs;
 	void __iomem *ovlsys1_regs = mtk_crtc->ovlsys1_regs;
 
-	DDPFUNC();
 	//DISPSYS0
-	/* DDP_COMPONENT_DLI_ASYNC5 -> DISP_PANEL_COMP_OUT_CROSSBAR4_TO_MERGE1_1 */
+	/* DDP_COMPONENT_DLI_ASYNC5 -> DISP_PANEL_COMP_OUT_CROSSBAR4_TO_MERGE0_1 */
 	addr = MT6897_COMP_OUT_CROSSBAR6_MOUT_EN;
-	value = DISP_DLI_RELAY5_TO_MERGE1_1;
+	value = DISP_DLI_RELAY5_TO_MERGE0_1;
 	writel_relaxed(value, config_regs + addr);
 
-	/* DDP_COMPONENT_COMP0_OUT_CB4 -> DISP_PANEL_COMP_OUT_CROSSBAR4_TO_MERGE1_0 */
+	/* DDP_COMPONENT_COMP0_OUT_CB4 -> DISP_PANEL_COMP_OUT_CROSSBAR4_TO_MERGE0_0 */
 	addr = MT6897_COMP_OUT_CROSSBAR4_MOUT_EN;
-	value = DISP_PANEL_COMP_OUT_CROSSBAR4_TO_MERGE1_0;
+	value = DISP_PANEL_COMP_OUT_CROSSBAR4_TO_MERGE0_0;
 	writel_relaxed(value, config_regs + addr);
 
 	/* DDP_COMPONENT_MERGE1 -> DDP_COMPONENT_DP_INTF0 */
-	addr = MT6897_MERGE_OUT_CROSSBAR6_MOUT_EN;
-	value = DISP_MERGE1_1_TO_DP_INTF0;
+	addr = MT6897_MERGE_OUT_CROSSBAR4_MOUT_EN;
+	value = DISP_MERGE0_0_TO_DP_INTF0;
 	writel_relaxed(value, config_regs + addr);
 
 	/* clear DDP_COMPONENT_MERGE0_OUT_CB1 -> DDP_COMPONENT_DP_INTF0 */
@@ -16674,6 +16673,7 @@ static void mtk_ddp_ext_insert_dual_pipe_MT6897(struct mtk_drm_crtc *mtk_crtc,
 	reg = readl_relaxed(ovlsys1_regs + addr) | 0xFF0001;
 	writel_relaxed(reg, ovlsys1_regs + addr);
 }
+
 
 unsigned int mtk_ddp_ovl_resource_list(struct mtk_drm_private *priv, unsigned int **ovl_list)
 {

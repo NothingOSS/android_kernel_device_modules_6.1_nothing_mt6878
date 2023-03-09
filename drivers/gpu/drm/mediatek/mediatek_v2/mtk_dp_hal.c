@@ -104,6 +104,16 @@ void mhal_dump_reg(struct mtk_dp *mtk_dp)
 		DPTXMSG("aux reg[0x%x] = 0x%x 0x%x 0x%x 0x%x",
 			reg, val[0], val[1], val[2], val[3]);
 	}
+
+	for (i = 0x0; i < 0x400; i += 16) {
+		reg = 0x1100 + i;
+		val[0] = msRead4Byte(mtk_dp, reg);
+		val[1] = msRead4Byte(mtk_dp, reg + 4);
+		val[2] = msRead4Byte(mtk_dp, reg + 8);
+		val[3] = msRead4Byte(mtk_dp, reg + 12);
+		DPTXMSG("aux reg[0x%x] = 0x%x 0x%x 0x%x 0x%x",
+			reg, val[0], val[1], val[2], val[3]);
+	}
 }
 
 void mhal_DPTx_Verify_Clock(struct mtk_dp *mtk_dp)
@@ -474,7 +484,11 @@ void mhal_DPTx_SetTU_SetEncoder(struct mtk_dp *mtk_dp)
 	msWrite2ByteMask(mtk_dp, REG_3364_DP_ENCODER1_P0, 0x2020, 0x0FFF);
 	msWriteByteMask(mtk_dp, REG_3300_DP_ENCODER1_P0 + 1, 0x02, BIT(1)|BIT(0));
 	msWriteByteMask(mtk_dp, REG_3364_DP_ENCODER1_P0 + 1, 0x40, 0x70);
-	msWrite2Byte(mtk_dp, REG_3368_DP_ENCODER1_P0, 0x1111);
+	msWrite2Byte(mtk_dp, REG_3368_DP_ENCODER1_P0,
+		(0x4 << BS2BS_MODE_DP_ENCODER1_P0_FLDMASK_POS) |
+		(0x1 << SDP_DP13_EN_DP_ENCODER1_P0_FLDMASK_POS) |
+		(0x1 << VIDEO_STABLE_CNT_THRD_DP_ENCODER1_P0_FLDMASK_POS) |
+		(0x1 << VIDEO_SRAM_FIFO_CNT_RESET_SEL_DP_ENCODER1_P0_FLDMASK_POS));
 }
 
 void mhal_DPTx_PGEnable(struct mtk_dp *mtk_dp, bool bENABLE)
@@ -976,6 +990,187 @@ void mhal_DPTx_Audio_PG_EN(struct mtk_dp *mtk_dp, BYTE Channel,
 	//enable audio reset
 	msWriteByteMask(mtk_dp, REG_33F4_DP_ENCODER1_P0, BIT(0), BIT(0));
 
+	// enable audio sample arrange
+	mhal_DPTx_audio_sample_arrange(mtk_dp, TRUE);
+}
+
+void mhal_DPTx_Audio_TDM_PG_EN(struct mtk_dp *mtk_dp, BYTE Channel,
+	BYTE Fs, BYTE bEnable)
+{
+	DPTXMSG("TDM_PG_EN enable = %d\n", bEnable);
+	if (bEnable) {
+		msWrite2ByteMask(mtk_dp, REG_3088_DP_ENCODER0_P0,
+				 AU_GEN_EN_DP_ENCODER0_P0_FLDMASK,
+				 AU_GEN_EN_DP_ENCODER0_P0_FLDMASK);
+
+		//[9 : 8] set 0x3 : PG	mtk_dp
+		msWrite2ByteMask(mtk_dp, REG_3324_DP_ENCODER1_P0,
+				0x3 << AUDIO_SOURCE_MUX_DP_ENCODER1_P0_FLDMASK_POS,
+				AUDIO_SOURCE_MUX_DP_ENCODER1_P0_FLDMASK);
+		msWrite2ByteMask(mtk_dp, REG_331C_DP_ENCODER1_P0,
+				0x0, TDM_AUDIO_DATA_EN_DP_ENCODER1_P0_FLDMASK);
+	}
+
+	else {
+		msWrite2ByteMask(mtk_dp, REG_3088_DP_ENCODER0_P0,
+				 0, AU_GEN_EN_DP_ENCODER0_P0_FLDMASK);
+		//[ 9 : 8] set 0x0 : dprx, for Source project, it means for front-end audio
+		//[10 : 8] set 0x4 : TDM after (include) Posnot
+		msWrite2ByteMask(mtk_dp, REG_3324_DP_ENCODER1_P0,
+				0x4 << AUDIO_SOURCE_MUX_DP_ENCODER1_P0_FLDMASK_POS
+				, AUDIO_SOURCE_MUX_DP_ENCODER1_P0_FLDMASK);
+		//[0]: TDM to DPTX transfer enable
+		msWrite2ByteMask(mtk_dp, REG_331C_DP_ENCODER1_P0,
+				TDM_AUDIO_DATA_EN_DP_ENCODER1_P0_FLDMASK,
+				TDM_AUDIO_DATA_EN_DP_ENCODER1_P0_FLDMASK);
+	}
+
+	msWriteByteMask(mtk_dp, REG_33F4_DP_ENCODER1_P0, 0, BIT(0));
+
+	DPTXMSG("fs = %d, ch = %d\n", Fs, Channel);
+
+	//audio channel count change reset
+	msWriteByteMask(mtk_dp, (REG_33F4_DP_ENCODER1_P0 + 1), BIT(1), BIT(1));
+
+	msWrite2ByteMask(mtk_dp, REG_3304_DP_ENCODER1_P0,
+			 AU_PRTY_REGEN_DP_ENCODER1_P0_FLDMASK,
+			 AU_PRTY_REGEN_DP_ENCODER1_P0_FLDMASK);
+	msWrite2ByteMask(mtk_dp, REG_3304_DP_ENCODER1_P0,
+			 AU_CH_STS_REGEN_DP_ENCODER1_P0_FLDMASK,
+			 AU_CH_STS_REGEN_DP_ENCODER1_P0_FLDMASK);
+	msWrite2ByteMask(mtk_dp, REG_3304_DP_ENCODER1_P0,
+			 AUDIO_SAMPLE_PRSENT_REGEN_DP_ENCODER1_P0_FLDMASK,
+			 AUDIO_SAMPLE_PRSENT_REGEN_DP_ENCODER1_P0_FLDMASK);
+	msWrite2ByteMask(mtk_dp, REG_3088_DP_ENCODER0_P0,
+			 AUDIO_2CH_SEL_DP_ENCODER0_P0_FLDMASK,
+			 AUDIO_2CH_SEL_DP_ENCODER0_P0_FLDMASK);
+	msWrite2ByteMask(mtk_dp, REG_3088_DP_ENCODER0_P0,
+			 AUDIO_MN_GEN_EN_DP_ENCODER0_P0_FLDMASK,
+			 AUDIO_MN_GEN_EN_DP_ENCODER0_P0_FLDMASK);
+	msWrite2ByteMask(mtk_dp, REG_3088_DP_ENCODER0_P0,
+			 AUDIO_8CH_SEL_DP_ENCODER0_P0_FLDMASK,
+			 AUDIO_8CH_SEL_DP_ENCODER0_P0_FLDMASK);
+	msWrite2ByteMask(mtk_dp, REG_3088_DP_ENCODER0_P0,
+			 AU_EN_DP_ENCODER0_P0_FLDMASK,
+			 AU_EN_DP_ENCODER0_P0_FLDMASK);
+
+	if (!bEnable) {
+		msWrite2ByteMask(mtk_dp, REG_3040_DP_ENCODER0_P0,
+			AUDIO_16CH_SEL_DP_ENCODER0_P0_FLDMASK,
+			AUDIO_16CH_SEL_DP_ENCODER0_P0_FLDMASK);
+		msWrite2ByteMask(mtk_dp, REG_3040_DP_ENCODER0_P0,
+			AUDIO_32CH_SEL_DP_ENCODER0_P0_FLDMASK,
+			AUDIO_32CH_SEL_DP_ENCODER0_P0_FLDMASK);
+	}
+
+	switch (Fs) {
+	case FS_44K:
+		msWrite2ByteMask(mtk_dp, REG_3324_DP_ENCODER1_P0,
+				 (0x0 << AUDIO_PATGEN_FS_SEL_DP_ENCODER1_P0_FLDMASK_POS),
+				 AUDIO_PATTERN_GEN_FS_SEL_DP_ENCODER1_P0_FLDMASK);
+		break;
+
+	case FS_48K:
+		msWrite2ByteMask(mtk_dp, REG_3324_DP_ENCODER1_P0,
+				 (0x1 << AUDIO_PATGEN_FS_SEL_DP_ENCODER1_P0_FLDMASK_POS),
+				 AUDIO_PATTERN_GEN_FS_SEL_DP_ENCODER1_P0_FLDMASK);
+		break;
+
+	case FS_192K:
+		msWrite2ByteMask(mtk_dp, REG_3324_DP_ENCODER1_P0,
+				 (0x2 << AUDIO_PATGEN_FS_SEL_DP_ENCODER1_P0_FLDMASK_POS),
+				 AUDIO_PATTERN_GEN_FS_SEL_DP_ENCODER1_P0_FLDMASK);
+		break;
+
+	default:
+		msWrite2ByteMask(mtk_dp, REG_3324_DP_ENCODER1_P0,
+				 (0x0 << AUDIO_PATGEN_FS_SEL_DP_ENCODER1_P0_FLDMASK_POS),
+				 AUDIO_PATTERN_GEN_FS_SEL_DP_ENCODER1_P0_FLDMASK);
+		break;
+	}
+
+	msWrite2ByteMask(mtk_dp, REG_3088_DP_ENCODER0_P0, 0, AUDIO_2CH_EN_DP_ENCODER0_P0_FLDMASK);
+	msWrite2ByteMask(mtk_dp, REG_3088_DP_ENCODER0_P0, 0, AUDIO_8CH_EN_DP_ENCODER0_P0_FLDMASK);
+
+	if (!bEnable) {
+		msWrite2ByteMask(mtk_dp, REG_3040_DP_ENCODER0_P0, 0,
+			AUDIO_16CH_EN_DP_ENCODER0_P0_FLDMASK);
+		msWrite2ByteMask(mtk_dp, REG_3040_DP_ENCODER0_P0, 0,
+			AUDIO_32CH_EN_DP_ENCODER0_P0_FLDMASK);
+	}
+	switch (Channel) {
+	case 2:
+		msWrite2ByteMask(mtk_dp, REG_3324_DP_ENCODER1_P0,
+				 (0x0 << AUDIO_PATGEN_CH_NUM_DP_ENCODER1_P0_FLDMASK_POS),
+				 AUDIO_PATTERN_GEN_CH_NUM_DP_ENCODER1_P0_FLDMASK);
+		msWrite2ByteMask(mtk_dp, REG_3088_DP_ENCODER0_P0,
+				(0x1 << AUDIO_2CH_EN_DP_ENCODER0_P0_FLDMASK_POS),
+				AUDIO_2CH_EN_DP_ENCODER0_P0_FLDMASK);
+		if (!bEnable)	//TDM audio interface, audio channel number, 1: 2ch
+			msWrite2ByteMask(mtk_dp, REG_331C_DP_ENCODER1_P0,
+				(0x1 << TDM_AUDIO_DATA_CH_NUM_DP_ENCODER1_P0_FLDMASK_POS),
+				TDM_AUDIO_DATA_CH_NUM_DP_ENCODER1_P0_FLDMASK);
+		break;
+
+	case 8:
+		msWrite2ByteMask(mtk_dp, REG_3324_DP_ENCODER1_P0,
+				 (0x1 << AUDIO_PATGEN_CH_NUM_DP_ENCODER1_P0_FLDMASK_POS),
+				 AUDIO_PATTERN_GEN_CH_NUM_DP_ENCODER1_P0_FLDMASK);
+		msWrite2ByteMask(mtk_dp, REG_3088_DP_ENCODER0_P0,
+				 (0x1 << AUDIO_8CH_EN_DP_ENCODER0_P0_FLDMASK_POS),
+				 AUDIO_8CH_EN_DP_ENCODER0_P0_FLDMASK);
+		if (!bEnable)	//TDM audio interface, audio channel number, 7: 8ch
+			msWrite2ByteMask(mtk_dp, REG_331C_DP_ENCODER1_P0,
+				(0x7 << TDM_AUDIO_DATA_CH_NUM_DP_ENCODER1_P0_FLDMASK_POS),
+				TDM_AUDIO_DATA_CH_NUM_DP_ENCODER1_P0_FLDMASK);
+		break;
+
+	case 16:
+		msWrite2ByteMask(mtk_dp, REG_3324_DP_ENCODER1_P0,
+				 (0x2 << AUDIO_PATGEN_CH_NUM_DP_ENCODER1_P0_FLDMASK_POS),
+				 AUDIO_PATTERN_GEN_CH_NUM_DP_ENCODER1_P0_FLDMASK);
+		if (!bEnable)
+			msWrite2ByteMask(mtk_dp, REG_3040_DP_ENCODER0_P0,
+				(0x1 << AUDIO_16CH_EN_DP_ENCODER0_P0_FLDMASK_POS),
+				AUDIO_16CH_EN_DP_ENCODER0_P0_FLDMASK);
+		break;
+
+	case 32:
+		msWrite2ByteMask(mtk_dp, REG_3324_DP_ENCODER1_P0,
+				 (0x3 << AUDIO_PATGEN_CH_NUM_DP_ENCODER1_P0_FLDMASK_POS),
+				 AUDIO_PATTERN_GEN_CH_NUM_DP_ENCODER1_P0_FLDMASK);
+		if (!bEnable)
+			msWrite2ByteMask(mtk_dp, REG_3040_DP_ENCODER0_P0,
+				(0x1 << AUDIO_32CH_EN_DP_ENCODER0_P0_FLDMASK_POS),
+				AUDIO_32CH_EN_DP_ENCODER0_P0_FLDMASK);
+		break;
+
+	default:
+		msWrite2ByteMask(mtk_dp, REG_3324_DP_ENCODER1_P0,
+				 (0x0 << AUDIO_PATGEN_CH_NUM_DP_ENCODER1_P0_FLDMASK_POS),
+				 AUDIO_PATTERN_GEN_CH_NUM_DP_ENCODER1_P0_FLDMASK);
+		if (!bEnable) {
+			msWrite2ByteMask(mtk_dp, REG_3088_DP_ENCODER0_P0,
+				(0x1 << AUDIO_2CH_EN_DP_ENCODER0_P0_FLDMASK_POS),
+				AUDIO_2CH_EN_DP_ENCODER0_P0_FLDMASK);
+			//TDM audio interface, audio channel number, 1: 2ch
+			msWrite2ByteMask(mtk_dp, REG_331C_DP_ENCODER1_P0,
+				(0x1 << TDM_AUDIO_DATA_CH_NUM_DP_ENCODER1_P0_FLDMASK_POS),
+				TDM_AUDIO_DATA_CH_NUM_DP_ENCODER1_P0_FLDMASK);
+			}
+		break;
+	}
+	if (!bEnable) {
+		//TDM to DPTX reset [1]
+		msWriteByteMask(mtk_dp, (REG_331C_DP_ENCODER1_P0),
+				TDM_AUDIO_RST_DP_ENCODER1_P0_FLDMASK,
+				TDM_AUDIO_RST_DP_ENCODER1_P0_FLDMASK);
+		udelay(5);
+		msWriteByteMask(mtk_dp, (REG_331C_DP_ENCODER1_P0),
+				0x0, TDM_AUDIO_RST_DP_ENCODER1_P0_FLDMASK);
+	}
+	//audio channel count change reset
+	msWriteByteMask(mtk_dp, (REG_33F4_DP_ENCODER1_P0 + 1), 0, BIT(1));
 	// enable audio sample arrange
 	mhal_DPTx_audio_sample_arrange(mtk_dp, TRUE);
 }

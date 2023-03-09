@@ -290,4 +290,6 @@ unsigned int mtk_de_get_clksrc(void);
 unsigned int mtk_de_get_con1(void);
 void mtk_dp_vsvoter_set(struct mtk_dp *mtk_dp);
 void mtk_dp_vsvoter_clr(struct mtk_dp *mtk_dp);
+void dptx_dump_reg(void);
+void dptx_write_reg(u32 offset, u32 val);
 #endif //__MTK_DP__H__

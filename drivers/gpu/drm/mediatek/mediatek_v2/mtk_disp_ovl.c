@@ -1046,6 +1046,9 @@ static void mtk_ovl_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 			comp->regs_pa + DISP_REG_OVL_INTEN, 0, ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_EN,
 		       0x0, 0x1);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			   comp->regs_pa + DISP_REG_OVL_DATAPATH_CON,
+			   0, DISP_OVL_BGCLR_IN_SEL);
 
 	mtk_ovl_all_layer_off(comp, handle, 0);
 

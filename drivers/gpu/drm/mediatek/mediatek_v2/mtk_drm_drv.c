@@ -2330,7 +2330,27 @@ static const enum mtk_ddp_comp_id mt6897_mtk_ddp_dual_main[] = {
 };
 
 static const enum mtk_ddp_comp_id mt6897_mtk_ddp_ext_dp[] = {
-	DDP_COMPONENT_OVLSYS_WDMA2,
+	DDP_COMPONENT_OVL2_2L,
+	DDP_COMPONENT_OVLSYS_DLO_ASYNC5,
+	DDP_COMPONENT_DLI_ASYNC2,
+	DDP_COMPONENT_PQ0_OUT_CB4,
+	DDP_COMPONENT_PANEL0_COMP_OUT_CB2,
+	DDP_COMPONENT_COMP0_OUT_CB4,
+	DDP_COMPONENT_MERGE0_OUT_CB1,
+	DDP_COMPONENT_DP_INTF0,
+};
+
+static const enum mtk_ddp_comp_id mt6897_mtk_ddp_dual_ext_dp[] = {
+	DDP_COMPONENT_OVL6_2L,
+	DDP_COMPONENT_OVLSYS_DLO_ASYNC12,
+	DDP_COMPONENT_DLI_ASYNC8,
+	DDP_COMPONENT_PQ1_OUT_CB4,
+	DDP_COMPONENT_PANEL1_COMP_OUT_CB2,
+	DDP_COMPONENT_COMP1_OUT_CB4,
+	DDP_COMPONENT_MERGE1_OUT_CB1,
+	DDP_COMPONENT_DLO_ASYNC3,
+	DDP_COMPONENT_DLI_ASYNC5,
+	DDP_COMPONENT_MERGE0,
 };
 
 static const enum mtk_ddp_comp_id mt6897_mtk_ddp_third[] = {
@@ -4147,6 +4167,8 @@ static const struct mtk_crtc_path_data mt6897_mtk_ext_path_data = {
 	.path[DDP_MAJOR][0] = mt6897_mtk_ddp_ext_dp,
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6897_mtk_ddp_ext_dp),
 	.path_req_hrt[DDP_MAJOR][0] = true,
+	.dual_path[0] = mt6897_mtk_ddp_dual_ext_dp,
+	.dual_path_len[0] = ARRAY_SIZE(mt6897_mtk_ddp_dual_ext_dp),
 	.addon_data = mt6897_addon_ext,
 };
 
@@ -7131,8 +7153,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DP_INTF},
 	{.compatible = "mediatek,mt6985-dp-intf",
 	 .data = (void *)MTK_DP_INTF},
-	//{.compatible = "mediatek,mt6897-dp-intf",
-	// .data = (void *)MTK_DP_INTF},
+	{.compatible = "mediatek,mt6897-dp-intf",
+	 .data = (void *)MTK_DP_INTF},
 	{.compatible = "mediatek,mt6895-dp-intf",
 	 .data = (void *)MTK_DP_INTF},
 	{.compatible = "mediatek,mt6873-dsi",
@@ -7325,8 +7347,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_MERGE},
 	{.compatible = "mediatek,mt6985-disp-merge",
 	 .data = (void *)MTK_DISP_MERGE},
-	//{.compatible = "mediatek,mt6897-disp-merge",
-	// .data = (void *)MTK_DISP_MERGE},
+	{.compatible = "mediatek,mt6897-disp-merge",
+	 .data = (void *)MTK_DISP_MERGE},
 	{.compatible = "mediatek,mt6895-disp-merge",
 	 .data = (void *)MTK_DISP_MERGE},
 	{.compatible = "mediatek,mt6885-dp_tx",
@@ -7336,6 +7358,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	{.compatible = "mediatek,mt6985-dp_tx",
 	 .data = (void *)MTK_DISP_DPTX},
 	{.compatible = "mediatek,mt6895-dp_tx",
+	 .data = (void *)MTK_DISP_DPTX},
+	{.compatible = "mediatek,mt6897-dp_tx",
 	 .data = (void *)MTK_DISP_DPTX},
 	{.compatible = "mediatek,mt6885-dmdp-aal",
 	 .data = (void *)MTK_DMDP_AAL},

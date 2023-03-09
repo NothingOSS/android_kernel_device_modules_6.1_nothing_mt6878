@@ -85,6 +85,7 @@
 #define DP_CHKSUM7						0x0120
 #define DP_BUF_CON0						0x0210
     #define BUF_BUF_EN						BIT(0)
+    #define BUF_BUF_FIFO_UNDERFLOW_DONT_BLOCK	BIT(4)
 #define DP_BUF_CON1						0x0214
 #define DP_BUF_RW_TIMES					0x0220
 #define DP_PATTERN_CTRL0				0x0F00
@@ -126,6 +127,13 @@ enum TVDPLL_CLK {
 	TVDPLL_D4 = 2,
 	TVDPLL_D8 = 3,
 	TVDPLL_D16 = 4,
+};
+
+enum MT6897_TVDPLL_CLK {
+	MT6897_TCK_26M = 0,
+	MT6897_TVDPLL_D4 = 1,
+	MT6897_TVDPLL_D8 = 2,
+	MT6897_TVDPLL_D16 = 3,
 };
 
 static const struct mtk_dp_intf_resolution_cfg mt6895_resolution_cfg[SINK_MAX] = {
@@ -317,6 +325,69 @@ static const struct mtk_dp_intf_resolution_cfg mt6985_resolution_cfg[SINK_MAX] =
 				},
 };
 
+static const struct mtk_dp_intf_resolution_cfg mt6897_resolution_cfg[SINK_MAX] = {
+	[SINK_640_480] = {
+					.clksrc = MT6897_TVDPLL_D16,
+					.con1 = 0x840F81F8
+				},
+	[SINK_800_600] = {
+					.clksrc = 0,
+					.con1 = 0
+				},
+	[SINK_1280_720] = {
+					.clksrc = MT6897_TVDPLL_D8,
+					.con1 = 0x8416DFB4
+				},
+	[SINK_1280_960] = {
+					.clksrc = 0,
+					.con1 = 0
+				},
+	[SINK_1280_1024] = {
+					.clksrc = 0,
+					.con1 = 0
+				},
+	[SINK_1920_1080] = {
+					.clksrc = MT6897_TVDPLL_D16,
+					.con1 = 0x8216D89D
+				},
+	[SINK_1920_1080_120] = {
+					.clksrc = MT6897_TVDPLL_D8,
+					.con1 = 0x8216D89D
+				},
+	[SINK_1080_2460] = {
+					.clksrc = MT6897_TVDPLL_D16,
+					.con1 = 0x821AC941
+				},
+	[SINK_1920_1200] = {
+					.clksrc = MT6897_TVDPLL_D16,
+					.con1 = 0x8217B645
+				},
+	[SINK_1920_1440] = {
+					.clksrc = 0,
+					.con1 = 0
+				},
+	[SINK_2560_1440] = {
+					.clksrc = MT6897_TVDPLL_D8,
+					.con1 = 0x821293B1
+				},
+	[SINK_2560_1600] = {
+					.clksrc = MT6897_TVDPLL_D8,
+					.con1 = 0x8214A762
+				},
+	[SINK_3840_2160_30] = {
+					.clksrc = MT6897_TVDPLL_D8,
+					.con1 = 0x8216D89D
+				},
+	[SINK_3840_2160] = {
+					.clksrc = MT6897_TVDPLL_D4,
+					.con1 = 0x8216D89D
+				}, //htotal = 1500  //con1 = 0x83109D89; //htotal = 1600
+	[SINK_7680_4320] = {
+					.clksrc = 0,
+					.con1 = 0
+				},
+};
+
 struct mtk_dp_intf_video_clock {
 	char	compatible[128];
 	const struct mtk_dp_intf_resolution_cfg *resolution_cfg;
@@ -345,11 +416,19 @@ static const struct mtk_dp_intf_video_clock mt6985_dp_intf_video_clock = {
 	.con1_reg = 0x24C
 };
 
+static const struct mtk_dp_intf_video_clock mt6897_dp_intf_video_clock = {
+	.compatible = "mediatek,mt6897-apmixedsys",
+	.resolution_cfg = mt6897_resolution_cfg,
+	.con0_reg = 0x248,
+	.con1_reg = 0x24C
+};
+
 struct mtk_dp_intf_driver_data {
 	const u32 reg_cmdq_ofs;
 	s32 (*poll_for_idle)(struct mtk_dp_intf *dp_intf,
 		struct cmdq_pkt *handle);
 	irqreturn_t (*irq_handler)(int irq, void *dev_id);
+	void (*get_pll_clk)(struct mtk_dp_intf *dp_intf);
 	const struct mtk_dp_intf_video_clock *video_clock_cfg;
 };
 
@@ -462,6 +541,11 @@ static void mtk_dp_intf_start(struct mtk_ddp_comp *comp,
 			 INT_VDE_EN | INT_VSYNC_EN), handle);
 
 #endif
+	//mtk_ddp_write_mask(comp, DP_PATTERN_EN,
+	//	DP_PATTERN_CTRL0, DP_PATTERN_EN, handle);
+	//mtk_ddp_write_mask(comp, DP_PATTERN_COLOR_BAR,
+	//	DP_PATTERN_CTRL0, DP_PATTERN_COLOR_BAR, handle);
+
 	mtk_ddp_write_mask(comp, DP_CONTROLLER_EN,
 		DP_EN, DP_CONTROLLER_EN, handle);
 
@@ -771,6 +855,8 @@ static void mtk_dp_intf_config(struct mtk_ddp_comp *comp,
 			DP_BUF_RW_TIMES, handle);
 	mtk_ddp_write_mask(comp, BUF_BUF_EN,
 			DP_BUF_CON0, BUF_BUF_EN, handle);
+	mtk_ddp_write_mask(comp, BUF_BUF_FIFO_UNDERFLOW_DONT_BLOCK,
+			DP_BUF_CON0, BUF_BUF_FIFO_UNDERFLOW_DONT_BLOCK, handle);
 
 	DPTXMSG("%s config done\n",
 			mtk_dump_comp_str(comp));
@@ -923,7 +1009,6 @@ unsigned long long mtk_dpintf_get_frame_hrt_bw_base(
 
 	if (dp_intf_bw != bw_base) {
 		dp_intf_bw = bw_base;
-		DDPDBG("%s Frame Bw:%llu, bpp:%d\n", __func__, bw_base, bpp);
 		DPTXMSG("%s Frame Bw:%llu, bpp:%d\n", __func__, bw_base, bpp);
 	}
 	return bw_base;
@@ -1043,13 +1128,6 @@ static int mtk_dp_intf_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	dp_intf->pclk = devm_clk_get(dev, "MUX_DP");
-	///dp_intf->pclk_src[0] = devm_clk_get(dev, "TVDPLL_D2");
-	dp_intf->pclk_src[1] = devm_clk_get(dev, "TVDPLL_D2");
-	dp_intf->pclk_src[2] = devm_clk_get(dev, "TVDPLL_D4");
-	dp_intf->pclk_src[3] = devm_clk_get(dev, "TVDPLL_D8");
-	dp_intf->pclk_src[4] = devm_clk_get(dev, "TVDPLL_D16");
-
 	if (clk_apmixed_base == NULL) {
 		node = of_find_compatible_node(NULL, NULL,
 			dp_intf->driver_data->video_clock_cfg->compatible);
@@ -1063,12 +1141,22 @@ static int mtk_dp_intf_probe(struct platform_device *pdev)
 			(unsigned long)clk_apmixed_base);
 	}
 
-	if (IS_ERR(dp_intf->pclk)
-		|| IS_ERR(dp_intf->pclk_src[0])
-		|| IS_ERR(dp_intf->pclk_src[1])
-		|| IS_ERR(dp_intf->pclk_src[2])
-		|| IS_ERR(dp_intf->pclk_src[3]))
-		dev_err(dev, "Failed to get pclk andr src clock !!!\n");
+	if (dp_intf->driver_data->get_pll_clk)
+		dp_intf->driver_data->get_pll_clk(dp_intf);
+	else {
+		dp_intf->pclk = devm_clk_get(dev, "MUX_DP");
+		dp_intf->pclk_src[1] = devm_clk_get(dev, "TVDPLL_D2");
+		dp_intf->pclk_src[2] = devm_clk_get(dev, "TVDPLL_D4");
+		dp_intf->pclk_src[3] = devm_clk_get(dev, "TVDPLL_D8");
+		dp_intf->pclk_src[4] = devm_clk_get(dev, "TVDPLL_D16");
+		if (IS_ERR(dp_intf->pclk)
+			|| IS_ERR(dp_intf->pclk_src[0])
+			|| IS_ERR(dp_intf->pclk_src[1])
+			|| IS_ERR(dp_intf->pclk_src[2])
+			|| IS_ERR(dp_intf->pclk_src[3])
+			|| IS_ERR(dp_intf->pclk_src[4]))
+			dev_err(dev, "Failed to get pclk andr src clock !!!\n");
+	}
 
 	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DP_INTF);
 	if ((int)comp_id < 0) {
@@ -1133,6 +1221,36 @@ static s32 mtk_dp_intf_poll_for_idle(struct mtk_dp_intf *dp_intf,
 	return 0;
 }
 
+static void mtk_dp_intf_get_pll_clk(struct mtk_dp_intf *dp_intf)
+{
+	dp_intf->pclk = devm_clk_get(dp_intf->dev, "MUX_DP");
+	dp_intf->pclk_src[1] = devm_clk_get(dp_intf->dev, "TVDPLL_D2");
+	dp_intf->pclk_src[2] = devm_clk_get(dp_intf->dev, "TVDPLL_D4");
+	dp_intf->pclk_src[3] = devm_clk_get(dp_intf->dev, "TVDPLL_D8");
+	dp_intf->pclk_src[4] = devm_clk_get(dp_intf->dev, "TVDPLL_D16");
+	if (IS_ERR(dp_intf->pclk)
+		|| IS_ERR(dp_intf->pclk_src[0])
+		|| IS_ERR(dp_intf->pclk_src[1])
+		|| IS_ERR(dp_intf->pclk_src[2])
+		|| IS_ERR(dp_intf->pclk_src[3])
+		|| IS_ERR(dp_intf->pclk_src[4]))
+		dev_err(dp_intf->dev, "Failed to get pclk andr src clock !!!\n");
+}
+
+static void mtk_dp_intf_mt6897_get_pll_clk(struct mtk_dp_intf *dp_intf)
+{
+	dp_intf->pclk = devm_clk_get(dp_intf->dev, "MUX_DP");
+	dp_intf->pclk_src[1] = devm_clk_get(dp_intf->dev, "TVDPLL_D4");
+	dp_intf->pclk_src[2] = devm_clk_get(dp_intf->dev, "TVDPLL_D8");
+	dp_intf->pclk_src[3] = devm_clk_get(dp_intf->dev, "TVDPLL_D16");
+	if (IS_ERR(dp_intf->pclk)
+		|| IS_ERR(dp_intf->pclk_src[0])
+		|| IS_ERR(dp_intf->pclk_src[1])
+		|| IS_ERR(dp_intf->pclk_src[2])
+		|| IS_ERR(dp_intf->pclk_src[3]))
+		dev_err(dp_intf->dev, "Failed to get pclk andr src clock !!!\n");
+}
+
 static irqreturn_t mtk_dp_intf_irq_status(int irq, void *dev_id)
 {
 	struct mtk_dp_intf *dp_intf = dev_id;
@@ -1181,6 +1299,7 @@ static const struct mtk_dp_intf_driver_data mt6885_dp_intf_driver_data = {
 	.poll_for_idle = mtk_dp_intf_poll_for_idle,
 	.irq_handler = mtk_dp_intf_irq_status,
 	.video_clock_cfg = &mt6983_dp_intf_video_clock,
+	.get_pll_clk = mtk_dp_intf_get_pll_clk,
 };
 
 static const struct mtk_dp_intf_driver_data mt6895_dp_intf_driver_data = {
@@ -1188,6 +1307,7 @@ static const struct mtk_dp_intf_driver_data mt6895_dp_intf_driver_data = {
 	.poll_for_idle = mtk_dp_intf_poll_for_idle,
 	.irq_handler = mtk_dp_intf_irq_status,
 	.video_clock_cfg = &mt6895_dp_intf_video_clock,
+	.get_pll_clk = mtk_dp_intf_get_pll_clk,
 };
 
 static const struct mtk_dp_intf_driver_data mt6985_dp_intf_driver_data = {
@@ -1195,6 +1315,15 @@ static const struct mtk_dp_intf_driver_data mt6985_dp_intf_driver_data = {
 	.poll_for_idle = mtk_dp_intf_poll_for_idle,
 	.irq_handler = mtk_dp_intf_irq_status,
 	.video_clock_cfg = &mt6985_dp_intf_video_clock,
+	.get_pll_clk = mtk_dp_intf_get_pll_clk,
+};
+
+static const struct mtk_dp_intf_driver_data mt6897_dp_intf_driver_data = {
+	.reg_cmdq_ofs = 0x200,
+	.poll_for_idle = mtk_dp_intf_poll_for_idle,
+	.irq_handler = mtk_dp_intf_irq_status,
+	.video_clock_cfg = &mt6897_dp_intf_video_clock,
+	.get_pll_clk = mtk_dp_intf_mt6897_get_pll_clk,
 };
 
 static const struct of_device_id mtk_dp_intf_driver_dt_match[] = {
@@ -1204,8 +1333,11 @@ static const struct of_device_id mtk_dp_intf_driver_dt_match[] = {
 	.data = &mt6895_dp_intf_driver_data},
 	{ .compatible = "mediatek,mt6985-dp-intf",
 	.data = &mt6985_dp_intf_driver_data},
+	{ .compatible = "mediatek,mt6897-dp-intf",
+	.data = &mt6897_dp_intf_driver_data},
 	{},
 };
+
 MODULE_DEVICE_TABLE(of, mtk_dp_intf_driver_dt_match);
 
 struct platform_driver mtk_dp_intf_driver = {
