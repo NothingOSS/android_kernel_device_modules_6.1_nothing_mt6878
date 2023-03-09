@@ -47,6 +47,7 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_HW_MTCMOS_EN_MD_P0		BIT(0)
 #define PEXTP_RSV_1			0x64
 #define PCIE_HW_MTCMOS_EN_MD_P1		BIT(0)
+#define PCIE_MSI_SEL			0x304
 
 #define PEXTP_SW_RST			0x4
 #define PEXTP_SW_RST_SET_OFFSET		0x8
@@ -186,15 +187,18 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_PHY_CKM			0x11110000
 #define XTP_CKM_DA_REG_3C		0x3C
 #define RG_CKM_PADCK_REQ		GENMASK(13, 12)
+#define PCIE_P1_PHY_OFFSET		0x20000
 
 /* vlpcfg register */
 #define PCIE_VLPCFG_BASE		0x1C00C000
 #define PCIE_VLP_AXI_PROTECT_STA	0x240
-#define PCIE_MAC0_SLP_READY_MASK	BIT(11)
-#define PCIE_PHY0_SLP_READY_MASK	BIT(13)
 #define PCIE_MAC_SLP_READY_MASK(port)	BIT(11 - port)
 #define PCIE_PHY_SLP_READY_MASK(port)	BIT(13 - port)
+#define PCIE_SUM_SLP_READY(port) \
+	(PCIE_MAC_SLP_READY_MASK(port) | PCIE_PHY_SLP_READY_MASK(port))
 #define SRCLKEN_RC_REQ_STA		0x1130
+
+#define MTK_PCIE_MAX_PORT		2
 
 enum mtk_pcie_suspend_link_state {
 	LINK_STATE_L12 = 0,
@@ -260,6 +264,7 @@ struct mtk_pcie_port {
 	u32 suspend_mode;
 	bool dvfs_req_en;
 	bool peri_reset_en;
+	bool soft_off;
 	int irq;
 	u32 saved_irq_state;
 	raw_spinlock_t irq_lock;
@@ -273,6 +278,8 @@ struct mtk_pcie_port {
 	bool rc_hw_mode_en;
 	DECLARE_BITMAP(msi_irq_in_use, PCIE_MSI_IRQS_NUM);
 };
+
+static struct platform_device *pdev_list[MTK_PCIE_MAX_PORT];
 
 /**
  * mtk_pcie_config_tlp_header() - Configure a configuration TLP header
@@ -397,14 +404,24 @@ static void mtk_pcie_enable_msi(struct mtk_pcie_port *port)
 	writel_relaxed(val, port->base + PCIE_INT_ENABLE_REG);
 }
 
-static void __maybe_unused mtk_pcie_mt6985_fixup(void)
+static void mtk_pcie_mt6985_phy_fixup(struct mtk_pcie_port *port)
 {
 	void __iomem *pcie_phy_sif;
 	void __iomem *pcie_phy_ckm;
 	u32 val;
+	u32 phy_sif_base, phy_ckm_base;
 
-	pcie_phy_sif = ioremap(PCIE_PHY_SIF, 0x100);
-	pcie_phy_ckm = ioremap(PCIE_PHY_CKM, 0x100);
+	if (port->port_num == 0) {
+		phy_sif_base = PCIE_PHY_SIF;
+		phy_ckm_base = PCIE_PHY_CKM;
+	}
+	if (port->port_num == 1) {
+		phy_sif_base = PCIE_PHY_SIF + PCIE_P1_PHY_OFFSET;
+		phy_ckm_base = PCIE_PHY_CKM + PCIE_P1_PHY_OFFSET;
+	}
+
+	pcie_phy_sif = ioremap(phy_sif_base, 0x100);
+	pcie_phy_ckm = ioremap(phy_ckm_base, 0x100);
 
 	val = readl(pcie_phy_sif + PEXTP_DIG_GLB_28);
 	val |= RG_XTP_PHY_CLKREQ_N_IN;
@@ -418,7 +435,7 @@ static void __maybe_unused mtk_pcie_mt6985_fixup(void)
 	val |= RG_CKM_PADCK_REQ;
 	writel(val, pcie_phy_ckm + XTP_CKM_DA_REG_3C);
 
-	pr_info("PHY GLB_28=%#x, GLB_50=%#x, CKM_3C=%#x\n",
+	dev_info(port->dev, "PHY GLB_28=%#x, GLB_50=%#x, CKM_3C=%#x\n",
 		readl(pcie_phy_sif + PEXTP_DIG_GLB_28),
 		readl(pcie_phy_sif + PEXTP_DIG_GLB_50),
 		readl(pcie_phy_ckm + XTP_CKM_DA_REG_3C));
@@ -448,20 +465,32 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 
 	if (port->pextpcfg) {
 		spin_lock_init(&port->vote_lock);
+		port->vlpcfg_base = devm_ioremap(port->dev, PCIE_VLPCFG_BASE, 0x2000);
 
-		port->vlpcfg_base = ioremap(PCIE_VLPCFG_BASE, 0x2000);
-		port->ep_hw_mode_en = false;
-		port->rc_hw_mode_en = false;
+		/* Just port0 enter L12 when suspend */
+		if (port->port_num == 0) {
+			port->ep_hw_mode_en = false;
+			port->rc_hw_mode_en = false;
+		}
 
+		if (port->port_num == 1) {
+			/* Choose one of port0 and port1 to dispatch msi to ADSP */
+			val = readl_relaxed(port->pextpcfg + PCIE_MSI_SEL);
+			val |= BIT(0);
+			writel_relaxed(val, port->pextpcfg + PCIE_MSI_SEL);
+			dev_info(port->dev, "PCIE MSI select=%#x\n",
+				readl_relaxed(port->pextpcfg + PCIE_MSI_SEL));
+		}
+
+		/* Enable P2_EXIT signal to phy, wait 8us for EP entering L1ss */
 		val = readl_relaxed(port->base + PCIE_ASPM_CTRL);
 		val &= ~PCIE_P2_IDLE_TIME_MASK;
 		val |= PCIE_P2_EXIT_BY_CLKREQ | PCIE_P2_IDLE_TIME(8);
 		writel_relaxed(val, port->base + PCIE_ASPM_CTRL);
 
-		mtk_pcie_mt6985_fixup();
-
 		/* Software enable BBCK2 */
 		clkbuf_srclken_ctrl("RC_FPM_REQ", 7);
+		mtk_pcie_mt6985_phy_fixup(port);
 	}
 
 	/* Mask all INTx interrupts */
@@ -477,6 +506,8 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 		val |= PCIE_DVFS_REQ_FORCE_OFF;
 	}
 	writel_relaxed(val, port->base + PCIE_MISC_CTRL_REG);
+
+	dev_info(port->dev, "PCIe link start ...\n");
 
 	/* Assert all reset signals */
 	val = readl_relaxed(port->base + PCIE_RST_CTRL_REG);
@@ -496,19 +527,23 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 	writel_relaxed(val, port->base + PCIE_RST_CTRL_REG);
 
 	/* Check if the link is up or not */
-	err = readl_poll_timeout(port->base + PCIE_LINK_STATUS_REG, val,
-				 !!(val & PCIE_PORT_LINKUP), 20,
-				 PCI_PM_D3COLD_WAIT * USEC_PER_MSEC);
-	if (err) {
-		val = readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG);
-		dev_err(port->dev, "PCIe link down, ltssm reg val: %#x\n", val);
-		return err;
+	if (!port->soft_off) {
+		err = readl_poll_timeout(port->base + PCIE_LINK_STATUS_REG, val,
+					 !!(val & PCIE_PORT_LINKUP), 20,
+					 PCI_PM_D3COLD_WAIT * USEC_PER_MSEC);
+		if (err) {
+			val = readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG);
+			dev_info(port->dev, "PCIe link down, ltssm reg val: %#x\n", val);
+			return err;
+		}
 	}
+
+	dev_info(port->dev, "PCIe linkup success ...\n");
 
 	mtk_pcie_enable_msi(port);
 
 	if (port->pextpcfg) {
-		/* PCIe read completion timeout is adjusted to 4ms */
+		/* PCIe port0 read completion timeout is adjusted to 4ms */
 		val = PCIE_CFG_FORCE_BYTE_EN | PCIE_CFG_BYTE_EN(0xf) |
 		      PCIE_CFG_HEADER(0, 0);
 		writel_relaxed(val, port->base + PCIE_CFGNUM_REG);
@@ -516,7 +551,7 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 		val &= ~PCIE_DCR2_CPL_TO;
 		val |= PCIE_CPL_TIMEOUT_4MS;
 		writel_relaxed(val, port->base + PCIE_CONF_DEV2_CTL_STS);
-		pr_info("PCIe RC control 2 register=%#x",
+		dev_info(port->dev, "PCIe RC control 2 register=%#x",
 			readl_relaxed(port->base + PCIE_CONF_DEV2_CTL_STS));
 	}
 
@@ -960,7 +995,7 @@ static int mtk_pcie_parse_port(struct mtk_pcie_port *port)
 	pextp_node = of_find_compatible_node(NULL, NULL,
 					     "mediatek,mt6985-pextpcfg_ao");
 	if (pextp_node) {
-		port->pextpcfg = of_iomap(pextp_node, 0);
+		port->pextpcfg = devm_of_iomap(dev, pextp_node, 0, NULL);
 		if (IS_ERR(port->pextpcfg))
 			return PTR_ERR(port->pextpcfg);
 	}
@@ -1045,12 +1080,12 @@ static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 	int err;
 
 	/* Clear PCIe pextp sw reset bit */
-	if (port->pextpcfg) {
+	if (port->pextpcfg && port->port_num == 0)
 		writel_relaxed(PEXTP_SW_MAC0_PHY0_BIT,
 			       port->pextpcfg + PEXTP_SW_RST_CLR_OFFSET);
+	if (port->pextpcfg && port->port_num == 1)
 		writel_relaxed(PEXTP_SW_MAC1_PHY1_BIT,
 			       port->pextpcfg + PEXTP_SW_RST_CLR_OFFSET);
-	}
 
 	/* Clear PCIe sw reset bit */
 	if (port->peri_reset_en) {
@@ -1063,6 +1098,7 @@ static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 
 	/* PHY power on and enable pipe clock */
 	reset_control_deassert(port->phy_reset);
+	pm_runtime_get_sync(port->genpd_phy);
 
 	err = phy_init(port->phy);
 	if (err) {
@@ -1078,12 +1114,7 @@ static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 
 	/* MAC power on and enable transaction layer clocks */
 	reset_control_deassert(port->mac_reset);
-
-	if (port->genpd_phy)
-		pm_runtime_get_sync(port->genpd_phy);
-
-	if (port->genpd_mac)
-		pm_runtime_get_sync(port->genpd_mac);
+	pm_runtime_get_sync(port->genpd_mac);
 
 	err = clk_bulk_prepare_enable(port->num_clks, port->clks);
 	if (err) {
@@ -1094,15 +1125,13 @@ static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 	return 0;
 
 err_clk_init:
-	if (port->genpd_mac)
-		pm_runtime_put_sync(port->genpd_mac);
-	if (port->genpd_phy)
-		pm_runtime_put_sync(port->genpd_phy);
+	pm_runtime_put_sync(port->genpd_mac);
 	reset_control_assert(port->mac_reset);
 	phy_power_off(port->phy);
 err_phy_on:
 	phy_exit(port->phy);
 err_phy_init:
+	pm_runtime_put_sync(port->genpd_phy);
 	reset_control_assert(port->phy_reset);
 
 	return err;
@@ -1111,21 +1140,12 @@ err_phy_init:
 static void mtk_pcie_power_down(struct mtk_pcie_port *port)
 {
 	clk_bulk_disable_unprepare(port->num_clks, port->clks);
-
-	if (port->genpd_mac) {
-		pm_runtime_put_sync(port->genpd_mac);
-		dev_pm_domain_detach(port->genpd_mac, true);
-	}
-
-	if (port->genpd_phy) {
-		pm_runtime_put_sync(port->genpd_phy);
-		dev_pm_domain_detach(port->genpd_phy, true);
-	}
-
+	pm_runtime_put_sync(port->genpd_mac);
 	reset_control_assert(port->mac_reset);
 
 	phy_power_off(port->phy);
 	phy_exit(port->phy);
+	pm_runtime_put_sync(port->genpd_phy);
 	reset_control_assert(port->phy_reset);
 
 	/* Set PCIe sw reset bit */
@@ -1133,12 +1153,12 @@ static void mtk_pcie_power_down(struct mtk_pcie_port *port)
 		mtk_pcie_peri_reset(port, true);
 
 	/* Set PCIe pextp sw reset bit */
-	if (port->pextpcfg) {
+	if (port->pextpcfg && port->port_num == 0)
 		writel_relaxed(PEXTP_SW_MAC0_PHY0_BIT,
 			       port->pextpcfg + PEXTP_SW_RST_SET_OFFSET);
+	if (port->pextpcfg && port->port_num == 1)
 		writel_relaxed(PEXTP_SW_MAC1_PHY1_BIT,
 			       port->pextpcfg + PEXTP_SW_RST_SET_OFFSET);
-	}
 
 	/* BBCK2 is controlled by itself hardware mode */
 	clkbuf_srclken_ctrl("RC_NONE_REQ", 7);
@@ -1191,6 +1211,7 @@ static int mtk_pcie_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, port);
 
 	err = mtk_pcie_setup(port);
+	pdev_list[port->port_num] = pdev;
 	if (err)
 		goto err_probe;
 
@@ -1207,6 +1228,8 @@ static int mtk_pcie_probe(struct platform_device *pdev)
 	return 0;
 
 err_probe:
+	dev_pm_domain_detach(port->genpd_mac, true);
+	dev_pm_domain_detach(port->genpd_phy, true);
 	pinctrl_pm_select_sleep_state(&pdev->dev);
 
 	return err;
@@ -1226,6 +1249,9 @@ static int mtk_pcie_remove(struct platform_device *pdev)
 	mtk_pcie_irq_teardown(port);
 	mtk_pcie_power_down(port);
 
+	dev_pm_domain_detach(port->genpd_mac, true);
+	dev_pm_domain_detach(port->genpd_phy, true);
+
 	err = pinctrl_pm_select_sleep_state(&pdev->dev);
 	if (err) {
 		dev_info(&pdev->dev, "Failed to set PCIe pins sleep state\n");
@@ -1235,31 +1261,21 @@ static int mtk_pcie_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static struct device_node *mtk_pcie_find_node_by_port(int port)
+static struct platform_device *mtk_pcie_find_pdev_by_port(int port)
 {
-	struct device_node *pcie_node = NULL;
+	struct platform_device *pdev = NULL;
 
-	do {
-		pcie_node = of_find_node_by_name(pcie_node, "pcie");
-		if (port == of_get_pci_domain_nr(pcie_node))
-			return pcie_node;
-	} while (pcie_node);
+	if (pdev_list[port] && (port < MTK_PCIE_MAX_PORT))
+		pdev = pdev_list[port];
 
-	pr_info("pcie device node not found!\n");
-
-	return NULL;
+	return pdev;
 }
 
 int mtk_pcie_probe_port(int port)
 {
-	struct device_node *pcie_node;
 	struct platform_device *pdev;
 
-	pcie_node = mtk_pcie_find_node_by_port(port);
-	if (!pcie_node)
-		return -ENODEV;
-
-	pdev = of_find_device_by_node(pcie_node);
+	pdev = mtk_pcie_find_pdev_by_port(port);
 	if (!pdev) {
 		pr_info("pcie platform device not found!\n");
 		return -ENODEV;
@@ -1277,20 +1293,15 @@ EXPORT_SYMBOL(mtk_pcie_probe_port);
 
 int mtk_pcie_remove_port(int port)
 {
-	struct device_node *pcie_node;
 	struct platform_device *pdev;
 
-	pcie_node = mtk_pcie_find_node_by_port(port);
-	if (!pcie_node)
-		return -ENODEV;
-
-	pdev = of_find_device_by_node(pcie_node);
+	pdev = mtk_pcie_find_pdev_by_port(port);
 	if (!pdev) {
 		pr_info("pcie platform device not found!\n");
 		return -ENODEV;
 	}
 
-	mtk_pcie_dump_link_info(0);
+	mtk_pcie_dump_link_info(port);
 
 	device_release_driver(&pdev->dev);
 
@@ -1302,44 +1313,48 @@ EXPORT_SYMBOL(mtk_pcie_remove_port);
 static void pcie_android_rvh_do_serror(void *data, struct pt_regs *regs,
 				       unsigned int esr, int *ret)
 {
-	struct device_node *pcie_node;
-	struct platform_device *pdev;
 	struct mtk_pcie_port *pcie_port;
-	u32 val;
+	struct platform_device *pdev;
+	u32 val, i;
 
-	pcie_node = mtk_pcie_find_node_by_port(0);
-	if (!pcie_node) {
-		pr_info("PCIe device node not found!\n");
-		return;
+	for (i = 0; i < MTK_PCIE_MAX_PORT; i++) {
+		pdev = mtk_pcie_find_pdev_by_port(i);
+		if (!pdev)
+			continue;
+
+		pcie_port = platform_get_drvdata(pdev);
+		if (!pcie_port)
+			continue;
+
+		pr_info("PCIe%d port found\n", pcie_port->port_num);
+
+		val = readl_relaxed(pcie_port->vlpcfg_base + PCIE_VLP_AXI_PROTECT_STA);
+		val &= PCIE_SUM_SLP_READY(pcie_port->port_num);
+		if (val) {
+			pr_info("PCIe%d sleep protect not ready=%#x\n", pcie_port->port_num, val);
+			continue;
+		}
+
+		/* Debug monitor pcie design internal signal */
+		writel_relaxed(0x80810001, pcie_port->base + PCIE_DEBUG_SEL_0);
+		writel_relaxed(0x22330100, pcie_port->base + PCIE_DEBUG_SEL_1);
+		pr_info("Port%d debug recovery:%#x\n", pcie_port->port_num,
+			readl_relaxed(pcie_port->base + PCIE_DEBUG_MONITOR));
+
+		pr_info("Port%d ltssm reg: %#x, PCIe interrupt status=%#x, AXI0 ERROR address=%#x, AXI0 ERROR status=%#x\n",
+			pcie_port->port_num,
+			readl_relaxed(pcie_port->base + PCIE_LTSSM_STATUS_REG),
+			readl_relaxed(pcie_port->base + PCIE_INT_STATUS_REG),
+			readl_relaxed(pcie_port->base + PCIE_AXI0_ERR_ADDR_L),
+			readl_relaxed(pcie_port->base + PCIE_AXI0_ERR_INFO));
+
+		val = readl_relaxed(pcie_port->base + PCIE_INT_STATUS_REG);
+		if (val & PCIE_AXI_READ_ERR)
+			*ret = 1;
+
+		if (pcie_port->port_num == 1)
+			writel(BIT(0), pcie_port->base + PCIE_AXI0_ERR_INFO);
 	}
-
-	pdev = of_find_device_by_node(pcie_node);
-	if (!pdev) {
-		pr_info("PCIe platform device not found!\n");
-		return;
-	}
-
-	pcie_port = platform_get_drvdata(pdev);
-	if (!pcie_port) {
-		pr_info("PCIe port not found!\n");
-		return;
-	}
-
-	/* Debug monitor pcie design internal signal */
-	writel_relaxed(0x80810001, pcie_port->base + PCIE_DEBUG_SEL_0);
-	writel_relaxed(0x22330100, pcie_port->base + PCIE_DEBUG_SEL_1);
-	pr_info("debug recovery:%#x\n",
-		readl_relaxed(pcie_port->base + PCIE_DEBUG_MONITOR));
-
-	pr_info("ltssm reg: %#x, PCIe interrupt status=%#x, AXI0 ERROR address=%#x, AXI0 ERROR status=%#x\n",
-		readl_relaxed(pcie_port->base + PCIE_LTSSM_STATUS_REG),
-		readl_relaxed(pcie_port->base + PCIE_INT_STATUS_REG),
-		readl_relaxed(pcie_port->base + PCIE_AXI0_ERR_ADDR_L),
-		readl_relaxed(pcie_port->base + PCIE_AXI0_ERR_INFO));
-
-	val = readl_relaxed(pcie_port->base + PCIE_INT_STATUS_REG);
-	if (val & PCIE_AXI_READ_ERR)
-		*ret = 1;
 }
 #endif
 
@@ -1354,18 +1369,11 @@ static void pcie_android_rvh_do_serror(void *data, struct pt_regs *regs,
  */
 u32 mtk_pcie_dump_link_info(int port)
 {
-	struct device_node *pcie_node;
 	struct platform_device *pdev;
 	struct mtk_pcie_port *pcie_port;
 	u32 val, ret_val = 0;
 
-	pcie_node = mtk_pcie_find_node_by_port(port);
-	if (!pcie_node) {
-		pr_info("PCIe device node not found!\n");
-		return 0;
-	}
-
-	pdev = of_find_device_by_node(pcie_node);
+	pdev = mtk_pcie_find_pdev_by_port(port);
 	if (!pdev) {
 		pr_info("PCIe platform device not found!\n");
 		return 0;
@@ -1379,7 +1387,7 @@ u32 mtk_pcie_dump_link_info(int port)
 
 	/* Check the sleep protect ready */
 	val = readl_relaxed(pcie_port->vlpcfg_base + PCIE_VLP_AXI_PROTECT_STA);
-	val &= (PCIE_MAC0_SLP_READY_MASK | PCIE_PHY0_SLP_READY_MASK);
+	val &= PCIE_SUM_SLP_READY(pcie_port->port_num);
 	if (val) {
 		pr_info("PCIe sleep protect is not ready=%#x\n", val);
 		return 0;
@@ -1429,18 +1437,11 @@ EXPORT_SYMBOL(mtk_pcie_dump_link_info);
  */
 int mtk_pcie_disable_data_trans(int port)
 {
-	struct device_node *pcie_node;
 	struct platform_device *pdev;
 	struct mtk_pcie_port *pcie_port;
 	u32 val;
 
-	pcie_node = mtk_pcie_find_node_by_port(port);
-	if (!pcie_node) {
-		pr_info("PCIe device node not found!\n");
-		return -ENODEV;
-	}
-
-	pdev = of_find_device_by_node(pcie_node);
+	pdev = mtk_pcie_find_pdev_by_port(port);
 	if (!pdev) {
 		pr_info("PCIe platform device not found!\n");
 		return -ENODEV;
@@ -1454,8 +1455,7 @@ int mtk_pcie_disable_data_trans(int port)
 
 	/* Check the sleep protect ready */
 	val = readl_relaxed(pcie_port->vlpcfg_base + PCIE_VLP_AXI_PROTECT_STA);
-	val &= (PCIE_MAC_SLP_READY_MASK(pcie_port->port_num) |
-	       PCIE_PHY_SLP_READY_MASK(pcie_port->port_num));
+	val &= PCIE_SUM_SLP_READY(pcie_port->port_num);
 	if (val) {
 		pr_info("PCIe sleep protect is not ready=%#x\n", val);
 		return -EPERM;
@@ -1535,56 +1535,12 @@ int mtk_msi_unmask_to_other_mcu(struct irq_data *data, u32 group)
 }
 EXPORT_SYMBOL(mtk_msi_unmask_to_other_mcu);
 
-/**
- * mtk_pcie_mask_msi_to_ap() - Disable msi dispatch to ap
- * @port: The port number which EP use
- * @msi_addr: EP message address register for msi
- * @mask: EP msi dispatch to modem, [like:0xFF00]
- */
-int mtk_pcie_mask_msi_to_ap(int port, u32 msi_addr, u32 mask)
-{
-	struct device_node *pcie_node;
-	struct platform_device *pdev;
-	struct mtk_pcie_port *pcie_port;
-	u32 offset, val;
-
-	pcie_node = mtk_pcie_find_node_by_port(port);
-	if (!pcie_node)
-		return -ENODEV;
-
-	pdev = of_find_device_by_node(pcie_node);
-	if (!pdev) {
-		pr_info("PCIe platform device not found!\n");
-		return -ENODEV;
-	}
-
-	pcie_port = platform_get_drvdata(pdev);
-	if (!pcie_port)
-		return -ENODEV;
-
-	offset = msi_addr - pcie_port->reg_base;
-	if (offset < PCIE_MSI_SET_BASE_REG || offset > PCIE_MSI_SET_ADDR_HI_BASE) {
-		pr_info("Wrong MSI address: %#x\n", msi_addr);
-		return -EINVAL;
-	}
-
-	val = readl_relaxed(pcie_port->base + offset + PCIE_MSI_SET_ENABLE_OFFSET);
-	val &= ~mask;
-	writel_relaxed(val, pcie_port->base + offset + PCIE_MSI_SET_ENABLE_OFFSET);
-
-	pr_info("port=%d, MSI address=%#x, mask=%#x, Enable status=%#x\n",
-		port, msi_addr, mask,
-		readl_relaxed(pcie_port->base + offset + PCIE_MSI_SET_ENABLE_OFFSET));
-
-	return 0;
-}
-EXPORT_SYMBOL(mtk_pcie_mask_msi_to_ap);
-
 static void __maybe_unused mtk_pcie_irq_save(struct mtk_pcie_port *port)
 {
 	int i;
+	unsigned long flags;
 
-	raw_spin_lock(&port->irq_lock);
+	raw_spin_lock_irqsave(&port->irq_lock, flags);
 
 	port->saved_irq_state = readl_relaxed(port->base + PCIE_INT_ENABLE_REG);
 
@@ -1595,14 +1551,15 @@ static void __maybe_unused mtk_pcie_irq_save(struct mtk_pcie_port *port)
 					   PCIE_MSI_SET_ENABLE_OFFSET);
 	}
 
-	raw_spin_unlock(&port->irq_lock);
+	raw_spin_unlock_irqrestore(&port->irq_lock, flags);
 }
 
 static void __maybe_unused mtk_pcie_irq_restore(struct mtk_pcie_port *port)
 {
 	int i;
+	unsigned long flags;
 
-	raw_spin_lock(&port->irq_lock);
+	raw_spin_lock_irqsave(&port->irq_lock, flags);
 
 	writel_relaxed(port->saved_irq_state, port->base + PCIE_INT_ENABLE_REG);
 
@@ -1613,7 +1570,7 @@ static void __maybe_unused mtk_pcie_irq_restore(struct mtk_pcie_port *port)
 			       msi_set->base + PCIE_MSI_SET_ENABLE_OFFSET);
 	}
 
-	raw_spin_unlock(&port->irq_lock);
+	raw_spin_unlock_irqrestore(&port->irq_lock, flags);
 }
 
 static int __maybe_unused mtk_pcie_turn_off_link(struct mtk_pcie_port *port)
@@ -1657,7 +1614,6 @@ static void mtk_pcie_enable_hw_control(struct mtk_pcie_port *port, bool enable)
  */
 int mtk_pcie_hw_control_vote(int port, bool hw_mode_en, u8 who)
 {
-	struct device_node *pcie_node;
 	struct platform_device *pdev;
 	struct mtk_pcie_port *pcie_port;
 	bool vote_hw_mode_en = false, last_hw_mode = false;
@@ -1665,11 +1621,7 @@ int mtk_pcie_hw_control_vote(int port, bool hw_mode_en, u8 who)
 	int err = 0;
 	u32 val;
 
-	pcie_node = mtk_pcie_find_node_by_port(port);
-	if (!pcie_node)
-		return -ENODEV;
-
-	pdev = of_find_device_by_node(pcie_node);
+	pdev = mtk_pcie_find_pdev_by_port(port);
 	if (!pdev) {
 		pr_info("PCIe platform device not found!\n");
 		return -ENODEV;
@@ -1695,10 +1647,9 @@ int mtk_pcie_hw_control_vote(int port, bool hw_mode_en, u8 who)
 	if (!vote_hw_mode_en && last_hw_mode) {
 		/* Check the sleep protect ready */
 		err = readl_poll_timeout_atomic(pcie_port->vlpcfg_base +
-					 PCIE_VLP_AXI_PROTECT_STA, val,
-					 !(val & (PCIE_MAC0_SLP_READY_MASK |
-					 PCIE_PHY0_SLP_READY_MASK)),
-					 10, 10 * USEC_PER_MSEC);
+			      PCIE_VLP_AXI_PROTECT_STA, val,
+			      !(val & PCIE_SUM_SLP_READY(pcie_port->port_num)),
+			      10, 10 * USEC_PER_MSEC);
 		if (err)
 			dev_info(pcie_port->dev, "PCIe sleep protect not ready, %#x, PCIe HW MODE BIT=%#x\n",
 				 readl_relaxed(pcie_port->vlpcfg_base +
@@ -1716,6 +1667,8 @@ EXPORT_SYMBOL(mtk_pcie_hw_control_vote);
 static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 {
 	struct mtk_pcie_port *port = dev_get_drvdata(dev);
+	struct pci_host_bridge *host = pci_host_bridge_from_priv(port);
+	struct pci_dev *pdev = pci_get_slot(host->bus, 0);
 	int err;
 	u32 val;
 
@@ -1728,7 +1681,6 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 			err = mtk_pcie_hw_control_vote(0, true, 0);
 			if (err)
 				return err;
-
 		} else if (port->port_num == 1) {
 			val = readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_1);
 			val |= PCIE_HW_MTCMOS_EN_P1;
@@ -1737,11 +1689,28 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 
 		/* BBCK2 is controlled by itself hardware mode */
 		clkbuf_srclken_ctrl("RC_NONE_REQ", 7);
+
 		/* srclken rc request state */
 		dev_info(port->dev, "PCIe0 Modem HW MODE BIT=%#x, srclken rc state=%#x\n",
 			 readl_relaxed(port->pextpcfg + PEXTP_RSV_0),
 			 readl_relaxed(port->vlpcfg_base + SRCLKEN_RC_REQ_STA));
 	} else {
+		/* The user enters L2 in advance by himself, so skip suspend directly */
+		if (port->soft_off) {
+			dev_info(port->dev, "PCIe soft off mode\n");
+			return 0;
+		}
+
+		if (port->port_num == 1) {
+			val = readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_1);
+			if (val & BIT(7)) {
+				dev_info(port->dev, "Suspend, Keep PCIe active, don't enter L2\n");
+				return 0;
+			}
+		}
+
+		pci_save_state(pdev);
+
 		/* Trigger link to L2 state */
 		err = mtk_pcie_turn_off_link(port);
 		if (err) {
@@ -1749,15 +1718,11 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 			return err;
 		}
 
-		/* Pull down the PERST# pin */
-		val = readl_relaxed(port->base + PCIE_RST_CTRL_REG);
-		val |= PCIE_PE_RSTB;
-		writel_relaxed(val, port->base + PCIE_RST_CTRL_REG);
-
-		dev_dbg(port->dev, "entered L2 states successfully");
+		dev_info(port->dev, "entered L2 states successfully");
 
 		mtk_pcie_irq_save(port);
 		mtk_pcie_power_down(port);
+		pinctrl_pm_select_idle_state(port->dev);
 	}
 
 	return 0;
@@ -1766,6 +1731,8 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 {
 	struct mtk_pcie_port *port = dev_get_drvdata(dev);
+	struct pci_host_bridge *host = pci_host_bridge_from_priv(port);
+	struct pci_dev *pdev = pci_get_slot(host->bus, 0);
 	int err;
 	u32 val;
 
@@ -1786,6 +1753,22 @@ static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 			writel_relaxed(val, port->pextpcfg + PEXTP_PWRCTL_1);
 		}
 	} else {
+		/* The user controls the exit from L2 by himself */
+		if (port->soft_off) {
+			dev_info(port->dev, "PCIe soft off mode\n");
+			return 0;
+		}
+
+		if (port->port_num == 1) {
+			val = readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_1);
+			if (val & BIT(7)) {
+				dev_info(port->dev, "Resume, PCIe is ready active\n");
+				return 0;
+			}
+		}
+
+		pinctrl_pm_select_default_state(port->dev);
+
 		err = mtk_pcie_power_up(port);
 		if (err)
 			return err;
@@ -1796,6 +1779,7 @@ static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 			return err;
 		}
 
+		pci_restore_state(pdev);
 		mtk_pcie_irq_restore(port);
 	}
 
@@ -1806,6 +1790,94 @@ static const struct dev_pm_ops mtk_pcie_pm_ops = {
 	SET_NOIRQ_SYSTEM_SLEEP_PM_OPS(mtk_pcie_suspend_noirq,
 				      mtk_pcie_resume_noirq)
 };
+
+int mtk_pcie_soft_off(struct pci_bus *bus)
+{
+	struct pci_host_bridge *host;
+	struct mtk_pcie_port *port;
+	struct pci_dev *dev;
+	int ret;
+	u32 val;
+
+	if (!bus) {
+		pr_info("There is no bus, please check the host driver\n");
+		return -ENODEV;
+	}
+
+	port = bus->sysdata;
+
+	/* Trigger link to L2 state */
+	ret = mtk_pcie_turn_off_link(port);
+	if (ret) {
+		val = readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG);
+		dev_info(port->dev, "cannot enter L2 state, LTSSM=%#x\n", val);
+
+		/* Need to clear the turn_off_link bit */
+		val = readl_relaxed(port->base + PCIE_ICMD_PM_REG);
+		val &= ~PCIE_TURN_OFF_LINK;
+		writel_relaxed(val, port->base + PCIE_ICMD_PM_REG);
+
+		return ret;
+	}
+
+	dev_info(port->dev, "entered L2 states successfully\n");
+
+	host = pci_host_bridge_from_priv(port);
+	dev = pci_get_slot(host->bus, 0);
+	pci_save_state(dev);
+	pci_dev_put(dev);
+
+	mtk_pcie_irq_save(port);
+	mtk_pcie_power_down(port);
+	port->soft_off = true;
+
+	dev_info(port->dev, "mtk pcie soft off done\n");
+
+	return ret;
+}
+EXPORT_SYMBOL(mtk_pcie_soft_off);
+
+int mtk_pcie_soft_on(struct pci_bus *bus)
+{
+	struct pci_host_bridge *host;
+	struct mtk_pcie_port *port;
+	struct pci_dev *dev;
+	int ret;
+
+	if (!bus) {
+		pr_info("There is no bus, please check the host driver\n");
+		return -ENODEV;
+	}
+
+	port = bus->sysdata;
+
+	if (!port->soft_off) {
+		pr_info("The soft_off is false, can't soft on\n");
+		return -EPERM;
+	}
+
+	ret = mtk_pcie_power_up(port);
+	if (ret)
+		return ret;
+
+	ret = mtk_pcie_startup_port(port);
+	if (ret)
+		return ret;
+
+	mtk_pcie_irq_restore(port);
+
+	host = pci_host_bridge_from_priv(port);
+	dev = pci_get_slot(host->bus, 0);
+	pci_restore_state(dev);
+	pci_dev_put(dev);
+
+	port->soft_off = false;
+
+	dev_info(port->dev, "mtk pcie soft on done\n");
+
+	return ret;
+}
+EXPORT_SYMBOL(mtk_pcie_soft_on);
 
 static const struct of_device_id mtk_pcie_of_match[] = {
 	{ .compatible = "mediatek,mt8192-pcie" },
