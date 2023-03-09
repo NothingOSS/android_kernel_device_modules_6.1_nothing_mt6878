@@ -6398,20 +6398,6 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(unsigned int frame_idx)
 	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++)
 		memset(&unchanged_compress_ratio_table[i], 0,
 				sizeof(struct layer_compress_ratio_item));
-	if (g_ovl_bwm_debug) {
-		for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
-			unsigned int index = fn*MAX_LAYER_RATIO_NUMBER + i;
-
-			if (index >= MAX_FRAME_RATIO_NUMBER*MAX_LAYER_RATIO_NUMBER) {
-				DDPINFO("%s errors due to index %u\n", __func__, index);
-				return;
-			}
-			memset(&normal_layer_compress_ratio_tb[index], 0,
-					sizeof(struct layer_compress_ratio_item));
-		}
-		memset(&fbt_layer_compress_ratio_tb[fn], 0,
-				sizeof(struct layer_compress_ratio_item));
-	}
 
 	/* Copy one frame ratio to table */
 	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {

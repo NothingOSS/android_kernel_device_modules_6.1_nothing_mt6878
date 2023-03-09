@@ -1599,38 +1599,54 @@ static int get_hrt_disp_num(struct drm_mtk_layering_info *disp_info)
 	return cnt;
 }
 
-#ifdef HRT_DEBUG_LEVEL1
 /* For BW monitor debug */
 static void print_bwm_table(void)
 {
 	int i = 0;
 
-	DDPDBG("BWMT===== normal_layer_compress_ratio_tb =====\n");
-	DDPDBG("BWMT===== Item     Key     avg    peak     valid =====\n");
+	DDPMSG("BWMT===== normal_layer_compress_ratio_tb =====\n");
+	DDPMSG("BWMT===== Item   Frame   Key   avg   peak   valid   active =====\n");
 	for (i = 0; i < MAX_FRAME_RATIO_NUMBER*MAX_LAYER_RATIO_NUMBER; i++) {
 		if ((normal_layer_compress_ratio_tb[i].key_value) &&
 				(normal_layer_compress_ratio_tb[i].average_ratio != 0) &&
 				(normal_layer_compress_ratio_tb[i].peak_ratio != 0))
-			DDPDBG("BWMT===== %4d     %lu     %u    %u     %u =====\n", i,
+			DDPMSG("BWMT===== %4d   %u   %llu   %u   %u   %u   %u =====\n", i,
+					normal_layer_compress_ratio_tb[i].frame_idx,
 					normal_layer_compress_ratio_tb[i].key_value,
 					normal_layer_compress_ratio_tb[i].average_ratio,
 					normal_layer_compress_ratio_tb[i].peak_ratio,
-					normal_layer_compress_ratio_tb[i].valid);
+					normal_layer_compress_ratio_tb[i].valid,
+					normal_layer_compress_ratio_tb[i].active);
 	}
-	DDPDBG("BWMT===== fbt_layer_compress_ratio_tb =====\n");
-	DDPDBG("BWMT===== Item     Key     avg    peak     valid =====\n");
+	DDPMSG("BWMT===== fbt_layer_compress_ratio_tb =====\n");
+	DDPMSG("BWMT===== Item   Frame   Key   avg   peak   valid   active =====\n");
 	for (i = 0; i < MAX_FRAME_RATIO_NUMBER; i++) {
 		if ((fbt_layer_compress_ratio_tb[i].key_value) &&
 				(fbt_layer_compress_ratio_tb[i].average_ratio != 0) &&
 				(fbt_layer_compress_ratio_tb[i].peak_ratio != 0))
-			DDPDBG("BWMT===== %4d     %lu     %u    %u     %u =====\n", i,
+			DDPMSG("BWMT===== %4d   %u   %llu   %u   %u   %u   %u =====\n", i,
+					fbt_layer_compress_ratio_tb[i].frame_idx,
 					fbt_layer_compress_ratio_tb[i].key_value,
 					fbt_layer_compress_ratio_tb[i].average_ratio,
 					fbt_layer_compress_ratio_tb[i].peak_ratio,
-					fbt_layer_compress_ratio_tb[i].valid);
+					fbt_layer_compress_ratio_tb[i].valid,
+					fbt_layer_compress_ratio_tb[i].active);
+	}
+	DDPMSG("BWMT===== unchanged_compress_ratio_table =====\n");
+	DDPMSG("BWMT===== Item   Frame   Key   avg   peak   valid   active =====\n");
+	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
+		if ((unchanged_compress_ratio_table[i].key_value) &&
+				(unchanged_compress_ratio_table[i].average_ratio != 0) &&
+				(unchanged_compress_ratio_table[i].peak_ratio != 0))
+			DDPMSG("BWMT===== %4d   %u   %llu   %u   %u   %u   %u =====\n", i,
+					unchanged_compress_ratio_table[i].frame_idx,
+					unchanged_compress_ratio_table[i].key_value,
+					unchanged_compress_ratio_table[i].average_ratio,
+					unchanged_compress_ratio_table[i].peak_ratio,
+					unchanged_compress_ratio_table[i].valid,
+					unchanged_compress_ratio_table[i].active);
 	}
 }
-#endif
 
 /**
  * Return the HRT layer weight.
@@ -1747,19 +1763,26 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 				(unchanged_compress_ratio_table[i].valid == 1) &&
 				(unchanged_compress_ratio_table[i].peak_ratio != 0)) {
 				unsigned int index = 0;
+				unsigned int peak_ratio =
+					unchanged_compress_ratio_table[i].peak_ratio;
 
-				if (unchanged_compress_ratio_table[i].peak_ratio > 1000)
+				/* Due to the problem of calculation accuracy use 1024 */
+				if (peak_ratio > 1024) {
+					print_bwm_table();
+					DDPAEE("%s:%d gets ratio:%u > 1000\n",
+					__func__, __LINE__, peak_ratio);
 					weight *= 1000;
-				else
-					weight *= unchanged_compress_ratio_table[i].peak_ratio;
+					peak_ratio = 1000;
+				} else
+					weight *= peak_ratio;
+
 				do_div(weight, 1000);
 				DDPDBG_BWM("BWM: unchgd f_idx:%u allocid:%llu ratio:%u weight:%d\n",
 					frame_idx, layer_info->buffer_alloc_id,
-					unchanged_compress_ratio_table[i].peak_ratio, weight);
+					peak_ratio, weight);
 
 				/* Just from emi efficency table to find level index */
-				index = (unchanged_compress_ratio_table[i].peak_ratio*256)/
-					(1000*16);
+				index = (peak_ratio * 256) / (1000 * 16);
 				if (index) {
 					weight = weight*10000/emi_eff_tb[index-1];
 					DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%d\n",
@@ -1779,18 +1802,25 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 				(normal_layer_compress_ratio_tb[i].valid == 1) &&
 				(normal_layer_compress_ratio_tb[i].peak_ratio != 0)) {
 				unsigned int index = 0;
+				unsigned int peak_ratio =
+					normal_layer_compress_ratio_tb[i].peak_ratio;
 
-				if (normal_layer_compress_ratio_tb[i].peak_ratio > 1000)
+				/* Due to the problem of calculation accuracy use 1024 */
+				if (peak_ratio > 1024) {
+					print_bwm_table();
+					DDPAEE("%s:%d gets ratio:%u > 1000\n",
+					__func__, __LINE__, peak_ratio);
 					weight *= 1000;
-				else
-					weight *= normal_layer_compress_ratio_tb[i].peak_ratio;
+					peak_ratio = 1000;
+				} else
+					weight *= peak_ratio;
+
 				do_div(weight, 1000);
 				DDPDBG_BWM("BWM:fidx:%u allocid:%llu key:%llu ratio:%u weight:%d\n",
 					frame_idx, layer_info->buffer_alloc_id, key_value,
-					normal_layer_compress_ratio_tb[i].peak_ratio, weight);
+					peak_ratio, weight);
 
-				index = (normal_layer_compress_ratio_tb[i].peak_ratio*256)/
-					(1000*16);
+				index = (peak_ratio * 256) / (1000 * 16);
 				if (index) {
 					weight = weight*10000/emi_eff_tb[index-1];
 					DDPDBG("%d BWM:index:%u eff:%u weight:%d\n",
