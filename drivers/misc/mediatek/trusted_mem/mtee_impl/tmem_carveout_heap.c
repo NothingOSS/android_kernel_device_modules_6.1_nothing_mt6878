@@ -32,6 +32,7 @@ int tmem_register_ffa_module(void)
 }
 int tmem_query_ffa_handle_to_pa(u64 handle, uint64_t *phy_addr)
 {
+	pr_info("%s: trusted_mem.ko Not Support FF-A\n", __func__);
 	return 0;
 }
 int tmem_ffa_region_alloc(enum MTEE_MCHUNKS_ID mchunk_id,
@@ -39,18 +40,22 @@ int tmem_ffa_region_alloc(enum MTEE_MCHUNKS_ID mchunk_id,
 						  unsigned long alignment,
 						  u64 *handle)
 {
+	pr_info("%s: trusted_mem.ko Not Support FF-A allocation\n", __func__);
 	return 0;
 }
 int tmem_ffa_region_free(enum MTEE_MCHUNKS_ID mchunk_id, u64 handle)
 {
+	pr_info("%s: trusted_mem.ko Not Support FF-A free\n", __func__);
 	return 0;
 }
 int tmem_ffa_page_alloc(struct sg_table *sg_tbl, u64 *handle)
 {
+	pr_info("%s: trusted_mem.ko Not Support FF-A allocation\n", __func__);
 	return 0;
 }
 int tmem_ffa_page_free(u64 handle)
 {
+	pr_info("%s: trusted_mem.ko Not Support FF-A free\n", __func__);
 	return 0;
 }
 int tmem_carveout_create(int idx, phys_addr_t heap_base, size_t heap_size)
