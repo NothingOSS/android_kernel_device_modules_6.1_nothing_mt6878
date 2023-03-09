@@ -71,6 +71,9 @@ static int mtk_reg_read(void *context,
 	unsigned int *val = _val;
 	int i = 0, words = bytes / 4;
 
+	if (!context || !_val)
+		return 0;
+
 	while (words--) {
 		*val++ = priv->devinfo_data[i + (reg / 4)];
 		i++;
