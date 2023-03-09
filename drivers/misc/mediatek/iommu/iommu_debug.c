@@ -2009,6 +2009,7 @@ static void mtk_iommu_iova_alloc_dump(struct seq_file *s, struct device *dev)
 	struct iommu_fwspec *fwspec = NULL;
 	struct iova_info *plist = NULL;
 	struct iova_info *n = NULL;
+	int dump_count = 0;
 	u64 tab_id = 0;
 	u32 dom_id = 0;
 
@@ -2061,6 +2062,9 @@ static void mtk_iommu_iova_alloc_dump(struct seq_file *s, struct device *dev)
 					   plist->time_high,
 					   plist->time_low,
 					   dev_name(plist->dev));
+
+			if (s == NULL && dev != NULL && ++dump_count > 10)
+				break;
 		}
 	spin_unlock(&iova_list.lock);
 }
