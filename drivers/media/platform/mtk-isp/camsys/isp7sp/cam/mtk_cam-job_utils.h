@@ -102,7 +102,8 @@ unsigned int _get_master_sv_id(unsigned int used_engine);
 
 int fill_img_in(struct mtkcam_ipi_img_input *ii,
 		struct mtk_cam_buffer *buf,
-		struct mtk_cam_video_device *node);
+		struct mtk_cam_video_device *node,
+		int id_overwite);
 int fill_img_out(struct mtkcam_ipi_img_output *io,
 		 struct mtk_cam_buffer *buf,
 		 struct mtk_cam_video_device *node);
@@ -125,6 +126,7 @@ int fill_yuvo_out_subsample(struct mtkcam_ipi_img_output *io,
 			    struct mtk_cam_video_device *node,
 			    int sub_ratio);
 int update_work_buffer_to_ipi_frame(struct req_buffer_helper *helper);
+
 struct mtkcam_ipi_crop v4l2_rect_to_ipi_crop(const struct v4l2_rect *r);
 bool ipi_crop_eq(const struct mtkcam_ipi_crop *s,
 				 const struct mtkcam_ipi_crop *d);
@@ -133,10 +135,18 @@ int get_sv_tag_idx(unsigned int exp_no, unsigned int tag_order, bool is_w);
 int get_hw_scenario(struct mtk_cam_job *job);
 bool is_dc_mode(struct mtk_cam_job *job);
 bool is_sv_pure_raw(struct mtk_cam_job *job);
+bool is_vhdr(struct mtk_cam_job *job);
 bool is_rgbw(struct mtk_cam_job *job);
+bool is_m2m(struct mtk_cam_job *job);
+bool is_m2m_apu(struct mtk_cam_job *job);
 int raw_video_id_w_port(int rawi_id);
 void get_stagger_rawi_table(struct mtk_cam_job *job,
 	const int **rawi_table, int *cnt);
+
+int map_ipi_vpu_point(int vpu_point);
+
+struct mtk_raw_ctrl_data *get_raw_ctrl_data(struct mtk_cam_job *job);
+struct mtk_raw_sink_data *get_raw_sink_data(struct mtk_cam_job *job);
 
 #endif //__MTK_CAM_JOB_UTILS_H
 

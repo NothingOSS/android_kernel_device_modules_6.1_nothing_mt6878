@@ -116,9 +116,34 @@ int get_hw_scenario(struct mtk_cam_job *job)
 	case MTK_CAM_SCEN_MSTREAM:
 		hard_scenario = MTKCAM_IPI_HW_PATH_MSTREAM;
 		break;
+	case MTK_CAM_SCEN_ODT_NORMAL:
+	case MTK_CAM_SCEN_M2M_NORMAL:
+		if (is_m2m_apu(job)) {
+			struct mtk_raw_ctrl_data *ctrl;
+
+			ctrl = get_raw_ctrl_data(job);
+			if (WARN_ON(!ctrl))
+				return -1;
+
+			if (ctrl->apu_info.apu_path == APU_FRAME_MODE)
+				hard_scenario = MTKCAM_IPI_HW_PATH_OFFLINE_ADL;
+			else if (ctrl->apu_info.apu_path == APU_DC_RAW)
+				hard_scenario = MTKCAM_IPI_HW_PATH_DC_ADL;
+			else {
+				pr_info("%s: error. apu_path = %d\n",
+					__func__, ctrl->apu_info.apu_path);
+				return -1;
+			}
+		} else
+			hard_scenario = MTKCAM_IPI_HW_PATH_OFFLINE;
+		break;
+
+	case MTK_CAM_SCEN_ODT_MSTREAM:
+		hard_scenario = MTKCAM_IPI_HW_PATH_OFFLINE_STAGGER;
+		break;
 	default:
-		pr_info("[%s] un-support scen id:%d",
-		__func__, scen->id);
+		pr_info("[%s] failed. un-support scen id:%d",
+			__func__, scen->id);
 		break;
 	}
 
@@ -681,19 +706,24 @@ int fill_yuvo_out_subsample(struct mtkcam_ipi_img_output *io,
 
 int fill_img_in(struct mtkcam_ipi_img_input *ii,
 		struct mtk_cam_buffer *buf,
-		struct mtk_cam_video_device *node)
+		struct mtk_cam_video_device *node,
+		int id_overwite)
 {
 	/* uid */
 	ii->uid = node->uid;
+
+	if (id_overwite >= 0)
+		ii->uid.id = (u8)id_overwite;
 
 	/* fmt */
 	fill_img_fmt(&ii->fmt, buf);
 
 	mtk_cam_fill_img_in_buf(ii, buf);
 
-	buf_printk("%s %dx%d\n",
+	buf_printk("%s %dx%d id_overwrite=%d\n",
 		   node->desc.name,
-		   ii->fmt.s.w, ii->fmt.s.h);
+		   ii->fmt.s.w, ii->fmt.s.h,
+		   id_overwite);
 	return 0;
 }
 
@@ -765,6 +795,24 @@ bool is_sv_pure_raw(struct mtk_cam_job *job)
 	return job->is_sv_pure_raw && sv_pure_raw;
 }
 
+bool is_vhdr(struct mtk_cam_job *job)
+{
+	struct mtk_cam_scen *scen = &job->job_scen;
+
+	switch (scen->id) {
+	case MTK_CAM_SCEN_NORMAL:
+	case MTK_CAM_SCEN_M2M_NORMAL:
+	case MTK_CAM_SCEN_ODT_NORMAL:
+		return scen->scen.normal.max_exp_num > 1;
+	case MTK_CAM_SCEN_MSTREAM:
+	case MTK_CAM_SCEN_ODT_MSTREAM:
+		return 1;
+	default:
+		break;
+	}
+	return 0;
+}
+
 bool is_rgbw(struct mtk_cam_job *job)
 {
 	struct mtk_cam_scen *scen = &job->job_scen;
@@ -775,5 +823,63 @@ bool is_rgbw(struct mtk_cam_job *job)
 		return !!(scen->scen.normal.w_chn_enabled);
 
 	return false;
+}
+
+bool is_m2m(struct mtk_cam_job *job)
+{
+	return job->job_scen.id == MTK_CAM_SCEN_M2M_NORMAL ||
+		job->job_scen.id == MTK_CAM_SCEN_ODT_NORMAL;
+}
+
+bool is_m2m_apu(struct mtk_cam_job *job)
+{
+	struct mtk_raw_ctrl_data *ctrl;
+
+	if (!is_m2m(job))
+		return 0;
+
+	ctrl = get_raw_ctrl_data(job);
+	if (!ctrl)
+		return 0;
+
+	return ctrl->apu_info.apu_path != APU_NONE;
+}
+
+int map_ipi_vpu_point(int vpu_point)
+{
+	switch (vpu_point) {
+	case AFTER_SEP_R1: return MTKCAM_IPI_ADL_AFTER_SEP_R1;
+	case AFTER_BPC: return MTKCAM_IPI_ADL_AFTER_BPC;
+	case AFTER_LTM: return MTKCAM_IPI_ADL_AFTER_LTM;
+	default:
+		pr_info("%s: error. not supported point %d\n",
+			__func__, vpu_point);
+		break;
+	}
+	return -1;
+}
+
+struct mtk_raw_ctrl_data *get_raw_ctrl_data(struct mtk_cam_job *job)
+{
+	struct mtk_cam_request *req = job->req;
+	int raw_pipe_idx;
+
+	raw_pipe_idx = get_raw_subdev_idx(job->src_ctx->used_pipe);
+	if (raw_pipe_idx == -1)
+		return NULL;
+
+	return &req->raw_data[raw_pipe_idx].ctrl;
+}
+
+struct mtk_raw_sink_data *get_raw_sink_data(struct mtk_cam_job *job)
+{
+	struct mtk_cam_request *req = job->req;
+	int raw_pipe_idx;
+
+	raw_pipe_idx = get_raw_subdev_idx(job->src_ctx->used_pipe);
+	if (raw_pipe_idx == -1)
+		return NULL;
+
+	return &req->raw_data[raw_pipe_idx].sink;
 }
 

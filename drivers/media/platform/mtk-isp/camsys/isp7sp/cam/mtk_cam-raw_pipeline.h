@@ -168,6 +168,8 @@ struct mtk_raw_ctrl_data {
 	s64 sync_id;
 	struct mtk_cam_mstream_exposure mstream_exp;
 
+	struct mtk_cam_apu_info apu_info;
+
 	struct mtk_cam_internal_mem pre_alloc_mem;
 	struct dma_buf *pre_alloc_dbuf;
 

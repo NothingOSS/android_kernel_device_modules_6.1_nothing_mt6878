@@ -472,7 +472,7 @@ void immediate_stream_off(struct mtk_raw_device *dev)
 		dev_info(dev->dev, "not ready\n");
 }
 
-static inline void _trigger_rawi(struct mtk_raw_device *dev, u32 val)
+static inline void trigger_rawi(struct mtk_raw_device *dev, u32 val)
 {
 	toggle_db(dev);
 
@@ -480,22 +480,25 @@ static inline void _trigger_rawi(struct mtk_raw_device *dev, u32 val)
 	engine_fsm_sof(&dev->fsm,
 		       readl(dev->base_inner + REG_FRAME_SEQ_NUM));
 
+	dev_info(dev->dev, "%s: 0x%x\n", __func__, val);
 	writel(val, dev->base + REG_CAMCTL_RAWI_TRIG);
 }
 
 void trigger_rawi_r2(struct mtk_raw_device *dev)
 {
-	_trigger_rawi(dev, FBIT(CAMCTL_RAWI_R2_TRIG));
+	trigger_rawi(dev, FBIT(CAMCTL_RAWI_R2_TRIG));
 }
 
 void trigger_rawi_r5(struct mtk_raw_device *dev)
 {
-	_trigger_rawi(dev, FBIT(CAMCTL_RAWI_R5_TRIG));
+	trigger_rawi(dev, FBIT(CAMCTL_RAWI_R5_TRIG));
 }
 
 void trigger_adl(struct mtk_raw_device *dev)
 {
-	_trigger_rawi(dev, FBIT(CAMCTL_APU_TRIG));
+#define CAM_MAIN_ADLRD_CTRL 0x32c
+	writel(0x2 << 1 | 0x1, dev->cam->base + CAM_MAIN_ADLRD_CTRL);
+	trigger_rawi(dev, FBIT(CAMCTL_APU_TRIG) | FBIT(CAMCTL_RAW_TRIG));
 }
 
 #define REG_DMA_SOFT_RST_STAT               0x4068

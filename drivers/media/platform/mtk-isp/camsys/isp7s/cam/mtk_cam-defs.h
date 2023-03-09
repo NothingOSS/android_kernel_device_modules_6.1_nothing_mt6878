@@ -206,6 +206,12 @@ enum mtkcam_ipi_raw_path_control {
 	MTKCAM_IPI_IMGO_FULLY_PROCESSED = MTKCAM_IPI_IMGO_AFTER_LTM,
 };
 
+enum mtkcam_ipi_ADL_path_control {
+	MTKCAM_IPI_ADL_AFTER_SEP_R1,
+	MTKCAM_IPI_ADL_AFTER_BPC,
+	MTKCAM_IPI_ADL_AFTER_LTM,
+};
+
 enum mtkcam_ipi_sw_feature_control {
 	MTKCAM_IPI_SW_FEATURE_NORMAL				= 0,
 	MTKCAM_IPI_SW_FEATURE_VHDR				= 1,

@@ -683,6 +683,23 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 		ctrl_data->mstream_exp =
 			*(struct mtk_cam_mstream_exposure *)ctrl->p_new.p;
 		break;
+	case V4L2_CID_MTK_CAM_APU_INFO:
+		{
+			struct mtk_cam_apu_info *apu_info = &ctrl_data->apu_info;
+
+			*apu_info = *(struct mtk_cam_apu_info *)ctrl->p_new.p;
+
+			if (1 || CAM_DEBUG_ENABLED(V4L2))
+				dev_info(dev, "%s: apu_info: path %d i,o=%d,%d sysram %d opp_idx=%d blk_y_size %d\n",
+					 __func__,
+					 apu_info->apu_path,
+					 apu_info->vpu_i_point,
+					 apu_info->vpu_o_point,
+					 apu_info->sysram_en,
+					 apu_info->opp_index,
+					 apu_info->block_y_size);
+		}
+		break;
 	case V4L2_CID_MTK_CAM_RAW_RESOURCE_UPDATE:
 		ctrl_data->rc_data.sensor_mode_update = ctrl->val;
 		dev_info(dev, "%s:pipe(%d):sensor_mode_update(%d)\n",
@@ -976,6 +993,19 @@ static const struct v4l2_ctrl_config mstream_exposure = {
 	.max = 0xFFFFFFFF,
 	.step = 1,
 	.dims = {sizeof_u32(struct mtk_cam_mstream_exposure)},
+};
+
+static const struct v4l2_ctrl_config cfg_apu_info = {
+	.ops = &cam_ctrl_ops,
+	.id = V4L2_CID_MTK_CAM_APU_INFO,
+	.name = "apu information",
+	.type = V4L2_CTRL_TYPE_INTEGER,
+	.flags = V4L2_CTRL_FLAG_VOLATILE | V4L2_CTRL_FLAG_EXECUTE_ON_WRITE,
+	.min = 0,
+	.max = 0x1fffffff,
+	.step = 1,
+	.def = 0,
+	.dims = {sizeof_u32(struct mtk_cam_apu_info)},
 };
 
 static const struct v4l2_ctrl_config mtk_cam_tg_flash_enable = {
@@ -3417,6 +3447,9 @@ static void mtk_raw_pipeline_ctrl_setup(struct mtk_raw_pipeline *pipe)
 
 	v4l2_ctrl_new_custom(ctrl_hdlr, &mstream_exposure, NULL);
 	v4l2_ctrl_new_custom(ctrl_hdlr, &cfg_dynamic_meta, NULL);
+
+	/* APU */
+	v4l2_ctrl_new_custom(ctrl_hdlr, &cfg_apu_info, NULL);
 
 	ctrl = v4l2_ctrl_new_custom(ctrl_hdlr, &cfg_hdr_timestamp_info, NULL);
 	if (ctrl)

@@ -35,8 +35,6 @@ static inline int job_debug_exception_dump(struct mtk_cam_job *job,
 	return job_debug_dump(job, desc, 1, -1);
 }
 
-static struct mtk_raw_sink_data *get_raw_sink_data(struct mtk_cam_job *job);
-static struct mtk_raw_ctrl_data *get_raw_ctrl_data(struct mtk_cam_job *job);
 static struct mtk_raw_request_data *req_get_raw_data(struct mtk_cam_ctx *ctx,
 						     struct mtk_cam_request *req);
 static int get_exp_switch_type(struct mtk_cam_job *job);
@@ -1335,13 +1333,19 @@ static int trigger_m2m(struct mtk_cam_job *job)
 	struct mtk_raw_device *raw_dev =
 		dev_get_drvdata(cam->engines.raw_devs[raw_id]);
 	int ret = 0;
+	bool is_apu_trig;
+
+	is_apu_trig = is_m2m_apu(job);
 
 	mtk_cam_event_frame_sync(&ctx->cam_ctrl, job->req_seq);
 
-	trigger_rawi_r2(raw_dev);
+	if (is_apu_trig)
+		trigger_adl(raw_dev);
+	else
+		trigger_rawi_r2(raw_dev);
 
-	dev_info(raw_dev->dev, "%s [ctx:%d] seq 0x%x\n",
-		 __func__, ctx->stream_id, job->frame_seq_no);
+	dev_info(raw_dev->dev, "%s [ctx:%d] seq 0x%x is_apu=%d\n",
+		 __func__, ctx->stream_id, job->frame_seq_no, is_apu_trig);
 
 	return ret;
 }
@@ -2046,8 +2050,9 @@ _job_pack_m2m(struct mtk_cam_job *job,
 
 	job->exp_num_cur = 1;
 	job->exp_num_prev = 1;
-	job->hardware_scenario = MTKCAM_IPI_HW_PATH_OFFLINE;
-	job->sw_feature = MTKCAM_IPI_SW_FEATURE_NORMAL;
+	job->hardware_scenario = get_hw_scenario(job);
+	job->sw_feature = is_vhdr(job) ?
+		MTKCAM_IPI_SW_FEATURE_VHDR : MTKCAM_IPI_SW_FEATURE_NORMAL;
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
 	dev_dbg(cam->dev, "[%s] ctx:%d, job_type:%d, scen:%d, expnum:%d->%d, sw/scene:%d/%d",
 		__func__, ctx->stream_id, job->job_type, job->job_scen.id,
@@ -2302,7 +2307,10 @@ static int fill_raw_img_buffer_to_ipi_frame(
 		in = &fp->img_ins[helper->ii_idx];
 		++helper->ii_idx;
 
-		ret = fill_img_in(in, buf, node);
+		if (is_m2m_apu(job))
+			ret = fill_img_in(in, buf, node, MTKCAM_IPI_RAW_IPUI);
+		else
+			ret = fill_img_in(in, buf, node, -1);
 	}
 
 	if (bypass_imgo && CAM_DEBUG_ENABLED(JOB))
@@ -2537,31 +2545,6 @@ static void mtk_cam_set_sensor_mstream_mode(struct mtk_cam_ctx *ctx, bool on)
 		v4l2_ctrl_s_ctrl(mstream_mode_ctrl, 0);
 
 	dev_info(ctx->cam->dev, "%s mstream mode:%d\n", __func__, on);
-}
-
-/* TODO(AY): move to utils */
-static struct mtk_raw_ctrl_data *get_raw_ctrl_data(struct mtk_cam_job *job)
-{
-	struct mtk_cam_request *req = job->req;
-	int raw_pipe_idx;
-
-	raw_pipe_idx = get_raw_subdev_idx(job->src_ctx->used_pipe);
-	if (raw_pipe_idx == -1)
-		return NULL;
-
-	return &req->raw_data[raw_pipe_idx].ctrl;
-}
-
-static struct mtk_raw_sink_data *get_raw_sink_data(struct mtk_cam_job *job)
-{
-	struct mtk_cam_request *req = job->req;
-	int raw_pipe_idx;
-
-	raw_pipe_idx = get_raw_subdev_idx(job->src_ctx->used_pipe);
-	if (raw_pipe_idx == -1)
-		return NULL;
-
-	return &req->raw_data[raw_pipe_idx].sink;
 }
 
 static int apply_sensor_mstream_exp_gain(struct mtk_cam_ctx *ctx,
@@ -3366,6 +3349,29 @@ static int map_ipi_bin_flag(int bin)
 	return bin_flag;
 }
 
+static int update_adl_param(struct mtk_cam_job *job,
+			    struct mtk_raw_ctrl_data *ctrl,
+			    struct mtkcam_ipi_adl_frame_param *adl_fp)
+{
+	struct mtk_cam_apu_info *apu_info = &ctrl->apu_info;
+
+	adl_fp->vpu_i_point = map_ipi_vpu_point(apu_info->vpu_i_point);
+	adl_fp->vpu_o_point = map_ipi_vpu_point(apu_info->vpu_o_point);
+	adl_fp->sysram_en = apu_info->sysram_en;
+	adl_fp->block_y_size = apu_info->block_y_size;
+	/* TODO: SLB */
+	adl_fp->slb_addr = 0;
+	adl_fp->slb_size = 0;
+
+	pr_info("%s: vpu i/o %d/%d sram %d ysize %d\n",
+		__func__,
+		adl_fp->vpu_i_point,
+		adl_fp->vpu_o_point,
+		adl_fp->sysram_en,
+		adl_fp->block_y_size);
+	return 0;
+}
+
 static int update_job_raw_param_to_ipi_frame(struct mtk_cam_job *job,
 					     struct mtkcam_ipi_frame_param *fp)
 {
@@ -3382,6 +3388,9 @@ static int update_job_raw_param_to_ipi_frame(struct mtk_cam_job *job,
 	p->bin_flag = map_ipi_bin_flag(ctrl->resource.user_data.raw_res.bin);
 	p->exposure_num = job->exp_num_cur;
 	p->previous_exposure_num = job->exp_num_prev;
+
+	if (is_m2m_apu(job))
+		update_adl_param(job, ctrl, &fp->adl_param);
 
 	if (CAM_DEBUG_ENABLED(IPI_BUF))
 		pr_info("[%s] job_type:%d scen:%d exp:%d/%d raw_path:%d", __func__,
@@ -3419,6 +3428,7 @@ static int update_raw_image_buf_to_ipi_frame(struct req_buffer_helper *helper,
 	case MTKCAM_IPI_RAW_RZH1N2TO_3:
 	case MTKCAM_IPI_RAW_DRZS4NO_1:
 	case MTKCAM_IPI_RAW_DRZS4NO_3:
+	case MTKCAM_IPI_RAW_DRZB2NO_1:
 		if (job_helper->update_raw_yuvo_to_ipi)
 			update_fn = job_helper->update_raw_yuvo_to_ipi;
 		break;
