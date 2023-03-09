@@ -208,14 +208,15 @@ static int offloadservice_gettargetrate(struct snd_kcontrol *kcontrol,
 /* timer callback is use to replace vp sync if vp is not send */
 static void offload_time_cb(struct timer_list *t)
 {
+	unsigned long flags;
 	notify_vb_audio_control(NOTIFIER_VP_AUDIO_TIMER, NULL);
-	mutex_lock(&afe_offload_service.timer_mutex);
+	spin_lock_irqsave(&afe_offload_service.timer_spinlock, flags);
 	if (afe_offload_service.timer_init) {
 		afe_offload_service.offload_timer.expires =
 			jiffies + msecs_to_jiffies(OFFLOAD_VPSYNC_TIMEOUT);
 		add_timer(&afe_offload_service.offload_timer);
 	}
-	mutex_unlock(&afe_offload_service.timer_mutex);
+	spin_unlock_irqrestore(&afe_offload_service.timer_spinlock, flags);
 }
 
 static int offloadservice_sethasvideo(struct snd_kcontrol *kcontrol,
@@ -235,14 +236,15 @@ static int offloadservice_gethasvideo(struct snd_kcontrol *kcontrol,
 /* workqueue to mod timer with vp time out*/
 void offload_vp_worker(struct work_struct *ws)
 {
+	unsigned long flags;
 	if (afe_offload_service.vp_sync_support && afe_offload_codec_info.has_video) {
-		mutex_lock(&afe_offload_service.timer_mutex);
+		spin_lock_irqsave(&afe_offload_service.timer_spinlock, flags);
 		if (afe_offload_service.timer_init) {
 			notify_vb_audio_control(NOTIFIER_VP_AUDIO_TIMER, NULL);
 			mod_timer(&afe_offload_service.offload_timer,
 				  jiffies + msecs_to_jiffies(OFFLOAD_VPSYNC_TIMEOUT));
 		}
-		mutex_unlock(&afe_offload_service.timer_mutex);
+		spin_unlock_irqrestore(&afe_offload_service.timer_spinlock, flags);
 	}
 }
 
@@ -392,6 +394,7 @@ static int mtk_compr_offload_open(struct snd_soc_component *component,
 				  struct snd_compr_stream *stream)
 {
 	int ret = 0;
+	unsigned long flags;
 #ifdef use_wake_lock
 	mtk_compr_offload_int_wakelock(true);
 #endif
@@ -451,7 +454,7 @@ static int mtk_compr_offload_open(struct snd_soc_component *component,
 	 * this timer is using if video do not send sync event , need to sync event to adsp
 	 */
 	if (afe_offload_service.vp_sync_support && afe_offload_codec_info.has_video) {
-		mutex_lock(&afe_offload_service.timer_mutex);
+		spin_lock_irqsave(&afe_offload_service.timer_spinlock, flags);
 		if (afe_offload_service.timer_init == false) {
 			afe_offload_service.offload_timer.expires =
 				jiffies + msecs_to_jiffies(OFFLOAD_VPSYNC_TIMEOUT);
@@ -459,7 +462,7 @@ static int mtk_compr_offload_open(struct snd_soc_component *component,
 			add_timer(&afe_offload_service.offload_timer);
 			afe_offload_service.timer_init = true;
 		}
-		mutex_unlock(&afe_offload_service.timer_mutex);
+		spin_unlock_irqrestore(&afe_offload_service.timer_spinlock, flags);
 	}
 	return 0;
 }
@@ -480,13 +483,14 @@ static int mtk_afe_dloffload_probe(struct snd_soc_component *component)
 static int mtk_compr_offload_free(struct snd_soc_component *component,
 				  struct snd_compr_stream *stream)
 {
+	unsigned long flags;
 	offloadservice_setwriteblocked(false);
-	mutex_lock(&afe_offload_service.timer_mutex);
+	spin_lock_irqsave(&afe_offload_service.timer_spinlock, flags);
 	if (afe_offload_service.vp_sync_support && afe_offload_codec_info.has_video) {
 		del_timer_sync(&afe_offload_service.offload_timer);
 		afe_offload_service.timer_init = false;
 	}
-	mutex_unlock(&afe_offload_service.timer_mutex);
+	spin_unlock_irqrestore(&afe_offload_service.timer_spinlock, flags);
 
 	if (dsp)
 		mtk_adsp_genpool_free_sharemem_ring(&dsp->dsp_mem[ID], ID);
@@ -1151,7 +1155,7 @@ static const struct snd_soc_component_driver mtk_dloffload_soc_platform = {
 static int mtk_offload_init(void)
 {
 	mutex_init(&afe_offload_service.ts_lock);
-	mutex_init(&afe_offload_service.timer_mutex);
+	spin_lock_init(&afe_offload_service.timer_spinlock);
 	init_waitqueue_head(&afe_offload_service.ts_wq);
 	afe_offload_service.workq = alloc_workqueue("offload_wq", WORK_CPU_UNBOUND | WQ_HIGHPRI, 0);
 	INIT_WORK(&afe_offload_service.offload_cb_work, offload_vp_worker);

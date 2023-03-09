@@ -74,7 +74,7 @@ struct afe_offload_service_t {
 	uint8_t scene;
 	bool vp_sync_support;
 	bool timer_init;
-	struct mutex timer_mutex;
+	spinlock_t timer_spinlock;
 	struct timer_list offload_timer;
 	struct workqueue_struct *workq;
 	struct work_struct offload_cb_work;
