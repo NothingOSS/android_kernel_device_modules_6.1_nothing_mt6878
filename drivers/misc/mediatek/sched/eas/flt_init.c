@@ -30,8 +30,10 @@ void  flt_set_mode(u32 mode)
 {
 	flt_mode = mode;
 }
+EXPORT_SYMBOL(flt_set_mode);
 
 u32 flt_get_mode(void)
 {
 	return flt_mode;
 }
+EXPORT_SYMBOL(flt_get_mode);

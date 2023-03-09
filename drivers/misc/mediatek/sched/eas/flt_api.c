@@ -26,25 +26,37 @@
 
 /* API Function pointer*/
 int (*flt_get_ws_api)(void);
+EXPORT_SYMBOL(flt_get_ws_api);
 int (*flt_set_ws_api)(int ws);
-int (*flt_sched_set_group_policy_eas_api)(int grp_id, int ws,
-					int wp, int wc);
-int (*flt_sched_get_group_policy_eas_api)(int grp_id, int *ws,
-					int *wp, int *wc);
-int (*flt_sched_set_cpu_policy_eas_api)(int cpu, int ws,
-					int wp, int wc);
-int (*flt_sched_get_cpu_policy_eas_api)(int cpu, int *ws,
-					int *wp, int *wc);
+EXPORT_SYMBOL(flt_set_ws_api);
+int (*flt_sched_set_group_policy_eas_api)(int grp_id, int ws, int wp, int wc);
+EXPORT_SYMBOL(flt_sched_set_group_policy_eas_api);
+int (*flt_sched_get_group_policy_eas_api)(int grp_id, int *ws, int *wp, int *wc);
+EXPORT_SYMBOL(flt_sched_get_group_policy_eas_api);
+int (*flt_sched_set_cpu_policy_eas_api)(int cpu, int ws, int wp, int wc);
+EXPORT_SYMBOL(flt_sched_set_cpu_policy_eas_api);
+int (*flt_sched_get_cpu_policy_eas_api)(int cpu, int *ws, int *wp, int *wc);
+EXPORT_SYMBOL(flt_sched_get_cpu_policy_eas_api);
 int (*flt_get_sum_group_api)(int grp_id);
+EXPORT_SYMBOL(flt_get_sum_group_api);
 int (*flt_get_max_group_api)(int grp_id);
+EXPORT_SYMBOL(flt_get_max_group_api);
 int (*flt_get_gear_sum_pelt_group_api)(unsigned int gear_id, int grp_id);
+EXPORT_SYMBOL(flt_get_gear_sum_pelt_group_api);
 int (*flt_get_gear_max_pelt_group_api)(unsigned int gear_id, int grp_id);
+EXPORT_SYMBOL(flt_get_gear_max_pelt_group_api);
 int (*flt_get_gear_sum_pelt_group_cnt_api)(unsigned int gear_id, int grp_id);
+EXPORT_SYMBOL(flt_get_gear_sum_pelt_group_cnt_api);
 int (*flt_get_gear_max_pelt_group_cnt_api)(unsigned int gear_id, int grp_id);
+EXPORT_SYMBOL(flt_get_gear_max_pelt_group_cnt_api);
 int (*flt_sched_get_gear_sum_group_eas_api)(int gear_id, int grp_id);
+EXPORT_SYMBOL(flt_sched_get_gear_sum_group_eas_api);
 int (*flt_sched_get_gear_max_group_eas_api)(int gear_id, int grp_id);
+EXPORT_SYMBOL(flt_sched_get_gear_max_group_eas_api);
 int (*flt_get_cpu_by_wp_api)(int cpu);
+EXPORT_SYMBOL(flt_get_cpu_by_wp_api);
 int (*flt_get_task_by_wp_api)(struct task_struct *p, int wc, int task_wp);
+EXPORT_SYMBOL(flt_get_task_by_wp_api);
 
 int flt_get_ws(void)
 {
