@@ -61,7 +61,19 @@ MODULE_LICENSE("GPL");
 	*ptr -= min_t(typeof(*ptr), *ptr, _val);		\
 } while (0)
 
+/* Runqueue only has SCHED_IDLE tasks enqueued */
+static int sched_idle_rq(struct rq *rq)
+{
+	return unlikely(rq->nr_running == rq->cfs.idle_h_nr_running &&
+			rq->nr_running);
+}
+
 #ifdef CONFIG_SMP
+static int sched_idle_cpu(int cpu)
+{
+	return sched_idle_rq(cpu_rq(cpu));
+}
+
 static inline unsigned long task_util(struct task_struct *p)
 {
 	return READ_ONCE(p->se.avg.util_avg);
@@ -874,6 +886,36 @@ static inline bool task_can_skip_this_cpu(struct task_struct *p, unsigned long p
 	return 1;
 }
 
+/*
+ * Scan the asym_capacity domain for idle CPUs; pick the first idle one on whi
+ * the task fits. If no CPU is big enough, but there are idle ones, try to
+ * maximize capacity.
+ */
+static int
+mtk_select_idle_capacity(struct task_struct *p, struct cpumask *allowed_cpumask)
+{
+	unsigned long task_util, best_cap = 0;
+	int cpu, best_cpu = -1;
+
+	task_util = uclamp_task_util(p);
+
+	for_each_cpu(cpu, allowed_cpumask) {
+		unsigned long cpu_cap = capacity_of(cpu);
+
+		if (!available_idle_cpu(cpu) && !sched_idle_cpu(cpu))
+			continue;
+		if (fits_capacity(task_util, cpu_cap))
+			return cpu;
+
+		if (cpu_cap > best_cap) {
+			best_cap = cpu_cap;
+			best_cpu = cpu;
+		}
+	}
+
+	return best_cpu;
+}
+
 DEFINE_PER_CPU(cpumask_var_t, mtk_select_rq_mask);
 
 void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_cpu, int sync,
@@ -890,7 +932,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	unsigned long target_cap = 0;
 	unsigned long cpu_cap, cpu_util;
 	bool latency_sensitive = false;
-	int cpu, best_energy_cpu = -1;
+	int cpu, best_energy_cpu = -1, recent_used_cpu;
 	struct cpuidle_state *idle;
 	struct perf_domain *pd;
 	int select_reason = -1;
@@ -1150,8 +1192,19 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 
 	irq_log_store();
 
+fail:
 	/* All cpu failed, even sys_max_spare_cap_cpu is not captured*/
-	if (cpumask_test_cpu(prev_cpu, &allowed_cpu_mask)) {
+
+	/* from overutilized & zero_util */
+	if (cpumask_empty(&allowed_cpu_mask))
+		cpumask_andnot(&allowed_cpu_mask, p->cpus_ptr, cpu_pause_mask);
+
+	/*
+	 * If the previous CPU fit_capacity and idle, don't be stupid:
+	 */
+	if (cpumask_test_cpu(prev_cpu, &allowed_cpu_mask) &&
+	    (available_idle_cpu(prev_cpu) || sched_idle_cpu(prev_cpu)) &&
+	    task_fits_capacity(p, prev_cpu)) {
 		*new_cpu = prev_cpu;
 		select_reason = LB_IRQ_BACKUP_PREV;
 		goto done;
@@ -1159,7 +1212,19 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 
 	irq_log_store();
 
-	if (cpumask_test_cpu(this_cpu, &allowed_cpu_mask)) {
+	/*
+	 * Allow a per-cpu kthread to stack with the wakee if the
+	 * kworker thread and the tasks previous CPUs are the same.
+	 * The assumption is that the wakee queued work for the
+	 * per-cpu kthread that is now complete and the wakeup is
+	 * essentially a sync wakeup. An obvious example of this
+	 * pattern is IO completions.
+	 */
+	if (cpumask_test_cpu(this_cpu, &allowed_cpu_mask) &&
+		is_per_cpu_kthread(current) && in_task() &&
+	    prev_cpu == this_cpu &&
+	    this_rq()->nr_running <= 1 &&
+	    task_fits_capacity(p, this_cpu)) {
 		*new_cpu = this_cpu;
 		select_reason = LB_IRQ_BACKUP_CURR;
 		goto done;
@@ -1167,11 +1232,25 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 
 	irq_log_store();
 
-	*new_cpu = cpumask_any(&allowed_cpu_mask);
-	select_reason = LB_IRQ_BACKUP_ALLOWED;
-	goto done;
+	/* Check a recently used CPU as a potential idle candidate: */
+	recent_used_cpu = p->recent_used_cpu;
+	p->recent_used_cpu = prev_cpu;
+	if (cpumask_test_cpu(recent_used_cpu, &allowed_cpu_mask) &&
+		recent_used_cpu != prev_cpu &&
+	    (available_idle_cpu(recent_used_cpu) || sched_idle_cpu(recent_used_cpu)) &&
+	    task_fits_capacity(p, recent_used_cpu)) {
+		*new_cpu = recent_used_cpu;
+		goto done;
+	}
 
-fail:
+	irq_log_store();
+
+	*new_cpu = mtk_select_idle_capacity(p, &allowed_cpu_mask);
+	if (*new_cpu < nr_cpu_ids) {
+		select_reason = LB_IRQ_BACKUP_ALLOWED;
+		goto done;
+	}
+
 	*new_cpu = -1;
 done:
 	irq_log_store();
