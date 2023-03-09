@@ -1171,7 +1171,7 @@ static int mtk_dloffload_probe(struct platform_device *pdev)
 	dsp = (struct mtk_base_dsp *)get_dsp_base();
 
 	if (pdev->dev.of_node) {
-		dev_set_name(&pdev->dev, "%s", "mt_soc_offload_common");
+		dev_set_name(&pdev->dev, "%s", "mt-soc-offload-common");
 		pdev->name = pdev->dev.kobj.name;
 	} else {
 		pr_debug("%s(), offload_dev->dev.of_node = NULL!!!\n", __func__);
@@ -1194,7 +1194,7 @@ static int mtk_dloffload_probe(struct platform_device *pdev)
 
 #if IS_ENABLED(CONFIG_OF)
 static const struct of_device_id mt_soc_offload_common_dt_match[] = {
-	{ .compatible = "mediatek,mt_soc_offload_common", },
+	{ .compatible = "mediatek,mt-soc-offload-common", },
 	{}
 };
 MODULE_DEVICE_TABLE(of, mt_soc_offload_common_dt_match);
@@ -1203,7 +1203,7 @@ MODULE_DEVICE_TABLE(of, mt_soc_offload_common_dt_match);
 
 static struct platform_driver mtk_offloadplayback_driver = {
 	.driver = {
-		.name = "mt_soc_offload_common",
+		.name = "mt-soc-offload-common",
 		.owner = THIS_MODULE,
 #if IS_ENABLED(CONFIG_OF)
 		.of_match_table = mt_soc_offload_common_dt_match,
