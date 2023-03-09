@@ -169,7 +169,10 @@ static int map_job_type(const struct mtk_cam_scen *scen)
 		break;
 
 	case MTK_CAM_SCEN_MSTREAM:
-		job_type = JOB_TYPE_MSTREAM;
+		if (scen->scen.mstream.type == MTK_CAM_MSTREAM_1_EXPOSURE)
+			job_type = JOB_TYPE_BASIC;
+		else
+			job_type = JOB_TYPE_MSTREAM;
 		break;
 	case MTK_CAM_SCEN_SMVR:
 		job_type = JOB_TYPE_HW_SUBSAMPLE;
@@ -209,8 +212,7 @@ static bool update_sv_pure_raw(struct mtk_cam_job *job)
 
 	/* TODO: scen help func */
 	is_supported_scen =
-		(job->job_type == JOB_TYPE_BASIC) ||
-		(job->job_type == JOB_TYPE_STAGGER);
+		(job->job_scen.id == MTK_CAM_SCEN_NORMAL);
 
 	is_sv_pure_raw = has_imgo && req_pure_raw && is_supported_scen;
 
@@ -276,6 +278,7 @@ static int mtk_cam_job_pack_init(struct mtk_cam_job *job,
 	job->timestamp = 0;
 	job->timestamp_mono = 0;
 	job->timestamp_buf = NULL;
+	job->update_sen_mstream_mode = false;
 
 	return ret;
 }
@@ -832,6 +835,26 @@ static int job_mark_engine_done(struct mtk_cam_job *job,
 	return (old | coming) == master_engine;
 }
 
+static int get_tg_seninf_pad(struct mtk_cam_job *job)
+{
+	int tg_exp_num = 1;
+
+	if (job->job_scen.id == MTK_CAM_SCEN_NORMAL)
+		tg_exp_num = scen_max_exp_num(&job->job_scen);
+	else
+		tg_exp_num = 1;
+
+	switch (tg_exp_num) {
+	case 2:
+		return PAD_SRC_RAW1;
+	case 3:
+		return PAD_SRC_RAW2;
+	case 1:
+	default:
+		return PAD_SRC_RAW0;
+	}
+}
+
 static int
 _stream_on(struct mtk_cam_job *job, bool on)
 {
@@ -839,7 +862,7 @@ _stream_on(struct mtk_cam_job *job, bool on)
 	struct mtk_raw_device *raw_dev;
 	struct mtk_camsv_device *sv_dev;
 	struct mtk_mraw_device *mraw_dev;
-	int raw_tg_idx = -1;
+	int seninf_pad = get_tg_seninf_pad(job), raw_tg_idx = -1;
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
@@ -850,16 +873,15 @@ _stream_on(struct mtk_cam_job *job, bool on)
 		}
 	}
 
-	if (is_dc_mode(job))
+	if (is_dc_mode(job)) {
+		seninf_pad = 0;
 		raw_tg_idx = -1;
+	}
 
 	/* TODO: separate seninf api to cammux setting and anable */
 	if (job->stream_on_seninf) {
-		int exp_num;
-
-		exp_num = scen_max_exp_num(&job->job_scen);
 		ctx_stream_on_seninf_sensor(job->src_ctx, on,
-					    exp_num, raw_tg_idx);
+					    seninf_pad, raw_tg_idx);
 
 		if (job->first_frm_switch)
 			apply_cam_mux_switch_stagger(job);
@@ -1004,6 +1026,8 @@ static int update_sensor_fmt(struct mtk_cam_job *job)
 	return 0;
 }
 
+static void mtk_cam_set_sensor_mstream_mode(struct mtk_cam_ctx *ctx, bool on);
+
 /* kthread context */
 static int
 _apply_sensor(struct mtk_cam_job *job)
@@ -1027,6 +1051,9 @@ _apply_sensor(struct mtk_cam_job *job)
 	}
 
 	frame_sync_start(job);
+
+	if (job->update_sen_mstream_mode)
+		mtk_cam_set_sensor_mstream_mode(ctx, 0);
 
 	update_sensor_fmt(job);
 
@@ -1604,14 +1631,10 @@ _job_pack_subsample(struct mtk_cam_job *job,
 	int ret;
 
 	subsample_job->prev_scen = ctx->ctldata_stored.resource.user_data.raw_res.scen;
-	job->exp_num_cur = 1;
-	job->exp_num_prev = 1;
-	job->hardware_scenario = MTKCAM_IPI_HW_PATH_ON_THE_FLY;
-	job->sw_feature = MTKCAM_IPI_SW_FEATURE_NORMAL;
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
-	dev_info(cam->dev, "[%s] ctx:%d, type:%d, scen_id:%d, 1stonly:%d, ratio:%d, sw/scene:%d/%d",
+	dev_info(cam->dev, "[%s] ctx:%d, type:%d, scen_id:%d, 1stonly:%d, ratio:%d",
 		__func__, ctx->stream_id, job->job_type, job->job_scen.id, first_frame_only_cur,
-		job->sub_ratio, job->sw_feature, job->hardware_scenario);
+		job->sub_ratio);
 	job->stream_on_seninf = false;
 	complete(&job->i2c_ready_completion);
 	if (!ctx->used_engine) {
@@ -1671,7 +1694,7 @@ int master_raw_set_stagger(struct device *dev, struct mtk_cam_job *job)
 
 	raw = dev_get_drvdata(dev);
 
-	if (scen_exp_num(&job->job_scen) > 1)
+	if (job_exp_num(job) > 1)
 		stagger_enable(raw, is_dc);
 
 	return 0;
@@ -1692,21 +1715,16 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 	int ret;
 
 	job->switch_type = get_exp_switch_type(job);
-	update_stagger_job_exp(job);
 	job->first_frm_switch =
 		(!ctx->not_first_job) && (job->switch_type != EXPOSURE_CHANGE_NONE);
 	job->seamless_switch =
 		(ctx->not_first_job) && (job->switch_type != EXPOSURE_CHANGE_NONE);
-	job->hardware_scenario = get_hw_scenario(job);
-	job->sw_feature = MTKCAM_IPI_SW_FEATURE_VHDR;
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
 
-	dev_info(cam->dev, "[%s] ctx:%d, type:%d, scen exp:%d->%d, swi:%d,  expN:%d->%d, sw/scene:%d/0x%x",
+	dev_info(cam->dev, "[%s] ctx:%d, type:%d, scen exp:%d->%d, swi:%d",
 		__func__, ctx->stream_id, job->job_type,
 		prev_scen->scen.normal.exp_num,
-		job->job_scen.scen.normal.exp_num, job->switch_type,
-		job->exp_num_prev, job->exp_num_cur,
-		job->sw_feature, job->hardware_scenario);
+		job->job_scen.scen.normal.exp_num, job->switch_type);
 	job->stream_on_seninf = false;
 	job->scq_period = SCQ_DEADLINE_MS_STAGGER;
 	if (!job->seamless_switch)
@@ -1763,6 +1781,18 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 	}
 	ret = mtk_cam_job_fill_ipi_frame(job, job_helper);
 	return ret;
+}
+
+static bool check_update_mstream_mode(struct mtk_cam_job *job)
+{
+	if (job->job_scen.id == MTK_CAM_SCEN_MSTREAM) {
+		bool exp_switch =
+			job_exp_num(job) != job_prev_exp_num(job);
+
+		return ((job->frame_seq_no == 0) || exp_switch);
+	}
+
+	return false;
 }
 
 static int job_init_mstream(struct mtk_cam_job *job)
@@ -1877,15 +1907,11 @@ _job_pack_mstream(struct mtk_cam_job *job,
 	struct mtk_cam_device *cam = ctx->cam;
 	int ret;
 
-	job->exp_num_cur = 2; /* TODO: add 1exp */
-	job->hardware_scenario = get_hw_scenario(job);
-	job->sw_feature = MTKCAM_IPI_SW_FEATURE_VHDR;
+	job->update_sen_mstream_mode = check_update_mstream_mode(job);
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
 
-	dev_info(cam->dev, "[%s] ctx/seq:%d/0x%x, type:%d, exp:%d, sw/scene:%d/0x%x",
-		__func__, ctx->stream_id, job->frame_seq_no, job->job_type,
-		job->exp_num_cur,
-		job->sw_feature, job->hardware_scenario);
+	dev_info(cam->dev, "[%s] ctx/seq:%d/0x%x, type:%d",
+		__func__, ctx->stream_id, job->frame_seq_no, job->job_type);
 	job->stream_on_seninf = false;
 	if (!ctx->used_engine) {
 		unsigned long selected;
@@ -2019,16 +2045,12 @@ _job_pack_normal(struct mtk_cam_job *job,
 	struct mtk_raw_ctrl_data *ctrl_data = get_raw_ctrl_data(job);
 	int ret;
 
-	job->exp_num_cur = 1;
-	job->exp_num_prev = 1;
+	job->update_sen_mstream_mode = check_update_mstream_mode(job);
 	job->seamless_switch = (ctrl_data) ?
 		ctrl_data->rc_data.sensor_mode_update : false;
-	job->hardware_scenario = get_hw_scenario(job);
-	job->sw_feature = MTKCAM_IPI_SW_FEATURE_NORMAL;
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
-	dev_dbg(cam->dev, "[%s] ctx:%d, job_type:%d, scen:%d, expnum:%d->%d, sw/scene:%d/%d",
-		__func__, ctx->stream_id, job->job_type, job->job_scen.id,
-		job->exp_num_prev, job->exp_num_cur, job->sw_feature, job->hardware_scenario);
+	dev_dbg(cam->dev, "[%s] ctx:%d, job_type:%d, scen:%d",
+		__func__, ctx->stream_id, job->job_type, job->job_scen.id);
 	job->stream_on_seninf = false;
 
 	if (!job->seamless_switch)
@@ -2092,18 +2114,10 @@ _job_pack_m2m(struct mtk_cam_job *job,
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_device *cam = ctx->cam;
 	int ret;
-	struct mtk_cam_scen *prev_scen =
-		&job->src_ctx->ctldata_stored.resource.user_data.raw_res.scen;
 
-	job->exp_num_cur = scen_exp_num(&job->job_scen);
-	job->exp_num_prev = scen_exp_num(prev_scen);
-	job->hardware_scenario = get_hw_scenario(job);
-	job->sw_feature = is_vhdr(job) ?
-		MTKCAM_IPI_SW_FEATURE_VHDR : MTKCAM_IPI_SW_FEATURE_NORMAL;
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
-	dev_dbg(cam->dev, "[%s] ctx:%d, job_type:%d, scen:%d, expnum:%d->%d, sw/scene:%d/%d",
-		__func__, ctx->stream_id, job->job_type, job->job_scen.id,
-		job->exp_num_prev, job->exp_num_cur, job->sw_feature, job->hardware_scenario);
+	dev_dbg(cam->dev, "[%s] ctx:%d, job_type:%d, scen:%d",
+		__func__, ctx->stream_id, job->job_type, job->job_scen.id);
 	job->stream_on_seninf = false;
 	complete(&job->i2c_ready_completion);
 	if (!ctx->used_engine) {
@@ -2262,14 +2276,9 @@ _job_pack_only_sv(struct mtk_cam_job *job,
 	struct mtk_cam_device *cam = ctx->cam;
 	int ret;
 
-	job->exp_num_cur = 1;
-	job->exp_num_prev = 1;
-	job->hardware_scenario = MTKCAM_IPI_HW_PATH_ON_THE_FLY;
-	job->sw_feature = MTKCAM_IPI_SW_FEATURE_NORMAL;
-	job->sub_ratio = 1;
-	dev_dbg(cam->dev, "[%s] ctx:%d, job_type:%d, scen:%d, expnum:%d->%d, sw/scene:%d/%d",
-		__func__, ctx->stream_id, job->job_type, job->job_scen.id,
-		job->exp_num_prev, job->exp_num_cur, job->sw_feature, job->hardware_scenario);
+	job->sub_ratio = get_subsample_ratio(&job->job_scen);
+	dev_dbg(cam->dev, "[%s] ctx:%d, job_type:%d, scen:%d",
+		__func__, ctx->stream_id, job->job_type, job->job_scen.id);
 	job->stream_on_seninf = false;
 	complete(&job->i2c_ready_completion);
 	if (!ctx->used_engine) {
@@ -2670,8 +2679,7 @@ static int apply_sensor_mstream(struct mtk_cam_job *job)
 
 	frame_sync_start(job);
 
-	/* TODO(AY): initial & switch */
-	if (job->frame_seq_no == 0)
+	if (job->update_sen_mstream_mode)
 		mtk_cam_set_sensor_mstream_mode(ctx, 1);
 
 	apply_sensor_mstream_exp_gain(ctx, mjob, cur_idx);
@@ -3060,6 +3068,13 @@ static int job_factory(struct mtk_cam_job *job)
 
 	ret = pack_helper->pack_job(job, pack_helper);
 
+	if (CAM_DEBUG_ENABLED(JOB))
+		pr_info("[%s] ctx:%d|type:%d|scen_id:%d|exp(cur:%d,prev:%d)|sw/scene:%d/%d",
+				__func__,
+				ctx->stream_id, job->job_type, job->job_scen.id,
+				job_exp_num(job), job_prev_exp_num(job),
+				get_sw_feature(job), get_hw_scenario(job));
+
 	return ret;
 }
 
@@ -3267,7 +3282,7 @@ static int mtk_cam_job_fill_ipi_config(struct mtk_cam_job *job,
 			MTK_CAM_IPI_CONFIG_TYPE_INPUT_CHANGE :
 			MTK_CAM_IPI_CONFIG_TYPE_INIT;
 
-		config->sw_feature = job->sw_feature;
+		config->sw_feature = get_sw_feature(job);
 
 		update_scen_order_to_config(&job->job_scen, config);
 		update_frame_order_to_config(&job->job_scen, config);
@@ -3339,7 +3354,7 @@ static int mtk_cam_job_fill_ipi_config_only_sv(struct mtk_cam_job *job,
 	memset(config, 0, sizeof(*config));
 
 	config->flags = MTK_CAM_IPI_CONFIG_TYPE_INIT;
-	config->sw_feature = job->sw_feature;
+	config->sw_feature = get_sw_feature(job);
 
 	for (i = SVTAG_START; i < SVTAG_END; i++) {
 		if (sv_dev->enabled_tags & (1 << i)) {
@@ -3434,10 +3449,10 @@ static int update_job_raw_param_to_ipi_frame(struct mtk_cam_job *job,
 		return 0;
 
 	p->imgo_path_sel = map_ipi_imgo_path(ctrl->raw_path);
-	p->hardware_scenario = job->hardware_scenario;
+	p->hardware_scenario = get_hw_scenario(job);
 	p->bin_flag = map_ipi_bin_flag(ctrl->resource.user_data.raw_res.bin);
-	p->exposure_num = job->exp_num_cur;
-	p->previous_exposure_num = job->exp_num_prev;
+	p->exposure_num = job_exp_num(job);
+	p->previous_exposure_num = job_prev_exp_num(job);
 
 	if (is_m2m_apu(job))
 		update_adl_param(job, ctrl, &fp->adl_param);
@@ -3992,7 +4007,7 @@ static int get_exp_switch_type(struct mtk_cam_job *job)
 	struct mtk_cam_scen *prev_scen =
 		&job->src_ctx->ctldata_stored.resource.user_data.raw_res.scen;
 
-	cur = scen_exp_num(&job->job_scen);
+	cur = job_exp_num(job);
 	if (ctx->not_first_job)
 		prev = prev_scen->scen.normal.exp_num;
 	else

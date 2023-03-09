@@ -201,7 +201,13 @@ int get_hw_scenario(struct mtk_cam_job *job)
 	struct mtk_cam_scen *scen = &job->job_scen;
 	int is_dc = is_dc_mode(job);
 	int is_w = is_rgbw(job);
-	int hard_scenario = 0;
+	int hard_scenario = MTKCAM_IPI_HW_PATH_ON_THE_FLY;
+	int is_sv_only = job->job_type == JOB_TYPE_ONLY_SV;
+
+	if (is_sv_only) {
+		hard_scenario = MTKCAM_IPI_HW_PATH_ON_THE_FLY;
+		goto END;
+	}
 
 	switch (scen->id) {
 	case MTK_CAM_SCEN_NORMAL:
@@ -246,16 +252,26 @@ int get_hw_scenario(struct mtk_cam_job *job)
 	case MTK_CAM_SCEN_ODT_MSTREAM:
 		hard_scenario = MTKCAM_IPI_HW_PATH_OFFLINE_STAGGER;
 		break;
+	case MTK_CAM_SCEN_SMVR:
+		hard_scenario = MTKCAM_IPI_HW_PATH_ON_THE_FLY;
+		break;
 	default:
 		pr_info("[%s] failed. un-support scen id:%d",
 			__func__, scen->id);
 		break;
 	}
 
+END:
 	return hard_scenario;
 }
 
-int scen_exp_num(struct mtk_cam_scen *scen)
+int get_sw_feature(struct mtk_cam_job *job)
+{
+	return is_vhdr(job) ?
+		MTKCAM_IPI_SW_FEATURE_VHDR : MTKCAM_IPI_SW_FEATURE_NORMAL;
+}
+
+static int scen_exp_num(struct mtk_cam_scen *scen)
 {
 	int exp = 1;
 
@@ -263,7 +279,11 @@ int scen_exp_num(struct mtk_cam_scen *scen)
 	case MTK_CAM_SCEN_NORMAL:
 	case MTK_CAM_SCEN_ODT_NORMAL:
 	case MTK_CAM_SCEN_M2M_NORMAL:
-		exp = scen->scen.normal.exp_num;
+		if (scen->scen.normal.exp_num == 0)
+			pr_info("%s: error: NORMAL SCEN(%d) w/o setting exp_num",
+					__func__, scen->id);
+		else
+			exp = scen->scen.normal.exp_num;
 		break;
 	case MTK_CAM_SCEN_MSTREAM:
 	case MTK_CAM_SCEN_ODT_MSTREAM:
@@ -279,12 +299,68 @@ int scen_exp_num(struct mtk_cam_scen *scen)
 			break;
 		}
 		break;
-	//case MTK_CAM_SCEN_SMVR:
+	case MTK_CAM_SCEN_SMVR:
 	default:
 		break;
 	}
 
 	return exp;
+}
+
+static int get_stagger_job_prev_exp(struct mtk_cam_job *job)
+{
+	struct mtk_cam_scen *scen = &job->job_scen;
+	int exp_num_cur = scen->scen.normal.exp_num;
+	int exp_num_prev = exp_num_cur;
+
+	// NOTE: job->switch_type is updated during job_pack
+	// calling this function in different timing may
+	// result unexpectly
+	// TODO: remove get_stagger_job_prev_exp
+	switch (job->switch_type) {
+	case EXPOSURE_CHANGE_3_to_2:
+	case EXPOSURE_CHANGE_3_to_1:
+		exp_num_prev = 3;
+		break;
+	case EXPOSURE_CHANGE_2_to_1:
+	case EXPOSURE_CHANGE_2_to_3:
+		exp_num_prev = 2;
+		break;
+	case EXPOSURE_CHANGE_1_to_2:
+	case EXPOSURE_CHANGE_1_to_3:
+		exp_num_prev = 1;
+		break;
+	case EXPOSURE_CHANGE_NONE:
+	default:
+		break;
+	}
+	//pr_info("[%s] prev:%d-exp -> cur:%d-exp\n",
+	//	__func__, job->feature->exp_num_prev, job->feature->exp_num_cur);
+
+	return exp_num_prev;
+}
+
+int job_prev_exp_num(struct mtk_cam_job *job)
+{
+	int exp = 1;
+	struct mtk_cam_scen *scen =
+		&job->src_ctx->ctldata_stored.resource.user_data.raw_res.scen;
+
+	// TODO: can be replaced with scen_exp_num(prev_scen)?
+	// and remove get_stagger_job_prev_exp
+	if (job->job_type == JOB_TYPE_STAGGER)
+		exp = get_stagger_job_prev_exp(job);
+	else
+		exp = scen_exp_num(scen);
+
+	return exp;
+}
+
+int job_exp_num(struct mtk_cam_job *job)
+{
+	struct mtk_cam_scen *scen = &job->job_scen;
+
+	return scen_exp_num(scen);
 }
 
 int scen_max_exp_num(struct mtk_cam_scen *scen)
@@ -497,7 +573,7 @@ static int fill_sv_img_fp_working_buffer(struct req_buffer_helper *helper,
 
 	sv_dev = dev_get_drvdata(ctx->hw_sv);
 
-	job_exp_no = job->exp_num_cur;
+	job_exp_no = job_exp_num(job);
 	tag_idx = (is_dc_mode(job) && job_exp_no > 1 && (exp_no + 1) == job_exp_no) ?
 		get_sv_tag_idx_hdr(job_exp_no, MTKCAM_IPI_ORDER_LAST_TAG, is_w) :
 		get_sv_tag_idx_hdr(job_exp_no, exp_no, is_w);
@@ -512,7 +588,7 @@ static int fill_sv_img_fp_working_buffer(struct req_buffer_helper *helper,
 
 	fp->camsv_param[0][tag_idx].pipe_id = uid.pipe_id;
 	fp->camsv_param[0][tag_idx].tag_id = tag_idx;
-	fp->camsv_param[0][tag_idx].hardware_scenario = job->hardware_scenario;
+	fp->camsv_param[0][tag_idx].hardware_scenario = get_hw_scenario(job);
 
 	out = &fp->camsv_param[0][tag_idx].camsv_img_outputs[0];
 	ret = fill_img_out_driver_buf(out, uid, desc, buf);
@@ -582,9 +658,10 @@ static int fill_sv_to_rawi_wbuf(struct req_buffer_helper *helper,
 void get_stagger_rawi_table(struct mtk_cam_job *job,
 		const int **rawi_table, int *cnt)
 {
+	int exp_num_cur = job_exp_num(job);
 	bool without_tg = is_dc_mode(job) || is_hw_offline(job);
 
-	switch (job->exp_num_cur) {
+	switch (exp_num_cur) {
 	case 1:
 		(*rawi_table) = without_tg ? dc_1exp_rawi : NULL;
 		*cnt = without_tg ? ARRAY_SIZE(dc_1exp_rawi) : 0;

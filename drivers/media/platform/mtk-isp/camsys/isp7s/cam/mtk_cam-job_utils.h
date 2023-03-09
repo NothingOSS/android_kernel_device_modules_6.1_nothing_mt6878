@@ -94,7 +94,8 @@ struct pack_job_ops_helper {
 void _set_timestamp(struct mtk_cam_job *job,
 	u64 time_boot, u64 time_mono);
 
-int scen_exp_num(struct mtk_cam_scen *scen);
+int job_prev_exp_num(struct mtk_cam_job *job);
+int job_exp_num(struct mtk_cam_job *job);
 int scen_max_exp_num(struct mtk_cam_scen *scen);
 int get_subsample_ratio(struct mtk_cam_scen *scen);
 u64 infer_i2c_deadline_ns(struct mtk_cam_scen *scen, u64 frame_interval_ns);
@@ -150,6 +151,7 @@ bool ipi_crop_eq(const struct mtkcam_ipi_crop *s,
 int get_sv_tag_idx(unsigned int exp_no, unsigned int tag_order, bool is_w);
 
 int get_hw_scenario(struct mtk_cam_job *job);
+int get_sw_feature(struct mtk_cam_job *job);
 bool is_vhdr(struct mtk_cam_job *job);
 bool is_dc_mode(struct mtk_cam_job *job);
 bool is_sv_pure_raw(struct mtk_cam_job *job);

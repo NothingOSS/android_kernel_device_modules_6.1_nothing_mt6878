@@ -282,12 +282,9 @@ struct mtk_cam_job {
 	struct v4l2_subdev *sensor;
 
 	bool is_sv_pure_raw;
+	bool update_sen_mstream_mode;
 
 	struct mtk_cam_scen job_scen;		/* job 's scen by res control */
-	int exp_num_cur;		/* for ipi */
-	int exp_num_prev;		/* for ipi */
-	int hardware_scenario;	/* for ipi */
-	int sw_feature;			/* for ipi */
 	unsigned int sub_ratio;
 	int scq_period;
 	u64 (*timestamp_buf)[128];

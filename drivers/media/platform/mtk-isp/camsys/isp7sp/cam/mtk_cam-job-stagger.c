@@ -37,35 +37,6 @@ int fill_imgo_buf_to_ipi_stagger(
 	return ret;
 }
 
-void update_stagger_job_exp(struct mtk_cam_job *job)
-{
-	struct mtk_cam_scen *scen = &job->job_scen;
-
-	job->exp_num_cur = scen->scen.normal.exp_num;
-
-	switch (job->switch_type) {
-	case EXPOSURE_CHANGE_NONE:
-		job->exp_num_prev = job->exp_num_cur;
-		break;
-	case EXPOSURE_CHANGE_3_to_2:
-	case EXPOSURE_CHANGE_3_to_1:
-		job->exp_num_prev = 3;
-		break;
-	case EXPOSURE_CHANGE_2_to_1:
-	case EXPOSURE_CHANGE_2_to_3:
-		job->exp_num_prev = 2;
-		break;
-	case EXPOSURE_CHANGE_1_to_2:
-	case EXPOSURE_CHANGE_1_to_3:
-		job->exp_num_prev = 1;
-		break;
-	default:
-		break;
-	}
-	//pr_info("[%s] prev:%d-exp -> cur:%d-exp\n",
-	//	__func__, job->feature->exp_num_prev, job->feature->exp_num_cur);
-}
-
 int apply_cam_mux_switch_stagger(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;

@@ -1950,18 +1950,9 @@ int PipeIDtoTGIDX(int pipe_id)
 }
 #endif
 
-static int exp_num_to_seninf_pad(int exp_num)
-{
-	if (exp_num == 2)
-		return PAD_SRC_RAW1;
-	else if (exp_num == 3)
-		return PAD_SRC_RAW2;
-	return PAD_SRC_RAW0;
-}
-
 int ctx_stream_on_seninf_sensor(struct mtk_cam_ctx *ctx,
 				int enable,
-				int exp_num, int raw_tg_idx)
+				int seninf_pad, int raw_tg_idx)
 {
 	struct mtk_cam_device *cam = ctx->cam;
 	struct v4l2_subdev *seninf = ctx->seninf;
@@ -1973,16 +1964,13 @@ int ctx_stream_on_seninf_sensor(struct mtk_cam_ctx *ctx,
 
 	if (!enable) {
 		/* use cached exp num */
-		exp_num = ctx->cur_exp_num;
+		seninf_pad = ctx->seninf_pad;
 		raw_tg_idx = ctx->raw_tg_idx;
 	}
 
 	/* RAW */
 	if (raw_tg_idx >= 0 && ctx->hw_raw[0]) {
-		int seninf_pad;
 		int pixel_mode = 3;
-
-		seninf_pad = exp_num_to_seninf_pad(exp_num);
 
 		mtk_cam_seninf_set_camtg(seninf, seninf_pad, raw_tg_idx);
 		mtk_cam_seninf_set_pixelmode(seninf, seninf_pad, pixel_mode);
@@ -2029,7 +2017,7 @@ int ctx_stream_on_seninf_sensor(struct mtk_cam_ctx *ctx,
 
 	/* cache for stop */
 	if (enable) {
-		ctx->cur_exp_num = exp_num;
+		ctx->seninf_pad = seninf_pad;
 		ctx->raw_tg_idx = raw_tg_idx;
 	}
 

@@ -15,7 +15,6 @@ struct mtk_cam_job;
 struct mtk_cam_buffer;
 struct mtk_cam_video_device;
 bool is_stagger_multi_exposure(struct mtk_cam_job *job);
-void update_stagger_job_exp(struct mtk_cam_job *job);
 int get_hard_scenario_stagger(struct mtk_cam_job *job);
 int wakeup_apply_sensor(struct mtk_cam_job *job);
 void update_event_setting_done_stagger(struct mtk_cam_job *job,

@@ -137,7 +137,7 @@ struct mtk_cam_ctx {
 
 	/* cached for stream_off */
 	int raw_tg_idx;
-	int cur_exp_num;
+	int seninf_pad;
 
 	struct device *hw_raw[MAX_RAW_PER_STREAM];
 	struct device *hw_sv;
@@ -162,7 +162,7 @@ struct mtk_cam_v4l2_pipelines {
 
 int ctx_stream_on_seninf_sensor(struct mtk_cam_ctx *ctx,
 				int enable,
-				int exp_num, int raw_tg_idx);
+				int seninf_pad, int raw_tg_idx);
 
 struct mtk_cam_engines {
 	int num_seninf_devices;
