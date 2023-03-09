@@ -49,6 +49,7 @@ int apply_cam_mux_switch_stagger(struct mtk_cam_job *job)
 	int raw_id = _get_master_raw_id(job->used_engine);
 	int raw_tg_idx = raw_to_tg_idx(raw_id);
 	int first_tag_idx, second_tag_idx, last_tag_idx;
+	int first_tag_idx_w, last_tag_idx_w;
 
 	/**
 	 * To identify the "max" exposure_num, we use
@@ -56,6 +57,9 @@ int apply_cam_mux_switch_stagger(struct mtk_cam_job *job)
 	 * since the latter one stores the exposure_num information,
 	 * not the max one.
 	 */
+
+	memset(settings, 0,
+		sizeof(struct mtk_cam_seninf_mux_setting) * ARRAY_SIZE(settings));
 
 	if (type != EXPOSURE_CHANGE_NONE && config_exposure_num == 3) {
 		switch (type) {
@@ -179,6 +183,8 @@ int apply_cam_mux_switch_stagger(struct mtk_cam_job *job)
 		case EXPOSURE_CHANGE_2_to_1:
 			first_tag_idx =
 				get_sv_tag_idx(1, MTKCAM_IPI_ORDER_FIRST_TAG, false);
+			first_tag_idx_w =
+				get_sv_tag_idx(1, MTKCAM_IPI_ORDER_FIRST_TAG, true);
 			settings[0].seninf = ctx->seninf;
 			settings[0].source = PAD_SRC_RAW0;
 			settings[0].camtg  = (is_dc) ?
@@ -193,18 +199,37 @@ int apply_cam_mux_switch_stagger(struct mtk_cam_job *job)
 			settings[1].tag_id = -1;
 			settings[1].enable = 0;
 
-			settings[2].seninf = ctx->seninf;
-			settings[2].source = PAD_SRC_RAW0;
-			settings[2].camtg  =
-				mtk_cam_get_sv_cammux_id(sv_dev, first_tag_idx);
-			settings[2].tag_id = first_tag_idx;
-			settings[2].enable = 1;
+			if (is_rgbw(job)) {
+				settings[2].seninf = ctx->seninf;
+				settings[2].source = PAD_SRC_RAW_W0;
+				settings[2].camtg  =
+					mtk_cam_get_sv_cammux_id(sv_dev, first_tag_idx_w);
+				settings[2].tag_id = first_tag_idx_w;
+				settings[2].enable = 1;
+
+				settings[3].seninf = ctx->seninf;
+				settings[3].source = PAD_SRC_RAW_W1;
+				settings[3].camtg  = -1;
+				settings[3].tag_id = -1;
+				settings[3].enable = 0;
+			} else {
+				settings[2].seninf = ctx->seninf;
+				settings[2].source = PAD_SRC_RAW0;
+				settings[2].camtg  =
+					mtk_cam_get_sv_cammux_id(sv_dev, first_tag_idx);
+				settings[2].tag_id = first_tag_idx;
+				settings[2].enable = 1;
+			}
 			break;
 		case EXPOSURE_CHANGE_1_to_2:
 			first_tag_idx =
 				get_sv_tag_idx(2, MTKCAM_IPI_ORDER_FIRST_TAG, false);
+			first_tag_idx_w =
+				get_sv_tag_idx(2, MTKCAM_IPI_ORDER_FIRST_TAG, true);
 			last_tag_idx =
 				get_sv_tag_idx(2, MTKCAM_IPI_ORDER_LAST_TAG, false);
+			last_tag_idx_w =
+				get_sv_tag_idx(2, MTKCAM_IPI_ORDER_LAST_TAG, true);
 			settings[0].seninf = ctx->seninf;
 			settings[0].source = PAD_SRC_RAW0;
 			settings[0].camtg  =
@@ -220,26 +245,42 @@ int apply_cam_mux_switch_stagger(struct mtk_cam_job *job)
 			settings[1].tag_id = (is_dc) ? last_tag_idx : -1;
 			settings[1].enable = 1;
 
-			settings[2].seninf = ctx->seninf;
-			settings[2].source = PAD_SRC_RAW1;
-			settings[2].camtg  =
-				mtk_cam_get_sv_cammux_id(sv_dev, last_tag_idx);
-			settings[2].tag_id = last_tag_idx;
-			settings[2].enable = 1;
+			if (is_rgbw(job)) {
+				settings[2].seninf = ctx->seninf;
+				settings[2].source = PAD_SRC_RAW_W0;
+				settings[2].camtg  =
+					mtk_cam_get_sv_cammux_id(sv_dev, first_tag_idx_w);
+				settings[2].tag_id = first_tag_idx_w;
+				settings[2].enable = 1;
+
+				settings[3].seninf = ctx->seninf;
+				settings[3].source = PAD_SRC_RAW_W1;
+				settings[3].camtg  =
+					mtk_cam_get_sv_cammux_id(sv_dev, last_tag_idx_w);
+				settings[3].tag_id = last_tag_idx_w;
+				settings[3].enable = 1;
+			} else {
+				settings[2].seninf = ctx->seninf;
+				settings[2].source = PAD_SRC_RAW1;
+				settings[2].camtg  =
+					mtk_cam_get_sv_cammux_id(sv_dev, last_tag_idx);
+				settings[2].tag_id = last_tag_idx;
+				settings[2].enable = 1;
+			}
 			break;
 		default:
 			break;
 		}
 		param.settings = &settings[0];
-		param.num = 3;
+		param.num = (is_rgbw(job)) ? 4 : 3;
 		mtk_cam_seninf_streaming_mux_change(&param);
 		dev_info(ctx->cam->dev,
-			"[%s] switch Req:%d type:%d cam_mux[0-2]:[%d/%d/%d][%d/%d/%d][%d/%d/%d] ts:%llu\n",
+			"[%s] switch Req:%d type:%d cam_mux[0-3]:[%d/%d/%d][%d/%d/%d][%d/%d/%d][%d/%d/%d]\n",
 			__func__, job->frame_seq_no, type,
 			settings[0].source, settings[0].camtg, settings[0].enable,
 			settings[1].source, settings[1].camtg, settings[1].enable,
 			settings[2].source, settings[2].camtg, settings[2].enable,
-			ktime_get_boottime_ns() / 1000);
+			settings[3].source, settings[3].camtg, settings[3].enable);
 	}
 
 	return 0;
