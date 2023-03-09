@@ -20,19 +20,27 @@ unsigned int predict_dsu_bw(int wl_type, int dst_cpu, unsigned long task_util,
 		unsigned long total_util, unsigned int dsu_bw)
 {
 	unsigned int bml_weighting;
+	unsigned int ret = 0;
 
 	/* pd_get_dsu_weighting return percentage */
 	bml_weighting = pd_get_dsu_weighting(wl_type, dst_cpu);
-	return (task_util/total_util) * dsu_bw * bml_weighting/100;
+	ret = dsu_bw * bml_weighting * task_util / total_util / 100;
+	ret += dsu_bw;
+
+	return ret;
 }
 
 unsigned int predict_emi_bw(int wl_type, int dst_cpu, unsigned long task_util,
 		unsigned long total_util, unsigned int emi_bw)
 {
 	unsigned int bml_weighting;
+	unsigned int ret = 0;
 
 	bml_weighting = pd_get_emi_weighting(wl_type, dst_cpu);
-	return (task_util/total_util) * emi_bw * bml_weighting/100;
+	ret = emi_bw * bml_weighting * task_util / total_util / 100;
+	ret += emi_bw;
+
+	return ret;
 }
 
 unsigned int dsu_dyn_pwr(int wl_type, struct dsu_info *p, unsigned int p_dsu_bw)
@@ -43,6 +51,8 @@ unsigned int dsu_dyn_pwr(int wl_type, struct dsu_info *p, unsigned int p_dsu_bw)
 	int pwr_delta;
 	struct dsu_state *dsu_tbl;
 	int perbw_pwr_a, perbw_pwr_b;
+	unsigned int ret = 0;
+	unsigned int volt_temp;
 
 	real_bw = p_dsu_bw/10;/* to gb/s */
 	dsu_tbl = dsu_get_opp_ps(wl_type, dsu_opp);
@@ -71,10 +81,13 @@ unsigned int dsu_dyn_pwr(int wl_type, struct dsu_info *p, unsigned int p_dsu_bw)
 		real_bw_pwr = real_bw * perbw_pwr_a;
 	}
 
-	pwr_delta = 1000 * (real_bw_pwr - golden_bw_pwr) * p->dsu_volt/100000 *
-	   p->dsu_volt/100000; /* mw to uw */
+	/* mw to uw */
+	volt_temp = 1000 * p->dsu_volt/100000 * p->dsu_volt/100000;
+	pwr_delta = volt_temp * (real_bw_pwr - golden_bw_pwr);
 
-	return dsu_tbl->dyn_pwr + pwr_delta;
+	ret = dsu_tbl->dyn_pwr + pwr_delta;
+
+	return ret;
 
 }
 
@@ -109,6 +122,7 @@ unsigned int mcusys_dyn_pwr(int wl_type, struct dsu_info *p,
 	unsigned int old_bw_pwr, old_bw, new_bw, new_bw_pwr;
 	int pwr_delta;
 	struct dsu_state *dsu_tbl;
+	unsigned int volt_temp;
 
 	dsu_tbl = dsu_get_opp_ps(wl_type, dsu_opp);
 	old_bw = dsu_tbl->EMI_BW;/* 100mb/s */
@@ -116,8 +130,9 @@ unsigned int mcusys_dyn_pwr(int wl_type, struct dsu_info *p,
 
 	old_bw_pwr = EMI_PERBW_PWR * old_bw/10;
 	new_bw_pwr = EMI_PERBW_PWR * new_bw/10;
-	pwr_delta = 1000 * (new_bw_pwr - old_bw_pwr) * p->dsu_volt/100000 *
-	   p->dsu_volt/100000; /* mw to uw */
+	/* mw to uw */
+	volt_temp = 1000 * p->dsu_volt/100000 * p->dsu_volt/100000;
+	pwr_delta = volt_temp * (new_bw_pwr - old_bw_pwr);
 
 	return dsu_tbl->mcusys_dyn_pwr + pwr_delta;/* uw */
 }
