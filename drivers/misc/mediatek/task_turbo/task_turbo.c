@@ -242,6 +242,7 @@ static void probe_android_rvh_set_user_nice(void *ignore, struct task_struct *p,
 						long *nice, bool *allowed)
 {
 	struct task_turbo_t *turbo_data;
+	bool p_turbo;
 
 	if ((*nice < MIN_NICE || *nice > MAX_NICE) && !task_turbo_nice(*nice)) {
 		*allowed = false;
@@ -255,7 +256,8 @@ static void probe_android_rvh_set_user_nice(void *ignore, struct task_struct *p,
 	if (!task_turbo_nice(*nice))
 		turbo_data->nice_backup = *nice;
 
-	if (is_turbo_task(p) && !task_restore_nice(*nice)) {
+	p_turbo = is_turbo_task(p);
+	if (p_turbo && !task_restore_nice(*nice)) {
 		*nice = rlimit_to_nice(task_rlimit(p, RLIMIT_NICE));
 		if (unlikely(*nice > MAX_NICE)) {
 			pr_warn("%s: pid=%d RLIMIT_NICE=%ld is not set\n",
@@ -265,7 +267,7 @@ static void probe_android_rvh_set_user_nice(void *ignore, struct task_struct *p,
 	} else
 		*nice = turbo_data->nice_backup;
 
-	trace_sched_set_user_nice(p, *nice, is_turbo_task(p));
+	trace_sched_set_user_nice(p, *nice, p_turbo);
 }
 
 static void probe_android_rvh_setscheduler(void *ignore, struct task_struct *p)
@@ -338,6 +340,7 @@ static void probe_android_vh_alter_futex_plist_add(void *ignore, struct plist_no
 	struct plist_node *this_node;
 	int prev_pid = 0;
 	bool prev_turbo = 1;
+	bool this_turbo;
 
 	if (!sub_feat_enable(SUB_FEAT_LOCK) &&
 	    !is_turbo_task(current)) {
@@ -346,17 +349,18 @@ static void probe_android_vh_alter_futex_plist_add(void *ignore, struct plist_no
 	}
 
 	plist_for_each_entry_safe(this, next, hb_chain, list) {
-		if ((!this->pi_state || !this->rt_waiter) && !is_turbo_task(this->task)) {
+		this_turbo = is_turbo_task(this->task);
+		if ((!this->pi_state || !this->rt_waiter) && !this_turbo) {
 			this_node = &this->list;
 			trace_turbo_futex_plist_add(prev_pid, prev_turbo,
-					this->task->pid, is_turbo_task(this->task));
+					this->task->pid, this_turbo);
 			list_add(&current_node->node_list,
 				 this_node->node_list.prev);
 			*already_on_hb = true;
 			return;
 		}
 		prev_pid = this->task->pid;
-		prev_turbo = is_turbo_task(this->task);
+		prev_turbo = this_turbo;
 	}
 
 	*already_on_hb = false;
@@ -498,9 +502,7 @@ static inline unsigned long _task_util_est(struct task_struct *p)
 int find_best_turbo_cpu(struct task_struct *p)
 {
 	struct hmp_domain *domain;
-	struct hmp_domain *tmp_domain[5] = {0, 0, 0, 0, 0};
-	int i, domain_cnt = 0;
-	int iter_cpu;
+	int i = 0, iter_cpu;
 	unsigned long spare_cap, max_spare_cap = 0;
 	const struct cpumask *tsk_cpus_ptr = p->cpus_ptr;
 	int max_spare_cpu = -1;
@@ -508,12 +510,6 @@ int find_best_turbo_cpu(struct task_struct *p)
 
 	/* The order is B, BL, LL cluster */
 	for_each_hmp_domain_L_first(domain) {
-		tmp_domain[domain_cnt] = domain;
-		domain_cnt++;
-	}
-
-	for (i = 0; i < domain_cnt; i++) {
-		domain = tmp_domain[i];
 		/* check fastest domain for turbo task */
 		if (i != 0)
 			break;
@@ -540,6 +536,7 @@ int find_best_turbo_cpu(struct task_struct *p)
 				max_spare_cpu = iter_cpu;
 			}
 		}
+		i++;
 	}
 	if (max_spare_cpu > 0)
 		new_cpu = max_spare_cpu;
@@ -922,11 +919,12 @@ static int unset_turbo_task(int pid)
 static int set_task_turbo_feats(const char *buf,
 				const struct kernel_param *kp)
 {
-	int ret = 0, i;
+	int ret, i;
 	unsigned int val;
 
 	ret = kstrtouint(buf, 0, &val);
-
+	if (ret)
+		return ret;
 
 	spin_lock(&TURBO_SPIN_LOCK);
 	if (val == latency_turbo ||
@@ -1315,13 +1313,13 @@ static void sys_set_turbo_task(struct task_struct *p)
 {
 	struct task_turbo_t *turbo_data;
 
-	if (strcmp(p->comm, RENDER_THREAD_NAME))
-		return;
-
 	if (!launch_turbo_enable())
 		return;
 
 	if (get_st_group_id(p) != TOP_APP_GROUP_ID)
+		return;
+
+	if (strcmp(p->comm, RENDER_THREAD_NAME))
 		return;
 
 	turbo_data = get_task_turbo_t(p);
