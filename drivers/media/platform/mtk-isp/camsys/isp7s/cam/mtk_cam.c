@@ -1308,8 +1308,10 @@ static int mtk_cam_ctx_pipeline_start(struct mtk_cam_ctx *ctx,
 	list_for_each_entry(ppad, &ctx->pipeline.pads, list) {
 		walked = false;
 		entity = ppad->pad->entity;
-		dev_info(dev, "linked entity %s, pad idx: %d, func: %d\n",
-			 entity->name, ppad->pad->index, entity->function);
+
+		if (CAM_DEBUG_ENABLED(V4L2))
+			dev_info(dev, "linked entity %s, pad idx: %d, func: %d\n",
+				 entity->name, ppad->pad->index, entity->function);
 
 		for (j = 0;
 		     j <= last_entity_walked && j < ARRAY_SIZE(entity_walked);

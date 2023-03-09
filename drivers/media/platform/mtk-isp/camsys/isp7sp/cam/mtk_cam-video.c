@@ -699,16 +699,19 @@ static u32 try_fmt_mp_pixelformat(struct mtk_cam_dev_node_desc *desc,
 	/* Validate pixelformat */
 	dev_fmt = mtk_cam_dev_find_fmt(desc, pixelformat);
 	if (!dev_fmt) {
-		pr_info_ratelimited(
-			"%s: warn. %s not-supportd pixelformat " FMT_FOURCC "\n",
-			__func__, desc->name, MEMBER_FOURCC(pixelformat));
+
+		if (CAM_DEBUG_ENABLED(V4L2_TRY))
+			pr_info("%s: warn. %s not-supportd pixelformat " FMT_FOURCC "\n",
+				__func__, desc->name,
+				MEMBER_FOURCC(pixelformat));
 
 		/* use default instead */
 		dev_fmt = &desc->fmts[desc->default_fmt_idx].vfmt;
 
-		pr_info_ratelimited(
-			"%s: warn. use pixelformat " FMT_FOURCC " instead.\n",
-			__func__, MEMBER_FOURCC(dev_fmt->fmt.pix_mp.pixelformat));
+		if (CAM_DEBUG_ENABLED(V4L2_TRY))
+			pr_info("%s: warn. use pixelformat " FMT_FOURCC " instead.\n",
+				__func__,
+				MEMBER_FOURCC(dev_fmt->fmt.pix_mp.pixelformat));
 	}
 
 	return dev_fmt->fmt.pix_mp.pixelformat;
@@ -1170,7 +1173,10 @@ int mtk_cam_vidioc_try_meta_fmt(struct file *file, void *fh,
 			f->fmt.meta.buffersize = max(f->fmt.meta.buffersize,
 						     fmt->fmt.meta.buffersize);
 		}
-		log_fmt_ops(node, f, __func__);
+
+		if (CAM_DEBUG_ENABLED(V4L2_TRY))
+			log_fmt_ops(node, f, __func__);
+
 		return (fmt) ? 0 : -EINVAL;
 	default:
 		break;

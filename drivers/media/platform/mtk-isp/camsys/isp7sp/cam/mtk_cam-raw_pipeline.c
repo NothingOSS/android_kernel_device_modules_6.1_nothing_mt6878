@@ -1345,10 +1345,11 @@ static int set_sink_pad_fmt(struct v4l2_subdev *sd,
 
 	if (!mbus_framefmt_eq(dst_fmt, fmt)) {
 
-		dev_info(dev, "%s: %ux%u(0x%x)->%ux%u(0x%x)\n",
-			 __func__,
-			 dst_fmt->width, dst_fmt->height, dst_fmt->code,
-			 fmt->width, fmt->height, fmt->code);
+		if (CAM_DEBUG_ENABLED(V4L2))
+			dev_info(dev, "%s: %ux%u(0x%x)->%ux%u(0x%x)\n",
+				 __func__,
+				 dst_fmt->width, dst_fmt->height, dst_fmt->code,
+				 fmt->width, fmt->height, fmt->code);
 
 		*dst_fmt = *fmt;
 		changed = 1;

@@ -101,12 +101,6 @@ u64 get_line_time(struct mtk_cam_job *job)
 		linet = 1000000000L * sensor_res->interval.numerator
 			/ sensor_res->interval.denominator
 			/ (sensor_res->height + sensor_res->vblank);
-
-		pr_info("%s: interval:(%d/%d) height:%d, vb:%d, line_time:%llu\n",
-			__func__,
-			sensor_res->interval.numerator,
-			sensor_res->interval.denominator,
-			sensor_res->height, sensor_res->vblank, linet);
 	}
 
 	return linet;
