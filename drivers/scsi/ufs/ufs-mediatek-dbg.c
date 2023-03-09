@@ -15,6 +15,8 @@
 #include <linux/spinlock.h>
 #include <linux/sysfs.h>
 #include <linux/tracepoint.h>
+#include "governor.h"
+#include "ufshcd-priv.h"
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 #include <mt-plat/mrdump.h>
 #endif
@@ -39,7 +41,6 @@ static unsigned int cmd_hist_ptr = MAX_CMD_HIST_ENTRY_CNT - 1;
 static struct cmd_hist_struct *cmd_hist;
 static struct ufs_hba *ufshba;
 static char *ufs_aee_buffer;
-static struct ufs_mtk_clk_scaling_attr clkscale_attr;
 
 static void ufs_mtk_dbg_print_err_hist(char **buff, unsigned long *size,
 				  struct seq_file *m, u32 id,
@@ -969,7 +970,6 @@ static ssize_t ufs_debug_proc_write(struct file *file, const char *buf,
 {
 	unsigned long op = UFSDBG_UNKNOWN;
 	struct ufs_hba *hba = ufshba;
-	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	char cmd_buf[16];
 
 	if (count == 0 || count > 15)
@@ -979,7 +979,7 @@ static ssize_t ufs_debug_proc_write(struct file *file, const char *buf,
 		return -EINVAL;
 
 	cmd_buf[count] = '\0';
-	if (kstrtoul(cmd_buf, 15, &op))
+	if (kstrtoul(cmd_buf, 16, &op))
 		return -EINVAL;
 
 	if (op == UFSDBG_CMD_LIST_DUMP) {
@@ -991,16 +991,6 @@ static ssize_t ufs_debug_proc_write(struct file *file, const char *buf,
 	} else if (op == UFSDBG_CMD_LIST_DISABLE) {
 		ufs_mtk_dbg_cmd_hist_disable();
 		dev_info(hba->dev, "cmd history off\n");
-	} else if (op == UFSDBG_CMD_QOS_ON) {
-		if (host && host->qos_allowed) {
-			host->qos_enabled = true;
-			dev_info(hba->dev, "QoS on\n");
-		}
-	} else if (op == UFSDBG_CMD_QOS_OFF) {
-		if (host && host->qos_allowed) {
-			host->qos_enabled = false;
-			dev_info(hba->dev, "QoS off\n");
-		}
 	}
 
 	return count;
@@ -1048,7 +1038,7 @@ static int ufs_mtk_dbg_init_procfs(void)
 	return 0;
 }
 
-static ssize_t ufs_mtk_clkscale_downdifferential_show(struct device *dev,
+static ssize_t downdifferential_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
@@ -1056,7 +1046,7 @@ static ssize_t ufs_mtk_clkscale_downdifferential_show(struct device *dev,
 	return sysfs_emit(buf, "%d\n", hba->vps->ondemand_data.downdifferential);
 }
 
-static ssize_t ufs_mtk_clkscale_downdifferential_store(struct device *dev,
+static ssize_t downdifferential_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
@@ -1078,7 +1068,7 @@ out:
 	return err ? err : count;
 }
 
-static ssize_t ufs_mtk_clkscale_upthreshold_show(struct device *dev,
+static ssize_t upthreshold_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
@@ -1086,7 +1076,7 @@ static ssize_t ufs_mtk_clkscale_upthreshold_show(struct device *dev,
 	return sysfs_emit(buf, "%d\n", hba->vps->ondemand_data.upthreshold);
 }
 
-static ssize_t ufs_mtk_clkscale_upthreshold_store(struct device *dev,
+static ssize_t upthreshold_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
@@ -1108,35 +1098,176 @@ out:
 	return err ? err : count;
 }
 
+static ssize_t clkscale_control_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	ssize_t size = 0;
+	int value, powerhal;
+
+	value = atomic_read((&host->clkscale_control));
+	powerhal = atomic_read((&host->clkscale_control_powerhal));
+	if (!value)
+		value = powerhal;
+
+	size += sprintf(buf + size, "current: %d\n", value);
+	size += sprintf(buf + size, "powerhal_set: %d\n", powerhal);
+	size += sprintf(buf + size, "===== control manual =====\n");
+	size += sprintf(buf + size, "0: free run\n");
+	size += sprintf(buf + size, "1: scale down\n");
+	size += sprintf(buf + size, "2: scale up\n");
+
+	return size;
+}
+
+static ssize_t clkscale_control_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	atomic_t *set_target = &host->clkscale_control;
+	unsigned long flags;
+	const char *opcode = buf;
+	u32 value;
+
+	if (!strncmp(buf, "powerhal_set: ", 14)) {
+		set_target = &host->clkscale_control_powerhal;
+		opcode = buf + 14;
+	}
+
+	if (kstrtou32(opcode, 0, &value) || value > 2)
+		return -EINVAL;
+
+	atomic_set(set_target, value);
+	ufshcd_rpm_get_sync(hba);
+	spin_lock_irqsave(hba->host->host_lock, flags);
+	if (!hba->clk_scaling.window_start_t) {
+		hba->clk_scaling.window_start_t = ktime_sub_us(ktime_get(), 1);
+		hba->clk_scaling.tot_busy_t = 0;
+		hba->clk_scaling.busy_start_t = 0;
+		hba->clk_scaling.is_busy_started = false;
+	}
+	spin_unlock_irqrestore(hba->host->host_lock, flags);
+	update_devfreq(hba->devfreq);
+	ufshcd_rpm_put(hba);
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(downdifferential);
+static DEVICE_ATTR_RW(upthreshold);
+static DEVICE_ATTR_RW(clkscale_control);
+
+static struct attribute *ufs_mtk_sysfs_clkscale_attrs[] = {
+	&dev_attr_downdifferential.attr,
+	&dev_attr_upthreshold.attr,
+	&dev_attr_clkscale_control.attr,
+	NULL
+};
+
+struct attribute_group ufs_mtk_sysfs_clkscale_group = {
+	.name = "clkscale",
+	.attrs = ufs_mtk_sysfs_clkscale_attrs,
+};
+
 void ufs_mtk_init_clk_scaling_sysfs(struct ufs_hba *hba)
 {
-	clkscale_attr.downdifferential.show = ufs_mtk_clkscale_downdifferential_show;
-	clkscale_attr.downdifferential.store = ufs_mtk_clkscale_downdifferential_store;
-	sysfs_attr_init(&clkscale_attr.downdifferential.attr);
-	clkscale_attr.downdifferential.attr.name = "clkscale_downdifferential";
-	clkscale_attr.downdifferential.attr.mode = 0644;
-	if (device_create_file(hba->dev, &clkscale_attr.downdifferential))
-		dev_info(hba->dev, "Failed to create sysfs for clkscale_downdifferential\n");
-
-	clkscale_attr.upthreshold.show = ufs_mtk_clkscale_upthreshold_show;
-	clkscale_attr.upthreshold.store = ufs_mtk_clkscale_upthreshold_store;
-	sysfs_attr_init(&clkscale_attr.upthreshold.attr);
-	clkscale_attr.upthreshold.attr.name = "clkscale_upthreshold";
-	clkscale_attr.upthreshold.attr.mode = 0644;
-	if (device_create_file(hba->dev, &clkscale_attr.upthreshold))
-		dev_info(hba->dev, "Failed to create sysfs for clkscale_upthreshold\n");
-
+	if (sysfs_create_group(&hba->dev->kobj, &ufs_mtk_sysfs_clkscale_group))
+		dev_info(hba->dev, "Failed to create sysfs for clkscale_control\n");
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_init_clk_scaling_sysfs);
 
 void ufs_mtk_remove_clk_scaling_sysfs(struct ufs_hba *hba)
 {
-	if (clkscale_attr.downdifferential.attr.name)
-		device_remove_file(hba->dev, &clkscale_attr.downdifferential);
-	if (clkscale_attr.upthreshold.attr.name)
-		device_remove_file(hba->dev, &clkscale_attr.upthreshold);
+	sysfs_remove_group(&hba->dev->kobj, &ufs_mtk_sysfs_clkscale_group);
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_remove_clk_scaling_sysfs);
+
+static int write_irq_affinity(const char *buf)
+{
+	struct ufs_hba *hba = ufshba;
+	cpumask_var_t new_mask;
+	int ret;
+
+	if (!zalloc_cpumask_var(&new_mask, GFP_KERNEL))
+		return -ENOMEM;
+
+	ret = cpumask_parse(buf, new_mask);
+	if (ret)
+		goto free;
+
+	if (!cpumask_intersects(new_mask, cpu_online_mask)) {
+		ret = -EINVAL;
+		goto free;
+	}
+
+	ret = irq_set_affinity(hba->irq, new_mask);
+
+free:
+	free_cpumask_var(new_mask);
+	return ret;
+}
+
+static ssize_t smp_affinity_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct ufs_hba *hba = ufshba;
+	struct irq_desc *desc = irq_to_desc(hba->irq);
+	const struct cpumask *mask;
+
+	mask = desc->irq_common_data.affinity;
+#ifdef CONFIG_GENERIC_PENDING_IRQ
+	if (irqd_is_setaffinity_pending(&desc->irq_data))
+		mask = desc->pending_mask;
+#endif
+
+	return sprintf(buf, "%*pb\n", cpumask_pr_args(mask));
+}
+
+static ssize_t smp_affinity_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned long mask;
+	struct ufs_hba *hba = ufshba;
+	int ret = count;
+
+	if (kstrtoul(buf, 16, &mask) || mask >= 256)
+		return -EINVAL;
+
+	ret = write_irq_affinity(buf);
+	if (!ret)
+		ret = count;
+
+	dev_info(hba->dev, "set irq affinity %lx\n", mask);
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(smp_affinity);
+
+static struct attribute *ufs_mtk_sysfs_irq_attrs[] = {
+	&dev_attr_smp_affinity.attr,
+	NULL
+};
+
+struct attribute_group ufs_mtk_sysfs_irq_group = {
+	.name = "irq",
+	.attrs = ufs_mtk_sysfs_irq_attrs,
+};
+
+void ufs_mtk_init_irq_sysfs(struct ufs_hba *hba)
+{
+	if (sysfs_create_group(&hba->dev->kobj, &ufs_mtk_sysfs_irq_group))
+		dev_info(hba->dev, "Failed to create sysfs for irq\n");
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_init_irq_sysfs);
+
+void ufs_mtk_remove_irq_sysfs(struct ufs_hba *hba)
+{
+	sysfs_remove_group(&hba->dev->kobj, &ufs_mtk_sysfs_irq_group);
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_remove_irq_sysfs);
 
 static void ufs_mtk_dbg_cleanup(void)
 {

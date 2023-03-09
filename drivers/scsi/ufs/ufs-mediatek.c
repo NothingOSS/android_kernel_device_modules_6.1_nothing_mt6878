@@ -1298,8 +1298,8 @@ static void ufs_mtk_trace_vh_update_sdev(void *data, struct scsi_device *sdev)
 	}
 }
 
-void ufs_mtk_trace_vh_ufs_prepare_command(void *data, struct ufs_hba *hba, struct request *rq,
-		 struct ufshcd_lrb *lrbp, int *err)
+void ufs_mtk_trace_vh_ufs_prepare_command(void *data, struct ufs_hba *hba,
+		struct request *rq, struct ufshcd_lrb *lrbp, int *err)
 {
 	struct scsi_cmnd *cmd = lrbp->cmd;
 	char *cmnd = cmd->cmnd;
@@ -1307,7 +1307,32 @@ void ufs_mtk_trace_vh_ufs_prepare_command(void *data, struct ufs_hba *hba, struc
 		cmnd[1] &= ~0x08;
 }
 
+void ufs_mtk_trace_vh_ufs_clock_scaling(void *data, struct ufs_hba *hba,
+		bool *force_out, bool *force_scaling, bool *scale_up)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	int value = atomic_read(&host->clkscale_control);
+
+	if (!value)
+		value = atomic_read(&host->clkscale_control_powerhal);
+
+	switch (value) {
+	case 1:
+		*scale_up = false;
+		break;
+	case 2:
+		*scale_up = true;
+		break;
+	default:
+		return;
+	}
+}
+
 static struct tracepoints_table interests[] = {
+	{
+		.name = "android_vh_ufs_clock_scaling",
+		.func = ufs_mtk_trace_vh_ufs_clock_scaling
+	},
 	{
 		.name = "android_vh_ufs_prepare_command",
 		.func = ufs_mtk_trace_vh_ufs_prepare_command
@@ -2253,6 +2278,8 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	/* enable clk scaling*/
 	hba->caps |= UFSHCD_CAP_CLK_SCALING;
 	host->clk_scale_up = true; /* default is max freq */
+	atomic_set(&host->clkscale_control, 0);
+	atomic_set(&host->clkscale_control_powerhal, 0);
 
 	hba->quirks |= UFSHCI_QUIRK_SKIP_MANUAL_WB_FLUSH_CTRL;
 	hba->vps->wb_flush_threshold = UFS_WB_BUF_REMAIN_PERCENT(80);
@@ -2265,6 +2292,8 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 #if IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK_DBG)
 	if (hba->caps & UFSHCD_CAP_CLK_SCALING)
 		ufs_mtk_init_clk_scaling_sysfs(hba);
+
+	ufs_mtk_init_irq_sysfs(hba);
 #endif
 
 	/*
@@ -3863,6 +3892,8 @@ static int ufs_mtk_remove(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK_DBG)
 	if (hba->caps & UFSHCD_CAP_CLK_SCALING)
 		ufs_mtk_remove_clk_scaling_sysfs(hba);
+
+	ufs_mtk_remove_irq_sysfs(hba);
 #endif
 
 	ufshcd_remove(hba);
