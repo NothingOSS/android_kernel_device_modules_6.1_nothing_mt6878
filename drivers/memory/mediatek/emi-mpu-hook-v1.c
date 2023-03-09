@@ -1,56 +1,81 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2019 MediaTek Inc.
+ * Copyright (c) 2022 MediaTek Inc.
  */
 
-#include <emi_mpu.h>
-#include <linux/bits.h>
-#include <linux/kernel.h>
-#include <linux/module.h>
-#include <linux/ratelimit.h>
+ #include <soc/mediatek/smpu.h>
+ #include <linux/bits.h>
+ #include <linux/kernel.h>
+ #include <linux/module.h>
+ #include <linux/ratelimit.h>
 
-static bool axi_id_is_gpu(unsigned int axi_id)
+static bool axi_id_is_gpu(unsigned int axi_id, int vio_type)
 {
 	unsigned int port;
 	unsigned int id;
 	unsigned int i;
+	struct smpu *mpu = NULL;
 
 	port = axi_id & (BIT_MASK(3) - 1);
 	id = axi_id >> 3;
 
-	for (i = 0; i < global_emi_mpu->bypass_axi_num; i++) {
-		/* master is MFG_MPU(GPU MPU) */
-		if (port == global_emi_mpu->bypass_axi[i].port
-		&& ((id & global_emi_mpu->bypass_axi[i].axi_mask)
-		== global_emi_mpu->bypass_axi[i].axi_value))
+	switch (vio_type) {
+	case VIO_TYPE_NSMPU:
+			mpu = global_nsmpu;
+			break;
+	case VIO_TYPE_SSMPU:
+			mpu = global_ssmpu;
+			break;
+	default:
+			break;
+	}
+	if (!mpu)
+		return false;
+
+	for (i = 0; i < mpu->bypass_axi_num; i++) {
+		if (port == mpu->bypass_axi[i].port && ((id & mpu->bypass_axi[i].axi_mask)
+					== mpu->bypass_axi[i].axi_value))
 			return true;
 	}
 
 	return false;
 }
-int bypass_info(unsigned int offset)
+int bypass_info(unsigned int offset, int vio_type)
 {
 	unsigned int i;
+	struct smpu *mpu = NULL;
 
-	for (i = 0; i < global_emi_mpu->bypass_miu_reg_num; i++) {
-		if (offset == global_emi_mpu->bypass_miu_reg[i])
+	switch (vio_type) {
+	case VIO_TYPE_NSMPU:
+			mpu = global_nsmpu;
+			break;
+	case VIO_TYPE_SSMPU:
+			mpu = global_ssmpu;
+			break;
+	default:
+			break;
+	}
+	if (!mpu)
+		return -1;
+
+	for (i = 0; i < mpu->bypass_miu_reg_num; i++) {
+		if (offset == mpu->bypass_miu_reg[i])
 			return i;
 	}
 	return -1;
+
 }
 
-static irqreturn_t emi_mpu_isr_hook(unsigned int emi_id,
-					struct reg_info_t *dump,
-					unsigned int leng)
+static irqreturn_t smpu_isr_vio_hook(struct smpu_reg_info_t *dump, unsigned int leng, int vio_type)
 {
 	int i;
 	unsigned int srinfo_r = 0, axi_id_r = 0;
 	unsigned int srinfo_w = 0, axi_id_w = 0;
 	bool bypass;
-	static DEFINE_RATELIMIT_STATE(ratelimit, 1 * HZ, 3);
+	static DEFINE_RATELIMIT_STATE(ratelimit, 1*HZ, 3);
 
 	for (i = 0; i < leng; i++) {
-		switch (bypass_info(dump[i].offset)) {
+		switch (bypass_info(dump[i].offset, vio_type)) {
 		case WRITE_SRINFO:
 			srinfo_w = dump[i].value;
 			break;
@@ -68,55 +93,60 @@ static irqreturn_t emi_mpu_isr_hook(unsigned int emi_id,
 		case WRITE_AXI_MSB:
 			if (srinfo_w == 3) {
 				axi_id_w &= (BIT_MASK(16) - 1);
-				axi_id_w |=
-					((dump[i].value & (BIT_MASK(4) - 1)) << 16);
+				axi_id_w |= ((dump[i].value &
+				(BIT_MASK(4) - 1)) << 16);
 			}
 			break;
 		case READ_AXI_MSB:
 			if (srinfo_r == 3) {
 				axi_id_r &= (BIT_MASK(16) - 1);
-				axi_id_r |=
-					((dump[i].value & (BIT_MASK(4) - 1)) << 16);
+				axi_id_r |= ((dump[i].value &
+				(BIT_MASK(4) - 1)) << 16);
 			}
 			break;
 		default:
 			break;
-		}
+
+
 	}
 
-	if (srinfo_r == 3 && !axi_id_is_gpu(axi_id_r))
+//	pr_info("srinfo_r is %d, srinfo_w is %d\n", srinfo_r, srinfo_w);
+
+	if (srinfo_r == 3 && !axi_id_is_gpu(axi_id_r, vio_type))
 		bypass = true;
-	else if (srinfo_w == 3 && !axi_id_is_gpu(axi_id_w))
+	else if (srinfo_w == 3 && !axi_id_is_gpu(axi_id_w, vio_type))
 		bypass = true;
 	else
 		bypass = false;
 
 	if (bypass == true) {
 		if (__ratelimit(&ratelimit)) {
-			pr_info("srinfo_r %d, axi_id_r 0x%x\n",
-				srinfo_r, axi_id_r);
-			pr_info("srinfo_w %d, axi_id_w 0x%x\n",
-				srinfo_w, axi_id_w);
+			pr_info("srinfo_r %d, axi_id_r 0x%x\n", srinfo_r, axi_id_r);
+			pr_info("srinfo_w %d, axi_id_w 0x%x\n", srinfo_w, axi_id_w);
 		}
 	}
 
+	}
+	pr_info("bypass is %d", bypass);
 	return (bypass) ? IRQ_HANDLED : IRQ_NONE;
 }
 
-static __init int emi_mpu_mt6983_init(void)
+static __init int smpu_hook_init(void)
 {
 	int ret;
 
-	pr_info("emi_mpu_mt6983 was loaded\n");
+	pr_info("smpu-hook was loaded\n");
 
-	ret = mtk_emimpu_isr_hook_register(emi_mpu_isr_hook);
+	ret = mtk_smpu_isr_hook_register(smpu_isr_vio_hook);
+
 	if (ret)
-		pr_err("Failed to register the EMI MPU ISR hook function\n");
+		pr_err("Failed to register the smpu isr hook function\n");
 
 	return 0;
 }
 
-module_init(emi_mpu_mt6983_init);
+module_init(smpu_hook_init);
 
-MODULE_DESCRIPTION("MediaTek EMI MPU MT6983 Driver");
-MODULE_LICENSE("GPL v2");
+MODULE_DESCRIPTION("MediaTek SMPU HOOK Driver");
+MODULE_LICENSE("GPL");
+
