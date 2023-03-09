@@ -28,7 +28,7 @@ static char *gpufreq_ipi_cmd_name[] = {
 	"CMD_GET_LEAKAGE_POWER",      // 4
 	"CMD_SET_LIMIT",              // 5
 	"CMD_POWER_CONTROL",          // 6
-	"CMD_ACTIVE_IDLE_CONTROL",    // 7
+	"CMD_ACTIVE_SLEEP_CONTROL",   // 7
 	"CMD_COMMIT",                 // 8
 	"CMD_PDCA_CONFIG",            // 9
 	/* Debug */
@@ -50,7 +50,7 @@ enum gpufreq_ipi_cmd {
 	CMD_GET_LEAKAGE_POWER         = 4,
 	CMD_SET_LIMIT                 = 5,
 	CMD_POWER_CONTROL             = 6,
-	CMD_ACTIVE_IDLE_CONTROL       = 7,
+	CMD_ACTIVE_SLEEP_CONTROL      = 7,
 	CMD_COMMIT                    = 8,
 	CMD_PDCA_CONFIG               = 9,
 	/* Debug */

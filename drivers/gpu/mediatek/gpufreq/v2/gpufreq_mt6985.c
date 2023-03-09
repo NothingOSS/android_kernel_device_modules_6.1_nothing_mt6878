@@ -79,7 +79,7 @@ static void __gpufreq_update_shared_status_opp_table(void);
 static void __gpufreq_update_shared_status_adj_table(void);
 static void __gpufreq_update_shared_status_init_reg(void);
 static void __gpufreq_update_shared_status_power_reg(void);
-static void __gpufreq_update_shared_status_active_idle_reg(void);
+static void __gpufreq_update_shared_status_active_sleep_reg(void);
 static void __gpufreq_update_shared_status_dvfs_reg(void);
 #if GPUFREQ_MSSV_TEST_MODE
 static void __gpufreq_mssv_set_stack_sel(unsigned int val);
@@ -255,7 +255,7 @@ static DEFINE_MUTEX(spm_sema_lock);
 
 static struct gpufreq_platform_fp platform_ap_fp = {
 	.power_ctrl_enable = __gpufreq_power_ctrl_enable,
-	.active_idle_ctrl_enable = __gpufreq_active_idle_ctrl_enable,
+	.active_sleep_ctrl_enable = __gpufreq_active_sleep_ctrl_enable,
 	.get_power_state = __gpufreq_get_power_state,
 	.get_dvfs_state = __gpufreq_get_dvfs_state,
 	.get_shader_present = __gpufreq_get_shader_present,
@@ -274,7 +274,7 @@ static struct gpufreq_platform_fp platform_ap_fp = {
 	.get_lkg_pgpu = __gpufreq_get_lkg_pgpu,
 	.get_dyn_pgpu = __gpufreq_get_dyn_pgpu,
 	.power_control = __gpufreq_power_control,
-	.active_idle_control = __gpufreq_active_idle_control,
+	.active_sleep_control = __gpufreq_active_sleep_control,
 	.fix_target_oppidx_gpu = __gpufreq_fix_target_oppidx_gpu,
 	.fix_custom_freq_volt_gpu = __gpufreq_fix_custom_freq_volt_gpu,
 	.get_cur_fstack = __gpufreq_get_cur_fstack,
@@ -323,10 +323,10 @@ unsigned int __gpufreq_power_ctrl_enable(void)
 	return GPUFREQ_POWER_CTRL_ENABLE;
 }
 
-/* API: get ACTIVE_IDLE_CTRL status */
-unsigned int __gpufreq_active_idle_ctrl_enable(void)
+/* API: get ACTIVE_SLEEP_CTRL status */
+unsigned int __gpufreq_active_sleep_ctrl_enable(void)
 {
-	return GPUFREQ_ACTIVE_IDLE_CTRL_ENABLE && GPUFREQ_POWER_CTRL_ENABLE;
+	return GPUFREQ_ACTIVE_SLEEP_CTRL_ENABLE && GPUFREQ_POWER_CTRL_ENABLE;
 }
 
 /* API: get power state (on/off) */
@@ -852,7 +852,7 @@ done_unlock:
  * return active_count if success
  * return GPUFREQ_EINVAL if failure
  */
-int __gpufreq_active_idle_control(enum gpufreq_power_state power)
+int __gpufreq_active_sleep_control(enum gpufreq_power_state power)
 {
 	int ret = 0;
 
@@ -907,7 +907,7 @@ int __gpufreq_active_idle_control(enum gpufreq_power_state power)
 	if (g_shared_status) {
 		g_shared_status->dvfs_state = g_dvfs_state;
 		g_shared_status->active_count = g_stack.active_count;
-		__gpufreq_update_shared_status_active_idle_reg();
+		__gpufreq_update_shared_status_active_sleep_reg();
 	}
 
 done:
@@ -1592,7 +1592,7 @@ void __gpufreq_set_shared_status(struct gpufreq_shared_status *shared_status)
 		g_shared_status->cg_count = g_stack.cg_count;
 		g_shared_status->active_count = g_stack.active_count;
 		g_shared_status->power_control = __gpufreq_power_ctrl_enable();
-		g_shared_status->active_idle_control = __gpufreq_active_idle_ctrl_enable();
+		g_shared_status->active_sleep_control = __gpufreq_active_sleep_ctrl_enable();
 		g_shared_status->dvfs_state = g_dvfs_state;
 		g_shared_status->shader_present = g_shader_present;
 		g_shared_status->asensor_enable = g_asensor_enable;
@@ -1857,7 +1857,7 @@ static void __gpufreq_update_shared_status_power_reg(void)
 #endif /* GPUFREQ_SHARED_STATUS_REG */
 }
 
-static void __gpufreq_update_shared_status_active_idle_reg(void)
+static void __gpufreq_update_shared_status_active_sleep_reg(void)
 {
 #if GPUFREQ_SHARED_STATUS_REG
 	unsigned int copy_size = 0;

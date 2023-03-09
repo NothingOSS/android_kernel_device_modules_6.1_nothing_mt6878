@@ -293,7 +293,7 @@ struct gpufreq_shared_status {
 	unsigned int cur_c_priority;
 	unsigned int cur_f_priority;
 	unsigned int power_control;
-	unsigned int active_idle_control;
+	unsigned int active_sleep_control;
 	unsigned int dvfs_state;
 	unsigned int shader_present;
 	unsigned int asensor_enable;
@@ -341,13 +341,13 @@ struct gpufreq_shared_status {
 struct gpufreq_platform_fp {
 	/* Common */
 	unsigned int (*power_ctrl_enable)(void);
-	unsigned int (*active_idle_ctrl_enable)(void);
+	unsigned int (*active_sleep_ctrl_enable)(void);
 	unsigned int (*get_power_state)(void);
 	unsigned int (*get_dvfs_state)(void);
 	unsigned int (*get_shader_present)(void);
 	unsigned int (*get_segment_id)(void);
 	int (*power_control)(enum gpufreq_power_state power);
-	int (*active_idle_control)(enum gpufreq_power_state power);
+	int (*active_sleep_control)(enum gpufreq_power_state power);
 	void (*dump_infra_status)(void);
 	void (*dump_power_tracker_status)(void);
 	void (*update_debug_opp_info)(void);
@@ -425,7 +425,7 @@ extern int (*mtk_get_gpu_cur_oppidx_fp)(enum gpufreq_target target);
 /* Common */
 unsigned int gpufreq_bringup(void);
 unsigned int gpufreq_power_ctrl_enable(void);
-unsigned int gpufreq_active_idle_ctrl_enable(void);
+unsigned int gpufreq_active_sleep_ctrl_enable(void);
 unsigned int gpufreq_get_power_state(void);
 unsigned int gpufreq_get_dvfs_state(void);
 unsigned int gpufreq_get_shader_present(void);
@@ -450,7 +450,7 @@ int gpufreq_set_limit(enum gpufreq_target target,
 int gpufreq_get_cur_limit_idx(enum gpufreq_target target,enum gpuppm_limit_type limit);
 unsigned int gpufreq_get_cur_limiter(enum gpufreq_target target, enum gpuppm_limit_type limit);
 int gpufreq_power_control(enum gpufreq_power_state power, int oppidx);
-int gpufreq_active_idle_control(enum gpufreq_power_state power);
+int gpufreq_active_sleep_control(enum gpufreq_power_state power);
 int gpufreq_commit(enum gpufreq_target target, int oppidx);
 struct gpufreq_core_mask_info *gpufreq_get_core_mask_table(void);
 unsigned int gpufreq_get_core_num(void);

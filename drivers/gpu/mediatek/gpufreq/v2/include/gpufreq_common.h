@@ -91,12 +91,12 @@
  **************************************************/
 /* Common */
 unsigned int __gpufreq_power_ctrl_enable(void);
-unsigned int __gpufreq_active_idle_ctrl_enable(void);
+unsigned int __gpufreq_active_sleep_ctrl_enable(void);
 unsigned int __gpufreq_get_power_state(void);
 unsigned int __gpufreq_get_dvfs_state(void);
 unsigned int __gpufreq_get_shader_present(void);
 int __gpufreq_power_control(enum gpufreq_power_state power);
-int __gpufreq_active_idle_control(enum gpufreq_power_state power);
+int __gpufreq_active_sleep_control(enum gpufreq_power_state power);
 void __gpufreq_dump_infra_status(void);
 void __gpufreq_dump_power_tracker_status(void);
 int __gpufreq_get_batt_oc_idx(int batt_oc_level);

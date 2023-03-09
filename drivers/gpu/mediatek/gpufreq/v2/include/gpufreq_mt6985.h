@@ -10,9 +10,9 @@
  * GPUFREQ Config
  **************************************************/
 /* 0 -> power on once then never off and disable DDK power on/off callback */
-#define GPUFREQ_POWER_CTRL_ENABLE       (1)
+#define GPUFREQ_POWER_CTRL_ENABLE           (1)
 /* 0 -> disable DDK runtime active-idle callback */
-#define GPUFREQ_ACTIVE_IDLE_CTRL_ENABLE (0)
+#define GPUFREQ_ACTIVE_SLEEP_CTRL_ENABLE    (0)
 /*
  * (DVFS_ENABLE, CUST_INIT)
  * (1, 1) -> DVFS enable and init to CUST_INIT_OPPIDX
@@ -20,58 +20,58 @@
  * (0, 1) -> DVFS disable but init to CUST_INIT_OPPIDX (do DVFS only onces)
  * (0, 0) -> DVFS disable
  */
-#define GPUFREQ_DVFS_ENABLE             (1)
-#define GPUFREQ_CUST_INIT_ENABLE        (0)
-#define GPUFREQ_CUST_INIT_OPPIDX        (0)
+#define GPUFREQ_DVFS_ENABLE                 (1)
+#define GPUFREQ_CUST_INIT_ENABLE            (0)
+#define GPUFREQ_CUST_INIT_OPPIDX            (0)
 /* MFGSYS Feature */
-#define GPUFREQ_HWDCM_ENABLE            (1)
-#define GPUFREQ_ACP_ENABLE              (1)
-#define GPUFREQ_PDCA_ENABLE             (1)
-#define GPUFREQ_GPM1_ENABLE             (1)
-#define GPUFREQ_GPM3_ENABLE             (0)
-#define GPUFREQ_MERGER_ENABLE           (1)
-#define GPUFREQ_AXUSER_PREULTRA_ENABLE  (1)
-#define GPUFREQ_DFD_ENABLE              (0)
-#define GPUFREQ_AVS_ENABLE              (0)
-#define GPUFREQ_ASENSOR_ENABLE          (0)
-#define GPUFREQ_IPS_ENABLE              (0)
-#define GPUFREQ_SELF_CTRL_MTCMOS        (0)
-#define GPUFREQ_SHARED_STATUS_REG       (0)
+#define GPUFREQ_HWDCM_ENABLE                (1)
+#define GPUFREQ_ACP_ENABLE                  (1)
+#define GPUFREQ_PDCA_ENABLE                 (1)
+#define GPUFREQ_GPM1_ENABLE                 (1)
+#define GPUFREQ_GPM3_ENABLE                 (0)
+#define GPUFREQ_MERGER_ENABLE               (1)
+#define GPUFREQ_AXUSER_PREULTRA_ENABLE      (1)
+#define GPUFREQ_DFD_ENABLE                  (0)
+#define GPUFREQ_AVS_ENABLE                  (0)
+#define GPUFREQ_ASENSOR_ENABLE              (0)
+#define GPUFREQ_IPS_ENABLE                  (0)
+#define GPUFREQ_SELF_CTRL_MTCMOS            (0)
+#define GPUFREQ_SHARED_STATUS_REG           (0)
 
 /**************************************************
  * Clock Setting
  **************************************************/
-#define POSDIV_2_MAX_FREQ               (1900000)         /* KHz */
-#define POSDIV_2_MIN_FREQ               (750000)          /* KHz */
-#define POSDIV_4_MAX_FREQ               (950000)          /* KHz */
-#define POSDIV_4_MIN_FREQ               (375000)          /* KHz */
-#define POSDIV_8_MAX_FREQ               (475000)          /* KHz */
-#define POSDIV_8_MIN_FREQ               (187500)          /* KHz */
-#define POSDIV_16_MAX_FREQ              (237500)          /* KHz */
-#define POSDIV_16_MIN_FREQ              (125000)          /* KHz */
-#define POSDIV_SHIFT                    (24)              /* bit */
-#define DDS_SHIFT                       (14)              /* bit */
-#define MFGPLL_FIN                      (26)              /* MHz */
-#define MFG_INT0_SEL_MASK               (BIT(16))         /* [16] */
-#define MFGSC_INT1_SEL_MASK             (BIT(17))         /* [17] */
-#define MFG_REF_SEL_MASK                (GENMASK(17, 16)) /* [17:16] */
-#define MFGSC_REF_SEL_MASK              (GENMASK(25, 24)) /* [25:24] */
-#define FREQ_ROUNDUP_TO_10(freq)        ((freq % 10) ? (freq - (freq % 10) + 10) : freq)
+#define POSDIV_2_MAX_FREQ                   (1900000)         /* KHz */
+#define POSDIV_2_MIN_FREQ                   (750000)          /* KHz */
+#define POSDIV_4_MAX_FREQ                   (950000)          /* KHz */
+#define POSDIV_4_MIN_FREQ                   (375000)          /* KHz */
+#define POSDIV_8_MAX_FREQ                   (475000)          /* KHz */
+#define POSDIV_8_MIN_FREQ                   (187500)          /* KHz */
+#define POSDIV_16_MAX_FREQ                  (237500)          /* KHz */
+#define POSDIV_16_MIN_FREQ                  (125000)          /* KHz */
+#define POSDIV_SHIFT                        (24)              /* bit */
+#define DDS_SHIFT                           (14)              /* bit */
+#define MFGPLL_FIN                          (26)              /* MHz */
+#define MFG_INT0_SEL_MASK                   (BIT(16))         /* [16] */
+#define MFGSC_INT1_SEL_MASK                 (BIT(17))         /* [17] */
+#define MFG_REF_SEL_MASK                    (GENMASK(17, 16)) /* [17:16] */
+#define MFGSC_REF_SEL_MASK                  (GENMASK(25, 24)) /* [25:24] */
+#define FREQ_ROUNDUP_TO_10(freq)            ((freq % 10) ? (freq - (freq % 10) + 10) : freq)
 
 /**************************************************
  * Frequency Hopping Setting
  **************************************************/
-#define GPUFREQ_FHCTL_ENABLE            (0)
-#define MFG_PLL_NAME                    "mfg_ao_mfgpll"
-#define MFGSC_PLL_NAME                  "mfgsc_ao_mfgscpll"
+#define GPUFREQ_FHCTL_ENABLE                (0)
+#define MFG_PLL_NAME                        "mfg_ao_mfgpll"
+#define MFGSC_PLL_NAME                      "mfgsc_ao_mfgscpll"
 
 /**************************************************
  * MTCMOS Setting
  **************************************************/
-#define GPUFREQ_CHECK_MFG_PWR_STATUS    (0)
-#define MFG_0_1_PWR_MASK                (GENMASK(1, 0))
-#define MFG_0_19_PWR_MASK               (GENMASK(19, 0))
-#define MFG_1_19_PWR_MASK               (GENMASK(19, 1))
+#define GPUFREQ_CHECK_MFG_PWR_STATUS        (0)
+#define MFG_0_1_PWR_MASK                    (GENMASK(1, 0))
+#define MFG_0_19_PWR_MASK                   (GENMASK(19, 0))
+#define MFG_1_19_PWR_MASK                   (GENMASK(19, 1))
 #define MFG_0_1_PWR_STATUS \
 	(((readl(SPM_XPU_PWR_STATUS) & BIT(1)) >> 1) | \
 	(((readl(MFG_RPC_MFG1_PWR_CON) & BIT(30)) >> 30) << 1))
@@ -100,12 +100,12 @@
 /**************************************************
  * Shader Core Setting
  **************************************************/
-#define MFG3_SHADER_STACK0              (T0C0 | T0C1)   /* MFG9,  MFG12 */
-#define MFG4_SHADER_STACK1              (T1C0 | T1C1)   /* MFG10, MFG13 */
-#define MFG5_SHADER_STACK2              (T2C0 | T2C1)   /* MFG11, MFG14 */
-#define MFG6_SHADER_STACK4              (T4C0)          /* MFG15        */
-#define MFG7_SHADER_STACK5              (T5C0 | T5C1)   /* MFG16, MFG18 */
-#define MFG8_SHADER_STACK6              (T6C0 | T6C1)   /* MFG17, MFG19 */
+#define MFG3_SHADER_STACK0                  (T0C0 | T0C1)   /* MFG9,  MFG12 */
+#define MFG4_SHADER_STACK1                  (T1C0 | T1C1)   /* MFG10, MFG13 */
+#define MFG5_SHADER_STACK2                  (T2C0 | T2C1)   /* MFG11, MFG14 */
+#define MFG6_SHADER_STACK4                  (T4C0)          /* MFG15        */
+#define MFG7_SHADER_STACK5                  (T5C0 | T5C1)   /* MFG16, MFG18 */
+#define MFG8_SHADER_STACK6                  (T6C0 | T6C1)   /* MFG17, MFG19 */
 
 #define GPU_SHADER_PRESENT_1 \
 	(MFG6_SHADER_STACK4)
@@ -135,7 +135,7 @@
 	(MFG3_SHADER_STACK0 | MFG4_SHADER_STACK1 | MFG5_SHADER_STACK2 | \
 	 MFG6_SHADER_STACK4 | MFG7_SHADER_STACK5 | MFG8_SHADER_STACK6)
 
-#define SHADER_CORE_NUM                 (11)
+#define SHADER_CORE_NUM                     (11)
 struct gpufreq_core_mask_info g_core_mask_table[] = {
 	{11, GPU_SHADER_PRESENT_11},
 	{10, GPU_SHADER_PRESENT_10},
@@ -153,12 +153,12 @@ struct gpufreq_core_mask_info g_core_mask_table[] = {
 /**************************************************
  * Dynamic Power Setting
  **************************************************/
-#define GPU_DYN_REF_POWER               (826)           /* mW  */
-#define GPU_DYN_REF_FREQ                (1000000)       /* KHz */
-#define GPU_DYN_REF_VOLT                (90000)         /* mV x 100 */
-#define STACK_DYN_REF_POWER             (4329)          /* mW  */
-#define STACK_DYN_REF_FREQ              (981000)        /* KHz */
-#define STACK_DYN_REF_VOLT              (80000)         /* mV x 100 */
+#define GPU_DYN_REF_POWER                   (826)           /* mW  */
+#define GPU_DYN_REF_FREQ                    (1000000)       /* KHz */
+#define GPU_DYN_REF_VOLT                    (90000)         /* mV x 100 */
+#define STACK_DYN_REF_POWER                 (4329)          /* mW  */
+#define STACK_DYN_REF_FREQ                  (981000)        /* KHz */
+#define STACK_DYN_REF_VOLT                  (80000)         /* mV x 100 */
 
 /**************************************************
  * PMIC Setting
@@ -169,53 +169,53 @@ struct gpufreq_core_mask_info g_core_mask_table[] = {
  * VSTACK    0.3 - 1.19375 V (MT6373_VBUCK2)
  * VSRAM     0.3 - 1.19375 V (MT6373_VSRAM_DIGRF_AIF)
  */
-#define VGPU_MAX_VOLT                   (119375)        /* mV x 100 */
-#define VGPU_MIN_VOLT                   (30000)         /* mV x 100 */
-#define VSTACK_MAX_VOLT                 (119375)        /* mV x 100 */
-#define VSTACK_MIN_VOLT                 (30000)         /* mV x 100 */
-#define VSRAM_MAX_VOLT                  (119375)        /* mV x 100 */
-#define VSRAM_MIN_VOLT                  (30000)         /* mV x 100 */
-#define VSRAM_THRESH                    (75000)         /* mV x 100 */
-#define PMIC_STEP                       (625)           /* mV x 100 */
-#define VOLT_NORMALIZATION(volt)        ((volt % 625) ? (volt - (volt % 625) + 625) : volt)
+#define VGPU_MAX_VOLT                       (119375)        /* mV x 100 */
+#define VGPU_MIN_VOLT                       (30000)         /* mV x 100 */
+#define VSTACK_MAX_VOLT                     (119375)        /* mV x 100 */
+#define VSTACK_MIN_VOLT                     (30000)         /* mV x 100 */
+#define VSRAM_MAX_VOLT                      (119375)        /* mV x 100 */
+#define VSRAM_MIN_VOLT                      (30000)         /* mV x 100 */
+#define VSRAM_THRESH                        (75000)         /* mV x 100 */
+#define PMIC_STEP                           (625)           /* mV x 100 */
+#define VOLT_NORMALIZATION(volt)            ((volt % 625) ? (volt - (volt % 625) + 625) : volt)
 
 /**************************************************
  * Power Throttling Setting
  **************************************************/
-#define GPUFREQ_BATT_OC_ENABLE          (0)
-#define GPUFREQ_BATT_PERCENT_ENABLE     (0)
-#define GPUFREQ_LOW_BATT_ENABLE         (0)
-#define GPUFREQ_BATT_OC_FREQ            (484000)
-#define GPUFREQ_BATT_PERCENT_IDX        (0)
-#define GPUFREQ_LOW_BATT_FREQ           (484000)
+#define GPUFREQ_BATT_OC_ENABLE              (0)
+#define GPUFREQ_BATT_PERCENT_ENABLE         (0)
+#define GPUFREQ_LOW_BATT_ENABLE             (0)
+#define GPUFREQ_BATT_OC_FREQ                (484000)
+#define GPUFREQ_BATT_PERCENT_IDX            (0)
+#define GPUFREQ_LOW_BATT_FREQ               (484000)
 
 /**************************************************
  * Aging Sensor Setting
  **************************************************/
-#define GPUFREQ_AGING_KEEP_FGPU         (945000)
-#define GPUFREQ_AGING_KEEP_VGPU         (82500)
-#define GPUFREQ_AGING_KEEP_FSTACK       (600000)
-#define GPUFREQ_AGING_KEEP_VSTACK       (65000)
-#define GPUFREQ_AGING_KEEP_VSRAM        (82500)
-#define GPUFREQ_AGING_LKG_VSTACK        (70000)
-#define GPUFREQ_AGING_GAP_MIN           (-3)
-#define GPUFREQ_AGING_GAP_1             (2)
-#define GPUFREQ_AGING_GAP_2             (4)
-#define GPUFREQ_AGING_GAP_3             (6)
-#define GPUFREQ_AGING_MAX_TABLE_IDX     (1)
-#define GPUFREQ_AGING_MOST_AGRRESIVE    (0)
+#define GPUFREQ_AGING_KEEP_FGPU             (945000)
+#define GPUFREQ_AGING_KEEP_VGPU             (82500)
+#define GPUFREQ_AGING_KEEP_FSTACK           (600000)
+#define GPUFREQ_AGING_KEEP_VSTACK           (65000)
+#define GPUFREQ_AGING_KEEP_VSRAM            (82500)
+#define GPUFREQ_AGING_LKG_VSTACK            (70000)
+#define GPUFREQ_AGING_GAP_MIN               (-3)
+#define GPUFREQ_AGING_GAP_1                 (2)
+#define GPUFREQ_AGING_GAP_2                 (4)
+#define GPUFREQ_AGING_GAP_3                 (6)
+#define GPUFREQ_AGING_MAX_TABLE_IDX         (1)
+#define GPUFREQ_AGING_MOST_AGRRESIVE        (0)
 
 /**************************************************
  * DVFS Constraint Setting
  **************************************************/
-#define STACK_SEL_OPP                   (20)
-#define SRAM_DEL_SEL_OPP                (36)
-#define CONSTRAINT_OPP_0                (0)
-#define CONSTRAINT_OPP_1                (20)
-#define CONSTRAINT_OPP_2                (36)
-#define CONSTRAINT_OPP_3                (48)
-#define CONSTRAINT_VSRAM_PARK           (-1)
-#define NUM_CONSTRAINT_IDX              ARRAY_SIZE(g_constraint_idx)
+#define STACK_SEL_OPP                       (20)
+#define SRAM_DEL_SEL_OPP                    (36)
+#define CONSTRAINT_OPP_0                    (0)
+#define CONSTRAINT_OPP_1                    (20)
+#define CONSTRAINT_OPP_2                    (36)
+#define CONSTRAINT_OPP_3                    (48)
+#define CONSTRAINT_VSRAM_PARK               (-1)
+#define NUM_CONSTRAINT_IDX                  ARRAY_SIZE(g_constraint_idx)
 static const int g_constraint_idx[] = {
 	CONSTRAINT_OPP_0,
 	CONSTRAINT_OPP_1,
@@ -227,25 +227,25 @@ static const int g_constraint_idx[] = {
 /**************************************************
  * DFD Setting
  **************************************************/
-#define MFG_DEBUGMON_CON_00_ENABLE      (0xFFFFFFFF)
-#define MFG_DFD_CON_0_ENABLE            (0x0F101100)
-#define MFG_DFD_CON_1_ENABLE            (0x00000100)
-#define MFG_DFD_CON_2_ENABLE            (0x00000000)
-#define MFG_DFD_CON_3_ENABLE            (0x0010001F)
-#define MFG_DFD_CON_4_ENABLE            (0x00000000)
-#define MFG_DFD_CON_5_ENABLE            (0x00000000)
-#define MFG_DFD_CON_6_ENABLE            (0x00000000)
-#define MFG_DFD_CON_7_ENABLE            (0x00000000)
-#define MFG_DFD_CON_8_ENABLE            (0x00000000)
-#define MFG_DFD_CON_9_ENABLE            (0x00000000)
-#define MFG_DFD_CON_10_ENABLE           (0x00000000)
-#define MFG_DFD_CON_11_ENABLE           (0x00000000)
+#define MFG_DEBUGMON_CON_00_ENABLE          (0xFFFFFFFF)
+#define MFG_DFD_CON_0_ENABLE                (0x0F101100)
+#define MFG_DFD_CON_1_ENABLE                (0x00000100)
+#define MFG_DFD_CON_2_ENABLE                (0x00000000)
+#define MFG_DFD_CON_3_ENABLE                (0x0010001F)
+#define MFG_DFD_CON_4_ENABLE                (0x00000000)
+#define MFG_DFD_CON_5_ENABLE                (0x00000000)
+#define MFG_DFD_CON_6_ENABLE                (0x00000000)
+#define MFG_DFD_CON_7_ENABLE                (0x00000000)
+#define MFG_DFD_CON_8_ENABLE                (0x00000000)
+#define MFG_DFD_CON_9_ENABLE                (0x00000000)
+#define MFG_DFD_CON_10_ENABLE               (0x00000000)
+#define MFG_DFD_CON_11_ENABLE               (0x00000000)
 
 /**************************************************
  * Leakage Power Setting
  **************************************************/
-#define GPU_LKG_POWER                   (30)
-#define STACK_LKG_POWER                 (30)
+#define GPU_LKG_POWER                       (30)
+#define STACK_LKG_POWER                     (30)
 
 /**************************************************
  * Enumeration
@@ -350,12 +350,12 @@ struct gpufreq_volt_sb {
 /**************************************************
  * GPU Platform OPP Table Definition
  **************************************************/
-#define GPU_SIGNED_OPP_0                (0)
-#define GPU_SIGNED_OPP_1                (28)
-#define GPU_SIGNED_OPP_2                (36)
-#define GPU_SIGNED_OPP_3                (48)
-#define NUM_GPU_SIGNED_IDX              ARRAY_SIZE(g_gpu_signed_idx)
-#define NUM_GPU_SIGNED_OPP              ARRAY_SIZE(g_gpu_default_opp_table)
+#define GPU_SIGNED_OPP_0                    (0)
+#define GPU_SIGNED_OPP_1                    (28)
+#define GPU_SIGNED_OPP_2                    (36)
+#define GPU_SIGNED_OPP_3                    (48)
+#define NUM_GPU_SIGNED_IDX                  ARRAY_SIZE(g_gpu_signed_idx)
+#define NUM_GPU_SIGNED_OPP                  ARRAY_SIZE(g_gpu_default_opp_table)
 static const int g_gpu_signed_idx[] = {
 	GPU_SIGNED_OPP_0,
 	GPU_SIGNED_OPP_1,
@@ -414,12 +414,12 @@ static struct gpufreq_opp_info g_gpu_default_opp_table[] = {
 	GPUOP(385000,  57500, 75000, POSDIV_POWER_8, 0, 0), /* 48 sign off */
 };
 
-#define STACK_SIGNED_OPP_0              (0)
-#define STACK_SIGNED_OPP_1              (20)
-#define STACK_SIGNED_OPP_2              (36)
-#define STACK_SIGNED_OPP_3              (48)
-#define NUM_STACK_SIGNED_IDX            ARRAY_SIZE(g_stack_signed_idx)
-#define NUM_STACK_SIGNED_OPP            ARRAY_SIZE(g_stack_default_opp_table)
+#define STACK_SIGNED_OPP_0                  (0)
+#define STACK_SIGNED_OPP_1                  (20)
+#define STACK_SIGNED_OPP_2                  (36)
+#define STACK_SIGNED_OPP_3                  (48)
+#define NUM_STACK_SIGNED_IDX                ARRAY_SIZE(g_stack_signed_idx)
+#define NUM_STACK_SIGNED_OPP                ARRAY_SIZE(g_stack_default_opp_table)
 static const int g_stack_signed_idx[] = {
 	STACK_SIGNED_OPP_0,
 	STACK_SIGNED_OPP_1,
