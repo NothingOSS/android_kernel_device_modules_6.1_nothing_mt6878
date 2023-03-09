@@ -717,6 +717,8 @@ static int trusty_task_nop(void *data)
 	trusty_info(s->dev, "tee%d/%s_%d ->\n", s->tee_id, __func__, idx);
 
 	while (!kthread_should_stop()) {
+		int current_cpu = -1;
+
 		wait_for_completion_interruptible_timeout(&nop_ti->run, timeout);
 
 		if (nop_ti->idx >= 0) {
@@ -726,7 +728,10 @@ static int trusty_task_nop(void *data)
 		} else
 			break;
 
-		if (unlikely(smp_processor_id() != idx)) {
+		preempt_disable();
+		current_cpu = smp_processor_id();
+		preempt_enable();
+		if (unlikely(current_cpu != idx)) {
 			/* self migrate */
 			if (cpu_online(idx)) {
 				struct cpumask cpu_mask;

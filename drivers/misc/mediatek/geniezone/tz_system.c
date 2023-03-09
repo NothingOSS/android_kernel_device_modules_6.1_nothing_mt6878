@@ -763,7 +763,9 @@ int ree_dummy_thread(void *data)
 		nop.args[2] = (uint32_t)(new_param.value >> 32);
 
 		/* get into GZ through NOP SMC call */
+		preempt_disable();
 		trusty_enqueue_nop(trusty_dev, &nop, smp_processor_id());
+		preempt_enable();
 	}
 	KREE_ERR("%s leave(%d)\n", __func__, ret);
 
@@ -779,8 +781,10 @@ static int ree_service_threads(uint32_t type, uint32_t val_a, uint32_t val_b,
 	new_param.value = (((uint64_t)val_b) << 32) | val_a;
 	new_param.boost_enabled = (param1_val_b & 0x00ff0000)>>16;
 
+	preempt_disable();
 	cpumask_copy(&ree_cpumask, cpu_all_mask);
 	cpumask_clear_cpu(smp_processor_id(), &ree_cpumask);
+	preempt_enable();
 
 	if (!cpumask_empty(&ree_cpumask))
 		set_cpus_allowed_ptr(ree_dummy_task, &ree_cpumask);
