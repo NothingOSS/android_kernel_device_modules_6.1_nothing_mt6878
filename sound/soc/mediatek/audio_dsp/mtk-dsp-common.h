@@ -56,6 +56,8 @@ struct mtk_base_afe;
 struct audio_hw_buffer;
 struct platform_device;
 struct ipi_msg_t;
+typedef bool (*has_video_cb_t)(void);
+typedef int (*offlad_vp_event)(void);
 
 int mtk_scp_ipi_send(int task_scene, int data_type, int ack_type,
 		     uint16_t msg_id, uint32_t param1, uint32_t param2,
@@ -112,5 +114,8 @@ int wait_dsp_ready(void);
 int mtk_audio_register_notify(void);
 
 int mtk_get_ipi_buf_scene_adsp(void);
+int register_vp_notifier(void);
+void hook_has_video_cb(has_video_cb_t cb);
+void hook_vp_sync_cb(offlad_vp_event cb);
 
 #endif

@@ -19,7 +19,13 @@
 #include <audio_ipi_dma.h>
 
 #include <trace/hooks/vendor_hooks.h>
+#include "mtk-afe-external.h"
+#include <linux/timer.h>
+#include <linux/workqueue.h>
+
 #define OFFLOAD_IPIMSG_TIMEOUT (25)
+/* current  support for 60fps = 16.67ms  */
+#define OFFLOAD_VPSYNC_TIMEOUT (21)
 
 /*
  * Variable Definition
@@ -49,6 +55,8 @@ static struct afe_offload_service_t afe_offload_service = {
 	.decode_error    = false,
 	.offload_volume  = {0x10000, 0x10000},
 	.scene           = TASK_SCENE_PLAYBACK_MP3,
+	.vp_sync_support = false,
+	.timer_init      = false,
 };
 
 static struct afe_offload_param_t afe_offload_block = {
@@ -197,6 +205,19 @@ static int offloadservice_gettargetrate(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+/* timer callback is use to replace vp sync if vp is not send */
+static void offload_time_cb(struct timer_list *t)
+{
+	notify_vb_audio_control(NOTIFIER_VP_AUDIO_TIMER, NULL);
+	mutex_lock(&afe_offload_service.timer_mutex);
+	if (afe_offload_service.timer_init) {
+		afe_offload_service.offload_timer.expires =
+			jiffies + msecs_to_jiffies(OFFLOAD_VPSYNC_TIMEOUT);
+		add_timer(&afe_offload_service.offload_timer);
+	}
+	mutex_unlock(&afe_offload_service.timer_mutex);
+}
+
 static int offloadservice_sethasvideo(struct snd_kcontrol *kcontrol,
 				      struct snd_ctl_elem_value *ucontrol)
 {
@@ -210,6 +231,34 @@ static int offloadservice_gethasvideo(struct snd_kcontrol *kcontrol,
 	ucontrol->value.integer.value[0] = afe_offload_codec_info.has_video;
 	return 0;
 }
+
+/* workqueue to mod timer with vp time out*/
+void offload_vp_worker(struct work_struct *ws)
+{
+	if (afe_offload_service.vp_sync_support && afe_offload_codec_info.has_video) {
+		mutex_lock(&afe_offload_service.timer_mutex);
+		if (afe_offload_service.timer_init) {
+			notify_vb_audio_control(NOTIFIER_VP_AUDIO_TIMER, NULL);
+			mod_timer(&afe_offload_service.offload_timer,
+				  jiffies + msecs_to_jiffies(OFFLOAD_VPSYNC_TIMEOUT));
+		}
+		mutex_unlock(&afe_offload_service.timer_mutex);
+	}
+}
+
+bool offload_has_video(void)
+{
+	return afe_offload_codec_info.has_video;
+}
+
+/*timer op cannot do in atomic, using workqueue to do */
+int offload_vp_sync(void)
+{
+	if (afe_offload_service.vp_sync_support && afe_offload_codec_info.has_video)
+		queue_work(afe_offload_service.workq, &afe_offload_service.offload_cb_work);
+	return 0;
+}
+
 static const struct snd_kcontrol_new Audio_snd_dloffload_controls[] = {
 	SND_SOC_BYTES_TLV("offload digital volume", sizeof(afe_offload_service.offload_volume),
 	offloadservice_getvolume, offloadservice_setvolume),
@@ -394,6 +443,24 @@ static int mtk_compr_offload_open(struct snd_soc_component *component,
 			 gen_pool_size(
 			 dsp->dsp_mem[ID].gen_pool_buffer));
 	}
+
+	afe_offload_service.vp_sync_support = adsp_task_get_latency_support();
+
+	/*
+	 * offload with vidoe will get vp sync event from vp,
+	 * this timer is using if video do not send sync event , need to sync event to adsp
+	 */
+	if (afe_offload_service.vp_sync_support && afe_offload_codec_info.has_video) {
+		mutex_lock(&afe_offload_service.timer_mutex);
+		if (afe_offload_service.timer_init == false) {
+			afe_offload_service.offload_timer.expires =
+				jiffies + msecs_to_jiffies(OFFLOAD_VPSYNC_TIMEOUT);
+			timer_setup(&afe_offload_service.offload_timer, offload_time_cb, 0);
+			add_timer(&afe_offload_service.offload_timer);
+			afe_offload_service.timer_init = true;
+		}
+		mutex_unlock(&afe_offload_service.timer_mutex);
+	}
 	return 0;
 }
 
@@ -413,8 +480,14 @@ static int mtk_afe_dloffload_probe(struct snd_soc_component *component)
 static int mtk_compr_offload_free(struct snd_soc_component *component,
 				  struct snd_compr_stream *stream)
 {
-	pr_debug("%s()\n", __func__);
 	offloadservice_setwriteblocked(false);
+	mutex_lock(&afe_offload_service.timer_mutex);
+	if (afe_offload_service.vp_sync_support && afe_offload_codec_info.has_video) {
+		del_timer_sync(&afe_offload_service.offload_timer);
+		afe_offload_service.timer_init = false;
+	}
+	mutex_unlock(&afe_offload_service.timer_mutex);
+
 	if (dsp)
 		mtk_adsp_genpool_free_sharemem_ring(&dsp->dsp_mem[ID], ID);
 	afe_offload_block.state = OFFLOAD_STATE_INIT;
@@ -1078,7 +1151,10 @@ static const struct snd_soc_component_driver mtk_dloffload_soc_platform = {
 static int mtk_offload_init(void)
 {
 	mutex_init(&afe_offload_service.ts_lock);
+	mutex_init(&afe_offload_service.timer_mutex);
 	init_waitqueue_head(&afe_offload_service.ts_wq);
+	afe_offload_service.workq = alloc_workqueue("offload_wq", WORK_CPU_UNBOUND | WQ_HIGHPRI, 0);
+	INIT_WORK(&afe_offload_service.offload_cb_work, offload_vp_worker);
 	return 0;
 }
 
@@ -1110,6 +1186,8 @@ static int mtk_dloffload_probe(struct platform_device *pdev)
 
 	mtk_offload_init();
 
+	hook_has_video_cb(offload_has_video);
+	hook_vp_sync_cb(offload_vp_sync);
 	return 0;
 }
 

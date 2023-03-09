@@ -17,6 +17,7 @@
 #include "mtk-dsp-mem-control.h"
 #include "mtk-base-dsp.h"
 #include "mtk-dsp-common.h"
+#include "mtk-afe-external.h"
 
 #include <adsp_helper.h>
 //#define DEBUG_VERBOSE
@@ -545,3 +546,55 @@ int mtk_get_ipi_buf_scene_adsp(void)
 }
 EXPORT_SYMBOL(mtk_get_ipi_buf_scene_adsp);
 
+void hook_has_video_cb(has_video_cb_t cb)
+{
+	if (cb && local_base_dsp)
+		local_base_dsp->offload_cb.query_has_video = cb;
+}
+EXPORT_SYMBOL(hook_has_video_cb);
+
+void hook_vp_sync_cb(offlad_vp_event cb)
+{
+	if (cb && local_base_dsp)
+		local_base_dsp->offload_cb.receive_vp_sync = cb;
+}
+EXPORT_SYMBOL(hook_vp_sync_cb);
+
+int notify_vp_audio_event(struct notifier_block *nb,
+				unsigned long event, void *v)
+{
+
+	int status = NOTIFY_DONE, result = -1;
+	bool has_video = false;
+	struct mtk_base_dsp *dsp = local_base_dsp;
+
+	if (!dsp)
+		return NOTIFY_DONE;
+
+	if (event == NOTIFIER_VP_AUDIO_TRIGGER) {
+		if (dsp->offload_cb.query_has_video)
+			has_video = dsp->offload_cb.query_has_video();
+		/* notify offload with vp sync */
+		if (dsp->offload_cb.receive_vp_sync)
+			dsp->offload_cb.receive_vp_sync();
+
+	} else if (event == NOTIFIER_VP_AUDIO_TIMER) {
+		if (dsp->offload_cb.query_has_video)
+			has_video = dsp->offload_cb.query_has_video();
+		if (has_video) {
+			result = adsp_send_vp_irq(true);
+			if (result)
+				pr_info("adsp_send_vp_irq result = %d\n", result);
+		}
+	}
+	return status;
+}
+
+static struct notifier_block adsp_vp_notifier = {
+	.notifier_call = notify_vp_audio_event,
+};
+
+int register_vp_notifier(void)
+{
+	return register_vp_audio_notifier(&adsp_vp_notifier);
+}

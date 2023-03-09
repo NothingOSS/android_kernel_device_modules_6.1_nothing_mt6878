@@ -35,6 +35,11 @@ struct mtk_dsp_ipi_ops {
 			    struct ipi_msg_t *ipi_msg);
 };
 
+struct mtk_dsp_offlad_cb {
+	bool (*query_has_video)(void);
+	int (*receive_vp_sync)(void);
+};
+
 struct mtk_base_dsp_mem {
 	struct audio_hw_buffer adsp_buf;    /* dsp <-> audio data struct */
 	struct audio_hw_buffer adsp_work_buf; /* working buffer */
@@ -85,6 +90,7 @@ struct mtk_base_dsp {
 	bool suspended;
 	int dsp_dram_resource_counter;
 	struct mtk_dsp_ipi_ops dsp_ipi_ops;
+	struct mtk_dsp_offlad_cb offload_cb;
 
 	struct mtk_ap_adsp_mem core_share_mem;
 
@@ -97,6 +103,13 @@ struct mtk_base_dsp {
 	int dsp_ver;
 };
 
+struct mtk_adsp_task_latency {
+	unsigned int rate;
+	unsigned int frame;
+	unsigned int irq_num;
+	bool adsp_support_latency;
+};
+
 struct mtk_adsp_task_attr {
 	unsigned int default_enable; /* default setting */
 	int afe_memif_dl;
@@ -106,6 +119,8 @@ struct mtk_adsp_task_attr {
 	int runtime_enable;
 	int ref_runtime_enable;
 	unsigned int task_property;
+	unsigned int kernel_dynamic_config;
+	struct mtk_adsp_task_latency task_latency;
 };
 
 #endif

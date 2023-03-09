@@ -70,6 +70,15 @@ unsigned int mtk_get_adsp_sharemem_size(int audio_task_id,
 int mtk_adsp_init_gen_pool(struct mtk_base_dsp *dsp);
 int mtk_init_adsp_audio_share_mem(struct mtk_base_dsp *dsp);
 
+/* init adsp latency*/
+int mtk_init_adsp_latency(struct mtk_base_dsp *dsp);
+bool adsp_task_get_latency_support(void);
+int adsp_task_get_latency(unsigned int task_id, unsigned int *frame, unsigned int *rate);
+int adsp_task_set_latency(unsigned int task_id, unsigned int frame, unsigned int rate);
+unsigned int adsp_task_get_latency_sample(unsigned int task_id);
+int adsp_task_get_irq(unsigned int task_id, unsigned int *irq);
+int adsp_task_set_irq(unsigned int task_id, unsigned int irq);
+
 /* init task with certain task id */
 int adsp_task_init(int task_id, struct mtk_base_dsp *dsp);
 int mtk_reinit_adsp(void);

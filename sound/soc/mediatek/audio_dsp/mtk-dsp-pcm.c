@@ -135,6 +135,14 @@ static int dsp_pcm_taskattr_init(struct platform_device *pdev)
 			task_attr.task_property = 0;
 		set_task_attr(AUDIO_TASK_A2DP_ID, ADSP_TASK_ATTR_PROPERTY,
 			      task_attr.task_property);
+
+		ret = of_property_read_u32(pdev->dev.of_node,
+			"adsp-dynamic-buffer",
+			&(task_attr.kernel_dynamic_config));
+		if (ret)
+			task_attr.kernel_dynamic_config = 0;
+		set_task_attr(AUDIO_TASK_PLAYBACK_ID, ADSP_TASK_ATTR_KERNEL_LATENCY_SUPPORT,
+			      task_attr.task_property);
 	}
 	return 0;
 }

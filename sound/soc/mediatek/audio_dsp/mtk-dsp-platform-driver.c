@@ -251,6 +251,77 @@ static int ktv_status_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+/* not support set */
+static int audio_dsp_latency_support_set(struct snd_kcontrol *kcontrol,
+			  struct snd_ctl_elem_value *ucontrol)
+{
+	return 0;
+}
+
+static int audio_dsp_latency_support_get(struct snd_kcontrol *kcontrol,
+			  struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = adsp_task_get_latency_support();
+	return 0;
+}
+
+static bool dsp_support_dynamic_latency(unsigned int task_id)
+{
+	if (task_id == AUDIO_TASK_PRIMARY_ID ||
+	    task_id == AUDIO_TASK_DEEPBUFFER_ID ||
+	    task_id == AUDIO_TASK_OFFLOAD_ID ||
+	    task_id == AUDIO_TASK_FAST_ID)
+		return true;
+	else
+		return false;
+}
+
+/*
+ * get latency base on different task id
+ * return value for latency m  return 0 means not support
+ */
+
+static int dsp_latency_info_get(struct snd_kcontrol *kcontrol,
+				    struct snd_ctl_elem_value *ucontrol)
+{
+	unsigned int task_id, i = 0;
+
+	for (i = 0; i < TASK_SCENE_SIZE; i++) {
+		task_id = get_dspdaiid_by_dspscene(i);
+		if (dsp_support_dynamic_latency(task_id))
+			ucontrol->value.integer.value[i] = adsp_task_get_latency_sample(task_id);
+		else
+			ucontrol->value.integer.value[i] = 0;
+	}
+	return 0;
+}
+
+static int dsp_latency_info_put(struct snd_kcontrol *kcontrol,
+				    struct snd_ctl_elem_value *ucontrol)
+{
+	pr_info("%s not support\n", __func__);
+	return 0;
+}
+
+static int dsp_latency_info(struct snd_kcontrol *kcontrol,
+				     struct snd_ctl_elem_info *uinfo)
+{
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+	uinfo->count = TASK_SCENE_SIZE;
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = 65535;
+	return 0;
+}
+
+static const struct snd_kcontrol_new dsp_stream_latency_kcontrols = {
+	.name = "dsp_stream_latency",
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.access = SNDRV_CTL_ELEM_ACCESS_READWRITE,
+	.info = dsp_latency_info,
+	.get = dsp_latency_info_get,
+	.put = dsp_latency_info_put,
+};
+
 static const struct snd_kcontrol_new dsp_platform_kcontrols[] = {
 	SOC_SINGLE_EXT("dsp_primary_default_en", SND_SOC_NOPM, 0, 0xff, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
@@ -374,6 +445,8 @@ static const struct snd_kcontrol_new dsp_platform_kcontrols[] = {
 		       dsp_task_attr_get, dsp_task_attr_set),
 	SOC_SINGLE_EXT("audio_dsp_version", SND_SOC_NOPM, 0, 0xff, 0,
 		       audio_dsp_version_get, audio_dsp_version_set),
+	SOC_SINGLE_EXT("audio_dsp_latency_support", SND_SOC_NOPM, 0, 0xff, 0,
+		       audio_dsp_latency_support_get, audio_dsp_latency_support_set),
 	SOC_SINGLE_EXT("swdsp_smartpa_process_enable", SND_SOC_NOPM, 0, 0xff, 0,
 		       smartpa_swdsp_process_enable_get,
 		       smartpa_swdsp_process_enable_set),
@@ -807,6 +880,13 @@ void mtk_dsp_handler(struct mtk_base_dsp *dsp,
 		 * which not support audio IRQ.
 		 */
 		mtk_dsp_dl_consume_handler(dsp, ipi_msg, id);
+		break;
+	case AUDIO_DSP_TASK_GET_LATENCY:
+		adsp_task_set_latency(get_dspdaiid_by_dspscene(ipi_msg->task_scene),
+				      ipi_msg->param1, ipi_msg->param2);
+		break;
+	case AUDIO_DSP_TASK_GET_IRQ_PERIOD:
+		adsp_task_set_irq(get_dspdaiid_by_dspscene(ipi_msg->task_scene), ipi_msg->param1);
 		break;
 	default:
 		break;
@@ -1465,6 +1545,13 @@ static int mtk_dsp_probe(struct snd_soc_component *component)
 	if (ret)
 		pr_info("%s add_component err ret = %d\n", __func__, ret);
 
+
+	ret = snd_soc_add_component_controls(component,
+				      &dsp_stream_latency_kcontrols,
+				      1);
+	if (ret)
+		pr_info("%s add_component dsp_latency_num err ret = %d\n", __func__, ret);
+
 	for (id = 0; id < AUDIO_TASK_DAI_NUM; id++) {
 		spin_lock_init(&dsp->dsp_mem[id].ringbuf_lock);
 
@@ -1481,9 +1568,15 @@ static int mtk_dsp_probe(struct snd_soc_component *component)
 		if (adsp_irq_registration(id, ADSP_IRQ_AUDIO_ID, audio_irq_handler, dsp) < 0)
 			pr_info("ADSP_IRQ_AUDIO not supported\n");
 	}
+
+	ret = mtk_init_adsp_latency(dsp);
+	if (ret)
+		pr_info("init latency fail\n");
+
 #ifdef CFG_RECOVERY_SUPPORT
 	adsp_register_notify(&adsp_audio_notifier);
 #endif
+	register_vp_notifier();
 	return ret;
 }
 

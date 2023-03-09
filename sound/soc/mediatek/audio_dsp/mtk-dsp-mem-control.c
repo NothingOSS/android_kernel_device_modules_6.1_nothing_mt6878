@@ -758,6 +758,21 @@ int set_task_attr(int dsp_id, int task_enum, int param)
 	case ADSP_TASK_ATTR_PROPERTY:
 		task_attr->task_property = param;
 		break;
+	case ADSP_TASK_ATTR_LATENCY_RATE:
+		task_attr->task_latency.rate = param;
+		break;
+	case ADSP_TASK_ATTR_LATENCY_FRAME:
+		task_attr->task_latency.frame = param;
+		break;
+	case ADSP_TASK_ATTR_LATENCY_IRQNUM:
+		task_attr->task_latency.irq_num = param;
+		break;
+	case ADSP_TASK_ATTR_ADSP_LATENCY_SUPPORT:
+		task_attr->task_latency.adsp_support_latency = param;
+		break;
+	case ADSP_TASK_ATTR_KERNEL_LATENCY_SUPPORT:
+		task_attr->kernel_dynamic_config = param;
+		break;
 	}
 	return 0;
 }
@@ -798,6 +813,16 @@ int get_task_attr(int dsp_id, int task_enum)
 		return task_attr->ref_runtime_enable;
 	case ADSP_TASK_ATTR_PROPERTY:
 		return task_attr->task_property;
+	case ADSP_TASK_ATTR_LATENCY_RATE:
+		return task_attr->task_latency.rate;
+	case ADSP_TASK_ATTR_LATENCY_FRAME:
+		return task_attr->task_latency.frame;
+	case ADSP_TASK_ATTR_LATENCY_IRQNUM:
+		return task_attr->task_latency.irq_num;
+	case ADSP_TASK_ATTR_ADSP_LATENCY_SUPPORT:
+		return task_attr->task_latency.adsp_support_latency;
+	case ADSP_TASK_ATTR_KERNEL_LATENCY_SUPPORT:
+		return task_attr->kernel_dynamic_config;
 	default:
 		return -1;
 	}
@@ -1013,6 +1038,10 @@ int mtk_reinit_adsp(void)
 		mutex_unlock(&adsp_control_mutex);
 		return -1;
 	}
+	ret = mtk_init_adsp_latency(dsp);
+	if (ret)
+		pr_info("init latency fail\n");
+
 	binitadsp_share_mem = true;
 	mutex_unlock(&adsp_control_mutex);
 
@@ -1185,4 +1214,129 @@ int mtk_init_adsp_audio_share_mem(struct mtk_base_dsp *dsp)
 	pr_debug("-%s task_id = %d\n", __func__, task_id);
 	return 0;
 }
+
+/* base on task id support latency adjust */
+static bool adsp_task_support_latency(unsigned int task_id)
+{
+	if (task_id == AUDIO_TASK_VOIP_ID ||
+	    task_id == AUDIO_TASK_PRIMARY_ID ||
+	    task_id == AUDIO_TASK_OFFLOAD_ID ||
+	    task_id == AUDIO_TASK_DEEPBUFFER_ID ||
+	    task_id == AUDIO_TASK_PLAYBACK_ID ||
+	    task_id == AUDIO_TASK_FAST_ID)
+		return true;
+	else
+		return false;
+}
+
+bool adsp_task_get_latency_support(void)
+{
+	return (get_task_attr(AUDIO_TASK_PLAYBACK_ID, ADSP_TASK_ATTR_ADSP_LATENCY_SUPPORT) &&
+		get_task_attr(AUDIO_TASK_PLAYBACK_ID, ADSP_TASK_ATTR_KERNEL_LATENCY_SUPPORT));
+}
+EXPORT_SYMBOL_GPL(adsp_task_get_latency_support);
+
+int adsp_task_get_latency(unsigned int task_id, unsigned int *frame, unsigned int *rate)
+{
+	if (task_id >= AUDIO_TASK_DAI_NUM)
+		return -1;
+	if (!frame || !rate)
+		return -1;
+
+	*rate = get_task_attr(AUDIO_TASK_PLAYBACK_ID, ADSP_TASK_ATTR_LATENCY_RATE);
+	*frame = get_task_attr(AUDIO_TASK_PLAYBACK_ID, ADSP_TASK_ATTR_LATENCY_FRAME);
+
+	return 0;
+}
+
+unsigned int adsp_task_get_latency_sample(unsigned int task_id)
+{
+	unsigned int frame;
+
+	if (task_id >= AUDIO_TASK_DAI_NUM)
+		return -1;
+
+	frame = get_task_attr(task_id, ADSP_TASK_ATTR_LATENCY_FRAME);
+
+	if (frame)
+		return frame;
+	else
+		return 0;
+}
+
+
+int adsp_task_set_latency(unsigned int task_id, unsigned int frame, unsigned int rate)
+{
+	pr_info("%s task_id[%u] frame[%u] rate[%u]", __func__, task_id, frame, rate);
+
+	if (adsp_task_support_latency(task_id) == false)
+		return -1;
+
+	set_task_attr(task_id, ADSP_TASK_ATTR_ADSP_LATENCY_SUPPORT, true);
+	set_task_attr(task_id, ADSP_TASK_ATTR_LATENCY_FRAME, frame);
+	set_task_attr(task_id, ADSP_TASK_ATTR_LATENCY_RATE, rate);
+
+	return 0;
+}
+
+int adsp_task_get_irq(unsigned int task_id, unsigned int *irq)
+{
+	if (task_id >= AUDIO_TASK_DAI_NUM)
+		return -1;
+	if (!irq)
+		return -1;
+
+	*irq = get_task_attr(task_id, ADSP_TASK_ATTR_LATENCY_IRQNUM);
+
+	return 0;
+}
+
+int adsp_task_set_irq(unsigned int task_id, unsigned int irq)
+{
+	if (adsp_task_support_latency(task_id) == false)
+		return -1;
+
+	set_task_attr(task_id, ADSP_TASK_ATTR_ADSP_LATENCY_SUPPORT, true);
+	set_task_attr(task_id, ADSP_TASK_ATTR_LATENCY_IRQNUM, irq);
+
+	return 0;
+}
+
+int mtk_init_adsp_latency(struct mtk_base_dsp *dsp)
+{
+	int ret = 0;
+	struct ipi_msg_t ipi_msg;
+
+	if (dsp == NULL) {
+		pr_info("%s dsp == NULL\n", __func__);
+		return -1;
+	}
+
+	adsp_register_feature(AUDIO_CONTROLLER_FEATURE_ID);
+
+	ret = audio_send_ipi_msg(&ipi_msg, TASK_SCENE_AUDPLAYBACK,
+				  AUDIO_IPI_LAYER_TO_DSP, AUDIO_IPI_MSG_ONLY,
+				  AUDIO_IPI_MSG_BYPASS_ACK,
+				  AUDIO_DSP_TASK_SET_LATENCY_SUPPORT,
+				  get_task_attr(AUDIO_TASK_PLAYBACK_ID,
+						ADSP_TASK_ATTR_KERNEL_LATENCY_SUPPORT),
+						0, NULL);
+	if (ret)
+		pr_info("ADSP_TASK_ATTR_KERNEL_LATENCY_SUPPORT fail\n");
+
+	ret = audio_send_ipi_msg(&ipi_msg, TASK_SCENE_AUDPLAYBACK,
+				  AUDIO_IPI_LAYER_TO_DSP, AUDIO_IPI_MSG_ONLY,
+				  AUDIO_IPI_MSG_BYPASS_ACK,
+				  AUDIO_DSP_TASK_GET_LATENCY_SUPPORT,
+				  0, 0, NULL);
+	if (ret)
+		pr_info("AUDIO_DSP_TASK_GET_LATENCY_SUPPORT fail\n");
+
+	adsp_deregister_feature(AUDIO_CONTROLLER_FEATURE_ID);
+
+	pr_info("-%s\n", __func__);
+	return 0;
+
+}
+
 

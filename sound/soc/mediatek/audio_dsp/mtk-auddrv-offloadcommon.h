@@ -72,6 +72,12 @@ struct afe_offload_service_t {
 	unsigned int pcmdump;
 	unsigned int offload_volume[2];
 	uint8_t scene;
+	bool vp_sync_support;
+	bool timer_init;
+	struct mutex timer_mutex;
+	struct timer_list offload_timer;
+	struct workqueue_struct *workq;
+	struct work_struct offload_cb_work;
 };
 
 struct afe_offload_codec_t {
