@@ -611,7 +611,7 @@ static void sys_loop_racing(struct mml_comp *comp, struct mml_task *task,
 			sys->data->gpr[ccfg->pipe]);
 
 	/* do eoc to avoid task timeout during self-loop */
-	cmdq_pkt_eoc(pkt, false);
+	cmdq_pkt_eoc(pkt, true);
 
 	/* wait display frame done before checking next, so disp driver has
 	 * chance to tell mml to entering next task.
@@ -660,7 +660,7 @@ static void sys_loop_pipe1(struct mml_comp *comp, struct mml_task *task,
 	struct cmdq_operand lhs, rhs;
 
 	/* do eoc to avoid task timeout during self-loop */
-	cmdq_pkt_eoc(pkt, false);
+	cmdq_pkt_eoc(pkt, true);
 
 	/* reserve assign inst for jump addr */
 	cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX0, 0);
@@ -690,7 +690,7 @@ static void sys_loop_dl(struct mml_comp *comp, struct mml_task *task,
 	struct cmdq_operand lhs, rhs;
 
 	/* do eoc to avoid task timeout during self-loop */
-	cmdq_pkt_eoc(pkt, false);
+	cmdq_pkt_eoc(pkt, true);
 
 	/* reserve assign inst for jump addr */
 	cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX0, 0);

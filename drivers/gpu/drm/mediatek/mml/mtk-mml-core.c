@@ -1575,6 +1575,9 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 			complete(&task->pipe[pipe].ready);
 			wait_for_completion(&task->pipe[(pipe + 1) & 0x1].ready);
 		}
+	} else if (task->config->info.mode == MML_MODE_DIRECT_LINK) {
+		/* direct link mode also loop, set flag to cmdq pass timeout */
+		task->pkts[pipe]->self_loop = true;
 	}
 
 	/* do dvfs/bandwidth calc right before flush to cmdq */
