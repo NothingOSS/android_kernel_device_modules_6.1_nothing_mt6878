@@ -57,6 +57,7 @@
 //#define DSI_SELF_PATTERN
 #define DSI_START 0x00
 #define SLEEPOUT_START BIT(2)
+#define SKEWCAL_START BIT(4)
 #define VM_CMD_START BIT(16)
 #define START_FLD_REG_START REG_FLD_MSB_LSB(0, 0)
 
@@ -70,6 +71,7 @@
 #define FRAME_DONE_INT_FLAG BIT(4)
 #define VM_CMD_DONE_INT_EN BIT(5)
 #define SLEEPOUT_DONE_INT_FLAG BIT(6)
+#define SKEWCAL_DONE_INT_FLAG BIT(11)
 #define BUFFER_UNDERRUN_INT_FLAG BIT(12)
 #define INP_UNFINISH_INT_EN BIT(14)
 #define SLEEPIN_ULPS_DONE_INT_FLAG BIT(15)
@@ -191,6 +193,8 @@
 #define DSI_WMEM_CONTI 0x3C
 
 #define DSI_TIME_CON0 0xA0
+#define FLD_SKEWCAL_PRD REG_FLD_MSB_LSB(31, 16)
+#define DSI_TIME_CON1 0xA4
 #define DSI_RESERVED 0xF0
 #define DSI_VDE_BLOCK_ULTRA BIT(29)
 
@@ -206,6 +210,9 @@
 #define LD0_ULPM_EN BIT(1)
 #define LD0_WAKEUP_EN BIT(2)
 #define LDX_ULPM_AS_L0 BIT(3)
+
+#define DSI_PHY_SYNCON 0x10C
+#define HS_DB_SYNC_EN BIT(24)
 
 #define DSI_PHY_TIMECON0 0x110
 #define LPX (0xff << 0)
@@ -2865,6 +2872,55 @@ static void mtk_dsi_disable_vfp_early_stop(struct mtk_dsi *dsi,
 	DDPINFO("[Msync] %s, VFP_EARLY_STOP = 0x%x\n", __func__, value);
 }
 
+static void DSI_MIPI_deskew(struct mtk_dsi *dsi)
+{
+	unsigned int timeout = 0;
+	unsigned int status = 0;
+	unsigned int phy_syncon = 0;
+	unsigned int value = 0, mask = 0;
+
+	phy_syncon = readl(dsi->regs + DSI_PHY_SYNCON);
+	writel(0x00aaffff, dsi->regs + DSI_PHY_SYNCON);
+
+	SET_VAL_MASK(value, mask, 6, FLD_SKEWCAL_PRD);
+	mtk_dsi_mask(dsi, DSI_TIME_CON0, mask, value);
+
+	writel(0, dsi->regs + DSI_START);
+	mtk_dsi_poll_for_idle(dsi, NULL);
+
+	mtk_dsi_mask(dsi, DSI_PHY_SYNCON, HS_DB_SYNC_EN, HS_DB_SYNC_EN);
+
+	value = 0;
+	mask = 0;
+	SET_VAL_MASK(value, mask, 2, FLD_DA_HS_SYNC);
+	mtk_dsi_mask(dsi, DSI_PHY_TIMECON2, mask, value);
+	mtk_dsi_mask(dsi, DSI_INTSTA, SKEWCAL_DONE_INT_FLAG, 0);
+	mtk_dsi_mask(dsi, DSI_START, SKEWCAL_START, 0);
+	mtk_dsi_mask(dsi, DSI_START, SKEWCAL_START, SKEWCAL_START);
+
+	timeout = 5000;
+	while (timeout) {
+		status = readl(dsi->regs + DSI_INTSTA);
+		DDPDBG("%s, status=0x%x\n", __func__, status);
+
+		if (status & 0x800) {
+			DDPDBG("%s, break, status=0x%x\n", __func__, status);
+			break;
+		}
+		udelay(10);
+		timeout--;
+	}
+
+	if (timeout == 0)
+		DDPMSG("%s, dsi wait idle timeout!\n", __func__);
+
+	writel(phy_syncon, dsi->regs + DSI_PHY_SYNCON);
+	value = 0;
+	mask = 0;
+	SET_VAL_MASK(value, mask, 1, FLD_DA_HS_SYNC);
+	mtk_dsi_mask(dsi, DSI_PHY_TIMECON2, mask, value);
+}
+
 /***********************Msync 2.0 function end************************/
 static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 	int force_lcm_update)
@@ -2992,6 +3048,9 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 		mtk_dsi_set_mode(dsi->slave_dsi);
 		mtk_dsi_clk_hs_mode(dsi->slave_dsi, 1);
 	}
+
+	if (mtk_dsi_default_rate(dsi) > 1500) // data rate > 1.5Gbsp, do skew calibration
+		DSI_MIPI_deskew(dsi);
 
 #ifdef DSI_SELF_PATTERN
 	DDPMSG("%s dsi self pattern\n", __func__);
@@ -4514,6 +4573,9 @@ static void mtk_dsi_leave_idle(struct mtk_dsi *dsi, int skip_ulps, bool async)
 								(EXT_TE_EN | HSTX_CKLP_EN));
 		mtk_dsi_set_mode(dsi);
 		mtk_dsi_clk_hs_mode(dsi, 1);
+
+		if (mtk_dsi_default_rate(dsi) > 1500) // data rate > 1.5Gbsp, skew calibration
+			DSI_MIPI_deskew(dsi);
 	}
 }
 
