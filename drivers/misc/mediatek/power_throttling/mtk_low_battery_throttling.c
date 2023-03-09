@@ -333,8 +333,8 @@ static int low_battery_throttling_probe(struct platform_device *pdev)
 			dev_notice(&pdev->dev,
 				"[%s] failed to get correct thd-volt ret=%d\n", __func__, ret);
 			priv->thd_volts_size = LOW_BATTERY_LEVEL_NUM;
-			priv->thd_volts = krealloc_array(priv->thd_volts, priv->thd_volts_size,
-							 sizeof(u32), GFP_KERNEL);
+			priv->thd_volts = devm_kmalloc_array(&pdev->dev, priv->thd_volts_size,
+							sizeof(u32), GFP_KERNEL);
 			if (!priv->thd_volts)
 				return -ENOMEM;
 			priv->thd_volts[0] = POWER_INT0_VOLT;

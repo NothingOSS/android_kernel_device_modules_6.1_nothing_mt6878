@@ -188,8 +188,11 @@ static int mtk_cpu_power_throttling_probe(struct platform_device *pdev)
 					return -ENOMEM;
 				max_lv = (cpu_pt_info[i].max_lv > 1) ? cpu_pt_info[i].max_lv : 1;
 				limit_t = kcalloc(max_lv, sizeof(u32), GFP_KERNEL);
-				if (!limit_t)
+				if (!limit_t) {
+					kfree(pt_policy);
 					return -ENOMEM;
+				}
+
 				for (j = 0; j < cpu_pt_info[i].max_lv; j++)
 					limit_t[j] = cpu_pt_info[i].freq_limit[j*CLUSTER_NUM+k];
 				pt_policy->pt_type = (enum cpu_pt_type)i;
