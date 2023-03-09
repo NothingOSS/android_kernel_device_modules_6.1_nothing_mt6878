@@ -890,21 +890,49 @@
 		polling-delay = <0>; /* milliseconds */
 		polling-delay-passive = <0>; /* milliseconds */
 		thermal-sensors = <&sensor0>;
+		trips {
+			camera0_crit: camera0-crit {
+				temperature = <120000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+		};
 	};
 	camera1: camera1 {
 		polling-delay = <0>; /* milliseconds */
 		polling-delay-passive = <0>; /* milliseconds */
 		thermal-sensors = <&sensor1>;
+		trips {
+			camera1_crit: camera1-crit {
+				temperature = <120000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+		};
 	};
 	camera2: camera2 {
 		polling-delay = <0>; /* milliseconds */
 		polling-delay-passive = <0>; /* milliseconds */
 		thermal-sensors = <&sensor2>;
+		trips {
+			camera2_crit: camera2-crit {
+				temperature = <120000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+		};
 	};
 	camera4: camera4 {
 		polling-delay = <0>; /* milliseconds */
 		polling-delay-passive = <0>; /* milliseconds */
 		thermal-sensors = <&sensor4>;
+		trips {
+			camera4_crit: camera4-crit {
+				temperature = <120000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+		};
 	};
 };
 
