@@ -175,6 +175,10 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_AER_CO_STATUS		0x1210
 #define AER_CO_RE			BIT(0)
 #define AER_CO_BTLP			BIT(6)
+#define PCIE_AER_HD0_LOG		0x121C
+#define PCIE_AER_HD1_LOG		0x1220
+#define PCIE_AER_HD2_LOG		0x1224
+#define PCIE_AER_HD3_LOG		0x1228
 
 /* PHY sif register */
 #define PCIE_PHY_SIF			0x11100000
@@ -1430,6 +1434,12 @@ u32 mtk_pcie_dump_link_info(int port)
 	val = readl_relaxed(pcie_port->base + PCIE_AER_CO_STATUS);
 	if (val & (AER_CO_RE | AER_CO_BTLP))
 		ret_val |= BIT(7);
+
+	pr_info("AER header: DW0=%#x, DW1%#x, DW2=%#x, DW3=%#x\n",
+		readl_relaxed(pcie_port->base + PCIE_AER_HD0_LOG),
+		readl_relaxed(pcie_port->base + PCIE_AER_HD1_LOG),
+		readl_relaxed(pcie_port->base + PCIE_AER_HD2_LOG),
+		readl_relaxed(pcie_port->base + PCIE_AER_HD3_LOG));
 
 	return ret_val;
 }
