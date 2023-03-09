@@ -1406,16 +1406,24 @@ static void job_dump(struct mtk_cam_job *job, int seq_no)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct device *dev = ctx->cam->dev;
+	int isp_state;
 
 	if (atomic_read(&ctx->cam_ctrl.stopped)) {
 		dev_info(dev, "%s: stopped, skip dump\n", __func__);
 		return;
 	}
 
+	isp_state = mtk_cam_job_state_get(&job->job_state, ISP_STATE);
+	if (isp_state < S_ISP_COMPOSED) {
+		dev_info(dev, "%s: job %d not composed yet. skip dump\n",
+			 __func__, job->req_seq);
+		return;
+	}
+
 	dump_job_info(job);
 	dev_info(dev, "%s: (dump seq 0x%x) ISP_STATE %s\n",
 		 __func__, seq_no,
-		 mtk_cam_job_state_str(&job->job_state, ISP_STATE));
+		 str_isp_state(isp_state));
 
 	trigger_error_dump(job, MSG_DEQUE_ERROR);
 }
@@ -1424,9 +1432,17 @@ static void job_dump_mstream(struct mtk_cam_job *job, int seq_no)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct device *dev = ctx->cam->dev;
+	int isp_state;
 
 	if (atomic_read(&ctx->cam_ctrl.stopped)) {
 		dev_info(dev, "%s: stopped, skip dump\n", __func__);
+		return;
+	}
+
+	isp_state = mtk_cam_job_state_get(&job->job_state, ISP_2ND_STATE);
+	if (isp_state < S_ISP_COMPOSED) {
+		dev_info(dev, "%s: job %d not composed yet. skip dump\n",
+			 __func__, job->req_seq);
 		return;
 	}
 
