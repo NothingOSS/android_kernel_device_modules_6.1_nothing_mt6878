@@ -396,7 +396,7 @@ static void res_fill_m2m_sensor_info(
 		struct mtk_cam_resource_raw_v2 *r)
 {
 	struct mtk_cam_scen *scen = &r->scen;
-	s64 prate = 0;
+	u64 prate = 0;
 
 	if (scen->id == MTK_CAM_SCEN_M2M_NORMAL ||
 		scen->id == MTK_CAM_SCEN_ODT_NORMAL) {
@@ -406,7 +406,8 @@ static void res_fill_m2m_sensor_info(
 		if (s->interval.numerator == 0)
 			s->interval.numerator = 10;
 
-		prate = s->width * s->height * s->interval.denominator * M2M_PROCESS_MARGIN_N;
+		prate = (u64)(s->width * s->height *
+				s->interval.denominator * M2M_PROCESS_MARGIN_N);
 		do_div(prate, s->interval.numerator * M2M_PROCESS_MARGIN_D);
 		s->pixel_rate = prate;
 
