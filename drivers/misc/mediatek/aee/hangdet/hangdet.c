@@ -540,7 +540,7 @@ static void show_irq_count(void)
 
 		memset(handler, 0, sizeof(handler));
 		if (desc->action && desc->action->handler) {
-			scnprintf(handler, sizeof(handler), "irq_handler: %ps\n",
+			scnprintf(handler, sizeof(handler), "irq_handler: %ps",
 					desc->action->handler);
 		}
 		if (desc->action && desc->action->name) {
