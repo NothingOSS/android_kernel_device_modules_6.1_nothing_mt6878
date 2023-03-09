@@ -7705,7 +7705,7 @@ SKIP_OVLSYS_CONFIG:
 	mtk_drm_get_top_clk(private);
 
 	/* Get AOD-SCP config */
-	aod_scp_node = of_find_node_by_name(NULL, "AOD_SCP_ON");
+	aod_scp_node = of_find_node_by_name(NULL, "AOD-SCP-ON");
 	if (!aod_scp_node) {
 		aod_scp_flag = 0;
 		DDPMSG("%s AOD-SCP OFF\n", __func__);

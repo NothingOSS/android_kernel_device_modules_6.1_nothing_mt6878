@@ -492,7 +492,7 @@ static int mtk_aod_scp_probe(struct platform_device *pdev)
 
 	aod_state = 0;
 
-	aod_scp_node = of_find_node_by_name(NULL, "AOD_SCP_ON");
+	aod_scp_node = of_find_node_by_name(NULL, "AOD-SCP-ON");
 	if (aod_scp_node) {
 		of_node_put(aod_scp_node);
 
@@ -597,7 +597,7 @@ static const struct dev_pm_ops aod_scp_pm_ops = {
 
 
 static const struct of_device_id mtk_aod_scp_of_match[] = {
-	{.compatible = "medaitek,aod_scp",},
+	{.compatible = "mediatek,aod_scp",},
 	{},
 };
 
