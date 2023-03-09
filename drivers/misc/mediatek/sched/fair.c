@@ -179,78 +179,6 @@ static inline void eenv_task_busy_time(struct energy_env *eenv,
 	eenv->task_busy_time = busy_time;
 }
 
-DEFINE_PER_CPU(cpumask_var_t, mtk_select_rq_mask);
-static inline void eenv_init(struct energy_env *eenv,
-			struct task_struct *p, int prev_cpu, struct perf_domain *pd)
-{
-	struct cpumask *cpus = this_cpu_cpumask_var_ptr(mtk_select_rq_mask);
-	unsigned int cpu, pd_idx, pd_cnt;
-	struct perf_domain *pd_ptr = pd;
-	unsigned int gear_idx;
-	struct dsu_info *dsu;
-	unsigned int dsu_opp;
-	struct dsu_state *dsu_ps;
-
-	eenv_task_busy_time(eenv, p, prev_cpu);
-
-	pd_cnt = get_nr_gears();
-	for (pd_idx = 0; pd_idx < pd_cnt; pd_idx++) {
-		eenv->pds_busy_time[pd_idx] =  -1;
-		eenv->pds_max_util[pd_idx][0] =  -1;
-		eenv->pds_max_util[pd_idx][1] =  -1;
-		eenv->pds_cpu_cap[pd_idx] = -1;
-		eenv->pds_cap[pd_idx] = -1;
-	}
-
-	for (; pd_ptr; pd_ptr = pd_ptr->next) {
-		unsigned long cpu_thermal_cap;
-
-		cpumask_and(cpus, perf_domain_span(pd_ptr), cpu_active_mask);
-		if (cpumask_empty(cpus))
-			continue;
-
-		/* Account thermal pressure for the energy estimation */
-		cpu = cpumask_first(cpus);
-		cpu_thermal_cap = arch_scale_cpu_capacity(cpu);
-		cpu_thermal_cap -= arch_scale_thermal_pressure(cpu);
-
-		gear_idx = per_cpu(gear_id, cpu);
-		eenv->pds_cpu_cap[gear_idx] = cpu_thermal_cap;
-		eenv->pds_cap[gear_idx] = 0;
-		for_each_cpu(cpu, cpus) {
-			eenv->pds_cap[gear_idx] += cpu_thermal_cap;
-		}
-
-		if (trace_sched_energy_init_enabled()) {
-			trace_sched_energy_init(cpus, gear_idx, eenv->pds_cpu_cap[gear_idx],
-				eenv->pds_cap[gear_idx]);
-		}
-	}
-
-	for_each_cpu(cpu, cpu_possible_mask) {
-		eenv->cpu_temp[cpu] = get_cpu_temp(cpu);
-		eenv->cpu_temp[cpu] /= 1000;
-	}
-
-	eenv->wl_support = is_wl_support();
-	if (eenv->wl_support) {
-		eenv->wl_type = get_em_wl();
-
-		dsu = &(eenv->dsu);
-		dsu->dsu_bw = get_pelt_dsu_bw();
-		dsu->emi_bw = get_pelt_emi_bw();
-		dsu->temp = get_dsu_temp()/1000;
-		eenv->dsu_freq_base = mtk_get_dsu_freq();
-		dsu_opp = dsu_get_freq_opp(eenv->wl_type, eenv->dsu_freq_base);
-		dsu_ps = dsu_get_opp_ps(eenv->wl_type, dsu_opp);
-		eenv->dsu_volt_base = dsu_ps->volt;
-
-		if (trace_sched_eenv_init_enabled())
-			trace_sched_eenv_init(eenv->dsu_freq_base, eenv->dsu_volt_base,
-					share_buck.gear_idx);
-	}
-}
-
 /*
  * Compute the perf_domain (PD) busy time for compute_energy(). Based on the
  * utilization for each @pd_cpus, it however doesn't take into account
@@ -288,7 +216,7 @@ static inline void eenv_pd_busy_time(int gear_idx, struct energy_env *eenv,
 		unsigned long util = cpu_util_next(cpu, p, -1);
 
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
-		busy_time = mtk_cpu_util(cpu, util, ENERGY_UTIL,
+		busy_time += mtk_cpu_util(cpu, util, ENERGY_UTIL,
 					NULL, eenv->min_cap, eenv->max_cap);
 #else
 		busy_time += effective_cpu_util(cpu, util, ENERGY_UTIL, NULL);
@@ -297,6 +225,84 @@ static inline void eenv_pd_busy_time(int gear_idx, struct energy_env *eenv,
 
 	eenv->pd_busy_time = min(eenv->pds_cap[gear_idx], busy_time);
 	eenv->pds_busy_time[gear_idx] = eenv->pd_busy_time;
+}
+
+DEFINE_PER_CPU(cpumask_var_t, mtk_select_rq_mask);
+static inline void eenv_init(struct energy_env *eenv,
+			struct task_struct *p, int prev_cpu, struct perf_domain *pd)
+{
+	struct cpumask *cpus = this_cpu_cpumask_var_ptr(mtk_select_rq_mask);
+	unsigned int cpu, pd_idx, pd_cnt;
+	struct perf_domain *pd_ptr = pd;
+	unsigned int gear_idx;
+	struct dsu_info *dsu;
+	unsigned int dsu_opp;
+	struct dsu_state *dsu_ps;
+
+	eenv_task_busy_time(eenv, p, prev_cpu);
+
+	pd_cnt = get_nr_gears();
+	for (pd_idx = 0; pd_idx < pd_cnt; pd_idx++) {
+		eenv->pds_busy_time[pd_idx] =  -1;
+		eenv->pds_max_util[pd_idx][0] =  -1;
+		eenv->pds_max_util[pd_idx][1] =  -1;
+		eenv->pds_cpu_cap[pd_idx] = -1;
+		eenv->pds_cap[pd_idx] = -1;
+	}
+
+	eenv->wl_support = is_wl_support();
+	eenv->total_util = 0;
+	for (; pd_ptr; pd_ptr = pd_ptr->next) {
+		unsigned long cpu_thermal_cap;
+
+		cpumask_and(cpus, perf_domain_span(pd_ptr), cpu_active_mask);
+		if (cpumask_empty(cpus))
+			continue;
+
+		/* Account thermal pressure for the energy estimation */
+		cpu = cpumask_first(cpus);
+		cpu_thermal_cap = arch_scale_cpu_capacity(cpu);
+		cpu_thermal_cap -= arch_scale_thermal_pressure(cpu);
+
+		gear_idx = per_cpu(gear_id, cpu);
+		eenv->pds_cpu_cap[gear_idx] = cpu_thermal_cap;
+		eenv->pds_cap[gear_idx] = 0;
+		for_each_cpu(cpu, cpus) {
+			eenv->pds_cap[gear_idx] += cpu_thermal_cap;
+		}
+
+		if (trace_sched_energy_init_enabled()) {
+			trace_sched_energy_init(cpus, gear_idx, eenv->pds_cpu_cap[gear_idx],
+				eenv->pds_cap[gear_idx]);
+		}
+
+		if (eenv->wl_support) {
+			eenv_pd_busy_time(gear_idx, eenv, cpus, p);
+			eenv->total_util += eenv->pds_busy_time[gear_idx];
+		}
+	}
+
+	for_each_cpu(cpu, cpu_possible_mask) {
+		eenv->cpu_temp[cpu] = get_cpu_temp(cpu);
+		eenv->cpu_temp[cpu] /= 1000;
+	}
+
+	if (eenv->wl_support) {
+		eenv->wl_type = get_em_wl();
+
+		dsu = &(eenv->dsu);
+		dsu->dsu_bw = get_pelt_dsu_bw();
+		dsu->emi_bw = get_pelt_emi_bw();
+		dsu->temp = get_dsu_temp()/1000;
+		eenv->dsu_freq_base = mtk_get_dsu_freq();
+		dsu_opp = dsu_get_freq_opp(eenv->wl_type, eenv->dsu_freq_base);
+		dsu_ps = dsu_get_opp_ps(eenv->wl_type, dsu_opp);
+		eenv->dsu_volt_base = dsu_ps->volt;
+
+		if (trace_sched_eenv_init_enabled())
+			trace_sched_eenv_init(eenv->dsu_freq_base, eenv->dsu_volt_base,
+					share_buck.gear_idx);
+	}
 }
 
 /*
@@ -466,7 +472,7 @@ mtk_compute_energy_cpu_dsu(struct energy_env *eenv, struct perf_domain *pd,
 				dsu->dsu_freq, dsu->dsu_volt);
 
 		dsu_pwr = get_dsu_pwr(eenv->wl_type, dst_cpu, eenv->task_busy_time,
-					eenv->pd_busy_time, dsu);
+						eenv->total_util, dsu);
 		if (trace_sched_compute_energy_cpu_dsu_enabled())
 			trace_sched_compute_energy_cpu_dsu(dst_cpu, cpu_pwr, delta_share_pwr,
 						dsu_pwr, cpu_pwr + delta_share_pwr + dsu_pwr);

@@ -66,6 +66,7 @@ struct energy_env {
 	unsigned long pds_max_util[NR_CPUS][2]; /* 0: dst_cpu=-1 1: with dst_cpu*/
 	unsigned long pds_cpu_cap[NR_CPUS];
 	unsigned long pds_cap[NR_CPUS];
+	unsigned long total_util;
 
 	/* temperature for each cpu*/
 	unsigned int cpu_temp[NR_CPUS];
