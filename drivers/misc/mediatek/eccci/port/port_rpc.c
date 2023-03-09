@@ -593,6 +593,37 @@ static int ccci_rpc_remap_queue(struct ccci_rpc_queue_mapping *remap)
 	return 0;
 }
 
+int port_rpc_ecid_print(struct rpc_ecid_info *buff)
+{
+	unsigned int i, num;
+
+	if (buff == NULL) {
+		CCCI_ERROR_LOG(0, RPC, "[%s]invalid BUFF\n", __func__);
+		return -1;
+	}
+	CCCI_NORMAL_LOG(0, RPC,
+		"[USB6_RF]sub6_rf_name=%s sub6_rf_ecid_i=0X%u sub6_rf_ecid_h=0X%u vpa_info_num=0X%u\n",
+		buff->sub6_rf_name, buff->sub6_rf_ecid_i,
+		buff->sub6_rf_ecid_h, buff->vpa_info_num);
+	num = buff->vpa_info_num;
+	if (num > 10) {
+		CCCI_ERROR_LOG(0, RPC, "vpa_info_num is invalid: %u\n", num);
+		return -1;
+	}
+	for (i = 0; i < num; i++) {
+		CCCI_NORMAL_LOG(0, RPC,
+			"[USB6_RF][%u]mipi_port:%hhu new_usid:%hhu vpa_type_name:%s vpa_type_id:%hu ecid_x_pox:%hu ecid_x_pox:%hu\n",
+			i, buff->rpc_vpa_public_info[i].mipi_port,
+			buff->rpc_vpa_public_info[i].new_usid,
+			buff->rpc_vpa_public_info[i].vpa_type_name,
+			buff->rpc_vpa_public_info[i].vpa_type_id,
+			buff->rpc_vpa_public_info[i].ecid_x_pox,
+			buff->rpc_vpa_public_info[i].ecid_y_pox);
+	}
+
+	return 0;
+}
+
 static void ccci_rpc_work_helper(struct port_t *port, struct rpc_pkt *pkt,
 	struct rpc_buffer *p_rpc_buf, unsigned int tmp_data[])
 {
@@ -1090,6 +1121,31 @@ static void ccci_rpc_work_helper(struct port_t *port, struct rpc_pkt *pkt,
 			pkt[pkt_num].len = sizeof(unsigned int);
 			pkt[pkt_num++].buf = (void *)&tmp_data[0];
 
+			break;
+		}
+	case IPC_RPC_RF_ECID_DATA_OP:
+		{
+			if (pkt_num != 1) {
+				CCCI_ERROR_LOG(0, RPC,
+					"invalid parameter for [0x%X]: pkt_num=%d!\n",
+					p_rpc_buf->op_id, pkt_num);
+				tmp_data[0] = FS_PARAM_ERROR;
+				pkt_num = 0;
+				pkt[pkt_num].len = sizeof(unsigned int);
+				pkt[pkt_num++].buf = (void *)&tmp_data[0];
+				pkt[pkt_num].len = sizeof(unsigned int);
+				pkt[pkt_num++].buf = (void *)&tmp_data[0];
+				break;
+			}
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DEBUG_LOG)
+			port_rpc_ecid_print((struct rpc_ecid_info *)pkt[0].buf);
+#endif
+			tmp_data[0] = 0;
+			pkt_num = 0;
+			pkt[pkt_num].len = sizeof(unsigned int);
+			pkt[pkt_num++].buf = (void *)&tmp_data[0];
+			pkt[pkt_num].len = sizeof(unsigned int);
+			pkt[pkt_num++].buf = (void *)&tmp_data[0];
 			break;
 		}
 	case IPC_RPC_DTSI_QUERY_OP:
