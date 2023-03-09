@@ -35,15 +35,15 @@ struct task_struct *dma_pool_fill_kthread;
 
 DECLARE_WAIT_QUEUE_HEAD(dma_pool_wq);
 static struct prefill_data req_data;
-static DEFINE_MUTEX(prefill_mutex);
+static spinlock_t prefill_lock;
 
 static bool pending_prefill_req(void)
 {
 	bool req_pending;
 
-	mutex_lock(&prefill_mutex);
+	spin_lock(&prefill_lock);
 	req_pending = req_data.heap_name != NULL && req_data.req_size > 0;
-	mutex_unlock(&prefill_mutex);
+	spin_unlock(&prefill_lock);
 
 	return req_pending;
 }
@@ -51,12 +51,12 @@ static bool pending_prefill_req(void)
 /* get current prefill data and clear */
 static void get_prefill_data(struct prefill_data *reqest_data)
 {
-	mutex_lock(&prefill_mutex);
+	spin_lock(&prefill_lock);
 	reqest_data->heap_name = req_data.heap_name;
 	reqest_data->req_size = req_data.req_size;
 	req_data.heap_name = NULL;
 	req_data.req_size = 0;
-	mutex_unlock(&prefill_mutex);
+	spin_unlock(&prefill_lock);
 }
 
 static int fill_dma_heap_pool(void *data)
@@ -142,6 +142,7 @@ int mtk_cache_pool_init(void)
 {
 	struct sched_param param = { .sched_priority = 0 };
 
+	spin_lock_init(&prefill_lock);
 	dma_pool_fill_kthread = kthread_run(fill_dma_heap_pool, NULL, "%s",
 				       "dma_pool_fill_thread");
 	if (IS_ERR(dma_pool_fill_kthread)) {
@@ -173,10 +174,10 @@ void dma_heap_pool_prefill(unsigned long size, const char *heap_name)
 	if (!target_heap)
 		return;
 
-	mutex_lock(&prefill_mutex);
+	spin_lock(&prefill_lock);
 	req_data.heap_name = dma_heap_get_name(target_heap);
 	req_data.req_size = size;
-	mutex_unlock(&prefill_mutex);
+	spin_unlock(&prefill_lock);
 
 	pr_info("%s, request size %lu, heap:%s\n",
 		__func__, size, dma_heap_get_name(target_heap));
