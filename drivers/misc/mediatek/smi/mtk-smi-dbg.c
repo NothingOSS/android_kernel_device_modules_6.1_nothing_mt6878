@@ -396,7 +396,7 @@ struct mtk_smi_dbg {
 	struct notifier_block suspend_nb;
 };
 static struct mtk_smi_dbg	*gsmi;
-static u32 smi_force_on;
+static bool smi_enter_met;
 
 static void mtk_smi_dbg_print(struct mtk_smi_dbg *smi, const bool larb,
 				const bool rsi, const u32 id, bool skip_pm_runtime)
@@ -1446,7 +1446,7 @@ s32 mtk_smi_dbg_hang_detect(char *user)
 	struct mtk_smi_dbg	*smi = gsmi;
 	s32			i, j, PRINT_NR = 1, is_busy = 0, is_hang = 0;
 
-	pr_info("%s: check caller:%s\n", __func__, user);
+	pr_info("%s: check caller:%s, is_in_met:%d\n", __func__, user, smi_enter_met);
 
 	if (!smi->probe) {
 		pr_notice("[smi] smi dbg not ready\n");
@@ -1464,7 +1464,8 @@ s32 mtk_smi_dbg_hang_detect(char *user)
 	/*start to monitor bw and check ostd*/
 	spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
 
-	smi_hang_detect_bw_monitor(true);
+	if (!smi_enter_met)
+		smi_hang_detect_bw_monitor(true);
 	is_busy |= smi_bus_ostd_check(smi->comm);
 	is_busy |= smi_bus_ostd_check(smi->larb);
 
@@ -1488,8 +1489,11 @@ s32 mtk_smi_dbg_hang_detect(char *user)
 
 	mtk_smi_dump_last_pd(user);
 
-	smi_hang_detect_bw_monitor(false);
-	is_hang = smi_bus_hang_check(smi->comm);
+	if (!smi_enter_met) {
+		smi_hang_detect_bw_monitor(false);
+		is_hang = smi_bus_hang_check(smi->comm);
+	} else
+		is_hang = 0;
 
 	spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
 
@@ -1510,6 +1514,10 @@ int smi_larb_force_all_on(char *buf, const struct kernel_param *kp)
 	struct mtk_smi_dbg	*smi = gsmi;
 	s32 i, ret;
 
+	spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
+	smi_enter_met = true;
+	spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
+
 	pr_notice("%s enable vcp\n", __func__);
 	raw_notifier_call_chain(&force_on_notifier_list,
 		true, NULL);
@@ -1520,7 +1528,6 @@ int smi_larb_force_all_on(char *buf, const struct kernel_param *kp)
 		if (ret < 0)
 			dev_notice(smi->larb[i].dev, "smi_larb%d get fail:%d\n", i, ret);
 	}
-	smi_force_on = 1;
 	pr_notice("[smi] larb force all on\n");
 	return 0;
 }
@@ -1536,17 +1543,20 @@ int smi_larb_force_all_put(char *buf, const struct kernel_param *kp)
 	struct mtk_smi_dbg	*smi = gsmi;
 	s32 i;
 
-	if (smi_force_on) {
+	if (smi_enter_met) {
 		for (i = 0; i < ARRAY_SIZE(smi->larb); i++) {
 			if (!smi->larb[i].dev)
 				continue;
 			pm_runtime_put_sync(smi->larb[i].dev);
 		}
-		smi_force_on = 0;
 		pr_notice("[smi] larb force all put\n");
 		pr_notice("disable vcp\n");
 		raw_notifier_call_chain(&force_on_notifier_list,
 			false, NULL);
+
+		spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
+		smi_enter_met = false;
+		spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
 	}
 
 	return 0;
