@@ -26,7 +26,7 @@
 
 #define SMEM_Q		AP_MD_CCB_WAKEUP
 
-static struct port_t md1_ccci_ports_6293[] = {
+static struct port_t md_ccci_ports_6293[] = {
 /* network port first for performace */
 	{CCCI_CCMNI1_TX, CCCI_CCMNI1_RX, DATA_TX_Q, DATA_RX_Q,
 		0xF0 | DATA_TX_ACK_Q, 0xFF, CLDMA_HIF_ID, 0,
@@ -278,7 +278,7 @@ static struct port_t md1_ccci_ports_6293[] = {
 		&smem_port_ops, SMEM_USER_CCB_META, "ccci_ccb_meta",},
 };
 
-static struct port_t md1_ccci_ports[] = {
+static struct port_t md_ccci_ports[] = {
 /* network port first for performace */
 	{CCCI_CCMNI1_TX, CCCI_CCMNI1_RX, DATA_TX_Q, DATA_RX_Q,
 		0xF0 | DATA_TX_ACK_Q, 0xFF, DPMAIF_HIF_ID, 0,
@@ -586,38 +586,40 @@ static struct port_t md1_ccci_ports[] = {
 
 };
 
-static unsigned int ccci_get_port_size(void)
-{
-	if (port_md_gen == 6293)
-		return ARRAY_SIZE(md1_ccci_ports_6293);
-	else
-		return ARRAY_SIZE(md1_ccci_ports);
-}
-
 int port_get_cfg(struct port_t **ports)
 {
 	int port_number = 0;
 
-	if (port_md_gen == 6293)
-		*ports = md1_ccci_ports_6293;
-	else
-		*ports = md1_ccci_ports;
-	port_number = ccci_get_port_size();
+	if (port_md_gen == 6293) {
+		*ports = md_ccci_ports_6293;
+		port_number = ARRAY_SIZE(md_ccci_ports_6293);
+	} else {
+		*ports = md_ccci_ports;
+		port_number = ARRAY_SIZE(md_ccci_ports);
+	}
 
 	return port_number;
 }
 
 int mtk_ccci_request_port(char *name)
 {
-	int i;
-	struct port_t *ccci_port = (port_md_gen == 6293) ?
-		md1_ccci_ports_6293 : md1_ccci_ports;
-	unsigned int port_array_size = ccci_get_port_size();
+	unsigned int i;
+	unsigned int port_array_size;
 
-	for (i = 0; i < port_array_size; i++) {
-		if (!strcmp(ccci_port[i].name, name))
-			return i;
+	if (port_md_gen == 6293) {
+		port_array_size = ARRAY_SIZE(md_ccci_ports_6293);
+		for (i = 0; i < port_array_size; i++) {
+			if (!strcmp(md_ccci_ports_6293[i].name, name))
+				return i;
+		}
+	} else {
+		port_array_size = ARRAY_SIZE(md_ccci_ports);
+		for (i = 0; i < port_array_size; i++) {
+			if (!strcmp(md_ccci_ports[i].name, name))
+				return i;
+		}
 	}
+
 	CCCI_ERROR_LOG(-1, PORT, "can not find port %s", name);
 
 	return -1;
@@ -626,34 +628,52 @@ EXPORT_SYMBOL(mtk_ccci_request_port);
 
 int find_port_by_channel(int index, struct port_t **port)
 {
-	struct port_t *ccci_port = (port_md_gen == 6293) ?
-		md1_ccci_ports_6293 : md1_ccci_ports;
-	unsigned int port_array_size = ccci_get_port_size();
+	unsigned int port_array_size;
+
+	if (port_md_gen == 6293)
+		port_array_size = ARRAY_SIZE(md_ccci_ports_6293);
+	else
+		port_array_size = ARRAY_SIZE(md_ccci_ports);
 
 	if (index < 0 || index >= port_array_size) {
 		CCCI_ERROR_LOG(-1, PORT, "%s: invalid index = %d\n",
 				__func__, index);
 		return -EINVAL;
 	}
-	*port = &ccci_port[index];
+
+	if (port_md_gen == 6293)
+		*port = &md_ccci_ports_6293[index];
+	else
+		*port = &md_ccci_ports[index];
 
 	return 0;
 }
 
 int mtk_ccci_open_port(int index)
 {
-	struct port_t *ccci_port = (port_md_gen == 6293) ?
-		md1_ccci_ports_6293 : md1_ccci_ports;
-	unsigned int port_array_size = ccci_get_port_size();
+	unsigned int port_array_size;
+
+	if (port_md_gen == 6293)
+		port_array_size = ARRAY_SIZE(md_ccci_ports_6293);
+	else
+		port_array_size = ARRAY_SIZE(md_ccci_ports);
 
 	if (index < 0 || index >= port_array_size) {
 		CCCI_ERROR_LOG(-1, PORT, "invalid index = %d\n", index);
 		return -EBUSY;
 	}
-	if (ccci_port[index].rx_ch != CCCI_CCB_CTRL &&
-		atomic_read(&ccci_port[index].usage_cnt))
-		return -EBUSY;
-	atomic_inc(&ccci_port[index].usage_cnt);
+
+	if (port_md_gen == 6293) {
+		if (md_ccci_ports_6293[index].rx_ch != CCCI_CCB_CTRL &&
+		    atomic_read(&md_ccci_ports_6293[index].usage_cnt))
+			return -EBUSY;
+		atomic_inc(&md_ccci_ports_6293[index].usage_cnt);
+	} else {
+		if (md_ccci_ports[index].rx_ch != CCCI_CCB_CTRL &&
+		    atomic_read(&md_ccci_ports[index].usage_cnt))
+			return -EBUSY;
+		atomic_inc(&md_ccci_ports[index].usage_cnt);
+	}
 
 	return 0;
 }
@@ -661,15 +681,22 @@ EXPORT_SYMBOL(mtk_ccci_open_port);
 
 int mtk_ccci_release_port(int index)
 {
-	struct port_t *ccci_port = (port_md_gen == 6293) ?
-		md1_ccci_ports_6293 : md1_ccci_ports;
-	unsigned int port_array_size = ccci_get_port_size();
+	unsigned int port_array_size;
+
+	if (port_md_gen == 6293)
+		port_array_size = ARRAY_SIZE(md_ccci_ports_6293);
+	else
+		port_array_size = ARRAY_SIZE(md_ccci_ports);
 
 	if (index < 0 || index >= port_array_size) {
 		CCCI_ERROR_LOG(-1, PORT, "invalid index = %d\n", index);
 		return -EBUSY;
 	}
-	atomic_dec(&ccci_port[index].usage_cnt);
+
+	if (port_md_gen == 6293)
+		atomic_dec(&md_ccci_ports_6293[index].usage_cnt);
+	else
+		atomic_dec(&md_ccci_ports[index].usage_cnt);
 
 	return 0;
 }
