@@ -173,9 +173,6 @@ void mtk_cam_mraw_copy_user_input_param(struct mtk_cam_device *cam,	void *vaddr,
 	struct mtk_mraw_pipeline *mraw_pipe);
 int mtk_cam_mraw_cal_cfg_info(struct mtk_cam_device *cam,
 	unsigned int pipe_id, struct mtkcam_ipi_mraw_frame_param *mraw_param);
-#ifdef CAMSYS_TF_DUMP_7S
-int mtk_mraw_translation_fault_callback(int port, dma_addr_t mva, void *data);
-#endif
 void mtk_cam_mraw_get_mqe_size(struct mtk_cam_device *cam, unsigned int pipe_id,
 	unsigned int *width, unsigned int *height);
 void mtk_cam_mraw_get_mbn_size(struct mtk_cam_device *cam, unsigned int pipe_id,
@@ -183,6 +180,7 @@ void mtk_cam_mraw_get_mbn_size(struct mtk_cam_device *cam, unsigned int pipe_id,
 void mtk_cam_mraw_get_cpi_size(struct mtk_cam_device *cam, unsigned int pipe_id,
 	unsigned int *width, unsigned int *height);
 int mtk_cam_mraw_is_zero_fbc_cnt(struct mtk_mraw_device *mraw_dev);
+int mtk_mraw_translation_fault_callback(int port, dma_addr_t mva, void *data);
 
 extern struct platform_driver mtk_cam_mraw_driver;
 

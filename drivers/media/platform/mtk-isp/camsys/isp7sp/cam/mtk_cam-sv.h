@@ -227,10 +227,7 @@ void apply_camsv_cq(struct mtk_camsv_device *sv_dev,
 	      int initial);
 bool mtk_cam_is_display_ic(struct mtk_cam_ctx *ctx);
 void mtk_cam_update_sensor_resource(struct mtk_cam_ctx *ctx);
-
-#ifdef CAMSYS_TF_DUMP_7S
 int mtk_camsv_translation_fault_callback(int port, dma_addr_t mva, void *data);
-#endif
 
 extern struct platform_driver mtk_cam_sv_driver;
 

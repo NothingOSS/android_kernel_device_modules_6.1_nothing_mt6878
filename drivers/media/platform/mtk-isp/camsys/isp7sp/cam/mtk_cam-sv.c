@@ -20,10 +20,7 @@
 #include "mtk_cam-sv.h"
 #include "mtk_cam-fmt_utils.h"
 
-#ifdef CAMSYS_TF_DUMP_7S
-#include <dt-bindings/memory/mt6985-larb-port.h>
 #include "iommu_debug.h"
-#endif
 
 #define MTK_CAMSV_STOP_HW_TIMEOUT			(33 * USEC_PER_MSEC)
 #define CAMSV_DEBUG 0
@@ -208,41 +205,6 @@ static int sv_process_fsm(struct mtk_camsv_device *sv_dev,
 	return recovered;
 }
 
-static void mtk_camsv_register_iommu_tf_callback(struct mtk_camsv_device *sv_dev)
-{
-#ifdef CAMSYS_TF_DUMP_7S
-	dev_dbg(sv_dev->dev, "%s : sv->id:%d\n", __func__, sv_dev->id);
-
-	switch (sv_dev->id) {
-	case CAMSV_0:
-		mtk_iommu_register_fault_callback(M4U_PORT_L14_CAMSV_0_WDMA,
-			mtk_camsv_translation_fault_callback, (void *)sv_dev, false);
-		break;
-	case CAMSV_1:
-		mtk_iommu_register_fault_callback(M4U_PORT_L13_CAMSV_1_WDMA,
-			mtk_camsv_translation_fault_callback, (void *)sv_dev, false);
-		break;
-	case CAMSV_2:
-		mtk_iommu_register_fault_callback(M4U_PORT_L29_CAMSV_2_WDMA,
-			mtk_camsv_translation_fault_callback, (void *)sv_dev, false);
-		break;
-	case CAMSV_3:
-		mtk_iommu_register_fault_callback(M4U_PORT_L29_CAMSV_3_WDMA,
-			mtk_camsv_translation_fault_callback, (void *)sv_dev, false);
-		break;
-	case CAMSV_4:
-		mtk_iommu_register_fault_callback(M4U_PORT_L29_CAMSV_4_WDMA,
-			mtk_camsv_translation_fault_callback, (void *)sv_dev, false);
-		break;
-	case CAMSV_5:
-		mtk_iommu_register_fault_callback(M4U_PORT_L29_CAMSV_5_WDMA,
-			mtk_camsv_translation_fault_callback, (void *)sv_dev, false);
-		break;
-	}
-#endif
-};
-
-#ifdef CAMSYS_TF_DUMP_7S
 int mtk_camsv_translation_fault_callback(int port, dma_addr_t mva, void *data)
 {
 	int index;
@@ -268,7 +230,6 @@ int mtk_camsv_translation_fault_callback(int port, dma_addr_t mva, void *data)
 			index * CAMSVCENTRAL_FBC1_TAG_SHIFT));
 	}
 
-
 	for (index = 0; index < MAX_SV_HW_TAGS; index++) {
 		dev_info(sv_dev->dev, "tag:%d imgo_stride_img:0x%x imgo_addr_img:0x%x_%x",
 			index,
@@ -282,9 +243,9 @@ int mtk_camsv_translation_fault_callback(int port, dma_addr_t mva, void *data)
 				REG_CAMSVDMATOP_WDMA_BASE_ADDR_MSB_IMG1 +
 				index * CAMSVDMATOP_WDMA_BASE_ADDR_MSB_IMG_SHIFT));
 	}
+
 	return 0;
 }
-#endif
 
 static int reset_msgfifo(struct mtk_camsv_device *sv_dev)
 {
@@ -789,7 +750,6 @@ int mtk_cam_sv_dev_config(struct mtk_camsv_device *sv_dev)
 
 	sv_dev->streaming_tag_cnt = 0;
 	sv_dev->tg_cnt = 0;
-	mtk_camsv_register_iommu_tf_callback(sv_dev);
 
 	mtk_cam_sv_dmao_common_config(sv_dev);
 	mtk_cam_sv_cq_config(sv_dev);
@@ -1565,10 +1525,12 @@ static int mtk_camsv_of_probe(struct platform_device *pdev,
 	struct device *dev = &pdev->dev;
 	struct platform_device *larb_pdev;
 	struct device_node *larb_node;
+	struct device_node *iommu_node;
+	struct of_phandle_args args;
 	struct device_link *link;
 	struct resource *res;
-	unsigned int i;
-	int clks, larbs, ret;
+	unsigned int i, j;
+	int ret, num_clks, num_larbs, num_iommus, num_ports;
 
 	ret = of_property_read_u32(dev->of_node, "mediatek,camsv-id",
 						       &sv_dev->id);
@@ -1710,10 +1672,10 @@ static int mtk_camsv_of_probe(struct platform_device *pdev,
 		dev_info(dev, "%s:disable irq %d\n", __func__, sv_dev->irq[i]);
 	}
 
-	clks  = of_count_phandle_with_args(pdev->dev.of_node, "clocks",
+	num_clks = of_count_phandle_with_args(pdev->dev.of_node, "clocks",
 			"#clock-cells");
 
-	sv_dev->num_clks = (clks == -ENOENT) ? 0:clks;
+	sv_dev->num_clks = (num_clks < 0) ? 0 : num_clks;
 	dev_info(dev, "clk_num:%d\n", sv_dev->num_clks);
 
 	if (sv_dev->num_clks) {
@@ -1731,16 +1693,16 @@ static int mtk_camsv_of_probe(struct platform_device *pdev,
 		}
 	}
 
-	larbs = of_count_phandle_with_args(
+	num_larbs = of_count_phandle_with_args(
 					pdev->dev.of_node, "mediatek,larbs", NULL);
-	larbs = (larbs == -ENOENT) ? 0:larbs;
-	dev_info(dev, "larb_num:%d\n", larbs);
+	num_larbs = (num_larbs < 0) ? 0 : num_larbs;
+	dev_info(dev, "larb_num:%d\n", num_larbs);
 
-	for (i = 0; i < larbs; i++) {
+	for (i = 0; i < num_larbs; i++) {
 		larb_node = of_parse_phandle(
 					pdev->dev.of_node, "mediatek,larbs", i);
 		if (!larb_node) {
-			dev_info(dev, "failed to get larb id\n");
+			dev_info(dev, "failed to get larb node\n");
 			continue;
 		}
 
@@ -1756,6 +1718,58 @@ static int mtk_camsv_of_probe(struct platform_device *pdev,
 						DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
 		if (!link)
 			dev_info(dev, "unable to link smi larb%d\n", i);
+	}
+
+	num_iommus = of_property_count_strings(
+					pdev->dev.of_node, "mediatek,larb-node-names");
+	num_iommus = (num_iommus < 0) ? 0 : num_iommus;
+	dev_info(dev, "iommu_num:%d\n", num_iommus);
+
+	for (i = 0; i < num_iommus; i++) {
+		const char *node_name;
+
+		ret = of_property_read_string_index(
+					pdev->dev.of_node, "mediatek,larb-node-names",
+					i, &node_name);
+		if (ret) {
+			dev_info(dev, "failed to read larb node name(%d)\n", i);
+			continue;
+		}
+		iommu_node = of_find_node_by_name(NULL, node_name);
+		if (!iommu_node) {
+			dev_info(dev, "failed to get iommu node(%s)\n", node_name);
+			continue;
+		}
+
+		num_ports = of_count_phandle_with_args(
+						iommu_node, "iommus", "#iommu-cells");
+		num_ports = (num_ports < 0) ? 0 : num_ports;
+		dev_info(dev, "port_num:%d\n", num_ports);
+
+		for (j = 0; j < num_ports; j++) {
+			if (!of_parse_phandle_with_args(iommu_node,
+				"iommus", "#iommu-cells", j, &args)) {
+				mtk_iommu_register_fault_callback(
+					args.args[0],
+					mtk_camsv_translation_fault_callback,
+					(void *)sv_dev, false);
+			}
+		}
+	}
+
+	num_ports = of_count_phandle_with_args(
+					pdev->dev.of_node, "iommus", "#iommu-cells");
+	num_ports = (num_ports < 0) ? 0 : num_ports;
+	dev_info(dev, "port_num:%d\n", num_ports);
+
+	for (i = 0; i < num_ports; i++) {
+		if (!of_parse_phandle_with_args(pdev->dev.of_node,
+			"iommus", "#iommu-cells", i, &args)) {
+			mtk_iommu_register_fault_callback(
+				args.args[0],
+				mtk_camsv_translation_fault_callback,
+				(void *)sv_dev, false);
+		}
 	}
 
 	sv_dev->notifier_blk.notifier_call = mtk_camsv_suspend_pm_event;

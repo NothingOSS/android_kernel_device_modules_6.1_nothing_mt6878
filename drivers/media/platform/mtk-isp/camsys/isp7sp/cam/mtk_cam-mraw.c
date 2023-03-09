@@ -19,10 +19,7 @@
 #include "mtk_cam-mraw-regs.h"
 #include "mtk_cam-mraw.h"
 
-#ifdef CAMSYS_TF_DUMP_7S
-#include <dt-bindings/memory/mt6985-larb-port.h>
 #include "iommu_debug.h"
-#endif
 
 static int debug_cam_mraw;
 module_param(debug_cam_mraw, int, 0644);
@@ -84,49 +81,6 @@ static int mraw_process_fsm(struct mtk_mraw_device *mraw_dev,
 	return recovered;
 }
 
-static void mtk_mraw_register_iommu_tf_callback(struct mtk_mraw_device *mraw_dev)
-{
-#ifdef CAMSYS_TF_DUMP_7S
-	dev_dbg(mraw_dev->dev, "%s : mraw->id:%d\n", __func__, mraw_dev->id);
-
-	switch (mraw_dev->id) {
-	case MRAW_0:
-		mtk_iommu_register_fault_callback(M4U_PORT_L25_MRAW0_CQI_M1,
-			mtk_mraw_translation_fault_callback, (void *)mraw_dev, false);
-		mtk_iommu_register_fault_callback(M4U_PORT_L25_MRAW0_IMGO_M1,
-			mtk_mraw_translation_fault_callback, (void *)mraw_dev, false);
-		mtk_iommu_register_fault_callback(M4U_PORT_L25_MRAW0_IMGBO_M1,
-			mtk_mraw_translation_fault_callback, (void *)mraw_dev, false);
-		break;
-	case MRAW_1:
-		mtk_iommu_register_fault_callback(M4U_PORT_L26_MRAW1_CQI_M1,
-			mtk_mraw_translation_fault_callback, (void *)mraw_dev, false);
-		mtk_iommu_register_fault_callback(M4U_PORT_L26_MRAW1_IMGO_M1,
-			mtk_mraw_translation_fault_callback, (void *)mraw_dev, false);
-		mtk_iommu_register_fault_callback(M4U_PORT_L26_MRAW1_IMGBO_M1,
-			mtk_mraw_translation_fault_callback, (void *)mraw_dev, false);
-		break;
-	case MRAW_2:
-		mtk_iommu_register_fault_callback(M4U_PORT_L25_MRAW2_CQI_M1,
-			mtk_mraw_translation_fault_callback, (void *)mraw_dev, false);
-		mtk_iommu_register_fault_callback(M4U_PORT_L25_MRAW2_IMGO_M1,
-			mtk_mraw_translation_fault_callback, (void *)mraw_dev, false);
-		mtk_iommu_register_fault_callback(M4U_PORT_L25_MRAW2_IMGBO_M1,
-			mtk_mraw_translation_fault_callback, (void *)mraw_dev, false);
-		break;
-	case MRAW_3:
-		mtk_iommu_register_fault_callback(M4U_PORT_L26_MRAW3_CQI_M1,
-			mtk_mraw_translation_fault_callback, (void *)mraw_dev, false);
-		mtk_iommu_register_fault_callback(M4U_PORT_L26_MRAW3_IMGO_M1,
-			mtk_mraw_translation_fault_callback, (void *)mraw_dev, false);
-		mtk_iommu_register_fault_callback(M4U_PORT_L26_MRAW3_IMGBO_M1,
-			mtk_mraw_translation_fault_callback, (void *)mraw_dev, false);
-		break;
-	}
-#endif
-};
-
-#ifdef CAMSYS_TF_DUMP_7S
 int mtk_mraw_translation_fault_callback(int port, dma_addr_t mva, void *data)
 {
 	struct mtk_mraw_device *mraw_dev = (struct mtk_mraw_device *)data;
@@ -182,7 +136,6 @@ int mtk_mraw_translation_fault_callback(int port, dma_addr_t mva, void *data)
 
 	return 0;
 }
-#endif
 
 void apply_mraw_cq(struct mtk_mraw_device *mraw_dev,
 	      struct apply_cq_ref *ref,
@@ -1073,8 +1026,6 @@ int mtk_cam_mraw_dev_config(struct mtk_mraw_device *mraw_dev,
 	/* reset enqueued status */
 	atomic_set(&mraw_dev->is_enqueued, 0);
 
-	mtk_mraw_register_iommu_tf_callback(mraw_dev);
-
 	mtk_cam_mraw_top_config(mraw_dev);
 	mtk_cam_mraw_dma_config(mraw_dev);
 	mtk_cam_mraw_fbc_config(mraw_dev);
@@ -1554,10 +1505,11 @@ static int mtk_mraw_of_probe(struct platform_device *pdev,
 	struct device *dev = &pdev->dev;
 	struct platform_device *larb_pdev;
 	struct device_node *larb_node;
+	struct of_phandle_args args;
 	struct device_link *link;
 	struct resource *res;
-	int ret;
-	int clks, larbs, i;
+	unsigned int i;
+	int ret, num_clks, num_larbs, num_ports;
 
 	ret = of_property_read_u32(dev->of_node, "mediatek,mraw-id",
 						       &mraw_dev->id);
@@ -1619,9 +1571,9 @@ static int mtk_mraw_of_probe(struct platform_device *pdev,
 	dev_dbg(dev, "registered irq=%d\n", mraw_dev->irq);
 	disable_irq(mraw_dev->irq);
 
-	clks = of_count_phandle_with_args(pdev->dev.of_node, "clocks",
+	num_clks = of_count_phandle_with_args(pdev->dev.of_node, "clocks",
 			"#clock-cells");
-	mraw_dev->num_clks = (clks == -ENOENT) ? 0:clks;
+	mraw_dev->num_clks = (num_clks < 0) ? 0 : num_clks;
 	dev_info(dev, "clk_num:%d\n", mraw_dev->num_clks);
 	if (mraw_dev->num_clks) {
 		mraw_dev->clks = devm_kcalloc(dev, mraw_dev->num_clks, sizeof(*mraw_dev->clks),
@@ -1638,16 +1590,16 @@ static int mtk_mraw_of_probe(struct platform_device *pdev,
 		}
 	}
 
-	larbs = of_count_phandle_with_args(
+	num_larbs = of_count_phandle_with_args(
 					pdev->dev.of_node, "mediatek,larbs", NULL);
-	larbs = (larbs == -ENOENT) ? 0:larbs;
-	dev_info(dev, "larb_num:%d\n", larbs);
+	num_larbs = (num_larbs < 0) ? 0 : num_larbs;
+	dev_info(dev, "larb_num:%d\n", num_larbs);
 
-	for (i = 0; i < larbs; i++) {
+	for (i = 0; i < num_larbs; i++) {
 		larb_node = of_parse_phandle(
 					pdev->dev.of_node, "mediatek,larbs", i);
 		if (!larb_node) {
-			dev_info(dev, "failed to get larb id\n");
+			dev_info(dev, "failed to get larb node\n");
 			continue;
 		}
 
@@ -1663,6 +1615,21 @@ static int mtk_mraw_of_probe(struct platform_device *pdev,
 						DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
 		if (!link)
 			dev_info(dev, "unable to link smi larb%d\n", i);
+	}
+
+	num_ports = of_count_phandle_with_args(
+					pdev->dev.of_node, "iommus", "#iommu-cells");
+	num_ports = (num_ports < 0) ? 0 : num_ports;
+	dev_info(dev, "port_num:%d\n", num_ports);
+
+	for (i = 0; i < num_ports; i++) {
+		if (!of_parse_phandle_with_args(pdev->dev.of_node,
+			"iommus", "#iommu-cells", i, &args)) {
+			mtk_iommu_register_fault_callback(
+				args.args[0],
+				mtk_mraw_translation_fault_callback,
+				(void *)mraw_dev, false);
+		}
 	}
 
 	mraw_dev->notifier_blk.notifier_call = mtk_mraw_suspend_pm_event;
