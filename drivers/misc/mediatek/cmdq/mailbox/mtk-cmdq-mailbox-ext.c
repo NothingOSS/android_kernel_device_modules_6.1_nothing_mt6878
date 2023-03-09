@@ -857,6 +857,7 @@ static void cmdq_task_exec(struct cmdq_pkt *pkt, struct cmdq_thread *thread)
 			mod_timer(&thread->timeout, jiffies +
 				msecs_to_jiffies(thread->timeout_ms));
 			thread->timer_mod = sched_clock();
+			thread->cookie = readl(thread->base + CMDQ_THR_CNT);
 		}
 		list_move_tail(&task->list_entry, &thread->task_busy_list);
 	} else {
@@ -1150,7 +1151,7 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 		if (cmdq_task_is_current_run(curr_pa, task->pkt)) {
 			curr_task = task;
 		/* for some self trigger loop, notify it is still working */
-			if (curr_task->pkt->self_loop) {
+			if (curr_task->pkt->self_loop && irq_flag) {
 				cmdq_task_err_callback(curr_task->pkt, -EBUSY);
 				task_done = true;
 			}
@@ -1195,8 +1196,9 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 			mod_timer(&thread->timeout, jiffies +
 				msecs_to_jiffies(thread->timeout_ms));
 			thread->timer_mod = sched_clock();
-			cmdq_log("mod_timer pkt:0x%p timeout:%u thread:%u",
-				task->pkt, thread->timeout_ms, thread->idx);
+			thread->cookie = readl(thread->base + CMDQ_THR_CNT);
+			cmdq_log("mod_timer pkt:0x%p timeout:%u thread:%u cookie:%d",
+				task->pkt, thread->timeout_ms, thread->idx, thread->cookie);
 		}
 	}
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
@@ -1363,14 +1365,43 @@ static bool cmdq_thread_timeout_excceed(struct cmdq_thread *thread)
 	if (duration < thread->timeout_ms) {
 		mod_timer(&thread->timeout, jiffies +
 			msecs_to_jiffies(thread->timeout_ms - duration));
+		thread->cookie = readl(thread->base + CMDQ_THR_CNT);
+
 		cmdq_msg(
-			"thread:%u usage:%d mod time:%llu dur:%llu timeout not excceed",
+			"thread:%u usage:%d mod time:%llu dur:%llu cookie:%d timeout not excceed",
 			thread->idx, atomic_read(&cmdq->usage),
-			thread->timer_mod, duration);
+			thread->timer_mod, duration, thread->cookie);
 		return false;
 	}
 
 	return true;
+}
+
+static bool cmdq_thread_skip_timeout_by_cookie(struct cmdq_thread *thread)
+{
+	u32 cookie;
+	struct cmdq_task *task;
+	struct cmdq *cmdq = container_of(thread->chan->mbox, typeof(*cmdq), mbox);
+
+	cookie = readl(thread->base + CMDQ_THR_CNT);
+	task = list_first_entry_or_null(&thread->task_busy_list,
+		struct cmdq_task, list_entry);
+	if (task) {
+		if (task->pkt->self_loop && cookie != thread->cookie) {
+#if IS_ENABLED(CONFIG_CMDQ_MMPROFILE_SUPPORT)
+			mmprofile_log_ex(cmdq_mmp.warning, MMPROFILE_FLAG_PULSE,
+				MMP_THD(thread, cmdq), cookie);
+#endif
+			mod_timer(&thread->timeout, jiffies +
+				msecs_to_jiffies(thread->timeout_ms));
+			cmdq_msg("%s pre_cookie:%d cookie:%d pass timeout flow",
+				__func__, thread->cookie, cookie);
+			thread->cookie = cookie;
+			return true;
+		}
+	}
+
+	return false;
 }
 
 static void cmdq_thread_handle_timeout_work(struct work_struct *work_item)
@@ -1394,6 +1425,12 @@ static void cmdq_thread_handle_timeout_work(struct work_struct *work_item)
 
 	/* Check before suspend thread to prevent hurt performance. */
 	if (!cmdq_thread_timeout_excceed(thread)) {
+		spin_unlock_irqrestore(&thread->chan->lock, flags);
+		return;
+	}
+
+	/* After IRQ, first task may change. */
+	if (cmdq_thread_skip_timeout_by_cookie(thread)) {
 		spin_unlock_irqrestore(&thread->chan->lock, flags);
 		return;
 	}
@@ -1476,6 +1513,7 @@ static void cmdq_thread_handle_timeout_work(struct work_struct *work_item)
 		mod_timer(&thread->timeout, jiffies +
 			msecs_to_jiffies(thread->timeout_ms));
 		thread->timer_mod = sched_clock();
+		thread->cookie = readl(thread->base + CMDQ_THR_CNT);
 		cmdq_thread_err_reset(cmdq, thread,
 			task->pa_base, thread->priority);
 		cmdq_thread_resume(thread);
@@ -1901,6 +1939,7 @@ void cmdq_mbox_thread_remove_task(struct mbox_chan *chan,
 		mod_timer(&thread->timeout, jiffies +
 			msecs_to_jiffies(thread->timeout_ms));
 		thread->timer_mod = sched_clock();
+		thread->cookie = readl(thread->base + CMDQ_THR_CNT);
 	}
 
 	if (last_task) {

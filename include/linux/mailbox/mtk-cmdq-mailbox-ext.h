@@ -209,6 +209,7 @@ struct cmdq_thread {
 	u32			irq_task;
 	u64			mbox_en;
 	u64			mbox_dis;
+	u32			cookie;
 };
 
 extern int mtk_cmdq_log;
