@@ -20,7 +20,7 @@
 
 /* option for ldvt */
 #define AOV_READY 1
-#define CMDQ_SEC_READY 0
+#define CMDQ_SEC_READY 1
 
 #define AIE_IOVA_BITS_SHIFT 4
 #define AIE_IOVA(IOVA) (IOVA >> AIE_IOVA_BITS_SHIFT)
