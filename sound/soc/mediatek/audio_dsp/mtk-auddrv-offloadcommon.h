@@ -33,8 +33,6 @@
 #include "mtk-dsp-platform-driver.h"
 #endif
 
-#define OFFLOAD_IPIMSG_TIMEOUT             25
-
 enum {
 	OFFLOAD_STATE_INIT = 0x1,
 	OFFLOAD_STATE_IDLE = 0x2,
@@ -80,6 +78,7 @@ struct afe_offload_codec_t {
 	unsigned int codec_samplerate;
 	unsigned int codec_bitrate;
 	unsigned int target_samplerate;
+	bool has_video;
 };
 
 enum ipi_send_offload {
@@ -93,6 +92,7 @@ enum ipi_send_offload {
 	OFFLOAD_TSTAMP,
 	OFFLOAD_SCENE,
 	OFFLOAD_CODEC_INFO,
+	OFFLOAD_VIDEO_INFO,
 	OFFLOAD_MDATA_INFO,
 	OFFLOAD_SEND_MAX,
 };

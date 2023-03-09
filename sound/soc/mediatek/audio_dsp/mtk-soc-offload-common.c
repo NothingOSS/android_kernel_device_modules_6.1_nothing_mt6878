@@ -19,6 +19,7 @@
 #include <audio_ipi_dma.h>
 
 #include <trace/hooks/vendor_hooks.h>
+#define OFFLOAD_IPIMSG_TIMEOUT (25)
 
 /*
  * Variable Definition
@@ -64,6 +65,7 @@ static struct afe_offload_codec_t afe_offload_codec_info = {
 	.codec_samplerate = 0,
 	.codec_bitrate = 0,
 	.target_samplerate = 0,
+	.has_video = 0,
 };
 
 static struct snd_compr_stream *offload_stream;
@@ -195,6 +197,19 @@ static int offloadservice_gettargetrate(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int offloadservice_sethasvideo(struct snd_kcontrol *kcontrol,
+				      struct snd_ctl_elem_value *ucontrol)
+{
+	afe_offload_codec_info.has_video = (unsigned int)ucontrol->value.integer.value[0];
+	return 0;
+}
+
+static int offloadservice_gethasvideo(struct snd_kcontrol *kcontrol,
+				      struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = afe_offload_codec_info.has_video;
+	return 0;
+}
 static const struct snd_kcontrol_new Audio_snd_dloffload_controls[] = {
 	SND_SOC_BYTES_TLV("offload digital volume", sizeof(afe_offload_service.offload_volume),
 	offloadservice_getvolume, offloadservice_setvolume),
@@ -205,6 +220,8 @@ static const struct snd_kcontrol_new Audio_snd_dloffload_controls[] = {
 	offloadservice_getbuffersize, offloadservice_setbuffersize),
 	SOC_SINGLE_EXT("offload_target_rate", SND_SOC_NOPM, 0, 0x100000, 0,
 	offloadservice_gettargetrate, offloadservice_settargetrate),
+	SOC_SINGLE_EXT("offload_has_video", SND_SOC_NOPM, 0, 1, 0,
+	offloadservice_gethasvideo, offloadservice_sethasvideo),
 };
 
 /*
@@ -401,6 +418,7 @@ static int mtk_compr_offload_free(struct snd_soc_component *component,
 	if (dsp)
 		mtk_adsp_genpool_free_sharemem_ring(&dsp->dsp_mem[ID], ID);
 	afe_offload_block.state = OFFLOAD_STATE_INIT;
+	afe_offload_codec_info.has_video = false;
 #ifdef use_wake_lock
 	mtk_compr_offload_int_wakelock(false);
 #endif
@@ -450,8 +468,16 @@ static int mtk_compr_offload_set_params(struct snd_soc_component *component,
 			 AUDIO_IPI_MSG_BYPASS_ACK,
 			 OFFLOAD_CODEC_INFO,
 			 afe_offload_codec_info.codec_bitrate,
-			 afe_offload_codec_info.codec_samplerate
-			 , NULL);
+			 afe_offload_codec_info.codec_samplerate,
+			 NULL);
+	/* send video info */
+	mtk_scp_ipi_send(get_dspscene_by_dspdaiid(ID),
+			 AUDIO_IPI_MSG_ONLY,
+			 AUDIO_IPI_MSG_BYPASS_ACK,
+			 OFFLOAD_VIDEO_INFO,
+			 afe_offload_codec_info.has_video,
+			 afe_offload_codec_info.has_video,
+			 NULL);
 
 	/* send audio_hw_buffer to SCP side */
 	ipi_audio_buf =
