@@ -374,7 +374,7 @@ static void probe_ufshcd_command(void *data, const char *dev_name,
 		ptr = cmd_hist_get_prev_ptr(ptr);
 		while (1) {
 			if (cmd_hist[ptr].cmd.utp.tag == tag) {
-				cmd_hist[cmd_hist_ptr].duration =
+				cmd_hist[ptr_cur].duration =
 					local_clock() - cmd_hist[ptr].time;
 				break;
 			}
@@ -413,7 +413,7 @@ static void probe_ufshcd_uic_command(void *data, const char *dev_name,
 		ptr = cmd_hist_get_prev_ptr(ptr);
 		while (1) {
 			if (cmd_hist[ptr].cmd.uic.cmd == cmd) {
-				cmd_hist[cmd_hist_ptr].duration =
+				cmd_hist[ptr_cur].duration =
 					local_clock() - cmd_hist[ptr].time;
 				break;
 			}
