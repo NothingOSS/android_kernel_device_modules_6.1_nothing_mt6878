@@ -37,6 +37,8 @@
 #include <mtk_heap.h>
 
 #include "gz_main.h"
+#include "gz_ffa.h"
+#include <linux/arm_ffa.h>
 #include "mtee_ut/gz_ut.h"
 #include "mtee_ut/gz_shmem_ut.h"
 #include "mtee_ut/gz_chmem_ut.h"
@@ -1158,12 +1160,26 @@ struct platform_driver gz_main_driver = {
 static int __init gz_main_init(void)
 {
 	int ret = 0;
+	struct ffa_driver *get_ffa_drv;
 
 	ret = platform_driver_register(&gz_main_driver);
 	if (ret) {
 		KREE_ERR("%s driver register fail, ret %d\n", __func__, ret);
 		return ret;
 	}
+
+	msleep(1000);
+
+	/* ffa driver register, init procedure won't stop when register failed */
+	get_ffa_drv = gz_get_ffa_dev();
+	if (!get_ffa_drv)
+		KREE_ERR("get_ffa_drv is null\n");
+
+	ret = ffa_driver_register(get_ffa_drv, THIS_MODULE, KBUILD_MODNAME);
+	if (ret)
+		KREE_ERR("%s gz_ffa_dev driver register fail, ret=%d\n", __func__, ret);
+
+	msleep(1000);
 
 	return 0;
 }
