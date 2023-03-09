@@ -143,7 +143,11 @@ int eara_nl_send_to_user(void *buf, int size)
 	skb = alloc_skb(len, GFP_ATOMIC);
 	if (!skb)
 		return -1;
-	nlh = nlmsg_put(skb, 0, 0, NLMSG_DONE, size+1, 0);
+	nlh = nlmsg_put(skb, 0, 0, NLMSG_DONE, size, 0);
+	if (!nlh) {
+		kfree_skb(skb);
+		return -EMSGSIZE;
+	}
 	data = NLMSG_DATA(nlh);
 	memcpy(data, buf, size);
 	NETLINK_CB(skb).portid = 0; /* from kernel */
