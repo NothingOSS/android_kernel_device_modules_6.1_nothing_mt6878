@@ -458,6 +458,10 @@ initcall_debug=1";
 	};
 };
 
+&snd_audio_dsp {
+	adsp-dynamic-buffer = <0x1>;
+};
+
 &sound {
 	mediatek,spk-i2s = <3 9>;
 	mediatek,speaker-codec {
