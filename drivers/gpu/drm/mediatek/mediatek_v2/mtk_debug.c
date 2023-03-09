@@ -2708,6 +2708,39 @@ static void process_dbg_opt(const char *opt)
 		mtk_drm_set_idle_check_interval(crtc, idle_check_interval);
 		DDPMSG("change idle interval to %llu ms\n",
 		       idle_check_interval);
+	} else if (strncmp(opt, "idle_perf:", 10) == 0) {
+		struct drm_crtc *crtc;
+
+		/* on     -- enable idle performance monitor
+		 * off    -- disable idle performance monitor
+		 * dump   -- dump idle performance data
+		 * sync   -- legacy flow of idle manager
+		 * async  -- async flow of idle manager
+		 * detail -- dump the detail timing of idle performance
+		 * brief  -- don't dump detail timing of idle performance
+		 */
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPPR_ERR("find crtc fail\n");
+			return;
+		}
+
+		DDPMSG("%s: idle_perf\n", __func__);
+		if (strncmp(opt + 10, "on", 2) == 0)
+			mtk_drm_idlemgr_monitor(true, crtc);
+		else if (strncmp(opt + 10, "off", 3) == 0)
+			mtk_drm_idlemgr_monitor(false, crtc);
+		else if (strncmp(opt + 10, "dump", 4) == 0)
+			mtk_drm_idlemgr_perf_dump(crtc);
+		else if (strncmp(opt + 10, "sync", 4) == 0)
+			mtk_drm_idlemgr_async_control(0);
+		else if (strncmp(opt + 10, "async", 5) == 0)
+			mtk_drm_idlemgr_async_control(1);
+		else if (strncmp(opt + 10, "detail", 6) == 0)
+			mtk_drm_idlemgr_async_perf_detail_control(true, crtc);
+		else if (strncmp(opt + 10, "brief", 5) == 0)
+			mtk_drm_idlemgr_async_perf_detail_control(false, crtc);
 	} else if (strncmp(opt, "hrt_bw", 6) == 0) {
 		struct mtk_drm_private *priv = drm_dev->dev_private;
 

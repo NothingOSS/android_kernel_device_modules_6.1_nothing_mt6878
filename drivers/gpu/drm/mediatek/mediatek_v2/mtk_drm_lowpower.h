@@ -28,6 +28,17 @@ struct mtk_drm_idlemgr_context {
 	struct mtk_idle_private_data priv;
 };
 
+struct mtk_drm_idlemgr_perf {
+	unsigned long long enter_total_cost; //us
+	unsigned long long enter_max_cost; //us
+	unsigned long long enter_min_cost; //us
+	unsigned long long leave_total_cost; //us
+	unsigned long long leave_max_cost; //us
+	unsigned long long leave_min_cost; //us
+	unsigned long long count;
+	atomic_t detail;
+};
+
 struct mtk_drm_idlemgr {
 	struct task_struct *idlemgr_task;
 	struct task_struct *kick_task;
@@ -52,6 +63,7 @@ struct mtk_drm_idlemgr {
 	//async_cb_list length
 	unsigned int async_cb_count;
 	struct mtk_drm_idlemgr_context *idlemgr_ctx;
+	struct mtk_drm_idlemgr_perf *perf;
 };
 
 struct mtk_drm_async_cb_data {
@@ -94,6 +106,10 @@ unsigned long long
 mtk_drm_get_idle_check_interval(struct drm_crtc *crtc);
 
 void mtk_drm_idlemgr_kick_async(struct drm_crtc *crtc);
-
+void mtk_drm_idlemgr_monitor(bool enable, struct drm_crtc *crtc);
+void mtk_drm_idlemgr_perf_dump(struct drm_crtc *crtc);
+void mtk_drm_idlemgr_async_control(bool enable);
+void mtk_drm_idlemgr_async_perf_detail_control(bool enable,
+				struct drm_crtc *crtc);
 
 #endif
