@@ -380,7 +380,7 @@ static int opfunc_recv_shm_msg(struct msg_op_data *op)
 	uint16_t msg_sz = (uint16_t)op->op_data[3];
 	int ret;
 
-	if (msg_drv > CONAP_SCP_DRV_NUM)
+	if (msg_drv >= CONAP_SCP_DRV_NUM)
 		return -1;
 
 	if (msg_sz >= MAX_MSG_SZ)

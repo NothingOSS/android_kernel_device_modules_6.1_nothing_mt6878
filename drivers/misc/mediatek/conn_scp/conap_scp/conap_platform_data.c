@@ -75,7 +75,7 @@ int connsys_scp_plt_data_init(struct platform_device *pdev)
 	u32 value;
 	u32 ipi_mbox_size = 0;
 	u32 batching_buf_sz = 0;
-	u64 value64, batching_buf_addr = 0;
+	u64 value64 = 0, batching_buf_addr = 0;
 
 	node = pdev->dev.of_node;
 
