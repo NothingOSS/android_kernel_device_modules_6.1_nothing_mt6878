@@ -7746,8 +7746,8 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_mode(
 static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 	struct mtk_drm_crtc *mtk_crtc, struct drm_crtc_state *old_state)
 {
-	struct cmdq_pkt *cmdq_handle;
-	struct cmdq_pkt *cmdq_handle2;
+	struct cmdq_pkt *cmdq_handle = NULL;
+	struct cmdq_pkt *cmdq_handle2 = NULL;
 	struct mtk_crtc_state *state =
 	    to_mtk_crtc_state(mtk_crtc->base.state);
 	struct mtk_crtc_state *old_mtk_state =
@@ -7817,6 +7817,7 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 			DDPINFO("Use CPU cmd to mode switch\n");
 			cmdq_pkt_flush(cmdq_handle);
 			cmdq_pkt_destroy(cmdq_handle);
+			cmdq_handle = NULL;
 		}
 	} else {
 		mode = mtk_crtc_get_display_mode_by_comp(__func__, &mtk_crtc->base, comp, false);
@@ -7839,6 +7840,9 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 		if (!check_ms_work) {
 			check_panel_cmd = dsi->ext->params->mode_switch_cmd.num_cmd;
 			if (check_panel_cmd) {
+				if (!cmdq_handle)
+					mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
+						mtk_crtc->gce_obj.client[CLIENT_CFG]);
 				for (i = 0; i < check_panel_cmd; i++) {
 					mipi_dsi_dcs_write_gce_dyn(dsi, cmdq_handle,
 					    dsi->ext->params->mode_switch_cmd.ms_table[i].para_list,
@@ -7846,6 +7850,7 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 				}
 				cmdq_pkt_flush(cmdq_handle);
 				cmdq_pkt_destroy(cmdq_handle);
+				cmdq_handle = NULL;
 			}
 		}
 	}
@@ -7907,6 +7912,9 @@ skip_change_mipi:
 		if (!check_ms_work) {
 			check_panel_cmd = dsi->ext->params->mode_switch_cmd.num_cmd;
 			if (check_panel_cmd) {
+				if (!cmdq_handle)
+					mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
+						mtk_crtc->gce_obj.client[CLIENT_CFG]);
 				for (i = 0; i < check_panel_cmd; i++) {
 					mipi_dsi_dcs_write_gce_dyn(dsi, cmdq_handle,
 					    dsi->ext->params->mode_switch_cmd.ms_table[i].para_list,
