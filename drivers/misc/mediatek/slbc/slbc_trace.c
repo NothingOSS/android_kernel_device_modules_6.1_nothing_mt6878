@@ -80,16 +80,17 @@ void slbc_trace_rec_write(const char *name, int line, u32 lvl, u32 type, int id,
 		int ret, char *fmt, ...)
 {
 	static char buf[1024];
+	int len = 0;
 	u64 index;
 	va_list va;
 
 	if (!slbc_trace) {
 		va_start(va, fmt);
-		vsnprintf(buf, sizeof(buf), (fmt) ? fmt : "null", va);
+		len = vsnprintf(buf, sizeof(buf), (fmt) ? fmt : "null", va);
 		va_end(va);
 
-		pr_info("#@# %s(%d) ret %d, %s\n",
-				name, line, ret, buf);
+		if (len)
+			pr_info("#@# %s(%d) ret %d, %s\n", name, line, ret, buf);
 
 		return;
 	}
@@ -113,18 +114,22 @@ void slbc_trace_rec_write(const char *name, int line, u32 lvl, u32 type, int id,
 		slbc_trace->record[index].name[SLBC_EVENT_NAME_SIZE - 1] = '\0';
 
 		va_start(va, fmt);
-		vsnprintf(slbc_trace->record[index].data, SLBC_EVENT_DATA_SIZE,
+		len = vsnprintf(slbc_trace->record[index].data, SLBC_EVENT_DATA_SIZE,
 				(fmt) ? fmt : "null", va);
 		va_end(va);
+
+		if (len < 0)
+			strncpy(slbc_trace->record[index].data, "print fail",
+					SLBC_EVENT_DATA_SIZE);
 	}
 
 	if (slbc_trace->log_enable && SLBC_TRACE_LOG_LVL(lvl)) {
 		va_start(va, fmt);
-		vsnprintf(buf, sizeof(buf), (fmt) ? fmt : "null", va);
+		len = vsnprintf(buf, sizeof(buf), (fmt) ? fmt : "null", va);
 		va_end(va);
 
-		pr_info("#@# %s(%d) ret %d, %s\n",
-			name, line, ret, buf);
+		if (len)
+			pr_info("#@# %s(%d) ret %d, %s\n", name, line, ret, buf);
 	}
 }
 EXPORT_SYMBOL_GPL(slbc_trace_rec_write);
@@ -347,7 +352,7 @@ int slbc_trace_init(void *ptr)
 	slbc_trace->enable = 1;
 
 	SLBC_TRACE_REC(LVL_QOS, TYPE_N, 0, 0,
-			"sizeof(struct slbc_trace): 0x%x bytes", sizeof(struct slbc_trace));
+			"sizeof(struct slbc_trace): 0x%lx bytes", sizeof(struct slbc_trace));
 
 	return 0;
 }
