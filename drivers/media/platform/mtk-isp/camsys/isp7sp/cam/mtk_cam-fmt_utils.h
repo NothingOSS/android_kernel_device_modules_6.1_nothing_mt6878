@@ -31,6 +31,9 @@ int is_yuv_ufo(unsigned int pixelformat);
 int is_raw_ufo(unsigned int pixelformat);
 int is_fullg_rb(unsigned int pixelformat);
 
+int ipifmt_is_raw_ufo(unsigned int ipi_fmt);
+int ipifmt_is_yuv_ufo(unsigned int ipi_fmt);
+
 struct mtk_format_info {
 	u32 format;
 	u8 mem_planes;

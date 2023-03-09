@@ -48,12 +48,72 @@ bool is_dc_mode(struct mtk_cam_job *job)
 		return false;
 }
 
+u32 get_used_raw_num(struct mtk_cam_job *job)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtk_cam_engines *eng = &ctx->cam->engines;
+	unsigned long mask;
+	u32 raw_cnt = 0;
+	int i;
+
+	mask = bit_map_subset_of(MAP_HW_RAW, ctx->used_engine);
+	for (i = 0; i < eng->num_raw_devices && mask; i++, mask >>= 1)
+		if (mask & 0x1)
+			++raw_cnt;
+
+	return raw_cnt;
+}
+
+u64 get_line_time(struct mtk_cam_job *job)
+{
+	struct mtk_cam_resource_v2 *res;
+	u64 linet = 0;
+
+	res = _get_job_res(job);
+	if (res) {
+		linet = 1000000000L * res->sensor_res.interval.numerator
+			/ res->sensor_res.interval.denominator
+			/ (res->sensor_res.height + res->sensor_res.vblank);
+
+		pr_info("%s: interval:(%d/%d) height:%d, vb:%d, line_time:%llu\n",
+			__func__,
+			res->sensor_res.interval.numerator,
+			res->sensor_res.interval.denominator,
+			res->sensor_res.height, res->sensor_res.vblank, linet);
+	}
+
+	return linet;
+}
+
+u32 get_sensor_h(struct mtk_cam_job *job)
+{
+	struct mtk_cam_resource_v2 *res;
+
+	res = _get_job_res(job);
+	if (res)
+		return res->sensor_res.height;
+
+	return 0;
+}
+
+u32 get_sensor_vb(struct mtk_cam_job *job)
+{
+	struct mtk_cam_resource_v2 *res;
+
+	res = _get_job_res(job);
+	if (res)
+		return res->sensor_res.vblank;
+
+	return 0;
+}
+
 void _set_timestamp(struct mtk_cam_job *job,
 	u64 time_boot, u64 time_mono)
 {
 	job->timestamp = time_boot;
 	job->timestamp_mono = time_mono;
 }
+
 int get_raw_subdev_idx(unsigned long used_pipe)
 {
 	unsigned long used_raw = bit_map_subset_of(MAP_SUBDEV_RAW, used_pipe);

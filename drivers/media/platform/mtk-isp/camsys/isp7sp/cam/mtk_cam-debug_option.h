@@ -22,6 +22,8 @@
 #define CAM_DEBUG_JOB		9
 #define CAM_DEBUG_STATE		10
 
+#define CAM_DEBUG_MMQOS     11
+
 unsigned int cam_debug_opts(void);
 
 static inline bool cam_debug_enabled(unsigned int type)

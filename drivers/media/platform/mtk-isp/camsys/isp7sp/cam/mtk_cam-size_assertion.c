@@ -12,7 +12,7 @@ static_assert(sizeof(_st) < _size, "check if need to update size")
 
 SIZE_STATIC_ASSERT(struct mtk_cam_request, 2 * 1024);
 //PRINT_SIZE(struct mtk_cam_request);
-SIZE_STATIC_ASSERT(struct mtk_cam_ctx, 10 * 1024);
+SIZE_STATIC_ASSERT(struct mtk_cam_ctx, 11 * 1024);
 //PRINT_SIZE(struct mtk_cam_ctx);
 SIZE_STATIC_ASSERT(struct mtk_cam_job, 2 * 1024);
 //PRINT_SIZE(struct mtk_cam_job);

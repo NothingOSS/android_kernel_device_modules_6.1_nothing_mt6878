@@ -500,6 +500,34 @@ int is_raw_ufo(unsigned int pixelformat)
 	}
 }
 
+int ipifmt_is_raw_ufo(unsigned int ipi_fmt)
+{
+	switch (ipi_fmt) {
+	case MTKCAM_IPI_IMG_FMT_UFBC_BAYER8:
+	case MTKCAM_IPI_IMG_FMT_UFBC_BAYER10:
+	case MTKCAM_IPI_IMG_FMT_UFBC_BAYER12:
+	case MTKCAM_IPI_IMG_FMT_UFBC_BAYER14:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
+int ipifmt_is_yuv_ufo(unsigned int ipi_fmt)
+{
+	switch (ipi_fmt) {
+	case MTKCAM_IPI_IMG_FMT_UFBC_NV12:
+	case MTKCAM_IPI_IMG_FMT_UFBC_NV21:
+	case MTKCAM_IPI_IMG_FMT_UFBC_YUV_P010:
+	case MTKCAM_IPI_IMG_FMT_UFBC_YVU_P010:
+	case MTKCAM_IPI_IMG_FMT_UFBC_YUV_P012:
+	case MTKCAM_IPI_IMG_FMT_UFBC_YVU_P012:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
 int is_fullg_rb(unsigned int pixelformat)
 {
 	switch (pixelformat) {

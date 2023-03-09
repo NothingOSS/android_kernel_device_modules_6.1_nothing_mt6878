@@ -10,6 +10,8 @@
 #include <linux/interconnect.h>
 #include <linux/spinlock_types.h>
 
+#include "mtk_cam-dvfs_qos_raw.h"
+
 struct device;
 struct regulator;
 
@@ -55,8 +57,7 @@ struct mtk_camsys_qos {
 };
 
 int mtk_cam_qos_probe(struct device *dev,
-		      struct mtk_camsys_qos *qos,
-		      int *ids, int n_id);
+		      struct mtk_camsys_qos *qos, int qos_num);
 int mtk_cam_qos_remove(struct mtk_camsys_qos *qos);
 
 static inline u32 to_qos_icc(unsigned long Bps)
@@ -64,9 +65,20 @@ static inline u32 to_qos_icc(unsigned long Bps)
 	return kBps_to_icc(Bps / 1024);
 }
 
-int mtk_cam_qos_update(struct mtk_camsys_qos *qos,
-		       int path_id, u32 avg_bw, u32 peak_bw);
-int mtk_cam_qos_reset_all(struct mtk_camsys_qos *qos);
+/* for srt occupied ratio */
+static inline u32 to_qos_icc_ratio(unsigned long Bps)
+{
+	return kBps_to_icc(Bps * 6 / 5 / 1024);
+}
+
+struct mtk_cam_job;
+struct mtk_cam_engines;
+struct req_buffer_helper;
+void mtk_cam_fill_qos(struct req_buffer_helper *helper);
+
+int mtk_cam_apply_qos(struct mtk_cam_job *job);
+
+int mtk_cam_reset_qos(struct device *dev, struct mtk_camsys_qos *qos);
 
 /* note: may sleep */
 /* TODO: only wait if bw changes? */

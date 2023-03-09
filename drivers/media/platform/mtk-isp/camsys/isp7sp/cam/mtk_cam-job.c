@@ -1330,6 +1330,8 @@ static int apply_engines_cq(struct mtk_cam_job *job,
 	if (subset)
 		_apply_mraw_cq(job, subset, cq, cq_rst);
 
+	mtk_cam_apply_qos(job);
+
 	dev_info(ctx->cam->dev, "[%s] ctx:%d CQ-0x%x eng 0x%lx cq_addr: %pad\n",
 		 __func__, ctx->stream_id, frame_seq_no, cq_engine,
 		 &cq->daddr);
@@ -3839,6 +3841,8 @@ static int update_job_buffer_to_ipi_frame(struct mtk_cam_job *job,
 		ret = ret || job_helper->append_work_buf_to_ipi(&helper);
 
 	reset_unused_io_of_ipi_frame(&helper);
+
+	mtk_cam_fill_qos(&helper);
 
 	return ret;
 }

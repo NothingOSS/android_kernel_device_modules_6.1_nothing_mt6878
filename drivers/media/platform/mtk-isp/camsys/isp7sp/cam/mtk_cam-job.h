@@ -15,6 +15,7 @@
 #include "mtk_cam-ipi.h"
 #include "mtk_camera-v4l2-controls-7sp.h"
 #include "mtk_cam-engine.h"
+#include "mtk_cam-dvfs_qos.h"
 
 struct mtk_cam_job;
 
@@ -181,6 +182,10 @@ struct mtk_cam_job_event_info {
 };
 struct mtk_cam_request;
 struct mtk_cam_ctx;
+struct mmqos_bw {
+	u32 peak_bw;
+	u32 avg_bw;
+};
 
 struct mtk_cam_job_ops {
 	/* job control */
@@ -279,6 +284,8 @@ struct mtk_cam_job {
 	unsigned int sub_ratio;
 	int scq_period;
 	u64 (*timestamp_buf)[128];
+	struct mmqos_bw raw_mmqos[SMI_PORT_RAW_NUM];
+	struct mmqos_bw yuv_mmqos[SMI_PORT_YUV_NUM];
 };
 
 static inline struct mtk_cam_job *mtk_cam_job_get(struct mtk_cam_job *job)

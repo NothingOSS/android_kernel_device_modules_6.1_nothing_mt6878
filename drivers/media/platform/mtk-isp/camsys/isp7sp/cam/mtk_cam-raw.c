@@ -19,7 +19,7 @@
 #include <soc/mediatek/smi.h>
 
 #include "mtk_cam.h"
-#include "mtk_cam-dvfs_qos_raw.h"
+#include "mtk_cam-dvfs_qos.h"
 #include "mtk_cam-raw.h"
 #include "mtk_cam-raw_debug.h"
 #include "mtk_cam-raw_regs.h"
@@ -1394,13 +1394,9 @@ static int mtk_raw_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-#ifdef QOS_ENABLE
-	ret = mtk_cam_qos_probe(dev, &raw_dev->qos,
-				qos_raw_ids,
-				ARRAY_SIZE(qos_raw_ids));
+	ret = mtk_cam_qos_probe(dev, &raw_dev->qos, SMI_PORT_RAW_NUM);
 	if (ret)
 		return ret;
-#endif
 
 	raw_dev->fifo_size =
 		roundup_pow_of_two(8 * sizeof(struct mtk_camsys_irq_info));
@@ -1425,9 +1421,7 @@ static int mtk_raw_remove(struct platform_device *pdev)
 	unregister_pm_notifier(&raw_dev->pm_notifier);
 
 	pm_runtime_disable(dev);
-#ifdef QOS_ENABLE
 	mtk_cam_qos_remove(&raw_dev->qos);
-#endif
 	component_del(dev, &mtk_raw_component_ops);
 
 	for (i = 0; i < raw_dev->num_clks; i++)
@@ -1446,12 +1440,12 @@ static int mtk_raw_runtime_suspend(struct device *dev)
 	dev_dbg(dev, "%s:drvdata->default_printk_cnt = %d\n", __func__,
 			drvdata->default_printk_cnt);
 
-	// disable_irq(drvdata->irq);
 	pr_detect_count = get_detect_count();
 	if (pr_detect_count > drvdata->default_printk_cnt)
 		set_detect_count(drvdata->default_printk_cnt);
 
 	// reset(drvdata);
+	mtk_cam_reset_qos(dev, &drvdata->qos);
 
 	for (i = 0; i < drvdata->num_clks; i++)
 		clk_disable_unprepare(drvdata->clks[i]);
@@ -1799,13 +1793,9 @@ static int mtk_yuv_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-#ifdef QOS_ENABLE
-	ret = mtk_cam_qos_probe(dev, &drvdata->qos,
-				qos_yuv_ids,
-				ARRAY_SIZE(qos_yuv_ids));
+	ret = mtk_cam_qos_probe(dev, &drvdata->qos, SMI_PORT_YUV_NUM);
 	if (ret)
 		return ret;
-#endif
 
 	pm_runtime_enable(dev);
 
@@ -1833,9 +1823,7 @@ static int mtk_yuv_remove(struct platform_device *pdev)
 	unregister_pm_notifier(&drvdata->pm_notifier);
 
 	pm_runtime_disable(dev);
-#ifdef QOS_ENABLE
 	mtk_cam_qos_remove(&drvdata->qos);
-#endif
 	component_del(dev, &mtk_yuv_component_ops);
 
 	for (i = 0; i < drvdata->num_clks; i++)
@@ -1851,6 +1839,8 @@ static int mtk_yuv_runtime_suspend(struct device *dev)
 	int i;
 
 	dev_info(dev, "%s:disable clock\n", __func__);
+
+	mtk_cam_reset_qos(dev, &drvdata->qos);
 
 	for (i = 0; i < drvdata->num_clks; i++)
 		clk_disable_unprepare(drvdata->clks[i]);
@@ -2176,9 +2166,7 @@ static int mtk_rms_remove(struct platform_device *pdev)
 	unregister_pm_notifier(&drvdata->pm_notifier);
 
 	pm_runtime_disable(dev);
-#ifdef QOS_ENABLE
-	mtk_cam_qos_remove(&drvdata->qos);
-#endif
+
 	component_del(dev, &mtk_rms_component_ops);
 
 	for (i = 0; i < drvdata->num_clks; i++)

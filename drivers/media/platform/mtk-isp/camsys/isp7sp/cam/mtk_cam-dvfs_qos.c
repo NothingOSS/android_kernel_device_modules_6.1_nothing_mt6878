@@ -9,7 +9,18 @@
 #include <mtk-interconnect.h>
 #include <soc/mediatek/mmdvfs_v3.h>
 #include <soc/mediatek/mmqos.h>
+#include <media/v4l2-subdev.h>
+
+#include "mtk_cam.h"
+#include "mtk_cam-defs.h"
+#include "mtk_cam-raw_pipeline.h"
+#include "mtk_cam-job.h"
+#include "mtk_cam-job_utils.h"
+#include "mtk_cam-fmt_utils.h"
 #include "mtk_cam-dvfs_qos.h"
+#include "mtk_cam-ufbc-def.h"
+
+#define ICCPATH_NAME_SIZE 32
 
 struct dvfs_stream_info {
 	unsigned int freq_hz;
@@ -220,13 +231,14 @@ int mtk_cam_dvfs_update(struct mtk_camsys_dvfs *dvfs,
 }
 
 struct mtk_camsys_qos_path {
-	int id;
+	char name[ICCPATH_NAME_SIZE];
 	struct icc_path *path;
+	u32 applied_bw;
+	u32 pending_bw;
 };
 
 int mtk_cam_qos_probe(struct device *dev,
-		      struct mtk_camsys_qos *qos,
-		      int *ids, int n_id)
+		      struct mtk_camsys_qos *qos, int qos_num)
 {
 	const char *names[32];
 	struct mtk_camsys_qos_path *cam_path;
@@ -246,16 +258,16 @@ int mtk_cam_qos_probe(struct device *dev,
 	if (!qos->cam_path)
 		return -ENOMEM;
 
-	//dev_info(dev, "icc_path num %d\n", qos->n_path);
+	dev_info(dev, "icc_path num %d\n", qos->n_path);
 	if (qos->n_path > ARRAY_SIZE(names)) {
 		dev_info(dev, "%s: array size of names is not enough.\n",
 			 __func__);
 		return -EINVAL;
 	}
 
-	if (qos->n_path != n_id) {
-		dev_info(dev, "icc num(%d) mismatch with ids num(%d)\n",
-			 qos->n_path, n_id);
+	if (qos->n_path != qos_num) {
+		dev_info(dev, "icc num(%d) mismatch with qos num(%d)\n",
+			 qos->n_path, qos_num);
 		return -EINVAL;
 	}
 
@@ -263,16 +275,14 @@ int mtk_cam_qos_probe(struct device *dev,
 				      names, qos->n_path);
 
 	for (i = 0, cam_path = qos->cam_path; i < qos->n_path; i++, cam_path++) {
-		//dev_info(dev, "interconnect: idx %d [%s id = %d]\n",
-		//	 i, names[i], ids[i]);
-
-		cam_path->id = ids[i];
+		dev_info(dev, "interconnect: idx %d [%s]\n", i, names[i]);
 		cam_path->path = of_mtk_icc_get(dev, names[i]);
 		if (IS_ERR_OR_NULL(cam_path->path)) {
 			dev_info(dev, "failed to get icc of %s\n",
 				 names[i]);
 			ret = -EINVAL;
 		}
+		strscpy(cam_path->name, names[i], ICCPATH_NAME_SIZE);
 	}
 
 	return ret;
@@ -291,41 +301,325 @@ int mtk_cam_qos_remove(struct mtk_camsys_qos *qos)
 	return 0;
 }
 
-static struct mtk_camsys_qos_path *find_qos_path(struct mtk_camsys_qos *qos,
-						 int id)
+static inline u32 apply_ufo_com_ratio(u32 avg_bw)
 {
-	struct mtk_camsys_qos_path *cam_path;
-	int i;
+	return avg_bw * 7 / 10;
+}
 
-	for (i = 0, cam_path = qos->cam_path; i < qos->n_path; i++, cam_path++)
-		if (cam_path->id == id)
-			return cam_path;
+static inline u32 calc_bw(u32 size, u64 linet, u32 active_h)
+{
+	//pr_info("%s: size:%d linet:%llu, active_h:%d\n",
+	//		__func__, size, linet, active_h);
+
+	return (1000000000L*size)/(linet * active_h);
+}
+
+static struct mtkcam_qos_desc *find_qos_desc_by_uid(
+				struct mtkcam_qos_desc *mmqos_table, int tbl_size, int uid)
+{
+	int i = 0;
+
+	for (i = 0; i < tbl_size; i++) {
+		if (uid == mmqos_table[i].id)
+			return &mmqos_table[i];
+	}
+
 	return NULL;
 }
 
-int mtk_cam_qos_update(struct mtk_camsys_qos *qos,
-		       int path_id, u32 avg_bw, u32 peak_bw)
+//assuming max image size 16000*12000*10/8
+#define MMQOS_SIZE_WARNING 240000000
+static int fill_raw_out_qos(struct mtk_cam_job *job,
+						struct mtkcam_ipi_img_output *out,
+						u32 sensor_h, u32 sensor_vb, u64 linet)
 {
-	struct mtk_camsys_qos_path *cam_path;
+	struct mtkcam_qos_desc *qos_desc;
+	unsigned int size, dst_port;
+	u32 peak_bw, avg_bw, active_h;
+	int i;
 
-	cam_path = find_qos_path(qos, path_id);
-	if (!cam_path)
-		return -1;
+	qos_desc = find_qos_desc_by_uid(
+			mmqos_img_table, ARRAY_SIZE(mmqos_img_table), out->uid.id);
+	if (!qos_desc) {
+		pr_info("%s: can't find qos desc in table uid:%d", __func__, out->uid.id);
+		return 0;
+	}
 
-	/* TODO
-	 * 1. detect change
-	 * 2. temporal adjustment
-	 */
-	return mtk_icc_set_bw(cam_path->path, avg_bw, peak_bw);
+	for (i = 0; i < qos_desc->desc_size &&
+				i < ARRAY_SIZE(out->fmt.stride); i++) {
+		size = out->buf[0][i].size;
+		if (!size)
+			break;
+
+		/*TODO: remove workaround if mw fixed */
+		if (ipifmt_is_yuv_ufo(out->fmt.format)) {
+			size = out->fmt.s.w * out->fmt.s.h * 3/2;
+			size += ALIGN((out->fmt.s.w / 64), 8) * out->fmt.s.h * 3/2;
+			size += sizeof(struct UfbcBufferHeader);
+		}
+
+		if (WARN_ON(size > MMQOS_SIZE_WARNING)) {
+			pr_info("%s: %s: req_seq(%d) uid:%d size too large(%d), please check\n",
+				__func__,
+				qos_desc->dma_desc[i].dma_name,
+				job->req_seq, out->uid.id, size);
+			continue;
+		}
+
+		active_h = sensor_h + sensor_vb;
+		avg_bw = (ipifmt_is_yuv_ufo(out->fmt.format) ||
+				  ipifmt_is_raw_ufo(out->fmt.format)) ?
+				apply_ufo_com_ratio(calc_bw(size, linet, active_h)) :
+				calc_bw(size, linet, active_h);
+
+		active_h = (out->crop.p.y*2 >= out->crop.s.h) ?
+				1 : out->crop.s.h - out->crop.p.y*2;
+		peak_bw = is_dc_mode(job) ?
+				0 : calc_bw(size, linet, active_h);
+
+		dst_port = qos_desc->dma_desc[i].dst_port;
+		if (qos_desc->dma_desc[i].domain == RAW_DOMAIN) {
+			job->raw_mmqos[dst_port].peak_bw += to_qos_icc(peak_bw);
+			job->raw_mmqos[dst_port].avg_bw += to_qos_icc(avg_bw);
+		} else {
+			job->yuv_mmqos[dst_port].peak_bw += to_qos_icc(peak_bw);
+			job->yuv_mmqos[dst_port].avg_bw += to_qos_icc_ratio(avg_bw);
+		}
+
+		if (CAM_DEBUG_ENABLED(MMQOS))
+			pr_info("%s: %s: req_seq(%d) dst_port:%d uid:%d avg_bw:%dB/s, peak_bw:%dB/s (size:%d crop_h:%d crop_top:%d vb:%d)\n",
+				__func__, qos_desc->dma_desc[i].dma_name, job->req_seq,
+				dst_port, out->uid.id, avg_bw, peak_bw,
+				size, out->crop.s.h, out->crop.p.y, sensor_vb);
+	}
+
+	return 0;
 }
 
-int mtk_cam_qos_reset_all(struct mtk_camsys_qos *qos)
+static int fill_raw_in_qos(struct mtk_cam_job *job,
+						struct mtkcam_ipi_img_input *in,
+						u32 sensor_h, u32 sensor_vb, u64 linet)
+{
+	struct mtkcam_qos_desc *qos_desc;
+	unsigned int size, dst_port;
+	u32 peak_bw, avg_bw;
+	int i;
+
+	qos_desc = find_qos_desc_by_uid(
+			mmqos_img_table, ARRAY_SIZE(mmqos_img_table), in->uid.id);
+	if (!qos_desc) {
+		pr_info("%s: can't find qos desc in table uid:%d", __func__, in->uid.id);
+		return 0;
+	}
+
+	for (i = 0; i < qos_desc->desc_size && i < ARRAY_SIZE(in->fmt.stride); i++) {
+		size = in->buf[i].size;
+		if (!size)
+			break;
+
+		if (WARN_ON(size > MMQOS_SIZE_WARNING)) {
+			pr_info("%s: %s: req_seq(%d) uid:%d size too large(%d), please check\n",
+				__func__,
+				qos_desc->dma_desc[i].dma_name,
+				job->req_seq, in->uid.id, size);
+			continue;
+		}
+
+		avg_bw = calc_bw(size, linet, sensor_h + sensor_vb);
+		peak_bw = is_dc_mode(job) ? 0 : calc_bw(size, linet, sensor_h);
+
+		dst_port = qos_desc->dma_desc[i].dst_port;
+		job->raw_mmqos[dst_port].peak_bw += to_qos_icc(peak_bw);
+		job->raw_mmqos[dst_port].avg_bw += to_qos_icc_ratio(avg_bw);
+
+		if (CAM_DEBUG_ENABLED(MMQOS))
+			pr_info("%s: %s: req_seq(%d) dst_port:%d uid:%d avg_bw:%dB/s, peak_bw:%dB/s (size:%d height:%d vb:%d)\n",
+				__func__, qos_desc->dma_desc[i].dma_name, job->req_seq,
+				dst_port, in->uid.id, avg_bw, peak_bw, size, sensor_h, sensor_vb);
+	}
+
+	return 0;
+}
+
+static int fill_raw_stats_qos(struct mtk_cam_job *job,
+							u32 sensor_h, u32 sensor_vb, u64 linet)
+{
+	struct mtkcam_qos_desc *qos_desc;
+	unsigned int size, dst_port;
+	u32 peak_bw, avg_bw;
+	int i, j;
+
+	for (i = 0; i < ARRAY_SIZE(mmqos_stats_table); i++) {
+		qos_desc = &mmqos_stats_table[i];
+
+		for (j = 0; j < qos_desc->desc_size; j++) {
+			CALL_PLAT_V4L2(get_meta_stats_size, qos_desc->dma_desc[j].src_port, &size);
+			if (!size)
+				break;
+
+			if (WARN_ON(size > MMQOS_SIZE_WARNING)) {
+				pr_info("%s: %s: req_seq(%d) size too large(%d), please check\n",
+					__func__,
+					qos_desc->dma_desc[i].dma_name,
+					job->req_seq, size);
+				continue;
+			}
+
+			avg_bw = calc_bw(size, linet, sensor_h + sensor_vb);
+			peak_bw = is_dc_mode(job) ? 0 : avg_bw;
+
+			dst_port = qos_desc->dma_desc[j].dst_port;
+			if (qos_desc->dma_desc[j].domain == RAW_DOMAIN) {
+				job->raw_mmqos[dst_port].peak_bw += to_qos_icc(peak_bw);
+				job->raw_mmqos[dst_port].avg_bw += to_qos_icc_ratio(avg_bw);
+			} else {
+				job->yuv_mmqos[dst_port].peak_bw += to_qos_icc(peak_bw);
+				job->yuv_mmqos[dst_port].avg_bw += to_qos_icc_ratio(avg_bw);
+			}
+
+			if (CAM_DEBUG_ENABLED(MMQOS))
+				pr_info("%s: %s: req_seq(%d) dst_port:%d avg_bw:%dB/s, peak_bw:%dB/s (size:%d height:%d)\n",
+					__func__, qos_desc->dma_desc[j].dma_name, job->req_seq,
+					dst_port, avg_bw, peak_bw, size, sensor_h);
+		}
+	}
+
+	return 0;
+}
+
+void mtk_cam_fill_qos(struct req_buffer_helper *helper)
+{
+	struct mtkcam_ipi_frame_param *fp = helper->fp;
+	struct mtk_cam_job *job = helper->job;
+	u32 senser_vb, sensor_h;
+	u64 avg_linet;
+	int i;
+
+	memset(job->raw_mmqos, 0, sizeof(job->raw_mmqos));
+	memset(job->yuv_mmqos, 0, sizeof(job->yuv_mmqos));
+	avg_linet = get_line_time(job);
+	senser_vb = get_sensor_vb(job);
+	sensor_h = get_sensor_h(job);
+
+	if (avg_linet == 0 || senser_vb == 0 || sensor_h == 0) {
+		pr_info("%s: wrong sensor param h/vb/linetime: %d/%d/%llu",
+			__func__, sensor_h, senser_vb, avg_linet);
+		return;
+	}
+
+	for (i = 0; i < helper->io_idx; i++)
+		fill_raw_out_qos(job, &fp->img_outs[i], sensor_h, senser_vb, avg_linet);
+
+	for (i = 0; i < helper->ii_idx; i++)
+		fill_raw_in_qos(job, &fp->img_ins[i], sensor_h, senser_vb, avg_linet);
+
+	fill_raw_stats_qos(job, sensor_h, senser_vb, avg_linet);
+}
+
+static bool apply_qos_chk(
+		u32 new_avg, u32 new_peak, u32 *applied, u32 *pending)
+{
+	u32 bw = (new_peak > 0) ? new_peak : new_avg;
+	bool ret = false;
+
+	if (bw > *applied) {
+		*applied = new_peak;
+		*pending = 0;
+		ret = true;
+	} else if (bw < *applied) {
+		if (*pending > 0 && bw >= *pending) {
+			*applied = new_peak;
+			*pending = 0;
+			ret = true;
+		} else {
+			*pending = new_peak;
+			ret = false;
+		}
+	}
+
+	return ret;
+}
+
+/* threaded irq context */
+int mtk_cam_apply_qos(struct mtk_cam_job *job)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtk_cam_device *cam = ctx->cam;
+	struct mtk_cam_engines *eng = &cam->engines;
+	struct mtk_raw_device *raw_dev;
+	struct mtk_yuv_device *yuv_dev;
+	int raw_num = eng->num_raw_devices;
+	unsigned long submask;
+	u32 a_bw, p_bw, used_raw_num;
+	bool apply;
+	int i, j;
+
+	used_raw_num = get_used_raw_num(job);
+	submask = bit_map_subset_of(MAP_HW_RAW, ctx->used_engine);
+	for (i = 0; i < raw_num && submask; i++, submask >>= 1) {
+		if (!(submask & 0x1))
+			continue;
+
+		raw_dev = dev_get_drvdata(eng->raw_devs[i]);
+		for (j = 0; j < SMI_PORT_RAW_NUM; j++) {
+			a_bw = job->raw_mmqos[j].avg_bw / used_raw_num;
+			p_bw = job->raw_mmqos[j].peak_bw / used_raw_num;
+			apply = apply_qos_chk(a_bw, p_bw,
+					&raw_dev->qos.cam_path[j].applied_bw,
+					&raw_dev->qos.cam_path[j].pending_bw);
+			if (apply)
+				mtk_icc_set_bw(raw_dev->qos.cam_path[j].path, a_bw, p_bw);
+
+			if (CAM_DEBUG_ENABLED(MMQOS))
+				pr_info("%s: req_seq:%d %s raw-%d icc_path:%s avg/peak:%u/%u(KB/s) applied/pending:%u/%u(KB/s)\n",
+						__func__, job->req_seq,
+						apply ? "APPLY" : "BYPASS", i,
+						raw_dev->qos.cam_path[j].name, a_bw, p_bw,
+						raw_dev->qos.cam_path[j].applied_bw,
+						raw_dev->qos.cam_path[j].pending_bw);
+		}
+
+		yuv_dev = dev_get_drvdata(eng->yuv_devs[i]);
+		for (j = 0; j < SMI_PORT_YUV_NUM; j++) {
+			a_bw = job->yuv_mmqos[j].avg_bw / used_raw_num;
+			p_bw = job->yuv_mmqos[j].peak_bw / used_raw_num;
+			apply = apply_qos_chk(a_bw, p_bw,
+				&yuv_dev->qos.cam_path[j].applied_bw,
+				&yuv_dev->qos.cam_path[j].pending_bw);
+			if (apply)
+				mtk_icc_set_bw(yuv_dev->qos.cam_path[j].path, a_bw, p_bw);
+
+			if (CAM_DEBUG_ENABLED(MMQOS))
+				pr_info("%s: req_seq:%d %s yuv-%d icc_path:%s avg/peak:%u/%u(KB/s) applied/pending:%u/%u(KB/s)\n",
+						__func__, job->req_seq,
+						apply ? "APPLY" : "BYPASS", i,
+						yuv_dev->qos.cam_path[j].name, a_bw, p_bw,
+						yuv_dev->qos.cam_path[j].applied_bw,
+						yuv_dev->qos.cam_path[j].pending_bw);
+		}
+	}
+
+	//thottling
+	mtk_mmqos_wait_throttle_done();
+
+	return 0;
+}
+
+/* reset after disable irq */
+int mtk_cam_reset_qos(struct device *dev, struct mtk_camsys_qos *qos)
 {
 	struct mtk_camsys_qos_path *cam_path;
 	int i;
 
-	for (i = 0, cam_path = qos->cam_path; i < qos->n_path; i++, cam_path++)
-		mtk_icc_set_bw(cam_path->path, 0, 0);
+	for (i = 0, cam_path = qos->cam_path; i < qos->n_path; i++, cam_path++) {
+		if (cam_path->applied_bw > 0) {
+			mtk_icc_set_bw(cam_path->path, 0, 0);
+			cam_path->applied_bw = 0;
+			cam_path->pending_bw = 0;
+		}
+	}
+
+	dev_info(dev, "mmqos reset done\n");
 	return 0;
 }
 

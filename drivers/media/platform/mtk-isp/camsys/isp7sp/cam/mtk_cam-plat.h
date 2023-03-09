@@ -9,6 +9,19 @@
 #include <linux/types.h>
 #include <linux/media.h>
 
+enum STATS_DMA_PORT {
+	PORT_UNKNOWN = 0,
+	PORT_CQI,
+	PORT_AAO,
+	PORT_AAHO,
+	PORT_TSFSO,
+	PORT_LTMSO,
+	PORT_LTMSHO,
+	PORT_FLKO,
+	PORT_TCYSO,
+	PORT_AFO,
+};
+
 enum mraw_dmao_id {
 	imgo_m1 = 0,
 	imgbo_m1,
@@ -89,6 +102,8 @@ struct plat_v4l2_data {
 
 	int (*set_meta_stats_info)(int ipi_id, void *addr, size_t size,
 				   const struct set_meta_stats_info_param *p);
+	int (*get_meta_stats_size)(int dma_port, int *size);
+
 	int (*set_sv_meta_stats_info)(int ipi_id, void *addr, struct dma_info *info);
 	int (*set_mraw_meta_stats_info)(int ipi_id, void *addr, struct dma_info *info);
 	int (*get_mraw_stats_cfg_param)(void *addr, struct mraw_stats_cfg_param *param);
