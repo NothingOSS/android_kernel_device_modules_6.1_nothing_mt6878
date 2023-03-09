@@ -1336,14 +1336,8 @@ static void sys_addon_connect(struct mml_sys *sys,
 	ddp_command_make(cfg->task, cfg->pipe, pkt);
 
 	if (cfg->task->config->info.mode == MML_MODE_DDP_ADDON &&
-		cfg->task->config->info.dest[0].pq_config.en_hdr) {
-		mml_log("%s Aaron_0 task %p pipe %u pkt %p job %u",
-			__func__, cfg->task, cfg->pipe, pkt, cfg->task->job.jobid);
+		cfg->task->config->info.dest[0].pq_config.en_hdr)
 		wait_for_completion(&cfg->task->pq_task->hdr_curve_ready[cfg->pipe]);
-		/*wait_for_completion(&task->pq_task->hdr_hist_flush[pipe]);*/
-		mml_log("%s Aaron_1 task %p pipe %u pkt %p job %u",
-			__func__, cfg->task, cfg->pipe, pkt, cfg->task->job.jobid);
-	}
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	if (mml_dle_delay)
