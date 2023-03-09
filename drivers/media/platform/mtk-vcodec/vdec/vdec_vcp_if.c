@@ -909,6 +909,7 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 	struct mtk_vcodec_dev *dev;
 	struct list_head *p, *q;
 	struct mtk_vcodec_ctx *ctx = NULL;
+	struct mtk_vcodec_ctx *lat_ctx, *core_ctx;
 	int timeout = 0;
 	struct vdec_inst *inst = NULL;
 	int val, wait_cnt, i;
@@ -928,6 +929,16 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 				break;
 			}
 		}
+
+		lat_ctx = mtk_vcodec_get_curr_ctx(dev, MTK_VDEC_LAT);
+		core_ctx = mtk_vcodec_get_curr_ctx(dev, MTK_VDEC_CORE);
+		mtk_v4l2_debug(0, "dec power before VCP_EVENT_STOP: LAT %d (ctx %d)(clk ref %d), CORE %d (ctx %d)(clk red %d), ao %d, ref %d\n",
+			dev->dec_is_power_on[MTK_VDEC_LAT], lat_ctx ? lat_ctx->id : -1,
+			atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_LAT]),
+			dev->dec_is_power_on[MTK_VDEC_CORE], core_ctx ? core_ctx->id : -1,
+			atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_CORE]),
+			dev->dec_ao_pw_cnt, atomic_read(&dev->dec_larb_ref_cnt));
+
 		mutex_lock(&dev->ctx_mutex);
 		// check release all ctx lock
 		list_for_each_safe(p, q, &dev->ctx_list) {
@@ -945,6 +956,16 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 		while (dev->dec_ao_pw_cnt > 0) {
 			dev->dec_ao_pw_cnt--;
 			mtk_vcodec_dec_pw_off(&dev->pm);
+		}
+		if (atomic_read(&dev->dec_larb_ref_cnt) != 0) {
+			lat_ctx = mtk_vcodec_get_curr_ctx(dev, MTK_VDEC_LAT);
+			core_ctx = mtk_vcodec_get_curr_ctx(dev, MTK_VDEC_CORE);
+			mtk_v4l2_err("dec power after VCP_EVENT_STOP: LAT %d (ctx %d)(clk ref %d), CORE %d (ctx %d)(clk red %d), ao %d, ref %d\n",
+				dev->dec_is_power_on[MTK_VDEC_LAT], lat_ctx ? lat_ctx->id : -1,
+				atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_LAT]),
+				dev->dec_is_power_on[MTK_VDEC_CORE], core_ctx ? core_ctx->id : -1,
+				atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_CORE]),
+				dev->dec_ao_pw_cnt, atomic_read(&dev->dec_larb_ref_cnt));
 		}
 		dev->codec_stop_done = true;
 		break;
