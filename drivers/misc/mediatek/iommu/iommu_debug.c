@@ -532,15 +532,18 @@ void mtk_iommu_debug_reset(void)
 }
 EXPORT_SYMBOL_GPL(mtk_iommu_debug_reset);
 
-static int mtk_iommu_get_tf_port_idx(int tf_id,
-	enum mtk_iommu_type type, int id)
+static int mtk_iommu_get_tf_port_idx(int tf_id, u32 type, int id)
 {
 	int i;
 	u32 vld_id, port_nr;
 	const struct mtk_iommu_port *port_list;
 	int (*mm_tf_is_gce_videoup)(u32 port_tf, u32 vld_tf);
+	u32 smmu_type = type;
 
-	if (type < MM_IOMMU || type >= TYPE_NUM) {
+	if (smmu_v3_enable && smmu_type >= SMMU_TYPE_NUM) {
+		pr_info("%s fail, invalid type %d\n", __func__, smmu_type);
+		return m4u_data->plat_data->port_nr[MM_SMMU];
+	} else if (!smmu_v3_enable && type >= TYPE_NUM) {
 		pr_info("%s fail, invalid type %d\n", __func__, type);
 		return m4u_data->plat_data->port_nr[MM_IOMMU];
 	}
@@ -612,8 +615,12 @@ static void report_custom_fault(
 	int idx;
 	u32 port_nr;
 	const struct mtk_iommu_port *port_list;
+	u32 smmu_type = type;
 
-	if (type < MM_IOMMU || type >= TYPE_NUM) {
+	if (smmu_v3_enable && smmu_type >= SMMU_TYPE_NUM) {
+		pr_info("%s fail, invalid type %d\n", __func__, smmu_type);
+		return;
+	} else if (!smmu_v3_enable && type >= TYPE_NUM) {
 		pr_info("%s fail, invalid type %d\n", __func__, type);
 		return;
 	}
@@ -781,7 +788,7 @@ void mtk_smmu_get_fault_idx(int tf_id, u32 smmu_id,
 
 	pr_info("%s smmu_id:%d, tf_id:0x%x\n", __func__, smmu_id, tf_id);
 
-	if (smmu_id < MM_SMMU || smmu_id > APU_SMMU) {
+	if (smmu_id > APU_SMMU) {
 		pr_info("%s fail, invalid type %d\n", __func__, smmu_id);
 		return;
 	}
@@ -1135,6 +1142,7 @@ static void ptdump(struct seq_file *s,
 		bits_per_level = PAGE_SHIFT - ilog2(sizeof(arm_lpae_iopte));
 		levels = DIV_ROUND_UP(va_bits, bits_per_level);
 
+		memset(&data_sva, 0, sizeof(data_sva));
 		data_sva.start_level = ARM_LPAE_MAX_LEVELS - levels;
 		data_sva.pgd_bits = va_bits - (bits_per_level * (levels - 1));
 		data_sva.bits_per_level = bits_per_level;
