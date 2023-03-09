@@ -296,22 +296,24 @@ static void mtk_cam_mraw_set_dense_fmt(
 	}
 }
 
-bool mtk_cam_mraw_is_zero_fbc_cnt(struct mtk_cam_ctx *ctx,
-	struct mtk_mraw_device *mraw_dev)
+int mtk_cam_mraw_is_zero_fbc_cnt(struct mtk_mraw_device *mraw_dev)
 {
-	bool result = false;
 	unsigned int imgo_fbc_cnt = 0, imgbo_fbc_cnt = 0, cpio_fbc_cnt = 0;
 
-	imgo_fbc_cnt = MRAW_READ_BITS(mraw_dev->base + REG_MRAW_FBC_IMGO_CTL2,
+	imgo_fbc_cnt = MRAW_READ_BITS(
+		mraw_dev->base_inner + REG_MRAW_FBC_IMGO_CTL2,
 		MRAW_FBC_IMGO_M1_CTRL2, FBC_IMGO_M1_FBC_CNT);
-	imgbo_fbc_cnt =  MRAW_READ_BITS(mraw_dev->base + REG_MRAW_FBC_IMGBO_CTL2,
+	imgbo_fbc_cnt =  MRAW_READ_BITS(
+		mraw_dev->base_inner + REG_MRAW_FBC_IMGBO_CTL2,
 		MRAW_FBC_IMGBO_M1_CTRL2, FBC_IMGBO_M1_FBC_CNT);
-	cpio_fbc_cnt = MRAW_READ_BITS(mraw_dev->base + REG_MRAW_FBC_CPIO_CTL2,
+	cpio_fbc_cnt = MRAW_READ_BITS(
+		mraw_dev->base_inner + REG_MRAW_FBC_CPIO_CTL2,
 		MRAW_FBC_CPIO_M1_CTRL2, FBC_CPIO_M1_FBC_CNT);
 
 	if (!(imgo_fbc_cnt || imgbo_fbc_cnt || cpio_fbc_cnt))
-		result = true;
-	return result;
+		return 1;
+
+	return 0;
 }
 
 static void mtk_cam_mraw_set_concatenation_fmt(
@@ -1075,11 +1077,6 @@ int mtk_cam_mraw_dev_stream_on(struct mtk_mraw_device *mraw_dev, bool on)
 	if (on) {
 		ret = mtk_cam_mraw_cq_enable(mraw_dev) ||
 			mtk_cam_mraw_top_enable(mraw_dev);
-#ifdef CHECK_MRAW_NODEQ
-		mraw_dev->wcnt_no_dup_cnt = 0;
-		mraw_dev->last_wcnt = 0;
-
-#endif
 	} else {
 		/* reset enqueued status */
 		atomic_set(&mraw_dev->is_enqueued, 0);
@@ -1279,26 +1276,6 @@ static void mraw_irq_handle_tg_overrun_err(struct mtk_mraw_device *mraw_dev,
 #endif
 }
 
-void mraw_check_fbc_no_deque(struct mtk_cam_ctx *ctx,
-	struct mtk_mraw_device *mraw_dev,
-	int fbc_cnt, int write_cnt, unsigned int dequeued_frame_seq_no)
-{
-	/* Check for enqued but no deque */
-	if (fbc_cnt != 0) {
-		if (mraw_dev->last_wcnt != write_cnt) {
-			mraw_dev->last_wcnt = write_cnt;
-			mraw_dev->wcnt_no_dup_cnt = 0;
-		} else {
-			mraw_dev->wcnt_no_dup_cnt++;
-			if (mraw_dev->wcnt_no_dup_cnt % 10 == 0) {
-				mtk_mraw_print_register_status(mraw_dev);
-				mtk_cam_seninf_dump(ctx->seninf, dequeued_frame_seq_no, false);
-				mraw_dev->wcnt_no_dup_cnt = 0;
-			}
-		}
-	}
-}
-
 static void mraw_handle_error(struct mtk_mraw_device *mraw_dev,
 			     struct mtk_camsys_irq_info *data)
 {
@@ -1327,12 +1304,7 @@ static irqreturn_t mtk_irq_mraw(int irq, void *data)
 	unsigned int imgo_overr_status, imgbo_overr_status, cpio_overr_status;
 	unsigned int irq_flag = 0;
 	bool wake_thread = 0;
-#ifdef CHECK_MRAW_NODEQ
-	unsigned int fbc_ctrl2_imgo;
 
-	fbc_ctrl2_imgo =
-	readl_relaxed(mraw_dev->base_inner + REG_MRAW_FBC_IMGO_CTL2);
-#endif
 	irq_status	= readl_relaxed(mraw_dev->base + REG_MRAW_CTL_INT_STATUS);
 	/*
 	 * [ISP 7.0/7.1] HW Bug Workaround: read MRAWCTL_INT2_STATUS every irq
@@ -1397,8 +1369,7 @@ static irqreturn_t mtk_irq_mraw(int irq, void *data)
 		mraw_dev->sof_count++;
 		dev_dbg(dev, "sof cnt:%d\n", mraw_dev->sof_count);
 
-		/* TODO: check if mraw's fbc is empty */
-		// irq_info.fbc_empty = 1;
+		irq_info.fbc_empty = mtk_cam_mraw_is_zero_fbc_cnt(mraw_dev);
 		engine_handle_sof(&mraw_dev->cq_ref, irq_info.frame_idx_inner);
 	}
 

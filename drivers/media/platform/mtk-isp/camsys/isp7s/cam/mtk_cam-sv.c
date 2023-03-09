@@ -12,6 +12,7 @@
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
 #include <linux/vmalloc.h>
+#include <linux/bitops.h>
 
 #include <soc/mediatek/smi.h>
 
@@ -165,20 +166,30 @@ static int sv_process_fsm(struct mtk_camsv_device *sv_dev,
 		}
 
 		if (irq_info->done_tags & sv_dev->last_done_tag) {
-			ret = engine_fsm_hw_done(fsm, &cookie_done);
-			if (ret > 0 && sv_dev->group_handled == sv_dev->used_group) {
-				irq_info->cookie_done = cookie_done;
-				sv_dev->group_handled = 0;
+			if (sv_dev->group_handled == sv_dev->used_group) {
+				ret = engine_fsm_hw_done(fsm, &cookie_done);
+				if (ret > 0) {
+					irq_info->cookie_done = cookie_done;
+					sv_dev->group_handled = 0;
+				} else {
+					/* handle for fake p1 done */
+					dev_info_ratelimited(sv_dev->dev, "warn: fake done in/out: 0x%x 0x%x\n",
+								 irq_info->frame_idx_inner,
+								 irq_info->frame_idx);
+					irq_info->irq_type &= ~done_type;
+					irq_info->cookie_done = 0;
+					sv_dev->group_handled = 0;
+				}
 			} else {
-				dev_info(sv_dev->dev, "%s: fake done or not all group done(frame_no:%d_%d/group:0x%x_0x%x/cookie_done:%d)\n",
+				dev_info_ratelimited(sv_dev->dev, "%s: warn: last group done comes without all group done received: in/out: 0x%x 0x%x group used/handled: 0x%x 0x%x\n",
 					__func__,
 					irq_info->frame_idx,
 					irq_info->frame_idx_inner,
 					sv_dev->used_group,
-					sv_dev->group_handled,
-					cookie_done);
+					sv_dev->group_handled);
 				irq_info->irq_type &= ~done_type;
 				irq_info->cookie_done = 0;
+				sv_dev->group_handled = 0;
 			}
 		} else {
 			irq_info->irq_type &= ~done_type;
@@ -643,17 +654,15 @@ void mtk_cam_sv_vf_reset(struct mtk_camsv_device *sv_dev)
 	dev_info(sv_dev->dev, "preisp sv_vf_reset");
 }
 
-bool mtk_cam_sv_is_zero_fbc_cnt(struct mtk_camsv_device *sv_dev,
+int mtk_cam_sv_is_zero_fbc_cnt(struct mtk_camsv_device *sv_dev,
 	unsigned int tag_idx)
 {
-	bool result = false;
-
-	if (CAMSV_READ_BITS(sv_dev->base +
+	if (CAMSV_READ_BITS(sv_dev->base_inner +
 			REG_CAMSVCENTRAL_FBC1_TAG1 + CAMSVCENTRAL_FBC1_TAG_SHIFT * tag_idx,
 			CAMSVCENTRAL_FBC1_TAG1, FBC_CNT_TAG1) == 0)
-		result = true;
+		return 1;
 
-	return result;
+	return 0;
 }
 
 void mtk_cam_sv_check_fbc_cnt(struct mtk_camsv_device *sv_dev,
@@ -1220,7 +1229,8 @@ static irqreturn_t mtk_irq_camsv_sof(int irq, void *data)
 	irq_info.ts_ns = ktime_get_boottime_ns();
 	irq_info.frame_idx = dequeued_imgo_seq_no;
 	irq_info.frame_idx_inner = dequeued_imgo_seq_no_inner;
-	irq_info.fbc_empty = 0; /* TODO */
+	irq_info.fbc_empty = ffs(sv_dev->last_tag) ?
+		mtk_cam_sv_is_zero_fbc_cnt(sv_dev, ffs(sv_dev->last_tag) - 1) : 0;
 
 	if (irq_sof_status & CAMSVCENTRAL_SOF_ST_TAG1)
 		irq_info.sof_tags |= (1 << 0);
@@ -1247,7 +1257,8 @@ static irqreturn_t mtk_irq_camsv_sof(int irq, void *data)
 	sv_dev->sof_timestamp = ktime_get_boottime_ns();
 	irq_flag = irq_info.irq_type;
 
-	engine_handle_sof(&sv_dev->cq_ref, irq_info.frame_idx_inner);
+	if (irq_info.sof_tags & sv_dev->first_tag)
+		engine_handle_sof(&sv_dev->cq_ref, irq_info.frame_idx_inner);
 
 	if (irq_flag && push_msgfifo(sv_dev, &irq_info) == 0)
 		wake_thread = 1;

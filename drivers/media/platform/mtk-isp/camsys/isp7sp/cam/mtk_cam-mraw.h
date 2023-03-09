@@ -13,7 +13,6 @@
 #include "mtk_cam-engine.h"
 
 #define USING_MRAW_SCQ 1
-#define CHECK_MRAW_NODEQ 1
 #define MRAW_TG_PIXEL_MODE 3
 
 #define MRAW_WRITE_BITS(RegAddr, RegName, FieldName, FieldValue) do {\
@@ -144,10 +143,6 @@ struct mtk_mraw_device {
 	struct notifier_block notifier_blk;
 
 	atomic_t is_enqueued;
-#ifdef CHECK_MRAW_NODEQ
-	u64 last_wcnt;
-	u64 wcnt_no_dup_cnt;
-#endif
 };
 
 void mraw_reset(struct mtk_mraw_device *mraw_dev);
@@ -183,13 +178,7 @@ void mtk_cam_mraw_get_mbn_size(struct mtk_cam_device *cam, unsigned int pipe_id,
 	unsigned int *width, unsigned int *height);
 void mtk_cam_mraw_get_cpi_size(struct mtk_cam_device *cam, unsigned int pipe_id,
 	unsigned int *width, unsigned int *height);
-bool mtk_cam_mraw_is_zero_fbc_cnt(struct mtk_cam_ctx *ctx,
-	struct mtk_mraw_device *mraw_dev);
-#ifdef CHECK_MRAW_NODEQ
-void mraw_check_fbc_no_deque(struct mtk_cam_ctx *ctx,
-	struct mtk_mraw_device *mraw_dev,
-	int fbc_cnt, int write_cnt, unsigned int dequeued_frame_seq_no);
-#endif
+int mtk_cam_mraw_is_zero_fbc_cnt(struct mtk_mraw_device *mraw_dev);
 
 extern struct platform_driver mtk_cam_mraw_driver;
 

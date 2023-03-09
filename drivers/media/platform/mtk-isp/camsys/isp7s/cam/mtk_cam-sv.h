@@ -204,7 +204,7 @@ unsigned int mtk_cam_get_sv_tag_index(
 int mtk_cam_sv_dev_pertag_write_rcnt(
 	struct mtk_camsv_device *sv_dev, unsigned int tag_idx);
 void mtk_cam_sv_vf_reset(struct mtk_camsv_device *sv_dev);
-bool mtk_cam_sv_is_zero_fbc_cnt(struct mtk_camsv_device *sv_dev, unsigned int tag_idx);
+int mtk_cam_sv_is_zero_fbc_cnt(struct mtk_camsv_device *sv_dev, unsigned int tag_idx);
 void mtk_cam_sv_check_fbc_cnt(
 	struct mtk_camsv_device *sv_dev, unsigned int tag_idx);
 int mtk_cam_sv_frame_no_inner(struct mtk_camsv_device *sv_dev);

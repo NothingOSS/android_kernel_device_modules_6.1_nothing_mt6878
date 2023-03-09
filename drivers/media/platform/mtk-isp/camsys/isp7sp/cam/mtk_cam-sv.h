@@ -161,10 +161,9 @@ struct mtk_camsv_device {
 	unsigned int active_group_info[MAX_SV_HW_GROUPS];
 	unsigned int first_tag;
 	unsigned int last_tag;
-	unsigned int last_done_tag;
 
-	unsigned int group_handled;
-	unsigned int used_group;
+	unsigned int handled_tags;
+	unsigned int used_tags;
 
 	int fifo_size;
 	void *msg_buffer;
@@ -201,7 +200,8 @@ unsigned int mtk_cam_get_sv_tag_index(
 int mtk_cam_sv_dev_pertag_write_rcnt(
 	struct mtk_camsv_device *sv_dev, unsigned int tag_idx);
 void mtk_cam_sv_vf_reset(struct mtk_camsv_device *sv_dev);
-bool mtk_cam_sv_is_zero_fbc_cnt(struct mtk_camsv_device *sv_dev, unsigned int tag_idx);
+int mtk_cam_sv_is_zero_fbc_cnt(
+	struct mtk_camsv_device *sv_dev, unsigned int enable_tags);
 void mtk_cam_sv_check_fbc_cnt(
 	struct mtk_camsv_device *sv_dev, unsigned int tag_idx);
 void mtk_cam_sv_fill_tag_info(struct mtk_camsv_tag_info *tag_info,
