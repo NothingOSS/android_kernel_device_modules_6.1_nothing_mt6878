@@ -1143,14 +1143,9 @@ static int mtk_ccu_get_power(struct mtk_ccu *ccu, struct device *dev)
 	}
 
 	if (ccu->ccu_version == CCU_VER_ISP7SP) {
-		ret = pm_runtime_get_sync(ccu->dev_cammainpwr);
-		if (ret != 0) {
-			dev_err(dev, "pm_runtime_get_sync cammainpwr failed %d", ret);
-			rc = pm_runtime_put_sync(dev);
-			if (rc != 0)
-				dev_err(dev, "pm_runtime_put_sync ao failed %d", ret);
-			return ret;
-		}
+		rc = pm_runtime_get_sync(ccu->dev_cammainpwr);
+		LOG_DBG("CCU power-on cammainpwr %d\n", rc);
+		ccu->cammainpwr_powered = (rc == 0);
 
 		sram_con = ((uint8_t *)ccu->spm_base)+CCU_SLEEP_SRAM_CON;
 		writel(readl(sram_con) & ~CCU_SLEEP_SRAM_PDN, sram_con);
@@ -1168,9 +1163,12 @@ static void mtk_ccu_put_power(struct mtk_ccu *ccu, struct device *dev)
 		sram_con = ((uint8_t *)ccu->spm_base)+CCU_SLEEP_SRAM_CON;
 		writel(readl(sram_con) | CCU_SLEEP_SRAM_PDN, sram_con);
 
-		ret = pm_runtime_put_sync(ccu->dev_cammainpwr);
-		if (ret != 0)
-			dev_err(dev, "pm_runtime_put_sync cammainpwr failed %d", ret);
+		if (ccu->cammainpwr_powered) {
+			ret = pm_runtime_put_sync(ccu->dev_cammainpwr);
+			if (ret != 0)
+				dev_err(dev, "pm_runtime_put_sync cammainpwr failed %d", ret);
+			ccu->cammainpwr_powered = false;
+		}
 	}
 
 	ret = pm_runtime_put_sync(dev);
