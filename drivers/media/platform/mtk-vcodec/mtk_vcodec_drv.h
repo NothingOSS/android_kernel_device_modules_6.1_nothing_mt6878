@@ -768,6 +768,7 @@ struct mtk_vcodec_dev {
 	int dec_m4u_ports[NUM_MAX_VDEC_M4U_PORT];
 	atomic_t dec_clk_ref_cnt[MTK_VDEC_HW_NUM];
 	atomic_t dec_larb_ref_cnt;
+	unsigned int dec_ao_pw_cnt;
 
 	unsigned long id_counter;
 

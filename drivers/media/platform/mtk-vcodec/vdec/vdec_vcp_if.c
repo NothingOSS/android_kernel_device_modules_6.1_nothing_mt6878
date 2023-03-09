@@ -729,9 +729,10 @@ int vcp_dec_ipi_handler(void *arg)
 				vdec_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 				break;
 			case VCU_IPIMSG_DEC_LOCK_CORE:
-				if (msg->payload)
+				if (msg->payload) {
 					mtk_vcodec_dec_pw_on(&vcu->ctx->dev->pm);
-				else {
+					dev->dec_ao_pw_cnt++;
+				} else {
 					get_dvfs_data(vcu->ctx->dev, msg->no_need_put);
 					vdec_decode_prepare(vcu->ctx, MTK_VDEC_CORE);
 					atomic_set(&dev->dec_hw_active[MTK_VDEC_CORE], 1);
@@ -740,9 +741,10 @@ int vcp_dec_ipi_handler(void *arg)
 				vdec_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 				break;
 			case VCU_IPIMSG_DEC_UNLOCK_CORE:
-				if (msg->payload)
+				if (msg->payload) {
+					dev->dec_ao_pw_cnt--;
 					mtk_vcodec_dec_pw_off(&vcu->ctx->dev->pm);
-				else {
+				} else {
 					get_dvfs_data(vcu->ctx->dev, msg->no_need_put);
 					atomic_set(&dev->dec_hw_active[MTK_VDEC_CORE], 0);
 					vdec_decode_unprepare(vcu->ctx, MTK_VDEC_CORE);
@@ -940,6 +942,10 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 			}
 		}
 		mutex_unlock(&dev->ctx_mutex);
+		while (dev->dec_ao_pw_cnt > 0) {
+			dev->dec_ao_pw_cnt--;
+			mtk_vcodec_dec_pw_off(&dev->pm);
+		}
 		dev->codec_stop_done = true;
 		break;
 	case VCP_EVENT_SUSPEND:
