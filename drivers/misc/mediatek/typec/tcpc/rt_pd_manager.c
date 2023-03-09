@@ -10,6 +10,7 @@
 #include <linux/power_supply.h>
 #include <linux/usb/typec.h>
 #include <linux/usb/typec_mux.h>
+#include <linux/usb/typec_dp.h>
 
 #include "inc/tcpci_typec.h"
 #if IS_ENABLED(CONFIG_MTK_CHARGER)
@@ -62,11 +63,16 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 	enum typec_pwr_opmode opmode = TYPEC_PWR_MODE_USB;
 	uint32_t partner_vdos[VDO_MAX_NR];
 	struct typec_mux_state state;
+	struct typec_displayport_data dp_data;
 #if CONFIG_WATER_DETECTION
 #if IS_ENABLED(CONFIG_MTK_CHARGER)
 	union power_supply_propval val = {.intval = 0};
 #endif /* CONFIG_MTK_CHARGER */
 #endif /* CONFIG_WATER_DETECTION */
+
+	dp_data.status = 0;
+	dp_data.conf = 0;
+	state.mode = 0;
 
 	switch (event) {
 	case TCP_NOTIFY_VBUS_SHORT_CC:
@@ -86,10 +92,6 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 	case TCP_NOTIFY_TYPEC_STATE:
 		old_state = noti->typec_state.old_state;
 		new_state = noti->typec_state.new_state;
-
-		state.data = noti;
-		state.mode = TCP_NOTIFY_TYPEC_STATE;
-		typec_mux_set(rpmd->typec_port->mux, &state);
 
 		if (old_state == TYPEC_UNATTACHED &&
 		    (new_state == TYPEC_ATTACHED_SNK ||
@@ -352,13 +354,17 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 				    __func__, noti->cable_type.type);
 		break;
 	case TCP_NOTIFY_AMA_DP_HPD_STATE:
-		state.data = noti;
-		state.mode = TCP_NOTIFY_AMA_DP_HPD_STATE;
+		dev_info(rpmd->dev, "%s Notify DP_HPD_STATE\n", __func__);
+		if (noti->ama_dp_hpd_state.irq)
+			dp_data.status = dp_data.status | DP_STATUS_IRQ_HPD;
+		if (noti->ama_dp_hpd_state.state)
+			dp_data.status = dp_data.status | DP_STATUS_HPD_STATE;
+		state.data = &dp_data;
 		typec_mux_set(rpmd->typec_port->mux, &state);
 		break;
 	case TCP_NOTIFY_AMA_DP_STATE:
-		state.mode = TCP_NOTIFY_AMA_DP_STATE;
-		state.data = noti;
+		dp_data.conf = noti->ama_dp_state.pin_assignment;
+		state.data = &dp_data;
 		typec_mux_set(rpmd->typec_port->mux, &state);
 		break;
 	case TCP_NOTIFY_WD0_STATE:

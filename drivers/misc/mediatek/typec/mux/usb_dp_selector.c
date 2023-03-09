@@ -10,7 +10,7 @@
 #include <linux/of_platform.h>
 #include <linux/usb/typec.h>
 #include <linux/usb/typec_mux.h>
-#include "tcpm.h"
+#include <linux/usb/typec_dp.h>
 
 #if IS_ENABLED(CONFIG_MTK_USB_TYPEC_MUX)
 #include "mux_switch.h"
@@ -68,7 +68,16 @@ static int usb_dp_selector_switch_set(struct typec_switch_dev *sw,
 
 	switch (orientation) {
 	case TYPEC_ORIENTATION_NONE:
-		/* Nothing */
+		/* Disconnect HPD */
+		if (uds->is_dp == true) {
+			/* We should clr this bit, since dp-4lane can not work with U3  */
+			uds_clrbits(uds->selector_reg_address, (1 << 19));
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
+			mtk_dp_SWInterruptSet(0x2);
+#endif
+			uds->dp_sw_connect = false;
+			uds->is_dp = false;
+		}
 		break;
 	case TYPEC_ORIENTATION_NORMAL:
 		/* USB NORMAL TX1, DP TX2 */
@@ -127,26 +136,24 @@ static int usb_dp_selector_mux_set(struct typec_mux_dev *mux,
 				struct typec_mux_state *state)
 {
 	struct usb_dp_selector *uds = typec_mux_get_drvdata(mux);
-	struct tcp_notify *data = state->data;
+	struct typec_displayport_data *dp_data = state->data;
 	int ret = 0;
 
-	/*dev_info(uds->dev, "usb_dp_selector_mux_set\n");
-	 *dev_info(uds->dev, "state->mode : %lu\n", state->mode);
-	 *dev_info(uds->dev, "data-> polarity : %d\n", data->ama_dp_state.polarity);
-	 *dev_info(uds->dev, "data-> signal : %d\n", data->ama_dp_state.signal);
-	 *dev_info(uds->dev, "data-> pin_assignment : %d\n", data->ama_dp_state.pin_assignment);
-	 *dev_info(uds->dev, "data-> active : %d\n", data->ama_dp_state.active);
-	 */
+	dev_info(uds->dev, "dp_data->config = %d\n", dp_data->conf);
+	dev_info(uds->dev, "dp_data->status = %d\n", dp_data->status);
+	dev_info(uds->dev, "state->mode = %lu\n", state->mode);
 
-	if (state->mode == TCP_NOTIFY_AMA_DP_STATE) {
+
+	if (dp_data->conf) {
 		uds->is_dp = true;
 
-		if (!data->ama_dp_state.active) {
-			dev_info(uds->dev, "%s Not active\n", __func__);
-			return ret;
-		}
+		/*if (!data->ama_dp_state.active) {
+		 *	dev_info(uds->dev, "%s Not active\n", __func__);
+		 *	return ret;
+		 *}
+		 */
 
-		switch (data->ama_dp_state.pin_assignment) {
+		switch (dp_data->conf) {
 		/* 4-lanes */
 		case 4:
 		case 16:
@@ -156,7 +163,7 @@ static int usb_dp_selector_mux_set(struct typec_mux_dev *mux,
 			case uds_V2:
 				uds_setbits(uds->selector_reg_address, (1 << 19));
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
-				mtk_dp_set_pin_assign(data->ama_dp_state.pin_assignment);
+				mtk_dp_set_pin_assign(dp_data->conf);
 #endif
 				break;
 			default:
@@ -172,7 +179,7 @@ static int usb_dp_selector_mux_set(struct typec_mux_dev *mux,
 			case uds_V2:
 				uds_clrbits(uds->selector_reg_address, (1 << 19));
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
-				mtk_dp_set_pin_assign(data->ama_dp_state.pin_assignment);
+				mtk_dp_set_pin_assign(dp_data->conf);
 #endif
 				break;
 			default:
@@ -183,14 +190,14 @@ static int usb_dp_selector_mux_set(struct typec_mux_dev *mux,
 			dev_info(uds->dev, "%s Pin Assignment not support\n", __func__);
 			break;
 		}
-
 		uds->hdp_state = 0;
 		schedule_delayed_work(&uds->check_wk, msecs_to_jiffies(CHECK_HPD_DELAY));
-	} else if (state->mode == TCP_NOTIFY_AMA_DP_HPD_STATE) {
-		uint8_t irq = data->ama_dp_hpd_state.irq;
-		uint8_t state = data->ama_dp_hpd_state.state;
 
-		dev_info(uds->dev, "TCP_NOTIFY_AMA_DP_HPD_STATE irq:%x state:%x\n",
+	} else if (dp_data->status) {
+		u32 irq = dp_data->status & DP_STATUS_IRQ_HPD;
+		u32 state = dp_data->status & DP_STATUS_HPD_STATE;
+
+		dev_info(uds->dev, "TCP Notify DP HPD irq:%x state:%x\n",
 			irq, state);
 
 		uds->hdp_state = state;
@@ -215,21 +222,6 @@ static int usb_dp_selector_mux_set(struct typec_mux_dev *mux,
 			uds->dp_sw_connect = false;
 		}
 #endif
-	} else if (state->mode == TCP_NOTIFY_TYPEC_STATE) {
-		if ((data->typec_state.old_state == TYPEC_ATTACHED_SRC ||
-			data->typec_state.old_state == TYPEC_ATTACHED_SNK) &&
-			data->typec_state.new_state == TYPEC_UNATTACHED &&
-			uds->is_dp == true) {
-			/* Call DP Event API Ready */
-			dev_info(uds->dev, "Plug Out, Disconnect HPD\n");
-			/* We should clr this bit, since dp-4lane can not work with U3  */
-			uds_clrbits(uds->selector_reg_address, (1 << 19));
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
-			mtk_dp_SWInterruptSet(0x2);
-			uds->dp_sw_connect = false;
-			uds->is_dp = false;
-#endif
-		}
 	}
 
 	return ret;
