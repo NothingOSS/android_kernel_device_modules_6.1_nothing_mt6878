@@ -7276,46 +7276,37 @@ void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 	struct mtk_drm_private *priv = NULL;
 	unsigned long crtc_id = (unsigned long)drm_crtc_index(crtc);
 	unsigned int cur_fps = 0;
-	unsigned int dsi_pll_check_off_offset = 500;
-	unsigned int skip_merge_trigger_offset = 1000;
-	unsigned int v_idle_power_off_offset = 300;
-	unsigned int merge_trigger_offset = 150;
-	unsigned int prefetch_te_offset = 150;
+	unsigned int dsi_pll_check_off_offset = CMDQ_US_TO_TICK(500);
+	unsigned int skip_merge_trigger_offset = CMDQ_US_TO_TICK(1000);
+	unsigned int v_idle_power_off_offset = CMDQ_US_TO_TICK(300);
+	unsigned int merge_trigger_offset = CMDQ_US_TO_TICK(150);
+	unsigned int prefetch_te_offset = CMDQ_US_TO_TICK(150);
 	unsigned int frame_time = 0;
-	int en = 1;
 
-	struct mtk_ddp_comp *output_comp;
-
+	GCE_COND_DECLARE;
 	struct cmdq_operand lop, rop;
-
-	const u16 reg_jump = CMDQ_THR_SPR_IDX1;
 	const u16 var1 = CMDQ_THR_SPR_IDX2;
 	const u16 var2 = CMDQ_THR_SPR_IDX3;
-	//const u16 var3 = 0;
-
-	u32 inst_condi_jump;
-	u64 *inst, jump_pa;
 
 	priv = mtk_crtc->base.dev->dev_private;
+	mtk_crtc->pre_te_cfg.prefetch_te_en =
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PREFETCH_TE);
+	mtk_crtc->pre_te_cfg.merge_trigger_en =
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_CHECK_TRIGGER_MERGE);
+	mtk_crtc->pre_te_cfg.vidle_apsrc_off_en =
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_APSRC_OFF);
+	mtk_crtc->pre_te_cfg.vidle_dsi_pll_off_en =
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_DSI_PLL_OFF);
 
-	mtk_crtc->pre_te_cfg.prefetch_te_en = false;
-	mtk_crtc->pre_te_cfg.vidle_apsrc_off_en = false;
-	mtk_crtc->pre_te_cfg.vidle_dsi_pll_off_en = false;
-	mtk_crtc->pre_te_cfg.merge_trigger_en = false;
-
-	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
-
-	if (crtc_id) {
-		DDPDBG("%s:%d invalid crtc:%ld\n",
-			__func__, __LINE__, crtc_id);
+	if (crtc_id != 0) {
+		DDPDBG("%s:%d invalid crtc:%ld\n", __func__, __LINE__, crtc_id);
 		return;
 	}
 
-	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PREFETCH_TE) &&
-		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_APSRC_OFF) &&
-		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_DSI_PLL_OFF) &&
-		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_CHECK_TRIGGER_MERGE)
-		) {
+	if (!mtk_crtc->pre_te_cfg.prefetch_te_en &&
+	    !mtk_crtc->pre_te_cfg.merge_trigger_en &&
+	    !mtk_crtc->pre_te_cfg.vidle_apsrc_off_en &&
+	    !mtk_crtc->pre_te_cfg.vidle_dsi_pll_off_en) {
 		DDPINFO("no need to start event loop.\n");
 		return;
 	}
@@ -7325,37 +7316,25 @@ void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 		return;
 	}
 
-	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PREFETCH_TE))
+	if (!mtk_crtc->pre_te_cfg.prefetch_te_en)
 		prefetch_te_offset = 0;
-	else
-		mtk_crtc->pre_te_cfg.prefetch_te_en = true;
 
-	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_CHECK_TRIGGER_MERGE))
+	if (!mtk_crtc->pre_te_cfg.merge_trigger_en)
 		merge_trigger_offset = 0;
-	else
-		mtk_crtc->pre_te_cfg.merge_trigger_en = true;
 
-	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_APSRC_OFF) &&
-		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_DSI_PLL_OFF)) {
-		v_idle_power_off_offset = 0;
+	if (!mtk_crtc->pre_te_cfg.vidle_dsi_pll_off_en)
 		dsi_pll_check_off_offset = 0;
-	} else {
-		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_APSRC_OFF)) {
-			mtk_crtc->pre_te_cfg.vidle_apsrc_off_en = true;
-			if (mtk_crtc->pre_te_cfg.merge_trigger_en == true) {
-				if (v_idle_power_off_offset > merge_trigger_offset)
-					v_idle_power_off_offset -= merge_trigger_offset;
-				else {
-					merge_trigger_offset = v_idle_power_off_offset;
-					v_idle_power_off_offset = 0;
-				}
-			}
-		}
 
-		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_DSI_PLL_OFF))
-			mtk_crtc->pre_te_cfg.vidle_dsi_pll_off_en = true;
-		else
-			dsi_pll_check_off_offset = 0;
+	if (!mtk_crtc->pre_te_cfg.vidle_apsrc_off_en)
+		v_idle_power_off_offset = 0;
+
+	if (mtk_crtc->pre_te_cfg.vidle_apsrc_off_en && mtk_crtc->pre_te_cfg.merge_trigger_en) {
+		if (v_idle_power_off_offset > merge_trigger_offset)
+			v_idle_power_off_offset -= merge_trigger_offset;
+		else {
+			merge_trigger_offset = v_idle_power_off_offset;
+			v_idle_power_off_offset = 0;
+		}
 	}
 
 	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params
@@ -7364,18 +7343,15 @@ void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 	} else if (crtc && crtc->state) {
 		cur_fps = drm_mode_vrefresh(&crtc->state->mode);
 	}
-
 	if (cur_fps)
 		frame_time = 1000000 / cur_fps;
-
 	DDPINFO("%s: cur_fps:%d, frame_time:%d\n", __func__, cur_fps, frame_time);
 
-	if (frame_time <=
-		(dsi_pll_check_off_offset
-		+ prefetch_te_offset
-		+ v_idle_power_off_offset
-		+ merge_trigger_offset
-		)) {
+	frame_time = CMDQ_US_TO_TICK(frame_time);
+	if (frame_time <= (dsi_pll_check_off_offset
+			   + v_idle_power_off_offset
+			   + prefetch_te_offset
+			   + merge_trigger_offset)) {
 		mtk_crtc->pre_te_cfg.prefetch_te_en = false;
 		mtk_crtc->pre_te_cfg.vidle_apsrc_off_en = false;
 		mtk_crtc->pre_te_cfg.vidle_dsi_pll_off_en = false;
@@ -7384,170 +7360,110 @@ void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 		return;
 	}
 
-	priv = mtk_crtc->base.dev->dev_private;
 	mtk_crtc->event_loop_cmdq_handle = cmdq_pkt_create(
 			mtk_crtc->gce_obj.client[CLIENT_EVENT_LOOP]);
 	cmdq_handle = mtk_crtc->event_loop_cmdq_handle;
-
 	if (!cmdq_handle) {
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
 		return;
 	}
+	GCE_COND_ASSIGN(cmdq_handle, CMDQ_THR_SPR_IDX1, CMDQ_GPR_R07);
 
-	lop.reg = true;
-	lop.idx = var1;
-	rop.reg = false;
-	rop.value = 0;
-
-	cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base,
-		mtk_get_gce_backup_slot_pa(mtk_crtc,
-		DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE), var1);
-
-	/*mark condition jump */
-	inst_condi_jump = cmdq_handle->cmd_buf_size;
-	cmdq_pkt_assign_command(cmdq_handle, reg_jump, 0);
-
-	cmdq_pkt_cond_jump_abs(cmdq_handle, reg_jump, &lop, &rop,
-		CMDQ_NOT_EQUAL);
-
-	/* if condition false, will jump here */
-	cmdq_pkt_clear_event(cmdq_handle,
-		mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_TE]);
-
-	/* if condition true, will jump curreent postzion */
-	inst = cmdq_pkt_get_va_by_offset(cmdq_handle,  inst_condi_jump);
-	jump_pa = cmdq_pkt_get_pa_by_offset(cmdq_handle,
-				cmdq_handle->cmd_buf_size);
-	*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
-
-	cmdq_pkt_clear_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_TE]);
-	if (mtk_drm_lcm_is_connect())
-		cmdq_pkt_wfe(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_TE]);
-
-	cmdq_pkt_set_event(cmdq_handle,
-		mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_TE]);
-
-	if (mtk_crtc->pre_te_cfg.vidle_dsi_pll_off_en) {
-		cmdq_pkt_sleep(cmdq_handle,
-			CMDQ_US_TO_TICK(dsi_pll_check_off_offset), CMDQ_GPR_R07);
-
+	if (mtk_crtc->pre_te_cfg.merge_trigger_en && !mtk_crtc->pre_te_cfg.prefetch_te_en) {
 		lop.reg = true;
 		lop.idx = var1;
 		rop.reg = false;
-		rop.value = 31;
-
-		//check dsi is busy or not
-		cmdq_pkt_read(cmdq_handle, NULL,
-			output_comp->regs_pa + 0x0C/*DSI_INTSTA*/, var1);
-
-		cmdq_pkt_logic_command(cmdq_handle, CMDQ_LOGIC_RIGHT_SHIFT, var1, &lop, &rop);
-
-		rop.reg = true;
-		rop.idx = var2;
-
-		//check pll switch function is enable or not
-		mtk_ddp_comp_io_cmd(output_comp, cmdq_handle,
-						DSI_PLL_SWITCH_REFERENCE_CNT_GET, &(rop.idx));
-
-		cmdq_pkt_logic_command(cmdq_handle, CMDQ_LOGIC_OR, var1, &lop, &rop);
-
-		rop.reg = false;
 		rop.value = 0;
-
-		/*mark condition jump */
-		inst_condi_jump = cmdq_handle->cmd_buf_size;
-		cmdq_pkt_assign_command(cmdq_handle, reg_jump, 0);
-
-		cmdq_pkt_cond_jump_abs(cmdq_handle, reg_jump, &lop, &rop,
-			CMDQ_NOT_EQUAL);
-
-		/* if condition false, will jump here */
-		en = 0;
-		mtk_ddp_comp_io_cmd(output_comp, cmdq_handle,
-						DSI_PLL_SWITCH_ON_OFF, &en);
-
-		/* if condition true, will jump curreent postzion */
-		inst = cmdq_pkt_get_va_by_offset(cmdq_handle,  inst_condi_jump);
-		jump_pa = cmdq_pkt_get_pa_by_offset(cmdq_handle,
-					cmdq_handle->cmd_buf_size);
-		*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
-	}
-
-	if (mtk_crtc->pre_te_cfg.merge_trigger_en == true) {
-		cmdq_pkt_sleep(cmdq_handle,
-			CMDQ_US_TO_TICK(skip_merge_trigger_offset), CMDQ_GPR_R07);
-
-		rop.reg = false;
-		rop.value = 0;
-
 		cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base,
-			mtk_get_gce_backup_slot_pa(mtk_crtc,
-			DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE), var1);
-
-		/*mark condition jump */
-		inst_condi_jump = cmdq_handle->cmd_buf_size;
-		cmdq_pkt_assign_command(cmdq_handle, reg_jump, 0);
-
-		cmdq_pkt_cond_jump_abs(cmdq_handle, reg_jump, &lop, &rop,
-			CMDQ_NOT_EQUAL);
-
-		/* if condition false, will jump here */
-		frame_time -= skip_merge_trigger_offset;
+			mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE),
+			var1);
+		GCE_IF(lop, R_CMDQ_EQUAL, rop);
+		GCE_DO(clear_event, EVENT_SYNC_TOKEN_TE);
+		GCE_FI;
 	}
 
-	/* set VIDLE_POWER_OFF event after TE event T_Vtotal - 150us - 300us */
-	cmdq_pkt_sleep(cmdq_handle, CMDQ_US_TO_TICK(
-					(frame_time
-					- dsi_pll_check_off_offset
-					- v_idle_power_off_offset
-					- merge_trigger_offset
-					- prefetch_te_offset)),
-					CMDQ_GPR_R07);
+	GCE_DO(clear_event, EVENT_TE);
+	if (mtk_drm_lcm_is_connect())
+		GCE_DO(wfe, EVENT_TE);
 
-	/* set pre-TE event after TE event T_Vtotal - 150us */
-	cmdq_pkt_clear_event(cmdq_handle,
-		mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_TE]);
+	GCE_DO(set_event, EVENT_SYNC_TOKEN_TE);
 
 	if (mtk_crtc->pre_te_cfg.vidle_dsi_pll_off_en) {
-		en = 1;
-		mtk_ddp_comp_io_cmd(output_comp, cmdq_handle,
-							DSI_PLL_SWITCH_ON_OFF, &en);
-	}
+		struct mtk_ddp_comp *output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 
-	if (mtk_crtc->pre_te_cfg.vidle_apsrc_off_en ||
-		mtk_crtc->pre_te_cfg.vidle_dsi_pll_off_en) {
-		cmdq_pkt_set_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_VIDLE_POWER_ON]);
+		if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI)) {
+			GCE_SLEEP(dsi_pll_check_off_offset);
 
-		if (mtk_crtc->pre_te_cfg.merge_trigger_en ||
-			mtk_crtc->pre_te_cfg.prefetch_te_en)
-			cmdq_pkt_sleep(cmdq_handle,
-				CMDQ_US_TO_TICK(v_idle_power_off_offset), CMDQ_GPR_R07);
-	}
+			// check dsi is busy or not
+			lop.reg = true;
+			lop.idx = var1;
+			rop.reg = false;
+			rop.value = 31;
+			cmdq_pkt_read(cmdq_handle, NULL, output_comp->regs_pa + 0x0C/*DSI_INTSTA*/,
+				var1);
+			cmdq_pkt_logic_command(cmdq_handle, CMDQ_LOGIC_RIGHT_SHIFT,
+				var1, &lop, &rop);
 
-	if (mtk_crtc->pre_te_cfg.merge_trigger_en) {
-		cmdq_pkt_set_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_CHECK_TRIGGER_MERGE]);
-
-		if (mtk_crtc->pre_te_cfg.prefetch_te_en) {
-			cmdq_pkt_sleep(cmdq_handle,
-				CMDQ_US_TO_TICK(merge_trigger_offset), CMDQ_GPR_R07);
+			// check pll switch function is enable or not
+			rop.reg = true;
+			rop.idx = var2;
+			mtk_ddp_comp_io_cmd(output_comp, cmdq_handle,
+				DSI_PLL_SWITCH_REFERENCE_CNT_GET, &(rop.idx));
+			cmdq_pkt_logic_command(cmdq_handle, CMDQ_LOGIC_OR, var1, &lop, &rop);
 		}
 	}
 
-	if (mtk_crtc->pre_te_cfg.prefetch_te_en) {
-		cmdq_pkt_set_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_PREFETCH_TE]);
-	}
+	GCE_SLEEP(skip_merge_trigger_offset);
 
-	if (mtk_crtc->pre_te_cfg.merge_trigger_en == true) {
-		/* if condition true, will jump curreent postzion */
-		inst = cmdq_pkt_get_va_by_offset(cmdq_handle,  inst_condi_jump);
-		jump_pa = cmdq_pkt_get_pa_by_offset(cmdq_handle,
-					cmdq_handle->cmd_buf_size);
-		*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
+	frame_time = frame_time - skip_merge_trigger_offset
+				- dsi_pll_check_off_offset
+				- v_idle_power_off_offset
+				- merge_trigger_offset
+				- prefetch_te_offset;
+
+	if (!mtk_crtc->pre_te_cfg.prefetch_te_en && mtk_crtc->pre_te_cfg.merge_trigger_en) {
+		rop.reg = false;
+		rop.value = 0;
+		cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base,
+			mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE),
+			var1);
+		GCE_IF(lop, R_CMDQ_EQUAL, rop);
+		{
+			GCE_SLEEP(frame_time);
+			GCE_DO(clear_event, EVENT_SYNC_TOKEN_TE);
+
+			if (mtk_crtc->pre_te_cfg.vidle_apsrc_off_en) {
+				GCE_DO(set_event, EVENT_SYNC_TOKEN_VIDLE_POWER_ON);
+				GCE_SLEEP(v_idle_power_off_offset);
+			}
+
+			GCE_DO(set_event, EVENT_SYNC_TOKEN_CHECK_TRIGGER_MERGE);
+		}
+		GCE_FI;
+	} else if (mtk_crtc->pre_te_cfg.prefetch_te_en && mtk_crtc->pre_te_cfg.merge_trigger_en) {
+		GCE_SLEEP(frame_time);
+		GCE_DO(clear_event, EVENT_SYNC_TOKEN_TE);
+
+		if (mtk_crtc->pre_te_cfg.vidle_apsrc_off_en) {
+			GCE_DO(set_event, EVENT_SYNC_TOKEN_VIDLE_POWER_ON);
+			GCE_SLEEP(v_idle_power_off_offset);
+		}
+
+		GCE_DO(set_event, EVENT_SYNC_TOKEN_CHECK_TRIGGER_MERGE);
+
+		GCE_SLEEP(merge_trigger_offset);
+		GCE_DO(set_event, EVENT_SYNC_TOKEN_PREFETCH_TE);
+	} else {
+		GCE_SLEEP(frame_time);
+		GCE_DO(clear_event, EVENT_SYNC_TOKEN_TE);
+
+		if (mtk_crtc->pre_te_cfg.vidle_apsrc_off_en)
+			GCE_DO(set_event, EVENT_SYNC_TOKEN_VIDLE_POWER_ON);
+
+		if (mtk_crtc->pre_te_cfg.prefetch_te_en) {
+			GCE_SLEEP(v_idle_power_off_offset);
+			GCE_DO(set_event, EVENT_SYNC_TOKEN_PREFETCH_TE);
+		}
 	}
 
 	cmdq_pkt_finalize_loop(cmdq_handle);
@@ -7787,23 +7703,17 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	unsigned long crtc_id = (unsigned long)drm_crtc_index(crtc);
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
-	struct cmdq_operand lop, rop;
 	struct mtk_panel_params *params = NULL;
-
 	struct mtk_panel_params *params_lcm =
 		mtk_drm_get_lcm_ext_params(crtc);
 	dma_addr_t slot_src_addr;
 	dma_addr_t slot_dts_addr;
-
 	struct mtk_ddp_comp *output_comp;
-	int en = 1;
 
-	const u16 reg_jump = CMDQ_THR_SPR_IDX1;
+	GCE_COND_DECLARE;
+	struct cmdq_operand lop, rop;
 	const u16 var1 = CMDQ_CPR_DDR_USR_CNT;
 	const u16 var2 = 0;
-
-	u32 inst_condi_jump;
-	u64 *inst, jump_pa;
 
 	lop.reg = true;
 	lop.idx = var1;
@@ -7819,12 +7729,11 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 	mtk_crtc->trig_loop_cmdq_handle = cmdq_pkt_create(
 		mtk_crtc->gce_obj.client[CLIENT_TRIG_LOOP]);
 	cmdq_handle = mtk_crtc->trig_loop_cmdq_handle;
-
 	if (!cmdq_handle) {
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
 		return;
 	}
-
+	GCE_COND_ASSIGN(cmdq_handle, CMDQ_THR_SPR_IDX1, CMDQ_GPR_R07);
 
 	if (priv->data->mmsys_id == MMSYS_MT6879) {
 		//workaround for gce can't wait dsi te event done
@@ -7854,231 +7763,153 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 		/* The STREAM BLOCK EVENT is used for stopping frame trigger if
 		 * the engine is stopped
 		 */
-		cmdq_pkt_wait_no_clear(cmdq_handle,
-			     mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
-		cmdq_pkt_wfe(cmdq_handle,
-			     mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+		GCE_DO(wait_no_clear, EVENT_STREAM_BLOCK);
+		GCE_DO(wfe, EVENT_STREAM_DIRTY);
 
-		if (mtk_crtc->pre_te_cfg.merge_trigger_en == false) {
-			cmdq_pkt_clear_event(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
-		} else {
+		if (mtk_crtc->pre_te_cfg.merge_trigger_en && !mtk_crtc->pre_te_cfg.prefetch_te_en) {
 			rop.reg = false;
 			rop.value = 0;
-
 			cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base,
 				mtk_get_gce_backup_slot_pa(mtk_crtc,
 				DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE), var1);
-
-			/*mark condition jump */
-			inst_condi_jump = cmdq_handle->cmd_buf_size;
-			cmdq_pkt_assign_command(cmdq_handle, reg_jump, 0);
-
-			cmdq_pkt_cond_jump_abs(cmdq_handle, reg_jump, &lop, &rop,
-				CMDQ_EQUAL);
-
-			/* if condition false, will jump here */
-			cmdq_pkt_clear_event(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
-
-			/* if condition true, will jump curreent postzion */
-			inst = cmdq_pkt_get_va_by_offset(cmdq_handle,  inst_condi_jump);
-			jump_pa = cmdq_pkt_get_pa_by_offset(cmdq_handle,
-						cmdq_handle->cmd_buf_size);
-			*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
-		}
+			GCE_IF(lop, R_CMDQ_NOT_EQUAL, rop);
+			GCE_DO(clear_event, EVENT_STREAM_EOF);
+			GCE_FI;
+		} else
+			GCE_DO(clear_event, EVENT_STREAM_EOF);
 
 		if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
-			cmdq_pkt_wfe(cmdq_handle,
-							mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
-			cmdq_pkt_wait_no_clear(cmdq_handle,
-							mtk_crtc->gce_obj.event[EVENT_ESD_EOF]);
+			GCE_DO(wfe, EVENT_CABC_EOF);
+			GCE_DO(wait_no_clear, EVENT_ESD_EOF);
 		}
 
-		cmdq_pkt_clear_event(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
+		GCE_DO(clear_event, EVENT_CMD_EOF);
 
-		if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
-			if (mtk_drm_helper_get_opt(priv->helper_opt,
-						MTK_DRM_OPT_DUAL_TE)) {
-				cmdq_pkt_wait_te(cmdq_handle, mtk_crtc);
-				if (mtk_crtc->pre_te_cfg.prefetch_te_en == true) {
-					if (priv->data->mmsys_id == MMSYS_MT6985)
-						mtk_oddmr_ddren(cmdq_handle, crtc, 1);
+		if (disp_helper_get_stage() == DISP_HELPER_STAGE_BRING_UP)
+			goto skip_prete;
 
-					if (mtk_crtc->pre_te_cfg.merge_trigger_en == true)
-						cmdq_pkt_clear_event(cmdq_handle,
-						mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DUAL_TE)) {
+			cmdq_pkt_wait_te(cmdq_handle, mtk_crtc);
+			if (mtk_crtc->pre_te_cfg.prefetch_te_en == true) {
+				if (priv->data->mmsys_id == MMSYS_MT6985)
+					mtk_oddmr_ddren(cmdq_handle, crtc, 1);
 
-					mtk_disp_mutex_enable_cmdq(mtk_crtc->mutex[0], cmdq_handle,
+				if (mtk_crtc->pre_te_cfg.merge_trigger_en == true)
+					GCE_DO(clear_event, EVENT_STREAM_DIRTY);
+
+				mtk_disp_mutex_enable_cmdq(mtk_crtc->mutex[0], cmdq_handle,
 					mtk_crtc->gce_obj.base);
-				}
-			} else {
-				if (mtk_crtc->pre_te_cfg.vidle_apsrc_off_en == true ||
-					mtk_crtc->pre_te_cfg.vidle_dsi_pll_off_en == true
-					) {
-					cmdq_pkt_clear_event(cmdq_handle,
-					mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_VIDLE_POWER_ON]);
-					cmdq_pkt_wfe(cmdq_handle,
-					mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_VIDLE_POWER_ON]);
+			}
+		} else {
+			if (mtk_crtc->pre_te_cfg.vidle_apsrc_off_en == true ||
+			    mtk_crtc->pre_te_cfg.vidle_dsi_pll_off_en == true) {
+				GCE_DO(clear_event, EVENT_SYNC_TOKEN_VIDLE_POWER_ON);
+				GCE_DO(wfe, EVENT_SYNC_TOKEN_VIDLE_POWER_ON);
 
-					if (crtc_id == 0) {
-						/*APSRC Power ON*/
-						mtk_crtc_v_idle_apsrc_control(crtc, cmdq_handle,
-							false, false, crtc_id, true);
-					}
-				}
-
-				if (mtk_crtc->pre_te_cfg.merge_trigger_en == true) {
-					rop.reg = false;
-					rop.value = 0;
-
-					cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base,
-						mtk_get_gce_backup_slot_pa(mtk_crtc,
-						DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE), var1);
-
-					/*mark condition jump */
-					inst_condi_jump = cmdq_handle->cmd_buf_size;
-					cmdq_pkt_assign_command(cmdq_handle, reg_jump, 0);
-
-					cmdq_pkt_cond_jump_abs(cmdq_handle, reg_jump, &lop, &rop,
-						CMDQ_NOT_EQUAL);
-
-					/* if condition false, will jump here */
-					cmdq_pkt_clear_event(cmdq_handle,
-					mtk_crtc->gce_obj.event[
-						EVENT_SYNC_TOKEN_CHECK_TRIGGER_MERGE]);
-					cmdq_pkt_wfe(cmdq_handle,
-					mtk_crtc->gce_obj.event[
-						EVENT_SYNC_TOKEN_CHECK_TRIGGER_MERGE]);
-
-					cmdq_pkt_clear_event(cmdq_handle,
-						mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
-
-					/* if condition true, will jump curreent postzion */
-					inst = cmdq_pkt_get_va_by_offset(cmdq_handle,
-									inst_condi_jump);
-					jump_pa = cmdq_pkt_get_pa_by_offset(cmdq_handle,
-								cmdq_handle->cmd_buf_size);
-					*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
-				}
-
-				if (mtk_crtc->pre_te_cfg.prefetch_te_en == true) {
-					cmdq_pkt_clear_event(cmdq_handle,
-					mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_PREFETCH_TE]);
-					cmdq_pkt_wfe(cmdq_handle,
-					mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_PREFETCH_TE]);
-					if (priv->data->mmsys_id == MMSYS_MT6985)
-						mtk_oddmr_ddren(cmdq_handle, crtc, 1);
-
-					if (mtk_crtc->pre_te_cfg.merge_trigger_en == true)
-						cmdq_pkt_clear_event(cmdq_handle,
-						mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
-
-					mtk_disp_mutex_enable_cmdq(mtk_crtc->mutex[0], cmdq_handle,
-						mtk_crtc->gce_obj.base);
-				}
-
-				if (mtk_crtc->pre_te_cfg.vidle_apsrc_off_en == false &&
-					mtk_crtc->pre_te_cfg.vidle_dsi_pll_off_en == false &&
-					mtk_crtc->pre_te_cfg.prefetch_te_en == false &&
-					mtk_crtc->pre_te_cfg.merge_trigger_en == false
-					) {
-					cmdq_pkt_clear_event(cmdq_handle,
-						mtk_crtc->gce_obj.event[EVENT_TE]);
-
-					if (mtk_drm_helper_get_opt(priv->helper_opt,
-							MTK_DRM_OPT_MSYNC2_0)
-							&& params_lcm && params_lcm->msync2_enable)
-						cmdq_pkt_request_te(cmdq_handle, mtk_crtc);
-
-					if (mtk_drm_lcm_is_connect())
-						cmdq_pkt_wfe(cmdq_handle,
-							mtk_crtc->gce_obj.event[EVENT_TE]);
+				if (crtc_id == 0) {
+					/*APSRC Power ON*/
+					mtk_crtc_v_idle_apsrc_control(crtc, cmdq_handle,
+						false, false, crtc_id, true);
 				}
 			}
-		}
 
-		/*Trigger*/
-		if (mtk_crtc->pre_te_cfg.vidle_apsrc_off_en == true ||
-			mtk_crtc->pre_te_cfg.vidle_dsi_pll_off_en == true ||
-			mtk_crtc->pre_te_cfg.prefetch_te_en == true ||
-			mtk_crtc->pre_te_cfg.merge_trigger_en == true
-			) {
-			if (mtk_crtc->pre_te_cfg.merge_trigger_en == true) {
+			if (mtk_crtc->pre_te_cfg.merge_trigger_en &&
+			    !mtk_crtc->pre_te_cfg.prefetch_te_en) {
 				rop.reg = false;
 				rop.value = 0;
-
 				cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base,
 					mtk_get_gce_backup_slot_pa(mtk_crtc,
 					DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE), var1);
+				GCE_IF(lop, R_CMDQ_EQUAL, rop);
+				{
+					GCE_DO(clear_event, EVENT_SYNC_TOKEN_CHECK_TRIGGER_MERGE);
+					GCE_DO(wfe, EVENT_SYNC_TOKEN_CHECK_TRIGGER_MERGE);
+					GCE_DO(clear_event, EVENT_STREAM_EOF);
+				}
+				GCE_FI;
+			}
 
-				/*mark condition jump */
-				inst_condi_jump = cmdq_handle->cmd_buf_size;
-				cmdq_pkt_assign_command(cmdq_handle, reg_jump, 0);
+			if (mtk_crtc->pre_te_cfg.prefetch_te_en == true) {
+				GCE_DO(clear_event, EVENT_SYNC_TOKEN_PREFETCH_TE);
+				GCE_DO(wfe, EVENT_SYNC_TOKEN_PREFETCH_TE);
 
-				cmdq_pkt_cond_jump_abs(cmdq_handle, reg_jump, &lop, &rop,
-					CMDQ_EQUAL);
+				if (priv->data->mmsys_id == MMSYS_MT6985)
+					mtk_oddmr_ddren(cmdq_handle, crtc, 1);
 
-				/* if condition false, will jump here */
-				cmdq_pkt_clear_event(cmdq_handle,
-						mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_TE]);
+				if (mtk_crtc->pre_te_cfg.merge_trigger_en == true)
+					GCE_DO(clear_event, EVENT_STREAM_DIRTY);
 
-				/* if condition true, will jump curreent postzion */
-				inst = cmdq_pkt_get_va_by_offset(cmdq_handle,  inst_condi_jump);
-				jump_pa = cmdq_pkt_get_pa_by_offset(cmdq_handle,
-							cmdq_handle->cmd_buf_size);
-				*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
+				mtk_disp_mutex_enable_cmdq(mtk_crtc->mutex[0], cmdq_handle,
+					mtk_crtc->gce_obj.base);
+			}
 
-				cmdq_pkt_wfe(cmdq_handle,
-						mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_TE]);
+			if (mtk_crtc->pre_te_cfg.vidle_apsrc_off_en == false &&
+			    mtk_crtc->pre_te_cfg.vidle_dsi_pll_off_en == false &&
+			    mtk_crtc->pre_te_cfg.prefetch_te_en == false &&
+			    mtk_crtc->pre_te_cfg.merge_trigger_en == false) {
+				GCE_DO(clear_event, EVENT_TE);
 
-				/*mark condition jump */
-				inst_condi_jump = cmdq_handle->cmd_buf_size;
-				cmdq_pkt_assign_command(cmdq_handle, reg_jump, 0);
+				if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MSYNC2_0)
+				    && params_lcm && params_lcm->msync2_enable)
+					cmdq_pkt_request_te(cmdq_handle, mtk_crtc);
 
-				cmdq_pkt_cond_jump_abs(cmdq_handle, reg_jump, &lop, &rop,
-					CMDQ_EQUAL);
-
-				rop.reg = false;
-				rop.value = 1;
-				cmdq_pkt_logic_command(cmdq_handle,
-						CMDQ_LOGIC_SUBTRACT, var1, &lop, &rop);
-
-				/* if condition false, will jump here */
-				cmdq_pkt_write_reg_addr(cmdq_handle,
-					mtk_get_gce_backup_slot_pa(mtk_crtc,
-					DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE), var1, ~0);
-
-			      /* if condition true, will jump curreent postzion */
-				inst = cmdq_pkt_get_va_by_offset(cmdq_handle,  inst_condi_jump);
-				jump_pa = cmdq_pkt_get_pa_by_offset(cmdq_handle,
-							cmdq_handle->cmd_buf_size);
-				*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
-			} else {
-				cmdq_pkt_wfe(cmdq_handle,
-						mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_TE]);
+				if (mtk_drm_lcm_is_connect())
+					GCE_DO(wfe, EVENT_TE);
 			}
 		}
 
+		if (mtk_crtc->pre_te_cfg.vidle_apsrc_off_en == true ||
+		    mtk_crtc->pre_te_cfg.vidle_dsi_pll_off_en == true ||
+		    mtk_crtc->pre_te_cfg.prefetch_te_en == true ||
+		    mtk_crtc->pre_te_cfg.merge_trigger_en == true) {
+			if (mtk_crtc->pre_te_cfg.merge_trigger_en &&
+			    !mtk_crtc->pre_te_cfg.prefetch_te_en) {
+				rop.reg = false;
+				rop.value = 0;
+				cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base,
+					mtk_get_gce_backup_slot_pa(mtk_crtc,
+					DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE), var1);
+				GCE_IF(lop, R_CMDQ_NOT_EQUAL, rop);
+				GCE_DO(clear_event, EVENT_SYNC_TOKEN_TE);
+				GCE_FI;
+
+				GCE_DO(wfe, EVENT_SYNC_TOKEN_TE);
+
+				GCE_IF(lop, R_CMDQ_NOT_EQUAL, rop);
+				{
+					rop.reg = false;
+					rop.value = 1;
+					cmdq_pkt_logic_command(cmdq_handle,
+						CMDQ_LOGIC_SUBTRACT, var1, &lop, &rop);
+					cmdq_pkt_write_reg_addr(cmdq_handle,
+						mtk_get_gce_backup_slot_pa(mtk_crtc,
+						DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE), var1, ~0);
+				}
+				GCE_FI;
+			} else {
+				GCE_DO(wfe, EVENT_SYNC_TOKEN_TE);
+			}
+		}
+
+skip_prete:
+		/*Trigger*/
 		if (mtk_crtc->pre_te_cfg.prefetch_te_en == false) {
 			if (priv->data->mmsys_id == MMSYS_MT6985)
 				mtk_oddmr_ddren(cmdq_handle, crtc, 1);
-			mtk_crtc_comp_trigger(mtk_crtc, cmdq_handle,
-						MTK_TRIG_FLAG_PRE_TRIGGER);
+
+			mtk_crtc_comp_trigger(mtk_crtc, cmdq_handle, MTK_TRIG_FLAG_PRE_TRIGGER);
 
 			if (mtk_crtc->pre_te_cfg.merge_trigger_en == true)
-				cmdq_pkt_clear_event(cmdq_handle,
-					mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+				GCE_DO(clear_event, EVENT_STREAM_DIRTY);
 
 			mtk_disp_mutex_enable_cmdq(mtk_crtc->mutex[0], cmdq_handle,
 						   mtk_crtc->gce_obj.base);
 		}
 
-		mtk_crtc_comp_trigger(mtk_crtc, cmdq_handle,
-					  MTK_TRIG_FLAG_TRIGGER);
+		mtk_crtc_comp_trigger(mtk_crtc, cmdq_handle, MTK_TRIG_FLAG_TRIGGER);
 
-		cmdq_pkt_wfe(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
+		GCE_DO(wfe, EVENT_CMD_EOF);
+
 		mtk_crtc_comp_trigger(mtk_crtc, cmdq_handle, MTK_TRIG_FLAG_EOF);
 
 #ifdef IF_ZERO /* not ready for dummy register method */
@@ -8106,11 +7937,8 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 				slot_dts_addr, CMDQ_THR_SPR_IDX3);
 		}
 
-		cmdq_pkt_set_event(cmdq_handle,
-				   mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
-
-		cmdq_pkt_set_event(cmdq_handle,
-				   mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
+		GCE_DO(set_event, EVENT_CABC_EOF);
+		GCE_DO(set_event, EVENT_STREAM_EOF);
 
 		if (crtc_id == 0) {
 			if (mtk_crtc->pre_te_cfg.vidle_apsrc_off_en == true) {
@@ -8126,29 +7954,6 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 					//check pll switch function is enable or not
 					mtk_ddp_comp_io_cmd(output_comp, cmdq_handle,
 						DSI_PLL_SWITCH_REFERENCE_CNT_GET, &(lop.idx));
-
-					rop.reg = false;
-					rop.value = 0;
-
-					/*mark condition jump */
-					inst_condi_jump = cmdq_handle->cmd_buf_size;
-					cmdq_pkt_assign_command(cmdq_handle, reg_jump, 0);
-
-					cmdq_pkt_cond_jump_abs(cmdq_handle, reg_jump, &lop, &rop,
-						CMDQ_NOT_EQUAL);
-
-					/* if condition false, will jump here */
-					en = 0;
-					mtk_ddp_comp_io_cmd(output_comp, cmdq_handle,
-								DSI_PLL_SWITCH_ON_OFF, &en);
-
-					/* if condition true, will jump curreent postzion */
-					inst = cmdq_pkt_get_va_by_offset(cmdq_handle,
-								inst_condi_jump);
-					jump_pa = cmdq_pkt_get_pa_by_offset(cmdq_handle,
-								cmdq_handle->cmd_buf_size);
-					*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
-
 				}
 			}
 		}
@@ -8162,57 +7967,37 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 					MTK_DRM_OPT_MSYNC2_0) && params &&
 					params->msync2_enable) {
 				DDPDBG("[Msync]%s, add set vfp period token\n", __func__);
-				cmdq_pkt_wfe(cmdq_handle,
-						mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
+				GCE_DO(wfe, EVENT_CMD_EOF);
 				/*clear last SOF*/
-				cmdq_pkt_clear_event(cmdq_handle,
-						mtk_crtc->gce_obj.event[EVENT_DSI_SOF]);
+				GCE_DO(clear_event, EVENT_DSI_SOF);
 
 				/*for dynamic Msync on/off,set vfp period token*/
-				cmdq_pkt_set_event(cmdq_handle,
-					mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_VFP_PERIOD]);
+				GCE_DO(set_event, EVENT_SYNC_TOKEN_VFP_PERIOD);
 			} else {
-				cmdq_pkt_wfe(cmdq_handle,
-					mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
+				GCE_DO(wfe, EVENT_CMD_EOF);
 			}
 
 		} else if (crtc_id == 1) {
 			output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 			if (output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI)
-				cmdq_pkt_wfe(cmdq_handle,
-				     mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
+				GCE_DO(wfe, EVENT_CMD_EOF);
 			else
-				cmdq_pkt_wfe(cmdq_handle,
-					 mtk_crtc->gce_obj.event[EVENT_VDO_EOF]);
+				GCE_DO(wfe, EVENT_VDO_EOF);
+
 		} else {
-			cmdq_pkt_wfe(cmdq_handle,
-			     mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
+			GCE_DO(wfe, EVENT_CMD_EOF);
 		}
 
 		/* sw workaround to fix gce hw bug */
 		if (mtk_crtc_with_sodi_loop(crtc)) {
 			cmdq_pkt_read(cmdq_handle, NULL,
 				GCE_BASE_ADDR + GCE_DEBUG_START_ADDR, var1);
-
-			/*mark condition jump */
-			inst_condi_jump = cmdq_handle->cmd_buf_size;
-			cmdq_pkt_assign_command(cmdq_handle, reg_jump, 0);
-
-			cmdq_pkt_cond_jump_abs(cmdq_handle, reg_jump, &lop, &rop,
-				CMDQ_NOT_EQUAL);
-
-			/* if condition false, will jump here */
+			GCE_IF(lop, R_CMDQ_EQUAL, rop);
 			cmdq_pkt_write(cmdq_handle, NULL,
 				GCE_BASE_ADDR + GCE_GCTL_VALUE, 0, GCE_DDR_EN);
+			GCE_FI;
 
-		      /* if condition true, will jump curreent postzion */
-			inst = cmdq_pkt_get_va_by_offset(cmdq_handle,  inst_condi_jump);
-			jump_pa = cmdq_pkt_get_pa_by_offset(cmdq_handle,
-						cmdq_handle->cmd_buf_size);
-			*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
-
-			cmdq_pkt_set_event(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_SODI]);
+			GCE_DO(set_event, EVENT_SYNC_TOKEN_SODI);
 		}
 
 #ifdef IF_ZERO /* not ready for dummy register method */
@@ -8243,14 +8028,13 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 					MTK_DRM_OPT_MSYNC2_0) && params &&
 					params->msync2_enable) {
 				/*wait next SOF*/
-				cmdq_pkt_wait_no_clear(cmdq_handle,
-						    mtk_crtc->gce_obj.event[EVENT_DSI_SOF]);
+				GCE_DO(wait_no_clear, EVENT_DSI_SOF);
+
 				/*clear last EOF*/
-				cmdq_pkt_clear_event(cmdq_handle,
-							mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
+				GCE_DO(clear_event, EVENT_CMD_EOF);
+
 				/*clear vfp period token*/
-				cmdq_pkt_clear_event(cmdq_handle,
-					mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_VFP_PERIOD]);
+				GCE_DO(clear_event, EVENT_SYNC_TOKEN_VFP_PERIOD);
 			}
 		}
 	}

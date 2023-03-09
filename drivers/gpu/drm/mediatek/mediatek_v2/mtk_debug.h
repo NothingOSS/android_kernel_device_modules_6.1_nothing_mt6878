@@ -124,4 +124,52 @@ struct wr_online_dbg {
 extern struct wr_online_dbg g_wr_reg;
 #endif
 
+enum GCE_COND_REVERSE_COND {
+	R_CMDQ_NOT_EQUAL = CMDQ_EQUAL,
+	R_CMDQ_EQUAL = CMDQ_NOT_EQUAL,
+	R_CMDQ_LESS = CMDQ_GREATER_THAN_AND_EQUAL,
+	R_CMDQ_GREATER = CMDQ_LESS_THAN_AND_EQUAL,
+	R_CMDQ_LESS_EQUAL = CMDQ_GREATER_THAN,
+	R_CMDQ_GREATER_EQUAL = CMDQ_LESS_THAN,
+};
+
+#define GCE_COND_DECLARE \
+	u32 _inst_condi_jump, _inst_jump_end; \
+	u64 _jump_pa; \
+	u64 *_inst; \
+	struct cmdq_pkt *_cond_pkt; \
+	u16 _gpr, _reg_jump
+
+#define GCE_COND_ASSIGN(pkt, addr, gpr) do { \
+	_cond_pkt = pkt; \
+	_reg_jump = addr; \
+	_gpr = gpr; \
+} while (0)
+
+#define GCE_IF(lop, cond, rop) do { \
+	_inst_condi_jump = _cond_pkt->cmd_buf_size; \
+	cmdq_pkt_assign_command(_cond_pkt, _reg_jump, 0); \
+	cmdq_pkt_cond_jump_abs(_cond_pkt, _reg_jump, &lop, &rop, (enum CMDQ_CONDITION_ENUM) cond); \
+	_inst_jump_end = _inst_condi_jump; \
+} while (0)
+
+#define GCE_ELSE do { \
+	_inst_jump_end = _cond_pkt->cmd_buf_size; \
+	cmdq_pkt_jump_addr(_cond_pkt, 0); \
+	_inst = cmdq_pkt_get_va_by_offset(_cond_pkt, _inst_condi_jump); \
+	_jump_pa = cmdq_pkt_get_pa_by_offset(_cond_pkt, _cond_pkt->cmd_buf_size); \
+	*_inst = *_inst | CMDQ_REG_SHIFT_ADDR(_jump_pa); \
+} while (0)
+
+#define GCE_FI do { \
+	_inst = cmdq_pkt_get_va_by_offset(_cond_pkt, _inst_jump_end); \
+	_jump_pa = cmdq_pkt_get_pa_by_offset(_cond_pkt, _cond_pkt->cmd_buf_size); \
+	*_inst = *_inst | CMDQ_REG_SHIFT_ADDR(_jump_pa); \
+} while (0)
+
+#define GCE_DO(act, name) cmdq_pkt_##act(_cond_pkt, mtk_crtc->gce_obj.event[name])
+
+#define GCE_SLEEP(us) cmdq_pkt_sleep(_cond_pkt, us, _gpr)
+
+
 #endif
