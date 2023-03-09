@@ -124,10 +124,12 @@ int scrn_nl_send_to_user(void *buf, int size)
 	ret = netlink_unicast(scrn_nl_sk, skb, SCRN_nl_enable.pid, MSG_DONTWAIT);
 	if (ret < 0) {
 		pr_info("SCRN Send to pid %d failed %d\n", SCRN_nl_enable.pid, ret);
+		kfree_skb(skb);
 		return -1;
 	}
 
 	pr_info("SCRN Netlink_unicast ret=%d\n", ret);
+	kfree_skb(skb);
 
 	return 0;
 }
