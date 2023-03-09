@@ -398,7 +398,7 @@ enum mddp_state_e mddp_sm_set_state_by_md_rsp(struct mddp_app_t *app,
 
 	complete(&app->md_resp_comp);
 	curr_state = mddp_get_state(app);
-	event = (md_rsp_result) ? MDDP_EVT_MD_RSP_OK : MDDP_EVT_MD_RSP_FAIL;
+	event = MDDP_EVT_MD_RSP_OK;
 
 	if (curr_state == prev_state) {
 		/* OK.

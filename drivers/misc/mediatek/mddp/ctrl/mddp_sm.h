@@ -33,7 +33,6 @@ enum mddp_event_e {
 	MDDP_EVT_FUNC_DEACT,  /**< Deactivate MDDP. */
 
 	MDDP_EVT_MD_RSP_OK,  /**< MD Response OK. */
-	MDDP_EVT_MD_RSP_FAIL,  /**< MD Response FAIL. */
 	MDDP_EVT_MD_RSP_TIMEOUT,  /**<MD Response timeout. */
 
 	MDDP_EVT_MD_RESET,  /**<MD send RESET. */

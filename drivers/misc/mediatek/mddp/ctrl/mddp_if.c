@@ -117,7 +117,7 @@ int32_t mddp_on_enable(enum mddp_app_type_e in_type)
 	for (idx = 0; idx < MDDP_MOD_CNT; idx++) {
 		type = mddp_sm_module_list_s[idx];
 		app = mddp_get_app_inst(type);
-		if (!(app->feature & MDDP_FEATURE_MDDP_WH))
+		if (!(app->feature & MDDP_FEATURE_MDDP_WH) || !app->drv_reg)
 			continue;
 		mddp_sm_wait_pre(app);
 		mddp_sm_on_event(app, MDDP_EVT_FUNC_ENABLE);
@@ -142,7 +142,7 @@ int32_t mddp_on_disable(enum mddp_app_type_e in_type)
 	for (idx = 0; idx < MDDP_MOD_CNT; idx++) {
 		type = mddp_sm_module_list_s[idx];
 		app = mddp_get_app_inst(type);
-		if (!(app->feature & MDDP_FEATURE_MDDP_WH))
+		if (!(app->feature & MDDP_FEATURE_MDDP_WH) || !app->drv_reg)
 			continue;
 		mddp_sm_wait_pre(app);
 		mddp_sm_on_event(app, MDDP_EVT_FUNC_DISABLE);
@@ -166,7 +166,7 @@ int32_t mddp_on_activate(enum mddp_app_type_e type,
 	if (!app->is_config)
 		return -EINVAL;
 
-	if (!(app->feature & MDDP_FEATURE_MDDP_WH))
+	if (!(app->feature & MDDP_FEATURE_MDDP_WH) || !app->drv_reg)
 		return -ENOENT;
 
 	if (!mddp_f_dev_add_wan_dev(ul_dev_name))
@@ -210,7 +210,7 @@ int32_t mddp_on_deactivate(enum mddp_app_type_e type)
 	if (!app->is_config)
 		return -EINVAL;
 
-	if (!(app->feature & MDDP_FEATURE_MDDP_WH))
+	if (!(app->feature & MDDP_FEATURE_MDDP_WH) || !app->drv_reg)
 		return -ENOENT;
 
 	mddp_netdev_notifier_exit();
@@ -239,7 +239,7 @@ int32_t mddp_on_get_offload_stats(
 	if (!app->is_config)
 		return -EINVAL;
 
-	if (!(app->feature & MDDP_FEATURE_MDDP_WH))
+	if (!(app->feature & MDDP_FEATURE_MDDP_WH) || !app->drv_reg)
 		return -ENOENT;
 
 	/*
@@ -266,7 +266,7 @@ int32_t mddp_on_set_data_limit(
 	if (!app->is_config)
 		return -EINVAL;
 
-	if (!(app->feature & MDDP_FEATURE_MDDP_WH))
+	if (!(app->feature & MDDP_FEATURE_MDDP_WH) || !app->drv_reg)
 		return -ENOENT;
 
 	ret = mddp_u_set_data_limit(buf, buf_len);
@@ -290,7 +290,7 @@ int32_t mddp_on_set_warning_and_data_limit(
 	if (!app->is_config)
 		return -EINVAL;
 
-	if (!(app->feature & MDDP_FEATURE_MDDP_WH))
+	if (!(app->feature & MDDP_FEATURE_MDDP_WH) || !app->drv_reg)
 		return -ENOENT;
 
 	ret = mddp_u_set_warning_and_data_limit(buf, buf_len);
@@ -314,7 +314,7 @@ int32_t mddp_on_set_ct_value(
 	if (!app->is_config)
 		return -EINVAL;
 
-	if (!(app->feature & MDDP_FEATURE_MDDP_WH))
+	if (!(app->feature & MDDP_FEATURE_MDDP_WH) || !app->drv_reg)
 		return -ENOENT;
 
 	/*

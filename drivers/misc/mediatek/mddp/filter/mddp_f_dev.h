@@ -8,7 +8,7 @@
 
 #include <linux/if.h>
 
-#define MDDP_MAX_LAN_DEV_NUM 2
+#define MDDP_MAX_LAN_DEV_NUM 1
 #define MDDP_MAX_WAN_DEV_NUM 1
 
 #define MDDP_WAN_DEV_NETIF_ID_BASE 0x00000400 /* IPC_NETIF_ID_LHIF_BEGIN */
