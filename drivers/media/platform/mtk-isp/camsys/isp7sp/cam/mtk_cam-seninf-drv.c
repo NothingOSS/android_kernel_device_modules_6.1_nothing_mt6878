@@ -59,6 +59,46 @@ struct seninf_ctx *aov_ctx[6];
 #ifdef CSI_EFUSE_SET
 #include <linux/nvmem-consumer.h>
 #endif
+
+#define CSI_EFUSE_VERIFY_EN 1
+#define CSI_EFUSE_VERIFY_GORDAN_TABLE_EN 0
+#if CSI_EFUSE_VERIFY_GORDAN_TABLE_EN == 1
+static int gordan_csi_efuse_table[32][6] = {
+	{       0x0,        0x1,        0x2,        0x3,        0x4,        0x5},
+	{ 0x8421085,  0x8421086,  0x8421087,  0x8421088,  0x8421089,  0x842108a},
+	{0x1084210a, 0x1084210b, 0x1084210c, 0x1084210d, 0x1084210e, 0x1084210f},
+	{0x18c6318f, 0x18c63181, 0x18c63182, 0x18c63183, 0x18c63184, 0x18c63185},
+	{0x21084205, 0x21084206, 0x21084207, 0x21084208, 0x21084209, 0x2108420a},
+	{0x294a528a, 0x294a528b, 0x294a528c, 0x294a528d, 0x294a528e, 0x294a528f},
+	{0x318c630f, 0x318c6310, 0x318c6302, 0x318c6303, 0x318c6304, 0x318c6305},
+	{0x39ce7385, 0x39ce7386, 0x39ce7387, 0x39ce7388, 0x39ce7389, 0x39ce738a},
+	{0x4210840a, 0x4210840b, 0x4210840c, 0x4210840d, 0x4210840e, 0x4210840f},
+	{0x4a52948f, 0x4a529490, 0x4a529491, 0x4a529483, 0x4a529484, 0x4a529485},
+	{0x5294a505, 0x5294a506, 0x5294a507, 0x5294a508, 0x5294a509, 0x5294a50a},
+	{0x5ad6b58a, 0x5ad6b58b, 0x5ad6b58c, 0x5ad6b58d, 0x5ad6b58e, 0x5ad6b58f},
+	{0x6318c60f, 0x6318c610, 0x6318c611, 0x6318c612, 0x6318c604, 0x6318c605},
+	{0x6b5ad685, 0x6b5ad686, 0x6b5ad687, 0x6b5ad688, 0x6b5ad689, 0x6b5ad68a},
+	{0x739ce70a, 0x739ce70b, 0x739ce70c, 0x739ce70d, 0x739ce70e, 0x739ce70f},
+	{0x7bdef78f, 0x7bdef790, 0x7bdef791, 0x7bdef792, 0x7bdef793, 0x7bdef785},
+	{0x84210805, 0x84210806, 0x84210807, 0x84210808, 0x84210809, 0x8421080a},
+	{0x8c63188a, 0x8c63188b, 0x8c63188c, 0x8c63188d, 0x8c63188e, 0x8c63188f},
+	{0x94a5290f, 0x94a52910, 0x94a52911, 0x94a52912, 0x94a52913, 0x94a52914},
+	{0x9ce73994, 0x9ce73986, 0x9ce73987, 0x9ce73988, 0x9ce73989, 0x9ce7398a},
+	{0xa5294a0a, 0xa5294a0b, 0xa5294a0c, 0xa5294a0d, 0xa5294a0e, 0xa5294a0f},
+	{0xad6b5a8f, 0xad6b5a90, 0xad6b5a91, 0xad6b5a92, 0xad6b5a93, 0xad6b5a94},
+	{0xb5ad6b14, 0xb5ad6b15, 0xb5ad6b07, 0xb5ad6b08, 0xb5ad6b09, 0xb5ad6b0a},
+	{0xbdef7b8a, 0xbdef7b8b, 0xbdef7b8c, 0xbdef7b8d, 0xbdef7b8e, 0xbdef7b8f},
+	{0xc6318c0f, 0xc6318c10, 0xc6318c11, 0xc6318c12, 0xc6318c13, 0xc6318c14},
+	{0xce739c94, 0xce739c95, 0xce739c96, 0xce739c88, 0xce739c89, 0xce739c8a},
+	{0xd6b5ad0a, 0xd6b5ad0b, 0xd6b5ad0c, 0xd6b5ad0d, 0xd6b5ad0e, 0xd6b5ad0f},
+	{0xdef7bd8f, 0xdef7bd90, 0xdef7bd91, 0xdef7bd92, 0xdef7bd93, 0xdef7bd94},
+	{0xe739ce14, 0xe739ce15, 0xe739ce16, 0xe739ce17, 0xe739ce09, 0xe739ce0a},
+	{0xef7bde8a, 0xef7bde8b, 0xef7bde8c, 0xef7bde8d, 0xef7bde8e, 0xef7bde8f},
+	{0xf7bdef0f, 0xf7bdef10, 0xf7bdef11, 0xf7bdef12, 0xf7bdef13, 0xf7bdef14},
+	{0xffffff94, 0xffffff95, 0xffffff96, 0xffffff97, 0xffffff98, 0xffffff8a}
+};
+#endif  /*CSI_EFUSE_VERIFY_GORDAN_TABLE_EN*/
+
 static const char * const csi_phy_versions[] = {
 	MTK_CSI_PHY_VERSIONS
 };
@@ -1008,7 +1048,84 @@ static int dev_read_csi_efuse(struct seninf_ctx *ctx)
 
 	return 0;
 }
-#endif
+
+static int csi_port_switch_for_efuse(enum CSI_PORT csi_port_efuse)
+{
+	int sw_csi_port = CSI_PORT_0;
+
+	switch (csi_port_efuse) {
+	case CSI_PORT_0:
+	case CSI_PORT_0A:
+	case CSI_PORT_0B:
+		sw_csi_port = CSI_PORT_0;
+		break;
+	case CSI_PORT_1:
+	case CSI_PORT_1A:
+	case CSI_PORT_1B:
+		sw_csi_port = CSI_PORT_1;
+		break;
+	case CSI_PORT_2:
+	case CSI_PORT_2A:
+	case CSI_PORT_2B:
+		sw_csi_port = CSI_PORT_2;
+		break;
+	case CSI_PORT_3:
+	case CSI_PORT_3A:
+	case CSI_PORT_3B:
+		sw_csi_port = CSI_PORT_3;
+		break;
+	case CSI_PORT_4:
+	case CSI_PORT_4A:
+	case CSI_PORT_4B:
+		sw_csi_port = CSI_PORT_4;
+		break;
+	case CSI_PORT_5:
+	case CSI_PORT_5A:
+	case CSI_PORT_5B:
+		sw_csi_port = CSI_PORT_5;
+		break;
+	default:
+		sw_csi_port = CSI_PORT_0;
+		break;
+	}
+	return  sw_csi_port;
+}
+
+#if CSI_EFUSE_VERIFY_EN == 1
+static int csi_efuse_value_verify(struct seninf_ctx *ctx)
+{
+	int checksum = 0;
+	int csi_efuse_val = ctx->m_csi_efuse;
+	int csi_port = csi_port_switch_for_efuse(ctx->port);
+	int csi_verify_bit = (csi_efuse_val & 0x1f);
+	int checksum2verify = 0;
+
+	checksum += ((csi_efuse_val >> 27) & 0x1f);
+	checksum += ((csi_efuse_val >> 22) & 0x1f);
+	checksum += ((csi_efuse_val >> 17) & 0x1f);
+	checksum += ((csi_efuse_val >> 12) & 0x1f);
+	checksum += ((csi_efuse_val >> 7) & 0x1f);
+	checksum += csi_port;
+	dev_info(ctx->dev, "Efuse Data: 0x%08x, csi_port: %d\n",
+		ctx->m_csi_efuse, csi_port);
+
+	if (checksum == csi_port) {
+		dev_info(ctx->dev, "All value == 0 skip verify\n");
+		return 0;
+	}
+
+	checksum2verify = (((checksum >> 4) & 0xf) + (checksum & 0xf)) & 0x1f;
+
+	if (checksum2verify != csi_verify_bit) {
+		dev_info(ctx->dev, "Efuse verify fail VerifyBit: 0x%08x, ChecksumToVerify: 0x%08x\n",
+			csi_verify_bit, checksum2verify);
+		return -1;
+	}
+	return 0;
+}
+#endif  /*CSI_EFUSE_VERIFY_EN*/
+#endif  /*CSI_EFUSE_SET*/
+
 static const struct v4l2_mbus_framefmt fmt_default = {
 	.code = MEDIA_BUS_FMT_SBGGR10_1X10,
 	.width = DEFAULT_WIDTH,
@@ -2475,6 +2592,11 @@ static int seninf_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct seninf_core *core;
 	int i;
+#if CSI_EFUSE_VERIFY_GORDAN_TABLE_EN == 1
+	int csi_verify_ret = 0;
+	int csi_i;
+	int csi_temp = 0;
+#endif  /*CSI_EFUSE_VERIFY_GORDAN_TABLE_EN*/
 
 	if (!dev->parent)
 		return -EPROBE_DEFER;
@@ -2547,7 +2669,21 @@ static int seninf_probe(struct platform_device *pdev)
 	ret = dev_read_csi_efuse(ctx);
 	if (ret < 0)
 		dev_info(dev, "Failed to read efuse data\n");
-#endif
+#if CSI_EFUSE_VERIFY_EN == 1
+#if CSI_EFUSE_VERIFY_GORDAN_TABLE_EN == 1
+	csi_temp = ctx->m_csi_efuse;
+	for (csi_i = 0; csi_i <= 31; csi_i++) {
+		ctx->m_csi_efuse = gordan_csi_efuse_table[csi_i][ctx->port];
+		csi_verify_ret = csi_efuse_value_verify(ctx);
+		if (csi_verify_ret < 0)
+			dev_info(dev, "Gordan csi efuse verify fail\n");
+	}
+	ctx->m_csi_efuse = csi_temp;
+#endif  /*CSI_EFUSE_VERIFY_GORDAN_TABLE_EN*/
+	if (csi_efuse_value_verify(ctx) < 0)
+		dev_info(dev, "Failed to verify efuse data\n");
+#endif  /*CSI_EFUSE_VERIFY_EN*/
+#endif  /*CSI_EFUSE_SET*/
 
 	ret = seninf_initialize_controls(ctx);
 	if (ret) {
