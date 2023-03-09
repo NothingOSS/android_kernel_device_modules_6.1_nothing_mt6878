@@ -360,8 +360,11 @@ static void auxadc_irq_lock(struct irq_data *data)
 static void auxadc_irq_sync_unlock(struct irq_data *data)
 {
 	struct mt6375_priv *priv = irq_data_get_irq_chip_data(data);
-	int idx = data->hwirq / 8, bits = BIT(data->hwirq % 8), ret;
-	unsigned int reg;
+	unsigned int idx = data->hwirq / 8, bits = BIT(data->hwirq % 8), reg;
+	int ret;
+
+	if (idx >= NUM_IRQ_REG)
+		goto irq_sync_unlock_out;
 
 	if (priv->unmask_buf[idx] & bits)
 		reg = HK_TOP_INT_CON0_SET + idx * 3;
@@ -372,6 +375,7 @@ static void auxadc_irq_sync_unlock(struct irq_data *data)
 	if (ret)
 		dev_err(priv->dev, "Failed to set/clr irq con %d\n", (int)data->hwirq);
 
+irq_sync_unlock_out:
 	mutex_unlock(&priv->irq_lock);
 }
 
@@ -482,7 +486,7 @@ static void auxadc_vbat0_poll_work(struct work_struct *work)
 {
 	struct mt6375_priv *priv = container_of(work, struct mt6375_priv,
 						vbat0_work);
-	bool valid;
+	bool valid = false;
 	ktime_t add;
 	int ret;
 
@@ -517,7 +521,7 @@ static enum alarmtimer_restart vbat0_alarm_poll_func(
 static int auxadc_check_vbat_event(struct mt6375_priv *priv, u8 *status_buf)
 {
 	int i, ret = 0, idx_i, idx_j;
-	bool valid;
+	bool valid = false;
 	ktime_t now, add;
 
 	if (atomic_read(&priv->vbat0_flag))
