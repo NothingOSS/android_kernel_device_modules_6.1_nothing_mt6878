@@ -635,10 +635,10 @@ const struct mtk_format_info *mtk_format_info(u32 format)
 		/* YUV UFBC formats */
 		{ .format = V4L2_PIX_FMT_MTISP_NV12_UFBC, .mem_planes = 1, .comp_planes = 2,
 			.bpp = { 1, 2, 0, 0 }, .hdiv = 2, .vdiv = 2,
-			.bit_r_num = 2, .bit_r_den = 1 },
+			.bit_r_num = 1, .bit_r_den = 1 },
 		{ .format = V4L2_PIX_FMT_MTISP_NV21_UFBC, .mem_planes = 1, .comp_planes = 2,
 			.bpp = { 1, 2, 0, 0 }, .hdiv = 2, .vdiv = 2,
-			.bit_r_num = 2, .bit_r_den = 1 },
+			.bit_r_num = 1, .bit_r_den = 1 },
 		{ .format = V4L2_PIX_FMT_MTISP_NV12_10_UFBC, .mem_planes = 1, .comp_planes = 2,
 			.bpp = { 1, 2, 0, 0 }, .hdiv = 2, .vdiv = 2,
 			.bit_r_num = 5, .bit_r_den = 4 },
