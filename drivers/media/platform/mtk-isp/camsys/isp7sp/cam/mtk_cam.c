@@ -478,13 +478,34 @@ static void mtk_cam_reset_rc_data(
 	memset(rc_data, 0, sizeof(struct mtk_raw_ctrl_data_read_clear));
 }
 
+static unsigned int mtk_cam_get_used_pipe(struct mtk_cam_device *cam,
+	struct mtk_cam_request *req)
+{
+	unsigned int used_ctx = req->used_ctx;
+	unsigned int i, stream_bit, used_pipe = 0;
+	struct mtk_cam_ctx *ctx;
+
+	for (i = 0, stream_bit = bit_map_bit(MAP_STREAM, 0);
+			i < cam->max_stream_num && used_ctx;
+			++i, stream_bit <<= 1) {
+		if (!(used_ctx & stream_bit))
+			continue;
+
+		used_ctx &= ~stream_bit;
+		ctx = &cam->ctxs[i];
+		used_pipe |= ctx->used_pipe;
+	}
+
+	return used_pipe;
+}
+
 static void mtk_cam_clone_pipe_data_to_req(struct media_request *req)
 {
 	struct mtk_cam_request *cam_req = to_mtk_cam_req(req);
 	struct mtk_cam_device *cam =
 		container_of(req->mdev, struct mtk_cam_device, media_dev);
 	struct mtk_cam_v4l2_pipelines *ppls = &cam->pipelines;
-	int i;
+	unsigned int used_pipe, i;
 	unsigned long submask;
 
 	submask = bit_map_subset_of(MAP_SUBDEV_RAW, cam_req->used_pipe);
@@ -519,7 +540,10 @@ static void mtk_cam_clone_pipe_data_to_req(struct media_request *req)
 		};
 	}
 
-	submask = bit_map_subset_of(MAP_SUBDEV_CAMSV, cam_req->used_pipe);
+	/* config w/o enque, so still update data for all used pipes of all used ctxs */
+	used_pipe = mtk_cam_get_used_pipe(cam, cam_req);
+
+	submask = bit_map_subset_of(MAP_SUBDEV_CAMSV, used_pipe);
 	for (i = 0; i < ppls->num_camsv && submask; i++, submask >>= 1) {
 		struct mtk_camsv_request_data *data;
 		struct mtk_camsv_pipeline *sv;
@@ -545,7 +569,7 @@ static void mtk_cam_clone_pipe_data_to_req(struct media_request *req)
 		};
 	}
 
-	submask = bit_map_subset_of(MAP_SUBDEV_MRAW, cam_req->used_pipe);
+	submask = bit_map_subset_of(MAP_SUBDEV_MRAW, used_pipe);
 	for (i = 0; i < ppls->num_mraw && submask; i++, submask >>= 1) {
 		struct mtk_mraw_request_data *data;
 		struct mtk_mraw_pipeline *mraw;
