@@ -838,10 +838,10 @@ struct mtk_ddp_comp *mtk_ddp_comp_last_in_dual_pipe(struct mtk_drm_crtc *mtk_crt
 int mtk_ddp_comp_locate_in_cur_crtc_path(struct mtk_drm_crtc *mtk_crtc, enum mtk_ddp_comp_id id,
 				bool *is_right_pipe, int *comp_order)
 {
-	struct mtk_ddp_comp *comp;
+	struct mtk_ddp_comp *comp = NULL;
 	int i, j, _num = -1, ret = -1;
 	bool _is_right_pipe = false;
-	enum mtk_ddp_comp_type comp_type = mtk_ddp_comp_get_type(id);
+	int comp_type = mtk_ddp_comp_get_type(id);
 
 	if (comp_type < 0)
 		goto done;

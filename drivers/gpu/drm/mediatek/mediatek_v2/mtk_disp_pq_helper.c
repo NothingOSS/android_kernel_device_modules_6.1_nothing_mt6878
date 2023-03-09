@@ -239,7 +239,8 @@ int mtk_pq_helper_fill_comp_pipe_info(struct mtk_ddp_comp *comp, int *path_order
 {
 	int _path_order, ret;
 	bool _is_right_pipe;
-	struct mtk_ddp_comp *_companion;
+	struct mtk_ddp_comp *_companion = NULL;
+	int comp_type;
 
 	ret = mtk_ddp_comp_locate_in_cur_crtc_path(comp->mtk_crtc, comp->id,
 					&_is_right_pipe, &_path_order);
@@ -254,12 +255,13 @@ int mtk_pq_helper_fill_comp_pipe_info(struct mtk_ddp_comp *comp, int *path_order
 	if (!comp->mtk_crtc->is_dual_pipe || !companion)
 		return ret;
 
+	comp_type = mtk_ddp_comp_get_type(comp->id);
 	if (!_is_right_pipe)
 		_companion = mtk_ddp_comp_sel_in_dual_pipe(comp->mtk_crtc,
-					mtk_ddp_comp_get_type(comp->id), _path_order);
+					comp_type, _path_order);
 	else
 		_companion = mtk_ddp_comp_sel_in_cur_crtc_path(comp->mtk_crtc,
-					mtk_ddp_comp_get_type(comp->id), _path_order);
+					comp_type, _path_order);
 	if (!_companion)
 		ret = -1;
 	if (_companion && companion)

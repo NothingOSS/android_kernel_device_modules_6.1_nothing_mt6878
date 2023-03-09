@@ -2561,21 +2561,20 @@ static void disp_aal_single_pipe_hist_update(struct mtk_ddp_comp *comp)
 	do {
 		CRTC_MMP_EVENT_START(0, aal_dre20_rh, comp->id, 0);
 		intsta = readl(comp->regs + DISP_AAL_INTSTA);
-		/* Only process end of frame state */
-		if ((intsta & 0x2) == 0x0) {
-			AALERR("break\n");
-			break;
-		}
-
 		if (spin_trylock_irqsave(&g_aal_get_irq_lock, flags)) {
 			writel(intsta & ~0x3, comp->regs + DISP_AAL_INTSTA);
 			spin_unlock_irqrestore(&g_aal_get_irq_lock, flags);
 		}
-
+		/* Only process end of frame state */
+		if ((intsta & 0x2) == 0x0) {
+			AALERR("break\n");
+			CRTC_MMP_EVENT_END(0, aal_dre20_rh, comp->id, 1);
+			break;
+		}
 		/* Allow to disable interrupt */
 		atomic_set(&aal_data->dirty_frame_retrieved, 1);
 
-		CRTC_MMP_MARK(0, aal_dre20_rh, comp->id, 1);
+		CRTC_MMP_MARK(0, aal_dre20_rh, comp->id, 2);
 		if (spin_trylock_irqsave(&g_aal_hist_lock, flags)) {
 			read_success = disp_aal_read_single_hist(comp);
 
@@ -2616,7 +2615,7 @@ static void disp_aal_single_pipe_hist_update(struct mtk_ddp_comp *comp)
 			 * See: disp_aal_set_interrupt()
 			 */
 		}
-		CRTC_MMP_MARK(0, aal_dre20_rh, comp->id, 2);
+		CRTC_MMP_MARK(0, aal_dre20_rh, comp->id, 3);
 		if (atomic_read(&g_aal_is_init_regs_valid) == 0) {
 			/*
 			 * AAL service is not running, not need per-frame wakeup
@@ -2631,7 +2630,7 @@ static void disp_aal_single_pipe_hist_update(struct mtk_ddp_comp *comp)
 					flags);
 			}
 		}
-		CRTC_MMP_EVENT_END(0, aal_dre20_rh, comp->id, 3);
+		CRTC_MMP_EVENT_END(0, aal_dre20_rh, comp->id, 4);
 	} while (0);
 }
 
@@ -3439,7 +3438,8 @@ static void mtk_aal_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	// for Display Clarity
 	if (g_disp_clarity_regs != NULL) {
 		mutex_lock(&g_clarity_lock);
-		mtk_disp_clarity_set_reg(comp, handle, g_disp_clarity_regs);
+		if (mtk_disp_clarity_set_reg(comp, handle, g_disp_clarity_regs) < 0)
+			DDPMSG("%s: clarity_set_reg failed\n", __func__);
 		mutex_unlock(&g_clarity_lock);
 	}
 }
@@ -4475,7 +4475,7 @@ static void disp_aal_wait_sof_irq(void)
 			mtk_crtc_check_trigger(default_comp->mtk_crtc, true, true);
 			atomic_set(&g_aal_first_frame, 0);
 			atomic_set(&g_aal1_first_frame, 0);
-
+			CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 3);
 			return;
 		}
 	} else {
@@ -4484,7 +4484,7 @@ static void disp_aal_wait_sof_irq(void)
 			mtk_crtc_user_cmd(g_aal_data->crtc, default_comp, FLIP_SRAM, NULL);
 			mtk_crtc_check_trigger(default_comp->mtk_crtc, true, true);
 			atomic_set(&g_aal_first_frame, 0);
-
+			CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 4);
 			return;
 		}
 	}
@@ -4504,7 +4504,7 @@ static void disp_aal_wait_sof_irq(void)
 		mtk_crtc_check_trigger(default_comp->mtk_crtc, true, true);
 		atomic_set(&g_aal_dre30_write, 0);
 	}
-	CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 3);
+	CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 5);
 }
 
 void disp_aal_on_start_of_frame(void)
