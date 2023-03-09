@@ -299,7 +299,7 @@ void mmqos_start_test_id(u32 test_id)
 
 static int mmqos_set_test_id(const char *val, const struct kernel_param *kp)
 {
-	u32 test_id;
+	u32 test_id = 0;
 	int ret;
 
 	ret = kstrtou32(val, 0, &test_id);
