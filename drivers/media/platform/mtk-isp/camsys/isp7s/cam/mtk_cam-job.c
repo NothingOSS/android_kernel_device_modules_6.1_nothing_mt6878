@@ -125,6 +125,11 @@ static int apply_sensor_async(struct mtk_cam_job *job)
 	return mtk_cam_ctx_queue_sensor_worker(ctx, &job->sensor_work);
 }
 
+bool mtk_cam_job_has_pending_action(struct mtk_cam_job *job)
+{
+	return mtk_cam_job_state_has_action(&job->job_state);
+}
+
 int mtk_cam_job_apply_pending_action(struct mtk_cam_job *job)
 {
 	int action, ret = 0;

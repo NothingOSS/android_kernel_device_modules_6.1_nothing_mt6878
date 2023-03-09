@@ -294,6 +294,7 @@ static inline void mtk_cam_job_put(struct mtk_cam_job *job)
 }
 
 void mtk_cam_ctx_job_finish(struct mtk_cam_job *job);
+bool mtk_cam_job_has_pending_action(struct mtk_cam_job *job);
 int mtk_cam_job_apply_pending_action(struct mtk_cam_job *job);
 
 #define call_jobop(job, func, ...) \

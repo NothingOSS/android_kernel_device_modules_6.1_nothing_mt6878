@@ -94,6 +94,11 @@ bool cond_switch_job_first(struct mtk_cam_job *job, void *arg)
 	return job->seamless_switch;
 }
 
+bool cond_job_with_action(struct mtk_cam_job *job, void *arg)
+{
+	return mtk_cam_job_has_pending_action(job);
+}
+
 static struct mtk_cam_job *
 mtk_cam_ctrl_get_job(struct mtk_cam_ctrl *ctrl,
 		     bool (*cond_func)(struct mtk_cam_job *, void *arg),
@@ -217,31 +222,35 @@ static void dump_runtime_info(struct mtk_cam_ctrl_runtime_info *info)
 	pr_info("[%s] sof_ts_ns %lld\n", __func__, info->sof_ts_ns);
 }
 
-static void _ctrl_send_event_locked(struct mtk_cam_ctrl *ctrl,
-				    struct transition_param *p)
+static void ctrl_send_event(struct mtk_cam_ctrl *ctrl,
+			    struct transition_param *p)
 {
 	struct mtk_cam_job_state *state;
 
 	MTK_CAM_TRACE_FUNC_BEGIN(BASIC);
-	/* note: make sure read_lock(&ctrl->list_lock) is held */
+
+	read_lock(&ctrl->list_lock);
+	spin_lock(&ctrl->send_lock);
 	list_for_each_entry(state, &ctrl->camsys_state_list, list) {
 		state->ops->send_event(state, p);
 	}
+	spin_unlock(&ctrl->send_lock);
+	read_unlock(&ctrl->list_lock);
+
 	MTK_CAM_TRACE_END(BASIC);
 }
 
-static int _ctrl_apply_locked(struct mtk_cam_ctrl *ctrl)
+static int ctrl_apply_actions(struct mtk_cam_ctrl *ctrl)
 {
 	struct mtk_cam_job *job;
-	struct mtk_cam_job_state *state;
 
-	/* note: make sure read_lock(&ctrl->list_lock) is held */
-
-	list_for_each_entry(state, &ctrl->camsys_state_list, list) {
-		job = container_of(state, struct mtk_cam_job, job_state);
-
-		mtk_cam_job_apply_pending_action(job);
-	}
+	do {
+		job = mtk_cam_ctrl_get_job(ctrl, cond_job_with_action, NULL);
+		if (job) {
+			mtk_cam_job_apply_pending_action(job);
+			mtk_cam_job_put(job);
+		}
+	} while (job);
 
 	return 0;
 }
@@ -294,14 +303,10 @@ static int mtk_cam_ctrl_send_event(struct mtk_cam_ctrl *ctrl, int event)
 	if (CAM_DEBUG_ENABLED(STATE))
 		debug_send_event(&p);
 
-	spin_lock(&ctrl->send_lock);
 
-	read_lock(&ctrl->list_lock);
-	_ctrl_send_event_locked(ctrl, &p);
-	_ctrl_apply_locked(ctrl);
-	read_unlock(&ctrl->list_lock);
+	ctrl_send_event(ctrl, &p);
 
-	spin_unlock(&ctrl->send_lock);
+	ctrl_apply_actions(ctrl);
 
 	MTK_CAM_TRACE_END(BASIC);
 	return 0;

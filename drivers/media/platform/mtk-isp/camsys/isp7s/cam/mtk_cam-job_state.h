@@ -46,6 +46,12 @@ void mtk_cam_job_state_set_action(struct mtk_cam_job_state *s, int act)
 }
 
 static inline
+bool mtk_cam_job_state_has_action(struct mtk_cam_job_state *s)
+{
+	return !!atomic_read(&s->todo_action);
+}
+
+static inline
 int mtk_cam_job_state_fetch_and_clear_action(struct mtk_cam_job_state *s)
 {
 	return atomic_xchg(&s->todo_action, 0);
