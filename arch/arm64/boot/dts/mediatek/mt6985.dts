@@ -409,7 +409,7 @@
 				arm,psci-suspend-param = <0x0201001f>;
 				local-timer-stop;
 				entry-latency-us = <697>;
-				exit-latency-us = <936>;
+				exit-latency-us = <1436>;
 				min-residency-us = <5700>;
 			};
 			system_bus: system_bus {
@@ -417,7 +417,7 @@
 				arm,psci-suspend-param = <0x0201007f>;
 				local-timer-stop;
 				entry-latency-us = <697>;
-				exit-latency-us = <2686>;
+				exit-latency-us = <3186>;
 				min-residency-us = <5700>;
 			};
 			system_vcore: system_vcore {
