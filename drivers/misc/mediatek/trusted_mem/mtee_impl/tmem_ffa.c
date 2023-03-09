@@ -148,20 +148,12 @@ static void set_memory_region_attrs(enum MTEE_MCHUNKS_ID mchunk_id,
 		break;
 
 	case MTEE_MCUHNKS_INVALID:
-		mem_region_attrs[0] = (struct ffa_mem_region_attributes) {
-			.receiver = VM_HA_BASE,
-			.attrs = FFA_MEM_RW
-		};
-		ffa_args->nattrs = 1;
-		pr_info("%s: VM_LIUNX\n", __func__);
+		ffa_args->nattrs = 0;
+		pr_info("%s: mchunk_id = MTEE_MCUHNKS_INVALID\n", __func__);
 		break;
 
 	default:
-		mem_region_attrs[0] = (struct ffa_mem_region_attributes) {
-			.receiver = SP_TA_1,
-			.attrs = FFA_MEM_RW
-		};
-		ffa_args->nattrs = 1;
+		ffa_args->nattrs = VM_HA_NUM;
 		pr_info("%s: mchunk_id = %d\n", __func__, mchunk_id);
 		break;
 	}
