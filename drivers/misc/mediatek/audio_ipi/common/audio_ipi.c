@@ -739,6 +739,7 @@ static void __exit audio_ipi_exit(void)
 	misc_deregister(&audio_ipi_device);
 }
 
+MODULE_SOFTDEP("pre: adsp-v2");
 
 module_init(audio_ipi_init);
 module_exit(audio_ipi_exit);
