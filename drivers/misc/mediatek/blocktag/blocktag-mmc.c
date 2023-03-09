@@ -106,6 +106,10 @@ static void btag_mmc_pidlog_insert(struct request *rq, bool is_sd,
 		mtk_btag_page_pidlog_set(bvec.bv_page, 0);
 
 		*tot_len += bvec.bv_len;
+
+		if (pid == 0)
+			continue;
+
 		if (pid < 0) {
 			*top_len += bvec.bv_len;
 			pid = -pid;
