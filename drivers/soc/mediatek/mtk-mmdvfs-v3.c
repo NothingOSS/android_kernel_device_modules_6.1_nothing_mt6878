@@ -906,35 +906,43 @@ EXPORT_SYMBOL_GPL(mmdvfs_get_version);
 
 int mmdvfs_force_step_by_vcp(const u8 pwr_idx, const s8 opp)
 {
-	u8 idx = pwr_idx + MMDVFS_USER_VCORE, mux_idx;
+	struct mmdvfs_mux *mux;
+	u8 idx = pwr_idx + MMDVFS_USER_VCORE;
 	int ret;
 
 	if (!mmdvfs_mux_version || idx >= ARRAY_SIZE(mmdvfs_user)) {
 		MMDVFS_ERR("invalid:%d pwr_idx:%hhu idx:%hhu", mmdvfs_mux_version, pwr_idx, idx);
 		return -EINVAL;
 	}
-	mux_idx = mmdvfs_user[idx].target_id;
+	mux = &mmdvfs_mux[mmdvfs_user[idx].target_id];
 
-	if (opp >= MAX_OPP || opp >= mmdvfs_mux[mux_idx].freq_num) {
+	if (opp >= MAX_OPP || opp >= mux->freq_num) {
 		MMDVFS_ERR("invalid opp:%hhd idx:%hhu mux:%hhu freq_num:%hhu",
-			opp, idx, mux_idx, mmdvfs_mux[mux_idx].freq_num);
+			opp, idx, mux->id, mux->freq_num);
 		return -EINVAL;
 	}
 
 	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_FORCE);
+	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
+		mux->opp < dpsw_thr && mux->last >= dpsw_thr)
+		mtk_mmdvfs_enable_vmm(true);
 	ret = mmdvfs_vcp_ipi_send(FUNC_FORCE_OPP, pwr_idx, opp, NULL);
+	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
+		mux->opp >= dpsw_thr && mux->last < dpsw_thr)
+		mtk_mmdvfs_enable_vmm(false);
 	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_FORCE);
 
 	if (ret || log_level & (1 << log_adb))
-		MMDVFS_DBG("pwr_idx:%hhu idx:%hhu mux_idx:%hhu opp:%hhd",
-			pwr_idx, idx, mux_idx, opp);
+		MMDVFS_DBG("pwr_idx:%hhu idx:%hhu mux:%hhu opp:%hhd",
+			pwr_idx, idx, mux->id, opp);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(mmdvfs_force_step_by_vcp);
 
 int mmdvfs_vote_step_by_vcp(const u8 pwr_idx, const s8 opp)
 {
-	u8 idx = pwr_idx + MMDVFS_USER_VCORE, mux_idx;
+	struct mmdvfs_mux *mux;
+	u8 idx = pwr_idx + MMDVFS_USER_VCORE;
 	s8 level;
 	int ret;
 
@@ -942,22 +950,28 @@ int mmdvfs_vote_step_by_vcp(const u8 pwr_idx, const s8 opp)
 		MMDVFS_ERR("invalid:%d pwr_idx:%hhu idx:%hhu", mmdvfs_mux_version, pwr_idx, idx);
 		return -EINVAL;
 	}
-	mux_idx = mmdvfs_user[idx].target_id;
+	mux = &mmdvfs_mux[mmdvfs_user[idx].target_id];
 
-	if (opp >= MAX_OPP || opp >= mmdvfs_mux[mux_idx].freq_num) {
+	if (opp >= MAX_OPP || opp >= mux->freq_num) {
 		MMDVFS_ERR("invalid opp:%hhd idx:%hhu mux:%hhu freq_num:%hhu",
-			opp, idx, mux_idx, mmdvfs_mux[mux_idx].freq_num);
+			opp, idx, mux->id, mux->freq_num);
 		return -EINVAL;
 	}
-	level = mmdvfs_mux[mux_idx].freq_num - 1 - opp;
+	level = mux->freq_num - 1 - opp;
 
 	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_VOTE);
-	ret = clk_set_rate(mmdvfs_user_clk[idx], mmdvfs_mux[mux_idx].freq[level]);
+	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
+		mux->opp < dpsw_thr && mux->last >= dpsw_thr)
+		mtk_mmdvfs_enable_vmm(true);
+	ret = clk_set_rate(mmdvfs_user_clk[idx], mux->freq[level]);
+	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
+		mux->opp >= dpsw_thr && mux->last < dpsw_thr)
+		mtk_mmdvfs_enable_vmm(false);
 	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_VOTE);
 
 	if (ret || log_level & (1 << log_adb))
-		MMDVFS_DBG("pwr_idx:%hhu idx:%hhu mux_idx:%hhu opp:%hhd level:%hhd",
-			pwr_idx, idx, mux_idx, opp, level);
+		MMDVFS_DBG("pwr_idx:%hhu idx:%hhu mux:%hhu opp:%hhd level:%hhd",
+			pwr_idx, idx, mux->id, opp, level);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(mmdvfs_vote_step_by_vcp);
@@ -1134,6 +1148,7 @@ static int disp_pd_callback(struct notifier_block *nb, unsigned long pd_flags, v
 		work->enable = false;
 		break;
 	default:
+		kfree(work);
 		return 0;
 	}
 
@@ -1574,13 +1589,7 @@ int mmdvfs_mux_set_opp(const char *name, unsigned long rate)
 			goto set_opp_end;
 		}
 
-		if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
-			mux->opp < dpsw_thr && mux->last >= dpsw_thr)
-			mtk_mmdvfs_enable_vmm(true);
 		ret = mmdvfs_vcp_ipi_send(TEST_SET_MUX, vcp_mux_id[mux->id], mux->opp, NULL);
-		if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
-			mux->opp >= dpsw_thr && mux->last < dpsw_thr)
-			mtk_mmdvfs_enable_vmm(false);
 	}
 	if (!ret) {
 		user->undo_rate = 0UL;
