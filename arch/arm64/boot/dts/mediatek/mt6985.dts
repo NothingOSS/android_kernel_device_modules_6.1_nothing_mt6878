@@ -614,7 +614,7 @@
 
 		dpmaif_resv_cache_mem: ccci-dpmaif-cache-memory {
 			compatible = "mediatek,dpmaif-resv-cache-mem";
-			size = <0 0x00210000>; /* 2162688 Bytes for 2rxq */
+			size = <0 0x08210000>; /* 130MB for 2rxq + page pool*/
 			alignment = <0 0x1000>;
 			alloc-ranges = <0 0x40000000 0 0xf0000000>;
 		};
