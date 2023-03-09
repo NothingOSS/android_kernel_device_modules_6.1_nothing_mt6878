@@ -48,7 +48,7 @@ int pe50_get_log_level(void)
 #define PE50_VBUS_CALI_THRESHOLD	150	/* mV */
 #define PE50_CV_LOWER_BOUND_GAP		50	/* mV */
 #define PE50_INIT_POLLING_INTERVAL	500	/* ms */
-#define PE50_INIT_RETRY_MAX	0
+#define PE50_INIT_RETRY_MAX	1
 #define PE50_MEASURE_R_RETRY_MAX	3
 #define PE50_MEASURE_R_AVG_TIMES	10
 #define PE50_VSYS_UPPER_BOUND            4700    /* mV */
@@ -496,7 +496,7 @@ static inline int pe50_set_ta_cap_cc_by_cali_vta(struct pe50_algo_info *info,
 
 static inline void pe50_update_ita_gap(struct pe50_algo_info *info, u32 ita_gap)
 {
-	int i;
+	unsigned int i;
 	u32 val = 0, avg_cnt = PE50_ITA_GAP_WINDOW_SIZE;
 	struct pe50_algo_data *data = info->data;
 
@@ -942,7 +942,7 @@ static int pe50_set_dvchg_charging(struct pe50_algo_info *info, bool en)
  */
 static int pe50_enable_swchg_charging(struct pe50_algo_info *info, bool en)
 {
-	int ret;
+	int ret = 0;
 	struct pe50_algo_data *data = info->data;
 	struct pe50_algo_desc *desc = info->desc;
 
@@ -1084,6 +1084,7 @@ static int pe50_stop(struct pe50_algo_info *info, struct pe50_stop_info *sinfo)
 	struct chg_alg_notify notify = {
 		.evt = EVT_ALGO_STOP,
 	};
+	int ret = 0;
 
 	if (data->state == PE50_ALGO_STOP) {
 		/*
@@ -1101,8 +1102,13 @@ static int pe50_stop(struct pe50_algo_info *info, struct pe50_stop_info *sinfo)
 	atomic_set(&data->stop_algo, 0);
 	alarm_cancel(&data->timer);
 
-	if (data->is_swchg_en)
-		pe50_enable_swchg_charging(info, false);
+	if (data->is_swchg_en) {
+		ret = pe50_enable_swchg_charging(info, false);
+		if (ret < 0) {
+			PE50_ERR("en swchg fail(%d)\n", ret);
+			return ret;
+		}
+	}
 	pe50_enable_dvchg_charging(info, PE50_DVCHG_SLAVE, false);
 	pe50_set_dvchg_charging(info, false);
 	if (!(data->notify & PE50_RESET_NOTIFY)) {
@@ -3208,7 +3214,7 @@ static bool
 
 static bool pe50_algo_safety_check(struct pe50_algo_info *info)
 {
-	int i;
+	unsigned int i;
 	struct pe50_stop_info sinfo = {
 		.reset_ta = true,
 		.hardreset_ta = false,
@@ -3436,7 +3442,7 @@ static int
 
 static int pe50_pre_handle_notify_evt(struct pe50_algo_info *info)
 {
-	int i;
+	unsigned int i;
 	struct pe50_algo_data *data = info->data;
 
 	mutex_lock(&data->notify_lock);
@@ -3455,7 +3461,7 @@ static int pe50_pre_handle_notify_evt(struct pe50_algo_info *info)
 
 static int pe50_post_handle_notify_evt(struct pe50_algo_info *info)
 {
-	int i;
+	unsigned int i;
 	struct pe50_algo_data *data = info->data;
 
 	mutex_lock(&data->notify_lock);
@@ -3474,10 +3480,11 @@ static int pe50_post_handle_notify_evt(struct pe50_algo_info *info)
 
 static int pe50_dump_charging_info(struct pe50_algo_info *info)
 {
-	int ret, i;
-	int vbus, ibus[PE50_DVCHG_MAX] = {0}, ibus_swchg = 0, vbat, ibat, vout[PE50_DVCHG_MAX] = {0};
-	int ibus_total, vsys, tbat;
-	u32 soc;
+	int ret = 0, i = 0;
+	int vbus = 0, ibus[PE50_DVCHG_MAX] = {0}, ibus_swchg = 0, vbat = 0
+		, ibat = 0, vout[PE50_DVCHG_MAX] = {0};
+	int ibus_total = 0, vsys = 0, tbat = 0;
+	int soc = 0;
 	struct pe50_algo_data *data = info->data;
 
 	/* vbus */
@@ -3690,8 +3697,8 @@ out_unlock:
 
 static int pe50_is_algo_ready(struct chg_alg_device *alg)
 {
-	int ret;
-	u32 soc;
+	int ret = 0;
+	int soc = 0;
 	struct pe50_algo_info *info = chg_alg_dev_get_drvdata(alg);
 	struct pe50_algo_data *data = info->data;
 	struct pe50_algo_desc *desc = info->desc;

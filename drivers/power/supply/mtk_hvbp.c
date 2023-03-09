@@ -46,7 +46,7 @@ int hvbp_get_log_level(void)
 #define HVBP_VBUS_CALI_THRESHOLD	150	/* mV */
 #define HVBP_CV_LOWER_BOUND_GAP		50	/* mV */
 #define HVBP_INIT_POLLING_INTERVAL	500	/* ms */
-#define HVBP_INIT_RETRY_MAX	0
+#define HVBP_INIT_RETRY_MAX	1
 #define HVBP_MEASURE_R_RETRY_MAX	3
 #define HVBP_MEASURE_R_AVG_TIMES	10
 #define HVBP_VSYS_UPPER_BOUND            8900    /* mV */
@@ -475,7 +475,7 @@ static inline int hvbp_set_ta_cap_cc_by_cali_vta(struct hvbp_algo_info *info,
 
 static inline void hvbp_update_ita_gap(struct hvbp_algo_info *info, u32 ita_gap)
 {
-	int i;
+	unsigned int i;
 	u32 val = 0, avg_cnt = HVBP_ITA_GAP_WINDOW_SIZE;
 	struct hvbp_algo_data *data = info->data;
 
@@ -965,6 +965,7 @@ static int hvbp_stop(struct hvbp_algo_info *info, struct hvbp_stop_info *sinfo)
 	struct chg_alg_notify notify = {
 		.evt = EVT_ALGO_STOP,
 	};
+	int ret = 0;
 
 	if (data->state == HVBP_ALGO_STOP) {
 		/*
@@ -982,8 +983,16 @@ static int hvbp_stop(struct hvbp_algo_info *info, struct hvbp_stop_info *sinfo)
 	atomic_set(&data->stop_algo, 0);
 	alarm_cancel(&data->timer);
 
-	hvbp_enable_dvchg_charging(info, HVBP_HVDVCHG_SLAVE, false);
-	hvbp_set_hvdvchg_charging(info, false);
+	ret = hvbp_enable_dvchg_charging(info, HVBP_HVDVCHG_SLAVE, false);
+	if (ret < 0) {
+		HVBP_ERR("disable master hvdvchg fail(%d)\n", ret);
+		return ret;
+	}
+	ret = hvbp_set_hvdvchg_charging(info, false);
+	if (ret < 0) {
+		HVBP_ERR("en dvchg fail\n");
+		return ret;
+	}
 	if (!(data->notify & HVBP_RESET_NOTIFY)) {
 		if (sinfo->hardreset_ta)
 			hvbp_hal_send_ta_hardreset(info->alg);
@@ -2918,7 +2927,7 @@ static bool
 
 static bool hvbp_algo_safety_check(struct hvbp_algo_info *info)
 {
-	int i;
+	unsigned int i;
 	struct hvbp_stop_info sinfo = {
 		.reset_ta = true,
 		.hardreset_ta = false,
@@ -3156,7 +3165,7 @@ static int
 
 static int hvbp_pre_handle_notify_evt(struct hvbp_algo_info *info)
 {
-	int i;
+	unsigned int i;
 	struct hvbp_algo_data *data = info->data;
 
 	mutex_lock(&data->notify_lock);
@@ -3175,7 +3184,7 @@ static int hvbp_pre_handle_notify_evt(struct hvbp_algo_info *info)
 
 static int hvbp_post_handle_notify_evt(struct hvbp_algo_info *info)
 {
-	int i;
+	unsigned int i;
 	struct hvbp_algo_data *data = info->data;
 
 	mutex_lock(&data->notify_lock);
@@ -3194,9 +3203,9 @@ static int hvbp_post_handle_notify_evt(struct hvbp_algo_info *info)
 
 static int hvbp_dump_charging_info(struct hvbp_algo_info *info)
 {
-	int ret;
-	int vbus, ibus, vbat, ibat, vsys, tbat;
-	u32 soc;
+	int ret = 0;
+	int vbus = 0, ibus = 0, vbat = 0, ibat = 0, vsys = 0, tbat = 0;
+	int soc = 0;
 	struct hvbp_algo_data *data = info->data;
 
 	/* vbus */
@@ -3627,7 +3636,7 @@ static inline void hvbp_parse_dt_u32(struct device_node *np, void *desc,
 				     const struct hvbp_dtprop *props,
 				     int prop_cnt)
 {
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < prop_cnt; i++) {
 		if (unlikely(!props[i].name))
@@ -3640,7 +3649,7 @@ static inline void hvbp_parse_dt_u32_arr(struct device_node *np, void *desc,
 					 const struct hvbp_dtprop *props,
 					 int prop_cnt)
 {
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < prop_cnt; i++) {
 		if (unlikely(!props[i].name))
@@ -3661,7 +3670,7 @@ static inline void hvbp_parse_dt_s32_arr(struct device_node *np, void *desc,
 					 const struct hvbp_dtprop *props,
 					 int prop_cnt)
 {
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < prop_cnt; i++) {
 		if (unlikely(!props[i].name))
@@ -3721,7 +3730,8 @@ static const struct hvbp_dtprop hvbp_dtprops_s32_array[] = {
 
 static int hvbp_parse_dt(struct hvbp_algo_info *info)
 {
-	int i, ret;
+	unsigned int i = 0;
+	int ret = 0;
 	struct hvbp_algo_desc *desc;
 	struct hvbp_algo_data *data;
 	struct device_node *np = info->dev->of_node;

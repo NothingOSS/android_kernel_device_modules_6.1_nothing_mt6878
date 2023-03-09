@@ -2797,7 +2797,7 @@ static void kpoc_power_off_check(struct mtk_charger *info)
 
 static void charger_status_check(struct mtk_charger *info)
 {
-	union power_supply_propval online, status;
+	union power_supply_propval online = {0}, status = {0};
 	struct power_supply *chg_psy = NULL;
 	int ret;
 	bool charging = true;

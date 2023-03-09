@@ -266,7 +266,7 @@ int mtk_pe40_get_setting_by_watt(struct chg_alg_device *alg, int *voltage,
 	int *adapter_ibus, int *actual_current, int watt,
 	int *ibus_current_setting)
 {
-	int i = 0;
+	unsigned int i = 0;
 	struct mtk_pe40 *pe40;
 	struct pe4_power_cap *pe40_cap;
 	int vbus = 0, ibus = 0, ibus_setting = 0;
@@ -668,7 +668,7 @@ int mtk_pe40_get_init_watt(struct chg_alg_device *alg)
 	int voltage = 0, input_current = 1000, actual_current = 0;
 	int voltage1 = 0, adapter_ibus;
 	bool is_enable = false, is_chip_enable = false;
-	int i;
+	unsigned int i;
 
 	pe40 = dev_get_drvdata(&alg->dev);
 	voltage = 0;
@@ -988,7 +988,7 @@ int mtk_pe40_safety_check(struct chg_alg_device *alg)
 	struct pe4_adapter_status TAstatus;
 	int ret;
 	int tmp;
-	int i;
+	unsigned int i;
 	int high_tmp_cnt = 0;
 
 	pe40 = dev_get_drvdata(&alg->dev);
@@ -1273,13 +1273,9 @@ int mtk_pe40_cc_state(struct chg_alg_device *alg)
 		goto disable_hv;
 
 	uisoc = pe4_hal_get_uisoc(alg);
-	if (uisoc > 80 && pe40->avbus * oldibus <= PE40_MIN_WATT) {
-		if (pe40->charging_current_limit1 != -1 ||
-			pe40->input_current_limit1 != -1)
-			mtk_pe40_end(alg, 1);
-		else
-			mtk_pe40_end(alg, 1);
-	}
+	if (uisoc > 80 && pe40->avbus * oldibus <= PE40_MIN_WATT)
+		mtk_pe40_end(alg, 1);
+
 
 	return 0;
 
@@ -1537,8 +1533,8 @@ static int _pe4_start_algo(struct chg_alg_device *alg)
 {
 	int ret = 0, ret_value = 0;
 	struct mtk_pe40 *pe4;
-	bool again;
-	int uisoc, tmp;
+	bool again = false;
+	int uisoc = 0, tmp = 0;
 
 	pe4 = dev_get_drvdata(&alg->dev);
 	mutex_lock(&pe4->access_lock);

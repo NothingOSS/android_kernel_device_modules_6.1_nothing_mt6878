@@ -210,13 +210,13 @@ int pe2_reset_ta_vchr(struct chg_alg_device *alg)
 static void pe2_check_cable_impedance(struct chg_alg_device *alg)
 {
 	int ret = 0;
-	int vchr1, vchr2, cable_imp;
-	unsigned int aicr_value;
+	int vchr1 = 0, vchr2 = 0, cable_imp = 0;
+	unsigned int aicr_value = 0;
 	bool mivr_state = false;
 	ktime_t ptime[2], ktime_diff;
 	struct timespec64 diff;
 	struct mtk_pe20 *pe2;
-	int input_current;
+	int input_current = 0;
 
 
 	pe2_dbg("%s: starts type:%d\n", __func__,
@@ -312,8 +312,8 @@ static int _pe20_set_ta_vchr(struct chg_alg_device *alg, u32 chr_volt)
 {
 	int ret = 0, ret_value = 0;
 	struct mtk_pe20 *pe2;
-	int chg_cnt, i;
-	bool is_chip_enabled;
+	int chg_cnt = 0, i = 0;
+	bool is_chip_enabled = false;
 
 	pe2_dbg("%s: starts\n", __func__);
 	pe2 = dev_get_drvdata(&alg->dev);
@@ -350,7 +350,7 @@ static int _pe20_set_ta_vchr(struct chg_alg_device *alg, u32 chr_volt)
 static int pe20_set_ta_vchr(struct chg_alg_device *alg, u32 chr_volt)
 {
 	int ret = 0, ret_value = 0;
-	int vchr_before, vchr_after, vchr_delta;
+	int vchr_before = 0, vchr_after = 0, vchr_delta = 0;
 	const u32 sw_retry_cnt_max = 3;
 	const u32 retry_cnt_max = 5;
 	u32 sw_retry_cnt = 0, retry_cnt = 0;
@@ -449,7 +449,7 @@ static int __pe2_check_charger(struct chg_alg_device *alg)
 {
 	int ret = 0, ret_value = 0;
 	struct mtk_pe20 *pe2;
-	int uisoc;
+	int uisoc = 0;
 
 	pe2 = dev_get_drvdata(&alg->dev);
 	uisoc = pe2_hal_get_uisoc(alg);
@@ -546,7 +546,7 @@ static int pe2_leave(struct chg_alg_device *alg)
 static int _pe2_init_algo(struct chg_alg_device *alg)
 {
 	struct mtk_pe20 *pe2;
-	int ret, cnt, log_level;
+	int ret = 0, cnt = 0, log_level = 0;
 
 	pe2 = dev_get_drvdata(&alg->dev);
 	mutex_lock(&pe2->access_lock);
@@ -615,7 +615,7 @@ static char *pe2_state_to_str(int state)
 static int _pe2_is_algo_ready(struct chg_alg_device *alg)
 {
 	struct mtk_pe20 *pe2;
-	int ret_value, uisoc;
+	int ret_value = 0, uisoc = 0;
 
 	pe2 = dev_get_drvdata(&alg->dev);
 
@@ -673,7 +673,7 @@ static int pe2_sc_set_charger(struct chg_alg_device *alg)
 {
 	struct mtk_pe20 *pe2;
 	int ichg1_min = -1, aicr1_min = -1;
-	int ret;
+	int ret = 0;
 
 	pe2 = dev_get_drvdata(&alg->dev);
 
@@ -760,7 +760,7 @@ static int pe2_dcs_set_charger(struct chg_alg_device *alg)
 	//bool chg1_enable = true;
 	bool chg2_enable = true;
 	bool chg2_chip_enabled = false;
-	int ret;
+	int ret = 0;
 	int ichg1_min = -1, ichg2_min = -1;
 	int aicr1_min = -1;
 
@@ -880,12 +880,12 @@ static int pe2_dcs_set_charger(struct chg_alg_device *alg)
 static int __pe2_run(struct chg_alg_device *alg)
 {
 	struct mtk_pe20 *pe2;
-	int i;
-	int vbat, vbus, ichg;
-	int pre_vbus, pre_idx;
+	unsigned int i = 0;
+	int vbat = 0, vbus = 0, ichg = 0;
+	int pre_vbus = 0, pre_idx = 0;
 	int tune = 0, pes = 0; /* For log, to know the state of PE+20 */
-	u32 size;
-	int ret = 0, ret_value = 0, vchr, uisoc;
+	u32 size = 0;
+	int ret = 0, ret_value = 0, vchr = 0, uisoc = 0;
 
 	pe2 = dev_get_drvdata(&alg->dev);
 
@@ -1002,7 +1002,7 @@ static int _pe2_start_algo(struct chg_alg_device *alg)
 {
 	int ret = 0, ret_value = 0;
 	struct mtk_pe20 *pe2;
-	bool again;
+	bool again = false;
 
 	pe2 = dev_get_drvdata(&alg->dev);
 	mutex_lock(&pe2->access_lock);

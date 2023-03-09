@@ -516,7 +516,7 @@ static inline int pe5p_set_ta_cap_cc_by_cali_vta(struct pe5p_algo_info *info,
 
 static inline void pe5p_update_ita_gap(struct pe5p_algo_info *info, u32 ita_gap)
 {
-	int i;
+	unsigned int i;
 	u32 val = 0, avg_cnt = PE5P_ITA_GAP_WINDOW_SIZE;
 	struct pe5p_algo_data *data = info->data;
 
@@ -3249,7 +3249,7 @@ static bool
 
 static bool pe5p_algo_safety_check(struct pe5p_algo_info *info)
 {
-	int i;
+	unsigned int i;
 	struct pe5p_stop_info sinfo = {
 		.reset_ta = true,
 		.hardreset_ta = false,
@@ -3486,7 +3486,7 @@ static int
 
 static int pe5p_pre_handle_notify_evt(struct pe5p_algo_info *info)
 {
-	int i;
+	unsigned int i;
 	struct pe5p_algo_data *data = info->data;
 
 	mutex_lock(&data->notify_lock);
@@ -3505,7 +3505,7 @@ static int pe5p_pre_handle_notify_evt(struct pe5p_algo_info *info)
 
 static int pe5p_post_handle_notify_evt(struct pe5p_algo_info *info)
 {
-	int i;
+	unsigned int i;
 	struct pe5p_algo_data *data = info->data;
 
 	mutex_lock(&data->notify_lock);
@@ -3524,9 +3524,10 @@ static int pe5p_post_handle_notify_evt(struct pe5p_algo_info *info)
 
 static int pe5p_dump_charging_info(struct pe5p_algo_info *info)
 {
-	int ret;
-	int vbus, ibus, ibus_swchg, vbat, ibat, vsys, tbat;
-	u32 soc;
+	int ret = 0;
+	int vbus = 0, ibus = 0, ibus_swchg = 0, vbat = 0, ibat = 0,
+	vsys = 0, tbat = 0;
+	int soc = 0;
 	struct pe5p_algo_data *data = info->data;
 
 	/* vbus */
@@ -3708,8 +3709,8 @@ out_unlock:
 
 static int pe5p_is_algo_ready(struct chg_alg_device *alg)
 {
-	int ret;
-	u32 soc;
+	int ret = 0;
+	int soc = 0;
 	struct pe5p_algo_info *info = chg_alg_dev_get_drvdata(alg);
 	struct pe5p_algo_data *data = info->data;
 	struct pe5p_algo_desc *desc = info->desc;
@@ -3986,7 +3987,7 @@ static inline void pe5p_parse_dt_u32(struct device_node *np, void *desc,
 				     const struct pe5p_dtprop *props,
 				     int prop_cnt)
 {
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < prop_cnt; i++) {
 		if (unlikely(!props[i].name))
@@ -3999,7 +4000,7 @@ static inline void pe5p_parse_dt_u32_arr(struct device_node *np, void *desc,
 					 const struct pe5p_dtprop *props,
 					 int prop_cnt)
 {
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < prop_cnt; i++) {
 		if (unlikely(!props[i].name))
@@ -4020,7 +4021,7 @@ static inline void pe5p_parse_dt_s32_arr(struct device_node *np, void *desc,
 					 const struct pe5p_dtprop *props,
 					 int prop_cnt)
 {
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < prop_cnt; i++) {
 		if (unlikely(!props[i].name))
@@ -4088,7 +4089,7 @@ static const struct pe5p_dtprop pe5p_dtprops_s32_array[] = {
 
 static int pe5p_parse_dt(struct pe5p_algo_info *info)
 {
-	int i, ret;
+	unsigned int i, ret;
 	struct pe5p_algo_desc *desc;
 	struct pe5p_algo_data *data;
 	struct device_node *np = info->dev->of_node;

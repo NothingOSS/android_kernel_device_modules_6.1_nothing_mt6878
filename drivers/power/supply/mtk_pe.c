@@ -770,8 +770,8 @@ _out:
 int _pe_start_algo(struct chg_alg_device *alg)
 {
 	struct mtk_pe *pe;
-	bool again;
-	int ret, ret_value;
+	bool again = false;
+	int ret = 0, ret_value = 0;
 
 	pe = dev_get_drvdata(&alg->dev);
 	pe_dbg("%s state:%d %s\n", __func__,
