@@ -155,6 +155,9 @@ void mml_buf_put(struct mml_file_buf *buf)
 	for (i = 0; i < buf->cnt; i++) {
 		if (!buf->dma[i].dmabuf)
 			continue;
+#ifndef MML_FPGA
+		mtk_dma_buf_set_name(buf->dma[i].dmabuf, NULL);
+#endif
 		if (buf->dma[i].va) {
 			map.vaddr = buf->dma[i].va;
 			dma_buf_vunmap(buf->dma[i].dmabuf, &map);
