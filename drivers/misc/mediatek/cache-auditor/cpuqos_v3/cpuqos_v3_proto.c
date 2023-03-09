@@ -715,6 +715,9 @@ static void cpuqos_v3_hook_switch(void __always_unused *data,
 	int prev_pd;
 	int next_pd;
 
+	if (!prev || !next)
+		return;
+
 	if (trace_CPUQOS_V3_CT_task_enter_enabled() && trace_CPUQOS_V3_CT_task_leave_enabled()) {
 		prev_pd = this_cpu_read(cpuqos_v3_local_pd);
 		next_pd = cpuqos_v3_map_task_pd(next);
