@@ -1124,7 +1124,11 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 	}
 
 	if (is_wl_support()) {
-		dsu_pwr_swpm_init();
+		ret = dsu_pwr_swpm_init();
+		if (ret) {
+			pr_info("dsu_pwr_swpm_init failed\n");
+			return ret;
+		}
 		l3ctl_sram_base_addr = get_l3ctl_sram_base_addr();
 		init_dsu();
 	}
