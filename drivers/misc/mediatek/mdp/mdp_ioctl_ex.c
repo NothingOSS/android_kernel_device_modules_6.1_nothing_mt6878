@@ -110,13 +110,13 @@ static dma_addr_t translate_read_id(u32 read_id)
 		+ slot_offset * sizeof(u32);
 }
 
-static u32 translate_engine_rdma(u32 engine)
+static s32 translate_engine_rdma(u32 engine)
 {
 	s32 rdma_idx = cmdq_mdp_get_rdma_idx(engine);
 
 	if (rdma_idx < 0) {
-		CMDQ_ERR("invalia rdma idx, set rdma0 as default\n");
-		rdma_idx = 0;
+		CMDQ_ERR("invalid rdma idx(%d)\n", rdma_idx);
+		return -EINVAL;
 	}
 	return rdma_idx;
 }
@@ -388,8 +388,9 @@ static s32 translate_meta(struct op_meta *meta,
 	}
 	case CMDQ_MOP_WRITE_FD_RDMA:
 	{
-		u32 rdma_idx, src_base_lsb, src_base_msb;
+		u32 src_base_lsb, src_base_msb;
 		unsigned long mva = translate_fd(meta, mapping_job);
+		s32 rdma_idx = translate_engine_rdma(meta->engine);
 
 		rdma_idx = translate_engine_rdma(meta->engine);
 
@@ -436,7 +437,7 @@ static s32 translate_meta(struct op_meta *meta,
 	case CMDQ_MOP_WRITE_RDMA:
 	{
 		u32 src_base_lsb, src_base_msb;
-		u32 rdma_idx = translate_engine_rdma(meta->engine);
+		s32 rdma_idx = translate_engine_rdma(meta->engine);
 
 		if ((rdma_idx != 0) && (rdma_idx != 1)) {
 			CMDQ_ERR("%s: op:%u, engine %d, rdma_idx %d invalid\n",
