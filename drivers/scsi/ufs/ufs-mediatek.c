@@ -3835,9 +3835,12 @@ skip_phy:
 		goto out;
 	}
 
-	/* set affinity to cpu3 */
 	hba = platform_get_drvdata(pdev);
-	if (hba && hba->irq)
+	if (!hba)
+		goto out;
+
+	/* set affinity to cpu3 */
+	if (hba->irq)
 		irq_set_affinity_hint(hba->irq, get_cpu_mask(3));
 
 #if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
