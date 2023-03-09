@@ -19,7 +19,7 @@
 #include "mtk_imgsys-dev.h"
 
 /* option for ldvt */
-#define AOV_READY 0
+#define AOV_READY 1
 #define CMDQ_SEC_READY 0
 
 #define AIE_IOVA_BITS_SHIFT 4
