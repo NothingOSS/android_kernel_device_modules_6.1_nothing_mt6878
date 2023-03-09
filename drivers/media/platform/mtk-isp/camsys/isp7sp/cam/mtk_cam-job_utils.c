@@ -37,21 +37,20 @@ static struct mtk_cam_resource_v2 *_get_job_res(struct mtk_cam_job *job)
 	return res;
 }
 
-static struct mtk_cam_resource_sensor_v2 *_get_job_sensor_res(
-									struct mtk_cam_job *job)
+static struct mtk_cam_resource_sensor_v2 *
+_get_job_sensor_res(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_resource_sensor_v2 *sensor_res = NULL;
 
 	if (ctx->has_raw_subdev) {
-		int p_idx;
+		struct mtk_raw_ctrl_data *ctrl;
 
-		p_idx = get_raw_subdev_idx(ctx->used_pipe);
-		if (p_idx == -1)
+		ctrl = get_raw_ctrl_data(job);
+		if (!ctrl)
 			return NULL;
 
-		sensor_res =
-			&job->req->raw_data[p_idx].ctrl.resource.user_data.sensor_res;
+		sensor_res = &ctrl->resource.user_data.sensor_res;
 	} else {
 		struct mtk_camsv_device *sv_dev;
 

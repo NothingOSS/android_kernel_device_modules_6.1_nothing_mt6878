@@ -670,7 +670,7 @@ static int mtk_camsv_pipeline_register(const char *str,
 {
 	struct v4l2_subdev *sd = &pipe->subdev;
 	struct mtk_cam_video_device *video;
-	unsigned int i;
+	int i;
 	int ret;
 
 	pipe->id = id;

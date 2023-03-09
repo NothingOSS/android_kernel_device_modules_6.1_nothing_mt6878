@@ -1021,6 +1021,13 @@ static int update_sensor_fmt(struct mtk_cam_job *job)
 	sink_mfmt.width = raw_data->sink.width;
 	sink_mfmt.height = raw_data->sink.height;
 	sink_mfmt.code = raw_data->sink.mbus_code;
+	sink_mfmt.field = V4L2_FIELD_NONE,
+	sink_mfmt.colorspace = V4L2_COLORSPACE_SRGB,
+	sink_mfmt.ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT,
+	sink_mfmt.quantization = V4L2_QUANTIZATION_DEFAULT,
+	sink_mfmt.xfer_func = V4L2_XFER_FUNC_DEFAULT,
+	sink_mfmt.flags = 0,
+	memset(sink_mfmt.reserved, 0, sizeof(sink_mfmt.reserved));
 
 	subdev_set_fmt(ctx->sensor, 0, &sink_mfmt);
 
