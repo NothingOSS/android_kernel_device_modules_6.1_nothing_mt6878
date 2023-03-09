@@ -3866,18 +3866,17 @@ static void resizing_rule(struct drm_device *dev,
 	mtk_rollback_all_resize_layer_to_GPU(disp_info, HRT_SECONDARY);
 	mtk_rollback_all_resize_layer_to_GPU(disp_info, HRT_THIRD);
 
-	/* RPO only support primary */
-	if (disp_idx == HRT_PRIMARY) {
+	/* if SPHRT, every crtc is HRT_PRIMARY, but only crtc 0 support RPO */
+	if (disp_idx == 0) {
 		struct mtk_drm_private *priv = dev->dev_private;
 		struct drm_crtc *crtc = priv->crtc[disp_idx];
 
 		if (crtc)
-			RPO_rule(crtc, disp_info, HRT_PRIMARY);
-
-		mtk_rollback_all_resize_layer_to_GPU(disp_info, HRT_PRIMARY);
+			RPO_rule(crtc, disp_info, disp_idx);
 	}
 
-	return;
+	/* for crtc N layers that cannot supported by RPO */
+	mtk_rollback_all_resize_layer_to_GPU(disp_info, HRT_PRIMARY);
 }
 
 static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc *crtc,
