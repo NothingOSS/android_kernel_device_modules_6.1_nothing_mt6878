@@ -339,10 +339,12 @@ int get_xo_auxout(void *data, int xo_id, u32 *out, char *reg_name)
 	struct reg_t reg_in, reg_out;
 	unsigned long flags = 0;
 	int auxout_sel, ret = 0;
-	spinlock_t *lock = pd->lock;
+	spinlock_t *lock = NULL;
 
 	if (!pd)
 		return 0;
+
+	lock = pd->lock;
 
 	xo_buf = (pd->xo_buf_t)[xo_id];
 	com_regs = pd->common_regs;
@@ -685,7 +687,7 @@ static int parsing_dts_xo_cmds(struct device_node *xo_buf,
 			       struct clkbuf_dts *array)
 {
 	/*****parsing init dts cmd****/
-	int num_args = 2, offset = 0, cmd_size = 0, i, num_xo_cmd;
+	int num_args = 2, offset = 0, cmd_size = 0, num_xo_cmd = 0, i;
 	struct xo_dts_cmd *xo_dts_cmd;
 
 	if (!of_get_property(xo_buf, "xo-cmd", &num_xo_cmd))

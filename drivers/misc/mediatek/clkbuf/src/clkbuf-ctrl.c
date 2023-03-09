@@ -80,7 +80,8 @@ int clkbuf_srclken_ctrl(char *cmd, int sub_id)
 	struct plat_rcdata *pd;
 	struct clkbuf_hdlr *hdlr;
 	struct clkbuf_hw hw;
-	int ret = 0, nums = 0, cmd_idx, i;
+	int ret = 0, nums = 0, i;
+	unsigned int cmd_idx;
 	int dts_api_perms = 0;
 
 	if (!_inited || !array)
@@ -131,7 +132,8 @@ int clkbuf_xo_ctrl(char *cmd, int xo_id, u32 input)
 	struct plat_xodata *pd;
 	struct clkbuf_hw hw;
 	int dts_api_perms;
-	int ret = 0, nums = 0, cmd_idx, i;
+	int ret = 0, nums = 0, i;
+	unsigned int cmd_idx;
 
 	if (!_inited || !array)
 		return -ENODEV;
@@ -264,8 +266,10 @@ static int dump_all(struct device *dev)
 	if (!buf)
 		return -ENOMEM;
 
-	if (!array)
+	if (!array) {
+		vfree(buf);
 		return -ENODEV;
+	}
 
 	nums = array->nums;
 
