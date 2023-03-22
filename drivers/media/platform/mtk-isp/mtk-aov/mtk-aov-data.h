@@ -271,9 +271,13 @@ struct aov_user {
 	uint32_t sub_format;
 	uint32_t frame_rate;
 	uint32_t frame_mode;
+	uint32_t power_mode;
 	uint32_t debug_mode;
 	uint32_t debug_level[AOV_LOG_ID_MAX];
 	uint32_t trace_perf;
+	uint32_t debug_drv_clk;
+	uint32_t debug_drv_time;
+	uint32_t debug_drv_bypass;
 	uint32_t reserved[5];
 
 	uint32_t aaa_size;
@@ -322,9 +326,13 @@ struct aov_start {
 	uint32_t sub_format;
 	uint32_t frame_rate;
 	uint32_t frame_mode;
+	uint32_t power_mode;
 	uint32_t debug_mode;
 	uint32_t debug_level[AOV_LOG_ID_MAX];
 	uint32_t trace_perf;
+	uint32_t debug_drv_clk;
+	uint32_t debug_drv_time;
+	uint32_t debug_drv_bypass;
 	uint32_t reserved[5];
 
 	// display on/off
