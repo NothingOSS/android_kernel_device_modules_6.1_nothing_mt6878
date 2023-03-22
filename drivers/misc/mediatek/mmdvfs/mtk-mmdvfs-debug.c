@@ -244,6 +244,17 @@ static int mmdvfs_debug_opp_show(struct seq_file *file, void *data)
 	for (i = 0; i < PWR_MMDVFS_NUM; i++)
 		seq_printf(file, "power: %u opp: %u\n", i, readl(MEM_PWR_OPP(i)));
 
+	//ap user latest request freq
+	seq_puts(file, "ap user latest request freq\n");
+	for (i = 0; i < MMDVFS_USER_NUM; i++)
+		if (readl(MEM_AP_USR_FREQ(i)))
+			seq_printf(file, "ap_user: %u freq: %u\n", i, readl(MEM_AP_USR_FREQ(i)));
+
+	//vcp user latest request opp
+	seq_puts(file, "vcp user latest request opp\n");
+	for (i = 0; i < MMDVFS_VCP_USER_NUM; i++)
+		seq_printf(file, "vcp_user: %u opp: %u\n", i, readl(MEM_USR_OPP(i)));
+
 	//power current gear
 	seq_puts(file, "power current gear\n");
 	for (i = 0; i < PWR_MMDVFS_NUM; i++)
