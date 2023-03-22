@@ -100,11 +100,19 @@ bool cond_job_with_action(struct mtk_cam_job *job, void *arg)
 	return mtk_cam_job_has_pending_action(job);
 }
 
-static int ctrl_enable_job_fsm(struct mtk_cam_job *job, void *arg)
+static int ctrl_enable_job_fsm_except_switch(struct mtk_cam_job *job,
+					    void *arg)
 {
+	int enable = 1;
+
+	if (job->raw_switch)
+		enable = 0;
+
 	if (CAM_DEBUG_ENABLED(CTRL))
-		pr_info("%s: #%d\n", __func__,  job->req_seq);
-	mtk_cam_job_set_fsm(job, 1);
+		pr_info("%s: enable(%d)#%d\n", __func__,  enable, job->req_seq);
+
+	mtk_cam_job_set_fsm(job, enable);
+
 	return 0;
 }
 
@@ -705,20 +713,13 @@ static u64 query_interval_from_sensor(struct v4l2_subdev *sensor)
 	return frame_interval_ns;
 }
 
-static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
+/* raw switch also resue it to stream on */
+static void mtk_cam_ctrl_stream_on_job(struct mtk_cam_job *job)
 {
-	struct mtk_cam_sys_wq_work *sys_wq_work =
-		container_of(work, struct mtk_cam_sys_wq_work, work);
-	struct mtk_cam_ctx *ctx = mtk_cam_wq_work_get_ctx(sys_wq_work);
+	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_ctrl *ctrl = &ctx->cam_ctrl;
-	struct mtk_cam_job *job = sys_wq_work->job;
 	struct device *dev = ctx->cam->dev;
 	unsigned long timeout = msecs_to_jiffies(1000);
-
-	dev_info(dev, "[%s] ctx %d begin\n", __func__, ctrl->ctx->stream_id);
-
-	if (!job)
-		return;
 
 	if (!wait_for_completion_timeout(&job->compose_completion, timeout)) {
 		pr_info("[%s] error: wait for job composed timeout\n",
@@ -770,9 +771,26 @@ static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 			mtk_cam_job_put(job);
 		}
 	}
+}
+
+static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
+{
+	struct mtk_cam_sys_wq_work *sys_wq_work =
+		container_of(work, struct mtk_cam_sys_wq_work, work);
+	struct mtk_cam_ctx *ctx = mtk_cam_wq_work_get_ctx(sys_wq_work);
+	struct mtk_cam_ctrl *ctrl = &ctx->cam_ctrl;
+	struct mtk_cam_job *job = sys_wq_work->job;
+	struct device *dev = ctx->cam->dev;
+
+	dev_info(dev, "[%s] ctx %d begin\n", __func__, ctrl->ctx->stream_id);
+
+	if (!job)
+		return;
+
+	mtk_cam_ctrl_stream_on_job(job);
 
 	atomic_set(&ctrl->stream_on_done, 1);
-	mtk_cam_ctrl_loop_job(ctrl,  ctrl_enable_job_fsm, NULL);
+	mtk_cam_ctrl_loop_job(ctrl, ctrl_enable_job_fsm_except_switch, NULL);
 
 	dev_info(dev, "[%s] ctx %d finish\n", __func__, ctrl->ctx->stream_id);
 }
@@ -805,12 +823,97 @@ static void mtk_cam_ctrl_seamless_switch_work(struct work_struct *work)
 		__func__, job->used_engine);
 }
 
+static bool allow_raw_switch_work(struct mtk_cam_ctrl *ctrl, struct mtk_cam_job *job)
+{
+	struct mtk_cam_job *job_found;
+	bool ret = false;
+
+	/* If the first job is the job switch job of the work, allow the switch flow */
+	job_found = mtk_cam_ctrl_get_job(ctrl, cond_first_job, 0);
+	if (job_found) {
+		if (job == job_found)
+			ret = true;
+
+		mtk_cam_job_put(job_found);
+	}
+
+	return ret;
+}
+
+static void mtk_cam_ctrl_raw_switch_work(struct work_struct *work)
+{
+	struct mtk_cam_sys_wq_work *sys_wq_work =
+		container_of(work, struct mtk_cam_sys_wq_work, work);
+	struct mtk_cam_ctx *ctx = mtk_cam_wq_work_get_ctx(sys_wq_work);
+	struct mtk_cam_ctrl *ctrl = &ctx->cam_ctrl;
+	struct mtk_cam_job *job = sys_wq_work->job;
+	int r;
+
+	if (!job)
+		return;
+
+	wait_event_interruptible(ctrl->raw_switch_wq,
+				 allow_raw_switch_work(ctrl, job));
+
+	dev_info(ctrl->ctx->cam->dev, "[%s] begin waiting raw switch no:%d\n",
+		 __func__, job->frame_seq_no);
+
+	/* stop the isp but doesn't power off raws */
+
+	mtk_cam_ctx_engine_off(ctx);
+	mtk_cam_watchdog_stop(&ctrl->watchdog);
+	mtk_cam_ctx_engine_reset(ctx);
+
+	/* re-initialized the new stream required engines with raw switch flow */
+	if (job->ops->apply_raw_switch) {
+		call_jobop(job, apply_raw_switch);
+	} else {
+		dev_info(ctx->cam->dev, "[%s] job doesn't support raw switch:%d\n",
+			 __func__, job->frame_seq_no);
+		return;
+	}
+
+	/**
+	 * Stream off the previous sensor
+	 * TODO: (Fred)
+	 * Split the cammux disabling part from this function.
+	 * We just want to disable cammux here.
+	 */
+	r = ctx_stream_on_seninf_sensor(ctx, 0, 0, 0);
+	if (r)
+		dev_info(ctrl->ctx->cam->dev,
+			 "[%s] failed to stream off the sensor:%d\n",
+			 __func__, r);
+	else
+		dev_info(ctrl->ctx->cam->dev,
+			 "[%s] stream off sensor %s\n",
+			__func__, job->seninf_prev->entity.name);
+
+	mtk_cam_watchdog_init(&ctrl->watchdog);
+
+	/* TBC: do we need vsync_set_desired here? */
+	vsync_set_desired(&ctrl->vsync_col,
+			  _get_master_engines(job->used_engine));
+
+	/* Update the context's sensor and seninf */
+	ctx->sensor = job->sensor;
+	ctx->seninf = job->seninf;
+
+	/**
+	 * Reuse stream on flow to start the new stream of the new sensor
+	 */
+	mtk_cam_ctrl_stream_on_job(job);
+	dev_info(ctrl->ctx->cam->dev, "[%s] finish, used_engine:0x%x\n",
+		 __func__, job->used_engine);
+}
+
 /* request queue */
 void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 			    struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx;
 	u32 req_seq, frame_seq;
+	int r;
 
 	if (mtk_cam_ctrl_get(cam_ctrl))
 		return;
@@ -845,8 +948,7 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 		}
 	}
 
-	if (!atomic_read(&cam_ctrl->stream_on_done)) {
-
+	if (!atomic_read(&cam_ctrl->stream_on_done) || job->raw_switch) {
 		mtk_cam_job_set_fsm(job, 0);
 		if (CAM_DEBUG_ENABLED(CTRL))
 			pr_info("disable job #%d's fsm\n", job->req_seq);
@@ -864,6 +966,19 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 	if (job->seamless_switch)
 		mtk_cam_wq_ctrl_queue_work(&cam_ctrl->highpri_wq_ctrl,
 			mtk_cam_ctrl_seamless_switch_work, job);
+
+	if (job->raw_switch) {
+		media_pipeline_stop(&job->seninf_prev->entity.pads[0]);
+		r = media_pipeline_start(&job->seninf->entity.pads[0], &ctx->pipeline);
+		if (r)
+			dev_info(ctx->cam->dev,
+				 "%s:failed in media_pipeline_start:%d\n",
+				 __func__, r);
+
+		mtk_cam_wq_ctrl_queue_work(&cam_ctrl->highpri_wq_ctrl,
+					   mtk_cam_ctrl_raw_switch_work,
+					   job);
+	}
 
 	mtk_cam_ctrl_put(cam_ctrl);
 }
@@ -940,6 +1055,7 @@ void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 	reset_runtime_info(cam_ctrl);
 
 	init_waitqueue_head(&cam_ctrl->stop_wq);
+	init_waitqueue_head(&cam_ctrl->raw_switch_wq);
 
 	vsync_reset(&cam_ctrl->vsync_col);
 	cam_ctrl->cur_cq_ref = 0;

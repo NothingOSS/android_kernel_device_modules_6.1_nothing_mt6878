@@ -218,6 +218,7 @@ struct mtk_cam_job_ops {
 				int seq_no);
 	int (*handle_buffer_done)(struct mtk_cam_job *s);
 	int (*apply_switch)(struct mtk_cam_job *s);
+	int (*apply_raw_switch)(struct mtk_cam_job *s);
 	int (*dump_aa_info)(struct mtk_cam_job *s, int engine_type);
 };
 struct mtk_cam_job {
@@ -244,6 +245,8 @@ struct mtk_cam_job {
 	bool seamless_switch;
 	bool first_frm_switch;
 	int switch_type;
+
+	bool raw_switch;
 
 	struct completion compose_completion;
 	struct completion cq_exe_completion;
@@ -284,6 +287,8 @@ struct mtk_cam_job {
 	/* for complete only: not null if current request has sensor ctrl */
 	struct media_request_object *sensor_hdl_obj;
 	struct v4l2_subdev *sensor;
+	struct v4l2_subdev *seninf; /* for raw switch */
+	struct v4l2_subdev *seninf_prev; /* TODO: (Fred) check if we can remove it */
 
 	bool is_sv_pure_raw;
 	bool update_sen_mstream_mode;

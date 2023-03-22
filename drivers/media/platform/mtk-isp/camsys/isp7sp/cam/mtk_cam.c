@@ -858,6 +858,41 @@ REQ_PUT:
 	media_request_put(&req->req);
 }
 
+/* use engine's entity to find seninf or use seninf to find sensor */
+struct v4l2_subdev
+*mtk_cam_find_sensor_seninf(struct v4l2_subdev *subdev, int media_func)
+{
+	struct v4l2_subdev *sensor_seninf = NULL;
+	struct media_link *link;
+
+	if (!subdev)
+		return NULL;
+
+	if (media_func != MEDIA_ENT_F_CAM_SENSOR &&
+	    media_func != MEDIA_ENT_F_VID_IF_BRIDGE) {
+		pr_info("%s: media_func must be 0x%x or 0x%x", __func__,
+			MEDIA_ENT_F_CAM_SENSOR, MEDIA_ENT_F_VID_IF_BRIDGE);
+		return NULL;
+	}
+
+	for_each_media_entity_data_link(&subdev->entity, link) {
+		if (link->flags & MEDIA_LNK_FL_ENABLED &&
+		    link->sink->entity == &subdev->entity &&
+		    link->source->entity->function == media_func) {
+			sensor_seninf = media_entity_to_v4l2_subdev(link->source->entity);
+			if (CAM_DEBUG_ENABLED(V4L2))
+				dev_info(subdev->v4l2_dev->dev,
+					 "%s:link(0x%lx), sink:%s/%p, source:%s, subdev:%s/%p\n",
+					 __func__, link->flags, link->sink->entity->name,
+					 link->sink->entity, link->source->entity->name,
+					 subdev->entity.name, &subdev->entity);
+			break;
+		}
+	}
+
+	return sensor_seninf;
+}
+
 static int get_ipi_id(int stream_id)
 {
 	int ipi_id = stream_id + CCD_IPI_ISP_MAIN;

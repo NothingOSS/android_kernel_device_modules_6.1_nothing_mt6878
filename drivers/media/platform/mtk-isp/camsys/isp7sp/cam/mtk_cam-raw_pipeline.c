@@ -1157,9 +1157,23 @@ static int mtk_raw_sd_s_stream(struct v4l2_subdev *sd, int enable)
 		container_of(sd, struct mtk_raw_pipeline, subdev);
 
 	dev_info(dev, "%s: %d\n", __func__, enable);
+	if (enable) {
+		pipe->sensor = NULL;
+		pipe->seninf = mtk_cam_find_sensor_seninf(sd, MEDIA_ENT_F_VID_IF_BRIDGE);
+		if (pipe->seninf) {
+			pipe->sensor =
+				mtk_cam_find_sensor_seninf(pipe->seninf,
+							   MEDIA_ENT_F_CAM_SENSOR);
+		}
 
-	if (!enable)
+		if (!pipe->sensor || !pipe->seninf)
+			dev_info(dev, "%s:pipe(%d) seninf/ sensor not enabled\n",
+					 __func__, pipe->id);
+	} else {
 		reset_internal_mem(pipe);
+		pipe->sensor = NULL;
+		pipe->seninf = NULL;
+	}
 
 	return 0;
 }
@@ -1670,6 +1684,23 @@ static int mtk_cam_media_link_setup(struct media_entity *entity,
 	struct mtk_raw_pipeline *pipe =
 		container_of(entity, struct mtk_raw_pipeline, subdev.entity);
 	struct device *dev = pipe->subdev.v4l2_dev->dev;
+	struct v4l2_subdev *sensor = NULL;
+	struct v4l2_subdev *seninf = NULL;
+
+	if (flags & MEDIA_LNK_FL_ENABLED &&
+	    remote->entity->function == MEDIA_ENT_F_VID_IF_BRIDGE) {
+		seninf = media_entity_to_v4l2_subdev(remote->entity);
+		sensor = mtk_cam_find_sensor_seninf(seninf, MEDIA_ENT_F_CAM_SENSOR);
+		if (!sensor)
+			dev_info(dev, "%s: sensor of %s is NULL\n",
+				 remote->entity->name, __func__);
+	}
+
+	if (sensor && seninf) {
+		pipe->ctrl_data.rc_data.sensor_update = true;
+		pipe->ctrl_data.sensor = sensor;
+		pipe->ctrl_data.seninf = seninf;
+	}
 
 	if (CAM_DEBUG_ENABLED(V4L2))
 		dev_info(dev, "%s: raw %d: remote:%s:%d->local:%s:%d flags:0x%x\n",

@@ -156,6 +156,7 @@ static inline int bin_ratio(u8 bin_type)
 
 struct mtk_raw_ctrl_data_read_clear {
 	bool sensor_mode_update;
+	bool sensor_update;
 };
 
 struct mtk_raw_ctrl_data {
@@ -172,6 +173,9 @@ struct mtk_raw_ctrl_data {
 
 	struct mtk_cam_internal_mem pre_alloc_mem;
 	struct dma_buf *pre_alloc_dbuf;
+
+	struct v4l2_subdev *sensor;
+	struct v4l2_subdev *seninf;
 
 	struct mtk_raw_ctrl_data_read_clear rc_data;
 };
@@ -210,6 +214,13 @@ struct mtk_raw_pipeline {
 	void *hdr_ts_buffer;
 	struct kfifo hdr_ts_fifo;
 	atomic_t is_hdr_ts_fifo_overflow;
+
+	/**
+	 * Only cached to save the sensor of a job considering raw switch.
+	 * Please don't use it in any other flow.
+	 */
+	struct v4l2_subdev *sensor;
+	struct v4l2_subdev *seninf;
 };
 
 static inline struct mtk_raw_pipeline *
