@@ -44,6 +44,7 @@ struct STRUCT_CAM_CAL_CONFIG_STRUCT {
 	unsigned int enable_preload;
 	unsigned int preload_size;
 	unsigned int has_stored_data;
+	unsigned int base_address;
 };
 
 unsigned int show_cmd_error_log(enum ENUM_CAMERA_CAM_CAL_TYPE_ENUM cmd);

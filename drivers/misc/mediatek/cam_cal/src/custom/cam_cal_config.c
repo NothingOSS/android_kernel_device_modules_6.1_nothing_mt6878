@@ -1001,6 +1001,7 @@ int read_data(struct EEPROM_DRV_FD_DATA *pdata, unsigned int sensor_id, unsigned
 		unsigned int offset, unsigned int length, unsigned char *data)
 {
 	int preloadIndex = IMGSENSOR_SENSOR_DUAL2IDX(device_id);
+	unsigned int staAddr = cam_cal_config->base_address;
 	unsigned int bufSize = (cam_cal_config->preload_size > cam_cal_config->max_size)
 		? cam_cal_config->max_size : cam_cal_config->preload_size;
 
@@ -1010,22 +1011,22 @@ int read_data(struct EEPROM_DRV_FD_DATA *pdata, unsigned int sensor_id, unsigned
 		error_log("Invalid DeviceID: 0x%x", device_id);
 		return -1;
 	}
-	if (cam_cal_config->enable_preload && bufSize > 0) {
+	if (cam_cal_config->enable_preload && bufSize) {
 		// Preloading to memory and read from memory
 		if (mp_eeprom_preload[preloadIndex] == NULL) {
 			mp_eeprom_preload[preloadIndex] = kmalloc(bufSize, GFP_KERNEL);
 			must_log("Preloading data %u bytes", bufSize);
-			if (read_data_region(pdata, mp_eeprom_preload[preloadIndex], 0, bufSize)
-					!= bufSize) {
+			if (read_data_region(pdata, mp_eeprom_preload[preloadIndex],
+					staAddr, bufSize) != bufSize) {
 				error_log("Preload data failed");
 				kfree(mp_eeprom_preload[preloadIndex]);
 				mp_eeprom_preload[preloadIndex] = NULL;
 			}
 		}
-		if ((mp_eeprom_preload[preloadIndex] != NULL) &&
-				(offset + length <= bufSize)) {
+		if (!(mp_eeprom_preload[preloadIndex] == NULL ||
+				offset < staAddr || offset + length > staAddr + bufSize)) {
 			debug_log("Read data from memory[%d]", preloadIndex);
-			memcpy(data, mp_eeprom_preload[preloadIndex] + offset, length);
+			memcpy(data, mp_eeprom_preload[preloadIndex] + offset - staAddr, length);
 			return length;
 		}
 	}
@@ -1040,11 +1041,12 @@ unsigned int read_data_region(struct EEPROM_DRV_FD_DATA *pdata,
 {
 	unsigned int ret;
 	unsigned short dts_addr;
+	unsigned int sta_addr = cam_cal_config->base_address;
 	unsigned int size_limit = (cam_cal_config->max_size > 0)
 		? cam_cal_config->max_size : DEFAULT_MAX_EEPROM_SIZE_8K;
 
-	if (offset + size > size_limit) {
-		error_log("Error! Not support address >= 0x%x!!\n", size_limit);
+	if (offset < sta_addr || offset + size > sta_addr + size_limit) {
+		error_log("Out of address 0x%x ~ 0x%x!!\n", sta_addr, sta_addr + size_limit - 1);
 		return 0;
 	}
 	if (cam_cal_config->read_function) {
@@ -1053,8 +1055,7 @@ unsigned int read_data_region(struct EEPROM_DRV_FD_DATA *pdata,
 		mutex_lock(&pdata->pdrv->eeprom_mutex);
 		dts_addr = pdata->pdrv->pi2c_client->addr;
 		pdata->pdrv->pi2c_client->addr = (cam_cal_config->i2c_write_id >> 1);
-		ret = cam_cal_config->read_function(pdata->pdrv->pi2c_client,
-					offset, buf, size);
+		ret = cam_cal_config->read_function(pdata->pdrv->pi2c_client, offset, buf, size);
 		pdata->pdrv->pi2c_client->addr = dts_addr;
 		mutex_unlock(&pdata->pdrv->eeprom_mutex);
 	} else {
