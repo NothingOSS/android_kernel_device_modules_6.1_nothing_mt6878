@@ -210,6 +210,32 @@ TRACE_EVENT(sched_eenv_init,
 		__entry->gear_idx)
 );
 
+#define UNIT_NAME_LEN  10
+TRACE_EVENT(sched_check_temp,
+
+	TP_PROTO(char *unit_name, int id, int temp),
+
+	TP_ARGS(unit_name, id, temp),
+
+	TP_STRUCT__entry(
+		__array(char, unit_name, UNIT_NAME_LEN)
+		__field(int, id)
+		__field(int, temp)
+		),
+
+	TP_fast_assign(
+		memcpy(__entry->unit_name, unit_name, UNIT_NAME_LEN);
+		__entry->id = id;
+		__entry->temp = temp;
+		),
+
+	TP_printk("%s temperature error! %s=%d temp=%d",
+		__entry->unit_name,
+		__entry->unit_name,
+		__entry->id,
+		__entry->temp)
+);
+
 TRACE_EVENT(sched_max_util,
 
 	TP_PROTO(int gear_idx, int dst_cpu,

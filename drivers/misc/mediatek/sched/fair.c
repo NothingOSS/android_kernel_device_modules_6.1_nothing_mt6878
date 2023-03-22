@@ -239,6 +239,14 @@ static inline void eenv_pd_busy_time(int gear_idx, struct energy_env *eenv,
 	eenv->pds_busy_time[gear_idx] = min(eenv->pds_cap[gear_idx], busy_time);
 }
 
+inline int reasonable_temp(int temp)
+{
+	if ((temp > 125) || (temp < -40))
+		return 0;
+
+	return 1;
+}
+
 DEFINE_PER_CPU(cpumask_var_t, mtk_select_rq_mask);
 static inline void eenv_init(struct energy_env *eenv,
 			struct task_struct *p, int prev_cpu, struct perf_domain *pd)
@@ -297,6 +305,11 @@ static inline void eenv_init(struct energy_env *eenv,
 	for_each_cpu(cpu, cpu_possible_mask) {
 		eenv->cpu_temp[cpu] = get_cpu_temp(cpu);
 		eenv->cpu_temp[cpu] /= 1000;
+
+		if (!reasonable_temp(eenv->cpu_temp[cpu])) {
+			if (trace_sched_check_temp_enabled())
+				trace_sched_check_temp("cpu", cpu, eenv->cpu_temp[cpu]);
+		}
 	}
 
 	if (eenv->wl_support) {
@@ -306,6 +319,11 @@ static inline void eenv_init(struct energy_env *eenv,
 		dsu->dsu_bw = get_pelt_dsu_bw();
 		dsu->emi_bw = get_pelt_emi_bw();
 		dsu->temp = get_dsu_temp()/1000;
+		if (!reasonable_temp(dsu->temp)) {
+			if (trace_sched_check_temp_enabled())
+				trace_sched_check_temp("dsu", -1, dsu->temp);
+		}
+
 		eenv->dsu_freq_base = mtk_get_dsu_freq();
 		dsu_opp = dsu_get_freq_opp(eenv->wl_type, eenv->dsu_freq_base);
 		dsu_ps = dsu_get_opp_ps(eenv->wl_type, dsu_opp);

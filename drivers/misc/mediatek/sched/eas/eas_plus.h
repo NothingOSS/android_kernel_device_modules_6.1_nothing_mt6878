@@ -68,7 +68,7 @@ struct energy_env {
 	unsigned long total_util;
 
 	/* temperature for each cpu*/
-	unsigned int cpu_temp[NR_CPUS];
+	int cpu_temp[NR_CPUS];
 
 	/* WL-based CPU+DSU ctrl */
 	unsigned int wl_support;
