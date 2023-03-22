@@ -334,12 +334,14 @@ static void case_general_submit(struct mml_test *test,
 
 	mml_pdev = mml_get_plat_device(test->pdev);
 	if (!mml_pdev) {
+		kfree(pq_param);
 		mml_err("[test]get mml device failed");
 		return;
 	}
 
 	mml_ctx = mml_drm_get_context(mml_pdev, &disp);
 	if (IS_ERR_OR_NULL(mml_ctx)) {
+		kfree(pq_param);
 		mml_err("[test]get mml context failed %pe", mml_ctx);
 		return;
 	}
