@@ -2733,14 +2733,54 @@ static void process_dbg_opt(const char *opt)
 			mtk_drm_idlemgr_monitor(false, crtc);
 		else if (strncmp(opt + 10, "dump", 4) == 0)
 			mtk_drm_idlemgr_perf_dump(crtc);
-		else if (strncmp(opt + 10, "sync", 4) == 0)
-			mtk_drm_idlemgr_async_control(0);
-		else if (strncmp(opt + 10, "async", 5) == 0)
-			mtk_drm_idlemgr_async_control(1);
-		else if (strncmp(opt + 10, "detail", 6) == 0)
+		else if (strncmp(opt + 10, "asyncoff", 8) == 0)
+			mtk_drm_idlemgr_async_control(crtc, 0);
+		else if (strncmp(opt + 10, "asyncon", 7) == 0)
+			mtk_drm_idlemgr_async_control(crtc, 1);
+		else if (strncmp(opt + 10, "sramoff", 7) == 0)
+			mtk_drm_idlemgr_sram_control(crtc, 0);
+		else if (strncmp(opt + 10, "sramsleep", 9) == 0)
+			mtk_drm_idlemgr_sram_control(crtc, 1);
+		else if (strncmp(opt + 10, "detailon", 8) == 0)
 			mtk_drm_idlemgr_async_perf_detail_control(true, crtc);
-		else if (strncmp(opt + 10, "brief", 5) == 0)
+		else if (strncmp(opt + 10, "detailoff", 9) == 0)
 			mtk_drm_idlemgr_async_perf_detail_control(false, crtc);
+	} else if (strncmp(opt, "idle_cpu_freq:", 14) == 0) {
+		struct drm_crtc *crtc;
+		int ret, value;
+
+		ret = sscanf(opt + 14, "%d\n", &value);
+		if (ret <= 0) {
+			DDPMSG("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPPR_ERR("find crtc fail\n");
+			return;
+		}
+
+		DDPMSG("%s: idle_cpu_freq:%u\n", __func__, value);
+		mtk_drm_idlemgr_cpu_control(crtc, true, value);
+	} else if (strncmp(opt, "idle_cpu_mask:", 14) == 0) {
+		struct drm_crtc *crtc;
+		int ret, value;
+
+		ret = sscanf(opt + 14, "%d\n", &value);
+		if (ret <= 0) {
+			DDPMSG("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPPR_ERR("find crtc fail\n");
+			return;
+		}
+
+		DDPMSG("%s: idle_cpu_mask:0x%x\n", __func__, value);
+		mtk_drm_idlemgr_cpu_control(crtc, false, value);
 	} else if (strncmp(opt, "hrt_bw", 6) == 0) {
 		struct mtk_drm_private *priv = drm_dev->dev_private;
 

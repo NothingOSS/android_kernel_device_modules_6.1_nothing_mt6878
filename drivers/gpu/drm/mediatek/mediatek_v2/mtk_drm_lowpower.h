@@ -11,11 +11,13 @@
 
 struct mtk_idle_private_data {
 	//the target cpu bind to idlemgr
-	int cpu_id;
+	unsigned int cpu_mask;
 	//min freq settings, unit of HZ
-	int cpu_freq;
+	unsigned int cpu_freq;
 	//vblank off async is supported or not
+	bool hw_async;
 	bool vblank_async;
+	bool sram_sleep;
 };
 
 struct mtk_drm_idlemgr_context {
@@ -79,6 +81,8 @@ struct mtk_drm_async_cb {
 
 //check if async is enabled
 bool mtk_drm_idlemgr_get_async_status(struct drm_crtc *crtc);
+//check if sram is enabled
+bool mtk_drm_idlemgr_get_sram_status(struct drm_crtc *crtc);
 
 /* flush cmdq pkt with async wait,
  * this is required if user wants to free cmdq pkt by async task,
@@ -108,8 +112,11 @@ mtk_drm_get_idle_check_interval(struct drm_crtc *crtc);
 void mtk_drm_idlemgr_kick_async(struct drm_crtc *crtc);
 void mtk_drm_idlemgr_monitor(bool enable, struct drm_crtc *crtc);
 void mtk_drm_idlemgr_perf_dump(struct drm_crtc *crtc);
-void mtk_drm_idlemgr_async_control(bool enable);
 void mtk_drm_idlemgr_async_perf_detail_control(bool enable,
 				struct drm_crtc *crtc);
+void mtk_drm_idlemgr_cpu_control(struct drm_crtc *crtc,
+				bool freq, unsigned int data);
+void mtk_drm_idlemgr_async_control(struct drm_crtc *crtc, bool enable);
+void mtk_drm_idlemgr_sram_control(struct drm_crtc *crtc, bool sleep);
 
 #endif

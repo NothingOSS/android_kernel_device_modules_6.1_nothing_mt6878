@@ -22,6 +22,7 @@
 #include "mtk_drm_trace.h"
 
 #define MAX_ENTER_IDLE_RSZ_RATIO 300
+#define MTK_DRM_CPU_MAX_COUNT 8
 
 static void mtk_drm_idlemgr_get_private_data(struct drm_crtc *crtc,
 		struct mtk_idle_private_data *data)
@@ -34,76 +35,240 @@ static void mtk_drm_idlemgr_get_private_data(struct drm_crtc *crtc,
 	priv = crtc->dev->dev_private;
 	if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_IDLEMGR_ASYNC)) {
-		data->cpu_id = -1;
+		data->cpu_mask = 0;
 		data->cpu_freq = 0;
 		data->vblank_async = false;
+		data->hw_async = false;
+		data->sram_sleep = false;
 		return;
 	}
 
 	switch (priv->data->mmsys_id) {
 	case MMSYS_MT6985:
-		data->cpu_id = 7;
+		data->cpu_mask = 0x80; //cpu7
 		data->cpu_freq = 1000000; // >=1GHZ
 		data->vblank_async = false;
+		data->hw_async = true;
+		data->sram_sleep = false;
 		break;
 	default:
-		data->cpu_id = -1;
+		data->cpu_mask = 0;
 		data->cpu_freq = 0;
 		data->vblank_async = false;
+		data->hw_async = false;
+		data->sram_sleep = false;
 		break;
 	}
 }
 
-static bool mtk_drm_adjust_cpu_freq(struct drm_crtc *crtc, bool bind, struct freq_qos_request *req)
+static void mtk_drm_idlemgr_bind_cpu(struct task_struct *task, unsigned int mask)
+{
+	cpumask_var_t cm;
+	int i = 0;
+
+	if (task == NULL || mask == 0)
+		return;
+
+	if (!zalloc_cpumask_var(&cm, GFP_KERNEL)) {
+		DDPPR_ERR("%s: failed to init cm\n", __func__);
+		return;
+	}
+
+	for (i = 0; i < MTK_DRM_CPU_MAX_COUNT; i++) {
+		if (mask & (0x1 << i))
+			cpumask_set_cpu(i, cm);
+	}
+	for_each_cpu(i, cm)
+		DDPMSG("%s, cpu:%u, mask:0x%x\n", __func__, i, mask);
+
+	set_cpus_allowed_ptr(task, cm);
+	free_cpumask_var(cm);
+}
+
+static int mtk_drm_enhance_cpu_freq(struct freq_qos_request *req,
+		unsigned int cpu_id, unsigned int cpu_freq)
+{
+	struct cpufreq_policy *policy = NULL;
+	int ret = 0;
+
+	if (req == NULL) {
+		DDPMSG("%s, invalid req\n", __func__);
+		return -EINVAL;
+	}
+	policy = cpufreq_cpu_get(cpu_id);
+	if (policy == NULL) {
+		DDPMSG("%s, failed to get cpu %u policy\n", __func__, cpu_id);
+		return -EFAULT;
+	}
+
+	ret = freq_qos_add_request(&policy->constraints, req, FREQ_QOS_MIN, cpu_freq);
+	cpufreq_cpu_put(policy);
+
+	if (ret < 0) {
+		DDPMSG("%s, failed to enhance cpu%u freq%u, ret:%d\n",
+			__func__, cpu_id, cpu_freq, ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+void mtk_drm_idlemgr_cpu_control(struct drm_crtc *crtc, bool freq, unsigned int data)
+{
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_drm_idlemgr *idlemgr = NULL;
+	struct mtk_drm_idlemgr_context *idlemgr_ctx = NULL;
+	unsigned int crtc_id = 0;
+
+	if (crtc == NULL)
+		return;
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	if (mtk_crtc == NULL)
+		return;
+
+	idlemgr = mtk_crtc->idlemgr;
+	if (idlemgr == NULL)
+		return;
+
+	crtc_id = drm_crtc_index(crtc);
+	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+	idlemgr_ctx = idlemgr->idlemgr_ctx;
+	if (freq == true)
+		idlemgr_ctx->priv.cpu_freq = data;
+	else
+		idlemgr_ctx->priv.cpu_mask = data & ((0x1 << MTK_DRM_CPU_MAX_COUNT) - 1);
+
+	mtk_drm_idlemgr_bind_cpu(idlemgr->idlemgr_task,
+			idlemgr_ctx->priv.cpu_mask);
+	mtk_drm_idlemgr_bind_cpu(idlemgr->kick_task,
+			idlemgr_ctx->priv.cpu_mask);
+	DDPMSG("%s,crtc:%u cpu_mask:0x%x, cpu_freq:%uMhz\n", __func__,
+		crtc_id, idlemgr_ctx->priv.cpu_mask,
+		idlemgr_ctx->priv.cpu_freq / 1000);
+	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+}
+
+static unsigned int mtk_drm_get_cpu_data(struct drm_crtc *crtc, unsigned int *cpus)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_idlemgr *idlemgr = mtk_crtc->idlemgr;
 	struct mtk_drm_idlemgr_context *idlemgr_ctx = idlemgr->idlemgr_ctx;
-	struct cpufreq_policy *policy = NULL;
-	int ret = 0;
+	unsigned int mask = 0, count = 0, i = 0;
 
-	if (req == NULL || idlemgr_ctx->priv.cpu_id < 0 ||
+	if (idlemgr_ctx->priv.cpu_mask == 0 ||
 		idlemgr_ctx->priv.cpu_freq == 0)
-		return false;
+		return 0;
+
+	mask = idlemgr_ctx->priv.cpu_mask;
+	while (mask > 0 && i < MTK_DRM_CPU_MAX_COUNT) {
+		if ((mask & 0x1) == 0x1) {
+			cpus[count] = i;
+			count++;
+		}
+		mask = mask >> 1;
+		i++;
+	}
+
+	return count;
+}
+static void mtk_drm_adjust_cpu_freq(struct drm_crtc *crtc, bool bind,
+		struct freq_qos_request **req, unsigned int *cpus, unsigned int count)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_idlemgr *idlemgr = mtk_crtc->idlemgr;
+	struct mtk_drm_idlemgr_context *idlemgr_ctx = idlemgr->idlemgr_ctx;
+	unsigned int freq = 0;
+	int ret = 0, i = 0;
+
+	if (count == 0 || cpus == NULL ||
+		idlemgr_ctx->priv.cpu_freq == 0)
+		return;
 
 	if (bind == true) {
-		memset(req, 0, sizeof(struct freq_qos_request));
-		policy = cpufreq_cpu_get(idlemgr_ctx->priv.cpu_id);
-		if (policy != NULL) {
-			ret = freq_qos_add_request(&policy->constraints, req,
-						FREQ_QOS_MIN, idlemgr_ctx->priv.cpu_freq);
-			cpufreq_cpu_put(policy);
-
-			if (ret < 0) {
-				DDPMSG("%s, failed to enhance cpu freq, ret:%d\n",
-					__func__, ret);
-				return false;
+		freq = idlemgr_ctx->priv.cpu_freq;
+		for (i = 0; i < count; i++) {
+			req[i] = kzalloc(sizeof(struct freq_qos_request), GFP_KERNEL);
+			if (req[i] == NULL) {
+				DDPPR_ERR("%s, alloc req:%d failed\n", __func__, i);
+				continue;
 			}
-		} else {
-			DDPMSG("%s, failed to get cpu policy\n", __func__);
-			return false;
+
+			ret = mtk_drm_enhance_cpu_freq(req[i], cpus[i], freq);
+			if (ret < 0) {
+				kfree(req[i]);
+				req[i] = NULL;
+				continue;
+			}
+		}
+	} else {
+		for (i = 0; i < count; i++) {
+			if (req[i] == NULL)
+				continue;
+			ret = freq_qos_remove_request(req[i]);
+			if (ret < 0)
+				DDPMSG("%s, failed to rollback cpu freq, ret:%d\n",
+					__func__, ret);
+			kfree(req[i]);
+			req[i] = NULL;
 		}
 	}
 
-	if (bind == false) {
-		ret = freq_qos_remove_request(req);
-		if (ret < 0)
-			DDPMSG("%s, failed to rollback cpu freq, ret:%d\n",
-				__func__, ret);
-	}
-
-	return true;
+	return;
 }
 
-static unsigned int g_async_support;
-void mtk_drm_idlemgr_async_control(bool enable)
+void mtk_drm_idlemgr_sram_control(struct drm_crtc *crtc, bool sleep)
 {
-	if (enable == true)
-		g_async_support = 1;
-	else
-		g_async_support = 0;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_drm_idlemgr *idlemgr = NULL;
+	struct mtk_drm_idlemgr_context *idlemgr_ctx = NULL;
+	unsigned int crtc_id = 0;
 
-	DDPMSG("%s, %d\n", __func__, g_async_support);
+	if (crtc == NULL)
+		return;
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	if (mtk_crtc == NULL)
+		return;
+
+	idlemgr = mtk_crtc->idlemgr;
+	if (idlemgr == NULL)
+		return;
+
+	crtc_id = drm_crtc_index(crtc);
+	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+	idlemgr_ctx = idlemgr->idlemgr_ctx;
+	idlemgr_ctx->priv.sram_sleep = sleep;
+	DDPMSG("%s,crtc:%u sram_sleep:%d\n",
+		__func__, crtc_id, idlemgr_ctx->priv.sram_sleep);
+	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+}
+
+void mtk_drm_idlemgr_async_control(struct drm_crtc *crtc, bool enable)
+{
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_drm_idlemgr *idlemgr = NULL;
+	struct mtk_drm_idlemgr_context *idlemgr_ctx = NULL;
+	unsigned int crtc_id = 0;
+
+	if (crtc == NULL)
+		return;
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	if (mtk_crtc == NULL)
+		return;
+
+	idlemgr = mtk_crtc->idlemgr;
+	if (idlemgr == NULL)
+		return;
+
+	crtc_id = drm_crtc_index(crtc);
+	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+	idlemgr_ctx = idlemgr->idlemgr_ctx;
+	idlemgr_ctx->priv.hw_async = enable;
+	DDPMSG("%s,crtc:%u hw_async:%d\n",
+		__func__, crtc_id, idlemgr_ctx->priv.hw_async);
+	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 }
 
 void mtk_drm_idlemgr_async_perf_detail_control(bool enable, struct drm_crtc *crtc)
@@ -143,6 +308,7 @@ void mtk_drm_idlemgr_perf_dump_func(struct drm_crtc *crtc, bool lock)
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_drm_idlemgr *idlemgr = NULL;
 	struct mtk_drm_idlemgr_perf *perf = NULL;
+	struct mtk_drm_idlemgr_context *idlemgr_ctx = NULL;
 	unsigned int crtc_id = 0;
 
 	if (crtc == NULL)
@@ -168,17 +334,23 @@ void mtk_drm_idlemgr_perf_dump_func(struct drm_crtc *crtc, bool lock)
 		return;
 	}
 
-	if (perf->count > 0)
+	if (perf->count > 0) {
+		idlemgr_ctx = idlemgr->idlemgr_ctx;
 		DDPMSG(
-			"%s:crtc:%u,async:%d,count:%llu,max:%llu-%llu,min:%llu-%llu,avg:%llu-%llu\n",
-			__func__, crtc_id, g_async_support, perf->count,
+			"%s:crtc:%u,async:%d/%d,sram_sleep:%d,cpu:(0x%x,%uMhz),count:%llu,max:%llu-%llu,min:%llu-%llu,avg:%llu-%llu\n",
+			__func__, crtc_id, idlemgr_ctx->priv.hw_async,
+			idlemgr_ctx->priv.vblank_async,
+			idlemgr_ctx->priv.sram_sleep,
+			idlemgr_ctx->priv.cpu_mask,
+			idlemgr_ctx->priv.cpu_freq / 1000, perf->count,
 			perf->enter_max_cost, perf->leave_max_cost,
 			perf->enter_min_cost, perf->leave_min_cost,
 			perf->enter_total_cost/perf->count,
 			perf->leave_total_cost/perf->count);
-	else
+	} else {
 		DDPMSG("%s: crtc:%u, perf monitor is started w/o update\n",
 				__func__, crtc_id);
+	}
 
 	if (lock)
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
@@ -193,6 +365,7 @@ static void mtk_drm_idlemgr_perf_reset(struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_idlemgr *idlemgr = mtk_crtc->idlemgr;
+	struct mtk_drm_idlemgr_context *idlemgr_ctx = idlemgr->idlemgr_ctx;
 	struct mtk_drm_idlemgr_perf *perf = idlemgr->perf;
 	unsigned int crtc_id;
 
@@ -202,8 +375,12 @@ static void mtk_drm_idlemgr_perf_reset(struct drm_crtc *crtc)
 	if (perf->count > 0) {
 		crtc_id = drm_crtc_index(crtc);
 		DDPMSG(
-			"%s:crtc:%u,async:%d,count:%llu,max:%llu-%llu,min:%llu-%llu,avg:%llu-%llu\n",
-			__func__, crtc_id, g_async_support, perf->count,
+			"%s:crtc:%u,async:%d/%d,sram_sleep:%d,cpu:(0x%x,%uMhz),count:%llu,max:%llu-%llu,min:%llu-%llu,avg:%llu-%llu\n",
+			__func__, crtc_id, idlemgr_ctx->priv.hw_async,
+			idlemgr_ctx->priv.vblank_async,
+			idlemgr_ctx->priv.sram_sleep,
+			idlemgr_ctx->priv.cpu_mask,
+			idlemgr_ctx->priv.cpu_freq / 1000, perf->count,
 			perf->enter_max_cost, perf->leave_max_cost,
 			perf->enter_min_cost, perf->leave_min_cost,
 			perf->enter_total_cost/perf->count,
@@ -363,17 +540,20 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 
 static void mtk_drm_cmd_mode_enter_idle(struct drm_crtc *crtc)
 {
-	bool adjusted = false;
-	struct freq_qos_request	req;
+	struct freq_qos_request *req[MTK_DRM_CPU_MAX_COUNT] = {0};
+	unsigned int cpus[MTK_DRM_CPU_MAX_COUNT] = { 0 };
+	unsigned int count = 0;
 
-	if (g_async_support)
-		adjusted = mtk_drm_adjust_cpu_freq(crtc, true, &req);
+	count = mtk_drm_get_cpu_data(crtc, cpus);
+
+	if (count > 0)
+		mtk_drm_adjust_cpu_freq(crtc, true, req, cpus, count);
 
 	mtk_drm_idlemgr_disable_crtc(crtc);
 	lcm_fps_ctx_reset(crtc);
 
-	if (g_async_support && adjusted == true)
-		mtk_drm_adjust_cpu_freq(crtc, false, &req);
+	if (count > 0)
+		mtk_drm_adjust_cpu_freq(crtc, false, req, cpus, count);
 }
 
 static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
@@ -407,16 +587,20 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 
 static void mtk_drm_cmd_mode_leave_idle(struct drm_crtc *crtc)
 {
-	bool adjusted = false;
-	struct freq_qos_request	req;
+	struct freq_qos_request *req[MTK_DRM_CPU_MAX_COUNT] = {0};
+	unsigned int cpus[MTK_DRM_CPU_MAX_COUNT] = { 0 };
+	unsigned int count = 0;
 
-	adjusted = mtk_drm_adjust_cpu_freq(crtc, true, &req);
+	count = mtk_drm_get_cpu_data(crtc, cpus);
+
+	if (count > 0)
+		mtk_drm_adjust_cpu_freq(crtc, true, req, cpus, count);
 
 	mtk_drm_idlemgr_enable_crtc(crtc);
 	lcm_fps_ctx_reset(crtc);
 
-	if (adjusted == true)
-		mtk_drm_adjust_cpu_freq(crtc, false, &req);
+	if (count > 0)
+		mtk_drm_adjust_cpu_freq(crtc, false, req, cpus, count);
 }
 
 static void mtk_drm_idlemgr_enter_idle_nolock(struct drm_crtc *crtc)
@@ -504,6 +688,35 @@ bool mtk_drm_idlemgr_get_async_status(struct drm_crtc *crtc)
 
 	if (atomic_read(&idlemgr->async_enabled) != 0)
 		return true;
+
+	return false;
+}
+
+bool mtk_drm_idlemgr_get_sram_status(struct drm_crtc *crtc)
+{
+	struct mtk_drm_idlemgr *idlemgr;
+	struct mtk_drm_private *priv = NULL;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_drm_idlemgr_context *idlemgr_ctx;
+
+	if (crtc == NULL)
+		return false;
+
+	priv = crtc->dev->dev_private;
+	if (priv == NULL ||
+		!mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_IDLEMGR_ASYNC))
+		return false;
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	if (mtk_crtc && mtk_crtc->idlemgr)
+		idlemgr = mtk_crtc->idlemgr;
+	else
+		return false;
+
+	idlemgr_ctx = idlemgr->idlemgr_ctx;
+	if (atomic_read(&idlemgr->async_enabled) != 0)
+		return idlemgr_ctx->priv.sram_sleep;
 
 	return false;
 }
@@ -1013,6 +1226,8 @@ int mtk_drm_idlemgr_init(struct drm_crtc *crtc, int index)
 	struct mtk_drm_idlemgr_context *idlemgr_ctx = NULL;
 	struct mtk_drm_private *priv =
 				mtk_crtc->base.dev->dev_private;
+	struct mtk_ddp_comp *output_comp = NULL;
+	bool mode = false;
 	char name[LEN] = {0};
 
 	idlemgr = kzalloc(sizeof(*idlemgr), GFP_KERNEL);
@@ -1035,37 +1250,37 @@ int mtk_drm_idlemgr_init(struct drm_crtc *crtc, int index)
 	idlemgr_ctx->cur_lp_cust_mode = 0;
 	idlemgr_ctx->idle_check_interval = 50;
 
-	mtk_drm_idlemgr_get_private_data(crtc, &idlemgr_ctx->priv);
-
 	snprintf(name, LEN, "mtk_drm_disp_idlemgr-%d", index);
-	if (idlemgr_ctx->priv.cpu_id >= 0)
-		idlemgr->idlemgr_task =
-			kthread_create_on_cpu(mtk_drm_idlemgr_monitor_thread,
-				crtc, idlemgr_ctx->priv.cpu_id, name);
-	else
-		idlemgr->idlemgr_task =
+	idlemgr->idlemgr_task =
 			kthread_create(mtk_drm_idlemgr_monitor_thread, crtc, name);
 	init_waitqueue_head(&idlemgr->idlemgr_wq);
 	atomic_set(&idlemgr->idlemgr_task_active, 1);
-
 	wake_up_process(idlemgr->idlemgr_task);
 
 	snprintf(name, LEN, "dis_ki-%d", index);
-	if (idlemgr_ctx->priv.cpu_id >= 0)
-		idlemgr->kick_task =
-			kthread_create_on_cpu(mtk_drm_async_kick_idlemgr_thread,
-					crtc, idlemgr_ctx->priv.cpu_id, name);
-	else
-		idlemgr->kick_task =
+	idlemgr->kick_task =
 			kthread_create(mtk_drm_async_kick_idlemgr_thread, crtc, name);
 	init_waitqueue_head(&idlemgr->kick_wq);
 	atomic_set(&idlemgr->kick_task_active, 0);
 	wake_up_process(idlemgr->kick_task);
 
 	atomic_set(&idlemgr->async_enabled, 0);
-	if (mtk_drm_helper_get_opt(priv->helper_opt,
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (output_comp)
+		mode = mtk_dsi_is_cmd_mode(output_comp);
+	if (mode && mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_IDLEMGR_ASYNC)) {
-		DDPMSG("%s, %d, init idle async\n", __func__, __LINE__);
+		mtk_drm_idlemgr_get_private_data(crtc, &idlemgr_ctx->priv);
+		DDPMSG("%s, %d, crtc:%u,cmd:%d,async:%d/%d,cpu:0x%x-%uMhz,sram:%d\n",
+			__func__, __LINE__, drm_crtc_index(crtc), mode,
+			idlemgr_ctx->priv.hw_async, idlemgr_ctx->priv.vblank_async,
+			idlemgr_ctx->priv.cpu_mask, idlemgr_ctx->priv.cpu_freq / 1000,
+			idlemgr_ctx->priv.sram_sleep);
+		mtk_drm_idlemgr_bind_cpu(idlemgr->idlemgr_task,
+				idlemgr_ctx->priv.cpu_mask);
+		mtk_drm_idlemgr_bind_cpu(idlemgr->kick_task,
+				idlemgr_ctx->priv.cpu_mask);
+
 		init_waitqueue_head(&idlemgr->async_event_wq);
 		atomic_set(&idlemgr->async_ref, 0);
 
@@ -1087,7 +1302,6 @@ int mtk_drm_idlemgr_init(struct drm_crtc *crtc, int index)
 			atomic_set(&idlemgr->async_vblank_active, 0);
 			wake_up_process(idlemgr->async_vblank_task);
 		}
-		g_async_support = 1;
 	}
 
 	return 0;
@@ -1168,7 +1382,8 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_IDLEMGR_ASYNC))
-		atomic_set(&idlemgr->async_enabled, g_async_support);
+		atomic_set(&idlemgr->async_enabled,
+			idlemgr_ctx->priv.hw_async ? 1 : 0);
 
 	/* 0. Waiting CLIENT_DSI_CFG/CLIENT_CFG thread done */
 	mtk_crtc_pkt_create(&cmdq_handle1, crtc,
@@ -1352,6 +1567,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	int en = 1, perf_detail = 0;
 	struct mtk_crtc_state *crtc_state = to_mtk_crtc_state(crtc->state);
 	struct mtk_drm_idlemgr *idlemgr = mtk_crtc->idlemgr;
+	struct mtk_drm_idlemgr_context *idlemgr_ctx = idlemgr->idlemgr_ctx;
 	unsigned long long start, end;
 	char *perf_string = NULL;
 
@@ -1381,7 +1597,8 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_IDLEMGR_ASYNC))
-		atomic_set(&idlemgr->async_enabled, g_async_support);
+		atomic_set(&idlemgr->async_enabled,
+			idlemgr_ctx->priv.hw_async ? 1 : 0);
 
 	/* 0. CMDQ power on */
 	cmdq_mbox_enable(mtk_crtc->gce_obj.client[CLIENT_CFG]->chan);
