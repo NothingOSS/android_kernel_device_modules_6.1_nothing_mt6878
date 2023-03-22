@@ -81,6 +81,10 @@ static int res_calc_fill_sensor(struct mtk_cam_res_calc *c,
 {
 	u32 vb = (r->hw_mode != HW_MODE_DIRECT_COUPLED) ?
 			s->vblank : DC_MODE_VB_MARGIN;
+	u32 interval_n, interval_d;
+
+	interval_n = s->interval.numerator;
+	interval_d = s->interval.denominator;
 
 #if USE_CTRL_PIXEL_RATE
 	c->mipi_pixel_rate = s->pixel_rate;
@@ -88,12 +92,11 @@ static int res_calc_fill_sensor(struct mtk_cam_res_calc *c,
 	c->mipi_pixel_rate =
 		(u64)(s->width + s->hblank)
 		* (s->height + s->vblank)
-		* s->interval.denominator / max(s->interval.numerator, 1U);
+		* interval_d / interval_n;
 #endif
 	c->line_time =
 		1000000000L
-		* s->interval.numerator / s->interval.denominator
-		/ max(s->height + vb, 1U);
+		* interval_n / interval_d / max(s->height + vb, 1U);
 	c->width = s->width;
 	c->height = s->height;
 	return 0;
@@ -450,6 +453,11 @@ static void res_sensor_info_validate(
 			s->interval.numerator = 10;
 		}
 	}
+
+	s->interval.numerator =
+		clamp_val(s->interval.numerator, 1U, 0xFFFFFFFFU);
+	s->interval.denominator =
+		clamp_val(s->interval.denominator, 1U, 0xFFFFFFFFU);
 }
 
 static inline int mtk_pixelmode_val(int pxl_mode)
