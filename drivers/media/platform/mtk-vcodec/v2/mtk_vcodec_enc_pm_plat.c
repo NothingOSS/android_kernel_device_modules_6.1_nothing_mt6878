@@ -508,3 +508,32 @@ void mtk_venc_pmqos_end_inst(struct mtk_vcodec_ctx *ctx)
 	}
 }
 
+/* only for SWRGO, remove it in mp branch */
+void mtk_venc_pmqos_frame_req(struct mtk_vcodec_ctx *ctx)
+{
+	struct mtk_vcodec_dev *dev = ctx->dev;
+	struct venc_inst *inst = (struct venc_inst *) ctx->drv_handle;
+	u32 common_bw[4] = {0};
+	int i;
+
+	if (ctx->state == MTK_STATE_ABORT)
+		return;
+
+	if (!inst->vsi->config.monitor_bw.apply_monitor_bw)
+		return;
+
+
+	common_bw[0] = inst->vsi->config.monitor_bw.comm0_r;
+	common_bw[1] = inst->vsi->config.monitor_bw.comm1_w;
+	common_bw[2] = inst->vsi->config.monitor_bw.comm1_r;
+	common_bw[3] = inst->vsi->config.monitor_bw.comm0_w;
+
+	for (i = 0; i < dev->venc_larb_cnt; i++) {
+		mtk_icc_set_bw(dev->venc_qos_req[i], MBps_to_icc((u32)common_bw[i]), 0);
+		mtk_v4l2_debug(8, "[VQOS][VENC] set larb%d: %dMB/s",
+			dev->venc_larb_bw[i].larb_id, common_bw[i]);
+	}
+	inst->vsi->config.monitor_bw.apply_monitor_bw = 0;
+
+}
+

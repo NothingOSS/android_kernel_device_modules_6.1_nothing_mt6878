@@ -155,8 +155,10 @@ void venc_encode_prepare(void *ctx_prepare,
 	mtk_vcodec_enc_clock_on(ctx, core_id);
 	if (!mtk_vcodec_is_vcp(MTK_INST_ENCODER))
 		enable_irq(ctx->dev->enc_irq[core_id]);
-	if (core_id == MTK_VENC_CORE_0)
+	if (core_id == MTK_VENC_CORE_0) {
+		mtk_venc_pmqos_frame_req(ctx); /* only for SWRGO, remove it in mp branch */
 		vcodec_trace_count("VENC_HW_CORE_0", 1);
+	}
 	else
 		vcodec_trace_count("VENC_HW_CORE_1", 1);
 	mutex_unlock(&ctx->hw_status);

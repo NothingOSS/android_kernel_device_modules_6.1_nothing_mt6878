@@ -491,3 +491,9 @@ void mtk_venc_pmqos_end_inst(struct mtk_vcodec_ctx *ctx)
 		}
 	}
 }
+
+/* only for SWRGO need to sync pmqos param, remove it in mp branch */
+void mtk_venc_pmqos_frame_req(struct mtk_vcodec_ctx *ctx)
+{
+
+}

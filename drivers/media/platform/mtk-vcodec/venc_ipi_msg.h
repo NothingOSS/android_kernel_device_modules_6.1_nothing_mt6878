@@ -405,6 +405,21 @@ struct venc_vcu_ipi_mem_op {
 	__u32 vcp_addr[2];
 };
 
+/**
+ * struct venc_monitor_bw - only use for SWRGO, removed in mp branch
+ * @msg_id:   message id (VCU_IPIMSG_XXX_ENC_DEINIT_DONE)
+ * @status:   cmd status (venc_ipi_msg_status)
+ * @venc_inst:	AP encoder instance (struct venc_inst *)
+ * @struct vcodec_mem_obj: encoder memories
+ */
+struct venc_monitor_bw {
+	bool apply_monitor_bw;
+	__u32 comm0_r;
+	__u32 comm0_w;
+	__u32 comm1_r;
+	__u32 comm1_w;
+};
+
 /*
  * struct venc_vcu_config - Structure for encoder configuration
  *                               AP-W/R : AP is writer/reader on this item
@@ -483,6 +498,7 @@ struct venc_vcu_config {
 	struct mtk_color_desc color_desc;
 	struct mtk_venc_multi_ref multi_ref;
 	struct mtk_venc_vui_info vui_info;
+	struct venc_monitor_bw monitor_bw;
 };
 
 /**
