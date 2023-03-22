@@ -983,6 +983,10 @@ unsigned int sensor_mbus_to_pixel_format_ufbc(unsigned int mbus_code)
 	}
 }
 
+/* NOTICE:
+ * ufbc fmt is special case, user fill stride to buffer size,
+ * so, don't use it to calculate image size.
+ */
 int get_bayer_ufbc_stride_and_size(u32 w, u32 h,
 			const struct mtk_format_info *info, u32 byteperline,
 			u32 *stride, u32 *bufsize)
@@ -995,12 +999,12 @@ int get_bayer_ufbc_stride_and_size(u32 w, u32 h,
 	/* UFO format width should align 64 pixel */
 	aligned_width = ALIGN(w, 64);
 	*stride = aligned_width * info->bitpp[0] / 8;
-	*stride = max(byteperline, *stride);
 
 	*bufsize = (*stride) * h;
 	*bufsize += ALIGN((aligned_width / 64),
 		UFBC_TABLE_STRIDE_ALIGNMENT) * h;
 	*bufsize += sizeof(struct UfbcBufferHeader);
 
+	*stride = max(byteperline, *stride);
 	return 0;
 }

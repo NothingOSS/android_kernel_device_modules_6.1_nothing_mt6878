@@ -303,7 +303,7 @@ int mtk_cam_qos_remove(struct mtk_camsys_qos *qos)
 
 static inline u32 apply_ufo_com_ratio(u32 avg_bw)
 {
-	return avg_bw * 7 / 10;
+	return avg_bw / 10 * 7;
 }
 
 static inline u32 calc_bw(u32 size, u64 linet, u32 active_h)
@@ -351,13 +351,6 @@ static int fill_raw_out_qos(struct mtk_cam_job *job,
 		if (!size)
 			break;
 
-		/*TODO: remove workaround if mw fixed */
-		if (ipifmt_is_yuv_ufo(out->fmt.format)) {
-			size = out->fmt.s.w * out->fmt.s.h * 3/2;
-			size += ALIGN((out->fmt.s.w / 64), 8) * out->fmt.s.h * 3/2;
-			size += sizeof(struct UfbcBufferHeader);
-		}
-
 		if (WARN_ON(size > MMQOS_SIZE_WARNING)) {
 			pr_info("%s: %s: req_seq(%d) uid:%d size too large(%d), please check\n",
 				__func__,
@@ -367,10 +360,10 @@ static int fill_raw_out_qos(struct mtk_cam_job *job,
 		}
 
 		active_h = sensor_h + sensor_vb;
+		avg_bw = calc_bw(size, linet, active_h);
 		avg_bw = (ipifmt_is_yuv_ufo(out->fmt.format) ||
-				  ipifmt_is_raw_ufo(out->fmt.format)) ?
-				apply_ufo_com_ratio(calc_bw(size, linet, active_h)) :
-				calc_bw(size, linet, active_h);
+					ipifmt_is_raw_ufo(out->fmt.format)) ?
+				apply_ufo_com_ratio(avg_bw) : avg_bw;
 
 		active_h = (out->crop.p.y*2 >= out->crop.s.h) ?
 				1 : out->crop.s.h - out->crop.p.y*2;
@@ -380,7 +373,7 @@ static int fill_raw_out_qos(struct mtk_cam_job *job,
 		dst_port = qos_desc->dma_desc[i].dst_port;
 		if (qos_desc->dma_desc[i].domain == RAW_DOMAIN) {
 			job->raw_mmqos[dst_port].peak_bw += to_qos_icc(peak_bw);
-			job->raw_mmqos[dst_port].avg_bw += to_qos_icc(avg_bw);
+			job->raw_mmqos[dst_port].avg_bw += to_qos_icc_ratio(avg_bw);
 		} else {
 			job->yuv_mmqos[dst_port].peak_bw += to_qos_icc(peak_bw);
 			job->yuv_mmqos[dst_port].avg_bw += to_qos_icc_ratio(avg_bw);
@@ -426,6 +419,8 @@ static int fill_raw_in_qos(struct mtk_cam_job *job,
 		}
 
 		avg_bw = calc_bw(size, linet, sensor_h + sensor_vb);
+		avg_bw = ipifmt_is_raw_ufo(in->fmt.format) ?
+				apply_ufo_com_ratio(avg_bw) : avg_bw;
 		peak_bw = is_dc_mode(job) ? 0 : calc_bw(size, linet, sensor_h);
 
 		dst_port = qos_desc->dma_desc[i].dst_port;
@@ -445,7 +440,8 @@ static int fill_raw_stats_qos(struct mtk_cam_job *job,
 							u32 sensor_h, u32 sensor_vb, u64 linet)
 {
 	struct mtkcam_qos_desc *qos_desc;
-	unsigned int size, dst_port;
+	unsigned int dst_port;
+	unsigned int size = 0;
 	u32 peak_bw, avg_bw;
 	int i, j;
 
@@ -732,6 +728,12 @@ int mtk_cam_apply_qos(struct mtk_cam_job *job)
 	int i, j, port_num;
 
 	used_raw_num = get_used_raw_num(job);
+	if (WARN_ON(used_raw_num == 0)) {
+		pr_info("%s: req_seq(%d) wrong used raw number\n",
+				__func__, job->req_seq);
+		return 0;
+	}
+
 	submask = bit_map_subset_of(MAP_HW_RAW, ctx->used_engine);
 	for (i = 0; i < raw_num && submask; i++, submask >>= 1) {
 		if (!(submask & 0x1))

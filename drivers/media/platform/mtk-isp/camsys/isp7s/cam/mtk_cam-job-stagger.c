@@ -45,11 +45,11 @@ int apply_cam_mux_switch_stagger(struct mtk_cam_job *job)
 	struct mtk_cam_seninf_mux_setting settings[4];
 	int type = job->switch_type;
 	int config_exposure_num = job->job_scen.scen.normal.max_exp_num;
-	int is_dc = is_dc_mode(job);
 	int raw_id = _get_master_raw_id(job->used_engine);
 	int raw_tg_idx = raw_to_tg_idx(raw_id);
 	int first_tag_idx, second_tag_idx, last_tag_idx;
 	int first_tag_idx_w, last_tag_idx_w;
+	bool is_dc = is_dc_mode(job) ? true : false;
 
 	/**
 	 * To identify the "max" exposure_num, we use

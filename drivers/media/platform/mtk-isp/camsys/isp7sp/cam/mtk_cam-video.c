@@ -619,20 +619,23 @@ static int mtk_cam_fill_mtk_pixfmt_mp(const struct mtk_format_info *info,
 	plane = &pixfmt->plane_fmt[0];
 
 	if (is_yuv_ufo(pixelformat)) {
+		/* NOTICE:
+		 * ufbc fmt is special case, user fill stride to buffer size,
+		 * so, don't use it to calculate image size.
+		 */
 		u32 aligned_width;
 
 		/* UFO format width should align 64 pixel */
 		aligned_width = ALIGN(width, 64);
 		stride = aligned_width * info->bitpp[0] / 8;
-		stride = max(plane->bytesperline, stride);
-
-		plane->bytesperline = stride;
 
 		plane->sizeimage = stride * height;
 		plane->sizeimage += stride * height / 2;
 		plane->sizeimage += ALIGN((aligned_width / 64), 8) * height;
 		plane->sizeimage += ALIGN((aligned_width / 64), 8) * height / 2;
 		plane->sizeimage += sizeof(struct UfbcBufferHeader);
+
+		plane->bytesperline = max(plane->bytesperline, stride);
 	} else if (is_raw_ufo(pixelformat)) {
 		if (CAM_DEBUG_ENABLED(V4L2))
 			pr_info("%s: raw ufo: (%d/%d/Bpl:%d)",

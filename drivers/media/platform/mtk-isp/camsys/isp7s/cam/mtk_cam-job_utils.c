@@ -806,13 +806,7 @@ static int mtk_cam_fill_img_out_buf_subsample(struct mtkcam_ipi_img_output *io,
 
 			if (!size)
 				break;
-			/* Only For IT. To be removed - user need to fix it */
-			/* same as mtk_cam_vb2_buf_prepare check if vb2_plane_size(vb, 0) < size */
-			if (img_info->bytesperline[i] > img_info->width * 100) {
-				pr_info("i:%d, wrong bpl:%d > 100*Width(%d) (using bpl as sizeimage)\n",
-				i, img_info->bytesperline[i], img_info->width);
-				size = img_info->bytesperline[i];
-			}
+
 			io->buf[j][i].iova = daddr;
 			io->buf[j][i].size = size;
 			io->buf[j][i].ccd_fd = buf->vbb.vb2_buf.planes[0].m.fd;

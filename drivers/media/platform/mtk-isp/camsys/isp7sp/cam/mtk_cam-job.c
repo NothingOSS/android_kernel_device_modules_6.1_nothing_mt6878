@@ -1139,7 +1139,7 @@ static int apply_cam_switch_stagger(struct mtk_cam_job *job)
 	struct mtk_raw_device *raw_dev = NULL;
 	int type = job->switch_type;
 	bool stagger_mode_updated = false;
-	bool is_dc = is_dc_mode(job);
+	bool is_dc = is_dc_mode(job) ? true : false;
 
 	if (raw_id < 0)
 		return -1;
@@ -1720,7 +1720,7 @@ int master_raw_set_stagger(struct device *dev, struct mtk_cam_job *job)
 	raw = dev_get_drvdata(dev);
 
 	if (job_exp_num(job) > 1)
-		stagger_enable(raw, is_dc);
+		stagger_enable(raw, is_dc ? true : false);
 
 	return 0;
 }
