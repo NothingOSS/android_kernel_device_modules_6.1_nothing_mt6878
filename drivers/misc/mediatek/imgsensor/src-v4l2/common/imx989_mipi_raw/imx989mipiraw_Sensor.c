@@ -90,6 +90,7 @@ static struct SET_PD_BLOCK_INFO_T imgsensor_pd_info_fullsize = {
 		.i4BinFacY = 4,
 	},
 };
+
 static struct SET_PD_BLOCK_INFO_T imgsensor_pd_info = {
 	.i4OffsetX = 0,
 	.i4OffsetY = 0,
@@ -127,6 +128,29 @@ static struct SET_PD_BLOCK_INFO_T imgsensor_pd_info = {
 		.i4BinFacX = 2,
 		.i4BinFacY = 4,
 	},
+};
+
+//1000 base for dcg gain ratio
+static u32 imx888_dcg_ratio_table_12bit[] = {4000};
+
+static u32 imx888_dcg_ratio_table_14bit[] = {16000};
+
+static struct mtk_sensor_saturation_info imgsensor_saturation_info_10bit = {
+	.gain_ratio = 1000,
+	.OB_pedestal = 64,
+	.saturation_level = 1023,
+};
+
+static struct mtk_sensor_saturation_info imgsensor_saturation_info_12bit = {
+	.gain_ratio = 4000,
+	.OB_pedestal = 64,
+	.saturation_level = 3900,
+};
+
+static struct mtk_sensor_saturation_info imgsensor_saturation_info_14bit = {
+	.gain_ratio = 16000,
+	.OB_pedestal = 64,
+	.saturation_level = 15408,
 };
 
 static struct mtk_mbus_frame_desc_entry frame_desc_prev[] = {
@@ -251,7 +275,7 @@ static struct mtk_mbus_frame_desc_entry frame_desc_cus4[] = {
 	{
 		.bus.csi2 = {
 			.channel = 0,
-			.data_type = 0x2b,
+			.data_type = 0x2c,
 			.hsize = 0x1000,
 			.vsize = 0x0900,
 			.user_data_desc = VC_STAGGER_NE,
@@ -260,11 +284,12 @@ static struct mtk_mbus_frame_desc_entry frame_desc_cus4[] = {
 	{
 		.bus.csi2 = {
 			.channel = 0,
-			.data_type = 0x30,
+			.data_type = 0x31,
 			.hsize = 0x1000,
 			.vsize = 0x0240,
-			.dt_remap_to_type = MTK_MBUS_FRAME_DESC_REMAP_TO_RAW10,
+			.dt_remap_to_type = MTK_MBUS_FRAME_DESC_REMAP_TO_RAW12,
 			.user_data_desc = VC_PDAF_STATS_NE_PIX_1,
+			.valid_bit = 10,
 		},
 	},
 };
@@ -272,7 +297,7 @@ static struct mtk_mbus_frame_desc_entry frame_desc_cus5[] = {
 	{
 		.bus.csi2 = {
 			.channel = 0,
-			.data_type = 0x2b,
+			.data_type = 0x2d,
 			.hsize = 0x1000,
 			.vsize = 0x0900,
 			.user_data_desc = VC_STAGGER_NE,
@@ -281,11 +306,12 @@ static struct mtk_mbus_frame_desc_entry frame_desc_cus5[] = {
 	{
 		.bus.csi2 = {
 			.channel = 0,
-			.data_type = 0x30,
+			.data_type = 0x32,
 			.hsize = 0x1000,
 			.vsize = 0x0240,
-			.dt_remap_to_type = MTK_MBUS_FRAME_DESC_REMAP_TO_RAW10,
+			.dt_remap_to_type = MTK_MBUS_FRAME_DESC_REMAP_TO_RAW14,
 			.user_data_desc = VC_PDAF_STATS_NE_PIX_1,
+			.valid_bit = 10,
 		},
 	},
 };
@@ -599,7 +625,7 @@ static struct mtk_mbus_frame_desc_entry frame_desc_cus16[] = {
 	{
 		.bus.csi2 = {
 			.channel = 0,
-			.data_type = 0x2b,
+			.data_type = 0x2c,
 			.hsize = 0x1000,
 			.vsize = 0x0c00,
 			.user_data_desc = VC_STAGGER_NE,
@@ -608,11 +634,12 @@ static struct mtk_mbus_frame_desc_entry frame_desc_cus16[] = {
 	{
 		.bus.csi2 = {
 			.channel = 0,
-			.data_type = 0x30,
+			.data_type = 0x31,
 			.hsize = 0x1000,
 			.vsize = 0x0300,
-			.dt_remap_to_type = MTK_MBUS_FRAME_DESC_REMAP_TO_RAW10,
+			.dt_remap_to_type = MTK_MBUS_FRAME_DESC_REMAP_TO_RAW12,
 			.user_data_desc = VC_PDAF_STATS_NE_PIX_1,
+			.valid_bit = 10,
 		},
 	},
 };
@@ -620,7 +647,7 @@ static struct mtk_mbus_frame_desc_entry frame_desc_cus17[] = {
 	{
 		.bus.csi2 = {
 			.channel = 0,
-			.data_type = 0x2b,
+			.data_type = 0x2d,
 			.hsize = 0x1000,
 			.vsize = 0x0c00,
 			.user_data_desc = VC_STAGGER_NE,
@@ -629,11 +656,12 @@ static struct mtk_mbus_frame_desc_entry frame_desc_cus17[] = {
 	{
 		.bus.csi2 = {
 			.channel = 0,
-			.data_type = 0x30,
+			.data_type = 0x32,
 			.hsize = 0x1000,
 			.vsize = 0x0300,
-			.dt_remap_to_type = MTK_MBUS_FRAME_DESC_REMAP_TO_RAW10,
+			.dt_remap_to_type = MTK_MBUS_FRAME_DESC_REMAP_TO_RAW14,
 			.user_data_desc = VC_PDAF_STATS_NE_PIX_1,
+			.valid_bit = 10,
 		},
 	},
 };
@@ -1153,7 +1181,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_mode_setting_table = imx989_seamless_custom4,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx989_seamless_custom4),
 		.hdr_group = 2,
-		// .hdr_mode = HDR_NONE,
+		.hdr_mode = HDR_RAW_DCG_COMPOSE_RAW12,
 		.pclk = 3225600000,
 		.linelength = 42400,
 		.framelength = 2528,
@@ -1188,6 +1216,17 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.fine_integ_line = 1073,
 		.delay_frame = 3,
 		.csi_param = {},
+		.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW12_R,
+		.saturation_info = &imgsensor_saturation_info_12bit,
+		.dcg_info = {
+			.dcg_mode = IMGSENSOR_DCG_COMPOSE,
+			.dcg_gain_mode = IMGSENSOR_DCG_RATIO_MODE,
+			.dcg_gain_ratio_min = 4000,
+			.dcg_gain_ratio_max = 4000,
+			.dcg_gain_ratio_step = 0,
+			.dcg_gain_table = imx888_dcg_ratio_table_12bit,
+			.dcg_gain_table_size = sizeof(imx888_dcg_ratio_table_12bit),
+		},
 	},
 	{
 		.frame_desc = frame_desc_cus5,
@@ -1198,7 +1237,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_mode_setting_table = imx989_seamless_custom5,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx989_seamless_custom5),
 		.hdr_group = 2,
-		// .hdr_mode = HDR_NONE,
+		.hdr_mode = HDR_RAW_DCG_COMPOSE_RAW14,
 		.pclk = 3225600000,
 		.linelength = 42400,
 		.framelength = 2528,
@@ -1233,6 +1272,17 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.fine_integ_line = 1073,
 		.delay_frame = 3,
 		.csi_param = {},
+		.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW14_R,
+		.saturation_info = &imgsensor_saturation_info_14bit,
+		.dcg_info = {
+			.dcg_mode = IMGSENSOR_DCG_COMPOSE,
+			.dcg_gain_mode = IMGSENSOR_DCG_RATIO_MODE,
+			.dcg_gain_ratio_min = 4000,
+			.dcg_gain_ratio_max = 4000,
+			.dcg_gain_ratio_step = 0,
+			.dcg_gain_table = imx888_dcg_ratio_table_14bit,
+			.dcg_gain_table_size = sizeof(imx888_dcg_ratio_table_14bit),
+		},
 	},
 	{
 		.frame_desc = frame_desc_cus6,
@@ -1700,7 +1750,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_mode_setting_table = imx989_seamless_custom16,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx989_seamless_custom16),
 		.hdr_group = 1,
-		// .hdr_mode = HDR_RAW_STAGGER_3EXP,
+		.hdr_mode = HDR_RAW_DCG_COMPOSE_RAW12,
 		.pclk = 4070400000,
 		.linelength = 42400,
 		.framelength = 3200,
@@ -1735,6 +1785,17 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.fine_integ_line = 1073,
 		.delay_frame = 3,
 		.csi_param = {},
+		.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW12_R,
+		.saturation_info = &imgsensor_saturation_info_12bit,
+		.dcg_info = {
+			.dcg_mode = IMGSENSOR_DCG_COMPOSE,
+			.dcg_gain_mode = IMGSENSOR_DCG_RATIO_MODE,
+			.dcg_gain_ratio_min = 4000,
+			.dcg_gain_ratio_max = 4000,
+			.dcg_gain_ratio_step = 0,
+			.dcg_gain_table = imx888_dcg_ratio_table_12bit,
+			.dcg_gain_table_size = sizeof(imx888_dcg_ratio_table_12bit),
+		},
 	},
 	{
 		.frame_desc = frame_desc_cus17,
@@ -1745,7 +1806,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_mode_setting_table = imx989_seamless_custom17,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx989_seamless_custom17),
 		.hdr_group = 1,
-		// .hdr_mode = HDR_RAW_STAGGER_3EXP,
+		.hdr_mode = HDR_RAW_DCG_COMPOSE_RAW14,
 		.pclk = 4070400000,
 		.linelength = 42400,
 		.framelength = 3200,
@@ -1780,6 +1841,17 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.fine_integ_line = 1073,
 		.delay_frame = 3,
 		.csi_param = {},
+		.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW14_R,
+		.saturation_info = &imgsensor_saturation_info_14bit,
+		.dcg_info = {
+			.dcg_mode = IMGSENSOR_DCG_COMPOSE,
+			.dcg_gain_mode = IMGSENSOR_DCG_RATIO_MODE,
+			.dcg_gain_ratio_min = 4000,
+			.dcg_gain_ratio_max = 4000,
+			.dcg_gain_ratio_step = 0,
+			.dcg_gain_table = imx888_dcg_ratio_table_14bit,
+			.dcg_gain_table_size = sizeof(imx888_dcg_ratio_table_14bit),
+		},
 	},
 	{
 		.frame_desc = frame_desc_cus18,
@@ -2084,12 +2156,13 @@ static struct subdrv_static_ctx static_ctx = {
 	.min_gain_iso = 100,
 	.exposure_def = 0x3D0,
 	.exposure_min = 8,
-	.exposure_max = 512 * (0xFFFC - 48), //CIT_LSHIFT = 9, 512x max
+	.exposure_max = 128 * (0xFFFC - 48),
 	.exposure_step = 4,
 	.exposure_margin = 48,
 	.dig_gain_min = BASE_DGAIN * 1,
 	.dig_gain_max = BASE_DGAIN * 256,
-	.dig_gain_step = 4, // BASE_DGAIN/256
+	.dig_gain_step = 4,
+	.saturation_info = &imgsensor_saturation_info_10bit,
 
 	.frame_length_max = 0xFFFC,
 	.ae_effective_frame = 2,
@@ -2125,6 +2198,7 @@ static struct subdrv_static_ctx static_ctx = {
 			{0x3166, 0x3167},
 			{0x0218, 0x0219},
 	},
+	.reg_addr_dcg_ratio = 0x3172,
 	.reg_addr_frame_length = {0x0340, 0x0341},
 	.reg_addr_temp_en = 0x0138,
 	.reg_addr_temp_read = 0x013A,
