@@ -1063,7 +1063,7 @@ static int mtk_aie_queue_init(void *priv, struct vb2_queue *src_vq,
 	dst_vq->io_modes = VB2_MMAP | VB2_DMABUF;
 	dst_vq->drv_priv = ctx;
 	dst_vq->ops = &mtk_aie_vb2_ops;
-	dst_vq->mem_ops = &aie_vb2_dma_contig_memops;
+	dst_vq->mem_ops = &vb2_dma_contig_memops;
 	dst_vq->buf_struct_size = sizeof(struct v4l2_m2m_buffer);
 	dst_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	dst_vq->lock = &ctx->fd_dev->vfd_lock;
@@ -1176,6 +1176,8 @@ static void mtk_aie_device_run(void *priv)
 		fd_param.src_img[1].dma_addr = fd->img_uv & 0xffffffff;
 	}
 
+	fd->out_fd = vb2_dma_contig_plane_dma_addr(&dst_buf->vb2_buf, 0);
+
 	plane_vaddr = vb2_plane_vaddr(&dst_buf->vb2_buf, 0);
 	if (plane_vaddr == NULL) {
 		dev_info(fd->dev, "vb2 plane vaddr is null");
@@ -1203,6 +1205,35 @@ static void mtk_aie_device_run(void *priv)
 	fd->aie_cfg->src_padding.down = g_user_param.user_param.src_padding_down;
 	fd->aie_cfg->src_padding.up = g_user_param.user_param.src_padding_up;
 	fd->aie_cfg->freq_level = g_user_param.user_param.freq_level;
+
+
+	if (fd->aie_cfg->sel_mode == FDMODE) {
+		fd->dma_para->fd_out_hw_pa[rpn2_loop_num][0]
+				= fd->out_fd + offsetof(struct aie_enq_info, fd_out)
+					+ offsetof(struct fd_result, rpn31_rlt);
+		fd->dma_para->fd_out_hw_pa[rpn1_loop_num][0]
+				= fd->out_fd + offsetof(struct aie_enq_info, fd_out)
+					+ offsetof(struct fd_result, rpn63_rlt);
+		fd->dma_para->fd_out_hw_pa[rpn0_loop_num][0]
+				= fd->out_fd + offsetof(struct aie_enq_info, fd_out)
+					+ offsetof(struct fd_result, rpn95_rlt);
+	} else if (fd->aie_cfg->sel_mode == ATTRIBUTEMODE) {
+		fd->dma_para->age_out_hw_pa[fd->attr_para->r_idx]
+				= fd->out_fd + offsetof(struct aie_enq_info, attr_out)
+					+ offsetof(struct attr_result, rpn17_rlt);
+		fd->dma_para->gender_out_hw_pa[fd->attr_para->r_idx]
+				= fd->out_fd + offsetof(struct aie_enq_info, attr_out)
+					+ offsetof(struct attr_result, rpn20_rlt);
+		fd->dma_para->isIndian_out_hw_pa[fd->attr_para->r_idx]
+				= fd->out_fd + offsetof(struct aie_enq_info, attr_out)
+					+ offsetof(struct attr_result, rpn22_rlt);
+		fd->dma_para->race_out_hw_pa[fd->attr_para->r_idx]
+				= fd->out_fd + offsetof(struct aie_enq_info, attr_out)
+					+ offsetof(struct attr_result, rpn25_rlt);
+	} else if (fd->aie_cfg->sel_mode == FLDMODE) {
+		fd->dma_para->fld_output_pa
+				= fd->out_fd + offsetof(struct aie_enq_info, fld_raw_out);
+	}
 
 	if (fd->aie_cfg->sel_mode == FLDMODE) {
 		fd->aie_cfg->fld_face_num = g_user_param.user_param.fld_face_num;

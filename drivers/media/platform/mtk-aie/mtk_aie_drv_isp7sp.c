@@ -1564,25 +1564,6 @@ static int aie_alloc_fddma_buf(struct mtk_aie_dev *fd)
 
 	fd->fd_attr_dma_hw.va = va;
 
-	alloc_size = fd->fd_dma_rst_max_size + fd->fd_attr_dma_rst_max_size;
-	//ret = aie_imem_alloc(fd, alloc_size, &fd->fd_dma_result_hw);
-	ret_buf = aie_imem_sec_alloc(fd, alloc_size, false);
-	if (!ret_buf)
-		return -1;
-
-	fd->fd_dma_result_hw.dmabuf = ret_buf;
-	fd->fd_dma_result_hw.size = alloc_size;
-	iova = aie_get_sec_iova(fd, ret_buf, &fd->fd_dma_result_hw);
-	if (!iova)
-		return -1;
-
-	fd->fd_dma_result_hw.pa = iova;
-	va = aie_get_va(fd, ret_buf, &fd->fd_dma_result_hw);
-	if (!va)
-		return -1;
-
-	fd->fd_dma_result_hw.va = va;
-
 	return 0;
 }
 #ifdef FLD
@@ -1712,24 +1693,6 @@ static int aie_alloc_fld_buf(struct mtk_aie_dev *fd)
 	if (!va)
 		return -1;
 	fd->fld_shape_hw.va = va;
-
-	alloc_size = fld_result_size;
-	ret_buf = aie_imem_sec_alloc(fd, alloc_size, false);
-	if (!ret_buf)
-		return -1;
-
-	fd->fld_output_hw.dmabuf = ret_buf;
-	fd->fld_output_hw.size = alloc_size;
-	iova = aie_get_sec_iova(fd, ret_buf, &fd->fld_output_hw);
-	if (!iova)
-		return -1;
-	writel(AIE_IOVA(iova), fd->fd_base + FLD_PP_BASE_ADDR);
-	fd->fld_output_hw.pa = iova;
-
-	va = aie_get_va(fd, ret_buf, &fd->fld_output_hw);
-	if (!va)
-		return -1;
-	fd->fld_output_hw.va = va;
 
 	return 0;
 }
@@ -1995,88 +1958,6 @@ static void aie_arrange_attrdma_buf(struct mtk_aie_dev *fd)
 	}
 }
 
-static void aie_arrange_result_dma_buf(struct mtk_aie_dev *fd)
-{
-	void *currentResultVA = NULL;
-	dma_addr_t currentResultPA;
-	u8 i;
-	struct aie_static_info *pstv;
-
-	pstv = &fd->st_info;
-
-	currentResultPA = fd->fd_dma_result_hw.pa;
-	currentResultVA = fd->fd_dma_result_hw.va;
-
-	fd->dma_para->fd_out_hw_pa[rpn2_loop_num][0] = currentResultPA;
-	fd->dma_para->fd_out_hw_va[rpn2_loop_num][0] = currentResultVA;
-	currentResultPA += pstv->fd_wdma_size[rpn2_loop_num][0];
-	currentResultVA += pstv->fd_wdma_size[rpn2_loop_num][0];
-	fd->dma_para->fd_out_hw_pa[rpn1_loop_num][0] = currentResultPA;
-	fd->dma_para->fd_out_hw_va[rpn1_loop_num][0] = currentResultVA;
-	currentResultPA += pstv->fd_wdma_size[rpn1_loop_num][0];
-	currentResultVA += pstv->fd_wdma_size[rpn1_loop_num][0];
-	fd->dma_para->fd_out_hw_pa[rpn0_loop_num][0] = currentResultPA;
-	fd->dma_para->fd_out_hw_va[rpn0_loop_num][0] = currentResultVA;
-	currentResultPA += pstv->fd_wdma_size[rpn0_loop_num][0];
-	currentResultVA += pstv->fd_wdma_size[rpn0_loop_num][0];
-
-	fd->dma_para->attr_out_hw_pa[age_out_rgs][0] = currentResultPA;
-	fd->dma_para->attr_out_hw_va[age_out_rgs][0] = currentResultVA;
-	currentResultPA += ATTR_OUT_SIZE * MAX_ENQUE_FRAME_NUM;
-	currentResultVA += ATTR_OUT_SIZE * MAX_ENQUE_FRAME_NUM;
-	fd->dma_para->attr_out_hw_pa[gender_out_rgs][0] = currentResultPA;
-	fd->dma_para->attr_out_hw_va[gender_out_rgs][0] = currentResultVA;
-	currentResultPA += ATTR_OUT_SIZE * MAX_ENQUE_FRAME_NUM;
-	currentResultVA += ATTR_OUT_SIZE * MAX_ENQUE_FRAME_NUM;
-	fd->dma_para->attr_out_hw_pa[indian_out_rgs][0] = currentResultPA;
-	fd->dma_para->attr_out_hw_va[indian_out_rgs][0] = currentResultVA;
-	currentResultPA += ATTR_OUT_SIZE * MAX_ENQUE_FRAME_NUM;
-	currentResultVA += ATTR_OUT_SIZE * MAX_ENQUE_FRAME_NUM;
-	fd->dma_para->attr_out_hw_pa[race_out_rgs][0] = currentResultPA;
-	fd->dma_para->attr_out_hw_va[race_out_rgs][0] = currentResultVA;
-	currentResultPA += ATTR_OUT_SIZE * MAX_ENQUE_FRAME_NUM;
-	currentResultVA += ATTR_OUT_SIZE * MAX_ENQUE_FRAME_NUM;
-
-	/* need to prepare 10 buffers to store 10 times result */
-	fd->dma_para->age_out_hw_pa[0] =
-		fd->dma_para->attr_out_hw_pa[age_out_rgs][0];
-	fd->dma_para->age_out_hw_va[0] =
-		fd->dma_para->attr_out_hw_va[age_out_rgs][0];
-	fd->dma_para->gender_out_hw_pa[0] =
-		fd->dma_para->attr_out_hw_pa[gender_out_rgs][0];
-	fd->dma_para->gender_out_hw_va[0] =
-		fd->dma_para->attr_out_hw_va[gender_out_rgs][0];
-	fd->dma_para->isIndian_out_hw_pa[0] =
-		fd->dma_para->attr_out_hw_pa[indian_out_rgs][0];
-	fd->dma_para->isIndian_out_hw_va[0] =
-		fd->dma_para->attr_out_hw_va[indian_out_rgs][0];
-	fd->dma_para->race_out_hw_pa[0] =
-		fd->dma_para->attr_out_hw_pa[race_out_rgs][0];
-	fd->dma_para->race_out_hw_va[0] =
-		fd->dma_para->attr_out_hw_va[race_out_rgs][0];
-
-	for (i = 1; i < MAX_ENQUE_FRAME_NUM; i++) {
-		fd->dma_para->age_out_hw_pa[i] =
-			fd->dma_para->age_out_hw_pa[i - 1] + ATTR_OUT_SIZE;
-		fd->dma_para->age_out_hw_va[i] =
-			fd->dma_para->age_out_hw_va[i - 1] + ATTR_OUT_SIZE;
-		fd->dma_para->gender_out_hw_pa[i] =
-			fd->dma_para->gender_out_hw_pa[i - 1] + ATTR_OUT_SIZE;
-		fd->dma_para->gender_out_hw_va[i] =
-			fd->dma_para->gender_out_hw_va[i - 1] + ATTR_OUT_SIZE;
-		fd->dma_para->isIndian_out_hw_pa[i] =
-			fd->dma_para->isIndian_out_hw_pa[i - 1] + ATTR_OUT_SIZE;
-		fd->dma_para->isIndian_out_hw_va[i] =
-			fd->dma_para->isIndian_out_hw_va[i - 1] + ATTR_OUT_SIZE;
-		fd->dma_para->race_out_hw_pa[i] =
-			fd->dma_para->race_out_hw_pa[i - 1] + ATTR_OUT_SIZE;
-		fd->dma_para->race_out_hw_va[i] =
-			fd->dma_para->race_out_hw_va[i - 1] + ATTR_OUT_SIZE;
-	}
-
-	memset(fd->fd_dma_result_hw.va, 0, fd->fd_dma_result_hw.size);
-
-}
 #ifdef FLD
 static void aie_arrange_fld_buf(struct mtk_aie_dev *fd)
 {
@@ -2084,11 +1965,6 @@ static void aie_arrange_fld_buf(struct mtk_aie_dev *fd)
 
 	fd->dma_para->fld_blink_weight_va = fd->fld_blink_weight_hw.va;
 	fd->dma_para->fld_blink_weight_pa = fd->fld_blink_weight_hw.pa;
-
-	fd->dma_para->fld_output_va = fd->fld_output_hw.va;
-	fd->dma_para->fld_output_pa = fd->fld_output_hw.pa;
-	fd->fld_para->fld_output_va = fd->dma_para->fld_output_va;
-	fd->fld_para->fld_output_pa = fd->dma_para->fld_output_pa;
 
 	fd->dma_para->fld_cv_va[0] = fd->fld_cv_hw.va;
 	fd->dma_para->fld_cv_pa[0] = fd->fld_cv_hw.pa;
@@ -2348,12 +2224,6 @@ static void aie_free_fddma_buf(struct mtk_aie_dev *fd)
 	aie_free_iova(fd, &fd->fd_attr_dma_hw);
 	aie_free_va(fd, &fd->fd_attr_dma_hw);
 	aie_free_dmabuf(fd, &fd->fd_attr_dma_hw);
-
-	//aie_imem_free(fd, &fd->fd_dma_result_hw);
-	aie_free_iova(fd, &fd->fd_dma_result_hw);
-	aie_free_va(fd, &fd->fd_dma_result_hw);
-	aie_free_dmabuf(fd, &fd->fd_dma_result_hw);
-
 }
 #ifdef FLD
 static void aie_free_fld_buf(struct mtk_aie_dev *fd)
@@ -2387,11 +2257,6 @@ static void aie_free_fld_buf(struct mtk_aie_dev *fd)
 	aie_free_iova(fd, &fd->fld_shape_hw);
 	aie_free_va(fd, &fd->fld_shape_hw);
 	aie_free_dmabuf(fd, &fd->fld_shape_hw);
-
-	//aie_imem_free(fd, &fd->fld_output_hw);
-	aie_free_iova(fd, &fd->fld_output_hw);
-	aie_free_va(fd, &fd->fld_output_hw);
-	aie_free_dmabuf(fd, &fd->fld_output_hw);
 }
 #endif
 #if CHECK_SERVICE_0
@@ -4284,17 +4149,16 @@ static int aie_alloc_aie_buf(struct mtk_aie_dev *fd)
 #endif
 
 	dev_info(fd->dev,
-	"c(%llx/%llx/%llx)o(%llx/%llx/%llx/%llx/%llx)f(%llx/%llx/%llx/%llx/%llx/%llx/%llx)\n",
+	"c(%llx/%llx/%llx)o(%llx/%llx/%llx/%llx)f(%llx/%llx/%llx/%llx/%llx/%llx)\n",
 		fd->rs_cfg_data.pa, fd->fd_cfg_data.pa, fd->yuv2rgb_cfg_data.pa,
-		fd->rs_output_hw.pa, fd->fd_dma_hw.pa, fd->fd_dma_result_hw.pa,
+		fd->rs_output_hw.pa, fd->fd_dma_hw.pa,
 		fd->fd_kernel_hw.pa, fd->fd_attr_dma_hw.pa, fd->fld_cv_hw.pa,
 		fd->fld_fp_hw.pa, fd->fld_leafnode_hw.pa, fd->fld_tree_02_hw.pa,
-		fd->fld_shape_hw.pa, fd->fld_blink_weight_hw.pa, fd->fld_output_hw.pa
+		fd->fld_shape_hw.pa, fd->fld_blink_weight_hw.pa
 	);
 	aie_arrange_fddma_buf(fd);
 	aie_arrange_kernel_buf(fd);
 	aie_arrange_attrdma_buf(fd);
-	aie_arrange_result_dma_buf(fd);
 #ifdef FLD
 	aie_arrange_fld_buf(fd);
 #endif
@@ -4813,7 +4677,6 @@ static void aie_irqhandle(struct mtk_aie_dev *fd)
 /* return aie_cfg to user space */
 static void aie_get_fd_result(struct mtk_aie_dev *fd, struct aie_enq_info *aie_cfg)
 {
-	void *fd_pym_result[PYM_NUM];
 	u32 fd_result_hw, fd_result_1_hw;
 	u32 fd_total_num;
 	u32 fd_pyramid_num[PYM_NUM];
@@ -4827,10 +4690,6 @@ static void aie_get_fd_result(struct mtk_aie_dev *fd, struct aie_enq_info *aie_c
 	aie_cfg->src_img_fmt = fd->base_para->src_img_fmt;
 	aie_cfg->fd_version = FD_VERSION;
 	aie_cfg->attr_version = ATTR_VERSION;
-
-	fd_pym_result[0] = fd->dma_para->fd_out_hw_va[rpn0_loop_num][0];
-	fd_pym_result[1] = fd->dma_para->fd_out_hw_va[rpn1_loop_num][0];
-	fd_pym_result[2] = fd->dma_para->fd_out_hw_va[rpn2_loop_num][0];
 
 	fd->reg_cfg.hw_result = readl(fd->fd_base + AIE_RESULT_0_REG);
 	fd->reg_cfg.hw_result1 = readl(fd->fd_base + AIE_RESULT_1_REG);
@@ -4847,22 +4706,10 @@ static void aie_get_fd_result(struct mtk_aie_dev *fd, struct aie_enq_info *aie_c
 	aie_cfg->fd_out.fd_pyramid1_num = fd_pyramid_num[1];
 	aie_cfg->fd_out.fd_pyramid2_num = fd_pyramid_num[2];
 
-	memcpy(aie_cfg->fd_out.rpn31_rlt,
-	       fd->dma_para->fd_out_hw_va[rpn2_loop_num][0],
-	       sizeof(aie_cfg->fd_out.rpn31_rlt));
-	memcpy(aie_cfg->fd_out.rpn63_rlt,
-	       fd->dma_para->fd_out_hw_va[rpn1_loop_num][0],
-	       sizeof(aie_cfg->fd_out.rpn63_rlt));
-	memcpy(aie_cfg->fd_out.rpn95_rlt,
-	       fd->dma_para->fd_out_hw_va[rpn0_loop_num][0],
-	       sizeof(aie_cfg->fd_out.rpn95_rlt));
 }
 
 static void aie_get_attr_result(struct mtk_aie_dev *fd, struct aie_enq_info *aie_cfg)
 {
-	u32 *attr_race_result, *attr_gender_result;
-	u32 *attr_age_result, *attr_isIndian_result;
-
 	aie_cfg->sel_mode = fd->attr_para->sel_mode[fd->attr_para->r_idx];
 	aie_cfg->rotate_degree =
 		fd->attr_para->rotate_degree[fd->attr_para->r_idx];
@@ -4877,25 +4724,6 @@ static void aie_get_attr_result(struct mtk_aie_dev *fd, struct aie_enq_info *aie
 	aie_cfg->fd_version = FD_VERSION;
 	aie_cfg->attr_version = ATTR_VERSION;
 
-	/* 64 feature * 32 bytes */
-	attr_age_result =
-		(u32 *)fd->dma_para->age_out_hw_va[fd->attr_para->r_idx];
-	attr_gender_result =
-		(u32 *)fd->dma_para->gender_out_hw_va[fd->attr_para->r_idx];
-	attr_isIndian_result =
-		(u32 *)fd->dma_para->isIndian_out_hw_va[fd->attr_para->r_idx];
-	attr_race_result =
-		(u32 *)fd->dma_para->race_out_hw_va[fd->attr_para->r_idx];
-
-	memcpy(aie_cfg->attr_out.rpn17_rlt, attr_age_result,
-	       sizeof(aie_cfg->attr_out.rpn17_rlt));
-	memcpy(aie_cfg->attr_out.rpn20_rlt, attr_gender_result,
-	       sizeof(aie_cfg->attr_out.rpn20_rlt));
-	memcpy(aie_cfg->attr_out.rpn22_rlt, attr_isIndian_result,
-	       sizeof(aie_cfg->attr_out.rpn22_rlt));
-	memcpy(aie_cfg->attr_out.rpn25_rlt, attr_race_result,
-	       sizeof(aie_cfg->attr_out.rpn25_rlt));
-
 	fd->attr_para->r_idx = (fd->attr_para->r_idx + 1) % MAX_ENQUE_FRAME_NUM;
 }
 
@@ -4909,7 +4737,6 @@ static void aie_get_fld_result(struct mtk_aie_dev *fd, struct aie_enq_info *aie_
 	aie_cfg->src_img_addr = fd->fld_para->src_img_addr;
 	aie_cfg->fld_face_num = fd->fld_para->face_num;
 
-	memcpy(aie_cfg->fld_raw_out, fd->dma_para->fld_output_va, FLD_MAX_OUT);
 	memcpy((char *)&(aie_cfg->fld_input[0]), (char *)fd->fld_para->fld_input,
 		sizeof(struct FLD_CROP_RIP_ROP) * aie_cfg->fld_face_num);
 }
@@ -4919,6 +4746,8 @@ static void aie_config_fld_buf_reg(struct mtk_aie_dev *fd)
 	writel(
 		AIE_IOVA(fd->img_y),
 		fd->fd_base + FLD_IMG_BASE_ADDR);
+	writel(AIE_IOVA(fd->dma_para->fld_output_pa),
+		fd->fd_base + FLD_PP_BASE_ADDR);
 }
 
 const struct mtk_aie_drv_ops aie_ops_isp7sp = {

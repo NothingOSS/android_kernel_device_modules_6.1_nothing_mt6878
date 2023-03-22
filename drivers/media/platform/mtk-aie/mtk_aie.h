@@ -278,21 +278,21 @@ struct aie_init_info {
 
 /* align v4l2 user space interface */
 struct fd_result {
-	u16 fd_pyramid0_num;
-	u16 fd_pyramid1_num;
-	u16 fd_pyramid2_num;
-	u16 fd_total_num;
-	u8 rpn31_rlt[MAX_FACE_NUM][RLT_NUM];
-	u8 rpn63_rlt[MAX_FACE_NUM][RLT_NUM];
-	u8 rpn95_rlt[MAX_FACE_NUM][RLT_NUM];
+	u16 fd_pyramid0_num __aligned(32);
+	u16 fd_pyramid1_num __aligned(32);
+	u16 fd_pyramid2_num __aligned(32);
+	u16 fd_total_num __aligned(32);
+	u8 rpn31_rlt[MAX_FACE_NUM][RLT_NUM] __aligned(32);
+	u8 rpn63_rlt[MAX_FACE_NUM][RLT_NUM] __aligned(32);
+	u8 rpn95_rlt[MAX_FACE_NUM][RLT_NUM] __aligned(32);
 };
 
 /* align v4l2 user space interface */
 struct attr_result {
-	u8 rpn17_rlt[GENDER_OUT];
-	u8 rpn20_rlt[GENDER_OUT];
-	u8 rpn22_rlt[GENDER_OUT];
-	u8 rpn25_rlt[GENDER_OUT];
+	u8 rpn17_rlt[GENDER_OUT] __aligned(32);
+	u8 rpn20_rlt[GENDER_OUT] __aligned(32);
+	u8 rpn22_rlt[GENDER_OUT] __aligned(32);
+	u8 rpn25_rlt[GENDER_OUT] __aligned(32);
 };
 
 struct aie_roi {
@@ -330,31 +330,35 @@ struct FLD_CROP_RIP_ROP {
 
 /* align v4l2 user space interface: FdDrv_output_struct */
 struct aie_enq_info {
-	u32 sel_mode;
-	u32 src_img_fmt;
-	u16 src_img_width;
-	u16 src_img_height;
-	u16 src_img_stride;
-	u32 pyramid_base_width;
-	u32 pyramid_base_height;
-	u32 number_of_pyramid;
-	u32 rotate_degree;
-	u32 en_roi;
-	struct aie_roi src_roi;
-	u32 en_padding;
-	struct aie_padding src_padding;
-	u32 freq_level;
-	u32 src_img_addr;
-	u32 src_img_addr_uv;
-	u32 fd_version;
-	u32 attr_version;
-	u32 pose_version;
-	struct fd_result fd_out;
-	struct attr_result attr_out;
-	u32 fld_face_num;
-	struct FLD_CROP_RIP_ROP fld_input[FLD_MAX_INPUT];
-	unsigned char fld_raw_out[FLD_MAX_OUT]; //fld output buf
-	struct FLD_RESULT fld_output[FLD_MAX_INPUT]; //fld output parsing data
+	u32 sel_mode __aligned(32);
+	u32 src_img_fmt __aligned(32);
+	u16 src_img_width __aligned(32);
+	u16 src_img_height __aligned(32);
+	u16 src_img_stride __aligned(32);
+	u32 pyramid_base_width __aligned(32);
+	u32 pyramid_base_height __aligned(32);
+	u32 number_of_pyramid __aligned(32);
+	u32 rotate_degree __aligned(32);
+	u32 en_roi __aligned(32);
+	struct aie_roi src_roi __aligned(32);
+	u32 en_padding __aligned(32);
+	struct aie_padding src_padding __aligned(32);
+	u32 freq_level __aligned(32);
+	u32 src_img_addr __aligned(32);
+	u32 src_img_addr_uv __aligned(32);
+	u32 fd_version __aligned(32);
+	u32 attr_version __aligned(32);
+	u32 pose_version __aligned(32);
+	struct fd_result fd_out __aligned(32);
+	struct attr_result attr_out __aligned(32);
+	u32 fld_face_num __aligned(32);
+	struct FLD_CROP_RIP_ROP fld_input[FLD_MAX_INPUT] __aligned(32);
+
+	/* fld output buf */
+	unsigned char fld_raw_out[FLD_MAX_OUT] __aligned(32);
+
+	 /* fld output parsing data */
+	struct FLD_RESULT fld_output[FLD_MAX_INPUT] __aligned(32);
 };
 
 struct aie_reg_cfg {
@@ -635,6 +639,7 @@ struct mtk_aie_dev {
 	/* Image information */
 	unsigned long long img_y;
 	unsigned long long img_uv;
+	unsigned long long out_fd;
 	unsigned int img_msb_y;
 	unsigned int img_msb_uv;
 
