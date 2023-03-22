@@ -46,7 +46,7 @@ static void mtk_drm_idlemgr_get_private_data(struct drm_crtc *crtc,
 	switch (priv->data->mmsys_id) {
 	case MMSYS_MT6985:
 		data->cpu_mask = 0x80; //cpu7
-		data->cpu_freq = 1000000; // >=1GHZ
+		data->cpu_freq = 0; // cpu7 default 1.2Ghz
 		data->vblank_async = false;
 		data->hw_async = true;
 		data->sram_sleep = false;
@@ -749,6 +749,11 @@ void mtk_drm_idlemgr_async_put(struct drm_crtc *crtc, char *master)
 
 	mtk_crtc = to_mtk_crtc(crtc);
 	idlemgr = mtk_crtc->idlemgr;
+	if (atomic_read(&idlemgr->async_ref) == 0) {
+		DDPMSG("%s: invalid put w/o get\n", __func__);
+		return;
+	}
+
 	if (atomic_dec_return(&idlemgr->async_ref) == 0)
 		wake_up_interruptible(&idlemgr->async_event_wq);
 
@@ -839,11 +844,12 @@ void mtk_drm_idle_async_flush(struct drm_crtc *crtc,
 }
 
 static void mtk_drm_idle_async_wait(struct drm_crtc *crtc,
-	unsigned int time, char *name)
+	unsigned int delay, char *name)
 {
 	struct mtk_drm_idlemgr *idlemgr = NULL;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
-	int ret = 0;
+	unsigned long jiffies = msecs_to_jiffies(1200);
+	long ret = 0;
 
 	if (mtk_drm_idlemgr_get_async_status(crtc) == false)
 		return;
@@ -852,11 +858,16 @@ static void mtk_drm_idle_async_wait(struct drm_crtc *crtc,
 	idlemgr = mtk_crtc->idlemgr;
 
 	//avoid of cpu schedule out by waiting last gce job done
-	if (time > 0)
-		udelay(time);
+	if (delay > 0)
+		udelay(delay);
 
-	ret = wait_event_interruptible(idlemgr->async_event_wq,
-					 !atomic_read(&idlemgr->async_ref));
+	ret = wait_event_interruptible_timeout(idlemgr->async_event_wq,
+					 !atomic_read(&idlemgr->async_ref), jiffies);
+	if (ret <= 0 && atomic_read(&idlemgr->async_ref) > 0) {
+		DDPPR_ERR("%s, timeout, ret:%ld, clear ref:%u\n",
+			__func__, ret, atomic_read(&idlemgr->async_ref));
+		atomic_set(&idlemgr->async_ref, 0);
+	}
 }
 
 void mtk_drm_idlemgr_kick_async(struct drm_crtc *crtc)
@@ -1464,7 +1475,8 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 					"power_off_conn", perf_string);
 
 		// trigger vblank async task
-		if (idlemgr_ctx->priv.vblank_async == true) {
+		if (idlemgr_ctx->priv.vblank_async == true &&
+			atomic_read(&idlemgr->async_enabled) != 0) {
 			mtk_drm_idlemgr_async_get(crtc, "vblank_off");
 			atomic_set(&idlemgr->async_vblank_active, 1);
 			wake_up_interruptible(&idlemgr->async_vblank_wq);
@@ -1503,7 +1515,8 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 		mtk_drm_idlemgr_perf_detail_check(
 				"unprepare", perf_string);
 
-	if (idlemgr_ctx->priv.vblank_async == false) {
+	if (idlemgr_ctx->priv.vblank_async == false ||
+		atomic_read(&idlemgr->async_enabled) == 0) {
 		drm_crtc_vblank_off(crtc);
 		mtk_crtc_vblank_irq(&mtk_crtc->base);
 		if (perf_detail)
@@ -1518,7 +1531,8 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 		mtk_drm_idlemgr_perf_detail_check(
 				"power_off", perf_string);
 
-	if (idlemgr_ctx->priv.vblank_async == true) {
+	if (idlemgr_ctx->priv.vblank_async == true &&
+		atomic_read(&idlemgr->async_enabled) != 0) {
 		mtk_drm_idle_async_wait(crtc, 0, "vblank_async");
 		if (perf_detail)
 			mtk_drm_idlemgr_perf_detail_check(
