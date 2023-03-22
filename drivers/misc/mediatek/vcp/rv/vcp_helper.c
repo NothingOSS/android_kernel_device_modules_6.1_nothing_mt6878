@@ -862,7 +862,7 @@ int vcp_enable_pm_clk(enum feature_id id)
 	pwclkcnt++;
 #ifdef VCP_CLK_FMETER
 	pr_notice("[VCP] %s id %d done %d clk %d\n", __func__, id,
-		pwclkcnt, mt_get_fmeter_freq(vcpreg.femter_ck, CKGEN));
+		pwclkcnt, mt_get_fmeter_freq(vcpreg.fmeter_ck, vcpreg.fmeter_type));
 #endif
 	mutex_unlock(&vcp_pw_clk_mutex);
 	return ret;
@@ -1076,7 +1076,7 @@ void vcp_set_clk(void)
 				__clk_get_name(vcpclk), __clk_get_name(vcpsel), ret);
 
 #ifdef VCP_CLK_FMETER
-		ret = mt_get_fmeter_freq(vcpreg.femter_ck, CKGEN);
+		ret = mt_get_fmeter_freq(vcpreg.fmeter_ck, vcpreg.fmeter_type);
 		if (ret > VCP_30MHZ) {	/* fmeter 5% deviation */
 			/* or fail dump something */
 			break;
@@ -1087,7 +1087,7 @@ void vcp_set_clk(void)
 #ifdef VCP_CLK_FMETER
 	if (ret < VCP_30MHZ)
 		pr_notice("[VCP] %s: fail clk %d(%d) clk_retry %d\n", __func__,
-		ret, mt_get_fmeter_freq(vcpreg.femter_ck, CKGEN), i);
+		ret, mt_get_fmeter_freq(vcpreg.fmeter_ck, vcpreg.fmeter_type), i);
 #endif
 }
 
@@ -1148,7 +1148,7 @@ int reset_vcp(int reset)
 		pr_notice("[VCP] %s: CORE0_RSTN_CLR %x %x %x ret %lu clk %d\n", __func__,
 			readl(DRAM_RESV_ADDR_REG), readl(DRAM_RESV_SIZE_REG),
 			readl(R_CORE0_SW_RSTN_CLR), res.a0,
-			mt_get_fmeter_freq(vcpreg.femter_ck, CKGEN));
+			mt_get_fmeter_freq(vcpreg.fmeter_ck, vcpreg.fmeter_type));
 #endif
 
 	}
@@ -2159,7 +2159,7 @@ void vcp_sys_reset_ws(struct work_struct *ws)
 	pr_notice("[VCP] %s: CORE0_RSTN_CLR %x %x %x ret %lu clk %d\n", __func__,
 		readl(DRAM_RESV_ADDR_REG), readl(DRAM_RESV_SIZE_REG),
 		readl(R_CORE0_SW_RSTN_CLR), res.a0,
-		mt_get_fmeter_freq(vcpreg.femter_ck, CKGEN));
+		mt_get_fmeter_freq(vcpreg.fmeter_ck, vcpreg.fmeter_type));
 #endif
 
 	dsb(SY); /* may take lot of time */
@@ -2607,12 +2607,14 @@ static int vcp_device_probe(struct platform_device *pdev)
 	}
 	pr_notice("[VCP] vcpreg.core_nums = %d\n", vcpreg.core_nums);
 
-	of_property_read_u32(pdev->dev.of_node, "femter-ck"
-						, &vcpreg.femter_ck);
+	of_property_read_u32(pdev->dev.of_node, "fmeter-ck"
+						, &vcpreg.fmeter_ck);
+	of_property_read_u32(pdev->dev.of_node, "fmeter-type"
+						, &vcpreg.fmeter_type);
 	of_property_read_u32(pdev->dev.of_node, "twohart"
 						, &vcpreg.twohart);
-	pr_notice("[VCP] vcpreg.twohart = %d,  vcpreg.femter_ck = %d\n",
-		vcpreg.twohart, vcpreg.femter_ck);
+	pr_notice("[VCP] vcpreg.twohart = %d,  vcpreg.fmeter_ck = %d vcpreg.fmeter_type = %d\n",
+		vcpreg.twohart, vcpreg.fmeter_ck, vcpreg.fmeter_type);
 
 	vcp_ee_enable = 0;
 	vcpreg.secure_dump = 0;
