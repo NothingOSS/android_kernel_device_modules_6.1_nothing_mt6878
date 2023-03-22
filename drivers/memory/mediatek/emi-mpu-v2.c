@@ -22,7 +22,7 @@
 #include <linux/ratelimit.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 
-//extern int mtk_clear_smpu_log(unsigned int emi_id);
+extern int mtk_clear_smpu_log(unsigned int emi_id);
 //static struct kthread_worker *smpu_kworker;
 struct smpu *global_ssmpu;
 EXPORT_SYMBOL_GPL(global_ssmpu);
@@ -202,7 +202,7 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 	struct smpu *mpu = (struct smpu *)dev_id;
 	struct smpu_reg_info_t *dump_reg = mpu->dump_reg;
 	void __iomem *mpu_base;
-	int i, vio_dump_idx, vio_dump_pos;
+	int i, vio_dump_idx, vio_dump_pos, prefetch;
 	int vio_type = 6;
 	bool violation;
 	ssize_t msg_len = 0;
@@ -265,9 +265,9 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 		}
 
 		if (msg_len < MTK_SMPU_MAX_CMD_LEN) {
-			//prefetch = mtk_clear_smpu_log(vio_type % 2);
-			//msg_len += scnprintf(mpu->vio_msg + msg_len,
-			//MTK_SMPU_MAX_CMD_LEN - msg_len,"\n[SMPU]cpu-prefetch:%d", prefetch);
+			prefetch = mtk_clear_smpu_log(vio_type % 2);
+			msg_len += scnprintf(mpu->vio_msg + msg_len,
+			MTK_SMPU_MAX_CMD_LEN - msg_len, "\n[SMPU]cpu-prefetch:%d", prefetch);
 			msg_len += scnprintf(mpu->vio_msg + msg_len, MTK_SMPU_MAX_CMD_LEN - msg_len,
 					"\n[SMPU]%s\n", mpu->name);
 		}
