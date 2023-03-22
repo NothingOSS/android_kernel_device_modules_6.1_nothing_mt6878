@@ -50,12 +50,6 @@ bool task_is_vip(struct task_struct *p)
 
 static inline unsigned int vip_task_limit(struct task_struct *p)
 {
-	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
-
-	/* Binder VIP tasks are high prio but have only single slice */
-	if (vts->vip_prio == BINDER_VIP)
-		return VIP_TIME_SLICE;
-
 	return VIP_TIME_LIMIT;
 }
 
@@ -86,8 +80,8 @@ static void insert_vip_task(struct rq *rq, struct vip_task_struct *vts,
 		pid_t next_pid = list_head_to_pid(vts->vip_list.next);
 		bool is_first_entry = (prev_pid == 0) ? true : false;
 
-		trace_sched_insert_vip_task(vts_to_ts(vts)->pid, cpu_of(rq), at_front,
-			prev_pid, next_pid, requeue, is_first_entry);
+		trace_sched_insert_vip_task(vts_to_ts(vts)->pid, cpu_of(rq), vts->vip_prio,
+			at_front, prev_pid, next_pid, requeue, is_first_entry);
 	}
 }
 
@@ -187,8 +181,18 @@ bool is_VIP_latency_sensitive(struct task_struct *p)
 	return false;
 }
 
+int is_VVIP(struct task_struct *p)
+{
+	return 0;
+}
+
 inline int get_vip_task_prio(struct task_struct *p)
 {
+	/* prio = 1 */
+	if (is_VVIP(p))
+		return VVIP;
+
+	/* prio = 0 */
 	if (is_VIP_task_group(p) || is_VIP_latency_sensitive(p))
 		return WORKER_VIP;
 

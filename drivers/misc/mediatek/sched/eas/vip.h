@@ -12,8 +12,7 @@ extern bool vip_enable;
 #define VIP_TIME_LIMIT     (4 * VIP_TIME_SLICE)
 
 #define WORKER_VIP         0
-#define BINDER_VIP         1
-#define TASK_BOOST_VIP     2
+#define VVIP               1
 #define NOT_VIP           -1
 
 #define DEFAULT_VIP_PRIO_THRESHOLD  99
