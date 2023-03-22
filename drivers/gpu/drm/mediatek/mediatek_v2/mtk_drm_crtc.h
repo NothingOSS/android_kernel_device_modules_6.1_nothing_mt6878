@@ -870,6 +870,7 @@ struct mtk_drm_crtc {
 
 	unsigned int avail_modes_num;
 	struct drm_display_mode *avail_modes;
+	struct mtk_panel_params **panel_params;
 	struct timespec64 vblank_time;
 
 	bool mipi_hopping_sta;

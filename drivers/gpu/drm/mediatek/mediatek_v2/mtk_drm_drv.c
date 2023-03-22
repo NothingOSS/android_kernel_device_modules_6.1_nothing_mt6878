@@ -6045,6 +6045,84 @@ int mtk_drm_ioctl_kick_idle(struct drm_device *dev, void *data,
 	return ret;
 }
 
+int mtk_drm_get_mode_ext_info_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *file_priv)
+{
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_drm_mode_ext_info *args = (struct mtk_drm_mode_ext_info *)data;
+	unsigned int *total_offset = NULL;
+	struct mtk_drm_private *priv = dev->dev_private;
+	unsigned int copy_num;
+	int i = 0;
+
+	crtc = drm_crtc_find(dev, file_priv, args->crtc_id);
+	if (!crtc) {
+		DDPPR_ERR("%s unknown CRTC ID %d\n", __func__, args->crtc_id);
+		return -EINVAL;
+	}
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s mtk_crtc is null\n", __func__);
+		return  -EFAULT;
+	}
+
+	if (drm_crtc_index(crtc) != 0 || !mtk_crtc_is_frame_trigger_mode(crtc))
+		return 0;
+
+	total_offset = kcalloc(1, sizeof(unsigned int) * mtk_crtc->avail_modes_num,
+			GFP_KERNEL);
+	if (!total_offset) {
+		DDPPR_ERR("%s alloc mem fail\n", __func__);
+		return -EFAULT;
+	}
+
+	for (i = 0;  i < mtk_crtc->avail_modes_num; i++) {
+		unsigned int merge_trigger_offset = 150;
+		unsigned int prefetch_te_offset = 150;
+
+		if (!mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_CHECK_TRIGGER_MERGE))
+			merge_trigger_offset = 0;
+		else if (mtk_crtc->panel_params[i]->merge_trig_offset)
+			merge_trigger_offset = mtk_crtc->panel_params[i]->merge_trig_offset;
+
+		if (!mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_PREFETCH_TE))
+			prefetch_te_offset = 0;
+		else if (mtk_crtc->panel_params[i]->prefetch_offset)
+			prefetch_te_offset = mtk_crtc->panel_params[i]->prefetch_offset;
+
+		total_offset[i] = merge_trigger_offset + prefetch_te_offset;
+	}
+
+	if (args->mode_num > mtk_crtc->avail_modes_num) {
+		copy_num = mtk_crtc->avail_modes_num;
+		DDPPR_ERR("%s mode_num:%d > avail_mode_num:%d\n", __func__,
+			args->mode_num, mtk_crtc->avail_modes_num);
+	} else if (args->mode_num < mtk_crtc->avail_modes_num) {
+		copy_num = args->mode_num;
+		DDPPR_ERR("%s mode_num:%d < avail_mode_num:%d\n", __func__,
+			args->mode_num, mtk_crtc->avail_modes_num);
+	} else
+		copy_num = mtk_crtc->avail_modes_num;
+
+	if (copy_to_user(args->total_offset, total_offset,
+		sizeof(unsigned int) * copy_num)) {
+		DDPPR_ERR("%s copy failed:(0x%p,0x%p), size:%ld\n",
+			__func__, args->total_offset, total_offset,
+			sizeof(unsigned int) * copy_num);
+
+		kfree(total_offset);
+		return -EFAULT;
+	}
+
+	kfree(total_offset);
+
+	return 0;
+}
+
 int mtk_drm_ioctl_get_all_connector_panel_info(struct drm_device *dev, void *data,
 		struct drm_file *file_priv)
 {
@@ -6784,6 +6862,8 @@ static const struct drm_ioctl_desc mtk_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(MTK_KICK_IDLE, mtk_drm_ioctl_kick_idle,
 				  DRM_UNLOCKED),
 	DRM_IOCTL_DEF_DRV(MTK_PQ_FRAME_CONFIG, mtk_drm_ioctl_pq_frame_config,
+				DRM_UNLOCKED),
+	DRM_IOCTL_DEF_DRV(MTK_GET_MODE_EXT_INFO, mtk_drm_get_mode_ext_info_ioctl,
 				  DRM_UNLOCKED),
 	DRM_IOCTL_DEF_DRV(MTK_PQ_PROXY_IOCTL, mtk_drm_ioctl_pq_proxy,
 				  DRM_UNLOCKED),

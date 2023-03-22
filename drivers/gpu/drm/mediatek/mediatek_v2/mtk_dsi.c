@@ -9007,6 +9007,8 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct mtk_drm_private *priv = (crtc->base).dev->dev_private;
 		struct drm_display_mode *m;
 		struct drm_display_mode *avail_modes;
+		struct mtk_panel_params **panel_params;
+		struct mtk_panel_params **tmp;
 		unsigned int i = 0, num = 0;
 		u16 vdisplay = 0;
 
@@ -9015,8 +9017,13 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			num++;
 
 		avail_modes = vzalloc(sizeof(struct drm_display_mode) * num);
+		panel_params = vzalloc(sizeof(struct mtk_panel_params *) * num);
+
 		list_for_each_entry(m, &dsi->conn.modes, head) {
 			drm_mode_copy(&avail_modes[i], m);
+			if (panel_ext && panel_ext->funcs && panel_ext->funcs->ext_param_get)
+				panel_ext->funcs->ext_param_get(dsi->panel, &dsi->conn,
+							&panel_params[i], i);
 			i++;
 
 			if (vdisplay == 0)
@@ -9042,10 +9049,14 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			crtc->res_switch = RES_SWITCH_NO_USE;
 
 		m = crtc->avail_modes;
+		tmp = crtc->panel_params;
 		crtc->avail_modes_num = num;
 		crtc->avail_modes = avail_modes;
+		crtc->panel_params = panel_params;
 		if (m)
 			vfree(m);
+		if (tmp)
+			vfree(tmp);
 	}
 		break;
 	case DSI_FILL_CONNECTOR_PROP_CAPS:

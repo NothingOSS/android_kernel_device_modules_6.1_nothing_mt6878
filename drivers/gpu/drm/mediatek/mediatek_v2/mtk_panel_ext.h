@@ -527,6 +527,9 @@ struct mtk_panel_params {
 
 	struct mode_switch_params mode_switch_cmd;
 	unsigned int mode_switch_cmdq;
+	/* PRE_XX */
+	unsigned int merge_trig_offset;
+	unsigned int prefetch_offset;
 };
 
 struct mtk_panel_ext {
