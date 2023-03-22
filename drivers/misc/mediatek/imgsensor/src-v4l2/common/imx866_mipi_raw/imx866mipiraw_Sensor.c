@@ -777,13 +777,13 @@ static void write_shutter(struct subdrv_ctx *ctx, unsigned long long shutter, ka
 		shutter = shutter >> l_shift;
 		// ctx->frame_length = shutter + imgsensor_info.margin;
 		LOG_INF("enter long exposure mode, time is %d", l_shift);
-		set_cmos_sensor_8(ctx, 0x3128, l_shift);
+		set_cmos_sensor_8(ctx, 0x3150, l_shift);
 		/* Frame exposure mode customization for LE*/
 		ctx->ae_frm_mode.frame_mode_1 = IMGSENSOR_AE_MODE_SE;
 		ctx->ae_frm_mode.frame_mode_2 = IMGSENSOR_AE_MODE_SE;
 		ctx->current_ae_effective_frame = 2;
 	} else {
-		set_cmos_sensor_8(ctx, 0x3128, 0x00);
+		set_cmos_sensor_8(ctx, 0x3150, 0x00);
 		// write_frame_len(ctx, ctx->frame_length);
 		ctx->current_ae_effective_frame = 2;
 	}
@@ -2995,7 +2995,7 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 				break;
 			}
 		} else {
-			*(feature_data + 2) = 65532 - imgsensor_info.margin;
+			*(feature_data + 2) = 128 * (0xFFFC - imgsensor_info.margin);
 		}
 		break;
 	case SENSOR_FEATURE_SET_HDR_SHUTTER://for 2EXP
