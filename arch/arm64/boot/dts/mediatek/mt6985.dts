@@ -13249,7 +13249,6 @@
 	};
 
 	mmdvfs {
-		compatible = "mediatek,mmdvfs";
 		operating-points-v2 = <&opp_table_disp>;
 		mediatek,support-mux = "disp0", "disp1", "disp2", "disp3",
 			"mminfra", "mdp0", "mdp1", "venc";
