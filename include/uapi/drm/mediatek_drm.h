@@ -523,8 +523,10 @@ struct DISP_AAL_TRIG_STATE {
 /* DISP_CLARITY */
 #define DRM_MTK_DISP_CLARITY_SET_REG 0x5E
 
-#define DRM_MTK_PQ_PROXY_IOCTL 0x60
-
+#define DRM_MTK_PQ_PROXY_IOCTL 0x37
+/* The device specific ioctl range is from DRM_COMMAND_BASE(0x40) to DRM_COMMAND_END(0x9f)
+ * The index of ioctl which define here must be less then 0x60
+ */
 
 /* C3D */
 #define DISP_C3D_1DLUT_SIZE 32
