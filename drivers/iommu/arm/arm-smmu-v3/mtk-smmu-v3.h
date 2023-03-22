@@ -8,6 +8,7 @@
 #define _MTK_SMMU_V3_H_
 
 #include <linux/iommu.h>
+#include <linux/of_device.h>
 #include <soc/mediatek/smi.h>
 
 #include <dt-bindings/memory/mtk-memory-port.h>
@@ -530,6 +531,22 @@ static inline int smmu_tab_id_to_smmu_id(u64 tab_id)
 static inline int smmu_tab_id_to_asid(u64 tab_id)
 {
 	return tab_id & 0xffffffff;
+}
+
+static inline struct device *mtk_smmu_get_shared_device(struct device *dev)
+{
+	struct device_node *node;
+	struct platform_device *shared_pdev;
+	struct device *shared_dev = dev;
+
+	node = of_parse_phandle(dev->of_node, "mtk,smmu-shared", 0);
+	if (node) {
+		shared_pdev = of_find_device_by_node(node);
+		if (shared_pdev)
+			shared_dev = &shared_pdev->dev;
+	}
+
+	return shared_dev;
 }
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
