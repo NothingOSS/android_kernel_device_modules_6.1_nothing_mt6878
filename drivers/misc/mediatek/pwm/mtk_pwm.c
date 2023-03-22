@@ -31,7 +31,7 @@
 #include <mt-plat/mtk_pwm_hal_pub.h>
 #include <mt-plat/mtk_pwm_hal.h>
 
-#define PWM_LDVT_FLAG		1
+#define PWM_LDVT_FLAG		0
 #if PWM_LDVT_FLAG
 #include <linux/gpio.h>
 #include <linux/pinctrl/consumer.h>
