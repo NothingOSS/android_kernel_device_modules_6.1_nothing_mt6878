@@ -477,6 +477,10 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		return ret;
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+	vip_init();
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_EAS)
 	mtk_freq_limit_notifier_register();
 
@@ -579,10 +583,6 @@ static int __init mtk_scheduler_init(void)
 	//ret = register_trace_android_vh_check_uninterruptible_tasks(mtk_check_d_tasks, NULL);
 	//if (ret)
 	//	pr_info("register mtk_check_d_tasks hooks failed, returned %d\n", ret);
-#endif
-
-#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
-	vip_init();
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
