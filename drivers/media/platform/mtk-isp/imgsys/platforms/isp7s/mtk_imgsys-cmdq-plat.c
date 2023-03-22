@@ -1341,6 +1341,7 @@ int imgsys_cmdq_sendtask_plat7s(struct mtk_imgsys_dev *imgsys_dev,
 	size_t pkt_ofst[MAX_FRAME_IN_TASK] = {0};
 	char logBuf_temp[MTK_IMGSYS_LOG_LENGTH];
 	u64 tsflushStart = 0, tsFlushEnd = 0;
+	bool isTimeShared = 0;
 
 	/* PMQOS API */
 	tsDvfsQosStart = ktime_get_boottime_ns()/1000;
@@ -1415,6 +1416,7 @@ int imgsys_cmdq_sendtask_plat7s(struct mtk_imgsys_dev *imgsys_dev,
 			(unsigned long)(cmd_buf->cmd_offset));
 		blk_num = cmd_buf->frame_block;
 		hw_comb = frm_info->user_info[frm_idx].hw_comb;
+		isTimeShared = frm_info->user_info[frm_idx].is_time_shared;
 
 		if (isPack == 0) {
 			if (frm_info->group_id == -1) {
@@ -1472,7 +1474,7 @@ int imgsys_cmdq_sendtask_plat7s(struct mtk_imgsys_dev *imgsys_dev,
 			frm_info->user_info[frm_idx].hw_comb, frm_info->sync_id, thd_idx, (unsigned long)clt);
 
 		cmd_idx = 0;
-		if (frm_info->user_info[frm_idx].is_time_shared)
+		if (isTimeShared)
 			mutex_lock(&(imgsys_dev->vss_blk_lock));
 		for (blk_idx = 0; blk_idx < blk_num; blk_idx++) {
 			tsReqStart = ktime_get_boottime_ns()/1000;
@@ -1483,6 +1485,8 @@ int imgsys_cmdq_sendtask_plat7s(struct mtk_imgsys_dev *imgsys_dev,
 					pr_info(
 						"%s: [ERROR] cmdq_pkt_create fail in block(%d)!\n",
 						__func__, blk_idx);
+					if (isTimeShared)
+						mutex_unlock(&(imgsys_dev->vss_blk_lock));
 					return -1;
 				}
 				pr_debug(
@@ -1514,6 +1518,8 @@ int imgsys_cmdq_sendtask_plat7s(struct mtk_imgsys_dev *imgsys_dev,
 					__func__, cmd_idx, cmd[cmd_idx].opcode,
 					blk_idx, frm_idx, frm_num);
 				cmdq_pkt_destroy(pkt);
+				if (isTimeShared)
+					mutex_unlock(&(imgsys_dev->vss_blk_lock));
 				goto sendtask_done;
 			}
 			cmd_idx += ret;
@@ -1546,6 +1552,8 @@ int imgsys_cmdq_sendtask_plat7s(struct mtk_imgsys_dev *imgsys_dev,
 					dev_info(imgsys_dev->dev,
 						"%s: cb_param is NULL! in block(%d) for frm(%d/%d)!\n",
 						__func__, blk_idx, frm_idx, frm_num);
+					if (isTimeShared)
+						mutex_unlock(&(imgsys_dev->vss_blk_lock));
 					return -1;
 				}
 				dev_dbg(imgsys_dev->dev,
@@ -1656,7 +1664,7 @@ int imgsys_cmdq_sendtask_plat7s(struct mtk_imgsys_dev *imgsys_dev,
 				isPack = 1;
 			}
 		}
-		if (frm_info->user_info[frm_idx].is_time_shared)
+		if (isTimeShared)
 			mutex_unlock(&(imgsys_dev->vss_blk_lock));
 	}
 
