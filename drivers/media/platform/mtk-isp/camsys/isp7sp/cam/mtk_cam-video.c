@@ -1164,6 +1164,9 @@ int mtk_cam_vidioc_try_meta_fmt(struct file *file, void *fh,
 	struct mtk_cam_video_device *node = file_to_mtk_cam_node(file);
 	const struct v4l2_format *fmt;
 
+	if (CAM_DEBUG_ENABLED(V4L2_TRY))
+		log_fmt_ops(node, f, "try_meta_fmt(user)");
+
 	switch (node->desc.dma_port) {
 	case MTKCAM_IPI_RAW_META_STATS_CFG:
 	case MTKCAM_IPI_RAW_META_STATS_0:
