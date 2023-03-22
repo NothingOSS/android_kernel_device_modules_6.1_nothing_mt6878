@@ -1335,20 +1335,20 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	vtotal = crtc->state->adjusted_mode.vtotal;
 
 	mml_ctx = mtk_drm_get_mml_drm_ctx(dev, crtc);
-	if (!mml_ctx)
+	if (unlikely(!mml_ctx))
 		return MML_MODE_UNKNOWN;
 
 	submit_pq = mtk_alloc_mml_submit();
-	if (!submit_pq)
+	if (unlikely(!submit_pq))
 		goto err_alloc_submit_pq;
 
 	submit_kernel = mtk_alloc_mml_submit();
-	if (!submit_kernel)
+	if (unlikely(!submit_kernel))
 		goto err_alloc_submit_kernel;
 
 	ret = copy_mml_submit_from_user(
 	    (struct mml_submit *)(mtk_plane_state->prop_val[PLANE_PROP_MML_SUBMIT]), submit_kernel);
-	if (ret < 0)
+	if (unlikely(ret < 0))
 		goto err_copy_submit;
 
 	if (submit_kernel->info.mode == MML_MODE_RACING && (!kref_read(&mtk_crtc->mml_ir_sram.ref)))
@@ -1424,6 +1424,10 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 		       sizeof(struct mml_rect));
 		memcpy(&submit_kernel->dl_out[1], &crtc_state->mml_dst_roi_dual[1],
 		       sizeof(struct mml_rect));
+	} else {
+		crtc_state->mml_dst_roi_dual[0] = crtc_state->mml_dst_roi;
+		memcpy(&submit_kernel->dl_out[0], &crtc_state->mml_dst_roi_dual[0],
+		       sizeof(struct mml_rect));
 	}
 
 	ret = mml_drm_submit(mml_ctx, submit_kernel, &(mtk_crtc->mml_cb));
@@ -1491,11 +1495,17 @@ static void mtk_atomic_mml(struct drm_device *dev,
 		}
 	}
 
-	if ((new_mode == MML_MODE_UNKNOWN) &&
-	    (mtk_crtc_state->lye_state.mml_ir_lye || mtk_crtc_state->lye_state.mml_dl_lye)) {
+	if (unlikely((new_mode == MML_MODE_UNKNOWN) &&
+	    (mtk_crtc_state->lye_state.mml_ir_lye || mtk_crtc_state->lye_state.mml_dl_lye))) {
 		mtk_crtc_state->lye_state.mml_ir_lye = 0;
 		mtk_crtc_state->lye_state.mml_dl_lye = 0;
 		DDPMSG("%s clear mml lye to avoid abnormal cases\n", __func__);
+	}
+	if (unlikely((mtk_crtc->mml_link_state == MML_IR_IDLE) &&
+	    (old_mtk_state->lye_state.mml_ir_lye || old_mtk_state->lye_state.mml_dl_lye))) {
+		old_mtk_state->lye_state.mml_ir_lye = 0;
+		old_mtk_state->lye_state.mml_dl_lye = 0;
+		DDPMSG("%s clear old mml lye to avoid abnormal idle resume\n", __func__);
 	}
 
 	mtk_crtc->is_mml = (new_mode == MML_MODE_RACING);

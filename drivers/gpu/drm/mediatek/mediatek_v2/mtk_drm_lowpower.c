@@ -1344,6 +1344,7 @@ static void mtk_drm_idlemgr_enable_connector(struct drm_crtc *crtc)
 static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_crtc_state *crtc_state = to_mtk_crtc_state(crtc->state);
 	unsigned int crtc_id = drm_crtc_index(&mtk_crtc->base);
 	bool mode = mtk_crtc_is_dc_mode(crtc);
 	struct mtk_drm_private *priv =
@@ -1437,6 +1438,12 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 
 	/* 3. disconnect addon module and recover config */
 	mtk_crtc_disconnect_addon_module(crtc);
+	if (crtc_state) {
+		crtc_state->lye_state.scn[crtc_id] = NONE;
+		crtc_state->lye_state.rpo_lye = 0;
+		crtc_state->lye_state.mml_ir_lye = 0;
+		crtc_state->lye_state.mml_dl_lye = 0;
+	}
 	CRTC_MMP_MARK((int)crtc_id, enter_idle, 2, 0);
 	if (perf_detail)
 		mtk_drm_idlemgr_perf_detail_check(
