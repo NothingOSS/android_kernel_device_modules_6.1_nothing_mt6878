@@ -3930,7 +3930,6 @@
 		#thermal-sensor-cells = <1>;
 		nvmem-cells = <&mt6363_thermal_efuse>;
 		nvmem-cell-names = "mt6363_e_data";
-		status = "disabled";
 	};
 
 	mt6373_temp: mt6373-temp {
@@ -3949,7 +3948,6 @@
 		#thermal-sensor-cells = <1>;
 		nvmem-cells = <&mt6373_thermal_efuse>;
 		nvmem-cell-names = "mt6373_e_data";
-		status = "disabled";
 	};
 
 	odm: odm {
