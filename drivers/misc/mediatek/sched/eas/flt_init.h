@@ -15,4 +15,5 @@ enum _flt_mode {
 
 void  flt_set_mode(u32 mode);
 u32 flt_get_mode(void);
+int flt_init_res(void);
 #endif /* _FLT_INIT_H*/

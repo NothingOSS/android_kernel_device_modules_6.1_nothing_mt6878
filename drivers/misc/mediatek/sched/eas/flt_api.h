@@ -36,6 +36,11 @@ unsigned long flt_get_cpu(int cpu);
 
 /* Note: task related API */
 int flt_get_task_by_wp(struct task_struct *p, int wc, int task_wp);
+
+#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
+void register_sugov_hooks(void);
+#endif
+
 /* suspend/resume api */
 void flt_resume_notify(void);
 void flt_suspend_notify(void);

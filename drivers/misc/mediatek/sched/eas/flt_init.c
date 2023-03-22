@@ -23,6 +23,7 @@
 #include "eas_plus.h"
 #include "common.h"
 #include "flt_init.h"
+#include "flt_api.h"
 
 static u32 flt_mode = FLT_MODE_0;
 
@@ -37,3 +38,13 @@ u32 flt_get_mode(void)
 	return flt_mode;
 }
 EXPORT_SYMBOL(flt_get_mode);
+
+int flt_init_res(void)
+{
+	if (unlikely(flt_get_mode() == FLT_MODE_0))
+		return -1;
+#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
+	register_sugov_hooks();
+#endif
+	return 0;
+}

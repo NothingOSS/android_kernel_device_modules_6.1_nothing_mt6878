@@ -56,10 +56,17 @@ int (*flt_sched_get_gear_sum_group_eas_api)(int gear_id, int grp_id);
 EXPORT_SYMBOL(flt_sched_get_gear_sum_group_eas_api);
 int (*flt_sched_get_gear_max_group_eas_api)(int gear_id, int grp_id);
 EXPORT_SYMBOL(flt_sched_get_gear_max_group_eas_api);
+int (*flt_sched_get_cpu_group_eas_api)(int cpu, int grp_id);
+EXPORT_SYMBOL(flt_sched_get_cpu_group_eas_api);
 int (*flt_get_cpu_by_wp_api)(int cpu);
 EXPORT_SYMBOL(flt_get_cpu_by_wp_api);
 int (*flt_get_task_by_wp_api)(struct task_struct *p, int wc, int task_wp);
 EXPORT_SYMBOL(flt_get_task_by_wp_api);
+
+#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
+extern unsigned long (*flt_get_cpu_util_hook)(int cpu);
+extern unsigned long (*flt_sched_get_cpu_group_util_eas_hook)(int cpu, int group_id);
+#endif
 
 int flt_get_ws(void)
 {
@@ -213,6 +220,17 @@ int flt_sched_get_gear_max_group_eas(int gear_id, int grp_id)
 }
 EXPORT_SYMBOL_GPL(flt_sched_get_gear_max_group_eas);
 
+int flt_sched_get_cpu_group_eas(int cpu, int grp_id)
+{
+	if (unlikely(flt_get_mode() == FLT_MODE_0))
+		return -1;
+	else if (flt_sched_get_cpu_group_eas_api)
+		return flt_sched_get_cpu_group_eas_api(cpu, grp_id);
+	else
+		return -1;
+}
+EXPORT_SYMBOL_GPL(flt_sched_get_cpu_group_eas);
+
 int flt_get_cpu_by_wp(int cpu)
 {
 	if (unlikely(flt_get_mode() == FLT_MODE_0))
@@ -247,6 +265,27 @@ unsigned long flt_get_cpu(int cpu)
 		return cpu_dmand;
 }
 EXPORT_SYMBOL(flt_get_cpu);
+
+unsigned long flt_sched_get_cpu_group(int cpu, int grp_id)
+{
+	int dmand = 0;
+
+	dmand = flt_sched_get_cpu_group_eas(cpu, grp_id);
+	/* sanity check */
+	if (unlikely(dmand < 0))
+		return 0;
+	else
+		return dmand;
+}
+EXPORT_SYMBOL(flt_sched_get_cpu_group);
+
+#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
+void register_sugov_hooks(void)
+{
+	flt_get_cpu_util_hook = flt_get_cpu;
+	flt_sched_get_cpu_group_util_eas_hook = flt_sched_get_cpu_group;
+}
+#endif
 
 void flt_resume_notify(void)
 {
