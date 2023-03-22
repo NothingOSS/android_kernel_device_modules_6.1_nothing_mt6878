@@ -375,8 +375,6 @@ static int mtk_clk_hwv_mux_set_parent(struct clk_hw *hw, u8 index)
 	u32 val = 0, val2 = 0, orig = 0, renew = 0;
 	int i = 0;
 
-	return 0;
-
 	regmap_read(mux->hwv_regmap, mux->data->hwv_set_ofs, &orig);
 
 	val = (orig & ~(mask << mux->data->mux_shift))
