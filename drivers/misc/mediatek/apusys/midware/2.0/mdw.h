@@ -105,6 +105,7 @@ struct mdw_mem {
 
 	/* map */
 	uint64_t device_va;
+	uint64_t device_iova;
 	uint32_t dva_size;
 	struct mdw_mem_map *map;
 

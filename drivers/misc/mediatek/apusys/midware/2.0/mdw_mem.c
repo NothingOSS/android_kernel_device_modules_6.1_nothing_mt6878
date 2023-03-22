@@ -391,7 +391,7 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 	mdw_trace_end();
 
 	/* get start addr and size */
-	m->device_va = sg_dma_address(map->sgt->sgl);
+	m->device_iova = sg_dma_address(map->sgt->sgl);
 	for_each_sgtable_dma_sg(map->sgt, sg, i) {
 		if (!sg)
 			break;
@@ -401,7 +401,7 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 	mdw_mem_debug("mdw call apummu_iova2eva buf_type(%u) mpriv(0x%llx) device_va(%llx) dva_size(%u)\n",
 	 m->buf_type, (uint64_t)m->mpriv, m->device_va, m->dva_size);
 	/* APUMMU iova to eva */
-	if (!apummu_iova2eva(m->buf_type, (uint64_t)m->mpriv, m->device_va, m->dva_size, &eva)) {
+	if (!apummu_iova2eva(m->buf_type, (uint64_t)m->mpriv, m->device_iova, m->dva_size, &eva)) {
 		m->device_va = eva;
 	} else {
 		ret = -EINVAL;
@@ -851,14 +851,21 @@ struct mdw_mem *mdw_mem_query_mem(uint64_t kva)
 	return NULL;
 }
 
-int apusys_mem_validate_by_cmd(void *session, void *cmd, uint64_t iova, uint32_t size)
+int apusys_mem_validate_by_cmd(void *session, void *cmd, uint64_t eva, uint32_t size)
 {
 	struct mdw_fpriv *mpriv = (struct mdw_fpriv *)session;
 	struct mdw_cmd *c = (struct mdw_cmd *)cmd;
 	struct mdw_device *mdev = mpriv->mdev;
 	struct mdw_mem_invoke *m_invoke = NULL;
 	struct mdw_mem *m = NULL;
+	uint64_t iova;
 	int ret = 0;
+
+	ret = mdw_ammu_eva2iova(eva, &iova);
+	if (ret) {
+		mdw_drv_err("Apummu ev2iova fail\n");
+		return ret;
+	}
 
 	mdw_vld_debug("target: s(0x%llx) c(0x%llx) iova(0x%llx/%u)\n",
 		(uint64_t)mpriv, (uint64_t)c, iova, size);
@@ -876,11 +883,11 @@ int apusys_mem_validate_by_cmd(void *session, void *cmd, uint64_t iova, uint32_t
 	list_for_each_entry(m_invoke, &mpriv->invokes, u_node) {
 		m = m_invoke->m;
 		mdw_vld_debug("check mem invoke list: va(0x%llx/%u) iova(0x%llx/%u)...\n",
-			(uint64_t)m->vaddr, m->size, m->device_va, m->dva_size);
-		if (iova < m->device_va || iova + size > m->device_va + m->dva_size)
+			(uint64_t)m->vaddr, m->size, m->device_iova, m->dva_size);
+		if (iova < m->device_iova || iova + size > m->device_iova + m->dva_size)
 			continue;
 		mdw_vld_debug("check mem invoke list: va(0x%llx/%u) iova(0x%llx/%u) match\n",
-			(uint64_t)m->vaddr, m->size, m->device_va, m->dva_size);
+			(uint64_t)m->vaddr, m->size, m->device_iova, m->dva_size);
 		if (c) {
 			mutex_lock(&mpriv->mdev->mctl_mtx);
 			ret = mdw_cmd_invoke_map(c, m->map);
@@ -897,12 +904,12 @@ int apusys_mem_validate_by_cmd(void *session, void *cmd, uint64_t iova, uint32_t
 	/* check vlm */
 	if (test_bit(MDW_MEM_TYPE_VLM, mdev->mem_mask) &&
 		size &&
-		iova >= mdev->minfos[MDW_MEM_TYPE_VLM].device_va &&
-		iova + size <= mdev->minfos[MDW_MEM_TYPE_VLM].device_va +
+		iova >= mdev->minfos[MDW_MEM_TYPE_VLM].device_iova &&
+		iova + size <= mdev->minfos[MDW_MEM_TYPE_VLM].device_iova +
 		mdev->minfos[MDW_MEM_TYPE_VLM].dva_size) {
 		mdw_vld_debug("m(0x%llx/%u) in vlm range(0x%llx/%u)\n",
 			iova, size,
-			mdev->minfos[MDW_MEM_TYPE_VLM].device_va,
+			mdev->minfos[MDW_MEM_TYPE_VLM].device_iova,
 			mdev->minfos[MDW_MEM_TYPE_VLM].dva_size);
 			return 0;
 	}
@@ -915,18 +922,25 @@ int apusys_mem_get_by_iova(void *session, uint64_t iova)
 	return 0;
 }
 
-void *apusys_mem_query_kva_by_sess(void *session, uint64_t iova)
+void *apusys_mem_query_kva_by_sess(void *session, uint64_t eva)
 {
 	struct mdw_fpriv *mpriv = (struct mdw_fpriv *)session;
 	struct mdw_mem_invoke *m_invoke = NULL;
 	struct mdw_mem *m = NULL;
+	uint64_t iova;
+
+	if (mdw_ammu_eva2iova(eva, &iova)) {
+		mdw_drv_err("Apummu ev2iova fail\n");
+		return NULL;
+	}
+
 
 	list_for_each_entry(m_invoke, &mpriv->invokes, u_node) {
 		m = m_invoke->m;
-		if (iova >= m->device_va &&
-			iova < m->device_va + m->dva_size &&
+		if (iova >= m->device_iova &&
+			iova < m->device_iova + m->dva_size &&
 			m->vaddr)
-			return m->vaddr + (iova - m->device_va);
+			return m->vaddr + (iova - m->device_iova);
 	}
 
 	return NULL;

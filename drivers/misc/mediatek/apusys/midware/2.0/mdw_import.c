@@ -133,6 +133,11 @@ int mdw_rvs_mem_unmap(uint64_t session, uint32_t sid)
 	return apummu_unmap_mem(session, sid);
 }
 
+int mdw_ammu_eva2iova(uint64_t eva, uint64_t *iova)
+{
+	return apummu_eva2iova(eva, iova);
+}
+
 int mdw_qos_cmd_start(uint64_t cmd_id, uint64_t sc_id,
 		int type, int core, uint32_t boost)
 {

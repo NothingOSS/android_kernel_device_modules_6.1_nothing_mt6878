@@ -301,6 +301,18 @@ int apummu_iova2eva(uint32_t type, uint64_t session, uint64_t device_va,
 
 /**
  * @para:
+ *  eva		-> input eva (gonna decode to iova)
+ *  iova	-> output iova
+ * @description:
+ *  decode input addr to iova according to buffer type
+ */
+int apummu_eva2iova(uint64_t eva, uint64_t *iova)
+{
+	return apummu_eva_decode(eva, iova, AMMU_DATA_BUF);
+}
+
+/**
+ * @para:
  *  session		-> input session
  *  device_va	-> input device_va
  *  buf_size	-> size of the buffer

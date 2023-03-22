@@ -57,6 +57,7 @@ struct apummu_session_tbl {
 
 int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session,
 			uint64_t iova, uint32_t buf_size, uint64_t *eva);
+int apummu_eva_decode(uint64_t eva, uint64_t *iova, enum AMMU_BUF_TYPE type);
 int apummu_stable_buffer_remove(uint64_t session, uint64_t device_va,
 			uint32_t buf_size);
 int get_session_table(uint64_t session, void **tbl_kva, uint32_t *size);

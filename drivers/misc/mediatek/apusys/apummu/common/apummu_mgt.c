@@ -67,7 +67,7 @@ static int addr_encode(uint64_t input_addr, enum AMMU_BUF_TYPE type, uint64_t *o
 		ret_addr = input_addr;
 		break;
 	default:
-		AMMU_LOG_ERR("APUMMU invalid buffer type(%u)\n", type);
+		AMMU_LOG_ERR("APUMMU encode invalid buffer type(%u)\n", type);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -75,6 +75,35 @@ static int addr_encode(uint64_t input_addr, enum AMMU_BUF_TYPE type, uint64_t *o
 	*output_addr = ret_addr;
 out:
 	return ret;
+}
+
+static int addr_decode(uint64_t input_addr, enum AMMU_BUF_TYPE type, uint64_t *output_addr)
+{
+	int ret = 0;
+	uint64_t ret_addr;
+
+	switch (type) {
+	case AMMU_DATA_BUF:
+		ret_addr = EVA2IOVA(input_addr);
+		break;
+	case AMMU_CMD_BUF:
+	case AMMU_VLM_BUF:
+		ret_addr = input_addr;
+		break;
+	default:
+		AMMU_LOG_ERR("APUMMU decode invalid buffer type(%u)\n", type);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	*output_addr = ret_addr;
+out:
+	return ret;
+}
+
+int apummu_eva_decode(uint64_t eva, uint64_t *iova, enum AMMU_BUF_TYPE type)
+{
+	return addr_decode(eva, type, iova);
 }
 
 /**
