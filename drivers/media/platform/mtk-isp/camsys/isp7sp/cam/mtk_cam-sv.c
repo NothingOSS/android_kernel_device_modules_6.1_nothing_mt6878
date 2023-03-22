@@ -19,6 +19,7 @@
 #include "mtk_cam-sv-regs.h"
 #include "mtk_cam-sv.h"
 #include "mtk_cam-fmt_utils.h"
+#include "mtk_cam-trace.h"
 
 #include "iommu_debug.h"
 
@@ -1141,6 +1142,9 @@ static irqreturn_t mtk_irq_camsv_done(int irq, void *data)
 	if (push_msgfifo(sv_dev, &irq_info) == 0)
 		wake_thread = true;
 
+	trace_camsv_irq_done(sv_dev->dev, frm_seq_no_inner, frm_seq_no,
+			     irq_done_status);
+
 	return wake_thread ? IRQ_WAKE_THREAD : IRQ_HANDLED;
 }
 
@@ -1237,6 +1241,15 @@ static irqreturn_t mtk_irq_camsv_sof(int irq, void *data)
 	if (push_msgfifo(sv_dev, &irq_info) == 0)
 		wake_thread = true;
 
+	trace_camsv_irq_sof(sv_dev->dev,
+			    frm_seq_no_inner, frm_seq_no,
+			    irq_sof_status,
+			    irq_channel_status,
+			    sv_dev->active_group_info,
+			    sv_dev->first_tag,
+			    sv_dev->last_tag,
+			    tg_cnt);
+
 	return wake_thread ? IRQ_WAKE_THREAD : IRQ_HANDLED;
 }
 
@@ -1298,6 +1311,9 @@ static irqreturn_t mtk_irq_camsv_err(int irq, void *data)
 	if (push_msgfifo(sv_dev, &err_info) == 0)
 		wake_thread = true;
 
+	trace_camsv_irq_err(sv_dev->dev, frm_seq_no_inner, frm_seq_no,
+			    err_status);
+
 	return wake_thread ? IRQ_WAKE_THREAD : IRQ_HANDLED;
 }
 
@@ -1345,6 +1361,9 @@ static irqreturn_t mtk_irq_camsv_cq_done(int irq, void *data)
 		if (push_msgfifo(sv_dev, &irq_info) == 0)
 			wake_thread = true;
 	}
+
+	trace_camsv_irq_cq_done(sv_dev->dev, frm_seq_no_inner, frm_seq_no,
+				cq_done_status);
 
 	return wake_thread ? IRQ_WAKE_THREAD : IRQ_HANDLED;
 }

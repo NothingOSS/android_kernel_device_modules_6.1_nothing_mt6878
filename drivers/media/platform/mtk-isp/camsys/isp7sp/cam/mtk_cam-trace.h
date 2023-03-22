@@ -163,6 +163,154 @@ TRACE_EVENT_CONDITION(raw_otf_overflow,
 	)
 );
 
+DECLARE_EVENT_CLASS(camsv_irq,
+	TP_PROTO(struct device *dev,
+		 unsigned int seq_no_inner,
+		 unsigned int seq_no,
+		 unsigned int status),
+	TP_ARGS(dev, seq_no_inner, seq_no, status),
+	TP_STRUCT__entry(
+		__string(device, dev_name(dev))
+		__field(unsigned int, seq_no_inner)
+		__field(unsigned int, seq_no)
+		__field(unsigned int, status)
+	),
+	TP_fast_assign(
+		__assign_str(device, dev_name(dev));
+		__entry->seq_no_inner = seq_no_inner;
+		__entry->seq_no = seq_no;
+		__entry->status = status;
+	),
+	TP_printk("%s status=0x%08x seq_no=0x%x_%x",
+		  __get_str(device),
+		  __entry->status,
+		  __entry->seq_no_inner,
+		  __entry->seq_no
+	)
+);
+
+#define DEFINE_CAMSV_IRQ_EVENT(name)			\
+DEFINE_EVENT(camsv_irq, camsv_irq_##name,		\
+	TP_PROTO(struct device *dev,			\
+		 unsigned int seq_no_inner,		\
+		 unsigned int seq_no,			\
+		 unsigned int status),			\
+	TP_ARGS(dev, seq_no_inner, seq_no, status)	\
+)
+
+DEFINE_CAMSV_IRQ_EVENT(cq_done);
+DEFINE_CAMSV_IRQ_EVENT(done);
+DEFINE_CAMSV_IRQ_EVENT(err);
+
+TRACE_EVENT(camsv_irq_sof,
+	TP_PROTO(struct device *dev,
+		 unsigned int seq_no_inner,
+		 unsigned int seq_no,
+		 unsigned int sof_status,
+		 unsigned int channel_status,
+		 const unsigned int *active_group,
+		 unsigned int first_tag,
+		 unsigned int last_tag,
+		 unsigned int tg_cnt),
+	TP_ARGS(dev,
+		seq_no_inner,
+		seq_no,
+		sof_status,
+		channel_status,
+		active_group,
+		first_tag,
+		last_tag,
+		tg_cnt
+	       ),
+	TP_STRUCT__entry(
+		__string(device, dev_name(dev))
+		__field(unsigned int, seq_no_inner)
+		__field(unsigned int, seq_no)
+		__field(unsigned int, sof_status)
+		__field(unsigned int, channel_status)
+		__array(unsigned int, active_group, 4)
+		__field(unsigned int, first_tag)
+		__field(unsigned int, last_tag)
+		__field(unsigned int, tg_cnt)
+		),
+	TP_fast_assign(
+		__assign_str(device, dev_name(dev));
+		__entry->seq_no_inner = seq_no_inner;
+		__entry->seq_no = seq_no;
+		__entry->sof_status = sof_status;
+		__entry->channel_status = channel_status;
+		memcpy(__entry->active_group,
+		       active_group, 4 * sizeof(unsigned int));
+		__entry->first_tag = first_tag;
+		__entry->last_tag = last_tag;
+		__entry->tg_cnt = tg_cnt;
+		),
+	TP_printk("%s sof status=0x%x channel status=0x%x seq_no=0x%x_%x group_tags=%s first/last_tag=0x%x 0x%x vf_st_tag4=%d",
+		  __get_str(device),
+		  __entry->sof_status,
+		  __entry->channel_status,
+		  __entry->seq_no_inner,
+		  __entry->seq_no,
+		  __print_array(__entry->active_group,
+				ARRAY_SIZE(__entry->active_group),
+				sizeof(__entry->active_group[0])),
+		__entry->first_tag,
+		__entry->last_tag,
+		__entry->tg_cnt
+	)
+);
+
+TRACE_EVENT(mraw_irq,
+	TP_PROTO(struct device *dev,
+		 unsigned int irq_status,
+		 unsigned int irq_status2,
+		 unsigned int err_status,
+		 unsigned int irq_status6,
+		 unsigned int dma_err_status,
+		 unsigned int seq_inner,
+		 unsigned int seq
+		),
+	TP_ARGS(dev,
+		irq_status,
+		irq_status2,
+		err_status,
+		irq_status6,
+		dma_err_status,
+		seq_inner,
+		seq
+	       ),
+	TP_STRUCT__entry(
+		__string(device, dev_name(dev))
+		__field(unsigned int, irq_status)
+		__field(unsigned int, irq_status2)
+		__field(unsigned int, err_status)
+		__field(unsigned int, irq_status6)
+		__field(unsigned int, dma_err_status)
+		__field(unsigned int, seq_inner)
+		__field(unsigned int, seq)
+	),
+	TP_fast_assign(
+		__assign_str(device, dev_name(dev));
+		__entry->irq_status = irq_status;
+		__entry->irq_status2 = irq_status2;
+		__entry->err_status = err_status;
+		__entry->irq_status6 = irq_status6;
+		__entry->dma_err_status = dma_err_status;
+		__entry->seq_inner = seq_inner;
+		__entry->seq = seq;
+	),
+	TP_printk("%s status=0x%x_%x(err=0x%x)/0x%x dma_err=0x%x seq_no=0x%x_%x",
+		  __get_str(device),
+		  __entry->irq_status,
+		  __entry->irq_status2,
+		  __entry->err_status,
+		  __entry->irq_status6,
+		  __entry->dma_err_status,
+		  __entry->seq_inner,
+		  __entry->seq
+	)
+);
+
 #endif /*_MTK_CAM_TRACE_H */
 
 #undef TRACE_INCLUDE_PATH

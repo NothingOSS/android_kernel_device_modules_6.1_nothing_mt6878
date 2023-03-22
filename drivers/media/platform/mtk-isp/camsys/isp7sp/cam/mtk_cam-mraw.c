@@ -18,6 +18,7 @@
 #include "mtk_cam.h"
 #include "mtk_cam-mraw-regs.h"
 #include "mtk_cam-mraw.h"
+#include "mtk_cam-trace.h"
 
 #include "iommu_debug.h"
 
@@ -1217,6 +1218,11 @@ static irqreturn_t mtk_irq_mraw(int irq, void *data)
 		"%i status:0x%x_%x(err:0x%x)/0x%x dma_err:0x%x seq_num:%d/%d\n",
 		mraw_dev->id, irq_status, irq_status2, err_status, irq_status6, dma_err_status,
 		dequeued_imgo_seq_no_inner, dequeued_imgo_seq_no);
+
+	trace_mraw_irq(mraw_dev->dev,
+		       irq_status, irq_status2, err_status, irq_status6,
+		       dma_err_status,
+		       dequeued_imgo_seq_no_inner, dequeued_imgo_seq_no);
 
 	dev_dbg(dev,
 		"%i dma_overr:0x%x_0x%x_0x%x fbc_ctrl:0x%x_0x%x_0x%x dma_addr:0x%x%x_0x%x%x_0x%x%x\n",
