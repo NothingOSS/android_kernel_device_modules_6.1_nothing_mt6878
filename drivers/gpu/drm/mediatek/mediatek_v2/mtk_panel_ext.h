@@ -530,6 +530,7 @@ struct mtk_panel_params {
 	/* PRE_XX */
 	unsigned int merge_trig_offset;
 	unsigned int prefetch_offset;
+	unsigned int real_te_duration;
 };
 
 struct mtk_panel_ext {

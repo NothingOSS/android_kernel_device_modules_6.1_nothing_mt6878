@@ -859,22 +859,28 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel,
 
 	if (drm_mode_vrefresh(m) == 120) {
 		ext_params.skip_vblank = 0;
+		ext_params.real_te_duration = 8333;
 		ext_params.vblank_off = false;
 		ext->params = &ext_params;
-	} else if (drm_mode_vrefresh(m) == 90)
+	} else if (drm_mode_vrefresh(m) == 90) {
+		ext_params.real_te_duration = 11111;
 		ext->params = &ext_params_90hz;
-	else if (drm_mode_vrefresh(m) == 60)
+	} else if (drm_mode_vrefresh(m) == 60) {
+		ext_params.real_te_duration = 16666;
 		ext->params = &ext_params_60hz;
-	else if (drm_mode_vrefresh(m) == 30) {
+	} else if (drm_mode_vrefresh(m) == 30) {
 		ext_params.skip_vblank = 4;
+		ext_params.real_te_duration = 8333;
 		ext_params.vblank_off = false;
 		ext->params = &ext_params;
 	} else if (drm_mode_vrefresh(m) == 24) {
 		ext_params.skip_vblank = 5;
+		ext_params.real_te_duration = 8333;
 		ext_params.vblank_off = false;
 		ext->params = &ext_params;
 	} else if (drm_mode_vrefresh(m) == 10) {
 		ext_params.skip_vblank = 12;
+		ext_params.real_te_duration = 8333;
 		ext_params.vblank_off = true;
 		ext->params = &ext_params;
 	} else

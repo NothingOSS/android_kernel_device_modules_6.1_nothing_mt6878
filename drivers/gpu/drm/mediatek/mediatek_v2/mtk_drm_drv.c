@@ -6052,6 +6052,7 @@ int mtk_drm_get_mode_ext_info_ioctl(struct drm_device *dev, void *data,
 	struct mtk_drm_crtc *mtk_crtc;
 	struct mtk_drm_mode_ext_info *args = (struct mtk_drm_mode_ext_info *)data;
 	unsigned int *total_offset = NULL;
+	unsigned int *real_te_duration = NULL;
 	struct mtk_drm_private *priv = dev->dev_private;
 	unsigned int copy_num;
 	int i = 0;
@@ -6073,7 +6074,9 @@ int mtk_drm_get_mode_ext_info_ioctl(struct drm_device *dev, void *data,
 
 	total_offset = kcalloc(1, sizeof(unsigned int) * mtk_crtc->avail_modes_num,
 			GFP_KERNEL);
-	if (!total_offset) {
+	real_te_duration = kcalloc(1, sizeof(unsigned int) * mtk_crtc->avail_modes_num,
+			GFP_KERNEL);
+	if (!total_offset || !real_te_duration) {
 		DDPPR_ERR("%s alloc mem fail\n", __func__);
 		return -EFAULT;
 	}
@@ -6095,6 +6098,12 @@ int mtk_drm_get_mode_ext_info_ioctl(struct drm_device *dev, void *data,
 			prefetch_te_offset = mtk_crtc->panel_params[i]->prefetch_offset;
 
 		total_offset[i] = merge_trigger_offset + prefetch_te_offset;
+
+		if (mtk_crtc->panel_params[i]->real_te_duration != 0) {
+			real_te_duration[i] =
+				mtk_crtc->panel_params[i]->real_te_duration;
+		} else
+			real_te_duration[i] = 0; //TE duration is same to SW vsync
 	}
 
 	if (args->mode_num > mtk_crtc->avail_modes_num) {
@@ -6118,6 +6127,17 @@ int mtk_drm_get_mode_ext_info_ioctl(struct drm_device *dev, void *data,
 		return -EFAULT;
 	}
 
+	if (copy_to_user(args->real_te_duration, real_te_duration,
+		sizeof(unsigned int) * copy_num)) {
+		DDPPR_ERR("%s copy failed:(0x%p,0x%p), size:%ld\n",
+			__func__, args->real_te_duration, real_te_duration,
+			sizeof(unsigned int) * copy_num);
+
+		kfree(real_te_duration);
+		return -EFAULT;
+	}
+
+	kfree(real_te_duration);
 	kfree(total_offset);
 
 	return 0;
