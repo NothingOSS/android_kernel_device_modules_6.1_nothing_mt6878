@@ -12,7 +12,8 @@
 
 bool vip_enable = true;
 bool allow_VIP_task_group;
-bool allow_VIP_ls;
+
+unsigned int ls_vip_threshold          =  DEFAULT_VIP_PRIO_THRESHOLD;
 
 DEFINE_PER_CPU(struct vip_rq, vip_rq);
 
@@ -113,13 +114,25 @@ bool is_VIP_task_group(struct task_struct *p)
 	return false;
 }
 
+/* ls vip interface */
+void set_ls_task_vip(unsigned int prio)
+{
+	ls_vip_threshold = prio;
+}
+EXPORT_SYMBOL_GPL(set_ls_task_vip);
+
+void unset_ls_task_vip(void)
+{
+	ls_vip_threshold = DEFAULT_VIP_PRIO_THRESHOLD;
+}
+EXPORT_SYMBOL_GPL(unset_ls_task_vip);
+/* end of ls vip interface */
+
 bool is_VIP_latency_sensitive(struct task_struct *p)
 {
-	if (!allow_VIP_ls)
-		return false;
-
-	if (is_task_latency_sensitive(p))
+	if (is_task_latency_sensitive(p) && p->prio <= ls_vip_threshold)
 		return true;
+
 	return false;
 }
 
@@ -446,7 +459,6 @@ void vip_init(void)
 	int cpu;
 
 	allow_VIP_task_group = false;
-	allow_VIP_ls = false;
 
 	/* init vip related value to exist tasks */
 	read_lock(&tasklist_lock);

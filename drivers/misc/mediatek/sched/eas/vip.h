@@ -16,6 +16,8 @@ extern bool vip_enable;
 #define TASK_BOOST_VIP     2
 #define NOT_VIP           -1
 
+#define DEFAULT_VIP_PRIO_THRESHOLD  99
+
 #define mts_to_ts(mts) ({ \
 		void *__mptr = (void *)(mts); \
 		((struct task_struct *)(__mptr - \
