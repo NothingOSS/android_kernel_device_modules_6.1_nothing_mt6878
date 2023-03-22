@@ -869,32 +869,6 @@ static ssize_t show_enable(const struct cluster_data *state, char *buf)
 	return scnprintf(buf, PAGE_SIZE, "%u\n", state->enable);
 }
 
-static ssize_t show_ppm_state(const struct cluster_data *state, char *buf)
-{
-	ssize_t count = 0;
-	int opp_nr = state->ppm_data.opp_nr;
-	int i;
-
-	if (!state->ppm_data.init) {
-		count += snprintf(buf + count, PAGE_SIZE - count,
-				"ppm_data is not initialized\n");
-		return count;
-	}
-
-	for (i = 0; i < opp_nr; i++) {
-		count += snprintf(buf + count, PAGE_SIZE - count,
-				"%4d: %8u %4u %8u %8u %8u %8u %8u\n", i,
-				state->ppm_data.ppm_tbl[i].freq,
-				state->ppm_data.ppm_tbl[i].capacity,
-				state->ppm_data.ppm_tbl[i].power,
-				state->ppm_data.ppm_tbl[i].leakage,
-				state->ppm_data.ppm_tbl[i].thermal_leakage,
-				state->ppm_data.ppm_tbl[i].eff,
-				state->ppm_data.ppm_tbl[i].thermal_eff);
-	}
-	return count;
-}
-
 static ssize_t show_thermal_up_thres(const struct cluster_data *state, char *buf)
 {
 	return scnprintf(buf, PAGE_SIZE, "%u\n", state->thermal_up_thres);
@@ -980,7 +954,6 @@ core_ctl_attr_rw(not_preferred);
 core_ctl_attr_rw(core_ctl_boost);
 core_ctl_attr_rw(enable);
 core_ctl_attr_ro(global_state);
-core_ctl_attr_ro(ppm_state);
 core_ctl_attr_ro(thermal_up_thres);
 core_ctl_attr_ro(cpu_busy_up_thres);
 
@@ -993,7 +966,6 @@ static struct attribute *default_attrs[] = {
 	&core_ctl_boost.attr,
 	&enable.attr,
 	&global_state.attr,
-	&ppm_state.attr,
 	&thermal_up_thres.attr,
 	&cpu_busy_up_thres.attr,
 	NULL
