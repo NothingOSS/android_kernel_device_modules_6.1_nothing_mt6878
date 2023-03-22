@@ -80,7 +80,7 @@ static void set_venc_vcp_data(struct mtk_vcodec_ctx *ctx, enum vcp_reserve_mem_i
 
 	if (id == VENC_SET_PROP_MEM_ID) {
 
-		sprintf(enc_prm.set_vcp_buf, "%s", mtk_venc_property);
+		SPRINTF(enc_prm.set_vcp_buf, "%s", mtk_venc_property);
 		mtk_v4l2_debug(3, "[%d] mtk_venc_property %s", ctx->id, enc_prm.set_vcp_buf);
 		mtk_v4l2_debug(3, "[%d] mtk_venc_property_prev %s",
 					ctx->id, mtk_venc_property_prev);
@@ -100,7 +100,7 @@ static void set_venc_vcp_data(struct mtk_vcodec_ctx *ctx, enum vcp_reserve_mem_i
 		}
 	} else if (id == VENC_VCP_LOG_INFO_ID) {
 
-		sprintf(enc_prm.set_vcp_buf, "%s", mtk_venc_vcp_log);
+		SPRINTF(enc_prm.set_vcp_buf, "%s", mtk_venc_vcp_log);
 		mtk_v4l2_debug(3, "[%d] mtk_venc_vcp_log %s", ctx->id, enc_prm.set_vcp_buf);
 		mtk_v4l2_debug(3, "[%d] mtk_venc_vcp_log_prev %s", ctx->id, mtk_venc_vcp_log_prev);
 

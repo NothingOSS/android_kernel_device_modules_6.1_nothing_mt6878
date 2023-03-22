@@ -436,8 +436,6 @@ u64 calc_freq(struct vcodec_inst *inst, struct mtk_vcodec_dev *dev)
 			/* SW overhead */
 			if (inst->width * inst->height <= 1920 * 1088)
 				freq = freq / 10 * 11;
-			else if (inst->width * inst->height <= 1280 * 736)
-				freq = freq / 10 * 12;
 
 			mtk_v4l2_debug(6, "[VDVFS] VENC w:%u x h:%u / 256 x oprate: %d x mb %u",
 				inst->width, inst->height, inst->op_rate,

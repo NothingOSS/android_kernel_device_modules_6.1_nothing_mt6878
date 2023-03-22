@@ -458,7 +458,7 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	mutex_init(&dev->enc_dvfs_mutex);
 	spin_lock_init(&dev->irqlock);
 
-	snprintf(dev->v4l2_dev.name, sizeof(dev->v4l2_dev.name), "%s",
+	SNPRINTF(dev->v4l2_dev.name, sizeof(dev->v4l2_dev.name), "%s",
 			 "[MTK_V4L2_VENC]");
 
 	ret = v4l2_device_register(&pdev->dev, &dev->v4l2_dev);
@@ -483,7 +483,7 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	vfd_enc->device_caps    = V4L2_CAP_VIDEO_M2M_MPLANE |
 							  V4L2_CAP_STREAMING;
 
-	snprintf(vfd_enc->name, sizeof(vfd_enc->name), "%s",
+	SNPRINTF(vfd_enc->name, sizeof(vfd_enc->name), "%s",
 			 MTK_VCODEC_ENC_NAME);
 	video_set_drvdata(vfd_enc, dev);
 	dev->vfd_enc = vfd_enc;

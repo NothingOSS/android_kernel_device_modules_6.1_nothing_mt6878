@@ -76,7 +76,7 @@ static void set_vdec_vcp_data(struct mtk_vcodec_ctx *ctx, enum vcp_reserve_mem_i
 
 	if (id == VDEC_SET_PROP_MEM_ID) {
 
-		sprintf(tmp_buf, "%s", mtk_vdec_property);
+		SPRINTF(tmp_buf, "%s", mtk_vdec_property);
 
 		mtk_v4l2_debug(3, "[%d] mtk_vdec_property %s", ctx->id, tmp_buf);
 		mtk_v4l2_debug(3, "[%d] mtk_vdec_property_prev %s",
@@ -95,7 +95,7 @@ static void set_vdec_vcp_data(struct mtk_vcodec_ctx *ctx, enum vcp_reserve_mem_i
 		}
 	} else if (id == VDEC_VCP_LOG_INFO_ID) {
 
-		sprintf(tmp_buf, "%s", mtk_vdec_vcp_log);
+		SPRINTF(tmp_buf, "%s", mtk_vdec_vcp_log);
 
 		mtk_v4l2_debug(3, "[%d] mtk_vdec_vcp_log %s", ctx->id, tmp_buf);
 		mtk_v4l2_debug(3, "[%d] mtk_vdec_vcp_log_prev %s", ctx->id, mtk_vdec_vcp_log_prev);
@@ -134,7 +134,11 @@ static void get_vcu_vpud_log(struct mtk_vcodec_ctx *ctx, void *out)
 		return;
 	}
 
-	vdec_if_get_param(ctx, GET_PARAM_VDEC_VCU_VPUD_LOG, out);
+	if (vdec_if_get_param(ctx, GET_PARAM_VDEC_VCU_VPUD_LOG, out) != 0) {
+		mtk_v4l2_err("[%d]Error!! Cannot get param : GET_PARAM_VDEC_VCU_VPUD_LOG ERR",
+					 ctx->id);
+		return;
+	}
 }
 
 static void get_supported_format(struct mtk_vcodec_ctx *ctx)
@@ -1428,6 +1432,10 @@ int mtk_vdec_put_fb(struct mtk_vcodec_ctx *ctx, enum mtk_put_buffer_type type, b
 
 	src_vb2_v4l2 = v4l2_m2m_next_src_buf(ctx->m2m_ctx);
 	src_buf = &src_vb2_v4l2->vb2_buf;
+	if (src_buf == NULL) {
+		mtk_v4l2_err("Error!! src_buf is NULL");
+		return -1;
+	}
 	src_buf_info = container_of(src_vb2_v4l2, struct mtk_video_dec_buf, vb);
 
 	if (src_buf_info == NULL) {
@@ -1805,6 +1813,10 @@ static void mtk_vdec_worker(struct work_struct *work)
 		mtk_v4l2_debug(0, "[%d] EarlyEos: decode last frame %d",
 			ctx->id, src_buf->planes[0].bytesused);
 		src_vb2_v4l2 = v4l2_m2m_src_buf_remove(ctx->m2m_ctx);
+		if (src_vb2_v4l2 == NULL) {
+			mtk_v4l2_err("Error!! src_vb2_v4l2 is NULL");
+			return;
+		}
 		src_vb2_v4l2->flags |= V4L2_BUF_FLAG_LAST;
 		clean_free_bs_buffer(ctx, NULL);
 		if (ctx->dec_flush_buf->lastframe == NON_EOS) {
@@ -2516,7 +2528,7 @@ static int vidioc_vdec_dqbuf(struct file *file, void *priv,
 			}
 
 			f_data.value = ctx->fence_idx;
-			sprintf(f_data.name, "vdec_fence%d",
+			SPRINTF(f_data.name, "vdec_fence%d",
 				f_data.value);
 			ret = fence_create(ctx->p_timeline_obj,
 				&f_data);
@@ -3468,7 +3480,7 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 		src_mem->dmabuf, ctx->dec_params.timestamp);
 
 	if (src_mem->va != NULL) {
-		sprintf(debug_bs, "%02x %02x %02x %02x %02x %02x %02x %02x %02x",
+		SPRINTF(debug_bs, "%02x %02x %02x %02x %02x %02x %02x %02x %02x",
 		  ((char *)src_mem->va)[0], ((char *)src_mem->va)[1], ((char *)src_mem->va)[2],
 		  ((char *)src_mem->va)[3], ((char *)src_mem->va)[4], ((char *)src_mem->va)[5],
 		  ((char *)src_mem->va)[6], ((char *)src_mem->va)[7], ((char *)src_mem->va)[8]);

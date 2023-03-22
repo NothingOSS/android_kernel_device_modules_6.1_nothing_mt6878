@@ -461,6 +461,10 @@ static int mtk_jpeg_s_fmt_mplane(struct mtk_jpeg_ctx *ctx,
 	q_data->fmt = mtk_jpeg_find_format(jpeg->variant->formats,
 					   jpeg->variant->num_formats,
 					   pix_mp->pixelformat, fmt_type);
+	if (q_data->fmt == NULL) {
+		v4l2_err(&jpeg->v4l2_dev, "Error!! q_data->fmt is NULL\n");
+		return -EINVAL;
+	}
 	q_data->pix_mp.width = pix_mp->width;
 	q_data->pix_mp.height = pix_mp->height;
 	q_data->enc_crop_rect.width = pix_mp->width;
@@ -968,6 +972,10 @@ static void mtk_jpeg_set_queue_data(struct mtk_jpeg_ctx *ctx,
 					   jpeg->variant->num_formats,
 					   param->dst_fourcc,
 					   MTK_JPEG_FMT_FLAG_CAPTURE);
+	if (q_data->fmt == NULL) {
+		v4l2_err(&jpeg->v4l2_dev, "Error!! q_data->fmt is NULL\n");
+		return;
+	}
 
 	for (i = 0; i < q_data->fmt->colplanes; i++) {
 		q_data->pix_mp.plane_fmt[i].bytesperline = param->mem_stride[i];
@@ -1144,6 +1152,14 @@ static void mtk_jpeg_enc_device_run(void *priv)
 
 	src_buf = v4l2_m2m_next_src_buf(ctx->fh.m2m_ctx);
 	dst_buf = v4l2_m2m_next_dst_buf(ctx->fh.m2m_ctx);
+	if (src_buf == NULL) {
+		v4l2_err(&jpeg->v4l2_dev, "Error!! src_buf is NULL\n");
+		return;
+	}
+	if (dst_buf == NULL) {
+		v4l2_err(&jpeg->v4l2_dev, "Error!! dst_buf is NULL\n");
+		return;
+	}
 
 	ret = pm_runtime_get_sync(jpeg->dev);
 	if (ret < 0)
@@ -1194,6 +1210,14 @@ static void mtk_jpeg_dec_device_run(void *priv)
 
 	src_buf = v4l2_m2m_next_src_buf(ctx->fh.m2m_ctx);
 	dst_buf = v4l2_m2m_next_dst_buf(ctx->fh.m2m_ctx);
+	if (src_buf == NULL) {
+		v4l2_err(&jpeg->v4l2_dev, "Error!! src_buf is NULL\n");
+		return;
+	}
+	if (dst_buf == NULL) {
+		v4l2_err(&jpeg->v4l2_dev, "Error!! dst_buf is NULL\n");
+		return;
+	}
 	jpeg_src_buf = mtk_jpeg_vb2_to_srcbuf(&src_buf->vb2_buf);
 
 	if (mtk_jpeg_check_resolution_change(ctx, &jpeg_src_buf->dec_param)) {
@@ -1324,6 +1348,14 @@ static irqreturn_t mtk_jpeg_enc_done(struct mtk_jpeg_dev *jpeg)
 
 	src_buf = v4l2_m2m_src_buf_remove(ctx->fh.m2m_ctx);
 	dst_buf = v4l2_m2m_dst_buf_remove(ctx->fh.m2m_ctx);
+	if (src_buf == NULL) {
+		v4l2_err(&jpeg->v4l2_dev, "Error!! src_buf is NULL\n");
+		return IRQ_NONE;
+	}
+	if (dst_buf == NULL) {
+		v4l2_err(&jpeg->v4l2_dev, "Error!! dst_buf is NULL\n");
+		return IRQ_NONE;
+	}
 
 	result_size = mtk_jpeg_enc_get_file_size(jpeg->reg_base);
 	vb2_set_plane_payload(&dst_buf->vb2_buf, 0, result_size);
@@ -1382,6 +1414,14 @@ static irqreturn_t mtk_jpeg_dec_irq(int irq, void *priv)
 
 	src_buf = v4l2_m2m_src_buf_remove(ctx->fh.m2m_ctx);
 	dst_buf = v4l2_m2m_dst_buf_remove(ctx->fh.m2m_ctx);
+	if (src_buf == NULL) {
+		v4l2_err(&jpeg->v4l2_dev, "Error!! src_buf is NULL\n");
+		return IRQ_NONE;
+	}
+	if (dst_buf == NULL) {
+		v4l2_err(&jpeg->v4l2_dev, "Error!! dst_buf is NULL\n");
+		return IRQ_NONE;
+	}
 	jpeg_src_buf = mtk_jpeg_vb2_to_srcbuf(&src_buf->vb2_buf);
 
 	if (dec_irq_ret >= MTK_JPEG_DEC_RESULT_UNDERFLOW)
@@ -1421,6 +1461,10 @@ static void mtk_jpeg_set_default_params(struct mtk_jpeg_ctx *ctx)
 				      jpeg->variant->num_formats,
 				      jpeg->variant->out_q_default_fourcc,
 				      MTK_JPEG_FMT_FLAG_OUTPUT);
+	if (q->fmt == NULL) {
+		v4l2_err(&jpeg->v4l2_dev, "Error!! q->fmt is NULL\n");
+		return;
+	}
 	q->pix_mp.width = MTK_JPEG_MIN_WIDTH;
 	q->pix_mp.height = MTK_JPEG_MIN_HEIGHT;
 	mtk_jpeg_try_fmt_mplane(&q->pix_mp, q->fmt);
@@ -1430,6 +1474,10 @@ static void mtk_jpeg_set_default_params(struct mtk_jpeg_ctx *ctx)
 				      jpeg->variant->num_formats,
 				      jpeg->variant->cap_q_default_fourcc,
 				      MTK_JPEG_FMT_FLAG_CAPTURE);
+	if (q->fmt == NULL) {
+		v4l2_err(&jpeg->v4l2_dev, "Error!! q->fmt is NULL\n");
+		return;
+	}
 	q->pix_mp.colorspace = V4L2_COLORSPACE_SRGB;
 	q->pix_mp.ycbcr_enc = V4L2_YCBCR_ENC_601;
 	q->pix_mp.quantization = V4L2_QUANTIZATION_FULL_RANGE;
@@ -1585,8 +1633,20 @@ static void mtk_jpeg_job_timeout_work(struct work_struct *work)
 	struct vb2_v4l2_buffer *src_buf, *dst_buf;
 
 	ctx = v4l2_m2m_get_curr_priv(jpeg->m2m_dev);
+	if (ctx == NULL) {
+		v4l2_err(&jpeg->v4l2_dev, "Error!! ctx is NULL\n");
+		return;
+	}
 	src_buf = v4l2_m2m_src_buf_remove(ctx->fh.m2m_ctx);
 	dst_buf = v4l2_m2m_dst_buf_remove(ctx->fh.m2m_ctx);
+	if (src_buf == NULL) {
+		v4l2_err(&jpeg->v4l2_dev, "Error!! src_buf is NULL\n");
+		return;
+	}
+	if (dst_buf == NULL) {
+		v4l2_err(&jpeg->v4l2_dev, "Error!! dst_buf is NULL\n");
+		return;
+	}
 
 	jpeg->variant->hw_reset(jpeg->reg_base);
 

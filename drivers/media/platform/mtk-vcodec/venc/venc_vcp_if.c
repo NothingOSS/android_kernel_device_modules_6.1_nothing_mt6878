@@ -626,7 +626,7 @@ int vcp_enc_ipi_handler(void *arg)
 				(struct venc_vcu_ipi_msg_trace *)obj->share_buf;
 			char buf[16];
 
-			sprintf(buf, "VENC_TRACE_%d", trace_msg->trace_id);
+			SPRINTF(buf, "VENC_TRACE_%d", trace_msg->trace_id);
 			vcodec_trace_count(buf, trace_msg->flag);
 		}
 			break;

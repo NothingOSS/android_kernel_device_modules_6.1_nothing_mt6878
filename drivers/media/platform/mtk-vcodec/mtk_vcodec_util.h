@@ -39,6 +39,18 @@
 		((h) >= 1920 && (w) >= 1080 && (opr) >= 120) || \
 		((w) >= 1280 && (h) >= 720 && (opr) >= 240) || \
 		((h) >= 1280 && (w) >= 720 && (opr) >= 240)) ? (1) : (0))
+
+#define SNPRINTF(args...)							\
+	do {											\
+		if (snprintf(args) < 0)						\
+			pr_notice("snprintf error\n");			\
+	} while (0)
+#define SPRINTF(args...)							\
+	do {											\
+		if (sprintf(args) < 0)						\
+			pr_notice("sprintf error\n");			\
+	} while (0)
+
 /**
  * enum eos_types  - encoder different eos types
  * @NON_EOS     : no eos, normal frame

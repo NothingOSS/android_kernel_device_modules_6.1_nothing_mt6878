@@ -525,7 +525,7 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	mutex_init(&dev->dec_dvfs_mutex);
 	spin_lock_init(&dev->irqlock);
 
-	snprintf(dev->v4l2_dev.name, sizeof(dev->v4l2_dev.name), "%s",
+	SNPRINTF(dev->v4l2_dev.name, sizeof(dev->v4l2_dev.name), "%s",
 			 "[/MTK_V4L2_VDEC]");
 
 	ret = v4l2_device_register(&pdev->dev, &dev->v4l2_dev);
@@ -549,7 +549,7 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	vfd_dec->device_caps    = V4L2_CAP_VIDEO_M2M_MPLANE |
 							  V4L2_CAP_STREAMING;
 
-	snprintf(vfd_dec->name, sizeof(vfd_dec->name), "%s",
+	SNPRINTF(vfd_dec->name, sizeof(vfd_dec->name), "%s",
 			 MTK_VCODEC_DEC_NAME);
 	video_set_drvdata(vfd_dec, dev);
 	dev->vfd_dec = vfd_dec;

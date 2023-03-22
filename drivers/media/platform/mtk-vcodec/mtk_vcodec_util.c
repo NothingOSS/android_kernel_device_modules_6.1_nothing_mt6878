@@ -984,7 +984,7 @@ void mtk_vcodec_set_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 					return;
 				}
 				memset(vcu_log, 0x00, sizeof(vcu_log));
-				snprintf(vcu_log, sizeof(vcu_log) - 1, "%s %s", argv[i], argv[i+1]);
+				SNPRINTF(vcu_log, sizeof(vcu_log) - 1, "%s %s", argv[i], argv[i+1]);
 				if (set_vcu_vpud_log != NULL)
 					set_vcu_vpud_log(ctx, vcu_log);
 			}
@@ -1054,17 +1054,17 @@ void mtk_vcodec_get_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 	if (log_index == MTK_VCODEC_LOG_INDEX_LOG) {
 		len = strlen(val);
 		if (len < LOG_PROPERTY_SIZE)
-			snprintf(val + len, LOG_PROPERTY_SIZE - 1 - len,
+			SNPRINTF(val + len, LOG_PROPERTY_SIZE - 1 - len,
 				" %s %d", "-mtk_vcodec_dbg", mtk_vcodec_dbg);
 
 		len = strlen(val);
 		if (len < LOG_PROPERTY_SIZE)
-			snprintf(val + len, LOG_PROPERTY_SIZE - 1 - len,
+			SNPRINTF(val + len, LOG_PROPERTY_SIZE - 1 - len,
 				" %s %d", "-mtk_vcodec_perf", mtk_vcodec_perf);
 
 		len = strlen(val);
 		if (len < LOG_PROPERTY_SIZE)
-			snprintf(val + len, LOG_PROPERTY_SIZE - 1 - len,
+			SNPRINTF(val + len, LOG_PROPERTY_SIZE - 1 - len,
 				" %s %d", "-mtk_v4l2_dbg_level", mtk_v4l2_dbg_level);
 	}
 
