@@ -24,6 +24,8 @@
 #define FPSGO_MW 1
 #define BY_PID_DEFAULT_VAL -1
 #define BY_PID_DELETE_VAL -2
+#define FPSGO_MAX_RECYCLE_IDLE_CNT 10
+#define FPSGO_MAX_TREE_SIZE 10
 
 enum {
 	FPSGO_SET_UNKNOWN = -1,
@@ -273,7 +275,8 @@ struct render_info {
 #if FPSGO_MW
 struct fpsgo_attr_by_pid {
 	struct rb_node entry;
-	int tgid;
+	int tgid;	/*for by tgid attribute*/
+	int tid;	/*for by tid attribute*/
 	unsigned long long ts;
 	struct fpsgo_boost_attr attr;
 };
@@ -289,6 +292,16 @@ struct BQ_id {
 	struct rb_node entry;
 };
 
+struct acquire_info {
+	int p_pid;
+	int c_pid;
+	int c_tid;
+	int api;
+	unsigned long long buffer_id;
+	struct rb_node entry;
+	struct fbt_render_key key;
+};
+
 struct hwui_info {
 	int pid;
 	struct rb_node entry;
@@ -302,6 +315,7 @@ struct sbe_info {
 struct fps_control_pid_info {
 	int pid;
 	struct rb_node entry;
+	unsigned long long ts;
 };
 
 struct video_info {
@@ -330,6 +344,8 @@ struct cam_dep_thread {
 #define FPSGO_CONTAINER_OF(ptr, type, member) \
 	((type *)(((char *)ptr) - offsetof(type, member)))
 
+extern int fpsgo_get_acquire_hint_enable;
+
 long long fpsgo_task_sched_runtime(struct task_struct *p);
 long fpsgo_sched_setaffinity(pid_t pid, const struct cpumask *in_mask);
 void *fpsgo_alloc_atomic(int i32Size);
@@ -354,8 +370,11 @@ void fpsgo_thread_lockprove(const char *tag, struct mutex *mlock);
 void fpsgo_clear_llf_cpu_policy_by_pid(int tgid);
 struct fpsgo_attr_by_pid *fpsgo_find_attr_by_pid(int pid, int add_new);
 void delete_attr_by_pid(int tgid);
-void fpsgo_reset_render_pid_attr(int tgid);
+void fpsgo_reset_render_attr(int pid, int set_by_tid);
 int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr);
+struct fpsgo_attr_by_pid *fpsgo_find_attr_by_tid(int pid, int add_new);
+void delete_attr_by_tid(int tid);
+int is_to_delete_fpsgo_tid_attr(struct fpsgo_attr_by_pid *fpsgo_attr);
 #endif  // FPSGO_MW
 struct render_info *eara2fpsgo_search_render_info(int pid,
 		unsigned long long buffer_id);
@@ -369,12 +388,21 @@ struct sbe_info *fpsgo_search_and_add_sbe_info(int pid, int force);
 void fpsgo_delete_sbe_info(int pid);
 struct fps_control_pid_info *fpsgo_search_and_add_fps_control_pid(int pid, int force);
 void fpsgo_delete_fpsgo_control_pid(int pid);
-void fpsgo_check_thread_status(void);
+int fpsgo_get_all_fps_control_pid_info(struct fps_control_pid_info *arr);
+int fpsgo_check_thread_status(void);
 void fpsgo_clear(void);
 struct BQ_id *fpsgo_find_BQ_id(int pid, int tgid, long long identifier,
 		int action);
 int fpsgo_get_BQid_pair(int pid, int tgid, long long identifier,
 		unsigned long long *buffer_id, int *queue_SF, int enqueue);
+int fpsgo_get_acquire_queue_pair_by_group(int tid, int *dep_arr, int dep_arr_num,
+		unsigned long long buffer_id);
+int fpsgo_check_all_render_blc(int tid);
+struct acquire_info *fpsgo_add_acquire_info(int p_pid, int c_pid, int c_tid,
+	int api, unsigned long long buffer_id);
+struct acquire_info *fpsgo_search_acquire_info(int tid, unsigned long long buffer_id);
+int fpsgo_delete_acquire_info(int mode, int tid, unsigned long long buffer_id);
+int fpsgo_get_camera_server_pid(int tgid);
 void fpsgo_main_trace(const char *fmt, ...);
 void fpsgo_clear_uclamp_boost(void);
 void fpsgo_clear_llf_cpu_policy(void);
@@ -418,6 +446,13 @@ enum FPSGO_RENDER_INFO_HWUI {
 	RENDER_INFO_HWUI_UNKNOWN = 0,
 	RENDER_INFO_HWUI_TYPE = 1,
 	RENDER_INFO_HWUI_NONE = 2,
+};
+
+enum FPSGO_ACQUIRE_TYPE {
+	ACQUIRE_UNKNOWN_TYPE,
+	ACQUIRE_SELF_TYPE,
+	ACQUIRE_CAMERA_TYPE,
+	ACQUIRE_OTHER_TYPE
 };
 
 #endif

@@ -22,6 +22,8 @@ extern int (*fpsgo_get_fstb_active_fp)(long long time_diff);
 extern int (*fpsgo_wait_fstb_active_fp)(void);
 extern void (*fpsgo_notify_sbe_rescue_fp)(int pid, int start, int enhance,
 		unsigned long long frameID);
+extern void (*fpsgo_notify_acquire_fp)(int c_pid, int p_pid,
+	int connectedAPI, unsigned long long buffer_id);
 
 extern void (*ged_vsync_notifier_fp)(void);
 

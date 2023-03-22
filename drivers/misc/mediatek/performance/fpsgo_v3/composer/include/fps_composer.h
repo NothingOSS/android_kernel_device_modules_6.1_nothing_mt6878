@@ -46,8 +46,10 @@ void fpsgo_ctrl2comp_connect_api(int pid, int api,
 	unsigned long long identifier);
 void fpsgo_ctrl2comp_disconnect_api(int pid, int api,
 			unsigned long long identifier);
-void fpsgo_fstb2comp_check_connect_api(void);
-
+void fpsgo_ctrl2comp_acquire(int p_pid, int c_pid, int c_tid,
+	int api, unsigned long long buffer_id);
+void fpsgo_base2comp_check_connect_api(void);
+int fpsgo_base2comp_check_connect_api_tree_empty(void);
 
 #endif
 

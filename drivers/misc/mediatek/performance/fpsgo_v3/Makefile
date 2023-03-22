@@ -8,7 +8,6 @@ BASE_TOP = $(FPSGO_TOP)/base
 FBT_TOP = $(FPSGO_TOP)/fbt
 FSTB_TOP = $(FPSGO_TOP)/fstb
 COM_TOP = $(FPSGO_TOP)/composer
-GBE_TOP = $(FPSGO_TOP)/gbe
 
 ccflags-y += \
         -I$(srctree)/include/ \
@@ -24,7 +23,6 @@ ccflags-y += \
         -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/ \
         -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/ \
         -I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek/ \
-        -I$(GBE_TOP)/ \
 
 subdir-ccflags-y += \
         -I$(srctree)/include/ \
@@ -40,7 +38,6 @@ subdir-ccflags-y += \
         -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/ \
         -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/ \
         -I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek/ \
-        -I$(GBE_TOP)/ \
 
 
 #fpsgo_main
@@ -62,11 +59,7 @@ MTK_FPSGO_FBT = $(mtk_fpsgo_fbt_objs:%.o=fbt/%.o)
 include $(FPSGO_TOP)/fstb/build.mk
 MTK_FPSGO_FSTB = $(mtk_fpsgo_fstb_objs:%.o=fstb/%.o)
 
-#gbe
-include $(FPSGO_TOP)/gbe/build.mk
-MTK_FPSGO_GBE = $(mtk_fpsgo_gbe_objs:%.o=gbe/%.o)
-
-MTK_FPSGO_SRC = $(MTK_FPSGO_MAIN) $(MTK_FPSGO_BASE) $(MTK_FPSGO_COMPOSER) $(MTK_FPSGO_FBT) $(MTK_FPSGO_FSTB) $(MTK_FPSGO_GBE)
+MTK_FPSGO_SRC = $(MTK_FPSGO_MAIN) $(MTK_FPSGO_BASE) $(MTK_FPSGO_COMPOSER) $(MTK_FPSGO_FBT) $(MTK_FPSGO_FSTB)
 
 obj-$(CONFIG_MTK_FPSGO_V3) += mtk_fpsgo.o
 mtk_fpsgo-objs += $(MTK_FPSGO_SRC)

@@ -28,7 +28,6 @@
 #include "fps_composer.h"
 #include "xgf.h"
 #include "mtk_drm_arr.h"
-#include "gbe_common.h"
 
 #define CREATE_TRACE_POINTS
 
@@ -43,6 +42,7 @@ enum FPSGO_NOTIFIER_PUSH_TYPE {
 	FPSGO_NOTIFIER_VSYNC				= 0x05,
 	FPSGO_NOTIFIER_SWAP_BUFFER          = 0x06,
 	FPSGO_NOTIFIER_SBE_RESCUE           = 0x07,
+	FPSGO_NOTIFIER_ACQUIRE              = 0x08,
 };
 
 /* TODO: use union*/
@@ -68,6 +68,10 @@ struct FPSGO_NOTIFIER_PUSH_TAG {
 	int enhance;
 	unsigned long long frameID;
 	struct list_head queue_list;
+
+	int consumer_pid;
+	int consumer_tid;
+	int producer_pid;
 };
 
 static struct mutex notify_lock;
@@ -129,7 +133,6 @@ static void fpsgo_notifier_wq_cb_dfrc_fps(int dfrc_fps)
 	FPSGO_LOGI("[FPSGO_CB] dfrc_fps %d\n", dfrc_fps);
 
 	fpsgo_ctrl2fstb_dfrc_fps(dfrc_fps);
-	fpsgo_ctrl2xgf_set_display_rate(dfrc_fps);
 	fpsgo_ctrl2fbt_dfrc_fps(dfrc_fps);
 }
 
@@ -154,6 +157,23 @@ static void fpsgo_notifier_wq_cb_bqid(int pid, unsigned long long bufID,
 		pid, bufID, queue_SF, id, create);
 
 	fpsgo_ctrl2comp_bqid(pid, bufID, queue_SF, id, create);
+}
+
+static void fpsgo_notify_wq_cb_acquire(int consumer_pid, int consumer_tid,
+	int producer_pid, int connectedAPI, unsigned long long buffer_id)
+{
+	FPSGO_LOGI(
+		"[FPSGO_CB] acquire: p_pid %d, c_pid:%d, c_tid:%d, api:%d, bufID:0x%llx\n",
+		producer_pid, consumer_pid, consumer_tid, connectedAPI, buffer_id);
+
+	if (!fpsgo_is_enable())
+		return;
+
+	if (!fpsgo_get_acquire_hint_enable)
+		return;
+
+	fpsgo_ctrl2comp_acquire(producer_pid, consumer_pid, consumer_tid,
+		connectedAPI, buffer_id);
 }
 
 static void fpsgo_notifier_wq_cb_qudeq(int qudeq,
@@ -294,6 +314,11 @@ static void fpsgo_notifier_wq_cb(void)
 		fpsgo_notifier_wq_cb_sbe_rescue(vpPush->pid, vpPush->enable, vpPush->enhance,
 						vpPush->frameID);
 		break;
+	case FPSGO_NOTIFIER_ACQUIRE:
+		fpsgo_notify_wq_cb_acquire(vpPush->consumer_pid,
+			vpPush->consumer_tid, vpPush->producer_pid,
+			vpPush->connectedAPI, vpPush->bufID);
+		break;
 	default:
 		FPSGO_LOGE("[FPSGO_CTRL] unhandled push type = %d\n",
 				vpPush->ePushType);
@@ -422,6 +447,35 @@ void fpsgo_notify_bqid(int pid, unsigned long long bufID,
 	vpPush->queue_SF = queue_SF;
 	vpPush->identifier = id;
 	vpPush->create = create;
+
+	fpsgo_queue_work(vpPush);
+}
+
+void fpsgo_notify_acquire(int consumer_pid, int producer_pid,
+	int connectedAPI, unsigned long long buffer_id)
+{
+	struct FPSGO_NOTIFIER_PUSH_TAG *vpPush;
+
+	vpPush = (struct FPSGO_NOTIFIER_PUSH_TAG *)
+		fpsgo_alloc_atomic(sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
+
+	if (!vpPush) {
+		FPSGO_LOGE("[FPSGO_CTRL] OOM\n");
+		return;
+	}
+
+	if (!kfpsgo_tsk) {
+		FPSGO_LOGE("[FPSGO_CTRL] NULL WorkQueue\n");
+		fpsgo_free(vpPush, sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
+		return;
+	}
+
+	vpPush->ePushType = FPSGO_NOTIFIER_ACQUIRE;
+	vpPush->consumer_pid = consumer_pid;
+	vpPush->consumer_tid = current->pid;
+	vpPush->producer_pid = producer_pid;
+	vpPush->connectedAPI = connectedAPI;
+	vpPush->bufID = buffer_id;
 
 	fpsgo_queue_work(vpPush);
 }
@@ -685,12 +739,6 @@ int fpsgo_switch_fstb(int enable)
 	return fpsgo_ctrl2fstb_switch_fstb(enable);
 }
 
-int fpsgo_fstb_fps_range(int nr_level,
-		struct fps_level *level)
-{
-	return switch_fps_range(nr_level, level);
-}
-
 int fpsgo_fstb_process_fps_range(char *proc_name,
 	int nr_level, struct fps_level *level)
 {
@@ -805,8 +853,6 @@ static void __exit fpsgo_exit(void)
 	fpsgo_composer_exit();
 	fpsgo_sysfs_exit();
 
-	/* game boost engine */
-	exit_gbe_common();
 }
 
 static int __init fpsgo_init(void)
@@ -855,9 +901,6 @@ fail_reg_cpu_frequency_entry:
 	mtk_fstb_init();
 	fpsgo_composer_init();
 
-	/* game boost engine*/
-	init_gbe_common();
-
 	if (fpsgo_arch_nr_clusters() > 0)
 		fpsgo_switch_enable(1);
 
@@ -866,6 +909,7 @@ fail_reg_cpu_frequency_entry:
 	fpsgo_notify_qudeq_fp = fpsgo_notify_qudeq;
 	fpsgo_notify_connect_fp = fpsgo_notify_connect;
 	fpsgo_notify_bqid_fp = fpsgo_notify_bqid;
+	fpsgo_notify_acquire_fp = fpsgo_notify_acquire;
 
 	fpsgo_notify_swap_buffer_fp = fpsgo_notify_swap_buffer;
 	fpsgo_notify_sbe_rescue_fp = fpsgo_notify_sbe_rescue;

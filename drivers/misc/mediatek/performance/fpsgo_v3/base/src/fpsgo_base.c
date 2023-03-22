@@ -41,7 +41,6 @@
 
 #define TIME_1S  1000000000ULL
 #define TRAVERSE_PERIOD  300000000000ULL
-#define FPSGO_MAX_TREE_SIZE 10
 
 #define event_trace(ip, fmt, args...) \
 do { \
@@ -54,6 +53,9 @@ do { \
 	}	\
 } while (0)
 
+static int total_fps_control_pid_info_num;
+int fpsgo_get_acquire_hint_enable;
+
 static struct kobject *base_kobj;
 static struct rb_root render_pid_tree;
 static struct rb_root BQ_id_list;
@@ -61,8 +63,10 @@ static struct rb_root linger_tree;
 static struct rb_root hwui_info_tree;
 static struct rb_root sbe_info_tree;
 static struct rb_root fps_control_pid_info_tree;
+static struct rb_root acquire_info_tree;
 #if FPSGO_MW
 static struct rb_root fpsgo_attr_by_pid_tree;
+static struct rb_root fpsgo_attr_by_tid_tree;
 #endif
 
 static DEFINE_MUTEX(fpsgo_render_lock);
@@ -574,7 +578,7 @@ int fpsgo_base_is_finished(struct render_info *thr)
 	return 1;
 }
 
-void fpsgo_reset_pid_attr(struct fpsgo_boost_attr *boost_attr)
+void fpsgo_reset_attr(struct fpsgo_boost_attr *boost_attr)
 {
 	if (boost_attr) {
 		boost_attr->llf_task_policy_by_pid = BY_PID_DEFAULT_VAL;
@@ -640,12 +644,12 @@ static int render_key_compare(struct fbt_render_key target,
 		return 0;
 }
 
-void fpsgo_reset_render_pid_attr(int tgid)
+void fpsgo_reset_render_attr(int pid, int set_by_tid)
 {
 	struct rb_node *n;
 	struct render_info *iter;
 
-	if (!tgid)
+	if (!pid)
 		return;
 
 	fpsgo_lockprove(__func__);
@@ -653,9 +657,11 @@ void fpsgo_reset_render_pid_attr(int tgid)
 	for (n = rb_first(&render_pid_tree); n != NULL; n = rb_next(n)) {
 		iter = rb_entry(n, struct render_info, render_key_node);
 
-		if (iter->tgid == tgid) {
+		if ((iter->pid == pid && set_by_tid) ||
+			(iter->tgid == pid && !set_by_tid)) {
 			fpsgo_thread_lock(&(iter->thr_mlock));
-			fpsgo_reset_pid_attr(&(iter->attr));
+			fpsgo_reset_attr(&(iter->attr));
+			fbt_set_render_boost_attr(iter);
 			fpsgo_thread_unlock(&(iter->thr_mlock));
 		}
 	}
@@ -914,7 +920,7 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 	return 0;
 }
 
-static int delete_oldest_attr(void)
+static int delete_oldest_pid_attr(void)
 {
 	struct rb_node *n;
 	struct fpsgo_attr_by_pid *iter;
@@ -944,7 +950,6 @@ struct fpsgo_attr_by_pid *fpsgo_find_attr_by_pid(int pid, int add_new)
 	struct rb_node *parent = NULL;
 	struct fpsgo_attr_by_pid *iter_attr = NULL;
 	int delete_tgid = 0;
-
 	fpsgo_lockprove(__func__);
 
 	while (*p) {
@@ -968,12 +973,12 @@ struct fpsgo_attr_by_pid *fpsgo_find_attr_by_pid(int pid, int add_new)
 
 	iter_attr->ts = fpsgo_get_time();
 	iter_attr->tgid = pid;
-	fpsgo_reset_pid_attr(&(iter_attr->attr));
+	fpsgo_reset_attr(&(iter_attr->attr));
 	rb_link_node(&iter_attr->entry, parent, p);
 	rb_insert_color(&iter_attr->entry, &fpsgo_attr_by_pid_tree);
 
 	/* If the tree size exceeds, then delete the oldest node. */
-	delete_tgid = delete_oldest_attr();
+	delete_tgid = delete_oldest_pid_attr();
 	if (delete_tgid)
 		delete_attr_by_pid(delete_tgid);
 
@@ -992,7 +997,7 @@ void delete_attr_by_pid(int tgid)
 	kfree(data);
 }
 
-void delete_all_attr_items_in_tree(void)
+void delete_all_pid_attr_items_in_tree(void)
 {
 	struct rb_node *n;
 	struct fpsgo_attr_by_pid *iter;
@@ -1006,6 +1011,117 @@ void delete_all_attr_items_in_tree(void)
 
 		rb_erase(&iter->entry, &fpsgo_attr_by_pid_tree);
 		n = rb_first(&fpsgo_attr_by_pid_tree);
+
+		kfree(iter);
+	}
+}
+
+int is_to_delete_fpsgo_tid_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
+{
+	struct fpsgo_boost_attr boost_attr;
+
+	if (!fpsgo_attr)
+		return 0;
+
+	boost_attr = fpsgo_attr->attr;
+	if (boost_attr.rescue_enable_by_pid == BY_PID_DEFAULT_VAL)
+		return 1;
+	if (boost_attr.rescue_enable_by_pid == BY_PID_DELETE_VAL)
+		return 1;
+	return 0;
+}
+static int delete_oldest_tid_attr(void)
+{
+	struct rb_node *n;
+	struct fpsgo_attr_by_pid *iter;
+	unsigned long long oldest_ts = (unsigned long long)-1; // max val
+	int tid = 0, count = 0;
+
+	fpsgo_lockprove(__func__);
+
+	for (n = rb_first(&fpsgo_attr_by_tid_tree), count = 0; n != NULL;
+		n = rb_next(n), count++) {
+		iter = rb_entry(n,  struct fpsgo_attr_by_pid, entry);
+		if (iter->ts < oldest_ts) {
+			tid = iter->tid;
+			oldest_ts = iter->ts;
+		}
+	}
+
+	if (count >= FPSGO_MAX_TREE_SIZE)
+		return tid;
+	else
+		return 0;
+}
+
+struct fpsgo_attr_by_pid *fpsgo_find_attr_by_tid(int pid, int add_new)
+{
+	struct rb_node **p = &fpsgo_attr_by_tid_tree.rb_node;
+	struct rb_node *parent = NULL;
+	struct fpsgo_attr_by_pid *iter_attr = NULL;
+	int delete_tid = 0;
+
+	fpsgo_lockprove(__func__);
+
+	while (*p) {
+		parent = *p;
+		iter_attr = rb_entry(parent, struct fpsgo_attr_by_pid, entry);
+
+		if (pid < iter_attr->tid)
+			p = &(*p)->rb_left;
+		else if (pid > iter_attr->tid)
+			p = &(*p)->rb_right;
+		else
+			return iter_attr;
+	}
+
+	if (!add_new)
+		return NULL;
+
+	iter_attr = kzalloc(sizeof(*iter_attr), GFP_KERNEL);
+	if (!iter_attr)
+		return NULL;
+
+	iter_attr->ts = fpsgo_get_time();
+	iter_attr->tid = pid;
+	fpsgo_reset_attr(&(iter_attr->attr));
+	rb_link_node(&iter_attr->entry, parent, p);
+	rb_insert_color(&iter_attr->entry, &fpsgo_attr_by_tid_tree);
+
+	/* If the tree size exceeds, then delete the oldest node. */
+	delete_tid = delete_oldest_tid_attr();
+	if (delete_tid)
+		delete_attr_by_tid(delete_tid);
+
+	return iter_attr;
+}
+
+void delete_attr_by_tid(int tid)
+{
+	struct fpsgo_attr_by_pid *data;
+
+	fpsgo_lockprove(__func__);
+	data = fpsgo_find_attr_by_tid(tid, 0);
+	if (!data)
+		return;
+	rb_erase(&data->entry, &fpsgo_attr_by_tid_tree);
+	kfree(data);
+}
+
+void delete_all_tid_attr_items_in_tree(void)
+{
+	struct rb_node *n;
+	struct fpsgo_attr_by_pid *iter;
+
+	fpsgo_lockprove(__func__);
+
+	n = rb_first(&fpsgo_attr_by_tid_tree);
+
+	while (n) {
+		iter = rb_entry(n,  struct fpsgo_attr_by_pid, entry);
+
+		rb_erase(&iter->entry, &fpsgo_attr_by_tid_tree);
+		n = rb_first(&fpsgo_attr_by_tid_tree);
 
 		kfree(iter);
 	}
@@ -1063,6 +1179,33 @@ void fpsgo_delete_sbe_info(int pid)
 	kfree(data);
 }
 
+void fpsgo_delete_oldest_fps_control_pid_info(void)
+{
+	unsigned long long min_ts = ULLONG_MAX;
+	struct fps_control_pid_info *min_iter = NULL, *tmp_iter = NULL;
+	struct rb_root *rbr = NULL;
+	struct rb_node *rbn = NULL;
+
+	if (RB_EMPTY_ROOT(&fps_control_pid_info_tree))
+		return;
+
+	rbr = &fps_control_pid_info_tree;
+	for (rbn = rb_first(rbr); rbn; rbn = rb_next(rbn)) {
+		tmp_iter = rb_entry(rbn, struct fps_control_pid_info, entry);
+		if (tmp_iter->ts < min_ts) {
+			min_ts = tmp_iter->ts;
+			min_iter = tmp_iter;
+		}
+	}
+
+	if (!min_iter)
+		return;
+
+	rb_erase(&min_iter->entry, &fps_control_pid_info_tree);
+	kfree(min_iter);
+	total_fps_control_pid_info_num--;
+}
+
 struct fps_control_pid_info *fpsgo_search_and_add_fps_control_pid(int pid, int force)
 {
 	struct rb_node **p = &fps_control_pid_info_tree.rb_node;
@@ -1091,9 +1234,14 @@ struct fps_control_pid_info *fpsgo_search_and_add_fps_control_pid(int pid, int f
 		return NULL;
 
 	tmp->pid = pid;
+	tmp->ts = fpsgo_get_time();
 
 	rb_link_node(&tmp->entry, parent, p);
 	rb_insert_color(&tmp->entry, &fps_control_pid_info_tree);
+	total_fps_control_pid_info_num++;
+
+	if (total_fps_control_pid_info_num > FPSGO_MAX_TREE_SIZE)
+		fpsgo_delete_oldest_fps_control_pid_info();
 
 	return tmp;
 }
@@ -1111,27 +1259,67 @@ void fpsgo_delete_fpsgo_control_pid(int pid)
 
 	rb_erase(&data->entry, &fps_control_pid_info_tree);
 	kfree(data);
+	total_fps_control_pid_info_num--;
+}
+
+int fpsgo_get_all_fps_control_pid_info(struct fps_control_pid_info *arr)
+{
+	int index = 0;
+	struct fps_control_pid_info *iter = NULL;
+	struct rb_root *rbr = NULL;
+	struct rb_node *rbn = NULL;
+
+	rbr = &fps_control_pid_info_tree;
+	for (rbn = rb_first(rbr); rbn; rbn = rb_next(rbn)) {
+		iter = rb_entry(rbn, struct fps_control_pid_info, entry);
+		arr[index].pid = iter->pid;
+		arr[index].ts = iter->ts;
+		index++;
+		if (index >= FPSGO_MAX_TREE_SIZE)
+			break;
+	}
+
+	return index;
 }
 
 static void fpsgo_check_BQid_status(void)
 {
-	struct rb_node *n;
-	struct rb_node *next;
-	struct BQ_id *pos;
+	struct rb_node *rbn = NULL;
+	struct BQ_id *pos = NULL;
 	int tgid = 0;
 
-	fpsgo_lockprove(__func__);
-
-	for (n = rb_first(&BQ_id_list); n; n = next) {
-		next = rb_next(n);
-
-		pos = rb_entry(n, struct BQ_id, entry);
+	rbn = rb_first(&BQ_id_list);
+	while (rbn) {
+		pos = rb_entry(rbn, struct BQ_id, entry);
 		tgid = fpsgo_get_tgid(pos->pid);
-		if (tgid)
-			continue;
+		if (tgid) {
+			rbn = rb_next(rbn);
+		} else {
+			rb_erase(rbn, &BQ_id_list);
+			kfree(pos);
+			rbn = rb_first(&BQ_id_list);
+		}
+	}
+}
 
-		rb_erase(n, &BQ_id_list);
-		kfree(pos);
+static void fpsgo_check_acquire_info_status(void)
+{
+	int local_p_tgid = 0, local_c_tgid =  0;
+	struct acquire_info *iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	rbn = rb_first(&acquire_info_tree);
+	while (rbn) {
+		iter = rb_entry(rbn, struct acquire_info, entry);
+		local_p_tgid = fpsgo_get_tgid(iter->p_pid);
+		local_c_tgid = fpsgo_get_tgid(iter->c_pid);
+		if (local_p_tgid && local_c_tgid)
+			rbn = rb_next(rbn);
+		else {
+			rb_erase(rbn, &acquire_info_tree);
+			kfree(iter);
+			rbn = rb_first(&acquire_info_tree);
+		}
 	}
 }
 
@@ -1198,7 +1386,37 @@ void fpsgo_clear_uclamp_boost(void)
 	fpsgo_render_tree_unlock(__func__);
 }
 
-void fpsgo_check_thread_status(void)
+int fpsgo_check_all_tree_empty(void)
+{
+	int render_info_empty_flag = 0;
+	int BQ_id_empty_flag = 0;
+	int linger_empty_flag = 0;
+	int hwui_empty_flag = 0;
+	int api_empty_flag = 0;
+	int ret = 0;
+
+	fpsgo_render_tree_lock(__func__);
+
+	render_info_empty_flag = RB_EMPTY_ROOT(&render_pid_tree);
+	BQ_id_empty_flag = RB_EMPTY_ROOT(&BQ_id_list);
+	linger_empty_flag = RB_EMPTY_ROOT(&linger_tree);
+	hwui_empty_flag = RB_EMPTY_ROOT(&hwui_info_tree);
+	api_empty_flag = fpsgo_base2comp_check_connect_api_tree_empty();
+
+	if (render_info_empty_flag && BQ_id_empty_flag &&
+		linger_empty_flag && hwui_empty_flag && api_empty_flag)
+		ret = 1;
+
+	fpsgo_render_tree_unlock(__func__);
+
+	FPSGO_LOGE("[render,BQ,linger,hwui,api]=[%d,%d,%d,%d,%d]\n",
+		render_info_empty_flag, BQ_id_empty_flag, linger_empty_flag,
+		hwui_empty_flag, api_empty_flag);
+
+	return ret;
+}
+
+int fpsgo_check_thread_status(void)
 {
 	unsigned long long ts = fpsgo_get_time();
 	unsigned long long expire_ts;
@@ -1211,7 +1429,7 @@ void fpsgo_check_thread_status(void)
 	int rb_tree_empty = 0;
 
 	if (ts < TIME_1S)
-		return;
+		return 0;
 
 	expire_ts = ts - TIME_1S;
 
@@ -1260,11 +1478,12 @@ void fpsgo_check_thread_status(void)
 	}
 
 	fpsgo_check_BQid_status();
+	fpsgo_check_acquire_info_status();
 	fpsgo_traverse_linger(ts);
 
 	fpsgo_render_tree_unlock(__func__);
 
-	fpsgo_fstb2comp_check_connect_api();
+	fpsgo_base2comp_check_connect_api();
 
 	if (check_max_blc)
 		fpsgo_base2fbt_check_max_blc();
@@ -1275,6 +1494,8 @@ void fpsgo_check_thread_status(void)
 
 	if (rb_tree_empty)
 		fpsgo_base2fbt_no_one_render();
+
+	return fpsgo_check_all_tree_empty();
 }
 
 void fpsgo_clear(void)
@@ -1314,7 +1535,8 @@ void fpsgo_clear(void)
 	}
 
 #if FPSGO_MW
-	delete_all_attr_items_in_tree();
+	delete_all_pid_attr_items_in_tree();
+	delete_all_tid_attr_items_in_tree();
 #endif  // FPSGO_MW
 
 	fpsgo_render_tree_unlock(__func__);
@@ -1452,6 +1674,7 @@ struct BQ_id *fpsgo_find_BQ_id(int pid, int tgid,
 				FPSGO_LOGI(
 					"find del pid %d, id %llu, key1 %d, key2 %llu\n",
 					pid, identifier, key.key1, key.key2);
+				fpsgo_delete_acquire_info(1, 0, pos->buffer_id);
 				rb_erase(n, &BQ_id_list);
 				kfree(pos);
 				done = 1;
@@ -1485,6 +1708,93 @@ int fpsgo_get_BQid_pair(int pid, int tgid, long long identifier,
 	}
 
 	return 0;
+}
+
+struct acquire_info *fpsgo_search_acquire_info(int tid, unsigned long long buffer_id)
+{
+	struct acquire_info *iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	for (rbn = rb_first(&acquire_info_tree); rbn; rbn = rb_next(rbn)) {
+		iter = rb_entry(rbn, struct acquire_info, entry);
+		if (iter->c_tid == tid && iter->buffer_id == buffer_id)
+			return iter;
+	}
+
+	return NULL;
+}
+
+struct acquire_info *fpsgo_add_acquire_info(int p_pid, int c_pid, int c_tid,
+	int api, unsigned long long buffer_id)
+{
+	struct rb_node **p = &acquire_info_tree.rb_node;
+	struct rb_node *parent = NULL;
+	struct acquire_info *iter = NULL;
+	struct fbt_render_key local_key = {.key1 = c_tid, .key2 = buffer_id};
+
+	while (*p) {
+		parent = *p;
+		iter = rb_entry(parent, struct acquire_info, entry);
+
+		if (render_key_compare(local_key, iter->key) < 0)
+			p = &(*p)->rb_left;
+		else if (render_key_compare(local_key, iter->key) > 0)
+			p = &(*p)->rb_right;
+		else
+			return iter;
+	}
+
+	iter = kzalloc(sizeof(struct acquire_info), GFP_KERNEL);
+	if (!iter)
+		return NULL;
+
+	iter->p_pid = p_pid;
+	iter->c_pid = c_pid;
+	iter->c_tid = c_tid;
+	iter->api = api;
+	iter->buffer_id = buffer_id;
+	iter->key.key1 = c_tid;
+	iter->key.key2 = buffer_id;
+
+	rb_link_node(&iter->entry, parent, p);
+	rb_insert_color(&iter->entry, &acquire_info_tree);
+
+	return iter;
+}
+
+int fpsgo_delete_acquire_info(int mode, int tid, unsigned long long buffer_id)
+{
+	int ret = 0;
+	struct acquire_info *iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	if (mode == 0) {
+		iter = fpsgo_search_acquire_info(tid, buffer_id);
+		if (iter) {
+			rb_erase(&iter->entry, &acquire_info_tree);
+			kfree(iter);
+			ret = 1;
+		}
+	} else if (mode == 1) {
+		rbn = rb_first(&acquire_info_tree);
+		while (rbn) {
+			iter = rb_entry(rbn, struct acquire_info, entry);
+			if (iter->buffer_id == buffer_id) {
+				rb_erase(&iter->entry, &acquire_info_tree);
+				kfree(iter);
+				ret = 1;
+				rbn = rb_first(&acquire_info_tree);
+			} else
+				rbn = rb_next(rbn);
+		}
+	}
+
+	return ret;
+}
+
+int fpsgo_get_camera_server_pid(int tgid)
+{
+	return -1;
 }
 
 static ssize_t systrace_mask_show(struct kobject *kobj,
@@ -1986,6 +2296,48 @@ out:
 }
 static KOBJ_ATTR_RO(render_attr_params);
 
+static ssize_t render_attr_params_tid_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	struct rb_node *n;
+	struct fpsgo_attr_by_pid *iter;
+	struct fpsgo_boost_attr attr_item;
+	char *temp = NULL;
+	int pos = 0;
+	int length = 0;
+
+	temp = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!temp)
+		goto out;
+
+	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+		"\n NEW tgid: TGID, rescue_enable,\n");
+	pos += length;
+
+	fpsgo_render_tree_lock(__func__);
+
+	for (n = rb_first(&fpsgo_attr_by_tid_tree); n != NULL; n = rb_next(n)) {
+		iter = rb_entry(n,  struct fpsgo_attr_by_pid, entry);
+		attr_item = iter->attr;
+
+		length = scnprintf(temp + pos,
+				FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+				"\n NEW tid: %4d, %4d,\n",
+			iter->tid, attr_item.rescue_enable_by_pid);
+		pos += length;
+
+	}
+	fpsgo_render_tree_unlock(__func__);
+
+	length = scnprintf(buf, PAGE_SIZE, "%s", temp);
+
+out:
+	kfree(temp);
+	return length;
+}
+static KOBJ_ATTR_RO(render_attr_params_tid);
+
 #endif  // FPSGO_MW
 
 static ssize_t force_onoff_show(struct kobject *kobj,
@@ -2028,7 +2380,6 @@ out:
 
 static KOBJ_ATTR_RW(force_onoff);
 
-
 static ssize_t BQid_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
@@ -2066,6 +2417,74 @@ out:
 }
 
 static KOBJ_ATTR_RO(BQid);
+
+static ssize_t acquire_info_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	char *temp = NULL;
+	int pos = 0;
+	int length = 0;
+	struct acquire_info *iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	temp = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!temp)
+		goto out;
+
+	fpsgo_render_tree_lock(__func__);
+
+	for (rbn = rb_first(&acquire_info_tree); rbn; rbn = rb_next(rbn)) {
+		iter = rb_entry(rbn, struct acquire_info, entry);
+		length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+			"p_pid:%d c_pid:%d c_tid:%d api:%d buffer_id:0x%llx\n",
+			iter->p_pid, iter->c_pid, iter->c_tid, iter->api, iter->buffer_id);
+		pos += length;
+	}
+
+	fpsgo_render_tree_unlock(__func__);
+
+	length = scnprintf(buf, PAGE_SIZE, "%s", temp);
+
+out:
+	kfree(temp);
+	return length;
+}
+
+static KOBJ_ATTR_RO(acquire_info);
+
+static ssize_t fpsgo_get_acquire_hint_enable_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%d\n",
+		fpsgo_get_acquire_hint_enable);
+}
+
+static ssize_t fpsgo_get_acquire_hint_enable_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	char *acBuffer = NULL;
+	int arg;
+
+	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!acBuffer)
+		goto out;
+
+	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &arg) == 0)
+				fpsgo_get_acquire_hint_enable = !!arg;
+			else
+				goto out;
+		}
+	}
+
+out:
+	kfree(acBuffer);
+	return count;
+}
+
+static KOBJ_ATTR_RW(fpsgo_get_acquire_hint_enable);
 
 static ssize_t perfserv_ta_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -2175,10 +2594,14 @@ static KOBJ_ATTR_RO(render_loading);
 int init_fpsgo_common(void)
 {
 	render_pid_tree = RB_ROOT;
-
 	BQ_id_list = RB_ROOT;
 	linger_tree = RB_ROOT;
 	hwui_info_tree = RB_ROOT;
+	sbe_info_tree = RB_ROOT;
+	fps_control_pid_info_tree = RB_ROOT;
+	fpsgo_attr_by_pid_tree = RB_ROOT;
+	fpsgo_attr_by_tid_tree = RB_ROOT;
+	acquire_info_tree = RB_ROOT;
 
 	if (!fpsgo_sysfs_create_dir(NULL, "common", &base_kobj)) {
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_systrace_mask);
@@ -2186,11 +2609,14 @@ int init_fpsgo_common(void)
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_force_onoff);
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_render_info);
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_BQid);
+		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_acquire_info);
+		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_fpsgo_get_acquire_hint_enable);
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_perfserv_ta);
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_render_loading);
 		#if FPSGO_MW
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_render_info_params);
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_render_attr_params);
+		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_render_attr_params_tid);
 		#endif
 	}
 

@@ -51,7 +51,6 @@
 #include "fps_composer.h"
 #include "fpsgo_cpu_policy.h"
 #include "fbt_cpu_ctrl.h"
-#include "fbt_cpu_cam.h"
 
 #define GED_VSYNC_MISS_QUANTUM_NS 16666666
 #define TIME_3MS  3000000
@@ -352,7 +351,6 @@ static DEFINE_SPINLOCK(freq_slock);
 static DEFINE_MUTEX(fbt_mlock);
 static DEFINE_SPINLOCK(loading_slock);
 static DEFINE_MUTEX(blc_mlock);
-static DEFINE_MUTEX(cam_dep_lock);
 
 static struct list_head blc_list;
 
@@ -430,9 +428,6 @@ static unsigned int lastest_idx;
 static unsigned long long last_cb_ts;
 
 static unsigned long long sbe_rescuing_frame_id;
-
-static struct rb_root cam_dep_thread_tree;
-
 
 static unsigned long long nsec_to_100usec_ull(unsigned long long nsec)
 {
@@ -1162,6 +1157,8 @@ static void dep_a_except_b(
 		}
 
 		if (fl_b->pid == fl_a->pid) {
+			if (fl_b->action)
+				fl_a->action = fl_b->action;
 			if (copy_intersection_to_b)
 				*fl_b = *fl_a;
 			incr_i = incr_j = 1;
@@ -1225,7 +1222,6 @@ static int fbt_get_dep_list(struct render_info *thr)
 {
 	int pid;
 	int count = 0;
-	int ret_size;
 	struct fpsgo_loading *dep_new, *dep_only_old, *dep_old_need_reset;
 	int ret = 0;
 
@@ -1258,19 +1254,10 @@ static int fbt_get_dep_list(struct render_info *thr)
 		goto EXIT;
 	}
 
-	count = fpsgo_fbt2xgf_get_dep_list_num(pid, thr->buffer_id);
+	count = fpsgo_fbt2xgf_get_dep_list(pid, MAX_DEP_NUM,
+		dep_new, thr->buffer_id);
 	if (count <= 0) {
 		ret = 3;
-		goto EXIT;
-	}
-
-	count = clamp(count, 1, MAX_DEP_NUM);
-
-	ret_size = fpsgo_fbt2xgf_get_dep_list(pid, count,
-		dep_new, thr->buffer_id);
-
-	if (ret_size == 0 || ret_size != count) {
-		ret = 4;
 		goto EXIT;
 	}
 
@@ -1329,38 +1316,6 @@ EXIT:
 	kfree(dep_only_old);
 	kfree(dep_new);
 	return ret;
-}
-
-static int fbt_get_cam_dep_list(struct fpsgo_loading *dep_arr)
-{
-	int index = 0;
-	struct cam_dep_thread *iter;
-	struct fpsgo_loading *cam_dep_list_local;
-	struct rb_root *rbr;
-	struct rb_node *rbn;
-
-	cam_dep_list_local =
-		kcalloc(MAX_DEP_NUM, sizeof(struct fpsgo_loading), GFP_KERNEL);
-	if (!cam_dep_list_local)
-		return -ENOMEM;
-
-	mutex_lock(&cam_dep_lock);
-	rbr = &cam_dep_thread_tree;
-	for (rbn = rb_first(rbr); rbn; rbn = rb_next(rbn)) {
-		iter = rb_entry(rbn, struct cam_dep_thread, rb_node);
-		if (index < MAX_DEP_NUM) {
-			cam_dep_list_local[index].pid = iter->pid;
-			index++;
-		}
-	}
-	mutex_unlock(&cam_dep_lock);
-
-	memset(dep_arr, 0, MAX_DEP_NUM * sizeof(struct fpsgo_loading));
-	memcpy(dep_arr, cam_dep_list_local, index * sizeof(struct fpsgo_loading));
-
-	kfree(cam_dep_list_local);
-
-	return index;
 }
 
 static void fbt_clear_dep_list(struct fpsgo_loading *pdep)
@@ -1650,8 +1605,10 @@ static void fbt_cal_min_max_cap(struct render_info *thr,
 	} else {
 		if (jerk == FPSGO_JERK_SECOND)
 			bhr_opp_local = rescue_second_copp;
-		else
+		else {
+			rescue_opp_c = clamp(rescue_opp_c, 0, nr_freq_cpu - 1);
 			bhr_opp_local = rescue_opp_c;
+		}
 		bhr_local = 0;
 	}
 
@@ -1765,8 +1722,6 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	int separate_release_sec_final = thr->attr.separate_release_sec_by_pid;
 	int boost_affinity_final = thr->attr.boost_affinity_by_pid;
 	int boost_LR_final = thr->attr.boost_lr_by_pid;
-	struct fpsgo_loading *cam_dep_arr = NULL;
-	int cam_dep_arr_size = 0;
 	struct fpsgo_loading *dep_final_need_set = NULL;
 	int final_size_need_set = 0;
 
@@ -1818,21 +1773,10 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	if (!dep_str)
 		goto EXIT;
 
-	cam_dep_arr = kcalloc(MAX_DEP_NUM, sizeof(struct fpsgo_loading), GFP_KERNEL);
-	if (!cam_dep_arr) {
-		FPSGO_LOGE("ERROR OOM %d\n", __LINE__);
-		goto EXIT;
-	}
 	dep_final_need_set = kcalloc(MAX_DEP_NUM, sizeof(struct fpsgo_loading), GFP_KERNEL);
 	if (!dep_final_need_set) {
 		FPSGO_LOGE("ERROR OOM %d\n", __LINE__);
 		goto EXIT;
-	}
-
-	cam_dep_arr_size = fbt_get_cam_dep_list(cam_dep_arr);
-	if (cam_dep_arr_size <= 0) {
-		cam_dep_arr_size = 0;
-		memset(cam_dep_arr, 0, MAX_DEP_NUM * sizeof(struct fpsgo_loading));
 	}
 
 	for (i = 0; i < thr->dep_valid_size; i++) {
@@ -1840,20 +1784,9 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 		thr->dep_arr[i].heavyidx = 0;
 	}
 
-	if (thr->pid == max_blc_pid && thr->buffer_id == max_blc_buffer_id) {
-		dep_a_except_b(
-			&(thr->dep_arr[0]), thr->dep_valid_size,
-			&cam_dep_arr[0], cam_dep_arr_size,
-			&dep_final_need_set[0], &final_size_need_set,
-			0);
-		print_dep(__func__, "max_dep",
-			thr->pid, thr->buffer_id,
-			&(thr->dep_arr[0]), thr->dep_valid_size);
-		print_dep(__func__, "max_dep_final_need_set",
-			max_blc_pid, max_blc_buffer_id,
-			&dep_final_need_set[0], final_size_need_set);
-		size_final = final_size_need_set;
-	} else {
+	if (thr->pid == max_blc_pid && thr->buffer_id == max_blc_buffer_id)
+		size_final = size;
+	else {
 		dep_a_except_b(
 			&(thr->dep_arr[0]), thr->dep_valid_size,
 			&max_blc_dep[0], max_blc_dep_num,
@@ -1865,15 +1798,6 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 		print_dep(__func__, "dep_need_set",
 			thr->pid, thr->buffer_id,
 			&dep_need_set[0], temp_size_need_set);
-
-		dep_a_except_b(
-			&(thr->dep_arr[0]), thr->dep_valid_size,
-			&cam_dep_arr[0], cam_dep_arr_size,
-			&dep_final_need_set[0], &final_size_need_set,
-			0);
-		print_dep(__func__, "dep_final_need_set",
-			thr->pid, thr->buffer_id,
-			&dep_final_need_set[0], final_size_need_set);
 		size_final = final_size_need_set;
 	}
 
@@ -1920,6 +1844,8 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 			separate_aa_final) {
 			fpsgo_systrace_c_fbt_debug(fl->pid, thr->buffer_id,
 				fl->loading, "dep-loading");
+			fpsgo_systrace_c_fbt_debug(fl->pid, thr->buffer_id,
+				fl->action, "dep-action");
 		}
 
 		light_thread = fbt_is_light_loading(fl->loading, loading_th_final);
@@ -1994,7 +1920,7 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 									FPSGO_PREFER_M, 1);
 				else
 					fbt_set_task_policy(fl, FPSGO_TPOLICY_AFFINITY,
-									FPSGO_PREFER_M, 0);
+									FPSGO_PREFER_M, fl->action);
 				break;
 			default:
 				if (boost_LR_final && thr->hwui == RENDER_INFO_HWUI_NONE
@@ -2024,11 +1950,17 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 
 EXIT:
 	kfree(dep_final_need_set);
-	kfree(cam_dep_arr);
 	kfree(dep_str);
 	kfree(dep_need_set);
 }
 
+/*
+ *	Attribute Setting Priority (from high to low)
+ *	1. by render tid setting
+ *	2. by tgid setting
+ *	3. global setting
+ *	high priority setting overwrite low priority setting
+ */
 void fbt_set_render_boost_attr(struct render_info *thr)
 {
 	struct fpsgo_boost_attr *render_attr;
@@ -2085,7 +2017,7 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 #if FPSGO_MW
 	fpsgo_attr = fpsgo_find_attr_by_pid(thr->tgid, 0);
 	if (!fpsgo_attr)
-		return;
+		goto by_tid;
 
 	pid_attr = fpsgo_attr->attr;
 	if (pid_attr.rescue_enable_by_pid != BY_PID_DEFAULT_VAL)
@@ -2200,6 +2132,16 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 			pid_attr.gcc_deq_bound_quota_by_pid;
 	if (pid_attr.reset_taskmask != BY_PID_DEFAULT_VAL)
 		render_attr->reset_taskmask = pid_attr.reset_taskmask;
+
+by_tid:
+	fpsgo_attr = NULL;
+	fpsgo_attr = fpsgo_find_attr_by_tid(thr->pid, 0);
+	if (!fpsgo_attr)
+		return;
+	pid_attr = fpsgo_attr->attr;
+	if (pid_attr.rescue_enable_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->rescue_enable_by_pid =
+			pid_attr.rescue_enable_by_pid;
 #endif  // FPSGO_MW
 }
 
@@ -2694,6 +2636,7 @@ static void fbt_do_sjerk(struct work_struct *work)
 	if (!pld)
 		goto EXIT;
 
+	rescue_opp_f = clamp(rescue_opp_f, 0, nr_freq_cpu - 1);
 	blc_wt = fbt_get_new_base_blc(pld, thr->boost_info.last_blc,
 		rescue_second_enhance_f, rescue_opp_f, rescue_second_copp);
 	if (separate_aa_final) {
@@ -2789,6 +2732,8 @@ static void fbt_do_jerk_locked(struct render_info *thr, struct fbt_jerk *jerk, i
 		}
 	}
 
+	rescue_opp_f = clamp(rescue_opp_f, 0, nr_freq_cpu - 1);
+	rescue_opp_c = clamp(rescue_opp_c, 0, nr_freq_cpu - 1);
 	blc_wt = fbt_get_new_base_blc(pld, blc_wt, rescue_enhance_f, rescue_opp_f, rescue_opp_c);
 	if (separate_aa_final) {
 		blc_wt_b = fbt_get_new_base_blc(pld, blc_wt_b,
@@ -3239,6 +3184,7 @@ static void fbt_do_boost(unsigned int blc_wt, int pid,
 	int cluster, i = 0;
 	int min_ceiling = 0;
 
+	bhr_opp = clamp(bhr_opp, 0, nr_freq_cpu - 1);
 	pld =
 		kcalloc(cluster_num, sizeof(struct cpu_ctrl_data),
 				GFP_KERNEL);
@@ -3636,6 +3582,8 @@ static int update_quota(struct fbt_boost_info *boost_info, int target_fps,
 	if (!gcc_fps_margin_final && target_fps == 144)
 		target_time = max(target_time, (long long)vsync_duration_us_144);
 
+	gcc_window_size = clamp(gcc_window_size, 0, 100);
+
 	s32_target_time = target_time;
 	window_cnt = target_fps * gcc_window_size;
 	do_div(window_cnt, 100);
@@ -3698,6 +3646,7 @@ static int update_quota(struct fbt_boost_info *boost_info, int target_fps,
 		boost_info->quota_cnt += 1;
 	}
 	boost_info->quota_cur_idx = new_idx;
+	boost_info->quota_cnt = clamp(boost_info->quota_cnt, 0, QUOTA_MAX_SIZE);
 
 	/* remove outlier */
 	avg = boost_info->quota / boost_info->quota_cnt;
@@ -4223,7 +4172,7 @@ static int fbt_boost_policy(
 	}
 	mutex_unlock(&blc_mlock);
 
-	if (blc_wt & rescue_enable_final) {
+	if (blc_wt && rescue_enable_final) {
 		 /* ignore hwui hint || not hwui */
 		if (qr_enable_active && (!qr_hwui_hint ||
 			thread_info->hwui != RENDER_INFO_HWUI_TYPE)) {
@@ -4909,7 +4858,7 @@ static void fbt_frame_start(struct render_info *thr, unsigned long long ts)
 	boost->frame_info[boost->f_iter].running_time = runtime;
 
 	fpsgo_fbt2fstb_query_fps(thr->pid, thr->buffer_id,
-			&targetfps, &targettime, &fps_margin, thr->tgid,
+			&targetfps, &targettime, &fps_margin,
 			&q_c_time, &q_g_time, &targetfpks, &cooler_on);
 	boost->quantile_cpu_time = q_c_time;
 	boost->quantile_gpu_time = q_g_time;
@@ -5345,12 +5294,14 @@ void fpsgo_sbe2fbt_rescue(struct render_info *thr, int start, int enhance,
 		if (!floor)
 			goto leave;
 
+		rescue_opp_c = clamp(rescue_opp_c, 0, nr_freq_cpu - 1);
 		headroom = rescue_opp_c;
 		new_enhance = enhance < 0 ?  rescue_enhance_f : sbe_enhance_f;
 
 		if (thr->boost_info.cur_stage == FPSGO_JERK_SECOND)
 			headroom = rescue_second_copp;
 
+		rescue_opp_f = clamp(rescue_opp_f, 0, nr_freq_cpu - 1);
 		blc_wt = fbt_get_new_base_blc(pld, floor, new_enhance, rescue_opp_f, headroom);
 		if (separate_aa_final) {
 			blc_wt_b = fbt_get_new_base_blc(pld, floor, new_enhance,
@@ -5426,6 +5377,7 @@ void fpsgo_sbe2fbt_rescue(struct render_info *thr, int start, int enhance,
 		/* find max perf index */
 		fbt_find_max_blc(&temp_blc, &temp_blc_pid, &temp_blc_buffer_id,
 				&temp_blc_dep_num, temp_blc_dep);
+		rescue_opp_f = clamp(rescue_opp_f, 0, nr_freq_cpu - 1);
 		fbt_get_new_base_blc(pld, temp_blc, 0, rescue_opp_f, bhr_opp);
 		fbt_set_ceiling(pld, thr->pid, thr->buffer_id);
 		if (boost_ta) {
@@ -5812,8 +5764,6 @@ int fbt_switch_uclamp_onoff(int enable)
 		fbt_notify_CM_limit(0);
 	}
 
-	fpsgo_fbt2cam_notify_uclamp_boost_enable(enable);
-
 	return 0;
 }
 
@@ -5967,73 +5917,6 @@ void fbt_xgff_blc_set(struct fbt_thread_blc *p_blc, int blc_wt,
 			p_blc->dep_num = 0;
 	}
 	mutex_unlock(&blc_mlock);
-}
-
-static struct cam_dep_thread *fbt_xgff_dep_thread_notify_add(int pid, int force)
-{
-	struct rb_node **p = &cam_dep_thread_tree.rb_node;
-	struct rb_node *parent = NULL;
-	struct cam_dep_thread *iter = NULL;
-
-	while (*p) {
-		parent = *p;
-		iter = rb_entry(parent, struct cam_dep_thread, rb_node);
-
-		if (pid < iter->pid)
-			p = &(*p)->rb_left;
-		else if (pid > iter->pid)
-			p = &(*p)->rb_right;
-		else
-			return iter;
-	}
-
-	if (!force)
-		return NULL;
-
-	iter = kzalloc(sizeof(*iter), GFP_KERNEL);
-	if (!iter)
-		return NULL;
-	iter->pid = pid;
-
-	rb_link_node(&iter->rb_node, parent, p);
-	rb_insert_color(&iter->rb_node, &cam_dep_thread_tree);
-
-	return iter;
-}
-
-static void fbt_xgff_dep_thread_notify_del(int pid)
-{
-	struct cam_dep_thread *iter;
-
-	iter = fbt_xgff_dep_thread_notify_add(pid, 0);
-
-	if (!iter)
-		return;
-
-	rb_erase(&iter->rb_node, &cam_dep_thread_tree);
-	kfree(iter);
-}
-
-int fbt_xgff_dep_thread_notify(int pid, int op)
-{
-	int ret = 0;
-	struct cam_dep_thread *iter = NULL;
-
-	mutex_lock(&cam_dep_lock);
-
-	if (op == 1)
-		iter = fbt_xgff_dep_thread_notify_add(pid, 1);
-	else if (op == 0)
-		iter = fbt_xgff_dep_thread_notify_add(pid, 0);
-	else if (op == -1)
-		fbt_xgff_dep_thread_notify_del(pid);
-
-	if (iter)
-		ret = 1;
-
-	mutex_unlock(&cam_dep_lock);
-
-	return ret;
 }
 
 static ssize_t light_loading_policy_show(struct kobject *kobj,
@@ -6742,13 +6625,13 @@ static ssize_t fbt_attr_by_pid_store(struct kobject *kobj,
 
 delete_pid:
 	if (delete) {
-		fpsgo_reset_render_pid_attr(pid);
 		delete_attr_by_pid(pid);
+		fpsgo_reset_render_attr(pid, 0);
 		goto unlock_out;
 	}
 	if (is_to_delete_fpsgo_attr(attr_render)) {
-		fpsgo_reset_render_pid_attr(pid);
 		delete_attr_by_pid(pid);
+		fpsgo_reset_render_attr(pid, 0);
 	}
 unlock_out:
 	fpsgo_render_tree_unlock(__func__);
@@ -6757,8 +6640,68 @@ out:
 		return ret;
 	return count;
 }
-
 static KOBJ_ATTR_WO(fbt_attr_by_pid);
+
+static ssize_t fbt_attr_by_tid_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	int ret;
+	char cmd[64];
+	u32 pid;
+	int val;
+	char action;
+	struct fpsgo_attr_by_pid *attr_render = NULL;
+	struct fpsgo_boost_attr *boost_attr;
+	int delete = 0;
+
+	ret = sscanf(buf, "%63s %c %d %d", cmd, &action, &pid, &val);
+	if (ret < 1) {
+		ret = -EPERM;
+		goto out;
+	}
+
+	FPSGO_LOGI("fpsgo cmd is %63s, action %c, pid %d, val %d", cmd, action, pid, val);
+
+	fpsgo_render_tree_lock(__func__);
+	attr_render = fpsgo_find_attr_by_tid(pid, 1);
+	if (!attr_render) {
+		FPSGO_LOGI("tid %d store error\n", pid);
+		ret = -1;
+		goto unlock_out;
+	}
+
+	boost_attr = &(attr_render->attr);
+	if (val == BY_PID_DELETE_VAL && action == 'u') {
+		delete = 1;
+		goto delete_tid;
+	}
+
+	if (!strcmp(cmd, "rescue_enable")) {
+		if ((val == 0 || val == 1) && action == 's')
+			boost_attr->rescue_enable_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->rescue_enable_by_pid = BY_PID_DEFAULT_VAL;
+	}
+
+delete_tid:
+	if (delete) {
+		delete_attr_by_tid(pid);
+		fpsgo_reset_render_attr(pid, 1);
+		goto unlock_out;
+	}
+	if (is_to_delete_fpsgo_tid_attr(attr_render)) {
+		delete_attr_by_tid(pid);
+		fpsgo_reset_render_attr(pid, 1);
+	}
+unlock_out:
+	fpsgo_render_tree_unlock(__func__);
+out:
+	if (ret < 0)
+		return ret;
+	return count;
+}
+static KOBJ_ATTR_WO(fbt_attr_by_tid);
 #endif  // FPSGO_MW
 
 static void llf_switch_policy(struct work_struct *work)
@@ -7974,6 +7917,8 @@ void __exit fbt_cpu_exit(void)
 	#if FPSGO_MW
 	fpsgo_sysfs_remove_file(fbt_kobj,
 			&kobj_attr_fbt_attr_by_pid);
+	fpsgo_sysfs_remove_file(fbt_kobj,
+			&kobj_attr_fbt_attr_by_tid);
 	#endif  // FPSGO_MW
 
 	kfree(base_opp);
@@ -7992,7 +7937,6 @@ void __exit fbt_cpu_exit(void)
 	fbt_cpu_ctrl_exit();
 	exit_fbt_platform();
 	exit_xgf();
-	fbt_cpu_cam_exit();
 }
 
 int __init fbt_cpu_init(void)
@@ -8090,8 +8034,6 @@ int __init fbt_cpu_init(void)
 	heavy_task_num = DEFAULT_HEAVY_TASK_NUM;
 
 	sbe_rescue_enable = fbt_get_default_sbe_rescue_enable();
-
-	cam_dep_thread_tree = RB_ROOT;
 
 	if (cluster_num <= 0)
 		FPSGO_LOGE("cpufreq policy not found");
@@ -8191,6 +8133,8 @@ int __init fbt_cpu_init(void)
 #if FPSGO_MW
 		fpsgo_sysfs_create_file(fbt_kobj,
 				&kobj_attr_fbt_attr_by_pid);
+		fpsgo_sysfs_create_file(fbt_kobj,
+				&kobj_attr_fbt_attr_by_tid);
 #endif  // FPSGO_MW
 
 	}
@@ -8201,7 +8145,6 @@ int __init fbt_cpu_init(void)
 
 	/* sub-module initialization */
 	init_xgf();
-	fbt_cpu_cam_init();
 	minitop_init();
 
 	fbt_cpu_ctrl_init();

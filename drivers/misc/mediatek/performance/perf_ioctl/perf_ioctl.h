@@ -32,6 +32,7 @@ struct _FPSGO_PACKAGE {
 		__s32 fps;
 		__s32 cmd;
 		__s32 active;
+		__u32 pid1;
 	};
 	union {
 		__u32 start;
@@ -47,6 +48,7 @@ struct _FPSGO_PACKAGE {
 	union {
 		__s32 queue_SF;
 		__s32 value2;
+		__u32 pid2;
 	};
 	__u64 identifier;
 };
@@ -102,10 +104,10 @@ struct _XGFFRAME_BOOST_PACKAGE {
 #define FPSGO_BQID                   _IOW('g', 16, struct _FPSGO_PACKAGE)
 #define FPSGO_GET_FPS                _IOW('g', 17, struct _FPSGO_PACKAGE)
 #define FPSGO_GET_CMD                _IOW('g', 18, struct _FPSGO_PACKAGE)
-#define FPSGO_GBE_GET_CMD            _IOW('g', 19, struct _FPSGO_PACKAGE)
 #define FPSGO_GET_FSTB_ACTIVE        _IOW('g', 20, struct _FPSGO_PACKAGE)
 #define FPSGO_WAIT_FSTB_ACTIVE       _IOW('g', 21, struct _FPSGO_PACKAGE)
 #define FPSGO_SBE_RESCUE             _IOW('g', 22, struct _FPSGO_PACKAGE)
+#define FPSGO_ACQUIRE                _IOW('g', 23, struct _FPSGO_PACKAGE)
 
 #define XGFFRAME_START              _IOW('g', 1, struct _XGFFRAME_PACKAGE)
 #define XGFFRAME_END                _IOW('g', 2, struct _XGFFRAME_PACKAGE)

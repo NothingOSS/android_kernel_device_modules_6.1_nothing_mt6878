@@ -25,7 +25,6 @@
 #include "fstb.h"
 #include "xgf.h"
 #include "mini_top.h"
-#include "gbe2.h"
 
 /*#define FPSGO_COM_DEBUG*/
 
@@ -40,16 +39,33 @@
 #define MAX_CONNECT_API_SIZE 20
 
 static struct kobject *comp_kobj;
-static struct rb_root ui_pid_tree;
+static struct workqueue_struct *composer_wq;
+static struct hrtimer recycle_hrt;
 static struct rb_root connect_api_tree;
 static int bypass_non_SF = 1;
 static int fpsgo_control;
 static int control_hwui;
 /* EGL, CPU, CAMREA */
 static int control_api_mask = 22;
+static int recycle_idle_cnt;
+static int recycle_active = 1;
 
 #define mtk_composer_dprintk_always(fmt, args...) \
 	pr_debug("[FPSGO_COMP]" fmt, ##args)
+
+static void fpsgo_com_notify_to_do_recycle(struct work_struct *work);
+static DECLARE_WORK(do_recycle_work, fpsgo_com_notify_to_do_recycle);
+static DEFINE_MUTEX(recycle_lock);
+
+static enum hrtimer_restart prepare_do_recycle(struct hrtimer *timer)
+{
+	if (composer_wq)
+		queue_work(composer_wq, &do_recycle_work);
+	else
+		schedule_work(&do_recycle_work);
+
+	return HRTIMER_NORESTART;
+}
 
 static inline int fpsgo_com_check_is_surfaceflinger(int pid)
 {
@@ -218,7 +234,6 @@ void fpsgo_ctrl2comp_enqueue_start(int pid,
 	unsigned long long identifier)
 {
 	struct render_info *f_render;
-	int xgf_ret = 0;
 	int check_render;
 	int ret;
 
@@ -277,11 +292,6 @@ void fpsgo_ctrl2comp_enqueue_start(int pid,
 		FPSGO_COM_TRACE("update pid[%d] tgid[%d] buffer_id:%llu api:%d",
 			f_render->pid, f_render->tgid,
 			f_render->buffer_id, f_render->api);
-		xgf_ret =
-			fpsgo_comp2xgf_qudeq_notify(pid, f_render->buffer_id,
-					XGF_QUEUE_START, NULL,
-					enqueue_start_time, 0);
-
 		break;
 	case BY_PASS_TYPE:
 		f_render->t_enqueue_start = enqueue_start_time;
@@ -291,10 +301,6 @@ void fpsgo_ctrl2comp_enqueue_start(int pid,
 			f_render->api, "bypass_api");
 		fpsgo_systrace_c_fbt(pid, f_render->buffer_id,
 			f_render->hwui, "bypass_hwui");
-		xgf_ret =
-			fpsgo_comp2xgf_qudeq_notify(pid, f_render->buffer_id,
-					XGF_QUEUE_START, NULL,
-					enqueue_start_time, 1);
 		break;
 	default:
 		FPSGO_COM_TRACE("type not found pid[%d] type[%d]",
@@ -304,6 +310,16 @@ void fpsgo_ctrl2comp_enqueue_start(int pid,
 exit:
 	fpsgo_thread_unlock(&f_render->thr_mlock);
 	fpsgo_render_tree_unlock(__func__);
+
+	mutex_lock(&recycle_lock);
+	if (recycle_idle_cnt) {
+		recycle_idle_cnt = 0;
+		if (!recycle_active) {
+			recycle_active = 1;
+			hrtimer_start(&recycle_hrt, ktime_set(0, NSEC_PER_SEC), HRTIMER_MODE_REL);
+		}
+	}
+	mutex_unlock(&recycle_lock);
 }
 
 void fpsgo_ctrl2comp_enqueue_end(int pid,
@@ -314,9 +330,9 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 	struct hwui_info *h_info;
 	struct sbe_info *s_info;
 	struct fps_control_pid_info *f_info;
-	int xgf_ret = 0;
 	int check_render;
 	unsigned long long running_time = 0;
+	unsigned long long enq_running_time = 0;
 	int ret;
 
 	FPSGO_COM_TRACE("%s pid[%d] id %llu", __func__, pid, identifier);
@@ -360,9 +376,10 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 		f_render->sbe_control_flag = 0;
 
 	f_info = fpsgo_search_and_add_fps_control_pid(f_render->tgid, 0);
-	if (f_info)
+	if (f_info) {
 		f_render->control_pid_flag = 1;
-	else
+		f_info->ts = enqueue_end_time;
+	} else
 		f_render->control_pid_flag = 0;
 
 	f_render->frame_type = fpsgo_com_check_frame_type(pid,
@@ -386,11 +403,13 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 		fpsgo_comp2fstb_prepare_calculate_target_fps(pid, f_render->buffer_id,
 			enqueue_end_time);
 
-		xgf_ret =
-			fpsgo_comp2xgf_qudeq_notify(pid, f_render->buffer_id,
-					XGF_QUEUE_END, &running_time,
-					enqueue_end_time, 0);
-		f_render->enqueue_length_real = f_render->enqueue_length;
+		fpsgo_comp2xgf_qudeq_notify(pid, f_render->buffer_id,
+			&running_time, &enq_running_time,
+			0, f_render->t_enqueue_end,
+			f_render->t_dequeue_start, f_render->t_dequeue_end,
+			f_render->t_enqueue_start, f_render->t_enqueue_end, 0);
+		f_render->enqueue_length_real = f_render->enqueue_length > enq_running_time ?
+						f_render->enqueue_length - enq_running_time : 0;
 		fpsgo_systrace_c_fbt_debug(pid, f_render->buffer_id,
 			f_render->enqueue_length_real, "enq_length_real");
 		if (running_time != 0)
@@ -405,7 +424,6 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 			f_render->api,
 			f_render->hwui);
 		fpsgo_comp2minitop_queue_update(enqueue_end_time);
-		fpsgo_comp2gbe_frame_update(f_render->pid, f_render->buffer_id);
 
 		fpsgo_systrace_c_fbt_debug(-300, 0, f_render->enqueue_length,
 			"%d_%d-enqueue_length", pid, f_render->frame_type);
@@ -422,17 +440,16 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 			"pid[%d] type[%d] enqueue_e:%llu enqueue_l:%llu",
 			pid, f_render->frame_type,
 			enqueue_end_time, f_render->enqueue_length);
-		xgf_ret =
-			fpsgo_comp2xgf_qudeq_notify(pid, f_render->buffer_id,
-					XGF_QUEUE_END, &running_time, enqueue_end_time, 1);
+
+		fpsgo_comp2xgf_qudeq_notify(pid, f_render->buffer_id,
+			&running_time, &enq_running_time,
+			0, f_render->t_enqueue_end,
+			f_render->t_dequeue_start, f_render->t_dequeue_end,
+			f_render->t_enqueue_start, f_render->t_enqueue_end, 1);
 		f_render->enqueue_length_real = f_render->enqueue_length;
 		fpsgo_systrace_c_fbt_debug(pid, f_render->buffer_id,
 			f_render->enqueue_length_real, "enq_length_real");
 
-		/*
-		 * For timer to recycle
-		 * TODO: add timer at fps_composer.c
-		 */
 		fpsgo_comp2fstb_queue_time_update(pid,
 			f_render->buffer_id,
 			f_render->frame_type,
@@ -456,7 +473,6 @@ void fpsgo_ctrl2comp_dequeue_start(int pid,
 	unsigned long long identifier)
 {
 	struct render_info *f_render;
-	int xgf_ret = 0;
 	int check_render;
 	int ret;
 
@@ -512,17 +528,9 @@ void fpsgo_ctrl2comp_dequeue_start(int pid,
 		f_render->t_dequeue_start = dequeue_start_time;
 		FPSGO_COM_TRACE("pid[%d] type[%d] dequeue_s:%llu",
 			pid, f_render->frame_type, dequeue_start_time);
-		xgf_ret =
-			fpsgo_comp2xgf_qudeq_notify(pid, f_render->buffer_id,
-					XGF_DEQUEUE_START, NULL,
-					dequeue_start_time, 0);
 		break;
 	case BY_PASS_TYPE:
 		f_render->t_dequeue_start = dequeue_start_time;
-		xgf_ret =
-			fpsgo_comp2xgf_qudeq_notify(pid, f_render->buffer_id,
-					XGF_DEQUEUE_START, NULL,
-					dequeue_start_time, 1);
 		break;
 	default:
 		FPSGO_COM_TRACE("type not found pid[%d] type[%d]",
@@ -540,7 +548,6 @@ void fpsgo_ctrl2comp_dequeue_end(int pid,
 	unsigned long long identifier)
 {
 	struct render_info *f_render;
-	int xgf_ret = 0;
 	int check_render;
 	int ret;
 
@@ -594,9 +601,6 @@ void fpsgo_ctrl2comp_dequeue_end(int pid,
 			"pid[%d] type[%d] dequeue_e:%llu dequeue_l:%llu",
 			pid, f_render->frame_type,
 			dequeue_end_time, f_render->dequeue_length);
-		xgf_ret =
-			fpsgo_comp2xgf_qudeq_notify(pid, f_render->buffer_id,
-				XGF_DEQUEUE_END, NULL, dequeue_end_time, 0);
 		fpsgo_comp2fbt_deq_end(f_render, dequeue_end_time);
 		fpsgo_systrace_c_fbt_debug(-300, 0, f_render->dequeue_length,
 			"%d_%d-dequeue_length", pid, f_render->frame_type);
@@ -605,9 +609,6 @@ void fpsgo_ctrl2comp_dequeue_end(int pid,
 		f_render->t_dequeue_end = dequeue_end_time;
 		f_render->dequeue_length =
 			dequeue_end_time - f_render->t_dequeue_start;
-		xgf_ret =
-			fpsgo_comp2xgf_qudeq_notify(pid, f_render->buffer_id,
-				XGF_DEQUEUE_END, NULL, dequeue_end_time, 1);
 		break;
 	default:
 		FPSGO_COM_TRACE("type not found pid[%d] type[%d]",
@@ -764,11 +765,24 @@ void fpsgo_ctrl2comp_disconnect_api(
 	rb_erase(&connect_api->rb_node, &connect_api_tree);
 	kfree(connect_api);
 
+	fpsgo_render_tree_unlock(__func__);
+}
+
+void fpsgo_ctrl2comp_acquire(int p_pid, int c_pid, int c_tid,
+	int api, unsigned long long buffer_id)
+{
+	fpsgo_render_tree_lock(__func__);
+
+	if (api == WINDOW_DISCONNECT)
+		fpsgo_delete_acquire_info(0, c_tid, buffer_id);
+	else
+		fpsgo_add_acquire_info(p_pid, c_pid, c_tid,
+			api, buffer_id);
 
 	fpsgo_render_tree_unlock(__func__);
 }
 
-void fpsgo_fstb2comp_check_connect_api(void)
+void fpsgo_base2comp_check_connect_api(void)
 {
 	struct rb_node *n;
 	struct connect_api_info *iter;
@@ -802,7 +816,16 @@ void fpsgo_fstb2comp_check_connect_api(void)
 		mtk_composer_dprintk_always("connect api tree size: %d", size);
 
 	fpsgo_render_tree_unlock(__func__);
+}
 
+int fpsgo_base2comp_check_connect_api_tree_empty(void)
+{
+	int ret = 0;
+
+	if (RB_EMPTY_ROOT(&connect_api_tree))
+		ret = 1;
+
+	return ret;
 }
 
 static int switch_ui_ctrl(int pid, int set_ctrl)
@@ -841,6 +864,30 @@ static int switch_fpsgo_control_pid(int pid, int set_ctrl)
 	return 0;
 }
 
+static void fpsgo_com_notify_to_do_recycle(struct work_struct *work)
+{
+	int ret1, ret2, ret3;
+
+	ret1 = fpsgo_check_thread_status();
+	ret2 = fpsgo_comp2fstb_do_recycle();
+	ret3 = fpsgo_comp2xgf_do_recycle();
+
+	mutex_lock(&recycle_lock);
+
+	if (ret1 && ret2 && ret3) {
+		recycle_idle_cnt++;
+		if (recycle_idle_cnt >= FPSGO_MAX_RECYCLE_IDLE_CNT) {
+			recycle_active = 0;
+			goto out;
+		}
+	}
+
+	hrtimer_start(&recycle_hrt, ktime_set(0, NSEC_PER_SEC), HRTIMER_MODE_REL);
+
+out:
+	mutex_unlock(&recycle_lock);
+}
+
 static ssize_t connect_api_info_show
 	(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -863,10 +910,10 @@ static ssize_t connect_api_info_show
 	posi += length;
 
 	fpsgo_render_tree_lock(__func__);
-	rcu_read_lock();
 
 	for (n = rb_first(&connect_api_tree); n != NULL; n = rb_next(n)) {
 		iter = rb_entry(n, struct connect_api_info, rb_node);
+		rcu_read_lock();
 		tsk = find_task_by_vpid(iter->tgid);
 		if (tsk) {
 			get_task_struct(tsk);
@@ -882,6 +929,7 @@ static ssize_t connect_api_info_show
 			posi += length;
 			put_task_struct(tsk);
 		}
+		rcu_read_unlock();
 
 		length = scnprintf(temp + posi,
 			FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
@@ -917,7 +965,6 @@ static ssize_t connect_api_info_show
 		posi += length;
 	}
 
-	rcu_read_unlock();
 	fpsgo_render_tree_unlock(__func__);
 
 	length = scnprintf(buf, PAGE_SIZE, "%s", temp);
@@ -1100,7 +1147,39 @@ static ssize_t fpsgo_control_pid_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
 {
-	return 0;
+	char *temp = NULL;
+	int i = 0;
+	int total = 0;
+	int pos = 0;
+	int length = 0;
+	struct fps_control_pid_info *arr = NULL;
+
+	temp = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!temp)
+		goto out;
+
+	arr = kcalloc(FPSGO_MAX_TREE_SIZE, sizeof(struct fps_control_pid_info), GFP_KERNEL);
+	if (!arr)
+		goto out;
+
+	fpsgo_render_tree_lock(__func__);
+
+	total = fpsgo_get_all_fps_control_pid_info(arr);
+
+	fpsgo_render_tree_unlock(__func__);
+
+	for (i = 0; i < total; i++) {
+		length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+			"%dth\ttgid:%d\tts:%llu\n", i+1, arr[i].pid, arr[i].ts);
+		pos += length;
+	}
+
+	length = scnprintf(buf, PAGE_SIZE, "%s", temp);
+
+out:
+	kfree(arr);
+	kfree(temp);
+	return length;
 }
 
 static ssize_t  fpsgo_control_pid_store(struct kobject *kobj,
@@ -1131,6 +1210,9 @@ static KOBJ_ATTR_RW(fpsgo_control_pid);
 
 void __exit fpsgo_composer_exit(void)
 {
+	hrtimer_cancel(&recycle_hrt);
+	destroy_workqueue(composer_wq);
+
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_connect_api_info);
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_control_hwui);
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_control_api_mask);
@@ -1144,8 +1226,13 @@ void __exit fpsgo_composer_exit(void)
 
 int __init fpsgo_composer_init(void)
 {
-	ui_pid_tree = RB_ROOT;
 	connect_api_tree = RB_ROOT;
+
+	composer_wq = alloc_ordered_workqueue("composer_wq", WQ_MEM_RECLAIM | WQ_HIGHPRI);
+	hrtimer_init(&recycle_hrt, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	recycle_hrt.function = &prepare_do_recycle;
+
+	hrtimer_start(&recycle_hrt, ktime_set(0, NSEC_PER_SEC), HRTIMER_MODE_REL);
 
 	if (!fpsgo_sysfs_create_dir(NULL, "composer", &comp_kobj)) {
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_connect_api_info);
