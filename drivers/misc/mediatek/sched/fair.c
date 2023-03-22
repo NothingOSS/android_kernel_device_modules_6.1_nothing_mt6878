@@ -431,6 +431,12 @@ mtk_compute_energy_cpu(int gear_idx, struct energy_env *eenv, struct perf_domain
 }
 
 struct share_buck_info share_buck;
+int get_share_buck(void)
+{
+	return share_buck.gear_idx;
+}
+EXPORT_SYMBOL_GPL(get_share_buck);
+
 int init_share_buck(void)
 {
 	struct root_domain *rd;
@@ -438,6 +444,7 @@ int init_share_buck(void)
 	int ret;
 	struct device_node *eas_node;
 
+	/* Default share buck gear_idx=0 */
 	share_buck.gear_idx = 0;
 	eas_node = of_find_node_by_name(NULL, "eas_info");
 	if (eas_node == NULL)

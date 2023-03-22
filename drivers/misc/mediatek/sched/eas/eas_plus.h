@@ -232,5 +232,6 @@ struct share_buck_info {
 };
 
 extern struct share_buck_info share_buck;
+extern int get_share_buck(void);
 
 #endif
