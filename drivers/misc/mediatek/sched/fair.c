@@ -1123,6 +1123,9 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 			}
 #endif
 
+			if (cpu == prev_cpu)
+				spare_cap += spare_cap >> 6;
+
 			if (min_vip_overwrite ||
 				(spare_cap > sys_max_spare_cap)) {
 				sys_max_spare_cap = spare_cap;
