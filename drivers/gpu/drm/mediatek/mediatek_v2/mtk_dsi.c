@@ -557,7 +557,7 @@ static void mtk_dsi_dphy_timconfig_v2(struct mtk_dsi *dsi, void *handle)
 	else
 		da_hs_trail = (dsi->data_rate * 66 + 42000) / 8000 + 1;
 	da_hs_exit = (dsi->data_rate * 118) / 8000 + 1;
-	da_hs_exit = (da_hs_exit % 2) ? da_hs_exit : da_hs_exit + 1;  //da_hs_exit must be odd
+	da_hs_exit = (da_hs_exit % 2) ? da_hs_exit + 2 : da_hs_exit + 1;  //da_hs_exit must be odd
 
 	clk_hs_prep = (dsi->data_rate * 57) / 8000 + 1;
 	clk_hs_prep = (clk_hs_prep % 2) ? clk_hs_prep + 1 : clk_hs_prep;  //clk_hs_prep must be even
@@ -787,7 +787,7 @@ static void mtk_dsi_cphy_timconfig_v2(struct mtk_dsi *dsi, void *handle)
 	da_hs_zero = 48;
 	da_hs_trail = 32;
 	da_hs_exit = (dsi->data_rate * 118) / 7000 + 1;
-	da_hs_exit = (da_hs_exit % 2) ? da_hs_exit : da_hs_exit + 1;  //da_hs_exit must be odd
+	da_hs_exit = (da_hs_exit % 2) ? da_hs_exit + 2 : da_hs_exit + 1;  //da_hs_exit must be odd
 
 	ta_go = 4 * lpx;
 	ta_get = 5 * lpx;
