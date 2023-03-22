@@ -465,7 +465,7 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 			   enum DISP_DEBUG_LEVEL debug_level)
 {
 	bool alloc = false;
-	int i, j, ret;
+	int i = 0, j = 0, ret = 0;
 	struct drm_mtk_layer_config *layer_info = NULL;
 
 #define _HRT_FMT \
@@ -529,8 +529,14 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 						alloc = false;
 						break;
 					}
-				} else if (disp_info->input_config[i])
+				} else if (disp_info->input_config[i]) {
 					layer_info = &disp_info->input_config[i][j];
+					if (!layer_info) {
+						DDPPR_ERR("%s:%d NULL layer_info\n",
+								__func__, __LINE__);
+						continue;
+					}
+				}
 
 				DDPMSG(_L_FMT, j, layer_info->ovl_id,
 				       layer_info->src_offset_x,
@@ -3015,7 +3021,7 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 	int no_compress_layer_num = 0;
 	int idx = disp_idx;
 	static u32 last_mml_ir_lye;
-	bool transition;
+	bool transition = false;
 	u32 rpo_comp = 0;
 
 	if (get_layering_opt(LYE_OPT_SPHRT))
@@ -3682,7 +3688,6 @@ static int check_cross_pipe_rpo(
 	u32 tile_in_len[2] = {0};
 	u32 tile_out_len[2] = {0};
 	u32 out_x[2] = {0};
-	bool is_dual = true;
 	int width = disp_w;
 	struct mtk_rsz_param param[2];
 	struct total_tile_overhead to_info;
@@ -3695,8 +3700,6 @@ static int check_cross_pipe_rpo(
 		tile_idx = 0;
 	else if (left >= width / 2)
 		tile_idx = 1;
-	else
-		is_dual = true;
 
 	step = (UNIT * (src_w - 1) + (dst_w - 2)) /
 			(dst_w - 1);
@@ -3713,30 +3716,21 @@ static int check_cross_pipe_rpo(
 		int_offset[0]++;
 		sub_offset[0] = sub_offset[0] - UNIT;
 	}
-	if (is_dual) {
-		/*left side*/
-		out_tile_loss[0] = (to_info.is_support ? to_info.left_overhead : 0);
-		in_tile_loss[0] = out_tile_loss[0] + 4;
 
-		tile_in_len[0] = (((width / 2 - dst_x) * src_w * 10) /
-			dst_w + 5) / 10;
-		if (tile_in_len[0] + in_tile_loss[0] >= src_w)
-			in_tile_loss[0] = src_w - tile_in_len[0];
+	/*left side*/
+	out_tile_loss[0] = (to_info.is_support ? to_info.left_overhead : 0);
+	in_tile_loss[0] = out_tile_loss[0] + 4;
 
-		tile_out_len[0] = width / 2 - dst_x + out_tile_loss[0];
-		if (tile_in_len[0] + in_tile_loss[0] > tile_out_len[0])
-			in_tile_loss[0] = tile_out_len[0] - tile_in_len[0];
-		tile_in_len[0] += in_tile_loss[0];
-		out_x[0] = dst_x;
-	} else {
-		tile_in_len[0] = src_w;
-		tile_out_len[0] = dst_w;
-		if (tile_idx == 0)
-			out_x[0] = dst_x;
-		else
-			out_x[0] = dst_x - width / 2 +
-			(to_info.is_support ? to_info.right_overhead : 0);
-	}
+	tile_in_len[0] = (((width / 2 - dst_x) * src_w * 10) /
+		dst_w + 5) / 10;
+	if (tile_in_len[0] + in_tile_loss[0] >= src_w)
+		in_tile_loss[0] = src_w - tile_in_len[0];
+
+	tile_out_len[0] = width / 2 - dst_x + out_tile_loss[0];
+	if (tile_in_len[0] + in_tile_loss[0] > tile_out_len[0])
+		in_tile_loss[0] = tile_out_len[0] - tile_in_len[0];
+	tile_in_len[0] += in_tile_loss[0];
+	out_x[0] = dst_x;
 
 	param[tile_idx].out_x = out_x[0];
 	param[tile_idx].step = step;

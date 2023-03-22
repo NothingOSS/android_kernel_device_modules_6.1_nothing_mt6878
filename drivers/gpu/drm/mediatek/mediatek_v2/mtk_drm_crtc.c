@@ -3417,8 +3417,11 @@ _mtk_crtc_atmoic_addon_module_connect(
 		mtk_ddp_comp_io_cmd(priv->ddp_comp[c.tgt_comp], cmdq_handle, OVL_SET_PQ_OUT, &c);
 		if (mtk_crtc->is_dual_pipe) {
 			c.tgt_comp = dual_pipe_comp_mapping(mtk_get_mmsys_id(crtc), c.tgt_comp);
-			mtk_ddp_comp_io_cmd(priv->ddp_comp[c.tgt_comp],
-					    cmdq_handle, OVL_SET_PQ_OUT, &c);
+			if ((c.tgt_comp >= 0) && (c.tgt_comp < DDP_COMPONENT_ID_MAX))
+				mtk_ddp_comp_io_cmd(priv->ddp_comp[c.tgt_comp],
+					cmdq_handle, OVL_SET_PQ_OUT, &c);
+			else
+				DDPPR_ERR("%s:%d Not exist dual pipe comp!\n", __func__, __LINE__);
 		}
 	}
 
@@ -3429,8 +3432,11 @@ _mtk_crtc_atmoic_addon_module_connect(
 		mtk_ddp_comp_io_cmd(priv->ddp_comp[c.tgt_comp], cmdq_handle, OVL_SET_PQ_OUT, &c);
 		if (mtk_crtc->is_dual_pipe) {
 			c.tgt_comp = dual_pipe_comp_mapping(mtk_get_mmsys_id(crtc), c.tgt_comp);
-			mtk_ddp_comp_io_cmd(priv->ddp_comp[c.tgt_comp],
-					    cmdq_handle, OVL_SET_PQ_OUT, &c);
+			if ((c.tgt_comp >= 0) && (c.tgt_comp < DDP_COMPONENT_ID_MAX))
+				mtk_ddp_comp_io_cmd(priv->ddp_comp[c.tgt_comp],
+					cmdq_handle, OVL_SET_PQ_OUT, &c);
+			else
+				DDPPR_ERR("%s:%d Not exist dual pipe comp!\n", __func__, __LINE__);
 		}
 	}
 
@@ -3442,8 +3448,11 @@ _mtk_crtc_atmoic_addon_module_connect(
 		mtk_ddp_comp_io_cmd(priv->ddp_comp[c.tgt_comp], cmdq_handle, OVL_SET_PQ_OUT, &c);
 		if (mtk_crtc->is_dual_pipe) {
 			c.tgt_comp = dual_pipe_comp_mapping(mtk_get_mmsys_id(crtc), c.tgt_comp);
-			mtk_ddp_comp_io_cmd(priv->ddp_comp[c.tgt_comp],
-					    cmdq_handle, OVL_SET_PQ_OUT, &c);
+			if ((c.tgt_comp >= 0) && (c.tgt_comp < DDP_COMPONENT_ID_MAX))
+				mtk_ddp_comp_io_cmd(priv->ddp_comp[c.tgt_comp],
+					cmdq_handle, OVL_SET_PQ_OUT, &c);
+			else
+				DDPPR_ERR("%s:%d Not exist dual pipe comp!\n", __func__, __LINE__);
 		}
 	}
 }
@@ -3944,19 +3953,23 @@ static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
 				if (mtk_crtc->is_dual_pipe) {
 					struct mtk_drm_private *priv =
 						mtk_crtc->base.dev->dev_private;
+					unsigned int index = dual_pipe_comp_mapping
+						(priv->data->mmsys_id, comp_state->comp_id);
 
-					comp = priv->ddp_comp
-						[dual_pipe_comp_mapping
-						(priv->data->mmsys_id, comp_state->comp_id)];
-					mtk_ddp_comp_layer_off(
+					if (index < DDP_COMPONENT_ID_MAX) {
+						comp = priv->ddp_comp[index];
+						mtk_ddp_comp_layer_off(
 							comp,
 							comp_state->lye_id,
 							comp_state->ext_lye_id,
 							cmdq_handle);
+					} else {
+						DDPPR_ERR("%s Not exist dual pipe comp!\n",
+						__func__);
+					}
 				}
 				break;
 			}
-
 		}
 		/* Set the crtc to plane state for releasing fence purpose.*/
 		plane_state->crtc = crtc;
@@ -9750,9 +9763,13 @@ static void mtk_drm_crtc_path_adjust(struct mtk_drm_private *priv, struct drm_cr
 			continue;
 
 		comp_id = dual_pipe_comp_mapping(priv->data->mmsys_id, comp_id_list[i]);
-		mtk_crtc->dual_pipe_ddp_ctx.ovl_comp[DDP_FIRST_PATH][ovl_comp_idx] =
-			priv->ddp_comp[comp_id];
-		++ovl_comp_idx;
+		if (comp_id < DDP_COMPONENT_ID_MAX) {
+			mtk_crtc->dual_pipe_ddp_ctx.ovl_comp[DDP_FIRST_PATH][ovl_comp_idx] =
+				priv->ddp_comp[comp_id];
+			++ovl_comp_idx;
+		} else {
+			DDPPR_ERR("%s Not exist dual pipe comp!\n", __func__);
+		}
 	}
 	mtk_crtc->dual_pipe_ddp_ctx.ovl_comp[DDP_FIRST_PATH][ovl_comp_idx] = comp;
 	mtk_crtc->dual_pipe_ddp_ctx.ovl_comp_nr[DDP_FIRST_PATH] = ovl_comp_idx + 1;
@@ -12137,7 +12154,8 @@ void mtk_drm_layer_dispatch_to_dual_pipe(
 	else if (plane_state_l->pending.width > left_bg)
 		plane_state_l->pending.width = left_bg;
 
-	if (plane_state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER) {
+	if ((plane_state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER) &&
+		crtc_state) {
 		plane_state_l->pending.dst_roi = crtc_state->rsz_param[0].out_len |
 						 crtc_state->rsz_dst_roi.height << 16;
 		plane_state_l->pending.offset = crtc_state->rsz_dst_roi.y << 16 |
@@ -12179,7 +12197,8 @@ void mtk_drm_layer_dispatch_to_dual_pipe(
 	else if (plane_state_r->pending.width > right_bg)
 		plane_state_r->pending.width = right_bg;
 
-	if (plane_state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER) {
+	if ((plane_state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER) &&
+		crtc_state) {
 		plane_state_r->pending.dst_roi = crtc_state->rsz_param[1].out_len |
 						crtc_state->rsz_dst_roi.height << 16;
 		plane_state_r->pending.offset = crtc_state->rsz_param[1].out_x |
@@ -14419,8 +14438,14 @@ static void mtk_drm_cwb_give_buf(struct drm_crtc *crtc)
 	mtk_crtc_wait_frame_done(mtk_crtc, handle, DDP_FIRST_PATH, 0);
 	mtk_ddp_comp_io_cmd(comp, handle, WDMA_WRITE_DST_ADDR0, &addr);
 	if (mtk_crtc->is_dual_pipe) {
-		comp = priv->ddp_comp[dual_pipe_comp_mapping(priv->data->mmsys_id, comp->id)];
-		mtk_ddp_comp_io_cmd(comp, handle, WDMA_WRITE_DST_ADDR0, &addr);
+		unsigned int index = dual_pipe_comp_mapping(priv->data->mmsys_id, comp->id);
+
+		if (index < DDP_COMPONENT_ID_MAX) {
+			comp = priv->ddp_comp[index];
+			mtk_ddp_comp_io_cmd(comp, handle, WDMA_WRITE_DST_ADDR0, &addr);
+		} else {
+			DDPPR_ERR("%s Not exist dual pipe comp!\n", __func__);
+		}
 	}
 	cb_data->cmdq_handle = handle;
 	if (cmdq_pkt_flush_threaded(handle, mtk_drm_cwb_cb, cb_data) < 0)
