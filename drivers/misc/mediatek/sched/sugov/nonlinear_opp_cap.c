@@ -74,6 +74,12 @@ static int last_wl_type;
 static unsigned long last_jiffies;
 static DEFINE_SPINLOCK(update_wl_tbl_lock);
 
+int get_nr_wl_type(void)
+{
+	return nr_wl_type;
+}
+EXPORT_SYMBOL_GPL(get_nr_wl_type);
+
 void set_wl_type_manual(int val)
 {
 	if (val >= 0 && val < nr_wl_type && is_wl_support())

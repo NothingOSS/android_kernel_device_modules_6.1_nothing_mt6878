@@ -120,6 +120,7 @@ extern int get_classify_wl(void);
 extern int get_em_wl(void);
 extern void set_wl_type_manual(int val);
 extern int get_wl_type_manual(void);
+extern int get_nr_wl_type(void);
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
 int init_opp_cap_info(struct proc_dir_entry *dir);
 void clear_opp_cap_info(void);
