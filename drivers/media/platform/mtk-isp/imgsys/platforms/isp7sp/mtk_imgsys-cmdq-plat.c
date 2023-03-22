@@ -2280,14 +2280,19 @@ void mtk_imgsys_mmqos_monitor_plat7sp(struct mtk_imgsys_dev *imgsys_dev, u32 sta
 	u32 flag[MAX_MON_REQ] = { 0 };
 	u32 bw0[MAX_MON_REQ] = { 0 };
 	u32 bw1[MAX_MON_REQ] = { 0 };
+	u32 sbc_lid0 = 0;
+	u32 sbc_lid1 = 0;
 
 	if (unlikely(!qos_info->sc_monitor))
 		return;
 
-	common_port[0] = qos_info->sc_id[0];
-	common_port[1] = qos_info->sc_id[1];
-	common_port[2] = qos_info->sc_id[2];
-	common_port[3] = qos_info->sc_id[3];
+	sbc_lid0 = qos_info->sc_id[0];
+	sbc_lid1 = qos_info->sc_id[1];
+
+	common_port[0] = 0;
+	common_port[1] = 0;
+	common_port[2] = 0;
+	common_port[3] = 0;
 
 	flag[0] = 1;
 	flag[1] = 2;
@@ -2297,9 +2302,9 @@ void mtk_imgsys_mmqos_monitor_plat7sp(struct mtk_imgsys_dev *imgsys_dev, u32 sta
 	if (state == SMI_MONITOR_STOP_STATE ||
 	    state == SMI_MONITOR_ACQUIRE_STATE) {
 #ifndef CONFIG_FPGA_EARLY_PORTING
-		smi_monitor_stop(NULL, 29, bw0, SMI_BW_IMGSYS);
+		smi_monitor_stop(NULL, sbc_lid0, bw0, SMI_BW_MET);
 		if (qos_info->sc_monitor > 1)
-			smi_monitor_stop(NULL, 30, bw1, SMI_BW_IMGSYS);
+			smi_monitor_stop(NULL, sbc_lid1, bw1, SMI_BW_MET);
 #endif
 	}
 
@@ -2331,9 +2336,9 @@ void mtk_imgsys_mmqos_monitor_plat7sp(struct mtk_imgsys_dev *imgsys_dev, u32 sta
 	if (state == SMI_MONITOR_START_STATE ||
 	    state == SMI_MONITOR_ACQUIRE_STATE) {
 #ifndef CONFIG_FPGA_EARLY_PORTING
-		smi_monitor_start(qos_info->dev, 29, common_port, flag, SMI_BW_IMGSYS);
+		smi_monitor_start(qos_info->dev, sbc_lid0, common_port, flag, SMI_BW_MET);
 		if (qos_info->sc_monitor > 1)
-			smi_monitor_start(qos_info->dev, 30, common_port, flag, SMI_BW_IMGSYS);
+			smi_monitor_start(qos_info->dev, sbc_lid1, common_port, flag, SMI_BW_MET);
 #endif
 	}
 
