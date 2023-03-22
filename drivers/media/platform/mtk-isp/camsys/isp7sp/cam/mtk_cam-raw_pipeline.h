@@ -134,9 +134,17 @@ struct mtk_cam_resource_driver {
 static inline int bin_ratio(u8 bin_type)
 {
 	if (bin_type == MTK_CAM_BIN_ON ||
-	    bin_type == MTK_CAM_CBN_2X2_ON ||
-	    bin_type == MTK_CAM_QBND_ON)
+	    bin_type == MTK_CAM_CBN_2X2_ON)
 		return 2;
+
+	/* note: MTK_CAM_QBND_ON
+	 *   this value is defined as (1 << 8).
+	 *   however, bin is in type of __u8...
+	 */
+#ifdef CAM_QBND_READY
+	if (bin_type == MTK_CAM_QBND_ON)
+		return 2;
+#endif
 
 	if (bin_type == MTK_CAM_CBN_3X3_ON)
 		return 3;
