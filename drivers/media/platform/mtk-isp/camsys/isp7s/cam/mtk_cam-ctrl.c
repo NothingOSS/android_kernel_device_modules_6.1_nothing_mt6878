@@ -403,6 +403,7 @@ static void ctrl_vsync_preprocess(struct mtk_cam_ctrl *ctrl,
 				  struct vsync_result *vsync_res)
 {
 	bool hint_inner_err = 0;
+	bool complete_vsync = false;
 	int cookie;
 
 	if (vsync_update(&ctrl->vsync_col, engine_type, engine_id, vsync_res))
@@ -413,20 +414,32 @@ static void ctrl_vsync_preprocess(struct mtk_cam_ctrl *ctrl,
 	if (vsync_res->is_first)
 		ctrl->r_info.sof_ts_ns = irq_info->ts_ns;
 
-	if (vsync_res->is_last && ctrl->cur_cq_ref) {
-		struct apply_cq_ref *cq_ref = ctrl->cur_cq_ref;
+	if (vsync_res->is_last) {
 
-		if (apply_cq_ref_is_to_inner(cq_ref)) {
-			ctrl->r_info.inner_seq_no =
-				seq_from_fh_cookie(cq_ref->cookie);
-			ctrl->cur_cq_ref = 0;
-		} else {
-			hint_inner_err = 1;
-			cookie = cq_ref->cookie;
+		if (ctrl->cur_cq_ref) {
+			struct apply_cq_ref *cq_ref = ctrl->cur_cq_ref;
+
+			if (apply_cq_ref_is_to_inner(cq_ref)) {
+				ctrl->r_info.inner_seq_no =
+					seq_from_fh_cookie(cq_ref->cookie);
+				ctrl->cur_cq_ref = 0;
+			} else {
+				hint_inner_err = 1;
+				cookie = cq_ref->cookie;
+			}
 		}
+
+		if (atomic_read(&ctrl->await_switching_seq)
+		    == ctrl->r_info.inner_seq_no)
+			complete_vsync = 1;
 	}
 
 	spin_unlock(&ctrl->info_lock);
+
+	if (complete_vsync) {
+		pr_info("%s: complete_vysnc\n", __func__);
+		complete(&ctrl->vsync_complete);
+	}
 
 	if (hint_inner_err)
 		pr_info("%s: inner not updated to 0x%x\n", __func__, cookie);
@@ -780,15 +793,35 @@ static void mtk_cam_ctrl_seamless_switch_work(struct work_struct *work)
 	if (!job)
 		return;
 
-	dev_info(ctrl->ctx->cam->dev, "[%s] begin waiting switch no:%d\n",
-		__func__, job->frame_seq_no);
-	if (!wait_for_completion_timeout(&job->cq_exe_completion, timeout)) {
-		pr_info("[%s] error: wait for job seamless_switch\n",
+	/* TODO(AY): remove -1 */
+	atomic_set(&ctrl->await_switching_seq, job->frame_seq_no - 1);
+	reinit_completion(&ctrl->vsync_complete);
+
+	if (!wait_for_completion_timeout(&ctrl->vsync_complete, timeout)) {
+		pr_info("[%s] error: wait for vsync timeout\n",
 			__func__);
 		return;
 	}
+
+	dev_info(ctrl->ctx->cam->dev, "[%s] begin waiting switch no:%d\n",
+		__func__, job->frame_seq_no);
+
 	/* let sensor set seamless switch */
 	complete(&job->i2c_ready_completion);
+
+	mtk_cam_job_state_set(&job->job_state, SENSOR_STATE, S_SENSOR_APPLYING);
+	call_jobop(job, apply_sensor);
+	mtk_cam_job_state_set(&job->job_state, SENSOR_STATE, S_SENSOR_LATCHED);
+
+	mtk_cam_job_state_set(&job->job_state, ISP_STATE, S_ISP_APPLYING);
+	call_jobop(job, apply_isp);
+
+	if (!wait_for_completion_timeout(&job->cq_exe_completion, timeout)) {
+		pr_info("[%s] error: wait for cq_exe timeout\n",
+			__func__);
+		return;
+	}
+
 	call_jobop(job, apply_switch);
 	vsync_set_desired(&ctrl->vsync_col, _get_master_engines(job->used_engine));
 	dev_info(ctrl->ctx->cam->dev, "[%s] finish, used_engine:0x%x\n",
@@ -812,13 +845,15 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 		add_frame_seq(cam_ctrl->enqueued_frame_seq_no, job->frame_cnt);
 
 	req_seq = atomic_inc_return(&cam_ctrl->enqueued_req_cnt);
+	mtk_cam_job_set_no(job, req_seq, frame_seq);
+
+	if (job->seamless_switch)
+		mtk_cam_job_set_fsm(job, 0);
 
 	/* EnQ this request's state element to state_list (STATE:READY) */
 	write_lock(&cam_ctrl->list_lock);
 	list_add_tail(&job->job_state.list, &cam_ctrl->camsys_state_list);
 	write_unlock(&cam_ctrl->list_lock);
-
-	mtk_cam_job_set_no(job, req_seq, frame_seq);
 
 	// to be removed
 	if (frame_seq == 0) {
@@ -921,6 +956,8 @@ void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 
 	atomic_set(&cam_ctrl->stopped, 0);
 	atomic_set(&cam_ctrl->stream_on_done, 0);
+
+	init_completion(&cam_ctrl->vsync_complete);
 
 	spin_lock_init(&cam_ctrl->send_lock);
 	rwlock_init(&cam_ctrl->list_lock);

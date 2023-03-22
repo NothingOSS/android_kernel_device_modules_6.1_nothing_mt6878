@@ -117,6 +117,10 @@ struct mtk_cam_ctrl {
 	atomic_t ref_cnt;
 
 	atomic_t stream_on_done;
+
+	/* use for awaiting next vsync. e.g., seamless switch */
+	atomic_t await_switching_seq;
+	struct completion vsync_complete;
 	/* note:
 	 *   this send_lock is only used in send_event func to guarantee that send_event
 	 *   is executed in an exclusive manner.
