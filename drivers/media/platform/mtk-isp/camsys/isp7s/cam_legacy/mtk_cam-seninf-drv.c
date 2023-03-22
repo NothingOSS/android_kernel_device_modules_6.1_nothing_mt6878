@@ -1694,6 +1694,15 @@ static int seninf_s_stream(struct v4l2_subdev *sd, int enable)
 	int i;
 	bool pad_inited = false;
 
+	/* get current sensor idx by get_sensor_idx */
+	core->current_sensor_id = get_sensor_idx(ctx);
+	if (core->current_sensor_id < 0) {
+		dev_info(ctx->dev,
+			"[%s] get_sensor_idx[%d] fail\n",
+			__func__, core->current_sensor_id);
+		return core->current_sensor_id;
+	}
+
 	if (core->aov_abnormal_init_flag) {
 		ctx->is_aov_real_sensor = 1;
 		/* switch aov pm ops: force power off sensor */

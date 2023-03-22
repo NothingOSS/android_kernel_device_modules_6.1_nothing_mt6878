@@ -1547,14 +1547,17 @@ int mtk_cam_seninf_s_stream_mux(struct seninf_ctx *ctx)
 		}
 
 		if (ctx->is_aov_real_sensor) {
-			if (!(core->aov_sensor_id < 0) &&
-				!(core->current_sensor_id < 0) &&
-				(core->current_sensor_id == core->aov_sensor_id)) {
-				dev_info(ctx->dev,
-					"[%s] aov streaming mux & cammux workaround on scp\n",
-					__func__);
-				break;
+			g_aov_param.vc = *vc;
+			/* workaround */
+			if (!g_aov_param.is_test_model) {
+				g_aov_param.vc.dest_cnt = 1;
+				g_aov_param.vc.dest[0].mux = 5;
+				g_aov_param.vc.dest[0].mux_vr = 33;
+				g_aov_param.vc.dest[0].cam = 33;
+				g_aov_param.vc.pixel_mode = 3;
+				g_aov_param.camtg = 33;
 			}
+
 			/* make sure aov cammux is set */
 			g_seninf_ops->_set_cammux_src(ctx,
 						g_aov_param.vc.dest[0].mux_vr,
@@ -1569,6 +1572,15 @@ int mtk_cam_seninf_s_stream_mux(struct seninf_ctx *ctx)
 				g_aov_param.vc.exp_hsize,
 				g_aov_param.vc.exp_vsize,
 				g_aov_param.vc.dt);
+
+			if (!(core->aov_sensor_id < 0) &&
+				!(core->current_sensor_id < 0) &&
+				(core->current_sensor_id == core->aov_sensor_id)) {
+				dev_info(ctx->dev,
+					"[%s] aov streaming mux & cammux workaround on scp\n",
+					__func__);
+				break;
+			}
 		}
 
 		if (!vc->dest_cnt) {
@@ -2233,17 +2245,6 @@ int mtk_cam_seninf_s_aov_param(unsigned int sensor_id,
 	if (!vc) {
 		pr_info("[%s] vc should not be NULL!\n", __func__);
 		return -ENODEV;
-	}
-
-	g_aov_param.vc = *vc;
-	/* workaround */
-	if (!g_aov_param.is_test_model) {
-		g_aov_param.vc.dest_cnt = 1;
-		g_aov_param.vc.dest[0].mux = 5;
-		g_aov_param.vc.dest[0].mux_vr = 33;
-		g_aov_param.vc.dest[0].cam = 33;
-		g_aov_param.vc.pixel_mode = 3;
-		g_aov_param.camtg = 33;
 	}
 
 	if (aov_seninf_param != NULL) {
