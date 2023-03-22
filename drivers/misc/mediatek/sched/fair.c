@@ -1521,18 +1521,21 @@ void mtk_sched_newidle_balance(void *data, struct rq *this_rq, struct rq_flags *
 		if (src_rq->misfit_task_load > misfit_load &&
 			capacity_orig_of(this_cpu) > capacity_orig_of(cpu)) {
 			p = src_rq->curr;
-			compute_effective_softmask(p, &latency_sensitive, &effective_softmask);
-			if (p && p->policy == SCHED_NORMAL &&
-				cpumask_test_cpu(this_cpu, p->cpus_ptr) &&
-				!(latency_sensitive &&
-				!cpumask_test_cpu(this_cpu, &effective_softmask))) {
+			if (p) {
+				compute_effective_softmask(p, &latency_sensitive,
+							&effective_softmask);
+				if (p->policy == SCHED_NORMAL &&
+					cpumask_test_cpu(this_cpu, p->cpus_ptr) &&
+					!(latency_sensitive &&
+					!cpumask_test_cpu(this_cpu, &effective_softmask))) {
 
-				misfit_task_rq = src_rq;
-				misfit_load = src_rq->misfit_task_load;
-				if (best_running_task)
-					put_task_struct(best_running_task);
-				best_running_task = p;
-				get_task_struct(best_running_task);
+					misfit_task_rq = src_rq;
+					misfit_load = src_rq->misfit_task_load;
+					if (best_running_task)
+						put_task_struct(best_running_task);
+					best_running_task = p;
+					get_task_struct(best_running_task);
+				}
 			}
 			p = NULL;
 		}
