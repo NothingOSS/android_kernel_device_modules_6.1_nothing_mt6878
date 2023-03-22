@@ -982,13 +982,34 @@ static int mtk_smmu_setup_irqs(struct arm_smmu_device *smmu, bool enable)
 	return 0;
 }
 
-static inline void mtk_smmu_irq_setup(struct mtk_smmu_data *data,
-				      unsigned long enable)
+static int mtk_smmu_sec_setup_irqs(struct arm_smmu_device *smmu, bool enable)
+{
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+	u32 smmu_type = data->plat_data->smmu_type;
+	int ret = 0;
+
+	if (!MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_SEC_EN))
+		return 0;
+
+#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
+	/* enable or disable secure interrupt */
+	ret = mtk_smmu_sec_irq_setup(smmu_type, enable);
+	if (ret) {
+		dev_info(smmu->dev, "[%s] Enable:%d IRQs failed\n", __func__, enable);
+		return ret;
+	}
+#endif
+
+	return 0;
+}
+
+static inline void mtk_smmu_irq_setup(struct mtk_smmu_data *data, bool enable)
 {
 	struct arm_smmu_device *smmu = &data->smmu;
 
 	mtk_smmu_power_get(smmu);
 	mtk_smmu_setup_irqs(smmu, enable);
+	mtk_smmu_sec_setup_irqs(smmu, enable);
 	mtk_smmu_power_put(smmu);
 }
 
@@ -999,7 +1020,7 @@ static void mtk_smmu_irq_restart(struct timer_list *t)
 	pr_info("[%s] smmu:%s\n", __func__,
 		get_smmu_name(data->plat_data->smmu_type));
 
-	mtk_smmu_irq_setup(data, 1);
+	mtk_smmu_irq_setup(data, true);
 
 #ifdef MTK_SMMU_DEBUG
 	mtk_iommu_debug_reset();
@@ -1024,7 +1045,7 @@ static int mtk_smmu_irq_pause(struct mtk_smmu_data *data, int delay)
 	pr_info("[%s] delay:%d\n", __func__, delay);
 
 	/* disable all intr */
-	mtk_smmu_irq_setup(data, 0);
+	mtk_smmu_irq_setup(data, false);
 
 	/* delay seconds */
 	data->irq_pause_timer.expires = jiffies + delay * HZ;
@@ -1102,8 +1123,10 @@ static int mtk_smmu_irq_handler(int irq, void *dev)
 			__func__, irq, gerror, gerrorn, active);
 
 		/* try to secure interrupt process which maybe trigger by secure */
-		if (mtk_smmu_sec_irq_process(irq, dev) == IRQ_HANDLED)
+		if (mtk_smmu_sec_irq_process(irq, dev) == IRQ_HANDLED) {
+			mtk_smmu_irq_record(data);
 			return IRQ_HANDLED;
+		}
 	} else {
 		pr_info("[%s] irq:0x%x, gerror:0x%x, gerrorn:0x%x, active:0x%x\n",
 			__func__, irq, gerror, gerrorn, active);
