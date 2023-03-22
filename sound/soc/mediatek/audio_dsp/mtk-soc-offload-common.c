@@ -917,7 +917,8 @@ static int mtk_compr_offload_pointer(struct snd_soc_component *component,
 		return 0;
 	}
 
-	if (afe_offload_block.state == OFFLOAD_STATE_RUNNING)
+	if (afe_offload_block.state == OFFLOAD_STATE_RUNNING ||
+	    afe_offload_block.state == OFFLOAD_STATE_DRAIN)
 		offloadservice_tswait(OFFLOAD_PCMCONSUMED);
 
 	if (!afe_offload_service.needdata) {
@@ -950,12 +951,12 @@ static int mtk_compr_offload_pointer(struct snd_soc_component *component,
 		if ((afe_offload_block.time_pcm_delay_ms > 0) &&
 		    (afe_offload_block.time_pcm_delay_ms < 100) &&
 		    (afe_offload_block.copied_total > 0)) {
-			pcm_compensate = afe_offload_block.samplerate *
+			pcm_compensate = afe_offload_codec_info.target_samplerate *
 					 afe_offload_block.time_pcm_delay_ms / 1000;
 		}
 	}
-	tstamp->pcm_io_frames = (afe_offload_block.copied_total >> 2)
-				+ pcm_compensate; /* DSP return 16bit data */
+	tstamp->pcm_io_frames = (afe_offload_block.copied_total >> 3)
+				+ pcm_compensate; /* DSP return 32bit data */
 	tstamp->pcm_io_frames = tstamp->pcm_io_frames&0Xffffff80;
 
 	return ret;
