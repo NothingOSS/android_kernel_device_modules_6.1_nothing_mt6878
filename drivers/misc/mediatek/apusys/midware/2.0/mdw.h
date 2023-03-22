@@ -341,6 +341,9 @@ struct mdw_cmd {
 	struct dma_fence *wait_fence;
 
 	void *tbl_kva;
+	/* history params */
+	uint32_t inference_time;
+	uint32_t tolerance_time;
 };
 
 struct mdw_dev_func {

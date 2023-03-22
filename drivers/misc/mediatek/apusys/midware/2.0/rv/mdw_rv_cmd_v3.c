@@ -35,6 +35,9 @@ struct mdw_rv_msg_cmd {
 	uint32_t exec_infos_offset;
 	uint32_t num_links;
 	uint32_t link_offset;
+	/* history params */
+	uint32_t inference_time;
+	uint32_t tolerance_time;
 } __packed;
 
 struct mdw_rv_msg_sc {
@@ -54,9 +57,12 @@ struct mdw_rv_msg_sc {
 	uint32_t bw;
 	uint32_t pack_id;
 	uint32_t affinity;
+	uint32_t trigger_type;
 	/* cmdbufs info */
 	uint32_t cmdbuf_start_idx;
 	uint32_t num_cmdbufs;
+	/* history info */
+	uint32_t avg_ip_time;
 } __packed;
 
 struct mdw_rv_msg_cb {
@@ -100,6 +106,8 @@ static void mdw_rv_cmd_print(struct mdw_rv_msg_cmd *rc)
 	mdw_cmd_debug(" exec_infos_offset = 0x%x\n", rc->exec_infos_offset);
 	mdw_cmd_debug(" num_links = %u\n", rc->num_links);
 	mdw_cmd_debug(" link_offset = 0x%x\n", rc->link_offset);
+	mdw_cmd_debug(" inference_time = %u\n", rc->inference_time);
+	mdw_cmd_debug(" tolerance_time = %u\n", rc->tolerance_time);
 	mdw_cmd_debug("-------------------------\n");
 }
 
@@ -136,8 +144,10 @@ static void mdw_rv_sc_print(struct mdw_rv_msg_sc *rsc,
 	mdw_cmd_debug(" ip_time = %u\n", rsc->ip_time);
 	mdw_cmd_debug(" pack_id = %u\n", rsc->pack_id);
 	mdw_cmd_debug(" affinity = 0x%x\n", rsc->affinity);
+	mdw_cmd_debug(" trigger_type = %u\n", rsc->trigger_type);
 	mdw_cmd_debug(" cmdbuf_start_idx = %u\n", rsc->cmdbuf_start_idx);
 	mdw_cmd_debug(" num_cmdbufs = %u\n", rsc->num_cmdbufs);
+	mdw_cmd_debug(" avg_ip_time = %u\n", rsc->avg_ip_time);
 	mdw_cmd_debug("-------------------------\n");
 }
 
@@ -265,6 +275,8 @@ static struct mdw_rv_cmd *mdw_rv_cmd_create(struct mdw_fpriv *mpriv,
 	rmc->exec_infos_offset = exec_infos_ofs;
 	rmc->num_links = c->num_links;
 	rmc->link_offset = link_ofs;
+	rmc->inference_time = 0;
+	rmc->tolerance_time = 0;
 	mdw_rv_cmd_print(rmc);
 
 	/* copy links */
@@ -299,6 +311,8 @@ static struct mdw_rv_cmd *mdw_rv_cmd_create(struct mdw_fpriv *mpriv,
 		rmsc[i].affinity = c->subcmds[i].affinity;
 		rmsc[i].num_cmdbufs = c->subcmds[i].num_cmdbufs;
 		rmsc[i].cmdbuf_start_idx = acc_cb;
+		rmsc[i].trigger_type = 0;
+		rmsc[i].avg_ip_time = 0;
 		mdw_rv_sc_print(&rmsc[i], rmc->cmd_id, i);
 
 		for (j = 0; j < rmsc[i].num_cmdbufs; j++) {
@@ -331,6 +345,9 @@ reuse:
 	/* copy adj matrix */
 	memcpy((void *)rmc + rmc->adj_matrix_offset, c->adj_matrix,
 		c->num_subcmds * c->num_subcmds * sizeof(uint8_t));
+
+	/* clear einfos */
+	memset(c->einfos, 0, c->exec_infos->size);
 
 	/* clear exec ret */
 	c->einfos->c.ret = 0;
