@@ -359,10 +359,13 @@ static int mtk_disp_pq_wait_irq(struct drm_device *dev)
 	int ret = 0;
 
 	if (atomic_read(&g_pq_get_irq) == 0) {
-		DDPDBG("%s: wait_event_interruptible ++ ", __func__);
+		DDPDBG("%s: wait_event_interruptible ++\n", __func__);
 		ret = wait_event_interruptible(g_pq_get_irq_wq,
 			(atomic_read(&g_pq_get_irq) == 1) || (atomic_read(&g_pq_get_irq) == 2));
-		DDPDBG("%s: wait_event_interruptible -- ", __func__);
+		if (ret >= 0)
+			DDPDBG("%s: wait_event_interruptible --\n", __func__);
+		else
+			DDPDBG("%s: interrupted unexpected\n", __func__);
 	} else {
 		DDPDBG("%s: irq_status = %d\n", __func__, atomic_read(&g_pq_get_irq));
 	}
