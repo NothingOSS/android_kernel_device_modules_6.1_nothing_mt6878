@@ -46,12 +46,11 @@ static void spm_resource_req_timer_fn(struct timer_list *data)
 		"apu",
 		"spm"
 	};
-	unsigned int subsys_req[SUBSYS_REQ_MAX];
+	unsigned int subsys_req[SUBSYS_REQ_MAX] = {0};
 
 	for (i = 0; i < lpm_subsys_req_num; i++) {
 		for (j = 0; j < SUBSYS_REQ_MAX; j++) {
 			if (!strcmp(subsys_req_name[j], lpm_subsys_req[i].name)) {
-				subsys_req[j] = 0;
 				if (lpm_subsys_req[i].req_addr1)
 					subsys_req[j] =
 						!!(plat_mmio_read(lpm_subsys_req[i].req_addr1) &
