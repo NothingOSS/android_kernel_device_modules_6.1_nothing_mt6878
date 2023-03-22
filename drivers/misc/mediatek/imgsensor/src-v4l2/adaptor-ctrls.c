@@ -1256,6 +1256,7 @@ static int imgsensor_set_ctrl(struct v4l2_ctrl *ctrl)
 			/* update timeout value upon seamless switch*/
 			ctx->exposure->val = info->ae_ctrl[0].exposure.arr[0];
 			ctx->shutter_for_timeout = info->ae_ctrl[0].exposure.arr[0];
+			ctx->is_sensor_scenario_inited = 1;
 			if (ctx->cur_mode->fine_intg_line)
 				ctx->shutter_for_timeout /= 1000;
 
