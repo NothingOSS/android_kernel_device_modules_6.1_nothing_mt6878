@@ -22,7 +22,6 @@
 #include "vcp_mbox_layout.h"
 #include "vcp.h"
 
-#define DRAM_BUF_LEN			(1 * 1024 * 1024)
 #define VCP_TIMER_TIMEOUT	        (1 * HZ) /* 1 seconds*/
 #define ROUNDUP(a, b)		        (((a) + ((b)-1)) & ~((b)-1))
 #define PLT_LOG_ENABLE              0x504C5402 /*magic*/
@@ -122,6 +121,11 @@ static struct mutex vcp_logger_mutex;
 
 /* ipi message buffer */
 struct vcp_logger_ctrl_msg msg_vcp_logger_ctrl;
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT)
+/* vsi buffer */
+static unsigned int vsi_r_pos;
+#endif
 
 /*
  * get log from vcp when received a buf full notify
@@ -246,6 +250,8 @@ ssize_t vcp_A_log_read(char __user *data, size_t len)
 	char *buf;
 	unsigned int retrytimes = VCP_IPI_RETRY_TIMES;
 	struct vcp_logger_ctrl_msg msg;
+	char *vsi_buf;
+	unsigned int vsi_len;
 	int ret;
 	int i;
 
@@ -259,11 +265,31 @@ ssize_t vcp_A_log_read(char __user *data, size_t len)
 	r_pos = VCP_A_buf_info->r_pos;
 	w_pos = VCP_A_buf_info->w_pos;
 
-	pr_debug("[VCP] r %x w %x read log buff size:%d get size: %zu\n",
-		r_pos, w_pos, VCP_A_log_ctl->buff_size, len);
+	pr_debug("[VCP] r %x w %x read log buff size:%d get size: %zu vsi_r_pos:%u\n",
+		r_pos, w_pos, VCP_A_log_ctl->buff_size, len, vsi_r_pos);
 
 	if (strcmp(current->comm, "mobile_log_d.rd") != 0) {
-		if (log_ctl_debug) {
+
+		vsi_buf = (char *)vcp_get_reserve_mem_virt(VDEC_MEM_ID);
+		vsi_len = (unsigned int)vcp_get_reserve_mem_size(VDEC_MEM_ID) +
+				  (unsigned int)vcp_get_reserve_mem_size(VENC_MEM_ID);
+
+		if (vsi_r_pos < vsi_len) {
+			if (vsi_r_pos + len > vsi_len)
+				datalen = vsi_len - vsi_r_pos;
+			else
+				datalen = len;
+
+			buf = vsi_buf + vsi_r_pos;
+
+			if (copy_to_user(data, buf, datalen))
+				pr_debug("[VCP] vsi copy to user buf failed..\n");
+
+			vsi_r_pos += datalen;
+			goto error;
+		}
+
+		if (!log_ctl_debug) {
 			i = 0;
 			while (!mutex_trylock(&vcp_pw_clk_mutex)) {
 				i += 5;
@@ -293,15 +319,21 @@ ssize_t vcp_A_log_read(char __user *data, size_t len)
 				pr_notice("[VCP] %s not ready\n", __func__);
 			}
 			/* dump full logger buffer start from w_pos + 1 */
-			r_pos_debug = (w_pos >= DRAM_BUF_LEN) ?  0 : (w_pos+1);
-			log_ctl_debug = 0;
+			r_pos_debug = (w_pos >= DRAM_LOG_BUF_LEN) ?  0 : (w_pos+1);
+			log_ctl_debug = 1;
 		}
 
-		if (r_pos_debug == w_pos)
+		pr_debug("[VCP] %s r_pos_debug:%x\n", __func__, r_pos_debug);
+
+		/* log read done, reset vsi_r_pos and log_ctl_debug for next read */
+		if (r_pos_debug == w_pos) {
+			vsi_r_pos = 0;
+			log_ctl_debug = 0;
 			goto error;
+		}
 
 		if (r_pos_debug > w_pos)
-			datalen = DRAM_BUF_LEN - r_pos_debug; /* not wrap */
+			datalen = DRAM_LOG_BUF_LEN - r_pos_debug; /* not wrap */
 		else
 			datalen = w_pos - r_pos_debug;
 
@@ -315,17 +347,17 @@ ssize_t vcp_A_log_read(char __user *data, size_t len)
 			pr_debug("[VCP] copy to user buf failed..\n");
 
 		r_pos_debug += datalen;
-		if (r_pos_debug >= DRAM_BUF_LEN)
-			r_pos_debug -= DRAM_BUF_LEN;
+		if (r_pos_debug >= DRAM_LOG_BUF_LEN)
+			r_pos_debug -= DRAM_LOG_BUF_LEN;
 
 		goto error;
 	}
 
-	if (r_pos == w_pos || (r_pos == 0 && w_pos == DRAM_BUF_LEN))
+	if (r_pos == w_pos || (r_pos == 0 && w_pos == DRAM_LOG_BUF_LEN))
 		goto error;
 
 	if (r_pos > w_pos)
-		datalen = DRAM_BUF_LEN - r_pos; /* not wrap */
+		datalen = DRAM_LOG_BUF_LEN - r_pos; /* not wrap */
 	else
 		datalen = w_pos - r_pos;
 
@@ -333,11 +365,9 @@ ssize_t vcp_A_log_read(char __user *data, size_t len)
 		datalen = len;
 
 	/*debug for logger pos fail*/
-	r_pos_debug = r_pos;
-	log_ctl_debug = VCP_A_log_ctl->buff_ofs;
-	if (r_pos >= DRAM_BUF_LEN) {
-		pr_notice("[VCP] %s(): r_pos >= DRAM_BUF_LEN,%x,%x\n",
-			__func__, r_pos_debug, log_ctl_debug);
+	if (r_pos >= DRAM_LOG_BUF_LEN) {
+		pr_notice("[VCP] %s(): r_pos >= DRAM_LOG_BUF_LEN,%x,%x\n",
+			__func__, r_pos, DRAM_LOG_BUF_LEN);
 		datalen = 0;
 		goto error;
 	}
@@ -350,8 +380,8 @@ ssize_t vcp_A_log_read(char __user *data, size_t len)
 		pr_debug("[VCP] copy to user buf failed..\n");
 
 	r_pos += datalen;
-	if (r_pos >= DRAM_BUF_LEN)
-		r_pos -= DRAM_BUF_LEN;
+	if (r_pos >= DRAM_LOG_BUF_LEN)
+		r_pos -= DRAM_LOG_BUF_LEN;
 
 	VCP_A_buf_info->r_pos = r_pos;
 
@@ -364,7 +394,7 @@ error:
 unsigned int vcp_A_log_poll(void)
 {
 	if (VCP_A_buf_info->r_pos != VCP_A_buf_info->w_pos) {
-		if (VCP_A_buf_info->r_pos == 0 && VCP_A_buf_info->w_pos == DRAM_BUF_LEN)
+		if (VCP_A_buf_info->r_pos == 0 && VCP_A_buf_info->w_pos == DRAM_LOG_BUF_LEN)
 			return 0;
 		return POLLIN | POLLRDNORM;
 	}
@@ -433,6 +463,10 @@ static unsigned int vcp_A_log_enable_set(unsigned int enable)
 			vcp_A_last_log = vmalloc(last_log_info.vcp_log_buf_maxlen + 1);
 		}
 		mutex_unlock(&vcp_logger_mutex);
+
+		/* reset vsi read position */
+		vsi_r_pos = 0;
+		log_ctl_debug = 0;
 
 		/*
 		 *send ipi to invoke vcp logger
@@ -644,7 +678,7 @@ static ssize_t vcp_A_mobile_log_UT_show(struct device *kobj,
 		goto error;
 
 	if (r_pos > w_pos)
-		datalen = DRAM_BUF_LEN - r_pos; /* not wrap */
+		datalen = DRAM_LOG_BUF_LEN - r_pos; /* not wrap */
 	else
 		datalen = w_pos - r_pos;
 
@@ -659,8 +693,8 @@ static ssize_t vcp_A_mobile_log_UT_show(struct device *kobj,
 	memcpy_fromio(buf, logger_buf, len);
 
 	r_pos += datalen;
-	if (r_pos >= DRAM_BUF_LEN)
-		r_pos -= DRAM_BUF_LEN;
+	if (r_pos >= DRAM_LOG_BUF_LEN)
+		r_pos -= DRAM_LOG_BUF_LEN;
 
 	VCP_A_buf_info->r_pos = r_pos;
 
@@ -895,7 +929,7 @@ int vcp_logger_init(phys_addr_t start, phys_addr_t limit)
 	last_ofs += sizeof(*VCP_A_buf_info);
 	last_ofs = ROUNDUP(last_ofs, 4);
 	VCP_A_log_ctl->buff_ofs = last_ofs;
-	VCP_A_log_ctl->buff_size = DRAM_BUF_LEN;
+	VCP_A_log_ctl->buff_size = DRAM_LOG_BUF_LEN;
 
 	VCP_A_buf_info = (struct buffer_info_s *)
 		(((unsigned char *) VCP_A_log_ctl) + VCP_A_log_ctl->info_ofs);
@@ -1071,8 +1105,8 @@ void vcp_crash_log_move_to_buf(enum vcp_core_id vcp_id)
 		/* get buffer w pos */
 		w_pos = VCP_A_buf_info->w_pos;
 
-		if (w_pos >= DRAM_BUF_LEN) {
-			pr_notice("[VCP] %s(): w_pos >= DRAM_BUF_LEN, w_pos=%u",
+		if (w_pos >= DRAM_LOG_BUF_LEN) {
+			pr_notice("[VCP] %s(): w_pos >= DRAM_LOG_BUF_LEN, w_pos=%u",
 				__func__, w_pos);
 			goto exit;
 		}
@@ -1095,7 +1129,7 @@ void vcp_crash_log_move_to_buf(enum vcp_core_id vcp_id)
 			pos++;
 			w_pos++;
 			dram_logger_buf++;
-			if (w_pos >= DRAM_BUF_LEN) {
+			if (w_pos >= DRAM_LOG_BUF_LEN) {
 				/* warp */
 				pr_notice("[VCP] %s: dram warp\n", __func__);
 				w_pos = 0;
