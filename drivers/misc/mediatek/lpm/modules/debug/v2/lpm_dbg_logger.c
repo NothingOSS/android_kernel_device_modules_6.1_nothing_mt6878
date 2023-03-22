@@ -299,7 +299,7 @@ static u32 is_blocked_cnt;
 	char log_buf[LOG_BUF_SIZE] = { 0 };
 	int log_size = 0, i;
 	u32 is_no_blocked = 0;
-	u32 req_sta_mix = 0, temp;
+	u32 req_sta_mix = 0, temp = 0;
 	struct spm_req_sta_list *sta_list;
 
 	sta_list = spm_get_req_sta_list();
@@ -375,7 +375,7 @@ static void lpm_check_cg_pll(void)
 				MT_LPM_SMC_ACT_GET, 0, 0);
 	if (block != 0) {
 		for (i = 0 ; i < spm_cond.pll_cnt ; i++) {
-			if (block & 1 << (spm_cond.pll_shift + i))
+			if (block & 1ULL << (spm_cond.pll_shift + i))
 				pr_info("suspend warning: pll: %s not closed\n"
 					, spm_cond.pll_str[i]);
 		}

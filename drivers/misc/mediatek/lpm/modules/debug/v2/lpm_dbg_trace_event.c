@@ -51,6 +51,7 @@ static void spm_resource_req_timer_fn(struct timer_list *data)
 	for (i = 0; i < lpm_subsys_req_num; i++) {
 		for (j = 0; j < SUBSYS_REQ_MAX; j++) {
 			if (!strcmp(subsys_req_name[j], lpm_subsys_req[i].name)) {
+				subsys_req[j] = 0;
 				if (lpm_subsys_req[i].req_addr1)
 					subsys_req[j] =
 						!!(plat_mmio_read(lpm_subsys_req[i].req_addr1) &
