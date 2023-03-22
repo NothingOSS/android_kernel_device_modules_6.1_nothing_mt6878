@@ -76,38 +76,42 @@ struct engine_callback {
 
 struct apply_cq_ref {
 	int cookie;
-	atomic_t cq_done_cnt;
-	atomic_t inner_cnt;
+
+	atomic_long_t cq_not_ready;
+	atomic_long_t inner_not_ready;
 };
 
 static inline void apply_cq_ref_reset(struct apply_cq_ref *ref)
 {
 	ref->cookie = -1;
-	atomic_set(&ref->cq_done_cnt, 0);
-	atomic_set(&ref->inner_cnt, 0);
+	atomic_long_set(&ref->cq_not_ready, 0);
+	atomic_long_set(&ref->inner_not_ready, 0);
 }
 
 static inline void apply_cq_ref_init(struct apply_cq_ref *ref,
-				     int cookie, int cnt)
+				     int cookie, unsigned long cq_engine)
 {
 	/* it's abnormal if cnt is not zero */
-	WARN_ON(atomic_read(&ref->cq_done_cnt));
+	WARN_ON(atomic_long_read(&ref->cq_not_ready));
 
 	ref->cookie = cookie;
-	atomic_set(&ref->cq_done_cnt, cnt);
-	atomic_set(&ref->inner_cnt, cnt);
+	atomic_long_set(&ref->cq_not_ready, cq_engine);
+	atomic_long_set(&ref->inner_not_ready, cq_engine);
 }
 
-static inline bool apply_cq_ref_handle_cq_done(struct apply_cq_ref *ref)
+static inline bool apply_cq_ref_handle_cq_done(struct apply_cq_ref *ref,
+					       long mask)
 {
-	return atomic_dec_and_test(&ref->cq_done_cnt);
+	return atomic_long_fetch_andnot(mask, &ref->cq_not_ready) == mask;
 }
 
 static inline bool apply_cq_ref_handle_sof(struct apply_cq_ref *ref,
+					   long mask,
 					   int inner_cookie)
 {
 	if (ref && ref->cookie == inner_cookie) {
-		atomic_dec(&ref->inner_cnt);
+
+		atomic_long_andnot(mask, &ref->inner_not_ready);
 		return 1;
 	}
 	return 0;
@@ -115,7 +119,7 @@ static inline bool apply_cq_ref_handle_sof(struct apply_cq_ref *ref,
 
 static inline bool apply_cq_ref_is_to_inner(struct apply_cq_ref *ref)
 {
-	return  atomic_read(&ref->inner_cnt) == 0;
+	return  atomic_long_read(&ref->inner_not_ready) == 0;
 }
 
 
@@ -128,14 +132,16 @@ static inline int assign_apply_cq_ref(struct apply_cq_ref **ref,
 	return 0;
 }
 
-static inline bool engine_handle_cq_done(struct apply_cq_ref **ref)
+static inline bool engine_handle_cq_done(struct apply_cq_ref **ref,
+					 long mask)
 {
-	return apply_cq_ref_handle_cq_done(*ref);
+	return apply_cq_ref_handle_cq_done(*ref, mask);
 }
 
-static inline void engine_handle_sof(struct apply_cq_ref **ref, int inner_cookie)
+static inline void engine_handle_sof(struct apply_cq_ref **ref,
+				     long mask, int inner_cookie)
 {
-	bool reset_ref = apply_cq_ref_handle_sof(*ref, inner_cookie);
+	bool reset_ref = apply_cq_ref_handle_sof(*ref, mask, inner_cookie);
 
 	if (reset_ref)
 		*ref = NULL;

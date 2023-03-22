@@ -1298,7 +1298,9 @@ static irqreturn_t mtk_irq_camsv_sof(int irq, void *data)
 		sv_dev->tg_cnt = tg_cnt;
 
 	if (irq_info.sof_tags & sv_dev->first_tag)
-		engine_handle_sof(&sv_dev->cq_ref, irq_info.frame_idx_inner);
+		engine_handle_sof(&sv_dev->cq_ref,
+				  bit_map_bit(MAP_HW_CAMSV, sv_dev->id),
+				  irq_info.frame_idx_inner);
 
 	if (push_msgfifo(sv_dev, &irq_info) == 0)
 		wake_thread = true;
@@ -1413,7 +1415,9 @@ static irqreturn_t mtk_irq_camsv_cq_done(int irq, void *data)
 
 	if (cq_done_status & CAMSVCQTOP_SCQ_SUB_THR_DONE) {
 		if (sv_dev->cq_ref != NULL) {
-			if (engine_handle_cq_done(&sv_dev->cq_ref)) {
+			long mask = bit_map_bit(MAP_HW_CAMSV, sv_dev->id);
+
+			if (engine_handle_cq_done(&sv_dev->cq_ref, mask)) {
 				irq_info.irq_type = (1 << CAMSYS_IRQ_SETTING_DONE);
 				irq_info.ts_ns = ktime_get_boottime_ns();
 				irq_info.frame_idx = frm_seq_no;

@@ -1245,13 +1245,17 @@ static irqreturn_t mtk_irq_mraw(int irq, void *data)
 		dev_dbg(dev, "sof cnt:%d\n", mraw_dev->sof_count);
 
 		irq_info.fbc_empty = mtk_cam_mraw_is_zero_fbc_cnt(mraw_dev);
-		engine_handle_sof(&mraw_dev->cq_ref, irq_info.frame_idx_inner);
+		engine_handle_sof(&mraw_dev->cq_ref,
+				  bit_map_bit(MAP_HW_MRAW, mraw_dev->id),
+				  irq_info.frame_idx_inner);
 	}
 
 	/* CQ done */
 	if (irq_status6 & MRAWCTL_CQ_SUB_THR0_DONE_ST) {
 		if (mraw_dev->cq_ref != NULL) {
-			if (engine_handle_cq_done(&mraw_dev->cq_ref))
+			long mask = bit_map_bit(MAP_HW_MRAW, mraw_dev->id);
+
+			if (engine_handle_cq_done(&mraw_dev->cq_ref, mask))
 				irq_info.irq_type |= 1 << CAMSYS_IRQ_SETTING_DONE;
 		}
 		dev_dbg(dev, "CQ done:%d\n", mraw_dev->sof_count);

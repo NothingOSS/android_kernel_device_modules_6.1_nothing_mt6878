@@ -495,7 +495,9 @@ static inline void trigger_rawi(struct mtk_raw_device *dev, u32 val)
 	cookie = readl(dev->base_inner + REG_FRAME_SEQ_NUM);
 	engine_fsm_sof(&dev->fsm, cookie, 0, NULL);
 
-	engine_handle_sof(&dev->cq_ref, cookie);
+	engine_handle_sof(&dev->cq_ref,
+			  bit_map_bit(MAP_HW_RAW, dev->id),
+			  cookie);
 
 	dev_info(dev->dev, "%s: 0x%x\n", __func__, val);
 	writel(val, dev->base + REG_CAMCTL_RAWI_TRIG);
@@ -868,7 +870,9 @@ static irqreturn_t mtk_irq_raw(int irq, void *data)
 	/* CQ done */
 	if (cq_done_status & FBIT(CAMCTL_CQ_THR0_DONE_ST)) {
 		if (raw_dev->cq_ref != NULL) {
-			if (engine_handle_cq_done(&raw_dev->cq_ref))
+			long mask = bit_map_bit(MAP_HW_RAW, raw_dev->id);
+
+			if (engine_handle_cq_done(&raw_dev->cq_ref, mask))
 				irq_info.irq_type |= 1 << CAMSYS_IRQ_SETTING_DONE;
 		}
 	}
@@ -897,7 +901,9 @@ static irqreturn_t mtk_irq_raw(int irq, void *data)
 
 		irq_info.fbc_empty = is_fbc_empty(raw_dev);
 
-		engine_handle_sof(&raw_dev->cq_ref, irq_info.frame_idx_inner);
+		engine_handle_sof(&raw_dev->cq_ref,
+				  bit_map_bit(MAP_HW_RAW, raw_dev->id),
+				  irq_info.frame_idx_inner);
 	}
 
 	/* DCIF main sof */

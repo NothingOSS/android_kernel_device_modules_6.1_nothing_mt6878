@@ -424,6 +424,7 @@ static void ctrl_vsync_preprocess(struct mtk_cam_ctrl *ctrl,
 {
 	bool hint_inner_err = 0;
 	int cookie;
+	long inner_not_ready;
 
 	if (vsync_update(&ctrl->vsync_col, engine_type, engine_id, vsync_res))
 		return;
@@ -449,6 +450,8 @@ static void ctrl_vsync_preprocess(struct mtk_cam_ctrl *ctrl,
 			} else {
 				hint_inner_err = 1;
 				cookie = cq_ref->cookie;
+				inner_not_ready =
+					atomic_long_read(&cq_ref->inner_not_ready);
 			}
 		}
 	}
@@ -459,7 +462,8 @@ static void ctrl_vsync_preprocess(struct mtk_cam_ctrl *ctrl,
 		wake_up(&ctrl->event_wq);
 
 	if (hint_inner_err)
-		pr_info("%s: inner not updated to 0x%x\n", __func__, cookie);
+		pr_info("%s: warn. inner not updated to 0x%x, engine not ready: 0x%lx\n",
+			__func__, cookie, inner_not_ready);
 }
 
 static int frame_no_to_fs_req_no(struct mtk_cam_ctrl *ctrl, int frame_no,
