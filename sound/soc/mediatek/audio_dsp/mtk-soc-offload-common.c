@@ -463,6 +463,7 @@ static int mtk_compr_offload_free(struct snd_soc_component *component,
 	if (afe_offload_service.vp_sync_support && afe_offload_codec_info.has_video) {
 		/* del_timer_sync will hold timer spinlock, cannot lock */
 		spin_lock_irqsave(&afe_offload_service.timer_spinlock, flags);
+		afe_offload_codec_info.has_video = false;
 		afe_offload_service.timer_init = false;
 		spin_unlock_irqrestore(&afe_offload_service.timer_spinlock, flags);
 		del_timer_sync(&afe_offload_service.offload_timer);
@@ -471,7 +472,6 @@ static int mtk_compr_offload_free(struct snd_soc_component *component,
 	if (dsp)
 		mtk_adsp_genpool_free_sharemem_ring(&dsp->dsp_mem[ID], ID);
 	afe_offload_block.state = OFFLOAD_STATE_INIT;
-	afe_offload_codec_info.has_video = false;
 #ifdef use_wake_lock
 	mtk_compr_offload_int_wakelock(false);
 #endif
