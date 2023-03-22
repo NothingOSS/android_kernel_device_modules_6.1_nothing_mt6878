@@ -23,10 +23,6 @@
 #include <thermal_interface.h>
 #endif
 
-#define CREATE_TRACE_POINTS
-#include <swpm_tracker_trace.h>
-/* EXPORT_TRACEPOINT_SYMBOL(swpm_power); */
-/* EXPORT_TRACEPOINT_SYMBOL(swpm_power_idx); */
 
 #include <mtk_swpm_common_sysfs.h>
 #include <mtk_swpm_sysfs.h>
@@ -34,17 +30,11 @@
 #include <swpm_module.h>
 #include <swpm_v6897.h>
 #include <swpm_v6897_ext.h>
+#include <swpm_v6897_subsys.h>
 
 /****************************************************************************
  *  Global Variables
  ****************************************************************************/
-struct power_rail_data swpm_power_rail[NR_POWER_RAIL] = {
-	[VPROC2] = {0, "VPROC2"},
-	[VPROC1] = {0, "VPROC1"},
-	[VGPU] = {0, "VGPU"},
-	[VCORE] = {0, "VCORE"},
-	[VDRAM] = {0, "VDRAM"},
-};
 struct share_wrap *wrap_d;
 
 /****************************************************************************
@@ -55,7 +45,6 @@ static void swpm_init_retry(struct work_struct *work);
 static struct workqueue_struct *swpm_init_retry_work_queue;
 DECLARE_WORK(swpm_init_retry_work, swpm_init_retry);
 
-static unsigned int swpm_log_mask = DEFAULT_LOG_MASK;
 static struct swpm_rec_data *swpm_info_ref;
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)
@@ -67,15 +56,6 @@ static unsigned long long rec_size;
 /****************************************************************************
  *  Static Function
  ****************************************************************************/
-static unsigned int swpm_get_avg_power(enum power_rail type)
-{
-	if (type >= NR_POWER_RAIL)
-		pr_notice("Invalid SWPM type = %d\n", type);
-
-	/* Remove the calculation of the power rail power and return 0 directly) */
-	return 0;
-}
-
 static void swpm_send_enable_ipi(unsigned int type, unsigned int enable)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && \
@@ -147,65 +127,13 @@ static void swpm_init_retry(struct work_struct *work)
 #endif
 }
 
-static char pwr_buf[POWER_CHAR_SIZE] = { 0 };
-#if SWPM_TEST
-static char idx_buf[POWER_INDEX_CHAR_SIZE] = { 0 };
-#endif
 static void swpm_log_loop(struct timer_list *t)
 {
-	char *ptr = pwr_buf;
-#if SWPM_TEST
-	char *idx_ptr = idx_buf;
-#endif
-	int i;
-
 	/* initialization retry */
 	if (swpm_init_retry_work_queue && !swpm_init_state)
 		queue_work(swpm_init_retry_work_queue, &swpm_init_retry_work);
 
-	for (i = 0; i < NR_POWER_RAIL; i++) {
-		if ((1 << i) & swpm_log_mask) {
-			ptr += scnprintf(ptr, 256, "%s/",
-					swpm_power_rail[i].name);
-		}
-	}
-	ptr--;
-	ptr += sprintf(ptr, " = ");
-
-	for (i = 0; i < NR_POWER_RAIL; i++) {
-		if ((1 << i) & swpm_log_mask) {
-			swpm_power_rail[i].avg_power =
-				swpm_get_avg_power((enum power_rail)i);
-			ptr += scnprintf(ptr, 256, "%d/",
-					swpm_power_rail[i].avg_power);
-		}
-	}
-	ptr--;
-	ptr += sprintf(ptr, " uA");
-
-#if SWPM_TEST
-	/* for LTR */
-	if (share_idx_ref && share_idx_ctrl) {
-		memset(idx_buf, 0, sizeof(char) * POWER_INDEX_CHAR_SIZE);
-		/* exclude window_cnt */
-		for (i = 0; i < idx_output_size; i++) {
-			idx_ptr += scnprintf(idx_ptr, POWER_INDEX_CHAR_SIZE,
-					    "%d,", *(idx_ref_uint_ptr+i));
-		}
-		idx_ptr--;
-		idx_ptr += scnprintf(idx_ptr, POWER_INDEX_CHAR_SIZE,
-				    " window_cnt = %d",
-				    share_idx_ref->window_cnt);
-
-		/* set share sram clear flag and release lock */
-		share_idx_ctrl->clear_flag = 1;
-
-		/* put power index data to ftrace */
-		trace_swpm_power_idx(idx_buf);
-	}
-	/* put power data to ftrace */
-	trace_swpm_power(pwr_buf);
-#endif
+	swpm_v6897_power_log();
 
 	swpm_call_event_notifier(SWPM_LOG_DATA_NOTIFY, NULL);
 

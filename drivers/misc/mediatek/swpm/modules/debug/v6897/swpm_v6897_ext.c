@@ -37,6 +37,9 @@ static DEFINE_SPINLOCK(swpm_sp_spinlock);
 /* share sram for extension index */
 static struct share_index_ext *share_idx_ref_ext;
 static struct share_ctrl_ext *share_idx_ctrl_ext;
+
+/* share sram for static data */
+static struct subsys_swpm_data *subsys_swpm_data_ptr;
 static struct mem_swpm_data *mem_swpm_data_ptr;
 static struct core_swpm_data *core_swpm_data_ptr;
 
@@ -122,6 +125,9 @@ static void swpm_sp_internal_update(void)
 				(((uint64_t) word_H << 32) | word_L) * 8;
 			}
 		}
+
+		swpm_v6897_sub_ext_update();
+
 		suspend_time.time_H = SUSPEND_SRAM.time_H;
 		suspend_time.time_L = SUSPEND_SRAM.time_L;
 		total_suspend_us +=
@@ -298,15 +304,21 @@ void swpm_v6897_ext_init(void)
 		share_idx_ctrl_ext =
 		(struct share_ctrl_ext *)
 		sspm_sbuf_get(wrap_d->share_ctrl_ext_addr);
-		mem_swpm_data_ptr =
-		(struct mem_swpm_data *)
-		sspm_sbuf_get(wrap_d->mem_swpm_data_addr);
-		core_swpm_data_ptr =
-		(struct core_swpm_data *)
-		sspm_sbuf_get(wrap_d->core_swpm_data_addr);
+		subsys_swpm_data_ptr =
+		(struct subsys_swpm_data *)
+		sspm_sbuf_get(wrap_d->subsys_swpm_data_addr);
 	} else {
 		share_idx_ref_ext = NULL;
 		share_idx_ctrl_ext = NULL;
+		subsys_swpm_data_ptr = NULL;
+	}
+
+	if (subsys_swpm_data_ptr) {
+		mem_swpm_data_ptr = (struct mem_swpm_data *)
+		sspm_sbuf_get(subsys_swpm_data_ptr->mem_swpm_data_addr);
+		core_swpm_data_ptr = (struct core_swpm_data *)
+		sspm_sbuf_get(subsys_swpm_data_ptr->core_swpm_data_addr);
+	} else {
 		mem_swpm_data_ptr = NULL;
 		core_swpm_data_ptr = NULL;
 	}
@@ -356,6 +368,8 @@ void swpm_v6897_ext_init(void)
 		}
 	}
 	total_suspend_us = 0;
+
+	swpm_v6897_sub_ext_init();
 
 #if SWPM_TEST
 	pr_notice("share_index_ext size = %zu bytes\n",

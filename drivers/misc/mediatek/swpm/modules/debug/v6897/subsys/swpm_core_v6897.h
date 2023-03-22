@@ -9,7 +9,7 @@
 #include <swpm_mem_v6897.h>
 
 #define MAX_APHY_CORE_PWR			(12)
-#define NR_CORE_VOLT				(5)
+#define NR_CORE_VOLT				(6)
 
 /* infra power state for core power */
 enum infra_power_state {
