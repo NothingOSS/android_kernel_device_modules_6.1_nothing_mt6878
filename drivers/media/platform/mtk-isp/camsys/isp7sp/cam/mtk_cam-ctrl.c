@@ -879,10 +879,11 @@ static void mtk_cam_ctrl_seamless_switch_flow(struct mtk_cam_job *job)
 		__func__, job->req_seq, job->frame_seq_no);
 
 	prev_seq = prev_frame_seq(job->frame_seq_no);
-
 	if (mtk_cam_ctrl_wait_event(ctrl, check_inner_within_tolerance,
 				    prev_seq, 1000))
 		goto SWITCH_FAILURE;
+
+	mtk_cam_job_update_clk_switching(job, 1);
 
 	/* note: apply cq first to avoid cq trig dly */
 	if (mtk_cam_job_manually_apply_isp_async(job))
@@ -903,9 +904,10 @@ static void mtk_cam_ctrl_seamless_switch_flow(struct mtk_cam_job *job)
 	call_jobop(job, apply_switch);
 	vsync_set_desired(&ctrl->vsync_col, _get_master_engines(job->used_engine));
 
-	/* TODO: for dvfs */
-	if (0 && mtk_cam_ctrl_wait_event(ctrl, check_done, prev_seq, 500))
+	if (mtk_cam_ctrl_wait_event(ctrl, check_done, prev_seq, 500))
 		goto SWITCH_FAILURE;
+
+	mtk_cam_job_update_clk_switching(job, 0);
 
 	dev_info(dev, "[%s] finish, used_engine:0x%x\n",
 		 __func__, job->used_engine);

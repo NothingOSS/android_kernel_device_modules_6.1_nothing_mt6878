@@ -494,4 +494,8 @@ static inline int mtk_cam_job_manually_apply_isp_async(struct mtk_cam_job *job)
 {
 	return mtk_cam_job_manually_apply_isp(job, 0);
 }
+
+int mtk_cam_job_update_clk(struct mtk_cam_job *job);
+int mtk_cam_job_update_clk_switching(struct mtk_cam_job *job, bool begin);
+
 #endif //__MTK_CAM_JOB_H

@@ -2298,7 +2298,7 @@ int mtk_cam_ctx_stream_off(struct mtk_cam_ctx *ctx)
 	ctx_stream_on_pipe_subdev(ctx, 0);
 
 	/* reset dvfs */
-	mtk_cam_dvfs_update(&ctx->cam->dvfs, ctx->stream_id, 0);
+	mtk_cam_dvfs_update(&ctx->cam->dvfs, ctx->stream_id, 0, 0);
 
 	return 0;
 }

@@ -28,8 +28,6 @@ MODULE_PARM_DESC(sv_pure_raw, "working fmt select: 0->bayer, 1->ufbc");
 
 
 /* forward declarations */
-static int apply_raw_target_clk(struct mtk_cam_ctx *ctx,
-				struct mtk_cam_request *req);
 static void reset_unused_io_of_ipi_frame(struct req_buffer_helper *helper);
 static int update_cq_buffer_to_ipi_frame(struct mtk_cam_pool_buffer *cq,
 					 struct mtkcam_ipi_frame_param *fp);
@@ -1248,15 +1246,12 @@ static int update_seninf_fmt(struct mtk_cam_job *job)
 static int
 _apply_switch(struct mtk_cam_job *job)
 {
-	struct mtk_cam_ctx *ctx = job->src_ctx;
-
 	switch (job->job_type) {
 	case JOB_TYPE_BASIC:
 	case JOB_TYPE_STAGGER:
 		update_seninf_fmt(job);
 		apply_cam_mux_switch_stagger(job);
 		apply_cam_switch_stagger(job);
-		apply_raw_target_clk(ctx, job->req);
 		break;
 	default:
 		pr_info("%s: job type %d not ready\n", __func__, job->job_type);
@@ -1661,24 +1656,6 @@ _compose_done(struct mtk_cam_job *job,
 		normal_dump_if_enable(job);
 }
 
-static int apply_raw_target_clk(struct mtk_cam_ctx *ctx,
-				struct mtk_cam_request *req)
-{
-	struct mtk_raw_request_data *raw_data;
-	struct mtk_cam_resource_driver *res;
-
-	if (!ctx->has_raw_subdev) {
-		pr_info("%s: warn. should not be called\n", __func__);
-		return -1;
-	}
-
-	raw_data = &req->raw_data[ctx->raw_subdev_idx];
-	res = &raw_data->ctrl.resource;
-
-	return mtk_cam_dvfs_update(&ctx->cam->dvfs, ctx->stream_id,
-				   res->clk_target);
-}
-
 static int job_dump_aa_info(struct mtk_cam_job *job, int engine_type)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
@@ -1765,7 +1742,7 @@ _job_pack_subsample(struct mtk_cam_job *job,
 	if (!ctx->not_first_job) {
 		ctx->not_first_job = true;
 
-		apply_raw_target_clk(ctx, job->req);
+		mtk_cam_job_update_clk(job);
 	}
 	ret = mtk_cam_job_fill_ipi_frame(job, job_helper);
 
@@ -1855,7 +1832,7 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 	if (!ctx->not_first_job) {
 		ctx->not_first_job = true;
 
-		apply_raw_target_clk(ctx, job->req);
+		mtk_cam_job_update_clk(job);
 	}
 	ret = mtk_cam_job_fill_ipi_frame(job, job_helper);
 	return ret;
@@ -2068,7 +2045,7 @@ _job_pack_mstream(struct mtk_cam_job *job,
 	if (!ctx->not_first_job) {
 		ctx->not_first_job = true;
 
-		apply_raw_target_clk(ctx, job->req);
+		mtk_cam_job_update_clk(job);
 	}
 
 	if (mtk_cam_job_fill_ipi_frame(job, job_helper))
@@ -2218,7 +2195,7 @@ _job_pack_normal(struct mtk_cam_job *job,
 
 		ctx->not_first_job = true;
 
-		apply_raw_target_clk(ctx, job->req);
+		mtk_cam_job_update_clk(job);
 	}
 	ret = mtk_cam_job_fill_ipi_frame(job, job_helper);
 
@@ -2274,7 +2251,7 @@ _job_pack_m2m(struct mtk_cam_job *job,
 
 		ctx->not_first_job = true;
 
-		apply_raw_target_clk(ctx, job->req);
+		mtk_cam_job_update_clk(job);
 	}
 	ret = mtk_cam_job_fill_ipi_frame(job, job_helper);
 
@@ -4442,4 +4419,56 @@ int mtk_cam_job_manually_apply_isp(struct mtk_cam_job *job, bool wait_completion
 	}
 
 	return 0;
+}
+
+static int job_fetch_freq(struct mtk_cam_job *job,
+			  unsigned int *freq_hz, bool *boostable)
+{
+	struct mtk_raw_ctrl_data *ctrl;
+	struct mtk_cam_resource_driver *res;
+
+	ctrl = get_raw_ctrl_data(job);
+	if (!ctrl) {
+		pr_info("%s: warn. should not be called\n", __func__);
+		return -1;
+	}
+
+	res = &ctrl->resource;
+
+	*freq_hz = res->clk_target;
+	/* boost isp clk during switching */
+	*boostable = res->user_data.raw_res.hw_mode == HW_MODE_DIRECT_COUPLED;
+
+	return 0;
+}
+
+int mtk_cam_job_update_clk(struct mtk_cam_job *job)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtk_cam_device *cam = ctx->cam;
+	unsigned int freq_hz;
+	bool boostable;
+
+	if (job_fetch_freq(job, &freq_hz, &boostable))
+		return -1;
+
+	return mtk_cam_dvfs_update(&cam->dvfs, ctx->stream_id,
+				   freq_hz, boostable);
+}
+
+int mtk_cam_job_update_clk_switching(struct mtk_cam_job *job, bool begin)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtk_cam_device *cam = ctx->cam;
+	unsigned int freq_hz;
+	bool boostable;
+
+	if (!begin)
+		return mtk_cam_dvfs_switch_end(&cam->dvfs, ctx->stream_id);
+
+	if (job_fetch_freq(job, &freq_hz, &boostable))
+		return -1;
+
+	return mtk_cam_dvfs_switch_begin(&cam->dvfs, ctx->stream_id,
+					 freq_hz, boostable);
 }

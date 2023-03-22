@@ -8,7 +8,6 @@
 
 #include <linux/clk.h>
 #include <linux/interconnect.h>
-#include <linux/spinlock_types.h>
 
 #include "mtk_cam-dvfs_qos_raw.h"
 #include "mtk_cam-dvfs_qos_sv.h"
@@ -29,9 +28,10 @@ struct mtk_camsys_dvfs {
 
 	struct clk *mmdvfs_clk;
 
-	spinlock_t lock;
 	int max_stream_num;
 	struct dvfs_stream_info *stream_infos;
+
+	struct mutex dvfs_lock;
 	int cur_opp_idx;
 };
 
@@ -41,8 +41,12 @@ int mtk_cam_dvfs_remove(struct mtk_camsys_dvfs *dvfs);
 
 void mtk_cam_dvfs_reset_runtime_info(struct mtk_camsys_dvfs *dvfs);
 
-int mtk_cam_dvfs_update(struct mtk_camsys_dvfs *dvfs,
-			int stream_id, unsigned int target_freq_hz);
+int mtk_cam_dvfs_update(struct mtk_camsys_dvfs *dvfs, int stream_id,
+			unsigned int target_freq_hz, bool boostable);
+
+int mtk_cam_dvfs_switch_begin(struct mtk_camsys_dvfs *dvfs, int stream_id,
+			      unsigned int target_freq_hz, bool boostable);
+int mtk_cam_dvfs_switch_end(struct mtk_camsys_dvfs *dvfs, int stream_id);
 
 static inline
 int mtk_cam_dvfs_get_opp_table(struct mtk_camsys_dvfs *dvfs,

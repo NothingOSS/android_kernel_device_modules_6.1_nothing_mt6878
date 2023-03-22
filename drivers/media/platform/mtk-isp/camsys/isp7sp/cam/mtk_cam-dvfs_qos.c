@@ -23,7 +23,11 @@
 #define ICCPATH_NAME_SIZE 32
 
 struct dvfs_stream_info {
-	unsigned int freq_hz;
+	int opp_idx;
+	bool boostable;
+
+	int switching_opp_idx;
+	bool switching_boostable;
 };
 
 static int mtk_cam_build_freq_table(struct device *dev,
@@ -95,8 +99,6 @@ int mtk_cam_dvfs_probe(struct device *dev,
 		dev_info(dev, "failed to get mmdvfs_clk\n");
 	}
 
-	spin_lock_init(&dvfs->lock);
-
 	return 0;
 
 opp_default_table:
@@ -122,13 +124,13 @@ void mtk_cam_dvfs_reset_runtime_info(struct mtk_camsys_dvfs *dvfs)
 	       dvfs->max_stream_num * sizeof(*dvfs->stream_infos));
 }
 
-static int mtk_cam_dvfs_get_clkidx(struct mtk_camsys_dvfs *dvfs,
-				   unsigned int freq)
+static int freq_to_oppidx(struct mtk_camsys_dvfs *dvfs,
+			  unsigned int freq)
 {
 	int i;
 
 	for (i = 0; i < dvfs->opp_num; i++)
-		if (freq == dvfs->opp[i].freq_hz)
+		if (freq <= dvfs->opp[i].freq_hz)
 			break;
 
 	if (i == dvfs->opp_num) {
@@ -138,33 +140,8 @@ static int mtk_cam_dvfs_get_clkidx(struct mtk_camsys_dvfs *dvfs,
 	return i;
 }
 
-static bool to_update_stream_opp_idx(struct mtk_camsys_dvfs *dvfs,
-				     int stream_id, unsigned int freq,
-				     unsigned int *max_freq)
-{
-	int i;
-	unsigned int fmax = 0;
-	bool change;
-
-	spin_lock(&dvfs->lock);
-
-	change = !(dvfs->stream_infos[stream_id].freq_hz == freq);
-
-	dvfs->stream_infos[stream_id].freq_hz = freq;
-	for (i = 0; i < dvfs->max_stream_num; i++)
-		fmax = max(fmax, dvfs->stream_infos[i].freq_hz);
-
-	spin_unlock(&dvfs->lock);
-
-	if (max_freq)
-		*max_freq = fmax;
-
-	dev_info(dvfs->dev, "%s: change %u, max %u\n", __func__, change, fmax);
-	return change;
-}
-
 static int mtk_cam_dvfs_update_opp(struct mtk_camsys_dvfs *dvfs,
-				   int opp_idx)
+					  int opp_idx)
 {
 	int ret;
 
@@ -189,53 +166,161 @@ static int mtk_cam_dvfs_update_opp(struct mtk_camsys_dvfs *dvfs,
 	return 0;
 }
 
-/* TODO:
- *  1. temporal adjustment
- */
-
-int mtk_cam_dvfs_update(struct mtk_camsys_dvfs *dvfs,
-			int stream_id, unsigned int target_freq_hz)
+static int mtk_cam_dvfs_adjust_opp(struct mtk_camsys_dvfs *dvfs,
+				   int opp_idx)
 {
-	int opp_idx = -1;
-	int max_freq = 0, tar_freq = 0;
-	int ret;
-
-	if (WARN_ON(stream_id < 0 || stream_id >= dvfs->max_stream_num))
-		return -1;
-
-	/* dvfs reset */
-	if (target_freq_hz == 0 && ARRAY_SIZE(dvfs->opp) > 0)
-		tar_freq = dvfs->opp[0].freq_hz;
-	else
-		tar_freq = target_freq_hz;
-
-	/* check if freq is changed */
-	if (!to_update_stream_opp_idx(dvfs,
-				     stream_id, tar_freq, &max_freq))
+	if (opp_idx == dvfs->cur_opp_idx)
 		return 0;
 
-	opp_idx = mtk_cam_dvfs_get_clkidx(dvfs, max_freq);
+	if (mtk_cam_dvfs_update_opp(dvfs, opp_idx))
+		return -1;
+
+	dvfs->cur_opp_idx = opp_idx;
+	return 0;
+}
+
+static struct dvfs_stream_info *get_stream_info(struct mtk_camsys_dvfs *dvfs,
+						int stream_id)
+{
+	if (WARN_ON(stream_id < 0 || stream_id >= dvfs->max_stream_num))
+		return NULL;
+
+	return &dvfs->stream_infos[stream_id];
+}
+
+static void stream_info_set(struct dvfs_stream_info *s_info,
+			    int opp_idx, bool boostable,
+			    bool is_switching)
+{
+	if (!is_switching) {
+		s_info->opp_idx = opp_idx;
+		s_info->boostable = boostable;
+
+		s_info->switching_opp_idx = 0;
+		s_info->switching_boostable = 0;
+	} else {
+		s_info->switching_opp_idx = opp_idx;
+		s_info->switching_boostable = boostable;
+	}
+}
+
+static void stream_info_do_switch(struct dvfs_stream_info *s_info)
+{
+	s_info->opp_idx = s_info->switching_opp_idx;
+	s_info->boostable = s_info->switching_boostable;
+
+	s_info->switching_opp_idx = 0;
+	s_info->switching_boostable = 0;
+}
+
+static int find_max_oppidx(struct mtk_camsys_dvfs *dvfs,
+			   struct dvfs_stream_info *s_info,
+			   bool is_switching)
+{
+	int max_opp = 0;
+	int boost_opp;
+	int i;
+
+	for (i = 0; i < dvfs->max_stream_num; i++)
+		max_opp = max(max_opp, dvfs->stream_infos[i].opp_idx);
+
+	if (!is_switching)
+		return max_opp;
+
+	boost_opp = s_info->boostable ?
+		min(s_info->opp_idx + 1, (int)dvfs->opp_num) :
+		s_info->opp_idx;
+
+	max_opp = max3(max_opp, boost_opp, s_info->switching_opp_idx);
+	return max_opp;
+}
+
+static int dvfs_update(struct mtk_camsys_dvfs *dvfs, int stream_id,
+		       unsigned int freq_hz, bool boostable,
+		       bool is_switching, const char *caller)
+{
+	struct dvfs_stream_info *s_info;
+	int opp_idx = -1;
+	int max_opp_idx = -1;
+	int prev_opp_idx;
+	int ret = 0;
+
+	s_info = get_stream_info(dvfs, stream_id);
+	if (!s_info)
+		return -1;
+
+	opp_idx = freq_to_oppidx(dvfs, freq_hz);
 	if (opp_idx < 0)
 		return -1;
 
-	/* TODO(Roy): dynamic change to lower dvfs level */
-	if (dvfs->cur_opp_idx != -1 &&
-			target_freq_hz != 0 &&
-			opp_idx <= dvfs->cur_opp_idx)
-		return 0;
+	mutex_lock(&dvfs->dvfs_lock);
 
-	ret = mtk_cam_dvfs_update_opp(dvfs, opp_idx);
+	stream_info_set(s_info, opp_idx, boostable, is_switching);
+	max_opp_idx = find_max_oppidx(dvfs, s_info, is_switching);
+
+	prev_opp_idx = dvfs->cur_opp_idx;
+	ret = mtk_cam_dvfs_adjust_opp(dvfs, max_opp_idx);
 	if (ret)
-		return ret;
+		goto EXIT_UNLOCK;
+
+	mutex_unlock(&dvfs->dvfs_lock);
 
 	dev_info(dvfs->dev,
-		 "dvfs_update: stream %d freq %u/max %u, opp_idx: %d->%d\n",
-		 stream_id, target_freq_hz, max_freq,
-		 dvfs->cur_opp_idx, opp_idx);
-
-	dvfs->cur_opp_idx = opp_idx;
-
+		 "%s: stream %d freq %u boostable %d, opp_idx: %d->%d\n",
+		 caller, stream_id, freq_hz, boostable,
+		 prev_opp_idx, max_opp_idx);
 	return 0;
+
+EXIT_UNLOCK:
+	mutex_unlock(&dvfs->dvfs_lock);
+	return ret;
+}
+
+int mtk_cam_dvfs_update(struct mtk_camsys_dvfs *dvfs, int stream_id,
+			unsigned int freq_hz, bool boostable)
+{
+	return dvfs_update(dvfs, stream_id, freq_hz, boostable, false,
+			   __func__);
+}
+
+int mtk_cam_dvfs_switch_begin(struct mtk_camsys_dvfs *dvfs, int stream_id,
+			      unsigned int freq_hz, bool boostable)
+{
+	return dvfs_update(dvfs, stream_id, freq_hz, boostable, true,
+			   __func__);
+}
+
+int mtk_cam_dvfs_switch_end(struct mtk_camsys_dvfs *dvfs, int stream_id)
+{
+	struct dvfs_stream_info *s_info;
+	int prev_opp_idx;
+	int max_opp_idx = -1;
+	int ret = 0;
+
+	s_info = get_stream_info(dvfs, stream_id);
+	if (!s_info)
+		return -1;
+
+	mutex_lock(&dvfs->dvfs_lock);
+
+	stream_info_do_switch(s_info);
+	max_opp_idx = find_max_oppidx(dvfs, s_info, false);
+
+	prev_opp_idx = dvfs->cur_opp_idx;
+	ret = mtk_cam_dvfs_adjust_opp(dvfs, max_opp_idx);
+	if (ret)
+		goto EXIT_UNLOCK;
+
+	mutex_unlock(&dvfs->dvfs_lock);
+
+	dev_info(dvfs->dev,
+		 "%s: stream %d opp_idx: %d->%d\n",
+		 __func__, stream_id, prev_opp_idx, max_opp_idx);
+	return 0;
+
+EXIT_UNLOCK:
+	mutex_unlock(&dvfs->dvfs_lock);
+	return ret;
 }
 
 struct mtk_camsys_qos_path {
