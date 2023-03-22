@@ -286,6 +286,10 @@ static const struct of_device_id vtskin_of_match[] = {
 		.compatible = "mediatek,mt6985-virtual-tskin",
 		.data = (void *)&mt6985_vtskin_data,
 	},
+	{
+		.compatible = "mediatek,mt6897-virtual-tskin",
+		.data = (void *)&mt6985_vtskin_data,
+	},
 	{},
 };
 MODULE_DEVICE_TABLE(of, vtskin_of_match);
