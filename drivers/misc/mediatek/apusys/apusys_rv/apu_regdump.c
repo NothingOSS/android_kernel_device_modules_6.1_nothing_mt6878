@@ -11,6 +11,9 @@
 static struct platform_device *g_apu_pdev;
 static struct mutex regdump_lock;
 
+#define REGDUMP_EN (0) //ToDo
+
+#ifdef REGDUMP_EN
 static uint32_t apusys_rv_smc_call(struct device *dev, uint32_t smc_id,
 	uint32_t a2)
 {
@@ -25,16 +28,17 @@ static uint32_t apusys_rv_smc_call(struct device *dev, uint32_t smc_id,
 
 	return res.a0;
 }
-
+#endif
 void apu_regdump(void)
 {
 	dev_info(&g_apu_pdev->dev, "%s +\n", __func__);
 
 	mutex_lock(&regdump_lock);
 
+#ifdef REGDUMP_EN
 	apusys_rv_smc_call(&g_apu_pdev->dev,
 		MTK_APUSYS_KERNEL_OP_APUSYS_REGDUMP, 0);
-
+#endif
 	mutex_unlock(&regdump_lock);
 }
 

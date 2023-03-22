@@ -565,7 +565,7 @@ int rv_boot(uint32_t seg_output0, uint32_t seg_output1, uint32_t seg_output2, ui
 	printf("<%s> seg_output0 = 0x%8x seg_output1 = 0x%8x seg_output2 = 0x%8x\n",
 		 __func__, seg_output0, seg_output1, seg_output2);
 	// 1. add rv map - MUST be in-order for rv booting
-	apummu_add_rv_boot_map(seg_output0, seg_output0, seg_output0);
+	apummu_add_rv_boot_map(seg_output0, 0, 0); //todo
 	// bind rv vsid
 	apummu_rv_bind_vsid(hw_thread); //thread: 0:normal, 1:secure, 2:logger?; MP flow should be 1
 	apummu_rv_bind_vsid(1);
