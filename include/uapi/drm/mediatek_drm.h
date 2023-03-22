@@ -504,9 +504,6 @@ struct DISP_AAL_TRIG_STATE {
 #define DRM_MTK_SET_DISP_TDSHP_REG 0x50
 #define DRM_MTK_DISP_TDSHP_GET_SIZE 0x51
 
-/* DISP_CLARITY */
-#define DRM_MTK_DISP_CLARITY_SET_REG 0x5E
-
 #define DRM_MTK_GET_PQ_CAPS 0x54
 #define DRM_MTK_SET_PQ_CAPS 0x55
 
@@ -522,6 +519,12 @@ struct DISP_AAL_TRIG_STATE {
 #define DRM_MTK_PQ_FRAME_CONFIG 0x5c
 
 #define DRM_MTK_DISP_PQ_GET_IRQ 0x5d
+
+/* DISP_CLARITY */
+#define DRM_MTK_DISP_CLARITY_SET_REG 0x5E
+
+#define DRM_MTK_PQ_PROXY_IOCTL 0x60
+
 
 /* C3D */
 #define DISP_C3D_1DLUT_SIZE 32
@@ -1422,7 +1425,7 @@ struct mtk_drm_oddmr_param {
 };
 
 struct mtk_drm_pq_config_ctl {
-	__u8 disp_id;
+	__u32 disp_id;
 	__u8 check_trigger;
 	__u8 len;
 	void *data;
@@ -1434,6 +1437,15 @@ struct mtk_drm_pq_param {
 	void *data;
 };
 
+struct mtk_drm_pq_proxy_ctl {
+	__u32 disp_id;
+	__u32 cmd;
+	__u32 size;
+	__u32 extra_size;
+	void *data;
+	void *extra_data;
+};
+
 enum mtk_pq_module_type {
 	MTK_DISP_PQ_COLOR,
 	MTK_DISP_PQ_DITHER,
@@ -1443,56 +1455,58 @@ enum mtk_pq_module_type {
 	MTK_DISP_PQ_CHIST,
 	MTK_DISP_PQ_C3D,
 	MTK_DISP_PQ_TDSHP,
+	MTK_DISP_VIRTUAL_TYPE,
 	MTK_DISP_PQ_TYPE_MAX,
 };
 
 enum mtk_pq_frame_cfg_cmd {
 	PQ_CMD_INVALID,
-	/* AAL cmds */
 	PQ_AAL_EVENTCTL,
-	PQ_AAL_GET_HIST,
 	PQ_AAL_INIT_REG,
 	PQ_AAL_SET_ESS20_SPECT_PARAM,
 	PQ_AAL_SET_PARAM,
 	PQ_AAL_INIT_DRE30,
-	PQ_AAL_GET_SIZE,
 	PQ_AAL_SET_TRIGGER_STATE,
 	PQ_AAL_CLARITY_SET_REG,
-	/* Gamma cmds */
 	PQ_GAMMA_SET_GAMMALUT,
 	PQ_GAMMA_SET_12BIT_GAMMALUT,
 	PQ_GAMMA_BYPASS_GAMMA,
 	PQ_GAMMA_DISABLE_MUL_EN,
-	/* Chist cmds */
 	PQ_CHIST_CONFIG,
-	/* Color cmds */
 	PQ_COLOR_MUTEX_CONTROL,
 	PQ_COLOR_BYPASS,
 	PQ_COLOR_SET_PQINDEX,
 	PQ_COLOR_SET_PQPARAM,
-	PQ_COLOR_READ_REG,
 	PQ_COLOR_WRITE_REG,
-	PQ_COLOR_READ_SW_REG,
 	PQ_COLOR_WRITE_SW_REG,
 	PQ_COLOR_SET_COLOR_REG,
 	PQ_COLOR_SET_WINDOW,
-	/* Ccorr cmds */
 	PQ_CCORR_EVENTCTL,
 	PQ_CCORR_SUPPORT_COLOR_MATRIX,
-	PQ_CCORR_GET_IRQ,
 	PQ_CCORR_SET_CCORR,
 	PQ_CCORR_AIBLD_CV_MODE,
-	/* C3d cmds */
 	PQ_C3D_EVENTCTL,
 	PQ_C3D_BYPASS,
-	PQ_C3D_GET_IRQ,
 	PQ_C3D_SET_LUT,
-	PQ_C3D_GET_BIN_NUM,
-	/* Tdshp cmds */
 	PQ_TDSHP_SET_REG,
-	/* Dither cmds */
 	PQ_DITHER_SET_DITHER_PARAM,
-	/* End */
+	PQ_VIRTUAL_SET_PROPERTY,
+	/* Get cmd begin */
+	/* Notice:
+	 * Command for getting must be added after the PQ_GET_CMD_START.
+	 * Otherwise, the func of 'copy_to_user' will not be called.
+	 */
+	PQ_GET_CMD_START,
+	PQ_AAL_GET_HIST,
+	PQ_AAL_GET_SIZE,
+	PQ_CHIST_GET,
+	PQ_COLOR_READ_REG,
+	PQ_COLOR_READ_SW_REG,
+	PQ_CCORR_GET_IRQ,
+	PQ_C3D_GET_IRQ,
+	PQ_C3D_GET_IRQ_STATUS,
+	PQ_C3D_GET_BIN_NUM,
+	PQ_TDSHP_GET_SIZE,
 	PQ_CMD_MAX,
 };
 
@@ -1698,6 +1712,9 @@ struct mtk_disp_pq_irq_data {
 
 #define DRM_IOCTL_MTK_PQ_FRAME_CONFIG    DRM_IOWR(DRM_COMMAND_BASE + \
 				DRM_MTK_PQ_FRAME_CONFIG, struct mtk_drm_pq_config_ctl)
+
+#define DRM_IOCTL_MTK_PQ_PROXY_IOCTL    DRM_IOWR(DRM_COMMAND_BASE + \
+				DRM_MTK_PQ_PROXY_IOCTL, struct mtk_drm_pq_proxy_ctl)
 
 #define DRM_IOCTL_MTK_DISP_PQ_GET_IRQ    DRM_IOWR(DRM_COMMAND_BASE + \
 			DRM_MTK_DISP_PQ_GET_IRQ, struct mtk_disp_pq_irq_data)
