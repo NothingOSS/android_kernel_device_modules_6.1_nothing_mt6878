@@ -138,6 +138,9 @@ struct seninf_core {
 	unsigned int err_detect_init_flag;
 	unsigned int err_detect_termination_flag;
 
+	/* for sentest use */
+	bool allow_adjust_isp_en;
+
 	/* aov sensor use */
 	int pwr_refcnt_for_aov;
 	int aov_sensor_id;

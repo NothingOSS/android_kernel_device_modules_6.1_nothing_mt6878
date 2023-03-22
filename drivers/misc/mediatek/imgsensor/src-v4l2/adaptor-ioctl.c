@@ -1453,6 +1453,67 @@ static int s_tg(struct adaptor_ctx *ctx, void *arg)
 	return 0;
 }
 
+static int s_sensor_profile_en(struct adaptor_ctx *ctx, void *arg)
+{
+	int *en = arg;
+	struct subdrv_ctx *subctx = &ctx->subctx;
+
+	if (subctx == NULL) {
+		dev_info(ctx->dev, "subdrv_ctx is NULL\n");
+		return -EFAULT;
+	}
+
+	if (en == NULL) {
+		dev_info(ctx->dev, "en is NULL\n");
+		return -EFAULT;
+	}
+
+	subctx->power_on_profile_en =  (*en) ? true : false;
+
+	dev_info(ctx->dev, "en: %d, power_on_profile_en  is %d\n",
+				*en, subctx->power_on_profile_en);
+
+	return 0;
+}
+
+static int g_sensor_profile(struct adaptor_ctx *ctx, void *arg)
+{
+	struct subdrv_ctx *subctx = &ctx->subctx;
+	struct mtk_sensor_profile *user_sensor_profile = arg;
+	struct mtk_sensor_profile sensor_profile;
+
+	if (subctx == NULL) {
+		dev_info(ctx->dev, "[%s] subdrv_ctx is NULL\n", __func__);
+		return -EFAULT;
+	}
+
+	if (user_sensor_profile == NULL) {
+		dev_info(ctx->dev, "[%s] sensor_profile is NULL\n", __func__);
+		return -EFAULT;
+	}
+
+	if (!subctx->power_on_profile_en) {
+		memset((void *)user_sensor_profile, 0, sizeof(sensor_profile));
+		dev_info(ctx->dev,
+			"[%s] power_on_profile_en is not enabled, init the sensor_profile\n"
+			, __func__);
+
+		return -EFAULT;
+	}
+
+	sensor_profile = subctx->sensor_pw_on_profile;
+
+	user_sensor_profile->i2c_init_period = sensor_profile.i2c_init_period;
+	user_sensor_profile->i2c_init_table_len = sensor_profile.i2c_init_table_len;
+	user_sensor_profile->i2c_cfg_period = sensor_profile.i2c_cfg_period;
+	user_sensor_profile->i2c_cfg_table_len = sensor_profile.i2c_cfg_table_len;
+	user_sensor_profile->hw_power_on_period = sensor_profile.hw_power_on_period;
+
+	dev_info(ctx->dev, "sensor_profile copy_to_user is done\n");
+
+	return 0;
+}
+
 struct ioctl_entry {
 	unsigned int cmd;
 	int (*func)(struct adaptor_ctx *ctx, void *arg);
@@ -1502,6 +1563,7 @@ static const struct ioctl_entry ioctl_list[] = {
 	{VIDIOC_MTK_G_DIG_GAIN_RANGE_BY_SCENARIO, g_dig_gain_range_by_scenario},
 	{VIDIOC_MTK_G_DIG_GAIN_STEP, g_dig_gain_step},
 	{VIDIOC_MTK_G_FS_FRAME_LENGTH_INFO, g_fsync_frame_length_info},
+	{VIDIOC_MTK_G_SENSOR_PROFILE, g_sensor_profile},
 	/* SET */
 	{VIDIOC_MTK_S_VIDEO_FRAMERATE, s_video_framerate},
 	{VIDIOC_MTK_S_MAX_FPS_BY_SCENARIO, s_max_fps_by_scenario},
@@ -1513,6 +1575,7 @@ static const struct ioctl_entry ioctl_list[] = {
 	{VIDIOC_MTK_S_LSC_TBL, s_lsc_tbl},
 	{VIDIOC_MTK_S_CONTROL, s_control},
 	{VIDIOC_MTK_S_TG, s_tg},
+	{VIDIOC_MTK_S_SENSOR_PROFILE_EN, s_sensor_profile_en},
 };
 
 long adaptor_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)

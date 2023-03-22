@@ -37,6 +37,7 @@
 #include "mtk_cam-seninf-tsrec.h"
 #include "imgsensor-user.h"
 #include "mtk_cam-seninf-ca.h"
+#include "mtk_cam-seninf_control.h"
 
 #define is_irq_ready 1
 
@@ -60,6 +61,7 @@ struct seninf_ctx *aov_ctx[6];
 #include <linux/nvmem-consumer.h>
 #endif
 
+#define USING_MAX_ISP_CLK
 #define CSI_EFUSE_VERIFY_EN 1
 #define CSI_EFUSE_VERIFY_GORDAN_TABLE_EN 0
 #if CSI_EFUSE_VERIFY_GORDAN_TABLE_EN == 1
@@ -440,20 +442,17 @@ static int seninf_dfs_init(struct seninf_dfs *dfs, struct device *dev)
 		return ret;
 	}
 
-	dfs->reg = devm_regulator_get_optional(dev, "dvfsrc-vmm");
-	if (IS_ERR(dfs->reg)) {
-		dev_info(dev, "can't get dvfsrc-vmm\n");
-		return PTR_ERR(dfs->reg);
-	}
-
 	dfs->cnt = dev_pm_opp_get_opp_count(dev);
 
 	dfs->freqs = devm_kzalloc(dev,
 				  sizeof(unsigned long) * dfs->cnt, GFP_KERNEL);
 	dfs->volts = devm_kzalloc(dev,
 				  sizeof(unsigned long) * dfs->cnt, GFP_KERNEL);
-	if (!dfs->freqs || !dfs->volts)
+
+	if (!dfs->freqs || !dfs->volts) {
+		dev_info(dev, "devm_kzalloc failed\n");
 		return -ENOMEM;
+	}
 
 	i = 0;
 	freq = 0;
@@ -486,7 +485,7 @@ static int seninf_dfs_exit(struct seninf_dfs *dfs)
 
 static int __seninf_dfs_set(struct seninf_ctx *ctx, unsigned long freq)
 {
-	int i;
+	int i, ret;
 	struct seninf_ctx *tmp;
 	struct seninf_core *core = ctx->core;
 	struct seninf_dfs *dfs = &core->dfs;
@@ -494,6 +493,11 @@ static int __seninf_dfs_set(struct seninf_ctx *ctx, unsigned long freq)
 
 	if (!dfs->cnt)
 		return 0;
+
+	if (!core->clk[CLK_MMDVFS]) {
+		dev_info(dfs->dev, "%s: mmdvfs_clk is not ready\n", __func__);
+		return -EINVAL;
+	}
 
 	old = ctx->isp_freq;
 	ctx->isp_freq = freq;
@@ -513,8 +517,13 @@ static int __seninf_dfs_set(struct seninf_ctx *ctx, unsigned long freq)
 		return -EINVAL;
 	}
 
-	regulator_set_voltage(dfs->reg, dfs->volts[i],
-			      dfs->volts[dfs->cnt - 1]);
+	ret = clk_set_rate(core->clk[CLK_MMDVFS], dfs->freqs[i]);
+
+	if (ret < 0) {
+		dev_info(ctx->dev, "[%s] clk_set_rate %lu failed\n",
+		__func__, dfs->freqs[i]);
+		return -EINVAL;
+	}
 
 	dev_info(ctx->dev, "freq %ld require %ld selected %ld\n",
 		 freq, require, dfs->freqs[i]);
@@ -1648,15 +1657,38 @@ static int get_mbus_config(struct seninf_ctx *ctx, struct v4l2_subdev *sd)
 //static int update_isp_clk(struct seninf_ctx *ctx)
 int update_isp_clk(struct seninf_ctx *ctx)
 {
-	int i, ret, pixelmode;
+	int i, ret;
 	struct seninf_dfs *dfs = &ctx->core->dfs;
+	struct seninf_core *core = ctx->core;
+
+#ifndef USING_MAX_ISP_CLK
+	int pixelmode;
 	s64 pixel_rate = -1, dfs_freq;
 	struct seninf_vc *vc;
+#endif
 
+	if (core == NULL) {
+		dev_info(dfs->dev, "%s: core is NULL\n", __func__);
+		return -EINVAL;
+	}
 
-	if (!dfs->cnt)
+	if (!core->allow_adjust_isp_en) {
+		dev_info(ctx->dev, "%s adjust_isp_en %d, skip update isp clk flow\n",
+			__func__, core->allow_adjust_isp_en);
 		return 0;
+	}
 
+	if (!dfs->cnt) {
+		dev_info(dfs->dev, "%s: dfs->cnt is NULL (can be ignore)\n", __func__);
+		return 0;
+	}
+
+
+#ifdef USING_MAX_ISP_CLK
+	/* always choose the highest freq index */
+	i = dfs->cnt - 1;
+
+#else
 	vc = mtk_cam_seninf_get_vc_by_pad(ctx, PAD_SRC_RAW0);
 	if (!vc) {
 		dev_info(ctx->dev, "failed to get vc SRC_RAW0, try EXT0\n");
@@ -1665,7 +1697,7 @@ int update_isp_clk(struct seninf_ctx *ctx)
 		if (!vc) {
 			dev_info(ctx->dev, "failed to get vc SRC_RAW_EXT0\n");
 
-			return -1;
+			return -EINVAL;
 		}
 	}
 	dev_info(ctx->dev,
@@ -1689,6 +1721,7 @@ int update_isp_clk(struct seninf_ctx *ctx)
 	}
 
 	pixelmode = vc->pixel_mode;
+
 	for (i = 0; i < dfs->cnt; i++) {
 		dfs_freq = dfs->freqs[i];
 		dfs_freq = dfs_freq * (100 - SENINF_CLK_MARGIN_IN_PERCENT);
@@ -1696,6 +1729,7 @@ int update_isp_clk(struct seninf_ctx *ctx)
 		if ((dfs_freq << pixelmode) >= pixel_rate)
 			break;
 	}
+#endif
 
 	if (i == dfs->cnt) {
 		dev_info(ctx->dev, "mux is overrun. please adjust pixelmode\n");
@@ -1705,7 +1739,7 @@ int update_isp_clk(struct seninf_ctx *ctx)
 	ret = seninf_dfs_set(ctx, dfs->freqs[i]);
 	if (ret) {
 		dev_info(ctx->dev, "failed to set freq\n");
-		return ret;
+		return -EINVAL;
 	}
 
 	return 0;
@@ -1994,6 +2028,53 @@ static int seninf_s_stream(struct v4l2_subdev *sd, int enable)
 	return 0;
 }
 
+static int s_update_isp_clk_en(struct seninf_ctx *ctx, void *arg)
+{
+	struct seninf_core *core = ctx->core;
+	int *en = arg;
+
+	if (core == NULL) {
+		dev_info(ctx->dev, "%s: core is NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	if (en == NULL) {
+		dev_info(ctx->dev, "%s: en is NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	core->allow_adjust_isp_en = *en;
+
+	dev_info(ctx->dev, "en: %d, allow_adjust_isp_en  is %d\n",
+				*en, core->allow_adjust_isp_en);
+
+	return 0;
+}
+
+long mtk_cam_seninf_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
+{
+	int ret = -ENOIOCTLCMD;
+	struct seninf_ctx *ctx = sd_to_ctx(sd);
+
+	/* dispatch ioctl request */
+	switch (cmd) {
+	case VIDIOC_MTK_G_SENINF_DEBUG_RESULT:
+		ret = g_seninf_ops->_get_debug_reg_result(ctx, arg);
+		break;
+	case VIDIOC_MTK_G_TSREC_TIMESTAMP:
+		ret = g_seninf_ops->_get_tsrec_timestamp(ctx, arg);
+		break;
+	case VIDIOC_MTK_S_UPDATE_ISP_EN:
+		ret = s_update_isp_clk_en(ctx, arg);
+		break;
+	default:
+		dev_info(ctx->dev, "ioctl cmd(%d) is invalid\n", cmd);
+		break;
+	}
+
+	return ret;
+}
+
 static const struct v4l2_subdev_pad_ops seninf_subdev_pad_ops = {
 	.link_validate = mtk_cam_seninf_link_validate,
 	.init_cfg = mtk_cam_seninf_init_cfg,
@@ -2008,6 +2089,7 @@ static const struct v4l2_subdev_video_ops seninf_subdev_video_ops = {
 static const struct v4l2_subdev_core_ops seninf_subdev_core_ops = {
 	.subscribe_event	= seninf_subscribe_event,
 	.unsubscribe_event	= v4l2_event_subdev_unsubscribe,
+	.ioctl = mtk_cam_seninf_ioctl,
 };
 
 static const struct v4l2_subdev_ops seninf_subdev_ops = {

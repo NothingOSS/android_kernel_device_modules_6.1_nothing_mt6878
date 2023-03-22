@@ -301,7 +301,8 @@ int do_hw_power_on(struct adaptor_ctx *ctx)
 	struct adaptor_hw_ops *op;
 	struct adaptor_profile_tv tv;
 	struct adaptor_log_buf buf;
-
+	struct subdrv_ctx *subctx;
+	u64 time_boot_begin = 0;
 #if IMGSENSOR_LOG_MORE
 	dev_info(ctx->dev, "[%s]+\n", __func__);
 #endif
@@ -322,9 +323,13 @@ int do_hw_power_on(struct adaptor_ctx *ctx)
 	if (!ctx->pinctrl)
 		reinit_pinctrl(ctx);
 
+	subctx = &ctx->subctx;
 	op = &ctx->hw_ops[HW_ID_MIPI_SWITCH];
 	if (op->set)
 		op->set(ctx, op->data, 0);
+
+	if (subctx->power_on_profile_en)
+		time_boot_begin = ktime_get_boottime_ns();
 
 	for (i = 0; i < ctx->subdrv->pw_seq_cnt; i++) {
 		if (ctx->ctx_pw_seq)
@@ -364,6 +369,11 @@ int do_hw_power_on(struct adaptor_ctx *ctx)
 #endif
 		if (ent->delay)
 			mdelay(ent->delay);
+	}
+
+	if (subctx->power_on_profile_en) {
+		subctx->sensor_pw_on_profile.hw_power_on_period =
+			ktime_get_boottime_ns() - time_boot_begin;
 	}
 
 	if (ctx->subdrv->ops->power_on)

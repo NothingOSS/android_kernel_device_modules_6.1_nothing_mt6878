@@ -475,6 +475,15 @@ struct mtk_DCG_type_by_scenario {
 	__u32 dcg_gain_mode;
 };
 
+struct mtk_sensor_profile {
+	__u64 i2c_init_period;
+	__u16 i2c_init_table_len;
+	__u64 i2c_cfg_period;
+	__u16 i2c_cfg_table_len;
+	__u64 hw_power_on_period;
+};
+
+
 /* GET */
 
 #define VIDIOC_MTK_G_DEF_FPS_BY_SCENARIO \
@@ -612,6 +621,9 @@ struct mtk_DCG_type_by_scenario {
 #define VIDIOC_MTK_G_DCG_TYPE_BY_SCENARIO \
 	_IOWR('M', BASE_VIDIOC_PRIVATE + 47, struct mtk_DCG_type_by_scenario)
 
+#define VIDIOC_MTK_G_SENSOR_PROFILE \
+	_IOWR('M', BASE_VIDIOC_PRIVATE + 48, struct mtk_sensor_profile)
+
 /* SET */
 
 #define VIDIOC_MTK_S_VIDEO_FRAMERATE \
@@ -643,5 +655,8 @@ struct mtk_DCG_type_by_scenario {
 
 #define VIDIOC_MTK_S_TG \
 	_IOW('M', BASE_VIDIOC_PRIVATE + 110, int)
+
+#define VIDIOC_MTK_S_SENSOR_PROFILE_EN \
+	_IOW('M', BASE_VIDIOC_PRIVATE + 111, int)
 
 #endif

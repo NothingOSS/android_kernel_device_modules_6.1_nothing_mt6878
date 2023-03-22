@@ -57,6 +57,7 @@ int adaptor_i2c_rd_u8(struct i2c_client *i2c_client,
 }
 
 int adaptor_i2c_rd_u16(struct i2c_client *i2c_client,
+		struct pm_qos_request *i2c_qos_request,
 		u16 addr, u16 reg, u16 *val)
 {
 	int ret;
@@ -79,7 +80,9 @@ int adaptor_i2c_rd_u16(struct i2c_client *i2c_client,
 	msg[1].buf = buf;
 	msg[1].len = 2;
 
+	cpu_latency_qos_update_request(i2c_qos_request, 50);
 	ret = i2c_transfer(i2c_client->adapter, msg, 2);
+	cpu_latency_qos_update_request(i2c_qos_request, PM_QOS_DEFAULT_VALUE);
 	if (ret < 0) {
 		dev_info(&i2c_client->dev, "i2c transfer failed (%d)\n", ret);
 		return ret;
@@ -142,6 +145,7 @@ int adaptor_i2c_rd_p8(struct i2c_client *i2c_client,
 }
 
 int adaptor_i2c_wr_u8(struct i2c_client *i2c_client,
+		struct pm_qos_request *i2c_qos_request,
 		u16 addr, u16 reg, u8 val)
 {
 	int ret;
@@ -160,7 +164,9 @@ int adaptor_i2c_wr_u8(struct i2c_client *i2c_client,
 	msg.buf = buf;
 	msg.len = sizeof(buf);
 
+	cpu_latency_qos_update_request(i2c_qos_request, 50);
 	ret = i2c_transfer(i2c_client->adapter, &msg, 1);
+	cpu_latency_qos_update_request(i2c_qos_request, PM_QOS_DEFAULT_VALUE);
 	if (ret < 0)
 		dev_info(&i2c_client->dev, "i2c transfer failed (%d)\n", ret);
 
@@ -168,6 +174,7 @@ int adaptor_i2c_wr_u8(struct i2c_client *i2c_client,
 }
 
 int adaptor_i2c_wr_u16(struct i2c_client *i2c_client,
+		struct pm_qos_request *i2c_qos_request,
 		u16 addr, u16 reg, u16 val)
 {
 	int ret;
@@ -187,7 +194,9 @@ int adaptor_i2c_wr_u16(struct i2c_client *i2c_client,
 	msg.buf = buf;
 	msg.len = sizeof(buf);
 
+	cpu_latency_qos_update_request(i2c_qos_request, 50);
 	ret = i2c_transfer(i2c_client->adapter, &msg, 1);
+	cpu_latency_qos_update_request(i2c_qos_request, PM_QOS_DEFAULT_VALUE);
 	if (ret < 0)
 		dev_info(&i2c_client->dev, "i2c transfer failed (%d)\n", ret);
 
@@ -195,6 +204,7 @@ int adaptor_i2c_wr_u16(struct i2c_client *i2c_client,
 }
 
 int adaptor_i2c_wr_p8(struct i2c_client *i2c_client,
+		struct pm_qos_request *i2c_qos_request,
 		u16 addr, u16 reg, u8 *p_vals, u32 n_vals)
 {
 	u8 *buf, *pbuf, *pdata;
@@ -230,7 +240,9 @@ int adaptor_i2c_wr_p8(struct i2c_client *i2c_client,
 
 		msg.len = 2 + cnt;
 
+		cpu_latency_qos_update_request(i2c_qos_request, 50);
 		ret = i2c_transfer(i2c_client->adapter, &msg, 1);
+		cpu_latency_qos_update_request(i2c_qos_request, PM_QOS_DEFAULT_VALUE);
 		if (ret < 0) {
 			dev_info(&i2c_client->dev,
 				"i2c transfer failed (%d)\n", ret);
@@ -248,6 +260,7 @@ int adaptor_i2c_wr_p8(struct i2c_client *i2c_client,
 }
 
 int adaptor_i2c_wr_p16(struct i2c_client *i2c_client,
+		struct pm_qos_request *i2c_qos_request,
 		u16 addr, u16 reg, u16 *p_vals, u32 n_vals)
 {
 	u8 *buf, *pbuf;
@@ -290,7 +303,9 @@ int adaptor_i2c_wr_p16(struct i2c_client *i2c_client,
 
 		msg.len = 2 + (cnt << 1);
 
+		cpu_latency_qos_update_request(i2c_qos_request, 50);
 		ret = i2c_transfer(i2c_client->adapter, &msg, 1);
+		cpu_latency_qos_update_request(i2c_qos_request, PM_QOS_DEFAULT_VALUE);
 		if (ret < 0) {
 			dev_info(&i2c_client->dev,
 				"i2c transfer failed (%d)\n", ret);
@@ -307,6 +322,7 @@ int adaptor_i2c_wr_p16(struct i2c_client *i2c_client,
 }
 
 int adaptor_i2c_wr_seq_p8(struct i2c_client *i2c_client,
+		struct pm_qos_request *i2c_qos_request,
 		u16 addr, u16 reg, u8 *p_vals, u32 n_vals)
 {
 	u8 *buf, *pbuf, *pdata;
@@ -345,7 +361,9 @@ int adaptor_i2c_wr_seq_p8(struct i2c_client *i2c_client,
 
 		msg.len = 2 + cnt;
 
+		cpu_latency_qos_update_request(i2c_qos_request, 50);
 		ret = i2c_transfer(i2c_client->adapter, &msg, 1);
+		cpu_latency_qos_update_request(i2c_qos_request, PM_QOS_DEFAULT_VALUE);
 		if (ret < 0) {
 			dev_info(&i2c_client->dev,
 				"i2c transfer failed (%d)\n", ret);
@@ -364,6 +382,7 @@ int adaptor_i2c_wr_seq_p8(struct i2c_client *i2c_client,
 }
 
 int adaptor_i2c_wr_regs_u8(struct i2c_client *i2c_client,
+		struct pm_qos_request *i2c_qos_request,
 		u16 addr, u16 *list, u32 len)
 {
 	struct cache_wr_regs_u8 *pmem;
@@ -409,7 +428,11 @@ int adaptor_i2c_wr_regs_u8(struct i2c_client *i2c_client,
 			pmsg++;
 		}
 
+		/* prevent cpu is idle during i2c transfer */
+		cpu_latency_qos_update_request(i2c_qos_request, 50);
 		ret = i2c_transfer(i2c_client->adapter, pmem->msg, cnt);
+		cpu_latency_qos_update_request(i2c_qos_request, PM_QOS_DEFAULT_VALUE);
+
 		if (ret != cnt) {
 			dev_info(&i2c_client->dev,
 				"i2c transfer failed (%d)\n", ret);
@@ -426,6 +449,7 @@ int adaptor_i2c_wr_regs_u8(struct i2c_client *i2c_client,
 }
 
 int adaptor_i2c_wr_regs_u16(struct i2c_client *i2c_client,
+		struct pm_qos_request *i2c_qos_request,
 		u16 addr, u16 *list, u32 len)
 {
 	struct cache_wr_regs_u16 *pmem;
@@ -472,7 +496,11 @@ int adaptor_i2c_wr_regs_u16(struct i2c_client *i2c_client,
 			pmsg++;
 		}
 
+		/* prevent cpu is idle during i2c transfer */
+		cpu_latency_qos_update_request(i2c_qos_request, 50);
 		ret = i2c_transfer(i2c_client->adapter, pmem->msg, cnt);
+		cpu_latency_qos_update_request(i2c_qos_request, PM_QOS_DEFAULT_VALUE);
+
 		if (ret != cnt) {
 			dev_info(&i2c_client->dev,
 				"i2c transfer failed (%d)\n", ret);

@@ -52,15 +52,7 @@ void mtk_cam_seninf_init_res(struct seninf_core *core)
 
 static enum CAM_TYPE_ENUM mtk_cam_seninf_get_vc_type(u8 out_pad)
 {
-	switch (out_pad) {
-	case PAD_SRC_RAW0:
-	case PAD_SRC_RAW1:
-	case PAD_SRC_RAW2:
-	case PAD_SRC_RAW_EXT0:
-		return TYPE_RAW;
-	default:
-		return TYPE_CAMSV_SAT;
-	}
+	return TYPE_CAMSV_SAT;
 }
 
 void mtk_cam_seninf_alloc_cammux(struct seninf_ctx *ctx)

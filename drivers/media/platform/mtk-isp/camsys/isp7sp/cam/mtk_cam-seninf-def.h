@@ -364,6 +364,9 @@ enum {
 	CLK_TOP_CAMTG = CLK_TOP_CAMTM_END,
 	CLK_TOP_OSC_D20,				// aov low power 26M reference clk on scp
 	CLK_TOP_TCK_26M_MX9,			// default 26M analog reference clk on apmcu
+
+	/*mtk isp clk*/
+	CLK_MMDVFS,
 	CLK_MAXCNT,
 };
 
@@ -383,5 +386,6 @@ enum {
 	"clk_top_camtg", \
 	"clk_top_osc_d20", \
 	"clk_top_tck_26m_mx9", \
+	"clk_mmdvfs", \
 
 #endif

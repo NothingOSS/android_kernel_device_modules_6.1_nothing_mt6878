@@ -20,7 +20,9 @@
 #include "mtk_csi_phy_3_0/mtk_cam-seninf-csirx_mac_csi0.h"
 #include "mtk_csi_phy_3_0/mtk_cam-seninf-csirx_mac_top.h"
 
+#include "mtk_cam-seninf_control.h"
 #include "mtk_cam-seninf-route.h"
+#include "mtk_cam-seninf-tsrec.h"
 #include "imgsensor-user.h"
 #define __SMT 0
 #define SENINF_CK 312000000
@@ -29,6 +31,7 @@
 #define DPHY_SETTLE_DEF 100  // ns
 #define CPHY_SETTLE_DEF 70 //60~80ns
 #define DPHY_TRAIL_SPEC 224
+#define FT_30_FPS 33
 
 #define DEBUG_CAM_MUX_SWITCH 0
 //#define SCAN_SETTLE
@@ -3336,11 +3339,159 @@ static int mtk_cam_seninf_get_mux_meter(struct seninf_ctx *ctx, int mux,
 	return 0;
 }
 
+static int mtk_cam_seninf_debug_core_dump(struct seninf_ctx *ctx,
+				   struct mtk_cam_seninf_debug *debug_result)
+{
+	int i, j, dbg_idx, dbg_timeout = 0;
+	int val = 0;
+	struct seninf_vc *vc;
+	struct v4l2_ctrl *ctrl;
+	struct v4l2_subdev *sensor_sd = ctx->sensor_sd;
+	struct seninf_vc_out_dest *dest;
+	struct mtk_cam_seninf_mux_meter *meter;
+	struct mtk_cam_seninf_vcinfo_debug *vcinfo_debug;
+	void *seninf, *csi_mac, *rx, *pmux, *pcammux, *base_ana;
+	unsigned long debug_ft = FT_30_FPS + 3;
+
+	csi_mac = ctx->reg_csirx_mac_csi[(unsigned int)ctx->port];
+	seninf = ctx->reg_if_csi2[(unsigned int)ctx->seninfIdx];
+	rx = ctx->reg_ana_dphy_top[(unsigned int)ctx->port];
+	base_ana = ctx->reg_ana_csi_rx[(unsigned int)ctx->port];
+
+	ctrl =
+		v4l2_ctrl_find(sensor_sd->ctrl_handler, V4L2_CID_MTK_SOF_TIMEOUT_VALUE);
+	if (ctrl) {
+		val = v4l2_ctrl_g_ctrl(ctrl);
+		if (val > 0)
+			dbg_timeout = val + (val / 10);
+	}
+
+	if (dbg_timeout != 0)
+		debug_ft = dbg_timeout / 1000;
+
+	mdelay(debug_ft);
+
+	debug_result->csi_irq_status =
+		SENINF_READ_REG(seninf, SENINF_CSI2_IRQ_STATUS);
+
+	debug_result->csi_mac_irq_status =
+		SENINF_READ_REG(csi_mac, CSIRX_MAC_CSI2_IRQ_STATUS);
+
+	/* wtire clear for enxt frame */
+	SENINF_WRITE_REG(seninf, SENINF_CSI2_IRQ_STATUS, 0xffffffff);
+	SENINF_WRITE_REG(csi_mac, CSIRX_MAC_CSI2_IRQ_STATUS, 0xffffffff);
+
+	debug_result->packet_cnt_status =
+		SENINF_READ_REG(csi_mac, CSIRX_MAC_CSI2_PACKET_CNT_STATUS);
+
+	for (i = 0; i < ctx->vcinfo.cnt; i++) {
+		vc = &ctx->vcinfo.vc[i];
+
+		for (j = 0; j < vc->dest_cnt; j++) {
+			dbg_idx = i * vc->dest_cnt + j;
+
+			if (dbg_idx >= MAX_MUX_VCINFO_DEBUG) {
+				dev_info(ctx->dev,
+				"[%s] vcinfo.cnt is exceed debug limit (%u)\n",
+				__func__, MAX_MUX_VCINFO_DEBUG);
+				return -1;
+			}
+
+			debug_result->mux_result_cnt = dbg_idx;
+			vcinfo_debug = &debug_result->vcinfo_debug[dbg_idx];
+			dest = &vc->dest[j];
+			pmux = ctx->reg_if_mux[dest->mux];
+			if (dest->cam < _seninf_ops->cam_mux_num)
+				pcammux = ctx->reg_if_cam_mux_pcsr[dest->cam];
+			else
+				pcammux = NULL;
+
+			vcinfo_debug->vc_feature = vc->feature;
+			vcinfo_debug->vc = vc->vc;
+			vcinfo_debug->dt = vc->dt;
+			vcinfo_debug->seninf_mux = dest->mux;
+			vcinfo_debug->cam_mux = dest->cam;
+			vcinfo_debug->seninf_mux_en =
+				mtk_cam_seninf_is_mux_used(ctx, dest->mux);
+			vcinfo_debug->seninf_mux_src =
+				mtk_cam_seninf_get_top_mux_ctrl(ctx, dest->mux);
+			vcinfo_debug->seninf_mux_irq =
+				SENINF_READ_REG(pmux, SENINF_MUX_IRQ_STATUS);
+
+			SENINF_WRITE_REG(pmux,
+					SENINF_MUX_IRQ_STATUS, 0xFFFFFFFF);
+
+			dev_dbg(ctx->dev,
+					"[%d] vc_feature %d vc 0x%x dt 0x%x mux %d cam %d\n",
+					i,
+					vcinfo_debug->vc_feature,
+					vcinfo_debug->vc,
+					vcinfo_debug->dt,
+					vcinfo_debug->seninf_mux,
+					vcinfo_debug->cam_mux);
+			dev_dbg(ctx->dev,
+				     "\tmux[%d] en %d src %d irq_stat 0x%x\n",
+					vcinfo_debug->seninf_mux,
+					vcinfo_debug->seninf_mux_en,
+					vcinfo_debug->seninf_mux_src,
+					vcinfo_debug->seninf_mux_irq);
+
+			if (pcammux) {
+				vcinfo_debug->cam_mux_en =
+					_seninf_ops->_is_cammux_used(ctx, dest->cam);
+				vcinfo_debug->cam_mux_src =
+					_seninf_ops->_get_cammux_ctrl(ctx, dest->cam);
+				vcinfo_debug->exp_size =
+					mtk_cam_seninf_get_cammux_exp(ctx, dest->cam);
+				vcinfo_debug->rec_size =
+					mtk_cam_seninf_get_cammux_res(ctx, dest->cam);
+				vcinfo_debug->frame_mointor_err =
+					mtk_cam_seninf_get_cammux_err(ctx, dest->cam);
+				vcinfo_debug->cam_mux_irq =
+					SENINF_READ_REG(pcammux, SENINF_CAM_MUX_PCSR_IRQ_STATUS);
+				dev_dbg(ctx->dev, "cam[%d] irq 0x%x\n",
+					dest->cam,
+					SENINF_READ_REG(pcammux, SENINF_CAM_MUX_PCSR_IRQ_STATUS));
+				/*  write clear  */
+				SENINF_WRITE_REG(pcammux,
+					SENINF_CAM_MUX_PCSR_IRQ_STATUS, 0xFFFFFFFF);
+			}
+
+			if (vc->feature == VC_RAW_DATA ||
+				vc->feature == VC_STAGGER_NE ||
+				vc->feature == VC_STAGGER_ME ||
+				vc->feature == VC_STAGGER_SE) {
+				meter = &debug_result->meter[i];
+				mtk_cam_seninf_get_mux_meter(ctx,
+							     dest->mux, meter);
+
+				dev_dbg(ctx->dev, "\t--- mux meter ---\n");
+				dev_dbg(ctx->dev, "\twidth %d height %d\n",
+				     meter->width, meter->height);
+				dev_dbg(ctx->dev, "\th_valid %d, h_blank %d\n",
+				     meter->h_valid, meter->h_blank);
+				dev_dbg(ctx->dev, "\tv_valid %d, v_blank %d\n",
+				     meter->v_valid, meter->v_blank);
+				dev_dbg(ctx->dev, "\tmipi_pixel_rate %lld\n",
+				     meter->mipi_pixel_rate);
+				dev_dbg(ctx->dev, "\tv_blank %lld us\n",
+				     meter->vb_in_us);
+				dev_dbg(ctx->dev, "\th_blank %lld us\n",
+				     meter->hb_in_us);
+				dev_dbg(ctx->dev, "\tline_time %lld us\n",
+				     meter->line_time_in_us);
+			}
+		}
+	}
+	return 1;
+}
+
+
 static ssize_t mtk_cam_seninf_show_status(struct device *dev,
 				   struct device_attribute *attr,
 		char *buf)
 {
-	int i, j, len;
+	int i, j, len, dbg_idx;
 	struct seninf_core *core;
 	struct seninf_ctx *ctx;
 	struct seninf_vc *vc;
@@ -3348,11 +3499,14 @@ static ssize_t mtk_cam_seninf_show_status(struct device *dev,
 	struct media_link *link;
 	struct media_pad *pad;
 	struct mtk_cam_seninf_mux_meter meter;
+	struct mtk_cam_seninf_debug debug_result;
+	struct mtk_cam_seninf_vcinfo_debug *vcinfo_debug;
 	void *pmux, *pcammux, *rx, *base_ana, *csi_mac, *base_seninf;
 
 	core = dev_get_drvdata(dev);
 	len = 0;
 
+	memset(&debug_result, 0, sizeof(struct mtk_cam_seninf_debug));
 	mutex_lock(&core->mutex);
 
 	list_for_each_entry(ctx, &core->list, list) {
@@ -3377,20 +3531,22 @@ static ssize_t mtk_cam_seninf_show_status(struct device *dev,
 		if (!ctx->streaming)
 			continue;
 
+		mtk_cam_seninf_debug_core_dump(ctx, &debug_result);
+
 		base_seninf = ctx->reg_if_csi2[(unsigned int)ctx->seninfIdx];
 		csi_mac = ctx->reg_csirx_mac_csi[(uint32_t)ctx->port];
 		rx = ctx->reg_ana_dphy_top[(unsigned int)ctx->port];
 		base_ana = ctx->reg_ana_csi_rx[(unsigned int)ctx->port];
 		SHOW(buf, len,
 			"csirx_mac_csi irq_stat 0x%08x, seninf irq_stat 0x%08x\n",
-		     SENINF_READ_REG(csi_mac, CSIRX_MAC_CSI2_IRQ_STATUS),
-			 SENINF_READ_REG(base_seninf, SENINF_CSI2_IRQ_STATUS));
+		     debug_result.csi_mac_irq_status,
+			 debug_result.csi_irq_status);
 		SHOW(buf, len, "csi2 line_frame_num 0x%08x\n",
 		     SENINF_READ_REG(csi_mac, CSIRX_MAC_CSI2_LINE_FRAME_NUM));
 		SHOW(buf, len, "csi2 packet_status 0x%08x\n",
 		     SENINF_READ_REG(csi_mac, CSIRX_MAC_CSI2_PACKET_STATUS));
 		SHOW(buf, len, "csi2 packet_cnt_status 0x%08x\n",
-		     SENINF_READ_REG(csi_mac, CSIRX_MAC_CSI2_PACKET_CNT_STATUS));
+		     debug_result.packet_cnt_status);
 
 		SHOW(buf, len, "rx-ana settle ck 0x%02x dt 0x%02x\n",
 		     SENINF_READ_BITS(rx, DPHY_RX_CLOCK_LANE0_HS_PARAMETER,
@@ -3435,34 +3591,48 @@ static ssize_t mtk_cam_seninf_show_status(struct device *dev,
 			vc = &ctx->vcinfo.vc[i];
 
 			for (j = 0; j < vc->dest_cnt; j++) {
+				dbg_idx = i * vc->dest_cnt + j;
+				if (dbg_idx >= MAX_MUX_VCINFO_DEBUG) {
+					dev_info(ctx->dev,
+					"[%s] vcinfo.cnt is exceed debug limit (%u)\n",
+					__func__, MAX_MUX_VCINFO_DEBUG);
+					return -1;
+				}
+
+
 				dest = &vc->dest[j];
 				pmux = ctx->reg_if_mux[dest->mux];
+				vcinfo_debug = &debug_result.vcinfo_debug[dbg_idx];
+				meter = debug_result.meter[j];
+
 				if (dest->cam < _seninf_ops->cam_mux_num)
 					pcammux = ctx->reg_if_cam_mux_pcsr[dest->cam];
 				else
 					pcammux = NULL;
-				SHOW(buf, len,
-				     "[%d] vc 0x%x dt 0x%x mux %d cam %d\n",
-					i, vc->vc, vc->dt, dest->mux, dest->cam);
+				SHOW(buf, len, "[%d] vc 0x%x dt 0x%x mux %d cam %d\n",
+					i,
+					vcinfo_debug->vc,
+					vcinfo_debug->dt,
+					vcinfo_debug->seninf_mux,
+					vcinfo_debug->cam_mux);
 				SHOW(buf, len,
 				     "\tmux[%d] en %d src %d irq_stat 0x%x\n",
-					dest->mux,
-					mtk_cam_seninf_is_mux_used(ctx, dest->mux),
-					mtk_cam_seninf_get_top_mux_ctrl(ctx, dest->mux),
-					SENINF_READ_REG(pmux, SENINF_MUX_IRQ_STATUS));
+					vcinfo_debug->seninf_mux,
+					vcinfo_debug->seninf_mux_en,
+					vcinfo_debug->seninf_mux_src,
+					vcinfo_debug->seninf_mux_irq);
 				SHOW(buf, len, "\t\tfifo_overrun_cnt : <%d>\n",
 					ctx->fifo_overrun_cnt);
 				if (pcammux) {
 					SHOW(buf, len,
-					     "\tcam[%d] en %d src %d exp 0x%x res 0x%x err 0x%x irq_stat 0x%x\n",
-					     dest->cam,
-					     _seninf_ops->_is_cammux_used(ctx, dest->cam),
-					     _seninf_ops->_get_cammux_ctrl(ctx, dest->cam),
-					     mtk_cam_seninf_get_cammux_exp(ctx, dest->cam),
-					     mtk_cam_seninf_get_cammux_res(ctx, dest->cam),
-					     mtk_cam_seninf_get_cammux_err(ctx, dest->cam),
-					     SENINF_READ_REG(pcammux,
-							SENINF_CAM_MUX_PCSR_IRQ_STATUS));
+						"\tcam[%d] en %d src %d exp 0x%x res 0x%x err 0x%x irq_stat 0x%x\n",
+						vcinfo_debug->cam_mux,
+						vcinfo_debug->cam_mux_en,
+						vcinfo_debug->cam_mux_src,
+						vcinfo_debug->exp_size,
+						vcinfo_debug->rec_size,
+						vcinfo_debug->frame_mointor_err,
+						vcinfo_debug->cam_mux_irq);
 					SENINF_WRITE_REG(pcammux,
 						SENINF_CAM_MUX_PCSR_IRQ_STATUS, 0x103);
 				}
@@ -3508,7 +3678,7 @@ static ssize_t mtk_cam_seninf_show_status(struct device *dev,
 #define SENINF_DRV_DEBUG_MAX_DELAY 400
 #endif
 
-#define FT_30_FPS 33
+
 #define PKT_CNT_CHK_MARGIN 110
 
 #define MAX_DELAY_STEP 100
@@ -3695,7 +3865,7 @@ static int mtk_cam_seninf_debug(struct seninf_ctx *ctx)
 		SENINF_WRITE_REG(base_seninf, SENINF_CSI2_IRQ_STATUS, 0xffffffff);
 	}
 	dev_info(ctx->dev,
-		"SENINF%d_CSI2_EN(0x%x) SENINF_CSI2_OPT(0x%x) CSIRX_MAC_CSI2_EN(0x%x) CSIRX_MAC_CSI2_OPT(0x%x) CSIRX_MAC_CSI2_IRQ_STATUS(0x%x), SENINF_CSI2_IRQ_STATUS(0x%x), CSIRX_MAC_CSI2_RESYNC_MERGE_CTRL(0x%x)\n",
+		"SENINF%d_CSI2_PRBS_EN(0x%x) SENINF_CSI2_OPT(0x%x) CSIRX_MAC_CSI2_EN(0x%x) CSIRX_MAC_CSI2_OPT(0x%x) CSIRX_MAC_CSI2_IRQ_STATUS(0x%x), SENINF_CSI2_IRQ_STATUS(0x%x), CSIRX_MAC_CSI2_RESYNC_MERGE_CTRL(0x%x)\n",
 		(uint32_t)ctx->seninfIdx,
 		SENINF_READ_REG(base_seninf, SENINF_CSI2_EN),
 		SENINF_READ_REG(base_seninf, SENINF_CSI2_OPT),
@@ -3842,6 +4012,108 @@ static int mtk_cam_seninf_debug(struct seninf_ctx *ctx)
 
 	dev_info(ctx->dev, "ret = %d", ret);
 
+	return ret;
+}
+
+int mtk_cam_seninf_get_tsrec_timestamp(struct seninf_ctx *ctx, void *arg)
+{
+	int ret = 0;
+	unsigned int tsrec_no = 0;
+	struct seninf_mux *mux_target;
+	struct mtk_tsrec_timestamp_by_sensor_id *info = arg;
+	struct mtk_cam_seninf_tsrec_timestamp_info ts_info = {0};
+
+	if (info == NULL) {
+		dev_info(ctx->dev, "%s arg is null", __func__);
+		return -1;
+	}
+
+	mutex_lock(&ctx->mutex);
+	list_for_each_entry(mux_target, &ctx->list_mux, list) {
+		tsrec_no = mux_target->idx;
+	}
+	mutex_unlock(&ctx->mutex);
+
+	mtk_cam_seninf_tsrec_get_timestamp_info(tsrec_no, &ts_info);
+
+	info->ts_us[0] = ts_info.exp_recs[0].ts_us[0];
+	info->ts_us[1] = ts_info.exp_recs[0].ts_us[1];
+	info->ts_us[2] = ts_info.exp_recs[0].ts_us[2];
+	info->ts_us[3] = ts_info.exp_recs[0].ts_us[3];
+	return ret;
+}
+
+int mtk_cam_seninf_get_debug_reg_result(struct seninf_ctx *ctx, void *arg)
+{
+	int ret = 0;
+	int i;
+	struct seninf_core *core = ctx->core;
+	struct mtk_seninf_debug_result *target = arg;
+	struct mtk_cam_seninf_debug debug_result;
+	struct mtk_cam_seninf_mux_meter *meter;
+	struct mtk_cam_seninf_vcinfo_debug *vcinfo_debug;
+	struct mux_debug_result *mux_result;
+	static __u16 last_pkCnt;
+
+	if (target == NULL) {
+		dev_info(ctx->dev, "mux_debug_result arg is null");
+		return -1;
+	}
+
+	memset(&debug_result, 0, sizeof(struct mtk_cam_seninf_debug));
+	mutex_lock(&core->mutex);
+
+	list_for_each_entry(ctx, &core->list, list) {
+		if (!ctx->streaming)
+			continue;
+
+		target->is_cphy = ctx->is_cphy;
+		target->csi_port = ctx->port;
+		target->seninf = ctx->seninfIdx;
+		target->data_lanes = ctx->num_data_lanes;
+
+		mtk_cam_seninf_debug_core_dump(ctx, &debug_result);
+		target->mux_result_cnt = debug_result.mux_result_cnt;
+		target->csi_irq_status = debug_result.csi_irq_status;
+		target->csi_mac_irq_status = debug_result.csi_mac_irq_status;
+
+		if (last_pkCnt != debug_result.packet_cnt_status) {
+			last_pkCnt = debug_result.packet_cnt_status;
+			target->packet_status_err = 0;
+		} else {
+			target->packet_status_err = 1;
+		}
+
+		for (i = 0; i <= debug_result.mux_result_cnt; i++) {
+			vcinfo_debug = &debug_result.vcinfo_debug[i];
+			meter = &debug_result.meter[i];
+			mux_result = &target->mux_result[i];
+
+			mux_result->vc_feature = vcinfo_debug->vc_feature;
+			mux_result->vc = vcinfo_debug->vc;
+			mux_result->dt = vcinfo_debug->dt;
+			mux_result->seninf_mux = vcinfo_debug->seninf_mux;
+			mux_result->seninf_mux_en = vcinfo_debug->seninf_mux_en;
+			mux_result->seninf_mux_src = vcinfo_debug->seninf_mux_src;
+			mux_result->seninf_mux_irq = vcinfo_debug->seninf_mux_irq;
+			mux_result->cam_mux = vcinfo_debug->cam_mux;
+			mux_result->cam_mux_en = vcinfo_debug->cam_mux_en;
+			mux_result->cam_mux_src = vcinfo_debug->cam_mux_src;
+			mux_result->cam_mux_irq = vcinfo_debug->cam_mux_irq;
+			mux_result->frame_mointor_err = vcinfo_debug->frame_mointor_err;
+			mux_result->exp_size = vcinfo_debug->exp_size;
+			mux_result->rec_size = vcinfo_debug->rec_size;
+			mux_result->v_valid = meter->v_valid;
+			mux_result->h_valid = meter->h_valid;
+			mux_result->v_blank = meter->v_blank;
+			mux_result->h_blank = meter->h_blank;
+			mux_result->mipi_pixel_rate = meter->mipi_pixel_rate;
+			mux_result->vb_in_us = meter->vb_in_us;
+			mux_result->hb_in_us = meter->hb_in_us;
+			mux_result->line_time_in_us = meter->line_time_in_us;
+		}
+	}
+	mutex_unlock(&core->mutex);
 	return ret;
 }
 
@@ -4439,7 +4711,7 @@ static void seninf_record_vsync_info(struct seninf_core *core,
 		vsync_info->vsync_irq_st_h = SENINF_READ_REG(pcammux_gcsr,
 			SENINF_CAM_MUX_GCSR_VSYNC_IRQ_STS_H);
 	} else
-		dev_info(ctx_->dev, "ctx is null\n");
+		dev_info(core->dev, "%s ctx_ is NULL", __func__);
 
 	if (core->vsync_irq_en_flag)
 		seninf_record_cammux_irq(core, vsync_info);
@@ -5020,6 +5292,8 @@ struct mtk_cam_seninf_ops mtk_csi_phy_3_0 = {
 #else
 	._debug = mtk_cam_seninf_debug,
 #endif
+	._get_debug_reg_result = mtk_cam_seninf_get_debug_reg_result,
+	._get_tsrec_timestamp = mtk_cam_seninf_get_tsrec_timestamp,
 	._set_reg = mtk_cam_seninf_set_reg,
 	.seninf_num = 12,
 	.mux_num = 22,

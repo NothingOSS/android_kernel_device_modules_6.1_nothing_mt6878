@@ -1421,6 +1421,10 @@ static int imgsensor_probe(struct i2c_client *client)
 		goto free_entity;
 	}
 
+	/* register qos to prevent deep idle during i2c transfer */
+	cpu_latency_qos_add_request(&ctx->subctx.i2c_qos_request,
+		PM_QOS_DEFAULT_VALUE);
+
 #ifdef IMGSENSOR_USE_PM_FRAMEWORK
 	pm_runtime_enable(dev);
 #else

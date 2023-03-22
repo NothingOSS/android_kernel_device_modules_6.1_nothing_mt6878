@@ -1622,10 +1622,25 @@ void subdrv_ctx_init(struct subdrv_ctx *ctx)
 
 void sensor_init(struct subdrv_ctx *ctx)
 {
+	u64 time_boot_begin = 0;
+
 	/* write init setting */
 	if (ctx->s_ctx.init_setting_table != NULL) {
 		DRV_LOG_MUST(ctx, "E: size:%u\n", ctx->s_ctx.init_setting_len);
+
+		if (ctx->power_on_profile_en)
+			time_boot_begin = ktime_get_boottime_ns();
+
 		i2c_table_write(ctx, ctx->s_ctx.init_setting_table, ctx->s_ctx.init_setting_len);
+
+		if (ctx->power_on_profile_en) {
+			ctx->sensor_pw_on_profile.i2c_init_period =
+				ktime_get_boottime_ns() - time_boot_begin;
+
+			 ctx->sensor_pw_on_profile.i2c_init_table_len =
+							ctx->s_ctx.init_setting_len;
+		}
+
 		DRV_LOG(ctx, "X: size:%u\n", ctx->s_ctx.init_setting_len);
 	} else {
 		DRV_LOGE(ctx, "please implement initial setting!\n");
@@ -1782,6 +1797,7 @@ int common_control(struct subdrv_ctx *ctx,
 	u8 *pbuf = NULL;
 	u16 size = 0;
 	u16 addr = 0;
+	u64 time_boot_begin = 0;
 	struct eeprom_info_struct *info = ctx->s_ctx.eeprom_info;
 
 	if (scenario_id >= ctx->s_ctx.sensor_mode_num) {
@@ -1797,8 +1813,21 @@ int common_control(struct subdrv_ctx *ctx,
 	if (ctx->s_ctx.mode[scenario_id].mode_setting_table != NULL) {
 		DRV_LOG_MUST(ctx, "E: sid:%u size:%u\n", scenario_id,
 			ctx->s_ctx.mode[scenario_id].mode_setting_len);
+
+		if (ctx->power_on_profile_en)
+			time_boot_begin = ktime_get_boottime_ns();
+
 		i2c_table_write(ctx, ctx->s_ctx.mode[scenario_id].mode_setting_table,
 			ctx->s_ctx.mode[scenario_id].mode_setting_len);
+
+		if (ctx->power_on_profile_en) {
+			ctx->sensor_pw_on_profile.i2c_cfg_period =
+					ktime_get_boottime_ns() - time_boot_begin;
+
+			ctx->sensor_pw_on_profile.i2c_cfg_table_len =
+					ctx->s_ctx.mode[scenario_id].mode_setting_len;
+		}
+
 		DRV_LOG(ctx, "X: sid:%u size:%u\n", scenario_id,
 			ctx->s_ctx.mode[scenario_id].mode_setting_len);
 	} else {
