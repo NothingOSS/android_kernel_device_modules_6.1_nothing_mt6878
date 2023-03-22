@@ -205,6 +205,11 @@ enum mtk_cam_hw_mode {
 	MTK_CAM_HW_MODE_DIRECT_COUPLED = 2,
 };
 
+enum mtk_cam_data_pattern {
+	MTK_CAM_PATTERN_BAYER,
+	MTK_CAM_PATTERN_4CELL,
+};
+
 struct mtk_cam_resource_sensor_v2 {
 	__u32 width;
 	__u32 height;
@@ -215,6 +220,7 @@ struct mtk_cam_resource_sensor_v2 {
 	__u64 pixel_rate;
 	__u8 no_bufferd_prate_calc;
 	__u64 driver_buffered_pixel_rate;
+	__u8 pattern;
 };
 
 #define MTK_CAM_RAW_A 0x0001
