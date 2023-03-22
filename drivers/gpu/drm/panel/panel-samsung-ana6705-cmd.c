@@ -1535,6 +1535,11 @@ static struct mtk_panel_params ext_params = {
 		.count = 1,
 		.para_list[0] = 0x9c,
 	},
+
+	.dyn = {
+		.switch_en = 1,
+		.data_rate = (PLL_CLOCK + 1) * 2,
+	},
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
 	.dsc_params = {
 		.enable = 1,
@@ -1620,6 +1625,11 @@ static struct mtk_panel_params ext_params_wqhd = {
 		.count = 1,
 		.para_list[0] = 0x9c,
 	},
+
+	.dyn = {
+		.switch_en = 1,
+		.data_rate = (PLL_CLOCK + 1) * 2,
+	},
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
 	.dsc_params = {
 		.enable = 1,
@@ -1704,6 +1714,10 @@ static struct mtk_panel_params ext_params_fhd_120 = {
 		.para_list[0] = 0x9c,
 	},
 
+	.dyn = {
+		.switch_en = 1,
+		.data_rate = (PLL_CLOCK_FHD + 1) * 2,
+	},
 	.dyn_fps = {
 		.switch_en = 1,
 		.vact_timing_fps = 120,
@@ -1757,6 +1771,10 @@ static struct mtk_panel_params ext_params_fhd_60 = {
 		.para_list[0] = 0x9c,
 	},
 
+	.dyn = {
+		.switch_en = 1,
+		.data_rate = (PLL_CLOCK_FHD + 1) * 2,
+	},
 	.dyn_fps = {
 		.switch_en = 1,
 		.vact_timing_fps = 60,
