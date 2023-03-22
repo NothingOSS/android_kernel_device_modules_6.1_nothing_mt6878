@@ -67,7 +67,7 @@ static int g_pd_pixel_region(struct adaptor_ctx *ctx, struct v4l2_ctrl *ctrl)
 static void dump_perframe_info(struct adaptor_ctx *ctx, struct mtk_hdr_ae *ae_ctrl)
 {
 	dev_info(ctx->dev,
-		"[%s][%s] sensor_idx %d, req id %d, sof_cnt:%u, exposure[LLLE->SSSE] %d %d %d %d %d ana_gain[LLLE->SSSE] %d %d %d %d %d, w(%d/%d/%d/%d/%d,%d/%d/%d/%d/%d) sub_tag:%u, fl:%u, min_fl:%u, flick_en:%u, mode:(line_time:%u, margin:%u, scen:%u; STG:(readout_l:%u, read_margin:%u, ext_fl:%u, fast_mode:%u))\n",
+		"[%s][%s] sensor_idx %d, req id %d, sof_cnt:%u, exposure[LLLE->SSSE] 64bit %llu %llu %llu %llu %llu ana_gain[LLLE->SSSE] %d %d %d %d %d, w(%llu/%llu/%llu/%llu/%llu,%d/%d/%d/%d/%d) sub_tag:%u, fl:%u, min_fl:%u, flick_en:%u, mode:(line_time:%u, margin:%u, scen:%u; STG:(readout_l:%u, read_margin:%u, ext_fl:%u, fast_mode:%u))\n",
 		ctx->sd.name,
 		(ctx->subdrv) ? (ctx->subdrv->name) : "null",
 		ctx->idx,
@@ -295,7 +295,7 @@ static int do_set_ae_ctrl(struct adaptor_ctx *ctx,
 	case 1:
 	default:
 	{
-		u32 fsync_exp[1] = {0}; /* needed by fsync set_shutter */
+		u64 fsync_exp[1] = {0}; /* needed by fsync set_shutter */
 		int ret = 0;
 		u32 again_exp[IMGSENSOR_STAGGER_EXPOSURE_CNT] = {0};
 		u32 dgain_exp[IMGSENSOR_STAGGER_EXPOSURE_CNT] = {0};
@@ -355,7 +355,7 @@ static int do_set_ae_ctrl(struct adaptor_ctx *ctx,
 		notify_fsync_mgr_set_extend_framelength(ctx, para.u64[0]);
 	}
 
-	ctx->exposure->val = ae_ctrl->exposure.le_exposure;
+	ctx->exposure->val = (u32) ae_ctrl->exposure.le_exposure;
 	ctx->analogue_gain->val = ae_ctrl->gain.le_gain;
 	ctx->subctx.ae_ctrl_gph_en = 0;
 	dump_perframe_info(ctx, ae_ctrl);
@@ -725,7 +725,7 @@ static int ext_ctrl(struct adaptor_ctx *ctx, struct v4l2_ctrl *ctrl, struct sens
 
 			ctrl->val = tmp / 1000;
 		}
-		dev_info(ctx->dev, "[%s][%s] sof timeout value in us %d|%llu|%d|%d\n",
+		dev_info(ctx->dev, "[%s][%s] sof timeout value in us %llu|%llu|%d|%d\n",
 			__func__,
 			(ctx->subdrv) ? (ctx->subdrv->name) : "null",
 			ctx->shutter_for_timeout,
@@ -931,7 +931,10 @@ static int imgsensor_set_ctrl(struct v4l2_ctrl *ctrl)
 		notify_fsync_mgr_vsync(ctx);
 
 		/* update timeout value upon vsync*/
-		ctx->shutter_for_timeout = ctx->exposure->val;
+		if (ctx->ae_memento.exposure.le_exposure)
+			ctx->shutter_for_timeout = ctx->ae_memento.exposure.le_exposure;
+		else
+			ctx->shutter_for_timeout = ctx->exposure->val;
 		if (ctx->cur_mode->fine_intg_line)
 			ctx->shutter_for_timeout /= 1000;
 		break;
@@ -943,7 +946,7 @@ static int imgsensor_set_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_EXPOSURE:
 		{
-			u32 fsync_exp[1] = {0}; /* needed by fsync set_shutter */
+			u64 fsync_exp[1] = {0}; /* needed by fsync set_shutter */
 
 			para.u64[0] = ctrl->val;
 
@@ -965,7 +968,7 @@ static int imgsensor_set_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_EXPOSURE_ABSOLUTE:
 		{
-			u32 fsync_exp[1] = {0}; /* needed by fsync set_shutter */
+			u64 fsync_exp[1] = {0}; /* needed by fsync set_shutter */
 			__u32 fine_integ_time = 0;
 
 			para.u64[0] = (u64)(ctrl->val) * 100000;
@@ -1058,7 +1061,7 @@ static int imgsensor_set_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_MTK_SHUTTER_GAIN_SYNC:
 		{
 			struct mtk_shutter_gain_sync *info = ctrl->p_new.p;
-			u32 fsync_exp[1] = {0}; /* needed by fsync set_shutter */
+			u64 fsync_exp[1] = {0}; /* needed by fsync set_shutter */
 
 			para.u64[0] = info->shutter;
 
@@ -1189,7 +1192,7 @@ static int imgsensor_set_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_START_SEAMLESS_SWITCH:
 		{
 			struct mtk_seamless_switch_param *info = ctrl->p_new.p;
-			u32 fsync_exp[5] = {0}; /* preventing drv modified exp value */
+			u64 fsync_exp[5] = {0}; /* preventing drv modified exp value */
 			u32 orig_scen_id = ctx->subctx.current_scenario_id;
 			u32 orig_readout_time_us =
 				(ctx->mode[orig_scen_id].height
@@ -1206,7 +1209,7 @@ static int imgsensor_set_ctrl(struct v4l2_ctrl *ctrl)
 			para.u64[2] = (uintptr_t)&info->ae_ctrl[1];
 
 			dev_info(dev,
-				    "seamless scen(%u => %u) s[%u %u %u %u %u] g[%u %u %u %u %u] s1[%u %u %u %u %u] g1[%u %u %u %u %u] %llu|%llu\n",
+				    "seamless scen(%u => %u) s[%llu %llu %llu %llu %llu] g[%u %u %u %u %u] s1[%llu %llu %llu %llu %llu] g1[%u %u %u %u %u] %llu|%llu\n",
 					orig_scen_id,
 					info->target_scenario_id,
 					info->ae_ctrl[0].exposure.arr[0],
@@ -1330,7 +1333,10 @@ static int imgsensor_set_ctrl(struct v4l2_ctrl *ctrl)
 			restore_ae_ctrl(ctx);
 
 			/* update timeout value after reset*/
-			ctx->shutter_for_timeout = ctx->exposure->val;
+			if (ctx->ae_memento.exposure.le_exposure)
+				ctx->shutter_for_timeout = ctx->ae_memento.exposure.le_exposure;
+			else
+				ctx->shutter_for_timeout = ctx->exposure->val;
 			if (ctx->cur_mode->fine_intg_line)
 				ctx->shutter_for_timeout /= 1000;
 

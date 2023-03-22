@@ -116,12 +116,12 @@ static void fsync_mgr_s_frame_length(struct adaptor_ctx *ctx)
 
 static void fsync_mgr_s_multi_shutter_frame_length(
 	struct adaptor_ctx *ctx,
-	u32 *ae_exp_arr, u32 ae_exp_cnt,
+	u64 *ae_exp_arr, u32 ae_exp_cnt,
 	const unsigned int multi_exp_type)
 {
 	enum ACDK_SENSOR_FEATURE_ENUM cmd;
 	union feature_para para;
-	u32 fsync_exp[IMGSENSOR_STAGGER_EXPOSURE_CNT] = {0};
+	u64 fsync_exp[IMGSENSOR_STAGGER_EXPOSURE_CNT] = {0};
 	u32 len = 0;
 	int i;
 
@@ -129,7 +129,7 @@ static void fsync_mgr_s_multi_shutter_frame_length(
 		for (i = 0;
 			(i < ae_exp_cnt) && (i < IMGSENSOR_STAGGER_EXPOSURE_CNT);
 			++i)
-			fsync_exp[i] = (u32)(*(ae_exp_arr + i));
+			fsync_exp[i] = (*(ae_exp_arr + i));
 	}
 
 	para.u64[0] = (u64)fsync_exp;
@@ -182,7 +182,7 @@ static void fsync_mgr_update_sensor_actual_fl_info(struct adaptor_ctx *ctx,
 
 
 static void fsync_mgr_chk_long_exposure(struct adaptor_ctx *ctx,
-	const u32 *ae_exp_arr, const u32 ae_exp_cnt)
+	const u64 *ae_exp_arr, const u32 ae_exp_cnt)
 {
 	unsigned int i = 0;
 	int has_long_exp = 0;
@@ -192,7 +192,7 @@ static void fsync_mgr_chk_long_exposure(struct adaptor_ctx *ctx,
 		g_sensor_fine_integ_line(ctx, ctx->subctx.current_scenario_id);
 
 	for (i = 0; i < ae_exp_cnt; ++i) {
-		u32 exp_lc =
+		u32 exp_lc = (u32)
 			FINE_INTEG_CONVERT(ae_exp_arr[i], fine_integ_line);
 
 		/* check if any exp will enter long exposure mode */
@@ -322,12 +322,13 @@ static void fsync_mgr_setup_sensor_hdr_info(struct adaptor_ctx *ctx,
 
 static void fsync_mgr_set_hdr_exp_data(struct adaptor_ctx *ctx,
 	struct fs_hdr_exp_st *p_hdr_exp,
-	u32 *ae_exp_arr, u32 ae_exp_cnt,
+	u64 *ae_exp_arr, u32 ae_exp_cnt,
 	u32 fine_integ_line, const u32 mode_id)
 {
 	struct mtk_stagger_info info = {0};
 	unsigned int i = 0;
 	int ret = 0;
+	u64 ae_exp;
 
 	/* error handle */
 	if (unlikely(p_hdr_exp == NULL)) {
@@ -365,12 +366,12 @@ static void fsync_mgr_set_hdr_exp_data(struct adaptor_ctx *ctx,
 #endif // !WAIT_SENSOR_SUPPORT_LBMF
 
 			if (likely(idx >= 0)) {
-				p_hdr_exp->exp_lc[idx] = ae_exp_arr[i];
+				ae_exp = ae_exp_arr[i];
 				if (fine_integ_line) {
 					p_hdr_exp->exp_lc[idx] =
-						FINE_INTEG_CONVERT(p_hdr_exp->exp_lc[idx],
-							fine_integ_line);
-				}
+						FINE_INTEG_CONVERT(ae_exp, fine_integ_line);
+				} else
+					p_hdr_exp->exp_lc[idx] = ae_exp;
 
 #ifndef WAIT_SENSOR_SUPPORT_LBMF
 				if (p_hdr_exp->multi_exp_type ==
@@ -399,9 +400,10 @@ static void fsync_mgr_set_hdr_exp_data(struct adaptor_ctx *ctx,
 
 static void fsync_mgr_set_exp_data(struct adaptor_ctx *ctx,
 	struct fs_perframe_st *p_pf_ctrl,
-	u32 *ae_exp_arr, u32 ae_exp_cnt, const u32 mode_id)
+	u64 *ae_exp_arr, u32 ae_exp_cnt, const u32 mode_id)
 {
 	u32 fine_integ_line = 0;
+	u64 ae_exp;
 
 	/* error handle */
 	if (unlikely(ae_exp_arr == NULL || ae_exp_cnt == 0)) {
@@ -413,11 +415,12 @@ static void fsync_mgr_set_exp_data(struct adaptor_ctx *ctx,
 
 
 	fine_integ_line = g_sensor_fine_integ_line(ctx, mode_id);
-	p_pf_ctrl->shutter_lc = (ae_exp_cnt == 1) ? *(ae_exp_arr + 0) : 0;
+	ae_exp = (ae_exp_cnt == 1) ? *(ae_exp_arr + 0) : 0;
 	if (fine_integ_line) {
 		p_pf_ctrl->shutter_lc =
-			FINE_INTEG_CONVERT(p_pf_ctrl->shutter_lc, fine_integ_line);
-	}
+			FINE_INTEG_CONVERT(ae_exp, fine_integ_line);
+	} else
+		p_pf_ctrl->shutter_lc = (u32) ae_exp;
 
 	fsync_mgr_set_hdr_exp_data(ctx, &p_pf_ctrl->hdr_exp,
 		ae_exp_arr, ae_exp_cnt, fine_integ_line, mode_id);
@@ -777,7 +780,7 @@ static void fsync_mgr_prepare_mode_related_info(struct adaptor_ctx *ctx,
 }
 
 int chk_s_exp_with_fl_by_fsync_mgr(struct adaptor_ctx *ctx,
-	u32 *ae_exp_arr, u32 ae_exp_cnt)
+	u64 *ae_exp_arr, u32 ae_exp_cnt)
 {
 	int en_fsync = 0;
 	int ret = 0;
@@ -919,7 +922,7 @@ void notify_fsync_mgr_set_extend_framelength(struct adaptor_ctx *ctx,
 }
 
 void notify_fsync_mgr_seamless_switch(struct adaptor_ctx *ctx,
-	u32 *ae_exp_arr, u32 ae_exp_max_cnt,
+	u64 *ae_exp_arr, u32 ae_exp_max_cnt,
 	u32 orig_readout_time_us, u32 target_scenario_id)
 {
 	struct fs_seamless_st seamless_info = {0};
@@ -1019,7 +1022,7 @@ void notify_fsync_mgr_subsample_tag(struct adaptor_ctx *ctx, u64 sub_tag)
 }
 
 void notify_fsync_mgr_set_shutter(struct adaptor_ctx *ctx,
-	u32 *ae_exp_arr, u32 ae_exp_cnt,
+	u64 *ae_exp_arr, u32 ae_exp_cnt,
 	int do_set_exp_with_fl)
 {
 	struct fs_perframe_st pf_ctrl;

@@ -65,11 +65,11 @@ void set_max_framerate_by_scenario(struct subdrv_ctx *ctx,
 		enum SENSOR_SCENARIO_ID_ENUM scenario_id, u32 framerate);
 bool set_auto_flicker(struct subdrv_ctx *ctx, bool min_framelength_en);
 void set_long_exposure(struct subdrv_ctx *ctx);
-void set_shutter(struct subdrv_ctx *ctx, u32 shutter);
-void set_shutter_frame_length(struct subdrv_ctx *ctx, u32 shutter, u32 frame_length);
+void set_shutter(struct subdrv_ctx *ctx, u64 shutter);
+void set_shutter_frame_length(struct subdrv_ctx *ctx, u64 shutter, u32 frame_length);
 void set_hdr_tri_shutter(struct subdrv_ctx *ctx, u64 *shutters, u16 exp_cnt);
 void set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
-		u32 *shutters, u16 shutter_cnt,	u16 frame_length);
+		u64 *shutters, u16 shutter_cnt,	u16 frame_length);
 u16 gain2reg(u32 gain);
 void set_gain(struct subdrv_ctx *ctx, u32 gain);
 void set_hdr_tri_gain(struct subdrv_ctx *ctx, u64 *gains, u16 exp_cnt);
@@ -118,7 +118,7 @@ void get_sensor_pdaf_capacity(struct subdrv_ctx *ctx,
 		enum SENSOR_SCENARIO_ID_ENUM scenario_id, u32 *pdaf_cap);
 void extend_frame_length(struct subdrv_ctx *ctx, u32 ns);
 void seamless_switch(struct subdrv_ctx *ctx,
-		enum SENSOR_SCENARIO_ID_ENUM scenario_id, u32 *ae_ctrl);
+		enum SENSOR_SCENARIO_ID_ENUM scenario_id, u64 *ae_ctrl);
 void get_seamless_scenarios(struct subdrv_ctx *ctx,
 		enum SENSOR_SCENARIO_ID_ENUM scenario_id, u32 *pScenarios);
 void get_sensor_hdr_capacity(struct subdrv_ctx *ctx,

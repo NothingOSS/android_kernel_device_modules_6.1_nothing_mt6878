@@ -718,7 +718,7 @@ static void set_max_framerate(struct subdrv_ctx *ctx, UINT16 framerate, kal_bool
 }	/*	set_max_framerate  */
 
 #define MAX_CIT_LSHIFT 7
-static void write_shutter(struct subdrv_ctx *ctx, kal_uint32 shutter, kal_bool gph)
+static void write_shutter(struct subdrv_ctx *ctx, unsigned long long shutter, kal_bool gph)
 {
 	kal_uint16 realtime_fps = 0;
 	kal_uint16 l_shift = 1;
@@ -740,7 +740,7 @@ static void write_shutter(struct subdrv_ctx *ctx, kal_uint32 shutter, kal_bool g
 	/* restore current shutter value */
 	for (i = 0; i < previous_exp_cnt; i++)
 		previous_exp[i] = 0;
-	previous_exp[0] = shutter;
+	previous_exp[0] = (kal_uint32)shutter;
 	previous_exp_cnt = 1;
 
 	if (gph)
@@ -756,7 +756,7 @@ static void write_shutter(struct subdrv_ctx *ctx, kal_uint32 shutter, kal_bool g
 			set_max_framerate(ctx, 146, 0);
 	}
 
-	ctx->shutter = shutter;
+	ctx->shutter = (kal_uint32)shutter;
 
 	/* long expsoure */
 	if (shutter >
@@ -769,7 +769,7 @@ static void write_shutter(struct subdrv_ctx *ctx, kal_uint32 shutter, kal_bool g
 		}
 		if (l_shift > MAX_CIT_LSHIFT) {
 			LOG_INF(
-				"Unable to set such a long exposure %d, set to max\n",
+				"Unable to set such a long exposure %llu, set to max\n",
 				shutter);
 
 			l_shift = MAX_CIT_LSHIFT;
@@ -799,7 +799,7 @@ static void write_shutter(struct subdrv_ctx *ctx, kal_uint32 shutter, kal_bool g
 		commit_write_sensor(ctx);
 	}
 
-	DEBUG_LOG(ctx, "shutter =%d, framelength =%d\n",
+	DEBUG_LOG(ctx, "shutter =%lld, framelength =%d\n",
 		shutter, ctx->frame_length);
 }	/*	write_shutter  */
 
@@ -819,11 +819,11 @@ static void write_shutter(struct subdrv_ctx *ctx, kal_uint32 shutter, kal_bool g
  * GLOBALS AFFECTED
  *
  *************************************************************************/
-static void set_shutter_w_gph(struct subdrv_ctx *ctx, kal_uint32 shutter, kal_bool gph)
+static void set_shutter_w_gph(struct subdrv_ctx *ctx, unsigned long long shutter, kal_bool gph)
 {
 	write_shutter(ctx, shutter, gph);
 }
-static void set_shutter(struct subdrv_ctx *ctx, kal_uint32 shutter)
+static void set_shutter(struct subdrv_ctx *ctx, unsigned long long shutter)
 {
 	set_shutter_w_gph(ctx, shutter, KAL_TRUE);
 } /* set_shutter */
@@ -847,7 +847,7 @@ static void set_frame_length(struct subdrv_ctx *ctx, kal_uint16 frame_length)
 }
 
 static void set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
-				kal_uint32 *shutters, kal_uint16 shutter_cnt,
+				unsigned long long *shutters, kal_uint16 shutter_cnt,
 				kal_uint16 frame_length)
 {
 	int i;
@@ -869,22 +869,22 @@ static void set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
 	}
 
 	/* fl constraint 1: previous se + previous me + current le */
-	calc_fl = shutters[0];
+	calc_fl = (kal_uint32)shutters[0];
 	for (i = 1; i < previous_exp_cnt; i++)
 		calc_fl += previous_exp[i];
 	calc_fl += imgsensor_info.margin*shutter_cnt*shutter_cnt;
 
 	/* fl constraint 2: current se + current me + current le */
-	calc_fl2 = shutters[0];
+	calc_fl2 = (kal_uint32)shutters[0];
 	for (i = 1; i < shutter_cnt; i++)
-		calc_fl2 += shutters[i];
+		calc_fl2 += (kal_uint32)shutters[i];
 	calc_fl2 += imgsensor_info.margin*shutter_cnt*shutter_cnt;
 
 	/* fl constraint 3: readout time cannot be overlapped */
 	calc_fl3 = (readoutLength + readMargin);
 	if (previous_exp_cnt == shutter_cnt) {
 		for (i = 1; i < shutter_cnt; i++) {
-			readoutDiff = previous_exp[i] - shutters[i];
+			readoutDiff = previous_exp[i] - (kal_uint32)shutters[i];
 			calc_fl3 += readoutDiff > 0 ? readoutDiff : 0;
 		}
 	}
@@ -902,23 +902,23 @@ static void set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
 	for (i = 0; i < previous_exp_cnt; i++)
 		previous_exp[i] = 0;
 	for (i = 0; i < shutter_cnt; i++)
-		previous_exp[i] = shutters[i];
+		previous_exp[i] = (kal_uint32)shutters[i];
 	previous_exp_cnt = shutter_cnt;
 
 	/* register value conversion */
 	switch (shutter_cnt) {
 	case 3:
-		le = shutters[0]/3;
-		me = shutters[1]/3;
-		se = shutters[2]/3;
+		le = (kal_uint32)shutters[0]/3;
+		me = (kal_uint32)shutters[1]/3;
+		se = (kal_uint32)shutters[2]/3;
 		break;
 	case 2:
-		le = shutters[0]/2;
+		le = (kal_uint32)shutters[0]/2;
 		me = 0;
-		se = shutters[1]/2;
+		se = (kal_uint32)shutters[1]/2;
 		break;
 	case 1:
-		le = shutters[0];
+		le = (kal_uint32)shutters[0];
 		me = 0;
 		se = 0;
 		break;
@@ -952,13 +952,13 @@ static void set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
 }
 
 static void set_shutter_frame_length(struct subdrv_ctx *ctx,
-				kal_uint16 shutter, kal_uint16 frame_length,
+				unsigned long long shutter, kal_uint16 frame_length,
 				kal_bool auto_extend_en)
 {
 	kal_uint16 realtime_fps = 0;
 	kal_int32 dummy_line = 0;
 
-	ctx->shutter = shutter;
+	ctx->shutter = (kal_uint32)shutter;
 
 	/* 0x3500, 0x3501, 0x3502 will increase VBLANK to get exposure larger
 	 * than frame exposure
@@ -1014,7 +1014,7 @@ static void set_shutter_frame_length(struct subdrv_ctx *ctx,
 	commit_write_sensor(ctx);
 
 	LOG_DEBUG(
-		"shutter =%d, framelength =%d/%d, dummy_line=%d\n",
+		"shutter =%llu, framelength =%d/%d, dummy_line=%d\n",
 		shutter, ctx->frame_length,
 		frame_length, dummy_line);
 }	/* set_shutter_frame_length */
@@ -1326,7 +1326,7 @@ static void custom6_setting(struct subdrv_ctx *ctx)
 }
 
 static void hdr_write_tri_shutter_w_gph(struct subdrv_ctx *ctx,
-		kal_uint32 le, kal_uint32 me, kal_uint32 se, kal_bool gph)
+		unsigned long long le, unsigned long long me, unsigned long long se, kal_bool gph)
 {
 	kal_uint16 realtime_fps = 0;
 	kal_uint16 exposure_cnt = 0;
@@ -1354,20 +1354,21 @@ static void hdr_write_tri_shutter_w_gph(struct subdrv_ctx *ctx,
 	}
 
 	ctx->frame_length =
-		max((kal_uint32)(le + me + se + imgsensor_info.margin*exposure_cnt*exposure_cnt),
+		max((kal_uint32)(((kal_uint32)le) + ((kal_uint32)me) + ((kal_uint32)se)
+				 + imgsensor_info.margin * exposure_cnt * exposure_cnt),
 		ctx->min_frame_length);
 	ctx->frame_length = min(ctx->frame_length, imgsensor_info.max_frame_length);
 
 	for (i = 0; i < previous_exp_cnt; i++)
 		previous_exp[i] = 0;
-	previous_exp[0] = le;
+	previous_exp[0] = (kal_uint32)le;
 	switch (exposure_cnt) {
 	case 3:
-		previous_exp[1] = me;
-		previous_exp[2] = se;
+		previous_exp[1] = (kal_uint32)me;
+		previous_exp[2] = (kal_uint32)se;
 		break;
 	case 2:
-		previous_exp[1] = se;
+		previous_exp[1] = (kal_uint32)se;
 		previous_exp[2] = 0;
 		break;
 	case 1:
@@ -1420,12 +1421,12 @@ static void hdr_write_tri_shutter_w_gph(struct subdrv_ctx *ctx,
 		commit_write_sensor(ctx);
 	}
 
-	LOG_DEBUG("X! le:0x%x, me:0x%x, se:0x%x autoflicker_en %d frame_length %d\n",
+	LOG_DEBUG("X! le:0x%llx, me:0x%llx, se:0x%llx autoflicker_en %d frame_length %d\n",
 		le, me, se, ctx->autoflicker_en, ctx->frame_length);
 }
 
 static void hdr_write_tri_shutter(struct subdrv_ctx *ctx,
-		kal_uint32 le, kal_uint32 me, kal_uint32 se)
+		unsigned long long le, unsigned long long me, unsigned long long se)
 {
 	hdr_write_tri_shutter_w_gph(ctx, le, me, se, KAL_TRUE);
 }
@@ -2998,12 +2999,12 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 		}
 		break;
 	case SENSOR_FEATURE_SET_HDR_SHUTTER://for 2EXP
-		LOG_DEBUG("SENSOR_FEATURE_SET_HDR_SHUTTER, LE=%d, SE=%d\n",
-				(UINT32) *feature_data, (UINT32) *(feature_data + 1));
+		LOG_DEBUG("SENSOR_FEATURE_SET_HDR_SHUTTER, LE=%llu, SE=%llu\n",
+				*feature_data, *(feature_data + 1));
 		// implement write shutter for NE/SE
-		hdr_write_tri_shutter(ctx, (UINT32)*feature_data,
+		hdr_write_tri_shutter(ctx, *feature_data,
 					0,
-					(UINT32)*(feature_data+1));
+					*(feature_data+1));
 		break;
 	case SENSOR_FEATURE_SET_DUAL_GAIN://for 2EXP
 		LOG_DEBUG("SENSOR_FEATURE_SET_DUAL_GAIN, LE=%d, SE=%d\n",
@@ -3015,14 +3016,14 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 				(UINT32)*(feature_data+1));
 		break;
 	case SENSOR_FEATURE_SET_HDR_TRI_SHUTTER://for 3EXP
-		LOG_DEBUG("SENSOR_FEATURE_SET_HDR_TRI_SHUTTER, LE=%d, ME=%d, SE=%d\n",
-				(UINT32) *feature_data,
-				(UINT32) *(feature_data + 1),
-				(UINT32) *(feature_data + 2));
+		LOG_DEBUG("SENSOR_FEATURE_SET_HDR_TRI_SHUTTER, LE=%llu, ME=%llu, SE=%llu\n",
+				*feature_data,
+				*(feature_data + 1),
+				*(feature_data + 2));
 		hdr_write_tri_shutter(ctx,
-				(UINT32) *feature_data,
-				(UINT32) *(feature_data + 1),
-				(UINT32) *(feature_data + 2));
+				*feature_data,
+				*(feature_data + 1),
+				*(feature_data + 2));
 		break;
 	case SENSOR_FEATURE_SET_HDR_TRI_GAIN:
 		LOG_DEBUG("SENSOR_FEATURE_SET_HDR_TRI_GAIN, LG=%d, SG=%d, MG=%d\n",
@@ -3054,7 +3055,7 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 		break;
 	case SENSOR_FEATURE_SET_SHUTTER_FRAME_TIME:
 		set_shutter_frame_length(ctx,
-			(UINT16) (*feature_data),
+			(*feature_data),
 			(UINT16) (*(feature_data + 1)),
 			(BOOL) (*(feature_data + 2)));
 		break;
@@ -3163,7 +3164,8 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 		set_frame_length(ctx, (UINT16) (*feature_data));
 		break;
 	case SENSOR_FEATURE_SET_MULTI_SHUTTER_FRAME_TIME:
-		set_multi_shutter_frame_length(ctx, (UINT32 *)(*feature_data),
+		set_multi_shutter_frame_length(ctx,
+					(unsigned long long *)(*feature_data),
 					(UINT16) (*(feature_data + 1)),
 					(UINT16) (*(feature_data + 2)));
 		break;

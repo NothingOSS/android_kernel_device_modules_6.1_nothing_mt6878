@@ -46,7 +46,7 @@ struct mtk_awb_gain {
 };
 
 struct mtk_shutter_gain_sync {
-	__u32 shutter;
+	__u64 shutter;
 	__u32 gain;
 };
 
@@ -56,8 +56,8 @@ struct mtk_dual_gain {
 };
 
 struct mtk_ihdr_shutter_gain {
-	__u32 le_shutter;
-	__u32 se_shutter;
+	__u64 le_shutter;
+	__u64 se_shutter;
 	__u32 gain;
 };
 
@@ -68,12 +68,12 @@ struct mtk_pixel_mode {
 
 
 struct mtk_hdr_shutter {
-	__u32 le_shutter;
-	__u32 se_shutter;
+	__u64 le_shutter;
+	__u64 se_shutter;
 };
 
 struct mtk_shutter_frame_length {
-	__u32 shutter;
+	__u64 shutter;
 	__u32 frame_length;
 	__u32 auto_extend_en;
 };
@@ -179,14 +179,14 @@ struct mtk_hdr_atr {
 struct mtk_hdr_exposure {
 	union {
 		struct {
-			__u32 le_exposure;
-			__u32 me_exposure;
-			__u32 se_exposure;
-			__u32 sse_exposure;
-			__u32 ssse_exposure;
+			__u64 le_exposure;
+			__u64 me_exposure;
+			__u64 se_exposure;
+			__u64 sse_exposure;
+			__u64 ssse_exposure;
 		};
 
-		__u32 arr[IMGSENSOR_STAGGER_EXPOSURE_CNT];
+		__u64 arr[IMGSENSOR_STAGGER_EXPOSURE_CNT];
 	};
 
 };

@@ -545,12 +545,12 @@ void set_long_exposure(struct subdrv_ctx *ctx)
 	ctx->exposure[IMGSENSOR_STAGGER_EXPOSURE_LE] = shutter;
 }
 
-void set_shutter(struct subdrv_ctx *ctx, u32 shutter)
+void set_shutter(struct subdrv_ctx *ctx, u64 shutter)
 {
 	set_shutter_frame_length(ctx, shutter, 0);
 }
 
-void set_shutter_frame_length(struct subdrv_ctx *ctx, u32 shutter, u32 frame_length)
+void set_shutter_frame_length(struct subdrv_ctx *ctx, u64 shutter, u32 frame_length)
 {
 	u32 fine_integ_line = 0;
 	bool gph = !ctx->is_seamless && (ctx->s_ctx.s_gph != NULL);
@@ -560,14 +560,14 @@ void set_shutter_frame_length(struct subdrv_ctx *ctx, u32 shutter, u32 frame_len
 	/* check boundary of shutter */
 	fine_integ_line = ctx->s_ctx.mode[ctx->current_scenario_id].fine_integ_line;
 	shutter = FINE_INTEG_CONVERT(shutter, fine_integ_line);
-	shutter = max(shutter, ctx->s_ctx.exposure_min);
-	shutter = min(shutter, ctx->s_ctx.exposure_max);
+	shutter = max_t(u64, shutter, (u64)ctx->s_ctx.exposure_min);
+	shutter = min_t(u64, shutter, (u64)ctx->s_ctx.exposure_max);
 	/* check boundary of framelength */
-	ctx->frame_length =	max(shutter + ctx->s_ctx.exposure_margin, ctx->min_frame_length);
-	ctx->frame_length =	min(ctx->frame_length, ctx->s_ctx.frame_length_max);
+	ctx->frame_length = max((u32)shutter + ctx->s_ctx.exposure_margin, ctx->min_frame_length);
+	ctx->frame_length = min(ctx->frame_length, ctx->s_ctx.frame_length_max);
 	/* restore shutter */
 	memset(ctx->exposure, 0, sizeof(ctx->exposure));
-	ctx->exposure[0] = shutter;
+	ctx->exposure[0] = (u32) shutter;
 	/* group hold start */
 	if (gph)
 		ctx->s_ctx.s_gph((void *)ctx, 1);
@@ -605,17 +605,17 @@ void set_shutter_frame_length(struct subdrv_ctx *ctx, u32 shutter, u32 frame_len
 void set_hdr_tri_shutter(struct subdrv_ctx *ctx, u64 *shutters, u16 exp_cnt)
 {
 	int i = 0;
-	u32 values[3] = {0};
+	u64 values[3] = {0};
 
 	if (shutters != NULL) {
 		for (i = 0; i < 3; i++)
-			values[i] = (u32) *(shutters + i);
+			values[i] = (u64) *(shutters + i);
 	}
 	set_multi_shutter_frame_length(ctx,	values, exp_cnt, 0);
 }
 
 void set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
-		u32 *shutters, u16 exp_cnt,	u16 frame_length)
+		u64 *shutters, u16 exp_cnt,	u16 frame_length)
 {
 	int i = 0;
 	u32 fine_integ_line = 0;
@@ -640,23 +640,23 @@ void set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
 	cit_step = ctx->s_ctx.mode[ctx->current_scenario_id].coarse_integ_step;
 	for (i = 0; i < exp_cnt; i++) {
 		shutters[i] = FINE_INTEG_CONVERT(shutters[i], fine_integ_line);
-		shutters[i] = max(shutters[i], ctx->s_ctx.exposure_min);
-		shutters[i] = min(shutters[i], ctx->s_ctx.exposure_max);
+		shutters[i] = max_t(u64, shutters[i], (u64)ctx->s_ctx.exposure_min);
+		shutters[i] = min_t(u64, shutters[i], (u64)ctx->s_ctx.exposure_max);
 		if (cit_step)
 			shutters[i] = round_up(shutters[i], cit_step);
 	}
 
 	/* check boundary of framelength */
 	/* - (1) previous se + previous me + current le */
-	calc_fl[0] = shutters[0];
+	calc_fl[0] = (u32) shutters[0];
 	for (i = 1; i < last_exp_cnt; i++)
 		calc_fl[0] += ctx->exposure[i];
 	calc_fl[0] += ctx->s_ctx.exposure_margin*exp_cnt*exp_cnt;
 
 	/* - (2) current se + current me + current le */
-	calc_fl[1] = shutters[0];
+	calc_fl[1] = (u32) shutters[0];
 	for (i = 1; i < exp_cnt; i++)
-		calc_fl[1] += shutters[i];
+		calc_fl[1] += (u32) shutters[i];
 	calc_fl[1] += ctx->s_ctx.exposure_margin*exp_cnt*exp_cnt;
 
 	/* - (3) readout time cannot be overlapped */
@@ -665,7 +665,7 @@ void set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
 		ctx->s_ctx.mode[ctx->current_scenario_id].read_margin);
 	if (last_exp_cnt == exp_cnt)
 		for (i = 1; i < exp_cnt; i++) {
-			readout_diff = ctx->exposure[i] - shutters[i];
+			readout_diff = ctx->exposure[i] - (u32) shutters[i];
 			calc_fl[2] += readout_diff > 0 ? readout_diff : 0;
 		}
 	for (i = 0; i < ARRAY_SIZE(calc_fl); i++)
@@ -675,7 +675,7 @@ void set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
 	/* restore shutter */
 	memset(ctx->exposure, 0, sizeof(ctx->exposure));
 	for (i = 0; i < exp_cnt; i++)
-		ctx->exposure[i] = shutters[i];
+		ctx->exposure[i] = (u32) shutters[i];
 	/* group hold start */
 	if (gph)
 		ctx->s_ctx.s_gph((void *)ctx, 1);
@@ -688,16 +688,16 @@ void set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
 	/* write shutter */
 	switch (exp_cnt) {
 	case 1:
-		rg_shutters[0] = shutters[0] / exp_cnt;
+		rg_shutters[0] = (u32) shutters[0] / exp_cnt;
 		break;
 	case 2:
-		rg_shutters[0] = shutters[0] / exp_cnt;
-		rg_shutters[2] = shutters[1] / exp_cnt;
+		rg_shutters[0] = (u32) shutters[0] / exp_cnt;
+		rg_shutters[2] = (u32) shutters[1] / exp_cnt;
 		break;
 	case 3:
-		rg_shutters[0] = shutters[0] / exp_cnt;
-		rg_shutters[1] = shutters[1] / exp_cnt;
-		rg_shutters[2] = shutters[2] / exp_cnt;
+		rg_shutters[0] = (u32) shutters[0] / exp_cnt;
+		rg_shutters[1] = (u32) shutters[1] / exp_cnt;
+		rg_shutters[2] = (u32) shutters[2] / exp_cnt;
 		break;
 	default:
 		break;
@@ -1270,7 +1270,7 @@ void extend_frame_length(struct subdrv_ctx *ctx, u32 ns)
 }
 
 void seamless_switch(struct subdrv_ctx *ctx,
-		enum SENSOR_SCENARIO_ID_ENUM scenario_id, u32 *ae_ctrl)
+		enum SENSOR_SCENARIO_ID_ENUM scenario_id, u64 *ae_ctrl)
 {
 	DRV_LOGE(ctx, "please check get_seamless_scenarios or implement this in sensor driver.");
 }
@@ -1976,7 +1976,7 @@ int common_feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 	case SENSOR_FEATURE_SEAMLESS_SWITCH:
 		if ((feature_data + 1) != NULL)
 			seamless_switch(ctx, (*feature_data),
-				(u32 *)((uintptr_t)(*(feature_data + 1))));
+				(u64 *)((uintptr_t)(*(feature_data + 1))));
 		else {
 			DRV_LOGE(ctx, "no ae_ctrl input\n");
 			seamless_switch(ctx, (*feature_data), NULL);
@@ -2047,7 +2047,7 @@ int common_feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 		break;
 	case SENSOR_FEATURE_SET_SHUTTER_FRAME_TIME:
 		set_shutter_frame_length(ctx,
-			(u32) (*feature_data),
+			(u64) (*feature_data),
 			(u32) (*(feature_data + 1)));
 		break;
 	case SENSOR_FEATURE_SET_IHDR_SHUTTER_GAIN:
@@ -2084,7 +2084,7 @@ int common_feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 		set_frame_length(ctx, (u16) (*feature_data));
 		break;
 	case SENSOR_FEATURE_SET_MULTI_SHUTTER_FRAME_TIME:
-		set_multi_shutter_frame_length(ctx, (u32 *)(*feature_data),
+		set_multi_shutter_frame_length(ctx, (u64 *)(*feature_data),
 					(u16) (*(feature_data + 1)),
 					(u16) (*(feature_data + 2)));
 		break;

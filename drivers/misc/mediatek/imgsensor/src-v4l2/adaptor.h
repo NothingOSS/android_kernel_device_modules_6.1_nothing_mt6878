@@ -171,7 +171,7 @@ struct adaptor_ctx {
 	unsigned int *sensor_debug_flag;
 	unsigned int sof_cnt; /* from seninf vsync notify */
 	int req_id; /* from mtk hdr ae ctrl */
-	u32 shutter_for_timeout;
+	u64 shutter_for_timeout;
 	struct wakeup_source *sensor_ws;
 	unsigned int aov_pm_ops_flag;	/* flag for aov pm ops */
 	unsigned int aov_mclk_ulposc_flag;	/* flag for aov switch mclk to ulposc */
