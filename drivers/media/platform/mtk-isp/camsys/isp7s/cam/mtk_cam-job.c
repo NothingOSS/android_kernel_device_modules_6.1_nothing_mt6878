@@ -1081,18 +1081,10 @@ _apply_sensor(struct mtk_cam_job *job)
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_device *cam = ctx->cam;
 	struct mtk_cam_request *req = job->req;
-	unsigned long timeout = msecs_to_jiffies(1000);
 
 	if (!job->sensor_hdl_obj) {
 		dev_info(cam->dev, "[%s] warn. no sensor_hdl_obj to apply: ctx-%d job 0x%x\n",
 			 __func__, ctx->stream_id, job->frame_seq_no);
-		return 0;
-	}
-
-	/* for delay sensor setting scenario : seamless ... etc */
-	if (!wait_for_completion_timeout(&job->i2c_ready_completion, timeout)) {
-		pr_info("[%s] error: wait for job i2c ready completion\n",
-			__func__);
 		return 0;
 	}
 
@@ -1415,6 +1407,9 @@ static int apply_engines_cq(struct mtk_cam_job *job,
 
 static int _apply_cq(struct mtk_cam_job *job)
 {
+	if (WARN_ON(!job->composed))
+		return -1;
+
 	apply_engines_cq(job, job->frame_seq_no, &job->cq, &job->cq_rst);
 	return 0;
 }
@@ -1633,7 +1628,6 @@ _job_pack_subsample(struct mtk_cam_job *job,
 		__func__, ctx->stream_id, job->job_type, job->job_scen.id, first_frame_only_cur,
 		job->sub_ratio, subsof_fps);
 	job->stream_on_seninf = false;
-	complete(&job->i2c_ready_completion);
 	if (!ctx->used_engine) {
 		unsigned long selected;
 
@@ -1722,8 +1716,7 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 		job->job_scen.scen.normal.exp_num, job->switch_type);
 	job->stream_on_seninf = false;
 	job->scq_period = SCQ_DEADLINE_MS_STAGGER;
-	if (!job->seamless_switch)
-		complete(&job->i2c_ready_completion);
+
 	if (!ctx->used_engine) {
 		unsigned long selected;
 
@@ -2044,9 +2037,6 @@ _job_pack_normal(struct mtk_cam_job *job,
 		__func__, ctx->stream_id, job->job_type, job->job_scen.id);
 	job->stream_on_seninf = false;
 
-	if (!job->seamless_switch)
-		complete(&job->i2c_ready_completion);
-
 	if (!ctx->used_engine) {
 		unsigned long selected;
 
@@ -2110,7 +2100,6 @@ _job_pack_m2m(struct mtk_cam_job *job,
 	dev_dbg(cam->dev, "[%s] ctx:%d, job_type:%d, scen:%d",
 		__func__, ctx->stream_id, job->job_type, job->job_scen.id);
 	job->stream_on_seninf = false;
-	complete(&job->i2c_ready_completion);
 	if (!ctx->used_engine) {
 		unsigned long selected;
 
@@ -2271,7 +2260,6 @@ _job_pack_only_sv(struct mtk_cam_job *job,
 	dev_dbg(cam->dev, "[%s] ctx:%d, job_type:%d, scen:%d",
 		__func__, ctx->stream_id, job->job_type, job->job_scen.id);
 	job->stream_on_seninf = false;
-	complete(&job->i2c_ready_completion);
 	if (!ctx->used_engine) {
 		int selected;
 
@@ -2959,7 +2947,6 @@ static int job_factory(struct mtk_cam_job *job)
 	job->scq_period = SCQ_DEADLINE_MS;
 	init_completion(&job->compose_completion);
 	init_completion(&job->cq_exe_completion);
-	init_completion(&job->i2c_ready_completion);
 
 	switch (job->job_type) {
 	case JOB_TYPE_BASIC:

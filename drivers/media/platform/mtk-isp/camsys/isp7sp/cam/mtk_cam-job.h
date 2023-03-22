@@ -250,7 +250,6 @@ struct mtk_cam_job {
 
 	struct completion compose_completion;
 	struct completion cq_exe_completion;
-	struct completion i2c_ready_completion;	/* seamless switch delay sensor setting */
 
 	struct mtk_cam_job_state job_state;
 	const struct mtk_cam_job_ops *ops;
@@ -421,7 +420,7 @@ static inline unsigned int to_fh_cookie(unsigned int ctx, unsigned int seq_no)
 	return ctx << BITS_FRAME_SEQ | seq_no;
 }
 
-static inline unsigned int add_frame_seq(unsigned int seq, unsigned int cnt)
+static inline unsigned int add_frame_seq(unsigned int seq, int cnt)
 {
 	return (seq + cnt) & _MASK_FRAME_SEQ;
 }
@@ -429,6 +428,11 @@ static inline unsigned int add_frame_seq(unsigned int seq, unsigned int cnt)
 static inline unsigned int next_frame_seq(unsigned int seq)
 {
 	return add_frame_seq(seq, 1);
+}
+
+static inline unsigned int prev_frame_seq(unsigned int seq)
+{
+	return add_frame_seq(seq, -1);
 }
 
 /* delta from a to b */
