@@ -2275,11 +2275,11 @@ s32 cmdq_core_print_error(char *buf)
 void cmdq_core_set_log_level(const s32 value)
 {
 	if (value == CMDQ_LOG_LEVEL_NORMAL) {
-		/* Only print CMDQ ERR and CMDQ LOG */
+		/* Only print CMDQ ERR and CMDQ LOG, reset to normal */
 		cmdq_ctx.logLevel = CMDQ_LOG_LEVEL_NORMAL;
 	} else if (value < CMDQ_LOG_LEVEL_MAX) {
 		/* Modify log level */
-		cmdq_ctx.logLevel = (1 << value);
+		cmdq_ctx.logLevel |= (1 << value);
 	}
 }
 

@@ -33,12 +33,10 @@ struct CmdqDeviceStruct {
 	u32 irqSecId;
 	s32 dma_mask_result;
 
-#if IS_ENABLED(CONFIG_MACH_MT6885)
 	struct device *pdev2;
 	unsigned long va2;
 	phys_addr_t pa2;
 	u32 irqId2;
-#endif
 };
 static struct CmdqDeviceStruct gCmdqDev;
 static u32 gThreadCount;
@@ -485,20 +483,21 @@ void cmdq_dev_init(struct platform_device *pDevice)
 	struct device_node *node = pDevice->dev.of_node;
 	u32 dma_mask_bit = 0;
 	s32 ret;
-#if IS_ENABLED(CONFIG_MACH_MT6885)
+	unsigned long mdpsys_base_va;
+	uint32_t mdpsys_base_pa;
 	struct device_node *node2;
 	struct platform_device	*pdevice2;
 	struct resource res;
-#endif
 
 	/* init cmdq device dependent data */
 	do {
 		memset(&gCmdqDev, 0x0, sizeof(struct CmdqDeviceStruct));
 
 		gCmdqDev.pDev = &pDevice->dev;
-#if !IS_ENABLED(CONFIG_MACH_MT6885)
-		gCmdqDev.regBaseVA = (unsigned long)of_iomap(node, 0);
-		gCmdqDev.regBasePA = cmdq_dev_get_gce_node_PA(node, 0);
+
+		mdpsys_base_va = cmdq_dev_alloc_reference_by_name("mmsys-config", &mdpsys_base_pa);
+		gCmdqDev.regBaseVA = (unsigned long)mdpsys_base_va;
+		gCmdqDev.regBasePA = mdpsys_base_pa;
 		gCmdqDev.irqId = irq_of_parse_and_map(node, 0);
 		gCmdqDev.irqSecId = irq_of_parse_and_map(node, 1);
 		gCmdqDev.clk_gce = devm_clk_get(&pDevice->dev, "GCE");
@@ -513,7 +512,6 @@ void cmdq_dev_init(struct platform_device *pDevice)
 			gCmdqDev.regBaseVA, gCmdqDev.irqId,
 			gCmdqDev.irqSecId);
 
-#else
 		node2 = of_parse_phandle(node, "mediatek,mailbox-gce-m", 0);
 		if (!node2)
 			break;
@@ -563,7 +561,6 @@ void cmdq_dev_init(struct platform_device *pDevice)
 			"[CMDQ] 2nd dev:%p PA:%pa VA:%lx irqId:%d\n",
 			gCmdqDev.pdev2, &gCmdqDev.pa2,
 			gCmdqDev.va2, gCmdqDev.irqId2);
-#endif
 	} while (0);
 
 	ret = of_property_read_u32(gCmdqDev.pDev->of_node, "dma-mask-bit",
