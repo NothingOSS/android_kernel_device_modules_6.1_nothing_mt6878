@@ -19,7 +19,6 @@
 #include <linux/pm_runtime.h>
 #include <linux/spi/spi.h>
 #include <linux/dma-mapping.h>
-#include <linux/pm_qos.h>
 #include <linux/time.h>
 #include <linux/timekeeping.h>
 
@@ -149,7 +148,6 @@ struct mtk_spi {
 	struct scatterlist *tx_sgl, *rx_sgl;
 	u32 tx_sgl_len, rx_sgl_len;
 	const struct mtk_spi_compatible *dev_comp;
-	struct pm_qos_request spi_qos_request;
 	u32 spi_clk_hz;
 	/* Add auto_suspend_delay for user to balance
 	 * power consumption and performance, default 0.
@@ -452,8 +450,6 @@ static int mtk_spi_prepare_message(struct spi_master *master,
 	struct mtk_chip_config *chip_config = spi->controller_data;
 	struct mtk_spi *mdata = spi_master_get_devdata(master);
 
-	cpu_latency_qos_update_request(&mdata->spi_qos_request, 500);
-
 	cpha = spi->mode & SPI_CPHA ? 1 : 0;
 	cpol = spi->mode & SPI_CPOL ? 1 : 0;
 
@@ -559,15 +555,6 @@ static int mtk_spi_prepare_message(struct spi_master *master,
 
 	/* set hw cs timing */
 	mtk_spi_set_hw_cs_timing(spi);
-	return 0;
-}
-
-static int mtk_spi_unprepare_message(struct spi_controller *ctlr,
-					struct spi_message *message)
-{
-	struct mtk_spi *mdata = spi_master_get_devdata(ctlr);
-
-	cpu_latency_qos_update_request(&mdata->spi_qos_request, PM_QOS_DEFAULT_VALUE);
 	return 0;
 }
 
@@ -1030,7 +1017,6 @@ static int mtk_spi_probe(struct platform_device *pdev)
 		master->set_cs = mtk_spi_set_cs;
 
 	master->prepare_message = mtk_spi_prepare_message;
-	master->unprepare_message = mtk_spi_unprepare_message;
 	master->transfer_one = mtk_spi_transfer_one;
 	master->can_dma = mtk_spi_can_dma;
 	master->setup = mtk_spi_setup;
@@ -1149,8 +1135,6 @@ static int mtk_spi_probe(struct platform_device *pdev)
 
 	mdata->spi_clk_hz = clk_get_rate(mdata->spi_clk);
 
-	cpu_latency_qos_add_request(&mdata->spi_qos_request, PM_QOS_DEFAULT_VALUE);
-
 	if (mdata->dev_comp->need_pad_sel) {
 		if (mdata->pad_num != master->num_chipselect) {
 			dev_err(&pdev->dev,
@@ -1222,7 +1206,6 @@ static int mtk_spi_remove(struct platform_device *pdev)
 	struct spi_master *master = platform_get_drvdata(pdev);
 	struct mtk_spi *mdata = spi_master_get_devdata(master);
 
-	cpu_latency_qos_remove_request(&mdata->spi_qos_request);
 	pm_runtime_disable(&pdev->dev);
 
 	mtk_spi_reset(mdata);
