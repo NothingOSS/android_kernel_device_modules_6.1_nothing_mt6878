@@ -91,10 +91,12 @@ struct mtk_m4u_data {
 	const struct mtk_m4u_plat_data	*plat_data;
 };
 
+/* max value of TYPE_NUM and SMMU_TYPE_NUM */
+#define MAX_IOMMU_NUM	4
 struct mtk_m4u_plat_data {
 	struct peri_iommu_data		*peri_data;
-	const struct mtk_iommu_port	*port_list[TYPE_NUM];
-	u32				port_nr[TYPE_NUM];
+	const struct mtk_iommu_port	*port_list[MAX_IOMMU_NUM];
+	u32				port_nr[MAX_IOMMU_NUM];
 	const struct mau_config_info	*mau_config;
 	u32				mau_config_nr;
 	u32				mm_tf_ccu_support;
