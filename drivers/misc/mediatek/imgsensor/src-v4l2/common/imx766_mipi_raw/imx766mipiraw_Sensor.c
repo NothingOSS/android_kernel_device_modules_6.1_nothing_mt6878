@@ -1723,6 +1723,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		},
 		.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_4CELL_B,
 		.ana_gain_max = BASEGAIN * 16,
+		.dpc_enabled = true,
 	},
 	{
 		.frame_desc = frame_desc_cus19,
@@ -1772,6 +1773,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		},
 		.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_4CELL_B,
 		.ana_gain_max = BASEGAIN * 16,
+		.dpc_enabled = true,
 	},
 };
 
