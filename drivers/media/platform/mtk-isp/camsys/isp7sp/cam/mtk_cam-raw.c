@@ -91,6 +91,16 @@ static void init_camsys_settings(struct mtk_raw_device *dev, bool is_dc)
 	writel_relaxed(HALT2_EN, cam_dev->base + REG_HALT2_EN);
 	writel_relaxed(HALT13_EN, cam_dev->base + REG_HALT13_EN);
 
+	//Disable low latency
+	writel_relaxed(0xffff,
+		dev->base + REG_CAMRAWDMATOP_LOW_LATENCY_LINE_CNT_IMGO_R1);
+	writel_relaxed(0xffff,
+		yuv_dev->base + REG_CAMYUVDMATOP_LOW_LATENCY_LINE_CNT_YUVO_R1);
+	writel_relaxed(0xffff,
+		yuv_dev->base + REG_CAMYUVDMATOP_LOW_LATENCY_LINE_CNT_YUVO_R3);
+	writel_relaxed(0xffff,
+		yuv_dev->base + REG_CAMYUVDMATOP_LOW_LATENCY_LINE_CNT_DRZS4NO_R1);
+
 	switch (dev->id) {
 	case RAW_A:
 		reg_raw_urgent = REG_HALT5_EN;
