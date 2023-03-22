@@ -640,10 +640,8 @@ static struct clk *mtk_clk_mux_register_user(const struct mtk_mux_user *user,
 	struct clk *clk;
 
 	clk_user = kzalloc(sizeof(*clk_user), GFP_KERNEL);
-	if (!clk_user) {
-		kfree(clk_user);
+	if (!clk_user)
 		return ERR_PTR(-ENOMEM);
-	}
 
 	init.name = user->name;
 	init.flags = user->flags;
@@ -658,7 +656,7 @@ static struct clk *mtk_clk_mux_register_user(const struct mtk_mux_user *user,
 
 	clk = clk_register(NULL, &clk_user->hw);
 	if (IS_ERR(clk)) {
-		kfree(clk);
+		kfree(clk_user);
 		return clk;
 	}
 
