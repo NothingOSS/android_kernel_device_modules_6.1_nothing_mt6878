@@ -166,7 +166,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			struct cpumask *lowest_mask, int ret, int *best_cpu, bool energy_eval)
 {
 	int cpu, best_idle_cpu_cluster;
-	unsigned long util_cum[NR_CPUS];
+	unsigned long util_cum[NR_CPUS] = {[0 ... NR_CPUS-1] = ULONG_MAX};
 	unsigned long cpu_util_cum, best_cpu_util_cum = ULONG_MAX;
 	// unsigned long tutil = task_util(p);
 	unsigned long min_cap = uclamp_eff_value(p, UCLAMP_MIN);
