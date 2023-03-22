@@ -217,6 +217,7 @@ struct mml_pq_task {
 	struct mml_pq_read_status read_status;
 	struct completion hdr_curve_ready[MML_PIPE_CNT];
 	struct completion hdr_hist_ready[MML_PIPE_CNT];
+	struct mutex ref_lock;
 	struct kref ref;
 	struct mml_pq_sub_task tile_init;
 	struct mml_pq_sub_task comp_config;
