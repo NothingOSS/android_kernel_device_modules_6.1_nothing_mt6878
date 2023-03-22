@@ -102,6 +102,20 @@ static bool is_session_table_exist(uint64_t session)
 	return isExist;
 }
 
+static void free_memory(struct kref *kref)
+{
+	AMMU_LOG_DBG("kref destroy\n");
+#if DRAM_FALL_BACK_IN_RUNTIME
+	apummu_dram_remap_runtime_free(g_adv);
+#endif
+	if (g_adv->remote.is_general_SLB_alloc) {
+		apummu_remote_mem_free_pool(g_adv);
+		apummu_free_general_SLB(g_adv);
+	}
+
+	g_ammu_table_set.is_stable_exist = false;
+}
+
 /**
  * @input:
  *  None
@@ -133,13 +147,12 @@ static int session_table_alloc(void)
 
 		ret = apummu_remote_set_hw_default_iova_one_shot(g_adv);
 		if (ret)
-			goto out;
+			goto free_DRAM;
 	#endif
 		if (!(apummu_alloc_general_SLB(g_adv)))
-			if (apummu_remote_mem_add_pool(g_adv)) {
-				apummu_free_general_SLB(g_adv);
-				goto out;
-			}
+			if (apummu_remote_mem_add_pool(g_adv))
+				goto free_general_SLB;
+
 		AMMU_LOG_VERBO("kref init\n");
 		kref_init(&g_ammu_table_set.session_tbl_cnt);
 		g_ammu_table_set.is_stable_exist = true;
@@ -148,6 +161,12 @@ static int session_table_alloc(void)
 		kref_get(&g_ammu_table_set.session_tbl_cnt);
 	}
 
+	return ret;
+
+free_general_SLB:
+	apummu_free_general_SLB(g_adv);
+free_DRAM:
+	apummu_dram_remap_runtime_free(g_adv);
 out:
 	return ret;
 }
@@ -382,20 +401,6 @@ out:
 	return ret;
 }
 
-static void free_memory(struct kref *kref)
-{
-	AMMU_LOG_DBG("kref destroy\n");
-#if DRAM_FALL_BACK_IN_RUNTIME
-	apummu_dram_remap_runtime_free(g_adv);
-#endif
-	if (g_adv->remote.is_general_SLB_alloc) {
-		apummu_remote_mem_free_pool(g_adv);
-		apummu_free_general_SLB(g_adv);
-	}
-
-	g_ammu_table_set.is_stable_exist = false;
-}
-
 /* free session table by session */
 int session_table_free(uint64_t session)
 {
@@ -509,6 +514,27 @@ out:
 	return ret;
 }
 
+static int ammu_remove_stable_SLB_status(uint32_t type)
+{
+	int ret = 0;
+
+	if (type == APUMMU_MEM_TYPE_EXT) {
+		g_ammu_stable_ptr->stable_info.EXT_SLB_addr = 0;
+		g_ammu_stable_ptr->stable_info.mem_mask &= ~(1 << SLB_EXT);
+	} else if (type == APUMMU_MEM_TYPE_RSV_S) {
+		g_ammu_stable_ptr->stable_info.RSV_S_SLB_page_array_start = 0;
+		g_ammu_stable_ptr->stable_info.RSV_S_SLB_page = 0;
+		g_ammu_stable_ptr->stable_info.mem_mask &= ~(1 << SLB_RSV_S);
+	} else {
+		AMMU_LOG_ERR("Invalid apu memory type %u\n", type);
+		ret = -EINVAL;
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
 int ammu_session_table_remove_SLB(uint64_t session, uint32_t type)
 {
 	int ret = 0;
@@ -527,18 +553,7 @@ int ammu_session_table_remove_SLB(uint64_t session, uint32_t type)
 		goto out;
 	}
 
-	if (type == APUMMU_MEM_TYPE_EXT) {
-		g_ammu_stable_ptr->stable_info.EXT_SLB_addr = 0;
-		g_ammu_stable_ptr->stable_info.mem_mask &= ~(1 << SLB_EXT);
-	} else if (type == APUMMU_MEM_TYPE_RSV_S) {
-		g_ammu_stable_ptr->stable_info.RSV_S_SLB_page_array_start = 0;
-		g_ammu_stable_ptr->stable_info.RSV_S_SLB_page = 0;
-		g_ammu_stable_ptr->stable_info.mem_mask &= ~(1 << SLB_RSV_S);
-	} else {
-		AMMU_LOG_ERR("Invalid apu memory type\n");
-		ret = -EINVAL;
-		goto out;
-	}
+	ret = ammu_remove_stable_SLB_status(type);
 
 out:
 	mutex_unlock(&g_ammu_table_set.table_lock);
@@ -547,19 +562,30 @@ out:
 
 void ammu_session_table_check_SLB(uint32_t type)
 {
+	int ret = 0;
 	struct list_head *list_ptr;
 
 	mutex_lock(&g_ammu_table_set.table_lock);
 	list_for_each(list_ptr, &g_ammu_table_set.g_stable_head) {
+		g_ammu_stable_ptr = list_entry(list_ptr, struct apummu_session_tbl, list);
+
 		if (type == APUMMU_MEM_TYPE_EXT) {
 			if (g_ammu_stable_ptr->stable_info.EXT_SLB_addr != 0) {
-				AMMU_LOG_WRN("EXT SLB is freed, but 0x%llx is still using\n",
-					g_ammu_stable_ptr->session);
+				AMMU_LOG_WRN("0x%llx is still using EXT_SLB after free\n",
+						g_ammu_stable_ptr->session);
+
+				ret = ammu_remove_stable_SLB_status(APUMMU_MEM_TYPE_EXT);
+				if (ret)
+					AMMU_LOG_ERR("ammu_remove_stable_SLB_status fail\n");
 			}
 		} else if (type == APUMMU_MEM_TYPE_RSV_S) {
 			if (g_ammu_stable_ptr->stable_info.RSV_S_SLB_page_array_start != 0) {
-				AMMU_LOG_WRN("EXT SLB is freed, but 0x%llx is still using\n",
-					g_ammu_stable_ptr->session);
+				AMMU_LOG_WRN("0x%llx is still using RSV_S_SLB after free\n",
+						g_ammu_stable_ptr->session);
+
+				ret = ammu_remove_stable_SLB_status(APUMMU_MEM_TYPE_RSV_S);
+				if (ret)
+					AMMU_LOG_ERR("ammu_remove_stable_SLB_status fail\n");
 			}
 		}
 	}

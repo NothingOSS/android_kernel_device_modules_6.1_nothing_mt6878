@@ -33,8 +33,10 @@ int apummu_plat_init(struct platform_device *pdev)
 
 	/* get platform data */
 	AMMU_LOG_INFO("slb_wait_time: %d\n", aplat->slb_wait_time);
+	AMMU_LOG_INFO("is_general_SLB_support: %d\n", aplat->is_general_SLB_support);
 
 	adv->plat.slb_wait_time = aplat->slb_wait_time;
+	adv->plat.is_general_SLB_support = aplat->is_general_SLB_support;
 
 out:
 	return ret;

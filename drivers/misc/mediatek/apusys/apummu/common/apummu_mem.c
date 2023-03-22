@@ -171,8 +171,8 @@ int apummu_alloc_general_SLB(void *drvinfo)
 		goto out;
 	}
 
-	ret = apummu_alloc_slb(APUMMU_MEM_TYPE_GENERAL_S, size,
-			adv->plat.slb_wait_time, &ret_addr, &ret_size);
+	ret = apummu_alloc_slb(APUMMU_MEM_TYPE_GENERAL_S, size, adv->plat.slb_wait_time,
+					&ret_addr, &ret_size, adv->plat.is_general_SLB_support);
 	if (ret)
 		goto out;
 

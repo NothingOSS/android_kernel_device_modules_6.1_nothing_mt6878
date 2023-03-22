@@ -32,7 +32,8 @@ int apummu_alloc_mem(uint32_t type, uint32_t size, uint64_t *addr, uint32_t *sid
 	case APUMMU_MEM_TYPE_EXT:
 	case APUMMU_MEM_TYPE_RSV_S:
 		ret = apummu_alloc_slb(type, size, g_adv->plat.slb_wait_time,
-							&ret_addr, &ret_size);
+							&ret_addr, &ret_size,
+							g_adv->plat.is_general_SLB_support);
 		if (ret)
 			goto err;
 

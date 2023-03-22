@@ -11,7 +11,7 @@
 #include "slbc_ops.h"
 
 int apummu_alloc_slb(uint32_t type, uint32_t size, uint32_t slb_wait_time,
-					uint64_t *ret_addr, uint64_t *ret_size)
+			uint64_t *ret_addr, uint64_t *ret_size, bool general_SLB_support)
 {
 	int ret = 0;
 	struct slbc_data slb;
@@ -30,8 +30,7 @@ int apummu_alloc_slb(uint32_t type, uint32_t size, uint32_t slb_wait_time,
 		slb.timeout = slb_wait_time;
 		break;
 	case APUMMU_MEM_TYPE_GENERAL_S:
-		AMMU_LOG_INFO("Flow not completed, type %u is still TBD\n", type);
-		// slb.uid = UID_APU;
+		slb.uid = UID_APU;
 		slb.type = TP_BUFFER;
 		break;
 	default:
@@ -40,13 +39,13 @@ int apummu_alloc_slb(uint32_t type, uint32_t size, uint32_t slb_wait_time,
 		goto out;
 	}
 
-	// TODO: open me for slb, mark for ep
-	// ret = slbc_request(&slb);
-	// TODO: SLB current all failed
-	ret = -1;
+	ret = slbc_request(&slb);
 	if (ret) {
-		// AMMU_LOG_ERR("slbc_request Fail %d, type(%u)\n", ret, type);
-		AMMU_LOG_WRN("apummu current force all SLB Fail %d, type(%u)\n", ret, type);
+		if (type == APUMMU_MEM_TYPE_GENERAL_S && (!general_SLB_support))
+			AMMU_LOG_INFO("No General SLB Support\n");
+		else
+			AMMU_LOG_ERR("slbc_request Fail %d, type(%u)\n", ret, type);
+
 		goto out;
 	}
 
@@ -70,8 +69,7 @@ int apummu_free_slb(uint32_t type)
 		slb.type = TP_BUFFER;
 		break;
 	case APUMMU_MEM_TYPE_GENERAL_S:
-		AMMU_LOG_INFO("Flow not completed, type %u is still TBD\n", type);
-		// slb.uid = UID_SH_APU;
+		slb.uid = UID_SH_APU;
 		slb.type = TP_BUFFER;
 		break;
 	default:
@@ -80,8 +78,7 @@ int apummu_free_slb(uint32_t type)
 		goto out;
 	}
 
-	// TODO: open me for slb, mark for ep
-	// ret = slbc_release(&slb);
+	ret = slbc_release(&slb);
 	if (ret < 0) {
 		AMMU_LOG_ERR("slbc_release Fail %d\n", ret);
 		goto out;

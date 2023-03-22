@@ -10,12 +10,13 @@
 #include "apummu_plat.h"
 #include "apummu_device.h"
 
-static struct apummu_plat rv_drv = {
-	.slb_wait_time	= 0,
+static struct apummu_plat mt6897_drv = {
+	.slb_wait_time			= 0,
+	.is_general_SLB_support	= false,
 };
 
 static const struct of_device_id apummu_of_match[] = {
-	{ .compatible = "mediatek,rv-apummu",        .data = &rv_drv },
+	{ .compatible = "mediatek,rv-apummu",        .data = &mt6897_drv },
 	{ /* end of list */ },
 };
 

@@ -40,6 +40,7 @@ struct apummu_remote_data {
 struct apummu_platform {
 	uint32_t slb_wait_time;
 	uint32_t boundary;
+	bool is_general_SLB_support;
 	bool is_internal_SLB_alloc;
 	bool is_external_SLB_alloc;
 };

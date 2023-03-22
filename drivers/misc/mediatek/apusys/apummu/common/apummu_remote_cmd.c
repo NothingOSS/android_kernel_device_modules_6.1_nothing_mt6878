@@ -273,6 +273,8 @@ int apummu_remote_mem_add_pool(void *drvinfo)
 		return -EINVAL;
 	}
 
+	AMMU_LOG_INFO("APUMMU remote general SLB add pool\n");
+
 	adv = (struct apummu_dev_info *)drvinfo;
 
 	memset(&req, 0, sizeof(struct apummu_msg));
