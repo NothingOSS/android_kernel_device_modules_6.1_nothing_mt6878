@@ -473,6 +473,10 @@ static int __init mtk_scheduler_init(void)
 	MTK_VENDOR_DATA_SIZE_TEST(struct mtk_task, struct task_struct);
 	MTK_VENDOR_DATA_SIZE_TEST(struct mtk_tg, struct task_group);
 
+	/* build cpu_array for hints-based gear search*/
+	init_cpu_array();
+	build_cpu_array();
+
 	ret = init_sched_common_sysfs();
 	if (ret)
 		return ret;
@@ -608,9 +612,6 @@ static int __init mtk_scheduler_init(void)
 		/* default value for pelt8 */
 		update_pelt_data(939, 12329);
 	}
-
-	init_cpu_array();
-	build_cpu_array();
 
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	sched_irq_mon_init();
