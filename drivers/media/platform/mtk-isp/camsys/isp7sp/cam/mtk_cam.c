@@ -2114,7 +2114,9 @@ void mtk_cam_ctx_engine_off(struct mtk_cam_ctx *ctx)
 
 void mtk_cam_ctx_engine_disable_irq(struct mtk_cam_ctx *ctx)
 {
+	struct mtk_cam_device *cam;
 	struct mtk_raw_device *raw_dev;
+	struct mtk_yuv_device *yuv_dev;
 	struct mtk_camsv_device *sv_dev;
 	struct mtk_mraw_device *mraw_dev;
 	int i;
@@ -2123,6 +2125,11 @@ void mtk_cam_ctx_engine_disable_irq(struct mtk_cam_ctx *ctx)
 		if (ctx->hw_raw[i]) {
 			raw_dev = dev_get_drvdata(ctx->hw_raw[i]);
 			disable_irq(raw_dev->irq);
+
+			cam = raw_dev->cam;
+			yuv_dev = dev_get_drvdata(
+				cam->engines.yuv_devs[raw_dev->id]);
+			disable_irq(yuv_dev->irq);
 		}
 	}
 

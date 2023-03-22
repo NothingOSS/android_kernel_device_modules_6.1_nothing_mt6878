@@ -1653,7 +1653,7 @@ static int mtk_yuv_of_probe(struct platform_device *pdev,
 	struct device_link *link;
 	struct resource *res;
 	unsigned int i;
-	int irq, clks, larbs, ret;
+	int clks, larbs, ret;
 
 	ret = of_property_read_u32(dev->of_node, "mediatek,cam-id",
 				   &drvdata->id);
@@ -1704,20 +1704,19 @@ static int mtk_yuv_of_probe(struct platform_device *pdev,
 		return PTR_ERR(drvdata->base_inner);
 	}
 
-	irq = platform_get_irq(pdev, 0);
-	if (irq < 0) {
+	drvdata->irq = platform_get_irq(pdev, 0);
+	if (drvdata->irq < 0) {
 		dev_dbg(dev, "failed to get irq\n");
 		return -ENODEV;
 	}
 
-	ret = devm_request_irq(dev, irq, mtk_irq_yuv, 0,
-			       dev_name(dev), drvdata);
+	ret = devm_request_irq(dev, drvdata->irq, mtk_irq_yuv,
+			IRQF_NO_AUTOEN, dev_name(dev), drvdata);
 	if (ret) {
-		dev_dbg(dev, "failed to request irq=%d\n", irq);
+		dev_dbg(dev, "failed to request irq=%d\n", drvdata->irq);
 		return ret;
 	}
-	dev_dbg(dev, "registered irq=%d\n", irq);
-
+	dev_dbg(dev, "registered irq=%d\n", drvdata->irq);
 
 	clks = of_count_phandle_with_args(pdev->dev.of_node, "clocks",
 			"#clock-cells");
@@ -1864,6 +1863,8 @@ static int mtk_yuv_runtime_resume(struct device *dev)
 	int i, ret;
 
 	dev_info(dev, "%s:enable clock\n", __func__);
+
+	enable_irq(drvdata->irq);
 
 	for (i = 0; i < drvdata->num_clks; i++) {
 		ret = clk_prepare_enable(drvdata->clks[i]);
