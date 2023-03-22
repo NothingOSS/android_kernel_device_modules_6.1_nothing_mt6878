@@ -483,12 +483,8 @@ static int init_private_table(unsigned int cluster)
 										ps_temp.volt,
 										ps_base->dyn_pwr);
 				if (is_wl_support())
-					ps_temp.dsu_freq =
-						interpolate(ps_next->freq,
-									ps_next->dsu_freq,
-									ps_base->freq,
-									ps_base->dsu_freq,
-									cur_freq);
+					ps_temp.dsu_freq = ps_base->dsu_freq;
+
 				ps_new = &ps_temp;
 			}
 
