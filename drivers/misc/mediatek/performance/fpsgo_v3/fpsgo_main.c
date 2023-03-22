@@ -17,6 +17,7 @@
 #include <linux/tracepoint.h>
 #include <linux/kallsyms.h>
 #include <uapi/linux/sched/types.h>
+#include "sugov/cpufreq.h"
 
 #include "mt-plat/fpsgo_common.h"
 #include "fpsgo_base.h"
@@ -626,7 +627,17 @@ int fpsgo_wait_fstb_active(void)
 {
 	return fpsgo_ctrl2fstb_wait_fstb_active();
 }
+#if FPSGO_DYNAMIC_WL
+void fpsgo_notify_cpufreq_cap(int cid, int cap)
+{
+	FPSGO_LOGI("[FPSGO_CTRL] cid %d, cpufreq %d\n", cid, cap);
 
+	if (!fpsgo_enable)
+		return;
+
+	fpsgo_ctrl2fbt_cpufreq_cb_cap(cid, cap);
+}
+#else  // FPSGO_DYNAMIC_WL
 void fpsgo_notify_cpufreq(int cid, unsigned long freq)
 {
 	FPSGO_LOGI("[FPSGO_CTRL] cid %d, cpufreq %lu\n", cid, freq);
@@ -639,6 +650,7 @@ void fpsgo_notify_cpufreq(int cid, unsigned long freq)
 
 	fpsgo_ctrl2fbt_cpufreq_cb_exp(cid, freq);
 }
+#endif  // FPSGO_DYNAMIC_WL
 
 void dfrc_fps_limit_cb(unsigned int fps_limit)
 {
@@ -758,6 +770,58 @@ struct tracepoints_table {
 	bool registered;
 };
 
+#if FPSGO_DYNAMIC_WL
+static void fpsgo_cpu_frequency_cap_tracer(void *ignore, struct cpufreq_policy *policy)
+{
+	unsigned int cpu_id = 0, cpu = 0, cluster = 0, capacity;
+	struct cpufreq_policy *cpus_policy = NULL;
+
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	u64 ts[2];
+
+	ts[0] = sched_clock();
+#endif
+
+	if (!policy)
+		return;
+
+	cpu_id = cpumask_first(policy->related_cpus);
+
+	for_each_possible_cpu(cpu) {
+		cpus_policy = cpufreq_cpu_get(cpu);
+		if (!cpus_policy)
+			break;
+		cpu = cpumask_first(cpus_policy->related_cpus);
+		if (cpu == cpu_id)
+			break;
+		cpu = cpumask_last(cpus_policy->related_cpus);
+		cluster++;
+		cpufreq_cpu_put(cpus_policy);
+	}
+
+	capacity = get_curr_cap(cpu);
+
+	if (capacity)
+		fpsgo_notify_cpufreq_cap(cluster, capacity);
+	else
+		FPSGO_LOGE("[%s] cluster:%d, cpu:%d, freq:%d\n", __func__,
+			cluster, cpu_id, capacity);
+
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	ts[1] = sched_clock();
+
+	if ((ts[1] - ts[0] > 100000ULL) && in_hardirq()) {
+		printk_deferred("%s duration %llu, ts[0]=%llu, ts[1]=%llu\n",
+			__func__, ts[1] - ts[0], ts[0], ts[1]);
+	}
+#endif
+}
+
+struct tracepoints_table fpsgo_tracepoints[] = {
+	{.name = "android_rvh_cpufreq_transition", .func = fpsgo_cpu_frequency_cap_tracer},
+};
+
+#else  // FPSGO_DYNAMIC_WL
 static void fpsgo_cpu_frequency_tracer(void *ignore, unsigned int frequency, unsigned int cpu_id)
 {
 	int cpu = 0, cluster = 0;
@@ -809,6 +873,8 @@ static void fpsgo_cpu_frequency_tracer(void *ignore, unsigned int frequency, uns
 struct tracepoints_table fpsgo_tracepoints[] = {
 	{.name = "cpu_frequency", .func = fpsgo_cpu_frequency_tracer},
 };
+
+#endif  // FPSGO_DYNAMIC_WL
 
 #define FOR_EACH_INTEREST(i) \
 	for (i = 0; i < sizeof(fpsgo_tracepoints) / sizeof(struct tracepoints_table); i++)

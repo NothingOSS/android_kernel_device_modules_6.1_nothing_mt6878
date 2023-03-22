@@ -14,7 +14,12 @@ extern int fpsgo_fbt2xgf_get_dep_list(int pid, int count,
 
 #if defined(CONFIG_MTK_FPSGO) || defined(CONFIG_MTK_FPSGO_V3)
 void fpsgo_ctrl2fbt_dfrc_fps(int fps_limit);
+
+#if FPSGO_DYNAMIC_WL
+void fpsgo_ctrl2fbt_cpufreq_cb_cap(int cid, int cap);
+#else  // FPSGO_DYNAMIC_WL
 void fpsgo_ctrl2fbt_cpufreq_cb_exp(int cid, unsigned long freq);
+#endif  // FPSGO_DYNAMIC_WL
 void fpsgo_ctrl2fbt_vsync(unsigned long long ts);
 int fpsgo_ctrl2fbt_switch_uclamp(int enable);
 void fpsgo_comp2fbt_frame_start(struct render_info *thr,
@@ -73,6 +78,7 @@ void fbt_set_render_last_cb(struct render_info *thr, unsigned long long ts);
 static inline void fpsgo_ctrl2fbt_dfrc_fps(int fps_limit) { }
 static inline void fpsgo_ctrl2fbt_cpufreq_cb_exp(int cid,
 		unsigned long freq) { }
+static inline void fpsgo_ctrl2fbt_cpufreq_cb_cap(int cid, int cap) { }
 static inline void fpsgo_ctrl2fbt_vsync(unsigned long long ts) { }
 int fpsgo_ctrl2fbt_switch_uclamp(int enable) { return 0; }
 static inline void fpsgo_comp2fbt_frame_start(struct render_info *thr,
