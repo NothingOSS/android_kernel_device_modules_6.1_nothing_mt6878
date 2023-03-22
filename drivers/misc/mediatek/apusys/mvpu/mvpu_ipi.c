@@ -41,9 +41,11 @@ static struct mvpu_rpmsg_device mvpu_rx_rpm_dev;
 int mvpu_ipi_send(int type_0, u64 val)
 {
 	struct mvpu_ipi_data ipi_cmd_send;
+	int ret = 0;
+	int retval = 0;
 
 	if (!mvpu_tx_rpm_dev.ept)
-		return 0;
+		return -1;
 
 	ipi_cmd_send.type0  = type_0;
 	ipi_cmd_send.dir    = MVPU_IPI_WRITE;
@@ -51,16 +53,47 @@ int mvpu_ipi_send(int type_0, u64 val)
 
 	mutex_lock(&mvpu_ipi_mtx);
 
-	rpmsg_send(mvpu_tx_rpm_dev.ept, &ipi_cmd_send, sizeof(ipi_cmd_send));
+	/* power on */
+	ret = rpmsg_sendto(mvpu_tx_rpm_dev.ept, NULL, 1, 0);
+	if (ret && ret != -EOPNOTSUPP) {
+		pr_info("%s: rpmsg_sendto(power on) fail(%d)\n", __func__, ret);
+		retval = -1;
+		goto out;
+	}
 
+	ret = rpmsg_send(mvpu_tx_rpm_dev.ept, &ipi_cmd_send, sizeof(ipi_cmd_send));
+
+	if (ret) {
+		pr_info("%s: rpmsg_send fail(%d)\n", __func__, ret);
+		/* power off to restore ref cnt */
+		ret = rpmsg_sendto(mvpu_tx_rpm_dev.ept, NULL, 0, 1);
+		if (ret && ret != -EOPNOTSUPP)
+			pr_info("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret);
+		retval = -1;
+		goto out;
+	}
+
+	if (wait_for_completion_interruptible_timeout(
+			&mvpu_tx_rpm_dev.ack,
+			msecs_to_jiffies(10)) == 0) {
+		pr_info("%s: timeout\n", __func__);
+		retval = -1;
+		goto out;
+	}
+
+out:
 	mutex_unlock(&mvpu_ipi_mtx);
-
-	return 0;
+	return retval;
 }
 
 int mvpu_ipi_recv(int type_0, u64 *val)
 {
 	struct mvpu_ipi_data ipi_cmd_send;
+	int ret = 0;
+	int retval = 0;
+
+	if (!mvpu_tx_rpm_dev.ept)
+		return -1;
 
 	ipi_cmd_send.type0  = type_0;
 	ipi_cmd_send.dir    = MVPU_IPI_READ;
@@ -68,27 +101,46 @@ int mvpu_ipi_recv(int type_0, u64 *val)
 
 	mutex_lock(&mvpu_ipi_mtx);
 
-	rpmsg_send(mvpu_tx_rpm_dev.ept, &ipi_cmd_send, sizeof(ipi_cmd_send));
+	/* power on */
+	ret = rpmsg_sendto(mvpu_tx_rpm_dev.ept, NULL, 1, 0);
+	if (ret && ret != -EOPNOTSUPP) {
+		pr_info("%s: rpmsg_sendto(power on) fail(%d)\n", __func__, ret);
+		retval = -1;
+		goto out;
+	}
+
+	ret = rpmsg_send(mvpu_tx_rpm_dev.ept, &ipi_cmd_send, sizeof(ipi_cmd_send));
+
+	if (ret) {
+		pr_info("%s: rpmsg_send fail(%d)\n", __func__, ret);
+		/* power off to restore ref cnt */
+		ret = rpmsg_sendto(mvpu_tx_rpm_dev.ept, NULL, 0, 1);
+		if (ret && ret != -EOPNOTSUPP)
+			pr_info("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret);
+		retval = -1;
+		goto out;
+	}
 
 	if (wait_for_completion_interruptible_timeout(
 			&mvpu_tx_rpm_dev.ack,
 			msecs_to_jiffies(10)) == 0) {
-		mutex_unlock(&mvpu_ipi_mtx);
 		pr_info("%s: timeout\n", __func__);
-		return -1;
+		retval = -1;
+		goto out;
 	}
 
 	*val  = (u64)ipi_tx_recv_buf.data;
 
+out:
 	mutex_unlock(&mvpu_ipi_mtx);
-
-	return 0;
+	return retval;
 }
 
 static int mvpu_rpmsg_tx_cb(struct rpmsg_device *rpdev, void *data,
 		int len, void *priv, u32 src)
 {
 	struct mvpu_ipi_data *d = (struct mvpu_ipi_data *)data;
+	int ret = 0;
 
 	if (d->dir != MVPU_IPI_READ)
 		return 0;
@@ -100,6 +152,11 @@ static int mvpu_rpmsg_tx_cb(struct rpmsg_device *rpdev, void *data,
 		ipi_tx_recv_buf.dir    = d->dir;
 		ipi_tx_recv_buf.data   = d->data;
 		complete(&mvpu_tx_rpm_dev.ack);
+
+		/* power off */
+		ret = rpmsg_sendto(mvpu_tx_rpm_dev.ept, NULL, 0, 1);
+		if (ret && ret != -EOPNOTSUPP)
+			pr_info("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret);
 	}
 
 	return 0;
