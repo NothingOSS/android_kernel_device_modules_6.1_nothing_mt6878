@@ -1460,9 +1460,24 @@ static void cldma_rx_ring_init(struct md_cd_ctrl *md_ctrl,
 		for (i = 0; i < ring->length; i++) {
 			item =
 			kzalloc(sizeof(struct cldma_request), GFP_KERNEL);
+			if (item == NULL) {
+				CCCI_ERROR_LOG(0, TAG, "%s, error: item kzalloc fail\n", __func__);
+				return;
+			}
 			item->gpd = dma_pool_alloc(md_ctrl->gpd_dmapool,
 				GFP_KERNEL, &item->gpd_addr);
+			if (item->gpd == NULL) {
+				CCCI_ERROR_LOG(0, TAG, "%s, error: item->gpd is NULL\n", __func__);
+				kfree(item);
+				return;
+			}
 			item->skb = ccci_alloc_skb(ring->pkt_size, 1, 1);
+			if (item->skb == NULL) {
+				CCCI_ERROR_LOG(0, TAG, "%s, error: item->skb is NULL\n", __func__);
+				dma_pool_free(md_ctrl->gpd_dmapool, item->gpd, item->gpd_addr);
+				kfree(item);
+				return;
+			}
 			gpd = (struct cldma_rgpd *)item->gpd;
 			memset(gpd, 0, sizeof(struct cldma_rgpd));
 			spin_lock_irqsave(&md_ctrl->cldma_timeout_lock, flags);
@@ -1521,6 +1536,11 @@ static void cldma_tx_ring_init(struct md_cd_ctrl *md_ctrl,
 				GFP_KERNEL);
 			item->gpd = dma_pool_alloc(md_ctrl->gpd_dmapool,
 				GFP_KERNEL, &item->gpd_addr);
+			if (item->gpd == NULL) {
+				CCCI_ERROR_LOG(0, TAG, "%s, error: item->gpd is NULL\n", __func__);
+				kfree(item);
+				return;
+			}
 			tgpd = (struct cldma_tgpd *)item->gpd;
 			memset(tgpd, 0, sizeof(struct cldma_tgpd));
 			tgpd->gpd_flags = 0x80;	/* IOC */
@@ -1542,6 +1562,11 @@ static void cldma_tx_ring_init(struct md_cd_ctrl *md_ctrl,
 				GFP_KERNEL);
 			item->gpd = dma_pool_alloc(md_ctrl->gpd_dmapool,
 				GFP_KERNEL, &item->gpd_addr);
+			if (item->gpd == NULL) {
+				CCCI_ERROR_LOG(0, TAG, "%s, error: item->gpd is NULL\n", __func__);
+				kfree(item);
+				return;
+			}
 			tgpd = (struct cldma_tgpd *)item->gpd;
 			memset(tgpd, 0, sizeof(struct cldma_tgpd));
 			tgpd->gpd_flags = 0x82;	/* IOC|BDP */
@@ -1562,6 +1587,12 @@ static void cldma_tx_ring_init(struct md_cd_ctrl *md_ctrl,
 				bd_item->gpd = dma_pool_alloc(
 					md_ctrl->gpd_dmapool,
 					GFP_KERNEL, &bd_item->gpd_addr);
+				if (bd_item->gpd == NULL) {
+					CCCI_ERROR_LOG(0, TAG, "%s, error: bd_item->gpd is NULL\n",
+							__func__);
+					kfree(bd_item);
+					return;
+				}
 				bd = (struct cldma_tbd *)bd_item->gpd;
 				memset(bd, 0, sizeof(struct cldma_tbd));
 				if (j == 0)
@@ -2272,6 +2303,12 @@ static int md_cd_clear_all_queue(unsigned char hif_id, enum DIRECTION dir)
 					req->skb = ccci_alloc_skb(
 						queue->tr_ring->pkt_size,
 						1, 1);
+					if (req->skb == NULL) {
+						CCCI_ERROR_LOG(
+							0, TAG,
+							"%s, error: req->skb is NULL\n", __func__);
+						return -1;
+					}
 					req->data_buffer_ptr_saved =
 						dma_map_single(
 						ccci_md_get_dev_by_id(),
