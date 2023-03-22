@@ -792,9 +792,6 @@ static void mtk_cam_ctrl_stream_on_flow(struct mtk_cam_job *job)
 
 	dev_info(dev, "[%s] ctx %d begin\n", __func__, ctrl->ctx->stream_id);
 
-	if (!job)
-		return;
-
 	if (mtk_cam_ctrl_stream_on_job(job))
 		return;
 
@@ -862,9 +859,6 @@ static void mtk_cam_ctrl_seamless_switch_flow(struct mtk_cam_job *job)
 
 	unsigned long timeout = msecs_to_jiffies(200);
 
-	if (!job)
-		return;
-
 	if (mtk_cam_ctrl_wait_for_switch(ctrl,
 					 prev_frame_seq(job->frame_seq_no)))
 		goto SWITCH_FAILURE;
@@ -924,9 +918,6 @@ static void mtk_cam_ctrl_raw_switch_flow(struct mtk_cam_job *job)
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_ctrl *ctrl = &ctx->cam_ctrl;
 	int r;
-
-	if (!job)
-		return;
 
 	wait_event_interruptible(ctrl->raw_switch_wq,
 				 allow_raw_switch_work(ctrl, job));
