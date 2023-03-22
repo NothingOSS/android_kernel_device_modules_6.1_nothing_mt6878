@@ -237,6 +237,8 @@ int get_hw_scenario(struct mtk_cam_job *job)
 					__func__, ctrl->apu_info.apu_path);
 				return -1;
 			}
+		} else if (is_w) {
+			hard_scenario = MTKCAM_IPI_HW_PATH_OFFLINE_RGBW;
 		} else if (is_vhdr(job))
 			hard_scenario = MTKCAM_IPI_HW_PATH_OFFLINE_STAGGER;
 		else
@@ -1005,7 +1007,11 @@ int fill_img_out_w(struct mtkcam_ipi_img_output *io,
 			struct mtk_cam_buffer *buf,
 			struct mtk_cam_video_device *node)
 {
-	return _fill_img_out(io, buf, node, 1);
+	int ret = _fill_img_out(io, buf, node, 1);
+
+	io->uid.id = raw_video_id_w_port(io->uid.id);
+
+	return ret;
 }
 
 int fill_sv_fp(

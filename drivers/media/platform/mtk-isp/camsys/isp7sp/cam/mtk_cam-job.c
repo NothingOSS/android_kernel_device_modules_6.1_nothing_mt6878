@@ -2491,6 +2491,27 @@ static int fill_imgo_buf_to_ipi_normal(struct req_buffer_helper *helper,
 	return ret;
 }
 
+static int fill_m2m_imgo_to_img_out_ipi(struct req_buffer_helper *helper,
+	struct mtk_cam_buffer *buf,
+	struct mtk_cam_video_device *node)
+{
+	struct mtk_cam_job *job = helper->job;
+	bool is_w = is_rgbw(job);
+	int ret = 0;
+
+	ret = fill_raw_img_buffer_to_ipi_frame(helper, buf, node);
+
+	if (!ret && is_w) {
+		struct mtkcam_ipi_frame_param *fp = helper->fp;
+		struct mtkcam_ipi_img_output *out;
+
+		out = &fp->img_outs[helper->io_idx++];
+
+		ret = fill_img_out_w(out, buf, node);
+	}
+
+	return ret;
+}
 
 int fill_imgo_buf_to_ipi_mstream(
 	struct req_buffer_helper *helper, struct mtk_cam_buffer *buf,
@@ -3155,7 +3176,7 @@ static struct pack_job_ops_helper m2m_pack_helper = {
 	.pack_job = _job_pack_m2m,
 	.update_raw_bufs_to_ipi = fill_raw_img_buffer_to_ipi_frame,
 	.update_raw_rawi_to_ipi = fill_m2m_rawi_to_img_in_ipi,
-	.update_raw_imgo_to_ipi = NULL,
+	.update_raw_imgo_to_ipi = fill_m2m_imgo_to_img_out_ipi,
 	.update_raw_yuvo_to_ipi = NULL,
 	.append_work_buf_to_ipi = NULL,
 };
