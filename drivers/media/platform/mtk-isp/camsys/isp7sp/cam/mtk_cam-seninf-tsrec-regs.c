@@ -64,10 +64,9 @@ static void tsrec_write_reg(struct tsrec_w_buffer *buf, const char *caller)
 	/* error handling */
 	/* --- SENINF NOT power up (exclude timer cfg */
 	/* --- due to unsing this as a flag) --- */
-	if (unlikely((buf->shift != TSREC_TIMER_CFG_OFFSET) &&
-			!get_tsrec_timer_en_status())) {
+	if (unlikely(get_tsrec_timer_en_status() == 0)) {
 		TSREC_LOG_INF(
-			"[%s] ERROR: tsrec_timer_en_status:%u (resume/suspend will change status), maybe touch RG at a wrong timing, return   [%#x(+%#x)]:(%#x => %#x), mask:%#x (%u)(SET:1/CLR:0/OVW:2)]\n",
+			"[%s] ERROR: tsrec_timer_en_status:%u (resume/suspend will change this status), maybe touch RG at a wrong timing, return   [%#x(+%#x)]:(%#x => %#x), mask:%#x (%u)(SET:1/CLR:0/OVW:2)]\n",
 			caller,
 			get_tsrec_timer_en_status(),
 			TSREC_ADDR_BY_OFFSET(buf->shift),
@@ -124,10 +123,9 @@ static void tsrec_read_reg(struct tsrec_r_buffer *buf, const char *caller)
 	/* error handling */
 	/* --- SENINF NOT power up (exclude timer cfg */
 	/* --- due to unsing this as a flag) --- */
-	if (unlikely((buf->shift != TSREC_TIMER_CFG_OFFSET) &&
-			!get_tsrec_timer_en_status())) {
+	if (unlikely(get_tsrec_timer_en_status() == 0)) {
 		TSREC_LOG_INF(
-			"[%s] ERROR: tsrec_timer_en_status:%u (resume/suspend will change status), maybe touch RG at a wrong timing, return   [%#x(+%#x)]:(%#x)]\n",
+			"[%s] ERROR: tsrec_timer_en_status:%u (resume/suspend will change this status), maybe touch RG at a wrong timing, return   [%#x(+%#x)]:(%#x)]\n",
 			caller,
 			get_tsrec_timer_en_status(),
 			TSREC_ADDR_BY_OFFSET(buf->shift),
@@ -209,7 +207,6 @@ void mtk_cam_seninf_s_tsrec_timer_cfg(const unsigned int en)
 	tsrec_write_reg(&w_buf, __func__);
 
 	/* sync reg ctrl info to tsrec_status */
-	notify_tsrec_update_timer_en_status(en);
 	notify_tsrec_update_timer_cfg(w_buf.after);
 
 	TSREC_LOG_DBG(

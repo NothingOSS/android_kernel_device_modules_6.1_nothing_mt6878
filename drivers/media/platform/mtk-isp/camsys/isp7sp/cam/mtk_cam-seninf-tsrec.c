@@ -768,7 +768,7 @@ static void tsrec_irq_event_st_reset(void)
 		return;
 	}
 
-	TSREC_LOG_INF(
+	TSREC_LOG_DBG(
 		"NOTICE: kfifo init done, ret:%d, msg_buffer:%p, fifo_size:%u(%u/%u/%lu)\n",
 		ret, tsrec_irq_event.msg_buffer,
 		tsrec_irq_event.fifo_size,
@@ -1258,7 +1258,7 @@ static void tsrec_kthread_init(const unsigned int tsrec_no)
 	sched_set_fifo(ptr->kthread_task);
 	tsrec_worker.kthreads[tsrec_no] = ptr;
 
-	TSREC_LOG_INF(
+	TSREC_LOG_DBG(
 		"NOTICE: kthread run (%p, (%p/%p)), kthreads[%u]:%p (%p/%p)\n",
 		ptr, &ptr->kthread, ptr->kthread_task,
 		tsrec_no,
@@ -2479,8 +2479,11 @@ void mtk_cam_seninf_tsrec_timer_enable(const unsigned int en)
 	if (en) {
 		/* check if NOT enable before */
 		if (TSREC_ATOMIC_READ(&tsrec_status.timer_en_cnt) == 0) {
-			mtk_cam_seninf_s_tsrec_timer_cfg(1);
+			/* !!! update pwr status for TSREC RG read/write operation !!! */
+			/* (timer enable is synchronized to seninf runtime resume/suspend) */
+			notify_tsrec_update_timer_en_status(1);
 
+			mtk_cam_seninf_s_tsrec_timer_cfg(1);
 			tsrec_irq_enable(1);
 
 			// mark as set RG
@@ -2496,10 +2499,12 @@ void mtk_cam_seninf_tsrec_timer_enable(const unsigned int en)
 		/* check if en cnt go back to zero */
 		if (TSREC_ATOMIC_READ(&tsrec_status.timer_en_cnt) == 0) {
 			tsrec_irq_enable(0);
-
 			tsrec_chk_auto_self_disable();
-
 			mtk_cam_seninf_s_tsrec_timer_cfg(0);
+
+			/* !!! update pwr status for TSREC RG read/write operation !!! */
+			/* (timer enable is synchronized to seninf runtime resume/suspend) */
+			notify_tsrec_update_timer_en_status(0);
 
 			// mark as clr RG
 			has_reg_op = 2;
