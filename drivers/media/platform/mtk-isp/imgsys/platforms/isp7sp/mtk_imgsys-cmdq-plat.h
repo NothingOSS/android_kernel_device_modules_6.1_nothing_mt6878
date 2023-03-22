@@ -562,7 +562,7 @@ static struct imgsys_event_table imgsys_event[] = {
 	{IMGSYS_CMDQ_SYNC_TOKEN_APUSYS_APU, "apu-sync-token"},
 	{IMGSYS_CMDQ_SYNC_TOKEN_IMGSYS_VSS_TRAW, "vss-traw-sync-token"},
 	{IMGSYS_CMDQ_SYNC_TOKEN_IMGSYS_VSS_LTRAW, "vss-ltraw-sync-token"},
-	{IMGSYS_CMDQ_SYNC_TOKEN_IMGSYS_VSS_DIP, "vss_dip-sync-token"},
+	{IMGSYS_CMDQ_SYNC_TOKEN_IMGSYS_VSS_DIP, "vss-dip-sync-token"},
 	{IMGSYS_CMDQ_SYNC_TOKEN_IMGSYS_POOL_1, "sw-sync-token-pool-1"},
 	{IMGSYS_CMDQ_SYNC_TOKEN_IMGSYS_POOL_2, "sw-sync-token-pool-2"},
 	{IMGSYS_CMDQ_SYNC_TOKEN_IMGSYS_POOL_3, "sw-sync-token-pool-3"},
