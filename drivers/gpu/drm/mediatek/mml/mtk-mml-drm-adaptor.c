@@ -22,6 +22,7 @@
 #include "mtk-mml-driver.h"
 #include "mtk-mml-sys.h"
 #include "mtk-mml-mmp.h"
+#include "mtk-mml-pq-core.h"
 
 #define MML_DEFAULT_END_NS	15000000
 
@@ -335,6 +336,7 @@ static struct mml_task *task_get_idle(struct mml_frame_config *cfg)
 		list_del_init(&task->entry);
 		cfg->done_task_cnt--;
 		memset(&task->buf, 0, sizeof(task->buf));
+		mml_pq_reset_hist_status(task);
 	}
 	return task;
 }

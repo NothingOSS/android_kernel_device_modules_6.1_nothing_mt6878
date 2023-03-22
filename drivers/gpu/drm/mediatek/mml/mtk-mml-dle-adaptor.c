@@ -14,6 +14,7 @@
 #include "mtk-mml-core.h"
 #include "mtk-mml-driver.h"
 #include "mtk-mml-mmp.h"
+#include "mtk-mml-pq-core.h"
 
 /* set to 0 to disable reuse config */
 int dle_reuse = 1;
@@ -115,6 +116,7 @@ static struct mml_task *task_get_idle(struct mml_frame_config *cfg)
 		list_del_init(&task->entry);
 		cfg->done_task_cnt--;
 		memset(&task->buf, 0, sizeof(task->buf));
+		mml_pq_reset_hist_status(task);
 	}
 	return task;
 }
@@ -367,6 +369,7 @@ static struct mml_task *task_get_idle_or_running(struct mml_frame_config *cfg)
 		list_del_init(&task->entry);
 		cfg->run_task_cnt--;
 		memset(&task->buf, 0, sizeof(task->buf));
+		mml_pq_reset_hist_status(task);
 	}
 	return task;
 }
