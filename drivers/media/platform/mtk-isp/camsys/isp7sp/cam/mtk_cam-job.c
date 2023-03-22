@@ -1975,6 +1975,7 @@ static void update_job_raw_switch(struct mtk_cam_job *job)
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_raw_ctrl_data *ctrl_data = get_raw_ctrl_data(job);
 	bool raw_switch = false;
+	int r;
 
 	if (!ctrl_data || !ctrl_data->rc_data.sensor_update)
 		goto EXIT_SET_RAW_SWITCH;
@@ -1984,6 +1985,13 @@ static void update_job_raw_switch(struct mtk_cam_job *job)
 			 "%s:ctx(%d): change sensor:(%s) --> (%s/%s)\n", __func__,
 			 ctx->stream_id, job->seninf_prev->entity.name,
 			 job->sensor->entity.name, job->seninf->entity.name);
+		/* update pipeline cached pads and v4l2 internal data here */
+		media_pipeline_stop(&job->seninf_prev->entity.pads[0]);
+		r = media_pipeline_start(&job->seninf->entity.pads[0], &ctx->pipeline);
+		if (r)
+			dev_info(ctx->cam->dev,
+				 "%s:failed in media_pipeline_start:%d\n",
+				 __func__, r);
 
 		/* The user changed the sensor in the first request */
 		if (job->stream_on_seninf) {

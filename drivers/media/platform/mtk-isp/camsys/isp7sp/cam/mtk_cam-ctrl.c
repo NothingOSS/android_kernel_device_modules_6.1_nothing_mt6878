@@ -1039,7 +1039,6 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 {
 	struct mtk_cam_ctx *ctx;
 	u32 req_seq, frame_seq;
-	int r;
 
 	if (mtk_cam_ctrl_get(cam_ctrl))
 		return;
@@ -1097,18 +1096,11 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 						mtk_cam_ctrl_seamless_switch_flow,
 						job);
 
-	if (job->raw_switch) {
-		media_pipeline_stop(&job->seninf_prev->entity.pads[0]);
-		r = media_pipeline_start(&job->seninf->entity.pads[0], &ctx->pipeline);
-		if (r)
-			dev_info(ctx->cam->dev,
-				 "%s:failed in media_pipeline_start:%d\n",
-				 __func__, r);
-
+	if (job->raw_switch)
 		mtk_cam_ctrl_queue_job_for_flow(cam_ctrl,
 						mtk_cam_ctrl_raw_switch_flow,
 						job);
-	}
+
 
 	mtk_cam_ctrl_put(cam_ctrl);
 }
