@@ -471,20 +471,19 @@ void mtk_drm_set_mmclk(struct drm_crtc *crtc, int level, bool lp_mode,
 	if (cnt == CRTC_NUM)
 		final_lp_mode = false;
 
-	DDPINFO("%s set lp mode:%d\n", __func__, final_lp_mode);
-	mmdvfs_set_lp_mode(final_lp_mode);
-
 	if (final_level >= 0)
 		freq = g_freq_steps[final_level];
 	else
 		freq = g_freq_steps[0];
 
-	DDPINFO("%s[%d] final_level(freq=%d, %lu)\n",
-		__func__, __LINE__, final_level, freq);
+	DDPINFO("%s[%d] final_level(freq=%d, %lu) final_lp_mode:%d\n",
+		__func__, __LINE__, final_level, freq, final_lp_mode);
 
 	if (!IS_ERR_OR_NULL(mm_clk)) {
-		if (mmdvfs_get_version())
+		if (mmdvfs_get_version()) {
 			mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_DISP);
+			mmdvfs_set_lp_mode_by_vcp(final_lp_mode);
+		}
 		ret = clk_set_rate(mm_clk, freq);
 		if (ret)
 			DDPPR_ERR("%s:clk_set_rate fail\n", __func__);
@@ -493,6 +492,7 @@ void mtk_drm_set_mmclk(struct drm_crtc *crtc, int level, bool lp_mode,
 		return;
 	}
 
+	mmdvfs_set_lp_mode(final_lp_mode);
 	opp = dev_pm_opp_find_freq_ceil(crtc->dev->dev, &freq);
 	volt = dev_pm_opp_get_voltage(opp);
 	dev_pm_opp_put(opp);
