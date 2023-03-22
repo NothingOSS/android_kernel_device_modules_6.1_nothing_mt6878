@@ -691,6 +691,9 @@ static void probe_android_rvh_selinux_is_initialized(void *ignore,
 
 static void check_selinux_state(struct ratelimit_state *rs)
 {
+	if (!policy_ctrl[MKP_POLICY_SELINUX_STATE])
+		return;
+
 	ratelimit_set_flags(rs, RATELIMIT_MSG_ON_RELEASE);
 	if (!__ratelimit(rs))
 		return;
@@ -775,6 +778,9 @@ static bool cred_is_not_matched(const struct cred *curr, pid_t index)
 static void check_cred(struct ratelimit_state *rs)
 {
 	struct task_struct *cur = NULL;
+
+	if (!policy_ctrl[MKP_POLICY_TASK_CRED])
+		return;
 
 	ratelimit_set_flags(rs, RATELIMIT_MSG_ON_RELEASE);
 	if (!__ratelimit(rs) || (g_ro_cred_handle == 0))
