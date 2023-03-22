@@ -796,77 +796,6 @@ static const struct v4l2_ctrl_ops cam_ctrl_ops = {
 	.try_ctrl = mtk_raw_try_ctrl,
 };
 
-static int mtk_raw_pde_get_ctrl(struct v4l2_ctrl *ctrl)
-{
-	struct mtk_raw_pipeline *pipeline;
-	struct mtk_raw_pde_config *pde_cfg;
-	struct mtk_cam_pde_info *pde_info_p;
-	struct device *dev = mtk_cam_root_dev();
-	int ret = 0;
-
-	pipeline = mtk_cam_ctrl_handler_to_raw_pipeline(ctrl->handler);
-	pde_cfg = &pipeline->pde_config;
-	pde_info_p = ctrl->p_new.p;
-
-	switch (ctrl->id) {
-	case V4L2_CID_MTK_CAM_PDE_INFO:
-		pde_info_p->pdo_max_size = pde_cfg->pde_info.pdo_max_size;
-		pde_info_p->pdi_max_size = pde_cfg->pde_info.pdi_max_size;
-		pde_info_p->pd_table_offset = pde_cfg->pde_info.pd_table_offset;
-		break;
-	default:
-		dev_info(dev, "%s(id:0x%x,val:%d) is not handled\n",
-			 __func__, ctrl->id, ctrl->val);
-		ret = -EINVAL;
-	}
-
-	return ret;
-}
-
-static int mtk_raw_pde_set_ctrl(struct v4l2_ctrl *ctrl)
-{
-	struct mtk_raw_pipeline *pipeline;
-	struct mtk_raw_pde_config *pde_cfg;
-	struct mtk_cam_pde_info *pde_info_p;
-	struct mtk_cam_video_device *node;
-	struct mtk_cam_dev_node_desc *desc;
-	const struct v4l2_format *default_fmt;
-	int ret = 0;
-	struct device *dev = mtk_cam_root_dev();
-
-	pipeline = mtk_cam_ctrl_handler_to_raw_pipeline(ctrl->handler);
-	pde_cfg = &pipeline->pde_config;
-	pde_info_p = ctrl->p_new.p;
-
-	node = &pipeline->vdev_nodes[MTK_RAW_META_IN - MTK_RAW_SINK_NUM];
-	desc = &node->desc;
-	default_fmt = &desc->fmts[desc->default_fmt_idx].vfmt;
-
-	switch (ctrl->id) {
-	case V4L2_CID_MTK_CAM_PDE_INFO:
-		if (!pde_info_p->pdo_max_size || !pde_info_p->pdi_max_size) {
-			dev_info(dev,
-				 "%s:pdo_max_sz(%d)/pdi_max_sz(%d) cannot be 0\n",
-				 __func__, pde_info_p->pdo_max_size,
-				 pde_info_p->pdi_max_size);
-			ret = -EINVAL;
-			break;
-		}
-
-		pde_cfg->pde_info.pdo_max_size = pde_info_p->pdo_max_size;
-		pde_cfg->pde_info.pdi_max_size = pde_info_p->pdi_max_size;
-		pde_cfg->pde_info.pd_table_offset =
-			default_fmt->fmt.meta.buffersize;
-		break;
-	default:
-		dev_info(dev, "%s(id:0x%x,val:%d) is not handled\n",
-			 __func__, ctrl->id, ctrl->val);
-		ret = -EINVAL;
-	}
-
-	return ret;
-}
-
 #define HDR_TSFIFO_SIZE 4
 int mtk_raw_hdr_tsfifo_init(struct mtk_raw_pipeline *arr_pipe, int num)
 {
@@ -965,12 +894,6 @@ static int mtk_raw_hdr_ts_get_ctrl(struct v4l2_ctrl *ctrl)
 
 	return ret;
 }
-
-static const struct v4l2_ctrl_ops cam_pde_ctrl_ops = {
-	.g_volatile_ctrl = mtk_raw_pde_get_ctrl,
-	.s_ctrl = mtk_raw_pde_set_ctrl,
-	.try_ctrl = mtk_raw_pde_set_ctrl,
-};
 
 static const struct v4l2_ctrl_ops cam_hdr_ts_info_ctrl_ops = {
 	.g_volatile_ctrl = mtk_raw_hdr_ts_get_ctrl,
@@ -1075,19 +998,6 @@ static const struct v4l2_ctrl_config mtk_cam_tg_flash_enable = {
 	.max = 0xffffffff,
 	.step = 1,
 	.dims = {sizeof(struct mtk_cam_tg_flash_config)},
-};
-
-static const struct v4l2_ctrl_config cfg_pde_info = {
-	.ops = &cam_pde_ctrl_ops,
-	.id = V4L2_CID_MTK_CAM_PDE_INFO,
-	.name = "pde information",
-	.type = V4L2_CTRL_COMPOUND_TYPES,
-	.flags = V4L2_CTRL_FLAG_VOLATILE,
-	.min = 0,
-	.max = 0x1fffffff,
-	.step = 1,
-	.def = 0,
-	.dims = {sizeof_u32(struct mtk_cam_pde_info)},
 };
 
 static const struct v4l2_ctrl_config cfg_hdr_timestamp_info = {
@@ -3501,10 +3411,6 @@ static void mtk_raw_pipeline_ctrl_setup(struct mtk_raw_pipeline *pipe)
 		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE |
 			       V4L2_CTRL_FLAG_EXECUTE_ON_WRITE;
 
-	/* TODO: remove pde later */
-	// PDE
-	ctrl = v4l2_ctrl_new_custom(ctrl_hdlr, &cfg_pde_info, NULL);
-
 	ctrl = v4l2_ctrl_new_custom(ctrl_hdlr, &cfg_res_update, NULL);
 	if (ctrl)
 		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE |
@@ -3537,7 +3443,6 @@ static void mtk_raw_pipeline_ctrl_setup(struct mtk_raw_pipeline *pipe)
 
 	/* TODO: properly set default values */
 	memset(&pipe->ctrl_data, 0, sizeof(pipe->ctrl_data));
-	memset(&pipe->pde_config, 0, sizeof(pipe->pde_config));
 }
 
 static int mtk_raw_pipeline_register(const char *str, unsigned int id,

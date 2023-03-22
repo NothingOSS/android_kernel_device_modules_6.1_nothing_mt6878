@@ -21,7 +21,6 @@
 
 struct mtk_cam_device;
 struct mtk_cam_resource;
-struct mtk_raw_pde_config;
 
 struct mtk_cam_cached_image_info {
 	unsigned int v4l2_pixelformat;

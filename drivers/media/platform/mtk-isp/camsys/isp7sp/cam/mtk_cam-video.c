@@ -1138,7 +1138,6 @@ int mtk_cam_vidioc_g_meta_fmt(struct file *file, void *fh,
 int mtk_cam_vidioc_s_meta_fmt(struct file *file, void *fh,
 			      struct v4l2_format *f)
 {
-	// TODO(Will): check PDE change update
 	struct mtk_cam_video_device *node = file_to_mtk_cam_node(file);
 	const struct v4l2_format *fmt;
 

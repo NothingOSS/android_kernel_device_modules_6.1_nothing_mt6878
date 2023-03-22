@@ -107,14 +107,7 @@ enum hardware_mode_id {
 	HW_MODE_M2M				= 4,
 };
 
-/* max(pdi_table1, pdi_table2, ...) */
-#define RAW_STATS_CFG_VARIOUS_SIZE ALIGN(0x7500, SZ_1K)
-
 #define MTK_RAW_TOTAL_NODES (MTK_RAW_PIPELINE_PADS_NUM - MTK_RAW_SINK_NUM)
-
-struct mtk_raw_pde_config {
-	struct mtk_cam_pde_info pde_info;
-};
 
 struct mtk_raw_pad_config {
 	struct v4l2_mbus_framefmt mbus_fmt;
@@ -209,8 +202,7 @@ struct mtk_raw_pipeline {
 	/*** v4l2 ctrl related data ***/
 	/* changed with request */
 	struct mtk_raw_ctrl_data ctrl_data;
-	/* pde module */
-	struct mtk_raw_pde_config pde_config;
+
 	/* vhdr timestamp */
 	int hdr_ts_fifo_size;
 	void *hdr_ts_buffer;
