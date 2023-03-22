@@ -444,14 +444,15 @@ static int ps5170_mux_set(struct typec_mux_dev *mux, struct typec_mux_state *sta
 	struct ps5170 *ps = typec_mux_get_drvdata(mux);
 	struct typec_displayport_data *dp_data = state->data;
 
-	dev_info(ps->dev, "dp_data->config = %d\n", dp_data->conf);
-	dev_info(ps->dev, "dp_data->status = %d\n", dp_data->status);
-	dev_info(ps->dev, "state->mode = %lu\n", state->mode);
-
 	if (dp_data == NULL) {
 		dev_info(ps->dev, "%s data is NULL, reject.\n", __func__);
 		return 0;
 	}
+
+	/*dev_info(ps->dev, "dp_data->config = %d\n", dp_data->conf);
+	 *dev_info(ps->dev, "dp_data->status = %d\n", dp_data->status);
+	 *dev_info(ps->dev, "state->mode = %lu\n", state->mode);
+	 */
 
 	ps->dp_data.conf = dp_data->conf;
 	ps->dp_data.status = dp_data->status;
