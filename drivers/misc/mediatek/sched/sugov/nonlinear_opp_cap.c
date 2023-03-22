@@ -1210,7 +1210,7 @@ static inline void mtk_arch_set_freq_scale_gearless(struct cpufreq_policy *polic
 	}
 }
 
-static unsigned int curr_cap[NR_CPUS];
+static unsigned int curr_cap[MAX_NR_CPUS];
 unsigned int get_curr_cap(int cpu)
 {
 	return curr_cap[per_cpu(gear_id, cpu)];
@@ -1299,8 +1299,8 @@ void mtk_arch_set_freq_scale(void *data, const struct cpumask *cpus,
 
 unsigned int util_scale = 1280;
 unsigned int sysctl_sched_capacity_margin_dvfs = 20;
-unsigned int turn_point_util[NR_CPUS];
-unsigned int target_margin[NR_CPUS];
+unsigned int turn_point_util[MAX_NR_CPUS];
+unsigned int target_margin[MAX_NR_CPUS];
 /*
  * set sched capacity margin for DVFS, Default = 20
  */
@@ -1385,12 +1385,12 @@ static int am_wind_cnt_shift = 1; /* wind_cnt = 1 << am_wind_cnt_shift */
 static int am_floor = 1024; /* 1024: 0% margin */
 static int am_ceiling = 1280; /* 1280: 20% margin */
 static int am_target_active_ratio = 80;
-static u64 last_wall_time_stamp[NR_CPUS];
-static u64 last_idle_time_stamp[NR_CPUS];
-static unsigned int adaptive_margin[NR_CPUS];
-static unsigned int his_ptr[NR_CPUS];
-static unsigned int margin_his[NR_CPUS][NR_CPUS];
-static unsigned int active_ratio[NR_CPUS];
+static u64 last_wall_time_stamp[MAX_NR_CPUS];
+static u64 last_idle_time_stamp[MAX_NR_CPUS];
+static unsigned int adaptive_margin[MAX_NR_CPUS];
+static unsigned int his_ptr[MAX_NR_CPUS];
+static unsigned int margin_his[MAX_NR_CPUS][MAX_NR_CPUS];
+static unsigned int active_ratio[MAX_NR_CPUS];
 
 unsigned int get_adaptive_margin(int cpu)
 {
@@ -1413,7 +1413,7 @@ int get_active_ratio(int cpu)
 }
 EXPORT_SYMBOL_GPL(get_active_ratio);
 
-static int util_signal[NR_CPUS];
+static int util_signal[MAX_NR_CPUS];
 void set_util_signal(int cpu, int signal)
 {
 	util_signal[per_cpu(gear_id, cpu)] = signal;
@@ -1503,7 +1503,9 @@ void mtk_map_util_freq(void *data, unsigned long util, unsigned long freq, struc
 	gearid = per_cpu(gear_id, cpu);
 
 	pd_info = &pd_capacity_tbl[gearid];
-	if (!turn_point_util[gearid] && util < pd_info->table[0].capacity) {
+	if (!turn_point_util[gearid]) {
+		if (util_signal[gearid])
+			goto flt_skip_margin;
 		mtk_map_util_freq_adaptive(data, util, cpu, next_freq);
 		return;
 	}
@@ -1513,7 +1515,7 @@ void mtk_map_util_freq(void *data, unsigned long util, unsigned long freq, struc
 		util > turn_point_util[gearid])
 		util = max(turn_point_util[gearid], orig_util * target_margin[gearid]
 					>> SCHED_CAPACITY_SHIFT);
-
+flt_skip_margin:
 	*next_freq = pd_X2Y(cpu, util, CAP, FREQ, false);
 	if (data != NULL) {
 		struct sugov_policy *sg_policy = (struct sugov_policy *)data;

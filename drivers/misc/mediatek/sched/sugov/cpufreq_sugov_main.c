@@ -37,6 +37,7 @@
 
 #define CREATE_TRACE_POINTS
 #include "sugov_trace.h"
+#include "eas/group.h"
 
 #define IOWAIT_BOOST_MIN	(SCHED_CAPACITY_SCALE / 8)
 
@@ -196,6 +197,48 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 	return freq;
 }
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+unsigned long (*flt_get_cpu_util_hook)(int cpu);
+EXPORT_SYMBOL(flt_get_cpu_util_hook);
+
+unsigned long (*flt_sched_get_cpu_group_util_eas_hook)(int cpu, int group_id);
+EXPORT_SYMBOL(flt_sched_get_cpu_group_util_eas_hook);
+#endif
+
+unsigned int util_signal[MAX_NR_CPUS];
+int group_aware_dvfs_util(int cpu, int pelt_util)
+{
+	unsigned long cpu_util = 0;
+	unsigned long group_util = 0;
+	unsigned long others_util;
+	unsigned long ratio, ratio_ori;
+	unsigned long ret_util = 0;
+	int i = 0;
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+	if (flt_get_cpu_util_hook && flt_sched_get_cpu_group_util_eas_hook) {
+		cpu_util = flt_get_cpu_util_hook(cpu);
+		if (cpu_util == 0)
+			return 0;
+		for (i = 0; i < GROUP_ID_RECORD_MAX; i++)
+			group_util += flt_sched_get_cpu_group_util_eas_hook(cpu, i);
+	} else
+		return 0;
+
+	group_util = clamp_val(group_util, 0, cpu_util);
+	others_util = cpu_util - group_util;
+	ratio_ori = get_adaptive_ratio(cpu, 85);
+	ratio = clamp_val(ratio_ori, 1024, 1280);
+	ret_util = (group_util * ratio >> SCHED_CAPACITY_SHIFT) + others_util;
+
+	if (trace_sugov_ext_group_dvfs_util_enabled())
+		trace_sugov_ext_group_dvfs_util(cpu, cpu_util, group_util,
+			others_util, ratio_ori, ratio, ret_util, pelt_util);
+#endif
+	return ret_util;
+}
+
+
 /*
  * This function computes an effective utilization for the given CPU, to be
  * used for frequency selection given the linear relation: f = u * f_max.
@@ -268,8 +311,21 @@ unsigned long mtk_cpu_util(int cpu, unsigned long util_cfs,
 			if (sbb_trigger)
 				util = util * sbb_data->boost_factor;
 		}
-		if (p == (struct task_struct *)UINTPTR_MAX)
+		if (p == (struct task_struct *)UINTPTR_MAX) {
+			unsigned long flt_cpu_util = 0;
+
 			p = NULL;
+
+			if (!get_turn_point_freq(pd_get_cpu_gear_id(cpu))) {
+				flt_cpu_util = group_aware_dvfs_util(cpu, util_ori);
+				if (flt_cpu_util > (util_ori * get_adaptive_margin(cpu)
+						>> SCHED_CAPACITY_SHIFT)) {
+					util = flt_cpu_util;
+					util_signal[cpu] = 1;
+				} else
+					util_signal[cpu] = 0;
+			}
+		}
 		util = mtk_uclamp_rq_util_with(rq, util, p, min_cap, max_cap);
 		if (sbb_trigger && trace_sugov_ext_sbb_enabled()) {
 			int pid = -1;
@@ -559,7 +615,7 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 	update_adaptive_margin(sg_policy->policy);
 	sugov_get_util(sg_cpu);
 	sugov_iowait_apply(sg_cpu, time);
-
+	set_util_signal(sg_cpu->cpu, util_signal[sg_cpu->cpu]);
 	if (trace_sugov_ext_util_enabled()) {
 		rq = cpu_rq(sg_cpu->cpu);
 
@@ -597,7 +653,7 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 	struct rq *rq;
 	unsigned long umin, umax;
 	unsigned long util = 0, max = 1;
-	unsigned int j;
+	unsigned int j, max_cpu = 0;
 
 	update_adaptive_margin(policy);
 	for_each_cpu(j, policy->cpus) {
@@ -620,9 +676,10 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 		if (j_util * max >= j_max * util) {
 			util = j_util;
 			max = j_max;
+			max_cpu = j;
 		}
 	}
-
+	set_util_signal(max_cpu, util_signal[max_cpu]);
 	return get_next_freq(sg_policy, util, max);
 }
 

@@ -17,6 +17,7 @@
 #define SBB_ALL 0
 #define SBB_GROUP 1
 #define SBB_TASK 2
+#define MAX_NR_CPUS CONFIG_MAX_NR_CPUS
 
 struct sbb_cpu_data {
 	unsigned int active;
@@ -171,6 +172,7 @@ extern void set_util_signal(int cpu, int signal);
 extern int get_mode(void);
 extern int get_active_ratio(int cpu);
 extern void update_adaptive_margin(struct cpufreq_policy *policy);
+extern unsigned long get_turn_point_freq(int gearid);
 DECLARE_PER_CPU(unsigned int, gear_id);
 DECLARE_PER_CPU(struct sbb_cpu_data *, sbb);
 #endif /* __CPUFREQ_H__ */
