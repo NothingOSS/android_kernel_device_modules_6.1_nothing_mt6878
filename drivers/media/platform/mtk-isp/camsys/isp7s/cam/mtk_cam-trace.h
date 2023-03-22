@@ -23,6 +23,30 @@ TRACE_EVENT(tracing_mark_write,
 	TP_printk("%s", __get_str(vstr))
 );
 
+TRACE_EVENT(seamless_apply_sensor,
+	TP_PROTO(const char *sensor_name,
+		 int ctx_id,
+		 int frame_seq,
+		 bool begin),
+	TP_ARGS(sensor_name, ctx_id, frame_seq, begin),
+	TP_STRUCT__entry(
+		__string(sensor, sensor_name)
+		__field(int, ctx_id)
+		__field(int, frame_seq)
+		__field(bool, begin)
+		),
+	TP_fast_assign(
+		__assign_str(sensor, sensor_name);
+		__entry->ctx_id = ctx_id;
+		__entry->frame_seq = frame_seq;
+		__entry->begin = begin;
+		),
+	TP_printk("%s ctx=%d frame=0x%x %s",
+		  __get_str(sensor), __entry->ctx_id, __entry->frame_seq,
+		  __entry->begin ? "begin" : "end"
+	)
+);
+
 #endif /*_MTK_CAM_TRACE_H */
 
 #undef TRACE_INCLUDE_PATH

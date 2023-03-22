@@ -886,9 +886,13 @@ static void mtk_cam_ctrl_seamless_switch_work(struct work_struct *work)
 	dev_info(dev, "[%s] begin waiting switch no:%d seq 0x%x\n",
 		__func__, job->req_seq, job->frame_seq_no);
 
+	trace_seamless_apply_sensor(job->sensor->name,
+				    ctx->stream_id, job->frame_seq_no, 1);
 	mtk_cam_job_state_set(&job->job_state, SENSOR_STATE, S_SENSOR_APPLYING);
 	call_jobop(job, apply_sensor);
 	mtk_cam_job_state_set(&job->job_state, SENSOR_STATE, S_SENSOR_LATCHED);
+	trace_seamless_apply_sensor(job->sensor->name,
+				    ctx->stream_id, job->frame_seq_no, 0);
 
 	if (!wait_for_completion_timeout(&job->compose_completion, timeout)) {
 		pr_info("[%s] error: wait for job composed timeout\n",

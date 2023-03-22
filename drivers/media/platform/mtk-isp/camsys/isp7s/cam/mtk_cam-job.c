@@ -1513,6 +1513,9 @@ static void job_dump(struct mtk_cam_job *job, int seq_no)
 		 __func__, seq_no,
 		 str_isp_state(isp_state));
 
+	if (isp_in_done_state(isp_state))
+		return;
+
 	trigger_error_dump(job, MSG_DEQUE_ERROR);
 }
 
@@ -1539,6 +1542,9 @@ static void job_dump_mstream(struct mtk_cam_job *job, int seq_no)
 		 __func__, seq_no,
 		 mtk_cam_job_state_str(&job->job_state, ISP_1ST_STATE),
 		 mtk_cam_job_state_str(&job->job_state, ISP_2ND_STATE));
+
+	if (isp_in_done_state(isp_state))
+		return;
 
 	trigger_error_dump(job, MSG_DEQUE_ERROR);
 }

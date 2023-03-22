@@ -41,6 +41,12 @@ enum mtk_cam_isp_state {
 	NR_S_ISP_STATE,
 };
 
+static inline bool isp_in_done_state(int state)
+{
+	return state == S_ISP_DONE ||
+		state == S_ISP_DONE_MISMATCHED;
+}
+
 enum mtk_cam_job_action {
 	ACTION_APPLY_SENSOR = 1,
 	ACTION_APPLY_ISP = 2,
