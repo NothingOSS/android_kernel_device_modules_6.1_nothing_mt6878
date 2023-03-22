@@ -61,6 +61,56 @@ static unsigned long long gray_code_to_binary_convert(unsigned long long gray_co
 	return value;
 }
 
+static unsigned int calculate_timeout_setting(unsigned int bus_freq_mhz, unsigned int timeout_ms)
+{
+	unsigned int value;
+
+	value = ((timeout_ms * 1000 * bus_freq_mhz) >> 10) - 1;
+	pr_info("bus_freq_mhz = %d, timeout_ms = %d, timeout_threshold = 0x%x\n",
+		bus_freq_mhz, timeout_ms, value);
+	return value;
+}
+
+static void lastbus_init_monitor_v1(struct lastbus_monitor *m, unsigned int timeout_ms,
+		unsigned int timeout_type, void __iomem *base)
+{
+	unsigned int bus_freq_mhz, timeout_setting;
+	unsigned int i, reg_offset, reg_value;
+
+	if (m->idle_mask_en == 1) {
+		for (i = 0; i < m->num_idle_mask; i++) {
+			reg_offset = m->idle_masks[i].reg_offset;
+			reg_value = m->idle_masks[i].reg_value;
+			writel(reg_value, base + reg_offset);
+			pr_info("set idle_mask 0x%x = 0x%x\n", m->base + reg_offset, reg_value);
+		}
+	}
+
+	/* clear timeout status with DBG_CKEN */
+	writel((LASTBUS_TIMEOUT_CLR | LASTBUS_DEBUG_CKEN), base);
+
+	/* de-assert clear bit with DBG_CKEN */
+	writel(LASTBUS_DEBUG_CKEN, base);
+
+	if (timeout_ms == 0xFFFFFFFF) {
+		/* set maximum timeout for 1st edition*/
+		writel(((0xFFFF << TIMEOUT_THRES_SHIFT) | LASTBUS_DEBUG_CKEN |
+			(timeout_type << TIMEOUT_TYPE_SHIFT)), base);
+		writel(((0xFFFF << TIMEOUT_THRES_SHIFT) | LASTBUS_DEBUG_CKEN | LASTBUS_DEBUG_EN |
+			(timeout_type << TIMEOUT_TYPE_SHIFT)), base);
+	} else {
+		bus_freq_mhz = m->bus_freq_mhz;
+		timeout_setting = calculate_timeout_setting(bus_freq_mhz, timeout_ms);
+		if (timeout_setting > 0xFFFF)
+			timeout_setting = 0xFFFF;
+		writel(((timeout_setting << TIMEOUT_THRES_SHIFT) | LASTBUS_DEBUG_CKEN |
+			(timeout_type << TIMEOUT_TYPE_SHIFT)), base);
+		writel(((timeout_setting << TIMEOUT_THRES_SHIFT) | LASTBUS_DEBUG_CKEN |
+			LASTBUS_DEBUG_EN | (timeout_type << TIMEOUT_TYPE_SHIFT)), base);
+	}
+	pr_info("base setting = 0x%x\n", readl(base));
+}
+
 static void lastbus_dump_monitor(const struct lastbus_monitor *m, void __iomem *base)
 {
 	unsigned int i;
@@ -77,6 +127,16 @@ static void lastbus_dump_monitor(const struct lastbus_monitor *m, void __iomem *
 		dump_buf_size += snprintf(dump_buf + buf_point, DUMP_BUFF_SIZE - buf_point,
 			"%08x\n", readl(base + 0x408 + i * 4));
 		pr_info("%08x\n", readl(base + 0x408 + i * 4));
+	}
+
+	if (m->num_bus_status != 0) {
+		pr_info("bus busy/idle status:");
+		for (i = 0; i < m->num_bus_status; i++) {
+			pr_info("0x%x", readl(base + m->offset_bus_status + i * 4));
+			buf_point = check_buf_size(10);
+			dump_buf_size += snprintf(dump_buf + buf_point, DUMP_BUFF_SIZE - buf_point,
+				"%08x\n", readl(base + m->offset_bus_status + i * 4));
+		}
 	}
 
 	grad_code = readl(base + 0x404);
@@ -114,15 +174,21 @@ int lastbus_dump(int force_dump)
 		is_timeout = value & LASTBUS_TIMEOUT;
 
 		if (is_timeout || force_dump) {
-			pr_info("%s: %s lastbus timeout: %d, force_dump: %d.\n",
-				__func__, m->name, is_timeout, force_dump);
+			pr_info("%s: %s lastbus timeout: %d, force_dump: %d, debug status 0x%x.\n",
+				__func__, m->name, is_timeout, force_dump, value);
+			buf_point = check_buf_size(100);
 			dump_buf_size += snprintf(dump_buf + buf_point, DUMP_BUFF_SIZE - buf_point,
-				"%s lastbus timeout: %d, force_dump: %d.\n",
-				m->name, is_timeout, force_dump);
+				"%s lastbus timeout: %d, force_dump: %d, debug status 0x%x.\n",
+				m->name, is_timeout, force_dump, value);
 			lastbus_dump_monitor(m, base);
+
+			if (is_timeout)
+				lastbus_init_monitor_v1(m, my_cfg_lastbus.timeout_ms,
+					my_cfg_lastbus.timeout_type, base);
 		}
 		iounmap(base);
 	}
+
 
 	return 1;
 }
@@ -248,6 +314,20 @@ static int last_bus_probe(struct platform_device *pdev)
 		if (ret < 0) {
 			dev_err(dev, "couldn't find property bus_freq_mhz(%d)\n", ret);
 			return -ENODATA;
+		}
+
+		/* get monitor bus-status-offset */
+		ret = of_property_read_u32(child_part, "bus-status-offset",
+			&my_cfg_lastbus.monitors[num].offset_bus_status);
+		if (ret < 0)
+			dev_err(dev, "couldn't find property bus-status-offset(%d)\n", ret);
+
+		/* get monitor bus-status-num */
+		ret = of_property_read_u32(child_part, "bus-status-num",
+			&my_cfg_lastbus.monitors[num].num_bus_status);
+		if (ret < 0) {
+			dev_err(dev, "couldn't find property bus-status-num(%d)\n", ret);
+			my_cfg_lastbus.monitors[num].num_bus_status = 0;
 		}
 
 		num++;

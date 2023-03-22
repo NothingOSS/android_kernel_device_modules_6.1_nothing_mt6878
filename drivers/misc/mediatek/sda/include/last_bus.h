@@ -9,6 +9,7 @@
 #define LASTBUS_BUF_LENGTH        0x4000
 #define NR_MAX_LASTBUS_MONITOR    16
 #define MAX_MONITOR_NAME_LEN      32
+#define NR_MAX_LASTBUS_IDLE_MASK  8
 
 #define TIMEOUT_THRES_SHIFT       16
 #define TIMEOUT_TYPE_SHIFT        1
@@ -39,6 +40,11 @@ struct lastbus_monitor {
 	unsigned int base;
 	unsigned int num_ports;
 	int bus_freq_mhz;
+	unsigned int idle_mask_en;
+	unsigned int num_idle_mask;
+	struct lastbus_idle_mask idle_masks[NR_MAX_LASTBUS_IDLE_MASK];
+	unsigned int num_bus_status;
+	unsigned int offset_bus_status;
 };
 
 struct cfg_lastbus {
