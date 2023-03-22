@@ -2938,7 +2938,7 @@ static int __init scp_init(void)
 	}
 	scp_dvfs_cali_ready = 0;
 
-	scp_dvfs_init();
+	pr_notice("scp_dvfs_init status = %d\n", scp_dvfs_init());
 	wait_scp_dvfs_init_done();
 
 	if (scp_dvfs_feature_enable()) {

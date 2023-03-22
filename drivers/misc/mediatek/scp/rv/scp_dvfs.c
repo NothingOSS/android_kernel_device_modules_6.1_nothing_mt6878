@@ -111,11 +111,11 @@ struct ipi_request_freq_data {
 
 /*
  * g_is_scp_dvfs_feature_enable: enable feature or not (by dts)
- * g_scp_dvfs_init_done: = true, if probe was finished or feature was not enabled
+ * g_scp_dvfs_init_done: if probe was finished or feature was not enabled
  * g_scp_dvfs_flow_enable: run dvfs flow or not (by dts or adb command)
  */
-static bool g_is_scp_dvfs_feature_enable;
-static bool g_scp_dvfs_init_done;
+static atomic_t g_is_scp_dvfs_feature_enable;
+static atomic_t g_scp_dvfs_init_done;
 static bool g_scp_dvfs_flow_enable = true; /* 1: RUN DVFS FLOW, others: NO DVFS */
 /*
  * -1  : No SCP Debug CMD
@@ -815,7 +815,7 @@ void wait_scp_dvfs_init_done(void)
 {
 	int count = 0;
 
-	while (!g_scp_dvfs_init_done) {
+	while (atomic_read(&g_scp_dvfs_init_done) != 1) {
 		mdelay(1);
 		count++;
 		if (count > 3000) {
@@ -2593,7 +2593,7 @@ static int __init mt_scp_dts_init(struct platform_device *pdev)
 		pr_notice("SCP DVFS is disabled, so bypass its init\n");
 		return 0;
 	}
-	g_is_scp_dvfs_feature_enable = true;
+	atomic_set(&g_is_scp_dvfs_feature_enable, 1);
 
 	/*
 	* if set, no VCORE DVS is needed & PMIC setting should
@@ -2769,7 +2769,7 @@ DTS_FAILED:
 
 int scp_dvfs_feature_enable(void)
 {
-	return g_is_scp_dvfs_feature_enable;
+	return atomic_read(&g_is_scp_dvfs_feature_enable);
 }
 
 static int __init mt_scp_dvfs_pdrv_probe(struct platform_device *pdev)
@@ -2784,7 +2784,7 @@ static int __init mt_scp_dvfs_pdrv_probe(struct platform_device *pdev)
 	}
 
 	if (!scp_dvfs_feature_enable()) {
-		g_scp_dvfs_init_done = true;
+		atomic_set(&g_scp_dvfs_init_done, 1);
 		pr_notice("bypass scp dvfs init\n");
 		return 0;
 	}
@@ -2816,7 +2816,7 @@ static int __init mt_scp_dvfs_pdrv_probe(struct platform_device *pdev)
 	}
 #endif /* CONFIG_PROC_FS */
 
-	g_scp_dvfs_init_done = true;
+	atomic_set(&g_scp_dvfs_init_done, 1);
 	pr_notice("[%s]: scp_dvfs probe done\n", __func__);
 
 	return 0;
