@@ -429,7 +429,7 @@ struct mtk_iommu_fault_event {
 };
 
 struct mtk_smmu_ops {
-	struct mtk_smmu_data* (*get_smmu_data)(int smmu_type);
+	struct mtk_smmu_data* (*get_smmu_data)(u32 smmu_type);
 	__le64* (*get_cd_ptr)(struct arm_smmu_domain *smmu_domain, u32 ssid);
 	__le64* (*get_step_ptr)(struct arm_smmu_device *smmu, u32 sid);
 };

@@ -136,11 +136,11 @@ static inline int smmu_write_reg_sync(void __iomem *base,
 
 static const struct mtk_smmu_plat_data *of_device_get_plat_data(struct device *dev);
 
-static inline struct mtk_smmu_data *mkt_get_smmu_data(int smmu_type)
+static inline struct mtk_smmu_data *mkt_get_smmu_data(u32 smmu_type)
 {
 	struct mtk_smmu_data *data;
 
-	if (smmu_type >= MM_SMMU && smmu_type < SMMU_TYPE_NUM) {
+	if (smmu_type < SMMU_TYPE_NUM) {
 		data = mtk_smmu_datas[smmu_type];
 		if (data != NULL)
 			return data;

@@ -851,7 +851,7 @@ static void dump_wrapper_register(struct seq_file *s,
 	}
 }
 
-void mtk_smmu_wpreg_dump(struct seq_file *s, int smmu_type)
+void mtk_smmu_wpreg_dump(struct seq_file *s, u32 smmu_type)
 {
 	struct mtk_smmu_data *data;
 
@@ -1260,7 +1260,7 @@ static void dump_ste_info_list(struct seq_file *s,
 	}
 }
 
-void mtk_smmu_ste_cd_dump(struct seq_file *s, int smmu_type)
+void mtk_smmu_ste_cd_dump(struct seq_file *s, u32 smmu_type)
 {
 	struct mtk_smmu_data *data;
 
@@ -1292,7 +1292,7 @@ static void smmu_pgtable_dump(struct seq_file *s, struct arm_smmu_device *smmu)
 	}
 }
 
-void mtk_smmu_pgtable_dump(struct seq_file *s, int smmu_type)
+void mtk_smmu_pgtable_dump(struct seq_file *s, u32 smmu_type)
 {
 	struct mtk_smmu_data *data;
 
