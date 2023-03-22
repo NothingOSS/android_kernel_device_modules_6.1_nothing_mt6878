@@ -337,7 +337,12 @@ done:
 		lp->truesize += delta_truesize;
 		lp->len += len;
 	}
-	NAPI_GRO_CB(skb)->same_flow = 1;
+
+	if (NAPI_GRO_CB(skb)->free)
+		kfree_skb_partial(skb, true);
+	else
+		NAPI_GRO_CB(skb)->same_flow = 1;
+
 	return 0;
 }
 
