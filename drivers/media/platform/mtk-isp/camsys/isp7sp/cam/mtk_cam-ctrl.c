@@ -773,8 +773,6 @@ static int mtk_cam_ctrl_stream_on_job(struct mtk_cam_job *job)
 		}
 	}
 
-	atomic_dec(&ctrl->stream_on_cnt);
-
 	return 0;
 
 STREAM_ON_FAIL:
@@ -796,6 +794,7 @@ static void mtk_cam_ctrl_stream_on_flow(struct mtk_cam_job *job)
 	if (mtk_cam_ctrl_stream_on_job(job))
 		return;
 
+	atomic_dec(&ctrl->stream_on_cnt);
 	mtk_cam_ctrl_loop_job(ctrl, ctrl_enable_job_fsm_until_switch, NULL);
 
 	dev_info(dev, "[%s] ctx %d finish\n", __func__, ctrl->ctx->stream_id);
@@ -976,6 +975,7 @@ static void mtk_cam_ctrl_raw_switch_flow(struct mtk_cam_job *job)
 	 * Reuse stream on flow to start the new stream of the new sensor
 	 */
 	mtk_cam_ctrl_stream_on_job(job);
+	atomic_dec(&ctrl->stream_on_cnt);
 	mtk_cam_ctrl_loop_job(ctrl, ctrl_enable_job_fsm_until_switch, job);
 
 	dev_info(ctrl->ctx->cam->dev, "[%s] finish, used_engine:0x%x\n",
