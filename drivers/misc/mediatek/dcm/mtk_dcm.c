@@ -17,62 +17,34 @@ static short dcm_debug;
 static short dcm_initiated;
 struct DCM *common_dcm_array;
 struct DCM_OPS *common_dcm_ops;
-unsigned int common_init_dcm_type;
-unsigned int common_all_dcm_type;
 unsigned int common_init_dcm_type_by_k;
-
-
-unsigned int __attribute__((weak)) dcm_get_chip_sw_ver(void)
-{
-	return 0;
-}
 
 /*****************************************
  * DCM driver will provide regular APIs :
- * 1. dcm_restore(type) to recovery CURRENT_STATE before any power-off reset.
- * 2. dcm_set_default(type) to reset as cold-power-on init state.
- * 3. dcm_disable(type) to disable all dcm.
- * 4. dcm_set_state(type) to set dcm state.
- * 5. dcm_dump_state(type) to show CURRENT_STATE.
+ * 1. dcm_restore(type) to restore to default DCM HW status, and remove force_disable flag.
+ * 2. dcm_get_default() to get default DCM HW status.
+ * 3. dcm_force_disable(type) to disable some dcm, and set force_disable flag prevent DCM on.
+ * 4. dcm_set_state(type) to enable/disable some dcm.
+ * 5. dcm_dump_state(type) to show DCM HW status.
  * 6. /sys/dcm/dcm_state interface:
  *			'restore', 'disable', 'dump', 'set'. 4 commands.
  *
  * spsecified APIs for workaround:
  * 1. (definitely no workaround now)
  *****************************************/
-void dcm_set_default(unsigned int type)
+
+static void dcm_get_default(void)
 {
 	struct DCM *dcm;
-
-	if (!is_dcm_initialized()) {
-		dcm_pr_info("[%s]DCM common driver not initialized!\n", __func__);
-		return;
-	}
-
-	dcm_pr_info("[%s]type:0x%08x, init_dcm_type=0x%x, INIT_DCM_TYPE_BY_K=0x%x\n",
-		 __func__, type, common_init_dcm_type,
-		 common_init_dcm_type_by_k);
 
 	mutex_lock(&dcm_lock);
 
 	for (dcm = common_dcm_array; dcm->name != NULL; dcm++) {
-		if (type & dcm->typeid) {
-			dcm->saved_state = dcm->default_state;
-			dcm->current_state = dcm->default_state;
-			dcm->disable_refcnt = 0;
-			if (common_init_dcm_type_by_k & dcm->typeid) {
-				if (dcm->preset_func)
-					dcm->preset_func();
-				dcm->func(dcm->current_state);
-			}
-
-			dcm_pr_info("[%16s 0x%08x] current state:%d (%d)\n",
-				 dcm->name, dcm->typeid, dcm->current_state,
-				 dcm->disable_refcnt);
-		}
+		if (dcm->is_on_func)
+			dcm->default_state = dcm->is_on_func();
+		else // HW status un-known, is-on-func not defined
+			dcm->default_state = -1;
 	}
-
-	/*dcm_smc_msg_send(common_init_dcm_type);*/
 
 	mutex_unlock(&dcm_lock);
 }
@@ -80,15 +52,13 @@ void dcm_set_default(unsigned int type)
 void dcm_set_state(unsigned int type, int state)
 {
 	struct DCM *dcm;
-	unsigned int init_dcm_type_pre = common_init_dcm_type;
 
 	if (!is_dcm_initialized()) {
 		dcm_pr_info("[%s]DCM common driver not initialized!\n", __func__);
 		return;
 	}
 
-	dcm_pr_info("[%s]type:0x%08x, set:%d, init_dcm_type_pre=0x%x\n",
-		 __func__, type, state, init_dcm_type_pre);
+	dcm_pr_info("[%s]type:0x%08x, set:%d\n", __func__, type, state);
 
 	mutex_lock(&dcm_lock);
 
@@ -96,44 +66,27 @@ void dcm_set_state(unsigned int type, int state)
 		if (type & dcm->typeid) {
 			type &= ~(dcm->typeid);
 
-			dcm->saved_state = state;
-			if (dcm->disable_refcnt == 0) {
-				if (state)
-					common_init_dcm_type |= dcm->typeid;
-				else
-					common_init_dcm_type &= ~(dcm->typeid);
-
-				dcm->current_state = state;
-				dcm->func(dcm->current_state);
+			if (dcm->force_disable == false) {
+				if (dcm->preset_func)
+					dcm->preset_func();
+				dcm->func(state);
 			}
 
-			dcm_pr_info("[%16s 0x%08x] current state:%d (%d)\n",
-				 dcm->name, dcm->typeid, dcm->current_state,
-				 dcm->disable_refcnt);
+			dcm_pr_info("[%-16s 0x%08x] current state:%d, default state: %d, force_disable: %d\n",
+				 dcm->name, dcm->typeid,
+				 dcm->is_on_func != NULL ? dcm->is_on_func() : -1,
+				 dcm->default_state,
+				 dcm->force_disable);
 
 		}
-	}
-
-	if (init_dcm_type_pre != common_init_dcm_type) {
-		dcm_pr_info("[%s]type:0x%08x, set:%d, init_dcm_type=0x%x->0x%x\n",
-			__func__, type, state,
-			init_dcm_type_pre,
-			common_init_dcm_type);
-		/*dcm_smc_msg_send(common_init_dcm_type);*/
 	}
 
 	mutex_unlock(&dcm_lock);
 }
 
-void dcm_disable(unsigned int type)
+static void dcm_force_disable(unsigned int type)
 {
 	struct DCM *dcm;
-	unsigned int init_dcm_type_pre = common_init_dcm_type;
-
-	if (!is_dcm_initialized()) {
-		dcm_pr_info("[%s]DCM common driver not initialized!\n", __func__);
-		return;
-	}
 
 	dcm_pr_info("[%s]type:0x%08x\n", __func__, type);
 
@@ -143,41 +96,29 @@ void dcm_disable(unsigned int type)
 		if (type & dcm->typeid) {
 			type &= ~(dcm->typeid);
 
-			dcm->current_state = DCM_OFF;
-			if (dcm->disable_refcnt++ == 0)
-				common_init_dcm_type &= ~(dcm->typeid);
-			dcm->func(dcm->current_state);
+			if (dcm->preset_func)
+				dcm->preset_func();
+			dcm->func(DCM_OFF);
+			dcm->force_disable = true;
 
-			dcm_pr_info("[%16s 0x%08x] current state:%d (%d)\n",
-				 dcm->name, dcm->typeid, dcm->current_state,
-				 dcm->disable_refcnt);
+			dcm_pr_info("[%-16s 0x%08x] current state:%d, default state: %d, force_disable: %d\n",
+				 dcm->name, dcm->typeid,
+				 dcm->is_on_func != NULL ? dcm->is_on_func() : -1,
+				 dcm->default_state,
+				 dcm->force_disable);
 
 		}
 	}
 
-	if (init_dcm_type_pre != common_init_dcm_type) {
-		dcm_pr_info("[%s]type:0x%08x, init_dcm_type=0x%x->0x%x\n",
-			 __func__, type, init_dcm_type_pre,
-			 common_init_dcm_type);
-		/*dcm_smc_msg_send(common_init_dcm_type);*/
-	}
-
 	mutex_unlock(&dcm_lock);
-
 }
-EXPORT_SYMBOL(dcm_disable);
 
-void dcm_restore(unsigned int type)
+static void dcm_restore(unsigned int type)
 {
 	struct DCM *dcm;
-	unsigned int init_dcm_type_pre = common_init_dcm_type;
 
-	if (!is_dcm_initialized()) {
-		dcm_pr_info("[%s]DCM common driver not initialized!\n", __func__);
-		return;
-	}
-
-	dcm_pr_info("[%s]type:0x%08x\n", __func__, type);
+	dcm_pr_info("[%s]type:0x%08x, INIT_DCM_TYPE_BY_K=0x%x\n",
+		 __func__, type, common_init_dcm_type_by_k);
 
 	mutex_lock(&dcm_lock);
 
@@ -185,35 +126,24 @@ void dcm_restore(unsigned int type)
 		if (type & dcm->typeid) {
 			type &= ~(dcm->typeid);
 
-			if (dcm->disable_refcnt > 0)
-				dcm->disable_refcnt--;
-			if (dcm->disable_refcnt == 0) {
-				if (dcm->saved_state)
-					common_init_dcm_type |= dcm->typeid;
-				else
-					common_init_dcm_type &= ~(dcm->typeid);
-
-				dcm->current_state = dcm->saved_state;
-				dcm->func(dcm->current_state);
+			/* Restore DCM setting to default */
+			if (dcm->default_state >= 0) {
+				if (dcm->preset_func)
+					dcm->preset_func();
+				dcm->func(dcm->default_state);
 			}
+			dcm->force_disable = false;
 
-			dcm_pr_info("[%16s 0x%08x] current state:%d (%d)\n",
-				 dcm->name, dcm->typeid, dcm->current_state,
-				 dcm->disable_refcnt);
-
+			dcm_pr_info("[%-16s 0x%08x] current state:%d, default state: %d, force_disable: %d\n",
+				 dcm->name, dcm->typeid,
+				 dcm->is_on_func != NULL ? dcm->is_on_func() : -1,
+				 dcm->default_state,
+				 dcm->force_disable);
 		}
-	}
-
-	if (init_dcm_type_pre != common_init_dcm_type) {
-		dcm_pr_info("[%s]type:0x%08x, init_dcm_type=0x%x->0x%x\n",
-			 __func__, type, init_dcm_type_pre,
-			 common_init_dcm_type);
-		/*dcm_smc_msg_send(common_init_dcm_type);*/
 	}
 
 	mutex_unlock(&dcm_lock);
 }
-
 
 void dcm_dump_state(int type)
 {
@@ -227,9 +157,11 @@ void dcm_dump_state(int type)
 	dcm_pr_info("\n******** Kernel dcm dump state *********\n");
 	for (dcm = common_dcm_array; dcm->name != NULL; dcm++) {
 		if (type & dcm->typeid) {
-			dcm_pr_info("[%-16s 0x%08x] current state:%d (%d)\n",
-				 dcm->name, dcm->typeid, dcm->current_state,
-				 dcm->disable_refcnt);
+			dcm_pr_info("[%-16s 0x%08x] current state:%d, default state: %d, force_disable: %d\n",
+				 dcm->name, dcm->typeid,
+				 dcm->is_on_func != NULL ? dcm->is_on_func() : -1,
+				 dcm->default_state,
+				 dcm->force_disable);
 		}
 	}
 }
@@ -242,21 +174,22 @@ static ssize_t dcm_state_show(struct kobject *kobj, struct kobj_attribute *attr,
 	int len = 0;
 	struct DCM *dcm;
 
-	/* dcm_dump_state(common_all_dcm_type); */
 	len += snprintf(buf+len, PAGE_SIZE-len,
 			"\n******** dcm dump state *********\n");
 	for (dcm = common_dcm_array; dcm->name != NULL; dcm++)
 		len += snprintf(buf+len, PAGE_SIZE-len,
-				"[%-16s 0x%08x] current state:%d (%d)\n",
-				dcm->name, dcm->typeid, dcm->current_state,
-				dcm->disable_refcnt);
+				"[%-16s 0x%08x] current state:%d, default state: %d, force_disable: %d\n",
+				dcm->name, dcm->typeid,
+				dcm->is_on_func != NULL ? dcm->is_on_func() : -1,
+				dcm->default_state,
+				dcm->force_disable);
 
 	len += snprintf(buf+len, PAGE_SIZE-len,
 			"\n********** dcm_state help *********\n");
 	len += snprintf(buf+len, PAGE_SIZE-len,
 			"set:       echo set [mask] [mode] > /sys/dcm/dcm_state\n");
 	len += snprintf(buf+len, PAGE_SIZE-len,
-			"disable:   echo disable [mask] > /sys/dcm/dcm_state\n");
+			"Force disable:   echo disable [mask] > /sys/dcm/dcm_state\n");
 	len += snprintf(buf+len, PAGE_SIZE-len,
 			"restore:   echo restore [mask] > /sys/dcm/dcm_state\n");
 	len += snprintf(buf+len, PAGE_SIZE-len,
@@ -268,10 +201,7 @@ static ssize_t dcm_state_show(struct kobject *kobj, struct kobj_attribute *attr,
 	len += snprintf(buf+len, PAGE_SIZE-len,
 			"***** [mode] is type of DCM to set and retained\n");
 	len += snprintf(buf+len, PAGE_SIZE-len,
-			"init_dcm_type=0x%x, all_dcm_type=0x%x, dcm_debug=%d, ",
-			common_init_dcm_type, common_all_dcm_type, dcm_debug);
-	len += snprintf(buf+len, PAGE_SIZE-len, "dcm_get_chip_sw_ver=0x%x\n",
-			dcm_get_chip_sw_ver());
+			"dcm_debug=%d, ", dcm_debug);
 
 	return len;
 }
@@ -282,25 +212,22 @@ static ssize_t dcm_state_store(struct kobject *kobj,
 {
 	char cmd[16];
 	unsigned int mask;
-	/*unsigned int val0, val1;*/
 	int ret, mode;
 
 	if (sscanf(buf, "%15s %x", cmd, &mask) == 2) {
-		mask &= common_all_dcm_type;
+		mask &= ALL_DCM_TYPE;
 
 		if (!strcmp(cmd, "restore")) {
-			/* dcm_dump_regs(); */
 			dcm_restore(mask);
-			/* dcm_dump_regs(); */
 		} else if (!strcmp(cmd, "disable")) {
-			/* dcm_dump_regs(); */
-			dcm_disable(mask);
-			/* dcm_dump_regs(); */
+			dcm_force_disable(mask);
 		} else if (!strcmp(cmd, "dump")) {
 			dcm_dump_state(mask);
 			common_dcm_ops->dump_regs();
 		} else if (!strcmp(cmd, "debug")) {
-			if (mask == 0) {
+			if (common_dcm_ops->set_debug_mode == NULL) {
+				dcm_pr_info("SORRY, this platform does not support debug mode\n");
+			} else if (mask == 0) {
 				dcm_debug = 0;
 				common_dcm_ops->set_debug_mode(dcm_debug);
 			} else if (mask == 1) {
@@ -309,7 +236,7 @@ static ssize_t dcm_state_store(struct kobject *kobj,
 			}
 		} else if (!strcmp(cmd, "set")) {
 			if (sscanf(buf, "%15s %x %d", cmd, &mask, &mode) == 3) {
-				mask &= common_all_dcm_type;
+				mask &= ALL_DCM_TYPE;
 				if (mode == 0 || mode == 1) {
 					dcm_set_state(mask, mode);
 				} else {
@@ -343,26 +270,27 @@ static struct kobject *kobj;
 
 int mt_dcm_common_init(void)
 {
+	int state;
+	int ret = 0;
 
-	unsigned int default_type;
-	int default_state;
-	int err = 0;
 	/*dcm_pr_info("[%s]: dcm common init\n", __func__);*/
 	if (common_dcm_ops == NULL || common_dcm_array == NULL) {
 		dcm_pr_notice("[%s] dcm common ops or array is null\n",
 					__func__);
 		return -1;
 	}
+	/* Dump DCM RG setting between LK init & Kernel init */
 	common_dcm_ops->dump_regs();
-	common_dcm_ops->get_default(&default_type, &default_state);
-	common_dcm_ops->get_init_type(&common_init_dcm_type);
-	common_dcm_ops->get_all_type(&common_all_dcm_type);
-	common_dcm_ops->get_init_by_k_type(&common_init_dcm_type_by_k);
 
-	if (default_state == DCM_DEFAULT)
-		dcm_set_default(default_type);
-	else
-		dcm_set_state(default_type, default_state);
+	/* DCM_ALL_OFF or DCM_INIT  */
+	common_dcm_ops->get_init_state_and_type(&common_init_dcm_type_by_k, &state);
+	if (state == DCM_INIT)
+		dcm_restore(common_init_dcm_type_by_k);
+	else if (state == DCM_OFF)
+		dcm_set_state(common_init_dcm_type_by_k, DCM_OFF);
+
+	/* Read back DCM RG status, save to DCM default_state */
+	dcm_get_default();
 
 #ifdef CONFIG_PM
 	{
@@ -370,24 +298,15 @@ int mt_dcm_common_init(void)
 		if (!kobj)
 			return -ENOMEM;
 
-		err = sysfs_create_file(kobj, &dcm_state_attr.attr);
-		if (err)
+		ret = sysfs_create_file(kobj, &dcm_state_attr.attr);
+		if (ret)
 			dcm_pr_notice("[%s]: fail to create sysfs\n", __func__);
 	}
-
-#ifdef DCM_DEBUG_MON
-	{
-		err = sysfs_create_file(power_kobj, &dcm_debug_mon_attr.attr);
-		if (err)
-			dcm_pr_notice("[%s]: fail to create sysfs\n", __func__);
-	}
-#endif /* #ifdef DCM_DEBUG_MON */
 #endif /* #ifdef CONFIG_PM */
-
 
 	dcm_initiated = 1;
 
-	return err;
+	return ret;
 }
 EXPORT_SYMBOL(mt_dcm_common_init);
 
@@ -409,12 +328,12 @@ bool is_dcm_initialized(void)
 }
 EXPORT_SYMBOL(is_dcm_initialized);
 
-void mt_dcm_disable(void)
+void mt_dcm_force_disable(void)
 {
 	if (!dcm_initiated)
 		return;
 
-	dcm_disable(common_all_dcm_type);
+	dcm_force_disable(ALL_DCM_TYPE);
 }
 
 void mt_dcm_restore(void)
@@ -422,7 +341,7 @@ void mt_dcm_restore(void)
 	if (!dcm_initiated)
 		return;
 
-	dcm_restore(common_all_dcm_type);
+	dcm_restore(ALL_DCM_TYPE);
 }
 
 static int __init mtk_dcm_init(void)
@@ -431,7 +350,6 @@ static int __init mtk_dcm_init(void)
 	dcm_initiated = 0;
 	return 0;
 }
-//arch_initcall(mt6779_dcm_init);
 
 static void mtk_dcm_exit(void)
 {

@@ -10,7 +10,7 @@
 
 #define DCM_OFF (0)
 #define DCM_ON (1)
-#define DCM_DEFAULT (-1)
+#define DCM_INIT (-1)
 
 #define TAG	"[Power/dcm] "
 #define dcm_pr_notice(fmt, args...)			\
@@ -189,6 +189,7 @@ enum {
 
 /*****************************************************/
 typedef int (*DCM_FUNC)(int);
+typedef int (*DCM_ISON_FUNC)(void);
 typedef void (*DCM_FUNC_VOID_VOID)(void);
 typedef void (*DCM_FUNC_VOID_UINTR)(unsigned int *);
 typedef void (*DCM_FUNC_VOID_UINTR_INTR)(unsigned int *, int *);
@@ -197,10 +198,7 @@ typedef void (*DCM_FUNC_VOID_UINT)(unsigned int);
 
 struct DCM_OPS {
 	DCM_FUNC_VOID_VOID dump_regs;
-	DCM_FUNC_VOID_UINTR_INTR get_default;
-	DCM_FUNC_VOID_UINTR get_init_type;
-	DCM_FUNC_VOID_UINTR get_all_type;
-	DCM_FUNC_VOID_UINTR get_init_by_k_type;
+	DCM_FUNC_VOID_UINTR_INTR get_init_state_and_type;
 	DCM_FUNC_VOID_UINT set_debug_mode;
 };
 
@@ -210,11 +208,10 @@ struct DCM_BASE {
 };
 
 struct DCM {
-	int current_state;
-	int saved_state;
-	int disable_refcnt;
+	bool force_disable;
 	int default_state;
 	DCM_FUNC func;
+	DCM_ISON_FUNC is_on_func;
 	DCM_PRESET_FUNC preset_func;
 	int typeid;
 	char *name;

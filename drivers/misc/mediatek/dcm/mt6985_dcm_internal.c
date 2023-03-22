@@ -194,6 +194,183 @@ int dcm_pextp(int on)
 	return 0;
 }
 
+static int dcm_mcusys_is_on(void)
+{
+	int ret = 1;
+
+	return ret;
+}
+
+static int dcm_infra_is_on(void)
+{
+	int ret = 1;
+
+	ret &= dcm_ifrbus_ao_infra_bus_dcm_is_on();
+	ret &= dcm_topckgen_infra_iommu_dcm_is_on();
+	ret &= dcm_topckgen_infra_rsi_dcm_is_on();
+
+	return ret;
+}
+
+static int dcm_peri_is_on(void)
+{
+	int ret = 1;
+
+	ret &= dcm_peri_ao_bcrm_peri_bus_dcm_is_on();
+
+	return ret;
+}
+
+static int dcm_mcusys_acp_is_on(void)
+{
+	int ret = 1;
+
+	ret &= dcm_mcusys_par_wrap_mcu_acp_dcm_is_on();
+
+	return ret;
+}
+
+static int dcm_mcusys_adb_is_on(void)
+{
+	int ret = 1;
+
+	ret &= dcm_mcusys_par_wrap_mcu_adb_dcm_is_on();
+
+	return ret;
+}
+
+static int dcm_mcusys_bus_is_on(void)
+{
+	int ret = 1;
+
+	ret &= dcm_mcusys_par_wrap_mcu_bus_qdcm_is_on();
+
+	return ret;
+}
+
+static int dcm_mcusys_cbip_is_on(void)
+{
+	int ret = 1;
+
+	ret &= dcm_mcusys_par_wrap_mcu_cbip_dcm_is_on();
+
+	return ret;
+}
+
+static int dcm_mcusys_core_is_on(void)
+{
+	int ret = 1;
+
+	ret &= dcm_mcusys_par_wrap_mcu_core_qdcm_is_on();
+
+	return ret;
+}
+
+static int dcm_mcusys_io_is_on(void)
+{
+	int ret = 1;
+
+	ret &= dcm_mcusys_par_wrap_mcu_io_dcm_is_on();
+
+	return ret;
+}
+
+static int dcm_mcusys_cpc_pbi_is_on(void)
+{
+	int ret = 1;
+
+	ret &= dcm_mcusys_par_wrap_cpc_pbi_dcm_is_on();
+
+	return ret;
+}
+
+static int dcm_mcusys_cpc_turbo_is_on(void)
+{
+	int ret = 1;
+
+	ret &= dcm_mcusys_par_wrap_cpc_turbo_dcm_is_on();
+
+	return ret;
+}
+
+static int dcm_mcusys_stall_is_on(void)
+{
+	int ret = 1;
+
+	ret &= dcm_mcusys_par_wrap_mcu_stalldcm_is_on();
+
+	return ret;
+}
+
+static int dcm_mcusys_apb_is_on(void)
+{
+	int ret = 1;
+
+	ret &= dcm_mcusys_par_wrap_mcu_apb_dcm_is_on();
+
+	return ret;
+}
+
+static int dcm_mcusys_mcupm_is_on(void)
+{
+	int ret = 1;
+
+	return ret;
+}
+
+static int dcm_vlp_is_on(void)
+{
+	int ret = 1;
+
+	ret &= dcm_vlp_ao_bcrm_vlp_bus_dcm_is_on();
+
+	return ret;
+}
+
+static int dcm_mcusys_bkr_is_on(void)
+{
+	int ret = 1;
+
+	ret &= dcm_mcusys_par_wrap_mcu_bkr_ldcm_is_on();
+
+	return ret;
+}
+
+static int dcm_mcusys_misc_is_on(void)
+{
+	int ret = 1;
+
+	ret &= dcm_mcusys_par_wrap_mcu_misc_dcm_is_on();
+
+	return ret;
+}
+
+static int dcm_ufs_is_on(void)
+{
+	int ret = 1;
+
+	ret &= dcm_ufs0_ao_bcrm_ufs_bus_dcm_is_on();
+
+	return ret;
+}
+
+static int dcm_pextp_is_on(void)
+{
+	int ret = 1;
+
+	ret &= dcm_pcie0_ao_bcrm_pextp_bus_dcm_is_on();
+
+	return ret;
+}
+
+static int dcm_armcore_is_on(void)
+{
+	int ret = 1;
+
+	return ret;
+}
+
+
 void dcm_dump_regs(void)
 {
 	dcm_pr_info("\n******** dcm dump register *********\n");
@@ -231,41 +408,23 @@ void dcm_dump_regs(void)
 	REG_DUMP(VDNR_DCM_TOP_VLP_PAR_BUS_u_VLP_PAR_BUS_CTRL_0);
 }
 
-void get_default(unsigned int *type, int *state)
+void get_init_state_and_type(unsigned int *type, int *state)
 {
-#ifndef DCM_DEFAULT_ALL_OFF
-	/** enable all dcm **/
-	*type = init_dcm_type;
-	*state = DCM_DEFAULT;
-#else /* DCM_DEFAULT_ALL_OFF */
+#if defined(DCM_DEFAULT_ALL_OFF)
 	*type = ALL_DCM_TYPE;
 	*state = DCM_OFF;
-#endif /* #ifndef DCM_DEFAULT_ALL_OFF */
-}
-
-void get_init_type(unsigned int *type)
-{
-	*type = init_dcm_type;
-}
-void get_all_type(unsigned int *type)
-{
-	*type = ALL_DCM_TYPE;
-}
-void get_init_by_k_type(unsigned int *type)
-{
-#ifdef ENABLE_DCM_IN_LK
+#elif defined(ENABLE_DCM_IN_LK)
 	*type = INIT_DCM_TYPE_BY_K;
+	*state = DCM_INIT;
 #else
 	*type = init_dcm_type;
+	*state = DCM_INIT;
 #endif
 }
 
 struct DCM_OPS dcm_ops = {
 	.dump_regs = (DCM_FUNC_VOID_VOID) dcm_dump_regs,
-	.get_default = (DCM_FUNC_VOID_UINTR_INTR) get_default,
-	.get_init_type = (DCM_FUNC_VOID_UINTR) get_init_type,
-	.get_all_type = (DCM_FUNC_VOID_UINTR) get_all_type,
-	.get_init_by_k_type = (DCM_FUNC_VOID_UINTR) get_init_by_k_type,
+	.get_init_state_and_type = (DCM_FUNC_VOID_UINTR_INTR) get_init_state_and_type,
 };
 
 struct DCM_BASE dcm_base_array[] = {
@@ -287,161 +446,142 @@ static struct DCM dcm_array[] = {
 	 .typeid = ARMCORE_DCM_TYPE,
 	 .name = "ARMCORE_DCM",
 	 .func = dcm_armcore,
-	 .current_state = ARMCORE_DCM_MODE1,
+	 .is_on_func = dcm_armcore_is_on,
 	 .default_state = ARMCORE_DCM_MODE1,
-	 .disable_refcnt = 0,
 	 },
 	{
 	 .typeid = MCUSYS_DCM_TYPE,
 	 .name = "MCUSYS_DCM",
 	 .func = dcm_mcusys,
-	 .current_state = MCUSYS_DCM_ON,
+	 .is_on_func = dcm_mcusys_is_on,
 	 .default_state = MCUSYS_DCM_ON,
-	 .disable_refcnt = 0,
 	 },
 	{
 	 .typeid = INFRA_DCM_TYPE,
 	 .name = "INFRA_DCM",
 	 .func = dcm_infra,
-	 .current_state = INFRA_DCM_ON,
+	 .is_on_func = dcm_infra_is_on,
 	 .default_state = INFRA_DCM_ON,
-	 .disable_refcnt = 0,
 	 },
 	{
 	 .typeid = PERI_DCM_TYPE,
 	 .name = "PERI_DCM",
 	 .func = dcm_peri,
-	 .current_state = PERI_DCM_ON,
+	 .is_on_func = dcm_peri_is_on,
 	 .default_state = PERI_DCM_ON,
-	 .disable_refcnt = 0,
 	 },
 	{
 	 .typeid = MCUSYS_ACP_DCM_TYPE,
 	 .name = "MCU_ACP_DCM",
 	 .func = dcm_mcusys_acp,
-	 .current_state = MCUSYS_ACP_DCM_ON,
+	 .is_on_func = dcm_mcusys_acp_is_on,
 	 .default_state = MCUSYS_ACP_DCM_ON,
-	 .disable_refcnt = 0,
 	},
 	{
 	 .typeid = MCUSYS_ADB_DCM_TYPE,
 	 .name = "MCU_ADB_DCM",
 	 .func = dcm_mcusys_adb,
-	 .current_state = MCUSYS_ADB_DCM_ON,
+	 .is_on_func = dcm_mcusys_adb_is_on,
 	 .default_state = MCUSYS_ADB_DCM_ON,
-	 .disable_refcnt = 0,
 	},
 	{
 	 .typeid = MCUSYS_BUS_DCM_TYPE,
 	 .name = "MCU_BUS_DCM",
 	 .func = dcm_mcusys_bus,
-	 .current_state = MCUSYS_BUS_DCM_ON,
+	 .is_on_func = dcm_mcusys_bus_is_on,
 	 .default_state = MCUSYS_BUS_DCM_ON,
-	 .disable_refcnt = 0,
 	},
 	{
 	 .typeid = MCUSYS_CBIP_DCM_TYPE,
 	 .name = "MCU_CBIP_DCM",
 	 .func = dcm_mcusys_cbip,
-	 .current_state = MCUSYS_CBIP_DCM_ON,
+	 .is_on_func = dcm_mcusys_cbip_is_on,
 	 .default_state = MCUSYS_CBIP_DCM_ON,
-	 .disable_refcnt = 0,
 	},
 	{
 	 .typeid = MCUSYS_CORE_DCM_TYPE,
 	 .name = "MCU_CORE_DCM",
 	 .func = dcm_mcusys_core,
-	 .current_state = MCUSYS_CORE_DCM_ON,
+	 .is_on_func = dcm_mcusys_core_is_on,
 	 .default_state = MCUSYS_CORE_DCM_ON,
-	 .disable_refcnt = 0,
 	},
 	{
 	 .typeid = MCUSYS_IO_DCM_TYPE,
 	 .name = "MCU_IO_DCM",
 	 .func = dcm_mcusys_io,
-	 .current_state = MCUSYS_IO_DCM_ON,
+	 .is_on_func = dcm_mcusys_io_is_on,
 	 .default_state = MCUSYS_IO_DCM_ON,
-	 .disable_refcnt = 0,
 	},
 	{
 	 .typeid = MCUSYS_CPC_PBI_DCM_TYPE,
 	 .name = "MCU_CPC_PBI_DCM",
 	 .func = dcm_mcusys_cpc_pbi,
-	 .current_state = MCUSYS_CPC_PBI_DCM_ON,
+	 .is_on_func = dcm_mcusys_cpc_pbi_is_on,
 	 .default_state = MCUSYS_CPC_PBI_DCM_ON,
-	 .disable_refcnt = 0,
 	},
 	{
 	 .typeid = MCUSYS_CPC_TURBO_DCM_TYPE,
 	 .name = "MCU_CPC_TURBO_DCM",
 	 .func = dcm_mcusys_cpc_turbo,
-	 .current_state = MCUSYS_CPC_TURBO_DCM_ON,
+	 .is_on_func = dcm_mcusys_cpc_turbo_is_on,
 	 .default_state = MCUSYS_CPC_TURBO_DCM_ON,
-	 .disable_refcnt = 0,
 	},
 	{
 	 .typeid = MCUSYS_STALL_DCM_TYPE,
 	 .name = "MCU_STALL_DCM",
 	 .func = dcm_mcusys_stall,
-	 .current_state = MCUSYS_STALL_DCM_ON,
+	 .is_on_func = dcm_mcusys_stall_is_on,
 	 .default_state = MCUSYS_STALL_DCM_ON,
-	 .disable_refcnt = 0,
 	},
 	{
 	 .typeid = MCUSYS_APB_DCM_TYPE,
 	 .name = "MCU_APB_DCM",
 	 .func = dcm_mcusys_apb,
-	 .current_state = MCUSYS_APB_DCM_ON,
+	 .is_on_func = dcm_mcusys_apb_is_on,
 	 .default_state = MCUSYS_APB_DCM_ON,
-	 .disable_refcnt = 0,
 	},
+
 	{
 	 .typeid = MCUSYS_BKR_DCM_TYPE,
 	 .name = "MCU_BKR_DCM",
 	 .func = dcm_mcusys_bkr,
-	 .current_state = MCUSYS_BKR_DCM_ON,
+	 .is_on_func = dcm_mcusys_bkr_is_on,
 	 .default_state = MCUSYS_BKR_DCM_ON,
-	 .disable_refcnt = 0,
 	},
 	{
 	 .typeid = MCUSYS_MISC_DCM_TYPE,
 	 .name = "MCU_MISC_DCM",
 	 .func = dcm_mcusys_misc,
-	 .current_state = MCUSYS_MISC_DCM_ON,
+	 .is_on_func = dcm_mcusys_misc_is_on,
 	 .default_state = MCUSYS_MISC_DCM_ON,
-	 .disable_refcnt = 0,
 	},
 	{
 	 .typeid = MCUSYS_MCUPM_DCM_TYPE,
 	 .name = "MCUSYS_MCUPM_DCM",
 	 .func = dcm_mcusys_mcupm,
-	 .current_state = MCUSYS_MCUPM_DCM_ON,
+	 .is_on_func = dcm_mcusys_mcupm_is_on,
 	 .default_state = MCUSYS_MCUPM_DCM_ON,
-	 .disable_refcnt = 0,
 	},
 	{
 	 .typeid = VLP_DCM_TYPE,
 	 .name = "VLP_DCM",
 	 .func = dcm_vlp,
-	 .current_state = VLP_DCM_ON,
+	 .is_on_func = dcm_vlp_is_on,
 	 .default_state = VLP_DCM_ON,
-	 .disable_refcnt = 0,
 	},
 	{
 	 .typeid = UFS0_DCM_TYPE,
 	 .name = "UFS0_DCM",
 	 .func = dcm_ufs0,
-	 .current_state = UFS0_DCM_ON,
+	 .is_on_func = dcm_ufs_is_on,
 	 .default_state = UFS0_DCM_ON,
-	 .disable_refcnt = 0,
 	},
 	{
 	 .typeid = PEXTP_DCM_TYPE,
 	 .name = "PEXTP_DCM",
 	 .func = dcm_pextp,
-	 .current_state = PEXTP_DCM_ON,
+	 .is_on_func = dcm_pextp_is_on,
 	 .default_state = PEXTP_DCM_ON,
-	 .disable_refcnt = 0,
 	},
 	/* Keep this NULL element for array traverse */
 	{0},
