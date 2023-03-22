@@ -1284,11 +1284,18 @@ int smi_get_larb_dump(const char *val, const struct kernel_param *kp)
 		pr_notice("SMI get larb dump failed: %d\n", result);
 		return result;
 	}
+
+	if (!smi->larb[larb_id].dev) {
+		pr_notice("%s: can not find larb%d\n", __func__, larb_id);
+		mtk_smi_dbg_hang_detect("SMI driver");
+		return -EINVAL;
+	}
+
 	ret = pm_runtime_resume_and_get(smi->larb[larb_id].dev);
 	if (ret < 0)
 		dev_notice(smi->larb[larb_id].dev, "smi_larb%d get fail:%d\n", larb_id, ret);
 
-	mtk_smi_dbg_hang_detect("SMI larb get and dump");
+	mtk_smi_dbg_hang_detect("SMI driver");
 
 	return 0;
 }
