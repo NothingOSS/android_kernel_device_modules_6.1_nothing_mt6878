@@ -18,10 +18,11 @@ DECLARE_PER_CPU(unsigned long, min_freq);
 #define LB_FAIL         (0x01)
 #define LB_SYNC         (0x02)
 #define LB_ZERO_UTIL    (0x04)
-#define LB_PREV         (0x08)
-#define LB_LATENCY_SENSITIVE_BEST_IDLE_CPU      (0x10)
-#define LB_LATENCY_SENSITIVE_IDLE_MAX_SPARE_CPU (0x20)
-#define LB_LATENCY_SENSITIVE_MAX_SPARE_CPU      (0x40)
+#define LB_ZERO_EENV_UTIL    (0x08)
+#define LB_PREV         (0x10)
+#define LB_LATENCY_SENSITIVE_BEST_IDLE_CPU      (0x20)
+#define LB_LATENCY_SENSITIVE_IDLE_MAX_SPARE_CPU (0x40)
+#define LB_LATENCY_SENSITIVE_MAX_SPARE_CPU      (0x80)
 #define LB_BEST_ENERGY_CPU      (0x100)
 #define LB_MAX_SPARE_CPU        (0x200)
 #define LB_IN_INTERRUPT		(0x400)
@@ -58,8 +59,6 @@ struct energy_env {
 	unsigned long task_busy_time;     /* task util*/
 	unsigned long min_cap;            /* min cap of task */
 	unsigned long max_cap;            /* max cap of task */
-
-	unsigned long pd_busy_time;       /* CPUs total util */
 
 	unsigned int gear_idx;
 	unsigned long pds_busy_time[NR_CPUS];
