@@ -654,8 +654,7 @@ void apply_camsv_cq(struct mtk_camsv_device *sv_dev,
 		cq_addr_msb);
 	CAMSV_WRITE_REG(sv_dev->base_scq  + REG_CAMSVCQ_CQ_SUB_THR0_BASEADDR_2,
 		cq_addr_lsb);
-	CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQTOP_THR_START,
-		CAMSVCQTOP_THR_START, CAMSVCQTOP_CSR_CQ_THR0_START, 1);
+	writel(CAMSVCQTOP_CQ_THR0_START, sv_dev->base_scq + REG_CAMSVCQTOP_THR_START);
 	wmb(); /* TBC */
 
 	if (initial) {
@@ -1352,12 +1351,13 @@ static irqreturn_t mtk_irq_camsv_cq_done(int irq, void *data)
 		frm_seq_no_inner, frm_seq_no);
 
 	if (cq_done_status & CAMSVCQTOP_SCQ_SUB_THR_DONE) {
-
-		if (engine_handle_cq_done(&sv_dev->cq_ref)) {
-			irq_info.irq_type = (1 << CAMSYS_IRQ_SETTING_DONE);
-			irq_info.ts_ns = ktime_get_boottime_ns();
-			irq_info.frame_idx = frm_seq_no;
-			irq_info.frame_idx_inner = frm_seq_no_inner;
+		if (sv_dev->cq_ref != NULL) {
+			if (engine_handle_cq_done(&sv_dev->cq_ref)) {
+				irq_info.irq_type = (1 << CAMSYS_IRQ_SETTING_DONE);
+				irq_info.ts_ns = ktime_get_boottime_ns();
+				irq_info.frame_idx = frm_seq_no;
+				irq_info.frame_idx_inner = frm_seq_no_inner;
+			}
 		}
 
 		if (push_msgfifo(sv_dev, &irq_info) == 0)

@@ -156,7 +156,7 @@ void apply_mraw_cq(struct mtk_mraw_device *mraw_dev,
 	writel_relaxed(cq_addr_lsb, mraw_dev->base + REG_MRAWCQ_CQ_SUB_THR0_BASEADDR_2);
 	writel_relaxed(cq_addr_msb, mraw_dev->base + REG_MRAWCQ_CQ_SUB_THR0_BASEADDR_2_MSB);
 	writel_relaxed(cq_size, mraw_dev->base + REG_MRAWCQ_CQ_SUB_THR0_DESC_SIZE_2);
-	writel_relaxed(MRAWCTL_CQ_THR0_START, mraw_dev->base + REG_MRAW_CTL_START);
+	writel(MRAWCTL_CQ_THR0_START, mraw_dev->base + REG_MRAW_CTL_START);
 	wmb(); /* TBC */
 
 	if (initial)
