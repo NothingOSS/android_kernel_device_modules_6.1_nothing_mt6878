@@ -99,6 +99,8 @@ int mtk_cam_dvfs_probe(struct device *dev,
 		dev_info(dev, "failed to get mmdvfs_clk\n");
 	}
 
+	mutex_init(&dvfs->dvfs_lock);
+
 	return 0;
 
 opp_default_table:
