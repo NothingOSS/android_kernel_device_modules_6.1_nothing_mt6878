@@ -1550,12 +1550,16 @@ static int _alloc_pool(const char *name,
 {
 	int total_size = size * num;
 	struct dma_buf *dbuf;
+	int ret;
 
 	dbuf = _alloc_dma_buf(name, total_size, cacheable);
 	if (!dbuf)
 		return -1;
 
-	return _alloc_pool_by_dbuf(buf, pool, dev, dbuf, total_size, num);
+	ret = _alloc_pool_by_dbuf(buf, pool, dev, dbuf, total_size, num);
+	dma_heap_buffer_free(dbuf);
+
+	return ret;
 }
 
 static void _destroy_pool(struct mtk_cam_device_buf *buf,
