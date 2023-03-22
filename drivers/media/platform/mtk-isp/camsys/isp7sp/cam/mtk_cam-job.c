@@ -1921,6 +1921,41 @@ static int fill_1st_ipi_mstream(struct mtk_cam_job *job)
 	return update_buffer_to_ipi_mstream_1st(job, fp_1st, fp_2nd);
 }
 
+/**
+ * To check and update job->raw_switch.
+ * Must be called after job->stream_on_seninf is determined and
+ * before ipi config/ input change parameter is prepared
+ */
+static void update_job_raw_switch(struct mtk_cam_job *job)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtk_raw_ctrl_data *ctrl_data = get_raw_ctrl_data(job);
+	bool raw_switch = false;
+
+	if (!ctrl_data || !ctrl_data->rc_data.sensor_update)
+		goto EXIT_SET_RAW_SWITCH;
+
+	if (job->seninf_prev != job->seninf) {
+		dev_info(ctx->cam->dev,
+			 "%s:ctx(%d): change sensor:(%s) --> (%s/%s)\n", __func__,
+			 ctx->stream_id, job->seninf_prev->entity.name,
+			 job->sensor->entity.name, job->seninf->entity.name);
+
+		/* The user changed the sensor in the first request */
+		if (job->stream_on_seninf) {
+			/* It is not real raw switch, just update the ctx' sensor */
+			ctx->sensor = job->sensor;
+			ctx->seninf = job->seninf;
+			goto EXIT_SET_RAW_SWITCH;
+		}
+
+		raw_switch = true;
+	}
+
+EXIT_SET_RAW_SWITCH:
+	job->raw_switch = raw_switch;
+}
+
 /* TODO(AY): too many duplicated codes in _job_pack_xxx */
 static int
 _job_pack_mstream(struct mtk_cam_job *job,
@@ -1952,6 +1987,10 @@ _job_pack_mstream(struct mtk_cam_job *job,
 		initialize_engines(ctx, job, NULL);
 		job->stream_on_seninf = true;
 	}
+
+	/* determine if it is a raw switch job */
+	update_job_raw_switch(job);
+
 	/* config_flow_by_job_type */
 	update_job_used_engine(job);
 
@@ -1999,7 +2038,7 @@ static bool seamless_config_changed(struct mtk_cam_job *job)
 	unsigned int tag_idx;
 	int i, j;
 
-	if (!job->seamless_switch || !ctx)
+	if (!job->seamless_switch || !job->raw_switch || !ctx)
 		return false;
 
 	/* raw */
@@ -2095,6 +2134,10 @@ _job_pack_normal(struct mtk_cam_job *job,
 		initialize_engines(ctx, job, NULL);
 		job->stream_on_seninf = true;
 	}
+
+	/* determine if it is a raw switch job */
+	update_job_raw_switch(job);
+
 	/* config_flow_by_job_type */
 	update_job_used_engine(job);
 
@@ -3037,63 +3080,48 @@ static struct pack_job_ops_helper only_sv_pack_helper = {
 	.pack_job = _job_pack_only_sv,
 };
 
-static void job_check_update_sensor(struct mtk_cam_job *job)
+static void update_job_sensor(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_raw_pipeline *raw;
 	struct mtk_raw_ctrl_data *ctrl_data = get_raw_ctrl_data(job);
-	bool raw_switch = false;
+
+	if (!ctx->sensor) {
+		job->sensor = NULL;
+		job->seninf = NULL;
+		job->seninf_prev = NULL;
+		return;
+	}
 
 	if (ctx->raw_subdev_idx < 0) {
 		/* Non-raw's engine case, we use the ctx's sensor */
 		job->sensor = ctx->sensor;
 		job->seninf = ctx->seninf;
 		job->seninf_prev = ctx->seninf;
-		goto EXIT_SET_RAW_SWITCH;
+		return;
 	}
 
 	raw = &ctx->cam->pipelines.raw[ctx->raw_subdev_idx];
 	if (!raw->sensor || !raw->seninf) {
 		/* TODO: warn this case */
-		if (ctx->sensor) {
-			dev_info(ctx->cam->dev,
-				 "%s:pipe(%d): cached sensor not found, but ctx has sensor\n",
-				 __func__, raw->id);
-			job->sensor = ctx->sensor;
-			job->seninf = ctx->seninf;
-			job->seninf_prev = ctx->seninf;
-		}
-		goto EXIT_SET_RAW_SWITCH;
+		dev_info(ctx->cam->dev,
+			 "%s:pipe(%d): cached sensor not found, but ctx has sensor\n",
+			 __func__, raw->id);
+		job->sensor = ctx->sensor;
+		job->seninf = ctx->seninf;
+		job->seninf_prev = ctx->seninf;
+		return;
 	}
 
 	job->seninf_prev = raw->seninf;
-
-	/* update the cached sensor adn seninf */
+	/* update the cached sensor and seninf */
 	if (ctrl_data && ctrl_data->sensor && ctrl_data->seninf) {
 		raw->seninf = ctrl_data->seninf;
 		raw->sensor = ctrl_data->sensor;
-
-		if (ctrl_data->rc_data.sensor_update) {
-			if (job->seninf_prev != raw->seninf)
-				raw_switch = true;
-			else
-				dev_info(ctx->cam->dev,
-					 "%s: seninf(%s) not changed, not raw switch\n",
-					 __func__, raw->seninf->entity.name);
-		}
 	}
 
 	job->sensor = raw->sensor;
 	job->seninf = raw->seninf;
-
-EXIT_SET_RAW_SWITCH:
-	job->raw_switch = raw_switch;
-	if (job->raw_switch)
-		dev_info(ctx->cam->dev,
-			 "%s:pipe(%d): raw switch:(%s) --> (%s/%s)\n", __func__,
-			 raw->id, job->seninf_prev->entity.name,
-			 job->sensor->entity.name, job->seninf->entity.name);
-
 }
 
 static int job_factory(struct mtk_cam_job *job)
@@ -3109,7 +3137,7 @@ static int job_factory(struct mtk_cam_job *job)
 	 * set job->senosor, job->seninf, job->seninf_prev
 	 * and job->job->raw_switch
 	 */
-	job_check_update_sensor(job);
+	update_job_sensor(job);
 
 	job->sensor_hdl_obj = job->sensor ?
 		mtk_cam_req_find_ctrl_obj(job->req, job->sensor->ctrl_handler) :
