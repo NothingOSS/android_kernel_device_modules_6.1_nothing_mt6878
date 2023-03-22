@@ -26,10 +26,11 @@ struct fd_kva_list_t fd_kva_info_list = {
 
 unsigned int nodes_num;
 
-#define	MTK_IMGSYS_VIDEO_NODE_SIGDEV_NORM_OUT	(nodes_num - 1)
-#define	MTK_IMGSYS_VIDEO_NODE_SIGDEV_OUT	    (nodes_num - 2)
-#define	MTK_IMGSYS_VIDEO_NODE_CTRLMETA_OUT	    (nodes_num - 4)
-#define	MTK_IMGSYS_VIDEO_NODE_TUNING_OUT	    (nodes_num - 5)
+#define	MTK_IMGSYS_VIDEO_NODE_SIGDEV_NORM_OUT	     (nodes_num - 1)
+#define	MTK_IMGSYS_VIDEO_NODE_SIGDEV_OUT	     (nodes_num - 2)
+#define	MTK_IMGSYS_VIDEO_NODE_CTRLMETA_FROM_USER_OUT (nodes_num - 3)
+#define	MTK_IMGSYS_VIDEO_NODE_CTRLMETA_OUT	     (nodes_num - 4)
+#define	MTK_IMGSYS_VIDEO_NODE_TUNING_OUT	     (nodes_num - 5)
 
 int mtk_imgsys_pipe_init(struct mtk_imgsys_dev *imgsys_dev,
 				struct mtk_imgsys_pipe *pipe,
@@ -793,7 +794,7 @@ static void mtk_imgsys_desc_fill_dmabuf(struct mtk_imgsys_pipe *pipe,
 	for (i = 0; i < FRAME_BUF_MAX; i++) {
 		for (j = 0; j < fparams->bufs[i].buf.num_planes; j++) {
 			plane = &fparams->bufs[i].buf.planes[j];
-			if (plane->m.dma_buf.fd == 0)
+			if (plane->m.dma_buf.fd <= 0)
 				continue;
 			/* get dma_buf first */
 			dbuf = dma_buf_get(plane->m.dma_buf.fd);
@@ -1594,7 +1595,7 @@ void mtk_imgsys_singledevice_ipi_params_config(struct mtk_imgsys_request *req)
 	struct singlenode_desc *singledevice_desc_dma = NULL;
 	struct singlenode_desc_norm *singledevice_desc_norm = NULL;
 	union request_track *req_track;
-	void *tuning_meta, *ctrl_meta;
+	void *tuning_meta, *ctrl_meta, *ctrl_meta_from_user;
 	int i = 0;
 	bool isMENode = false;
 
@@ -1635,6 +1636,7 @@ void mtk_imgsys_singledevice_ipi_params_config(struct mtk_imgsys_request *req)
 			(struct singlenode_desc *)buf_in->va_daddr[0];
 		tuning_meta = (void *) &singledevice_desc_dma->tuning_meta;
 		ctrl_meta = (void *) &singledevice_desc_dma->ctrl_meta;
+		ctrl_meta_from_user = (void *) &singledevice_desc_dma->ctrl_meta_from_user;
 		req->req_stat = &singledevice_desc_dma->req_state;
 		break;
 	/* NORM */
@@ -1644,6 +1646,7 @@ void mtk_imgsys_singledevice_ipi_params_config(struct mtk_imgsys_request *req)
 			(struct singlenode_desc_norm *)buf_in->va_daddr[0];
 		tuning_meta = (void *) &singledevice_desc_norm->tuning_meta;
 		ctrl_meta = (void *) &singledevice_desc_norm->ctrl_meta;
+		ctrl_meta_from_user = (void *) &singledevice_desc_norm->ctrl_meta_from_user;
 		req->req_stat = &singledevice_desc_norm->req_state;
 		break;
 	}
@@ -1658,6 +1661,10 @@ void mtk_imgsys_singledevice_ipi_params_config(struct mtk_imgsys_request *req)
 
 	mtk_imgsys_singledevice_fill_ipi_param(pipe,
 			ctrl_meta,
+			buf_in, 1);
+
+	mtk_imgsys_singledevice_fill_ipi_param(pipe,
+			ctrl_meta_from_user,
 			buf_in, 1);
 
 #ifndef MTK_IOVA_SINK2KERNEL
