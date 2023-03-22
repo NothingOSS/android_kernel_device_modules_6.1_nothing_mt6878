@@ -80,17 +80,33 @@
 				channel = <AUXADC_VIN3>;
 				pures = <ADC_PURES_OPEN>;
 			};
+			vin4-100k {
+				channel = <AUXADC_VIN4>;
+				pures = <ADC_PURES_100K>;
+			};
 			vin4-open {
 				channel = <AUXADC_VIN4>;
 				pures = <ADC_PURES_OPEN>;
+			};
+			vin5-100k {
+				channel = <AUXADC_VIN5>;
+				pures = <ADC_PURES_100K>;
 			};
 			vin5-open {
 				channel = <AUXADC_VIN5>;
 				pures = <ADC_PURES_OPEN>;
 			};
+			vin6-100k {
+				channel = <AUXADC_VIN6>;
+				pures = <ADC_PURES_100K>;
+			};
 			vin6-open {
 				channel = <AUXADC_VIN6>;
 				pures = <ADC_PURES_OPEN>;
+			};
+			vin7-100k {
+				channel = <AUXADC_VIN7>;
+				pures = <ADC_PURES_100K>;
 			};
 			vin7-open {
 				channel = <AUXADC_VIN7>;
