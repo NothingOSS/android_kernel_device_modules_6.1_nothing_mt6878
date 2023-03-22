@@ -344,8 +344,8 @@ int tmem_ffa_region_free(enum MTEE_MCHUNKS_ID mchunk_id, u64 handle)
 	if (ret) {
 		pr_info("region-based, handle=0x%llx failed to FF-A reclaim, ret=%d\n",
 			handle, ret);
-		mutex_unlock(&tmem_block_mutex);
-		return TMEM_KPOOL_FFA_PAGE_FAILED;
+//		mutex_unlock(&tmem_block_mutex);
+//		return TMEM_KPOOL_FFA_PAGE_FAILED;
 	}
 	tmem_do_gettimeofday(&ffa_end_time);
 	pr_debug("%s FF-A flow spend time: %d ns\n", __func__, ffa_get_spend_nsec());
