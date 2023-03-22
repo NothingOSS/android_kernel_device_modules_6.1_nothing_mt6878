@@ -28,6 +28,8 @@ MODULE_PARM_DESC(sv_pure_raw, "working fmt select: 0->bayer, 1->ufbc");
 
 
 /* forward declarations */
+static int apply_raw_target_clk(struct mtk_cam_ctx *ctx,
+				struct mtk_cam_request *req);
 static void reset_unused_io_of_ipi_frame(struct req_buffer_helper *helper);
 static int update_cq_buffer_to_ipi_frame(struct mtk_cam_pool_buffer *cq,
 					 struct mtkcam_ipi_frame_param *fp);
@@ -1213,12 +1215,15 @@ static int update_seninf_fmt(struct mtk_cam_job *job)
 static int
 _apply_switch(struct mtk_cam_job *job)
 {
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+
 	switch (job->job_type) {
 	case JOB_TYPE_BASIC:
 	case JOB_TYPE_STAGGER:
 		update_seninf_fmt(job);
 		apply_cam_mux_switch_stagger(job);
 		apply_cam_switch_stagger(job);
+		apply_raw_target_clk(ctx, job->req);
 		break;
 	default:
 		pr_info("%s: job type %d not ready\n", __func__, job->job_type);

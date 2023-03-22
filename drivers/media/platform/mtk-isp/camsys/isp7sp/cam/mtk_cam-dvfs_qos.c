@@ -197,23 +197,31 @@ int mtk_cam_dvfs_update(struct mtk_camsys_dvfs *dvfs,
 			int stream_id, unsigned int target_freq_hz)
 {
 	int opp_idx = -1;
-	int max_freq = 0;
+	int max_freq = 0, tar_freq = 0;
 	int ret;
 
 	if (WARN_ON(stream_id < 0 || stream_id >= dvfs->max_stream_num))
 		return -1;
 
+	/* dvfs reset */
+	if (target_freq_hz == 0 && ARRAY_SIZE(dvfs->opp) > 0)
+		tar_freq = dvfs->opp[0].freq_hz;
+	else
+		tar_freq = target_freq_hz;
+
 	/* check if freq is changed */
 	if (!to_update_stream_opp_idx(dvfs,
-				     stream_id, target_freq_hz,
-				     &max_freq))
+				     stream_id, tar_freq, &max_freq))
 		return 0;
 
 	opp_idx = mtk_cam_dvfs_get_clkidx(dvfs, max_freq);
 	if (opp_idx < 0)
 		return -1;
 
-	if (opp_idx == dvfs->cur_opp_idx)
+	/* TODO(Roy): dynamic change to lower dvfs level */
+	if (dvfs->cur_opp_idx != -1 &&
+			target_freq_hz != 0 &&
+			opp_idx <= dvfs->cur_opp_idx)
 		return 0;
 
 	ret = mtk_cam_dvfs_update_opp(dvfs, opp_idx);
