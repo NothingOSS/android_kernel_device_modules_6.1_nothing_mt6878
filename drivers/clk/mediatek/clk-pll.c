@@ -432,7 +432,7 @@ static int mtk_hwv_pll_prepare(struct clk_hw *hw)
 
 err_hwv_done:
 	regmap_read(pll->hwv_regmap, pll->data->hwv_done_ofs, &val);
-	regmap_read(pll->hwv_regmap, pll->data->hwv_clr_sta_ofs, &val2);
+	regmap_read(pll->hwv_regmap, pll->data->hwv_set_sta_ofs, &val2);
 	pr_err("%s pll enable timeout(%dus)(%x %x)\n", pll->data->name,
 			i * MTK_WAIT_HWV_PLL_DONE_US, val, val2);
 err_hwv_vote:
