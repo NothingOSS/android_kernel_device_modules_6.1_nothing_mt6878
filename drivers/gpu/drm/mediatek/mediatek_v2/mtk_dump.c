@@ -313,7 +313,7 @@ void mtk_cust_dump_reg(void __iomem *base, int off1, int off2, int off3,
 	unsigned int i = 0;
 	int s = 0, l = 0;
 	int off[] = {off1, off2, off3, off4};
-	char buf[CUST_REG_MAX];
+	char buf[CUST_REG_MAX] = {0};
 
 	for (i = 0; i < 4; i++) {
 		if (off[i] < 0)

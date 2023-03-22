@@ -1463,7 +1463,7 @@ static void mtk_atomic_mml(struct drm_device *dev,
 	struct drm_atomic_state *state)
 {
 	struct drm_crtc *crtc = NULL;
-	struct drm_crtc_state *old_crtc_state, *new_crtc_state;
+	struct drm_crtc_state *old_cs = NULL, *new_cs = NULL;
 	struct mtk_crtc_state *mtk_crtc_state = NULL;
 	struct mtk_crtc_state *old_mtk_state = NULL;
 	struct drm_plane *plane;
@@ -1473,16 +1473,16 @@ static void mtk_atomic_mml(struct drm_device *dev,
 	int i = 0;
 	enum mml_mode new_mode = MML_MODE_UNKNOWN;
 
-	for_each_oldnew_crtc_in_state(state, crtc, old_crtc_state, new_crtc_state, i) {
+	for_each_oldnew_crtc_in_state(state, crtc, old_cs, new_cs, i) {
 		if (drm_crtc_index(crtc) == 0)
 			break;
 		else
 			return;
 	}
 
-	if (new_crtc_state) {
-		mtk_crtc_state = to_mtk_crtc_state(new_crtc_state);
-		old_mtk_state = to_mtk_crtc_state(old_crtc_state);
+	if (new_cs && old_cs) {
+		mtk_crtc_state = to_mtk_crtc_state(new_cs);
+		old_mtk_state = to_mtk_crtc_state(old_cs);
 	} else
 		return;
 
