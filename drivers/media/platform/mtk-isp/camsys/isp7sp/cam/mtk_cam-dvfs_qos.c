@@ -515,6 +515,14 @@ static int fill_sv_qos(struct mtk_cam_job *job,
 				calc_bw(x_size * img_h, linet, img_h + sensor_vb);
 			peak_bw =
 				calc_bw(x_size * img_h, linet, img_h);
+			if (is_raw_ufo(in->fmt.format)) {
+				/* compression ratio: 0.7x */
+				avg_bw = avg_bw * 7 / 10;
+				/* table */
+				avg_bw = avg_bw +
+					calc_bw(DIV_ROUND_UP(in->fmt.s.w, 64) * img_h,
+						linet, img_h + sensor_vb);
+			}
 		} else {
 			avg_bw =
 				calc_bw(x_size * img_h, linet, sensor_h + img_h + sensor_vb);

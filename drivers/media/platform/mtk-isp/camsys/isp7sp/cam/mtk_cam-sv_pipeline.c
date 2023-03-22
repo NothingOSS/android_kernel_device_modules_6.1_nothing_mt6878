@@ -556,6 +556,38 @@ static const struct mtk_cam_format_desc sv_stream_out_fmts[] = {
 			.num_planes = 1,
 		},
 	},
+	{
+		.vfmt.fmt.pix_mp = {
+			.width = SV_IMG_MAX_WIDTH,
+			.height = SV_IMG_MAX_HEIGHT,
+			.pixelformat = V4L2_PIX_FMT_MTISP_BAYER8_UFBC,
+			.num_planes = 1,
+		},
+	},
+	{
+		.vfmt.fmt.pix_mp = {
+			.width = SV_IMG_MAX_WIDTH,
+			.height = SV_IMG_MAX_HEIGHT,
+			.pixelformat = V4L2_PIX_FMT_MTISP_BAYER10_UFBC,
+			.num_planes = 1,
+		},
+	},
+	{
+		.vfmt.fmt.pix_mp = {
+			.width = SV_IMG_MAX_WIDTH,
+			.height = SV_IMG_MAX_HEIGHT,
+			.pixelformat = V4L2_PIX_FMT_MTISP_BAYER12_UFBC,
+			.num_planes = 1,
+		},
+	},
+	{
+		.vfmt.fmt.pix_mp = {
+			.width = SV_IMG_MAX_WIDTH,
+			.height = SV_IMG_MAX_HEIGHT,
+			.pixelformat = V4L2_PIX_FMT_MTISP_BAYER14_UFBC,
+			.num_planes = 1,
+		},
+	},
 };
 
 static const struct

@@ -2406,7 +2406,7 @@ static int fill_sv_img_buffer_to_ipi_frame(
 	struct mtk_camsv_device *sv_dev;
 	struct vb2_buffer *vb;
 	struct dma_info info;
-	unsigned int tag_idx;
+	unsigned int tag_idx, img_fmt;
 	void *vaddr;
 	int ret = -1;
 
@@ -2426,17 +2426,28 @@ static int fill_sv_img_buffer_to_ipi_frame(
 	out->uid.id = MTKCAM_IPI_CAMSV_MAIN_OUT;
 	out->uid.pipe_id =
 		sv_dev->id + MTKCAM_SUBDEV_CAMSV_START;
-	out->buf[0][0].iova =
-		((((buf->daddr + GET_PLAT_V4L2(meta_sv_ext_size)) + 15) >> 4) << 4);
 
-	/* update meta header */
-	vb = &buf->vbb.vb2_buf;
-	vaddr = vb2_plane_vaddr(vb, 0);
-	info.width = buf->image_info.width;
-	info.height = buf->image_info.height;
-	info.stride = buf->image_info.bytesperline[0];
-	CALL_PLAT_V4L2(
-		set_sv_meta_stats_info, node->desc.dma_port, vaddr, &info);
+	img_fmt = mtk_cam_get_img_fmt(buf->image_info.v4l2_pixelformat);
+	if (img_fmt == MTKCAM_IPI_IMG_FMT_UNKNOWN)
+		pr_info("[%s] unknown image format: 0x%x\n",
+			__func__, buf->image_info.v4l2_pixelformat);
+
+	if (is_raw_ufo(img_fmt))
+		out->buf[0][0].iova = buf->daddr;
+	else {
+		out->buf[0][0].iova =
+			((((buf->daddr + GET_PLAT_V4L2(meta_sv_ext_size)) + 15)
+			>> 4) << 4);
+
+		/* update meta header */
+		vb = &buf->vbb.vb2_buf;
+		vaddr = vb2_plane_vaddr(vb, 0);
+		info.width = buf->image_info.width;
+		info.height = buf->image_info.height;
+		info.stride = buf->image_info.bytesperline[0];
+		CALL_PLAT_V4L2(
+			set_sv_meta_stats_info, node->desc.dma_port, vaddr, &info);
+	}
 
 	return ret;
 }
