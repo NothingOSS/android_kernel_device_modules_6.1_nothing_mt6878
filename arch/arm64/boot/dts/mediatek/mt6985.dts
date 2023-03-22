@@ -10074,7 +10074,16 @@
 				<&level_ufshci>,
 				<&level_usb_host>,
 				<&level_apusys_rv_mbox0 &level_apusys_rv_mbox1>,
-				<&level_vcpsys_rv_mbox0>;
+				<&level_vcpsys_rv_mbox0>,
+				<&level_spi0>,
+				<&level_spi1>,
+				<&level_spi2>,
+				<&level_spi3>,
+				<&level_spi4>,
+				<&level_spi5>,
+				<&level_spi6>,
+				<&level_spi7>;
+
 		resource-ctrl = <&bus26m &infra &syspll>,
 				<&dram_s0 &dram_s1>;
 		constraints = <&rc_bus26m &rc_syspll &rc_vcore>;
@@ -10131,6 +10140,38 @@
 			level_vcpsys_rv_mbox0: level-vcpsys-rv-mbox0 {
 				target = <&vcp>;
 				value = <0 2 0 0>;
+			};
+			level_spi0: level-spi0 {
+				target = <&spi0>;
+				value = <0 0 0 0>;
+			};
+			level_spi1: level-spi1 {
+				target = <&spi1>;
+				value = <0 0 0 0>;
+			};
+			level_spi2: level-spi2 {
+				target = <&spi2>;
+				value = <0 0 0 0>;
+			};
+			level_spi3: level-spi3 {
+				target = <&spi3>;
+				value = <0 0 0 0>;
+			};
+			level_spi4: level-spi4 {
+				target = <&spi4>;
+				value = <0 0 0 0>;
+			};
+			level_spi5: level-spi5 {
+				target = <&spi5>;
+				value = <0 0 0 0>;
+			};
+			level_spi6: level-spi6 {
+				target = <&spi6>;
+				value = <0 0 0 0>;
+			};
+			level_spi7: level-spi7 {
+				target = <&spi7>;
+				value = <0 0 0 0>;
 			};
 		};
 		resource-ctrl-list {
