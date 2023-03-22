@@ -1199,11 +1199,6 @@ s32 mdp_ioctl_free_readback_slots(void *fp, unsigned long param)
 		mutex_lock(&rb_slot_list_mutex);
 		free_slot_group = free_slot_index >> 6;
 		free_slot = free_slot_index & 0x3f;
-		if (free_slot_group >= SLOT_GROUP_NUM) {
-			mutex_unlock(&rb_slot_list_mutex);
-			CMDQ_ERR("%s invalid group:%x\n", __func__, free_slot_group);
-			return -EINVAL;
-		}
 		if (!(alloc_slot[free_slot_group] & (1LL << free_slot))) {
 			mutex_unlock(&rb_slot_list_mutex);
 			CMDQ_ERR("%s %d not in group[%d]:%llx\n", __func__,
