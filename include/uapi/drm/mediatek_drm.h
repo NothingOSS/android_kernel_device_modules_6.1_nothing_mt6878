@@ -1491,6 +1491,7 @@ enum mtk_pq_frame_cfg_cmd {
 	PQ_COLOR_WRITE_SW_REG,
 	PQ_COLOR_SET_COLOR_REG,
 	PQ_COLOR_SET_WINDOW,
+	PQ_COLOR_DRECOLOR_SET_SGY,
 	PQ_CCORR_EVENTCTL,
 	PQ_CCORR_SUPPORT_COLOR_MATRIX,
 	PQ_CCORR_SET_CCORR,
@@ -1857,6 +1858,13 @@ struct DISP_AAL_ESS20_SPECT_PARAM {
 	unsigned int ELVSSPN;
 	unsigned int ClarityGain; /* 10-bit ; [0,1023] */
 	unsigned int flag;//
+};
+
+#define DRECOLOR_SGY_Y_ENTRY 5
+#define DRECOLOR_SGY_HUE_NUM 20
+struct DISP_AAL_DRECOLOR_PARAM {
+	bool sgy_trans_trigger;
+	unsigned int sgy_out_gain[DRECOLOR_SGY_Y_ENTRY][DRECOLOR_SGY_HUE_NUM];
 };
 
 enum SET_BL_EXT_TYPE {
