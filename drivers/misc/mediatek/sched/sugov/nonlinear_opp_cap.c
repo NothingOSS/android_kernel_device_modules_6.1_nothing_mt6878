@@ -67,11 +67,27 @@ static struct dsu_state **dsu_tbl;
 static int *curr_freqs;
 static int nr_wl_type = 1;
 static int wl_type_curr;
+static int wl_type_manual = -1;
 static int wl_type_delay;
 static int wl_type_delay_cnt;
 static int last_wl_type;
 static unsigned long last_jiffies;
 static DEFINE_SPINLOCK(update_wl_tbl_lock);
+
+void set_wl_type_manual(int val)
+{
+	if (val >= 0 && val < nr_wl_type && is_wl_support())
+		wl_type_manual = val;
+	else
+		wl_type_manual = -1;
+}
+EXPORT_SYMBOL_GPL(set_wl_type_manual);
+
+int get_wl_type_manual(void)
+{
+	return wl_type_manual;
+}
+EXPORT_SYMBOL_GPL(get_wl_type_manual);
 
 void update_wl_tbl(int cpu)
 {
@@ -83,7 +99,10 @@ void update_wl_tbl(int cpu)
 		if (last_jiffies !=  tmp_jiffies) {
 			last_jiffies =  tmp_jiffies;
 			spin_unlock(&update_wl_tbl_lock);
-			tmp = get_wl(0);
+			if (wl_type_manual == -1)
+				tmp = get_wl(0);
+			else
+				tmp = wl_type_manual;
 			if (tmp >= 0 && tmp < nr_wl_type)
 				wl_type_curr = tmp;
 			if (last_wl_type != wl_type_curr && wl_type_curr >= 0
@@ -145,6 +164,12 @@ int get_curr_wl(void)
 	return clamp_val(wl_type_curr, 0, nr_wl_type - 1);
 }
 EXPORT_SYMBOL_GPL(get_curr_wl);
+
+int get_classify_wl(void)
+{
+	return get_wl(0);
+}
+EXPORT_SYMBOL_GPL(get_classify_wl);
 
 int get_em_wl(void)
 {
@@ -395,6 +420,27 @@ struct mtk_em_perf_state *pd_get_freq_ps(int wl_type, int cpu, unsigned long fre
 	return ps;
 }
 EXPORT_SYMBOL_GPL(pd_get_freq_ps);
+
+struct mtk_em_perf_state *pd_get_opp_ps(int wl_type, int cpu, int opp, bool quant)
+{
+	int i;
+	struct pd_capacity_info *pd_info;
+	struct mtk_em_perf_state *ps;
+
+	i = per_cpu(gear_id, cpu);
+	if (wl_type < 0 || wl_type >= nr_wl_type)
+		wl_type = wl_type_curr;
+	pd_info = &pd_wl_type[wl_type][i];
+
+	opp = clamp_val(opp, 0, (quant ? pd_info->nr_caps_legacy : pd_info->nr_caps) - 1);
+	if (quant)
+		ps = &pd_info->table_legacy[opp];
+	else
+		ps = &pd_info->table[opp];
+
+	return ps;
+}
+EXPORT_SYMBOL_GPL(pd_get_opp_ps);
 
 unsigned long pd_get_freq_opp(int cpu, unsigned long freq)
 {
@@ -989,6 +1035,7 @@ static int alloc_capacity_table(void)
 		for (i = 0; i < nr_wl_type; i++) {
 			pd_capacity_tbl = pd_wl_type[i];
 			pd_capacity_tbl[cur_tbl].nr_caps = nr_caps;
+			pd_capacity_tbl[cur_tbl].nr_caps_legacy = pd->nr_perf_states;
 			pd_capacity_tbl[cur_tbl].type = i;
 			cpumask_copy(&pd_capacity_tbl[cur_tbl].cpus, to_cpumask(pd->cpus));
 

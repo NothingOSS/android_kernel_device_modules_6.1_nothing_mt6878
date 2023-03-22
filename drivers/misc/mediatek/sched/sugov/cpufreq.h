@@ -47,6 +47,7 @@ struct pd_capacity_info {
 	unsigned int dsu_weighting;
 	unsigned int emi_weighting;
 	int nr_caps;
+	int nr_caps_legacy;
 	unsigned int freq_max;
 	unsigned int freq_min;
 	/* table[0].freq => the max freq.
@@ -114,7 +115,10 @@ extern unsigned int dsu_get_freq_opp(int wl_type, unsigned int freq);
 extern int init_dsu(void);
 extern void update_wl_tbl(int cpu);
 extern int get_curr_wl(void);
+extern int get_classify_wl(void);
 extern int get_em_wl(void);
+extern void set_wl_type_manual(int val);
+extern int get_wl_type_manual(void);
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
 int init_opp_cap_info(struct proc_dir_entry *dir);
 void clear_opp_cap_info(void);
@@ -135,6 +139,7 @@ extern unsigned long pd_get_util_freq(int cpu, unsigned long util);
 extern unsigned long pd_get_util_pwr_eff(int cpu, unsigned long util);
 extern unsigned long pd_get_util_opp(int cpu, unsigned long util);
 extern unsigned long pd_get_util_opp_legacy(int cpu, unsigned long util);
+extern struct mtk_em_perf_state *pd_get_opp_ps(int wl_type, int cpu, int opp, bool quant);
 extern unsigned long pd_get_opp_pwr_eff(int cpu, int opp);
 extern unsigned int pd_get_cpu_opp(int cpu);
 extern unsigned int pd_get_cpu_gear_id(int cpu);
