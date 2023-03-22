@@ -7,6 +7,8 @@
 /* wake lock relate*/
 #include <linux/device.h>
 #include <linux/pm_wakeup.h>
+#include <linux/kthread.h>
+#include <linux/wait.h>
 
 #include "mtk-dsp-common.h"
 #include "mtk-dsp-common_define.h"
@@ -21,7 +23,6 @@
 #include <trace/hooks/vendor_hooks.h>
 #include "mtk-afe-external.h"
 #include <linux/timer.h>
-#include <linux/workqueue.h>
 
 #define OFFLOAD_IPIMSG_TIMEOUT (25)
 /* current  support for 60fps = 16.67ms  */
@@ -233,32 +234,9 @@ static int offloadservice_gethasvideo(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-/* workqueue to mod timer with vp time out*/
-void offload_vp_worker(struct work_struct *ws)
-{
-	unsigned long flags;
-	if (afe_offload_service.vp_sync_support && afe_offload_codec_info.has_video) {
-		spin_lock_irqsave(&afe_offload_service.timer_spinlock, flags);
-		if (afe_offload_service.timer_init) {
-			notify_vb_audio_control(NOTIFIER_VP_AUDIO_TIMER, NULL);
-			mod_timer(&afe_offload_service.offload_timer,
-				  jiffies + msecs_to_jiffies(OFFLOAD_VPSYNC_TIMEOUT));
-		}
-		spin_unlock_irqrestore(&afe_offload_service.timer_spinlock, flags);
-	}
-}
-
 bool offload_has_video(void)
 {
 	return afe_offload_codec_info.has_video;
-}
-
-/*timer op cannot do in atomic, using workqueue to do */
-int offload_vp_sync(void)
-{
-	if (afe_offload_service.vp_sync_support && afe_offload_codec_info.has_video)
-		queue_work(afe_offload_service.workq, &afe_offload_service.offload_cb_work);
-	return 0;
 }
 
 static const struct snd_kcontrol_new Audio_snd_dloffload_controls[] = {
@@ -1153,13 +1131,64 @@ static const struct snd_soc_component_driver mtk_dloffload_soc_platform = {
 	.probe      = mtk_afe_dloffload_probe,
 };
 
+// long running function to be executed inside a thread, this will run for 30 secs.
+int offload_vp_function(void *data)
+{
+	unsigned long flags;
+	int ret = 0;
+
+	while (!kthread_should_stop()) {
+		ret = wait_event_interruptible(afe_offload_service.offload_wq,
+					       afe_offload_service.vp_sync_event);
+		if (ret == 0) {
+			spin_lock_irqsave(&afe_offload_service.timer_spinlock, flags);
+			afe_offload_service.vp_sync_event = false;
+			if (afe_offload_service.timer_init) {
+				notify_vb_audio_control(NOTIFIER_VP_AUDIO_TIMER, NULL);
+				mod_timer(&afe_offload_service.offload_timer,
+				jiffies + msecs_to_jiffies(OFFLOAD_VPSYNC_TIMEOUT));
+			}
+			spin_unlock_irqrestore(&afe_offload_service.timer_spinlock, flags);
+		} else
+			pr_info("%s ret = %d\n", __func__, ret);
+	}
+	return 0;
+}
+
+// initialize one thread at a time.
+static int offload_init_thread(struct task_struct *kth)
+{
+	kth = kthread_create(offload_vp_function, NULL, "offload_work_thread");
+
+	if (kth != NULL) {
+		wake_up_process(kth);
+		pr_info("offload_work_thread is running\n");
+	} else {
+		pr_info("offload_work_thread could not be created\n");
+		return -1;
+	}
+	return 0;
+}
+
+/*timer op cannot do in atomic, using workqueue to do */
+int offload_vp_sync(void)
+{
+	if (afe_offload_service.vp_sync_support && afe_offload_codec_info.has_video) {
+		afe_offload_service.vp_sync_event = true;
+		wake_up_interruptible(&afe_offload_service.offload_wq);
+	}
+	return 0;
+}
+
 static int mtk_offload_init(void)
 {
 	mutex_init(&afe_offload_service.ts_lock);
 	spin_lock_init(&afe_offload_service.timer_spinlock);
+
+	init_waitqueue_head(&afe_offload_service.offload_wq);
+	offload_init_thread(afe_offload_service.offload_thread_task);
+
 	init_waitqueue_head(&afe_offload_service.ts_wq);
-	afe_offload_service.workq = alloc_workqueue("offload_wq", WORK_CPU_UNBOUND | WQ_HIGHPRI, 0);
-	INIT_WORK(&afe_offload_service.offload_cb_work, offload_vp_worker);
 	return 0;
 }
 

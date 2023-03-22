@@ -20,6 +20,8 @@
 #include "mtk-afe-external.h"
 
 #include <adsp_helper.h>
+#include <linux/sched/clock.h>
+
 //#define DEBUG_VERBOSE
 
 #include "mtk-sp-spk-amp.h"
@@ -575,7 +577,7 @@ int notify_vp_audio_event(struct notifier_block *nb,
 		if (dsp->offload_cb.query_has_video)
 			has_video = dsp->offload_cb.query_has_video();
 		/* notify offload with vp sync */
-		if (dsp->offload_cb.receive_vp_sync)
+		if (has_video && dsp->offload_cb.receive_vp_sync)
 			dsp->offload_cb.receive_vp_sync();
 
 	} else if (event == NOTIFIER_VP_AUDIO_TIMER) {

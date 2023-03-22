@@ -73,11 +73,12 @@ struct afe_offload_service_t {
 	unsigned int offload_volume[2];
 	uint8_t scene;
 	bool vp_sync_support;
+	bool vp_sync_event;
 	bool timer_init;
 	spinlock_t timer_spinlock;
 	struct timer_list offload_timer;
-	struct workqueue_struct *workq;
-	struct work_struct offload_cb_work;
+	struct task_struct *offload_thread_task;
+	wait_queue_head_t offload_wq;
 };
 
 struct afe_offload_codec_t {
@@ -87,7 +88,7 @@ struct afe_offload_codec_t {
 	bool has_video;
 };
 
-enum ipi_send_offload {
+enum ipi_send_ogffload {
 	OFFLOAD_RESUME = 0x300,
 	OFFLOAD_PAUSE,
 	OFFLOAD_SETWRITEBLOCK,
