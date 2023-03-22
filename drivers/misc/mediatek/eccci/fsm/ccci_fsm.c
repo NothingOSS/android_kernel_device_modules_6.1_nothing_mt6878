@@ -39,6 +39,7 @@ struct kern_md_state_cb {
 static struct kern_md_state_cb md_state_callbacks[KERN_MD_STAT_RCV_MAX];
 static spinlock_t state_broadcase_lock;
 static unsigned int kern_reg_cb_bitmap;
+atomic_t md_ee_occurred;
 
 int ccci_register_md_state_receiver(unsigned char ch_id,
 	void (*callback)(enum MD_STATE, enum MD_STATE))
@@ -391,6 +392,7 @@ static void fsm_routine_exception(struct ccci_fsm_ctl *ctl,
 	}
 	ctl->last_state = ctl->curr_state;
 	ctl->curr_state = CCCI_FSM_EXCEPTION;
+	atomic_set(&md_ee_occurred, 1);
 	if (reason == EXCEPTION_WDT
 		|| reason == EXCEPTION_HS1_TIMEOUT
 		|| reason == EXCEPTION_HS2_TIMEOUT)
@@ -1252,6 +1254,7 @@ static void fsm_routine_start(struct ccci_fsm_ctl *ctl,
 	}
 	ctl->last_state = ctl->curr_state;
 	ctl->curr_state = CCCI_FSM_STARTING;
+	atomic_set(&md_ee_occurred, 0);
 	__pm_stay_awake(ctl->wakelock);
 
 	/* 2. poll for critical users exit */
