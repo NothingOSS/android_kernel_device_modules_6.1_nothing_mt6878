@@ -1544,7 +1544,7 @@ int mmdvfs_mux_set_opp(const char *name, unsigned long rate)
 {
 	struct mtk_mux_user *user;
 	struct mmdvfs_mux *mux;
-	int i, ret = 0;
+	int i, ret = 0, retry = 0;
 
 	for (i = 0; i < ARRAY_SIZE(mmdvfs_user); i++)
 		if (!strncmp(mmdvfs_user[i].name, name, 16))
@@ -1586,9 +1586,14 @@ int mmdvfs_mux_set_opp(const char *name, unsigned long rate)
 			return -EINVAL;
 		}
 
-		if (!mmdvfs_swrgo_init && mux->id < MMDVFS_MUX_VDE) {
-			MMDVFS_ERR("swrgo:%d not ready", mmdvfs_swrgo_init);
-			goto set_opp_end;
+
+		while (!mmdvfs_swrgo_init && mux->id < MMDVFS_MUX_VDE) {
+			if (++retry > 100) {
+				MMDVFS_ERR("swrgo:%d not ready", mmdvfs_swrgo_init);
+				ret = -ENODEV;
+				goto set_opp_end;
+			}
+			usleep_range(1000, 2000);
 		}
 
 		ret = mmdvfs_vcp_ipi_send(TEST_SET_MUX, vcp_mux_id[mux->id], mux->opp, NULL);
