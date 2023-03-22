@@ -3515,9 +3515,27 @@ fail:
 bool mtk_crtc_alloc_sram(struct mtk_drm_crtc *mtk_crtc, unsigned int hrt_idx)
 {
 	int ret = 0;
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 
 	if (!mtk_crtc)
 		return false;
+
+	/*need register cb for share sram, register after SLB driver enable*/
+	if (mtk_crtc->slbc_state == SLBC_UNREGISTER &&
+		(priv->data->mmsys_id == MMSYS_MT6886 ||
+		priv->data->mmsys_id == MMSYS_MT6897)) {
+		struct slbc_data d;
+		struct slbc_ops ops;
+
+		d.uid = UID_DISP;
+		d.type = TP_BUFFER;
+		d.user_cb_data = mtk_crtc;
+		ops.data = &d;
+		ops.deactivate = &mtk_disp_deactivate;
+		slbc_register_activate_ops(&ops);
+		mtk_crtc->slbc_state = SLBC_CAN_ALLOC;
+		DDPMSG("slbc callback registered\n");
+	}
 
 	mutex_lock(&mtk_crtc->mml_ir_sram.lock);
 
@@ -14837,22 +14855,6 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	mtk_crtc->slbc_state = SLBC_UNREGISTER;
 	mtk_crtc->mml_ir_sram.data.type = TP_BUFFER;
 	mtk_crtc->mml_ir_sram.data.uid = UID_DISP;
-
-	/* mt6886 share sram with other modules, need register cb for this*/
-	if (priv->data->mmsys_id == MMSYS_MT6886 ||
-		priv->data->mmsys_id == MMSYS_MT6897) {
-		struct slbc_data d;
-		struct slbc_ops ops;
-
-		d.uid = UID_DISP;
-		d.type = TP_BUFFER;
-		d.user_cb_data = mtk_crtc;
-		ops.data = &d;
-		ops.deactivate = &mtk_disp_deactivate;
-		slbc_register_activate_ops(&ops);
-		mtk_crtc->slbc_state = SLBC_CAN_ALLOC;
-		DDPMSG("slbc callback registered\n");
-	}
 
 	if (priv->data->mmsys_id == MMSYS_MT6985 ||
 		priv->data->mmsys_id == MMSYS_MT6897) {
