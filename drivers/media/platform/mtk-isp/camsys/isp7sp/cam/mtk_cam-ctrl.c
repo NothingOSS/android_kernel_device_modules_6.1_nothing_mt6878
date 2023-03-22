@@ -811,18 +811,18 @@ static void mtk_cam_ctrl_stream_on_flow(struct mtk_cam_job *job)
 #define VALID_SWITCH_PERIOD_FROM_VSYNC_MS	3
 static bool check_valid_sync(struct mtk_cam_ctrl *ctrl, int seq)
 {
-	u64 first_sof_ts;
+	u64 last_sof_ts;
 	int inner_seq;
 
 	spin_lock(&ctrl->info_lock);
 	inner_seq = ctrl->r_info.inner_seq_no;
-	first_sof_ts = ctrl->r_info.sof_ts_ns;
+	last_sof_ts = ctrl->r_info.sof_l_ts_ns;
 	spin_unlock(&ctrl->info_lock);
 
 	if (inner_seq == seq) {
 		u64 ts = ktime_get_boottime_ns();
 
-		return ts - first_sof_ts <
+		return ts - last_sof_ts <
 			VALID_SWITCH_PERIOD_FROM_VSYNC_MS * 1000000;
 	}
 
