@@ -39,6 +39,7 @@ enum SET_REG_KEYS {
 	REG_KEY_CAMMUX_VSYNC_IRQ_EN_H,
 	REG_KEY_CSI_IRQ_EN,
 	REG_KEY_AOV_CSI_CLK_SWITCH,
+	REG_KEY_MIPI_ERROR_DETECT_EN,
 	REG_KEY_MAX_NUM
 };
 
@@ -55,6 +56,7 @@ enum SET_REG_KEYS {
 	"RG_VSYNC_IRQ_EN_H", \
 	"RG_CSI_IRQ_EN", \
 	"RG_AOV_CSI_CLK_SWITCH", \
+	"RG_MIPI_ERROR_DETECT_EN", \
 
 struct mtk_cam_seninf_mux_meter {
 	u32 width;
@@ -118,6 +120,9 @@ struct mtk_cam_seninf_ops {
 	int (*_set_cammux_next_ctrl)(struct seninf_ctx *ctx, int src, int target);
 	int (*_update_mux_pixel_mode)(struct seninf_ctx *ctx, int mux, int pixel_mode);
 	int (*_irq_handler)(int irq, void *data);
+	int (*_thread_irq_handler)(int irq, void *data);
+	void (*_init_irq_fifo)(struct seninf_core *core);
+	void (*_uninit_irq_fifo)(struct seninf_core *core);
 	int (*_set_sw_cfg_busy)(struct seninf_ctx *ctx, bool enable, int index);
 	int (*_set_cam_mux_dyn_en)(struct seninf_ctx *ctx, bool enable, int cam_mux, int index);
 	int (*_reset_cam_mux_dyn_en)(struct seninf_ctx *ctx, int index);
@@ -125,8 +130,9 @@ struct mtk_cam_seninf_ops {
 	int (*_enable_cam_mux_vsync_irq)(struct seninf_ctx *ctx, bool enable, int cam_mux);
 	int (*_set_all_cam_mux_vsync_irq)(struct seninf_ctx *ctx, bool enable);
 	int (*_debug)(struct seninf_ctx *ctx);
-	int (*_set_reg)(struct seninf_ctx *ctx, u32 key, u32 val);
+	int (*_set_reg)(struct seninf_ctx *ctx, u32 key, u64 val);
 	ssize_t (*_show_err_status)(struct device *dev, struct device_attribute *attr, char *buf);
+	int (*_enable_stream_err_detect)(struct seninf_ctx *ctx);
 	unsigned int seninf_num;
 	unsigned int mux_num;
 	unsigned int cam_mux_num;

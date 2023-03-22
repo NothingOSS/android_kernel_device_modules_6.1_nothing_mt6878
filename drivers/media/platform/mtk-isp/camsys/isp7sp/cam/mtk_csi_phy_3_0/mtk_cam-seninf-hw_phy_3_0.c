@@ -37,6 +37,13 @@
 #define MT6886_IOMOM_VERSIONS "mt6886"
 
 static struct mtk_cam_seninf_ops *_seninf_ops = &mtk_csi_phy_3_0;
+static struct mtk_cam_seninf_irq_event_st vsync_detect_seninf_irq_event;
+#define SENINF_IRQ_FIFO_LEN 36
+#define VSYNC_DUMP_BUF_MAX_LEN 2048
+
+#define SENINF_SNPRINTF(buf, len, fmt, ...) { \
+	len += snprintf(buf + len, VSYNC_DUMP_BUF_MAX_LEN - len, fmt, ##__VA_ARGS__); \
+}
 
 #define SET_DI_CTRL(ptr, s, vc) do { \
 	SENINF_BITS(ptr, SENINF_CSI2_S##s##_DI_CTRL, \
@@ -3896,249 +3903,576 @@ static ssize_t mtk_cam_seninf_show_err_status(struct device *dev,
 	return len;
 }
 
-static int mtk_cam_seninf_irq_handler(int irq, void *data)
+static int seninf_push_vsync_info_msgfifo(struct mtk_cam_seninf_vsync_info *vsync_info)
 {
-	struct seninf_core *core = (struct seninf_core *)data;
-	struct seninf_ctx *ctx;
-	void *pcammux_gcsr;
-	unsigned long flags;
-	/* for mipi err detection */
-	struct seninf_ctx *ctx_;
-	struct seninf_vc *vc;
-	void *base_csi_mac, *pmux, *pSeninf_cam_mux_pcsr;
-	int i, j;
-	unsigned int csiIrq_tmp;
-	unsigned int muxIrq_tmp;
-	unsigned int camIrq_tmp;
-	char seninf_name[256];
-	/* for aee log */
-	int cnt1, cnt2, cnt3, cnt4, cnt5, cnt6, cnt7, cnt8;
-	int cnt_tmp = 0;
-	u64 time_boot = ktime_get_boottime_ns();
-	u64 time_mono = ktime_get_ns();
-	u32 gcsr_vsync_st_h = 0;
-	u32 gcsr_vsync_st = 0;
+	int len = 0;
 
-
-	spin_lock_irqsave(&core->spinlock_irq, flags);
-
-	if (core->vsync_irq_en_flag) {
-		ctx = list_first_entry_or_null(&core->list,
-						   struct seninf_ctx, list);
-
-		if (ctx != NULL) {
-			pcammux_gcsr = ctx->reg_if_cam_mux_gcsr;
-
-			gcsr_vsync_st =
-				SENINF_READ_REG(pcammux_gcsr, SENINF_CAM_MUX_GCSR_VSYNC_IRQ_STS);
-			gcsr_vsync_st_h =
-				SENINF_READ_REG(pcammux_gcsr, SENINF_CAM_MUX_GCSR_VSYNC_IRQ_STS_H);
-			if (gcsr_vsync_st) {
-				SENINF_WRITE_REG(
-					pcammux_gcsr,
-					SENINF_CAM_MUX_GCSR_VSYNC_IRQ_STS,
-					0xffffffff);
-			}
-			if (gcsr_vsync_st_h) {
-				SENINF_WRITE_REG(
-					pcammux_gcsr,
-					SENINF_CAM_MUX_GCSR_VSYNC_IRQ_STS_H,
-					0xffffffff);
-			}
-			if (gcsr_vsync_st || gcsr_vsync_st_h) {
-				dev_info(ctx->dev,
-					"%s SENINF_CAM_MUX_GCSR_VSYNC_STS/H 0x%x/0x%x tBoot %llu tMono %llu\n",
-					__func__, gcsr_vsync_st, gcsr_vsync_st_h,
-					time_boot / 1000000, time_mono / 1000000);
-			}
-
-		} else
-			pr_info("%s, ctx == NULL", __func__);
+	if (unlikely(kfifo_avail(
+			&vsync_detect_seninf_irq_event.msg_fifo) < sizeof(*vsync_info))) {
+		atomic_set(&vsync_detect_seninf_irq_event.is_fifo_overflow, 1);
+		pr_info("%s fifo over flow\n", __func__);
+		return -1;
 	}
 
-	if (core->csi_irq_en_flag) {
-		list_for_each_entry(ctx_, &core->list, list) {
-			base_csi_mac = ctx_->reg_csirx_mac_csi[(uint32_t)ctx->port];
-			csiIrq_tmp =
-				SENINF_READ_REG(base_csi_mac, CSIRX_MAC_CSI2_IRQ_STATUS);
+	len = kfifo_in(&vsync_detect_seninf_irq_event.msg_fifo,
+				vsync_info, sizeof(*vsync_info));
+	WARN_ON(len != sizeof(*vsync_info));
 
-			if (csiIrq_tmp & ~(0x324)) {
-				SENINF_WRITE_REG(
-				base_csi_mac,
-				CSIRX_MAC_CSI2_IRQ_STATUS,
-				0xffffffff);
-				csiIrq_tmp =
-					SENINF_READ_REG(base_csi_mac, CSIRX_MAC_CSI2_IRQ_STATUS);
+	return 0;
+}
+
+static unsigned int seninf_chk_vsync_info_msgfifo_not_empty(void)
+{
+	return (kfifo_len(&vsync_detect_seninf_irq_event.msg_fifo)
+		>= sizeof(struct mtk_cam_seninf_vsync_info));
+}
+
+static void seninf_pop_vsync_info_msgfifo(struct mtk_cam_seninf_vsync_info *vsync_info)
+{
+	unsigned int len = 0;
+
+	len = kfifo_out(
+		&vsync_detect_seninf_irq_event.msg_fifo,
+		vsync_info, sizeof(*vsync_info));
+
+	WARN_ON(len != sizeof(*vsync_info));
+
+}
+
+static void calculate_mipi_error_cnt(struct seninf_core *core,
+	struct seninf_ctx *ctx, unsigned int csi_irq_st)
+{
+	switch (csi_irq_st) {
+	case 804:
+	case 805:
+		break;
+	default:
+		if (csi_irq_st & RO_CSI2_ECC_ERR_CORRECTED_IRQ_MASK)
+			ctx->ecc_err_corrected_cnt++;
+		if (csi_irq_st & RO_CSI2_ECC_ERR_DOUBLE_IRQ_MASK)
+			ctx->ecc_err_double_cnt++;
+		if (csi_irq_st & RO_CSI2_CRC_ERR_IRQ_MASK)
+			ctx->crc_err_cnt++;
+		if (csi_irq_st & RO_CSI2_ERR_LANE_RESYNC_IRQ_MASK)
+			ctx->err_lane_resync_cnt++;
+		if (csi_irq_st & RO_CSI2_RECEIVE_DATA_NOT_ENOUGH_IRQ_MASK)
+			ctx->data_not_enough_cnt++;
+		break;
+	}
+#ifdef ERR_DETECT_TEST
+	if (core->err_detect_test_flag)
+		ctx->test_cnt++;
+#endif
+}
+
+static void dump_current_mipi_error_cnt(struct seninf_core *core,
+	struct seninf_ctx *ctx, struct mtk_cam_seninf_vsync_info *vsync_info)
+{
+	char *buf = NULL;
+	void *pcammux_gcsr;
+	int len = 0;
+
+	buf = kmalloc(sizeof(char) * VSYNC_DUMP_BUF_MAX_LEN, GFP_ATOMIC);
+	if (buf == NULL)
+		return;
+
+	SENINF_SNPRINTF(buf, len,
+		"%s detection_cnt(0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x),",
+		 __func__,
+		core->size_err_detection_cnt,
+		core->fifo_overrun_detection_cnt,
+		core->ecc_err_corrected_detection_cnt,
+		core->ecc_err_double_detection_cnt,
+		core->crc_err_detection_cnt,
+		core->err_lane_resync_detection_cnt,
+		core->data_not_enough_detection_cnt);
+
+#ifdef ERR_DETECT_TEST
+	SENINF_SNPRINTF(buf, len,
+		" test enable:%d test cnt:%d,",
+		core->err_detect_test_flag,
+		ctx->test_cnt);
+#endif
+	SENINF_SNPRINTF(buf, len,
+		"port%d: error_cnt: %d; %d; %d; %d; %d; %d; %d tMono %llu",
+		ctx->port,
+		ctx->data_not_enough_cnt,
+		ctx->err_lane_resync_cnt,
+		ctx->crc_err_cnt,
+		ctx->ecc_err_double_cnt,
+		ctx->ecc_err_corrected_cnt,
+		ctx->fifo_overrun_cnt,
+		ctx->size_err_cnt,
+		vsync_info->time_mono/1000000);
+	dev_info(ctx->dev, "%s\n", buf);
+
+	if (ctx->streaming)
+		if ((ctx->data_not_enough_cnt) >= (core->data_not_enough_detection_cnt) || // 2
+		(ctx->err_lane_resync_cnt) >= (core->err_lane_resync_detection_cnt) || // val = 300
+		(ctx->crc_err_cnt) >= (core->crc_err_detection_cnt) || // 2
+		(ctx->ecc_err_double_cnt) >= (core->ecc_err_double_detection_cnt) || // 2
+		(ctx->ecc_err_corrected_cnt) >= (core->ecc_err_corrected_detection_cnt) || //300
+		(ctx->fifo_overrun_cnt) >= (core->fifo_overrun_detection_cnt) || // 2
+		(ctx->size_err_cnt) >= (core->size_err_detection_cnt) // val = 300
+#ifdef ERR_DETECT_TEST
+		|| (ctx->test_cnt) >= (300)
+#endif
+		) {
+			pcammux_gcsr = ctx->reg_if_cam_mux_gcsr;
+			SENINF_WRITE_REG(
+				pcammux_gcsr,
+				SENINF_CAM_MUX_GCSR_VSYNC_IRQ_EN,
+				0);
+			SENINF_WRITE_REG(
+				pcammux_gcsr,
+				SENINF_CAM_MUX_GCSR_VSYNC_IRQ_EN_H,
+				0);
+
+			core->err_detect_termination_flag = 1;
+			len = 0;
+
+			if ((ctx->data_not_enough_cnt) >= (core->data_not_enough_detection_cnt))
+				ctx->data_not_enough_flag = 1;
+			if ((ctx->err_lane_resync_cnt) >= (core->err_lane_resync_detection_cnt))
+				ctx->err_lane_resync_flag = 1;
+			if ((ctx->crc_err_cnt) >= (core->crc_err_detection_cnt))
+				ctx->crc_err_flag = 1;
+			if ((ctx->ecc_err_double_cnt) >= (core->ecc_err_double_detection_cnt))
+				ctx->ecc_err_double_flag = 1;
+			if ((ctx->ecc_err_corrected_cnt) >=
+				(core->ecc_err_corrected_detection_cnt))
+				ctx->ecc_err_corrected_flag = 1;
+			if ((ctx->fifo_overrun_cnt) >= (core->fifo_overrun_detection_cnt))
+				ctx->fifo_overrun_flag = 1;
+			if ((ctx->size_err_cnt) >= (core->size_err_detection_cnt))
+				ctx->size_err_flag = 1;
+			SENINF_SNPRINTF(buf, len,
+				"data_not_enough_count: %d, err_lane_resync_count: %d,",
+				ctx->data_not_enough_cnt,
+				ctx->err_lane_resync_cnt);
+
+			SENINF_SNPRINTF(buf, len,
+				"crc_err_count: %d, ecc_err_double_count: %d,",
+				ctx->crc_err_cnt,
+				ctx->ecc_err_double_cnt);
+
+			SENINF_SNPRINTF(buf, len,
+				"ecc_err_corrected_count: %d, fifo_overrun_count: %d,",
+				ctx->ecc_err_corrected_cnt,
+				ctx->fifo_overrun_cnt);
+
+			SENINF_SNPRINTF(buf, len,
+				"size_err_count: %d,",
+				ctx->size_err_cnt);
+#ifdef ERR_DETECT_TEST
+			SENINF_SNPRINTF(buf, len,
+				" test_count: %d",
+				ctx->test_cnt);
+#endif
+			seninf_aee_print("[AEE] %s", buf);
+			//kill_pid(ctx_->pid, SIGKILL, 1);
+	}
+	kfree(buf);
+}
+
+static void dump_mipi_error_detect_info(struct seninf_core *core,
+				struct mtk_cam_seninf_vsync_info *vsync_info)
+{
+	struct seninf_ctx *ctx_;
+	int i;
+
+	for (i = 0; i < vsync_info->used_csi_port_num; i++) {
+		list_for_each_entry(ctx_, &core->list, list) {
+			if (vsync_info->ctx_port[i] == ctx_->port) {
+				calculate_mipi_error_cnt(core, ctx_, vsync_info->csi_irq_st[i]);
+				dump_current_mipi_error_cnt(core, ctx_, vsync_info);
+			}
+		}
+	}
+}
+
+static void dump_vsync_info(struct seninf_core *core,
+			struct mtk_cam_seninf_vsync_info *vsync_info)
+{
+	int i, len = 0;
+	char *buf = NULL;
+
+	buf = kmalloc(sizeof(char) * VSYNC_DUMP_BUF_MAX_LEN, GFP_ATOMIC);
+	if (buf == NULL)
+		return;
+
+	SENINF_SNPRINTF(buf, len,
+		"tMono:%llu,vsync_irq:(0x%x/0x%x), cammux_used:%d, csiport_used:%d",
+		vsync_info->time_mono/1000000,
+		vsync_info->vsync_irq_st_h,
+		vsync_info->vsync_irq_st,
+		vsync_info->used_cammux_num,
+		vsync_info->used_csi_port_num);
+
+	for (i = 0; i < vsync_info->used_csi_port_num; i++) {
+
+		SENINF_SNPRINTF(buf, len,
+			" csi_port%d:(csi_irq:0x%x, csi_packet_cnt:0x%x),",
+			vsync_info->ctx_port[i],
+			vsync_info->csi_irq_st[i],
+			vsync_info->csi_packet_cnt_st[i]);
+
+		if (*(core->seninf_vsync_debug_flag) ==
+			ENABLE_VSYNC_DETECT_ONLY_CSI_IRQ_STATUS_ERROR_INFO)
+			core->vsync_irq_detect_csi_irq_error_flag |=
+				(vsync_info->csi_irq_st[i] & (0x324));
+	}
+
+	switch (*(core->seninf_vsync_debug_flag)) {
+	case ENABLE_VSYNC_DETECT_PER_FRAME_INFO:
+		dev_info(core->dev, "%s:%s", __func__, buf);
+		break;
+	case ENABLE_VSYNC_DETECT_ONLY_CSI_IRQ_STATUS_ERROR_INFO:
+		if (core->vsync_irq_detect_csi_irq_error_flag != (0x324))
+			dev_info(core->dev, "%s:%s", __func__, buf);
+		break;
+	default:
+		break;
+	}
+
+	len = 0;
+
+	for (i = 0; i < vsync_info->used_cammux_num; i++) {
+		SENINF_SNPRINTF(buf, len,
+			" cam_mux%d :(ctrl:0x%x, res:0x%x, exp:0x%x, err:0x%x",
+			vsync_info->used_cammux[i],
+			vsync_info->cammux_ctrl_st[i],
+			vsync_info->cammux_chk_res_st[i],
+			vsync_info->cammux_chk_ctrl_st[i],
+			vsync_info->cammux_chk_err_res_st[i]);
+		SENINF_SNPRINTF(buf, len,
+			" opt:0x%x, irq:0x%x, tag_vc:0x%x, tag_dt:0x%x)",
+			vsync_info->cammux_opt_st[i],
+			vsync_info->cammux_irq_st[i],
+			vsync_info->cammux_tag_vc_sel_st[i],
+			vsync_info->cammux_tag_dt_sel_st[i]);
+	}
+
+	switch (*(core->seninf_vsync_debug_flag)) {
+	case ENABLE_VSYNC_DETECT_PER_FRAME_INFO:
+		dev_info(core->dev, "%s:%s", __func__, buf);
+		break;
+	case ENABLE_VSYNC_DETECT_ONLY_CSI_IRQ_STATUS_ERROR_INFO:
+		if (core->vsync_irq_detect_csi_irq_error_flag != (0x324))
+			dev_info(core->dev, "%s:%s", __func__, buf);
+		break;
+	default:
+		break;
+	}
+
+	kfree(buf);
+}
+
+static void mtk_notify_frame_end_fn(struct kthread_work *work)
+{
+	struct mtk_cam_seninf_vsync_work *vsync_work =
+		container_of(work, struct mtk_cam_seninf_vsync_work, work);
+	struct seninf_core *core = vsync_work->core;
+	struct mtk_cam_seninf_vsync_info *vsync_info = &vsync_work->vsync_info;
+
+	if (core->vsync_irq_en_flag)
+		dump_vsync_info(core, vsync_info);
+
+	if (core->csi_irq_en_flag)
+		dump_mipi_error_detect_info(core, vsync_info);
+
+	kfree(vsync_work);
+}
+
+static void seninf_dump_vsync_info(struct seninf_core *core,
+			struct mtk_cam_seninf_vsync_info *vsync_info)
+{
+	struct mtk_cam_seninf_vsync_work *vsync_work = NULL;
+
+	vsync_work = kmalloc(
+			sizeof(struct mtk_cam_seninf_vsync_work),
+			GFP_ATOMIC);
+	if (vsync_work) {
+		kthread_init_work(&vsync_work->work, mtk_notify_frame_end_fn);
+		vsync_work->core = core;
+		memcpy(&vsync_work->vsync_info, vsync_info, sizeof(*vsync_info));
+		kthread_queue_work(&core->seninf_worker, &vsync_work->work);
+	} else
+		dev_info(core->dev, "%s malloc fail\n", __func__);
+}
+
+static int mtk_thread_cam_seninf_irq_handler(int irq, void *data)
+{
+	struct seninf_core *core = (struct seninf_core *)data;
+	struct mtk_cam_seninf_vsync_info vsync_info;
+
+	/* error handling (check case and print information) */
+	if (unlikely(atomic_cmpxchg(&vsync_detect_seninf_irq_event.is_fifo_overflow, 1, 0)))
+		dev_info(core->dev,
+			"WARNING:Vsync detect irq msg fifo overflow\n");
+
+	while (seninf_chk_vsync_info_msgfifo_not_empty()) {
+		seninf_pop_vsync_info_msgfifo(&vsync_info);
+		seninf_dump_vsync_info(core, &vsync_info);
+	}
+
+	return 0;
+}
+
+static void mtk_cam_seninf_irq_event_st_init(struct seninf_core *core)
+{
+	int ret = 0;
+
+	/* init/setup fifo size for below dynamic mem alloc using */
+	vsync_detect_seninf_irq_event.fifo_size = roundup_pow_of_two(
+		SENINF_IRQ_FIFO_LEN * sizeof(struct mtk_cam_seninf_vsync_info));
+
+	if (likely(vsync_detect_seninf_irq_event.msg_buffer == NULL)) {
+		vsync_detect_seninf_irq_event.msg_buffer = devm_kzalloc(core->dev,
+					vsync_detect_seninf_irq_event.fifo_size, GFP_ATOMIC);
+
+		if (unlikely(vsync_detect_seninf_irq_event.msg_buffer == NULL))
+			dev_info(core->dev,
+				"ERROR: irq msg_buffer:%p allocate memory failed, fifo_size:%u\n",
+				vsync_detect_seninf_irq_event.msg_buffer,
+				vsync_detect_seninf_irq_event.fifo_size);
+		else {
+			ret = kfifo_init(&vsync_detect_seninf_irq_event.msg_fifo,
+				vsync_detect_seninf_irq_event.msg_buffer,
+				vsync_detect_seninf_irq_event.fifo_size);
+
+			if (unlikely(ret != 0)) {
+				dev_info(core->dev,
+					"%s init failed,ret:%d,msg_buffer:%p,fifo_size:(%u/%lu)\n",
+					__func__, ret, vsync_detect_seninf_irq_event.msg_buffer,
+					vsync_detect_seninf_irq_event.fifo_size,
+					sizeof(struct mtk_cam_seninf_vsync_info));
+				return;
 			}
 
-			if (csiIrq_tmp & (0x1 << 3))
-				ctx_->ecc_err_corrected_cnt++;
-			if (csiIrq_tmp & (0x1 << 4))
-				ctx_->ecc_err_double_cnt++;
-			if (csiIrq_tmp & (0x1 << 6))
-				ctx_->crc_err_cnt++;
-			if (csiIrq_tmp & (0x1 << 13))
-				ctx_->err_lane_resync_cnt++;
-			if (csiIrq_tmp & (0x1 << 29))
-				ctx_->data_not_enough_cnt++;
+			atomic_set(&vsync_detect_seninf_irq_event.is_fifo_overflow, 0);
+
+			dev_info(core->dev,
+				"%s init done,ret:%d,msg_buffer:%p,fifo_size:%u(%lu)\n",
+				__func__, ret, vsync_detect_seninf_irq_event.msg_buffer,
+				vsync_detect_seninf_irq_event.fifo_size,
+				sizeof(struct mtk_cam_seninf_vsync_info));
+		}
+	}
+}
+
+static void mtk_cam_seninf_irq_event_st_uninit(struct seninf_core *core)
+{
+	kfifo_free(&vsync_detect_seninf_irq_event.msg_fifo);
+
+	if (likely(vsync_detect_seninf_irq_event.msg_buffer != NULL)) {
+		devm_kfree(core->dev, vsync_detect_seninf_irq_event.msg_buffer);
+		vsync_detect_seninf_irq_event.msg_buffer = NULL;
+		dev_info(core->dev,
+			"irq msg_buffer:%p is freed\n",
+			vsync_detect_seninf_irq_event.msg_buffer);
+	}
+
+}
+
+static int mtk_cam_enable_stream_err_detect(struct seninf_ctx *ctx)
+{
+	struct seninf_core *core;
+	struct seninf_ctx *ctx_;
+	void *pSeninf_cam_mux_gcsr;
+
+	core = dev_get_drvdata(ctx->dev->parent);
+
+	list_for_each_entry(ctx_, &core->list, list) {
+		if (core->err_detect_termination_flag)
+			core->err_detect_termination_flag = 0;
+
+		ctx_->data_not_enough_flag = 0;
+		ctx_->err_lane_resync_flag = 0;
+		ctx_->crc_err_flag = 0;
+		ctx_->ecc_err_double_flag = 0;
+		ctx_->ecc_err_corrected_flag = 0;
+		ctx_->fifo_overrun_flag = 0;
+		ctx_->size_err_flag = 0;
+		ctx_->data_not_enough_cnt = 0;
+		ctx_->err_lane_resync_cnt = 0;
+		ctx_->crc_err_cnt = 0;
+		ctx_->ecc_err_double_cnt = 0;
+		ctx_->ecc_err_corrected_cnt = 0;
+		ctx_->fifo_overrun_cnt = 0;
+		ctx_->size_err_cnt = 0;
+#ifdef ERR_DETECT_TEST
+		ctx_->test_cnt = 0;
+#endif
+		pSeninf_cam_mux_gcsr = ctx_->reg_if_cam_mux_gcsr;
+		dev_info(
+			ctx_->dev,
+			"mwj VSYNC_IRQ_EN by stream_err_detect!");
+			SENINF_WRITE_REG(
+				pSeninf_cam_mux_gcsr,
+				SENINF_CAM_MUX_GCSR_VSYNC_IRQ_EN,
+				0xFFFFFFFF);
+			SENINF_WRITE_REG(
+				pSeninf_cam_mux_gcsr,
+				SENINF_CAM_MUX_GCSR_VSYNC_IRQ_EN_H,
+				0xFFFFFFFF);
+	}
+	return 0;
+}
+
+
+static void seninf_record_cammux_irq(struct seninf_core *core,
+	struct mtk_cam_seninf_vsync_info *vsync_info)
+{
+	struct seninf_ctx *ctx_;
+	int i, j, index = 0;
+	void *pSeninf_cam_mux_pcsr;
+	struct seninf_vc *vc;
+	struct seninf_vc_out_dest *dest;
+
+	list_for_each_entry(ctx_, &core->list, list) {
+		if (ctx_->streaming) {
+			for (i = 0; i < ctx_->vcinfo.cnt; i++) {
+				vc = &ctx_->vcinfo.vc[i];
+				for (j = 0; j < vc->dest_cnt; j++) {
+					dest = &vc->dest[j];
+					vsync_info->used_cammux[index] = dest->cam;
+					if (dest->cam < _seninf_ops->cam_mux_num) {
+						pSeninf_cam_mux_pcsr =
+							ctx_->reg_if_cam_mux_pcsr[dest->cam];
+					} else
+						pSeninf_cam_mux_pcsr = NULL;
+
+					if (pSeninf_cam_mux_pcsr) {
+						vsync_info->cammux_irq_st[index] =
+							SENINF_READ_REG(pSeninf_cam_mux_pcsr,
+								SENINF_CAM_MUX_PCSR_IRQ_STATUS);
+						index++;
+					}
+				}
+			}
+		}
+	}
+	vsync_info->used_cammux_num = index;
+}
+
+static void seninf_record_cammux_info(struct seninf_core *core,
+	struct mtk_cam_seninf_vsync_info *vsync_info)
+{
+	struct seninf_ctx *ctx_;
+	int i, j, used_cammux = 0;
+	void *csirx_mac_csi, *pSeninf_cam_mux_pcsr, *pmux;
+	struct seninf_vc *vc;
+	struct seninf_vc_out_dest *dest;
+
+	 list_for_each_entry(ctx_, &core->list, list) {
+		if (ctx_->streaming) {
+			csirx_mac_csi = ctx_->reg_csirx_mac_csi[(uint32_t)ctx_->port];
+			vsync_info->csi_irq_st[vsync_info->used_csi_port_num] =
+				SENINF_READ_REG(csirx_mac_csi, CSIRX_MAC_CSI2_IRQ_STATUS);
+			vsync_info->csi_packet_cnt_st[vsync_info->used_csi_port_num] =
+				SENINF_READ_REG(csirx_mac_csi, CSIRX_MAC_CSI2_PACKET_CNT_STATUS);
+			vsync_info->ctx_port[vsync_info->used_csi_port_num++] = ctx_->port;
 
 			for (i = 0; i < ctx_->vcinfo.cnt; i++) {
 				vc = &ctx_->vcinfo.vc[i];
 				for (j = 0; j < vc->dest_cnt; j++) {
-					pmux = ctx_->reg_if_mux[vc->dest[j].mux];
-					pSeninf_cam_mux_pcsr =
-						ctx_->reg_if_cam_mux_pcsr[vc->dest[j].cam];
-					muxIrq_tmp = SENINF_READ_REG(
-						     pmux,
-						     SENINF_MUX_IRQ_STATUS);
-					camIrq_tmp = SENINF_READ_REG(
-						     pSeninf_cam_mux_pcsr,
-						     SENINF_CAM_MUX_PCSR_CHK_ERR_RES);
-
-					if (muxIrq_tmp) {
-						SENINF_WRITE_REG(
-						pmux,
-						SENINF_MUX_IRQ_STATUS,
-						0xffffffff);
-						muxIrq_tmp = SENINF_READ_REG(
-							     pmux,
-							     SENINF_MUX_IRQ_STATUS);
-					}
-					if (camIrq_tmp) {
-						SENINF_WRITE_REG(
-						pSeninf_cam_mux_pcsr,
-						SENINF_CAM_MUX_PCSR_CHK_ERR_RES,
-						0xffffffff);
-						camIrq_tmp =
-						SENINF_READ_REG(
-						pSeninf_cam_mux_pcsr,
-						SENINF_CAM_MUX_PCSR_CHK_ERR_RES);
-					}
-					if (muxIrq_tmp & (0x1 << 0))
+					dest = &vc->dest[j];
+					pmux = ctx_->reg_if_mux[dest->mux];
+					vsync_info->seninf_mux_irq_st[used_cammux] =
+						SENINF_READ_REG(pmux, SENINF_MUX_IRQ_STATUS);
+					if (core->csi_irq_en_flag &&
+					(vsync_info->seninf_mux_irq_st[used_cammux] & (0x3))) {
 						ctx_->fifo_overrun_cnt++;
-					if (camIrq_tmp)
-						ctx_->size_err_cnt++;
+						SENINF_WRITE_REG(pmux,
+							SENINF_MUX_IRQ_STATUS, 0x103);
+					}
+					if (dest->cam < _seninf_ops->cam_mux_num &&
+						core->vsync_irq_en_flag) {
+						pSeninf_cam_mux_pcsr =
+							ctx_->reg_if_cam_mux_pcsr[dest->cam];
+					} else
+						pSeninf_cam_mux_pcsr = NULL;
+
+					if (pSeninf_cam_mux_pcsr) {
+						vsync_info->cammux_chk_res_st[used_cammux] =
+							SENINF_READ_REG(pSeninf_cam_mux_pcsr,
+								SENINF_CAM_MUX_PCSR_CHK_RES);
+						vsync_info->cammux_tag_vc_sel_st[used_cammux] =
+							SENINF_READ_REG(pSeninf_cam_mux_pcsr,
+								SENINF_CAM_MUX_PCSR_TAG_VC_SEL);
+						vsync_info->cammux_tag_dt_sel_st[used_cammux] =
+							SENINF_READ_REG(pSeninf_cam_mux_pcsr,
+								SENINF_CAM_MUX_PCSR_TAG_DT_SEL);
+						vsync_info->cammux_ctrl_st[used_cammux] =
+							SENINF_READ_REG(pSeninf_cam_mux_pcsr,
+								SENINF_CAM_MUX_PCSR_CTRL);
+						vsync_info->cammux_chk_ctrl_st[used_cammux] =
+							SENINF_READ_REG(pSeninf_cam_mux_pcsr,
+								SENINF_CAM_MUX_PCSR_CHK_CTL);
+						vsync_info->cammux_chk_err_res_st[used_cammux] =
+							SENINF_READ_REG(pSeninf_cam_mux_pcsr,
+								SENINF_CAM_MUX_PCSR_CHK_ERR_RES);
+						vsync_info->cammux_opt_st[used_cammux] =
+							SENINF_READ_REG(pSeninf_cam_mux_pcsr,
+								SENINF_CAM_MUX_PCSR_OPT);
+						used_cammux++;
+					}
 				}
-			}
-
-			if ((ctx_->data_not_enough_cnt) >= (core->detection_cnt) ||
-			    (ctx_->err_lane_resync_cnt) >= (core->detection_cnt) ||
-			    (ctx_->crc_err_cnt) >= (core->detection_cnt) ||
-			    (ctx_->ecc_err_double_cnt) >= (core->detection_cnt) ||
-			    (ctx_->ecc_err_corrected_cnt) >= (core->detection_cnt) ||
-			    (ctx_->fifo_overrun_cnt) >= (core->detection_cnt) ||
-			    (ctx_->size_err_cnt) >= (core->detection_cnt)) {
-				SENINF_WRITE_REG(base_csi_mac, CSIRX_MAC_CSI2_IRQ_EN, 0x80000000);
-
-				if ((ctx_->data_not_enough_cnt) >= (core->detection_cnt))
-					ctx_->data_not_enough_flag = 1;
-				if ((ctx_->err_lane_resync_cnt) >= (core->detection_cnt))
-					ctx_->err_lane_resync_flag = 1;
-				if ((ctx_->crc_err_cnt) >= (core->detection_cnt))
-					ctx_->crc_err_flag = 1;
-				if ((ctx_->ecc_err_double_cnt) >= (core->detection_cnt))
-					ctx_->ecc_err_double_flag = 1;
-				if ((ctx_->ecc_err_corrected_cnt) >= (core->detection_cnt))
-					ctx_->ecc_err_corrected_flag = 1;
-				if ((ctx_->fifo_overrun_cnt) >= (core->detection_cnt))
-					ctx_->fifo_overrun_flag = 1;
-				if ((ctx_->size_err_cnt) >= (core->detection_cnt))
-					ctx_->size_err_flag = 1;
-
-				cnt1 = snprintf(seninf_name, 256, "%s", __func__);
-				if (cnt1 < 0) {
-					seninf_aee_print(
-						"[AEE] error, cnt1:%d",
-						cnt1);
-					cnt1 = 0;
-				}
-				cnt_tmp += cnt1;
-
-				cnt2 = snprintf(seninf_name+cnt_tmp, 256-cnt_tmp,
-					"   data_not_enough_count: %d",
-					ctx_->data_not_enough_cnt);
-				if (cnt2 < 0) {
-					seninf_aee_print(
-						"[AEE] error, cnt2:%d",
-						cnt2);
-					cnt2 = 0;
-				}
-				cnt_tmp += cnt2;
-
-				cnt3 = snprintf(seninf_name+cnt_tmp, 256-cnt_tmp,
-					"   err_lane_resync_count: %d",
-					ctx_->err_lane_resync_cnt);
-				if (cnt3 < 0) {
-					seninf_aee_print(
-						"[AEE] error, cnt3:%d",
-						cnt3);
-					cnt3 = 0;
-				}
-				cnt_tmp += cnt3;
-
-				cnt4 = snprintf(seninf_name+cnt_tmp, 256-cnt_tmp,
-					"   crc_err_count: %d",
-					ctx_->crc_err_cnt);
-				if (cnt4 < 0) {
-					seninf_aee_print(
-						"[AEE] error, cnt4:%d",
-						cnt4);
-					cnt4 = 0;
-				}
-				cnt_tmp += cnt4;
-
-				cnt5 = snprintf(seninf_name+cnt_tmp, 256-cnt_tmp,
-					"   ecc_err_double_count: %d",
-					ctx_->ecc_err_double_cnt);
-				if (cnt5 < 0) {
-					seninf_aee_print(
-						"[AEE] error, cnt5:%d",
-						cnt5);
-					cnt5 = 0;
-				}
-				cnt_tmp += cnt5;
-
-				cnt6 = snprintf(seninf_name+cnt_tmp, 256-cnt_tmp,
-					"   ecc_err_corrected_count: %d",
-					ctx_->ecc_err_corrected_cnt);
-				if (cnt6 < 0) {
-					seninf_aee_print(
-						"[AEE] error, cnt6:%d",
-						cnt6);
-					cnt6 = 0;
-				}
-				cnt_tmp += cnt6;
-
-				cnt7 = snprintf(seninf_name+cnt_tmp, 256-cnt_tmp,
-					"   fifo_overrun_count: %d",
-					ctx_->fifo_overrun_cnt);
-				if (cnt7 < 0) {
-					seninf_aee_print(
-						"[AEE] error, cnt7:%d",
-						cnt7);
-					cnt7 = 0;
-				}
-				cnt_tmp += cnt7;
-
-				cnt8 = snprintf(seninf_name+cnt_tmp, 256-cnt_tmp,
-					"   size_err_count: %d",
-					ctx_->size_err_cnt);
-				if (cnt8 < 0) {
-					seninf_aee_print(
-						"[AEE] error, cnt8:%d",
-						cnt8);
-					cnt8 = 0;
-				}
-				seninf_aee_print("[AEE] %s", seninf_name);
-
-				// kill_pid(core->pid, SIGKILL, 1);
 			}
 		}
+	}
+}
+
+static void seninf_record_vsync_info(struct seninf_core *core,
+	struct mtk_cam_seninf_vsync_info *vsync_info)
+{
+	void *pcammux_gcsr;
+	struct seninf_ctx *ctx_;
+
+	ctx_ = list_first_entry_or_null(&core->list, struct seninf_ctx, list);
+	if (ctx_ != NULL) {
+		vsync_info->time_mono = ktime_get_ns();
+		pcammux_gcsr = ctx_->reg_if_cam_mux_gcsr;
+		vsync_info->vsync_irq_st = SENINF_READ_REG(pcammux_gcsr,
+			SENINF_CAM_MUX_GCSR_VSYNC_IRQ_STS);
+		vsync_info->vsync_irq_st_h = SENINF_READ_REG(pcammux_gcsr,
+			SENINF_CAM_MUX_GCSR_VSYNC_IRQ_STS_H);
+	} else
+		dev_info(ctx_->dev, "ctx is null\n");
+
+	if (core->vsync_irq_en_flag)
+		seninf_record_cammux_irq(core, vsync_info);
+
+	if (vsync_info->vsync_irq_st)
+		SENINF_WRITE_REG(pcammux_gcsr,
+			SENINF_CAM_MUX_GCSR_VSYNC_IRQ_STS, 0xFFFFFFFF);
+
+	if (vsync_info->vsync_irq_st_h)
+		SENINF_WRITE_REG(pcammux_gcsr,
+			SENINF_CAM_MUX_GCSR_VSYNC_IRQ_STS_H, 0xFFFFFFFF);
+
+	seninf_record_cammux_info(core, vsync_info);
+}
+
+static int mtk_cam_seninf_irq_handler(int irq, void *data)
+{
+	struct seninf_core *core = (struct seninf_core *)data;
+	struct mtk_cam_seninf_vsync_info vsync_info  = {0};
+	unsigned int wake_thread = 0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&core->spinlock_irq, flags);
+
+	if (core->vsync_irq_en_flag || core->csi_irq_en_flag) {
+		seninf_record_vsync_info(core, &vsync_info);
+		if (seninf_push_vsync_info_msgfifo(&vsync_info) == 0)
+			wake_thread = 1;
 	}
 
 	spin_unlock_irqrestore(&core->spinlock_irq, flags);
 
-	return 0;
+	return (wake_thread) ? 1 : 0;
 }
 
 static int mtk_cam_seninf_set_sw_cfg_busy(struct seninf_ctx *ctx, bool enable, int index)
@@ -4377,7 +4711,7 @@ static void update_vsync_irq_en_flag(struct seninf_ctx *ctx)
 	dev_info(ctx->dev, "vsync enable = %u\n", core->vsync_irq_en_flag);
 }
 
-static int mtk_cam_seninf_set_reg(struct seninf_ctx *ctx, u32 key, u32 val)
+static int mtk_cam_seninf_set_reg(struct seninf_ctx *ctx, u32 key, u64 val)
 {
 	int i, j;
 	void *base = ctx->reg_ana_dphy_top[(unsigned int)ctx->port];
@@ -4386,11 +4720,10 @@ static int mtk_cam_seninf_set_reg(struct seninf_ctx *ctx, u32 key, u32 val)
 	struct seninf_vc *vc;
 	struct seninf_core *core;
 	struct seninf_ctx *ctx_;
-	void *_csi_mac;
 
 	core = dev_get_drvdata(ctx->dev->parent);
 
-	dev_info(ctx->dev, "%s key = 0x%x, val = 0x%x\n",
+	dev_info(ctx->dev, "%s key = 0x%x, val = %llu\n",
 		 __func__, key, val);
 
 	switch (key) {
@@ -4501,20 +4834,119 @@ static int mtk_cam_seninf_set_reg(struct seninf_ctx *ctx, u32 key, u32 val)
 
 		update_vsync_irq_en_flag(ctx);
 		break;
-	case REG_KEY_CSI_IRQ_EN:
-		{
-			if (!ctx->streaming)
-				return 0;
-			if (!val)
-				core->detection_cnt = 50;
+	case REG_KEY_MIPI_ERROR_DETECT_EN:
+		dev_info(ctx->dev,
+			"%s REG_KEY_MIPI_ERROR_DETECT_EN start val=%lld ctx->streaming=%d",
+			__func__, val, ctx->streaming);
+		if (!ctx->streaming) {
+			dev_info(ctx->dev, "%s no streaming, return ", __func__);
+			return 0;
+		}
 
-			core->csi_irq_en_flag = 1;
-			core->detection_cnt = val;
+		if (val == 1) { // stop/restart err detection in stream
+			core->csi_irq_en_flag = 0;
+			core->err_detect_init_flag = 0;
+			core->err_detect_termination_flag = 1;
 			list_for_each_entry(ctx_, &core->list, list) {
-				_csi_mac = ctx_->reg_csirx_mac_csi[(uint32_t)ctx->port];
-				SENINF_WRITE_REG(_csi_mac, CSIRX_MAC_CSI2_IRQ_EN,
-						0xA0002058);
+				dev_info(ctx_->dev,
+					"%s MIPI_ERROR_DETECT_EN terminated by user!",
+					__func__);
+				p_gcammux = ctx_->reg_if_cam_mux_gcsr;
+				SENINF_WRITE_REG(
+					p_gcammux,
+					SENINF_CAM_MUX_GCSR_VSYNC_IRQ_EN,
+					0);
+				SENINF_WRITE_REG(
+					p_gcammux,
+					SENINF_CAM_MUX_GCSR_VSYNC_IRQ_EN_H,
+					0);
+				ctx_->data_not_enough_flag = 0;
+				ctx_->err_lane_resync_flag = 0;
+				ctx_->crc_err_flag = 0;
+				ctx_->ecc_err_double_flag = 0;
+				ctx_->ecc_err_corrected_flag = 0;
+				ctx_->fifo_overrun_flag = 0;
+				ctx_->size_err_flag = 0;
+				ctx_->data_not_enough_cnt = 0;
+				ctx_->err_lane_resync_cnt = 0;
+				ctx_->crc_err_cnt = 0;
+				ctx_->ecc_err_double_cnt = 0;
+				ctx_->ecc_err_corrected_cnt = 0;
+				ctx_->fifo_overrun_cnt = 0;
+				ctx_->size_err_cnt = 0;
+#ifdef ERR_DETECT_TEST
+				ctx_->test_cnt = 0;
+				//stop err detect test
+				core->err_detect_test_flag = 0;
+#endif
+				return 0;
 			}
+		}
+		core->data_not_enough_detection_cnt = 50;
+		core->err_lane_resync_detection_cnt = 50;
+		core->crc_err_detection_cnt = 50;
+		core->ecc_err_double_detection_cnt = 50;
+		core->ecc_err_corrected_detection_cnt = 50;
+		core->fifo_overrun_detection_cnt = 50;
+		core->size_err_detection_cnt = 50;
+		core->csi_irq_en_flag = 1;
+		core->detection_cnt = val;
+		core->err_detect_init_flag = 1;
+		core->err_detect_termination_flag = 0;
+#ifdef ERR_DETECT_TEST
+		core->err_detect_test_flag = 0;
+#endif
+/*
+ * data_not_enough_detection_cnt		[7:0]
+ * err_lane_resync_detection_cnt		[15:8]
+ * crc_err_detection_cnt			[23:16]
+ * ecc_err_double_detection_cnt		[31:24]
+ * ecc_err_corrected_detection_cnt	[39:32]
+ * fifo_overrun_detection_cnt		[47:40]
+ * size_err_detection_cnt		[55:48]
+ * err_detect_test_flag			[56]
+ */
+		if (val & 0xFF)
+			core->data_not_enough_detection_cnt = (val & 0xFF);
+		if (((val >> 8) & 0xFF))
+			core->err_lane_resync_detection_cnt = ((val >> 8) & 0xFF);
+		if (((val >> 16) & 0xFF))
+			core->crc_err_detection_cnt = ((val >> 16) & 0xFF);
+		if (((val >> 24) & 0xFF))
+			core->ecc_err_double_detection_cnt = ((val >> 24) & 0xFF);
+		if (((val >> 32) & 0xFF))
+			core->ecc_err_corrected_detection_cnt = ((val >> 32) & 0xFF);
+		if (((val >> 40) & 0xFF))
+			core->fifo_overrun_detection_cnt = ((val >> 40) & 0xFF);
+		if (((val >> 48) & 0xFF))
+			core->size_err_detection_cnt = ((val >> 48) & 0xFF);
+#ifdef ERR_DETECT_TEST
+		if (((val >> 56) & 0x01))
+			core->err_detect_test_flag = 1;
+#endif
+		dev_info(ctx->dev,
+			"%s detection_cnt(0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,test enable:%d)",
+			__func__,
+			core->size_err_detection_cnt,
+			core->fifo_overrun_detection_cnt,
+			core->ecc_err_corrected_detection_cnt,
+			core->ecc_err_double_detection_cnt,
+			core->crc_err_detection_cnt,
+			core->err_lane_resync_detection_cnt,
+			core->data_not_enough_detection_cnt,
+			core->err_detect_test_flag);
+			dev_info(ctx->dev,
+				"%s err detection enabled by user!", __func__);
+		list_for_each_entry(ctx_, &core->list, list) {
+			p_gcammux = ctx_->reg_if_cam_mux_gcsr;
+			SENINF_WRITE_REG(
+				p_gcammux,
+				SENINF_CAM_MUX_GCSR_VSYNC_IRQ_EN,
+				0xFFFFFFFF);
+			SENINF_WRITE_REG(
+				p_gcammux,
+				SENINF_CAM_MUX_GCSR_VSYNC_IRQ_EN_H,
+				0xFFFFFFFF);
 		}
 		break;
 	case REG_KEY_AOV_CSI_CLK_SWITCH:
@@ -4522,14 +4954,14 @@ static int mtk_cam_seninf_set_reg(struct seninf_ctx *ctx, u32 key, u32 val)
 		case 130:
 			core->aov_csi_clk_switch_flag = CSI_CLK_130;
 			dev_info(ctx->dev,
-				"[%s] set aov csi clk (%u)\n",
+				"[%s] set aov csi clk (%llu)\n",
 				__func__, val);
 			break;
 		case 242:
 		default:
 			core->aov_csi_clk_switch_flag = CSI_CLK_242;
 			dev_info(ctx->dev,
-				"[%s] set aov csi clk (%u)\n",
+				"[%s] set aov csi clk (%llu)\n",
 				__func__, val);
 			break;
 		}
@@ -4573,6 +5005,9 @@ struct mtk_cam_seninf_ops mtk_csi_phy_3_0 = {
 	._set_cammux_next_ctrl = mtk_cam_seninf_set_cammux_next_ctrl,
 	._update_mux_pixel_mode = mtk_cam_seninf_update_mux_pixel_mode,
 	._irq_handler = mtk_cam_seninf_irq_handler,
+	._thread_irq_handler = mtk_thread_cam_seninf_irq_handler,
+	._init_irq_fifo = mtk_cam_seninf_irq_event_st_init,
+	._uninit_irq_fifo = mtk_cam_seninf_irq_event_st_uninit,
 	._set_sw_cfg_busy = mtk_cam_seninf_set_sw_cfg_busy,
 	._set_cam_mux_dyn_en = mtk_cam_seninf_set_cam_mux_dyn_en,
 	._reset_cam_mux_dyn_en = mtk_cam_seninf_reset_cam_mux_dyn_en,
@@ -4592,4 +5027,5 @@ struct mtk_cam_seninf_ops mtk_csi_phy_3_0 = {
 	.pref_mux_num = 17,
 	.iomem_ver = NULL,
 	._show_err_status = mtk_cam_seninf_show_err_status,
+	._enable_stream_err_detect = mtk_cam_enable_stream_err_detect,
 };

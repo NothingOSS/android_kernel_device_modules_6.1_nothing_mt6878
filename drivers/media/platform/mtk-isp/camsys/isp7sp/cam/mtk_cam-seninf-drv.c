@@ -275,7 +275,8 @@ static ssize_t debug_ops_store(struct device *dev,
 	struct seninf_core *core = dev_get_drvdata(dev);
 	struct seninf_ctx *ctx, *seninf_ctx = NULL;
 	int rg_idx = -1;
-	u32 val, pad_id, camtg, tag_id;
+	u32 pad_id, camtg, tag_id;
+	u64 val;
 
 	if (!sbuf)
 		goto ERR_DEBUG_OPS_STORE;
@@ -310,7 +311,7 @@ static ssize_t debug_ops_store(struct device *dev,
 		if (rg_idx < 0)
 			goto ERR_DEBUG_OPS_STORE;
 
-		ret = kstrtouint(arg[REG_OPS_CMD_VAL], 0, &val);
+		ret = kstrtoull(arg[REG_OPS_CMD_VAL], 0, &val);
 		if (ret)
 			goto ERR_DEBUG_OPS_STORE;
 
@@ -651,7 +652,15 @@ static int seninf_core_pm_runtime_put(struct seninf_core *core)
 #if is_irq_ready
 static irqreturn_t mtk_irq_seninf(int irq, void *data)
 {
-	g_seninf_ops->_irq_handler(irq, data);
+	unsigned int wake_thread = 0;
+
+	wake_thread = g_seninf_ops->_irq_handler(irq, data);
+	return (wake_thread) ? IRQ_WAKE_THREAD : IRQ_HANDLED;
+}
+
+static irqreturn_t mtk_thread_irq_seninf(int irq, void *data)
+{
+	g_seninf_ops->_thread_irq_handler(irq, data);
 	return IRQ_HANDLED;
 }
 #endif
@@ -839,8 +848,8 @@ static int seninf_core_probe(struct platform_device *pdev)
 			irq);
 		//return -ENODEV;
 	} else {
-		ret = devm_request_irq(dev, irq, mtk_irq_seninf, 0,
-					dev_name(dev), core);
+		ret = devm_request_threaded_irq(dev, irq, mtk_irq_seninf,
+					mtk_thread_irq_seninf, 0, dev_name(dev), core);
 		if (ret) {
 			dev_info(dev, "failed to request seninf-irq=%d\n", irq);
 			return ret;
@@ -930,6 +939,8 @@ static int seninf_core_probe(struct platform_device *pdev)
 		sched_set_fifo(core->seninf_kworker_task);
 	}
 
+	g_seninf_ops->_init_irq_fifo(core);
+
 	return 0;
 }
 
@@ -949,6 +960,8 @@ static int seninf_core_remove(struct platform_device *pdev)
 
 	if (core->seninf_kworker_task)
 		kthread_stop(core->seninf_kworker_task);
+
+	g_seninf_ops->_uninit_irq_fifo(core);
 
 	return 0;
 }
@@ -1707,6 +1720,8 @@ static int debug_err_detect_initialize(struct seninf_ctx *ctx)
 
 	core->csi_irq_en_flag = 0;
 	core->vsync_irq_en_flag = 0;
+	core->vsync_irq_detect_csi_irq_error_flag = 0;
+	core->err_detect_termination_flag = 1;
 
 	list_for_each_entry(ctx_, &core->list, list) {
 		ctx_->data_not_enough_flag = 0;
@@ -1723,6 +1738,9 @@ static int debug_err_detect_initialize(struct seninf_ctx *ctx)
 		ctx_->ecc_err_corrected_cnt = 0;
 		ctx_->fifo_overrun_cnt = 0;
 		ctx_->size_err_cnt = 0;
+#ifdef ERR_DETECT_TEST
+		ctx_->test_cnt = 0;
+#endif
 	}
 
 	return 0;
@@ -1796,7 +1814,8 @@ static int seninf_csi_s_stream(struct v4l2_subdev *sd, int enable)
 	}
 
 	if (enable) {
-		debug_err_detect_initialize(ctx);
+		if (!(core->err_detect_init_flag))
+			debug_err_detect_initialize(ctx);
 		get_mbus_config(ctx, ctx->sensor_sd);
 
 		get_pixel_rate(ctx, ctx->sensor_sd, &ctx->mipi_pixel_rate);
@@ -1968,6 +1987,10 @@ static int seninf_s_stream(struct v4l2_subdev *sd, int enable)
 		core->aov_abnormal_deinit_flag = 0;
 	}
 
+	if (enable && core->err_detect_init_flag) {
+		dev_info(ctx->dev, "[%s] _enable_stream_err_detect enable(%d)\n", __func__, enable);
+		g_seninf_ops->_enable_stream_err_detect(ctx);
+	}
 	return 0;
 }
 
@@ -2348,6 +2371,7 @@ static int seninf_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	mutex_lock(&ctx->mutex);
 	ctx->open_refcnt++;
 	core->pid = find_get_pid(current->pid);
+	ctx->pid = find_get_pid(current->pid);
 
 	if (ctx->open_refcnt == 1)
 		dev_info(ctx->dev, "%s open_refcnt %d\n", __func__, ctx->open_refcnt);

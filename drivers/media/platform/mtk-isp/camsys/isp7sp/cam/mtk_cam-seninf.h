@@ -14,12 +14,15 @@
 #include "imgsensor-user.h"
 #include "mtk_cam-seninf-regs.h"
 #include "mtk_cam-aov.h"
+#include <linux/atomic.h>
+#include <linux/kfifo.h>
 
 /* def V4L2_MBUS_CSI2_IS_USER_DEFINED_DATA */
 #define SENINF_VC_ROUTING
 
 #define CSI_EFUSE_SET
 //#define SENINF_UT_DUMP
+#define ERR_DETECT_TEST
 
 #define seninf_logi(_ctx, format, args...) do { \
 	if ((_ctx) && (_ctx)->sensor_sd) { \
@@ -111,12 +114,29 @@ struct seninf_core {
 
 	/* record pid */
 	struct pid *pid;
+	unsigned int data_not_enough_detection_cnt;
+	unsigned int err_lane_resync_detection_cnt;
+	unsigned int crc_err_detection_cnt;
+	unsigned int ecc_err_double_detection_cnt;
+	unsigned int ecc_err_corrected_detection_cnt;
+	/* seninf_mux fifo overrun irq */
+	unsigned int fifo_overrun_detection_cnt;
+	/* cam_mux h/v size irq */
+	unsigned int size_err_detection_cnt;
+#ifdef ERR_DETECT_TEST
+	/* enable csi err detect flag */
+	unsigned int err_detect_test_flag;
+#endif
 	/* mipi error detection count */
 	unsigned int detection_cnt;
 	/* enable csi irq flag */
 	unsigned int csi_irq_en_flag;
 	/* enable vsync irq flag */
 	unsigned int vsync_irq_en_flag;
+	unsigned int vsync_irq_detect_csi_irq_error_flag;
+	/* flags for continuous detection */
+	unsigned int err_detect_init_flag;
+	unsigned int err_detect_termination_flag;
 
 	/* aov sensor use */
 	int pwr_refcnt_for_aov;
@@ -242,6 +262,53 @@ struct seninf_ctx {
 
 	/* cammux switch debug element */
 	struct mtk_cam_seninf_mux_param *dbg_chmux_param;
+#ifdef ERR_DETECT_TEST
+	unsigned int test_cnt;
+#endif
+	/* record pid */
+	struct pid *pid;
 };
 
+struct mtk_cam_seninf_irq_event_st {
+	/* for linux kfifo */
+	void *msg_buffer;
+	unsigned int fifo_size;
+	atomic_t is_fifo_overflow;
+	struct kfifo msg_fifo;
+};
+
+#define USED_CAMMUX_MAX_MUM 10
+#define USED_CSI_MAX_MUM 4
+struct mtk_cam_seninf_vsync_info {
+	unsigned int vsync_irq_st;
+	unsigned int vsync_irq_st_h;
+	unsigned int ctx_port[USED_CSI_MAX_MUM];
+	unsigned int csi_irq_st[USED_CSI_MAX_MUM];
+	unsigned int csi_packet_cnt_st[USED_CSI_MAX_MUM];
+	unsigned int used_csi_port_num;
+	unsigned int used_cammux_num;
+	unsigned int used_cammux[USED_CAMMUX_MAX_MUM];
+	unsigned int seninf_mux_irq_st[USED_CAMMUX_MAX_MUM];
+	unsigned int cammux_chk_res_st[USED_CAMMUX_MAX_MUM];
+	unsigned int cammux_irq_st[USED_CAMMUX_MAX_MUM];
+	unsigned int cammux_tag_vc_sel_st[USED_CAMMUX_MAX_MUM];
+	unsigned int cammux_tag_dt_sel_st[USED_CAMMUX_MAX_MUM];
+	unsigned int cammux_ctrl_st[USED_CAMMUX_MAX_MUM];
+	unsigned int cammux_chk_ctrl_st[USED_CAMMUX_MAX_MUM];
+	unsigned int cammux_chk_err_res_st[USED_CAMMUX_MAX_MUM];
+	unsigned int cammux_opt_st[USED_CAMMUX_MAX_MUM];
+	u64 time_mono;
+};
+
+struct mtk_cam_seninf_vsync_work {
+	struct kthread_work work;
+	struct seninf_core *core;
+	struct mtk_cam_seninf_vsync_info vsync_info;
+};
+
+enum VSYNC_DETECT_LOG_LEVEL {
+	DISABLE_VSYNC_DETECT = 0,
+	ENABLE_VSYNC_DETECT_PER_FRAME_INFO = 1,
+	ENABLE_VSYNC_DETECT_ONLY_CSI_IRQ_STATUS_ERROR_INFO = 2,
+};
 #endif
