@@ -43,9 +43,13 @@ static int debug_user_raws[3] = {-1, -1, -1};
 module_param_array(debug_user_raws, int, NULL, 0644);
 MODULE_PARM_DESC(debug_user_raws, "debug: user raws");
 
-static int debug_disable_twin = 1;
-module_param(debug_disable_twin, int, 0644);
-MODULE_PARM_DESC(debug_disable_twin, "debug: disable twin");
+static int debug_disable_twin_otf_scen;
+module_param(debug_disable_twin_otf_scen, int, 0644);
+MODULE_PARM_DESC(debug_disable_twin_otf_scen, "debug: disable twin otf scen");
+
+static int debug_disable_twin_dc_scen;
+module_param(debug_disable_twin_dc_scen, int, 0644);
+MODULE_PARM_DESC(debug_disable_twin_dc_scen, "debug: disable twin dc scen");
 
 #define RAW_PIPELINE_NUM 3
 
@@ -340,6 +344,13 @@ static int mtk_raw_calc_raw_mask_chk_scen(struct mtk_cam_device *cam,
 	return 0;
 }
 
+static bool scenario_disable_twin(int scenario_id, bool is_dc)
+{
+	return is_dc ?
+		!!(debug_disable_twin_dc_scen & BIT(scenario_id)) :
+		!!(debug_disable_twin_otf_scen & BIT(scenario_id));
+}
+
 /**
  * Pre-condition:
  * 1. raws can't be 0
@@ -348,7 +359,15 @@ static int mtk_raw_calc_raw_mask_chk_scen(struct mtk_cam_device *cam,
 static void mtk_raw_calc_num_raw_max_min(struct mtk_cam_resource_raw_v2 *r,
 					 int *n_min, int *n_max)
 {
-	bool is_rgbw = r->scen.scen.normal.w_chn_enabled;
+	struct mtk_cam_scen *scen = &r->scen;
+	int scen_id = scen->id;
+
+	/* TODO: refine this. collect into utils */
+	bool is_rgbw =
+		(scen_id == MTK_CAM_SCEN_NORMAL ||
+		 scen_id == MTK_CAM_SCEN_ODT_NORMAL ||
+		 scen_id == MTK_CAM_SCEN_M2M_NORMAL)
+		&& !!(scen->scen.normal.w_chn_enabled);
 
 	if (is_rgbw) {
 		*n_min = 2;
@@ -356,11 +375,16 @@ static void mtk_raw_calc_num_raw_max_min(struct mtk_cam_resource_raw_v2 *r,
 		return;
 	}
 
-	*n_min = max(1, max_num_conti_bits(r->raws_must));
-	*n_max = min3(1, (int)r->raws_max_num, max_num_conti_bits(r->raws));
-
-	if (debug_disable_twin)
+	if (scenario_disable_twin(scen_id,
+				  r->hw_mode == HW_MODE_DIRECT_COUPLED)) {
+		*n_min = 1;
 		*n_max = 1;
+		return;
+	}
+
+	/* note: raws_max_num is unused now, should be 0. may remove later */
+	*n_min = max(1, max_num_conti_bits(r->raws_must));
+	*n_max = max3(*n_min, (int)r->raws_max_num, max_num_conti_bits(r->raws));
 }
 
 static unsigned int mtk_raw_choose_raws(const int raw_count, const int num_raws,
