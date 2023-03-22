@@ -71,7 +71,7 @@ static struct mtk_yuv_device *get_yuv_dev(struct mtk_raw_device *raw_dev)
 	return dev_get_drvdata(dev);
 }
 
-static void init_camsys_settings(struct mtk_raw_device *dev, bool is_srt)
+static void init_camsys_settings(struct mtk_raw_device *dev, bool is_dc)
 {
 	struct mtk_cam_device *cam_dev = dev->cam;
 	struct mtk_yuv_device *yuv_dev = get_yuv_dev(dev);
@@ -118,7 +118,7 @@ static void init_camsys_settings(struct mtk_raw_device *dev, bool is_srt)
 		return;
 	}
 
-	if (is_srt) {
+	if (is_dc) {
 		writel_relaxed(0x0, cam_dev->base + reg_raw_urgent);
 		writel_relaxed(0x0, cam_dev->base + reg_yuv_urgent);
 		mtk_smi_larb_ultra_dis(&dev->larb_pdev->dev, true);
@@ -131,7 +131,7 @@ static void init_camsys_settings(struct mtk_raw_device *dev, bool is_srt)
 	}
 
 	wmb(); /* TBC */
-	dev_info(dev->dev, "%s: is srt:%d axi_mux:0x%x\n", __func__, is_srt,
+	dev_info(dev->dev, "%s: is dc:%d axi_mux:0x%x\n", __func__, is_dc,
 		readl_relaxed(cam_dev->base + REG_CAMSYS_AXI_MUX));
 }
 
@@ -188,13 +188,13 @@ static void reset_error_handling(struct mtk_raw_device *dev)
 	dev->tg_grab_err_handle_cnt = 0;
 }
 
-void initialize(struct mtk_raw_device *dev, int is_slave,
+#define CAMCQ_CQ_EN_DEFAULT	0x14
+void initialize(struct mtk_raw_device *dev, int is_slave, int is_dc,
 		struct engine_callback *cb)
 {
-	bool is_srt = false; /* TODO(AY): move to args */
 	u32 val;
 
-	val = readl_relaxed(dev->base + REG_CAMCQ_CQ_EN);
+	val = CAMCQ_CQ_EN_DEFAULT;
 	SET_FIELD(&val, CAMCQ_CQ_DROP_FRAME_EN, 1);
 	writel_relaxed(val, dev->base + REG_CAMCQ_CQ_EN);
 
@@ -221,7 +221,7 @@ void initialize(struct mtk_raw_device *dev, int is_slave,
 	atomic_set(&dev->vf_en, 0);
 	reset_msgfifo(dev);
 
-	init_camsys_settings(dev, is_srt);
+	init_camsys_settings(dev, is_dc);
 
 	dev->engine_cb = cb;
 	engine_fsm_reset(&dev->fsm, dev->dev);
@@ -1173,14 +1173,12 @@ static int mtk_raw_of_probe(struct platform_device *pdev,
 	ret = devm_request_threaded_irq(dev, raw->irq,
 					mtk_irq_raw,
 					mtk_thread_irq_raw,
-					0, dev_name(dev), raw);
+					IRQF_NO_AUTOEN, dev_name(dev), raw);
 	if (ret) {
 		dev_dbg(dev, "failed to request irq=%d\n", raw->irq);
 		return ret;
 	}
 	dev_dbg(dev, "registered irq=%d\n", raw->irq);
-
-	disable_irq(raw->irq);
 
 	clks = of_count_phandle_with_args(pdev->dev.of_node, "clocks",
 			"#clock-cells");

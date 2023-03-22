@@ -7465,8 +7465,6 @@ static inline u32 _set_field(u32 *val, int pos, int width, u32 fval)
 #define REG_CQI_R3_BASE        0x41e0
 #define REG_CQI_R4_BASE        0x4250
 
-#define REG_CAMSYS_AXI_MUX			0x0334
-
 #define REG_HALT1_EN					0x00c4
 #define REG_HALT2_EN					0x00c8
 #define REG_HALT3_EN					0x00cc
@@ -7483,19 +7481,19 @@ static inline u32 _set_field(u32 *val, int pos, int width, u32 fval)
 
 /* TBC(AY) */
 /* camsv_a/b */
-#define HALT1_EN		0x3
-#define HALT2_EN		0x3
+#define HALT1_EN		0x2
+#define HALT2_EN		0x2
 /* raw_a/yuv_a */
-#define HALT5_EN		0xF92
+#define HALT5_EN		0xF860
 #define HALT6_EN		0x6F
 /* raw_b/yuv_b */
-#define HALT7_EN		0xF92
+#define HALT7_EN		0xF860
 #define HALT8_EN		0x6F
 /* raw_c/yuv_c */
-#define HALT9_EN		0xF92
+#define HALT9_EN		0xF860
 #define HALT10_EN		0x6F
 /* camsv_c/d/e/f */
-#define HALT13_EN		0xFF
+#define HALT13_EN		0xF0
 
 /* CAMSYS_RAW */
 #define REG_RAWI_R2_BASE       0x42c0

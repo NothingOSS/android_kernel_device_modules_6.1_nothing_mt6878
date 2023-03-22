@@ -513,7 +513,8 @@ static int initialize_engines(struct mtk_cam_ctx *ctx,
 			raw = dev_get_drvdata(ctx->hw_raw[i]);
 			is_master = !!(raw_master_id == raw->id);
 
-			initialize(raw, !is_master, &engine_cb);
+			initialize(raw, !is_master,
+				is_dc_mode(job) ? 1 : 0, &engine_cb);
 
 			if (is_master && opt && opt->master_raw_init)
 				opt->master_raw_init(ctx->hw_raw[i], job);
