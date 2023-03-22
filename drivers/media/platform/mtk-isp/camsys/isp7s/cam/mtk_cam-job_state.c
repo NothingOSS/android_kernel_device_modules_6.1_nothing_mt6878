@@ -42,6 +42,7 @@ const char *str_sensor_state(int state)
 		[S_SENSOR_NONE] = "none",
 		[S_SENSOR_NOT_SET] = "not-set",
 		[S_SENSOR_APPLYING] = "applying",
+		[S_SENSOR_APPLIED] = "applied",
 		[S_SENSOR_LATCHED] = "latched",
 	};
 

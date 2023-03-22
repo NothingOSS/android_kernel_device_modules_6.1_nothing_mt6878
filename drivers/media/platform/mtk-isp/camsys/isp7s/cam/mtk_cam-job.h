@@ -23,8 +23,7 @@ enum mtk_cam_sensor_state {
 	S_SENSOR_NONE,
 	S_SENSOR_NOT_SET,
 	S_SENSOR_APPLYING,
-	/* add this if want to confirm i2c transmission is done */
-	//S_SENSOR_APPLIED,
+	S_SENSOR_APPLIED, /* add this if want to confirm i2c transmission is done */
 	S_SENSOR_LATCHED,
 	NR_S_SENSOR_STATE,
 };

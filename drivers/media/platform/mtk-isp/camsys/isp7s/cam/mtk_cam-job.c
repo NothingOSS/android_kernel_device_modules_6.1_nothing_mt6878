@@ -1110,6 +1110,9 @@ _apply_sensor(struct mtk_cam_job *job)
 
 	/* TBC */
 	/* mtk_cam_tg_flash_req_setup(ctx, s_data); */
+
+	mtk_cam_job_state_set(&job->job_state, SENSOR_STATE, S_SENSOR_APPLIED);
+
 	job_complete_sensor_ctrl_obj(job);
 
 	return 0;
@@ -2672,6 +2675,10 @@ static int apply_sensor_mstream(struct mtk_cam_job *job)
 		v4l2_ctrl_request_setup(&req->req, job->sensor->ctrl_handler);
 
 	frame_sync_end(job);
+
+	mtk_cam_job_state_set(&job->job_state,
+			cur_idx == 0 ? SENSOR_1ST_STATE : SENSOR_2ND_STATE,
+			S_SENSOR_APPLIED);
 
 	if (do_request_setup)
 		job_complete_sensor_ctrl_obj(job);
