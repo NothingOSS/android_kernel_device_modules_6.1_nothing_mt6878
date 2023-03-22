@@ -1398,7 +1398,7 @@ static void dmabuf_rbtree_dump_egl(struct seq_file *s, int pid)
 	} else {
 		map_cnt = egl_pid_cnt;
 		map = kcalloc(map_cnt, sizeof(*map), DMA_HEAP_DUMP_ALLOC_GFP);
-		if (IS_ERR_OR_NULL(map)) {
+		if (!map) {
 			spin_unlock_irqrestore(&egl_cache_lock, flags);
 			dmabuf_dump(s, "[%s]err: no memory map\n", __func__);
 			return;
