@@ -6362,10 +6362,15 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 				DDPPR_ERR("BWM: division by zero, src_w:%u src_h:%u\n",
 						src_w, src_h);
 			}
-			if (src_w * ovl_win_size * (is_compress?4:1) * bpp)
-				peak_inter_value = (16 * expand)/
-					(src_w * ovl_win_size * (is_compress?4:1) * bpp);
-			else {
+			if (src_w * ovl_win_size * bpp) {
+				if ((plane_state->pending.format == DRM_FORMAT_RGB565) ||
+					(plane_state->pending.format == DRM_FORMAT_BGR565))
+					peak_inter_value = (16 * expand) /
+						(src_w * ovl_win_size * (is_compress?8:1) * bpp);
+				else
+					peak_inter_value = (16 * expand) /
+						(src_w * ovl_win_size * (is_compress?4:1) * bpp);
+			} else {
 				need_skip = 1;
 				DDPPR_ERR("BWM: division by zero, src_w:%u ovl_win_size:%u\n",
 						src_w, ovl_win_size);
@@ -6612,18 +6617,6 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(unsigned int frame_idx)
 	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++)
 		memset(&unchanged_compress_ratio_table[i], 0,
 				sizeof(struct layer_compress_ratio_item));
-	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
-		unsigned int index = fn*MAX_LAYER_RATIO_NUMBER + i;
-
-		if (index >= MAX_FRAME_RATIO_NUMBER*MAX_LAYER_RATIO_NUMBER) {
-			DDPINFO("%s errors due to index %u\n", __func__, index);
-			return;
-		}
-		memset(&normal_layer_compress_ratio_tb[index], 0,
-			sizeof(struct layer_compress_ratio_item));
-	}
-	memset(&fbt_layer_compress_ratio_tb[fn], 0,
-		sizeof(struct layer_compress_ratio_item));
 
 	/* Copy one frame ratio to table */
 	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {

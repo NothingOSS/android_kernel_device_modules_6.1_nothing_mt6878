@@ -2481,6 +2481,27 @@ static bool is_disp_reg(uint32_t addr, char *comp_name, uint32_t comp_name_len)
 }
 #endif
 
+void mtk_drm_crtc_diagnose(void)
+{
+	struct drm_crtc *crtc = NULL;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+
+	drm_for_each_crtc(crtc, drm_dev) {
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPMSG("find crtc fail\n");
+			continue;
+		}
+
+		mtk_crtc = to_mtk_crtc(crtc);
+		if (!crtc->enabled
+				|| mtk_crtc->ddp_mode == DDP_NO_USE)
+			continue;
+
+		mtk_drm_crtc_analysis(crtc);
+		mtk_drm_crtc_dump(crtc);
+	}
+}
+
 static void process_dbg_opt(const char *opt)
 {
 	DDPINFO("display_debug cmd %s\n", opt);

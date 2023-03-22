@@ -1776,6 +1776,7 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 						print_bwm_table();
 						dump_disp_info(disp_info,
 							DISP_DEBUG_LEVEL_CRITICAL);
+						mtk_drm_crtc_diagnose();
 						DDPAEE("%s:%d gets ratio:%u > 1000\n",
 							__func__, __LINE__, peak_ratio);
 						aee_trigger = false;
@@ -1821,6 +1822,7 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 						print_bwm_table();
 						dump_disp_info(disp_info,
 							DISP_DEBUG_LEVEL_CRITICAL);
+						mtk_drm_crtc_diagnose();
 						DDPAEE("%s:%d gets ratio:%u > 1000\n",
 							__func__, __LINE__, peak_ratio);
 						aee_trigger = false;
