@@ -1432,10 +1432,6 @@ int mtk_vdec_put_fb(struct mtk_vcodec_ctx *ctx, enum mtk_put_buffer_type type, b
 
 	src_vb2_v4l2 = v4l2_m2m_next_src_buf(ctx->m2m_ctx);
 	src_buf = &src_vb2_v4l2->vb2_buf;
-	if (src_buf == NULL) {
-		mtk_v4l2_err("Error!! src_buf is NULL");
-		return -1;
-	}
 	src_buf_info = container_of(src_vb2_v4l2, struct mtk_video_dec_buf, vb);
 
 	if (src_buf_info == NULL) {
@@ -1451,7 +1447,10 @@ int mtk_vdec_put_fb(struct mtk_vcodec_ctx *ctx, enum mtk_put_buffer_type type, b
 	}
 
 	if (type == PUT_BUFFER_WORKER && src_buf_info->lastframe == EOS) {
-
+		if (src_buf == NULL) {
+			mtk_v4l2_err("Error!! src_buf is NULL");
+			return -1;
+		}
 		clean_display_buffer(ctx, src_buf->planes[0].bytesused != 0U);
 		clean_free_fm_buffer(ctx);
 
