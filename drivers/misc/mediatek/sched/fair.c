@@ -332,7 +332,8 @@ static inline void eenv_init(struct energy_env *eenv,
 		if (trace_sched_eenv_init_enabled())
 			trace_sched_eenv_init(eenv->dsu_freq_base, eenv->dsu_volt_base,
 					share_buck.gear_idx);
-	}
+	} else
+		eenv->wl_type = 0;
 }
 
 /*
