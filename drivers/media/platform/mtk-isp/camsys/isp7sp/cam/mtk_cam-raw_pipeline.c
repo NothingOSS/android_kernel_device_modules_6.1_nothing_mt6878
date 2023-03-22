@@ -486,6 +486,7 @@ static inline bool skip_find_resource(void)
 	return (debug_clk_freq_mhz != -1);
 }
 
+#define PIX_MODE_SIZE_CONSTRAIN 1920
 static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 				     struct mtk_cam_resource_v2 *user_ctrl,
 				     struct mtk_cam_resource_driver *drv_data)
@@ -530,7 +531,8 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 	c.bin_en = (user_ctrl->raw_res.bin == MTK_CAM_BIN_ON) ? 1 : 0;
 
 	/* constraints */
-	stepper.pixel_mode_min = 1;
+	/* always 2 pixel mode, beside sensor size <= 1920 */
+	stepper.pixel_mode_min = (s->width <= PIX_MODE_SIZE_CONSTRAIN) ? 1 : 2;
 	stepper.pixel_mode_max = 2;
 
 	mtk_raw_calc_num_raw_max_min(r,

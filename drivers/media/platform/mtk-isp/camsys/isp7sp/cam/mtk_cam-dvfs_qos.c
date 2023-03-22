@@ -702,16 +702,16 @@ static bool apply_qos_chk(
 	bool ret = false;
 
 	if (bw > *applied) {
-		*applied = new_peak;
+		*applied = bw;
 		*pending = 0;
 		ret = true;
 	} else if (bw < *applied) {
 		if (*pending > 0 && bw >= *pending) {
-			*applied = new_peak;
+			*applied = bw;
 			*pending = 0;
 			ret = true;
 		} else {
-			*pending = new_peak;
+			*pending = bw;
 			ret = false;
 		}
 	}
