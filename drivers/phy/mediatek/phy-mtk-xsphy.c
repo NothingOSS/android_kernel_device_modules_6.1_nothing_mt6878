@@ -1065,7 +1065,7 @@ static ssize_t proc_intr_ofs_write(struct file *file,
 	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
 		return -EFAULT;
 
-	if (kstrtouint(buf, 0, &val))
+	if (kstrtouint(buf, 2, &val))
 		return -EINVAL;
 
 	mtk_phy_update_field(pbase + XSP_USBPHYA_RESERVE, P2AR_RG_INTR_CAL,
