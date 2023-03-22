@@ -5198,7 +5198,7 @@ static int detect_impedance(struct mt6368_priv *priv)
 	int dc_sum = 0, detect_sum = 0;
 	int pick_impedance = 0, impedance = 0, phase_flag = 0;
 	int cur_dc = 0;
-	unsigned int value;
+	unsigned int value = 0;
 
 	/* params by chip */
 	int auxcable_impedance = 5000;
