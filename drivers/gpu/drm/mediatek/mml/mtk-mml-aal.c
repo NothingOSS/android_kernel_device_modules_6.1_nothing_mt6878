@@ -1628,7 +1628,6 @@ static bool aal_hist_read(struct mml_comp_aal *aal)
 	}
 	mml_pq_ir_aal_readback(aal->pq_task, aal->frame_data, aal->pipe, aal->phist,
 		aal->jobid, aal->dual);
-	mml_pq_put_pq_task(aal->pq_task);
 	return true;
 }
 
@@ -1864,6 +1863,8 @@ static void aal_readback_work(struct work_struct *work_item)
 	if (aal->dual)
 		wait_for_completion(
 			&aal->pq_task->aal_hist_done[(aal->pipe + 1) & 0x1]);
+
+	mml_pq_put_pq_task(aal->pq_task);
 
 	mutex_lock(&aal->irq_wq_lock);
 	atomic_dec_if_positive(&aal->hist_read);
