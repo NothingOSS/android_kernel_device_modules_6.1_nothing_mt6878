@@ -16,6 +16,9 @@ extern int g_old_pq_backlight;
 int mtk_drm_ioctl_pq_frame_config(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
 
+int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data,
+	struct drm_file *file_priv);
+
 int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle,
 	void *data, bool user_lock);
 

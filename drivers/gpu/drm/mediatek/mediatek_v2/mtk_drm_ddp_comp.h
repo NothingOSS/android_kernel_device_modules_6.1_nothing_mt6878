@@ -754,6 +754,8 @@ struct mtk_ddp_comp_funcs {
 	void (*config_overhead)(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg);
 	int (*pq_frame_config)(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		      unsigned int cmd, void *params, unsigned int size);
+	int (*pq_ioctl_transact)(struct mtk_ddp_comp *comp,
+		      unsigned int cmd, void *params, unsigned int size);
 };
 
 struct mtk_ddp_comp {
@@ -982,6 +984,16 @@ mtk_ddp_comp_is_busy(struct mtk_ddp_comp *comp)
 	return ret;
 }
 
+static inline int mtk_ddp_comp_pq_ioctl_transact(struct mtk_ddp_comp *comp,
+				      unsigned int cmd, void *params, unsigned int size)
+{
+	int ret = -EINVAL;
+
+	if (comp && comp->funcs && comp->funcs->pq_ioctl_transact && !comp->blank_mode)
+		ret = comp->funcs->pq_ioctl_transact(comp, cmd, params, size);
+
+	return ret;
+}
 
 static inline int mtk_ddp_comp_pq_frame_config(struct mtk_ddp_comp *comp,
 				      struct cmdq_pkt *handle,

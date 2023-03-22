@@ -1191,6 +1191,26 @@ static int mtk_gamma_pq_frame_config(struct mtk_ddp_comp *comp,
 	return ret;
 }
 
+static int mtk_gamma_ioctl_transact(struct mtk_ddp_comp *comp,
+		unsigned int cmd, void *data, unsigned int data_size)
+{
+	int ret = -1;
+	/* will only call left path */
+	switch (cmd) {
+	case PQ_GAMMA_SET_GAMMALUT:
+		break;
+	case PQ_GAMMA_SET_12BIT_GAMMALUT:
+		break;
+	case PQ_GAMMA_BYPASS_GAMMA:
+		break;
+	case PQ_GAMMA_DISABLE_MUL_EN:
+		break;
+	default:
+		break;
+	}
+	return ret;
+}
+
 static const struct mtk_ddp_comp_funcs mtk_disp_gamma_funcs = {
 	.gamma_set = mtk_gamma_set,
 	.config = mtk_gamma_config,
@@ -1204,6 +1224,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_gamma_funcs = {
 	.unprepare = mtk_gamma_unprepare,
 	.config_overhead = mtk_disp_gamma_config_overhead,
 	.pq_frame_config = mtk_gamma_pq_frame_config,
+	.pq_ioctl_transact = mtk_gamma_ioctl_transact,
 };
 
 static int mtk_disp_gamma_bind(struct device *dev, struct device *master,

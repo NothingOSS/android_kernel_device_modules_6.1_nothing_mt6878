@@ -54,20 +54,86 @@ int mtk_drm_ioctl_pq_frame_config(struct drm_device *dev, void *data,
 	struct drm_crtc *crtc;
 	struct mtk_drm_pq_config_ctl *params = data;
 
-	if (data == NULL || params->disp_id >= MAX_CRTC)
-		return -1;
-
 	DDPINFO("%s:%d ++\n", __func__, __LINE__);
+
+	if (data == NULL)
+		return -1;
 
 	crtc = private->crtc[params->disp_id];
 //	crtc = drm_crtc_find(dev, file_priv, params->disp_id);
-
 	if (crtc)
 		return mtk_pq_helper_frame_config(crtc, NULL, data, true);
 
 	DDPINFO("%s:%d --\n", __func__, __LINE__);
 
 	return -1;
+}
+
+int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *file_priv)
+{
+	struct mtk_drm_private *private = dev->dev_private;
+	struct drm_crtc *crtc;
+	struct mtk_drm_pq_proxy_ctl *params = data;
+	struct mtk_ddp_comp *comp;
+	unsigned int pq_type;
+	unsigned int cmd;
+	unsigned int i, j;
+	char stack_kdata[128];
+	char *kdata = NULL;
+	int ret = -1;
+
+	DDPINFO("%s:%d ++\n", __func__, __LINE__);
+
+	if (!params || !params->size || !params->data)
+		return -1;
+
+	pq_type = params->cmd >> 16;
+	cmd = params->cmd & 0xffff;
+
+	crtc = private->crtc[params->disp_id];
+//	crtc = drm_crtc_find(dev, file_priv, params->disp_id);
+	if (!crtc) {
+		DDPPR_ERR("%s, crtc is null id:%d!\n", __func__, params->disp_id);
+		return -1;
+	}
+
+	if (params->size <= sizeof(stack_kdata))
+		kdata = stack_kdata;
+	else
+		kdata = kmalloc(params->size, GFP_KERNEL);
+
+	if (!kdata) {
+		DDPINFO("%s:%d, kdata alloc failed pq_type:%d, cmd:%d\n", __func__,
+				__LINE__, pq_type, cmd);
+		return -1;
+	}
+
+	if (copy_from_user(kdata, (void __user *)params->data, params->size) != 0)
+		goto err;
+
+	if (pq_type == MTK_DISP_VIRTUAL_TYPE) {
+		// TODO: for virtual module ex: mtk_drm_ioctl_pq_get_persist_property
+	} else {
+		for_each_comp_in_cur_crtc_path(comp, to_mtk_crtc(crtc), i, j) {
+			if (pq_module_matches[pq_type].type == mtk_ddp_comp_get_type(comp->id)) {
+				if (mtk_ddp_comp_pq_ioctl_transact(comp,
+					cmd, kdata, params->size) < 0)
+					DDPINFO("%s:%d, ioctl transact failed, comp:%d\n",
+						__func__, __LINE__, comp->id);
+			}
+		}
+	}
+
+	if (cmd > PQ_GET_CMD_START) {
+		if (copy_to_user((void __user *)params->data, kdata,  params->size) != 0)
+			goto err;
+	}
+	ret = 0;
+	DDPINFO("%s:%d --\n", __func__, __LINE__);
+err:
+	if (kdata != stack_kdata)
+		kfree(kdata);
+	return ret;
 }
 
 static void frame_cmdq_cb(struct cmdq_cb_data data)
@@ -97,7 +163,7 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 	mtk_drm_trace_begin("mtk_pq_helper_frame_config");
 	CRTC_MMP_EVENT_START(index, pq_frame_config, (unsigned long)crtc, 0);
 
-	if (cmds_len == 0 || cmds_len > REQUEST_MAX_COUNT || params->data == NULL) {
+	if (!cmds_len || cmds_len > REQUEST_MAX_COUNT || params->data == NULL) {
 		DDPPR_ERR("%s:%d, invalid requests for pq config\n",
 			__func__, __LINE__);
 		CRTC_MMP_MARK(index, pq_frame_config, 0, 1);
@@ -151,7 +217,7 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 		unsigned int pq_type = requests[index].cmd >> 16;
 		unsigned int cmd = requests[index].cmd & 0xffff;
 
-		if (pq_type >= MTK_DISP_PQ_TYPE_MAX)
+		if (pq_type >= MTK_DISP_PQ_TYPE_MAX || !requests[index].size)
 			continue;
 
 		for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
