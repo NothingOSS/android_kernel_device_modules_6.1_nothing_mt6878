@@ -328,6 +328,69 @@ static void debug_send_event(const struct transition_param *p)
 			str_event(p->event));
 }
 
+static const int waitable_event =
+	BIT(CAMSYS_EVENT_IRQ_L_SOF) |
+	BIT(CAMSYS_EVENT_IRQ_FRAME_DONE);
+
+static void mtk_cam_ctrl_wake_up_on_event(struct mtk_cam_ctrl *ctrl, int event)
+{
+
+	if (BIT(event) & (~waitable_event))
+		return;
+
+	wake_up(&ctrl->event_wq);
+}
+
+/* note: just to support little margin for sw latency here */
+#define VALID_SWITCH_PERIOD_FROM_VSYNC_MS	3
+static bool check_inner_within_tolerance(struct mtk_cam_ctrl *ctrl, int seq)
+{
+	u64 last_sof_ts;
+	int inner_seq;
+
+	spin_lock(&ctrl->info_lock);
+	inner_seq = ctrl->r_info.inner_seq_no;
+	last_sof_ts = ctrl->r_info.sof_l_ts_ns;
+	spin_unlock(&ctrl->info_lock);
+
+	if (inner_seq == seq) {
+		u64 ts = ktime_get_boottime_ns();
+
+		return ts - last_sof_ts <
+			VALID_SWITCH_PERIOD_FROM_VSYNC_MS * 1000000;
+	}
+
+	return 0;
+}
+
+static bool check_done(struct mtk_cam_ctrl *ctrl, int seq)
+{
+	int done_seq;
+
+	spin_lock(&ctrl->info_lock);
+	done_seq = ctrl->r_info.done_seq_no;
+	spin_unlock(&ctrl->info_lock);
+
+	return done_seq == seq;
+}
+
+static int mtk_cam_ctrl_wait_event(struct mtk_cam_ctrl *ctrl,
+				   bool (*cond)(struct mtk_cam_ctrl *, int),
+				   int seq, int timeout_ms)
+{
+	long timeout = msecs_to_jiffies(timeout_ms);
+
+	timeout = wait_event_timeout(ctrl->event_wq,
+				     cond(ctrl, seq), timeout);
+	if (timeout == 0) {
+		pr_info("%s: error: wait for %ps: seq 0x%x %dms timeout\n",
+			__func__, cond, seq, timeout_ms);
+		return -1;
+	}
+
+	return 0;
+}
+
 static int mtk_cam_ctrl_send_event(struct mtk_cam_ctrl *ctrl, int event)
 {
 	struct mtk_cam_ctrl_runtime_info local_info;
@@ -352,6 +415,7 @@ static int mtk_cam_ctrl_send_event(struct mtk_cam_ctrl *ctrl, int event)
 
 	ctrl_send_event(ctrl, &p);
 
+	mtk_cam_ctrl_wake_up_on_event(ctrl, event);
 	ctrl_apply_actions(ctrl);
 
 	return 0;
@@ -406,6 +470,11 @@ static void handle_frame_done(struct mtk_cam_ctrl *ctrl,
 		       engine_type, engine_id, seq_no)) {
 
 		/* last done: trigger FSM */
+
+		spin_lock(&ctrl->info_lock);
+		ctrl->r_info.done_seq_no = seq_no;
+		spin_unlock(&ctrl->info_lock);
+
 		mtk_cam_ctrl_send_event(ctrl, CAMSYS_EVENT_IRQ_FRAME_DONE);
 	}
 
@@ -457,9 +526,6 @@ static void ctrl_vsync_preprocess(struct mtk_cam_ctrl *ctrl,
 	}
 
 	spin_unlock(&ctrl->info_lock);
-
-	if (vsync_res->is_last)
-		wake_up(&ctrl->event_wq);
 
 	if (hint_inner_err)
 		pr_info("%s: warn. inner not updated to 0x%x, engine not ready: 0x%lx\n",
@@ -801,70 +867,22 @@ static void mtk_cam_ctrl_stream_on_flow(struct mtk_cam_job *job)
 	dev_info(dev, "[%s] ctx %d finish\n", __func__, ctrl->ctx->stream_id);
 }
 
-/* note: just to support little margin for sw latency here */
-#define VALID_SWITCH_PERIOD_FROM_VSYNC_MS	3
-static bool check_valid_sync(struct mtk_cam_ctrl *ctrl, int seq)
-{
-	u64 last_sof_ts;
-	int inner_seq;
-
-	spin_lock(&ctrl->info_lock);
-	inner_seq = ctrl->r_info.inner_seq_no;
-	last_sof_ts = ctrl->r_info.sof_l_ts_ns;
-	spin_unlock(&ctrl->info_lock);
-
-	if (inner_seq == seq) {
-		u64 ts = ktime_get_boottime_ns();
-
-		return ts - last_sof_ts <
-			VALID_SWITCH_PERIOD_FROM_VSYNC_MS * 1000000;
-	}
-
-	return 0;
-}
-
-/*
- * wait until prev_seq is in inner (updated at last vsync)
- */
-static int mtk_cam_ctrl_wait_for_switch(struct mtk_cam_ctrl *ctrl,
-					int prev_seq)
-{
-	long timeout = msecs_to_jiffies(1000);
-	int ret = 0;
-
-	/*
-	 * case 1: prev_seq is in inner and vsync has came already
-	 * case 2: prev_seq is not innner
-	 */
-	pr_info("%s: wait for next vsync with inner 0x%x\n",
-		__func__, prev_seq);
-
-	timeout = wait_event_timeout(ctrl->event_wq,
-				     check_valid_sync(ctrl, prev_seq),
-				     timeout);
-	if (timeout == 0) {
-		pr_info("%s: error: wait for inner 0x%x timeout\n",
-			__func__, prev_seq);
-		ret = -1;
-	}
-
-	return ret;
-}
-
 static void mtk_cam_ctrl_seamless_switch_flow(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_ctrl *ctrl = &ctx->cam_ctrl;
 	struct device *dev = ctx->cam->dev;
-
 	unsigned long timeout = msecs_to_jiffies(200);
-
-	if (mtk_cam_ctrl_wait_for_switch(ctrl,
-					 prev_frame_seq(job->frame_seq_no)))
-		goto SWITCH_FAILURE;
+	int prev_seq;
 
 	dev_info(dev, "[%s] begin waiting switch no:%d seq 0x%x\n",
 		__func__, job->req_seq, job->frame_seq_no);
+
+	prev_seq = prev_frame_seq(job->frame_seq_no);
+
+	if (mtk_cam_ctrl_wait_event(ctrl, check_inner_within_tolerance,
+				    prev_seq, 1000))
+		goto SWITCH_FAILURE;
 
 	/* note: apply cq first to avoid cq trig dly */
 	if (mtk_cam_job_manually_apply_isp_async(job))
@@ -884,6 +902,10 @@ static void mtk_cam_ctrl_seamless_switch_flow(struct mtk_cam_job *job)
 
 	call_jobop(job, apply_switch);
 	vsync_set_desired(&ctrl->vsync_col, _get_master_engines(job->used_engine));
+
+	/* TODO: for dvfs */
+	if (0 && mtk_cam_ctrl_wait_event(ctrl, check_done, prev_seq, 500))
+		goto SWITCH_FAILURE;
 
 	dev_info(dev, "[%s] finish, used_engine:0x%x\n",
 		 __func__, job->used_engine);
@@ -1139,6 +1161,7 @@ static void reset_runtime_info(struct mtk_cam_ctrl *ctrl)
 	info->ack_seq_no = -1;
 	info->outer_seq_no = -1;
 	info->inner_seq_no = -1;
+	info->done_seq_no = -1;
 
 	spin_unlock(&ctrl->info_lock);
 }
