@@ -231,6 +231,24 @@ static int mmdvfs_debug_opp_show(struct seq_file *file, void *data)
 	for (i = 0; i < USER_NUM; i++)
 		seq_printf(file, "user: %u opp: %u\n", i, readl(MEM_VOTE_OPP_USR(i)));
 
+	/* MMDVFS_DBG_VER3.5 */
+	seq_puts(file, "VER3.5: mux controlled by vcp:\n");
+
+	//mux opp
+	seq_puts(file, "mux latest opp\n");
+	for (i = 0; i < USER_NUM; i++)
+		seq_printf(file, "mux: %u opp: %u\n", i, readl(MEM_MUX_OPP(i)));
+
+	//power opp
+	seq_puts(file, "power latest opp\n");
+	for (i = 0; i < PWR_MMDVFS_NUM; i++)
+		seq_printf(file, "power: %u opp: %u\n", i, readl(MEM_PWR_OPP(i)));
+
+	//power current gear
+	seq_puts(file, "power current gear\n");
+	for (i = 0; i < PWR_MMDVFS_NUM; i++)
+		seq_printf(file, "power: %u gear: %u\n", i, readl(MEM_PWR_CUR_GEAR(i)));
+
 	// vmm debug
 	seq_printf(file, "VMM Efuse_low:%#x, Efuse_high:%#x\n",
 		readl(MEM_VMM_EFUSE_LOW), readl(MEM_VMM_EFUSE_HIGH));
