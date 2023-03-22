@@ -819,7 +819,7 @@ cpumask_t __read_mostly **cpu_array;
 void init_cpu_array(void)
 {
 	int i;
-	int num_sched_clusters = get_nr_gears();
+	num_sched_clusters = get_nr_gears();
 
 	cpu_array = kcalloc(num_sched_clusters, sizeof(cpumask_t *),
 			GFP_ATOMIC | __GFP_NOFAIL);
