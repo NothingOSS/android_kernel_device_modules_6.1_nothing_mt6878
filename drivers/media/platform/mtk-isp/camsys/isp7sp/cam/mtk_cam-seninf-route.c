@@ -1503,14 +1503,16 @@ int mtk_cam_seninf_get_tag_order(struct v4l2_subdev *sd, int pad_id)
 
 	for (i = 0; i < vcinfo->cnt; i++) {
 		vc = &vcinfo->vc[i];
-		if (vc->out_pad == PAD_SRC_PDAF1 ||
-			vc->out_pad == PAD_SRC_PDAF3 ||
-			vc->out_pad == PAD_SRC_PDAF5) {
+		if (vc->out_pad == PAD_SRC_RAW0  ||
+			vc->out_pad == PAD_SRC_RAW1  ||
+			vc->out_pad == PAD_SRC_RAW2) {
 			exposure_num++;
 		}
 	}
 
 	switch (pad_id) {
+	case PAD_SRC_RAW1:
+	case PAD_SRC_RAW_W1:
 	case PAD_SRC_PDAF3:
 		switch (exposure_num) {
 		case 3:
@@ -1524,6 +1526,8 @@ int mtk_cam_seninf_get_tag_order(struct v4l2_subdev *sd, int pad_id)
 			break;
 		}
 		break;
+	case PAD_SRC_RAW2:
+	case PAD_SRC_RAW_W2:
 	case PAD_SRC_PDAF5:
 		ret = (exposure_num == 3) ? 2 : 0;
 		break;
