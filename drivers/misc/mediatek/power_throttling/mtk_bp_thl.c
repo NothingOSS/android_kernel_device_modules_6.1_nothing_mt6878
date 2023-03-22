@@ -6,6 +6,7 @@
 #include <linux/device.h>
 #include <linux/kthread.h>
 #include <linux/module.h>
+#include <linux/workqueue.h>
 #include <linux/mutex.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
@@ -40,6 +41,8 @@ struct bp_thl_priv {
 	int temp_cur_stage;
 	int temp_max_stage;
 	int *throttle_table;
+	struct work_struct soc_work;
+	struct power_supply *psy;
 };
 static struct bp_thl_priv *bp_thl_data;
 
@@ -221,28 +224,53 @@ int bp_notify_handler(void *unused)
 
 int bp_psy_event(struct notifier_block *nb, unsigned long event, void *v)
 {
-	struct power_supply *psy = v;
+	if (!bp_thl_data) {
+		pr_info("[%s] bp_thl_data not init\n", __func__);
+		return NOTIFY_DONE;
+	}
+
+	bp_thl_data->psy = v;
+	schedule_work(&bp_thl_data->soc_work);
+	return NOTIFY_DONE;
+}
+
+static void soc_handler(struct work_struct *work)
+{
+	struct power_supply *psy;
 	union power_supply_propval val;
 	int ret, soc, temp, new_lv, soc_thd, temp_thd, soc_stage, temp_stage;
 	static int last_soc, last_temp;
 	bool loop;
+
+	if (!bp_thl_data) {
+		pr_info("[%s] bp_thl_data not init\n", __func__);
+		return;
+	}
+
+	if (!bp_thl_data->psy) {
+		pr_info("[%s] psy not init\n", __func__);
+		return;
+	}
+
+	psy =  bp_thl_data->psy;
+
 	if (strcmp(psy->desc->name, "battery") != 0)
-		return NOTIFY_DONE;
+		return;
 	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CAPACITY, &val);
 	if (ret)
-		return NOTIFY_DONE;
+		return;
 	soc = val.intval;
 	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_TEMP, &val);
 	if (ret)
-		return NOTIFY_DONE;
+		return;
 	temp = val.intval / 10;
 	if (soc > 100 || soc <= 0) {
 		pr_info("%s:%d return\n", __func__, __LINE__);
-		return NOTIFY_DONE;
+		return;
 	}
 	if (soc == last_soc && temp == last_temp) {
 		pr_info("%s:%d soc and temperature are all the same\n", __func__, __LINE__);
-		return NOTIFY_DONE;
+		return;
 	}
 	new_lv = bp_thl_data->bp_thl_lv;
 	soc_stage = bp_thl_data->soc_cur_stage;
@@ -298,7 +326,7 @@ int bp_psy_event(struct notifier_block *nb, unsigned long event, void *v)
 
 	if (bp_notify_flag_ext || bp_notify_flag)
 		wake_up_interruptible(&bp_notify_waiter);
-	return NOTIFY_DONE;
+	return;
 }
 
 static int soc_default_setting(struct device *dev, struct bp_thl_priv *priv)
@@ -426,6 +454,7 @@ static int bp_thl_probe(struct platform_device *pdev)
 		return ret;
 	}
 	bp_thl_data = priv;
+	INIT_WORK(&bp_thl_data->soc_work, soc_handler);
 	bp_notify_lock = wakeup_source_register(NULL, "bp_notify_lock wakelock");
 	if (!bp_notify_lock) {
 		pr_notice("bp_notify_lock wakeup source fail\n");
