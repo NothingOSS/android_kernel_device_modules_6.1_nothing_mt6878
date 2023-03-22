@@ -223,7 +223,7 @@ static __init int emimputest_init(void)
 
 	pr_info("emimputest was loaded\n");
 
-	node = of_find_compatible_node(NULL, NULL, "mediatek,mt6983-emimpu");
+	node = of_find_compatible_node(NULL, NULL, "mediatek,smpu");
 	if (!node) {
 		pr_info("emimputest: cannot find emimpu node\n");
 		return -ENXIO;
