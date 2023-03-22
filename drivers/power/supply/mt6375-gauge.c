@@ -271,8 +271,8 @@ static void gauge_irq_lock(struct irq_data *data)
 static void gauge_irq_sync_unlock(struct irq_data *data)
 {
 	struct mt6375_priv *priv = irq_data_get_irq_chip_data(data);
-	int idx = data->hwirq / 8, bits = BIT(data->hwirq % 8), ret;
-	unsigned int reg;
+	int bits = BIT(data->hwirq % 8), ret;
+	unsigned int reg, idx = data->hwirq / 8;
 
 	if (priv->unmask_buf[idx] & bits)
 		reg = RG_BM_TOP_INT_CON0_SET + idx * 3;
@@ -789,10 +789,7 @@ static void fgauge_read_RTC_boot_status(struct mtk_gauge *gauge)
 
 	if (gauge->hw_status.rtc_invalid == 0) {
 		spare0_reg_b13 = (spare0_reg & 0x20) >> 5;
-		if ((hw_id & 0xff00) == 0x3500)
-			gauge->hw_status.is_bat_plugout = spare0_reg_b13;
-		else
-			gauge->hw_status.is_bat_plugout = !spare0_reg_b13;
+		gauge->hw_status.is_bat_plugout = !spare0_reg_b13;
 
 		gauge->hw_status.bat_plug_out_time = spare0_reg & 0x1f;
 	} else {
@@ -1172,7 +1169,7 @@ static int read_hw_ocv_6375_power_on(struct mtk_gauge *gauge)
 	signed int adc_result = 0;
 	u16 regval = 0;
 	int offset_trim = priv->offset_trim;
-	unsigned int sel = 0, data;
+	unsigned int sel = 0, data = 0;
 	bool is_ship_rst;
 
 	regmap_raw_read(gauge->regmap, RG_AUXADC_ADC_OUT_PWRON_PCHR, &regval, sizeof(regval));
@@ -2146,7 +2143,6 @@ static int gauge_initialized_set(struct mtk_gauge *gauge, struct mtk_gauge_sysfs
 static int reset_fg_rtc_set(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_info *attr,
 			    int val)
 {
-	int hw_id = 0x6375;
 	int temp_value;
 	u8 spare0_reg, after_rst_spare0_reg;
 	u8 spare3_reg, after_rst_spare3_reg;
@@ -2157,19 +2153,11 @@ static int reset_fg_rtc_set(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_fiel
 	spare0_reg = get_rtc_spare0_fg_value(gauge);
 
 	/* raise 15b to reset */
-	if ((hw_id & 0xff00) == 0x3500) {
-		temp_value = 0x80;
-		set_rtc_spare0_fg_value(gauge, temp_value);
-		mdelay(1);
-		temp_value = 0x00;
-		set_rtc_spare0_fg_value(gauge, temp_value);
-	} else {
-		temp_value = 0x80;
-		set_rtc_spare0_fg_value(gauge, temp_value);
-		mdelay(1);
-		temp_value = 0x20;
-		set_rtc_spare0_fg_value(gauge, temp_value);
-	}
+	temp_value = 0x80;
+	set_rtc_spare0_fg_value(gauge, temp_value);
+	mdelay(1);
+	temp_value = 0x20;
+	set_rtc_spare0_fg_value(gauge, temp_value);
 
 	/* read spare0 again */
 	after_rst_spare0_reg = get_rtc_spare0_fg_value(gauge);
@@ -2420,7 +2408,7 @@ static int boot_zcv_get(struct mtk_gauge *gauge_dev, struct mtk_gauge_sysfs_fiel
 	int _hw_ocv_75_pon_rdy;
 	int _hw_ocv_chgin;
 	int _hw_ocv_chgin_rdy;
-	int now_temp;
+	int now_temp = -1;
 	int now_thr;
 	int tmp_hwocv_chgin = 0;
 	bool fg_is_charger_exist;
@@ -2442,16 +2430,16 @@ static int boot_zcv_get(struct mtk_gauge *gauge_dev, struct mtk_gauge_sysfs_fiel
 	else
 		_hw_ocv_chgin = 0;
 
-	now_temp = gm->bs_data.bat_batt_temp;
-
 	if (gm == NULL)
 		now_thr = 300;
 	else {
+		now_temp = gm->bs_data.bat_batt_temp;
 		if (now_temp > gm->ext_hwocv_swocv_lt_temp)
 			now_thr = gm->ext_hwocv_swocv;
 		else
 			now_thr = gm->ext_hwocv_swocv_lt;
 	}
+
 
 	if (_hw_ocv_chgin < 25000)
 		_hw_ocv_chgin_rdy = 0;
@@ -2951,7 +2939,7 @@ out:
 
 static int mt6375_auxadc_init_vbat_calibration(struct mt6375_priv *priv)
 {
-	int ret, offset_trim;
+	int ret, offset_trim = 0;
 	u16 data = 0;
 
 	regmap_bulk_read(priv->regmap, AUXADC_EFUSE_OFFSET_TRIM, &offset_trim, 2);
@@ -3049,7 +3037,7 @@ out:
 static int bat_vol_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_info *attr, int *val)
 {
 	struct mt6375_priv *priv = container_of(gauge, struct mt6375_priv, gauge);
-	int i, ret, vbat_mon;
+	int i, ret, vbat_mon = 0;
 	u32 data = 0;
 	static long long t1;
 	static int print_period = 3;
@@ -3350,7 +3338,7 @@ static int battery_cic2_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_fiel
 static int initial_set(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_info *attr, int val)
 {
 	int bat_flag = 0;
-	int is_charger_exist;
+	int is_charger_exist = 0;
 	u16 rev_val = 0;
 
 	regmap_update_bits(gauge->regmap, RG_AUXADC_NAG_0, AUXADC_NAG_PRD_MASK,

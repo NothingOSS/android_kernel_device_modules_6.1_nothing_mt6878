@@ -703,7 +703,7 @@ static inline int mt6375_chg_field_get(struct mt6375_chg_data *ddata,
 				       enum mt6375_chg_reg_field fd, u32 *val)
 {
 	int ret;
-	u32 regval;
+	u32 regval = 0;
 
 	ret = regmap_field_read(ddata->rmap_fields[fd], &regval);
 	if (ret < 0)
@@ -2286,9 +2286,12 @@ static irqreturn_t mt6375_fl_batpro_done_handler(int irq, void *data)
 static irqreturn_t mt6375_adc_vbat_mon_ov_handler(int irq, void *data)
 {
 	struct mt6375_chg_data *ddata = data;
-	u32 cv;
+	u32 cv = 0;
+	int ret;
 
-	mt6375_get_cv(ddata->chgdev, &cv);
+	ret = mt6375_get_cv(ddata->chgdev, &cv);
+	if (ret < 0)
+		return ret;
 	mt_dbg(ddata->dev, "cv = %dmV\n", U_TO_M(cv));
 	return IRQ_HANDLED;
 }
