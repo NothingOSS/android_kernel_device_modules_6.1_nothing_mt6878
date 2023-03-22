@@ -1290,7 +1290,7 @@ static int mtk_ut_yuv_probe(struct platform_device *pdev)
 static int mtk_ut_yuv_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	struct mtk_ut_raw_device *drvdata = dev_get_drvdata(dev);
+	struct mtk_ut_yuv_device *drvdata = dev_get_drvdata(dev);
 	int i;
 
 	//dev_info(dev, "%s\n", __func__);
@@ -1404,7 +1404,7 @@ static void ut_rms_set_ops(struct device *dev)
 static int mtk_ut_rms_component_bind(struct device *dev,
 				     struct device *master, void *data)
 {
-	struct mtk_ut_yuv_device *drvdata = dev_get_drvdata(dev);
+	struct mtk_ut_rms_device *drvdata = dev_get_drvdata(dev);
 	struct mtk_cam_ut *ut = data;
 
 	//dev_info(dev, "%s\n", __func__);
@@ -1414,11 +1414,11 @@ static int mtk_ut_rms_component_bind(struct device *dev,
 		return -1;
 	}
 
-	if (!ut->yuv) {
-		dev_info(dev, "no yuv arr, num of yuv %d\n", ut->num_yuv);
+	if (!ut->rms) {
+		dev_info(dev, "no rms arr, num of rms %d\n", ut->num_rms);
 		return -1;
 	}
-	ut->yuv[drvdata->id] = dev;
+	ut->rms[drvdata->id] = dev;
 
 	return 0;
 }
@@ -1508,7 +1508,7 @@ static int mtk_ut_rms_probe(struct platform_device *pdev)
 static int mtk_ut_rms_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	struct mtk_ut_raw_device *drvdata = dev_get_drvdata(dev);
+	struct mtk_ut_rms_device *drvdata = dev_get_drvdata(dev);
 	int i;
 
 	//dev_info(dev, "%s\n", __func__);
@@ -1523,13 +1523,17 @@ static int mtk_ut_rms_remove(struct platform_device *pdev)
 	return 0;
 }
 
-
 static int mtk_ut_rms_pm_suspend(struct device *dev)
 {
 	int ret = 0;
 
 	dev_dbg(dev, "- %s\n", __func__);
+#if WITH_POWER_DRIVER
+	if (pm_runtime_suspended(dev))
+		return 0;
 
+	ret = pm_runtime_force_suspend(dev);
+#endif
 	return ret;
 }
 
@@ -1538,7 +1542,15 @@ static int mtk_ut_rms_pm_resume(struct device *dev)
 	int ret = 0;
 
 	dev_dbg(dev, "- %s\n", __func__);
+#if WITH_POWER_DRIVER
+	if (pm_runtime_suspended(dev))
+		return 0;
 
+	/* Force ISP HW to resume */
+	ret = pm_runtime_force_resume(dev);
+	if (ret)
+		return ret;
+#endif
 	return ret;
 }
 
@@ -1554,7 +1566,7 @@ static int mtk_ut_rms_runtime_suspend(struct device *dev)
 
 static int mtk_ut_rms_runtime_resume(struct device *dev)
 {
-	struct mtk_ut_yuv_device *raw = dev_get_drvdata(dev);
+	struct mtk_ut_rms_device *raw = dev_get_drvdata(dev);
 	int i, ret;
 
 	for (i = 0; i < raw->num_clks; i++) {

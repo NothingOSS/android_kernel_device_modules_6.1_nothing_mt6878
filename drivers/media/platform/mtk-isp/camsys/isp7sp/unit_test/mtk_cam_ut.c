@@ -1278,10 +1278,11 @@ static struct component_match *mtk_cam_match_add(struct device *dev)
 
 static int bind_cam_sub_pipes(struct mtk_cam_ut *ut)
 {
-	struct device *consumer, *supplier;
+	struct device *consumer, *supplier, *supplier2;
 	struct device_link *link;
 	struct mtk_ut_raw_device *raw;
 	struct mtk_ut_yuv_device *yuv;
+	struct mtk_ut_rms_device *rms;
 	int i;
 
 	//dev_info(ut->dev, "%s\n", __func__);
@@ -1289,14 +1290,16 @@ static int bind_cam_sub_pipes(struct mtk_cam_ut *ut)
 	for (i = 0; i < ut->num_raw; i++) {
 		consumer = ut->raw[i];
 		supplier = ut->yuv[i];
-		if (!consumer || !supplier) {
+		supplier2 = ut->rms[i];
+		if (!consumer || !supplier || !supplier2) {
 			dev_info(ut->dev,
-				 "failed to get raw/yuv dev for id %d\n", i);
+				 "failed to get raw/yuv/rms dev for id %d\n", i);
 			continue;
 		}
 
 		raw = dev_get_drvdata(consumer);
 		yuv = dev_get_drvdata(supplier);
+		rms = dev_get_drvdata(supplier2);
 
 		raw->yuv_base = yuv->base;
 
@@ -1307,6 +1310,18 @@ static int bind_cam_sub_pipes(struct mtk_cam_ut *ut)
 			dev_info(ut->dev,
 				 "Unable to create link between %s and %s\n",
 				 dev_name(consumer), dev_name(supplier));
+			return -ENODEV;
+		}
+
+		raw->rms_base = rms->base;
+
+		link = device_link_add(consumer, supplier2,
+			DL_FLAG_AUTOREMOVE_CONSUMER |
+			DL_FLAG_PM_RUNTIME);
+		if (!link) {
+			dev_info(ut->dev,
+			"Unable to create link between %s and %s\n",
+			dev_name(consumer), dev_name(supplier2));
 			return -ENODEV;
 		}
 	}
@@ -1336,9 +1351,18 @@ static int mtk_cam_ut_master_bind(struct device *dev)
 		}
 	}
 
-	if (ut->num_raw != ut->num_yuv) {
-		dev_info(dev, "wrong num: raw %d, yuv %d\n",
-			 ut->num_raw, ut->num_yuv);
+	if (ut->num_rms) {
+		ut->rms = devm_kcalloc(dev, ut->num_rms, sizeof(*ut->rms),
+				       GFP_KERNEL);
+		if (!ut->rms) {
+			/* dev_info(dev, "kcalloc rms fail\n"); */
+			return -ENOMEM;
+		}
+	}
+
+	if (ut->num_raw != ut->num_yuv || ut->num_raw != ut->num_rms) {
+		dev_info(dev, "wrong num: raw %d, yuv %d, rms %d\n",
+			 ut->num_raw, ut->num_yuv, ut->num_rms);
 		return -ENODEV;
 	}
 #if WITH_CAMSV_DRIVER

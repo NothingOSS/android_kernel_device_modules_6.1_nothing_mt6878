@@ -52,6 +52,7 @@ struct mtk_ut_raw_device {
 	void __iomem *base;
 	void __iomem *base_inner;
 	void __iomem *yuv_base;
+	void __iomem *rms_base;
 	unsigned int num_clks;
 	struct clk **clks;
 
@@ -278,7 +279,7 @@ extern struct platform_driver mtk_ut_seninf_driver;
 #define WITH_MRAW_DRIVER 1
 #define SUPPORT_PM 1
 #define SUPPORT_RAWB 0
-#define WITH_POWER_DRIVER 0
+#define WITH_POWER_DRIVER 1
 extern struct platform_driver mtk_ut_larb_driver;
 
 #endif /* __MTK_CAM_UT_ENGINES_H */
