@@ -329,6 +329,11 @@ static s32 hdr_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 {
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 
+	if (IS_ERR_OR_NULL(task) || IS_ERR_OR_NULL(task->pq_task)) {
+		mml_err("%s task or pq_task is NULL", __func__);
+		return 0;
+	}
+
 	mutex_lock(&task->pq_task->hdr_comp_lock);
 	mml_pq_ir_log("%s jobid[%d] pipe_id[%d] engine_id[%d] hist_done[%d] hist_read_cnt[%d]",
 		__func__, task->job.jobid, ccfg->pipe, comp->id,
@@ -1236,18 +1241,22 @@ static void hdr_curve_work(struct work_struct *work_item)
 	u32 gpr = 0;
 
 	hdr = container_of(work_item, struct mml_comp_hdr, hdr_curve_task);
+
+	if (IS_ERR_OR_NULL(hdr) || IS_ERR_OR_NULL(&hdr->comp) || IS_ERR_OR_NULL(&hdr->comp.base)
+		|| IS_ERR_OR_NULL(hdr->gain_curve)) {
+		mml_pq_log("%s Has NULL hdr[%p] comp[%p] base[%p] curve[%p]",
+			__func__, hdr, &hdr->comp, &hdr->comp.base, hdr->gain_curve);
+		return;
+	}
+
+
 	comp = &hdr->comp;
 	base = comp->base;
 	curve = hdr->gain_curve;
+
 	pkt = cmdq_pkt_create(hdr->clts[hdr->pipe]);
 	base_pa = comp->base_pa;
 	gpr = hdr->data->gpr[hdr->pipe];
-
-	if (!hdr || !comp || !base || !curve) {
-		mml_pq_log("%s Has NULL hdr[%p] comp[%p] base[%p] curve[%p] pkt[%p]",
-			__func__, hdr, comp, base, curve, pkt);
-		return;
-	}
 
 	cmdq_pkt_poll(pkt, NULL, (0x0 << 11),
 		base_pa + hdr->data->reg_table[HDR_GAIN_TABLE_0],
