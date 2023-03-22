@@ -731,6 +731,7 @@ static int mtk_spmi_pmic_probe(struct spmi_device *sdev)
 
 static const struct of_device_id mtk_spmi_pmic_of_match[] = {
 	{ .compatible = "mediatek,mt6315", .data = &common_data, },
+	{ .compatible = "mediatek,mt6316", .data = &common_data, },
 	{ .compatible = "mediatek,mt6319", .data = &common_data, },
 	{ .compatible = "mediatek,mt6363", .data = &mt6363_data, },
 	{ .compatible = "mediatek,mt6368", .data = &mt6368_data, },
