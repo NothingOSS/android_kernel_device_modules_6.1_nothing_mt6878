@@ -130,6 +130,7 @@ void imgsys_cmdq_init_plat7sp(struct mtk_imgsys_dev *imgsys_dev, const int nr_im
 
 	mutex_init(&imgsys_dev->dvfs_qos_lock);
 	mutex_init(&imgsys_dev->power_ctrl_lock);
+	mutex_init(&imgsys_dev->vss_blk_lock);
 }
 
 void imgsys_cmdq_release_plat7sp(struct mtk_imgsys_dev *imgsys_dev)
@@ -161,6 +162,7 @@ void imgsys_cmdq_release_plat7sp(struct mtk_imgsys_dev *imgsys_dev)
 #endif
 	mutex_destroy(&imgsys_dev->dvfs_qos_lock);
 	mutex_destroy(&imgsys_dev->power_ctrl_lock);
+	mutex_destroy(&imgsys_dev->vss_blk_lock);
 }
 
 void imgsys_cmdq_streamon_plat7sp(struct mtk_imgsys_dev *imgsys_dev)
@@ -1470,6 +1472,8 @@ int imgsys_cmdq_sendtask_plat7sp(struct mtk_imgsys_dev *imgsys_dev,
 			frm_info->user_info[frm_idx].hw_comb, frm_info->sync_id, thd_idx, (unsigned long)clt);
 
 		cmd_idx = 0;
+		if (frm_info->user_info[frm_idx].is_time_shared)
+			mutex_lock(&(imgsys_dev->vss_blk_lock));
 		for (blk_idx = 0; blk_idx < blk_num; blk_idx++) {
 			tsReqStart = ktime_get_boottime_ns()/1000;
 			if (isPack == 0) {
@@ -1652,6 +1656,8 @@ int imgsys_cmdq_sendtask_plat7sp(struct mtk_imgsys_dev *imgsys_dev,
 				isPack = 1;
 			}
 		}
+		if (frm_info->user_info[frm_idx].is_time_shared)
+			mutex_unlock(&(imgsys_dev->vss_blk_lock));
 	}
 
 sendtask_done:
