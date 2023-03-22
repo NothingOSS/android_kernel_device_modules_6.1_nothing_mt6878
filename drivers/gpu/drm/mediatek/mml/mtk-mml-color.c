@@ -277,7 +277,7 @@ static s32 color_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	struct mml_pq_comp_config_result *result = NULL;
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 	s32 ret = 0;
-s32 i;
+	s32 i;
 	struct mml_pq_reg *regs = NULL;
 
 	if (!dest->pq_config.en_color)

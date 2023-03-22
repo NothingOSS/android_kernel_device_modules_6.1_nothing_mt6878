@@ -450,13 +450,14 @@ static s32 aal_buf_prepare(struct mml_comp *comp, struct mml_task *task,
 	struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	struct mml_comp_aal *aal = comp_to_aal(comp);
 	struct aal_frame_data *aal_frm = aal_frm_data(ccfg);
+	struct mml_crop *crop = &cfg->frame_in_crop[ccfg->node->out_idx];
 	s32 ret = 0;
 
 	mml_pq_trace_ex_begin("%s", __func__);
 	mml_pq_msg("%s engine_id[%d] en_dre[%d]", __func__, comp->id,
 		   dest->pq_config.en_dre);
 	aal_frm->relay_mode = (!(dest->pq_config.en_dre) ||
-		dest->crop.r.width < aal->data->min_tile_width);
+		crop->r.width < aal->data->min_tile_width);
 
 	if (!(aal_frm->relay_mode))
 		ret = mml_pq_set_comp_config(task);
@@ -471,8 +472,9 @@ static s32 aal_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 			    union mml_tile_data *data)
 {
 	const struct mml_frame_config *cfg = task->config;
-	const struct mml_frame_data *src = &cfg->info.src;
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
+	const struct mml_frame_size *frame_in = &cfg->frame_in;
+	const struct mml_crop *crop = &cfg->frame_in_crop[ccfg->node->out_idx];
 	struct mml_comp_aal *aal = comp_to_aal(comp);
 
 	func->for_func = tile_aal_for;
@@ -482,21 +484,21 @@ static s32 aal_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	     !memcmp(&cfg->info.dest[0].crop,
 		     &cfg->info.dest[1].crop,
 		     sizeof(struct mml_crop))) &&
-	    (dest->crop.r.width != src->width ||
-	    dest->crop.r.height != src->height)) {
+	    (crop->r.width != frame_in->width ||
+	    crop->r.height != frame_in->height)) {
 		u32 in_crop_w, in_crop_h;
 
-		in_crop_w = dest->crop.r.width;
-		in_crop_h = dest->crop.r.height;
-		if (in_crop_w + dest->crop.r.left > src->width)
-			in_crop_w = src->width - dest->crop.r.left;
-		if (in_crop_h + dest->crop.r.top > src->height)
-			in_crop_h = src->height - dest->crop.r.top;
+		in_crop_w = crop->r.width;
+		in_crop_h = crop->r.height;
+		if (in_crop_w + crop->r.left > frame_in->width)
+			in_crop_w = frame_in->width - crop->r.left;
+		if (in_crop_h + crop->r.top > frame_in->height)
+			in_crop_h = frame_in->height - crop->r.top;
 		func->full_size_x_in = in_crop_w;
 		func->full_size_y_in = in_crop_h;
 	} else {
-		func->full_size_x_in = src->width;
-		func->full_size_y_in = src->height;
+		func->full_size_x_in = frame_in->width;
+		func->full_size_y_in = frame_in->height;
 	}
 	func->full_size_x_out = func->full_size_x_in;
 	func->full_size_y_out = func->full_size_y_in;
@@ -825,12 +827,12 @@ static s32 aal_config_tile(struct mml_comp *comp, struct mml_task *task,
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 	const phys_addr_t base_pa = comp->base_pa;
 	struct aal_frame_data *aal_frm = aal_frm_data(ccfg);
-	struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
+	const struct mml_crop *crop = &cfg->frame_in_crop[ccfg->node->out_idx];
 	struct mml_comp_aal *aal = comp_to_aal(comp);
 
 	struct mml_tile_engine *tile = config_get_tile(cfg, ccfg, idx);
-	u32 src_frame_width = cfg->info.src.width;
-	u32 src_frame_height = cfg->info.src.height;
+	u32 src_frame_width = cfg->frame_in.width;
+	u32 src_frame_height = cfg->frame_in.height;
 	u16 tile_cnt = cfg->frame_tile[ccfg->pipe]->tile_cnt;
 
 	u32 aal_input_w;
@@ -884,7 +886,7 @@ static s32 aal_config_tile(struct mml_comp *comp, struct mml_task *task,
 		if (task->config->dual)
 			aal_frm->cut_pos_x = cfg->hist_div[ccfg->tile_eng_idx];
 		else
-			aal_frm->cut_pos_x = dest->crop.r.width;
+			aal_frm->cut_pos_x = crop->r.width;
 		if (ccfg->pipe)
 			aal_frm->out_hist_xs = aal_frm->cut_pos_x;
 	}
@@ -1528,12 +1530,13 @@ static bool get_dre_block(u32 *phist, const int block_x, const int block_y,
 static bool aal_hist_check(struct mml_comp *comp, struct mml_task *task,
 			   struct mml_comp_config *ccfg, u32 *phist)
 {
+	const struct mml_frame_config *cfg = task->config;
 	u32 blk_x = 0, blk_y = 0;
 	u8 pipe = (ccfg) ? ccfg->pipe : 0;
 	bool dual = (task) ? task->config->dual : false;
 	struct aal_frame_data *aal_frm = aal_frm_data(ccfg);
-	u32 crop_width = task->config->info.dest[ccfg->node->out_idx].crop.r.width;
-	u32 crop_height = task->config->info.dest[ccfg->node->out_idx].crop.r.height;
+	u32 crop_width = cfg->frame_in_crop[ccfg->node->out_idx].r.width;
+	u32 crop_height = cfg->frame_in_crop[ccfg->node->out_idx].r.height;
 	u32 cut_pos_x = aal_frm->cut_pos_x;
 	u32 dre_blk_width = aal_frm->dre_blk_width;
 	u32 dre_blk_height = aal_frm->dre_blk_height;

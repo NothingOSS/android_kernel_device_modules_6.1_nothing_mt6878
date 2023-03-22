@@ -23,6 +23,16 @@
 #include "tile_mdp_func.h"
 
 /* MERGE register offset */
+#define VPP_MERGE_ENABLE		0x000
+#define VPP_MERGE_SHADOW_CTRL		0x008
+#define VPP_MERGE_CFG_0			0x010
+#define VPP_MERGE_CFG_1			0x014
+#define VPP_MERGE_CFG_4			0x020
+#define VPP_MERGE_CFG_12		0x040
+#define VPP_MERGE_CFG_24		0x070
+#define VPP_MERGE_CFG_25		0x074
+#define VPP_MERGE_CFG_26		0x078
+#define VPP_MERGE_CFG_27		0x07c
 
 #define MERGE_LABEL_TOTAL		0
 
@@ -37,24 +47,9 @@ struct mml_comp_merge {
 	const struct merge_data *data;
 };
 
-/* meta data for each different frame config */
-struct merge_frame_data {
-};
-
-static inline struct merge_frame_data *merge_frm_data(struct mml_comp_config *ccfg)
-{
-	return ccfg->data;
-}
-
 static inline struct mml_comp_merge *comp_to_merge(struct mml_comp *comp)
 {
 	return container_of(comp, struct mml_comp_merge, comp);
-}
-
-static s32 merge_prepare(struct mml_comp *comp, struct mml_task *task,
-			 struct mml_comp_config *ccfg)
-{
-	return 0;
 }
 
 s32 merge_tile_prepare(struct mml_comp *comp, struct mml_task *task,
@@ -62,7 +57,34 @@ s32 merge_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	struct tile_func_block *func,
 	union mml_tile_data *data)
 {
+	struct mml_frame_config *cfg = task->config;
+	struct mml_frame_size *frame_in = &cfg->frame_in;
+	struct mml_crop *crop = &cfg->frame_in_crop[0];
+
+	func->enable_flag = true;
+
+	if (cfg->info.dest_cnt == 1 &&
+	     (crop->r.width != frame_in->width ||
+	    crop->r.height != frame_in->height)) {
+		u32 in_crop_w, in_crop_h;
+
+		in_crop_w = crop->r.width;
+		in_crop_h = crop->r.height;
+		if (in_crop_w + crop->r.left > frame_in->width)
+			in_crop_w = frame_in->width - crop->r.left;
+		if (in_crop_h + crop->r.top > frame_in->height)
+			in_crop_h = frame_in->height - crop->r.top;
+		func->full_size_x_in = in_crop_w;
+		func->full_size_y_in = in_crop_h;
+	} else {
+		func->full_size_x_in = frame_in->width;
+		func->full_size_y_in = frame_in->height;
+	}
+	func->full_size_x_out = func->full_size_x_in;
+	func->full_size_y_out = func->full_size_y_in;
+
 	return 0;
+
 }
 
 static const struct mml_comp_tile_ops merge_tile_ops = {
@@ -78,45 +100,105 @@ static u32 merge_get_label_count(struct mml_comp *comp, struct mml_task *task,
 static s32 merge_config_frame(struct mml_comp *comp, struct mml_task *task,
 			      struct mml_comp_config *ccfg)
 {
+	struct mml_frame_config *cfg = task->config;
+	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	const phys_addr_t base_pa = comp->base_pa;
+
+	cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_ENABLE, 0x1, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_SHADOW_CTRL,
+		((cfg->shadow ? 0 : BIT(1)) << 1) | 0x1, U32_MAX);
+
+	/* bit[7:0] 8'd24:  CFG_2PI_2PI_2PO_0PO_MERGE */
+	cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_12, 24, U32_MAX);
+
 	return 0;
 }
 
 static s32 merge_config_tile(struct mml_comp *comp, struct mml_task *task,
 			     struct mml_comp_config *ccfg, u32 idx)
 {
-	return 0;
-}
+	struct mml_frame_config *cfg = task->config;
+	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	const phys_addr_t base_pa = comp->base_pa;
+	struct mml_tile_engine *tile = config_get_tile(cfg, ccfg, idx);
+	u32 width = tile->in.xe - tile->in.xs + 1;
+	u32 height = tile->in.ye - tile->in.ys + 1;
+	u32 input0, input1;
 
-static s32 merge_wait(struct mml_comp *comp, struct mml_task *task,
-		      struct mml_comp_config *ccfg, u32 idx)
-{
-	return 0;
-}
+	input0 = (cfg->rrot_out[0].height << 16) | cfg->rrot_out[0].width;
+	input1 = (cfg->rrot_out[1].height << 16) | cfg->rrot_out[1].width;
 
-static s32 merge_post(struct mml_comp *comp, struct mml_task *task,
-		      struct mml_comp_config *ccfg)
-{
-	return 0;
-}
+	/* vpp_merge_i_0_fwidth, vpp_merge_i_0_fheight */
+	cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_0, input0, U32_MAX);
+	/* vpp_merge_i_1_fwidth, vpp_merge_i_1_fheight */
+	cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_1, input1, U32_MAX);
+	/* vpp_merge_o_0_fwidth, vpp_merge_o_0_fheight */
+	cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_4, (height << 16) | width, U32_MAX);
 
-static s32 merge_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
-				struct mml_comp_config *ccfg)
-{
+	/* vpp_merge_sram_0_fwidth, vpp_merge_sram_0_fheight */
+	cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_24, input0, U32_MAX);
+	/* vpp_merge_sram_1_fwidth, vpp_merge_sram_1_fheight */
+	cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_25, input1, U32_MAX);
+
+	/* vpp_merge_merge_0_fwidth, vpp_merge_merge_0_fheight */
+	cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_26, input0, U32_MAX);
+	/* vpp_merge_merge_1_fwidth, vpp_merge_merge_1_fheight */
+	cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_27, input1, U32_MAX);
+
+	if (cfg->rrot_out[0].width + cfg->rrot_out[1].width == width &&
+		cfg->rrot_out[0].height  == height && cfg->rrot_out[1].height == height &&
+		cfg->frame_in.height == width && cfg->frame_in.height == height)
+		mml_log("[merge]in0 %u %u in1 %u %u out %u %u full %u %u",
+			cfg->rrot_out[0].width, cfg->rrot_out[0].height,
+			cfg->rrot_out[1].width, cfg->rrot_out[1].height,
+			width, height,
+			cfg->frame_in.width, cfg->frame_in.height);
+	else
+		mml_err("[merge]in0 %u %u in1 %u %u out %u %u full %u %u size not match!",
+			cfg->rrot_out[0].width, cfg->rrot_out[0].height,
+			cfg->rrot_out[1].width, cfg->rrot_out[1].height,
+			width, height,
+			cfg->frame_in.width, cfg->frame_in.height);
+
 	return 0;
 }
 
 static const struct mml_comp_config_ops merge_cfg_ops = {
-	.prepare = merge_prepare,
 	.get_label_count = merge_get_label_count,
 	.frame = merge_config_frame,
 	.tile = merge_config_tile,
-	.wait = merge_wait,
-	.post = merge_post,
-	.reframe = merge_reconfig_frame,
 };
 
 static void merge_debug_dump(struct mml_comp *comp)
 {
+	void __iomem *base = comp->base;
+	u32 shadow_ctrl, value[4];
+
+	mml_err("merge component %u %s dump:", comp->id, comp->name ? comp->name : "");
+
+	/* Enable shadow read working */
+	shadow_ctrl = readl(base + VPP_MERGE_SHADOW_CTRL);
+	shadow_ctrl |= 0x4;
+	writel(shadow_ctrl, base + VPP_MERGE_SHADOW_CTRL);
+
+	value[0] = readl(base + VPP_MERGE_ENABLE);
+	mml_err("VPP_MERGE_ENABLE %#x", value[0]);
+
+	value[0] = readl(base + VPP_MERGE_CFG_0);
+	value[1] = readl(base + VPP_MERGE_CFG_1);
+	value[2] = readl(base + VPP_MERGE_CFG_4);
+	value[3] = readl(base + VPP_MERGE_CFG_12);
+	mml_err(
+		"VPP_MERGE_CFG_0 %#010x VPP_MERGE_CFG_1 %#010x VPP_MERGE_CFG_4 %#010x VPP_MERGE_CFG_12 %#010x",
+		value[0], value[1], value[2], value[3]);
+
+	value[0] = readl(base + VPP_MERGE_CFG_24);
+	value[1] = readl(base + VPP_MERGE_CFG_25);
+	value[2] = readl(base + VPP_MERGE_CFG_26);
+	value[3] = readl(base + VPP_MERGE_CFG_27);
+	mml_err(
+		"VPP_MERGE_CFG_24 %#010x VPP_MERGE_CFG_25 %#010x VPP_MERGE_CFG_26 %#010x VPP_MERGE_CFG_27 %#010x",
+		value[0], value[1], value[2], value[3]);
 }
 
 static void merge_reset(struct mml_comp *comp, struct mml_frame_config *cfg, u32 pipe)

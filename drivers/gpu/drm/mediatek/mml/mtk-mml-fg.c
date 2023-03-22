@@ -75,27 +75,27 @@ static s32 fg_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 {
 	struct fg_frame_data *fg_frm = fg_frm_data(ccfg);
 	struct mml_frame_config *cfg = task->config;
-	struct mml_frame_data *src = &cfg->info.src;
-	struct mml_frame_dest *dest = &cfg->info.dest[fg_frm->out_idx];
+	struct mml_frame_size *frame_in = &cfg->frame_in;
+	struct mml_crop *crop = &cfg->frame_in_crop[fg_frm->out_idx];
 
 	func->enable_flag = true;
 
 	if (cfg->info.dest_cnt == 1 &&
-	    (dest->crop.r.width != src->width ||
-	    dest->crop.r.height != src->height)) {
+	    (crop->r.width != frame_in->width ||
+	    crop->r.height != frame_in->height)) {
 		u32 in_crop_w, in_crop_h;
 
-		in_crop_w = dest->crop.r.width;
-		in_crop_h = dest->crop.r.height;
-		if (in_crop_w + dest->crop.r.left > src->width)
-			in_crop_w = src->width - dest->crop.r.left;
-		if (in_crop_h + dest->crop.r.top > src->height)
-			in_crop_h = src->height - dest->crop.r.top;
-		func->full_size_x_in = in_crop_w + dest->crop.r.left;
-		func->full_size_y_in = in_crop_h + dest->crop.r.top;
+		in_crop_w = crop->r.width;
+		in_crop_h = crop->r.height;
+		if (in_crop_w + crop->r.left > frame_in->width)
+			in_crop_w = frame_in->width - crop->r.left;
+		if (in_crop_h + crop->r.top > frame_in->height)
+			in_crop_h = frame_in->height - crop->r.top;
+		func->full_size_x_in = in_crop_w + crop->r.left;
+		func->full_size_y_in = in_crop_h + crop->r.top;
 	} else {
- 		func->full_size_x_in = src->width;
-		func->full_size_y_in = src->height;
+		func->full_size_x_in = frame_in->width;
+		func->full_size_y_in = frame_in->height;
 	}
 	func->full_size_x_out = func->full_size_x_in;
 	func->full_size_y_out = func->full_size_y_in;

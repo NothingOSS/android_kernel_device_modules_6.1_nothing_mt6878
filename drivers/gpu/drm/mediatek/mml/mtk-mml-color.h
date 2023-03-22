@@ -43,6 +43,8 @@
 #define MML_FMT_IS_YUV(c)		(MML_FMT_GROUP(c) == 1)
 #define MML_FMT_UV_COPLANE(c)		(MML_FMT_PLANE(c) == 2 && \
 					 MML_FMT_IS_YUV(c))
+#define MML_FMT_YUV444(c)		(!MML_FMT_H_SUBSAMPLE(c) && \
+					 !MML_FMT_V_SUBSAMPLE(c))
 #define MML_FMT_YUV422(c)		(MML_FMT_H_SUBSAMPLE(c) && \
 					 !MML_FMT_V_SUBSAMPLE(c))
 #define MML_FMT_YUV420(c)		(MML_FMT_H_SUBSAMPLE(c) && \

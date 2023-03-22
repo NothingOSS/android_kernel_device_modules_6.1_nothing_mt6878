@@ -330,8 +330,8 @@ enum rdma_label {
 int mml_rdma_crc;
 module_param(mml_rdma_crc, int, 0644);
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-static u32 *rdma_crc_va[MML_PIPE_CNT];
-static dma_addr_t rdma_crc_pa[MML_PIPE_CNT];
+u32 *rdma_crc_va[MML_PIPE_CNT];
+dma_addr_t rdma_crc_pa[MML_PIPE_CNT];
 #endif
 
 static s32 rdma_write(struct cmdq_pkt *pkt, phys_addr_t base_pa, u8 hw_pipe,
@@ -1336,10 +1336,10 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		    GENMASK(9, 8) |	/* WRITE_REQUEST_TYPE */
 		    BIT(16);		/* PRE_ULTRA_EN */
 	/* racing case also enable urgent/ultra to not blocking disp */
-	if (unlikely(mml_racing_urgent)) {
-		if (mml_racing_urgent == 1)
+	if (unlikely(mml_rdma_urgent)) {
+		if (mml_rdma_urgent == 1)
 			gmcif_con ^= BIT(16) | BIT(15);	/* URGENT_EN: always */
-		else if (mml_racing_urgent == 2)
+		else if (mml_rdma_urgent == 2)
 			gmcif_con ^= BIT(13) | BIT(16);	/* ULTRA_EN: always */
 		else
 			gmcif_con |= BIT(14) | BIT(12);	/* URGENT_EN */
@@ -1703,10 +1703,10 @@ static s32 rdma_config_tile(struct mml_comp *comp, struct mml_task *task,
 	const u32 crop_ofst_x = tile->luma.x;
 	const u32 crop_ofst_y = tile->luma.y;
 
-	if (unlikely(mml_racing_urgent)) {
-		if (mml_racing_urgent == 1)
+	if (unlikely(mml_rdma_urgent)) {
+		if (mml_rdma_urgent == 1)
 			gmcif_con |= BIT(15);	/* URGENT_EN: always */
-		else if (mml_racing_urgent == 2)
+		else if (mml_rdma_urgent == 2)
 			gmcif_con |= BIT(13);	/* ULTRA_EN: always */
 		rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_GMCIF_CON,
 			gmcif_con, write_sec);

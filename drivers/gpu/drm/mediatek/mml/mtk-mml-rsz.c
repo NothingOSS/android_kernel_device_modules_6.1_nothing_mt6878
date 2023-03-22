@@ -212,10 +212,9 @@ static s32 rsz_prepare(struct mml_comp *comp, struct mml_task *task,
 {
 	struct mml_frame_config *cfg = task->config;
 	const struct mml_frame_data *src = &cfg->info.src;
-	const struct mml_frame_dest *dest =
-		&cfg->info.dest[ccfg->node->out_idx];
-	const struct mml_frame_size *frame_out =
-		&cfg->frame_out[ccfg->node->out_idx];
+	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
+	const struct mml_frame_size *frame_out = &cfg->frame_out[ccfg->node->out_idx];
+	const struct mml_crop *crop = &cfg->frame_in_crop[ccfg->node->out_idx];
 	struct rsz_frame_data *rsz_frm;
 	struct mml_comp_rsz *rsz = comp_to_rsz(comp);
 	s32 ret = 0;
@@ -234,11 +233,11 @@ static s32 rsz_prepare(struct mml_comp *comp, struct mml_task *task,
 
 	if (!rsz_frm->relay_mode) {
 		if (mml_rsz_fw_comb) {
-			fw_in.in_width = dest->crop.r.width; /* was src->width; */
-			fw_in.in_height = dest->crop.r.height; /* was src->height; */
+			fw_in.in_width = crop->r.width; /* was src->width; */
+			fw_in.in_height = crop->r.height; /* was src->height; */
 			fw_in.out_width = frame_out->width;
 			fw_in.out_height = frame_out->height;
-			fw_in.crop = dest->crop;
+			fw_in.crop = *crop;
 
 			if (MML_FMT_10BIT(src->format) ||
 			    MML_FMT_10BIT(dest->data.format))
@@ -314,13 +313,15 @@ static s32 rsz_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 {
 	struct rsz_frame_data *rsz_frm = rsz_frm_data(ccfg);
 	const struct mml_frame_config *cfg = task->config;
-	const struct mml_frame_data *src = &cfg->info.src;
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
+	const struct mml_frame_size *frame_in = &cfg->frame_in;
+	const struct mml_crop *crop = &cfg->frame_in_crop[ccfg->node->out_idx];
 	struct mml_comp_rsz *rsz = comp_to_rsz(comp);
+	u32 rotate = cfg->out_rotate[ccfg->node->out_idx];
 
 	mml_trace_ex_begin("%s", __func__);
 
-	data->rsz.crop = dest->crop;
+	data->rsz.crop = *crop;
 	if (!rsz_frm->relay_mode) {
 		data->rsz.use_121filter = rsz_frm->use121filter;
 		if (mml_rsz_fw_comb) {
@@ -361,26 +362,25 @@ static s32 rsz_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	     !memcmp(&cfg->info.dest[0].crop,
 		     &cfg->info.dest[1].crop,
 		     sizeof(struct mml_crop))) &&
-	    (dest->crop.r.width != src->width ||
-	    dest->crop.r.height != src->height)) {
+	    (crop->r.width != frame_in->width ||
+	     crop->r.height != frame_in->height)) {
 		u32 in_crop_w, in_crop_h;
 
-		in_crop_w = dest->crop.r.width;
-		in_crop_h = dest->crop.r.height;
-		if (in_crop_w + dest->crop.r.left > src->width)
-			in_crop_w = src->width - dest->crop.r.left;
-		if (in_crop_h + dest->crop.r.top > src->height)
-			in_crop_h = src->height - dest->crop.r.top;
+		in_crop_w = crop->r.width;
+		in_crop_h = crop->r.height;
+		if (in_crop_w + crop->r.left > frame_in->width)
+			in_crop_w = frame_in->width - crop->r.left;
+		if (in_crop_h + crop->r.top > frame_in->height)
+			in_crop_h = frame_in->height - crop->r.top;
 		func->full_size_x_in = in_crop_w;
 		func->full_size_y_in = in_crop_h;
-		data->rsz.crop.r.left -= dest->crop.r.left;
-		data->rsz.crop.r.top -= dest->crop.r.top;
+		data->rsz.crop.r.left -= crop->r.left;
+		data->rsz.crop.r.top -= crop->r.top;
 	} else {
-		func->full_size_x_in = src->width;
-		func->full_size_y_in = src->height;
+		func->full_size_x_in = frame_in->width;
+		func->full_size_y_in = frame_in->height;
 	}
-	if (dest->rotate == MML_ROT_90 ||
-	    dest->rotate == MML_ROT_270) {
+	if (rotate == MML_ROT_90 || rotate == MML_ROT_270) {
 		func->full_size_x_out = dest->data.height;
 		func->full_size_y_out = dest->data.width;
 	} else {
@@ -508,6 +508,7 @@ static s32 rsz_config_tile(struct mml_comp *comp, struct mml_task *task,
 	const struct rsz_frame_data *rsz_frm = rsz_frm_data(ccfg);
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	const phys_addr_t base_pa = comp->base_pa;
+	const enum mml_orientation rotate = cfg->out_rotate[ccfg->node->out_idx];
 
 	struct mml_tile_engine *tile = config_get_tile(cfg, ccfg, idx);
 
@@ -532,7 +533,7 @@ static s32 rsz_config_tile(struct mml_comp *comp, struct mml_task *task,
 	rsz_output_h = tile->out.ye - tile->out.ys + 1;
 
 	/* YUV422 to YUV444 upsampler */
-	if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270) {
+	if (rotate == MML_ROT_90 || rotate == MML_ROT_270) {
 		if (tile->out.xe >= dest->data.height - 1)
 			urs_clip_en = false;
 		else

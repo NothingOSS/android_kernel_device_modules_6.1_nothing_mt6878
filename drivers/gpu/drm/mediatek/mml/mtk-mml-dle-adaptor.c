@@ -178,6 +178,7 @@ static struct mml_frame_config *frame_config_create(
 {
 	struct mml_dle_frame_config *dle_cfg = kzalloc(sizeof(*dle_cfg), GFP_KERNEL);
 	struct mml_frame_config *cfg;
+	u32 i;
 
 	if (!dle_cfg)
 		return ERR_PTR(-ENOMEM);
@@ -194,6 +195,12 @@ static struct mml_frame_config *frame_config_create(
 	cfg->task_ops = ctx->task_ops;
 	cfg->cfg_ops = ctx->cfg_ops;
 	cfg->ctx_kt_done = ctx->kt_done;
+	cfg->frame_in.width = info->src.width;
+	cfg->frame_in.height = info->src.height;
+	for (i = 0; i < MML_MAX_OUTPUTS; i++) {
+		cfg->frame_in_crop[i] = info->dest[i].crop;
+		cfg->out_rotate[i] = info->dest[i].rotate;
+	}
 	INIT_WORK(&cfg->work_destroy, frame_config_destroy_work);
 	kref_init(&cfg->ref);
 

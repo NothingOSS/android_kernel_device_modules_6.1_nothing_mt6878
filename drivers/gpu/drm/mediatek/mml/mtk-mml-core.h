@@ -39,6 +39,7 @@ extern int mml_qos_log;
 
 /* define in mtk-mml-wrot.c */
 extern int mml_wrot_bkgd_en;
+extern int mml_rrot_debug;
 
 #define mml_msg(fmt, args...) \
 do { \
@@ -148,11 +149,17 @@ extern int mml_slt;
 
 /* racing mode ut and debug */
 extern int mml_racing_ut;
-extern int mml_racing_urgent;
 extern int mml_racing_eoc;
+extern int mml_rdma_urgent;
+extern int mml_rdma_crc;
+
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+extern u32 *rdma_crc_va[MML_PIPE_CNT];
+extern dma_addr_t rdma_crc_pa[MML_PIPE_CNT];
+#endif
 
 #define MML_MAX_PATH_NODES	19 /* must align MAX_TILE_FUNC_NO in tile_driver.h */
-#define MML_MAX_PATH_CACHES	20 /* must >= PATH_MML_MAX in all mtk-mml-mtxxxx.c */
+#define MML_MAX_PATH_CACHES	22 /* must >= PATH_MML_MAX in all mtk-mml-mtxxxx.c */
 #define MML_MAX_CMDQ_CLTS	4
 #define MML_MAX_OPPS		5
 #define MML_MAX_TPUT		800
@@ -323,6 +330,14 @@ struct mml_pipe_cache {
 struct mml_frame_config {
 	struct list_head entry;
 	struct mml_frame_info info;
+	/* frame size that after rrot binning and rotate */
+	struct mml_frame_size frame_in;
+	struct mml_frame_size rrot_out[MML_PIPE_CNT];
+	struct mml_crop frame_in_crop[MML_MAX_OUTPUTS];
+	/* binning level config by: 2'd0: 1; 2'd1: 2; 2'd2: 4; 2'd3: 8 */
+	u8 bin_x;
+	u8 bin_y;
+	u8 out_rotate[MML_MAX_OUTPUTS];
 	/* frame output pixel size */
 	struct mml_frame_size frame_out[MML_MAX_OUTPUTS];
 	/* direct-link input roi offset and output rect */

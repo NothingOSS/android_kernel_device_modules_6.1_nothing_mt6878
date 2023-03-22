@@ -250,6 +250,7 @@ struct wrot_frame_data {
 	u32 plane_offset[MML_MAX_PLANES];
 
 	/* calculate in prepare and use as tile input */
+	enum mml_orientation rotate;
 	bool en_x_crop;
 	bool en_y_crop;
 	struct mml_rect out_crop;
@@ -379,13 +380,13 @@ static void wrot_config_left(struct mml_frame_dest *dest,
 	    wrot_frm->out_crop.width & 31) {
 		wrot_frm->out_crop.width =
 			(wrot_frm->out_crop.width & ~31) + 32;
-		if (is_change_wx(dest->rotate, dest->flip))
+		if (is_change_wx(wrot_frm->rotate, dest->flip))
 			wrot_frm->out_crop.width = wrot_frm->out_w -
 						   wrot_frm->out_crop.width;
 	} else if (MML_FMT_10BIT_PACKED(dest->data.format) &&
 		 wrot_frm->out_crop.width & 3) {
 		wrot_frm->out_crop.width = (wrot_frm->out_crop.width & ~3) + 4;
-		if (is_change_wx(dest->rotate, dest->flip))
+		if (is_change_wx(wrot_frm->rotate, dest->flip))
 			wrot_frm->out_crop.width = wrot_frm->out_w -
 						   wrot_frm->out_crop.width;
 	} else if (wrot_frm->out_crop.width & 1) {
@@ -403,13 +404,13 @@ static void wrot_config_right(struct mml_frame_dest *dest,
 	    wrot_frm->out_crop.left & 31) {
 		wrot_frm->out_crop.left =
 			(wrot_frm->out_crop.left & ~31) + 32;
-		if (is_change_wx(dest->rotate, dest->flip))
+		if (is_change_wx(wrot_frm->rotate, dest->flip))
 			wrot_frm->out_crop.left = wrot_frm->out_w -
 						   wrot_frm->out_crop.left;
 	} else if (MML_FMT_10BIT_PACKED(dest->data.format) &&
 	    wrot_frm->out_crop.left & 3) {
 		wrot_frm->out_crop.left = (wrot_frm->out_crop.left & ~3) + 4;
-		if (is_change_wx(dest->rotate, dest->flip))
+		if (is_change_wx(wrot_frm->rotate, dest->flip))
 			wrot_frm->out_crop.left = wrot_frm->out_w -
 						  wrot_frm->out_crop.left;
 	} else if (wrot_frm->out_crop.left & 1) {
@@ -452,17 +453,17 @@ static void wrot_config_pipe0(struct mml_frame_config *cfg,
 			      struct wrot_frame_data *wrot_frm)
 {
 	if (cfg->info.mode == MML_MODE_RACING) {
-		if ((dest->rotate == MML_ROT_90 && !dest->flip) ||
-		    (dest->rotate == MML_ROT_270 && dest->flip))
+		if ((wrot_frm->rotate == MML_ROT_90 && !dest->flip) ||
+		    (wrot_frm->rotate == MML_ROT_270 && dest->flip))
 			wrot_config_bottom(&cfg->info.src, dest, wrot_frm);
-		else if ((dest->rotate == MML_ROT_90 && dest->flip) ||
-			 (dest->rotate == MML_ROT_270 && !dest->flip))
+		else if ((wrot_frm->rotate == MML_ROT_90 && dest->flip) ||
+			 (wrot_frm->rotate == MML_ROT_270 && !dest->flip))
 			wrot_config_top(&cfg->info.src, dest, wrot_frm);
-		else if ((dest->rotate == MML_ROT_0 && !dest->flip) ||
-			 (dest->rotate == MML_ROT_180 && dest->flip))
+		else if ((wrot_frm->rotate == MML_ROT_0 && !dest->flip) ||
+			 (wrot_frm->rotate == MML_ROT_180 && dest->flip))
 			wrot_config_left(dest, wrot_frm);
-		else if ((dest->rotate == MML_ROT_0 && dest->flip) ||
-			 (dest->rotate == MML_ROT_180 && !dest->flip))
+		else if ((wrot_frm->rotate == MML_ROT_0 && dest->flip) ||
+			 (wrot_frm->rotate == MML_ROT_180 && !dest->flip))
 			wrot_config_right(dest, wrot_frm);
 	} else {
 		wrot_config_left(dest, wrot_frm);
@@ -474,17 +475,17 @@ static void wrot_config_pipe1(struct mml_frame_config *cfg,
 			      struct wrot_frame_data *wrot_frm)
 {
 	if (cfg->info.mode == MML_MODE_RACING) {
-		if ((dest->rotate == MML_ROT_90 && !dest->flip) ||
-		    (dest->rotate == MML_ROT_270 && dest->flip))
+		if ((wrot_frm->rotate == MML_ROT_90 && !dest->flip) ||
+		    (wrot_frm->rotate == MML_ROT_270 && dest->flip))
 			wrot_config_top(&cfg->info.src, dest, wrot_frm);
-		else if ((dest->rotate == MML_ROT_90 && dest->flip) ||
-			 (dest->rotate == MML_ROT_270 && !dest->flip))
+		else if ((wrot_frm->rotate == MML_ROT_90 && dest->flip) ||
+			 (wrot_frm->rotate == MML_ROT_270 && !dest->flip))
 			wrot_config_bottom(&cfg->info.src, dest, wrot_frm);
-		else if ((dest->rotate == MML_ROT_0 && !dest->flip) ||
-			 (dest->rotate == MML_ROT_180 && dest->flip))
+		else if ((wrot_frm->rotate == MML_ROT_0 && !dest->flip) ||
+			 (wrot_frm->rotate == MML_ROT_180 && dest->flip))
 			wrot_config_right(dest, wrot_frm);
-		else if ((dest->rotate == MML_ROT_0 && dest->flip) ||
-			 (dest->rotate == MML_ROT_180 && !dest->flip))
+		else if ((wrot_frm->rotate == MML_ROT_0 && dest->flip) ||
+			 (wrot_frm->rotate == MML_ROT_180 && !dest->flip))
 			wrot_config_left(dest, wrot_frm);
 	} else {
 		wrot_config_right(dest, wrot_frm);
@@ -505,6 +506,7 @@ static s32 wrot_prepare(struct mml_comp *comp, struct mml_task *task,
 
 	/* cache out index for easy use */
 	wrot_frm->out_idx = ccfg->node->out_idx;
+	wrot_frm->rotate = cfg->out_rotate[wrot_frm->out_idx];
 
 	/* select output port struct */
 	dest = &cfg->info.dest[wrot_frm->out_idx];
@@ -512,7 +514,7 @@ static s32 wrot_prepare(struct mml_comp *comp, struct mml_task *task,
 	wrot_frm->compose = dest->compose;
 	wrot_frm->y_stride = dest->data.y_stride;
 	wrot_frm->uv_stride = dest->data.uv_stride;
-	if (dest->rotate == MML_ROT_0 || dest->rotate == MML_ROT_180) {
+	if (wrot_frm->rotate == MML_ROT_0 || wrot_frm->rotate == MML_ROT_180) {
 		wrot_frm->out_w = dest->data.width;
 		wrot_frm->out_h = dest->data.height;
 	} else {
@@ -537,11 +539,11 @@ static s32 wrot_prepare(struct mml_comp *comp, struct mml_task *task,
 			wrot_config_pipe1(cfg, dest, wrot_frm);
 
 		if (cfg->info.mode == MML_MODE_RACING) {
-			if (dest->rotate == MML_ROT_0)
+			if (wrot_frm->rotate == MML_ROT_0)
 				wrot_frm->sram_side = ccfg->pipe;
-			else if (dest->rotate == MML_ROT_90)
+			else if (wrot_frm->rotate == MML_ROT_90)
 				wrot_frm->sram_side = !ccfg->pipe;
-			else if (dest->rotate == MML_ROT_180)
+			else if (wrot_frm->rotate == MML_ROT_180)
 				wrot_frm->sram_side = !ccfg->pipe;
 			else
 				wrot_frm->sram_side = ccfg->pipe;
@@ -653,7 +655,7 @@ static s32 wrot_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
 
 	data->wrot.dest_fmt = dest->data.format;
-	data->wrot.rotate = dest->rotate;
+	data->wrot.rotate = wrot_frm->rotate;
 	data->wrot.flip = dest->flip;
 	data->wrot.alpharot = cfg->alpharot;
 	data->wrot.racing = cfg->info.mode == MML_MODE_RACING;
@@ -949,7 +951,7 @@ static void wrot_config_addr(const struct mml_frame_dest *dest,
 				wrot_frm->iova, wrot_frm->plane_offset,
 				&block_x, &addr_c, &addr_v, &addr);
 
-		if (dest->rotate == MML_ROT_0 || dest->rotate == MML_ROT_180)
+		if (wrot_frm->rotate == MML_ROT_0 || wrot_frm->rotate == MML_ROT_180)
 			frame_size = ((((wrot_frm->out_h + 31) >>
 					 5) << 5) << 16) +
 					 ((block_x << 5) << 0);
@@ -1040,7 +1042,7 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	const phys_addr_t base_pa = comp->base_pa;
 	const u32 src_fmt = cfg->info.src.format;
 	const u32 dest_fmt = dest->data.format;
-	const u16 rotate = dest->rotate;
+	const u16 rotate = wrot_frm->rotate;
 	const u8 flip = dest->flip ? 1 : 0;
 	const u32 h_subsample = MML_FMT_H_SUBSAMPLE(dest_fmt);
 	const u32 v_subsample = MML_FMT_V_SUBSAMPLE(dest_fmt);
@@ -1181,7 +1183,7 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		       (uv_ysel		<< 30) +
 		       (uv_xsel		<< 28) +
 		       (flip		<< 24) +
-		       (dest->rotate	<< 20) +
+		       (wrot_frm->rotate << 20) +
 		       (cfg->alpharot	<< 16) + /* alpha rot */
 		       (preultra_en	<< 14) + /* pre-ultra */
 		       (crop_en		<< 12) +
@@ -1285,43 +1287,43 @@ static void wrot_tile_calc_comp(const struct mml_frame_dest *dest,
 	const u64 out_h = wrot_frm->out_h;
 	const char *msg = "";
 
-	if (dest->rotate == MML_ROT_0 && !dest->flip) {
+	if (wrot_frm->rotate == MML_ROT_0 && !dest->flip) {
 		/* Target Y offset */
 		ofst->y = (out_ys / 8) * (wrot_frm->y_stride / 128) * 1024 +
 			  out_xs * 32;
 		msg = "No flip and no rotation";
-	} else if (dest->rotate == MML_ROT_0 && dest->flip) {
+	} else if (wrot_frm->rotate == MML_ROT_0 && dest->flip) {
 		/* Target Y offset */
 		ofst->y = ((out_ys / 8) * (wrot_frm->y_stride / 128) +
 			  (out_w / 32) - (out_xs / 32) - 1) * 1024;
 		msg = "Flip without rotation";
-	} else if (dest->rotate == MML_ROT_90 && !dest->flip) {
+	} else if (wrot_frm->rotate == MML_ROT_90 && !dest->flip) {
 		/* Target Y offset */
 		ofst->y = ((out_xs / 8) * (wrot_frm->y_stride / 128) +
 			  (out_h / 32) - (out_ys / 32) - 1) * 1024;
 		msg = "Rotate 90 degree only";
-	} else if (dest->rotate == MML_ROT_90 && dest->flip) {
+	} else if (wrot_frm->rotate == MML_ROT_90 && dest->flip) {
 		/* Target Y offset */
 		ofst->y = (out_xs / 8) * (wrot_frm->y_stride / 128) * 1024 +
 			  out_ys * 32;
 		msg = "Flip and Rotate 90 degree";
-	} else if (dest->rotate == MML_ROT_180 && !dest->flip) {
+	} else if (wrot_frm->rotate == MML_ROT_180 && !dest->flip) {
 		/* Target Y offset */
 		ofst->y = (((out_h / 8) - (out_ys / 8) - 1) *
 			  (wrot_frm->y_stride / 128) +
 			  (out_w / 32) - (out_xs / 32) - 1) * 1024;
 		msg = "Rotate 180 degree only";
-	} else if (dest->rotate == MML_ROT_180 && dest->flip) {
+	} else if (wrot_frm->rotate == MML_ROT_180 && dest->flip) {
 		/* Target Y offset */
 		ofst->y = (((out_h / 8) - (out_ys / 8) - 1) *
 			  (wrot_frm->y_stride / 128)) * 1024 + out_xs * 32;
 		msg = "Flip and Rotate 180 degree";
-	} else if (dest->rotate == MML_ROT_270 && !dest->flip) {
+	} else if (wrot_frm->rotate == MML_ROT_270 && !dest->flip) {
 		/* Target Y offset */
 		ofst->y = (((out_w / 8) - (out_xs / 8) - 1) *
 			  (wrot_frm->y_stride / 128)) * 1024 + out_ys * 32;
 		msg = "Rotate 270 degree only";
-	} else if (dest->rotate == MML_ROT_270 && dest->flip) {
+	} else if (wrot_frm->rotate == MML_ROT_270 && dest->flip) {
 		/* Target Y offset */
 		ofst->y = (((out_w / 8) - (out_xs / 8) - 1) *
 			  (wrot_frm->y_stride / 128) +
@@ -1354,7 +1356,7 @@ static void wrot_tile_calc(const struct mml_task *task,
 	const char *msg = "";
 	bool tile_eol = false;
 
-	if (dest->rotate == MML_ROT_0 && !dest->flip) {
+	if (wrot_frm->rotate == MML_ROT_0 && !dest->flip) {
 		if (mode == MML_MODE_RACING) {
 			sram_block = tout->tiles[idx].v_tile_no & 0x1;
 			out_ys = 0;
@@ -1377,7 +1379,7 @@ static void wrot_tile_calc(const struct mml_task *task,
 			  wrot_frm->bbp_uv >> 3);
 
 		msg = "No flip and no rotation";
-	} else if (dest->rotate == MML_ROT_0 && dest->flip) {
+	} else if (wrot_frm->rotate == MML_ROT_0 && dest->flip) {
 		if (mode == MML_MODE_RACING) {
 			sram_block = tout->tiles[idx].v_tile_no & 0x1;
 			out_ys = 0;
@@ -1401,7 +1403,7 @@ static void wrot_tile_calc(const struct mml_task *task,
 			  wrot_frm->hor_sh_uv) * wrot_frm->bbp_uv >> 3) - 1;
 
 		msg = "Flip without rotation";
-	} else if (dest->rotate == MML_ROT_90 && !dest->flip) {
+	} else if (wrot_frm->rotate == MML_ROT_90 && !dest->flip) {
 		if (mode == MML_MODE_RACING) {
 			sram_block = tout->tiles[idx].h_tile_no & 0x1;
 			out_xs = 0;
@@ -1425,7 +1427,7 @@ static void wrot_tile_calc(const struct mml_task *task,
 			  wrot_frm->hor_sh_uv) * wrot_frm->bbp_uv >> 3) - 1;
 
 		msg = "Rotate 90 degree only";
-	} else if (dest->rotate == MML_ROT_90 && dest->flip) {
+	} else if (wrot_frm->rotate == MML_ROT_90 && dest->flip) {
 		if (mode == MML_MODE_RACING) {
 			sram_block = tout->tiles[idx].h_tile_no & 0x1;
 			out_xs = 0;
@@ -1448,7 +1450,7 @@ static void wrot_tile_calc(const struct mml_task *task,
 			  wrot_frm->bbp_uv >> 3);
 
 		msg = "Flip and Rotate 90 degree";
-	} else if (dest->rotate == MML_ROT_180 && !dest->flip) {
+	} else if (wrot_frm->rotate == MML_ROT_180 && !dest->flip) {
 		if (mode == MML_MODE_RACING) {
 			sram_block = (tout->v_tile_cnt - tout->tiles[idx].v_tile_no - 1) & 0x1;
 			out_h = tile->out.ye + 1;
@@ -1473,7 +1475,7 @@ static void wrot_tile_calc(const struct mml_task *task,
 			  wrot_frm->hor_sh_uv) * wrot_frm->bbp_uv >> 3) - 1;
 
 		msg = "Rotate 180 degree only";
-	} else if (dest->rotate == MML_ROT_180 && dest->flip) {
+	} else if (wrot_frm->rotate == MML_ROT_180 && dest->flip) {
 		if (mode == MML_MODE_RACING) {
 			sram_block = (tout->v_tile_cnt - tout->tiles[idx].v_tile_no - 1) & 0x1;
 			out_h = tile->out.ye + 1;
@@ -1497,7 +1499,7 @@ static void wrot_tile_calc(const struct mml_task *task,
 			  wrot_frm->bbp_uv >> 3);
 
 		msg = "Flip and Rotate 180 degree";
-	} else if (dest->rotate == MML_ROT_270 && !dest->flip) {
+	} else if (wrot_frm->rotate == MML_ROT_270 && !dest->flip) {
 		if (mode == MML_MODE_RACING) {
 			sram_block = (tout->h_tile_cnt - tout->tiles[idx].h_tile_no - 1) & 0x1;
 			out_w = tile->out.xe + 1;
@@ -1521,7 +1523,7 @@ static void wrot_tile_calc(const struct mml_task *task,
 			  wrot_frm->bbp_uv >> 3);
 
 		msg = "Rotate 270 degree only";
-	} else if (dest->rotate == MML_ROT_270 && dest->flip) {
+	} else if (wrot_frm->rotate == MML_ROT_270 && dest->flip) {
 		if (mode == MML_MODE_RACING) {
 			sram_block = (tout->h_tile_cnt - tout->tiles[idx].h_tile_no - 1) & 0x1;
 			out_w = tile->out.xe + 1;
@@ -1566,6 +1568,7 @@ static void wrot_tile_calc(const struct mml_task *task,
 
 static void wrot_check_buf(const struct mml_frame_dest *dest,
 			   struct wrot_setting *setting,
+			   const struct wrot_frame_data *wrot_frm,
 			   struct check_buf_param *buf)
 {
 	/* Checking Y buffer usage
@@ -1591,8 +1594,8 @@ static void wrot_check_buf(const struct mml_frame_dest *dest,
 	} else {
 		if (!MML_FMT_V_SUBSAMPLE(dest->data.format)) {
 			/* YUV422 */
-			if (dest->rotate == MML_ROT_0 ||
-			    dest->rotate == MML_ROT_180) {
+			if (wrot_frm->rotate == MML_ROT_0 ||
+			    wrot_frm->rotate == MML_ROT_180) {
 				buf->uv_blk_width =
 					setting->main_blk_width >> 1;
 				buf->uv_blk_line = setting->main_buf_line_num;
@@ -1619,7 +1622,7 @@ static void wrot_check_buf(const struct mml_frame_dest *dest,
 		buf->uv_buf_check = 1;
 	}
 
-	if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270) {
+	if (wrot_frm->rotate == MML_ROT_90 || wrot_frm->rotate == MML_ROT_270) {
 		if (dest->data.format == MML_FMT_NV15 ||
 		    dest->data.format == MML_FMT_NV51) {
 			if (setting->main_buf_line_num > 32)
@@ -1669,7 +1672,7 @@ static void wrot_calc_setting(struct mml_comp_wrot *wrot,
 
 	/* check for internal buffer size */
 	while (!buf.y_buf_check || !buf.uv_buf_check)
-		wrot_check_buf(dest, setting, &buf);
+		wrot_check_buf(dest, setting, wrot_frm, &buf);
 }
 
 static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
@@ -1845,12 +1848,11 @@ static void wrot_config_inlinerot(struct mml_comp *comp, struct mml_task *task,
 	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 	struct mml_frame_config *cfg = task->config;
-	struct mml_frame_dest *dest = &cfg->info.dest[wrot_frm->out_idx];
 	struct mml_tile_engine *tile = config_get_tile(cfg, ccfg, idx);
 	u32 height;
 	u32 irot_h_off;
 
-	if (dest->rotate == MML_ROT_0 || dest->rotate == MML_ROT_180)
+	if (wrot_frm->rotate == MML_ROT_0 || wrot_frm->rotate == MML_ROT_180)
 		height = tile->out.ye - tile->out.ys + 1;
 	else
 		height = tile->out.xe - tile->out.xs + 1;

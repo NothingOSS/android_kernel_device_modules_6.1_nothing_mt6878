@@ -689,7 +689,7 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		    GENMASK(9, 8) |	/* WRITE_REQUEST_TYPE */
 		    BIT(16);		/* PRE_ULTRA_EN */
 	/* racing case also enable urgent/ultra to not blocking disp */
-	if (unlikely(mml_racing_urgent)) {
+	if (unlikely(mml_rdma_urgent)) {
 		gmcif_con ^= BIT(16) | BIT(15);	/* URGENT_EN: always */
 		rdma_reset_threshold(rdma, pkt, base_pa, hw_pipe, write_sec);
 	} else if (cfg->info.mode == MML_MODE_RACING) {

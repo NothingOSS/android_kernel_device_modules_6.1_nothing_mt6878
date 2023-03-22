@@ -65,8 +65,8 @@ module_param(mml_slt, int, 0644);
 int mml_racing_ut;
 module_param(mml_racing_ut, int, 0644);
 
-int mml_racing_urgent;
-module_param(mml_racing_urgent, int, 0644);
+int mml_rdma_urgent;
+module_param(mml_rdma_urgent, int, 0644);
 
 /* loop eoc and wdone mmp debug mark
  * 0: disable/per-task
@@ -1588,6 +1588,7 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 	mml_mmp(flush, MMPROFILE_FLAG_PULSE, task->job.jobid,
 		(unsigned long)task->pkts[pipe]);
 	ret = cmdq_pkt_flush_async(pkt, core_taskdone_cb, (void *)task->pkts[pipe]);
+
 	/* only start at pipe 0 and end at receive both pipe irq */
 	if (pipe == 0)
 		mml_mmp(exec, MMPROFILE_FLAG_START, task->job.jobid, 0);
