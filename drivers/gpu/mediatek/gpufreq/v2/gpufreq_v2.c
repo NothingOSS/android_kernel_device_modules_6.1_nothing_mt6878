@@ -884,7 +884,7 @@ int gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx)
 
 done:
 	if (unlikely(ret))
-		GPUFREQ_LOGE("fail to commit GPU/STACK OPP index %d/%d (%d)",
+		GPUFREQ_LOGE("fail to commit GPU/STACK OPP index: %d/%d (%d)",
 			gpu_oppidx, stack_oppidx, ret);
 
 	GPUFREQ_TRACE_END();
@@ -1265,6 +1265,50 @@ done:
 }
 
 /***********************************************************************************
+ * Function Name      : gpufreq_fix_dual_target_oppidx
+ * Description        : Only for GPUFREQ internal debug purpose
+ ***********************************************************************************/
+int gpufreq_fix_dual_target_oppidx(int gpu_oppidx, int stack_oppidx)
+{
+	struct gpufreq_ipi_data send_msg = {};
+	int ret = GPUFREQ_SUCCESS;
+
+	GPUFREQ_TRACE_START("gpu_oppidx=%d, stack_oppidx=%d", gpu_oppidx, stack_oppidx);
+
+	/* implement on EB */
+	if (g_gpueb_support) {
+		mutex_lock(&gpufreq_ipi_lock);
+		send_msg.cmd_id = CMD_FIX_DUAL_TARGET_OPPIDX;
+		send_msg.u.dual_commit.gpu_oppidx = gpu_oppidx;
+		send_msg.u.dual_commit.stack_oppidx = stack_oppidx;
+
+		if (!gpufreq_ipi_to_gpueb(send_msg))
+			ret = g_recv_msg.u.return_value;
+		else
+			ret = GPUFREQ_EINVAL;
+		mutex_unlock(&gpufreq_ipi_lock);
+		goto done;
+	}
+
+	/* implement on AP */
+	if (gpufreq_fp && gpufreq_fp->fix_target_oppidx_dual)
+		ret = gpufreq_fp->fix_target_oppidx_dual(gpu_oppidx, stack_oppidx);
+	else {
+		ret = GPUFREQ_ENOENT;
+		GPUFREQ_LOGE("null gpufreq platform function pointer (ENOENT)");
+	}
+
+done:
+	if (unlikely(ret))
+		GPUFREQ_LOGE("fail to fix GPU/STACK OPP index: %d/%d (%d)",
+			gpu_oppidx, stack_oppidx, ret);
+
+	GPUFREQ_TRACE_END();
+
+	return ret;
+}
+
+/***********************************************************************************
  * Function Name      : gpufreq_fix_custom_freq_volt
  * Description        : Only for GPUFREQ internal debug purpose
  ***********************************************************************************/
@@ -1308,8 +1352,55 @@ int gpufreq_fix_custom_freq_volt(enum gpufreq_target target,
 
 done:
 	if (unlikely(ret))
-		GPUFREQ_LOGE("fail to fix %s freq: %d, volt: %d (%d)",
+		GPUFREQ_LOGE("fail to fix %s F(%d)/V(%d) (%d)",
 			target == TARGET_STACK ? "STACK" : "GPU", freq, volt, ret);
+
+	GPUFREQ_TRACE_END();
+
+	return ret;
+}
+
+/***********************************************************************************
+ * Function Name      : gpufreq_fix_dual_custom_freq_volt
+ * Description        : Only for GPUFREQ internal debug purpose
+ ***********************************************************************************/
+int gpufreq_fix_dual_custom_freq_volt(unsigned int fgpu, unsigned int vgpu,
+	unsigned int fstack, unsigned int vstack)
+{
+	struct gpufreq_ipi_data send_msg = {};
+	int ret = GPUFREQ_SUCCESS;
+
+	GPUFREQ_TRACE_START("fgpu=%d, vgpu=%d, fstack=%d, vstack=%d", fgpu, vgpu, fstack, vstack);
+
+	/* implement on EB */
+	if (g_gpueb_support) {
+		mutex_lock(&gpufreq_ipi_lock);
+		send_msg.cmd_id = CMD_FIX_DUAL_CUSTOM_FREQ_VOLT;
+		send_msg.u.dual_custom.fgpu = fgpu;
+		send_msg.u.dual_custom.vgpu = vgpu;
+		send_msg.u.dual_custom.fstack = fstack;
+		send_msg.u.dual_custom.vstack = vstack;
+
+		if (!gpufreq_ipi_to_gpueb(send_msg))
+			ret = g_recv_msg.u.return_value;
+		else
+			ret = GPUFREQ_EINVAL;
+		mutex_unlock(&gpufreq_ipi_lock);
+		goto done;
+	}
+
+	/* implement on AP */
+	if (gpufreq_fp && gpufreq_fp->fix_custom_freq_volt_dual)
+		ret = gpufreq_fp->fix_custom_freq_volt_dual(fgpu, vgpu, fstack, vstack);
+	else {
+		ret = GPUFREQ_ENOENT;
+		GPUFREQ_LOGE("null gpufreq platform function pointer (ENOENT)");
+	}
+
+done:
+	if (unlikely(ret))
+		GPUFREQ_LOGE("fail to fix GPU F(%d)/V(%d), STACK F(%d)/V(%d) (%d)",
+			fgpu, vgpu, fstack, vstack, ret);
 
 	GPUFREQ_TRACE_END();
 

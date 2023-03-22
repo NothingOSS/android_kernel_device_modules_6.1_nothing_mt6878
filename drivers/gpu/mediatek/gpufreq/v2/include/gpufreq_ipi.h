@@ -21,25 +21,27 @@
  **************************************************/
 static char *gpufreq_ipi_cmd_name[] = {
 	/* Common */
-	"CMD_INIT_SHARED_MEM",        // 0
-	"CMD_GET_FREQ_BY_IDX",        // 1
-	"CMD_GET_POWER_BY_IDX",       // 2
-	"CMD_GET_OPPIDX_BY_FREQ",     // 3
-	"CMD_GET_LEAKAGE_POWER",      // 4
-	"CMD_SET_LIMIT",              // 5
-	"CMD_POWER_CONTROL",          // 6
-	"CMD_ACTIVE_SLEEP_CONTROL",   // 7
-	"CMD_COMMIT",                 // 8
-	"CMD_DUAL_COMMIT",            // 9
-	"CMD_PDCA_CONFIG",            // 10
+	"CMD_INIT_SHARED_MEM",           // 0
+	"CMD_GET_FREQ_BY_IDX",           // 1
+	"CMD_GET_POWER_BY_IDX",          // 2
+	"CMD_GET_OPPIDX_BY_FREQ",        // 3
+	"CMD_GET_LEAKAGE_POWER",         // 4
+	"CMD_SET_LIMIT",                 // 5
+	"CMD_POWER_CONTROL",             // 6
+	"CMD_ACTIVE_SLEEP_CONTROL",      // 7
+	"CMD_COMMIT",                    // 8
+	"CMD_DUAL_COMMIT",               // 9
+	"CMD_PDCA_CONFIG",               // 10
 	/* Debug */
-	"CMD_UPDATE_DEBUG_OPP_INFO",  // 11
-	"CMD_SWITCH_LIMIT",           // 12
-	"CMD_FIX_TARGET_OPPIDX",      // 13
-	"CMD_FIX_CUSTOM_FREQ_VOLT",   // 14
-	"CMD_SET_MFGSYS_CONFIG",      // 15
-	"CMD_MSSV_COMMIT",            // 16
-	"CMD_NUM",                    // 17
+	"CMD_UPDATE_DEBUG_OPP_INFO",     // 11
+	"CMD_SWITCH_LIMIT",              // 12
+	"CMD_FIX_TARGET_OPPIDX",         // 13
+	"CMD_FIX_DUAL_TARGET_OPPIDX",    // 14
+	"CMD_FIX_CUSTOM_FREQ_VOLT",      // 15
+	"CMD_FIX_DUAL_CUSTOM_FREQ_VOLT", // 16
+	"CMD_SET_MFGSYS_CONFIG",         // 17
+	"CMD_MSSV_COMMIT",               // 18
+	"CMD_NUM",                       // 19
 };
 
 enum gpufreq_ipi_cmd {
@@ -59,10 +61,12 @@ enum gpufreq_ipi_cmd {
 	CMD_UPDATE_DEBUG_OPP_INFO     = 11,
 	CMD_SWITCH_LIMIT              = 12,
 	CMD_FIX_TARGET_OPPIDX         = 13,
-	CMD_FIX_CUSTOM_FREQ_VOLT      = 14,
-	CMD_SET_MFGSYS_CONFIG         = 15,
-	CMD_MSSV_COMMIT               = 16,
-	CMD_NUM                       = 17,
+	CMD_FIX_DUAL_TARGET_OPPIDX    = 14,
+	CMD_FIX_CUSTOM_FREQ_VOLT      = 15,
+	CMD_FIX_DUAL_CUSTOM_FREQ_VOLT = 16,
+	CMD_SET_MFGSYS_CONFIG         = 17,
+	CMD_MSSV_COMMIT               = 18,
+	CMD_NUM                       = 19,
 };
 
 /**************************************************
@@ -109,6 +113,12 @@ struct gpufreq_ipi_data {
 			int gpu_oppidx;
 			int stack_oppidx;
 		} dual_commit;
+		struct {
+			unsigned int fgpu;
+			unsigned int vgpu;
+			unsigned int fstack;
+			unsigned int vstack;
+		} dual_custom;
 	} u;
 };
 

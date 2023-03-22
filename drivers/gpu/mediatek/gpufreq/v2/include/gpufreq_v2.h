@@ -359,6 +359,9 @@ struct gpufreq_platform_fp {
 	int (*mssv_commit)(unsigned int target, unsigned int val);
 	int (*generic_commit_dual)(int target_oppidx_gpu, int target_oppidx_stack,
 		enum gpufreq_dvfs_state key);
+	int (*fix_target_oppidx_dual)(int oppidx_gpu, int oppidx_stack);
+	int (*fix_custom_freq_volt_dual)(unsigned int fgpu, unsigned int vgpu,
+		unsigned int fstack, unsigned int vstack);
 	/* GPU */
 	unsigned int (*get_cur_fgpu)(void);
 	unsigned int (*get_cur_vgpu)(void);
@@ -469,8 +472,11 @@ const struct gpufreq_opp_info *gpufreq_get_working_table(enum gpufreq_target tar
 int gpufreq_switch_limit(enum gpufreq_target target,
 	enum gpuppm_limiter limiter, int c_enable, int f_enable);
 int gpufreq_fix_target_oppidx(enum gpufreq_target target, int oppidx);
+int gpufreq_fix_dual_target_oppidx(int gpu_oppidx, int stack_oppidx);
 int gpufreq_fix_custom_freq_volt(enum gpufreq_target target,
 	unsigned int freq, unsigned int volt);
+int gpufreq_fix_dual_custom_freq_volt(unsigned int fgpu, unsigned int vgpu,
+	unsigned int fstack, unsigned int vstack);
 int gpufreq_set_mfgsys_config(enum gpufreq_config_target target, enum gpufreq_config_value val);
 int gpufreq_mssv_commit(unsigned int target, unsigned int val);
 

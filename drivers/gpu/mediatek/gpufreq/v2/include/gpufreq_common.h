@@ -111,6 +111,9 @@ void __gpufreq_set_shared_status(struct gpufreq_shared_status *shared_status);
 int __gpufreq_mssv_commit(unsigned int target, unsigned int val);
 int __gpufreq_generic_commit_dual(int target_oppidx_gpu, int target_oppidx_stack,
 	enum gpufreq_dvfs_state key);
+int __gpufreq_fix_target_oppidx_dual(int oppidx_gpu, int oppidx_stack);
+int __gpufreq_fix_custom_freq_volt_dual(unsigned int fgpu, unsigned int vgpu,
+	unsigned int fstack, unsigned int vstack);
 /* GPU */
 unsigned int __gpufreq_get_cur_fgpu(void);
 unsigned int __gpufreq_get_cur_vgpu(void);
