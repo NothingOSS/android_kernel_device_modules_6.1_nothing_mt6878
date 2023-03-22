@@ -867,9 +867,10 @@ static irqreturn_t mtk_irq_raw(int irq, void *data)
 
 	/* CQ done */
 	if (cq_done_status & FBIT(CAMCTL_CQ_THR0_DONE_ST)) {
-
-		if (engine_handle_cq_done(&raw_dev->cq_ref))
-			irq_info.irq_type |= 1 << CAMSYS_IRQ_SETTING_DONE;
+		if (raw_dev->cq_ref != NULL) {
+			if (engine_handle_cq_done(&raw_dev->cq_ref))
+				irq_info.irq_type |= 1 << CAMSYS_IRQ_SETTING_DONE;
+		}
 	}
 
 	/* DMAO done, only for AFO */
