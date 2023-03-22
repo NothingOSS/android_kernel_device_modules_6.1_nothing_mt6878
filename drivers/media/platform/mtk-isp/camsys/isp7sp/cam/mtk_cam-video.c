@@ -72,7 +72,7 @@ static int mtk_cam_vb2_queue_setup(struct vb2_queue *vq,
 	struct mtk_cam_device *cam = vb2_get_drv_priv(vq);
 	struct mtk_cam_video_device *node = mtk_cam_vbq_to_vdev(vq);
 	unsigned int max_buffer_count = node->desc.max_buf_count;
-	const struct v4l2_format *fmt = &node->active_fmt;
+	const struct v4l2_format *fmt = &node->active_fmt, *meta_fmt;
 	unsigned int size;
 	int i;
 	int min_buf_sz;
@@ -87,10 +87,20 @@ static int mtk_cam_vb2_queue_setup(struct vb2_queue *vq,
 		vq->dma_attrs |= DMA_ATTR_NO_KERNEL_MAPPING;
 
 	if (vq->type == V4L2_BUF_TYPE_META_OUTPUT ||
-	    vq->type == V4L2_BUF_TYPE_META_CAPTURE)
-		size = fmt->fmt.meta.buffersize;
-	else
+	    vq->type == V4L2_BUF_TYPE_META_CAPTURE) {
+		meta_fmt = mtk_cam_dev_find_fmt(&node->desc,
+						fmt->fmt.meta.dataformat);
+		if (meta_fmt) {
+			size = meta_fmt->fmt.meta.buffersize;
+		} else {
+			dev_info(cam->dev, "[%s] id:%d, name:%s, get fmt(0x%x) from desc failed",
+				 __func__, node->desc.id, node->desc.name,
+				 fmt->fmt.meta.dataformat);
+			size = fmt->fmt.meta.buffersize;
+		}
+	} else {
 		size = min_buf_sz;
+	}
 
 	/* Add for q.create_bufs with fmt.g_sizeimage(p) / 2 test */
 	if (*num_planes) {
