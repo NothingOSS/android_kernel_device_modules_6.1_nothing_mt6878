@@ -7184,7 +7184,7 @@
 #endif
 			mediatek,imgsys-qos-sc-motr = <2>;
 			mediatek,imgsys-qos-sc-nums = <2>;
-			mediatek,imgsys-qos-sc-id = <7 7>;
+			mediatek,imgsys-qos-sc-id = <15 18>;
 			interconnects =
 				<&mmqos SLAVE_LARB(10)
 					&mmqos SLAVE_COMMON(0)>,
