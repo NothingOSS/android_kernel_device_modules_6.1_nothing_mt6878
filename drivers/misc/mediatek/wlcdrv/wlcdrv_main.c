@@ -38,12 +38,11 @@ static int g_wlc_latest_send_cmd	 = WLCIPI_CMD_DEFAULT;
 #define MCPUCLUSTER_TYPE_BITMASK (0x000000FF << MCPUCLUSTER_TYPE_BIT_OFFSET)
 #define BCPUCLUSTER_TYPE_BITMASK (0x000000FF << BCPUCLUSTER_TYPE_BIT_OFFSET)
 
-#define WLC_SRAM_BASE		0x0003f000
-#define AP_VIEW_TCM_BASE	0x0c080000
-#define WLCDRV_SRAM_ADDR	(AP_VIEW_TCM_BASE+WLC_SRAM_BASE)
-#define WLCDRV_SRAM_SIZE	16
+#define WLC_ENABLE_CHECK_ID		0x454E4142
+#define WLC_DISABLE_CHECK_ID	0x44495341
 
-#define WLCDRV_SRAM_OFFSET_DBG_CNT 4
+#define WLCDRV_SRAM_OFFSET_DBG_CNT	0x4
+#define WLCDRV_SRAM_OFFSET_DBG_SRAM 0x8
 
 static void __iomem *wl_sram_addr_iomapped;
 static int g_wl_support;
@@ -59,20 +58,23 @@ static int _wlc_proc_show(struct seq_file *m, void *v)
 {
 	int value = -1;
 
-	seq_puts(m, "=== wlc status ===\n");
-	seq_printf(m, "Enable:%d\n", g_wl_support);
-	seq_printf(m, "sram addr:0x%x, sz:%d\n", g_wl_sram_addr, g_wl_sram_sz);
-	seq_printf(m, "sram io_mapped:0x%lx\n",	 (unsigned long)wl_sram_addr_iomapped);
+	seq_puts(m, "=== wl status ===\n");
+	seq_printf(m, "Enable(dts):%d\n", g_wl_support);
+	seq_printf(m, "addr:0x%x, sz:%d\n", g_wl_sram_addr, g_wl_sram_sz);
+	seq_printf(m, "io_mapped:0x%lx\n",	 (unsigned long)wl_sram_addr_iomapped);
 	seq_printf(m, "tbl base:0x%x, sz:%d\n", g_wl_tbl_addr, g_wl_tbl_sz);
+
+	value = ioread32(wl_sram_addr_iomapped + WLCDRV_SRAM_OFFSET_DBG_SRAM);
+	seq_printf(m, "addr(in wlc): 0x%x\n", value);
 
 	seq_printf(m, "curr ctrl cmd: 0x%x\n\n", g_wlc_latest_send_cmd);
 	value = ioread32(wl_sram_addr_iomapped + 0);
-	seq_printf(m, "inf scenario: 0x%x\n", value);
+	seq_printf(m, "inf wl-types: 0x%x\n", value);
 
 	value = ioread32(wl_sram_addr_iomapped + WLCDRV_SRAM_OFFSET_DBG_CNT);
-	seq_printf(m, "sram inf count: 0x%x\n", value);
+	seq_printf(m, "inf cnts: 0x%x\n", value);
 
-	seq_puts(m, "=== wlc status ===\n\n");
+	seq_puts(m, "=== wl status ===\n\n");
 
 	return 0;
 }
@@ -169,6 +171,7 @@ static int wlcdrv_probe(void)
 	int wl_sram_sz	 = 0;
 	int wl_tbl_addr = 0;
 	int wl_tbl_sz	= 0;
+	int value = -1;
 
 	/* Create debugfs */
 	struct proc_dir_entry *procfs_wlc_dir = NULL;
@@ -247,9 +250,12 @@ static int wlcdrv_probe(void)
 	g_wl_tbl_sz = wl_tbl_sz;
 
 	pr_info("[wl-info dts]enable:%d\n", wl_support);
-	pr_info("[wl-info wl sram base:0x%x, sz:0x%x\n", wl_sram_addr, wl_sram_sz);
-	pr_info("[wl-info wl tbl base:0x%x, sz:0x%x\n", wl_tbl_addr, wl_tbl_sz);
-	pr_info("[wl-info io_mapped:0x%lx\n", (unsigned long)wl_sram_addr_iomapped);
+	pr_info("[wl-info dts]sram addr:0x%x, sz:0x%x\n", wl_sram_addr, wl_sram_sz);
+	pr_info("[wl-info dts]wl-tbl addr:0x%x, sz:0x%x\n", wl_tbl_addr, wl_tbl_sz);
+	pr_info("[wl-info dts]io_mapped:0x%lx\n", (unsigned long)wl_sram_addr_iomapped);
+
+	value = ioread32(wl_sram_addr_iomapped + WLCDRV_SRAM_OFFSET_DBG_CNT);
+	pr_info("[wl-in-up]wl state:0x%x\n", value);
 
 	return 0;
 }

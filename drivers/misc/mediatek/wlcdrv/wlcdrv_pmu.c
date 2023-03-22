@@ -84,7 +84,7 @@ int wlc_mcu_pmu_init(void)
 	 * --pmu-cpu-evt=0,1,2,3:0x1B,0x70,0x71,0x73,0x75,0x76
 	 */
 
-	int cpu;
+	unsigned int cpu;
 	int nr_events;
 	int nr_events_cpu_l = 6 + 1;
 	int nr_events_cpu_b = 7 + 1;
@@ -113,7 +113,7 @@ int wlc_mcu_pmu_init(void)
 
 	/* for each cpu in cpu_list, add all the events in event_list */
 	for_each_online_cpu(cpu) {
-		if (cpu < 0 || cpu >= MAX_NR_CPUS)
+		if (cpu >= MAX_NR_CPUS)
 			continue;
 		pmu = g_cpu_pmu->pmu[cpu];
 		/*
@@ -259,7 +259,7 @@ int wlc_mcu_pmu_deinit(void)
 
 int wlc_mcu_pmu_start(void)
 {
-	int cpu = raw_smp_processor_id();
+	unsigned int cpu = raw_smp_processor_id();
 
 	pr_info("[wlc]%s(%d)\n", __func__, cpu);
 	if (g_cpu_pmu)
@@ -271,7 +271,7 @@ int wlc_mcu_pmu_start(void)
 
 int wlc_mcu_pmu_stop(void)
 {
-	int cpu = raw_smp_processor_id();
+	unsigned int cpu = raw_smp_processor_id();
 
 	wlc_perf_cpupmu_status = 0;
 
