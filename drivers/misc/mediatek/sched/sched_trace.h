@@ -140,7 +140,7 @@ TRACE_EVENT(sched_select_task_rq,
 		),
 
 	TP_printk(
-		"pid=%4d 32-bit=%d in_irq=%d policy=0x%08x pre-cpu=%d target=%d util=%d util_est=%d uclamp=%d mask=0x%lx eff_mask=0x%lx latency_sensitive=%d sync=%d cpuctl=%d cpuset=%d",
+		"pid=%4d 32-bit=%d in_irq=%d policy=0x%08x pre-cpu=%d target=%d util=%d util_est=%d uclamp=%d mask=0x%lx eff_softmask=0x%lx latency_sensitive=%d sync=%d cpuctl=%d cpuset=%d",
 		__entry->pid,
 		__entry->compat_thread,
 		__entry->in_irq,

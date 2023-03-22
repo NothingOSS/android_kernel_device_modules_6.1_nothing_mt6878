@@ -135,10 +135,6 @@ enum {
 	BACKGROUND_ID,
 	TG_NUM
 };
-struct soft_affinity_tg_for_user {
-	int tg_id;
-	int soft_cpumask;
-};
 
 struct soft_affinity_task_for_user {
 	pid_t pid;
@@ -146,8 +142,8 @@ struct soft_affinity_task_for_user {
 	int soft_cpumask;
 };
 extern void soft_affinity_init(void);
-extern void set_task_group_cpumask_int(struct soft_affinity_tg_for_user *soft_affinity_tg_val);
-extern struct cpumask *get_task_group_cpumask(int tg_id);
+extern void set_task_group_cpumask_int(unsigned int cpumask_val, char *group_name);
+extern struct cpumask get_task_group_cpumask(char *group_name);
 extern void set_task_ls_with_softmask(struct soft_affinity_task_for_user *soft_affinity_task_val);
 
 extern void get_most_powerful_pd_and_util_Th(void);
@@ -161,8 +157,6 @@ extern void get_most_powerful_pd_and_util_Th(void);
 #define EAS_NEWLY_IDLE_BALANCE_INTERVAL_GET     _IOR('g', 7,  unsigned int)
 #define EAS_GET_THERMAL_HEADROOM_INTERVAL_SET	_IOW('g', 8,  unsigned int)
 #define EAS_GET_THERMAL_HEADROOM_INTERVAL_GET	_IOR('g', 9,  unsigned int)
-#define EAS_SET_TASK_GROUP_SOFT_AFFINITY	_IOW('g', 10,  struct soft_affinity_tg_for_user)
-#define EAS_GET_TASK_GROUP_SOFT_AFFINITY	_IOR('g', 11, unsigned int)
 #define EAS_SBB_ALL_SET				_IOW('g', 12,  unsigned int)
 #define EAS_SBB_ALL_UNSET			_IOW('g', 13,  unsigned int)
 #define EAS_SBB_GROUP_SET			_IOW('g', 14,  unsigned int)
@@ -177,7 +171,10 @@ extern void get_most_powerful_pd_and_util_Th(void);
 #define EAS_TARGET_MARGIN_C1		_IOW('g', 24,  unsigned int)
 #define EAS_TURN_POINT_UTIL_C2		_IOW('g', 25,  unsigned int)
 #define EAS_TARGET_MARGIN_C2		_IOW('g', 26,  unsigned int)
-#define EAS_SET_TASK_SOFT_AFFINITY	_IOW('g', 27,  struct soft_affinity_task_for_user)
+#define EAS_SET_CPUMASK_TA			_IOW('g', 27,  unsigned int)
+#define EAS_SET_CPUMASK_BACKGROUND	_IOW('g', 28,  unsigned int)
+#define EAS_SET_CPUMASK_FOREGROUND	_IOW('g', 29,  unsigned int)
+#define EAS_SET_TASK_SOFT_AFFINITY	_IOW('g', 30,  struct soft_affinity_task_for_user)
 
 #if IS_ENABLED(CONFIG_MTK_NEWIDLE_BALANCE)
 extern void mtk_sched_newidle_balance(void *data, struct rq *this_rq,

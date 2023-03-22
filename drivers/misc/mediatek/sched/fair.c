@@ -590,28 +590,17 @@ static inline struct task_group *css_tg(struct cgroup_subsys_state *css)
 	return css ? container_of(css, struct task_group, css) : NULL;
 }
 
-struct task_group *tg_array[TG_NUM];
 void _init_tg_mask(struct cgroup_subsys_state *css)
 {
 	struct task_group *tg = css_tg(css);
 	struct soft_affinity_tg *sa_tg = &((struct mtk_tg *) tg->android_vendor_data1)->sa_tg;
 
 	cpumask_copy(&sa_tg->soft_cpumask, cpu_possible_mask);
-
-	if (!strcmp(css->cgroup->kn->name, "top-app"))
-		tg_array[TOPAPP_ID] = tg;
-	else if (!strcmp(css->cgroup->kn->name, "foreground"))
-		tg_array[FOREGROUND_ID] = tg;
-	else if (!strcmp(css->cgroup->kn->name, "background"))
-		tg_array[BACKGROUND_ID] = tg;
 }
 
 static void soft_affinity_rvh_cpu_cgroup_online(void *unused, struct cgroup_subsys_state *css)
 {
-	struct task_group *tg = css_tg(css);
-	struct soft_affinity_tg *sa_tg = &((struct mtk_tg *) tg->android_vendor_data1)->sa_tg;
-
-	cpumask_copy(&sa_tg->soft_cpumask, cpu_possible_mask);
+	_init_tg_mask(css);
 }
 
 void init_tg_soft_affinity(void)
@@ -654,20 +643,47 @@ struct cpumask bit_to_cpumask(unsigned int cpumask_val)
 	return cpumask_setting;
 }
 
-void set_task_group_cpumask_int(struct soft_affinity_tg_for_user *soft_affinity_tg_val)
+struct task_group *search_tg(char *group_name)
 {
-	struct task_group *tg = tg_array[soft_affinity_tg_val->tg_id];
-	struct cpumask *tg_mask = &(((struct mtk_tg *)
-		tg->android_vendor_data1)->sa_tg.soft_cpumask);
-	struct cpumask soft_cpumask = bit_to_cpumask(soft_affinity_tg_val->soft_cpumask);
+	struct cgroup_subsys_state *css = &root_task_group.css;
+	struct cgroup_subsys_state *top_css = css;
+	int ret = 0;
+
+	rcu_read_lock();
+	css_for_each_child(css, top_css)
+		if (!strcmp(css->cgroup->kn->name, group_name)) {
+			ret = 1;
+			break;
+		}
+	rcu_read_unlock();
+
+	if (ret)
+		return css_tg(css);
+
+	return &root_task_group;
+}
+
+void set_task_group_cpumask_int(unsigned int cpumask_val, char *group_name)
+{
+	struct task_group *tg = search_tg(group_name);
+	struct cpumask *tg_mask;
+	struct cpumask soft_cpumask;
+
+	if (tg == &root_task_group)
+		return;
+
+	tg_mask = &(((struct mtk_tg *) tg->android_vendor_data1)->sa_tg.soft_cpumask);
+	soft_cpumask = bit_to_cpumask(cpumask_val);
 
 	cpumask_copy(tg_mask, &soft_cpumask);
 }
 
-struct cpumask *get_task_group_cpumask(int tg_id)
+struct cpumask get_task_group_cpumask(char *group_name)
 {
-	struct task_group *tg = tg_array[tg_id];
-	struct cpumask *tg_mask = &((struct mtk_tg *) tg->android_vendor_data1)->sa_tg.soft_cpumask;
+	struct task_group *tg = search_tg(group_name);
+	struct cpumask tg_mask;
+
+	tg_mask = ((struct mtk_tg *) tg->android_vendor_data1)->sa_tg.soft_cpumask;
 
 	return tg_mask;
 }
@@ -753,18 +769,17 @@ static inline void compute_effective_softmask(struct task_struct *p,
 	struct cpumask task_mask;
 	struct cpumask tg_mask;
 
+	*latency_sensitive = is_task_latency_sensitive(p);
+	if (!*latency_sensitive) {
+		cpumask_copy(dst_mask, cpu_possible_mask);
+		return;
+	}
+
 	css = task_css(p, cpu_cgrp_id);
 	tg = container_of(css, struct task_group, css);
 	tg_mask = ((struct mtk_tg *) tg->android_vendor_data1)->sa_tg.soft_cpumask;
 
 	task_mask = ((struct mtk_task *) p->android_vendor_data1)->sa_task.soft_cpumask;
-
-	*latency_sensitive = is_task_latency_sensitive(p);
-	/* not latency_sensitive task */
-	if (!*latency_sensitive) {
-		cpumask_copy(dst_mask, &tg_mask);
-		return;
-	}
 
 	if (!cpumask_and(dst_mask, &task_mask, &tg_mask)) {
 		cpumask_copy(dst_mask, &tg_mask);
@@ -1289,10 +1304,11 @@ done:
 	if (trace_sched_find_energy_efficient_cpu_enabled())
 		trace_sched_find_energy_efficient_cpu(in_irq, best_delta, best_energy_cpu,
 				best_idle_cpu, idle_max_spare_cap_cpu, sys_max_spare_cap_cpu);
-	if (trace_sched_select_task_rq_enabled())
+	if (trace_sched_select_task_rq_enabled()) {
 		trace_sched_select_task_rq(p, in_irq, select_reason, prev_cpu, *new_cpu,
 				task_util(p), task_util_est(p), uclamp_task_util(p),
 				latency_sensitive, sync, &effective_softmask);
+	}
 
 	irq_log_store();
 }
