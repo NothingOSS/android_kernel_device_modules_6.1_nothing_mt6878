@@ -1257,7 +1257,7 @@ unsigned int target_margin[NR_CPUS];
 /*
  * set sched capacity margin for DVFS, Default = 20
  */
-int set_sched_capacity_margin_dvfs(unsigned int capacity_margin)
+int set_sched_capacity_margin_dvfs(int capacity_margin)
 {
 	if (capacity_margin < 0 || capacity_margin > 95)
 		return -1;
