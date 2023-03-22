@@ -9812,6 +9812,7 @@
 		#mbox-cells = <3>;
 		#gce-event-cells = <1>;
 		#gce-subsys-cells = <2>;
+		cmdq-pwr-log = <0>;
 		default-tokens = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_0>,
 				 /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_1>,
 				 /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_2>,
@@ -9826,6 +9827,8 @@
 				 /bits/ 16 <CMDQ_SYNC_TOKEN_HW_TRACE_LOCK>,
 				 /bits/ 16 <CMDQ_SYNC_TOKEN_MML_MML_STOP>;
 		append-by-event;
+		cmdq-dump-buf-size = <0>;
+		error-irq-bug-on = <0>;
 		mboxes = <&gce 13 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_MM_INFRA>;
 		mediatek,smi = <&smi_mdp_2x1_subcommon>;
