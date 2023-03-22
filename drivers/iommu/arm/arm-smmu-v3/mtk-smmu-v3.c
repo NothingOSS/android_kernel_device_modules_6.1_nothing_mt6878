@@ -1051,6 +1051,40 @@ static void mtk_smmu_irq_record(struct mtk_smmu_data *data)
 	}
 }
 
+static irqreturn_t mtk_smmu_sec_irq_process(int irq, void *dev)
+{
+	struct arm_smmu_device *smmu = dev;
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+	u32 smmu_type = data->plat_data->smmu_type;
+	unsigned long fault_iova = 0, fault_pa = 0, fault_id = 0;
+	bool need_handle = false;
+	int ret = 0;
+
+	if (!MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_SEC_EN))
+		return IRQ_NONE;
+
+#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
+	/* query whether need handle secure TF */
+	ret = mtk_smmu_sec_tf_handler(smmu_type, &need_handle,
+			&fault_iova, &fault_pa, &fault_id);
+	if (ret) {
+		pr_info("[%s] smmu_%u fail\n", __func__, smmu_type);
+		return IRQ_HANDLED;
+	}
+#endif
+
+#ifdef MTK_SMMU_DEBUG
+	if (need_handle) {
+		pr_info("[%s] smmu_%u, fault_iova:0x%lx, fault_pa:0x%lx, fault_id:0x%lx\n",
+			__func__, smmu_type, fault_iova, fault_pa, fault_id);
+		report_custom_smmu_fault(fault_iova, fault_pa, fault_id, smmu_type);
+		return IRQ_HANDLED;
+	}
+#endif
+
+	return IRQ_NONE;
+}
+
 static int mtk_smmu_irq_handler(int irq, void *dev)
 {
 	struct arm_smmu_device *smmu = dev;
@@ -1066,6 +1100,10 @@ static int mtk_smmu_irq_handler(int irq, void *dev)
 		/* No errors pending */
 		pr_info("[%s] no errors pending: irq:0x%x, gerror:0x%x, gerrorn:0x%x, active:0x%x\n",
 			__func__, irq, gerror, gerrorn, active);
+
+		/* try to secure interrupt process which maybe trigger by secure */
+		if (mtk_smmu_sec_irq_process(irq, dev) == IRQ_HANDLED)
+			return IRQ_HANDLED;
 	} else {
 		pr_info("[%s] irq:0x%x, gerror:0x%x, gerrorn:0x%x, active:0x%x\n",
 			__func__, irq, gerror, gerrorn, active);

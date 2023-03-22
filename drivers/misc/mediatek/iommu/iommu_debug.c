@@ -981,6 +981,8 @@ static u64 arm_lpae_iova_to_iopte(struct io_pgtable_ops *ops, unsigned long iova
 	return 0;
 
 found_translation:
+	pr_info("%s, iova:0x%lx, pte:0x%llx, lvl:%d, iopte_type:%llu, fmt:%u\n",
+		__func__, iova, pte, lvl, iopte_type(pte), data->iop.fmt);
 	return pte;
 }
 

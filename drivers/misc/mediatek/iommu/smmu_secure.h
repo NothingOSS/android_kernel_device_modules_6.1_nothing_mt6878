@@ -12,8 +12,21 @@
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 int mtk_smmu_sec_init(u32 smmu_type);
+int mtk_smmu_sec_tf_handler(u32 smmu_type, bool *need_handle,
+			    unsigned long *fault_iova,
+			    unsigned long *fault_pa,
+			    unsigned long *fault_id);
 #else
 static inline int mtk_smmu_sec_init(u32 smmu_type)
+{
+	pr_info("%s not support\n", __func__);
+	return 0;
+}
+
+static inline int mtk_smmu_sec_tf_handler(u32 smmu_type, bool *need_handle,
+					  unsigned long *fault_iova,
+					  unsigned long *fault_pa,
+					  unsigned long *fault_id)
 {
 	pr_info("%s not support\n", __func__);
 	return 0;
