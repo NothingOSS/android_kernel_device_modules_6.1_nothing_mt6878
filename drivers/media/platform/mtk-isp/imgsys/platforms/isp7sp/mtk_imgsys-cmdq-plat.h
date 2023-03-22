@@ -12,7 +12,7 @@
 #define IMGSYS_DVFS_ENABLE     (1)
 #define IMGSYS_QOS_SET_BY_SCEN (1)
 
-#define IMGSYS_SECURE_ENABLE   (0)
+#define IMGSYS_SECURE_ENABLE   (1)
 
 #ifdef GCE_SUPPORT_REPLACE_MODE
 #undef GCE_SUPPORT_REPLACE_MODE
@@ -823,7 +823,7 @@ static struct imgsys_event_table imgsys_event[] = {
 	{IMGSYS_CMDQ_SYNC_TOKEN_CAMSYS_POOL_8, "sw-sync-token-camsys-pool-8"},
 	{IMGSYS_CMDQ_SYNC_TOKEN_CAMSYS_POOL_9, "sw-sync-token-camsys-pool-9"},
 	{IMGSYS_CMDQ_SYNC_TOKEN_CAMSYS_POOL_10, "sw-sync-token-camsys-pool-10"},
-	{IMGSYS_CMDQ_SYNC_TOKEN_TZMP_ISP_WAIT, "sw-sync-token_tzmp_isp-wait"},
+	{IMGSYS_CMDQ_SYNC_TOKEN_TZMP_ISP_WAIT, "sw-sync-token-tzmp-isp-wait"},
 	{IMGSYS_CMDQ_SYNC_TOKEN_TZMP_ISP_SET, "sw-sync-token-tzmp-isp-set"},
 	{IMGSYS_CMDQ_SYNC_TOKEN_TZMP_ADL_WAIT, "sw-sync-token-tzmp-adl-wait"},
 	{IMGSYS_CMDQ_SYNC_TOKEN_TZMP_ADL_SET, "sw-sync-token-tzmp-adl-set"},

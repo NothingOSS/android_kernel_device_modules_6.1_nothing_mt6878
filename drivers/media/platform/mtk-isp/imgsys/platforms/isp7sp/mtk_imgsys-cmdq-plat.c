@@ -110,8 +110,8 @@ void imgsys_cmdq_init_plat7sp(struct mtk_imgsys_dev *imgsys_dev, const int nr_im
 		for (idx = IMGSYS_NOR_THD; idx < (IMGSYS_NOR_THD + IMGSYS_SEC_THD); idx++) {
 			imgsys_sec_clt[idx-IMGSYS_NOR_THD] = cmdq_mbox_create(dev, idx);
 			pr_info(
-				"%s: cmdq_mbox_create sec_thd(%d, 0x%x)\n",
-				__func__, idx, imgsys_sec_clt[idx-IMGSYS_NOR_THD]);
+				"%s: cmdq_mbox_create sec_thd(%d, 0x%lx)\n",
+				__func__, idx, (unsigned long)imgsys_sec_clt[idx-IMGSYS_NOR_THD]);
 		}
 		#endif
 		/* parse hardware event */
