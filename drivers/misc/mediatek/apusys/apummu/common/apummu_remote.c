@@ -118,24 +118,23 @@ int apummu_remote_send_cmd_sync(void *drvinfo, void *request, void *reply, uint3
 		goto out;
 	}
 
-wait:
 	AMMU_LOG_INFO("Wait for Getting cmd\n");
-	ret = wait_event_interruptible_timeout(
+	do {
+		ret = wait_event_interruptible_timeout(
 				g_ammu_msg->lock.wait_rx,
 				g_ammu_msg->count,
 				msecs_to_jiffies(APUMMU_REMOTE_TIMEOUT));
-	if (!ret) {
-		if (ret == -ERESTARTSYS) {
-			AMMU_LOG_ERR("Wake up by signal!, retry again %d\n", retry);
-			msleep(20);
-			retry++;
-			goto wait;
+		if (!ret) {
+			AMMU_LOG_ERR("wait command timeout!!\n");
+			ret = -ETIME;
+			goto out;
+		} else if (ret != -ERESTARTSYS) {
+			break;
 		}
 
-		AMMU_LOG_ERR("wait command timeout!!\n");
-		ret = -ETIME;
-		goto out;
-	}
+		AMMU_LOG_ERR("Wake up by signal!, retry again %d\n", retry++);
+		msleep(20);
+	} while (ret == -ERESTARTSYS);
 
 	spin_lock_irqsave(&g_ammu_msg->lock.lock_rx, flags);
 
