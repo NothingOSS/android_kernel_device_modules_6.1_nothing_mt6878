@@ -50,6 +50,10 @@ uint64_t scp_chre_payload_to_size;
 uint64_t scp_chre_payload_from_addr;
 uint64_t scp_chre_payload_from_size;
 
+/* scp chre manager for scp status check */
+static unsigned int scp_chre_stat_flag = SCP_CHRE_UNINIT;
+static DECLARE_WAIT_QUEUE_HEAD(scp_chre_stat_queue);
+
 /*
  * IPI for chre
  * @param id:   IPI id
@@ -136,8 +140,9 @@ static ssize_t scp_chre_manager_write(struct file *filp,
 		return -EFAULT;
 	}
 
-	if (msg.magic != SCP_CHRE_MAGIC) {
-		pr_err("[SCP] magic check fail\n");
+	if (msg.magic != SCP_CHRE_MAGIC &&
+		msg.size > SCP_CHRE_MANAGER_PAYLOAD_MAXIMUM) {
+		pr_err("[SCP] magic/size check fail\n");
 		return -EFAULT;
 	}
 
@@ -164,19 +169,54 @@ static ssize_t scp_chre_manager_write(struct file *filp,
 	return scp_chre_ackdata[1];
 }
 
-static unsigned int scp_chre_manager_poll(struct file *filp,
-		struct poll_table_struct *wait)
+static long scp_chre_manager_ioctl(struct file *filp,
+		unsigned int cmd, unsigned long arg)
 {
-	pr_notice("%s+++\n", __func__);
+	struct scp_chre_manager_stat_info pkt;
 
-	return POLLIN;
+	memset(&pkt, 0, sizeof(pkt));
+	if (copy_from_user((void *)&pkt, (const void __user *)arg, sizeof(pkt))) {
+		pr_err("[SCP] get chre stat pkt fail\n");
+		return -EFAULT;
+	}
+
+	if (pkt.ret_user_stat_addr == 0) {
+		pr_err("[SCP] get chre stat addr fail\n");
+		return -EFAULT;
+	}
+
+	/* once user state != kernel state, return stat and sync to user immediately
+	 * Or wait notification broadcast event.
+	 */
+	switch (cmd) {
+	case SCP_CHRE_MANAGER_STAT_UNINIT:
+	case SCP_CHRE_MANAGER_STAT_STOP:
+	case SCP_CHRE_MANAGER_STAT_START:
+		wait_event_interruptible(scp_chre_stat_queue,
+			scp_chre_stat_flag != (cmd & IOCTL_NR_MASK));
+		break;
+	default:
+		pr_err("[SCP] Unknown state, but still update new state to chre\n");
+		break;
+	}
+
+	if (copy_to_user((void __user *)pkt.ret_user_stat_addr,
+			&scp_chre_stat_flag, sizeof(unsigned int))) {
+		pr_err("[SCP] update chre state fail\n");
+		return -EFAULT;
+	}
+
+	pr_debug("%s: scp_chre_stat_flag: %d\n", __func__, scp_chre_stat_flag);
+
+	return 0;
 }
 
 static const struct file_operations scp_chre_manager_fops = {
 	.owner		= THIS_MODULE,
 	.read           = scp_chre_manager_read,
 	.write          = scp_chre_manager_write,
-	.poll           = scp_chre_manager_poll,
+	.unlocked_ioctl = scp_chre_manager_ioctl,
+	.compat_ioctl   = scp_chre_manager_ioctl,
 };
 
 static struct miscdevice scp_chre_device = {
@@ -185,7 +225,28 @@ static struct miscdevice scp_chre_device = {
 	.fops = &scp_chre_manager_fops
 };
 
-static void scp_chre_channel_init(void)
+static int scp_chre_recover_event(struct notifier_block *this,
+				unsigned long event, void *ptr)
+{
+	switch (event) {
+	case SCP_EVENT_READY:
+		scp_chre_stat_flag = SCP_CHRE_START;
+		break;
+	case SCP_EVENT_STOP:
+		scp_chre_stat_flag = SCP_CHRE_STOP;
+		break;
+	}
+
+	wake_up_interruptible(&scp_chre_stat_queue);
+
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block scp_chre_recover_notifier = {
+	.notifier_call = scp_chre_recover_event,
+};
+
+static int scp_chre_channel_init(void)
 {
 	int ret;
 
@@ -193,6 +254,12 @@ static void scp_chre_channel_init(void)
 	scp_chre_payload_to_size = (uint64_t)scp_get_reserve_mem_size(SCP_CHRE_TO_MEM_ID);
 	scp_chre_payload_from_addr = (uint64_t)scp_get_reserve_mem_virt(SCP_CHRE_FROM_MEM_ID);
 	scp_chre_payload_from_size = (uint64_t)scp_get_reserve_mem_size(SCP_CHRE_FROM_MEM_ID);
+
+	if (scp_chre_payload_to_addr == 0 || scp_chre_payload_to_size == 0
+	|| scp_chre_payload_from_addr == 0 || scp_chre_payload_from_size == 0) {
+		pr_err("[SCP] chre memory reserve fail\n");
+		return -1;
+	}
 
 	/* synchronization for send IPI post callback sequence */
 	ret = mtk_ipi_register(
@@ -202,8 +269,8 @@ static void scp_chre_channel_init(void)
 			(void *)scp_chre_ack_handler,
 			(void *)&scp_chre_ackdata);
 	if (ret) {
-		pr_err("IPI_OUT_HOST_SCP_CHRE register failed %d\n", ret);
-		WARN_ON(1);
+		pr_err("[SCP] IPI_OUT_HOST_SCP_CHRE register failed %d\n", ret);
+		return -1;
 	}
 
 	/* receive IPI handler */
@@ -214,16 +281,23 @@ static void scp_chre_channel_init(void)
 			NULL,
 			(void *)&scp_chre_msgdata);
 	if (ret) {
-		pr_err("IPI_IN_SCP_HOST_CHRE register failed %d\n", ret);
-		WARN_ON(1);
+		pr_err("[SCP] IPI_IN_SCP_HOST_CHRE register failed %d\n", ret);
+		return -1;
 	}
+
+	return 0;
 }
 
 void scp_chre_manager_init(void)
 {
 	int ret;
 
-	scp_chre_channel_init();
+	if (scp_chre_channel_init()) {
+		pr_notice("[SCP] skip chre manager init\n");
+		return;
+	}
+
+	scp_A_register_notify(&scp_chre_recover_notifier);
 
 	ret = misc_register(&scp_chre_device);
 	if (unlikely(ret != 0))
