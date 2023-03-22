@@ -111,18 +111,18 @@ bool cond_job_with_action(struct mtk_cam_job *job, void *arg)
 	return mtk_cam_job_has_pending_action(job);
 }
 
-static int ctrl_enable_job_fsm_except_switch(struct mtk_cam_job *job,
+static int ctrl_enable_job_fsm_until_switch(struct mtk_cam_job *job,
 					    void *arg)
 {
-	int enable = 1;
+	struct mtk_cam_job *switched_job = (struct mtk_cam_job *)arg;
 
-	if (job->raw_switch)
-		enable = 0;
+	if (switched_job != job && job->raw_switch)
+		return -1;
 
 	if (CAM_DEBUG_ENABLED(CTRL))
-		pr_info("%s: enable(%d)#%d\n", __func__,  enable, job->req_seq);
+		pr_info("%s: enable#%d\n", __func__, job->req_seq);
 
-	mtk_cam_job_set_fsm(job, enable);
+	mtk_cam_job_set_fsm(job, 1);
 
 	return 0;
 }
@@ -773,6 +773,8 @@ static int mtk_cam_ctrl_stream_on_job(struct mtk_cam_job *job)
 		}
 	}
 
+	atomic_dec(&ctrl->stream_on_cnt);
+
 	return 0;
 
 STREAM_ON_FAIL:
@@ -794,8 +796,7 @@ static void mtk_cam_ctrl_stream_on_flow(struct mtk_cam_job *job)
 	if (mtk_cam_ctrl_stream_on_job(job))
 		return;
 
-	atomic_set(&ctrl->stream_on_done, 1);
-	mtk_cam_ctrl_loop_job(ctrl, ctrl_enable_job_fsm_except_switch, NULL);
+	mtk_cam_ctrl_loop_job(ctrl, ctrl_enable_job_fsm_until_switch, NULL);
 
 	dev_info(dev, "[%s] ctx %d finish\n", __func__, ctrl->ctx->stream_id);
 }
@@ -975,6 +976,8 @@ static void mtk_cam_ctrl_raw_switch_flow(struct mtk_cam_job *job)
 	 * Reuse stream on flow to start the new stream of the new sensor
 	 */
 	mtk_cam_ctrl_stream_on_job(job);
+	mtk_cam_ctrl_loop_job(ctrl, ctrl_enable_job_fsm_until_switch, job);
+
 	dev_info(ctrl->ctx->cam->dev, "[%s] finish, used_engine:0x%x\n",
 		 __func__, job->used_engine);
 }
@@ -1036,8 +1039,8 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 	req_seq = atomic_inc_return(&cam_ctrl->enqueued_req_cnt);
 	mtk_cam_job_set_no(job, req_seq, frame_seq);
 
-	if (job->seamless_switch)
-		mtk_cam_job_set_fsm(job, 0);
+	if (job->raw_switch)
+		atomic_inc(&cam_ctrl->stream_on_cnt);
 
 	/* EnQ this request's state element to state_list (STATE:READY) */
 	write_lock(&cam_ctrl->list_lock);
@@ -1054,15 +1057,16 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 		    job->job_scen.id == MTK_CAM_SCEN_ODT_NORMAL ||
 		    job->job_scen.id == MTK_CAM_SCEN_ODT_MSTREAM) {
 
-			atomic_set(&cam_ctrl->stream_on_done, 1);
+			atomic_set(&cam_ctrl->stream_on_cnt, 0);
 			mtk_cam_watchdog_start(&cam_ctrl->watchdog, 0);
 		}
 	}
 
-	if (!atomic_read(&cam_ctrl->stream_on_done) || job->raw_switch) {
+	if (atomic_read(&cam_ctrl->stream_on_cnt)) {
 		mtk_cam_job_set_fsm(job, 0);
 		if (CAM_DEBUG_ENABLED(CTRL))
-			pr_info("disable job #%d's fsm\n", job->req_seq);
+			pr_info("disable job #%d's fsm, stream_on_cnt(%d)\n",
+				job->req_seq, atomic_read(&cam_ctrl->stream_on_cnt));
 	}
 
 	call_jobop(job, compose);
@@ -1151,7 +1155,7 @@ void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 	cam_ctrl->fs_event_subframe_idx = 0;
 
 	atomic_set(&cam_ctrl->stopped, 0);
-	atomic_set(&cam_ctrl->stream_on_done, 0);
+	atomic_set(&cam_ctrl->stream_on_cnt, 1);
 
 	init_waitqueue_head(&cam_ctrl->event_wq);
 

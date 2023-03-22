@@ -83,7 +83,7 @@ struct mtk_cam_ctrl {
 	atomic_t stopped;
 	atomic_t ref_cnt;
 
-	atomic_t stream_on_done;
+	atomic_t stream_on_cnt;
 
 	wait_queue_head_t event_wq;
 	/* note:
