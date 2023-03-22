@@ -1121,8 +1121,9 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		sram_addr = wrot->sram_pa + wrot_frm->plane_offset[0];
 
 		/* config smi addr to emi (iova) or sram */
-		cmdq_pkt_write(pkt, NULL, wrot->smi_larb_con,
-			GENMASK(19, 16), GENMASK(19, 16));
+		if (!mml_slt)
+			cmdq_pkt_write(pkt, NULL, wrot->smi_larb_con,
+				GENMASK(19, 16), GENMASK(19, 16));
 
 		/* config ready signal from disp0 or disp1 */
 		wrot_config_ready(wrot, cfg, wrot_frm, ccfg->pipe, pkt, true);
@@ -1160,7 +1161,7 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 			wrot_frm->hor_sh_uv, wrot_frm->ver_sh_uv,
 			wrot_frm->plane_offset);
 
-		if (wrot->smi_larb_con) {
+		if (wrot->smi_larb_con && !mml_slt) {
 			/* always reset larb con to va mode to avoid last frame fail */
 			cmdq_pkt_write(pkt, NULL, wrot->smi_larb_con, 0, GENMASK(19, 16));
 		}
@@ -1941,8 +1942,9 @@ static s32 wrot_post(struct mml_comp *comp, struct mml_task *task,
 		struct mml_comp_wrot *wrot = comp_to_wrot(comp);
 
 		/* clear path sel back to dram */
-		cmdq_pkt_write(task->pkts[ccfg->pipe], NULL, wrot->smi_larb_con,
-			0, GENMASK(19, 16));
+		if (!mml_slt)
+			cmdq_pkt_write(task->pkts[ccfg->pipe], NULL, wrot->smi_larb_con,
+				0, GENMASK(19, 16));
 	}
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
