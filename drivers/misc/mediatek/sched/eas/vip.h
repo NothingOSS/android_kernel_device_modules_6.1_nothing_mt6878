@@ -29,8 +29,15 @@ struct vip_rq {
 };
 
 enum vip_group {
-	VIP_GROUP1,
+	VIP_GROUP_TOPAPP,
+	VIP_GROUP_FOREGROUND,
+	VIP_GROUP_BACKGROUND,
 	VIP_GROUP_NUM
+};
+
+struct VIP_task_group {
+	int enable[VIP_GROUP_NUM];
+	int threshold[VIP_GROUP_NUM];
 };
 
 extern inline int get_vip_task_prio(struct task_struct *p);

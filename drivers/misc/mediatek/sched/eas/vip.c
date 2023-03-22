@@ -11,9 +11,9 @@
 #include "eas_trace.h"
 
 bool vip_enable = true;
-bool allow_VIP_task_group;
 
 unsigned int ls_vip_threshold          =  DEFAULT_VIP_PRIO_THRESHOLD;
+struct VIP_task_group vtg;
 
 DEFINE_PER_CPU(struct vip_rq, vip_rq);
 
@@ -91,26 +91,77 @@ static void insert_vip_task(struct rq *rq, struct vip_task_struct *vts,
 	}
 }
 
-int VIP_task_group[VIP_GROUP_NUM] = {0};
-void set_task_group_VIP(int group_id)
+/* top-app interface */
+void set_top_app_vip(unsigned int prio)
 {
-	VIP_task_group[group_id] = 1;
+	vtg.threshold[VIP_GROUP_TOPAPP] = prio;
+	vtg.enable[VIP_GROUP_TOPAPP] = 1;
 }
+EXPORT_SYMBOL_GPL(set_top_app_vip);
 
-void deactivate_task_group_VIP(int group_id)
+void unset_top_app_vip(void)
 {
-	VIP_task_group[group_id] = 0;
+	vtg.threshold[VIP_GROUP_TOPAPP] = DEFAULT_VIP_PRIO_THRESHOLD;
+	vtg.enable[VIP_GROUP_TOPAPP] = 0;
+}
+EXPORT_SYMBOL_GPL(unset_top_app_vip);
+/* end of top-app interface */
+
+/* foreground interface */
+void set_foreground_vip(unsigned int prio)
+{
+	vtg.threshold[VIP_GROUP_FOREGROUND] = prio;
+	vtg.enable[VIP_GROUP_FOREGROUND] = 1;
+}
+EXPORT_SYMBOL_GPL(set_foreground_vip);
+
+void unset_foreground_vip(void)
+{
+	vtg.threshold[VIP_GROUP_FOREGROUND] = DEFAULT_VIP_PRIO_THRESHOLD;
+	vtg.enable[VIP_GROUP_FOREGROUND] = 0;
+}
+EXPORT_SYMBOL_GPL(unset_foreground_vip);
+/* end of foreground interface */
+
+/* background interface */
+void set_background_vip(unsigned int prio)
+{
+	vtg.threshold[VIP_GROUP_BACKGROUND] = prio;
+	vtg.enable[VIP_GROUP_BACKGROUND] = 1;
+}
+EXPORT_SYMBOL_GPL(set_background_vip);
+
+void unset_background_vip(void)
+{
+	vtg.threshold[VIP_GROUP_BACKGROUND] = DEFAULT_VIP_PRIO_THRESHOLD;
+	vtg.enable[VIP_GROUP_BACKGROUND] = 0;
+}
+EXPORT_SYMBOL_GPL(unset_background_vip);
+/* end of background interface */
+
+int get_group_id(struct task_struct *p)
+{
+	struct cgroup_subsys_state *css = task_css(p, cpu_cgrp_id);
+	const char *group_name = css->cgroup->kn->name;
+
+	if (!strcmp(group_name, "top-app"))
+		return VIP_GROUP_TOPAPP;
+	else if (!strcmp(group_name, "foreground"))
+		return VIP_GROUP_FOREGROUND;
+	else if (!strcmp(group_name, "background"))
+		return VIP_GROUP_BACKGROUND;
+
+	return -1;
 }
 
 bool is_VIP_task_group(struct task_struct *p)
 {
-	int group_id = -1;
+	int group_id = get_group_id(p);
 
-	if (!allow_VIP_task_group)
-		return false;
-
-	if (group_id >= 0 && VIP_task_group[group_id])
+	if (group_id >= 0 && vtg.enable[group_id] &&
+			p->prio <= vtg.threshold[group_id])
 		return true;
+
 	return false;
 }
 
@@ -457,8 +508,12 @@ void vip_init(void)
 {
 	struct task_struct *g, *p;
 	int cpu;
+	int i;
 
-	allow_VIP_task_group = false;
+	for (i = 0; i < VIP_GROUP_NUM; i++) {
+		vtg.enable[i] = 0;
+		vtg.threshold[i] = DEFAULT_VIP_PRIO_THRESHOLD;
+	}
 
 	/* init vip related value to exist tasks */
 	read_lock(&tasklist_lock);
