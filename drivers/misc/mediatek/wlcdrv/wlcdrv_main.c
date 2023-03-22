@@ -89,7 +89,7 @@ static ssize_t _wlc_proc_write(struct file *fp, const char __user *userbuf,
 	ssize_t ret;
 	size_t length = count;
 
-	if (length > WLC_CMD_BUFFER_SIZE)
+	if (length >= WLC_CMD_BUFFER_SIZE)
 		length = WLC_CMD_BUFFER_SIZE - 1;
 	ret = length;
 

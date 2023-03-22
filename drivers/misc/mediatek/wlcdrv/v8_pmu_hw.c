@@ -216,7 +216,7 @@ static unsigned long armv8_perf_event_get_evttype(struct perf_event *ev)
 /*
  * Use to hold the request pmu event id for all CPU cores
  */
-static struct pmu_data_info pmus_info[NR_CPUS][MXNR_PMU_EVENTS];
+static struct pmu_data_info pmus_info[MAX_NR_CPUS][MXNR_PMU_EVENTS];
 
 struct cpu_pmu_hw arm_pmu = {
 	.name = "arm_pmu",
@@ -257,11 +257,10 @@ static void init_pmus(void)
 struct cpu_pmu_hw *cpu_pmu_hw_init(void)
 {
 	int cpu = 0;
-	int max_nr_cpus = 8;
 
 	init_pmus();
 	for_each_possible_cpu(cpu) {
-		if (cpu < 0 || cpu >= max_nr_cpus)
+		if (cpu < 0 || cpu >= MAX_NR_CPUS)
 			continue;
 		arm_pmu.pmu[cpu] = pmus_info[cpu];
 	}

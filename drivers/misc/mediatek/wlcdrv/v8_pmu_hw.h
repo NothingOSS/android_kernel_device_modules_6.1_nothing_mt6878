@@ -17,10 +17,10 @@
 #define MODE_DISABLED	0
 #define MODE_INTERRUPT	1
 #define MODE_POLLING	2
-
+#define MAX_NR_CPUS		8
 /* max number of pmu counter for armv9 is 20+1 */
-#define	MXNR_PMU_EVENTS          22
-/* a roughly large enough size for pmu events buffers,       */
+#define	MXNR_PMU_EVENTS			 22
+/* a roughly large enough size for pmu events buffers,		 */
 /* if an input length is rediculously too many, we drop them */
 #define MXNR_PMU_EVENT_BUFFER_SZ ((MXNR_PMU_EVENTS) + 16)
 
@@ -41,17 +41,17 @@ struct cpu_pmu_hw {
 	unsigned long (*perf_event_get_evttype)(struct perf_event *ev);
 	u32 (*pmu_read_clear_overflow_flag)(void);
 	void (*write_counter)(unsigned int idx,
-			      unsigned int val, int is_cyc_cnt);
+				  unsigned int val, int is_cyc_cnt);
 	void (*disable_intr)(unsigned int idx);
 	void (*disable_cyc_intr)(void);
 
-	struct pmu_data_info *pmu[NR_CPUS];
-	int event_count[NR_CPUS];
+	struct pmu_data_info *pmu[MAX_NR_CPUS];
+	int event_count[MAX_NR_CPUS];
 	/*
 	 * used for compensation of pmu counter loss
 	 * between end of polling and start of cpu pm
 	 */
-	unsigned int cpu_pm_unpolled_loss[NR_CPUS][MXNR_PMU_EVENTS];
+	unsigned int cpu_pm_unpolled_loss[MAX_NR_CPUS][MXNR_PMU_EVENTS];
 };
 
 struct cpu_pmu_hw *cpu_pmu_hw_init(void);

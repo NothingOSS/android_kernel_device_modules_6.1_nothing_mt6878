@@ -10,9 +10,10 @@
 #include "v8_pmu_hw.h"
 
 struct cpu_pmu_hw *g_cpu_pmu;
-static int counter_cnt[NR_CPUS];
-static int nr_arg[NR_CPUS];
-static int nr_ignored_arg[NR_CPUS];
+
+static int counter_cnt[MAX_NR_CPUS];
+static int nr_arg[MAX_NR_CPUS];
+static int nr_ignored_arg[MAX_NR_CPUS];
 int wlc_perf_cpupmu_status;
 
 /* max number of pmu counter for armv9 is 20+1 */
@@ -98,7 +99,6 @@ int wlc_mcu_pmu_init(void)
 	int		is_cpu_cycle_evt;
 
 	struct pmu_data_info *pmu;
-	int max_nr_cpus = 8;
 
 	/* init */
 	g_cpu_pmu = cpu_pmu_hw_init();
@@ -113,7 +113,7 @@ int wlc_mcu_pmu_init(void)
 
 	/* for each cpu in cpu_list, add all the events in event_list */
 	for_each_online_cpu(cpu) {
-		if (cpu < 0 || cpu >= max_nr_cpus)
+		if (cpu < 0 || cpu >= MAX_NR_CPUS)
 			continue;
 		pmu = g_cpu_pmu->pmu[cpu];
 		/*
@@ -225,7 +225,6 @@ int wlc_mcu_pmu_deinit(void)
 	int		cpu, i;
 	int		event_count;
 	struct pmu_data_info *pmu;
-	int max_nr_cpus = 8;
 
 #if IS_ENABLED(CONFIG_CPU_PM)
 	if (use_cpu_pm_pmu_notifier) {
@@ -240,7 +239,7 @@ int wlc_mcu_pmu_deinit(void)
 	}
 
 	for_each_possible_cpu(cpu) {
-		if (cpu < 0 || cpu >= max_nr_cpus)
+		if (cpu < 0 || cpu >= MAX_NR_CPUS)
 			continue;
 
 		event_count = g_cpu_pmu->event_count[cpu];
