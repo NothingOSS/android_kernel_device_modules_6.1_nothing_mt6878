@@ -9050,7 +9050,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		break;
 	case DSI_FILL_CONNECTOR_PROP_CAPS:
 	{
-		struct mtk_drm_crtc *crtc = (struct mtk_drm_crtc *)params;
+		struct mtk_drm_crtc *mtk_crtc = (struct mtk_drm_crtc *)params;
 		struct drm_display_mode *m;
 		struct drm_property *prop;
 		struct mtk_dsi *dsi = container_of(comp, struct mtk_dsi, ddp_comp);
@@ -9064,11 +9064,14 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct drm_property_blob *old_blob = NULL;
 		uint32_t new_blob_id = 0;
 		uint32_t old_blob_id = 0;
+		struct mtk_panel_params *panel_params = NULL;
 
-		if (crtc->res_switch == RES_SWITCH_ON_AP) {
+		if (mtk_crtc->res_switch == RES_SWITCH_ON_AP) {
 			list_for_each_entry(m, &dsi->conn.modes, head) {
-				connector_caps->width_after_pq[i] = crtc->scaling_ctx.lcm_width;
-				connector_caps->height_after_pq[i] = crtc->scaling_ctx.lcm_height;
+				connector_caps->width_after_pq[i] =
+					mtk_crtc->scaling_ctx.lcm_width;
+				connector_caps->height_after_pq[i] =
+					mtk_crtc->scaling_ctx.lcm_height;
 				i++;
 			}
 		} else {
@@ -9077,6 +9080,16 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				connector_caps->height_after_pq[i] = m->vdisplay;
 				i++;
 			}
+		}
+
+		/* set lcm_color_mode */
+		panel_params = mtk_drm_get_lcm_ext_params(&mtk_crtc->base);
+		if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_OVL_WCG)) {
+			if (panel_params)
+				connector_caps->conn_caps.lcm_color_mode =
+					panel_params->lcm_color_mode;
+			else
+				DDPPR_ERR("%s: failed to get lcm color mode\n", __func__);
 		}
 
 		new_blob = drm_property_create_blob(dev,

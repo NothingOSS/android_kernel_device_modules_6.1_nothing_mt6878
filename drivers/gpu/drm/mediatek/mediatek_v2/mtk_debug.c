@@ -3689,6 +3689,8 @@ static void process_dbg_opt(const char *opt)
 		}
 		mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_SET_PANEL_PARAMS_BY_IDX, &cur_mode_idx);
 
+		/* fill connector prop caps for hwc */
+		mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_FILL_CONNECTOR_PROP_CAPS, mtk_crtc);
 		DDPINFO("set panel color_mode to %d\n", params->lcm_color_mode);
 	} else if (strncmp(opt, "fake_mode:", 10) == 0) {
 		unsigned int en = 0;
