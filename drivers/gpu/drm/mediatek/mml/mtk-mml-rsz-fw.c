@@ -403,6 +403,8 @@ static void rsz_auto_coef_trunc(struct rsz_fw_in *in, struct rsz_fw_out *out,
 	cal_param->hori_chroma_cubic_trunc_bit = 0;
 	if (out->vert_algo != 2 || hori_ratio <= 512) {
 		out->vert_cubic_trunc = 0;
+		cal_param->vert_luma_cubic_trunc_bit = 0;
+		cal_param->vert_chroma_cubic_trunc_bit = 0;
 		return;
 	}
 

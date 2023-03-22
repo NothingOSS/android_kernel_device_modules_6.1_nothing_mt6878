@@ -986,7 +986,6 @@ int mml_ddp_comp_init(struct device *dev,
 
 	ddp_comp->funcs = funcs;
 	ddp_comp->dev = dev;
-
 	/* ddp_comp->clk = mml_comp->clks[0]; */
 	ddp_comp->regs_pa = mml_comp->base_pa;
 	ddp_comp->regs = mml_comp->base;
@@ -1001,11 +1000,10 @@ int mml_ddp_comp_register(struct drm_device *drm, struct mtk_ddp_comp *comp)
 {
 	struct mtk_drm_private *private = drm->dev_private;
 
+	if (IS_ERR_VALUE(comp->id))
+		return -EINVAL;
 	if (private->ddp_comp[comp->id])
 		return -EBUSY;
-
-	if (comp->id < 0)
-		return -EINVAL;
 
 	private->ddp_comp[comp->id] = comp;
 	return 0;
@@ -1015,7 +1013,7 @@ void mml_ddp_comp_unregister(struct drm_device *drm, struct mtk_ddp_comp *comp)
 {
 	struct mtk_drm_private *private = drm->dev_private;
 
-	if (comp && comp->id >= 0)
+	if (comp && !IS_ERR_VALUE(comp->id))
 		private->ddp_comp[comp->id] = NULL;
 }
 
