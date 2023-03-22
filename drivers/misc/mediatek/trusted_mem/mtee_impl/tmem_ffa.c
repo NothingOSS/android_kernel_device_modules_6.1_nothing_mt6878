@@ -115,11 +115,11 @@ static void set_memory_region_attrs(enum MTEE_MCHUNKS_ID mchunk_id,
 
 	switch (mchunk_id) {
 	case MTEE_MCHUNKS_SVP:
-		mem_region_attrs[VM_HA_NUM] = (struct ffa_mem_region_attributes) {
+		mem_region_attrs[0] = (struct ffa_mem_region_attributes) {
 			.receiver = SP_TA_1,
 			.attrs = FFA_MEM_RW
 		};
-		ffa_args->nattrs = VM_HA_NUM + 1;
+		ffa_args->nattrs = 1;
 		pr_info("%s: mchunk_id = MTEE_MCHUNKS_SVP\n", __func__);
 		break;
 
