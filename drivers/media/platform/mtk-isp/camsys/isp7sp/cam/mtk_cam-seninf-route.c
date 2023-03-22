@@ -289,6 +289,7 @@ enum CAM_TYPE_ENUM cammux2camtype(struct seninf_ctx *ctx, int cammux)
 
 static int cammux_tag_2_fsync_target_id(struct seninf_ctx *ctx, int cammux, int tag)
 {
+	unsigned int const raw_cammux_factor = 2;
 	int cammux_factor = 8;
 	int fsync_camsv_start_id = 5;
 	int fsync_pdp_start_id = 56;
@@ -306,7 +307,8 @@ static int cammux_tag_2_fsync_target_id(struct seninf_ctx *ctx, int cammux, int 
 			+ core->cammux_range[TYPE_CAMSV_NORMAL].first
 			+ fsync_camsv_start_id + tag;
 	} else if (type == TYPE_RAW) {
-		ret = 1 + (cammux - core->cammux_range[TYPE_RAW].first);
+		ret = 1 +
+			((cammux - core->cammux_range[TYPE_RAW].first) / raw_cammux_factor);
 	} else if (type == TYPE_PDP) {
 		ret = fsync_pdp_start_id + (cammux - core->cammux_range[TYPE_PDP].first);
 	}
@@ -1439,17 +1441,26 @@ int _mtk_cam_seninf_set_camtg(struct v4l2_subdev *sd, int pad_id, int camtg, int
 	struct seninf_vc *vc;
 	int set, i;
 
-	if (pad_id < PAD_SRC_RAW0 || pad_id >= PAD_MAXCNT)
+	if (pad_id < PAD_SRC_RAW0 || pad_id >= PAD_MAXCNT) {
+		dev_info(ctx->dev, "[%s][ERROR] pad_id %d is invalid\n",
+			__func__, pad_id);
 		return -EINVAL;
+	}
 
 	if (camtg < 0 || camtg == 0xff) {
 		/* disable all dest */
+		dev_info(ctx->dev, "[%s][ERROR] disable camtg %d by pad %d\n",
+			__func__, camtg, pad_id);
 		return _mtk_cam_seninf_reset_cammux(ctx, pad_id);
 	}
 
 	vc = mtk_cam_seninf_get_vc_by_pad(ctx, pad_id);
-	if (!vc)
+	if (!vc) {
+		dev_info(ctx->dev,
+		"[%s] mtk_cam_seninf_get_vc_by_pad return failed by using pad %d\n",
+		__func__, pad_id);
 		return -EINVAL;
+	}
 
 	set = vc->dest_cnt;
 
@@ -1474,6 +1485,10 @@ int _mtk_cam_seninf_set_camtg(struct v4l2_subdev *sd, int pad_id, int camtg, int
 		return _mtk_cam_seninf_set_camtg_with_dest_idx(sd, pad_id,
 						camtg, tag_id, set, from_set_camtg);
 	}
+
+	dev_info(ctx->dev,
+		"[%s][ERROR] current set (%d) is out of boundary(%d)\n",
+		__func__, set, MAX_DEST_NUM);
 
 	return -EINVAL;
 }

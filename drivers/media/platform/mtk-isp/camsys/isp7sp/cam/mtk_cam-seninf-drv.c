@@ -1767,7 +1767,7 @@ static int seninf_csi_s_stream(struct v4l2_subdev *sd, int enable)
 
 	if (ctx->csi_streaming == enable) {
 		dev_info(ctx->dev,
-			"[%s] is_csi_streaming(%d)\n",
+			"[%s] is_csi_streaming is (%d) already, return\n",
 			__func__, ctx->csi_streaming);
 		return 0;
 	}
