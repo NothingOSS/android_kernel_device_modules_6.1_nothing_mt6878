@@ -24,9 +24,14 @@
 
 //extern int mtk_clear_smpu_log(unsigned int emi_id);
 //static struct kthread_worker *smpu_kworker;
-static struct smpu *global_ssmpu, *global_nsmpu, *global_skp, *global_nkp;
-//EXPORT_SYMBOL_GPL(global_ssmpu);
-//EXPORT_SYMBOL_GPL(global_nsmpu);
+struct smpu *global_ssmpu;
+EXPORT_SYMBOL_GPL(global_ssmpu);
+
+struct smpu *global_nsmpu;
+EXPORT_SYMBOL_GPL(global_nsmpu);
+
+struct smpu *global_skp, *global_nkp;
+
 static void set_regs(struct smpu_reg_info_t *reg_list,
 			unsigned int reg_cnt, void __iomem *smpu_base)
 {
@@ -172,19 +177,20 @@ static void smpu_violation_callback(struct work_struct *work)
 	skp = global_skp;
 	nkp = global_nkp;
 
-	if (nsmpu && nsmpu->vio_msg)
+	if (nsmpu && nsmpu->vio_msg && nsmpu->is_vio)
 		mpu = nsmpu;
-	else if (ssmpu && ssmpu->vio_msg)
+	else if (ssmpu && ssmpu->vio_msg && ssmpu->is_vio)
 		mpu = ssmpu;
-	else if (nkp && nkp->vio_msg)
+	else if (nkp && nkp->vio_msg && nkp->vio_msg)
 		mpu = nkp;
-	else if (skp && skp->vio_msg)
+	else if (skp && skp->vio_msg && skp->vio_msg)
 		mpu = skp;
 	else
 		return;
 
 	printk_deferred("%s: %s", __func__, mpu->vio_msg);
 	aee_kernel_exception("SMPU", mpu->vio_msg);
+	mpu->is_vio = false;
 
 
 
@@ -231,8 +237,10 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 	for (i = 0; i < mpu->vio_dump_cnt; i++) {
 		vio_dump_idx = mpu->vio_reg_info[i].vio_dump_idx;
 		vio_dump_pos = mpu->vio_reg_info[i].vio_dump_pos;
-		if (CHECK_BIT(dump_reg[vio_dump_idx].value, vio_dump_pos))
+		if (CHECK_BIT(dump_reg[vio_dump_idx].value, vio_dump_pos)) {
 			violation = true;
+			mpu->is_vio = true;
+		}
 	}
 
 	if (!violation) {
@@ -249,8 +257,10 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 			if (mpu->by_plat_isr_hook) {
 				irqret = mpu->by_plat_isr_hook(dump_reg, mpu->dump_cnt, vio_type);
 
-				if (irqret == IRQ_HANDLED)
+				if (irqret == IRQ_HANDLED) {
+					violation = false;
 					goto clear_violation;
+				}
 			}
 		}
 
@@ -324,6 +334,8 @@ static int smpu_probe(struct platform_device *pdev)
 
 	if (!of_property_read_string(smpu_node, "name", &name))
 		mpu->name = name;
+//is_vio default value
+	mpu->is_vio = false;
 
 // dump_reg
 	size = of_property_count_elems_of_size(smpu_node, "dump", sizeof(char));

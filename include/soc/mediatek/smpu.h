@@ -58,6 +58,7 @@ void smpu_clear_md_violation(void);
 struct smpu {
 	const char *name;
 	char *vio_msg;
+	bool is_vio;
 
 	struct smpu_reg_info_t *dump_reg;
 	struct smpu_reg_info_t *clear_reg;
@@ -83,8 +84,8 @@ struct smpu {
 	unsigned int bypass_axi_num;
 
 };
-//extern struct smpu *global_nsmpu, *global_ssmpu;
-static struct smpu *global_ssmpu, *global_nsmpu, *global_skp, *global_nkp;
+extern struct smpu *global_nsmpu, *global_ssmpu;
+//static struct smpu *global_ssmpu, *global_nsmpu, *global_skp, *global_nkp;
 
 int mtk_smpu_md_handling_register(smpu_md_handler md_handling_func);
 

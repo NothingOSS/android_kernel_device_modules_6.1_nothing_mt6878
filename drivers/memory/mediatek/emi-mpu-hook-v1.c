@@ -55,8 +55,10 @@ int bypass_info(unsigned int offset, int vio_type)
 	default:
 			break;
 	}
-	if (!mpu)
+	if (!mpu) {
+		pr_info("%s mpu is NULL\n", __func__);
 		return -1;
+	}
 
 	for (i = 0; i < mpu->bypass_miu_reg_num; i++) {
 		if (offset == mpu->bypass_miu_reg[i])
