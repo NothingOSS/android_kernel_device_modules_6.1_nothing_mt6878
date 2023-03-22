@@ -1981,6 +1981,10 @@ static int ufs_mtk_init_clocks(struct ufs_hba *hba)
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	struct ufs_clk_info *clki, *clki_tmp;
 	struct list_head *head = &hba->clk_list_head;
+	struct device *dev = hba->dev;
+	struct regulator *reg;
+	u32 volt;
+
 	/*
 	 * Find private clocks and store in struct ufs_mtk_clk.
 	 * Remove "ufs_sel_min_src" and "ufs_sel_min_src" from list to avoid
@@ -2015,6 +2019,26 @@ static int ufs_mtk_init_clocks(struct ufs_hba *hba)
 		dev_info(hba->dev, "%s: Clk scaling not ready. Feature disabled.", __func__);
 		return -1;
 	}
+
+	if (ufshcd_is_clkscaling_supported(hba)) {
+		reg = devm_regulator_get_optional(dev, "dvfsrc-vcore");
+		if (IS_ERR(reg)) {
+			dev_info(dev, "failed to get dvfsrc-vcore: %ld",
+				 PTR_ERR(reg));
+			goto out;
+		}
+
+		if (of_property_read_u32(dev->of_node, "clk-scale-up-vcore-min",
+					 &volt)) {
+			dev_info(dev, "failed to get clk-scale-up-vcore-min");
+			goto out;
+		}
+
+		host->mclk.reg_vcore = reg;
+		host->mclk.vcore_volt = volt;
+	}
+
+out:
 	return 0;
 }
 
@@ -3658,6 +3682,62 @@ static void ufs_mtk_config_scaling_param(struct ufs_hba *hba,
 	hba->vps->ondemand_data.downdifferential = 20;
 }
 
+static void _ufs_mtk_clk_scale(struct ufs_hba *hba, bool scale_up)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	struct ufs_mtk_clk *mclk = &host->mclk;
+	struct ufs_clk_info *clki = mclk->ufs_sel_clki;
+	struct regulator *reg;
+	int volt, ret = 0;
+	bool clk_bind_vcore = false;
+
+	reg = host->mclk.reg_vcore;
+	volt = host->mclk.vcore_volt;
+	if (reg && volt != 0)
+		clk_bind_vcore = true;
+
+	ret = clk_prepare_enable(clki->clk);
+	if (ret) {
+		dev_info(hba->dev, "clk_prepare_enable() fail, ret = %d\n", ret);
+		return;
+	}
+
+	if (scale_up) {
+		if (clk_bind_vcore) {
+			ret = regulator_set_voltage(reg, volt, INT_MAX);
+			if (ret) {
+				dev_info(hba->dev,
+					"Failed to set vcore to %d\n", volt);
+				goto out;
+			}
+		}
+
+		ret = clk_set_parent(clki->clk, mclk->ufs_sel_max_clki->clk);
+		if (ret) {
+			dev_info(hba->dev, "Failed to set clk mux, ret = %d\n",
+				ret);
+		}
+	} else {
+		ret = clk_set_parent(clki->clk, mclk->ufs_sel_min_clki->clk);
+		if (ret) {
+			dev_info(hba->dev, "Failed to set clk mux, ret = %d\n",
+				ret);
+			goto out;
+		}
+
+		if (clk_bind_vcore) {
+			ret = regulator_set_voltage(reg, 0, INT_MAX);
+			if (ret) {
+				dev_info(hba->dev,
+					"failed to set vcore to MIN\n");
+			}
+		}
+	}
+
+out:
+	clk_disable_unprepare(clki->clk);
+}
+
 /**
  * ufs_mtk_clk_scale - Internal clk scaling operation
  * MTK platform supports clk scaling by switching parent of ufs_sel(mux).
@@ -3676,50 +3756,23 @@ static void ufs_mtk_clk_scale(struct ufs_hba *hba, bool scale_up)
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	struct ufs_mtk_clk *mclk = &host->mclk;
 	struct ufs_clk_info *clki = mclk->ufs_sel_clki;
-	int ret = 0;
-	int ver;
-	/* u32 ahit; */
 	static bool skip_switch;
 
 	if (host->clk_scale_up == scale_up)
 		goto out;
 
-	/* set longer ah8 timer when scale up */
-	/*
-	if (scale_up)
-		ahit = FIELD_PREP(UFSHCI_AHIBERN8_TIMER_MASK, 5) |
-				FIELD_PREP(UFSHCI_AHIBERN8_SCALE_MASK, 3);
-	else
-		ahit = host->desired_ahit;
-	ufshcd_auto_hibern8_update(hba, ahit);
-	*/
-
 	if (skip_switch)
 		goto skip;
 
-	/* Do switch */
-	ret = clk_prepare_enable(clki->clk);
-	if (ret) {
-		dev_info(hba->dev, "clk_prepare_enable() fail, ret = %d\n", ret);
-		goto skip;
-	}
-
-	/*
-	 * Parent switching may have glich and uic error.
-	 * Keep UFS4.0 device fast clock and UFS3.1 device slow clock.
-	 */
-	ver = (hba->dev_info.wspecversion & 0xF00) >> 8;
-	if (ver >= 4)
-		ret = clk_set_parent(clki->clk, mclk->ufs_sel_max_clki->clk);
+	/* Only change to CLK MAX if device is UFS4.0 and clock scale up */
+	if ((hba->dev_info.wspecversion >= 0x0400) && scale_up)
+		_ufs_mtk_clk_scale(hba, true);
 	else
-		ret = clk_set_parent(clki->clk, mclk->ufs_sel_min_clki->clk);
+		_ufs_mtk_clk_scale(hba, false);
 
-	if (ret)
-		dev_info(hba->dev, "Failed to set ufs_sel_clki, ret = %d\n", ret);
-
-	clk_disable_unprepare(clki->clk);
-
-	skip_switch = true;
+	/* UFS3.0 keep MIN is enough, no need switch anymore */
+	if (hba->dev_info.wspecversion < 0x0400)
+		skip_switch = true;
 
 skip:
 	host->clk_scale_up = scale_up;
@@ -3742,7 +3795,7 @@ static int ufs_mtk_clk_scale_notify(struct ufs_hba *hba, bool scale_up,
 	if (status == PRE_CHANGE) {
 		ufs_mtk_pm_qos(hba, scale_up);
 
-		/* do parent switching before clk_set_rate() */
+		/* do parent/vcore switching before clk_set_rate() */
 		ufs_mtk_clk_scale(hba, scale_up);
 	}
 
