@@ -6743,7 +6743,7 @@ static void mtk_crtc_enable_iommu(struct mtk_drm_crtc *mtk_crtc,
 }
 
 #ifndef DRM_CMDQ_DISABLE
-static void mtk_crtc_exec_atf_prebuilt_instr(struct mtk_drm_crtc *mtk_crtc,
+void mtk_crtc_exec_atf_prebuilt_instr(struct mtk_drm_crtc *mtk_crtc,
 			   struct cmdq_pkt *handle)
 {
 	/*note: put the prebuilt instr into cmdq_inst_disp_va[] in cmdq-prebuilt.h*/

@@ -1276,5 +1276,7 @@ void mtk_addon_get_module(const enum addon_scenario scn,
 			 struct mtk_drm_crtc *mtk_crtc,
 			 const struct mtk_addon_module_data **addon_module,
 			 const struct mtk_addon_module_data **addon_module_dual);
+void mtk_crtc_exec_atf_prebuilt_instr(struct mtk_drm_crtc *mtk_crtc,
+			struct cmdq_pkt *handle);
 
 #endif /* MTK_DRM_CRTC_H */

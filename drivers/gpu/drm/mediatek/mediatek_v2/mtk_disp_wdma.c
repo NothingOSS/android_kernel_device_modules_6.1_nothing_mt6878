@@ -149,12 +149,14 @@
 
 #define MT6985_OVL1_2L	0x14403000
 #define MT6985_OVLSYS_LARB20	0x1460C000
+#define MT6985_OVLSYS_LARB0	0x1440C000
 #define OVLSYS_WDMA0_PORT		6
 #define MT6985_MMSYS_LARB32		0x1401D000
 #define MMSYS_WDMA1_PORT		5
 #define MT6985_SEC_LARB_OFFSET	0xF80
 #define MT6985_OVL_DUMMY_REG	0x200
 #define MT6985_OVLSYS_DUMMY_OFFSET	0x400
+#define MT6985_OVLSYS_DUMMY1_OFFSET	0x404
 
 /* AID offset in mmsys config */
 #define MT6895_WDMA0_AID_SEL	(0xB1CUL)
@@ -452,17 +454,27 @@ static void mtk_wdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	if (data && data->use_larb_control_sec && crtc_idx == 2) {
 		if (disp_sec_cb.cb != NULL) {
 			void __iomem *ovl0_2l_reg_addr;
+			void __iomem *ovl0_2l_reg_addr1;
+
 			switch (priv->data->mmsys_id) {
 			case MMSYS_MT6985:
 			case MMSYS_MT6897:
 				ovl0_2l_reg_addr =
 					comp->mtk_crtc->ovlsys0_regs + MT6985_OVLSYS_DUMMY_OFFSET;
+				ovl0_2l_reg_addr1 =
+					comp->mtk_crtc->ovlsys0_regs + MT6985_OVLSYS_DUMMY1_OFFSET;
 				if (output_comp->id == DDP_COMPONENT_WDMA0)
 					writel(MT6985_MMSYS_LARB32 + MT6985_SEC_LARB_OFFSET
 						+ (MMSYS_WDMA1_PORT * 0x4), ovl0_2l_reg_addr);
 				else if (output_comp->id == DDP_COMPONENT_OVLSYS_WDMA2)
 					writel(MT6985_OVLSYS_LARB20 + MT6985_SEC_LARB_OFFSET
 						+ (OVLSYS_WDMA0_PORT * 0x4), ovl0_2l_reg_addr);
+				else if (output_comp->id == DDP_COMPONENT_OVLSYS_WDMA0) {
+					writel(MT6985_OVLSYS_LARB0 + MT6985_SEC_LARB_OFFSET
+						+ (OVLSYS_WDMA0_PORT * 0x4), ovl0_2l_reg_addr1);
+					writel(MT6985_OVLSYS_LARB20 + MT6985_SEC_LARB_OFFSET
+						+ (OVLSYS_WDMA0_PORT * 0x4), ovl0_2l_reg_addr);
+				}
 				break;
 			default:
 				DDPMSG("Not multi condition platform\n");
@@ -1011,12 +1023,14 @@ static int wdma_config_yuv420(struct mtk_ddp_comp *comp,
 			larb_ctl_dummy = wdma->data->check_wdma_sec_reg(comp);
 		if (larb_ctl_dummy) {
 			if (mtk_wdma_store_sec_state(wdma, sec) && disp_sec_cb.cb != NULL) {
-				if (sec)
+				if (sec) {
 					disp_sec_cb.cb(DISP_SEC_ENABLE, handle,
 							larb_ctl_dummy, NULL);
-				else
+					mtk_crtc_exec_atf_prebuilt_instr(comp->mtk_crtc, handle);
+				} else {
 					disp_sec_cb.cb(DISP_SEC_DISABLE, handle,
 							larb_ctl_dummy, NULL);
+				}
 			}
 		}
 	} else {
@@ -1153,10 +1167,11 @@ static void mtk_wdma_config(struct mtk_ddp_comp *comp,
 			larb_ctl_dummy = wdma->data->check_wdma_sec_reg(comp);
 		if (larb_ctl_dummy) {
 			if (mtk_wdma_store_sec_state(wdma, sec) && disp_sec_cb.cb != NULL) {
-				if (sec)
+				if (sec) {
 					disp_sec_cb.cb(DISP_SEC_ENABLE, handle,
 							larb_ctl_dummy, NULL);
-				else
+					mtk_crtc_exec_atf_prebuilt_instr(comp->mtk_crtc, handle);
+				} else
 					disp_sec_cb.cb(DISP_SEC_DISABLE, handle,
 							larb_ctl_dummy, NULL);
 			}
@@ -2008,7 +2023,7 @@ static const struct mtk_disp_wdma_data mt6897_wdma_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
 	.is_support_34bits = true,
-	.use_larb_control_sec = false,
+	.use_larb_control_sec = true,
 	.is_right_wdma_comp = &is_right_wdma_comp_MT6897,
 };
 
