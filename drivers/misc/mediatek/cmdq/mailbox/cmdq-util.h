@@ -186,7 +186,7 @@ void cmdq_util_prebuilt_enable(const u16 hwid);
 void cmdq_util_prebuilt_disable(const u16 hwid);
 void cmdq_util_prebuilt_dump(const u16 hwid, const u16 event);
 void cmdq_util_prebuilt_dump_cpr(const u16 hwid, const u16 cpr, const u16 cnt);
-void cmdq_util_hw_trace_set_client(const u16 hwid, struct cmdq_client *client);
+s32 cmdq_util_hw_trace_set_client(const u16 hwid, struct cmdq_client *client);
 void cmdq_util_hw_trace_enable(const u16 hwid, const bool dram);
 void cmdq_util_hw_trace_disable(const u16 hwid);
 void cmdq_util_hw_trace_dump(const u16 hwid, const bool dram);

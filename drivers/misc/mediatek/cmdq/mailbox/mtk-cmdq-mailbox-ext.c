@@ -2856,12 +2856,15 @@ struct device *cmdq_mbox_get_dev(void *chan)
 s32 cmdq_mbox_set_hw_id(void *cmdq_mbox)
 {
 	struct cmdq *cmdq = cmdq_mbox;
+	s32 ret;
 
 	if (!cmdq)
 		return -EINVAL;
 	cmdq->hwid = (u8)cmdq_util_get_hw_id(cmdq->base_pa);
 	cmdq_util_prebuilt_set_client(cmdq->hwid, cmdq->prebuilt_clt);
-	cmdq_util_hw_trace_set_client(cmdq->hwid, cmdq->hw_trace_clt);
+	ret = cmdq_util_hw_trace_set_client(cmdq->hwid, cmdq->hw_trace_clt);
+	if (ret)
+		return ret;
 	return 0;
 }
 

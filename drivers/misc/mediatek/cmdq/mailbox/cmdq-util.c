@@ -600,19 +600,29 @@ void cmdq_util_prebuilt_dump_cpr(const u16 hwid, const u16 cpr, const u16 cnt)
 }
 EXPORT_SYMBOL(cmdq_util_prebuilt_dump_cpr);
 
-void cmdq_util_hw_trace_set_client(const u16 hwid, struct cmdq_client *client)
+s32 cmdq_util_hw_trace_set_client(const u16 hwid, struct cmdq_client *client)
 {
-	if (hwid >= CMDQ_HW_MAX)
+	if (!client) {
+		cmdq_err("hw trace client is null");
+		return -EFAULT;
+	}
+
+	if (hwid >= CMDQ_HW_MAX) {
 		cmdq_err("invalid hwid:%u", hwid);
-	else
-		util.hw_trace[hwid].clt = client;
+		return -EINVAL;
+	}
+
+	util.hw_trace[hwid].clt = client;
 	cmdq_msg("hwid:%u client:%p", hwid, client);
+
+	return 0;
 }
 EXPORT_SYMBOL(cmdq_util_hw_trace_set_client);
 
 void cmdq_util_hw_trace_enable(const u16 hwid, const bool dram)
 {
 	struct cmdq_hw_trace *trace;
+	s32 ret;
 
 	if (hwid > util.mbox_cnt || !cmdq_hw_trace) {
 		cmdq_msg("%s: hwid:%hu mbox_cnt:%u cmdq_hw_trace:%d",
@@ -629,8 +639,11 @@ void cmdq_util_hw_trace_enable(const u16 hwid, const bool dram)
 	}
 	trace->enable = true;
 
-	if (unlikely(!trace->clt))
-		cmdq_mbox_set_hw_id(util.cmdq_mbox[hwid]);
+	if (unlikely(!trace->clt)) {
+		ret = cmdq_mbox_set_hw_id(util.cmdq_mbox[hwid]);
+		if (ret)
+			return;
+	}
 
 	if (unlikely(!trace->buf)) {
 		trace->buf = kzalloc(sizeof(*trace->buf), GFP_KERNEL);
