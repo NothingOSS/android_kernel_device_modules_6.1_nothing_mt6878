@@ -124,6 +124,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dramc/$(MTK_PLATFORM
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/clkbuf/v1/inc/ \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/ \
              -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mml \
 
 ccflags-$(CONFIG_MTK_CMDQ_MBOX_EXT) += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox
 
