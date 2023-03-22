@@ -350,6 +350,10 @@ static int search_sensor(struct adaptor_ctx *ctx)
 		subdrvs = of_subdrvs;
 		subdrvs_cnt = 0;
 		for (i = 0; i < of_sensor_names_cnt; i++) {
+#if IMGSENSOR_LOG_MORE
+			dev_info(ctx->dev, "sensor_name %s\n",
+				of_sensor_names[i]);
+#endif
 			for (j = 0; j < ARRAY_SIZE(imgsensor_subdrvs); j++) {
 				subdrv = imgsensor_subdrvs[j];
 				if (!strcmp(subdrv->name,
@@ -378,7 +382,7 @@ static int search_sensor(struct adaptor_ctx *ctx)
 	}
 
 	for (i = 0; i < subdrvs_cnt; i++) {
-		u32 sensor_id;
+		u32 sensor_id = 0xffffffff;
 
 		ctx->subdrv = subdrvs[i];
 		ctx->subctx.i2c_client = ctx->i2c_client;
@@ -402,6 +406,10 @@ static int search_sensor(struct adaptor_ctx *ctx)
 			}
 			return 0;
 		}
+#if IMGSENSOR_LOG_MORE
+		dev_info(ctx->dev, "sensor %s not found\n",
+			ctx->subdrv->name);
+#endif
 	}
 
 	return -EIO;

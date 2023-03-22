@@ -330,6 +330,10 @@ int do_hw_power_on(struct adaptor_ctx *ctx)
 			continue;
 		}
 		op->set(ctx, op->data, ent->val);
+#if IMGSENSOR_LOG_MORE
+		dev_dbg(ctx->dev, "set comp %d val %d\n",
+			ent->id, ent->val);
+#endif
 		if (ent->delay)
 			mdelay(ent->delay);
 	}

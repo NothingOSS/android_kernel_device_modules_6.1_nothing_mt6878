@@ -126,6 +126,7 @@
 #define IMX800_SENSOR_ID                        0x0800
 #define IMX709_SENSOR_ID                        0x0709
 #define IMX866_SENSOR_ID                        0x0866
+#define IMX989_SENSOR_ID                        0x0989
 #define IMX709O_SENSOR_ID                       0x0709
 #define IMX519_SENSOR_ID                        0x0519
 #define IMX576_SENSOR_ID                        0x0576
@@ -396,6 +397,7 @@
 #define SENSOR_DRVNAME_IMX709O_MIPI_RAW         "imx709o_mipi_raw"
 #define SENSOR_DRVNAME_IMX766DUAL_MIPI_RAW      "imx766dual_mipi_raw"
 #define SENSOR_DRVNAME_IMX766DUALO_MIPI_RAW     "imx766dualo_mipi_raw"
+#define SENSOR_DRVNAME_IMX989_MIPI_RAW          "imx989_mipi_raw"
 #define SENSOR_DRVNAME_IMX800_MIPI_RAW          "imx800_mipi_raw"
 #define SENSOR_DRVNAME_IMX6632X_MIPI_RAW          "imx6632x_mipi_raw"
 #define SENSOR_DRVNAME_IMX519_MIPI_RAW          "imx519_mipi_raw"
