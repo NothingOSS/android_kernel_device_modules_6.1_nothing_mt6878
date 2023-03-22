@@ -1229,14 +1229,18 @@ static void show_genpd_state(struct genpd_state *pdst)
 					devst->dev_name != NULL ? devst->dev_name : "NULL",
 					atomic_read(&dev->power.usage_count),
 					devst->disable_depth,
-					prm_status_name[devst->runtime_status]);
+					((devst->runtime_status < ARRAY_SIZE(prm_status_name)) &&
+					  devst->runtime_status >= 0) ?
+					prm_status_name[devst->runtime_status] : "UFO");
 			else
 				pr_info("\t%c (%-19s %3d, %d, %10s)\n",
 					devst->active ? '+' : '-',
 					pdev->name ? pdev->name : "NULL",
 					atomic_read(&dev->power.usage_count),
 					devst->disable_depth,
-					prm_status_name[devst->runtime_status]);
+					((devst->runtime_status < ARRAY_SIZE(prm_status_name)) &&
+					  devst->runtime_status >= 0) ?
+					prm_status_name[devst->runtime_status] : "UFO");
 
 			mdelay(20);
 		}
@@ -1287,7 +1291,8 @@ static void dump_genpd_state(struct genpd_state *pdst, struct seq_file *s)
 					atomic_read(&dev->power.usage_count),
 					devst->disable_depth ? "unsupport" :
 					devst->runtime_error ? "error" :
-					(devst->runtime_status < ARRAY_SIZE(prm_status_name)) ?
+					((devst->runtime_status < ARRAY_SIZE(prm_status_name)) &&
+					  devst->runtime_status >= 0) ?
 					prm_status_name[devst->runtime_status] : "UFO");
 			else
 				seq_printf(s, "\t%c (%-19s %3d, %10s)\n",
@@ -1296,7 +1301,8 @@ static void dump_genpd_state(struct genpd_state *pdst, struct seq_file *s)
 					atomic_read(&dev->power.usage_count),
 					devst->disable_depth ? "unsupport" :
 					devst->runtime_error ? "error" :
-					(devst->runtime_status < ARRAY_SIZE(prm_status_name)) ?
+					((devst->runtime_status < ARRAY_SIZE(prm_status_name)) &&
+					  devst->runtime_status >= 0) ?
 					prm_status_name[devst->runtime_status] : "UFO");
 		}
 	}
