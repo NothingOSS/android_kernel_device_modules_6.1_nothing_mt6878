@@ -79,6 +79,7 @@ static void mtk_y2r_addon_config(struct mtk_ddp_comp *comp,
 		default:
 			break;
 		}
+		profile |= DISP_REG_DISP_Y2R0_CLAMP;
 		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 				comp->regs_pa + DISP_REG_DISP_Y2R0_CON0, profile, ~0);
 	} else
