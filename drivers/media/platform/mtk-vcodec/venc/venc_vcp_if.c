@@ -1083,6 +1083,7 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 			slbc_release(&inst->ctx->sram_data);
 			inst->ctx->use_slbc = 0;
 			atomic_inc(&mtk_venc_slb_cb.later_cnt);
+			inst->ctx->later_cnt_once = true;
 			if (inst->ctx->enc_params.slbc_encode_performance)
 				atomic_dec(&mtk_venc_slb_cb.perf_used_cnt);
 
@@ -1116,6 +1117,7 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 				atomic_inc(&mtk_venc_slb_cb.perf_used_cnt);
 
 			atomic_dec(&mtk_venc_slb_cb.later_cnt);
+			inst->ctx->later_cnt_once = false;
 			if (atomic_read(&mtk_venc_slb_cb.later_cnt) <= 0)
 				atomic_set(&mtk_venc_slb_cb.request_slbc, 0);
 

@@ -217,7 +217,8 @@ void mtk_venc_deinit_ctx_pm(struct mtk_vcodec_ctx *ctx)
 		if (ctx->enc_params.slbc_encode_performance)
 			atomic_dec(&mtk_venc_slb_cb.perf_used_cnt);
 	} else {
-		atomic_dec(&mtk_venc_slb_cb.later_cnt);
+		if (ctx->later_cnt_once)
+			atomic_dec(&mtk_venc_slb_cb.later_cnt);
 	}
 
 	mtk_v4l2_debug(0, "slb_cb %d/%d perf %d cnt %d/%d",

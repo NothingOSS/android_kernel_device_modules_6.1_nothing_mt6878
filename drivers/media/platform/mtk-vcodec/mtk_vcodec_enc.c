@@ -2342,9 +2342,10 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 	if (ctx->use_slbc == 1) {
 		if (ctx->enc_params.slbc_encode_performance)
 			atomic_inc(&mtk_venc_slb_cb.perf_used_cnt);
-	} else
+	} else {
 		atomic_inc(&mtk_venc_slb_cb.later_cnt);
-
+		ctx->later_cnt_once = true;
+	}
 	mtk_v4l2_debug(0, "slb_cb %d/%d perf %d cnt %d/%d",
 		atomic_read(&mtk_venc_slb_cb.release_slbc),
 		atomic_read(&mtk_venc_slb_cb.request_slbc),

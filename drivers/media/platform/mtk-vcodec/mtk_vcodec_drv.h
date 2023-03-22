@@ -670,6 +670,7 @@ struct mtk_vcodec_ctx {
 	struct mutex buf_lock;
 	struct mutex worker_lock;
 	struct slbc_data sram_data;
+	bool later_cnt_once;
 	struct mutex q_mutex;
 	int use_slbc;
 	unsigned int slbc_addr;
