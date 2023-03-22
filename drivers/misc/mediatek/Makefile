@@ -99,3 +99,4 @@ obj-$(CONFIG_MTK_GATE_IC) += gate_ic/
 obj-$(CONFIG_USB) += usb/
 obj-$(CONFIG_MTK_WIDEVINE_DRM) += widevine_drm/
 obj-$(CONFIG_MTK_WLC)          += wlcdrv/
+obj-$(CONFIG_MTK_PGBOOST) += pgboost/

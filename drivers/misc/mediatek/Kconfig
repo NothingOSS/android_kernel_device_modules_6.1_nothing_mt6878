@@ -183,6 +183,7 @@ source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/performance/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/perf_common/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/rps/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/task_turbo/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/pgboost/Kconfig"
 endmenu # Performance
 
 
