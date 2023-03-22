@@ -806,6 +806,7 @@ static int seninf_core_probe(struct platform_device *pdev)
 	dev_set_drvdata(dev, core);
 	core->dev = dev;
 	mutex_init(&core->mutex);
+	mutex_init(&core->cammux_page_ctrl_mutex);
 	INIT_LIST_HEAD(&core->list);
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "base");

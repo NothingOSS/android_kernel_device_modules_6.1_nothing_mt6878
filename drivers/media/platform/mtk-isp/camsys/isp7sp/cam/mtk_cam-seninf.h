@@ -89,6 +89,7 @@ struct seninf_core {
 	struct seninf_cam_mux cam_mux[SENINF_CAM_MUX_NUM];
 #endif
 	struct mutex mutex;
+	struct mutex cammux_page_ctrl_mutex;
 	void __iomem *reg_if;
 	void __iomem *reg_ana;
 	int refcnt;

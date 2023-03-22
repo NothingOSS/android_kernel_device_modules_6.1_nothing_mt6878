@@ -1273,6 +1273,7 @@ int _mtk_cam_seninf_set_camtg_with_dest_idx(struct v4l2_subdev *sd, int pad_id,
 	bool disable_last = from_set_camtg;
 	int en_tag = ((tag_id >= 0) && (tag_id <= 31));
 	struct seninf_mux *mux = NULL;
+	struct seninf_core *core = ctx->core;
 
 	if (pad_id < PAD_SRC_RAW0 || pad_id >= PAD_MAXCNT)
 		return -EINVAL;
@@ -1317,9 +1318,11 @@ int _mtk_cam_seninf_set_camtg_with_dest_idx(struct v4l2_subdev *sd, int pad_id,
 			if (camtg == 0xff) {
 				dest->cam = 0xff;
 				if (disable_last) {
+					mutex_lock(&core->cammux_page_ctrl_mutex);
 					g_seninf_ops->_switch_to_cammux_inner_page(ctx, true);
 					g_seninf_ops->_set_cammux_next_ctrl(ctx, 0x3f, old_camtg);
 					g_seninf_ops->_disable_cammux(ctx, old_camtg);
+					mutex_unlock(&core->cammux_page_ctrl_mutex);
 				}
 			} else {
 				/* enable new */
@@ -1337,6 +1340,7 @@ int _mtk_cam_seninf_set_camtg_with_dest_idx(struct v4l2_subdev *sd, int pad_id,
 				dest->mux_vr = mux2mux_vr(ctx, dest->mux, dest->cam,
 							vc->muxvr_offset);
 
+				mutex_lock(&core->cammux_page_ctrl_mutex);
 				g_seninf_ops->_switch_to_cammux_inner_page(ctx, true);
 				g_seninf_ops->_set_cammux_next_ctrl(ctx, 0x3f, dest->cam);
 
@@ -1364,6 +1368,7 @@ int _mtk_cam_seninf_set_camtg_with_dest_idx(struct v4l2_subdev *sd, int pad_id,
 				if (old_camtg != 0xff && disable_last)
 					g_seninf_ops->_set_cammux_next_ctrl(ctx,
 									dest->mux_vr, old_camtg);
+				mutex_unlock(&core->cammux_page_ctrl_mutex);
 
 				chk_is_fsync_vsync_src(ctx, pad_id);
 			}
@@ -1387,6 +1392,7 @@ int _mtk_cam_seninf_set_camtg_with_dest_idx(struct v4l2_subdev *sd, int pad_id,
 static int _mtk_cam_seninf_reset_cammux(struct seninf_ctx *ctx, int pad_id)
 {
 	struct seninf_vc *vc;
+	struct seninf_core *core = ctx->core;
 	int old_camtg;
 	u8 j;
 
@@ -1408,12 +1414,14 @@ static int _mtk_cam_seninf_reset_cammux(struct seninf_ctx *ctx, int pad_id)
 		if (old_camtg != 0xff)
 			g_seninf_ops->_set_cam_mux_dyn_en(ctx, true, old_camtg, 0/*index*/);
 
+		mutex_lock(&core->cammux_page_ctrl_mutex);
 		g_seninf_ops->_switch_to_cammux_inner_page(ctx, false);
 		if (old_camtg != 0xff) {
 			//disable old in next sof
 			g_seninf_ops->_disable_cammux(ctx, old_camtg);
 		}
 		g_seninf_ops->_switch_to_cammux_inner_page(ctx, true);
+		mutex_unlock(&core->cammux_page_ctrl_mutex);
 
 		dev_info(ctx->dev, "disable outer of pad_id(%d) old camtg(%d)\n",
 			 pad_id, old_camtg);
@@ -1675,6 +1683,7 @@ int mtk_cam_seninf_s_stream_mux(struct seninf_ctx *ctx)
 					en_tag = 0;
 
 				// set outter
+				mutex_lock(&core->cammux_page_ctrl_mutex);
 				g_seninf_ops->_switch_to_cammux_inner_page(ctx, false);
 				g_seninf_ops->_set_cammux_vc(ctx, dest->cam,
 							     vc_sel, dt_sel, dt_en, dt_en);
@@ -1708,6 +1717,7 @@ int mtk_cam_seninf_s_stream_mux(struct seninf_ctx *ctx)
 
 				// inner next
 				g_seninf_ops->_set_cammux_next_ctrl(ctx, dest->mux_vr, dest->cam);
+				mutex_unlock(&core->cammux_page_ctrl_mutex);
 
 				seninf_logi(ctx,
 					"vc[%d] dest[%u] pad %d intf %d mux %d next/src mux_vr %d cam %d tag %d vc 0x%x dt 0x%x first %d\n",
