@@ -54,6 +54,8 @@ static void pmsr_cfg_init(void)
 	cfg.enable = false;
 	cfg.pmsr_speed_mode = DEFAULT_SPEED_MODE;
 	cfg.pmsr_window_len = 0;
+	cfg.err = 0;
+	cfg.test = 0;
 
 	for (i = 0 ; i < SET_CH_MAX; i++) {
 		cfg.ch[i].dpmsr_id = 0xFFFFFFFF;
@@ -141,6 +143,8 @@ static ssize_t remote_data_write(struct file *fp, const char __user *userbuf,
 					pmsr_scmi_data.uid, pmsr_scmi_data.action,
 					pmsr_scmi_data.param1, pmsr_scmi_data.param2,
 					pmsr_scmi_data.param3);
+				if (ret)
+					cfg.err |= pmsr_scmi_data.action;
 #endif
 			}
 			/* pass the window length */
@@ -153,6 +157,8 @@ static ssize_t remote_data_write(struct file *fp, const char __user *userbuf,
 			ret = scmi_tinysys_common_set(tinfo->ph, scmi_apmcupm_id,
 				pmsr_scmi_data.uid, pmsr_scmi_data.action,
 				pmsr_scmi_data.param1, pmsr_scmi_data.param2, 0);
+			if (ret)
+				cfg.err |= pmsr_scmi_data.action;
 #endif
 
 			/* pass the signum */
@@ -165,6 +171,8 @@ static ssize_t remote_data_write(struct file *fp, const char __user *userbuf,
 					pmsr_scmi_data.uid, pmsr_scmi_data.action,
 					pmsr_scmi_data.param1, pmsr_scmi_data.param2,
 					0);
+				if (ret)
+					cfg.err |= pmsr_scmi_data.action;
 			}
 			/* pass the montype */
 			for (i = 0; i < cfg.dpmsr_count; i++) {
@@ -176,6 +184,8 @@ static ssize_t remote_data_write(struct file *fp, const char __user *userbuf,
 					pmsr_scmi_data.uid, pmsr_scmi_data.action,
 					pmsr_scmi_data.param1, pmsr_scmi_data.param2,
 					0);
+				if (ret)
+					cfg.err |= pmsr_scmi_data.action;
 			}
 			/* pass the en */
 			for (i = 0; i < cfg.dpmsr_count; i++) {
@@ -187,6 +197,8 @@ static ssize_t remote_data_write(struct file *fp, const char __user *userbuf,
 					pmsr_scmi_data.uid, pmsr_scmi_data.action,
 					pmsr_scmi_data.param1, pmsr_scmi_data.param2,
 					0);
+				if (ret)
+					cfg.err |= pmsr_scmi_data.action;
 			}
 			/* pass the enable command */
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
@@ -200,6 +212,8 @@ static ssize_t remote_data_write(struct file *fp, const char __user *userbuf,
 				hrtimer_start(&pmsr_timer,
 						ns_to_ktime(timer_window_len * NSEC_PER_USEC),
 						HRTIMER_MODE_REL_PINNED);
+			} else {
+				cfg.err |= pmsr_scmi_data.action;
 			}
 		} else {
 			pmsr_cfg_init();
@@ -209,11 +223,24 @@ static ssize_t remote_data_write(struct file *fp, const char __user *userbuf,
 			ret = scmi_tinysys_common_set(tinfo->ph, scmi_apmcupm_id,
 				pmsr_scmi_data.uid, pmsr_scmi_data.action,
 				0, 0, 0);
+			if (ret)
+				cfg.err |= pmsr_scmi_data.action;
 #endif
 			hrtimer_try_to_cancel(&pmsr_timer);
 		}
+	} else if ((void *)v == (void *)&cfg.test) {
+		if (cfg.test == 1) {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+			pmsr_scmi_data.uid = 0x0;
+			pmsr_scmi_data.action = PMSR_TOOL_ACT_TEST;
+			ret = scmi_tinysys_common_set(tinfo->ph, scmi_apmcupm_id,
+				pmsr_scmi_data.uid, pmsr_scmi_data.action,
+				0, 0, 0);
+			if (ret)
+				cfg.err |= pmsr_scmi_data.action;
+#endif
+		}
 	}
-
 	return count;
 }
 static const struct proc_ops remote_data_fops = {
@@ -237,9 +264,7 @@ static ssize_t local_ipi_read(struct file *fp, char __user *userbuf,
 
 	log("pmsr state:\n");
 	log("enable %d\n", cfg.enable ? 1 : 0);
-	log("speed_mode %s\n",
-	    (cfg.pmsr_speed_mode == SPEED_MODE_SPEED) ?
-		"26" : "32");
+	log("speed_mode %u\n", cfg.pmsr_speed_mode);
 	log("window_len %u (0x%x)\n",
 	    cfg.pmsr_window_len, cfg.pmsr_window_len);
 	for (i = 0; i < SET_CH_MAX; i++) {
@@ -263,6 +288,7 @@ static ssize_t local_ipi_read(struct file *fp, char __user *userbuf,
 				cfg.dpmsr[i].signum,
 				cfg.dpmsr[i].en);
 	}
+	log("err 0x%x\n", cfg.err);
 
 	len = p - dbgbuf;
 	return simple_read_from_buffer(userbuf, count, f_pos, dbgbuf, len);
@@ -309,6 +335,8 @@ static int pmsr_procfs_init(void)
 				 (void *) &(cfg.pmsr_window_len));
 		proc_create_data("enable", 0644, pmsr_droot, &remote_data_fops,
 				 (void *) &(cfg.enable));
+		proc_create_data("test", 0644, pmsr_droot, &remote_data_fops,
+				 (void *) &(cfg.test));
 
 		for (i = 0 ; i < SET_CH_MAX; i++) {
 			ch[i] = proc_mkdir(ch_name[i], pmsr_droot);

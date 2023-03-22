@@ -16,9 +16,8 @@
 #define MONTYPE_HIGH_LEVEL		(2)
 #define MONITPE_LOW_LEVEL		(3)
 
-/* Must equal to CODA */
-#define SPEED_MODE_NORMAL		(0x2)
-#define SPEED_MODE_SPEED		(0x3)
+#define SPEED_MODE_NORMAL		(0x0)
+#define SPEED_MODE_SPEED		(0x1)
 
 #define DEFAULT_MONTYPE			MONTYPE_HIGH_LEVEL
 #define DEFAULT_SPEED_MODE		SPEED_MODE_NORMAL
@@ -36,6 +35,7 @@
 #define PMSR_TOOL_ACT_MONTYPE		(1u << 4)
 #define PMSR_TOOL_ACT_SIGNUM		(1u << 5)
 #define PMSR_TOOL_ACT_EN			(1u << 6)
+#define PMSR_TOOL_ACT_TEST			(1u << 7)
 
 #define SET_CH_MAX 4
 #define MTK_PMSR_BUF_WRITESZ 512
@@ -67,8 +67,10 @@ struct pmsr_cfg {
 	struct pmsr_channel ch[SET_CH_MAX];	/* channel 0~3 config */
 	unsigned int pmsr_speed_mode;		/* 0: normal, 1: high speed */
 	unsigned int pmsr_window_len;
-	bool enable;
 	unsigned int dpmsr_count;
+	bool enable;
+	unsigned int err;
+	unsigned int test;
 	/* pmsr_window_len
 	 *	0: will be automatically updated for current speed mode
 	 * for normal speed mode, set to WINDOW_LEN_NORMAL.
