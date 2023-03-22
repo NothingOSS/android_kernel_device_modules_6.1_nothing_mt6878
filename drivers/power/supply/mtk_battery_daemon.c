@@ -150,6 +150,11 @@ void mtk_battery_send_to_user(struct mtk_battery *gm,
 		return;
 
 	nlh = nlmsg_put(skb, pid, seq, 0, size, 0);
+	if (!nlh) {
+		kfree_skb(skb);
+		return;
+	}
+
 	data = NLMSG_DATA(nlh);
 	memcpy(data, reply_msg, size);
 	NETLINK_CB(skb).portid = 0;	/* from kernel */
@@ -416,124 +421,129 @@ void fg_custom_data_check(struct mtk_battery *gm)
 
 void Intr_Number_to_Name(char *intr_name, unsigned int intr_no)
 {
+	int ret = 0;
+
 	switch (intr_no) {
 	case FG_INTR_0:
-		sprintf(intr_name, "FG_INTR_INIT");
+		ret = sprintf(intr_name, "FG_INTR_INIT");
 		break;
 
 	case FG_INTR_TIMER_UPDATE:
-		sprintf(intr_name, "FG_INTR_TIMER_UPDATE");
+		ret = sprintf(intr_name, "FG_INTR_TIMER_UPDATE");
 		break;
 
 	case FG_INTR_BAT_CYCLE:
-		sprintf(intr_name, "FG_INTR_BAT_CYCLE");
+		ret = sprintf(intr_name, "FG_INTR_BAT_CYCLE");
 		break;
 
 	case FG_INTR_CHARGER_OUT:
-		sprintf(intr_name, "FG_INTR_CHARGER_OUT");
+		ret = sprintf(intr_name, "FG_INTR_CHARGER_OUT");
 		break;
 
 	case FG_INTR_CHARGER_IN:
-		sprintf(intr_name, "FG_INTR_CHARGER_IN");
+		ret = sprintf(intr_name, "FG_INTR_CHARGER_IN");
 		break;
 
 	case FG_INTR_FG_TIME:
-		sprintf(intr_name, "FG_INTR_FG_TIME");
+		ret = sprintf(intr_name, "FG_INTR_FG_TIME");
 		break;
 
 	case FG_INTR_BAT_INT1_HT:
-		sprintf(intr_name, "FG_INTR_COULOMB_HT");
+		ret = sprintf(intr_name, "FG_INTR_COULOMB_HT");
 		break;
 
 	case FG_INTR_BAT_INT1_LT:
-		sprintf(intr_name, "FG_INTR_COULOMB_LT");
+		ret = sprintf(intr_name, "FG_INTR_COULOMB_LT");
 		break;
 
 	case FG_INTR_BAT_INT2_HT:
-		sprintf(intr_name, "FG_INTR_UISOC_HT");
+		ret = sprintf(intr_name, "FG_INTR_UISOC_HT");
 		break;
 
 	case FG_INTR_BAT_INT2_LT:
-		sprintf(intr_name, "FG_INTR_UISOC_LT");
+		ret = sprintf(intr_name, "FG_INTR_UISOC_LT");
 		break;
 
 	case FG_INTR_BAT_TMP_HT:
-		sprintf(intr_name, "FG_INTR_BAT_TEMP_HT");
+		ret = sprintf(intr_name, "FG_INTR_BAT_TEMP_HT");
 		break;
 
 	case FG_INTR_BAT_TMP_LT:
-		sprintf(intr_name, "FG_INTR_BAT_TEMP_LT");
+		ret = sprintf(intr_name, "FG_INTR_BAT_TEMP_LT");
 		break;
 
 	case FG_INTR_BAT_TIME_INT:
-		sprintf(intr_name, "FG_INTR_BAT_TIME_INT");
+		ret = sprintf(intr_name, "FG_INTR_BAT_TIME_INT");
 		break;
 
 	case FG_INTR_NAG_C_DLTV:
-		sprintf(intr_name, "FG_INTR_NAFG_VOLTAGE");
+		ret = sprintf(intr_name, "FG_INTR_NAFG_VOLTAGE");
 		break;
 
 	case FG_INTR_FG_ZCV:
-		sprintf(intr_name, "FG_INTR_FG_ZCV");
+		ret = sprintf(intr_name, "FG_INTR_FG_ZCV");
 		break;
 
 	case FG_INTR_SHUTDOWN:
-		sprintf(intr_name, "FG_INTR_SHUTDOWN");
+		ret = sprintf(intr_name, "FG_INTR_SHUTDOWN");
 		break;
 
 	case FG_INTR_RESET_NVRAM:
-		sprintf(intr_name, "FG_INTR_RESET_NVRAM");
+		ret = sprintf(intr_name, "FG_INTR_RESET_NVRAM");
 		break;
 
 	case FG_INTR_BAT_PLUGOUT:
-		sprintf(intr_name, "FG_INTR_BAT_PLUGOUT");
+		ret = sprintf(intr_name, "FG_INTR_BAT_PLUGOUT");
 		break;
 
 	case FG_INTR_IAVG:
-		sprintf(intr_name, "FG_INTR_IAVG");
+		ret = sprintf(intr_name, "FG_INTR_IAVG");
 		break;
 
 	case FG_INTR_VBAT2_L:
-		sprintf(intr_name, "FG_INTR_VBAT2_L");
+		ret = sprintf(intr_name, "FG_INTR_VBAT2_L");
 		break;
 
 	case FG_INTR_VBAT2_H:
-		sprintf(intr_name, "FG_INTR_VBAT2_H");
+		ret = sprintf(intr_name, "FG_INTR_VBAT2_H");
 		break;
 
 	case FG_INTR_CHR_FULL:
-		sprintf(intr_name, "FG_INTR_CHR_FULL");
+		ret = sprintf(intr_name, "FG_INTR_CHR_FULL");
 		break;
 
 	case FG_INTR_DLPT_SD:
-		sprintf(intr_name, "FG_INTR_DLPT_SD");
+		ret = sprintf(intr_name, "FG_INTR_DLPT_SD");
 		break;
 
 	case FG_INTR_BAT_TMP_C_HT:
-		sprintf(intr_name, "FG_INTR_BAT_TMP_C_HT");
+		ret = sprintf(intr_name, "FG_INTR_BAT_TMP_C_HT");
 		break;
 
 	case FG_INTR_BAT_TMP_C_LT:
-		sprintf(intr_name, "FG_INTR_BAT_TMP_C_LT");
+		ret = sprintf(intr_name, "FG_INTR_BAT_TMP_C_LT");
 		break;
 
 	case FG_INTR_BAT_INT1_CHECK:
-		sprintf(intr_name, "FG_INTR_COULOMB_C");
+		ret = sprintf(intr_name, "FG_INTR_COULOMB_C");
 		break;
 
 	case FG_INTR_KERNEL_CMD:
-		sprintf(intr_name, "FG_INTR_KERNEL_CMD");
+		ret = sprintf(intr_name, "FG_INTR_KERNEL_CMD");
 		break;
 
 	case FG_INTR_BAT_INT2_CHECK:
-		sprintf(intr_name, "FG_INTR_BAT_INT2_CHECK");
+		ret = sprintf(intr_name, "FG_INTR_BAT_INT2_CHECK");
 		break;
 
 	default:
-		sprintf(intr_name, "FG_INTR_UNKNOWN");
+		ret = sprintf(intr_name, "FG_INTR_UNKNOWN");
 		bm_err("[%s] unknown intr %d\n", __func__, intr_no);
 		break;
 	}
+
+	if (ret < 0)
+		bm_err("[%s] something wrong %d\n", __func__, intr_no);
 }
 
 void exec_BAT_EC(int cmd, int param)
@@ -1861,13 +1871,6 @@ static ssize_t uisoc_update_type_store(
 		bm_err("[%s] buf is %s\n",
 			__func__, buf);
 		ret = kstrtoul(buf, 10, &val);
-		if (val < 0) {
-			bm_err(
-				"[%s] val is %d ??\n",
-				__func__,
-				(int)val);
-			val = 0;
-		}
 
 		if (val >= 0 && val <= 2) {
 			gm->fg_cust_data.uisoc_update_type = val;
@@ -1917,13 +1920,6 @@ static ssize_t disable_nafg_store(
 		bm_err("[%s] buf is %s\n",
 			__func__, buf);
 		ret = kstrtoul(buf, 10, &val);
-		if (val < 0) {
-			bm_err(
-				"[%s] val is %d ??\n",
-				__func__,
-				(int)val);
-			val = 0;
-		}
 
 		if (val == 0)
 			gm->cmd_disable_nafg = false;
@@ -1969,12 +1965,6 @@ static ssize_t ntc_disable_nafg_store(
 	if (buf != NULL && size != 0) {
 		bm_err("[%s] buf is %s\n", __func__, buf);
 		ret = kstrtoul(buf, 10, &val);
-		if (val < 0) {
-			bm_err(
-				"[%s] val is %d ??\n",  __func__,
-				(int)val);
-			val = 0;
-		}
 
 		if (val == 0) {
 			gm->ntc_disable_nafg = false;
@@ -2029,14 +2019,8 @@ static ssize_t FG_meter_resistance_store(
 		bm_err("[%s] buf is %s\n",
 			__func__, buf);
 		ret = kstrtoul(buf, 10, &val);
-		if (val < 0) {
-			bm_err(
-				"[%s] val is %d ??\n",
-				__func__,
-				(int)val);
-			val = 0;
-		} else
-			gm->fg_cust_data.com_fg_meter_resistance = val;
+
+		gm->fg_cust_data.com_fg_meter_resistance = val;
 
 		bm_err(
 			"[%s] com FG_meter_resistance = %d\n",
@@ -2079,12 +2063,6 @@ static ssize_t FG_daemon_log_level_store(
 	if (buf != NULL && size != 0) {
 		bm_err("[FG_daemon_log_level] buf is %s\n", buf);
 		ret = kstrtoul(buf, 10, &val);
-		if (val < 0) {
-			bm_err(
-				"[FG_daemon_log_level] val is %d ??\n",
-				(int)val);
-			val = 0;
-		}
 
 		if (val < 10 && val >= 0) {
 			gm->fg_cust_data.daemon_log_level = val;
@@ -2219,13 +2197,7 @@ static ssize_t shutdown_condition_enable_store(
 		bm_err("[%s] buf is %s\n",
 			__func__, buf);
 		ret = kstrtoul(buf, 10, &val);
-		if (val < 0) {
-			bm_err(
-				"[%s] val is %d ??\n",
-				__func__,
-				(int)val);
-			val = 0;
-		}
+
 		set_shutdown_cond_flag(gm, val);
 		bm_err(
 			"[%s] shutdown_cond_enabled=%d\n",
@@ -2264,13 +2236,7 @@ static ssize_t reset_battery_cycle_store(
 		bm_err("[%s] buf is %s\n",
 			__func__, buf);
 		ret = kstrtoul(buf, 10, &val);
-		if (val < 0) {
-			bm_err(
-				"[%s] val is %d ??\n",
-				__func__,
-				(int)val);
-			val = 0;
-		}
+
 		if (val == 0)
 			gm->is_reset_battery_cycle = false;
 		else {
@@ -2314,13 +2280,7 @@ static ssize_t reset_aging_factor_store(
 		bm_err("[%s] buf is %s\n",
 			__func__, buf);
 		ret = kstrtoul(buf, 10, &val);
-		if (val < 0) {
-			bm_err(
-				"[%s] val is %d ??\n",
-				__func__,
-				(int)val);
-			val = 0;
-		}
+
 		if (val == 0)
 			gm->is_reset_aging_factor = false;
 		else {
@@ -2522,13 +2482,7 @@ static ssize_t BAT_NO_PROP_TIMEOUT_store(
 		bm_err("[%s] buf is %s\n",
 			__func__, buf);
 		ret = kstrtoul(buf, 10, &val);
-		if (val < 0) {
-			bm_err(
-				"[%s] val is %d ??\n",
-				__func__,
-				(int)val);
-			val = 0;
-		}
+
 		if (val == 0)
 			gm->no_prop_timeout_control = 0;
 		else
@@ -4292,9 +4246,6 @@ void mtk_battery_netlink_handler(struct sk_buff *skb)
 			return;
 	}
 
-	if (!fgd_ret_msg)
-		return;
-
 	memset(fgd_ret_msg, 0, size);
 	mtk_battery_daemon_handler(gm, data, fgd_ret_msg);
 	mtk_battery_send_to_user(gm, seq, fgd_ret_msg);
@@ -4356,11 +4307,12 @@ unsigned int TempToBattVolt(struct mtk_battery *gm, int temp, int update)
 	int vbif28 = gm->rbat.rbat_pull_up_volt;
 	static int fg_current_temp;
 	static bool fg_current_state;
-	int fg_r_value = gm->fg_cust_data.com_r_fg_value;
-	int fg_meter_res_value = 0;
+	long long fg_r_value = (long long) gm->fg_cust_data.com_r_fg_value;
+	long long fg_meter_res_value = 0;
+	long long fg_current_t2v = 0;
 
 	if (gm->no_bat_temp_compensate == 0)
-		fg_meter_res_value = gm->fg_cust_data.com_fg_meter_resistance;
+		fg_meter_res_value = (long long) gm->fg_cust_data.com_fg_meter_resistance;
 	else
 		fg_meter_res_value = 0;
 
@@ -4383,16 +4335,17 @@ unsigned int TempToBattVolt(struct mtk_battery *gm, int temp, int update)
 		else
 			fg_current_state = true;
 	}
+	fg_current_t2v = (long long) fg_current_temp;
 
 	if (fg_current_state == true) {
 		V_IR_comp = Vin;
 		V_IR_comp +=
-			((fg_current_temp *
+			((fg_current_t2v *
 			(fg_meter_res_value + fg_r_value)) / 10000);
 	} else {
 		V_IR_comp = Vin;
 		V_IR_comp -=
-			((fg_current_temp *
+			((fg_current_t2v *
 			(fg_meter_res_value + fg_r_value)) / 10000);
 	}
 
@@ -4504,7 +4457,7 @@ void fg_int_event(struct mtk_battery *gm, enum gauge_event evt)
 /* ============================================================ */
 void sw_check_bat_plugout(struct mtk_battery *gm)
 {
-	int is_bat_exist;
+	int is_bat_exist = 0;
 
 	if (gm->disable_plug_int && gm->disableGM30 != true) {
 		gauge_get_property_control(gm, GAUGE_PROP_BATTERY_EXIST,
@@ -4530,7 +4483,7 @@ void sw_check_bat_plugout(struct mtk_battery *gm)
 /* ============================================================ */
 void fg_update_sw_low_battery_check(unsigned int thd)
 {
-	int vbat;
+	int vbat = 0;
 	int thd1, thd2, thd3;
 	struct mtk_battery *gm;
 	struct fuel_gauge_custom_data *fg_cust_data;
@@ -4697,7 +4650,7 @@ static irqreturn_t nafg_irq(int irq, void *data)
 /* ============================================================ */
 static void bat_plugout_irq_handler(struct mtk_battery *gm)
 {
-	int is_bat_exist;
+	int is_bat_exist = 0;
 
 	gauge_get_property_control(gm, GAUGE_PROP_BATTERY_EXIST,
 		&is_bat_exist, 0);
@@ -5114,12 +5067,23 @@ static int irq_routine_thread(void *arg)
 {
 	struct mtk_battery *gm = arg;
 	struct irq_controller *irq_ctrl = &gm->irq_ctrl;
-	int ret = 0;
+	int ret = 0, retry = 0;
 
 	while (1) {
 		ret = wait_event_interruptible(irq_ctrl->wait_que,
 			irq_ctrl->do_irq == true &&
 			!gm->in_sleep);
+
+		if (ret < 0) {
+			retry++;
+			if (retry < 0xFFFFFFFF)
+				continue;
+			else {
+				bm_err("%s something wrong retry: %d\n", __func__, retry);
+				break;
+			}
+		}
+		retry = 0;
 		if (gm->in_sleep)
 			continue;
 

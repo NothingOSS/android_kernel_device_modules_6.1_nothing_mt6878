@@ -56,7 +56,7 @@ void gauge_coulomb_dump_list(struct mtk_battery *gm)
 	struct list_head *pos;
 	struct list_head *phead;
 	struct gauge_consumer *ptr;
-	int car;
+	int car = 0;
 	struct mtk_coulomb_service *cs;
 
 	cs = &gm->cs;
@@ -98,7 +98,7 @@ void gauge_coulomb_dump_list(struct mtk_battery *gm)
 void gauge_coulomb_before_reset(struct mtk_battery *gm)
 {
 	struct mtk_coulomb_service *cs;
-	int val;
+	int val = 0;
 
 	cs = &gm->cs;
 
@@ -183,7 +183,7 @@ void gauge_coulomb_start(struct mtk_battery *gm,
 	int hw_car, now_car;
 	bool wake = false;
 	int car_now;
-	int val;
+	int val = 0;
 	struct mtk_coulomb_service *cs;
 
 	cs = &gm->cs;
@@ -289,7 +289,7 @@ void gauge_coulomb_stop(struct mtk_battery *gm, struct gauge_consumer *coulomb)
 
 static void gauge_coulomb_int_handler(struct mtk_coulomb_service *cs)
 {
-	int car, hw_car;
+	int car = 0, hw_car;
 	struct list_head *pos;
 	struct list_head *phead;
 	struct gauge_consumer *ptr = NULL;
@@ -482,7 +482,7 @@ static int system_pm_notify(struct notifier_block *nb,
 
 void gauge_coulomb_service_init(struct mtk_battery *gm)
 {
-	int val;
+	int val = 0;
 	struct mtk_coulomb_service *cs;
 	int ret;
 

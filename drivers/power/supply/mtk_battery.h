@@ -1218,7 +1218,7 @@ extern int get_shutdown_cond(struct mtk_battery *gm);
 extern int get_shutdown_cond_flag(struct mtk_battery *gm);
 extern void set_shutdown_cond_flag(struct mtk_battery *gm, int val);
 extern bool set_charge_power_sel(enum charge_sel select);
-extern int dump_pseudo100(enum charge_sel select);
+extern int dump_pseudo100(int select);
 /*mtk_battery.c end */
 
 /* mtk_battery_algo.c */
