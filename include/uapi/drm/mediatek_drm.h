@@ -450,6 +450,7 @@ struct DISP_AAL_TRIG_STATE {
 #define DRM_MTK_DRM_SET_LEASE_INFO    0x12
 #define DRM_MTK_DRM_GET_LEASE_INFO    0x13
 #define DRM_MTK_CRTC_FENCE_REL           0x14
+#define DRM_MTK_GET_MODE_EXT_INFO 0x15
 
 /* PQ */
 #define DRM_MTK_SET_12BIT_GAMMALUT	0x1D
@@ -831,6 +832,12 @@ struct mtk_drm_connector_caps {
 	struct mtk_drm_conn_caps conn_caps;
 	unsigned int width_after_pq[MAX_MODES];
 	unsigned int height_after_pq[MAX_MODES];
+};
+
+struct mtk_drm_mode_ext_info {
+	unsigned int crtc_id;
+	unsigned int mode_num;
+	unsigned int *total_offset;
 };
 
 struct mtk_drm_crtc_caps {
@@ -1720,6 +1727,8 @@ struct mtk_disp_pq_irq_data {
 
 #define DRM_IOCTL_MTK_DISP_PQ_GET_IRQ    DRM_IOWR(DRM_COMMAND_BASE + \
 			DRM_MTK_DISP_PQ_GET_IRQ, struct mtk_disp_pq_irq_data)
+#define DRM_IOCTL_MTK_GET_MODE_EXT_INFO DRM_IOWR(DRM_COMMAND_BASE + \
+			DRM_MTK_GET_MODE_EXT_INFO, struct mtk_drm_mode_ext_info)
 
 
 /* AAL IOCTL */
