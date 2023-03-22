@@ -838,6 +838,7 @@ struct mtk_drm_mode_ext_info {
 	unsigned int crtc_id;
 	unsigned int mode_num;
 	unsigned int *total_offset;
+	unsigned int *real_te_duration;
 };
 
 struct mtk_drm_crtc_caps {
