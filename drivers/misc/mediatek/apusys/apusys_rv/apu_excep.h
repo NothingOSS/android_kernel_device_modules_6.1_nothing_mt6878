@@ -59,7 +59,7 @@
 	} while (0)
 #else
 #define apusys_rv_aee_warn(module, reason)
-#define apusys_rv_exception_aee_warn(module, reason)
+#define apusys_rv_exception_aee_warn(module)
 #endif
 
 int apu_excep_init(struct platform_device *pdev, struct mtk_apu *apu);

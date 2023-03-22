@@ -13,14 +13,17 @@
 #include <linux/ratelimit.h>
 #include <linux/pm_runtime.h>
 #include <linux/rpmsg.h>
+#include <linux/delay.h>
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 #include <linux/debugfs.h>
+#include <linux/proc_fs.h>
 #endif
 
 #include <mt-plat/aee.h>
 
 #include "apu.h"
+#include "apu_hw.h"
 #include "apu_config.h"
 #include "apu_mbox.h"
 #include "apu_ipi_config.h"
@@ -137,13 +140,13 @@ int apu_ipi_send(struct mtk_apu *apu, u32 id, void *data, u32 len,
 	ipi = &apu->ipi_desc[id];
 	hw_ops = &apu->platdata->ops;
 
-	if ((apu->platdata->flags & F_BYPASS_PM_RUNTIME) == 0)
+	if ((apu->platdata->flags & F_FAST_ON_OFF) == 0)
 		if (!pm_runtime_enabled(dev)) {
 			dev_info(dev, "%s: rpm disabled, ipi=%d\n", __func__, id);
 			return -EBUSY;
 		}
 
-	if ((apu->platdata->flags & F_BYPASS_PM_RUNTIME) &&
+	if ((apu->platdata->flags & F_FAST_ON_OFF) &&
 		ipi_attrs[id].direction == IPI_HOST_INITIATE &&
 		apu->ipi_pwr_ref_cnt[id] == 0) {
 		dev_info(dev, "%s: host initiated ipi(%d) not power on\n",
@@ -167,7 +170,7 @@ int apu_ipi_send(struct mtk_apu *apu, u32 id, void *data, u32 len,
 	/* re-init inbox mask everytime for aoc */
 	apu_mbox_inbox_init(apu);
 
-	if ((apu->platdata->flags & F_BYPASS_PM_RUNTIME) == 0) {
+	if ((apu->platdata->flags & F_FAST_ON_OFF) == 0) {
 		ret = apu_deepidle_power_on_aputop(apu);
 		if (ret) {
 			dev_info(dev, "apu_deepidle_power_on_aputop failed\n");
@@ -552,7 +555,7 @@ int apu_power_on_off(struct platform_device *pdev, u32 id, u32 on, u32 off)
 
 	hw_ops = &apu->platdata->ops;
 
-	if ((apu->platdata->flags & F_BYPASS_PM_RUNTIME) == 0 ||
+	if ((apu->platdata->flags & F_FAST_ON_OFF) == 0 ||
 		!hw_ops->power_on_off) {
 		/* dev_info(dev, "%s: not support\n", __func__); */
 		return -EOPNOTSUPP;
@@ -805,10 +808,6 @@ static struct rpmsg_driver apu_ipi_ut_rpmsg_driver = {
 
 int apu_ipi_ut_val;
 
-#define APU_IPI_DNAME	"apu_ipi"
-#define APU_IPI_FNAME	"ipi_dbg"
-static struct dentry *ipi_dbg_root, *ipi_dbg_file;
-
 static int apu_ipi_dbg_show(struct seq_file *s, void *unused)
 {
 	seq_printf(s, "apu_ipi_ut_val = %d\n", apu_ipi_ut_val);
@@ -887,6 +886,50 @@ out:
 	return ret;
 }
 
+
+#ifdef APUSYS_RV_FPGA_EP
+#define APU_IPI_DNAME	"apu_ipi"
+#define APU_IPI_FNAME	"ipi_dbg"
+static struct proc_dir_entry *ipi_dbg_root, *ipi_dbg_file;
+
+static const struct proc_ops apu_ipi_dbg_fops = {
+	.proc_open = apu_ipi_dbg_open,
+	.proc_read = seq_read,
+	.proc_write = apu_ipi_dbg_write,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
+static int apu_ipi_dbg_init(void)
+{
+	ipi_dbg_root = proc_mkdir(APU_IPI_DNAME, NULL);
+	if (IS_ERR_OR_NULL(ipi_dbg_root)) {
+		pr_info("%s: failed to create debug dir %s\n",
+			__func__, APU_IPI_DNAME);
+		return -EINVAL;
+	}
+
+	ipi_dbg_file = proc_create(APU_IPI_FNAME, (0644), ipi_dbg_root,
+					   &apu_ipi_dbg_fops);
+	if (IS_ERR_OR_NULL(ipi_dbg_file)) {
+		pr_info("%s: failed to create debug file %s\n",
+			__func__, APU_IPI_FNAME);
+		remove_proc_entry(APU_IPI_DNAME, NULL);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static void apu_ipi_dbg_exit(void)
+{
+	remove_proc_entry(APU_IPI_FNAME, ipi_dbg_root);
+	remove_proc_entry(APU_IPI_DNAME, NULL);
+}
+#else
+#define APU_IPI_DNAME	"apu_ipi"
+#define APU_IPI_FNAME	"ipi_dbg"
+static struct dentry *ipi_dbg_root, *ipi_dbg_file;
 static const struct file_operations apu_ipi_dbg_fops = {
 	.open = apu_ipi_dbg_open,
 	.read = seq_read,
@@ -921,6 +964,7 @@ static void apu_ipi_dbg_exit(void)
 	debugfs_remove(ipi_dbg_file);
 	debugfs_remove_recursive(ipi_dbg_root);
 }
+#endif /* #ifdef APUSYS_RV_FPGA_EP */
 
 static int apu_ipi_ut_init(struct mtk_apu *apu)
 {
@@ -980,16 +1024,13 @@ int apu_ipi_init(struct platform_device *pdev, struct mtk_apu *apu)
 		apu->ipi_pwr_ref_cnt[i] = 0;
 	}
 
-	/* for cold boot(already power on by apu_top.ko) */
-	apu->ipi_pwr_ref_cnt[0] = 1;
-	apu->local_pwr_ref_cnt = 1;
 	current_ipi_handler_id = -1;
 
 	init_waitqueue_head(&apu->run.wq);
 	init_waitqueue_head(&apu->ack_wq);
 
 	/* APU initialization IPI register */
-	if ((apu->platdata->flags & F_BYPASS_PM_RUNTIME) == 0) {
+	if ((apu->platdata->flags & F_FAST_ON_OFF) == 0) {
 		ret = apu_ipi_register(apu, APU_IPI_INIT, apu_init_ipi_top_handler, NULL, apu);
 		if (ret) {
 			dev_info(dev, "failed to register apu_init_ipi_top_handler for init, ret=%d\n",

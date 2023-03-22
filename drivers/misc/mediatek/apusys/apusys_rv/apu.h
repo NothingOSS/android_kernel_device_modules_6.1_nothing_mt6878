@@ -29,7 +29,7 @@ struct mtk_apu_hw_ops {
 	int (*power_init)(struct mtk_apu *apu);
 	int (*power_on)(struct mtk_apu *apu);
 	int (*power_off)(struct mtk_apu *apu);
-	/* for fast on/off, only exist if F_BYPASS_PM_RUNTIME set */
+	/* for fast on/off, only exist if F_FAST_ON_OFF set */
 	int (*power_on_off)(struct mtk_apu *apu, u32 id, u32 on, u32 off);
 	void (*wake_lock)(struct mtk_apu *apu, uint32_t id);
 	void (*wake_unlock)(struct mtk_apu *apu, uint32_t id);
@@ -46,16 +46,21 @@ struct mtk_apu_hw_ops {
 	int (*irq_affin_clear)(struct mtk_apu *apu);
 };
 
-#define F_PRELOAD_FIRMWARE	BIT(0)
-#define F_AUTO_BOOT		BIT(1)
-#define F_BYPASS_IOMMU		BIT(2)
-#define F_SECURE_BOOT		BIT(3)
-#define F_SECURE_COREDUMP	BIT(4)
-#define F_DEBUG_LOG_ON		BIT(5)
-#define F_CE_EXCEPTION_ON	BIT(6)
-#define F_BYPASS_PM_RUNTIME		BIT(7)
+#define F_PRELOAD_FIRMWARE		BIT(0)
+#define F_AUTO_BOOT				BIT(1)
+#define F_BYPASS_IOMMU			BIT(2)
+#define F_SECURE_BOOT			BIT(3)
+#define F_SECURE_COREDUMP		BIT(4)
+#define F_DEBUG_LOG_ON			BIT(5)
+#define F_CE_EXCEPTION_ON		BIT(6)
+#define F_FAST_ON_OFF			BIT(7)
 #define F_APU_IPI_UT_SUPPORT	BIT(8)
 #define F_APUSYS_RV_TAG_SUPPORT	BIT(9)
+#define F_SMMU_SUPPORT			BIT(10)
+#define F_BRINGUP				BIT(11)
+#define F_FPGA_EP				BIT(12)
+
+#define APUSYS_RV_FPGA_EP
 
 struct mtk_apu_platdata {
 	uint32_t flags;

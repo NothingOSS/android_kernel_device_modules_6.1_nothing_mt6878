@@ -91,24 +91,6 @@ int apu_config_setup(struct mtk_apu *apu)
 		goto out;
 	}
 
-	//@@@ret = reviser_set_init_info(apu);
-	//@@@if (ret) {
-	//@@@	dev_info(apu->dev, "apu reviser config init failed\n");
-	//@@@	goto out;
-	//@@@}
-
-	//@@@ret = vpu_set_init_info(apu);
-	//@@@if (ret) {
-	//@@@	dev_info(apu->dev, "apu vpu config init failed\n");
-	//@@@	goto out;
-	//@@@}
-
-	//@@@ret = power_set_chip_info(apu);
-	//@@@if (ret) {
-	//@@@	dev_info(apu->dev, "set chip info fail ret:%d\n", ret);
-	//@@@	goto out;
-	//@@@}
-
 	ret = sw_logger_config_init(apu);
 	if (ret) {
 		dev_info(dev, "sw logger config init failed\n");

@@ -325,7 +325,8 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 				MTK_APUSYS_KERNEL_OP_APUSYS_RV_CLEAR_WDT_ISR, 0);
 		}
 
-		apu_regdump();
+		if ((apu->platdata->flags & F_BRINGUP) == 0)
+			apu_regdump();
 		/* since exception is triggered, so bypass power off timeout check */
 		apu->bypass_pwr_off_chk = true;
 		apusys_rv_exception_aee_warn(
@@ -473,7 +474,8 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 		dsb(SY); /* may take lots of time */
 	}
 
-	apu_regdump();
+	if ((apu->platdata->flags & F_BRINGUP) == 0)
+		apu_regdump();
 	/* since exception is triggered, so bypass power off timeout check */
 	apu->bypass_pwr_off_chk = true;
 	apusys_rv_aee_warn("APUSYS_RV", "APUSYS_RV_TIMEOUT");

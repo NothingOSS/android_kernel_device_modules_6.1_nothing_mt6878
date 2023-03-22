@@ -31,7 +31,7 @@ static void apu_timesync_handler(void *data, u32 len, void *priv)
 	int ret;
 
 	dev_info(apu->dev, "%s timesync request received\n", __func__);
-	if ((apu->platdata->flags & F_BYPASS_PM_RUNTIME) == 0)
+	if ((apu->platdata->flags & F_FAST_ON_OFF) == 0)
 		queue_work(apu_ts_workq, &apu->timesync_work);
 	else {
 		timesync_stamp = sched_clock();

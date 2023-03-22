@@ -67,7 +67,8 @@ static int __apu_run(struct rproc *rproc)
 		return -EINVAL;
 	}
 
-	hw_ops->power_on(apu);
+	if ((apu->platdata->flags & F_FAST_ON_OFF) == 0)
+		hw_ops->power_on(apu);
 	hw_ops->start(apu);
 
 	/* check if boot success */
@@ -87,7 +88,8 @@ static int __apu_run(struct rproc *rproc)
 		 * and use APUSYS_RV_TIMEOUT instead of
 		 * APUSYS_RV_BOOT_TIMEOUT to dump more info *
 		 */
-		apu_regdump();
+		if ((apu->platdata->flags & F_BRINGUP) == 0)
+			apu_regdump();
 		apu->bypass_pwr_off_chk = true;
 		apusys_rv_aee_warn("APUSYS_RV", "APUSYS_RV_TIMEOUT");
 		goto stop;
@@ -196,10 +198,16 @@ static int apu_dram_boot_init(struct mtk_apu *apu)
 		apu->code_buf = (void *) apu->apu_sec_mem_base +
 			apu->apusys_sec_info->up_code_buf_ofs;
 		apu->code_da = APU_SEC_FW_IOVA;
+		if ((apu->platdata->flags & F_SMMU_SUPPORT) == 0)
 		/* Map reserved code buffer to APU_SEC_FW_IOVA */
-		ret = iommu_map(domain, APU_SEC_FW_IOVA,
+			ret = iommu_map(domain, APU_SEC_FW_IOVA,
 				apu->apusys_sec_mem_start,
-				apu->apusys_sec_mem_size, IOMMU_READ|IOMMU_WRITE);
+				apu->apusys_sec_mem_size, IOMMU_READ | IOMMU_WRITE);
+		else
+		/* add IOMMU_PRIV for SMMU security criterion of AXI sideband AxPROT */
+			ret = iommu_map(domain, APU_SEC_FW_IOVA,
+				apu->apusys_sec_mem_start,
+				apu->apusys_sec_mem_size, IOMMU_READ | IOMMU_WRITE | IOMMU_PRIV);
 		if (ret) {
 			dev_info(dev, "%s: iommu_map fail(%d)\n", __func__, ret);
 			return ret;
@@ -236,16 +244,20 @@ static int apu_dram_boot_init(struct mtk_apu *apu)
 		dev_info(dev, "%s: sgt.nents = %d, sgt.orig_nents = %d\n",
 			__func__, sgt.nents, sgt.orig_nents);
 		/* Map sg_list to MD32_BOOT_ADDR */
-		map_sg_sz = iommu_map_sg(domain, iova, sgt.sgl,
-			sgt.nents, IOMMU_READ|IOMMU_WRITE);
+		if ((apu->platdata->flags & F_SMMU_SUPPORT) == 0)
+			map_sg_sz = iommu_map_sg(domain, iova, sgt.sgl,
+				sgt.nents, IOMMU_READ | IOMMU_WRITE);
+		else
+		/* add IOMMU_PRIV for SMMU security criterion of AXI sideband AxPROT */
+			map_sg_sz = iommu_map_sg(domain, iova, sgt.sgl,
+				sgt.nents, IOMMU_READ | IOMMU_WRITE | IOMMU_PRIV);
 		dev_info(dev, "%s: sgt.nents = %d, sgt.orig_nents = %d\n",
 			__func__, sgt.nents, sgt.orig_nents);
 		dev_info(dev, "%s: map_sg_sz = %d\n", __func__, map_sg_sz);
 		if (map_sg_sz != apu->up_code_buf_sz)
 			dev_info(dev, "%s: iommu_map_sg fail(%d)\n", __func__, ret);
 
-		pa = iommu_iova_to_phys(domain,
-			iova + apu->up_code_buf_sz - SZ_4K);
+		pa = iommu_iova_to_phys(domain, iova);
 		dev_info(dev, "%s: pa = 0x%llx\n",
 			__func__, (uint64_t) pa);
 		if (!pa) // pa should not be null
@@ -390,7 +402,7 @@ static int apu_probe(struct platform_device *pdev)
 			apu->apu_aee_coredump_mem_base;
 	}
 
-	if ((data->flags & F_BYPASS_PM_RUNTIME) == 0) {
+	if ((data->flags & F_FAST_ON_OFF) == 0) {
 		apu_drv_debug("before pm_runtime_enable\n");
 		pm_runtime_enable(&pdev->dev);
 
@@ -406,14 +418,14 @@ static int apu_probe(struct platform_device *pdev)
 	if (data->flags & F_AUTO_BOOT) {
 		ret = hw_ops->power_init(apu);
 		if (ret) {
-			if ((data->flags & F_BYPASS_PM_RUNTIME) == 0)
+			if ((data->flags & F_FAST_ON_OFF) == 0)
 				pm_runtime_put_sync(&pdev->dev);
 			goto out_free_rproc;
 		}
 	}
 
 	if (!hw_ops->apu_memmap_init) {
-		if ((data->flags & F_BYPASS_PM_RUNTIME) == 0) {
+		if ((data->flags & F_FAST_ON_OFF) == 0) {
 			pm_runtime_put_sync(&pdev->dev);
 			if (data->flags & F_AUTO_BOOT)
 				pm_runtime_put_sync(apu->power_dev);
@@ -499,7 +511,7 @@ static int apu_probe(struct platform_device *pdev)
 	if ((data->flags & F_PRELOAD_FIRMWARE) && (data->flags & F_AUTO_BOOT))
 		rproc->state = RPROC_DETACHED;
 
-	if ((data->flags & F_BYPASS_PM_RUNTIME) == 0) {
+	if ((data->flags & F_FAST_ON_OFF) == 0) {
 		pm_runtime_put_sync(&pdev->dev);
 		if (data->flags & F_AUTO_BOOT)
 			pm_runtime_put_sync(apu->power_dev);
@@ -541,7 +553,7 @@ remove_apu_mem:
 	apu_mem_remove(apu);
 
 remove_apu_memmap:
-	if ((data->flags & F_BYPASS_PM_RUNTIME) == 0) {
+	if ((data->flags & F_FAST_ON_OFF) == 0) {
 		pm_runtime_put_sync(&pdev->dev);
 		if (data->flags & F_AUTO_BOOT)
 			pm_runtime_put_sync(apu->power_dev);
