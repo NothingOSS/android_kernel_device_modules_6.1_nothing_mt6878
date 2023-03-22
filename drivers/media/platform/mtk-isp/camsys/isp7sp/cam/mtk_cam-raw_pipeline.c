@@ -586,7 +586,7 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 EXIT:
 	if (drv_data || ret == -EBUSY || CAM_DEBUG_ENABLED(V4L2_TRY))
 		dev_info(cam->dev,
-			 "calc_resource: sensor fps %u/%u %dx%d blank %u/%u linet %ld prate %llu clk %d pxlmode %d num %d bin %d img_wbuf %dx%d raw(0x%x,0x%x,%d)\n",
+			 "calc_resource: sensor fps %u/%u %dx%d blank %u/%u linet %ld prate %llu bin %d clk %d pxlmode %d num %d img_wbuf %dx%d raw(0x%x,0x%x,%d)\n",
 			 s->interval.denominator, s->interval.numerator,
 			 s->width, s->height, s->hblank, s->vblank, c.line_time,
 			 s->pixel_rate,

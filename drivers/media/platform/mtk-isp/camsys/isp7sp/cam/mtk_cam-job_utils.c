@@ -820,7 +820,7 @@ int fill_imgo_out_subsample(struct mtkcam_ipi_img_output *io,
 	for (i = 0; i < subsample_ratio; i++) {
 		/* FIXME: porting workaround */
 		io->buf[i][0].size = buf->image_info.size[0];
-		io->buf[i][0].iova = buf->daddr + io->buf[i][0].size;
+		io->buf[i][0].iova = buf->daddr + i * (dma_addr_t) io->buf[i][0].size;
 		io->buf[i][0].ccd_fd = buf->vbb.vb2_buf.planes[0].m.fd;
 		buf_printk("i=%d: buf->daddr:0x%llx, io->buf[i][0].iova:0x%llx, size:%d",
 			   i, buf->daddr, io->buf[i][0].iova, io->buf[i][0].size);
