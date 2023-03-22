@@ -208,12 +208,11 @@ static int offloadservice_gettargetrate(struct snd_kcontrol *kcontrol,
 static void offload_time_cb(struct timer_list *t)
 {
 	unsigned long flags;
-	notify_vb_audio_control(NOTIFIER_VP_AUDIO_TIMER, NULL);
 	spin_lock_irqsave(&afe_offload_service.timer_spinlock, flags);
 	if (afe_offload_service.timer_init) {
-		afe_offload_service.offload_timer.expires =
-			jiffies + msecs_to_jiffies(OFFLOAD_VPSYNC_TIMEOUT);
-		add_timer(&afe_offload_service.offload_timer);
+		notify_vb_audio_control(NOTIFIER_VP_AUDIO_TIMER, NULL);
+		mod_timer(&afe_offload_service.offload_timer,
+			  jiffies + msecs_to_jiffies(OFFLOAD_VPSYNC_TIMEOUT));
 	}
 	spin_unlock_irqrestore(&afe_offload_service.timer_spinlock, flags);
 }
@@ -1146,9 +1145,9 @@ int offload_vp_function(void *data)
 					       afe_offload_service.vp_sync_event);
 		if (ret == 0) {
 			spin_lock_irqsave(&afe_offload_service.timer_spinlock, flags);
+			notify_vb_audio_control(NOTIFIER_VP_AUDIO_TIMER, NULL);
 			afe_offload_service.vp_sync_event = false;
 			if (afe_offload_service.timer_init) {
-				notify_vb_audio_control(NOTIFIER_VP_AUDIO_TIMER, NULL);
 				mod_timer(&afe_offload_service.offload_timer,
 				jiffies + msecs_to_jiffies(OFFLOAD_VPSYNC_TIMEOUT));
 			}
