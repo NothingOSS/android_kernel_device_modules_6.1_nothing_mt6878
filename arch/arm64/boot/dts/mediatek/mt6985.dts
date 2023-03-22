@@ -13561,9 +13561,10 @@
 			<2 M4U_PORT_L37_JPGDEC_HUFF_OFFSET_0 0>;
 		interconnects = <&mmqos SLAVE_LARB(7) &mmqos SLAVE_COMMON(0)>,
 				<&mmqos SLAVE_LARB(8) &mmqos SLAVE_COMMON(1)>,
-				<&mmqos SLAVE_LARB(37) &mmqos SLAVE_COMMON(1)>;
-		interconnect-names = "path_larb7", "path_larb8", "path_larb37";
-		interconnect-num = <3>;
+				<&mmqos SLAVE_LARB(37) &mmqos SLAVE_COMMON(1)>,
+				<&mmqos SLAVE_LARB(43) &mmqos SLAVE_COMMON(0)>;
+		interconnect-names = "path_larb7", "path_larb8", "path_larb37", "path_larb43";
+		interconnect-num = <4>;
 		throughput-op-rate-thresh = <120>;
 		throughput-min = <250000000>;
 		throughput-normal-max = <624000000>;
@@ -13625,7 +13626,8 @@
 		bandwidth-table =
 			<7 0 447>,
 			<8 1 481>,
-			<37 2 404>;
+			<37 2 404>,
+			<43 1 0>;
 	};
 
 	vcp: vcp@1ec00000 {
