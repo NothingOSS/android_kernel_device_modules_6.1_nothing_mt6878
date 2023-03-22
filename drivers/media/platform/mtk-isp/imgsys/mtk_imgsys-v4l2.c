@@ -1054,6 +1054,27 @@ static bool get_user_by_file(struct file *filp, struct mtk_imgsys_user **user)
 	return found;
 }
 
+static int mtk_imgsys_subdev_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
+{
+	struct mtk_imgsys_dma_buf_iova_get_info *iova_info, *tmp;
+	struct mtk_imgsys_pipe *pipe = sd->dev_priv;
+
+	list_for_each_entry_safe(iova_info, tmp,
+		&pipe->iova_cache.list, list_entry) {
+		mtk_imgsys_put_dma_buf(iova_info->dma_buf,
+		iova_info->attach,
+		iova_info->sgt);
+		spin_lock(&pipe->iova_cache.lock);
+		list_del(&iova_info->list_entry);
+		hash_del(&iova_info->hnode);
+		spin_unlock(&pipe->iova_cache.lock);
+		vfree(iova_info);
+	}
+	pr_info("imgsys_fw:%s", __func__);
+
+	return 0;
+}
+
 #ifdef BATCH_MODE_V3
 static int mtkdip_ioc_dqbuf(struct file *filp, void *arg)
 {
@@ -1680,7 +1701,7 @@ static int mtkdip_ioc_add_iova(struct v4l2_subdev *subdev, void *arg)
 		spin_unlock(&pipe->iova_cache.lock);
 		fd_info.fds_size[i] = dmabuf->size;
 		fd_info.fds[i] = kfd[i];
-		pr_debug("%s: fd(%d) size (%lx) cache added\n", __func__,
+		dev_dbg(pipe->imgsys_dev->dev, "%s: fd(%d) size (%lx) cache added\n", __func__,
 					fd_info.fds[i], fd_info.fds_size[i]);
 
 	}
@@ -1753,8 +1774,8 @@ static int mtkdip_ioc_del_iova(struct v4l2_subdev *subdev, void *arg)
 		dma_buf_put(dmabuf);
 
 		fd_info.fds[i] = kfd[i];
-		pr_debug("%s: fd(%d) size (%lx) cache invalidated\n", __func__,
-					fd_info.fds[i], fd_info.fds_size[i]);
+		dev_dbg(pipe->imgsys_dev->dev, "%s: fd(%d) size (%lx) cache invalidated\n",
+					__func__, fd_info.fds[i], fd_info.fds_size[i]);
 
 	}
 
@@ -2379,6 +2400,7 @@ int mtk_imgsys_pipe_v4l2_register(struct mtk_imgsys_pipe *pipe,
 	pipe->subdev.flags =
 		V4L2_SUBDEV_FL_HAS_DEVNODE | V4L2_SUBDEV_FL_HAS_EVENTS;
 	pipe->subdev.ctrl_handler = NULL;
+	pipe->subdev.internal_ops = &mtk_imgsys_subdev_int_ops;
 
 	for (i = 0; i < pipe->desc->total_queues; i++)
 		pipe->subdev_pads[i].flags =

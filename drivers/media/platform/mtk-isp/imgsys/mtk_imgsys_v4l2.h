@@ -119,6 +119,8 @@ static int mtk_imgsys_video_device_s_ctrl(struct v4l2_ctrl *ctrl);
 static int mtk_imgsys_vidioc_qbuf(struct file *file, void *priv,
 				  struct v4l2_buffer *buf);
 
+static int mtk_imgsys_subdev_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh);
+
 #ifdef BATCH_MODE_V3
 long mtk_imgsys_vidioc_default(struct file *file, void *fh,
 			bool valid_prio, unsigned int cmd, void *arg);
@@ -154,6 +156,10 @@ static const struct v4l2_subdev_ops mtk_imgsys_subdev_ops = {
 static const struct media_entity_operations mtk_imgsys_media_ops = {
 	.link_setup = mtk_imgsys_link_setup,
 	.link_validate = v4l2_subdev_link_validate,
+};
+
+static const struct v4l2_subdev_internal_ops mtk_imgsys_subdev_int_ops = {
+	.close = mtk_imgsys_subdev_close,
 };
 
 static struct media_request *mtk_imgsys_request_alloc(
