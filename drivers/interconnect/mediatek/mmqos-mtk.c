@@ -296,9 +296,23 @@ static void set_total_bw_to_emi(struct common_node *comm_node)
 	MMQOS_SYSTRACE_END();
 }
 
-static u32 get_max_channel_bw(u32 comm_id)
+static u32 get_max_channel_bw_in_common(u32 comm_id)
 {
-	u32 max_bw = 0, i, j;
+	u32 max_bw = 0, i;
+
+	for (i = 0; i < MMQOS_COMM_CHANNEL_NUM; i++) {
+		max_bw = max_t(u32, max_bw, chn_hrt_r_bw[comm_id][i] * 10 / 7);
+		max_bw = max_t(u32, max_bw, chn_srt_r_bw[comm_id][i]);
+		max_bw = max_t(u32, max_bw, chn_hrt_w_bw[comm_id][i] * 10 / 7);
+		max_bw = max_t(u32, max_bw, chn_srt_w_bw[comm_id][i]);
+	}
+
+	return max_bw;
+}
+
+static u32 get_max_channel_bw(u32 comm_id, u32 freq_mode)
+{
+	u32 max_bw = 0, comm_bw, i, j;
 
 	if (log_level & 1 << log_comm_freq) {
 		for (i = 0; i < MMQOS_MAX_COMM_NUM; i++) {
@@ -309,13 +323,15 @@ static u32 get_max_channel_bw(u32 comm_id)
 			}
 		}
 	}
-	for (i = 0; i < MMQOS_COMM_CHANNEL_NUM; i++) {
-		max_bw = max_t(u32, max_bw, chn_hrt_r_bw[comm_id][i] * 10 / 7);
-		max_bw = max_t(u32, max_bw, chn_srt_r_bw[comm_id][i]);
-		max_bw = max_t(u32, max_bw, chn_hrt_w_bw[comm_id][i] * 10 / 7);
-		max_bw = max_t(u32, max_bw, chn_srt_w_bw[comm_id][i]);
-	}
 
+	if (!mmdvfs_get_version()) //BY_REGULATOR
+		return get_max_channel_bw_in_common(comm_id);
+
+	// BY_MMDVFS
+	for (i = 0; i < MMQOS_MAX_COMM_NUM; i++) {
+		comm_bw = get_max_channel_bw_in_common(i);
+		max_bw = max_t(u32, max_bw, comm_bw);
+	}
 	return max_bw;
 }
 
@@ -357,7 +373,7 @@ static void set_comm_icc_bw(struct common_node *comm_node)
 	comm_id = MASK_8(comm_node->base->icc_node->id);
 
 	if (freq_mode == BY_REGULATOR || freq_mode == BY_MMDVFS) {
-		max_bw = get_max_channel_bw(comm_id);
+		max_bw = get_max_channel_bw(comm_id, freq_mode);
 
 		if (max_bw)
 			smi_clk = SHIFT_ROUND(max_bw, 4) * 1000;
