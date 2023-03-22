@@ -692,7 +692,10 @@ void mtk_cam_update_sensor_resource(struct mtk_cam_ctx *ctx)
 	if (ctx->hw_sv == NULL)
 		return;
 	sv_dev = dev_get_drvdata(ctx->hw_sv);
+
 	memset(&sv_dev->sensor_res, 0, sizeof(struct mtk_cam_resource_sensor_v2));
+	memset(&fi, 0, sizeof(fi));
+	memset(&sd_fmt, 0, sizeof(sd_fmt));
 
 	if (ctx->sensor) {
 		fi.pad = 0;

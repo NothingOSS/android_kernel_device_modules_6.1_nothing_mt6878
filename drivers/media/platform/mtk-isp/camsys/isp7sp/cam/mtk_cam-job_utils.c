@@ -516,7 +516,7 @@ static int fill_sv_img_fp_working_buffer(struct req_buffer_helper *helper,
 	struct mtkcam_ipi_img_output *out;
 	struct mtkcam_ipi_uid uid;
 	unsigned int tag_idx;
-	int job_exp_no = 0;
+	unsigned int job_exp_no = 0;
 	int ret = 0;
 
 	if (ctx->hw_sv == NULL)
@@ -525,6 +525,13 @@ static int fill_sv_img_fp_working_buffer(struct req_buffer_helper *helper,
 	sv_dev = dev_get_drvdata(ctx->hw_sv);
 
 	job_exp_no = job_exp_num(job);
+	if (job_exp_no > 3) {
+		ret = -1;
+		pr_info("%s: over maximum exposure number(exp_no:%d)",
+			__func__, job_exp_no);
+		goto EXIT;
+	}
+
 	tag_idx = (is_dc_mode(job) && job_exp_no > 1 && (exp_no + 1) == job_exp_no) ?
 		get_sv_tag_idx_hdr(job_exp_no, MTKCAM_IPI_ORDER_LAST_TAG, is_w) :
 		get_sv_tag_idx_hdr(job_exp_no, exp_no, is_w);

@@ -2278,8 +2278,6 @@ _handle_sv_tag_only_sv(struct mtk_cam_job *job)
 	/* img tag(s) */
 	tag_idx = SVTAG_START;
 	for (i = 0; i < ctx->num_sv_subdevs; i++) {
-		if (tag_idx >= SVTAG_END)
-			return 1;
 		sv_pipe_idx = ctx->sv_subdev_idx[i];
 		if (sv_pipe_idx >= ctx->cam->pipelines.num_camsv)
 			return 1;
