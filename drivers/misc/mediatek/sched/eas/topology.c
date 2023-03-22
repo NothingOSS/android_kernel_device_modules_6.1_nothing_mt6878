@@ -110,4 +110,9 @@ void mtk_update_cpu_capacity(void *data, int cpu, unsigned long *capacity)
 	*capacity = min(cap_ceiling, *capacity);
 }
 
+unsigned long cpu_cap_ceiling(int cpu)
+{
+	return min(capacity_orig_of(cpu), per_cpu(max_freq_scale, cpu));
+}
+
 #endif

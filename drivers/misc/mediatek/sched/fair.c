@@ -1654,8 +1654,9 @@ void mtk_sched_newidle_balance(void *data, struct rq *this_rq, struct rq_flags *
 			rq_unlock_irqrestore(src_rq, &src_rf);
 			continue;
 		}
-		if (src_rq->misfit_task_load > misfit_load &&
-			capacity_orig_of(this_cpu) > capacity_orig_of(cpu)) {
+
+		if ((src_rq->misfit_task_load > misfit_load) &&
+			(cpu_cap_ceiling(this_cpu) > cpu_cap_ceiling(cpu))) {
 			p = src_rq->curr;
 			if (p) {
 				compute_effective_softmask(p, &latency_sensitive,

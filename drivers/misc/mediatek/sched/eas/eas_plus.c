@@ -612,14 +612,14 @@ int select_bigger_idle_cpu(struct task_struct *p)
 	struct perf_domain *pd, *prefer_pds[NR_CPUS];
 	int cpu = task_cpu(p), bigger_idle_cpu = -1;
 	int i = 0;
-	long max_capacity = capacity_orig_of(cpu);
+	long max_capacity = cpu_cap_ceiling(cpu);
 	long capacity;
 
 	rcu_read_lock();
 	pd = rcu_dereference(rd->pd);
 
 	for (; pd; pd = pd->next) {
-		capacity = capacity_orig_of(cpumask_first(perf_domain_span(pd)));
+		capacity = cpu_cap_ceiling(cpumask_first(perf_domain_span(pd)));
 		if (capacity > max_capacity &&
 			cpumask_intersects(p->cpus_ptr, perf_domain_span(pd))) {
 			prefer_pds[i++] = pd;
@@ -682,7 +682,7 @@ void check_for_migration(struct task_struct *p)
 		raw_spin_unlock(&p->pi_lock);
 
 		if ((new_cpu < 0) ||
-			(capacity_orig_of(new_cpu) <= capacity_orig_of(cpu)))
+			(cpu_cap_ceiling(new_cpu) <= cpu_cap_ceiling(cpu)))
 			better_idle_cpu = select_bigger_idle_cpu(p);
 
 		if (better_idle_cpu >= 0)
@@ -696,7 +696,7 @@ void check_for_migration(struct task_struct *p)
 
 		irq_log_store();
 		if ((better_idle_cpu >= 0) ||
-			(capacity_orig_of(new_cpu) > capacity_orig_of(cpu))) {
+			(cpu_cap_ceiling(new_cpu) > cpu_cap_ceiling(cpu))) {
 			raw_spin_unlock(&migration_lock);
 
 			migrate_running_task(new_cpu, p, rq, MIGR_TICK_PULL_MISFIT_RUNNING);
