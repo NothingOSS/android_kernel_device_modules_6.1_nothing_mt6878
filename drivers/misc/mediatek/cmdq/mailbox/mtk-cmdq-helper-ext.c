@@ -221,6 +221,9 @@ void cmdq_set_buffer_size(struct cmdq_client *cl, bool b)
 {
 	u32 hwid, thd;
 
+	if (!cmdq_dump_buf_size)
+		return;
+
 	if (!cl) {
 		cmdq_msg("%s cl is null", __func__);
 		return;
