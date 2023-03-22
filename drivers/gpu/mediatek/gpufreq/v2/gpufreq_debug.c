@@ -546,18 +546,18 @@ static ssize_t mfgsys_power_control_proc_write(struct file *file,
 
 	mutex_lock(&gpufreq_debug_lock);
 
-	if (sysfs_streq(buf, "power_on") && g_debug_power_state == POWER_OFF) {
-		ret = gpufreq_power_control(POWER_ON, GPUPPM_DEFAULT_IDX);
+	if (sysfs_streq(buf, "power_on") && g_debug_power_state == GPU_PWR_OFF) {
+		ret = gpufreq_power_control(GPU_PWR_ON, GPUPPM_DEFAULT_IDX);
 		if (ret < 0)
 			GPUFREQ_LOGE("fail to power on MFGSYS (%d)", ret);
 		else
-			g_debug_power_state = POWER_ON;
-	} else if (sysfs_streq(buf, "power_off") && g_debug_power_state == POWER_ON) {
-		ret = gpufreq_power_control(POWER_OFF, GPUPPM_DEFAULT_IDX);
+			g_debug_power_state = GPU_PWR_ON;
+	} else if (sysfs_streq(buf, "power_off") && g_debug_power_state == GPU_PWR_ON) {
+		ret = gpufreq_power_control(GPU_PWR_OFF, GPUPPM_DEFAULT_IDX);
 		if (ret < 0)
 			GPUFREQ_LOGE("fail to power off MFGSYS (%d)", ret);
 		else
-			g_debug_power_state = POWER_OFF;
+			g_debug_power_state = GPU_PWR_OFF;
 	}
 
 	mutex_unlock(&gpufreq_debug_lock);
@@ -1036,7 +1036,7 @@ void gpufreq_debug_init(unsigned int dual_buck, unsigned int gpueb_support,
 
 	g_dual_buck = dual_buck;
 	g_gpueb_support = gpueb_support;
-	g_debug_power_state = POWER_OFF;
+	g_debug_power_state = GPU_PWR_OFF;
 	g_debug_margin_mode = FEAT_ENABLE;
 	/* take every info of mfgsys from shared status */
 	if (shared_status)

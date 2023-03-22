@@ -161,12 +161,12 @@ EXPORT_SYMBOL(gpufreq_active_sleep_ctrl_enable);
  ***********************************************************************************/
 unsigned int gpufreq_get_power_state(void)
 {
-	enum gpufreq_power_state power_state = POWER_OFF;
+	enum gpufreq_power_state power_state = GPU_PWR_OFF;
 	int power_count = 0, active_count = 0;
 
 	if (g_shared_status) {
 		power_count = g_shared_status->power_count;
-		power_state = power_count > 0 ? POWER_ON : POWER_OFF;
+		power_state = power_count > 0 ? GPU_PWR_ON : GPU_PWR_OFF;
 	} else
 		GPUFREQ_LOGE("null gpufreq shared memory (ENOENT)");
 
@@ -706,7 +706,7 @@ int gpufreq_power_control(enum gpufreq_power_state power, int oppidx)
 	if (gpufreq_fp && gpufreq_fp->power_control) {
 		ret = gpufreq_fp->power_control(power);
 		/* resume DVFS state after first power on */
-		if (power == POWER_ON && ret == 1) {
+		if (power == GPU_PWR_ON && ret == 1) {
 			/* use input oppidx if specified or cur oppidx */
 			if (oppidx < 0)
 				target_oppidx = gpufreq_get_cur_oppidx(TARGET_DEFAULT);
@@ -722,7 +722,7 @@ int gpufreq_power_control(enum gpufreq_power_state power, int oppidx)
 done:
 	if (unlikely(ret < 0))
 		GPUFREQ_LOGE("fail to control power state: %s (%d)",
-			power ? "POWER_ON" : "POWER_OFF", ret);
+			power ? "GPU_PWR_ON" : "GPU_PWR_OFF", ret);
 
 	GPUFREQ_TRACE_END();
 
@@ -1053,9 +1053,9 @@ EXPORT_SYMBOL(gpufreq_pdca_config);
  ***********************************************************************************/
 void gpufreq_fake_mtcmos_control(enum gpufreq_power_state power)
 {
-	if (power == POWER_ON)
+	if (power == GPU_PWR_ON)
 		gpufreq_set_mfgsys_config(CONFIG_FAKE_MTCMOS_CTRL, FEAT_ENABLE);
-	else if (power == POWER_OFF)
+	else if (power == GPU_PWR_OFF)
 		gpufreq_set_mfgsys_config(CONFIG_FAKE_MTCMOS_CTRL, FEAT_DISABLE);
 }
 EXPORT_SYMBOL(gpufreq_fake_mtcmos_control);
@@ -1430,7 +1430,7 @@ static void gpufreq_dump_dvfs_status(void)
 static void gpufreq_dump_power_tracker_status(void)
 {
 	/* implement on AP */
-	if (gpufreq_get_power_state() == POWER_ON) {
+	if (gpufreq_get_power_state() == GPU_PWR_ON) {
 		if (g_shared_status && g_shared_status->power_tracker_mode) {
 			if (gpufreq_fp && gpufreq_fp->dump_power_tracker_status)
 				gpufreq_fp->dump_power_tracker_status();

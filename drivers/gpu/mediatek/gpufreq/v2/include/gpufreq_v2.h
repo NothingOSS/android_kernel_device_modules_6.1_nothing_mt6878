@@ -91,8 +91,8 @@ enum gpufreq_target {
 };
 
 enum gpufreq_power_state {
-	POWER_OFF = 0,
-	POWER_ON,
+	GPU_PWR_OFF = 0,
+	GPU_PWR_ON,
 };
 
 enum gpufreq_config_target {

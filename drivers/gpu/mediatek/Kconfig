@@ -148,6 +148,15 @@ config MTK_GPU_MT6985_SUPPORT
 	  and set N to disable.
 	  It is additional config to separate platforms.
 
+config MTK_GPU_MT6989_SUPPORT
+	tristate "Specify Mediatek GPU Platform is mt6989"
+	depends on MTK_GPU_SUPPORT
+	help
+	  Select MediaTek GPU Platform is mt6989.
+	  Set Y or M to select this feature for specific platform-mt6989,
+	  and set N to disable.
+	  It is additional config to separate platforms.
+
 config MTK_GPU_DIAGNOSIS_DEBUG
 	bool "Enable gpu diagnosis switch for debug"
 	depends on MTK_GPU_SUPPORT
