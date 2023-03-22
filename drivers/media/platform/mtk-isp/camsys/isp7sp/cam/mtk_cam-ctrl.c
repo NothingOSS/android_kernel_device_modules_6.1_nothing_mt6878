@@ -1034,6 +1034,9 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 	req_seq = atomic_inc_return(&cam_ctrl->enqueued_req_cnt);
 	mtk_cam_job_set_no(job, req_seq, frame_seq);
 
+	if (job->seamless_switch)
+		mtk_cam_job_set_fsm(job, 0);
+
 	if (job->raw_switch)
 		atomic_inc(&cam_ctrl->stream_on_cnt);
 
