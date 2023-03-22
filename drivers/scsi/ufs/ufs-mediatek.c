@@ -2359,6 +2359,10 @@ static bool ufs_mtk_pmc_via_fastauto(struct ufs_hba *hba,
 		(dev_req_params->gear_rx < UFS_HS_G4))
 		return false;
 
+	if ((dev_req_params->pwr_tx == SLOW_MODE) ||
+		(dev_req_params->pwr_rx == SLOW_MODE))
+		return false;
+
 	return true;
 }
 
@@ -2403,6 +2407,11 @@ static int ufs_mtk_pre_pwr_change(struct ufs_hba *hba,
 	ufshcd_init_pwr_dev_param(&host_cap);
 	host_cap.hs_rx_gear = UFS_HS_G5;
 	host_cap.hs_tx_gear = UFS_HS_G5;
+
+	if ((dev_max_params->pwr_rx == SLOW_MODE) ||
+		(dev_max_params->pwr_tx == SLOW_MODE)) {
+		host_cap.desired_working_mode = UFS_PWM_MODE;
+	}
 
 	ret = ufshcd_get_pwr_dev_param(&host_cap,
 				       dev_max_params,
@@ -2451,10 +2460,17 @@ static int ufs_mtk_pre_pwr_change(struct ufs_hba *hba,
 		return ret;
 	}
 
-	if (host->hw_ver.major >= 3) {
-		ret = ufshcd_dme_configure_adapt(hba,
-					   dev_req_params->gear_tx,
-					   PA_INITIAL_ADAPT);
+	if (dev_req_params->pwr_rx == FAST_MODE ||
+		dev_req_params->pwr_rx == FASTAUTO_MODE) {
+		if (host->hw_ver.major >= 3) {
+			ret = ufshcd_dme_configure_adapt(hba,
+						   dev_req_params->gear_tx,
+						   PA_INITIAL_ADAPT);
+		} else {
+			ret = ufshcd_dme_configure_adapt(hba,
+				   dev_req_params->gear_tx,
+				   PA_NO_ADAPT);
+		}
 	} else {
 		ret = ufshcd_dme_configure_adapt(hba,
 			   dev_req_params->gear_tx,
