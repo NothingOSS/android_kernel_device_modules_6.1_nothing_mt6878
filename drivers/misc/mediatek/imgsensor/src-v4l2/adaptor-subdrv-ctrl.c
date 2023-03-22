@@ -1837,8 +1837,8 @@ int common_feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 		for (i = 0; i < ctx->s_ctx.list_len; i++)
 			if (ctx->s_ctx.list[i].feature_id == feature_id &&
 				ctx->s_ctx.list[i].func != NULL) {
-				ctx->s_ctx.list[i].func(ctx, feature_para, feature_para_len);
-				return ERROR_NONE;
+				ret = ctx->s_ctx.list[i].func(ctx, feature_para, feature_para_len);
+				return ret;
 			}
 	}
 	switch (feature_id) {
@@ -1899,14 +1899,8 @@ int common_feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 	case SENSOR_FEATURE_SET_ESHUTTER:
 		set_shutter(ctx, *feature_data);
 		break;
-	case SENSOR_FEATURE_SET_NIGHTMODE:
-		break;
 	case SENSOR_FEATURE_SET_GAIN:
 		set_gain(ctx, *feature_data);
-		break;
-	case SENSOR_FEATURE_SET_FLASHLIGHT:
-		break;
-	case SENSOR_FEATURE_SET_ISP_MASTER_CLOCK_FREQ:
 		break;
 	case SENSOR_FEATURE_SET_REGISTER:
 		subdrv_i2c_wr_u8(ctx,
@@ -1945,8 +1939,6 @@ int common_feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 		get_fine_integ_line_by_scenario(ctx,
 			(enum SENSOR_SCENARIO_ID_ENUM)*feature_data,
 			(u32 *)(uintptr_t)(*(feature_data + 1)));
-		break;
-	case SENSOR_FEATURE_GET_PDAF_DATA:
 		break;
 	case SENSOR_FEATURE_SET_TEST_PATTERN:
 		set_test_pattern(ctx, *feature_data);
@@ -2002,8 +1994,6 @@ int common_feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 	case SENSOR_FEATURE_GET_SENSOR_HDR_CAPACITY:
 		get_sensor_hdr_capacity(ctx, *feature_data_32,
 			(u32 *)(uintptr_t)(*(feature_data + 1)));
-		break;
-	case SENSOR_FEATURE_GET_VC_INFO2:
 		break;
 	case SENSOR_FEATURE_GET_STAGGER_TARGET_SCENARIO:
 		get_stagger_target_scenario(ctx,
@@ -2113,9 +2103,11 @@ int common_feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 			(u32 *)(feature_data + 1));
 		break;
 	default:
+		DRV_LOGE(ctx, "feature_id %u is invalid\n", feature_id);
+		ret = ERROR_INVALID_FEATURE_ID;
 		break;
 	}
-	return ERROR_NONE;
+	return ret;
 }
 
 int common_close(struct subdrv_ctx *ctx)

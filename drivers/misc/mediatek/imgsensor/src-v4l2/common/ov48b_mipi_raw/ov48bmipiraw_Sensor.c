@@ -26,10 +26,10 @@ static void set_sensor_cali(void *arg);
 static int get_sensor_temperature(void *arg);
 static void set_group_hold(void *arg, u8 en);
 static void ov48b_set_dummy(struct subdrv_ctx *ctx);
-static void ov48b_set_max_framerate_by_scenario(struct subdrv_ctx *ctx, u8 *para, u32 *len);
+static int ov48b_set_max_framerate_by_scenario(struct subdrv_ctx *ctx, u8 *para, u32 *len);
 static u16 get_gain2reg(u32 gain);
-static void ov48b_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len);
-static void ov48b_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *len);
+static int ov48b_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len);
+static int ov48b_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *len);
 static int init_ctx(struct subdrv_ctx *ctx,	struct i2c_client *i2c_client, u8 i2c_write_id);
 
 /* STRUCT */
@@ -1379,7 +1379,7 @@ static void ov48b_set_dummy(struct subdrv_ctx *ctx)
 	commit_i2c_buffer(ctx);
 }
 
-static void ov48b_set_max_framerate_by_scenario(struct subdrv_ctx *ctx, u8 *para, u32 *len)
+static int ov48b_set_max_framerate_by_scenario(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 {
 	u64 *feature_data = (u64 *)para;
 	enum SENSOR_SCENARIO_ID_ENUM scenario_id = (enum SENSOR_SCENARIO_ID_ENUM)*feature_data;
@@ -1394,22 +1394,22 @@ static void ov48b_set_max_framerate_by_scenario(struct subdrv_ctx *ctx, u8 *para
 
 	if (framerate == 0) {
 		DRV_LOG(ctx, "framerate should not be 0\n");
-		return;
+		return ERROR_NONE;
 	}
 
 	if (ctx->s_ctx.mode[scenario_id].linelength == 0) {
 		DRV_LOG(ctx, "linelength should not be 0\n");
-		return;
+		return ERROR_NONE;
 	}
 
 	if (ctx->line_length == 0) {
 		DRV_LOG(ctx, "ctx->line_length should not be 0\n");
-		return;
+		return ERROR_NONE;
 	}
 
 	if (ctx->frame_length == 0) {
 		DRV_LOG(ctx, "ctx->frame_length should not be 0\n");
-		return;
+		return ERROR_NONE;
 	}
 
 	frame_length = ctx->s_ctx.mode[scenario_id].pclk / framerate * 10
@@ -1423,6 +1423,7 @@ static void ov48b_set_max_framerate_by_scenario(struct subdrv_ctx *ctx, u8 *para
 		framerate, ctx->current_fps, scenario_id);
 	if (ctx->frame_length > (ctx->exposure[0] + ctx->s_ctx.exposure_margin))
 		ov48b_set_dummy(ctx);
+	return ERROR_NONE;
 }
 
 static u16 get_gain2reg(u32 gain)
@@ -1430,7 +1431,7 @@ static u16 get_gain2reg(u32 gain)
 	return gain * 256 / BASEGAIN;
 }
 
-static void ov48b_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len)
+static int ov48b_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 {
 	enum SENSOR_SCENARIO_ID_ENUM scenario_id;
 	u32 *ae_ctrl = NULL;
@@ -1438,7 +1439,7 @@ static void ov48b_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 
 	if (feature_data == NULL) {
 		DRV_LOGE(ctx, "input scenario is null!");
-		return;
+		return ERROR_NONE;
 	}
 	scenario_id = *feature_data;
 	if ((feature_data + 1) != NULL)
@@ -1455,17 +1456,17 @@ static void ov48b_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 	if (scenario_id >= ctx->s_ctx.sensor_mode_num) {
 		DRV_LOGE(ctx, "invalid sid:%u, mode_num:%u\n",
 			scenario_id, ctx->s_ctx.sensor_mode_num);
-		return;
+		return ERROR_NONE;
 	}
 	if (ctx->s_ctx.mode[scenario_id].seamless_switch_group == 0 ||
 		ctx->s_ctx.mode[scenario_id].seamless_switch_group !=
 			ctx->s_ctx.mode[ctx->current_scenario_id].seamless_switch_group) {
 		DRV_LOGE(ctx, "seamless_switch not supported\n");
-		return;
+		return ERROR_NONE;
 	}
 	if (ctx->s_ctx.mode[scenario_id].seamless_switch_mode_setting_table == NULL) {
 		DRV_LOGE(ctx, "Please implement seamless_switch setting\n");
-		return;
+		return ERROR_NONE;
 	}
 
 	ctx->is_seamless = TRUE;
@@ -1491,9 +1492,10 @@ static void ov48b_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 
 	ctx->is_seamless = FALSE;
 	DRV_LOG(ctx, "X: set seamless switch done\n");
+	return ERROR_NONE;
 }
 
-static void ov48b_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *len)
+static int ov48b_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 {
 	u32 mode = *((u32 *)para);
 
@@ -1532,6 +1534,7 @@ static void ov48b_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 		}
 
 	ctx->test_pattern = mode;
+	return ERROR_NONE;
 }
 
 static int init_ctx(struct subdrv_ctx *ctx,	struct i2c_client *i2c_client, u8 i2c_write_id)

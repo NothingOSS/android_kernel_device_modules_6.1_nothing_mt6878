@@ -26,10 +26,10 @@ static void set_sensor_cali(void *arg);
 static int get_sensor_temperature(void *arg);
 static void set_group_hold(void *arg, u8 en);
 static u16 get_gain2reg(u32 gain);
-static void imx766dual_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len);
-static void imx766dual_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *len);
-static void imx766dual_check_sensor_id(struct subdrv_ctx *ctx, u8 *para, u32 *len);
-static void imx766dual_get_stagger_target_scenario(struct subdrv_ctx *ctx, u8 *para, u32 *len);
+static int imx766dual_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len);
+static int imx766dual_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *len);
+static int imx766dual_check_sensor_id(struct subdrv_ctx *ctx, u8 *para, u32 *len);
+static int imx766dual_get_stagger_target_scenario(struct subdrv_ctx *ctx, u8 *para, u32 *len);
 static int get_imgsensor_id(struct subdrv_ctx *ctx, u32 *sensor_id);
 static int init_ctx(struct subdrv_ctx *ctx,	struct i2c_client *i2c_client, u8 i2c_write_id);
 static int vsync_notify(struct subdrv_ctx *ctx,	unsigned int sof_cnt);
@@ -1966,7 +1966,7 @@ static u16 get_gain2reg(u32 gain)
 	return (16384 - (16384 * BASEGAIN) / gain);
 }
 
-static void imx766dual_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len)
+static int imx766dual_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 {
 	enum SENSOR_SCENARIO_ID_ENUM scenario_id;
 	u32 *ae_ctrl = NULL;
@@ -1974,7 +1974,7 @@ static void imx766dual_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *le
 
 	if (feature_data == NULL) {
 		DRV_LOGE(ctx, "input scenario is null!");
-		return;
+		return ERROR_NONE;
 	}
 	scenario_id = *feature_data;
 	if ((feature_data + 1) != NULL)
@@ -1991,17 +1991,17 @@ static void imx766dual_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *le
 	if (scenario_id >= ctx->s_ctx.sensor_mode_num) {
 		DRV_LOGE(ctx, "invalid sid:%u, mode_num:%u\n",
 			scenario_id, ctx->s_ctx.sensor_mode_num);
-		return;
+		return ERROR_NONE;
 	}
 	if (ctx->s_ctx.mode[scenario_id].seamless_switch_group == 0 ||
 		ctx->s_ctx.mode[scenario_id].seamless_switch_group !=
 			ctx->s_ctx.mode[ctx->current_scenario_id].seamless_switch_group) {
 		DRV_LOGE(ctx, "seamless_switch not supported\n");
-		return;
+		return ERROR_NONE;
 	}
 	if (ctx->s_ctx.mode[scenario_id].seamless_switch_mode_setting_table == NULL) {
 		DRV_LOGE(ctx, "Please implement seamless_switch setting\n");
-		return;
+		return ERROR_NONE;
 	}
 
 	ctx->is_seamless = TRUE;
@@ -2035,9 +2035,10 @@ static void imx766dual_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *le
 	ctx->ref_sof_cnt = ctx->sof_cnt;
 	ctx->is_seamless = FALSE;
 	DRV_LOG(ctx, "X: set seamless switch done\n");
+	return ERROR_NONE;
 }
 
-static void imx766dual_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *len)
+static int imx766dual_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 {
 	u32 mode = *((u32 *)para);
 
@@ -2061,11 +2062,12 @@ static void imx766dual_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *l
 	}
 
 	ctx->test_pattern = mode;
+	return ERROR_NONE;
 }
 
-static void imx766dual_check_sensor_id(struct subdrv_ctx *ctx, u8 *para, u32 *len)
+static int imx766dual_check_sensor_id(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 {
-	get_imgsensor_id(ctx, (u32 *)para);
+	return get_imgsensor_id(ctx, (u32 *)para);
 }
 
 static int get_imgsensor_id(struct subdrv_ctx *ctx, u32 *sensor_id)
@@ -2101,7 +2103,7 @@ static int get_imgsensor_id(struct subdrv_ctx *ctx, u32 *sensor_id)
 	return ERROR_NONE;
 }
 
-static void imx766dual_get_stagger_target_scenario(struct subdrv_ctx *ctx, u8 *para, u32 *len)
+static int imx766dual_get_stagger_target_scenario(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 {
 	u64 *feature_data = (u64 *)para;
 	enum SENSOR_SCENARIO_ID_ENUM scenario_id = *feature_data;
@@ -2122,10 +2124,11 @@ static void imx766dual_get_stagger_target_scenario(struct subdrv_ctx *ctx, u8 *p
 		}
 		DRV_LOG(ctx, "sid(input/output):%u/%u, hdr_mode:%u\n",
 			scenario_id, *pScenarios, hdr_mode);
-		return;
+		return ERROR_NONE;
 	}
 	/* For AI-shutter switch */
 	get_stagger_target_scenario(ctx, scenario_id, hdr_mode, pScenarios);
+	return ERROR_NONE;
 }
 
 static int init_ctx(struct subdrv_ctx *ctx,	struct i2c_client *i2c_client, u8 i2c_write_id)

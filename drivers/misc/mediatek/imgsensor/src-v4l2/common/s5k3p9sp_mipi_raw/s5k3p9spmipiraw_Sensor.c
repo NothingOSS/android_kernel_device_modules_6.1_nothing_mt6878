@@ -26,8 +26,8 @@
 
 static void set_group_hold(void *arg, u8 en);
 static u16 get_gain2reg(u32 gain);
-static void s5k3p9sp_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *len);
-static void s5k3p9sp_set_test_pattern_data(struct subdrv_ctx *ctx, u8 *para, u32 *len);
+static int s5k3p9sp_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *len);
+static int s5k3p9sp_set_test_pattern_data(struct subdrv_ctx *ctx, u8 *para, u32 *len);
 static int init_ctx(struct subdrv_ctx *ctx,	struct i2c_client *i2c_client, u8 i2c_write_id);
 static void s5k3p9sp_sensor_init(struct subdrv_ctx *ctx);
 static int open(struct subdrv_ctx *ctx);
@@ -544,7 +544,7 @@ static u16 get_gain2reg(u32 gain)
 	return gain * 32 / BASEGAIN;
 }
 
-static void s5k3p9sp_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *len)
+static int s5k3p9sp_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 {
 	u32 mode = *((u32 *)para);
 
@@ -557,9 +557,10 @@ static void s5k3p9sp_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *len
 		subdrv_i2c_wr_u16(ctx, 0x0600, 0x0000); /*No pattern*/
 
 	ctx->test_pattern = mode;
+	return ERROR_NONE;
 }
 
-static void s5k3p9sp_set_test_pattern_data(struct subdrv_ctx *ctx, u8 *para, u32 *len)
+static int s5k3p9sp_set_test_pattern_data(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 {
 	struct mtk_test_pattern_data *data = (struct mtk_test_pattern_data *)para;
 	u16 R = (data->Channel_R >> 22) & 0x3ff;
@@ -574,6 +575,7 @@ static void s5k3p9sp_set_test_pattern_data(struct subdrv_ctx *ctx, u8 *para, u32
 
 	DRV_LOGE(ctx, "mode(%u) R/Gr/Gb/B = 0x%04x/0x%04x/0x%04x/0x%04x\n",
 		ctx->test_pattern, R, Gr, Gb, B);
+	return ERROR_NONE;
 }
 
 static int init_ctx(struct subdrv_ctx *ctx,	struct i2c_client *i2c_client, u8 i2c_write_id)

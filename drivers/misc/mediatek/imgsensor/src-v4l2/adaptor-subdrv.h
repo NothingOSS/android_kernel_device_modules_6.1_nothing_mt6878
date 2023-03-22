@@ -367,7 +367,7 @@ struct subdrv_ctx {
 
 struct subdrv_feature_control {
 	MSDK_SENSOR_FEATURE_ENUM feature_id;
-	void (*func)(struct subdrv_ctx *ctx, u8 *para, u32 *len);
+	int (*func)(struct subdrv_ctx *ctx, u8 *para, u32 *len);
 };
 
 struct subdrv_ops {
