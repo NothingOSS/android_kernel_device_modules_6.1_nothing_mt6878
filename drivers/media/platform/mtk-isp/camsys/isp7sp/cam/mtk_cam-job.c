@@ -47,6 +47,7 @@ static inline int job_debug_exception_dump(struct mtk_cam_job *job,
 static struct mtk_raw_request_data *req_get_raw_data(struct mtk_cam_ctx *ctx,
 						     struct mtk_cam_request *req);
 static int get_exp_switch_type(struct mtk_cam_job *job);
+static bool do_seamless_switch(struct mtk_cam_job *job);
 static void mtk_cam_aa_dump_work(struct work_struct *work);
 
 static int subdev_set_fmt(struct v4l2_subdev *sd, int pad,
@@ -1800,9 +1801,9 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 
 	job->switch_type = get_exp_switch_type(job);
 	job->first_frm_switch =
-		(!ctx->not_first_job) && (job->switch_type != EXPOSURE_CHANGE_NONE);
+		(!ctx->not_first_job) && do_seamless_switch(job);
 	job->seamless_switch =
-		(ctx->not_first_job) && (job->switch_type != EXPOSURE_CHANGE_NONE);
+		(ctx->not_first_job) && do_seamless_switch(job);
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
 
 	dev_info(cam->dev, "[%s] ctx:%d, type:%d, scen exp:%d->%d, swi:%d",
@@ -2160,11 +2161,9 @@ _job_pack_normal(struct mtk_cam_job *job,
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_device *cam = ctx->cam;
-	struct mtk_raw_ctrl_data *ctrl_data = get_raw_ctrl_data(job);
 	int ret;
 
-	job->seamless_switch = (ctrl_data) ?
-		ctrl_data->rc_data.sensor_mode_update : false;
+	job->seamless_switch = do_seamless_switch(job);
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
 	dev_dbg(cam->dev, "[%s] ctx:%d, job_type:%d, scen:%d",
 		__func__, ctx->stream_id, job->job_type, job->job_scen.id);
@@ -3274,6 +3273,7 @@ static int job_factory(struct mtk_cam_job *job)
 	job->composed = false;
 	job->seamless_switch = false;
 	job->first_frm_switch = false;
+	job->switch_type = EXPOSURE_CHANGE_NONE;
 	job->scq_period = SCQ_DEADLINE_MS;
 	init_completion(&job->compose_completion);
 	init_completion(&job->cq_exe_completion);
@@ -4299,6 +4299,22 @@ static int get_exp_switch_type(struct mtk_cam_job *job)
 			__func__, res, cur, prev);
 
 	return res;
+}
+
+static bool do_seamless_switch(struct mtk_cam_job *job)
+{
+	struct mtk_raw_ctrl_data *ctrl_data = get_raw_ctrl_data(job);
+	bool ret;
+
+	/* exposure change */
+	if (job->switch_type != EXPOSURE_CHANGE_NONE)
+		return true;
+
+	/* sensor change */
+	ret = (ctrl_data) ?
+		ctrl_data->rc_data.sensor_mode_update : false;
+
+	return ret;
 }
 
 static void job_dump_engines_debug_status(struct mtk_cam_job *job)
