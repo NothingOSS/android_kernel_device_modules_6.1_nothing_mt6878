@@ -40,6 +40,8 @@ const unsigned int mtk_imgsys_wpe_base_ofst[] = {0x0, 0x300000, 0x400000};
 // register ofst
 #define WPE_REG_DBG_SET     (0x3C)
 #define WPE_REG_DBG_PORT    (0x40)
+#define WPE_REG_DMA_DBG_SET     (0xE68)
+#define WPE_REG_DMA_DBG_PORT    (0xE70)
 #define WPE_REG_CQ_THR0_CTL (0xC08)
 #define WPE_REG_CQ_THR1_CTL (0xC18)
 #define WPE_REG_DEC_CTL1    (0xFC0)
@@ -527,41 +529,97 @@ for (i = 0x1d; i <= 0x20; i += 2) {
 		sel_value[0], debug_value[0], sel_value[1], debug_value[1],
 		sel_value[2], debug_value[2]);
 
+	//veci_chksum
+	writel(0x100, (wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	sel_value[0] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	debug_value[0] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_PORT + ofst));
+
+	writel(0x200, (wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	sel_value[1] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	debug_value[1] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_PORT + ofst));
+
+	writel(0x300, (wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	sel_value[2] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	debug_value[2] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_PORT + ofst));
+
+	pr_info("%s:[0x%x]dbg_sel,[0x%x]dbg_port, veci_chksum[0x%x]0x%x, [0x%x]0x%x, [0x%x]0x%x",
+		__func__, (WPE_REG_DMA_DBG_SET + ofst), (WPE_REG_DMA_DBG_PORT + ofst),
+		sel_value[0], debug_value[0], sel_value[1], debug_value[1],
+		sel_value[2], debug_value[2]);
+
+	//vec2i_chksum
+	writel(0x101, (wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	sel_value[0] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	debug_value[0] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_PORT + ofst));
+
+	writel(0x201, (wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	sel_value[1] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	debug_value[1] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_PORT + ofst));
+
+	writel(0x301, (wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	sel_value[2] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	debug_value[2] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_PORT + ofst));
+
+	pr_info("%s:[0x%x]dbg_sel,[0x%x]dbg_port, vec2i_chksum[0x%x]0x%x, [0x%x]0x%x, [0x%x]0x%x",
+		__func__, (WPE_REG_DMA_DBG_SET + ofst), (WPE_REG_DMA_DBG_PORT + ofst),
+		sel_value[0], debug_value[0], sel_value[1], debug_value[1],
+		sel_value[2], debug_value[2]);
+
 	//wpeo_chksum
-	writel(((0x10<<12) | (0x0<<8)), (wpeRegBA + WPE_REG_DBG_SET + ofst));
-	sel_value[0] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DBG_SET + ofst));
-	debug_value[0] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DBG_PORT + ofst));
+	writel(0x103, (wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	sel_value[0] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	debug_value[0] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_PORT + ofst));
 
-	writel(((0x10<<12) | (0x1<<8)), (wpeRegBA + WPE_REG_DBG_SET + ofst));
-	sel_value[1] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DBG_SET + ofst));
-	debug_value[1] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DBG_PORT + ofst));
+	writel(0x203, (wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	sel_value[1] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	debug_value[1] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_PORT + ofst));
 
-	writel(((0x10<<12) | (0x2<<8)), (wpeRegBA + WPE_REG_DBG_SET + ofst));
-	sel_value[2] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DBG_SET + ofst));
-	debug_value[2] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DBG_PORT + ofst));
+	writel(0x303, (wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	sel_value[2] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	debug_value[2] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_PORT + ofst));
 
 	pr_info("%s:[0x%x]dbg_sel,[0x%x]dbg_port, wpeo_chksum[0x%x]0x%x, [0x%x]0x%x, [0x%x]0x%x",
-		__func__, (WPE_REG_DBG_SET + ofst), (WPE_REG_DBG_PORT + ofst),
+		__func__, (WPE_REG_DMA_DBG_SET + ofst), (WPE_REG_DMA_DBG_PORT + ofst),
 		sel_value[0], debug_value[0], sel_value[1], debug_value[1],
 		sel_value[2], debug_value[2]);
 
 	//wpeo2_chksum
-	writel(((0x11<<12) | (0x0<<8)), (wpeRegBA + WPE_REG_DBG_SET + ofst));
-	sel_value[0] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DBG_SET + ofst));
-	debug_value[0] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DBG_PORT + ofst));
+	writel(0x104, (wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	sel_value[0] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	debug_value[0] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_PORT + ofst));
 
-	writel(((0x11<<12) | (0x1<<8)), (wpeRegBA + WPE_REG_DBG_SET + ofst));
-	sel_value[1] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DBG_SET + ofst));
-	debug_value[1] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DBG_PORT + ofst));
+	writel(0x204, (wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	sel_value[1] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	debug_value[1] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_PORT + ofst));
 
-	writel(((0x11<<12) | (0x2<<8)), (wpeRegBA + WPE_REG_DBG_SET + ofst));
-	sel_value[2] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DBG_SET + ofst));
-	debug_value[2] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DBG_PORT + ofst));
+	writel(0x304, (wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	sel_value[2] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	debug_value[2] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_PORT + ofst));
 
 	pr_info("%s:[0x%x]dbg_sel,[0x%x]dbg_port, wpeo2_chksum[0x%x]0x%x, [0x%x]0x%x, [0x%x]0x%x",
-		__func__, (WPE_REG_DBG_SET + ofst), (WPE_REG_DBG_PORT + ofst),
+		__func__, (WPE_REG_DMA_DBG_SET + ofst), (WPE_REG_DMA_DBG_PORT + ofst),
 		sel_value[0], debug_value[0], sel_value[1], debug_value[1],
 		sel_value[2], debug_value[2]);
+
+
+	//masko_chksum
+	writel(0x105, (wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	sel_value[0] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	debug_value[0] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_PORT + ofst));
+
+	writel(0x205, (wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	sel_value[1] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	debug_value[1] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_PORT + ofst));
+
+	writel(0x305, (wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	sel_value[2] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_SET + ofst));
+	debug_value[2] = (unsigned int)ioread32((void *)(wpeRegBA + WPE_REG_DMA_DBG_PORT + ofst));
+
+	pr_info("%s:[0x%x]dbg_sel,[0x%x]dbg_port, masko_chksum[0x%x]0x%x, [0x%x]0x%x, [0x%x]0x%x",
+		__func__, (WPE_REG_DMA_DBG_SET + ofst), (WPE_REG_DMA_DBG_PORT + ofst),
+		sel_value[0], debug_value[0], sel_value[1], debug_value[1],
+		sel_value[2], debug_value[2]);
+
 
 	//wpeo_crop, wpeo2_crop, traw_crop
 	writel(((0x15<<12) | (0x1<<8)), (wpeRegBA + WPE_REG_DBG_SET + ofst));
