@@ -950,6 +950,8 @@ static void *create_general_buffer_info(struct mtk_vcodec_ctx *ctx, int fd)
 	dma_addr_t dma_general_addr = 0;
 	int ret;
 
+	memset(&map, 0, sizeof(struct iosys_map));
+
 	dmabuf = dma_buf_get(fd);
 	mtk_v4l2_debug(8, "%s, dmabuf:%p", __func__, dmabuf);
 

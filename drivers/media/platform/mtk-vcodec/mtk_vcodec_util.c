@@ -971,12 +971,16 @@ void mtk_vcodec_set_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 			} else { // vcu path
 				if (ctx == NULL) {
 					mtk_v4l2_err("ctx is null, cannot set log to vpud");
+					kfree(argv);
+					kfree(log);
 					return;
 				}
 				if (log_index != MTK_VCODEC_LOG_INDEX_LOG) {
 					mtk_v4l2_err(
 						"invalid index: %d, only support set log on vcu path",
 						log_index);
+					kfree(argv);
+					kfree(log);
 					return;
 				}
 				memset(vcu_log, 0x00, sizeof(vcu_log));
