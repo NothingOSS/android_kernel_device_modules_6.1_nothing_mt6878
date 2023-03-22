@@ -48,6 +48,8 @@ static int get_outfmt_code(struct adaptor_ctx *ctx)
 	int outfmt = ctx->sensor_info.SensorOutputDataFormat;
 
 	switch (outfmt) {
+	case SENSOR_OUTPUT_FORMAT_RAW_IR:
+	case SENSOR_OUTPUT_FORMAT_RAW_MONO:
 	case SENSOR_OUTPUT_FORMAT_RAW_B:
 		return MEDIA_BUS_FMT_SBGGR10_1X10;
 	case SENSOR_OUTPUT_FORMAT_RAW_Gb:
@@ -91,6 +93,7 @@ static int get_outfmt_code(struct adaptor_ctx *ctx)
 	case SENSOR_OUTPUT_FORMAT_RAW8_R:
 		return MEDIA_BUS_FMT_SRGGB8_1X8;
 
+	case SENSOR_OUTPUT_FORMAT_RAW12_TOF:
 	case SENSOR_OUTPUT_FORMAT_RAW12_B:
 		return MEDIA_BUS_FMT_SBGGR12_1X12;
 	case SENSOR_OUTPUT_FORMAT_RAW12_Gb:
