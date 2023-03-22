@@ -294,7 +294,7 @@ gamma_write_lut_unlock:
 	return ret;
 }
 
-void disp_gamma_on_start_of_frame(void)
+static void disp_gamma_on_start_of_frame(struct mtk_ddp_comp *comp)
 {
 
 	if ((!atomic_read(&g_gamma_sof_irq_available)) && (atomic_read(&g_gamma_sof_filp))) {
@@ -1225,6 +1225,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_gamma_funcs = {
 	.config_overhead = mtk_disp_gamma_config_overhead,
 	.pq_frame_config = mtk_gamma_pq_frame_config,
 	.pq_ioctl_transact = mtk_gamma_ioctl_transact,
+	.mutex_sof_irq = disp_gamma_on_start_of_frame,
 };
 
 static int mtk_disp_gamma_bind(struct device *dev, struct device *master,

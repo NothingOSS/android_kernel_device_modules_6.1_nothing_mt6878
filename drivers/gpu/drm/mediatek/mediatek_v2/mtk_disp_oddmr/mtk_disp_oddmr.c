@@ -3235,7 +3235,7 @@ static int mtk_oddmr_user_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 	return 0;
 }
 
-void disp_oddmr_on_start_of_frame(void)
+static void disp_oddmr_on_start_of_frame(struct mtk_ddp_comp *comp)
 {
 	if (!default_comp)
 		return;
@@ -4164,6 +4164,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_oddmr_funcs = {
 	.first_cfg = mtk_oddmr_first_cfg,
 	.config_trigger = mtk_oddmr_config_trigger,
 	.config_overhead = mtk_disp_oddmr_config_overhead,
+	.mutex_sof_irq = disp_oddmr_on_start_of_frame,
 };
 
 static int mtk_disp_oddmr_bind(struct device *dev, struct device *master,

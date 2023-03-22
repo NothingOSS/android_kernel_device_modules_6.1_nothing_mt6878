@@ -498,15 +498,17 @@ ccorr_write_coef_unlock:
 	return ret;
 }
 
-void disp_ccorr_on_start_of_frame(void)
+static void disp_ccorr_on_start_of_frame(struct mtk_ddp_comp *comp)
 {
+	if (comp->id != DDP_COMPONENT_CCORR0)
+		return;
 	if (atomic_read(&g_ccorr_irq_en) == 1) {
 		atomic_set(&g_ccorr_get_irq, 1);
 		wake_up_interruptible(&g_ccorr_get_irq_wq);
 	}
 }
 
-void disp_ccorr_on_end_of_frame(struct mtk_ddp_comp *comp)
+static void disp_ccorr_on_end_of_frame(struct mtk_ddp_comp *comp)
 {
 	unsigned int intsta;
 	unsigned long flags;
@@ -1703,7 +1705,8 @@ static const struct mtk_ddp_comp_funcs mtk_disp_ccorr_funcs = {
 	.prepare = mtk_ccorr_prepare,
 	.unprepare = mtk_ccorr_unprepare,
 	.config_overhead = mtk_disp_ccorr_config_overhead,
-	.pq_frame_config = mtk_ccorr_pq_frame_config
+	.pq_frame_config = mtk_ccorr_pq_frame_config,
+	.mutex_sof_irq = disp_ccorr_on_start_of_frame
 };
 
 static int mtk_disp_ccorr_bind(struct device *dev, struct device *master,

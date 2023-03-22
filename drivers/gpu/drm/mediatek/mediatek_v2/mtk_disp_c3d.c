@@ -818,7 +818,7 @@ int mtk_drm_ioctl_bypass_c3d(struct drm_device *dev, void *data,
 	return ret;
 }
 
-void disp_c3d_on_start_of_frame(void)
+static void disp_c3d_on_start_of_frame(struct mtk_ddp_comp *comp)
 {
 	if (!default_comp)
 		return;
@@ -828,7 +828,7 @@ void disp_c3d_on_start_of_frame(void)
 		wake_up_interruptible(&g_c3d_get_irq_wq);
 }
 
-void disp_c3d_on_end_of_frame_mutex(void)
+static void disp_c3d_on_end_of_frame(struct mtk_ddp_comp *comp)
 {
 	if (!default_comp)
 		return;
@@ -1351,7 +1351,9 @@ static const struct mtk_ddp_comp_funcs mtk_disp_c3d_funcs = {
 	.unprepare = mtk_disp_c3d_unprepare,
 	.config_overhead = mtk_disp_c3d_config_overhead,
 	.io_cmd = mtk_c3d_io_cmd,
-	.pq_frame_config = mtk_c3d_pq_frame_config
+	.pq_frame_config = mtk_c3d_pq_frame_config,
+	.mutex_eof_irq = disp_c3d_on_end_of_frame,
+	.mutex_sof_irq = disp_c3d_on_start_of_frame
 };
 
 static int mtk_disp_c3d_bind(struct device *dev, struct device *master,

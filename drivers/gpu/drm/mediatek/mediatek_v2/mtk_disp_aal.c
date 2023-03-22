@@ -280,6 +280,8 @@ int g_disp_clarity_support;
 static struct DISP_CLARITY_REG *g_disp_clarity_regs;
 static DEFINE_MUTEX(g_clarity_lock);
 
+static void disp_aal_on_start_of_frame(struct mtk_ddp_comp *comp);
+
 static inline struct mtk_disp_aal *comp_to_aal(struct mtk_ddp_comp *comp)
 {
 	return container_of(comp, struct mtk_disp_aal, ddp_comp);
@@ -4300,6 +4302,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_aal_funcs = {
 	.unprepare = mtk_aal_unprepare,
 	.config_overhead = mtk_disp_aal_config_overhead,
 	.pq_frame_config = mtk_aal_pq_frame_config,
+	.mutex_sof_irq = disp_aal_on_start_of_frame
 };
 
 static int mtk_disp_aal_bind(struct device *dev, struct device *master,
@@ -4507,7 +4510,7 @@ static void disp_aal_wait_sof_irq(void)
 	CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 5);
 }
 
-void disp_aal_on_start_of_frame(void)
+static void disp_aal_on_start_of_frame(struct mtk_ddp_comp *comp)
 {
 	if (!default_comp)
 		return;

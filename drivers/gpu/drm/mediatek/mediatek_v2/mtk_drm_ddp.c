@@ -27,6 +27,7 @@
 #include "mtk_disp_ccorr.h"
 #include "mtk_disp_gamma.h"
 #include "mtk_disp_oddmr/mtk_disp_oddmr.h"
+#include "mtk_disp_pq_helper.h"
 #include "platform/mtk_drm_platform.h"
 #include "mtk_drm_trace.h"
 
@@ -18296,19 +18297,24 @@ void mtk_disp_mutex_submit_sof(struct mtk_disp_mutex *mutex)
 		}
 	}
 }
+
 static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 {
 	struct mtk_ddp *ddp = dev_id;
 	unsigned int val = 0;
 	unsigned int m_id = 0;
 	int ret = 0;
-	unsigned long long irq_debug[11] = {0};
+	struct irq_debug irq_time[IRQ_DEBUG_MAX] = {{0, 0}};
+	int irq_time_index = 0;
 	static DEFINE_RATELIMIT_STATE(irq_ratelimit, 5 * HZ, 1);
 	struct mtk_drm_private *priv = NULL;
+	struct mtk_drm_crtc *mtk_crtc0 = NULL;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_ddp_comp *comp = NULL;
+	int i, j;
 
 	if (ddp->mtk_crtc[0])
-		mtk_crtc = ddp->mtk_crtc[0];
+		mtk_crtc0 = ddp->mtk_crtc[0];
 	else {
 		DDPPR_ERR("%s mtk_crtc is null\n", __func__);
 		return IRQ_NONE;
@@ -18320,7 +18326,9 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 		return IRQ_NONE;
 	}
 
-	irq_debug[0] = sched_clock();
+	irq_time[irq_time_index].comp_id = -1;
+	irq_time[irq_time_index].clock = sched_clock();
+	irq_time_index++;
 
 	if (mtk_drm_top_clk_isr_get("mutex_irq") == false) {
 		DDPIRQ("%s, top clk off\n", __func__);
@@ -18345,14 +18353,30 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 			DRM_MMP_MARK(mutex[m_id], val, 1);
 			if (m_id == 0)
 				drm_trace_tag_mark("mutex0_eof");
-			if (mtk_crtc && mtk_crtc->esd_ctx) {
+			if (mtk_crtc0 && mtk_crtc0->esd_ctx) {
 				if (priv && priv->data->mmsys_id == MMSYS_MT6985)
-					atomic_set(&mtk_crtc->esd_ctx->target_time, 0);
+					atomic_set(&mtk_crtc0->esd_ctx->target_time, 0);
 			}
 #ifndef DRM_BYPASS_PQ
-			irq_debug[1] = sched_clock();
-			disp_c3d_on_end_of_frame_mutex();
-			irq_debug[2] = sched_clock();
+			mtk_crtc = NULL;
+			for (i = 0; i < MAX_CRTC; i++) {
+				if (&ddp->mutex[m_id] == ddp->mtk_crtc[i]->mutex[DDP_FIRST_PATH] ||
+				    &ddp->mutex[m_id] == ddp->mtk_crtc[i]->mutex[DDP_SECOND_PATH]) {
+					mtk_crtc = ddp->mtk_crtc[i];
+					break;
+				}
+			}
+
+			if (mtk_crtc) {
+				if (irq_time_index < IRQ_DEBUG_MAX) {
+					irq_time[irq_time_index].comp_id = -1;
+					irq_time[irq_time_index].clock = sched_clock();
+					irq_time_index++;
+				}
+				for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+					mtk_ddp_comp_mutex_eof_irq(comp, irq_time, &irq_time_index);
+				}
+			}
 #endif
 		}
 		if (val & (0x1 << m_id)) {
@@ -18366,46 +18390,57 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 				vcp_cmd_ex(VCP_SET_DISP_SYNC);
 			}
 #endif
-			if ((m_id == 0 || m_id == 3) && ddp->data->wakeup_pf_wq && mtk_crtc) {
-				mtk_crtc->sof_time = ktime_get();
+			if ((m_id == 0 || m_id == 3) && ddp->data->wakeup_pf_wq && mtk_crtc0) {
+				mtk_crtc0->sof_time = ktime_get();
 				mtk_wakeup_pf_wq(m_id);
 			}
 			if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
-				irq_debug[3] = sched_clock();
+				if (irq_time_index < IRQ_DEBUG_MAX) {
+					irq_time[irq_time_index].comp_id = -1;
+					irq_time[irq_time_index].clock = sched_clock();
+					irq_time_index++;
+				}
 				mtk_drm_cwb_backup_copy_size();
-				irq_debug[4] = sched_clock();
+				if (irq_time_index < IRQ_DEBUG_MAX) {
+					irq_time[irq_time_index].comp_id = -1;
+					irq_time[irq_time_index].clock = sched_clock();
+					irq_time_index++;
+				}
 			}
 
 #ifndef DRM_BYPASS_PQ
-			/* oddmr should be first */
-			mtk_disp_pq_on_start_of_frame();
-			irq_debug[5] = sched_clock();
-			disp_oddmr_on_start_of_frame();
-			irq_debug[6] = sched_clock();
-			disp_aal_on_start_of_frame();
-			irq_debug[7] = sched_clock();
-			disp_c3d_on_start_of_frame();
-			irq_debug[8] = sched_clock();
-			disp_gamma_on_start_of_frame();
-			irq_debug[9] = sched_clock();
-			disp_ccorr_on_start_of_frame();
-			irq_debug[10] = sched_clock();
+			mtk_crtc = NULL;
+			for (i = 0; i < MAX_CRTC; i++) {
+				if (&ddp->mutex[m_id] == ddp->mtk_crtc[i]->mutex[DDP_FIRST_PATH] ||
+				    &ddp->mutex[m_id] == ddp->mtk_crtc[i]->mutex[DDP_SECOND_PATH]) {
+					mtk_crtc = ddp->mtk_crtc[i];
+					break;
+				}
+			}
+
+			if (mtk_crtc) {
+				mtk_disp_pq_on_start_of_frame(mtk_crtc);
+				if (irq_time_index < IRQ_DEBUG_MAX) {
+					irq_time[irq_time_index].comp_id = -1;
+					irq_time[irq_time_index].clock = sched_clock();
+					irq_time_index++;
+				}
+
+				/* oddmr should be first */
+				for_each_comp_in_crtc_path_reverse(comp, mtk_crtc, i, j) {
+					mtk_ddp_comp_mutex_sof_irq(comp, irq_time, &irq_time_index);
+				}
+			}
 #endif
 		}
 	}
 
-	if (((sched_clock() - irq_debug[0]) > 850000) &&
+	if (((sched_clock() - irq_time[0].clock) > 850000) &&
 			__ratelimit(&irq_ratelimit)) {
-		DDPMSG("%s > 850 us, %llu %llu %llu %llu %llu %llu %llu\n",
-			__func__,
-			(irq_debug[2] - irq_debug[1]),
-			(irq_debug[4] - irq_debug[3]),
-			(irq_debug[6] - irq_debug[5]),
-			(irq_debug[7] - irq_debug[6]),
-			(irq_debug[8] - irq_debug[7]),
-			(irq_debug[9] - irq_debug[8]),
-			(irq_debug[10] - irq_debug[9])
-			);
+		DDPMSG("%s > 850 us\n", __func__);
+		for (i = 0; i < irq_time_index; i++)
+			DDPMSG("comp_id:%d, clock_time:%llu\n",
+					irq_time[i].comp_id, irq_time[i].clock);
 	}
 
 	ret = IRQ_HANDLED;

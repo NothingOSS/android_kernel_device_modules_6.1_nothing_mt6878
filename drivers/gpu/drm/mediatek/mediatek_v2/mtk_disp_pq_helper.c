@@ -340,7 +340,7 @@ static DECLARE_WAIT_QUEUE_HEAD(g_pq_get_irq_wq);
 static atomic_t g_pq_get_irq = ATOMIC_INIT(0);
 static atomic_t g_pq_irq_trig_src = ATOMIC_INIT(0);
 
-void mtk_disp_pq_on_start_of_frame(void)
+void mtk_disp_pq_on_start_of_frame(struct mtk_drm_crtc *mtk_crtc)
 {
 	if ((atomic_read(&g_ccorr_irq_en) == 1) ||
 			(atomic_read(&g_c3d_eventctl) == 1)) {

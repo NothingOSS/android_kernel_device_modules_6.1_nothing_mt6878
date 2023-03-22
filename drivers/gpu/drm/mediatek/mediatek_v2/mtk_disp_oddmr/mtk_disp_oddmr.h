@@ -167,7 +167,6 @@ int mtk_drm_ioctl_oddmr_load_param(struct drm_device *dev, void *data,
 		struct drm_file *file_priv);
 int mtk_drm_ioctl_oddmr_ctl(struct drm_device *dev, void *data,
 		struct drm_file *file_priv);
-void disp_oddmr_on_start_of_frame(void);
 void mtk_oddmr_timing_chg(struct mtk_oddmr_timing *timing, struct cmdq_pkt *handle);
 void mtk_oddmr_bl_chg(uint32_t bl_level, struct cmdq_pkt *handle);
 int mtk_oddmr_hrt_cal_notify(int *oddmr_hrt);

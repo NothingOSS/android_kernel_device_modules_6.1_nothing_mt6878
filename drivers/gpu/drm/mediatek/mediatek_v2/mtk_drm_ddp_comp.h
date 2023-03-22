@@ -756,6 +756,8 @@ struct mtk_ddp_comp_funcs {
 		      unsigned int cmd, void *params, unsigned int size);
 	int (*pq_ioctl_transact)(struct mtk_ddp_comp *comp,
 		      unsigned int cmd, void *params, unsigned int size);
+	void (*mutex_sof_irq)(struct mtk_ddp_comp *comp);
+	void (*mutex_eof_irq)(struct mtk_ddp_comp *comp);
 };
 
 struct mtk_ddp_comp {
@@ -1005,6 +1007,38 @@ static inline int mtk_ddp_comp_pq_frame_config(struct mtk_ddp_comp *comp,
 		ret = comp->funcs->pq_frame_config(comp, handle, cmd, params, size);
 
 	return ret;
+}
+
+#define IRQ_DEBUG_MAX 64
+struct irq_debug {
+	int comp_id;
+	unsigned long long clock;
+};
+
+static inline void mtk_ddp_comp_mutex_sof_irq(struct mtk_ddp_comp *comp,
+					struct irq_debug *irq_time, int *index)
+{
+	if (comp && comp->funcs && comp->funcs->mutex_sof_irq) {
+		comp->funcs->mutex_sof_irq(comp);
+		if (*index < IRQ_DEBUG_MAX) {
+			irq_time[*index].comp_id = comp->id;
+			irq_time[*index].clock = sched_clock();
+			(*index)++;
+		}
+	}
+}
+
+static inline void mtk_ddp_comp_mutex_eof_irq(struct mtk_ddp_comp *comp,
+					struct irq_debug *irq_time, int *index)
+{
+	if (comp && comp->funcs && comp->funcs->mutex_eof_irq) {
+		comp->funcs->mutex_eof_irq(comp);
+		if (*index < IRQ_DEBUG_MAX) {
+			irq_time[*index].comp_id = comp->id;
+			irq_time[*index].clock = sched_clock();
+			(*index)++;
+		}
+	}
 }
 
 static inline void mtk_ddp_cpu_mask_write(struct mtk_ddp_comp *comp,

@@ -249,8 +249,6 @@ void disp_aal_debug(const char *opt);
 void disp_aal_notify_backlight_changed(int trans_backlight,
 	int max_backlight);
 
-void disp_aal_on_start_of_frame(void);
-
 /* AAL Control API in Kernel */
 void disp_aal_set_lcm_type(unsigned int panel_type);
 void disp_aal_set_ess_level(int level);
