@@ -50,6 +50,7 @@
 #define SMMU_EVT_DUMP_LEN_MAX		(200)
 
 static const char *IOMMU_GROUP_PROP_NAME = "mtk,iommu-group";
+static const char *PMU_SMMU_PROP_NAME = "mtk,smmu";
 
 enum iova_type {
 	NORMAL,
@@ -830,7 +831,7 @@ static int set_dev_bypass_smmu_s1(struct device *dev, bool enable)
 
 	steptr = arm_smmu_get_step_for_sid(master->smmu, sid);
 	val = le64_to_cpu(steptr[0]);
-	set_mask_bits(&val, 0, GENMASK_ULL(3, 1));
+	set_mask_bits(&val, GENMASK_ULL(3, 1), 0);
 
 	if (enable)
 		val |= FIELD_PREP(STRTAB_STE_0_CFG, STRTAB_STE_0_CFG_BYPASS);
@@ -1055,6 +1056,7 @@ static int mtk_smmu_irq_handler(int irq, void *dev)
 	struct arm_smmu_device *smmu = dev;
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 	u32 gerror, gerrorn, active;
+	struct smmuv3_pmu_device *pmu_device;
 
 	gerror = readl_relaxed(smmu->base + ARM_SMMU_GERROR);
 	gerrorn = readl_relaxed(smmu->base + ARM_SMMU_GERRORN);
@@ -1072,6 +1074,11 @@ static int mtk_smmu_irq_handler(int irq, void *dev)
 	smmuwp_process_intr(smmu);
 
 	mtk_smmu_irq_record(data);
+
+	list_for_each_entry(pmu_device, &data->pmu_devices, node) {
+		if (pmu_device->impl && pmu_device->impl->pmu_irq_handler)
+			pmu_device->impl->pmu_irq_handler(irq, pmu_device->dev);
+	}
 
 	return IRQ_HANDLED;
 }
@@ -1725,6 +1732,7 @@ static struct arm_smmu_device *mtk_smmu_create(struct arm_smmu_device *smmu,
 	data->smmu.wp_base = smmu->wp_base;
 	data->smmu.features = smmu->features;
 	data->smmu.impl = impl;
+	INIT_LIST_HEAD(&data->pmu_devices);
 
 	mtk_smmu_data_init(data);
 
@@ -2498,6 +2506,56 @@ void mtk_smmu_dump_dcm_en(struct device *dev)
 	smmuwp_dump_dcm_en(smmu);
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_dump_dcm_en);
+
+int mtk_smmu_register_pmu_device(struct smmuv3_pmu_device *pmu_device)
+{
+	struct platform_device *smmudev;
+	struct device_node *smmu_node;
+	struct arm_smmu_device *smmu;
+	struct mtk_smmu_data *data;
+	struct device *dev;
+
+	if (!pmu_device || !pmu_device->dev)
+		return -ENOENT;
+
+	dev = pmu_device->dev;
+	smmu_node = of_parse_phandle(dev->of_node, PMU_SMMU_PROP_NAME, 0);
+	if (!smmu_node) {
+		dev_err(dev, "%s, can't find smmu node for:%s\n",
+			__func__, dev_name(dev));
+		return -EINVAL;
+	}
+
+	smmudev = of_find_device_by_node(smmu_node);
+	if (!smmudev) {
+		dev_err(dev, "%s, can't find smmu dev for:%s\n",
+			__func__, dev_name(dev));
+		of_node_put(smmu_node);
+		return -EINVAL;
+	}
+
+	smmu = platform_get_drvdata(smmudev);
+	data = to_mtk_smmu_data(smmu);
+	list_add(&pmu_device->node, &data->pmu_devices);
+
+	if (pmu_device->impl && pmu_device->impl->late_init)
+		pmu_device->impl->late_init(smmu->base, dev);
+
+	if (pmu_device->impl && pmu_device->impl->irq_set_up)
+		pmu_device->impl->irq_set_up(smmu->combined_irq, dev);
+
+	pr_info("%s, pmu(%s) register\n", __func__, dev_name(pmu_device->dev));
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_smmu_register_pmu_device);
+
+void mtk_smmu_unregister_pmu_device(struct smmuv3_pmu_device *pmu_device)
+{
+	if (pmu_device)
+		list_del(&pmu_device->node);
+}
+EXPORT_SYMBOL_GPL(mtk_smmu_unregister_pmu_device);
 
 MODULE_DESCRIPTION("MediaTek SMMUv3 Customization");
 MODULE_LICENSE("GPL");

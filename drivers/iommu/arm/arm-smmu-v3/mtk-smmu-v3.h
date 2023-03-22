@@ -9,6 +9,7 @@
 
 #include <linux/iommu.h>
 #include <linux/of_device.h>
+#include <linux/interrupt.h>
 #include <soc/mediatek/smi.h>
 
 #include <dt-bindings/memory/mtk-memory-port.h>
@@ -374,6 +375,18 @@ enum mtk_smmu_plat {
 	SMMU_MT6989,
 };
 
+struct smmuv3_pmu_impl {
+	int (*irq_set_up)(int irq, struct device *dev);
+	irqreturn_t (*pmu_irq_handler)(int irq, struct device *dev);
+	int (*late_init)(void __iomem *reg_base, struct device *dev);
+};
+
+struct smmuv3_pmu_device {
+	struct device			*dev;
+	const struct smmuv3_pmu_impl	*impl;
+	struct list_head		node;
+};
+
 struct iommu_group_data {
 	struct iommu_group		*iommu_group;
 	enum mtk_smmu_type		smmu_type;
@@ -394,6 +407,7 @@ struct mtk_smmu_data {
 	struct mutex			group_mutexs;
 	struct arm_smmu_device		smmu;
 	struct iommu_group_data		*iommu_groups;
+	struct list_head		pmu_devices;
 	u32				iommu_group_nr;
 	u32				smmu_trans_type;
 
@@ -567,6 +581,8 @@ void mtk_smmu_end_latency_monitor(struct device *dev,
 void mtk_smmu_dump_outstanding_monitor(struct device *dev);
 void mtk_smmu_dump_io_interface_signals(struct device *dev);
 void mtk_smmu_dump_dcm_en(struct device *dev);
+int mtk_smmu_register_pmu_device(struct smmuv3_pmu_device *pmu_device);
+void mtk_smmu_unregister_pmu_device(struct smmuv3_pmu_device *pmu_device);
 #else
 static inline void mtk_smmu_fault_dump(struct arm_smmu_device *smmu)
 {
@@ -607,6 +623,13 @@ static inline void mtk_smmu_dump_io_interface_signals(struct device *dev)
 }
 
 static inline void mtk_smmu_dump_dcm_en(struct device *dev)
+{
+}
+static int mtk_smmu_register_pmu_device(struct smmuv3_pmu_device *pmu_device)
+{
+	return 0;
+}
+static void mtk_smmu_unregister_pmu_device(struct smmuv3_pmu_device *pmu_device)
 {
 }
 #endif /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 */

@@ -31,4 +31,14 @@ config DEVICE_MODULES_MTK_IOMMU
 
 	  If unsure, say N here.
 
+config DEVICE_MODULES_MTK_SMMU_V3_PMU
+	tristate "MediaTek SMMUV3 PMU Support"
+	depends on DEVICE_MODULES_ARM_SMMU_V3
+	help
+	  Support for the SMMU v3 PMU on mediatek SOCs.
+	  PMU is Performance Monitor Unit, can use to monitor SMMU TBU or
+	  TCU performance.
+
+	  If unsure, say N here.
+
 endif # IOMMU_SUPPORT
