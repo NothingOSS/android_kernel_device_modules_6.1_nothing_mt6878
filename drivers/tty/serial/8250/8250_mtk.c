@@ -151,6 +151,7 @@ struct mtk8250_data {
 	unsigned int   support_hub;
 	unsigned int   hub_baud;
 	struct mutex uart_mutex;
+	struct workqueue_struct  *uart_workqueue;
 };
 
 struct mtk8250_comp {
@@ -1062,6 +1063,14 @@ EXPORT_SYMBOL(mtk8250_uart_hub_is_ready);
 
 #endif
 
+static void mtk_flip_buffer_push(struct tty_port *port, struct mtk8250_data *data)
+{
+	struct tty_bufhead *buf = &port->buf;
+
+	//memory barrier
+	smp_store_release(&buf->tail->commit, buf->tail->used);
+	queue_work(data->uart_workqueue, &buf->work);
+}
 
 #ifdef CONFIG_SERIAL_8250_DMA
 static void mtk8250_rx_dma(struct uart_8250_port *up);
@@ -1212,7 +1221,10 @@ static void mtk8250_dma_rx_complete(void *param)
 	up->port.icount.rx += copied;
 	mtk8250_uart_rx_setting(dma->rxchan, copied, total);
 
-	tty_flip_buffer_push(tty_port);
+	if (data->support_hub == 1)
+		mtk_flip_buffer_push(tty_port, data);
+	else
+		tty_flip_buffer_push(tty_port);
 
 	mtk8250_rx_dma(up);
 
@@ -1982,6 +1994,16 @@ static int mtk8250_probe(struct platform_device *pdev)
 	} else
 		return -ENODEV;
 #endif
+
+	if ((data->support_hub) && (data->uart_workqueue == NULL)) {
+		data->uart_workqueue = alloc_workqueue("UART_RX_WQ", WQ_HIGHPRI | WQ_UNBOUND |
+						WQ_MEM_RECLAIM, 1);
+		if (data->uart_workqueue == NULL) {
+			pr_info("[%s]: Uart[%d] rx use tty default workqueue!\n",
+				__func__, data->line);
+			return -ENOMEM;
+		}
+	}
 
 	spin_lock_init(&uart.port.lock);
 	uart.port.mapbase = regs->start;
