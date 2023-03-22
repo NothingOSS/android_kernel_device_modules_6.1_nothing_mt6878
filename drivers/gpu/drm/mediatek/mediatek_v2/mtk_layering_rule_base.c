@@ -3037,8 +3037,6 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 			clear_idx = -1;
 		}
 
-		comp_state.layer_caps = layer_info->layer_caps;
-
 		if (mtk_is_gles_layer(disp_info, idx, i) &&
 		    i != disp_info->gles_head[idx]) {
 			layer_info->ovl_id = plane_idx - 1;
@@ -3123,6 +3121,8 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 			layer_info->layer_caps &= ~DISP_MML_CAPS_MASK;
 			layer_info->layer_caps |= MTK_MML_DISP_MDP_LAYER;
 		}
+
+		comp_state.layer_caps = layer_info->layer_caps;
 
 		lye_add_lye_priv_blob(&comp_state, lyeblob_ids, plane_idx,
 				      disp_idx, drm_dev);
