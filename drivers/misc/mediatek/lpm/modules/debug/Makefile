@@ -25,3 +25,9 @@ ifneq ($(wildcard $(srctree)/$(src)/mt6897),)
 obj-$(CONFIG_MTK_LPM_MT6897) += mt6897/
 endif
 endif
+
+ifeq ($(CONFIG_MTK_LPM_MT6989),m)
+ifneq ($(wildcard $(srctree)/$(src)/mt6989),)
+obj-$(CONFIG_MTK_LPM_MT6989) += mt6989/
+endif
+endif
