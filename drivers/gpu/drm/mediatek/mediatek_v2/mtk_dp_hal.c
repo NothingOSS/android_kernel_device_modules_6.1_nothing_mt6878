@@ -1023,6 +1023,14 @@ void mhal_DPTx_Audio_TDM_PG_EN(struct mtk_dp *mtk_dp, BYTE Channel,
 		msWrite2ByteMask(mtk_dp, REG_331C_DP_ENCODER1_P0,
 				TDM_AUDIO_DATA_EN_DP_ENCODER1_P0_FLDMASK,
 				TDM_AUDIO_DATA_EN_DP_ENCODER1_P0_FLDMASK);
+		//[12:8]: TDM audio data 32 bit
+		//32bit:0x1F
+		//24bit:0x17
+		//20bit:0x13
+		//16bit:0x0F
+		msWrite2ByteMask(mtk_dp, REG_331C_DP_ENCODER1_P0,
+				(0x1F << TDM_AUDIO_DATA_BIT_DP_ENCODER1_P0_FLDMASK_POS),
+				TDM_AUDIO_DATA_BIT_DP_ENCODER1_P0_FLDMASK);
 	}
 
 	msWriteByteMask(mtk_dp, REG_33F4_DP_ENCODER1_P0, 0, BIT(0));

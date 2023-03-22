@@ -1831,7 +1831,7 @@
 #define AUDIO_SAMPLE_PRSENT_REGEN_DP_ENCODER1_P0_FLDMASK_POS              12
 #define AUDIO_SAMPLE_PRSENT_REGEN_DP_ENCODER1_P0_FLDMASK_LEN              1
 
-#define REG_331C_DP_ENCODER1_P0              (0x331C)
+#define REG_331C_DP_ENCODER1_P0                                           (0x331C)
 #define TDM_AUDIO_DATA_EN_DP_ENCODER1_P0_FLDMASK                          0x1
 #define TDM_AUDIO_DATA_EN_DP_ENCODER1_P0_FLDMASK_POS                      0
 #define TDM_AUDIO_DATA_EN_DP_ENCODER1_P0_FLDMASK_LEN                      1
@@ -1844,15 +1844,23 @@
 #define TDM_AUDIO_DATA_CH_NUM_DP_ENCODER1_P0_FLDMASK_POS                  4
 #define TDM_AUDIO_DATA_CH_NUM_DP_ENCODER1_P0_FLDMASK_LEN                  3
 
+#define TDM_AUDIO_DATA_BIT_DP_ENCODER1_P0_FLDMASK                         0x1F00
+#define TDM_AUDIO_DATA_BIT_DP_ENCODER1_P0_FLDMASK_POS                     8
+#define TDM_AUDIO_DATA_BIT_DP_ENCODER1_P0_FLDMASK_LEN                     5
+
+#define TDM_AUDIO_DATA_SHIFT_DP_ENCODER1_P0_FLDMASK                       0x2000
+#define TDM_AUDIO_DATA_SHIFT_DP_ENCODER1_P0_FLDMASK_POS                   13
+#define TDM_AUDIO_DATA_SHIFT_DP_ENCODER1_P0_FLDMASK_LEN                   1
+
 #define REG_3320_DP_ENCODER1_P0              (0x3320)
 #define AUDIO_PATTERN_GEN_DSTB_CNT_THRD_DP_ENCODER1_P0_FLDMASK            0x1ff
 #define AUDIO_PATTERN_GEN_DSTB_CNT_THRD_DP_ENCODER1_P0_FLDMASK_POS        0
 #define AUDIO_PATTERN_GEN_DSTB_CNT_THRD_DP_ENCODER1_P0_FLDMASK_LEN        9
 
 #define REG_3324_DP_ENCODER1_P0              (0x3324)
-#define AUDIO_SOURCE_MUX_DP_ENCODER1_P0_FLDMASK                           0x300
+#define AUDIO_SOURCE_MUX_DP_ENCODER1_P0_FLDMASK                           0x700
 #define AUDIO_SOURCE_MUX_DP_ENCODER1_P0_FLDMASK_POS                       8
-#define AUDIO_SOURCE_MUX_DP_ENCODER1_P0_FLDMASK_LEN                       2
+#define AUDIO_SOURCE_MUX_DP_ENCODER1_P0_FLDMASK_LEN                       3
 
 #define AUDIO_PATTERN_GEN_CH_NUM_DP_ENCODER1_P0_FLDMASK                   0x3000
 #define AUDIO_PATGEN_CH_NUM_DP_ENCODER1_P0_FLDMASK_POS                    12
