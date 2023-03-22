@@ -37,6 +37,11 @@
 #define MMDVFS_USER_VDEC	13
 #define MMDVFS_USER_NUM		14
 
+#define MMDVFS_VCP_USER_VDEC	0
+#define MMDVFS_VCP_USER_VENC	1
+#define MMDVFS_VCP_USER_NUM	2
+
+/* v1 */
 /* clock consumer */
 #define CLK_MMDVFS_DISP		0
 #define CLK_MMDVFS_MDP		1
