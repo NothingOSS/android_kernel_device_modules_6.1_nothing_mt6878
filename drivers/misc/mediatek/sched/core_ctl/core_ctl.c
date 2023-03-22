@@ -544,7 +544,7 @@ EXPORT_SYMBOL(core_ctl_set_offline_throttle_ms);
  */
 int core_ctl_set_boost(bool boost)
 {
-	int ret;
+	int ret = 0;
 	unsigned int index = 0;
 	unsigned long flags;
 	struct cluster_data *cluster;
@@ -691,7 +691,7 @@ int core_ctl_set_cpu_busy_thres(unsigned int cid, unsigned int pct)
 	unsigned long flags;
 	struct cluster_data *cluster;
 
-	if (pct > 100 || cid > 3)
+	if (pct > 100 || cid > 2)
 		return -EINVAL;
 
 	spin_lock_irqsave(&state_lock, flags);
