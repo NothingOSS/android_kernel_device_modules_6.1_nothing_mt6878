@@ -2077,11 +2077,6 @@ _job_pack_mstream(struct mtk_cam_job *job,
 	return fill_1st_ipi_mstream(job);
 }
 
-static inline bool sink_switching(struct mtk_cam_job *job)
-{
-	return (job->seamless_switch || job->raw_switch);
-}
-
 static bool seamless_config_changed(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
@@ -2094,7 +2089,14 @@ static bool seamless_config_changed(struct mtk_cam_job *job)
 	unsigned int tag_idx;
 	int i, j;
 
-	if (!sink_switching(job) || !ctx)
+	/**
+	 * In raw switch case, the camsv restart flow needs the config
+	 * ipi, so we return true directly.
+	 */
+	if (job->raw_switch)
+		return true;
+
+	if (!job->seamless_switch || !ctx)
 		return false;
 
 	/* raw */
