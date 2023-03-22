@@ -112,11 +112,8 @@ static ssize_t emimpu_ctrl_store
 	char *command, *backup_command;
 	char *ptr, *token[MTK_EMI_MAX_TOKEN];
 	static struct emimpu_region_t *rg_info;
-	unsigned long long start, end;
 	unsigned long region;
-	unsigned long dgroup;
-	unsigned long apc;
-	int i, j, ret;
+	int i, ret;
 
 	mpu_test = global_mpu_test;
 	if (!mpu_test)
@@ -174,67 +171,6 @@ static ssize_t emimpu_ctrl_store
 			mpu_test->show_region = (unsigned int) region;
 			pr_info("%s: show_region to %u\n",
 				__func__, mpu_test->show_region);
-		}
-	} else if (!strncmp(buf, "SET", strlen("SET"))) {
-		if (i < 3)
-			goto emimpu_ctrl_store_end;
-
-		pr_info("%s: %s %s %s\n",
-			__func__, token[0], token[1], token[2]);
-
-		ret = kstrtoul(token[1], 10, &dgroup);
-		if (ret != 0)
-			pr_info("%s: fail to parse dgroup\n", __func__);
-		ret = kstrtoul(token[2], 16, &apc);
-		if (ret != 0)
-			pr_info("[MPU] fail to parse apc\n");
-
-		if (dgroup < (mpu_test->domain_cnt / 8)) {
-			pr_info("%s: apc[%lu]: 0x%lx\n",
-				__func__, dgroup, apc);
-
-			for (j = 0; j < 8; j++)
-				rg_info->apc[dgroup * 8 + j] =
-					((unsigned int)apc >> (3 * j)) & 0x7;
-		}
-		if (dgroup == 0)
-			rg_info->lock = apc & 0x80000000;
-	} else if (!strncmp(buf, "ON", strlen("ON"))) {
-		if (i < 4)
-			goto emimpu_ctrl_store_end;
-
-		pr_info("%s: %s %s %s %s\n",
-			__func__, token[0], token[1], token[2], token[3]);
-
-		ret = kstrtoull(token[1], 16, &start);
-		if (ret != 0)
-			pr_info("%s: fail to parse start\n", __func__);
-		ret = kstrtoull(token[2], 16, &end);
-		if (ret != 0)
-			pr_info("%s: fail to parse end\n", __func__);
-		ret = kstrtoul(token[3], 10, &region);
-		if (ret != 0)
-			pr_info("%s: fail to parse region\n", __func__);
-
-		if (region < mpu_test->region_cnt) {
-			rg_info->start = start;
-			rg_info->end = end;
-			rg_info->rg_num = (unsigned int)region;
-			mtk_emimpu_set_protection(rg_info);
-		}
-	} else if (!strncmp(buf, "OFF", strlen("OFF"))) {
-		if (i < 2)
-			goto emimpu_ctrl_store_end;
-
-		pr_info("%s: %s %s\n", __func__, token[0], token[1]);
-
-		ret = kstrtoul(token[1], 10, &region);
-		if (ret != 0)
-			pr_info("%s: fail to parse region\n", __func__);
-
-		if (region < mpu_test->region_cnt) {
-			rg_info->rg_num = (unsigned int)region;
-			mtk_emimpu_clear_protection(rg_info);
 		}
 	} else
 		pr_info("%s: unknown store command\n", __func__);
