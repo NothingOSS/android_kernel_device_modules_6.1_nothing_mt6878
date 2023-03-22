@@ -273,6 +273,7 @@ struct gce_plat {
 	u32 thread_nr;
 	u8 shift;
 	u32 mminfra;
+	bool fake_dev;
 };
 
 #if IS_ENABLED(CONFIG_CMDQ_MMPROFILE_SUPPORT)
@@ -2316,6 +2317,16 @@ static int cmdq_probe(struct platform_device *pdev)
 	struct gce_plat *plat_data;
 	static u8 hwid;
 
+	plat_data = (struct gce_plat *)of_device_get_match_data(dev);
+	if (!plat_data) {
+		cmdq_err("failed to get match data\n");
+		return -EINVAL;
+	}
+	if (plat_data->fake_dev) {
+		cmdq_msg("%s for smmu fake dev\n", __func__);
+		return 0;
+	}
+
 	cmdq = devm_kzalloc(dev, sizeof(*cmdq), GFP_KERNEL);
 	if (!cmdq)
 		return -ENOMEM;
@@ -2351,12 +2362,6 @@ static int cmdq_probe(struct platform_device *pdev)
 
 	init_waitqueue_head(&cmdq->err_irq_wq);
 	kthr = kthread_run(cmdq_irq_handler_thread, cmdq, "cmdq_irq_thread");
-
-	plat_data = (struct gce_plat *)of_device_get_match_data(dev);
-	if (!plat_data) {
-		cmdq_err("failed to get match data\n");
-		return -EINVAL;
-	}
 
 	gce_shift_bit = plat_data->shift;
 	gce_mminfra = plat_data->mminfra;
@@ -2511,6 +2516,7 @@ static const struct gce_plat gce_plat_v5 = {
 	.thread_nr = 32, .shift = 3, .mminfra = BIT(30)};
 static const struct gce_plat gce_plat_v5_1 = {
 	.thread_nr = 32, .shift = 3};
+static const struct gce_plat gce_smmu = {.fake_dev = true};
 
 static const struct of_device_id cmdq_of_ids[] = {
 	{.compatible = "mediatek,mt8173-gce", .data = (void *)&gce_plat_v2},
@@ -2537,6 +2543,7 @@ static const struct of_device_id cmdq_of_ids[] = {
 	{.compatible = "mediatek,mt6985-gce", .data = (void *)&gce_plat_v5},
 	{.compatible = "mediatek,mt6897-gce", .data = (void *)&gce_plat_v5},
 	{.compatible = "mediatek,mt6989-gce", .data = (void *)&gce_plat_v5},
+	{.compatible = "mediatek,smmu-share-group", .data = (void *)&gce_smmu},
 	{}
 };
 
