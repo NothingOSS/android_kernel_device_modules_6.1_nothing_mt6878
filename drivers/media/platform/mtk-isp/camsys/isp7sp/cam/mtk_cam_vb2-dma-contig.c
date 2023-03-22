@@ -35,6 +35,7 @@ struct mtk_cam_vb2_buf {
 	struct vb2_vmarea_handler	handler;
 	refcount_t			refcount;
 	struct sg_table			*sgt_base;
+	unsigned int                    sync;
 
 	/* DMABUF related */
 	struct dma_buf_attachment	*db_attach;
@@ -105,7 +106,8 @@ static void mtk_cam_vb2_prepare(void *buf_priv)
 		return;
 	if (CAM_DEBUG_ENABLED(V4L2))
 		pr_info("%s: %s\n", __func__, node->desc.name);
-	dma_sync_sgtable_for_device(buf->dev, sgt, buf->dma_dir);
+	if (buf->sync)
+		dma_sync_sgtable_for_device(buf->dev, sgt, buf->dma_dir);
 }
 
 static void mtk_cam_vb2_finish(void *buf_priv)
@@ -120,7 +122,8 @@ static void mtk_cam_vb2_finish(void *buf_priv)
 		return;
 	if (CAM_DEBUG_ENABLED(V4L2))
 		pr_info("%s: %s\n", __func__, node->desc.name);
-	dma_sync_sgtable_for_cpu(buf->dev, sgt, buf->dma_dir);
+	if (buf->sync)
+		dma_sync_sgtable_for_cpu(buf->dev, sgt, buf->dma_dir);
 }
 
 /*********************************************/
@@ -211,6 +214,14 @@ static void mtk_cam_vb2_detach_dmabuf(void *mem_priv)
 	kfree(buf);
 }
 
+static bool region_heap_is_prot(struct dma_buf *dbuf)
+{
+	if (strstr(dbuf->exp_name, "prot"))
+		return true;
+
+	return false;
+}
+
 static void *mtk_cam_vb2_attach_dmabuf(
 	struct vb2_buffer *vb, struct device *dev, struct dma_buf *dbuf,
 	unsigned long size)
@@ -239,6 +250,11 @@ static void *mtk_cam_vb2_attach_dmabuf(
 	buf->size = size;
 	buf->db_attach = dba;
 	buf->vb = vb;
+
+	if (region_heap_is_prot(dbuf))
+		buf->sync = 0;
+	else
+		buf->sync = 1;
 
 	return buf;
 }
@@ -275,7 +291,8 @@ void mtk_cam_vb2_sync_for_device(void *buf_priv)
 		return;
 	if (CAM_DEBUG_ENABLED(V4L2))
 		pr_info("%s: %s\n", __func__, node->desc.name);
-	dma_sync_sgtable_for_device(buf->dev, sgt, buf->dma_dir);
+	if (buf->sync)
+		dma_sync_sgtable_for_device(buf->dev, sgt, buf->dma_dir);
 }
 
 void mtk_cam_vb2_sync_for_cpu(void *buf_priv)
@@ -288,7 +305,8 @@ void mtk_cam_vb2_sync_for_cpu(void *buf_priv)
 		return;
 	if (CAM_DEBUG_ENABLED(V4L2))
 		pr_info("%s: %s\n", __func__, node->desc.name);
-	dma_sync_sgtable_for_cpu(buf->dev, sgt, buf->dma_dir);
+	if (buf->sync)
+		dma_sync_sgtable_for_cpu(buf->dev, sgt, buf->dma_dir);
 }
 
 MODULE_DESCRIPTION("DMA-contig memory handling routines for mtk-cam videobuf2");

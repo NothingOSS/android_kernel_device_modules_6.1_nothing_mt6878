@@ -58,6 +58,7 @@ struct raw_info {
 	uint32_t Hsf_en;
 	uint32_t enable_raw;
 	uint32_t vf_en;
+	uint32_t hsf_status;
 };
 
 struct mtk_cam_dma_map {
@@ -65,7 +66,7 @@ struct mtk_cam_dma_map {
 	struct dma_buf_attachment *attach;
 	struct sg_table *table;
 	dma_addr_t dma_addr;
-	uint32_t hsf_handle;
+	uint64_t hsf_handle;
 };
 
 struct mtk_cam_hsf_ctrl {

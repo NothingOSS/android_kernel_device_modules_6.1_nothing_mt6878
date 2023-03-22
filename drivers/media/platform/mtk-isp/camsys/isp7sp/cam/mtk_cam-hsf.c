@@ -21,25 +21,10 @@
 #include <media/v4l2-mc.h>
 #include <media/v4l2-subdev.h>
 #include "mtk_cam.h"
+#include "mtk_cam-engine.h"
 #include "mtk_heap.h"
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 #include <linux/arm-smccc.h>
-
-static struct device *mtk_cam_find_raw_dev_hsf(struct mtk_cam_device *cam,
-					   unsigned int raw_mask)
-{
-	struct mtk_cam_ctx *ctx;
-	unsigned int i;
-
-	for (i = 0; i < cam->num_raw_drivers; i++) {
-		if (raw_mask & (1 << i)) {
-			ctx = cam->ctxs + i;
-			/* FIXME: correct TWIN case */
-			return cam->raw.devs[i];
-		}
-	}
-	return NULL;
-}
 
 struct dma_buf *mtk_cam_dmabuf_alloc(struct mtk_cam_ctx *ctx, unsigned int size)
 {
@@ -62,7 +47,7 @@ struct dma_buf *mtk_cam_dmabuf_alloc(struct mtk_cam_ctx *ctx, unsigned int size)
 		dev_info(cam->dev, "region-based hsf buffer allocation fail\n");
 		return NULL;
 	}
-	dev_info(cam->dev, "%s done dbuf = 0x%x\n", __func__, dbuf);
+	dev_info(cam->dev, "%s done dbuf = 0x%pad\n", __func__, (unsigned int *)dbuf);
 	return dbuf;
 }
 
@@ -102,7 +87,7 @@ int mtk_cam_dmabuf_get_iova(struct mtk_cam_ctx *ctx,
 	dmap->attach = attach;
 	dmap->table = table;
 	dmap->dma_addr = sg_dma_address(table->sgl);
-
+	dev_info(cam->dev, "dma_addr:0x%llx\n", dmap->dma_addr);
 	return 0;
 }
 
@@ -140,7 +125,7 @@ static unsigned int get_ccu_device(struct mtk_cam_hsf_ctrl *handle_inst)
 	rproc_np = of_find_node_by_phandle(handle);
 	if (rproc_np) {
 		handle_inst->ccu_pdev = of_find_device_by_node(rproc_np);
-		pr_info("handle_inst.ccu_pdev = 0x%x\n", handle_inst->ccu_pdev);
+		pr_info("handle_inst.ccu_pdev = 0x%pad\n", handle_inst->ccu_pdev);
 		if (!handle_inst->ccu_pdev) {
 			pr_info("error: failed to find ccu rproc pdev\n");
 			handle_inst->ccu_pdev = NULL;
@@ -195,13 +180,14 @@ static void mtk_cam_power_on_ccu(struct mtk_cam_hsf_ctrl *handle_inst, unsigned 
 }
 #endif
 
-void ccu_stream_on(struct mtk_raw_device *dev, int on)
+void ccu_stream_on(struct mtk_cam_ctx *ctx, int on)
 {
 	int ret = 0;
-	struct mtk_cam_ctx *ctx;
 	struct mtk_cam_hsf_ctrl *hsf_config = NULL;
 	struct mtk_cam_hsf_info *share_buf = NULL;
 	struct raw_info pData;
+	int raw_id, raw_engine;
+
 #ifdef PERFORMANCE_HSF
 	int ms_0 = 0, ms_1 = 0, ms = 0;
 	struct timeval time;
@@ -209,26 +195,33 @@ void ccu_stream_on(struct mtk_raw_device *dev, int on)
 	do_gettimeofday(&time);
 	ms_0 = time.tv_sec + time.tv_usec;
 #endif
-	pData.tg_idx = dev->id;
-	pData.vf_en = on;
-	ctx = mtk_cam_find_ctx(dev->cam, &dev->pipeline->subdev.entity);
 
-	if (ctx == NULL) {
-		pr_info("%s error: ctx is NULL pointer check initial\n", __func__);
+	raw_engine = bit_map_subset_of(MAP_HW_RAW, ctx->used_engine);
+	raw_id = find_first_bit_set(raw_engine);
+	pr_info("%s used_engine:%d raw_engine:%d raw_id:%d\n", __func__, ctx->used_engine,
+		raw_engine, raw_id);
+	if (raw_id < 0) {
+		pr_info("%s error: raw_id is not found\n", __func__);
 		return;
 	}
-	hsf_config = ctx->hsf;
 
+	hsf_config = ctx->hsf;
 	if (hsf_config == NULL) {
 		pr_info("%s error: hsf_config is NULL pointer check hsf initial\n", __func__);
 		return;
 	}
-	share_buf = hsf_config->share_buf;
 
+	share_buf = hsf_config->share_buf;
 	if (share_buf == NULL) {
 		pr_info("%s hsf config fail share buffer not alloc\n", __func__);
 		return;
 	}
+
+	pData.tg_idx = raw_id;
+	pData.vf_en = on;
+	pData.chunk_iova = share_buf->chunk_iova;
+	pData.hsf_status = 0;
+
 #ifdef USING_CCU
 	ret = mtk_ccu_rproc_ipc_send(
 	hsf_config->ccu_pdev,
@@ -244,8 +237,9 @@ void ccu_stream_on(struct mtk_raw_device *dev, int on)
 	pr_info("%s time %d us\n", __func__, ms);
 #endif
 
-	if (ret != 0)
-		pr_info("%s TG(%d) VF(%d) fail\n", __func__, pData.tg_idx, on);
+	if (ret != 0 || pData.hsf_status == 0)
+		pr_info("%s TG(%d) VF(%d) fail, hsf_status:(%d)\n",
+			__func__, pData.tg_idx, on, pData.hsf_status);
 	else
 		pr_info("%s TG(%d) VF(%d) success\n", __func__, pData.tg_idx, on);
 }
@@ -281,8 +275,8 @@ void ccu_hsf_config(struct mtk_cam_ctx *ctx, unsigned int En)
 	pData.enable_raw = share_buf->enable_raw;
 	pData.Hsf_en = En;
 
-	pr_info("tg = %d  chunk_iova = 0x%lx  pData.Hsf_en = 0x%x\n",
-		pData.tg_idx, pData.chunk_iova, pData.Hsf_en);
+	pr_info("%s tg = %d  chunk_iova = 0x%llx  cq_iova = 0x%llx pData.Hsf_en = 0x%x\n", __func__,
+		pData.tg_idx, pData.chunk_iova, pData.cq_iova, pData.Hsf_en);
 	ret = mtk_ccu_rproc_ipc_send(
 		hsf_config->ccu_pdev,
 		MTK_CCU_FEATURE_CAMSYS,
@@ -297,22 +291,26 @@ void ccu_hsf_config(struct mtk_cam_ctx *ctx, unsigned int En)
 #endif
 
 	if (ret != 0)
-		pr_info("error: %s fail%d\n", __func__, pData.tg_idx);
+		pr_info("%s En(%d) Tg(%d) error\n", __func__, En, pData.tg_idx);
 	else
-		pr_info("%s success\n", __func__, pData.tg_idx);
+		pr_info("%s En(%d) Tg(%d) success\n", __func__, En, pData.tg_idx);
 }
 
 
 
-void ccu_apply_cq(struct mtk_raw_device *dev, dma_addr_t cq_addr,
-	unsigned int cq_size, int initial, unsigned int cq_offset,
+void ccu_apply_cq(struct mtk_cam_job *job, unsigned long raw_engines, dma_addr_t cq_addr,
+	unsigned int cq_size, unsigned int cq_offset,
 	unsigned int sub_cq_size, unsigned int sub_cq_offset)
 {
 	int ret = 0;
-	struct mtk_cam_ctx *ctx;
 	struct mtk_cam_hsf_ctrl *hsf_config = NULL;
 	struct mtk_cam_hsf_info *share_buf = NULL;
 	struct cq_info pData;
+
+	struct mtk_cam_device *cam = job->src_ctx->cam;
+	struct mtk_raw_device *raw_dev;
+	int raw_id;
+	struct apply_cq_ref *ref = &job->cq_ref;
 #ifdef PERFORMANCE_HSF
 	int ms_0 = 0, ms_1 = 0, ms = 0;
 	struct timeval time;
@@ -321,20 +319,28 @@ void ccu_apply_cq(struct mtk_raw_device *dev, dma_addr_t cq_addr,
 	ms_0 = time.tv_sec + time.tv_usec;
 #endif
 
-	ctx = mtk_cam_find_ctx(dev->cam, &dev->pipeline->subdev.entity);
-
-	if (ctx == NULL) {
-		pr_info("%s error: ctx is NULL pointer check initial\n", __func__);
+	raw_id = find_first_bit_set(raw_engines);
+	pr_info("%s raw_engines:%lu raw_id:%d\n", __func__, raw_engines, raw_id);
+	if (raw_id < 0) {
+		pr_info("%s error: raw_id is not found\n", __func__);
 		return;
 	}
-	hsf_config = ctx->hsf;
+	raw_dev = dev_get_drvdata(cam->engines.raw_devs[raw_id]);
 
+	/* note: apply cq with size = 0, will cause cq hang */
+	if (WARN_ON(!cq_size || !sub_cq_size))
+		return;
+
+	if (WARN_ON(assign_apply_cq_ref(&raw_dev->cq_ref, ref)))
+		return;
+
+	hsf_config = job->src_ctx->hsf;
 	if (hsf_config == NULL) {
 		pr_info("%s error: hsf_config is NULL pointer check hsf initial\n", __func__);
 		return;
 	}
-	share_buf = hsf_config->share_buf;
 
+	share_buf = hsf_config->share_buf;
 	if (share_buf == NULL) {
 		pr_info("%s hsf config fail share buffer not alloc\n", __func__);
 		return;
@@ -345,21 +351,21 @@ void ccu_apply_cq(struct mtk_raw_device *dev, dma_addr_t cq_addr,
 #endif
 
     /* call CCU to trigger CQ*/
-	pData.tg = share_buf->cam_tg;
+	pData.tg = raw_id;
 	pData.dst_addr = share_buf->cq_dst_iova;
 	pData.chunk_iova = share_buf->chunk_iova;
 	pData.src_addr = cq_addr;
 	pData.cq_size = cq_size;
-	pData.init_value = initial;
+	pData.init_value = 0;
 	pData.cq_offset = cq_offset;
 	pData.sub_cq_size = sub_cq_size;
 	pData.sub_cq_offset = sub_cq_offset;
 	pData.ipc_status = 0;
 
-	pr_info("CCU trigger CQ. tg:%d cq_src:0x%lx cq_dst:0x%lx cq_addr = 0x%lx init_value = %d\n",
+	pr_info("CCU trigger CQ. tg:%d cq_src:0x%llx cq_dst:0x%llx cq_addr = 0x%llx init_value = %d\n",
 		pData.tg, pData.src_addr, pData.dst_addr, cq_addr, pData.init_value);
 #ifdef USING_CCU
-	pr_info("ccu_pdev = 0x%x\n", hsf_config->ccu_pdev);
+	pr_info("ccu_pdev = 0x%pad\n", hsf_config->ccu_pdev);
 	ret = mtk_ccu_rproc_ipc_send(
 		hsf_config->ccu_pdev,
 		MTK_CCU_FEATURE_CAMSYS,
@@ -375,11 +381,12 @@ void ccu_apply_cq(struct mtk_raw_device *dev, dma_addr_t cq_addr,
 #endif
 
 	if (ret != 0)
-		pr_info("error: CCU trigger CQ failure. tg:%d cq_src:0x%x cq_dst:0x%x cq_size:%d\n",
+		pr_info("error: CCU trigger CQ failure. tg:%d cq_src:0x%llx cq_dst:0x%llx cq_size:%d\n",
 		pData.tg, pData.src_addr, pData.dst_addr, pData.cq_size);
 	else
-		pr_info("after CCU trigger CQ. tg:%d cq_src:0x%x cq_dst:0x%x initial_value = %d\n",
+		pr_info("after CCU trigger CQ. tg:%d cq_src:0x%llx cq_dst:0x%llx initial_value = %d\n",
 		pData.tg, pData.src_addr, pData.dst_addr, pData.init_value);
+
 	if (pData.ipc_status != 0)
 		pr_info("error:CCU trrigger CQ Sensor initial fail 0x%x\n",
 		pData.init_value);
@@ -448,14 +455,14 @@ int mtk_cam_hsf_init(struct mtk_cam_ctx *ctx)
 
 int mtk_cam_hsf_config(struct mtk_cam_ctx *ctx, unsigned int raw_id)
 {
+#define CQ_SIZE 0x1000
 	struct mtk_cam_device *cam = ctx->cam;
-	struct mtk_raw_pipeline *pipe = ctx->pipe;
 	struct mtk_cam_hsf_ctrl *hsf_config = NULL;
 	struct mtk_cam_hsf_info *share_buf = NULL;
 	struct mtk_cam_dma_map *dma_map_cq = NULL;
 	struct mtk_cam_dma_map *dma_map_chk = NULL;
-	struct device *dev;
-	struct mtk_raw_device *raw_dev;
+	//struct device *dev;
+	//struct mtk_raw_device *raw_dev;
 	struct arm_smccc_res res;
 
 #ifdef PERFORMANCE_HSF
@@ -471,18 +478,13 @@ int mtk_cam_hsf_config(struct mtk_cam_ctx *ctx, unsigned int raw_id)
 		return -1;
 	}
 
-	if (mtk_cam_hsf_init(ctx) != 0) {
-		dev_info(cam->dev, "hsf initial fail\n");
-		return -1;
-	}
 	hsf_config = ctx->hsf;
-
 	if (hsf_config == NULL) {
 		pr_info("%s error: hsf_config is NULL pointer check hsf initial\n", __func__);
 		return -1;
 	}
-	share_buf = hsf_config->share_buf;
 
+	share_buf = hsf_config->share_buf;
 	if (share_buf == NULL) {
 		pr_info("%s hsf config fail share buffer not alloc\n", __func__);
 		return -1;
@@ -495,8 +497,8 @@ int mtk_cam_hsf_config(struct mtk_cam_ctx *ctx, unsigned int raw_id)
 	dev_info(cam->dev, "hsf initial time %d us\n", ms);
 #endif
 
-	share_buf->cq_size = CQ_BUF_SIZE;
-	share_buf->enable_raw = pipe->enabled_raw;
+	share_buf->cq_size = CQ_SIZE;
+	share_buf->enable_raw = bit_map_subset_of(MAP_HW_RAW, ctx->used_engine);
 	share_buf->cam_module = raw_id;
 	share_buf->cam_tg = raw_id;
 
@@ -508,30 +510,25 @@ int mtk_cam_hsf_config(struct mtk_cam_ctx *ctx, unsigned int raw_id)
 	//FIXME:
 	dma_map_cq = hsf_config->cq_buf;
 	dma_map_chk = hsf_config->chk_buf;
+
 	//TEST: secure iova map to camsys device.
-	dma_map_cq->dbuf = mtk_cam_dmabuf_alloc(ctx, CQ_BUF_SIZE);
+	dma_map_cq->dbuf = mtk_cam_dmabuf_alloc(ctx, CQ_SIZE);
 	if (!dma_map_cq->dbuf) {
 		dev_info(cam->dev, "mtk_cam_dmabuf_alloc fail\n");
 		return -1;
 	}
 
-	dev = mtk_cam_find_raw_dev_hsf(cam, ctx->pipe->enabled_raw);
-	if (!dev) {
-		dev_info(cam->dev, "config hsf raw device not found\n");
-		return -1;
-	}
-
-	raw_dev = dev_get_drvdata(dev);
 	dev_info(cam->dev, "mtk_cam_dmabuf_alloc Done\n");
 	if (mtk_cam_dmabuf_get_iova(ctx, &(hsf_config->ccu_pdev->dev), dma_map_cq) != 0) {
 		dev_info(cam->dev, "Get cq iova failed\n");
 		return -1;
 	}
 	share_buf->cq_dst_iova = dma_map_cq->dma_addr;
-	dev_info(cam->dev, "dma_map_cq->dma_addr:0x%lx dma_map_cq->hsf_handle:0x%lx\n",
+	dev_info(cam->dev, "dma_map_cq->dma_addr:0x%llx dma_map_cq->hsf_handle:0x%llx\n",
 		dma_map_cq->dma_addr, dma_map_cq->hsf_handle);
+
 	//TEST: secure map to ccu devcie.
-	dma_map_chk->dbuf = mtk_cam_dmabuf_alloc(ctx, CQ_BUF_SIZE);
+	dma_map_chk->dbuf = mtk_cam_dmabuf_alloc(ctx, CQ_SIZE);
 	if (!dma_map_chk->dbuf) {
 		dev_info(cam->dev, "mtk_cam_dmabuf_alloc dma_map_chk fail\n");
 		return -1;
@@ -543,14 +540,16 @@ int mtk_cam_hsf_config(struct mtk_cam_ctx *ctx, unsigned int raw_id)
 		return -1;
 	}
 
-	dev_info(cam->dev, "dma_map_chk->dma_addr:0x%lx dma_map_chk->hsf_handle:0x%lx\n",
+	dev_info(cam->dev, "dma_map_chk->dma_addr:0x%llx dma_map_chk->hsf_handle:0x%llx\n",
 		dma_map_chk->dma_addr, dma_map_chk->hsf_handle);
+
 	share_buf->chunk_hsfhandle = dma_map_chk->hsf_handle;
 	share_buf->chunk_iova =  dma_map_chk->dma_addr;
+
 	arm_smccc_smc(MTK_SIP_KERNEL_DAPC_CAM_CONTROL, 1, 0, 0, 0, 0, 0, 0, &res);
+
 	ccu_hsf_config(ctx, 1);
 
-//enable devapc
 
 #ifdef PERFORMANCE_HSF
 	do_gettimeofday(&time);
@@ -616,8 +615,7 @@ int mtk_cam_hsf_uninit(struct mtk_cam_ctx *ctx)
 	kfree(hsf_config->chk_buf);
 	kfree(ctx->hsf);
 
-	ctx->pipe->res_config.enable_hsf_raw = 0;
-	dev_info(cam->dev, "enable_hsf_raw:%d\n", ctx->pipe->res_config.enable_hsf_raw);
+	ctx->enable_hsf_raw = 0;
 
 	return 0;
 }

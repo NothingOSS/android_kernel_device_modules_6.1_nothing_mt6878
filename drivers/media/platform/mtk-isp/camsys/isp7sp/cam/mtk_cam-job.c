@@ -16,6 +16,7 @@
 #include "mtk_cam-plat.h"
 #include "mtk_cam-debug.h"
 #include "mtk_cam-timesync.h"
+#include "mtk_cam-hsf.h"
 
 #define SENSOR_SET_MARGIN_MS  25
 #define SENSOR_SET_MARGIN_MS_STAGGER  27
@@ -517,7 +518,11 @@ static int initialize_engines(struct mtk_cam_ctx *ctx,
 			if (is_master && opt && opt->master_raw_init)
 				opt->master_raw_init(ctx->hw_raw[i], job);
 		}
+
+		if (job->enable_hsf_raw)
+			mtk_cam_hsf_init(ctx);
 	}
+
 
 	/* camsv */
 	if (ctx->hw_sv) {
@@ -562,6 +567,7 @@ update_job_type_feature(struct mtk_cam_job *job)
 		// TODO: remove update_buf_fmt_sel and update_sv_pure_raw dependency in
 		// which is_sv_pure_raw is read during update_buf_fmt_sel
 		job->is_sv_pure_raw = update_sv_pure_raw(job);
+		job->enable_hsf_raw = ctrl->enable_hsf_raw;
 		update_buf_fmt_sel(job);
 	} else
 		job->job_type = JOB_TYPE_ONLY_SV;
@@ -942,8 +948,13 @@ _stream_on(struct mtk_cam_job *job, bool on)
 	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
 		if (ctx->hw_raw[i]) {
 			raw_dev = dev_get_drvdata(ctx->hw_raw[i]);
-			update_scq_start_period(raw_dev, job->scq_period);
-			stream_on(raw_dev, on);
+
+			if (job->enable_hsf_raw) {
+				ccu_stream_on(ctx, on);
+			} else {
+				update_scq_start_period(raw_dev, job->scq_period);
+				stream_on(raw_dev, on);
+			}
 		}
 	}
 
@@ -1354,10 +1365,17 @@ static int _apply_raw_cq(struct mtk_cam_job *job,
 
 	raw_dev = dev_get_drvdata(cam->engines.raw_devs[raw_id]);
 
-	apply_cq(raw_dev, &job->cq_ref,
-		 cq->daddr,
-		 cq_rst->main.size, cq_rst->main.offset,
-		 cq_rst->sub.size, cq_rst->sub.offset);
+	if (job->enable_hsf_raw)
+		ccu_apply_cq(job, raw_engines,
+			cq->daddr, cq_rst->main.size,
+			cq_rst->main.offset, cq_rst->sub.size,
+			cq_rst->sub.offset);
+	else
+		apply_cq(raw_dev, &job->cq_ref,
+			cq->daddr,
+			cq_rst->main.size, cq_rst->main.offset,
+			cq_rst->sub.size, cq_rst->sub.offset);
+
 	return 0;
 }
 

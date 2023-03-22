@@ -56,7 +56,6 @@ struct mtk_raw_device {
 	struct engine_fsm fsm;
 	struct apply_cq_ref *cq_ref;
 
-	bool enable_hsf;
 	int fps;
 	int subsample_ratio;
 

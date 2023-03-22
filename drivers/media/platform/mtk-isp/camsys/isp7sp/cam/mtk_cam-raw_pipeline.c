@@ -774,6 +774,11 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 #endif
 	case V4L2_CID_MTK_CAM_SYNC_ID:
 		break;
+	case V4L2_CID_MTK_CAM_HSF_EN:
+		ctrl_data->enable_hsf_raw = ctrl->val;
+		dev_info(dev, "%s:pipe(%d):HSF_EN(%d)\n",
+			 __func__, pipeline->id, ctrl_data->enable_hsf_raw);
+		break;
 	default:
 		dev_info_ratelimited(dev, "%s: error. ctrl(\"%s\", id:0x%x) not supported yet\n",
 				     __func__, ctrl->name, ctrl->id);

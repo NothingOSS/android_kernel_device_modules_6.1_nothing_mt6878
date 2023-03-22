@@ -39,6 +39,7 @@
 #include "mtk_cam-job.h"
 #include "mtk_cam-fmt_utils.h"
 #include "mtk_cam-job_utils.h"
+#include "mtk_cam-hsf.h"
 
 #ifdef CONFIG_VIDEO_MTK_ISP_CAMSYS_DUBUG
 static unsigned int debug_ae = 1;
@@ -761,6 +762,7 @@ int mtk_cam_dev_req_enqueue(struct mtk_cam_device *cam,
 			return -1;
 		}
 		mtk_cam_store_pipe_data_to_ctx(ctx, req);
+		ctx->enable_hsf_raw = job->enable_hsf_raw;
 
 		list_add_tail(&job->list, &job_list);
 		++job_cnt;
@@ -2135,6 +2137,37 @@ int ctx_stream_on_seninf_sensor(struct mtk_cam_ctx *ctx,
 		raw_tg_idx = ctx->raw_tg_idx;
 	}
 
+	if (enable) {
+		if (ctx->enable_hsf_raw) {
+			// ctx->used_engine: bit mask of raw/camsv/mraw
+			// => raw dev id
+			unsigned long raws;
+			int raw_idx;
+
+			raws = bit_map_subset_of(MAP_HW_RAW, ctx->used_engine);
+			raw_idx = find_first_bit_set(raws);
+			if (raw_idx >= 0) {
+				ret = mtk_cam_hsf_config(ctx, raw_idx);
+				if (ret != 0) {
+					dev_info(cam->dev, "Error:mtk_cam_hsf_config fail\n");
+					return -EPERM;
+				}
+				mtk_cam_seninf_set_secure(seninf, 1,
+					ctx->hsf->share_buf->chunk_hsfhandle);
+			}
+		} else {
+			mtk_cam_seninf_set_secure(seninf, 0, 0);
+		}
+	} else {
+		if (ctx->enable_hsf_raw) {
+			ret = mtk_cam_hsf_uninit(ctx);
+			if (ret != 0) {
+				dev_info(cam->dev, "Error: mtk_cam_hsf_uninit fail\n");
+				return -EPERM;
+			}
+		}
+	}
+
 	/* RAW */
 	if (raw_tg_idx >= 0 && ctx->hw_raw[0]) {
 		int pixel_mode = 3;
@@ -2246,7 +2279,11 @@ void mtk_cam_ctx_engine_off(struct mtk_cam_ctx *ctx)
 	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
 		if (ctx->hw_raw[i]) {
 			raw_dev = dev_get_drvdata(ctx->hw_raw[i]);
-			stream_on(raw_dev, false);
+
+			if (ctx->enable_hsf_raw)
+				ccu_stream_on(ctx, false);
+			else
+				stream_on(raw_dev, false);
 		}
 	}
 

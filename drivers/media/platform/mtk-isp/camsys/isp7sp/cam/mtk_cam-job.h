@@ -232,6 +232,7 @@ struct mtk_cam_job {
 	 * src_ctx is just kept to access worker/workqueue.
 	 */
 	struct mtk_cam_ctx *src_ctx;
+	u32 enable_hsf_raw;
 
 	struct mtk_cam_pool_buffer cq;
 	struct mtk_cam_pool_buffer ipi;

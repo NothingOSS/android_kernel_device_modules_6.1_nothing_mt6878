@@ -37,6 +37,8 @@
 #include "mtk_cam-debug_option.h"
 #include "mtk_cam-debug.h"
 
+#include "mtk_cam-hsf-def.h"
+
 #define CCD_READY 1
 
 
@@ -94,6 +96,7 @@ struct mtk_cam_ctx {
 	unsigned int enabled_node_cnt;
 	unsigned int streaming_node_cnt;
 	int has_raw_subdev;
+	u32 enable_hsf_raw;
 
 	struct media_pipeline pipeline;
 	struct v4l2_subdev *sensor;
@@ -167,6 +170,7 @@ struct mtk_cam_ctx {
 	//struct mtk_mraw_pipeline *mraw_pipe[MAX_MRAW_PIPES_PER_STREAM];
 	struct mtk_cam_ctrl cam_ctrl;
 	/* list for struct mtk_cam_job */
+	struct mtk_cam_hsf_ctrl *hsf;
 };
 
 struct mtk_cam_v4l2_pipelines {
