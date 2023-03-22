@@ -113,6 +113,7 @@
 #define WR_LIMIT_LSB			24
 #define RD_LIMIT_LSB			16
 #define MASK_7				(0x7f)
+#define	MASK_PATH_SEL			GENMASK(19, 16)
 
 struct mtk_smi_reg_pair {
 	u16	offset;
@@ -464,8 +465,8 @@ int mtk_smi_larb_ultra_dis(struct device *larbdev, bool is_dis)
 }
 EXPORT_SYMBOL_GPL(mtk_smi_larb_ultra_dis);
 
-s32 smi_sysram_enable(struct device *larbdev, const u32 master_id,
-	const bool enable, const char *user)
+s32 mtk_smi_sysram_set(struct device *larbdev, const u32 master_id,
+	u32 set_val, const char *user)
 {
 	struct mtk_smi_larb *larb = dev_get_drvdata(larbdev);
 	u32 larbid = MTK_M4U_TO_LARB(master_id);
@@ -476,21 +477,33 @@ s32 smi_sysram_enable(struct device *larbdev, const u32 master_id,
 	ostd[1] = readl_relaxed(larb->base + INT_SMI_LARB_OSTD_MON_PORT(port));
 	if (ostd[0] || ostd[1]) {
 		aee_kernel_exception(user,
-			"%s set larb%u port%u sysram %d failed ostd:%u %u\n",
-			user, larbid, port, enable, ostd[0], ostd[1]);
+			"%s set larb%u port%u set_value:%#x failed ostd:%u %u\n",
+			user, larbid, port, set_val, ostd[0], ostd[1]);
 		return (ostd[1] << 16) | ostd[0];
 	}
 
-	val = readl_relaxed(larb->base + SMI_LARB_NONSEC_CON(port));
-	if (enable)
-		writel(val | (0xf << 16),
-			larb->base + SMI_LARB_NONSEC_CON(port));
-	else
-		writel(val & 0xfff0ffff,
-			larb->base + SMI_LARB_NONSEC_CON(port));
-	wmb(); /* make sure settings are written */
+	if (log_level & 1 << log_config_bit)
+		dev_notice(larbdev, "%s set larb%u port%u set_value:%#x\n",
+				user, larbid, port, set_val);
+
+	val = readl_relaxed(larb->base + SMI_LARB_NONSEC_CON(port)) & (~(u32)MASK_PATH_SEL);
+	writel(val | (set_val & MASK_PATH_SEL), larb->base + SMI_LARB_NONSEC_CON(port));
 
 	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_smi_sysram_set);
+
+s32 smi_sysram_enable(struct device *larbdev, const u32 master_id,
+	const bool enable, const char *user)
+{
+	u32 ret;
+
+	if (enable)
+		ret = mtk_smi_sysram_set(larbdev, master_id, 0xf << 16, user);
+	else
+		ret = mtk_smi_sysram_set(larbdev, master_id, 0, user);
+
+	return ret;
 }
 EXPORT_SYMBOL_GPL(smi_sysram_enable);
 

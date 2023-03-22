@@ -37,6 +37,8 @@ void mtk_smi_dump_last_pd(const char *user);
 void mtk_smi_larb_clamp_and_lock(struct device *larbdev, bool on);
 s32 smi_sysram_enable(struct device *larbdev, const u32 master_id,
 			const bool enable, const char *user);
+s32 mtk_smi_sysram_set(struct device *larbdev, const u32 master_id,
+			u32 set_val, const char *user);
 s32 mtk_smi_dbg_cg_status(void);
 void mtk_smi_check_comm_ref_cnt(struct device *dev);
 void mtk_smi_check_larb_ref_cnt(struct device *dev);
@@ -81,6 +83,13 @@ static inline void mtk_smi_larb_clamp_and_lock(struct device *larbdev, bool on) 
 static inline
 s32 smi_sysram_enable(struct device *larbdev, const u32 master_id,
 			const bool enable, const char *user)
+{
+	return 0;
+}
+
+static inline
+s32 mtk_smi_sysram_set(struct device *larbdev, const u32 master_id,
+			u32 set_val, const char *user)
 {
 	return 0;
 }
