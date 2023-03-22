@@ -139,6 +139,11 @@ static int usb_dp_selector_mux_set(struct typec_mux_dev *mux,
 	struct typec_displayport_data *dp_data = state->data;
 	int ret = 0;
 
+	if (dp_data == NULL) {
+		dev_info(uds->dev, "%s data is NULL, reject.\n", __func__);
+		return 0;
+	}
+
 	dev_info(uds->dev, "dp_data->config = %d\n", dp_data->conf);
 	dev_info(uds->dev, "dp_data->status = %d\n", dp_data->status);
 	dev_info(uds->dev, "state->mode = %lu\n", state->mode);
