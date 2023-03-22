@@ -452,6 +452,7 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 					struct mtk_mmqos, prov);
 	u32 value = 1;
 	u32 comm_id, chnn_id, port_id;
+	const char *r_w_type = "w";
 
 	MMQOS_SYSTRACE_BEGIN("%s %s->%s\n", __func__, src->name, dst->name);
 	switch (NODE_TYPE(dst->id)) {
@@ -606,11 +607,15 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 			}
 #endif
 			if (mmqos_met_enabled()) {
+				if (!larb_node->is_write)
+					r_w_type = "r";
 				trace_mmqos__larb_avg_bw(
+					r_w_type,
 					src->name,
 					LARB_ID(src->id),
 					icc_to_MBps(src->avg_bw));
 				trace_mmqos__larb_peak_bw(
+					r_w_type,
 					src->name,
 					LARB_ID(src->id),
 					icc_to_MBps(src->peak_bw));
@@ -774,12 +779,16 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 				value);
 
 		if (mmqos_met_enabled()) {
+			if (!larb_port_node->is_write)
+				r_w_type = "r";
 			trace_mmqos__larb_port_avg_bw(
-				src->name,
+				r_w_type,
+				dst->name,
 				MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
 				icc_to_MBps(larb_port_node->base->icc_node->avg_bw));
 			trace_mmqos__larb_port_peak_bw(
-				src->name,
+				r_w_type,
+				dst->name,
 				MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
 				icc_to_MBps(larb_port_node->base->icc_node->peak_bw));
 #ifdef ENABLE_INTERCONNECT_V1
