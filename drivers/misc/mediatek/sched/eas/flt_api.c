@@ -23,6 +23,9 @@
 #include "eas_plus.h"
 #include "common.h"
 #include "flt_init.h"
+#include "flt_api.h"
+
+static struct flt_pm fltpmrec;
 
 /* API Function pointer*/
 int (*flt_get_ws_api)(void);
@@ -244,3 +247,24 @@ unsigned long flt_get_cpu(int cpu)
 		return cpu_dmand;
 }
 EXPORT_SYMBOL(flt_get_cpu);
+
+void flt_resume_notify(void)
+{
+	fltpmrec.ktime_suspended = false;
+}
+
+void flt_suspend_notify(void)
+{
+	fltpmrec.ktime_last = ktime_get();
+	fltpmrec.ktime_suspended = true;
+}
+
+void flt_get_pm_status(struct flt_pm *fltpm)
+{
+	if (fltpm) {
+		fltpm->ktime_suspended = fltpmrec.ktime_suspended;
+		fltpm->ktime_last = fltpmrec.ktime_last;
+	}
+}
+EXPORT_SYMBOL(flt_get_pm_status);
+

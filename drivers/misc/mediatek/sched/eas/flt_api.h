@@ -5,6 +5,11 @@
  #ifndef _FLT_API_H
 #define _FLT_API_H
 
+struct flt_pm {
+	ktime_t ktime_last;
+	bool ktime_suspended;
+};
+
 /* Note: ws setting related API */
 int flt_get_ws(void);
 int flt_set_ws(int ws);
@@ -31,4 +36,8 @@ unsigned long flt_get_cpu(int cpu);
 
 /* Note: task related API */
 int flt_get_task_by_wp(struct task_struct *p, int wc, int task_wp);
+/* suspend/resume api */
+void flt_resume_notify(void);
+void flt_suspend_notify(void);
+void flt_get_pm_status(struct flt_pm *fltpm);
 #endif /* _FLT_API_H */

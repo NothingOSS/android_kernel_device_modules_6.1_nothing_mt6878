@@ -33,6 +33,7 @@
 #include <mt-plat/mtk_irq_mon.h>
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 #include "flt_init.h"
+#include "flt_api.h"
 #endif
 #include "group.h"
 
@@ -412,6 +413,23 @@ static const struct proc_ops eas_Fops = {
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 
+static int flt_resume_cb(struct device *dev)
+{
+	flt_resume_notify();
+	return 0;
+}
+
+static int flt_suspend_cb(struct device *dev)
+{
+	flt_suspend_notify();
+	return 0;
+}
+
+static const struct dev_pm_ops flt_pm_ops = {
+	.resume_noirq = flt_resume_cb,
+	.suspend_noirq = flt_suspend_cb,
+};
+
 static int platform_flt_probe(struct platform_device *pdev)
 {
 	int ret = 0, retval = 0;
@@ -449,6 +467,7 @@ static struct platform_driver mtk_platform_flt_driver = {
 		.name = "FLT",
 		.owner = THIS_MODULE,
 		.of_match_table = platform_flt_match,
+		.pm = &flt_pm_ops,
 	},
 	.id_table = platform_flt_id_table,
 };
