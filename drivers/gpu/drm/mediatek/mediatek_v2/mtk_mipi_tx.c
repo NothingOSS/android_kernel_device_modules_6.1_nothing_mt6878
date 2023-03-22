@@ -2921,7 +2921,12 @@ static int mtk_mipi_tx_pll_cphy_prepare_mt6897(struct clk_hw *hw)
 			FLD_RG_DSI_HSTX_LDO_REF_SEL, mipi_volt << 6);
 	}
 
-	writel(0x0, mipi_tx->regs + MIPITX_PRESERVED_MT6983);
+	/* value different from MT6983 */
+	if (rate < 2500)
+		writel(0xFFFF00F0, mipi_tx->regs + MIPITX_PRESERVED_MT6983);
+	else
+		writel(0xFFFF0030, mipi_tx->regs + MIPITX_PRESERVED_MT6983);
+
 	/* step 0 */
 	/* BG_LPF_EN / BG_CORE_EN */
 	writel(0x00FF12E0, mipi_tx->regs + MIPITX_PLL_CON4);
