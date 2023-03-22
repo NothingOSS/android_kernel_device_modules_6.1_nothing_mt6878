@@ -574,7 +574,7 @@ int core_ctl_set_boost(bool boost)
 			apply_demand(cluster);
 	}
 
-	core_ctl_debug("%s: boost=%d ret=%d ", __func__, boost, ret);
+	core_ctl_debug("%s: boost=%d ret=%d ", TAG, boost, ret);
 	return ret;
 }
 EXPORT_SYMBOL(core_ctl_set_boost);
@@ -824,7 +824,6 @@ static ssize_t show_not_preferred(const struct cluster_data *state, char *buf)
 static ssize_t store_core_ctl_boost(struct cluster_data *state,
 		const char *buf, size_t count)
 {
-	int ret;
 	unsigned int val;
 
 	if (sscanf(buf, "%u\n", &val) != 1)
@@ -835,11 +834,11 @@ static ssize_t store_core_ctl_boost(struct cluster_data *state,
 		return -EINVAL;
 
 	if (val == 0 || val == 1)
-		ret = core_ctl_set_boost(val);
+		core_ctl_set_boost(val);
 	else
-		ret = -EINVAL;
+		return -EINVAL;
 
-	return ret;
+	return count;
 }
 
 static ssize_t show_core_ctl_boost(const struct cluster_data *state, char *buf)
