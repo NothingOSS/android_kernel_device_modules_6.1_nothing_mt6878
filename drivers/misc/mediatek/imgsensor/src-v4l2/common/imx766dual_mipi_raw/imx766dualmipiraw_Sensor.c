@@ -1714,7 +1714,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.csi_param = {
 			.cphy_settle = 65,
 		},
-		.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_4CELL_Gb,
+		.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_4CELL_R,
 		.ana_gain_max = BASEGAIN * 16,
 	},
 	{
@@ -1763,7 +1763,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.csi_param = {
 			.cphy_settle = 65,
 		},
-		.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_4CELL_Gb,
+		.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_4CELL_R,
 		.ana_gain_max = BASEGAIN * 16,
 	},
 };
