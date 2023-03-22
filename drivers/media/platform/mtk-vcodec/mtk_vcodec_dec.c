@@ -1201,7 +1201,6 @@ void mtk_vdec_queue_error_event(struct mtk_vcodec_ctx *ctx)
 static void mtk_vdec_dvfs_reset_AO_flag(struct mtk_vcodec_dev *dev)
 {
 	dev->vdec_dvfs_params.target_freq = 0;
-	dev->vdec_dvfs_params.high_loading_scenario = 0;
 }
 
 void mtk_vdec_error_handle(struct mtk_vcodec_ctx *ctx, char *debug_str)
@@ -1209,9 +1208,8 @@ void mtk_vdec_error_handle(struct mtk_vcodec_ctx *ctx, char *debug_str)
 	struct mtk_vcodec_dev *dev = ctx->dev;
 	int i;
 
-	mtk_v4l2_err("[%d] start error handling %s (dvfs freq %d, high %d)(pw ref %d, %d %d)(hw active %d %d)",
+	mtk_v4l2_err("[%d] start error handling %s (dvfs freq %d)(pw ref %d, %d %d)(hw active %d %d)",
 		ctx->id, debug_str, dev->vdec_dvfs_params.target_freq,
-		dev->vdec_dvfs_params.high_loading_scenario,
 		atomic_read(&dev->dec_larb_ref_cnt),
 		atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_LAT]),
 		atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_CORE]),
@@ -2118,9 +2116,8 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 				mtk_vdec_dvfs_reset_AO_flag(dev);
 			}
 			mtk_vdec_dvfs_sync_vsi_data(ctx);
-			mtk_v4l2_debug(0, "[VDVFS] check alive: freq: %d, h_l: %d, op: %d",
+			mtk_v4l2_debug(0, "[VDVFS] check alive: freq: %d, op: %d",
 				ctx->dev->vdec_dvfs_params.target_freq,
-				ctx->dev->vdec_dvfs_params.high_loading_scenario,
 				ctx->dec_params.operating_rate);
 			if (!mtk_vdec_dvfs_is_pw_always_on(dev))
 				mtk_vcodec_dec_pw_off(&dev->pm);
@@ -3794,9 +3791,8 @@ static int vb2ops_vdec_start_streaming(struct vb2_queue *q, unsigned int count)
 				mtk_vdec_dvfs_reset_AO_flag(ctx->dev);
 			}
 			mtk_vdec_dvfs_sync_vsi_data(ctx);
-			mtk_v4l2_debug(0, "[VDVFS][%d(%d)] start DVFS(UP): freq:%d, h_l:%d, op:%d",
+			mtk_v4l2_debug(0, "[VDVFS][%d(%d)] start DVFS(UP): freq:%d, op:%d",
 				ctx->id, ctx->state, ctx->dev->vdec_dvfs_params.target_freq,
-				ctx->dev->vdec_dvfs_params.high_loading_scenario,
 				ctx->dec_params.operating_rate);
 			if (!mtk_vdec_dvfs_is_pw_always_on(ctx->dev))
 				mtk_vcodec_dec_pw_off(&ctx->dev->pm);
@@ -3956,9 +3952,8 @@ static void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 			mtk_vdec_dvfs_reset_AO_flag(ctx->dev);
 		}
 		mtk_vdec_dvfs_sync_vsi_data(ctx);
-		mtk_v4l2_debug(0, "[VDVFS][%d(%d)] stop DVFS (UP): freq: %d, h_l: %d, op: %d",
+		mtk_v4l2_debug(0, "[VDVFS][%d(%d)] stop DVFS (UP): freq: %d, op: %d",
 			ctx->id, ctx->state, ctx->dev->vdec_dvfs_params.target_freq,
-			ctx->dev->vdec_dvfs_params.high_loading_scenario,
 			ctx->dec_params.operating_rate);
 		if (!mtk_vdec_dvfs_is_pw_always_on(ctx->dev))
 			mtk_vcodec_dec_pw_off(&ctx->dev->pm);

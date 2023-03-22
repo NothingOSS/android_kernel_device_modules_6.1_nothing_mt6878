@@ -986,10 +986,9 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 		mtk_vcodec_alive_checker_suspend(dev);
 		mutex_unlock(&dev->ctx_mutex);
 
-		mtk_v4l2_debug(0, "[%d] %sbackup (dvfs freq %d, high %d)(pw ref %d, %d %d)(hw active %d %d)",
+		mtk_v4l2_debug(0, "[%d] %sbackup (dvfs freq %d)(pw ref %d, %d %d)(hw active %d %d)",
 			ctx ? ctx->id : 0, ctx ? "" : "no need ",
 			dev->vdec_dvfs_params.target_freq,
-			dev->vdec_dvfs_params.high_loading_scenario,
 			atomic_read(&dev->dec_larb_ref_cnt),
 			atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_LAT]),
 			atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_CORE]),

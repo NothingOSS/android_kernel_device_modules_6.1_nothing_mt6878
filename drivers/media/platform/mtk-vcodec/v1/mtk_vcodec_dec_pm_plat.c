@@ -314,7 +314,6 @@ void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 		i++;
 		dev_pm_opp_put(opp);
 	}
-	dev->vdec_dvfs_params.high_loading_scenario = 0;
 #endif
 	mtk_dec_tput_init(dev);
 }

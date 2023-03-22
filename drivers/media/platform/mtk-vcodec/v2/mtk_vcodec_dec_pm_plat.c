@@ -319,7 +319,6 @@ void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 		i++;
 		dev_pm_opp_put(opp);
 	}
-	dev->vdec_dvfs_params.high_loading_scenario = 0;
 #endif
 	mtk_dec_tput_init(dev);
 }
@@ -411,7 +410,6 @@ void mtk_vdec_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)
 		return;
 
 	dev->vdec_dvfs_params.target_freq = inst->vsi->target_freq;
-	dev->vdec_dvfs_params.high_loading_scenario = inst->vsi->high_loading_scenario;
 	ctx->dec_params.operating_rate = inst->vsi->op_rate;
 }
 
@@ -697,7 +695,6 @@ void mtk_vdec_dvfs_update_active_state(struct mtk_vcodec_ctx *ctx)
 
 bool mtk_vdec_dvfs_is_pw_always_on(struct mtk_vcodec_dev *dev)
 {
-	return (dev->vdec_dvfs_params.target_freq == VDEC_HIGHEST_FREQ ||
-		dev->vdec_dvfs_params.high_loading_scenario);
+	return dev->vdec_dvfs_params.target_freq == VDEC_HIGHEST_FREQ;
 }
 
