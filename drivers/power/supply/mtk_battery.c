@@ -3324,6 +3324,7 @@ static int system_pm_notify(struct notifier_block *nb,
 		gm->in_sleep = false;
 		mutex_unlock(&gm->fg_update_lock);
 		wake_up(&gm->wait_que);
+		wake_up(&gm->irq_ctrl.wait_que);
 		break;
 	default:
 		break;

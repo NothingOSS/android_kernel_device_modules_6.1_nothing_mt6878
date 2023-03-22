@@ -4720,7 +4720,8 @@ static void bat_plugout_irq_handler(struct mtk_battery *gm)
 			bm_err("[%s]disable FG_BAT_PLUGOUT\n",
 				__func__);
 			gm->disable_plug_int = 1;
-		}
+		} else
+			disable_gauge_irq(gm->gauge, BAT_PLUGOUT_IRQ);
 	}
 
 	if (is_bat_exist == 0) {
@@ -4762,7 +4763,8 @@ static void zcv_irq_handler(struct mtk_battery *gm)
 		wakeup_fg_algo(gm, FG_INTR_FG_ZCV);
 		zcv_intr_en = 0;
 		gauge_set_property(GAUGE_PROP_ZCV_INTR_EN, zcv_intr_en);
-	}
+	} else
+		enable_gauge_irq(gm->gauge, ZCV_IRQ);
 
 	fg_int_event(gm, EVT_INT_ZCV);
 	sw_check_bat_plugout(gm);
@@ -5115,7 +5117,12 @@ static int irq_routine_thread(void *arg)
 	int ret = 0;
 
 	while (1) {
-		ret = wait_event_interruptible(irq_ctrl->wait_que, irq_ctrl->do_irq == true);
+		ret = wait_event_interruptible(irq_ctrl->wait_que,
+			irq_ctrl->do_irq == true &&
+			!gm->in_sleep);
+		if (gm->in_sleep)
+			continue;
+
 		irq_thread_handler(gm);
 	}
 	return 0;
