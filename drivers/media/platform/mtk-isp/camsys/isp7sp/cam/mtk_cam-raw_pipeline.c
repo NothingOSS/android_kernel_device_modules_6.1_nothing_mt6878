@@ -49,21 +49,6 @@ MODULE_PARM_DESC(debug_disable_twin, "debug: disable twin");
 
 #define RAW_PIPELINE_NUM 3
 
-#define MTK_CAMSYS_RES_IDXMASK		0xF0
-#define MTK_CAMSYS_RES_BIN_TAG		0x10
-#define MTK_CAMSYS_RES_FRZ_TAG		0x20
-#define MTK_CAMSYS_RES_HWN_TAG		0x30
-#define MTK_CAMSYS_RES_CLK_TAG		0x40
-
-#define MTK_CAMSYS_RES_PLAN_NUM		10
-#define TGO_MAX_PXLMODE		8
-#define FRZ_PXLMODE_THRES		71
-#define MHz		1000000
-#define MTK_CAMSYS_PROC_DEFAULT_PIXELMODE	2
-#define DC_DEFAULT_CAMSV_PIXELMODE			8
-
-#define DC_SUPPORT_RAW_FEATURE_MASK	\
-	(STAGGER_2_EXPOSURE_LE_SE | STAGGER_2_EXPOSURE_SE_LE)
 
 #define sizeof_u32(__struct__) ((sizeof(__struct__) + sizeof(u32) - 1)/ \
 				sizeof(u32))
@@ -175,7 +160,7 @@ static int loop_resource_till_valid(struct mtk_cam_res_calc *c,
 				    struct raw_resource_stepper *stepper,
 				    const step_fn_t *arr_step, int arr_size)
 {
-	const bool enable_log = false;
+	const bool enable_log = CAM_DEBUG_ENABLED(V4L2_TRY);
 	int i;
 	int ret = -1;
 
@@ -588,13 +573,12 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 EXIT:
 	if (drv_data || ret == -EBUSY || CAM_DEBUG_ENABLED(V4L2_TRY))
 		dev_info(cam->dev,
-			 "calc_resource: sensor fps %u/%u %dx%d blank %u/%u linet %ld prate %llu bin %d clk %d pxlmode %d num %d img_wbuf %dx%d raw(0x%x,0x%x,%d)\n",
+			 "calc_resource: sensor fps %u/%u %dx%d blank %u/%u prate %llu linet %ld clk %d pxlmode %d num %d bin %d hw_mode %d wbuf %dx%d raw(0x%x,0x%x,%d)\n",
 			 s->interval.denominator, s->interval.numerator,
-			 s->width, s->height, s->hblank, s->vblank, c.line_time,
+			 s->width, s->height, s->hblank, s->vblank,
 			 s->pixel_rate,
-			 user_ctrl->raw_res.bin,
-			 c.clk, c.raw_pixel_mode, c.raw_num,
-			 r->img_wbuf_num, r->img_wbuf_size,
+			 c.line_time, c.clk, c.raw_pixel_mode, c.raw_num,
+			 r->bin, r->hw_mode, r->img_wbuf_num, r->img_wbuf_size,
 			 r->raws, r->raws_must, r->raws_max_num);
 
 	return ret;
