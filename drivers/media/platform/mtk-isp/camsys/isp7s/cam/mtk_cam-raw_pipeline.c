@@ -246,7 +246,6 @@ static void mtk_cam_get_work_buf_num(struct mtk_cam_resource_v2 *user_ctrl)
 	struct v4l2_mbus_framefmt mf;
 
 	switch (scen->id) {
-	case MTK_CAM_SCEN_MSTREAM:
 	case MTK_CAM_SCEN_NORMAL:
 		exp_num = (scen->scen.normal.max_exp_num == 0) ?
 					1 : scen->scen.normal.max_exp_num;
@@ -254,6 +253,10 @@ static void mtk_cam_get_work_buf_num(struct mtk_cam_resource_v2 *user_ctrl)
 					exp_num : exp_num - 1;
 		buf_require = !!(scen->scen.normal.w_chn_supported) ?
 					buf_require * 2 : buf_require;
+		break;
+	case MTK_CAM_SCEN_MSTREAM:
+		buf_require = (r->hw_mode == HW_MODE_DIRECT_COUPLED) ?
+					2 : 1;
 		break;
 	case MTK_CAM_SCEN_EXT_ISP:
 		/* TODO */

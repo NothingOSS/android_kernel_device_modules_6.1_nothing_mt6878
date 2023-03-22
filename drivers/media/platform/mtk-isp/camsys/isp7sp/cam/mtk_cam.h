@@ -79,6 +79,8 @@ struct mtk_cam_driver_buf_desc {
 	/* for userspace only */
 	dma_addr_t daddr;
 	int fd;
+	/* for buf pool release */
+	bool has_pool;
 };
 
 struct mtk_cam_buf_fmt_desc *get_fmt_desc(

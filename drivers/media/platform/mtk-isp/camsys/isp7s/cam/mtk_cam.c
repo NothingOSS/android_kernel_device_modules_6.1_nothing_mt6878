@@ -1727,7 +1727,7 @@ static int mtk_cam_ctx_alloc_img_pool(struct mtk_cam_ctx *ctx)
 	int ret = 0;
 
 	if (!ctx->has_raw_subdev)
-		return 0;
+		goto EXIT;
 
 	dev_to_attach = ctx->cam->engines.raw_devs[0];
 	raw_pipe = &ctx->cam->pipelines.raw[ctx->raw_subdev_idx];
@@ -1735,12 +1735,12 @@ static int mtk_cam_ctx_alloc_img_pool(struct mtk_cam_ctx *ctx)
 	raw_res = &ctrl_data->resource.user_data.raw_res;
 
 	if (raw_res->img_wbuf_num == 0)
-		return ret;
+		goto EXIT;
 
 	// TODO(Will): for BAYER10_MIPI, use MTK_RAW_MAIN_STREAM_OUT fmt instead;
 	mf = &raw_pipe->pad_cfg[MTK_RAW_SINK].mbus_fmt;
 	if (update_buf_fmt_desc(desc, mf))
-		return -1;
+		goto EXIT;
 
 	if (ctrl_data->pre_alloc_mem.num
 	    && desc->max_size >= ctrl_data->pre_alloc_mem.bufs[0].length) {
@@ -1758,9 +1758,14 @@ static int mtk_cam_ctx_alloc_img_pool(struct mtk_cam_ctx *ctx)
 			  dev_to_attach, desc->max_size,
 			  raw_res->img_wbuf_num,
 			  false);
+#ifdef CLOSE_FD_READY
 		/* FIXME: close fd */
 		desc->fd = mtk_cam_device_buf_fd(&ctx->img_work_buffer);
+#else
+		desc->fd = -1;
+#endif
 	}
+	desc->has_pool = (ret == 0) ? true : false;
 
 	for (i = MTKCAM_BUF_FMT_TYPE_START; i < MTKCAM_BUF_FMT_TYPE_CNT; ++i) {
 		struct mtk_cam_buf_fmt_desc *fmt_desc = &desc->fmt_desc[i];
@@ -1782,6 +1787,10 @@ static int mtk_cam_ctx_alloc_img_pool(struct mtk_cam_ctx *ctx)
 		raw_res->img_wbuf_size);
 
 	return ret;
+
+EXIT:
+	desc->has_pool = false;
+	return ret;
 }
 
 static void mtk_cam_ctx_destroy_pool(struct mtk_cam_ctx *ctx)
@@ -1792,17 +1801,15 @@ static void mtk_cam_ctx_destroy_pool(struct mtk_cam_ctx *ctx)
 
 static void mtk_cam_ctx_destroy_img_pool(struct mtk_cam_ctx *ctx)
 {
-	struct mtk_raw_pipeline *raw_pipe;
-	struct mtk_cam_resource_raw_v2 *raw_res;
+	struct mtk_cam_driver_buf_desc *desc = &ctx->img_work_buf_desc;
 
 	if (!ctx->has_raw_subdev)
 		return;
 
-	raw_pipe = &ctx->cam->pipelines.raw[ctx->raw_subdev_idx];
-	raw_res = &raw_pipe->ctrl_data.resource.user_data.raw_res;
-
-	if (raw_res->img_wbuf_num > 0)
+	if (desc->has_pool) {
+		desc->has_pool = false;
 		_destroy_pool(&ctx->img_work_buffer, &ctx->img_work_pool);
+	}
 }
 
 static int mtk_cam_ctx_prepare_session(struct mtk_cam_ctx *ctx)
