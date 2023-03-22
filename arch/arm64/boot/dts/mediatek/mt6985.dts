@@ -3125,10 +3125,8 @@
 
 	therm_intf: therm-intf@114000 {
 		compatible = "mediatek,therm_intf";
-		reg = <0 0x00114000 0 0x400>,
-			  <0 0x190e1000 0 0x1000>;
-		reg-names = "therm_sram",
-				"apu_mbox";
+		reg = <0 0x00114000 0 0x400>;
+		reg-names = "therm_sram";
 	};
 
 	thermal_zones: thermal-zones {
