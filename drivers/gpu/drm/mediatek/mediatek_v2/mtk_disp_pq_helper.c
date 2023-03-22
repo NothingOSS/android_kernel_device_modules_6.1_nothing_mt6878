@@ -156,7 +156,8 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 	struct mtk_ddp_comp *comp;
 	struct mtk_drm_pq_param requests[REQUEST_MAX_COUNT];
 	unsigned int check_trigger = params->check_trigger;
-	unsigned int i, j, index = params->disp_id;
+	unsigned int i, j;
+	int index = params->disp_id;
 	bool is_atomic_commit = cmdq_handle;
 
 	DDPINFO("%s:%d ++\n", __func__, __LINE__);
