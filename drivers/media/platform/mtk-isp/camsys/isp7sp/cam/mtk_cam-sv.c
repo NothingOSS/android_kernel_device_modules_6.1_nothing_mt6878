@@ -638,7 +638,7 @@ void apply_camsv_cq(struct mtk_camsv_device *sv_dev,
 	dma_addr_t cq_addr, unsigned int cq_size,
 	unsigned int cq_offset, int initial)
 {
-#define CQ_VADDR_MASK 0xffffffff
+#define CQ_VADDR_MASK 0xFFFFFFFF
 	u32 cq_addr_lsb = (cq_addr + cq_offset) & CQ_VADDR_MASK;
 	u32 cq_addr_msb = ((cq_addr + cq_offset) >> 32);
 
@@ -656,16 +656,17 @@ void apply_camsv_cq(struct mtk_camsv_device *sv_dev,
 		cq_addr_lsb);
 	CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQTOP_THR_START,
 		CAMSVCQTOP_THR_START, CAMSVCQTOP_CSR_CQ_THR0_START, 1);
+	wmb(); /* TBC */
 
 	if (initial) {
 		/* enable stagger mode for multiple vsync(s) */
 		CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQ_CQ_EN,
 			CAMSVCQ_CQ_EN, CAMSVCQ_SCQ_STAGGER_MODE, 1);
-		dev_info(sv_dev->dev, "apply 1st camsv scq: addr_msb:0x%x addr_lsb:0x%x size:%d cq_en(0x%x))",
+		dev_info(sv_dev->dev, "apply 1st camsv scq: addr_msb:0x%x addr_lsb:0x%x size:%d cq_en:0x%x\n",
 			cq_addr_msb, cq_addr_lsb, cq_size,
-			readl_relaxed(sv_dev->base_scq + REG_CAMSVCQ_CQ_EN));
+			CAMSV_READ_REG(sv_dev->base_scq + REG_CAMSVCQ_CQ_EN));
 	} else
-		dev_dbg(sv_dev->dev, "apply camsv scq: addr_msb:0x%x addr_lsb:0x%x size:%d",
+		dev_dbg(sv_dev->dev, "apply camsv scq: addr_msb:0x%x addr_lsb:0x%x size:%d\n",
 			cq_addr_msb, cq_addr_lsb, cq_size);
 }
 
@@ -738,7 +739,8 @@ unsigned int mtk_cam_get_sv_tag_index(struct mtk_camsv_device *sv_dev,
 	return 0;
 }
 
-int mtk_cam_sv_dev_config(struct mtk_camsv_device *sv_dev)
+int mtk_cam_sv_dev_config(struct mtk_camsv_device *sv_dev,
+	unsigned int sub_ratio)
 {
 	engine_fsm_reset(&sv_dev->fsm, sv_dev->dev);
 	sv_dev->cq_ref = NULL;
@@ -753,10 +755,9 @@ int mtk_cam_sv_dev_config(struct mtk_camsv_device *sv_dev)
 	sv_dev->tg_cnt = 0;
 
 	mtk_cam_sv_dmao_common_config(sv_dev);
-	mtk_cam_sv_cq_config(sv_dev);
-	mtk_cam_sv_cq_enable(sv_dev);
-	dev_info(sv_dev->dev, "[%s] sv_dev->id:%d",
-		__func__, sv_dev->id);
+	mtk_cam_sv_cq_config(sv_dev, sub_ratio);
+
+	dev_info(sv_dev->dev, "[%s] sub_ratio:%d\n", __func__, sub_ratio);
 
 	return 0;
 }
@@ -833,70 +834,71 @@ int mtk_cam_sv_get_tag_param(struct mtk_camsv_tag_param *arr_tag_param,
 	return ret;
 }
 
-int mtk_cam_sv_cq_config(struct mtk_camsv_device *sv_dev)
+int mtk_cam_sv_cq_config(struct mtk_camsv_device *sv_dev, unsigned int sub_ratio)
 {
+	/* cq en */
 	CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQ_CQ_EN,
-		CAMSVCQ_CQ_EN, CAMSVCQ_CQ_DB_EN, 0);
-	/* reset stagger mode */
+		CAMSVCQ_CQ_EN, CAMSVCQ_CQ_DB_EN, 1);
 	CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQ_CQ_EN,
 		CAMSVCQ_CQ_EN, CAMSVCQ_SCQ_STAGGER_MODE, 0);
-	CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQ_CQ_SUB_THR0_CTL,
-		CAMSVCQ_CQ_SUB_THR0_CTL, CAMSVCQ_CQ_SUB_THR0_MODE, 1);
-	/* camsv todo: start period need to be calculated */
+	CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQ_CQ_EN,
+		CAMSVCQ_CQ_EN, CAMSVCQ_SCQ_SUBSAMPLE_EN, (sub_ratio) ? 1 : 0);
+
+	/* cq sub en */
+	CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQ_CQ_SUB_EN,
+		CAMSVCQ_CQ_SUB_EN, CAMSVCQ_CQ_SUB_DB_EN, 1);
+
+	/* scq start period */
 	CAMSV_WRITE_REG(sv_dev->base_scq  + REG_CAMSVCQ_SCQ_START_PERIOD,
 		0xFFFFFFFF);
+
+	/* cq sub thr0 ctl */
+	CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQ_CQ_SUB_THR0_CTL,
+		CAMSVCQ_CQ_SUB_THR0_CTL, CAMSVCQ_CQ_SUB_THR0_MODE, 1);
+	CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQ_CQ_SUB_THR0_CTL,
+		CAMSVCQ_CQ_SUB_THR0_CTL, CAMSVCQ_CQ_SUB_THR0_EN, 1);
+
+	/* cq int en */
+	CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQTOP_INT_0_EN,
+		CAMSVCQTOP_INT_0_EN, CAMSVCQTOP_CSR_SCQ_SUB_THR_DONE_INT_EN, 1);
+	wmb(); /* TBC */
+
+	dev_dbg(sv_dev->dev, "[%s] cq_en:0x%x_%x start_period:0x%x cq_sub_thr0_ctl:0x%x cq_int_en:0x%x\n",
+		__func__,
+		CAMSV_READ_REG(sv_dev->base_scq + REG_CAMSVCQ_CQ_EN),
+		CAMSV_READ_REG(sv_dev->base_scq + REG_CAMSVCQ_CQ_SUB_EN),
+		CAMSV_READ_REG(sv_dev->base_scq + REG_CAMSVCQ_SCQ_START_PERIOD),
+		CAMSV_READ_REG(sv_dev->base_scq + REG_CAMSVCQ_CQ_SUB_THR0_CTL),
+		CAMSV_READ_REG(sv_dev->base_scq + REG_CAMSVCQTOP_INT_0_EN));
 
 	return 0;
 }
 
-int mtk_cam_sv_cq_enable(struct mtk_camsv_device *sv_dev)
+void mtk_cam_sv_update_start_period(
+	struct mtk_camsv_device *sv_dev, int scq_ms)
 {
-	int i, subsample = 0;
+	u32 ts_cnt, scq_cnt_rate;
 
-	for (i = SVTAG_START; i < SVTAG_END; i++) {
-		if (sv_dev->enabled_tags & (1 << i)) {
-			subsample = sv_dev->tag_info[i].cfg_in_param.subsample;
-			break;
-		}
-	}
+	ts_cnt = CAMSV_READ_REG(sv_dev->base +
+		REG_CAMSVCENTRAL_TIME_STAMP_INC_CNT);
 
-	if (subsample)
-		CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQ_CQ_EN,
-			CAMSVCQ_CQ_EN, CAMSVCQ_SCQ_SUBSAMPLE_EN, 1);
+	/* scq count rate(khz) */
+	scq_cnt_rate = SCQ_DEFAULT_CLK_RATE * 1000 / ((ts_cnt + 1) * 2);
 
-	CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQ_CQ_SUB_THR0_CTL,
-		CAMSVCQ_CQ_SUB_THR0_CTL, CAMSVCQ_CQ_SUB_THR0_EN, 1);
-	CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQTOP_INT_0_EN,
-		CAMSVCQTOP_INT_0_EN, CAMSVCQTOP_CSR_SCQ_SUB_THR_DONE_INT_EN, 1);
+	/* scq start period */
+	CAMSV_WRITE_REG(sv_dev->base_scq + REG_CAMSVCQ_SCQ_START_PERIOD,
+		scq_ms * scq_cnt_rate);
 
-	return 0;
+	dev_info(sv_dev->dev, "[%s] start_period:0x%x ts_cnt:%d, scq_ms:%d\n",
+		__func__,
+		CAMSV_READ_REG(sv_dev->base_scq + REG_CAMSVCQ_SCQ_START_PERIOD),
+		ts_cnt, scq_ms);
 }
 
 int mtk_cam_sv_cq_disable(struct mtk_camsv_device *sv_dev)
 {
-	int i, subsample = 0;
-
-	for (i = SVTAG_START; i < SVTAG_END; i++) {
-		if (sv_dev->enabled_tags & (1 << i)) {
-			subsample = sv_dev->tag_info[i].cfg_in_param.subsample;
-			break;
-		}
-	}
-
-	if (subsample) {
-		CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQ_CQ_EN,
-			CAMSVCQ_CQ_EN, CAMSVCQ_SCQ_SUBSAMPLE_EN, 0);
-	}
-
 	CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQ_CQ_SUB_THR0_CTL,
 		CAMSVCQ_CQ_SUB_THR0_CTL, CAMSVCQ_CQ_SUB_THR0_EN, 0);
-	CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQ_CQ_EN,
-		CAMSVCQ_CQ_EN, CAMSVCQ_SCQ_STAGGER_MODE, 0);
-	CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQ_CQ_SUB_THR0_CTL,
-		CAMSVCQ_CQ_SUB_THR0_CTL, CAMSVCQ_CQ_SUB_THR0_MODE, 0);
-	CAMSV_WRITE_REG(sv_dev->base_scq  + REG_CAMSVCQ_SCQ_START_PERIOD, 0);
-	CAMSV_WRITE_BITS(sv_dev->base_scq + REG_CAMSVCQTOP_INT_0_EN,
-		CAMSVCQTOP_INT_0_EN, CAMSVCQTOP_CSR_SCQ_SUB_THR_DONE_INT_EN, 0);
 
 	return 0;
 }

@@ -488,7 +488,8 @@ static int initialize_engines(struct mtk_cam_ctx *ctx,
 	if (ctx->hw_sv) {
 		struct mtk_camsv_device *sv = dev_get_drvdata(ctx->hw_sv);
 
-		mtk_cam_sv_dev_config(sv);
+		/* HS_TODO: to support camsv subsample mode */
+		mtk_cam_sv_dev_config(sv, 0);
 	}
 
 	/* mraw */
@@ -905,12 +906,14 @@ _stream_on(struct mtk_cam_job *job, bool on)
 
 	if (ctx->hw_sv) {
 		sv_dev = dev_get_drvdata(ctx->hw_sv);
+			mtk_cam_sv_update_start_period(sv_dev, job->scq_period);
 		mtk_cam_sv_dev_stream_on(sv_dev, on);
 	}
 
 	for (i = 0; i < ctx->num_mraw_subdevs; i++) {
 		if (ctx->hw_mraw[i]) {
 			mraw_dev = dev_get_drvdata(ctx->hw_mraw[i]);
+			mtk_cam_mraw_update_start_period(mraw_dev, job->scq_period);
 			mtk_cam_mraw_dev_stream_on(mraw_dev, on);
 		}
 	}

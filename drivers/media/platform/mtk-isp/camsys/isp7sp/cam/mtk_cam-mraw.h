@@ -13,7 +13,6 @@
 #include "mtk_cam-engine.h"
 #include "mtk_cam-dvfs_qos.h"
 
-#define USING_MRAW_SCQ 1
 #define MRAW_TG_PIXEL_MODE 3
 
 #define MRAW_WRITE_BITS(RegAddr, RegName, FieldName, FieldValue) do {\
@@ -152,6 +151,7 @@ struct mtk_mraw_device {
 
 void mraw_reset(struct mtk_mraw_device *mraw_dev);
 int mtk_cam_mraw_dev_config(struct mtk_mraw_device *mraw_dev, unsigned int sub_ratio);
+void mtk_cam_mraw_update_start_period(struct mtk_mraw_device *mraw_dev, int scq_ms);
 int mtk_cam_mraw_dev_stream_on(struct mtk_mraw_device *mraw_dev, bool on);
 int mtk_cam_mraw_top_config(struct mtk_mraw_device *mraw_dev);
 int mtk_cam_mraw_dma_config(struct mtk_mraw_device *mraw_dev);

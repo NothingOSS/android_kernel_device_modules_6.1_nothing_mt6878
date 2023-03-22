@@ -143,14 +143,9 @@ void apply_mraw_cq(struct mtk_mraw_device *mraw_dev,
 	      dma_addr_t cq_addr, unsigned int cq_size, unsigned int cq_offset,
 	      int initial)
 {
-#define CQ_VADDR_MASK 0xffffffff
+#define CQ_VADDR_MASK 0xFFFFFFFF
 	u32 cq_addr_lsb = (cq_addr + cq_offset) & CQ_VADDR_MASK;
 	u32 cq_addr_msb = ((cq_addr + cq_offset) >> 32);
-
-	dev_dbg(mraw_dev->dev,
-		"apply mraw%d cq - addr:0x%llx ,size:%d,offset:%d, REG_MRAW_CQ_SUB_THR0_CTL:0x%8x\n",
-		mraw_dev->id, cq_addr, cq_size, cq_offset,
-		readl_relaxed(mraw_dev->base + REG_MRAW_CQ_SUB_THR0_CTL));
 
 	if (cq_size == 0)
 		return;
@@ -161,27 +156,17 @@ void apply_mraw_cq(struct mtk_mraw_device *mraw_dev,
 	writel_relaxed(cq_addr_lsb, mraw_dev->base + REG_MRAWCQ_CQ_SUB_THR0_BASEADDR_2);
 	writel_relaxed(cq_addr_msb, mraw_dev->base + REG_MRAWCQ_CQ_SUB_THR0_BASEADDR_2_MSB);
 	writel_relaxed(cq_size, mraw_dev->base + REG_MRAWCQ_CQ_SUB_THR0_DESC_SIZE_2);
-
+	writel_relaxed(MRAWCTL_CQ_THR0_START, mraw_dev->base + REG_MRAW_CTL_START);
 	wmb(); /* TBC */
-	if (initial) {
-		writel_relaxed(MRAWCTL_CQ_SUB_THR0_DONE_EN,
-			       mraw_dev->base + REG_MRAW_CTL_INT6_EN);
-		writel_relaxed(MRAWCTL_CQ_THR0_START,
-			       mraw_dev->base + REG_MRAW_CTL_START);
-		wmb(); /* TBC */
+
+	if (initial)
 		dev_info(mraw_dev->dev,
-			"apply 1st mraw%d scq - addr/size = [main] 0x%llx/%d cq_en(0x%x)\n",
-			mraw_dev->id, cq_addr, cq_size,
-			readl_relaxed(mraw_dev->base + REG_MRAW_CQ_EN));
-	} else {
-#if USING_MRAW_SCQ
-		writel_relaxed(MRAWCTL_CQ_THR0_START, mraw_dev->base + REG_MRAW_CTL_START);
-		wmb(); /* TBC */
-#endif
-	}
-	dev_dbg(mraw_dev->dev,
-		"apply mraw%d scq - addr/size = [main] 0x%llx/%d\n",
-		mraw_dev->id, cq_addr, cq_size);
+			"apply 1st mraw scq: addr_msb:0x%x addr_lsb:0x%x size:%d\n",
+			cq_addr_msb, cq_addr_lsb, cq_size);
+	else
+		dev_dbg(mraw_dev->dev,
+			"apply mraw scq: addr_msb:0x%x addr_lsb:0x%x size:%d\n",
+			cq_addr_msb, cq_addr_lsb, cq_size);
 }
 
 static unsigned int mtk_cam_mraw_powi(unsigned int x, unsigned int n)
@@ -843,10 +828,9 @@ EXIT:
 int mtk_cam_mraw_cq_config(struct mtk_mraw_device *mraw_dev,
 	unsigned int sub_ratio)
 {
-	int ret = 0;
-#if USING_MRAW_SCQ
 	u32 val;
 
+	/* cq en */
 	val = readl_relaxed(mraw_dev->base + REG_MRAW_CQ_EN);
 	val = val | CQ_DB_EN;
 	if (sub_ratio) {
@@ -858,53 +842,52 @@ int mtk_cam_mraw_cq_config(struct mtk_mraw_device *mraw_dev,
 	}
 	writel_relaxed(val, mraw_dev->base + REG_MRAW_CQ_EN);
 
+	/* cq sub en */
 	val = readl_relaxed(mraw_dev->base + REG_MRAW_CQ_SUB_EN);
 	val = val | CQ_SUB_DB_EN;
 	writel_relaxed(val, mraw_dev->base + REG_MRAW_CQ_SUB_EN);
 
+	/* scq start period */
 	writel_relaxed(0xFFFFFFFF, mraw_dev->base + REG_MRAW_SCQ_START_PERIOD);
-	wmb(); /* TBC */
-#endif
+
+	/* cq sub thr0 ctl */
 	writel_relaxed(CQ_SUB_THR0_MODE_IMMEDIATE | CQ_SUB_THR0_EN,
 		       mraw_dev->base + REG_MRAW_CQ_SUB_THR0_CTL);
+
+	/* cq int en */
 	writel_relaxed(MRAWCTL_CQ_SUB_THR0_DONE_EN,
 		       mraw_dev->base + REG_MRAW_CTL_INT6_EN);
 	wmb(); /* TBC */
 
-	dev_dbg(mraw_dev->dev, "%s - REG_CQ_EN:0x%x_%x ,REG_CQ_THR0_CTL:0x%8x\n",
+	dev_dbg(mraw_dev->dev, "[%s] cq_en:0x%x_%x start_period:0x%x cq_sub_thr0_ctl:0x%x cq_int_en:0x%x\n",
 		__func__,
 		readl_relaxed(mraw_dev->base + REG_MRAW_CQ_EN),
 		readl_relaxed(mraw_dev->base + REG_MRAW_CQ_SUB_EN),
-		readl_relaxed(mraw_dev->base + REG_MRAW_CQ_SUB_THR0_CTL));
+		readl_relaxed(mraw_dev->base + REG_MRAW_SCQ_START_PERIOD),
+		readl_relaxed(mraw_dev->base + REG_MRAW_CQ_SUB_THR0_CTL),
+		readl_relaxed(mraw_dev->base + REG_MRAW_CTL_INT6_EN));
 
-	return ret;
+	return 0;
 }
 
-int mtk_cam_mraw_cq_enable(struct mtk_mraw_device *mraw_dev)
+void mtk_cam_mraw_update_start_period(
+	struct mtk_mraw_device *mraw_dev, int scq_ms)
 {
-	int ret = 0;
-	u32 val;
-#if USING_MRAW_SCQ
-	val = readl_relaxed(mraw_dev->base + REG_MRAW_TG_TIME_STAMP_CNT);
+	u32 ts_cnt, scq_cnt_rate;
 
-	//[todo]: implement/check the start period
-	writel_relaxed(SCQ_DEADLINE_MS * 1000 * SCQ_DEFAULT_CLK_RATE
-		, mraw_dev->base + REG_MRAW_SCQ_START_PERIOD);
-#else
-	writel_relaxed(CQ_THR0_MODE_CONTINUOUS | CQ_THR0_EN,
-				mraw_dev->base + REG_MRAW_CQ_SUB_THR0_CTL);
+	ts_cnt = readl_relaxed(mraw_dev->base + REG_MRAW_TG_TIME_STAMP_CNT);
 
-	writel_relaxed(CQ_DB_EN | CQ_DB_LOAD_MODE,
-				mraw_dev->base + REG_MRAW_CQ_EN);
-	wmb(); /* TBC */
+	/* scq count rate(khz) */
+	scq_cnt_rate = SCQ_DEFAULT_CLK_RATE * 1000 / ((ts_cnt + 1) * 2);
 
-	dev_info(mraw_dev->dev, "%s - REG_CQ_EN:0x%x_%x ,REG_CQ_THR0_CTL:0x%8x\n",
+	/* scq start period */
+	writel_relaxed(scq_ms * scq_cnt_rate,
+		mraw_dev->base + REG_MRAW_SCQ_START_PERIOD);
+
+	dev_info(mraw_dev->dev, "[%s] start_period:0x%x ts_cnt:%d, scq_ms:%d\n",
 		__func__,
-		readl_relaxed(mraw_dev->base + REG_MRAW_CQ_EN),
-		readl_relaxed(mraw_dev->base + REG_MRAW_CQ_SUB_EN),
-		readl_relaxed(mraw_dev->base + REG_MRAW_CQ_SUB_THR0_CTL));
-#endif
-	return ret;
+		readl_relaxed(mraw_dev->base + REG_MRAW_SCQ_START_PERIOD),
+		ts_cnt, scq_ms);
 }
 
 int mtk_cam_mraw_cq_disable(struct mtk_mraw_device *mraw_dev)
@@ -1033,7 +1016,7 @@ int mtk_cam_mraw_dev_config(struct mtk_mraw_device *mraw_dev,
 	mtk_cam_mraw_fbc_enable(mraw_dev);
 	mtk_cam_mraw_cq_config(mraw_dev, sub_ratio);
 
-	dev_info(mraw_dev->dev, "mraw %d %s done\n", mraw_dev->id, __func__);
+	dev_info(mraw_dev->dev, "[%s] sub_ratio:%d\n", __func__, sub_ratio);
 
 	return 0;
 }
@@ -1042,10 +1025,9 @@ int mtk_cam_mraw_dev_stream_on(struct mtk_mraw_device *mraw_dev, bool on)
 {
 	int ret = 0;
 
-	if (on) {
-		ret = mtk_cam_mraw_cq_enable(mraw_dev) ||
-			mtk_cam_mraw_top_enable(mraw_dev);
-	} else {
+	if (on)
+		ret = mtk_cam_mraw_top_enable(mraw_dev);
+	else {
 		/* reset enqueued status */
 		atomic_set(&mraw_dev->is_enqueued, 0);
 		/* reset format status */

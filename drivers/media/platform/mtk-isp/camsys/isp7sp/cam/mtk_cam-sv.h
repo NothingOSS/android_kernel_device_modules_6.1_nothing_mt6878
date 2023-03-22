@@ -190,9 +190,9 @@ struct mtk_camsv_device {
 
 void sv_reset(struct mtk_camsv_device *sv_dev);
 void mtk_cam_sv_debug_dump(struct mtk_camsv_device *sv_dev, unsigned int dump_tags);
-int mtk_cam_sv_dev_config(struct mtk_camsv_device *sv_dev);
-int mtk_cam_sv_cq_config(struct mtk_camsv_device *sv_dev);
-int mtk_cam_sv_cq_enable(struct mtk_camsv_device *sv_dev);
+int mtk_cam_sv_dev_config(struct mtk_camsv_device *sv_dev, unsigned int sub_ratio);
+int mtk_cam_sv_cq_config(struct mtk_camsv_device *sv_dev, unsigned int sub_ratio);
+void mtk_cam_sv_update_start_period(struct mtk_camsv_device *sv_dev, int scq_ms);
 int mtk_cam_sv_cq_disable(struct mtk_camsv_device *sv_dev);
 int mtk_cam_get_sv_cammux_id(struct mtk_camsv_device *sv_dev, int tag_idx);
 int mtk_cam_sv_dev_pertag_stream_on(
