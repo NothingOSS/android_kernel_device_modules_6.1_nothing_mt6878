@@ -1640,14 +1640,15 @@ _job_pack_subsample(struct mtk_cam_job *job,
 			(struct mtk_cam_subsample_job *)job;
 	int first_frame_only_cur = job->job_scen.scen.smvr.output_first_frame_only;
 	int first_frame_only_prev = subsample_job->prev_scen.scen.smvr.output_first_frame_only;
-	int ret;
+	int ret, subsof_fps;
 
 	subsample_job->prev_scen = ctx->ctldata_stored.resource.user_data.raw_res.scen;
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
-	job->scq_period = SCQ_DEADLINE_MS / job->sub_ratio;
-	dev_info(cam->dev, "[%s] ctx:%d, type:%d, scen_id:%d, 1stonly:%d, ratio:%d",
+	subsof_fps = get_sensor_fps(job) / job->sub_ratio;
+	job->scq_period = subsof_fps > 0 ? SCQ_DEADLINE_MS / (subsof_fps / 30) : SCQ_DEADLINE_MS;
+	dev_info(cam->dev, "[%s] ctx:%d, type:%d, scen_id:%d, 1stonly:%d, ratio:%d, subsof_fps:%d",
 		__func__, ctx->stream_id, job->job_type, job->job_scen.id, first_frame_only_cur,
-		job->sub_ratio);
+		job->sub_ratio, subsof_fps);
 	job->stream_on_seninf = false;
 	complete(&job->i2c_ready_completion);
 	if (!ctx->used_engine) {
