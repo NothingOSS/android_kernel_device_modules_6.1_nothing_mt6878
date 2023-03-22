@@ -6,6 +6,12 @@
 #ifndef MT6985_H
 #define MT6985_H
 
+#define UARTHUB_CMM_BASE_ADDR(_baseaddr)      (_baseaddr+0x000)
+#define UARTHUB_DEV_0_BASE_ADDR(_baseaddr)    (_baseaddr+0x100)
+#define UARTHUB_DEV_1_BASE_ADDR(_baseaddr)    (_baseaddr+0x200)
+#define UARTHUB_DEV_2_BASE_ADDR(_baseaddr)    (_baseaddr+0x300)
+#define UARTHUB_INTFHUB_BASE_ADDR(_baseaddr)  (_baseaddr+0x400)
+
 #define UARTHUB_MAX_NUM_DEV_HOST       3
 
 #define UARTHUB_DEV_0_BAUD_RATE        12000000
@@ -94,13 +100,10 @@
 #define PERI_UART_WAKEUP_MASK          0x10
 #define PERI_UART_WAKEUP_SHIFT         4
 
-#define HW_CCF_BASE_ADDR               0x10320000
-#define HW_CCF_PLL_DONE                0x140C
-#define HW_CCF_PLL_DONE_SHIFT          4
-
 #define APMIXEDSYS_BASE_ADDR           0x1000C000
 #define UNIVPLL_CON0                   0x308
-#define UNIVPLL_CON0_SHIFT             0
+#define UNIVPLL_CON0_UNIVPLL_EN_MASK   (0x1 << 0)
+#define UNIVPLL_CON0_UNIVPLL_EN_SHIFT  0
 
 #define TOPCKGEN_BASE_ADDR             0x10000000
 #define CLK_CFG_6                      0x70
@@ -115,12 +118,12 @@
 #define SPM_SYS_TIMER_L                0x504
 #define SPM_SYS_TIMER_H                0x508
 
-#define SPM_REQ_STA_9                  0x86C
-#define SPM_REQ_STA_9_MASK             (0x1F << 17)
-#define SPM_REQ_STA_9_SHIFT            17
+#define SPM_REQ_STA_9                   0x86C
+#define SPM_REQ_STA_9_UARTHUB_REQ_MASK  (0x1F << 17)
+#define SPM_REQ_STA_9_UARTHUB_REQ_SHIFT 17
 
 #define UART3_BASE_ADDR                0x11004000
-#define AP_DMA_UART_3_TX_INT_FLAG_ADDR 0x11301300
+#define AP_DMA_UART_TX_INT_FLAG_ADDR   0x11301300
 
 #define SYS_SRAM_BASE_ADDR              0x00113C00
 

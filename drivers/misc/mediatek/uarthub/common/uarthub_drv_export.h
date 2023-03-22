@@ -16,6 +16,7 @@ enum UARTHUB_baud_rate {
 	baud_rate_3m = 3000000,
 	baud_rate_4m = 4000000,
 	baud_rate_12m = 12000000,
+	baud_rate_16m = 16000000,
 	baud_rate_24m = 24000000,
 };
 
@@ -75,9 +76,8 @@ typedef void (*UARTHUB_IRQ_CB) (unsigned int err_type);
 #define KERNEL_UARTHUB_md_adsp_fifo_ctrl          UARTHUB_md_adsp_fifo_ctrl
 #define KERNEL_UARTHUB_dump_debug_info            UARTHUB_dump_debug_info
 #define KERNEL_UARTHUB_dump_debug_info_with_tag   UARTHUB_dump_debug_info_with_tag
-#define KERNEL_UARTHUB_debug_bt_tx_timeout        UARTHUB_debug_bt_tx_timeout
-#define KERNEL_UARTHUB_loopback_test              UARTHUB_loopback_test
-#define KERNEL_UARTHUB_dump_trx_info_loop_ctrl    UARTHUB_dump_trx_info_loop_ctrl
+#define KERNEL_UARTHUB_config_host_loopback       UARTHUB_config_host_loopback
+#define KERNEL_UARTHUB_config_cmm_loopback        UARTHUB_config_cmm_loopback
 #define KERNEL_UARTHUB_debug_dump_tx_rx_count     UARTHUB_debug_dump_tx_rx_count
 #define KERNEL_UARTHUB_reset_flow_control         UARTHUB_reset_flow_control
 
@@ -108,9 +108,47 @@ int UARTHUB_sw_reset(void);
 int UARTHUB_md_adsp_fifo_ctrl(int enable);
 int UARTHUB_dump_debug_info(void);
 int UARTHUB_dump_debug_info_with_tag(const char *tag);
-int UARTHUB_loopback_test(int dev_index, int tx_to_rx, int enable);
-int UARTHUB_debug_bt_tx_timeout(const char *tag);
-int UARTHUB_dump_trx_info_loop_ctrl(int enable, int loop_dur_ms);
+int UARTHUB_config_host_loopback(int dev_index, int tx_to_rx, int enable);
+int UARTHUB_config_cmm_loopback(int tx_to_rx, int enable);
 int UARTHUB_debug_dump_tx_rx_count(const char *tag, enum debug_dump_tx_rx_index trigger_point);
+
+/* FPGA test only */
+int UARTHUB_is_host_uarthub_ready_state(int dev_index);
+int UARTHUB_set_host_txrx_request(int dev_index, int trx);
+int UARTHUB_clear_host_txrx_request(int dev_index, int trx);
+int UARTHUB_request_host_sema_own_sta(int dev_index);
+int UARTHUB_set_host_sema_own_rel(int dev_index);
+int UARTHUB_get_host_sema_own_rel_irq_sta(int dev_index);
+int UARTHUB_clear_host_sema_own_rel_irq(int dev_index);
+int UARTHUB_reset_host_sema_own(int dev_index);
+int UARTHUB_get_host_sema_own_timeout_irq_sta(int dev_index);
+int UARTHUB_clear_host_sema_own_timeout_irq(int dev_index);
+int UARTHUB_reset_host_sema_own_timeout(int dev_index);
+int UARTHUB_get_host_irq_sta(int dev_index);
+int UARTHUB_clear_host_irq(int dev_index);
+int UARTHUB_mask_host_irq(int dev_index, int mask_bit, int is_mask);
+int UARTHUB_config_host_irq_ctrl(int dev_index, int enable);
+int UARTHUB_get_host_rx_fifo_size(int dev_index);
+int UARTHUB_get_cmm_rx_fifo_size(void);
+int UARTHUB_config_uartip_dma_en_ctrl(int dev_index, int trx, int enable);
+int UARTHUB_reset_fifo_trx(void);
+int UARTHUB_config_inband_esc_char(int esc_char);
+int UARTHUB_config_inband_esc_sta(int esc_sta);
+int UARTHUB_config_inband_enable_ctrl(int enable);
+int UARTHUB_config_inband_irq_enable_ctrl(int enable);
+int UARTHUB_config_inband_trigger(void);
+int UARTHUB_is_inband_tx_complete(void);
+int UARTHUB_get_inband_irq_sta(void);
+int UARTHUB_clear_inband_irq(void);
+int UARTHUB_get_received_inband_sta(void);
+int UARTHUB_clear_received_inband_sta(void);
+int UARTHUB_uartip_write_data_to_tx_buf(int dev_index, int tx_data);
+int UARTHUB_uartip_read_data_from_rx_buf(int dev_index);
+int UARTHUB_is_uartip_tx_buf_empty_for_writing(int dev_index);
+int UARTHUB_is_uartip_rx_buf_ready_for_reading(int dev_index);
+int UARTHUB_is_uartip_throw_xoff(int dev_index);
+int UARTHUB_config_uartip_rx_fifo_trig_threshold(int dev_index, int size);
+int UARTHUB_ut_ip_verify_pkt_hdr_fmt(void);
+int UARTHUB_ut_ip_verify_trx_not_ready(void);
 
 #endif /* UARTHUB_DRV_EXPORT_H */

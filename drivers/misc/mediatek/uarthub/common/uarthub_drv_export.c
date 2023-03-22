@@ -169,38 +169,256 @@ EXPORT_SYMBOL(UARTHUB_md_adsp_fifo_ctrl);
 
 int UARTHUB_dump_debug_info(void)
 {
-	return uarthub_core_debug_info();
+	return uarthub_core_debug_info(NULL, 0);
 }
 EXPORT_SYMBOL(UARTHUB_dump_debug_info);
 
 int UARTHUB_dump_debug_info_with_tag(const char *tag)
 {
-	return uarthub_core_debug_info_with_tag(tag);
+	return uarthub_core_debug_info(tag, 0);
 }
 EXPORT_SYMBOL(UARTHUB_dump_debug_info_with_tag);
 
-int UARTHUB_loopback_test(int dev_index, int tx_to_rx, int enable)
+int UARTHUB_config_host_loopback(int dev_index, int tx_to_rx, int enable)
 {
-	return uarthub_core_loopback_test(dev_index, tx_to_rx, enable);
+	return uarthub_core_config_host_loopback(dev_index, tx_to_rx, enable);
 }
-EXPORT_SYMBOL(UARTHUB_loopback_test);
+EXPORT_SYMBOL(UARTHUB_config_host_loopback);
 
-int UARTHUB_debug_bt_tx_timeout(const char *tag)
+int UARTHUB_config_cmm_loopback(int tx_to_rx, int enable)
 {
-	return uarthub_core_debug_bt_tx_timeout(tag);
+	return uarthub_core_config_cmm_loopback(tx_to_rx, enable);
 }
-EXPORT_SYMBOL(UARTHUB_debug_bt_tx_timeout);
-
-int UARTHUB_dump_trx_info_loop_ctrl(int enable, int loop_dur_ms)
-{
-	return uarthub_core_dump_trx_info_loop_ctrl(enable, loop_dur_ms);
-}
-EXPORT_SYMBOL(UARTHUB_dump_trx_info_loop_ctrl);
+EXPORT_SYMBOL(UARTHUB_config_cmm_loopback);
 
 int UARTHUB_debug_dump_tx_rx_count(const char *tag, enum debug_dump_tx_rx_index trigger_point)
 {
 	return uarthub_core_debug_dump_tx_rx_count(tag, (int)trigger_point);
 }
 EXPORT_SYMBOL(UARTHUB_debug_dump_tx_rx_count);
+
+
+/* FPGA test only */
+int UARTHUB_is_host_uarthub_ready_state(int dev_index)
+{
+	return uarthub_core_is_host_uarthub_ready_state(dev_index);
+}
+EXPORT_SYMBOL(UARTHUB_is_host_uarthub_ready_state);
+
+int UARTHUB_set_host_txrx_request(int dev_index, int trx)
+{
+	return uarthub_core_set_host_txrx_request(dev_index, trx);
+}
+EXPORT_SYMBOL(UARTHUB_set_host_txrx_request);
+
+int UARTHUB_clear_host_txrx_request(int dev_index, int trx)
+{
+	return uarthub_core_clear_host_txrx_request(dev_index, trx);
+}
+EXPORT_SYMBOL(UARTHUB_clear_host_txrx_request);
+
+int UARTHUB_request_host_sema_own_sta(int dev_index)
+{
+	return uarthub_core_request_host_sema_own_sta(dev_index);
+}
+EXPORT_SYMBOL(UARTHUB_request_host_sema_own_sta);
+
+int UARTHUB_set_host_sema_own_rel(int dev_index)
+{
+	return uarthub_core_set_host_sema_own_rel(dev_index);
+}
+EXPORT_SYMBOL(UARTHUB_set_host_sema_own_rel);
+
+int UARTHUB_get_host_sema_own_rel_irq_sta(int dev_index)
+{
+	return uarthub_core_get_host_sema_own_rel_irq_sta(dev_index);
+}
+EXPORT_SYMBOL(UARTHUB_get_host_sema_own_rel_irq_sta);
+
+int UARTHUB_clear_host_sema_own_rel_irq(int dev_index)
+{
+	return uarthub_core_clear_host_sema_own_rel_irq(dev_index);
+}
+EXPORT_SYMBOL(UARTHUB_clear_host_sema_own_rel_irq);
+
+int UARTHUB_reset_host_sema_own(int dev_index)
+{
+	return uarthub_core_reset_host_sema_own(dev_index);
+}
+EXPORT_SYMBOL(UARTHUB_reset_host_sema_own);
+
+int UARTHUB_get_host_sema_own_timeout_irq_sta(int dev_index)
+{
+	return uarthub_core_get_host_sema_own_tmo_irq_sta(dev_index);
+}
+EXPORT_SYMBOL(UARTHUB_get_host_sema_own_timeout_irq_sta);
+
+int UARTHUB_clear_host_sema_own_timeout_irq(int dev_index)
+{
+	return uarthub_core_clear_host_sema_own_tmo_irq(dev_index);
+}
+EXPORT_SYMBOL(UARTHUB_clear_host_sema_own_timeout_irq);
+
+int UARTHUB_reset_host_sema_own_timeout(int dev_index)
+{
+	return uarthub_core_reset_host_sema_own_tmo(dev_index);
+}
+EXPORT_SYMBOL(UARTHUB_reset_host_sema_own_timeout);
+
+int UARTHUB_get_host_irq_sta(int dev_index)
+{
+	return uarthub_core_get_host_irq_sta(dev_index);
+}
+EXPORT_SYMBOL(UARTHUB_get_host_irq_sta);
+
+int UARTHUB_clear_host_irq(int dev_index)
+{
+	return uarthub_core_clear_host_irq(dev_index);
+}
+EXPORT_SYMBOL(UARTHUB_clear_host_irq);
+
+int UARTHUB_mask_host_irq(int dev_index, int mask_bit, int is_mask)
+{
+	return uarthub_core_mask_host_irq(dev_index, mask_bit, is_mask);
+}
+EXPORT_SYMBOL(UARTHUB_mask_host_irq);
+
+int UARTHUB_config_host_irq_ctrl(int dev_index, int enable)
+{
+	return uarthub_core_config_host_irq_ctrl(dev_index, enable);
+}
+EXPORT_SYMBOL(UARTHUB_config_host_irq_ctrl);
+
+int UARTHUB_get_host_rx_fifo_size(int dev_index)
+{
+	return uarthub_core_get_host_rx_fifo_size(dev_index);
+}
+EXPORT_SYMBOL(UARTHUB_get_host_rx_fifo_size);
+
+int UARTHUB_get_cmm_rx_fifo_size(void)
+{
+	return uarthub_core_get_cmm_rx_fifo_size();
+}
+EXPORT_SYMBOL(UARTHUB_get_cmm_rx_fifo_size);
+
+int UARTHUB_config_uartip_dma_en_ctrl(int dev_index, int trx, int enable)
+{
+	return uarthub_core_config_uartip_dma_en_ctrl(dev_index, trx, enable);
+}
+EXPORT_SYMBOL(UARTHUB_config_uartip_dma_en_ctrl);
+
+int UARTHUB_reset_fifo_trx(void)
+{
+	return uarthub_core_reset_fifo_trx();
+}
+EXPORT_SYMBOL(UARTHUB_reset_fifo_trx);
+
+int UARTHUB_config_inband_esc_char(int esc_char)
+{
+	return uarthub_core_config_inband_esc_char(esc_char);
+}
+EXPORT_SYMBOL(UARTHUB_config_inband_esc_char);
+
+int UARTHUB_config_inband_esc_sta(int esc_sta)
+{
+	return uarthub_core_config_inband_esc_sta(esc_sta);
+}
+EXPORT_SYMBOL(UARTHUB_config_inband_esc_sta);
+
+int UARTHUB_config_inband_enable_ctrl(int enable)
+{
+	return uarthub_core_config_inband_enable_ctrl(enable);
+}
+EXPORT_SYMBOL(UARTHUB_config_inband_enable_ctrl);
+
+int UARTHUB_config_inband_irq_enable_ctrl(int enable)
+{
+	return uarthub_core_config_inband_irq_enable_ctrl(enable);
+}
+EXPORT_SYMBOL(UARTHUB_config_inband_irq_enable_ctrl);
+
+int UARTHUB_config_inband_trigger(void)
+{
+	return uarthub_core_config_inband_trigger();
+}
+EXPORT_SYMBOL(UARTHUB_config_inband_trigger);
+
+int UARTHUB_is_inband_tx_complete(void)
+{
+	return uarthub_core_is_inband_tx_complete();
+}
+EXPORT_SYMBOL(UARTHUB_is_inband_tx_complete);
+
+int UARTHUB_get_inband_irq_sta(void)
+{
+	return uarthub_core_get_inband_irq_sta();
+}
+EXPORT_SYMBOL(UARTHUB_get_inband_irq_sta);
+
+int UARTHUB_clear_inband_irq(void)
+{
+	return uarthub_core_clear_inband_irq();
+}
+EXPORT_SYMBOL(UARTHUB_clear_inband_irq);
+
+int UARTHUB_get_received_inband_sta(void)
+{
+	return uarthub_core_get_received_inband_sta();
+}
+EXPORT_SYMBOL(UARTHUB_get_received_inband_sta);
+
+int UARTHUB_clear_received_inband_sta(void)
+{
+	return uarthub_core_clear_received_inband_sta();
+}
+EXPORT_SYMBOL(UARTHUB_clear_received_inband_sta);
+
+int UARTHUB_uartip_write_data_to_tx_buf(int dev_index, int tx_data)
+{
+	return uarthub_core_uartip_write_data_to_tx_buf(dev_index, tx_data);
+}
+EXPORT_SYMBOL(UARTHUB_uartip_write_data_to_tx_buf);
+
+int UARTHUB_uartip_read_data_from_rx_buf(int dev_index)
+{
+	return uarthub_core_uartip_read_data_from_rx_buf(dev_index);
+}
+EXPORT_SYMBOL(UARTHUB_uartip_read_data_from_rx_buf);
+
+int UARTHUB_is_uartip_tx_buf_empty_for_writing(int dev_index)
+{
+	return uarthub_core_is_uartip_tx_buf_empty_for_write(dev_index);
+}
+EXPORT_SYMBOL(UARTHUB_is_uartip_tx_buf_empty_for_writing);
+
+int UARTHUB_is_uartip_rx_buf_ready_for_reading(int dev_index)
+{
+	return uarthub_core_is_uartip_rx_buf_ready_for_read(dev_index);
+}
+EXPORT_SYMBOL(UARTHUB_is_uartip_rx_buf_ready_for_reading);
+
+int UARTHUB_is_uartip_throw_xoff(int dev_index)
+{
+	return uarthub_core_is_uartip_throw_xoff(dev_index);
+}
+EXPORT_SYMBOL(UARTHUB_is_uartip_throw_xoff);
+
+int UARTHUB_config_uartip_rx_fifo_trig_threshold(int dev_index, int size)
+{
+	return uarthub_core_config_uartip_rx_fifo_trig_thr(dev_index, size);
+}
+EXPORT_SYMBOL(UARTHUB_config_uartip_rx_fifo_trig_threshold);
+
+int UARTHUB_ut_ip_verify_pkt_hdr_fmt(void)
+{
+	return uarthub_core_ut_ip_verify_pkt_hdr_fmt();
+}
+EXPORT_SYMBOL(UARTHUB_ut_ip_verify_pkt_hdr_fmt);
+
+int UARTHUB_ut_ip_verify_trx_not_ready(void)
+{
+	return uarthub_core_ut_ip_verify_trx_not_ready();
+}
+EXPORT_SYMBOL(UARTHUB_ut_ip_verify_trx_not_ready);
 
 MODULE_LICENSE("GPL");
