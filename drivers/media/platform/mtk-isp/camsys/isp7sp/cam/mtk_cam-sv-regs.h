@@ -18,6 +18,26 @@
 #define REG_CAMSV_M2_CQI_ORIRDMA_CON3			0x05AC
 #define REG_CAMSV_M2_CQI_ORIRDMA_CON4			0x05A0
 
+#define LARB14_SMI_LARB			0x1a002000
+#define LARB13_SMI_LARB			0x1a001000
+#define LARB29_SMI_LARB			0x1a004000
+
+/* smi larb */
+#define REG_SMI_LARB_NON_SEC_CON				0x380
+union SMI_LARB_NON_SEC_CON {
+	struct {
+		unsigned int MMU_EN			                :  1;
+		unsigned int CMD_GP_EN						:  1;
+		unsigned int rsv_1							:  1;
+		unsigned int BW_THRT_EN						:  1;
+		unsigned int rsv_2							:  4;
+		unsigned int BANK_SEL						:  8;
+		unsigned int PATH_SEL						:  4;
+		unsigned int rsv_3							:  12;
+	} Bits;
+	unsigned int Raw;
+};
+
 #define REG_CAMSVCQ_CQ_SUB_THR0_CTL				0x0140
 union CAMSVCQ_CQ_SUB_THR0_CTL {
 	struct {

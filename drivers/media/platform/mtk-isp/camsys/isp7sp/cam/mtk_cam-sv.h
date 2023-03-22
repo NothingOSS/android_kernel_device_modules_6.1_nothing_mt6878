@@ -154,6 +154,7 @@ struct mtk_camsv_device {
 	void __iomem *base_dma_inner;
 	void __iomem *base_scq;
 	void __iomem *base_scq_inner;
+	void __iomem *smi_larb;
 	unsigned int num_clks;
 	struct clk **clks;
 	unsigned int cammux_id;
