@@ -133,6 +133,10 @@ struct mvpu_request {
 	uint64_t primem_dst_offset;
 	uint64_t primem_size;
 #endif
+	uint32_t sw_version;
+	uint64_t feature_control_mask;
+	uint32_t glsu_idx_mode_table;
+	uint32_t glsu_idx_mode_table_size;
 } __packed;
 
 #endif

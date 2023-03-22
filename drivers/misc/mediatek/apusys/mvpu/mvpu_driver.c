@@ -141,9 +141,7 @@ static int mvpu_validation(void *hnd)
 
 	cmdbuf = cmd_hnd->cmdbufs;
 
-	if ((cmdbuf[MVPU_CMD_INFO_IDX].size != sizeof(struct mvpu_request)) &&
-		(cmdbuf[MVPU_CMD_INFO_IDX].size != MVPU_CMD_LITE_SIZE_0) &&
-		(cmdbuf[MVPU_CMD_INFO_IDX].size != MVPU_CMD_LITE_SIZE_1)) {
+	if (cmdbuf[MVPU_CMD_INFO_IDX].size != sizeof(struct mvpu_request)) {
 		pr_info("[MVPU][Sec] [ERROR] get wrong cmdbuf size: 0x%x, should be 0x%lx\n",
 				cmdbuf[MVPU_CMD_INFO_IDX].size,
 				sizeof(struct mvpu_request));
