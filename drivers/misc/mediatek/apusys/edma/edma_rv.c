@@ -13,8 +13,8 @@
 #include <linux/dev_printk.h>
 
 #define inf_printf(fmt, args...)	pr_info("[edma][inf] " fmt, ##args)
-#define dbg_printf(fmt, args...)	pr_info("[edma][dbg] " fmt, ##args)
-#define err_printf(fmt, args...)	pr_info("[edma][err] " fmt, ##args)
+#define dbg_printf(fmt, args...)	pr_info("[edma][dbg][%s] " fmt, __func__, ##args)
+#define err_printf(fmt, args...)	pr_info("[edma][err][%s] " fmt, __func__, ##args)
 
 enum {
 	EDMA_IPI_NONE = 0,
@@ -59,9 +59,22 @@ static int edma_ipi_send(int type, u32 val)
 
 	mutex_lock(&edma_ipi_mtx);
 
+	/* power on */
+	ret = rpmsg_sendto(edma_rpm_dev.ept, NULL, 1, 0);
+	if (ret && ret != -EOPNOTSUPP) {
+		err_printf("rpmsg_sendto(power on) fail: %d\n", ret);
+		goto exit;
+	}
+
 	ret = rpmsg_send(edma_rpm_dev.ept, &ipi_data, sizeof(ipi_data));
 	if (ret) {
+		int res;
+
 		err_printf("rpmsg_send fail: %d\n", ret);
+		/* power off */
+		res = rpmsg_sendto(edma_rpm_dev.ept, NULL, 0, 1);
+		if (res && res != -EOPNOTSUPP)
+			err_printf("rpmsg_sendto(power off) fail: %d\n", res);
 		goto exit;
 	}
 
@@ -82,6 +95,13 @@ exit:
 static int edma_rpmsg_cb(struct rpmsg_device *rpdev, void *data,
 		int len, void *priv, u32 src)
 {
+	int ret;
+
+	/* power off */
+	ret = rpmsg_sendto(edma_rpm_dev.ept, NULL, 0, 1);
+	if (ret && ret != -EOPNOTSUPP)
+		err_printf("rpmsg_sendto(power off) fail: %d\n", ret);
+
 	complete(&edma_rpm_dev.ack);
 
 	return 0;
