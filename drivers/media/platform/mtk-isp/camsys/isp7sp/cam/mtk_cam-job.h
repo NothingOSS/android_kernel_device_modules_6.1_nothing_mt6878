@@ -303,6 +303,7 @@ struct mtk_cam_job {
 	int scq_period;
 	u64 (*timestamp_buf)[128];
 	struct mmqos_bw raw_mmqos[SMI_PORT_RAW_NUM];
+	struct mmqos_bw raw_w_mmqos[SMI_PORT_RAW_NUM];
 	struct mmqos_bw yuv_mmqos[SMI_PORT_YUV_NUM];
 	struct mmqos_bw sv_mmqos[SMI_PORT_SV_NUM];
 	struct mmqos_bw mraw_mmqos[MAX_MRAW_PIPES_PER_STREAM][SMI_PORT_MRAW_NUM];

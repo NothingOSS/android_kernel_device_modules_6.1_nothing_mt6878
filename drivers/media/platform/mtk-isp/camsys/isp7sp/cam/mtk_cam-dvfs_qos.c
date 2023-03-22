@@ -379,12 +379,23 @@ static int fill_raw_out_qos(struct mtk_cam_job *job,
 				0 : calc_bw(size, linet, active_h);
 
 		dst_port = qos_desc->dma_desc[i].dst_port;
-		if (qos_desc->dma_desc[i].domain == RAW_DOMAIN) {
+		switch (qos_desc->dma_desc[i].domain) {
+		case RAW_DOMAIN:
 			job->raw_mmqos[dst_port].peak_bw += to_qos_icc(peak_bw);
 			job->raw_mmqos[dst_port].avg_bw += to_qos_icc_ratio(avg_bw);
-		} else {
+		break;
+		case RAW_W_DOMAIN:
+			job->raw_w_mmqos[dst_port].peak_bw += to_qos_icc(peak_bw);
+			job->raw_w_mmqos[dst_port].avg_bw += to_qos_icc_ratio(avg_bw);
+		break;
+		case YUV_DOMAIN:
 			job->yuv_mmqos[dst_port].peak_bw += to_qos_icc(peak_bw);
 			job->yuv_mmqos[dst_port].avg_bw += to_qos_icc_ratio(avg_bw);
+		break;
+		default:
+			pr_info("%s: unsupport domain(%d)\n", __func__,
+				qos_desc->dma_desc[i].domain);
+		break;
 		}
 
 		if (CAM_DEBUG_ENABLED(MMQOS))
@@ -432,8 +443,20 @@ static int fill_raw_in_qos(struct mtk_cam_job *job,
 		peak_bw = is_dc_mode(job) ? 0 : calc_bw(size, linet, sensor_h);
 
 		dst_port = qos_desc->dma_desc[i].dst_port;
-		job->raw_mmqos[dst_port].peak_bw += to_qos_icc(peak_bw);
-		job->raw_mmqos[dst_port].avg_bw += to_qos_icc_ratio(avg_bw);
+		switch (qos_desc->dma_desc[i].domain) {
+		case RAW_DOMAIN:
+			job->raw_mmqos[dst_port].peak_bw += to_qos_icc(peak_bw);
+			job->raw_mmqos[dst_port].avg_bw += to_qos_icc_ratio(avg_bw);
+		break;
+		case RAW_W_DOMAIN:
+			job->raw_w_mmqos[dst_port].peak_bw += to_qos_icc(peak_bw);
+			job->raw_w_mmqos[dst_port].avg_bw += to_qos_icc_ratio(avg_bw);
+		break;
+		default:
+			pr_info("%s: unsupport domain(%d)\n", __func__,
+				qos_desc->dma_desc[i].domain);
+		break;
+		}
 
 		if (CAM_DEBUG_ENABLED(MMQOS))
 			pr_info("%s: %s: req_seq(%d) dst_port:%d uid:%d avg_bw:%dB/s, peak_bw:%dB/s (size:%d height:%d vb:%d)\n",
@@ -473,12 +496,19 @@ static int fill_raw_stats_qos(struct mtk_cam_job *job,
 			peak_bw = is_dc_mode(job) ? 0 : avg_bw;
 
 			dst_port = qos_desc->dma_desc[j].dst_port;
-			if (qos_desc->dma_desc[j].domain == RAW_DOMAIN) {
+			switch (qos_desc->dma_desc[j].domain) {
+			case RAW_DOMAIN:
 				job->raw_mmqos[dst_port].peak_bw += to_qos_icc(peak_bw);
 				job->raw_mmqos[dst_port].avg_bw += to_qos_icc_ratio(avg_bw);
-			} else {
+			break;
+			case YUV_DOMAIN:
 				job->yuv_mmqos[dst_port].peak_bw += to_qos_icc(peak_bw);
 				job->yuv_mmqos[dst_port].avg_bw += to_qos_icc_ratio(avg_bw);
+			break;
+			default:
+				pr_info("%s: unsupport domain(%d)\n", __func__,
+					qos_desc->dma_desc[j].domain);
+			break;
 			}
 
 			if (CAM_DEBUG_ENABLED(MMQOS))
@@ -664,6 +694,7 @@ void mtk_cam_fill_qos(struct req_buffer_helper *helper)
 	int i;
 
 	memset(job->raw_mmqos, 0, sizeof(job->raw_mmqos));
+	memset(job->raw_w_mmqos, 0, sizeof(job->raw_mmqos));
 	memset(job->yuv_mmqos, 0, sizeof(job->yuv_mmqos));
 	memset(job->sv_mmqos, 0, sizeof(job->sv_mmqos));
 	memset(job->mraw_mmqos, 0, sizeof(job->mraw_mmqos));
@@ -732,10 +763,10 @@ int mtk_cam_apply_qos(struct mtk_cam_job *job)
 	int raw_num = eng->num_raw_devices;
 	unsigned long submask;
 	u32 a_bw, p_bw, used_raw_num;
-	bool apply;
+	bool apply, is_w_plane;
 	int i, j, port_num;
 
-	used_raw_num = get_used_raw_num(job);
+	used_raw_num = is_rgbw(job) ? 1 : get_used_raw_num(job);
 	if (WARN_ON(used_raw_num == 0)) {
 		pr_info("%s: req_seq(%d) wrong used raw number\n",
 				__func__, job->req_seq);
@@ -748,9 +779,14 @@ int mtk_cam_apply_qos(struct mtk_cam_job *job)
 			continue;
 
 		raw_dev = dev_get_drvdata(eng->raw_devs[i]);
+		is_w_plane = (is_rgbw(job) && raw_dev->is_slave) ? true : false;
 		for (j = 0; j < SMI_PORT_RAW_NUM; j++) {
-			a_bw = job->raw_mmqos[j].avg_bw / used_raw_num;
-			p_bw = job->raw_mmqos[j].peak_bw / used_raw_num;
+			a_bw = is_w_plane ?
+				(job->raw_w_mmqos[j].avg_bw / used_raw_num) :
+				(job->raw_mmqos[j].avg_bw / used_raw_num);
+			p_bw = is_w_plane ?
+				(job->raw_w_mmqos[j].peak_bw / used_raw_num) :
+				(job->raw_mmqos[j].peak_bw / used_raw_num);
 			apply = apply_qos_chk(a_bw, p_bw,
 					&raw_dev->qos.cam_path[j].applied_bw,
 					&raw_dev->qos.cam_path[j].pending_bw);
@@ -765,6 +801,9 @@ int mtk_cam_apply_qos(struct mtk_cam_job *job)
 						raw_dev->qos.cam_path[j].applied_bw,
 						raw_dev->qos.cam_path[j].pending_bw);
 		}
+
+		if (is_w_plane)
+			continue;
 
 		yuv_dev = dev_get_drvdata(eng->yuv_devs[i]);
 		for (j = 0; j < SMI_PORT_YUV_NUM; j++) {

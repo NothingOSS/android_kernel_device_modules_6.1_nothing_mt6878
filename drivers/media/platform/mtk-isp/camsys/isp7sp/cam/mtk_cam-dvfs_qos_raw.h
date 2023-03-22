@@ -41,6 +41,7 @@ enum SMI_YUV_MERGE_PORT_ID {
 
 enum PORT_DOMAIN {
 	RAW_DOMAIN,
+	RAW_W_DOMAIN,
 	YUV_DOMAIN
 };
 
@@ -321,7 +322,39 @@ static struct qos_dma_desc drzb2no_1_dmas[] = {
 	},
 };
 
-#define MTKCAM_IPI_RAW_NUM 17
+static struct qos_dma_desc imgo_w_dmas[] = {
+	{
+		.dma_name = "imgo_r1_w",
+		.domain = RAW_W_DOMAIN,
+		.dst_port = SMI_PORT_IMGO_R1,
+	},
+};
+
+static struct qos_dma_desc rawi_r2_w_dmas[] = {
+	{
+		.dma_name = "rawi_r2_w",
+		.domain = RAW_W_DOMAIN,
+		.dst_port = SMI_PORT_RAWI_R2,
+	},
+};
+
+static struct qos_dma_desc rawi_r3_w_dmas[] = {
+	{
+		.dma_name = "rawi_r3_w",
+		.domain = RAW_W_DOMAIN,
+		.dst_port = SMI_PORT_RAWI_R3,
+	},
+};
+
+static struct qos_dma_desc rawi_r5_w_dmas[] = {
+	{
+		.dma_name = "rawi_r5_w",
+		.domain = RAW_W_DOMAIN,
+		.dst_port = SMI_PORT_RAWI_R5,
+	},
+};
+
+#define MTKCAM_IPI_RAW_NUM 21
 static struct mtkcam_qos_desc mmqos_img_table[MTKCAM_IPI_RAW_NUM] = {
 	{
 		.id = MTKCAM_IPI_RAW_RAWI_2,
@@ -404,6 +437,26 @@ static struct mtkcam_qos_desc mmqos_img_table[MTKCAM_IPI_RAW_NUM] = {
 	{
 		.id = MTKCAM_IPI_RAW_IPUO,
 		.desc_size = 0,
+	},
+	{
+		.id = MTKCAM_IPI_RAW_IMGO_W,
+		.dma_desc = imgo_w_dmas,
+		.desc_size = ARRAY_SIZE(imgo_w_dmas),
+	},
+	{
+		.id = MTKCAM_IPI_RAW_RAWI_2_W,
+		.dma_desc = rawi_r2_w_dmas,
+		.desc_size = ARRAY_SIZE(rawi_r2_w_dmas),
+	},
+	{
+		.id = MTKCAM_IPI_RAW_RAWI_3_W,
+		.dma_desc = rawi_r3_w_dmas,
+		.desc_size = ARRAY_SIZE(rawi_r3_w_dmas),
+	},
+	{
+		.id = MTKCAM_IPI_RAW_RAWI_5_W,
+		.dma_desc = rawi_r5_w_dmas,
+		.desc_size = ARRAY_SIZE(rawi_r5_w_dmas),
 	},
 };
 
