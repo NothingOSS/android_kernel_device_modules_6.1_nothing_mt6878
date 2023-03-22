@@ -280,6 +280,7 @@ static void __exit mtk_smmu_secure_exit(void)
 #else  /* CONFIG_MTK_IOMMU_DEBUG */
 static int __init mtk_smmu_secure_init(void)
 {
+	return 0;
 }
 
 static void __exit mtk_smmu_secure_exit(void)
