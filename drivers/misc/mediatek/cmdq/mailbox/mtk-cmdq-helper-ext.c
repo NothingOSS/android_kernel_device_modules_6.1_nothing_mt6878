@@ -219,7 +219,7 @@ EXPORT_SYMBOL(cmdq_dump_buffer_size_seq);
 
 void cmdq_set_buffer_size(struct cmdq_client *cl, bool b)
 {
-	u32 hwid, thd;
+	s32 hwid, thd;
 
 	if (!cmdq_dump_buf_size)
 		return;
@@ -229,9 +229,12 @@ void cmdq_set_buffer_size(struct cmdq_client *cl, bool b)
 		return;
 	}
 
-	hwid = cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(cl->chan));
-	thd = cmdq_mbox_chan_id(cl->chan);
-
+	hwid = (s32)cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(cl->chan));
+	thd = (s32)cmdq_mbox_chan_id(cl->chan);
+	if (hwid < 0 || thd < 0) {
+		cmdq_err("hwid:%d thd:%d", hwid, thd);
+		return;
+	}
 	mutex_lock(&buffer_size_mutex);
 	if (b) {
 		BUF_SIZE_THRD[hwid][thd]++;
