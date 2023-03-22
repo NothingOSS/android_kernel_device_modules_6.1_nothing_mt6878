@@ -321,7 +321,6 @@ static int mtk_cam_job_pack_init(struct mtk_cam_job *job,
 	job->timestamp = 0;
 	job->timestamp_mono = 0;
 	job->timestamp_buf = NULL;
-	job->update_sen_mstream_mode = false;
 	job->raw_switch = false;
 
 	return ret;
@@ -1102,7 +1101,40 @@ static int update_sensor_fmt(struct mtk_cam_job *job)
 	return 0;
 }
 
-static void mtk_cam_set_sensor_mstream_mode(struct mtk_cam_ctx *ctx, bool on);
+static void mtk_cam_set_sensor_mstream_mode(struct mtk_cam_ctx *ctx, bool on)
+{
+	struct v4l2_ctrl *mstream_mode_ctrl;
+
+	/* TODO(AY): cache v4l2_ctrl in ctx */
+	mstream_mode_ctrl = v4l2_ctrl_find(ctx->sensor->ctrl_handler,
+			V4L2_CID_MTK_MSTREAM_MODE);
+
+	if (!mstream_mode_ctrl) {
+		dev_info(ctx->cam->dev,
+			"%s: ctx(%d): no sensor mstream mode control found\n",
+			__func__, ctx->stream_id);
+		return;
+	}
+
+	if (on)
+		v4l2_ctrl_s_ctrl(mstream_mode_ctrl, 1);
+	else
+		v4l2_ctrl_s_ctrl(mstream_mode_ctrl, 0);
+
+	dev_info(ctx->cam->dev, "%s mstream mode:%d\n", __func__, on);
+}
+
+static bool check_update_mstream_mode(struct mtk_cam_job *job)
+{
+	if (job->job_scen.id == MTK_CAM_SCEN_MSTREAM) {
+		bool exp_switch =
+			job_exp_num(job) != job_prev_exp_num(job);
+
+		return ((job->frame_seq_no == 0) || exp_switch);
+	}
+
+	return false;
+}
 
 /* kthread context */
 static int
@@ -1120,7 +1152,7 @@ _apply_sensor(struct mtk_cam_job *job)
 
 	frame_sync_start(job);
 
-	if (job->update_sen_mstream_mode)
+	if (check_update_mstream_mode(job))
 		mtk_cam_set_sensor_mstream_mode(ctx, 0);
 
 	update_sensor_fmt(job);
@@ -1823,18 +1855,6 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 	return ret;
 }
 
-static bool check_update_mstream_mode(struct mtk_cam_job *job)
-{
-	if (job->job_scen.id == MTK_CAM_SCEN_MSTREAM) {
-		bool exp_switch =
-			job_exp_num(job) != job_prev_exp_num(job);
-
-		return ((job->frame_seq_no == 0) || exp_switch);
-	}
-
-	return false;
-}
-
 static int job_init_mstream(struct mtk_cam_job *job)
 {
 	struct mtk_cam_mstream_job *mjob =
@@ -1983,7 +2003,6 @@ _job_pack_mstream(struct mtk_cam_job *job,
 	struct mtk_cam_device *cam = ctx->cam;
 	int ret;
 
-	job->update_sen_mstream_mode = check_update_mstream_mode(job);
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
 
 	dev_info(cam->dev, "[%s] ctx/seq:%d/0x%x, type:%d",
@@ -2125,7 +2144,6 @@ _job_pack_normal(struct mtk_cam_job *job,
 	struct mtk_raw_ctrl_data *ctrl_data = get_raw_ctrl_data(job);
 	int ret;
 
-	job->update_sen_mstream_mode = check_update_mstream_mode(job);
 	job->seamless_switch = (ctrl_data) ?
 		ctrl_data->rc_data.sensor_mode_update : false;
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
@@ -2681,29 +2699,6 @@ static void compose_done_mstream(struct mtk_cam_job *job,
 		normal_dump_if_enable(job);
 }
 
-static void mtk_cam_set_sensor_mstream_mode(struct mtk_cam_ctx *ctx, bool on)
-{
-	struct v4l2_ctrl *mstream_mode_ctrl;
-
-	/* TODO(AY): cache v4l2_ctrl in ctx */
-	mstream_mode_ctrl = v4l2_ctrl_find(ctx->sensor->ctrl_handler,
-			V4L2_CID_MTK_MSTREAM_MODE);
-
-	if (!mstream_mode_ctrl) {
-		dev_info(ctx->cam->dev,
-			"%s: ctx(%d): no sensor mstream mode control found\n",
-			__func__, ctx->stream_id);
-		return;
-	}
-
-	if (on)
-		v4l2_ctrl_s_ctrl(mstream_mode_ctrl, 1);
-	else
-		v4l2_ctrl_s_ctrl(mstream_mode_ctrl, 0);
-
-	dev_info(ctx->cam->dev, "%s mstream mode:%d\n", __func__, on);
-}
-
 static int apply_sensor_mstream_exp_gain(struct mtk_cam_ctx *ctx,
 					 struct mtk_cam_mstream_job *mjob,
 					 u8 index)
@@ -2767,7 +2762,7 @@ static int apply_sensor_mstream(struct mtk_cam_job *job)
 
 	frame_sync_start(job);
 
-	if (job->update_sen_mstream_mode)
+	if (check_update_mstream_mode(job) && (cur_idx == 0))
 		mtk_cam_set_sensor_mstream_mode(ctx, 1);
 
 	apply_sensor_mstream_exp_gain(ctx, mjob, cur_idx);
