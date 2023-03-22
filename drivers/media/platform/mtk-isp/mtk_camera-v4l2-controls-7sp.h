@@ -24,7 +24,7 @@
 #define V4L2_CID_MTK_CAM_SYNC_ID (V4L2_CID_USER_MTK_CAM_BASE + 13)
 #define V4L2_CID_MTK_CAM_RAW_PATH_SELECT (V4L2_CID_USER_MTK_CAM_BASE + 14)
 #define V4L2_CID_MTK_CAM_HSF_EN (V4L2_CID_USER_MTK_CAM_BASE + 15)
-#define V4L2_CID_MTK_CAM_PDE_INFO (V4L2_CID_USER_MTK_CAM_BASE + 16)
+
 #define V4L2_CID_MTK_CAM_MSTREAM_EXPOSURE (V4L2_CID_USER_MTK_CAM_BASE + 17)
 #define V4L2_CID_MTK_CAM_RAW_RESOURCE_CALC (V4L2_CID_USER_MTK_CAM_BASE + 18)
 #define V4L2_CID_MTK_CAM_TG_FLASH_CFG (V4L2_CID_USER_MTK_CAM_BASE + 19)
@@ -35,39 +35,6 @@
 #define V4L2_CID_MTK_CAM_CAMSYS_HDR_TIMESTAMP (V4L2_CID_USER_MTK_CAM_BASE + 25)
 #define V4L2_CID_MTK_CAM_APU_INFO (V4L2_CID_USER_MTK_CAM_BASE + 26)
 #define V4L2_CID_MTK_CAM_CAMSYS_VF_RESET (V4L2_CID_USER_MTK_CAM_BASE + 27)
-#define V4L2_CID_MTK_CAM_CAMSYS_DYNAMIC_METADATA (V4L2_CID_USER_MTK_CAM_BASE + 28)
-/**
- * struct mtk_cam_dynamic_metadata_params
- * @cfg_pixelformat: pixelformat for metadata config.
- *    e.g., V4L2_META_FMT_MTISP_PARAMS_RGBW
- * @sensor_width/height
- * @bin_type: ref. enum mtk_cam_bin
- * @raw_num: number of raw used
- * @cac_support: to support cac or not
- * @pdi_tbl_size: pdi table size in bytes
- * @aao_blk_num: e.g., 128x128
- * @afo_blk_num: e.g., 128x128
- *
- * @min_(meta_cfg/meta0/meta1)_size
- */
-struct mtk_cam_dynamic_metadata_params {
-	__u32 cfg_dataformat;
-	__u32 sensor_width;
-	__u32 sensor_height;
-	__u8 bin;
-	__u8 raw_num;
-	__u8 cac_support;
-	__u32 pdi_tbl_size;
-	__u32 aao_blk_num;
-	__u32 afo_blk_num;
-
-	__u32 min_meta_cfg_size;
-	__u32 min_meta0_size;
-	__u32 min_meta1_size;
-
-	__u32 caci_size;
-	__u32 pdi_size;
-};
 
 #define V4L2_CID_MTK_CAM_RAW_RESOURCE_CALC_TEST (V4L2_CID_USER_MTK_CAM_BASE + 47)
 
@@ -264,12 +231,6 @@ struct mtk_cam_hdr_timestamp_info {
 	__u64 se_mono;
 };
 
-enum mtk_cam_ctrl_type {
-	CAM_SET_CTRL = 0,
-	CAM_TRY_CTRL,
-	CAM_CTRL_NUM,
-};
-
 struct mtk_cam_internal_buf {
 	__s32 fd;
 	__u32 length;
@@ -304,14 +265,6 @@ struct mtk_cam_apu_info {
 	__u8 sysram_en;
 	__u8 opp_index;
 	__u32 block_y_size;
-};
-
-struct mtk_cam_pde_info {
-	__u32 pdo_max_size;
-	__u32 pdi_max_size;
-	__u32 pd_table_offset;
-	__u32 meta_cfg_size;
-	__u32 meta_0_size;
 };
 
 #endif /* __MTK_CAMERA_V4l2_CONTROLS_7SP_H */
