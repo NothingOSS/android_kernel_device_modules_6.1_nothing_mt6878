@@ -33,7 +33,7 @@ static struct dma_buf *mtk_cam_buffer_alloc_from_heap(const char *heap_name,
 	dma_heap = dma_heap_find(heap_name);
 	if (!dma_heap) {
 		pr_info("failed to find dma heap: %s\n", heap_name);
-		return ERR_PTR(-ENOMEM);
+		return NULL;
 	}
 
 	dmabuf = dma_heap_buffer_alloc(dma_heap, size,
@@ -41,7 +41,7 @@ static struct dma_buf *mtk_cam_buffer_alloc_from_heap(const char *heap_name,
 				       DMA_HEAP_VALID_HEAP_FLAGS);
 	if (IS_ERR(dmabuf))  {
 		pr_info("dma_heap_buffer_alloc failed\n");
-		return ERR_PTR(-ENOMEM);
+		return NULL;
 	}
 
 	return dmabuf;
