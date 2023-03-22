@@ -91,7 +91,8 @@ struct mtk_cam_ctx {
 	int mraw_subdev_idx[MAX_MRAW_PIPES_PER_STREAM];
 	int num_mraw_subdevs;
 	/* stored raw data for switch exp case : prev : 1exp , next: 2exp */
-	struct mtk_raw_ctrl_data ctldata_stored;
+	bool ctrldata_stored;
+	struct mtk_raw_ctrl_data ctrldata;
 	/* job pool */
 	struct mtk_cam_job_data jobs[JOB_NUM_PER_STREAM];
 	struct mtk_cam_pool job_pool;

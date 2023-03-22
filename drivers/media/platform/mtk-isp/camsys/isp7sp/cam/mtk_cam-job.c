@@ -518,6 +518,10 @@ update_job_type_feature(struct mtk_cam_job *job)
 			return -1;
 
 		job->job_scen = ctrl->resource.user_data.raw_res.scen;
+		if (ctx->ctrldata_stored)
+			job->prev_scen = ctx->ctrldata.resource.user_data.raw_res.scen;
+		else
+			job->prev_scen = ctrl->resource.user_data.raw_res.scen;
 		job->job_type = map_job_type(&job->job_scen);
 		job->is_sv_pure_raw = update_sv_pure_raw(job);
 	} else
@@ -1655,13 +1659,10 @@ _job_pack_subsample(struct mtk_cam_job *job,
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_device *cam = ctx->cam;
-	struct mtk_cam_subsample_job *subsample_job =
-			(struct mtk_cam_subsample_job *)job;
 	int first_frame_only_cur = job->job_scen.scen.smvr.output_first_frame_only;
-	int first_frame_only_prev = subsample_job->prev_scen.scen.smvr.output_first_frame_only;
+	int first_frame_only_prev = job->prev_scen.scen.smvr.output_first_frame_only;
 	int ret, subsof_fps;
 
-	subsample_job->prev_scen = ctx->ctldata_stored.resource.user_data.raw_res.scen;
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
 	subsof_fps = get_sensor_fps(job) / job->sub_ratio;
 	job->scq_period = subsof_fps > 0 ? SCQ_DEADLINE_MS / (subsof_fps / 30) : SCQ_DEADLINE_MS;
@@ -1743,8 +1744,7 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_device *cam = ctx->cam;
-	struct mtk_cam_scen *prev_scen =
-		&job->src_ctx->ctldata_stored.resource.user_data.raw_res.scen;
+	struct mtk_cam_scen *prev_scen = &job->prev_scen;
 	int ret;
 
 	job->switch_type = get_exp_switch_type(job);
@@ -4041,13 +4041,11 @@ static int get_exp_switch_type(struct mtk_cam_job *job)
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	int res = EXPOSURE_CHANGE_NONE;
 	int cur, prev;
-	// TODO(Will): consider to store prev_scen in job
-	struct mtk_cam_scen *prev_scen =
-		&job->src_ctx->ctldata_stored.resource.user_data.raw_res.scen;
 
 	cur = job_exp_num(job);
+
 	if (ctx->not_first_job)
-		prev = prev_scen->scen.normal.exp_num;
+		prev = job_prev_exp_num(job);
 	else
 		prev = scen_max_exp_num(&job->job_scen);
 

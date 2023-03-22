@@ -606,7 +606,8 @@ static void mtk_cam_store_pipe_data_to_ctx(
 		return;
 
 	data = &req->raw_data[raw_pipe_idx];
-	ctx->ctldata_stored = data->ctrl;
+	ctx->ctrldata = data->ctrl;
+	ctx->ctrldata_stored = true;
 }
 
 static void mtk_cam_req_queue(struct media_request *req)

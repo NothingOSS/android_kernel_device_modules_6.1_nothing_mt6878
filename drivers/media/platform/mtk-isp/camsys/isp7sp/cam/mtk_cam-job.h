@@ -289,6 +289,7 @@ struct mtk_cam_job {
 	bool update_sen_mstream_mode;
 
 	struct mtk_cam_scen job_scen;		/* job 's scen by res control */
+	struct mtk_cam_scen prev_scen;
 	unsigned int sub_ratio;
 	int scq_period;
 	u64 (*timestamp_buf)[128];
@@ -372,11 +373,7 @@ struct mtk_cam_mstream_job {
 	int switch_type;
 #endif
 };
-struct mtk_cam_subsample_job {
-	struct mtk_cam_job job; /* always on top */
-	struct mtk_cam_scen prev_scen;
-	/* TODO */
-};
+
 struct mtk_cam_timeshare_job {
 	struct mtk_cam_job job; /* always on top */
 
@@ -395,7 +392,6 @@ struct mtk_cam_job_data {
 	union {
 		struct mtk_cam_job job;
 		struct mtk_cam_mstream_job m;
-		struct mtk_cam_subsample_job ss;
 		struct mtk_cam_timeshare_job t;
 	};
 };

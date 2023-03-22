@@ -300,53 +300,11 @@ static int scen_exp_num(struct mtk_cam_scen *scen)
 	return exp;
 }
 
-static int get_stagger_job_prev_exp(struct mtk_cam_job *job)
-{
-	struct mtk_cam_scen *scen = &job->job_scen;
-	int exp_num_cur = scen->scen.normal.exp_num;
-	int exp_num_prev = exp_num_cur;
-
-	// NOTE: job->switch_type is updated during job_pack
-	// calling this function in different timing may
-	// result unexpectly
-	// TODO: remove get_stagger_job_prev_exp
-	switch (job->switch_type) {
-	case EXPOSURE_CHANGE_3_to_2:
-	case EXPOSURE_CHANGE_3_to_1:
-		exp_num_prev = 3;
-		break;
-	case EXPOSURE_CHANGE_2_to_1:
-	case EXPOSURE_CHANGE_2_to_3:
-		exp_num_prev = 2;
-		break;
-	case EXPOSURE_CHANGE_1_to_2:
-	case EXPOSURE_CHANGE_1_to_3:
-		exp_num_prev = 1;
-		break;
-	case EXPOSURE_CHANGE_NONE:
-	default:
-		break;
-	}
-	//pr_info("[%s] prev:%d-exp -> cur:%d-exp\n",
-	//	__func__, job->feature->exp_num_prev, job->feature->exp_num_cur);
-
-	return exp_num_prev;
-}
-
 int job_prev_exp_num(struct mtk_cam_job *job)
 {
-	int exp = 1;
-	struct mtk_cam_scen *scen =
-		&job->src_ctx->ctldata_stored.resource.user_data.raw_res.scen;
+	struct mtk_cam_scen *scen = &job->prev_scen;
 
-	// TODO: can be replaced with scen_exp_num(prev_scen)?
-	// and remove get_stagger_job_prev_exp
-	if (job->job_type == JOB_TYPE_STAGGER)
-		exp = get_stagger_job_prev_exp(job);
-	else
-		exp = scen_exp_num(scen);
-
-	return exp;
+	return scen_exp_num(scen);
 }
 
 int job_exp_num(struct mtk_cam_job *job)
