@@ -31,6 +31,28 @@ struct geofence_area {
 	int32_t monitor_transitions;
 	int32_t notification_responsiveness_ms;
 	int32_t unknown_timer_ms;
+	int32_t status;
+};
+
+struct elapsedrealtime {
+	/**
+	 * A set of flags indicating the validity of each field in this data structure.
+	 *
+	 * Fields may have invalid information in them, if not marked as valid by the
+	 * corresponding bit in flags.
+	 */
+	uint16_t flags;
+
+	/**
+	 * Estimate of the elapsed time since boot value for the corresponding event in nanoseconds.
+	 */
+	uint64_t timestampNs;
+
+	/**
+	 * Estimate of the relative precision of the alignment of this SystemClock
+	 * timestamp, with the reported measurements in nanoseconds (68% confidence).
+	 */
+	uint64_t timeUncertaintyNs;
 };
 
 struct geo_gnss_location {
@@ -47,12 +69,32 @@ struct geo_gnss_location {
 	int64_t timestamp;
 	uint32_t fix_type;
 	int64_t utc_time;
+	struct elapsedrealtime elapsed_realtime;
+};
+
+struct geofence_nlp_context {
+	struct geo_gnss_location location;
+	int64_t systime_ms;
 };
 
 struct scp2hal_geofence_ack {
 	int32_t geofence_id;
 	int32_t result;
 };
+
+struct scp2hal_geofence_add_area_ack {
+	int32_t geofence_id;
+	double latitude;
+	double longitude;
+	double radius_meters;
+	int32_t last_transition;
+	int32_t monitor_transitions;
+	int32_t noitification_responsiveness_ms;
+	int32_t unknown_timer_ms;
+	int32_t status; //pause:0, working:1
+	int32_t result;
+};
+
 
 struct scp2hal_geofence_transition {
 	int32_t geofence_id;
@@ -64,6 +106,11 @@ struct scp2hal_geofence_transition {
 struct scp2hal_geofence_status {
 	int32_t status;
 	struct geo_gnss_location last_location;
+};
+
+struct scp2hal_geofence_nlp_req {
+	bool independentFromGnss;
+	bool isUserEmergency;
 };
 
 struct geofence_resume_option {
@@ -81,6 +128,7 @@ enum conn_geofence_hal2scp_msg_id {
 	GEOFENCE_HAL2SCP_REMOVE_AREA,
 	GEOFENCE_HAL2SCP_PAUSE,
 	GEOFENCE_HAL2SCP_RESUME,
+	GEOFENCE_HAL2SCP_NLP_LOC,
 };
 
 enum conn_geofence_scp2hal_msg_id {
@@ -92,6 +140,7 @@ enum conn_geofence_scp2hal_msg_id {
 	GEOFENCE_SCP2HAL_PAUSE_ACK,
 	GEOFENCE_SCP2HAL_RESUME_ACK,
 	GEOFENCE_SCP2HAL_RESTART,
+	GEOFENCE_SCP2HAL_NLP_REQ,
 };
 
 
