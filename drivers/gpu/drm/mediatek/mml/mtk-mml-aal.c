@@ -1855,6 +1855,7 @@ static void aal_readback_work(struct work_struct *work_item)
 		mutex_unlock(&aal->irq_wq_lock);
 		return;
 	}
+	atomic_dec_if_positive(&aal->hist_read_cnt);
 	mutex_unlock(&aal->irq_wq_lock);
 
 	aal_hist_read(aal);
@@ -1868,7 +1869,6 @@ static void aal_readback_work(struct work_struct *work_item)
 
 	mutex_lock(&aal->irq_wq_lock);
 	atomic_dec_if_positive(&aal->hist_read);
-	atomic_dec_if_positive(&aal->hist_read_cnt);
 	mutex_unlock(&aal->irq_wq_lock);
 
 	if (aal->data->rb_mode == RB_EOF_MODE) {
