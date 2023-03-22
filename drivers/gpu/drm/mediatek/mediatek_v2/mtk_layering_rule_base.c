@@ -1660,6 +1660,7 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 {
 	int bpp, weight;
 	struct mtk_drm_private *priv = dev->dev_private;
+	static bool aee_trigger = true;
 
 	if (layer_info)
 		bpp = mtk_get_format_bpp(layer_info->src_fmt);
@@ -1771,10 +1772,14 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 
 				/* Due to the problem of calculation accuracy use 1024 */
 				if (peak_ratio > 1000) {
-					print_bwm_table();
-					dump_disp_info(disp_info, DISP_DEBUG_LEVEL_CRITICAL);
-					DDPAEE("%s:%d gets ratio:%u > 1000\n",
-					__func__, __LINE__, peak_ratio);
+					if (aee_trigger) {
+						print_bwm_table();
+						dump_disp_info(disp_info,
+							DISP_DEBUG_LEVEL_CRITICAL);
+						DDPAEE("%s:%d gets ratio:%u > 1000\n",
+							__func__, __LINE__, peak_ratio);
+						aee_trigger = false;
+					}
 					weight *= 1000;
 					peak_ratio = 1000;
 				} else
@@ -1812,10 +1817,14 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 
 				/* Due to the problem of calculation accuracy use 1024 */
 				if (peak_ratio > 1000) {
-					print_bwm_table();
-					dump_disp_info(disp_info, DISP_DEBUG_LEVEL_CRITICAL);
-					DDPAEE("%s:%d gets ratio:%u > 1000\n",
-					__func__, __LINE__, peak_ratio);
+					if (aee_trigger) {
+						print_bwm_table();
+						dump_disp_info(disp_info,
+							DISP_DEBUG_LEVEL_CRITICAL);
+						DDPAEE("%s:%d gets ratio:%u > 1000\n",
+							__func__, __LINE__, peak_ratio);
+						aee_trigger = false;
+					}
 					weight *= 1000;
 					peak_ratio = 1000;
 				} else
