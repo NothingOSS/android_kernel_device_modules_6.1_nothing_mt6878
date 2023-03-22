@@ -163,6 +163,8 @@ void mtk_battery_send_to_user(struct mtk_battery *gm,
 	if (gm->mtk_battery_sk != NULL)
 		ret = netlink_unicast
 			(gm->mtk_battery_sk, skb, pid, MSG_DONTWAIT);
+	else
+		kfree_skb(skb);
 
 	if (ret < 0) {
 		bm_err("[%s]send failed ret=%d pid=%d\n", __func__, ret, pid);
@@ -1872,7 +1874,7 @@ static ssize_t uisoc_update_type_store(
 			__func__, buf);
 		ret = kstrtoul(buf, 10, &val);
 
-		if (val >= 0 && val <= 2) {
+		if (val <= 2) {
 			gm->fg_cust_data.uisoc_update_type = val;
 			wakeup_fg_algo_cmd(
 				gm,
@@ -2064,7 +2066,7 @@ static ssize_t FG_daemon_log_level_store(
 		bm_err("[FG_daemon_log_level] buf is %s\n", buf);
 		ret = kstrtoul(buf, 10, &val);
 
-		if (val < 10 && val >= 0) {
+		if (val < 10) {
 			gm->fg_cust_data.daemon_log_level = val;
 			wakeup_fg_algo_cmd(
 				gm,
@@ -4674,7 +4676,7 @@ static void bat_plugout_irq_handler(struct mtk_battery *gm)
 				__func__);
 			gm->disable_plug_int = 1;
 		} else
-			disable_gauge_irq(gm->gauge, BAT_PLUGOUT_IRQ);
+			enable_gauge_irq(gm->gauge, BAT_PLUGOUT_IRQ);
 	}
 
 	if (is_bat_exist == 0) {
@@ -5051,7 +5053,7 @@ static void irq_thread_handler(struct mtk_battery *gm)
 		/*bat_plug*/
 		case BAT_PLUG_FLAG:
 			bat_plugout_irq_handler(gm);
-		break;
+			break;
 		}
 		pending_flag = pending_flag >> irq_bit;
 	}
