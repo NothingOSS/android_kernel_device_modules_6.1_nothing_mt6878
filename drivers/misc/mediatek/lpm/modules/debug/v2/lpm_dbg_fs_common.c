@@ -8,8 +8,6 @@
 #include <linux/module.h>
 #include <linux/of_device.h>
 #include <linux/proc_fs.h>
-//#include <linux/spinlock.h>
-//#include <linux/syscore_ops.h>
 
 #include <lpm_dbg_common_v2.h>
 #include <lpm_module.h>
@@ -30,6 +28,23 @@
 		sz -= l; \
 	} while (0)
 
+static unsigned int mtk_suspend_debug_flag;
+
+int spm_common_dbg_dump(void)
+{
+	int ret = 0;
+
+	if (mtk_suspend_debug_flag & MTK_DUMP_GPIO) {
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_PINCTRL_MTK_PARIS)
+		gpio_dump_regs();
+#else
+		pr_info("[LPM] gpio dump not supported.\n");
+#endif
+	}
+
+	return ret;
+}
+
 static ssize_t suspend_state_read(char *ToUser, size_t sz, void *priv)
 {
 	char *p = ToUser;
@@ -42,6 +57,7 @@ static ssize_t suspend_state_read(char *ToUser, size_t sz, void *priv)
 	lpm_dbg_log("echo kernel_suspend 0/1 > %s\n", LPM_DGB_SUSP_NODE);
 	lpm_dbg_log("mtk_suspend disable/enable:\n");
 	lpm_dbg_log("echo mtk_suspend 0/1 > %s\n", LPM_DGB_SUSP_NODE);
+	lpm_dbg_log("echo gpio_dump 0/1 > %s\n", LPM_DGB_SUSP_NODE);
 
 	return p - ToUser;
 }
@@ -63,6 +79,11 @@ static ssize_t suspend_state_write(char *FromUser,
 				kernel_suspend_only = 1;
 		} else if (!strcmp(cmd, "mtk_suspend")) {
 			/* add debug if necessary*/
+		} else if (!strcmp(cmd, "gpio_dump")) {
+			if (param)
+				mtk_suspend_debug_flag |= MTK_DUMP_GPIO;
+			else
+				mtk_suspend_debug_flag &= ~(MTK_DUMP_GPIO);
 		}
 
 		return sz;
