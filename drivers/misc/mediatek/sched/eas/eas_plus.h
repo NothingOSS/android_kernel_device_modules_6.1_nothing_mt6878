@@ -54,6 +54,7 @@ DECLARE_PER_CPU(unsigned long, min_freq);
  * @cpu_cap:        Maximum CPU capacity for the perf domain.
  * @pd_cap:         Entire perf domain capacity. (pd->nr_cpus * cpu_cap).
  */
+#define MAX_NR_CPUS CONFIG_MAX_NR_CPUS
 struct energy_env {
 
 	unsigned long task_busy_time;     /* task util*/
@@ -61,14 +62,14 @@ struct energy_env {
 	unsigned long max_cap;            /* max cap of task */
 
 	unsigned int gear_idx;
-	unsigned long pds_busy_time[NR_CPUS];
-	unsigned long pds_max_util[NR_CPUS][2]; /* 0: dst_cpu=-1 1: with dst_cpu*/
-	unsigned long pds_cpu_cap[NR_CPUS];
-	unsigned long pds_cap[NR_CPUS];
+	unsigned long pds_busy_time[MAX_NR_CPUS];
+	unsigned long pds_max_util[MAX_NR_CPUS][2]; /* 0: dst_cpu=-1 1: with dst_cpu*/
+	unsigned long pds_cpu_cap[MAX_NR_CPUS];
+	unsigned long pds_cap[MAX_NR_CPUS];
 	unsigned long total_util;
 
 	/* temperature for each cpu*/
-	int cpu_temp[NR_CPUS];
+	int cpu_temp[MAX_NR_CPUS];
 
 	/* WL-based CPU+DSU ctrl */
 	unsigned int wl_support;
