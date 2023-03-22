@@ -298,12 +298,15 @@ static void md_ccif_dump_queue_history(unsigned char hif_id, unsigned int qno)
 
 static int ccif_debug_dump_data(unsigned int hif_id, int *buff, int length)
 {
-	int i;
+	int i, sram_size;
 	unsigned int *dest_buff = NULL;
 	struct md_ccif_ctrl *ccif_ctrl = ccci_ccif_ctrl;
-	int sram_size = ccif_ctrl->sram_size;
 
-	if (!buff || length < 0 || length > sram_size || ccif_ctrl == NULL)
+	if (!buff || length < 0 || ccif_ctrl == NULL)
+		return 0;
+
+	sram_size = ccif_ctrl->sram_size;
+	if (length > sram_size)
 		return 0;
 
 	dest_buff = (unsigned int *)buff;
