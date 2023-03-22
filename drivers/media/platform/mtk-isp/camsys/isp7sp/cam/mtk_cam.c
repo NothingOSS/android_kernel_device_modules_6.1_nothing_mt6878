@@ -1435,28 +1435,50 @@ static void mtk_cam_ctx_pipeline_stop(struct mtk_cam_ctx *ctx,
 		ctx->pipe_subdevs[i] = NULL;
 }
 
+static struct task_struct *
+mtk_cam_ctx_create_fifo_task(struct mtk_cam_ctx *ctx,
+			     const char *prefix,
+			     struct kthread_worker *worker)
+{
+	struct device *dev = ctx->cam->dev;
+	struct task_struct *task;
+
+	task = kthread_run(kthread_worker_fn, worker,
+			   "%s-%d", prefix, ctx->stream_id);
+
+	if (IS_ERR(task)) {
+		dev_info(dev, "%s: failed. could not create %s-%d\n",
+			 __func__, prefix, ctx->stream_id);
+		return NULL;
+	}
+
+	sched_set_fifo(task);
+	return task;
+}
+
 static int mtk_cam_ctx_alloc_workers(struct mtk_cam_ctx *ctx)
 {
 	struct device *dev = ctx->cam->dev;
 
 	kthread_init_worker(&ctx->sensor_worker);
-	ctx->sensor_worker_task = kthread_run(kthread_worker_fn,
-					      &ctx->sensor_worker,
-					      "sensor_worker-%d",
-					      ctx->stream_id);
-	if (IS_ERR(ctx->sensor_worker_task)) {
-		dev_info(dev, "%s:ctx(%d): could not create sensor_worker_task\n",
-			 __func__, ctx->stream_id);
+	ctx->sensor_worker_task =
+		mtk_cam_ctx_create_fifo_task(ctx, "sensor_worker",
+					     &ctx->sensor_worker);
+	if (!ctx->sensor_worker_task)
 		return -1;
-	}
 
-	sched_set_fifo(ctx->sensor_worker_task);
+	kthread_init_worker(&ctx->flow_worker);
+	ctx->flow_task =
+		mtk_cam_ctx_create_fifo_task(ctx, "camsys_worker",
+					     &ctx->flow_worker);
+	if (!ctx->flow_task)
+		goto fail_uninit_sensor_worker_task;
 
 	ctx->composer_wq = alloc_ordered_workqueue(dev_name(dev),
 						   WQ_HIGHPRI | WQ_FREEZABLE);
 	if (!ctx->composer_wq) {
 		dev_info(dev, "failed to alloc composer workqueue\n");
-		goto fail_uninit_sensor_worker_task;
+		goto fail_uninit_flow_worker_task;
 	}
 
 	ctx->frame_done_wq =
@@ -1481,6 +1503,9 @@ fail_uninit_frame_done_wq:
 	destroy_workqueue(ctx->frame_done_wq);
 fail_uninit_composer_wq:
 	destroy_workqueue(ctx->composer_wq);
+fail_uninit_flow_worker_task:
+	kthread_stop(ctx->flow_task);
+	ctx->flow_task = NULL;
 fail_uninit_sensor_worker_task:
 	kthread_stop(ctx->sensor_worker_task);
 	ctx->sensor_worker_task = NULL;
@@ -1492,6 +1517,8 @@ static void mtk_cam_ctx_destroy_workers(struct mtk_cam_ctx *ctx)
 {
 	kthread_stop(ctx->sensor_worker_task);
 	ctx->sensor_worker_task = NULL;
+	kthread_stop(ctx->flow_task);
+	ctx->flow_task = NULL;
 
 	destroy_workqueue(ctx->composer_wq);
 	destroy_workqueue(ctx->frame_done_wq);
@@ -2406,6 +2433,21 @@ int mtk_cam_ctx_queue_sensor_worker(struct mtk_cam_ctx *ctx,
 		return -1;
 
 	ret = kthread_queue_work(&ctx->sensor_worker, work) ? 0 : -1;
+	if (ret)
+		pr_info("%s: failed\n", __func__);
+
+	return ret;
+}
+
+int mtk_cam_ctx_queue_flow_worker(struct mtk_cam_ctx *ctx,
+				  struct kthread_work *work)
+{
+	int ret;
+
+	if (WARN_ON(!ctx))
+		return -1;
+
+	ret = kthread_queue_work(&ctx->flow_worker, work) ? 0 : -1;
 	if (ret)
 		pr_info("%s: failed\n", __func__);
 
