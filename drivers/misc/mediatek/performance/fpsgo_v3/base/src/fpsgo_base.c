@@ -177,8 +177,10 @@ int fpsgo_arch_nr_get_opp_cpu(int cpu)
 	ret = cpufreq_get_policy(curr_policy, cpu);
 	if (ret == 0) {
 		table = curr_policy->freq_table;
-		cpufreq_for_each_valid_entry_idx(pos, table, idx) {
-			nr_opp++;
+		if (table) {
+			cpufreq_for_each_valid_entry_idx(pos, table, idx) {
+				nr_opp++;
+			}
 		}
 	}
 

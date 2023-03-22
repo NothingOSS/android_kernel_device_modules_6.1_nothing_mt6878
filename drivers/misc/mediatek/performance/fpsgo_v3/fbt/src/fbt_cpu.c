@@ -110,6 +110,7 @@ struct fbt_cpu_dvfs_info {
 	unsigned int *capacity_ratio;
 	int num_cpu;
 	int first_cpu;
+	int num_opp;
 };
 
 struct fbt_pid_list {
@@ -639,17 +640,17 @@ static int fbt_is_enable(void)
 static int fbt_cluster_X2Y(int cluster, unsigned long input, enum sugov_type in_type,
 	enum sugov_type out_type, int is_to_scale_cap, const char *caller)
 {
-	int cpu;
+	int cpu, num_opp;
 	unsigned long output;
 
 	cpu = cpu_dvfs[cluster].first_cpu;
+	num_opp = cpu_dvfs[cluster].num_opp;
 
 	if (in_type == OPP) {
-		if ((int)input < fpsgo_arch_nr_get_opp_cpu(cpu))
+		if ((int)input < num_opp)
 			output = pd_X2Y(cpu, input, in_type, out_type, true);
 		else
-			output = pd_X2Y(cpu, fpsgo_arch_nr_get_opp_cpu(cpu) - 1,
-				in_type, out_type, true);
+			output = pd_X2Y(cpu, num_opp - 1, in_type, out_type, true);
 	} else {
 		output = pd_X2Y(cpu, input, in_type, out_type, true);
 	}
@@ -5689,6 +5690,8 @@ static void fbt_update_pwr_tbl(void)
 
 		cpu_dvfs[cluster].num_cpu = cpumask_weight(policy->cpus);
 		cpu_dvfs[cluster].first_cpu = cpumask_first(policy->related_cpus);
+		cpu_dvfs[cluster].num_opp =
+			fpsgo_arch_nr_get_opp_cpu(cpu_dvfs[cluster].first_cpu);
 
 #if FPSGO_DYNAMIC_WL
 #else  // FPSGO_DYNAMIC_WL
