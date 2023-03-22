@@ -342,7 +342,8 @@ out:
 
 static void count_page_array_en_num(void)
 {
-	uint32_t i, idx;
+	int i;
+	uint32_t idx;
 
 	for (idx = 0; idx < 2; idx++) {
 	#if PAGE_ARRAY_CNT_EN

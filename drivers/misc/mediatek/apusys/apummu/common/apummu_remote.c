@@ -124,13 +124,14 @@ wait:
 				g_ammu_msg->lock.wait_rx,
 				g_ammu_msg->count,
 				msecs_to_jiffies(APUMMU_REMOTE_TIMEOUT));
-	if (ret == -ERESTARTSYS) {
-		AMMU_LOG_ERR("Wake up by signal!, retry again %d\n", retry);
-		msleep(20);
-		retry++;
-		goto wait;
-	}
 	if (!ret) {
+		if (ret == -ERESTARTSYS) {
+			AMMU_LOG_ERR("Wake up by signal!, retry again %d\n", retry);
+			msleep(20);
+			retry++;
+			goto wait;
+		}
+
 		AMMU_LOG_ERR("wait command timeout!!\n");
 		ret = -ETIME;
 		goto out;
