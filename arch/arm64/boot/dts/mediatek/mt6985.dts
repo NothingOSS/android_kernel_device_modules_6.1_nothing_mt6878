@@ -16066,6 +16066,13 @@ FLL0_out,FLL1_out,FLL2_out,FLL4_out,FLL5_out,FLL6_out";
 	status = "okay";
 };
 
+&mt6685_clkbuf {
+	XO-BBCK2 {
+		perms = <0x10ffff>;
+		xo-id = <1>;
+	};
+};
+
 #include "mediatek/cust_mt6985_msdc.dtsi"
 #include "mediatek/rt5133.dtsi"
 #include "mediatek/mt6363.dtsi"
