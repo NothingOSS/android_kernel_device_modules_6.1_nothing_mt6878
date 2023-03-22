@@ -97,9 +97,9 @@ static int res_calc_fill_sensor(struct mtk_cam_res_calc *c,
 	c->mipi_pixel_rate = s->pixel_rate;
 #else
 	c->mipi_pixel_rate =
-		(s64)(s->width + s->hblank)
+		(u64)(s->width + s->hblank)
 		* (s->height + s->vblank)
-		* s->interval.denominator / s->interval.numerator;
+		* s->interval.denominator / max(s->interval.numerator, 1U);
 #endif
 	c->line_time =
 		1000000000L
@@ -639,6 +639,7 @@ static int mtk_raw_try_ctrl(struct v4l2_ctrl *ctrl)
 	/* skip control value checks */
 	case V4L2_CID_MTK_CAM_RAW_RESOURCE_UPDATE:
 	case V4L2_CID_MTK_CAM_MSTREAM_EXPOSURE:
+	case V4L2_CID_MTK_CAM_APU_INFO:
 	case V4L2_CID_MTK_CAM_RAW_PATH_SELECT:
 	case V4L2_CID_MTK_CAM_SYNC_ID:
 	case V4L2_CID_MTK_CAM_HSF_EN:
