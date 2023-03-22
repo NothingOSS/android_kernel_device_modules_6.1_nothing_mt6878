@@ -52,33 +52,54 @@ struct vsync_rec {
 
 
 
-/*******************************************************************************
- * frame monitor function
- ******************************************************************************/
-#ifdef USING_CCU
-void frm_power_on_ccu(unsigned int flag);
+/******************************************************************************/
+// debug/utilities/dump functions
+/******************************************************************************/
+int frm_get_ts_src_type(void);
+/******************************************************************************/
 
-void frm_reset_ccu_vsync_timestamp(unsigned int idx, unsigned int en);
 
+#ifdef SUPPORT_USING_CCU
+/******************************************************************************/
+// frame monitor --- ccu related function
+/******************************************************************************/
+/* ==> CCU operation */
+void frm_reset_ccu_vsync_timestamp(
+	const unsigned int idx, const unsigned int en);
 int frm_get_ccu_pwn_cnt(void);
+void frm_power_on_ccu(const unsigned int flag);
+/******************************************************************************/
 #endif
 
 
-void frm_init_frame_info_st_data(
-	unsigned int idx,
-	unsigned int sensor_id, unsigned int sensor_idx, unsigned int tg);
+/*******************************************************************************
+ * frame monitor function
+ ******************************************************************************/
+/* ==> frame measurement */
+void frm_set_frame_measurement(
+	unsigned int idx, unsigned int passed_vsyncs,
+	unsigned int curr_fl_us, unsigned int curr_fl_lc,
+	unsigned int next_fl_us, unsigned int next_fl_lc);
+void frm_get_curr_frame_mesurement_and_ts_data(
+	const unsigned int idx, unsigned int *p_fmeas_idx,
+	unsigned int *p_pr_fl_us, unsigned int *p_pr_fl_lc,
+	unsigned long long *p_act_fl_us, unsigned long long *p_ts_arr);
 
-void frm_reset_frame_info(unsigned int idx);
 
-unsigned int frm_convert_cammux_tg_to_ccu_tg(unsigned int tg);
-unsigned int frm_convert_cammux_id_to_ccu_tg_id(unsigned int cammux_id);
+void frm_reset_frame_info(const unsigned int idx);
+void frm_init_frame_info_st_data(const unsigned int idx,
+	const unsigned int sensor_id, const unsigned int sensor_idx,
+	const unsigned int tg);
 
-unsigned int frm_chk_and_get_tg_value(
-	const unsigned int cammux_id, const unsigned int target_tg);
 
+/* ==> tg */
 void frm_update_tg(unsigned int idx, unsigned int tg);
+unsigned int frm_convert_cammux_id_to_ccu_tg_id(const unsigned int cammux_id);
+unsigned int frm_chk_and_get_tg_value(const unsigned int cammux_id,
+	const unsigned int target_tg);
 
 
+/* ==> timestamp data (CCU) */
 /*
  * return: (0/non 0) for (done/error)
  *
@@ -86,33 +107,19 @@ void frm_update_tg(unsigned int idx, unsigned int tg);
  *     tgs -> all TG you want to get vsync from CCU;
  *     len -> array length;
  */
-unsigned int frm_query_vsync_data(
-	unsigned int tgs[], unsigned int len, struct vsync_rec *pData);
-
-
-void frm_query_vsync_data_by_tsrec(
-	const unsigned int idxs[], const unsigned int len,
+int frm_query_vsync_data(const unsigned int tgs[], const unsigned int len,
 	struct vsync_rec *pData);
 
 
+/* ==> timestamp data (TSREC) */
+void frm_query_vsync_data_by_tsrec(
+	const unsigned int idxs[], const unsigned int len,
+	struct vsync_rec *pData);
 void frm_receive_tsrec_timestamp_info(const unsigned int idx,
 	const struct mtk_cam_seninf_tsrec_timestamp_info *ts_info);
-
-
 const struct mtk_cam_seninf_tsrec_timestamp_info *
 frm_get_tsrec_timestamp_info_ptr(const unsigned int idx);
-
-
-void frm_set_frame_measurement(
-	unsigned int idx, unsigned int passed_vsyncs,
-	unsigned int curr_fl_us, unsigned int curr_fl_lc,
-	unsigned int next_fl_us, unsigned int next_fl_lc);
-
-
-void frm_get_curr_frame_mesurement_and_ts_data(
-	const unsigned int idx, unsigned int *p_fmeas_idx,
-	unsigned int *p_pr_fl_us, unsigned int *p_pr_fl_lc,
-	unsigned long long *p_act_fl_us, unsigned long long *p_ts_arr);
+/******************************************************************************/
 
 
 #ifdef FS_UT
@@ -143,7 +150,14 @@ void frm_get_next_vts_bias_us(unsigned int idx, unsigned int *vts_bias);
 void frm_debug_copy_frame_info_vsync_rec_data(struct vsync_rec *p_vsync_res);
 
 void frm_debug_set_last_vsync_data(struct vsync_rec *v_rec);
+/******************************************************************************/
 #endif // FS_UT
 
+
+/******************************************************************************/
+// Frame Monitor init function.
+/******************************************************************************/
+void frm_init(void);
+/******************************************************************************/
 
 #endif

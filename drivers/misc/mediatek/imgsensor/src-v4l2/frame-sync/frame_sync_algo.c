@@ -3079,44 +3079,31 @@ unsigned int fs_alg_get_vsync_data(unsigned int solveIdxs[], unsigned int len)
 	struct vsync_rec vsync_recs = {0};
 	unsigned int i = 0, j = 0;
 
-#if defined(USING_CCU) || defined(USING_N3D)
+#if defined(SUPPORT_USING_CCU)
+	if (frm_get_ts_src_type() == FS_TS_SRC_CCU) {
+		/* ==> timestamp from CCU */
+		unsigned int query_tg_ts[TG_MAX_NUM];
+		int ret = 0;
 
-	/* => USING_CCU */
-	unsigned int query_tg_ts[TG_MAX_NUM];
-
-
-	/* according to "solve Idx", get correct "TG / sensor_idx" */
-	for (i = 0; i < len; ++i)
-		query_tg_ts[i] = fs_inst[solveIdxs[i]].tg;
-
-
-	/* call Frame Monitor API to get vsync data from CCU */
-	if (frm_query_vsync_data(query_tg_ts, len, &vsync_recs)) {
-		LOG_PR_WARN("ERROR: query vsync data from CCU error\n");
-		return 1;
+		/* according to "solve Idx", get correct "TG / sensor_idx" */
+		for (i = 0; i < len; ++i)
+			query_tg_ts[i] = fs_inst[solveIdxs[i]].tg;
+		/* call Frame Monitor API to get vsync data from CCU */
+		ret = frm_query_vsync_data(query_tg_ts, len, &vsync_recs);
+		if (unlikely(ret != 0))
+			return 1;
+	} else {
+		/* ==> timestamp from TSREC */
+		frm_query_vsync_data_by_tsrec(solveIdxs, len, &vsync_recs);
 	}
-
-#else
-
-	/* => USING_TSREC */
-	/* call Frame Monitor API to get timestamp data received from TSREC */
+#else /* ==> using TSREC */
+	/* ==> timestamp from TSREC */
 	frm_query_vsync_data_by_tsrec(solveIdxs, len, &vsync_recs);
-
-#endif // !USING_TSREC
-
+#endif
 
 	/* keep cur_tick and tick_factor value */
 	cur_tick = vsync_recs.cur_tick;
 	tick_factor = vsync_recs.tick_factor;
-
-
-#ifndef REDUCE_FS_ALGO_LOG
-	LOG_INF("cur_tick:%llu, tick_factor:%u\n",
-		cur_tick,
-		tick_factor);
-#endif // REDUCE_FS_ALGO_LOG
-
-
 	/* keep vsync and last_vts data */
 	for (i = 0; i < len; ++i) {
 		if (fs_inst[solveIdxs[i]].tg != vsync_recs.recs[i].id) {
@@ -3142,11 +3129,9 @@ unsigned int fs_alg_get_vsync_data(unsigned int solveIdxs[], unsigned int len)
 					vsync_recs.recs[i].timestamps[j];
 		}
 
-
 		frec_notify_update_timestamp_data(solveIdxs[i],
 			vsync_recs.tick_factor,
 			vsync_recs.recs[i].timestamps, VSYNCS_MAX);
-
 
 #if !defined(REDUCE_FS_ALGO_LOG) || defined(FS_UT)
 		LOG_PF_INF(
@@ -3165,7 +3150,6 @@ unsigned int fs_alg_get_vsync_data(unsigned int solveIdxs[], unsigned int len)
 			vsync_recs.tick_factor);
 #endif
 	}
-
 
 	return 0;
 }

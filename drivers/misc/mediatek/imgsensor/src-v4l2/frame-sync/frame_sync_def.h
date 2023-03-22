@@ -40,8 +40,14 @@
  * (choose ONE) timestamp by using bellow method.
  * e.g. CCU / N3D / TSREC (default) / etc.
  */
-//#define USING_CCU
-#ifdef USING_CCU
+enum fs_timestamp_src_type {
+	FS_TS_SRC_UNKNOWN = 0,
+	FS_TS_SRC_CCU,
+	FS_TS_SRC_TSREC,
+};
+
+#define SUPPORT_USING_CCU
+#ifdef SUPPORT_USING_CCU
 /*
  * delay power ON/OFF and operate CCU to fs_set_sync()
  *
@@ -50,11 +56,7 @@
  *      after seninf being config compeleted.
  */
 #define DELAY_CCU_OP
-#endif // USING_CCU
-
-
-// #define USING_N3D
-
+#endif
 
 #define USING_TSREC
 #ifdef USING_TSREC
@@ -64,7 +66,7 @@
  *          if use local timer => 32-bits timestamp
  */
 // #define TS_TICK_64_BITS // for using global timer => 64-bits timestamp
-#endif // USING_TSREC
+#endif
 #define TSREC_1ST_EXP_ID 0
 
 

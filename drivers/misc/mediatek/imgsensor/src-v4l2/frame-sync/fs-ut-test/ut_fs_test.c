@@ -2123,7 +2123,7 @@ static void ut_set_fs_streaming(void)
 		/* because "fs_streaming_st" memory address is the same */
 		/* for UT frm set timestamp data, sync process to convert TG */
 		g_streaming_sensors[i].tg =
-			frm_convert_cammux_tg_to_ccu_tg(tg);
+			frm_convert_cammux_id_to_ccu_tg_id(tg);
 
 
 
@@ -3476,8 +3476,8 @@ static void exe_fs_alg_stability_test_item(unsigned int test_id)
 		/* TODO : non-hardcode */
 		g_query_tg_cnt++;
 
-		g_v_rec.recs[i].id =
-			frm_convert_cammux_tg_to_ccu_tg(g_streaming_sensors[i].tg);
+		g_v_rec.recs[i].id = frm_convert_cammux_id_to_ccu_tg_id(
+			g_streaming_sensors[i].tg);
 
 		g_v_rec.recs[i].vsyncs = 1;
 

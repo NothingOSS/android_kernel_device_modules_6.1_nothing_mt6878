@@ -293,9 +293,10 @@ struct FrameSync {
 
 
 	/* for cam mux switch and sensor streaming on before setup cam mux */
-	void (*fs_update_tg)(unsigned int ident, unsigned int tg);
+	void (*fs_update_tg)(const unsigned int ident, unsigned int tg);
 	/* ISP7s HW change, seninf assign target tg ID (direct map to CCU tg ID) */
-	void (*fs_update_target_tg)(unsigned int ident, unsigned int target_tg);
+	void (*fs_update_target_tg)(const unsigned int ident,
+		const unsigned int target_tg);
 
 
 	/* update fs_perframe_st data */

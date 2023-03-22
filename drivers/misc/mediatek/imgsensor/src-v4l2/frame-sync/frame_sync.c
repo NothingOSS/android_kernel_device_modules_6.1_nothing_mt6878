@@ -107,9 +107,9 @@ struct FrameSyncMgr {
 	FS_Atomic_T set_sync_idx_table[SENSOR_MAX_NUM];
 
 
-#ifdef USING_CCU
+#ifdef SUPPORT_USING_CCU
 	FS_Atomic_T power_on_ccu_bits;
-#endif // USING_CCU
+#endif
 
 
 	/* for different fps sync sensor sync together */
@@ -150,6 +150,8 @@ struct FrameSyncMgr {
 
 
 	unsigned int sof_cnt_arr[SENSOR_MAX_NUM];   // debug, from p1 sof cnt
+	/* for checking receive ctrl timing */
+	unsigned int notify_vsync_sof_cnt_arr[SENSOR_MAX_NUM];
 };
 static struct FrameSyncMgr fs_mgr;
 //----------------------------------------------------------------------------//
@@ -277,7 +279,7 @@ static void fs_dump_status(const int idx, const int flag, const char *caller,
 	const unsigned int cnt =
 		FS_POPCOUNT(FS_ATOMIC_READ(&fs_mgr.validSync_bits));
 	char *log_buf = NULL;
-	int ret = 0;
+	int len = 0;
 
 	log_buf = FS_CALLOC(LOG_BUF_STR_LEN, sizeof(char));
 	if (unlikely(log_buf == NULL)) {
@@ -288,8 +290,7 @@ static void fs_dump_status(const int idx, const int flag, const char *caller,
 	}
 
 	log_buf[0] = '\0';
-	ret = snprintf(log_buf + strlen(log_buf),
-		LOG_BUF_STR_LEN - strlen(log_buf),
+	FS_SNPRINTF(log_buf, len,
 		"[%s:%d/%d %s]: stat:%u, ready:%u, stream:%d, enSync:%d(%d/%d/%d/%d/%d/%d), valid:%d, hw_sync:%d(%d)(%d/%d/%d/%d/%d/%d), trigger:%u, pf_ctrl:%d(%u), complete:%d(%u)(hw:%d/%d/%d/%d/%d/%d), act(%u/%u/%u/%u/%u/%u), hdr_ft_mode(%u/%u/%u/%u/%u/%u), seamless:%#x, SA(%d/%d/%d, %d, async(%d, m_sidx:%d(%d)))",
 		caller, idx, flag, msg,
 		status,
@@ -361,27 +362,18 @@ static void fs_dump_status(const int idx, const int flag, const char *caller,
 		FS_ATOMIC_READ(&fs_mgr.user_async_master_sidx),
 		FS_ATOMIC_READ(&fs_mgr.async_master_idx));
 
-	if (unlikely(ret < 0))
-		LOG_MUST("ERROR: LOG encoding error, ret:%d\n", ret);
+	FS_SNPRINTF(log_buf, len,
+		", ts_src_type:%d(0:unknown/1:CCU/2:TSREC)",
+		frm_get_ts_src_type());
 
-
-#if defined(USING_CCU)
-	ret = snprintf(log_buf + strlen(log_buf),
-		LOG_BUF_STR_LEN - strlen(log_buf),
-		", pw_ccu:%d(cnt:%d)",
+#if defined(SUPPORT_USING_CCU)
+	FS_SNPRINTF(log_buf, len,
+		", pw_ccu:%#x(cnt:%d)",
 		FS_ATOMIC_READ(&fs_mgr.power_on_ccu_bits),
 		frm_get_ccu_pwn_cnt());
-
-	if (unlikely(ret < 0)) {
-		LOG_MUST(
-			"ERROR: LOG encoding error (add USING_CCU part), ret:%d\n",
-			ret);
-	}
-#endif // USING_CCU
-
+#endif
 
 	LOG_MUST("%s\n", log_buf);
-
 	FS_FREE(log_buf);
 }
 /******************************************************************************/
@@ -913,9 +905,9 @@ static void fs_init_members(void)
 		FS_ATOMIC_INIT(0, &fs_mgr.seamless_ctrl[i].wait_for_processing);
 	}
 
-#if defined(USING_CCU)
+#if defined(SUPPORT_USING_CCU)
 	FS_ATOMIC_INIT(0, &fs_mgr.power_on_ccu_bits);
-#endif // USING_CCU
+#endif
 
 	FS_ATOMIC_INIT(0, &fs_mgr.using_sa_ver);
 	FS_ATOMIC_INIT(0, &fs_mgr.sa_bits);
@@ -1510,69 +1502,38 @@ static inline void fs_sa_set_async_info(const unsigned int idx,
 static void fs_set_sync_status(unsigned int idx, unsigned int flag)
 {
 	/* unset sync => reset pf_ctrl_bits data of this idx */
-	/* TODO: add a API for doing this */
 	if (flag == 0) {
 		FS_WRITE_BIT(idx, 0, &fs_mgr.pf_ctrl_bits);
 		FS_WRITE_BIT(idx, 0, &fs_mgr.setup_complete_bits);
+	}
 
+#if defined(SUPPORT_USING_CCU) && defined(DELAY_CCU_OP)
+	if (frm_get_ts_src_type() == FS_TS_SRC_CCU) {
+		if (flag == 0) {
+			if (FS_CHECK_BIT(idx, &fs_mgr.power_on_ccu_bits) == 1) {
+				FS_WRITE_BIT(idx, 0, &fs_mgr.power_on_ccu_bits);
 
-#if defined(USING_CCU) && defined(DELAY_CCU_OP)
-		if (FS_CHECK_BIT(idx, &fs_mgr.power_on_ccu_bits) == 1) {
-			FS_WRITE_BIT(idx, 0, &fs_mgr.power_on_ccu_bits);
+				/* power off CCU and disable vsync INTR */
+				frm_reset_ccu_vsync_timestamp(idx, 0);
+				frm_power_on_ccu(0);
 
-#if !defined(REDUCE_FS_DRV_LOG)
-			LOG_INF("[%u] ID:%#x(sidx:%u), pw_ccu:%d (OFF)\n",
-				idx,
-				fs_get_reg_sensor_id(idx),
-				fs_get_reg_sensor_idx(idx),
-				FS_READ_BITS(&fs_mgr.power_on_ccu_bits));
-#endif // REDUCE_FS_DRV_LOG
+				fs_alg_reset_vsync_data(idx);
+			}
+		} else {
+			if (FS_CHECK_BIT(idx, &fs_mgr.power_on_ccu_bits) == 0) {
+				FS_WRITE_BIT(idx, 1, &fs_mgr.power_on_ccu_bits);
 
-			frm_reset_ccu_vsync_timestamp(idx, 0);
+				fs_alg_reset_vsync_data(idx);
 
-			/* power off CCU */
-			frm_power_on_ccu(0);
-
-			fs_alg_reset_vsync_data(idx);
+				/* power on CCU and enable vsync INTR */
+				frm_power_on_ccu(1);
+				frm_reset_ccu_vsync_timestamp(idx, 1);
+			}
 		}
-#endif // USING_CCU && DELAY_CCU_OP
 	}
-
-
-#if defined(USING_CCU) && defined(DELAY_CCU_OP)
-	if (flag > 0 && FS_CHECK_BIT(idx, &fs_mgr.power_on_ccu_bits) == 0) {
-		FS_WRITE_BIT(idx, 1, &fs_mgr.power_on_ccu_bits);
-
-#if !defined(REDUCE_FS_DRV_LOG)
-		LOG_INF("[%u] ID:%#x(sidx:%u), pw_ccu:%d (ON)\n",
-			idx,
-			fs_get_reg_sensor_id(idx),
-			fs_get_reg_sensor_idx(idx),
-			FS_READ_BITS(&fs_mgr.power_on_ccu_bits));
-#endif // REDUCE_FS_DRV_LOG
-
-		fs_alg_reset_vsync_data(idx);
-
-		/* power on CCU and get device handle */
-		frm_power_on_ccu(1);
-
-		frm_reset_ccu_vsync_timestamp(idx, 1);
-	}
-#endif // USING_CCU && DELAY_CCU_OP
-
+#endif
 
 	fs_set_status_bits(idx, flag, &fs_mgr.enSync_bits);
-
-
-#if !defined(REDUCE_FS_DRV_LOG)
-	LOG_INF("en:%u [%u] ID:%#x(sidx:%u)   [enSync_bits:%d]\n",
-		flag,
-		idx,
-		fs_get_reg_sensor_id(idx),
-		fs_get_reg_sensor_idx(idx),
-		FS_READ_BITS(&fs_mgr.enSync_bits));
-#endif // REDUCE_FS_DRV_LOG
-
 }
 
 
@@ -2118,7 +2079,8 @@ void fs_chk_exit_seamless_switch_frame(const unsigned int ident)
 	/* because it is the next frame that after seamless switch frame */
 	/* if yes, clear/reset seamless ctrl data */
 	if (fs_chk_seamless_switch_status(idx)) {
-		if (fs_mgr.seamless_ctrl[idx].seamless_sof_cnt != fs_mgr.sof_cnt_arr[idx]
+		if (fs_mgr.seamless_ctrl[idx].seamless_sof_cnt
+				!= fs_mgr.notify_vsync_sof_cnt_arr[idx]
 			|| (FS_ATOMIC_READ(&fs_mgr.seamless_ctrl[idx].wait_for_processing) == 0)) {
 			LOG_MUST(
 				"NOTICE: [%u] ID:%#x(sidx:%u), wait_for_processing:%d or (current sof cnt:%u)/(seamelss sof cnt:%u) is different => It is NOT seamless switch frame => enter to NORMAL frame => clear seamless ctrl that keep before\n",
@@ -2126,7 +2088,7 @@ void fs_chk_exit_seamless_switch_frame(const unsigned int ident)
 				fs_mgr.seamless_ctrl[idx].seamless_info.seamless_pf_ctrl.sensor_id,
 				fs_mgr.seamless_ctrl[idx].seamless_info.seamless_pf_ctrl.sensor_idx,
 				FS_ATOMIC_READ(&fs_mgr.seamless_ctrl[idx].wait_for_processing),
-				fs_mgr.sof_cnt_arr[idx],
+				fs_mgr.notify_vsync_sof_cnt_arr[idx],
 				fs_mgr.seamless_ctrl[idx].seamless_sof_cnt);
 
 			fs_clr_seamless_switch_info(idx);
@@ -2147,7 +2109,8 @@ void fs_chk_valid_for_doing_seamless_switch(const unsigned int ident)
 	/* check if new vsync sof cnt been updated and is match to seamless sof cnt */
 	/* if not, keep seamless ctrl for vsync notify using. */
 	if (fs_chk_seamless_switch_status(idx)) {
-		if (fs_mgr.seamless_ctrl[idx].seamless_sof_cnt != fs_mgr.sof_cnt_arr[idx]) {
+		if (fs_mgr.seamless_ctrl[idx].seamless_sof_cnt
+				!= fs_mgr.notify_vsync_sof_cnt_arr[idx]) {
 			LOG_MUST(
 				"NOTICE: [%u] ID:%#x(sidx:%u), seamless:%#x, wait_for_processing:%d, (current sof cnt:%u)/(seamelss sof cnt:%u) is different, SA(m_idx:%d), keep this seamless ctrl\n",
 				idx,
@@ -2155,7 +2118,7 @@ void fs_chk_valid_for_doing_seamless_switch(const unsigned int ident)
 				fs_mgr.seamless_ctrl[idx].seamless_info.seamless_pf_ctrl.sensor_idx,
 				FS_ATOMIC_READ(&fs_mgr.seamless_bits),
 				FS_ATOMIC_READ(&fs_mgr.seamless_ctrl[idx].wait_for_processing),
-				fs_mgr.sof_cnt_arr[idx],
+				fs_mgr.notify_vsync_sof_cnt_arr[idx],
 				fs_mgr.seamless_ctrl[idx].seamless_sof_cnt,
 				FS_ATOMIC_READ(&fs_mgr.master_idx));
 
@@ -2172,7 +2135,7 @@ void fs_chk_valid_for_doing_seamless_switch(const unsigned int ident)
 			fs_mgr.seamless_ctrl[idx].seamless_info.seamless_pf_ctrl.sensor_idx,
 			FS_ATOMIC_READ(&fs_mgr.seamless_bits),
 			FS_ATOMIC_READ(&fs_mgr.seamless_ctrl[idx].wait_for_processing),
-			fs_mgr.sof_cnt_arr[idx],
+			fs_mgr.notify_vsync_sof_cnt_arr[idx],
 			fs_mgr.seamless_ctrl[idx].seamless_sof_cnt,
 			sa_cfg.idx,
 			sa_cfg.m_idx,
@@ -2207,7 +2170,7 @@ void fs_seamless_switch(const unsigned int ident,
  * update fs_streaming_st data
  *     (for cam_mux switch & sensor stream on before cam mux setup)
  */
-void fs_update_tg(unsigned int ident, unsigned int tg)
+void fs_update_tg(const unsigned int ident, unsigned int tg)
 {
 	unsigned int idx;
 
@@ -2215,35 +2178,29 @@ void fs_update_tg(unsigned int ident, unsigned int tg)
 	if (unlikely(fs_g_registered_idx_by_ident(ident, &idx, __func__)))
 		return;
 
-#ifdef USING_CCU
-	/* 0. check ccu pwr ON, and disable INT(previous tg) */
-	if (FS_CHECK_BIT(idx, &fs_mgr.power_on_ccu_bits))
-		frm_reset_ccu_vsync_timestamp(idx, 0);
-#endif // USING_CCU
+#ifdef SUPPORT_USING_CCU
+	if (frm_get_ts_src_type() == FS_TS_SRC_CCU) {
+		/* check ccu pwr ON, and disable vsync INT(previous tg) */
+		if (FS_CHECK_BIT(idx, &fs_mgr.power_on_ccu_bits))
+			frm_reset_ccu_vsync_timestamp(idx, 0);
+	}
+#endif
 
-	/* 0-1 convert cammux id to ccu tg id */
-	// tg = frm_convert_cammux_tg_to_ccu_tg(tg);
+	/* convert cammux id to ccu tg id */
 	tg = frm_convert_cammux_id_to_ccu_tg_id(tg);
 
-
-	/* 1. update the fs_streaming_st data */
+	/* update the fs_streaming_st data */
 	fs_alg_update_tg(idx, tg);
 	frm_update_tg(idx, tg);
 
-
-#ifdef USING_CCU
-	/* 2. on the fly change cam_mux/tg */
-	/*    => reset/re-init frame info data for after using */
-	if (FS_CHECK_BIT(idx, &fs_mgr.power_on_ccu_bits)) {
-		// frm_reset_frame_info(idx);
-
-		// frm_init_frame_info_st_data(idx,
-		//	info.sensor_id, info.sensor_idx,
-		//	tg);
-
-		frm_reset_ccu_vsync_timestamp(idx, 1);
+#ifdef SUPPORT_USING_CCU
+	if (frm_get_ts_src_type() == FS_TS_SRC_CCU) {
+		/* on the fly change cam_mux/tg */
+		/* ==> reset/re-init frame info data for after using */
+		if (FS_CHECK_BIT(idx, &fs_mgr.power_on_ccu_bits))
+			frm_reset_ccu_vsync_timestamp(idx, 1);
 	}
-#endif // USING_CCU
+#endif
 }
 
 
@@ -2261,29 +2218,24 @@ void fs_update_target_tg(const unsigned int ident,
 	if (unlikely(fs_g_registered_idx_by_ident(ident, &idx, __func__)))
 		return;
 
-#ifdef USING_CCU
-	/* 0. check ccu pwr ON, and disable INT(previous tg) */
-	if (FS_CHECK_BIT(idx, &fs_mgr.power_on_ccu_bits))
-		frm_reset_ccu_vsync_timestamp(idx, 0);
+#ifdef SUPPORT_USING_CCU
+	if (frm_get_ts_src_type() == FS_TS_SRC_CCU) {
+		/* check ccu pwr ON, and disable INT(previous tg) */
+		if (FS_CHECK_BIT(idx, &fs_mgr.power_on_ccu_bits))
+			frm_reset_ccu_vsync_timestamp(idx, 0);
+	}
 #endif
 
-
-	/* 1. update the fs_streaming_st data */
+	/* update the fs_streaming_st data */
 	fs_alg_update_tg(idx, target_tg);
 	frm_update_tg(idx, target_tg);
 
-
-#ifdef USING_CCU
-	/* 2. on the fly change cam_mux/tg */
-	/*    => reset/re-init frame info data for after using */
-	if (FS_CHECK_BIT(idx, &fs_mgr.power_on_ccu_bits)) {
-		// frm_reset_frame_info(idx);
-
-		// frm_init_frame_info_st_data(idx,
-		//	info.sensor_id, info.sensor_idx,
-		//	tg);
-
-		frm_reset_ccu_vsync_timestamp(idx, 1);
+#ifdef SUPPORT_USING_CCU
+	if (frm_get_ts_src_type() == FS_TS_SRC_CCU) {
+		/* on the fly change cam_mux/tg */
+		/* ==> reset/re-init frame info data for after using */
+		if (FS_CHECK_BIT(idx, &fs_mgr.power_on_ccu_bits))
+			frm_reset_ccu_vsync_timestamp(idx, 1);
 	}
 #endif
 }
@@ -3020,6 +2972,12 @@ static void fs_debug_hw_sync(unsigned int idx)
 }
 
 
+static void fs_update_notify_vsync_sof_cnt(const unsigned int idx)
+{
+	fs_mgr.notify_vsync_sof_cnt_arr[idx] = fs_mgr.sof_cnt_arr[idx];
+}
+
+
 void fs_set_debug_info_sof_cnt(const unsigned int ident,
 	const unsigned int sof_cnt)
 {
@@ -3054,24 +3012,27 @@ void fs_notify_vsync(const unsigned int ident)
 	/* get registered idx and check if it is valid */
 	if (unlikely(fs_g_registered_idx_by_ident(ident, &idx, __func__)))
 		return;
-	if (!FS_CHECK_BIT(idx, &fs_mgr.validSync_bits))
+	if (FS_CHECK_BIT(idx, &fs_mgr.validSync_bits) == 0)
 		return;
 	if (FS_CHECK_BIT(idx, &fs_mgr.hw_sync_bits)) {
 		fs_debug_hw_sync(idx);
 		return;
 	}
 
+#if defined(SUPPORT_USING_CCU) || defined(FS_UT)
+	if (frm_get_ts_src_type() == FS_TS_SRC_CCU) {
+		fs_alg_sa_notify_setup_all_frame_info(idx);
+		frec_notify_vsync(idx);
+		fs_alg_sa_notify_vsync(idx);
+		fs_alg_sa_dump_dynamic_para(idx);
 
-#if !defined(USING_TSREC) || defined(FS_UT)
-	fs_alg_sa_notify_setup_all_frame_info(idx);
-	frec_notify_vsync(idx);
-	fs_alg_sa_notify_vsync(idx);
-	fs_alg_sa_dump_dynamic_para(idx);
+		/* update ctrl's p1 sof cnt for checking ctrl timing */
+		fs_update_notify_vsync_sof_cnt(idx);
+
+		/* check special ctrl that using p1 sof cnt (e.g., seamless switch) */
+		fs_chk_valid_for_doing_seamless_switch(ident);
+	}
 #endif
-
-
-	/* check special ctrl that using p1 sof cnt (e.g., seamless switch) */
-	fs_chk_valid_for_doing_seamless_switch(ident);
 }
 
 
@@ -3084,6 +3045,18 @@ void fs_notify_vsync_by_tsrec(const unsigned int ident)
 		return;
 	if (FS_CHECK_BIT(idx, &fs_mgr.streaming_bits) == 0)
 		return;
+
+	if (frm_get_ts_src_type() == FS_TS_SRC_TSREC) {
+		/* !!! warning / becareful !!! */
+		/* ==> below flow make sure TSREC will guarantee the order */
+		/* ==> of ctrl (HW pre-latch by tsrec >> notify vsync by tsrec) */
+
+		/* update ctrl's p1 sof cnt for checking ctrl timing */
+		fs_update_notify_vsync_sof_cnt(idx);
+
+		/* check special ctrl that using p1 sof cnt (e.g., seamless switch) */
+		fs_chk_valid_for_doing_seamless_switch(ident);
+	}
 }
 
 
@@ -3097,9 +3070,10 @@ void fs_notify_sensor_hw_pre_latch_by_tsrec(const unsigned int ident)
 	if (FS_CHECK_BIT(idx, &fs_mgr.streaming_bits) == 0)
 		return;
 
-
-	fs_alg_sa_notify_setup_all_frame_info(idx);
-	frec_notify_vsync(idx); // sensor recorder hw pre-latch
+	if (frm_get_ts_src_type() == FS_TS_SRC_TSREC) {
+		fs_alg_sa_notify_setup_all_frame_info(idx);
+		frec_notify_vsync(idx); // sensor recorder hw pre-latch
+	}
 }
 
 
@@ -3119,18 +3093,16 @@ void fs_receive_tsrec_timestamp_info(const unsigned int ident,
 			ts_info);
 		return;
 	}
-
 	/* save tsrec timestamp info */
 	frm_receive_tsrec_timestamp_info(idx, ts_info);
 
+	if (frm_get_ts_src_type() == FS_TS_SRC_TSREC) {
+		/* call this function after receive TSREC timestamp info */
+		fs_alg_sa_notify_vsync(idx);
 
-#if defined(USING_TSREC)
-	/* call this function after receive TSREC timestamp info */
-	fs_alg_sa_notify_vsync(idx);
-
-	if (FS_CHECK_BIT(idx, &fs_mgr.enSync_bits))
-		fs_alg_sa_dump_dynamic_para(idx);
-#endif
+		if (FS_CHECK_BIT(idx, &fs_mgr.enSync_bits))
+			fs_alg_sa_dump_dynamic_para(idx);
+	}
 }
 
 
@@ -3272,9 +3244,9 @@ static struct FrameSync frameSync = {
  */
 #if !defined(FS_UT)
 unsigned int FrameSyncInit(struct FrameSync **pframeSync, struct device *dev)
-#else // FS_UT
+#else /* ==> FS_UT */
 unsigned int FrameSyncInit(struct FrameSync **pframeSync)
-#endif // FS_UT
+#endif
 {
 	int ret = 0;
 
@@ -3285,6 +3257,8 @@ unsigned int FrameSyncInit(struct FrameSync **pframeSync)
 	}
 
 	fs_init();
+	frm_init();
+
 	*pframeSync = &frameSync;
 
 #if !defined(FS_UT)
