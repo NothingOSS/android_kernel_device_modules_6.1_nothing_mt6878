@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0
 
 ccflags-y += -I$(srctree)/drivers/dma-buf/heaps
-obj-$(CONFIG_DEVICE_MODULES_DMABUF_HEAPS_DEFERRED_FREE)	+= deferred-free-helper.o
 obj-$(CONFIG_DEVICE_MODULES_DMABUF_HEAPS_PAGE_POOL)	+= page_pool.o
 
 # system heap
