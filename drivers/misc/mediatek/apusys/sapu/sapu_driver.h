@@ -51,7 +51,7 @@ struct PWRarg {
 };
 
 struct haArg {
-	uint32_t handle;
+	uint64_t handle;
 	dma_addr_t dma_addr;
 	uint64_t mem_hd;
 };
