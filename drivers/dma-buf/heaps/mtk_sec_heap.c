@@ -1823,7 +1823,7 @@ u64 dmabuf_to_secure_handle(const struct dma_buf *dmabuf)
 	}
 	buffer = dmabuf->priv;
 	heap_base = get_heap_base_type(buffer->heap);
-	if (heap_base != REGION_BASE) {
+	if (heap_base != REGION_BASE && heap_base != PAGE_BASE) {
 		pr_warn("%s failed, heap(%s) not support sec_handle\n",
 			__func__, dma_heap_get_name(buffer->heap));
 		return 0;
