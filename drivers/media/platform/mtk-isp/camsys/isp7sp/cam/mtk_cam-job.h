@@ -48,6 +48,13 @@ enum mtk_cam_isp_state {
 	NR_S_ISP_STATE,
 };
 
+struct mtk_camsv_tag_info {
+	struct mtk_camsv_pipeline *sv_pipe;
+	unsigned int seninf_padidx;
+	unsigned int hw_scen;
+	unsigned int tag_order;
+};
+
 static inline bool isp_in_done_state(int state)
 {
 	return state == S_ISP_DONE ||
@@ -300,6 +307,11 @@ struct mtk_cam_job {
 	struct mmqos_bw yuv_mmqos[SMI_PORT_YUV_NUM];
 	struct mmqos_bw sv_mmqos[SMI_PORT_SV_NUM];
 	struct mmqos_bw mraw_mmqos[MAX_MRAW_PIPES_PER_STREAM][SMI_PORT_MRAW_NUM];
+
+	/* sv tag control */
+	unsigned int used_tag_cnt;
+	unsigned int enabled_tags;
+	struct mtk_camsv_tag_info tag_info[CAMSV_MAX_TAGS];
 };
 
 static inline struct mtk_cam_job *mtk_cam_job_get(struct mtk_cam_job *job)

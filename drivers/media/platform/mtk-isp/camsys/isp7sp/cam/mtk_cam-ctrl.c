@@ -970,7 +970,7 @@ static void mtk_cam_ctrl_raw_switch_flow(struct mtk_cam_job *job)
 	 * Split the cammux disabling part from this function.
 	 * We just want to disable cammux here.
 	 */
-	r = ctx_stream_on_seninf_sensor(ctx, 0, 0, 0);
+	r = ctx_stream_off_seninf_sensor(ctx);
 	if (r)
 		dev_info(ctrl->ctx->cam->dev,
 			 "[%s] failed to stream off the sensor:%d\n",
@@ -1237,7 +1237,7 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 	mtk_cam_watchdog_stop(&cam_ctrl->watchdog);
 
 	/* this would be time consuming */
-	ctx_stream_on_seninf_sensor(ctx, 0, 0, 0);
+	ctx_stream_off_seninf_sensor(ctx);
 
 	mtk_cam_ctrl_wait_all_released(cam_ctrl);
 

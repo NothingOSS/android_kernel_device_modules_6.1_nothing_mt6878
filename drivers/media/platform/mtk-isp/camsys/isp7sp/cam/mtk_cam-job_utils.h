@@ -180,5 +180,10 @@ u32 get_sensor_h(struct mtk_cam_job *job);
 u32 get_sensor_vb(struct mtk_cam_job *job);
 u32 get_sensor_fps(struct mtk_cam_job *job);
 
+int handle_sv_tag(struct mtk_cam_job *job);
+int handle_sv_tag_display_ic(struct mtk_cam_job *job);
+int handle_sv_tag_only_sv(struct mtk_cam_job *job);
+bool is_sv_img_tag_used(struct mtk_cam_job *job);
+
 #endif //__MTK_CAM_JOB_UTILS_H
 

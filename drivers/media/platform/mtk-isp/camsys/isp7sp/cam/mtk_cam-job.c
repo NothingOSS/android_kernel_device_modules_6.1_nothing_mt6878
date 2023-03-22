@@ -938,10 +938,9 @@ _stream_on(struct mtk_cam_job *job, bool on)
 		raw_tg_idx = -1;
 	}
 
-	/* TODO: separate seninf api to cammux setting and anable */
+	/* TODO: separate seninf api to cammux setting and enable */
 	if (job->stream_on_seninf || job->raw_switch) {
-		ctx_stream_on_seninf_sensor(job->src_ctx, on,
-					    seninf_pad, raw_tg_idx);
+		ctx_stream_on_seninf_sensor(job, seninf_pad, raw_tg_idx);
 
 		if (job->first_frm_switch)
 			apply_cam_mux_switch_stagger(job);
@@ -963,7 +962,8 @@ _stream_on(struct mtk_cam_job *job, bool on)
 	if (ctx->hw_sv) {
 		sv_dev = dev_get_drvdata(ctx->hw_sv);
 			mtk_cam_sv_update_start_period(sv_dev, job->scq_period);
-		mtk_cam_sv_dev_stream_on(sv_dev, on);
+		mtk_cam_sv_dev_stream_on(sv_dev, on,
+			job->enabled_tags, job->used_tag_cnt);
 	}
 
 	for (i = 0; i < ctx->num_mraw_subdevs; i++) {
@@ -985,11 +985,12 @@ _stream_on_only_sv(struct mtk_cam_job *job, bool on)
 
 	if (ctx->hw_sv) {
 		sv_dev = dev_get_drvdata(ctx->hw_sv);
-		mtk_cam_sv_dev_stream_on(sv_dev, on);
+		mtk_cam_sv_dev_stream_on(sv_dev, on,
+			job->enabled_tags, job->used_tag_cnt);
 	}
 
 	if (job->stream_on_seninf)
-		ctx_stream_on_seninf_sensor(job->src_ctx, on, 0, -1);
+		ctx_stream_on_seninf_sensor(job, 0, -1);
 
 	return 0;
 }
@@ -1829,6 +1830,12 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 	}
 	/* clone into job for debug dump */
 	job->ipi_config = ctx->ipi_config;
+
+	job->used_tag_cnt = ctx->used_tag_cnt;
+	job->enabled_tags = ctx->enabled_tags;
+	memcpy(job->tag_info, ctx->tag_info,
+		sizeof(struct mtk_camsv_tag_info) * CAMSV_MAX_TAGS);
+
 	if (!ctx->not_first_job) {
 		ctx->not_first_job = true;
 
@@ -2042,6 +2049,12 @@ _job_pack_mstream(struct mtk_cam_job *job,
 	}
 	/* clone into job for debug dump */
 	job->ipi_config = ctx->ipi_config;
+
+	job->used_tag_cnt = ctx->used_tag_cnt;
+	job->enabled_tags = ctx->enabled_tags;
+	memcpy(job->tag_info, ctx->tag_info,
+		sizeof(struct mtk_camsv_tag_info) * CAMSV_MAX_TAGS);
+
 	if (!ctx->not_first_job) {
 		ctx->not_first_job = true;
 
@@ -2095,7 +2108,7 @@ static bool seamless_config_changed(struct mtk_cam_job *job)
 			continue;
 
 		sv_dev = dev_get_drvdata(ctx->hw_sv);
-		tag_idx = mtk_cam_get_sv_tag_index(sv_dev,
+		tag_idx = mtk_cam_get_sv_tag_index(ctx->tag_info,
 			ctx->sv_subdev_idx[i] + MTKCAM_SUBDEV_CAMSV_START);
 		in = &ctx->ipi_config.sv_input[0][tag_idx].input;
 		sv_sink = &job->req->sv_data[ctx->sv_subdev_idx[i]].sink;
@@ -2191,6 +2204,12 @@ _job_pack_normal(struct mtk_cam_job *job,
 	}
 	/* clone into job for debug dump */
 	job->ipi_config = ctx->ipi_config;
+
+	job->used_tag_cnt = ctx->used_tag_cnt;
+	job->enabled_tags = ctx->enabled_tags;
+	memcpy(job->tag_info, ctx->tag_info,
+		sizeof(struct mtk_camsv_tag_info) * CAMSV_MAX_TAGS);
+
 	if (!ctx->not_first_job) {
 
 		ctx->not_first_job = true;
@@ -2259,108 +2278,6 @@ _job_pack_m2m(struct mtk_cam_job *job,
 }
 
 static int
-_handle_sv_tag_display_ic(struct mtk_cam_job *job)
-{
-	struct mtk_cam_ctx *ctx = job->src_ctx;
-	struct mtk_camsv_device *sv_dev;
-	struct mtk_camsv_pipeline *sv_pipe;
-	struct mtk_camsv_tag_param tag_param[3];
-	struct v4l2_format *img_fmt;
-	unsigned int width, height, mbus_code;
-	unsigned int hw_scen;
-	int ret = 0, i, sv_pipe_idx;
-
-	/* reset tag info */
-	sv_dev = dev_get_drvdata(ctx->hw_sv);
-	mtk_cam_sv_reset_tag_info(sv_dev);
-
-	if (ctx->num_sv_subdevs != 1)
-		return 1;
-
-	sv_pipe_idx = ctx->sv_subdev_idx[0];
-	sv_pipe = &ctx->cam->pipelines.camsv[sv_pipe_idx];
-	hw_scen = (1 << MTKCAM_SV_SPECIAL_SCENARIO_DISPLAY_IC);
-	mtk_cam_sv_get_tag_param(tag_param, hw_scen, 1, 3);
-
-	for (i = 0; i < ARRAY_SIZE(tag_param); i++) {
-		if (tag_param[i].tag_idx == SVTAG_0) {
-			img_fmt = &sv_pipe->vdev_nodes[
-				MTK_CAMSV_MAIN_STREAM_OUT - MTK_CAMSV_SINK_NUM].active_fmt;
-			width = img_fmt->fmt.pix_mp.width;
-			height = img_fmt->fmt.pix_mp.height;
-			if (img_fmt->fmt.pix_mp.pixelformat == V4L2_PIX_FMT_NV21)
-				mbus_code = MEDIA_BUS_FMT_SBGGR8_1X8;
-			else
-				mbus_code = MEDIA_BUS_FMT_SBGGR10_1X10;
-		} else if (tag_param[i].tag_idx == SVTAG_1) {
-			img_fmt = &sv_pipe->vdev_nodes[
-				MTK_CAMSV_MAIN_STREAM_OUT - MTK_CAMSV_SINK_NUM].active_fmt;
-			width = img_fmt->fmt.pix_mp.width;
-			height = img_fmt->fmt.pix_mp.height / 2;
-			if (img_fmt->fmt.pix_mp.pixelformat == V4L2_PIX_FMT_NV21)
-				mbus_code = MEDIA_BUS_FMT_SBGGR8_1X8;
-			else
-				mbus_code = MEDIA_BUS_FMT_SBGGR10_1X10;
-		} else {
-			img_fmt = &sv_pipe->vdev_nodes[
-				MTK_CAMSV_EXT_STREAM_OUT - MTK_CAMSV_SINK_NUM].active_fmt;
-			width = img_fmt->fmt.pix_mp.width;
-			height = img_fmt->fmt.pix_mp.height;
-			mbus_code = MEDIA_BUS_FMT_SBGGR8_1X8;
-		}
-		mtk_cam_sv_fill_tag_info(sv_dev->tag_info,
-			&tag_param[i], 1, 3, job->sub_ratio,
-			width, height,
-			mbus_code, sv_pipe);
-
-		sv_dev->used_tag_cnt++;
-		sv_dev->enabled_tags |= (1 << tag_param[i].tag_idx);
-	}
-
-	return ret;
-}
-
-static int
-_handle_sv_tag_only_sv(struct mtk_cam_job *job)
-{
-	struct mtk_cam_ctx *ctx = job->src_ctx;
-	struct mtk_camsv_device *sv_dev;
-	struct mtk_camsv_pipeline *sv_pipe;
-	struct mtk_camsv_sink_data *sv_sink;
-	struct mtk_camsv_tag_param tag_param;
-	unsigned int tag_idx, sv_pipe_idx;
-	int ret = 0, i;
-
-	/* reset tag info */
-	sv_dev = dev_get_drvdata(ctx->hw_sv);
-	mtk_cam_sv_reset_tag_info(sv_dev);
-
-	/* img tag(s) */
-	tag_idx = SVTAG_START;
-	for (i = 0; i < ctx->num_sv_subdevs; i++) {
-		sv_pipe_idx = ctx->sv_subdev_idx[i];
-		if (sv_pipe_idx >= ctx->cam->pipelines.num_camsv)
-			return 1;
-		sv_pipe = &ctx->cam->pipelines.camsv[sv_pipe_idx];
-		sv_sink = &job->req->sv_data[sv_pipe_idx].sink;
-		tag_param.tag_idx = tag_idx;
-		tag_param.seninf_padidx = sv_pipe->seninf_padidx;
-		tag_param.tag_order = mtk_cam_seninf_get_tag_order(
-			ctx->seninf, sv_pipe->seninf_padidx);
-		mtk_cam_sv_fill_tag_info(sv_dev->tag_info,
-			&tag_param, 1, 3, job->sub_ratio,
-			sv_sink->width, sv_sink->height,
-			sv_sink->mbus_code, sv_pipe);
-
-		sv_dev->used_tag_cnt++;
-		sv_dev->enabled_tags |= (1 << tag_idx);
-		tag_idx++;
-	}
-
-	return ret;
-}
-
-static int
 _job_pack_only_sv(struct mtk_cam_job *job,
 	 struct pack_job_ops_helper *job_helper)
 {
@@ -2399,12 +2316,12 @@ _job_pack_only_sv(struct mtk_cam_job *job,
 	if (!ctx->configured) {
 		/* handle camsv tags */
 		if (mtk_cam_is_display_ic(ctx)) {
-			if (_handle_sv_tag_display_ic(job)) {
+			if (handle_sv_tag_display_ic(job)) {
 				dev_info(cam->dev, "tag handle failed");
 				return -1;
 			}
 		} else {
-			if (_handle_sv_tag_only_sv(job)) {
+			if (handle_sv_tag_only_sv(job)) {
 				dev_info(cam->dev, "tag handle failed");
 				return -1;
 			}
@@ -2422,6 +2339,12 @@ _job_pack_only_sv(struct mtk_cam_job *job,
 	}
 	/* clone into job for debug dump */
 	job->ipi_config = ctx->ipi_config;
+
+	job->used_tag_cnt = ctx->used_tag_cnt;
+	job->enabled_tags = ctx->enabled_tags;
+	memcpy(job->tag_info, ctx->tag_info,
+		sizeof(struct mtk_camsv_tag_info) * CAMSV_MAX_TAGS);
+
 	if (!ctx->not_first_job)
 		ctx->not_first_job = true;
 	ret = mtk_cam_job_fill_ipi_frame(job, job_helper);
@@ -2572,7 +2495,8 @@ static int fill_sv_img_buffer_to_ipi_frame(
 	struct req_buffer_helper *helper, struct mtk_cam_buffer *buf,
 	struct mtk_cam_video_device *node)
 {
-	struct mtk_cam_ctx *ctx = helper->job->src_ctx;
+	struct mtk_cam_job *job = helper->job;
+	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtkcam_ipi_frame_param *fp = helper->fp;
 	struct mtkcam_ipi_img_output *out;
 	struct mtk_camsv_device *sv_dev;
@@ -2586,7 +2510,7 @@ static int fill_sv_img_buffer_to_ipi_frame(
 		return ret;
 
 	sv_dev = dev_get_drvdata(ctx->hw_sv);
-	tag_idx = mtk_cam_get_sv_tag_index(sv_dev, node->uid.pipe_id);
+	tag_idx = mtk_cam_get_sv_tag_index(job->tag_info, node->uid.pipe_id);
 
 	out = &fp->camsv_param[0][tag_idx].camsv_img_outputs[0];
 	ret = fill_img_out(out, buf, node);
@@ -3551,14 +3475,14 @@ static int mtk_cam_job_fill_ipi_config(struct mtk_cam_job *job,
 		struct mtk_camsv_device *sv_dev = dev_get_drvdata(ctx->hw_sv);
 
 		for (i = SVTAG_START; i < SVTAG_END; i++) {
-			if (sv_dev->enabled_tags & (1 << i)) {
+			if (job->enabled_tags & (1 << i)) {
 				sv_input = &config->sv_input[0][i];
 
 				sv_input->pipe_id = sv_dev->id + MTKCAM_SUBDEV_CAMSV_START;
 				sv_input->tag_id = i;
-				sv_input->tag_order = sv_dev->tag_info[i].tag_order;
+				sv_input->tag_order = job->tag_info[i].tag_order;
 				sv_input->is_first_frame = (ctx->not_first_job) ? 0 : 1;
-				sv_input->input = sv_dev->tag_info[i].cfg_in_param;
+				sv_input->input = job->ipi_config.sv_input[0][i].input;
 			}
 		}
 	}
@@ -3600,14 +3524,14 @@ static int mtk_cam_job_fill_ipi_config_only_sv(struct mtk_cam_job *job,
 	config->sw_feature = get_sw_feature(job);
 
 	for (i = SVTAG_START; i < SVTAG_END; i++) {
-		if (sv_dev->enabled_tags & (1 << i)) {
+		if (job->enabled_tags & (1 << i)) {
 			sv_input = &config->sv_input[0][i];
 
 			sv_input->pipe_id = sv_dev->id + MTKCAM_SUBDEV_CAMSV_START;
 			sv_input->tag_id = i;
-			sv_input->tag_order = sv_dev->tag_info[i].tag_order;
+			sv_input->tag_order = job->tag_info[i].tag_order;
 			sv_input->is_first_frame = (ctx->not_first_job) ? 0 : 1;
-			sv_input->input = sv_dev->tag_info[i].cfg_in_param;
+			sv_input->input = job->ipi_config.sv_input[0][i].input;
 		}
 	}
 

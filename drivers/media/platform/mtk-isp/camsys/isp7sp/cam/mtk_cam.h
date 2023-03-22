@@ -175,6 +175,11 @@ struct mtk_cam_ctx {
 	struct mtk_cam_ctrl cam_ctrl;
 	/* list for struct mtk_cam_job */
 	struct mtk_cam_hsf_ctrl *hsf;
+
+	/* sv tag control */
+	unsigned int used_tag_cnt;
+	unsigned int enabled_tags;
+	struct mtk_camsv_tag_info tag_info[CAMSV_MAX_TAGS];
 };
 
 struct mtk_cam_v4l2_pipelines {
@@ -188,9 +193,9 @@ struct mtk_cam_v4l2_pipelines {
 	struct mtk_mraw_pipeline *mraw;
 };
 
-int ctx_stream_on_seninf_sensor(struct mtk_cam_ctx *ctx,
-				int enable,
-				int seninf_pad, int raw_tg_idx);
+int ctx_stream_on_seninf_sensor(struct mtk_cam_job *job,
+			int seninf_pad, int raw_tg_idx);
+int ctx_stream_off_seninf_sensor(struct mtk_cam_ctx *ctx);
 
 struct mtk_cam_engines {
 	int num_seninf_devices;

@@ -1347,3 +1347,240 @@ bool is_hw_offline(struct mtk_cam_job *job)
 		scen_id == MTK_CAM_SCEN_M2M_NORMAL);
 }
 
+void mtk_cam_sv_reset_tag_info(struct mtk_cam_job *job)
+{
+	struct mtk_camsv_tag_info *tag_info;
+	int i;
+
+	job->used_tag_cnt = 0;
+	job->enabled_tags = 0;
+	for (i = SVTAG_START; i < SVTAG_END; i++) {
+		tag_info = &job->tag_info[i];
+		tag_info->sv_pipe = NULL;
+		tag_info->seninf_padidx = 0;
+		tag_info->hw_scen = 0;
+		tag_info->tag_order = MTKCAM_IPI_ORDER_FIRST_TAG;
+	}
+}
+
+int handle_sv_tag(struct mtk_cam_job *job)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtk_raw_sink_data *raw_sink;
+	struct mtk_camsv_pipeline *sv_pipe;
+	struct mtk_camsv_sink_data *sv_sink;
+	struct mtk_camsv_tag_param img_tag_param[SVTAG_IMG_END];
+	struct mtk_camsv_tag_param meta_tag_param;
+	unsigned int tag_idx, sv_pipe_idx, hw_scen;
+	unsigned int exp_no, req_amount;
+	int ret = 0, i;
+
+	/* reset tag info */
+	mtk_cam_sv_reset_tag_info(job);
+
+	/* img tag(s) */
+	if (job->job_scen.scen.normal.max_exp_num == 2) {
+		exp_no = req_amount = 2;
+		req_amount *= is_rgbw(job) ? 2 : 1;
+		hw_scen = is_dc_mode(job) ?
+			(1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_DC_STAGGER)) :
+			(1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_STAGGER));
+	} else if (job->job_scen.scen.normal.max_exp_num == 3) {
+		exp_no = req_amount = 3;
+		if (is_rgbw(job)) {
+			pr_info("[%s] rgbw not supported under 3-exp stagger case",
+				__func__);
+			return 1;
+		}
+		hw_scen = is_dc_mode(job) ?
+			(1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_DC_STAGGER)) :
+			(1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_STAGGER));
+	} else {
+		exp_no = req_amount = 1;
+		req_amount *= is_rgbw(job) ? 2 : 1;
+		hw_scen = is_dc_mode(job) ?
+			(1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_DC_STAGGER)) :
+			(1 << HWPATH_ID(MTKCAM_IPI_HW_PATH_ON_THE_FLY));
+	}
+	pr_info("[%s] hw_scen:%d exp_no:%d req_amount:%d",
+			__func__, hw_scen, exp_no, req_amount);
+	if (mtk_cam_sv_get_tag_param(img_tag_param, hw_scen, exp_no, req_amount))
+		return 1;
+
+	raw_sink = get_raw_sink_data(job);
+	if (WARN_ON(!raw_sink))
+		return -1;
+
+	for (i = 0; i < req_amount; i++) {
+		mtk_cam_sv_fill_tag_info(job->tag_info,
+			&job->ipi_config,
+			&img_tag_param[i], hw_scen, 3,
+			job->sub_ratio,
+			raw_sink->width, raw_sink->height,
+			raw_sink->mbus_code, NULL);
+
+		job->used_tag_cnt++;
+		job->enabled_tags |= (1 << img_tag_param[i].tag_idx);
+	}
+
+	for (i = 0; i < req_amount; i++)
+		pr_info("[%s] tag_param:%d tag_idx:%d seninf_padidx:%d tag_order:%d",
+				__func__, i, img_tag_param[i].tag_idx,
+				img_tag_param[i].seninf_padidx, img_tag_param[i].tag_order);
+	/* meta tag(s) */
+	tag_idx = SVTAG_META_START;
+	for (i = 0; i < ctx->num_sv_subdevs; i++) {
+		if (tag_idx >= SVTAG_END)
+			return 1;
+		sv_pipe_idx = ctx->sv_subdev_idx[i];
+		if (sv_pipe_idx >= ctx->cam->pipelines.num_camsv)
+			return 1;
+
+		sv_pipe = &ctx->cam->pipelines.camsv[sv_pipe_idx];
+		sv_sink = &job->req->sv_data[sv_pipe_idx].sink;
+		meta_tag_param.tag_idx = tag_idx;
+		meta_tag_param.seninf_padidx = sv_pipe->seninf_padidx;
+		meta_tag_param.tag_order = mtk_cam_seninf_get_tag_order(
+			ctx->seninf, sv_pipe->seninf_padidx);
+		mtk_cam_sv_fill_tag_info(job->tag_info,
+			&job->ipi_config,
+			&meta_tag_param, 1, 3, job->sub_ratio,
+			sv_sink->width, sv_sink->height,
+			sv_sink->mbus_code, sv_pipe);
+
+		job->used_tag_cnt++;
+		job->enabled_tags |= (1 << tag_idx);
+		tag_idx++;
+	}
+
+	ctx->used_tag_cnt = job->used_tag_cnt;
+	ctx->enabled_tags = job->enabled_tags;
+	memcpy(ctx->tag_info, job->tag_info,
+		sizeof(struct mtk_camsv_tag_info) * CAMSV_MAX_TAGS);
+
+	return ret;
+}
+
+int handle_sv_tag_display_ic(struct mtk_cam_job *job)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtk_camsv_pipeline *sv_pipe;
+	struct mtk_camsv_tag_param tag_param[3];
+	struct v4l2_format *img_fmt;
+	unsigned int width, height, mbus_code;
+	unsigned int hw_scen;
+	int ret = 0, i, sv_pipe_idx;
+
+	/* reset tag info */
+	mtk_cam_sv_reset_tag_info(job);
+
+	if (ctx->num_sv_subdevs != 1)
+		return 1;
+
+	sv_pipe_idx = ctx->sv_subdev_idx[0];
+	sv_pipe = &ctx->cam->pipelines.camsv[sv_pipe_idx];
+	hw_scen = (1 << MTKCAM_SV_SPECIAL_SCENARIO_DISPLAY_IC);
+	mtk_cam_sv_get_tag_param(tag_param, hw_scen, 1, 3);
+
+	for (i = 0; i < ARRAY_SIZE(tag_param); i++) {
+		if (tag_param[i].tag_idx == SVTAG_0) {
+			img_fmt = &sv_pipe->vdev_nodes[
+				MTK_CAMSV_MAIN_STREAM_OUT - MTK_CAMSV_SINK_NUM].active_fmt;
+			width = img_fmt->fmt.pix_mp.width;
+			height = img_fmt->fmt.pix_mp.height;
+			if (img_fmt->fmt.pix_mp.pixelformat == V4L2_PIX_FMT_NV21)
+				mbus_code = MEDIA_BUS_FMT_SBGGR8_1X8;
+			else
+				mbus_code = MEDIA_BUS_FMT_SBGGR10_1X10;
+		} else if (tag_param[i].tag_idx == SVTAG_1) {
+			img_fmt = &sv_pipe->vdev_nodes[
+				MTK_CAMSV_MAIN_STREAM_OUT - MTK_CAMSV_SINK_NUM].active_fmt;
+			width = img_fmt->fmt.pix_mp.width;
+			height = img_fmt->fmt.pix_mp.height / 2;
+			if (img_fmt->fmt.pix_mp.pixelformat == V4L2_PIX_FMT_NV21)
+				mbus_code = MEDIA_BUS_FMT_SBGGR8_1X8;
+			else
+				mbus_code = MEDIA_BUS_FMT_SBGGR10_1X10;
+		} else {
+			img_fmt = &sv_pipe->vdev_nodes[
+				MTK_CAMSV_EXT_STREAM_OUT - MTK_CAMSV_SINK_NUM].active_fmt;
+			width = img_fmt->fmt.pix_mp.width;
+			height = img_fmt->fmt.pix_mp.height;
+			mbus_code = MEDIA_BUS_FMT_SBGGR8_1X8;
+		}
+		mtk_cam_sv_fill_tag_info(job->tag_info,
+			&job->ipi_config,
+			&tag_param[i], 1, 3, job->sub_ratio,
+			width, height,
+			mbus_code, sv_pipe);
+
+		job->used_tag_cnt++;
+		job->enabled_tags |= (1 << tag_param[i].tag_idx);
+	}
+
+	ctx->used_tag_cnt = job->used_tag_cnt;
+	ctx->enabled_tags = job->enabled_tags;
+	memcpy(ctx->tag_info, job->tag_info,
+		sizeof(struct mtk_camsv_tag_info) * CAMSV_MAX_TAGS);
+
+	return ret;
+}
+
+int handle_sv_tag_only_sv(struct mtk_cam_job *job)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtk_camsv_pipeline *sv_pipe;
+	struct mtk_camsv_sink_data *sv_sink;
+	struct mtk_camsv_tag_param tag_param;
+	unsigned int tag_idx, sv_pipe_idx;
+	int ret = 0, i;
+
+	/* reset tag info */
+	mtk_cam_sv_reset_tag_info(job);
+
+	/* img tag(s) */
+	tag_idx = SVTAG_START;
+	for (i = 0; i < ctx->num_sv_subdevs; i++) {
+		sv_pipe_idx = ctx->sv_subdev_idx[i];
+		if (sv_pipe_idx >= ctx->cam->pipelines.num_camsv)
+			return 1;
+		sv_pipe = &ctx->cam->pipelines.camsv[sv_pipe_idx];
+		sv_sink = &job->req->sv_data[sv_pipe_idx].sink;
+		tag_param.tag_idx = tag_idx;
+		tag_param.seninf_padidx = sv_pipe->seninf_padidx;
+		tag_param.tag_order = mtk_cam_seninf_get_tag_order(
+			ctx->seninf, sv_pipe->seninf_padidx);
+		mtk_cam_sv_fill_tag_info(job->tag_info,
+			&job->ipi_config,
+			&tag_param, 1, 3, job->sub_ratio,
+			sv_sink->width, sv_sink->height,
+			sv_sink->mbus_code, sv_pipe);
+
+		job->used_tag_cnt++;
+		job->enabled_tags |= (1 << tag_idx);
+		tag_idx++;
+	}
+
+	ctx->used_tag_cnt = job->used_tag_cnt;
+	ctx->enabled_tags = job->enabled_tags;
+	memcpy(ctx->tag_info, job->tag_info,
+		sizeof(struct mtk_camsv_tag_info) * CAMSV_MAX_TAGS);
+
+	return ret;
+}
+
+bool is_sv_img_tag_used(struct mtk_cam_job *job)
+{
+	bool rst = false;
+
+	/* HS_TODO: check all features */
+	if (job->job_scen.scen.normal.exp_num > 1)
+		rst = !is_hw_offline(job);
+	if (is_dc_mode(job))
+		rst = true;
+	if (is_sv_pure_raw(job))
+		rst = true;
+
+	return rst;
+}
+

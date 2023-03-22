@@ -14,7 +14,6 @@
 #include "mtk_cam-resource_calc.h"
 
 #define MULTI_SMI_SV_HW_NUM 2
-#define MAX_SV_HW_TAGS 8
 #define MAX_SV_HW_GROUPS 4
 #define CAMSV_IRQ_NUM 4
 
@@ -135,14 +134,6 @@ struct mtk_camsv_tag_param {
 	bool is_w;
 };
 
-struct mtk_camsv_tag_info {
-	struct mtk_camsv_pipeline *sv_pipe;
-	unsigned int seninf_padidx;
-	unsigned int hw_scen;
-	unsigned int tag_order;
-	struct mtkcam_ipi_input_param cfg_in_param;
-};
-
 struct mtk_camsv_device {
 	struct device *dev;
 	struct mtk_cam_device *cam;
@@ -158,10 +149,9 @@ struct mtk_camsv_device {
 	unsigned int num_clks;
 	struct clk **clks;
 	unsigned int cammux_id;
+	unsigned int enabled_tags;
 	unsigned int used_tag_cnt;
 	unsigned int streaming_tag_cnt;
-	unsigned int enabled_tags;
-	struct mtk_camsv_tag_info tag_info[MAX_SV_HW_TAGS];
 	unsigned int active_group_info[MAX_SV_HW_GROUPS];
 	unsigned int first_tag;
 	unsigned int last_tag;
@@ -198,7 +188,8 @@ int mtk_cam_sv_cq_disable(struct mtk_camsv_device *sv_dev);
 int mtk_cam_get_sv_cammux_id(struct mtk_camsv_device *sv_dev, int tag_idx);
 int mtk_cam_sv_dev_pertag_stream_on(
 	struct mtk_camsv_device *sv_dev, unsigned int tag_idx, bool on);
-int mtk_cam_sv_dev_stream_on(struct mtk_camsv_device *sv_dev, bool on);
+int mtk_cam_sv_dev_stream_on(struct mtk_camsv_device *sv_dev, bool on,
+	unsigned int enabled_tags, unsigned int used_tag_cnt);
 int mtk_cam_sv_dmao_common_config(struct mtk_camsv_device *sv_dev);
 int mtk_cam_sv_print_fbc_status(struct mtk_camsv_device *sv_dev);
 int mtk_cam_sv_toggle_tg_db(struct mtk_camsv_device *sv_dev);
@@ -206,8 +197,8 @@ int mtk_cam_sv_toggle_db(struct mtk_camsv_device *sv_dev);
 int mtk_cam_sv_central_common_enable(struct mtk_camsv_device *sv_dev);
 int mtk_cam_sv_central_common_disable(struct mtk_camsv_device *sv_dev);
 int mtk_cam_sv_fbc_disable(struct mtk_camsv_device *sv_dev, unsigned int tag_idx);
-unsigned int mtk_cam_get_sv_tag_index(
-	struct mtk_camsv_device *sv_dev, unsigned int pipe_id);
+unsigned int mtk_cam_get_sv_tag_index(struct mtk_camsv_tag_info *arr_tag,
+	unsigned int pipe_id);
 int mtk_cam_sv_dev_pertag_write_rcnt(
 	struct mtk_camsv_device *sv_dev, unsigned int tag_idx);
 void mtk_cam_sv_vf_reset(struct mtk_camsv_device *sv_dev);
@@ -215,12 +206,12 @@ int mtk_cam_sv_is_zero_fbc_cnt(
 	struct mtk_camsv_device *sv_dev, unsigned int enable_tags);
 void mtk_cam_sv_check_fbc_cnt(
 	struct mtk_camsv_device *sv_dev, unsigned int tag_idx);
-void mtk_cam_sv_fill_tag_info(struct mtk_camsv_tag_info *tag_info,
+void mtk_cam_sv_fill_tag_info(struct mtk_camsv_tag_info *arr_tag,
+	struct mtkcam_ipi_config_param *ipi_config,
 	struct mtk_camsv_tag_param *tag_param, unsigned int hw_scen,
 	unsigned int pixelmode, unsigned int sub_ratio,
 	unsigned int mbus_width, unsigned int mbus_height,
 	unsigned int mbus_code,	struct mtk_camsv_pipeline *pipeline);
-void mtk_cam_sv_reset_tag_info(struct mtk_camsv_device *sv_dev);
 int mtk_cam_sv_get_tag_param(struct mtk_camsv_tag_param *arr_tag_param,
 	unsigned int hw_scen, unsigned int exp_no, unsigned int req_amount);
 void apply_camsv_cq(struct mtk_camsv_device *sv_dev,
