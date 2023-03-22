@@ -6165,12 +6165,6 @@ static void mtk_drm_ovl_bw_monitor_ratio_prework(struct drm_crtc *crtc,
 	unsigned int plane_mask = old_crtc_state->plane_mask;
 	struct drm_plane *plane = NULL;
 	int i = 0;
-	int prop_lye_idx = old_mtk_state->prop_val[CRTC_PROP_LYE_IDX];
-	struct mtk_drm_lyeblob_ids *lyeblob_ids, *next;
-	struct mtk_drm_private *mtk_drm = crtc->dev->dev_private;
-	int fbt_gles_head = -1;
-	int fbt_gles_tail = -1;
-	int fbt_layer_id = -1;
 
 	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
 		display_compress_ratio_table[i].frame_idx = 0;
@@ -6188,17 +6182,6 @@ static void mtk_drm_ovl_bw_monitor_ratio_prework(struct drm_crtc *crtc,
 	display_fbt_compress_ratio_table.peak_ratio = NULL;
 	display_fbt_compress_ratio_table.active = 0;
 
-	list_for_each_entry_safe(lyeblob_ids, next, &mtk_drm->lyeblob_head,
-				 list) {
-		if (lyeblob_ids->lye_idx == prop_lye_idx) {
-			fbt_gles_head = lyeblob_ids->fbt_gles_head;
-			fbt_gles_tail = lyeblob_ids->fbt_gles_tail;
-			fbt_layer_id = lyeblob_ids->fbt_layer_id;
-			mtk_crtc->fbt_layer_id = fbt_layer_id;
-			break;
-		}
-	}
-
 	drm_for_each_plane_mask(plane, crtc->dev, plane_mask) {
 		unsigned int plane_index = to_crtc_plane_index(plane->index);
 		struct mtk_plane_state *plane_state =
@@ -6206,6 +6189,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_prework(struct drm_crtc *crtc,
 		int index = plane_index;
 		int is_active = 0;
 		int need_skip = 0;
+		bool is_gpu_cached = false;
 
 		DDPDBG_BWM("BWM: layer caps:0x%08x\n", plane_state->comp_state.layer_caps);
 		if ((plane_state->comp_state.layer_caps & MTK_HWC_UNCHANGED_LAYER) ||
@@ -6213,6 +6197,11 @@ static void mtk_drm_ovl_bw_monitor_ratio_prework(struct drm_crtc *crtc,
 			(plane_state->comp_state.layer_caps & MTK_HWC_UNCHANGED_FBT_LAYER)) {
 			is_active = 0;
 			need_skip = 0;
+			if ((plane_state->comp_state.layer_caps & MTK_HWC_INACTIVE_LAYER) &&
+			(plane_state->comp_state.layer_caps & MTK_HWC_UNCHANGED_FBT_LAYER)) {
+				is_gpu_cached = true;
+				mtk_crtc->fbt_layer_id = index;
+			}
 		} else {
 			is_active = 1;
 			need_skip = 1;
@@ -6224,12 +6213,11 @@ static void mtk_drm_ovl_bw_monitor_ratio_prework(struct drm_crtc *crtc,
 			need_skip = 1;
 
 		DDPDBG_BWM("BWM: need skip:%d\n", need_skip);
-		if ((fbt_gles_head != -1) && (fbt_gles_tail != -1) && (need_skip != 1)) {
 
-			if ((plane_index == fbt_layer_id) &&
-					(plane_index == fbt_gles_head) &&
-					(fbt_layer_id != -1) &&
-					(plane_state->pending.enable)) {
+		if ((plane_index < MAX_LAYER_RATIO_NUMBER) &&
+			(plane_state->pending.enable) && (need_skip != 1) && (index >= 0)) {
+
+			if (is_gpu_cached) {
 				display_fbt_compress_ratio_table.frame_idx = frame_idx;
 				display_fbt_compress_ratio_table.key_value = frame_idx;
 				display_fbt_compress_ratio_table.valid = 0;
@@ -6241,9 +6229,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_prework(struct drm_crtc *crtc,
 					DISP_SLOT_LAYER_PEAK_RATIO(index)));
 				if (is_active)
 					display_fbt_compress_ratio_table.active = 1;
-
-			} else if ((plane_index < MAX_LAYER_RATIO_NUMBER) &&
-					(plane_state->pending.enable) && (index >= 0)) {
+			} else {
 				display_compress_ratio_table[index].frame_idx = frame_idx;
 				display_compress_ratio_table[index].key_value = frame_idx +
 					plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID];
@@ -6257,27 +6243,13 @@ static void mtk_drm_ovl_bw_monitor_ratio_prework(struct drm_crtc *crtc,
 				if (is_active)
 					display_compress_ratio_table[index].active = 1;
 			}
-		} else if ((plane_index < MAX_LAYER_RATIO_NUMBER) &&
-				(plane_state->pending.enable) && (need_skip != 1) && (index >= 0)) {
-			display_compress_ratio_table[index].frame_idx = frame_idx;
-			display_compress_ratio_table[index].key_value = frame_idx +
-				plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID];
-			display_compress_ratio_table[index].valid = 0;
-			display_compress_ratio_table[index].average_ratio =
-				(unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
-				DISP_SLOT_LAYER_AVG_RATIO(index)));
-			display_compress_ratio_table[index].peak_ratio =
-				(unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
-				DISP_SLOT_LAYER_PEAK_RATIO(index)));
-			if (is_active)
-				display_compress_ratio_table[index].active = 1;
 		}
 
 		DDPDBG_BWM("BWM: frame idx:%d alloc_id:%llu plane_index:%u enable:%u\n",
 				frame_idx, plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID],
 				plane_index, plane_state->pending.enable);
-		DDPDBG_BWM("BWM: fn:%u index:%d fbt_layer_id:%d fbt_head:%d fbt_tail:%d\n",
-				fn, index, fbt_layer_id, fbt_gles_head, fbt_gles_tail);
+		DDPDBG_BWM("BWM: fn:%u index:%d is_gpu_cached:%d\n",
+				fn, index, is_gpu_cached);
 	}
 }
 
