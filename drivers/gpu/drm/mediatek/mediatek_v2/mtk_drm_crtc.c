@@ -9806,6 +9806,11 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	DDP_PROFILE("[PROFILE] %s+\n", __func__);
 	CRTC_MMP_MARK(crtc_id, enable, 1, 0);
 
+
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
+		/* 1. power on mtcmos & init apsrc*/
+		mtk_drm_top_clk_prepare_enable(crtc->dev);
+
 	/* adjust path for ovl switch if necessary */
 	mtk_drm_crtc_path_adjust(priv, crtc, mtk_crtc->ddp_mode);
 
@@ -9823,19 +9828,18 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 				&en);
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
-		/* 1. power on mtcmos & init apsrc*/
-		mtk_drm_top_clk_prepare_enable(crtc->dev);
+		/* 2. init apsrc*/
 		mtk_crtc_v_idle_apsrc_control(crtc, NULL, true, true,
 			MTK_APSRC_CRTC_DEFAULT, false);
 
-		/* 2. prepare modules would be used in this CRTC */
+		/* 3. prepare modules would be used in this CRTC */
 		mtk_crtc_ddp_prepare(mtk_crtc);
 	}
 
 	mtk_gce_backup_slot_init(mtk_crtc);
 
 #ifndef DRM_CMDQ_DISABLE
-	/* 3. power on cmdq client */
+	/* 4. power on cmdq client */
 	client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 	cmdq_mbox_enable(client->chan);
 	CRTC_MMP_MARK((int) crtc_id, enable, 1, 1);
@@ -9843,7 +9847,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 		mtk_crtc_prepare_instr(crtc);
 #endif
 
-	/* 4. start trigger loop first to keep gce alive */
+	/* 5. start trigger loop first to keep gce alive */
 	if (mtk_crtc_with_trigger_loop(crtc)) {
 		if (mtk_crtc_with_sodi_loop(crtc) &&
 			(!mtk_crtc_is_frame_trigger_mode(crtc)))
@@ -9879,43 +9883,43 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	}
 
 	CRTC_MMP_MARK((int) crtc_id, enable, 1, 2);
-	/* 5. connect path */
+	/* 6. connect path */
 	mtk_crtc_connect_default_path(mtk_crtc);
 
 	if (!crtc_id)
 		mtk_crtc->qos_ctx->last_hrt_req = 0;
 
-	/* 6. config ddp engine */
+	/* 7. config ddp engine */
 	mtk_crtc_config_default_path(mtk_crtc);
 	CRTC_MMP_MARK((int) crtc_id, enable, 1, 3);
 
-	/* 7. disconnect addon module and config */
+	/* 8. disconnect addon module and config */
 	mtk_crtc_connect_addon_module(crtc);
 
-	/* 8. restore OVL setting */
+	/* 9. restore OVL setting */
 	mtk_crtc_restore_plane_setting(mtk_crtc);
 
-	/* 9. Set QOS BW */
+	/* 10. Set QOS BW */
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_BW, NULL);
 
-	/* 10. set dirty for cmd mode */
+	/* 11. set dirty for cmd mode */
 	if (mtk_crtc_is_frame_trigger_mode(crtc) &&
 		!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE] &&
 		!mtk_state->doze_changed && !mtk_crtc->skip_frame)
 		mtk_crtc_set_dirty(mtk_crtc);
 
-	/* 11. set vblank*/
+	/* 12. set vblank*/
 	drm_crtc_vblank_on(crtc);
 
-	/* 12. enable ESD check */
+	/* 13. enable ESD check */
 	if (mtk_drm_lcm_is_connect())
 		mtk_disp_esd_check_switch(crtc, true);
 
-	/* 13. enable fake vsync if need*/
+	/* 14. enable fake vsync if need*/
 	mtk_drm_fake_vsync_switch(crtc, true);
 
-	/* 14. set CRTC SW status */
+	/* 15. set CRTC SW status */
 	mtk_crtc_set_status(crtc, true);
 
 end:
