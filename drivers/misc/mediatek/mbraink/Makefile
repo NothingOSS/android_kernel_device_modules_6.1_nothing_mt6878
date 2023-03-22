@@ -1,0 +1,11 @@
+#####FOR SWPM Include #####
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm/inc/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm/inc/
+
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/qos/
+
+subdir-ccflags-y += -Wformat
+
+obj-${CONFIG_MTK_MBRAINK} += mtk_mbraink.o
+
+mtk_mbraink-objs += mbraink_power.o mbraink_video.o mbraink_process.o mbraink.o mbraink_memory.o mbraink_gpu.o mbraink_audio.o mbraink_cpufreq.o mbraink_suspend_info.o mbraink_battery.o

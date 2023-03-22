@@ -100,3 +100,5 @@ obj-$(CONFIG_USB) += usb/
 obj-$(CONFIG_MTK_WIDEVINE_DRM) += widevine_drm/
 obj-$(CONFIG_MTK_WLC)          += wlcdrv/
 obj-$(CONFIG_MTK_PGBOOST) += pgboost/
+obj-$(CONFIG_MTK_MBRAINK)      += mbraink/
+
