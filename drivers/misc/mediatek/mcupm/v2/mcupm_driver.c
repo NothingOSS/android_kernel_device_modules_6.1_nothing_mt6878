@@ -79,6 +79,11 @@ static int mtk_ipi_init(struct platform_device *pdev)
 		if (legacy_mbox_dt == false) {
 			res = platform_get_resource_byname(pdev,
 					IORESOURCE_MEM, "mbox0_base");
+			if (!res) {
+				pr_info("[MCUPM] could not get resource for mbox0_base\n");
+				return -ENODEV;
+			}
+
 			res_size = resource_size(res);
 			offset = res->start + (i * res_size);
 			base = devm_ioremap(dev, offset, res_size);
@@ -86,6 +91,11 @@ static int mtk_ipi_init(struct platform_device *pdev)
 			snprintf(name, sizeof(name), "mbox%d_base", i);
 			res = platform_get_resource_byname(pdev,
 					IORESOURCE_MEM, name);
+			if (!res) {
+				pr_info("[MCUPM] could not get resource for %s\n", name);
+				return -ENODEV;
+			}
+
 			base = devm_ioremap_resource(dev, res);
 		}
 		if (IS_ERR((void const *) base)) {
