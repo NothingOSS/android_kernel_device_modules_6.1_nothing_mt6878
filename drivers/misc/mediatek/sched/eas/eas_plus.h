@@ -136,15 +136,15 @@ enum {
 	TG_NUM
 };
 
-struct soft_affinity_task_for_user {
-	pid_t pid;
-	int latency_sensitive;
-	int soft_cpumask;
-};
 extern void soft_affinity_init(void);
-extern void set_task_group_cpumask_int(unsigned int cpumask_val, char *group_name);
-extern struct cpumask get_task_group_cpumask(char *group_name);
-extern void set_task_ls_with_softmask(struct soft_affinity_task_for_user *soft_affinity_task_val);
+extern void set_top_app_cpumask(unsigned int cpumask_val);
+extern void set_foreground_cpumask(unsigned int cpumask_val);
+extern void set_background_cpumask(unsigned int cpumask_val);
+extern struct cpumask get_top_app_cpumask(void);
+extern struct cpumask get_foreground_cpumask(void);
+extern struct cpumask get_background_cpumask(void);
+extern void set_task_ls(int pid);
+extern void unset_task_ls(int pid);
 
 extern void get_most_powerful_pd_and_util_Th(void);
 
@@ -171,10 +171,13 @@ extern void get_most_powerful_pd_and_util_Th(void);
 #define EAS_TARGET_MARGIN_C1		_IOW('g', 24,  unsigned int)
 #define EAS_TURN_POINT_UTIL_C2		_IOW('g', 25,  unsigned int)
 #define EAS_TARGET_MARGIN_C2		_IOW('g', 26,  unsigned int)
-#define EAS_SET_CPUMASK_TA			_IOW('g', 27,  unsigned int)
+#define EAS_SET_CPUMASK_TA		_IOW('g', 27,  unsigned int)
 #define EAS_SET_CPUMASK_BACKGROUND	_IOW('g', 28,  unsigned int)
 #define EAS_SET_CPUMASK_FOREGROUND	_IOW('g', 29,  unsigned int)
-#define EAS_SET_TASK_SOFT_AFFINITY	_IOW('g', 30,  struct soft_affinity_task_for_user)
+#define EAS_SET_TASK_LS			_IOW('g', 30,  int)
+#define EAS_UNSET_TASK_LS		_IOW('g', 31,  int)
+
+
 
 #if IS_ENABLED(CONFIG_MTK_NEWIDLE_BALANCE)
 extern void mtk_sched_newidle_balance(void *data, struct rq *this_rq,

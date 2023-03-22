@@ -241,7 +241,7 @@ static long eas_ioctl_impl(struct file *filp,
 
 	unsigned int sync;
 	unsigned int val;
-	struct soft_affinity_task_for_user soft_affinity_task_val;
+	int pid;
 
 	switch (cmd) {
 	case EAS_SYNC_SET:
@@ -292,23 +292,27 @@ static long eas_ioctl_impl(struct file *filp,
 	case EAS_SET_CPUMASK_TA:
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
 			return -1;
-		set_task_group_cpumask_int(val, "top-app");
+		set_top_app_cpumask(val);
 		break;
 	case EAS_SET_CPUMASK_BACKGROUND:
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
 			return -1;
-		set_task_group_cpumask_int(val, "background");
+		set_foreground_cpumask(val);
 		break;
 	case EAS_SET_CPUMASK_FOREGROUND:
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
 			return -1;
-		set_task_group_cpumask_int(val, "foreground");
+		set_background_cpumask(val);
 		break;
-	case EAS_SET_TASK_SOFT_AFFINITY:
-		if (easctl_copy_from_user(&soft_affinity_task_val,
-				(void *)arg, sizeof(struct soft_affinity_task_for_user)))
+	case EAS_SET_TASK_LS:
+		if (easctl_copy_from_user(&pid, (void *)arg, sizeof(int)))
 			return -1;
-		set_task_ls_with_softmask(&soft_affinity_task_val);
+		set_task_ls(pid);
+		break;
+	case EAS_UNSET_TASK_LS:
+		if (easctl_copy_from_user(&pid, (void *)arg, sizeof(int)))
+			return -1;
+		unset_task_ls(pid);
 		break;
 	case EAS_SBB_ALL_SET:
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))

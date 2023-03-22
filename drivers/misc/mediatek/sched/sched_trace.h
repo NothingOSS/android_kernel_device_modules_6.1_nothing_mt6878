@@ -158,6 +158,41 @@ TRACE_EVENT(sched_select_task_rq,
 		__entry->cpuset_grp_id)
 );
 
+TRACE_EVENT(sched_effective_mask,
+
+	TP_PROTO(int pid, int target_cpu, bool prefer, struct cpumask *effective_softmask,
+			struct cpumask *tsk_softmask, struct cpumask *tg_softmask),
+
+	TP_ARGS(pid, target_cpu, prefer, effective_softmask, tsk_softmask, tg_softmask),
+
+	TP_STRUCT__entry(
+		__field(int, pid)
+		__field(int, target_cpu)
+		__field(bool, prefer)
+		__field(long, effective_softmask)
+		__field(long, tsk_softmask)
+		__field(long, tg_softmask)
+		),
+
+	TP_fast_assign(
+		__entry->pid = pid;
+		__entry->target_cpu = target_cpu;
+		__entry->prefer         = prefer;
+		__entry->effective_softmask = effective_softmask->bits[0];
+		__entry->tsk_softmask = tsk_softmask->bits[0];
+		__entry->tg_softmask = tg_softmask->bits[0];
+		),
+
+	TP_printk(
+		"pid=%4d target=%d latency_sensitive=%d eff_softmask=0x%lx tsk_softmask=0x%lx tg_softmask=0x%lx",
+		__entry->pid,
+		__entry->target_cpu,
+		__entry->prefer,
+		__entry->effective_softmask,
+		__entry->tsk_softmask,
+		__entry->tg_softmask)
+);
+
 TRACE_EVENT(sched_energy_init,
 
 	TP_PROTO(struct cpumask *pd_mask, unsigned int gear_idx, unsigned long cpu_cap,

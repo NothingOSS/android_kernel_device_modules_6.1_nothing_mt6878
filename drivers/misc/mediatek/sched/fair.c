@@ -714,33 +714,97 @@ struct cpumask get_task_group_cpumask(char *group_name)
 	return tg_mask;
 }
 
-void __set_task_ls_with_softmask(struct task_struct *p, bool latency_sensitive,
-		struct cpumask soft_cpumask)
+/* start of soft affinity interface */
+void set_top_app_cpumask(unsigned int cpumask_val)
 {
-	struct soft_affinity_task *sa_task;
-
-	sa_task = &((struct mtk_task *) p->android_vendor_data1)->sa_task;
-	sa_task->need_idle = latency_sensitive;
-	cpumask_copy(&sa_task->soft_cpumask, &soft_cpumask);
+	set_task_group_cpumask_int(cpumask_val, "top-app");
 }
-EXPORT_SYMBOL_GPL(__set_task_ls_with_softmask);
+EXPORT_SYMBOL_GPL(set_top_app_cpumask);
 
-void set_task_ls_with_softmask(struct soft_affinity_task_for_user *soft_affinity_task_val)
+void set_foreground_cpumask(unsigned int cpumask_val)
 {
-	int pid = soft_affinity_task_val->pid;
-	bool latency_sensitive = soft_affinity_task_val->latency_sensitive;
-	struct cpumask soft_cpumask = bit_to_cpumask(soft_affinity_task_val->soft_cpumask);
+	set_task_group_cpumask_int(cpumask_val, "foreground");
+}
+EXPORT_SYMBOL_GPL(set_foreground_cpumask);
+
+void set_background_cpumask(unsigned int cpumask_val)
+{
+	set_task_group_cpumask_int(cpumask_val, "background");
+}
+EXPORT_SYMBOL_GPL(set_background_cpumask);
+
+struct cpumask get_top_app_cpumask(void)
+{
+	return get_task_group_cpumask("top-app");
+}
+EXPORT_SYMBOL_GPL(get_top_app_cpumask);
+
+struct cpumask get_foreground_cpumask(void)
+{
+	return get_task_group_cpumask("foreground");
+}
+EXPORT_SYMBOL_GPL(get_foreground_cpumask);
+
+struct cpumask get_background_cpumask(void)
+{
+	return get_task_group_cpumask("background");
+}
+EXPORT_SYMBOL_GPL(get_background_cpumask);
+
+
+void set_task_ls(int pid)
+{
 	struct task_struct *p;
+	struct soft_affinity_task *sa_task;
 
 	rcu_read_lock();
 	p = find_task_by_vpid(pid);
 	if (p) {
 		get_task_struct(p);
-		__set_task_ls_with_softmask(p, latency_sensitive, soft_cpumask);
+		sa_task = &((struct mtk_task *) p->android_vendor_data1)->sa_task;
+		sa_task->need_idle = true;
 		put_task_struct(p);
 	}
 	rcu_read_unlock();
 }
+EXPORT_SYMBOL_GPL(set_task_ls);
+
+void unset_task_ls(int pid)
+{
+	struct task_struct *p;
+	struct soft_affinity_task *sa_task;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (p) {
+		get_task_struct(p);
+		sa_task = &((struct mtk_task *) p->android_vendor_data1)->sa_task;
+		sa_task->need_idle = false;
+		put_task_struct(p);
+	}
+	rcu_read_unlock();
+}
+EXPORT_SYMBOL_GPL(unset_task_ls);
+
+void set_task_soft_mask(int pid, unsigned int cpumask_val)
+{
+	struct task_struct *p;
+	struct soft_affinity_task *sa_task;
+	struct cpumask soft_cpumask = bit_to_cpumask(cpumask_val);
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (p) {
+		get_task_struct(p);
+		sa_task = &((struct mtk_task *) p->android_vendor_data1)->sa_task;
+		sa_task->need_idle = true;
+		cpumask_copy(&sa_task->soft_cpumask, &soft_cpumask);
+		put_task_struct(p);
+	}
+	rcu_read_unlock();
+}
+EXPORT_SYMBOL_GPL(set_task_soft_mask);
+/* end of soft affinity interface */
 
 #if IS_ENABLED(CONFIG_UCLAMP_TASK_GROUP)
 static inline bool cloned_uclamp_latency_sensitive(struct task_struct *p)
@@ -792,8 +856,8 @@ static inline void compute_effective_softmask(struct task_struct *p,
 {
 	struct cgroup_subsys_state *css;
 	struct task_group *tg;
-	struct cpumask task_mask;
-	struct cpumask tg_mask;
+	struct cpumask *task_mask;
+	struct cpumask *tg_mask;
 
 	*latency_sensitive = is_task_latency_sensitive(p);
 	if (!*latency_sensitive) {
@@ -803,12 +867,12 @@ static inline void compute_effective_softmask(struct task_struct *p,
 
 	css = task_css(p, cpu_cgrp_id);
 	tg = container_of(css, struct task_group, css);
-	tg_mask = ((struct mtk_tg *) tg->android_vendor_data1)->sa_tg.soft_cpumask;
+	tg_mask = &((struct mtk_tg *) tg->android_vendor_data1)->sa_tg.soft_cpumask;
 
-	task_mask = ((struct mtk_task *) p->android_vendor_data1)->sa_task.soft_cpumask;
+	task_mask = &((struct mtk_task *) p->android_vendor_data1)->sa_task.soft_cpumask;
 
-	if (!cpumask_and(dst_mask, &task_mask, &tg_mask)) {
-		cpumask_copy(dst_mask, &tg_mask);
+	if (!cpumask_and(dst_mask, task_mask, tg_mask)) {
+		cpumask_copy(dst_mask, tg_mask);
 		return;
 	}
 }
@@ -1343,6 +1407,17 @@ done:
 		trace_sched_select_task_rq(p, in_irq, select_reason, prev_cpu, *new_cpu,
 				task_util(p), task_util_est(p), uclamp_task_util(p),
 				latency_sensitive, sync, &effective_softmask);
+	}
+	if (trace_sched_effective_mask_enabled()) {
+		struct soft_affinity_task *sa_task = &((struct mtk_task *)
+			p->android_vendor_data1)->sa_task;
+		struct cgroup_subsys_state *css = task_css(p, cpu_cgrp_id);
+		struct task_group *tg = container_of(css, struct task_group, css);
+		struct soft_affinity_tg *sa_tg = &((struct mtk_tg *)
+			tg->android_vendor_data1)->sa_tg;
+
+			trace_sched_effective_mask(p->pid, *new_cpu, latency_sensitive,
+				&effective_softmask, &sa_task->soft_cpumask, &sa_tg->soft_cpumask);
 	}
 
 	irq_log_store();
