@@ -9,6 +9,7 @@
 #include "common.h"
 #include "eas_plus.h"
 #include "eas_trace.h"
+#include "vip.h"
 #include <mt-plat/mtk_irq_mon.h>
 
 #if IS_ENABLED(CONFIG_RT_SOFTINT_OPTIMIZATION)
@@ -215,7 +216,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			// util = cpu_util(cpu);
 
 			/* RT task skips cpu that runs latency_sensitive or vip tasks */
-			cpu_has_lt = uclamp_latency_sensitive(cpu_rq(cpu)->curr);
+			cpu_has_lt = is_task_latency_sensitive(cpu_rq(cpu)->curr);
 			//	|| mtk_nr_rtg_high_prio(cpu);
 
 			/*
