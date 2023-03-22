@@ -334,9 +334,13 @@ void isee_shm_free(struct tee_shm *shm)
 	 * In the case of driver private memory we call tee_shm_release
 	 * directly instead as it doesn't have a reference counter.
 	 */
+	if (shm == NULL)
+		return;
 	if (shm->flags & TEE_SHM_DMA_BUF)
 		dma_buf_put(shm->dmabuf);
-	else
+	else if ((shm->flags & TEE_SHM_DMA_KERN_BUF) ||
+		(shm->flags & TEE_SHM_MAPPED) ||
+		(shm->flags & TEE_SHM_EXT_DMA_BUF))
 		tee_shm_release(shm);
 }
 EXPORT_SYMBOL_GPL(isee_shm_free);

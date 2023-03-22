@@ -94,7 +94,7 @@ static void soter_release(struct tee_context *ctx)
 	struct soter_context_data *ctxdata = ctx->data;
 	struct tee_shm *shm;
 	struct optee_msg_arg *arg = NULL;
-	phys_addr_t parg;
+	phys_addr_t parg = 0;
 	struct soter_session *sess;
 	struct soter_session *sess_tmp;
 
@@ -164,6 +164,7 @@ int soter_ffa_shm_register(unsigned long page_link, unsigned int length,
 
 	struct scatterlist s;
 	int retVal = 0;
+	sg_init_table(&s, 1);
 
 	if (soter_priv == NULL) {
 		IMSG_ERROR("Failed! soter_priv is NULL\n");
