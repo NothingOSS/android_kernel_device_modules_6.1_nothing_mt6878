@@ -78,9 +78,9 @@ static int usnd_scp_recover_event(struct notifier_block *this,
 	struct mtk_base_scp_ultra_mem *ultra_mem = &scp_ultra->ultra_mem;
 	struct mtk_base_afe *afe = get_afe_base();
 	struct mtk_base_afe_memif *memif =
-		&afe->memif[ultra_mem->ultra_dl_memif_id];
+		&afe->memif[scp_ultra->scp_ultra_dl_memif_id];
 	struct mtk_base_afe_memif *memiful =
-		&afe->memif[ultra_mem->ultra_ul_memif_id];
+		&afe->memif[scp_ultra->scp_ultra_ul_memif_id];
 	int irq_id_dl = memif->irq_usage;
 	struct mtk_base_afe_irq *irqs_dl = &afe->irqs[irq_id_dl];
 	const struct mtk_base_irq_data *irq_data_dl = irqs_dl->irq_data;
