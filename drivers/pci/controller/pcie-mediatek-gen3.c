@@ -203,6 +203,7 @@ u32 mtk_pcie_dump_link_info(int port);
 #define SRCLKEN_RC_REQ_STA		0x1130
 
 #define MTK_PCIE_MAX_PORT		2
+#define PCIE_CLKBUF_SUBSYS_ID		7
 
 enum mtk_pcie_suspend_link_state {
 	LINK_STATE_L12 = 0,
@@ -451,6 +452,45 @@ static void mtk_pcie_mt6985_phy_fixup(struct mtk_pcie_port *port)
 	iounmap(pcie_phy_ckm);
 }
 
+/*
+ * mtk_pcie_clkbuf_control() - Switch BBCK2 to SW mode or HW mode
+ * @dev: the request device
+ * @enable: true is SW mode, false is HW mode
+ *
+ * SW mode will always on BBCK2, HW mode will be controlled by HW
+ */
+static void mtk_pcie_clkbuf_control(struct device *dev, bool enable)
+{
+	static int count;
+	int err = 0;
+
+	if (!dev)
+		return;
+
+	if (enable) {
+		if (++count > 1) {
+			dev_info(dev, "PCIe BBCK2 already enabled, count = %d\n", count);
+			return;
+		}
+	} else {
+		if (count == 0) {
+			dev_info(dev, "PCIe BBCK2 already disabled\n");
+			return;
+		}
+
+		if (--count) {
+			dev_info(dev, "PCIe BBCK2 has user, count = %d\n", count);
+			return;
+		}
+	}
+
+	dev_info(dev, "Current PCIe BBCK2 count = %d\n", count);
+	err = clkbuf_srclken_ctrl(enable ? "RC_FPM_REQ" : "RC_NONE_REQ",
+				  PCIE_CLKBUF_SUBSYS_ID);
+	if (err)
+		dev_info(dev, "PCIe fail to request BBCK2\n");
+}
+
 static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 {
 	struct resource_entry *entry;
@@ -474,6 +514,8 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 		spin_lock_init(&port->vote_lock);
 		port->vlpcfg_base = devm_ioremap(port->dev, PCIE_VLPCFG_BASE, 0x2000);
 
+		mtk_pcie_clkbuf_control(port->dev, true);
+
 		/* Just port0 enter L12 when suspend */
 		if (port->port_num == 0) {
 			port->ep_hw_mode_en = false;
@@ -495,8 +537,6 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 		val |= PCIE_P2_EXIT_BY_CLKREQ | PCIE_P2_IDLE_TIME(8);
 		writel_relaxed(val, port->base + PCIE_ASPM_CTRL);
 
-		/* Software enable BBCK2 */
-		clkbuf_srclken_ctrl("RC_FPM_REQ", 7);
 		mtk_pcie_mt6985_phy_fixup(port);
 	}
 
@@ -1167,8 +1207,7 @@ static void mtk_pcie_power_down(struct mtk_pcie_port *port)
 		writel_relaxed(PEXTP_SW_MAC1_PHY1_BIT,
 			       port->pextpcfg + PEXTP_SW_RST_SET_OFFSET);
 
-	/* BBCK2 is controlled by itself hardware mode */
-	clkbuf_srclken_ctrl("RC_NONE_REQ", 7);
+	mtk_pcie_clkbuf_control(port->dev, false);
 }
 
 static int mtk_pcie_setup(struct mtk_pcie_port *port)
@@ -1705,8 +1744,7 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 			writel_relaxed(val, port->pextpcfg + PEXTP_PWRCTL_1);
 		}
 
-		/* BBCK2 is controlled by itself hardware mode */
-		clkbuf_srclken_ctrl("RC_NONE_REQ", 7);
+		mtk_pcie_clkbuf_control(dev, false);
 
 		/* srclken rc request state */
 		dev_info(port->dev, "PCIe0 Modem HW MODE BIT=%#x, srclken rc state=%#x\n",
@@ -1758,8 +1796,7 @@ static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 		return -ENODEV;
 
 	if (port->suspend_mode == LINK_STATE_L12) {
-		/* Software enable BBCK2 */
-		clkbuf_srclken_ctrl("RC_FPM_REQ", 7);
+		mtk_pcie_clkbuf_control(dev, true);
 
 		if (port->port_num == 0) {
 			err = mtk_pcie_hw_control_vote(0, false, 0);
