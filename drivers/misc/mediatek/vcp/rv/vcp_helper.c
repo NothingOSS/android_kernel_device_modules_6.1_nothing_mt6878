@@ -693,7 +693,7 @@ static void vcp_err_info_handler(int id, void *prdata, void *data,
 /*
  * @return: 1 if vcp is ready for running tasks
  */
-void trigger_vcp_halt(enum vcp_core_id id)
+void trigger_vcp_halt(enum vcp_core_id id, char *user)
 {
 	int i, j;
 
@@ -711,7 +711,7 @@ void trigger_vcp_halt(enum vcp_core_id id)
 		vcp_dump_last_regs(mmup_enable_count());
 
 		/* trigger halt isr, force vcp enter wfi */
-		pr_notice("[VCP] %s VCP EE coredump...\n", __func__);
+		pr_notice("[VCP] %s %s trigger VCP EE coredump...\n", __func__, user);
 		writel(B_GIPC3_SETCLR_0, R_GIPC_IN_SET);
 		for (j = 0; j < NUM_FEATURE_ID; j++)
 			if (feature_table[j].enable)
@@ -719,7 +719,7 @@ void trigger_vcp_halt(enum vcp_core_id id)
 					j, feature_table[j].enable);
 		mtk_smi_dbg_hang_detect("VCP EE");
 	} else
-		pr_notice("[VCP] %s not ready\n", __func__);
+		pr_notice("[VCP] %s %s tigger but VCP not ready\n", __func__, user);
 	mutex_unlock(&vcp_pw_clk_mutex);
 }
 EXPORT_SYMBOL_GPL(trigger_vcp_halt);
@@ -763,11 +763,11 @@ unsigned int get_vcp_generation(void)
 }
 EXPORT_SYMBOL_GPL(get_vcp_generation);
 
-unsigned int vcp_cmd(enum vcp_cmd_id id)
+unsigned int vcp_cmd(enum vcp_cmd_id id, char *user)
 {
 	switch (id) {
 	case VCP_SET_HALT:
-		trigger_vcp_halt(VCP_A_ID);
+		trigger_vcp_halt(VCP_A_ID, user);
 		break;
 	case VCP_SET_DISP_SYNC:
 		trigger_vcp_disp_sync(VCP_A_ID);

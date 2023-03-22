@@ -15,7 +15,7 @@ typedef int (*vcp_deregister_feature_fp)(enum feature_id id);
 typedef unsigned int (*is_vcp_ready_fp)(enum vcp_core_id id);
 typedef void (*vcp_A_register_notify_fp)(struct notifier_block *nb);
 typedef void (*vcp_A_unregister_notify_fp)(struct notifier_block *nb);
-typedef unsigned int (*vcp_cmd_fp)(enum vcp_cmd_id id);
+typedef unsigned int (*vcp_cmd_fp)(enum vcp_cmd_id id, char *user);
 typedef unsigned int (*is_vcp_suspending_fp)(void);
 
 struct vcp_status_fp {
@@ -43,7 +43,7 @@ int vcp_deregister_feature_ex(enum feature_id id);
 unsigned int is_vcp_ready_ex(enum vcp_core_id id);
 void vcp_A_register_notify_ex(struct notifier_block *nb);
 void vcp_A_unregister_notify_ex(struct notifier_block *nb);
-unsigned int vcp_cmd_ex(enum vcp_cmd_id id);
+unsigned int vcp_cmd_ex(enum vcp_cmd_id id, char *user);
 unsigned int is_vcp_suspending_ex(void);
 
 #endif

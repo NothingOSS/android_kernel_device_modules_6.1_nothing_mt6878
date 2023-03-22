@@ -79,7 +79,7 @@ int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
 	mutex_lock(&mmqos_vcp_ipi_mutex);
 	writel(0, MEM_IPI_SYNC_DATA);
 	writel(val | (1 << func), MEM_IPI_SYNC_FUNC);
-	gen = vcp_cmd_ex(VCP_GET_GEN);
+	gen = vcp_cmd_ex(VCP_GET_GEN, "mmqos_ipi_task");
 
 	ret = mtk_ipi_send(vcp_get_ipidev(), IPI_OUT_MMQOS, IPI_SEND_WAIT,
 		&slot, PIN_OUT_SIZE_MMQOS, IPI_TIMEOUT_MS);
@@ -109,10 +109,10 @@ int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
 
 	if (!ret)
 		writel(val & ~readl(MEM_IPI_SYNC_DATA), MEM_IPI_SYNC_FUNC);
-	else if (gen == vcp_cmd_ex(VCP_GET_GEN)) {
+	else if (gen == vcp_cmd_ex(VCP_GET_GEN, "mmqos_ipi_task")) {
 		if (!times) {
 			MMQOS_ERR("VCP_SET_HALT");
-			vcp_cmd_ex(VCP_SET_HALT);
+			vcp_cmd_ex(VCP_SET_HALT, "mmqos_ipi_task");
 		}
 		times += 1;
 	}

@@ -18387,7 +18387,7 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 			if (m_id == 0) {
 				//hint vcp display SOF
-				vcp_cmd_ex(VCP_SET_DISP_SYNC);
+				vcp_cmd_ex(VCP_SET_DISP_SYNC, "disp");
 			}
 #endif
 			if ((m_id == 0 || m_id == 3) && ddp->data->wakeup_pf_wq && mtk_crtc0) {
