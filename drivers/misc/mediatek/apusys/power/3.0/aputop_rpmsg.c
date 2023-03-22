@@ -47,12 +47,20 @@ int aputop_send_rpmsg(struct aputop_rpmsg_data *rpmsg_data, int timeout) // ms
 	reinit_completion(&top_rpmsg->comp);
 
 	top_rpmsg->curr_rpmsg_cmd = rpmsg_data->cmd;
+
+	/* power on */
+	ret = rpmsg_sendto(top_rpmsg->ept, NULL, 1, 0);
+	if (ret && ret != -EOPNOTSUPP) {
+		pr_info("rpmsg_sendto(power on) fail: %d\n", ret);
+		goto unlock;
+	}
+
 	ret = rpmsg_send(top_rpmsg->ept, (void *)rpmsg_data,
 			sizeof(struct aputop_rpmsg_data));
 	if (ret) {
 		pr_info("%s: failed to send msg to remote side, ret=%d\n",
 				__func__, ret);
-		goto unlock;
+		goto poweroff;
 	}
 
 	if (timeout > 0) {
@@ -63,18 +71,23 @@ int aputop_send_rpmsg(struct aputop_rpmsg_data *rpmsg_data, int timeout) // ms
 		if (ret < 0) {
 			pr_info("%s waiting for ack interrupted, ret : %d\n",
 					__func__, ret);
-			goto unlock;
+			goto poweroff;
 		}
 
 		if (ret == 0) {
 			pr_info("%s waiting for ack timeout\n", __func__);
 			ret = -ETIMEDOUT;
-			goto unlock;
+			goto poweroff;
 		}
 
 		ret = 0;
 	}
 
+poweroff:
+	/* power off to restore ref cnt */
+	ret = rpmsg_sendto(top_rpmsg->ept, NULL, 0, 1);
+	if (ret && ret != -EOPNOTSUPP)
+		pr_info("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret);
 unlock:
 	mutex_unlock(&top_rpmsg->send_lock);
 
@@ -101,6 +114,11 @@ static int aputop_rpmsg_callback(struct rpmsg_device *rpdev, void *data,
 	}
 out:
 	complete(&top_rpmsg->comp);
+	/* power off */
+	ret = rpmsg_sendto(top_rpmsg->ept, NULL, 0, 1);
+	if (ret && ret != -EOPNOTSUPP)
+		pr_info("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret);
+
 	return ret;
 }
 
