@@ -166,11 +166,13 @@ static int mtk_uarthub_remove(struct platform_device *pdev)
 
 static int mtk_uarthub_resume(struct device *dev)
 {
+#if UARTHUB_DEBUG_LOG
 	const char *prefix = "##########";
 	const char *postfix = "##############";
 
 	pr_info("[%s] %s uarthub enter resume %s\n",
 		__func__, prefix, postfix);
+#endif
 
 #if UARTHUB_INFO_LOG
 	uarthub_core_debug_clk_info("HUB_DBG_RESUME");
@@ -181,11 +183,13 @@ static int mtk_uarthub_resume(struct device *dev)
 
 static int mtk_uarthub_suspend(struct device *dev)
 {
+#if UARTHUB_INFO_LOG
 	const char *prefix = "##########";
 	const char *postfix = "##############";
 
 	pr_info("[%s] %s uarthub enter suspend %s\n",
 		__func__, prefix, postfix);
+#endif
 
 #if UARTHUB_DEBUG_LOG
 	uarthub_core_debug_clk_info("HUB_DBG_RESUME");
@@ -507,8 +511,10 @@ int uarthub_core_irq_register(struct platform_device *pdev)
 	if (node) {
 		irq_num = irq_of_parse_and_map(node, 0);
 		irq_flag = irq_get_trigger_type(irq_num);
+#if UARTHUB_DEBUG_LOG
 		pr_info("[%s] get irq id(%d) and irq trigger flag(%d) from DT\n",
 			__func__, irq_num, irq_flag);
+#endif
 
 		ktime_get_real_ts64(&now);
 		tv_end_assert.tv_sec = now.tv_sec;
@@ -1228,7 +1234,7 @@ int uarthub_core_dev0_clear_tx_request(void)
 		return -4;
 	}
 
-#if UARTHUB_INFO_LOG
+#if UARTHUB_DEBUG_LOG
 	pr_info("[%s] g_max_dev=[%d]\n", __func__, g_max_dev);
 #endif
 
@@ -1876,7 +1882,9 @@ int uarthub_core_config_internal_baud_rate(int dev_index, int rate_index)
 	}
 
 	if (uarthub_core_is_uarthub_clk_enable() == 0) {
+#if UARTHUB_DEBUG_LOG
 		pr_notice("[%s] uarthub_core_is_uarthub_clk_enable=[0]\n", __func__);
+#endif
 		return -4;
 	}
 
