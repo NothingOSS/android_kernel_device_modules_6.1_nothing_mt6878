@@ -1603,6 +1603,118 @@ fail_destroy_cq:
 	return ret;
 }
 
+/* buffer format operation */
+struct mtk_cam_buf_fmt_desc *get_fmt_desc(
+	struct mtk_cam_driver_buf_desc *buf_desc)
+{
+	return &buf_desc->fmt_desc[buf_desc->fmt_sel];
+}
+
+int set_fmt_select(int sel,
+	struct mtk_cam_driver_buf_desc *buf_desc)
+{
+	if (sel >= MTKCAM_BUF_FMT_TYPE_START &&
+		sel < MTKCAM_BUF_FMT_TYPE_CNT)
+		buf_desc->fmt_sel = sel;
+	else {
+		pr_info("%s: error: invalid fmt_sel %d",
+				__func__, sel);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int update_from_mbus_bayer(struct mtk_cam_buf_fmt_desc *fmt_desc,
+	struct v4l2_mbus_framefmt *mf)
+{
+	fmt_desc->ipi_fmt = sensor_mbus_to_ipi_fmt(mf->code);
+	fmt_desc->pixel_fmt = sensor_mbus_to_pixel_format(mf->code);
+	fmt_desc->width = mf->width;
+	fmt_desc->height = mf->height;
+
+	return (fmt_desc->ipi_fmt == MTKCAM_IPI_IMG_FMT_UNKNOWN) ? 1 : 0;
+}
+
+static int calc_buf_param_bayer(struct mtk_cam_buf_fmt_desc *fmt_desc)
+{
+	fmt_desc->stride[0] = mtk_cam_dmao_xsize(fmt_desc->width, fmt_desc->ipi_fmt, 4);
+	fmt_desc->stride[1] = 0;
+	fmt_desc->stride[2] = 0;
+
+	fmt_desc->size = fmt_desc->stride[0] * fmt_desc->height;
+
+	return 0;
+}
+
+static int update_from_mbus_ufbc(struct mtk_cam_buf_fmt_desc *fmt_desc,
+	struct v4l2_mbus_framefmt *mf)
+{
+	fmt_desc->ipi_fmt = sensor_mbus_to_ipi_fmt_ufbc(mf->code);
+	fmt_desc->pixel_fmt = sensor_mbus_to_pixel_format_ufbc(mf->code);
+	fmt_desc->width = mf->width;
+	fmt_desc->height = mf->height;
+
+	return (fmt_desc->ipi_fmt == MTKCAM_IPI_IMG_FMT_UNKNOWN) ? 1 : 0;
+}
+
+static int calc_buf_param_ufbc(struct mtk_cam_buf_fmt_desc *fmt_desc)
+{
+	int ret = 0;
+	__u32 stride, size;
+
+	ret = get_bayer_ufbc_stride_and_size(
+			(u32)fmt_desc->width, (u32)fmt_desc->height,
+			mtk_format_info(fmt_desc->pixel_fmt), 0,
+			&stride, &size);
+
+	fmt_desc->size = size;
+	fmt_desc->stride[0] = stride;
+	fmt_desc->stride[1] = fmt_desc->stride[2] = 0;
+
+	return ret;
+}
+
+struct buf_fmt_ops {
+	int (*update_input_param)(struct mtk_cam_buf_fmt_desc *fmt_desc,
+		struct v4l2_mbus_framefmt *mf);
+	int (*calc_buf_param)(struct mtk_cam_buf_fmt_desc *fmt_desc);
+};
+
+static struct buf_fmt_ops buf_fmt_ops_bayer = {
+	.update_input_param = update_from_mbus_bayer,
+	.calc_buf_param = calc_buf_param_bayer,
+};
+
+static struct buf_fmt_ops buf_fmt_ops_ufbc = {
+	.update_input_param = update_from_mbus_ufbc,
+	.calc_buf_param = calc_buf_param_ufbc,
+};
+
+int update_buf_fmt_desc(struct mtk_cam_driver_buf_desc *desc,
+				struct v4l2_mbus_framefmt *mf)
+{
+	int ret = 0, i = 0;
+	struct buf_fmt_ops *ops[MTKCAM_BUF_FMT_TYPE_CNT] = {
+		&buf_fmt_ops_bayer,
+		&buf_fmt_ops_ufbc
+	};
+
+	for (i = MTKCAM_BUF_FMT_TYPE_START; i < MTKCAM_BUF_FMT_TYPE_CNT && !ret; ++i) {
+		ret = ret || ops[i]->update_input_param(&desc->fmt_desc[i], mf);
+		ret = ret || ops[i]->calc_buf_param(&desc->fmt_desc[i]);
+
+		if (ret) {
+			WARN_ON_ONCE(1);
+			break;
+		}
+
+		desc->max_size = max(desc->max_size, desc->fmt_desc[i].size);
+	}
+
+	return ret;
+}
+
 static int mtk_cam_ctx_alloc_img_pool(struct mtk_cam_ctx *ctx)
 {
 	struct device *dev_to_attach;
@@ -1611,6 +1723,7 @@ static int mtk_cam_ctx_alloc_img_pool(struct mtk_cam_ctx *ctx)
 	struct mtk_raw_ctrl_data *ctrl_data;
 	struct mtk_cam_resource_raw_v2 *raw_res;
 	struct v4l2_mbus_framefmt *mf;
+	int i;
 	int ret = 0;
 
 	if (!ctx->has_raw_subdev)
@@ -1624,21 +1737,13 @@ static int mtk_cam_ctx_alloc_img_pool(struct mtk_cam_ctx *ctx)
 	if (raw_res->img_wbuf_num == 0)
 		return ret;
 
-	/* img working buf desc */
+	// TODO(Will): for BAYER10_MIPI, use MTK_RAW_MAIN_STREAM_OUT fmt instead;
 	mf = &raw_pipe->pad_cfg[MTK_RAW_SINK].mbus_fmt;
-	desc->ipi_fmt = sensor_mbus_to_ipi_fmt(mf->code);
-	if (WARN_ON_ONCE(desc->ipi_fmt == MTKCAM_IPI_BAYER_PXL_ID_UNKNOWN))
+	if (update_buf_fmt_desc(desc, mf))
 		return -1;
 
-	desc->width = mf->width;
-	desc->height = mf->height;
-	desc->stride[0] = mtk_cam_dmao_xsize(desc->width, desc->ipi_fmt, 4);
-	desc->stride[1] = 0;
-	desc->stride[2] = 0;
-	desc->size = desc->stride[0] * desc->height;
-
 	if (ctrl_data->pre_alloc_mem.num
-	    && desc->size >= ctrl_data->pre_alloc_mem.bufs[0].length) {
+	    && desc->max_size >= ctrl_data->pre_alloc_mem.bufs[0].length) {
 		ret = _alloc_pool_by_dbuf(
 			  &ctx->img_work_buffer, &ctx->img_work_pool,
 			  dev_to_attach,
@@ -1650,16 +1755,26 @@ static int mtk_cam_ctx_alloc_img_pool(struct mtk_cam_ctx *ctx)
 		ret = _alloc_pool(
 			  "CAM_MEM_IMG_ID",
 			  &ctx->img_work_buffer, &ctx->img_work_pool,
-			  dev_to_attach, desc->size,
+			  dev_to_attach, desc->max_size,
 			  raw_res->img_wbuf_num,
 			  false);
 		/* FIXME: close fd */
 		desc->fd = mtk_cam_device_buf_fd(&ctx->img_work_buffer);
 	}
 
-	dev_info(dev_to_attach, "[%s]: desc(%d/%d/%d/%zu/0x%x) alloc_mem(%d/%d/%d) img_wbuf_num(%d/%d)\n",
+	for (i = MTKCAM_BUF_FMT_TYPE_START; i < MTKCAM_BUF_FMT_TYPE_CNT; ++i) {
+		struct mtk_cam_buf_fmt_desc *fmt_desc = &desc->fmt_desc[i];
+
+		dev_info(dev_to_attach, "[%s]: fmt_desc[%d](%d/%d/%d/sz:%zu/ipi:%d)",
+				 __func__, i,
+				 fmt_desc->width, fmt_desc->height,
+				 fmt_desc->stride[0], fmt_desc->size,
+				 fmt_desc->ipi_fmt);
+	}
+
+	dev_info(dev_to_attach, "[%s]: desc(%zu/0x%x) alloc_mem(%d/%d/%d) img_wbuf_num(%d/%d)\n",
 		__func__,
-		desc->width, desc->height, desc->stride[0], desc->size, mf->code,
+		desc->max_size, mf->code,
 		ctrl_data->pre_alloc_mem.bufs[0].fd,
 		ctrl_data->pre_alloc_mem.bufs[0].length,
 		ctrl_data->pre_alloc_mem.num,

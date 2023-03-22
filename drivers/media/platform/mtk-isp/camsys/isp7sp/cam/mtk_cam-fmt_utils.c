@@ -11,6 +11,9 @@
 #include "mtk_cam-fmt_utils.h"
 #include "mtk_cam-ipi.h"
 #include "mtk_camera-videodev2.h"
+#include "mtk_cam-ufbc-def.h"
+
+#define UFBC_TABLE_STRIDE_ALIGNMENT		16 // camsv hw constraint
 
 void fill_ext_mtkcam_fmtdesc(struct v4l2_fmtdesc *f)
 {
@@ -889,6 +892,29 @@ unsigned int sensor_mbus_to_ipi_fmt(unsigned int mbus_code)
 	return fmt;
 }
 
+static int bayer_ipi_fmt_to_ufbc_ipi_fmt(int ipi_fmt)
+{
+	switch (ipi_fmt) {
+	case MTKCAM_IPI_IMG_FMT_BAYER8:
+		return MTKCAM_IPI_IMG_FMT_UFBC_BAYER8;
+	case MTKCAM_IPI_IMG_FMT_BAYER10:
+		return MTKCAM_IPI_IMG_FMT_UFBC_BAYER10;
+	case MTKCAM_IPI_IMG_FMT_BAYER12:
+		return MTKCAM_IPI_IMG_FMT_UFBC_BAYER12;
+	case MTKCAM_IPI_IMG_FMT_BAYER14:
+		return MTKCAM_IPI_IMG_FMT_UFBC_BAYER14;
+	default:
+		pr_info("%s: error: un-support ipi fmt %d", __func__, ipi_fmt);
+		return MTKCAM_IPI_IMG_FMT_UNKNOWN;
+	}
+}
+
+unsigned int sensor_mbus_to_ipi_fmt_ufbc(unsigned int mbus_code)
+{
+	return bayer_ipi_fmt_to_ufbc_ipi_fmt(
+		sensor_mbus_to_ipi_fmt(mbus_code));
+}
+
 unsigned int sensor_mbus_to_ipi_pixel_id(unsigned int mbus_code)
 {
 	unsigned int pxl_id = MTKCAM_IPI_BAYER_PXL_ID_UNKNOWN;
@@ -923,6 +949,7 @@ unsigned int sensor_mbus_to_ipi_pixel_id(unsigned int mbus_code)
 
 	return pxl_id;
 }
+
 unsigned int sensor_mbus_to_pixel_format(unsigned int mbus_code)
 {
 	switch (mbus_code & SENSOR_FMT_MASK) {
@@ -964,3 +991,44 @@ unsigned int sensor_mbus_to_pixel_format(unsigned int mbus_code)
 	return V4L2_PIX_FMT_MTISP_SBGGR14;
 }
 
+unsigned int sensor_mbus_to_pixel_format_ufbc(unsigned int mbus_code)
+{
+	int ipi_fmt_ufbc = sensor_mbus_to_ipi_fmt_ufbc(mbus_code);
+
+	switch (ipi_fmt_ufbc) {
+	case MTKCAM_IPI_IMG_FMT_UFBC_BAYER8:
+		return V4L2_PIX_FMT_MTISP_BAYER8_UFBC;
+	case MTKCAM_IPI_IMG_FMT_UFBC_BAYER10:
+		return V4L2_PIX_FMT_MTISP_BAYER10_UFBC;
+	case MTKCAM_IPI_IMG_FMT_UFBC_BAYER12:
+		return V4L2_PIX_FMT_MTISP_BAYER12_UFBC;
+	case MTKCAM_IPI_IMG_FMT_UFBC_BAYER14:
+		return V4L2_PIX_FMT_MTISP_BAYER14_UFBC;
+	default:
+		pr_info("%s: error: un-support ipi fmt %d",
+			__func__, ipi_fmt_ufbc);
+		return V4L2_PIX_FMT_MTISP_BAYER10_UFBC;
+	}
+}
+
+int get_bayer_ufbc_stride_and_size(u32 w, u32 h,
+			const struct mtk_format_info *info, u32 byteperline,
+			u32 *stride, u32 *bufsize)
+{
+	u32 aligned_width;
+
+	if (!info)
+		return -1;
+
+	/* UFO format width should align 64 pixel */
+	aligned_width = ALIGN(w, 64);
+	*stride = aligned_width * info->bitpp[0] / 8;
+	*stride = max(byteperline, *stride);
+
+	*bufsize = (*stride) * h;
+	*bufsize += ALIGN((aligned_width / 64),
+		UFBC_TABLE_STRIDE_ALIGNMENT) * h;
+	*bufsize += sizeof(struct UfbcBufferHeader);
+
+	return 0;
+}

@@ -437,28 +437,31 @@ static int fill_img_in_driver_buf(struct mtkcam_ipi_img_input *ii,
 				  struct mtk_cam_pool_buffer *buf)
 {
 	int i;
+	struct mtk_cam_buf_fmt_desc *fmt_desc = get_fmt_desc(desc);
 
 	/* uid */
 	ii->uid = uid;
 
 	/* fmt */
-	ii->fmt.format = desc->ipi_fmt;
+	ii->fmt.format = fmt_desc->ipi_fmt;
 	ii->fmt.s = (struct mtkcam_ipi_size) {
-		.w = desc->width,
-		.h = desc->height,
+		.w = fmt_desc->width,
+		.h = fmt_desc->height,
 	};
 
 	for (i = 0; i < ARRAY_SIZE(ii->fmt.stride); i++)
-		ii->fmt.stride[i] = i < ARRAY_SIZE(desc->stride) ?
-			desc->stride[i] : 0;
+		ii->fmt.stride[i] = i < ARRAY_SIZE(fmt_desc->stride) ?
+			fmt_desc->stride[i] : 0;
 
 	/* buf */
-	ii->buf[0].size = desc->size;
+	ii->buf[0].size = fmt_desc->size;
 	ii->buf[0].iova = buf->daddr;
 	ii->buf[0].ccd_fd = desc->fd; /* TODO: ufo : desc->fd; */
 
 	buf_printk("%dx%d sz %zu/%d iova %pad\n",
-		   desc->width, desc->height, desc->size, buf->size, &buf->daddr);
+		   fmt_desc->width, fmt_desc->height,
+		   fmt_desc->size, buf->size, &buf->daddr);
+
 	return 0;
 }
 
@@ -468,23 +471,24 @@ static int fill_img_out_driver_buf(struct mtkcam_ipi_img_output *io,
 				  struct mtk_cam_pool_buffer *buf)
 {
 	int i;
+	struct mtk_cam_buf_fmt_desc *fmt_desc = get_fmt_desc(desc);
 
 	/* uid */
 	io->uid = uid;
 
 	/* fmt */
-	io->fmt.format = desc->ipi_fmt;
+	io->fmt.format = fmt_desc->ipi_fmt;
 	io->fmt.s = (struct mtkcam_ipi_size) {
-		.w = desc->width,
-		.h = desc->height,
+		.w = fmt_desc->width,
+		.h = fmt_desc->height,
 	};
 
 	for (i = 0; i < ARRAY_SIZE(io->fmt.stride); i++)
-		io->fmt.stride[i] = i < ARRAY_SIZE(desc->stride) ?
-			desc->stride[i] : 0;
+		io->fmt.stride[i] = i < ARRAY_SIZE(fmt_desc->stride) ?
+			fmt_desc->stride[i] : 0;
 
 	/* buf */
-	io->buf[0][0].size = desc->size;
+	io->buf[0][0].size = fmt_desc->size;
 	io->buf[0][0].iova = buf->daddr;
 	io->buf[0][0].ccd_fd = desc->fd; /* TODO: ufo : desc->fd; */
 
@@ -495,13 +499,15 @@ static int fill_img_out_driver_buf(struct mtkcam_ipi_img_output *io,
 			.y = 0,
 		},
 		.s = (struct mtkcam_ipi_size) {
-			.w = desc->width,
-			.h = desc->height,
+			.w = fmt_desc->width,
+			.h = fmt_desc->height,
 		},
 	};
 
 	buf_printk("%dx%d sz %zu/%d iova %pad\n",
-		   desc->width, desc->height, desc->size, buf->size, &buf->daddr);
+		   fmt_desc->width, fmt_desc->height,
+		   fmt_desc->size, buf->size, &buf->daddr);
+
 	return 0;
 }
 
@@ -1266,6 +1272,25 @@ int map_ipi_imgo_path(int v4l2_raw_path)
 	}
 	/* un-processed raw frame */
 	return MTKCAM_IPI_IMGO_UNPROCESSED;
+}
+
+bool require_imgo(struct mtk_cam_job *job)
+{
+	struct mtk_cam_video_device *node;
+	struct mtk_cam_request *req = job->req;
+	struct mtk_cam_buffer *buf;
+	bool has_imgo = false;
+
+	list_for_each_entry(buf, &req->buf_list, list) {
+		node = mtk_cam_buf_to_vdev(buf);
+
+		if (node->desc.id == MTK_RAW_MAIN_STREAM_OUT) {
+			has_imgo = true;
+			break;
+		}
+	}
+
+	return has_imgo;
 }
 
 bool require_proccessed_raw(struct mtk_cam_job *job)

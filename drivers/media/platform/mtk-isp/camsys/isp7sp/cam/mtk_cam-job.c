@@ -20,6 +20,11 @@
 #define SENSOR_SET_MARGIN_MS  25
 #define SENSOR_SET_MARGIN_MS_STAGGER  27
 
+static unsigned int debug_buf_fmt_sel = -1;
+module_param(debug_buf_fmt_sel, int, 0644);
+MODULE_PARM_DESC(sv_pure_raw, "working fmt select: 0->bayer, 1->ufbc");
+
+
 /* forward declarations */
 static void reset_unused_io_of_ipi_frame(struct req_buffer_helper *helper);
 static int update_cq_buffer_to_ipi_frame(struct mtk_cam_pool_buffer *cq,
@@ -195,21 +200,10 @@ static int map_job_type(const struct mtk_cam_scen *scen)
 
 static bool update_sv_pure_raw(struct mtk_cam_job *job)
 {
-	struct mtk_cam_request *req = job->req;
-	//struct mtk_cam_scen *scen = &job->job_scen;
-	struct mtk_cam_buffer *buf;
-	struct mtk_cam_video_device *node;
 	bool has_imgo, req_pure_raw, is_supported_scen, is_sv_pure_raw;
 
 	req_pure_raw = require_pure_raw(job);
-
-	has_imgo = false;
-	list_for_each_entry(buf, &req->buf_list, list) {
-		node = mtk_cam_buf_to_vdev(buf);
-
-		if (node->desc.id == MTK_RAW_MAIN_STREAM_OUT)
-			has_imgo = true;
-	}
+	has_imgo = require_imgo(job);
 
 	/* TODO: scen help func */
 	is_supported_scen =
@@ -223,6 +217,45 @@ static bool update_sv_pure_raw(struct mtk_cam_job *job)
 			is_sv_pure_raw);
 
 	return is_sv_pure_raw;
+}
+
+static bool is_4cell_sensor(struct mtk_cam_job *job)
+{
+	// TODO: get 4Cell from v2 sensor type
+	return false;
+}
+
+static bool is_sv_support_ufbc(struct mtk_cam_job *job)
+{
+	bool use_ufbc = !job->is_sv_pure_raw;
+	// TODO: 16 pixel mode not support UFBC
+
+	return use_ufbc;
+}
+
+static void update_buf_fmt_sel(struct mtk_cam_job *job)
+{
+	// NOTE: this will change ctx->img_work_buf_desc->fmt_sel
+	// everytime packing a new job
+	struct mtk_cam_driver_buf_desc *desc =
+		&job->src_ctx->img_work_buf_desc;
+	bool use_ufbc = true;
+
+	use_ufbc = use_ufbc
+		&& is_sv_support_ufbc(job)
+		&& !is_4cell_sensor(job);
+
+	if (use_ufbc)
+		set_fmt_select(MTKCAM_BUF_FMT_TYPE_UFBC, desc);
+	else
+		set_fmt_select(MTKCAM_BUF_FMT_TYPE_BAYER, desc);
+
+	if (debug_buf_fmt_sel != -1)
+		set_fmt_select(debug_buf_fmt_sel, desc);
+
+	if (CAM_DEBUG_ENABLED(JOB))
+		pr_info("%s: use_ufbc %d, desc->fmt_sel %d",
+			__func__, use_ufbc, desc->fmt_sel);
 }
 
 static int mtk_cam_job_fill_ipi_config(struct mtk_cam_job *job,
@@ -523,7 +556,11 @@ update_job_type_feature(struct mtk_cam_job *job)
 		else
 			job->prev_scen = ctrl->resource.user_data.raw_res.scen;
 		job->job_type = map_job_type(&job->job_scen);
+
+		// TODO: remove update_buf_fmt_sel and update_sv_pure_raw dependency in
+		// which is_sv_pure_raw is read during update_buf_fmt_sel
 		job->is_sv_pure_raw = update_sv_pure_raw(job);
+		update_buf_fmt_sel(job);
 	} else
 		job->job_type = JOB_TYPE_ONLY_SV;
 
@@ -1580,65 +1617,6 @@ static int job_dump_aa_info(struct mtk_cam_job *job, int engine_type)
 	return mtk_cam_ctx_queue_aa_dump_wq(ctx, &job->aa_dump_work);
 }
 
-#ifdef NOT_READY
-static int
-alloc_image_work_buffer(struct mtk_cam_device_buf *buf, int size,
-				   struct device *dev)
-{
-	struct dma_buf *dbuf;
-	int ret;
-
-	WARN_ON(!dev);
-
-	dbuf = mtk_cam_noncached_buffer_alloc(size);
-
-	ret = mtk_cam_device_buf_init(buf, dbuf, dev, size);
-	dma_heap_buffer_free(dbuf);
-	return  ret;
-}
-
-static int
-alloc_hdr_buffer(struct mtk_cam_ctx *ctx,
-			    struct mtk_cam_request *req)
-{
-	struct mtk_cam_driver_buf_desc *desc = &ctx->hdr_buf_desc;
-	struct mtk_cam_device_buf *buf = &ctx->hdr_buffer;
-	struct device *dev;
-	struct mtk_raw_request_data *d;
-	int ret;
-
-	/* FIXME */
-	d = &req->raw_data[ctx->raw_subdev_idx];
-
-	/* desc */
-	desc->ipi_fmt = sensor_mbus_to_ipi_fmt(d->sink.mbus_code);
-	if (WARN_ON_ONCE(desc->ipi_fmt == MTKCAM_IPI_BAYER_PXL_ID_UNKNOWN))
-		return -1;
-
-	desc->width = d->sink.width;
-	desc->height = d->sink.height;
-	desc->stride[0] = mtk_cam_dmao_xsize(d->sink.width, desc->ipi_fmt, 4);
-	desc->stride[1] = 0;
-	desc->stride[2] = 0;
-	desc->size = desc->stride[0] * desc->height;
-
-	/* FIXME: */
-	dev = ctx->hw_raw[0];
-
-	ret = alloc_image_work_buffer(buf, desc->size, dev);
-	if (ret)
-		return ret;
-
-	desc->daddr = buf->daddr;
-	desc->fd = 0; /* TODO: for UFO */
-
-	dev_info(ctx->cam->dev, "%s: fmt %d %dx%d str %d size %zu da 0x%x\n",
-		 __func__, desc->ipi_fmt, desc->width, desc->height,
-		 desc->stride[0], desc->size, desc->daddr);
-	return 0;
-}
-#endif
-
 int master_raw_set_subsample(struct device *dev, struct mtk_cam_job *job)
 {
 	struct mtk_raw_device *raw;
@@ -1803,11 +1781,6 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 	/* clone into job for debug dump */
 	job->ipi_config = ctx->ipi_config;
 	if (!ctx->not_first_job) {
-#ifdef drv_alloc_buffer
-		ret = alloc_hdr_buffer(ctx, job->req);
-		if (ret)
-			return ret;
-#endif
 		ctx->not_first_job = true;
 
 		apply_raw_target_clk(ctx, job->req);

@@ -634,18 +634,17 @@ static int mtk_cam_fill_mtk_pixfmt_mp(const struct mtk_format_info *info,
 		plane->sizeimage += ALIGN((aligned_width / 64), 8) * height / 2;
 		plane->sizeimage += sizeof(struct UfbcBufferHeader);
 	} else if (is_raw_ufo(pixelformat)) {
-		u32 aligned_width;
+		if (CAM_DEBUG_ENABLED(V4L2))
+			pr_info("%s: raw ufo: (%d/%d/Bpl:%d)",
+				__func__, width, height, plane->bytesperline);
 
-		/* UFO format width should align 64 pixel */
-		aligned_width = ALIGN(width, 64);
-		stride = aligned_width * info->bitpp[0] / 8;
-		stride = max(plane->bytesperline, stride);
+		get_bayer_ufbc_stride_and_size(
+			width, height, info, plane->bytesperline,
+			&plane->bytesperline, &plane->sizeimage);
 
-		plane->bytesperline = stride;
-
-		plane->sizeimage = stride * height;
-		plane->sizeimage += ALIGN((aligned_width / 64), 8) * height;
-		plane->sizeimage += sizeof(struct UfbcBufferHeader);
+		if (CAM_DEBUG_ENABLED(V4L2))
+			pr_info("%s: raw ufo: (Bpl:%d/sz:%d)",
+				__func__, plane->bytesperline, plane->sizeimage);
 	} else {
 
 		stride = mtk_format_calc_stride(info, 0, width,

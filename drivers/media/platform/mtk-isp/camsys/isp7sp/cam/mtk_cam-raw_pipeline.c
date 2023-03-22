@@ -246,6 +246,8 @@ static void mtk_cam_get_work_buf_num(struct mtk_cam_resource_v2 *user_ctrl)
 	struct mtk_cam_resource_raw_v2 *r = &user_ctrl->raw_res;
 	struct mtk_cam_scen *scen = &r->scen;
 	int exp_num = 0, buf_require = 0;
+	struct mtk_cam_driver_buf_desc desc;
+	struct v4l2_mbus_framefmt mf;
 
 	switch (scen->id) {
 	case MTK_CAM_SCEN_MSTREAM:
@@ -266,9 +268,12 @@ static void mtk_cam_get_work_buf_num(struct mtk_cam_resource_v2 *user_ctrl)
 	}
 
 	/* TODO: check pure raw fmt for DC */
-	r->img_wbuf_size =
-		mtk_cam_dmao_xsize(s->width,
-			sensor_mbus_to_ipi_fmt(s->code), 4) * s->height;
+	mf.code = s->code;
+	mf.width = s->width;
+	mf.height = s->height;
+	update_buf_fmt_desc(&desc, &mf);
+	r->img_wbuf_size = desc.max_size;
+
 	r->img_wbuf_num = buf_require;
 }
 

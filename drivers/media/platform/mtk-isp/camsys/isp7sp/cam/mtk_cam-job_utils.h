@@ -166,6 +166,8 @@ void get_stagger_rawi_table(struct mtk_cam_job *job,
 
 int map_ipi_vpu_point(int vpu_point);
 int map_ipi_imgo_path(int v4l2_raw_path);
+
+bool require_imgo(struct mtk_cam_job *job);
 bool require_pure_raw(struct mtk_cam_job *job);
 bool require_proccessed_raw(struct mtk_cam_job *job);
 

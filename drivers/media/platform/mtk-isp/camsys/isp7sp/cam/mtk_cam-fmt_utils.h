@@ -22,8 +22,6 @@ void fill_ext_mtkcam_fmtdesc(struct v4l2_fmtdesc *f);
 
 unsigned int mtk_cam_get_pixel_bits(unsigned int ipi_fmt);
 
-int mtk_cam_dmao_xsize(int w, unsigned int ipi_fmt, int pixel_mode_shift);
-
 /* TODO: rename */
 unsigned int mtk_cam_get_img_fmt(unsigned int fourcc);
 
@@ -69,7 +67,14 @@ unsigned int v4l2_format_calc_planesize(const struct v4l2_format_info *info,
 
 #define SENSOR_FMT_MASK			0xFFFF
 unsigned int sensor_mbus_to_ipi_fmt(unsigned int mbus_code);
+unsigned int sensor_mbus_to_ipi_fmt_ufbc(unsigned int mbus_code);
 unsigned int sensor_mbus_to_ipi_pixel_id(unsigned int mbus_code);
 unsigned int sensor_mbus_to_pixel_format(unsigned int mbus_code);
+unsigned int sensor_mbus_to_pixel_format_ufbc(unsigned int mbus_code);
+
+int mtk_cam_dmao_xsize(int w, unsigned int ipi_fmt, int pixel_mode_shift);
+int get_bayer_ufbc_stride_and_size(u32 w, u32 h,
+			const struct mtk_format_info *info, u32 byteperline,
+			u32 *stride, u32 *bufsize);
 
 #endif //__MTKCAM_FMT_UTILS_H

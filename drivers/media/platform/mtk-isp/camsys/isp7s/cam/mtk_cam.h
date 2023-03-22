@@ -56,17 +56,39 @@ struct mtk_rpmsg_device;
 #define MAX_SV_PIPES_PER_STREAM (MAX_PIPES_PER_STREAM - 1)
 #define MAX_MRAW_PIPES_PER_STREAM (MAX_PIPES_PER_STREAM - 1)
 
-struct mtk_cam_driver_buf_desc {
+enum mtkcam_buf_fmt_type {
+	MTKCAM_BUF_FMT_TYPE_START = 0,
+	MTKCAM_BUF_FMT_TYPE_BAYER = MTKCAM_BUF_FMT_TYPE_START,
+	MTKCAM_BUF_FMT_TYPE_UFBC,
+	MTKCAM_BUF_FMT_TYPE_CNT,
+};
+
+struct mtk_cam_buf_fmt_desc {
 	int ipi_fmt;
+	int pixel_fmt;
 	int width;
 	int height;
 	int stride[3];
 	size_t size;
+};
+
+struct mtk_cam_driver_buf_desc {
+	int fmt_sel;
+	struct mtk_cam_buf_fmt_desc fmt_desc[MTKCAM_BUF_FMT_TYPE_CNT];
+
+	size_t max_size; //largest size among all fmt type
 
 	/* for userspace only */
 	dma_addr_t daddr;
 	int fd;
 };
+
+struct mtk_cam_buf_fmt_desc *get_fmt_desc(
+		struct mtk_cam_driver_buf_desc *buf_desc);
+int set_fmt_select(int sel,
+		struct mtk_cam_driver_buf_desc *buf_desc);
+int update_buf_fmt_desc(struct mtk_cam_driver_buf_desc *desc,
+		struct v4l2_mbus_framefmt *mf);
 
 struct mtk_cam_ctx {
 	struct mtk_cam_device *cam;
