@@ -28,12 +28,14 @@
 #include "mtk_vcu.h"
 
 module_param(mtk_v4l2_dbg_level, int, 0644);
+module_param(mtk_vdec_lpw_level, int, 0644);
 module_param(mtk_vcodec_dbg, bool, 0644);
 module_param(mtk_vcodec_perf, bool, 0644);
 module_param(mtk_vcodec_vcp, int, 0644);
 char mtk_vdec_property_prev[1024];
 char mtk_vdec_vcp_log_prev[1024];
-module_param(mtk_vdec_align_limit, int, 0644);
+module_param(mtk_vdec_lpw_limit, int, 0644);
+module_param(mtk_vdec_lpw_timeout, int, 0644);
 
 static struct mtk_vcodec_dev *dev_ptr;
 
@@ -115,6 +117,7 @@ static int fops_vcodec_open(struct file *file)
 	mutex_init(&ctx->q_mutex);
 	mutex_init(&ctx->gen_buf_va_lock);
 	mutex_init(&ctx->detect_ts_param.lock);
+	spin_lock_init(&ctx->lpw_lock);
 
 	ctx->type = MTK_INST_DECODER;
 	ret = mtk_vcodec_dec_ctrls_setup(ctx);

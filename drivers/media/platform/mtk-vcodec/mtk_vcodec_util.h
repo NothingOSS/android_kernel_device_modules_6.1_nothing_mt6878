@@ -32,6 +32,10 @@
 #define LOG_PROPERTY_SIZE 1024
 #define ROUND_N(X, N)   (((X) + ((N)-1)) & (~((N)-1)))    //only for N is exponential of 2
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
+#define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
+#define NS_TO_MS(X) ((X) / 1000000)
+#define NS_MOD_MS(X) ((X) % 1000000)
+#define MS_TO_NS(X) ((X) * 1000000)
 #define isENCODE_PERFORMANCE_USAGE(w, h, fr, opr) \
 		((((w) >= 3840 && (h) >= 2160 && (fr) >= 30) || \
 		((h) >= 3840 && (w) >= 2160 && (fr) >= 30) || \
@@ -134,6 +138,7 @@ struct mtk_vcodec_dev;
 struct mtk_video_dec_buf;
 
 extern int mtk_v4l2_dbg_level;
+extern int mtk_vdec_lpw_level;
 extern bool mtk_vcodec_dbg;
 extern bool mtk_vcodec_perf;
 extern int mtk_vcodec_vcp;
@@ -145,7 +150,8 @@ extern char *mtk_vdec_vcp_log;
 extern char mtk_vdec_vcp_log_prev[LOG_PROPERTY_SIZE];
 extern char *mtk_venc_vcp_log;
 extern char mtk_venc_vcp_log_prev[LOG_PROPERTY_SIZE];
-extern int mtk_vdec_align_limit;
+extern int mtk_vdec_lpw_limit;
+extern int mtk_vdec_lpw_timeout;
 extern int support_svp_region;
 extern int support_wfd_region;
 
@@ -211,6 +217,18 @@ enum mtk_vcodec_debug_level {
 #define mtk_vcodec_debug_enter(h)  mtk_vcodec_debug(h, "+")
 #define mtk_vcodec_debug_leave(h)  mtk_vcodec_debug(h, "-")
 
+#define mtk_lpw_debug(level, fmt, args...)                              \
+	do {                                                             \
+		if ((mtk_vdec_lpw_level & (level)) == (level) ||       \
+		    (mtk_v4l2_dbg_level & (level)) == (level))           \
+			pr_notice("[MTK_LPW] level=%d %s(),%d: " fmt "\n",\
+				level, __func__, __LINE__, ##args);      \
+	} while (0)
+
+#define mtk_lpw_err(fmt, args...)                \
+	pr_notice("[MTK_LPW][ERROR] %s:%d: " fmt "\n", __func__, __LINE__, \
+		   ##args)
+
 #else
 
 #define mtk_v4l2_debug(level, fmt, args...)
@@ -222,6 +240,9 @@ enum mtk_vcodec_debug_level {
 #define mtk_vcodec_err(h, fmt, args...)
 #define mtk_vcodec_debug_enter(h)
 #define mtk_vcodec_debug_leave(h)
+
+#define mtk_lpw_debug(level, fmt, args...)
+#define mtk_lpw_err(fmt, args...)
 
 #endif
 

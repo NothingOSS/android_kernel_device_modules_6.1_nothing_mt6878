@@ -140,7 +140,7 @@ enum vdec_get_param_type {
 	GET_PARAM_INTERLACING,
 	GET_PARAM_CODEC_TYPE,
 	GET_PARAM_INPUT_DRIVEN,
-	GET_PARAM_ALIGN_MODE,
+	GET_PARAM_LOW_POWER_MODE,
 	GET_PARAM_INTERLACING_FIELD_SEQ,
 	GET_PARAM_CAPABILITY_FRAMEINTERVALS,
 	GET_PARAM_VDEC_VCU_VPUD_LOG
@@ -444,11 +444,8 @@ struct vdec_vsi {
 	__u32 interlacing;
 	__u32 codec_type;
 	__u8 input_driven;
-	__u8 align_mode;
-	__u8 wait_align;
+	__u8 low_pw_mode;
 	__u8 in_group;
-	__u8 src_cnt;
-	__u8 dst_cnt;
 	__s8 crc_path[256];
 	__s8 golden_path[256];
 	__u64 general_buf_dma;

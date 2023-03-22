@@ -118,6 +118,11 @@ EXPORT_SYMBOL_GPL(mtk_vcodec_perf);
 int mtk_v4l2_dbg_level;
 EXPORT_SYMBOL_GPL(mtk_v4l2_dbg_level);
 
+/* The log level of decoder low power mode related log.
+ */
+int mtk_vdec_lpw_level;
+EXPORT_SYMBOL_GPL(mtk_vdec_lpw_level);
+
 /* For vcodec vcp debug */
 int mtk_vcodec_vcp;
 EXPORT_SYMBOL_GPL(mtk_vcodec_vcp);
@@ -142,9 +147,13 @@ EXPORT_SYMBOL(mtk_venc_vcp_log);
 struct VENC_SLB_CB_T mtk_venc_slb_cb = {0};
 EXPORT_SYMBOL(mtk_venc_slb_cb);
 
-/* For vcp vdec align mode force setting limit grouping count */
-int mtk_vdec_align_limit = MTK_VDEC_GROUP_CNT;
-EXPORT_SYMBOL_GPL(mtk_vdec_align_limit);
+/* For vcp vdec low power mode force setting limit grouping count */
+int mtk_vdec_lpw_limit = MTK_VDEC_GROUP_CNT;
+EXPORT_SYMBOL_GPL(mtk_vdec_lpw_limit);
+
+/* For vcp vdec low power mode force setting timer default timeout (ms) */
+int mtk_vdec_lpw_timeout = MTK_VDEC_WAIT_GROUP_MS;
+EXPORT_SYMBOL_GPL(mtk_vdec_lpw_timeout);
 
 struct vcu_v4l2_func vcu_func = { NULL };
 EXPORT_SYMBOL_GPL(vcu_func);
@@ -410,7 +419,6 @@ struct vdec_fb *mtk_vcodec_get_fb(struct mtk_vcodec_ctx *ctx)
 				pfb->general_buf_fd);
 
 		dst_vb2_v4l2 = v4l2_m2m_dst_buf_remove(ctx->m2m_ctx);
-		(*ctx->dst_cnt) = v4l2_m2m_num_dst_bufs_ready(ctx->m2m_ctx);
 		if (dst_vb2_v4l2 != NULL)
 			dst_buf = &dst_vb2_v4l2->vb2_buf;
 			mtk_v4l2_debug(8, "[%d] index=%d, num_rdy_bufs=%d\n",

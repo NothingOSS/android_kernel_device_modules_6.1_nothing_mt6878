@@ -228,15 +228,16 @@ enum vdec_input_driven_mode {
 };
 
 /**
- * enum vdec_align_status  - decoder different status when align mode
- * @VDEC_ALIGN_WAIT  : need to wait display vsync align
- * @VDEC_ALIGN_FULL  : input output buffer pair over limit, start decode and not wait align
- * @VDEC_ALIGN_RESET : get EOS to reset so continuous decoding, don't need to wait align
+ * enum vdec_low_power_state  - decoder different state for low power mode
+ * @VDEC_LPW_WAIT  : waiting for start condition be met
+ * @VDEC_LPW_DEC   : start decode (group decode)
+ * @VDEC_LPW_RESET : get EOS or resolution change need to reset and continuous decoding,
+ *                   don't need to wait condition
  */
-enum vdec_align_status {
-	VDEC_ALIGN_WAIT = 0,
-	VDEC_ALIGN_FULL = 1,
-	VDEC_ALIGN_RESET = 2,
+enum vdec_low_power_state {
+	VDEC_LPW_WAIT,
+	VDEC_LPW_DEC,
+	VDEC_LPW_RESET,
 };
 
 enum venc_lock {
@@ -640,13 +641,23 @@ struct mtk_vcodec_ctx {
 	wait_queue_head_t bs_wq;
 	unsigned int *ipi_blocked;
 	enum vdec_input_driven_mode input_driven;
-	bool align_mode;
+
+	/* for vdec low power mode */
+	spinlock_t lpw_lock;
+	bool low_pw_mode;
 	bool in_group;
-	atomic_t align_type; // flag for enum vdec_align_status
-	unsigned char *wait_align; // flag for waiting display vsync
-	int align_start_cnt;
-	unsigned char *src_cnt;
-	unsigned char *dst_cnt;
+	bool dynamic_low_latency;
+	enum vdec_low_power_state lpw_state;
+	unsigned int lpw_dec_start_cnt;	// count for low power mode to decode after start streaming
+	struct timer_list lpw_timer;
+	bool lpw_timer_wait; // if timer is start waiting
+	bool lpw_set_start_ts; // need to set group_start_ts
+	unsigned int group_dec_cnt;
+	u64 group_start_ts; // ns
+	u64 group_end_ts; // ns
+	u64 group_start_time; // jiffies_to_nsecs
+	u64 lpw_last_disp_ts;
+	u64 lpw_ts_diff;
 
 	struct workqueue_struct *vdec_set_frame_wq;
 	struct vdec_set_frame_work_struct vdec_set_frame_work;

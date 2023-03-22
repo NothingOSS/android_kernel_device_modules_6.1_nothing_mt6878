@@ -60,8 +60,7 @@ static void put_fb_to_free(struct vdec_inst *inst, struct vdec_fb *fb)
 	}
 }
 
-static void get_pic_info(struct vdec_inst *inst,
-						 struct vdec_pic_info *pic)
+static void get_pic_info(struct vdec_inst *inst, struct vdec_pic_info *pic)
 {
 	if (inst == NULL)
 		return;
@@ -99,10 +98,8 @@ static void get_dpb_size(struct vdec_inst *inst, unsigned int *dpb_sz)
 		return;
 
 	*dpb_sz = inst->vsi->dec.dpb_sz;
-	if (inst->vsi->align_mode)
-		*dpb_sz += mtk_vdec_align_limit;
-		//if (!inst->vsi.input_driven)
-		//	*dpb_sz -= MTK_VDEC_DRV_OUTPUT_OVERHEAD;
+	if (inst->vsi->low_pw_mode)
+		*dpb_sz += mtk_vdec_lpw_limit;
 	mtk_vcodec_debug(inst, "sz=%d", *dpb_sz);
 }
 
@@ -1161,12 +1158,7 @@ static int vdec_vcp_init(struct mtk_vcodec_ctx *ctx, unsigned long *h_vdec)
 	ctx->input_driven = inst->vsi->input_driven;
 	ctx->ipi_blocked = &inst->vsi->ipi_blocked;
 	*(ctx->ipi_blocked) = 0;
-	ctx->align_mode = inst->vsi->align_mode;
-	ctx->wait_align = &inst->vsi->wait_align;
-	*(ctx->wait_align) = 0;
-	atomic_set(&ctx->align_type, 0);
-	ctx->src_cnt = &inst->vsi->src_cnt;
-	ctx->dst_cnt = &inst->vsi->dst_cnt;
+	ctx->low_pw_mode = inst->vsi->low_pw_mode;
 
 	mtk_v4l2_debug(0, "[%d] %c%c%c%c(%d) Decoder Instance >> %p, ap_inst_addr %llx",
 		ctx->id, fourcc & 0xFF, (fourcc >> 8) & 0xFF,
@@ -1355,7 +1347,7 @@ static int vdec_vcp_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 		goto err_free_fb_out;
 
 	inst->ctx->input_driven = inst->vsi->input_driven;
-	inst->ctx->align_mode   = inst->vsi->align_mode > 0;
+	inst->ctx->low_pw_mode  = inst->vsi->low_pw_mode > 0;
 	inst->num_nalu++;
 	return ret;
 
@@ -1706,8 +1698,7 @@ static void get_frame_sizes(struct vdec_inst *inst,
 
 }
 
-static void get_color_desc(struct vdec_inst *inst,
-	struct mtk_color_desc *color_desc)
+static void get_color_desc(struct vdec_inst *inst, struct mtk_color_desc *color_desc)
 {
 	inst->vcu.ctx = inst->ctx;
 	memcpy(color_desc, &inst->vsi->color_desc, sizeof(*color_desc));
@@ -1722,52 +1713,46 @@ static void get_aspect_ratio(struct vdec_inst *inst, unsigned int *aspect_ratio)
 	*aspect_ratio = inst->vsi->aspect_ratio;
 }
 
-static void get_supported_fix_buffers(struct vdec_inst *inst,
-					unsigned int *supported)
+static void get_supported_fix_buffers(struct vdec_inst *inst, unsigned int *supported)
 {
 	inst->vcu.ctx = inst->ctx;
 	if (inst->vsi != NULL)
 		*supported = inst->vsi->fix_buffers;
 }
 
-static void get_supported_fix_buffers_svp(struct vdec_inst *inst,
-					unsigned int *supported)
+static void get_supported_fix_buffers_svp(struct vdec_inst *inst, unsigned int *supported)
 {
 	inst->vcu.ctx = inst->ctx;
 	if (inst->vsi != NULL)
 		*supported = inst->vsi->fix_buffers_svp;
 }
 
-static void get_interlacing(struct vdec_inst *inst,
-			    unsigned int *interlacing)
+static void get_interlacing(struct vdec_inst *inst, unsigned int *interlacing)
 {
 	inst->vcu.ctx = inst->ctx;
 	if (inst->vsi != NULL)
 		*interlacing = inst->vsi->interlacing;
 }
 
-static void get_codec_type(struct vdec_inst *inst,
-			   unsigned int *codec_type)
+static void get_codec_type(struct vdec_inst *inst, unsigned int *codec_type)
 {
 	inst->vcu.ctx = inst->ctx;
 	if (inst->vsi != NULL)
 		*codec_type = inst->vsi->codec_type;
 }
 
-static void get_input_driven(struct vdec_inst *inst,
-			   unsigned int *input_driven)
+static void get_input_driven(struct vdec_inst *inst, unsigned int *input_driven)
 {
 	inst->vcu.ctx = inst->ctx;
 	if (inst->vsi != NULL)
 		*input_driven = inst->vsi->input_driven;
 }
 
-static void get_align_mode(struct vdec_inst *inst,
-			   unsigned int *align_mode)
+static void get_low_pw_mode(struct vdec_inst *inst, unsigned int *low_pw_mode)
 {
 	inst->vcu.ctx = inst->ctx;
 	if (inst->vsi != NULL)
-		*align_mode = inst->vsi->align_mode;
+		*low_pw_mode = inst->vsi->low_pw_mode;
 }
 
 
@@ -1877,8 +1862,8 @@ static int vdec_vcp_get_param(unsigned long h_vdec,
 		get_input_driven(inst, out);
 		break;
 
-	case GET_PARAM_ALIGN_MODE:
-		get_align_mode(inst, out);
+	case GET_PARAM_LOW_POWER_MODE:
+		get_low_pw_mode(inst, out);
 		break;
 
 	default:
