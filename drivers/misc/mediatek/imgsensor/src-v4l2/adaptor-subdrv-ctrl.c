@@ -1321,25 +1321,26 @@ void get_stagger_target_scenario(struct subdrv_ctx *ctx,
 	int i = 0;
 	u32 group = 0;
 
-	if (ctx->s_ctx.hdr_type == HDR_SUPPORT_NA)
-		return;
-
 	if (scenario_id >= ctx->s_ctx.sensor_mode_num) {
 		DRV_LOG(ctx, "invalid sid:%u, mode_num:%u\n",
 			scenario_id, ctx->s_ctx.sensor_mode_num);
 		return;
 	}
+
 	group = ctx->s_ctx.mode[scenario_id].hdr_group;
+	if ((ctx->s_ctx.hdr_type == HDR_SUPPORT_NA) || !group ||
+		(ctx->s_ctx.mode[scenario_id].hdr_mode == hdr_mode))
+		return;
+
 	for (i = 0; i < ctx->s_ctx.sensor_mode_num; i++) {
-		if (group != 0 && i != scenario_id &&
-		(ctx->s_ctx.mode[i].hdr_group == group) &&
-		(ctx->s_ctx.mode[i].hdr_mode == hdr_mode)) {
+		if ((ctx->s_ctx.mode[i].hdr_group == group) &&
+			(ctx->s_ctx.mode[i].hdr_mode == hdr_mode)) {
 			*pScenarios = i;
-			DRV_LOG(ctx, "sid(input/output):%u/%u, hdr_mode:%u\n",
-				scenario_id, *pScenarios, hdr_mode);
 			break;
 		}
 	}
+	DRV_LOG(ctx, "sid(input/output):%u/%u, hdr_mode:%u\n",
+		scenario_id, *pScenarios, hdr_mode);
 }
 
 void get_frame_ctrl_info_by_scenario(struct subdrv_ctx *ctx,

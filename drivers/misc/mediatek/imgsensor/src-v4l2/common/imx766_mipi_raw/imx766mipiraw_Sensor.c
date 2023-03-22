@@ -2078,30 +2078,25 @@ static void imx766_get_stagger_target_scenario(struct subdrv_ctx *ctx, u8 *para,
 	enum SENSOR_SCENARIO_ID_ENUM scenario_id = *feature_data;
 	enum IMGSENSOR_HDR_MODE_ENUM hdr_mode = *(feature_data + 1);
 	u32 *pScenarios = (u32 *)(feature_data + 2);
-	int i = 0;
-	u32 group = 0;
 
-	if (ctx->s_ctx.hdr_type == HDR_SUPPORT_NA)
-		return;
-
-	if (scenario_id >= ctx->s_ctx.sensor_mode_num) {
-		DRV_LOG(ctx, "invalid sid:%u, mode_num:%u\n",
-			scenario_id, ctx->s_ctx.sensor_mode_num);
-		return;
-	}
-	group = ctx->s_ctx.mode[scenario_id].hdr_group;
-	if (scenario_id == SENSOR_SCENARIO_ID_NORMAL_PREVIEW)
-		group = 3;
-	for (i = 0; i < ctx->s_ctx.sensor_mode_num; i++) {
-		if (group != 0 && i != scenario_id &&
-		(ctx->s_ctx.mode[i].hdr_group == group) &&
-		(ctx->s_ctx.mode[i].hdr_mode == hdr_mode)) {
-			*pScenarios = i;
-			DRV_LOG(ctx, "sid(input/output):%u/%u, hdr_mode:%u\n",
-				scenario_id, *pScenarios, hdr_mode);
+	/* For AI-shutter switch */
+	if (scenario_id == SENSOR_SCENARIO_ID_NORMAL_PREVIEW) {
+		switch (hdr_mode) {
+		case HDR_NONE:
+			*pScenarios = SENSOR_SCENARIO_ID_CUSTOM15;
+			break;
+		case HDR_RAW_STAGGER_2EXP:
+			*pScenarios = SENSOR_SCENARIO_ID_CUSTOM16;
+			break;
+		default:
 			break;
 		}
+		DRV_LOG(ctx, "sid(input/output):%u/%u, hdr_mode:%u\n",
+			scenario_id, *pScenarios, hdr_mode);
+		return;
 	}
+	/* For AI-shutter switch */
+	get_stagger_target_scenario(ctx, scenario_id, hdr_mode, pScenarios);
 }
 
 static int init_ctx(struct subdrv_ctx *ctx,	struct i2c_client *i2c_client, u8 i2c_write_id)
