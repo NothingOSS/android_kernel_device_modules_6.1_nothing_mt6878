@@ -2249,7 +2249,7 @@ static unsigned int fbt_must_enhance_floor(unsigned int blc_wt,
 	if (orig_opp - tgt_opp < level)
 		tgt_opp = max((int)(orig_opp - level), 0);
 
-	blc_wt = cpu_dvfs[cluster].capacity_ratio[tgt_opp];
+	blc_wt = fbt_cluster_X2Y(cluster, tgt_opp, OPP, CAP, 1, __func__);
 
 	return blc_wt;
 }
@@ -5551,10 +5551,10 @@ static int fbt_get_opp_by_freq(int cluster, unsigned int freq)
 		return INVALID_NUM;
 
 	for (opp = (nr_freq_cpu - 1); opp > 0; opp--) {
-		if (cpu_dvfs[cluster].power[opp] == freq)
+		if (fbt_cluster_X2Y(cluster, opp, OPP, FREQ, 0, __func__) == freq)
 			break;
 
-		if (cpu_dvfs[cluster].power[opp] > freq) {
+		if (fbt_cluster_X2Y(cluster, opp, OPP, FREQ, 0, __func__) > freq) {
 			opp++;
 			break;
 		}
@@ -5672,6 +5672,7 @@ static void fbt_update_pwr_tbl(void)
 	int cpu;
 	struct cpufreq_policy *policy;
 #if FPSGO_DYNAMIC_WL
+	int tmp_cap, tmp_max_freq;
 #else  // FPSGO_DYNAMIC_WL
 	int opp;
 #endif  // FPSGO_DYNAMIC_WL
@@ -5713,7 +5714,22 @@ static void fbt_update_pwr_tbl(void)
 	}
 #endif  // CONFIG_MTK_OPP_CAP_INFO
 
-
+#if FPSGO_DYNAMIC_WL
+	for (cluster = 0; cluster < cluster_num ; cluster++) {
+		tmp_cap = fbt_cluster_X2Y(cluster, 0, OPP, CAP, 0, __func__);
+		if (tmp_cap >= max_cap) {
+			max_cap = tmp_cap;
+			max_cap_cluster = cluster;
+		}
+		if (tmp_cap < min_cap) {
+			min_cap = tmp_cap;
+			min_cap_cluster = cluster;
+		}
+		tmp_max_freq = fbt_cluster_X2Y(cluster, 0, OPP, FREQ, 1, __func__);
+		if (tmp_max_freq > cpu_max_freq)
+			cpu_max_freq = tmp_max_freq;
+	}
+#else  // FPSGO_DYNAMIC_WL
 	for (cluster = 0; cluster < cluster_num ; cluster++) {
 		if (cpu_dvfs[cluster].capacity_ratio[0] >= max_cap) {
 			max_cap = cpu_dvfs[cluster].capacity_ratio[0];
@@ -5726,7 +5742,7 @@ static void fbt_update_pwr_tbl(void)
 		if (cpu_dvfs[cluster].power[0] > cpu_max_freq)
 			cpu_max_freq = cpu_dvfs[cluster].power[0];
 	}
-
+#endif  // FPSGO_DYNAMIC_WL
 	max_cap_cluster = clamp(max_cap_cluster, 0, cluster_num - 1);
 	min_cap_cluster = clamp(min_cap_cluster, 0, cluster_num - 1);
 	sec_cap_cluster = (max_cap_cluster > min_cap_cluster)
