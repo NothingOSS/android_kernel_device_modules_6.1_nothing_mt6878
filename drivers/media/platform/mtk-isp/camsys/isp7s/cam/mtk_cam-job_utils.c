@@ -1169,12 +1169,14 @@ bool require_imgo(struct mtk_cam_job *job)
 	struct mtk_cam_video_device *node;
 	struct mtk_cam_request *req = job->req;
 	struct mtk_cam_buffer *buf;
+	unsigned long ctx_used_pipe = job->src_ctx->used_pipe;
 	bool has_imgo = false;
 
 	list_for_each_entry(buf, &req->buf_list, list) {
 		node = mtk_cam_buf_to_vdev(buf);
 
-		if (node->desc.id == MTK_RAW_MAIN_STREAM_OUT) {
+		if (node->desc.id == MTK_RAW_MAIN_STREAM_OUT &&
+			ctx_used_pipe & ipi_pipe_id_to_bit(node->uid.pipe_id)) {
 			has_imgo = true;
 			break;
 		}
