@@ -388,21 +388,26 @@ static void btag_ufs_data_eval(struct btag_ufs_ctx_data *data,
 
 /* Switch the ufs context data to another
  * This function is only used by ufs worker, therefore we can switch the ctx
- * data without any lock.
+ * data without any write lock.
  */
 static struct btag_ufs_ctx_data *btag_switch_ctx_data(struct btag_ufs_ctx *ctx)
 {
 	struct btag_ufs_ctx_data *next, *prev;
 
+	rcu_read_lock();
 	prev = rcu_dereference(ctx->cur_data);
-	if (sched_clock() - prev->wl.window_begin < BTAG_UFS_TRACE_LATENCY)
+	if (sched_clock() - prev->wl.window_begin < BTAG_UFS_TRACE_LATENCY) {
+		rcu_read_unlock();
 		return NULL;
+	}
 
 	next = (prev == ctx->data) ? &ctx->data[1] : &ctx->data[0];
 	next->wl.window_begin = sched_clock();
 	next->wl.idle_begin = next->wl.window_begin;
 	rcu_assign_pointer(ctx->cur_data, next);
+	rcu_read_unlock();
 	synchronize_rcu();
+
 	return prev;
 }
 
