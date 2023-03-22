@@ -142,7 +142,7 @@ static int dsp_pcm_taskattr_init(struct platform_device *pdev)
 		if (ret)
 			task_attr.kernel_dynamic_config = 0;
 		set_task_attr(AUDIO_TASK_PLAYBACK_ID, ADSP_TASK_ATTR_KERNEL_LATENCY_SUPPORT,
-			      task_attr.task_property);
+			      task_attr.kernel_dynamic_config);
 	}
 	return 0;
 }

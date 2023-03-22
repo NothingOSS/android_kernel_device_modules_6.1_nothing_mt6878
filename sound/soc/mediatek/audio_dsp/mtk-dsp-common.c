@@ -564,10 +564,15 @@ int notify_vp_audio_event(struct notifier_block *nb,
 
 	int status = NOTIFY_DONE, result = -1;
 	bool has_video = false;
+	bool latency_support;
 	struct mtk_base_dsp *dsp = local_base_dsp;
 
 	if (!dsp)
 		return NOTIFY_DONE;
+
+	latency_support = adsp_task_get_latency_support();
+	if (latency_support == false)
+		return status;
 
 	if (event == NOTIFIER_VP_AUDIO_TRIGGER) {
 		if (dsp->offload_cb.query_has_video)
