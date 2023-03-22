@@ -99,12 +99,12 @@ static void _transit_state(struct mtk_cam_job_state *s, int state_type,
 {
 	int prv_state;
 
+	prv_state = mtk_cam_job_state_set(s, state_type, new_state);
+	mtk_cam_job_state_set_action(s, act);
+
 	if (s->cb && s->cb->on_transit)
 		s->cb->on_transit(s, state_type,
 				  old_state, new_state, act, data);
-
-	prv_state = mtk_cam_job_state_set(s, state_type, new_state);
-	mtk_cam_job_state_set_action(s, act);
 
 	/* this warning indicates racing condition is just happened */
 	if (unlikely(prv_state != old_state))

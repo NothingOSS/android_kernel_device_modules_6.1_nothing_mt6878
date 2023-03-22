@@ -63,6 +63,17 @@ static int mtk_cam_ctrl_put(struct mtk_cam_ctrl *cam_ctrl)
 	return 0;
 }
 
+static int ctrl_fetch_inner(struct mtk_cam_ctrl *ctrl)
+{
+	int inner_seq;
+
+	spin_lock(&ctrl->info_lock);
+	inner_seq = ctrl->r_info.inner_seq_no;
+	spin_unlock(&ctrl->info_lock);
+
+	return inner_seq;
+}
+
 /*
  * this function is blocked until no one could successfully do ctrl_get
  */
@@ -412,7 +423,6 @@ static void ctrl_vsync_preprocess(struct mtk_cam_ctrl *ctrl,
 				  struct vsync_result *vsync_res)
 {
 	bool hint_inner_err = 0;
-	bool complete_vsync = false;
 	int cookie;
 
 	if (vsync_update(&ctrl->vsync_col, engine_type, engine_id, vsync_res))
@@ -441,18 +451,12 @@ static void ctrl_vsync_preprocess(struct mtk_cam_ctrl *ctrl,
 				cookie = cq_ref->cookie;
 			}
 		}
-
-		if (atomic_read(&ctrl->await_switching_seq)
-		    == ctrl->r_info.inner_seq_no)
-			complete_vsync = 1;
 	}
 
 	spin_unlock(&ctrl->info_lock);
 
-	if (complete_vsync) {
-		pr_info("%s: signal for switching\n", __func__);
-		complete(&ctrl->vsync_complete);
-	}
+	if (vsync_res->is_last)
+		wake_up(&ctrl->event_wq);
 
 	if (hint_inner_err)
 		pr_info("%s: inner not updated to 0x%x\n", __func__, cookie);
@@ -806,13 +810,9 @@ static void mtk_cam_ctrl_stream_on_work(struct work_struct *work)
 	dev_info(dev, "[%s] ctx %d finish\n", __func__, ctrl->ctx->stream_id);
 }
 
-/*
- * note: this threshold due to
- * 1. having a stagger sensor, it takes 10ms between 1st and 2nd vsync
- * 2. little margin for sw: 3ms
- */
-#define VALID_SWITCH_PERIOD_FROM_VSYNC_MS	13
-static int check_valid_sync(struct mtk_cam_ctrl *ctrl, int seq)
+/* note: just to support little margin for sw latency here */
+#define VALID_SWITCH_PERIOD_FROM_VSYNC_MS	3
+static bool check_valid_sync(struct mtk_cam_ctrl *ctrl, int seq)
 {
 	u64 first_sof_ts;
 	int inner_seq;
@@ -838,31 +838,26 @@ static int check_valid_sync(struct mtk_cam_ctrl *ctrl, int seq)
 static int mtk_cam_ctrl_wait_for_switch(struct mtk_cam_ctrl *ctrl,
 					int prev_seq)
 {
-	unsigned long timeout = msecs_to_jiffies(1000);
+	long timeout = msecs_to_jiffies(1000);
+	int ret = 0;
 
 	/*
 	 * case 1: prev_seq is in inner and vsync has came already
 	 * case 2: prev_seq is not innner
 	 */
-	if (check_valid_sync(ctrl, prev_seq)) {
-		pr_info("%s: vsync has came\n", __func__);
-		return 0;
+	pr_info("%s: wait for next vsync with inner 0x%x\n",
+		__func__, prev_seq);
+
+	timeout = wait_event_timeout(ctrl->event_wq,
+				     check_valid_sync(ctrl, prev_seq),
+				     timeout);
+	if (timeout == 0) {
+		pr_info("%s: error: wait for inner 0x%x timeout\n",
+			__func__, prev_seq);
+		ret = -1;
 	}
 
-	pr_info("%s: wait for next vsync\n", __func__);
-
-	atomic_set(&ctrl->await_switching_seq, prev_seq);
-	reinit_completion(&ctrl->vsync_complete);
-
-	if (!wait_for_completion_timeout(&ctrl->vsync_complete, timeout)) {
-		pr_info("[%s] error: wait for vsync timeout\n",
-			__func__);
-		return -1;
-	}
-	/* reset */
-	atomic_set(&ctrl->await_switching_seq, -1);
-
-	return 0;
+	return ret;
 }
 
 static void mtk_cam_ctrl_seamless_switch_work(struct work_struct *work)
@@ -886,14 +881,7 @@ static void mtk_cam_ctrl_seamless_switch_work(struct work_struct *work)
 	dev_info(dev, "[%s] begin waiting switch no:%d seq 0x%x\n",
 		__func__, job->req_seq, job->frame_seq_no);
 
-	trace_seamless_apply_sensor(job->sensor->name,
-				    ctx->stream_id, job->frame_seq_no, 1);
-	mtk_cam_job_state_set(&job->job_state, SENSOR_STATE, S_SENSOR_APPLYING);
-	call_jobop(job, apply_sensor);
-	mtk_cam_job_state_set(&job->job_state, SENSOR_STATE, S_SENSOR_LATCHED);
-	trace_seamless_apply_sensor(job->sensor->name,
-				    ctx->stream_id, job->frame_seq_no, 0);
-
+	/* note: apply cq first to avoid cq trig dly */
 	if (!wait_for_completion_timeout(&job->compose_completion, timeout)) {
 		pr_info("[%s] error: wait for job composed timeout\n",
 			__func__);
@@ -902,6 +890,15 @@ static void mtk_cam_ctrl_seamless_switch_work(struct work_struct *work)
 
 	mtk_cam_job_state_set(&job->job_state, ISP_STATE, S_ISP_APPLYING);
 	call_jobop(job, apply_isp);
+
+
+	trace_seamless_apply_sensor(job->sensor->name,
+				    ctx->stream_id, job->frame_seq_no, 1);
+	mtk_cam_job_state_set(&job->job_state, SENSOR_STATE, S_SENSOR_APPLYING);
+	call_jobop(job, apply_sensor);
+	mtk_cam_job_state_set(&job->job_state, SENSOR_STATE, S_SENSOR_LATCHED);
+	trace_seamless_apply_sensor(job->sensor->name,
+				    ctx->stream_id, job->frame_seq_no, 0);
 
 	if (!wait_for_completion_timeout(&job->cq_exe_completion, timeout)) {
 		dev_info(dev, "[%s] error: wait for cq_exe timeout\n",
@@ -1149,8 +1146,7 @@ void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 	atomic_set(&cam_ctrl->stopped, 0);
 	atomic_set(&cam_ctrl->stream_on_done, 0);
 
-	atomic_set(&cam_ctrl->await_switching_seq, -1);
-	init_completion(&cam_ctrl->vsync_complete);
+	init_waitqueue_head(&cam_ctrl->event_wq);
 
 	spin_lock_init(&cam_ctrl->send_lock);
 	rwlock_init(&cam_ctrl->list_lock);
@@ -1299,11 +1295,8 @@ static void mtk_cam_ctrl_dump_first_job(struct mtk_cam_ctrl *ctrl, int *seq)
 
 		if (seq)
 			seq_no = *seq;
-		else {
-			spin_lock(&ctrl->info_lock);
-			seq_no = ctrl->r_info.inner_seq_no;
-			spin_unlock(&ctrl->info_lock);
-		}
+		else
+			seq_no = ctrl_fetch_inner(ctrl);
 
 		call_jobop(job, dump, seq_no);
 		mtk_cam_job_put(job);
@@ -1357,9 +1350,7 @@ static void mtk_cam_watchdog_sensor_worker(struct work_struct *work)
 			goto EXIT_WORK;
 	}
 
-	spin_lock(&ctrl->info_lock);
-	seq_no = ctrl->r_info.inner_seq_no;
-	spin_unlock(&ctrl->info_lock);
+	seq_no = ctrl_fetch_inner(ctrl);
 
 	/* handle timeout */
 	if (mtk_cam_seninf_dump(ctx->seninf, seq_no, true)) {
