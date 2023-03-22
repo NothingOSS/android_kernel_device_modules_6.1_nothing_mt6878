@@ -2409,18 +2409,20 @@ static bool VowDrv_SetBargeIn(unsigned int set, unsigned int irq_id)
 	if (set == 1) {
 		vow_register_feature(VOW_BARGEIN_FEATURE_ID);
 
-		vowserv.bargein_enable = true;
 		ret = vow_ipi_send(IPIMSG_VOW_SET_BARGEIN_ON,
 				   1,
 				   &vow_ipi_buf[0],
 				   VOW_IPI_NEED_ACK);
+		if (ret == true)
+			vowserv.bargein_enable = true;
 	} else if (set == 0) {
-		vowserv.bargein_enable = false;
 		ret = vow_ipi_send(IPIMSG_VOW_SET_BARGEIN_OFF,
 				   1,
 				   &vow_ipi_buf[0],
 				   VOW_IPI_NEED_ACK);
 		vow_deregister_feature(VOW_BARGEIN_FEATURE_ID);
+		if (ret == true)
+			vowserv.bargein_enable = false;
 	} else {
 		VOWDRV_DEBUG("Adb comment error\n\r");
 	}
@@ -3131,6 +3133,18 @@ static ssize_t VowDrv_read(struct file *fp,
 	bool dsp_inform_tx_flag = false;
 
 	VOWDRV_DEBUG("+%s()+\n", __func__);
+	if (fp == NULL || data == NULL || offset == NULL) {
+		VOWDRV_DEBUG("%s(), open vow fail\n", __func__);
+		goto exit;
+	}
+	if (count != sizeof(struct vow_eint_data_struct_t)) {
+		VOWDRV_DEBUG(
+			"%s(), cpy incorrect size to user, size=%ld, correct size=%ld, exit\n",
+			__func__,
+			count,
+			sizeof(struct vow_eint_data_struct_t));
+		goto exit;
+	}
 	VowDrv_SetVowEINTStatus(VOW_EINT_RETRY);
 
 	if (VowDrv_Wait_Queue_flag == 0)
