@@ -457,6 +457,19 @@ static inline int mtk_pixelmode_val(int pxl_mode)
 	return val;
 }
 
+/* 0: disable, 1: 2x2, 2: 3x3 3: 4x4 */
+static inline int mtk_cbn_type(int cbn)
+{
+	if (cbn == MTK_CAM_CBN_2X2_ON)
+		return 1;
+	else if (cbn == MTK_CAM_CBN_3X3_ON)
+		return 2;
+	else if (cbn == MTK_CAM_CBN_4X4_ON)
+		return 3;
+	else
+		return 0;
+}
+
 static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 				     struct mtk_cam_resource_v2 *user_ctrl,
 				     struct mtk_cam_resource_driver *drv_data)
@@ -495,10 +508,10 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 
 	res_sensor_info_validate(s, r);
 	res_calc_fill_sensor(&c, s, r);
-	c.cbn_type = 0; /* 0: disable, 1: 2x2, 2: 3x3 3: 4x4 */
-	c.qbnd_en = 0;
+	c.cbn_type = mtk_cbn_type(user_ctrl->raw_res.bin);
+	c.qbnd_en = (user_ctrl->raw_res.bin == MTK_CAM_QBND_ON) ? 1 : 0;
 	c.qbn_type = 0; /* 0: disable, 1: w/2, 2: w/4 */
-	c.bin_en = (user_ctrl->raw_res.bin == BIN_ON) ? 1 : 0;
+	c.bin_en = (user_ctrl->raw_res.bin == MTK_CAM_BIN_ON) ? 1 : 0;
 
 	/* constraints */
 	stepper.pixel_mode_min = 1;
@@ -544,12 +557,13 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 	}
 
 EXIT:
-	if (drv_data || CAM_DEBUG_ENABLED(V4L2_TRY))
+	if (drv_data || ret == -EBUSY || CAM_DEBUG_ENABLED(V4L2_TRY))
 		dev_info(cam->dev,
-			 "calc_resource: sensor fps %u/%u %dx%d blank %u/%u linet %ld prate %llu clk %d pxlmode %d num %d img_wbuf %dx%d raw(0x%x,0x%x,%d)\n",
+			 "calc_resource: sensor fps %u/%u %dx%d blank %u/%u linet %ld prate %llu clk %d pxlmode %d num %d bin %d img_wbuf %dx%d raw(0x%x,0x%x,%d)\n",
 			 s->interval.denominator, s->interval.numerator,
 			 s->width, s->height, s->hblank, s->vblank, c.line_time,
 			 s->pixel_rate,
+			 user_ctrl->raw_res.bin,
 			 c.clk, c.raw_pixel_mode, c.raw_num,
 			 r->img_wbuf_num, r->img_wbuf_size,
 			 r->raws, r->raws_must, r->raws_max_num);
