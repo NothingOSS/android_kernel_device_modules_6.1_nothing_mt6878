@@ -128,6 +128,56 @@ void __mtk_disp_set_module_hrt(struct icc_path *request,
 		mtk_icc_set_bw(request, 0, MBps_to_icc(bandwidth));
 }
 
+static bool mtk_disp_check_segment(struct mtk_drm_crtc *mtk_crtc,
+				struct mtk_drm_private *priv)
+{
+	bool ret = true;
+	int hact = 0;
+	int vact = 0;
+	int vrefresh = 0;
+
+	if (IS_ERR_OR_NULL(mtk_crtc)) {
+		DDPPR_ERR("%s, mtk_crtc is NULL\n", __func__);
+		return ret;
+	}
+
+	if (IS_ERR_OR_NULL(priv)) {
+		DDPPR_ERR("%s, private is NULL\n", __func__);
+		return ret;
+	}
+
+	hact = mtk_crtc->base.state->adjusted_mode.hdisplay;
+	vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
+	vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
+
+	if (priv->data->mmsys_id == MMSYS_MT6897) {
+		switch (priv->seg_id) {
+		case 1:
+			if (hact >= 1440 && vrefresh > 120)
+				ret = false;
+			break;
+		case 2:
+			if (hact >= 1440 && vrefresh > 144)
+				ret = false;
+			break;
+		default:
+			ret = true;
+			break;
+		}
+	}
+
+/*
+ *	DDPMSG("%s, segment:%d, mode(%d, %d, %d)\n",
+ *			__func__, priv->seg_id, hact, vact, vrefresh);
+ */
+
+	if (ret == false)
+		DDPPR_ERR("%s, check sement fail: segment:%d, mode(%d, %d, %d)\n",
+			__func__, priv->seg_id, hact, vact, vrefresh);
+
+	return ret;
+}
+
 int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 {
 	struct drm_crtc *crtc = &mtk_crtc->base;
@@ -167,7 +217,12 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 	for (i = 0; i < MAX_CRTC; ++i)
 		total += priv->req_hrt[i];
 
-	mtk_icc_set_bw(priv->hrt_bw_request, 0, MBps_to_icc(total));
+	if (priv->data->mmsys_id == MMSYS_MT6897) {
+		if (mtk_disp_check_segment(mtk_crtc, priv) == false)
+			mtk_icc_set_bw(priv->hrt_bw_request, 0, MBps_to_icc(1));
+	} else
+		mtk_icc_set_bw(priv->hrt_bw_request, 0, MBps_to_icc(total));
+
 	DRM_MMP_MARK(hrt_bw, 0, tmp);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
@@ -187,7 +242,13 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 				tmp1 = ((bw_base / 2) > total) ? total : (ovl_num < 3) ?
 					(bw_base / 2) : (ovl_num < 5) ? bw_base : (bw_base * 3 / 2);
 			}
-			mtk_icc_set_bw(priv->hrt_by_larb, 0, MBps_to_icc(tmp1));
+
+			if (priv->data->mmsys_id == MMSYS_MT6897) {
+				if (mtk_disp_check_segment(mtk_crtc, priv) == false)
+					mtk_icc_set_bw(priv->hrt_by_larb, 0, MBps_to_icc(1));
+			} else
+				mtk_icc_set_bw(priv->hrt_by_larb, 0, MBps_to_icc(tmp1));
+
 			DDPINFO("%s, CRTC%d HRT bw=%u total=%u larb bw=%u ovl_num=%d bw_base=%d\n",
 				__func__, crtc_idx, tmp, total, tmp1, ovl_num, bw_base);
 		}
