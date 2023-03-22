@@ -1536,6 +1536,7 @@ int vcp_enc_set_param(struct venc_inst *inst,
 					  struct venc_enc_param *enc_param)
 {
 	struct venc_ap_ipi_msg_set_param out;
+	bool has_lock_dvfs = false;
 
 	mtk_vcodec_debug(inst, "id %d ->", id);
 	if (sizeof(out) > SHARE_BUF_SIZE) {
@@ -1673,6 +1674,7 @@ int vcp_enc_set_param(struct venc_inst *inst,
 	case VENC_SET_PARAM_MMDVFS:
 		out.data_item = 1;
 		out.data[0] = enc_param->venc_dvfs_state;
+		has_lock_dvfs = true;
 		mtk_v4l2_debug(4, "[VDVFS][VENC] data VENC_SET_PARAM_MMDVFS");
 		break;
 	default:
@@ -1680,7 +1682,7 @@ int vcp_enc_set_param(struct venc_inst *inst,
 		return -EINVAL;
 	}
 
-	if (venc_vcp_ipi_send(inst, &out, sizeof(out), false, true, false)) {
+	if (venc_vcp_ipi_send(inst, &out, sizeof(out), false, true, has_lock_dvfs)) {
 		mtk_vcodec_err(inst,
 			"AP_IPIMSG_ENC_SET_PARAM %d fail", id);
 		return -EINVAL;
