@@ -45,6 +45,7 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_HW_MTCMOS_EN_P1		BIT(0)
 #define PEXTP_RSV_0			0x60
 #define PCIE_HW_MTCMOS_EN_MD_P0		BIT(0)
+#define PCIE_BBCK2_BYPASS		BIT(5)
 #define PEXTP_RSV_1			0x64
 #define PCIE_HW_MTCMOS_EN_MD_P1		BIT(0)
 #define PCIE_MSI_SEL			0x304
@@ -204,6 +205,9 @@ u32 mtk_pcie_dump_link_info(int port);
 
 #define MTK_PCIE_MAX_PORT		2
 #define PCIE_CLKBUF_SUBSYS_ID		7
+#define PCIE_CLKBUF_XO_ID		1
+#define BBCK2_BIND			0x2c1
+#define BBCK2_UNBIND			0x2c0
 
 enum mtk_pcie_suspend_link_state {
 	LINK_STATE_L12 = 0,
@@ -1744,6 +1748,19 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 			writel_relaxed(val, port->pextpcfg + PEXTP_PWRCTL_1);
 		}
 
+		/* Binding of BBCK1 and BBCK2 */
+		err = clkbuf_xo_ctrl("SET_XO_VOTER", PCIE_CLKBUF_XO_ID, BBCK2_BIND);
+		if (err)
+			dev_info(port->dev, "Fail to bind BBCK2 with BBCK1\n");
+
+		/* Wait 400us for BBCK2 bind ready */
+		udelay(400);
+
+		/* Enable Bypass BBCK2 */
+		val = readl_relaxed(port->pextpcfg + PEXTP_RSV_0);
+		val |= PCIE_BBCK2_BYPASS;
+		writel_relaxed(val, port->pextpcfg + PEXTP_RSV_0);
+
 		mtk_pcie_clkbuf_control(dev, false);
 
 		/* srclken rc request state */
@@ -1797,6 +1814,14 @@ static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 
 	if (port->suspend_mode == LINK_STATE_L12) {
 		mtk_pcie_clkbuf_control(dev, true);
+
+		/* Wait 400us for BBCK2 switch SW Mode ready */
+		udelay(400);
+
+		/* Unbinding of BBCK1 and BBCK2 */
+		err = clkbuf_xo_ctrl("SET_XO_VOTER", PCIE_CLKBUF_XO_ID, BBCK2_UNBIND);
+		if (err)
+			dev_info(port->dev, "Fail to unbind BBCK2 with BBCK1\n");
 
 		if (port->port_num == 0) {
 			err = mtk_pcie_hw_control_vote(0, false, 0);
