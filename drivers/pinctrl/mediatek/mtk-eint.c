@@ -222,39 +222,6 @@ static void mtk_eint_unmask(struct irq_data *d)
 		mtk_eint_flip_edge(eint, d->hwirq);
 }
 
-/*
- * We need to do extra effort to clear edge-triggered EINT
- * which located in eint_c due to hw design limitation.
- */
-void mt6983_eint_ack(struct irq_data *d)
-{
-	struct mtk_eint *eint = irq_data_get_irq_chip_data(d);
-	unsigned int instance, index;
-	void __iomem *sens_reg,
-		     *ack_reg = mtk_eint_get_offset(eint, d->hwirq,
-						eint->comp->regs->sens,
-						&instance, &index);
-	unsigned int bit = BIT(index & 0x1f);
-
-	if (!ack_reg) {
-		dev_err(eint->dev, "%s invalid eint_num %lu\n",
-			__func__, d->hwirq);
-		return;
-	}
-
-	if (instance == 4) {
-		sens_reg = mtk_eint_get_offset(eint, d->hwirq,
-					  eint->comp->regs->sens_clr,
-					  &instance, &index);
-		writel(bit, sens_reg);
-		sens_reg = mtk_eint_get_offset(eint, d->hwirq,
-					  eint->comp->regs->sens_set,
-					  &instance, &index);
-		writel(bit, sens_reg);
-	} else
-		writel(bit, ack_reg);
-}
-
 static void mtk_eint_ack(struct irq_data *d)
 {
 	struct mtk_eint *eint = irq_data_get_irq_chip_data(d);
@@ -867,15 +834,7 @@ static const struct mtk_eint_compatible default_compat = {
 	.regs = &mtk_generic_eint_regs,
 };
 
-static const struct mtk_eint_compatible mt6983_compat = {
-	.ops = {
-		.ack = mt6983_eint_ack,
-	},
-	.regs = &mtk_generic_eint_regs,
-};
-
 static const struct of_device_id eint_compatible_ids[] = {
-	{ .compatible = "mediatek,mt6983-pinctrl", .data = &mt6983_compat },
 	{ }
 };
 
@@ -1007,11 +966,7 @@ int mtk_eint_do_init(struct mtk_eint *eint)
 			return -ENOMEM;
 	}
 
-	eint->comp = (struct mtk_eint_compatible *)
-			of_device_get_match_data(eint->dev);
-
-	if (!eint->comp)
-		eint->comp = &default_compat;
+	eint->comp = &default_compat;
 
 	eint->irq = irq_of_parse_and_map(node, 0);
 	if (!eint->irq) {
