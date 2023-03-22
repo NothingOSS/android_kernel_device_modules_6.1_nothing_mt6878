@@ -2336,10 +2336,7 @@ signed int dpe_enque_cb(struct frame *frames, void *req)
 			//return ENQUE_FAIL;
 		}
 
-			if (DPE_debug_log_en == 1) {
-				LOG_INF("SrcImg_Y_Pre fd= %x\n",
-				_req->m_pDpeConfig[ucnt].DPE_DMapSettings.Dpe_InBuf_SrcImg_Y_Pre_fd,
-			}
+
 			success = dpe_get_dma_buffer(&SrcImg_Y_Pre_mmu[DVGF_only_en-1],
 			_req->m_pDpeConfig[ucnt].DPE_DMapSettings.Dpe_InBuf_SrcImg_Y_Pre_fd);
 			if (success) {
@@ -2359,10 +2356,7 @@ signed int dpe_enque_cb(struct frame *frames, void *req)
 				//return ENQUE_FAIL;
 			}
 
-			if (DPE_debug_log_en == 1) {
-				LOG_INF("SrcImg_C_Pre fd= %x\n",
-				_req->m_pDpeConfig[ucnt].DPE_DMapSettings.Dpe_InBuf_SrcImg_C_Pre_fd,
-			}
+
 			success = dpe_get_dma_buffer(&SrcImg_C_Pre_mmu[DVGF_only_en-1],
 			_req->m_pDpeConfig[ucnt].DPE_DMapSettings.Dpe_InBuf_SrcImg_C_Pre_fd);
 			if (success) {
