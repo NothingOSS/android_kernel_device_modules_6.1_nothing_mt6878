@@ -357,6 +357,8 @@ struct gpufreq_platform_fp {
 	void (*pdca_config)(enum gpufreq_power_state power);
 	void (*set_shared_status)(struct gpufreq_shared_status *shared_status);
 	int (*mssv_commit)(unsigned int target, unsigned int val);
+	int (*generic_commit_dual)(int target_oppidx_gpu, int target_oppidx_stack,
+		enum gpufreq_dvfs_state key);
 	/* GPU */
 	unsigned int (*get_cur_fgpu)(void);
 	unsigned int (*get_cur_vgpu)(void);
@@ -398,6 +400,7 @@ struct gpufreq_platform_fp {
 
 struct gpuppm_platform_fp {
 	int (*limited_commit)(enum gpufreq_target target, int oppidx);
+	int (*limited_dual_commit)(int gpu_oppidx, int stack_oppidx);
 	int (*set_limit)(enum gpufreq_target target, enum gpuppm_limiter limiter,
 		int ceiling_info, int floor_info);
 	int (*switch_limit)(enum gpufreq_target target, enum gpuppm_limiter limiter,
@@ -452,6 +455,7 @@ unsigned int gpufreq_get_cur_limiter(enum gpufreq_target target, enum gpuppm_lim
 int gpufreq_power_control(enum gpufreq_power_state power, int oppidx);
 int gpufreq_active_sleep_control(enum gpufreq_power_state power);
 int gpufreq_commit(enum gpufreq_target target, int oppidx);
+int gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx);
 struct gpufreq_core_mask_info *gpufreq_get_core_mask_table(void);
 unsigned int gpufreq_get_core_num(void);
 void gpufreq_pdca_config(enum gpufreq_power_state power);

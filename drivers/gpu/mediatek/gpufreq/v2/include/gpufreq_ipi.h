@@ -30,15 +30,16 @@ static char *gpufreq_ipi_cmd_name[] = {
 	"CMD_POWER_CONTROL",          // 6
 	"CMD_ACTIVE_SLEEP_CONTROL",   // 7
 	"CMD_COMMIT",                 // 8
-	"CMD_PDCA_CONFIG",            // 9
+	"CMD_DUAL_COMMIT",            // 9
+	"CMD_PDCA_CONFIG",            // 10
 	/* Debug */
-	"CMD_UPDATE_DEBUG_OPP_INFO",  // 10
-	"CMD_SWITCH_LIMIT",           // 11
-	"CMD_FIX_TARGET_OPPIDX",      // 12
-	"CMD_FIX_CUSTOM_FREQ_VOLT",   // 13
-	"CMD_SET_MFGSYS_CONFIG",      // 14
-	"CMD_MSSV_COMMIT",            // 15
-	"CMD_NUM",                    // 16
+	"CMD_UPDATE_DEBUG_OPP_INFO",  // 11
+	"CMD_SWITCH_LIMIT",           // 12
+	"CMD_FIX_TARGET_OPPIDX",      // 13
+	"CMD_FIX_CUSTOM_FREQ_VOLT",   // 14
+	"CMD_SET_MFGSYS_CONFIG",      // 15
+	"CMD_MSSV_COMMIT",            // 16
+	"CMD_NUM",                    // 17
 };
 
 enum gpufreq_ipi_cmd {
@@ -52,15 +53,16 @@ enum gpufreq_ipi_cmd {
 	CMD_POWER_CONTROL             = 6,
 	CMD_ACTIVE_SLEEP_CONTROL      = 7,
 	CMD_COMMIT                    = 8,
-	CMD_PDCA_CONFIG               = 9,
+	CMD_DUAL_COMMIT               = 9,
+	CMD_PDCA_CONFIG               = 10,
 	/* Debug */
-	CMD_UPDATE_DEBUG_OPP_INFO     = 10,
-	CMD_SWITCH_LIMIT              = 11,
-	CMD_FIX_TARGET_OPPIDX         = 12,
-	CMD_FIX_CUSTOM_FREQ_VOLT      = 13,
-	CMD_SET_MFGSYS_CONFIG         = 14,
-	CMD_MSSV_COMMIT               = 15,
-	CMD_NUM                       = 16,
+	CMD_UPDATE_DEBUG_OPP_INFO     = 11,
+	CMD_SWITCH_LIMIT              = 12,
+	CMD_FIX_TARGET_OPPIDX         = 13,
+	CMD_FIX_CUSTOM_FREQ_VOLT      = 14,
+	CMD_SET_MFGSYS_CONFIG         = 15,
+	CMD_MSSV_COMMIT               = 16,
+	CMD_NUM                       = 17,
 };
 
 /**************************************************
@@ -94,7 +96,7 @@ struct gpufreq_ipi_data {
 			unsigned int limiter;
 			int ceiling_info;
 			int floor_info;
-		} setlimit;
+		} set_limit;
 		struct {
 			unsigned int target;
 			unsigned int val;
@@ -103,6 +105,10 @@ struct gpufreq_ipi_data {
 			unsigned int target;
 			unsigned int val;
 		} mssv;
+		struct {
+			int gpu_oppidx;
+			int stack_oppidx;
+		} dual_commit;
 	} u;
 };
 

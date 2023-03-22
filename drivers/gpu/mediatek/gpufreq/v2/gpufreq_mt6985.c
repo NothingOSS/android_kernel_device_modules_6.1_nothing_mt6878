@@ -1022,6 +1022,16 @@ done:
 	return ret;
 }
 
+int __gpufreq_generic_commit_dual(int target_oppidx_gpu, int target_oppidx_stack,
+	enum gpufreq_dvfs_state key)
+{
+	GPUFREQ_UNREFERENCED(target_oppidx_gpu);
+	GPUFREQ_UNREFERENCED(target_oppidx_stack);
+	GPUFREQ_UNREFERENCED(key);
+
+	return GPUFREQ_EINVAL;
+}
+
 /* API: fix OPP of GPU via given OPP index */
 int __gpufreq_fix_target_oppidx_gpu(int oppidx)
 {

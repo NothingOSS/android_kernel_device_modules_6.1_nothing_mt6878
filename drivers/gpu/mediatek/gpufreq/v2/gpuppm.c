@@ -87,6 +87,7 @@ static struct gpuppm_limit_info g_limit_table[] = {
 static struct gpuppm_platform_fp platform_ap_fp = {
 	.set_shared_status = gpuppm_set_shared_status,
 	.limited_commit = gpuppm_limited_commit,
+	.limited_dual_commit = gpuppm_limited_dual_commit,
 	.set_limit = gpuppm_set_limit,
 	.switch_limit = gpuppm_switch_limit,
 	.get_ceiling = gpuppm_get_ceiling,
@@ -503,7 +504,7 @@ int gpuppm_limited_commit(enum gpufreq_target target, int oppidx)
 	else
 		limited_idx = oppidx;
 
-	GPUFREQ_LOGD("[%s] restrict OPP index: (%d->%d), limited interval: [%d, %d]",
+	GPUFREQ_LOGD("restrict %s OPP index: (%d->%d), limited interval: [%d, %d]",
 		(target == TARGET_STACK) ? "STACK" : "GPU",
 		oppidx, limited_idx, cur_ceiling, cur_floor);
 
@@ -515,6 +516,62 @@ int gpuppm_limited_commit(enum gpufreq_target target, int oppidx)
 		ret = __gpufreq_generic_commit_stack(limited_idx, DVFS_FREE);
 	else
 		ret = __gpufreq_generic_commit_gpu(limited_idx, DVFS_FREE);
+
+	mutex_unlock(&gpuppm_lock);
+
+	GPUFREQ_TRACE_END();
+
+	return ret;
+}
+
+int gpuppm_limited_dual_commit(int gpu_oppidx, int stack_oppidx)
+{
+	int limited_idx_gpu = 0, limited_idx_stack = 0;
+	int cur_ceiling = 0, cur_floor = 0;
+	int ret = GPUFREQ_SUCCESS;
+
+	GPUFREQ_TRACE_START("gpu_oppidx=%d, stack_oppidx=%d", gpu_oppidx, stack_oppidx);
+
+	mutex_lock(&gpuppm_lock);
+
+	/* fit to limited interval */
+	cur_ceiling = g_ppm.ceiling;
+	cur_floor = g_ppm.floor;
+
+	/* randomly replace target OPP index */
+	if (g_stress_test) {
+		get_random_bytes(&gpu_oppidx, sizeof(gpu_oppidx));
+		gpu_oppidx = gpu_oppidx < 0 ? (gpu_oppidx * -1) : gpu_oppidx;
+		gpu_oppidx = (gpu_oppidx % (cur_floor - cur_ceiling + 1)) + cur_ceiling;
+		get_random_bytes(&stack_oppidx, sizeof(stack_oppidx));
+		stack_oppidx = stack_oppidx < 0 ? (stack_oppidx * -1) : stack_oppidx;
+		stack_oppidx = (stack_oppidx % (cur_floor - cur_ceiling + 1)) + cur_ceiling;
+	}
+
+	if (gpu_oppidx < cur_ceiling)
+		limited_idx_gpu = cur_ceiling;
+	else if (gpu_oppidx > cur_floor)
+		limited_idx_gpu = cur_floor;
+	else
+		limited_idx_gpu = gpu_oppidx;
+
+	if (stack_oppidx < cur_ceiling)
+		limited_idx_stack = cur_ceiling;
+	else if (stack_oppidx > cur_floor)
+		limited_idx_stack = cur_floor;
+	else
+		limited_idx_stack = stack_oppidx;
+
+	GPUFREQ_LOGD("restrict GPU/STACK OPP index: (%d->%d)/(%d->%d), limited interval: [%d, %d]",
+		gpu_oppidx, limited_idx_gpu, stack_oppidx, limited_idx_stack,
+		cur_ceiling, cur_floor);
+
+#if GPUFREQ_HISTORY_ENABLE
+	gpufreq_set_history_target_opp(TARGET_GPU, gpu_oppidx);
+	gpufreq_set_history_target_opp(TARGET_STACK, stack_oppidx);
+#endif /* GPUFREQ_HISTORY_ENABLE */
+
+	ret = __gpufreq_generic_commit_dual(limited_idx_gpu, limited_idx_stack, DVFS_FREE);
 
 	mutex_unlock(&gpuppm_lock);
 

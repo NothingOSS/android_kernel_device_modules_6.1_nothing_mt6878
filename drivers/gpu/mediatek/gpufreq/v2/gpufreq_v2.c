@@ -842,6 +842,58 @@ done:
 EXPORT_SYMBOL(gpufreq_commit);
 
 /***********************************************************************************
+ * Function Name      : gpufreq_dual_commit
+ * Inputs             : gpu_oppidx      - Working OPP index of GPU
+ *                      stack_oppidx    - Working OPP index of STACK
+ * Outputs            : -
+ * Returns            : GPUFREQ_SUCCESS - Success
+ *                      GPUFREQ_EINVAL  - Failure
+ *                      GPUFREQ_ENOENT  - Null implementation
+ * Description        : Commit DVFS request to both GPU & STACK with working OPP index
+ *                      It will be constrained by the limit recorded in GPU PPM
+ ***********************************************************************************/
+int gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx)
+{
+	struct gpufreq_ipi_data send_msg = {};
+	int ret = GPUFREQ_SUCCESS;
+
+	GPUFREQ_TRACE_START("gpu_oppidx=%d, stack_oppidx=%d", gpu_oppidx, stack_oppidx);
+
+	/* implement on EB */
+	if (g_gpueb_support) {
+		mutex_lock(&gpufreq_ipi_lock);
+		send_msg.cmd_id = CMD_DUAL_COMMIT;
+		send_msg.u.dual_commit.gpu_oppidx = gpu_oppidx;
+		send_msg.u.dual_commit.stack_oppidx = stack_oppidx;
+
+		if (!gpufreq_ipi_to_gpueb(send_msg))
+			ret = g_recv_msg.u.return_value;
+		else
+			ret = GPUFREQ_EINVAL;
+		mutex_unlock(&gpufreq_ipi_lock);
+		goto done;
+	}
+
+	/* implement on AP */
+	if (gpuppm_fp && gpuppm_fp->limited_dual_commit)
+		ret = gpuppm_fp->limited_dual_commit(gpu_oppidx, stack_oppidx);
+	else {
+		ret = GPUFREQ_ENOENT;
+		GPUFREQ_LOGE("null gpuppm platform function pointer (ENOENT)");
+	}
+
+done:
+	if (unlikely(ret))
+		GPUFREQ_LOGE("fail to commit GPU/STACK OPP index %d/%d (%d)",
+			gpu_oppidx, stack_oppidx, ret);
+
+	GPUFREQ_TRACE_END();
+
+	return ret;
+}
+EXPORT_SYMBOL(gpufreq_dual_commit);
+
+/***********************************************************************************
  * Function Name      : gpufreq_set_limit
  * Inputs             : target          - Target of GPU DVFS (GPU, STACK, DEFAULT)
  *                      limiter         - Pre-defined user that set limit to GPU DVFS
@@ -872,9 +924,9 @@ int gpufreq_set_limit(enum gpufreq_target target,
 		mutex_lock(&gpufreq_ipi_lock);
 		send_msg.cmd_id = CMD_SET_LIMIT;
 		send_msg.target = target;
-		send_msg.u.setlimit.limiter = limiter;
-		send_msg.u.setlimit.ceiling_info = ceiling_info;
-		send_msg.u.setlimit.floor_info = floor_info;
+		send_msg.u.set_limit.limiter = limiter;
+		send_msg.u.set_limit.ceiling_info = ceiling_info;
+		send_msg.u.set_limit.floor_info = floor_info;
 
 		if (!gpufreq_ipi_to_gpueb(send_msg))
 			ret = g_recv_msg.u.return_value;
@@ -1131,9 +1183,9 @@ int gpufreq_switch_limit(enum gpufreq_target target,
 		mutex_lock(&gpufreq_ipi_lock);
 		send_msg.cmd_id = CMD_SWITCH_LIMIT;
 		send_msg.target = target;
-		send_msg.u.setlimit.limiter = limiter;
-		send_msg.u.setlimit.ceiling_info = c_enable;
-		send_msg.u.setlimit.floor_info = f_enable;
+		send_msg.u.set_limit.limiter = limiter;
+		send_msg.u.set_limit.ceiling_info = c_enable;
+		send_msg.u.set_limit.floor_info = f_enable;
 
 		if (!gpufreq_ipi_to_gpueb(send_msg))
 			ret = g_recv_msg.u.return_value;
