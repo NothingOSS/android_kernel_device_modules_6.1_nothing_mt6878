@@ -126,21 +126,61 @@ TRACE_EVENT(sugov_ext_sbb,
 		__entry->threshold)
 );
 
-TRACE_EVENT(sugov_adaptive_margin,
-	TP_PROTO(unsigned int gear_id, unsigned int margin),
-	TP_ARGS(gear_id, margin),
+TRACE_EVENT(sugov_ext_adaptive_margin,
+	TP_PROTO(unsigned int gear_id, unsigned int margin, unsigned int ratio),
+	TP_ARGS(gear_id, margin, ratio),
 	TP_STRUCT__entry(
 		__field(unsigned int, gear_id)
 		__field(unsigned int, margin)
+		__field(unsigned int, ratio)
 	),
 	TP_fast_assign(
 		__entry->gear_id = gear_id;
 		__entry->margin = margin;
+		__entry->ratio = ratio;
 	),
 	TP_printk(
-		"gear_id=%u margin=%u",
+		"gear_id=%u margin=%u ratio=%u",
 		__entry->gear_id,
-		__entry->margin)
+		__entry->margin,
+		__entry->ratio)
+);
+
+TRACE_EVENT(sugov_ext_group_dvfs_util,
+	TP_PROTO(int cpu, unsigned long cpu_util, unsigned long group_util,
+		unsigned long others_util, unsigned long ratio_ori, unsigned long ratio,
+		unsigned long ret_util, unsigned long pelt_util),
+	TP_ARGS(cpu, cpu_util, group_util, others_util, ratio_ori, ratio, ret_util, pelt_util),
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(unsigned long, cpu_util)
+		__field(unsigned long, group_util)
+		__field(unsigned long, others_util)
+		__field(unsigned long, ratio_ori)
+		__field(unsigned long, ratio)
+		__field(unsigned long, ret_util)
+		__field(unsigned long, pelt_util)
+	),
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->cpu_util = cpu_util;
+		__entry->group_util = group_util;
+		__entry->others_util = others_util;
+		__entry->ratio_ori = ratio_ori;
+		__entry->ratio = ratio;
+		__entry->ret_util = ret_util;
+		__entry->pelt_util = pelt_util;
+	),
+	TP_printk(
+		"cpu=,%d, cpu_util=,%lu, group_util=,%lu, others_util=,%lu, ratio_ori=,%lu, ratio=,%lu, ret_util=,%lu, pelt_util=,%lu,",
+		__entry->cpu,
+		__entry->cpu_util,
+		__entry->group_util,
+		__entry->others_util,
+		__entry->ratio_ori,
+		__entry->ratio,
+		__entry->ret_util,
+		__entry->pelt_util)
 );
 #endif /* _TRACE_SCHEDULER_H */
 

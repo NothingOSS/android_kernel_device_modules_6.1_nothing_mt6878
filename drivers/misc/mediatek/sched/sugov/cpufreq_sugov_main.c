@@ -556,7 +556,7 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 
 	/* Critical Task aware thermal throttling, notify thermal */
 	mtk_set_cpu_min_opp_single(sg_cpu);
-
+	update_adaptive_margin(sg_policy->policy);
 	sugov_get_util(sg_cpu);
 	sugov_iowait_apply(sg_cpu, time);
 
@@ -599,6 +599,7 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 	unsigned long util = 0, max = 1;
 	unsigned int j;
 
+	update_adaptive_margin(policy);
 	for_each_cpu(j, policy->cpus) {
 		struct sugov_cpu *j_sg_cpu = &per_cpu(sugov_cpu, j);
 		unsigned long j_util, j_max;

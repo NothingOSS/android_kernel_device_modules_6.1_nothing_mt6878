@@ -166,6 +166,11 @@ extern unsigned int get_nr_gears(void);
 extern struct cpumask *get_gear_cpumask(unsigned int gear);
 extern bool is_gearless_support(void);
 extern unsigned int get_adaptive_margin(int cpu);
+extern int get_adaptive_ratio(int cpu, int target);
+extern void set_util_signal(int cpu, int signal);
+extern int get_mode(void);
+extern int get_active_ratio(int cpu);
+extern void update_adaptive_margin(struct cpufreq_policy *policy);
 DECLARE_PER_CPU(unsigned int, gear_id);
 DECLARE_PER_CPU(struct sbb_cpu_data *, sbb);
 #endif /* __CPUFREQ_H__ */

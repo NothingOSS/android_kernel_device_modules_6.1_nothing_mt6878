@@ -1379,75 +1379,117 @@ inline unsigned long get_turn_point_freq(int gearid)
 }
 EXPORT_SYMBOL_GPL(get_turn_point_freq);
 
-static u64 duration_threshold = 4000; /* microsecond */
-unsigned int adaptive_margin[NR_CPUS];
+/* adaptive margin */
+static int am_wind_dura = 4000; /* microsecond */
+static int am_wind_cnt_shift = 1; /* wind_cnt = 1 << am_wind_cnt_shift */
+static int am_floor = 1024; /* 1024: 0% margin */
+static int am_ceiling = 1280; /* 1280: 20% margin */
+static int am_target_active_ratio = 80;
 static u64 last_wall_time_stamp[NR_CPUS];
 static u64 last_idle_time_stamp[NR_CPUS];
+static unsigned int adaptive_margin[NR_CPUS];
+static unsigned int his_ptr[NR_CPUS];
+static unsigned int margin_his[NR_CPUS][NR_CPUS];
+static unsigned int active_ratio[NR_CPUS];
 
 unsigned int get_adaptive_margin(int cpu)
 {
-	return adaptive_margin[per_cpu(gear_id, cpu)];
+	if (!turn_point_util[per_cpu(gear_id, cpu)])
+		return adaptive_margin[per_cpu(gear_id, cpu)];
+	else
+		return util_scale;
 }
 EXPORT_SYMBOL_GPL(get_adaptive_margin);
 
-inline void mtk_map_util_freq_adaptive(void *data, unsigned long util, unsigned long freq,
-				struct cpumask *cpumask, unsigned long *next_freq)
+int get_adaptive_ratio(int cpu, int target)
 {
+	int gearid = per_cpu(gear_id, cpu);
+	return active_ratio[gearid] * 100 / target;
+}
+
+int get_active_ratio(int cpu)
+{
+	return active_ratio[per_cpu(gear_id, cpu)];
+}
+EXPORT_SYMBOL_GPL(get_active_ratio);
+
+static int util_signal[NR_CPUS];
+void set_util_signal(int cpu, int signal)
+{
+	util_signal[per_cpu(gear_id, cpu)] = signal;
+}
+EXPORT_SYMBOL_GPL(set_util_signal);
+
+void update_adaptive_margin(struct cpufreq_policy *policy)
+{
+	int i;
+	int cpu = cpumask_first(policy->cpus);
+	int gearid = per_cpu(gear_id, cpu);
+	int cpu_idx;
+	u64 idle_time_stamp, wall_time_stamp, duration;
+	u64 idle_duration, max_active, active_duration;
+	u64 duration_max_active;
+
+	idle_time_stamp = get_cpu_idle_time(cpu, &wall_time_stamp, 1);
+	duration = wall_time_stamp - last_wall_time_stamp[cpu];
+	if (duration < am_wind_dura)
+		return;
+
+	idle_duration = idle_time_stamp - last_idle_time_stamp[cpu];
+	max_active = duration - idle_duration;
+	duration_max_active = duration;
+	last_idle_time_stamp[cpu] = idle_time_stamp;
+	last_wall_time_stamp[cpu] = wall_time_stamp;
+	for_each_cpu(cpu_idx, policy->cpus) {
+		if (cpu_idx == cpu)
+			continue;
+		idle_time_stamp = get_cpu_idle_time(cpu_idx, &wall_time_stamp, 1);
+		duration = wall_time_stamp - last_wall_time_stamp[cpu_idx];
+		idle_duration = idle_time_stamp - last_idle_time_stamp[cpu_idx];
+		active_duration = duration - idle_duration;
+		if (max_active < active_duration) {
+			max_active = active_duration;
+			duration_max_active = duration;
+		}
+		last_idle_time_stamp[cpu_idx] = idle_time_stamp;
+		last_wall_time_stamp[cpu_idx] = wall_time_stamp;
+	}
+	his_ptr[gearid]++;
+	his_ptr[gearid] %= (1 << am_wind_cnt_shift);
+	active_ratio[gearid] =
+		(max_active << SCHED_CAPACITY_SHIFT) / duration_max_active;
+	adaptive_margin[gearid] =
+		(adaptive_margin[gearid] * get_adaptive_ratio(cpu, am_target_active_ratio))
+		>> SCHED_CAPACITY_SHIFT;
+	adaptive_margin[gearid] =
+		clamp_val(adaptive_margin[gearid], am_floor, am_ceiling);
+	margin_his[gearid][his_ptr[gearid]] = adaptive_margin[gearid];
+	adaptive_margin[gearid] = 0;
+	for (i = 0; i < (1 << am_wind_cnt_shift); i++)
+		adaptive_margin[gearid] += margin_his[gearid][i];
+	adaptive_margin[gearid] >>= am_wind_cnt_shift;
+	if (trace_sugov_ext_adaptive_margin_enabled())
+		trace_sugov_ext_adaptive_margin(gearid, adaptive_margin[gearid],
+			active_ratio[gearid]);
+}
+EXPORT_SYMBOL_GPL(update_adaptive_margin);
+
+inline void mtk_map_util_freq_adaptive(void *data, unsigned long util,
+				int cpu, unsigned long *next_freq)
+{
+	int gearid = per_cpu(gear_id, cpu);
 	if (data != NULL) {
 		struct sugov_policy *sg_policy = (struct sugov_policy *)data;
 		struct cpufreq_policy *policy = sg_policy->policy;
-		int cpu = cpumask_first(policy->cpus);
-		int gearid = per_cpu(gear_id, cpu);
-		u64 idle_time_stamp, wall_time_stamp, duration;
 
-		idle_time_stamp = get_cpu_idle_time(cpu, &wall_time_stamp, 1);
-		duration = wall_time_stamp - last_wall_time_stamp[cpu];
-		if (duration >= duration_threshold) {
-			int cpu_idx;
-			u64 idle_duration, max_active, active_duration;
-			u64 max_active_cpu, duration_max_active;
-
-			idle_duration = idle_time_stamp - last_idle_time_stamp[cpu];
-			max_active = duration - idle_duration;
-			duration_max_active = duration;
-			max_active_cpu = cpu;
-
-			last_idle_time_stamp[cpu] = idle_time_stamp;
-			last_wall_time_stamp[cpu] = wall_time_stamp;
-
-			for_each_cpu(cpu_idx, policy->cpus) {
-				if (cpu_idx == cpu)
-					continue;
-				idle_time_stamp = get_cpu_idle_time(cpu_idx, &wall_time_stamp, 1);
-				duration = wall_time_stamp - last_wall_time_stamp[cpu_idx];
-				idle_duration = idle_time_stamp - last_idle_time_stamp[cpu_idx];
-				active_duration = duration - idle_duration;
-				if (max_active < active_duration) {
-					max_active = active_duration;
-					duration_max_active = duration;
-					max_active_cpu = cpu_idx;
-				}
-				last_idle_time_stamp[cpu_idx] = idle_time_stamp;
-				last_wall_time_stamp[cpu_idx] = wall_time_stamp;
-			}
-			adaptive_margin[gearid] = (adaptive_margin[gearid] * max_active * 100) /
-				(duration_max_active * 80);
-
-			adaptive_margin[gearid] = clamp_val(adaptive_margin[gearid],
-				util_scale, util_scale);
-
-			if (trace_sugov_adaptive_margin_enabled())
-				trace_sugov_adaptive_margin(gearid, adaptive_margin[gearid]);
-		}
 		util = (util * adaptive_margin[gearid]) >> SCHED_CAPACITY_SHIFT;
 		*next_freq = pd_get_util_freq(cpu, util);
 		policy->cached_target_freq = *next_freq;
 		policy->cached_resolved_idx = pd_get_freq_opp_legacy(cpu, *next_freq);
 		sg_policy->cached_raw_freq = *next_freq;
 	} else {
-		util = (util * adaptive_margin[per_cpu(gear_id, cpumask_first(cpumask))])
-			>> SCHED_CAPACITY_SHIFT;
-		*next_freq = pd_get_util_freq(cpumask_first(cpumask), util);
+		util = (util * adaptive_margin[gearid]) >> SCHED_CAPACITY_SHIFT;
+		*next_freq = pd_get_util_freq(cpu, util);
 	}
 }
 
@@ -1455,12 +1497,14 @@ void mtk_map_util_freq(void *data, unsigned long util, unsigned long freq, struc
 		unsigned long *next_freq, int wl_type)
 {
 	int cpu, orig_util = util, gearid;
+	struct pd_capacity_info *pd_info;
 
 	cpu = cpumask_first(cpumask);
 	gearid = per_cpu(gear_id, cpu);
 
-	if (!turn_point_util[gearid]) {
-		mtk_map_util_freq_adaptive(data, util, freq, cpumask, next_freq);
+	pd_info = &pd_capacity_tbl[gearid];
+	if (!turn_point_util[gearid] && util < pd_info->table[0].capacity) {
+		mtk_map_util_freq_adaptive(data, util, cpu, next_freq);
 		return;
 	}
 
