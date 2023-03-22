@@ -2486,6 +2486,71 @@ static int fill_imgo_buf_to_ipi_normal(struct req_buffer_helper *helper,
 }
 
 
+int fill_imgo_buf_to_ipi_mstream(
+	struct req_buffer_helper *helper, struct mtk_cam_buffer *buf,
+	struct mtk_cam_video_device *node)
+{
+	struct mtkcam_ipi_frame_param *fp = helper->fp;
+	struct mtk_cam_job *job = helper->job;
+	struct mtkcam_ipi_img_output *out;
+	struct mtkcam_ipi_img_input *in;
+
+	const int first_exp = MTKCAM_IPI_RAW_RAWI_2;
+	const int second_exp = MTKCAM_IPI_RAW_IMGO;
+	int ne_ipi, se_ipi, mstream_type;
+	int idx = 0;
+	// NOTE: buffer layer is fixed due to an agreement with MW
+	int *buf_layer[] = {
+		&ne_ipi,
+		&se_ipi
+	};
+
+	mstream_type = job->job_scen.scen.mstream.type;
+
+	if (mstream_type == MTK_CAM_MSTREAM_NE_SE) {
+		ne_ipi = first_exp;
+		se_ipi = second_exp;
+	} else if (mstream_type == MTK_CAM_MSTREAM_SE_NE) {
+		se_ipi = first_exp;
+		ne_ipi = second_exp;
+	} else {
+		pr_info("%s: unknown mstream type: %d\n",
+			__func__, mstream_type);
+		return -1;
+	}
+
+	helper->filled_hdr_buffer = true;
+
+	if (CAM_DEBUG_ENABLED(JOB))
+		pr_info("%s: mstream type: %d\n",
+				__func__, mstream_type);
+
+	for (idx = 0; idx < ARRAY_SIZE(buf_layer); ++idx) {
+		int ipi_id = *(buf_layer[idx]);
+
+		if (ipi_id == MTKCAM_IPI_RAW_IMGO) {
+			// or ipi output
+
+			out = &fp->img_outs[helper->io_idx++];
+			fill_img_out_hdr(out, buf, node, idx, ipi_id);
+
+			if (CAM_DEBUG_ENABLED(JOB))
+				pr_info("%s: buf idx[%d]: imgo\n", __func__, idx);
+
+		} else if (ipi_id == MTKCAM_IPI_RAW_RAWI_2) {
+			// or ipi input
+
+			in = &fp->img_ins[helper->ii_idx++];
+			fill_img_in_hdr(in, buf, node, idx, ipi_id);
+
+			if (CAM_DEBUG_ENABLED(JOB))
+				pr_info("%s: buf idx[%d]: rawi2\n", __func__, idx);
+		}
+	}
+
+	return 0;
+}
+
 static int fill_sv_img_buffer_to_ipi_frame(
 	struct req_buffer_helper *helper, struct mtk_cam_buffer *buf,
 	struct mtk_cam_video_device *node)
@@ -2706,8 +2771,24 @@ static int apply_sensor_mstream_exp_gain(struct mtk_cam_ctx *ctx,
 	struct mtk_raw_ctrl_data *ctrl;
 	u32 shutter, gain;
 	int req_id;
-
 	struct v4l2_ctrl *ae_ctrl;
+
+	// NOTE: idx order of mstream_exp.exposure is fixed
+	// due to an agreement with MW
+	const int ne_idx = 0;
+	const int se_idx = 1;
+	int idx, mstream_type =
+		mjob->job.job_scen.scen.mstream.type;
+
+	// TODO(Will): refactor
+	if (mstream_type == MTK_CAM_MSTREAM_NE_SE) {
+		idx = (index == 0) ? ne_idx : se_idx;
+	} else if (mstream_type == MTK_CAM_MSTREAM_SE_NE) {
+		idx = (index == 0) ? se_idx : ne_idx;
+	} else {
+		pr_info("%s: unknown mstream type %d", __func__, mstream_type);
+		return -1;
+	}
 
 	if (WARN_ON(!ctx->sensor))
 		return -1;
@@ -2727,8 +2808,8 @@ static int apply_sensor_mstream_exp_gain(struct mtk_cam_ctx *ctx,
 		return -1;
 	}
 
-	shutter = ctrl->mstream_exp.exposure[index].shutter;
-	gain = ctrl->mstream_exp.exposure[index].gain;
+	shutter = ctrl->mstream_exp.exposure[idx].shutter;
+	gain = ctrl->mstream_exp.exposure[idx].gain;
 	req_id = ctrl->mstream_exp.req_id;
 
 	if (shutter > 0 && gain > 0) {
@@ -3079,7 +3160,7 @@ static struct pack_job_ops_helper mstream_pack_helper = {
 	.pack_job = _job_pack_mstream,
 	.update_raw_bufs_to_ipi = fill_raw_img_buffer_to_ipi_frame,
 	.update_raw_rawi_to_ipi = NULL,
-	.update_raw_imgo_to_ipi = NULL,
+	.update_raw_imgo_to_ipi = fill_imgo_buf_to_ipi_mstream,
 	.update_raw_yuvo_to_ipi = NULL,
 	.append_work_buf_to_ipi = update_work_buffer_to_ipi_frame,
 };
