@@ -267,7 +267,7 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 		if (msg_len < MTK_SMPU_MAX_CMD_LEN) {
 			prefetch = mtk_clear_smpu_log(vio_type % 2);
 			msg_len += scnprintf(mpu->vio_msg + msg_len,
-			MTK_SMPU_MAX_CMD_LEN - msg_len, "\n[SMPU]cpu-prefetch:%d", prefetch);
+			MTK_SMPU_MAX_CMD_LEN - msg_len, "\ncpu-prefetch:%d", prefetch);
 			msg_len += scnprintf(mpu->vio_msg + msg_len, MTK_SMPU_MAX_CMD_LEN - msg_len,
 					"\n[SMPU]%s\n", mpu->name);
 		}
