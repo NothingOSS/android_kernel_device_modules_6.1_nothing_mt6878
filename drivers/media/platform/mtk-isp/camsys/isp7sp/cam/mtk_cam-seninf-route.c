@@ -1304,29 +1304,8 @@ int _mtk_cam_seninf_set_camtg_with_dest_idx(struct v4l2_subdev *sd, int pad_id,
 		g_seninf_ops->_set_cam_mux_dyn_en(ctx, true, camtg, 0/*index*/);
 #ifdef SENSOR_SECURE_MTEE_SUPPORT
 		if (ctx->is_secure == 1) {
-			dest->cam = camtg;
-			dest->mux_vr = mux2mux_vr(ctx, dest->mux, dest->cam, vc->muxvr_offset);
-
-			dev_info(ctx->dev, "Sensor Secure CA");
-			g_seninf_ops->_set_cammux_vc(ctx, dest->cam,
-							vc->vc, vc->dt,
-							!!vc->dt, !!vc->dt);
-			g_seninf_ops->_set_cammux_src(ctx, dest->mux_vr, dest->cam,
-							vc->exp_hsize,
-							vc->exp_vsize,
-							vc->dt);
-			g_seninf_ops->_set_cammux_chk_pixel_mode(ctx,
-							dest->cam,
-							vc->pixel_mode);
-			g_seninf_ops->_cammux(ctx, dest->cam);
-
-			chk_is_fsync_vsync_src(ctx, pad_id);
-
-			if (!seninf_ca_open_session())
-				dev_info(ctx->dev, "seninf_ca_open_session fail");
-
-			dev_info(ctx->dev, "Sensor kernel ca_checkpipe");
-			seninf_ca_checkpipe(ctx->SecInfo_addr);
+			dev_info(ctx->dev, "secure path has already exisited!");
+			return 0;
 		} else {
 #endif // SENSOR_SECURE_MTEE_SUPPORT
 
@@ -1473,6 +1452,15 @@ int _mtk_cam_seninf_set_camtg(struct v4l2_subdev *sd, int pad_id, int camtg, int
 			vc->dest[i].mux_vr = 0xff;
 		}
 
+	for (i = 0; i < vc->dest_cnt; i++) {
+		if (vc->dest[i].cam == camtg) {
+			seninf_logi(ctx,
+				"camtg == vc->dest[%d].cam:%u,redundantly manipulated!\n",
+				i, vc->dest[i].cam);
+			return 0;
+		}
+	}
+
 	if (set < MAX_DEST_NUM) {
 		vc->dest_cnt += 1;
 		return _mtk_cam_seninf_set_camtg_with_dest_idx(sd, pad_id,
@@ -1613,6 +1601,10 @@ int mtk_cam_seninf_s_stream_mux(struct seninf_ctx *ctx)
 	struct seninf_mux *mux;
 	int en_tag = 0;
 	struct seninf_core *core = ctx->core;
+#ifdef SENSOR_SECURE_MTEE_SUPPORT
+	int raw_cammux_first = core->cammux_range[TYPE_RAW].first;
+	int raw_cammux_second = core->cammux_range[TYPE_RAW].second;
+#endif
 
 	for (i = 0; i < vcinfo->cnt; i++) {
 		vc = &vcinfo->vc[i];
@@ -1723,13 +1715,28 @@ int mtk_cam_seninf_s_stream_mux(struct seninf_ctx *ctx)
 					dest->cam, dest->tag, vc_sel, dt_sel, en_tag);
 
 #ifdef SENSOR_SECURE_MTEE_SUPPORT
-				if (ctx->is_secure == 1) {
-					dev_info(ctx->dev, "Sensor kernel init seninf_ca");
+				if (ctx->is_secure != 1) {
+					dev_info(ctx->dev,
+						"is not secure, won't Sensor kernel init seninf_ca");
+					continue;
+				}
+				if (vc->out_pad == PAD_SRC_RAW0 ||
+					vc->out_pad == PAD_SRC_RAW1 ||
+					vc->out_pad == PAD_SRC_RAW2) {
+					if (dest->cam < raw_cammux_first ||
+						dest->cam > raw_cammux_second) {
+						dev_info(ctx->dev,
+							"cam not secure path, ignore ca_checkpipe");
+						continue;
+					}
 					if (!seninf_ca_open_session())
 						dev_info(ctx->dev, "seninf_ca_open_session fail");
 
 					dev_info(ctx->dev, "Sensor kernel ca_checkpipe");
 					seninf_ca_checkpipe(ctx->SecInfo_addr);
+				} else {
+					dev_info(ctx->dev,
+						"pad not secure path, ignore ca_checkpipe");
 				}
 #endif
 			} else {
