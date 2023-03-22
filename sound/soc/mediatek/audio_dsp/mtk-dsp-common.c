@@ -218,10 +218,6 @@ int get_dspdaiid_by_dspscene(int dspscene)
 		}
 	}
 
-	if (ret < 0)
-		pr_debug("%s() dspscene is not in dsp_task_scence[id]\n",
-			__func__);
-
 	return ret;
 }
 EXPORT_SYMBOL(get_dspdaiid_by_dspscene);

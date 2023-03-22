@@ -284,11 +284,12 @@ static bool dsp_support_dynamic_latency(unsigned int task_id)
 static int dsp_latency_info_get(struct snd_kcontrol *kcontrol,
 				    struct snd_ctl_elem_value *ucontrol)
 {
-	unsigned int task_id, i = 0;
+	int task_id;
+	unsigned int i = 0;
 
 	for (i = 0; i < TASK_SCENE_SIZE; i++) {
 		task_id = get_dspdaiid_by_dspscene(i);
-		if (dsp_support_dynamic_latency(task_id))
+		if (task_id >= 0 && dsp_support_dynamic_latency(task_id))
 			ucontrol->value.integer.value[i] = adsp_task_get_latency_sample(task_id);
 		else
 			ucontrol->value.integer.value[i] = 0;
