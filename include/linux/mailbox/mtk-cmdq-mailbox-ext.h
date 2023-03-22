@@ -112,6 +112,10 @@ enum cmdq_aee_type {
 	CMDQ_AEE_EXCEPTION = 0x2,
 };
 
+enum cmdq_log_type {
+	CMDQ_PWR_CHECK = 0,
+};
+
 typedef int (*cmdq_aee_cb)(struct cmdq_cb_data data);
 
 typedef void (*cmdq_async_flush_cb)(struct cmdq_cb_data data);
@@ -220,8 +224,25 @@ do { \
 		##args, __func__, __LINE__); \
 } while (0)
 
+extern int cmdq_pwr_log;
+#define cmdq_log_level(idx, fmt, args...) \
+do { \
+	if (mtk_cmdq_log) { \
+		cmdq_log(fmt, ##args); \
+		continue; \
+	} \
+	switch (idx) { \
+	case CMDQ_PWR_CHECK: \
+		if (cmdq_pwr_log) \
+			cmdq_log_ex(fmt, ##args); \
+		break; \
+	} \
+} while (0)
+
 
 /* MTK only functions */
+#define cmdq_log_ex(fmt, args...) \
+	pr_notice("[cmdq] "fmt" @%s,%u\n", ##args, __func__, __LINE__)
 
 #define cmdq_msg(fmt, args...) \
 	pr_notice("[cmdq] "fmt"\n", ##args)
@@ -334,6 +355,7 @@ s32 cmdq_task_get_pkt_from_thread(struct mbox_chan *chan,
 void cmdq_set_event(void *chan, u16 event_id);
 void cmdq_clear_event(void *chan, u16 event_id);
 u32 cmdq_get_event(void *chan, u16 event_id);
+void cmdq_dump_event(void *chan);
 void cmdq_event_verify(void *chan, u16 event_id);
 unsigned long cmdq_get_tracing_mark(void);
 u32 cmdq_thread_timeout_backup(struct cmdq_thread *thread, const u32 ms);

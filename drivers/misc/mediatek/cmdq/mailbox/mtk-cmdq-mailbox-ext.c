@@ -136,6 +136,10 @@ EXPORT_SYMBOL(append_by_event);
 int mtk_cmdq_log;
 EXPORT_SYMBOL(mtk_cmdq_log);
 
+int cmdq_pwr_log;
+EXPORT_SYMBOL(cmdq_pwr_log);
+module_param(cmdq_pwr_log, int, 0644);
+
 int mtk_cmdq_msg;
 EXPORT_SYMBOL(mtk_cmdq_msg);
 
@@ -149,6 +153,14 @@ module_param(cmdq_trace, int, 0644);
 
 int cmdq_hw_trace;
 EXPORT_SYMBOL(cmdq_hw_trace);
+
+int cmdq_dump_buf_size;
+EXPORT_SYMBOL(cmdq_dump_buf_size);
+module_param(cmdq_dump_buf_size, int, 0644);
+
+int error_irq_bug_on;
+EXPORT_SYMBOL(error_irq_bug_on);
+module_param(error_irq_bug_on, int, 0644);
 
 struct cmdq_hw_trace_bit {
 	uint8_t enable : 1;
@@ -2363,6 +2375,12 @@ static int cmdq_probe(struct platform_device *pdev)
 	if (of_property_read_bool(dev->of_node, "append-by-event"))
 		append_by_event = true;
 
+	of_property_read_u32(dev->of_node, "cmdq-dump-buf-size", &cmdq_dump_buf_size);
+	of_property_read_u32(dev->of_node, "error-irq-bug-on", &error_irq_bug_on);
+	of_property_read_u32(dev->of_node, "cmdq-pwr-log", &cmdq_pwr_log);
+
+	cmdq_msg("dump_buf_size %d error irq %d", cmdq_dump_buf_size, error_irq_bug_on);
+
 	dev_notice(dev,
 		"cmdq thread:%u shift:%u mminfra:%#x base:0x%lx pa:0x%lx\n",
 		plat_data->thread_nr, plat_data->shift, plat_data->mminfra,
@@ -2591,7 +2609,7 @@ void cmdq_mbox_enable(void *chan)
 	if (usage == 1) {
 		unsigned long flags;
 
-		cmdq_log("%s: hwid:%hu usage:%d idx:%d usage:%d",
+		cmdq_log_level(CMDQ_PWR_CHECK, "%s: hwid:%hu usage:%d idx:%d usage:%d",
 			__func__, cmdq->hwid, usage, i,
 			atomic_read(&cmdq->thread[i].usage));
 
@@ -2716,7 +2734,7 @@ void cmdq_mbox_disable(void *chan)
 	} else if (usage == 1) {
 		unsigned long flags;
 
-		cmdq_log("%s: hwid:%hu usage:%d idx:%d usage:%d",
+		cmdq_log_level(CMDQ_PWR_CHECK, "%s: hwid:%hu usage:%d idx:%d usage:%d",
 			__func__, cmdq->hwid, usage, i,
 			atomic_read(&cmdq->thread[i].usage));
 
@@ -3119,6 +3137,16 @@ u32 cmdq_get_event(void *chan, u16 event_id)
 	return readl(cmdq->base + CMDQ_SYNC_TOKEN_VAL);
 }
 EXPORT_SYMBOL(cmdq_get_event);
+
+void cmdq_dump_event(void *chan)
+{
+	u32 i;
+
+	for (i = 0; i < CMDQ_EVENT_MAX; i++)
+		if (cmdq_get_event(chan, i))
+			cmdq_msg("%s event %u is set", __func__, i);
+}
+EXPORT_SYMBOL(cmdq_dump_event);
 
 void cmdq_event_verify(void *chan, u16 event_id)
 {

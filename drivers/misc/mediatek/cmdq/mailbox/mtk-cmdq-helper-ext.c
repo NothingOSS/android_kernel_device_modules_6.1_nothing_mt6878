@@ -111,6 +111,12 @@ struct cmdq_sec_helper_fp *cmdq_sec_helper;
 
 #define	VCP_OFF_DELAY 1000 /* 1000ms */
 
+u32 BUF_SIZE[CMDQ_HW_MAX];
+u32 BUF_SIZE_THRD[CMDQ_HW_MAX][CMDQ_THR_MAX_COUNT];
+
+u32 BUF_SIZE_MAX[CMDQ_HW_MAX];
+u32 BUF_SIZE_THRD_MAX[CMDQ_HW_MAX][CMDQ_THR_MAX_COUNT];
+
 struct workqueue_struct *cmdq_pkt_destroy_wq;
 
 struct vcp_control {
@@ -173,6 +179,71 @@ int __weak set_memory_valid(unsigned long addr, int numpages, int enable)
 	return 0;
 }
 #endif
+
+struct mutex buffer_size_mutex;
+
+void cmdq_dump_buffer_size(void)
+{
+	int i, j;
+
+	for (i = 0; i < CMDQ_HW_MAX; i++) {
+		cmdq_msg("%s hwid:%d MAX total buf size:%u", __func__, i, BUF_SIZE_MAX[i]);
+		for (j = 0; j < CMDQ_THR_MAX_COUNT; j += 4) {
+			cmdq_msg("%s thr%d=[%u] thr%d=[%u] thr%d=[%u] thr%d=[%u]", __func__,
+				j, BUF_SIZE_THRD_MAX[i][j],
+				j + 1, BUF_SIZE_THRD_MAX[i][j + 1],
+				j + 2, BUF_SIZE_THRD_MAX[i][j + 2],
+				j + 3, BUF_SIZE_THRD_MAX[i][j + 3]);
+		}
+	}
+}
+EXPORT_SYMBOL(cmdq_dump_buffer_size);
+
+void cmdq_dump_buffer_size_seq(struct seq_file *seq)
+{
+	int i, j;
+
+	for (i = 0; i < CMDQ_HW_MAX; i++) {
+		seq_printf(seq, "%s hwid:%d max total buf size:%u\n", __func__, i, BUF_SIZE_MAX[i]);
+		for (j = 0; j < CMDQ_THR_MAX_COUNT; j += 4) {
+			seq_printf(seq,
+				"%s max total buf size thr%d=[%u] thr%d=[%u] thr%d=[%u] thr%d=[%u]\n",
+				__func__, j, BUF_SIZE_THRD_MAX[i][j],
+				j + 1, BUF_SIZE_THRD_MAX[i][j + 1],
+				j + 2, BUF_SIZE_THRD_MAX[i][j + 2],
+				j + 3, BUF_SIZE_THRD_MAX[i][j + 3]);
+		}
+	}
+}
+EXPORT_SYMBOL(cmdq_dump_buffer_size_seq);
+
+void cmdq_set_buffer_size(struct cmdq_client *cl, bool b)
+{
+	u32 hwid, thd;
+
+	if (!cl) {
+		cmdq_msg("%s cl is null", __func__);
+		return;
+	}
+
+	hwid = cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(cl->chan));
+	thd = cmdq_mbox_chan_id(cl->chan);
+
+	mutex_lock(&buffer_size_mutex);
+	if (b) {
+		BUF_SIZE_THRD[hwid][thd]++;
+		BUF_SIZE[hwid]++;
+
+		if (BUF_SIZE_THRD[hwid][thd] >= BUF_SIZE_THRD_MAX[hwid][thd])
+			BUF_SIZE_THRD_MAX[hwid][thd] = BUF_SIZE_THRD[hwid][thd];
+		if (BUF_SIZE[hwid] >= BUF_SIZE_MAX[hwid])
+			BUF_SIZE_MAX[hwid] = BUF_SIZE[hwid];
+	} else {
+		BUF_SIZE_THRD[hwid][thd]--;
+		BUF_SIZE[hwid]--;
+	}
+	mutex_unlock(&buffer_size_mutex);
+}
 
 static s8 cmdq_subsys_base_to_id(struct cmdq_base *clt_base, u32 base)
 {
@@ -642,6 +713,8 @@ void *cmdq_mbox_buf_alloc(struct cmdq_client *cl, dma_addr_t *pa_out)
 		return NULL;
 	}
 
+	cmdq_set_buffer_size(cl, true);
+
 	*pa_out = pa + gce_mminfra;
 	return va;
 }
@@ -664,6 +737,7 @@ void cmdq_mbox_buf_free(struct cmdq_client *cl, void *va, dma_addr_t pa)
 	mbox_dev = cl->chan->mbox->dev;
 
 	cmdq_mbox_buf_free_dev(mbox_dev, va, pa - gce_mminfra);
+	cmdq_set_buffer_size(cl, false);
 }
 EXPORT_SYMBOL(cmdq_mbox_buf_free);
 
@@ -740,6 +814,8 @@ struct cmdq_pkt_buffer *cmdq_pkt_alloc_buf(struct cmdq_pkt *pkt)
 		dump_stack();
 		return ERR_PTR(-ENODEV);
 	}
+
+	cmdq_set_buffer_size(cl, true);
 
 	/* try dma pool if available */
 	if (pkt->cur_pool.pool && !pkt->no_pool)
@@ -857,6 +933,7 @@ void cmdq_pkt_free_buf(struct cmdq_pkt *pkt)
 			cmdq_mbox_buf_free_dev(pkt->dev, buf->va_base,
 				CMDQ_BUF_ADDR(buf));
 		kfree(buf);
+		cmdq_set_buffer_size(cl, false);
 	}
 }
 
@@ -2380,6 +2457,9 @@ static void cmdq_pkt_err_irq_dump(struct cmdq_pkt *pkt)
 
 	cmdq_util_helper->error_enable((u8)hwid);
 
+	if (cmdq_dump_buf_size)
+		cmdq_dump_buffer_size();
+
 	cmdq_util_user_err(client ? client->chan : NULL,
 		"hwid:%d begin of error irq %u", hwid, err_num[hwid]++);
 	cmdq_chan_dump_dbg(client->chan);
@@ -2446,7 +2526,8 @@ static void cmdq_flush_async_cb(struct cmdq_cb_data data)
 
 	if (data.err == -EINVAL) {
 		cmdq_pkt_err_irq_dump(pkt);
-		BUG_ON(1);
+		if (error_irq_bug_on)
+			BUG_ON(1);
 	}
 
 	if (item->cb)
@@ -2552,6 +2633,8 @@ void cmdq_pkt_err_dump_cb(struct cmdq_cb_data data)
 
 	cmdq_util_helper->dump_lock();
 
+	if (cmdq_dump_buf_size)
+		cmdq_dump_buffer_size();
 
 	cmdq_util_user_err(client->chan, "hwid:%d Begin of Error %u",
 		hwid, err_num[hwid]);
@@ -3511,6 +3594,8 @@ int cmdq_helper_init(void)
 
 	cmdq_pkt_destroy_wq = create_singlethread_workqueue(
 		"cmdq_pkt_destroy_wq");
+
+	mutex_init(&buffer_size_mutex);
 
 	return 0;
 }

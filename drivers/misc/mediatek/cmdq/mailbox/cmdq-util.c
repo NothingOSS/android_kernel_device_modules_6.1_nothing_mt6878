@@ -329,6 +329,8 @@ static int cmdq_util_status_print(struct seq_file *seq, void *data)
 	}
 
 	seq_puts(seq, "[cmdq] dump all thread current status\n");
+	if (cmdq_dump_buf_size)
+		cmdq_dump_buffer_size_seq(seq);
 	for (i = 0; i < util.mbox_cnt; i++)
 		cmdq_thread_dump_all_seq(util.cmdq_mbox[i], seq);
 

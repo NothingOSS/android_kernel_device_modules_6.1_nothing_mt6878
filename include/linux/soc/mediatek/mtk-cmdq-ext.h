@@ -105,6 +105,8 @@ extern bool gce_in_vcp;
 extern bool cpr_not_support_cookie;
 extern bool skip_poll_sleep;
 extern bool append_by_event;
+extern int cmdq_dump_buf_size;
+extern int error_irq_bug_on;
 
 #define CMDQ_REG_SHIFT_ADDR(addr) (((addr) + gce_mminfra) >> gce_shift_bit)
 #define CMDQ_REG_REVERT_ADDR(addr) (((addr) << gce_shift_bit) - gce_mminfra)
@@ -310,6 +312,8 @@ struct cmdq_base *cmdq_register_device(struct device *dev);
  */
 struct cmdq_client *cmdq_mbox_create(struct device *dev, int index);
 void cmdq_mbox_stop(struct cmdq_client *cl);
+
+void cmdq_dump_buffer_size(void);
 
 void cmdq_vcp_enable(bool en);
 void *cmdq_get_vcp_buf(enum CMDQ_VCP_ENG_ENUM engine, dma_addr_t *pa_out);
@@ -590,6 +594,8 @@ char *cmdq_pkt_parse_buf(struct cmdq_pkt *pkt, u32 *size_out);
 
 void cmdq_pkt_set_err_cb(struct cmdq_pkt *pkt,
 	cmdq_async_flush_cb cb, void *data);
+
+void cmdq_dump_buffer_size_seq(struct seq_file *seq);
 
 int cmdq_helper_init(void);
 
