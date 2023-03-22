@@ -19,18 +19,15 @@ int mtk_cam_job_state_get(struct mtk_cam_job_state *s,
 	return atomic_read(&s->state[state_type]);
 }
 
-/* FIXME(AY): relocate this function */
 /**
  * Return: old state for checking
  */
-#ifdef REFINE_THIS
 static inline
 int mtk_cam_job_state_set(struct mtk_cam_job_state *s,
 			  int state_type, int new_state)
 {
 	return atomic_xchg(&s->state[state_type], new_state);
 }
-#endif
 
 static inline
 const char *mtk_cam_job_state_str(struct mtk_cam_job_state *s,

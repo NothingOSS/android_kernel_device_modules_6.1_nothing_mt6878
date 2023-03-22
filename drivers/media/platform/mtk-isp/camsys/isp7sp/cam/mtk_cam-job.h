@@ -160,14 +160,6 @@ struct mtk_cam_job_state {
 	_s->ops->func(_s, ##__VA_ARGS__); \
 })
 
-/* TODO(AY): try to remove from this header */
-static inline
-int mtk_cam_job_state_set(struct mtk_cam_job_state *s,
-			  int state_type, int new_state)
-{
-	return atomic_xchg(&s->state[state_type], new_state);
-}
-
 enum EXP_CHANGE_TYPE {
 	EXPOSURE_CHANGE_NONE = 0,
 	EXPOSURE_CHANGE_3_to_2,
@@ -486,4 +478,19 @@ int mtk_cam_job_fill_dump_param(struct mtk_cam_job *job,
 				struct mtk_cam_dump_param *p,
 				const char *desc);
 
+/* functions used in flow control */
+int mtk_cam_job_manually_apply_sensor(struct mtk_cam_job *job,
+				      bool transit_latched);
+int mtk_cam_job_manually_apply_isp(struct mtk_cam_job *job,
+				   bool wait_completion);
+
+static inline int mtk_cam_job_manually_apply_isp_sync(struct mtk_cam_job *job)
+{
+	return mtk_cam_job_manually_apply_isp(job, 1);
+}
+
+static inline int mtk_cam_job_manually_apply_isp_async(struct mtk_cam_job *job)
+{
+	return mtk_cam_job_manually_apply_isp(job, 0);
+}
 #endif //__MTK_CAM_JOB_H

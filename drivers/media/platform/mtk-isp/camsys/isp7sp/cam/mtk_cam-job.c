@@ -4398,4 +4398,47 @@ PUT_JOB:
 	mtk_cam_job_put(job);
 }
 
+int mtk_cam_job_manually_apply_sensor(struct mtk_cam_job *job,
+				      bool transit_latched)
+{
+	int sensor_state;
 
+	sensor_state = mtk_cam_job_state_get(&job->job_state, SENSOR_STATE);
+	if (sensor_state == S_SENSOR_NONE) {
+		pr_info("%s: without sensor setting to apply\n", __func__);
+		return 0;
+	}
+
+	mtk_cam_job_state_set(&job->job_state, SENSOR_STATE, S_SENSOR_APPLYING);
+	call_jobop(job, apply_sensor);
+
+	if (transit_latched)
+		mtk_cam_job_state_set(&job->job_state, SENSOR_STATE,
+				      S_SENSOR_LATCHED);
+
+	return 0;
+}
+
+int mtk_cam_job_manually_apply_isp(struct mtk_cam_job *job, bool wait_completion)
+{
+	unsigned long timeout = msecs_to_jiffies(1000);
+
+	if (!wait_for_completion_timeout(&job->compose_completion, timeout)) {
+		pr_info("[%s] error: wait for job composed timeout\n",
+			__func__);
+		return -1;
+	}
+
+	mtk_cam_job_state_set(&job->job_state, ISP_STATE, S_ISP_APPLYING);
+	call_jobop(job, apply_isp);
+
+	if (!wait_completion)
+		return 0;
+
+	if (!wait_for_completion_timeout(&job->cq_exe_completion, timeout)) {
+		pr_info("[%s] error: wait for job cq exe\n", __func__);
+		return -1;
+	}
+
+	return 0;
+}

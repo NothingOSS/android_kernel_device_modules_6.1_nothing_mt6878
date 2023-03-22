@@ -729,31 +729,17 @@ static u64 query_interval_from_sensor(struct v4l2_subdev *sensor)
 }
 
 /* raw switch also resue it to stream on */
-static void mtk_cam_ctrl_stream_on_job(struct mtk_cam_job *job)
+static int mtk_cam_ctrl_stream_on_job(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_ctrl *ctrl = &ctx->cam_ctrl;
 	struct device *dev = ctx->cam->dev;
-	unsigned long timeout = msecs_to_jiffies(1000);
 
-	mtk_cam_job_state_set(&job->job_state, SENSOR_STATE, S_SENSOR_APPLYING);
-	call_jobop(job, apply_sensor);
-	mtk_cam_job_state_set(&job->job_state, SENSOR_STATE, S_SENSOR_LATCHED);
+	if (mtk_cam_job_manually_apply_sensor(job, true))
+		goto STREAM_ON_FAIL;
 
-	if (!wait_for_completion_timeout(&job->compose_completion, timeout)) {
-		pr_info("[%s] error: wait for job composed timeout\n",
-			__func__);
-		return;
-	}
-
-	mtk_cam_job_state_set(&job->job_state, ISP_STATE, S_ISP_APPLYING);
-	call_jobop(job, apply_isp);
-
-	if (!wait_for_completion_timeout(&job->cq_exe_completion, timeout)) {
-		pr_info("[%s] error: wait for job cq exe\n",
-			__func__);
-		return;
-	}
+	if (mtk_cam_job_manually_apply_isp_sync(job))
+		goto STREAM_ON_FAIL;
 
 	ctrl->s_params.i2c_thres_ns =
 		infer_i2c_deadline_ns(&job->job_scen,
@@ -770,22 +756,28 @@ static void mtk_cam_ctrl_stream_on_job(struct mtk_cam_job *job)
 
 	/* non multi-frame job: e.g., mstream */
 	if (job->frame_cnt > 1) {
-		mtk_cam_job_state_set(&job->job_state,
-				      SENSOR_2ND_STATE, S_SENSOR_APPLYING);
-		call_jobop(job, apply_sensor);
 
+		/* note: not transit to lateched state */
+		mtk_cam_job_manually_apply_sensor(job, false);
 	} else {
 		int seq;
 
 		seq = next_frame_seq(job->frame_seq_no);
 		job = mtk_cam_ctrl_get_job(ctrl, cond_frame_no_belong, &seq);
 		if (job) {
-			mtk_cam_job_state_set(&job->job_state,
-					      SENSOR_STATE, S_SENSOR_APPLYING);
-			call_jobop(job, apply_sensor);
+
+			/* note: not transit to lateched state */
+			mtk_cam_job_manually_apply_sensor(job, false);
+
 			mtk_cam_job_put(job);
 		}
 	}
+
+	return 0;
+
+STREAM_ON_FAIL:
+	dev_info(dev, "%s: failed. ctx=%d\n", __func__, ctx->stream_id);
+	return -1;
 }
 
 static void mtk_cam_ctrl_stream_on_flow(struct mtk_cam_job *job)
@@ -799,7 +791,8 @@ static void mtk_cam_ctrl_stream_on_flow(struct mtk_cam_job *job)
 	if (!job)
 		return;
 
-	mtk_cam_ctrl_stream_on_job(job);
+	if (mtk_cam_ctrl_stream_on_job(job))
+		return;
 
 	atomic_set(&ctrl->stream_on_done, 1);
 	mtk_cam_ctrl_loop_job(ctrl, ctrl_enable_job_fsm_except_switch, NULL);
@@ -876,21 +869,12 @@ static void mtk_cam_ctrl_seamless_switch_flow(struct mtk_cam_job *job)
 		__func__, job->req_seq, job->frame_seq_no);
 
 	/* note: apply cq first to avoid cq trig dly */
-	if (!wait_for_completion_timeout(&job->compose_completion, timeout)) {
-		pr_info("[%s] error: wait for job composed timeout\n",
-			__func__);
+	if (mtk_cam_job_manually_apply_isp_async(job))
 		goto SWITCH_FAILURE;
-	}
-
-	mtk_cam_job_state_set(&job->job_state, ISP_STATE, S_ISP_APPLYING);
-	call_jobop(job, apply_isp);
-
 
 	trace_seamless_apply_sensor(job->sensor->name,
 				    ctx->stream_id, job->frame_seq_no, 1);
-	mtk_cam_job_state_set(&job->job_state, SENSOR_STATE, S_SENSOR_APPLYING);
-	call_jobop(job, apply_sensor);
-	mtk_cam_job_state_set(&job->job_state, SENSOR_STATE, S_SENSOR_LATCHED);
+	mtk_cam_job_manually_apply_sensor(job, true);
 	trace_seamless_apply_sensor(job->sensor->name,
 				    ctx->stream_id, job->frame_seq_no, 0);
 
