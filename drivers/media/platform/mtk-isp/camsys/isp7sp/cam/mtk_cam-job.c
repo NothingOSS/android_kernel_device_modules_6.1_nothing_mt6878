@@ -21,7 +21,8 @@
 #define SENSOR_SET_MARGIN_MS  25
 #define SENSOR_SET_MARGIN_MS_STAGGER  27
 
-static unsigned int debug_buf_fmt_sel = -1;
+// TODO(Will): change to -1 to enable bayer ufo by default
+static unsigned int debug_buf_fmt_sel;
 module_param(debug_buf_fmt_sel, int, 0644);
 MODULE_PARM_DESC(sv_pure_raw, "working fmt select: 0->bayer, 1->ufbc");
 
