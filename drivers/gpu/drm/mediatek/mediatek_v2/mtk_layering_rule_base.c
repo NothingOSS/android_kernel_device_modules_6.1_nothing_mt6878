@@ -464,9 +464,9 @@ static int get_larb_by_ovl(struct drm_device *dev, int ovl_idx, int disp_idx)
 static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 			   enum DISP_DEBUG_LEVEL debug_level)
 {
-	bool alloc;
+	bool alloc = false;
 	int i, j, ret;
-	struct drm_mtk_layer_config *layer_info;
+	struct drm_mtk_layer_config *layer_info = NULL;
 
 #define _HRT_FMT \
 	"HRT hrt_num:0x%x/disp_idx:%x/disp_list:%x/mod:%d/dal:%d/addon_scn:(%d, %d, %d)/bd_tb:%d/i:%d\n"
@@ -524,6 +524,9 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 						__func__, ret);
 					if (ret != sizeof(struct drm_mtk_layer_config)) {
 						DDPPR_ERR("%s ret %d\n", __func__, ret);
+						kfree(layer_info);
+						layer_info = NULL;
+						alloc = false;
 						break;
 					}
 				} else if (disp_info->input_config[i])
@@ -546,6 +549,12 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 				       layer_info->secure,
 				       disp_info->frame_idx[i],
 				       layer_info->buffer_alloc_id);
+
+				if (alloc) {
+					kfree(layer_info);
+					layer_info = NULL;
+					alloc = false;
+				}
 			}
 		}
 	} else {
@@ -597,6 +606,9 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 						__func__, ret);
 					if (ret != sizeof(struct drm_mtk_layer_config)) {
 						DDPPR_ERR("%s ret %d\n", __func__, ret);
+						kfree(layer_info);
+						layer_info = NULL;
+						alloc = false;
 						break;
 					}
 				} else if (disp_info->input_config[i])
@@ -619,12 +631,15 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 					layer_info->secure,
 					disp_info->frame_idx[i],
 					layer_info->buffer_alloc_id);
+
+				if (alloc) {
+					kfree(layer_info);
+					layer_info = NULL;
+					alloc = false;
+				}
 			}
 		}
 	}
-
-	if (alloc)
-		kfree(layer_info);
 }
 
 static void check_gles_change(struct debug_gles_range *dbg_gles, const int line, const bool print)
@@ -2804,7 +2819,8 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 			for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 				if (comp)
 					break;
-			return comp->id;
+			if (comp)
+				return comp->id;
 		} else if (priv->data->mmsys_id == MMSYS_MT6885)
 			return DDP_COMPONENT_OVL2_2L;
 		else if (priv->data->mmsys_id == MMSYS_MT6983)
@@ -2833,7 +2849,8 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 			for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 				if (comp)
 					break;
-			return comp->id;
+			if (comp)
+				return comp->id;
 		} else if (priv->data->mmsys_id == MMSYS_MT6983)
 			return DDP_COMPONENT_OVL1_2L_NWCG;
 		else if (priv->data->mmsys_id == MMSYS_MT6985)
@@ -2862,7 +2879,8 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 			for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 				if (comp)
 					break;
-			return comp->id;
+			if (comp)
+				return comp->id;
 		} else if (priv->data->mmsys_id == MMSYS_MT6983)
 			return DDP_COMPONENT_OVL0_2L_NWCG;
 		else if (priv->data->mmsys_id == MMSYS_MT6985 ||

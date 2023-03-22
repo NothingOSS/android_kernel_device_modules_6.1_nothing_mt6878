@@ -3839,7 +3839,6 @@ static unsigned int dual_comp_map_mt6897(unsigned int comp_id)
 		break;
 	default:
 		DDPMSG("unknown comp %u for %s\n", comp_id, __func__);
-		ret = -1;
 		break;
 	}
 

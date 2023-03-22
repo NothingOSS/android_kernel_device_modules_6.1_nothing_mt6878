@@ -1177,7 +1177,8 @@ static void mtk_wdma_config(struct mtk_ddp_comp *comp,
 	}
 	write_dst_addr(comp, handle, 0, addr);
 
-	if (comp->mtk_crtc->is_dual_pipe && wdma->data->is_right_wdma_comp(comp)) {
+	if (comp->mtk_crtc->is_dual_pipe &&
+		wdma->data && wdma->data->is_right_wdma_comp(comp)) {
 		if (comp->fb->format->format == DRM_FORMAT_YUV420 ||
 			comp->fb->format->format == DRM_FORMAT_YVU420) {
 			mtk_ddp_write(comp, cfg->w, DISP_REG_WDMA_DST_ADDR_OFFSETX(0),  handle);
