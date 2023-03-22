@@ -53,8 +53,15 @@ static inline bool mmdvfs_is_init_done(void) { return false; }
 
 #define MEM_REC_PWR_OBJ		4
 #define MEM_REC_USR_OBJ		5
+#define MEM_REC_MUX_OBJ		3
 #define MEM_REC_VMM_DBG_OBJ	5
 #define MEM_REC_CNT_MAX		16
+
+#define MEM_REC_MUX_CNT		(MEM_BASE + 0xBB0)
+#define MEM_REC_MUX_SEC(x)	(MEM_BASE + 0xBB4 + MEM_REC_MUX_OBJ * 0x4 * (x))
+#define MEM_REC_MUX_NSEC(x)	(MEM_BASE + 0xBB8 + MEM_REC_MUX_OBJ * 0x4 * (x))
+/* mux_id/opp/min/level */
+#define MEM_REC_MUX_VAL(x)	(MEM_BASE + 0xBBC + MEM_REC_MUX_OBJ * 0x4 * (x))
 
 #define MEM_REC_VMM_DBG_CNT	(MEM_BASE + 0xC74)
 #define MEM_REC_VMM_SEC(x)	(MEM_BASE + 0xC78 + MEM_REC_VMM_DBG_OBJ * 0x4 * (x))

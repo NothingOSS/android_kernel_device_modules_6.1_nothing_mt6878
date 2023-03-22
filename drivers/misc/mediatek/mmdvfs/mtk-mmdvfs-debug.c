@@ -172,7 +172,7 @@ static void mmdvfs_debug_record_opp(const u8 opp)
 static int mmdvfs_debug_opp_show(struct seq_file *file, void *data)
 {
 	unsigned long flags;
-	u32 i, j;
+	u32 i, j, val;
 
 	/* MMDVFS_DBG_VER1 */
 	seq_puts(file, "VER1: mux controlled by vcore regulator:\n");
@@ -248,6 +248,25 @@ static int mmdvfs_debug_opp_show(struct seq_file *file, void *data)
 	seq_puts(file, "power current gear\n");
 	for (i = 0; i < PWR_MMDVFS_NUM; i++)
 		seq_printf(file, "power: %u gear: %u\n", i, readl(MEM_PWR_CUR_GEAR(i)));
+
+	// mux opp records
+	i = readl(MEM_REC_MUX_CNT) % MEM_REC_CNT_MAX;
+	if (readl(MEM_REC_MUX_SEC(i)))
+		for (j = i; j < MEM_REC_CNT_MAX; j++) {
+			val = readl(MEM_REC_MUX_VAL(j));
+			seq_printf(file, "[%5u.%3u] mux:%lu opp:%lu min:%lu level:%lu\n",
+				readl(MEM_REC_MUX_SEC(j)), readl(MEM_REC_MUX_NSEC(j)),
+				(val >> 24) & GENMASK(7, 0), (val >> 16) & GENMASK(7, 0),
+				(val >> 8) & GENMASK(7, 0), val & GENMASK(7, 0));
+		}
+
+	for (j = 0; j < i; j++) {
+		val = readl(MEM_REC_MUX_VAL(j));
+		seq_printf(file, "[%5u.%3u] mux:%lu opp:%lu min:%lu level:%lu\n",
+			readl(MEM_REC_MUX_SEC(j)), readl(MEM_REC_MUX_NSEC(j)),
+			(val >> 24) & GENMASK(7, 0), (val >> 16) & GENMASK(7, 0),
+			(val >> 8) & GENMASK(7, 0), val & GENMASK(7, 0));
+	}
 
 	// vmm debug
 	seq_printf(file, "VMM Efuse_low:%#x, Efuse_high:%#x\n",
