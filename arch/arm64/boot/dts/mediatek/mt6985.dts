@@ -13386,7 +13386,7 @@
 		interconnect-names = "path_larb4", "path_larb5";
 		interconnect-num = <2>;
 		throughput-op-rate-thresh = <120>;
-		throughput-min = <182000000>;
+		throughput-min = <218000000>;
 		throughput-normal-max = <880000000>;
 		profile-duration = <60 2000>;
 		profile-target = <15 25 30 50 60 90 120 150 180 240 480>;
