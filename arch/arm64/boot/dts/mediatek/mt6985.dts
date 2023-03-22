@@ -13816,7 +13816,8 @@
 		vcp-dram-size = <0x00800000>;
 		core-nums = <1>;	/* core number */
 		twohart = <1>;		/* two hart arch */
-		femter-ck = <12>;	/* clk table fmeter f_fmmup_ck */
+		fmeter-ck = <12>;	/* clk table fmeter f_fmmup_ck */
+		fmeter-type = <2>;	/* fmeter type */
 		mbox-count = <5>;
 		vcp-ee-enable = <1>;
 		/* id, mbox, send_size*/
