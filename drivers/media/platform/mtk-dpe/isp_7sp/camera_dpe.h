@@ -309,6 +309,19 @@ struct DVP_CORE_Kernel {
 
 
 struct DVGF_CORE_CFG {
+	unsigned int  DVGF_CTRL_00; //DVGF
+	unsigned int  DVGF_CTRL_01;
+	unsigned int  DVGF_CTRL_02;
+	unsigned int  DVGF_CTRL_03;
+	unsigned int  DVGF_CTRL_05;
+	unsigned int  DVGF_CTRL_07;
+	unsigned int  DVGF_IRQ_00;
+	unsigned int  DVGF_IRQ_01;
+	unsigned int  DVGF_DRAM_PITCH;
+	unsigned int  DVGF_DRAM_SEC_0;
+	unsigned int  DVGF_DRAM_SEC_1;
+	unsigned int  DVGF_CTRL_RESERVED;
+	unsigned int  DVGF_CTRL_ATPG;
 	unsigned int  DVGF_CORE_00;
 	unsigned int  DVGF_CORE_01;
 	unsigned int  DVGF_CORE_02;
@@ -1367,6 +1380,7 @@ struct DVS_Settings {
 	unsigned int dram_pxl_pitch;
 	unsigned int input_offset;
 	unsigned int output_offset;
+	unsigned int total_frame_width;
 	unsigned int out_adj_en;
 	unsigned int out_adj_dv_en;
 	unsigned int out_adj_width;
@@ -1487,7 +1501,7 @@ struct DPE_Config_map {
 	unsigned int Dpe_OutBuf_RW_IIR_Ofs;
 };
 
-struct DPE_Config {
+struct DPE_Config_V2 {
 	enum DPEMODE Dpe_engineSelect;
 	unsigned int Dpe_RegDump;
 	unsigned int Dpe_is16BitMode;
@@ -1556,7 +1570,7 @@ enum DPE_CMD_ENUM {
 
 struct DPE_Request {
 	unsigned int m_ReqNum;
-	struct DPE_Config *m_pDpeConfig;
+	struct DPE_Config_V2 *m_pDpeConfig;
 };
 
 #if IS_ENABLED(CONFIG_COMPAT)
@@ -1587,11 +1601,11 @@ struct compat_DPE_Request {
 	_IOW(DPE_MAGIC, DPE_CMD_CLEAR_IRQ, struct DPE_CLEAR_IRQ_STRUCT)
 
 #define DPE_ENQNUE_NUM  _IOW(DPE_MAGIC, DPE_CMD_ENQUE_NUM,    int)
-#define DPE_ENQUE      _IOWR(DPE_MAGIC, DPE_CMD_ENQUE,      struct DPE_Config)
+#define DPE_ENQUE      _IOWR(DPE_MAGIC, DPE_CMD_ENQUE,      struct DPE_Config_V2)
 #define DPE_ENQUE_REQ  _IOWR(DPE_MAGIC, DPE_CMD_ENQUE_REQ,  struct DPE_Request)
 
 #define DPE_DEQUE_NUM  _IOR(DPE_MAGIC, DPE_CMD_DEQUE_NUM,    int)
-#define DPE_DEQUE      _IOWR(DPE_MAGIC, DPE_CMD_DEQUE,      struct DPE_Config)
+#define DPE_DEQUE      _IOWR(DPE_MAGIC, DPE_CMD_DEQUE,      struct DPE_Config_V2)
 #define DPE_DEQUE_REQ  _IOWR(DPE_MAGIC, DPE_CMD_DEQUE_REQ,  struct DPE_Request)
 
 //#if IS_ENABLED(CONFIG_COMPAT)
