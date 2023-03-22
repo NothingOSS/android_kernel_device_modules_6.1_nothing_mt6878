@@ -14,6 +14,8 @@
 #include "kd_imgsensor_define_v4l2.h"
 #include "adaptor.h"
 #include "adaptor-hw.h"
+#include "adaptor-profile.h"
+#include "adaptor-util.h"
 #include <linux/clk-provider.h>
 
 #define INST_OPS(__ctx, __field, __idx, __hw_id, __set, __unset) do {\
@@ -297,6 +299,9 @@ int do_hw_power_on(struct adaptor_ctx *ctx)
 	int i;
 	const struct subdrv_pw_seq_entry *ent;
 	struct adaptor_hw_ops *op;
+	struct adaptor_profile_tv tv;
+	struct adaptor_log_buf buf;
+
 #if IMGSENSOR_LOG_MORE
 	dev_info(ctx->dev, "[%s]+\n", __func__);
 #endif
@@ -310,6 +315,9 @@ int do_hw_power_on(struct adaptor_ctx *ctx)
 	else
 		dev_info(ctx->dev, "__pm_stay_awake(fail)\n");
 #endif
+
+	adaptor_log_buf_init(&buf, ADAPTOR_LOG_BUF_SZ);
+
 	/* may be released for mipi switch */
 	if (!ctx->pinctrl)
 		reinit_pinctrl(ctx);
@@ -329,7 +337,27 @@ int do_hw_power_on(struct adaptor_ctx *ctx)
 				ent->id, ent->val);
 			continue;
 		}
+
+		ADAPTOR_PROFILE_BEGIN(&tv);
 		op->set(ctx, op->data, ent->val);
+		ADAPTOR_PROFILE_END(&tv);
+
+		{
+			static const char * const hw_id_names[] = {
+				HW_ID_NAMES
+			};
+
+			if (ent->id >= 0 && ent->id < ARRAY_SIZE(hw_id_names)) {
+				adaptor_log_buf_gather(ctx, __func__, &buf, "[%s:%lldus]",
+						hw_id_names[ent->id],
+						(ADAPTOR_PROFILE_G_DIFF_NS(&tv) / 1000));
+			} else {
+				adaptor_log_buf_gather(ctx, __func__, &buf, "[hwid%d:%lldus]",
+						ent->id,
+						(ADAPTOR_PROFILE_G_DIFF_NS(&tv) / 1000));
+			}
+		}
+
 #if IMGSENSOR_LOG_MORE
 		dev_dbg(ctx->dev, "set comp %d val %d\n",
 			ent->id, ent->val);
@@ -343,6 +371,10 @@ int do_hw_power_on(struct adaptor_ctx *ctx)
 #if IMGSENSOR_LOG_MORE
 	dev_info(ctx->dev, "[%s]-\n", __func__);
 #endif
+
+	adaptor_log_buf_flush(ctx, __func__, &buf);
+	adaptor_log_buf_deinit(&buf);
+
 	return 0;
 }
 

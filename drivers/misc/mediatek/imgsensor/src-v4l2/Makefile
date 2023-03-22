@@ -32,6 +32,7 @@ imgsensor-objs += \
 	adaptor-subdrv-ctrl.o \
 	adaptor-fsync-ctrls.o \
 	adaptor-trace.o \
+	adaptor-util.o \
 
 define FILTER_DRV
 ifeq ($(wildcard $(IMGSENSOR_DRIVER_PATH)/camera_project/$(IMGSENSOR_PROJECT)/$(1)),)
