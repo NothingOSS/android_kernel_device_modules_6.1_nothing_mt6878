@@ -693,10 +693,17 @@ static s32 rdma_buf_map(struct mml_comp *comp, struct mml_task *task,
 
 	if (task->config->info.mode != MML_MODE_APUDC &&
 		unlikely(task->config->info.mode != MML_MODE_SRAM_READ)) {
+		mml_mmp(buf_map, MMPROFILE_FLAG_START,
+			((u64)task->job.jobid << 16) | comp->id, 0);
+
 		/* get iova */
 		ret = mml_buf_iova_get(rdma->dev, &task->buf.src);
 		if (ret < 0)
 			mml_err("%s iova fail %d", __func__, ret);
+
+		mml_mmp(buf_map, MMPROFILE_FLAG_END,
+			((u64)task->job.jobid << 16) | comp->id,
+			(unsigned long)task->buf.src.dma[0].iova);
 
 		mml_msg("%s comp %u iova %#11llx (%u) %#11llx (%u) %#11llx (%u)",
 			__func__, comp->id,
@@ -707,9 +714,6 @@ static s32 rdma_buf_map(struct mml_comp *comp, struct mml_task *task,
 			task->buf.src.dma[2].iova,
 			task->buf.src.size[2]);
 
-		mml_mmp(buf_map, MMPROFILE_FLAG_PULSE,
-			((u64)task->job.jobid << 16) | comp->id,
-			(unsigned long)task->buf.src.dma[0].iova);
 	}
 
 	mml_trace_ex_end();
@@ -724,11 +728,17 @@ static s32 rdma_buf_prepare(struct mml_comp *comp, struct mml_task *task,
 		unlikely(task->config->info.mode == MML_MODE_SRAM_READ)) {
 		struct mml_comp_rdma *rdma = comp_to_rdma(comp);
 
+		mml_mmp(buf_prepare, MMPROFILE_FLAG_START,
+			((u64)task->job.jobid << 16) | comp->id, 0);
+
 		mutex_lock(&rdma->sram_mutex);
 		if (!rdma->sram_cnt)
 			rdma->sram_pa = (u64)mml_sram_get(task->config->mml, mml_sram_apudc);
 		rdma->sram_cnt++;
 		mutex_unlock(&rdma->sram_mutex);
+
+		mml_mmp(buf_prepare, MMPROFILE_FLAG_END,
+			((u64)task->job.jobid << 16) | comp->id, rdma->sram_pa);
 
 		mml_msg("%s comp %u sram pa %#llx",
 			__func__, comp->id, rdma->sram_pa);

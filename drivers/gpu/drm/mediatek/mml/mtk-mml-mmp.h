@@ -36,6 +36,7 @@ struct mml_mmp_events_t {
 	mmp_event task_create;
 	mmp_event buf_map;
 	mmp_event comp_prepare;
+	mmp_event buf_prepare;
 	mmp_event tile_alloc;
 	mmp_event tile_calc;
 	mmp_event tile_calc_frame;
