@@ -1149,6 +1149,53 @@ static void tsrec_work_setup(int irq, void *data,
 }
 
 
+static void tsrec_worker_flush(const unsigned int tsrec_no)
+{
+#ifndef FS_UT
+	struct tsrec_kthread_st *ptr = NULL;
+	const unsigned int tsrec_hw_cnt = tsrec_status.tsrec_hw_cnt;
+
+#if defined(TSREC_WORK_USING_KTHREAD)
+
+	if (unlikely((tsrec_worker.kthreads == NULL)
+			|| (tsrec_no >= tsrec_hw_cnt)))
+		return;
+
+	ptr = tsrec_worker.kthreads[tsrec_no];
+	if (ptr == NULL)
+		return;
+
+	TSREC_LOG_INF(
+		"NOTICE: tsrec_no:%u, kthread flush\n",
+		tsrec_no);
+
+	kthread_flush_worker(&ptr->kthread);
+
+#else /* => workqueue */
+
+	if (unlikely((tsrec_worker.workqs == NULL)
+			|| (tsrec_no >= tsrec_hw_cnt)))
+		return;
+
+	ptr = tsrec_worker.workqs[tsrec_no];
+	if (ptr == NULL)
+		return;
+
+	TSREC_LOG_INF(
+		"NOTICE: tsrec_no:%u, workqueue drain\n",
+		tsrec_no);
+
+	drain_workqueue(ptr);
+
+#endif // TSREC_WORK_USING_KTHREAD
+#endif // !FS_UT
+
+	TSREC_LOG_DBG(
+		"NOTICE: tsrec_no:%u, worker flush/drain done\n",
+		tsrec_no);
+}
+
+
 #ifndef FS_UT
 #if defined(TSREC_WORK_USING_KTHREAD)
 static void tsrec_kthread_uninit(const unsigned int tsrec_no)
@@ -2355,6 +2402,7 @@ static void tsrec_chk_auto_self_disable(void)
 			i, TSREC_ATOMIC_READ(&tsrec_status.top_cfg));
 
 		tsrec_n_settings_clear(i);
+		tsrec_worker_flush(i);
 		mtk_cam_seninf_tsrec_dbg_dump_tsrec_n_regs_info(__func__);
 	}
 }
@@ -2714,6 +2762,7 @@ void mtk_cam_seninf_tsrec_n_reset(const unsigned int seninf_idx)
 
 		/* reset/clear this tsrec settings */
 		tsrec_n_settings_clear(i);
+		tsrec_worker_flush(i);
 		mtk_cam_seninf_tsrec_dbg_dump_tsrec_n_regs_info(__func__);
 	}
 }

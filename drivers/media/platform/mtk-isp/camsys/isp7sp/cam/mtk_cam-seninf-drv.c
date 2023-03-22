@@ -2826,13 +2826,6 @@ static int runtime_suspend(struct device *dev)
 			}
 		}
 
-		/* one of the source clk of TSREC */
-		if (core->clk[CLK_TOP_CAMTM]) {
-			clk_disable_unprepare(core->clk[CLK_TOP_CAMTM]);
-			dev_info(dev,
-				"[%s] clk_disable_unprepare CLK_TOP_CAMTM\n", __func__);
-		}
-
 		if (core->refcnt == 0) {
 			/* disable tsrec timer clk */
 			mtk_cam_seninf_tsrec_timer_enable(0);
@@ -2846,6 +2839,14 @@ static int runtime_suspend(struct device *dev)
 						"[%s] clk_disable_unprepare clk[%d]:%s\n",
 						__func__, i, clk_names[i]);
 				}
+			}
+
+			/* one of the source clk of TSREC */
+			if (core->clk[CLK_TOP_CAMTM]) {
+				clk_disable_unprepare(core->clk[CLK_TOP_CAMTM]);
+				dev_info(dev,
+					"[%s] clk_disable_unprepare CLK_TOP_CAMTM\n",
+					__func__);
 			}
 
 			/* disable camtg_sel as phya clk */
@@ -2908,6 +2909,22 @@ static int runtime_resume(struct device *dev)
 						"[%s] clk_prepare_enable clk[%u]:%s(success),ret(%d)\n",
 						__func__, i, clk_names[i], ret);
 				}
+			}
+
+			/* one of the source clk of TSREC */
+			if (core->clk[CLK_TOP_CAMTM]) {
+				ret = clk_prepare_enable(core->clk[CLK_TOP_CAMTM]);
+				if (ret < 0) {
+					dev_info(dev,
+						"[%s] clk_prepare_enable clk[CLK_TOP_CAMTM:%u]:%s(fail),ret(%d)\n",
+						__func__, CLK_TOP_CAMTM,
+						clk_names[CLK_TOP_CAMTM], ret);
+					return ret;
+				}
+				dev_dbg(dev,
+					"[%s] clk_prepare_enable clk[CLK_TOP_CAMTM:%u]:%s(success),ret(%d)\n",
+					__func__, CLK_TOP_CAMTM,
+					clk_names[CLK_TOP_CAMTM], ret);
 			}
 
 			/* enable tsrec timer clk */
@@ -3115,22 +3132,6 @@ static int runtime_resume(struct device *dev)
 				dev_info(dev, "invalid seninfIdx %d\n", ctx->seninfIdx);
 				return -EINVAL;
 			}
-		}
-
-		/* one of the source clk of TSREC */
-		if (core->clk[CLK_TOP_CAMTM]) {
-			ret = clk_prepare_enable(core->clk[CLK_TOP_CAMTM]);
-			if (ret < 0) {
-				dev_info(dev,
-					"[%s] clk_prepare_enable clk[CLK_TOP_CAMTM:%u]:%s(fail),ret(%d)\n",
-					__func__, CLK_TOP_CAMTM,
-					clk_names[CLK_TOP_CAMTM], ret);
-				return ret;
-			}
-			dev_dbg(dev,
-				"[%s] clk_prepare_enable clk[CLK_TOP_CAMTM:%u]:%s(success),ret(%d)\n",
-				__func__, CLK_TOP_CAMTM,
-				clk_names[CLK_TOP_CAMTM], ret);
 		}
 
 		if (core->refcnt == 1) {

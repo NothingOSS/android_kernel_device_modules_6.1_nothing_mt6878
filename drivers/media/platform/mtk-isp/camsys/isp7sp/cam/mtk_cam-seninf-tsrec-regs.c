@@ -59,17 +59,7 @@ static unsigned int tsrec_get_mask(
 static void tsrec_write_reg(struct tsrec_w_buffer *buf, const char *caller)
 {
 	void __iomem *__p = (tsrec_base_addr + buf->shift);
-	u32 __v = readl(__p);
-
-	buf->before = __v;
-
-	/* overwrite:2 / set:1 / clear: 0 */
-	if (buf->op == 2)
-		__v = buf->mask;
-	else if (buf->op)
-		__v |= buf->mask;
-	else
-		__v &= buf->mask;
+	u32 __v;
 
 	/* error handling */
 	/* --- SENINF NOT power up (exclude timer cfg */
@@ -88,6 +78,17 @@ static void tsrec_write_reg(struct tsrec_w_buffer *buf, const char *caller)
 			buf->op);
 		return;
 	}
+
+	__v = readl(__p);
+	buf->before = __v;
+
+	/* overwrite:2 / set:1 / clear: 0 */
+	if (buf->op == 2)
+		__v = buf->mask;
+	else if (buf->op)
+		__v |= buf->mask;
+	else
+		__v &= buf->mask;
 
 	writel(__v, __p);
 
