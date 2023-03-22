@@ -487,6 +487,7 @@ void mhal_DPTx_SetTU_SetEncoder(struct mtk_dp *mtk_dp)
 	if (mtk_dp->priv && mtk_dp->priv->data &&
 			mtk_dp->priv->data->mmsys_id == MMSYS_MT6897)
 		msWrite2Byte(mtk_dp, REG_3368_DP_ENCODER1_P0,
+			(0x1 << BS_FOLLOW_SEL_DP_ENCODER1_P0_FLDMASK_POS) |
 			(0x4 << BS2BS_MODE_DP_ENCODER1_P0_FLDMASK_POS) |
 			(0x1 << SDP_DP13_EN_DP_ENCODER1_P0_FLDMASK_POS) |
 			(0x1 << VIDEO_STABLE_CNT_THRD_DP_ENCODER1_P0_FLDMASK_POS) |

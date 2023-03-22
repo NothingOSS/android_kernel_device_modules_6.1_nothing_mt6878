@@ -2058,9 +2058,13 @@
 #define VIDEO_PIXEL_SWAP_DP_ENCODER1_P0_FLDMASK_POS                       9
 #define VIDEO_PIXEL_SWAP_DP_ENCODER1_P0_FLDMASK_LEN                       2
 
-#define BS2BS_MODE_DP_ENCODER1_P0_FLDMASK                                 0x3000
+#define BS2BS_MODE_DP_ENCODER1_P0_FLDMASK                                 0x7000
 #define BS2BS_MODE_DP_ENCODER1_P0_FLDMASK_POS                             12
-#define BS2BS_MODE_DP_ENCODER1_P0_FLDMASK_LEN                             2
+#define BS2BS_MODE_DP_ENCODER1_P0_FLDMASK_LEN                             3
+
+#define BS_FOLLOW_SEL_DP_ENCODER1_P0_FLDMASK                              0x8000
+#define BS_FOLLOW_SEL_DP_ENCODER1_P0_FLDMASK_POS                          15
+#define BS_FOLLOW_SEL_DP_ENCODER1_P0_FLDMASK_LEN                          1
 
 #define REG_336C_DP_ENCODER1_P0              (0x336C)
 #define DSC_EN_DP_ENCODER1_P0_FLDMASK                                     0x1
