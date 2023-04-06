@@ -22,6 +22,7 @@
 #include <slbc_ipi.h>
 #include <slbc_trace.h>
 #include <mtk_slbc_sram.h>
+#include <mtk_heap.h>
 
 /* #define CREATE_TRACE_POINTS */
 /* #include <slbc_events.h> */
@@ -46,6 +47,20 @@ static struct pm_qos_request slbc_qos_request;
 #define SLBC_WAY_A_BASE			0x0f000000
 #define SLBC_WAY_B_BASE			0x680000000
 #define SLBC_PADDR_MASK			0x00ffffff
+
+
+#define GID_MAX					64
+#define GID_REQ					(-1)
+#define GID_MD					5
+#define GID_GPU					6
+#define GID_GPU_OVL				7
+#define GID_VDEC				8
+
+#define BUF_ID_NOT_CARE			0x00000000
+#define BUF_ID_GPU			0x0000000f
+#define BUF_ID_OVL			0x000000f0
+#define BUF_ID_VDEC			0x00000f00
+
 
 static struct mtk_slbc *slbc;
 
@@ -74,6 +89,8 @@ static int uid_ref[UID_MAX];
 static int slbc_mic_num = 3;
 static int slbc_inner = 5;
 static int slbc_outer = 5;
+static int gid_ref[GID_MAX];
+static int gid_vld_cnt[GID_MAX];
 
 static u64 req_val_count;
 static u64 rel_val_count;
@@ -121,9 +138,6 @@ static struct slbc_config p_config[] = {
 
 u32 slbc_sram_read(u32 offset)
 {
-	if (!slbc_enable)
-		return 0;
-
 	if (!slbc_sram_enable)
 		return 0;
 
@@ -137,9 +151,6 @@ u32 slbc_sram_read(u32 offset)
 
 void slbc_sram_write(u32 offset, u32 val)
 {
-	if (!slbc_enable)
-		return;
-
 	if (!slbc_sram_enable)
 		return;
 
@@ -357,6 +368,9 @@ int slbc_request(struct slbc_data *d)
 	int ret = 0;
 	int sid;
 	u64 begin, val;
+
+	if (slbc_enable == 0)
+		return -EDISABLED;
 
 	begin = ktime_get_ns();
 
@@ -661,6 +675,136 @@ void slbc_update_outer(unsigned int outer)
 	slbc_outer_cmd(outer);
 }
 
+int slbc_gid_request(enum slc_ach_uid uid, int *gid, struct slbc_gid_data *data)
+{
+	SLBC_TRACE_REC(LVL_QOS, TYPE_C, uid, 0, "gid:%d", *gid);
+	if (*gid >= GID_MAX)
+		return -EINVAL;
+	if (data->sign != 0x51ca11ca) {
+		SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "invalid sign:%#x", data->sign);
+		return -EINVAL;
+	}
+
+	switch (uid) {
+	case ID_MD:
+		if (*gid == GID_REQ)
+			*gid = GID_MD;
+		gid_ref[GID_MD]++;
+		break;
+	case ID_VDEC:
+		if (*gid == GID_REQ) {
+			uint32_t i;
+
+			for (i = GID_VDEC + 1; i < GID_MAX; i++) {
+				if (gid_ref[i] == 0) {
+					gid_ref[i]++;
+					*gid = i;
+					return 0;
+				}
+			}
+
+			if (i == GID_MAX)
+				return -EREQ_GID_RUN_OUT;
+		} else {
+			gid_ref[*gid]++;
+		}
+		break;
+	case ID_GPU:
+		if (*gid == GID_REQ)
+			*gid = GID_GPU;
+		gid_ref[GID_GPU]++;
+		break;
+	case ID_GPU_W:
+	case ID_OVL_R:
+		gid_ref[GID_GPU_OVL]++;
+		break;
+	default:
+		SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "unrecognized uid");
+		return -EINVAL;
+	}
+
+
+	/* Set M/G and G/P tables */
+	_slbc_ach_scmi(IPI_SLBC_GID_REQUEST_FROM_AP, uid, *gid, data);
+
+	return 0;
+}
+
+int slbc_gid_release(enum slc_ach_uid uid, int gid)
+{
+	SLBC_TRACE_REC(LVL_QOS, TYPE_C, uid, 0, "gid:%d", gid);
+	if (gid >= GID_MAX)
+		return -EINVAL;
+
+	switch (uid) {
+	case ID_VDEC:
+		break;
+	case ID_GPU:
+		gid_ref[GID_GPU]--;
+		break;
+	case ID_GPU_W:
+	case ID_OVL_R:
+		gid_ref[GID_GPU_OVL]--;
+		break;
+	default:
+		SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "unrecognized uid");
+		return -EINVAL;
+	}
+
+	/* Clear M/G and G/P tables */
+	_slbc_ach_scmi(IPI_SLBC_GID_RELEASE_FROM_AP, uid, gid, NULL);
+
+	return 0;
+}
+
+int slbc_roi_update(enum slc_ach_uid uid, int gid, struct slbc_gid_data *data)
+{
+	if (gid >= GID_MAX)
+		return -EINVAL;
+
+	_slbc_ach_scmi(IPI_SLBC_ROI_UPDATE_FROM_AP, uid, gid, data);
+
+	return 0;
+}
+
+int slbc_validate(enum slc_ach_uid uid, int gid)
+{
+	SLBC_TRACE_REC(LVL_NORM, TYPE_C, uid, 0, "gid:%d", gid);
+	if (gid >= GID_MAX)
+		return -EINVAL;
+
+	gid_vld_cnt[gid]++;
+	_slbc_ach_scmi(IPI_SLBC_GID_VALID_FROM_AP, uid, gid, NULL);
+
+	return 0;
+}
+
+int slbc_invalidate(enum slc_ach_uid uid, int gid)
+{
+	SLBC_TRACE_REC(LVL_NORM, TYPE_C, uid, 0, "gid:%d", gid);
+	if (gid >= GID_MAX)
+		return -EINVAL;
+
+	gid_vld_cnt[gid]--;
+	_slbc_ach_scmi(IPI_SLBC_GID_INVALID_FROM_AP, uid, gid, NULL);
+
+	return 0;
+}
+
+int slbc_read_invalidate(enum slc_ach_uid uid, int gid, int enable)
+{
+	struct slbc_gid_data data;
+
+	SLBC_TRACE_REC(LVL_NORM, TYPE_C, uid, 0, "gid:%d", gid);
+	if (gid >= GID_MAX)
+		return -EINVAL;
+
+	data.bw = enable;
+	_slbc_ach_scmi(IPI_SLBC_GID_READ_INVALID_FROM_AP, uid, gid, &data);
+
+	return 0;
+}
+
 static void slbc_dump_data(struct seq_file *m, struct slbc_data *d)
 {
 	unsigned int uid = d->uid;
@@ -689,6 +833,8 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 	struct slbc_ops *ops;
 	int i;
 	int sid;
+
+	slbc_sspm_sram_update();
 
 #if IS_ENABLED(CONFIG_MTK_SLBC_IPI)
 	slbc_uid_used = slbc_sram_read(SLBC_UID_USED);
@@ -750,6 +896,20 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 	seq_printf(m, "mic_num %x\n", slbc_mic_num);
 	seq_printf(m, "inner %x\n", slbc_inner);
 	seq_printf(m, "outer %x\n", slbc_outer);
+	if (slbc_all_cache_mode) {
+		seq_puts(m, "gid         ");
+		for (i = 0; i < UID_MAX; i++)
+			seq_printf(m, "%2d", i);
+		seq_puts(m, "\n");
+		seq_puts(m, "gid_ref     ");
+		for (i = 0; i < UID_MAX; i++)
+			seq_printf(m, "%2x", gid_ref[i]);
+		seq_puts(m, "\n");
+		seq_puts(m, "gid_vld_cnt ");
+		for (i = 0; i < UID_MAX; i++)
+			seq_printf(m, "%2x", gid_vld_cnt[i]);
+		seq_puts(m, "\n");
+	}
 
 	for (i = 0; i < UID_MAX; i++) {
 		sid = slbc_get_sid_by_uid(i);
@@ -811,7 +971,15 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 	}
 
 	if (!strcmp(cmd, "slbc_enable")) {
+		if (slbc_enable == !!val_1) {
+			pr_info("slbc: slbc_enable config has already %d\n", slbc_enable);
+			goto out;
+		}
+
 		slbc_enable = !!val_1;
+		pr_info("slbc enable %d\n", slbc_enable);
+
+		/* ask slb user to release slb */
 		if (slbc_enable == 0) {
 			struct slbc_ops *ops;
 
@@ -825,6 +993,9 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 			}
 			mutex_unlock(&slbc_ops_lock);
 		}
+
+		/* enable/disable slc */
+		slbc_sspm_enable(slbc_enable);
 	} else if (!strcmp(cmd, "slb_disable")) {
 		pr_info("slb disable %ld\n", val_1);
 		slb_disable = val_1;
@@ -833,9 +1004,6 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 		pr_info("slc disable %ld\n", val_1);
 		slc_disable = val_1;
 		slbc_sspm_slc_disable((int)!!val_1);
-	} else if (!strcmp(cmd, "slbc_scmi_enable")) {
-		pr_info("slbc scmi enable %ld\n", val_1);
-		slbc_sspm_enable((int)!!val_1);
 	} else if (!strcmp(cmd, "slbc_uid_used")) {
 		slbc_uid_used = val_1;
 		slbc_sram_write(SLBC_UID_USED, slbc_uid_used);
@@ -1042,6 +1210,12 @@ static struct slbc_common_ops common_ops = {
 	.slbc_sram_write = slbc_sram_write,
 	.slbc_update_mm_bw = slbc_update_mm_bw,
 	.slbc_update_mic_num = slbc_update_mic_num,
+	.slbc_gid_request = slbc_gid_request,
+	.slbc_gid_release = slbc_gid_release,
+	.slbc_roi_update = slbc_roi_update,
+	.slbc_validate = slbc_validate,
+	.slbc_invalidate = slbc_invalidate,
+	.slbc_read_invalidate = slbc_read_invalidate,
 };
 
 static struct slbc_ipi_ops ipi_ops = {
@@ -1049,6 +1223,61 @@ static struct slbc_ipi_ops ipi_ops = {
 	.slbc_release_acp = slbc_release_acp,
 	.slbc_mem_barrier = slbc_mem_barrier,
 };
+
+void slbc_get_gid_for_dma(struct dma_buf *dmabuf_2)
+{
+	int gid = GID_REQ;
+	struct slbc_gid_data *gid_data;
+	unsigned int buffer_fd, producer, consumer;
+	struct iosys_map map;
+	struct dma_buf *dmabuf_1;
+	int ret;
+
+	memset(&map, 0, sizeof(map));
+	ret = dma_buf_vmap(dmabuf_2, &map);
+	if (ret) {
+		SLBC_TRACE_REC(LVL_ERR, TYPE_C, 0, ret, "dma_buf_vmap failed");
+		return;
+	}
+
+	gid_data = (struct slbc_gid_data *)map.vaddr;
+	buffer_fd = gid_data->buffer_fd;
+	producer = gid_data->producer;
+	consumer = gid_data->consumer;
+	SLBC_TRACE_REC(LVL_QOS, TYPE_C, 0, ret, "buffer_fd:%d  producer:%d  consumer:%d",
+			buffer_fd, producer, consumer);
+
+
+	/* mapping producre/consumer to GID */
+	switch (producer) {
+	case BUF_ID_GPU:
+		if (consumer & BUF_ID_OVL)	/* GPU to OVL */
+			gid = GID_GPU_OVL;
+		else                        /* GPU only */
+			gid = GID_GPU;
+		break;
+	case BUF_ID_VDEC:
+		gid = GID_VDEC;
+		break;
+	default:
+		if (consumer & BUF_ID_GPU)  /* GPU only */
+			gid = GID_GPU;
+	}
+	SLBC_TRACE_REC(LVL_QOS, TYPE_C, 0, 0, "gid:%d", gid);
+
+
+	dmabuf_1 = dma_buf_get(buffer_fd);
+	if (IS_ERR(dmabuf_1)) {
+		SLBC_TRACE_REC(LVL_ERR, TYPE_C, 0, 0, "dma_buf_get failed");
+		return;
+	}
+	ret = dma_buf_set_gid(dmabuf_1, gid);
+	if (ret)
+		SLBC_TRACE_REC(LVL_ERR, TYPE_C, 0, ret, "dma_buf_set_gid failed");
+
+	dma_buf_put(dmabuf_1);
+	dma_buf_vunmap(dmabuf_2, &map);
+}
 
 static int slbc_probe(struct platform_device *pdev)
 {
@@ -1085,6 +1314,15 @@ static int slbc_probe(struct platform_device *pdev)
 		else
 			SLBC_TRACE_REC(LVL_QOS, TYPE_N, 0, ret,
 					"slbc_enable %d", slbc_enable);
+
+		ret = of_property_read_u32(node,
+				"slbc-all-cache-enable", &slbc_all_cache_mode);
+		if (ret)
+			SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, ret,
+					"failed to get slbc_all_cache_mode from dts");
+		else
+			SLBC_TRACE_REC(LVL_QOS, TYPE_N, 0, ret,
+					"slbc_all_cache_mode %d", slbc_all_cache_mode);
 	} else
 		SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, -1,
 				"find slbc node failed");
@@ -1148,6 +1386,10 @@ static int slbc_probe(struct platform_device *pdev)
 
 	slbc_register_ipi_ops(&ipi_ops);
 	slbc_register_common_ops(&common_ops);
+	if (slbc_all_cache_mode) {
+		ret = mtk_dmaheap_register_slc_callback(slbc_get_gid_for_dma);
+		SLBC_TRACE_REC(LVL_NORM, TYPE_C, 0, ret, "mtk_dmaheap_register_slc_callback done");
+	}
 
 	if (slbc_enable)
 		slbc_sspm_enable(slbc_enable);
@@ -1162,6 +1404,8 @@ static int slbc_remove(struct platform_device *pdev)
 	slbc_trace_exit();
 	slbc_unregister_ipi_ops(&ipi_ops);
 	slbc_unregister_common_ops(&common_ops);
+	if (slbc_all_cache_mode)
+		mtk_dmaheap_unregister_slc_callback();
 	devm_kfree(dev, slbc);
 
 	return 0;
@@ -1280,4 +1524,5 @@ module_exit(slbc_module_exit);
 
 MODULE_SOFTDEP("pre: tinysys-scmi.ko");
 MODULE_DESCRIPTION("SLBC Driver mt6985 v0.1");
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL");
