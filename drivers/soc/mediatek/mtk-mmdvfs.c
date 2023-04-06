@@ -558,12 +558,10 @@ int dump_setting(char *buf, const struct kernel_param *kp)
 		"\n");
 	length += snprintf(buf + length, MAX_DUMP  - length,
 		"request voltage:%d\n", drv_data->request_voltage);
-#ifdef MMDVFS_DBG
 	length += snprintf(buf + length, MAX_DUMP  - length,
 		"force_step:%d\n", dbg_data->force_step);
 	length += snprintf(buf + length, MAX_DUMP  - length,
 		"vote_step:%d\n", dbg_data->vote_step);
-#endif
 	if (length >= MAX_DUMP)
 		length = MAX_DUMP - 1;
 
