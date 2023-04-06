@@ -429,6 +429,9 @@ static const struct of_device_id of_vmm_spm_match_tbl[] = {
 		.compatible = "mediatek,vmm_spm_7s",
 	},
 	{
+		.compatible = "mediatek,vmm_spm_7sp",
+	},
+	{
 		.compatible = "mediatek,vmm_spm_mt6886",
 	},
 	{}
