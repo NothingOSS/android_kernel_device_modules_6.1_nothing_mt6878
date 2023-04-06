@@ -3561,7 +3561,11 @@ _mtk_crtc_atmoic_addon_module_connect(
 
 		c.module = OVL_RSZ;
 		mtk_addon_get_comp(lye_state->rpo_lye, &c.tgt_comp, &c.tgt_layer);
-		mtk_ddp_comp_io_cmd(priv->ddp_comp[c.tgt_comp], cmdq_handle, OVL_SET_PQ_OUT, &c);
+		if ((c.tgt_comp >= 0) && (c.tgt_comp < DDP_COMPONENT_ID_MAX))
+			mtk_ddp_comp_io_cmd(priv->ddp_comp[c.tgt_comp],
+			cmdq_handle, OVL_SET_PQ_OUT, &c);
+		else
+			DDPPR_ERR("%s:%d Unavailable comp!\n", __func__, __LINE__);
 		if (mtk_crtc->is_dual_pipe) {
 			c.tgt_comp = dual_pipe_comp_mapping(mtk_get_mmsys_id(crtc), c.tgt_comp);
 			if ((c.tgt_comp >= 0) && (c.tgt_comp < DDP_COMPONENT_ID_MAX))
@@ -3576,7 +3580,11 @@ _mtk_crtc_atmoic_addon_module_connect(
 		struct mtk_addon_config_type c = {0};
 
 		mtk_addon_get_comp(lye_state->mml_ir_lye, &c.tgt_comp, &c.tgt_layer);
-		mtk_ddp_comp_io_cmd(priv->ddp_comp[c.tgt_comp], cmdq_handle, OVL_SET_PQ_OUT, &c);
+		if ((c.tgt_comp >= 0) && (c.tgt_comp < DDP_COMPONENT_ID_MAX))
+			mtk_ddp_comp_io_cmd(priv->ddp_comp[c.tgt_comp],
+			cmdq_handle, OVL_SET_PQ_OUT, &c);
+		else
+			DDPPR_ERR("%s:%d Unavailable comp!\n", __func__, __LINE__);
 		if (mtk_crtc->is_dual_pipe) {
 			c.tgt_comp = dual_pipe_comp_mapping(mtk_get_mmsys_id(crtc), c.tgt_comp);
 			if ((c.tgt_comp >= 0) && (c.tgt_comp < DDP_COMPONENT_ID_MAX))
@@ -3592,7 +3600,11 @@ _mtk_crtc_atmoic_addon_module_connect(
 
 		c.module = DISP_MML_DL;
 		mtk_addon_get_comp(lye_state->mml_dl_lye, &c.tgt_comp, &c.tgt_layer);
-		mtk_ddp_comp_io_cmd(priv->ddp_comp[c.tgt_comp], cmdq_handle, OVL_SET_PQ_OUT, &c);
+		if ((c.tgt_comp >= 0) && (c.tgt_comp < DDP_COMPONENT_ID_MAX))
+			mtk_ddp_comp_io_cmd(priv->ddp_comp[c.tgt_comp],
+			cmdq_handle, OVL_SET_PQ_OUT, &c);
+		else
+			DDPPR_ERR("%s:%d Unavailable comp!\n", __func__, __LINE__);
 		if (mtk_crtc->is_dual_pipe) {
 			c.tgt_comp = dual_pipe_comp_mapping(mtk_get_mmsys_id(crtc), c.tgt_comp);
 			if ((c.tgt_comp >= 0) && (c.tgt_comp < DDP_COMPONENT_ID_MAX))

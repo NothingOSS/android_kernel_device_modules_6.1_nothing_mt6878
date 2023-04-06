@@ -595,6 +595,11 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 					memcpy(layer_info, &disp_info->input_config[i][j],
 						sizeof(struct drm_mtk_layer_config));
 
+				if (layer_info == NULL) {
+					DDPPR_ERR("%s[%d]:layer_info = null\n", __func__, __LINE__);
+					break;
+				}
+
 				DDPINFO(_L_FMT, j, layer_info->ovl_id,
 					layer_info->src_offset_x,
 					layer_info->src_offset_y,
@@ -1714,7 +1719,7 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 
 	if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR) && frame_idx && is_gles &&
 			get_layering_opt(LYE_OPT_GPU_CACHE) && (disp_idx == HRT_PRIMARY)
-			&& (have_force_gpu_layer == 0)) {
+			&& (have_force_gpu_layer == 0) && layer_info->compress) {
 		uint64_t key_value = frame_idx - BWM_GPUC_TUNING_FRAME;
 		int i = 0;
 		struct drm_mtk_layering_info *disp_info = &layering_info;
@@ -1770,7 +1775,7 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 
 	if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR) && frame_idx &&
 		(disp_idx == HRT_PRIMARY) && (layer_info != NULL) &&
-		(layer_info->layer_caps & MTK_HWC_UNCHANGED_LAYER)) {
+		(layer_info->layer_caps & MTK_HWC_UNCHANGED_LAYER) && layer_info->compress) {
 		uint64_t key_value = frame_idx + layer_info->buffer_alloc_id -
 			BWM_GPUC_TUNING_FRAME;
 		int i = 0;
