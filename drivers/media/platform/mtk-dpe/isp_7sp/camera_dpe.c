@@ -4907,6 +4907,8 @@ cmdq_pkt_write(handle, dpe_clt_base, DVS_CTRL00_HW, 0x20000000, 0x20000000);
 	else
 		cmdq_pkt_wfe(handle, dvp_event_id);
 
+cmdq_pkt_sleep(handle, CMDQ_US_TO_TICK(2000), CMDQ_GPR_R03);
+
 cmdq_pkt_write(handle, dpe_clt_base, DVS_CTRL00_HW, 0x00000000, 0x20000000);
 #endif
 #if defined(DPE_PMQOS_EN) && defined(CONFIG_MTK_QOS_SUPPORT)
