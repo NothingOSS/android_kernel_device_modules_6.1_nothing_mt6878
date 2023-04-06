@@ -335,7 +335,7 @@ enum {
 	IRQ_HW_MONITOR_V4 = 29,
 	IRQ_WDT_V4 = 30,
 	IRQ_ALL_PMIC_MPU_VIO_V4 = 31,
-	/* MT6985 */
+	/* MT6985/MT6897 */
 	IRQ_PMIF_ACC_VIO_V3 = 27,
 	IRQ_PMIF_SWINF_ACC_ERR_0 = 3,
 	IRQ_PMIF_SWINF_ACC_ERR_1 = 4,
@@ -343,13 +343,6 @@ enum {
 	IRQ_PMIF_SWINF_ACC_ERR_3 = 6,
 	IRQ_PMIF_SWINF_ACC_ERR_4 = 7,
 	IRQ_PMIF_SWINF_ACC_ERR_5 = 8,
-	/* MT6897 */
-	IRQ_PMIF_SWINF_ACC_ERR_0_V2 = 15,
-	IRQ_PMIF_SWINF_ACC_ERR_1_V2 = 16,
-	IRQ_PMIF_SWINF_ACC_ERR_2_V2 = 17,
-	IRQ_PMIF_SWINF_ACC_ERR_3_V2 = 18,
-	IRQ_PMIF_SWINF_ACC_ERR_4_V2 = 19,
-	IRQ_PMIF_SWINF_ACC_ERR_5_V2 = 20,
 };
 
 unsigned long long get_current_time_ms(void)
@@ -791,27 +784,8 @@ static irqreturn_t pmif_event_2_irq_handler(int irq, void *data)
 	for (idx = 0; idx < 32; idx++) {
 		if ((irq_f & (0x1 << idx)) != 0) {
 			switch (idx) {
-			case IRQ_PMIF_SWINF_ACC_ERR_0_V2:
-				pmif_swinf_acc_err_0_irq_handler(irq, data);
-			break;
-			case IRQ_PMIF_SWINF_ACC_ERR_1_V2:
-				pmif_swinf_acc_err_1_irq_handler(irq, data);
-			break;
-			/* Use caps to distinguish platform if they have same irq number */
 			case IRQ_PMIC_CMD_ERR_PARITY_ERR:
-				if (arb->caps == 1)
-					pmif_cmd_err_parity_err_irq_handler(irq, data);
-				else
-					pmif_swinf_acc_err_2_irq_handler(irq, data);
-			break;
-			case IRQ_PMIF_SWINF_ACC_ERR_3_V2:
-				pmif_swinf_acc_err_3_irq_handler(irq, data);
-			break;
-			case IRQ_PMIF_SWINF_ACC_ERR_4_V2:
-				pmif_swinf_acc_err_4_irq_handler(irq, data);
-			break;
-			case IRQ_PMIF_SWINF_ACC_ERR_5_V2:
-				pmif_swinf_acc_err_5_irq_handler(irq, data);
+				pmif_cmd_err_parity_err_irq_handler(irq, data);
 			break;
 			case IRQ_PMIF_ACC_VIO_V2:
 				pmif_pmif_acc_vio_irq_handler(irq, data);
@@ -895,7 +869,8 @@ static irqreturn_t pmif_event_3_irq_handler(int irq, void *data)
 				spmi_dump_pmif_record_reg();
 			break;
 			}
-			pmif_writel(arb, irq_f, PMIF_IRQ_CLR_3);
+			if (!(irq_f & (0x1 << IRQ_PMIF_SWINF_ACC_ERR_0)))
+				pmif_writel(arb, irq_f, PMIF_IRQ_CLR_3);
 			break;
 		}
 	}
