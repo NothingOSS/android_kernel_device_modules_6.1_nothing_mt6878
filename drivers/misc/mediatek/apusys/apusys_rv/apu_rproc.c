@@ -31,6 +31,7 @@
 #include "apusys_core.h"
 #include "apu_regdump.h"
 #include "apusys_rv_tag.h"
+#include "aov_recovery.h"
 
 
 struct mtk_apu *g_apu_struct;
@@ -486,6 +487,10 @@ static int apu_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto remove_apu_excep;
 
+	ret = aov_recovery_ipi_init(pdev, apu);
+	if (ret < 0)
+		goto remove_apu_aov_recovery;
+
 	if (data->flags & F_CE_EXCEPTION_ON) {
 		ret = apu_ce_excep_init(pdev, apu);
 		if (ret < 0)
@@ -524,6 +529,9 @@ remove_apu_excep:
 
 remove_apu_ce_excep:
 	apu_ce_excep_remove(pdev, apu);
+
+remove_apu_aov_recovery:
+	aov_recovery_exit();
 
 remove_apu_procfs:
 	apu_procfs_remove(pdev);
