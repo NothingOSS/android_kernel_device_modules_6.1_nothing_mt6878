@@ -160,11 +160,9 @@ int get_sw_feature(struct mtk_cam_job *job);
 bool is_vhdr(struct mtk_cam_job *job);
 bool is_dc_mode(struct mtk_cam_job *job);
 bool is_sv_pure_raw(struct mtk_cam_job *job);
-bool is_vhdr(struct mtk_cam_job *job);
 bool is_rgbw(struct mtk_cam_job *job);
 bool is_m2m(struct mtk_cam_job *job);
 bool is_m2m_apu(struct mtk_cam_job *job);
-bool is_hw_offline(struct mtk_cam_job *job);
 int raw_video_id_w_port(int rawi_id);
 void get_stagger_rawi_table(struct mtk_cam_job *job,
 	const int **rawi_table, int *cnt);

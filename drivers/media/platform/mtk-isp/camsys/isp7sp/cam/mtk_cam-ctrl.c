@@ -1076,10 +1076,7 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 		vsync_set_desired(&cam_ctrl->vsync_col,
 				  _get_master_engines(job->used_engine));
 
-		/* TODO(AY): refine this */
-		if (job->job_scen.id == MTK_CAM_SCEN_M2M_NORMAL ||
-		    job->job_scen.id == MTK_CAM_SCEN_ODT_NORMAL ||
-		    job->job_scen.id == MTK_CAM_SCEN_ODT_MSTREAM) {
+		if (is_m2m(job)) {
 
 			atomic_set(&cam_ctrl->stream_on_cnt, 0);
 			mtk_cam_watchdog_start(&cam_ctrl->watchdog, 0);

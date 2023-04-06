@@ -372,7 +372,7 @@ static unsigned long mtk_cam_select_hw(struct mtk_cam_job *job)
 	}
 
 	/* camsv */
-	if (is_hw_offline(job)) {
+	if (is_m2m(job)) {
 		dev_info(cam->dev, "skip camsv select in hw offline scen(%d)\n",
 				 job->job_scen.id);
 	} else if (selected) {

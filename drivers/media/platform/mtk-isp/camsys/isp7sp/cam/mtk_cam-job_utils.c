@@ -7,6 +7,7 @@
 #include "mtk_cam-fmt_utils.h"
 #include "mtk_cam-job_utils.h"
 #include "mtk_cam-ufbc-def.h"
+#include "mtk_cam-raw_ctrl.h"
 
 static unsigned int sv_pure_raw = 1;
 module_param(sv_pure_raw, uint, 0644);
@@ -62,17 +63,6 @@ _get_job_sensor_res(struct mtk_cam_job *job)
 	}
 
 	return sensor_res;
-}
-
-bool is_dc_mode(struct mtk_cam_job *job)
-{
-	struct mtk_cam_resource_v2 *res;
-
-	res = _get_job_res(job);
-	if (res)
-		return (res->raw_res.hw_mode == HW_MODE_DIRECT_COUPLED);
-	else
-		return false;
 }
 
 u32 get_used_raw_num(struct mtk_cam_job *job)
@@ -635,7 +625,7 @@ void get_stagger_rawi_table(struct mtk_cam_job *job,
 		const int **rawi_table, int *cnt)
 {
 	int exp_num_cur = job_exp_num(job);
-	bool without_tg = is_dc_mode(job) || is_hw_offline(job);
+	bool without_tg = is_dc_mode(job) || is_m2m(job);
 
 	switch (exp_num_cur) {
 	case 1:
@@ -1207,52 +1197,39 @@ bool is_sv_pure_raw(struct mtk_cam_job *job)
 
 bool is_vhdr(struct mtk_cam_job *job)
 {
-	struct mtk_cam_scen *scen = &job->job_scen;
+	return scen_is_vhdr(&job->job_scen);
+}
 
-	switch (scen->id) {
-	case MTK_CAM_SCEN_NORMAL:
-	case MTK_CAM_SCEN_M2M_NORMAL:
-	case MTK_CAM_SCEN_ODT_NORMAL:
-		return scen->scen.normal.max_exp_num > 1;
-	case MTK_CAM_SCEN_MSTREAM:
-	case MTK_CAM_SCEN_ODT_MSTREAM:
-		return 1;
-	default:
-		break;
-	}
-	return 0;
+bool is_dc_mode(struct mtk_cam_job *job)
+{
+	struct mtk_cam_resource_v2 *res;
+
+	res = _get_job_res(job);
+	if (!res)
+		return false;
+
+	return scen_is_dc_mode(&res->raw_res);
 }
 
 bool is_rgbw(struct mtk_cam_job *job)
 {
-	struct mtk_cam_scen *scen = &job->job_scen;
-
-	if (scen->id == MTK_CAM_SCEN_NORMAL ||
-		scen->id == MTK_CAM_SCEN_ODT_NORMAL ||
-		scen->id == MTK_CAM_SCEN_M2M_NORMAL)
-		return !!(scen->scen.normal.w_chn_enabled);
-
-	return false;
+	return scen_is_rgbw(&job->job_scen);
 }
 
 bool is_m2m(struct mtk_cam_job *job)
 {
-	return job->job_scen.id == MTK_CAM_SCEN_M2M_NORMAL ||
-		job->job_scen.id == MTK_CAM_SCEN_ODT_NORMAL;
+	return scen_is_m2m(&job->job_scen);
 }
 
 bool is_m2m_apu(struct mtk_cam_job *job)
 {
 	struct mtk_raw_ctrl_data *ctrl;
 
-	if (!is_m2m(job))
-		return 0;
-
 	ctrl = get_raw_ctrl_data(job);
 	if (!ctrl)
 		return 0;
 
-	return ctrl->apu_info.apu_path != APU_NONE;
+	return scen_is_m2m_apu(&job->job_scen, &ctrl->apu_info);
 }
 
 int map_ipi_vpu_point(int vpu_point)
@@ -1346,15 +1323,6 @@ struct mtk_raw_sink_data *get_raw_sink_data(struct mtk_cam_job *job)
 		return NULL;
 
 	return &req->raw_data[raw_pipe_idx].sink;
-}
-
-bool is_hw_offline(struct mtk_cam_job *job)
-{
-	int scen_id = job->job_scen.id;
-
-	return (scen_id == MTK_CAM_SCEN_ODT_MSTREAM ||
-		scen_id == MTK_CAM_SCEN_ODT_NORMAL ||
-		scen_id == MTK_CAM_SCEN_M2M_NORMAL);
 }
 
 void mtk_cam_sv_reset_tag_info(struct mtk_cam_job *job)
@@ -1598,8 +1566,9 @@ bool is_sv_img_tag_used(struct mtk_cam_job *job)
 	bool rst = false;
 
 	/* HS_TODO: check all features */
+	/* FIXME(AY): should check scen id before accessing */
 	if (job->job_scen.scen.normal.exp_num > 1)
-		rst = !is_hw_offline(job);
+		rst = !is_m2m(job);
 	if (is_dc_mode(job))
 		rst = true;
 	if (is_sv_pure_raw(job))

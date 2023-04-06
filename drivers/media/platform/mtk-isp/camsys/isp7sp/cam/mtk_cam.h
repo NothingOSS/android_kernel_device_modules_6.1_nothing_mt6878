@@ -138,8 +138,6 @@ struct mtk_cam_ctx {
 	struct workqueue_struct *composer_wq; /* TODO(AY): may remove */
 	struct workqueue_struct *aa_dump_wq;
 
-	struct mtk_cam_device_buf w_caci_buf;
-
 	struct mtk_cam_device_buf cq_buffer;
 	struct mtk_cam_device_buf ipi_buffer;
 
@@ -149,6 +147,9 @@ struct mtk_cam_ctx {
 	struct mtk_cam_pool	cq_pool;
 	struct mtk_cam_pool	ipi_pool;
 	struct mtk_cam_pool	img_work_pool;
+
+	bool scenario_init;
+	struct mtk_cam_device_buf w_caci_buf;
 
 	/* TODO:
 	 * life-cycle of work buffer during switch
@@ -333,6 +334,7 @@ struct mtk_cam_ctx *mtk_cam_find_ctx(struct mtk_cam_device *cam,
 struct mtk_cam_ctx *mtk_cam_start_ctx(struct mtk_cam_device *cam,
 				      struct mtk_cam_video_device *node);
 void mtk_cam_stop_ctx(struct mtk_cam_ctx *ctx, struct media_entity *entity);
+int mtk_cam_ctx_init_scenario(struct mtk_cam_ctx *ctx);
 int mtk_cam_ctx_all_nodes_streaming(struct mtk_cam_ctx *ctx);
 int mtk_cam_ctx_all_nodes_idle(struct mtk_cam_ctx *ctx);
 int mtk_cam_ctx_stream_on(struct mtk_cam_ctx *ctx);

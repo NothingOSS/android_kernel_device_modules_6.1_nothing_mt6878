@@ -39,6 +39,7 @@
 #include "mtk_cam-job.h"
 #include "mtk_cam-fmt_utils.h"
 #include "mtk_cam-job_utils.h"
+#include "mtk_cam-raw_ctrl.h"
 #include "mtk_cam-hsf.h"
 
 #ifdef CONFIG_VIDEO_MTK_ISP_CAMSYS_DUBUG
@@ -776,7 +777,10 @@ int mtk_cam_dev_req_enqueue(struct mtk_cam_device *cam,
 
 	list_for_each_entry(job, &job_list, list) {
 
-		ctx  = job->src_ctx;
+		ctx = job->src_ctx;
+
+		if (!ctx->scenario_init)
+			WARN_ON(mtk_cam_ctx_init_scenario(ctx));
 
 		// enque to ctrl ; job will send ipi
 		mtk_cam_ctrl_job_enque(&ctx->cam_ctrl, job);
@@ -1608,34 +1612,25 @@ static void _destroy_pool(struct mtk_cam_device_buf *buf,
 
 // TODO(Will): get offset from rgb path?
 #define MTK_CAM_CACI_TABLE_SIZE (50000)
-static int mtk_cam_ctx_alloc_rgbw_caci_buf(struct mtk_cam_ctx *ctx)
+static int mtk_cam_ctx_alloc_rgbw_caci_buf(struct mtk_cam_ctx *ctx, int w, int h)
 {
-	int ret = 0;
 	struct device *dev_to_attach;
-	struct mtk_raw_pipeline *raw_pipe;
-	bool is_rgbw;
+	struct mtk_cam_device_buf *buf;
+	struct dma_buf *dbuf;
+	int ret;
 
-	if (!ctx->has_raw_subdev)
-		return 0;
+	dev_to_attach = ctx->cam->engines.raw_devs[0];
+	buf = &ctx->w_caci_buf;
 
-	raw_pipe = &ctx->cam->pipelines.raw[ctx->raw_subdev_idx];
-	is_rgbw =
-		raw_pipe->ctrl_data.resource.user_data.raw_res.scen.scen.normal.w_chn_supported;
+	dbuf = _alloc_dma_buf("CAM_W_CACI_ID", MTK_CAM_CACI_TABLE_SIZE, false);
+	ret = (!dbuf) ? -1 : 0;
 
-	if (is_rgbw) {
-		struct mtk_cam_device_buf *buf;
-		struct dma_buf *dbuf;
+	ret = ret
+		|| mtk_cam_device_buf_init(buf, dbuf, dev_to_attach,
+					   MTK_CAM_CACI_TABLE_SIZE)
+		|| mtk_cam_device_buf_vmap(buf);
 
-		dev_to_attach = ctx->cam->engines.raw_devs[0];
-		buf = &ctx->w_caci_buf;
-
-		dbuf = _alloc_dma_buf("CAM_W_CACI_ID", MTK_CAM_CACI_TABLE_SIZE, false);
-		ret = (!dbuf) ? -1 : 0;
-
-		ret = ret || mtk_cam_device_buf_init(buf, dbuf, dev_to_attach,
-						MTK_CAM_CACI_TABLE_SIZE)
-				|| mtk_cam_device_buf_vmap(buf);
-	}
+	dma_heap_buffer_free(dbuf);
 
 	if (!ret)
 		memset(ctx->w_caci_buf.vaddr, 0, ctx->w_caci_buf.size);
@@ -1645,9 +1640,6 @@ static int mtk_cam_ctx_alloc_rgbw_caci_buf(struct mtk_cam_ctx *ctx)
 
 static int mtk_cam_ctx_destroy_rgbw_caci_buf(struct mtk_cam_ctx *ctx)
 {
-	if (!ctx->has_raw_subdev)
-		return 0;
-
 	if (ctx->w_caci_buf.size)
 		mtk_cam_device_buf_uninit(&ctx->w_caci_buf);
 
@@ -2046,11 +2038,9 @@ struct mtk_cam_ctx *mtk_cam_start_ctx(struct mtk_cam_device *cam,
 	if (mtk_cam_ctx_alloc_pool(ctx))
 		goto fail_destroy_workers;
 
-	if (mtk_cam_ctx_alloc_rgbw_caci_buf(ctx))
-		goto fail_destroy_pools;
-
+	/* note: too early. move into mtk_cam_ctx_init_scenario */
 	if (mtk_cam_ctx_alloc_img_pool(ctx))
-		goto fail_destroy_caci_buf;
+		goto fail_destroy_pools;
 
 	if (mtk_cam_ctx_prepare_session(ctx))
 		goto fail_destroy_img_pool;
@@ -2068,8 +2058,6 @@ fail_unprepare_session:
 	mtk_cam_ctx_unprepare_session(ctx);
 fail_destroy_img_pool:
 	mtk_cam_ctx_destroy_img_pool(ctx);
-fail_destroy_caci_buf:
-	mtk_cam_ctx_destroy_rgbw_caci_buf(ctx);
 fail_destroy_pools:
 	mtk_cam_ctx_destroy_pool(ctx);
 fail_destroy_workers:
@@ -2111,6 +2099,43 @@ void mtk_cam_stop_ctx(struct mtk_cam_ctx *ctx, struct media_entity *entity)
 	mtk_cam_ctx_put(ctx);
 
 	mtk_cam_uninitialize(cam);
+}
+
+int mtk_cam_ctx_init_scenario(struct mtk_cam_ctx *ctx)
+{
+	struct mtk_raw_pipeline *raw_pipe;
+	struct mtk_raw_ctrl_data *ctrl_data;
+	struct mtk_cam_scen *scen;
+	int ret = 0;
+
+	if (ctx->scenario_init)
+		return 0;
+
+	if (ctx->raw_subdev_idx < 0)
+		return 0;
+
+	raw_pipe = &ctx->cam->pipelines.raw[ctx->raw_subdev_idx];
+	ctrl_data = &raw_pipe->ctrl_data;
+
+	scen = &ctrl_data->resource.user_data.raw_res.scen;
+
+	if (scen_is_rgbw(scen)) {
+		int sink_w, sink_h;
+
+		sink_w = raw_pipe->pad_cfg[MTK_RAW_SINK].mbus_fmt.width;
+		sink_h = raw_pipe->pad_cfg[MTK_RAW_SINK].mbus_fmt.height;
+
+		ret = mtk_cam_ctx_alloc_rgbw_caci_buf(ctx, sink_w, sink_h);
+		if (!ret)
+			pr_info("%s: failed to alloc for caci buf\n", __func__);
+
+	} else if (scen_is_m2m_apu(scen, &ctrl_data->apu_info)) {
+
+		/* TODO */
+	}
+
+	ctx->scenario_init = true;
+	return ret;
 }
 
 int mtk_cam_ctx_all_nodes_streaming(struct mtk_cam_ctx *ctx)
