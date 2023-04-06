@@ -13,10 +13,11 @@
 #include <adsp_helper.h>
 #endif
 
+#include "usb_offload.h"
 #ifdef MTK_AUDIO_INTERFACE_READY
 #include "mtk-usb-offload-ops.h"
 #endif
-#include "usb_offload.h"
+
 
 /* mtk_sram_pwr - sram power manager
  * @type: sram type (ex reserved or allocated)
@@ -51,11 +52,17 @@ static void reset_buffer(struct usb_offload_buffer *buf)
 	buf->type = 0;
 }
 
-static char *memory_type(u8 buf_type)
+static char *memory_type(bool is_sram, u8 sub_type)
 {
 	char *type_name;
+
+	if (!is_sram) {
+		type_name = "adsp shared dram";
+		return type_name;
+	}
+
 #ifdef MTK_AUDIO_INTERFACE_READY
-	switch (buf_type) {
+	switch (sub_type) {
 	case MEM_TYPE_SRAM_AFE:
 		type_name = "afe sram";
 		break;
@@ -64,9 +71,6 @@ static char *memory_type(u8 buf_type)
 		break;
 	case MEM_TYPE_SRAM_SLB:
 		type_name = "slb";
-		break;
-	case MEM_TYPE_DRAM:
-		type_name = "adsp shared dram";
 		break;
 	default:
 		type_name = "unknown type";
@@ -157,7 +161,7 @@ static int soc_alloc_sram(struct usb_offload_buffer *buf, unsigned int size)
 
 	audio_sram = aud_intf->ops->allocate_sram(aud_intf, size);
 
-	if (audio_sram->phys_addr) {
+	if (audio_sram && audio_sram->phys_addr) {
 		buf->dma_addr = audio_sram->phys_addr;
 		buf->dma_area = (unsigned char *)ioremap_wc(
 			(phys_addr_t)audio_sram->phys_addr, (unsigned long)size);
@@ -526,7 +530,8 @@ int mtk_offload_alloc_mem(struct usb_offload_buffer *buf,
 ALLOC_SUCCESS:
 	USB_OFFLOAD_INFO("va:%p phy:0x%llx size:%zu is_sram:%d is_rsv:%d type:%s\n",
 		buf->dma_area, (unsigned long long)buf->dma_addr,
-		buf->dma_bytes, buf->is_sram, buf->is_rsv, memory_type(buf->type));
+		buf->dma_bytes, buf->is_sram, buf->is_rsv,
+		memory_type(buf->is_sram, buf->type));
 	return 0;
 ALLOC_FAIL:
 	USB_OFFLOAD_ERR("FAIL!!!!!!!!\n");
@@ -551,7 +556,8 @@ int mtk_offload_free_mem(struct usb_offload_buffer *buf)
 
 	USB_OFFLOAD_INFO("va:%p phy:0x%llx size:%zu is_sram:%d is_rsv:%d type:%s\n",
 		buf->dma_area, (unsigned long long)buf->dma_addr,
-		buf->dma_bytes, buf->is_sram, buf->is_rsv, memory_type(buf->type));
+		buf->dma_bytes, buf->is_sram, buf->is_rsv,
+		memory_type(buf->is_sram, buf->type));
 
 	type = buf->type;
 	is_sram = buf->is_sram;

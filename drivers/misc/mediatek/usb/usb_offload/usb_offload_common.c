@@ -2192,12 +2192,14 @@ static long usb_offload_ioctl(struct file *fp,
 		ret = xhci_mtk_alloc_event_ring(uodev);
 		if (ret) {
 			USB_OFFLOAD_ERR("error allocating event ring\n");
+			kfree(xhci_mem);
 			goto fail;
 		}
 
 		ret = xhci_mtk_alloc_erst(uodev);
 		if (ret) {
 			USB_OFFLOAD_ERR("error allocating erst\n");
+			kfree(xhci_mem);
 			goto fail;
 		}
 

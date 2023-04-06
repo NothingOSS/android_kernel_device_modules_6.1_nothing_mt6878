@@ -27,6 +27,8 @@
 #include <linux/iommu.h>
 #include <linux/dma-mapping.h>
 
+#define MTK_AUDIO_INTERFACE_READY
+
 #define MIN_USB_OFFLOAD_SHIFT (8)
 #define MIN_USB_OFFLOAD_POOL_SIZE (1 << MIN_USB_OFFLOAD_SHIFT)
 
