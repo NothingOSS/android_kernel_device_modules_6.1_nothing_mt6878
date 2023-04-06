@@ -386,7 +386,7 @@ static bool check_done(struct mtk_cam_ctrl *ctrl, int seq)
 	done_seq = ctrl->r_info.done_seq_no;
 	spin_unlock(&ctrl->info_lock);
 
-	return done_seq == seq;
+	return frame_seq_ge(seq, done_seq);
 }
 
 static int mtk_cam_ctrl_wait_event(struct mtk_cam_ctrl *ctrl,
@@ -897,7 +897,6 @@ static void mtk_cam_ctrl_seamless_switch_flow(struct mtk_cam_job *job)
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_ctrl *ctrl = &ctx->cam_ctrl;
 	struct device *dev = ctx->cam->dev;
-	unsigned long timeout = msecs_to_jiffies(200);
 	int prev_seq;
 
 	dev_info(dev, "[%s] begin waiting switch no:%d seq 0x%x\n",
@@ -910,26 +909,19 @@ static void mtk_cam_ctrl_seamless_switch_flow(struct mtk_cam_job *job)
 
 	mtk_cam_job_update_clk_switching(job, 1);
 
-	/* note: apply cq first to avoid cq trig dly */
-	if (mtk_cam_job_manually_apply_isp_async(job))
-		goto SWITCH_FAILURE;
-
 	trace_seamless_apply_sensor(job->sensor->name,
 				    ctx->stream_id, job->frame_seq_no, 1);
 	mtk_cam_job_manually_apply_sensor(job, true);
 	trace_seamless_apply_sensor(job->sensor->name,
 				    ctx->stream_id, job->frame_seq_no, 0);
 
-	if (!wait_for_completion_timeout(&job->cq_exe_completion, timeout)) {
-		dev_info(dev, "[%s] error: wait for cq_exe timeout\n",
-			 __func__);
+	if (mtk_cam_job_manually_apply_isp_sync(job))
 		goto SWITCH_FAILURE;
-	}
 
 	call_jobop(job, apply_switch);
 	vsync_set_desired(&ctrl->vsync_col, _get_master_engines(job->used_engine));
 
-	if (mtk_cam_ctrl_wait_event(ctrl, check_done, prev_seq, 500))
+	if (mtk_cam_ctrl_wait_event(ctrl, check_done, prev_seq, 999))
 		goto SWITCH_FAILURE;
 
 	mtk_cam_job_update_clk_switching(job, 0);
