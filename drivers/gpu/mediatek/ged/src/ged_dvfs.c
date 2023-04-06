@@ -526,7 +526,9 @@ bool ged_dvfs_cal_gpu_utilization_ex(unsigned int *pui32Loading,
  * This shall be registered in vendor's GPU driver,
  * since each IP has its own rule
  */
-static unsigned long g_ged_dvfs_commit_idx; /* max freq opp idx */
+static unsigned long g_ged_dvfs_commit_idx; /* freq opp idx for last policy(default stack) */
+static unsigned long g_ged_dvfs_commit_top_idx; /* top freq opp idx for last policy*/
+
 void (*ged_dvfs_gpu_freq_commit_fp)(unsigned long ui32NewFreqID,
 	GED_DVFS_COMMIT_TYPE eCommitType, int *pbCommited) = NULL;
 EXPORT_SYMBOL(ged_dvfs_gpu_freq_commit_fp);
@@ -546,15 +548,63 @@ unsigned long ged_dvfs_write_sysram_last_commit_idx_test(int commit_idx)
 
 	mtk_gpueb_sysram_write(SYSRAM_GPU_LAST_COMMIT_IDX, commit_idx);
 
-	return g_ged_dvfs_commit_idx;
+	return commit_idx;
 }
 EXPORT_SYMBOL(ged_dvfs_write_sysram_last_commit_idx_test);
+
+unsigned long ged_dvfs_write_sysram_last_commit_top_idx(void)
+{
+
+	mtk_gpueb_sysram_write(SYSRAM_GPU_LAST_COMMIT_TOP_IDX, g_ged_dvfs_commit_top_idx);
+
+	return g_ged_dvfs_commit_top_idx;
+}
+EXPORT_SYMBOL(ged_dvfs_write_sysram_last_commit_top_idx);
+
+unsigned long ged_dvfs_write_sysram_last_commit_top_idx_test(int commit_idx)
+{
+
+	mtk_gpueb_sysram_write(SYSRAM_GPU_LAST_COMMIT_TOP_IDX, commit_idx);
+
+	return commit_idx;
+}
+EXPORT_SYMBOL(ged_dvfs_write_sysram_last_commit_top_idx_test);
+
+unsigned long ged_dvfs_write_sysram_last_commit_stack_idx(void)
+{
+
+	mtk_gpueb_sysram_write(SYSRAM_GPU_LAST_COMMIT_IDX, g_ged_dvfs_commit_idx);
+
+	return g_ged_dvfs_commit_idx;
+}
+EXPORT_SYMBOL(ged_dvfs_write_sysram_last_commit_stack_idx);
+
+unsigned long ged_dvfs_write_sysram_last_commit_stack_idx_test(int commit_idx)
+{
+
+	mtk_gpueb_sysram_write(SYSRAM_GPU_LAST_COMMIT_IDX, commit_idx);
+
+	return commit_idx;
+}
+EXPORT_SYMBOL(ged_dvfs_write_sysram_last_commit_stack_idx_test);
 
 unsigned long ged_dvfs_get_last_commit_idx(void)
 {
 	return g_ged_dvfs_commit_idx;
 }
 EXPORT_SYMBOL(ged_dvfs_get_last_commit_idx);
+
+unsigned long ged_dvfs_get_last_commit_top_idx(void)
+{
+	return g_ged_dvfs_commit_top_idx;
+}
+EXPORT_SYMBOL(ged_dvfs_get_last_commit_top_idx);
+
+unsigned long ged_dvfs_get_last_commit_stack_idx(void)
+{
+	return g_ged_dvfs_commit_idx;
+}
+EXPORT_SYMBOL(ged_dvfs_get_last_commit_stack_idx);
 
 bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 	unsigned long ui32NewFreq, GED_DVFS_COMMIT_TYPE eCommitType)
@@ -593,6 +643,7 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 		if (ui32NewFreqID != ui32CurFreqID) {
 			/* call to ged gpufreq wrapper module */
 			g_ged_dvfs_commit_idx = ui32NewFreqID;
+			g_ged_dvfs_commit_top_idx = ui32NewFreqID;
 			ged_gpufreq_commit(ui32NewFreqID, eCommitType, &bCommited);
 
 			/*

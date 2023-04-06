@@ -32,7 +32,7 @@
 #define FASTDVFS_FEEDBACK_INFO_FIRST_ENTRY 32   // use to offset array
 #define SYSRAM_LOG_SIZE sizeof(int)
 
-// FDVFS SYSRAM space is allocated after BM
+// FDVFS SYSRAM space is allocated after BM, 5~24
 enum gpu_fastdvfs_counter {
 	FASTDVFS_COUNTER_CURRENT_FREQUENCY = FASTDVFS_COUNTER_FIRST_ENTRY,
 	FASTDVFS_COUNTER_PREDICTED_FREQUENCY,
@@ -53,6 +53,7 @@ enum gpu_fastdvfs_counter {
 	FASTDVFS_COUNTER_COMMIT_PROFILE,
 	FASTDVFS_COUNTER_DCS,
 	FASTDVFS_COUNTER_LAST_COMMIT_IDX,
+	FASTDVFS_COUNTER_LAST_COMMIT_TOP_IDX,
 
 	NR_FASTDVFS_COUNTER,
 };
@@ -152,6 +153,11 @@ enum gpu_fastdvfs_share_info {
 (									   \
 (FASTDVFS_COUNTER_LAST_COMMIT_IDX*SYSRAM_LOG_SIZE) \
 )
+#define SYSRAM_GPU_LAST_COMMIT_TOP_IDX               \
+(									   \
+(FASTDVFS_COUNTER_LAST_COMMIT_TOP_IDX*SYSRAM_LOG_SIZE) \
+)
+
 #define SYSRAM_GPU_FEEDBACK_INFO_UPDATED \
 (                                      \
 (FASTDVFS_FEEDBACK_INFO_UPDATED*SYSRAM_LOG_SIZE) \
