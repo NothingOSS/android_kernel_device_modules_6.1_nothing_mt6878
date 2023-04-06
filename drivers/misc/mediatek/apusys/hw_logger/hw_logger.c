@@ -39,6 +39,7 @@
 
 #include <linux/sched/signal.h>
 
+#define HW_LOG_DUMP_RAW_BUF (1)
 #define USE_LOCAL_LOG_BUF_INFO (1)
 #define APUSYS_RV_DEBUG_INFO_DUMP (1)
 
@@ -61,6 +62,9 @@ static struct proc_dir_entry *log_devattr;
 static struct proc_dir_entry *log_seqlog;
 static struct proc_dir_entry *log_seqlogL;
 static struct proc_dir_entry *log_aov_log;
+#ifdef HW_LOG_DUMP_RAW_BUF
+static struct proc_dir_entry *log_raw_log;
+#endif
 
 /* logtop mmap address */
 static void *apu_logtop;
@@ -1497,6 +1501,26 @@ static const struct proc_ops aov_log_ops = {
 	.proc_release	= single_release
 };
 
+#ifdef HW_LOG_DUMP_RAW_BUF
+static int raw_seq_show(struct seq_file *s, void *v)
+{
+	hw_logger_buf_invalidate();
+	seq_write(s, hw_log_buf, HWLOGR_LOG_SIZE);
+	return 0;
+}
+
+static int raw_log_sqopen(struct inode *inode, struct file *file)
+{
+	return single_open(file, raw_seq_show, NULL);
+}
+
+static const struct proc_ops raw_log_ops = {
+	.proc_open		= raw_log_sqopen,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release	= single_release
+};
+#endif
 
 #ifdef HW_LOG_SYSFS_BIN
 static ssize_t apusys_log_dump(struct file *filep,
@@ -1593,6 +1617,9 @@ static void hw_logger_remove_procfs(struct device *dev)
 	remove_proc_entry("seq_log", log_root);
 	remove_proc_entry("seq_logl", log_root);
 	remove_proc_entry("aov_log", log_root);
+#ifdef HW_LOG_DUMP_RAW_BUF
+	remove_proc_entry("raw_log", log_root);
+#endif
 	remove_proc_entry("attr", log_root);
 	remove_proc_entry(APUSYS_HWLOGR_DIR, NULL);
 }
@@ -1640,6 +1667,16 @@ static int hw_logger_create_procfs(struct device *dev)
 		HWLOGR_ERR("create aov_log fail (%d)\n", ret);
 		goto out;
 	}
+
+#ifdef HW_LOG_DUMP_RAW_BUF
+	log_raw_log = proc_create("raw_log", 0440,
+		log_root, &raw_log_ops);
+	ret = IS_ERR_OR_NULL(log_raw_log);
+	if (ret) {
+		HWLOGR_ERR("create raw_log fail (%d)\n", ret);
+		goto out;
+	}
+#endif
 
 	log_devattr = proc_create("attr", 0440,
 		log_root, &hw_logger_attr_fops);
