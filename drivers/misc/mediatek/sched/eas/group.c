@@ -513,9 +513,6 @@ void group_init(void)
 	if (alloc_related_thread_groups() != 0)
 		return;
 
-	/* default tracking mode */
-	group_set_mode(GP_MODE_1);
-
 	/* for existing thread */
 	read_lock(&tasklist_lock);
 	do_each_thread(g, p) {
