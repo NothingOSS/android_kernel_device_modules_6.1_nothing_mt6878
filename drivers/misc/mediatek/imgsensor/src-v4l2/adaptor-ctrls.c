@@ -1867,7 +1867,6 @@ static const struct v4l2_ctrl_config cfg_max_fps = {
 	.id = V4L2_CID_MTK_MAX_FPS,
 	.name = "max_fps",
 	.type = V4L2_CTRL_TYPE_INTEGER,
-	.flags = V4L2_CTRL_FLAG_EXECUTE_ON_WRITE,
 	.max = 0xffff,
 	.step = 1,
 };
