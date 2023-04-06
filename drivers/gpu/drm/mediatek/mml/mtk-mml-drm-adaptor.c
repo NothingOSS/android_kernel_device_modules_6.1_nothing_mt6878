@@ -778,8 +778,8 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 	void *cb_param)
 {
 	struct mml_frame_config *cfg;
-	struct mml_task *task;
-	s32 result;
+	struct mml_task *task = NULL;
+	s32 result = -EINVAL;
 	u32 i;
 	struct fence_data fence = {0};
 
@@ -963,7 +963,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 			&submit->buffer.src,
 			"mml_rdma");
 		if (result) {
-			mml_err("[drm]%s get dma buf fail", __func__);
+			mml_err("[drm]%s get src dma buf fail", __func__);
 			goto err_buf_exit;
 		}
 	}
@@ -973,7 +973,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 				      &submit->buffer.seg_map,
 				      "mml_rdma");
 		if (result) {
-			mml_err("[drm]%s get dma buf fail", __func__);
+			mml_err("[drm]%s get seg map dma buf fail", __func__);
 			goto err_buf_exit;
 		}
 	}
@@ -984,7 +984,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 				      &submit->buffer.dest[i],
 				      "mml_wrot");
 		if (result) {
-			mml_err("[drm]%s get dma buf fail", __func__);
+			mml_err("[drm]%s get dest %u dma buf fail", __func__, i);
 			goto err_buf_exit;
 		}
 	}
@@ -1029,7 +1029,31 @@ err_unlock_exit:
 	mutex_unlock(&ctx->config_mutex);
 err_buf_exit:
 	mml_trace_end();
-	mml_log("%s fail result %d", __func__, result);
+	mml_log("%s fail result %d task %p", __func__, result, task);
+	if (task) {
+		mutex_lock(&ctx->config_mutex);
+
+		list_del_init(&task->entry);
+		cfg->await_task_cnt--;
+
+		if (task->state == MML_TASK_INITIAL) {
+			mml_log("dec config %p and del", cfg);
+
+			list_del_init(&cfg->entry);
+
+			/* revert racing ref count decrease after done */
+			if (cfg->info.mode == MML_MODE_RACING)
+				atomic_dec(&ctx->racing_cnt);
+			else if (cfg->info.mode == MML_MODE_DIRECT_LINK)
+				atomic_dec(&ctx->dl_cnt);
+			ctx->racing_begin = false;
+		} else
+			mml_log("dec config %p", cfg);
+
+		mutex_unlock(&ctx->config_mutex);
+		kref_put(&task->ref, task_move_to_destroy);
+		cfg->cfg_ops->put(cfg);
+	}
 	return result;
 }
 EXPORT_SYMBOL_GPL(mml_drm_submit);
