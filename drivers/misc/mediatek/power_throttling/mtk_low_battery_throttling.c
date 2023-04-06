@@ -478,6 +478,7 @@ static int low_battery_throttling_probe(struct platform_device *pdev)
 	}
 
 	priv->lvsys_status = DEACTIVATE;
+	mutex_init(&priv->lock);
 	if (lvsys_thd_enable)
 		ret = lvsys_register_notifier(&lbat_vsys_notifier);
 
