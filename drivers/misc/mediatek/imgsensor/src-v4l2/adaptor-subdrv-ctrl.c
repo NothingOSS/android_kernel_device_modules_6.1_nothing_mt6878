@@ -983,7 +983,7 @@ void set_shutter_frame_length(struct subdrv_ctx *ctx, u64 shutter, u32 frame_len
 	u32 fine_integ_line = 0;
 	bool gph = !ctx->is_seamless && (ctx->s_ctx.s_gph != NULL);
 
-	ctx->frame_length = frame_length ? frame_length : ctx->frame_length;
+	ctx->frame_length = frame_length ? frame_length : ctx->min_frame_length;
 	check_current_scenario_id_bound(ctx);
 	/* check boundary of shutter */
 	fine_integ_line = ctx->s_ctx.mode[ctx->current_scenario_id].fine_integ_line;
@@ -1069,7 +1069,7 @@ void set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
 	u32 rg_shutters[3] = {0};
 	u32 cit_step = 0;
 
-	ctx->frame_length = frame_length ? frame_length : ctx->frame_length;
+	ctx->frame_length = frame_length ? frame_length : ctx->min_frame_length;
 	if (exp_cnt > ARRAY_SIZE(ctx->exposure)) {
 		DRV_LOGE(ctx, "invalid exp_cnt:%u>%lu\n", exp_cnt, ARRAY_SIZE(ctx->exposure));
 		exp_cnt = ARRAY_SIZE(ctx->exposure);
@@ -1207,7 +1207,7 @@ void set_multi_shutter_frame_length_in_lut(struct subdrv_ctx *ctx,
 	u32 calc_fl_in_lut[3] = {0};
 	bool gph = !ctx->is_seamless && (ctx->s_ctx.s_gph != NULL);
 
-	ctx->frame_length = frame_length ? frame_length : ctx->frame_length;
+	ctx->frame_length = frame_length ? frame_length : ctx->min_frame_length;
 
 	// if (exp_cnt > ARRAY_SIZE(ctx->exposure))
 	// Coverity: assignment: Assigning exp_cnt = 5 (cause Out-of-bounds write)
