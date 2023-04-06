@@ -142,6 +142,7 @@ const char *clk_dbg_ver[MAX_CLK_DBG_VERSION] __initconst = {
 	[CLK_DBG_VER_1] = "v1",
 	[CLK_DBG_VER_2] = "v2",
 	[CLK_DBG_VER_3] = "v3",
+	[CLK_DBG_VER_4] = "v4",
 };
 
 const char *scp_clk_ver[MAX_SCP_CLK_VERSION] __initconst = {
@@ -211,6 +212,17 @@ struct clk_cali_regs clk_dbg_reg[MAX_CLK_DBG_VERSION] __initdata = {
 		REG_DEFINE_WITH_INIT(fmeter_ck_sel, 0x28C, 0x3F, 16, 0x3E, 0)
 
 		REG_DEFINE_WITH_INIT(clk_misc_cfg0, 0x240, REG_MAX_MASK, 0, 0x90F00, 0)
+	},
+	[CLK_DBG_VER_4] = {
+		REG_DEFINE(clk26cali_0, 0x230, REG_MAX_MASK, 0)
+		REG_DEFINE_WITH_INIT(fmeter_ck_sel, 0x230, 0x1F, 16, 0x19, 0)
+		REG_DEFINE_WITH_INIT(fmeter_rst, 0x230, 0x1, 15, 0x1, 0)
+		REG_DEFINE_WITH_INIT(fmeter_en, 0x230, 0x1, 12, 0x1, 0)
+		REG_DEFINE_WITH_INIT(trigger_cal, 0x230, 0x1, 4, 1, 0)
+
+		REG_DEFINE(clk26cali_1, 0x234, REG_MAX_MASK, 0)
+		REG_DEFINE(cal_cnt, 0x234, 0xFFFF, 0)
+		REG_DEFINE_WITH_INIT(load_cnt, 0x234, 0x3FF, 16, 0x1FF, 0)
 	},
 };
 

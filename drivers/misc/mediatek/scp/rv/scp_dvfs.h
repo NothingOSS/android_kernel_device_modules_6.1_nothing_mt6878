@@ -139,6 +139,7 @@ enum clk_dbg_ver_enum {
 	CLK_DBG_VER_1,
 	CLK_DBG_VER_2,
 	CLK_DBG_VER_3,
+	CLK_DBG_VER_4,
 	MAX_CLK_DBG_VERSION,
 };
 
