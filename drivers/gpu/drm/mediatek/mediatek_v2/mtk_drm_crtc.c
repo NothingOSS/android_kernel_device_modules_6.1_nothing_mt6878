@@ -7593,7 +7593,7 @@ void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 	}
 
 	GCE_DO(clear_event, EVENT_TE);
-	if (mtk_drm_lcm_is_connect())
+	if (mtk_drm_lcm_is_connect(mtk_crtc))
 		GCE_DO(wfe, EVENT_TE);
 
 	GCE_DO(set_event, EVENT_SYNC_TOKEN_TE);
@@ -7755,6 +7755,7 @@ static void cmdq_pkt_wait_te(struct cmdq_pkt *cmdq_handle,
 	struct cmdq_operand rop;
 	u32 inst_condi_jump, inst_jump_end;
 	u64 *inst, jump_pa;
+	bool panel_connected;
 
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
@@ -7768,6 +7769,7 @@ static void cmdq_pkt_wait_te(struct cmdq_pkt *cmdq_handle,
 	rop.reg = false;
 	rop.value = 0x1;
 
+	panel_connected = mtk_drm_lcm_is_connect(mtk_crtc);
 	inst_condi_jump = cmdq_handle->cmd_buf_size;
 	cmdq_pkt_assign_command(cmdq_handle, reg_jump, 0);
 	/* check whether te1_en is enabled*/
@@ -7782,7 +7784,7 @@ static void cmdq_pkt_wait_te(struct cmdq_pkt *cmdq_handle,
 			&& params_lcm && params_lcm->msync2_enable)
 		cmdq_pkt_request_te(cmdq_handle, mtk_crtc);
 
-	if (mtk_drm_lcm_is_connect())
+	if (panel_connected)
 		cmdq_pkt_wfe(cmdq_handle,
 				 mtk_crtc->gce_obj.event[EVENT_TE]);
 
@@ -7809,7 +7811,7 @@ static void cmdq_pkt_wait_te(struct cmdq_pkt *cmdq_handle,
 				&& params_lcm && params_lcm->msync2_enable)
 		cmdq_pkt_request_te(cmdq_handle, mtk_crtc);
 
-	if (mtk_drm_lcm_is_connect())
+	if (panel_connected)
 		cmdq_pkt_wfe(cmdq_handle,
 				 mtk_crtc->gce_obj.event[EVENT_GPIO_TE1]);
 
@@ -7919,6 +7921,7 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 	dma_addr_t slot_src_addr;
 	dma_addr_t slot_dts_addr;
 	struct mtk_ddp_comp *output_comp;
+	bool panel_connected = mtk_drm_lcm_is_connect(mtk_crtc);
 
 	GCE_COND_DECLARE;
 	struct cmdq_operand lop, rop;
@@ -8063,7 +8066,7 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 				    && params_lcm && params_lcm->msync2_enable)
 					cmdq_pkt_request_te(cmdq_handle, mtk_crtc);
 
-				if (mtk_drm_lcm_is_connect())
+				if (panel_connected)
 					GCE_DO(wfe, EVENT_TE);
 			}
 		}
@@ -9927,7 +9930,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	drm_crtc_vblank_on(crtc);
 
 	/* 13. enable ESD check */
-	if (mtk_drm_lcm_is_connect())
+	if (mtk_drm_lcm_is_connect(mtk_crtc))
 		mtk_disp_esd_check_switch(crtc, true);
 
 	/* 14. enable fake vsync if need*/
@@ -10665,10 +10668,13 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 	/* 7. set vblank*/
 	drm_crtc_vblank_on(crtc);
 
-	/* 8. set CRTC SW status */
+	/* 8. enable fake vsync if necessary */
+	mtk_drm_fake_vsync_switch(crtc, true);
+
+	/* 9. set CRTC SW status */
 	mtk_crtc_set_status(crtc, true);
 
-	/* 9. power off mtcmos*/
+	/* 10. power off mtcmos*/
 	/* Because of align lk hw power status,
 	 * we power on mtcmos at the beginning of the display initialization.
 	 * We power off mtcmos at the end of the display initialization.
@@ -10728,7 +10734,7 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 	mtk_drm_fake_vsync_switch(crtc, false);
 
 	/* 3. disable ESD check */
-	if (mtk_drm_lcm_is_connect())
+	if (mtk_drm_lcm_is_connect(mtk_crtc))
 		mtk_disp_esd_check_switch(crtc, false);
 
 	/* 4. stop CRTC */
@@ -14603,7 +14609,7 @@ void mtk_drm_fake_vsync_switch(struct drm_crtc *crtc, bool enable)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_fake_vsync *fake_vsync = mtk_crtc->fake_vsync;
 
-	if (drm_crtc_index(crtc) != 0 || mtk_drm_lcm_is_connect() ||
+	if (mtk_drm_lcm_is_connect(mtk_crtc) ||
 		!mtk_crtc_is_frame_trigger_mode(crtc))
 		return;
 
@@ -14648,17 +14654,11 @@ void mtk_drm_fake_vsync_init(struct drm_crtc *crtc)
 		kzalloc(sizeof(struct mtk_drm_fake_vsync), GFP_KERNEL);
 	char name[LEN];
 
-	if (drm_crtc_index(crtc) != 0 || mtk_drm_lcm_is_connect() ||
-		!mtk_crtc_is_frame_trigger_mode(crtc)) {
-		kfree(fake_vsync);
-		return;
-	}
-
 	snprintf(name, LEN, "mtk_drm_fake_vsync:%d", drm_crtc_index(crtc));
 	fake_vsync->fvsync_task = kthread_create(mtk_drm_fake_vsync_kthread,
 					crtc, name);
 	init_waitqueue_head(&fake_vsync->fvsync_wq);
-	atomic_set(&fake_vsync->fvsync_active, 1);
+	atomic_set(&fake_vsync->fvsync_active, 0);
 	mtk_crtc->fake_vsync = fake_vsync;
 
 	wake_up_process(fake_vsync->fvsync_task);
@@ -14714,7 +14714,10 @@ static int mtk_drm_pf_release_thread(void *data)
 		atomic_set(&mtk_crtc->pf_event, 0);
 
 #ifndef DRM_CMDQ_DISABLE
-		pf_time = mtk_check_preset_fence_timestamp(crtc);
+		if (likely(mtk_drm_lcm_is_connect(mtk_crtc)))
+			pf_time = mtk_check_preset_fence_timestamp(crtc);
+		else
+			pf_time = 0;
 		fence_idx = atomic_read(&private->crtc_rel_present[crtc_idx]);
 
 		mtk_release_present_fence(private->session_id[crtc_idx],
@@ -15130,7 +15133,8 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 
 	mtk_disp_chk_recover_init(&mtk_crtc->base);
 
-	mtk_drm_fake_vsync_init(&mtk_crtc->base);
+	if (output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI)
+		mtk_drm_fake_vsync_init(&mtk_crtc->base);
 
 	if (mtk_crtc_support_dc_mode(&mtk_crtc->base)) {
 		mtk_crtc->dc_main_path_commit_task = kthread_create(
@@ -17234,7 +17238,7 @@ unsigned int mtk_drm_primary_display_get_debug_state(
 			 "LCM Driver=[%s] Resolution=%ux%u, Connected:%s\n",
 			  panel_name, crtc->state->adjusted_mode.hdisplay,
 			  crtc->state->adjusted_mode.vdisplay,
-			  (mtk_drm_lcm_is_connect() ? "Y" : "N"));
+			  (mtk_drm_lcm_is_connect(mtk_crtc) ? "Y" : "N"));
 
 	len += scnprintf(stringbuf + len, buf_len - len,
 			 "FPS = %d, display mode idx = %u, %s mode %d\n",
