@@ -132,6 +132,7 @@ struct mtk_dsi {
 	/* for Panel Master dcs read/write */
 	struct mipi_dsi_device *dev_for_PM;
 	atomic_t ulps_async;
+	bool pending_switch;
 };
 
 s32 mtk_dsi_poll_for_idle(struct mtk_dsi *dsi, struct cmdq_pkt *handle);
