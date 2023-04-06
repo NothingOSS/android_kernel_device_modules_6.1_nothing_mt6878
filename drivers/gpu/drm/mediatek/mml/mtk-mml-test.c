@@ -94,9 +94,10 @@ struct mml_ut {
 			uint32_t dma_size_in[2];
 			void *buf_dest[2];
 			uint32_t dma_size_out[2];
-			bool use_dma;
 		};
 	};
+
+	bool use_dma;
 };
 
 static struct mml_ut the_case;
@@ -166,6 +167,9 @@ module_param(mml_test_out_fmt, int, 0644);
 
 int mml_test_dump_dest = 1;
 module_param(mml_test_dump_dest, int, 0644);
+
+int mml_test_use_last;
+module_param(mml_test_use_last, int, 0644);
 
 static u64 apu_ut_handle;
 
@@ -1308,6 +1312,8 @@ static void case_config_crop_manual(void)
 
 static void setup_crop_manual(struct mml_submit *task, struct mml_ut *cur)
 {
+	u32 size_out;
+
 	task->info.dest[0].crop.r.left = mml_test_crop_left;
 	task->info.dest[0].crop.r.top = mml_test_crop_top;
 	task->info.dest[0].crop.r.width = mml_test_crop_width;
@@ -1319,13 +1325,18 @@ static void setup_crop_manual(struct mml_submit *task, struct mml_ut *cur)
 	task->info.dest[0].rotate = mml_test_rot;
 	task->info.dest[0].flip = mml_test_flip;
 
+	if (cur->use_dma)
+		size_out = cur->dma_size_out[0];
+	else
+		size_out = cur->size_out;
+
 	/* check dest 0 with 2 plane size */
 	if (task->buffer.dest[0].size[0] +
 	    task->buffer.dest[0].size[1] +
 	    task->buffer.dest[0].size[2] !=
-	    cur->size_out)
+	    size_out)
 		mml_err("[test]%s case %d dest size total %u plane %u %u %u",
-			__func__, mml_case, cur->size_out,
+			__func__, mml_case, size_out,
 			task->buffer.dest[0].size[0], task->buffer.dest[0].size[1],
 			task->buffer.dest[0].size[2]);
 }
@@ -1677,6 +1688,22 @@ static void mml_test_fill_frame_rgba8888(u8 *va, u32 width, u32 height)
 	}
 }
 
+static s32 mml_test_fill_frame_dumpout(void *frame_buf, u32 size)
+{
+	struct mml_frm_dump_data *frm = mml_core_get_frame_out();
+
+	if (!frm->size) {
+		mml_log("[test]%s frame out data to use", __func__);
+		return false;
+	}
+
+	mml_log("[test]use frame %s size %u(%u)", frm->name, frm->size, size);
+	size = min_t(u32, frm->size, size);
+
+	memcpy(frame_buf, frm->frame, size);
+	return true;
+}
+
 static struct dma_buf *mml_test_create_buf(struct dma_heap *heap, u32 size)
 {
 	struct dma_buf *frame_buf;
@@ -1696,8 +1723,10 @@ static struct dma_buf *mml_test_create_buf(struct dma_heap *heap, u32 size)
 static int mml_test_alloc_frame(struct dma_heap *heap, struct mml_buffer *buf,
 	u32 format, u32 width, u32 height)
 {
-	u32 plane, buf_size;
+	u32 plane;
 	struct dma_buf *dmabuf;
+	u32 size[3] = {0};
+	u32 buf_size;
 
 	mml_log("[test]%s format %#x res %u %u", __func__, format, width, height);
 
@@ -1707,21 +1736,30 @@ static int mml_test_alloc_frame(struct dma_heap *heap, struct mml_buffer *buf,
 	}
 
 	plane = MML_FMT_PLANE(format);
-	buf_size = mml_color_get_min_y_size(format, width, height);
+	size[0] = mml_color_get_min_y_size(format, width, height);
 
 	if (plane == 2)
-		buf_size += mml_color_get_min_uv_size(format, width, height);
+		size[1] = mml_color_get_min_uv_size(format, width, height);
 	else if (plane >= 3)
-		buf_size += mml_color_get_min_uv_size(format, width, height) * 2;
+		size[2] = mml_color_get_min_uv_size(format, width, height) * 2;
+	buf_size = size[0] + size[1] + size[2];
+
+	/* workaround: make size align to avoid allocaed iova small than size we need */
+	buf_size = round_up(buf_size, 0x10000);
 
 	dmabuf = mml_test_create_buf(heap, buf_size);
 	if (IS_ERR_OR_NULL(dmabuf))
 		return PTR_ERR(dmabuf);
 
 	buf->dmabuf[0] = dmabuf;
-	buf->size[0] = buf_size;
+	buf->size[0] = size[0];
+	buf->size[1] = size[1];
+	buf->size[2] = size[2];
 	buf->cnt = plane;
 	buf->use_dma = true;
+
+	mml_log("[test]allocate dmabuf %p (%zu) size %u %u %u alloc %u plane %u",
+		dmabuf, dmabuf->size, size[0], size[1], size[2], buf_size, plane);
 
 	return 0;
 }
@@ -1753,6 +1791,8 @@ static int mml_test_create_src(struct dma_heap *heap, struct mml_ut *cur_case,
 	}
 	va = map.vaddr;
 
+	mml_log("%s mapped va %llx", __func__, (u64)va);
+
 	switch (cur_case->cfg_src_format) {
 	case MML_FMT_RGB888:
 	case MML_FMT_BGR888:
@@ -1763,7 +1803,8 @@ static int mml_test_create_src(struct dma_heap *heap, struct mml_ut *cur_case,
 		mml_test_fill_frame_rgba8888(va, cur_case->cfg_src_w, cur_case->cfg_src_h);
 		break;
 	default:
-		mml_err("[test]not support src format %#x", cur_case->cfg_src_format);
+		if (!mml_test_use_last || mml_test_fill_frame_dumpout(va, buf->size[0]))
+			mml_err("[test]not support src format %#x", cur_case->cfg_src_format);
 		break;
 	}
 
@@ -1792,6 +1833,8 @@ static int mml_test_create_dest(struct dma_heap *heap, struct mml_ut *cur_case,
 		return -ENOMEM;
 	}
 	va = map.vaddr;
+
+	mml_log("%s mapped va %llx", __func__, (u64)va);
 
 	for (i = 0; i < buf->size[0] / 8; i++)
 		va[i] = 0xdeadbeef + i;
@@ -1823,10 +1866,6 @@ static void mml_test_krun(u32 case_num)
 		cases[case_num].config();
 
 	cur = the_case;
-	cur.buf_src[0] = src_buf.dmabuf[0];
-	cur.dma_size_in[0] = src_buf.size[0];
-	cur.buf_dest[0] = dest_buf.dmabuf[0];
-	cur.dma_size_out[0] = dest_buf.size[0];
 	cur.use_dma = true;
 
 	heap = dma_heap_find("mtk_mm-uncached");
@@ -1842,13 +1881,9 @@ static void mml_test_krun(u32 case_num)
 		goto free_heap;
 
 	cur.buf_src[0] = src_buf.dmabuf[0];
-	cur.dma_size_in[0] = src_buf.size[0];
-	cur.buf_src[1] = src_buf.dmabuf[1];
-	cur.dma_size_in[1] = src_buf.size[1];
+	cur.dma_size_in[0] = src_buf.size[0] + src_buf.size[1] + src_buf.size[2];
 	cur.buf_dest[0] = dest_buf.dmabuf[0];
-	cur.dma_size_out[0] = dest_buf.size[0];
-	cur.buf_dest[1] = dest_buf.dmabuf[1];
-	cur.dma_size_out[1] = dest_buf.size[1];
+	cur.dma_size_out[0] = dest_buf.size[0] + dest_buf.size[1] + dest_buf.size[2];
 
 	if (case_num < ARRAY_SIZE(cases) && cases[case_num].run)
 		cases[case_num].run(main_test, &cur);

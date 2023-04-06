@@ -33,6 +33,15 @@
 #define VPP_MERGE_CFG_25		0x074
 #define VPP_MERGE_CFG_26		0x078
 #define VPP_MERGE_CFG_27		0x07c
+#define VPP_MERGE_MON_0			0x100
+#define VPP_MERGE_MON_1			0x104
+#define VPP_MERGE_MON_2			0x108
+#define VPP_MERGE_MON_4			0x110
+#define VPP_MERGE_MON_5			0x114
+#define VPP_MERGE_MON_6			0x118
+#define VPP_MERGE_MON_8			0x120
+#define VPP_MERGE_MON_9			0x124
+#define VPP_MERGE_MON_10		0x128
 
 #define MERGE_LABEL_TOTAL		0
 
@@ -199,6 +208,30 @@ static void merge_debug_dump(struct mml_comp *comp)
 	mml_err(
 		"VPP_MERGE_CFG_24 %#010x VPP_MERGE_CFG_25 %#010x VPP_MERGE_CFG_26 %#010x VPP_MERGE_CFG_27 %#010x",
 		value[0], value[1], value[2], value[3]);
+
+	value[0] = readl(base + VPP_MERGE_MON_0);
+	value[1] = readl(base + VPP_MERGE_MON_1);
+	value[2] = readl(base + VPP_MERGE_MON_2);
+	mml_err(
+		"mon_i_0 frame done %u underflow %u overflow %u valid %u ready %u cout %#010x size %#010x",
+		value[0] & 0x1, (value[0] >> 4) & 0x1, (value[0] >> 8) & 0x1,
+		(value[0] >> 16) & 0x1, (value[0] >> 20) & 0x1, value[1], value[2]);
+
+	value[0] = readl(base + VPP_MERGE_MON_4);
+	value[1] = readl(base + VPP_MERGE_MON_5);
+	value[2] = readl(base + VPP_MERGE_MON_6);
+	mml_err(
+		"mon_i_1 frame done %u underflow %u overflow %u valid %u ready %u cout %#010x size %#010x",
+		value[0] & 0x1, (value[0] >> 4) & 0x1, (value[0] >> 8) & 0x1,
+		(value[0] >> 16) & 0x1, (value[0] >> 20) & 0x1, value[1], value[2]);
+
+	value[0] = readl(base + VPP_MERGE_MON_8);
+	value[1] = readl(base + VPP_MERGE_MON_9);
+	value[2] = readl(base + VPP_MERGE_MON_10);
+	mml_err(
+		"mon_o_0 frame done %u underflow %u overflow %u valid %u ready %u cout %#010x size %#010x",
+		value[0] & 0x1, (value[0] >> 4) & 0x1, (value[0] >> 8) & 0x1,
+		(value[0] >> 16) & 0x1, (value[0] >> 20) & 0x1, value[1], value[2]);
 }
 
 static void merge_reset(struct mml_comp *comp, struct mml_frame_config *cfg, u32 pipe)

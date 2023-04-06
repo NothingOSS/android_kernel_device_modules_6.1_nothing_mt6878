@@ -287,7 +287,7 @@ static void calc_binning_rot(struct mml_frame_config *cfg, struct mml_comp_confi
 	const struct mml_frame_dest *dest = &cfg->info.dest[0];
 	u32 w = dest->crop.r.width, h = dest->crop.r.height, i;
 
-	if ((w >> 1) > dest->data.width) {
+	if ((w >> 1) >= dest->data.width) {
 		cfg->frame_in.width = w >> 1;
 		cfg->bin_x = 1;
 		for (i = 0; i < MML_MAX_OUTPUTS; i++) {
@@ -295,7 +295,7 @@ static void calc_binning_rot(struct mml_frame_config *cfg, struct mml_comp_confi
 			cfg->frame_in_crop[i].r.left = cfg->frame_in_crop[i].r.left >> 1;
 		}
 	}
-	if ((h >> 1) > dest->data.height) {
+	if ((h >> 1) >= dest->data.height) {
 		cfg->frame_in.height = h >> 1;
 		cfg->bin_y = 1;
 		for (i = 0; i < MML_MAX_OUTPUTS; i++) {
@@ -330,8 +330,10 @@ static s32 rrot_prepare(struct mml_comp *comp, struct mml_task *task,
 	/* calculate binning size and set to frame config */
 	if (rrot->pipe == 0)
 		calc_binning_rot(task->config, ccfg);
-	if (cfg->bin_x || cfg->bin_y)
+	if (cfg->bin_x || cfg->bin_y) {
 		rrot_frm->binning = true;
+		mml_log("%s bin %u %u", __func__, cfg->bin_x, cfg->bin_y);
+	}
 
 	return 0;
 }
@@ -342,7 +344,7 @@ static s32 rrot_buf_map(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_rrot *rrot = comp_to_rrot(comp);
 	s32 ret = 0;
 
-	mml_trace_ex_begin("%s rrot%s", __func__, rrot->pipe ? "_2nd" : "");
+	mml_trace_ex_begin("%s_rrot%s", __func__, rrot->pipe ? "_2nd" : "");
 
 	/* check iova, so rrot get iova first and rrot_2nd use same value */
 	if (!task->buf.src.dma[0].iova) {
@@ -351,8 +353,8 @@ static s32 rrot_buf_map(struct mml_comp *comp, struct mml_task *task,
 		if (ret < 0)
 			mml_err("%s iova fail %d", __func__, ret);
 
-		mml_msg("%s comp %u iova %#11llx (%u) %#11llx (%u) %#11llx (%u)",
-			__func__, comp->id,
+		mml_msg("%s comp %u dma %p iova %#11llx (%u) %#11llx (%u) %#11llx (%u)",
+			__func__, comp->id, task->buf.src.dma[0].dmabuf,
 			task->buf.src.dma[0].iova,
 			task->buf.src.size[0],
 			task->buf.src.dma[1].iova,
@@ -859,6 +861,11 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	mml_msg("use config %p rrot %p", cfg, rrot);
 
+#ifdef MML_FPGA
+	/* clear event in fpga, to avoid cmdq init issue */
+	cmdq_pkt_clear_event(pkt, rrot->event_eof);
+#endif
+
 	/* before everything start, make sure ddr enable */
 	if (ccfg->pipe == 0)
 		task->config->task_ops->ddren(task, pkt, true);
@@ -1163,6 +1170,35 @@ static void rrot_config_bottom(struct mml_tile_engine *tile)
 	tile->luma.y = 0;
 }
 
+static void rrot_calc_unbin(struct mml_frame_config *cfg, struct mml_tile_engine *tile)
+{
+	if (cfg->bin_x) {
+		u32 in_w = (tile->in.xe - tile->in.xs + 1) << cfg->bin_x;
+		u32 out_w = (tile->out.xe - tile->out.xs + 1) << cfg->bin_x;
+
+		tile->in.xs = tile->in.xs << cfg->bin_x;
+		tile->in.xe = tile->in.xs + in_w - 1;
+		tile->out.xs = tile->out.xs << cfg->bin_x;
+		tile->out.xe = tile->out.xs + out_w - 1;
+
+		tile->luma.x = tile->luma.x << cfg->bin_x;
+		tile->chroma.x = tile->chroma.x << cfg->bin_x;
+	}
+
+	if (cfg->bin_y) {
+		u32 in_h = (tile->in.ye - tile->in.ys + 1) << cfg->bin_y;
+		u32 out_h = (tile->out.ye - tile->out.ys + 1) << cfg->bin_y;
+
+		tile->in.ys = tile->in.ys << cfg->bin_y;
+		tile->in.ye = tile->in.ys + in_h - 1;
+		tile->out.ys = tile->out.ys << cfg->bin_y;
+		tile->out.ye = tile->out.ys + out_h - 1;
+
+		tile->luma.y = tile->luma.y << cfg->bin_y;
+		tile->chroma.y = tile->chroma.y << cfg->bin_y;
+	}
+}
+
 static struct mml_tile_engine rrot_config_dual(struct mml_comp *comp, struct mml_task *task,
 	struct mml_tile_engine *tile_merge)
 {
@@ -1198,6 +1234,8 @@ static struct mml_tile_engine rrot_config_dual(struct mml_comp *comp, struct mml
 			rrot_config_left(&tile);
 	}
 
+	rrot_calc_unbin(task->config, &tile);
+
 	return tile;
 }
 
@@ -1227,13 +1265,13 @@ static struct mml_tile_engine rrot_config_dual(struct mml_comp *comp, struct mml
 
 #define target_y(_offx, _offy, _stride, _frm) \
 	(_frm->blk ? \
-		(_target(_offx, _offy, _stride, _frm)) : \
-		(_target_blk(_offx, _offy, _stride, _frm)))
+		(_target_blk(_offx, _offy, _stride, _frm)) : \
+		(_target(_offx, _offy, _stride, _frm)))
 
 #define target_uv(_offx, _offy, _stride, _frm) \
 	(_frm->blk ? \
-		(_target_uv(_offx, _offy, _stride, _frm)) : \
-		(_target_uv_blk(_offx, _offy, _stride, _frm)))
+		(_target_uv_blk(_offx, _offy, _stride, _frm)) : \
+		(_target_uv(_offx, _offy, _stride, _frm)))
 
 static void rrot_calc_offset(struct mml_frame_data *src, const struct mml_frame_dest *dest,
 	struct rrot_frame_data *rrot_frm, struct mml_tile_engine *tile)
@@ -1412,11 +1450,11 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 		    (mf_offset_h_1 << 16) + mf_offset_w_1, U32_MAX);
 
 	if (dest->rotate == MML_ROT_0 || dest->rotate == MML_ROT_180) {
-		cfg->rrot_out[rrot->pipe].width = mf_clip_w;
-		cfg->rrot_out[rrot->pipe].height = mf_clip_h;
+		cfg->rrot_out[rrot->pipe].width = mf_clip_w >> cfg->bin_x;
+		cfg->rrot_out[rrot->pipe].height = mf_clip_h >> cfg->bin_y;
 	} else {
-		cfg->rrot_out[rrot->pipe].width = mf_clip_h;
-		cfg->rrot_out[rrot->pipe].height = mf_clip_w;
+		cfg->rrot_out[rrot->pipe].width = mf_clip_h >> cfg->bin_y;
+		cfg->rrot_out[rrot->pipe].height = mf_clip_w >> cfg->bin_x;
 	}
 
 	/* qos accumulate tile pixel */
@@ -1603,7 +1641,7 @@ static u32 rrot_datasize_get(struct mml_task *task, struct mml_comp_config *ccfg
 {
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
 
-	mml_log("[rrot]latency:%u", rrot_get_latency(task->config));
+	mml_msg("[rrot]latency:%u", rrot_get_latency(task->config));
 
 	return rrot_frm->datasize;
 }
@@ -1707,6 +1745,9 @@ static void rrot_debug_dump(struct mml_comp *comp)
 		debug_con |= 0xe000;
 		writel(debug_con, base + RROT_DEBUG_CON);
 	}
+	value[4] = readl(base + RROT_TRANSFORM_0);
+	mml_err("RROT_SRC_CON %#010x RROT_COMP_CON %#010x RROT_TRANSFORM_0 %#010x",
+		value[2], value[3], value[4]);
 
 	value[4] = readl(base + RROT_MF_BKGD_SIZE_IN_BYTE);
 	value[5] = readl(base + RROT_MF_BKGD_SIZE_IN_PXL);
@@ -1736,8 +1777,6 @@ static void rrot_debug_dump(struct mml_comp *comp)
 	value[29] = readl(base + RROT_AFBC_PAYLOAD_OST);
 	value[30] = readl(base + RROT_GMCIF_CON);
 
-	mml_err("RROT_SRC_CON %#010x RROT_COMP_CON %#010x",
-		value[2], value[3]);
 	mml_err("RROT_MF_BKGD_SIZE_IN_BYTE %#010x RROT_MF_BKGD_SIZE_IN_PXL %#010x",
 		value[4], value[5]);
 	mml_err("RROT_MF_SRC_SIZE %#010x RROT_MF_CLIP_SIZE %#010x RROT_MF_OFFSET_1 %#010x",

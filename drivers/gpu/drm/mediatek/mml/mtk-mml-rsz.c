@@ -189,17 +189,21 @@ static inline struct mml_comp_rsz *comp_to_rsz(struct mml_comp *comp)
 static bool rsz_can_relay(struct mml_frame_config *cfg,
 			  const struct mml_frame_data *src,
 			  const struct mml_frame_dest *dest,
+			  const struct mml_crop *crop,
 			  const struct mml_frame_size *frame_out)
 {
+	const u32 srcw = cfg->frame_in.width;
+	const u32 srch = cfg->frame_in.height;
+
 	if (cfg->info.dest_cnt > 1)
 		return false;
 
-	if (dest->crop.r.width == src->width &&
-	    src->width == frame_out->width &&
-	    dest->crop.r.height == src->height &&
-	    src->height == frame_out->height &&
-	    dest->crop.x_sub_px == 0 && dest->crop.y_sub_px == 0 &&
-	    dest->crop.w_sub_px == 0 && dest->crop.h_sub_px == 0 &&
+	if (crop->r.width == srcw &&
+	    srcw == frame_out->width &&
+	    crop->r.height == srch &&
+	    srch == frame_out->height &&
+	    crop->x_sub_px == 0 && crop->y_sub_px == 0 &&
+	    crop->w_sub_px == 0 && crop->h_sub_px == 0 &&
 	    dest->data.width == dest->compose.width &&
 	    dest->data.height == dest->compose.height)
 		return true;
@@ -227,7 +231,7 @@ static s32 rsz_prepare(struct mml_comp *comp, struct mml_task *task,
 	if (!rsz->data->aal_crop && dest->pq_config.en_dre)
 		rsz_frm->relay_mode = false;
 	else
-		rsz_frm->relay_mode = rsz_can_relay(cfg, src, dest, frame_out);
+		rsz_frm->relay_mode = rsz_can_relay(cfg, src, dest, crop, frame_out);
 	/* C42 conversion: drop if source is YUV422 or YUV420 */
 	rsz_frm->use121filter = !MML_FMT_H_SUBSAMPLE(src->format);
 

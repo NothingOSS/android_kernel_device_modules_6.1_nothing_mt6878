@@ -588,8 +588,8 @@ static s32 wrot_buf_map(struct mml_comp *comp, struct mml_task *task,
 
 	mml_trace_ex_end();
 
-	mml_msg("%s comp %u iova %#11llx (%u) %#11llx (%u) %#11llx (%u)",
-		__func__, comp->id,
+	mml_msg("%s comp %u dma %p iova %#11llx (%u) %#11llx (%u) %#11llx (%u)",
+		__func__, comp->id, dest_buf->dma[0].dmabuf,
 		dest_buf->dma[0].iova,
 		dest_buf->size[0],
 		dest_buf->dma[1].iova,
@@ -969,15 +969,15 @@ static void wrot_config_addr(const struct mml_frame_dest *dest,
 		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_AFBC_YUVTRANS,
 			       MML_FMT_IS_RGB(dest_fmt), 0x1);
 	} else {
+		mml_msg("%s base %#llx+%u %#llx+%u %#llx+%u",
+			__func__,
+			wrot_frm->iova[0], wrot_frm->plane_offset[0],
+			wrot_frm->iova[1], wrot_frm->plane_offset[1],
+			wrot_frm->iova[2], wrot_frm->plane_offset[2]);
+
 		addr = wrot_frm->iova[0] + wrot_frm->plane_offset[0];
 		addr_c = wrot_frm->iova[1] + wrot_frm->plane_offset[1];
 		addr_v = wrot_frm->iova[2] + wrot_frm->plane_offset[2];
-
-		mml_msg("%s base %#llx+%u %#llx+%u %#llx+%u",
-			__func__,
-			addr, wrot_frm->plane_offset[0],
-			addr_c, wrot_frm->plane_offset[1],
-			addr_v, wrot_frm->plane_offset[2]);
 	}
 
 	if (!mml_slt) {
@@ -1059,6 +1059,11 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	u32 uv_xsel, uv_ysel;
 	u32 preultra;
 	u32 scan_10bit = 0, bit_num = 0, pending_zero = 0, pvric = 0;
+
+#ifdef MML_FPGA
+	/* clear event in fpga, to avoid cmdq init issue */
+	cmdq_pkt_clear_event(pkt, wrot->event_eof);
+#endif
 
 	wrot_color_fmt(cfg, wrot_frm);
 
@@ -2138,7 +2143,7 @@ static const char *wrot_state(u32 state)
 static void wrot_debug_dump(struct mml_comp *comp)
 {
 	void __iomem *base = comp->base;
-	u32 value[35];
+	u32 value[36];
 	u32 debug[33];
 	u32 dbg_id = 0, state, smi_req;
 	u32 shadow_ctrl;
@@ -2191,6 +2196,7 @@ static void wrot_debug_dump(struct mml_comp *comp)
 	value[32] = readl(base + VIDO_BASE_ADDR_V);
 	value[33] = readl(base + VIDO_CRC_CTRL);
 	value[34] = readl(base + VIDO_CRC_VALUE);
+	value[35] = readl(base + VIDO_MAT_CTRL);
 
 	/* debug id from 0x0100 ~ 0x2100, count 33 which is debug array size */
 	for (i = 0; i < ARRAY_SIZE(debug); i++) {
@@ -2205,8 +2211,8 @@ static void wrot_debug_dump(struct mml_comp *comp)
 		value[3], value[4], value[5]);
 	mml_err("VIDO_IN_SIZE %#010x VIDO_CROP_OFST %#010x VIDO_TAR_SIZE %#010x",
 		value[6], value[7], value[8]);
-	mml_err("VIDO_FRAME_SIZE %#010x",
-		value[9]);
+	mml_err("VIDO_FRAME_SIZE %#010x VIDO_MAT_CTRL %#010x",
+		value[9], value[35]);
 	if (value[33] || value[34])
 		mml_err("VIDO_CRC_CTRL %#010x VIDO_CRC_VALUE %#010x", value[33], value[34]);
 	mml_err("VIDO_OFST ADDR_HIGH   %#010x ADDR   %#010x",
@@ -2245,7 +2251,7 @@ static void wrot_debug_dump(struct mml_comp *comp)
 	smi_req = (debug[24] >> 30) & 0x1;
 	mml_err("WROT state: %#x (%s)", state, wrot_state(state));
 	mml_err("WROT x_cnt %u y_cnt %u",
-		debug[9] & 0xffff, (debug[9] >> 16) & 0xffff);
+		debug[9] & 0x7f, (debug[9] >> 12) & 0x3ff);
 	mml_err("WROT smi_req:%u => suggest to ask SMI help:%u", smi_req, smi_req);
 }
 
