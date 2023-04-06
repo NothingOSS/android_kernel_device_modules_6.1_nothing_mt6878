@@ -4502,6 +4502,7 @@ signed int CmdqDPEHW(struct frame *frame)
 	unsigned int w_imgi, h_imgi, w_mvio, h_mvio, w_bvo, h_bvo;
 	unsigned int dma_bandwidth, trig_num;
 #endif
+	//int cmd_cnt = 0;
 
 	LOG_INF("%s CmdqtoHw statr", __func__);
 
@@ -4781,7 +4782,7 @@ if ((pDpeConfig->DPE_MODE != 1) && (pDpeConfig->DPE_MODE != 3)) {
 		/* dvp_trig_en = 1, dvs_trig_en = 0  */
 		#ifdef CMdq_en
 		cmdq_pkt_write(handle, dpe_clt_base,
-		DVS_CTRL00_HW, 0xC8000000, 0xD8300000);
+		DVS_CTRL00_HW, 0xC8000000, 0xDC300000);
 		cmdq_pkt_write(handle, dpe_clt_base,
 		DVS_CTRL02_HW, 0x70310001, CMDQ_REG_MASK);
 		#endif
@@ -4877,7 +4878,7 @@ if (pDpeConfig->DPE_MODE == 3) {
 	LOG_INF("star DVGF CMDQWR\n");
 	#ifdef CMdq_en
 	cmdq_pkt_write(handle, dpe_clt_base,
-	DVS_CTRL00_HW, 0xC4040000, 0xD4040000); //dvgf_trig_en
+	DVS_CTRL00_HW, 0xC4040000, 0xDC040000); //dvgf_trig_en
 
 	//cmdq_pkt_write(handle, dpe_clt_base,
 	//DVGF_CTRL_00_HW, 0x80000000, CMDQ_REG_MASK);
@@ -4887,7 +4888,10 @@ if (pDpeConfig->DPE_MODE == 3) {
 	cmdq_pkt_write(handle, dpe_clt_base,
 	DVGF_IRQ_00_HW, 0x00000E00, 0x00000F00);
 
-	CMDQWR(DVGF_CTRL_00);
+	cmdq_pkt_write(handle, dpe_clt_base,
+	DVGF_CTRL_00_HW, 0x80000000, 0x80000000);
+
+	///CMDQWR(DVGF_CTRL_00);
 	CMDQWR(DVGF_CTRL_01);
 	CMDQWR(DVGF_CTRL_02);
 	CMDQWR(DVGF_CTRL_03);
@@ -4947,10 +4951,7 @@ cmdq_pkt_write(handle, dpe_clt_base, DVS_CTRL00_HW, 0x20000000, 0x20000000);
 	else
 		cmdq_pkt_wfe(handle, dvp_event_id);
 
-//
-cmdq_pkt_sleep(handle, 2000, CMDQ_GPR_R03);
-//
-cmdq_pkt_write(handle, dpe_clt_base, DVS_CTRL00_HW, 0x00000000, 0x20000000);
+//cmdq_pkt_write(handle, dpe_clt_base, DVS_CTRL00_HW, 0x00000000, 0x20000000);
 #endif
 #if defined(DPE_PMQOS_EN) && defined(CONFIG_MTK_QOS_SUPPORT)
 	LOG_INF("DPE_PMQOS_EN =1\n");
@@ -5186,22 +5187,6 @@ static signed int DPE_Dump_kernelReg(struct DPE_Config_V2 *cfg)
 	cfg->DPE_Kernel_DpeConfig.DVS_SRC_10_R_FRM1 = (unsigned int)DPE_RD32(DVS_SRC_10_R_FRM1_REG);
 	cfg->DPE_Kernel_DpeConfig.DVS_SRC_11_R_FRM2 = (unsigned int)DPE_RD32(DVS_SRC_11_R_FRM2_REG);
 	cfg->DPE_Kernel_DpeConfig.DVS_SRC_12_R_FRM3 = (unsigned int)DPE_RD32(DVS_SRC_12_R_FRM3_REG);
-	//cfg->DPE_Kernel_DpeConfig.DVS_SRC_13_L_VMAP0 =
-	//(unsigned int)DPE_RD32(DVS_SRC_13_L_VMAP0_REG);
-	//cfg->DPE_Kernel_DpeConfig.DVS_SRC_14_L_VMAP1 =
-	//(unsigned int)DPE_RD32(DVS_SRC_14_L_VMAP1_REG);
-	//cfg->DPE_Kernel_DpeConfig.DVS_SRC_15_L_VMAP2 =
-	//(unsigned int)DPE_RD32(DVS_SRC_15_L_VMAP2_REG);
-	//cfg->DPE_Kernel_DpeConfig.DVS_SRC_16_L_VMAP3 =
-	//(unsigned int)DPE_RD32(DVS_SRC_16_L_VMAP3_REG);
-	//cfg->DPE_Kernel_DpeConfig.DVS_SRC_17_R_VMAP0 =
-	//(unsigned int)DPE_RD32(DVS_SRC_17_R_VMAP0_REG);
-	//cfg->DPE_Kernel_DpeConfig.DVS_SRC_18_R_VMAP1 =
-	//(unsigned int)DPE_RD32(DVS_SRC_18_R_VMAP1_REG);
-	//cfg->DPE_Kernel_DpeConfig.DVS_SRC_19_R_VMAP2 =
-	//(unsigned int)DPE_RD32(DVS_SRC_19_R_VMAP2_REG);
-	//cfg->DPE_Kernel_DpeConfig.DVS_SRC_20_R_VMAP3 =
-	//(unsigned int)DPE_RD32(DVS_SRC_20_R_VMAP3_REG);
 	cfg->DPE_Kernel_DpeConfig.DVS_SRC_21_P4_L_DV_ADR =
 	(unsigned int)DPE_RD32(DVS_SRC_21_P4_L_DV_ADR_REG);
 	cfg->DPE_Kernel_DpeConfig.DVS_SRC_22_OCCDV0 = (unsigned int)DPE_RD32(DVS_SRC_22_OCCDV0_REG);
@@ -5272,6 +5257,24 @@ static signed int DPE_Dump_kernelReg(struct DPE_Config_V2 *cfg)
 	cfg->DPE_Kernel_DpeConfig.DVS_ME_ATPG = (unsigned int)DPE_RD32(DVS_ME_ATPG_REG);
 	cfg->DPE_Kernel_DpeConfig.DVS_ME_40 = (unsigned int)DPE_RD32(DVS_ME_40_REG);
 	cfg->DPE_Kernel_DpeConfig.DVS_ME_41 = (unsigned int)DPE_RD32(DVS_ME_41_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_ME_42 = (unsigned int)DPE_RD32(DVS_ME_42_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_ME_43 = (unsigned int)DPE_RD32(DVS_ME_43_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_ME_44 = (unsigned int)DPE_RD32(DVS_ME_44_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_ME_45 = (unsigned int)DPE_RD32(DVS_ME_45_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_ME_46 = (unsigned int)DPE_RD32(DVS_ME_46_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_ME_47 = (unsigned int)DPE_RD32(DVS_ME_47_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_ME_48 = (unsigned int)DPE_RD32(DVS_ME_48_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_ME_49 = (unsigned int)DPE_RD32(DVS_ME_49_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_ME_50 = (unsigned int)DPE_RD32(DVS_ME_50_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_ME_51 = (unsigned int)DPE_RD32(DVS_ME_51_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_ME_52 = (unsigned int)DPE_RD32(DVS_ME_52_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_ME_53 = (unsigned int)DPE_RD32(DVS_ME_53_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_ME_54 = (unsigned int)DPE_RD32(DVS_ME_54_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_ME_55 = (unsigned int)DPE_RD32(DVS_ME_55_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_ME_56 = (unsigned int)DPE_RD32(DVS_ME_56_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_ME_57 = (unsigned int)DPE_RD32(DVS_ME_57_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_ME_58 = (unsigned int)DPE_RD32(DVS_ME_58_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_ME_59 = (unsigned int)DPE_RD32(DVS_ME_59_REG);
 
 	//OCC
 	cfg->DPE_Kernel_DpeConfig.DVS_OCC_PQ_0 = (unsigned int)DPE_RD32(DVS_OCC_PQ_0_REG);
@@ -5287,7 +5290,25 @@ static signed int DPE_Dump_kernelReg(struct DPE_Config_V2 *cfg)
 	cfg->DPE_Kernel_DpeConfig.DVS_OCC_PQ_10 = (unsigned int)DPE_RD32(DVS_OCC_PQ_10_REG);
 	cfg->DPE_Kernel_DpeConfig.DVS_OCC_PQ_11 = (unsigned int)DPE_RD32(DVS_OCC_PQ_11_REG);
 	cfg->DPE_Kernel_DpeConfig.DVS_OCC_ATPG = (unsigned int)DPE_RD32(DVS_OCC_ATPG_REG);
-
+	cfg->DPE_Kernel_DpeConfig.DVS_OCC_HIST0 = (unsigned int)DPE_RD32(DVS_OCC_HIST0_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_OCC_HIST1 = (unsigned int)DPE_RD32(DVS_OCC_HIST1_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_OCC_HIST2 = (unsigned int)DPE_RD32(DVS_OCC_HIST2_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_OCC_HIST3 = (unsigned int)DPE_RD32(DVS_OCC_HIST3_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_OCC_HIST4 = (unsigned int)DPE_RD32(DVS_OCC_HIST4_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_OCC_HIST5 = (unsigned int)DPE_RD32(DVS_OCC_HIST5_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_OCC_HIST6 = (unsigned int)DPE_RD32(DVS_OCC_HIST6_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_OCC_HIST7 = (unsigned int)DPE_RD32(DVS_OCC_HIST7_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_OCC_HIST8 = (unsigned int)DPE_RD32(DVS_OCC_HIST8_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_OCC_HIST9 = (unsigned int)DPE_RD32(DVS_OCC_HIST9_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_OCC_HIST10 = (unsigned int)DPE_RD32(DVS_OCC_HIST10_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_OCC_HIST11 = (unsigned int)DPE_RD32(DVS_OCC_HIST11_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_OCC_HIST12 = (unsigned int)DPE_RD32(DVS_OCC_HIST12_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_OCC_HIST13 = (unsigned int)DPE_RD32(DVS_OCC_HIST13_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_OCC_HIST14 = (unsigned int)DPE_RD32(DVS_OCC_HIST14_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_OCC_HIST15 = (unsigned int)DPE_RD32(DVS_OCC_HIST15_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_OCC_HIST16 = (unsigned int)DPE_RD32(DVS_OCC_HIST16_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_OCC_HIST17 = (unsigned int)DPE_RD32(DVS_OCC_HIST17_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_OCC_HIST18 = (unsigned int)DPE_RD32(DVS_OCC_HIST18_REG);
 	//DVP
 	cfg->DPE_Kernel_DpeConfig.DVP_CTRL00 = (unsigned int)DPE_RD32(DVP_CTRL00_REG);
 	cfg->DPE_Kernel_DpeConfig.DVP_CTRL01 = (unsigned int)DPE_RD32(DVP_CTRL01_REG);
@@ -5396,6 +5417,148 @@ static signed int DPE_Dump_kernelReg(struct DPE_Config_V2 *cfg)
 	(unsigned int)DPE_RD32(DVP_EXT_SRC_22_ASF_DV2_REG);
 	cfg->DPE_Kernel_DpeConfig.DVP_EXT_SRC_23_ASF_DV3 =
 	(unsigned int)DPE_RD32(DVP_EXT_SRC_23_ASF_DV3_REG);
+
+	// DVGF
+	cfg->DPE_Kernel_DpeConfig.DVGF_CTRL_00 =
+	(unsigned int)DPE_RD32(DVGF_CTRL_00_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CTRL_01 =
+	(unsigned int)DPE_RD32(DVGF_CTRL_01_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CTRL_02 =
+	(unsigned int)DPE_RD32(DVGF_CTRL_02_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CTRL_03 =
+	(unsigned int)DPE_RD32(DVGF_CTRL_03_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CTRL_05 =
+	(unsigned int)DPE_RD32(DVGF_CTRL_05_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CTRL_07 =
+	(unsigned int)DPE_RD32(DVGF_CTRL_07_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_IRQ_00 =
+	(unsigned int)DPE_RD32(DVGF_IRQ_00_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_IRQ_01 =
+	(unsigned int)DPE_RD32(DVGF_IRQ_01_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CTRL_STATUS0 =
+	(unsigned int)DPE_RD32(DVGF_CTRL_STATUS0_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CTRL_STATUS0 =
+	(unsigned int)DPE_RD32(DVGF_CTRL_STATUS0_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_IRQ_STATUS =
+	(unsigned int)DPE_RD32(DVGF_IRQ_STATUS_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_FRM_STATUS =
+	(unsigned int)DPE_RD32(DVGF_FRM_STATUS_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CUR_STATUS =
+	(unsigned int)DPE_RD32(DVGF_CUR_STATUS_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CRC_CTRL =
+	(unsigned int)DPE_RD32(DVGF_CRC_CTRL_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CRC_OUT =
+	(unsigned int)DPE_RD32(DVGF_CRC_OUT_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CRC_IN =
+	(unsigned int)DPE_RD32(DVGF_CRC_IN_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CRC_OUT_0 =
+	(unsigned int)DPE_RD32(DVGF_CRC_OUT_0_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CRC_OUT_1 =
+	(unsigned int)DPE_RD32(DVGF_CRC_OUT_1_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CRC_OUT_2 =
+	(unsigned int)DPE_RD32(DVGF_CRC_OUT_2_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CORE_CRC_IN =
+	(unsigned int)DPE_RD32(DVGF_CORE_CRC_IN_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_DRAM_STA =
+	(unsigned int)DPE_RD32(DVGF_DRAM_STA_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_DRAM_PITCH =
+	(unsigned int)DPE_RD32(DVGF_DRAM_PITCH_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_DRAM_SEC_0 =
+	(unsigned int)DPE_RD32(DVGF_DRAM_SEC_0_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_DRAM_SEC_1 =
+	(unsigned int)DPE_RD32(DVGF_DRAM_SEC_1_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CTRL_STATUS_32b_00 =
+	(unsigned int)DPE_RD32(DVGF_CTRL_STATUS_32b_00_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CTRL_STATUS_32b_01 =
+	(unsigned int)DPE_RD32(DVGF_CTRL_STATUS_32b_01_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CTRL_STATUS_32b_02 =
+	(unsigned int)DPE_RD32(DVGF_CTRL_STATUS_32b_02_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CTRL_STATUS_32b_03 =
+	(unsigned int)DPE_RD32(DVGF_CTRL_STATUS_32b_03_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CTRL_STATUS_32b_04 =
+	(unsigned int)DPE_RD32(DVGF_CTRL_STATUS_32b_04_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CTRL_RESERVED =
+	(unsigned int)DPE_RD32(DVGF_CTRL_RESERVED_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CTRL_ATPG =
+	(unsigned int)DPE_RD32(DVGF_CTRL_ATPG_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_00 =
+	(unsigned int)DPE_RD32(DVGF_SRC_00_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_01 =
+	(unsigned int)DPE_RD32(DVGF_SRC_01_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_02 =
+	(unsigned int)DPE_RD32(DVGF_SRC_02_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_04 =
+	(unsigned int)DPE_RD32(DVGF_SRC_04_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_05 =
+	(unsigned int)DPE_RD32(DVGF_SRC_05_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_06 =
+	(unsigned int)DPE_RD32(DVGF_SRC_06_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_07 =
+	(unsigned int)DPE_RD32(DVGF_SRC_07_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_08 =
+	(unsigned int)DPE_RD32(DVGF_SRC_08_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_09 =
+	(unsigned int)DPE_RD32(DVGF_SRC_09_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_10 =
+	(unsigned int)DPE_RD32(DVGF_SRC_10_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_11 =
+	(unsigned int)DPE_RD32(DVGF_SRC_11_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_12 =
+	(unsigned int)DPE_RD32(DVGF_SRC_12_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_13 =
+	(unsigned int)DPE_RD32(DVGF_SRC_13_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_14 =
+	(unsigned int)DPE_RD32(DVGF_SRC_14_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_15 =
+	(unsigned int)DPE_RD32(DVGF_SRC_15_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_16 =
+	(unsigned int)DPE_RD32(DVGF_SRC_16_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_17 =
+	(unsigned int)DPE_RD32(DVGF_SRC_17_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_18 =
+	(unsigned int)DPE_RD32(DVGF_SRC_18_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_19 =
+	(unsigned int)DPE_RD32(DVGF_SRC_19_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_20 =
+	(unsigned int)DPE_RD32(DVGF_SRC_20_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_21 =
+	(unsigned int)DPE_RD32(DVGF_SRC_21_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_22 =
+	(unsigned int)DPE_RD32(DVGF_SRC_22_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_23 =
+	(unsigned int)DPE_RD32(DVGF_SRC_23_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_SRC_24 =
+	(unsigned int)DPE_RD32(DVGF_SRC_24_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CORE_00 =
+	(unsigned int)DPE_RD32(DVGF_CORE_00_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CORE_01 =
+	(unsigned int)DPE_RD32(DVGF_CORE_01_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CORE_02 =
+	(unsigned int)DPE_RD32(DVGF_CORE_02_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CORE_03 =
+	(unsigned int)DPE_RD32(DVGF_CORE_03_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CORE_05 =
+	(unsigned int)DPE_RD32(DVGF_CORE_05_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CORE_06 =
+	(unsigned int)DPE_RD32(DVGF_CORE_06_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CORE_07 =
+	(unsigned int)DPE_RD32(DVGF_CORE_07_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CORE_08 =
+	(unsigned int)DPE_RD32(DVGF_CORE_08_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CORE_09 =
+	(unsigned int)DPE_RD32(DVGF_CORE_09_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CORE_10 =
+	(unsigned int)DPE_RD32(DVGF_CORE_10_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CORE_11 =
+	(unsigned int)DPE_RD32(DVGF_CORE_11_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CORE_12 =
+	(unsigned int)DPE_RD32(DVGF_CORE_12_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CORE_13 =
+	(unsigned int)DPE_RD32(DVGF_CORE_13_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CORE_14 =
+	(unsigned int)DPE_RD32(DVGF_CORE_14_REG);
+	cfg->DPE_Kernel_DpeConfig.DVGF_CORE_15 =
+	(unsigned int)DPE_RD32(DVGF_CORE_15_REG);
 
 	return 0;
 }
