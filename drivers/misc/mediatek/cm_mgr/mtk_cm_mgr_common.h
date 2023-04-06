@@ -8,6 +8,12 @@
 
 #include <linux/kernel.h>
 
+unsigned int cm_dbg_info;
+#define CM_DBG_PRINT(fmt, ...) \
+	do { \
+		if (cm_dbg_info) \
+			pr_info(pr_fmt(fmt), ##__VA_ARGS__); \
+	} while (0)
 enum {
 	CM_MGR_ARCH_V1,
 	CM_MGR_ARCH_V1P,
