@@ -337,6 +337,9 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 
 	if ((apu->platdata->flags & F_SECURE_COREDUMP)) {
 		apusys_rv_smc_call(dev,
+			MTK_APUSYS_KERNEL_OP_APUSYS_CE_SRAM_DUMP, 0);
+
+		apusys_rv_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_RV_TCMDUMP, 0);
 
 		apusys_rv_smc_call(dev,

@@ -157,6 +157,8 @@ static irqreturn_t apu_ce_isr(int irq, void *private_data)
 
 	schedule_work(&(apu_ce_coredump_work.work));
 
+	disable_irq_nosync(apu->ce_exp_irq_number);
+
 	return IRQ_HANDLED;
 }
 

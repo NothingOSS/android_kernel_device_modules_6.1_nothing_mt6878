@@ -252,14 +252,19 @@ static void apu_mrdump_register(struct mtk_apu *apu)
 				__func__, ret);
 	}
 
-	//CE FW + CE sram start addr & total size
-	base_pa = apu->apusys_aee_coredump_mem_start +
-			apu->apusys_aee_coredump_info->ce_bin_ofs;
-	base_va = (unsigned long) apu->apu_aee_coredump_mem_base +
-			apu->apusys_aee_coredump_info->ce_bin_ofs;
+	if (apu->platdata->flags & F_CE_EXCEPTION_ON) {
 
-	size = apu->apusys_aee_coredump_info->ce_bin_sz + apu->apusys_aee_coredump_info->are_sram_sz;
-	dev_info(dev, "%s: ce_bin_sz + are_sram_sz = 0x%lx\n", __func__, size);
+		//CE FW + CE sram start addr & total size
+		base_pa = apu->apusys_aee_coredump_mem_start +
+				apu->apusys_aee_coredump_info->ce_bin_ofs;
+		base_va = (unsigned long) apu->apu_aee_coredump_mem_base +
+				apu->apusys_aee_coredump_info->ce_bin_ofs;
+
+		size = apu->apusys_aee_coredump_info->ce_bin_sz +
+			apu->apusys_aee_coredump_info->are_sram_sz;
+		dev_info(dev, "%s: ce_bin_sz + are_sram_sz = 0x%lx\n", __func__, size);
+	}
+
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 	ret = mrdump_mini_add_extra_file(base_va, base_pa, size, "APUSYS_CE_FW_SRAM");
 #endif
@@ -323,13 +328,16 @@ int apu_procfs_init(struct platform_device *pdev)
 		goto out;
 	}
 
-	ce_fw_sram_seqlog = proc_create("apusys_ce_fw_sram", 0444,
-		procfs_root, &ce_fw_sram_file_ops);
-	ret = IS_ERR_OR_NULL(ce_fw_sram_seqlog);
-	if (ret) {
-		dev_info(&pdev->dev, "(%d)failed to create apusys_rv node(apusys_ce_fw_sram)\n",
-			ret);
-		goto out;
+	if (apu->platdata->flags & F_CE_EXCEPTION_ON) {
+
+		ce_fw_sram_seqlog = proc_create("apusys_ce_fw_sram", 0444,
+			procfs_root, &ce_fw_sram_file_ops);
+		ret = IS_ERR_OR_NULL(ce_fw_sram_seqlog);
+		if (ret) {
+			dev_info(&pdev->dev, "(%d)failed to create apusys_rv node(apusys_ce_fw_sram)\n",
+				ret);
+			goto out;
+		}
 	}
 
 	apu_regdump_init(pdev);
