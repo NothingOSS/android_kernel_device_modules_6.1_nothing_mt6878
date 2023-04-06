@@ -10320,7 +10320,7 @@
 				"disp_hrt_by_larb",
 				"disp_dp_hrt_by_larb";
 		pre-define-bw = <0xffffffff>, <4200>, <0>;
-		crtc-ovl-usage = <7>, <4>, <8>;
+		crtc-ovl-usage = <7>, <4>, <2>;
 
 		/* define threads, see mt6873-gce.h */
 		mediatek,mailbox-gce = <&gce>;
