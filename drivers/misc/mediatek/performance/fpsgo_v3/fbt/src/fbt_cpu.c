@@ -62,7 +62,6 @@
 #define NSEC_PER_HUSEC 100000
 #define TIME_MS_TO_NS  1000000ULL
 #define LOADING_WEIGHT 50
-#define DEFAULT_ADJUST_LOADING_HWUI_HINT 1
 #define DEF_RESCUE_PERCENT 33
 #define DEF_RESCUE_NS_TH 0
 #define INVALID_NUM -1
@@ -73,7 +72,6 @@
 #define DEFAULT_QR_T2WNT_Y_N 0
 #define DEFAULT_QR_HWUI_HINT 1
 #define DEFAULT_ST2WNT_ADJ 0
-#define DEFAULT_GCC_HWUI_HINT 1
 #define DEFAULT_GCC_RESERVED_UP_QUOTA_PCT 100
 #define DEFAULT_GCC_RESERVED_DOWN_QUOTA_PCT 5
 #define DEFAULT_GCC_STD_FILTER 2
@@ -232,7 +230,6 @@ static int loading_adj_cnt;
 static int loading_debnc_cnt;
 static int loading_time_diff;
 static int adjust_loading;
-static int adjust_loading_hwui_hint;
 static int fps_level_range;
 static int check_running;
 static int boost_affinity;
@@ -252,7 +249,6 @@ static int qr_filter_outlier;
 static int qr_mod_frame;
 static int qr_debug;
 static int gcc_enable;
-static int gcc_hwui_hint;
 static int gcc_reserved_up_quota_pct;
 static int gcc_reserved_down_quota_pct;
 static int gcc_window_size;
@@ -305,7 +301,6 @@ module_param(loading_adj_cnt, int, 0644);
 module_param(loading_debnc_cnt, int, 0644);
 module_param(loading_time_diff, int, 0644);
 module_param(adjust_loading, int, 0644);
-module_param(adjust_loading_hwui_hint, int, 0644);
 module_param(fps_level_range, int, 0644);
 module_param(check_running, int, 0644);
 module_param(boost_affinity, int, 0644);
@@ -324,7 +319,6 @@ module_param(qr_filter_outlier, int, 0644);
 module_param(qr_mod_frame, int, 0644);
 module_param(qr_debug, int, 0644);
 module_param(gcc_enable, int, 0644);
-module_param(gcc_hwui_hint, int, 0644);
 module_param(gcc_reserved_up_quota_pct, int, 0644);
 module_param(gcc_reserved_down_quota_pct, int, 0644);
 module_param(gcc_window_size, int, 0644);
@@ -4118,8 +4112,7 @@ static int fbt_boost_policy(
 
 	limit_max_cap = fbt_get_limit_capacity(0);
 
-	if (gcc_enable_active && (!gcc_hwui_hint ||
-			thread_info->hwui != RENDER_INFO_HWUI_TYPE)) {
+	if (gcc_enable_active) {
 		int gcc_boost;
 
 		gcc_boost = fbt_eva_gcc(
@@ -4680,9 +4673,7 @@ static unsigned long long fbt_adjust_loading_exp(struct render_info *thr,
 		&loading, new_ts_100us);
 	fpsgo_systrace_c_fbt_debug(thr->pid, thr->buffer_id, loading, "q2q_loading");
 
-	if (!(adjust_loading ||
-		(adjust_loading_hwui_hint && thr->hwui == RENDER_INFO_HWUI_TYPE))
-		|| cluster_num == 1) {
+	if (!adjust_loading || cluster_num == 1) {
 		adjust = FPSGO_ADJ_NONE;
 		if (!(separate_aa_final && thr->boost_info.cl_loading))
 			goto SKIP;
@@ -4768,9 +4759,7 @@ static long fbt_get_loading(struct render_info *thr, unsigned long long ts)
 	int last_blc = 0;
 	int cur_hit = FPSGO_ADJ_NONE;
 
-	if (!(adjust_loading ||
-		(adjust_loading_hwui_hint && thr->hwui == RENDER_INFO_HWUI_TYPE))
-		|| cluster_num == 1)
+	if (!adjust_loading || cluster_num == 1)
 		goto SKIP;
 
 	boost = &(thr->boost_info);
@@ -8133,7 +8122,6 @@ int __init fbt_cpu_init(void)
 	fbt_down_throttle_enable = 1;
 	boost_ta = fbt_get_default_boost_ta();
 	adjust_loading = fbt_get_default_adj_loading();
-	adjust_loading_hwui_hint = DEFAULT_ADJUST_LOADING_HWUI_HINT;
 	enable_ceiling = 0;
 
 	/* t2wnt = target_time * (1+x) + quota * y_p, if quota > 0 */
@@ -8148,7 +8136,6 @@ int __init fbt_cpu_init(void)
 	qr_debug = 0;
 
 	gcc_enable = fbt_get_default_gcc_enable();
-	gcc_hwui_hint = DEFAULT_GCC_HWUI_HINT;
 	gcc_reserved_up_quota_pct = DEFAULT_GCC_RESERVED_UP_QUOTA_PCT;
 	gcc_reserved_down_quota_pct = DEFAULT_GCC_RESERVED_DOWN_QUOTA_PCT;
 	gcc_window_size = DEFAULT_GCC_WINDOW_SIZE;
