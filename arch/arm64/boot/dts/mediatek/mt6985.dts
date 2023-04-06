@@ -4714,22 +4714,16 @@
 		};
 
 		emimpu: emimpu@10226000 {
-			compatible = "mediatek,mt6983-emimpu";
+			compatible = "mediatek,common-emimpu";
 			reg = <0 0x10226000 0 0x1000>,
 				  <0 0x10225000 0 0x1000>;
 			mediatek,emi-reg = <&emicen>;
-			mediatek,miukp-reg = <&miukp>;
-			mediatek,miumpu-reg = <&miumpu>;
 			interrupts = <GIC_SPI 282 IRQ_TYPE_LEVEL_HIGH 0>;
-			sr_cnt = <63>;
-			aid_cnt = <256>;
-			aid_num_per_set = <32>;
 			dump = <0x1f0 0x1f8 0x1fc>;
 			clear = <0x1f0 0x80000000 1>,
 				<0x160 0xffffffff 16>,
 				<0x200 0x00000003 16>;
-			clear_hp = <0x1fc 0x40000000 1>;
-			clear_md = <0x1fc 0x80000000 1>;
+			clear-md = <0x1fc 0x80000000 1>;
 		};
 		nsmpu: nsmpu@10351000 {
 			compatible = "mediatek,smpu";
