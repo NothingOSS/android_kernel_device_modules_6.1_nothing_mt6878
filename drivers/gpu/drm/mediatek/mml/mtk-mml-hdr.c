@@ -1632,7 +1632,7 @@ hdr_hist_cmd_done:
 	}
 
 	cmdq_pkt_refinalize(pkt);
-	cmdq_pkt_flush_async(pkt, hdr_histdone_cb, (void *)hdr->hist_pkts[pipe]);
+	cmdq_pkt_flush_threaded(pkt, hdr_histdone_cb, (void *)hdr->hist_pkts[pipe]);
 
 	mml_pq_ir_log("%s job_id[%d] hist_pkts[%p %p] id[%d] buf_size[%zu] hist_cmd_done[%d]",
 		__func__, hdr->jobid,
