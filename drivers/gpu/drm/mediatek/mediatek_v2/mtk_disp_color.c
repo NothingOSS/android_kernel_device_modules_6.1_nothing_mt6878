@@ -69,12 +69,12 @@ bool g_legacy_color_cust;
 #define is_color1_module(module) (0)
 struct drm_mtk_ccorr_caps g_ccorr_caps;
 
-enum COLOR_IOCTL_CMD {
+enum COLOR_USER_CMD {
 	SET_PQPARAM = 0,
 	SET_COLOR_REG,
 	WRITE_REG,
 	BYPASS_COLOR,
-	PQ_SET_WINDOW
+	PQ_SET_WINDOW,
 };
 
 static struct MDP_COLOR_CAP mdp_color_cap;
@@ -1243,6 +1243,8 @@ void DpEngine_COLORonConfig(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	int i, j, reg_index;
 	unsigned int pq_index;
 	int wide_gamut_en = 0;
+	/* mask s_gain_by_y when drecolor enable */
+	int s_gain_by_y = !(m_new_pq_persist_property[DISP_DRE_CAPABILITY] & 0x1);
 
 	if (pq_param_p->u4Brightness >= BRIGHTNESS_SIZE ||
 		pq_param_p->u4Contrast >= CONTRAST_SIZE ||
@@ -1268,7 +1270,8 @@ void DpEngine_COLORonConfig(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 				| (g_Color_Index.LSP_EN << 20)
 				| (g_Color_Index.S_GAIN_BY_Y_EN << 15)
 				| (wide_gamut_en << 8)
-				| (0 << 7), 0x03081FF);
+				| (0 << 7),
+				0x003001FF | s_gain_by_y << 15);
 		} else {
 			/* disable wide_gamut */
 			cmdq_pkt_write(handle, comp->cmdq_base,
@@ -1563,7 +1566,7 @@ void DpEngine_COLORonConfig(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 		u4Temp = 0;
 
 		reg_index = 0;
-		for (i = 0; i < S_GAIN_BY_Y_CONTROL_CNT; i++) {
+		for (i = 0; i < S_GAIN_BY_Y_CONTROL_CNT && s_gain_by_y; i++) {
 			for (j = 0; j < S_GAIN_BY_Y_HUE_PHASE_CNT; j += 4) {
 				u4Temp = (g_Color_Index.S_GAIN_BY_Y[i][j]) +
 					(g_Color_Index.S_GAIN_BY_Y[i][j + 1]
@@ -1671,6 +1674,26 @@ void DpEngine_COLORonConfig(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	}
 }
 
+struct DISP_AAL_DRECOLOR_PARAM g_drecolor_sgy;
+static void disp_color_set_sgy(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+				void *sgy_gain)
+{
+	int i, cnt = DRECOLOR_SGY_Y_ENTRY * DRECOLOR_SGY_HUE_NUM / 4;
+	unsigned int *param = sgy_gain;
+	uint32_t value;
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DISP_COLOR_CFG_MAIN, 1 << 15, 1 << 15);
+	for (i = 0; i < cnt; i++) {
+		value = param[4 * i] |
+			(param[4 * i + 1]  << 8) |
+			(param[4 * i + 2] << 16) |
+			(param[4 * i + 3] << 24);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_COLOR_S_GAIN_BY_Y0_0 + i * 4, value, ~0);
+	}
+}
+
 static void color_write_hw_reg(struct mtk_ddp_comp *comp,
 	const struct DISPLAY_COLOR_REG *color_reg, struct cmdq_pkt *handle)
 {
@@ -1681,8 +1704,10 @@ static void color_write_hw_reg(struct mtk_ddp_comp *comp,
 	struct mtk_disp_color *color = comp_to_color(comp);
 	int i, j, reg_index;
 	int wide_gamut_en = 0;
+	/* mask s_gain_by_y when drecolor enable */
+	int s_gain_by_y = !(m_new_pq_persist_property[DISP_DRE_CAPABILITY] & 0x1);
 
-	DDPINFO("%s,SET COLOR REG id(%d)\n", __func__, comp->id);
+	DDPINFO("%s,SET COLOR REG id(%d) sgy %d\n", __func__, comp->id, s_gain_by_y);
 
 	if (g_color_bypass == 0) {
 		if (color->data->support_color21 == true) {
@@ -1693,7 +1718,8 @@ static void color_write_hw_reg(struct mtk_ddp_comp *comp,
 					| (g_Color_Index.LSP_EN << 20)
 					| (g_Color_Index.S_GAIN_BY_Y_EN << 15)
 					| (wide_gamut_en << 8)
-					| (0 << 7), 0x003081FF);
+					| (0 << 7),
+					0x003001FF | s_gain_by_y << 15);
 			else
 				cmdq_pkt_write(handle, comp->cmdq_base,
 					comp->regs_pa + DISP_COLOR_CFG_MAIN,
@@ -1701,7 +1727,8 @@ static void color_write_hw_reg(struct mtk_ddp_comp *comp,
 					| (color_reg->LSP_EN << 20)
 					| (color_reg->S_GAIN_BY_Y_EN << 15)
 					| (wide_gamut_en << 8)
-					| (0 << 7), 0x003081FF);
+					| (0 << 7),
+					0x003001FF | s_gain_by_y << 15);
 		} else {
 			/* disable wide_gamut */
 			cmdq_pkt_write(handle, comp->cmdq_base,
@@ -1986,7 +2013,7 @@ static void color_write_hw_reg(struct mtk_ddp_comp *comp,
 		u4Temp = 0;
 
 		reg_index = 0;
-		for (i = 0; i < S_GAIN_BY_Y_CONTROL_CNT; i++) {
+		for (i = 0; i < S_GAIN_BY_Y_CONTROL_CNT && s_gain_by_y; i++) {
 			for (j = 0; j < S_GAIN_BY_Y_HUE_PHASE_CNT; j += 4) {
 				if (g_legacy_color_cust)
 					u4Temp = (g_Color_Index.S_GAIN_BY_Y[i][j]) +
@@ -2163,6 +2190,13 @@ static void mtk_color_config(struct mtk_ddp_comp *comp,
 		       comp->regs_pa + DISP_COLOR_WIDTH(color), width, ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_COLOR_HEIGHT(color), cfg->h, ~0);
+	mutex_lock(&g_color_reg_lock);
+	if ((m_new_pq_persist_property[DISP_DRE_CAPABILITY] & 0x1) &&
+		g_drecolor_sgy.sgy_trans_trigger) {
+		DDPINFO("%s set sgy\n", __func__);
+		disp_color_set_sgy(comp, handle, g_drecolor_sgy.sgy_out_gain);
+	}
+	mutex_unlock(&g_color_reg_lock);
 
 	// set color_8bit_switch register
 	if (cfg->source_bpc == 8)
@@ -3523,6 +3557,32 @@ void disp_color_write_pos_main_for_dual_pipe(struct mtk_ddp_comp *comp,
 	}
 }
 
+static int mtk_color_cfg_drecolor_set_sgy(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, void *data, unsigned int data_size)
+{
+	struct mtk_disp_color *priv_data = comp_to_color(comp);
+	struct DISP_AAL_DRECOLOR_PARAM *param = data;
+	struct DISP_AAL_DRECOLOR_PARAM *drecolor_sgy = &g_drecolor_sgy;
+
+	if (sizeof(struct DISP_AAL_DRECOLOR_PARAM) < data_size) {
+		DDPPR_ERR("%s param size error %lu, %u\n", __func__, sizeof(*param), data_size);
+		return -EFAULT;
+	}
+	mutex_lock(&g_color_reg_lock);
+	memcpy(drecolor_sgy, param, sizeof(struct DISP_AAL_DRECOLOR_PARAM));
+	if (!drecolor_sgy->sgy_trans_trigger) {
+		DDPINFO("%s set skip\n", __func__);
+		mutex_unlock(&g_color_reg_lock);
+		return 0;
+	}
+	DDPINFO("%s set now\n", __func__);
+	disp_color_set_sgy(comp, handle, drecolor_sgy->sgy_out_gain);
+	if (comp->mtk_crtc->is_dual_pipe)
+		disp_color_set_sgy(priv_data->companion, handle, drecolor_sgy->sgy_out_gain);
+	mutex_unlock(&g_color_reg_lock);
+	return 0;
+}
+
 static int mtk_color_pq_frame_config(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, unsigned int cmd, void *data, unsigned int data_size)
 {
@@ -3551,6 +3611,9 @@ static int mtk_color_pq_frame_config(struct mtk_ddp_comp *comp,
 		break;
 	case PQ_COLOR_SET_WINDOW:
 		ret = mtk_drm_color_cfg_pq_set_window(comp, handle, data, data_size);
+		break;
+	case PQ_COLOR_DRECOLOR_SET_SGY:
+		ret = mtk_color_cfg_drecolor_set_sgy(comp, handle, data, data_size);
 		break;
 	default:
 		break;
