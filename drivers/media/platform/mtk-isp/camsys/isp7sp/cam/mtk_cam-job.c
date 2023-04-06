@@ -3889,21 +3889,22 @@ static int fill_raw_meta_header(struct req_buffer_helper *helper)
 		p.bin_ratio = bin_ratio(res->raw_res.bin);
 
 		p.rgbw = is_rgbw(job);
+
+		helper->meta_cfg_buf_va = p.meta_cfg;
 	}
 
 	if (helper->meta_stats0_buf) {
-		void *vaddr = NULL;
-
 		ret = ret || fill_raw_stats_header(helper->meta_stats0_buf, &p,
-						   &vaddr);
+						   &helper->meta_stats0_buf_va);
 
-		job->timestamp_buf = vaddr ?
-			(vaddr + GET_PLAT_V4L2(timestamp_buffer_ofst)) : NULL;
+		job->timestamp_buf = helper->meta_stats0_buf_va ?
+			(helper->meta_stats0_buf_va +
+				GET_PLAT_V4L2(timestamp_buffer_ofst)) : NULL;
 	}
 
 	if (helper->meta_stats1_buf)
 		ret = ret || fill_raw_stats_header(helper->meta_stats1_buf, &p,
-						   NULL);
+						   &helper->meta_stats1_buf_va);
 
 	if (ret)
 		pr_info("%s: failed. ret = %d\n", __func__, ret);

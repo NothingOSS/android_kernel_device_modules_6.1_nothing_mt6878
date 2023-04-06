@@ -628,20 +628,32 @@ static int fill_raw_in_qos(struct mtk_cam_job *job,
 	return 0;
 }
 
-static int fill_raw_stats_qos(struct mtk_cam_job *job,
-							u32 sensor_h, u32 sensor_vb, u64 linet)
+static int fill_raw_stats_qos(struct req_buffer_helper *helper,
+					u32 sensor_h, u32 sensor_vb, u64 linet)
 {
+	struct mtk_cam_job *job = helper->job;
 	struct mtkcam_qos_desc *qos_desc;
 	unsigned int dst_port;
 	unsigned int size = 0;
+	void *meta_va = NULL;
 	u32 peak_bw, avg_bw;
 	int i, j;
 
 	for (i = 0; i < ARRAY_SIZE(mmqos_stats_table); i++) {
 		qos_desc = &mmqos_stats_table[i];
 
+		if (qos_desc->id == MTKCAM_IPI_RAW_META_STATS_CFG)
+			meta_va = helper->meta_cfg_buf_va;
+		else if (qos_desc->id == MTKCAM_IPI_RAW_META_STATS_0)
+			meta_va = helper->meta_stats0_buf_va;
+		else if (qos_desc->id == MTKCAM_IPI_RAW_META_STATS_1)
+			meta_va = helper->meta_stats1_buf_va;
+		else
+			continue;
+
 		for (j = 0; j < qos_desc->desc_size; j++) {
-			CALL_PLAT_V4L2(get_meta_stats_size, qos_desc->dma_desc[j].src_port, &size);
+			CALL_PLAT_V4L2(get_meta_stats_port_size,
+				qos_desc->id, meta_va, qos_desc->dma_desc[j].src_port, &size);
 			if (!size)
 				break;
 
@@ -652,6 +664,10 @@ static int fill_raw_stats_qos(struct mtk_cam_job *job,
 					job->req_seq, size);
 				continue;
 			}
+
+			/* for multi exposure */
+			if (qos_desc->dma_desc[j].src_port == PORT_BPCI)
+				size *= job_exp_num(job);
 
 			avg_bw = calc_bw(size, linet, sensor_h + sensor_vb);
 			peak_bw = is_dc_mode(job) ? 0 : avg_bw;
@@ -878,7 +894,7 @@ void mtk_cam_fill_qos(struct req_buffer_helper *helper)
 	for (i = 0; i < helper->ii_idx; i++)
 		fill_raw_in_qos(job, &fp->img_ins[i], sensor_h, senser_vb, avg_linet);
 
-	fill_raw_stats_qos(job, sensor_h, senser_vb, avg_linet);
+	fill_raw_stats_qos(helper, sensor_h, senser_vb, avg_linet);
 
 	/* camsv */
 	fill_sv_qos(job, fp, sensor_h, senser_vb, avg_linet, sensor_fps);

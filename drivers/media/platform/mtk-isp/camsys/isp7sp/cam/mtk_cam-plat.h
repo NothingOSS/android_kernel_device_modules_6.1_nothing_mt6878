@@ -12,6 +12,10 @@
 enum STATS_DMA_PORT {
 	PORT_UNKNOWN = 0,
 	PORT_CQI,
+	PORT_CACI,
+	PORT_BPCI,
+	PORT_PDI,
+	PORT_PDO,
 	PORT_AAO,
 	PORT_AAHO,
 	PORT_TSFSO,
@@ -101,7 +105,7 @@ struct plat_v4l2_data {
 
 	int (*set_meta_stats_info)(int ipi_id, void *addr, size_t size,
 				   const struct set_meta_stats_info_param *p);
-	int (*get_meta_stats_size)(int dma_port, int *size);
+	int (*get_meta_stats_port_size)(int ipi_id, void *addr, int dma_port, int *size);
 
 	int (*set_sv_meta_stats_info)(int ipi_id, void *addr, struct dma_info *info);
 	int (*set_mraw_meta_stats_info)(int ipi_id, void *addr, struct dma_info *info);

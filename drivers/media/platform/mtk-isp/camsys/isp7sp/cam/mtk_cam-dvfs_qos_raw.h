@@ -75,6 +75,24 @@ static struct qos_dma_desc stats_cfg_dmas[] = {
 		.src_port = PORT_CQI,
 		.dst_port = SMI_PORT_CQI_R1,
 	},
+	{
+		.dma_name = "caci_r1",
+		.domain = RAW_DOMAIN,
+		.src_port = PORT_CACI,
+		.dst_port = SMI_PORT_FPRI_R1,
+	},
+	{
+		.dma_name = "bpci_r1",
+		.domain = RAW_DOMAIN,
+		.src_port = PORT_BPCI,
+		.dst_port = SMI_PORT_BPCI_R1,
+	},
+	{
+		.dma_name = "pdi_r1",
+		.domain = RAW_DOMAIN,
+		.src_port = PORT_PDI,
+		.dst_port = SMI_PORT_LSCI_R1,
+	},
 };
 
 static struct qos_dma_desc stats_0_dmas[] = {
@@ -118,6 +136,12 @@ static struct qos_dma_desc stats_0_dmas[] = {
 		.domain = YUV_DOMAIN,
 		.src_port = PORT_TCYSO,
 		.dst_port = SMI_PORT_TSYSO_R1,
+	},
+	{
+		.dma_name = "pdo_r1",
+		.domain = RAW_DOMAIN,
+		.src_port = PORT_PDO,
+		.dst_port = SMI_PORT_UFEO_R1,
 	},
 };
 
