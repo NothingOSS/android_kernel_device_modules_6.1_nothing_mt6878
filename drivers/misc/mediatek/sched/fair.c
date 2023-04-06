@@ -1073,10 +1073,128 @@ void set_gear_indices(int pid, int gear_start, int num_gear)
 }
 EXPORT_SYMBOL_GPL(set_gear_indices);
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_UPDOWN_MIGRATE)
+
+/* Default Migration margin */
+unsigned int sched_capacity_up_margin[MAX_NR_CPUS] = {
+			[0 ... MAX_NR_CPUS-1] = 1280 /* ~20% margin */
+};
+unsigned int sched_capacity_down_margin[MAX_NR_CPUS] = {
+			[0 ... MAX_NR_CPUS-1] = 1280 /* ~20% margin */
+};
+
+int set_updown_migrate_pct(int gear_idx, int dn_pct, int up_pct)
+{
+	int ret = 0, cpu;
+	struct cpumask *cpus;
+
+	rcu_read_lock();
+
+	/* check gear_idx validity */
+	if (gear_idx < 0 || gear_idx > num_sched_clusters-1)
+		goto unlock;
+
+	/* check pct validity */
+	if (dn_pct < 1 || dn_pct > 100)
+		goto unlock;
+
+	if (up_pct < 1 || up_pct > 100)
+		goto unlock;
+
+	if (dn_pct > up_pct)
+		goto unlock;
+
+	cpus = get_gear_cpumask(gear_idx);
+	for_each_cpu(cpu, cpus) {
+		sched_capacity_up_margin[cpu] =
+			SCHED_CAPACITY_SCALE * 100 / up_pct;
+		sched_capacity_down_margin[cpu] =
+			SCHED_CAPACITY_SCALE * 100 / dn_pct;
+	}
+	ret = 1;
+
+unlock:
+	rcu_read_unlock();
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(set_updown_migrate_pct);
+
+int unset_updown_migrate_pct(int gear_idx)
+{
+	int ret = 0, cpu;
+	struct cpumask *cpus;
+
+	rcu_read_lock();
+
+	/* check gear_idx validity */
+	if (gear_idx < 0 || gear_idx > num_sched_clusters-1)
+		goto unlock;
+
+	cpus = get_gear_cpumask(gear_idx);
+	for_each_cpu(cpu, cpus) {
+		sched_capacity_up_margin[cpu] = 1078;
+		sched_capacity_down_margin[cpu] = 1205;
+	}
+	ret = 1;
+
+unlock:
+	rcu_read_unlock();
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(unset_updown_migrate_pct);
+
+static inline bool task_demand_fits(struct task_struct *p, int dst_cpu)
+{
+	int src_cpu = task_cpu(p);
+	unsigned int margin;
+	unsigned long dst_capacity = capacity_orig_of(dst_cpu);
+	unsigned long src_capacity = capacity_orig_of(src_cpu);
+
+	if (dst_capacity == SCHED_CAPACITY_SCALE)
+		return true;
+
+	/*
+	 * Derive upmigration/downmigration margin wrt the src/dst CPU.
+	 */
+	if (src_capacity > dst_capacity)
+		margin = sched_capacity_down_margin[dst_cpu];
+	else
+		margin = sched_capacity_up_margin[src_cpu];
+
+	return dst_capacity * SCHED_CAPACITY_SCALE > uclamp_task_util(p) * margin;
+}
+
+static inline bool util_fits_capacity(unsigned long cpu_util, unsigned long cpu_cap, int cpu)
+{
+	unsigned long ceiling;
+
+	ceiling = sched_capacity_up_margin[cpu] * capacity_orig_of(cpu) / SCHED_CAPACITY_SCALE;
+
+	if (trace_sched_fits_cap_ceiling_enabled())
+		trace_sched_fits_cap_ceiling(cpu, cpu_util, cpu_cap,
+			ceiling, sched_capacity_up_margin[cpu]);
+
+	return min(ceiling, cpu_cap) >= cpu_util;
+}
+
+#else
 static inline bool task_demand_fits(struct task_struct *p, int cpu)
 {
-	return task_fits_capacity(p, capacity_orig_of(cpu));
+	unsigned long capacity = capacity_orig_of(cpu);
+
+	if (capacity == SCHED_CAPACITY_SCALE)
+		return true;
+
+	return task_fits_capacity(p, capacity);
 }
+
+static inline bool util_fits_capacity(unsigned long cpu_util, unsigned long cpu_cap, int cpu)
+{
+	return fits_capacity(cpu_util, cpu_cap);
+}
+#endif
 
 static void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_index)
 {
@@ -1260,7 +1378,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 				trace_sched_util_fits_cpu(cpu, cpu_util, cpu_cap,
 						min_cap, max_cap, cpu_rq(cpu));
 
-			if (!fits_capacity(cpu_util, cpu_cap))
+			if (!util_fits_capacity(cpu_util, cpu_cap, cpu))
 				continue;
 
 			/*

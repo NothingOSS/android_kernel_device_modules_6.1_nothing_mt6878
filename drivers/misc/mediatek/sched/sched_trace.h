@@ -93,6 +93,45 @@ TRACE_EVENT(sched_find_cpu_in_irq,
 		__entry->max_spare_cap)
 );
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_UPDOWN_MIGRATE)
+TRACE_EVENT(sched_fits_cap_ceiling,
+
+	TP_PROTO(int cpu, unsigned long cpu_util,
+		unsigned long cup_cap, unsigned long ceiling,
+		unsigned int capacity_up_margin),
+
+	TP_ARGS(cpu, cpu_util, cup_cap, ceiling, capacity_up_margin),
+
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(unsigned long,   cpu_util)
+		__field(unsigned long,   cup_cap)
+		__field(unsigned long,   ceiling)
+		__field(unsigned int,   capacity_up_margin)
+		__field(unsigned long,   capacity_orig)
+		),
+
+	TP_fast_assign(
+		__entry->cpu				= cpu;
+		__entry->cpu_util			= cpu_util;
+		__entry->cup_cap			= cup_cap;
+		__entry->ceiling			= ceiling;
+		__entry->capacity_up_margin	= capacity_up_margin;
+		__entry->capacity_orig		= capacity_orig_of(cpu);
+		),
+
+	TP_printk(
+		"cpu=%d cpu_util=%ld cup_cap=%ld ceiling=%ld capacity_up_margin=%d capacity_orig=%ld",
+		__entry->cpu,
+		__entry->cpu_util,
+		__entry->cup_cap,
+		__entry->ceiling,
+		__entry->capacity_up_margin,
+		__entry->capacity_orig)
+);
+#endif
+
+
 TRACE_EVENT(sched_get_gear_indices,
 
 	TP_PROTO(struct task_struct *tsk, int uclamp_task_util,

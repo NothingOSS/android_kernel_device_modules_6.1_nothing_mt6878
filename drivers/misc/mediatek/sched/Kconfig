@@ -51,6 +51,15 @@ config MTK_SCHED_VIP_TASK
 	  It allows partial latency sensitive tasks and certain task
 	  groups to preempt other tasks.
 
+config MTK_SCHED_UPDOWN_MIGRATE
+	bool "sched updown migration"
+	depends on MTK_SCHEDULER
+	help
+	  Add tunable migration threshold.
+	  This feature can help to fine-tuning CPU Loading.
+	  It allows task to upmigrate to bigger CPUs
+	  or downmigrate to smaller CPUs with customized threshold.
+
 config MTK_THERMAL_AWARE_SCHEDULING
 	bool "thermal aware scheduling"
 	depends on MTK_EAS && MTK_THERMAL_INTERFACE
