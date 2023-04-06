@@ -14157,12 +14157,16 @@
 		scp-ultra-ul-memif-id = <0x11>;
 	};
 
-	audio_sram@11052000 {
+	audio_sram: audio-sram@11052000 {
 		compatible = "mediatek,audio_sram";
 		reg = <0 0x11052000 0 0x18000>;
 		prefer-mode = <0>;
 		mode-size = <0x12000 0x18000>;
 		block-size = <0x1000>;
+	};
+
+	audio_xhci_sram: audio-xhci-sram {
+		compatible = "mediatek,audio_xhci_sram";
 	};
 
 	sound: sound {
