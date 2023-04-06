@@ -2041,6 +2041,15 @@ static int ufs_mtk_init_clocks(struct ufs_hba *hba)
 
 		host->mclk.reg_vcore = reg;
 		host->mclk.vcore_volt = volt;
+
+		/* If default boot is max gear, request vcore */
+		if (reg && volt && host->clk_scale_up) {
+			if (regulator_set_voltage(reg, volt, INT_MAX)) {
+				dev_info(hba->dev,
+					"Failed to set vcore to %d\n", volt);
+				goto out;
+			}
+		}
 	}
 
 out:
