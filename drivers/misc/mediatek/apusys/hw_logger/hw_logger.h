@@ -120,13 +120,13 @@ enum {
 #define HWLOGR_INFO(x, args...) \
 	{ \
 		if (g_hw_logger_log_lv >= DBG_LOG_INFO) \
-			pr_info(HWLOGR_PREFIX "%s " \
-			x, __func__, ##args); \
+			pr_info(HWLOGR_PREFIX "[info] %s:%d " \
+			x, __func__, __LINE__, ##args); \
 	}
 #define HWLOGR_DBG(x, args...) \
 	{ \
 		if (g_hw_logger_log_lv >= DBG_LOG_DEBUG) \
-			pr_info(HWLOGR_PREFIX "[debug] %s/%d " \
+			pr_info(HWLOGR_PREFIX "[debug] %s:%d " \
 			x, __func__, __LINE__, ##args); \
 	}
 
@@ -150,6 +150,13 @@ enum {
 #define LOCAL_LOG_SIZE         (1024 * 1024)
 
 #define IPI_DEBUG_LEVEL 4
+
+enum {
+	SMC_OP_APU_LOG_BUF_ST_ADDR,
+	SMC_OP_APU_LOG_BUF_T_SIZE,
+	SMC_OP_APU_LOG_BUF_W_PTR,
+	SMC_OP_APU_LOG_BUF_NUM
+};
 
 /* #define hw_logger_DEBUG */
 

@@ -59,6 +59,7 @@ struct mtk_apu_hw_ops {
 #define F_SMMU_SUPPORT			BIT(10)
 #define F_BRINGUP				BIT(11)
 #define F_FPGA_EP				BIT(12)
+#define F_ACCESS_RCX_IN_ATF		BIT(13)
 
 #define APUSYS_RV_FPGA_EP
 
