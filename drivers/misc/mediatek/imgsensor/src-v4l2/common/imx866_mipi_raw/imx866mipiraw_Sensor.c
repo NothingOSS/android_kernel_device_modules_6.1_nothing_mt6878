@@ -1998,6 +1998,7 @@ static int get_info(struct subdrv_ctx *ctx,
 		MSDK_SENSOR_INFO_STRUCT *sensor_info,
 		MSDK_SENSOR_CONFIG_STRUCT *sensor_config_data)
 {
+	int i;
 	LOG_DEBUG("scenario_id = %d\n", scenario_id);
 
 	sensor_info->SensorClockPolarity = SENSOR_CLOCK_POLARITY_LOW;
@@ -2065,6 +2066,11 @@ static int get_info(struct subdrv_ctx *ctx,
 	sensor_info->SensorPacketECCOrder = 1;
 	sensor_info->FrameTimeDelayFrame = imgsensor_info.frame_time_delay_frame;
 	sensor_info->OB_pedestal = imgsensor_info.ob_pedestal;
+	for (i = 0; i < SENSOR_SCENARIO_ID_MAX; i++) {
+		sensor_info->gain_ratio[i] = 1000;
+		sensor_info->OB_pedestals[i] = imgsensor_info.ob_pedestal;
+		sensor_info->saturation_level[i] = 1023;
+	}
 
 	return ERROR_NONE;
 }	/*	get_info  */
