@@ -1264,6 +1264,7 @@ int mtk_cam_seninf_set_pixelmode(struct v4l2_subdev *sd,
 {
 	struct seninf_ctx *ctx = container_of(sd, struct seninf_ctx, subdev);
 	struct seninf_vc *vc;
+	int i;
 
 	vc = mtk_cam_seninf_get_vc_by_pad(ctx, pad_id);
 	if (!vc) {
@@ -1274,7 +1275,13 @@ int mtk_cam_seninf_set_pixelmode(struct v4l2_subdev *sd,
 	vc->pixel_mode = pixelMode;
 	if (ctx->streaming) {
 		update_isp_clk(ctx);
-		g_seninf_ops->_update_mux_pixel_mode(ctx, vc->dest[0].mux, pixelMode);
+		for (i = 0; i < vc->dest_cnt; i++) {
+			if (vc->dest[i].mux == 0xFF)
+				dev_info(ctx->dev, "%s !ERROR dest[%d].mux == 0xFF\n", __func__, i);
+			else
+				g_seninf_ops->_update_mux_pixel_mode(ctx,
+							vc->dest[i].mux, pixelMode);
+		}
 	}
 	// if streaming, update ispclk and update pixle mode seninf mux and reset
 
