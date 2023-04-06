@@ -132,6 +132,7 @@ phys_addr_t vcp_sec_dump_base_phys;
 phys_addr_t vcp_sec_dump_base_virt;
 phys_addr_t vcp_mem_size;
 bool vcp_hwvoter_support = true;
+bool vcp_ao;
 struct vcp_regs vcpreg;
 struct clk *vcpsel;
 struct clk *vcpclk;
@@ -856,18 +857,20 @@ int vcp_enable_pm_clk(enum feature_id id)
 	}
 
 	if (pwclkcnt == 0) {
-		ret |= clk_prepare_enable(vcp26m);
-		if (ret)
-			pr_debug("[VCP] %s: clk_prepare_enable vcp26m\n", __func__);
-		ret |= clk_prepare_enable(vcpclk);
-		if (ret)
-			pr_debug("[VCP] %s: clk_prepare_enable vcpclk\n", __func__);
-		ret |= clk_prepare_enable(vcpsel);
-		if (ret)
-			pr_debug("[VCP] %s: clk_prepare_enable vcpsel\n", __func__);
-		ret |= pm_runtime_get_sync(vcp_io_devs[VCP_IOMMU_256MB1]);
-		if (ret)
-			pr_debug("[VCP] %s: pm_runtime_get_sync\n", __func__);
+		if (!vcp_ao) {
+			ret |= clk_prepare_enable(vcp26m);
+			if (ret)
+				pr_debug("[VCP] %s: clk_prepare_enable vcp26m\n", __func__);
+			ret |= clk_prepare_enable(vcpclk);
+			if (ret)
+				pr_debug("[VCP] %s: clk_prepare_enable vcpclk\n", __func__);
+			ret |= clk_prepare_enable(vcpsel);
+			if (ret)
+				pr_debug("[VCP] %s: clk_prepare_enable vcpsel\n", __func__);
+			ret |= pm_runtime_get_sync(vcp_io_devs[VCP_IOMMU_256MB1]);
+			if (ret)
+				pr_debug("[VCP] %s: pm_runtime_get_sync\n", __func__);
+		}
 
 		vcp_enable_dapc();
 		vcp_enable_irqs();
@@ -942,12 +945,14 @@ int vcp_disable_pm_clk(enum feature_id id)
 		vcp_wait_awake_count();
 		vcp_disable_dapc();
 
-		ret = pm_runtime_put_sync(vcp_io_devs[VCP_IOMMU_256MB1]);
-		if (ret)
-			pr_debug("[VCP] %s: pm_runtime_put_sync\n", __func__);
-		clk_disable_unprepare(vcpsel);
-		clk_disable_unprepare(vcpclk);
-		clk_disable_unprepare(vcp26m);
+		if (!vcp_ao) {
+			ret = pm_runtime_put_sync(vcp_io_devs[VCP_IOMMU_256MB1]);
+			if (ret)
+				pr_debug("[VCP] %s: pm_runtime_put_sync\n", __func__);
+			clk_disable_unprepare(vcpsel);
+			clk_disable_unprepare(vcpclk);
+			clk_disable_unprepare(vcp26m);
+		}
 	}
 	if (pwclkcnt < 0) {
 		for (i = 0; i < NUM_FEATURE_ID; i++)
@@ -1002,12 +1007,14 @@ static int vcp_pm_event(struct notifier_block *notifier
 
 			vcp_wait_awake_count();
 
-			retval = pm_runtime_put_sync(vcp_io_devs[VCP_IOMMU_256MB1]);
-			if (retval)
-				pr_debug("[VCP] %s: pm_runtime_put_sync\n", __func__);
-			clk_disable_unprepare(vcpsel);
-			clk_disable_unprepare(vcpclk);
-			clk_disable_unprepare(vcp26m);
+			if (!vcp_ao) {
+				retval = pm_runtime_put_sync(vcp_io_devs[VCP_IOMMU_256MB1]);
+				if (retval)
+					pr_debug("[VCP] %s: pm_runtime_put_sync\n", __func__);
+				clk_disable_unprepare(vcpsel);
+				clk_disable_unprepare(vcpclk);
+				clk_disable_unprepare(vcp26m);
+			}
 		}
 		is_suspending = true;
 		mutex_unlock(&vcp_pw_clk_mutex);
@@ -1022,18 +1029,20 @@ static int vcp_pm_event(struct notifier_block *notifier
 		mutex_lock(&vcp_pw_clk_mutex);
 		pr_notice("[VCP] PM_POST_SUSPEND entered %d %d\n", pwclkcnt, is_suspending);
 		if (is_suspending && pwclkcnt) {
-			retval = clk_prepare_enable(vcp26m);
-			if (retval)
-				pr_debug("[VCP] %s: clk_prepare_enable vcp26m\n", __func__);
-			retval = clk_prepare_enable(vcpclk);
-			if (retval)
-				pr_debug("[VCP] %s: clk_prepare_enable vcpclk\n", __func__);
-			retval = clk_prepare_enable(vcpsel);
-			if (retval)
-				pr_debug("[VCP] %s: clk_prepare_enable vcpsel\n", __func__);
-			retval = pm_runtime_get_sync(vcp_io_devs[VCP_IOMMU_256MB1]);
-			if (retval)
-				pr_debug("[VCP] %s: pm_runtime_get_sync\n", __func__);
+			if (!vcp_ao) {
+				retval = clk_prepare_enable(vcp26m);
+				if (retval)
+					pr_debug("[VCP] %s: clk_prepare_enable vcp26m\n", __func__);
+				retval = clk_prepare_enable(vcpclk);
+				if (retval)
+					pr_debug("[VCP] %s: clk_prepare_enable vcpclk\n", __func__);
+				retval = clk_prepare_enable(vcpsel);
+				if (retval)
+					pr_debug("[VCP] %s: clk_prepare_enable vcpsel\n", __func__);
+				retval = pm_runtime_get_sync(vcp_io_devs[VCP_IOMMU_256MB1]);
+				if (retval)
+					pr_debug("[VCP] %s: pm_runtime_get_sync\n", __func__);
+			}
 
 			vcp_enable_dapc();
 			vcp_enable_irqs();
@@ -1080,23 +1089,31 @@ void vcp_set_clk(void)
 	int ret, i;
 	int clk_retry = 10;
 
-	for (i = 0; i < clk_retry; i++) {
-		ret = clk_set_parent(vcpsel, vcp26m);	/* guarantee status sync */
-		if (ret)
-			pr_notice("[VCP] %s: Failed to set parent %s of %s ret %d\n", __func__,
-				__clk_get_name(vcp26m), __clk_get_name(vcpsel), ret);
+	if (!vcp_ao) {
+		for (i = 0; i < clk_retry; i++) {
+			ret = clk_set_parent(vcpsel, vcp26m);	/* guarantee status sync */
+			if (ret)
+				pr_notice("[VCP] %s: Failed to set parent %s of %s ret %d\n",
+					__func__, __clk_get_name(vcp26m),
+					__clk_get_name(vcpsel), ret);
 
-		ret = clk_set_parent(vcpsel, vcpclk);
-		if (ret)
-			pr_notice("[VCP] %s: Failed to set parent %s of %s ret %d\n", __func__,
-				__clk_get_name(vcpclk), __clk_get_name(vcpsel), ret);
+			ret = clk_set_parent(vcpsel, vcpclk);
+			if (ret)
+				pr_notice("[VCP] %s: Failed to set parent %s of %s ret %d\n",
+					__func__, __clk_get_name(vcpclk),
+					__clk_get_name(vcpsel), ret);
 
 #ifdef VCP_CLK_FMETER
-		ret = mt_get_fmeter_freq(vcpreg.fmeter_ck, vcpreg.fmeter_type);
-		if (ret > VCP_30MHZ) {	/* fmeter 5% deviation */
-			/* or fail dump something */
-			break;
+			ret = mt_get_fmeter_freq(vcpreg.fmeter_ck, vcpreg.fmeter_type);
+			if (ret > VCP_30MHZ) {	/* fmeter 5% deviation */
+				/* or fail dump something */
+				break;
+			}
+#endif
 		}
+	} else {
+#ifdef VCP_CLK_FMETER
+		ret = mt_get_fmeter_freq(vcpreg.fmeter_ck, vcpreg.fmeter_type);
 #endif
 	}
 
@@ -2846,29 +2863,35 @@ static int vcp_device_probe(struct platform_device *pdev)
 		}
 	}
 
-	ret = of_property_read_string_index(
+	vcp_ao = of_property_read_bool(node, "vcp-ao-feature");
+	pr_info("[VCP] vcp-ao %s", vcp_ao ? "support":"non-support");
+
+	if (!vcp_ao) {
+		ret = of_property_read_string_index(
 				pdev->dev.of_node, "clock-names", 0, &clk_name);
-	vcpsel = devm_clk_get(&pdev->dev, clk_name);
-	if (IS_ERR(vcpsel)) {
-		pr_info("[VCP] Unable to devm_clk_get id: %d, name: %s\n",
-			0, clk_name);
-		return PTR_ERR(vcpsel);
-	}
-	ret = of_property_read_string_index(
+		vcpsel = devm_clk_get(&pdev->dev, clk_name);
+		if (IS_ERR(vcpsel)) {
+			pr_info("[VCP] Unable to devm_clk_get id: %d, name: %s\n",
+				0, clk_name);
+			return PTR_ERR(vcpsel);
+		}
+		ret = of_property_read_string_index(
 				pdev->dev.of_node, "clock-names", 1, &clk_name);
-	vcpclk = devm_clk_get(&pdev->dev, clk_name);
-	if (IS_ERR(vcpclk)) {
-		pr_info("[VCP] Unable to devm_clk_get id: %d, name: %s\n",
-			1, clk_name);
-		return PTR_ERR(vcpclk);
-	}
-	ret = of_property_read_string_index(
+		vcpclk = devm_clk_get(&pdev->dev, clk_name);
+		if (IS_ERR(vcpclk)) {
+			pr_info("[VCP] Unable to devm_clk_get id: %d, name: %s\n",
+				1, clk_name);
+			return PTR_ERR(vcpclk);
+		}
+		ret = of_property_read_string_index(
 				pdev->dev.of_node, "clock-names", 2, &clk_name);
-	vcp26m = devm_clk_get(&pdev->dev, clk_name);
-	if (IS_ERR(vcp26m)) {
-		pr_info("[VCP] Unable to devm_clk_get id: %d, name: %s\n",
-			2, clk_name);
-		return PTR_ERR(vcp26m);
+		vcp26m = devm_clk_get(&pdev->dev, clk_name);
+		if (IS_ERR(vcp26m)) {
+			pr_info("[VCP] Unable to devm_clk_get id: %d, name: %s\n",
+				2, clk_name);
+			return PTR_ERR(vcp26m);
+		}
+
 	}
 
 	ret = vcp_dump_size_probe(pdev);

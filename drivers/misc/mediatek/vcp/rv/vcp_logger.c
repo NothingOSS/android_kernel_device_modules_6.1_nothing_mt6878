@@ -152,6 +152,7 @@ int vcp_logger_wakeup_handler(unsigned int id, void *prdata, void *data,
 	return 0;
 }
 
+#if VCP_LOGGER_ENABLE
 /*
  * get log from vcp to last_log_buf
  * @param len:  data length
@@ -242,6 +243,7 @@ exit:
 	mutex_unlock(&vcp_logger_mutex);
 	return ret;
 }
+#endif
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT)
 ssize_t vcp_A_log_read(char __user *data, size_t len)
