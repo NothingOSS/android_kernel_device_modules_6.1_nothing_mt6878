@@ -475,12 +475,11 @@ unsigned int DVP_only_en;
 unsigned int DVP_Num;
 unsigned int DVGF_only_en;
 unsigned int DVGF_Num;
-unsigned int Get_DPE_IRQ[3];
+//unsigned int Get_DVS_IRQ;
 //unsigned int Get_DVP_IRQ;
 //unsigned int Get_DVGF_IRQ;
 //unsigned int DVGF_Frame_cnt;
 unsigned int DPE_debug_log_en;
-
 
 #ifdef CMASYS_CLK_Debug
 // add Rang to dts
@@ -1603,9 +1602,6 @@ signed int dpe_enque_cb(struct frame *frames, void *req)
 	if ((_req->m_pDpeConfig[ucnt].Dpe_engineSelect == MODE_DVS_ONLY) ||
 		(_req->m_pDpeConfig[ucnt].Dpe_engineSelect == MODE_DVS_DVP_BOTH)) {
 
-		// LOG_INF("DVS enable IRQ Get_DPE_IRQ = %d\n", Get_DPE_IRQ[1]);
-		// enable_irq(Get_DPE_IRQ[1]);
-
 		mutex_lock(&gFDMutex);
 		if ((DVS_only_en == 0) && (DVS_Num == 0)) {
 			SrcImg_Y_L_mmu = kzalloc(sizeof(struct tee_mmu) * 4, GFP_KERNEL);
@@ -1881,9 +1877,6 @@ signed int dpe_enque_cb(struct frame *frames, void *req)
 	///////DVP
 	if ((_req->m_pDpeConfig[ucnt].Dpe_engineSelect == MODE_DVP_ONLY) ||
 		(_req->m_pDpeConfig[ucnt].Dpe_engineSelect == MODE_DVS_DVP_BOTH)) {
-
-		// LOG_INF("DVP enable IRQ Get_DPE_IRQ = %d\n", Get_DPE_IRQ[0]);
-		// enable_irq(Get_DPE_IRQ[0]);
 
 		mutex_lock(&gFDMutex);
 		if ((DVP_only_en == 0) && (DVP_Num == 0)) {
@@ -2276,9 +2269,6 @@ signed int dpe_enque_cb(struct frame *frames, void *req)
 	}
 	////////DVGF
 	if (_req->m_pDpeConfig[ucnt].Dpe_engineSelect == MODE_DVGF_ONLY) {
-
-		// LOG_INF("DVDF enable IRQ Get_DPE_IRQ = %d\n", Get_DPE_IRQ[2]);
-		// enable_irq(Get_DPE_IRQ[2]);
 
 		mutex_lock(&gFDMutex);
 		if ((DVGF_only_en == 0) && (DVGF_Num == 0)) {
@@ -6097,15 +6087,6 @@ static void DPE_EnableClock(bool En)
 #ifndef EP_NO_CLKMGR
 			LOG_INF("[Debug]DPE_EnClock CLK OPEN");
 			DPE_Prepare_Enable_ccf_clock();
-			if (DPE_debug_log_en == 1) {
-				LOG_INF("Enable IRQ\n");
-				LOG_INF("OPEN CCF enable IRQ Get_DPE_IRQ = %d\n", Get_DPE_IRQ[0]);
-				LOG_INF("OPEN CCF enable IRQ Get_DPE_IRQ = %d\n", Get_DPE_IRQ[1]);
-				LOG_INF("OPEN CCF enable IRQ Get_DPE_IRQ = %d\n", Get_DPE_IRQ[2]);
-			}
-			enable_irq(Get_DPE_IRQ[0]);
-			enable_irq(Get_DPE_IRQ[1]);
-			enable_irq(Get_DPE_IRQ[2]);
 			//mutex_unlock(&gDpeMutex);//!
 #else
 			/* Enable clock by hardcode:
@@ -6155,15 +6136,6 @@ static void DPE_EnableClock(bool En)
 			spin_unlock(&(DPEInfo.SpinLockDPE));
 #if !IS_ENABLED(CONFIG_MTK_LEGACY) && IS_ENABLED(CONFIG_COMMON_CLK) /*CCF*/
 #ifndef EP_NO_CLKMGR
-			//if (DPE_debug_log_en == 1) {
-			//	LOG_INF("disCCF disable IRQ Get_DPE_IRQ = %d\n", Get_DPE_IRQ[0]);
-			//	LOG_INF("disCCF disable IRQ Get_DPE_IRQ = %d\n", Get_DPE_IRQ[1]);
-			//	LOG_INF("disCCF disable IRQ Get_DPE_IRQ = %d\n", Get_DPE_IRQ[2]);
-			//}
-			//disable_irq(Get_DPE_IRQ[0]);
-			//disable_irq(Get_DPE_IRQ[1]);
-			//disable_irq(Get_DPE_IRQ[2]);
-
 			DPE_Disable_Unprepare_ccf_clock();
 #else
 			/* Disable clock by hardcode:
@@ -7397,7 +7369,6 @@ static signed int DPE_open(struct inode *pInode, struct file *pFile)
 	//DPE_debug_log_en = 1;
 	LOG_INF("DPE open g_u4EnableClockCount: %d", g_u4EnableClockCount);
 	/*  */
-	//enable_irq(DPEInfo.IrqNum);
 /*#define KERNEL_LOG*/
 #ifdef KERNEL_LOG
     /* In EP, Add DPE_DBG_WRITE_REG for debug. Should remove it after EP */
@@ -7995,7 +7966,7 @@ if (DPE_dev->irq > 0) {
 			request_irq(DPE_dev->irq,
 				(irq_handler_t)
 				DPE_IRQ_CB_TBL[i].isr_fp,
-				IRQF_NO_AUTOEN | irq_info[2],
+				irq_info[2],
 				(const char *)DPE_IRQ_CB_TBL[i].device_name,
 				NULL);
 			if (Ret) {
@@ -8013,10 +7984,6 @@ if (DPE_dev->irq > 0) {
 			pDev->dev.of_node->name,
 			DPE_dev->irq,
 			DPE_IRQ_CB_TBL[i].device_name);
-			Get_DPE_IRQ[i] = DPE_dev->irq;
-			if (DPE_debug_log_en == 1)
-				LOG_INF("Get_DPE_IRQ = %d, i = %d\n", Get_DPE_IRQ[i], i);
-
 			break;
 		}
 	}
@@ -8030,17 +7997,6 @@ if (DPE_dev->irq > 0) {
 			nr_DPE_devs,
 			pDev->dev.of_node->name, DPE_dev->irq);
 }
-
-	/* Release IRQ for default disable */
-	// if (DPE_debug_log_en == 1) {
-	//	LOG_INF("Probe disable IRQ Get_DPE_IRQ = %d\n", Get_DPE_IRQ[0]);
-	//	LOG_INF("Probe disable IRQ Get_DPE_IRQ = %d\n", Get_DPE_IRQ[1]);
-	//	LOG_INF("Probe disable IRQ Get_DPE_IRQ = %d\n", Get_DPE_IRQ[2]);
-	// }
-	// disable_irq(Get_DPE_IRQ[0]);
-	// disable_irq(Get_DPE_IRQ[1]);
-	// disable_irq(Get_DPE_IRQ[2]);
-
 #endif
 	pm_runtime_enable(DPE_dev->dev);
 	if (!pm_runtime_enabled(DPE_dev->dev))
@@ -8431,12 +8387,6 @@ static int dpe_suspend_pm_event(struct notifier_block *notifier,
 	case PM_SUSPEND_PREPARE: /*enter suspend*/
 		if (g_u4EnableClockCount > 0) {
 			DPE_EnableClock(MFALSE);
-			// LOG_INF("suspend disable IRQ Get_DPE_IRQ = %d\n", Get_DPE_IRQ[0]);
-			// disable_irq(Get_DPE_IRQ[0]);
-			// LOG_INF("suspend disable IRQ Get_DPE_IRQ = %d\n", Get_DPE_IRQ[1]);
-			// disable_irq(Get_DPE_IRQ[1]);
-			// LOG_INF("suspend disable IRQ Get_DPE_IRQ = %d\n", Get_DPE_IRQ[2]);
-			// disable_irq(Get_DPE_IRQ[2]);
 			g_SuspendCnt++;
 		}
 		bPass1_On_In_Resume_TG1 = 0;
