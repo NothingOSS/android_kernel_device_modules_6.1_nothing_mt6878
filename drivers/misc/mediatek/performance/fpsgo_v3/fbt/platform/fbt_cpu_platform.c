@@ -55,14 +55,14 @@ static int platform_fpsgo_probe(struct platform_device *pdev)
 #endif /* CONFIG_MTK_DVFSRC */
 
 	ret = of_property_read_u32(node,
-			 "gcc_enable", &retval);
+			 "gcc-enable", &retval);
 	if (!ret)
 		plat_gcc_enable = retval;
 	else
 		FPSGO_LOGE("%s unable to get plat_gcc_enable\n", __func__);
 
 	ret = of_property_read_u32(node,
-			 "cpu_limit", &retval);
+			 "cpu-limit", &retval);
 	if (!ret)
 		plat_cpu_limit = retval;
 
@@ -208,7 +208,7 @@ static int generate_cpu_mask(void)
 	int i, ret, cpu;
 	int temp_mask = 0;
 
-	ret = of_property_read_u32_array(node, "fbt_cpu_mask",
+	ret = of_property_read_u32_array(node, "fbt-cpu-mask",
 			mask_int, FPSGO_PREFER_TOTAL);
 
 	for (i = 0; i < FPSGO_PREFER_TOTAL; i++) {
@@ -233,7 +233,7 @@ static int generate_sbe_rescue_enable(void)
 	int ret = 0, retval = 0;
 
 	ret = of_property_read_u32(node,
-		 "sbe_resceue_enable", &retval);
+		 "sbe-resceue-enable", &retval);
 	if (!ret)
 		plat_sbe_rescue_enable = retval;
 	else
