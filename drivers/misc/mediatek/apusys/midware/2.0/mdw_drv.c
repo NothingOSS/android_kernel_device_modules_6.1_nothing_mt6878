@@ -72,28 +72,32 @@ static int mdw_drv_open(struct inode *inode, struct file *filp)
 	idr_init(&mpriv->cmds);
 	atomic_set(&mpriv->exec_seqno, 0);
 
-	if (!atomic_read(&g_inited)) {
-		ret = mdw_dev->dev_funcs->sw_init(mdw_dev);
-		if (ret) {
-			mdw_drv_err("mdw sw init fail(%d)\n", ret);
-			goto delete_mpriv;
-		}
-		atomic_inc(&g_inited);
-	}
-
 	mpriv->get = mdw_drv_priv_get;
 	mpriv->put = mdw_drv_priv_put;
 	kref_init(&mpriv->ref);
 
+	if (!atomic_read(&g_inited)) {
+		ret = mdw_dev->dev_funcs->sw_init(mdw_dev);
+		if (ret) {
+			mdw_drv_err("mdw sw init fail(%d)\n", ret);
+			goto put_mpriv;
+		}
+		atomic_inc(&g_inited);
+	}
+
 	ret = mdw_mem_pool_create(mpriv, &mpriv->cmd_buf_pool,
 		MDW_MEM_TYPE_MAIN, MDW_MEM_POOL_CHUNK_SIZE,
 		MDW_DEFAULT_ALIGN, F_MDW_MEM_32BIT);
-	if (ret)
-		goto delete_mpriv;
+	if (ret) {
+		mdw_drv_err("mdw create mem pool fail ret(%d)\n", ret);
+		goto put_mpriv;
+	}
 
 	ret = mdw_cmd_history_tbl_create(mpriv);
-	if (ret)
+	if (ret) {
+		mdw_drv_err("mdw create history table fail ret(%d)\n", ret);
 		goto delete_mem_pool;
+	}
 
 	mdw_dev_session_create(mpriv);
 	mdw_flw_debug("mpriv(0x%lx)\n", (unsigned long)mpriv);
@@ -101,9 +105,8 @@ static int mdw_drv_open(struct inode *inode, struct file *filp)
 
 delete_mem_pool:
 	mdw_mem_pool_destroy(&mpriv->cmd_buf_pool);
-delete_mpriv:
-	kfree(mpriv);
-	mpriv = NULL;
+put_mpriv:
+	mpriv->put(mpriv);
 out:
 	return ret;
 }
