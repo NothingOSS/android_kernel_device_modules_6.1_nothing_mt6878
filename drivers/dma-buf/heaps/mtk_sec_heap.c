@@ -28,6 +28,7 @@
 #include "page_pool.h"
 #include "mtk_heap_priv.h"
 #include "mtk_heap.h"
+#include "mtk_sec_heap.h"
 #include "mtk_iommu.h"
 
 #define LOW_ORDER_GFP (GFP_HIGHUSER | __GFP_ZERO | __GFP_COMP)
@@ -36,18 +37,6 @@
 	(((GFP_HIGHUSER | __GFP_ZERO | __GFP_NOWARN | __GFP_NORETRY) &         \
 	  ~__GFP_RECLAIM) |                                                    \
 	 __GFP_COMP)
-
-#define ROUNDUP(a, b) (((a) + ((b)-1)) & ~((b)-1))
-
-#define PMM_MSG_ORDER_SHIFT (24UL)
-#define PMM_MSG_ENTRY(pa, page_order)                                          \
-	((pa >> PAGE_SHIFT) | (page_order << PMM_MSG_ORDER_SHIFT))
-#define GET_PMM_ENTRY_PA(entry)                                                \
-	((entry & ((1UL << PMM_MSG_ORDER_SHIFT) - 1)) << PAGE_SHIFT)
-#define PMM_MSG_ENTRIES_PER_PAGE (PAGE_SIZE / sizeof(uint32_t))
-
-#define HYP_PMM_ASSIGN_BUFFER_V2 (0XBB00FFAB)
-#define HYP_PMM_UNASSIGN_BUFFER_V2 (0XBB00FFAC)
 
 // static gfp_t order_flags[] = { HIGH_ORDER_GFP, MID_ORDER_GFP, LOW_ORDER_GFP };
 static gfp_t order_flags[] = { HIGH_ORDER_GFP, MID_ORDER_GFP };
@@ -124,6 +113,7 @@ struct secure_heap_page {
 	atomic64_t total_size;
 	struct dma_heap *heap;
 	struct device *heap_dev;
+	struct page *bitmap;
 	enum TRUSTED_MEM_REQ_TYPE tmem_type;
 	enum HEAP_BASE_TYPE heap_type;
 };
@@ -403,6 +393,7 @@ static int page_base_free_v2(struct secure_heap_page *sec_heap,
 	struct sg_table *table = NULL;
 	struct scatterlist *sg = NULL;
 	int smc_ret, i, j;
+	uint32_t *bitmap = page_address(sec_heap->bitmap);
 
 	smc_ret = mtee_unassign_buffer_v2(buffer->ssheap, sec_heap->tmem_type);
 	if (smc_ret) {
@@ -415,7 +406,19 @@ static int page_base_free_v2(struct secure_heap_page *sec_heap,
 	pmm_page = buffer->ssheap->pmm_page;
 	pmm_msg_list = &buffer->ssheap->pmm_msg_list;
 	list_for_each_entry_safe(pmm_page, tmp_page, pmm_msg_list, lru) {
-		memset(page_address(pmm_page), 0, page_size(pmm_page));
+		uint32_t *pfn = page_address(pmm_page);
+		uint32_t idx_2m, idx, offset;
+
+		i = 0;
+		while (pfn[i]) {
+			idx_2m = (pfn[i] & 0xffffff) >> 9;
+			idx = idx_2m / 32;
+			offset = idx_2m % 32;
+			bitmap[idx] |= (1 << offset);
+			// pr_info("bitmap[%#x]:%#x, offset:%#x\n", idx, bitmap[idx], offset);
+			++i;
+		}
+		memset(pfn, 0, page_size(pmm_page));
 		__free_pages(pmm_page, get_order(PAGE_SIZE));
 	}
 	kfree(buffer->ssheap);
@@ -441,10 +444,21 @@ static int page_base_free_v2(struct secure_heap_page *sec_heap,
 		pr_warn("%s, total memory overflow, %#llx!!\n", __func__,
 			atomic64_read(&sec_heap->total_size));
 
+	/* check need infra MPU lv1 bypass */
+	if (atomic64_read(&sec_heap->total_size) == 0) {
+		struct arm_smccc_res smc_res;
+
+		arm_smccc_smc(HYP_PMM_MERGED_TABLE, page_to_pfn(sec_heap->bitmap),
+				0, 0, 0, 0, 0, 0, &smc_res);
+		if (smc_res.a0 != 0) {
+			pr_err("smc_res.a0=%#lx\n", smc_res.a0);
+			return -EINVAL;
+		}
+	}
+
 	pr_debug("%s done, [%s] size:%#lx, total_size:%#llx\n", __func__,
 		 dma_heap_get_name(buffer->heap), buffer->len,
 		 atomic64_read(&sec_heap->total_size));
-
 	return 0;
 }
 
@@ -2004,6 +2018,7 @@ static int mtk_page_heap_create(void)
 			       exp_info.name, mtk_sec_heap_page[i].tmem_type);
 			return err;
 		}
+		mtk_sec_heap_page[i].bitmap = alloc_page(GFP_KERNEL | __GFP_ZERO);
 		pr_info("%s add heap[%s][%d] success\n", __func__,
 			exp_info.name, mtk_sec_heap_page[i].tmem_type);
 	}
