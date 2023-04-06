@@ -675,7 +675,7 @@ unsigned int __gpufreq_get_dyn_pstack(unsigned int freq, unsigned int volt)
  */
 int __gpufreq_power_control(enum gpufreq_power_state power)
 {
-	int ret = 0;
+	int ret = 0, target_oppidx = 0;
 	u64 power_time = 0;
 
 	GPUFREQ_TRACE_START("power=%d", power);
@@ -832,9 +832,16 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 			__gpufreq_update_shared_status_power_reg();
 	}
 
-	if (power == GPU_PWR_ON)
+	if (power == GPU_PWR_ON && g_stack.power_count == 1) {
+		if (ged_get_last_commit_idx_fp)
+			target_oppidx = (int)ged_get_last_commit_idx_fp();
+		else
+			target_oppidx = g_stack.cur_oppidx;
+		/* resume DVFS state after first power on */
+		gpufreq_commit(TARGET_STACK, target_oppidx);
+
 		__gpufreq_footprint_power_step(0x17);
-	else if (power == GPU_PWR_OFF)
+	} else if (power == GPU_PWR_OFF && g_stack.power_count == 0)
 		__gpufreq_footprint_power_step(0x18);
 
 done_unlock:

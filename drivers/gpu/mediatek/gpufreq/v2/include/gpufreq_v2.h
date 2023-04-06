@@ -426,6 +426,13 @@ extern unsigned int (*mtk_get_gpu_cur_freq_fp)(enum gpufreq_target target);
 extern int (*mtk_get_gpu_cur_oppidx_fp)(enum gpufreq_target target);
 
 /**************************************************
+ * GED Interface
+ **************************************************/
+extern unsigned long (*ged_get_last_commit_idx_fp)(void);
+extern unsigned long (*ged_get_last_commit_top_idx_fp)(void);
+extern unsigned long (*ged_get_last_commit_stack_idx_fp)(void);
+
+/**************************************************
  * External Function
  **************************************************/
 /* Common */
@@ -455,7 +462,7 @@ int gpufreq_set_limit(enum gpufreq_target target,
 	enum gpuppm_limiter limiter, int ceiling_info, int floor_info);
 int gpufreq_get_cur_limit_idx(enum gpufreq_target target,enum gpuppm_limit_type limit);
 unsigned int gpufreq_get_cur_limiter(enum gpufreq_target target, enum gpuppm_limit_type limit);
-int gpufreq_power_control(enum gpufreq_power_state power, int oppidx);
+int gpufreq_power_control(enum gpufreq_power_state power);
 int gpufreq_active_sleep_control(enum gpufreq_power_state power);
 int gpufreq_commit(enum gpufreq_target target, int oppidx);
 int gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx);

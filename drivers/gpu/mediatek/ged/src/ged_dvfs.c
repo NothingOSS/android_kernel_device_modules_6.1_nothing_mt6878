@@ -2448,6 +2448,10 @@ GED_ERROR ged_dvfs_system_init(void)
 		mtk_get_fastdvfs_mode_fp = ged_get_fastdvfs_mode;
 	}
 
+	ged_get_last_commit_idx_fp = ged_dvfs_get_last_commit_idx;
+	ged_get_last_commit_top_idx_fp = ged_dvfs_get_last_commit_top_idx;
+	ged_get_last_commit_stack_idx_fp = ged_dvfs_get_last_commit_stack_idx;
+
 	spin_lock_init(&g_sSpinLock);
 
 	return GED_OK;

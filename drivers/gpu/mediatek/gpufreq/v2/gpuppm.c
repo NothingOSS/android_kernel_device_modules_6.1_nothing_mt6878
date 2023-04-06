@@ -198,24 +198,45 @@ static void __gpuppm_sort_limit(void)
 
 static int __gpuppm_limit_effective(enum gpufreq_target target)
 {
-	int cur_oppidx = 0, cur_ceiling = 0, cur_floor = 0;
+	int cur_ceiling = 0, cur_floor = 0;
+	int cur_oppidx_gpu = 0, cur_oppidx_stack = 0;
+	int oppidx_gpu = 0, oppidx_stack = 0;
 	int ret = GPUFREQ_SUCCESS;
 
 	cur_ceiling = g_ppm.ceiling;
 	cur_floor = g_ppm.floor;
+	cur_oppidx_gpu = __gpufreq_get_cur_idx_gpu();
+	cur_oppidx_stack = __gpufreq_get_cur_idx_stack();
 
 	if (target == TARGET_STACK) {
-		cur_oppidx = __gpufreq_get_cur_idx_stack();
-		if (cur_oppidx < cur_ceiling)
-			ret = __gpufreq_generic_commit_stack(cur_ceiling, DVFS_FREE);
-		else if (cur_oppidx > cur_floor)
-			ret = __gpufreq_generic_commit_stack(cur_floor, DVFS_FREE);
+		/* GPU */
+		if (cur_oppidx_gpu < cur_ceiling)
+			oppidx_gpu = cur_ceiling;
+		else if (cur_oppidx_gpu > cur_floor)
+			oppidx_gpu = cur_floor;
+		else
+			oppidx_gpu = cur_oppidx_gpu;
+		/* STACK */
+		if (cur_oppidx_stack < cur_ceiling)
+			cur_oppidx_stack = cur_ceiling;
+		else if (cur_oppidx_stack > cur_floor)
+			cur_oppidx_stack = cur_floor;
+		else
+			oppidx_stack = cur_oppidx_stack;
+
+		if (cur_oppidx_gpu != oppidx_gpu || cur_oppidx_stack != oppidx_stack)
+			ret = __gpufreq_generic_commit_dual(oppidx_gpu, oppidx_stack, DVFS_FREE);
 	} else {
-		cur_oppidx = __gpufreq_get_cur_idx_gpu();
-		if (cur_oppidx < cur_ceiling)
-			ret = __gpufreq_generic_commit_gpu(cur_ceiling, DVFS_FREE);
-		else if (cur_oppidx > cur_floor)
-			ret = __gpufreq_generic_commit_gpu(cur_floor, DVFS_FREE);
+		/* GPU */
+		if (cur_oppidx_gpu < cur_ceiling)
+			oppidx_gpu = cur_ceiling;
+		else if (cur_oppidx_gpu > cur_floor)
+			oppidx_gpu = cur_floor;
+		else
+			oppidx_gpu = cur_oppidx_gpu;
+		/* commit */
+		if (cur_oppidx_gpu != oppidx_gpu)
+			ret = __gpufreq_generic_commit_gpu(oppidx_gpu, DVFS_FREE);
 	}
 
 	return ret;
@@ -548,13 +569,14 @@ int gpuppm_limited_dual_commit(int gpu_oppidx, int stack_oppidx)
 		stack_oppidx = (stack_oppidx % (cur_floor - cur_ceiling + 1)) + cur_ceiling;
 	}
 
+	/* GPU */
 	if (gpu_oppidx < cur_ceiling)
 		limited_idx_gpu = cur_ceiling;
 	else if (gpu_oppidx > cur_floor)
 		limited_idx_gpu = cur_floor;
 	else
 		limited_idx_gpu = gpu_oppidx;
-
+	/* STACK */
 	if (stack_oppidx < cur_ceiling)
 		limited_idx_stack = cur_ceiling;
 	else if (stack_oppidx > cur_floor)

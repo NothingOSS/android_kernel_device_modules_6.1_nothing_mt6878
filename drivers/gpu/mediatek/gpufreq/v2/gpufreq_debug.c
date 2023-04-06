@@ -600,13 +600,13 @@ static ssize_t mfgsys_power_control_proc_write(struct file *file,
 	mutex_lock(&gpufreq_debug_lock);
 
 	if (sysfs_streq(buf, "power_on") && g_debug_power_state == GPU_PWR_OFF) {
-		ret = gpufreq_power_control(GPU_PWR_ON, GPUPPM_DEFAULT_IDX);
+		ret = gpufreq_power_control(GPU_PWR_ON);
 		if (ret < 0)
 			GPUFREQ_LOGE("fail to power on MFGSYS (%d)", ret);
 		else
 			g_debug_power_state = GPU_PWR_ON;
 	} else if (sysfs_streq(buf, "power_off") && g_debug_power_state == GPU_PWR_ON) {
-		ret = gpufreq_power_control(GPU_PWR_OFF, GPUPPM_DEFAULT_IDX);
+		ret = gpufreq_power_control(GPU_PWR_OFF);
 		if (ret < 0)
 			GPUFREQ_LOGE("fail to power off MFGSYS (%d)", ret);
 		else
