@@ -422,15 +422,62 @@ static struct mtkcam_qos_desc *find_qos_desc_by_uid(
 	return NULL;
 }
 
+static int get_ufbc_size(int ipi_fmt, int ufbc_type, int img_w, int img_h)
+{
+	int size = 0, aligned_w = 0, stride = 0;
+
+	if (ipifmt_is_yuv_ufo(ipi_fmt) || ipifmt_is_raw_ufo(ipi_fmt)) {
+		aligned_w = ALIGN(img_w, 64);
+		stride = aligned_w * mtk_cam_get_pixel_bits(ipi_fmt) / 8;
+
+		switch (ufbc_type) {
+		case UFBC_BITSTREAM_0:
+			size = stride * img_h;
+		break;
+		case UFBC_BITSTREAM_1:
+			size = stride * img_h / 2;
+		break;
+		case UFBC_TABLE_0:
+			size = ALIGN((aligned_w / 64),
+				ipifmt_is_raw_ufo(ipi_fmt) ? 16 : 8) * img_h;
+		break;
+		case UFBC_TABLE_1:
+			size = ALIGN((aligned_w / 64),
+				ipifmt_is_raw_ufo(ipi_fmt) ? 16 : 8) * img_h / 2;
+		break;
+		default:
+		break;
+		}
+	}
+
+	return size;
+}
+
+static inline bool is_bitstream(u8 ufbc_type)
+{
+	return (ufbc_type == UFBC_BITSTREAM_0) || (ufbc_type == UFBC_BITSTREAM_1);
+}
+
+static inline int get_ipi_img_output_h(struct mtkcam_ipi_img_output *out)
+{
+	return (out->crop.s.h == 0) ? out->fmt.s.h : out->crop.s.h;
+}
+
+static inline int get_ipi_img_output_w(struct mtkcam_ipi_img_output *out)
+{
+	return (out->crop.s.w == 0) ? out->fmt.s.w : out->crop.s.w;
+}
+
 //assuming max image size 16000*12000*10/8
 #define MMQOS_SIZE_WARNING 240000000
 static int fill_raw_out_qos(struct mtk_cam_job *job,
-						struct mtkcam_ipi_img_output *out,
-						u32 sensor_h, u32 sensor_vb, u64 linet)
+					struct mtkcam_ipi_img_output *out,
+					u32 sensor_h, u32 sensor_vb, u64 linet)
 {
 	struct mtkcam_qos_desc *qos_desc;
 	unsigned int size, dst_port;
 	u32 peak_bw, avg_bw, active_h;
+	int img_w, img_h;
 	int i;
 
 	qos_desc = find_qos_desc_by_uid(
@@ -442,7 +489,11 @@ static int fill_raw_out_qos(struct mtk_cam_job *job,
 
 	for (i = 0; i < qos_desc->desc_size &&
 				i < ARRAY_SIZE(out->fmt.stride); i++) {
-		size = out->buf[0][i].size;
+		img_w = get_ipi_img_output_w(out);
+		img_h = get_ipi_img_output_h(out);
+		size = get_ufbc_size(out->fmt.format,
+					qos_desc->dma_desc[i].ufbc_type, img_w, img_h);
+		size = (size == 0) ? out->buf[0][i].size : size;
 		if (!size)
 			break;
 
@@ -456,12 +507,11 @@ static int fill_raw_out_qos(struct mtk_cam_job *job,
 
 		active_h = sensor_h + sensor_vb;
 		avg_bw = calc_bw(size, linet, active_h);
-		avg_bw = (ipifmt_is_yuv_ufo(out->fmt.format) ||
-					ipifmt_is_raw_ufo(out->fmt.format)) ?
+		avg_bw = is_bitstream(qos_desc->dma_desc[i].ufbc_type) ?
 				apply_ufo_com_ratio(avg_bw) : avg_bw;
 
-		active_h = (out->crop.p.y*2 >= out->crop.s.h) ?
-				1 : out->crop.s.h - out->crop.p.y*2;
+		active_h = (out->crop.p.y*2 >= img_h) ?
+				1 : img_h - out->crop.p.y*2;
 		peak_bw = is_dc_mode(job) ?
 				0 : calc_bw(size, linet, active_h);
 
@@ -489,17 +539,18 @@ static int fill_raw_out_qos(struct mtk_cam_job *job,
 			pr_info("%s: %s: req_seq(%d) dst_port:%d uid:%d avg_bw:%dB/s, peak_bw:%dB/s (size:%d crop_h:%d crop_top:%d vb:%d)\n",
 				__func__, qos_desc->dma_desc[i].dma_name, job->req_seq,
 				dst_port, out->uid.id, avg_bw, peak_bw,
-				size, out->crop.s.h, out->crop.p.y, sensor_vb);
+				size, img_h, out->crop.p.y, sensor_vb);
 	}
 
 	return 0;
 }
 
 static int fill_raw_in_qos(struct mtk_cam_job *job,
-						struct mtkcam_ipi_img_input *in,
-						u32 sensor_h, u32 sensor_vb, u64 linet)
+					struct mtkcam_ipi_img_input *in,
+					u32 sensor_h, u32 sensor_vb, u64 linet)
 {
-	struct mtkcam_qos_desc *qos_desc;
+	struct mtkcam_qos_desc *qos_desc = NULL;
+	struct mtkcam_qos_desc *imgo_qos_desc = NULL;
 	unsigned int size, dst_port;
 	u32 peak_bw, avg_bw;
 	int i;
@@ -511,8 +562,18 @@ static int fill_raw_in_qos(struct mtk_cam_job *job,
 		return 0;
 	}
 
+	/* for mstream 1st ipi update */
+	if (job->job_type == JOB_TYPE_MSTREAM &&
+		in->uid.id == MTKCAM_IPI_RAW_RAWI_2) {
+		imgo_qos_desc = find_qos_desc_by_uid(
+			mmqos_img_table, ARRAY_SIZE(mmqos_img_table), MTKCAM_IPI_RAW_IMGO);
+	}
+
 	for (i = 0; i < qos_desc->desc_size && i < ARRAY_SIZE(in->fmt.stride); i++) {
-		size = in->buf[i].size;
+		size = get_ufbc_size(in->fmt.format,
+					qos_desc->dma_desc[i].ufbc_type,
+					in->fmt.s.w, in->fmt.s.h);
+		size = (size == 0) ? in->buf[i].size : size;
 		if (!size)
 			break;
 
@@ -525,7 +586,7 @@ static int fill_raw_in_qos(struct mtk_cam_job *job,
 		}
 
 		avg_bw = calc_bw(size, linet, sensor_h + sensor_vb);
-		avg_bw = ipifmt_is_raw_ufo(in->fmt.format) ?
+		avg_bw = is_bitstream(qos_desc->dma_desc[i].ufbc_type) ?
 				apply_ufo_com_ratio(avg_bw) : avg_bw;
 		peak_bw = is_dc_mode(job) ? 0 : calc_bw(size, linet, sensor_h);
 
@@ -549,6 +610,19 @@ static int fill_raw_in_qos(struct mtk_cam_job *job,
 			pr_info("%s: %s: req_seq(%d) dst_port:%d uid:%d avg_bw:%dB/s, peak_bw:%dB/s (size:%d height:%d vb:%d)\n",
 				__func__, qos_desc->dma_desc[i].dma_name, job->req_seq,
 				dst_port, in->uid.id, avg_bw, peak_bw, size, sensor_h, sensor_vb);
+
+		/* for mstream 1st ipi */
+		if (imgo_qos_desc) {
+			dst_port = imgo_qos_desc->dma_desc[i].dst_port;
+			job->raw_mmqos[dst_port].peak_bw = to_qos_icc(peak_bw);
+			job->raw_mmqos[dst_port].avg_bw = to_qos_icc_ratio(avg_bw);
+
+			if (CAM_DEBUG_ENABLED(MMQOS))
+				pr_info("%s: %s: req_seq(%d) dst_port:%d uid:%d avg_bw:%dB/s, peak_bw:%dB/s (size:%d height:%d vb:%d)\n",
+					__func__, imgo_qos_desc->dma_desc[i].dma_name,
+					job->req_seq, dst_port, in->uid.id, avg_bw, peak_bw,
+					size, sensor_h, sensor_vb);
+		}
 	}
 
 	return 0;
@@ -781,7 +855,7 @@ void mtk_cam_fill_qos(struct req_buffer_helper *helper)
 	int i;
 
 	memset(job->raw_mmqos, 0, sizeof(job->raw_mmqos));
-	memset(job->raw_w_mmqos, 0, sizeof(job->raw_mmqos));
+	memset(job->raw_w_mmqos, 0, sizeof(job->raw_w_mmqos));
 	memset(job->yuv_mmqos, 0, sizeof(job->yuv_mmqos));
 	memset(job->sv_mmqos, 0, sizeof(job->sv_mmqos));
 	memset(job->mraw_mmqos, 0, sizeof(job->mraw_mmqos));

@@ -42,7 +42,15 @@ enum SMI_YUV_MERGE_PORT_ID {
 enum PORT_DOMAIN {
 	RAW_DOMAIN,
 	RAW_W_DOMAIN,
-	YUV_DOMAIN
+	YUV_DOMAIN,
+};
+
+/* for yuv */
+enum UFBC_TYPE {
+	UFBC_BITSTREAM_0 = 1,
+	UFBC_BITSTREAM_1,
+	UFBC_TABLE_0,
+	UFBC_TABLE_1,
 };
 
 struct qos_dma_desc {
@@ -50,6 +58,7 @@ struct qos_dma_desc {
 	u8 domain;
 	u8 src_port;
 	u8 dst_port;
+	u8 ufbc_type;
 };
 
 struct mtkcam_qos_desc {
@@ -145,12 +154,39 @@ static struct qos_dma_desc rawi_2_dmas[] = {
 		.dma_name = "rawi_r2",
 		.domain = RAW_DOMAIN,
 		.dst_port = SMI_PORT_RAWI_R2,
+		.ufbc_type = UFBC_BITSTREAM_0,
+	},
+	{
+		.dma_name = "ufdi_r2",
+		.domain = RAW_DOMAIN,
+		.dst_port = SMI_PORT_RAWI_R2,
+		.ufbc_type = UFBC_TABLE_0,
+	},
+};
+
+static struct qos_dma_desc rawi_3_dmas[] = {
+	{
+		.dma_name = "rawi_r3",
+		.domain = RAW_DOMAIN,
+		.dst_port = SMI_PORT_RAWI_R3,
+		.ufbc_type = UFBC_BITSTREAM_0,
+	},
+	{
+		.dma_name = "ufdi_r3",
+		.domain = RAW_DOMAIN,
+		.dst_port = SMI_PORT_RAWI_R3,
+		.ufbc_type = UFBC_TABLE_0,
 	},
 };
 
 static struct qos_dma_desc rawi_5_dmas[] = {
 	{
 		.dma_name = "rawi_r5",
+		.domain = RAW_DOMAIN,
+		.dst_port = SMI_PORT_RAWI_R5,
+	},
+	{
+		.dma_name = "ufdi_r5",
 		.domain = RAW_DOMAIN,
 		.dst_port = SMI_PORT_RAWI_R5,
 	},
@@ -161,6 +197,13 @@ static struct qos_dma_desc imgo_dmas[] = {
 		.dma_name = "imgo_r1",
 		.domain = RAW_DOMAIN,
 		.dst_port = SMI_PORT_IMGO_R1,
+		.ufbc_type = UFBC_BITSTREAM_0,
+	},
+	{
+		.dma_name = "ufeo_r1",
+		.domain = RAW_DOMAIN,
+		.dst_port = SMI_PORT_UFEO_R1,
+		.ufbc_type = UFBC_TABLE_0,
 	},
 };
 
@@ -169,21 +212,25 @@ static struct qos_dma_desc yuvo_1_dmas[] = {
 		.dma_name = "yuvo_r1",
 		.domain = YUV_DOMAIN,
 		.dst_port = SMI_PORT_YUVO_R1,
+		.ufbc_type = UFBC_BITSTREAM_0,
 	},
 	{
 		.dma_name = "yuvbo_r1",
 		.domain = YUV_DOMAIN,
 		.dst_port = SMI_PORT_YUVO_R1,
+		.ufbc_type = UFBC_BITSTREAM_1,
 	},
 	{
 		.dma_name = "yuvco_r1",
 		.domain = YUV_DOMAIN,
 		.dst_port = SMI_PORT_YUVO_R1,
+		.ufbc_type = UFBC_TABLE_0,
 	},
 	{
 		.dma_name = "yuvdo_r1",
 		.domain = YUV_DOMAIN,
 		.dst_port = SMI_PORT_YUVO_R1,
+		.ufbc_type = UFBC_TABLE_1,
 	},
 };
 
@@ -205,21 +252,25 @@ static struct qos_dma_desc yuvo_3_dmas[] = {
 		.dma_name = "yuvo_r3",
 		.domain = YUV_DOMAIN,
 		.dst_port = SMI_PORT_YUVO_R3,
+		.ufbc_type = UFBC_BITSTREAM_0,
 	},
 	{
 		.dma_name = "yuvbo_r3",
 		.domain = YUV_DOMAIN,
 		.dst_port = SMI_PORT_YUVO_R3,
+		.ufbc_type = UFBC_BITSTREAM_1,
 	},
 	{
 		.dma_name = "yuvco_r3",
 		.domain = YUV_DOMAIN,
 		.dst_port = SMI_PORT_YUVO_R3,
+		.ufbc_type = UFBC_TABLE_0,
 	},
 	{
 		.dma_name = "yuvdo_r3",
 		.domain = YUV_DOMAIN,
 		.dst_port = SMI_PORT_YUVO_R3,
+		.ufbc_type = UFBC_TABLE_1,
 	},
 };
 
@@ -327,6 +378,13 @@ static struct qos_dma_desc imgo_w_dmas[] = {
 		.dma_name = "imgo_r1_w",
 		.domain = RAW_W_DOMAIN,
 		.dst_port = SMI_PORT_IMGO_R1,
+		.ufbc_type = UFBC_BITSTREAM_0,
+	},
+	{
+		.dma_name = "ufeo_r1_w",
+		.domain = RAW_W_DOMAIN,
+		.dst_port = SMI_PORT_UFEO_R1,
+		.ufbc_type = UFBC_TABLE_0,
 	},
 };
 
@@ -335,6 +393,13 @@ static struct qos_dma_desc rawi_r2_w_dmas[] = {
 		.dma_name = "rawi_r2_w",
 		.domain = RAW_W_DOMAIN,
 		.dst_port = SMI_PORT_RAWI_R2,
+		.ufbc_type = UFBC_BITSTREAM_0,
+	},
+	{
+		.dma_name = "ufdi_r2_w",
+		.domain = RAW_W_DOMAIN,
+		.dst_port = SMI_PORT_RAWI_R2,
+		.ufbc_type = UFBC_TABLE_0,
 	},
 };
 
@@ -343,6 +408,13 @@ static struct qos_dma_desc rawi_r3_w_dmas[] = {
 		.dma_name = "rawi_r3_w",
 		.domain = RAW_W_DOMAIN,
 		.dst_port = SMI_PORT_RAWI_R3,
+		.ufbc_type = UFBC_BITSTREAM_0,
+	},
+	{
+		.dma_name = "ufdi_r2_w",
+		.domain = RAW_W_DOMAIN,
+		.dst_port = SMI_PORT_RAWI_R2,
+		.ufbc_type = UFBC_TABLE_0,
 	},
 };
 
@@ -351,6 +423,13 @@ static struct qos_dma_desc rawi_r5_w_dmas[] = {
 		.dma_name = "rawi_r5_w",
 		.domain = RAW_W_DOMAIN,
 		.dst_port = SMI_PORT_RAWI_R5,
+		.ufbc_type = UFBC_BITSTREAM_0,
+	},
+	{
+		.dma_name = "ufdi_r5_w",
+		.domain = RAW_W_DOMAIN,
+		.dst_port = SMI_PORT_RAWI_R5,
+		.ufbc_type = UFBC_TABLE_0,
 	},
 };
 
@@ -363,7 +442,8 @@ static struct mtkcam_qos_desc mmqos_img_table[MTKCAM_IPI_RAW_NUM] = {
 	},
 	{
 		.id = MTKCAM_IPI_RAW_RAWI_3,
-		.desc_size = 0,
+		.dma_desc = rawi_3_dmas,
+		.desc_size = ARRAY_SIZE(rawi_3_dmas),
 	},
 	{
 		.id = MTKCAM_IPI_RAW_RAWI_5,
