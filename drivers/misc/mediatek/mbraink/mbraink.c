@@ -49,6 +49,9 @@ static long handleMemoryDdrInfo(unsigned long arg)
 	long ret = 0;
 	struct mbraink_memory_ddrInfo memoryDdrInfo;
 
+	memset(&memoryDdrInfo,
+			0,
+			sizeof(struct mbraink_memory_ddrInfo));
 	ret = mbraink_memory_getDdrInfo(&memoryDdrInfo);
 	if (ret == 0) {
 		if (copy_to_user((struct mbraink_memory_ddrInfo *)arg,
@@ -67,6 +70,9 @@ static long handleIdleRatioInfo(unsigned long arg)
 	long ret = 0;
 	struct mbraink_audio_idleRatioInfo audioIdleRatioInfo;
 
+	memset(&audioIdleRatioInfo,
+			0,
+			sizeof(struct mbraink_audio_idleRatioInfo));
 	ret = mbraink_audio_getIdleRatioInfo(&audioIdleRatioInfo);
 	if (ret == 0) {
 		if (copy_to_user((struct mbraink_audio_idleRatioInfo *)arg,
@@ -84,6 +90,9 @@ static long handleVcoreInfo(unsigned long arg)
 	long ret = 0;
 	struct mbraink_power_vcoreInfo powerVcoreInfo;
 
+	memset(&powerVcoreInfo,
+			0,
+			sizeof(struct mbraink_power_vcoreInfo));
 	ret = mbraink_power_getVcoreInfo(&powerVcoreInfo);
 	if (ret == 0) {
 		if (copy_to_user((struct mbraink_power_vcoreInfo *)arg,
@@ -362,6 +371,9 @@ static long mbraink_ioctl(struct file *filp,
 	{
 		struct mbraink_battery_data battery_buffer;
 
+		memset(&battery_buffer,
+				0,
+				sizeof(struct mbraink_battery_data));
 		mbraink_get_battery_info(&battery_buffer);
 		if (copy_to_user((struct mbraink_battery_data *) arg,
 					&battery_buffer,
@@ -523,6 +535,9 @@ static ssize_t mbraink_gpu_store(struct device *dev,
 	int retSize = 0;
 
 	retSize = sscanf(buf, "%d %llu", &command, &value);
+	if (retSize == -1)
+		return 0;
+
 	pr_info("%s: Get Command (%d), Value (%llu) size(%d)\n",
 			__func__,
 			command,
@@ -575,8 +590,10 @@ static int mbraink_dev_init(void)
 		goto r_class;
 	}
 
-	/*add mbraink device into mbraink_class host,*/
-	/*and assign the character device id to mbraink device*/
+	/*add mbraink device into mbraink_class host,
+	 *and assign the character device id to mbraink device
+	 */
+
 	mbraink_device.devt = mbraink_dev_no;
 	mbraink_device.class = &mbraink_class;
 

@@ -51,7 +51,7 @@ struct workqueue_struct *udm_wq;
 
 static void udm_work_handler(struct work_struct *work)
 {
-	int targetBankId = (gBankId == 0) ? 1:0;
+	unsigned int targetBankId = (gBankId == 0) ? 1:0;
 	int i = 0;
 	char temp[NETLINK_EVENT_MESSAGE_SIZE];
 	int posi = 0;
@@ -136,7 +136,10 @@ static int udm_buffer_write(struct mbraink_udm_buffer *pMbraink_udm_buffer,
 	}
 
 	ktime_get_real_ts64(&tv);
-	strncpy(pMbraink_udm_buffer->buffer[pos], pData, MIN(size, MAX_AUDIO_UDM_LOG_SIZE)-1);
+	if (size < MAX_AUDIO_UDM_LOG_SIZE)
+		strncpy(pMbraink_udm_buffer->buffer[pos], pData, size-1);
+	else
+		strncpy(pMbraink_udm_buffer->buffer[pos], pData, MAX_AUDIO_UDM_LOG_SIZE-1);
 	pMbraink_udm_buffer->timestamp[pos] = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
 	pMbraink_udm_buffer->level[pos] = level;
 	pMbraink_udm_buffer->counter++;
