@@ -473,6 +473,7 @@ enum cmdq_smc_request {
 	CMDQ_PREBUILT_DISABLE,
 	CMDQ_PREBUILT_DUMP,
 	CMDQ_MMINFRA_CMD,
+	CMDQ_MMUEN_SET_DEVAPC_DISABLE,
 };
 
 static atomic_t cmdq_dbg_ctrl[CMDQ_HW_MAX] = {ATOMIC_INIT(0)};
@@ -507,6 +508,15 @@ bool cmdq_util_is_secure_client(struct cmdq_client *client)
 	return false;
 }
 EXPORT_SYMBOL(cmdq_util_is_secure_client);
+
+void cmdq_util_mmuen_devapc_disable(void)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(MTK_SIP_CMDQ_CONTROL, CMDQ_MMUEN_SET_DEVAPC_DISABLE,
+		0, 0, 0, 0, 0, 0, &res);
+}
+EXPORT_SYMBOL(cmdq_util_mmuen_devapc_disable);
 
 void cmdq_util_enable_disp_va(void)
 {

@@ -177,6 +177,7 @@ void cmdq_util_dump_lock(void);
 void cmdq_util_dump_unlock(void);
 s32 cmdq_util_error_save_lst(const char *format, va_list args, u8 hwid);
 s32 cmdq_util_error_save(const char *format, ...);
+void cmdq_util_mmuen_devapc_disable(void);
 void cmdq_util_enable_disp_va(void);
 bool cmdq_util_is_prebuilt_client(struct cmdq_client *client);
 void cmdq_util_prebuilt_set_client(const u16 hwid, struct cmdq_client *client);
