@@ -54,7 +54,8 @@ static struct pm_qos_request slbc_qos_request;
 #define GID_MD					5
 #define GID_GPU					6
 #define GID_GPU_OVL				7
-#define GID_VDEC				8
+#define GID_VDEC_FRAME				8
+#define GID_VDEC_UBE				9
 
 #define BUF_ID_NOT_CARE			0x00000000
 #define BUF_ID_GPU			0x0000000f
@@ -689,40 +690,36 @@ int slbc_gid_request(enum slc_ach_uid uid, int *gid, struct slbc_gid_data *data)
 	case ID_MD:
 		if (*gid == GID_REQ)
 			*gid = GID_MD;
-		gid_ref[GID_MD]++;
+		else if (*gid != GID_MD)
+			return -EINVAL;
 		break;
-	case ID_VDEC:
-		if (*gid == GID_REQ) {
-			uint32_t i;
-
-			for (i = GID_VDEC + 1; i < GID_MAX; i++) {
-				if (gid_ref[i] == 0) {
-					gid_ref[i]++;
-					*gid = i;
-					return 0;
-				}
-			}
-
-			if (i == GID_MAX)
-				return -EREQ_GID_RUN_OUT;
-		} else {
-			gid_ref[*gid]++;
-		}
+	case ID_VDEC_FRAME:
+		if (*gid != GID_VDEC_FRAME)
+			return -EINVAL;
+		break;
+	case ID_VDEC_UBE:
+		if (*gid == GID_REQ)
+			*gid = GID_VDEC_UBE;
+		else if (*gid != GID_VDEC_UBE)
+			return -EINVAL;
 		break;
 	case ID_GPU:
 		if (*gid == GID_REQ)
 			*gid = GID_GPU;
-		gid_ref[GID_GPU]++;
+		else if (*gid != GID_GPU)
+			return -EINVAL;
 		break;
 	case ID_GPU_W:
 	case ID_OVL_R:
-		gid_ref[GID_GPU_OVL]++;
+		if (*gid != GID_GPU_OVL)
+			return -EINVAL;
 		break;
 	default:
 		SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "unrecognized uid");
 		return -EINVAL;
 	}
 
+	gid_ref[*gid]++;
 
 	/* Set M/G and G/P tables */
 	_slbc_ach_scmi(IPI_SLBC_GID_REQUEST_FROM_AP, uid, *gid, data);
@@ -737,19 +734,33 @@ int slbc_gid_release(enum slc_ach_uid uid, int gid)
 		return -EINVAL;
 
 	switch (uid) {
-	case ID_VDEC:
+	case ID_MD:
+		if (gid != GID_MD)
+			return -EINVAL;
+		break;
+	case ID_VDEC_FRAME:
+		if (gid != GID_VDEC_FRAME)
+			return -EINVAL;
+		break;
+	case ID_VDEC_UBE:
+		if (gid != GID_VDEC_UBE)
+			return -EINVAL;
 		break;
 	case ID_GPU:
-		gid_ref[GID_GPU]--;
+		if (gid != GID_GPU)
+			return -EINVAL;
 		break;
 	case ID_GPU_W:
 	case ID_OVL_R:
-		gid_ref[GID_GPU_OVL]--;
+		if (gid != GID_GPU_OVL)
+			return -EINVAL;
 		break;
 	default:
 		SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "unrecognized uid");
 		return -EINVAL;
 	}
+
+	gid_ref[gid]--;
 
 	/* Clear M/G and G/P tables */
 	_slbc_ach_scmi(IPI_SLBC_GID_RELEASE_FROM_AP, uid, gid, NULL);
@@ -1258,7 +1269,7 @@ void slbc_get_gid_for_dma(struct dma_buf *dmabuf_2)
 			gid = GID_GPU;
 		break;
 	case BUF_ID_VDEC:
-		gid = GID_VDEC;
+		gid = GID_VDEC_FRAME;
 		break;
 	default:
 		if (consumer & BUF_ID_GPU)  /* GPU only */

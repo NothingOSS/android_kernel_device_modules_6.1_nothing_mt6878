@@ -114,7 +114,8 @@ enum slbc_flag {
 /* SLC all cache mode user id */
 enum slc_ach_uid {
 	ID_MD,
-	ID_VDEC,
+	ID_VDEC_FRAME,
+	ID_VDEC_UBE,
 	ID_GPU,
 	ID_GPU_W,
 	ID_OVL_R,
