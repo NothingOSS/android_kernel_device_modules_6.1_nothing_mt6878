@@ -42,16 +42,11 @@
 
 /* systracker registers offset */
 #define BUS_DBG_CON         0x0
-#define WP_ADDR             0x14
-#define WP_MASK             0x18
-#define WP_ADDR_EXT         0x30
-#define WP_MASK_EXT         0x34
-#define WP_SECURITY_CFG     0x38
-
-#define WP_REGS_SIZE        0x100
 #define SECURE_CMD_MASK     0x3
-#define NAME_MAX_LEN        (32)
+#define WP_REGS_SIZE        0x100
+
 #define MAX_ENTRY_NUM       (5) /* the maximum number to enter isr */
+#define NAME_MAX_LEN        (32)
 
 #define TRACKER_COMPATIBLE  "mediatek,tracker"
 #define SUBSYS_NODE_NAME    "subsys"
@@ -72,6 +67,11 @@ enum TRACKER_IRQ_EN_OPS {
 	IRQ_EN_OPS_AW_WP	= 0x1 << 1,
 	IRQ_EN_OPS_AR_1ST_TMO	= 0x1 << 2,
 	IRQ_EN_OPS_AW_1ST_TMO	= 0x1 << 3,
+	IRQ_EN_OPS_AR_SLV_ERR	= 0x1 << 4,
+	IRQ_EN_OPS_AW_SLV_ERR	= 0x1 << 5,
+	IRQ_EN_OPS_WP		= IRQ_EN_OPS_AR_WP | IRQ_EN_OPS_AW_WP,
+	IRQ_EN_OPS_TMO		= IRQ_EN_OPS_AR_1ST_TMO | IRQ_EN_OPS_AW_1ST_TMO,
+	IRQ_EN_OPS_SLE		= IRQ_EN_OPS_AR_SLV_ERR | IRQ_EN_OPS_AW_SLV_ERR,
 	IRQ_EN_OPS_ALL		= IRQ_EN_OPS_AR_WP | IRQ_EN_OPS_AW_WP |
 				  IRQ_EN_OPS_AR_1ST_TMO | IRQ_EN_OPS_AW_1ST_TMO,
 };
