@@ -141,6 +141,16 @@ config REGULATOR_MTK_VMM_ISP71
 	  of Mediatek. It allows for voting on regulator state
 	  between multiple users.
 
+config REGULATOR_RT4803
+	tristate "Richtek RT4803 boost regualtor"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  This adds support for RT4803 boost converter that integrates the
+	  bypass switch. If the input voltage is low than the required voltage,
+	  RT4803 will enter boost mode. Otherwise, enable internal bypass
+	  switch to enter bypass mode.
+
 config REGULATOR_RT5133
 	tristate "Richtek RT5133 regulator driver"
 	depends on I2C && GPIOLIB
