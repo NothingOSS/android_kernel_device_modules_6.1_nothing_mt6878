@@ -3481,7 +3481,8 @@ static int mtk_cam_job_fill_ipi_config(struct mtk_cam_job *job,
 				sv_input->pipe_id = sv_dev->id + MTKCAM_SUBDEV_CAMSV_START;
 				sv_input->tag_id = i;
 				sv_input->tag_order = job->tag_info[i].tag_order;
-				sv_input->is_first_frame = (ctx->not_first_job) ? 0 : 1;
+				sv_input->is_first_frame =
+					(!ctx->not_first_job || job->raw_switch) ? 1 : 0;
 				sv_input->input = job->ipi_config.sv_input[0][i].input;
 			}
 		}

@@ -86,7 +86,9 @@ int mtk_mraw_translation_fault_callback(int port, dma_addr_t mva, void *data)
 {
 	struct mtk_mraw_device *mraw_dev = (struct mtk_mraw_device *)data;
 
-	dev_info_ratelimited(mraw_dev->dev, "tg_sen_mode:0x%x tg_vf_con:0x%x tg_path_cfg:0x%x tg_grab_pxl:0x%x tg_grab_lin:0x%x\n",
+	dev_info_ratelimited(mraw_dev->dev, "seq_no:%d_%d tg_sen_mode:0x%x tg_vf_con:0x%x tg_path_cfg:0x%x tg_grab_pxl:0x%x tg_grab_lin:0x%x\n",
+		readl_relaxed(mraw_dev->base_inner + REG_MRAW_FRAME_SEQ_NUM),
+		readl_relaxed(mraw_dev->base + REG_MRAW_FRAME_SEQ_NUM),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_TG_SEN_MODE),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_TG_VF_CON),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_TG_PATH_CFG),
@@ -1049,7 +1051,9 @@ int mtk_cam_mraw_dev_stream_on(struct mtk_mraw_device *mraw_dev, bool on)
 void mtk_cam_mraw_debug_dump(struct mtk_mraw_device *mraw_dev)
 {
 	dev_info_ratelimited(mraw_dev->dev,
-		"tg_sen_mode:0x%x tg_vf_con:0x%x tg_path_cfg:0x%x frm_size:0x%x frm_size_r:0x%x grab_pix:0x%x grab_lin:0x%x\n",
+		"seq_no:%d_%d tg_sen_mode:0x%x tg_vf_con:0x%x tg_path_cfg:0x%x frm_size:0x%x frm_size_r:0x%x grab_pix:0x%x grab_lin:0x%x\n",
+		readl_relaxed(mraw_dev->base_inner + REG_MRAW_FRAME_SEQ_NUM),
+		readl_relaxed(mraw_dev->base + REG_MRAW_FRAME_SEQ_NUM),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_TG_SEN_MODE),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_TG_VF_CON),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_TG_PATH_CFG),

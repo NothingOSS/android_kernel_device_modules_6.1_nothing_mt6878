@@ -1421,12 +1421,17 @@ int handle_sv_tag(struct mtk_cam_job *job)
 
 		job->used_tag_cnt++;
 		job->enabled_tags |= (1 << img_tag_param[i].tag_idx);
+
+		pr_info("[%s] tag_idx:%d seninf_padidx:%d tag_order:%d width/height/mbus_code:0x%x_0x%x_0x%x\n",
+			__func__,
+			img_tag_param[i].tag_idx,
+			img_tag_param[i].seninf_padidx,
+			img_tag_param[i].tag_order,
+			raw_sink->width,
+			raw_sink->height,
+			raw_sink->mbus_code);
 	}
 
-	for (i = 0; i < req_amount; i++)
-		pr_info("[%s] tag_param:%d tag_idx:%d seninf_padidx:%d tag_order:%d",
-				__func__, i, img_tag_param[i].tag_idx,
-				img_tag_param[i].seninf_padidx, img_tag_param[i].tag_order);
 	/* meta tag(s) */
 	tag_idx = SVTAG_META_START;
 	for (i = 0; i < ctx->num_sv_subdevs; i++) {
@@ -1441,7 +1446,7 @@ int handle_sv_tag(struct mtk_cam_job *job)
 		meta_tag_param.tag_idx = tag_idx;
 		meta_tag_param.seninf_padidx = sv_pipe->seninf_padidx;
 		meta_tag_param.tag_order = mtk_cam_seninf_get_tag_order(
-			ctx->seninf, sv_pipe->seninf_padidx);
+			job->seninf, sv_pipe->seninf_padidx);
 		mtk_cam_sv_fill_tag_info(job->tag_info,
 			&job->ipi_config,
 			&meta_tag_param, 1, 3, job->sub_ratio,
@@ -1451,6 +1456,15 @@ int handle_sv_tag(struct mtk_cam_job *job)
 		job->used_tag_cnt++;
 		job->enabled_tags |= (1 << tag_idx);
 		tag_idx++;
+
+		pr_info("[%s] tag_idx:%d seninf_padidx:%d tag_order:%d width/height/mbus_code:0x%x_0x%x_0x%x\n",
+			__func__,
+			meta_tag_param.tag_idx,
+			meta_tag_param.seninf_padidx,
+			meta_tag_param.tag_order,
+			sv_sink->width,
+			sv_sink->height,
+			sv_sink->mbus_code);
 	}
 
 	ctx->used_tag_cnt = job->used_tag_cnt;
@@ -1549,7 +1563,7 @@ int handle_sv_tag_only_sv(struct mtk_cam_job *job)
 		tag_param.tag_idx = tag_idx;
 		tag_param.seninf_padidx = sv_pipe->seninf_padidx;
 		tag_param.tag_order = mtk_cam_seninf_get_tag_order(
-			ctx->seninf, sv_pipe->seninf_padidx);
+			job->seninf, sv_pipe->seninf_padidx);
 		mtk_cam_sv_fill_tag_info(job->tag_info,
 			&job->ipi_config,
 			&tag_param, 1, 3, job->sub_ratio,
