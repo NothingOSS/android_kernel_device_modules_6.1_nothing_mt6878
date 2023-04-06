@@ -266,9 +266,11 @@ static void mtk_cam_get_work_buf_num(struct mtk_cam_resource_v2 *user_ctrl)
 	mf.code = s->code;
 	mf.width = s->width;
 	mf.height = s->height;
-	update_buf_fmt_desc(&desc, &mf);
-	r->img_wbuf_size = desc.max_size;
 
+	memset(&desc, 0, sizeof(desc));
+	update_buf_fmt_desc(&desc, &mf);
+
+	r->img_wbuf_size = desc.max_size;
 	r->img_wbuf_num = buf_require;
 }
 

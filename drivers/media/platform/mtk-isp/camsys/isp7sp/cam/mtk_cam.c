@@ -1723,7 +1723,7 @@ static int update_from_mbus_ufbc(struct mtk_cam_buf_fmt_desc *fmt_desc,
 static int calc_buf_param_ufbc(struct mtk_cam_buf_fmt_desc *fmt_desc)
 {
 	int ret = 0;
-	__u32 stride, size;
+	u32 stride = 0, size = 0;
 
 	ret = get_bayer_ufbc_stride_and_size(
 			(u32)fmt_desc->width, (u32)fmt_desc->height,
@@ -1757,6 +1757,7 @@ int update_buf_fmt_desc(struct mtk_cam_driver_buf_desc *desc,
 				struct v4l2_mbus_framefmt *mf)
 {
 	int ret = 0, i = 0;
+	size_t max_size = 0;
 	struct buf_fmt_ops *ops[MTKCAM_BUF_FMT_TYPE_CNT] = {
 		&buf_fmt_ops_bayer,
 		&buf_fmt_ops_ufbc
@@ -1771,8 +1772,9 @@ int update_buf_fmt_desc(struct mtk_cam_driver_buf_desc *desc,
 			break;
 		}
 
-		desc->max_size = max(desc->max_size, desc->fmt_desc[i].size);
+		max_size = max(max_size, desc->fmt_desc[i].size);
 	}
+	desc->max_size = max_size;
 
 	return ret;
 }
