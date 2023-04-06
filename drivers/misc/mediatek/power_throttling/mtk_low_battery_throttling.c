@@ -421,8 +421,7 @@ static int low_battery_throttling_probe(struct platform_device *pdev)
 	ret |= of_property_read_u32_array(np, "thd-volts-h", volt_h_thd, vol_h_size);
 	ret |= check_duplicate(volt_l_thd);
 	ret |= check_duplicate(volt_h_thd);
-	if (vol_l_size != vol_h_size)
-		ret = -1;
+
 	if (ret) {
 		dev_notice(&pdev->dev,
 			"[%s] failed to get correct thd-volt ret=%d\n", __func__, ret);
