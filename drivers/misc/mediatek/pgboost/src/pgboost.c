@@ -1045,35 +1045,9 @@ static void __init pgboost_init(void)
 	pgboost_ready = true;
 }
 
-static void do_first_pgboost(struct work_struct *work);
-static DECLARE_DELAYED_WORK(first_pgboost_work, do_first_pgboost);
-static void do_first_pgboost(struct work_struct *work)
-{
-#define DELAY_FIRST_PGBOOST_HZ	(3)
-
-	static bool ops_ready;
-
-	if (ops_ready) {
-		do_pgboost(0, true, false);
-	} else {
-		if (mt_boot_finish()) {
-			ops_ready = true;
-			/* Delay first pgboost some time after boot completion */
-			queue_delayed_work(system_unbound_wq, &first_pgboost_work,
-					DELAY_FIRST_PGBOOST_HZ * HZ);
-		} else {
-			queue_delayed_work(system_unbound_wq, &first_pgboost_work, HZ);
-		}
-	}
-#undef DELAY_FIRST_PGBOOST_HZ
-}
-
 static int __init init_pgboost(void)
 {
 	pgboost_init();
-
-	/* Try to start first pgboost after boot completion */
-	queue_delayed_work(system_unbound_wq, &first_pgboost_work, HZ);
 
 	return 0;
 }
@@ -1081,8 +1055,6 @@ module_init(init_pgboost);
 
 static void  __exit exit_pgboost(void)
 {
-	/* Cancel pgboost first delayed work */
-	cancel_delayed_work_sync(&first_pgboost_work);
 	if (!pgboost_ready)
 		return;
 
