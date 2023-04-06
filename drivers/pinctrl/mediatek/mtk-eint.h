@@ -57,7 +57,7 @@ struct mtk_eint_instance {
 	const char *name;
 	void __iomem *base;
 	unsigned int number;
-	u8 pin_list[MAX_PIN];
+	u16 pin_list[MAX_PIN];
 	unsigned int *wake_mask;
 	unsigned int *cur_mask;
 };
