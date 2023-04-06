@@ -1137,6 +1137,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	int t_gpu_target_hd;   // apply headroom target, unit: us
 	int t_gpu_pipe, t_gpu_real;   // unit: us
 	int gpu_freq_pre, gpu_freq_tar, gpu_freq_floor;   // unit: KHZ
+	int gpu_freq_overdue_max;   // unit: KHZ
 	int i, ui32NewFreqID = 0;
 	int minfreq_idx;
 	static int num_pre_frames;
@@ -1152,6 +1153,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	int ui32GPUFreq_oppidx = ged_get_cur_oppidx();
 
 	gpu_freq_pre = ged_get_cur_freq();
+	gpu_freq_overdue_max = (ged_get_max_freq_in_opp() * 1000) / OVERDUE_FREQ_TH;
 
 	/* DVFS is not enabled */
 	if (gpu_dvfs_enable == 0) {
@@ -1241,7 +1243,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 		// from this point on, t_gpu_target & t_gpu_target_hd would be > 0
 
 		if (t_gpu > (t_gpu_target * OVERDUE_TH / 10) &&
-			gpu_freq_pre > (ged_get_max_freq_in_opp() / OVERDUE_FREQ_TH))
+			gpu_freq_pre > gpu_freq_overdue_max)
 			overdue_counter = OVERDUE_LIMIT_FRAME;
 
 		if (t_gpu > t_gpu_target_hd) {   // previous frame overdued
@@ -1360,7 +1362,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	gpu_freq_floor = gpu_freq_pre * GED_FB_DVFS_FERQ_DROP_RATIO_LIMIT / 100;
 	/* overdue_counter : 4~1, limit gpu_freq_floor 95%~80% */
 	if (overdue_counter <= 4 && overdue_counter > 0) {
-		if (gpu_freq_pre > (ged_get_max_freq_in_opp() / OVERDUE_FREQ_TH))
+		if (gpu_freq_pre > gpu_freq_overdue_max)
 			gpu_freq_floor =
 				gpu_freq_pre *
 				(100 - (OVERDUE_LIMIT_FREQ_SCALE * (5 - overdue_counter))) / 100;
@@ -1399,7 +1401,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	if (overdue_counter <= 8 && overdue_counter > 4) {
 		overdue_counter--;
 		if (ui32NewFreqID > ui32GPUFreq_oppidx &&
-			gpu_freq_pre > (ged_get_max_freq_in_opp() / OVERDUE_FREQ_TH))
+			gpu_freq_pre > gpu_freq_overdue_max)
 			ui32NewFreqID = ui32GPUFreq_oppidx;
 	}
 
@@ -1459,6 +1461,7 @@ static bool ged_dvfs_policy(
 	unsigned int sentinalLoading = 0;
 	unsigned int window_size_ms = g_loading_slide_window_size;
 	int i32NewFreqID = (int)ui32GPUFreq;
+	int gpu_freq_pre, gpu_freq_overdue_max;	// unit: KHZ
 
 	unsigned long ui32IRQFlags;
 
@@ -1468,6 +1471,10 @@ static bool ged_dvfs_policy(
 
 	if (ui32GPUFreq < 0 || ui32GPUFreq > ged_get_min_oppidx())
 		return GED_FALSE;
+
+	gpu_freq_pre = ged_get_cur_freq();
+	gpu_freq_overdue_max =
+		(ged_get_max_freq_in_opp() * 1000) / OVERDUE_FREQ_TH;
 
 	g_um_gpu_tar_freq = 0;
 	if (bRefreshed == false) {
@@ -1622,7 +1629,8 @@ static bool ged_dvfs_policy(
 				} else {   // in time
 					/* increase margin when t_gpu_uncomplete increase */
 					/* else decrease margin */
-					if (t_gpu_uncomplete > t_gpu_complete &&
+					if (gpu_freq_pre > gpu_freq_overdue_max &&
+						t_gpu_uncomplete > t_gpu_complete &&
 						t_gpu_uncomplete > (t_gpu_target_hd / 2)) {
 						gx_tb_dvfs_margin += g_tb_dvfs_margin_step;
 					} else if (gpu_completed_count != prev_gpu_completed_count)
@@ -1651,7 +1659,8 @@ static bool ged_dvfs_policy(
 				policy_state == POLICY_STATE_LB_FALLBACK) {
 			// overwrite state & timeout value set prior to ged_dvfs_run
 			if (uncomplete_flag || api_sync_flag ||
-				t_gpu > (t_gpu_target * OVERDUE_TH / 10)) {
+				(gpu_freq_pre > gpu_freq_overdue_max &&
+				t_gpu > (t_gpu_target * OVERDUE_TH / 10))) {
 				ged_set_policy_state(POLICY_STATE_LB_FALLBACK);
 				ged_set_backup_timer_timeout(ged_get_fallback_time());
 			} else {
