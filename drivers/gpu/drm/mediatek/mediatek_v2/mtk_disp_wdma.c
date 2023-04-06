@@ -376,6 +376,22 @@ resource_size_t mtk_wdma_check_sec_reg_MT6985(struct mtk_ddp_comp *comp)
 	}
 }
 
+resource_size_t mtk_wdma_check_sec_reg_MT6897(struct mtk_ddp_comp *comp)
+{
+	switch (comp->id) {
+	case DDP_COMPONENT_WDMA1:
+	case DDP_COMPONENT_OVLSYS_WDMA1:
+	case DDP_COMPONENT_OVLSYS_WDMA3:
+		return 0;
+	case DDP_COMPONENT_WDMA0: // w/ TDSHP
+	case DDP_COMPONENT_OVLSYS_WDMA0: // w/o TDSHP
+		return MT6985_OVL1_2L + MT6985_OVL_DUMMY_REG;
+	default:
+		return 0;
+	}
+}
+
+
 unsigned int mtk_wdma_aid_sel_MT6895(struct mtk_ddp_comp *comp)
 {
 	switch (comp->id) {
@@ -2063,7 +2079,7 @@ static const struct mtk_disp_wdma_data mt6897_wdma_driver_data = {
 	.fifo_size_3plane = PARSE_FROM_DTS,
 	.fifo_size_uv_3plane = PARSE_FROM_DTS,
 	.sodi_config = mt6985_mtk_sodi_config,
-	.check_wdma_sec_reg = &mtk_wdma_check_sec_reg_MT6985,
+	.check_wdma_sec_reg = &mtk_wdma_check_sec_reg_MT6897,
 	.support_shadow = false,
 	.need_bypass_shadow = true,
 	.is_support_34bits = true,

@@ -34,6 +34,7 @@ struct mtk_disp_sec_data {
 
 
 struct mtk_disp_sec_config sec_config;
+static bool sec_client_already_stop;
 
 static void mtk_disp_secure_cb(struct cmdq_cb_data data)
 {
@@ -59,6 +60,8 @@ int mtk_disp_cmdq_secure_init(void)
 		DDPMSG("%s cmdq_handle is already exist\n", __func__);
 		return false;
 	}
+	if (!sec_client_already_stop)
+		sec_client_already_stop = true;
 
 	sec_config.sec_cmdq_handle =
 		cmdq_pkt_create(sec_config.disp_sec_client);
@@ -87,6 +90,11 @@ int mtk_disp_cmdq_secure_end(void)
 			__func__, __LINE__);
 		return false;
 	}
+
+	if (sec_client_already_stop)
+		sec_client_already_stop = false;
+	else
+		return true;
 
 	cmdq_sec_mbox_stop(sec_config.disp_sec_client);
 	return true;
