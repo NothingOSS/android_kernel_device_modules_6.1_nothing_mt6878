@@ -39,6 +39,10 @@ static char *adsp_ke_buffer;
 static struct adsp_exception_control excep_ctrl;
 static bool suppress_test_ee;
 
+/*
+ * copy_from_iomem - copy io memory(sram,cfg) to destination memory
+ * implementation by memcpy_fromio
+ */
 static u32 copy_from_iomem(void *dest, size_t destsize, const void *src,
 			   size_t srcsize, u32 offset, size_t request)
 {
@@ -57,6 +61,10 @@ static u32 copy_from_iomem(void *dest, size_t destsize, const void *src,
 	return request;
 }
 
+/*
+ * copy_from_buffer - copy buffer memory(dram) to destination memory
+ * implementation by memcpy
+ */
 static u32 copy_from_buffer(void *dest, size_t destsize, const void *src,
 			    size_t srcsize, u32 offset, size_t request)
 {
