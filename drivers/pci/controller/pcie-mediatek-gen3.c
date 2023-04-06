@@ -1019,6 +1019,7 @@ static int mtk_pcie_parse_port(struct mtk_pcie_port *port)
 	regs = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pcie-mac");
 	if (!regs)
 		return -EINVAL;
+
 	port->base = devm_ioremap_resource(dev, regs);
 	if (IS_ERR(port->base)) {
 		dev_err(dev, "failed to map register base\n");
@@ -1033,6 +1034,9 @@ static int mtk_pcie_parse_port(struct mtk_pcie_port *port)
 		return port->port_num;
 	}
 
+	if (port->port_num < MTK_PCIE_MAX_PORT)
+		pdev_list[port->port_num] = pdev;
+
 	port->dvfs_req_en = true;
 	ret = of_property_read_bool(dev->of_node, "mediatek,dvfs-req-dis");
 	if (ret)
@@ -1046,7 +1050,8 @@ static int mtk_pcie_parse_port(struct mtk_pcie_port *port)
 	pextp_node = of_find_compatible_node(NULL, NULL,
 					     "mediatek,mt6985-pextpcfg_ao");
 	if (pextp_node) {
-		port->pextpcfg = devm_of_iomap(dev, pextp_node, 0, NULL);
+		port->pextpcfg = of_iomap(pextp_node, 0);
+		of_node_put(pextp_node);
 		if (IS_ERR(port->pextpcfg))
 			return PTR_ERR(port->pextpcfg);
 	}
@@ -1212,6 +1217,8 @@ static void mtk_pcie_power_down(struct mtk_pcie_port *port)
 			       port->pextpcfg + PEXTP_SW_RST_SET_OFFSET);
 
 	mtk_pcie_clkbuf_control(port->dev, false);
+	if (port->pextpcfg)
+		iounmap(port->pextpcfg);
 }
 
 static int mtk_pcie_setup(struct mtk_pcie_port *port)
@@ -1264,9 +1271,6 @@ static int mtk_pcie_probe(struct platform_device *pdev)
 	if (err)
 		goto err_probe;
 
-	if (port->port_num < MTK_PCIE_MAX_PORT)
-		pdev_list[port->port_num] = pdev;
-
 	host->ops = &mtk_pcie_ops;
 	host->sysdata = port;
 
@@ -1280,9 +1284,12 @@ static int mtk_pcie_probe(struct platform_device *pdev)
 	return 0;
 
 err_probe:
-	dev_pm_domain_detach(port->genpd_mac, true);
-	dev_pm_domain_detach(port->genpd_phy, true);
 	pinctrl_pm_select_sleep_state(&pdev->dev);
+	if (port->genpd_mac)
+		dev_pm_domain_detach(port->genpd_mac, true);
+
+	if (port->genpd_phy)
+		dev_pm_domain_detach(port->genpd_phy, true);
 
 	return err;
 }
