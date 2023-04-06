@@ -127,6 +127,124 @@ int slbc_suspend_resume_notify(int suspend)
 }
 EXPORT_SYMBOL_GPL(slbc_suspend_resume_notify);
 
+int slbc_table_gid_set(int gid, int quota, int pri)
+{
+	struct slbc_ipi_data slbc_ipi_d;
+
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
+	slbc_ipi_d.cmd = IPI_SLBC_TABLE_GID_SET;
+	slbc_ipi_d.arg = gid;
+	slbc_ipi_d.arg2 = quota;
+	slbc_ipi_d.arg3 = pri;
+	return slbc_scmi_set(&slbc_ipi_d);
+}
+EXPORT_SYMBOL_GPL(slbc_table_gid_set);
+
+int slbc_table_gid_release(int gid)
+{
+	struct slbc_ipi_data slbc_ipi_d;
+
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
+	slbc_ipi_d.cmd = IPI_SLBC_TABLE_GID_RELEASE;
+	slbc_ipi_d.arg = gid;
+	return slbc_scmi_set(&slbc_ipi_d);
+}
+EXPORT_SYMBOL_GPL(slbc_table_gid_release);
+
+int slbc_table_gid_get(int gid)
+{
+	struct slbc_ipi_data slbc_ipi_d;
+
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
+	slbc_ipi_d.cmd = IPI_SLBC_TABLE_GID_GET;
+	slbc_ipi_d.arg = gid;
+	return slbc_scmi_set(&slbc_ipi_d);
+}
+EXPORT_SYMBOL_GPL(slbc_table_gid_get);
+
+int slbc_table_idt_set(int index, int arid, int idt)
+{
+	struct slbc_ipi_data slbc_ipi_d;
+
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
+	slbc_ipi_d.cmd = IPI_SLBC_TABLE_IDT_SET;
+	slbc_ipi_d.arg = index;
+	slbc_ipi_d.arg2 = arid;
+	slbc_ipi_d.arg3 = idt;
+	return slbc_scmi_set(&slbc_ipi_d);
+}
+EXPORT_SYMBOL_GPL(slbc_table_idt_set);
+
+int slbc_table_idt_release(int index)
+{
+	struct slbc_ipi_data slbc_ipi_d;
+
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
+	slbc_ipi_d.cmd = IPI_SLBC_TABLE_IDT_RELEASE;
+	slbc_ipi_d.arg = index;
+	return slbc_scmi_set(&slbc_ipi_d);
+}
+EXPORT_SYMBOL_GPL(slbc_table_idt_release);
+
+int slbc_table_idt_get(int index)
+{
+	struct slbc_ipi_data slbc_ipi_d;
+
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
+	slbc_ipi_d.cmd = IPI_SLBC_TABLE_IDT_GET;
+	slbc_ipi_d.arg = index;
+	return slbc_scmi_set(&slbc_ipi_d);
+}
+EXPORT_SYMBOL_GPL(slbc_table_idt_get);
+
+int slbc_table_gid_axi_set(int index, int axiid, int pg)
+{
+	struct slbc_ipi_data slbc_ipi_d;
+
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
+	slbc_ipi_d.cmd = IPI_SLBC_TABLE_GID_AXI_SET;
+	slbc_ipi_d.arg = index;
+	slbc_ipi_d.arg2 = axiid;
+	slbc_ipi_d.arg3 = pg;
+	return slbc_scmi_set(&slbc_ipi_d);
+}
+EXPORT_SYMBOL_GPL(slbc_table_gid_axi_set);
+
+int slbc_table_gid_axi_release(int index)
+{
+	struct slbc_ipi_data slbc_ipi_d;
+
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
+	slbc_ipi_d.cmd = IPI_SLBC_TABLE_GID_AXI_RELEASE;
+	slbc_ipi_d.arg = index;
+	return slbc_scmi_set(&slbc_ipi_d);
+}
+EXPORT_SYMBOL_GPL(slbc_table_gid_axi_release);
+
+int slbc_table_gid_axi_get(int index)
+{
+	struct slbc_ipi_data slbc_ipi_d;
+
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
+	slbc_ipi_d.cmd = IPI_SLBC_TABLE_GID_AXI_GET;
+	slbc_ipi_d.arg = index;
+	return slbc_scmi_set(&slbc_ipi_d);
+}
+EXPORT_SYMBOL_GPL(slbc_table_gid_axi_get);
+
+int emi_slb_select(int argv1, int argv2, int argv3)
+{
+	struct slbc_ipi_data slbc_ipi_d;
+
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
+	slbc_ipi_d.cmd = IPI_EMI_SLB_SELECT;
+	slbc_ipi_d.arg = argv1;
+	slbc_ipi_d.arg2 = argv2;
+	slbc_ipi_d.arg3 = argv3;
+	return slbc_scmi_set(&slbc_ipi_d);
+}
+EXPORT_SYMBOL_GPL(emi_slb_select);
+
 int _slbc_request_cache_scmi(void *ptr)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)

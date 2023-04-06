@@ -42,6 +42,16 @@ enum {
 	IPI_SLBC_GID_VALID_FROM_AP,
 	IPI_SLBC_GID_INVALID_FROM_AP,
 	IPI_SLBC_GID_READ_INVALID_FROM_AP,
+	IPI_SLBC_TABLE_GID_SET,
+	IPI_SLBC_TABLE_GID_RELEASE,
+	IPI_SLBC_TABLE_GID_GET,
+	IPI_SLBC_TABLE_IDT_SET,
+	IPI_SLBC_TABLE_IDT_RELEASE,
+	IPI_SLBC_TABLE_IDT_GET,
+	IPI_SLBC_TABLE_GID_AXI_SET,
+	IPI_SLBC_TABLE_GID_AXI_RELEASE,
+	IPI_SLBC_TABLE_GID_AXI_GET,
+	IPI_EMI_SLB_SELECT,
 	NR_IPI_SLBC,
 };
 
@@ -83,6 +93,16 @@ extern int _slbc_release_buffer_scmi(void *ptr);
 extern void slbc_register_ipi_ops(struct slbc_ipi_ops *ops);
 extern void slbc_unregister_ipi_ops(struct slbc_ipi_ops *ops);
 extern int slbc_sspm_sram_update(void);
+extern int slbc_table_gid_set(int gid, int quota, int pri);
+extern int slbc_table_gid_release(int gid);
+extern int slbc_table_gid_get(int gid);
+extern int slbc_table_idt_set(int index, int arid, int idt);
+extern int slbc_table_idt_release(int index);
+extern int slbc_table_idt_get(int index);
+extern int slbc_table_gid_axi_set(int index, int axiid, int pg);
+extern int slbc_table_gid_axi_release(int index);
+extern int slbc_table_gid_axi_get(int index);
+extern int emi_slb_select(int argv1, int argv2, int argv3);
 extern int _slbc_ach_scmi(unsigned int cmd, enum slc_ach_uid uid, int gid,
 			struct slbc_gid_data *data);
 
@@ -104,6 +124,16 @@ __weak int _slbc_release_buffer_scmi(void *ptr) {}
 __weak void slbc_register_ipi_ops(struct slbc_ipi_ops *ops) {}
 __weak void slbc_unregister_ipi_ops(struct slbc_ipi_ops *ops) {}
 __weak int slbc_sspm_sram_update(void) {}
+__weak int slbc_table_gid_set(int gid, int quota, int pri) {}
+__weak int slbc_table_gid_release(int gid) {}
+__weak int slbc_table_gid_get(int gid) {}
+__weak int slbc_table_idt_set(int index, int arid, int idt) {}
+__weak int slbc_table_idt_release(int index) {}
+__weak int slbc_table_idt_get(int index) {}
+__weak int slbc_table_gid_axi_set(int index, int axiid, int pg) {}
+__weak int slbc_table_gid_axi_release(int index) {}
+__weak int slbc_table_gid_axi_get(int index) {}
+__weak int emi_slb_select(int argv1, int argv2, int argv3) {}
 __weak int _slbc_ach_scmi(unsigned int cmd, enum slc_ach_uid uid, int gid,
 			struct slbc_gid_data *data)
 {
