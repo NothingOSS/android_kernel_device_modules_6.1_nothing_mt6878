@@ -545,7 +545,7 @@ static s32 calc_scaling_lut(s32 plane, struct mml_pq_fg_alg_data *fg_data)
 
 		if (delta_x == 0)
 			delta_x = 1;
-		delta = (s64)(delta_y * ((65536 + (delta_x >> 1)) / delta_x));
+		delta = (s64)(delta_y * (s64)((65536 + (delta_x >> 1)) / delta_x));
 
 		for (x = 0; x < delta_x; x++)
 			scaling_lut[value[point] + x] =
