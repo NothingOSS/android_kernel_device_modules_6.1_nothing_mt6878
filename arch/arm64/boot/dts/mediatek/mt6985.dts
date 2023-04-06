@@ -50,7 +50,7 @@
 		i2c11 = &i2c11;
 		i2c12 = &i2c12;
 		i2c13 = &i2c13;
-		scp_i2c1 = &scp_i2c1;
+		scp-i2c1 = &scp_i2c1;
 		y2r0 = &disp_y2r0;
 		y2r1 = &disp1_y2r0;
 		y2r4 = &ovl_y2r0;
@@ -6233,9 +6233,9 @@
 				<&pericfg_ao_clk CLK_PERAO_DMA_B>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
-			clk_src_in_hz = <130000000>;
-			ch_offset_i2c = <0x200>;
-			ch_offset_dma = <0x80>;
+			clk-src-in-hz = <130000000>;
+			ch-offset-i2c = <0x200>;
+			ch-offset-dma = <0x80>;
 			scl-gpio-id = <49>;
 			sda-gpio-id = <50>;
 		};
