@@ -1081,13 +1081,14 @@ module_init(init_pgboost);
 
 static void  __exit exit_pgboost(void)
 {
-	/* Cancel pgboost delayed work */
+	/* Cancel pgboost first delayed work */
 	cancel_delayed_work_sync(&first_pgboost_work);
-	cancel_delayed_work_sync(&pgboost_work);
-	cancel_delayed_work_sync(&pgboost_periodic_work);
-
 	if (!pgboost_ready)
 		return;
+
+	/* Cancel pgboost delayed work */
+	cancel_delayed_work_sync(&pgboost_work);
+	cancel_delayed_work_sync(&pgboost_periodic_work);
 
 	/* Uninitialized other hooks */
 	pgboost_disconnect_tracepoints();
