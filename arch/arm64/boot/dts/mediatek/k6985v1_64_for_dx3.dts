@@ -477,6 +477,7 @@ initcall_debug=1";
 	sleep-mode-enable = <1>;
 	adaptive-power-policy = <1>;
 	default-glb-pwroff-timeout-us = <300>;
+	gpu-frame-base-optimize = <1>;
 };
 
 #include "mediatek/cust_k6985_connfem.dtsi"

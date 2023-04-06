@@ -9123,6 +9123,7 @@
 			firmware-idle-hysteresis-time-ms = <0>;
 			sleep-mode-enable = <0xff>;
 			pending-submission-mode = <1>;
+			gpu-frame-base-optimize = <0>;
 		};
 
 		gpu_mali_opp: opp-table0 {
