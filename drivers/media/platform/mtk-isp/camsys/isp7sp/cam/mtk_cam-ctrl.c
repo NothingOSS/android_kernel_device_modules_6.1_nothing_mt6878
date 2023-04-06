@@ -887,6 +887,7 @@ static void mtk_cam_ctrl_stream_on_flow(struct mtk_cam_job *job)
 
 	dev_info(dev, "[%s] ctx %d begin\n", __func__, ctrl->ctx->stream_id);
 
+	mtk_cam_job_update_clk(job);
 	if (mtk_cam_ctrl_stream_on_job(job))
 		return;
 
@@ -989,6 +990,8 @@ static void mtk_cam_ctrl_raw_switch_flow(struct mtk_cam_job *job)
 	/* Update the context's sensor and seninf */
 	ctx->sensor = job->sensor;
 	ctx->seninf = job->seninf;
+
+	mtk_cam_job_update_clk(job);
 
 	/**
 	 * Reuse stream on flow to start the new stream of the new sensor

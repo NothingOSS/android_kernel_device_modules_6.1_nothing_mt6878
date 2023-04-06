@@ -1698,11 +1698,9 @@ _job_pack_subsample(struct mtk_cam_job *job,
 	}
 	/* clone into job for debug dump */
 	job->ipi_config = ctx->ipi_config;
-	if (!ctx->not_first_job) {
+	if (!ctx->not_first_job)
 		ctx->not_first_job = true;
 
-		mtk_cam_job_update_clk(job);
-	}
 	ret = mtk_cam_job_fill_ipi_frame(job, job_helper);
 
 	return ret;
@@ -1861,11 +1859,9 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 	memcpy(job->tag_info, ctx->tag_info,
 		sizeof(struct mtk_camsv_tag_info) * CAMSV_MAX_TAGS);
 
-	if (!ctx->not_first_job) {
+	if (!ctx->not_first_job)
 		ctx->not_first_job = true;
 
-		mtk_cam_job_update_clk(job);
-	}
 	ret = mtk_cam_job_fill_ipi_frame(job, job_helper);
 	return ret;
 }
@@ -2029,11 +2025,8 @@ _job_pack_mstream(struct mtk_cam_job *job,
 	memcpy(job->tag_info, ctx->tag_info,
 		sizeof(struct mtk_camsv_tag_info) * CAMSV_MAX_TAGS);
 
-	if (!ctx->not_first_job) {
+	if (!ctx->not_first_job)
 		ctx->not_first_job = true;
-
-		mtk_cam_job_update_clk(job);
-	}
 
 	if (mtk_cam_job_fill_ipi_frame(job, job_helper))
 		return -1;
@@ -2168,12 +2161,9 @@ _job_pack_normal(struct mtk_cam_job *job,
 	memcpy(job->tag_info, ctx->tag_info,
 		sizeof(struct mtk_camsv_tag_info) * CAMSV_MAX_TAGS);
 
-	if (!ctx->not_first_job) {
-
+	if (!ctx->not_first_job)
 		ctx->not_first_job = true;
 
-		mtk_cam_job_update_clk(job);
-	}
 	ret = mtk_cam_job_fill_ipi_frame(job, job_helper);
 
 	return ret;
@@ -2218,6 +2208,7 @@ _job_pack_m2m(struct mtk_cam_job *job,
 
 		ctx->not_first_job = true;
 
+		/* There is no stream on work in m2m, so we must update clock here */
 		mtk_cam_job_update_clk(job);
 	}
 	ret = mtk_cam_job_fill_ipi_frame(job, job_helper);
