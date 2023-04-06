@@ -17,7 +17,6 @@
 #include <linux/uaccess.h>
 #include <linux/delay.h>
 
-
 #define FAKE_ENG_EN				0x0
 #define FAKE_ENG_RST			0x4
 #define FAKE_ENG_DONE			0x8
@@ -83,6 +82,8 @@ struct fake_eng_set {
 	unsigned int init_pat6;
 	unsigned int init_pat7;
 	unsigned int freeze_en;
+	unsigned int emi_disp_en;
+	unsigned int chn_hash_en;
 };
 
 struct emi_fake_eng {
@@ -93,8 +94,42 @@ struct emi_fake_eng {
 	struct fake_eng_set feng_arg;
 };
 
+struct reg_info {
+	void __iomem *addr;
+	unsigned int mask_value;
+	unsigned int set_value;
+};
+
+struct pre_setting {
+	unsigned int pre_cnt;
+	struct reg_info *setting_info;
+};
+
 /* global pointer for sysfs operations*/
 static struct emi_fake_eng *fakeng;
+static struct pre_setting *preset;
+
+/*
+ * mask_value -> bits to clear, fill in dts(mask-value)
+ *               if no bit to clear, just fill 0x0
+ *
+ * set_value -> bits to set, fill in dts(set-value)
+ *              if no bit to set, just fill 0x0
+ *
+ * Notice: don't fill in the same value in mask and set
+ *         it will not be masked actually
+ */
+static void fake_eng_pre_setting(void)
+{
+	unsigned int value, i;
+
+	for (i = 0; i < preset->pre_cnt; i++) {
+		value = readl(preset->setting_info[i].addr);
+		value = value & ~(preset->setting_info[i].mask_value);
+		value = value | preset->setting_info[i].set_value;
+		writel(value, preset->setting_info[i].addr);
+	}
+}
 
 static int fake_eng_init(unsigned int chn_id)
 {
@@ -127,7 +162,7 @@ static int fake_eng_init(unsigned int chn_id)
 	fakeng->feng_arg.start_addr_rd_extend = 0x00000000;
 	fakeng->feng_arg.start_addr_wr_2nd_extend = 0x0;
 	fakeng->feng_arg.start_addr_rd_2nd_extend = 0x0;
-	fakeng->feng_arg.addr_offset1 = 0x60;
+	fakeng->feng_arg.addr_offset1 = 0;
 	fakeng->feng_arg.addr_offset2 = 0;
 	fakeng->feng_arg.init_pat0 = 0x0000ffff;
 	fakeng->feng_arg.init_pat1 = 0x0000ffff;
@@ -255,8 +290,10 @@ static int fake_eng_init(unsigned int chn_id)
 			fakeng->fake_eng_base[chn_id] + FAKE_ENG_FREEZE_RESULT);
 
 	/* HASH */
-	val = (0x0 << 24) | (0x1 << 20) | (0x1 << 16) | (0x2 << 12) |
-			(0x1 << 8) | (fakeng->feng_arg.chn_number << 4) | 0x1;
+	val = (0x1 << 24) | (0x1 << 20) | (0x1 << 16) |
+			(fakeng->feng_arg.emi_disp_en << 12) |
+			(fakeng->feng_arg.chn_hash_en << 8) |
+			(fakeng->feng_arg.chn_number << 4) | 0x1;
 	writel(val, fakeng->fake_eng_base[chn_id] + FAKE_ENG_HASH);
 
 	return 0;
@@ -312,6 +349,8 @@ static void emi_fake_eng_start(unsigned int chn_id,
 	u32 loop_en = 1;
 	u32 slow_down, slow_down_grp, val;
 	int ret;
+
+	fake_eng_pre_setting();
 
 	if (fakeng->bitmap & (0x1 << chn_id)) {
 		pr_info("%s:Please disable fake eng:%d first\n", __func__, chn_id);
@@ -409,7 +448,7 @@ static ssize_t emi_fake_eng_store
 		goto out;
 	}
 
-	if (latency > 100) {
+	if (latency > 1000) {
 		pr_info("%s: Please enter latency value between 1 ~ 100\n", __func__);
 		goto out;
 	}
@@ -435,10 +474,16 @@ static int emi_fake_eng_remove(struct platform_device *pdev)
 static int emi_fake_eng_probe(struct platform_device *pdev)
 {
 	struct device_node *emi_feng_node  = pdev->dev.of_node;
+	struct device_node *emicen_node =
+		of_parse_phandle(emi_feng_node, "mediatek,emi-reg", 0);
+	struct device_node *p_pre_setting;
+	struct device_node *setting;
 	struct emi_fake_eng *feng;
+	struct pre_setting *pset;
 
-	unsigned int i;
-	int ret;
+	int ret, i;
+	unsigned int pre_cnt = 0;
+	unsigned int value;
 
 	dev_info(&pdev->dev, "driver probed\n");
 
@@ -447,18 +492,18 @@ static int emi_fake_eng_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	ret = of_property_count_elems_of_size(emi_feng_node,
-		"reg", sizeof(unsigned int) * 4);
+			"reg", sizeof(unsigned int) * 4);
 	if (ret <= 0) {
-		dev_err(&pdev->dev, "No reg\n");
+		dev_info(&pdev->dev, "No reg\n");
 		return -ENXIO;
 	}
+
 	feng->emi_fake_eng_cnt = (unsigned int)ret;
 
 	feng->fake_eng_base = devm_kmalloc_array(&pdev->dev,
 		feng->emi_fake_eng_cnt, sizeof(phys_addr_t), GFP_KERNEL);
 	if (!(feng->fake_eng_base))
 		return -ENOMEM;
-
 
 	for (i = 0; i < feng->emi_fake_eng_cnt; i++) {
 		feng->fake_eng_base[i] = of_iomap(emi_feng_node, i);
@@ -471,8 +516,63 @@ static int emi_fake_eng_probe(struct platform_device *pdev)
 	if (!(feng->k_addr))
 		return -ENOMEM;
 
+	ret = of_property_read_u32(emicen_node, "a2d-disph", &(feng->feng_arg.emi_disp_en));
+	if (ret)
+		feng->feng_arg.emi_disp_en = 0x2;
+	ret = of_property_read_u32(emicen_node, "a2d-hash", &(feng->feng_arg.chn_hash_en));
+	if (ret)
+		feng->feng_arg.chn_hash_en = 0x1;
+
+	pset = devm_kzalloc(&pdev->dev, sizeof(struct pre_setting), GFP_KERNEL);
+	if (!pset)
+		return -ENOMEM;
+
+	p_pre_setting = of_get_child_by_name(emi_feng_node, "pre-setting");
+	if (!p_pre_setting) {
+		dev_info(&pdev->dev, "No pre-setting\n");
+	} else {
+		for_each_child_of_node(p_pre_setting, setting) {
+			pre_cnt++;
+		}
+		pset->pre_cnt = pre_cnt;
+
+		pset->setting_info = devm_kzalloc(&pdev->dev,
+				sizeof(struct reg_info) * pre_cnt, GFP_KERNEL);
+
+		pre_cnt = 0;
+		for_each_child_of_node(p_pre_setting, setting) {
+			ret = of_property_read_u32(setting, "addr", &value);
+			if (ret) {
+				dev_info(&pdev->dev, "Fail to parse setting addr\n");
+				return -EINVAL;
+			}
+
+			pset->setting_info[pre_cnt].addr = ioremap(value, 0x4);
+			if (!pset->setting_info[pre_cnt].addr) {
+				dev_info(&pdev->dev, "Fail to remap setting addr\n");
+				return -EFAULT;
+			}
+
+			ret = of_property_read_u32(setting, "mask-value", &value);
+			if (ret) {
+				dev_info(&pdev->dev, "Fail to parse mask value\n");
+				return -EINVAL;
+			}
+			pset->setting_info[pre_cnt].mask_value = value;
+
+			ret = of_property_read_u32(setting, "set-value", &value);
+			if (ret) {
+				dev_info(&pdev->dev, "Fail to parse set value\n");
+				return -EINVAL;
+			}
+			pset->setting_info[pre_cnt].set_value = value;
+			pre_cnt++;
+		}
+	}
+
 	/* Set to global pointer */
 	fakeng = feng;
+	preset = pset;
 
 	/* Initial channel bitmap */
 	fakeng->bitmap = 0;
