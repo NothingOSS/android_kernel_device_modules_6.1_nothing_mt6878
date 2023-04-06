@@ -189,7 +189,7 @@ static struct irq_count_desc *irq_count_desc_lookup(int irq)
 static struct irq_count_desc *irq_count_desc_alloc(int irq)
 {
 	struct irq_count_desc *desc;
-	void *entry;
+	int err;
 
 	desc = kzalloc(sizeof(*desc), GFP_ATOMIC);
 	if (!desc)
@@ -199,11 +199,16 @@ static struct irq_count_desc *irq_count_desc_alloc(int irq)
 		kfree(desc);
 		return NULL;
 	}
-	entry = xa_store(&irqs_desc_xa, irq, desc, GFP_ATOMIC);
-	if (xa_is_err(entry)) {
+	/*
+	 * This entry might be stored by concurrent irq_count_desc_alloc()
+	 * Use xa_insert() to prevent override the entry.
+	 */
+	err = xa_insert(&irqs_desc_xa, irq, desc, GFP_ATOMIC);
+	if (err) {
 		free_percpu(desc->count);
 		kfree(desc);
-		return NULL;
+		/* Try to return the entry which is present. */
+		desc =  (err == -EBUSY) ? xa_load(&irqs_desc_xa, irq) : NULL;
 	}
 	return desc;
 }
@@ -398,8 +403,7 @@ enum hrtimer_restart irq_count_tracer_hrtimer_fn(struct hrtimer *hrtimer)
 			spin_lock(&irq_cpus[i].lock);
 
 			desc = irq_count_desc_lookup(irq);
-
-			if (desc->rec[i].warn || !desc->rec[i].diff) {
+			if (!desc || desc->rec[i].warn || !desc->rec[i].diff) {
 				spin_unlock(&irq_cpus[i].lock);
 				continue;
 			}
