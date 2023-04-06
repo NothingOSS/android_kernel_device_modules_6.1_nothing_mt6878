@@ -59,16 +59,17 @@ struct mem_size_stats {
 };
 
 void mbraink_show_process_info(void);
-void mbraink_get_process_stat_info(pid_t *current_pid,
+void mbraink_get_process_stat_info(pid_t current_pid,
 			struct mbraink_process_stat_data *process_stat_buffer);
-void mbraink_get_thread_stat_info(pid_t *current_pid_idx, pid_t *current_tid,
+void mbraink_get_thread_stat_info(pid_t current_pid_idx, pid_t current_tid,
 			struct mbraink_thread_stat_data *thread_stat_buffer);
-void mbraink_processname_to_pid(struct mbraink_monitor_processlist *processname_inputlist);
-void mbraink_get_process_memory_info(pid_t *current_pid,
+void mbraink_processname_to_pid(unsigned short monitor_process_count,
+				const struct mbraink_monitor_processlist *processname_inputlist);
+void mbraink_get_process_memory_info(pid_t current_pid,
 			struct mbraink_process_memory_data *process_memory_buffer);
 int mbraink_process_tracer_init(void);
 void mbraink_process_tracer_exit(void);
-void mbraink_get_tracing_pid_info(unsigned short *current_idx,
+void mbraink_get_tracing_pid_info(unsigned short current_idx,
 			struct mbraink_tracing_pid_data *tracing_pid_buffer);
 void smap_gather_stats(struct vm_area_struct *vma,
 			struct mem_size_stats *mss, unsigned long start);

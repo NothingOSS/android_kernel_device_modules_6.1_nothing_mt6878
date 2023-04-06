@@ -28,8 +28,8 @@ struct mbraink_cpufreq_notify_data {
 int mbraink_cpufreq_notify_init(void);
 void mbraink_cpufreq_notify_exit(void);
 void mbraink_get_cpufreq_notifier_info(
-		unsigned short *current_cluster_idx,
-		unsigned short *current_idx,
+		unsigned short current_cluster_idx,
+		unsigned short current_idx,
 		struct mbraink_cpufreq_notify_struct_data *cpufreq_notify_buffer);
 void remove_freq_qos_hook(void);
 #endif

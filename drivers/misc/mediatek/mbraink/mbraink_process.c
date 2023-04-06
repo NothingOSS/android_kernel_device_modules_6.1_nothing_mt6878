@@ -76,7 +76,7 @@ static int unregister_trace_android_vh_do_exit(void *t, void *p)
 #endif
 
 #if (MBRAINK_LANDING_PONSOT_CHECK == 1)
-void mbraink_get_process_memory_info(pid_t *current_pid,
+void mbraink_get_process_memory_info(pid_t current_pid,
 					struct mbraink_process_memory_data *process_memory_buffer)
 {
 	pr_info("%s: not support yet...", __func__);
@@ -142,7 +142,7 @@ void mbraink_map_vma(struct vm_area_struct *vma, unsigned long cur_pss,
 	}
 }
 
-void mbraink_get_process_memory_info(pid_t *current_pid,
+void mbraink_get_process_memory_info(pid_t current_pid,
 				struct mbraink_process_memory_data *process_memory_buffer)
 {
 	struct task_struct *t = NULL;
@@ -159,7 +159,7 @@ void mbraink_get_process_memory_info(pid_t *current_pid,
 
 	read_lock(&tasklist_lock);
 	for_each_process(t) {
-		if (t->pid < (*current_pid))
+		if (t->pid < current_pid)
 			continue;
 
 		mm = t->mm;
@@ -204,9 +204,8 @@ void mbraink_get_process_memory_info(pid_t *current_pid,
 					process_memory_buffer->pid_count++;
 				} else {
 					ret = -1;
-					(*current_pid) = t->pid;
 					process_memory_buffer->pid =
-						(unsigned short)(*current_pid);
+						(unsigned short)(t->pid);
 					break;
 				}
 			} else {
@@ -218,12 +217,12 @@ void mbraink_get_process_memory_info(pid_t *current_pid,
 	}
 
 	pr_info("%s: current_pid = %u, count = %u\n",
-			__func__, (*current_pid), process_memory_buffer->pid_count);
+		__func__, process_memory_buffer->pid, process_memory_buffer->pid_count);
 	read_unlock(&tasklist_lock);
 }
 #endif
 
-void mbraink_get_process_stat_info(pid_t *current_pid,
+void mbraink_get_process_stat_info(pid_t current_pid,
 		struct mbraink_process_stat_data *process_stat_buffer)
 {
 	struct task_struct *t = NULL;
@@ -239,10 +238,10 @@ void mbraink_get_process_stat_info(pid_t *current_pid,
 
 	read_lock(&tasklist_lock);
 	for_each_process(t) {
-		if (t->pid < (*current_pid))
+		if (t->pid < current_pid)
 			continue;
 
-		cutime = cstime = stime = utime = 0;
+		stime = utime = 0;
 		cutime = t->signal->cutime;
 		cstime = t->signal->cstime;
 
@@ -269,19 +268,18 @@ void mbraink_get_process_stat_info(pid_t *current_pid,
 			put_cred(cred);
 		} else {
 			ret = -1;
-			(*current_pid) = t->pid;
-			process_stat_buffer->pid = (unsigned short)(*current_pid);
+			process_stat_buffer->pid = (unsigned short)(t->pid);
 			put_cred(cred);
 			break;
 		}
 	}
 
 	pr_info("%s: current_pid = %u, count = %u\n",
-		__func__, (*current_pid), process_stat_buffer->pid_count);
+		__func__, process_stat_buffer->pid, process_stat_buffer->pid_count);
 	read_unlock(&tasklist_lock);
 }
 
-void mbraink_get_thread_stat_info(pid_t *current_pid_idx, pid_t *current_tid,
+void mbraink_get_thread_stat_info(pid_t current_pid_idx, pid_t current_tid,
 				struct mbraink_thread_stat_data *thread_stat_buffer)
 {
 	struct task_struct *t = NULL;
@@ -318,7 +316,7 @@ void mbraink_get_thread_stat_info(pid_t *current_pid_idx, pid_t *current_tid,
 	thread_stat_buffer->tid = 0;
 	thread_stat_buffer->tid_count = 0;
 
-	for (index = (*current_pid_idx); index < count; index++) {
+	for (index = current_pid_idx; index < count; index++) {
 		parent_pid = find_get_pid(processlist_temp[index]);
 
 		if (parent_pid == NULL) {
@@ -337,10 +335,10 @@ void mbraink_get_thread_stat_info(pid_t *current_pid_idx, pid_t *current_tid,
 
 		if (t && t->mm) {
 			for_each_thread(t, s) {
-				if (s->pid < (*current_tid))
+				if (s->pid < current_tid)
 					continue;
 
-				cutime = cstime = stime = utime = 0;
+				stime = utime = 0;
 				cutime = s->signal->cutime;
 				cstime = s->signal->cstime;
 				task_cputime_adjusted(s, &utime, &stime);
@@ -381,10 +379,8 @@ void mbraink_get_thread_stat_info(pid_t *current_pid_idx, pid_t *current_tid,
 					put_cred(cred);
 				} else {
 					ret = -1;
-					(*current_tid) = s->pid;
-					thread_stat_buffer->tid = (unsigned short)(*current_tid);
-					(*current_pid_idx) = index;
-					thread_stat_buffer->pid_idx = (*current_pid_idx);
+					thread_stat_buffer->tid = (unsigned short)(s->pid);
+					thread_stat_buffer->pid_idx = index;
 					put_cred(cred);
 					break;
 				}
@@ -400,11 +396,11 @@ void mbraink_get_thread_stat_info(pid_t *current_pid_idx, pid_t *current_tid,
 			break;
 		}
 		/*move to the next pid and reset the current tid*/
-		(*current_tid) = 1;
+		current_tid = 1;
 	}
 
 	pr_info("%s: current_tid = %u, current_pid_idx = %u, count = %u\n",
-			__func__, (*current_tid), (*current_pid_idx),
+			__func__, thread_stat_buffer->tid, thread_stat_buffer->pid_idx,
 			thread_stat_buffer->tid_count);
 
 	read_unlock(&tasklist_lock);
@@ -432,7 +428,8 @@ char *strcasestr(const char *s1, const char *s2)
 	return *p ? NULL : (char *) s1;
 }
 
-void mbraink_processname_to_pid(struct mbraink_monitor_processlist *processname_inputlist)
+void mbraink_processname_to_pid(unsigned short monitor_process_count,
+				const struct mbraink_monitor_processlist *processname_inputlist)
 {
 	struct task_struct *t = NULL;
 	char *cmdline = NULL;
@@ -440,7 +437,6 @@ void mbraink_processname_to_pid(struct mbraink_monitor_processlist *processname_
 	int count = 0;
 	unsigned short processlist_temp[MAX_MONITOR_PROCESS_NUM];
 	unsigned long flags;
-	unsigned short monitor_process_count = 0;
 
 	spin_lock_irqsave(&monitor_pidlist_lock, flags);
 	mbraink_monitor_pidlist_data.is_set = 0;
@@ -453,7 +449,6 @@ void mbraink_processname_to_pid(struct mbraink_monitor_processlist *processname_
 			if (count >= MAX_MONITOR_PROCESS_NUM)
 				break;
 
-			cmdline = NULL;
 			read_unlock(&tasklist_lock);
 			/*This function might sleep*/
 			cmdline = kstrdup_quotable_cmdline(t, GFP_KERNEL);
@@ -463,7 +458,7 @@ void mbraink_processname_to_pid(struct mbraink_monitor_processlist *processname_
 				pr_info("cmdline is NULL\n");
 				continue;
 			}
-			monitor_process_count = processname_inputlist->monitor_process_count;
+
 			for (index = 0; index < monitor_process_count; index++) {
 				if (strcasestr(cmdline,
 					processname_inputlist->process_name[index])) {
@@ -471,11 +466,10 @@ void mbraink_processname_to_pid(struct mbraink_monitor_processlist *processname_
 						processlist_temp[count] = (unsigned short)(t->pid);
 						count++;
 					}
-					kfree(cmdline);
 					break;
-				} else if (index == monitor_process_count - 1)
-					kfree(cmdline);
+				}
 			}
+			kfree(cmdline);
 		}
 	}
 	read_unlock(&tasklist_lock);
@@ -505,18 +499,17 @@ void mbraink_show_process_info(void)
 
 	read_lock(&tasklist_lock);
 	for_each_process(t) {
-		cutime = cstime = stime = utime = 0;
-		cutime = t->signal->cutime;
-		cstime = t->signal->cstime;
+		stime = utime = 0;
 		mm = t->mm;
 		counter++;
 		if (mm) {
-			cmdline = NULL;
 			read_unlock(&tasklist_lock);
 			/*This function might sleep, cannot be called during atomic context*/
 			cmdline = kstrdup_quotable_cmdline(t, GFP_KERNEL);
 			read_lock(&tasklist_lock);
 
+			cutime = t->signal->cutime;
+			cstime = t->signal->cstime;
 			thread_group_cputime_adjusted(t, &utime, &stime);
 			cred = get_task_cred(t);
 			priority = t->prio - MAX_RT_PRIO;
@@ -551,6 +544,8 @@ void mbraink_show_process_info(void)
 			}
 		} else {
 			cred = get_task_cred(t);
+			cutime = t->signal->cutime;
+			cstime = t->signal->cstime;
 			task_cputime_adjusted(t, &utime, &stime);
 			priority = t->prio - MAX_RT_PRIO;
 			pr_info(PROCESS_INFO_STR,
@@ -766,7 +761,7 @@ void mbraink_process_tracer_exit(void)
 	unregister_trace_android_vh_do_exit(mbraink_trace_android_vh_do_exit, NULL);
 }
 
-void mbraink_get_tracing_pid_info(unsigned short *current_idx,
+void mbraink_get_tracing_pid_info(unsigned short current_idx,
 				struct mbraink_tracing_pid_data *tracing_pid_buffer)
 {
 	int i = 0;
@@ -778,7 +773,7 @@ void mbraink_get_tracing_pid_info(unsigned short *current_idx,
 
 	memset(tracing_pid_buffer, 0, sizeof(struct mbraink_tracing_pid_data));
 
-	for (i = (*current_idx); i < MAX_TRACE_NUM; i++) {
+	for (i = current_idx; i < MAX_TRACE_NUM; i++) {
 		if (mbraink_tracing_pidlist_data[i].dirty == false)
 			continue;
 		else {
@@ -818,14 +813,13 @@ void mbraink_get_tracing_pid_info(unsigned short *current_idx,
 				}
 			} else {
 				ret = -1;
-				(*current_idx) = i;
-				tracing_pid_buffer->tracing_idx = (*current_idx);
+				tracing_pid_buffer->tracing_idx = i;
 				break;
 			}
 		}
 	}
 	pr_info("%s: current_idx = %u, count = %u\n",
-		__func__, (*current_idx), tracing_pid_buffer->tracing_count);
+		__func__, tracing_pid_buffer->tracing_idx, tracing_pid_buffer->tracing_count);
 	spin_unlock_irqrestore(&tracing_pidlist_lock, flags);
 }
 #else

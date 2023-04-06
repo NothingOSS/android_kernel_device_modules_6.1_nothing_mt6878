@@ -48,7 +48,7 @@ void mbraink_set_suspend_info_list_record(unsigned short datatype)
 
 void mbraink_get_suspend_info_list_record(struct mbraink_suspend_info_struct_data *buffer, int max)
 {
-	int buf_idx = 0;
+	unsigned int buf_idx = 0;
 	unsigned short r_idx = 0;
 	unsigned short init_r_idx = 0;
 	unsigned long flags;

@@ -177,8 +177,8 @@ static int freq_qos_min_notifier_call(struct notifier_block *nb,
 }
 
 void
-mbraink_get_cpufreq_notifier_info(unsigned short *current_cluster_idx,
-				unsigned short *current_idx,
+mbraink_get_cpufreq_notifier_info(unsigned short current_cluster_idx,
+				unsigned short current_idx,
 				struct mbraink_cpufreq_notify_struct_data *cpufreq_notify_buffer)
 {
 	int i = 0, j = 0;
@@ -190,8 +190,8 @@ mbraink_get_cpufreq_notifier_info(unsigned short *current_cluster_idx,
 
 	memset(cpufreq_notify_buffer, 0, sizeof(struct mbraink_cpufreq_notify_struct_data));
 
-	for (i = (*current_cluster_idx); i < CPU_CLUSTER_SZ; i++) {
-		for (j = (*current_idx); j < CPUFREQ_NOTIFY_SZ; j++) {
+	for (i = current_cluster_idx; i < CPU_CLUSTER_SZ; i++) {
+		for (j = current_idx; j < CPUFREQ_NOTIFY_SZ; j++) {
 			if (cpufreq_notify_data[i].drv_data[j].dirty  == false)
 				continue;
 			else {
@@ -216,21 +216,19 @@ mbraink_get_cpufreq_notifier_info(unsigned short *current_cluster_idx,
 					cpufreq_notify_data[i].drv_data[j].dirty  = false;
 				} else {
 					ret = -1;
-					(*current_cluster_idx) = i;
-					(*current_idx) = j;
-					cpufreq_notify_buffer->notify_cluster_idx =
-								(*current_cluster_idx);
-					cpufreq_notify_buffer->notify_idx = (*current_idx);
+					cpufreq_notify_buffer->notify_cluster_idx = i;
+					cpufreq_notify_buffer->notify_idx = j;
 					break;
 				}
 			}
 		}
 		if (ret == -1)
 			break;
-		(*current_idx) = 0;
+		current_idx = 0;
 	}
 	pr_info("%s: current_cluster_idx = %u, current_idx= %u, count = %u\n",
-			__func__, (*current_cluster_idx), (*current_idx),
+			__func__, cpufreq_notify_buffer->notify_cluster_idx,
+			cpufreq_notify_buffer->notify_idx,
 			cpufreq_notify_buffer->notify_count);
 	spin_unlock_irqrestore(&cpufreq_lock, flags);
 }

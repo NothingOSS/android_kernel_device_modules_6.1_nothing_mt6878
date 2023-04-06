@@ -166,7 +166,7 @@ static long mbraink_ioctl(struct file *filp,
 	switch (cmd) {
 	case RO_POWER:
 	{
-		n = mbraink_get_power_info(mbraink_priv.power_buffer, CURRENT_DATA);
+		n = mbraink_get_power_info(mbraink_priv.power_buffer, MAX_BUF_SZ, CURRENT_DATA);
 		if (n <= 0) {
 			pr_notice("mbraink_get_power_info return failed, err %d\n", n);
 		} else {
@@ -246,7 +246,7 @@ static long mbraink_ioctl(struct file *filp,
 
 		pid = process_stat_buffer.pid;
 
-		mbraink_get_process_stat_info(&pid, &process_stat_buffer);
+		mbraink_get_process_stat_info(pid, &process_stat_buffer);
 
 		if (copy_to_user((struct mbraink_process_stat_data *)arg,
 					&process_stat_buffer,
@@ -271,7 +271,7 @@ static long mbraink_ioctl(struct file *filp,
 
 		pid = process_memory_buffer.pid;
 
-		mbraink_get_process_memory_info(&pid, &process_memory_buffer);
+		mbraink_get_process_memory_info(pid, &process_memory_buffer);
 
 		if (copy_to_user((struct mbraink_process_memory_data *)arg,
 					&process_memory_buffer,
@@ -284,6 +284,7 @@ static long mbraink_ioctl(struct file *filp,
 	case WO_MONITOR_PROCESS:
 	{
 		struct mbraink_monitor_processlist monitor_processlist_buffer;
+		unsigned short monitor_process_count = 0;
 
 		if (copy_from_user(&monitor_processlist_buffer,
 					(struct mbraink_monitor_processlist *)arg,
@@ -291,8 +292,10 @@ static long mbraink_ioctl(struct file *filp,
 			pr_notice("copy mbraink_monitor_processlist from user Err!\n");
 			return -EPERM;
 		}
-
-		mbraink_processname_to_pid(&monitor_processlist_buffer);
+		monitor_process_count =
+			monitor_processlist_buffer.monitor_process_count;
+		mbraink_processname_to_pid(monitor_process_count,
+					&monitor_processlist_buffer);
 		break;
 	}
 	case RO_THREAD_STAT:
@@ -311,7 +314,7 @@ static long mbraink_ioctl(struct file *filp,
 		pid_idx = thread_stat_buffer.pid_idx;
 		tid = thread_stat_buffer.tid;
 
-		mbraink_get_thread_stat_info(&pid_idx, &tid, &thread_stat_buffer);
+		mbraink_get_thread_stat_info(pid_idx, tid, &thread_stat_buffer);
 
 		if (copy_to_user((struct mbraink_thread_stat_data *)arg,
 					&thread_stat_buffer,
@@ -336,7 +339,7 @@ static long mbraink_ioctl(struct file *filp,
 
 		tracing_idx = tracing_pid_buffer.tracing_idx;
 
-		mbraink_get_tracing_pid_info(&tracing_idx, &tracing_pid_buffer);
+		mbraink_get_tracing_pid_info(tracing_idx, &tracing_pid_buffer);
 
 		if (copy_to_user((struct mbraink_tracing_pid_data *)arg,
 					&tracing_pid_buffer,
@@ -369,8 +372,8 @@ static long mbraink_ioctl(struct file *filp,
 		}
 		notify_cluster_idx = pcpufreq_notify_buffer->notify_cluster_idx;
 		notify_idx = pcpufreq_notify_buffer->notify_idx;
-		mbraink_get_cpufreq_notifier_info(&notify_cluster_idx,
-									&notify_idx,
+		mbraink_get_cpufreq_notifier_info(notify_cluster_idx,
+									notify_idx,
 									pcpufreq_notify_buffer);
 		if (copy_to_user((struct mbraink_cpufreq_notify_struct_data *)arg,
 					pcpufreq_notify_buffer,
@@ -476,7 +479,8 @@ static int mbraink_suspend(struct device *dev)
 	mutex_lock(&power_lock);
 	if (mbraink_priv.suspend_power_info_en[0] == '1') {
 		mbraink_priv.suspend_power_data_size =
-			mbraink_get_power_info(mbraink_priv.suspend_power_buffer, SUSPEND_DATA);
+			mbraink_get_power_info(mbraink_priv.suspend_power_buffer,
+						MAX_BUF_SZ, SUSPEND_DATA);
 		if (mbraink_priv.suspend_power_data_size <= 0) {
 			pr_notice("mbraink_get_power_info return failed, err %d\n",
 						mbraink_priv.suspend_power_data_size);
@@ -504,7 +508,8 @@ static int mbraink_resume(struct device *dev)
 	mutex_lock(&power_lock);
 	if (mbraink_priv.suspend_power_info_en[0] == '1') {
 		mbraink_priv.resume_power_data_size =
-			mbraink_get_power_info(mbraink_priv.resume_power_buffer, RESUME_DATA);
+			mbraink_get_power_info(mbraink_priv.resume_power_buffer,
+						MAX_BUF_SZ, RESUME_DATA);
 		if (mbraink_priv.resume_power_data_size <= 0) {
 			pr_notice("mbraink_get_power_info return failed, err %d\n",
 				mbraink_priv.resume_power_data_size);

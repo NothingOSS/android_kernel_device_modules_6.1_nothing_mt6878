@@ -22,7 +22,7 @@ void mtk_get_lp_info(struct lpm_dbg_lp_info *info, int type)
 }
 #endif
 
-int mbraink_get_power_info(char *buffer, int datatype)
+int mbraink_get_power_info(char *buffer, unsigned int size, int datatype)
 {
 	int idx = 0, n = 0;
 	struct mbraink_26m mbraink_26m_stat;
@@ -35,18 +35,22 @@ int mbraink_get_power_info(char *buffer, int datatype)
 		"VCORE",
 	};
 
-	ktime_get_real_ts64(&tv);
-	n += sprintf(buffer + n, "systime:%lld\n", tv.tv_sec);
+	memset(&mbraink_26m_stat, 0, sizeof(mbraink_26m_stat));
+	memset(&mbraink_lpm_dbg_lp_info, 0, sizeof(mbraink_lpm_dbg_lp_info));
+	memset(&mbraink_md_data, 0, sizeof(mbraink_md_data));
 
-	n += sprintf(buffer + n, "datatype:%d\n", datatype);
+	ktime_get_real_ts64(&tv);
+	n += snprintf(buffer + n, size, "systime:%lld\n", tv.tv_sec);
+
+	n += snprintf(buffer + n, size, "datatype:%d\n", datatype);
 
 	mtk_get_lp_info(&mbraink_lpm_dbg_lp_info, SPM_IDLE_STAT);
 	for (idx = 0; idx < NUM_SPM_STAT; idx++) {
-		n += sprintf(buffer + n, "Idle_count %s:%lld\n",
+		n += snprintf(buffer + n, size, "Idle_count %s:%lld\n",
 			mbraink_lp_state_name[idx], mbraink_lpm_dbg_lp_info.record[idx].count);
 	}
 	for (idx = 0; idx < NUM_SPM_STAT; idx++) {
-		n += sprintf(buffer + n, "Idle_period %s:%lld.%03lld\n",
+		n += snprintf(buffer + n, size, "Idle_period %s:%lld.%03lld\n",
 			mbraink_lp_state_name[idx],
 			PCM_TICK_TO_SEC(mbraink_lpm_dbg_lp_info.record[idx].duration),
 			PCM_TICK_TO_SEC((mbraink_lpm_dbg_lp_info.record[idx].duration%
@@ -56,11 +60,11 @@ int mbraink_get_power_info(char *buffer, int datatype)
 
 	mtk_get_lp_info(&mbraink_lpm_dbg_lp_info, SPM_SUSPEND_STAT);
 	for (idx = 0; idx < NUM_SPM_STAT; idx++) {
-		n += sprintf(buffer + n, "Suspend_count %s:%lld\n",
+		n += snprintf(buffer + n, size, "Suspend_count %s:%lld\n",
 			mbraink_lp_state_name[idx], mbraink_lpm_dbg_lp_info.record[idx].count);
 	}
 	for (idx = 0; idx < NUM_SPM_STAT; idx++) {
-		n += sprintf(buffer + n, "Suspend_period %s:%lld.%03lld\n",
+		n += snprintf(buffer + n, size, "Suspend_period %s:%lld.%03lld\n",
 			mbraink_lp_state_name[idx],
 			PCM_TICK_TO_SEC(mbraink_lpm_dbg_lp_info.record[idx].duration),
 			PCM_TICK_TO_SEC((mbraink_lpm_dbg_lp_info.record[idx].duration%
@@ -72,7 +76,7 @@ int mbraink_get_power_info(char *buffer, int datatype)
 	if (!is_md_sleep_info_valid(&mbraink_md_data))
 		pr_notice("mbraink_md_data is not valid!\n");
 
-	n += sprintf(buffer + n, "MD:%lld.%03lld\nMD_2G:%lld.%03lld\nMD_3G:%lld.%03lld\n",
+	n += snprintf(buffer + n, size, "MD:%lld.%03lld\nMD_2G:%lld.%03lld\nMD_3G:%lld.%03lld\n",
 		mbraink_md_data.md_sleep_time / 1000000,
 		(mbraink_md_data.md_sleep_time % 1000000) / 1000,
 		mbraink_md_data.gsm_sleep_time / 1000000,
@@ -80,7 +84,7 @@ int mbraink_get_power_info(char *buffer, int datatype)
 		mbraink_md_data.wcdma_sleep_time / 1000000,
 		(mbraink_md_data.wcdma_sleep_time % 1000000) / 1000);
 
-	n += sprintf(buffer + n, "MD_4G:%lld.%03lld\nMD_5G:%lld.%03lld\n",
+	n += snprintf(buffer + n, size, "MD_4G:%lld.%03lld\nMD_5G:%lld.%03lld\n",
 		mbraink_md_data.lte_sleep_time / 1000000,
 		(mbraink_md_data.lte_sleep_time % 1000000) / 1000,
 		mbraink_md_data.nr_sleep_time / 1000000,
@@ -99,13 +103,13 @@ int mbraink_get_power_info(char *buffer, int datatype)
 	mbraink_26m_stat.req_sta_10 = plat_mmio_read(SPM_REQ_STA_10);
 	mbraink_26m_stat.src_req = plat_mmio_read(SPM_SRC_REQ);
 
-	n += sprintf(buffer + n, "req_sta_0:%u\nreq_sta_1:%u\nreq_sta_2:%u\nreq_sta_3:%u\n",
+	n += snprintf(buffer + n, size, "req_sta_0:%u\nreq_sta_1:%u\nreq_sta_2:%u\nreq_sta_3:%u\n",
 		mbraink_26m_stat.req_sta_0, mbraink_26m_stat.req_sta_1,
 		mbraink_26m_stat.req_sta_2, mbraink_26m_stat.req_sta_3);
-	n += sprintf(buffer + n, "req_sta_4:%u\nreq_sta_5:%u\nreq_sta_6:%u\nreq_sta_7:%u\n",
+	n += snprintf(buffer + n, size, "req_sta_4:%u\nreq_sta_5:%u\nreq_sta_6:%u\nreq_sta_7:%u\n",
 		mbraink_26m_stat.req_sta_4, mbraink_26m_stat.req_sta_5,
 		mbraink_26m_stat.req_sta_6, mbraink_26m_stat.req_sta_7);
-	n += sprintf(buffer + n, "req_sta_8:%u\nreq_sta_9:%u\nreq_sta_10:%u\nsrc_req:%u\n",
+	n += snprintf(buffer + n, size, "req_sta_8:%u\nreq_sta_9:%u\nreq_sta_10:%u\nsrc_req:%u\n",
 		mbraink_26m_stat.req_sta_8, mbraink_26m_stat.req_sta_9,
 		mbraink_26m_stat.req_sta_10, mbraink_26m_stat.src_req);
 	buffer[n] = '\0';
@@ -113,7 +117,7 @@ int mbraink_get_power_info(char *buffer, int datatype)
 	return n;
 }
 #else
-int mbraink_get_power_info(char *buffer, int datatype)
+int mbraink_get_power_info(char *buffer, unsigned int size, int datatype)
 {
 	pr_info("%s: Do not support ioctl power query.\n", __func__);
 	return 0;
