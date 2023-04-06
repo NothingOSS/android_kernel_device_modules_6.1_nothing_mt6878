@@ -761,6 +761,9 @@ int mtk_cam_dev_req_enqueue(struct mtk_cam_device *cam,
 			return -1;
 		}
 
+		if (!ctx->scenario_init)
+			WARN_ON(mtk_cam_ctx_init_scenario(ctx));
+
 		/* TODO(AY): return buffer in failed case */
 		if (mtk_cam_job_pack(job, ctx, req)) {
 			mtk_cam_job_return(job);
@@ -778,9 +781,6 @@ int mtk_cam_dev_req_enqueue(struct mtk_cam_device *cam,
 	list_for_each_entry(job, &job_list, list) {
 
 		ctx = job->src_ctx;
-
-		if (!ctx->scenario_init)
-			WARN_ON(mtk_cam_ctx_init_scenario(ctx));
 
 		// enque to ctrl ; job will send ipi
 		mtk_cam_ctrl_job_enque(&ctx->cam_ctrl, job);
