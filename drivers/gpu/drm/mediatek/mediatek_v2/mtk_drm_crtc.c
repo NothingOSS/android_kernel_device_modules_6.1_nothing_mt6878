@@ -5285,8 +5285,13 @@ void mtk_crtc_ovl_connect_change(struct drm_crtc *crtc, unsigned int ovl_res,
 			continue;
 
 		comp_id = dual_pipe_comp_mapping(priv->data->mmsys_id, comp_id_list[i]);
-		mtk_crtc->dual_pipe_ddp_ctx.ovl_comp[DDP_FIRST_PATH][ovl_comp_idx] =
-			priv->ddp_comp[comp_id];
+		if (comp_id < DDP_COMPONENT_ID_MAX)
+			mtk_crtc->dual_pipe_ddp_ctx.ovl_comp[DDP_FIRST_PATH][ovl_comp_idx] =
+				priv->ddp_comp[comp_id];
+		else {
+			DDPPR_ERR("%s:%d comp_id:%d is invalid!\n", __func__, __LINE__, comp_id);
+			return;
+		}
 		++ovl_comp_idx;
 	}
 	mtk_crtc->dual_pipe_ddp_ctx.ovl_comp[DDP_FIRST_PATH][ovl_comp_idx] = comp;
@@ -8792,6 +8797,7 @@ void mtk_crtc_dual_layer_config(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_plane_state plane_state_l = {0};
 	struct mtk_plane_state plane_state_r = {0};
 	struct mtk_ddp_comp *p_comp = NULL;
+	unsigned int comp_index = 0;
 
 	if (!mtk_crtc || !comp) {
 		DDPINFO("%s failed with NULL argument mtk_crtc or comp\n", __func__);
@@ -8807,7 +8813,15 @@ void mtk_crtc_dual_layer_config(struct mtk_drm_crtc *mtk_crtc,
 	if (plane_state->comp_state.comp_id == 0)
 		plane_state_r.comp_state.comp_id = 0;
 
-	p_comp = priv->ddp_comp[dual_pipe_comp_mapping(priv->data->mmsys_id, comp->id)];
+	comp_index = dual_pipe_comp_mapping(priv->data->mmsys_id, comp->id);
+
+	if (comp_index < DDP_COMPONENT_ID_MAX)
+		p_comp = priv->ddp_comp[comp_index];
+	else {
+		DDPPR_ERR("%s:%d comp_index:%d is invalid!\n", __func__, __LINE__, comp_index);
+		return;
+	}
+
 	mtk_ddp_comp_layer_config(p_comp, idx, &plane_state_r, cmdq_handle);
 
 	p_comp = comp;
@@ -12289,7 +12303,14 @@ void mtk_drm_crtc_plane_disable(struct drm_crtc *crtc, struct drm_plane *plane,
 
 					comp_r_id = dual_pipe_comp_mapping(priv->data->mmsys_id,
 								comp->id);
-					comp_r = priv->ddp_comp[comp_r_id];
+					if (comp_r_id < DDP_COMPONENT_ID_MAX)
+						comp_r = priv->ddp_comp[comp_r_id];
+					else {
+						DDPPR_ERR("%s:%d comp_r_id:%d is invalid!\n",
+							__func__, __LINE__, comp_r_id);
+						return;
+					}
+
 					mtk_ddp_comp_layer_off(comp_r, plane->index,
 							0, cmdq_handle);
 					mtk_ddp_comp_layer_off(comp, plane->index, 0, cmdq_handle);

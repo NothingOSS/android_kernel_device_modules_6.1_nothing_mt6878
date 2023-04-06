@@ -301,7 +301,13 @@ static void disable_attached_layer(struct drm_crtc *crtc, struct mtk_ddp_comp *o
 			unsigned int r_comp_id;
 
 			r_comp_id = dual_pipe_comp_mapping(priv->data->mmsys_id, comp_id);
-			r_comp = priv->ddp_comp[r_comp_id];
+			if (r_comp_id < DDP_COMPONENT_ID_MAX)
+				r_comp = priv->ddp_comp[r_comp_id];
+			else {
+				DDPPR_ERR("%s:%d r_comp_id:%d is invalid!\n",
+					__func__, __LINE__, r_comp_id);
+				return;
+			}
 			mtk_ddp_comp_layer_off(r_comp, layer_id,
 						ext_lye_id, cmdq_handle);
 		}

@@ -742,7 +742,9 @@ void mtk_rollback_layer_to_GPU(struct drm_mtk_layering_info *disp_info,
 		return;
 
 	mtk_gles_incl_layer(disp_info, idx, i);
-	disp_info->input_config[idx][i].ext_sel_layer = -1;
+
+	if (idx >= 0 && idx < LYE_CRTC)
+		disp_info->input_config[idx][i].ext_sel_layer = -1;
 }
 
 /* rollback and set NO_FBDC flag */
@@ -2572,7 +2574,8 @@ static int ext_layer_grouping(struct drm_device *dev,
 	for (idx = 0; disp_idx < HRT_DISP_TYPE_NUM; disp_idx++, idx++) {
 		/* initialize ext layer info */
 		for (i = 0; i < disp_info->layer_num[idx]; i++)
-			disp_info->input_config[idx][i].ext_sel_layer = -1;
+			if (idx >= 0 && idx < LYE_CRTC)
+				disp_info->input_config[idx][i].ext_sel_layer = -1;
 
 		if (!get_layering_opt(LYE_OPT_EXT_LAYER))
 			continue;
@@ -2702,7 +2705,7 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 	uint16_t ovl_mapping_tb = l_rule_ops->get_mapping_table(
 		drm_dev, disp_idx, disp_list, DISP_HW_OVL_TB, 0);
 	struct mtk_drm_private *priv = drm_dev->dev_private;
-	unsigned int temp, temp1, i, comp_id_nr, *comp_id_list;
+	unsigned int temp, temp1, i, comp_id_nr, *comp_id_list = NULL;
 
 	/* TODO: The component ID should be changed by ddp path and platforms */
 	if (disp_idx == 0) {
@@ -2738,7 +2741,8 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 						__func__, comp_id_nr, temp);
 					i = 0;
 				}
-				return comp_id_list[i];
+				if (comp_id_list != NULL)
+					return comp_id_list[i];
 			} else if (HRT_GET_FIRST_SET_BIT(ovl_mapping_tb -
 				HRT_GET_FIRST_SET_BIT(ovl_mapping_tb -
 				HRT_GET_FIRST_SET_BIT(ovl_mapping_tb)) -
@@ -2760,7 +2764,8 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 						__func__, comp_id_nr, temp);
 					i = 0;
 				}
-				return comp_id_list[i];
+				if (comp_id_list != NULL)
+					return comp_id_list[i];
 			}
 			temp = priv->ovl_usage[disp_idx];
 
@@ -2780,7 +2785,8 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 						__func__, comp_id_nr, temp);
 				i = 0;
 			}
-			return comp_id_list[i];
+			if (comp_id_list != NULL)
+				return comp_id_list[i];
 		}
 		if (priv->data->mmsys_id == MMSYS_MT6985 ||
 			priv->data->mmsys_id == MMSYS_MT6897) {
@@ -3391,6 +3397,11 @@ _copy_layer_info_from_disp(struct drm_mtk_layering_info *disp_info_user,
 	struct drm_mtk_layering_info *l_info = &layering_info;
 	unsigned long layer_size = 0, mml_cfg_size = 0;
 	int ret = 0, layer_num = 0;
+
+	if (disp_idx < 0 || disp_idx >= LYE_CRTC) {
+		DDPPR_ERR("%s disp_idx=%d is invalid\n", __func__, disp_idx);
+		return -EFAULT;
+	}
 
 	if (l_info->layer_num[disp_idx] <= 0) {
 		/* direct skip */
@@ -4012,11 +4023,13 @@ static void check_is_mml_layer(const int disp_idx,
 	priv = dev->dev_private;
 
 	for (i = 0; i < disp_info->layer_num[disp_idx]; i++) {
-		c = &disp_info->input_config[disp_idx][i];
+		if (disp_idx >= 0 && disp_idx < LYE_CRTC)
+			c = &disp_info->input_config[disp_idx][i];
 		if (!(MTK_MML_OVL_LAYER & c->layer_caps))
 			continue;
 
-		mml_info = &(disp_info->mml_cfg[disp_idx][i]);
+		if (disp_idx >= 0 && disp_idx < LYE_CRTC)
+			mml_info = &(disp_info->mml_cfg[disp_idx][i]);
 		if (!mml_info)
 			continue;
 
