@@ -920,33 +920,18 @@ SWITCH_FAILURE:
 	WRAP_AEE_EXCEPTION(MSG_SWITCH_FAILURE, __func__);
 }
 
-static bool allow_raw_switch_work(struct mtk_cam_ctrl *ctrl, struct mtk_cam_job *job)
-{
-	struct mtk_cam_job *job_found;
-	bool ret = false;
-
-	/* If the first job is the job switch job of the work, allow the switch flow */
-	job_found = mtk_cam_ctrl_get_job(ctrl, cond_first_job, 0);
-	if (job_found) {
-		if (job == job_found)
-			ret = true;
-
-		mtk_cam_job_put(job_found);
-	}
-
-	return ret;
-}
-
 static void mtk_cam_ctrl_raw_switch_flow(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_ctrl *ctrl = &ctx->cam_ctrl;
+	struct device *dev = ctx->cam->dev;
+	int prev_seq;
 	int r;
 
-	wait_event_interruptible(ctrl->raw_switch_wq,
-				 allow_raw_switch_work(ctrl, job));
+	prev_seq = prev_frame_seq(job->frame_seq_no);
+	mtk_cam_ctrl_wait_event(ctrl, check_done, prev_seq, 1000);
 
-	dev_info(ctrl->ctx->cam->dev, "[%s] begin waiting raw switch no:%d\n",
+	dev_info(dev, "[%s] begin waiting raw switch no:%d\n",
 		 __func__, job->frame_seq_no);
 
 	/* stop the isp but doesn't power off raws */
@@ -959,7 +944,7 @@ static void mtk_cam_ctrl_raw_switch_flow(struct mtk_cam_job *job)
 	if (job->ops->apply_raw_switch) {
 		call_jobop(job, apply_raw_switch);
 	} else {
-		dev_info(ctx->cam->dev, "[%s] job doesn't support raw switch:%d\n",
+		dev_info(dev, "[%s] job doesn't support raw switch:%d\n",
 			 __func__, job->frame_seq_no);
 		return;
 	}
@@ -972,11 +957,11 @@ static void mtk_cam_ctrl_raw_switch_flow(struct mtk_cam_job *job)
 	 */
 	r = ctx_stream_off_seninf_sensor(ctx);
 	if (r)
-		dev_info(ctrl->ctx->cam->dev,
+		dev_info(dev,
 			 "[%s] failed to stream off the sensor:%d\n",
 			 __func__, r);
 	else
-		dev_info(ctrl->ctx->cam->dev,
+		dev_info(dev,
 			 "[%s] stream off sensor %s\n",
 			__func__, job->seninf_prev->entity.name);
 
@@ -997,7 +982,7 @@ static void mtk_cam_ctrl_raw_switch_flow(struct mtk_cam_job *job)
 	atomic_dec(&ctrl->stream_on_cnt);
 	mtk_cam_ctrl_loop_job(ctrl, ctrl_enable_job_fsm_until_switch, job);
 
-	dev_info(ctrl->ctx->cam->dev, "[%s] finish, used_engine:0x%x\n",
+	dev_info(dev, "[%s] finish, used_engine:0x%x\n",
 		 __func__, job->used_engine);
 }
 
@@ -1190,7 +1175,6 @@ void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 	reset_runtime_info(cam_ctrl);
 
 	init_waitqueue_head(&cam_ctrl->stop_wq);
-	init_waitqueue_head(&cam_ctrl->raw_switch_wq);
 
 	vsync_reset(&cam_ctrl->vsync_col);
 	cam_ctrl->cur_cq_ref = 0;
