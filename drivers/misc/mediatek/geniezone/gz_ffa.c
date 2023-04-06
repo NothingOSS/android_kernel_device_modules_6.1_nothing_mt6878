@@ -380,7 +380,7 @@ static int ffa_memory_send_write(struct args *args, void * __user user_args)
 	bool share, involve_sp, mtk_retrieve;
 	unsigned long ffa_memory_handle;
 	void *ffa_memory_ptr = NULL;
-	unsigned short vm_arr[VM_NUMBER_MAX];
+	unsigned short vm_arr[VM_NUMBER_MAX] = {0};
 	unsigned char *ptr;
 
 	share = !!args->arg[1];
@@ -499,7 +499,7 @@ static int gz_ffa_memory_share(struct args *args, void * __user user_args)
 	bool share, involve_sp, mtk_retrieve;
 	unsigned long ffa_memory_handle;
 	void *ffa_memory_ptr = NULL;
-	unsigned short vm_arr[VM_NUMBER_MAX];
+	unsigned short vm_arr[VM_NUMBER_MAX] = {0};
 
 	share = !!args->arg[1];
 	involve_sp = !!args->arg[2];
@@ -651,7 +651,7 @@ static int gz_ffa_message_send(struct args *args, void * __user user_args)
 	int ret, i;
 	struct ffa_send_direct_data data = {};
 	uint32_t number_of_vm;
-	unsigned short vmids[VM_NUMBER_MAX];
+	unsigned short vmids[VM_NUMBER_MAX] = {0};
 
 	if (!g_ffa_dev)
 		return -ENODEV;
@@ -737,7 +737,7 @@ static int gz_ffa_get_chm_handle(struct args *args, void * __user user_args)
 static long ff_a_gz_ioctl(struct file *fd, unsigned int cmd, unsigned long user_args)
 {
 	long ret;
-	struct args args;
+	struct args args = {};
 	void * __user user_arg = (void *)user_args;
 
 	FFA_INFO("cmd = %d\n", cmd);
