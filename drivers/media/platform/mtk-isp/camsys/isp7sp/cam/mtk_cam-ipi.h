@@ -120,6 +120,27 @@ struct mtkcam_ipi_mraw_input_param {
 	struct mtkcam_ipi_input_param input;
 } __packed;
 
+struct mtkcam_ipi_img_ufo_param {
+	__u32 ufd_bitstream_ofst_addr[2]; /* 2 for max 3-raw of twin driver */
+	__u32 ufd_bs_au_start[2];
+	__u32 ufd_au2_size[2];
+	__u32 ufd_bond_mode[2]; /* bond means boundary, 2 for max 3-raw of twin driver */
+} __packed;
+
+struct mtkcam_ipi_img_ufdo_params {
+	struct mtkcam_ipi_img_ufo_param imgo;
+	/* struct mtkcam_ipi_img_ufo_param imgo2; */
+	struct mtkcam_ipi_img_ufo_param yuvo1;
+	struct mtkcam_ipi_img_ufo_param yuvo3;
+} __packed;
+
+struct mtkcam_ipi_img_ufdi_params {
+	struct mtkcam_ipi_img_ufo_param rawi2;
+	struct mtkcam_ipi_img_ufo_param rawi3;
+	/* struct mtkcam_ipi_img_ufo_param rawi4; */
+	struct mtkcam_ipi_img_ufo_param rawi5;
+} __packed;
+
 struct mtkcam_ipi_raw_frame_param {
 	__u8	imgo_path_sel; /* mtkcam_ipi_raw_path_control */
 	__u32	hardware_scenario;
@@ -238,6 +259,9 @@ struct mtkcam_ipi_frame_param {
 	struct mtkcam_ipi_img_output img_outs[CAM_MAX_IMAGE_OUTPUT];
 	struct mtkcam_ipi_meta_output meta_outputs[CAM_MAX_META_OUTPUT];
 	struct mtkcam_ipi_meta_input meta_inputs[CAM_MAX_PIPE_USED];
+	/* for UFD meta info transfer from buffer header to parameters */
+	struct mtkcam_ipi_img_ufdo_params img_ufdo_params;
+	struct mtkcam_ipi_img_ufdi_params img_ufdi_params;
 
 	/* following will be modified */
 	//struct mtkcam_ipi_bw_info	bw_infos[10*3]; //ports * num_raw
