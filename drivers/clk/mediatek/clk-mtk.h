@@ -248,8 +248,6 @@ void mtk_free_clk_data(struct clk_onecell_data *clk_data);
 #define CLK_USE_HW_VOTER		BIT(18)
 #define HWV_CHK_FULL_STA		BIT(19)
 #define CLK_ENABLE_QUICK_SWITCH		BIT(20)
-#define MUX_ROUND_CLOSEST		BIT(21)
-
 
 struct mtk_pll_div_table {
 	u32 div;

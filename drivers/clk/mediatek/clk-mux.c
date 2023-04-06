@@ -427,38 +427,6 @@ hwv_prepare_fail:
 	return -EBUSY;
 }
 
-static int mtk_clk_mux_determine_rate_closest(struct clk_hw *hw, struct clk_rate_request *req)
-{
-	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
-	int ret, parent_index = -1;
-	unsigned long now = 0;
-
-	parent_index = clk_hw_get_parent_index(hw);
-	if (parent_index >= 0) {
-		req->best_parent_hw = clk_hw_get_parent_by_index(hw, parent_index);
-
-		if (!req->best_parent_hw)
-			return -EINVAL;
-
-		if ((mux->flags & MUX_ROUND_CLOSEST) == MUX_ROUND_CLOSEST) {
-			now = clk_hw_get_rate(hw);
-			req->best_parent_rate = clk_hw_get_rate(req->best_parent_hw);
-			__clk_mux_determine_rate_closest(hw, req);
-
-			if (abs(now - req->rate) > abs(req->best_parent_rate - req->rate)) {
-				ret = clk_hw_set_parent(hw, req->best_parent_hw);
-				if (ret) {
-					pr_err("mux set parent error(%d)\n", ret);
-					return now;
-				}
-				return req->best_parent_rate;
-			}
-		}
-	}
-
-	return now;
-}
-
 static int mtk_clk_mux_determine_rate(struct clk_hw *hw, struct clk_rate_request *req)
 {
 	int idx, parent_index = -1;
@@ -504,7 +472,6 @@ EXPORT_SYMBOL_GPL(mtk_mux_clr_set_ops);
 const struct clk_ops mtk_mux_clr_set_upd_ops = {
 	.get_parent = mtk_clk_mux_get_parent,
 	.set_parent = mtk_clk_mux_set_parent_setclr_upd_lock,
-	.determine_rate = mtk_clk_mux_determine_rate_closest,
 };
 EXPORT_SYMBOL_GPL(mtk_mux_clr_set_upd_ops);
 
@@ -523,7 +490,6 @@ const struct clk_ops mtk_mux_gate_clr_set_upd_ops = {
 	.is_enabled = mtk_clk_mux_is_enabled,
 	.get_parent = mtk_clk_mux_get_parent,
 	.set_parent = mtk_clk_mux_set_parent_setclr_upd_lock,
-	.determine_rate = mtk_clk_mux_determine_rate_closest,
 };
 EXPORT_SYMBOL_GPL(mtk_mux_gate_clr_set_upd_ops);
 
