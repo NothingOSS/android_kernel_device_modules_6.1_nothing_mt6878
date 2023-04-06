@@ -170,6 +170,37 @@ static void mtk_check_d_tasks(void *data, struct task_struct *p,
 #endif
 #endif
 
+static void mtk_sched_pelt_multiplier(void *data, unsigned int old_pelt,
+				      unsigned int new_pelt, int *ret)
+{
+	int pelt_weight = 0, pelt_sum = 0;
+
+	switch (new_pelt) {
+	/* pelt 32 */
+	case 1:
+		pelt_weight = 1002;
+		pelt_sum = 47742;
+		break;
+	/* pelt 16 */
+	case 2:
+		pelt_weight = 981;
+		pelt_sum = 24125;
+		break;
+	/* pelt 8 */
+	case 4:
+		pelt_weight = 939;
+		pelt_sum = 12329;
+		break;
+	default:
+		break;
+	}
+	if (pelt_weight && pelt_sum && is_wl_support()) {
+		/* notify pelt model */
+		update_pelt_data(pelt_weight, pelt_sum);
+		pr_info("new_pelt %d pelt_w %d pelt_s %d\n", new_pelt, pelt_weight, pelt_sum);
+	}
+}
+
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 static void sched_irq_mon_init(void)
 {
@@ -605,6 +636,9 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register find_lowest_rq hooks failed, returned %d\n", ret);
 
+	ret = register_trace_android_vh_sched_pelt_multiplier(mtk_sched_pelt_multiplier, NULL);
+	if (ret)
+		pr_info("register mtk_sched_pelt_multiplier hooks failed, returned %d\n", ret);
 
 #if IS_ENABLED(CONFIG_DETECT_HUNG_TASK)
 	//ret = register_trace_android_vh_check_uninterruptible_tasks(mtk_check_d_tasks, NULL);
