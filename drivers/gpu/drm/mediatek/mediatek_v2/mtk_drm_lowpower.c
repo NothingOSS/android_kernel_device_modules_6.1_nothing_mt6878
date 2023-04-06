@@ -1363,7 +1363,7 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 	struct mtk_drm_idlemgr *idlemgr = mtk_crtc->idlemgr;
 	struct mtk_ddp_comp *output_comp = NULL;
 	int en = 0, perf_detail = 0;
-	struct cmdq_pkt *cmdq_handle1, *cmdq_handle2;
+	struct cmdq_pkt *cmdq_handle1 = NULL, *cmdq_handle2 = NULL;
 	struct mtk_drm_idlemgr_context *idlemgr_ctx = idlemgr->idlemgr_ctx;
 	unsigned long long start, end;
 	char *perf_string = NULL;
@@ -1398,8 +1398,9 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 			idlemgr_ctx->priv.hw_async ? 1 : 0);
 
 	/* 0. Waiting CLIENT_DSI_CFG/CLIENT_CFG thread done */
-	mtk_crtc_pkt_create(&cmdq_handle1, crtc,
-		mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]);
+	if (mtk_crtc->gce_obj.client[CLIENT_DSI_CFG])
+		mtk_crtc_pkt_create(&cmdq_handle1, crtc,
+			mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]);
 
 	if (cmdq_handle1) {
 		cmdq_pkt_flush(cmdq_handle1);
