@@ -1758,7 +1758,7 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 	}
 
 	/* scaling path */
-	if (mtk_crtc->scaling_ctx.scaling_en) {
+	if (mtk_crtc && mtk_crtc->scaling_ctx.scaling_en) {
 		width = mtk_crtc_get_width_by_comp(__func__, &mtk_crtc->base, comp, false);
 		height = mtk_crtc_get_height_by_comp(__func__, &mtk_crtc->base, comp, false);
 	} else {

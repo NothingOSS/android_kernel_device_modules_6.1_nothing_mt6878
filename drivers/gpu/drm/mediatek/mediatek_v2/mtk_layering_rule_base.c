@@ -2586,8 +2586,8 @@ static int ext_layer_grouping(struct drm_device *dev,
 
 	for (idx = 0; disp_idx < HRT_DISP_TYPE_NUM; disp_idx++, idx++) {
 		/* initialize ext layer info */
-		for (i = 0; i < disp_info->layer_num[idx]; i++)
-			if (idx >= 0 && idx < LYE_CRTC)
+		if (idx >= 0 && idx < LYE_CRTC)
+			for (i = 0; i < disp_info->layer_num[idx]; i++)
 				disp_info->input_config[idx][i].ext_sel_layer = -1;
 
 		if (!get_layering_opt(LYE_OPT_EXT_LAYER))
