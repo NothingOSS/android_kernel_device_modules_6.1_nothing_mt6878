@@ -272,7 +272,7 @@ static u32 rrot_get_latency(struct mml_frame_config *cfg)
 		line = (rot == MML_ROT_0 || rot == MML_ROT_180) ? 4 : 32;
 	} else if (MML_FMT_AFBC_YUV(fmt) || MML_FMT_HYFBC(fmt)) {
 		line = 16;
-	} else if (MML_FMT_UFO(fmt) || MML_FMT_UFO(MML_FMT_BLOCK(fmt))) {
+	} else if (MML_FMT_UFO(fmt) || MML_FMT_BLOCK(fmt)) {
 		line = (rot == MML_ROT_0 || rot == MML_ROT_180) ? 8 : 16;
 	} else {
 		/* other unexpect format, use max latency */
