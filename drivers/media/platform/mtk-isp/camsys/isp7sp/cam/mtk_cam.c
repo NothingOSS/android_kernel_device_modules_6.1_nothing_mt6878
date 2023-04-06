@@ -818,15 +818,16 @@ void mtk_cam_req_buffer_done(struct mtk_cam_job *job,
 		if (node->uid.pipe_id != pipe_id)
 			continue;
 
-		if (node_id != -1 && node->uid.id != node_id)
+		/* check V4L2 node id */
+		if (node_id != -1 && node->desc.id != node_id)
 			continue;
 
 		/* sv pure raw */
 		if (node_id == -1 && is_sv_pure_raw(job) &&
-		    node->uid.id == MTKCAM_IPI_RAW_IMGO && is_proc) {
+		    node->desc.id == MTK_RAW_PURE_RAW_OUT && is_proc) {
 			if (CAM_DEBUG_ENABLED(JOB))
 				dev_info(dev,
-					 "%s: ctx-%d req:%s(%d) pipe_id:%d, node_id:%d bypass raw imgo\n",
+					 "%s: ctx-%d req:%s(%d) pipe_id:%d, node_id:%d bypass pure raw node\n",
 					 __func__, ctx->stream_id,
 					 req->req.debug_str,  job->req_seq,
 					 pipe_id, node_id);

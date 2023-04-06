@@ -179,23 +179,41 @@ static int map_job_type(const struct mtk_cam_scen *scen)
 	return job_type;
 }
 
+/* support pure raw node only */
 static bool update_sv_pure_raw(struct mtk_cam_job *job)
 {
-	bool has_imgo, req_pure_raw, is_supported_scen, is_sv_pure_raw;
+	bool has_pure_raw, has_processed_raw, is_supported_scen, is_sv_pure_raw;
 
-	req_pure_raw = require_pure_raw(job);
-	has_imgo = require_imgo(job);
+	has_pure_raw = find_video_node(job, MTK_RAW_PURE_RAW_OUT);
+	has_processed_raw = find_video_node(job, MTK_RAW_MAIN_STREAM_OUT);
 
 	/* TODO: scen help func */
 	is_supported_scen =
 		(job->job_scen.id == MTK_CAM_SCEN_NORMAL);
 
-	is_sv_pure_raw = has_imgo && req_pure_raw && is_supported_scen;
+	is_sv_pure_raw = has_pure_raw && is_supported_scen;
+
+	/**
+	 * main-stream: raw hw
+	 * pure-raw: raw hw or sv hw
+	 *     otf: use sv pure raw flow
+	 *     dc: replace sv working buffer
+	 */
 
 	if (CAM_DEBUG_ENABLED(JOB))
-		pr_info("%s has_imgo:%d req_pure_raw:%d is_supported_scen: %d sv_pure_raw:%d",
-			__func__, has_imgo, req_pure_raw, is_supported_scen,
-			is_sv_pure_raw);
+		pr_info("%s has_pure/processed_raw:%d/%d is_supported_scen: %d sv_pure_raw:%d",
+			__func__, has_pure_raw, has_processed_raw,
+			is_supported_scen, is_sv_pure_raw);
+
+	if (!is_sv_pure_raw && (has_pure_raw && has_processed_raw)) {
+		/* only one type of imgo could be handled */
+		mtk_cam_req_buffer_done(job,
+					get_raw_subdev_idx(job->src_ctx->used_pipe),
+					MTK_RAW_PURE_RAW_OUT,
+					VB2_BUF_STATE_ERROR,
+					job->timestamp, true);
+		pr_info("%s [warn] force return pure raw node", __func__);
+	}
 
 	return is_sv_pure_raw;
 }
@@ -591,7 +609,7 @@ _meta1_done(struct mtk_cam_job *job)
 			 job->frame_seq_no,
 			 mtk_cam_job_state_get(&job->job_state, ISP_STATE));
 
-	mtk_cam_req_buffer_done(job, pipe_id, MTKCAM_IPI_RAW_META_STATS_1,
+	mtk_cam_req_buffer_done(job, pipe_id, MTK_RAW_META_OUT_1,
 				VB2_BUF_STATE_DONE, job->timestamp, true);
 
 	return 0;
@@ -714,14 +732,9 @@ handle_sv_frame_done(struct mtk_cam_job *job)
 	/* sv pure raw */
 	if (ctx->has_raw_subdev && is_sv_pure_raw(job)) {
 		pipe_id = get_raw_subdev_idx(ctx->used_pipe);
-		if (is_normal)
-			mtk_cam_req_buffer_done(job, pipe_id,
-				MTKCAM_IPI_RAW_IMGO, VB2_BUF_STATE_DONE,
-				job->timestamp, true);
-		else
-			mtk_cam_req_buffer_done(job, pipe_id,
-				MTKCAM_IPI_RAW_IMGO, VB2_BUF_STATE_ERROR,
-				job->timestamp, true);
+		mtk_cam_req_buffer_done(job, pipe_id, MTK_RAW_PURE_RAW_OUT,
+			is_normal ? VB2_BUF_STATE_DONE : VB2_BUF_STATE_ERROR,
+			job->timestamp, true);
 	}
 
 	for (i = MTKCAM_SUBDEV_CAMSV_START; i < MTKCAM_SUBDEV_CAMSV_END; i++) {
@@ -2330,15 +2343,16 @@ static int fill_raw_img_buffer_to_ipi_frame(
 	struct mtk_cam_job *job = helper->job;
 	struct mtkcam_ipi_frame_param *fp = helper->fp;
 	int ret = -1;
-	bool is_imgo = (node->desc.id == MTK_RAW_MAIN_STREAM_OUT);
+	bool is_pure_imgo = is_pure_raw_node(job, node);
 
-	if (is_imgo && is_sv_pure_raw(job)) {
+	if (is_pure_imgo && is_sv_pure_raw(job)) {
+		/* pure raw */
 		if (CAM_DEBUG_ENABLED(JOB))
-			pr_info("%s:req:%s bypass raw imgo\n",
+			pr_info("%s:req:%s bypass pure raw node\n",
 				__func__, job->req->req.debug_str);
 	} else if (V4L2_TYPE_IS_CAPTURE(buf->vbb.vb2_buf.type)) {
 		struct mtkcam_ipi_img_output *out;
-
+		/* main-stream + pure raw + others*/
 		out = &fp->img_outs[helper->io_idx++];
 
 		ret = fill_img_out(out, buf, node);
@@ -2367,9 +2381,9 @@ static int fill_imgo_buf_to_ipi_normal(struct req_buffer_helper *helper,
 	int ret = 0;
 	struct mtk_cam_job *job = helper->job;
 
-	if (is_dc_mode(job) && require_pure_raw(job))
+	if (is_dc_mode(job) && is_pure_raw_node(job, node))  /* pure raw only */
 		ret = fill_imgo_buf_as_working_buf(helper, buf, node);
-	else
+	else  /* main-stream + pure raw */
 		ret = fill_raw_img_buffer_to_ipi_frame(helper, buf, node);
 
 	return ret;
@@ -3617,7 +3631,7 @@ static int update_raw_image_buf_to_ipi_frame(struct req_buffer_helper *helper,
 		if (job_helper->update_raw_rawi_to_ipi)
 			update_fn = job_helper->update_raw_rawi_to_ipi;
 		break;
-	case MTKCAM_IPI_RAW_IMGO:
+	case MTKCAM_IPI_RAW_IMGO:  /* main stream + pure raw */
 		if (job_helper->update_raw_imgo_to_ipi)
 			update_fn = job_helper->update_raw_imgo_to_ipi;
 		break;
@@ -3635,7 +3649,7 @@ static int update_raw_image_buf_to_ipi_frame(struct req_buffer_helper *helper,
 		if (job_helper->update_raw_yuvo_to_ipi)
 			update_fn = job_helper->update_raw_yuvo_to_ipi;
 		break;
-	default:  /* pure raw node no need or go to imgo for buffer assignment */
+	default:
 		pr_info("%s %s: not supported port: %d\n",
 			__FILE__, __func__, node->desc.dma_port);
 	}

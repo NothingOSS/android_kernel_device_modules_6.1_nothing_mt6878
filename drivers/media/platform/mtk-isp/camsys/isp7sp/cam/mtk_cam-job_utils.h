@@ -171,9 +171,11 @@ void get_stagger_rawi_table(struct mtk_cam_job *job,
 int map_ipi_vpu_point(int vpu_point);
 int map_ipi_imgo_path(int v4l2_raw_path);
 
-bool require_imgo(struct mtk_cam_job *job);
-bool require_pure_raw(struct mtk_cam_job *job);
-bool require_proccessed_raw(struct mtk_cam_job *job);
+bool find_video_node(struct mtk_cam_job *job, int node_id);
+bool is_pure_raw_node(struct mtk_cam_job *job,
+		      struct mtk_cam_video_device *node);
+bool is_processed_raw_node(struct mtk_cam_job *job,
+			   struct mtk_cam_video_device *node);
 
 struct mtk_raw_ctrl_data *get_raw_ctrl_data(struct mtk_cam_job *job);
 struct mtk_raw_sink_data *get_raw_sink_data(struct mtk_cam_job *job);

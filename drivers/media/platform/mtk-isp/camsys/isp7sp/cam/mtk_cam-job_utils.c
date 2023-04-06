@@ -1064,7 +1064,7 @@ int fill_sv_img_fp(
 	bool is_w;
 	int ret = 0;
 
-	if (node->desc.dma_port != MTKCAM_IPI_RAW_IMGO)
+	if (node->desc.id != MTK_RAW_PURE_RAW_OUT)
 		goto EXIT;
 
 	if (ctx->hw_sv == NULL)
@@ -1126,8 +1126,8 @@ int fill_imgo_buf_as_working_buf(
 	int index = 0, ii_inc = 0, ret = 0;
 	bool sv_pure_raw;
 
-	if (node->desc.id != MTK_RAW_MAIN_STREAM_OUT) {
-		pr_info("%s: expect IMGO node only", __func__);
+	if (node->desc.id != MTK_RAW_PURE_RAW_OUT) {
+		pr_info("%s: expect PURE-RAW node only", __func__);
 		WARN_ON(1);
 		return -1;
 	}
@@ -1155,7 +1155,7 @@ int fill_imgo_buf_as_working_buf(
 	}
 
 	if (sv_pure_raw && CAM_DEBUG_ENABLED(JOB))
-		pr_info("%s:req:%s bypass raw imgo\n",
+		pr_info("%s:req:%s bypass pure raw node\n",
 			__func__, job->req->req.debug_str);
 	/* fill sv image fp */
 	ret = ret || fill_sv_img_fp(helper, buf, node);
@@ -1273,44 +1273,42 @@ int map_ipi_imgo_path(int v4l2_raw_path)
 	return MTKCAM_IPI_IMGO_UNPROCESSED;
 }
 
-bool require_imgo(struct mtk_cam_job *job)
+bool find_video_node(struct mtk_cam_job *job, int node_id)
 {
 	struct mtk_cam_video_device *node;
 	struct mtk_cam_request *req = job->req;
 	struct mtk_cam_buffer *buf;
 	unsigned long ctx_used_pipe = job->src_ctx->used_pipe;
-	bool has_imgo = false;
 
 	list_for_each_entry(buf, &req->buf_list, list) {
 		node = mtk_cam_buf_to_vdev(buf);
 
-		if (node->desc.id == MTK_RAW_MAIN_STREAM_OUT &&
-			ctx_used_pipe & ipi_pipe_id_to_bit(node->uid.pipe_id)) {
-			has_imgo = true;
-			break;
+		if (node->desc.id == node_id &&
+		    ctx_used_pipe & ipi_pipe_id_to_bit(node->uid.pipe_id)) {
+			return true;
 		}
 	}
 
-	return has_imgo;
+	return false;
 }
 
-bool require_proccessed_raw(struct mtk_cam_job *job)
+bool is_pure_raw_node(struct mtk_cam_job *job,
+		      struct mtk_cam_video_device *node)
 {
-	struct mtk_raw_ctrl_data *ctrl =
-		get_raw_ctrl_data(job);
-
-	if (!ctrl) {
-		pr_info("%s: failed to get job ctrl data", __func__);
-		return false;
-	}
-
-	return (map_ipi_imgo_path(ctrl->raw_path) !=
-		MTKCAM_IPI_IMGO_UNPROCESSED);
+	(void) job;
+	return node->desc.id == MTK_RAW_PURE_RAW_OUT;
 }
 
-bool require_pure_raw(struct mtk_cam_job *job)
+bool is_processed_raw_node(struct mtk_cam_job *job,
+			    struct mtk_cam_video_device *node)
 {
-	return !require_proccessed_raw(job);
+	struct mtk_raw_ctrl_data *ctrl = get_raw_ctrl_data(job);
+
+	if (ctrl &&
+	    map_ipi_imgo_path(ctrl->raw_path) == MTKCAM_IPI_IMGO_UNPROCESSED)
+		pr_info("%s unexpected raw path", __func__);
+
+	return node->desc.id == MTK_RAW_MAIN_STREAM_OUT;
 }
 
 struct mtk_raw_ctrl_data *get_raw_ctrl_data(struct mtk_cam_job *job)

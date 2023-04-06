@@ -15,13 +15,15 @@ int fill_imgo_img_buffer_to_ipi_frame_subsample(
 	struct mtkcam_ipi_img_output *out;
 	int ret = -1;
 
+	/* main-stream + pure raw, only one could be applied */
+
 	out = &fp->img_outs[helper->io_idx];
 	++helper->io_idx;
 	ret = fill_imgo_out_subsample(out, buf, node, helper->job->sub_ratio);
 
 	return ret;
-
 }
+
 int fill_yuvo_img_buffer_to_ipi_frame_subsample(
 	struct req_buffer_helper *helper, struct mtk_cam_buffer *buf,
 	struct mtk_cam_video_device *node)
