@@ -657,7 +657,7 @@ static int fbt_cluster_X2Y(int cluster, unsigned long input, enum sugov_type in_
 	fpsgo_systrace_c_fbt_debug(-100, 0, in_type, "EAS_X2Y_in_type");
 	fpsgo_systrace_c_fbt_debug(-100, 0, out_type, "EAS_X2Y_in_type");
 	fpsgo_systrace_c_fbt_debug(-100, 0, output, "EAS_X2Y_in_output");
-	fpsgo_main_trace("[%s][%s] clus=%d,cpu=%d,input=%lu,intype=%d,outtype=%d, output=%lu",
+	xgf_trace("[%s][%s] clus=%d,cpu=%d,input=%lu,intype=%d,outtype=%d, output=%lu",
 		__func__, caller, cluster, cpu, input, in_type, out_type, output);
 	return (int)output;
 }
