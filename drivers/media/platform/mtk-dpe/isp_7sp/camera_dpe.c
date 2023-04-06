@@ -66,6 +66,7 @@
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
 //#include <linux/soc/mediatek/mtk-cmdq.h>
 #include <soc/mediatek/smi.h>
+#include<soc/mediatek/mmdvfs_v3.h>
 
 //! for IOVA to PA
 #include <linux/iommu.h>
@@ -4035,6 +4036,45 @@ void DPE_DumptoHWReg(struct DPE_Kernel_Config *pConfigToKernel)
 	pConfigToKernel->TuningKernel_OCC.DVS_OCC_PQ_12);
 	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_ATPG_HW),
 	pConfigToKernel->TuningKernel_OCC.DVS_OCC_ATPG);
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST0_HW),
+	pConfigToKernel->TuningKernel_OCC.DVS_OCC_HIST0);
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST1_HW),
+	pConfigToKernel->TuningKernel_OCC.DVS_OCC_HIST1);
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST2_HW),
+	pConfigToKernel->TuningKernel_OCC.DVS_OCC_HIST2);
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST3_HW),
+	pConfigToKernel->TuningKernel_OCC.DVS_OCC_HIST3);
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST4_HW),
+	pConfigToKernel->TuningKernel_OCC.DVS_OCC_HIST4);
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST5_HW),
+	pConfigToKernel->TuningKernel_OCC.DVS_OCC_HIST5);
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST6_HW),
+	pConfigToKernel->TuningKernel_OCC.DVS_OCC_HIST6);
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST7_HW),
+	pConfigToKernel->TuningKernel_OCC.DVS_OCC_HIST7);
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST8_HW),
+	pConfigToKernel->TuningKernel_OCC.DVS_OCC_HIST8);
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST9_HW),
+	pConfigToKernel->TuningKernel_OCC.DVS_OCC_HIST9);
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST10_HW),
+	pConfigToKernel->TuningKernel_OCC.DVS_OCC_HIST10);
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST11_HW),
+	pConfigToKernel->TuningKernel_OCC.DVS_OCC_HIST11);
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST12_HW),
+	pConfigToKernel->TuningKernel_OCC.DVS_OCC_HIST12);
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST13_HW),
+	pConfigToKernel->TuningKernel_OCC.DVS_OCC_HIST13);
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST14_HW),
+	pConfigToKernel->TuningKernel_OCC.DVS_OCC_HIST14);
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST15_HW),
+	pConfigToKernel->TuningKernel_OCC.DVS_OCC_HIST15);
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST16_HW),
+	pConfigToKernel->TuningKernel_OCC.DVS_OCC_HIST16);
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST17_HW),
+	pConfigToKernel->TuningKernel_OCC.DVS_OCC_HIST17);
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST18_HW),
+	pConfigToKernel->TuningKernel_OCC.DVS_OCC_HIST18);
+
 	LOG_INF("Dump DVGF\n");
 	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVGF_CTRL_00_HW),
 	pConfigToKernel->DVGF_CTRL_00);
@@ -4907,8 +4947,9 @@ cmdq_pkt_write(handle, dpe_clt_base, DVS_CTRL00_HW, 0x20000000, 0x20000000);
 	else
 		cmdq_pkt_wfe(handle, dvp_event_id);
 
-cmdq_pkt_sleep(handle, CMDQ_US_TO_TICK(2000), CMDQ_GPR_R03);
-
+//
+cmdq_pkt_sleep(handle, 2000, CMDQ_GPR_R03);
+//
 cmdq_pkt_write(handle, dpe_clt_base, DVS_CTRL00_HW, 0x00000000, 0x20000000);
 #endif
 #if defined(DPE_PMQOS_EN) && defined(CONFIG_MTK_QOS_SUPPORT)
@@ -5603,6 +5644,46 @@ static signed int DPE_DumpReg(void)
 		(unsigned int)DPE_RD32(DVS_OCC_PQ_11_REG));
 	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_ATPG_HW),
 		(unsigned int)DPE_RD32(DVS_OCC_ATPG_REG));
+
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST0_HW),
+		(unsigned int)DPE_RD32(DVS_OCC_HIST0_REG));
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST1_HW),
+		(unsigned int)DPE_RD32(DVS_OCC_HIST1_REG));
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST2_HW),
+		(unsigned int)DPE_RD32(DVS_OCC_HIST2_REG));
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST3_HW),
+		(unsigned int)DPE_RD32(DVS_OCC_HIST3_REG));
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST4_HW),
+		(unsigned int)DPE_RD32(DVS_OCC_HIST4_REG));
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST5_HW),
+		(unsigned int)DPE_RD32(DVS_OCC_HIST5_REG));
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST6_HW),
+		(unsigned int)DPE_RD32(DVS_OCC_HIST6_REG));
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST7_HW),
+		(unsigned int)DPE_RD32(DVS_OCC_HIST7_REG));
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST8_HW),
+		(unsigned int)DPE_RD32(DVS_OCC_HIST8_REG));
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST9_HW),
+		(unsigned int)DPE_RD32(DVS_OCC_HIST9_REG));
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST10_HW),
+		(unsigned int)DPE_RD32(DVS_OCC_HIST10_REG));
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST11_HW),
+		(unsigned int)DPE_RD32(DVS_OCC_HIST11_REG));
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST12_HW),
+		(unsigned int)DPE_RD32(DVS_OCC_HIST12_REG));
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST13_HW),
+		(unsigned int)DPE_RD32(DVS_OCC_HIST13_REG));
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST14_HW),
+		(unsigned int)DPE_RD32(DVS_OCC_HIST14_REG));
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST15_HW),
+		(unsigned int)DPE_RD32(DVS_OCC_HIST15_REG));
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST16_HW),
+		(unsigned int)DPE_RD32(DVS_OCC_HIST16_REG));
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST17_HW),
+		(unsigned int)DPE_RD32(DVS_OCC_HIST17_REG));
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_HIST18_HW),
+		(unsigned int)DPE_RD32(DVS_OCC_HIST18_REG));
+
 	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVP_CTRL00_HW),
 		(unsigned int)DPE_RD32(DVP_CTRL00_REG));
 	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVP_CTRL01_HW),
@@ -5958,7 +6039,8 @@ static inline void DPE_Prepare_Enable_ccf_clock(void)
 	int ret;
 
 	LOG_INF("DPE_Prepare_Enable_ccf_clock_star\n");
-	//!smi_bus_prepare_enable(SMI_LARB12, DPE_DEV_NAME);
+	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_CAM);
+
 	if (pm_runtime_get_sync(gdev))
 		LOG_INF("pm_runtime_get_sync fail\n");
 
@@ -6041,27 +6123,28 @@ LOG_INF("DPE_Prepare_Enable_ccf_clock_end\n");
 static inline void DPE_Disable_Unprepare_ccf_clock(void)
 {
 
-	clk_disable_unprepare(dpe_clk.CLK_TOP_DPE_SEL);
-	clk_disable_unprepare(dpe_clk.CLK_CAM_MAIN_CON_0);
-	clk_disable_unprepare(dpe_clk.CLK_CAM_MRAW_CON_0);
-	clk_disable_unprepare(dpe_clk.CLK_CAM_DPE_CON_0);
-	clk_disable_unprepare(dpe_clk.CLK_CAM_LARBX);
-	clk_disable_unprepare(dpe_clk.CLK_CAM_GALS);
-	clk_disable_unprepare(dpe_clk.CLK_CAM_CAMTG);
-	clk_disable_unprepare(dpe_clk.CLK_CAM_MRAW0);
-	clk_disable_unprepare(dpe_clk.CLK_CAM_MRAW1);
-	clk_disable_unprepare(dpe_clk.CLK_CAM_MRAW2);
-	clk_disable_unprepare(dpe_clk.CLK_CAM_MRAW3);
-	clk_disable_unprepare(dpe_clk.CLK_CAM_PDA0);
-	clk_disable_unprepare(dpe_clk.CLK_CAM_PDA1);
-	clk_disable_unprepare(dpe_clk.IPE_LARB19);
-	clk_disable_unprepare(dpe_clk.CLK_CAMSYS_DPE);
-	clk_disable_unprepare(dpe_clk.CLK_CAMSYS_FUS);
-	clk_disable_unprepare(dpe_clk.CLK_CAMSYS_DHZE);
 	clk_disable_unprepare(dpe_clk.CLK_CAMSYS_CLAS);
-
+	clk_disable_unprepare(dpe_clk.CLK_CAMSYS_DHZE);
+	clk_disable_unprepare(dpe_clk.CLK_CAMSYS_FUS);
+	clk_disable_unprepare(dpe_clk.CLK_CAMSYS_DPE);
+	clk_disable_unprepare(dpe_clk.IPE_LARB19);
+	clk_disable_unprepare(dpe_clk.CLK_CAM_PDA1);
+	clk_disable_unprepare(dpe_clk.CLK_CAM_PDA0);
+	clk_disable_unprepare(dpe_clk.CLK_CAM_MRAW3);
+	clk_disable_unprepare(dpe_clk.CLK_CAM_MRAW2);
+	clk_disable_unprepare(dpe_clk.CLK_CAM_MRAW1);
+	clk_disable_unprepare(dpe_clk.CLK_CAM_MRAW0);
+	clk_disable_unprepare(dpe_clk.CLK_CAM_CAMTG);
+	clk_disable_unprepare(dpe_clk.CLK_CAM_GALS);
+	clk_disable_unprepare(dpe_clk.CLK_CAM_LARBX);
+	clk_disable_unprepare(dpe_clk.CLK_CAM_DPE_CON_0);
+	clk_disable_unprepare(dpe_clk.CLK_CAM_MRAW_CON_0);
+	clk_disable_unprepare(dpe_clk.CLK_CAM_MAIN_CON_0);
+	clk_disable_unprepare(dpe_clk.CLK_TOP_DPE_SEL);
 
 	pm_runtime_put_sync(gdev);
+
+	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_CAM);
 	LOG_INF("Disable_Unprepare_ccf_clock end\n");
 }
 #endif
@@ -7277,7 +7360,7 @@ static signed int DPE_open(struct inode *pInode, struct file *pFile)
 	LOG_INF("- E. UserCount: %d.", DPEInfo.UserCount);
 
 	/*  */
-	//mutex_lock(&(MutexDPERef));
+	mutex_lock(&(MutexDPERef));
 	pFile->private_data = NULL;
 	pFile->private_data = kmalloc(sizeof(struct DPE_USER_INFO_STRUCT),
 								GFP_ATOMIC);
@@ -7286,7 +7369,7 @@ static signed int DPE_open(struct inode *pInode, struct file *pFile)
 								current->comm,
 						current->pid, current->tgid);
 		Ret = -ENOMEM;
-//		mutex_unlock(&(MutexDPERef));
+		mutex_unlock(&(MutexDPERef));
 		goto EXIT;
 	} else {
 		pUserInfo = (struct DPE_USER_INFO_STRUCT *) pFile->private_data;
@@ -7296,7 +7379,7 @@ static signed int DPE_open(struct inode *pInode, struct file *pFile)
 	/*  */
 	if (DPEInfo.UserCount > 0) {
 		DPEInfo.UserCount++;
-//		mutex_unlock(&(MutexDPERef));
+		mutex_unlock(&(MutexDPERef));
 		LOG_DBG("Cur Usr(%d), (proc, pid, tgid)=(%s, %d, %d), exist",
 			DPEInfo.UserCount, current->comm, current->pid,
 								current->tgid);
@@ -7343,7 +7426,7 @@ static signed int DPE_open(struct inode *pInode, struct file *pFile)
 
 		dpe_register_requests_isp7s(&dpe_reqs_dvgf, sizeof(struct DPE_Config_V2));
 		dpe_set_engine_ops_isp7s(&dpe_reqs_dvgf, &dpe_ops);
-//		mutex_unlock(&(MutexDPERef));
+		mutex_unlock(&(MutexDPERef));
 		//
 		LOG_DBG("Cur Usr(%d), (proc, pid, tgid)=(%s, %d, %d), 1st user",
 			DPEInfo.UserCount, current->comm, current->pid,
@@ -7838,10 +7921,10 @@ static signed int DPE_probe(struct platform_device *pDev)
 	struct IPE_device *_ipe_dev;
 #endif
 
-	struct device_link *link;
+	//struct device_link *link;
 	struct video_device *vfd = NULL;
 #ifndef EP_NO_CLKMGR
-	struct device_node *node;
+	//struct device_node *node;
 #endif
 	int ret;
 #if IS_ENABLED(CONFIG_OF)
@@ -8019,10 +8102,10 @@ if (DPE_dev->irq > 0) {
 #ifndef EP_NO_CLKMGR
 #if !IS_ENABLED(CONFIG_MTK_LEGACY) && IS_ENABLED(CONFIG_COMMON_CLK) /*CCF*/
 #ifdef SMI_CLK
-
+/*
 		LOG_INF("2 nr_DPE_devs=%d, devnode(%s)\n", nr_DPE_devs,
 		pDev->dev.of_node->name);
-	/*larb19*/
+
 		node = of_parse_phandle(pDev->dev.of_node, "mediatek-larb-supply", 0);
 		LOG_INF("larb19 node get\n");
 		if (!node) {
@@ -8046,7 +8129,7 @@ if (DPE_dev->irq > 0) {
 			LOG_INF("%s smi larb device link fail", __func__);
 			return -EPROBE_DEFER;
 		}
-
+*/
 #endif
 		/*CCF: Grab clock pointer (struct clk*) */
 		LOG_INF(" get clock node star\n");
@@ -8073,7 +8156,7 @@ if (DPE_dev->irq > 0) {
 			LOG_INF("cannot get CLK_CAM_DPE_CON_0 clock\n");
 
 
-			dpe_clk.CLK_CAM_GALS = devm_clk_get(&pDev->dev,
+		dpe_clk.CLK_CAM_LARBX = devm_clk_get(&pDev->dev,
 							"CLK_CAM_LARBX");
 		if (IS_ERR(dpe_clk.CLK_CAM_LARBX))
 			LOG_INF("cannot get CLK_CAM_LARBX clock\n");
@@ -8250,6 +8333,7 @@ if (DPE_dev->irq > 0) {
 #endif
 		seqlock_init(&(dpe_reqs_dvs.seqlock));
 		seqlock_init(&(dpe_reqs_dvp.seqlock));
+		seqlock_init(&(dpe_reqs_dvgf.seqlock));
 		snprintf(DPE_dev->v4l2_dev.name, sizeof(DPE_dev->v4l2_dev.name),
 			"%s-%03d", DPE_DEV_NAME, 0);
 		Ret = v4l2_device_register(&pDev->dev, &DPE_dev->v4l2_dev);
