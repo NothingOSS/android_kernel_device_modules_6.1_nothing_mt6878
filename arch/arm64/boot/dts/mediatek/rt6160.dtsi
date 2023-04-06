@@ -23,7 +23,7 @@
 		compatible = "richtek,rt6160";
 		reg = <0x75>;
 		//enable-gpios = <&gpio26 2 0>;
-		regulator-name = "rt6160-buckboost";
+		regulator-name = "rt6160-buckboost-1";
 		regulator-min-microvolt = <2025000>;
 		regulator-max-microvolt = <5200000>;
 		regulator-always-on;
@@ -39,7 +39,7 @@
 		compatible = "richtek,rt6160";
 		reg = <0x75>;
 		//enable-gpios = <&gpio26 2 0>;
-		regulator-name = "rt6160-buckboost";
+		regulator-name = "rt6160-buckboost-2";
 		regulator-min-microvolt = <2025000>;
 		regulator-max-microvolt = <5200000>;
 		regulator-always-on;
