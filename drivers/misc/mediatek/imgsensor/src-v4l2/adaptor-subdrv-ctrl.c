@@ -881,7 +881,7 @@ bool set_auto_flicker(struct subdrv_ctx *ctx, bool min_framelength_en)
 					ctx->s_ctx.mode[ctx->current_scenario_id].readout_length +
 					ctx->s_ctx.mode[ctx->current_scenario_id].read_margin);
 			calc_fl_in_lut[i] =
-				min(ctx->frame_length_in_lut[i], ctx->s_ctx.frame_length_max);
+				min(calc_fl_in_lut[i], ctx->s_ctx.frame_length_max);
 			temp_fl_in_lut += calc_fl_in_lut[i];
 		}
 		framerate = ctx->pclk / ctx->line_length * 10 / temp_fl_in_lut;
@@ -1187,9 +1187,11 @@ void set_multi_shutter_frame_length_in_lut(struct subdrv_ctx *ctx,
 
 	ctx->frame_length = frame_length ? frame_length : ctx->frame_length;
 
-	if (exp_cnt > ARRAY_SIZE(ctx->exposure)) {
-		DRV_LOGE(ctx, "invalid exp_cnt:%u>%lu\n", exp_cnt, ARRAY_SIZE(ctx->exposure));
-		exp_cnt = ARRAY_SIZE(ctx->exposure);
+	// if (exp_cnt > ARRAY_SIZE(ctx->exposure))
+	// Coverity: assignment: Assigning exp_cnt = 5 (cause Out-of-bounds write)
+	if (exp_cnt > 3) {
+		DRV_LOGE(ctx, "invalid exp_cnt: %u > %d\n", exp_cnt, 3);
+		exp_cnt = 3;
 	}
 	check_current_scenario_id_bound(ctx);
 
