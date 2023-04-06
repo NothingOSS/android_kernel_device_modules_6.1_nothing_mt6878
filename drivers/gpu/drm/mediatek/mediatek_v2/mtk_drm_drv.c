@@ -6253,6 +6253,8 @@ int mtk_drm_get_mode_ext_info_ioctl(struct drm_device *dev, void *data,
 		unsigned int merge_trigger_offset = 150;
 		unsigned int prefetch_te_offset = 150;
 
+		if (mtk_crtc->panel_params[i] == NULL)
+			continue;
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_CHECK_TRIGGER_MERGE))
 			merge_trigger_offset = 0;
