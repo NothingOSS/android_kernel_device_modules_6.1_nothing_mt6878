@@ -2761,6 +2761,10 @@ static void dpmaif_dump_rx_data(void)
 	for (i = 0; i < dpmaif_ctl->real_rxq_num; i++) {
 		rxq = &dpmaif_ctl->rxq[i];
 
+		/* skip dump rxq1 */
+		if (rxq->index == 1)
+			continue;
+
 		CCCI_BUF_LOG_TAG(0, CCCI_DUMP_DPMAIF, TAG,
 			"dpmaif: rxq%d, pit request base: 0x%p(%u*%u); pos: w/r = %u,%u\n",
 			rxq->index, rxq->pit_base, rxq->pit_cnt, drv.normal_pit_size,
