@@ -284,7 +284,7 @@ static bool is_rsv_mem_valid(enum usb_offload_mem_id mem_id)
 /* init reserved memory on both DRAM and SRAM
  * note that at least we should get dram region successfully
  */
-int mtk_usb_offload_init_rsv_mem(int min_alloc_order, bool adv_lowpwr)
+int mtk_usb_offload_init_rsv_mem(int min_alloc_order)
 {
 	int ret = 0, i;
 	unsigned long va_start;
@@ -313,8 +313,11 @@ int mtk_usb_offload_init_rsv_mem(int min_alloc_order, bool adv_lowpwr)
 
 	/* get reserved sram region */
 	mem_id = USB_OFFLOAD_MEM_SRAM_ID;
-	if (!adv_lowpwr || soc_init_aud_intf() || soc_get_basic_sram()) {
+	if (!uodev->adv_lowpwr || soc_init_aud_intf() || soc_get_basic_sram()) {
+		USB_OFFLOAD_INFO("not support advanced low power, adv_lowpwr:%d->0\n"
+			, uodev->adv_lowpwr);
 		usb_offload_mem_buffer[mem_id].is_valid = false;
+		uodev->adv_lowpwr = false;
 		goto INIT_GEN_POOL;
 	}
 #ifdef MTK_AUDIO_INTERFACE_READY

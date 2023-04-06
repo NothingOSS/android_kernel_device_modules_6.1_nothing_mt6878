@@ -2403,7 +2403,7 @@ static int usb_offload_probe(struct platform_device *pdev)
 
 	node_xhci_host = of_parse_phandle(uodev->dev->of_node, "xhci-host", 0);
 	if (node_xhci_host) {
-		ret = mtk_usb_offload_init_rsv_mem(MIN_USB_OFFLOAD_SHIFT, uodev->adv_lowpwr);
+		ret = mtk_usb_offload_init_rsv_mem(MIN_USB_OFFLOAD_SHIFT);
 		if (ret != 0)
 			goto INIT_SHAREMEM_FAIL;
 

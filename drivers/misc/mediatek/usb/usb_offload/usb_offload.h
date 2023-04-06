@@ -265,7 +265,7 @@ extern unsigned int usb_offload_log;
 		pr_info("UD, %s(%d) " fmt, __func__, __LINE__, ## args); \
 	} while (0)
 
-extern int mtk_usb_offload_init_rsv_mem(int min_alloc_order, bool adv_lowpwr);
+extern int mtk_usb_offload_init_rsv_mem(int min_alloc_order);
 extern int mtk_usb_offload_deinit_rsv_sram(void);
 extern int mtk_offload_alloc_mem(struct usb_offload_buffer *buf, unsigned int size,
 	int align, enum usb_offload_mem_id mem_id, bool is_rsv);
