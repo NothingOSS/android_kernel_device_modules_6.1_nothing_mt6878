@@ -276,9 +276,14 @@ static long memory_send(bool share, bool involve_sp,
 		FFA_DEBUG("Page: %d at 0x%p (0x%llx)\n", index,
 			 virt_to_page(va), page_to_phys(virt_to_page(va)));
 	}
-	sg_alloc_table_from_pages(&sgt, pages,
+	retval = sg_alloc_table_from_pages(&sgt, pages,
 				  page_entries, 0,
 				  page_entries * 4096, GFP_KERNEL);
+	if (retval) {
+		FFA_ERR("sg_alloc_table_from_pages failed, ret=%d %s:%d\n", retval,
+			   __FILE__, __LINE__);
+		goto free_mem_ret;
+	}
 
 	FFA_DEBUG("Start mem share %s:%d\n", __FILE__, __LINE__);
 
