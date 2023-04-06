@@ -2506,7 +2506,7 @@ static void check_mstream_buffer(struct mtk_cam_device *cam,
 				is_m2m ? MTKCAM_IPI_HW_PATH_OFFLINE_STAGGER :
 			MTKCAM_IPI_HW_PATH_MSTREAM;
 
-			dev_dbg(cam->dev,
+			dev_info(cam->dev,
 				"%s: mstream (m2m %d) ne_se ne imgo:0x%llx se rawi:0x%llx\n",
 				__func__, is_m2m, out_fmt->buf[0][0].iova,
 				in_fmt->buf[0].iova);
@@ -2516,12 +2516,14 @@ static void check_mstream_buffer(struct mtk_cam_device *cam,
 				is_m2m ? MTKCAM_IPI_HW_PATH_OFFLINE_STAGGER :
 			MTKCAM_IPI_HW_PATH_MSTREAM;
 
-			dev_dbg(cam->dev,
+			dev_info(cam->dev,
 				"%s: mstream (m2m %d) se_ne se imgo:0x%llx ne rawi:0x%llx\n",
 				__func__, is_m2m, out_fmt->buf[0][0].iova,
 				in_fmt->buf[0].iova);
 		}
 	}
+	dev_info(cam->dev, "%s:%s mstream rawi:0x%llx\n",
+		__func__, req->req.debug_str, in_fmt->buf[0].iova);
 }
 
 static void mtk_cam_req_set_vfmt(struct mtk_cam_device *cam,
@@ -4607,7 +4609,9 @@ static int mtk_cam_req_update(struct mtk_cam_device *cam,
 				req_stream_data->frame_params.raw_param.hardware_scenario =
 					MTKCAM_IPI_HW_PATH_OTF_RGBW;
 		}
-
+		dev_info(cam->dev,
+			"%s:%s check ctx-%d\n",
+			 __func__, req->req.debug_str, ctx->stream_id);
 	}
 
 	req->fs.target = ctx_cnt > 1 ? ctx_cnt : 0;
@@ -5896,6 +5900,13 @@ void mstream_seamless_buf_update(struct mtk_cam_ctx *ctx,
 		pr_debug("%s normal imgo:0x%llx\n", __func__,
 			frame_param->img_outs[desc_id].buf[0][0].iova);
 	}
+
+	pr_info("%s:%s frame param iova/sz/fd/path:0x%llx/%d/%u/%u\n",
+		__func__, req->req.debug_str,
+		frame_param->img_outs[desc_id].buf[0][0].iova,
+		frame_param->img_outs[desc_id].buf[0][0].size,
+		frame_param->img_outs[desc_id].buf[0][0].ccd_fd,
+		frame_param->raw_param.imgo_path_sel);
 }
 
 int get_first_sv_tag_idx(struct mtk_cam_ctx *ctx,
