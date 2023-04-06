@@ -527,6 +527,7 @@ static ssize_t adsp_dump_show(struct file *filep, struct kobject *kobj,
 			ctrl->buf_size, offset, size);
 
 		if (n == 0) {
+			memset(ctrl->buf_backup, 0, ctrl->buf_size);
 			vfree(ctrl->buf_backup);
 			ctrl->buf_backup = NULL;
 			ctrl->buf_size = 0;
@@ -540,6 +541,7 @@ static ssize_t adsp_dump_show(struct file *filep, struct kobject *kobj,
 	return n;
 }
 
+#if IS_ENABLED(CONFIG_MTK_AUDIODSP_DEBUG_SUPPORT)
 static ssize_t adsp_dump_ke_show(struct file *filep, struct kobject *kobj,
 				struct bin_attribute *attr,
 				char *buf, loff_t offset, size_t size)
@@ -593,6 +595,7 @@ static ssize_t adsp_dump_log_show(struct file *filep, struct kobject *kobj,
 	}
 	return n;
 }
+#endif
 
 static struct bin_attribute bin_attr_adsp_dump = {
 	.attr = {
@@ -603,6 +606,7 @@ static struct bin_attribute bin_attr_adsp_dump = {
 	.read = adsp_dump_show,
 };
 
+#if IS_ENABLED(CONFIG_MTK_AUDIODSP_DEBUG_SUPPORT)
 static struct bin_attribute bin_attr_adsp_dump_ke = {
 	.attr = {
 		.name = "adsp_dump_ke",
@@ -635,16 +639,21 @@ static inline ssize_t suppress_ee_store(struct device *dev,
 	return count;
 }
 DEVICE_ATTR_WO(suppress_ee);
+#endif
 
 static struct bin_attribute *adsp_excep_bin_attrs[] = {
 	&bin_attr_adsp_dump,
+#if IS_ENABLED(CONFIG_MTK_AUDIODSP_DEBUG_SUPPORT)
 	&bin_attr_adsp_dump_ke,
 	&bin_attr_adsp_dump_log,
+#endif
 	NULL,
 };
 
 static struct attribute *adsp_excep_attrs[] = {
+#if IS_ENABLED(CONFIG_MTK_AUDIODSP_DEBUG_SUPPORT)
 	&dev_attr_suppress_ee.attr,
+#endif
 	NULL,
 };
 
