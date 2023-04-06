@@ -1444,12 +1444,13 @@ void fg_custom_init_from_header(struct mtk_battery *gm)
 	int i, j;
 	struct fuel_gauge_custom_data *fg_cust_data;
 	struct fuel_gauge_table_custom_data *fg_table_cust_data;
-	int version = 0;
+	int version = 0, bat_id = 0;
 
 	fg_cust_data = &gm->fg_cust_data;
 	fg_table_cust_data = &gm->fg_table_cust_data;
 
-	fgauge_get_profile_id(gm);
+	bat_id = fgauge_get_profile_id(gm);
+	bm_debug("[%s] init form bat id %d\n", __func__, bat_id);
 
 	fg_cust_data->versionID1 = FG_DAEMON_CMD_FROM_USER_NUMBER;
 	fg_cust_data->versionID2 = sizeof(gm->fg_cust_data);

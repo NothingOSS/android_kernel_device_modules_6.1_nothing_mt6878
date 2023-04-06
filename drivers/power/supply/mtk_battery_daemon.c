@@ -395,10 +395,12 @@ void fg_custom_data_check(struct mtk_battery *gm)
 {
 	struct fuel_gauge_custom_data *p;
 	struct fuel_gauge_table_custom_data *fg_table_cust_data;
+	int bat_id = 0;
 
 	p = &gm->fg_cust_data;
 	fg_table_cust_data = &gm->fg_table_cust_data;
-	fgauge_get_profile_id(gm);
+	bat_id = fgauge_get_profile_id(gm);
+	bm_debug("[%s] check form bat id %d\n", __func__, bat_id);
 
 	bm_err("FGLOG MultiGauge0[%d] BATID[%d] pmic_min_vol[%d,%d,%d,%d,%d]\n",
 		p->multi_temp_gauge0, gm->battery_id,
