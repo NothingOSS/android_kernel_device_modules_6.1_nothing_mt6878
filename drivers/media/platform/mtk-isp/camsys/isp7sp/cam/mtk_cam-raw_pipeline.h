@@ -167,6 +167,7 @@ struct mtk_raw_ctrl_data {
 
 	s64 sync_id;
 	struct mtk_cam_mstream_exposure mstream_exp;
+	bool valid_mstream_exp;
 
 	struct mtk_cam_apu_info apu_info;
 

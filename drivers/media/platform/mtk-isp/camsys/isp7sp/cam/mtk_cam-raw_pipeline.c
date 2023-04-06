@@ -84,8 +84,8 @@ static int res_calc_fill_sensor(struct mtk_cam_res_calc *c,
 			s->vblank : DC_MODE_VB_MARGIN;
 	u32 interval_n, interval_d;
 
-	interval_n = clamp_t(u32, s->interval.numerator, 1U, 0xFFFFFFFFU);
-	interval_d = clamp_t(u32, s->interval.denominator, 1U, 0xFFFFFFFFU);
+	interval_n = max(s->interval.numerator, 1U);
+	interval_d = max(s->interval.denominator, 1U);
 
 #if USE_CTRL_PIXEL_RATE
 	c->mipi_pixel_rate = s->pixel_rate;
@@ -747,6 +747,16 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_MTK_CAM_MSTREAM_EXPOSURE:
 		ctrl_data->mstream_exp =
 			*(struct mtk_cam_mstream_exposure *)ctrl->p_new.p;
+		ctrl_data->valid_mstream_exp = 1;
+
+		if (CAM_DEBUG_ENABLED(V4L2))
+			dev_info(dev, "%s: mstream_exposure (%u,%u) (%u,%u)\n",
+				 __func__,
+				 ctrl_data->mstream_exp.exposure[0].shutter,
+				 ctrl_data->mstream_exp.exposure[0].gain,
+				 ctrl_data->mstream_exp.exposure[1].shutter,
+				 ctrl_data->mstream_exp.exposure[1].gain);
+
 		break;
 	case V4L2_CID_MTK_CAM_APU_INFO:
 		{
@@ -1068,6 +1078,18 @@ static int mtk_raw_sd_subscribe_event(struct v4l2_subdev *subdev,
 	}
 }
 
+static void mtk_raw_reset_ctrls(struct mtk_raw_pipeline *pipeline)
+{
+	struct mtk_raw_ctrl_data *ctrl_data;
+
+	reset_internal_mem(pipeline);
+
+	ctrl_data = &pipeline->ctrl_data;
+
+	/* mark mstream exp as invalid */
+	ctrl_data->valid_mstream_exp = 0;
+}
+
 static int mtk_raw_sd_s_stream(struct v4l2_subdev *sd, int enable)
 {
 	struct device *dev = sd->v4l2_dev->dev;
@@ -1088,7 +1110,7 @@ static int mtk_raw_sd_s_stream(struct v4l2_subdev *sd, int enable)
 			dev_info(dev, "%s:pipe(%d) seninf/ sensor not enabled\n",
 					 __func__, pipe->id);
 	} else {
-		reset_internal_mem(pipe);
+		mtk_raw_reset_ctrls(pipe);
 		pipe->sensor = NULL;
 		pipe->seninf = NULL;
 	}

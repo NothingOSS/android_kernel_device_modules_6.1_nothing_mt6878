@@ -516,8 +516,7 @@ bool job_has_done_pending(struct mtk_cam_job *job);
 int job_handle_done(struct mtk_cam_job *job);
 
 /* functions used in flow control */
-int mtk_cam_job_manually_apply_sensor(struct mtk_cam_job *job,
-				      bool transit_latched);
+int mtk_cam_job_manually_apply_sensor(struct mtk_cam_job *job);
 int mtk_cam_job_manually_apply_isp(struct mtk_cam_job *job,
 				   bool wait_completion);
 

@@ -110,13 +110,17 @@ static const struct mtk_cam_job_state_ops mstream_state_ops = {
 };
 
 int mtk_cam_job_state_init_mstream(struct mtk_cam_job_state *s,
-				   const struct mtk_cam_job_state_cb *cb)
+				   const struct mtk_cam_job_state_cb *cb,
+				   int with_sensor_ctrl)
 {
+	int init_sensor_state = with_sensor_ctrl ?
+		S_SENSOR_NOT_SET : S_SENSOR_NONE;
+
 	s->ops = &mstream_state_ops;
 
-	mtk_cam_job_state_set(s, SENSOR_1ST_STATE, S_SENSOR_NOT_SET);
+	mtk_cam_job_state_set(s, SENSOR_1ST_STATE, init_sensor_state);
 	mtk_cam_job_state_set(s, ISP_1ST_STATE, S_ISP_NOT_SET);
-	mtk_cam_job_state_set(s, SENSOR_2ND_STATE, S_SENSOR_NOT_SET);
+	mtk_cam_job_state_set(s, SENSOR_2ND_STATE, init_sensor_state);
 	mtk_cam_job_state_set(s, ISP_2ND_STATE, S_ISP_NOT_SET);
 
 	s->cb = cb;

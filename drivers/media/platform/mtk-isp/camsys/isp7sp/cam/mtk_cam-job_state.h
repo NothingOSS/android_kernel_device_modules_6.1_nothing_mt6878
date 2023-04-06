@@ -70,5 +70,6 @@ int mtk_cam_job_state_init_subsample(struct mtk_cam_job_state *s,
 				int with_sensor_ctrl);
 
 int mtk_cam_job_state_init_mstream(struct mtk_cam_job_state *s,
-				   const struct mtk_cam_job_state_cb *cb);
+				   const struct mtk_cam_job_state_cb *cb,
+				   int with_sensor_ctrl);
 #endif //__MTK_CAM_JOB_STATE_H

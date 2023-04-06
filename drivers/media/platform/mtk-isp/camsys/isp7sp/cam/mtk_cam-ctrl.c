@@ -28,7 +28,9 @@
 #define WATCHDOG_MAX_HWTIME_MS		400
 #define WATCHDOG_MAX_SENSOR_RETRY_CNT	3
 
-//#define SET_SENSOR_BEFORE_1ST_VSYNC
+static int set_sensor_bf_first_vsync;
+module_param(set_sensor_bf_first_vsync, int, 0644);
+MODULE_PARM_DESC(set_sensor_bf_first_vsync, "set sensor before 1st vsync");
 
 unsigned long engine_idx_to_bit(int engine_type, int idx)
 {
@@ -832,7 +834,7 @@ static int mtk_cam_ctrl_stream_on_job(struct mtk_cam_job *job)
 	struct mtk_cam_ctrl *ctrl = &ctx->cam_ctrl;
 	struct device *dev = ctx->cam->dev;
 
-	if (mtk_cam_job_manually_apply_sensor(job, true))
+	if (mtk_cam_job_manually_apply_sensor(job))
 		goto STREAM_ON_FAIL;
 
 	if (mtk_cam_job_manually_apply_isp_sync(job))
@@ -850,27 +852,6 @@ static int mtk_cam_ctrl_stream_on_job(struct mtk_cam_job *job)
 	call_jobop(job, stream_on, true);
 
 	mtk_cam_watchdog_start(&ctrl->watchdog, 1);
-
-#ifdef SET_SENSOR_BEFORE_1ST_VSYNC
-	/* non multi-frame job: e.g., mstream */
-	if (job->frame_cnt > 1) {
-
-		/* note: not transit to lateched state */
-		mtk_cam_job_manually_apply_sensor(job, false);
-	} else {
-		int seq;
-
-		seq = next_frame_seq(job->frame_seq_no);
-		job = mtk_cam_ctrl_get_job(ctrl, cond_frame_no_belong, &seq);
-		if (job) {
-
-			/* note: not transit to lateched state */
-			mtk_cam_job_manually_apply_sensor(job, false);
-
-			mtk_cam_job_put(job);
-		}
-	}
-#endif
 
 	return 0;
 
@@ -894,6 +875,31 @@ static void mtk_cam_ctrl_stream_on_flow(struct mtk_cam_job *job)
 	atomic_dec(&ctrl->stream_on_cnt);
 	mtk_cam_ctrl_loop_job(ctrl, ctrl_enable_job_fsm_until_switch, NULL);
 
+	/*
+	 * 'Fake' sof event to trigger next 'enqueued' job's apply sensor.
+	 *
+	 * We need to trigger 2nd frame's apply sensor, though some CID may be
+	 * skipped by sensor driver due to sensor constaint.
+	 *
+	 *  sensor
+	 *     i2c  oo1oo       (oo2oo)      oo3o
+	 *     exp                  \\1\\\       \\2\\\
+	 *    vsync                      |            |
+	 *                    | <- 'fake' vsync event
+	 *         ---------^-----------------------------------------
+	 *             (stream-on)
+	 *     isp                       xx1xxxx      xx2xxxx
+	 *
+	 * special cases:
+	 *   - mstream: 1 job contains 2 frames
+	 *   - smvr: different applying order for sensor/isp
+	 *   - lbmf: trigger sensor via last sof
+	 */
+
+	/* note: on purpose not to update ctrl's runtime info */
+	if (set_sensor_bf_first_vsync)
+		mtk_cam_ctrl_send_event(ctrl, CAMSYS_EVENT_IRQ_L_SOF);
+
 	dev_info(dev, "[%s] ctx %d finish\n", __func__, ctrl->ctx->stream_id);
 }
 
@@ -914,11 +920,7 @@ static void mtk_cam_ctrl_seamless_switch_flow(struct mtk_cam_job *job)
 
 	mtk_cam_job_update_clk_switching(job, 1);
 
-	trace_seamless_apply_sensor(job->sensor->name,
-				    ctx->stream_id, job->frame_seq_no, 1);
-	mtk_cam_job_manually_apply_sensor(job, true);
-	trace_seamless_apply_sensor(job->sensor->name,
-				    ctx->stream_id, job->frame_seq_no, 0);
+	mtk_cam_job_manually_apply_sensor(job);
 
 	if (mtk_cam_job_manually_apply_isp_sync(job))
 		goto SWITCH_FAILURE;
@@ -1044,6 +1046,32 @@ static int mtk_cam_ctrl_queue_job_for_flow(struct mtk_cam_ctrl *ctrl,
 					     &flow_work->work);
 }
 
+static void mtk_cam_ctrl_queue_for_flow_control(struct mtk_cam_ctrl *ctrl,
+						struct mtk_cam_job *job)
+{
+	void (*func)(struct mtk_cam_job *) = NULL;
+
+	if (job->stream_on_seninf)
+		func = mtk_cam_ctrl_stream_on_flow;
+
+	if (job->seamless_switch)
+		func = mtk_cam_ctrl_seamless_switch_flow;
+
+	if (job->raw_switch)
+		func = mtk_cam_ctrl_raw_switch_flow;
+
+	if (CAM_DEBUG_ENABLED(CTRL) && func)
+		pr_info("%s: job #%d %d/%d/%d %ps\n",
+			__func__,
+			job->req_seq,
+			job->stream_on_seninf,
+			job->seamless_switch,
+			job->raw_switch,
+			func);
+
+	if (func)
+		mtk_cam_ctrl_queue_job_for_flow(ctrl, func, job);
+}
 
 /* request queue */
 void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
@@ -1098,21 +1126,7 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 	dev_dbg(ctx->cam->dev, "[%s] ctx:%d, req_no:%d frame_no:%d\n",
 		__func__, ctx->stream_id, req_seq, frame_seq);
 
-	if (job->stream_on_seninf)
-		mtk_cam_ctrl_queue_job_for_flow(cam_ctrl,
-						mtk_cam_ctrl_stream_on_flow,
-						job);
-
-	if (job->seamless_switch)
-		mtk_cam_ctrl_queue_job_for_flow(cam_ctrl,
-						mtk_cam_ctrl_seamless_switch_flow,
-						job);
-
-	if (job->raw_switch)
-		mtk_cam_ctrl_queue_job_for_flow(cam_ctrl,
-						mtk_cam_ctrl_raw_switch_flow,
-						job);
-
+	mtk_cam_ctrl_queue_for_flow_control(cam_ctrl, job);
 
 	mtk_cam_ctrl_put(cam_ctrl);
 }

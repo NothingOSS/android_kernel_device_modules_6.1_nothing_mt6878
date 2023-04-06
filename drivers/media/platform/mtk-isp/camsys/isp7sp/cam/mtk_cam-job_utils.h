@@ -185,6 +185,8 @@ bool is_processed_raw_node(struct mtk_cam_job *job,
 struct mtk_raw_ctrl_data *get_raw_ctrl_data(struct mtk_cam_job *job);
 struct mtk_raw_sink_data *get_raw_sink_data(struct mtk_cam_job *job);
 
+bool has_valid_mstream_exp(struct mtk_cam_job *job);
+
 u32 get_used_raw_num(struct mtk_cam_job *job);
 u64 get_line_time(struct mtk_cam_job *job);
 u32 get_sensor_h(struct mtk_cam_job *job);

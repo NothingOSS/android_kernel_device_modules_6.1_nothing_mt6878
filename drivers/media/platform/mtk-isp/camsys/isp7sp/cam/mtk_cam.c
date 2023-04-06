@@ -1494,7 +1494,7 @@ static int mtk_cam_ctx_alloc_workers(struct mtk_cam_ctx *ctx)
 
 	kthread_init_worker(&ctx->done_worker);
 	ctx->done_task =
-		mtk_cam_ctx_create_task(ctx, "camsys_done_worker",
+		mtk_cam_ctx_create_task(ctx, "camsys_done",
 					     &ctx->done_worker, false);
 	if (!ctx->done_task)
 		goto fail_uninit_flow_worker_task;
@@ -2330,6 +2330,8 @@ int ctx_stream_on_seninf_sensor(struct mtk_cam_job *job,
 	if (!seninf)
 		return -1;
 
+	MTK_CAM_TRACE_BEGIN(BASIC, "%s ctx=%d", __func__, ctx->stream_id);
+
 	if (ctx->enable_hsf_raw) {
 		// ctx->used_engine: bit mask of raw/camsv/mraw
 		// => raw dev id
@@ -2404,6 +2406,7 @@ int ctx_stream_on_seninf_sensor(struct mtk_cam_job *job,
 	ctx->seninf_pad = seninf_pad;
 	ctx->raw_tg_idx = raw_tg_idx;
 
+	MTK_CAM_TRACE_END(BASIC);
 	return ret;
 }
 

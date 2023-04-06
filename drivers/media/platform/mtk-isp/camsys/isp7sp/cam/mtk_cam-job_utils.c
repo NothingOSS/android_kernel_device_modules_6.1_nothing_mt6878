@@ -1539,6 +1539,17 @@ struct mtk_raw_sink_data *get_raw_sink_data(struct mtk_cam_job *job)
 	return &req->raw_data[raw_pipe_idx].sink;
 }
 
+bool has_valid_mstream_exp(struct mtk_cam_job *job)
+{
+	struct mtk_raw_ctrl_data *ctrl;
+
+	ctrl = get_raw_ctrl_data(job);
+	if (!ctrl)
+		return false;
+
+	return ctrl->valid_mstream_exp;
+}
+
 void mtk_cam_sv_reset_tag_info(struct mtk_cam_job *job)
 {
 	struct mtk_camsv_tag_info *tag_info;

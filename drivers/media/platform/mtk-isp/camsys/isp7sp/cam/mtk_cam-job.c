@@ -2047,8 +2047,8 @@ _job_pack_mstream(struct mtk_cam_job *job,
 
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
 
-	dev_info(cam->dev, "[%s] ctx/seq:%d/0x%x, type:%d",
-		__func__, ctx->stream_id, job->frame_seq_no, job->job_type);
+	dev_info(cam->dev, "[%s] ctx:%d, type:%d",
+		__func__, ctx->stream_id, job->job_type);
 	job->stream_on_seninf = false;
 
 	if (!ctx->used_engine) {
@@ -3184,7 +3184,9 @@ static int job_factory(struct mtk_cam_job *job)
 	case JOB_TYPE_MSTREAM:
 		pack_helper = &mstream_pack_helper;
 
-		mtk_cam_job_state_init_mstream(&job->job_state, &mstream_state_cb);
+		mtk_cam_job_state_init_mstream(&job->job_state,
+					       &mstream_state_cb,
+					       has_valid_mstream_exp(job));
 		job->ops = &mstream_job_ops;
 		break;
 	case JOB_TYPE_HW_SUBSAMPLE:
@@ -4298,10 +4300,11 @@ int job_handle_done(struct mtk_cam_job *job)
 	return ret;
 }
 
-int mtk_cam_job_manually_apply_sensor(struct mtk_cam_job *job,
-				      bool transit_latched)
+int mtk_cam_job_manually_apply_sensor(struct mtk_cam_job *job)
 {
+	struct mtk_cam_ctx *ctx = job->src_ctx;
 	int sensor_state;
+
 
 	sensor_state = mtk_cam_job_state_get(&job->job_state, SENSOR_STATE);
 	if (sensor_state == S_SENSOR_NONE) {
@@ -4310,11 +4313,14 @@ int mtk_cam_job_manually_apply_sensor(struct mtk_cam_job *job,
 	}
 
 	mtk_cam_job_state_set(&job->job_state, SENSOR_STATE, S_SENSOR_APPLYING);
-	call_jobop(job, apply_sensor);
 
-	if (transit_latched)
-		mtk_cam_job_state_set(&job->job_state, SENSOR_STATE,
-				      S_SENSOR_LATCHED);
+	MTK_CAM_TRACE_BEGIN(BASIC, "manually_apply_sensor %s ctx=%d f=0x%x",
+			    job->sensor->name,
+			    ctx->stream_id, job->frame_seq_no);
+	call_jobop(job, apply_sensor);
+	MTK_CAM_TRACE_END(BASIC);
+
+	mtk_cam_job_state_set(&job->job_state, SENSOR_STATE, S_SENSOR_LATCHED);
 
 	return 0;
 }
