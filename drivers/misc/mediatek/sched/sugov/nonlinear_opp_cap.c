@@ -80,6 +80,21 @@ int get_nr_wl_type(void)
 }
 EXPORT_SYMBOL_GPL(get_nr_wl_type);
 
+int get_nr_cpu_type(void)
+{
+	return mtk_mapping.nr_cpu_type;
+}
+EXPORT_SYMBOL_GPL(get_nr_cpu_type);
+
+int get_cpu_type(int type)
+{
+	if (type < mtk_mapping.total_type)
+		return mtk_mapping.cpu_to_dsu[type].cpu_type;
+	else
+		return -1;
+}
+EXPORT_SYMBOL_GPL(get_cpu_type);
+
 void set_wl_type_manual(int val)
 {
 	if (val >= 0 && val < nr_wl_type && is_wl_support())
