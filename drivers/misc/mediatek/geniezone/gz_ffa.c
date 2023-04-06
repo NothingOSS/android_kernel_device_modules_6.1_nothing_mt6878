@@ -270,7 +270,7 @@ static long memory_send(bool share, bool involve_sp,
 		 * have a single page and consume the maximum space possible in the
 		 * memory region descriptor.
 		 */
-		__u64 va = (__u64)mem_region + (index * 2 * 4096);
+		__u64 va = (__u64)mem_region + ((__u64)index * 2 * 4096);
 
 		pages[index] = virt_to_page(va);
 		FFA_DEBUG("Page: %d at 0x%p (0x%llx)\n", index,
