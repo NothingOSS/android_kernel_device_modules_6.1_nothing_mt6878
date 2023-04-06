@@ -35,7 +35,7 @@ struct mtk_cam_hsf_info {
 	u32 enable_raw;
 	u32 cam_module;
 	u64 chunk_iova;
-	uint32_t chunk_hsfhandle;
+	u64 chunk_hsfhandle;
 };
 
 struct cq_info {
@@ -65,7 +65,7 @@ struct mtk_cam_dma_map {
 	struct dma_buf_attachment *attach;
 	struct sg_table *table;
 	dma_addr_t dma_addr;
-	uint32_t hsf_handle;
+	u64 hsf_handle;
 };
 
 struct mtk_cam_hsf_ctrl {

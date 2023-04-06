@@ -72,7 +72,7 @@ int mtk_cam_dmabuf_get_iova(struct mtk_cam_ctx *ctx,
 	struct mtk_cam_device *cam = ctx->cam;
 	struct dma_buf_attachment *attach;
 	struct sg_table *table;
-	int handle;
+	uint64_t handle;
 
 	handle = dmabuf_to_secure_handle(dmap->dbuf);
 
@@ -528,7 +528,7 @@ int mtk_cam_hsf_config(struct mtk_cam_ctx *ctx, unsigned int raw_id)
 		return -1;
 	}
 	share_buf->cq_dst_iova = dma_map_cq->dma_addr;
-	dev_info(cam->dev, "dma_map_cq->dma_addr:0x%llx dma_map_cq->hsf_handle:0x%x\n",
+	dev_info(cam->dev, "dma_map_cq->dma_addr:0x%llx dma_map_cq->hsf_handle:0x%llx\n",
 		dma_map_cq->dma_addr, dma_map_cq->hsf_handle);
 	//TEST: secure map to ccu devcie.
 	dma_map_chk->dbuf = mtk_cam_dmabuf_alloc(ctx, CQ_BUF_SIZE);
@@ -543,7 +543,7 @@ int mtk_cam_hsf_config(struct mtk_cam_ctx *ctx, unsigned int raw_id)
 		return -1;
 	}
 
-	dev_info(cam->dev, "dma_map_chk->dma_addr:0x%llx dma_map_chk->hsf_handle:0x%x\n",
+	dev_info(cam->dev, "dma_map_chk->dma_addr:0x%llx dma_map_chk->hsf_handle:0x%llx\n",
 		dma_map_chk->dma_addr, dma_map_chk->hsf_handle);
 	share_buf->chunk_hsfhandle = dma_map_chk->hsf_handle;
 	share_buf->chunk_iova =  dma_map_chk->dma_addr;
