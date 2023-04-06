@@ -36,7 +36,7 @@ DEFINE_PER_CPU(__u32, active_softirqs);
 struct cpumask __cpu_pause_mask;
 EXPORT_SYMBOL(__cpu_pause_mask);
 
-static struct perf_domain *find_pd(struct perf_domain *pd, int cpu)
+struct perf_domain *find_pd(struct perf_domain *pd, int cpu)
 {
 	while (pd) {
 		if (cpumask_test_cpu(cpu, perf_domain_span(pd)))

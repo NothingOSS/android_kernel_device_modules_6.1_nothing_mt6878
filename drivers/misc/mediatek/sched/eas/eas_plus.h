@@ -93,6 +93,7 @@ unsigned long capacity_of(int cpu);
 
 extern unsigned long cpu_util(int cpu);
 extern int task_fits_capacity(struct task_struct *p, long capacity);
+extern struct perf_domain *find_pd(struct perf_domain *pd, int cpu);
 
 #if IS_ENABLED(CONFIG_MTK_EAS)
 extern void mtk_find_busiest_group(void *data, struct sched_group *busiest,

@@ -478,9 +478,18 @@ void init_vip_task_struct(struct task_struct *p)
 	vts->vip_prio = NOT_VIP;
 }
 
+void init_task_gear_hints(struct task_struct *p)
+{
+	struct task_gear_hints *ghts = &((struct mtk_task *) p->android_vendor_data1)->gear_hints;
+
+	ghts->gear_start = -1;
+	ghts->num_gear   = num_sched_clusters;
+}
+
 static void vip_new_tasks(void *unused, struct task_struct *new)
 {
 	init_vip_task_struct(new);
+	init_task_gear_hints(new);
 }
 
 void register_vip_hooks(void)

@@ -1050,121 +1050,133 @@ static inline bool is_target_max_spare_cpu(bool is_vip, int num_vip, int min_num
 	return true;
 }
 
-DEFINE_PER_CPU(cpumask_var_t, mtk_select_rq_mask);
-
-void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_cpu, int sync,
-					int *new_cpu)
+void __set_gear_indices(struct task_struct *p, int gear_start, int num_gear)
 {
-	struct cpumask *cpus = this_cpu_cpumask_var_ptr(mtk_select_rq_mask);
-	unsigned long best_delta = ULONG_MAX;
-	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
-	int best_idle_cpu = -1;
-	long sys_max_spare_cap = LONG_MIN, idle_max_spare_cap = LONG_MIN;
-	long max_spare_cap = LONG_MIN, max_spare_cap_ls_idle = LONG_MIN;
-	int sys_max_spare_cap_cpu = -1;
-	int idle_max_spare_cap_cpu = -1;
+	struct task_gear_hints *ghts = &((struct mtk_task *) p->android_vendor_data1)->gear_hints;
+
+	ghts->gear_start = gear_start;
+	ghts->num_gear   = num_gear;
+}
+
+void set_gear_indices(int pid, int gear_start, int num_gear)
+{
+	struct task_struct *p;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (p) {
+		get_task_struct(p);
+		__set_gear_indices(p, gear_start, num_gear);
+		put_task_struct(p);
+	}
+	rcu_read_unlock();
+}
+EXPORT_SYMBOL_GPL(set_gear_indices);
+
+static inline bool task_demand_fits(struct task_struct *p, int cpu)
+{
+	return task_fits_capacity(p, capacity_orig_of(cpu));
+}
+
+static void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_index)
+{
+	int i = 0;
+	struct task_gear_hints *ghts = &((struct mtk_task *) p->android_vendor_data1)->gear_hints;
+
+	*order_index = 0;
+	*end_index = 0;
+	if (num_sched_clusters <= 1)
+		goto out;
+
+	/* gear_start's range -1~num_sched_clusters */
+	if (ghts->gear_start > num_sched_clusters || ghts->gear_start < -1)
+		goto out;
+
+	/* strict boost on BCPU */
+	if (ghts->gear_start == num_sched_clusters) {
+		*order_index = num_sched_clusters - 1;
+		goto out;
+	}
+
+	/* task has customized gear prefer */
+	if (ghts->gear_start >= 0) {
+		*order_index = ghts->gear_start;
+		*end_index   = ghts->num_gear;
+		goto out;
+	}
+
+	for (i = *order_index; i < num_sched_clusters - 1; i++) {
+		if (task_demand_fits(p, cpumask_first(&cpu_array[i][0])))
+			break;
+	}
+
+	*order_index = i;
+	*end_index = num_sched_clusters - 1 - i;
+out:
+	if (trace_sched_get_gear_indices_enabled())
+		trace_sched_get_gear_indices(p, uclamp_task_util(p),
+				ghts->gear_start, ghts->num_gear, num_sched_clusters,
+				*order_index, *end_index);
+}
+
+struct find_best_candidates_parameters {
+	bool in_irq;
+	bool latency_sensitive;
+	int prev_cpu;
+	int order_index;
+	int end_index;
+};
+
+DEFINE_PER_CPU(cpumask_var_t, mtk_fbc_mask);
+
+static void mtk_find_best_candidates(struct cpumask *candidates, struct task_struct *p,
+		struct cpumask *effective_softmask, struct cpumask *allowed_cpu_mask,
+		struct energy_env *eenv, struct find_best_candidates_parameters *fbc_params,
+		int *sys_max_spare_cap_cpu, int *idle_max_spare_cap_cpu)
+{
+	int cluster, cpu;
+	struct cpumask *cpus = this_cpu_cpumask_var_ptr(mtk_fbc_mask);
 	unsigned long target_cap = 0;
 	unsigned long cpu_cap, cpu_util;
-	bool latency_sensitive = false;
-	int cpu, best_energy_cpu = -1, recent_used_cpu;
-	struct cpuidle_state *idle;
-	struct perf_domain *pd;
-	int select_reason = -1;
-	unsigned long min_cap = uclamp_eff_value(p, UCLAMP_MIN);
-	unsigned long max_cap = uclamp_eff_value(p, UCLAMP_MAX);
-	struct energy_env eenv;
-	struct cpumask effective_softmask;
-	bool in_irq = in_interrupt();
 	bool not_in_softmask;
-	struct cpumask allowed_cpu_mask;
-	int this_cpu = smp_processor_id();
+	struct cpuidle_state *idle;
+	long sys_max_spare_cap = LONG_MIN, idle_max_spare_cap = LONG_MIN;
+	unsigned long min_cap = eenv->min_cap;
+	unsigned long max_cap = eenv->max_cap;
 	bool is_vip = false;
 	unsigned int num_vip, prev_min_num_vip, min_num_vip;
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	struct vip_task_struct *vts;
 #endif
+	bool latency_sensitive = fbc_params->latency_sensitive;
+	bool in_irq = fbc_params->in_irq;
+	int prev_cpu = fbc_params->prev_cpu;
+	int order_index = fbc_params->order_index;
+	int end_index = fbc_params->end_index;
 
 	num_vip = prev_min_num_vip = min_num_vip = UINT_MAX;
-	cpumask_clear(&allowed_cpu_mask);
-
-	irq_log_store();
-
-	rcu_read_lock();
-	compute_effective_softmask(p, &latency_sensitive, &effective_softmask);
-
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
 	vts->vip_prio = get_vip_task_prio(p);
 	is_vip = task_is_vip(p);
 #endif
 
-	pd = rcu_dereference(rd->pd);
-	if (!pd || READ_ONCE(rd->overutilized)) {
-		select_reason = LB_FAIL;
-		rcu_read_unlock();
-		goto fail;
-	}
-
-	irq_log_store();
-
-	cpu = smp_processor_id();
-	if (sync && cpu_rq(cpu)->nr_running == 1 &&
-	    cpumask_test_cpu(cpu, p->cpus_ptr) &&
-	    task_fits_capacity(p, capacity_of(cpu)) &&
-	    !(latency_sensitive && !cpumask_test_cpu(cpu, &effective_softmask))) {
-		rcu_read_unlock();
-		*new_cpu = cpu;
-		select_reason = LB_SYNC;
-		goto done;
-	}
-
-	irq_log_store();
-
-	if (!task_util_est(p)) {
-		select_reason = LB_ZERO_UTIL;
-		rcu_read_unlock();
-		goto fail;
-	}
-
-	irq_log_store();
-
-	if (!in_irq) {
-		eenv_task_busy_time(&eenv, p, prev_cpu);
-		eenv.min_cap = min_cap;
-		eenv.max_cap = max_cap;
-
-		eenv_init(&eenv, p, prev_cpu, pd);
-
-		if (!eenv.task_busy_time) {
-			select_reason = LB_ZERO_EENV_UTIL;
-			rcu_read_unlock();
-			goto fail;
-		}
-	}
-
-	irq_log_store();
-
-	for (; pd; pd = pd->next) {
-		unsigned long cur_delta, base_energy;
+	/* find best candidate */
+	for (cluster = 0; cluster < num_sched_clusters; cluster++) {
 		long spare_cap, pd_max_spare_cap = LONG_MIN;
 		long pd_max_spare_cap_ls_idle = LONG_MIN;
 		unsigned int pd_min_exit_lat = UINT_MAX;
 		int pd_max_spare_cap_cpu = -1;
 		int pd_max_spare_cap_cpu_ls_idle = -1;
-		int gear_idx;
 #if IS_ENABLED(CONFIG_MTK_THERMAL_AWARE_SCHEDULING)
 		int cpu_order[NR_CPUS]  ____cacheline_aligned, cnt, i;
 
 #endif
 
-		cpumask_and(cpus, perf_domain_span(pd), cpu_active_mask);
+		cpumask_and(cpus, &cpu_array[order_index][cluster], cpu_active_mask);
 
 		if (cpumask_empty(cpus))
 			continue;
-
-		/* Account thermal pressure for the energy estimation */
-		cpu = cpumask_first(cpus);
-		gear_idx = eenv.gear_idx = per_cpu(gear_id, cpu);
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_AWARE_SCHEDULING)
 		cnt = sort_thermal_headroom(cpus, cpu_order, in_irq);
@@ -1180,7 +1192,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 			if (cpu_paused(cpu))
 				continue;
 
-			cpumask_set_cpu(cpu, &allowed_cpu_mask);
+			cpumask_set_cpu(cpu, allowed_cpu_mask);
 
 			if (in_irq &&
 				task_can_skip_this_cpu(p, min_cap, latency_sensitive, cpu, &bcpus))
@@ -1195,7 +1207,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 			spare_cap = cpu_cap;
 			lsub_positive(&spare_cap, cpu_util);
 			not_in_softmask = (latency_sensitive &&
-						!cpumask_test_cpu(cpu, &effective_softmask));
+						!cpumask_test_cpu(cpu, effective_softmask));
 
 			if (not_in_softmask)
 				continue;
@@ -1217,7 +1229,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 			if (is_target_max_spare_cpu(is_vip, num_vip, prev_min_num_vip,
 					spare_cap, sys_max_spare_cap)) {
 				sys_max_spare_cap = spare_cap;
-				sys_max_spare_cap_cpu = cpu;
+				*sys_max_spare_cap_cpu = cpu;
 			}
 
 			/*
@@ -1230,7 +1242,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 				if (is_target_max_spare_cpu(is_vip, num_vip, prev_min_num_vip,
 						spare_cap, idle_max_spare_cap)) {
 					idle_max_spare_cap = spare_cap;
-					idle_max_spare_cap_cpu = cpu;
+					*idle_max_spare_cap_cpu = cpu;
 				}
 			}
 
@@ -1243,6 +1255,11 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 			 */
 			cpu_util = mtk_uclamp_rq_util_with(cpu_rq(cpu), cpu_util, p,
 							min_cap, max_cap);
+			eenv->pds_max_util[cpu][0] = cpu_util;
+			if (trace_sched_util_fits_cpu_enabled())
+				trace_sched_util_fits_cpu(cpu, cpu_util, cpu_cap,
+						min_cap, max_cap, cpu_rq(cpu));
+
 			if (!fits_capacity(cpu_util, cpu_cap))
 				continue;
 
@@ -1284,51 +1301,160 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 			}
 		}
 
-		/* Evaluate the energy impact of using this CPU. */
-		if (!latency_sensitive && pd_max_spare_cap_cpu >= 0) {
-			if (unlikely(in_irq)) {
-				cur_delta = calc_pwr_eff(pd_max_spare_cap_cpu, cpu_util);
-				base_energy = 0;
-			} else {
-				eenv_pd_busy_time(gear_idx, &eenv, cpus, p);
-				cur_delta = mtk_compute_energy(&eenv, pd, cpus, p,
-									pd_max_spare_cap_cpu);
-				base_energy = mtk_compute_energy(&eenv, pd, cpus, p, -1);
-			}
-			cur_delta = cur_delta - base_energy;
-			if (cur_delta <= best_delta) {
-				best_delta = cur_delta;
-				best_energy_cpu = pd_max_spare_cap_cpu;
-				max_spare_cap = pd_max_spare_cap;
-			}
-		}
+		if (pd_max_spare_cap_cpu_ls_idle != -1)
+			cpumask_set_cpu(pd_max_spare_cap_cpu_ls_idle, candidates);
+		else if (pd_max_spare_cap_cpu != -1)
+			cpumask_set_cpu(pd_max_spare_cap_cpu, candidates);
 
-		if (latency_sensitive && pd_max_spare_cap_cpu_ls_idle >= 0) {
-			if (unlikely(in_irq)) {
-				cur_delta = calc_pwr_eff(pd_max_spare_cap_cpu_ls_idle, cpu_util);
-				base_energy = 0;
-			} else {
-				eenv_pd_busy_time(gear_idx, &eenv, cpus, p);
-				cur_delta = mtk_compute_energy(&eenv, pd, cpus, p,
-						pd_max_spare_cap_cpu_ls_idle);
-				base_energy = mtk_compute_energy(&eenv, pd, cpus, p, -1);
-			}
-			cur_delta = cur_delta - base_energy;
-			if (cur_delta <= best_delta) {
-				best_delta = cur_delta;
-				best_idle_cpu = pd_max_spare_cap_cpu_ls_idle;
-				max_spare_cap_ls_idle = pd_max_spare_cap_ls_idle;
-			}
+		if ((cluster >= end_index) && (!cpumask_empty(candidates)))
+			break;
+	}
+
+	if (trace_sched_find_best_candidates_enabled())
+		trace_sched_find_best_candidates(p, is_vip, candidates, order_index, end_index,
+				allowed_cpu_mask);
+}
+
+DEFINE_PER_CPU(cpumask_var_t, mtk_select_rq_mask);
+static DEFINE_PER_CPU(cpumask_t, energy_cpus);
+
+void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_cpu, int sync,
+					int *new_cpu)
+{
+	struct cpumask *cpus = this_cpu_cpumask_var_ptr(mtk_select_rq_mask);
+	unsigned long best_delta = ULONG_MAX;
+	int this_cpu = smp_processor_id();
+	struct root_domain *rd = cpu_rq(this_cpu)->rd;
+	int sys_max_spare_cap_cpu = -1;
+	int idle_max_spare_cap_cpu = -1;
+	bool latency_sensitive = false;
+	int cpu, best_energy_cpu = -1, recent_used_cpu;
+	struct perf_domain *pd;
+	int select_reason = -1;
+	unsigned long min_cap = uclamp_eff_value(p, UCLAMP_MIN);
+	unsigned long max_cap = uclamp_eff_value(p, UCLAMP_MAX);
+	struct energy_env eenv;
+	struct cpumask effective_softmask;
+	bool in_irq = in_interrupt();
+	struct cpumask allowed_cpu_mask;
+	int order_index, end_index, weight;
+	cpumask_t *candidates;
+	struct find_best_candidates_parameters fbc_params;
+
+	cpumask_clear(&allowed_cpu_mask);
+
+	irq_log_store();
+
+	rcu_read_lock();
+	compute_effective_softmask(p, &latency_sensitive, &effective_softmask);
+
+	pd = rcu_dereference(rd->pd);
+	if (!pd || READ_ONCE(rd->overutilized)) {
+		select_reason = LB_FAIL;
+		rcu_read_unlock();
+		goto fail;
+	}
+
+	irq_log_store();
+
+	if (sync && cpu_rq(this_cpu)->nr_running == 1 &&
+	    cpumask_test_cpu(this_cpu, p->cpus_ptr) &&
+	    task_fits_capacity(p, capacity_of(this_cpu)) &&
+	    !(latency_sensitive && !cpumask_test_cpu(this_cpu, &effective_softmask))) {
+		rcu_read_unlock();
+		*new_cpu = this_cpu;
+		select_reason = LB_SYNC;
+		goto done;
+	}
+
+	irq_log_store();
+
+	if (!task_util_est(p)) {
+		select_reason = LB_ZERO_UTIL;
+		rcu_read_unlock();
+		goto fail;
+	}
+
+	irq_log_store();
+
+	mtk_get_gear_indicies(p, &order_index, &end_index);
+
+	irq_log_store();
+
+	eenv.min_cap = min_cap;
+	eenv.max_cap = max_cap;
+	if (!in_irq) {
+		eenv_task_busy_time(&eenv, p, prev_cpu);
+
+		eenv_init(&eenv, p, prev_cpu, pd);
+
+		if (!eenv.task_busy_time) {
+			select_reason = LB_ZERO_EENV_UTIL;
+			rcu_read_unlock();
+			goto fail;
 		}
 	}
 
+	irq_log_store();
+
+	fbc_params.in_irq = in_irq;
+	fbc_params.latency_sensitive = latency_sensitive;
+	fbc_params.prev_cpu = prev_cpu;
+	fbc_params.order_index = order_index;
+	fbc_params.end_index = end_index;
+
+	/* Pre-select a set of candidate CPUs. */
+	candidates = this_cpu_ptr(&energy_cpus);
+	cpumask_clear(candidates);
+
+	mtk_find_best_candidates(candidates, p, &effective_softmask, &allowed_cpu_mask,
+			&eenv, &fbc_params, &sys_max_spare_cap_cpu, &idle_max_spare_cap_cpu);
+
+	irq_log_store();
+
+	/* select best energy cpu in candidates */
+	weight = cpumask_weight(candidates);
+	if (!weight)
+		goto unlock;
+	if (weight == 1) {
+		best_energy_cpu = cpumask_first(candidates);
+		goto unlock;
+	}
+
+	for_each_cpu(cpu, candidates) {
+		unsigned long cur_delta, base_energy;
+		int gear_idx;
+		struct perf_domain *target_pd;
+
+		/* Evaluate the energy impact of using this CPU. */
+		if (unlikely(in_irq)) {
+			cur_delta = calc_pwr_eff(cpu, eenv.pds_max_util[cpu][0]);
+			base_energy = 0;
+		} else {
+			target_pd = find_pd(pd, cpu);
+			gear_idx = eenv.gear_idx = per_cpu(gear_id, cpu);
+			cpus = get_gear_cpumask(gear_idx);
+
+			eenv_pd_busy_time(gear_idx, &eenv, cpus, p);
+			cur_delta = mtk_compute_energy(&eenv, target_pd, cpus, p,
+								cpu);
+			base_energy = mtk_compute_energy(&eenv, target_pd, cpus, p, -1);
+		}
+		cur_delta = cur_delta - base_energy;
+		if (cur_delta < best_delta) {
+			best_delta = cur_delta;
+			best_energy_cpu = cpu;
+		}
+	}
+
+unlock:
 	rcu_read_unlock();
 
 	irq_log_store();
 
 	if (latency_sensitive) {
-		if (best_idle_cpu >= 0) {
-			*new_cpu = best_idle_cpu;
+		if (best_energy_cpu >= 0) {
+			*new_cpu = best_energy_cpu;
 			select_reason = LB_LATENCY_SENSITIVE_BEST_IDLE_CPU;
 			goto done;
 		}
@@ -1428,7 +1554,7 @@ done:
 
 	if (trace_sched_find_energy_efficient_cpu_enabled())
 		trace_sched_find_energy_efficient_cpu(in_irq, best_delta, best_energy_cpu,
-				best_idle_cpu, idle_max_spare_cap_cpu, sys_max_spare_cap_cpu);
+				best_energy_cpu, idle_max_spare_cap_cpu, sys_max_spare_cap_cpu);
 	if (trace_sched_select_task_rq_enabled()) {
 		trace_sched_select_task_rq(p, in_irq, select_reason, prev_cpu, *new_cpu,
 				task_util(p), task_util_est(p), uclamp_task_util(p),

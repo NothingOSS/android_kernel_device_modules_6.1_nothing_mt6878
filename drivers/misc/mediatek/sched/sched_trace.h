@@ -93,6 +93,126 @@ TRACE_EVENT(sched_find_cpu_in_irq,
 		__entry->max_spare_cap)
 );
 
+TRACE_EVENT(sched_get_gear_indices,
+
+	TP_PROTO(struct task_struct *tsk, int uclamp_task_util,
+		int gear_start, int num_gear,
+		int num_sched_clusters, int order_index, int end_index),
+
+	TP_ARGS(tsk, uclamp_task_util, gear_start, num_gear, num_sched_clusters,
+			order_index, end_index),
+
+	TP_STRUCT__entry(
+		__field(pid_t, pid)
+		__field(int,   uclamp_task_util)
+		__field(int,   gear_start)
+		__field(int,   num_gear)
+		__field(int,   num_sched_clusters)
+		__field(int,   order_index)
+		__field(int,   end_index)
+		),
+
+	TP_fast_assign(
+		__entry->pid				= tsk->pid;
+		__entry->uclamp_task_util	= uclamp_task_util;
+		__entry->gear_start			= gear_start;
+		__entry->num_gear			= num_gear;
+		__entry->num_sched_clusters	= num_sched_clusters;
+		__entry->order_index		= order_index;
+		__entry->end_index			= end_index;
+		),
+
+	TP_printk(
+		"pid=%d uclamp_task_util=%d gear_start=%d num_gear=%d max_gear_num=%d order_index=%d end_index=%d",
+		__entry->pid,
+		__entry->uclamp_task_util,
+		__entry->gear_start,
+		__entry->num_gear,
+		__entry->num_sched_clusters,
+		__entry->order_index,
+		__entry->end_index)
+);
+
+TRACE_EVENT(sched_util_fits_cpu,
+
+	TP_PROTO(int cpu, unsigned long util, unsigned long cpu_cap,
+		unsigned long min_cap, unsigned long max_cap, struct rq *rq),
+
+	TP_ARGS(cpu, util, cpu_cap, min_cap, max_cap, rq),
+
+	TP_STRUCT__entry(
+		__field(int,	cpu)
+		__field(unsigned long,	util)
+		__field(unsigned long,   cpu_cap)
+		__field(unsigned long,   task_min_cap)
+		__field(unsigned long,   task_max_cap)
+		__field(unsigned long,   rq_min_cap)
+		__field(unsigned long,   rq_max_cap)
+		),
+
+	TP_fast_assign(
+		__entry->cpu				= cpu;
+		__entry->util				= util;
+		__entry->cpu_cap			= cpu_cap;
+		__entry->task_min_cap		= min_cap;
+		__entry->task_max_cap		= max_cap;
+		__entry->rq_min_cap			= READ_ONCE(rq->uclamp[UCLAMP_MIN].value);
+		__entry->rq_max_cap			= READ_ONCE(rq->uclamp[UCLAMP_MAX].value);
+		),
+
+	TP_printk(
+		"cpu=%d util=%ld cpu_cap=%ld task_min_cap=%ld task_max_cap=%ld rq_min_cap=%ld rq_max_cap=%ld",
+		__entry->cpu,
+		__entry->util,
+		__entry->cpu_cap,
+		__entry->task_min_cap,
+		__entry->task_max_cap,
+		__entry->rq_min_cap,
+		__entry->rq_max_cap)
+);
+
+TRACE_EVENT(sched_find_best_candidates,
+
+	TP_PROTO(struct task_struct *tsk, bool is_vip,
+		struct cpumask *candidates, int order_index, int end_index,
+		struct cpumask *allowed_cpu_mask),
+
+	TP_ARGS(tsk, is_vip, candidates, order_index, end_index, allowed_cpu_mask),
+
+	TP_STRUCT__entry(
+		__field(pid_t, pid)
+		__field(bool,  is_vip)
+		__field(long,  candidates)
+		__field(int,   order_index)
+		__field(int,   end_index)
+		__field(long,   active_mask)
+		__field(long,   pause_mask)
+		__field(long,   allowed_cpu_mask)
+		),
+
+	TP_fast_assign(
+		__entry->pid        = tsk->pid;
+		__entry->is_vip     = is_vip;
+		__entry->candidates = candidates->bits[0];
+		__entry->order_index   = order_index;
+		__entry->end_index     = end_index;
+		__entry->active_mask     = cpu_active_mask->bits[0];
+		__entry->pause_mask     = cpu_pause_mask->bits[0];
+		__entry->allowed_cpu_mask     = allowed_cpu_mask->bits[0];
+		),
+
+	TP_printk(
+		"pid=%d is_vip=%d candidates=0x%lx order_index=%d end_index=%d active_mask=0x%lx pause_mask=0x%lx allowed_mask=0x%lx",
+		__entry->pid,
+		__entry->is_vip,
+		__entry->candidates,
+		__entry->order_index,
+		__entry->end_index,
+		__entry->active_mask,
+		__entry->pause_mask,
+		__entry->allowed_cpu_mask)
+);
+
 TRACE_EVENT(sched_select_task_rq,
 
 	TP_PROTO(struct task_struct *tsk, bool in_irq,
