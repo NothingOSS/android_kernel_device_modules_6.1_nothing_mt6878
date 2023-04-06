@@ -390,6 +390,11 @@ struct mml_comp *mml_dev_get_comp_by_id(struct mml_dev *mml, u32 id)
 }
 EXPORT_SYMBOL_GPL(mml_dev_get_comp_by_id);
 
+void *mml_get_sys(struct mml_dev *mml)
+{
+	return mml->sys;
+}
+
 phys_addr_t mml_get_node_base_pa(struct platform_device *pdev, const char *name,
 	u32 idx, void __iomem **base)
 {
