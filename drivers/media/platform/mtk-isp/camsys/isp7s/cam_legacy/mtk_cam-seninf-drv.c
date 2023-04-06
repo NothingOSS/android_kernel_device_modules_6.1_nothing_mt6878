@@ -3078,12 +3078,12 @@ int mtk_cam_seninf_dump(struct v4l2_subdev *sd, u32 seq_id, bool force_check)
 	return (ret && reset_by_user);
 }
 
-void mtk_cam_seninf_set_secure(struct v4l2_subdev *sd, int enable, unsigned int SecInfo_addr)
+void mtk_cam_seninf_set_secure(struct v4l2_subdev *sd, int enable, u64 SecInfo_addr)
 {
 	struct seninf_ctx *ctx = sd_to_ctx(sd);
 
 	ctx->SecInfo_addr = SecInfo_addr;
-	dev_info(ctx->dev, "[%s]: %x, enable: %d\n", __func__, SecInfo_addr, enable);
+	dev_info(ctx->dev, "[%s]: %llx, enable: %d\n", __func__, SecInfo_addr, enable);
 	ctx->is_secure = enable ? 1 : 0;
 }
 

@@ -113,7 +113,7 @@ int mtk_cam_seninf_get_pad_data_info(struct v4l2_subdev *sd,
 				struct mtk_seninf_pad_data_info *result);
 
 void
-mtk_cam_seninf_set_secure(struct v4l2_subdev *sd, int enable, unsigned int SecInfo_addr);
+mtk_cam_seninf_set_secure(struct v4l2_subdev *sd, int enable, u64 SecInfo_addr);
 
 bool is_fsync_listening_on_pd(struct v4l2_subdev *sd);
 

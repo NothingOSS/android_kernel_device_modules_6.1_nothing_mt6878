@@ -166,7 +166,7 @@ struct seninf_ctx {
 	unsigned int m_csi_efuse;
 #endif
 	unsigned int is_secure:1;
-	unsigned int SecInfo_addr;
+	u64 SecInfo_addr;
 	int seninfIdx;
 	int pad2cam[PAD_MAXCNT][MAX_DEST_NUM];
 	int pad_tag_id[PAD_MAXCNT][MAX_DEST_NUM];

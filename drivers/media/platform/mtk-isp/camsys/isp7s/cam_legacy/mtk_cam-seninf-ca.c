@@ -61,7 +61,7 @@ int seninf_ca_close_session(void)
 
 
 
-int seninf_ca_checkpipe(unsigned int SecInfo_addr)
+int seninf_ca_checkpipe(u64 SecInfo_addr)
 {
 
 	int types = 0;
@@ -69,10 +69,11 @@ int seninf_ca_checkpipe(unsigned int SecInfo_addr)
 	TZ_RESULT ret_tz = TZ_RESULT_SUCCESS;
 	union MTEEC_PARAM param[PARAM_SIZE];
 
-	LOG_INF("[%s] +", __func__);
+	LOG_INF("[%s] + secInfo_addr 0x%llx", __func__, SecInfo_addr);
 
 	param[0].value.a = ret;
-	param[0].value.b = SecInfo_addr;
+	param[0].value.b = SecInfo_addr & 0xFFFFFFFF;
+	param[1].value.b = (SecInfo_addr >> 32) & 0xFFFFFFFF;
 	types = TZ_ParamTypes4(TZPT_VALUE_OUTPUT, TZPT_NONE, TZPT_NONE, TZPT_NONE);
 	ret_tz = KREE_TeeServiceCall(pca->session, SENINF_TEE_CMD_CHECKPIPE, types, param);
 
