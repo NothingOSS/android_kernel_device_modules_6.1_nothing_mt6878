@@ -29,6 +29,8 @@
 
 #include "sapu_driver.h"
 
+#define ENABLE_DRAM_FB 0
+
 static void sapu_rpm_lock_exit(void);
 
 static struct mutex sapu_lock_rpm_mtx;
@@ -64,6 +66,8 @@ static long apusys_sapu_compat_ioctl(struct file *filep, unsigned int cmd,
 	return ret;
 }
 #endif
+
+#if ENABLE_DRAM_FB
 
 static int dram_fb_register(struct apusys_sapu_data *data)
 {
@@ -211,6 +215,7 @@ static int dram_fb_unregister(struct apusys_sapu_data *data)
 
 	return 0;
 }
+#endif // ENABLE_DRAM_FB
 
 static int apusys_sapu_open(struct inode *inode, struct file *filp)
 {
@@ -223,11 +228,13 @@ static int apusys_sapu_open(struct inode *inode, struct file *filp)
 		return -EINVAL;
 	}
 	mutex_lock(&data->dmabuf_lock);
+#if ENABLE_DRAM_FB
 	if (data->ref_count == 0 || !data->dram_register) {
 		ret = dram_fb_register(data);
 		if (!ret)
 			data->dram_register = true;
 	}
+#endif // ENABLE_DRAM_FB
 	data->ref_count++;
 	mutex_unlock(&data->dmabuf_lock);
 
@@ -245,11 +252,13 @@ static int apusys_sapu_release(struct inode *inode, struct file *filp)
 		return -EINVAL;
 	}
 	mutex_lock(&data->dmabuf_lock);
+#if ENABLE_DRAM_FB
 	if (data->ref_count == 1 && data->dram_register) {
 		ret = dram_fb_unregister(data);
 		if (!ret)
 			data->dram_register = false;
 	}
+#endif
 	data->ref_count--;
 	mutex_unlock(&data->dmabuf_lock);
 
