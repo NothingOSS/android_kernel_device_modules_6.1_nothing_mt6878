@@ -11008,10 +11008,10 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 		mtk_crtc->qos_ctx->last_mmclk_req_idx += 1;
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
-	mtk_state = to_mtk_crtc_state(crtc->state);
+	mtk_state = (aod_scp_flag && crtc) ? to_mtk_crtc_state(crtc->state) : NULL;
 
 	if ((output_comp) &&
-		!((aod_scp_flag) && (!crtc->state->active) &&
+		!((aod_scp_flag) && crtc && crtc->state && (!crtc->state->active) && (mtk_state) &&
 			(mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE])))
 		mtk_ddp_comp_io_cmd(output_comp, NULL, SET_MMCLK_BY_DATARATE,
 				&en);
