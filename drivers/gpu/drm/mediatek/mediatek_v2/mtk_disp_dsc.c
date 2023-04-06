@@ -238,7 +238,7 @@ static void mtk_dsc_unprepare(struct mtk_ddp_comp *comp)
 
 struct mtk_panel_dsc_params *mtk_dsc_default_setting(void)
 {
-	u8 dsc_cap[16];
+	u8 dsc_cap[16] = {0};
 	static struct mtk_panel_dsc_params dsc_params = {
 		.enable = 1,
 		.ver = 2,

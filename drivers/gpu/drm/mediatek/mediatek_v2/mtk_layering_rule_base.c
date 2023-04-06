@@ -343,7 +343,7 @@ static int get_phy_ovl_layer_cnt_after_gc(struct drm_mtk_layering_info *info,
 	struct drm_mtk_layer_config *layer_info;
 	int j = 0;
 
-	if (disp_idx > LYE_CRTC || disp_idx < 0) {
+	if (disp_idx >= LYE_CRTC || disp_idx < 0) {
 		DDPPR_ERR("%s[%d]:disp_idx:%d\n", __func__, __LINE__, disp_idx);
 		return -1;
 	}
@@ -737,7 +737,7 @@ void mtk_rollback_compress_layer_to_GPU(struct drm_mtk_layering_info *disp_info,
 					int idx, int i)
 {
 
-	if (idx > LYE_CRTC || idx < 0) {
+	if (idx >= LYE_CRTC || idx < 0) {
 		DDPPR_ERR("%s[%d]:idx:%d\n", __func__, __LINE__, idx);
 		return;
 	}
@@ -1957,7 +1957,7 @@ static bool _calc_gpu_cache_layerset_hrt_num(struct drm_device *dev,
 	else
 		bw_monitor_is_on = 0;
 
-	if (disp > LYE_CRTC || disp < 0) {
+	if (disp >= LYE_CRTC || disp < 0) {
 		DDPPR_ERR("%s[%d]:disp:%d\n", __func__, __LINE__, disp);
 		return false;
 	}
@@ -2704,7 +2704,7 @@ void lye_add_lye_priv_blob(struct mtk_plane_comp_state *comp_state,
 	blob = drm_property_create_blob(
 		drm_dev, sizeof(struct mtk_plane_comp_state), comp_state);
 
-	if (disp_idx > LYE_CRTC || disp_idx < 0) {
+	if (disp_idx >= LYE_CRTC || disp_idx < 0) {
 		DDPPR_ERR("%s[%d]:disp_idx:%d\n", __func__, __LINE__, disp_idx);
 		return;
 	}
@@ -3979,6 +3979,7 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_drm_private *priv = NULL;
 	struct drm_crtc *crtcx = NULL;
+	struct mml_drm_ctx *mml_ctx = NULL;
 
 	if (!dev || !crtc) {
 		DDPMSG("%s !dev, !crtc\n", __func__);
@@ -4028,8 +4029,12 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_SUPPORT_CMD_MODE))
 		mml_info->mode = MML_MODE_MML_DECOUPLE;
 
-	mode = mml_drm_query_cap(mtk_drm_get_mml_drm_ctx(dev, crtc), mml_info);
-	DDPDBG("%s, mml_drm_query_cap mode:%d\n", __func__, mode);
+	mml_ctx = mtk_drm_get_mml_drm_ctx(dev, crtc);
+	if (mml_ctx != NULL) {
+		mode = mml_drm_query_cap(mml_ctx, mml_info);
+	    DDPDBG("%s, mml_drm_query_cap mode:%d\n", __func__, mode);
+	} else
+		return ret;
 
 mode_mapping:
 	switch (mode) {
@@ -4074,7 +4079,7 @@ static void check_is_mml_layer(const int disp_idx,
 	if (!dev || !disp_info)
 		return;
 
-	if (disp_idx > LYE_CRTC || disp_idx < 0) {
+	if (disp_idx >= LYE_CRTC || disp_idx < 0) {
 		DDPPR_ERR("%s[%d]:disp_idx:%d\n", __func__, __LINE__, disp_idx);
 		return;
 	}
@@ -4093,6 +4098,9 @@ static void check_is_mml_layer(const int disp_idx,
 
 		if (disp_idx >= 0 && disp_idx < LYE_CRTC)
 			mml_info = &(disp_info->mml_cfg[disp_idx][i]);
+		else
+			continue;
+
 		if (!mml_info)
 			continue;
 
