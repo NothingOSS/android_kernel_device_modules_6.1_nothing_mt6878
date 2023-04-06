@@ -1532,7 +1532,7 @@ static DRIVER_ATTR_RW(set_swp_addr);
 
 #ifdef CONFIG_MTK_SERROR_HOOK
 static void devapc_arm64_serror_panic_hook(void *data,
-		struct pt_regs *regs, unsigned int esr)
+		struct pt_regs *regs, unsigned long esr)
 {
 	struct devapc_vio_callbacks *viocb;
 
