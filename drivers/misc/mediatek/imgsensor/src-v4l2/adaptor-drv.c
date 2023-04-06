@@ -49,7 +49,8 @@ static void get_outfmt_code(struct adaptor_ctx *ctx)
 
 	for (i = 0; i < SENSOR_SCENARIO_ID_MAX; i++) {
 
-		outfmt = (ctx->subctx.s_ctx.mode == NULL || i > ctx->subctx.s_ctx.sensor_mode_num)
+		outfmt = (ctx->subctx.s_ctx.mode == NULL
+				|| i >= ctx->subctx.s_ctx.sensor_mode_num)
 			? ctx->sensor_info.SensorOutputDataFormat
 			: ctx->subctx.s_ctx.mode[i].sensor_output_dataformat;
 		switch (outfmt) {
