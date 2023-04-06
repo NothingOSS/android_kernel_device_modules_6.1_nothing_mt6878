@@ -88,6 +88,8 @@ struct charger_data;
 
 #define MAX_ALG_NO 10
 
+#define RESET_BOOT_VOLT_TIME 50
+
 enum bat_temp_state_enum {
 	BAT_TEMP_LOW = 0,
 	BAT_TEMP_NORMAL,
@@ -405,6 +407,10 @@ struct mtk_charger {
 	bool force_disable_pp[CHG2_SETTING + 1];
 	bool enable_pp[CHG2_SETTING + 1];
 	struct mutex pp_lock[CHG2_SETTING + 1];
+
+	/* enable boot volt*/
+	bool enable_boot_volt;
+	bool reset_boot_volt_times;
 };
 
 static inline int mtk_chg_alg_notify_call(struct mtk_charger *info,

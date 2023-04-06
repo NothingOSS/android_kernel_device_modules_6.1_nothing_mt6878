@@ -231,6 +231,16 @@ int charger_dev_get_min_input_current(struct charger_device *chg_dev, u32 *uA)
 }
 EXPORT_SYMBOL(charger_dev_get_min_input_current);
 
+int charger_dev_set_boot_volt_times(struct charger_device *chg_dev, u32 val)
+{
+	if (chg_dev != NULL && chg_dev->ops != NULL &&
+	    chg_dev->ops->set_boot_volt_times)
+		chg_dev->ops->set_boot_volt_times(chg_dev, val);
+
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL(charger_dev_set_boot_volt_times);
+
 int charger_dev_set_eoc_current(struct charger_device *chg_dev, u32 uA)
 {
 	if (chg_dev != NULL && chg_dev->ops != NULL &&

@@ -76,6 +76,7 @@ module_param(dbg_log_en, bool, 0644);
 #define MT6375_REG_ADC_ZCV_RPT	0x1CA
 #define MT6375_REG_CHG_STAT0	0x1E0
 #define MT6375_REG_CHG_STAT1	0x1E1
+#define FGADC_SYS_INFO_CON0     0x2F9
 
 #define MT6375_MSK_BATFET_DIS	0x40
 #define MT6375_MSK_BLEED_DIS_EN	BIT(7)
@@ -85,6 +86,8 @@ module_param(dbg_log_en, bool, 0644);
 #define MT6375_MSK_CLK_FREQ	0xC0
 #define MT6375_MSK_COMP_CLAMP	0x03
 #define MT6375_MSK_BUCK_RAMPOFT	0xC0
+#define BOOT_TIMES_MASK         0xC0
+#define BOOT_TIMES_SHIFT        6
 
 #define ADC_CONV_TIME_US	2200
 #define ADC_VBAT_SCALE		1250
@@ -2144,6 +2147,23 @@ out:
 	return ret;
 }
 
+static int mt6375_set_boot_volt_times(struct charger_device *chgdev, u32 val)
+{
+	u16 data = 0, ret;
+	struct mt6375_chg_data *ddata = charger_get_data(chgdev);
+
+	ret = regmap_bulk_read(ddata->rmap, FGADC_SYS_INFO_CON0, &data, sizeof(data));
+	if (ret)
+		return ret;
+	data &= ~BOOT_TIMES_MASK;
+	data |= (val << BOOT_TIMES_SHIFT & BOOT_TIMES_MASK);
+	ret = regmap_bulk_write(ddata->rmap, FGADC_SYS_INFO_CON0,
+				&data, sizeof(data));
+	if (ret)
+		return ret;
+
+	return 0;
+}
 static const struct charger_properties mt6375_chg_props = {
 	.alias_name = "mt6375_chg",
 };
@@ -2211,6 +2231,8 @@ static const struct charger_ops mt6375_chg_ops = {
 	.event = mt6375_do_event,
 	/* 6pin battery */
 	.enable_6pin_battery_charging = mt6375_enable_6pin_battery_charging,
+	/* set boot volt times*/
+	.set_boot_volt_times = mt6375_set_boot_volt_times,
 };
 
 static irqreturn_t mt6375_fl_wdt_handler(int irq, void *data)

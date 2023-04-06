@@ -250,6 +250,11 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 		info->data.battery_cv = BATTERY_CV;
 	}
 
+
+	info->enable_boot_volt =
+		of_property_read_bool(np, "enable_boot_volt")
+		|| of_property_read_bool(np, "enable-boot-volt");
+
 	if (of_property_read_u32(np, "max_charger_voltage", &val) >= 0)
 		info->data.max_charger_voltage = val;
 	else if (of_property_read_u32(np, "max-charger-voltage", &val) >= 0)
@@ -2960,6 +2965,18 @@ static int charger_routine_thread(void *arg)
 		chr_debug("%s end , %d\n",
 			__func__, info->charger_thread_timeout);
 		mutex_unlock(&info->charger_lock);
+
+		if (info->enable_boot_volt &&
+			ktime_get_seconds() > RESET_BOOT_VOLT_TIME &&
+			!info->reset_boot_volt_times) {
+			ret = charger_dev_set_boot_volt_times(info->chg1_dev, 0);
+			if (ret < 0)
+				chr_err("reset boot_battery_voltage times fails %d\n", ret);
+			else {
+				info->reset_boot_volt_times = 1;
+				chr_err("reset boot_battery_voltage times\n");
+			}
+		}
 	}
 
 	return 0;

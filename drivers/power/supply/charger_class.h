@@ -101,6 +101,9 @@ struct charger_ops {
 	int (*set_input_current)(struct charger_device *dev, u32 uA);
 	int (*get_min_input_current)(struct charger_device *dev, u32 *uA);
 
+	/* set boot volt times */
+	int (*set_boot_volt_times)(struct charger_device *dev, u32 val);
+
 	/* set termination current */
 	int (*get_eoc_current)(struct charger_device *dev, u32 *uA);
 	int (*set_eoc_current)(struct charger_device *dev, u32 uA);
@@ -253,6 +256,8 @@ extern int charger_dev_get_input_current(
 	struct charger_device *charger_dev, u32 *uA);
 extern int charger_dev_get_min_input_current(
 	struct charger_device *charger_dev, u32 *uA);
+extern int charger_dev_set_boot_volt_times(
+	struct charger_device *charger_dev, u32 val);
 extern int charger_dev_set_eoc_current(
 	struct charger_device *charger_dev, u32 uA);
 extern int charger_dev_get_eoc_current(
