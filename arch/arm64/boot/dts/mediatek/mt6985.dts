@@ -10051,7 +10051,7 @@
 	sleep@1c001000 {
 		compatible = "mediatek,sleep";
 		reg = <0 0x1c001000 0 0x1000>;
-		interrupts = <GIC_SPI 351 IRQ_TYPE_LEVEL_HIGH 0>;
+		interrupts = <GIC_SPI 320 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
 	mtk_lpm: mtk_lpm {
