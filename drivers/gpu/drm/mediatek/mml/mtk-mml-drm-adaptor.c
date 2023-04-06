@@ -282,10 +282,14 @@ static u32 format_drm_to_mml(u32 drm_format, u64 modifier)
 	return drm_format;
 }
 
-static bool check_frame_change(struct mml_frame_info *info,
-			       struct mml_frame_config *cfg)
+static bool check_frame_wo_change(struct mml_submit *submit,
+				  struct mml_frame_config *cfg)
 {
-	return !memcmp(&cfg->info, info, sizeof(*info));
+	/* Only when both of frame info and dl_out are not changed, return true,
+	 * else return false
+	 */
+	return (!memcmp(&submit->info, &cfg->info, sizeof(submit->info)) &&
+		!memcmp(&submit->dl_out[0], &cfg->dl_out[0], sizeof(submit->dl_out)));
 }
 
 static struct mml_frame_config *frame_config_find_reuse(
@@ -307,7 +311,7 @@ static struct mml_frame_config *frame_config_find_reuse(
 		if (submit->update && cfg->last_jobid == submit->job->jobid)
 			goto done;
 
-		if (check_frame_change(&submit->info, cfg))
+		if (check_frame_wo_change(submit, cfg))
 			goto done;
 
 		idx++;
