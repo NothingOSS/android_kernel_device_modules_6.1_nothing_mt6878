@@ -429,7 +429,6 @@ void mtk_dprec_snapshot(void)
 		return;
 
 	called = true;
-	spin_lock_irqsave(dprec_logger_lock(DPREC_LOGGER_STATUS), flag);
 	spin_lock_irqsave(dprec_logger_lock(DPREC_LOGGER_DEBUG), flag);
 
 	buf_id = dprec_logger_buffer[DPREC_LOGGER_DEBUG].id;
@@ -443,7 +442,6 @@ void mtk_dprec_snapshot(void)
 	}
 
 	spin_unlock_irqrestore(dprec_logger_lock(DPREC_LOGGER_DEBUG), flag);
-	spin_unlock_irqrestore(dprec_logger_lock(DPREC_LOGGER_STATUS), flag);
 }
 
 int __mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param,
