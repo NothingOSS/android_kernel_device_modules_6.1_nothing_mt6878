@@ -489,8 +489,16 @@ static void mtk_aie_hw_job_finish(struct mtk_aie_dev *fd,
 	struct vb2_v4l2_buffer *src_vbuf = NULL, *dst_vbuf = NULL;
 
 	ctx = v4l2_m2m_get_curr_priv(fd->m2m_dev);
+	if (ctx == NULL)
+		return;
+
 	src_vbuf = v4l2_m2m_src_buf_remove(ctx->fh.m2m_ctx);
+	if (src_vbuf == NULL)
+		return;
+
 	dst_vbuf = v4l2_m2m_dst_buf_remove(ctx->fh.m2m_ctx);
+	if (dst_vbuf == NULL)
+		return;
 
 	v4l2_m2m_buf_copy_metadata(src_vbuf, dst_vbuf,
 				   V4L2_BUF_FLAG_TSTAMP_SRC_MASK);
@@ -761,9 +769,9 @@ static void mtk_aie_job_timeout_work(struct work_struct *work)
 	wake_up(&fd->flushing_waitq);
 }
 
-static void mtk_aie_job_wait_finish(struct mtk_aie_dev *fd)
+static int mtk_aie_job_wait_finish(struct mtk_aie_dev *fd)
 {
-	wait_for_completion_timeout(&fd->fd_job_finished, msecs_to_jiffies(3000));
+	return wait_for_completion_timeout(&fd->fd_job_finished, msecs_to_jiffies(3000));
 }
 
 static void mtk_aie_vb2_stop_streaming(struct vb2_queue *vq)
@@ -773,10 +781,14 @@ static void mtk_aie_vb2_stop_streaming(struct vb2_queue *vq)
 	struct vb2_v4l2_buffer *vb;
 	struct v4l2_m2m_ctx *m2m_ctx = ctx->fh.m2m_ctx;
 	struct v4l2_m2m_queue_ctx *queue_ctx;
+	int ret;
 
 	dev_info(fd->dev, "STREAM STOP\n");
 
-	mtk_aie_job_wait_finish(fd);
+	ret = mtk_aie_job_wait_finish(fd);
+	if (!ret)
+		dev_info(fd->dev, "wait job finish timeout\n");
+
 	queue_ctx = V4L2_TYPE_IS_OUTPUT(vq->type) ? &m2m_ctx->out_q_ctx
 						  : &m2m_ctx->cap_q_ctx;
 	while ((vb = v4l2_m2m_buf_remove(queue_ctx)))
@@ -798,11 +810,14 @@ static int mtk_aie_querycap(struct file *file, void *fh,
 {
 	struct mtk_aie_dev *fd = video_drvdata(file);
 	struct device *dev = fd->dev;
+	int ret = 0;
 
 	strscpy(cap->driver, dev_driver_string(dev), sizeof(cap->driver));
 	strscpy(cap->card, dev_driver_string(dev), sizeof(cap->card));
-	snprintf(cap->bus_info, sizeof(cap->bus_info), "platform:%s",
+	ret = snprintf(cap->bus_info, sizeof(cap->bus_info), "platform:%s",
 		 dev_name(fd->dev));
+	if (ret < 0)
+		return ret;
 
 	return 0;
 }
@@ -881,7 +896,11 @@ static int mtk_aie_try_fmt_out_mp(struct file *file, void *fh,
 static int mtk_aie_g_fmt_out_mp(struct file *file, void *fh,
 				struct v4l2_format *f)
 {
-	struct mtk_aie_ctx *ctx = fh_to_ctx(fh);
+	struct mtk_aie_ctx *ctx;
+
+	ctx = fh_to_ctx(fh);
+	if (ctx == NULL)
+		return -1;
 
 	f->fmt.pix_mp = ctx->src_fmt;
 
@@ -891,8 +910,16 @@ static int mtk_aie_g_fmt_out_mp(struct file *file, void *fh,
 static int mtk_aie_s_fmt_out_mp(struct file *file, void *fh,
 				struct v4l2_format *f)
 {
-	struct mtk_aie_ctx *ctx = fh_to_ctx(fh);
-	struct vb2_queue *vq = v4l2_m2m_get_vq(ctx->fh.m2m_ctx, f->type);
+	struct mtk_aie_ctx *ctx;
+	struct vb2_queue *vq;
+
+	ctx = fh_to_ctx(fh);
+	if (ctx == NULL)
+		return -1;
+
+	vq = v4l2_m2m_get_vq(ctx->fh.m2m_ctx, f->type);
+	if (vq == NULL)
+		return -1;
 
 	/* Change not allowed if queue is streaming. */
 	if (vb2_is_streaming(vq)) {
@@ -1165,7 +1192,12 @@ static void mtk_aie_device_run(void *priv)
 	int ret = 0;
 
 	src_buf = v4l2_m2m_next_src_buf(ctx->fh.m2m_ctx);
+	if (src_buf == NULL)
+		return;
+
 	dst_buf = v4l2_m2m_next_dst_buf(ctx->fh.m2m_ctx);
+	if (dst_buf == NULL)
+		return;
 
 	fd->img_y = vb2_dma_contig_plane_dma_addr(&src_buf->vb2_buf, 0);
 	fd->img_msb_y = (fd->img_y & 0Xf00000000) >> 32;
@@ -1313,7 +1345,7 @@ static int mtk_aie_video_device_register(struct mtk_aie_dev *fd)
 	ret = video_register_device(vfd, VFL_TYPE_VIDEO, 0);
 	if (ret) {
 		dev_info(dev, "Failed to register video device\n");
-		goto err_free_dev;
+		return ret;
 	}
 
 	ret = v4l2_m2m_register_media_controller(
@@ -1326,8 +1358,6 @@ static int mtk_aie_video_device_register(struct mtk_aie_dev *fd)
 
 err_unreg_video:
 	video_unregister_device(vfd);
-err_free_dev:
-	video_device_release(vfd);
 	return ret;
 }
 
@@ -1379,9 +1409,15 @@ static int mtk_aie_dev_v4l2_init(struct mtk_aie_dev *fd)
 	}
 
 	mdev->dev = dev;
-	strscpy(mdev->model, dev_driver_string(dev), sizeof(mdev->model));
-	snprintf(mdev->bus_info, sizeof(mdev->bus_info), "platform:%s",
+	ret = strscpy(mdev->model, dev_driver_string(dev), sizeof(mdev->model));
+	if (ret < 0)
+		goto err_unreg_v4l2_dev;
+
+	ret = snprintf(mdev->bus_info, sizeof(mdev->bus_info), "platform:%s",
 		 dev_name(dev));
+	if (ret < 0)
+		goto err_unreg_v4l2_dev;
+
 	media_device_init(mdev);
 	mdev->ops = &fd_m2m_media_ops;
 	fd->v4l2_dev.mdev = mdev;
@@ -1403,7 +1439,6 @@ static int mtk_aie_dev_v4l2_init(struct mtk_aie_dev *fd)
 err_unreg_vdev:
 	v4l2_m2m_unregister_media_controller(fd->m2m_dev);
 	video_unregister_device(&fd->vfd);
-	video_device_release(&fd->vfd);
 err_cleanup_mdev:
 	media_device_cleanup(mdev);
 	v4l2_m2m_release(fd->m2m_dev);
@@ -1416,7 +1451,6 @@ static void mtk_aie_dev_v4l2_release(struct mtk_aie_dev *fd)
 {
 	v4l2_m2m_unregister_media_controller(fd->m2m_dev);
 	video_unregister_device(&fd->vfd);
-	video_device_release(&fd->vfd);
 	media_device_cleanup(&fd->mdev);
 	v4l2_m2m_release(fd->m2m_dev);
 	v4l2_device_unregister(&fd->v4l2_dev);
