@@ -78,6 +78,7 @@ struct charger_data;
 #define CHG_ST_TMO_STATUS	(1 << 4)
 #define CHG_BAT_LT_STATUS	(1 << 5)
 #define CHG_TYPEC_WD_STATUS	(1 << 6)
+#define CHG_DPDM_OV_STATUS	(1 << 7)
 
 /* Battery Temperature Protection */
 #define MIN_CHARGE_TEMP  0
@@ -333,6 +334,8 @@ struct mtk_charger {
 	bool safety_timeout;
 	int safety_timer_cmd;
 	bool vbusov_stat;
+	bool dpdmov_stat;
+	bool lst_dpdmov_stat;
 	bool is_chg_done;
 	/* ATM */
 	bool atm_enabled;
