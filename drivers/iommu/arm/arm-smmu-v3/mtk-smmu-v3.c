@@ -972,7 +972,7 @@ static int mtk_smmu_setup_irqs(struct arm_smmu_device *smmu, bool enable)
 
 	dev_info(smmu->dev, "[%s] Enable:%d IRQs irqen_flags:0x%x\n",
 		 __func__, enable, irqen_flags);
-	ret = smmu_write_reg_sync(smmu, irqen_flags, ARM_SMMU_IRQ_CTRL,
+	ret = smmu_write_reg_sync(smmu->base, irqen_flags, ARM_SMMU_IRQ_CTRL,
 				  ARM_SMMU_IRQ_CTRLACK);
 	if (ret) {
 		dev_err(smmu->dev, "[%s] Enable:%d IRQs failed\n", __func__, enable);
@@ -1373,6 +1373,22 @@ static void mtk_smmu_fault_device_dump(struct arm_smmu_master *master,
 	}
 }
 
+static void mtk_smmu_sid_dump(struct arm_smmu_device *smmu, u32 sid)
+{
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+	u32 smmu_type = data->plat_data->smmu_type;
+	int ret = 0;
+
+	if (!MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_SEC_EN))
+		return;
+
+#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
+	ret = mtk_smmu_dump_sid(smmu_type, sid);
+	if (ret)
+		pr_info("[%s] smmu_%u fail\n", __func__, smmu_type);
+#endif
+}
+
 static int mtk_report_device_fault(struct arm_smmu_master *master,
 				   u64 *evt,
 				   struct iommu_fault_event *fault_evt)
@@ -1415,6 +1431,8 @@ static int mtk_report_device_fault(struct arm_smmu_master *master,
 	mtk_smmu_fault_device_dump(master, evt, flt);
 
 	mtk_smmu_fault_iova_dump(master, fault_iova, sid, ssid);
+
+	mtk_smmu_sid_dump(smmu, sid);
 
 	/* Report fault event to device driver */
 	ret = iommu_report_device_fault(master->dev, &mtk_fault_evt.fault_evt);

@@ -30,6 +30,7 @@ enum smmu_atf_cmd {
 	SMMU_SECURE_INIT,
 	SMMU_SECURE_IRQ_SETUP,
 	SMMU_SECURE_TF_HANDLE,
+	SMMU_SECURE_DUMP_SID,
 	SMMU_SECURE_AID_SID_MAP,
 	SMMU_SECURE_TRIGGER_IRQ,
 	SMMU_SECURE_TEST,
@@ -48,9 +49,8 @@ static int mtk_smmu_hw_is_valid(uint32_t smmu_type)
 
 /*
  * a0/in0 = MTK_IOMMU_SECURE_CONTROL(IOMMU SMC ID)
- * a1/in1 = SMMU TF-A SMC cmd
- * a2/in2 = smmu_type (smmu id in TF-A)
- * a3/in3 ~ a7/in7: user defined
+ * a1/in1 = SMMU TF-A SMC cmd (sec + smmu_type + cmd_id)
+ * a2/in2 ~ a7/in7: user defined
  */
 static int mtk_smmu_atf_call(uint32_t smmu_type, unsigned long cmd,
 			     unsigned long in2, unsigned long in3, unsigned long in4,
@@ -152,6 +152,22 @@ int mtk_smmu_sec_tf_handler(u32 smmu_type, bool *need_handle,
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_sec_tf_handler);
 
+int mtk_smmu_dump_sid(uint32_t smmu_type, uint32_t sid)
+{
+	unsigned long cmd;
+	int ret;
+
+	cmd = SMMU_ATF_SET_CMD(smmu_type, 1, SMMU_SECURE_DUMP_SID);
+	ret = mtk_smmu_atf_call(smmu_type, cmd, sid, 0, 0, 0, 0, 0);
+	if (ret) {
+		pr_info("%s, smc call fail:%d, type:%u\n", __func__, ret, smmu_type);
+		return SMC_SMMU_FAIL;
+	}
+
+	return SMC_SMMU_SUCCESS;
+}
+EXPORT_SYMBOL_GPL(mtk_smmu_dump_sid);
+
 #if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 static int mtk_smmu_aid2sid(uint32_t smmu_type, uint32_t sec,
 			    uint32_t sid, uint32_t aid)
@@ -234,6 +250,10 @@ static int mtk_smmu_sec_debug_set(void *data, u64 input)
 					      &fault_pa, &fault_id);
 		pr_info("%s, need_handle:%d, fault_iova:ox%lx, fault_pa:ox%lx, fault_id:ox%lx\n",
 			__func__, need_handle, fault_iova, fault_pa, fault_id);
+		break;
+	case SMMU_SECURE_DUMP_SID:
+		pr_info("%s, SMMU_SECURE_DUMP_SID:\n", __func__);
+		ret = mtk_smmu_dump_sid(smmu_type, sid);
 		break;
 	case SMMU_SECURE_AID_SID_MAP:
 		pr_info("%s, SMMU_SECURE_AID_SID_MAP:\n", __func__);

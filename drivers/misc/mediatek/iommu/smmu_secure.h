@@ -17,6 +17,7 @@ int mtk_smmu_sec_tf_handler(u32 smmu_type, bool *need_handle,
 			    unsigned long *fault_iova,
 			    unsigned long *fault_pa,
 			    unsigned long *fault_id);
+int mtk_smmu_dump_sid(uint32_t smmu_type, uint32_t sid);
 #else
 static inline int mtk_smmu_sec_init(u32 smmu_type)
 {
@@ -36,6 +37,11 @@ static inline int mtk_smmu_sec_tf_handler(u32 smmu_type, bool *need_handle,
 					  unsigned long *fault_id)
 {
 	pr_info("%s not support\n", __func__);
+	return 0;
+}
+
+static inline int mtk_smmu_dump_sid(uint32_t smmu_type, uint32_t sid)
+{
 	return 0;
 }
 #endif /* CONFIG_MTK_IOMMU_MISC_SECURE */
