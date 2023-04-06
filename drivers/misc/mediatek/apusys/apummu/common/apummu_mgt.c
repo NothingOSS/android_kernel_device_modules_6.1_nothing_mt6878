@@ -221,6 +221,18 @@ int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session, uint
 		goto out_before_lock;
 	}
 
+	if (device_va < 0x40000000) {
+		if (!((device_va >= g_adv->remote.vlm_addr) &&
+			(device_va <= (g_adv->remote.vlm_addr + g_adv->remote.vlm_size)))) {
+			AMMU_LOG_ERR("Invalid input VA 0x%llx\n", device_va);
+			ret = -EINVAL;
+			goto out_before_lock;
+		} else {
+			ret_eva = device_va;
+			goto out;
+		}
+	}
+
 	/* addr encode and CHECK input type */
 	ret = addr_encode(device_va, type, &ret_eva);
 	if (ret)
@@ -294,6 +306,7 @@ int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session, uint
 	AMMU_LOG_VERBO("g_ammu_stable_ptr->mem_mask = 0x%08x\n",
 			g_ammu_stable_ptr->stable_info.mem_mask);
 
+out:
 	*eva = ret_eva;
 
 	AMMU_LOG_VERBO("apummu add 0x%llx -> 0x%llx in 0x%llx stable done\n",
@@ -311,6 +324,16 @@ int apummu_stable_buffer_remove(uint64_t session, uint64_t device_va, uint32_t b
 	uint32_t cross_page_array_num = 0;
 	uint8_t mask_idx;
 	bool is_34bit;
+
+	if (device_va < 0x40000000) {
+		if (!((device_va >= g_adv->remote.vlm_addr)
+			&& (device_va <= (g_adv->remote.vlm_addr + g_adv->remote.vlm_size)))) {
+			AMMU_LOG_ERR("Invalid input VA 0x%llx\n", device_va);
+			ret = -EINVAL;
+		}
+
+		goto out;
+	}
 
 	mutex_lock(&g_ammu_table_set.table_lock);
 
