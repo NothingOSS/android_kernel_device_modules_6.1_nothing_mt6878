@@ -156,9 +156,9 @@ bool is_algo_active(struct mtk_battery *gm)
 	return gm->algo.active;
 }
 
-int fgauge_get_profile_id(void)
+int fgauge_get_profile_id(struct mtk_battery *gm)
 {
-	return 0;
+	return gm->battery_id;
 }
 
 int wakeup_fg_algo_cmd(
@@ -1449,7 +1449,7 @@ void fg_custom_init_from_header(struct mtk_battery *gm)
 	fg_cust_data = &gm->fg_cust_data;
 	fg_table_cust_data = &gm->fg_table_cust_data;
 
-	fgauge_get_profile_id();
+	fgauge_get_profile_id(gm);
 
 	fg_cust_data->versionID1 = FG_DAEMON_CMD_FROM_USER_NUMBER;
 	fg_cust_data->versionID2 = sizeof(gm->fg_cust_data);
@@ -2009,6 +2009,22 @@ static void fg_custom_parse_table(struct mtk_battery *gm,
 	kvfree(temp);
 }
 
+void fg_check_bat_type(struct platform_device *dev,
+	struct mtk_battery *gm)
+{
+	int val = 0, bat_dect = 0;
+	struct device_node *np = dev->dev.of_node;
+
+	gm->battery_id = 0;
+
+	fg_read_dts_val(np, "DETECT_BAT_TYPE", &(bat_dect), 1);
+	if (bat_dect) {
+		fg_read_dts_val(np, "bat_type", &(val), 1);
+		gm->battery_id = val;
+	}
+	bm_err("[%s] init battery type val:%d %d\n",
+		__func__, gm->battery_id, bat_dect);
+}
 
 void fg_custom_init_from_dts(struct platform_device *dev,
 	struct mtk_battery *gm)
@@ -2024,8 +2040,7 @@ void fg_custom_init_from_dts(struct platform_device *dev,
 	struct fuel_gauge_custom_data *fg_cust_data;
 	struct fuel_gauge_table_custom_data *fg_table_cust_data;
 
-	gm->battery_id = fgauge_get_profile_id();
-	bat_id = gm->battery_id;
+	bat_id = fgauge_get_profile_id(gm);
 	fg_cust_data = &gm->fg_cust_data;
 	fg_table_cust_data = &gm->fg_table_cust_data;
 
@@ -4169,6 +4184,7 @@ int battery_init(struct platform_device *pdev)
 	fg_check_bootmode(&pdev->dev, gm);
 	fg_check_lk_swocv(&pdev->dev, gm);
 	fg_prop_control_init(gm);
+	fg_check_bat_type(pdev, gm);
 	fg_custom_init_from_header(gm);
 	fg_custom_init_from_dts(pdev, gm);
 	gauge_coulomb_service_init(gm);

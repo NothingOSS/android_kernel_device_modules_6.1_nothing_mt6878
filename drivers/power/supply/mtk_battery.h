@@ -1212,7 +1212,7 @@ extern void set_shutdown_vbat_lt(struct mtk_battery *gm,
 	int vbat_lt, int vbat_lt_lv1);
 extern void fg_sw_bat_cycle_accu(struct mtk_battery *gm);
 extern void notify_fg_chr_full(struct mtk_battery *gm);
-extern int fgauge_get_profile_id(void);
+extern int fgauge_get_profile_id(struct mtk_battery *gm);
 extern void disable_fg(struct mtk_battery *gm);
 extern int get_shutdown_cond(struct mtk_battery *gm);
 extern int get_shutdown_cond_flag(struct mtk_battery *gm);
