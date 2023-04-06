@@ -496,8 +496,9 @@ void mml_pq_get_pq_task(struct mml_pq_task *pq_task);
  *
  * @pq_task:	pq task data, include sub_task info
  *
+ * Return:	if value = 1, pq will be released
  */
-void mml_pq_put_pq_task(struct mml_pq_task *pq_task);
+int mml_pq_put_pq_task(struct mml_pq_task *pq_task);
 
 /*
  * copy_sub_task_data - copy sub_task info
