@@ -25,6 +25,35 @@ mcDrvModule-y := \
 	clientlib.o \
 	clock.o \
 	fastcall.o \
+	ffa_dummy.o \
+	iwp.o \
+	logging.o \
+	main.o \
+	mcp.o \
+	mmu.o \
+	nq.o \
+	protocol.o \
+	protocol_be.o \
+	protocol_fe.o \
+	session.o \
+	teeclientapi.o \
+	user.o \
+	vlx_be.o \
+	vlx_common.o \
+	vlx_fe.o \
+	xen_be.o \
+	xen_common.o \
+	xen_fe.o
+
+# add our ffa modules to kernel.
+obj-$(CONFIG_TRUSTONIC_TEE_SUPPORT) += mcDrvModule-ffa.o
+
+mcDrvModule-ffa-y := \
+	admin.o \
+	client.o \
+	clientlib.o \
+	clock.o \
+	fastcall.o \
 	ffa.o \
 	iwp.o \
 	logging.o \
