@@ -20,6 +20,18 @@
 #include "adaptor-i2c.h"
 #include "adaptor.h"
 
+static const char * const clk_names[] = {
+	ADAPTOR_CLK_NAMES
+};
+
+static const char * const reg_names[] = {
+	ADAPTOR_REGULATOR_NAMES
+};
+
+static const char * const state_names[] = {
+	ADAPTOR_STATE_NAMES
+};
+
 void check_current_scenario_id_bound(struct subdrv_ctx *ctx)
 {
 	if (ctx->current_scenario_id >= ctx->s_ctx.sensor_mode_num) {
@@ -173,7 +185,12 @@ void set_mirror_flip(struct subdrv_ctx *ctx, u8 image_mirror)
 		DRV_LOG(ctx, "sensor no support\n");
 		return;
 	}
-	itemp = subdrv_i2c_rd_u8(ctx, ctx->s_ctx.reg_addr_mirror_flip) & ~0x03;
+	if (ctx->s_ctx.aov_sensor_support &&
+		ctx->s_ctx.reg_addr_aov_mode_mirror_flip)
+		itemp = subdrv_i2c_rd_u8(ctx,
+			ctx->s_ctx.reg_addr_aov_mode_mirror_flip) & ~0x03;
+	else
+		itemp = subdrv_i2c_rd_u8(ctx, ctx->s_ctx.reg_addr_mirror_flip) & ~0x03;
 	switch (image_mirror) {
 	case IMAGE_NORMAL:
 		itemp |= 0x00;
@@ -666,8 +683,13 @@ void set_max_framerate_by_scenario(struct subdrv_ctx *ctx,
 	DRV_LOG(ctx, "max_fps(input/output):%u/%u(sid:%u), min_fl_en:1\n",
 		framerate, ctx->current_fps, scenario_id);
 	if (ctx->s_ctx.reg_addr_auto_extend ||
-			(ctx->frame_length > (ctx->exposure[0] + ctx->s_ctx.exposure_margin)))
-		set_dummy(ctx);
+			(ctx->frame_length > (ctx->exposure[0] + ctx->s_ctx.exposure_margin))) {
+		if (ctx->s_ctx.aov_sensor_support &&
+			!ctx->s_ctx.mode[scenario_id].s_dummy_support)
+			DRV_LOG_MUST(ctx, "AOV mode not support set_dummy!\n");
+		else
+			set_dummy(ctx);
+	}
 }
 /**
  * @brief: This api is used to assign general FLL value/FLL_A/FLL_B for manual mode.
@@ -1791,9 +1813,23 @@ void check_stream_off(struct subdrv_ctx *ctx)
 void streaming_control(struct subdrv_ctx *ctx, bool enable)
 {
 	check_current_scenario_id_bound(ctx);
-	if (ctx->s_ctx.mode[ctx->current_scenario_id].aov_mode) {
-		DRV_LOG(ctx, "AOV mode set stream in SCP side! (sid:%u)\n",
+	if (ctx->s_ctx.aov_sensor_support && ctx->s_ctx.streaming_ctrl_imp) {
+		if (ctx->s_ctx.s_streaming_control != NULL)
+			ctx->s_ctx.s_streaming_control((void *) ctx, enable);
+		else
+			DRV_LOG_MUST(ctx,
+				"please implement drive own streaming control!(sid:%u)\n",
+				ctx->current_scenario_id);
+		ctx->is_streaming = enable;
+		DRV_LOG_MUST(ctx, "enable:%u\n", enable);
+		return;
+	}
+	if (ctx->s_ctx.aov_sensor_support && ctx->s_ctx.mode[ctx->current_scenario_id].aov_mode) {
+		DRV_LOG_MUST(ctx,
+			"stream ctrl implement on scp side!(sid:%u)\n",
 			ctx->current_scenario_id);
+		ctx->is_streaming = enable;
+		DRV_LOG_MUST(ctx, "enable:%u\n", enable);
 		return;
 	}
 
@@ -2530,6 +2566,13 @@ void subdrv_ctx_init(struct subdrv_ctx *ctx)
 		if (!ctx->s_ctx.mode[i].saturation_info)
 			ctx->s_ctx.mode[i].saturation_info = ctx->s_ctx.saturation_info;
 	}
+	ctx->aov_sensor_support = ctx->s_ctx.aov_sensor_support;
+	ctx->aov_csi_clk = ctx->s_ctx.aov_csi_clk;
+	ctx->sensor_mode_ops = ctx->s_ctx.sensor_mode_ops;
+	ctx->sensor_debug_sensing_ut_on_scp =
+		ctx->s_ctx.sensor_debug_sensing_ut_on_scp;
+	ctx->sensor_debug_dphy_global_timing_continuous_clk =
+		ctx->s_ctx.sensor_debug_dphy_global_timing_continuous_clk;
 }
 
 void sensor_init(struct subdrv_ctx *ctx)
@@ -2574,7 +2617,11 @@ int common_open(struct subdrv_ctx *ctx)
 		return ERROR_SENSOR_CONNECT_FAIL;
 
 	/* initail setting */
-	sensor_init(ctx);
+	if (ctx->s_ctx.aov_sensor_support && !ctx->s_ctx.init_in_open)
+		DRV_LOG_MUST(ctx, "sensor init not in open stage!\n");
+	else
+		sensor_init(ctx);
+
 	if (ctx->s_ctx.s_cali != NULL)
 		ctx->s_ctx.s_cali((void *) ctx);
 	else
@@ -2662,6 +2709,7 @@ int common_get_info(struct subdrv_ctx *ctx,
 			sensor_info->OB_pedestals[i] = ctx->s_ctx.ob_pedestal;
 			sensor_info->saturation_level[i] = 1023;
 		}
+		sensor_info->Mode_AE_Ctrl_Support[i] = ctx->s_ctx.mode[i].ae_ctrl_support;
 	}
 	sensor_info->SensorDrivingCurrent = ctx->s_ctx.isp_driving_current;
 	sensor_info->IHDR_Support = 0;
@@ -2737,6 +2785,15 @@ int common_control(struct subdrv_ctx *ctx,
 	u16 addr = 0;
 	u64 time_boot_begin = 0;
 	struct eeprom_info_struct *info = ctx->s_ctx.eeprom_info;
+	struct adaptor_ctx *_adaptor_ctx = NULL;
+	struct v4l2_subdev *sd = NULL;
+
+	if (ctx->i2c_client)
+		sd = i2c_get_clientdata(ctx->i2c_client);
+	if (sd)
+		_adaptor_ctx = to_ctx(sd);
+	if (!_adaptor_ctx)
+		return -ENODEV;
 
 	if (scenario_id >= ctx->s_ctx.sensor_mode_num) {
 		DRV_LOG(ctx, "invalid sid:%u, mode_num:%u\n",
@@ -2751,12 +2808,40 @@ int common_control(struct subdrv_ctx *ctx,
 	if (ctx->s_ctx.mode[scenario_id].mode_setting_table != NULL) {
 		DRV_LOG_MUST(ctx, "E: sid:%u size:%u\n", scenario_id,
 			ctx->s_ctx.mode[scenario_id].mode_setting_len);
-
 		if (ctx->power_on_profile_en)
 			time_boot_begin = ktime_get_boottime_ns();
 
-		i2c_table_write(ctx, ctx->s_ctx.mode[scenario_id].mode_setting_table,
-			ctx->s_ctx.mode[scenario_id].mode_setting_len);
+		/* initail setting */
+		if (ctx->s_ctx.aov_sensor_support) {
+			if (ctx->s_ctx.mode[scenario_id].aov_mode &&
+				ctx->s_ctx.s_pwr_seq_reset_view_to_sensing != NULL)
+				ctx->s_ctx.s_pwr_seq_reset_view_to_sensing((void *) ctx);
+
+			if (!ctx->s_ctx.init_in_open)
+				sensor_init(ctx);
+		}
+		switch (ctx->sensor_mode_ops) {
+		case AOV_MODE_CTRL_OPS_SENSING_CTRL:
+		default:
+			i2c_table_write(ctx, ctx->s_ctx.mode[scenario_id].mode_setting_table,
+				ctx->s_ctx.mode[scenario_id].mode_setting_len);
+			break;
+		case AOV_MODE_CTRL_OPS_MONTION_DETECTION_CTRL:
+			i2c_table_write(ctx,
+				ctx->s_ctx.mode[scenario_id].mode_setting_table_for_md,
+				ctx->s_ctx.mode[scenario_id].mode_setting_len_for_md);
+			/* set eint gpio */
+			ret = pinctrl_select_state(
+				_adaptor_ctx->pinctrl,
+				_adaptor_ctx->state[STATE_EINT]);
+			if (ret < 0)
+				DRV_LOG_MUST(ctx,
+					"select(%s)(fail),ret(%d)\n",
+					state_names[STATE_EINT], ret);
+			else
+				DRV_LOG(ctx, "select(%s)(correct)\n", state_names[STATE_EINT]);
+			break;
+		}
 
 		if (ctx->power_on_profile_en) {
 			ctx->sensor_pw_on_profile.i2c_cfg_period =
@@ -2765,7 +2850,6 @@ int common_control(struct subdrv_ctx *ctx,
 			ctx->sensor_pw_on_profile.i2c_cfg_table_len =
 					ctx->s_ctx.mode[scenario_id].mode_setting_len;
 		}
-
 		DRV_LOG(ctx, "X: sid:%u size:%u\n", scenario_id,
 			ctx->s_ctx.mode[scenario_id].mode_setting_len);
 	} else {
@@ -2785,6 +2869,10 @@ int common_control(struct subdrv_ctx *ctx,
 			}
 		}
 	}
+
+	if (ctx->s_ctx.aov_sensor_support &&
+		ctx->s_ctx.s_data_rate_global_timing_phy_ctrl != NULL)
+		ctx->s_ctx.s_data_rate_global_timing_phy_ctrl((void *) ctx);
 
 	set_mirror_flip(ctx, ctx->s_ctx.mirror);
 
@@ -2864,10 +2952,20 @@ int common_feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 		*feature_para_len = 4;
 		break;
 	case SENSOR_FEATURE_SET_ESHUTTER:
-		set_shutter(ctx, *feature_data);
+		if (ctx->s_ctx.aov_sensor_support &&
+			!ctx->s_ctx.mode[ctx->current_scenario_id].ae_ctrl_support)
+			DRV_LOG_MUST(ctx,
+				"AOV sensing mode not support ae shutter control!\n");
+		else
+			set_shutter(ctx, *feature_data);
 		break;
 	case SENSOR_FEATURE_SET_GAIN:
-		set_gain(ctx, *feature_data);
+		if (ctx->s_ctx.aov_sensor_support &&
+			!ctx->s_ctx.mode[ctx->current_scenario_id].ae_ctrl_support)
+			DRV_LOG_MUST(ctx,
+				"AOV sensing mode not support ae gain control!\n");
+		else
+			set_gain(ctx, *feature_data);
 		break;
 	case SENSOR_FEATURE_SET_REGISTER:
 		subdrv_i2c_wr_u8(ctx,
@@ -2984,20 +3082,45 @@ int common_feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 			*(feature_data + 1), (feature_data + 2));
 		break;
 	case SENSOR_FEATURE_SET_HDR_SHUTTER:
-		set_hdr_tri_shutter(ctx, feature_data, 2);
+		if (ctx->s_ctx.aov_sensor_support &&
+			!ctx->s_ctx.mode[ctx->current_scenario_id].ae_ctrl_support)
+			DRV_LOG_MUST(ctx,
+				"AOV sensing mode not support ae shutter control!\n");
+		else
+			set_hdr_tri_shutter(ctx, feature_data, 2);
 		break;
 	case SENSOR_FEATURE_SET_DUAL_GAIN:
-		set_hdr_tri_gain(ctx, feature_data, 2);
+		if (ctx->s_ctx.aov_sensor_support &&
+			!ctx->s_ctx.mode[ctx->current_scenario_id].ae_ctrl_support)
+			DRV_LOG_MUST(ctx,
+				"AOV sensing mode not support ae gain control!\n");
+		else
+			set_hdr_tri_gain(ctx, feature_data, 2);
 		break;
 	case SENSOR_FEATURE_SET_HDR_TRI_SHUTTER:
-		set_hdr_tri_shutter(ctx, feature_data, 3);
+		if (ctx->s_ctx.aov_sensor_support &&
+			!ctx->s_ctx.mode[ctx->current_scenario_id].ae_ctrl_support)
+			DRV_LOG_MUST(ctx,
+				"AOV sensing mode not support ae shutter control!\n");
+		else
+			set_hdr_tri_shutter(ctx, feature_data, 3);
 		break;
 	case SENSOR_FEATURE_SET_HDR_TRI_GAIN:
-		set_hdr_tri_gain(ctx, feature_data, 3);
+		if (ctx->s_ctx.aov_sensor_support &&
+			!ctx->s_ctx.mode[ctx->current_scenario_id].ae_ctrl_support)
+			DRV_LOG_MUST(ctx,
+				"AOV sensing mode not support ae gain control!\n");
+		else
+			set_hdr_tri_gain(ctx, feature_data, 3);
 		break;
 	case SENSOR_FEATURE_SET_MULTI_DIG_GAIN:
-		set_multi_dig_gain(ctx, (u32 *)(*feature_data),
-					(u16) (*(feature_data + 1)));
+		if (ctx->s_ctx.aov_sensor_support &&
+			!ctx->s_ctx.mode[ctx->current_scenario_id].ae_ctrl_support)
+			DRV_LOG_MUST(ctx,
+				"AOV sensing mode not support ae gain control!\n");
+		else
+			set_multi_dig_gain(
+				ctx, (u32 *)(*feature_data), (u16) (*(feature_data + 1)));
 		break;
 	case SENSOR_FEATURE_GET_TEMPERATURE_VALUE:
 		get_temperature_value(ctx, feature_data_32);
@@ -3025,8 +3148,14 @@ int common_feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 		streaming_control(ctx, FALSE);
 		break;
 	case SENSOR_FEATURE_SET_STREAMING_RESUME:
-		if (*feature_data)
-			set_shutter(ctx, *feature_data);
+		if (*feature_data) {
+			if (ctx->s_ctx.aov_sensor_support &&
+				!ctx->s_ctx.mode[ctx->current_scenario_id].ae_ctrl_support)
+				DRV_LOG_MUST(ctx,
+					"AOV sensing mode not support ae shutter control!\n");
+			else
+				set_shutter(ctx, *feature_data);
+		}
 		streaming_control(ctx, TRUE);
 		break;
 	case SENSOR_FEATURE_GET_BINNING_TYPE:
@@ -3096,6 +3225,20 @@ int common_feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 		get_dcg_type_by_scenario(ctx,
 			(enum SENSOR_SCENARIO_ID_ENUM)*(feature_data),
 			feature_data + 1, feature_data + 2);
+		break;
+	case SENSOR_FEATURE_SET_AOV_CSI_CLK:
+		switch (*feature_data_32) {
+		case 130:
+			ctx->aov_csi_clk = 130;
+			break;
+		case 242:
+		default:
+			ctx->aov_csi_clk = 242;
+			break;
+		}
+		DRV_LOG_MUST(ctx,
+			"[%s] SENSOR_FEATURE_SET_AOV_CSI_CLK(%u)\n",
+			__func__, *feature_data_32);
 		break;
 	default:
 		DRV_LOGE(ctx, "feature_id %u is invalid\n", feature_id);

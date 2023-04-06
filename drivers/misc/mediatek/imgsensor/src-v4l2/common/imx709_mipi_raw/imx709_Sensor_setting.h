@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2021 MediaTek Inc.
+ * Copyright (c) 2022 MediaTek Inc.
  */
 /*****************************************************************************
  *
@@ -19,14 +19,6 @@
 #define _IMX709_SENSOR_SETTING_H
 
 #include "kd_camera_typedef.h"
-
-#define AOV_MODE_SENSING
-#ifdef AOV_MODE_SENSING
-// #define it to debug for power sequence if needed
-#undef PWR_SEQ_ALL_USE_FOR_AOV_MODE_TRANSITION
-#endif
-
-#define EEPROM_READY 0	// FIX ME
 
 static kal_uint16 imx709_init_setting[] = {
 	// stream off

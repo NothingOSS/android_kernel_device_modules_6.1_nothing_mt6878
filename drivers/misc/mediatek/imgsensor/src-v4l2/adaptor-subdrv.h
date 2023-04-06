@@ -148,6 +148,8 @@ struct dcg_info_struct {
 struct subdrv_mode_struct {
 	u16 *mode_setting_table;
 	u32 mode_setting_len;
+	u16 *mode_setting_table_for_md;
+	u32 mode_setting_len_for_md;
 	u32 seamless_switch_group;
 	u16 *seamless_switch_mode_setting_table;
 	u32 seamless_switch_mode_setting_len;
@@ -167,7 +169,12 @@ struct subdrv_mode_struct {
 	struct SENSOR_WINSIZE_INFO_STRUCT imgsensor_winsize_info;
 
 	enum IMGSENSOR_RGBW_OUTPUT_MODE rgbw_output_mode;
+
+	/* aov param by mode */
 	u8 aov_mode;
+	u8 s_dummy_support;
+	u8 ae_ctrl_support;
+
 	u8 pdaf_cap;
 	struct SET_PD_BLOCK_INFO_T *imgsensor_pd_info;
 	u32 ae_binning_ratio;
@@ -251,6 +258,9 @@ struct subdrv_static_ctx {
 	void (*g_cali)(void *arg);
 	void (*s_gph)(void *arg, u8 en);
 	void (*s_cali)(void *arg);
+	int (*s_streaming_control)(void *arg, bool enable);
+	void (*s_data_rate_global_timing_phy_ctrl)(void *arg);
+	int (*s_pwr_seq_reset_view_to_sensing)(void *arg);
 
 	u16 reg_addr_stream;
 	u16 reg_addr_mirror_flip;
@@ -283,6 +293,15 @@ struct subdrv_static_ctx {
 	u8 chk_s_off_end;
 
 	u32 checksum_value;
+
+	u8 aov_sensor_support;
+	u32 aov_csi_clk;	/* aov switch csi clk param */
+	unsigned int sensor_mode_ops;
+	bool sensor_debug_sensing_ut_on_scp;
+	bool sensor_debug_dphy_global_timing_continuous_clk;
+	u16 reg_addr_aov_mode_mirror_flip;
+	u8 init_in_open;
+	u8 streaming_ctrl_imp;
 };
 
 #define HDR_CAP_IHDR 0x1
@@ -370,6 +389,7 @@ struct subdrv_ctx {
 	struct clk *clk[CLK_MAXCNT];
 
 	struct subdrv_static_ctx s_ctx;
+	u8 aov_sensor_support;
 	u32 aov_csi_clk;	/* aov switch csi clk param */
 	unsigned int sensor_mode_ops;
 	bool sensor_debug_sensing_ut_on_scp;

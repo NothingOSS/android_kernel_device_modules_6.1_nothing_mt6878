@@ -1,11 +1,25 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2021 MediaTek Inc.
+ * Copyright (c) 2022 MediaTek Inc.
  */
-
-/*****************************************************************************/
+/*****************************************************************************
+ *
+ * Filename:
+ * ---------
+ *	 imx709_ana_gain_table.h
+ *
+ * Project:
+ * --------
+ * Description:
+ * ------------
+ *	 Analog Gain Table
+ *
+ ****************************************************************************/
 #ifndef __IMX709_ANA_GAIN_TABLE_H__
 #define __IMX709_ANA_GAIN_TABLE_H__
+
+#include "kd_camera_typedef.h"
+
 static kal_uint32 imx709_ana_gain_table[] = {
 	1024,
 	1025,
