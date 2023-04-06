@@ -15987,6 +15987,11 @@ FLL0_out,FLL1_out,FLL2_out,FLL4_out,FLL5_out,FLL6_out";
 		compatible = "mediatek,mkp-drv";
 		memory-region = <&mkp_mem>;
 	};
+
+	hypervisor {
+		compatible = "mediatek,gzvm";
+		status = "okay";
+	};
 };
 
 &scp_i2c1{
