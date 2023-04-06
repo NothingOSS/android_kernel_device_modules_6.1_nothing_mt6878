@@ -1094,7 +1094,6 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 				job->req_seq, atomic_read(&cam_ctrl->stream_on_cnt));
 	}
 
-	call_jobop(job, compose);
 	mtk_cam_ctrl_send_event(cam_ctrl, CAMSYS_EVENT_ENQUE);
 	dev_dbg(ctx->cam->dev, "[%s] ctx:%d, req_no:%d frame_no:%d\n",
 		__func__, ctx->stream_id, req_seq, frame_seq);
@@ -1143,6 +1142,7 @@ void mtk_cam_ctrl_job_composed(struct mtk_cam_ctrl *cam_ctrl,
 		goto PUT_CTRL;
 	}
 
+	update_ufbc_header_param(job_composed);
 	call_jobop(job_composed, compose_done, cq_ret, ack_ret);
 	mtk_cam_job_put(job_composed);
 

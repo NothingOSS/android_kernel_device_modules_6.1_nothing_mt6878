@@ -149,6 +149,7 @@ int fill_imgo_buf_as_working_buf(
 	struct mtk_cam_video_device *node);
 
 int update_work_buffer_to_ipi_frame(struct req_buffer_helper *helper);
+int update_ufbc_header_param(struct mtk_cam_job *job);
 
 struct mtkcam_ipi_crop v4l2_rect_to_ipi_crop(const struct v4l2_rect *r);
 bool ipi_crop_eq(const struct mtkcam_ipi_crop *s,
@@ -191,6 +192,8 @@ int handle_sv_tag(struct mtk_cam_job *job);
 int handle_sv_tag_display_ic(struct mtk_cam_job *job);
 int handle_sv_tag_only_sv(struct mtk_cam_job *job);
 bool is_sv_img_tag_used(struct mtk_cam_job *job);
+
+bool belong_to_current_ctx(struct mtk_cam_job *job, int ipi_pipe_id);
 
 #endif //__MTK_CAM_JOB_UTILS_H
 

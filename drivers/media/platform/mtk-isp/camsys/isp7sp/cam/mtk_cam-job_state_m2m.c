@@ -4,6 +4,13 @@
 
 #include "mtk_cam-job_state_impl.h"
 
+static struct state_transition STATE_TRANS(m2m, S_ISP_NOT_SET)[] = {
+	{
+		S_ISP_COMPOSING, CAMSYS_EVENT_ENQUE,
+		NULL, ACTION_COMPOSE_CQ
+	},
+};
+
 static struct state_transition STATE_TRANS(m2m, S_ISP_COMPOSING)[] = {
 	{
 		S_ISP_APPLYING, CAMSYS_EVENT_ACK,
@@ -32,10 +39,11 @@ static struct state_transition STATE_TRANS(m2m, S_ISP_APPLYING)[] = {
 static struct state_transition STATE_TRANS(m2m, S_ISP_PROCESSING)[] = {
 	{
 		S_ISP_DONE, CAMSYS_EVENT_IRQ_FRAME_DONE,
-		NULL, ACTION_BUFFER_DONE
+		NULL, 0
 	},
 };
 static struct transitions_entry m2m_isp_entries[NR_S_ISP_STATE] = {
+	ADD_TRANS_ENTRY(m2m, S_ISP_NOT_SET),
 	ADD_TRANS_ENTRY(m2m, S_ISP_COMPOSING),
 	ADD_TRANS_ENTRY(m2m, S_ISP_COMPOSED),
 	ADD_TRANS_ENTRY(m2m, S_ISP_APPLYING),

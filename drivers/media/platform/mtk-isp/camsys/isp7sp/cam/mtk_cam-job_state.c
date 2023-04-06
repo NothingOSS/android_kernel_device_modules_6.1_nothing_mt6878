@@ -52,7 +52,7 @@ const char *str_sensor_state(int state)
 const char *str_isp_state(int state)
 {
 	static const char * const str[] = {
-		//[S_ISP_NOT_SET] = "not-set",
+		[S_ISP_NOT_SET] = "not-set",
 		[S_ISP_COMPOSING] = "composing",
 		[S_ISP_COMPOSED] = "composed",
 		[S_ISP_APPLYING] = "applying",

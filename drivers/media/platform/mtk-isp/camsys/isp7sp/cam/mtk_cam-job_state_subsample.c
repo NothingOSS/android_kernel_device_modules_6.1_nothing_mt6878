@@ -11,6 +11,13 @@ static struct state_transition STATE_TRANS(subsample_sensor, S_SENSOR_NOT_SET)[]
 	},
 };
 
+static struct state_transition STATE_TRANS(subsample, S_ISP_NOT_SET)[] = {
+	{
+		S_ISP_COMPOSING, CAMSYS_EVENT_ENQUE,
+		NULL, ACTION_COMPOSE_CQ
+	},
+};
+
 static struct state_transition STATE_TRANS(subsample, S_ISP_COMPOSING)[] = {
 	{
 		S_ISP_APPLYING, CAMSYS_EVENT_ACK,
@@ -50,7 +57,7 @@ static struct state_transition STATE_TRANS(subsample, S_ISP_OUTER)[] = {
 static struct state_transition STATE_TRANS(subsample, S_ISP_PROCESSING)[] = {
 	{
 		S_ISP_DONE, CAMSYS_EVENT_IRQ_FRAME_DONE,
-		guard_inner_eq, ACTION_BUFFER_DONE
+		guard_inner_eq, 0
 	},
 	{ /* note: should handle frame_done first if sof/p1done come together */
 		S_ISP_SENSOR_MISMATCHED, CAMSYS_EVENT_IRQ_L_SOF,
@@ -65,12 +72,12 @@ static struct state_transition STATE_TRANS(subsample, S_ISP_PROCESSING)[] = {
 static struct state_transition STATE_TRANS(subsample, S_ISP_SENSOR_MISMATCHED)[] = {
 	{
 		S_ISP_DONE_MISMATCHED, CAMSYS_EVENT_IRQ_FRAME_DONE,
-		guard_inner_eq, ACTION_BUFFER_DONE
+		guard_inner_eq, 0
 	},
 #ifdef TO_REMOVE
 	{
 		S_ISP_DONE_MISMATCHED, CAMSYS_EVENT_IRQ_SOF,
-		guard_inner_ge, ACTION_BUFFER_DONE
+		guard_inner_ge, 0
 	},
 #endif
 };
@@ -81,6 +88,7 @@ static struct transitions_entry basic_sensor_entries[NR_S_SENSOR_STATE] = {
 DECL_STATE_TABLE(subsample_sensor_tbl, basic_sensor_entries);
 
 static struct transitions_entry basic_isp_entries[NR_S_ISP_STATE] = {
+	ADD_TRANS_ENTRY(subsample, S_ISP_NOT_SET),
 	ADD_TRANS_ENTRY(subsample, S_ISP_COMPOSING),
 	ADD_TRANS_ENTRY(subsample, S_ISP_COMPOSED),
 	ADD_TRANS_ENTRY(subsample, S_ISP_APPLYING),
@@ -104,18 +112,16 @@ static int subsample_send_event(struct mtk_cam_job_state *s,
 			    struct transition_param *p)
 {
 	struct state_accessor s_acc;
-	int ret;
 
 	s_acc.head = p->head;
 	s_acc.s = s;
 	s_acc.seq_no = s->seq_no;
 	s_acc.ops = &_acc_ops;
 
-	ret = loop_each_transition(&subsample_sensor_tbl,
+	loop_each_transition(&subsample_sensor_tbl,
 				   &s_acc, SENSOR_STATE, p);
 
-	if (!ret)
-		loop_each_transition(&subsample_isp_tbl,
+	loop_each_transition(&subsample_isp_tbl,
 				     &s_acc, ISP_STATE, p);
 
 	return 0;

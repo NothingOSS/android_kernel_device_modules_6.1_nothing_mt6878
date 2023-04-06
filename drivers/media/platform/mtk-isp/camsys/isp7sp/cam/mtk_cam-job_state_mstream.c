@@ -63,29 +63,26 @@ static int mstream_send_event(struct mtk_cam_job_state *s,
 			      struct transition_param *p)
 {
 	struct state_accessor s_acc;
-	int ret;
 
 	s_acc.head = p->head;
 	s_acc.s = s;
 	s_acc.seq_no = s->seq_no;
 	s_acc.ops = &_acc_ops_1st;
 
-	ret = loop_each_transition(&basic_sensor_tbl, &s_acc,
-				   SENSOR_1ST_STATE, p);
+	loop_each_transition(&basic_sensor_tbl, &s_acc,
+			   SENSOR_1ST_STATE, p);
 
-	if (!ret)
-		loop_each_transition(&basic_isp_tbl, &s_acc,
-				     ISP_1ST_STATE, p);
+	loop_each_transition(&basic_isp_tbl, &s_acc,
+			   ISP_1ST_STATE, p);
 
 	s_acc.seq_no = next_frame_seq(s->seq_no);
 	s_acc.ops = &_acc_ops_2nd;
 
-	ret = loop_each_transition(&basic_sensor_tbl, &s_acc,
-				   SENSOR_2ND_STATE, p);
+	loop_each_transition(&basic_sensor_tbl, &s_acc,
+			   SENSOR_2ND_STATE, p);
 
-	if (!ret)
-		loop_each_transition(&basic_isp_tbl, &s_acc,
-				     ISP_2ND_STATE, p);
+	loop_each_transition(&basic_isp_tbl, &s_acc,
+			   ISP_2ND_STATE, p);
 
 	return 0;
 }

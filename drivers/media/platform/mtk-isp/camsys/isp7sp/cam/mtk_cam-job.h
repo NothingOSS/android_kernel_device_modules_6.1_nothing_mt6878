@@ -37,7 +37,7 @@ enum mtk_cam_sensor_state {
 
 enum mtk_cam_isp_state {
 	S_ISP_NOT_SET,
-	S_ISP_COMPOSING = S_ISP_NOT_SET,
+	S_ISP_COMPOSING,
 	S_ISP_COMPOSED,
 	S_ISP_APPLYING,
 	S_ISP_OUTER,
@@ -66,7 +66,7 @@ enum mtk_cam_job_action {
 	ACTION_APPLY_ISP = 2,
 	//ACTION_VSYNC_EVENT,
 	ACTION_AFO_DONE = 4,
-	ACTION_BUFFER_DONE = 8,
+	ACTION_COMPOSE_CQ = 8,
 	ACTION_TRIGGER = 16, /* trigger m2m start */
 };
 

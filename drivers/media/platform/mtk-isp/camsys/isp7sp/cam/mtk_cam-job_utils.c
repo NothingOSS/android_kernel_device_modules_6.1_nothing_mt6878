@@ -696,6 +696,85 @@ int update_work_buffer_to_ipi_frame(struct req_buffer_helper *helper)
 	return ret;
 }
 
+static int fill_ufbc_header_yuvo(struct mtk_cam_buffer *buf,
+			struct mtkcam_ipi_img_ufo_param *ufo_param)
+{
+	struct YUFO_META_INFO *yuvo_meta =
+		vb2_plane_vaddr(&buf->vbb.vb2_buf, 0);
+	struct YUFD_META_INFO *yufd_meta = &yuvo_meta->YUFD.YUFD;
+
+	yuvo_meta->AUWriteBySW = 1;
+
+	yufd_meta->bYUF = 1;
+	yufd_meta->YUFD_BITSTREAM_OFST_ADDR[0] = ufo_param->ufd_bitstream_ofst_addr[0];
+	yufd_meta->YUFD_BITSTREAM_OFST_ADDR[1] = ufo_param->ufd_bitstream_ofst_addr[1];
+	yufd_meta->YUFD_BS_AU_START[0] = ufo_param->ufd_bs_au_start[0];
+	yufd_meta->YUFD_BS_AU_START[1] = ufo_param->ufd_bs_au_start[1];
+	yufd_meta->YUFD_AU2_SIZE[0] = ufo_param->ufd_au2_size[0];
+	yufd_meta->YUFD_AU2_SIZE[1] = ufo_param->ufd_au2_size[1];
+	yufd_meta->YUFD_BOND_MODE = ufo_param->ufd_bond_mode[0];
+
+	return 0;
+}
+
+static inline bool is_ufbc_ipi(unsigned int ipi_fmt)
+{
+	return (ipifmt_is_yuv_ufo(ipi_fmt) || ipifmt_is_raw_ufo(ipi_fmt));
+}
+
+static bool is_ufbc_dmao_port(struct mtkcam_ipi_frame_param *fp, __u8 id)
+{
+	bool is_ufbc = false;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(fp->img_outs); ++i) {
+		if (fp->img_outs[i].uid.id == id) {
+			is_ufbc = is_ufbc_ipi(fp->img_outs[i].fmt.format);
+			break;
+		}
+	}
+
+	return is_ufbc;
+}
+
+int update_ufbc_header_param(struct mtk_cam_job *job)
+{
+	struct mtk_cam_buffer *buf;
+	struct mtk_cam_video_device *node;
+	struct mtkcam_ipi_frame_param *fp;
+	struct mtk_cam_request *req = job->req;
+
+	fp = (struct mtkcam_ipi_frame_param *)job->ipi.vaddr;
+
+	list_for_each_entry(buf, &req->buf_list, list) {
+		node = mtk_cam_buf_to_vdev(buf);
+
+		if (!belong_to_current_ctx(job, node->uid.pipe_id))
+			continue;
+
+		switch (node->desc.id) {
+#ifdef MAIN_UFO_HEADER_READY
+		case MTK_RAW_MAIN_STREAM_OUT:
+			if (is_ufbc_dmao_port(fp, MTKCAM_IPI_RAW_IMGO))
+				fill_ufbc_header(buf, &fp->img_ufdo_params.imgo);
+			break;
+#endif
+		case MTK_RAW_YUVO_1_OUT:
+			if (is_ufbc_dmao_port(fp, MTKCAM_IPI_RAW_YUVO_1))
+				fill_ufbc_header_yuvo(buf, &fp->img_ufdo_params.yuvo1);
+			break;
+		case MTK_RAW_YUVO_3_OUT:
+			if (is_ufbc_dmao_port(fp, MTKCAM_IPI_RAW_YUVO_3))
+				fill_ufbc_header_yuvo(buf, &fp->img_ufdo_params.yuvo3);
+			break;
+		default:
+			break;
+		}
+	}
+
+	return 0;
+}
+
 static int fill_img_fmt(struct mtkcam_ipi_pix_fmt *ipi_pfmt,
 			struct mtk_cam_buffer *buf)
 {
@@ -1278,13 +1357,12 @@ bool find_video_node(struct mtk_cam_job *job, int node_id)
 	struct mtk_cam_video_device *node;
 	struct mtk_cam_request *req = job->req;
 	struct mtk_cam_buffer *buf;
-	unsigned long ctx_used_pipe = job->src_ctx->used_pipe;
 
 	list_for_each_entry(buf, &req->buf_list, list) {
 		node = mtk_cam_buf_to_vdev(buf);
 
 		if (node->desc.id == node_id &&
-		    ctx_used_pipe & ipi_pipe_id_to_bit(node->uid.pipe_id)) {
+		    belong_to_current_ctx(job, node->uid.pipe_id)) {
 			return true;
 		}
 	}
@@ -1585,5 +1663,13 @@ bool is_sv_img_tag_used(struct mtk_cam_job *job)
 		rst = true;
 
 	return rst;
+}
+
+bool belong_to_current_ctx(struct mtk_cam_job *job, int ipi_pipe_id)
+{
+	unsigned long ctx_used_pipe;
+
+	ctx_used_pipe = job->src_ctx->used_pipe;
+	return ctx_used_pipe & ipi_pipe_id_to_bit(ipi_pipe_id);
 }
 

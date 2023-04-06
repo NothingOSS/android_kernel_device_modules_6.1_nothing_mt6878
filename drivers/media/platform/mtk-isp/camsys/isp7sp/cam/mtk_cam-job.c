@@ -134,6 +134,9 @@ int mtk_cam_job_apply_pending_action(struct mtk_cam_job *job)
 	if (action & ACTION_TRIGGER)
 		ret = ret || call_jobop(job, trigger_isp);
 
+	if (action & ACTION_COMPOSE_CQ)
+		ret = ret || call_jobop(job, compose);
+
 	return ret;
 }
 
@@ -224,17 +227,9 @@ static bool is_scen_support_ufbc(struct mtk_cam_job *job)
 
 	switch (job->job_scen.id) {
 	case MTK_CAM_SCEN_NORMAL:
-#ifndef RBGW_UFO_READY
-		support = !job->job_scen.scen.normal.w_chn_enabled;
-#else
-		support = true;
-#endif
-		break;
-#ifdef MSTREAM_UFO_TWIN_READY
 	case MTK_CAM_SCEN_MSTREAM:
 		support = true;
 		break;
-#endif
 	default:
 		break;
 	}
@@ -2645,19 +2640,38 @@ static void job_finalize(struct mtk_cam_job *job)
 	mtk_cam_buffer_pool_return(&job->ipi);
 }
 
+static void update_mstream_ufd_offset(struct mtk_cam_pool_buffer *fir_ipi,
+		struct mtk_cam_pool_buffer *sec_ipi)
+{
+	struct mtkcam_ipi_frame_param *fir_fp;
+	struct mtkcam_ipi_frame_param *sec_fp;
+
+	fir_fp = (struct mtkcam_ipi_frame_param *)fir_ipi->vaddr;
+	sec_fp = (struct mtkcam_ipi_frame_param *)sec_ipi->vaddr;
+
+	sec_fp->img_ufdi_params.rawi2 = fir_fp->img_ufdo_params.imgo;
+}
+
 static int compose_mstream(struct mtk_cam_job *job)
 {
 	struct mtk_cam_mstream_job *mjob =
 		container_of(job, struct mtk_cam_mstream_job, job);
+	int ret = 0;
 
-	if (job->do_ipi_config && ipi_config(job))
-		return -1;
+	if (mjob->composed_idx == 0) {
+		// first exp
+		if (job->do_ipi_config && ipi_config(job))
+			return -1;
 
-	if (send_ipi_frame(job, &mjob->ipi, job->frame_seq_no))
-		return -1;
+		ret = send_ipi_frame(job, &mjob->ipi, job->frame_seq_no);
+	} else {
+		update_mstream_ufd_offset(&mjob->ipi, &job->ipi);
 
-	return send_ipi_frame(job, &job->ipi,
-			      next_frame_seq(job->frame_seq_no));
+		ret = send_ipi_frame(job, &job->ipi,
+			next_frame_seq(job->frame_seq_no));
+	}
+
+	return ret;
 }
 
 static void compose_done_mstream(struct mtk_cam_job *job,
@@ -3813,13 +3827,7 @@ static int update_raw_meta_buf_to_ipi_frame(struct req_buffer_helper *helper,
 	WARN_ON(ret);
 	return ret;
 }
-static bool belong_to_current_ctx(struct mtk_cam_job *job, int ipi_pipe_id)
-{
-	unsigned long ctx_used_pipe;
 
-	ctx_used_pipe = job->src_ctx->used_pipe;
-	return ctx_used_pipe & ipi_pipe_id_to_bit(ipi_pipe_id);
-}
 static int update_cam_buf_to_ipi_frame(struct req_buffer_helper *helper,
 	struct mtk_cam_buffer *buf, struct pack_job_ops_helper *job_helper)
 {
@@ -4014,6 +4022,14 @@ static int update_job_buffer_to_ipi_frame(struct mtk_cam_job *job,
 	return ret;
 }
 
+static int reset_img_ufd_io_param(struct mtkcam_ipi_frame_param *fp)
+{
+	memset(&fp->img_ufdi_params, 0, sizeof(fp->img_ufdi_params));
+	memset(&fp->img_ufdo_params, 0, sizeof(fp->img_ufdo_params));
+
+	return 0;
+}
+
 static int mtk_cam_job_fill_ipi_frame(struct mtk_cam_job *job,
 	struct pack_job_ops_helper *job_helper)
 {
@@ -4024,7 +4040,8 @@ static int mtk_cam_job_fill_ipi_frame(struct mtk_cam_job *job,
 
 	ret = update_cq_buffer_to_ipi_frame(&job->cq, fp)
 		|| update_job_raw_param_to_ipi_frame(job, fp)
-		|| update_job_buffer_to_ipi_frame(job, fp, job_helper);
+		|| update_job_buffer_to_ipi_frame(job, fp, job_helper)
+		|| reset_img_ufd_io_param(fp);
 
 	if (ret)
 		pr_info("%s: failed.\n", __func__);

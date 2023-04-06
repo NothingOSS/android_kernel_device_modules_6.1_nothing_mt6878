@@ -100,6 +100,12 @@ static inline int sf_cur_isp_state(struct state_accessor *s_acc)
  * guard functions
  */
 
+static inline int guard_next_compose(struct state_accessor *s_acc,
+			       struct transition_param *p)
+{
+	return (unsigned int)(cur_seq_no(s_acc) - p->info->ack_seq_no) == 1;
+}
+
 static inline int guard_ack_eq(struct state_accessor *s_acc,
 			       struct transition_param *p)
 {
