@@ -30,7 +30,9 @@
 #include <linux/reset.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 #include <linux/spinlock.h>
-//#include <trace/hooks/traps.h>
+#if IS_ENABLED(CONFIG_ANDROID_FIX_PCIE_SLAVE_ERROR)
+#include <trace/hooks/traps.h>
+#endif
 
 #include "../pci.h"
 #include "../../misc/mediatek/clkbuf/src/clkbuf-ctrl.h"
