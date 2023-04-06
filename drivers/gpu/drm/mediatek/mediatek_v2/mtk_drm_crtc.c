@@ -5772,6 +5772,9 @@ void mtk_crtc_wait_frame_done(struct mtk_drm_crtc *mtk_crtc,
 		if (mtk_crtc_is_dc_mode(&mtk_crtc->base))
 			cmdq_pkt_wfe(cmdq_handle, gce_event);
 	} else  if (gce_event == mtk_crtc->gce_obj.event[EVENT_OVLSYS1_WDMA0_EOF]) {
+		if (mtk_crtc_is_dc_mode(&mtk_crtc->base))
+			cmdq_pkt_wfe(cmdq_handle, gce_event);
+	} else  if (gce_event == mtk_crtc->gce_obj.event[EVENT_OVLSYS_WDMA0_EOF]) {
 		struct mtk_drm_private *priv;
 
 		priv = mtk_crtc->base.dev->dev_private;
@@ -5779,7 +5782,7 @@ void mtk_crtc_wait_frame_done(struct mtk_drm_crtc *mtk_crtc,
 			cmdq_pkt_wfe(cmdq_handle, gce_event);
 			if (priv->data->mmsys_id == MMSYS_MT6897)
 				cmdq_pkt_wfe(cmdq_handle,
-					mtk_crtc->gce_obj.event[EVENT_OVLSYS_WDMA0_EOF]);
+					mtk_crtc->gce_obj.event[EVENT_OVLSYS1_WDMA0_EOF]);
 		}
 	} else
 		DDPPR_ERR("The output component has not frame done event\n");
