@@ -402,10 +402,6 @@ int mtk_cam_sv_dmao_common_config(struct mtk_camsv_device *sv_dev)
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON1_LEN, 0x12220111);
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON4_LEN, 0x81110000);
 
-		/* default mdp */
-		CAMSV_WRITE_BITS(sv_dev->smi_larb + REG_SMI_LARB_NON_SEC_CON + (1<<2),
-			SMI_LARB_NON_SEC_CON, PATH_SEL, 0);
-
 		/* wdma 2 */
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON3_IMG2, 0x84000355);
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON2_IMG2, 0x12AA0200);
@@ -416,10 +412,13 @@ int mtk_cam_sv_dmao_common_config(struct mtk_camsv_device *sv_dev)
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON2_LEN2, 0x12AA0200);
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON1_LEN2, 0x115500AB);
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON4_LEN2, 0x80AB0000);
-
-		/* default disp */
-		CAMSV_WRITE_BITS(sv_dev->smi_larb + REG_SMI_LARB_NON_SEC_CON + (2<<2),
-			SMI_LARB_NON_SEC_CON, PATH_SEL, 1);
+		/* default cqi/port_1 disp port_2 mdp */
+		smi_sysram_enable(&sv_dev->larb_pdev->dev,
+			sv_dev->larb_master_id[SMI_PORT0_SV_CQI], true, "camsys-camsv");
+		smi_sysram_enable(&sv_dev->larb_pdev->dev,
+			sv_dev->larb_master_id[SMI_PORT1_SV_WDMA], true, "camsys-camsv");
+		smi_sysram_enable(&sv_dev->larb_pdev->dev,
+			sv_dev->larb_master_id[SMI_PORT2_SV_WDMA], false, "camsys-camsv");
 		break;
 	case CAMSV_1:
 		/* wdma 1 */
@@ -433,10 +432,6 @@ int mtk_cam_sv_dmao_common_config(struct mtk_camsv_device *sv_dev)
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON1_LEN, 0x12220111);
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON4_LEN, 0x81110000);
 
-		/* default mdp */
-		CAMSV_WRITE_BITS(sv_dev->smi_larb + REG_SMI_LARB_NON_SEC_CON + (1<<2),
-			SMI_LARB_NON_SEC_CON, PATH_SEL, 0);
-
 		/* wdma 2 */
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON3_IMG2, 0x84000355);
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON2_IMG2, 0x12AA0200);
@@ -447,10 +442,13 @@ int mtk_cam_sv_dmao_common_config(struct mtk_camsv_device *sv_dev)
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON2_LEN2, 0x12AA0200);
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON1_LEN2, 0x115500AB);
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON4_LEN2, 0x80AB0000);
-
-		/* default disp */
-		CAMSV_WRITE_BITS(sv_dev->smi_larb + REG_SMI_LARB_NON_SEC_CON + (2<<2),
-			SMI_LARB_NON_SEC_CON, PATH_SEL, 1);
+		/* default cqi/port_1 disp port_2 mdp */
+		smi_sysram_enable(&sv_dev->larb_pdev->dev,
+			sv_dev->larb_master_id[SMI_PORT0_SV_CQI], true, "camsys-camsv");
+		smi_sysram_enable(&sv_dev->larb_pdev->dev,
+			sv_dev->larb_master_id[SMI_PORT1_SV_WDMA], true, "camsys-camsv");
+		smi_sysram_enable(&sv_dev->larb_pdev->dev,
+			sv_dev->larb_master_id[SMI_PORT2_SV_WDMA], false, "camsys-camsv");
 		break;
 	case CAMSV_2:
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON3_IMG, 0x84CE0401);
@@ -462,10 +460,11 @@ int mtk_cam_sv_dmao_common_config(struct mtk_camsv_device *sv_dev)
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON2_LEN, 0x13340267);
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON1_LEN, 0x119A00CD);
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON4_LEN, 0x80CD0000);
-
 		/* default disp */
-		CAMSV_WRITE_BITS(sv_dev->smi_larb + REG_SMI_LARB_NON_SEC_CON + (4<<2),
-			SMI_LARB_NON_SEC_CON, PATH_SEL, 0);
+		smi_sysram_enable(&sv_dev->larb_pdev->dev,
+			sv_dev->larb_master_id[SMI_PORT0_SV_CQI], false, "camsys-camsv");
+		smi_sysram_enable(&sv_dev->larb_pdev->dev,
+			sv_dev->larb_master_id[SMI_PORT1_SV_WDMA], false, "camsys-camsv");
 		break;
 	case CAMSV_3:
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON3_IMG, 0x83000280);
@@ -477,10 +476,11 @@ int mtk_cam_sv_dmao_common_config(struct mtk_camsv_device *sv_dev)
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON2_LEN, 0x12000180);
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON1_LEN, 0x11000080);
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON4_LEN, 0x80800000);
-
 		/* default disp */
-		CAMSV_WRITE_BITS(sv_dev->smi_larb + REG_SMI_LARB_NON_SEC_CON + (5<<2),
-			SMI_LARB_NON_SEC_CON, PATH_SEL, 0);
+		smi_sysram_enable(&sv_dev->larb_pdev->dev,
+			sv_dev->larb_master_id[SMI_PORT0_SV_CQI], false, "camsys-camsv");
+		smi_sysram_enable(&sv_dev->larb_pdev->dev,
+			sv_dev->larb_master_id[SMI_PORT1_SV_WDMA], false, "camsys-camsv");
 		break;
 	case CAMSV_4:
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON3_IMG, 0x80D800B4);
@@ -488,8 +488,10 @@ int mtk_cam_sv_dmao_common_config(struct mtk_camsv_device *sv_dev)
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON1_IMG, 0x10480024);
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON4_IMG, 0x80240000);
 		/* default disp */
-		CAMSV_WRITE_BITS(sv_dev->smi_larb + REG_SMI_LARB_NON_SEC_CON + (6<<2),
-			SMI_LARB_NON_SEC_CON, PATH_SEL, 0);
+		smi_sysram_enable(&sv_dev->larb_pdev->dev,
+			sv_dev->larb_master_id[SMI_PORT0_SV_CQI], false, "camsys-camsv");
+		smi_sysram_enable(&sv_dev->larb_pdev->dev,
+			sv_dev->larb_master_id[SMI_PORT1_SV_WDMA], false, "camsys-camsv");
 		break;
 	case CAMSV_5:
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON3_IMG, 0x80D800B4);
@@ -497,8 +499,10 @@ int mtk_cam_sv_dmao_common_config(struct mtk_camsv_device *sv_dev)
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON1_IMG, 0x10480024);
 		CAMSV_WRITE_REG(sv_dev->base_dma + REG_CAMSVDMATOP_CON4_IMG, 0x80240000);
 		/* default disp */
-		CAMSV_WRITE_BITS(sv_dev->smi_larb + REG_SMI_LARB_NON_SEC_CON + (7<<2),
-			SMI_LARB_NON_SEC_CON, PATH_SEL, 0);
+		smi_sysram_enable(&sv_dev->larb_pdev->dev,
+			sv_dev->larb_master_id[SMI_PORT0_SV_CQI], false, "camsys-camsv");
+		smi_sysram_enable(&sv_dev->larb_pdev->dev,
+			sv_dev->larb_master_id[SMI_PORT1_SV_WDMA], false, "camsys-camsv");
 		break;
 	}
 
@@ -1587,6 +1591,7 @@ static int mtk_camsv_of_probe(struct platform_device *pdev,
 	struct resource *res;
 	unsigned int i, j;
 	int ret, num_clks, num_larbs, num_iommus, num_ports;
+	unsigned int larb_idx = 0;
 
 	ret = of_property_read_u32(dev->of_node, "mediatek,camsv-id",
 						       &sv_dev->id);
@@ -1687,19 +1692,6 @@ static int mtk_camsv_of_probe(struct platform_device *pdev,
 	}
 	dev_dbg(dev, "camsv, map_addr(inner scq)=0x%pK\n", sv_dev->base_scq_inner);
 
-	/* smi larb */
-	switch (sv_dev->id) {
-	case CAMSV_0:
-		sv_dev->smi_larb =  ioremap(LARB14_SMI_LARB, 0x1000);
-		break;
-	case CAMSV_1:
-		sv_dev->smi_larb =  ioremap(LARB13_SMI_LARB, 0x1000);
-		break;
-	default:
-		sv_dev->smi_larb =  ioremap(LARB29_SMI_LARB, 0x1000);
-		break;
-	}
-
 	for (i = 0; i < CAMSV_IRQ_NUM; i++) {
 		sv_dev->irq[i] = platform_get_irq(pdev, i);
 		if (!sv_dev->irq[i]) {
@@ -1787,6 +1779,8 @@ static int mtk_camsv_of_probe(struct platform_device *pdev,
 						DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
 		if (!link)
 			dev_info(dev, "unable to link smi larb%d\n", i);
+		else
+			sv_dev->larb_pdev = larb_pdev;
 	}
 
 	num_iommus = of_property_count_strings(
@@ -1822,7 +1816,9 @@ static int mtk_camsv_of_probe(struct platform_device *pdev,
 					args.args[0],
 					mtk_camsv_translation_fault_callback,
 					(void *)sv_dev, false);
+				sv_dev->larb_master_id[larb_idx++] = args.args[0];
 			}
+
 		}
 	}
 
@@ -1838,6 +1834,7 @@ static int mtk_camsv_of_probe(struct platform_device *pdev,
 				args.args[0],
 				mtk_camsv_translation_fault_callback,
 				(void *)sv_dev, false);
+			sv_dev->larb_master_id[i] = args.args[0];
 		}
 	}
 

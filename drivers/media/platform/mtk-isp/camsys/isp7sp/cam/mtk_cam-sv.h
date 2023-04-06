@@ -17,6 +17,13 @@
 #define MAX_SV_HW_GROUPS 4
 #define CAMSV_IRQ_NUM 4
 
+enum SV_SMI_PORT_ID {
+	SMI_PORT0_SV_CQI = 0,
+	SMI_PORT1_SV_WDMA,
+	SMI_PORT2_SV_WDMA,
+	MAX_SMI_PORT_NUM
+};
+
 /* refer to ipi hw path definition */
 enum mtkcam_sv_hw_path_control {
 	MTKCAM_SV_SPECIAL_SCENARIO_ADDITIONAL_RAW = 24,
@@ -145,7 +152,6 @@ struct mtk_camsv_device {
 	void __iomem *base_dma_inner;
 	void __iomem *base_scq;
 	void __iomem *base_scq_inner;
-	void __iomem *smi_larb;
 	unsigned int num_clks;
 	struct clk **clks;
 	unsigned int cammux_id;
@@ -173,7 +179,9 @@ struct mtk_camsv_device {
 	struct notifier_block notifier_blk;
 
 	/* mmqos */
+	struct platform_device *larb_pdev;
 	struct mtk_camsys_qos qos;
+	unsigned int larb_master_id[MAX_SMI_PORT_NUM];
 
 	/* sensor resource data */
 	struct mtk_cam_resource_sensor_v2 sensor_res;
