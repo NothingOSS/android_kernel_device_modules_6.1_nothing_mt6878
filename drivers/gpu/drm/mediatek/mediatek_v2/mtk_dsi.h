@@ -133,6 +133,7 @@ struct mtk_dsi {
 	struct mipi_dsi_device *dev_for_PM;
 	atomic_t ulps_async;
 	bool pending_switch;
+	struct mtk_drm_esd_ctx *esd_ctx;
 };
 
 s32 mtk_dsi_poll_for_idle(struct mtk_dsi *dsi, struct cmdq_pkt *handle);
