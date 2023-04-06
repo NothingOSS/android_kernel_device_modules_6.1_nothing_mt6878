@@ -1208,7 +1208,7 @@ void mtk_cam_ctrl_handle_done_loop(struct mtk_cam_ctrl *ctrl)
 	dev_info(dev, "%s: ctx %d exited\n", __func__, ctx->stream_id);
 }
 
-static void mtk_cam_ctrl_done_work(struct work_struct *work)
+static void mtk_cam_ctrl_done_work(struct kthread_work *work)
 {
 	struct mtk_cam_ctrl *ctrl =
 		container_of(work, struct mtk_cam_ctrl, done_work);
@@ -1245,9 +1245,9 @@ void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 
 	init_waitqueue_head(&cam_ctrl->event_wq);
 
-	INIT_WORK(&cam_ctrl->done_work, mtk_cam_ctrl_done_work);
 	init_waitqueue_head(&cam_ctrl->done_wq);
-	queue_work(system_highpri_wq, &cam_ctrl->done_work);
+	kthread_init_work(&cam_ctrl->done_work, mtk_cam_ctrl_done_work);
+	mtk_cam_ctx_queue_done_worker(ctx, &cam_ctrl->done_work);
 
 	spin_lock_init(&cam_ctrl->send_lock);
 	rwlock_init(&cam_ctrl->list_lock);
@@ -1314,7 +1314,7 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 	mtk_cam_event_eos(cam_ctrl);
 
 	/* await done work finished */
-	flush_work(&cam_ctrl->done_work);
+	kthread_flush_worker(&ctx->done_worker);
 	drain_workqueue(ctx->aa_dump_wq);
 	kthread_flush_worker(&ctx->sensor_worker);
 

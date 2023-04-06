@@ -133,6 +133,8 @@ struct mtk_cam_ctx {
 	struct kthread_worker sensor_worker;
 	struct task_struct *flow_task;
 	struct kthread_worker flow_worker;
+	struct task_struct *done_task;
+	struct kthread_worker done_worker;
 	struct workqueue_struct *composer_wq; /* TODO(AY): may remove */
 	struct workqueue_struct *aa_dump_wq;
 
@@ -346,6 +348,8 @@ int mtk_cam_ctx_send_sv_event(struct mtk_cam_ctx *ctx,
 int mtk_cam_ctx_queue_sensor_worker(struct mtk_cam_ctx *ctx,
 				    struct kthread_work *work);
 int mtk_cam_ctx_queue_flow_worker(struct mtk_cam_ctx *ctx,
+				  struct kthread_work *work);
+int mtk_cam_ctx_queue_done_worker(struct mtk_cam_ctx *ctx,
 				  struct kthread_work *work);
 int mtk_cam_ctx_queue_aa_dump_wq(struct mtk_cam_ctx *ctx,
 			      struct work_struct *work);

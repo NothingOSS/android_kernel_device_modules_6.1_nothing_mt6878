@@ -87,7 +87,7 @@ struct mtk_cam_ctrl {
 
 	wait_queue_head_t event_wq;
 
-	struct work_struct done_work;
+	struct kthread_work done_work;
 	wait_queue_head_t done_wq;
 
 	/* note:

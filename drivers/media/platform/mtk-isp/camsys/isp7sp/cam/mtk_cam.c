@@ -834,15 +834,15 @@ void mtk_cam_req_buffer_done(struct mtk_cam_job *job,
 
 	spin_unlock(&req->buf_lock);
 
-	dev_info(dev, "%s: ctx-%d req:%s(%d) pipe_id:%d, node_id:%d bufs: 0x%lx ts:%lld is_empty %d\n",
+	dev_info(dev, "%s: ctx-%d req:%s(%d) pipe_id:%d, node_id:%d bufs: 0x%lx ts:%lld%s\n",
 		 __func__, ctx->stream_id, req->req.debug_str, job->req_seq,
-		 pipe_id, node_id, ids, ts, is_buf_empty);
+		 pipe_id, node_id, ids, ts, is_buf_empty ? " (empty)" : "");
 
 	if (list_empty(&done_list)) {
 		dev_info(dev,
-			 "%s: req:%s failed to find pipe_id:%d, node_id:%d, ts:%lld, is_empty %d\n",
+			 "%s: req:%s failed to find pipe_id:%d, node_id:%d, ts:%lld%s\n",
 			 __func__, req->req.debug_str,
-			 pipe_id, node_id, ts, is_buf_empty);
+			 pipe_id, node_id, ts, is_buf_empty ? " (empty)" : "");
 		goto REQ_PUT;
 	}
 
@@ -1440,9 +1440,10 @@ static void mtk_cam_ctx_pipeline_stop(struct mtk_cam_ctx *ctx,
 }
 
 static struct task_struct *
-mtk_cam_ctx_create_fifo_task(struct mtk_cam_ctx *ctx,
-			     const char *prefix,
-			     struct kthread_worker *worker)
+mtk_cam_ctx_create_task(struct mtk_cam_ctx *ctx,
+			const char *prefix,
+			struct kthread_worker *worker,
+			bool set_fifo)
 {
 	struct device *dev = ctx->cam->dev;
 	struct task_struct *task;
@@ -1456,7 +1457,11 @@ mtk_cam_ctx_create_fifo_task(struct mtk_cam_ctx *ctx,
 		return NULL;
 	}
 
-	sched_set_fifo(task);
+	if (set_fifo)
+		sched_set_fifo(task);
+	else
+		sched_set_normal(task, -20);
+
 	return task;
 }
 
@@ -1466,23 +1471,30 @@ static int mtk_cam_ctx_alloc_workers(struct mtk_cam_ctx *ctx)
 
 	kthread_init_worker(&ctx->sensor_worker);
 	ctx->sensor_worker_task =
-		mtk_cam_ctx_create_fifo_task(ctx, "sensor_worker",
-					     &ctx->sensor_worker);
+		mtk_cam_ctx_create_task(ctx, "sensor_worker",
+					&ctx->sensor_worker, true);
 	if (!ctx->sensor_worker_task)
 		return -1;
 
 	kthread_init_worker(&ctx->flow_worker);
 	ctx->flow_task =
-		mtk_cam_ctx_create_fifo_task(ctx, "camsys_worker",
-					     &ctx->flow_worker);
+		mtk_cam_ctx_create_task(ctx, "camsys_worker",
+					&ctx->flow_worker, true);
 	if (!ctx->flow_task)
 		goto fail_uninit_sensor_worker_task;
+
+	kthread_init_worker(&ctx->done_worker);
+	ctx->done_task =
+		mtk_cam_ctx_create_task(ctx, "camsys_done_worker",
+					     &ctx->done_worker, false);
+	if (!ctx->done_task)
+		goto fail_uninit_flow_worker_task;
 
 	ctx->composer_wq = alloc_ordered_workqueue(dev_name(dev),
 						   WQ_HIGHPRI | WQ_FREEZABLE);
 	if (!ctx->composer_wq) {
 		dev_info(dev, "failed to alloc composer workqueue\n");
-		goto fail_uninit_flow_worker_task;
+		goto fail_uninit_done_worker_task;
 	}
 
 	ctx->aa_dump_wq =
@@ -1497,6 +1509,9 @@ static int mtk_cam_ctx_alloc_workers(struct mtk_cam_ctx *ctx)
 
 fail_uninit_composer_wq:
 	destroy_workqueue(ctx->composer_wq);
+fail_uninit_done_worker_task:
+	kthread_stop(ctx->done_task);
+	ctx->done_task = NULL;
 fail_uninit_flow_worker_task:
 	kthread_stop(ctx->flow_task);
 	ctx->flow_task = NULL;
@@ -1513,6 +1528,8 @@ static void mtk_cam_ctx_destroy_workers(struct mtk_cam_ctx *ctx)
 	ctx->sensor_worker_task = NULL;
 	kthread_stop(ctx->flow_task);
 	ctx->flow_task = NULL;
+	kthread_stop(ctx->done_task);
+	ctx->done_task = NULL;
 
 	destroy_workqueue(ctx->composer_wq);
 	destroy_workqueue(ctx->aa_dump_wq);
@@ -2429,34 +2446,35 @@ int mtk_cam_ctx_send_sv_event(struct mtk_cam_ctx *ctx,
 	return 0;
 }
 
-int mtk_cam_ctx_queue_sensor_worker(struct mtk_cam_ctx *ctx,
-				    struct kthread_work *work)
+static int ctx_kthread_queue_work(struct mtk_cam_ctx *ctx,
+				  struct kthread_worker *worker,
+				  struct kthread_work *work,
+				  const char *caller)
 {
 	int ret;
 
-	if (WARN_ON(!ctx))
-		return -1;
-
-	ret = kthread_queue_work(&ctx->sensor_worker, work) ? 0 : -1;
+	ret = kthread_queue_work(worker, work) ? 0 : -1;
 	if (ret)
-		pr_info("%s: failed\n", __func__);
-
+		pr_info("%s: ctx-%d failed\n", caller, ctx->stream_id);
 	return ret;
+}
+
+int mtk_cam_ctx_queue_sensor_worker(struct mtk_cam_ctx *ctx,
+				    struct kthread_work *work)
+{
+	return ctx_kthread_queue_work(ctx, &ctx->sensor_worker, work, __func__);
+}
+
+int mtk_cam_ctx_queue_done_worker(struct mtk_cam_ctx *ctx,
+				  struct kthread_work *work)
+{
+	return ctx_kthread_queue_work(ctx, &ctx->done_worker, work, __func__);
 }
 
 int mtk_cam_ctx_queue_flow_worker(struct mtk_cam_ctx *ctx,
 				  struct kthread_work *work)
 {
-	int ret;
-
-	if (WARN_ON(!ctx))
-		return -1;
-
-	ret = kthread_queue_work(&ctx->flow_worker, work) ? 0 : -1;
-	if (ret)
-		pr_info("%s: failed\n", __func__);
-
-	return ret;
+	return ctx_kthread_queue_work(ctx, &ctx->flow_worker, work, __func__);
 }
 
 int mtk_cam_ctx_queue_aa_dump_wq(struct mtk_cam_ctx *ctx, struct work_struct *work)
