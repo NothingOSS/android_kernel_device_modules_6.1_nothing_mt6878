@@ -136,10 +136,7 @@ static int udm_buffer_write(struct mbraink_udm_buffer *pMbraink_udm_buffer,
 	}
 
 	ktime_get_real_ts64(&tv);
-	if (size < MAX_AUDIO_UDM_LOG_SIZE)
-		strncpy(pMbraink_udm_buffer->buffer[pos], pData, size-1);
-	else
-		strncpy(pMbraink_udm_buffer->buffer[pos], pData, MAX_AUDIO_UDM_LOG_SIZE-1);
+	strncpy(pMbraink_udm_buffer->buffer[pos], pData, size-1);
 	pMbraink_udm_buffer->timestamp[pos] = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
 	pMbraink_udm_buffer->level[pos] = level;
 	pMbraink_udm_buffer->counter++;
