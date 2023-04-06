@@ -19,6 +19,7 @@
 #include <linux/dma-fence.h>
 #include <linux/hashtable.h>
 #include <linux/genalloc.h>
+#include <linux/min_heap.h>
 
 #include "apusys_core.h"
 #include "apusys_device.h"
@@ -42,12 +43,18 @@
 
 #define MDW_ALIGN(x, align) ((x+align-1) & (~(align-1)))
 
+/* history parameter */
+#define MDW_NUM_HISTORY 2
+#define MDW_NUM_PREDICT_CMD 16
+#define MDW_POWER_GAIN_TH 7680
+#define MDW_PERIOD_TOLERANCE_PCT (10/100)
+#define MDW_IPTIME_TOLERANCE_PCT (10/100)
 
 struct mdw_fpriv;
 struct mdw_device;
 struct mdw_mem;
 
-enum mdw_buf_rype {
+enum mdw_buf_type {
 	MDW_DATA_BUF,
 	MDW_CMD_BUF,
 };
@@ -244,6 +251,12 @@ struct mdw_device {
 	uint32_t num_fence_ctx;
 	unsigned long fence_ctx_mask[BITS_TO_LONGS(MDW_FENCE_MAX_RINGS)];
 	struct mutex f_mtx;
+
+	/* cmd history */
+	uint64_t idle_time_ts;
+	uint64_t predict_cmd_ts[MDW_NUM_PREDICT_CMD];
+	struct min_heap heap;
+	atomic_t cmd_running;
 };
 
 struct mdw_fpriv {
@@ -264,6 +277,9 @@ struct mdw_fpriv {
 	struct kref ref;
 	void (*get)(struct mdw_fpriv *mpriv);
 	void (*put)(struct mdw_fpriv *mpriv);
+
+	/* cmd history */
+	struct mdw_cmd_history_tbl *ch_tbl;
 };
 
 struct mdw_exec_info {
@@ -291,6 +307,19 @@ struct mdw_fence {
 struct mdw_cmd_map_invoke {
 	struct list_head c_node;
 	struct mdw_mem_map *map;
+};
+
+struct mdw_cmd_history_tbl {
+	/* history counter */
+	uint64_t period_cnt;
+
+	/* history cmd time info */
+	uint64_t h_end_ts;
+	uint64_t h_period;
+	uint64_t cmd_cnt;
+
+	/* history subcmd einfo */
+	struct mdw_subcmd_exec_info *h_sc_einfo;
 };
 
 struct mdw_cmd {
@@ -423,5 +452,10 @@ void mdw_dev_session_create(struct mdw_fpriv *mpriv);
 void mdw_dev_session_delete(struct mdw_fpriv *mpriv);
 int mdw_dev_validation(struct mdw_fpriv *mpriv, uint32_t dtype,
 	struct mdw_cmd *cmd, struct apusys_cmdbuf *cbs, uint32_t num);
+
+void mdw_cmd_history_init(struct mdw_device *mdev);
+void mdw_cmd_history_deinit(struct mdw_device *mdev);
+int mdw_cmd_history_tbl_create(struct mdw_fpriv *mpriv);
+void mdw_cmd_history_tbl_delete(struct mdw_fpriv *mpriv);
 
 #endif

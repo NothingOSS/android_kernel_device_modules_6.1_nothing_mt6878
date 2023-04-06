@@ -7,6 +7,7 @@
 #include <linux/slab.h>
 #include <linux/sync_file.h>
 #include <linux/sched/clock.h>
+#include <linux/min_heap.h>
 
 #include "mdw_trace.h"
 #include "mdw_cmn.h"
@@ -424,6 +425,8 @@ void mdw_cmd_mpriv_release(struct mdw_fpriv *mpriv)
 		mutex_unlock(&mpriv->mdev->mctl_mtx);
 		mdw_flw_debug("s(0x%llx) release apummu table\n", (uint64_t)mpriv);
 		apummu_table_free((uint64_t)mpriv);
+		mdw_flw_debug("s(0x%llx) release history tbl\n", (uint64_t)mpriv);
+		mdw_cmd_history_tbl_delete(mpriv);
 	}
 }
 
@@ -724,6 +727,7 @@ static int mdw_cmd_run(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 	mdw_cmd_show(c, mdw_cmd_debug);
 
 	c->start_ts = sched_clock();
+	atomic_inc(&mdev->cmd_running);
 	ret = mdev->dev_funcs->run_cmd(mpriv, c);
 	if (ret) {
 		mdw_drv_err("s(0x%llx) run cmd(0x%llx) fail(%d)\n",
@@ -788,15 +792,310 @@ static void mdw_cmd_check_rets(struct mdw_cmd *c, int ret)
 	}
 }
 
+int mdw_cmd_history_tbl_create(struct mdw_fpriv *mpriv)
+{
+	int ret = 0;
+
+	mpriv->ch_tbl = kzalloc(sizeof(*mpriv->ch_tbl), GFP_KERNEL);
+	if (!mpriv->ch_tbl) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	mdw_flw_debug("create cmd history done\n");
+
+out:
+	return ret;
+}
+
+void mdw_cmd_history_init(struct mdw_device *mdev)
+{
+	mdev->heap.data = mdev->predict_cmd_ts;
+	mdev->heap.nr = 0;
+	mdev->heap.size = ARRAY_SIZE(mdev->predict_cmd_ts);
+}
+
+void mdw_cmd_history_deinit(struct mdw_device *mdev)
+{
+}
+
+void mdw_cmd_history_tbl_delete(struct mdw_fpriv *mpriv)
+{
+	kfree(mpriv->ch_tbl->h_sc_einfo);
+	kfree(mpriv->ch_tbl);
+}
+
+static uint64_t mdw_cmd_iptime_avg(uint64_t avg_iptime, uint64_t new_iptime, uint64_t cmd_cnt)
+{
+	uint64_t iptime = 0;
+
+	iptime = ((avg_iptime * (cmd_cnt-1)) + new_iptime) / cmd_cnt;
+
+	mdw_cmd_debug("avg iptime(%llu)", iptime);
+
+	return iptime;
+}
+
+static uint64_t mdw_cmd_period_avg(uint64_t old_period, uint64_t new_period)
+{
+	uint64_t period = 0;
+
+	period = (old_period + new_period) / 2;
+
+	return period;
+}
+
+static bool mdw_cmd_iptime_check(uint64_t h_iptime, uint64_t new_iptime)
+{
+	uint64_t interval_th = 0;
+
+	if (h_iptime == 0)
+		goto out;
+
+	interval_th = h_iptime * MDW_IPTIME_TOLERANCE_PCT;
+	if (abs(new_iptime - h_iptime) < interval_th)
+		return true;
+
+out:
+	return false;
+}
+
+static bool mdw_cmd_period_check(uint64_t old_period, uint64_t new_period)
+{
+	uint64_t interval_th = 0;
+
+	interval_th = old_period * MDW_PERIOD_TOLERANCE_PCT;
+	if (abs(new_period - old_period) < interval_th)
+		return true;
+
+	return false;
+}
+
+//--------------------------------------------
+
+static void mdw_swap_uint64(void *lhs, void *rhs)
+{
+	uint64_t temp = *(uint64_t *)lhs;
+
+	*(uint64_t *)lhs = *(uint64_t *)rhs;
+	*(uint64_t *)rhs = temp;
+}
+
+static bool mdw_less_than(const void *lhs, const void *rhs)
+{
+	return *(uint64_t *)lhs < *(uint64_t *)rhs;
+}
+
+static const struct min_heap_callbacks mdw_min_heap_funcs = {
+	.elem_size = sizeof(uint64_t),
+	.less = mdw_less_than,
+	.swp = mdw_swap_uint64,
+};
+
+//--------------------------------------------
+
+
+static void mdw_cmd_history_check_interval(struct mdw_cmd_history_tbl *ch_tbl,
+	struct mdw_cmd *c)
+{
+	uint64_t interval = 0;
+
+	/* no history cmd */
+	if (!ch_tbl->h_end_ts)
+		return;
+
+	/* cmd overlap case */
+	if (c->start_ts <= ch_tbl->h_end_ts) {
+		ch_tbl->h_period = 0;
+		ch_tbl->period_cnt = 0;
+		return;
+	}
+
+	interval = (c->start_ts - ch_tbl->h_end_ts);
+
+	/* initial h_period */
+	if (!ch_tbl->h_period) {
+		mdw_cmd_debug("init period_ts(%llu) interval(%llu)\n",
+				ch_tbl->h_period, interval);
+		ch_tbl->h_period = interval;
+		ch_tbl->period_cnt++;
+		return;
+	}
+
+	/* check interval time and cal h_period */
+	if (mdw_cmd_period_check(ch_tbl->h_period, interval)) {
+		mdw_cmd_debug("period h_period_ts(%llu) interval(%llu)\n",
+				ch_tbl->h_period, interval);
+		ch_tbl->h_period =
+				 mdw_cmd_period_avg(ch_tbl->h_period, interval);
+		if (ch_tbl->period_cnt < MDW_NUM_HISTORY)
+			ch_tbl->period_cnt++;
+	} else {
+		mdw_cmd_debug("no period h_period_ts(%llu) interval(%llu)\n",
+				 ch_tbl->h_period, interval);
+		ch_tbl->h_period = interval;
+		ch_tbl->period_cnt = 1;
+	}
+}
+
+static int mdw_cmd_record(struct mdw_cmd *c)
+{
+	struct mdw_cmd_history_tbl *ch_tbl = NULL;
+	struct mdw_device *mdev = c->mpriv->mdev;
+	struct mdw_subcmd_exec_info *sc_einfo = NULL;
+	int i = 0, ret = -EINVAL;
+	uint32_t h_iptime = 0, c_iptime = 0;
+	uint64_t predict_start_ts = 0;
+
+	/* check history table */
+	ch_tbl = c->mpriv->ch_tbl;
+	if (!ch_tbl)
+		goto out;
+
+	/* initial: alloc subcmd histoy */
+	if (!ch_tbl->h_sc_einfo)
+		ch_tbl->h_sc_einfo =
+			 kcalloc(c->num_subcmds, sizeof(*ch_tbl->h_sc_einfo), GFP_KERNEL);
+
+	if (!ch_tbl->h_sc_einfo) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	/* Setup subcmd history */
+	sc_einfo = &c->einfos->sc;
+	if (!sc_einfo)
+		goto out;
+
+	/* inc cmd counter */
+	ch_tbl->cmd_cnt++;
+
+	/* calculate avg ip_time */
+	for (i = 0; i < c->num_subcmds; i++) {
+		h_iptime = ch_tbl->h_sc_einfo[i].ip_time;
+		c_iptime = sc_einfo[i].ip_time;
+
+		if (mdw_cmd_iptime_check(h_iptime, c_iptime)) {
+			ch_tbl->h_sc_einfo[i].ip_time =
+				mdw_cmd_iptime_avg(h_iptime, c_iptime, ch_tbl->cmd_cnt);
+		} else {
+			ch_tbl->h_sc_einfo[i].ip_time = c_iptime;
+			ch_tbl->cmd_cnt = 1;
+		}
+	}
+
+	/* calculate interval time */
+	mdw_cmd_history_check_interval(ch_tbl, c);
+
+	/* calculate predict cmd_start_ts and push to min heap */
+	if (ch_tbl->period_cnt >= MDW_NUM_HISTORY) {
+		predict_start_ts = c->end_ts + ch_tbl->h_period;
+		min_heap_push(&mdev->heap, &predict_start_ts, &mdw_min_heap_funcs);
+		mdw_cmd_debug("predict_start_ts(%llu) nr(%d)",
+				 mdev->predict_cmd_ts[0], mdev->heap.nr);
+	}
+
+	/* record cmd end_ts */
+	ch_tbl->h_end_ts = c->end_ts;
+	ret = 0;
+
+out:
+	return ret;
+}
+
+static void mdw_cmd_history_reset(struct mdw_cmd *c)
+{
+	struct mdw_device *mdev = c->mpriv->mdev;
+	int i = 0;
+
+	/* reset min heap */
+	mdev->heap.nr = 0;
+	for (i = 0; i < MDW_NUM_PREDICT_CMD; i++)
+		mdev->predict_cmd_ts[i] = 0;
+}
+
+static bool mdw_cmd_is_perf_mode(struct mdw_cmd *c)
+{
+	/* check cmd mode */
+	if (c->power_plcy == MDW_POWERPOLICY_PERFORMANCE) {
+		mdw_flw_debug("cmd is performace policy\n");
+		/* reset history */
+		mdw_cmd_history_reset(c);
+		return true;
+	}
+	return false;
+}
+
+static uint64_t mdw_cmd_get_predict(struct mdw_cmd *c)
+{
+	struct mdw_device *mdev = c->mpriv->mdev;
+	uint64_t i = 0, predict_start_ts = 0;
+
+	for (i = 0; i < mdev->heap.nr; i++) {
+		predict_start_ts = mdev->predict_cmd_ts[0];
+		if (c->end_ts >= predict_start_ts) {
+			mdw_flw_debug("predict cmd start_ts is invalid\n");
+			min_heap_pop(&mdev->heap, &mdw_min_heap_funcs);
+			predict_start_ts = 0;
+			continue;
+		} else {
+			mdw_flw_debug("predict cmd start_ts is valid\n");
+			break;
+		}
+	}
+
+	return predict_start_ts;
+}
+
+static bool mdw_cmd_predict(struct mdw_cmd *c)
+{
+	struct mdw_device *mdev = c->mpriv->mdev;
+	uint64_t predict_idle = 0, predict_start_ts = 0;
+	int cmd_running = 0;
+	bool ret = false;  // dtime management
+
+	/* check predict cmd exist */
+	if (!mdev->heap.nr) {
+		mdw_flw_debug("no enough history\n");
+		goto out;
+	}
+
+	/* check heap predict start_ts with cmd */
+	predict_start_ts = mdw_cmd_get_predict(c);
+
+	if (predict_start_ts == 0) {
+		mdw_flw_debug("no valid predict cmd in heap\n");
+		goto out;
+	}
+
+	/* check predict idle time */
+	predict_idle = predict_start_ts - c->end_ts;
+	if (predict_idle > MDW_POWER_GAIN_TH) {
+		cmd_running  = atomic_read(&mdev->cmd_running);
+		if (cmd_running) {
+			mdw_flw_debug("Disable fast power off\n");
+		} else {
+			mdw_flw_debug("Maybe enable fast power off\n");
+			ret = true; // need check dtime setting
+		}
+	}
+
+out:
+	return ret;
+}
+
 static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 {
 	struct dma_fence *f = &c->fence->base_fence;
 	struct mdw_fpriv *mpriv = c->mpriv;
+	struct mdw_device *mdev = c->mpriv->mdev;
+	bool need_dtime_check = false;
 
 	mdw_trace_begin("apumdw:cmd_complete|cmd:0x%llx/0x%llx", c->uid, c->kid);
 	mutex_lock(&c->mtx);
 
 	c->end_ts = sched_clock();
+	atomic_dec(&mdev->cmd_running);
 	c->einfos->c.total_us = (c->end_ts - c->start_ts) / 1000;
 	mdw_flw_debug("s(0x%llx) c(%s/0x%llx/0x%llx/0x%llx) ret(%d) sc_rets(0x%llx) complete, pid(%d/%d)(%d)\n",
 		(uint64_t)mpriv, c->comm, c->uid, c->kid, c->rvid,
@@ -843,6 +1142,18 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 	}
 	dma_fence_put(f);
 	atomic_dec(&mpriv->active_cmds);
+
+	/* check cmd mode */
+	if (!mdw_cmd_is_perf_mode(c)) {
+		/* cmd record */
+		ret = mdw_cmd_record(c);
+		if (ret)
+			mdw_drv_err("record cmd fail(%d)\n", ret);
+		else
+			need_dtime_check = mdw_cmd_predict(c);
+	}
+
+	/* Todo: check dtime setting and implement dtime management */
 	mutex_unlock(&c->mtx);
 
 	/* check mpriv to clean cmd */

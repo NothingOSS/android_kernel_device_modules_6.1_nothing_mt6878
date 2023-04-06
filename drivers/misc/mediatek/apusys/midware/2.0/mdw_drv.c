@@ -76,7 +76,7 @@ static int mdw_drv_open(struct inode *inode, struct file *filp)
 		ret = mdw_dev->dev_funcs->sw_init(mdw_dev);
 		if (ret) {
 			mdw_drv_err("mdw sw init fail(%d)\n", ret);
-			goto out;
+			goto delete_mpriv;
 		}
 		atomic_inc(&g_inited);
 	}
@@ -89,11 +89,21 @@ static int mdw_drv_open(struct inode *inode, struct file *filp)
 		MDW_MEM_TYPE_MAIN, MDW_MEM_POOL_CHUNK_SIZE,
 		MDW_DEFAULT_ALIGN, F_MDW_MEM_32BIT);
 	if (ret)
-		goto out;
+		goto delete_mpriv;
+
+	ret = mdw_cmd_history_tbl_create(mpriv);
+	if (ret)
+		goto delete_mem_pool;
 
 	mdw_dev_session_create(mpriv);
 	mdw_flw_debug("mpriv(0x%lx)\n", (unsigned long)mpriv);
+	goto out;
 
+delete_mem_pool:
+	mdw_mem_pool_destroy(&mpriv->cmd_buf_pool);
+delete_mpriv:
+	kfree(mpriv);
+	mpriv = NULL;
 out:
 	return ret;
 }
@@ -153,6 +163,7 @@ static int mdw_platform_probe(struct platform_device *pdev)
 	mdev->misc_dev = &mdw_misc_dev;
 	mdw_dev = mdev;
 	platform_set_drvdata(pdev, mdev);
+	atomic_set(&mdev->cmd_running, 0);
 
 	ret = mdw_mem_init(mdev);
 	if (ret)
@@ -167,6 +178,8 @@ static int mdw_platform_probe(struct platform_device *pdev)
 	ret = mdw_dev_init(mdev);
 	if (ret)
 		goto deinit_dbg;
+
+	mdw_cmd_history_init(mdev);
 
 	pr_info("%s +\n", __func__);
 
@@ -190,6 +203,7 @@ static int mdw_platform_remove(struct platform_device *pdev)
 
 	mdev->dev_funcs->sw_deinit(mdev);
 	mdw_dev_deinit(mdev);
+	mdw_cmd_history_deinit(mdev);
 	mdw_dbg_deinit();
 	mdw_sysfs_deinit(mdev);
 	mdw_mem_deinit(mdev);
@@ -258,6 +272,8 @@ static int mdw_rpmsg_probe(struct rpmsg_device *rpdev)
 	if (ret)
 		goto deinit_dbg;
 
+	mdw_cmd_history_init(mdev);
+
 	pr_info("%s -\n", __func__);
 
 	goto out;
@@ -280,6 +296,7 @@ static void mdw_rpmsg_remove(struct rpmsg_device *rpdev)
 
 	mdev->dev_funcs->sw_deinit(mdev);
 	mdw_dev_deinit(mdev);
+	mdw_cmd_history_deinit(mdev);
 	mdw_dbg_deinit();
 	mdw_sysfs_deinit(mdev);
 	mdw_mem_deinit(mdev);
