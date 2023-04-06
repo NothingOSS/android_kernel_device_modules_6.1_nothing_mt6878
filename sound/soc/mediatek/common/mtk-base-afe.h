@@ -222,6 +222,9 @@ struct mtk_base_afe {
 		    int channel, unsigned long hwoff,
 		    void *buf, unsigned long bytes,
 		    mtk_sp_copy_f sp_copy);
+
+	/* Receive event from usb offload */
+	struct notifier_block usb_offload_notifier;
 };
 
 struct mtk_base_afe_memif {

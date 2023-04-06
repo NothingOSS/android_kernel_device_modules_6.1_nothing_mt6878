@@ -24,6 +24,7 @@
 #include "../common/mtk-sp-pcm-ops.h"
 #include "../common/mtk-sram-manager.h"
 #include "../common/mtk-mmap-ion.h"
+#include "../common/mtk-usb-offload-ops.h"
 
 #include "mt6985-afe-cm.h"
 #include "mt6985-afe-common.h"
@@ -4234,6 +4235,60 @@ static int mt6985_afe_pcm_copy(struct snd_pcm_substream *substream,
 	return ret;
 }
 
+static int mt6985_usb_offload_event_receive(struct notifier_block *this,
+					    unsigned long event, void *ptr)
+{
+	struct mtk_base_afe *afe = container_of(this, struct mtk_base_afe, usb_offload_notifier);
+	struct mtk_audio_usb_mem *umem = NULL;
+	int ret = 0;
+
+	if (afe)
+		dev_info(afe->dev, "%s() afe = %p\n", __func__, afe);
+	else
+		return -EINVAL;
+
+
+	dev_info(afe->dev, "%s() event[%lu]\n", __func__, event);
+
+	switch (event) {
+	case EVENT_PM_AFE_SRAM_ON:
+		pm_runtime_get_sync(afe->dev);
+	break;
+	case EVENT_PM_AFE_SRAM_OFF:
+		pm_runtime_put(afe->dev);
+	break;
+	case EVENT_AFE_SRAM_ALLOCATE:
+	if (ptr) {
+		umem = (struct mtk_audio_usb_mem *)ptr;
+
+		ret = mtk_audio_sram_allocate(afe->sram,
+					    &umem->phys_addr,
+					    (unsigned char **)&umem->virt_addr,
+					    umem->size,
+					    ptr,
+					    SNDRV_PCM_FORMAT_S24,
+					    true);
+		if (ret == 0)
+			umem->sram_inited = true;
+	}
+	break;
+	case EVENT_AFE_SRAM_FREE:
+	if (ptr) {
+		umem = (struct mtk_audio_usb_mem *)ptr;
+
+		if (umem->sram_inited) {
+			ret = mtk_audio_sram_free(afe->sram, ptr);
+			umem->sram_inited = false;
+		}
+	}
+	break;
+	default:
+	break;
+	}
+
+	return ret;
+}
+
 static int mt6985_set_memif_sram_mode(struct device *dev,
 				      enum mtk_audio_sram_mode sram_mode)
 {
@@ -8224,6 +8279,12 @@ static int mt6985_afe_pcm_dev_probe(struct platform_device *pdev)
 					   S_IFREG | 0444, NULL,
 					   afe, &mt6985_debugfs_ops);
 #endif
+	/* usb offload notifier */
+	afe->usb_offload_notifier.notifier_call = mt6985_usb_offload_event_receive;
+	ret = mtk_audio_usb_offload_register_notify(&afe->usb_offload_notifier);
+	if (ret)
+		dev_info(dev, "Unable to register usb offload notifier: %d\n", ret);
+
 	/* register component */
 	ret = devm_snd_soc_register_component(&pdev->dev,
 					      &mt6985_afe_component,
@@ -8271,6 +8332,9 @@ static int mt6985_afe_pcm_dev_remove(struct platform_device *pdev)
 	pm_runtime_disable(&pdev->dev);
 	if (!pm_runtime_status_suspended(&pdev->dev))
 		mt6985_afe_runtime_suspend(&pdev->dev);
+
+	/* usb offload notifier */
+	mtk_audio_usb_offload_unregister_notify(&afe->usb_offload_notifier);
 
 	/* disable afe clock */
 	mt6985_afe_disable_clock(afe);
