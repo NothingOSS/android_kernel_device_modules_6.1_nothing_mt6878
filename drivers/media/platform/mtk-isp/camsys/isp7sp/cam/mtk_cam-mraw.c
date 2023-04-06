@@ -187,6 +187,24 @@ static unsigned int mtk_cam_mraw_xsize_cal(unsigned int length)
 	return length * 16 / 8;
 }
 
+static unsigned int mtk_cam_mraw_dbg_xsize_cal(unsigned int length, unsigned int imgo_fmt)
+{
+	switch (imgo_fmt) {
+	case MTKCAM_IPI_IMG_FMT_BAYER8:
+		return length * 8 / 8;
+	case MTKCAM_IPI_IMG_FMT_BAYER10:
+		return length * 10 / 8;
+	case MTKCAM_IPI_IMG_FMT_BAYER12:
+		return length * 12 / 8;
+	case MTKCAM_IPI_IMG_FMT_BAYER14:
+		return length * 14 / 8;
+	default:
+		break;
+	}
+
+	return length * 16 / 8;
+}
+
 static unsigned int mtk_cam_mraw_xsize_cal_cpio(unsigned int length)
 {
 	return (length + 7) / 8;
@@ -308,22 +326,37 @@ static void mtk_cam_mraw_set_interleving_fmt(
 
 static void mtk_cam_mraw_set_mraw_dmao_info(
 	struct mtk_cam_device *cam, unsigned int pipe_id,
-	struct dma_info *info)
+	struct dma_info *info, unsigned int imgo_fmt)
 {
-	unsigned int width_mbn = 0, height_mbn = 0;
+	unsigned int width_mbn = 0, height_mbn = 0, height_dbg = 0, width_dbg = 0;
 	unsigned int width_cpi = 0, height_cpi = 0;
 	int i;
 	struct mtk_mraw_pipeline *pipe =
 		&cam->pipelines.mraw[pipe_id - MTKCAM_SUBDEV_MRAW_START];
 
-	mtk_cam_mraw_get_mbn_size(cam, pipe_id, &width_mbn, &height_mbn);
-	mtk_cam_mraw_get_cpi_size(cam, pipe_id, &width_cpi, &height_cpi);
+	struct mraw_stats_cfg_param *param = &pipe->res_config.stats_cfg_param;
+
+	if (param->dbg_en) {
+		mtk_cam_mraw_get_dbg_size(cam, pipe_id, &width_dbg, &height_dbg);
+		mtk_cam_mraw_get_cpi_size(cam, pipe_id, &width_cpi, &height_cpi);
+		mtk_cam_mraw_get_mbn_size(cam, pipe_id, &width_mbn, &height_mbn);
+	} else {
+		mtk_cam_mraw_get_mbn_size(cam, pipe_id, &width_mbn, &height_mbn);
+		mtk_cam_mraw_get_cpi_size(cam, pipe_id, &width_cpi, &height_cpi);
+	}
 
 	/* IMGO */
-	info[imgo_m1].width = mtk_cam_mraw_xsize_cal(width_mbn);
-	info[imgo_m1].height = height_mbn;
-	info[imgo_m1].xsize = mtk_cam_mraw_xsize_cal(width_mbn);
-	info[imgo_m1].stride = info[imgo_m1].xsize;
+	if (param->dbg_en) {
+		info[imgo_m1].width = mtk_cam_mraw_dbg_xsize_cal(width_dbg, imgo_fmt);
+		info[imgo_m1].height = height_dbg;
+		info[imgo_m1].xsize = mtk_cam_mraw_dbg_xsize_cal(width_dbg, imgo_fmt);
+		info[imgo_m1].stride = info[imgo_m1].xsize;
+	} else {
+		info[imgo_m1].width = mtk_cam_mraw_xsize_cal(width_mbn);
+		info[imgo_m1].height = height_mbn;
+		info[imgo_m1].xsize = mtk_cam_mraw_xsize_cal(width_mbn);
+		info[imgo_m1].stride = info[imgo_m1].xsize;
+	}
 
 	/* IMGBO */
 	info[imgbo_m1].width = mtk_cam_mraw_xsize_cal(width_mbn);
@@ -367,11 +400,12 @@ void mtk_cam_mraw_copy_user_input_param(struct mtk_cam_device *cam,
 		mraw_pipe->res_config.tg_crop.s.h < param->crop_height)
 		dev_info(cam->dev, "%s tg size smaller than crop size", __func__);
 
-	dev_dbg(cam->dev, "%s:enable:(%d,%d,%d) crop:(%d,%d) mqe:%d mbn:0x%x_%x_%x_%x_%x_%x_%x_%x cpi:0x%x_%x_%x_%x_%x_%x_%x_%x\n",
+	dev_dbg(cam->dev, "%s:enable:(%d,%d,%d,%d) crop:(%d,%d) mqe:%d mbn:0x%x_%x_%x_%x_%x_%x_%x_%x cpi:0x%x_%x_%x_%x_%x_%x_%x_%x sel:0x%x_%x\n",
 		__func__,
 		param->mqe_en,
 		param->mobc_en,
 		param->plsc_en,
+		param->dbg_en,
 		param->crop_width,
 		param->crop_height,
 		param->mqe_mode,
@@ -390,7 +424,9 @@ void mtk_cam_mraw_copy_user_input_param(struct mtk_cam_device *cam,
 		param->cpi_spar_pow,
 		param->cpi_spar_fac,
 		param->cpi_spar_con1,
-		param->cpi_spar_con0);
+		param->cpi_spar_con0,
+		param->img_sel,
+		param->imgo_sel);
 }
 
 static void mtk_cam_mraw_set_frame_param_dmao(
@@ -447,13 +483,14 @@ static void mtk_cam_mraw_set_meta_stats_info(
 }
 
 int mtk_cam_mraw_cal_cfg_info(struct mtk_cam_device *cam,
-	unsigned int pipe_id, struct mtkcam_ipi_mraw_frame_param *mraw_param)
+	unsigned int pipe_id, struct mtkcam_ipi_mraw_frame_param *mraw_param,
+	unsigned int imgo_fmt)
 {
 	struct dma_info info[mraw_dmao_num];
 	struct mtk_mraw_pipeline *pipe =
 		&cam->pipelines.mraw[pipe_id - MTKCAM_SUBDEV_MRAW_START];
 
-	mtk_cam_mraw_set_mraw_dmao_info(cam, pipe_id, info);
+	mtk_cam_mraw_set_mraw_dmao_info(cam, pipe_id, info, imgo_fmt);
 	mtk_cam_mraw_set_frame_param_dmao(cam, mraw_param,
 		info, pipe_id,
 		pipe->res_config.daddr[MTKCAM_IPI_MRAW_META_STATS_0
@@ -559,6 +596,30 @@ void mtk_cam_mraw_get_cpi_size(struct mtk_cam_device *cam, unsigned int pipe_id,
 		dev_info(cam->engines.mraw_devs[pipe_id - MTKCAM_SUBDEV_MRAW_START],
 			"%s:CPI's dir %d %s fail",
 			__func__, param->cpi_dir, "unknown idx");
+		return;
+	}
+}
+
+void mtk_cam_mraw_get_dbg_size(struct mtk_cam_device *cam, unsigned int pipe_id,
+	unsigned int *width, unsigned int *height)
+{
+	struct mtk_mraw_pipeline *pipe =
+		&cam->pipelines.mraw[pipe_id - MTKCAM_SUBDEV_MRAW_START];
+	struct mraw_stats_cfg_param *param = &pipe->res_config.stats_cfg_param;
+
+	switch (param->img_sel) {
+	case 0:  // CRP output
+		*width = param->crop_width;
+		*height = param->crop_height;
+		break;
+	case 1:  // MQE output
+	case 2:  // PLSC output
+	case 3:  // SGG output
+		mtk_cam_mraw_get_mqe_size(cam, pipe_id, width, height);
+		break;
+	default:
+		dev_info(cam->dev, "%s:DBG's img_sel %d %s fail",
+			__func__, param->img_sel, "unknown idx");
 		return;
 	}
 }

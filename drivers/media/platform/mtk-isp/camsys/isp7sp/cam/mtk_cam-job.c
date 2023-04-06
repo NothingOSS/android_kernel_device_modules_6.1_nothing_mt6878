@@ -3755,8 +3755,11 @@ static int update_mraw_meta_buf_to_ipi_frame(
 	}
 
 	if (mraw_pipe->res_config.enque_num == MTK_MRAW_TOTAL_NODES) {
+		struct mtk_mraw_sink_data *sink =
+			&helper->job->req->mraw_data[ctx->mraw_subdev_idx[param_idx]].sink;
 		mtk_cam_mraw_cal_cfg_info(ctx->cam,
-			node->uid.pipe_id, &fp->mraw_param[param_idx]);
+			node->uid.pipe_id, &fp->mraw_param[param_idx],
+			sensor_mbus_to_ipi_fmt(sink->mbus_code));
 		mraw_pipe->res_config.enque_num = 0;
 	}
 EXIT:
