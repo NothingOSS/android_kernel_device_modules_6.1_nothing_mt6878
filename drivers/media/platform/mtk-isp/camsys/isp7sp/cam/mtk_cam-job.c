@@ -1425,7 +1425,8 @@ static int job_print_warn_desc(struct mtk_cam_job *job, const char *desc,
 			job->req_seq, job->frame_seq_no, desc);
 }
 
-static void trigger_error_dump(struct mtk_cam_job *job, const char *desc)
+static void trigger_error_dump(struct mtk_cam_job *job,
+			       const char *desc)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	char warn_desc[64];
@@ -1460,7 +1461,7 @@ static void dump_job_info(struct mtk_cam_job *job)
 		 atomic_long_read(&job->afo_done));
 }
 
-static void job_dump(struct mtk_cam_job *job, int seq_no)
+static void job_dump(struct mtk_cam_job *job, int seq_no, const char *desc)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct device *dev = ctx->cam->dev;
@@ -1486,10 +1487,11 @@ static void job_dump(struct mtk_cam_job *job, int seq_no)
 	if (isp_in_done_state(isp_state))
 		return;
 
-	trigger_error_dump(job, MSG_DEQUE_ERROR);
+	trigger_error_dump(job, desc);
 }
 
-static void job_dump_mstream(struct mtk_cam_job *job, int seq_no)
+static void job_dump_mstream(struct mtk_cam_job *job,
+				int seq_no, const char *desc)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct device *dev = ctx->cam->dev;
@@ -1516,7 +1518,7 @@ static void job_dump_mstream(struct mtk_cam_job *job, int seq_no)
 	if (isp_in_done_state(isp_state))
 		return;
 
-	trigger_error_dump(job, MSG_DEQUE_ERROR);
+	trigger_error_dump(job, desc);
 }
 
 static void normal_dump_if_enable(struct mtk_cam_job *job)

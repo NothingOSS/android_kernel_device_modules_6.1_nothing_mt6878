@@ -1380,9 +1380,11 @@ struct watchdog_debug_work {
 	struct work_struct work;
 	struct mtk_cam_watchdog *wd;
 	bool seninf_check_timeout;
+	const char *desc;
 };
 
-static void mtk_cam_ctrl_dump_first_job(struct mtk_cam_ctrl *ctrl, int *seq)
+static void mtk_cam_ctrl_dump_first_job(struct mtk_cam_ctrl *ctrl,
+			int *seq, const char *desc)
 {
 	struct mtk_cam_job *job;
 
@@ -1395,7 +1397,7 @@ static void mtk_cam_ctrl_dump_first_job(struct mtk_cam_ctrl *ctrl, int *seq)
 		else
 			seq_no = ctrl_fetch_inner(ctrl);
 
-		call_jobop(job, dump, seq_no);
+		call_jobop(job, dump, seq_no, desc);
 		mtk_cam_job_put(job);
 	} else
 		pr_info("%s: no job to dump", __func__);
@@ -1488,7 +1490,7 @@ static void mtk_cam_watchdog_job_worker(struct work_struct *work)
 	if (!ctx || atomic_read(&ctrl->stopped))
 		goto EXIT_WORK;
 
-	mtk_cam_ctrl_dump_first_job(ctrl, NULL);
+	mtk_cam_ctrl_dump_first_job(ctrl, NULL, dbg_work->desc);
 
 EXIT_WORK:
 	complete(&wd->work_complete);
@@ -1498,6 +1500,7 @@ FREE_WORK:
 
 static int watchdog_schedule_debug_work(struct mtk_cam_watchdog *wd,
 					void (*func)(struct work_struct *work),
+					const char *desc,
 					bool seninf_check_timeout)
 {
 	struct watchdog_debug_work *work;
@@ -1509,6 +1512,7 @@ static int watchdog_schedule_debug_work(struct mtk_cam_watchdog *wd,
 	work->wd = wd;
 	INIT_WORK(&work->work, func);
 	work->seninf_check_timeout = seninf_check_timeout;
+	work->desc = desc;
 
 	schedule_work(&work->work);
 	return 0;
@@ -1516,15 +1520,17 @@ static int watchdog_schedule_debug_work(struct mtk_cam_watchdog *wd,
 
 
 static int mtk_cam_watchdog_schedule_sensor_reset(struct mtk_cam_watchdog *wd,
-						  bool check_timeout)
+						 const char *desc, bool check_timeout)
 {
 	return watchdog_schedule_debug_work(wd, mtk_cam_watchdog_sensor_worker,
-					    check_timeout);
+					     desc, check_timeout);
 }
 
-static int mtk_cam_watchdog_schedule_job_dump(struct mtk_cam_watchdog *wd)
+static int mtk_cam_watchdog_schedule_job_dump(struct mtk_cam_watchdog *wd,
+						  const char *desc)
 {
-	return watchdog_schedule_debug_work(wd, mtk_cam_watchdog_job_worker, 0);
+	return watchdog_schedule_debug_work(wd, mtk_cam_watchdog_job_worker,
+						 desc, 0);
 }
 
 static int try_launch_watchdog_sensor_worker(struct mtk_cam_watchdog *wd,
@@ -1548,7 +1554,7 @@ static int try_launch_watchdog_sensor_worker(struct mtk_cam_watchdog *wd,
 
 	dev_info(ctx->cam->dev, "schedule work for sensor_reset: ctx-%d\n",
 		 ctx->stream_id);
-	mtk_cam_watchdog_schedule_sensor_reset(wd, check_timeout);
+	mtk_cam_watchdog_schedule_sensor_reset(wd, MSG_VSYNC_TIMEOUT, check_timeout);
 	return 0;
 
 SKIP_SCHEDULE_WORK:
@@ -1635,7 +1641,7 @@ static int mtk_cam_watchdog_monitor_job(struct mtk_cam_watchdog *wd)
 	/* job is not updated */
 	dev_info(ctx->cam->dev, "schedule work for job_dump: ctx-%d req %d\n",
 		 ctx->stream_id, wd->req_seq);
-	mtk_cam_watchdog_schedule_job_dump(wd);
+	mtk_cam_watchdog_schedule_job_dump(wd, MSG_DEQUE_ERROR);
 	return -1;
 
 SKIP_SCHEDULE_WORK:
@@ -1798,10 +1804,9 @@ int mtk_cam_ctrl_reset_sensor(struct mtk_cam_device *cam,
 
 int mtk_cam_ctrl_dump_request(struct mtk_cam_device *cam,
 			      int engine_type, unsigned int engine_id,
-			      int inner_cookie)
+			      int inner_cookie, const char *desc)
 {
 	unsigned int ctx_id = ctx_from_fh_cookie(inner_cookie);
-	int seq = seq_from_fh_cookie(inner_cookie);
 	struct mtk_cam_ctrl *ctrl = &cam->ctxs[ctx_id].cam_ctrl;
 
 	dev_info(cam->dev, "%s: engine %d id %d seq 0x%x\n",
@@ -1810,7 +1815,7 @@ int mtk_cam_ctrl_dump_request(struct mtk_cam_device *cam,
 	if (mtk_cam_ctrl_get(ctrl))
 		return 0;
 
-	mtk_cam_ctrl_dump_first_job(ctrl, &seq);
+	mtk_cam_watchdog_schedule_job_dump(&ctrl->watchdog, desc);
 
 	mtk_cam_ctrl_put(ctrl);
 	return 0;

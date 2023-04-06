@@ -65,7 +65,7 @@ struct engine_callback {
 			    int inner_cookie);
 	int (*dump_request)(struct mtk_cam_device *cam,
 			    int engine_type, unsigned int engine_id,
-			    int inner_cookie);
+			    int inner_cookie, const char *desc);
 };
 
 #define do_engine_callback(cb, func, ...) \

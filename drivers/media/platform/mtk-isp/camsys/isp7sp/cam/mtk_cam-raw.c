@@ -20,6 +20,7 @@
 #include <soc/mediatek/mmdvfs_v3.h>
 
 #include "mtk_cam.h"
+#include "mtk_cam-debug.h"
 #include "mtk_cam-dvfs_qos.h"
 #include "mtk_cam-raw.h"
 #include "mtk_cam-raw_debug.h"
@@ -69,6 +70,16 @@ static struct mtk_yuv_device *get_yuv_dev(struct mtk_raw_device *raw_dev)
 	struct mtk_cam_device *cam = raw_dev->cam;
 
 	dev = cam->engines.yuv_devs[raw_dev->id];
+
+	return dev_get_drvdata(dev);
+}
+
+static struct mtk_raw_device *get_raw_dev(struct mtk_yuv_device *yuv_dev)
+{
+	struct device *dev;
+	struct mtk_cam_device *cam = yuv_dev->cam;
+
+	dev = cam->engines.raw_devs[yuv_dev->id];
 
 	return dev_get_drvdata(dev);
 }
@@ -1085,7 +1096,7 @@ static void raw_handle_tg_grab_err(struct mtk_raw_device *raw_dev,
 {
 	int cnt;
 
-	if (atomic_read(&raw_dev->vf_en)) {
+	if (!atomic_read(&raw_dev->vf_en)) {
 		dev_info(raw_dev->dev, "%s: skipped since vf is off\n", __func__);
 		return;
 	}
@@ -1105,7 +1116,7 @@ static void raw_handle_tg_grab_err(struct mtk_raw_device *raw_dev,
 	else if (cnt == MAX_RETRY_SENSOR_CNT)
 		do_engine_callback(raw_dev->engine_cb, dump_request,
 				   raw_dev->cam, CAMSYS_ENGINE_RAW, raw_dev->id,
-				   fh_cookie);
+				   fh_cookie, MSG_TG_GRAB_ERROR);
 }
 
 static void raw_handle_dma_err(struct mtk_raw_device *raw_dev,
@@ -1140,7 +1151,7 @@ static void raw_handle_tg_overrun_err(struct mtk_raw_device *raw_dev,
 	else if (cnt == MAX_RETRY_SENSOR_CNT)
 		do_engine_callback(raw_dev->engine_cb, dump_request,
 				   raw_dev->cam, CAMSYS_ENGINE_RAW, raw_dev->id,
-				   fh_cookie);
+				   fh_cookie, MSG_TG_OVERRUN);
 }
 
 static int mtk_raw_pm_suspend_prepare(struct mtk_raw_device *dev)
@@ -1544,6 +1555,7 @@ static int mtk_yuv_component_bind(struct device *dev, struct device *master,
 	struct mtk_cam_device *cam_dev = data;
 
 	dev_info(dev, "%s: id=%d\n", __func__, drvdata->id);
+	drvdata->cam = cam_dev;
 	return mtk_cam_set_dev_raw(cam_dev->dev, drvdata->id, NULL, dev, NULL);
 }
 
@@ -1927,67 +1939,61 @@ void print_dma_settings(void __iomem *base, u32 dmao_base)
 		readl_relaxed(base + dmao_base + REG_STRIDE));
 }
 
+#define CAMSYS_DMA_GROUP_SIZE 4
 int mtk_raw_translation_fault_cb(int port, dma_addr_t mva, void *data)
 {
 	struct mtk_raw_device *raw_dev = (struct mtk_raw_device *)data;
+	unsigned int fh_cookie =
+			readl_relaxed(raw_dev->base_inner + REG_FRAME_SEQ_NUM);
 	unsigned int m4u_port = MTK_M4U_TO_PORT(port);
-	unsigned int group_size = GET_PLAT_HW(camsys_dma_group_size);
-	u32 *group = kzalloc(sizeof(u32)*group_size, GFP_KERNEL);
+	u32 group[CAMSYS_DMA_GROUP_SIZE];
 	int i;
-
-	if (!group) {
-		dev_info(raw_dev->dev, "%s: failed to kzalloc for goup_size %d\n",
-			 __func__, group_size);
-		return 0;
-	}
 
 	if (m4u_port == 0) { /* cq info */
 		print_cq_settings(raw_dev->base_inner);
-
-		goto FREE_GROUP;
 	}
 
 	if (CALL_PLAT_HW(query_raw_dma_group, m4u_port, group))
-		goto FREE_GROUP;
+		return 0;
 
-	for (i = 0; i < group_size; i++) {
+	for (i = 0; i < CAMSYS_DMA_GROUP_SIZE; i++) {
 		if (group[i] == 0x0)
 			continue;
 
 		print_dma_settings(raw_dev->base_inner, group[i]);
 	}
 
-FREE_GROUP:
-	kfree(group);
+	do_engine_callback(raw_dev->engine_cb, dump_request,
+		   raw_dev->cam, CAMSYS_ENGINE_RAW, raw_dev->id,
+		   fh_cookie, MSG_M4U_TF);
+
 	return 0;
 }
 
 int mtk_yuv_translation_fault_cb(int port, dma_addr_t mva, void *data)
 {
 	struct mtk_yuv_device *yuv_dev = (struct mtk_yuv_device *)data;
+	struct mtk_raw_device *raw_dev = get_raw_dev(yuv_dev);
+	unsigned int fh_cookie =
+			readl_relaxed(raw_dev->base_inner + REG_FRAME_SEQ_NUM);
 	unsigned int m4u_port = MTK_M4U_TO_PORT(port);
-	unsigned int group_size = GET_PLAT_HW(camsys_dma_group_size);
-	u32 *group = kzalloc(sizeof(u32)*group_size, GFP_KERNEL);
+	u32 group[CAMSYS_DMA_GROUP_SIZE];
 	int i;
 
-	if (!group) {
-		dev_info(yuv_dev->dev, "%s: failed to kzalloc for goup_size %d\n",
-			 __func__, group_size);
-		return 0;
-	}
-
 	if (CALL_PLAT_HW(query_yuv_dma_group, m4u_port, group))
-		goto FREE_GROUP;
+		return 0;
 
-	for (i = 0; i < group_size; i++) {
+	for (i = 0; i < CAMSYS_DMA_GROUP_SIZE; i++) {
 		if (group[i] == 0x0)
 			continue;
 
 		print_dma_settings(yuv_dev->base_inner, group[i]);
 	}
 
-FREE_GROUP:
-	kfree(group);
+	do_engine_callback(raw_dev->engine_cb, dump_request,
+		   raw_dev->cam, CAMSYS_ENGINE_RAW, raw_dev->id,
+		   fh_cookie, MSG_M4U_TF);
+
 	return 0;
 }
 

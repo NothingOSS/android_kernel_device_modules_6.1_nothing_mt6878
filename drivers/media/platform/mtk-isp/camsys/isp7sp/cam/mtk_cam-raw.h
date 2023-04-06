@@ -83,6 +83,7 @@ struct mtk_raw_device {
 
 struct mtk_yuv_device {
 	struct device *dev;
+	struct mtk_cam_device *cam;
 	unsigned int id;
 	int irq;
 	void __iomem *base;

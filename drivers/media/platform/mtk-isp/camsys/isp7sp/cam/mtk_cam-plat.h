@@ -111,10 +111,9 @@ struct plat_v4l2_data {
 struct plat_data_hw {
 	u32 camsys_axi_mux;
 	int cammux_id_raw_start;
-	int camsys_dma_group_size;
 
-	int (*query_raw_dma_group)(int m4u_id, u32 *group);
-	int (*query_yuv_dma_group)(int m4u_id, u32 *group);
+	int (*query_raw_dma_group)(int m4u_id, u32 group[4]);
+	int (*query_yuv_dma_group)(int m4u_id, u32 group[4]);
 };
 
 struct camsys_platform_data {
