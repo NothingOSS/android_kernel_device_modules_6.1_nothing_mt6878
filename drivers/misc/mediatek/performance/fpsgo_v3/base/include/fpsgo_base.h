@@ -14,7 +14,7 @@
 #include <linux/sched/task.h>
 #include <linux/sched.h>
 
-#define MAX_DEP_NUM 50
+#define MAX_DEP_NUM 100
 #define WINDOW 20
 #define RESCUE_TIMER_NUM 5
 #define QUOTA_MAX_SIZE 300
@@ -57,11 +57,7 @@ struct fbt_proc {
 };
 
 struct fbt_frame_info {
-	int target_fps;
-	int mips_diff;
-	long mips;
 	unsigned long long running_time;
-	int count;
 };
 
 struct fbt_loading_info {
@@ -112,6 +108,8 @@ struct fbt_boost_info {
 	int hit_cnt;
 	int deb_cnt;
 	int hit_cluster;
+	struct fbt_frame_info frame_info[WINDOW];
+	int f_iter;
 
 	/* SeparateCap */
 	long *cl_loading;
@@ -119,13 +117,6 @@ struct fbt_boost_info {
 	/* rescue*/
 	struct fbt_proc proc;
 	int cur_stage;
-
-	/* variance control */
-	struct fbt_frame_info frame_info[WINDOW];
-	unsigned int floor;
-	int floor_count;
-	int reset_floor_bound;
-	int f_iter;
 
 	/* filter heavy frames */
 	struct fbt_loading_info filter_loading[FBT_FILTER_MAX_WINDOW];

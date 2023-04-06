@@ -1577,7 +1577,6 @@ static int xgff_get_start_runtime(int rpid, unsigned long long queueid,
 	unsigned long long runtime = 0;
 	struct task_struct *p;
 
-	*count_dep_runtime = 0;
 	if (!dep_runtime || !count_dep_runtime) {
 		ret = -EINVAL;
 		goto out;
@@ -1588,6 +1587,7 @@ static int xgff_get_start_runtime(int rpid, unsigned long long queueid,
 		goto out;
 	}
 
+	*count_dep_runtime = 0;
 	for (i = 0; i < deplist_size; i++) {
 		rcu_read_lock();
 		p = find_task_by_vpid(deplist[i]);
@@ -1660,8 +1660,8 @@ static int _xgff_frame_start(
 
 qudeq_notify_err:
 	xgf_trace("xgff result:%d at rpid:%d cmd:xgff_frame_start", ret, tid);
-	xgf_trace("[XGFF] tid=%d, queueid=%llu, frameid=%llu, rframe=%lu, is_start_dep=%d",
-		tid, queueid, frameid, rframe, is_start_dep);
+	xgf_trace("[XGFF] tid=%d, queueid=%llu, frameid=%llu, is_start_dep=%d",
+		tid, queueid, frameid, is_start_dep);
 
 	mutex_unlock(&xgff_frames_lock);
 
@@ -1720,6 +1720,7 @@ void print_dep(unsigned int deplist_size, unsigned int *deplist)
 	char *dep_str = NULL;
 	char temp[7] = {"\0"};
 	int i = 0;
+	int ret;
 
 	dep_str = kcalloc(deplist_size + 1, 7 * sizeof(char),
 				GFP_KERNEL);
@@ -1727,13 +1728,17 @@ void print_dep(unsigned int deplist_size, unsigned int *deplist)
 		return;
 	for (i = 0; i < deplist_size; i++) {
 		if (strlen(dep_str) == 0)
-			snprintf(temp, sizeof(temp), "%d", deplist[i]);
+			ret = snprintf(temp, sizeof(temp), "%d", deplist[i]);
 		else
-			snprintf(temp, sizeof(temp), ",%d", deplist[i]);
+			ret = snprintf(temp, sizeof(temp), ",%d", deplist[i]);
+
+		if (ret < 0 || ret >= sizeof(temp))
+			goto out;
 
 		if (strlen(dep_str) + strlen(temp) < 256)
 			strncat(dep_str, temp, strlen(temp));
 	}
+out:
 	xgf_trace("[XGFF] EXP_deplist: %s", dep_str);
 	kfree(dep_str);
 }
@@ -1753,7 +1758,7 @@ static int _xgff_frame_end(
 	int iscancel = 0;
 	unsigned long long raw_runtime = 0, raw_runtime_exp = 0;
 	unsigned int newdepsize = 0, deplist_size_exp = 0;
-	unsigned int deplist_exp[XGF_DEP_FRAMES_MAX];
+	unsigned int deplist_exp[XGF_DEP_FRAMES_MAX] = {0};
 
 	mutex_lock(&xgf_main_lock);
 	if (!xgf_is_enable()) {
@@ -1944,6 +1949,25 @@ Reget:
 	fte->state = 0;
 	fte->addr = addr;
 }
+
+/* fake trace event for fpsgo */
+void Test_fake_trace_event(int buffer, int cpu, int event, int data,
+		int note, int state, unsigned long long ts, unsigned long long addr)
+{
+	switch (buffer) {
+	case XGF_BUFFER:
+		xgf_buffer_record_irq_waking_switch(cpu, event, data,
+			note, state, ts);
+		break;
+	case FSTB_BUFFER:
+		fstb_buffer_record_waking_timer(cpu, event, data,
+			note, ts, addr);
+		break;
+	default:
+		break;
+	}
+}
+EXPORT_SYMBOL(Test_fake_trace_event);
 
 static void xgf_irq_handler_entry_tracer(void *ignore,
 					int irqnr,

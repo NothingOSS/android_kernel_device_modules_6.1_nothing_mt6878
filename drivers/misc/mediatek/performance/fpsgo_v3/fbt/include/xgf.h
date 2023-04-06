@@ -30,6 +30,11 @@ enum XGF_EVENT {
 	HRTIMER_EXIT
 };  // need align fpsgo.ko
 
+enum XGF_BUFFER_TYPE {
+	XGF_BUFFER,
+	FSTB_BUFFER
+}; // need to align ktf
+
 struct fpsgo_trace_event {
 	int event;
 	int cpu;
