@@ -2260,7 +2260,7 @@ int ctx_stream_on_seninf_sensor(struct mtk_cam_job *job,
 
 int ctx_stream_off_seninf_sensor(struct mtk_cam_ctx *ctx)
 {
-	int ret, i;
+	int ret = 0, i;
 
 	if (ctx->enable_hsf_raw) {
 		ret = mtk_cam_hsf_uninit(ctx);
@@ -2269,6 +2269,9 @@ int ctx_stream_off_seninf_sensor(struct mtk_cam_ctx *ctx)
 			return -EPERM;
 		}
 	}
+
+	if (!ctx->seninf)
+		return ret;
 
 	/* disable cam mux */
 	for (i = PAD_SRC_RAW0; i < PAD_MAXCNT; i++)
