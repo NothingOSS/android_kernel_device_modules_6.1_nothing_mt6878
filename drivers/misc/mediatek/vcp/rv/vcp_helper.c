@@ -51,8 +51,14 @@
 #include "vcp.h"
 #include "clk-fmeter.h"
 
+/* SMMU related header file */
+#include "mtk-smmu-v3.h"
+
 #if IS_ENABLED(CONFIG_OF_RESERVED_MEM)
 #include <linux/of_reserved_mem.h>
+#include <linux/dma-heap.h>
+#include <uapi/linux/dma-heap.h>
+#include <linux/dma-buf.h>
 #include "vcp_reservedmem_define.h"
 #endif
 
@@ -1704,13 +1710,70 @@ phys_addr_t vcp_get_reserve_mem_size(enum vcp_reserve_mem_id_t id)
 EXPORT_SYMBOL_GPL(vcp_get_reserve_mem_size);
 
 #if VCP_RESERVED_MEM && defined(CONFIG_OF)
-static int vcp_reserve_memory_ioremap(struct platform_device *pdev)
+static int vcp_alloc_iova(struct device *dev, __u32 size, __u64 *start_phys, __u64 *start_virt)
+{
+	struct dma_heap *dma_heap = NULL;
+	struct dma_buf *dbuf = NULL;
+	struct iosys_map map;
+	struct dma_buf_attachment *attach = NULL;
+	struct sg_table *sgt = NULL;
+
+	/* normal iova */
+	dma_heap = dma_heap_find("mtk_mm-uncached");
+
+	if (!dma_heap) {
+		pr_notice("[VCP] cannot get heap\n");
+		return -EPERM;
+	}
+
+	dbuf = dma_heap_buffer_alloc(dma_heap, size,
+		O_RDWR | O_CLOEXEC, DMA_HEAP_VALID_HEAP_FLAGS);
+	if (IS_ERR_OR_NULL(dbuf)) {
+		pr_notice("[VCP] buffer alloc fail\n");
+		return PTR_ERR(dbuf);
+	}
+
+	if (dma_buf_vmap(dbuf, &map)) {
+		pr_notice("[VCP] vmap fail\n");
+		return -ENOMEM;
+	}
+
+	*start_virt = (__u64)map.vaddr;
+
+	attach = dma_buf_attach(dbuf, dev);
+	if (IS_ERR_OR_NULL(attach)) {
+		pr_notice("[VCP] buffer attach fail, return\n");
+		dma_heap_buffer_free(dbuf);
+		return PTR_ERR(attach);
+	}
+
+	sgt = dma_buf_map_attachment(attach, DMA_BIDIRECTIONAL);
+	if (IS_ERR_OR_NULL(sgt)) {
+		pr_notice("[VCP] buffer map failed, detach and return\n");
+		dma_buf_detach(dbuf, attach);
+		dma_heap_buffer_free(dbuf);
+		return PTR_ERR(sgt);
+	}
+
+	*start_phys = (__u64)sg_dma_address(sgt->sgl);
+
+	if (*start_phys == (__u64)NULL || *start_virt == (__u64)NULL) {
+		pr_notice("[VCP] allocate failed, va 0x%llx iova 0x%llx len %d\n",
+			*start_virt, *start_phys, size);
+		return -EPERM;
+	}
+
+	return 0;
+
+}
+
+static int vcp_reserve_memory_ioremap(struct platform_device *pdev, struct device *dma_dev)
 {
 #define MEMORY_TBL_ELEM_NUM (2)
 	unsigned int num = (unsigned int)(sizeof(vcp_reserve_mblock)
 			/ sizeof(vcp_reserve_mblock[0]));
 	enum vcp_reserve_mem_id_t id;
-	phys_addr_t accumlate_memory_size = 0;
+	unsigned int accumlate_memory_size = 0;
 	unsigned int vcp_mem_num = 0;
 	unsigned int i = 0, m_idx = 0, m_size = 0;
 	unsigned int alloc_mem_size = 0;
@@ -1829,19 +1892,27 @@ static int vcp_reserve_memory_ioremap(struct platform_device *pdev)
 		pr_notice("@@@@ reserved: <%d  %d>\n", m_idx, m_size);
 	}
 
-	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
+	if (!dma_dev) {
+		pr_notice("[VCP] memory device is null\n");
+		return -1;
+	}
+
+
+	ret = dma_set_mask_and_coherent(dma_dev, DMA_BIT_MASK(64));
 	if (ret) {
-		dev_info(&pdev->dev, "64-bit DMA enable failed\n");
+		dev_info(dma_dev, "64-bit DMA enable failed\n");
 		return ret;
 	}
-	if (!pdev->dev.dma_parms) {
-		pdev->dev.dma_parms =
-			devm_kzalloc(&pdev->dev, sizeof(*pdev->dev.dma_parms), GFP_KERNEL);
+	if (!dma_dev->dma_parms) {
+		dma_dev->dma_parms =
+			devm_kzalloc(dma_dev,
+			sizeof(*dma_dev->dma_parms), GFP_KERNEL);
 	}
-	if (pdev->dev.dma_parms) {
-		ret = dma_set_max_seg_size(&pdev->dev, (unsigned int)DMA_BIT_MASK(64));
+	if (dma_dev->dma_parms) {
+		ret = dma_set_max_seg_size(dma_dev,
+			(unsigned int)DMA_BIT_MASK(64));
 		if (ret)
-			dev_info(&pdev->dev, "Failed to set DMA segment size\n");
+			dev_info(dma_dev, "Failed to set DMA segment size\n");
 	}
 
 	for (id = 0; id < NUMS_MEM_ID; id++) {
@@ -1862,10 +1933,16 @@ static int vcp_reserve_memory_ioremap(struct platform_device *pdev)
 			else
 				alloc_mem_size = vcp_reserve_mblock[id].size;
 
-			vcp_reserve_mblock[id].start_virt =
-				(__u64)dma_alloc_coherent(&pdev->dev, alloc_mem_size,
-					&vcp_reserve_mblock[id].start_phys,
-					GFP_KERNEL);
+			ret = vcp_alloc_iova(dma_dev,
+				alloc_mem_size,
+				&vcp_reserve_mblock[id].start_phys,
+				&vcp_reserve_mblock[id].start_virt);
+
+			if (ret) {
+				pr_notice("[VCP] alloc iova fail for %d\n", id);
+				return ret;
+			}
+
 			accumlate_memory_size += alloc_mem_size;
 
 			if (vcp_reserve_mblock[id].start_phys < iova_lower)
@@ -2470,6 +2547,7 @@ static int vcp_device_probe(struct platform_device *pdev)
 	const char *core_status = NULL;
 	const char *vcp_hwvoter = NULL;
 	struct device *dev = &pdev->dev;
+	struct device *smmu_dev = NULL;
 	struct device_node *node;
 	const char *clk_name;
 	struct device_link	*link;
@@ -2486,7 +2564,16 @@ static int vcp_device_probe(struct platform_device *pdev)
 		return 0;
 	}
 	// VCP iommu devices
-	vcp_io_devs[vcp_support-1] = dev;
+	if (smmu_v3_enabled()) {
+		pr_info("[VCP] smmu enable\n");
+		smmu_dev = mtk_smmu_get_shared_device(dev);
+		if (smmu_dev)
+			vcp_io_devs[vcp_support-1] = smmu_dev;
+		else
+			pr_info("[VCP] cannot get smmu shared dev\n");
+	} else
+		vcp_io_devs[vcp_support-1] = dev;
+
 	if (vcp_support > 1)
 		return 0;
 
@@ -2713,9 +2800,9 @@ static int vcp_device_probe(struct platform_device *pdev)
 #if VCP_RESERVED_MEM && defined(CONFIG_OF)
 	/*vcp resvered memory*/
 	pr_notice("[VCP] vcp_reserve_memory_ioremap 1\n");
-	ret = vcp_reserve_memory_ioremap(pdev);
+	ret = vcp_reserve_memory_ioremap(pdev, vcp_io_devs[vcp_support-1]);
 	if (ret) {
-		pr_notice("[VCP]vcp_reserve_memory_ioremap failed\n");
+		pr_notice("[VCP]vcp_reserve_memory_ioremap failed ret = %d\n", ret);
 		return ret;
 	}
 #endif
@@ -3147,4 +3234,5 @@ module_exit(vcp_exit);
 
 MODULE_DESCRIPTION("MEDIATEK Module VCP driver");
 MODULE_AUTHOR("Mediatek");
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL");

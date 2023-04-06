@@ -144,7 +144,7 @@ struct vcp_reserve_mblock {
 	enum vcp_reserve_mem_id_t num;
 	u64 start_phys;
 	u64 start_virt;
-	u64 size;
+	u32 size;
 };
 
 struct vcp_region_info_st {
