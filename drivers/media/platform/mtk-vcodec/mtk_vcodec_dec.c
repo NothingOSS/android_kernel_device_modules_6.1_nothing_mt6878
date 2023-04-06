@@ -2581,6 +2581,12 @@ static int vidioc_vdec_qbuf(struct file *file, void *priv,
 			ctx->id, buf->index, vq->num_buffers);
 		return -EINVAL;
 	}
+	if (IS_ERR_OR_NULL(buf->m.planes) || buf->length == 0) {
+		mtk_v4l2_err("[%d] buffer index %d planes address %p 0x%llx or length %d invalid",
+			ctx->id, buf->index, buf->m.planes,
+			(unsigned long long)buf->m.planes, buf->length);
+		return -EINVAL;
+	}
 
 	vb = vq->bufs[buf->index];
 	vb2_v4l2 = container_of(vb, struct vb2_v4l2_buffer, vb2_buf);
@@ -2594,11 +2600,6 @@ static int vidioc_vdec_qbuf(struct file *file, void *priv,
 		ctx->input_max_ts =
 			(timeval_to_ns(&buf->timestamp) > ctx->input_max_ts) ?
 			timeval_to_ns(&buf->timestamp) : ctx->input_max_ts;
-		if (IS_ERR_OR_NULL(buf->m.planes)) {
-			mtk_v4l2_err("[%d] buffer planes address %p %llx can not access",
-				ctx->id, buf->m.planes, (unsigned long long)buf->m.planes);
-			return -EIO;
-		}
 		if (buf->m.planes[0].bytesused == 0) {
 			mtkbuf->lastframe = EOS;
 			mtk_v4l2_debug(1, "[%d] index=%d Eos BS(%d,%d) vb=%p pts=%llu",
