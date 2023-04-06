@@ -432,51 +432,6 @@ void update_scq_start_period(struct mtk_raw_device *dev, int scq_ms)
 		 __func__, readl(dev->base + REG_CAMCQ_SCQ_START_PERIOD), scq_ms);
 }
 
-void set_topdebug_rdyreq(struct mtk_raw_device *dev, u32 event)
-{
-	u32 val = event << 16 | 0xa << 12;
-
-	writel(val, dev->base + REG_CAMCTL_DBG_SET);
-	writel(event, dev->base + REG_CAMCTL_DBG_SET2);
-	writel(val, dev->yuv_base + REG_CAMCTL_DBG_SET);
-	writel(event, dev->yuv_base + REG_CAMCTL_DBG_SET2);
-}
-
-void dump_topdebug_rdyreq(struct mtk_raw_device *dev)
-{
-	static const u32 debug_sel[] = {
-		/* req group 1~7 */
-		0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6,
-		/* rdy group 1~7 */
-		0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE,
-		/* latched_events */
-		0xF,
-	};
-	void __iomem *dbg_set, *dbg_port;
-	u32 set;
-	int i;
-
-	dbg_set = dev->base + REG_CAMCTL_DBG_SET;
-	dbg_port = dev->base + REG_CAMCTL_DBG_PORT;
-
-	set = (readl(dbg_set) & 0xfff000) | 0x1;
-	for (i = 0; i < ARRAY_SIZE(debug_sel); i++) {
-		writel(set | debug_sel[i] << 8, dbg_set);
-		dev_info(dev->dev, "RAW debug_set 0x%08x port 0x%08x\n",
-			 readl(dbg_set), readl(dbg_port));
-	}
-
-	dbg_set = dev->yuv_base + REG_CAMCTL_DBG_SET;
-	dbg_port = dev->yuv_base + REG_CAMCTL_DBG_PORT;
-
-	set = (readl(dbg_set) & 0xfff000) | 0x1;
-	for (i = 0; i < ARRAY_SIZE(debug_sel); i++) {
-		writel(set | debug_sel[i] << 8, dbg_set);
-		dev_info(dev->dev, "YUV debug_set 0x%08x port 0x%08x\n",
-			 readl(dbg_set), readl(dbg_port));
-	}
-}
-
 void stream_on(struct mtk_raw_device *dev, int on)
 {
 	if (on) {
@@ -759,67 +714,6 @@ static int push_msgfifo(struct mtk_raw_device *dev,
 	WARN_ON(len != sizeof(*info));
 
 	return 0;
-}
-
-struct reg_to_dump {
-	const char *name;
-	unsigned int reg;
-};
-
-#define ADD_DMA(name)	{ #name, REG_ ## name ## _BASE + DMA_OFFSET_ERR_STAT }
-
-static void dump_raw_dma_err_st(struct mtk_raw_device *raw)
-{
-	static const struct reg_to_dump raw_dma_list[] = {
-		ADD_DMA(RAWI_R2), ADD_DMA(UFDI_R2),
-		ADD_DMA(RAWI_R5), ADD_DMA(UFDI_R5),
-		ADD_DMA(BPCI_R1), ADD_DMA(BPCI_R2),
-		ADD_DMA(LSCI_R1), ADD_DMA(PDI_R1),
-		ADD_DMA(AAI_R1), ADD_DMA(CACI_R1),
-		ADD_DMA(IMGO_R1), ADD_DMA(FHO_R1),
-		ADD_DMA(UFEO_R1), ADD_DMA(FLKO_R1),
-		ADD_DMA(PDO_R1), ADD_DMA(AAO_R1),
-		ADD_DMA(AAHO_R1), ADD_DMA(AFO_R1),
-		ADD_DMA(TSFSO_R1), ADD_DMA(LTMSO_R1),
-		ADD_DMA(LTMSHO_R1), ADD_DMA(DRZB2NO_R1),
-		ADD_DMA(DRZB2NBO_R1), ADD_DMA(DRZB2NCO_R1),
-	};
-	int i = 0, err_st;
-
-	for (i = 0; i < ARRAY_SIZE(raw_dma_list); i++) {
-		err_st = readl_relaxed(raw->base + raw_dma_list[i].reg);
-		if (err_st & 0xffff) {
-			dev_info(raw->dev, "%s: %s: 0x%x\n",  __func__,
-				raw_dma_list[i].name, err_st);
-		}
-	}
-}
-
-static void dump_yuv_dma_err_st(struct mtk_yuv_device *yuv)
-{
-	static const struct reg_to_dump yuv_dma_list[] = {
-		ADD_DMA(YUVO_R1), ADD_DMA(YUVBO_R1),
-		ADD_DMA(YUVCO_R1), ADD_DMA(YUVDO_R1),
-		ADD_DMA(YUVO_R3), ADD_DMA(YUVBO_R3),
-		ADD_DMA(YUVCO_R3), ADD_DMA(YUVDO_R3),
-		ADD_DMA(YUVO_R2), ADD_DMA(YUVBO_R2),
-		ADD_DMA(YUVO_R4), ADD_DMA(YUVBO_R4),
-		ADD_DMA(YUVO_R5), ADD_DMA(YUVBO_R5),
-		ADD_DMA(RZH1N2TBO_R1), ADD_DMA(RZH1N2TBO_R3),
-		ADD_DMA(TCYSO_R1), ADD_DMA(RZH1N2TO_R2),
-		ADD_DMA(DRZS4NO_R1), ADD_DMA(DRZH2NO_R8),
-		ADD_DMA(DRZS4NO_R3), ADD_DMA(RZH1N2TO_R3),
-		ADD_DMA(RZH1N2TO_R1), ADD_DMA(RGBWI_R1),
-	};
-	int i = 0, err_st;
-
-	for (i = 0; i < ARRAY_SIZE(yuv_dma_list); i++) {
-		err_st = readl_relaxed(yuv->base + yuv_dma_list[i].reg);
-		if (err_st & 0xffff) {
-			dev_info(yuv->dev, "%s: %s: 0x%x\n",  __func__,
-				yuv_dma_list[i].name, err_st);
-		}
-	}
 }
 
 static void raw_handle_tg_grab_err(struct mtk_raw_device *raw_dev,
@@ -1189,8 +1083,12 @@ static void raw_handle_dma_err(struct mtk_raw_device *raw_dev,
 
 	cnt = raw_dev->dma_err_handle_cnt++;
 
-	if (cnt <= 3)
+	if (cnt <= 3) {
+		struct mtk_yuv_device *yuv_dev = get_yuv_dev(raw_dev);
+
 		dump_raw_dma_err_st(raw_dev);
+		dump_yuv_dma_err_st(yuv_dev);
+	}
 }
 
 #define OVERRUN_DUMP_CNT 3
@@ -2006,6 +1904,7 @@ void print_dma_settings(void __iomem *base, u32 dmao_base)
 int mtk_raw_translation_fault_cb(int port, dma_addr_t mva, void *data)
 {
 	struct mtk_raw_device *raw_dev = (struct mtk_raw_device *)data;
+	struct mtk_yuv_device *yuv_dev = get_yuv_dev(raw_dev);
 	unsigned int fh_cookie =
 			readl_relaxed(raw_dev->base_inner + REG_FRAME_SEQ_NUM);
 	unsigned int m4u_port = MTK_M4U_TO_PORT(port);
@@ -2025,6 +1924,8 @@ int mtk_raw_translation_fault_cb(int port, dma_addr_t mva, void *data)
 
 		print_dma_settings(raw_dev->base_inner, group[i]);
 	}
+	dump_raw_dma_fbc(raw_dev);
+	dump_yuv_dma_fbc(yuv_dev);
 
 	do_engine_callback(raw_dev->engine_cb, dump_request,
 		   raw_dev->cam, CAMSYS_ENGINE_RAW, raw_dev->id,
@@ -2052,6 +1953,8 @@ int mtk_yuv_translation_fault_cb(int port, dma_addr_t mva, void *data)
 
 		print_dma_settings(yuv_dev->base_inner, group[i]);
 	}
+	dump_raw_dma_fbc(raw_dev);
+	dump_yuv_dma_fbc(yuv_dev);
 
 	do_engine_callback(raw_dev->engine_cb, dump_request,
 		   raw_dev->cam, CAMSYS_ENGINE_RAW, raw_dev->id,

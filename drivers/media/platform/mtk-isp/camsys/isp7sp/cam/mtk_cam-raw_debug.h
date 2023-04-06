@@ -6,31 +6,8 @@
 #ifndef _MTK_CAM_RAW_DEBUG_H
 #define _MTK_CAM_RAW_DEBUG_H
 
-void debug_dma_fbc(struct device *dev,
-			  void __iomem *base, void __iomem *yuvbase);
-
-void mtk_cam_raw_dump_fbc(struct device *dev,
-			  void __iomem *base, void __iomem *yuvbase);
-
-void mtk_cam_raw_dump_dma_err_st(struct device *dev, void __iomem *base);
-void mtk_cam_yuv_dump_dma_err_st(struct device *dev, void __iomem *yuvbase);
-
-void mtk_cam_dump_req_rdy_status(struct device *dev,
-				 void __iomem *base, void __iomem *yuvbase);
-
-struct dma_debug_item {
-	unsigned int	debug_sel;
-	const char	*msg;
-};
-
-void mtk_cam_dump_dma_debug(struct device *dev,
-			    void __iomem *dmatop_base,
-			    const char *dma_name,
-			    struct dma_debug_item *items, int n);
-
-void mtk_cam_sw_reset_check(struct device *dev,
-			    void __iomem *dmatop_base,
-			    struct dma_debug_item *items, int n);
+struct mtk_raw_device;
+struct mtk_yuv_device;
 
 enum topdebug_event {
 	ALL_THE_TIME	= 1 << 0,
@@ -41,11 +18,21 @@ enum topdebug_event {
 	YUV_DMA_ERR	= 1 << 5,
 };
 
-void mtk_cam_set_topdebug_rdyreq(struct device *dev,
-				 void __iomem *base, void __iomem *yuvbase,
-				 u32 event);
+struct reg_to_dump {
+	const char *name;
+	unsigned int reg;
+};
 
-void mtk_cam_dump_topdebug_rdyreq(struct device *dev,
-				  void __iomem *base, void __iomem *yuvbase);
+#define ADD_DMA_ERR(name) { #name, REG_ ## name ## _BASE + DMA_OFFSET_ERR_STAT }
+#define ADD_DMA_FBC(name) { #name, REG_FBC_ ## name ## _CTL2 }
+
+void dump_raw_dma_fbc(struct mtk_raw_device *raw);
+void dump_yuv_dma_fbc(struct mtk_yuv_device *yuv);
+
+void dump_raw_dma_err_st(struct mtk_raw_device *raw);
+void dump_yuv_dma_err_st(struct mtk_yuv_device *yuv);
+
+void set_topdebug_rdyreq(struct mtk_raw_device *dev, u32 event);
+void dump_topdebug_rdyreq(struct mtk_raw_device *dev);
 
 #endif	/* _MTK_CAM_RAW_DEBUG_H */
