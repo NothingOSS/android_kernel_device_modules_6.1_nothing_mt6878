@@ -4591,8 +4591,8 @@
 			reg = <0 0x10219000 0 0x1000>,
 				<0 0x1021d000 0 0x1000>;
 			mediatek,emi-reg = <&emichn>;
-			a2d_hash = <0xb>;
-			a2d_disph = <0xe>;
+			a2d-hash = <0xb>;
+			a2d-disph = <0xe>;
 		};
 
 		emichn: emichn@10235000 {
