@@ -1542,14 +1542,17 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	for_each_cpu(cpu, candidates) {
 		unsigned long cur_delta, base_energy;
 		int gear_idx;
-		struct perf_domain *target_pd;
+		struct perf_domain *target_pd = rcu_dereference(pd);
 
 		/* Evaluate the energy impact of using this CPU. */
 		if (unlikely(in_irq)) {
 			cur_delta = calc_pwr_eff(cpu, eenv.pds_max_util[cpu][0]);
 			base_energy = 0;
 		} else {
-			target_pd = find_pd(pd, cpu);
+			target_pd = find_pd(target_pd, cpu);
+			if (!target_pd)
+				continue;
+
 			gear_idx = eenv.gear_idx = per_cpu(gear_id, cpu);
 			cpus = get_gear_cpumask(gear_idx);
 
