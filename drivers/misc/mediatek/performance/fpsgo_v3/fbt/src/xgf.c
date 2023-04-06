@@ -1890,6 +1890,9 @@ Reget:
 
 	index -= 1;
 
+	if (unlikely(!xgf_event_buffer || !MAX_XGF_EVENT_NUM))
+		return;
+
 	fte = &xgf_event_buffer[index];
 	fte->ts = ts;
 	fte->cpu = cpu;
@@ -1928,6 +1931,9 @@ Reget:
 		goto Reget;
 
 	index -= 1;
+
+	if (unlikely(!fstb_event_buffer || !MAX_FSTB_EVENT_NUM))
+		return;
 
 	fte = &fstb_event_buffer[index];
 	fte->ts = ts;
@@ -2244,7 +2250,16 @@ void fpsgo_ctrl2xgf_switch_xgf(int val)
 
 int notify_xgf_ko_ready(void)
 {
-	int ret;
+	int ret = 0;
+
+	if (unlikely(!xgf_event_buffer || !xgf_event_buffer_size)) {
+		pr_info("%s: get xgf_event_buffer fail\n", __func__);
+		goto out;
+	}
+	if (unlikely(!fstb_event_buffer || !fstb_event_buffer_size)) {
+		pr_info("%s: get fstb_event_buffer fail\n", __func__);
+		goto out;
+	}
 
 	mutex_lock(&xgf_main_lock);
 
@@ -2252,11 +2267,9 @@ int notify_xgf_ko_ready(void)
 	if (xgf_is_enable()) {
 		xgf_enter_state_xchg(xgf_enable);
 		ret = 1;
-	} else
-		ret = 0;
-
+	}
 	mutex_unlock(&xgf_main_lock);
-
+out:
 	return ret;
 }
 EXPORT_SYMBOL(notify_xgf_ko_ready);
