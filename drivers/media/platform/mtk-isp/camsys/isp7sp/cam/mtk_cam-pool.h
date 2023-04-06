@@ -53,6 +53,11 @@ struct mtk_cam_pool {
 	int available_cnt;
 };
 
+struct mtk_cam_pool_wrapper {
+	struct mtk_cam_pool pool;
+	struct mtk_cam_device_buf mem;
+};
+
 /* alloc/destroy */
 int mtk_cam_pool_alloc(struct mtk_cam_pool *pool,
 		       size_t element_size, int n_element);

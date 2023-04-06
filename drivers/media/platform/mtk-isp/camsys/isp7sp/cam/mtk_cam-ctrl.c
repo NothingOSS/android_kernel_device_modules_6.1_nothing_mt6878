@@ -993,6 +993,9 @@ static void mtk_cam_ctrl_raw_switch_flow(struct mtk_cam_job *job)
 
 	mtk_cam_job_update_clk(job);
 
+	/* update the ctx's img working buf pool */
+	mtk_cam_ctx_update_img_pool(ctx, job->img_wbuf_pool_wrapper);
+
 	/**
 	 * Reuse stream on flow to start the new stream of the new sensor
 	 */

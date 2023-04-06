@@ -147,13 +147,14 @@ struct mtk_cam_ctx {
 	struct mtk_cam_device_buf cq_buffer;
 	struct mtk_cam_device_buf ipi_buffer;
 
-	struct mtk_cam_device_buf img_work_buffer;
-	struct mtk_cam_driver_buf_desc img_work_buf_desc;
-
 	struct mtk_cam_pool	cq_pool;
 	struct mtk_cam_pool	ipi_pool;
-	struct mtk_cam_pool	img_work_pool;
 
+	struct mtk_cam_driver_buf_desc img_work_buf_desc;
+	struct mtk_cam_pool_wrapper *img_wbuf_pool_wrapper;
+
+	/* cached for pack job */
+	struct mtk_cam_pool_wrapper *pack_job_img_wbuf_pool_wrapper;
 	/*
 	 * scenario dependent
 	 */
@@ -385,6 +386,9 @@ int mtk_cam_ctx_queue_aa_dump_wq(struct mtk_cam_ctx *ctx,
 			      struct work_struct *work);
 
 int mtk_cam_ctx_fetch_devices(struct mtk_cam_ctx *ctx, unsigned long engines);
+void mtk_cam_ctx_destroy_img_pool(struct mtk_cam_ctx *ctx);
+void mtk_cam_ctx_update_img_pool(struct mtk_cam_ctx *ctx,
+				 struct mtk_cam_pool_wrapper *pool_wrapper);
 
 int isp_composer_create_session(struct mtk_cam_ctx *ctx);
 void isp_composer_destroy_session(struct mtk_cam_ctx *ctx);
@@ -425,5 +429,17 @@ void mtk_engine_dump_debug_status(struct mtk_cam_device *cam,
 
 struct v4l2_subdev
 *mtk_cam_find_sensor_seninf(struct v4l2_subdev *subdev, int media_func);
+
+bool mtk_cam_check_img_pool_need(struct device *dev_to_attach,
+				 struct mtk_raw_ctrl_data *ctrl_data,
+				 struct v4l2_mbus_framefmt *mf,
+				 struct mtk_cam_driver_buf_desc *desc);
+int mtk_cam_alloc_img_pool(struct device *dev_to_attach,
+			   struct mtk_raw_ctrl_data *ctrl_data,
+			   struct v4l2_mbus_framefmt *mf,
+			   struct mtk_cam_driver_buf_desc *desc,
+			   struct mtk_cam_device_buf *img_work_buffer,
+			   struct mtk_cam_pool *img_work_pool);
+void mtk_cam_destroy_img_pool(struct mtk_cam_pool_wrapper *pool_wrapper);
 
 #endif /*__MTK_CAM_H*/

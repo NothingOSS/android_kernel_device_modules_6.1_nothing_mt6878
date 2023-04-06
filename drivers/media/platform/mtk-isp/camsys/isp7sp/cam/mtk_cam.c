@@ -1832,37 +1832,42 @@ int update_buf_fmt_desc(struct mtk_cam_driver_buf_desc *desc,
 	return ret;
 }
 
-static int mtk_cam_ctx_alloc_img_pool(struct mtk_cam_ctx *ctx)
+bool mtk_cam_check_img_pool_need(struct device *dev_to_attach,
+	struct mtk_raw_ctrl_data *ctrl_data,
+	struct v4l2_mbus_framefmt *mf,
+	struct mtk_cam_driver_buf_desc *desc)
 {
-	struct device *dev_to_attach;
-	struct mtk_cam_driver_buf_desc *desc = &ctx->img_work_buf_desc;
-	struct mtk_raw_pipeline *raw_pipe;
-	struct mtk_raw_ctrl_data *ctrl_data;
 	struct mtk_cam_resource_raw_v2 *raw_res;
-	struct v4l2_mbus_framefmt *mf;
+
+	raw_res = &ctrl_data->resource.user_data.raw_res;
+	if (raw_res->img_wbuf_num == 0)
+		goto EXIT_NO_POOL;
+
+	if (update_buf_fmt_desc(desc, mf))
+		goto EXIT_NO_POOL;
+
+	return true;
+
+EXIT_NO_POOL:
+	return false;
+}
+
+int mtk_cam_alloc_img_pool(struct device *dev_to_attach,
+	struct mtk_raw_ctrl_data *ctrl_data,
+	struct v4l2_mbus_framefmt *mf,
+	struct mtk_cam_driver_buf_desc *desc,
+	struct mtk_cam_device_buf *img_work_buffer,
+	struct mtk_cam_pool *img_work_pool)
+{
+	struct mtk_cam_resource_raw_v2 *raw_res;
 	int i;
 	int ret = 0;
 
-	if (!ctx->has_raw_subdev)
-		goto EXIT;
-
-	dev_to_attach = ctx->cam->engines.raw_devs[0];
-	raw_pipe = &ctx->cam->pipelines.raw[ctx->raw_subdev_idx];
-	ctrl_data = &raw_pipe->ctrl_data;
 	raw_res = &ctrl_data->resource.user_data.raw_res;
-
-	if (raw_res->img_wbuf_num == 0)
-		goto EXIT;
-
-	// TODO(Will): for BAYER10_MIPI, use MTK_RAW_MAIN_STREAM_OUT fmt instead;
-	mf = &raw_pipe->pad_cfg[MTK_RAW_SINK].mbus_fmt;
-	if (update_buf_fmt_desc(desc, mf))
-		goto EXIT;
-
 	if (ctrl_data->pre_alloc_mem.num
 	    && desc->max_size >= ctrl_data->pre_alloc_mem.bufs[0].length) {
 		ret = _alloc_pool_by_dbuf(
-			  &ctx->img_work_buffer, &ctx->img_work_pool,
+			  img_work_buffer, img_work_pool,
 			  dev_to_attach,
 			  ctrl_data->pre_alloc_dbuf,
 			  ctrl_data->pre_alloc_mem.bufs[0].length,
@@ -1871,7 +1876,7 @@ static int mtk_cam_ctx_alloc_img_pool(struct mtk_cam_ctx *ctx)
 	} else {
 		ret = _alloc_pool(
 			  "CAM_MEM_IMG_ID",
-			  &ctx->img_work_buffer, &ctx->img_work_pool,
+			  img_work_buffer, img_work_pool,
 			  dev_to_attach, desc->max_size,
 			  raw_res->img_wbuf_num,
 			  false);
@@ -1882,7 +1887,6 @@ static int mtk_cam_ctx_alloc_img_pool(struct mtk_cam_ctx *ctx)
 		desc->fd = -1;
 #endif
 	}
-	desc->has_pool = (ret == 0) ? true : false;
 
 	for (i = MTKCAM_BUF_FMT_TYPE_START; i < MTKCAM_BUF_FMT_TYPE_CNT; ++i) {
 		struct mtk_cam_buf_fmt_desc *fmt_desc = &desc->fmt_desc[i];
@@ -1904,9 +1908,60 @@ static int mtk_cam_ctx_alloc_img_pool(struct mtk_cam_ctx *ctx)
 		raw_res->img_wbuf_size);
 
 	return ret;
+}
 
-EXIT:
-	desc->has_pool = false;
+static int mtk_cam_ctx_alloc_img_pool(struct mtk_cam_ctx *ctx)
+{
+	struct mtk_cam_driver_buf_desc *desc = &ctx->img_work_buf_desc;
+	struct mtk_raw_pipeline *raw_pipe;
+	struct v4l2_mbus_framefmt *mf;
+	int ret = 0;
+
+	if (!ctx->has_raw_subdev)
+		goto EXIT_NO_POOL;
+
+	raw_pipe = &ctx->cam->pipelines.raw[ctx->raw_subdev_idx];
+
+	// TODO(Will): for BAYER10_MIPI, use MTK_RAW_MAIN_STREAM_OUT fmt instead;
+	mf = &raw_pipe->pad_cfg[MTK_RAW_SINK].mbus_fmt;
+	if (!mtk_cam_check_img_pool_need(ctx->cam->engines.raw_devs[0],
+					 &raw_pipe->ctrl_data, mf, desc))
+		goto EXIT_NO_POOL;
+
+	ctx->img_wbuf_pool_wrapper =
+		kmalloc(sizeof(struct mtk_cam_pool_wrapper), GFP_KERNEL);
+	if (!ctx->img_wbuf_pool_wrapper) {
+		dev_info(ctx->cam->dev,
+			 "%s: ctx-%d img_wbuf_pool_wrapper alloc failed, can't be recovered\n",
+			 __func__, ctx->stream_id);
+		ret = -ENOMEM;
+		goto EXIT_NO_POOL;
+	}
+
+	ret = mtk_cam_alloc_img_pool(ctx->cam->engines.raw_devs[0],
+				     &raw_pipe->ctrl_data,
+				     mf,
+				     desc,
+				     &ctx->img_wbuf_pool_wrapper->mem,
+				     &ctx->img_wbuf_pool_wrapper->pool);
+	if (ret)
+		goto EXIT_CLEAN;
+
+	ctx->pack_job_img_wbuf_pool_wrapper = ctx->img_wbuf_pool_wrapper;
+	if (CAM_DEBUG_ENABLED(IPI_BUF))
+		dev_info(ctx->cam->dev,
+			 "%s: ctx-%d img_wbuf_pool_wrapper(%p) created\n",
+			 __func__, ctx->stream_id, ctx->img_wbuf_pool_wrapper);
+
+	return ret;
+
+EXIT_CLEAN:
+	kfree(ctx->img_wbuf_pool_wrapper);
+
+EXIT_NO_POOL:
+	ctx->img_wbuf_pool_wrapper = NULL;
+	ctx->pack_job_img_wbuf_pool_wrapper = NULL;
+
 	return ret;
 }
 
@@ -1916,17 +1971,38 @@ static void mtk_cam_ctx_destroy_pool(struct mtk_cam_ctx *ctx)
 	_destroy_pool(&ctx->ipi_buffer, &ctx->ipi_pool);
 }
 
-static void mtk_cam_ctx_destroy_img_pool(struct mtk_cam_ctx *ctx)
+void mtk_cam_destroy_img_pool(struct mtk_cam_pool_wrapper *pool_wrapper)
 {
-	struct mtk_cam_driver_buf_desc *desc = &ctx->img_work_buf_desc;
-
-	if (!ctx->has_raw_subdev)
+	if (!pool_wrapper)
 		return;
 
-	if (desc->has_pool) {
-		desc->has_pool = false;
-		_destroy_pool(&ctx->img_work_buffer, &ctx->img_work_pool);
-	}
+	_destroy_pool(&pool_wrapper->mem, &pool_wrapper->pool);
+	kfree(pool_wrapper);
+}
+
+void mtk_cam_ctx_destroy_img_pool(struct mtk_cam_ctx *ctx)
+{
+	mtk_cam_destroy_img_pool(ctx->img_wbuf_pool_wrapper);
+	if (CAM_DEBUG_ENABLED(IPI_BUF))
+		dev_info(ctx->cam->dev,
+			 "%s: ctx-%d img_wbuf_pool_wrapper(%p) destroyed\n",
+			 __func__, ctx->stream_id,
+			 ctx->pack_job_img_wbuf_pool_wrapper);
+
+	ctx->img_wbuf_pool_wrapper = NULL;
+	ctx->pack_job_img_wbuf_pool_wrapper = NULL;
+}
+
+void mtk_cam_ctx_update_img_pool(struct mtk_cam_ctx *ctx,
+				 struct mtk_cam_pool_wrapper *pool_wrapper)
+{
+	if (CAM_DEBUG_ENABLED(IPI_BUF))
+		dev_info(ctx->cam->dev,
+			 "%s: ctx-%d img_wbuf_pool_wrapper(destroy:%p updated:%p)\n",
+			 __func__, ctx->stream_id,
+			 ctx->img_wbuf_pool_wrapper, pool_wrapper);
+	mtk_cam_destroy_img_pool(ctx->img_wbuf_pool_wrapper);
+	ctx->img_wbuf_pool_wrapper = pool_wrapper;
 }
 
 static int mtk_cam_ctx_prepare_session(struct mtk_cam_ctx *ctx)

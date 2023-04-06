@@ -666,7 +666,13 @@ int update_work_buffer_to_ipi_frame(struct req_buffer_helper *helper)
 		return ret;
 
 	for (i = 0 ; i < raw_table_size; i++) {
-		ret = mtk_cam_buffer_pool_fetch(&ctx->img_work_pool, &job->img_work_buf);
+		if (!job->img_wbuf_pool_wrapper) {
+			pr_info("[%s] fail to fetch, img_wbuf_pool_wrapper is NULL\n", __func__);
+			return -ENOMEM;
+		}
+
+		ret = mtk_cam_buffer_pool_fetch(&job->img_wbuf_pool_wrapper->pool,
+						&job->img_work_buf);
 		if (ret) {
 			pr_info("[%s] fail to fetch\n", __func__);
 			return ret;
@@ -679,7 +685,8 @@ int update_work_buffer_to_ipi_frame(struct req_buffer_helper *helper)
 		mtk_cam_buffer_pool_return(&job->img_work_buf);
 
 		if (!ret && job->job_scen.scen.normal.w_chn_enabled) {
-			ret = mtk_cam_buffer_pool_fetch(&ctx->img_work_pool, &job->img_work_buf);
+			ret = mtk_cam_buffer_pool_fetch(&job->img_wbuf_pool_wrapper->pool,
+							&job->img_work_buf);
 			if (ret) {
 				pr_info("[%s] fail to fetch\n", __func__);
 				return ret;
