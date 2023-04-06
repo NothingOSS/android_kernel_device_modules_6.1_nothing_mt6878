@@ -264,12 +264,6 @@ enum gpufreq_sema_op {
 	SEMA_ACQUIRE,
 };
 
-enum gpufreq_opp_direct {
-	SCALE_DOWN = 0,
-	SCALE_UP,
-	SCALE_STAY,
-};
-
 /**************************************************
  * Structure
  **************************************************/

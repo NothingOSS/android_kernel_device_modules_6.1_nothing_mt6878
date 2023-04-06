@@ -123,6 +123,9 @@ enum gpufreq_config_value {
 	FEAT_ENABLE        = 1,
 	DFD_FORCE_DUMP     = 2,
 	IPS_VMIN_GET       = 3,
+	STRESS_RANDOM      = 4,
+	STRESS_TRAVERSE    = 5,
+	STRESS_MAX_MIN     = 6,
 };
 
 enum gpuppm_reserved_idx {
@@ -152,6 +155,12 @@ enum gpuppm_limit_type {
 	GPUPPM_CEILING = 0,
 	GPUPPM_FLOOR   = 1,
 	GPUPPM_INVALID,
+};
+
+enum gpufreq_opp_direct {
+	SCALE_DOWN = 0,
+	SCALE_UP,
+	SCALE_STAY,
 };
 
 /**************************************************

@@ -141,11 +141,13 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		g_shared_status->shader_present);
 
 	seq_printf(m,
-		"%-16s DualBuck: %s, GPUEBSupport: %s, RandomOPP: %s\n",
+		"%-16s DualBuck: %s, GPUEBSupport: %s, StressTest: %s\n",
 		"[MFGSYS Config]",
 		g_dual_buck ? "True" : "False",
 		g_gpueb_support ? "On" : "Off",
-		g_shared_status->stress_test ? "On" : "Off");
+		g_shared_status->stress_test == STRESS_RANDOM ? "Random" :
+		g_shared_status->stress_test == STRESS_TRAVERSE ? "Traverse" :
+		g_shared_status->stress_test == STRESS_MAX_MIN ? "Max_Min" : "Disable");
 	seq_printf(m,
 		"%-16s AgingMargin: %s, AVSMargin: %s, GPM1.0: %s, GPM3.0: %s, PTP3: %s\n",
 		"[MFGSYS Config]",
@@ -708,9 +710,11 @@ static int mfgsys_config_proc_show(struct seq_file *m, void *v)
 		g_shared_status->ips_info.autok_trim0,
 		g_shared_status->ips_info.autok_trim1,
 		g_shared_status->ips_info.autok_trim2);
-	seq_printf(m, "%-8s RandomOPP: %s, TestMode: %s\n",
+	seq_printf(m, "%-8s StressTest: %s, TestMode: %s\n",
 		"[Misc]",
-		g_shared_status->stress_test ? "On" : "Off",
+		g_shared_status->stress_test == STRESS_RANDOM ? "Random" :
+		g_shared_status->stress_test == STRESS_TRAVERSE ? "Traverse" :
+		g_shared_status->stress_test == STRESS_MAX_MIN ? "Max_Min" : "Disable",
 		g_shared_status->test_mode ? "On" : "Off");
 
 	seq_puts(m, "\n[##*] [TOP Vaging] [##*] [TOP Vavs] [##*] [STK Vaging] [##*] [STK Vavs]\n");
@@ -763,9 +767,15 @@ static ssize_t mfgsys_config_proc_write(struct file *file,
 		} else if (sysfs_streq(input_target, "stress_test")) {
 			target = CONFIG_STRESS_TEST;
 			if (sysfs_streq(input_val, "enable"))
-				val = FEAT_ENABLE;
+				val = STRESS_RANDOM;
 			else if (sysfs_streq(input_val, "disable"))
 				val = FEAT_DISABLE;
+			else if (sysfs_streq(input_val, "random"))
+				val = STRESS_RANDOM;
+			else if (sysfs_streq(input_val, "traverse"))
+				val = STRESS_TRAVERSE;
+			else if (sysfs_streq(input_val, "maxmin"))
+				val = STRESS_MAX_MIN;
 		} else if (sysfs_streq(input_target, "margin")) {
 			target = CONFIG_MARGIN;
 			if (sysfs_streq(input_val, "enable"))

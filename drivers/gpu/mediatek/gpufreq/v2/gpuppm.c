@@ -40,6 +40,8 @@ static DEFINE_MUTEX(gpuppm_lock);
 static struct gpuppm_status g_ppm;
 static unsigned int g_gpueb_support;
 static unsigned int g_stress_test;
+static unsigned int g_stress_direction;
+static int g_stress_oppidx;
 static struct gpufreq_shared_status *g_shared_status;
 
 static struct gpuppm_limit_info g_limit_table[] = {
@@ -372,6 +374,9 @@ static void __gpuppm_update_gpuppm_info(void)
 void gpuppm_set_stress_test(unsigned int val)
 {
 	g_stress_test = val;
+	g_stress_oppidx = 0;
+
+	GPUFREQ_LOGD("stress test mode: %d", g_stress_test);
 
 	/* update current status to shared memory */
 	if (g_shared_status)
@@ -500,7 +505,7 @@ done:
 int gpuppm_limited_commit(enum gpufreq_target target, int oppidx)
 {
 	int limited_idx = 0;
-	int cur_ceiling = 0, cur_floor = 0;
+	int cur_ceiling = 0, cur_floor = 0, min_oppidx = 0;
 	int ret = GPUFREQ_SUCCESS;
 
 	GPUFREQ_TRACE_START("target=%d, oppidx=%d", target, oppidx);
@@ -510,12 +515,30 @@ int gpuppm_limited_commit(enum gpufreq_target target, int oppidx)
 	/* fit to limited interval */
 	cur_ceiling = g_ppm.ceiling;
 	cur_floor = g_ppm.floor;
+	min_oppidx = g_ppm.opp_num - 1;
 
-	/* randomly replace target OPP index */
-	if (g_stress_test) {
+	/* replace target OPP index to do stress test */
+	if (g_stress_test == STRESS_RANDOM) {
+		/* random */
 		get_random_bytes(&oppidx, sizeof(oppidx));
 		oppidx = oppidx < 0 ? (oppidx * -1) : oppidx;
 		oppidx = (oppidx % (cur_floor - cur_ceiling + 1)) + cur_ceiling;
+	} else if (g_stress_test == STRESS_TRAVERSE) {
+		/* 0 <-> 1 <-> ... <-> opp_num-2 <-> opp_num-1 */
+		oppidx = g_stress_oppidx;
+		oppidx = (oppidx % (cur_floor - cur_ceiling + 1)) + cur_ceiling;
+		if (oppidx == cur_ceiling)
+			g_stress_direction = SCALE_UP;
+		else if (oppidx == cur_floor)
+			g_stress_direction = SCALE_DOWN;
+		if (g_stress_direction == SCALE_UP)
+			g_stress_oppidx++;
+		else if (g_stress_direction == SCALE_DOWN)
+			g_stress_oppidx--;
+	} else if (g_stress_test == STRESS_MAX_MIN) {
+		/* 0 <-> opp_num-1 */
+		oppidx = g_stress_oppidx;
+		g_stress_oppidx = g_stress_oppidx ? 0 : min_oppidx;
 	}
 
 	if (oppidx < cur_ceiling)
@@ -548,7 +571,7 @@ int gpuppm_limited_commit(enum gpufreq_target target, int oppidx)
 int gpuppm_limited_dual_commit(int gpu_oppidx, int stack_oppidx)
 {
 	int limited_idx_gpu = 0, limited_idx_stack = 0;
-	int cur_ceiling = 0, cur_floor = 0;
+	int cur_ceiling = 0, cur_floor = 0, min_oppidx = 0;
 	int ret = GPUFREQ_SUCCESS;
 
 	GPUFREQ_TRACE_START("gpu_oppidx=%d, stack_oppidx=%d", gpu_oppidx, stack_oppidx);
@@ -558,15 +581,33 @@ int gpuppm_limited_dual_commit(int gpu_oppidx, int stack_oppidx)
 	/* fit to limited interval */
 	cur_ceiling = g_ppm.ceiling;
 	cur_floor = g_ppm.floor;
+	min_oppidx = g_ppm.opp_num - 1;
 
-	/* randomly replace target OPP index */
-	if (g_stress_test) {
+	/* replace target OPP index to do stress test */
+	if (g_stress_test == STRESS_RANDOM) {
+		/* random */
 		get_random_bytes(&gpu_oppidx, sizeof(gpu_oppidx));
 		gpu_oppidx = gpu_oppidx < 0 ? (gpu_oppidx * -1) : gpu_oppidx;
 		gpu_oppidx = (gpu_oppidx % (cur_floor - cur_ceiling + 1)) + cur_ceiling;
-		get_random_bytes(&stack_oppidx, sizeof(stack_oppidx));
-		stack_oppidx = stack_oppidx < 0 ? (stack_oppidx * -1) : stack_oppidx;
-		stack_oppidx = (stack_oppidx % (cur_floor - cur_ceiling + 1)) + cur_ceiling;
+		stack_oppidx = gpu_oppidx;
+	} else if (g_stress_test == STRESS_TRAVERSE) {
+		/* 0 <-> 1 <-> ... <-> opp_num-2 <-> opp_num-1 */
+		gpu_oppidx = g_stress_oppidx;
+		gpu_oppidx = (gpu_oppidx % (cur_floor - cur_ceiling + 1)) + cur_ceiling;
+		stack_oppidx = gpu_oppidx;
+		if (gpu_oppidx == cur_ceiling)
+			g_stress_direction = SCALE_UP;
+		else if (gpu_oppidx == cur_floor)
+			g_stress_direction = SCALE_DOWN;
+		if (g_stress_direction == SCALE_UP)
+			g_stress_oppidx++;
+		else if (g_stress_direction == SCALE_DOWN)
+			g_stress_oppidx--;
+	} else if (g_stress_test == STRESS_MAX_MIN) {
+		/* 0 <-> opp_num-1 */
+		gpu_oppidx = g_stress_oppidx;
+		stack_oppidx = gpu_oppidx;
+		g_stress_oppidx = g_stress_oppidx ? 0 : min_oppidx;
 	}
 
 	/* GPU */
