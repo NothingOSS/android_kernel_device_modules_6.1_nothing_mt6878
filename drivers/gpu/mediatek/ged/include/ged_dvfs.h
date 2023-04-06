@@ -216,4 +216,11 @@ extern void (*mtk_set_fastdvfs_mode_fp)(unsigned int u32Mode);
 extern unsigned int (*mtk_get_fastdvfs_mode_fp)(void);
 extern unsigned int g_eb_workload;
 
+void ged_dvfs_enable_async_ratio(int enableAsync);
+void ged_dvfs_force_top_oppidx(int idx);
+void ged_dvfs_force_stack_oppidx(int idx);
+int ged_dvfs_get_async_ratio_support(void);
+int ged_dvfs_get_top_oppidx(void);
+int ged_dvfs_get_stack_oppidx(void);
+
 #endif

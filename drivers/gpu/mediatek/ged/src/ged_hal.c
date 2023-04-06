@@ -995,6 +995,63 @@ static ssize_t fallback_frequency_adjust_store(struct kobject *kobj,
 
 static KOBJ_ATTR_RW(fallback_frequency_adjust);
 //-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+static ssize_t dvfs_async_ratio_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int async_ratio_support, force_stack_opp, force_top_opp;
+	int pos = 0;
+	int length;
+
+	async_ratio_support = ged_dvfs_get_async_ratio_support();
+	force_stack_opp = ged_dvfs_get_stack_oppidx();
+	force_top_opp = ged_dvfs_get_top_oppidx();
+
+	length = scnprintf(buf + pos, PAGE_SIZE - pos,
+				"dvfs_async test, force stack opp(%d), force top opp(%d), enable async(%d)\n",
+			force_stack_opp, force_top_opp, async_ratio_support);
+
+	pos += length;
+
+	return pos;
+}
+
+static ssize_t dvfs_async_ratio_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	int i32Value, FORCE_TOP_OPP;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
+				if (i32Value & (0x1 << 7)) {
+					if (i32Value & 0x1)
+						ged_dvfs_enable_async_ratio(1);
+					else
+						ged_dvfs_enable_async_ratio(0);
+				} else if (i32Value & (0x1 << 8)) {
+					FORCE_TOP_OPP = i32Value & ((0x1 << 6) - 1);
+					ged_dvfs_force_top_oppidx(FORCE_TOP_OPP);
+				} else {
+					if (i32Value & (0x1 << 6)) {
+						ged_dvfs_force_top_oppidx(0);
+						ged_dvfs_force_stack_oppidx(0);
+					} else {
+						ged_dvfs_force_stack_oppidx(i32Value);
+					}
+				}
+			}
+		}
+	}
+
+	return count;
+}
+
+static KOBJ_ATTR_RW(dvfs_async_ratio);
+//-----------------------------------------------------------------------------
 unsigned int g_loading_slide_window_size = GED_DEFAULT_SLIDE_WINDOW_SIZE;
 
 static ssize_t loading_window_size_show(struct kobject *kobj,
@@ -1197,6 +1254,13 @@ GED_ERROR ged_hal_init(void)
 		goto ERROR;
 	}
 
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_dvfs_async_ratio);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE(
+			"Failed to create dvfs_async_ratio entry!\n");
+		goto ERROR;
+	}
+
 	return err;
 
 ERROR:
@@ -1231,6 +1295,7 @@ void ged_hal_exit(void)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_fallback_interval);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_fallback_window_size);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_fallback_frequency_adjust);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dvfs_async_ratio);
 #ifdef GED_DCS_POLICY
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_mode);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_stress);

@@ -164,6 +164,10 @@ static unsigned int fallback_duration;   // unit: ms
 #define OVERDUE_FREQ_TH 2
 static int overdue_counter;
 
+static int FORCE_OPP;
+static int FORCE_TOP_OPP;
+static int g_async_ratio_support;
+
 void ged_dvfs_last_and_target_cb(int t_gpu_target, int boost_accum_gpu)
 {
 	g_ui32TargetPeriod_us = t_gpu_target;
@@ -533,6 +537,15 @@ void (*ged_dvfs_gpu_freq_commit_fp)(unsigned long ui32NewFreqID,
 	GED_DVFS_COMMIT_TYPE eCommitType, int *pbCommited) = NULL;
 EXPORT_SYMBOL(ged_dvfs_gpu_freq_commit_fp);
 
+/*-----------------------------------------------------------------------------
+ * void (*ged_dvfs_gpu_freq_dual_commit_fp)
+ * call back function
+ * This shall be registered in vendor's GPU driver,
+ * since each IP has its own rule
+ */
+void (*ged_dvfs_gpu_freq_dual_commit_fp)(unsigned long gpuNewFreqID,
+	unsigned long stackNewFreqID, int *pbCommited) = NULL;
+EXPORT_SYMBOL(ged_dvfs_gpu_freq_dual_commit_fp);
 
 unsigned long ged_dvfs_write_sysram_last_commit_idx(void)
 {
@@ -620,6 +633,9 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 	if (ui32CurFreqID == -1)
 		return bCommited;
 
+	if (FORCE_OPP)
+		ui32NewFreqID = FORCE_OPP;
+
 	if (eCommitType == GED_DVFS_FRAME_BASE_COMMIT ||
 		eCommitType == GED_DVFS_LOADING_BASE_COMMIT)
 		g_last_def_commit_freq_id = ui32NewFreqID;
@@ -670,14 +686,16 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 
 			trace_tracing_mark_write(5566, "gpu_freq", avg_freq);
 
-			trace_GPU_DVFS__Frequency(avg_freq*1000,
-				gpufreq_get_cur_freq(TARGET_DEFAULT));
+			trace_GPU_DVFS__Frequency(avg_freq,
+				gpufreq_get_cur_freq(TARGET_STACK) / 1000,
+				gpufreq_get_cur_freq(TARGET_GPU) / 1000);
 		} else {
 			trace_tracing_mark_write(5566, "gpu_freq",
 				(long long) ged_get_cur_freq() / 1000);
 
-			trace_GPU_DVFS__Frequency(ged_get_cur_freq(),
-				gpufreq_get_cur_freq(TARGET_DEFAULT));
+			trace_GPU_DVFS__Frequency(ged_get_cur_freq() / 1000,
+				gpufreq_get_cur_freq(TARGET_STACK) / 1000,
+				gpufreq_get_cur_freq(TARGET_GPU) / 1000);
 		}
 
 		trace_tracing_mark_write(5566, "gpu_freq_ceil",
@@ -695,6 +713,106 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 		trace_GPU_DVFS__Policy__Common(eCommitType, policy_state);
 
 	}
+	return bCommited;
+}
+
+bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
+	unsigned long ui32NewFreq, GED_DVFS_COMMIT_TYPE eCommitType,
+	unsigned long topNewFreqID)
+{
+	int bCommited = false;
+
+	int ui32CurFreqID, ui32CeilingID, ui32FloorID;
+	unsigned int cur_freq = 0;
+	enum gpu_dvfs_policy_state policy_state;
+
+	ui32CurFreqID = ged_get_cur_oppidx();
+
+	if (ui32CurFreqID == -1)
+		return bCommited;
+
+	if (eCommitType == GED_DVFS_FRAME_BASE_COMMIT ||
+		eCommitType == GED_DVFS_LOADING_BASE_COMMIT)
+		g_last_def_commit_freq_id = stackNewFreqID;
+
+	if (ged_dvfs_gpu_freq_dual_commit_fp == NULL || !g_async_ratio_support)
+		return ged_dvfs_gpu_freq_commit(stackNewFreqID, ui32NewFreq, eCommitType);
+
+	ui32CeilingID = ged_get_cur_limit_idx_ceil();
+	ui32FloorID = ged_get_cur_limit_idx_floor();
+
+	if (stackNewFreqID < ui32CeilingID)
+		stackNewFreqID = ui32CeilingID;
+
+	if (stackNewFreqID > ui32FloorID)
+		stackNewFreqID = ui32FloorID;
+
+	g_ulCommitFreq = ged_get_freq_by_idx(stackNewFreqID);
+	ged_commit_freq = ui32NewFreq;
+	ged_commit_opp_freq = ged_get_freq_by_idx(stackNewFreqID);
+
+	/* do change, top change or stack change */
+	if (stackNewFreqID != ui32CurFreqID ||
+		topNewFreqID != g_ged_dvfs_commit_top_idx) {
+		if (FORCE_OPP || FORCE_TOP_OPP) {
+			stackNewFreqID = FORCE_OPP;
+			topNewFreqID = FORCE_TOP_OPP;
+		}
+
+		g_ged_dvfs_commit_idx = stackNewFreqID;
+		g_ged_dvfs_commit_top_idx = topNewFreqID;
+		ged_gpufreq_dual_commit(topNewFreqID, stackNewFreqID, eCommitType, &bCommited);
+
+		/*
+		 * To-Do: refine previous freq contributions,
+		 * since it is possible to have multiple freq settings
+		 * in previous execution period
+		 * Does this fatal for precision?
+		 */
+		ged_log_buf_print2(ghLogBuf_DVFS, GED_LOG_ATTR_TIME,
+	"[GED_K] new freq ID committed: idx=%lu type=%u, g_type=%u",
+			stackNewFreqID, eCommitType, g_CommitType);
+		if (bCommited == true) {
+			ged_log_buf_print(ghLogBuf_DVFS,
+				"[GED_K] committed true");
+			g_ui32PreFreqID = ui32CurFreqID;
+		}
+	}
+
+	if (ged_is_fdvfs_support()
+		&& is_fb_dvfs_triggered && is_fdvfs_enable()) {
+		memset(batch_freq, 0, sizeof(batch_freq));
+		avg_freq = mtk_gpueb_sysram_batch_read(BATCH_MAX_READ_COUNT,
+					batch_freq, BATCH_STR_SIZE);
+
+		trace_tracing_mark_write(5566, "gpu_freq", avg_freq);
+
+		trace_GPU_DVFS__Frequency(avg_freq,
+			gpufreq_get_cur_freq(TARGET_STACK) / 1000,
+			gpufreq_get_cur_freq(TARGET_GPU) / 1000);
+	} else {
+		trace_tracing_mark_write(5566, "gpu_freq",
+			(long long) ged_get_cur_freq() / 1000);
+
+		trace_GPU_DVFS__Frequency(ged_get_cur_freq() / 1000,
+			gpufreq_get_cur_freq(TARGET_STACK) / 1000,
+			gpufreq_get_cur_freq(TARGET_GPU) / 1000);
+	}
+
+	trace_tracing_mark_write(5566, "gpu_freq_ceil",
+		(long long) ged_get_freq_by_idx(ui32CeilingID) / 1000);
+	trace_tracing_mark_write(5566, "gpu_freq_floor",
+		(long long) ged_get_freq_by_idx(ui32FloorID) / 1000);
+	trace_tracing_mark_write(5566, "limitter_ceil",
+		ged_get_cur_limiter_ceil());
+	trace_tracing_mark_write(5566, "limitter_floor",
+		ged_get_cur_limiter_floor());
+	trace_tracing_mark_write(5566, "commit_type", eCommitType);
+
+	policy_state = ged_get_policy_state();
+	ged_set_prev_policy_state(policy_state);
+	trace_GPU_DVFS__Policy__Common(eCommitType, policy_state);
+
 	return bCommited;
 }
 
@@ -1297,9 +1415,12 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	margin_low_bound, target_fps_margin, dvfs_margin_low_bound,
 	dvfs_min_margin_inc_step);
 	g_CommitType = MTK_GPU_DVFS_TYPE_VSYNCBASED;
-	ged_dvfs_gpu_freq_commit((unsigned long)ui32NewFreqID,
-		gpu_freq_tar, GED_DVFS_FRAME_BASE_COMMIT);
-
+	if (g_async_ratio_support)
+		ged_dvfs_gpu_freq_dual_commit((unsigned long)ui32NewFreqID,
+			gpu_freq_tar, GED_DVFS_FRAME_BASE_COMMIT, (unsigned long)ui32NewFreqID);
+	else
+		ged_dvfs_gpu_freq_commit((unsigned long)ui32NewFreqID,
+			gpu_freq_tar, GED_DVFS_FRAME_BASE_COMMIT);
 	//t_gpu_target(unit: 100us) *10^5 =nanosecond
 	set_fb_timeout(t_gpu_target * 100000, t_gpu_target_hd * 100000);
 	ged_set_backup_timer_timeout(fb_timeout);
@@ -2198,8 +2319,14 @@ void ged_dvfs_run(
 				else
 					eCommitType = GED_DVFS_FALLBACK_COMMIT;
 
-				ged_dvfs_gpu_freq_commit(g_ui32FreqIDFromPolicy,
-					ged_get_freq_by_idx(g_ui32FreqIDFromPolicy), eCommitType);
+				if (g_async_ratio_support)
+					ged_dvfs_gpu_freq_dual_commit(g_ui32FreqIDFromPolicy,
+						ged_get_freq_by_idx(g_ui32FreqIDFromPolicy),
+						eCommitType, g_ui32FreqIDFromPolicy);
+				else
+					ged_dvfs_gpu_freq_commit(g_ui32FreqIDFromPolicy,
+						ged_get_freq_by_idx(g_ui32FreqIDFromPolicy),
+						eCommitType);
 			}
 		}
 	}
@@ -2361,6 +2488,40 @@ GED_ERROR ged_dvfs_probe(int pid)
 	}
 
 	return GED_OK;
+}
+
+void ged_dvfs_enable_async_ratio(int enableAsync)
+{
+	pr_info("[DVFS] %s async ratio in ged_dvfs",
+			enableAsync ? "enable" : "disable");
+	g_async_ratio_support = enableAsync;
+}
+
+void ged_dvfs_force_top_oppidx(int idx)
+{
+	pr_info("[DVFS] force top oppidx (%d) in ged_dvfs", idx);
+	FORCE_TOP_OPP = idx;
+}
+
+void ged_dvfs_force_stack_oppidx(int idx)
+{
+	pr_info("[DVFS] force stack oppidx (%d) in ged_dvfs", idx);
+	FORCE_OPP = idx;
+}
+
+int ged_dvfs_get_async_ratio_support(void)
+{
+	return g_async_ratio_support;
+}
+
+int ged_dvfs_get_top_oppidx(void)
+{
+	return FORCE_TOP_OPP;
+}
+
+int ged_dvfs_get_stack_oppidx(void)
+{
+	return FORCE_OPP;
 }
 
 GED_ERROR ged_dvfs_system_init(void)

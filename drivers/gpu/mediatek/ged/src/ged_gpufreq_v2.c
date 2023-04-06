@@ -459,6 +459,98 @@ int ged_gpufreq_commit(int oppidx, int commit_type, int *bCommited)
 	return ret;
 }
 
+int ged_gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx, int commit_type, int *bCommited)
+{
+	int ret = GED_OK;
+	int oppidx_tar = 0;
+	int oppidx_cur = 0;
+	int mask_idx = 0;
+	int freqScaleUpFlag = false;
+	unsigned int freq = 0, core_mask_tar = 0, core_num_tar = 0;
+	unsigned int ud_mask_bit = 0;
+
+	int dvfs_state = 0;
+
+	oppidx_cur = ged_get_cur_oppidx();
+	if (oppidx_cur > stack_oppidx) /* freq scale up */
+		freqScaleUpFlag = true;
+
+	/* convert virtual opp to working opp with corresponding core mask */
+	if (stack_oppidx > g_min_working_oppidx) {
+		mask_idx = stack_oppidx - g_virtual_oppnum + g_avail_mask_num;
+		oppidx_tar = g_min_working_oppidx;
+	} else {
+		mask_idx = 0;
+		oppidx_tar = stack_oppidx;
+	}
+
+	/* scaling cores to max if freq. is fixed */
+	dvfs_state = gpufreq_get_dvfs_state();
+
+	if (dvfs_state == DVFS_FIX_OPP || dvfs_state == DVFS_FIX_FREQ_VOLT) {
+		mask_idx = 0;
+		oppidx_tar = stack_oppidx;
+	}
+
+	if (is_dcs_enable()) {
+		if (dcs_get_dcs_stress()) {
+			oppidx_tar = g_min_working_oppidx;
+			commit_type = GED_DVFS_DCS_STRESS_COMMIT;
+		}
+	}
+	if (!freqScaleUpFlag) /* freq scale down: commit freq. --> set core_mask */
+		ged_dvfs_gpu_freq_dual_commit_fp(gpu_oppidx, oppidx_tar, bCommited);
+
+	/* DCS policy enabled */
+	if (is_dcs_enable()) {
+		if (dcs_get_dcs_stress()) {
+			unsigned int rand;
+			int cnt = 0;
+
+			/* Stress test: routine random */
+			get_random_bytes(&rand, sizeof(rand));
+			rand = rand % g_avail_mask_num;
+			while (g_stress_mask_idx == rand) {
+				get_random_bytes(&rand, sizeof(rand));
+				rand = rand % g_avail_mask_num;
+				cnt++;
+				if (cnt > 5)
+					break;
+			}
+
+			if (dcs_get_dcs_stress() > 1) {
+				GED_LOGI("[DCS stress] set core %d -> %d, cnt=%d",
+					g_mask_table[g_stress_mask_idx].num,
+					g_mask_table[rand].num, cnt);
+			}
+
+			g_stress_mask_idx = rand;
+			mask_idx = g_stress_mask_idx;
+		}
+
+		core_mask_tar = g_mask_table[mask_idx].mask;
+		core_num_tar = g_mask_table[mask_idx].num;
+		ud_mask_bit = (ged_get_ud_mask_bit() |
+			(1 << (g_max_core_num-1))) & ((1 << (g_max_core_num)) - 1);
+
+		if ((ud_mask_bit > 0) && (mask_idx > 0)) {
+			while (!((1 << (core_num_tar-1)) & ud_mask_bit) && mask_idx) {
+				mask_idx -= 1;
+				core_mask_tar = g_mask_table[mask_idx].mask;
+				core_num_tar = g_mask_table[mask_idx].num;
+			}
+		}
+
+		dcs_set_core_mask(core_mask_tar, core_num_tar);
+	}
+
+	if (freqScaleUpFlag) /* freq scale up: set core_mask --> commit freq. */
+		ged_dvfs_gpu_freq_dual_commit_fp(gpu_oppidx, oppidx_tar, bCommited);
+
+	/* TODO: return value handling */
+	return ret;
+}
+
 unsigned int ged_gpufreq_bringup(void)
 {
 	return gpufreq_bringup();

@@ -34,22 +34,20 @@ TRACE_EVENT(tracing_mark_write,
 );
 
 TRACE_EVENT(GPU_DVFS__Frequency,
-
-	TP_PROTO(unsigned int virtual, unsigned int real),
-
-	TP_ARGS(virtual, real),
-
+	TP_PROTO(unsigned int virtual_stack, unsigned int real_stack, unsigned int real_top),
+	TP_ARGS(virtual_stack, real_stack, real_top),
 	TP_STRUCT__entry(
-		__field(unsigned int, virtual)
-		__field(unsigned int, real)
+		__field(unsigned int, virtual_stack)
+		__field(unsigned int, real_stack)
+		__field(unsigned int, real_top)
 	),
-
 	TP_fast_assign(
-		__entry->virtual = virtual;
-		__entry->real = real;
+		__entry->virtual_stack = virtual_stack;
+		__entry->real_stack = real_stack;
+		__entry->real_top = real_top;
 	),
-
-	TP_printk("virtual=%u, real=%u", __entry->virtual, __entry->real)
+	TP_printk("virtual_stack=%u, real_stack=%u, real_top=%u",
+		__entry->virtual_stack, __entry->real_stack, __entry->real_top)
 );
 
 TRACE_EVENT(GPU_DVFS__Loading,

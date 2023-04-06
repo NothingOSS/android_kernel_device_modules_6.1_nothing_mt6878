@@ -34,6 +34,7 @@ void ged_set_ud_mask_bit(unsigned int ud_mask_bit);
 unsigned int ged_get_ud_mask_bit(void);
 
 int ged_gpufreq_commit(int oppidx, int commit_type, int *bCommited);
+int ged_gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx, int commit_type, int *bCommited);
 
 unsigned int ged_gpufreq_bringup(void);
 void ged_gpufreq_print_tables(void);
