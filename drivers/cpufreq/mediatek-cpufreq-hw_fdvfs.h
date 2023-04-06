@@ -4,7 +4,7 @@
  */
 
 #define FDVFS_MAGICNUM	0xABCD0001
-#define FDVFS_FREQU	26
+#define FDVFS_FREQU	26000
 
 enum FDVFS_REG_TYPE {
 	FDVFS_REG,

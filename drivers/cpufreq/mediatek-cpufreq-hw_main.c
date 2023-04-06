@@ -16,6 +16,8 @@
 #include <linux/slab.h>
 #include <linux/sched/clock.h>
 
+#include "mediatek-cpufreq-hw_fdvfs.h"
+
 #define LUT_MAX_ENTRIES			32U
 #define LUT_FREQ			GENMASK(11, 0)
 #define LUT_ROW_SIZE			0x4
@@ -55,6 +57,7 @@ static const u16 cpufreq_mtk_offsets[REG_ARRAY_SIZE] = {
 
 static struct cpufreq_mtk *mtk_freq_domain_map[NR_CPUS];
 static bool freq_scaling_disabled = true;
+static bool fdvfs_enabled;
 
 static int look_up_cpu(struct device *cpu_dev)
 {
@@ -136,14 +139,18 @@ static unsigned int mtk_cpufreq_hw_fast_switch(struct cpufreq_policy *policy,
 	else
 		index = cpufreq_table_find_index_dl(policy, target_freq, false);
 
-	if (!freq_scaling_disabled) {
-		writel_relaxed(target_freq, c->reg_bases[REG_FREQ_PERF_STATE]);
+	if (fdvfs_enabled) // Fdvfs enabled
+		cpufreq_fdvfs_switch(target_freq, policy);
+	else {
+		if (!freq_scaling_disabled) // Frequency scaling enabled
+			writel_relaxed(target_freq, c->reg_bases[REG_FREQ_PERF_STATE]);
+		else
+			writel_relaxed(index, c->reg_bases[REG_FREQ_PERF_STATE]);
+	}
 
-		if (c->last_index == index)
-			return 0;
-		c->last_index = index;
-	} else
-		writel_relaxed(index, c->reg_bases[REG_FREQ_PERF_STATE]);
+	if (c->last_index == index)
+		return 0;
+	c->last_index = index;
 
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	ts[1] = sched_clock();
@@ -410,6 +417,8 @@ static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
 
 	if (readl_relaxed(csram_base))
 		freq_scaling_disabled = false;
+
+	fdvfs_enabled = check_fdvfs_support() == 1 ? true : false;
 
 	for_each_possible_cpu(cpu) {
 		cpu_np = of_cpu_device_node_get(cpu);

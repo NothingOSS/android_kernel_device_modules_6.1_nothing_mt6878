@@ -114,23 +114,18 @@ fdvfs_disable:
 
 	return ret;
 }
-EXPORT_SYMBOL_GPL(check_fdvfs_support);
 
 int cpufreq_fdvfs_switch(unsigned int target_f, struct cpufreq_policy *policy)
 {
 	unsigned int cpu;
-
-	if (fdvfs_support != 1 || fdvfs_base == NULL)
-		return 0;
 
 	target_f = DIV_ROUND_UP(target_f, FDVFS_FREQU);
 	for_each_cpu(cpu, policy->real_cpus) {
 		writel_relaxed(target_f, fdvfs_base + cpu*0x4);
 	}
 
-	return 1;
+	return 0;
 }
-EXPORT_SYMBOL_GPL(cpufreq_fdvfs_switch);
 
 int cpufreq_fdvfs_cci_switch(unsigned int target_f)
 {
