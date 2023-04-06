@@ -751,6 +751,8 @@ static int fill_sv_qos(struct mtk_cam_job *job,
 
 		/* only first two camsv devices support two smi out */
 		if (sv_dev->id < MULTI_SMI_SV_HW_NUM) {
+			/* hw issue: disable two smi out */
+#ifdef SV_TWO_SMI_OUT
 			job->sv_mmqos[SMI_PORT_SV_DISP_WDMA_0].avg_bw +=
 				to_qos_icc_ratio(avg_bw / 2);
 			job->sv_mmqos[SMI_PORT_SV_DISP_WDMA_0].peak_bw +=
@@ -759,6 +761,12 @@ static int fill_sv_qos(struct mtk_cam_job *job,
 				to_qos_icc_ratio(avg_bw / 2);
 			job->sv_mmqos[SMI_PORT_SV_MDP_WDMA_1].peak_bw +=
 				to_qos_icc(peak_bw / 2);
+#else
+			job->sv_mmqos[SMI_PORT_SV_MDP_WDMA_0].avg_bw +=
+				to_qos_icc_ratio(avg_bw);
+			job->sv_mmqos[SMI_PORT_SV_MDP_WDMA_0].peak_bw +=
+				to_qos_icc(peak_bw);
+#endif
 		} else {
 			job->sv_mmqos[SMI_PORT_SV_DISP_WDMA_0].avg_bw +=
 				to_qos_icc_ratio(avg_bw);

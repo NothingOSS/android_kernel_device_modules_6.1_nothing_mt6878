@@ -199,7 +199,6 @@ int mtk_cam_sv_dev_pertag_stream_on(
 int mtk_cam_sv_dev_stream_on(struct mtk_camsv_device *sv_dev, bool on,
 	unsigned int enabled_tags, unsigned int used_tag_cnt);
 int mtk_cam_sv_dmao_common_config(struct mtk_camsv_device *sv_dev);
-int mtk_cam_sv_print_fbc_status(struct mtk_camsv_device *sv_dev);
 int mtk_cam_sv_toggle_tg_db(struct mtk_camsv_device *sv_dev);
 int mtk_cam_sv_toggle_db(struct mtk_camsv_device *sv_dev);
 int mtk_cam_sv_central_common_enable(struct mtk_camsv_device *sv_dev);
