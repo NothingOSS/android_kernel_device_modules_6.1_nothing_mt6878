@@ -221,11 +221,11 @@ struct mtk_cam_job_ops {
 	int (*mark_engine_done)(struct mtk_cam_job *s,
 				int engine_type, int engine_id,
 				int seq_no);
-	int (*handle_buffer_done)(struct mtk_cam_job *s);
 	int (*apply_switch)(struct mtk_cam_job *s);
 	int (*apply_raw_switch)(struct mtk_cam_job *s);
 	int (*dump_aa_info)(struct mtk_cam_job *s, int engine_type);
 };
+
 struct mtk_cam_job {
 	/* note: to manage life-cycle in state list */
 	atomic_t refs;
@@ -264,10 +264,6 @@ struct mtk_cam_job {
 	struct apply_cq_ref cq_ref;
 
 	struct kthread_work sensor_work;
-	struct work_struct frame_done_work;
-	wait_queue_head_t done_wq;
-	bool done_work_queued;
-	bool cancel_done_work;
 	atomic_long_t afo_done; /* bit 0: not handled, bit 1: handled */
 	atomic_long_t done_set;
 	unsigned long done_handled;
@@ -490,6 +486,17 @@ struct mtk_cam_dump_param;
 int mtk_cam_job_fill_dump_param(struct mtk_cam_job *job,
 				struct mtk_cam_dump_param *p,
 				const char *desc);
+
+bool job_has_done_pending(struct mtk_cam_job *job);
+/*
+ * handle job's done
+ *
+ * returns:
+ *   1: all engines are done
+ *   0: waiting for other engine's done
+ *  -1: failure
+ */
+int job_handle_done(struct mtk_cam_job *job);
 
 /* functions used in flow control */
 int mtk_cam_job_manually_apply_sensor(struct mtk_cam_job *job,

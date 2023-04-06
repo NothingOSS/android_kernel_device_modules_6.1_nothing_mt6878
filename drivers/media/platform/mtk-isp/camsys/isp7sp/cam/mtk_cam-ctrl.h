@@ -86,6 +86,10 @@ struct mtk_cam_ctrl {
 	atomic_t stream_on_cnt;
 
 	wait_queue_head_t event_wq;
+
+	struct work_struct done_work;
+	wait_queue_head_t done_wq;
+
 	/* note:
 	 *   this send_lock is only used in send_event func to guarantee that send_event
 	 *   is executed in an exclusive manner.
@@ -127,6 +131,8 @@ void mtk_cam_ctrl_job_composed(struct mtk_cam_ctrl *cam_ctrl,
 			       unsigned int fh_cookie,
 			       struct mtkcam_ipi_frame_ack_result *cq_ret,
 			       int ack_ret);
+
+void mtk_cam_ctrl_handle_done_loop(struct mtk_cam_ctrl *cam_ctrl);
 
 void mtk_cam_event_frame_sync(struct mtk_cam_ctrl *cam_ctrl,
 			      unsigned int frame_seq_no);

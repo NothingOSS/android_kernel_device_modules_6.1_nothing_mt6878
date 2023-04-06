@@ -17,6 +17,7 @@
 #include "mtk_cam-debug.h"
 #include "mtk_cam-timesync.h"
 #include "mtk_cam-hsf.h"
+#include "mtk_cam-trace.h"
 
 #define SENSOR_SET_MARGIN_MS  25
 #define SENSOR_SET_MARGIN_MS_STAGGER  27
@@ -101,30 +102,6 @@ static void mtk_cam_sensor_work(struct kthread_work *work)
 
 	call_jobop(job, apply_sensor);
 	mtk_cam_job_put(job);
-}
-
-static void
-mtk_cam_frame_done_work(struct work_struct *work)
-{
-	struct mtk_cam_job *job =
-		container_of(work, struct mtk_cam_job, frame_done_work);
-	int ret;
-
-	ret = call_jobop(job, handle_buffer_done);
-	if (ret == 0)
-		mtk_cam_job_put(job);
-	else
-		pr_info("%s: job #%d is cancelled\n",
-			__func__, job->req_seq);
-}
-
-static int handle_done_async(struct mtk_cam_job *job, struct work_struct *work)
-{
-	struct mtk_cam_ctx *ctx = job->src_ctx;
-
-	/* pr_info("%s: job %d\n", __func__, job->req_seq); */
-	job->done_work_queued = 1;
-	return mtk_cam_ctx_queue_done_wq(ctx, work);
 }
 
 static int apply_sensor_async(struct mtk_cam_job *job)
@@ -302,10 +279,6 @@ static int mtk_cam_job_pack_init(struct mtk_cam_job *job,
 	apply_cq_ref_reset(&job->cq_ref);
 
 	kthread_init_work(&job->sensor_work, mtk_cam_sensor_work);
-	INIT_WORK(&job->frame_done_work, mtk_cam_frame_done_work);
-	init_waitqueue_head(&job->done_wq);
-	job->done_work_queued = 0;
-	job->cancel_done_work = 0;
 	atomic_long_set(&job->afo_done, 0);
 	atomic_long_set(&job->done_set, 0);
 	job->done_handled = 0;
@@ -771,92 +744,13 @@ handle_mraw_frame_done(struct mtk_cam_job *job, unsigned int pipe_id)
 	return 0;
 }
 
-static bool has_pending_or_cancelled(struct mtk_cam_job *job)
-{
-	return atomic_long_read(&job->done_set) != job->done_handled ||
-		atomic_long_read(&job->afo_done) == 1 ||
-		job->cancel_done_work;
-}
-
-static int job_buffer_done(struct mtk_cam_job *job)
-{
-	unsigned long cur_handle, engine_to_handle;
-	long timeout;
-	int ret;
-	int i;
-
-	timeout = msecs_to_jiffies(250);
-	engine_to_handle = _get_master_engines(job->used_engine);
-
-	do {
-		ret = wait_event_interruptible_timeout(job->done_wq,
-						has_pending_or_cancelled(job),
-						timeout);
-		if (!ret) {
-			pr_info("%s: timeout\n", __func__);
-			call_jobop(job, dump, job->frame_seq_no);
-			return -1;
-		}
-
-		cur_handle = atomic_long_read(&job->done_set) & ~job->done_handled;
-
-		if (job->cancel_done_work) {
-			/* to be release by ctrl: to keep release buffer order */
-			return -1;
-		}
-
-		if (atomic_long_read(&job->afo_done) == BIT(0)) {
-			_meta1_done(job);
-			atomic_long_fetch_or(BIT(1), &job->afo_done);
-		}
-
-		/* handle_raw */
-		if (bit_map_subset_of(MAP_HW_RAW, cur_handle))
-			handle_raw_frame_done(job);
-
-		/* handle_camsv */
-		if (bit_map_subset_of(MAP_HW_CAMSV, cur_handle))
-			handle_sv_frame_done(job);
-
-		/* handle_mraw */
-		if (bit_map_subset_of(MAP_HW_MRAW, cur_handle)) {
-			unsigned long submask_mraw =
-				bit_map_subset_of(MAP_HW_MRAW, cur_handle);
-
-			for (i = 0; submask_mraw; i++, submask_mraw >>= 1) {
-				if (!(submask_mraw & 0x1))
-					continue;
-
-				handle_mraw_frame_done(job,
-					i + MTKCAM_SUBDEV_MRAW_START);
-			}
-		}
-
-		job->done_handled |= cur_handle;
-
-	} while (job->done_handled != engine_to_handle);
-
-	return 0;
-}
-
-static int is_first_done(struct mtk_cam_job *job)
-{
-	return !job->done_work_queued;
-}
-
 static int job_mark_afo_done(struct mtk_cam_job *job, int seq_no)
 {
-	bool do_queue_work = is_first_done(job);
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtk_cam_ctrl *ctrl = &ctx->cam_ctrl;
 
-	if (atomic_long_read(&job->afo_done))
-		return 0;
-
-	atomic_long_fetch_or(BIT(0), &job->afo_done);
-
-	if (do_queue_work)
-		handle_done_async(job, &job->frame_done_work);
-	else
-		wake_up_interruptible(&job->done_wq);
+	if (!atomic_long_fetch_or(BIT(0), &job->afo_done))
+		wake_up_interruptible(&ctrl->done_wq);
 
 	return 0;
 }
@@ -865,11 +759,13 @@ static int job_mark_engine_done(struct mtk_cam_job *job,
 				int engine_type, int engine_id,
 				int seq_no)
 {
-	bool do_queue_work = is_first_done(job);
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtk_cam_ctrl *ctrl = &ctx->cam_ctrl;
 	unsigned long coming;
 	unsigned long old;
-	unsigned int master_engine = _get_master_engines(job->used_engine);
+	unsigned int master_engine;
 
+	master_engine = _get_master_engines(job->used_engine);
 	coming = engine_idx_to_bit(engine_type, engine_id);
 
 	if (!(coming & master_engine))
@@ -883,10 +779,7 @@ static int job_mark_engine_done(struct mtk_cam_job *job,
 	coming &= master_engine;
 	old = atomic_long_fetch_or(coming, &job->done_set);
 
-	if (do_queue_work)
-		handle_done_async(job, &job->frame_done_work);
-	else
-		wake_up_interruptible(&job->done_wq);
+	wake_up_interruptible(&ctrl->done_wq);
 
 	if (CAM_DEBUG_ENABLED(AA))
 		call_jobop(job, dump_aa_info, engine_type);
@@ -1561,11 +1454,10 @@ static void dump_job_info(struct mtk_cam_job *job)
 		 job->req_seq, job->frame_seq_no,
 		 job->used_engine);
 
-	dev_info(dev, "%s: done status: %lx(handled %lx)/afo %lx%s\n",
+	dev_info(dev, "%s: done status: %lx(handled %lx)/afo %lx\n",
 		 __func__,
 		 atomic_long_read(&job->done_set), job->done_handled,
-		 atomic_long_read(&job->afo_done),
-		 job->cancel_done_work ? "(cancelled)" : "");
+		 atomic_long_read(&job->afo_done));
 }
 
 static void job_dump(struct mtk_cam_job *job, int seq_no)
@@ -2639,9 +2531,6 @@ static void job_cancel(struct mtk_cam_job *job)
 
 	pr_info("%s: #%d\n", __func__, job->req_seq);
 
-	job->cancel_done_work = 1;
-	wake_up_interruptible(&job->done_wq);
-
 	used_pipe = job->req->used_pipe & job->src_ctx->used_pipe;
 
 	frame_sync_dec_target(&job->req->fs);
@@ -2971,7 +2860,6 @@ static struct mtk_cam_job_ops otf_job_ops = {
 	.apply_isp = _apply_cq,
 	.mark_afo_done = job_mark_afo_done,
 	.mark_engine_done = job_mark_engine_done,
-	.handle_buffer_done = job_buffer_done,
 	.apply_switch = _apply_switch,
 	.apply_raw_switch = _apply_raw_switch,
 	.dump_aa_info = job_dump_aa_info,
@@ -2989,7 +2877,6 @@ static struct mtk_cam_job_ops otf_stagger_job_ops = {
 	.apply_isp = _apply_cq,
 	.mark_afo_done = job_mark_afo_done,
 	.mark_engine_done = job_mark_engine_done,
-	.handle_buffer_done = job_buffer_done,
 	.apply_switch = _apply_switch,
 	.apply_raw_switch = NULL,
 	.dump_aa_info = job_dump_aa_info,
@@ -3008,7 +2895,6 @@ static struct mtk_cam_job_ops m2m_job_ops = {
 	.trigger_isp = trigger_m2m,
 	.mark_afo_done = job_mark_afo_done,
 	.mark_engine_done = job_mark_engine_done,
-	.handle_buffer_done = job_buffer_done,
 	.apply_raw_switch = NULL,
 	.dump_aa_info = 0,
 };
@@ -3025,7 +2911,6 @@ static struct mtk_cam_job_ops mstream_job_ops = {
 	.apply_isp = apply_cq_mstream,
 	.mark_afo_done = job_mark_afo_done,
 	.mark_engine_done = job_mark_engine_done_mstream,
-	.handle_buffer_done = job_buffer_done,
 	.apply_raw_switch = NULL,
 	.dump_aa_info = job_dump_aa_info,
 };
@@ -3041,7 +2926,6 @@ static struct mtk_cam_job_ops otf_only_sv_job_ops = {
 	.apply_sensor = _apply_sensor,
 	.apply_isp = _apply_cq,
 	.mark_engine_done = job_mark_engine_done,
-	.handle_buffer_done = job_buffer_done,
 	.apply_raw_switch = NULL,
 	.dump_aa_info = 0,
 };
@@ -4299,6 +4183,60 @@ static void mtk_cam_aa_dump_work(struct work_struct *work)
 
 PUT_JOB:
 	mtk_cam_job_put(job);
+}
+
+bool job_has_done_pending(struct mtk_cam_job *job)
+{
+	return atomic_long_read(&job->done_set) != job->done_handled ||
+		atomic_long_read(&job->afo_done) == 1;
+}
+
+int job_handle_done(struct mtk_cam_job *job)
+{
+	unsigned long cur_handle, engine_to_handle;
+	int i;
+	int ret;
+
+	engine_to_handle = _get_master_engines(job->used_engine);
+	cur_handle = atomic_long_read(&job->done_set) & ~job->done_handled;
+
+	MTK_CAM_TRACE_BEGIN(BASIC, "%s #%d cur=0x%lx", __func__,
+			    job->req_seq, cur_handle);
+
+	if (atomic_long_read(&job->afo_done) == BIT(0)) {
+		_meta1_done(job);
+		atomic_long_fetch_or(BIT(1), &job->afo_done);
+	}
+
+	/* handle_raw */
+	if (bit_map_subset_of(MAP_HW_RAW, cur_handle))
+		handle_raw_frame_done(job);
+
+	/* handle_camsv */
+	if (bit_map_subset_of(MAP_HW_CAMSV, cur_handle))
+		handle_sv_frame_done(job);
+
+	/* handle_mraw */
+	if (bit_map_subset_of(MAP_HW_MRAW, cur_handle)) {
+		unsigned long submask_mraw =
+			bit_map_subset_of(MAP_HW_MRAW, cur_handle);
+
+		for (i = 0; submask_mraw; i++, submask_mraw >>= 1) {
+			if (!(submask_mraw & 0x1))
+				continue;
+
+			handle_mraw_frame_done(job,
+					       i + MTKCAM_SUBDEV_MRAW_START);
+		}
+	}
+
+	job->done_handled |= cur_handle;
+
+	/* note: return 1 for success, 0 for continue */
+	ret = (job->done_handled == engine_to_handle) ? 1 : 0;
+
+	MTK_CAM_TRACE_END(BASIC);
+	return ret;
 }
 
 int mtk_cam_job_manually_apply_sensor(struct mtk_cam_job *job,

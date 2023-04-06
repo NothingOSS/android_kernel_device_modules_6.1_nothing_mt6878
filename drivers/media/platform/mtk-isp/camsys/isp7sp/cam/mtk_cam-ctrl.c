@@ -175,6 +175,21 @@ static struct mtk_cam_job *mtk_cam_ctrl_get_job(struct mtk_cam_ctrl *ctrl,
 	return found ? job : NULL;
 }
 
+/* note: without 'get' */
+static struct mtk_cam_job *
+mtk_cam_ctrl_fetch_first_job(struct mtk_cam_ctrl *ctrl)
+{
+	struct mtk_cam_job_state *state;
+
+	read_lock(&ctrl->list_lock);
+	state = list_first_entry_or_null(&ctrl->camsys_state_list,
+					 struct mtk_cam_job_state, list);
+	read_unlock(&ctrl->list_lock);
+
+	return state ?
+		container_of(state, struct mtk_cam_job, job_state) : NULL;
+}
+
 static void log_event(const char *func, int ctx_id, struct v4l2_event *e)
 {
 	switch (e->type) {
@@ -1138,6 +1153,69 @@ PUT_CTRL:
 	mtk_cam_ctrl_put(cam_ctrl);
 }
 
+static bool handle_job_done_or_stopped(struct mtk_cam_ctrl *ctrl,
+				       struct mtk_cam_job **job,
+				       bool *stopped)
+{
+	struct mtk_cam_job *local_job;
+
+	*stopped = atomic_read(&ctrl->stopped);
+	if (*stopped)
+		return true;
+
+	local_job = mtk_cam_ctrl_fetch_first_job(ctrl);
+	if (!local_job)
+		return false;
+
+	if (!job_has_done_pending(local_job))
+		return false;
+
+	*job = local_job;
+	return true;
+}
+
+void mtk_cam_ctrl_handle_done_loop(struct mtk_cam_ctrl *ctrl)
+{
+	struct mtk_cam_ctx *ctx = ctrl->ctx;
+	struct device *dev = ctx->cam->dev;
+	struct mtk_cam_job *job;
+	bool stopped;
+	int ret;
+
+	dev_info(dev, "%s: ctx %d enter\n", __func__, ctx->stream_id);
+	do {
+		job = NULL;
+		stopped = 0;
+
+		ret = wait_event_interruptible(ctrl->done_wq,
+			handle_job_done_or_stopped(ctrl, &job, &stopped));
+
+		if (stopped)
+			break;
+
+		if (ret)
+			continue;
+
+		if (WARN_ON(!job))
+			continue;
+
+		ret = job_handle_done(job);
+		if (ret > 0)
+			mtk_cam_job_put(job);
+
+	} while (1);
+
+	dev_info(dev, "%s: ctx %d exited\n", __func__, ctx->stream_id);
+}
+
+static void mtk_cam_ctrl_done_work(struct work_struct *work)
+{
+	struct mtk_cam_ctrl *ctrl =
+		container_of(work, struct mtk_cam_ctrl, done_work);
+
+	mtk_cam_ctrl_handle_done_loop(ctrl);
+}
+
 static void reset_runtime_info(struct mtk_cam_ctrl *ctrl)
 {
 	struct mtk_cam_ctrl_runtime_info *info = &ctrl->r_info;
@@ -1167,6 +1245,10 @@ void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 
 	init_waitqueue_head(&cam_ctrl->event_wq);
 
+	INIT_WORK(&cam_ctrl->done_work, mtk_cam_ctrl_done_work);
+	init_waitqueue_head(&cam_ctrl->done_wq);
+	queue_work(system_highpri_wq, &cam_ctrl->done_work);
+
 	spin_lock_init(&cam_ctrl->send_lock);
 	rwlock_init(&cam_ctrl->list_lock);
 	INIT_LIST_HEAD(&cam_ctrl->camsys_state_list);
@@ -1191,6 +1273,9 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 	struct mtk_cam_job *job;
 	struct list_head job_list;
 
+	/* should wait stream-on/seamless switch finished before stopping */
+	kthread_flush_worker(&ctx->flow_worker);
+
 	/* stop procedure
 	 * 1. mark 'stopped' status to skip further processing
 	 * 2. stop all working context
@@ -1200,9 +1285,7 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 	 * 3. Now, all contexts are stopped. return resources
 	 */
 	atomic_set(&cam_ctrl->stopped, 1);
-
-	/* should wait stream-on/seamless switch finished before stopping */
-	kthread_flush_worker(&ctx->flow_worker);
+	wake_up_interruptible(&cam_ctrl->done_wq);
 
 	mtk_cam_ctx_engine_off(ctx);
 
@@ -1230,7 +1313,8 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 
 	mtk_cam_event_eos(cam_ctrl);
 
-	drain_workqueue(ctx->frame_done_wq);
+	/* await done work finished */
+	flush_work(&cam_ctrl->done_work);
 	drain_workqueue(ctx->aa_dump_wq);
 	kthread_flush_worker(&ctx->sensor_worker);
 

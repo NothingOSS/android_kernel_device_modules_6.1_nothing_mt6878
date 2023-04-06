@@ -617,6 +617,8 @@ static void mtk_cam_req_queue(struct media_request *req)
 	struct mtk_cam_device *cam =
 		container_of(req->mdev, struct mtk_cam_device, media_dev);
 
+	MTK_CAM_TRACE_FUNC_BEGIN(BASIC);
+
 	// reset req
 	mtk_cam_req_reset(req);
 
@@ -644,6 +646,8 @@ static void mtk_cam_req_queue(struct media_request *req)
 		dev_info(cam->dev, "%s: req %s\n", __func__, req->debug_str);
 
 	mtk_cam_dev_req_try_queue(cam);
+
+	MTK_CAM_TRACE_END(BASIC);
 }
 
 static int mtk_cam_link_notify(struct media_link *link, u32 flags,
@@ -1481,26 +1485,16 @@ static int mtk_cam_ctx_alloc_workers(struct mtk_cam_ctx *ctx)
 		goto fail_uninit_flow_worker_task;
 	}
 
-	ctx->frame_done_wq =
-			alloc_ordered_workqueue(dev_name(dev),
-						WQ_HIGHPRI | WQ_FREEZABLE);
-	if (!ctx->frame_done_wq) {
-		dev_info(dev, "failed to alloc frame_done workqueue\n");
-		goto fail_uninit_composer_wq;
-	}
-
 	ctx->aa_dump_wq =
 			alloc_ordered_workqueue(dev_name(dev),
 						WQ_HIGHPRI | WQ_FREEZABLE);
 	if (!ctx->aa_dump_wq) {
 		dev_info(dev, "failed to alloc aa_dump workqueue\n");
-		goto fail_uninit_frame_done_wq;
+		goto fail_uninit_composer_wq;
 	}
 
 	return 0;
 
-fail_uninit_frame_done_wq:
-	destroy_workqueue(ctx->frame_done_wq);
 fail_uninit_composer_wq:
 	destroy_workqueue(ctx->composer_wq);
 fail_uninit_flow_worker_task:
@@ -1521,7 +1515,6 @@ static void mtk_cam_ctx_destroy_workers(struct mtk_cam_ctx *ctx)
 	ctx->flow_task = NULL;
 
 	destroy_workqueue(ctx->composer_wq);
-	destroy_workqueue(ctx->frame_done_wq);
 	destroy_workqueue(ctx->aa_dump_wq);
 }
 
@@ -2458,20 +2451,6 @@ int mtk_cam_ctx_queue_flow_worker(struct mtk_cam_ctx *ctx,
 		return -1;
 
 	ret = kthread_queue_work(&ctx->flow_worker, work) ? 0 : -1;
-	if (ret)
-		pr_info("%s: failed\n", __func__);
-
-	return ret;
-}
-
-int mtk_cam_ctx_queue_done_wq(struct mtk_cam_ctx *ctx, struct work_struct *work)
-{
-	int ret;
-
-	if (WARN_ON(!ctx || !ctx->frame_done_wq))
-		return -1;
-
-	ret = queue_work(ctx->frame_done_wq, work) ? 0 : -1;
 	if (ret)
 		pr_info("%s: failed\n", __func__);
 
