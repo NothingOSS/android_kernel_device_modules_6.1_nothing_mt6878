@@ -943,7 +943,7 @@ int mmdvfs_force_step_by_vcp(const u8 pwr_idx, const s8 opp)
 
 	/* Fix problem: force step is called after display power-off */
 	if (mmdvfs_swrgo && pwr_idx == 0 && !mmdvfs_swrgo_init &&
-		opp >= 0 && (opp < mux->freq_num - 1))
+		opp >= 0 && (opp < mux->freq_num))
 		disp_pd_swrgo_init(true);
 
 	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_FORCE);
