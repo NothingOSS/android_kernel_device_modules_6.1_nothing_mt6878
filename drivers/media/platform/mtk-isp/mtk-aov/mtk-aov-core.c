@@ -611,7 +611,10 @@ int aov_core_send_cmd(struct mtk_aov *aov_dev, uint32_t cmd,
 		AOV_TRACE_BEGIN("AOV Free Buffer");
 		dev_dbg(aov_dev->dev, "aov free buffer+");
 		spin_lock_irqsave(&core_info->buf_lock, flag);
-		tlsf_free(&(core_info->alloc), buf);
+		if (buf != NULL)
+			tlsf_free(&(core_info->alloc), buf);
+		else
+			dev_info(aov_dev->dev, "aov free buffer is NULL");
 		spin_unlock_irqrestore(&core_info->buf_lock, flag);
 		dev_dbg(aov_dev->dev, "aov free buffer-");
 		AOV_TRACE_END();
