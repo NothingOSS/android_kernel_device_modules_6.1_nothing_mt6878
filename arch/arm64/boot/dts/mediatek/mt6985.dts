@@ -5931,11 +5931,13 @@
 			mvpu-tx-rpmsg {
 				compatible = "mediatek,mvpu-tx-rpmsg";
 				mtk,rpmsg-name = "mvpu-tx-rpmsg";
+				status = "disabled";
 			};
 
 			mvpu-rx-rpmsg {
 				compatible = "mediatek,mvpu-rx-rpmsg";
 				mtk,rpmsg-name = "mvpu-rx-rpmsg";
+				status = "disabled";
 			};
 
 			aps-tx-rpmsg {
@@ -6034,6 +6036,7 @@
 			version = <0x0>;
 			mask = /bits/ 64 <0x00000003ffffffff>;
 			iommus = <&apu_iommu0 M4U_PORT_L40_APU_CODE>;
+			status = "disabled";
 		};
 
 		apusys-aov {
