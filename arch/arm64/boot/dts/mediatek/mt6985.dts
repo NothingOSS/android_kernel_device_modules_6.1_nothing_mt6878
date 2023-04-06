@@ -14336,6 +14336,9 @@
 
 		/* enable check vsys voltage */
 		enable_check_vsys;
+
+		/* enable LK boot volt*/
+		enable-boot-volt = <1>;
 	};
 
 	pe: pe {
@@ -14667,6 +14670,9 @@
 
 		/* fast charging algo support indicator */
 		enable_fast_charging_indicator;
+
+		/* enable LK boot volt*/
+		enable-boot-volt = <1>;
 	};
 
 	logstore: logstore {
