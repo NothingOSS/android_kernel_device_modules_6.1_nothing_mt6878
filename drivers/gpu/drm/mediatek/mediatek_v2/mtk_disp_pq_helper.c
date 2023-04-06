@@ -323,6 +323,10 @@ int mtk_pq_helper_fill_comp_pipe_info(struct mtk_ddp_comp *comp, int *path_order
 		return ret;
 
 	comp_type = mtk_ddp_comp_get_type(comp->id);
+	if (comp_type < 0) {
+		DDPPR_ERR("%s comp id %d is invalid\n", __func__, comp->id);
+		return comp_type;
+	}
 	if (!_is_right_pipe)
 		_companion = mtk_ddp_comp_sel_in_dual_pipe(comp->mtk_crtc,
 					comp_type, _path_order);
