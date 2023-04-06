@@ -141,6 +141,8 @@ unsigned int vGed_Tmp;
 unsigned int g_ged_segment_id;
 unsigned int g_ged_efuse_id;
 unsigned int g_ged_adaptive_power_policy_support;
+unsigned int g_ged_frame_base_optimize;
+
 
 /******************************************************************************
  * GED File operations
@@ -504,6 +506,30 @@ GED_ERROR check_adaptive_power_policy(void)
 	return ret;
 }
 
+GED_ERROR check_frame_base_optimize(void)
+{
+	struct device_node *app_node;
+	int ret = GED_OK, ret_temp;
+
+	g_ged_frame_base_optimize = 0;
+	app_node = of_find_compatible_node(NULL, NULL, "mediatek,mali");
+	if (!app_node) {
+		GED_LOGE("No mali node.");
+		g_ged_frame_base_optimize = 0;
+	} else {
+		ret_temp = of_property_read_u32(app_node, "gpu-frame-base-optimize",
+			&g_ged_frame_base_optimize);
+		if (unlikely(ret_temp))
+			GED_LOGE("fail to read gpu-frame-base-optimize (%d)", ret_temp);
+	}
+
+	GED_LOGE("%s. g_ged_frame_base_optimize: %d",
+		__func__, g_ged_frame_base_optimize);
+
+	return ret;
+}
+
+
 /******************************************************************************
  * Module related
  *****************************************************************************/
@@ -585,6 +611,13 @@ static int ged_pdrv_probe(struct platform_device *pdev)
 		GED_LOGE("Failed to check adaptive power policy!\n");
 		goto ERROR;
 	}
+
+	err = check_frame_base_optimize();
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("Failed to check gpu-frame-base-optimize!\n");
+		goto ERROR;
+	}
+
 
 	if (g_ged_gpueb_support) {
 		fastdvfs_proc_init();

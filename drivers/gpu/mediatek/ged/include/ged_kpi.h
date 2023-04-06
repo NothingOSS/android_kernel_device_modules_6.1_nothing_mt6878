@@ -79,7 +79,8 @@ GED_ERROR ged_kpi_query_dvfs_freq_pred(int *gpu_freq_cur
 GED_ERROR ged_kpi_query_gpu_dvfs_info(struct GED_BRIDGE_OUT_QUERY_GPU_DVFS_INFO *out);
 GED_ERROR ged_kpi_set_gift_status(int mode);
 GED_ERROR ged_kpi_set_gift_target_pid(int pid);
-
+unsigned long long ged_kpi_get_fb_timestamp(void);
+unsigned long ged_kpi_get_fb_ulMask(void);
 extern spinlock_t gsGpuUtilLock;
 
 // extern unsigned int g_gpufreqv2;

@@ -1358,7 +1358,6 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 		gpu_freq_tar = gpu_freq_pre;
 
 	gpu_freq_floor = gpu_freq_pre * GED_FB_DVFS_FERQ_DROP_RATIO_LIMIT / 100;
-
 	/* overdue_counter : 4~1, limit gpu_freq_floor 95%~80% */
 	if (overdue_counter <= 4 && overdue_counter > 0) {
 		if (gpu_freq_pre > (ged_get_max_freq_in_opp() / OVERDUE_FREQ_TH))
@@ -1784,7 +1783,16 @@ static bool ged_dvfs_policy(
 			i32NewFreqID,
 			dvfs_step_mode);
 
-		g_CommitType = MTK_GPU_DVFS_TYPE_FALLBACK;
+		/* Back to frame base when uncomplete time is smller than fb_timeout */
+		if (g_ged_frame_base_optimize &&
+				ged_get_policy_state() == POLICY_STATE_FB_FALLBACK &&
+				((u64)t_gpu_uncomplete * 1000) < fb_timeout) {
+			ged_set_policy_state(POLICY_STATE_FB);
+			ged_set_backup_timer_timeout(fb_timeout -
+				((u64)t_gpu_uncomplete * 1000));
+			g_CommitType = MTK_GPU_DVFS_TYPE_VSYNCBASED;
+		} else
+			g_CommitType = MTK_GPU_DVFS_TYPE_FALLBACK;
 	}
 
 	if (i32NewFreqID > minfreq_idx)
@@ -2316,6 +2324,8 @@ void ged_dvfs_run(
 				if (policy_state == POLICY_STATE_LB ||
 						policy_state == POLICY_STATE_FORCE_LB)
 					eCommitType = GED_DVFS_LOADING_BASE_COMMIT;
+				else if (policy_state == POLICY_STATE_FB)
+					eCommitType = GED_DVFS_FRAME_BASE_COMMIT;
 				else
 					eCommitType = GED_DVFS_FALLBACK_COMMIT;
 

@@ -258,6 +258,8 @@ static spinlock_t gs_hashtableLock;
 static struct GED_KPI g_asKPI[GED_KPI_TOTAL_ITEMS];
 static int g_i32Pos;
 static GED_THREAD_HANDLE ghThread;
+static unsigned long long frame_base_timestamp;
+static unsigned long frame_base_ulMask;
 
 #if !defined(CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT)
 /* Disable for bring-up stage unexpected exception */
@@ -1173,6 +1175,8 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		psKPI->QedBufferDelay = psHead->last_QedBufferDelay;
 		psHead->last_QedBufferDelay = 0;
 		psHead->last_TimeStamp1 = psKPI->ullTimeStamp1;
+		frame_base_timestamp = psTimeStamp->ullTimeStamp;
+		frame_base_ulMask = GED_TIMESTAMP_TYPE_1;
 
 		if (ged_kpi_find_and_delete_miss_tag(ulID,
 			psTimeStamp->i32FrameID, GED_TIMESTAMP_TYPE_S) == GED_TRUE) {
@@ -1284,6 +1288,7 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		(((unsigned long) ged_get_dvfs_margin()) & 0x3FF);
 		psKPI->cpu_gpu_info.gpu.gpu_dvfs |=
 		((((unsigned long) ged_get_dvfs_margin_mode()) & 0xFF) << 16);
+		frame_base_ulMask = GED_TIMESTAMP_TYPE_2;
 
 		/* Detect if there are multi renderers by */
 		/* checking if there is struct GED_KPI info
@@ -2192,6 +2197,17 @@ int ged_kpi_get_main_bq_uncomplete_count(void)
 	else
 		return -1;
 }
+
+unsigned long long ged_kpi_get_fb_timestamp(void)
+{
+	return frame_base_timestamp;
+}
+
+unsigned long ged_kpi_get_fb_ulMask(void)
+{
+	return frame_base_ulMask;
+}
+
 
 /* ------------------------------------------------------------------- */
 GED_ERROR ged_kpi_query_dvfs_freq_pred(int *gpu_freq_cur

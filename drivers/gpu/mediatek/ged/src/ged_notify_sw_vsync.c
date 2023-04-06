@@ -264,24 +264,26 @@ void ged_cancel_backup_timer(void)
 
 	temp = ged_get_time();
 #ifdef ENABLE_TIMER_BACKUP
-	if (hrtimer_try_to_cancel(&g_HT_hwvsync_emu)) {
-		/* Timer is either queued or in cb
-		 * cancel it to ensure it is not bother any way
-		 */
-		hrtimer_cancel(&g_HT_hwvsync_emu);
-		hrtimer_start(&g_HT_hwvsync_emu,
-			ns_to_ktime(GED_DVFS_TIMER_TIMEOUT), HRTIMER_MODE_REL);
-		ged_log_buf_print(ghLogBuf_DVFS,
-			"[GED_K] Timer Restart (ts=%llu)", temp);
-	} else {
-		/*
-		 * Timer is not existed
-		 */
-		hrtimer_start(&g_HT_hwvsync_emu,
-			ns_to_ktime(GED_DVFS_TIMER_TIMEOUT), HRTIMER_MODE_REL);
-		ged_log_buf_print(ghLogBuf_DVFS,
-			"[GED_K] New Timer Start (ts=%llu)", temp);
-		timer_switch_locked(true);
+	if (g_ged_frame_base_optimize == 0 || g_bGPUClock) {
+		if (hrtimer_try_to_cancel(&g_HT_hwvsync_emu)) {
+			/* Timer is either queued or in cb
+			 * cancel it to ensure it is not bother any way
+			 */
+			hrtimer_cancel(&g_HT_hwvsync_emu);
+			hrtimer_start(&g_HT_hwvsync_emu,
+				ns_to_ktime(GED_DVFS_TIMER_TIMEOUT), HRTIMER_MODE_REL);
+			ged_log_buf_print(ghLogBuf_DVFS,
+				"[GED_K] Timer Restart (ts=%llu)", temp);
+		} else {
+			/*
+			 * Timer is not existed
+			 */
+			hrtimer_start(&g_HT_hwvsync_emu,
+				ns_to_ktime(GED_DVFS_TIMER_TIMEOUT), HRTIMER_MODE_REL);
+			ged_log_buf_print(ghLogBuf_DVFS,
+				"[GED_K] New Timer Start (ts=%llu)", temp);
+			timer_switch_locked(true);
+		}
 	}
 #endif /*	#ifdef ENABLE_TIMER_BACKUP	*/
 }
@@ -532,10 +534,29 @@ EXPORT_SYMBOL(ged_gpu_adaptive_power_notify);
 
 void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state)
 {
+	enum gpu_dvfs_policy_state policy_state;
+
+	policy_state = ged_get_policy_state();
 
 	if (power_state == GED_POWER_ON) {
 		g_ns_gpu_on_ts = ged_get_time();
 		g_bGPUClock = true;
+		/* check overdue if timestamp is queuebuffer(0x2) */
+		if (g_ged_frame_base_optimize &&
+			(policy_state == POLICY_STATE_FB ||
+			policy_state == POLICY_STATE_FB_FALLBACK) &&
+			ged_kpi_get_fb_ulMask() == 0x2) {
+			unsigned long long uncomplete_time =
+				g_ns_gpu_on_ts - ged_kpi_get_fb_timestamp();
+			/* get in fallback if uncomplete time is overdue */
+			if (uncomplete_time > fb_timeout) {
+				ged_set_policy_state(POLICY_STATE_FB_FALLBACK);
+				ged_set_backup_timer_timeout(ged_get_fallback_time());
+			} else {
+				ged_set_policy_state(POLICY_STATE_FB);
+				ged_set_backup_timer_timeout(fb_timeout - uncomplete_time);
+			}
+		}
 		if (g_timer_on) {
 			ged_log_buf_print(ghLogBuf_DVFS,
 				"[GED_K] Timer Already Start");
@@ -552,6 +573,17 @@ void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state)
 			power_state == GED_SLEEP) {
 		g_ns_gpu_off_ts = ged_get_time();
 		g_bGPUClock = false;
+		if (g_ged_frame_base_optimize &&
+			(policy_state == POLICY_STATE_FB ||
+			 policy_state == POLICY_STATE_FB_FALLBACK)) {
+			mutex_lock(&gsPolicyLock);
+			if (hrtimer_try_to_cancel(&g_HT_hwvsync_emu)) {
+				/* frame base pass power off timer*/
+				hrtimer_cancel(&g_HT_hwvsync_emu);
+				timer_switch(false);
+			}
+			mutex_unlock(&gsPolicyLock);
+		}
 		ged_log_buf_print(ghLogBuf_DVFS, "[GED_K] Buck-off");
 	}
 	// Update power on/off state
