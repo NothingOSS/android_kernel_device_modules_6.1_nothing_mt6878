@@ -6247,6 +6247,8 @@ int mtk_drm_get_mode_ext_info_ioctl(struct drm_device *dev, void *data,
 			GFP_KERNEL);
 	if (!total_offset || !real_te_duration) {
 		DDPPR_ERR("%s alloc mem fail\n", __func__);
+		kfree(real_te_duration);
+		kfree(total_offset);
 		return -EFAULT;
 	}
 
@@ -6294,6 +6296,7 @@ int mtk_drm_get_mode_ext_info_ioctl(struct drm_device *dev, void *data,
 			__func__, args->total_offset, total_offset,
 			sizeof(unsigned int) * copy_num);
 
+		kfree(real_te_duration);
 		kfree(total_offset);
 		return -EFAULT;
 	}
@@ -6305,6 +6308,7 @@ int mtk_drm_get_mode_ext_info_ioctl(struct drm_device *dev, void *data,
 			sizeof(unsigned int) * copy_num);
 
 		kfree(real_te_duration);
+		kfree(total_offset);
 		return -EFAULT;
 	}
 
