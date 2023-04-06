@@ -22,8 +22,7 @@
 #define SENSOR_SET_MARGIN_MS  25
 #define SENSOR_SET_MARGIN_MS_STAGGER  27
 
-// TODO(Will): change to -1 to enable bayer ufo by default
-static unsigned int debug_buf_fmt_sel;
+static unsigned int debug_buf_fmt_sel = -1;
 module_param(debug_buf_fmt_sel, int, 0644);
 MODULE_PARM_DESC(sv_pure_raw, "working fmt select: 0->bayer, 1->ufbc");
 
@@ -199,10 +198,33 @@ static bool update_sv_pure_raw(struct mtk_cam_job *job)
 	return is_sv_pure_raw;
 }
 
+static bool is_scen_support_ufbc(struct mtk_cam_job *job)
+{
+	bool support = false;
+
+	switch (job->job_scen.id) {
+	case MTK_CAM_SCEN_NORMAL:
+#ifndef RBGW_UFO_READY
+		support = !job->job_scen.scen.normal.w_chn_enabled;
+#else
+		support = true;
+#endif
+		break;
+#ifdef MSTREAM_UFO_TWIN_READY
+	case MTK_CAM_SCEN_MSTREAM:
+		support = true;
+		break;
+#endif
+	default:
+		break;
+	}
+
+	return support;
+}
+
 static bool is_4cell_sensor(struct mtk_cam_job *job)
 {
-	// TODO: get 4Cell from v2 sensor type
-	return false;
+	return get_sensor_data_pattern(job) == MTK_CAM_PATTERN_4CELL;
 }
 
 static bool is_sv_support_ufbc(struct mtk_cam_job *job)
@@ -223,7 +245,8 @@ static void update_buf_fmt_sel(struct mtk_cam_job *job)
 
 	use_ufbc = use_ufbc
 		&& is_sv_support_ufbc(job)
-		&& !is_4cell_sensor(job);
+		&& !is_4cell_sensor(job)
+		&& is_scen_support_ufbc(job);
 
 	if (use_ufbc)
 		set_fmt_select(MTKCAM_BUF_FMT_TYPE_UFBC, desc);
@@ -3289,14 +3312,19 @@ static int update_vsync_order_to_config(struct mtk_cam_ctx *ctx,
 static int update_scen_order_to_config(struct mtk_cam_scen *scen,
 				       struct mtkcam_ipi_config_param *config)
 {
+	int ret = 0;
+
 	switch (scen->id) {
 	case MTK_CAM_SCEN_NORMAL:
-		return update_normal_scen_to_config(&scen->scen.normal, config);
+		ret = update_normal_scen_to_config(&scen->scen.normal, config);
+		break;
 	case MTK_CAM_SCEN_MSTREAM:
 	case MTK_CAM_SCEN_ODT_MSTREAM:
-		return update_mstream_scen_to_config(&scen->scen.mstream, config);
+		ret = update_mstream_scen_to_config(&scen->scen.mstream, config);
+		break;
 	default:
 		config->exp_order = 0;
+		break;
 	}
 
 	if (CAM_DEBUG_ENABLED(IPI_BUF))
@@ -3305,7 +3333,7 @@ static int update_scen_order_to_config(struct mtk_cam_scen *scen,
 			config->exp_order,
 			config->frame_order,
 			config->vsync_order);
-	return 0;
+	return ret;
 }
 
 static int mtk_cam_job_fill_ipi_config(struct mtk_cam_job *job,

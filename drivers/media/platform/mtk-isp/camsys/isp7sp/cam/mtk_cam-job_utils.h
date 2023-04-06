@@ -179,6 +179,7 @@ u64 get_line_time(struct mtk_cam_job *job);
 u32 get_sensor_h(struct mtk_cam_job *job);
 u32 get_sensor_vb(struct mtk_cam_job *job);
 u32 get_sensor_fps(struct mtk_cam_job *job);
+u8 get_sensor_data_pattern(struct mtk_cam_job *job);
 
 int handle_sv_tag(struct mtk_cam_job *job);
 int handle_sv_tag_display_ic(struct mtk_cam_job *job);

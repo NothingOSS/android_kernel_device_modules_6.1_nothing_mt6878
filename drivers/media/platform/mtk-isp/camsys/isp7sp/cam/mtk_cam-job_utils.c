@@ -143,6 +143,16 @@ u32 get_sensor_fps(struct mtk_cam_job *job)
 	return 0;
 }
 
+u8 get_sensor_data_pattern(struct mtk_cam_job *job)
+{
+	struct mtk_cam_resource_sensor_v2 *sensor_res;
+
+	sensor_res = _get_job_sensor_res(job);
+	if (sensor_res)
+		return sensor_res->pattern;
+
+	return MTK_CAM_PATTERN_BAYER;
+}
 
 void _set_timestamp(struct mtk_cam_job *job,
 	u64 time_boot, u64 time_mono)
