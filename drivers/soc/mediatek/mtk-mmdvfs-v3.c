@@ -1271,6 +1271,7 @@ static int mmdvfs_vcp_init_thread(void *data)
 	for (i = 0; i < USER_NUM; i++) {
 		writel_relaxed(MAX_OPP, MEM_VOTE_OPP_USR(i));
 		writel_relaxed(MAX_OPP, MEM_MUX_OPP(i));
+		writel_relaxed(MAX_OPP, MEM_MUX_MIN(i));
 	}
 	for (i = 0; i < MMDVFS_VCP_USER_NUM; i++)
 		writel_relaxed(MAX_OPP, MEM_USR_OPP(i));

@@ -234,15 +234,17 @@ static int mmdvfs_debug_opp_show(struct seq_file *file, void *data)
 	/* MMDVFS_DBG_VER3.5 */
 	seq_puts(file, "VER3.5: mux controlled by vcp:\n");
 
-	//mux opp
-	seq_puts(file, "mux latest opp\n");
+	//mux opp/min
+	seq_puts(file, "mux latest opp/min\n");
 	for (i = 0; i < USER_NUM; i++)
-		seq_printf(file, "mux: %u opp: %u\n", i, readl(MEM_MUX_OPP(i)));
+		seq_printf(file, "mux: %u opp: %u min: %u\n",
+			i, readl(MEM_MUX_OPP(i)), readl(MEM_MUX_MIN(i)));
 
-	//power opp
-	seq_puts(file, "power latest opp\n");
+	//power opp/gear
+	seq_puts(file, "power latest opp/gear\n");
 	for (i = 0; i < PWR_MMDVFS_NUM; i++)
-		seq_printf(file, "power: %u opp: %u\n", i, readl(MEM_PWR_OPP(i)));
+		seq_printf(file, "power: %u opp: %u gear: %u\n",
+			i, readl(MEM_PWR_OPP(i)), readl(MEM_PWR_CUR_GEAR(i)));
 
 	//ap user latest request freq
 	seq_puts(file, "ap user latest request freq\n");
@@ -254,11 +256,6 @@ static int mmdvfs_debug_opp_show(struct seq_file *file, void *data)
 	seq_puts(file, "vcp user latest request opp\n");
 	for (i = 0; i < MMDVFS_VCP_USER_NUM; i++)
 		seq_printf(file, "vcp_user: %u opp: %u\n", i, readl(MEM_USR_OPP(i)));
-
-	//power current gear
-	seq_puts(file, "power current gear\n");
-	for (i = 0; i < PWR_MMDVFS_NUM; i++)
-		seq_printf(file, "power: %u gear: %u\n", i, readl(MEM_PWR_CUR_GEAR(i)));
 
 	// mux opp records
 	i = readl(MEM_REC_MUX_CNT) % MEM_REC_CNT_MAX;

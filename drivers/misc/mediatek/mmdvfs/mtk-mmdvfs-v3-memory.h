@@ -50,7 +50,8 @@ static inline bool mmdvfs_is_init_done(void) { return false; }
 #define MEM_PWR_OPP(x)		(MEM_BASE + 0x140 + 0x4 * (x)) // POWER_NUM(4)
 #define MEM_PWR_CUR_GEAR(x)	(MEM_BASE + 0x150 + 0x4 * (x)) // POWER_NUM(4)
 #define MEM_AP_USR_FREQ(x)	(MEM_BASE + 0x160 + 0x4 * (x)) // AP_USER_NUM(16)
-/* next start: 0x170 */
+#define MEM_MUX_MIN(x)		(MEM_BASE + 0x1A0 + 0x4 * (x)) // MUX_NUM(16)
+/* next start: 0x1E0 */
 
 #define MEM_REC_PWR_OBJ		4
 #define MEM_REC_USR_OBJ		5
