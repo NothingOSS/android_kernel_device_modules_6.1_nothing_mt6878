@@ -506,7 +506,7 @@ exit:
 
 	return count;
 }
-
+#ifdef GOODIX_REG_RW
 /* reg read/write */
 static u32 rw_addr;
 static u32 rw_len;
@@ -639,7 +639,7 @@ err_out:
 	return -EINVAL;
 
 }
-
+#endif
 /* show irq infomation */
 static ssize_t goodix_ts_irq_info_show(struct device *dev,
 				       struct device_attribute *attr,
@@ -774,7 +774,9 @@ static ssize_t goodix_ts_irq_info_store(struct device *dev,
 		break;
 	/* use cmd to make touch power off */
 	case '2':
+		mutex_lock(&irq_info_mutex);
 		ret = goodix_ts_power_off(core_data);
+		mutex_unlock(&irq_info_mutex);
 		if (ret < 0) {
 			ts_err("Failed to disable analog power: %d", ret);
 			return ret;
@@ -783,7 +785,9 @@ static ssize_t goodix_ts_irq_info_store(struct device *dev,
 		break;
 	/* use cmd to make touch power on */
 	case '3':
+		mutex_lock(&irq_info_mutex);
 		ret = goodix_ts_power_on(core_data);
+		mutex_unlock(&irq_info_mutex);
 		if (ret < 0) {
 			ts_err("Failed to enable analog power: %d", ret);
 			return ret;
@@ -871,8 +875,10 @@ static DEVICE_ATTR(send_cfg, 0220,
 		NULL, goodix_ts_send_cfg_store);
 static DEVICE_ATTR(read_cfg, 0440,
 		read_cfg_show, NULL);
+#ifdef GOODIX_REG_RW
 static DEVICE_ATTR(reg_rw, 0660,
 		goodix_ts_reg_rw_show, goodix_ts_reg_rw_store);
+#endif
 static DEVICE_ATTR(irq_info, 0660,
 		goodix_ts_irq_info_show, goodix_ts_irq_info_store);
 static DEVICE_ATTR(esd_info, 0660,
@@ -886,7 +892,9 @@ static struct attribute *sysfs_attrs[] = {
 	&dev_attr_reset.attr,
 	&dev_attr_send_cfg.attr,
 	&dev_attr_read_cfg.attr,
+#ifdef GOODIX_REG_RW
 	&dev_attr_reg_rw.attr,
+#endif
 	&dev_attr_irq_info.attr,
 	&dev_attr_esd_info.attr,
 	&dev_attr_debug_log.attr,
