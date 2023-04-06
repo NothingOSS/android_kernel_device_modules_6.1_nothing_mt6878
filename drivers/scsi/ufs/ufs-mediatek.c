@@ -1490,10 +1490,12 @@ int ufs_mtk_rpmb_security_out(struct scsi_device *sdev,
 	put_unaligned_be32(trans_len, cmd + 6);  /* transfer length */
 
 retry:
-	ret = scsi_execute_req(sdev, cmd, DMA_TO_DEVICE,
-				     frames, trans_len, &sshdr,
-				     SEC_PROTOCOL_TIMEOUT, SEC_PROTOCOL_RETRIES,
-				     NULL);
+	ret = scsi_execute_cmd(sdev, cmd, REQ_OP_DRV_OUT, frames,
+				trans_len, SEC_PROTOCOL_TIMEOUT, SEC_PROTOCOL_RETRIES,
+				&(struct scsi_exec_args) {
+					.sshdr = &sshdr,
+					.resid = NULL,
+				});
 
 	if (ret && scsi_sense_valid(&sshdr) &&
 	    sshdr.sense_key == UNIT_ATTENTION)
@@ -1531,10 +1533,12 @@ int ufs_mtk_rpmb_security_in(struct scsi_device *sdev,
 	put_unaligned_be32(alloc_len, cmd + 6); /* allocation length */
 
 retry:
-	ret = scsi_execute_req(sdev, cmd, DMA_FROM_DEVICE,
-				     frames, alloc_len, &sshdr,
-				     SEC_PROTOCOL_TIMEOUT, SEC_PROTOCOL_RETRIES,
-				     NULL);
+	ret = scsi_execute_cmd(sdev, cmd, REQ_OP_DRV_IN, frames,
+				alloc_len, SEC_PROTOCOL_TIMEOUT, SEC_PROTOCOL_RETRIES,
+				&(struct scsi_exec_args) {
+					.sshdr = &sshdr,
+					.resid = NULL,
+				});
 
 	if (ret && scsi_sense_valid(&sshdr) &&
 	    sshdr.sense_key == UNIT_ATTENTION)
