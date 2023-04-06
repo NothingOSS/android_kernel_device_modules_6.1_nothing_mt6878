@@ -530,16 +530,93 @@ void mtk_cam_seninf_get_vcinfo_test(struct seninf_ctx *ctx)
 	}
 }
 
+unsigned int get_code2dt(unsigned int code)
+{
+	switch (code) {
+	case MEDIA_BUS_FMT_SBGGR8_1X8:
+	case MEDIA_BUS_FMT_SGBRG8_1X8:
+	case MEDIA_BUS_FMT_SGRBG8_1X8:
+	case MEDIA_BUS_FMT_SRGGB8_1X8:
+		return 0x2a;
+
+	case MEDIA_BUS_FMT_SBGGR12_1X12:
+	case MEDIA_BUS_FMT_SGBRG12_1X12:
+	case MEDIA_BUS_FMT_SGRBG12_1X12:
+	case MEDIA_BUS_FMT_SRGGB12_1X12:
+		return 0x2c;
+
+	case MEDIA_BUS_FMT_SBGGR14_1X14:
+	case MEDIA_BUS_FMT_SGBRG14_1X14:
+	case MEDIA_BUS_FMT_SGRBG14_1X14:
+	case MEDIA_BUS_FMT_SRGGB14_1X14:
+		return 0x2d;
+
+	case MEDIA_BUS_FMT_SBGGR10_ALAW8_1X8:
+	case MEDIA_BUS_FMT_SGBRG10_ALAW8_1X8:
+	case MEDIA_BUS_FMT_SGRBG10_ALAW8_1X8:
+	case MEDIA_BUS_FMT_SRGGB10_ALAW8_1X8:
+	case MEDIA_BUS_FMT_SBGGR10_DPCM8_1X8:
+	case MEDIA_BUS_FMT_SGBRG10_DPCM8_1X8:
+	case MEDIA_BUS_FMT_SGRBG10_DPCM8_1X8:
+	case MEDIA_BUS_FMT_SRGGB10_DPCM8_1X8:
+	case MEDIA_BUS_FMT_SBGGR10_2X8_PADHI_BE:
+	case MEDIA_BUS_FMT_SBGGR10_2X8_PADHI_LE:
+	case MEDIA_BUS_FMT_SBGGR10_2X8_PADLO_BE:
+	case MEDIA_BUS_FMT_SBGGR10_2X8_PADLO_LE:
+	case MEDIA_BUS_FMT_SBGGR10_1X10:
+	case MEDIA_BUS_FMT_SGBRG10_1X10:
+	case MEDIA_BUS_FMT_SGRBG10_1X10:
+	case MEDIA_BUS_FMT_SRGGB10_1X10:
+	default:
+		return 0x2b;
+	}
+}
+
+static unsigned int dt_remap_to_mipi_dt(unsigned int dt_remap)
+{
+	switch (dt_remap) {
+	case MTK_MBUS_FRAME_DESC_REMAP_TO_RAW12:
+		return 0x2c;
+	case MTK_MBUS_FRAME_DESC_REMAP_TO_RAW14:
+		return 0x2d;
+	case MTK_MBUS_FRAME_DESC_REMAP_TO_RAW10:
+	default:
+		return 0x2b;
+	}
+}
+
 struct seninf_vc *mtk_cam_seninf_get_vc_by_pad(struct seninf_ctx *ctx, int idx)
 {
-	int i;
+	int i, ret;
 	struct seninf_vcinfo *vcinfo = &ctx->vcinfo;
+	struct v4l2_subdev_format raw_fmt;
+	unsigned int format_code, cur_dt, dt_remap, pad_dt;
+
+	memset(&raw_fmt, 0, sizeof(struct v4l2_subdev_format));
+	raw_fmt.pad = ctx->sensor_pad_idx;
+	raw_fmt.which = V4L2_SUBDEV_FORMAT_ACTIVE;
+	ret = v4l2_subdev_call(ctx->sensor_sd, pad, get_fmt,
+				NULL, &raw_fmt);
+	// get current scenraio output bit(/data type)
+	format_code = to_std_fmt_code(raw_fmt.format.code);
+	cur_dt = get_code2dt(format_code);
+
+	// find vc via vc_dt or dt_remap
+	for (i = 0; i < vcinfo->cnt; i++) {
+		dt_remap = vcinfo->vc[i].dt_remap_to_type;
+		pad_dt = (dt_remap == MTK_MBUS_FRAME_DESC_REMAP_NONE)
+				? vcinfo->vc[i].dt : dt_remap_to_mipi_dt(dt_remap);
+		if (vcinfo->vc[i].out_pad == idx && pad_dt == cur_dt)
+			return &vcinfo->vc[i];
+	}
+
+	// if it can't find vc via vc_dt or dt_remap.
+	// default: find vc via pad
 
 	for (i = 0; i < vcinfo->cnt; i++) {
 		if (vcinfo->vc[i].out_pad == idx)
 			return &vcinfo->vc[i];
 	}
-
 	return NULL;
 }
 
@@ -576,6 +653,8 @@ static int get_mbus_format_by_dt(int dt)
 		return MEDIA_BUS_FMT_SBGGR10_1X10;
 	case 0x2c:
 		return MEDIA_BUS_FMT_SBGGR12_1X12;
+	case 0x2d:
+		return MEDIA_BUS_FMT_SBGGR14_1X14;
 	default:
 		/* default raw8 for other data types */
 		return MEDIA_BUS_FMT_SBGGR8_1X8;
@@ -929,9 +1008,13 @@ int mtk_cam_seninf_get_vcinfo(struct seninf_ctx *ctx)
 			vc->feature = VC_RAW_SE_W_DATA;
 			vc->out_pad = PAD_SRC_RAW_W2;
 			break;
+		case VC_RAW_FLICKER_DATA:
+			vc->feature = VC_RAW_FLICKER_DATA;
+			vc->out_pad = PAD_SRC_FLICKER;
+			break;
 		default:
 			if (vc->dt == 0x2a || vc->dt == 0x2b ||
-			    vc->dt == 0x2c) {
+			    vc->dt == 0x2c || vc->dt == 0x2d) {
 				if (raw_cnt >= 3) {
 					dev_info(ctx->dev,
 						"too much raw data\n");
@@ -1367,17 +1450,18 @@ int _mtk_cam_seninf_set_camtg_with_dest_idx(struct v4l2_subdev *sd, int pad_id,
 				chk_is_fsync_vsync_src(ctx, pad_id);
 			}
 			seninf_logi(ctx,
-				"pad %d dest %u mux %d -> %d mux_vr %d -> %d cam %d -> %d, tag %d\n",
+				"pad %d dest %u mux %d -> %d mux_vr %d -> %d cam %d -> %d, tag %d vc id %d, dt 0x%x\n",
 				vc->out_pad, dest_set, old_mux, dest->mux,
-				old_mux_vr, dest->mux_vr, old_camtg, dest->cam, dest->tag);
+				old_mux_vr, dest->mux_vr, old_camtg, dest->cam, dest->tag,
+				vc->vc, vc->dt);
 
 #ifdef SENSOR_SECURE_MTEE_SUPPORT
 		}
 #endif
 	} else {
 		seninf_logi(ctx,
-			"pad_id %d, dest %u camtg %d, ctx->streaming %d, vc_en %d, tag %d\n",
-			pad_id, dest_set, camtg, ctx->streaming, vc_en, tag_id);
+			"pad_id %d, dest %u camtg %d, ctx->streaming %d, vc_en %d, tag %d vc id %d, dt 0x%x\n",
+			pad_id, dest_set, camtg, ctx->streaming, vc_en, tag_id, vc->vc, vc->dt);
 	}
 
 	return 0;
@@ -1401,6 +1485,9 @@ static int _mtk_cam_seninf_reset_cammux(struct seninf_ctx *ctx, int pad_id)
 		dev_info(ctx->dev, "%s !ctx->streaming\n", __func__);
 		return -EINVAL;
 	}
+
+	dev_info(ctx->dev, "[%s] disable pad_id %d vc id %d dt 0x%x res %dx%d\n",
+			 __func__, pad_id, vc->vc, vc->dt, vc->exp_hsize, vc->exp_vsize);
 
 	for (j = 0; j < vc->dest_cnt; j++) {
 		old_camtg = vc->dest[j].cam;
