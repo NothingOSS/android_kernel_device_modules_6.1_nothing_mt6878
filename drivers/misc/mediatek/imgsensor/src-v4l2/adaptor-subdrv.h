@@ -5,7 +5,6 @@
 #define __ADAPTOR_SUBDRV_H__
 
 #include <media/v4l2-subdev.h>
-#include <linux/pm_qos.h>
 
 //#include "kd_imgsensor_define_v4l2.h"
 #include "imgsensor-user.h"
@@ -300,7 +299,6 @@ struct subdrv_static_ctx {
 #define SUBDRV_I2C_BUF_SIZE 256
 struct subdrv_ctx {
 	struct i2c_client *i2c_client;
-	struct pm_qos_request i2c_qos_request;
 	u8 i2c_write_id;
 	u16 _i2c_data[SUBDRV_I2C_BUF_SIZE];
 	u16 _size_to_write;
@@ -452,44 +450,36 @@ struct subdrv_entry {
 ({ \
 	u16 __val = 0xffff; \
 	adaptor_i2c_rd_u16(subctx->i2c_client, \
-		&subctx->i2c_qos_request, \
 		subctx->i2c_write_id >> 1, reg, &__val); \
 	__val; \
 })
 
 #define subdrv_i2c_wr_u8(subctx, reg, val) \
 	adaptor_i2c_wr_u8(subctx->i2c_client, \
-		&subctx->i2c_qos_request, \
 		subctx->i2c_write_id >> 1, reg, val)
 
 #define subdrv_i2c_wr_u16(subctx, reg, val) \
 	adaptor_i2c_wr_u16(subctx->i2c_client, \
-		&subctx->i2c_qos_request, \
 		subctx->i2c_write_id >> 1, reg, val)
 
 #define subdrv_i2c_wr_p8(subctx, reg, p_vals, n_vals) \
 	adaptor_i2c_wr_p8(subctx->i2c_client, \
-		&subctx->i2c_qos_request, \
 		subctx->i2c_write_id >> 1, reg, p_vals, n_vals)
 
 #define subdrv_i2c_wr_p16(subctx, reg, p_vals, n_vals) \
 	adaptor_i2c_wr_p16(subctx->i2c_client, \
-		&subctx->i2c_qos_request, \
 		subctx->i2c_write_id >> 1, reg, p_vals, n_vals)
 
 #define subdrv_i2c_wr_seq_p8(subctx, reg, p_vals, n_vals) \
 	adaptor_i2c_wr_seq_p8(subctx->i2c_client, \
-		&subctx->i2c_qos_request, \
 		subctx->i2c_write_id >> 1, reg, p_vals, n_vals)
 
 #define subdrv_i2c_wr_regs_u8(subctx, list, len) \
 	adaptor_i2c_wr_regs_u8(subctx->i2c_client, \
-		&subctx->i2c_qos_request, \
 		subctx->i2c_write_id >> 1, list, len)
 
 #define subdrv_i2c_wr_regs_u16(subctx, list, len) \
 	adaptor_i2c_wr_regs_u16(subctx->i2c_client, \
-		&subctx->i2c_qos_request, \
 		subctx->i2c_write_id >> 1, list, len)
 
 #define FINE_INTEG_CONVERT(_shutter, _fine_integ) \
