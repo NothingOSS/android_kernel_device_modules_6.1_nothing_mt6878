@@ -121,6 +121,7 @@ enum mtkcam_ipi_raw_video_id {
 	MTKCAM_IPI_RAW_RAWI_5,		/* RAWI_R5 */
 	MTKCAM_IPI_RAW_IPUI,		/* ADLRD */
 	MTKCAM_IPI_RAW_IMGO,		/* IMGO_R1 */
+	/* no need pure raw */
 	MTKCAM_IPI_RAW_YUVO_1,		/* YUVO_R1 */
 	MTKCAM_IPI_RAW_YUVO_2,		/* YUVO_R2 */
 	MTKCAM_IPI_RAW_YUVO_3,		/* YUVO_R3 */

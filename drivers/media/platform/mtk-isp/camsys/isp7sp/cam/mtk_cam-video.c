@@ -107,6 +107,11 @@ static int mtk_cam_vb2_queue_setup(struct vb2_queue *vq,
 		if (sizes[0] < size || *num_planes != 1)
 			return -EINVAL;
 	} else {
+		if (node->desc.id == MTK_RAW_PURE_RAW_OUT)
+			dev_dbg(cam->dev,
+				"[PURE-RAW]%s:%s handle multi plane\n",
+				__func__, node->desc.name);
+
 		*num_planes = 1;
 		sizes[0] = size;
 		/* workaround */
@@ -142,7 +147,11 @@ static int mtk_cam_vb2_buf_init(struct vb2_buffer *vb)
 	if (!node->desc.smem_alloc)
 		return 0;
 
-	buf = mtk_cam_vb2_buf_to_dev_buf(vb);
+	if (node->desc.id == MTK_RAW_PURE_RAW_OUT)
+		dev_dbg(dev,
+			"[PURE-RAW]%s:%s handle multi plane\n",
+			__func__, node->desc.name);
+
 	/* Use coherent address to get iova address */
 	addr = dma_map_resource(dev, buf->daddr, vb->planes[0].length,
 				DMA_BIDIRECTIONAL, DMA_ATTR_SKIP_CPU_SYNC);
@@ -370,6 +379,11 @@ static int mtk_cam_vb2_buf_prepare(struct vb2_buffer *vb)
 	else
 		size = fmt->fmt.pix_mp.plane_fmt[0].sizeimage;
 
+	if (node->desc.id == MTK_RAW_PURE_RAW_OUT)
+		dev_dbg(vb->vb2_queue->dev,
+			"[PURE-RAW]%s:%s handle multi plane\n",
+			__func__, node->desc.name);
+
 	if (vb2_plane_size(vb, 0) < size) {
 		dev_info_ratelimited(vb->vb2_queue->dev, "%s: plane size is too small:%lu<%u\n",
 			 node->desc.name, vb2_plane_size(vb, 0), size);
@@ -505,6 +519,11 @@ static void mtk_cam_vb2_buf_cleanup(struct vb2_buffer *vb)
 
 	if (!node->desc.smem_alloc)
 		return;
+
+	if (node->desc.id == MTK_RAW_PURE_RAW_OUT)
+		dev_dbg(vb->vb2_queue->dev,
+			"[PURE-RAW]%s:%s handle multi plane\n",
+			__func__, node->desc.name);
 
 	buf = mtk_cam_vb2_buf_to_dev_buf(vb);
 	dma_unmap_page_attrs(dev, buf->daddr,

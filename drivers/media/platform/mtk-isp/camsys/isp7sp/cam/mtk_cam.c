@@ -1338,7 +1338,7 @@ static int mtk_cam_ctx_pipeline_start(struct mtk_cam_ctx *ctx,
 	struct v4l2_subdev **target_sd;
 	struct mtk_cam_video_device *mtk_vdev;
 	struct media_pipeline_pad *ppad;
-	struct media_entity *entity_walked[32] = {0};
+	struct media_entity *entity_walked[64] = {0};
 	int last_entity_walked = 0;
 	bool walked;
 	int i, j, ret;

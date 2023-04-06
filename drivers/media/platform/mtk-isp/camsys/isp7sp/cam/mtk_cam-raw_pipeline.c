@@ -2786,9 +2786,9 @@ static const char *output_queue_names[RAW_PIPELINE_NUM][MTK_RAW_TOTAL_OUTPUT_QUE
 };
 
 #ifndef PREISP
-#define MTK_RAW_TOTAL_CAPTURE_QUEUES 15 //todo :check backend node size
+#define MTK_RAW_TOTAL_CAPTURE_QUEUES 16 //todo :check backend node size
 #else
-#define MTK_RAW_TOTAL_CAPTURE_QUEUES 20 //todo :check backend node size
+#define MTK_RAW_TOTAL_CAPTURE_QUEUES 21 //todo :check backend node size
 #endif
 static const struct
 mtk_cam_dev_node_desc capture_queues[] = {
@@ -2801,6 +2801,32 @@ mtk_cam_dev_node_desc capture_queues[] = {
 		.image = true,
 		.smem_alloc = false,
 		.dma_port = MTKCAM_IPI_RAW_IMGO,
+		.fmts = stream_out_fmts,
+		.num_fmts = ARRAY_SIZE(stream_out_fmts),
+		.default_fmt_idx = 0,
+		.ioctl_ops = &mtk_cam_v4l2_vcap_ioctl_ops,
+		.frmsizes = &(struct v4l2_frmsizeenum) {
+			.index = 0,
+			.type = V4L2_FRMSIZE_TYPE_CONTINUOUS,
+			.stepwise = {
+				.max_width = IMG_MAX_WIDTH,
+				.min_width = IMG_MIN_WIDTH,
+				.max_height = IMG_MAX_HEIGHT,
+				.min_height = IMG_MIN_HEIGHT,
+				.step_height = 1,
+				.step_width = 1,
+			},
+		},
+	},
+	{
+		.id = MTK_RAW_PURE_RAW_OUT,
+		.name = "pure-raw",  /* not the name shown to user */
+		.cap = V4L2_CAP_VIDEO_CAPTURE_MPLANE,
+		.buf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
+		.link_flags = MEDIA_LNK_FL_ENABLED |  MEDIA_LNK_FL_IMMUTABLE,
+		.image = true,
+		.smem_alloc = false,
+		.dma_port = MTKCAM_IPI_RAW_ID_UNKNOWN,  /* unknown or imgo */
 		.fmts = stream_out_fmts,
 		.num_fmts = ARRAY_SIZE(stream_out_fmts),
 		.default_fmt_idx = 0,
@@ -3259,8 +3285,9 @@ mtk_cam_dev_node_desc capture_queues[] = {
 	},
 };
 
+/* TODO: remove the names array */
 static const char *capture_queue_names[RAW_PIPELINE_NUM][MTK_RAW_TOTAL_CAPTURE_QUEUES] = {
-	{"mtk-cam raw-0 main-stream",
+	{"mtk-cam raw-0 main-stream", "mtk-cam raw-0 pure-raw",
 	 "mtk-cam raw-0 yuvo-1", "mtk-cam raw-0 yuvo-2",
 	 "mtk-cam raw-0 yuvo-3", "mtk-cam raw-0 yuvo-4",
 	 "mtk-cam raw-0 yuvo-5",
@@ -3273,7 +3300,7 @@ static const char *capture_queue_names[RAW_PIPELINE_NUM][MTK_RAW_TOTAL_CAPTURE_Q
 	 "mtk-cam raw-0 ext-meta-0", "mtk-cam raw-0 ext-meta-1",
 	 "mtk-cam raw-0 ext-meta-2"},
 
-	{"mtk-cam raw-1 main-stream",
+	{"mtk-cam raw-1 main-stream", "mtk-cam raw-1 pure-raw",
 	 "mtk-cam raw-1 yuvo-1", "mtk-cam raw-1 yuvo-2",
 	 "mtk-cam raw-1 yuvo-3", "mtk-cam raw-1 yuvo-4",
 	 "mtk-cam raw-1 yuvo-5",
@@ -3286,7 +3313,7 @@ static const char *capture_queue_names[RAW_PIPELINE_NUM][MTK_RAW_TOTAL_CAPTURE_Q
 	 "mtk-cam raw-1 ext-meta-0", "mtk-cam raw-1 ext-meta-1",
 	 "mtk-cam raw-1 ext-meta-2"},
 
-	{"mtk-cam raw-2 main-stream",
+	{"mtk-cam raw-2 main-stream", "mtk-cam raw-2 pure-raw",
 	 "mtk-cam raw-2 yuvo-1", "mtk-cam raw-2 yuvo-2",
 	 "mtk-cam raw-2 yuvo-3", "mtk-cam raw-2 yuvo-4",
 	 "mtk-cam raw-2 yuvo-5",
@@ -3380,6 +3407,7 @@ static void mtk_raw_pipeline_queue_setup(struct mtk_raw_pipeline *pipe)
 		vdev = &pipe->vdev_nodes[node_idx];
 
 		vdev->desc = capture_queues[i];
+		/* assign prefix raw# for each node */
 		vdev->desc.name = capture_queue_names[pipe->id][i];
 
 		++node_idx;

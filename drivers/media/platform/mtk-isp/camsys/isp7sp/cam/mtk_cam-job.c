@@ -3635,7 +3635,7 @@ static int update_raw_image_buf_to_ipi_frame(struct req_buffer_helper *helper,
 		if (job_helper->update_raw_yuvo_to_ipi)
 			update_fn = job_helper->update_raw_yuvo_to_ipi;
 		break;
-	default:
+	default:  /* pure raw node no need or go to imgo for buffer assignment */
 		pr_info("%s %s: not supported port: %d\n",
 			__FILE__, __func__, node->desc.dma_port);
 	}
