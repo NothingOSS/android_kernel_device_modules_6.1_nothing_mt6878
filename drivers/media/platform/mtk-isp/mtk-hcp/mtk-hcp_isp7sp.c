@@ -528,7 +528,7 @@ int isp7sp_allocate_working_buffer(struct mtk_hcp *hcp_dev, unsigned int mode)
 				}
 				mtk_dma_buf_set_name(mblock[id].d_buf, mblock[id].name);
 				mblock[id].attach =
-					dma_buf_attach(mblock[id].d_buf, hcp_dev->dev);
+					dma_buf_attach(mblock[id].d_buf, hcp_dev->smmu_dev);
 				attach = mblock[id].attach;
 				if (IS_ERR(attach)) {
 					pr_info("dma_buf_attach fail :%ld\n",
@@ -589,7 +589,7 @@ int isp7sp_allocate_working_buffer(struct mtk_hcp *hcp_dev, unsigned int mode)
 				}
 				mtk_dma_buf_set_name(mblock[id].d_buf, mblock[id].name);
 				mblock[id].attach = dma_buf_attach(
-				mblock[id].d_buf, hcp_dev->dev);
+				mblock[id].d_buf, hcp_dev->smmu_dev);
 				attach = mblock[id].attach;
 				if (IS_ERR(attach)) {
 					pr_info("dma_buf_attach fail :%ld\n",
@@ -597,7 +597,7 @@ int isp7sp_allocate_working_buffer(struct mtk_hcp *hcp_dev, unsigned int mode)
 					return -1;
 				}
 
-				mblock[id].sgt = dma_buf_map_attachment(attach, DMA_TO_DEVICE);
+				mblock[id].sgt = dma_buf_map_attachment(attach, DMA_BIDIRECTIONAL);
 				sgt = mblock[id].sgt;
 				if (IS_ERR(sgt)) {
 					dma_buf_detach(mblock[id].d_buf, attach);
@@ -705,7 +705,7 @@ int isp7sp_release_working_buffer(struct mtk_hcp *hcp_dev)
 				dma_buf_vunmap(mblock[id].d_buf, &mblock[id].map);
 				/* free iova */
 				dma_buf_unmap_attachment(mblock[id].attach,
-				mblock[id].sgt, DMA_TO_DEVICE);
+				mblock[id].sgt, DMA_BIDIRECTIONAL);
 				dma_buf_detach(mblock[id].d_buf,
 				mblock[id].attach);
 				dma_buf_put(mblock[id].d_buf);

@@ -32,7 +32,7 @@
 
 #include "mtk_imgsys-data.h"
 #include "mtk_imgsys-probe.h"
-
+#include "iommu_debug.h"
 #define CLK_READY
 
 static struct device *imgsys_pm_dev;
@@ -1512,7 +1512,7 @@ static int mtkdip_ioc_add_kva(struct v4l2_subdev *subdev, void *arg)
 		buf_va_info->map = map;
 		buf_va_info->dma_buf_putkva = dmabuf;
 
-		attach = dma_buf_attach(dmabuf, imgsys_pipe->imgsys_dev->dev);
+		attach = dma_buf_attach(dmabuf, imgsys_pipe->imgsys_dev->smmu_dev);
 		if (IS_ERR(attach)) {
 			dma_buf_vunmap(dmabuf, &buf_va_info->map);
 			dma_buf_end_cpu_access(dmabuf, DMA_BIDIRECTIONAL);
@@ -1667,7 +1667,7 @@ static int mtkdip_ioc_add_iova(struct v4l2_subdev *subdev, void *arg)
 			"[%s]%s: fd(%d) GCE buffer used\n", __func__, dmabuf->name, kfd[i]);
 		spin_unlock(&dmabuf->name_lock);
 #endif
-		attach = dma_buf_attach(dmabuf, pipe->imgsys_dev->dev);
+		attach = dma_buf_attach(dmabuf, pipe->imgsys_dev->smmu_dev);
 		if (IS_ERR(attach)) {
 			dma_buf_put(dmabuf);
 			pr_info("dma_buf_attach fail fd:%d\n", kfd[i]);
@@ -2891,6 +2891,13 @@ int mtk_imgsys_probe(struct platform_device *pdev)
 	if (!imgsys_dev->imgcmdq_pdev) {
 		dev_info(imgsys_dev->dev,
 			"%s: failed to get imgsys cmdq device\n",
+			__func__);
+		return -EINVAL;
+	}
+	imgsys_dev->smmu_dev = mtk_smmu_get_shared_device(&pdev->dev);
+	if (!imgsys_dev->smmu_dev) {
+		dev_info(imgsys_dev->dev,
+			"%s: failed to get imgsys smmu device\n",
 			__func__);
 		return -EINVAL;
 	}

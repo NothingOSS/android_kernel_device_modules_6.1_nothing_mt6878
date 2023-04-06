@@ -317,6 +317,7 @@ struct mtk_hcp {
 	struct hcp_mem extmem;
 	struct hcp_desc hcp_desc_table[HCP_MAX_ID];
 	struct device *dev;
+	struct device *smmu_dev;
 	const struct vb2_mem_ops *mem_ops;
 	const struct mtk_hcp_data *data;
 	/* for protecting vcu data structure */

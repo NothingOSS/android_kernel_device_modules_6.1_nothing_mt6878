@@ -68,7 +68,7 @@
 #include <linux/dma-direction.h>
 #include <linux/scatterlist.h>
 #include <linux/dma-buf.h>
-
+#include "iommu_debug.h"
 
 /**
  * HCP (Hetero Control Processor ) is a tiny processor controlling
@@ -1565,6 +1565,14 @@ static int mtk_hcp_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, hcp_dev);
 	dev_set_drvdata(&pdev->dev, hcp_dev);
+
+	hcp_dev->smmu_dev = mtk_smmu_get_shared_device(&pdev->dev);
+	if (!hcp_dev->smmu_dev) {
+		dev_info(hcp_dev->dev,
+			"%s: failed to get hcp smmu device\n",
+			__func__);
+		return -EINVAL;
+	}
 
 	if (dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(34)))
 		dev_info(&pdev->dev, "%s:No DMA available\n", __func__);

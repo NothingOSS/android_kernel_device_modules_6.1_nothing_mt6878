@@ -617,7 +617,7 @@ u64 mtk_imgsys_get_iova(struct dma_buf *dma_buf, s32 ionFd,
 		return 0;
 	}
 
-	dev = imgsys_dev->dev;
+	dev = imgsys_dev->smmu_dev;
 
 	attach = dma_buf_attach(dma_buf, dev);
 

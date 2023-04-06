@@ -30,6 +30,7 @@ endif
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/ \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/ \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/ \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc/ \
              -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/ \
              -I$(DEVICE_MODULES_PATH)/drivers/iommu
