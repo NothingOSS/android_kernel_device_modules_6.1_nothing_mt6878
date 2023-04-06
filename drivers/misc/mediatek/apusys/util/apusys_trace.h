@@ -11,15 +11,6 @@
 
 #define TRACE_LEN 256
 
-#ifdef TRACE_PUT
-#undef TRACE_PUT
-#endif
-
-#define TRACE_PUTS(p) \
-	do { \
-		trace_puts(p);; \
-	} while (0)
-
 void trace_tag_begin(const char *format, ...);
 void trace_tag_end(void);
 void trace_tag_customer(const char *fmt, ...);

@@ -7,13 +7,9 @@
 #include <linux/string.h>
 #include <linux/kernel.h>
 #include "apusys_trace.h"
+#define CREATE_TRACE_POINTS
+#include "mtk_apu_events.h"
 #include "sw_logger.h"
-
-static noinline int tracing_mark_write(const char *buf)
-{
-	TRACE_PUTS(buf);
-	return 0;
-}
 
 void trace_tag_customer(const char *fmt, ...)
 {
@@ -27,7 +23,7 @@ void trace_tag_customer(const char *fmt, ...)
 		pr_info("%s: vsnprintf error\n", __func__);
 	va_end(args);
 
-	tracing_mark_write(buf);
+	trace_tracing_mark_write(buf);
 }
 
 void trace_tag_begin(const char *format, ...)
@@ -40,7 +36,7 @@ void trace_tag_begin(const char *format, ...)
 	if (len >= TRACE_LEN)
 		len = TRACE_LEN - 1;
 
-	tracing_mark_write(buf);
+	trace_tracing_mark_write(buf);
 }
 
 void trace_tag_end(void)
@@ -53,7 +49,7 @@ void trace_tag_end(void)
 	if (len >= TRACE_LEN)
 		len = TRACE_LEN - 1;
 
-	tracing_mark_write(buf);
+	trace_tracing_mark_write(buf);
 }
 
 void trace_async_tag(bool isBegin, const char *format, ...)
@@ -71,5 +67,5 @@ void trace_async_tag(bool isBegin, const char *format, ...)
 	if (len >= TRACE_LEN)
 		len = TRACE_LEN - 1;
 
-	tracing_mark_write(buf);
+	trace_tracing_mark_write(buf);
 }

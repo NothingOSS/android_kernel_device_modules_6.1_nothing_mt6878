@@ -71,6 +71,8 @@ apusys-objs += midware/$(APUSYS_VERSION_MIDWARE)/rv/mdw_rv_cmd_v3.o
 apusys-objs += midware/$(APUSYS_VERSION_MIDWARE)/rv/mdw_rv_dev.o
 apusys-objs += midware/$(APUSYS_VERSION_MIDWARE)/rv/mdw_rv_tag.o
 
+# support trace
+CFLAGS_mtk_apu_events.o	:= -I$(src)
 apusys-$(CONFIG_FTRACE) += $(UTIL_DIR)/apusys_trace.o
 apusys-objs += $(UTIL_DIR)/apu_bmap.o
 

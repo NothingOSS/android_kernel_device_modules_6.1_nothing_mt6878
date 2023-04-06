@@ -13,10 +13,11 @@
 #define CREATE_TRACE_POINTS
 #include "met_vpusys_events.h"
 
+#include "apusys_trace.h"
 #define vpu_trace_dump(fmt, args...) \
 { \
 	if (vpu_drv->met & VPU_MET_LEGACY) \
-		trace_printk("MET_DUMP|" fmt "\n", ##args); \
+		trace_tag_customer("MET_DUMP|" fmt "\n", ##args); \
 }
 
 /* log format */
