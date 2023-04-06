@@ -29,6 +29,16 @@ enum LOW_BATTERY_PRIO_TAG {
 	LOW_BATTERY_PRIO_UT = 15
 };
 
+enum LOW_BATTERY_LVSYS_STATUS {
+	ACTIVATE = 0,
+	DEACTIVATE = 1
+};
+
+enum LOW_BATTERY_INT_TYPE {
+	LVBAT = 0,
+	LVSYS = 1
+};
+
 typedef void (*low_battery_callback)(enum LOW_BATTERY_LEVEL_TAG tag, void *data);
 
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
