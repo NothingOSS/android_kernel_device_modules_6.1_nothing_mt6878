@@ -87,7 +87,7 @@ static struct mtk_mbus_frame_desc_entry frame_desc_prev[] = {
 			.data_type = 0x2b,
 			.hsize = 0x0FA0,
 			.vsize = 0x0BB8,
-			.user_data_desc = VC_RAW_DATA,
+			.user_data_desc = VC_STAGGER_NE,
 		},
 	},
 	{
@@ -108,7 +108,7 @@ static struct mtk_mbus_frame_desc_entry frame_desc_cap[] = {
 			.data_type = 0x2b,
 			.hsize = 0x0FA0,
 			.vsize = 0x0BB8,
-			.user_data_desc = VC_RAW_DATA,
+			.user_data_desc = VC_STAGGER_NE,
 		},
 	},
 	{
@@ -129,7 +129,7 @@ static struct mtk_mbus_frame_desc_entry frame_desc_vid[] = {
 			.data_type = 0x2b,
 			.hsize = 0x0FA0,
 			.vsize = 0x08D0,
-			.user_data_desc = VC_RAW_DATA,
+			.user_data_desc = VC_STAGGER_NE,
 		},
 	},
 };
@@ -140,7 +140,7 @@ static struct mtk_mbus_frame_desc_entry frame_desc_hs_vid[] = {
 			.data_type = 0x2b,
 			.hsize = 0x0FA0,
 			.vsize = 0x08D0,
-			.user_data_desc = VC_RAW_DATA,
+			.user_data_desc = VC_STAGGER_NE,
 		},
 	},
 };
@@ -151,7 +151,7 @@ static struct mtk_mbus_frame_desc_entry frame_desc_slim_vid[] = {
 			.data_type = 0x2b,
 			.hsize = 0x0FA0,
 			.vsize = 0x08D0,
-			.user_data_desc = VC_RAW_DATA,
+			.user_data_desc = VC_STAGGER_NE,
 		},
 	},
 };
@@ -162,7 +162,7 @@ static struct mtk_mbus_frame_desc_entry frame_desc_cus1[] = {
 			.data_type = 0x2b,
 			.hsize = 0x0FA0,
 			.vsize = 0x0BB8,
-			.user_data_desc = VC_RAW_DATA,
+			.user_data_desc = VC_STAGGER_NE,
 		},
 	},
 };
@@ -173,7 +173,7 @@ static struct mtk_mbus_frame_desc_entry frame_desc_cus2[] = {
 			.data_type = 0x2b,
 			.hsize = 0x07D0,
 			.vsize = 0x046C,
-			.user_data_desc = VC_RAW_DATA,
+			.user_data_desc = VC_STAGGER_NE,
 		},
 	},
 };
@@ -184,7 +184,7 @@ static struct mtk_mbus_frame_desc_entry frame_desc_cus3[] = {
 			.data_type = 0x2b,
 			.hsize = 0x07D0,
 			.vsize = 0x05DC,
-			.user_data_desc = VC_RAW_DATA,
+			.user_data_desc = VC_STAGGER_NE,
 		},
 	},
 };
