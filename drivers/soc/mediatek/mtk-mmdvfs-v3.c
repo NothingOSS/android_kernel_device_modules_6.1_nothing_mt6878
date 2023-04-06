@@ -903,6 +903,26 @@ int mmdvfs_get_version(void)
 }
 EXPORT_SYMBOL_GPL(mmdvfs_get_version);
 
+static void disp_pd_swrgo_init(const bool enable)
+{
+	int ret = 0;
+
+	if (enable && !mmdvfs_swrgo_init) {
+		ret = mtk_mmdvfs_enable_vcp(enable, VCP_PWR_USR_MMDVFS_GENPD);
+		if (!ret) {
+			ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_INIT, 1, MAX_OPP, NULL);
+			if (!ret)
+				mmdvfs_swrgo_init = enable;
+		}
+	} else if (!enable && mmdvfs_swrgo_init) {
+		ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_INIT, 0, MAX_OPP, NULL);
+		if (!ret)
+			mmdvfs_swrgo_init = enable;
+		ret = mtk_mmdvfs_enable_vcp(enable, VCP_PWR_USR_MMDVFS_GENPD);
+	}
+	MMDVFS_DBG("ret:%d enable:%d swrgo:%d", ret, enable, mmdvfs_swrgo_init);
+}
+
 int mmdvfs_force_step_by_vcp(const u8 pwr_idx, const s8 opp)
 {
 	struct mmdvfs_mux *mux;
@@ -921,6 +941,11 @@ int mmdvfs_force_step_by_vcp(const u8 pwr_idx, const s8 opp)
 		return -EINVAL;
 	}
 
+	/* Fix problem: force step is called after display power-off */
+	if (mmdvfs_swrgo && pwr_idx == 0 && !mmdvfs_swrgo_init &&
+		opp >= 0 && (opp < mux->freq_num - 1))
+		disp_pd_swrgo_init(true);
+
 	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_FORCE);
 	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
 		mux->opp < dpsw_thr && mux->last >= dpsw_thr)
@@ -931,9 +956,8 @@ int mmdvfs_force_step_by_vcp(const u8 pwr_idx, const s8 opp)
 		mtk_mmdvfs_enable_vmm(false);
 	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_FORCE);
 
-	if (ret || log_level & (1 << log_adb))
-		MMDVFS_DBG("pwr_idx:%hhu idx:%hhu mux:%hhu opp:%hhd",
-			pwr_idx, idx, mux->id, opp);
+	MMDVFS_DBG("pwr_idx:%hhu idx:%hhu mux:%hhu opp:%hhd",
+		pwr_idx, idx, mux->id, opp);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(mmdvfs_force_step_by_vcp);
@@ -1099,26 +1123,6 @@ static struct notifier_block mmdvfs_pm_notifier_block = {
 	.notifier_call = mmdvfs_pm_notifier,
 	.priority = 0,
 };
-
-static void disp_pd_swrgo_init(const bool enable)
-{
-	int ret = 0;
-
-	if (enable && !mmdvfs_swrgo_init) {
-		ret = mtk_mmdvfs_enable_vcp(enable, VCP_PWR_USR_MMDVFS_GENPD);
-		if (!ret) {
-			ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_INIT, 1, MAX_OPP, NULL);
-			if (!ret)
-				mmdvfs_swrgo_init = enable;
-		}
-	} else if (!enable && mmdvfs_swrgo_init) {
-		ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_INIT, 0, MAX_OPP, NULL);
-		if (!ret)
-			mmdvfs_swrgo_init = enable;
-		ret = mtk_mmdvfs_enable_vcp(enable, VCP_PWR_USR_MMDVFS_GENPD);
-	}
-	MMDVFS_DBG("ret:%d enable:%d swrgo:%d", ret, enable, mmdvfs_swrgo_init);
-}
 
 void disp_pd_notify_work(struct work_struct *_work)
 {
