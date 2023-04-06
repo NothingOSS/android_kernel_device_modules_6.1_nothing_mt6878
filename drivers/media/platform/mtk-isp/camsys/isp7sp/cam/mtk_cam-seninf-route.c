@@ -846,7 +846,7 @@ int mtk_cam_seninf_get_vcinfo(struct seninf_ctx *ctx)
 	struct mtk_mbus_frame_desc fd;
 	struct v4l2_ctrl *ctrl;
 	u64 fsync_ext_vsync_pad_code = 0;
-	int i, raw_cnt;
+	int i;
 	int desc;
 	int ret = 0;
 	int *vcid_map = NULL;
@@ -873,7 +873,6 @@ int mtk_cam_seninf_get_vcinfo(struct seninf_ctx *ctx)
 	}
 
 	vcinfo->cnt = 0;
-	raw_cnt = 0;
 
 	vcid_map = kmalloc_array(fd.num_entries, sizeof(int), GFP_KERNEL);
 	map_cnt = 0;
@@ -955,27 +954,13 @@ int mtk_cam_seninf_get_vcinfo(struct seninf_ctx *ctx)
 			vc->out_pad = PAD_SRC_PDAF6;
 			break;
 		case VC_YUV_Y:
-			if (raw_cnt >= 3) {
-				dev_info(ctx->dev,
-					 "too much raw data\n");
-				continue;
-			}
 			vc->feature = VC_RAW_DATA;
 			vc->out_pad = PAD_SRC_RAW0;
-
-			++raw_cnt;
 			vc->group = VC_CH_GROUP_RAW1;
 			break;
 		case VC_YUV_UV:
-			if (raw_cnt >= 3) {
-				dev_info(ctx->dev,
-					 "too much raw data\n");
-				continue;
-			}
 			vc->feature = VC_RAW_DATA;
 			vc->out_pad = PAD_SRC_RAW1;
-
-			++raw_cnt;
 			vc->group = VC_CH_GROUP_RAW2;
 			break;
 		case VC_GENERAL_EMBEDDED:
@@ -1013,19 +998,8 @@ int mtk_cam_seninf_get_vcinfo(struct seninf_ctx *ctx)
 			vc->out_pad = PAD_SRC_FLICKER;
 			break;
 		default:
-			if (vc->dt == 0x2a || vc->dt == 0x2b ||
-			    vc->dt == 0x2c || vc->dt == 0x2d) {
-				if (raw_cnt >= 3) {
-					dev_info(ctx->dev,
-						"too much raw data\n");
-					continue;
-				}
-
+			if (vc->dt > 0x29 && vc->dt < 0x2e) {
 				switch (desc) {
-				case VC_STAGGER_NE:
-					vc->out_pad = PAD_SRC_RAW0;
-					vc->group = VC_CH_GROUP_RAW1;
-					break;
 				case VC_STAGGER_ME:
 					vc->out_pad = PAD_SRC_RAW1;
 					vc->group = VC_CH_GROUP_RAW2;
@@ -1034,12 +1008,12 @@ int mtk_cam_seninf_get_vcinfo(struct seninf_ctx *ctx)
 					vc->out_pad = PAD_SRC_RAW2;
 					vc->group = VC_CH_GROUP_RAW3;
 					break;
+				case VC_STAGGER_NE:
 				default:
-					vc->out_pad = PAD_SRC_RAW0 + raw_cnt;
-					vc->group = VC_CH_GROUP_RAW1 + raw_cnt;
+					vc->out_pad = PAD_SRC_RAW0;
+					vc->group = VC_CH_GROUP_RAW1;
 					break;
 				}
-				++raw_cnt;
 				vc->feature = VC_RAW_DATA;
 			} else {
 				dev_info(ctx->dev, "unknown desc %d, dt 0x%x\n",
@@ -1116,7 +1090,7 @@ int mtk_cam_seninf_get_vcinfo(struct seninf_ctx *ctx)
 		}
 
 		dev_info(ctx->dev,
-			"%s vc[%d] vc 0x%x dt 0x%x pad %d exp %dx%d grp 0x%x muxvr_offset %d code 0x%x, fsync_ext_vsync_pad_code:%#llx\n",
+			"%s vc[%d],vc:0x%x,dt:0x%x,pad:%d,exp:%dx%d,grp:0x%x,muxvr_offset:%d,code:0x%x,fsync_ext_vsync_pad_code:%#llx\n",
 			__func__,
 			vcinfo->cnt, vc->vc, vc->dt, vc->out_pad,
 			vc->exp_hsize, vc->exp_vsize, vc->group, vc->muxvr_offset,
@@ -1359,12 +1333,16 @@ int _mtk_cam_seninf_set_camtg_with_dest_idx(struct v4l2_subdev *sd, int pad_id,
 	struct seninf_mux *mux = NULL;
 	struct seninf_core *core = ctx->core;
 
-	if (pad_id < PAD_SRC_RAW0 || pad_id >= PAD_MAXCNT)
+	if (pad_id < PAD_SRC_RAW0 || pad_id >= PAD_MAXCNT) {
+		dev_info(ctx->dev, "no such pad id:%d\n", pad_id);
 		return -EINVAL;
+	}
 
 	vc = mtk_cam_seninf_get_vc_by_pad(ctx, pad_id);
-	if (!vc)
+	if (!vc) {
+		dev_info(ctx->dev, "no such vc by pad id:%d\n", pad_id);
 		return -EINVAL;
+	}
 
 	if (!from_set_camtg && !ctx->streaming) {
 		dev_info(ctx->dev, "%s !from_set_camtg && !ctx->streaming\n", __func__);
@@ -1481,12 +1459,16 @@ static int _mtk_cam_seninf_reset_cammux(struct seninf_ctx *ctx, int pad_id)
 	int old_camtg;
 	u8 j;
 
-	if (pad_id < PAD_SRC_RAW0 || pad_id >= PAD_MAXCNT)
+	if (pad_id < PAD_SRC_RAW0 || pad_id >= PAD_MAXCNT) {
+		dev_info(ctx->dev, "no such pad id:%d\n", pad_id);
 		return -EINVAL;
+	}
 
 	vc = mtk_cam_seninf_get_vc_by_pad(ctx, pad_id);
-	if (!vc)
+	if (!vc) {
+		dev_info(ctx->dev, "no such vc by pad id:%d\n", pad_id);
 		return -EINVAL;
+	}
 
 	if (!ctx->streaming) {
 		dev_info(ctx->dev, "%s !ctx->streaming\n", __func__);
