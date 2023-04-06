@@ -11097,7 +11097,7 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 		}
 	}
 
-	if (priv->mml_ctx && mml_drm_ctx_idle(priv->mml_ctx)) {
+	if (priv && priv->mml_ctx && mml_drm_ctx_idle(priv->mml_ctx)) {
 		mml_drm_put_context(priv->mml_ctx);
 		priv->mml_ctx = NULL;
 	}

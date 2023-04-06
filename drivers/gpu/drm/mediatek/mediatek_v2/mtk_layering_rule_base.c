@@ -171,6 +171,11 @@ bool mtk_is_gles_layer(struct drm_mtk_layering_info *disp_info, int idx,
 static void mtk_gles_incl_layer(struct drm_mtk_layering_info *disp_info,
 				const u32 disp_idx, const u32 layer_idx)
 {
+	if (unlikely(disp_idx >= LYE_CRTC)) {
+		DDPPR_ERR("%s[%d]:disp_idx:%u\n", __func__, __LINE__, disp_idx);
+		return;
+	}
+
 	if (disp_info->gles_head[disp_idx] == -1 ||
 		disp_info->gles_head[disp_idx] > layer_idx)
 		disp_info->gles_head[disp_idx] = layer_idx;

@@ -8503,7 +8503,10 @@ static u32 mtk_dsi_get_line_time_ns(struct mtk_dsi *dsi, struct mtk_drm_crtc *mt
 	if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
 		struct drm_display_mode *mode = &mtk_crtc->base.state->adjusted_mode;
 
-		line_time_ns = 1000000000 / drm_mode_vrefresh(mode) / mode->vtotal;
+		if (likely((drm_mode_vrefresh(mode) > 0) && (mode->vtotal > 0)))
+			line_time_ns = 1000000000 / drm_mode_vrefresh(mode) / mode->vtotal;
+		else
+			DDPPR_ERR("invalid vrefresh mode or vtotal\n");
 		return line_time_ns;
 	}
 
