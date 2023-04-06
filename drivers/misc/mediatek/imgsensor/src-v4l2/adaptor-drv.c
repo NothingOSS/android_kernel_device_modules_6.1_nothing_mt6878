@@ -47,8 +47,11 @@ static void get_outfmt_code(struct adaptor_ctx *ctx)
 {
 	unsigned int i, outfmt;
 
-	for (i = 0; i < ctx->subctx.s_ctx.sensor_mode_num; i++) {
-		outfmt = ctx->subctx.s_ctx.mode[i].sensor_output_dataformat;
+	for (i = 0; i < SENSOR_SCENARIO_ID_MAX; i++) {
+
+		outfmt = (ctx->subctx.s_ctx.mode == NULL || i > ctx->subctx.s_ctx.sensor_mode_num)
+			? ctx->sensor_info.SensorOutputDataFormat
+			: ctx->subctx.s_ctx.mode[i].sensor_output_dataformat;
 		switch (outfmt) {
 		case SENSOR_OUTPUT_FORMAT_RAW_B:
 		case SENSOR_OUTPUT_FORMAT_RAW_IR:
