@@ -791,6 +791,11 @@ int mtk_rollback_resize_layer_to_GPU_range(
 	int i;
 	struct drm_mtk_layer_config *lc;
 
+	if (idx >= LYE_CRTC || idx < 0) {
+		DDPPR_ERR("%s[%d]:idx:%d\n", __func__, __LINE__, idx);
+		return 0;
+	}
+
 	if (disp_info->layer_num[idx] <= 0) {
 		/* direct skip */
 		return 0;
@@ -969,8 +974,14 @@ out:
 static bool unset_disp_rsz_attr(struct drm_mtk_layering_info *disp_info,
 				int idx)
 {
-	struct drm_mtk_layer_config *c =
-		&disp_info->input_config[idx][0];
+	struct drm_mtk_layer_config *c;
+
+	if (idx >= LYE_CRTC || idx < 0) {
+		DDPPR_ERR("%s[%d]:idx:%d\n", __func__, __LINE__, idx);
+		return 0;
+	}
+
+	c = &disp_info->input_config[idx][0];
 
 	if (l_rule_info->addon_scn[HRT_PRIMARY] == ONE_SCALING &&
 	    mtk_has_layer_cap(c, MTK_MDP_RSZ_LAYER) &&
@@ -1945,7 +1956,7 @@ void calc_mml_layer_weight(struct drm_mtk_layering_info *disp_info,
 {
 	u32 ratio = 0;
 
-	if (disp_info == NULL || overlap_w == NULL)
+	if (disp_info == NULL || overlap_w == NULL || idx >= LYE_CRTC || idx < 0)
 		return;
 
 	ratio = calc_mml_rsz_ratio(&disp_info->mml_cfg[idx][layer_idx]);
@@ -3101,6 +3112,11 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 	if (get_layering_opt(LYE_OPT_SPHRT))
 		idx = 0;
 
+	if (idx >= LYE_CRTC || idx < 0) {
+		DDPPR_ERR("%s[%d]:idx:%d\n", __func__, __LINE__, idx);
+		return 0;
+	}
+
 	for (i = 0; i < disp_info->layer_num[idx]; i++) {
 		layer_info = &disp_info->input_config[idx][i];
 		if (mtk_has_layer_cap(layer_info,
@@ -3880,6 +3896,11 @@ static void RPO_rule(struct drm_crtc *crtc,
 	struct drm_display_mode *mode;
 	int i = 0;
 	u8 scale_cnt = 0;
+
+	if (disp_idx >= LYE_CRTC || disp_idx < 0) {
+		DDPPR_ERR("%s[%d]:idx:%d\n", __func__, __LINE__, disp_idx);
+		return;
+	}
 
 	if (disp_info->layer_num[disp_idx] <= 0)
 		return;
