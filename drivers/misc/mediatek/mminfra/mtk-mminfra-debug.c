@@ -210,6 +210,7 @@ static int mtk_mminfra_pd_callback(struct notifier_block *nb,
 			cmdq_util_mminfra_cmd(3); //mminfra rfifo init
 			do_mminfra_bkrs(true);
 		}
+		cmdq_util_mmuen_devapc_disable();
 		test_base = ioremap(bkrs_reg_pa, 4);
 		val = readl_relaxed(test_base);
 		if (val != bk_val) {
