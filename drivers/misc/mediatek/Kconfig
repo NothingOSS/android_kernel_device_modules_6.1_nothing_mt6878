@@ -81,6 +81,15 @@ endmenu # Tinysys
 
 menu "Debug, log, trace"
 
+config MTK_MTE_DEBUG
+	bool "Test MTE temp patch"
+	depends on ARM64_MTE
+	help
+	  To prevent gki breaking, we introduce MTK MTE DEBUG config
+	  for those MTE temporary patch only in eng/userdebug build.
+	  Say Y in eng/userdebug build.
+	  If unsure, say N.
+
 config MTK_KASAN_DEBUG
 	bool "Test Kasan temp patch"
 	depends on KASAN
