@@ -43,6 +43,7 @@ static unsigned long rank_boundary_phys __ro_after_init;
 static int zone_batch __ro_after_init;
 static struct rank_info rank_info[RANKS_COUNT];
 
+#ifdef PGBOOST_STRATEGY_HOLD_SPG
 /* Private structures for small pages with MIGRATE_MOVABLE */
 static struct list_head spg_list_0[HPAGE_PMD_ORDER];
 static struct list_head spg_list_1[HPAGE_PMD_ORDER];
@@ -53,6 +54,7 @@ module_param_array_named(status_hold_small_pages_rank0, spg_nr_0, ulong, NULL, 0
 module_param_array_named(status_hold_small_pages_rank1, spg_nr_1, ulong, NULL, 0644);
 #endif
 static DEFINE_SPINLOCK(spg_lock);
+#endif
 
 /* Delayed work with periodicity, the default kick interval is 10s */
 static struct delayed_work pgboost_periodic_work;
@@ -100,6 +102,91 @@ static inline bool pfn_in_interesting_rank(unsigned long pfn, bool favor_rank1)
 static inline bool pfn_not_in_interesting_rank(unsigned long pfn, bool favor_rank1)
 {
 	return favor_rank1 ? (pfn < rank_boundary_pfn) : (pfn >= rank_boundary_pfn);
+}
+
+/* Show the status of list ordering */
+static int dump_list_rank_layout(int mt, char *buffer)
+{
+	unsigned long flags;
+	struct page *page;
+	unsigned long pfn;
+	unsigned long cnt = 0;
+	int order;
+	int prev_rank = -1, curr_rank;
+	int result = 0, ret;
+	char layout[1024];
+	char *output = (buffer != NULL) ? buffer : layout;
+
+	ret = sprintf(output, "[migrate_type:%d]\n", mt);
+	if (ret < 0)
+		goto exit;
+	result += ret;
+
+	spin_lock_irqsave(&zone->lock, flags);
+
+	for (order = MAX_ORDER - 1; order >= 0; order--) {
+
+		ret = sprintf(output + result, "[order-%2d]:", order);
+		if (ret < 0)
+			goto exit;
+		result += ret;
+
+		list_for_each_entry(page, &zone->free_area[order].free_list[mt],
+				buddy_list) {
+			pfn = page_to_pfn(page);
+
+			if (pfn_in_interesting_rank(pfn, false))
+				curr_rank = 0;
+			else
+				curr_rank = 1;
+
+			/* update cnt, rank info and write result */
+			if (curr_rank == prev_rank) {
+				cnt++;
+			} else {
+				if (cnt != 0 && result < 1000) {
+					ret = sprintf(output + result, "(%d)%lu-",
+							prev_rank, cnt);
+					if (ret < 0)
+						goto exit;
+					result += ret;
+				}
+
+				/* the new rank's 1st */
+				cnt = 1;
+				prev_rank = curr_rank;
+			}
+		}
+
+		/* write out the last result */
+		if (cnt != 0 && result < 1000) {
+			ret = sprintf(output + result, "(%d)%lu", prev_rank, cnt);
+			if (ret < 0)
+				goto exit;
+			result += ret;
+		}
+
+		/* add newline */
+		ret = sprintf(output + result, "\n");
+		if (ret < 0)
+			goto exit;
+		result += ret;
+
+		/* reset */
+		cnt = 0;
+		prev_rank = -1;
+	}
+
+	spin_unlock_irqrestore(&zone->lock, flags);
+
+	/* output trailing character */
+	output[result] = '\0';
+
+	if (buffer == NULL)
+		pr_info("%s: %s\n", __func__, output);
+
+exit:
+	return result;
 }
 
 #ifdef DEBUG_PGBOOST_ENABLED
@@ -173,9 +260,9 @@ static void change_migrate_type(int mt, bool favor_rank1)
 	unsigned long pfn;
 	int order = MAX_ORDER - 1;
 	int tried = 0, changed = 0, slot = 0;
+	bool positive_seq = false; /* works on <= HPAGE_PMD_ORDER */
 	LIST_HEAD(list);
 
-repeat:
 	/* force drain all pages for every 1st mt change at specific order */
 	WRITE_ONCE(force_drain, true);
 
@@ -201,6 +288,8 @@ repeat:
 		 * Add the isolated pages to the movable list head to
 		 * make uninteresting ones be allocated firstly before
 		 * the completion of this pgboost.
+		 * The remaining uninteresting ones will be reordered to tail when
+		 * reordering MIGRATE_MOVABLE list.
 		 */
 		list_splice_init(&list, &zone->free_area[order].free_list[MIGRATE_MOVABLE]);
 
@@ -225,26 +314,57 @@ repeat:
 	PGBOOST_DEBUG("%s: order(%d), migrate_type(%d), tried(%d), changed(%d)\n", __func__,
 			order, mt, tried, changed);
 
-	/*
-	 * Try next order -
-	 * Does changing HPAGE_PMD_ORDER pages induce the risk of fragmentation ?! (TBC)
-	 */
-	if (--order >= HPAGE_PMD_ORDER) {
-		tried = 0;
-		changed = 0;
-		slot = 0;
-		goto repeat;
-	}
+	/* Try orders <= HPAGE_PMD_ORDER */
+	order = HPAGE_PMD_ORDER;
+	do {
+		/* Sanity check */
+		if (!list_empty(&list)) {
+			pr_info("%s: the list should be empty here\n", __func__);
+			break;
+		}
 
-	/* Sanity check */
-	if (!list_empty(&list))
-		pr_info("%s: the list should be empty here\n", __func__);
+		/* Reset pfn */
+		pfn = 0;
+
+		spin_lock_irqsave(&zone->lock, flags);
+
+		/* Find pages in the interesting rank */
+		list_for_each_entry_safe(page, tmp, &zone->free_area[order].free_list[mt],
+				buddy_list) {
+			pfn = page_to_pfn(page);
+
+			if (pfn_in_interesting_rank(pfn, favor_rank1))
+				list_move_tail(&page->buddy_list, &list);
+		}
+
+		/*
+		 * Move list -
+		 * Moving to the list head if positive_seq is true,
+		 * else moving to the tail.
+		 */
+		if (positive_seq)
+			list_splice_init(&list, &zone->free_area[order].free_list[mt]);
+		else
+			list_splice_tail_init(&list, &zone->free_area[order].free_list[mt]);
+
+		spin_unlock_irqrestore(&zone->lock, flags);
+
+		/* Flip positive_seq if pfn is not zero */
+		if (pfn != 0)
+			positive_seq = !positive_seq;
+
+	} while (--order >= 0);
+
+#ifdef DEBUG_PGBOOST_ENABLED
+	dump_list_rank_layout(mt, NULL);
+#endif
 
 #undef MT_BATCH
 #undef EB_TRIES
 #undef MAX_TRIES
 }
 
+#ifdef PGBOOST_STRATEGY_HOLD_SPG
 static unsigned long release_small_pages(struct list_head *spg_list,
 			unsigned long *spg_nr, unsigned long total_freed,
 			unsigned long nr_to_scan)
@@ -286,6 +406,7 @@ static unsigned long release_small_pages(struct list_head *spg_list,
 
 	return total_freed;
 }
+#endif
 
 #define SPG_GFP_FLAGS	((GFP_KERNEL | __GFP_MOVABLE) & ~__GFP_RECLAIM)
 /*
@@ -302,20 +423,27 @@ static void do_pgboost_list_reordering(bool pick_small, bool favor_rank1)
 	unsigned long pfn;
 	int order = MAX_ORDER - 1;
 	int end_order = pick_small ? 0 : HPAGE_PMD_ORDER;
+
+#ifdef PGBOOST_STRATEGY_HOLD_SPG
 	int changed = 0, count = 0;
 	int movable_free[HPAGE_PMD_ORDER];
 	unsigned long spg_size = 0;
 	struct list_head *spg_list = NULL;
 	unsigned long *spg_nr = NULL;
+#else
+	bool positive_seq = false; /* works on < HPAGE_PMD_ORDER */
+#endif
 	LIST_HEAD(list);
 
 	WRITE_ONCE(pgboost_in_progres, true);
 
+#ifdef PGBOOST_STRATEGY_HOLD_SPG
 	/* Putback interesting rank's small pages firstly */
 	if (favor_rank1)
 		release_small_pages(spg_list_1, spg_nr_1, 0, ULONG_MAX);
 	else
 		release_small_pages(spg_list_0, spg_nr_0, 0, ULONG_MAX);
+#endif
 
 	/* Drain pcp pages before change migrate type */
 	try_to_drain_pcp_pages();
@@ -329,6 +457,7 @@ static void do_pgboost_list_reordering(bool pick_small, bool favor_rank1)
 	/* Drain pcp pages before refordering */
 	try_to_drain_pcp_pages();
 
+#ifdef PGBOOST_STRATEGY_HOLD_SPG
 	/* Reordering the lists of MIGRATE_MOVABLE */
 	do {
 		spin_lock_irqsave(&zone->lock, flags);
@@ -442,6 +571,65 @@ static void do_pgboost_list_reordering(bool pick_small, bool favor_rank1)
 abort:
 	pr_info("%s: abort collecting small pages @order(%d)-count(%d)\n",
 			__func__, order, count);
+
+#else	/* !defined(PGBOOST_STRATEGY_HOLD_SPG) */
+
+	/* Reordering the lists of MIGRATE_MOVABLE */
+	do {
+		/* Reset pfn */
+		pfn = 0;
+
+		spin_lock_irqsave(&zone->lock, flags);
+
+		/* Find pages in the interesting rank */
+		list_for_each_entry_safe(page, tmp,
+				&zone->free_area[order].free_list[MIGRATE_MOVABLE], buddy_list) {
+			pfn = page_to_pfn(page);
+
+			if (pfn_in_interesting_rank(pfn, favor_rank1))
+				list_move_tail(&page->buddy_list, &list);
+		}
+
+		/*
+		 * Move list -
+		 * order >= HPAGE_PMD_ORDER: move to the list head
+		 * others: move to position according positive_seq
+		 */
+		if (order >= HPAGE_PMD_ORDER) {
+			list_splice_init(&list, &zone->free_area[order].free_list[MIGRATE_MOVABLE]);
+		} else {
+			/*
+			 * Moving to the list head if positive_seq is true,
+			 * else moving to the tail.
+			 */
+			if (positive_seq)
+				list_splice_init(&list,
+						&zone->free_area[order].free_list[MIGRATE_MOVABLE]);
+			else
+				list_splice_tail_init(&list,
+						&zone->free_area[order].free_list[MIGRATE_MOVABLE]);
+
+			/* Flip positive_seq if pfn is not zero */
+			if (pfn != 0)
+				positive_seq = !positive_seq;
+		}
+
+		spin_unlock_irqrestore(&zone->lock, flags);
+
+		/* Sanity check */
+		if (!list_empty(&list)) {
+			pr_info("%s: the list should be empty here\n", __func__);
+			goto exit;
+		}
+
+	} while (--order >= end_order);
+
+	/* Update what the current rank is */
+	WRITE_ONCE(curr_favor_rank1, favor_rank1);
+
+	/* Reset page violation status (how many pages are polluting reordered lists) */
+	atomic_long_set(&pgs_violate_ranks, 0);
+#endif
 
 exit:
 	WRITE_ONCE(pgboost_in_progres, false);
@@ -883,6 +1071,7 @@ static void __exit pgboost_disconnect_tracepoints(void)
 	}
 }
 
+#ifdef PGBOOST_STRATEGY_HOLD_SPG
 /******************************/
 /* -- The IMPL of shrinker -- */
 /******************************/
@@ -928,6 +1117,7 @@ static struct shrinker pgboost_shrinker = {
 	.seeks = DEFAULT_SEEKS,
 	.batch = 0,
 };
+#endif
 
 /*************************************/
 /* -- Initialize fundamental data -- */
@@ -967,6 +1157,7 @@ static int __init pgboost_init_data(void)
 		rank_info[0].end_pfn - rank_info[0].start_pfn,
 		rank_info[1].end_pfn - rank_info[1].start_pfn);
 
+#ifdef PGBOOST_STRATEGY_HOLD_SPG
 	/* Initialize lists of small pages */
 	for (i = 0; i < HPAGE_PMD_ORDER; i++) {
 		INIT_LIST_HEAD(&spg_list_0[i]);
@@ -974,6 +1165,7 @@ static int __init pgboost_init_data(void)
 		spg_nr_0[i] = 0;
 		spg_nr_1[i] = 0;
 	}
+#endif
 
 	return 0;
 }
@@ -1026,9 +1218,11 @@ static void __init pgboost_init(void)
 	if (pgboost_init_data() != 0)
 		return;
 
+#ifdef PGBOOST_STRATEGY_HOLD_SPG
 	/* Register shrinker */
 	if (register_shrinker(&pgboost_shrinker, "pgboost") != 0)
 		return;
+#endif
 
 	/* Initialize & start the delayed work with periodicity */
 	INIT_DELAYED_WORK(&pgboost_periodic_work, pgboost_periodic_work_handler);
@@ -1064,10 +1258,12 @@ static void  __exit exit_pgboost(void)
 
 	/* Uninitialized other hooks */
 	pgboost_disconnect_tracepoints();
+#ifdef PGBOOST_STRATEGY_HOLD_SPG
 	unregister_shrinker(&pgboost_shrinker);
 
 	/* Release hold small pages */
 	release_hold_small_pages(ULONG_MAX);
+#endif
 }
 module_exit(exit_pgboost);
 
@@ -1078,6 +1274,8 @@ static int param_get_pgboost_status(char *buffer, const struct kernel_param *kp)
 {
 	int result = 0, ret;
 	int i;
+
+#ifdef PGBOOST_STRATEGY_HOLD_SPG
 	unsigned long tmp, size_kb;
 
 	ret = sprintf(buffer, "Hold small pages:\n");
@@ -1136,6 +1334,7 @@ static int param_get_pgboost_status(char *buffer, const struct kernel_param *kp)
 	if (ret < 0)
 		goto exit;
 	result += ret;
+#endif
 
 	/* Rank distribution */
 	ret = sprintf(buffer + result,
@@ -1144,6 +1343,10 @@ static int param_get_pgboost_status(char *buffer, const struct kernel_param *kp)
 	if (ret < 0)
 		goto exit;
 	result += ret;
+
+	/* Show list ordering information */
+	for (i = MIGRATE_UNMOVABLE; i < MIGRATE_PCPTYPES; i++)
+		result += dump_list_rank_layout(i, buffer + result);
 
 exit:
 	PGBOOST_DEBUG("%s: output size is (%d) bytes\n", __func__, result);
@@ -1167,7 +1370,7 @@ static unsigned int movable_alloc;	/* 0: GFP_KERNEL, !0: GFP_KERNEL | __GFP_MOVA
 module_param_named(test_with_movable_alloc, movable_alloc, uint, 0600);
 static int test_allocation_impl(char *buffer, bool favor_rank1)
 {
-	int result = 0;
+	int result = 0, ret;
 	unsigned long full_points, got_points;
 	gfp_t gfp_mask = (movable_alloc == 0) ? GFP_KERNEL : (GFP_KERNEL | __GFP_MOVABLE);
 	int prev_rank = -1, curr_rank = -1;
@@ -1176,12 +1379,18 @@ static int test_allocation_impl(char *buffer, bool favor_rank1)
 	struct page *page;
 	LIST_HEAD(list);
 
-	result = sprintf(buffer, "Test %lu kB for favor rank%s, rank boundary:0x%lx\n",
+	ret = sprintf(buffer, "Test %lu kB for favor rank%s, rank boundary:0x%lx\n",
 			sz_in_pgs << 2, favor_rank1 ? "1" : "0", rank_boundary_phys);
+	if (ret < 0)
+		goto exit;
+	result += ret;
 
-	result += sprintf(buffer + result, "%6s %8s %8s %8s %10s %15s %15s %8s\n",
+	ret = sprintf(buffer + result, "%6s %8s %8s %8s %10s %15s %15s %8s\n",
 			"Order", "tried", "meet", "meet_4KB", "hit_favor",
 			"hit_not_favor", "no_allocated", "score");
+	if (ret < 0)
+		goto exit;
+	result += ret;
 
 	for (order = pageblock_order; order >= 0; order--) {
 		full_points = sz_in_pgs >> order;
@@ -1214,9 +1423,12 @@ static int test_allocation_impl(char *buffer, bool favor_rank1)
 			}
 		}
 
-		result += sprintf(buffer + result, "%6d %8d %8d %8d %10d %15d %15d %8lu\n",
+		ret = sprintf(buffer + result, "%6d %8d %8d %8d %10d %15d %15d %8lu\n",
 				order, index, meet, meet << order, hit_favor,
 				hit_not_favor, no_allocated, got_points);
+		if (ret < 0)
+			goto exit;
+		result += ret;
 
 		/* Put back */
 		while (!list_empty(&list)) {
@@ -1227,9 +1439,13 @@ static int test_allocation_impl(char *buffer, bool favor_rank1)
 		}
 
 		/* Sanity check */
-		if (index != no_allocated)
-			result += sprintf(buffer + result, "*** %s: error remaining (%d)\n",
+		if (index != no_allocated) {
+			ret = sprintf(buffer + result, "*** %s: error remaining (%d)\n",
 					__func__, index);
+			if (ret < 0)
+				goto exit;
+			result += ret;
+		}
 
 		/* Reset for the next order */
 		meet = 0;
@@ -1239,6 +1455,7 @@ static int test_allocation_impl(char *buffer, bool favor_rank1)
 		prev_rank = curr_rank = -1;
 	}
 
+exit:
 	return result;
 }
 
