@@ -638,6 +638,23 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 		}
 	}
 
+	//addon from RPO
+	if (!crtc->state)
+		DDPDUMP("%s dump nothing for null state\n", __func__);
+	else {
+		state = to_mtk_crtc_state(crtc->state);
+		if (state->lye_state.rpo_lye) {
+			addon_data = mtk_addon_get_scenario_data(__func__, crtc,
+					ONE_SCALING);
+			mtk_drm_crtc_addon_dump(crtc, addon_data);
+			if (mtk_crtc->is_dual_pipe) {
+				addon_data = mtk_addon_get_scenario_data_dual
+					(__func__, crtc, ONE_SCALING);
+				mtk_drm_crtc_addon_dump(crtc, addon_data);
+			}
+		}
+	}
+
 	//addon from layering rule
 	if (!crtc->state)
 		DDPDUMP("%s dump nothing for null state\n", __func__);
@@ -1129,6 +1146,23 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 			if (mtk_crtc->is_dual_pipe) {
 				addon_data = mtk_addon_get_scenario_data_dual
 					(__func__, crtc, scn);
+				mtk_drm_crtc_addon_analysis(crtc, addon_data);
+			}
+		}
+	}
+
+	//addon from RPO
+	if (!crtc->state)
+		DDPDUMP("%s dump nothing for null state\n", __func__);
+	else {
+		state = to_mtk_crtc_state(crtc->state);
+		if (state->lye_state.rpo_lye) {
+			addon_data = mtk_addon_get_scenario_data(__func__, crtc,
+					ONE_SCALING);
+			mtk_drm_crtc_addon_analysis(crtc, addon_data);
+			if (mtk_crtc->is_dual_pipe) {
+				addon_data = mtk_addon_get_scenario_data_dual
+					(__func__, crtc, ONE_SCALING);
 				mtk_drm_crtc_addon_analysis(crtc, addon_data);
 			}
 		}
