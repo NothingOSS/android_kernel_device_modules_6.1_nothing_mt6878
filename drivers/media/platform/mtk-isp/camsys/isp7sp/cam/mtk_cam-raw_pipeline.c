@@ -543,7 +543,9 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 	res_sensor_info_validate(s, r);
 	res_calc_fill_sensor(&c, s, r);
 	c.cbn_type = mtk_cbn_type(user_ctrl->raw_res.bin);
-	c.qbnd_en = (user_ctrl->raw_res.bin == MTK_CAM_QBND_ON) ? 1 : 0;
+	/* note: interface issue, qbnd cannot be enabled */
+	//c.qbnd_en = (user_ctrl->raw_res.bin == MTK_CAM_QBND_ON) ? 1 : 0;
+	c.qbnd_en = 0;
 	c.qbn_type = 0; /* 0: disable, 1: w/2, 2: w/4 */
 	c.bin_en = (user_ctrl->raw_res.bin == MTK_CAM_BIN_ON) ? 1 : 0;
 
