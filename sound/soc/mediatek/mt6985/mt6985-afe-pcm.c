@@ -4242,12 +4242,6 @@ static int mt6985_usb_offload_event_receive(struct notifier_block *this,
 	struct mtk_audio_usb_mem *umem = NULL;
 	int ret = 0;
 
-	if (afe)
-		dev_info(afe->dev, "%s() afe = %p\n", __func__, afe);
-	else
-		return -EINVAL;
-
-
 	dev_info(afe->dev, "%s() event[%lu]\n", __func__, event);
 
 	switch (event) {

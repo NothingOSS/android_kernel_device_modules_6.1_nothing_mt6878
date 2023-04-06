@@ -70,7 +70,7 @@ int mtk_audio_usb_offload_sram_init(struct device *dev, char *of_compatible,
 	u64 regaddr64, size64;
 
 	if (type_mem == NULL)
-		goto of_error;
+		return -ENODEV;
 
 	/* Step 1, query reserved AFE SRAM */
 	/* parse info from device tree */
@@ -119,6 +119,7 @@ of_error:
 	type_mem->sram_inited = false;
 
 	of_node_put(sram_node);
+
 	return -ENODEV;
 }
 
