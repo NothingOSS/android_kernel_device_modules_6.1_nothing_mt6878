@@ -558,6 +558,5 @@ extern void ccmni_clr_flush_timer(void);
 extern void mt_irq_dump_status(unsigned int irq);
 
 extern void ccmni_set_tcp_is_need_gro(u32 tcp_is_need_gro);
-extern void ccmni_set_cur_speed(u64 cur_dl_speed);
 
 #endif				/* __CCCI_MODEM_DPMA_COMM_H__ */
