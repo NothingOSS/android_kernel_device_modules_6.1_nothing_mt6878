@@ -5824,6 +5824,9 @@ void mstream_seamless_buf_update(struct mtk_cam_ctx *ctx,
 			MTKCAM_IPI_HW_PATH_ON_THE_FLY;
 	}
 
+	if (frame_param->img_outs[desc_id].buf[0][0].iova == 0)
+		return;
+
 	// imgo mstream buffer layout is fixed plane[0]=NE, plane[1]=SE
 	if (scen->scen.mstream.type == MTK_CAM_MSTREAM_NE_SE) {
 		// Normal single exposure seamless to NE_SE
