@@ -701,7 +701,12 @@ static int fill_ufbc_header_yuvo(struct mtk_cam_buffer *buf,
 {
 	struct YUFO_META_INFO *yuvo_meta =
 		vb2_plane_vaddr(&buf->vbb.vb2_buf, 0);
-	struct YUFD_META_INFO *yufd_meta = &yuvo_meta->YUFD.YUFD;
+	struct YUFD_META_INFO *yufd_meta;
+
+	if (!yuvo_meta)
+		return -1;
+
+	yufd_meta = &yuvo_meta->YUFD.YUFD;
 
 	yuvo_meta->AUWriteBySW = 1;
 
@@ -814,6 +819,113 @@ int fill_img_in_hdr(struct mtkcam_ipi_img_input *ii,
 	return 0;
 }
 
+static int get_exp_order_ipi_normal(struct mtk_cam_scen_normal *n)
+{
+	int exp_order;
+
+	// n->exp_order is undefined when 1 exp
+	if (n->exp_num <= 1)
+		exp_order = MTKCAM_IPI_ORDER_NE_SE;
+	else {
+		switch (n->exp_order) {
+		case MTK_CAM_EXP_SE_LE:
+			exp_order = MTKCAM_IPI_ORDER_SE_NE;
+			break;
+		case MTK_CAM_EXP_LE_SE:
+		default:
+			exp_order = MTKCAM_IPI_ORDER_NE_SE;
+			break;
+		}
+	}
+
+	return exp_order;
+}
+
+static int get_exp_order_ipi_mstream(struct mtk_cam_scen_mstream *m)
+{
+	int exp_order;
+
+	switch (m->type) {
+	case MTK_CAM_MSTREAM_1_EXPOSURE:
+		exp_order = MTKCAM_IPI_ORDER_NE_SE;
+		break;
+	case MTK_CAM_MSTREAM_NE_SE:
+		exp_order = MTKCAM_IPI_ORDER_NE_SE;
+		break;
+	case MTK_CAM_MSTREAM_SE_NE:
+		exp_order = MTKCAM_IPI_ORDER_SE_NE;
+		break;
+	default:
+		pr_info("%s: warn. unknown type %d\n", __func__, m->type);
+		exp_order = MTKCAM_IPI_ORDER_NE_SE;
+		break;
+	}
+
+	return exp_order;
+}
+
+int get_exp_order(struct mtk_cam_scen *scen)
+{
+	int exp_order;
+
+	switch (scen->id) {
+	case MTK_CAM_SCEN_NORMAL:
+	case MTK_CAM_SCEN_ODT_NORMAL:
+	case MTK_CAM_SCEN_M2M_NORMAL:
+		exp_order = get_exp_order_ipi_normal(&scen->scen.normal);
+		break;
+	case MTK_CAM_SCEN_MSTREAM:
+	case MTK_CAM_SCEN_ODT_MSTREAM:
+		exp_order = get_exp_order_ipi_mstream(&scen->scen.mstream);
+		break;
+	default:
+		exp_order = MTKCAM_IPI_ORDER_NE_SE;
+		break;
+	}
+
+	return exp_order;
+}
+
+static int ne_se_offset_in_buf[2] = {0, 1};
+static int se_ne_offset_in_buf[2] = {1, 0};
+static int ne_me_se_offset_in_buf[3] = {0, 1, 2};
+
+int get_buf_offset_idx(int exp_order_ipi, int exp_seq_num, bool is_rgbw, bool w_path)
+{
+	int *idx_off_tbl = NULL, tbl_cnt = -1;
+	int plane_per_exp = (is_rgbw) ? 2 : 1;
+	int ret = 0;
+
+	switch (exp_order_ipi) {
+	case MTKCAM_IPI_ORDER_NE_SE:
+		idx_off_tbl = ne_se_offset_in_buf;
+		tbl_cnt = ARRAY_SIZE(ne_se_offset_in_buf);
+		break;
+	case MTKCAM_IPI_ORDER_SE_NE:
+		idx_off_tbl = se_ne_offset_in_buf;
+		tbl_cnt = ARRAY_SIZE(se_ne_offset_in_buf);
+		break;
+	case MTKCAM_IPI_ORDER_NE_ME_SE:
+		idx_off_tbl = ne_me_se_offset_in_buf;
+		tbl_cnt = ARRAY_SIZE(ne_me_se_offset_in_buf);
+		break;
+	}
+
+	if (exp_seq_num >= tbl_cnt || !idx_off_tbl) {
+		pr_info("%s: idx(%d) is out of table size(%d)",
+			__func__, exp_seq_num, tbl_cnt);
+		return 0;
+	}
+
+	ret = (idx_off_tbl[exp_seq_num] * plane_per_exp) + ((w_path) ? 1 : 0);
+
+	if (CAM_DEBUG_ENABLED(JOB))
+		pr_info("%s: order(%d)/exp_seq(%d)/rgbw(%d)/w(%d) => idx(%d)",
+			__func__, exp_order_ipi, exp_seq_num, is_rgbw, w_path, ret);
+
+	return ret;
+}
+
 int fill_img_in_by_exposure(struct req_buffer_helper *helper,
 	struct mtk_cam_buffer *buf,
 	struct mtk_cam_video_device *node)
@@ -822,20 +934,24 @@ int fill_img_in_by_exposure(struct req_buffer_helper *helper,
 	struct mtkcam_ipi_frame_param *fp = helper->fp;
 	struct mtkcam_ipi_img_input *in;
 	struct mtk_cam_job *job = helper->job;
-	bool is_w = is_rgbw(job);
+	bool is_w = is_rgbw(job) ? true : false;//for coverity...
 	const int *rawi_table = NULL;
 	int i = 0, rawi_cnt = 0;
-	int index = 0;
+	int exp_order = get_exp_order(&job->job_scen);
 
+	// the order rawi is in exposure sequence
 	get_stagger_rawi_table(job, &rawi_table, &rawi_cnt);
 	for (i = 0; i < rawi_cnt; i++) {
 		in = &fp->img_ins[helper->ii_idx++];
 
-		ret = fill_img_in_hdr(in, buf, node, index++, rawi_table[i]);
+		ret = fill_img_in_hdr(in, buf, node,
+				get_buf_offset_idx(exp_order, i, is_w, false),
+				rawi_table[i]);
 
 		if (!ret && is_w) {
 			in = &fp->img_ins[helper->ii_idx++];
-			ret = fill_img_in_hdr(in, buf, node, index++,
+			ret = fill_img_in_hdr(in, buf, node,
+					get_buf_offset_idx(exp_order, i, is_w, true),
 					raw_video_id_w_port(rawi_table[i]));
 		}
 	}

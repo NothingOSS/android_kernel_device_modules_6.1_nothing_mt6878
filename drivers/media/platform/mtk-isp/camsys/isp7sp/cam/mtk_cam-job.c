@@ -2415,58 +2415,25 @@ int fill_imgo_buf_to_ipi_mstream(
 	struct mtkcam_ipi_img_output *out;
 	struct mtkcam_ipi_img_input *in;
 
-	const int first_exp = MTKCAM_IPI_RAW_RAWI_2;
-	const int second_exp = MTKCAM_IPI_RAW_IMGO;
-	int ne_ipi, se_ipi, mstream_type;
-	int idx = 0;
-	// NOTE: buffer layer is fixed due to an agreement with MW
-	int *buf_layer[] = {
-		&ne_ipi,
-		&se_ipi
-	};
-
-	mstream_type = job->job_scen.scen.mstream.type;
-
-	if (mstream_type == MTK_CAM_MSTREAM_NE_SE) {
-		ne_ipi = first_exp;
-		se_ipi = second_exp;
-	} else if (mstream_type == MTK_CAM_MSTREAM_SE_NE) {
-		se_ipi = first_exp;
-		ne_ipi = second_exp;
-	} else {
-		pr_info("%s: unknown mstream type: %d\n",
-			__func__, mstream_type);
-		return -1;
-	}
+	int exp_order = get_exp_order(&job->job_scen);
 
 	helper->filled_hdr_buffer = true;
 
 	if (CAM_DEBUG_ENABLED(JOB))
-		pr_info("%s: mstream type: %d\n",
-				__func__, mstream_type);
+		pr_info("%s: exp_order: %d\n",
+				__func__, exp_order);
 
-	for (idx = 0; idx < ARRAY_SIZE(buf_layer); ++idx) {
-		int ipi_id = *(buf_layer[idx]);
+	// RAWI is always the first exp
+	in = &fp->img_ins[helper->ii_idx++];
+	fill_img_in_hdr(in, buf, node,
+		get_buf_offset_idx(exp_order, 0, 0, 0),
+		MTKCAM_IPI_RAW_RAWI_2);
 
-		if (ipi_id == MTKCAM_IPI_RAW_IMGO) {
-			// or ipi output
-
-			out = &fp->img_outs[helper->io_idx++];
-			fill_img_out_hdr(out, buf, node, idx, ipi_id);
-
-			if (CAM_DEBUG_ENABLED(JOB))
-				pr_info("%s: buf idx[%d]: imgo\n", __func__, idx);
-
-		} else if (ipi_id == MTKCAM_IPI_RAW_RAWI_2) {
-			// or ipi input
-
-			in = &fp->img_ins[helper->ii_idx++];
-			fill_img_in_hdr(in, buf, node, idx, ipi_id);
-
-			if (CAM_DEBUG_ENABLED(JOB))
-				pr_info("%s: buf idx[%d]: rawi2\n", __func__, idx);
-		}
-	}
+	// IMGO is used as the second exp
+	out = &fp->img_outs[helper->io_idx++];
+	fill_img_out_hdr(out, buf, node,
+		get_buf_offset_idx(exp_order, 1, 0, 0),
+		MTKCAM_IPI_RAW_IMGO);
 
 	return 0;
 }
@@ -3307,52 +3274,6 @@ static int mraw_set_ipi_input_param(struct mtkcam_ipi_input_param *input,
 	return 0;
 }
 
-static int update_normal_scen_to_config(struct mtk_cam_scen_normal *n,
-					struct mtkcam_ipi_config_param *config)
-{
-	/* TODO(AY): rgbw */
-	if (n->exp_num == 1) {
-		config->exp_order = 0;
-		config->frame_order = 0;
-		config->vsync_order = 0;
-		return 0;
-	}
-
-	switch (n->exp_order) {
-	case MTK_CAM_EXP_SE_LE:
-		config->exp_order = MTKCAM_IPI_ORDER_SE_NE;
-		break;
-	case MTK_CAM_EXP_LE_SE:
-	default:
-		config->exp_order = MTKCAM_IPI_ORDER_NE_SE;
-		break;
-	}
-
-	return 0;
-}
-
-static int update_mstream_scen_to_config(struct mtk_cam_scen_mstream *m,
-					 struct mtkcam_ipi_config_param *config)
-{
-	switch (m->type) {
-	case MTK_CAM_MSTREAM_1_EXPOSURE:
-		config->exp_order = 0;
-		break;
-	case MTK_CAM_MSTREAM_NE_SE:
-		config->exp_order = MTKCAM_IPI_ORDER_NE_SE;
-		break;
-	case MTK_CAM_MSTREAM_SE_NE:
-		config->exp_order = MTKCAM_IPI_ORDER_SE_NE;
-		break;
-	default:
-		pr_info("%s: warn. unknown type %d\n", __func__, m->type);
-		config->exp_order = 0;
-		break;
-	}
-
-	return 0;
-}
-
 static int update_frame_order_to_config(struct mtk_cam_scen *scen,
 				       struct mtkcam_ipi_config_param *config)
 {
@@ -3395,28 +3316,14 @@ static int update_vsync_order_to_config(struct mtk_cam_ctx *ctx,
 static int update_scen_order_to_config(struct mtk_cam_scen *scen,
 				       struct mtkcam_ipi_config_param *config)
 {
-	int ret = 0;
-
-	switch (scen->id) {
-	case MTK_CAM_SCEN_NORMAL:
-		ret = update_normal_scen_to_config(&scen->scen.normal, config);
-		break;
-	case MTK_CAM_SCEN_MSTREAM:
-	case MTK_CAM_SCEN_ODT_MSTREAM:
-		ret = update_mstream_scen_to_config(&scen->scen.mstream, config);
-		break;
-	default:
-		config->exp_order = 0;
-		break;
-	}
+	config->exp_order = get_exp_order(scen);
 
 	if (CAM_DEBUG_ENABLED(IPI_BUF))
-		pr_info("%s: scen id %d exp/frame/vsync order: %d/%d/%d\n",
+		pr_info("%s: scen id %d exp order: %d\n",
 			__func__, scen->id,
-			config->exp_order,
-			config->frame_order,
-			config->vsync_order);
-	return ret;
+			config->exp_order);
+
+	return 0;
 }
 
 static int mtk_cam_job_fill_ipi_config(struct mtk_cam_job *job,

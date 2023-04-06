@@ -125,6 +125,8 @@ int fill_img_out_hdr(struct mtkcam_ipi_img_output *io,
 		     struct mtk_cam_buffer *buf,
 		     struct mtk_cam_video_device *node,
 		     int index, int id);
+int get_buf_offset_idx(int exp_order_ipi, int exp_seq_num,
+	bool is_rgbw, bool w_path);
 int fill_img_in_hdr(struct mtkcam_ipi_img_input *ii,
 		    struct mtk_cam_buffer *buf,
 		    struct mtk_cam_video_device *node, int index, int id);
@@ -158,6 +160,8 @@ int get_sv_tag_idx(unsigned int exp_no, unsigned int tag_order, bool is_w);
 
 int get_hw_scenario(struct mtk_cam_job *job);
 int get_sw_feature(struct mtk_cam_job *job);
+int get_exp_order(struct mtk_cam_scen *scen);
+
 bool is_vhdr(struct mtk_cam_job *job);
 bool is_dc_mode(struct mtk_cam_job *job);
 bool is_sv_pure_raw(struct mtk_cam_job *job);
