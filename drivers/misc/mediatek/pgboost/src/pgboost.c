@@ -1076,40 +1076,76 @@ module_exit(exit_pgboost);
 /*****************************************/
 static int param_get_pgboost_status(char *buffer, const struct kernel_param *kp)
 {
-	int result = 0;
+	int result = 0, ret;
 	int i;
 	unsigned long tmp, size_kb;
 
-	result = sprintf(buffer, "Hold small pages:\n");
-	result += sprintf(buffer + result, "order:");
-	for (i = 0; i < HPAGE_PMD_ORDER; i++)
-		result += sprintf(buffer + result, "%7d", i);
+	ret = sprintf(buffer, "Hold small pages:\n");
+	if (ret < 0)
+		goto exit;
+	result = ret;
+
+	ret = sprintf(buffer + result, "order:");
+	if (ret < 0)
+		goto exit;
+	result += ret;
+
+	for (i = 0; i < HPAGE_PMD_ORDER; i++) {
+		ret = sprintf(buffer + result, "%7d", i);
+		if (ret < 0)
+			goto exit;
+		result += ret;
+	}
 
 	/* rank0 */
 	size_kb = 0;
-	result += sprintf(buffer + result, "\nrank0:");
+	ret = sprintf(buffer + result, "\nrank0:");
+	if (ret < 0)
+		goto exit;
+	result += ret;
+
 	for (i = 0; i < HPAGE_PMD_ORDER; i++) {
 		tmp = spg_nr_0[i];
-		result += sprintf(buffer + result, "%7lu", tmp);
+		ret = sprintf(buffer + result, "%7lu", tmp);
+		if (ret < 0)
+			goto exit;
+		result += ret;
 		size_kb += (tmp << i);
 	}
-	result += sprintf(buffer + result, " (%8lu kB)\n", size_kb << 2);
+	ret = sprintf(buffer + result, " (%8lu kB)\n", size_kb << 2);
+	if (ret < 0)
+		goto exit;
+	result += ret;
 
 	/* rank1 */
 	size_kb = 0;
-	result += sprintf(buffer + result, "rank1:");
+	ret = sprintf(buffer + result, "rank1:");
+	if (ret < 0)
+		goto exit;
+	result += ret;
+
 	for (i = 0; i < HPAGE_PMD_ORDER; i++) {
 		tmp = spg_nr_1[i];
-		result += sprintf(buffer + result, "%7lu", tmp);
+		ret = sprintf(buffer + result, "%7lu", tmp);
+		if (ret < 0)
+			goto exit;
+		result += ret;
 		size_kb += (tmp << i);
 	}
-	result += sprintf(buffer + result, " (%8lu kB)\n", size_kb << 2);
+	ret = sprintf(buffer + result, " (%8lu kB)\n", size_kb << 2);
+	if (ret < 0)
+		goto exit;
+	result += ret;
 
 	/* Rank distribution */
-	result += sprintf(buffer + result,
+	ret = sprintf(buffer + result,
 			"Rank huge page distribution(rank0, rank1): (%8lu kB, %8lu kB)\n",
 			rank_info[0].free << 2, rank_info[1].free << 2);
+	if (ret < 0)
+		goto exit;
+	result += ret;
 
+exit:
 	PGBOOST_DEBUG("%s: output size is (%d) bytes\n", __func__, result);
 
 	return result;
