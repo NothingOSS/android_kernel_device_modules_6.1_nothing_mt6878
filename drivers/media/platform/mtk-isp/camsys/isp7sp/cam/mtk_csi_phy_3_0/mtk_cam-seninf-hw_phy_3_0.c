@@ -452,7 +452,14 @@ static int mtk_cam_seninf_set_top_mux_ctrl(struct seninf_ctx *ctx,
 				    int mux_idx, int seninf_src)
 {
 	void *pSeninf = ctx->reg_if_top;
+	struct seninf_core *core = ctx->core;
 
+	if (core == NULL) {
+		dev_info(ctx->dev, "%s core is NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	mutex_lock(&core->seninf_top_mux_mutex);
 	switch (mux_idx) {
 	case SENINF_MUX1:
 		SENINF_BITS(pSeninf, SENINF_TOP_MUX_CTRL_0,
@@ -544,10 +551,12 @@ static int mtk_cam_seninf_set_top_mux_ctrl(struct seninf_ctx *ctx,
 			break;
 
 	default:
+		mutex_unlock(&core->seninf_top_mux_mutex);
 		dev_info(ctx->dev, "invalid mux_idx %d\n", mux_idx);
 		return -EINVAL;
 	}
-#if LOG_MORE
+	mutex_unlock(&core->seninf_top_mux_mutex);
+
 	dev_info(ctx->dev,
 		"mux %d TOP_MUX_CTRL_0(0x%x) TOP_MUX_CTRL_1(0x%x) TOP_MUX_CTRL_2(0x%x) TOP_MUX_CTRL_3(0x%x) TOP_MUX_CTRL_4(0x%x) TOP_MUX_CTRL_5(0x%x)\n",
 		mux_idx,
@@ -557,7 +566,7 @@ static int mtk_cam_seninf_set_top_mux_ctrl(struct seninf_ctx *ctx,
 		SENINF_READ_REG(pSeninf, SENINF_TOP_MUX_CTRL_3),
 		SENINF_READ_REG(pSeninf, SENINF_TOP_MUX_CTRL_4),
 		SENINF_READ_REG(pSeninf, SENINF_TOP_MUX_CTRL_5));
-#endif
+
 	return 0;
 }
 

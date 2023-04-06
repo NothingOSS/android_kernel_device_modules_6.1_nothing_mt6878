@@ -93,6 +93,7 @@ struct seninf_core {
 #endif
 	struct mutex mutex;
 	struct mutex cammux_page_ctrl_mutex;
+	struct mutex seninf_top_mux_mutex;
 	void __iomem *reg_if;
 	void __iomem *reg_ana;
 	int refcnt;

@@ -831,6 +831,7 @@ static int seninf_core_probe(struct platform_device *pdev)
 	core->dev = dev;
 	mutex_init(&core->mutex);
 	mutex_init(&core->cammux_page_ctrl_mutex);
+	mutex_init(&core->seninf_top_mux_mutex);
 	INIT_LIST_HEAD(&core->list);
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "base");
