@@ -399,8 +399,9 @@ static void frame_config_queue_destroy(struct kref *kref)
 
 static struct mml_frame_config *frame_config_create(
 	struct mml_drm_ctx *ctx,
-	struct mml_frame_info *info)
+	struct mml_submit *submit)
 {
+	struct mml_frame_info *info = &submit->info;
 	struct mml_frame_config *cfg = kzalloc(sizeof(*cfg), GFP_KERNEL);
 	u32 i;
 
@@ -424,6 +425,7 @@ static struct mml_frame_config *frame_config_create(
 		cfg->frame_in_crop[i] = info->dest[i].crop;
 		cfg->out_rotate[i] = info->dest[i].rotate;
 	}
+	memcpy(cfg->dl_out, submit->dl_out, sizeof(cfg->dl_out));
 	INIT_WORK(&cfg->work_destroy, frame_config_destroy_work);
 	kref_init(&cfg->ref);
 
@@ -883,7 +885,8 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 			kref_get(&cfg->ref);
 		}
 	} else {
-		cfg = frame_config_create(ctx, &submit->info);
+		cfg = frame_config_create(ctx, submit);
+
 		mml_msg("[drm]%s create config %p", __func__, cfg);
 		if (IS_ERR(cfg)) {
 			result = PTR_ERR(cfg);
@@ -909,8 +912,6 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 			cfg->disp_hrt = frame_calc_layer_hrt(ctx, &submit->info,
 				cfg->layer_w, cfg->layer_h);
 		} else if (submit->info.mode == MML_MODE_DIRECT_LINK) {
-			memcpy(cfg->dl_out, submit->dl_out, sizeof(cfg->dl_out));
-
 			/* TODO: remove it, workaround for direct link,
 			 * the dlo roi should fill by disp
 			 */
