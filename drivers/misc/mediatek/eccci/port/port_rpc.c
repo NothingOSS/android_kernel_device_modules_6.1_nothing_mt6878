@@ -119,7 +119,7 @@ static char *md_gpio_name_convert(char *gpio_name, unsigned int len)
 static int get_gpio_id_from_dt(struct device_node *node,
 	char *gpio_name, int *md_view_id)
 {
-	int gpio_id = -1;
+	int gpio_id;
 	int md_view_gpio_id = -1;
 	int ret;
 
@@ -362,7 +362,7 @@ static int get_eint_attr(char *name, unsigned int name_len,
 static void get_md_dtsi_val(struct ccci_rpc_md_dtsi_input *input,
 	struct ccci_rpc_md_dtsi_output *output)
 {
-	int ret = -1;
+	int ret;
 	int value = 0;
 	struct device_node *node =
 	of_find_compatible_node(NULL, NULL, "mediatek,md_attr_node");

@@ -61,17 +61,20 @@ static inline u32 fifo_avail(struct fifo_t *fifo)
 
 static inline void fifo_write(struct fifo_t *fifo, void *skb)
 {
-	if (atomic_read(&fifo->w) < 0 || atomic_read(&fifo->w) > DL_POOL_LEN) {
+	int w_idx = 0;
+
+	w_idx = atomic_read(&fifo->w);
+	if (w_idx < 0 || w_idx >= DL_POOL_LEN) {
 		CCCI_ERROR_LOG(-1, TAG,
 			"[%s] error\n", __func__);
 		return;
 	}
-	fifo->buf[atomic_read(&fifo->w)] = skb;
+	fifo->buf[w_idx] = skb;
 
 	/* wait: fifo->buf[fifo->w] = skb done*/
 	mb();
 
-	if (atomic_read(&fifo->w) < (DL_POOL_LEN - 1))
+	if (w_idx < (DL_POOL_LEN - 1))
 		atomic_inc(&fifo->w);
 	else
 		atomic_set(&fifo->w, 0);
@@ -80,18 +83,20 @@ static inline void fifo_write(struct fifo_t *fifo, void *skb)
 static inline void *fifo_read(struct fifo_t *fifo)
 {
 	void *data = NULL;
+	int r_idx = 0;
 
-	if (atomic_read(&fifo->r) < 0 || atomic_read(&fifo->r) > DL_POOL_LEN) {
+	r_idx = atomic_read(&fifo->r);
+	if (r_idx < 0 || r_idx >= DL_POOL_LEN) {
 		CCCI_ERROR_LOG(-1, TAG,
 			"[%s] error\n", __func__);
 		return NULL;
 	}
-	data = fifo->buf[atomic_read(&fifo->r)];
+	data = fifo->buf[r_idx];
 
 	/* wait: data = fifo->buf[r] done*/
 	mb();
 
-	if (atomic_read(&fifo->r) < (DL_POOL_LEN - 1))
+	if (r_idx < (DL_POOL_LEN - 1))
 		atomic_inc(&fifo->r);
 	else
 		atomic_set(&fifo->r, 0);

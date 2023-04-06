@@ -408,8 +408,7 @@ long port_ccb_ioctl(struct port_t *port, unsigned int cmd, unsigned long arg)
 		ccci_md_get_smem_by_user_id(SMEM_USER_RAW_CCB_CTRL);
 	struct ccb_ctrl_info ctrl_info;
 	struct port_t *s_port = NULL;
-	struct ccci_smem_port *smem_port =
-		(struct ccci_smem_port *)port->private_data;
+	struct ccci_smem_port *smem_port;
 
 	if (ccb_ctl == NULL) {
 		CCCI_ERROR_LOG(0, TAG, "ccb ctrl is NULL!\n");
@@ -619,6 +618,9 @@ static int smem_dev_mmap(struct file *fp, struct vm_area_struct *vma)
 	if ((smem_port->addr_phy == 0) || (smem_port->length == 0))
 		return -EFAULT;
 
+	if (ccb_ctl == NULL)
+		return -EFAULT;
+
 	switch (port->rx_ch) {
 	case CCCI_CCB_CTRL:
 		CCCI_NORMAL_LOG(0, CHAR,
@@ -773,6 +775,8 @@ int port_smem_init(struct port_t *port)
 {
 	struct ccci_smem_region *ccb_ctl =
 		ccci_md_get_smem_by_user_id(SMEM_USER_RAW_CCB_CTRL);
+	if (ccb_ctl == NULL)
+		return -1;
 	smem_port->ccb_vir_addr =
 		(struct buffer_header *)ccb_ctl->base_ap_view_vir;
 	smem_port->poll_save_idx = 0;
