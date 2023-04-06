@@ -1789,7 +1789,8 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 	urgent_hi_fifo_us = dsi->driver_data->urgent_hi_fifo_us ?
 				dsi->driver_data->urgent_hi_fifo_us : 12;
 
-	if (priv->data->mmsys_id == MMSYS_MT6989)
+	if (!IS_ERR_OR_NULL(priv) && !IS_ERR_OR_NULL(priv->data)
+		&& priv->data->mmsys_id == MMSYS_MT6989)
 		in_width = DSI_IPM_1_8_0_0_IN_WIDTH;
 	else
 		in_width = DSI_IPM_1_6_0_1_IN_WIDTH;
