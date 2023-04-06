@@ -17,3 +17,35 @@
 		};
 	};
 };
+
+&i2c1 {
+	rt6160@75 {
+		compatible = "richtek,rt6160";
+		reg = <0x75>;
+		//enable-gpios = <&gpio26 2 0>;
+		regulator-name = "rt6160-buckboost";
+		regulator-min-microvolt = <2025000>;
+		regulator-max-microvolt = <5200000>;
+		regulator-always-on;
+
+		dbg {
+			compatible = "richtek,rt6160-dbg";
+		};
+	};
+};
+
+&i2c2 {
+	rt6160@75 {
+		compatible = "richtek,rt6160";
+		reg = <0x75>;
+		//enable-gpios = <&gpio26 2 0>;
+		regulator-name = "rt6160-buckboost";
+		regulator-min-microvolt = <2025000>;
+		regulator-max-microvolt = <5200000>;
+		regulator-always-on;
+
+		dbg {
+			compatible = "richtek,rt6160-dbg";
+		};
+	};
+};
