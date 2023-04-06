@@ -68,6 +68,11 @@ static void vcp_A_wdt_handler(struct tasklet_struct *t)
 
 	pr_notice("[VCP] %s\n", __func__);
 
+	if (readl(VCP_GPR_DEBUG_HINT) & B_SERR) {
+		pr_notice("[VCP] Serror detected dump !\n");
+		/* Call debug dump */
+	}
+
 	wait_vcp_ready_to_reboot();
 	/* Wakeup mobile_log_d after vcp flush the log */
 	vcp_logger_wakeup_handler(0, NULL, NULL, 0);
