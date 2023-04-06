@@ -128,6 +128,9 @@ enum mtk_ddp_comp_type {
 	MTK_MML_MUTEX,
 	MTK_MML_WROT,
 	MTK_DISP_ODDMR,
+	MTK_DISP_R2Y,
+	MTK_DISP_GDMA,
+	MTK_DISP_SPLITTER,
 	MTK_DDP_COMP_TYPE_MAX,
 };
 
@@ -467,7 +470,49 @@ enum mtk_ddp_comp_type {
 	EXPR(DDP_COMPONENT_GAMMA2)			\
 	EXPR(DDP_COMPONENT_GAMMA3)			\
 	EXPR(DDP_COMPONENT_TDSHP_VIRTUAL0)				\
-	EXPR(DDP_COMPONENT_MAIN0_TX_VIRTUAL0)				\
+/*335*/	EXPR(DDP_COMPONENT_MAIN0_TX_VIRTUAL0)				\
+	EXPR(DDP_COMPONENT_DLI_ASYNC12)		\
+	EXPR(DDP_COMPONENT_PQ0_IN_CB5)		\
+	EXPR(DDP_COMPONENT_PQ0_IN_CB6)		\
+	EXPR(DDP_COMPONENT_PQ0_IN_CB7)		\
+/*340*/	EXPR(DDP_COMPONENT_PQ0_IN_CB8)		\
+	EXPR(DDP_COMPONENT_PQ0_OUT_CB5)		\
+	EXPR(DDP_COMPONENT_PQ0_OUT_CB6)		\
+	EXPR(DDP_COMPONENT_PQ0_OUT_CB7)		\
+	EXPR(DDP_COMPONENT_PANEL0_COMP_OUT_CB5)		\
+/*345*/	EXPR(DDP_COMPONENT_SPLITTER0_IN_CB0)		\
+	EXPR(DDP_COMPONENT_SPLITTER0_IN_CB1)		\
+	EXPR(DDP_COMPONENT_SPLITTER0_IN_CB2)		\
+	EXPR(DDP_COMPONENT_SPLITTER0_IN_CB3)		\
+	EXPR(DDP_COMPONENT_SPLITTER0_IN_CB4)		\
+/*350*/	EXPR(DDP_COMPONENT_SPLITTER0_IN_CB5)		\
+	EXPR(DDP_COMPONENT_COMP0_IN_CB0)		\
+	EXPR(DDP_COMPONENT_COMP0_IN_CB1)		\
+	EXPR(DDP_COMPONENT_COMP0_IN_CB2)		\
+	EXPR(DDP_COMPONENT_COMP0_IN_CB3)		\
+/*355*/	EXPR(DDP_COMPONENT_COMP0_IN_CB4)		\
+	EXPR(DDP_COMPONENT_COMP0_IN_CB5)		\
+	EXPR(DDP_COMPONENT_COMP0_IN_CB6)		\
+	EXPR(DDP_COMPONENT_COMP0_IN_CB7)		\
+	EXPR(DDP_COMPONENT_COMP0_IN_CB8)		\
+/*360*/	EXPR(DDP_COMPONENT_COMP0_IN_CB9)		\
+	EXPR(DDP_COMPONENT_COMP0_OUT_CB8)		\
+	EXPR(DDP_COMPONENT_COMP0_OUT_CB9)		\
+	EXPR(DDP_COMPONENT_MERGE0_OUT_CB8)		\
+	EXPR(DDP_COMPONENT_MERGE0_OUT_CB9)		\
+/*365*/	EXPR(DDP_COMPONENT_GDMA0)		\
+	EXPR(DDP_COMPONENT_R2Y0)		\
+	EXPR(DDP_COMPONENT_SPLITTER0)		\
+	EXPR(DDP_COMPONENT_SPLITTER1)		\
+	EXPR(DDP_COMPONENT_DSI2)                \
+/*370*/	EXPR(DDP_COMPONENT_OVL0_BLEND_CB4)		\
+	EXPR(DDP_COMPONENT_OVL1_BLEND_CB4)		\
+	EXPR(DDP_COMPONENT_OVL0_BG_CB5)		\
+	EXPR(DDP_COMPONENT_OVL1_BG_CB5)		\
+	EXPR(DDP_COMPONENT_OVL0_PQ_OUT_CB4)		\
+/*375*/	EXPR(DDP_COMPONENT_OVL1_PQ_OUT_CB4)		\
+	EXPR(DDP_COMPONENT_DSC4)		\
+	EXPR(DDP_COMPONENT_DSC5)		\
 	EXPR(DDP_COMPONENT_ID_MAX)
 #define DECLARE_NUM(ENUM) ENUM,
 #define DECLARE_STR(STR) #STR,
@@ -1091,6 +1136,8 @@ void mt6983_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			    struct cmdq_pkt *handle, void *data);
 void mt6985_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			    struct cmdq_pkt *handle, void *data);
+void mt6989_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
+			    struct cmdq_pkt *handle, void *data);
 void mt6895_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			    struct cmdq_pkt *handle, void *data);
 void mt6873_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
@@ -1105,6 +1152,10 @@ void mt6855_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			    struct cmdq_pkt *handle, void *data);
 
 void mt6985_mtk_sodi_apsrc_config(struct drm_crtc *crtc,
+	struct cmdq_pkt *_cmdq_handle, bool reset, bool condition_check,
+	unsigned int crtc_id, bool enable);
+
+void mt6989_mtk_sodi_apsrc_config(struct drm_crtc *crtc,
 	struct cmdq_pkt *_cmdq_handle, bool reset, bool condition_check,
 	unsigned int crtc_id, bool enable);
 

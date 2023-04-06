@@ -2789,7 +2789,8 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 				return comp_id_list[i];
 		}
 		if (priv->data->mmsys_id == MMSYS_MT6985 ||
-			priv->data->mmsys_id == MMSYS_MT6897) {
+			priv->data->mmsys_id == MMSYS_MT6897 ||
+			priv->data->mmsys_id == MMSYS_MT6989) {
 			if (HRT_GET_FIRST_SET_BIT(ovl_mapping_tb -
 				HRT_GET_FIRST_SET_BIT(ovl_mapping_tb)) >=
 				layer_map_idx) {
