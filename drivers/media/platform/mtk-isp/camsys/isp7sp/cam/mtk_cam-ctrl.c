@@ -509,9 +509,14 @@ static void ctrl_vsync_preprocess(struct mtk_cam_ctrl *ctrl,
 	bool hint_inner_err = 0;
 	int cookie;
 	long inner_not_ready;
+	struct apply_cq_ref *cq_ref;
 
 	if (vsync_update(&ctrl->vsync_col, engine_type, engine_id, vsync_res))
 		return;
+
+	cq_ref = READ_ONCE(ctrl->cur_cq_ref);
+	vsync_res->inner_cookie =
+		(vsync_res->is_first && cq_ref) ? cq_ref->cookie : -1;
 
 	spin_lock(&ctrl->info_lock);
 
@@ -524,13 +529,11 @@ static void ctrl_vsync_preprocess(struct mtk_cam_ctrl *ctrl,
 		ctrl->r_info.sof_l_ts_ns = irq_info->ts_ns;
 		ctrl->r_info.sof_l_ts_mono_ns = ktime_get_ns();
 
-		if (ctrl->cur_cq_ref) {
-			struct apply_cq_ref *cq_ref = ctrl->cur_cq_ref;
-
+		if (cq_ref) {
 			if (apply_cq_ref_is_to_inner(cq_ref)) {
 				ctrl->r_info.inner_seq_no =
 					seq_from_fh_cookie(cq_ref->cookie);
-				ctrl->cur_cq_ref = 0;
+				WRITE_ONCE(ctrl->cur_cq_ref, 0);
 			} else {
 				hint_inner_err = 1;
 				cookie = cq_ref->cookie;
@@ -553,6 +556,9 @@ static int frame_no_to_fs_req_no(struct mtk_cam_ctrl *ctrl, int frame_no,
 	struct mtk_cam_job *job;
 	int do_send_evnt;
 
+	if (frame_no == -1)
+		goto SKIP_FIND_JOB;
+
 	job = mtk_cam_ctrl_get_job(ctrl, cond_frame_no_belong, &frame_no);
 	if (job) {
 
@@ -566,6 +572,7 @@ static int frame_no_to_fs_req_no(struct mtk_cam_ctrl *ctrl, int frame_no,
 		mtk_cam_job_put(job);
 	}
 
+SKIP_FIND_JOB:
 	do_send_evnt = ctrl->fs_event_subframe_idx == 0;
 	ctrl->fs_event_subframe_idx =
 		(ctrl->fs_event_subframe_idx + 1) % ctrl->fs_event_subframe_cnt;
@@ -578,18 +585,24 @@ static int frame_no_to_fs_req_no(struct mtk_cam_ctrl *ctrl, int frame_no,
 
 static void handle_engine_frame_start(struct mtk_cam_ctrl *ctrl,
 				      struct mtk_camsys_irq_info *irq_info,
-				      bool is_first, bool is_last)
+				      struct vsync_result *vsync_res)
 {
 
-	if (is_first) {
+	if (vsync_res->is_first) {
 		int frame_sync_no;
 		int req_no;
-		struct mtk_seninf_sof_notify_param param;
 
-		frame_sync_no = seq_from_fh_cookie(irq_info->frame_idx_inner);
+		if (vsync_res->inner_cookie != -1)
+			frame_sync_no =
+				seq_from_fh_cookie(vsync_res->inner_cookie);
+		else
+			frame_sync_no = -1;
 
 		if (frame_no_to_fs_req_no(ctrl, frame_sync_no, &req_no)) {
+			struct mtk_seninf_sof_notify_param param;
+
 			mtk_cam_event_frame_sync(ctrl, req_no);
+
 			/* notify sof to sensor*/
 			param.sd = ctrl->ctx->seninf;
 			param.sof_cnt = req_no;
@@ -598,7 +611,7 @@ static void handle_engine_frame_start(struct mtk_cam_ctrl *ctrl,
 		mtk_cam_ctrl_send_event(ctrl, CAMSYS_EVENT_IRQ_F_VSYNC);
 	}
 
-	if (is_last)
+	if (vsync_res->is_last)
 		mtk_cam_ctrl_send_event(ctrl, CAMSYS_EVENT_IRQ_L_SOF);
 
 }
@@ -634,8 +647,7 @@ static int mtk_cam_event_handle_raw(struct mtk_cam_ctrl *ctrl,
 				      &vsync_res);
 
 		handle_engine_frame_start(ctrl, irq_info,
-					  vsync_res.is_first,
-					  vsync_res.is_last);
+					  &vsync_res);
 	}
 
 	/* note: should handle SOF before CQ done for trigger delay cases */
@@ -678,8 +690,7 @@ static int mtk_camsys_event_handle_camsv(struct mtk_cam_ctrl *ctrl,
 				      &vsync_res);
 
 		handle_engine_frame_start(ctrl, irq_info,
-					  vsync_res.is_first,
-					  vsync_res.is_last);
+					  &vsync_res);
 	}
 
 	/* note: should handle SOF before CQ done for trigger delay cases */
@@ -715,8 +726,7 @@ static int mtk_camsys_event_handle_mraw(struct mtk_cam_ctrl *ctrl,
 				      &vsync_res);
 
 		handle_engine_frame_start(ctrl, irq_info,
-					  vsync_res.is_first,
-					  vsync_res.is_last);
+					  &vsync_res);
 	}
 
 	/* note: should handle SOF before CQ done for trigger delay cases */
@@ -1237,6 +1247,8 @@ void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 
 	atomic_set(&cam_ctrl->enqueued_req_cnt, 0);
 	cam_ctrl->enqueued_frame_seq_no = 0;
+	/* special case: if failed to find job in 1st vsync */
+	cam_ctrl->frame_sync_event_cnt = 1;
 	cam_ctrl->fs_event_subframe_cnt = 0;
 	cam_ctrl->fs_event_subframe_idx = 0;
 
@@ -1342,13 +1354,10 @@ int vsync_update(struct vsync_collector *c,
 {
 	unsigned int coming;
 
-	if (!res)
-		return 1;
-
 	coming = engine_idx_to_bit(engine_type, idx);
 
 	if (!(coming & c->desired))
-		return 1;
+		goto SKIP_VSYNC;
 
 	c->collected |= (coming & c->desired);
 
@@ -1363,6 +1372,12 @@ int vsync_update(struct vsync_collector *c,
 		c->collected = 0;
 
 	return 0;
+
+SKIP_VSYNC:
+	res->is_first = 0;
+	res->is_last = 0;
+	res->inner_cookie = -1;
+	return 1;
 }
 
 static inline u64 mtk_cam_ctrl_latest_sof(struct mtk_cam_ctrl *ctrl)

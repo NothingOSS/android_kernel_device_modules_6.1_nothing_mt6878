@@ -1382,7 +1382,7 @@ static int apply_engines_cq(struct mtk_cam_job *job,
 	apply_cq_ref_init(&job->cq_ref,
 			  to_fh_cookie(ctx->stream_id, frame_seq_no),
 			  cq_engine);
-	ctx->cam_ctrl.cur_cq_ref = &job->cq_ref;
+	WRITE_ONCE(ctx->cam_ctrl.cur_cq_ref, &job->cq_ref);
 
 	subset = bit_map_subset_of(MAP_HW_RAW, cq_engine);
 	if (subset)

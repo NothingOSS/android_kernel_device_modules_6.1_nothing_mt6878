@@ -21,6 +21,8 @@ unsigned long engine_idx_to_bit(int engine_type, int idx);
 struct vsync_result {
 	unsigned char is_first : 1;
 	unsigned char is_last  : 1;
+
+	int inner_cookie;
 };
 
 struct vsync_collector {
