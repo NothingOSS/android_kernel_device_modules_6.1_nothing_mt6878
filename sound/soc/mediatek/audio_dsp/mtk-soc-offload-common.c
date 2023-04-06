@@ -1022,8 +1022,8 @@ static int mtk_compr_offload_pause(struct snd_compr_stream *stream)
 	}
 	afe_offload_block.state = OFFLOAD_STATE_PAUSED;
 	if (afe_offload_service.pause_in_drain) {
-		// Pause in drain, set PCM STATE back to DRAINING
-		offload_stream->runtime->state = SNDRV_PCM_STATE_DRAINING;
+		pr_debug("%s paused in drain done, set PCM STATE to paused\n", __func__);
+		offload_stream->runtime->state = SNDRV_PCM_STATE_PAUSED;
 	}
 	return 0;
 }
