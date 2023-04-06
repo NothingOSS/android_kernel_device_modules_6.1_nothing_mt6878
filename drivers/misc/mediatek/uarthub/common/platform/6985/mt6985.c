@@ -483,7 +483,8 @@ int uarthub_reset_to_ap_enable_only_mt6985(int ap_only)
 	dev1_fifoe = FCR_RD_GET_FIFOE(dev1_base_remap_addr_mt6985);
 	dev2_fifoe = FCR_RD_GET_FIFOE(dev2_base_remap_addr_mt6985);
 
-	trx_mask = (DEV0_STA_SET_VAL_dev0_sw_rx_set(1) | DEV0_STA_SET_VAL_dev0_sw_tx_set(1));
+	trx_mask = (REG_FLD_MASK(DEV0_STA_SET_FLD_dev0_sw_rx_set) |
+		REG_FLD_MASK(DEV0_STA_SET_FLD_dev0_sw_tx_set));
 	trx_state = UARTHUB_REG_READ_BIT(DEV0_STA_ADDR, trx_mask);
 
 #if UARTHUB_DEBUG_LOG
@@ -763,6 +764,23 @@ int uarthub_uarthub_init_mt6985(struct platform_device *pdev)
 	CON2_SET_intfhub_bypass(CON2_ADDR, 0);
 	CON2_SET_crc_en(CON2_ADDR, 1);
 	uarthub_init_trx_timeout_mt6985();
+
+	uarthub_clk_univpll_ctrl_mt6985(1);
+
+	/* Switch UART3 to external TOPCK 104M */
+	if (pericfg_ao_remap_addr_mt6985)
+		UARTHUB_REG_WRITE_MASK(pericfg_ao_remap_addr_mt6985 + PERI_CLOCK_CON,
+			PERI_UART_FBCLK_CKSEL_UART_CK, PERI_UART_FBCLK_CKSEL_MASK);
+
+	if (topckgen_base_remap_addr_mt6985) {
+		/* Switch UART_MUX to 104M */
+		UARTHUB_REG_WRITE(topckgen_base_remap_addr_mt6985 + CLK_CFG_6_CLR,
+			CLK_CFG_6_UART_SEL_MASK);
+		UARTHUB_REG_WRITE(topckgen_base_remap_addr_mt6985 + CLK_CFG_6_SET,
+			CLK_CFG_6_UART_SEL_104M);
+		UARTHUB_REG_WRITE(topckgen_base_remap_addr_mt6985 + CLK_CFG_UPDATE,
+			CLK_CFG_UPDATE_UART_CK_UPDATE_MASK);
+	}
 #endif
 
 	pr_info("[%s] assert=[0x%x], bypass=[0x%x], crc=[0x%x]\n",
@@ -1082,7 +1100,7 @@ int uarthub_get_peri_clk_info_mt6985(void)
 	}
 
 	return UARTHUB_REG_READ_BIT(pericfg_ao_remap_addr_mt6985 + PERI_CLOCK_CON,
-		PERI_UART_FBCLK_CKSEL);
+		PERI_UART_FBCLK_CKSEL_MASK);
 }
 
 int uarthub_get_hwccf_univpll_on_info_mt6985(void)
@@ -1104,7 +1122,7 @@ int uarthub_get_uart_mux_info_mt6985(void)
 	}
 
 	return (UARTHUB_REG_READ_BIT(topckgen_base_remap_addr_mt6985 + CLK_CFG_6,
-		CLK_CFG_6_MASK) >> CLK_CFG_6_SHIFT);
+		CLK_CFG_6_UART_SEL_MASK) >> CLK_CFG_6_UART_SEL_SHIFT);
 }
 
 int uarthub_get_spm_sys_timer_mt6985(uint32_t *hi, uint32_t *lo)
@@ -3045,6 +3063,11 @@ int uarthub_clk_univpll_ctrl_mt6985(int clk_on)
 	unsigned int before_pll_sta = 0;
 #endif
 
+#if !(UARTHUB_SUPPORT_SSPM_DRIVER)
+	if (clk_on == 0)
+		return 0;
+#endif
+
 	if (clk_apmixedsys_univpll_mt6985 == NULL || IS_ERR(clk_apmixedsys_univpll_mt6985)) {
 		pr_notice("[%s] clk_apmixedsys_univpll_mt6985 is not init\n", __func__);
 		return -1;
@@ -3191,8 +3214,8 @@ int uarthub_set_host_trx_request_mt6985(int dev_index, enum uarthub_trx_type trx
 			DEV0_STA_SET_SET_dev0_sw_tx_set(DEV0_STA_SET_ADDR, 1);
 		} else {
 			UARTHUB_REG_WRITE(DEV0_STA_SET_ADDR,
-				(DEV0_STA_SET_VAL_dev0_sw_rx_set(1) |
-				DEV0_STA_SET_VAL_dev0_sw_tx_set(1)));
+				(REG_FLD_MASK(DEV0_STA_SET_FLD_dev0_sw_rx_set) |
+				REG_FLD_MASK(DEV0_STA_SET_FLD_dev0_sw_tx_set)));
 		}
 	} else if (dev_index == 1) {
 		if (trx == RX) {
@@ -3201,9 +3224,8 @@ int uarthub_set_host_trx_request_mt6985(int dev_index, enum uarthub_trx_type trx
 			DEV1_STA_SET_SET_dev1_sw_tx_set(DEV1_STA_SET_ADDR, 1);
 		} else {
 			UARTHUB_REG_WRITE(DEV1_STA_SET_ADDR,
-				(DEV1_STA_SET_VAL_dev1_sw_rx_set(1) |
-				DEV1_STA_SET_VAL_dev1_sw_tx_set(1)));
-			UARTHUB_REG_WRITE(DEV1_STA_SET_ADDR, 0x3);
+				(REG_FLD_MASK(DEV1_STA_SET_FLD_dev1_sw_rx_set) |
+				REG_FLD_MASK(DEV1_STA_SET_FLD_dev1_sw_tx_set)));
 		}
 	} else if (dev_index == 2) {
 		if (trx == RX) {
@@ -3212,8 +3234,8 @@ int uarthub_set_host_trx_request_mt6985(int dev_index, enum uarthub_trx_type trx
 			DEV2_STA_SET_SET_dev2_sw_tx_set(DEV2_STA_SET_ADDR, 1);
 		} else {
 			UARTHUB_REG_WRITE(DEV2_STA_SET_ADDR,
-				(DEV2_STA_SET_VAL_dev2_sw_rx_set(1) |
-				DEV2_STA_SET_VAL_dev2_sw_tx_set(1)));
+				(REG_FLD_MASK(DEV2_STA_SET_FLD_dev2_sw_rx_set) |
+				REG_FLD_MASK(DEV2_STA_SET_FLD_dev2_sw_tx_set)));
 		}
 	}
 
@@ -3230,44 +3252,44 @@ int uarthub_clear_host_trx_request_mt6985(int dev_index, enum uarthub_trx_type t
 	if (dev_index == 0) {
 		if (trx == RX) {
 			UARTHUB_REG_WRITE(DEV0_STA_CLR_ADDR,
-				(DEV0_STA_CLR_VAL_dev0_sw_rx_clr(1) |
-				DEV0_STA_CLR_VAL_dev0_hw_rx_clr(1)));
+				(REG_FLD_MASK(DEV0_STA_CLR_FLD_dev0_sw_rx_clr) |
+				REG_FLD_MASK(DEV0_STA_CLR_FLD_dev0_hw_rx_clr)));
 		} else if (trx == TX) {
 			UARTHUB_REG_WRITE(DEV0_STA_CLR_ADDR,
-				DEV0_STA_CLR_VAL_dev0_sw_tx_clr(1));
+				REG_FLD_MASK(DEV0_STA_CLR_FLD_dev0_sw_tx_clr));
 		} else {
 			UARTHUB_REG_WRITE(DEV0_STA_CLR_ADDR,
-				(DEV0_STA_CLR_VAL_dev0_sw_rx_clr(1) |
-				DEV0_STA_CLR_VAL_dev0_sw_tx_clr(1) |
-				DEV0_STA_CLR_VAL_dev0_hw_rx_clr(1)));
+				(REG_FLD_MASK(DEV0_STA_CLR_FLD_dev0_sw_rx_clr) |
+				REG_FLD_MASK(DEV0_STA_CLR_FLD_dev0_sw_tx_clr) |
+				REG_FLD_MASK(DEV0_STA_CLR_FLD_dev0_hw_rx_clr)));
 		}
 	} else if (dev_index == 1) {
 		if (trx == RX) {
 			UARTHUB_REG_WRITE(DEV1_STA_CLR_ADDR,
-				(DEV1_STA_CLR_VAL_dev1_sw_rx_clr(1) |
-				DEV1_STA_CLR_VAL_dev1_hw_rx_clr(1)));
+				(REG_FLD_MASK(DEV1_STA_CLR_FLD_dev1_sw_rx_clr) |
+				REG_FLD_MASK(DEV1_STA_CLR_FLD_dev1_hw_rx_clr)));
 		} else if (trx == TX) {
 			UARTHUB_REG_WRITE(DEV1_STA_CLR_ADDR,
-				DEV1_STA_CLR_VAL_dev1_sw_tx_clr(1));
+				REG_FLD_MASK(DEV1_STA_CLR_FLD_dev1_sw_tx_clr));
 		} else {
 			UARTHUB_REG_WRITE(DEV1_STA_CLR_ADDR,
-				(DEV1_STA_CLR_VAL_dev1_sw_rx_clr(1) |
-				DEV1_STA_CLR_VAL_dev1_sw_tx_clr(1) |
-				DEV1_STA_CLR_VAL_dev1_hw_rx_clr(1)));
+				(REG_FLD_MASK(DEV1_STA_CLR_FLD_dev1_sw_rx_clr) |
+				REG_FLD_MASK(DEV1_STA_CLR_FLD_dev1_sw_tx_clr) |
+				REG_FLD_MASK(DEV1_STA_CLR_FLD_dev1_hw_rx_clr)));
 		}
 	} else if (dev_index == 2) {
 		if (trx == RX) {
 			UARTHUB_REG_WRITE(DEV2_STA_CLR_ADDR,
-				(DEV2_STA_CLR_VAL_dev2_sw_rx_clr(1) |
-				DEV2_STA_CLR_VAL_dev2_hw_rx_clr(1)));
+				(REG_FLD_MASK(DEV2_STA_CLR_FLD_dev2_sw_rx_clr) |
+				REG_FLD_MASK(DEV2_STA_CLR_FLD_dev2_hw_rx_clr)));
 		} else if (trx == TX) {
 			UARTHUB_REG_WRITE(DEV2_STA_CLR_ADDR,
-				DEV2_STA_CLR_VAL_dev2_sw_tx_clr(1));
+				REG_FLD_MASK(DEV2_STA_CLR_FLD_dev2_sw_tx_clr));
 		} else {
 			UARTHUB_REG_WRITE(DEV2_STA_CLR_ADDR,
-				(DEV2_STA_CLR_VAL_dev2_sw_rx_clr(1) |
-				DEV2_STA_CLR_VAL_dev2_sw_tx_clr(1) |
-				DEV2_STA_CLR_VAL_dev2_hw_rx_clr(1)));
+				(REG_FLD_MASK(DEV2_STA_CLR_FLD_dev2_sw_rx_clr) |
+				REG_FLD_MASK(DEV2_STA_CLR_FLD_dev2_sw_tx_clr) |
+				REG_FLD_MASK(DEV2_STA_CLR_FLD_dev2_hw_rx_clr)));
 		}
 	}
 

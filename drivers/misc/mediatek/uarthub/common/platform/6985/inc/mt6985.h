@@ -95,7 +95,8 @@
 #define PERI_CG_1_UARTHUB_CLK_CG_MASK  0x3000000
 #define PERI_CG_1_UARTHUB_CLK_CG_SHIFT 24
 #define PERI_CLOCK_CON                 0x20
-#define PERI_UART_FBCLK_CKSEL          0xF00
+#define PERI_UART_FBCLK_CKSEL_MASK     0xF00
+#define PERI_UART_FBCLK_CKSEL_UART_CK  0x800
 #define PERI_UART_WAKEUP               0x50
 #define PERI_UART_WAKEUP_MASK          0x10
 #define PERI_UART_WAKEUP_SHIFT         4
@@ -107,8 +108,14 @@
 
 #define TOPCKGEN_BASE_ADDR             0x10000000
 #define CLK_CFG_6                      0x70
-#define CLK_CFG_6_MASK                 0x3
-#define CLK_CFG_6_SHIFT                0x0
+#define CLK_CFG_6_SET                       0x74
+#define CLK_CFG_6_CLR                       0x78
+#define CLK_CFG_6_UART_SEL_MASK             0x3
+#define CLK_CFG_6_UART_SEL_SHIFT            0x0
+#define CLK_CFG_6_UART_SEL_26M              0x0
+#define CLK_CFG_6_UART_SEL_104M             0x2
+#define CLK_CFG_UPDATE                      0x4
+#define CLK_CFG_UPDATE_UART_CK_UPDATE_MASK  0x01000000
 
 #define SPM_BASE_ADDR                  0x1C001000
 #define MD32PCM_SCU_CTRL1              0x104
