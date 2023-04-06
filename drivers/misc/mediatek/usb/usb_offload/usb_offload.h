@@ -31,25 +31,22 @@
 #define MIN_USB_OFFLOAD_POOL_SIZE (1 << MIN_USB_OFFLOAD_SHIFT)
 
 #define BUF_CTX_SIZE					31
-#define BUF_SEG_SIZE					((15 * 2 + 1) * 2)
+#define TR_MAX_SEG						((15 * 2 + 1) * 2)
+#define EV_MAX_SEG						1
+#define BUF_SEG_SIZE					(TR_MAX_SEG + EV_MAX_SEG)
+#define ERST_SIZE						16
+#define ERST_NUMBER						EV_MAX_SEG
 #define USB_OFFLOAD_TRBS_PER_SEGMENT	256
 #define USB_OFFLOAD_TRB_SEGMENT_SIZE	(USB_OFFLOAD_TRBS_PER_SEGMENT*16)
-
-#define USB_OFFLOAD_USE_SRAM	0
-#define SRAM_ADDR			0x11052000
-#define SRAM_TOTAL_SIZE		0x12000
-#define SRAM_TR_SIZE		0x4000
-#define SRAM_TR_OFST		0x20C0
-
-struct usb_offload_buffer *buf_dcbaa;
-struct usb_offload_buffer *buf_ctx;
-struct usb_offload_buffer *buf_seg;
 
 struct usb_offload_mem_info {
 	unsigned long long phy_addr;
 	unsigned long long va_addr;
 	unsigned long long size;
 	unsigned char *vir_addr;
+	bool is_valid;
+	struct gen_pool *pool;
+	u8 type;
 };
 
 struct usb_offload_buffer {
@@ -58,6 +55,9 @@ struct usb_offload_buffer {
 	dma_addr_t dma_addr;		/* physical bus address (not accessible from main CPU) */
 	size_t dma_bytes;			/* size of DMA area */
 	bool allocated;
+	bool is_sram;
+	bool is_rsv;
+	u8 type;
 };
 
 enum usb_offload_mem_id {
@@ -114,9 +114,13 @@ struct ssusb_offload {
 };
 
 struct mem_info_xhci {
-	bool use_sram;
-	unsigned int xhci_data_addr;
-	unsigned int xhci_data_size;
+	bool adv_lowpwr;
+	unsigned int xhci_dram_addr;
+	unsigned int xhci_dram_size;
+	unsigned int xhci_sram_addr;
+	unsigned int xhci_sram_size;
+	unsigned long long ev_ring;
+	unsigned long long erst_table;
 };
 
 struct usb_audio_stream_info {
@@ -175,6 +179,10 @@ struct usb_audio_stream_msg {
 	enum usb_audio_device_speed speed_info;
 	unsigned char controller_num_valid;
 	unsigned char controller_num;
+	unsigned long long urb_start_addr;
+	unsigned int urb_size;
+	unsigned int urb_num;
+	unsigned int urb_packs;
 	struct usb_audio_stream_info uainfo;
 };
 
@@ -207,12 +215,13 @@ struct usb_audio_dev {
 struct usb_offload_dev {
 	struct device *dev;
 	struct xhci_hcd *xhci;
+	struct xhci_ring *event_ring;
+	struct xhci_erst *erst;
+	unsigned int num_entries_in_use;
 	u32 intr_num;
 	unsigned long card_slot;
 	unsigned int card_num;
-	enum usb_offload_mem_id mem_id;
-	bool default_use_sram;
-	int current_mem_mode;
+	bool adv_lowpwr;
 	bool is_streaming;
 	bool tx_streaming;
 	bool rx_streaming;
@@ -223,14 +232,44 @@ struct usb_offload_dev {
 	bool adsp_ready;
 	struct ssusb_offload *ssusb_offload_notify;
 	struct mutex dev_lock;
+	u64 *mapping_table;
 };
 
-extern int mtk_usb_offload_allocate_mem(struct usb_offload_buffer *buf,
-		unsigned int size, int align, enum usb_offload_mem_id mem_id);
-extern int mtk_usb_offload_free_mem(struct usb_offload_buffer *buf, enum usb_offload_mem_id mem_id);
 extern int ssusb_offload_register(struct ssusb_offload *offload);
 extern int ssusb_offload_unregister(struct device *dev);
 
 
 extern bool usb_offload_ready(void);
+
+extern struct usb_offload_dev *uodev;
+extern unsigned int usb_offload_log;
+#define USB_OFFLOAD_MEM_DBG(fmt, args...) do { \
+	if (usb_offload_log > 1) \
+		pr_info("UD, %s(%d) " fmt, __func__, __LINE__, ## args); \
+	} while (0)
+
+#define USB_OFFLOAD_INFO(fmt, args...) do { \
+	if (1) \
+		pr_info("UO, %s(%d) " fmt, __func__, __LINE__, ## args); \
+	} while (0)
+
+#define USB_OFFLOAD_PROBE(fmt, args...) do { \
+	if (1) \
+		pr_info("UD, %s(%d) " fmt, __func__, __LINE__, ## args); \
+	} while (0)
+
+#define USB_OFFLOAD_ERR(fmt, args...) do { \
+	if (1) \
+		pr_info("UD, %s(%d) " fmt, __func__, __LINE__, ## args); \
+	} while (0)
+
+extern int mtk_usb_offload_init_rsv_mem(int min_alloc_order, bool adv_lowpwr);
+extern int mtk_usb_offload_deinit_rsv_sram(void);
+extern int mtk_offload_alloc_mem(struct usb_offload_buffer *buf, unsigned int size,
+	int align, enum usb_offload_mem_id mem_id, bool is_rsv);
+extern int mtk_offload_free_mem(struct usb_offload_buffer *buf);
+extern bool mtk_offload_is_sram_mode(void);
+extern int mtk_offload_get_rsv_mem_info(enum usb_offload_mem_id mem_id,
+	unsigned int *phys, unsigned int *size);
+extern bool is_sram(enum usb_offload_mem_id id);
 #endif /* __USB_OFFLOAD_H__ */

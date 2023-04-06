@@ -23,4 +23,10 @@ ifneq ($(CONFIG_SND_USB_AUDIO), )
 ccflags-y += -I$(srctree)/sound/usb
 endif
 
+ccflags-y += -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/common/
+
 obj-$(CONFIG_MTK_USB_OFFLOAD)	+= usb_offload.o
+ifneq ($(CONFIG_MTK_USB_OFFLOAD), )
+usb_offload-y := usb_offload_common.o
+usb_offload-y += usb_offload_mem.o
+endif

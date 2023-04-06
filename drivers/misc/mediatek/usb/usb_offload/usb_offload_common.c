@@ -13,7 +13,6 @@
 #include <linux/platform_device.h>
 #include <linux/of_device.h>
 #include <linux/io.h>
-#include <linux/genalloc.h>
 #include <linux/types.h>
 #include <linux/miscdevice.h>
 #include <linux/usb.h>
@@ -54,34 +53,27 @@
 #include "usb_offload.h"
 #include "audio_task_usb_msg_id.h"
 
-static unsigned int usb_offload_log;
+static DEFINE_MUTEX(register_mutex);
+
+struct usb_offload_buffer *buf_dcbaa;
+struct usb_offload_buffer *buf_ctx;
+struct usb_offload_buffer *buf_seg;
+struct usb_offload_buffer *buf_ev_table;
+struct usb_offload_buffer buf_allocated[2];
+
+unsigned int usb_offload_log;
 module_param(usb_offload_log, uint, 0644);
 MODULE_PARM_DESC(usb_offload_log, "Enable/Disable USB Offload log");
 
-#define USB_OFFLOAD_MEM_DBG(fmt, args...) do { \
-		if (usb_offload_log > 1) \
-			pr_info("UD, %s(%d) " fmt, __func__, __LINE__, ## args); \
-	} while (0)
+static enum usb_offload_mem_id lowpwr_mem_type(void)
+{
+	return uodev->adv_lowpwr ?
+		USB_OFFLOAD_MEM_SRAM_ID : USB_OFFLOAD_MEM_DRAM_ID;
+}
 
-#define USB_OFFLOAD_INFO(fmt, args...) do { \
-		if (1) \
-			pr_info("UO, %s(%d) " fmt, __func__, __LINE__, ## args); \
-	} while (0)
-
-#define USB_OFFLOAD_PROBE(fmt, args...) do { \
-		if (1) \
-			pr_info("UD, %s(%d) " fmt, __func__, __LINE__, ## args); \
-	} while (0)
-
-#define USB_OFFLOAD_ERR(fmt, args...) do { \
-		if (1) \
-			pr_info("UD, %s(%d) " fmt, __func__, __LINE__, ## args); \
-	} while (0)
-
-static DEFINE_MUTEX(register_mutex);
 
 static struct usb_audio_dev uadev[SNDRV_CARDS];
-static struct usb_offload_dev *uodev;
+struct usb_offload_dev *uodev;
 static struct snd_usb_audio *usb_chip[SNDRV_CARDS];
 
 #if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
@@ -89,6 +81,25 @@ static struct snd_offload_operations offload_ops;
 
 static void uaudio_disconnect_cb(struct snd_usb_audio *chip);
 #endif
+
+static int mtk_usb_offload_free_allocated(bool is_in);
+static struct xhci_ring *xhci_mtk_alloc_ring(struct xhci_hcd *xhci,
+	int num_segs, int cycle_state, enum xhci_ring_type ring_type,
+	unsigned int max_packet, gfp_t mem_flags,
+	enum usb_offload_mem_id mem_id, bool is_rsv);
+static void xhci_mtk_free_ring(struct xhci_hcd *xhci,
+	struct xhci_ring *ring, unsigned int ep_index);
+static int xhci_mtk_alloc_erst(struct usb_offload_dev *udev);
+static struct xhci_ring *xhci_mtk_alloc_transfer_ring(struct xhci_hcd *xhci,
+	u32 endpoint_type, enum xhci_ring_type ring_type,
+	unsigned int max_packet, gfp_t mem_flags);
+static int xhci_mtk_alloc_event_ring(struct usb_offload_dev *udev);
+static void xhci_mtk_free_erst(struct usb_offload_dev *udev);
+static void xhci_mtk_free_event_ring(struct usb_offload_dev *udev);
+static int xhci_mtk_ring_expansion(struct xhci_hcd *xhci,
+	struct xhci_ring *ring, dma_addr_t phys, void *vir);
+static int xhci_mtk_update_erst(struct usb_offload_dev *udev,
+	struct xhci_segment *first,	struct xhci_segment *last, unsigned int num_segs);
 
 static void adsp_ee_recovery(void)
 {
@@ -528,6 +539,11 @@ static void uaudio_disconnect_cb(struct snd_usb_audio *chip)
 		/* wait response */
 		USB_OFFLOAD_INFO("send_disconnect_ipi_msg_to_adsp msg, ret: %d\n", ret);
 
+		mtk_usb_offload_free_allocated(true);
+		mtk_usb_offload_free_allocated(false);
+		xhci_mtk_free_erst(uodev);
+		xhci_mtk_free_event_ring(uodev);
+
 		atomic_set(&dev->in_use, 0);
 
 		mutex_lock(&uodev->dev_lock);
@@ -559,6 +575,7 @@ static void uaudio_dev_release(struct kref *kref)
 static int info_idx_from_ifnum(unsigned int card_num, int intf_num, bool enable)
 {
 	int i;
+
 	USB_OFFLOAD_INFO("enable:%d, card_num:%d, intf_num:%d\n",
 			enable, card_num, intf_num);
 
@@ -878,10 +895,10 @@ int send_init_ipi_msg_to_adsp(struct mem_info_xhci *mpu_info)
 	struct ipi_msg_t ipi_msg;
 	uint8_t scene = 0;
 
-	USB_OFFLOAD_INFO("xhci_rsv_addr: 0x%x, xhci_rsv_size: %d, size: %lu\n",
-			mpu_info->xhci_data_addr,
-			mpu_info->xhci_data_size,
-			sizeof(*mpu_info));
+	USB_OFFLOAD_INFO("[reserved dram] addr:0x%x size:%d\n",
+			mpu_info->xhci_dram_addr, mpu_info->xhci_dram_size);
+	USB_OFFLOAD_INFO("[reserved sram] addr:0x%x size:%d\n",
+			mpu_info->xhci_sram_addr, mpu_info->xhci_sram_size);
 
 	// Send struct usb_audio_stream_info Address to Hifi3 Via IPI
 	for (scene = TASK_SCENE_USB_DL; scene <= TASK_SCENE_USB_UL; scene++) {
@@ -944,6 +961,156 @@ int send_uas_ipi_msg_to_adsp(struct usb_audio_stream_msg *uas_msg)
 	return send_result;
 }
 
+static int mtk_usb_offload_free_allocated(bool is_in)
+{
+	unsigned int buf_idx = is_in ? 1 : 0;
+	struct usb_offload_buffer *buf;
+
+	buf = &buf_allocated[buf_idx];
+	if (!buf) {
+		USB_OFFLOAD_INFO("buf(%s) has already freed\n",
+			is_in ? "in" : "out");
+		return 0;
+	}
+
+	mtk_offload_free_mem(buf);
+	return 0;
+}
+
+struct urb_information {
+	unsigned int align_size;
+	unsigned int urb_size;
+	unsigned int urb_num;
+	unsigned int urb_packs;
+};
+
+static struct urb_information mtk_usb_offload_calculate_urb(
+	struct usb_audio_stream_info *uainfo, struct snd_usb_substream *subs)
+{
+	struct urb_information urb_info;
+	struct snd_usb_endpoint *ep = subs->data_endpoint;
+	struct snd_usb_audio *chip = ep->chip;
+	unsigned int maxsize, packs_per_ms, max_packs_per_urb, urb_packs, nurbs;
+	unsigned int buffer_size, align = 64 - 1;
+	int frame_bits = ep->cur_frame_bytes * 8, packets;
+
+	maxsize = (((ep->freqmax << ep->datainterval) + 0xffff) >> 16) * (frame_bits >> 3);
+
+	if (chip->dev->speed != USB_SPEED_FULL) {
+		packs_per_ms = 8 >> ep->datainterval;
+		max_packs_per_urb = MAX_PACKS_HS;
+	} else {
+		packs_per_ms = 1;
+		max_packs_per_urb = MAX_PACKS;
+	}
+	max_packs_per_urb = max(1u, max_packs_per_urb >> ep->datainterval);
+
+	if (usb_pipein(ep->pipe)) {
+		urb_packs = packs_per_ms;
+		urb_packs = min(max_packs_per_urb, urb_packs);
+
+		while (urb_packs > 1 && urb_packs * maxsize >= uainfo->pcm_size)
+			urb_packs >>= 1;
+
+		if (uainfo->xhc_irq_period_ms * uainfo->xhc_urb_num * packs_per_ms
+			> USB_OFFLOAD_TRBS_PER_SEGMENT) {
+			urb_packs = uainfo->xhc_irq_period_ms * packs_per_ms;
+			nurbs = USB_OFFLOAD_TRBS_PER_SEGMENT / urb_packs;
+		} else {
+			urb_packs = uainfo->xhc_irq_period_ms * packs_per_ms;
+			nurbs = uainfo->xhc_urb_num;
+		}
+	} else {
+		nurbs = uainfo->xhc_urb_num;
+		urb_packs = uainfo->xhc_irq_period_ms * packs_per_ms;
+	}
+
+	packets = urb_packs;
+	buffer_size = maxsize * packets;
+
+	urb_info.urb_size = buffer_size;
+	urb_info.urb_num = nurbs;
+	urb_info.urb_packs = packets;
+	urb_info.align_size = buffer_size + align;
+
+	return urb_info;
+}
+
+/* allocate urb and 2nd segment in one time */
+static int usb_offload_prepare_msg_ext(struct usb_audio_stream_msg *msg,
+	struct usb_audio_stream_info *uainfo, struct snd_usb_substream *subs)
+{
+	struct urb_information urb_info;
+	struct usb_host_endpoint *ep;
+	struct xhci_ring *ring;
+	unsigned int total_size, align = 64 - 1;
+	unsigned int slot_id, ep_id;
+	struct usb_offload_buffer *buf = &buf_allocated[uainfo->direction];
+	dma_addr_t phy_addr;
+	void *vir_addr;
+	int ret, i;
+	bool expend_tr;
+
+	/* calculate urb */
+	urb_info = mtk_usb_offload_calculate_urb(uainfo, subs);
+	USB_OFFLOAD_INFO("[urb_info] align_size:%d size:%d nurbs:%d packs:%d\n",
+		urb_info.align_size, urb_info.urb_size, urb_info.urb_num, urb_info.urb_packs);
+	total_size = urb_info.align_size * urb_info.urb_num;
+
+	/* check if it needs 2nd segment */
+	expend_tr = get_speed_info(subs->dev->speed) > USB_AUDIO_DEVICE_SPEED_FULL &&
+		uainfo->xhc_irq_period_ms == 20 ? true : false;
+	if (expend_tr)
+		total_size += USB_OFFLOAD_TRB_SEGMENT_SIZE + align;
+
+	USB_OFFLOAD_INFO("allocate total_size:%d direction:%d\n",
+		total_size, uainfo->direction);
+
+	/* requeset for memory (urbs + 2nd segment)*/
+	ret = mtk_offload_alloc_mem(buf, total_size, USB_OFFLOAD_TRB_SEGMENT_SIZE,
+				lowpwr_mem_type(), false);
+	if (ret != 0)
+		return ret;
+
+	/* assign memory for 2nd segment */
+	phy_addr = buf->dma_addr;
+	if (expend_tr) {
+		slot_id = subs->dev->slot_id;
+		ep = usb_pipe_endpoint(subs->dev, subs->data_endpoint->pipe);
+		if (ep) {
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_XHCI_MTK)
+			ep_id = xhci_get_endpoint_index_(&ep->desc);
+#else
+			ep_id = xhci_get_endpoint_index(&ep->desc);
+#endif
+			ring = uodev->xhci->devs[slot_id]->eps[ep_id].ring;
+			phy_addr = (phy_addr + align) & (~align);
+			vir_addr = (void *)((u64)buf->dma_area + (u64)(phy_addr - buf->dma_addr));
+			xhci_mtk_ring_expansion(uodev->xhci, ring, phy_addr, vir_addr);
+
+			phy_addr = buf->dma_addr + USB_OFFLOAD_TRB_SEGMENT_SIZE;
+		}
+	}
+
+	/* assign memory for urbs */
+	phy_addr = (phy_addr + align) & (~align);
+	msg->urb_start_addr = (unsigned long long)phy_addr;
+	msg->urb_size = urb_info.urb_size;
+	msg->urb_num = urb_info.urb_num;
+	msg->urb_packs = urb_info.urb_packs;
+
+	for (i = 0; i < msg->urb_num; i++) {
+		USB_OFFLOAD_INFO("[urb(%s)%d] phys:0x%llx size:%d\n",
+			uainfo->direction == SNDRV_PCM_STREAM_CAPTURE ? "in" : "out",
+			i, phy_addr, msg->urb_size);
+
+		phy_addr += msg->urb_size;
+		phy_addr = (phy_addr + align) & (~align);
+	}
+
+	return 0;
+}
+
 static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 {
 	struct usb_audio_stream_msg msg = {0};
@@ -952,7 +1119,6 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 	struct snd_usb_audio *chip = NULL;
 	struct intf_info *info;
 	struct usb_host_endpoint *ep;
-
 	u8 pcm_card_num, pcm_dev_num, direction;
 	int info_idx = -EINVAL, datainterval = -EINVAL, ret = 0;
 	int interface;
@@ -1088,6 +1254,9 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 			mutex_unlock(&uodev->dev_lock);
 			return ret;
 		}
+
+		usb_offload_prepare_msg_ext(&msg, uainfo, subs);
+
 	} else {
 		ret = substream->ops->hw_free(substream);
 		USB_OFFLOAD_INFO("hw_free, ret: %d\n", ret);
@@ -1103,6 +1272,8 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 	ret = send_uas_ipi_msg_to_adsp(&msg);
 	USB_OFFLOAD_INFO("send_ipi_msg_to_adsp msg, ret: %d\n", ret);
 	/* wait response */
+	if (!uainfo->enable)
+		mtk_usb_offload_free_allocated(uainfo->direction == SNDRV_PCM_STREAM_CAPTURE);
 
 done:
 	if ((!uainfo->enable && ret != -EINVAL && ret != -ENODEV) ||
@@ -1130,220 +1301,6 @@ done:
 	return ret;
 }
 
-static struct usb_offload_mem_info usb_offload_mem_buffer[USB_OFFLOAD_MEM_NUM];
-static struct gen_pool *usb_offload_mem_pool[USB_OFFLOAD_MEM_NUM];
-
-static int dump_mtk_usb_offload_gen_pool(void)
-{
-	int i = 0;
-
-	for (i = 0; i < USB_OFFLOAD_MEM_NUM; i++) {
-		USB_OFFLOAD_INFO("idx: %d, gen_pool_avail: %zu, gen_pool_size: %zu\n",
-				i,
-				gen_pool_avail(usb_offload_mem_pool[i]),
-				gen_pool_size(usb_offload_mem_pool[i]));
-		if (!uodev->default_use_sram)
-			break;
-	}
-	return 0;
-}
-
-struct gen_pool *mtk_get_usb_offload_mem_gen_pool(enum usb_offload_mem_id mem_id)
-{
-	if (mem_id < USB_OFFLOAD_MEM_NUM)
-		return usb_offload_mem_pool[mem_id];
-	USB_OFFLOAD_ERR("Invalid id: %d\n", mem_id);
-	return NULL;
-}
-EXPORT_SYMBOL_GPL(mtk_get_usb_offload_mem_gen_pool);
-
-static int mtk_init_usb_offload_sharemem(uint32_t dram_mem_id, uint32_t mem_id)
-{
-	int ret = 0;
-	unsigned long long sram_tr_addr, sram_tr_size;
-
-	switch (mem_id) {
-	case USB_OFFLOAD_MEM_DRAM_ID:
-		if (!adsp_get_reserve_mem_phys(dram_mem_id))
-			return -EPROBE_DEFER;
-		usb_offload_mem_buffer[mem_id].phy_addr = adsp_get_reserve_mem_phys(dram_mem_id);
-		usb_offload_mem_buffer[mem_id].va_addr =
-				(unsigned long long) adsp_get_reserve_mem_virt(dram_mem_id);
-		usb_offload_mem_buffer[mem_id].vir_addr = adsp_get_reserve_mem_virt(dram_mem_id);
-		usb_offload_mem_buffer[mem_id].size = adsp_get_reserve_mem_size(dram_mem_id);
-		break;
-
-	case USB_OFFLOAD_MEM_SRAM_ID:
-		sram_tr_addr = SRAM_ADDR + SRAM_TR_OFST;
-		sram_tr_size = SRAM_TR_SIZE;
-		USB_OFFLOAD_INFO("sram_tr_addr: 0x%llx, sram_tr_size: %llu",
-					sram_tr_addr, sram_tr_size);
-
-		usb_offload_mem_buffer[mem_id].phy_addr = sram_tr_addr;
-		usb_offload_mem_buffer[mem_id].va_addr =
-				(unsigned long long) ioremap_wc(
-					(phys_addr_t) sram_tr_addr, (unsigned long) sram_tr_size);
-		usb_offload_mem_buffer[mem_id].vir_addr = (unsigned char *) sram_tr_addr;
-		usb_offload_mem_buffer[mem_id].size = sram_tr_size;
-		break;
-	}
-
-	USB_OFFLOAD_INFO("mem_id(%u), buf_id(%u), phy_addr(0x%llx), vir_addr(%p)\n",
-			dram_mem_id, mem_id,
-			usb_offload_mem_buffer[mem_id].phy_addr,
-			usb_offload_mem_buffer[mem_id].vir_addr);
-	USB_OFFLOAD_INFO("va_addr:(0x%llx), size(%llu)\n",
-			usb_offload_mem_buffer[mem_id].va_addr,
-			usb_offload_mem_buffer[mem_id].size);
-
-	return ret;
-}
-
-static int mtk_usb_offload_gen_pool_create(int min_alloc_order, int nid)
-{
-	int i, ret = 0;
-	unsigned long va_start;
-	size_t va_chunk;
-
-	if (min_alloc_order <= 0)
-		return -1;
-
-	USB_OFFLOAD_MEM_DBG("\n");
-
-	for (i = 0; i < USB_OFFLOAD_MEM_NUM; i++) {
-		usb_offload_mem_pool[i] = gen_pool_create(min_alloc_order, -1);
-
-		if (!usb_offload_mem_pool[i])
-			return -ENOMEM;
-
-		va_start = usb_offload_mem_buffer[i].va_addr;
-		va_chunk = usb_offload_mem_buffer[i].size;
-		if ((!va_start) || (!va_chunk)) {
-			ret = -1;
-			break;
-		}
-		if (gen_pool_add_virt(usb_offload_mem_pool[i], (unsigned long)va_start,
-				usb_offload_mem_buffer[i].phy_addr, va_chunk, -1)) {
-			USB_OFFLOAD_ERR("idx: %d failed, va_start: 0x%lx, va_chunk: %zu\n",
-					i, va_start, va_chunk);
-		}
-
-		USB_OFFLOAD_MEM_DBG("idx:%d success, va_start:0x%lx, va_chunk:%zu, pool[%d]:%p\n",
-					i, va_start, va_chunk, i, usb_offload_mem_pool[i]);
-
-		if (!uodev->default_use_sram)
-			break;
-	}
-	dump_mtk_usb_offload_gen_pool();
-	return ret;
-}
-
-static int mtk_usb_offload_genpool_allocate_memory(unsigned char **vaddr,
-		dma_addr_t *paddr,
-		unsigned int size,
-		enum usb_offload_mem_id mem_id,
-		int align)
-{
-	/* gen pool related */
-	struct gen_pool *gen_pool_usb_offload = mtk_get_usb_offload_mem_gen_pool(mem_id);
-
-	if (gen_pool_usb_offload == NULL) {
-		USB_OFFLOAD_ERR("gen_pool_usb_offload == NULL\n");
-		return -1;
-	}
-
-	USB_OFFLOAD_MEM_DBG("mem_id: %d, vaddr: %p, DMA paddr: 0x%llx, size:%u\n",
-		mem_id, vaddr, (unsigned long long)*paddr, size);
-
-	/* allocate VA with gen pool */
-	if (*vaddr == NULL) {
-		*vaddr = (unsigned char *)gen_pool_dma_zalloc_align(gen_pool_usb_offload,
-									size, paddr, align);
-		*paddr = gen_pool_virt_to_phys(gen_pool_usb_offload,
-					(unsigned long)*vaddr);
-	}
-	USB_OFFLOAD_MEM_DBG("size: %u, id: %d, vaddr: %p, DMA paddr: 0x%llx\n",
-			size, mem_id, vaddr, (unsigned long long)*paddr);
-
-	return 0;
-}
-
-static int mtk_usb_offload_genpool_free_memory(unsigned char **vaddr,
-		size_t *size, enum usb_offload_mem_id mem_id)
-{
-	/* gen pool related */
-	struct gen_pool *gen_pool_usb_offload = mtk_get_usb_offload_mem_gen_pool(mem_id);
-
-	if (gen_pool_usb_offload == NULL) {
-		USB_OFFLOAD_ERR("gen_pool_usb_offload == NULL\n");
-		return -1;
-	}
-
-	if (!gen_pool_has_addr(gen_pool_usb_offload, (unsigned long)*vaddr, *size)) {
-		USB_OFFLOAD_ERR("vaddr is not in genpool\n");
-		return -1;
-	}
-
-	/* allocate VA with gen pool */
-	if (*vaddr) {
-		USB_OFFLOAD_MEM_DBG("size: %zu, id: %d, vaddr: %p\n",
-				*size, mem_id, vaddr);
-		gen_pool_free(gen_pool_usb_offload, (unsigned long)*vaddr, *size);
-		*vaddr = NULL;
-		*size = 0;
-	}
-
-	return 0;
-}
-
-int mtk_usb_offload_allocate_mem(struct usb_offload_buffer *buf,
-		unsigned int size, int align, enum usb_offload_mem_id mem_id)
-{
-	int ret = 0;
-
-	if (buf->dma_area) {
-		ret = mtk_usb_offload_genpool_free_memory(
-					&buf->dma_area,
-					&buf->dma_bytes,
-					mem_id);
-
-		if (ret)
-			USB_OFFLOAD_ERR("Fail to free memoroy\n");
-	}
-	ret =  mtk_usb_offload_genpool_allocate_memory
-				(&buf->dma_area,
-				 &buf->dma_addr,
-				 size,
-				 mem_id,
-				 align);
-
-	if (!ret) {
-		buf->dma_bytes = size;
-		buf->allocated = true;
-	}
-
-	return ret;
-}
-EXPORT_SYMBOL_GPL(mtk_usb_offload_allocate_mem);
-
-int mtk_usb_offload_free_mem(struct usb_offload_buffer *buf, enum usb_offload_mem_id mem_id)
-{
-	int ret = 0;
-
-	ret = mtk_usb_offload_genpool_free_memory(
-				&buf->dma_area,
-				&buf->dma_bytes,
-				mem_id);
-
-	if (!ret) {
-		buf->dma_addr = 0;
-		buf->allocated = 0;
-	}
-
-	return ret;
-}
-EXPORT_SYMBOL_GPL(mtk_usb_offload_free_mem);
-
 static bool xhci_mtk_is_usb_offload_enabled(struct xhci_hcd *xhci,
 					   struct xhci_virt_device *vdev,
 					   unsigned int ep_index)
@@ -1356,9 +1313,10 @@ static struct xhci_device_context_array *xhci_mtk_alloc_dcbaa(struct xhci_hcd *x
 {
 	struct xhci_device_context_array *xhci_ctx;
 
+	USB_OFFLOAD_MEM_DBG("\n");
 	buf_dcbaa = kzalloc(sizeof(struct usb_offload_buffer), GFP_KERNEL);
-	if (mtk_usb_offload_allocate_mem(buf_dcbaa, sizeof(*xhci_ctx), 64,
-				USB_OFFLOAD_MEM_DRAM_ID)) {
+	if (mtk_offload_alloc_mem(buf_dcbaa, sizeof(*xhci_ctx), 64,
+				USB_OFFLOAD_MEM_DRAM_ID, true)) {
 		USB_OFFLOAD_ERR("FAIL to allocate mem for USB Offload DCBAA\n");
 		return NULL;
 	}
@@ -1370,26 +1328,24 @@ static struct xhci_device_context_array *xhci_mtk_alloc_dcbaa(struct xhci_hcd *x
 			xhci_ctx->dev_context_ptrs, xhci_ctx->dma);
 
 	buf_ctx = kzalloc(sizeof(struct usb_offload_buffer) * BUF_CTX_SIZE, GFP_KERNEL);
-	buf_seg = kzalloc(sizeof(struct usb_offload_buffer) * BUF_SEG_SIZE, GFP_KERNEL);
 	return xhci_ctx;
 }
 
 static void xhci_mtk_free_dcbaa(struct xhci_hcd *xhci)
 {
+	USB_OFFLOAD_MEM_DBG("\n");
 	if (!buf_dcbaa) {
 		USB_OFFLOAD_ERR("DCBAA has not been initialized.\n");
 		return;
 	}
 
-	if (mtk_usb_offload_free_mem(buf_dcbaa, USB_OFFLOAD_MEM_DRAM_ID))
+	if (mtk_offload_free_mem(buf_dcbaa))
 		USB_OFFLOAD_ERR("FAIL to free mem for USB Offload DCBAA\n");
 	else
 		USB_OFFLOAD_MEM_DBG("Free mem DCBAA DONE\n");
 
-	kfree(buf_seg);
 	kfree(buf_ctx);
 	kfree(buf_dcbaa);
-	buf_seg = NULL;
 	buf_ctx = NULL;
 	buf_dcbaa = NULL;
 }
@@ -1419,8 +1375,8 @@ static void xhci_mtk_alloc_container_ctx(struct xhci_hcd *xhci, struct xhci_cont
 
 	int buf_ctx_slot = get_first_avail_buf_ctx_idx(xhci);
 
-	if (mtk_usb_offload_allocate_mem(&buf_ctx[buf_ctx_slot], ctx->size, 64,
-				USB_OFFLOAD_MEM_DRAM_ID)) {
+	if (mtk_offload_alloc_mem(&buf_ctx[buf_ctx_slot], ctx->size, 64,
+				USB_OFFLOAD_MEM_DRAM_ID, true)) {
 		USB_OFFLOAD_ERR("FAIL to allocate mem for USB Offload Context %d size: %d\n",
 				buf_ctx_slot, ctx->size);
 		return;
@@ -1445,7 +1401,7 @@ static void xhci_mtk_free_container_ctx(struct xhci_hcd *xhci, struct xhci_conta
 				ctx->dma);
 
 		if (buf_ctx[idx].allocated && buf_ctx[idx].dma_addr == ctx->dma) {
-			if (mtk_usb_offload_free_mem(&buf_ctx[idx], USB_OFFLOAD_MEM_DRAM_ID))
+			if (mtk_offload_free_mem(&buf_ctx[idx]))
 				USB_OFFLOAD_ERR("FAIL: free mem ctx: %d\n", idx);
 			else
 				USB_OFFLOAD_MEM_DBG("Free mem ctx: %d DONE\n", idx);
@@ -1462,6 +1418,11 @@ static int get_first_avail_buf_seg_idx(void)
 {
 	unsigned int idx;
 
+	if (!buf_seg) {
+		USB_OFFLOAD_ERR("buf_seg is NULL\n");
+		return -1;
+	}
+
 	for (idx = 0; idx < BUF_SEG_SIZE; idx++) {
 		USB_OFFLOAD_MEM_DBG("seg[%d], alloc: %d, DMA area: %p, addr: %llx, bytes: %zu\n",
 				idx,
@@ -1474,17 +1435,22 @@ static int get_first_avail_buf_seg_idx(void)
 			return idx;
 	}
 	USB_OFFLOAD_ERR("NO Available BUF Segment.\n");
-	return 0;
+	return -1;
 }
 
 static void xhci_mtk_usb_offload_segment_free(struct xhci_hcd *xhci,
-			struct xhci_segment *seg, enum usb_offload_mem_id mem_id)
+			struct xhci_segment *seg)
 {
 	unsigned int idx;
 
+	if (!buf_seg) {
+		USB_OFFLOAD_ERR("buf_seg is NULL\n");
+		return;
+	}
+
 	if (seg->trbs) {
 		for (idx = 0; idx < BUF_SEG_SIZE; idx++) {
-			USB_OFFLOAD_MEM_DBG("seg[%d], alloc:%d, dma_addr:%llx, dma:%llx, size:%zu\n",
+			USB_OFFLOAD_MEM_DBG("seg[%d] alloc:%d dma_addr:%llx dma:%llx size:%zu\n",
 					idx,
 					buf_seg[idx].allocated,
 					buf_seg[idx].dma_addr,
@@ -1492,35 +1458,28 @@ static void xhci_mtk_usb_offload_segment_free(struct xhci_hcd *xhci,
 					buf_seg[idx].dma_bytes);
 
 			if (buf_seg[idx].allocated && buf_seg[idx].dma_addr == seg->dma) {
-				if (mtk_usb_offload_free_mem(&buf_seg[idx], mem_id))
+				if (mtk_offload_free_mem(&buf_seg[idx]))
 					USB_OFFLOAD_ERR("FAIL: free mem seg: %d\n", idx);
 				else
 					USB_OFFLOAD_MEM_DBG("Free mem seg: %d DONE\n", idx);
 				goto done;
 			}
 		}
-		USB_OFFLOAD_MEM_DBG("NO Segment MATCH to be freed. seg->trbs: %p, seg->dma: %llx\n",
+		USB_OFFLOAD_INFO("NO Segment MATCH to be freed. seg->trbs: %p, seg->dma: %llx\n",
 				seg->trbs, seg->dma);
 done:
 		seg->trbs = NULL;
 	}
+
 	kfree(seg->bounce_buf);
 	kfree(seg);
 }
 
 static void xhci_mtk_usb_offload_free_segments_for_ring(struct xhci_hcd *xhci,
-				struct xhci_segment *first, enum usb_offload_mem_id mem_id)
+				struct xhci_segment *first)
 {
-	struct xhci_segment *seg;
-
-	seg = first->next;
-	while (seg != first) {
-		struct xhci_segment *next = seg->next;
-
-		xhci_mtk_usb_offload_segment_free(xhci, seg, mem_id);
-		seg = next;
-	}
-	xhci_mtk_usb_offload_segment_free(xhci, first, mem_id);
+	/* only free 1st segment */
+	xhci_mtk_usb_offload_segment_free(xhci, first);
 }
 
 /*
@@ -1534,19 +1493,23 @@ static struct xhci_segment *xhci_mtk_usb_offload_segment_alloc(struct xhci_hcd *
 						   unsigned int cycle_state,
 						   unsigned int max_packet,
 						   gfp_t flags,
-						   enum usb_offload_mem_id mem_id)
+						   enum usb_offload_mem_id mem_id,
+						   bool is_rsv)
 {
 	struct xhci_segment *seg;
 	dma_addr_t	dma;
 	int		i;
 	int buf_seg_slot = get_first_avail_buf_seg_idx();
 
+	if (buf_seg_slot < 0)
+		return NULL;
+
 	seg = kzalloc(sizeof(*seg), flags);
 	if (!seg)
 		return NULL;
 
-	if (mtk_usb_offload_allocate_mem(&buf_seg[buf_seg_slot],
-		USB_OFFLOAD_TRB_SEGMENT_SIZE, USB_OFFLOAD_TRB_SEGMENT_SIZE, mem_id)) {
+	if (mtk_offload_alloc_mem(&buf_seg[buf_seg_slot],
+		USB_OFFLOAD_TRB_SEGMENT_SIZE, USB_OFFLOAD_TRB_SEGMENT_SIZE, mem_id, is_rsv)) {
 		USB_OFFLOAD_ERR("FAIL to allocate mem id: %d for USB Offload Seg %d, size: %d\n",
 				mem_id, buf_seg_slot, USB_OFFLOAD_TRB_SEGMENT_SIZE);
 		kfree(seg);
@@ -1572,7 +1535,7 @@ static struct xhci_segment *xhci_mtk_usb_offload_segment_alloc(struct xhci_hcd *
 	if (max_packet) {
 		seg->bounce_buf = kzalloc(max_packet, flags);
 		if (!seg->bounce_buf) {
-			xhci_mtk_usb_offload_segment_free(xhci, seg, mem_id);
+			xhci_mtk_usb_offload_segment_free(xhci, seg);
 			return NULL;
 		}
 	}
@@ -1616,7 +1579,7 @@ static int xhci_mtk_usb_offload_alloc_segments_for_ring(struct xhci_hcd *xhci,
 		struct xhci_segment **first, struct xhci_segment **last,
 		unsigned int num_segs, unsigned int cycle_state,
 		enum xhci_ring_type type, unsigned int max_packet, gfp_t flags,
-		enum usb_offload_mem_id mem_id)
+		enum usb_offload_mem_id mem_id, bool is_rsv)
 {
 	struct xhci_segment *prev;
 	bool chain_links;
@@ -1631,7 +1594,8 @@ static int xhci_mtk_usb_offload_alloc_segments_for_ring(struct xhci_hcd *xhci,
 			 (type == TYPE_ISOC &&
 			  (xhci->quirks & XHCI_AMD_0x96_HOST)));
 
-	prev = xhci_mtk_usb_offload_segment_alloc(xhci, cycle_state, max_packet, flags, mem_id);
+	prev = xhci_mtk_usb_offload_segment_alloc(xhci, cycle_state, max_packet, flags,
+			mem_id, is_rsv);
 	if (!prev)
 		return -ENOMEM;
 	num_segs--;
@@ -1641,12 +1605,12 @@ static int xhci_mtk_usb_offload_alloc_segments_for_ring(struct xhci_hcd *xhci,
 		struct xhci_segment	*next;
 
 		next = xhci_mtk_usb_offload_segment_alloc(
-					xhci, cycle_state, max_packet, flags, mem_id);
+					xhci, cycle_state, max_packet, flags, mem_id, is_rsv);
 		if (!next) {
 			prev = *first;
 			while (prev) {
 				next = prev->next;
-				xhci_mtk_usb_offload_segment_free(xhci, prev, mem_id);
+				xhci_mtk_usb_offload_segment_free(xhci, prev);
 				prev = next;
 			}
 			return -ENOMEM;
@@ -1665,20 +1629,157 @@ static int xhci_mtk_usb_offload_alloc_segments_for_ring(struct xhci_hcd *xhci,
 	xhci_link_segments(prev, *first, type, chain_links);
 #endif
 	*last = prev;
+	return 0;
+}
+
+static void xhci_mtk_link_rings(struct xhci_hcd *xhci, struct xhci_ring *ring,
+	struct xhci_segment *first, struct xhci_segment *last, unsigned int num_segs)
+{
+	struct xhci_segment *next;
+	bool chain_links;
+
+	chain_links = !!(xhci_link_trb_quirk(xhci) ||
+			 (ring->type == TYPE_ISOC &&
+			  (xhci->quirks & XHCI_AMD_0x96_HOST)));
+
+	next = ring->enq_seg->next;
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_XHCI_MTK)
+	xhci_link_segments_(ring->enq_seg, first, ring->type, chain_links);
+	xhci_link_segments_(last, next, ring->type, chain_links);
+#else
+	xhci_link_segments(ring->enq_seg, first, ring->type, chain_links);
+	xhci_link_segments(last, next, ring->type, chain_links);
+#endif
+	ring->num_segs += num_segs;
+	ring->num_trbs_free += (TRBS_PER_SEGMENT - 1) * num_segs;
+
+	if (ring->type != TYPE_EVENT && ring->enq_seg == ring->last_seg) {
+		ring->last_seg->trbs[TRBS_PER_SEGMENT-1].link.control
+			&= ~cpu_to_le32(LINK_TOGGLE);
+		last->trbs[TRBS_PER_SEGMENT-1].link.control
+			|= cpu_to_le32(LINK_TOGGLE);
+		ring->last_seg = last;
+	}
+}
+
+static int xhci_mtk_update_erst(struct usb_offload_dev *udev, struct xhci_segment *first,
+	struct xhci_segment *last, unsigned int num_segs)
+{
+	struct xhci_segment *segment;
+	struct xhci_ring *event_ring = udev->event_ring;
+	struct xhci_erst *erst = udev->erst;
+	struct xhci_erst_entry *entry;
+	unsigned int entries_idx, entries_in_use = udev->num_entries_in_use;
+	unsigned int ev_seg_num = event_ring->num_segs;
+
+	USB_OFFLOAD_INFO("ev_segs:%d entries_in_use:%d",
+		ev_seg_num, entries_in_use);
+
+	if (ev_seg_num <= entries_in_use) {
+		USB_OFFLOAD_INFO("no need to update erst\n");
+		return 0;
+	}
+
+	entries_idx = ev_seg_num - num_segs;
+	USB_OFFLOAD_MEM_DBG("need %d more erst entries, start with entry%d\n",
+		ev_seg_num - entries_in_use, entries_idx);
+
+	segment = first;
+	while (ev_seg_num > entries_in_use) {
+		USB_OFFLOAD_INFO("[erst]entry%d\n", entries_idx);
+		entry = &erst->entries[entries_idx];
+		entry->seg_addr = cpu_to_le64(segment->dma);
+		entry->seg_size = cpu_to_le32(USB_OFFLOAD_TRBS_PER_SEGMENT);
+
+		USB_OFFLOAD_MEM_DBG("entry:%p seg_addr:0x%llx seg_size:%d\n",
+			entry, entry->seg_addr, entry->seg_size);
+
+		entries_idx++;
+		entries_in_use++;
+		segment = segment->next;
+	}
+	udev->num_entries_in_use = entries_in_use;
+	USB_OFFLOAD_INFO("num_entries_in_use:%d\n", udev->num_entries_in_use);
 
 	return 0;
 }
 
-static struct xhci_ring *xhci_mtk_alloc_transfer_ring(struct xhci_hcd *xhci,
-		u32 endpoint_type, enum xhci_ring_type ring_type,
-		unsigned int max_packet, gfp_t mem_flags)
+static int xhci_mtk_ring_expansion(struct xhci_hcd *xhci,
+	struct xhci_ring *ring, dma_addr_t phys, void *vir)
 {
+	struct xhci_segment *new_seg, *seg;
+	unsigned int num_segs = 1, max_packet, i;
+	bool chain_links;
 
+	if (!ring)
+		return -EINVAL;
 
+	chain_links = !!(xhci_link_trb_quirk(xhci) ||
+			 (ring->type == TYPE_ISOC &&
+			  (xhci->quirks & XHCI_AMD_0x96_HOST)));
+
+	USB_OFFLOAD_INFO("phys:0x%llx vir:%p\n", (u64)phys, vir);
+
+	new_seg = kzalloc(sizeof(*new_seg), GFP_ATOMIC);
+	if (!new_seg)
+		return -ENOMEM;
+
+	new_seg->trbs = vir;
+	new_seg->dma = phys;
+
+	USB_OFFLOAD_INFO("vir:%p phy:0x%llx\n",
+		new_seg->trbs, (u64)new_seg->dma);
+
+	if (!new_seg->trbs) {
+		USB_OFFLOAD_ERR("No seg->trbs\n");
+		kfree(new_seg);
+		return -EINVAL;
+	}
+
+	max_packet = ring->bounce_buf_len;
+	if (max_packet) {
+		new_seg->bounce_buf = kzalloc(max_packet, GFP_ATOMIC);
+		if (!new_seg->bounce_buf) {
+			kfree(new_seg);
+			return -ENOMEM;
+		}
+	}
+
+	if (ring->cycle_state == 0) {
+		for (i = 0; i < USB_OFFLOAD_TRBS_PER_SEGMENT; i++)
+			new_seg->trbs[i].link.control |= cpu_to_le32(TRB_CYCLE);
+	}
+	new_seg->next = NULL;
+
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_XHCI_MTK)
+	xhci_link_segments_(new_seg, new_seg, ring->type, chain_links);
+#else
+	xhci_link_segments(new_seg, new_seg, ring->type, chain_links);
+#endif
+
+	xhci_mtk_link_rings(xhci, ring, new_seg, new_seg, num_segs);
+
+	if (ring->type == TYPE_EVENT)
+		xhci_mtk_update_erst(uodev, new_seg, new_seg, num_segs);
+
+	seg = ring->first_seg;
+	for (i = 0; i < ring->num_segs; i++) {
+		USB_OFFLOAD_INFO("[seg%d] vir:%p phy:0x%llx point_to:0x%llx\n",
+			i, seg->trbs, (u64)seg->dma,
+			seg->trbs[USB_OFFLOAD_TRBS_PER_SEGMENT - 1].link.segment_ptr);
+		seg = seg->next;
+	}
+
+	return 0;
+}
+
+static struct xhci_ring *xhci_mtk_alloc_ring(struct xhci_hcd *xhci,
+		int num_segs, int cycle_state, enum xhci_ring_type ring_type,
+		unsigned int max_packet, gfp_t mem_flags,
+		enum usb_offload_mem_id mem_id, bool is_rsv)
+{
 	struct xhci_ring	*ring;
 	int ret;
-	int num_segs = 1;
-	int cycle_state = 1;
 
 	ring = kzalloc(sizeof(*ring), mem_flags);
 	if (!ring)
@@ -1691,9 +1792,9 @@ static struct xhci_ring *xhci_mtk_alloc_transfer_ring(struct xhci_hcd *xhci,
 
 	ret = xhci_mtk_usb_offload_alloc_segments_for_ring(xhci, &ring->first_seg,
 			&ring->last_seg, num_segs, cycle_state, ring_type,
-			max_packet, mem_flags, uodev->mem_id);
+			max_packet, mem_flags, mem_id, is_rsv);
 	if (ret) {
-		USB_OFFLOAD_ERR("Fail to alloc segment for rings (mem_id:%d)\n", uodev->mem_id);
+		USB_OFFLOAD_ERR("Fail to alloc segment for rings (mem_id:%d)\n", lowpwr_mem_type());
 		goto fail;
 	}
 
@@ -1703,7 +1804,6 @@ static struct xhci_ring *xhci_mtk_alloc_transfer_ring(struct xhci_hcd *xhci,
 			cpu_to_le32(LINK_TOGGLE);
 	}
 	xhci_mtk_initialize_ring_info(ring, cycle_state);
-	//trace_xhci_ring_alloc(ring);
 	return ring;
 
 fail:
@@ -1711,16 +1811,120 @@ fail:
 	return NULL;
 }
 
-static void xhci_mtk_free_transfer_ring(struct xhci_hcd *xhci,
+static void xhci_mtk_free_ring(struct xhci_hcd *xhci,
 		struct xhci_ring *ring, unsigned int ep_index)
 {
+	USB_OFFLOAD_INFO("\n");
+
 	if (!ring)
 		return;
 
 	if (ring->first_seg)
-		xhci_mtk_usb_offload_free_segments_for_ring(xhci, ring->first_seg, uodev->mem_id);
+		xhci_mtk_usb_offload_free_segments_for_ring(xhci, ring->first_seg);
 
 	kfree(ring);
+}
+
+static void xhci_mtk_free_event_ring(struct usb_offload_dev *udev)
+{
+	USB_OFFLOAD_INFO("\n");
+
+	if (!udev->event_ring) {
+		USB_OFFLOAD_INFO("Event ring has already freed\n");
+		return;
+	}
+
+	xhci_mtk_free_ring(udev->xhci, udev->event_ring, 0);
+	udev->event_ring = NULL;
+}
+
+static void xhci_mtk_free_erst(struct usb_offload_dev *udev)
+{
+	USB_OFFLOAD_MEM_DBG("\n");
+
+	mtk_offload_free_mem(buf_ev_table);
+	udev->erst->entries = NULL;
+	udev->num_entries_in_use = 0;
+}
+
+static struct xhci_ring *xhci_mtk_alloc_transfer_ring(struct xhci_hcd *xhci,
+		u32 endpoint_type, enum xhci_ring_type ring_type,
+		unsigned int max_packet, gfp_t mem_flags)
+{
+	struct xhci_ring *ring;
+	int num_segs = 1;
+	int cycle_state = 1;
+
+	USB_OFFLOAD_INFO("\n");
+
+	if (endpoint_type != ISOC_OUT_EP && endpoint_type != ISOC_IN_EP) {
+		USB_OFFLOAD_ERR("wrong endpoint type, type=%d\n", endpoint_type);
+		return NULL;
+	}
+
+	ring = xhci_mtk_alloc_ring(xhci, num_segs, cycle_state,
+			ring_type, max_packet, mem_flags, lowpwr_mem_type(), true);
+	if (!ring) {
+		USB_OFFLOAD_ERR("ring is NULL\n");
+		return ring;
+	}
+
+	return ring;
+}
+
+static int xhci_mtk_alloc_event_ring(struct usb_offload_dev *udev)
+{
+	int num_segs = 1;
+	int cycle_state = 1;
+
+	udev->event_ring = xhci_mtk_alloc_ring(udev->xhci, num_segs, cycle_state,
+			TYPE_EVENT, 0, GFP_ATOMIC, lowpwr_mem_type(), true);
+	if (!udev->event_ring) {
+		USB_OFFLOAD_ERR("error allocating event ring\n");
+		return -ENOMEM;
+	}
+
+	USB_OFFLOAD_INFO("[event ring] va:%p phy:0x%llx\n",
+		udev->event_ring->first_seg->trbs,
+		(unsigned long long)udev->event_ring->first_seg->dma);
+
+	return 0;
+}
+
+static int xhci_mtk_alloc_erst(struct usb_offload_dev *udev)
+{
+	int ret;
+
+	ret = mtk_offload_alloc_mem(buf_ev_table, ERST_SIZE * ERST_NUMBER,
+		64, lowpwr_mem_type(), true);
+	if (ret != 0) {
+		USB_OFFLOAD_ERR("Allocate ERST Fail!!!\n");
+		goto FAIL_TO_ALLOC_ERST;
+	}
+
+	udev->num_entries_in_use = 1;
+
+	udev->erst = kzalloc(sizeof(struct xhci_erst), GFP_ATOMIC);
+	if (!udev->erst) {
+		USB_OFFLOAD_ERR("Allocate xhci_erst Fail!!!\n");
+		goto FAIL_TO_ALLOC_XHCI_ERST;
+	}
+	udev->erst->entries = (struct xhci_erst_entry *)buf_ev_table->dma_area;
+	udev->erst->erst_dma_addr = buf_ev_table->dma_addr;
+	udev->erst->num_entries = ERST_NUMBER;
+
+	USB_OFFLOAD_INFO("[erst] va:%p phy:0x%llx is_sram:%d is_rsv:%d\n",
+		buf_ev_table->dma_area,
+		(unsigned long long)buf_ev_table->dma_addr,
+		buf_ev_table->is_sram,
+		buf_ev_table->is_rsv);
+
+	return 0;
+FAIL_TO_ALLOC_XHCI_ERST:
+	udev->num_entries_in_use = 0;
+	mtk_offload_free_mem(buf_ev_table);
+FAIL_TO_ALLOC_ERST:
+	return ret;
 }
 
 static bool xhci_mtk_is_streaming(struct xhci_hcd *xhci)
@@ -1812,6 +2016,11 @@ int usb_offload_cleanup(void)
 	ret = send_disconnect_ipi_msg_to_adsp();
 	/* wait response */
 	USB_OFFLOAD_INFO("send_disconnect_ipi_msg_to_adsp msg, ret: %d\n", ret);
+
+	mtk_usb_offload_free_allocated(true);
+	mtk_usb_offload_free_allocated(false);
+	xhci_mtk_free_erst(uodev);
+	xhci_mtk_free_event_ring(uodev);
 
 	mutex_lock(&uodev->dev_lock);
 	uaudio_dev_cleanup(&uadev[card_num]);
@@ -1931,7 +2140,6 @@ static long usb_offload_ioctl(struct file *fp,
 	long ret = 0;
 	struct usb_audio_stream_info uainfo;
 	struct mem_info_xhci *xhci_mem;
-	enum usb_offload_mem_id mem_id;
 
 	switch (cmd) {
 	case USB_OFFLOAD_INIT_ADSP:
@@ -1956,28 +2164,48 @@ static long usb_offload_ioctl(struct file *fp,
 			goto fail;
 		}
 
+		/* Fiil in info of reserved region */
 		if (value == 1) {
-			if (uodev->default_use_sram) {
-				mem_id = USB_OFFLOAD_MEM_SRAM_ID;
-				xhci_mem->use_sram = uodev->default_use_sram;
-				xhci_mem->xhci_data_addr = SRAM_ADDR;
-				xhci_mem->xhci_data_size = SRAM_TOTAL_SIZE;
+			xhci_mem->adv_lowpwr = uodev->adv_lowpwr;
+
+			mtk_offload_get_rsv_mem_info(USB_OFFLOAD_MEM_DRAM_ID,
+				&xhci_mem->xhci_dram_addr, &xhci_mem->xhci_dram_size);
+
+			if (uodev->adv_lowpwr) {
+				mtk_offload_get_rsv_mem_info(USB_OFFLOAD_MEM_SRAM_ID,
+					&xhci_mem->xhci_sram_addr, &xhci_mem->xhci_sram_size);
 			} else {
-				mem_id = USB_OFFLOAD_MEM_DRAM_ID;
-				xhci_mem->use_sram = uodev->default_use_sram;
-				xhci_mem->xhci_data_addr =
-					usb_offload_mem_buffer[mem_id].phy_addr;
-				xhci_mem->xhci_data_size =
-					usb_offload_mem_buffer[mem_id].size;
+				xhci_mem->xhci_sram_addr = 0;
+				xhci_mem->xhci_sram_size = 0;
 			}
 
 		} else {
-			xhci_mem->xhci_data_addr = 0;
-			xhci_mem->xhci_data_size = 0;
+			xhci_mem->xhci_dram_addr = 0;
+			xhci_mem->xhci_dram_size = 0;
+			xhci_mem->xhci_sram_addr = 0;
+			xhci_mem->xhci_sram_size = 0;
 		}
 
 		USB_OFFLOAD_INFO("adsp_exception:%d, adsp_ready:%d\n",
 				uodev->adsp_exception, uodev->adsp_ready);
+
+		ret = xhci_mtk_alloc_event_ring(uodev);
+		if (ret) {
+			USB_OFFLOAD_ERR("error allocating event ring\n");
+			goto fail;
+		}
+
+		ret = xhci_mtk_alloc_erst(uodev);
+		if (ret) {
+			USB_OFFLOAD_ERR("error allocating erst\n");
+			goto fail;
+		}
+
+		xhci_mem->erst_table = (unsigned long long)uodev->erst->erst_dma_addr;
+		xhci_mem->ev_ring = (unsigned long long)uodev->event_ring->first_seg->dma;
+
+		USB_OFFLOAD_INFO("ev_ring:0x%llx erst_table:0x%llx\n",
+			xhci_mem->ev_ring, xhci_mem->erst_table);
 
 		ret = send_init_ipi_msg_to_adsp(xhci_mem);
 		if (ret || (value == 0)) {
@@ -1985,8 +2213,7 @@ static long usb_offload_ioctl(struct file *fp,
 			uodev->tx_streaming = false;
 			uodev->rx_streaming = false;
 			uodev->adsp_inited = false;
-		}
-		else
+		} else
 			uodev->adsp_inited = true;
 		kfree(xhci_mem);
 		break;
@@ -2119,22 +2346,22 @@ static struct xhci_vendor_ops xhci_mtk_vendor_ops = {
 	.alloc_container_ctx = xhci_mtk_alloc_container_ctx,
 	.free_container_ctx = xhci_mtk_free_container_ctx,
 	.alloc_transfer_ring = xhci_mtk_alloc_transfer_ring,
-	.free_transfer_ring = xhci_mtk_free_transfer_ring,
+	.free_transfer_ring = xhci_mtk_free_ring,
 	.is_streaming = xhci_mtk_is_streaming,
 };
 
 int xhci_mtk_ssusb_offload_get_mode(struct device *dev)
 {
-	USB_OFFLOAD_INFO("default_use_sram:%d, current_mem_mode:%d, is_streaming:%d\n",
-			uodev->default_use_sram, uodev->current_mem_mode, uodev->is_streaming);
+	bool is_sram_mode;
+
+	is_sram_mode = mtk_offload_is_sram_mode();
+	USB_OFFLOAD_INFO("is_streaming:%d, is_sram_mode:%d\n",
+		uodev->is_streaming, is_sram_mode);
 
 	if (!uodev->is_streaming)
 		return SSUSB_OFFLOAD_MODE_NONE;
 
-	if (uodev->default_use_sram && uodev->current_mem_mode == SSUSB_OFFLOAD_MODE_S)
-		return SSUSB_OFFLOAD_MODE_S;
-	else
-		return SSUSB_OFFLOAD_MODE_D;
+	return is_sram_mode ? SSUSB_OFFLOAD_MODE_S : SSUSB_OFFLOAD_MODE_D;
 }
 
 static int usb_offload_probe(struct platform_device *pdev)
@@ -2150,16 +2377,12 @@ static int usb_offload_probe(struct platform_device *pdev)
 	}
 
 	uodev->dev = &pdev->dev;
+#ifdef MTK_AUDIO_INTERFACE_READY
+	uodev->adv_lowpwr = of_property_read_bool(pdev->dev.of_node, "adv-lowpower");
+#else
+	uodev->adv_lowpwr = false;
+#endif
 
-	if (USB_OFFLOAD_USE_SRAM) {
-		uodev->default_use_sram = true;
-		uodev->current_mem_mode = SSUSB_OFFLOAD_MODE_S;
-		uodev->mem_id = USB_OFFLOAD_MEM_SRAM_ID;
-	} else {
-		uodev->default_use_sram = false;
-		uodev->current_mem_mode = SSUSB_OFFLOAD_MODE_D;
-		uodev->mem_id = USB_OFFLOAD_MEM_DRAM_ID;
-	}
 	uodev->is_streaming = false;
 	uodev->tx_streaming = false;
 	uodev->rx_streaming = false;
@@ -2168,23 +2391,19 @@ static int usb_offload_probe(struct platform_device *pdev)
 	uodev->opened = false;
 	uodev->xhci = NULL;
 
-	USB_OFFLOAD_INFO("default_use_sram:%d, current_mem_mode:%d, mem_id:%d\n",
-		uodev->default_use_sram, uodev->current_mem_mode, uodev->mem_id);
+	buf_seg = NULL;
+	buf_ev_table = NULL;
+	uodev->event_ring = NULL;
+	uodev->erst = NULL;
+	uodev->num_entries_in_use = 0;
+
+	USB_OFFLOAD_INFO("adv_lowpwr:%d\n", uodev->adv_lowpwr);
 
 	node_xhci_host = of_parse_phandle(uodev->dev->of_node, "xhci-host", 0);
 	if (node_xhci_host) {
-		ret = mtk_init_usb_offload_sharemem(ADSP_XHCI_MEM_ID, USB_OFFLOAD_MEM_DRAM_ID);
-		if (ret == -EPROBE_DEFER)
+		ret = mtk_usb_offload_init_rsv_mem(MIN_USB_OFFLOAD_SHIFT, uodev->adv_lowpwr);
+		if (ret != 0)
 			goto INIT_SHAREMEM_FAIL;
-
-		if (uodev->default_use_sram)
-			mtk_init_usb_offload_sharemem(0, USB_OFFLOAD_MEM_SRAM_ID);
-
-		ret = mtk_usb_offload_gen_pool_create(MIN_USB_OFFLOAD_SHIFT, -1);
-		if (ret) {
-			ret = -ENOMEM;
-			goto GEN_POOL_FAIL;
-		}
 
 		ret = misc_register(&usb_offload_device);
 		if (ret) {
@@ -2221,23 +2440,26 @@ static int usb_offload_probe(struct platform_device *pdev)
 			USB_OFFLOAD_ERR("Fail to register offload_ops\n");
 			goto REG_SSUSB_OFFLOAD_FAIL;
 		}
+
 	} else {
 		USB_OFFLOAD_ERR("No 'xhci_host' node, NOT support USB_OFFLOAD\n");
 		ret = -ENODEV;
 		goto INIT_SHAREMEM_FAIL;
 	}
 
+	buf_seg = kzalloc(sizeof(struct usb_offload_buffer) * BUF_SEG_SIZE, GFP_KERNEL);
+	buf_ev_table = kzalloc(sizeof(struct usb_offload_buffer), GFP_KERNEL);
+
+	USB_OFFLOAD_INFO("Probe Success!!!");
 	return ret;
 REG_SSUSB_OFFLOAD_FAIL:
 	kfree(uodev->ssusb_offload_notify);
 INIT_OFFLOAD_NOTIFY_FAIL:
 	misc_deregister(&usb_offload_device);
 INIT_MISC_DEV_FAIL:
-GEN_POOL_FAIL:
-	if (uodev->default_use_sram)
-		iounmap((void *) usb_offload_mem_buffer[USB_OFFLOAD_MEM_SRAM_ID].va_addr);
 INIT_SHAREMEM_FAIL:
 	of_node_put(node_xhci_host);
+	USB_OFFLOAD_INFO("Probe Fail!!!");
 	return ret;
 }
 
@@ -2248,12 +2470,18 @@ static int usb_offload_remove(struct platform_device *pdev)
 	USB_OFFLOAD_INFO("\n");
 	ret = ssusb_offload_unregister(uodev->ssusb_offload_notify->dev);
 
-	if (uodev->default_use_sram)
-		iounmap((void *) usb_offload_mem_buffer[USB_OFFLOAD_MEM_SRAM_ID].va_addr);
+	mtk_usb_offload_deinit_rsv_sram();
 
 #if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
 	snd_usb_unregister_offload_ops();
 #endif
+
+	kfree(buf_ev_table);
+	buf_ev_table = NULL;
+
+	kfree(buf_seg);
+	buf_seg = NULL;
+
 	return 0;
 }
 
