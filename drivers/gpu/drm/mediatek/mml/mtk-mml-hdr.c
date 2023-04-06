@@ -360,10 +360,8 @@ static s32 hdr_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 	if (result->is_hdr_need_readback &&
 		task->pq_task->read_status.hdr_comp == MML_PQ_HIST_IDLE) {
 		if (hdr->hist_pkts[ccfg->pipe]) {
-			if (task->pq_task) {
-				hdr->pq_task = task->pq_task;
-				mml_pq_get_pq_task(hdr->pq_task);
-			}
+			hdr->pq_task = task->pq_task;
+			mml_pq_get_pq_task(hdr->pq_task);
 
 
 			memcpy(&hdr->frame_data.pq_param, task->pq_param,
