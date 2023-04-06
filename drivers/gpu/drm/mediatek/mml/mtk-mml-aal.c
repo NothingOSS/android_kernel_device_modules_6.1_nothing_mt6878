@@ -648,10 +648,8 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			aal->dual = task->config->dual;
 			aal->pipe = ccfg->pipe;
 
-			if (task->pq_task) {
-				aal->pq_task = task->pq_task;
-				mml_pq_get_pq_task(aal->pq_task);
-			}
+			aal->pq_task = task->pq_task;
+			mml_pq_get_pq_task(aal->pq_task);
 
 			memcpy(&aal->frame_data.pq_param, task->pq_param,
 				MML_MAX_OUTPUTS * sizeof(struct mml_pq_param));
