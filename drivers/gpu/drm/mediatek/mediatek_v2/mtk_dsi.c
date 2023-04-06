@@ -4725,6 +4725,11 @@ static void mtk_dsi_clk_change(struct mtk_dsi *dsi, int en)
 		data_rate = mtk_dsi_default_rate(dsi);
 	}
 
+	if (data_rate == 0) {
+		DDPPR_ERR("%s, data_rate is 0\n", __func__);
+		return;
+	}
+
 	dsi->data_rate = data_rate;
 	mtk_mipi_tx_pll_rate_set_adpt(dsi->phy, data_rate);
 
@@ -7280,6 +7285,11 @@ unsigned int mtk_dsi_get_line_time(struct mtk_drm_crtc *mtk_crtc,
 	//for FPS change,update dsi->ext
 	dsi->ext = find_panel_ext(dsi->panel);
 	data_rate = mtk_dsi_default_rate(dsi);
+
+	if (data_rate == 0) {
+		DDPPR_ERR("%s, data_rate is 0\n", __func__);
+		return 0;
+	}
 
 	if (dsi->ext->params->is_cphy) {
 		/* CPHY */
