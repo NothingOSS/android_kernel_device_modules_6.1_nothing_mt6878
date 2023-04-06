@@ -34,8 +34,8 @@
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 #include "flt_init.h"
 #include "flt_api.h"
-#endif
 #include "group.h"
+#endif
 
 #define CREATE_TRACE_POINTS
 #include "eas_trace.h"
@@ -539,6 +539,12 @@ static int __init mtk_scheduler_init(void)
 	vip_init();
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+	init_flt_platform();
+	flt_init_res();
+	group_init();
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_EAS)
 	mtk_freq_limit_notifier_register();
 
@@ -645,13 +651,6 @@ static int __init mtk_scheduler_init(void)
 	//if (ret)
 	//	pr_info("register mtk_check_d_tasks hooks failed, returned %d\n", ret);
 #endif
-
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
-	init_flt_platform();
-	flt_init_res();
-#endif
-	group_init();
-
 	sched_asym_cpucapacity_init();
 
 	get_most_powerful_pd_and_util_Th();

@@ -730,6 +730,50 @@ TRACE_EVENT(sched_find_lowest_rq,
 );
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+TRACE_EVENT(sched_flt_get_cpu,
+
+	TP_PROTO(int cpu, int util),
+
+	TP_ARGS(cpu, util),
+
+	TP_STRUCT__entry(
+		__field(int,		cpu)
+		__field(int,		util)
+	),
+
+	TP_fast_assign(
+		__entry->cpu		= cpu;
+		__entry->util		= util;
+	),
+
+	TP_printk("cpu[%d] gp_util [%d]",
+		__entry->cpu, __entry->util)
+);
+
+TRACE_EVENT(sched_flt_get_cpu_group,
+
+	TP_PROTO(int cpu, int grp_id, int util),
+
+	TP_ARGS(cpu, grp_id, util),
+
+	TP_STRUCT__entry(
+		__field(int,		cpu)
+		__field(int,		grp_id)
+		__field(int,		util)
+	),
+
+	TP_fast_assign(
+		__entry->cpu		= cpu;
+		__entry->grp_id		= grp_id;
+		__entry->util		= util;
+	),
+
+	TP_printk("cpu[%d] gp[%d] util [%d]",
+		__entry->cpu, __entry->grp_id, __entry->util)
+);
+#endif
+
 TRACE_EVENT(sched_get_pelt_group_util,
 
 	TP_PROTO(int grp_idx, unsigned long long delta),
@@ -750,17 +794,18 @@ TRACE_EVENT(sched_get_pelt_group_util,
 		__entry->grp_idx, __entry->delta)
 );
 
-TRACE_EVENT(sched_cgroup_attach,
+TRACE_EVENT(sched_task_to_grp,
 
-	TP_PROTO(struct task_struct *p, unsigned int grp_id, int ret),
+	TP_PROTO(struct task_struct *p, unsigned int grp_id, int ret, int type),
 
-	TP_ARGS(p, grp_id, ret),
+	TP_ARGS(p, grp_id, ret, type),
 
 	TP_STRUCT__entry(
 		__array(char,		comm, TASK_COMM_LEN)
 		__field(pid_t,		pid)
 		__field(unsigned int,	grp_id)
 		__field(int,		ret)
+		__field(int,		type)
 	),
 
 	TP_fast_assign(
@@ -768,14 +813,15 @@ TRACE_EVENT(sched_cgroup_attach,
 		__entry->pid	= p->pid;
 		__entry->grp_id = grp_id;
 		__entry->ret = ret;
+		__entry->type = type;
 	),
 
-	TP_printk("comm=%s pid=%d grp_id=%u ret=%d",
+	TP_printk("comm=%s pid=%d grp_id=%u ret=%d type=%d",
 			__entry->comm, __entry->pid,
-			__entry->grp_id, __entry->ret)
+			__entry->grp_id, __entry->ret,
+			__entry->type)
 
 );
-
 #endif /* _TRACE_SCHEDULER_H */
 
 #undef TRACE_INCLUDE_PATH

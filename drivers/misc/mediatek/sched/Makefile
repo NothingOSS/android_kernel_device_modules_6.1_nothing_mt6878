@@ -7,12 +7,12 @@ scheduler-y += eas/topology.o
 scheduler-y += eas/dsu_pwr.o
 scheduler-y += common.o
 scheduler-y += fair.o
-scheduler-y+= eas/group.o
 scheduler-$(CONFIG_MTK_CORE_PAUSE)+= eas/core_pause.o
 scheduler-$(CONFIG_MTK_SCHED_BIG_TASK_ROTATE)+= eas/rotate.o
 scheduler-$(CONFIG_MTK_SCHED_VIP_TASK)+= eas/vip.o
 scheduler-$(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)+= eas/flt_init.o
 scheduler-$(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)+= eas/flt_api.o
+scheduler-$(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)+= eas/group.o
 
 obj-$(CONFIG_MTK_CPUFREQ_SUGOV_EXT) += cpufreq_sugov_ext.o
 cpufreq_sugov_ext-y += sugov/cpufreq_sugov_main.o

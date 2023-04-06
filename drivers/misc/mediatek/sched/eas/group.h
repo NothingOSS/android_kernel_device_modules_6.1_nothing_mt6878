@@ -21,6 +21,16 @@ enum _GP_mode {
 	GP_MODE_NUM,
 };
 
+/* gp trace mode */
+enum _GP_trace {
+	GP_CGROUP,
+	GP_TTWU,
+	GP_WAUPNEW,
+	GP_DEAD,
+	GP_API,
+	GP_TRACE_NUM,
+};
+
 /* gp id */
 enum _GP_ID {
 	GROUP_ID_1 = 0,

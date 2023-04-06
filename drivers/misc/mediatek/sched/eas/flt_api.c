@@ -24,6 +24,7 @@
 #include "common.h"
 #include "flt_init.h"
 #include "flt_api.h"
+#include "eas_trace.h"
 
 static struct flt_pm fltpmrec;
 
@@ -255,27 +256,39 @@ EXPORT_SYMBOL_GPL(flt_get_task_by_wp);
 
 unsigned long flt_get_cpu(int cpu)
 {
-	int cpu_dmand = 0;
+	int cpu_demand = 0;
 
-	cpu_dmand = flt_get_cpu_by_wp(cpu);
+	cpu_demand = flt_get_cpu_by_wp(cpu);
 	/* sanity check */
-	if (unlikely(cpu_dmand < 0))
-		return 0;
-	else
-		return cpu_dmand;
+	if (unlikely(cpu_demand < 0)) {
+		cpu_demand = 0;
+		goto out;
+	} else {
+		goto out;
+	}
+out:
+	if (trace_sched_flt_get_cpu_enabled())
+		trace_sched_flt_get_cpu(cpu, cpu_demand);
+	return cpu_demand;
 }
 EXPORT_SYMBOL(flt_get_cpu);
 
 unsigned long flt_sched_get_cpu_group(int cpu, int grp_id)
 {
-	int dmand = 0;
+	int gp_demand = 0;
 
-	dmand = flt_sched_get_cpu_group_eas(cpu, grp_id);
+	gp_demand = flt_sched_get_cpu_group_eas(cpu, grp_id);
 	/* sanity check */
-	if (unlikely(dmand < 0))
-		return 0;
-	else
-		return dmand;
+	if (unlikely(gp_demand < 0)) {
+		gp_demand = 0;
+		goto out;
+	} else {
+		goto out;
+	}
+out:
+	if (trace_sched_flt_get_cpu_group_enabled())
+		trace_sched_flt_get_cpu_group(cpu, grp_id, gp_demand);
+	return gp_demand;
 }
 EXPORT_SYMBOL(flt_sched_get_cpu_group);
 
