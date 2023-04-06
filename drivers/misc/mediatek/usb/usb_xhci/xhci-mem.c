@@ -881,8 +881,12 @@ static void xhci_free_tt_info(struct xhci_hcd *xhci,
 	list_for_each_entry_safe(tt_info, next, tt_list_head, tt_list) {
 		/* Multi-TT hubs will have more than one entry */
 		if (tt_info->slot_id == slot_id) {
+			int i;
 			slot_found = true;
 			list_del(&tt_info->tt_list);
+			for (i = 0; i < MAX_HC_SLOTS; i++)
+				if (xhci->devs[i] && xhci->devs[i]->tt_info == tt_info)
+					xhci->devs[i]->tt_info = NULL;
 			kfree(tt_info);
 		} else if (slot_found) {
 			break;
