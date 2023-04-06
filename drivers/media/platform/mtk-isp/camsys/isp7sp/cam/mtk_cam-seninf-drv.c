@@ -533,11 +533,17 @@ static int __seninf_dfs_set(struct seninf_ctx *ctx, unsigned long freq)
 
 static int seninf_dfs_set(struct seninf_ctx *ctx, unsigned long freq)
 {
-	int ret;
+	int ret = 0;
 	struct seninf_core *core = ctx->core;
 
+	if (core == NULL) {
+		dev_info(ctx->dev, "%s core is NULL\n", __func__);
+		return -EINVAL;
+	}
+
 	mutex_lock(&core->mutex);
-	ret = __seninf_dfs_set(ctx, freq);
+	if (core->allow_adjust_isp_en)
+		ret = __seninf_dfs_set(ctx, freq);
 	mutex_unlock(&core->mutex);
 
 	return ret;
