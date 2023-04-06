@@ -1743,6 +1743,12 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 	if (mtk_crtc && mtk_crtc->base.dev)
 		priv = mtk_crtc->base.dev->dev_private;
 
+	mmsys_clk = mtk_drm_get_mmclk(&mtk_crtc->base, __func__) / 1000000;
+	if (!mmsys_clk) {
+		DDPPR_ERR("%s:%d mmclk is zero\n", __func__, __LINE__);
+		mmsys_clk = 208;
+	}
+
 	/* scaling path */
 	if (mtk_crtc->scaling_ctx.scaling_en) {
 		width = mtk_crtc_get_width_by_comp(__func__, &mtk_crtc->base, comp, false);

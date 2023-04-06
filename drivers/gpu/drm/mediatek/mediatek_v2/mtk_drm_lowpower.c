@@ -1638,13 +1638,23 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		mtk_drm_idlemgr_perf_detail_check(
 				"apsrc_enable", perf_string);
 
-	/* 2. prepare modules would be used in this CRTC */
+	/* 2. Request MMClock before enabling connector*/
+	mtk_crtc_attach_ddp_comp(crtc, mtk_crtc->ddp_mode, true);
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (output_comp)
+		mtk_ddp_comp_io_cmd(output_comp, NULL, SET_MMCLK_BY_DATARATE,
+				&en);
+	if (perf_detail)
+		mtk_drm_idlemgr_perf_detail_check(
+				"update_mmclk", perf_string);
+
+	/* 3. prepare modules would be used in this CRTC */
 	mtk_drm_idlemgr_enable_connector(crtc);
 	if (perf_detail)
 		mtk_drm_idlemgr_perf_detail_check(
 				"enable_conn", perf_string);
 
-	/* 3. start event loop first */
+	/* 4. start event loop first */
 	if (crtc_id == 0) {
 		if (mtk_crtc_with_event_loop(crtc) &&
 			(mtk_crtc_is_frame_trigger_mode(crtc)))
@@ -1654,7 +1664,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		mtk_drm_idlemgr_perf_detail_check(
 				"start_event_loop", perf_string);
 
-	/* 4. prepare modules would be used in this CRTC */
+	/* 5. prepare modules would be used in this CRTC */
 	mtk_crtc_ddp_prepare(mtk_crtc);
 	if (perf_detail)
 		mtk_drm_idlemgr_perf_detail_check(
@@ -1675,7 +1685,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		mtk_drm_idlemgr_perf_detail_check(
 				"instr", perf_string);
 
-	/* 5. start trigger loop first to keep gce alive */
+	/* 6. start trigger loop first to keep gce alive */
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (!IS_ERR_OR_NULL(output_comp) &&
 		mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI) {
@@ -1695,19 +1705,19 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		mtk_drm_idlemgr_perf_detail_check(
 				"async_wait", perf_string);
 
-	/* 6. connect path */
+	/* 7. connect path */
 	mtk_crtc_connect_default_path(mtk_crtc);
 	if (perf_detail)
 		mtk_drm_idlemgr_perf_detail_check(
 				"connect_default_path", perf_string);
 
-	/* 7. config ddp engine & set dirty for cmd mode */
+	/* 8. config ddp engine & set dirty for cmd mode */
 	mtk_crtc_config_default_path(mtk_crtc);
 	if (perf_detail)
 		mtk_drm_idlemgr_perf_detail_check(
 				"config_default_path", perf_string);
 
-	/* 8. conect addon module and config
+	/* 9. conect addon module and config
 	 *    skip mml addon connect if kick idle by atomic commit
 	 */
 	if (crtc_state->lye_state.mml_ir_lye || crtc_state->lye_state.mml_dl_lye)
@@ -1718,20 +1728,20 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		mtk_drm_idlemgr_perf_detail_check(
 				"connect_addon", perf_string);
 
-	/* 9. restore OVL setting */
+	/* 10. restore OVL setting */
 	mtk_crtc_restore_plane_setting(mtk_crtc);
 	if (perf_detail)
 		mtk_drm_idlemgr_perf_detail_check(
 				"restore_plane", perf_string);
 
-	/* 10. Set QOS BW */
+	/* 11. Set QOS BW */
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_BW, NULL);
 	if (perf_detail)
 		mtk_drm_idlemgr_perf_detail_check(
 				"update_pmqos", perf_string);
 
-	/* 11. restore HRT BW */
+	/* 12. restore HRT BW */
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_MMQOS_SUPPORT))
 		mtk_disp_set_hrt_bw(mtk_crtc,
@@ -1739,15 +1749,6 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	if (perf_detail)
 		mtk_drm_idlemgr_perf_detail_check(
 				"update_hrt", perf_string);
-
-	/* 12. Request MMClock */
-	mtk_crtc_attach_ddp_comp(crtc, mtk_crtc->ddp_mode, true);
-	if (output_comp)
-		mtk_ddp_comp_io_cmd(output_comp, NULL, SET_MMCLK_BY_DATARATE,
-				&en);
-	if (perf_detail)
-		mtk_drm_idlemgr_perf_detail_check(
-				"update_mmclk", perf_string);
 
 	mtk_drm_idle_async_wait(crtc, 0, "conifg_async");
 	if (perf_detail)
