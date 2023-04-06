@@ -568,6 +568,27 @@ static void imgsys_dip_dump_smtd4(struct mtk_imgsys_dev *a_pDev,
 
 }
 
+static void imgsys_dip_dump_yufdd1(struct mtk_imgsys_dev *a_pDev,
+				void __iomem *a_pRegBA,
+				unsigned int a_DdbSel,
+				unsigned int a_DbgOut)
+{
+	unsigned int DbgCmd = 0;
+	unsigned int DbgData = 0;
+	unsigned int Idx = 0;
+	unsigned int CmdOft = 0x10000;
+
+	pr_info("dump yufd_d1 debug\n");
+
+	/* yufd_d1 debug */
+	DbgCmd = 0x10401;
+	for (Idx = 0; Idx < 0xF; Idx++) {
+		DbgData = ExeDbgCmd(a_pDev, a_pRegBA, a_DdbSel, a_DbgOut, DbgCmd);
+		DbgCmd += CmdOft;
+	}
+
+}
+
 void imgsys_dip_debug_dump(struct mtk_imgsys_dev *imgsys_dev,
 							unsigned int engine)
 {
@@ -772,6 +793,8 @@ void imgsys_dip_debug_dump(struct mtk_imgsys_dev *imgsys_dev,
 	imgsys_dip_dump_pcrpd16(imgsys_dev, dipRegBA, CtlDdbSel, CtlDbgOut);
 	/* SMT_D4 debug data */
 	imgsys_dip_dump_smtd4(imgsys_dev, dipRegBA, CtlDdbSel, CtlDbgOut);
+	/* YUFD_D1 debug data */
+	imgsys_dip_dump_yufdd1(imgsys_dev, dipRegBA, CtlDdbSel, CtlDbgOut);
 
 	pr_info("%s: -\n", __func__);
 
