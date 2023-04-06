@@ -256,9 +256,19 @@ struct mtk_pll_div_table {
 	unsigned long freq;
 };
 
+struct mtk_pll_setclr_data {
+	uint16_t en_ofs;
+	uint16_t en_set_ofs;
+	uint16_t en_clr_ofs;
+	uint16_t rstb_ofs;
+	uint16_t rstb_set_ofs;
+	uint16_t rstb_clr_ofs;
+};
+
 struct mtk_pll_data {
 	int id;
 	const char *name;
+	struct mtk_pll_setclr_data *pll_setclr;
 	uint32_t reg;
 	uint32_t pwr_reg;
 	uint32_t en_reg;
@@ -266,6 +276,8 @@ struct mtk_pll_data {
 	uint32_t hwv_set_ofs;
 	uint32_t hwv_clr_ofs;
 	uint32_t hwv_sta_ofs;
+	uint32_t hwv_res_set_ofs;
+	uint32_t hwv_res_clr_ofs;
 	uint32_t hwv_done_ofs;
 	uint32_t hwv_set_sta_ofs;
 	uint32_t hwv_clr_sta_ofs;
@@ -288,6 +300,8 @@ struct mtk_pll_data {
 	const struct mtk_pll_div_table *div_table;
 	const char *parent_name;
 	uint8_t pll_en_bit;
+	uint8_t en_setclr_bit;
+	uint8_t rstb_setclr_bit;
 };
 
 struct mtk_clk_user {

@@ -39,6 +39,14 @@
 #define MTK_WAIT_HWV_PLL_DONE_CNT		100000
 #define MTK_WAIT_HWV_PLL_DONE_US		1
 
+#define MTK_WAIT_HWV_RES_PREPARE_CNT	500
+#define MTK_WAIT_HWV_RES_PREPARE_US		1
+#define MTK_WAIT_HWV_RES_VOTE_CNT		100
+#define MTK_WAIT_HWV_RES_LONG_VOTE_CNT		2500
+#define MTK_WAIT_HWV_RES_VOTE_US		2
+#define MTK_WAIT_HWV_RES_DONE_CNT		100000
+#define MTK_WAIT_HWV_RES_DONE_US		1
+
 static bool is_registered;
 
 /*
@@ -58,8 +66,16 @@ struct mtk_clk_pll {
 	void __iomem	*pcw_addr;
 	void __iomem	*pcw_chg_addr;
 	void __iomem	*en_addr;
+	void __iomem	*en_set_addr;
+	void __iomem	*en_clr_addr;
+	void __iomem	*rstb_addr;
+	void __iomem	*rstb_set_addr;
+	void __iomem	*rstb_clr_addr;
 	const struct mtk_pll_data *data;
 	struct regmap	*hwv_regmap;
+	unsigned int	en_msk;
+	unsigned int	rstb_msk;
+	unsigned int	flags;
 };
 
 static bool (*mtk_fh_set_rate)(const char *name, unsigned long dds, int postdiv) = NULL;
@@ -89,6 +105,16 @@ static int mtk_pll_is_prepared(struct clk_hw *hw)
 		return 0;
 
 	return (readl(pll->en_addr) & BIT(pll->data->pll_en_bit)) != 0;
+}
+
+static int mtk_pll_setclr_is_prepared(struct clk_hw *hw)
+{
+	struct mtk_clk_pll *pll = to_mtk_clk_pll(hw);
+
+	if (!is_registered)
+		return 0;
+
+	return (readl(pll->en_addr) & pll->en_msk) != 0;
 }
 
 static unsigned long __mtk_pll_recalc_rate(struct mtk_clk_pll *pll, u32 fin,
@@ -329,6 +355,34 @@ static void mtk_pll_unprepare(struct clk_hw *hw)
 	writel(r, pll->pwr_addr);
 }
 
+static int mtk_pll_setclr_prepare(struct clk_hw *hw)
+{
+	struct mtk_clk_pll *pll = to_mtk_clk_pll(hw);
+
+	writel(pll->en_msk, pll->en_set_addr);
+
+	__mtk_pll_tuner_enable(pll);
+
+	udelay(20);
+
+	if (pll->data->flags & HAVE_RST_BAR)
+		writel(pll->rstb_msk, pll->rstb_set_addr);
+
+	return 0;
+}
+
+static void mtk_pll_setclr_unprepare(struct clk_hw *hw)
+{
+	struct mtk_clk_pll *pll = to_mtk_clk_pll(hw);
+
+	if (pll->data->flags & HAVE_RST_BAR)
+		writel(pll->rstb_msk, pll->rstb_clr_addr);
+
+	__mtk_pll_tuner_disable(pll);
+
+	writel(pll->en_msk, pll->en_clr_addr);
+}
+
 static int mtk_hwv_pll_is_prepared_done(struct mtk_clk_pll *pll)
 {
 	u32 val, pll_sta;
@@ -519,6 +573,281 @@ err_hwv_prepare:
 	return;
 }
 
+static int mtk_hwv_pll_res_is_prepared_done(struct mtk_clk_pll *pll)
+{
+	u32 val = 0;
+
+	regmap_read(pll->hwv_regmap, pll->data->hwv_done_ofs, &val);
+
+	if (val & BIT(pll->data->hwv_shift)) {
+		regmap_read(pll->hwv_regmap, pll->data->hwv_set_sta_ofs, &val);
+		if ((val & BIT(pll->data->hwv_shift)) == 0x0)
+			return 1;
+	}
+
+	return 0;
+}
+
+static int mtk_hwv_pll_res_is_unprepared_done(struct mtk_clk_pll *pll)
+{
+	u32 val = 0;
+
+	regmap_read(pll->hwv_regmap, pll->data->hwv_done_ofs, &val);
+
+	if ((val & BIT(pll->data->hwv_shift))) {
+		regmap_read(pll->hwv_regmap, pll->data->hwv_clr_sta_ofs, &val);
+		if ((val & BIT(pll->data->hwv_shift)) == 0x0)
+			return 1;
+	}
+
+	return 0;
+}
+
+static int mtk_hwv_pll_setclr_is_prepared(struct mtk_clk_pll *pll)
+{
+	u32 val = 0;
+
+	if (!is_registered)
+		return 0;
+
+	regmap_read(pll->hwv_regmap, pll->data->hwv_set_ofs, &val);
+
+	return (val & pll->en_msk) != 0;
+}
+
+static int mtk_hwv_pll_setclr_is_prepare_done(struct mtk_clk_pll *pll)
+{
+	u32 val = 0, val2 = 0;
+
+	if (!is_registered)
+		return 0;
+
+	regmap_read(pll->hwv_regmap, pll->data->hwv_done_ofs, &val);
+	val2 = readl(pll->en_addr);
+	if ((val & pll->en_msk) && (val2 & pll->en_msk))
+		return 1;
+
+	return 0;
+}
+
+static int mtk_hwv_pll_setclr_is_unprepare_done(struct mtk_clk_pll *pll)
+{
+	u32 val = 0;
+
+	if (!is_registered)
+		return 0;
+
+	regmap_read(pll->hwv_regmap, pll->data->hwv_done_ofs, &val);
+
+	return (val & pll->en_msk) != 0;
+}
+
+static int mtk_hwv_pll_setclr_prepare(struct clk_hw *hw)
+{
+	bool is_trigger = false;
+	struct mtk_clk_pll *pll = to_mtk_clk_pll(hw);
+	u32 val = 0, val2 = 0;
+	int i = 0;
+
+	/* wait for irq idle */
+	do {
+		regmap_read(pll->hwv_regmap, pll->data->hwv_done_ofs, &val);
+		if ((val & BIT(pll->data->hwv_shift)) != 0)
+			break;
+
+		if (i < MTK_WAIT_HWV_RES_PREPARE_CNT)
+			udelay(MTK_WAIT_HWV_RES_PREPARE_US);
+		else
+			goto err_res_prepare;
+		i++;
+	} while (1);
+
+	i = 0;
+
+	regmap_write(pll->hwv_regmap, pll->data->hwv_res_set_ofs, BIT(pll->data->hwv_shift));
+
+	do {
+		regmap_read(pll->hwv_regmap, pll->data->hwv_res_set_ofs, &val);
+		if ((val & BIT(pll->data->hwv_shift)) != 0)
+			break;
+
+		udelay(MTK_WAIT_HWV_RES_VOTE_US);
+		if ((i > MTK_WAIT_HWV_RES_VOTE_CNT) && (is_trigger == false)) {
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+			aee_kernel_warning("clk-pll", "res %s prepare warning",
+					   clk_hw_get_name(hw));
+#endif
+			pr_info("pll %s: res hwv warning\n",  clk_hw_get_name(hw));
+			is_trigger = true;
+		}
+
+
+		if (i > MTK_WAIT_HWV_RES_LONG_VOTE_CNT)
+			goto err_res_vote;
+		i++;
+	} while (1);
+
+	i = 0;
+	is_trigger = false;
+
+	do {
+		if (mtk_hwv_pll_res_is_prepared_done(pll))
+			break;
+
+		if (i < MTK_WAIT_HWV_RES_DONE_CNT)
+			udelay(MTK_WAIT_HWV_RES_DONE_US);
+		else
+			goto err_res_done;
+		i++;
+	} while (1);
+
+	regmap_write(pll->hwv_regmap, pll->data->hwv_set_ofs, pll->en_msk);
+
+	while (!mtk_hwv_pll_setclr_is_prepared(pll)) {
+		if (i < MTK_WAIT_HWV_PREPARE_CNT)
+			udelay(MTK_WAIT_HWV_PREPARE_US);
+		else
+			goto hwv_prepare_fail;
+		i++;
+	}
+
+	i = 0;
+
+	while (!mtk_hwv_pll_setclr_is_prepare_done(pll)) {
+		if (i < MTK_WAIT_HWV_DONE_CNT)
+			udelay(MTK_WAIT_HWV_DONE_US);
+		else
+			goto hwv_done_fail;
+		i++;
+	}
+
+	return 0;
+
+err_res_done:
+	regmap_read(pll->hwv_regmap, pll->data->hwv_done_ofs, &val);
+	regmap_read(pll->hwv_regmap, pll->data->hwv_set_sta_ofs, &val2);
+	pr_err("%s res enable timeout(%dus)(%x %x)\n", pll->data->name,
+			i * MTK_WAIT_HWV_RES_DONE_US, val, val2);
+err_res_vote:
+	pr_err("%s res vote timeout(%dus)(0x%x)\n", pll->data->name,
+			i * MTK_WAIT_HWV_RES_VOTE_US, val);
+err_res_prepare:
+	pr_err("%s res prepare timeout(%dus)(0x%x)\n", pll->data->name,
+			i * MTK_WAIT_HWV_RES_PREPARE_US, val);
+	mtk_clk_notify(NULL, pll->hwv_regmap, NULL,
+			pll->data->hwv_res_set_ofs, 0,
+			pll->data->hwv_shift, CLK_EVT_HWV_PLL_TIMEOUT);
+
+hwv_done_fail:
+	val = readl(pll->en_addr);
+	pr_err("%s pll enable timeout(%x)\n", clk_hw_get_name(hw), val);
+hwv_prepare_fail:
+	regmap_read(pll->hwv_regmap, pll->data->hwv_sta_ofs, &val);
+	pr_err("%s pll vote timeout(%x)\n", clk_hw_get_name(hw), val);
+
+	mtk_clk_notify(NULL, pll->hwv_regmap, NULL,
+			0, (pll->data->hwv_set_ofs / MTK_HWV_ID_OFS),
+			0, CLK_EVT_HWV_CG_TIMEOUT);
+
+	return -EBUSY;
+}
+
+static void mtk_hwv_pll_setclr_unprepare(struct clk_hw *hw)
+{
+	struct mtk_clk_pll *pll = to_mtk_clk_pll(hw);
+	u32 val = 0, val2 = 0;
+	int i = 0;
+
+	/* wait for irq idle */
+	do {
+		regmap_read(pll->hwv_regmap, pll->data->hwv_done_ofs, &val);
+		if ((val & BIT(pll->data->hwv_shift)) != 0)
+			break;
+
+		if (i < MTK_WAIT_HWV_RES_PREPARE_CNT)
+			udelay(MTK_WAIT_HWV_RES_PREPARE_US);
+		else
+			goto err_res_prepare;
+		i++;
+	} while (1);
+
+	i = 0;
+
+	regmap_write(pll->hwv_regmap, pll->data->hwv_res_clr_ofs, BIT(pll->data->hwv_shift));
+
+	do {
+		regmap_read(pll->hwv_regmap, pll->data->hwv_res_clr_ofs, &val);
+		if ((val & BIT(pll->data->hwv_shift)) == 0)
+			break;
+
+		udelay(MTK_WAIT_HWV_RES_VOTE_US);
+		if (i > MTK_WAIT_HWV_RES_VOTE_CNT)
+			goto err_res_vote;
+		i++;
+	} while (1);
+
+	i = 0;
+
+	do {
+		if (mtk_hwv_pll_res_is_unprepared_done(pll))
+			break;
+
+		if (i < MTK_WAIT_HWV_RES_DONE_CNT)
+			udelay(MTK_WAIT_HWV_RES_DONE_US);
+		else
+			goto err_res_done;
+		i++;
+	} while (1);
+
+	regmap_write(pll->hwv_regmap, pll->data->hwv_clr_ofs, pll->en_msk);
+
+	while (mtk_hwv_pll_setclr_is_prepared(pll)) {
+		if (i < MTK_WAIT_HWV_PREPARE_CNT)
+			udelay(MTK_WAIT_HWV_PREPARE_US);
+		else
+			goto hwv_prepare_fail;
+		i++;
+	}
+
+	i = 0;
+
+	while (!mtk_hwv_pll_setclr_is_unprepare_done(pll)) {
+		if (i < MTK_WAIT_HWV_DONE_CNT)
+			udelay(MTK_WAIT_HWV_DONE_US);
+		else
+			goto hwv_done_fail;
+		i++;
+	}
+
+	return;
+
+err_res_done:
+	regmap_read(pll->hwv_regmap, pll->data->hwv_done_ofs, &val);
+	regmap_read(pll->hwv_regmap, pll->data->hwv_clr_sta_ofs, &val2);
+	pr_err("%s res disable timeout(%dus)(%x %x)\n", pll->data->name,
+			i * MTK_WAIT_HWV_RES_DONE_US, val, val2);
+err_res_vote:
+	pr_err("%s res unvote timeout(%dus)(0x%x)\n", pll->data->name,
+			i * MTK_WAIT_HWV_RES_PREPARE_US, val);
+err_res_prepare:
+	pr_err("%s res unprepare timeout(%dus)(0x%x)\n", pll->data->name,
+			i * MTK_WAIT_HWV_RES_PREPARE_US, val);
+	mtk_clk_notify(NULL, pll->hwv_regmap, NULL,
+			pll->data->hwv_res_set_ofs, 0,
+			pll->data->hwv_shift, CLK_EVT_HWV_PLL_TIMEOUT);
+
+hwv_done_fail:
+	val = readl(pll->en_addr);
+	pr_err("%s pll disable timeout(%x)\n", clk_hw_get_name(hw), val);
+hwv_prepare_fail:
+	regmap_read(pll->hwv_regmap, pll->data->hwv_sta_ofs, &val);
+	pr_err("%s pll unvote timeout(%x)\n", clk_hw_get_name(hw), val);
+
+	mtk_clk_notify(NULL, pll->hwv_regmap, NULL,
+			0, (pll->data->hwv_clr_ofs / MTK_HWV_ID_OFS),
+			0, CLK_EVT_HWV_CG_TIMEOUT);
+}
+
 int mtk_hwv_pll_on(struct clk_hw *hw)
 {
 	return mtk_hwv_pll_prepare(hw);
@@ -551,10 +880,28 @@ static const struct clk_ops mtk_pll_ops = {
 	.set_rate	= mtk_pll_set_rate,
 };
 
+static const struct clk_ops mtk_pll_setclr_ops = {
+	.is_prepared	= mtk_pll_setclr_is_prepared,
+	.prepare	= mtk_pll_setclr_prepare,
+	.unprepare	= mtk_pll_setclr_unprepare,
+	.recalc_rate	= mtk_pll_recalc_rate,
+	.round_rate	= mtk_pll_round_rate,
+	.set_rate	= mtk_pll_set_rate,
+};
+
 static const struct clk_ops mtk_hwv_pll_ops = {
 	.is_prepared	= mtk_pll_is_prepared,
 	.prepare	= mtk_hwv_pll_prepare,
 	.unprepare	= mtk_hwv_pll_unprepare,
+	.recalc_rate	= mtk_pll_recalc_rate,
+	.round_rate	= mtk_pll_round_rate,
+	.set_rate	= mtk_pll_set_rate,
+};
+
+static const struct clk_ops mtk_hwv_pll_setclr_ops = {
+	.is_prepared	= mtk_pll_setclr_is_prepared,
+	.prepare	= mtk_hwv_pll_setclr_prepare,
+	.unprepare	= mtk_hwv_pll_setclr_unprepare,
 	.recalc_rate	= mtk_pll_recalc_rate,
 	.round_rate	= mtk_pll_round_rate,
 	.set_rate	= mtk_pll_set_rate,
@@ -585,10 +932,23 @@ static struct clk *mtk_clk_register_pll(const struct mtk_pll_data *data,
 		pll->tuner_addr = base + data->tuner_reg;
 	if (data->tuner_en_reg)
 		pll->tuner_en_addr = base + data->tuner_en_reg;
-	if (data->en_reg)
-		pll->en_addr = base + data->en_reg;
-	else
-		pll->en_addr = pll->base_addr + REG_CON0;
+	if (data->pll_setclr) {
+		pll->en_addr = base + data->pll_setclr->en_ofs;
+		pll->en_set_addr = base + data->pll_setclr->en_set_ofs;
+		pll->en_clr_addr = base + data->pll_setclr->en_clr_ofs;
+		pll->en_msk = BIT(pll->data->en_setclr_bit);
+		if ((data->flags & HAVE_RST_BAR) == HAVE_RST_BAR) {
+			pll->rstb_addr = base + data->pll_setclr->rstb_ofs;
+			pll->rstb_set_addr = base + data->pll_setclr->rstb_set_ofs;
+			pll->rstb_clr_addr = base + data->pll_setclr->rstb_clr_ofs;
+			pll->rstb_msk = BIT(pll->data->rstb_setclr_bit);
+		}
+	} else {
+		if (data->en_reg)
+			pll->en_addr = base + data->en_reg;
+		else
+			pll->en_addr = pll->base_addr + REG_CON0;
+	}
 
 	if (hw_voter_regmap && (data->flags & CLK_USE_HW_VOTER))
 		pll->hwv_regmap = hw_voter_regmap;
@@ -598,10 +958,17 @@ static struct clk *mtk_clk_register_pll(const struct mtk_pll_data *data,
 
 	init.name = data->name;
 	init.flags = (data->flags & PLL_AO) ? CLK_IS_CRITICAL : 0;
-	if (hw_voter_regmap && (data->flags & CLK_USE_HW_VOTER))
-		init.ops = &mtk_hwv_pll_ops;
-	else
-		init.ops = &mtk_pll_ops;
+	if (hw_voter_regmap && (data->flags & CLK_USE_HW_VOTER)) {
+		if (data->pll_setclr)
+			init.ops = &mtk_hwv_pll_setclr_ops;
+		else
+			init.ops = &mtk_hwv_pll_ops;
+	} else {
+		if (data->pll_setclr)
+			init.ops = &mtk_pll_setclr_ops;
+		else
+			init.ops = &mtk_pll_ops;
+	}
 
 	if (data->parent_name)
 		init.parent_names = &data->parent_name;
