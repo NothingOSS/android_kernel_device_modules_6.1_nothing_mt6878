@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2021 MediaTek Inc.
+ * Copyright (c) 2023 MediaTek Inc.
  */
 #include "mtk-mml-fg-fw.h"
 
@@ -203,41 +203,6 @@ static const s16 gaussian_sequence[2048] = {
 	104,   32,    -296,  -32,   788,   -80,   32,    -16,   280,   288,  944,
 	428,   -484
 };
-
-static bool check_film_grain_valid(const struct mml_pq_film_grain_params *param)
-{
-	if (!param)
-		return false;
-
-	if ((param->apply_grain <= 1) &&    /* 0 ~ 1 */
-		(param->update_grain <= 1) &&    /* 0 ~ 1 */
-		(param->num_y_points <= 14) &&    /* 0 ~ 14 */
-		(param->chroma_scaling_from_luma <= 1) &&    /* 0 ~ 1 */
-		(param->num_cb_points <= 10) &&    /* 0 ~ 10 */
-		(param->num_cr_points <= 10) &&    /* 0 ~ 10 */
-		(param->grain_scaling >= 0 + 8 && param->grain_scaling <= 3 + 8) && /* 8 ~ 11 */
-		(param->ar_coeff_shift >= 0 + 6 && param->ar_coeff_shift <= 3 + 6) && /* 6 ~ 9 */
-		(param->overlap_flag <= 1) &&        /*0 ~ 1 */
-		(param->clip_to_restricted_range <= 1) /* 0 ~ 1 */)
-		return true;
-
-	mml_pq_err("invalid filmGrain param");
-	mml_pq_err("apply_grain:%d update_grain:%d num_y_points:%d chroma_scaling_from_luma:%d",
-		param->apply_grain,
-		param->update_grain,
-		param->num_y_points,
-		param->chroma_scaling_from_luma);
-	mml_pq_err("num_cb_points:%d num_cr_points:%d",
-		param->num_cb_points,
-		param->num_cr_points);
-	mml_pq_err("grain_scaling:%d ar_coeff_shift:%d overlap_flag:%d clip_to_restricted_range:%d",
-		param->grain_scaling,
-		param->ar_coeff_shift,
-		param->overlap_flag,
-		param->clip_to_restricted_range);
-
-	return false;
-}
 
 /* generate random values */
 static u32 get_random_number(s32 bits, struct mml_pq_fg_alg_data *fg_data)
@@ -610,37 +575,83 @@ void mml_pq_fg_calc(struct mml_pq_dma_buffer *lut,
 	fg_data.cr_grain_size =
 		(fg_data.chroma_grain_width * fg_data.chroma_grain_height * 2 + 15) >> 4 << 4;
 	fg_data.allocated_va = (char *)lut->va;
-
-	mml_pq_msg("is_yuv_444:%d bit_depth:%d", is_yuv_444, bit_depth);
-
-	if (!check_film_grain_valid(metadata))
-		return;
-
 	fg_data.metadata = metadata;
 	fg_data.random_register = metadata->grain_seed;
-	fg_data.pps0_setting = (metadata->grain_seed << 0 |
-		metadata->chroma_scaling_from_luma << 16 |
-		metadata->overlap_flag << 24 |
-		metadata->clip_to_restricted_range << 28);
-	fg_data.pps1_setting = (metadata->cb_mult << 0 |
-		metadata->cb_luma_mult << 8 |
-		metadata->cb_offset << 16);
-	fg_data.pps2_setting = (metadata->cr_mult << 0 |
-		metadata->cr_luma_mult << 8 |
-		metadata->cr_offset << 16);
-	fg_data.pps3_setting = (metadata->grain_scaling << 0 |
-		6 << 4 |            /* 0: MC_IDENTITY, 1: BT709, 6: BT601 */
-		metadata->num_y_points << 12 |
-		metadata->num_cb_points << 16 |
-		metadata->num_cr_points << 20);
-	fg_data.apply_grain = metadata->apply_grain;
-	fg_data.update_grain = metadata->update_grain;
 
-	if (fg_data.apply_grain && fg_data.update_grain) {
+	mml_pq_msg("%s is_yuv_444:%d bit_depth:%d", __func__, is_yuv_444, bit_depth);
+
+	if (metadata->apply_grain && metadata->update_grain) {
 		fill_scaling_lut(&fg_data);
 		fill_luma_grain_table(&fg_data);
 		fill_chroma_grain_table(&fg_data);
 	}
+}
+
+u32 mml_pq_fg_get_pps0(struct mml_pq_film_grain_params *metadata)
+{
+	u32 pps0_setting = (metadata->grain_seed << 0 |
+		metadata->chroma_scaling_from_luma << 16 |
+		metadata->overlap_flag << 24 |
+		metadata->clip_to_restricted_range << 28);
+
+	return pps0_setting;
+}
+
+u32 mml_pq_fg_get_pps1(struct mml_pq_film_grain_params *metadata)
+{
+	u32 pps1_setting = (metadata->cb_mult << 0 |
+		metadata->cb_luma_mult << 8 |
+		metadata->cb_offset << 16);
+
+	return pps1_setting;
+}
+
+u32 mml_pq_fg_get_pps2(struct mml_pq_film_grain_params *metadata)
+{
+	u32 pps2_setting = (metadata->cr_mult << 0 |
+		metadata->cr_luma_mult << 8 |
+		metadata->cr_offset << 16);
+
+	return pps2_setting;
+}
+
+u32 mml_pq_fg_get_pps3(struct mml_pq_film_grain_params *metadata)
+{
+	u32 pps3_setting = (metadata->grain_scaling << 0 |
+		6 << 4 | /* 0: MC_IDENTITY, 1: BT709, 6: BT601 */
+		metadata->num_y_points << 12 |
+		metadata->num_cb_points << 16 |
+		metadata->num_cr_points << 20);
+
+	return pps3_setting;
+}
+
+u32 mml_pq_fg_get_luma_offset(void)
+{
+	return 0;
+}
+
+u32 mml_pq_fg_get_cb_offset(void)
+{
+	return (LUMA_GRAIN_WIDTH * LUMA_GRAIN_HEIGHT * 2 + 15) >> 4 << 4;
+}
+
+u32 mml_pq_fg_get_cr_offset(bool is_yuv_444)
+{
+	int chroma_grain_width = (is_yuv_444) ? 82 : 44;
+	int chroma_grain_height = (is_yuv_444) ? 73 : 38;
+	int cb_grain_size = (chroma_grain_width * chroma_grain_height * 2 + 15) >> 4 << 4;
+
+	return mml_pq_fg_get_cb_offset() + cb_grain_size;
+}
+
+u32 mml_pq_fg_get_scaling_offset(bool is_yuv_444)
+{
+	int chroma_grain_width = (is_yuv_444) ? 82 : 44;
+	int chroma_grain_height = (is_yuv_444) ? 73 : 38;
+	int cr_grain_size = (chroma_grain_width * chroma_grain_height * 2 + 15) >> 4 << 4;
+
+	return mml_pq_fg_get_cr_offset(is_yuv_444) + cr_grain_size;
 }
 
 MODULE_LICENSE("GPL");

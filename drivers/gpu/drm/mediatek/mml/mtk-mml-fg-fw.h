@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2021 MediaTek Inc.
+ * Copyright (c) 2023 MediaTek Inc.
  */
-#ifndef __MTK_MML_FG_ALG_H__
-#define __MTK_MML_FG_ALG_H__
+#ifndef __MTK_MML_FG_FW_H__
+#define __MTK_MML_FG_FW_H__
 
 #include <linux/kernel.h>
 #include <linux/types.h>
@@ -28,16 +28,20 @@ struct mml_pq_fg_alg_data {
 	s32 cb_grain_size;
 	s32 cr_grain_size;
 
-	u32 pps0_setting;
-	u32 pps1_setting;
-	u32 pps2_setting;
-	u32 pps3_setting;
-	s32 apply_grain;
-	s32 update_grain;
 	char *allocated_va;
 };
 
 void mml_pq_fg_calc(struct mml_pq_dma_buffer *lut,
 	struct mml_pq_film_grain_params *metadata, bool isYUV444, s32 bitDepth);
 
-#endif	/* __MTK_MML_FG_ALG_H__ */
+u32 mml_pq_fg_get_pps0(struct mml_pq_film_grain_params *metadata);
+u32 mml_pq_fg_get_pps1(struct mml_pq_film_grain_params *metadata);
+u32 mml_pq_fg_get_pps2(struct mml_pq_film_grain_params *metadata);
+u32 mml_pq_fg_get_pps3(struct mml_pq_film_grain_params *metadata);
+
+u32 mml_pq_fg_get_luma_offset(void);
+u32 mml_pq_fg_get_cb_offset(void);
+u32 mml_pq_fg_get_cr_offset(bool is_yuv_444);
+u32 mml_pq_fg_get_scaling_offset(bool is_yuv_444);
+
+#endif	/* __MTK_MML_FG_FW_H__ */

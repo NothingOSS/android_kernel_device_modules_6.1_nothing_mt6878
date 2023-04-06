@@ -57,8 +57,14 @@ struct mml_pq_mbox {
 	struct mml_pq_chan dc_readback_chan;
 };
 
-#define FG_BUF_NUM 2
-#define FG_BUF_SIZE 39024 //luma_grain_size + cb_grain_size + cr_grain_size + SCALING_LUT_SIZE * 3
+#define FG_BUF_NUM_LIMIT 5
+/*
+ * FG_BUF_SIZE = luma_grain_size(11984) +
+ *               cb_grain_size(11984) +
+ *               cr_grain_size(11984) +
+ *               SCALING_LUT_SIZE(1024) * 3
+ */
+#define FG_BUF_SIZE 39024
 
 static struct mutex fg_buf_list_mutex;
 static struct list_head fg_buf_list;
@@ -512,8 +518,8 @@ void mml_pq_get_fg_buffer(struct mml_task *task, u8 pipe, struct mml_pq_dma_buff
 	if (temp_buffer) {
 		*lut_buf = temp_buffer;
 		list_del(&temp_buffer->buffer_list);
-		mml_pq_msg("%s aal get buffer from list jobid[%d] va[%p] pa[%p]",
-			__func__, task->job.jobid, temp_buffer->va, &temp_buffer->pa);
+		mml_pq_msg("%s aal get buffer from list jobid[%d] va[%p] pa[%llx]",
+			__func__, task->job.jobid, temp_buffer->va, temp_buffer->pa);
 	} else {
 		temp_buffer = kzalloc(sizeof(struct mml_pq_dma_buffer), GFP_KERNEL);
 
@@ -531,8 +537,8 @@ void mml_pq_get_fg_buffer(struct mml_task *task, u8 pipe, struct mml_pq_dma_buff
 			dma_alloc_coherent(dev, FG_BUF_SIZE, &temp_buffer->pa, GFP_KERNEL);
 		mutex_unlock(&task->pq_task->fg_buffer_mutex);
 
-		mml_pq_msg("%s aal reallocate jobid[%d] va[%p] pa[%p]", __func__,
-			task->job.jobid, temp_buffer->va, &temp_buffer->pa);
+		mml_pq_msg("%s aal reallocate jobid[%d] va[%p] pa[%llx]", __func__,
+			task->job.jobid, temp_buffer->va, temp_buffer->pa);
 	}
 	mutex_unlock(&fg_buf_list_mutex);
 
