@@ -651,7 +651,8 @@ static void dump_disp_trace(struct drm_mtk_layering_info *disp_info)
 	for (i = 0; i < HRT_DISP_TYPE_NUM; i++) {
 		if (disp_info->layer_num[i] <= 0)
 			continue;
-
+		if (n >= LEN)
+			break;
 		n = snprintf(msg, LEN, "D%d,ovp:%d,dal:%d,LN:%d,G(%d,%d)",
 			     i, disp_info->hrt_weight, l_rule_info->dal_enable,
 			     disp_info->layer_num[i], disp_info->gles_head[i],
