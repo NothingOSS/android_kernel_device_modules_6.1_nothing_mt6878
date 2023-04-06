@@ -28,6 +28,8 @@
 #define WATCHDOG_MAX_HWTIME_MS		400
 #define WATCHDOG_MAX_SENSOR_RETRY_CNT	3
 
+//#define SET_SENSOR_BEFORE_1ST_VSYNC
+
 unsigned long engine_idx_to_bit(int engine_type, int idx)
 {
 	unsigned int map_hw = 0;
@@ -849,6 +851,7 @@ static int mtk_cam_ctrl_stream_on_job(struct mtk_cam_job *job)
 
 	mtk_cam_watchdog_start(&ctrl->watchdog, 1);
 
+#ifdef SET_SENSOR_BEFORE_1ST_VSYNC
 	/* non multi-frame job: e.g., mstream */
 	if (job->frame_cnt > 1) {
 
@@ -867,6 +870,7 @@ static int mtk_cam_ctrl_stream_on_job(struct mtk_cam_job *job)
 			mtk_cam_job_put(job);
 		}
 	}
+#endif
 
 	return 0;
 
