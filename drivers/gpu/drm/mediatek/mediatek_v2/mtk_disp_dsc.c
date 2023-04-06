@@ -358,8 +358,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 
 		if (spr_params->enable && spr_params->relay == 0
 			&& disp_spr_bypass == 0) {
-			reg_val = ((spr_params->relay == 0) ?
-				0x1 : 0) << 26;
+			reg_val = 0x1 << 26;
 			switch (spr_params->spr_format_type) {
 			case MTK_PANEL_RGBG_BGRG_TYPE:
 				reg_val |= 0x00e10d2;

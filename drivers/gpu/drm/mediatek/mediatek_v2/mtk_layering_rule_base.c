@@ -343,6 +343,11 @@ static int get_phy_ovl_layer_cnt_after_gc(struct drm_mtk_layering_info *info,
 	struct drm_mtk_layer_config *layer_info;
 	int j = 0;
 
+	if (disp_idx > LYE_CRTC || disp_idx < 0) {
+		DDPPR_ERR("%s[%d]:disp_idx:%d\n", __func__, __LINE__, disp_idx);
+		return -1;
+	}
+
 	if (info->layer_num[disp_idx] > 0) {
 		total_cnt = info->layer_num[disp_idx];
 
@@ -538,6 +543,11 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 					}
 				}
 
+				if (layer_info == NULL) {
+					DDPPR_ERR("%s[%d]:layer_info = null\n", __func__, __LINE__);
+					return;
+				}
+
 				DDPMSG(_L_FMT, j, layer_info->ovl_id,
 				       layer_info->src_offset_x,
 				       layer_info->src_offset_y,
@@ -711,27 +721,34 @@ print_disp_info_to_log_buffer(struct drm_mtk_layering_info *disp_info)
 	n += snprintf(status_buf + n, LOGGER_BUFFER_SIZE - n,
 		"Last hrt query data[start]\n");
 	for (i = 0; i < 2; i++) {
-		n += snprintf(status_buf + n, LOGGER_BUFFER_SIZE - n,
-			"HRT D%d/M%d/LN%d/hrt_num:%d/G(%d,%d)/fps:%d\n",
-			i, disp_info->disp_mode[i], disp_info->layer_num[i],
-			disp_info->hrt_num, disp_info->gles_head[i],
-			disp_info->gles_tail[i], l_rule_info->primary_fps);
-
-		for (j = 0; j < disp_info->layer_num[i]; j++) {
-			layer_info = &disp_info->input_config[i][j];
+		if (n < LOGGER_BUFFER_SIZE) {
 			n += snprintf(status_buf + n, LOGGER_BUFFER_SIZE - n,
-			"L%d->%d/of(%d,%d)/wh(%d,%d)/fmt:0x%x/compr:%u\n",
-				j, layer_info->ovl_id,
-				layer_info->dst_offset_x,
-				layer_info->dst_offset_y,
-				layer_info->dst_width,
-				layer_info->dst_height,
-				layer_info->src_fmt,
-				layer_info->compress);
-		}
+				"HRT D%d/M%d/LN%d/hrt_num:%d/G(%d,%d)/fps:%d\n",
+				i, disp_info->disp_mode[i], disp_info->layer_num[i],
+				disp_info->hrt_num, disp_info->gles_head[i],
+				disp_info->gles_tail[i], l_rule_info->primary_fps);
+
+			for (j = 0; j < disp_info->layer_num[i]; j++) {
+				layer_info = &disp_info->input_config[i][j];
+				n += snprintf(status_buf + n, LOGGER_BUFFER_SIZE - n,
+				"L%d->%d/of(%d,%d)/wh(%d,%d)/fmt:0x%x/compr:%u\n",
+					j, layer_info->ovl_id,
+					layer_info->dst_offset_x,
+					layer_info->dst_offset_y,
+					layer_info->dst_width,
+					layer_info->dst_height,
+					layer_info->src_fmt,
+					layer_info->compress);
+			}
+		} else
+			DDPPR_ERR("%s[%d]:%d, %d\n", __func__, __LINE__, n, i);
 	}
-	n += snprintf(status_buf + n, LOGGER_BUFFER_SIZE - n,
-		"Last hrt query data[end]\n");
+
+	if (n < LOGGER_BUFFER_SIZE)
+		n += snprintf(status_buf + n, LOGGER_BUFFER_SIZE - n,
+			"Last hrt query data[end]\n");
+	else
+		DDPPR_ERR("%s[%d]:%d\n", __func__, __LINE__, n);
 #endif
 }
 
@@ -751,6 +768,12 @@ void mtk_rollback_layer_to_GPU(struct drm_mtk_layering_info *disp_info,
 void mtk_rollback_compress_layer_to_GPU(struct drm_mtk_layering_info *disp_info,
 					int idx, int i)
 {
+
+	if (idx > LYE_CRTC || idx < 0) {
+		DDPPR_ERR("%s[%d]:idx:%d\n", __func__, __LINE__, idx);
+		return;
+	}
+
 	if (mtk_is_layer_id_valid(disp_info, idx, i) == false)
 		return;
 
@@ -1955,6 +1978,11 @@ static bool _calc_gpu_cache_layerset_hrt_num(struct drm_device *dev,
 	else
 		bw_monitor_is_on = 0;
 
+	if (disp > LYE_CRTC || disp < 0) {
+		DDPPR_ERR("%s[%d]:disp:%d\n", __func__, __LINE__, disp);
+		return false;
+	}
+
 	if (!has_hrt_limit(disp_info, disp))
 		return 0;
 
@@ -2696,6 +2724,13 @@ void lye_add_lye_priv_blob(struct mtk_plane_comp_state *comp_state,
 
 	blob = drm_property_create_blob(
 		drm_dev, sizeof(struct mtk_plane_comp_state), comp_state);
+
+	if (disp_idx > LYE_CRTC || disp_idx < 0) {
+		DDPPR_ERR("%s[%d]:disp_idx:%d\n", __func__, __LINE__, disp_idx);
+		return;
+	}
+
+
 	lyeblob_ids->lye_plane_blob_id[disp_idx][plane_idx] = blob->base.id;
 }
 
@@ -4048,6 +4083,11 @@ static void check_is_mml_layer(const int disp_idx,
 
 	if (!dev || !disp_info)
 		return;
+
+	if (disp_idx > LYE_CRTC || disp_idx < 0) {
+		DDPPR_ERR("%s[%d]:disp_idx:%d\n", __func__, __LINE__, disp_idx);
+		return;
+	}
 
 	drm_for_each_crtc(crtc, dev)
 		if (drm_crtc_index(crtc) == disp_idx)
