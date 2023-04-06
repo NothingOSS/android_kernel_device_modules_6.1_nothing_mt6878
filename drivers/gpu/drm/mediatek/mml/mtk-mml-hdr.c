@@ -135,7 +135,11 @@ struct mml_comp_hdr {
 	u16 event_eof;
 	u16 mutex_hint;
 	u32 jobid;
+	u32 cut_pos_x;
+	u32 crop_width;
+	u32 crop_height;
 	struct mml_pq_task *pq_task;
+	struct mml_pq_task *curve_pq_task;
 	bool dual;
 	atomic_t hist_done;
 	bool hist_cmd_done;
@@ -143,7 +147,7 @@ struct mml_comp_hdr {
 	atomic_t hist_read_cnt;
 	struct mml_pq_frame_data frame_data;
 	struct mml_pq_readback_buffer *hdr_hist[MML_PIPE_CNT];
-	struct cmdq_client *clts[MML_PIPE_CNT];
+	struct cmdq_client *clts;
 	struct cmdq_pkt *hist_pkts[MML_PIPE_CNT];
 	struct workqueue_struct *hdr_curve_wq;
 	struct work_struct hdr_curve_task;
@@ -328,6 +332,9 @@ static s32 hdr_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			    struct mml_pq_comp_config_result *result)
 {
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
+	struct mml_frame_config *cfg = task->config;
+	const struct mml_frame_dest *dest =
+		&cfg->info.dest[ccfg->node->out_idx];
 
 	if (IS_ERR_OR_NULL(task) || IS_ERR_OR_NULL(task->pq_task)) {
 		mml_err("%s task or pq_task is NULL", __func__);
@@ -367,6 +374,15 @@ static s32 hdr_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 				MML_MAX_OUTPUTS * sizeof(struct mml_frame_size));
 			hdr->jobid = task->job.jobid;
 
+			if (task->config->dual)
+				hdr->cut_pos_x = cfg->hist_div[ccfg->tile_eng_idx];
+			else
+				hdr->cut_pos_x = dest->crop.r.left+dest->crop.r.width;
+
+			hdr->crop_height = dest->crop.r.height;
+			hdr->crop_width = dest->crop.r.width;
+			hdr->pipe = ccfg->pipe;
+;
 			if (!(hdr->hdr_hist[ccfg->pipe]))
 				mml_pq_get_readback_buffer(task,
 					ccfg->pipe, &(hdr->hdr_hist[ccfg->pipe]));
@@ -455,20 +471,32 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 				curve[i + 1], U32_MAX, reuse, cache, &hdr_frm->reuse_curve);
 		}
 	} else if (mode == MML_MODE_DDP_ADDON || mode == MML_MODE_DIRECT_LINK) {
-		hdr->pq_task = task->pq_task;
-		hdr->pipe = ccfg->pipe;
+		hdr->curve_pq_task = task->pq_task;
 		hdr->dual = cfg->dual;
+		hdr->pipe = ccfg->pipe;
 		memcpy(hdr->gain_curve, &curve[0], sizeof(u32)*HDR_CURVE_NUM);
 
-		if (!hdr->clts[ccfg->pipe])
-			hdr->clts[ccfg->pipe] = mml_get_cmdq_clt(cfg->mml,
+		if (!hdr->clts) {
+			hdr->clts = mml_get_cmdq_clt(cfg->mml,
 				ccfg->pipe + GCE_THREAD_START);
+			if (!hdr->clts)
+				mml_pq_err("%s cmdq client get failed", __func__);
+		}
 
-		if ((!hdr->hist_pkts[ccfg->pipe] && hdr->clts[ccfg->pipe]))
-			hdr->hist_pkts[ccfg->pipe] = cmdq_pkt_create(hdr->clts[ccfg->pipe]);
+		if ((!hdr->hist_pkts[ccfg->pipe] && hdr->clts))
+			hdr->hist_pkts[ccfg->pipe] = cmdq_pkt_create(hdr->clts);
 
-		if (!hdr->hist_pkts[ccfg->pipe])
+		if (!hdr->hist_pkts[ccfg->pipe] || !hdr->clts) {
+			mml_pq_err("%s pkt or clits get failed", __func__);
+			complete_all(&hdr->curve_pq_task->hdr_curve_ready[hdr->pipe]);
 			goto jump_cmd;
+		}
+
+		if (!hdr->hist_pkts[ccfg->pipe]->dev) {
+			mml_pq_err("%s pkt dev get failed", __func__);
+			complete_all(&hdr->curve_pq_task->hdr_curve_ready[hdr->pipe]);
+			goto jump_cmd;
+		}
 
 		queue_work(hdr->hdr_curve_wq, &hdr->hdr_curve_task);
 		hdr_hist_ctrl(comp, task, ccfg, result);
@@ -478,8 +506,6 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 		base_pa + hdr->data->reg_table[HDR_HIST_ADDR], 1 << 8, 1 << 8);
 	cmdq_pkt_write(pkt, NULL,
 		base_pa + hdr->data->reg_table[HDR_HIST_CTRL_2], 1 << 31, 1 << 31);
-	cmdq_pkt_write(pkt, NULL,
-		base_pa + hdr->data->reg_table[HDR_GAIN_TABLE_0], 1 << 11, 1 << 11);
 
 	mml_pq_msg("%s is_hdr_need_readback[%d] reuses count %u %u",
 		__func__, result->is_hdr_need_readback,
@@ -540,16 +566,19 @@ static s32 hdr_config_tile(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_SIZE_2],
 		(hdr_crop_ye << 16) + hdr_crop_ys, U32_MAX);
 
+
 	mml_pq_msg("%s %d: [input] jobid[%d] [xs, xe] = [%d, %d], [ys, ye] = [%d, %d]",
 			__func__, idx, task->job.jobid, tile->in.xs, tile->in.xe,
 			tile->in.ys, tile->in.ye);
+
 	mml_pq_msg("%s %d: [output] [xs, xe] = [%d, %d], [ys, ye] = [%d, %d]",
 			__func__, idx, tile->out.xs, tile->out.xe, tile->out.ys,
 			tile->out.ye);
 
-	mml_pq_ir_log("%s %d: jobid[%d] en_hdr[%d], hist_div[%d] out_hist_xs[%d]",
+	mml_pq_msg("%s %d: jobid[%d] en_hdr[%d], hist_div[%d] out_hist_xs[%d] pipe[%d]",
 			__func__, idx, task->job.jobid, dest->pq_config.en_hdr,
-			cfg->hist_div[ccfg->tile_eng_idx], hdr_frm->out_hist_xs);
+			cfg->hist_div[ccfg->tile_eng_idx], hdr_frm->out_hist_xs,
+			ccfg->pipe);
 
 	if (!dest->pq_config.en_hdr)
 		return 0;
@@ -824,6 +853,7 @@ static s32 hdr_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 	struct mml_pq_comp_config_result *result;
 	struct mml_pq_reg *regs;
+	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 	u32 *curve;
 	u32 i, j, val_idx;
 	s32 ret;
@@ -871,6 +901,7 @@ static s32 hdr_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	hdr_frm->is_hdr_need_readback = result->is_hdr_need_readback;
 	task->pq_task->hdr_readback.readback_data.cut_pos_x =
 		hdr_frm->cut_pos_x;
+	hdr->cut_pos_x = hdr_frm->cut_pos_x;
 
 	return 0;
 
@@ -1246,6 +1277,7 @@ static void hdr_curve_work(struct work_struct *work_item)
 		|| IS_ERR_OR_NULL(hdr->gain_curve)) {
 		mml_pq_log("%s Has NULL hdr[%p] comp[%p] base[%p] curve[%p]",
 			__func__, hdr, &hdr->comp, &hdr->comp.base, hdr->gain_curve);
+		complete_all(&hdr->curve_pq_task->hdr_curve_ready[hdr->pipe]);
 		return;
 	}
 
@@ -1253,8 +1285,7 @@ static void hdr_curve_work(struct work_struct *work_item)
 	comp = &hdr->comp;
 	base = comp->base;
 	curve = hdr->gain_curve;
-
-	pkt = cmdq_pkt_create(hdr->clts[hdr->pipe]);
+	pkt = cmdq_pkt_create(hdr->clts);
 	base_pa = comp->base_pa;
 	gpr = hdr->data->gpr[hdr->pipe];
 
@@ -1269,13 +1300,98 @@ static void hdr_curve_work(struct work_struct *work_item)
 			curve[i+1], U32_MAX);
 	}
 
+	cmdq_pkt_write(pkt, NULL,
+		base_pa + hdr->data->reg_table[HDR_GAIN_TABLE_0], 1 << 11, 1 << 11);
+
 	cmdq_pkt_flush(pkt);
 	cmdq_pkt_destroy(pkt);
 
-	complete_all(&hdr->pq_task->hdr_curve_ready[hdr->pipe]);
-	mml_pq_ir_log("%s end hdr[%p] comp[%p] base[%p] curve[%p]",
-			__func__, hdr, comp, base, curve);
+	complete_all(&hdr->curve_pq_task->hdr_curve_ready[hdr->pipe]);
+	mml_pq_ir_log("%s end jobid[%d] hdr[%p] comp[%p] base[%p] curve[%p] pipe[%d]",
+			__func__, hdr->jobid, hdr, comp, base, curve, hdr->pipe);
 }
+
+static void hdr_ir_histogram_check(struct mml_comp_hdr *hdr)
+{
+	u8 pipe = hdr->pipe;
+
+	u32 i = 0, sum = 0;
+	u32 expect_value_letter = 0, expect_value_crop = 0, expect_value_hist = 0;
+	u32 letter_up = 0, letter_down = 0, letter_height = 0;
+	u32 crop_width = hdr->crop_width;
+	u32 crop_height = hdr->crop_height;
+	u32 hist_up = 0, hist_down = 0, hist_height = 0;
+
+	for (i = 0; i < HDR_HIST_CNT; i++)
+		sum = sum + hdr->hdr_hist[pipe]->va[i];
+
+	letter_up = ((hdr->hdr_hist[pipe]->va[57] &
+		0x0000FFFF) >> 0);
+	letter_down = ((hdr->hdr_hist[pipe]->va[57] &
+		0xFFFF0000) >> 16);
+	letter_height = letter_down - letter_up;
+
+	hist_up = ((hdr->hdr_hist[pipe]->va[58] &
+		0xFFFF0000) >> 16);
+	hist_down = ((hdr->hdr_hist[pipe]->va[59] &
+		0xFFFF0000) >> 16);
+
+	hist_height = hist_down - hist_up;
+
+	if (hdr->dual) {
+		if (pipe) {
+			expect_value_hist = (hist_height+1) *
+				(crop_width - hdr->cut_pos_x) * 8;
+			expect_value_letter = (letter_height+1) *
+				(crop_width - hdr->cut_pos_x) * 8;
+			expect_value_crop = crop_height *
+				(crop_width - hdr->cut_pos_x) * 8;
+		} else {
+			expect_value_hist =
+				(hist_height+1) * hdr->cut_pos_x * 8;
+			expect_value_letter =
+				(letter_height+1) * hdr->cut_pos_x * 8;
+			expect_value_crop =
+				crop_height * hdr->cut_pos_x * 8;
+		}
+	} else {
+		expect_value_letter =
+			(letter_height+1) * crop_width * 8;
+		expect_value_crop = crop_height * crop_width * 8;
+	}
+
+	mml_pq_rb_msg("%s job_id[%d] pipe[%d] sum[%u] expect_value[%u %u %u]",
+		__func__, hdr->jobid, pipe, sum, expect_value_letter,
+		expect_value_crop, expect_value_hist);
+	mml_pq_rb_msg("%s job_id[%d] pipe[%d] letter_height[%d] down[%d] up[%d]",
+		__func__, hdr->jobid, pipe, letter_height, letter_down,
+		letter_up);
+
+	if (sum != expect_value_letter &&
+		sum != expect_value_crop &&
+		sum != expect_value_hist) {
+		mml_pq_err("%s sum[%u] expect_value_letter[%u] job_id[%d] pipe[%d] cut_pos_x[%d]",
+			__func__, sum, expect_value_letter, hdr->jobid, pipe,
+			hdr->cut_pos_x);
+		for (i = 0; i < HDR_HIST_CNT-1; i += 4)
+			mml_pq_err("%s hist[%d - %d] = [%d, %d, %d, %d]",
+				__func__, i, i+3,
+				hdr->hdr_hist[pipe]->va[i],
+				hdr->hdr_hist[pipe]->va[i+1],
+				hdr->hdr_hist[pipe]->va[i+2],
+				hdr->hdr_hist[pipe]->va[i+3]);
+
+			mml_pq_err("%s hist[56-57] = [%d, %x]",
+				__func__, hdr->hdr_hist[pipe]->va[56],
+				hdr->hdr_hist[pipe]->va[57]);
+
+			if (mml_pq_debug_mode & MML_PQ_HIST_CHECK)
+				mml_pq_util_aee("MML_PQ_HDR_Histogram Error",
+					"HDR Histogram error need to check jobid:%d",
+					hdr->jobid);
+	}
+}
+
 
 static void hdr_histdone_cb(struct cmdq_cb_data data)
 {
@@ -1325,12 +1441,36 @@ static void hdr_histdone_cb(struct cmdq_cb_data data)
 			&(hdr->hdr_hist[pipe]->va[offset/4]), hdr->jobid,
 			hdr->dual);
 
+	if (hdr->jobid == 1) {
+		mml_pq_err("%s sum[%u] job_id[%d] pipe[%d] cut_pos_x[%d]",
+			__func__, sum, hdr->jobid, pipe,
+			hdr->cut_pos_x);
+		for (i = 0; i < HDR_HIST_CNT-1; i += 4)
+			mml_pq_err("%s hist[%d - %d] = [%d, %d, %d, %d]",
+				__func__, i, i+3,
+				hdr->hdr_hist[pipe]->va[i],
+				hdr->hdr_hist[pipe]->va[i+1],
+				hdr->hdr_hist[pipe]->va[i+2],
+				hdr->hdr_hist[pipe]->va[i+3]);
+
+			mml_pq_err("%s hist[56-57] = [%d, %x]",
+				__func__, hdr->hdr_hist[pipe]->va[56],
+				hdr->hdr_hist[pipe]->va[57]);
+	}
+
+	if ((mml_pq_debug_mode & MML_PQ_HIST_CHECK))
+		hdr_ir_histogram_check(hdr);
+
+	mml_pq_put_pq_task(hdr->pq_task);
 	atomic_fetch_add_unless(&hdr->hist_done, 1, 1);
 	atomic_dec_if_positive(&hdr->hist_read_cnt);
 
 
-	mml_pq_ir_log("%s end jobid[%d] pkt[%p] hdr[%p] pipe[%d]",
-		__func__, hdr->jobid, pkt, hdr, pipe);
+	mml_pq_ir_log("%s end jobid[%d] pkt[%p] hdr[%p] pipe[%d] pa[%llx] va[%p]",
+		__func__, hdr->jobid, pkt, hdr, pipe,
+		hdr->hdr_hist[pipe]->pa,
+		hdr->hdr_hist[pipe]->va);
+
 	mml_trace_end();
 }
 
@@ -1368,10 +1508,14 @@ static void hdr_hist_work(struct work_struct *work_item)
 	pkt = hdr->hist_pkts[pipe];
 	idx_out = hdr->data->cpr[hdr->pipe];
 
+	mml_pq_ir_log("%s jobid[%d] pkt[%p] hdr[%p] pipe[%d] pa[%llx] va[%p]",
+		__func__, hdr->jobid, pkt, hdr, pipe, hdr->hdr_hist[pipe]->pa,
+		hdr->hdr_hist[pipe]->va);
 
-	mml_pq_ir_log("%s job_id[%d] eng_id[%d] cmd_buf_size[%zu] hist_cmd_done[%d]",
+	mml_pq_ir_log("%s job_id[%d] eng_id[%d] cmd_buf_size[%zu] hist_cmd_done[%d] pipe[%d]",
 		__func__, hdr->jobid, comp->id,
-		pkt->cmd_buf_size, hdr->hist_cmd_done);
+		pkt->cmd_buf_size, hdr->hist_cmd_done,
+		pipe);
 
 	idx_out64 = CMDQ_CPR_TO_CPR64(idx_out);
 
@@ -1474,10 +1618,11 @@ static void hdr_hist_work(struct work_struct *work_item)
 		__func__, condi_offset, condi_inst,
 		begin_offset, begin_pa);
 
+	pkt->user_data = hdr;
+
 	mutex_unlock(&hdr->hist_cmd_lock);
 
 hdr_hist_cmd_done:
-	pkt->user_data = hdr;
 
 	wait_for_completion(&hdr->pq_task->hdr_curve_ready[hdr->pipe]);
 
