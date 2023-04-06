@@ -1334,6 +1334,14 @@ static void mtk_cam_ctx_match_pipe_subdevs(struct mtk_cam_ctx *ctx)
 	}
 }
 
+/**
+ *  Max connected entities of a context:
+ *  sensor, seninf, engines and their video devices
+ */
+#define MTK_CAM_CTX_MAX_ENTITIES (2 + (1 + MTK_RAW_TOTAL_NODES) + \
+				  (1 + MTK_CAMSV_TOTAL_NODES) * MAX_SV_PIPES_PER_STREAM + \
+				  (1 + MTK_MRAW_TOTAL_NODES) * MAX_MRAW_PIPES_PER_STREAM)
+
 static int mtk_cam_ctx_pipeline_start(struct mtk_cam_ctx *ctx,
 				      struct media_entity *entity)
 {
@@ -1341,7 +1349,7 @@ static int mtk_cam_ctx_pipeline_start(struct mtk_cam_ctx *ctx,
 	struct v4l2_subdev **target_sd;
 	struct mtk_cam_video_device *mtk_vdev;
 	struct media_pipeline_pad *ppad;
-	struct media_entity *entity_walked[64] = {0};
+	struct media_entity *entity_walked[MTK_CAM_CTX_MAX_ENTITIES] = {0};
 	int last_entity_walked = 0;
 	bool walked;
 	int i, j, ret;
@@ -1368,7 +1376,7 @@ static int mtk_cam_ctx_pipeline_start(struct mtk_cam_ctx *ctx,
 				 entity->name, ppad->pad->index, entity->function);
 
 		for (j = 0;
-		     j <= last_entity_walked && j < ARRAY_SIZE(entity_walked);
+		     j <= last_entity_walked && j < MTK_CAM_CTX_MAX_ENTITIES;
 		     j++) {
 			if (entity_walked[j] == entity) {
 				walked = true;
@@ -1377,6 +1385,12 @@ static int mtk_cam_ctx_pipeline_start(struct mtk_cam_ctx *ctx,
 		}
 
 		if (!walked) {
+			if (last_entity_walked > (MTK_CAM_CTX_MAX_ENTITIES - 1)) {
+				dev_info(dev,
+					 "ctx-%d abnormal entity counts:%d\n",
+					 ctx->stream_id, last_entity_walked);
+				goto fail_stop_pipeline;
+			}
 			last_entity_walked++;
 			entity_walked[last_entity_walked] = entity;
 		} else {
