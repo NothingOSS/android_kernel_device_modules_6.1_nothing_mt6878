@@ -235,7 +235,7 @@ int charger_dev_set_boot_volt_times(struct charger_device *chg_dev, u32 val)
 {
 	if (chg_dev != NULL && chg_dev->ops != NULL &&
 	    chg_dev->ops->set_boot_volt_times)
-		chg_dev->ops->set_boot_volt_times(chg_dev, val);
+		return chg_dev->ops->set_boot_volt_times(chg_dev, val);
 
 	return -EOPNOTSUPP;
 }
