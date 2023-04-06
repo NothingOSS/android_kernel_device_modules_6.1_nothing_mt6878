@@ -94,7 +94,7 @@ struct mtk_mode_switch_cmd cmd_table_60fps[] = {
 	{6, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00}},
 	{2, {0x6F, 0x1C}},
 	{9, {0xBA, 0x91, 0x01, 0x01, 0x00, 0x01, 0x01, 0x01, 0x00}},
-	{2, {0x5A, 0x01}},
+	{2, {0x5A, 0x00}},
 	{2, {0x2F, 0x30}}
 };
 
@@ -378,7 +378,7 @@ static void lcm_panel_init(struct lcm *ctx)
 		lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00);
 		lcm_dcs_write_seq_static(ctx, 0x6F, 0x1C);
 		lcm_dcs_write_seq_static(ctx, 0xBA, 0x91, 0x01, 0x01, 0x00, 0x01, 0x01, 0x01, 0x00);
-		lcm_dcs_write_seq_static(ctx, 0x5A, 0x01);
+		lcm_dcs_write_seq_static(ctx, 0x5A, 0x00);
 		lcm_dcs_write_seq_static(ctx, 0x2F, 0x30);
 		break;
 	case 30:
@@ -1044,8 +1044,9 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel,
 		ext_params_90hz.real_te_duration = 11111;
 		ext->params = &ext_params_90hz;
 	} else if (drm_mode_vrefresh(m) == 60) {
-		ext_params_60hz.real_te_duration = 16666;
-		ext->params = &ext_params_60hz;
+		ext_params.skip_vblank = 2;
+		ext_params.real_te_duration = 8333;
+		ext->params = &ext_params;
 	} else if (drm_mode_vrefresh(m) == 30) {
 		ext_params.skip_vblank = 4;
 		ext_params.real_te_duration = 8333;
