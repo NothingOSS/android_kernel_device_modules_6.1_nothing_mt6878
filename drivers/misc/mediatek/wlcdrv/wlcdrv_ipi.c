@@ -55,6 +55,18 @@ int wlc_ipi_to_mcupm_send(int ctrl_cmd)
 		wlc_mcu_pmu_init();
 		wlc_sampler_start();
 		break;
+	case WLCIPI_CMD_RANDOM_VECTOR_STAGE1:
+		cmd_packet.cmd = IPI_WLC_RANDOM_VECTOR_STAGE1;
+		break;
+	case WLCIPI_CMD_RANDOM_VECTOR_STAGE2:
+		cmd_packet.cmd = IPI_WLC_RANDOM_VECTOR_STAGE2;
+		break;
+	case WLCIPI_CMD_VECTOR_STAGE1_USER:
+		cmd_packet.cmd = IPI_WLC_VECTOR_STAGE1_USER;
+		break;
+	case WLCIPI_CMD_VECTOR_STAGE2_USER:
+		cmd_packet.cmd = IPI_WLC_VECTOR_STAGE2_USER;
+		break;
 	default:
 		pr_info("[WLCDrv]default cmd:0x%x\n", ctrl_cmd);
 		return 0;

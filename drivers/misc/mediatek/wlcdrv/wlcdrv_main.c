@@ -43,6 +43,7 @@ static int g_wlc_latest_send_cmd	 = WLCIPI_CMD_DEFAULT;
 
 #define WLCDRV_SRAM_OFFSET_DBG_CNT	0x4
 #define WLCDRV_SRAM_OFFSET_DBG_SRAM 0x8
+#define WLCDRV_SRAM_OFFSET_DBG_TYPE 0xc
 
 static void __iomem *wl_sram_addr_iomapped;
 static int g_wl_support;
@@ -65,14 +66,17 @@ static int _wlc_proc_show(struct seq_file *m, void *v)
 	seq_printf(m, "tbl base:0x%x, sz:%d\n", g_wl_tbl_addr, g_wl_tbl_sz);
 
 	value = ioread32(wl_sram_addr_iomapped + WLCDRV_SRAM_OFFSET_DBG_SRAM);
-	seq_printf(m, "addr(in wlc): 0x%x\n", value);
+	seq_printf(m, "addr(in wlc): 0x%08x\n", value);
 
 	seq_printf(m, "curr ctrl cmd: 0x%x\n\n", g_wlc_latest_send_cmd);
 	value = ioread32(wl_sram_addr_iomapped + 0);
-	seq_printf(m, "inf wl-types: 0x%x\n", value);
+	seq_printf(m, "inf wl-types: 0x%08x\n", value);
+
+	value = ioread32(wl_sram_addr_iomapped + WLCDRV_SRAM_OFFSET_DBG_TYPE);
+	seq_printf(m, "inf wl-types(per-core): 0x%08x\n", value);
 
 	value = ioread32(wl_sram_addr_iomapped + WLCDRV_SRAM_OFFSET_DBG_CNT);
-	seq_printf(m, "inf cnts: 0x%x\n", value);
+	seq_printf(m, "inf cnts: 0x%08x\n", value);
 
 	seq_puts(m, "=== wl status ===\n\n");
 
