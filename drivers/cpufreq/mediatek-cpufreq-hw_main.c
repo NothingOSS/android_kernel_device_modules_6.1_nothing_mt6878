@@ -98,7 +98,15 @@ static int mtk_cpufreq_hw_target_index(struct cpufreq_policy *policy,
 {
 	struct cpufreq_mtk *c = policy->driver_data;
 
-	writel_relaxed(index, c->reg_bases[REG_FREQ_PERF_STATE]);
+	if (!freq_scaling_disabled) {
+		int target_freq = policy->freq_table[index].frequency;
+
+		if (fdvfs_enabled)
+			cpufreq_fdvfs_switch(target_freq, policy);
+		else
+			writel_relaxed(target_freq, c->reg_bases[REG_FREQ_PERF_STATE]);
+	} else
+		writel_relaxed(index, c->reg_bases[REG_FREQ_PERF_STATE]);
 
 	return 0;
 }
