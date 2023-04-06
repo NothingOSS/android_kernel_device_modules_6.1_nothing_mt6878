@@ -188,6 +188,8 @@ struct subdrv_mode_struct {
 	bool pdc_enabled; /* pd correction */
 	struct mtk_sensor_saturation_info *saturation_info;
 	struct dcg_info_struct dcg_info;
+	u32 exposure_order_in_lbmf;
+	u32 mode_type_in_lbmf;
 };
 
 #define REG_ADDR_MAXCNT 3
@@ -252,17 +254,23 @@ struct subdrv_static_ctx {
 	u16 reg_addr_stream;
 	u16 reg_addr_mirror_flip;
 	struct reg_ reg_addr_exposure[IMGSENSOR_STAGGER_EXPOSURE_CNT];
+	struct reg_ reg_addr_exposure_in_lut[IMGSENSOR_STAGGER_EXPOSURE_CNT];
 	u16 long_exposure_support;
 	u16 reg_addr_exposure_lshift;
 	struct reg_ reg_addr_ana_gain[IMGSENSOR_STAGGER_EXPOSURE_CNT];
+	struct reg_ reg_addr_ana_gain_in_lut[IMGSENSOR_STAGGER_EXPOSURE_CNT];
 	struct reg_ reg_addr_dig_gain[IMGSENSOR_STAGGER_EXPOSURE_CNT];
+	struct reg_ reg_addr_dig_gain_in_lut[IMGSENSOR_STAGGER_EXPOSURE_CNT];
 	struct reg_ reg_addr_frame_length;
+	struct reg_ reg_addr_frame_length_in_lut[IMGSENSOR_STAGGER_EXPOSURE_CNT];
 	u16 reg_addr_temp_en;
 	u16 reg_addr_temp_read;
 	u16 reg_addr_auto_extend;
 	u16 reg_addr_frame_count;
 	u16 reg_addr_fast_mode;
 	u16 reg_addr_dcg_ratio;
+	u16 reg_addr_fast_mode_in_lbmf;
+	u16 reg_addr_stream_in_lbmf;
 
 	u16 *init_setting_table;
 	u32 init_setting_len;
@@ -331,6 +339,7 @@ struct subdrv_ctx {
 	u32 gain; /* current gain */
 	u32 pclk; /* current pclk */
 	u32 frame_length; /* current framelength */
+	u32 frame_length_in_lut[IMGSENSOR_STAGGER_EXPOSURE_CNT]; /* current lbmf framelength */
 	u32 line_length; /* current linelength */
 	u32 min_frame_length; /* current framelength limitation */
 	u8 margin; /* current (mode's) exp margin */

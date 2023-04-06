@@ -58,10 +58,15 @@ bool probe_eeprom(struct subdrv_ctx *ctx);
 void read_sensor_Cali(struct subdrv_ctx *ctx);
 void write_sensor_Cali(struct subdrv_ctx *ctx);
 void write_frame_length(struct subdrv_ctx *ctx, u32 fll);
+void write_frame_length_in_lut(struct subdrv_ctx *ctx, u32 fll, u32 *fll_in_lut);
 void set_dummy(struct subdrv_ctx *ctx);
 void set_frame_length(struct subdrv_ctx *ctx, u16 frame_length);
+void set_frame_length_in_lut(struct subdrv_ctx *ctx,
+		u32 frame_length, u32 *frame_length_in_lut);
 void set_max_framerate(struct subdrv_ctx *ctx, u16 framerate, bool min_framelength_en);
 void set_max_framerate_by_scenario(struct subdrv_ctx *ctx,
+		enum SENSOR_SCENARIO_ID_ENUM scenario_id, u32 framerate);
+void set_max_framerate_in_lut_by_scenario(struct subdrv_ctx *ctx,
 		enum SENSOR_SCENARIO_ID_ENUM scenario_id, u32 framerate);
 bool set_auto_flicker(struct subdrv_ctx *ctx, bool min_framelength_en);
 void set_long_exposure(struct subdrv_ctx *ctx);
@@ -70,11 +75,15 @@ void set_shutter_frame_length(struct subdrv_ctx *ctx, u64 shutter, u32 frame_len
 void set_hdr_tri_shutter(struct subdrv_ctx *ctx, u64 *shutters, u16 exp_cnt);
 void set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
 		u64 *shutters, u16 shutter_cnt,	u16 frame_length);
+void set_multi_shutter_frame_length_in_lut(struct subdrv_ctx *ctx,
+		u64 *shutters, u16 shutter_cnt,	u32 frame_length, u32 *frame_length_in_lut);
 u16 gain2reg(u32 gain);
 void set_gain(struct subdrv_ctx *ctx, u32 gain);
 void set_hdr_tri_gain(struct subdrv_ctx *ctx, u64 *gains, u16 exp_cnt);
 void set_multi_gain(struct subdrv_ctx *ctx, u32 *gains, u16 exp_cnt);
+void set_multi_gain_in_lut(struct subdrv_ctx *ctx, u32 *gains, u16 exp_cnt);
 void set_multi_dig_gain(struct subdrv_ctx *ctx, u32 *gains, u16 exp_cnt);
+void set_multi_dig_gain_in_lut(struct subdrv_ctx *ctx, u32 *gains, u16 exp_cnt);
 void get_lens_driver_id(struct subdrv_ctx *ctx, u32 *lens_id);
 void check_stream_off(struct subdrv_ctx *ctx);
 void streaming_control(struct subdrv_ctx *ctx, bool enable);

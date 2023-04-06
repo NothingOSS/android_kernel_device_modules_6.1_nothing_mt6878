@@ -344,16 +344,16 @@ static struct mtk_mbus_frame_desc_entry frame_desc_cus6[] = {
 			.user_data_desc = VC_PDAF_STATS_NE_PIX_1,
 		},
 	},
-	{
-		.bus.csi2 = {
-			.channel = 1,
-			.data_type = 0x30,
-			.hsize = 0x1000,
-			.vsize = 0x0240,
-			.dt_remap_to_type = MTK_MBUS_FRAME_DESC_REMAP_TO_RAW10,
-			.user_data_desc = VC_PDAF_STATS_ME_PIX_1,
-		},
-	},
+	// {
+		// .bus.csi2 = {
+			// .channel = 1,
+			// .data_type = 0x30,
+			// .hsize = 0x1000,
+			// .vsize = 0x0240,
+			// .dt_remap_to_type = MTK_MBUS_FRAME_DESC_REMAP_TO_RAW10,
+			// .user_data_desc = VC_PDAF_STATS_ME_PIX_1,
+		// },
+	// },
 };
 static struct mtk_mbus_frame_desc_entry frame_desc_cus7[] = {
 	{
@@ -610,16 +610,16 @@ static struct mtk_mbus_frame_desc_entry frame_desc_cus15[] = {
 		},
 	},
 // MRAW not support; HW number not enough
-	{
-		.bus.csi2 = {
-			.channel = 2,
-			.data_type = 0x30,
-			.hsize = 0x1000,
-			.vsize = 0x0300,
-			.dt_remap_to_type = MTK_MBUS_FRAME_DESC_REMAP_TO_RAW10,
-			.user_data_desc = VC_PDAF_STATS_SE_PIX_1,
-		},
-	},
+	// {
+		// .bus.csi2 = {
+			// .channel = 2,
+			// .data_type = 0x30,
+			// .hsize = 0x1000,
+			// .vsize = 0x0300,
+			// .dt_remap_to_type = MTK_MBUS_FRAME_DESC_REMAP_TO_RAW10,
+			// .user_data_desc = VC_PDAF_STATS_SE_PIX_1,
+		// },
+	// },
 };
 static struct mtk_mbus_frame_desc_entry frame_desc_cus16[] = {
 	{
@@ -694,16 +694,16 @@ static struct mtk_mbus_frame_desc_entry frame_desc_cus18[] = {
 			.user_data_desc = VC_PDAF_STATS_NE_PIX_1,
 		},
 	},
-	{
-		.bus.csi2 = {
-			.channel = 1,
-			.data_type = 0x30,
-			.hsize = 0x1000,
-			.vsize = 0x0300,
-			.dt_remap_to_type = MTK_MBUS_FRAME_DESC_REMAP_TO_RAW10,
-			.user_data_desc = VC_PDAF_STATS_ME_PIX_1,
-		},
-	},
+	// {
+		// .bus.csi2 = {
+			// .channel = 1,
+			// .data_type = 0x30,
+			// .hsize = 0x1000,
+			// .vsize = 0x0300,
+			// .dt_remap_to_type = MTK_MBUS_FRAME_DESC_REMAP_TO_RAW10,
+			// .user_data_desc = VC_PDAF_STATS_ME_PIX_1,
+		// },
+	// },
 };
 static struct mtk_mbus_frame_desc_entry frame_desc_cus19[] = {
 	{
@@ -1293,14 +1293,14 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_mode_setting_table = imx989_seamless_custom6,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx989_seamless_custom6),
 		.hdr_group = 2,
-		// .hdr_mode = HDR_NONE,
+		.hdr_mode = HDR_RAW_LBMF_2EXP,
 		.pclk = 3225600000,
 		.linelength = 11168,
 		.framelength = 4808*2,
 		.max_framerate = 300,
 		.mipi_pixel_rate = 2452114286,
-		.readout_length = 0,
-		.read_margin = 64,
+		.readout_length = 2304,
+		.read_margin = 64*2,
 		.framelength_step = 4,
 		.coarse_integ_step = 4,
 		.min_exposure_line = 8,
@@ -1328,6 +1328,8 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.fine_integ_line = 4747,
 		.delay_frame = 3,
 		.csi_param = {},
+		.exposure_order_in_lbmf = IMGSENSOR_LBMF_EXPOSURE_SE_FIRST,
+		.mode_type_in_lbmf = IMGSENSOR_LBMF_MODE_MANUAL,
 	},
 	{
 		.frame_desc = frame_desc_cus7,
@@ -1862,14 +1864,14 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_mode_setting_table = imx989_seamless_custom18,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx989_seamless_custom18),
 		.hdr_group = 1,
-		// .hdr_mode = HDR_RAW_STAGGER_3EXP,
+		.hdr_mode = HDR_RAW_LBMF_2EXP,
 		.pclk = 4070400000,
 		.linelength = 11168,
 		.framelength = 6072*2,
 		.max_framerate = 300,
 		.mipi_pixel_rate = 2452114286,
-		.readout_length = 0,
-		.read_margin = 64,
+		.readout_length = 3072,
+		.read_margin = 64*2,
 		.framelength_step = 4,
 		.coarse_integ_step = 4,
 		.min_exposure_line = 8,
@@ -1897,6 +1899,8 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.fine_integ_line = 4747,
 		.delay_frame = 3,
 		.csi_param = {},
+		.exposure_order_in_lbmf = IMGSENSOR_LBMF_EXPOSURE_SE_FIRST,
+		.mode_type_in_lbmf = IMGSENSOR_LBMF_MODE_MANUAL,
 	},
 	{
 		.frame_desc = frame_desc_cus19,
@@ -2170,7 +2174,7 @@ static struct subdrv_static_ctx static_ctx = {
 	.start_exposure_offset = 3000000, //mtk31709
 
 	.pdaf_type = PDAF_SUPPORT_CAMSV_DUALPD,
-	.hdr_type = HDR_SUPPORT_STAGGER_FDOL,
+	.hdr_type = HDR_SUPPORT_STAGGER_FDOL|HDR_SUPPORT_DCG|HDR_SUPPORT_LBMF,
 	.seamless_switch_support = TRUE,
 	.temperature_support = TRUE,
 
@@ -2186,6 +2190,11 @@ static struct subdrv_static_ctx static_ctx = {
 			{0x3162, 0x3163},
 			{0x0224, 0x0225},
 	},
+	.reg_addr_exposure_in_lut = {
+			{0x0E10, 0x0E11},
+			{0x0E40, 0x0E41},
+			{0x0E70, 0x0E71},
+	},
 	.long_exposure_support = TRUE,
 	.reg_addr_exposure_lshift = 0x3128,
 	.reg_addr_ana_gain = {
@@ -2193,18 +2202,34 @@ static struct subdrv_static_ctx static_ctx = {
 			{0x3164, 0x3165},
 			{0x0216, 0x0217},
 	},
+	.reg_addr_ana_gain_in_lut = {
+			{0x0E12, 0x0E13},
+			{0x0E42, 0x0E43},
+			{0x0E72, 0x0E73},
+	},
 	.reg_addr_dig_gain = {
 			{0x020E, 0x020F},
 			{0x3166, 0x3167},
 			{0x0218, 0x0219},
 	},
+	.reg_addr_dig_gain_in_lut = {
+			{0x0E14, 0x0E15},
+			{0x0E44, 0x0E45},
+			{0x0E74, 0x0E75},
+	},
 	.reg_addr_dcg_ratio = 0x3172,
 	.reg_addr_frame_length = {0x0340, 0x0341},
+	.reg_addr_frame_length_in_lut = {
+			{0x0E18, 0x0E19},
+			{0x0E48, 0x0E49},
+			{0x0E78, 0x0E79},
+	},
 	.reg_addr_temp_en = 0x0138,
 	.reg_addr_temp_read = 0x013A,
 	.reg_addr_auto_extend = 0x0350,
 	.reg_addr_frame_count = 0x0005,
 	.reg_addr_fast_mode = 0x3010,
+	.reg_addr_fast_mode_in_lbmf = 0x3248,
 
 	.init_setting_table = imx989_init_setting,
 	.init_setting_len = ARRAY_SIZE(imx989_init_setting),
@@ -2331,6 +2356,7 @@ static int imx989_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 	enum SENSOR_SCENARIO_ID_ENUM scenario_id;
 	struct mtk_hdr_ae *ae_ctrl = NULL;
 	u64 *feature_data = (u64 *)para;
+	u32 frame_length_in_lut[IMGSENSOR_STAGGER_EXPOSURE_CNT] = {0};
 
 	if (feature_data == NULL) {
 		DRV_LOGE(ctx, "input scenario is null!");
@@ -2369,6 +2395,15 @@ static int imx989_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 
 	subdrv_i2c_wr_u8(ctx, 0x0104, 0x01);
 	subdrv_i2c_wr_u8(ctx, ctx->s_ctx.reg_addr_fast_mode, 0x02);
+	switch (ctx->s_ctx.mode[scenario_id].hdr_mode) {
+	case HDR_RAW_LBMF_2EXP:
+	case HDR_RAW_LBMF_3EXP:
+		subdrv_i2c_wr_u8(ctx, ctx->s_ctx.reg_addr_fast_mode_in_lbmf, 0x4);
+		break;
+	default:
+		break;
+	}
+
 	i2c_table_write(ctx,
 		ctx->s_ctx.mode[scenario_id].seamless_switch_mode_setting_table,
 		ctx->s_ctx.mode[scenario_id].seamless_switch_mode_setting_len);
@@ -2382,6 +2417,16 @@ static int imx989_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 		case HDR_RAW_STAGGER_3EXP:
 			set_multi_shutter_frame_length(ctx, (u64 *)&ae_ctrl->exposure, 3, 0);
 			set_multi_gain(ctx, (u32 *)&ae_ctrl->gain, 3);
+			break;
+		case HDR_RAW_LBMF_2EXP:
+			set_multi_shutter_frame_length_in_lut(ctx,
+				(u64 *)&ae_ctrl->exposure, 2, 0, frame_length_in_lut);
+			set_multi_gain_in_lut(ctx, (u32 *)&ae_ctrl->gain, 2);
+			break;
+		case HDR_RAW_LBMF_3EXP:
+			set_multi_shutter_frame_length_in_lut(ctx,
+				(u64 *)&ae_ctrl->exposure, 3, 0, frame_length_in_lut);
+			set_multi_gain_in_lut(ctx, (u32 *)&ae_ctrl->gain, 3);
 			break;
 		default:
 			set_shutter(ctx, ae_ctrl->exposure.le_exposure);
