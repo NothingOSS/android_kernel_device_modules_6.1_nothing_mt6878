@@ -65,6 +65,7 @@ static struct logging_ctx {
 	u32	line_log_level;		/* Log Line log message level */
 	bool	dead;
 	u32	log_level;		/* Kinibi trace level */
+	bool	started;
 } log_ctx;
 
 static inline void dev_print_level(u16 prev_source, u32 cpuid)
@@ -267,7 +268,8 @@ static const struct file_operations mc_logging_log_level_ops = {
  */
 void logging_run(void)
 {
-	if (!log_ctx.dead && log_ctx.trace_buf->head != log_ctx.trace_buf->tail)
+	if (log_ctx.started && !log_ctx.dead &&
+	    log_ctx.trace_buf->head != log_ctx.trace_buf->tail)
 #if KERNEL_VERSION(4, 9, 0) > LINUX_VERSION_CODE
 		queue_kthread_work(&log_ctx.worker, &log_ctx.work);
 #else
@@ -281,6 +283,8 @@ void logging_run(void)
  */
 int logging_init(phys_addr_t *buffer, u32 *size)
 {
+	log_ctx.started = false;
+
 	/*
 	 * We are going to map this buffer into virtual address space in SWd.
 	 * To reduce complexity there, we use a contiguous buffer.
@@ -293,6 +297,11 @@ int logging_init(phys_addr_t *buffer, u32 *size)
 	*buffer = virt_to_phys((void *)(log_ctx.trace_page));
 	*size = BIT(LOG_BUF_ORDER) * PAGE_SIZE;
 
+	return 0;
+}
+
+int logging_start(void)
+{
 	/* Logging thread */
 #if KERNEL_VERSION(4, 9, 0) > LINUX_VERSION_CODE
 	init_kthread_work(&log_ctx.work, logging_worker);
@@ -307,6 +316,8 @@ int logging_init(phys_addr_t *buffer, u32 *size)
 		return PTR_ERR(log_ctx.thread);
 
 	wake_up_process(log_ctx.thread);
+
+	log_ctx.started = true;
 
 	return 0;
 }
@@ -328,13 +339,20 @@ int logging_trace_level_init(void)
 	return ret;
 }
 
-void logging_exit(bool buffer_busy)
+void logging_stop(void)
 {
 	/*
 	 * This is not racey as the only caller for logging_run is the
 	 * scheduler which gets stopped before us, and long before we exit.
 	 */
-	kthread_stop(log_ctx.thread);
+	if (log_ctx.started)
+		kthread_stop(log_ctx.thread);
+
+	log_ctx.started = false;
+}
+
+void logging_exit(bool buffer_busy)
+{
 	if (!buffer_busy)
 		free_pages(log_ctx.trace_page, LOG_BUF_ORDER);
 }

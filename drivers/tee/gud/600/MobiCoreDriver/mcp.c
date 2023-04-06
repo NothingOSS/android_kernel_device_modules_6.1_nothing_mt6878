@@ -244,7 +244,7 @@ end:
 	mutex_unlock(&session->notif_wait_lock);
 	if (ret) {
 #ifdef CONFIG_FREEZER
-		if (ret == -ERESTARTSYS && static_branch_unlikely(&freezer_active))
+		if (ret == -ERESTARTSYS && static_key_true(&freezer_active.key))
 			mc_dev_devel("freezing session %x", session->sid);
 		else
 #endif

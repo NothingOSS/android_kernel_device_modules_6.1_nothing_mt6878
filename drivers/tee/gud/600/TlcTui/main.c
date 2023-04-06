@@ -135,8 +135,6 @@ static long tui_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 	 */
 	case TUI_IO_GET_ION_FD: {
 		tui_dev_devel("TUI_IO_GET_ION_FD");
-		if (dci == NULL)
-			break;
 
 		/* Get the back buffer id (in the dci, from DrTui) */
 		u32 buff_id = dci->buff_id;

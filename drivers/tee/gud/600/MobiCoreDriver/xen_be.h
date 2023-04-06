@@ -16,9 +16,10 @@
 #ifndef MC_XEN_BE_H
 #define MC_XEN_BE_H
 
+#include "platform.h"
 #include "protocol_common.h"
 
-#ifdef CONFIG_XEN
+#ifdef MC_XEN_FEBE
 struct tee_protocol_ops *xen_be_check(void);
 #else
 static inline

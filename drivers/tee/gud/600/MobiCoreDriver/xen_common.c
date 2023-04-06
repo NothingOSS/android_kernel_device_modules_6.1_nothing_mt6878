@@ -13,7 +13,9 @@
  * GNU General Public License for more details.
  */
 
-#ifdef CONFIG_XEN
+#include "platform.h"
+
+#ifdef MC_XEN_FEBE
 
 #include "main.h"
 #include "client.h"		/* client_close */

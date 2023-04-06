@@ -22,7 +22,8 @@
  * Initialisation values flags
  */
 /* Set if IRQ is present */
-#define MC_IV_FLAG_IRQ		BIT(0)
+#define MC_IV_FLAG_IRQ			BIT(0)
+#define MC_IV_FLAG_FFA_NOTIFICATION	BIT(1)
 
 struct init_values {
 	u32	flags;

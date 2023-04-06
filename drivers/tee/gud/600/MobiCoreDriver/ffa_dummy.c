@@ -34,8 +34,9 @@ int ffa_register_buffer(struct page **pages, struct tee_mmu *mmu, u64 tag)
 	return 0;
 }
 
-void ffa_reclaim_buffer(struct tee_mmu *mmu)
+int ffa_reclaim_buffer(struct tee_mmu *mmu)
 {
+	return 0;
 }
 
 inline int ffa_fastcall(union fc_common *fc)

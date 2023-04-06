@@ -26,6 +26,16 @@
 
 #define MC_TEE_HOTPLUG
 
+/* Enable Paravirtualization support */
+// #define MC_FEBE
+
+/* Xen virtualization support */
+#if defined(CONFIG_XEN)
+#if defined(MC_FEBE)
+#define MC_XEN_FEBE
+#endif /* MC_XEN_FEBE */
+#endif /* CONFIG_XEN */
+
 /* ARM FFA protocol support */
 #if KERNEL_VERSION(5, 4, 0) <= LINUX_VERSION_CODE
 #if IS_REACHABLE(CONFIG_ARM_FFA_TRANSPORT)

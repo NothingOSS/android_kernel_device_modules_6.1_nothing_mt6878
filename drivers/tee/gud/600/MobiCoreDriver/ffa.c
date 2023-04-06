@@ -13,6 +13,7 @@
  * GNU General Public License for more details.
  */
 #include <linux/scatterlist.h>
+#include <linux/interrupt.h>
 
 #include "mci/mcifc.h"
 
@@ -35,6 +36,7 @@ static struct {
 	struct ffa_device *dev;
 	const struct ffa_ops *ops;
 	struct ffa_device_id device_id;
+	irq_handler_t global_irq_handler;
 } l_ffa_ctx = {
 	.dev = NULL,
 	.ops = NULL,
@@ -78,6 +80,16 @@ static void ffa_remove(struct ffa_device *ffa_dev)
 	(void)ffa_dev;
 }
 
+#ifdef MC_FFA_NOTIFICATION
+static void ffa_notif_callback(ffa_partition_id_t partition_id,
+			       ffa_notification_id_t notification_id,
+			       void *dev_data)
+{
+	if (l_ffa_ctx.global_irq_handler)
+		l_ffa_ctx.global_irq_handler(notification_id, dev_data);
+}
+#endif
+
 static inline int ffa_shm_register(struct page **pages, size_t num_pages,
 				   struct tee_mmu *mmu, u64 tag)
 {
@@ -112,10 +124,10 @@ static inline int ffa_shm_register(struct page **pages, size_t num_pages,
 	if (rc)
 		return rc;
 
-	mmu->ffa_handle = args.g_handle;
+	mmu->handle = args.g_handle;
 
 	mc_dev_devel("FFA buffer %s: handle %llx, tag %llx\n",
-		     lend ? "lent" : "shared", mmu->ffa_handle, tag);
+		     lend ? "lent" : "shared", mmu->handle, tag);
 
 	return 0;
 }
@@ -151,7 +163,7 @@ static int ffa_share_continuous_buffer(const void *buf,
 		goto end;
 
 	if (ffa_handle)
-		*ffa_handle = mmu.ffa_handle;
+		*ffa_handle = mmu.handle;
 
 end:
 	if (pages_page)
@@ -159,6 +171,27 @@ end:
 
 	return ret;
 }
+
+#ifdef MC_FFA_NOTIFICATION
+int ffa_register_notif_handler(irq_handler_t handler)
+{
+	int id = 0;
+
+	/* Setup global notification */
+	id = l_ffa_ctx.ops->request_notification(l_ffa_ctx.dev, false,
+						  ffa_notif_callback, NULL);
+	if (id < 0) {
+		mc_dev_err(ret, "requesting FFA notification");
+		return id;
+	}
+
+	l_ffa_ctx.global_irq_handler = handler;
+	mc_dev_info("FFA notification handler registered on notification id %x",
+		    id);
+
+	return id;
+}
+#endif
 
 int ffa_share_mci_buffer(const void *mci, size_t n_cont_pages, u64 *ffa_handle)
 {
@@ -178,15 +211,10 @@ int ffa_register_buffer(struct page **pages, struct tee_mmu *mmu, u64 tag)
 	return ffa_shm_register(pages, mmu->nr_pages, mmu, tag);
 }
 
-void ffa_reclaim_buffer(struct tee_mmu *mmu)
+int ffa_reclaim_buffer(struct tee_mmu *mmu)
 {
-	int ret = 0;
-
-	ret = l_ffa_ctx.ops->mem_ops->memory_reclaim(mmu->ffa_handle,
-					    FFA_MEMORY_RECLAIM_KEEP_MEMORY);
-	if (ret)
-		mc_dev_err(ret, "reclaiming ffa buffer, handle %llx",
-			   mmu->ffa_handle);
+	return l_ffa_ctx.ops->mem_ops->memory_reclaim(mmu->handle,
+					     FFA_MEMORY_RECLAIM_KEEP_MEMORY);
 }
 
 /* Wrapper around FFA_MSG_SEND_DIRECT_REQ */

@@ -18,6 +18,8 @@
 
 void logging_run(void);
 int logging_init(phys_addr_t *buffer, u32 *size);
+int logging_start(void);
+void logging_stop(void);
 void logging_exit(bool buffer_busy);
 int logging_trace_level_init(void);
 

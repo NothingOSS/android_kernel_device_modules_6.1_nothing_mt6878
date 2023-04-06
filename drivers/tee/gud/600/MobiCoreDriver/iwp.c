@@ -149,7 +149,8 @@ static u64 iws_slot_get(void)
 	u64 slot = INVALID_IWS_SLOT;
 
 	if (protocol_is_fe())
-		return (uintptr_t)kzalloc(sizeof(*iws), GFP_KERNEL);
+		return (uintptr_t)kzalloc(sizeof(struct interworld_session),
+					  GFP_KERNEL);
 
 	mutex_lock(&l_ctx.iws_list_lock);
 	if (!list_empty(&l_ctx.free_iws)) {

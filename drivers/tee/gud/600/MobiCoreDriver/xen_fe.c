@@ -16,11 +16,12 @@
 #include <linux/irq.h>
 #include <linux/kernel.h>	/* container_of */
 
+#include "platform.h"
 #include "mci/mciiwp.h"		/* struct interworld_session */
 
 #include "main.h"
 
-#ifdef CONFIG_XEN
+#ifdef MC_XEN_FEBE
 
 #include "client.h"
 #include "iwp.h"
@@ -80,13 +81,13 @@ static void xen_fe_map_release_pmd_ptes(
 {
 	int i;
 
-	gnttab_end_foreign_access(buffer->pmd_ref, true, 0);
+	gnttab_end_foreign_access(buffer->pmd_ref, NULL);
 	map->refs_shared--;
 	mc_dev_devel("unmapped PMD ref %llu", buffer->pmd_ref);
 
 	for (i = 0; i < map->nr_pte_tables; i++) {
 		gnttab_end_foreign_access(
-			map->mmu->pmd_table.entries[i], true, 0);
+			map->mmu->pmd_table.entries[i], NULL);
 		map->refs_shared--;
 		mc_dev_devel("unmapped PTE %d ref %llu",
 			     i, map->mmu->pmd_table.entries[i]);
@@ -108,7 +109,7 @@ static void xen_fe_map_release(struct protocol_fe_map *map)
 		for (j = 0; j < nr_pages; j++) {
 			gnttab_end_foreign_access(
 				map->mmu->pte_tables[i].entries[j],
-				map->readonly, 0);
+				NULL);
 			map->refs_shared--;
 			nr_pages_left--;
 			mc_dev_devel("unmapped [%d, %d] ref %llu, left %d",
@@ -309,6 +310,7 @@ static irqreturn_t xen_fe_irq_handler_domu_th(int intr, void *arg)
 	xfe->ring->fe2be_data.id = 0;
 	complete(&xfe->ring_completion);
 
+	xen_irq_lateeoi(intr, 0);
 	return IRQ_HANDLED;
 }
 
@@ -329,7 +331,8 @@ static inline void xfe_release(struct tee_xfe *xfe)
 		xenbus_free_evtchn(xfe->xdev, xfe->evtchn_dom0);
 
 	if (xfe->ring_ul) {
-		gnttab_end_foreign_access(xfe->ring_ref, 0, xfe->ring_ul);
+		gnttab_end_foreign_access(xfe->ring_ref,
+					  (struct page *)&xfe->ring_ul);
 		free_page(xfe->ring_ul);
 	}
 
@@ -362,7 +365,8 @@ static inline struct tee_xfe *xfe_create(struct xenbus_device *xdev)
 	xfe->pfe.be2fe_data = &xfe->ring->be2fe_data;
 
 	/* Allow/grant access to Frontend Ring buffer created */
-	ret = xenbus_grant_ring(xfe->xdev, xfe->ring, 1, &ref);
+	ret = xenbus_setup_ring(xfe->xdev, GFP_KERNEL, (void **)&xfe->ring,
+				1, &ref);
 	if (ret < 0)
 		goto err;
 
@@ -589,4 +593,4 @@ struct tee_protocol_ops *xen_fe_check(void)
 	return &protocol_ops;
 }
 
-#endif /* CONFIG_XEN */
+#endif /* MC_XEN_FEBE */

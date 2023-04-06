@@ -51,7 +51,9 @@ MODULE_IMPORT_NS(DMA_BUF);
 #endif /* CONFIG_ION_SYSTEM_HEAP */
 #endif /* CONFIG_ION */
 
-#ifdef CONFIG_XEN
+#include "platform.h"
+
+#ifdef MC_XEN_FEBE
 /* To get the MFN */
 #include <linux/pfn.h>
 #include <xen/page.h>
@@ -66,10 +68,7 @@ MODULE_IMPORT_NS(DMA_BUF);
 #include "protocol.h"	/* protocol_fe_uses_pages_and_vas */
 #include "mmu.h"
 #include "mmu_internal.h"
-#include "platform.h"
-#ifdef MC_FFA_FASTCALL
-#include "ffa.h"
-#endif
+#include "fastcall.h"
 
 #define PHYS_48BIT_MASK (BIT(48) - 1)
 
@@ -207,9 +206,7 @@ static void tee_mmu_delete(struct tee_mmu *mmu)
 {
 	unsigned long i, nr_pages_left = mmu->nr_pages;
 
-#ifdef MC_FFA_FASTCALL
-	ffa_reclaim_buffer(mmu);
-#endif
+	fc_reclaim_buffer(mmu);
 
 #ifdef CONFIG_DMA_SHARED_BUFFER
 	if (mmu->dma_buf) {
@@ -598,13 +595,11 @@ end:
 	}
 
 	if (all_pages) {
-#ifdef MC_FFA_FASTCALL
-		ret = ffa_register_buffer(all_pages, mmu, buf->tag);
+		ret = fc_register_buffer(all_pages, mmu, buf->tag);
 		if (ret) {
-			mc_dev_err(ret, "sharing FFA buffer");
+			mc_dev_err(ret, "sharing buffer");
 			return ERR_PTR(ret);
 		}
-#endif
 		kfree(all_pages);
 	}
 
@@ -620,7 +615,7 @@ struct tee_mmu *tee_mmu_wrap(struct tee_deleter *deleter, struct page **pages,
 			     const struct mcp_buffer_map *b_map)
 {
 	int ret = -EINVAL;
-#ifdef CONFIG_XEN
+#ifdef MC_XEN_FEBE
 	struct tee_mmu *mmu;
 	unsigned long chunk, nr_pages_left;
 
@@ -668,6 +663,7 @@ struct tee_mmu *tee_mmu_wrap(struct tee_deleter *deleter, struct page **pages,
 	}
 
 	mmu->deleter = deleter;
+	mmu->handle = mmu->pmd_table.page;
 	mc_dev_devel("wrapped mmu %p: len %u off %u flg %x pmd table %lx",
 		     mmu, mmu->length, mmu->offset, mmu->flags,
 		     mmu->pmd_table.page);
@@ -706,24 +702,24 @@ void tee_mmu_put(struct tee_mmu *mmu)
 
 u64 tee_mmu_get_handle(struct tee_mmu *mmu)
 {
-#ifdef MC_FFA_FASTCALL
-	return mmu->ffa_handle;
-#else
-	return 0;
-#endif
+	return mmu->handle;
 }
 
 void tee_mmu_buffer(struct tee_mmu *mmu, struct mcp_buffer_map *map)
 {
 #ifdef MC_FFA_FASTCALL
-	map->addr = mmu->ffa_handle;
 	map->type = WSM_FFA;
+	map->addr = mmu->handle;
 #else
+	map->type = WSM_L1;
+#ifdef MC_FEBE
 	if (mmu->use_pages_and_vas)
 		map->addr = mmu->pmd_table.page;
 	else
-		map->addr = virt_to_phys(mmu->pmd_table.addr);
-	map->type = WSM_L1;
+		map->addr = mmu->handle;
+#else
+	map->addr = mmu->handle;
+#endif
 #endif
 
 	map->secure_va = 0;

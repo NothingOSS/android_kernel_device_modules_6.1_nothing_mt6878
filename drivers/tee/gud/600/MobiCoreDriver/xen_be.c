@@ -13,7 +13,9 @@
  * GNU General Public License for more details.
  */
 
-#ifdef CONFIG_XEN
+#include "platform.h"
+
+#ifdef MC_XEN_FEBE
 
 #include <linux/delay.h>
 #include <linux/mm.h>
@@ -528,7 +530,7 @@ static inline void frontend_attach(struct tee_xfe *xfe)
 		xen_be_irq_handler_domu_th, 0, "tee_be_domu", xfe);
 #elif KERNEL_VERSION(5, 10, 0) <= LINUX_VERSION_CODE
 	ret = bind_interdomain_evtchn_to_irqhandler_lateeoi(
-		xfe->xdev->otherend_id, xfe->evtchn_dom0,
+		xfe->xdev->otherend_id, xfe->evtchn_domu,
 		xen_be_irq_handler_domu_th, 0, "tee_be_domu", xfe);
 #else
 	ret = bind_interdomain_evtchn_to_irqhandler(

@@ -84,10 +84,7 @@ struct tee_mmu {
 	struct dma_buf			*dma_buf;
 	struct dma_buf_attachment	*attach;
 	struct sg_table			*sgt;
-#ifdef MC_FFA_FASTCALL
-	/* FFA */
-	u64				ffa_handle;
-#endif
+	u64				handle;
 };
 
 /*

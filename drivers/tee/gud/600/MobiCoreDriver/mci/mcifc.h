@@ -40,6 +40,9 @@
 /**< Initializing FastCall (scheduler) */
 #define MC_FC_SCHED_INIT	MC_FC_STD32(3)
 
+#define MC_FC_REGISTER_SHM	MC_FC_STD32(4)
+#define MC_FC_RECLAIM_SHM	MC_FC_STD32(5)
+
 /**< Enable SWd tracing via memory */
 #define MC_FC_MEM_TRACE		MC_FC_STD32(10)
 /**< CPU is removed from system */

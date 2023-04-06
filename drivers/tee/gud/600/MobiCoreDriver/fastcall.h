@@ -16,6 +16,8 @@
 #ifndef TBASE_FASTCALL_H
 #define TBASE_FASTCALL_H
 
+#include "mmu.h"
+
 struct fc_s_yield {
 	u32	resp;
 	u32	ret;
@@ -45,6 +47,9 @@ int fc_trace_deinit(void);
 int fc_nsiq(u32 session_id, u32 payload);
 int fc_yield(u32 session_id, u32 payload, struct fc_s_yield *resp);
 int fc_cpu_off(void);
+
+int fc_register_buffer(struct page **pages, struct tee_mmu *mmu, u64 tag);
+void fc_reclaim_buffer(struct tee_mmu *mmu);
 
 int mc_fastcall_debug_smclog(struct kasnprintf_buf *buf);
 

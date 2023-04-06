@@ -760,7 +760,9 @@ void nq_signal_tee_hung(void)
 
 static int nq_boot_tee(void)
 {
+#ifndef MC_FFA_NOTIFICATION
 	struct irq_data *irq_d = irq_get_irq_data(l_ctx.irq);
+#endif
 	unsigned long timeout_jiffies;
 	int ret;
 	u64 tee_sched_buffer, mci_buffer = 0;
@@ -769,12 +771,17 @@ static int nq_boot_tee(void)
 	cpumask_t old_affinity = tee_set_affinity();
 
 	/* Set initialization values */
+#ifdef MC_FFA_NOTIFICATION
+	l_ctx.tee_sched->init_values.flags |= MC_IV_FLAG_FFA_NOTIFICATION;
+	l_ctx.tee_sched->init_values.irq = l_ctx.irq;
+#else
 	l_ctx.tee_sched->init_values.flags |= MC_IV_FLAG_IRQ;
 #if defined(MC_INTR_SSIQ_SWD)
 	l_ctx.tee_sched->init_values.irq = MC_INTR_SSIQ_SWD;
 #endif
 	if (irq_d)
 		l_ctx.tee_sched->init_values.irq = irq_d->hwirq;
+#endif
 
 #ifdef MC_FFA_FASTCALL
 	ret = ffa_share_mci_buffer(l_ctx.tee_sched,
@@ -1200,6 +1207,13 @@ int nq_start(void)
 	int ret, cnt;
 	u64 trace_buffer = 0;
 
+#ifdef MC_FFA_NOTIFICATION
+	l_ctx.irq = ffa_register_notif_handler(irq_handler);
+	if (l_ctx.irq < 0) {
+		ret = -EINVAL;
+		return ret;
+	}
+#else
 	/* Make sure we have the interrupt before going on */
 #if defined(CONFIG_OF)
 	l_ctx.irq = irq_of_parse_and_map(g_ctx.mcd->of_node, 0);
@@ -1229,6 +1243,7 @@ int nq_start(void)
 			   l_ctx.irq);
 		return ret;
 	}
+#endif
 #endif
 
 	/* Enable TEE clock */
@@ -1271,6 +1286,12 @@ int nq_start(void)
 		ret = fc_trace_init(trace_buffer, l_ctx.log_buffer_size);
 		tee_restore_affinity(old_affinity);
 		if (!ret) {
+			ret = logging_start();
+			if (ret) {
+				mc_dev_err(ret, "logging start failed");
+				return ret;
+			}
+
 			/* Trace level setup */
 			logging_trace_level_init();
 
@@ -1291,6 +1312,7 @@ int nq_start(void)
 	ret = nq_boot_tee();
 	if (ret) {
 		mc_clock_disable();
+		logging_stop();
 		return ret;
 	}
 
@@ -1304,6 +1326,7 @@ int nq_start(void)
 		l_ctx.tee_worker[cnt] = kthread_create(tee_worker,
 						       (void *)((uintptr_t)cnt),
 						       "%s", worker_name);
+
 #if defined(MC_BIG_CORE)
 		kthread_bind(l_ctx.tee_worker[cnt], MC_BIG_CORE);
 #endif
@@ -1311,6 +1334,7 @@ int nq_start(void)
 		if (IS_ERR(l_ctx.tee_worker[cnt])) {
 			ret = PTR_ERR(l_ctx.tee_worker[cnt]);
 			mc_dev_err(ret, "tee_worker thread creation failed");
+			logging_stop();
 			return ret;
 		}
 	}
@@ -1335,6 +1359,8 @@ int nq_start(void)
 void nq_stop(void)
 {
 	u32 worker;
+
+	logging_stop();
 
 	/* Make all workers exit */
 	l_ctx.tee_scheduler_run = false;

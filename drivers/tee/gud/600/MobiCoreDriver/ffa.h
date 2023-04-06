@@ -18,6 +18,8 @@
 
 #ifdef MC_FFA_FASTCALL
 
+#include <linux/interrupt.h>
+
 #include "mmu.h"
 #include "fastcall.h"
 
@@ -27,10 +29,13 @@ int ffa_register_module(void);
 void ffa_unregister_module(void);
 int ffa_module_probe(void);
 
+#ifdef MC_FFA_NOTIFICATION
+int ffa_register_notif_handler(irq_handler_t handler);
+#endif
 int ffa_share_trace_buffer(phys_addr_t buffer, u32 size, u64 *ffa_handle);
 int ffa_share_mci_buffer(const void *mci, size_t n_cont_pages, u64 *ffa_handle);
 int ffa_register_buffer(struct page **pages, struct tee_mmu *mmu, u64 tag);
-void ffa_reclaim_buffer(struct tee_mmu *mmu);
+int ffa_reclaim_buffer(struct tee_mmu *mmu);
 
 #endif /* MC_FFA_FASTCALL */
 

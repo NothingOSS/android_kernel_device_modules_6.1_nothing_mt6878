@@ -24,11 +24,18 @@
 #include "mci/mcifc.h"
 
 #include "main.h"
+#include "mmu.h"
+#include "mmu_internal.h"
 #include "fastcall.h"
 #include "nq.h"
+#include "protocol.h"
 
 #ifdef MC_FFA_FASTCALL
 #include "ffa.h"
+#endif
+
+#ifdef CONFIG_XEN
+#include <xen/xen.h>
 #endif
 
 /* Unknown SMC Function Identifier (SMC Calling Convention) */
@@ -142,6 +149,39 @@ union fc_yield {
 	} out;
 };
 
+union fc_register_buffer {
+	union fc_common common;
+
+	struct {
+		u32 cmd;
+		u32 phys_addr_low;
+		u32 phys_addr_high;
+		u32 pte_count;
+	} in;
+
+	struct {
+		u32 resp;
+		u32 ret;
+		u32 handle_low;
+		u32 handle_high;
+	} out;
+};
+
+union fc_reclaim_buffer {
+	union fc_common common;
+
+	struct {
+		u32 cmd;
+		u32 handle_low;
+		u32 handle_high;
+	} in;
+
+	struct {
+		u32 resp;
+		u32 ret;
+	} out;
+};
+
 #ifdef MC_TEE_HOTPLUG
 union fc_cpu_off {
 	union fc_common common;
@@ -205,25 +245,30 @@ static inline int __smc(union fc_common *fc, const char *func)
 	ret = ffa_fastcall(fc);
 #else
 	{
-		/* SMC expect values in x0-x3 */
+		/* SMC expect values in x0-x7 */
 		register u64 reg0 __asm__("x0") = fc->in.cmd;
 		register u64 reg1 __asm__("x1") = fc->in.param[0];
 		register u64 reg2 __asm__("x2") = fc->in.param[1];
 		register u64 reg3 __asm__("x3") = fc->in.param[2];
+		register u64 reg4 __asm__("x4") = 0;
+		register u64 reg5 __asm__("x5") = 0;
+		register u64 reg6 __asm__("x6") = 0;
+		register u64 reg7 __asm__("x7") = 0;
 
 		/*
 		 * According to AARCH64 SMC Calling Convention (ARM DEN 0028A),
-		 * section 3.1: registers x4-x17 are unpredictable/scratch
+		 * section 3.1: registers x8-x17 are unpredictable/scratch
 		 * registers.  So we have to make sure that the compiler does
 		 * not allocate any of those registers by letting him know that
 		 * the asm code might clobber them.
 		 */
 		__asm__ volatile (
 			"smc #0\n"
-			: "+r"(reg0), "+r"(reg1), "+r"(reg2), "+r"(reg3)
+			: "+r"(reg0), "+r"(reg1), "+r"(reg2), "+r"(reg3),
+			  "+r"(reg4), "+r"(reg5), "+r"(reg6), "+r"(reg7)
 			:
-			: "x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11",
-			  "x12", "x13", "x14", "x15", "x16", "x17"
+			: "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15",
+			  "x16", "x17"
 		);
 
 		/* set response */
@@ -380,6 +425,103 @@ int fc_yield(u32 session_id, u32 payload, struct fc_s_yield *resp)
 	}
 
 	return 0;
+}
+
+#ifdef CONFIG_XEN
+static int fc_register_shm(u64 phys_addr, u32 pte_count, u64 *handle)
+{
+	int ret;
+	union fc_register_buffer fc;
+
+	memset(&fc, 0, sizeof(fc));
+	fc.in.cmd = MC_FC_REGISTER_SHM;
+	fc.in.phys_addr_low = (u32)phys_addr;
+	fc.in.phys_addr_high = (u32)(phys_addr >> 32);
+	fc.in.pte_count = pte_count;
+	ret = smc(&fc);
+	if (ret)
+		return ret;
+
+	/* SWd return status must always be zero */
+	if (fc.out.ret)
+		return -EIO;
+
+	if (handle)
+		*handle = (u64)fc.out.handle_high << 32 | fc.out.handle_low;
+
+	return 0;
+}
+
+static int fc_reclaim_shm(u64 handle)
+{
+	int ret;
+	union fc_reclaim_buffer fc;
+
+	memset(&fc, 0, sizeof(fc));
+	fc.in.cmd = MC_FC_RECLAIM_SHM;
+	fc.in.handle_low = (u32)handle;
+	fc.in.handle_high = (u32)(handle >> 32);
+	ret = smc(&fc);
+	if (ret)
+		return ret;
+
+	/* SWd return status must always be zero */
+	if (fc.out.ret)
+		return -EIO;
+
+	return 0;
+}
+#endif
+
+int fc_register_buffer(struct page **pages, struct tee_mmu *mmu, u64 tag)
+{
+	int ret = 0;
+
+#ifdef MC_FFA_FASTCALL
+	ret = ffa_register_buffer(pages, mmu, tag);
+#else
+#ifdef CONFIG_XEN
+	/*
+	 * CONFIG_XEN can be active even if xen isn't running as EL2.
+	 * xen_domain() ensures that Xen is running as Hypervisor.
+	 * Issue the FC when Xen is present and the module isn't running as FE.
+	 */
+	if (xen_domain() && !protocol_is_fe()) {
+		phys_addr_t phys = virt_to_phys(mmu->pmd_table.addr);
+
+		ret = fc_register_shm(phys, mmu->nr_pages, &mmu->handle);
+	} else {
+		mmu->handle = virt_to_phys(mmu->pmd_table.addr);
+	}
+#else
+	mmu->handle = virt_to_phys(mmu->pmd_table.addr);
+#endif
+#endif
+
+	if (ret)
+		mc_dev_err(ret, "sharing buffer, handle %llx",
+			   mmu->handle);
+
+	return ret;
+}
+
+void fc_reclaim_buffer(struct tee_mmu *mmu)
+{
+	int ret = 0;
+
+#ifdef MC_FFA_FASTCALL
+	ret = ffa_reclaim_buffer(mmu);
+#else
+#ifdef CONFIG_XEN
+	if (xen_domain() && !protocol_is_fe())
+		ret = fc_reclaim_shm(mmu->handle);
+
+#endif
+#endif
+
+	if (ret)
+		mc_dev_err(ret, "reclaiming buffer, handle %llx",
+			   mmu->handle);
 }
 
 #ifdef MC_TEE_HOTPLUG

@@ -18,11 +18,12 @@
 
 #include <linux/version.h>
 
+#include "platform.h"
 #include "main.h"
 #include "client.h"
 #include "protocol_common.h"
 
-#ifdef CONFIG_XEN
+#ifdef MC_XEN_FEBE
 struct tee_protocol_ops *xen_fe_check(void);
 #else
 static inline
