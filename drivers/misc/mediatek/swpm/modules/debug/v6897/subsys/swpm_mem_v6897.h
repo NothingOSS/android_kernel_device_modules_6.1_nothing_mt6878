@@ -9,7 +9,7 @@
 #define MAX_APHY_OTHERS_PWR			(16)
 #define NR_DRAM_PWR_SAMPLE			(3)
 /* sync emi in sspm */
-#define MAX_EMI_NUM				(1)
+#define MAX_EMI_NUM				(2)
 
 enum ddr_freq {
 	DDR_400,
@@ -20,6 +20,8 @@ enum ddr_freq {
 	DDR_2133,
 	DDR_2750,
 	DDR_3200,
+	DDR_3750,
+	DDR_4266,
 
 	NR_DDR_FREQ
 };
@@ -67,56 +69,6 @@ enum dram_pwr_type {
 	DRAM_VDDQ,
 
 	NR_DRAM_PWR_TYPE
-};
-
-struct aphy_others_bw_data {
-	unsigned short bw[MAX_APHY_OTHERS_PWR];
-};
-
-struct aphy_others_pwr {
-	unsigned short read_coef[MAX_APHY_OTHERS_PWR];
-	unsigned short write_coef[MAX_APHY_OTHERS_PWR];
-};
-
-struct aphy_others_pwr_data {
-	struct aphy_others_pwr pwr[NR_DDR_FREQ];
-	unsigned short coef_idle[NR_DDR_FREQ];
-	unsigned short coef_srst[NR_DDR_FREQ];
-	unsigned short coef_ssr[NR_DDR_FREQ];
-	unsigned short volt[NR_DDR_FREQ];
-};
-
-/* unit: uA */
-struct dram_pwr_conf {
-	unsigned int volt;
-	unsigned int i_dd0;
-	unsigned int i_dd2p;
-	unsigned int i_dd2n;
-	unsigned int i_dd4r;
-	unsigned int i_dd4w;
-	unsigned int i_dd5;
-	unsigned int i_dd6;
-};
-
-struct dram_pwr_data {
-	struct dram_pwr_conf idd_conf[NR_DRAM_PWR_SAMPLE];
-};
-
-/* mem share memory data structure - 2640/2700 bytes */
-struct mem_swpm_rec_data {
-	/* 2(short) * 16(sample point) * 9(opp_num) = 288 bytes */
-	struct aphy_others_bw_data aphy_others_bw_tbl[NR_DDR_FREQ];
-
-	/* 2(short) * 3(pwr_type) */
-	/* * ((16+16)(r/w_coef) * 9(opp) + 9(idle) + 9(srst) + 9(ssr) + 9(volt)) = 1944 bytes */
-	struct aphy_others_pwr_data
-		aphy_others_pwr_tbl[NR_APHY_OTHERS_PWR_TYPE];
-
-	/* 2(short) * 3(dram_pwr_sample) = 6 bytes */
-	unsigned short dram_pwr_sample[NR_DRAM_PWR_SAMPLE];
-
-	/* 4(int) * 12(pwr_type * pwr_sample) * 8 = 384 bytes */
-	struct dram_pwr_data dram_conf[NR_DRAM_PWR_TYPE];
 };
 
 extern spinlock_t mem_swpm_spinlock;

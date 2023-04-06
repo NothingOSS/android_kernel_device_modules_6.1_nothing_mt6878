@@ -41,8 +41,6 @@
 
 #define SWPM_EXT_DBG (0)
 
-static struct swpm_pmsr_data *swpm_pmsr_data_ptr;
-static struct swpm_pmsr_data default_data;
 
 static ssize_t enable_read(char *ToUser, size_t sz, void *priv)
 {
@@ -226,58 +224,6 @@ static const struct mtk_swpm_sysfs_op swpm_pmsr_log_interval_fops = {
 	.fs_write = swpm_pmsr_log_interval_write,
 };
 
-static ssize_t swpm_pmsr_sig_sel_read(char *ToUser, size_t sz, void *priv)
-{
-	char *p = ToUser;
-	size_t mSize = 0;
-	unsigned int i, val;
-
-	if (!ToUser)
-		return -EINVAL;
-
-	for (i = 0; swpm_pmsr_data_ptr && i < PMSR_MAX_SIG_SEL; i++) {
-		val = swpm_pmsr_data_ptr->sig_record[i];
-		if (default_data.sig_record[i] != val)
-			p += sprintf(p, "(*)");
-		p += scnprintf(p + mSize, sz - mSize,
-			       "SWID %d\t HWID %d\n", i, val);
-	}
-	p += sprintf(p, "(*) is modified\n");
-
-	WARN_ON(sz - mSize <= 0);
-
-	return p - ToUser;
-}
-
-static ssize_t swpm_pmsr_sig_sel_write(char *FromUser, size_t sz, void *priv)
-{
-	unsigned int type = 0, val = 0;
-	int ret;
-
-	ret = -EINVAL;
-
-	if (!FromUser)
-		goto out;
-
-	if (sz >= MTK_SWPM_SYSFS_BUF_WRITESZ)
-		goto out;
-
-	ret = -EPERM;
-	if (sscanf(FromUser, "%d %d", &type, &val) == 2) {
-		swpm_set_only_cmd(type, val,
-				PMSR_SET_SIG_SEL, PMSR_CMD_TYPE);
-		ret = sz;
-	}
-
-out:
-	return sz;
-}
-
-static const struct mtk_swpm_sysfs_op swpm_pmsr_sig_sel_fops = {
-	.fs_read = swpm_pmsr_sig_sel_read,
-	.fs_write = swpm_pmsr_sig_sel_write,
-};
-
 #if SWPM_EXT_DBG
 static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 {
@@ -429,8 +375,6 @@ static void swpm_v6897_dbg_fs_init(void)
 			, 0644, &swpm_pmsr_dbg_en_fops, NULL, NULL);
 	mtk_swpm_sysfs_entry_func_node_add("swpm_pmsr_log_interval"
 			, 0644, &swpm_pmsr_log_interval_fops, NULL, NULL);
-	mtk_swpm_sysfs_entry_func_node_add("swpm_pmsr_sig_sel"
-			, 0644, &swpm_pmsr_sig_sel_fops, NULL, NULL);
 
 #if SWPM_EXT_DBG
 	mtk_swpm_sysfs_entry_func_node_add("swpm_sp_ddr_idx"
@@ -455,8 +399,6 @@ static int __init swpm_v6897_dbg_device_initcall(void)
 
 static int __init swpm_v6897_dbg_late_initcall(void)
 {
-	unsigned int i, offset;
-
 	/*
 	 * use late init call sync to
 	 * ensure qos module is ready
@@ -466,13 +408,6 @@ static int __init swpm_v6897_dbg_late_initcall(void)
 	swpm_v6897_ext_init();
 	swpm_v6897_dbg_fs_init();
 
-	offset = swpm_set_and_get_cmd(0, 0,
-			      PMSR_GET_SIG_SEL, PMSR_CMD_TYPE);
-	swpm_pmsr_data_ptr =
-		(struct swpm_pmsr_data *)sspm_sbuf_get(offset);
-
-	for (i = 0; swpm_pmsr_data_ptr && i < PMSR_MAX_SIG_SEL; i++)
-		default_data.sig_record[i] = swpm_pmsr_data_ptr->sig_record[i];
 
 	pr_notice("swpm init success\n");
 

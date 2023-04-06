@@ -65,39 +65,6 @@ struct core_swpm_data {
 	unsigned int thermal;
 };
 
-enum aphy_core_pwr_type {
-	APHY_VCORE,
-	NR_APHY_CORE_PWR_TYPE
-};
-
-struct aphy_core_bw_data {
-	unsigned short bw[MAX_APHY_CORE_PWR];
-};
-
-struct aphy_core_pwr {
-	unsigned short read_coef[MAX_APHY_CORE_PWR];
-	unsigned short write_coef[MAX_APHY_CORE_PWR];
-};
-
-struct aphy_core_pwr_data {
-	struct aphy_core_pwr pwr[NR_DDR_FREQ];
-	unsigned short coef_idle[NR_DDR_FREQ];
-	unsigned short coef_srst[NR_DDR_FREQ];
-	unsigned short coef_ssr[NR_DDR_FREQ];
-	unsigned short volt[NR_DDR_FREQ];
-};
-
-/* core share memory data structure - 874/1000 bytes */
-struct core_swpm_rec_data {
-	/* 2(short) * 12(sample point) * 9(opp_num) = 216 bytes */
-	struct aphy_core_bw_data aphy_core_bw_tbl[NR_DDR_FREQ];
-
-	/* 2(short) * 1(pwr_type) */
-	/* * ((12+12)(r/w_coef) * 9(opp) + 9(idle) + 9(srst) + 9(ssr) + 9(volt)) = 504 bytes */
-	struct aphy_core_pwr_data
-		aphy_core_pwr_tbl[NR_APHY_CORE_PWR_TYPE];
-};
-
 extern unsigned int swpm_core_static_data_get(void);
 extern void swpm_core_static_replaced_data_set(unsigned int data);
 extern void swpm_core_static_data_init(void);
