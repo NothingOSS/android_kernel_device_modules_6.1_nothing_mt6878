@@ -1254,10 +1254,10 @@ int fill_sv_img_fp(
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_scen *scen = &job->job_scen;
 	struct mtk_camsv_device *sv_dev;
-	unsigned int pipe_id, exp_no, buf_cnt = 0, buf_ofset = 0;
-	int tag_idx, i, j;
+	unsigned int pipe_id, exp_no, buf_cnt, buf_ofset;
+	int exp_order = get_exp_order(&job->job_scen);
+	int tag_idx, i, j, ret = 0;
 	bool is_w;
-	int ret = 0;
 
 	if (node->desc.id != MTK_RAW_PURE_RAW_OUT)
 		goto EXIT;
@@ -1273,6 +1273,7 @@ int fill_sv_img_fp(
 		buf_cnt = is_rgbw(job) ? 2 : 1;
 	} else if (is_stagger_3_exposure(scen)) {
 		exp_no = 3;
+		buf_cnt = 1;
 		if (is_rgbw(job)) {
 			ret = -1;
 			pr_info("%s: rgbw not supported under 3-exp stagger case",
@@ -1300,8 +1301,9 @@ int fill_sv_img_fp(
 					__func__, exp_no, (is_w) ? 1 : 0);
 				goto EXIT;
 			}
+			buf_ofset = buf->image_info.size[0] *
+				get_buf_offset_idx(exp_order, i, (buf_cnt == 2), is_w);
 			ret = fill_sv_fp(helper, buf, node, tag_idx, pipe_id, buf_ofset);
-			buf_ofset += buf->image_info.size[0];
 		}
 	}
 
