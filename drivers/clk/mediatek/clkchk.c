@@ -328,18 +328,19 @@ EXPORT_SYMBOL(clkchk_pvdck_is_prepared);
 
 bool clkchk_pvdck_is_enabled(struct provider_clk *pvdck)
 {
-	struct clk_hw *hw;
+	struct clk_hw *hw, *p_hw;
 
 	if (clkchk_pvdck_is_on(pvdck) == 1) {
 		hw = __clk_get_hw(pvdck->ck);
+		p_hw = clk_hw_get_parent(hw);
 
 		if (IS_ERR_OR_NULL(hw))
 			return false;
 
-		if (IS_ERR_OR_NULL(clk_hw_get_parent(hw)))
+		if (IS_ERR_OR_NULL(p_hw))
 			return false;
 
-		if (!clk_hw_is_enabled(clk_hw_get_parent(hw)))
+		if (!clk_hw_is_enabled(p_hw))
 			return false;
 
 		return clk_hw_is_enabled(hw);
