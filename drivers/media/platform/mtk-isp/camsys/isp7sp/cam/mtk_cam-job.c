@@ -3558,6 +3558,15 @@ static int update_job_raw_param_to_ipi_frame(struct mtk_cam_job *job,
 	return 0;
 }
 
+/* TODO: imgo ufbc */
+static void update_raw_image_buf_vaddr(struct mtk_cam_buffer *buf)
+{
+	struct mtk_cam_cached_image_info *info = &buf->image_info;
+
+	buf->vaddr = is_yuv_ufo(info->v4l2_pixelformat) ?
+		vb2_plane_vaddr(&buf->vbb.vb2_buf, 0) :  NULL;
+}
+
 static int update_raw_image_buf_to_ipi_frame(struct req_buffer_helper *helper,
 		struct mtk_cam_buffer *buf, struct mtk_cam_video_device *node,
 		struct pack_job_ops_helper *job_helper)
@@ -3595,6 +3604,8 @@ static int update_raw_image_buf_to_ipi_frame(struct req_buffer_helper *helper,
 		pr_info("%s %s: not supported port: %d\n",
 			__FILE__, __func__, node->desc.dma_port);
 	}
+
+	update_raw_image_buf_vaddr(buf);
 
 	return update_fn(helper, buf, node);
 }

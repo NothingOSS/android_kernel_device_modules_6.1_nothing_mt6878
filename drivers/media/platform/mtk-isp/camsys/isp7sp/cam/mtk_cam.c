@@ -811,6 +811,8 @@ void mtk_cam_req_buffer_done(struct mtk_cam_job *job,
 
 	spin_lock(&req->buf_lock);
 
+	update_ufbc_header_param(job);
+
 	list_for_each_entry_safe(buf, buf_next, &req->buf_list, list) {
 
 		node = mtk_cam_buf_to_vdev(buf);

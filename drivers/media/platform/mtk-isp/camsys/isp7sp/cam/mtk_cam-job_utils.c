@@ -706,12 +706,13 @@ int update_work_buffer_to_ipi_frame(struct req_buffer_helper *helper)
 static int fill_ufbc_header_yuvo(struct mtk_cam_buffer *buf,
 			struct mtkcam_ipi_img_ufo_param *ufo_param)
 {
-	struct YUFO_META_INFO *yuvo_meta =
-		vb2_plane_vaddr(&buf->vbb.vb2_buf, 0);
+	struct YUFO_META_INFO *yuvo_meta = buf->vaddr;
 	struct YUFD_META_INFO *yufd_meta;
 
-	if (!yuvo_meta)
+	if (!yuvo_meta) {
+		pr_info("[%s] fail to get buf va\n", __func__);
 		return -1;
+	}
 
 	yufd_meta = &yuvo_meta->YUFD.YUFD;
 
@@ -751,14 +752,14 @@ static bool is_ufbc_dmao_port(struct mtkcam_ipi_frame_param *fp, __u8 id)
 
 int update_ufbc_header_param(struct mtk_cam_job *job)
 {
-	struct mtk_cam_buffer *buf;
+	struct mtk_cam_buffer *buf, *buf_next;
 	struct mtk_cam_video_device *node;
 	struct mtkcam_ipi_frame_param *fp;
 	struct mtk_cam_request *req = job->req;
 
 	fp = (struct mtkcam_ipi_frame_param *)job->ipi.vaddr;
 
-	list_for_each_entry(buf, &req->buf_list, list) {
+	list_for_each_entry_safe(buf, buf_next, &req->buf_list, list) {
 		node = mtk_cam_buf_to_vdev(buf);
 
 		if (!belong_to_current_ctx(job, node->uid.pipe_id))

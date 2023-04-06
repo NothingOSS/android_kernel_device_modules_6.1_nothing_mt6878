@@ -57,6 +57,7 @@ struct mtk_cam_buffer {
 	unsigned int flags;
 	dma_addr_t daddr;
 	dma_addr_t scp_addr;
+	void *vaddr;
 
 	union {
 		struct mtk_cam_cached_image_info image_info;

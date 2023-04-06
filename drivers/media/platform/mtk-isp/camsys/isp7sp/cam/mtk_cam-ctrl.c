@@ -1142,7 +1142,6 @@ void mtk_cam_ctrl_job_composed(struct mtk_cam_ctrl *cam_ctrl,
 		goto PUT_CTRL;
 	}
 
-	update_ufbc_header_param(job_composed);
 	call_jobop(job_composed, compose_done, cq_ret, ack_ret);
 	mtk_cam_job_put(job_composed);
 
