@@ -128,9 +128,9 @@ void mtk_cam_dvfs_reset_runtime_info(struct mtk_camsys_dvfs *dvfs)
 
 unsigned int mtk_cam_dvfs_query(struct mtk_camsys_dvfs *dvfs, int opp_idx)
 {
-	int idx;
+	unsigned int idx;
 
-	idx = clamp_val(opp_idx, 0, (int)dvfs->opp_num);
+	idx = clamp_t(unsigned int, opp_idx, 0, dvfs->opp_num);
 	return dvfs->opp[idx].freq_hz;
 }
 
