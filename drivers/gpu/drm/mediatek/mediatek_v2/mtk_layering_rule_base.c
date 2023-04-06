@@ -663,18 +663,22 @@ static void dump_disp_trace(struct drm_mtk_layering_info *disp_info)
 			     disp_info->layer_num[i], disp_info->gles_head[i],
 			     disp_info->gles_tail[i]);
 
-		for (j = 0; j < disp_info->layer_num[i]; j++) {
-			if (n >= LEN)
-				break;
-			c = &disp_info->input_config[i][j];
-			n += snprintf(msg + n, LEN - n,
-				      "|L%d->%d(%u,%u,%ux%u),f:0x%x,c:%d",
-				      j, c->ovl_id, c->dst_offset_x,
-				      c->dst_offset_y, c->dst_width,
-				      c->dst_height, c->src_fmt, c->compress);
-		}
+		if (n < 0 || n >= LEN) {
+			DDPPR_ERR("unknown error, n:%d\n", n);
+		} else {
+			for (j = 0; j < disp_info->layer_num[i]; j++) {
+				if (n >= LEN)
+					break;
+				c = &disp_info->input_config[i][j];
+				n += snprintf(msg + n, LEN - n,
+						  "|L%d->%d(%u,%u,%ux%u),f:0x%x,c:%d",
+						  j, c->ovl_id, c->dst_offset_x,
+						  c->dst_offset_y, c->dst_width,
+						  c->dst_height, c->src_fmt, c->compress);
+			}
 
-		trace_layer_layout(msg);
+			trace_layer_layout(msg);
+		}
 	}
 }
 
