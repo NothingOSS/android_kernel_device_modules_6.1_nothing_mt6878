@@ -3360,7 +3360,8 @@ static int mtk_cam_seninf_debug_core_dump(struct seninf_ctx *ctx,
 	struct mtk_cam_seninf_mux_meter *meter;
 	struct mtk_cam_seninf_vcinfo_debug *vcinfo_debug;
 	void *seninf, *csi_mac, *rx, *pmux, *pcammux, *base_ana;
-	unsigned long debug_ft = FT_30_FPS + 3;
+	unsigned long debug_ft = FT_30_FPS;
+	const unsigned int ft_delay_margin = 3;
 
 	csi_mac = ctx->reg_csirx_mac_csi[(unsigned int)ctx->port];
 	seninf = ctx->reg_if_csi2[(unsigned int)ctx->seninfIdx];
@@ -3377,6 +3378,8 @@ static int mtk_cam_seninf_debug_core_dump(struct seninf_ctx *ctx,
 
 	if (dbg_timeout != 0)
 		debug_ft = dbg_timeout / 1000;
+
+	debug_ft += ft_delay_margin;
 
 	mdelay(debug_ft);
 
