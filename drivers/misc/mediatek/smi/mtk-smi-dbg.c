@@ -361,6 +361,7 @@ struct mtk_smi_dbg_node {
 	u32	bw[MAX_MON_REQ];
 
 	u8	port_stat[SMI_LARB_OSTD_MON_PORT_NR];
+	atomic_t	mon_ref_cnt[MAX_MON_REQ];
 };
 
 enum smi_bus_type {
@@ -862,7 +863,7 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 	struct platform_device	*pdev;
 	struct resource		*res;
 	void __iomem		*va;
-	s32			larb_nr = 0, comm_nr = 0, rsi_nr = 0, id, ret;
+	s32			larb_nr = 0, comm_nr = 0, rsi_nr = 0, id, ret, i;
 
 	smi->dev = dev;
 	for_each_compatible_node(node, NULL, mtk_smi_dbg_comp[0]) {
@@ -901,6 +902,9 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 			smi->comm[id].smi_type = SMI_COMMON;
 		else
 			smi->comm[id].smi_type = SMI_SUB_COMMON;
+
+		for (i = 0; i < MAX_MON_REQ; i++)
+			atomic_set(&smi->comm[id].mon_ref_cnt[i], 0);
 
 		ret = mtk_smi_dbg_parse(pdev, smi->comm, false, id);
 		if (ret)
@@ -1062,7 +1066,7 @@ static bool smi_bus_hang_check(struct mtk_smi_dbg_node node[])
 {
 	struct mtk_smi_dbg	*smi = gsmi;
 	struct mtk_smi_dbg_init_setting	*dbg_setting;
-	u8 id, j, type;
+	u8 id, i, j, type;
 
 	for (id = 0; id < MTK_SMI_NR_MAX; id++) {
 		if (!node[id].dev ||
@@ -1075,11 +1079,23 @@ static bool smi_bus_hang_check(struct mtk_smi_dbg_node node[])
 
 		for (j = 0; j < dbg_setting->mon_port_nr; j++) {
 			/*check read bw*/
-			if ((node[id].port_stat[j] & BIT(READ_BIT)) && !node[id].bw[j])
+			if ((node[id].port_stat[j] & BIT(READ_BIT)) && !node[id].bw[j]) {
+				dev_notice(node[id].dev, "out_port%d_bw=%d\n", j, node[id].bw[j]);
+				for (i = 0; i < BUS_BUSY_TIME; i++)
+					dev_notice(node[id].dev, "%#x=%#x\n",
+						dbg_setting->ostd_cnt_offset + (j << 2),
+						node[id].bus_ostd_val[i][j]);
 				return true;
+			}
 			/*check write bw*/
-			if ((node[id].port_stat[j] & BIT(WRITE_BIT)) && !node[id].bw[j+2])
+			if ((node[id].port_stat[j] & BIT(WRITE_BIT)) && !node[id].bw[j+2]) {
+				dev_notice(node[id].dev, "out_port%d_bw=%d\n", j, node[id].bw[j+2]);
+				for (i = 0; i < BUS_BUSY_TIME; i++)
+					dev_notice(node[id].dev, "%#x=%#x\n",
+						dbg_setting->ostd_cnt_offset + (j << 2),
+						node[id].bus_ostd_val[i][j]);
 				return true;
+			}
 		}
 	}
 
@@ -1344,7 +1360,7 @@ MODULE_LICENSE("GPL v2");
 s32 smi_monitor_start(struct device *dev, u32 common_id, u32 commonlarb_id[MAX_MON_REQ],
 			u32 flag[MAX_MON_REQ], enum smi_mon_id mon_id)
 {
-	u32 i, ret;
+	u32 i, ret, ref_cnt;
 	bool is_write;
 	struct mtk_smi_dbg	*smi = gsmi;
 	void __iomem *comm_base;
@@ -1352,6 +1368,13 @@ s32 smi_monitor_start(struct device *dev, u32 common_id, u32 commonlarb_id[MAX_M
 	comm_base = smi->comm[common_id].va;
 	if (!comm_base) {
 		pr_notice("[smi]%s: failed to monitor comm%d\n", __func__, common_id);
+		return -EAGAIN;
+	}
+
+	ref_cnt = atomic_read(&smi->comm[common_id].mon_ref_cnt[mon_id]);
+	if (ref_cnt > 0) {
+		pr_notice("[smi]%s: comm%d already in monitor, ref_cnt=%d\n",
+							__func__, common_id, ref_cnt);
 		return -EAGAIN;
 	}
 
@@ -1374,7 +1397,7 @@ s32 smi_monitor_start(struct device *dev, u32 common_id, u32 commonlarb_id[MAX_M
 	}
 	writel_relaxed(0x3, comm_base + SMI_MON_ENA(mon_id));
 
-	pm_runtime_put(smi->comm[common_id].dev);
+	atomic_inc(&smi->comm[common_id].mon_ref_cnt[mon_id]);
 
 	return 0;
 }
@@ -1391,7 +1414,7 @@ EXPORT_SYMBOL_GPL(smi_monitor_start);
   */
 s32 smi_monitor_stop(struct device *dev, u32 common_id, u32 *bw, enum smi_mon_id mon_id)
 {
-	u32 i, ret;
+	u32 i;
 	u32 byte_cnt[MAX_MON_REQ] = { 0 };
 	struct mtk_smi_dbg	*smi = gsmi;
 	void __iomem *comm_base;
@@ -1402,10 +1425,9 @@ s32 smi_monitor_stop(struct device *dev, u32 common_id, u32 *bw, enum smi_mon_id
 		return -EAGAIN;
 	}
 
-	ret = pm_runtime_get_if_in_use(smi->comm[common_id].dev);
-	if (ret <= 0) {
-		pr_notice("[smi]%s: comm%d power off, rpm:%d\n", __func__, common_id, ret);
-		return ret;
+	if (!atomic_read(&smi->comm[common_id].mon_ref_cnt[mon_id])) {
+		pr_notice("[smi]%s: comm%d not in monitor\n", __func__, common_id);
+		return -EAGAIN;
 	}
 
 	writel_relaxed(0x0, comm_base + SMI_MON_ENA(mon_id));
@@ -1423,6 +1445,7 @@ s32 smi_monitor_stop(struct device *dev, u32 common_id, u32 *bw, enum smi_mon_id
 	writel_relaxed(0x1, comm_base + SMI_MON_CLR(mon_id));
 	writel_relaxed(0x0, comm_base + SMI_MON_CLR(mon_id));
 
+	atomic_dec(&smi->comm[common_id].mon_ref_cnt[mon_id]);
 	pm_runtime_put(smi->comm[common_id].dev);
 
 	return 0;
@@ -1463,9 +1486,6 @@ s32 mtk_smi_dbg_hang_detect(char *user)
 	mtk_emidbg_dump();
 #endif
 
-	/* notify to CCF to enable trace dump */
-	mtk_clk_notify(NULL, NULL, NULL, 0, 1, 0, CLK_EVT_TRIGGER_TRACE_DUMP);
-
 	raw_notifier_call_chain(&smi_notifier_list, 0, user);
 
 	/*start to monitor bw and check ostd*/
@@ -1502,15 +1522,12 @@ s32 mtk_smi_dbg_hang_detect(char *user)
 	} else
 		is_hang = 0;
 
-	spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
-
-	/* notify to CCF to disable trace dump */
-	mtk_clk_notify(NULL, NULL, NULL, 0, 0, 0, CLK_EVT_TRIGGER_TRACE_DUMP);
-
 	if (is_hang) {
 		pr_notice("[smi] smi may hang\n");
 		BUG_ON(1);
 	}
+
+	spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
 
 	return 0;
 }
