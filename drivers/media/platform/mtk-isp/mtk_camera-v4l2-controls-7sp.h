@@ -203,6 +203,7 @@ struct mtk_cam_resource_raw_v2 {
 	__u8 bin;
 	__u8 raw_pixel_mode;
 	__u8 hw_mode;
+	__u32 freq;
 	__u32 img_wbuf_size;
 	__u32 img_wbuf_num;
 };

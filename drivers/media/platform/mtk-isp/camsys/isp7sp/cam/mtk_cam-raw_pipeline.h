@@ -125,8 +125,6 @@ struct mtk_cam_resource_driver {
 	struct mtk_cam_resource_v2 user_data;
 
 	/* driver internally cached */
-	unsigned int clk_target; /* Hz */
-	int raw_num;
 	int tgo_pxl_mode;
 	int tgo_pxl_mode_before_raw;
 };

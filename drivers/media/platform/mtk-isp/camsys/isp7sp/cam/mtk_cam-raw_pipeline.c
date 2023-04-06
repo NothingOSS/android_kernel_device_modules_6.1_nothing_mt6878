@@ -559,6 +559,7 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 	}
 
 	r->raw_pixel_mode = c.raw_pixel_mode;
+	r->freq = c.clk;
 
 	mtk_cam_get_work_buf_num(user_ctrl);
 
@@ -577,8 +578,6 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 	r->raws = raws_driver_selected;
 	if (drv_data) {
 		drv_data->user_data = *user_ctrl;
-		drv_data->clk_target = c.clk;
-		drv_data->raw_num = final_raw_num;
 		drv_data->tgo_pxl_mode =
 			mtk_pixelmode_val(mtk_raw_overall_pixel_mode(&c));
 		drv_data->tgo_pxl_mode_before_raw = mtk_pixelmode_val(8);

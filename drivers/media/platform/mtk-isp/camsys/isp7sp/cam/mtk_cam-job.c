@@ -352,38 +352,22 @@ static unsigned long mtk_cam_select_hw(struct mtk_cam_job *job)
 	/* todo: more rules */
 	if (ctx->has_raw_subdev) {
 		struct mtk_raw_ctrl_data *ctrl;
-		int raw_required, raws;
-		int raw_cnt = 0;
+		int raws;
 
 		ctrl = get_raw_ctrl_data(job);
 		if (WARN_ON(!ctrl))
 			goto SELECT_HW_FAILED;
 
-		raw_required = ctrl->resource.raw_num;
 		raws = ctrl->resource.user_data.raw_res.raws;
 
-		if (!raw_required) {
-			dev_info(cam->dev, "%s: no raw_requried\n", __func__);
-			selected = 0;
+		if (!raws) {
+			dev_info(cam->dev, "%s: no raws\n", __func__);
 			goto SELECT_HW_FAILED;
 		}
 
 		for (i = 0; i < cam->engines.num_raw_devices; i++)
-			if (raws & BIT(i)) {
+			if (raws & BIT(i))
 				selected |= bit_map_bit(MAP_HW_RAW, i);
-
-				raw_cnt++;
-				if (raw_cnt == raw_required)
-					break;
-			}
-
-		if (raw_cnt != raw_required) {
-			dev_info(cam->dev,
-				 "select hw failed at raw (raw_cnt:%d, raw_required:%d)\n",
-				 raw_cnt, raw_required);
-			selected = 0;
-			goto SELECT_HW_FAILED;
-		}
 	}
 
 	/* camsv */
@@ -4325,7 +4309,7 @@ static int job_fetch_freq(struct mtk_cam_job *job,
 	}
 
 	res = &ctrl->resource;
-	freq = res->clk_target;
+	freq = res->user_data.raw_res.freq;
 
 	if (is_m2m_apu(job)) {
 		struct mtk_cam_ctx *ctx = job->src_ctx;
