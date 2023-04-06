@@ -35,6 +35,12 @@
 
 #define MTK_JPEG_MAX_EXIF_SIZE	(64 * 1024)
 
+#define SNPRINTF(args...)							\
+	do {											\
+		if (snprintf(args) < 0)						\
+			pr_notice("snprintf error\n");			\
+	} while (0)
+
 enum mtk_enc_dtsi_reg_idx {
 	VENC_SYS,
 	VENC_GCON,

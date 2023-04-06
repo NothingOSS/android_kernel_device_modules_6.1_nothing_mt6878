@@ -150,15 +150,11 @@ static int mtk_jpeg_querycap(struct file *file, void *priv,
 			     struct v4l2_capability *cap)
 {
 	struct mtk_jpeg_dev *jpeg = video_drvdata(file);
-	int ret;
 
 	strscpy(cap->driver, jpeg->variant->dev_name, sizeof(cap->driver));
 	strscpy(cap->card, jpeg->variant->dev_name, sizeof(cap->card));
-	ret = snprintf(cap->bus_info, sizeof(cap->bus_info), "platform:%s",
+	SNPRINTF(cap->bus_info, sizeof(cap->bus_info), "platform:%s",
 			dev_name(jpeg->dev));
-	if (ret < 0)
-		v4l2_info(&jpeg->v4l2_dev, "Error in snprintf at %s line: %d ret %d",
-			__func__, __LINE__, ret);
 	cap->reserved[0] = jpgenc_probe_time;
 
 	v4l2_info(&jpeg->v4l2_dev, "device numbers: %d\n", jpgenc_probe_time);
@@ -1748,7 +1744,7 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 		ret = -ENOMEM;
 		goto err_vfd_jpeg_alloc;
 	}
-	snprintf(jpeg->vdev->name, sizeof(jpeg->vdev->name),
+	SNPRINTF(jpeg->vdev->name, sizeof(jpeg->vdev->name),
 		 "%s", jpeg->variant->dev_name);
 
 
