@@ -3548,7 +3548,7 @@ static int set_disp_info(struct drm_mtk_layering_info *disp_info_user,
 
 static int
 _copy_layer_info_by_disp(struct drm_mtk_layering_info *disp_info_user,
-			 int debug_mode, int disp_idx)
+			 int debug_mode, unsigned int disp_idx)
 {
 	struct drm_mtk_layering_info *l_info = &layering_info;
 	unsigned long layer_size = 0;
@@ -3586,7 +3586,8 @@ _copy_layer_info_by_disp(struct drm_mtk_layering_info *disp_info_user,
 static int copy_layer_info_to_user(struct drm_device *dev,
 	struct drm_mtk_layering_info *disp_info_user, int debug_mode)
 {
-	int ret = 0, i;
+	int ret = 0;
+	unsigned int i;
 	struct drm_mtk_layering_info *l_info = &layering_info;
 
 	disp_info_user->hrt_num = l_info->hrt_num;

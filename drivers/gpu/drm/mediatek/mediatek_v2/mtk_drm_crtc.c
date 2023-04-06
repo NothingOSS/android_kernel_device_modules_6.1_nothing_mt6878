@@ -2955,7 +2955,7 @@ static void _mtk_crtc_lye_addon_module_disconnect(
 	struct drm_crtc *crtc, unsigned int ddp_mode,
 	struct mtk_lye_ddp_state *lye_state, struct cmdq_pkt *cmdq_handle)
 {
-	const struct mtk_addon_module_data *addon_module[2];
+	const struct mtk_addon_module_data *addon_module[2] = {NULL, NULL};
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 
 	if (lye_state->rpo_lye) {
@@ -12638,6 +12638,10 @@ void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 		u8 cur_layer = plane_state->comp_state.lye_id;
 
 		comp = mtk_crtc_get_plane_comp(crtc, plane_state);
+		if (!comp) {
+			DDPPR_ERR("%s,%d NULL comp error\n", __func__, __LINE__);
+			return;
+		}
 		mtk_dprec_mmp_dump_ovl_layer(plane_state);
 
 		plane_state->pending.pq_loop_type = 0;
@@ -13116,14 +13120,19 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 	//discrete mdp_rdma need fill full frame
 	if (mtk_crtc->path_data->is_discrete_path) {
 		first_comp = mtk_crtc_get_comp(crtc, mtk_crtc->ddp_mode, 0, 0);
-		mtk_ddp_comp_io_cmd(first_comp, cmdq_handle,
-			MDP_RDMA_FILL_FRAME, NULL);
-		if (mtk_crtc->is_dual_pipe) {
-			r_comp_id = dual_pipe_comp_mapping(
-				priv->data->mmsys_id, first_comp->id);
-			r_comp = priv->ddp_comp[r_comp_id];
-			mtk_ddp_comp_io_cmd(r_comp, cmdq_handle,
+		if (first_comp != NULL) {
+			mtk_ddp_comp_io_cmd(first_comp, cmdq_handle,
 				MDP_RDMA_FILL_FRAME, NULL);
+			if (mtk_crtc->is_dual_pipe) {
+				r_comp_id = dual_pipe_comp_mapping(
+					priv->data->mmsys_id, first_comp->id);
+				r_comp = priv->ddp_comp[r_comp_id];
+				mtk_ddp_comp_io_cmd(r_comp, cmdq_handle,
+					MDP_RDMA_FILL_FRAME, NULL);
+			}
+		} else {
+			DDPPR_ERR("%s:%d first_comp is NULL\n", __func__, __LINE__);
+			return -EINVAL;
 		}
 	}
 
@@ -13214,8 +13223,13 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		pending_handle = mtk_crtc->pending_handle;
 		mtk_crtc->pending_handle = NULL;
 		discrete_cb_data = kmalloc(sizeof(*discrete_cb_data), GFP_KERNEL);
-		discrete_cb_data->cmdq_handle = pending_handle;
-		discrete_cb_data->crtc = crtc;
+		if (discrete_cb_data) {
+			discrete_cb_data->cmdq_handle = pending_handle;
+			discrete_cb_data->crtc = crtc;
+		} else {
+			DDPPR_ERR("discrete_cb_data alloc fail\n");
+			return -EINVAL;
+		}
 
 		DDPINFO("[discrete] flush pending hnd:0x%lx\n",
 			(unsigned long)pending_handle);
