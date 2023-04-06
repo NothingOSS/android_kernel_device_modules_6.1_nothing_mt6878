@@ -469,7 +469,6 @@ static int get_larb_by_ovl(struct drm_device *dev, int ovl_idx, int disp_idx)
 static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 			   enum DISP_DEBUG_LEVEL debug_level)
 {
-	bool alloc = false;
 	int i = 0, j = 0, ret = 0;
 	struct drm_mtk_layer_config *layer_info = NULL;
 
@@ -478,6 +477,15 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 #define _L_FMT \
 	"L%d->%d/(%d,%d,%d,%d)/(%d,%d,%d,%d)/f0x%x/ds%d/e%d/cap0x%x" \
 	"/compr%d/secure%d/frame:%u/AID:%llu\n"
+
+	layer_info = kzalloc(sizeof(struct drm_mtk_layer_config),
+			GFP_KERNEL);
+
+	if (!layer_info) {
+		DDPPR_ERR("%s:%d NULL layer_info\n",
+			__func__, __LINE__);
+		return;
+	}
 
 	if (debug_level < DISP_DEBUG_LEVEL_INFO) {
 		DDPMSG(_HRT_FMT,
@@ -509,19 +517,6 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 			for (j = 0; j < disp_info->layer_num[i]; j++) {
 				if (access_ok(&disp_info->input_config[i][j],
 					sizeof(struct drm_mtk_layer_config))) {
-					layer_info =
-						(!layer_info) ?
-						kzalloc(sizeof(struct drm_mtk_layer_config),
-							GFP_KERNEL) :
-						layer_info;
-
-					if (!layer_info) {
-						DDPPR_ERR("%s:%d NULL layer_info\n",
-								__func__, __LINE__);
-						continue;
-					} else
-						alloc = true;
-
 					ret = copy_from_user(layer_info,
 							&disp_info->input_config[i][j],
 							sizeof(struct drm_mtk_layer_config));
@@ -529,19 +524,11 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 						__func__, ret);
 					if (ret != sizeof(struct drm_mtk_layer_config)) {
 						DDPPR_ERR("%s ret %d\n", __func__, ret);
-						kfree(layer_info);
-						layer_info = NULL;
-						alloc = false;
 						break;
 					}
-				} else if (disp_info->input_config[i]) {
-					layer_info = &disp_info->input_config[i][j];
-					if (!layer_info) {
-						DDPPR_ERR("%s:%d NULL layer_info\n",
-								__func__, __LINE__);
-						continue;
-					}
-				}
+				} else if (disp_info->input_config[i])
+					memcpy(layer_info, &disp_info->input_config[i][j],
+						sizeof(struct drm_mtk_layer_config));
 
 				if (layer_info == NULL) {
 					DDPPR_ERR("%s[%d]:layer_info = null\n", __func__, __LINE__);
@@ -565,12 +552,6 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 				       layer_info->secure,
 				       disp_info->frame_idx[i],
 				       layer_info->buffer_alloc_id);
-
-				if (alloc) {
-					kfree(layer_info);
-					layer_info = NULL;
-					alloc = false;
-				}
 			}
 		}
 	} else {
@@ -601,20 +582,6 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 			for (j = 0; j < disp_info->layer_num[i]; j++) {
 				if (access_ok(&disp_info->input_config[i][j],
 					sizeof(struct drm_mtk_layer_config))) {
-
-					layer_info =
-						(!layer_info) ?
-						kzalloc(sizeof(struct drm_mtk_layer_config),
-							GFP_KERNEL) :
-						layer_info;
-
-					if (!layer_info) {
-						DDPPR_ERR("%s:%d NULL layer_info\n",
-								__func__, __LINE__);
-						continue;
-					} else
-						alloc = true;
-
 					ret = copy_from_user(layer_info,
 							&disp_info->input_config[i][j],
 							sizeof(struct drm_mtk_layer_config));
@@ -622,13 +589,11 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 						__func__, ret);
 					if (ret != sizeof(struct drm_mtk_layer_config)) {
 						DDPPR_ERR("%s ret %d\n", __func__, ret);
-						kfree(layer_info);
-						layer_info = NULL;
-						alloc = false;
 						break;
 					}
 				} else if (disp_info->input_config[i])
-					layer_info = &disp_info->input_config[i][j];
+					memcpy(layer_info, &disp_info->input_config[i][j],
+						sizeof(struct drm_mtk_layer_config));
 
 				DDPINFO(_L_FMT, j, layer_info->ovl_id,
 					layer_info->src_offset_x,
@@ -648,14 +613,12 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 					disp_info->frame_idx[i],
 					layer_info->buffer_alloc_id);
 
-				if (alloc) {
-					kfree(layer_info);
-					layer_info = NULL;
-					alloc = false;
-				}
 			}
 		}
 	}
+
+	kfree(layer_info);
+	layer_info = NULL;
 }
 
 static void check_gles_change(struct debug_gles_range *dbg_gles, const int line, const bool print)
@@ -3676,7 +3639,7 @@ void lye_add_blob_ids(struct drm_mtk_layering_info *l_info,
 
 	memcpy(lye_state->scn, l_rule_info->addon_scn, sizeof(lye_state->scn));
 	for (i = 0 ; i < HRT_DISP_TYPE_NUM ; i++) {
-		if (lye_state->scn[i] < NONE ||	lye_state->scn[i] >= ADDON_SCN_NR) {
+		if (lye_state->scn[i] >= ADDON_SCN_NR) {
 			DDPPR_ERR("[%s]abnormal scn[%u]:%d,set scn to 0\n",
 				  __func__, i, lye_state->scn[i]);
 			lye_state->scn[i] = NONE;

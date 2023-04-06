@@ -3443,7 +3443,7 @@ _mtk_crtc_lye_addon_module_connect(
 	int pipe;
 
 	if (lye_state->rpo_lye) {
-		const struct mtk_addon_module_data *addon_module[2];
+		const struct mtk_addon_module_data *addon_module[2] = {NULL, NULL};
 		union mtk_addon_config addon_config;
 		u32 tgt_comp[2];
 
@@ -3499,7 +3499,7 @@ _mtk_crtc_lye_addon_module_connect(
 
 	/* TODO: ir or dl should be exclusive */
 	if (lye_state->mml_ir_lye) {
-		const struct mtk_addon_module_data *addon_module[2];
+		const struct mtk_addon_module_data *addon_module[2] = {NULL, NULL};
 		union mtk_addon_config addon_config;
 
 		mtk_addon_get_module(MML_RSZ, mtk_crtc, &addon_module[0], &addon_module[1]);
@@ -3514,7 +3514,7 @@ _mtk_crtc_lye_addon_module_connect(
 	}
 
 	if (lye_state->mml_dl_lye) {
-		const struct mtk_addon_module_data *addon_module[2];
+		const struct mtk_addon_module_data *addon_module[2] = {NULL, NULL};
 		union mtk_addon_config addon_config;
 
 		mtk_addon_get_module(MML_DL, mtk_crtc, &addon_module[0], &addon_module[1]);
@@ -3557,7 +3557,7 @@ _mtk_crtc_atmoic_addon_module_connect(
 			crtc, ddp_mode, lye_state, cmdq_handle);
 
 	if (lye_state->rpo_lye) {
-		struct mtk_addon_config_type c;
+		struct mtk_addon_config_type c = {0};
 
 		c.module = OVL_RSZ;
 		mtk_addon_get_comp(lye_state->rpo_lye, &c.tgt_comp, &c.tgt_layer);
@@ -3573,7 +3573,7 @@ _mtk_crtc_atmoic_addon_module_connect(
 	}
 
 	if (lye_state->mml_ir_lye) {
-		struct mtk_addon_config_type c;
+		struct mtk_addon_config_type c = {0};
 
 		mtk_addon_get_comp(lye_state->mml_ir_lye, &c.tgt_comp, &c.tgt_layer);
 		mtk_ddp_comp_io_cmd(priv->ddp_comp[c.tgt_comp], cmdq_handle, OVL_SET_PQ_OUT, &c);
@@ -3588,7 +3588,7 @@ _mtk_crtc_atmoic_addon_module_connect(
 	}
 
 	if (lye_state->mml_dl_lye) {
-		struct mtk_addon_config_type c;
+		struct mtk_addon_config_type c = {0};
 
 		c.module = DISP_MML_DL;
 		mtk_addon_get_comp(lye_state->mml_dl_lye, &c.tgt_comp, &c.tgt_layer);
