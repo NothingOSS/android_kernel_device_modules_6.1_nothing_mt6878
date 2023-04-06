@@ -524,8 +524,11 @@ static int s_ae_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct adaptor_ctx *ctx = ctrl_to_ctx(ctrl);
 	struct mtk_hdr_ae *ae_ctrl = ctrl->p_new.p;
-	enum IMGSENSOR_HDR_MODE_ENUM hdr_mode =
-		ctx->subctx.s_ctx.mode[ctx->cur_mode->id].hdr_mode;
+	enum IMGSENSOR_HDR_MODE_ENUM hdr_mode;
+
+	hdr_mode = (ctx->subctx.s_ctx.mode == NULL)
+		? 0
+		: ctx->subctx.s_ctx.mode[ctx->cur_mode->id].hdr_mode;
 
 	memcpy(&ctx->ae_memento, ae_ctrl,
 		   sizeof(ctx->ae_memento));
@@ -2139,8 +2142,11 @@ void adaptor_sensor_init(struct adaptor_ctx *ctx)
 
 void restore_ae_ctrl(struct adaptor_ctx *ctx)
 {
-	enum IMGSENSOR_HDR_MODE_ENUM hdr_mode =
-		ctx->subctx.s_ctx.mode[ctx->cur_mode->id].hdr_mode;
+	enum IMGSENSOR_HDR_MODE_ENUM hdr_mode;
+
+	hdr_mode = (ctx->subctx.s_ctx.mode == NULL)
+		? 0
+		: ctx->subctx.s_ctx.mode[ctx->cur_mode->id].hdr_mode;
 
 #if IMGSENSOR_LOG_MORE
 	dev_info(ctx->dev, "[%s][%s]+\n",
