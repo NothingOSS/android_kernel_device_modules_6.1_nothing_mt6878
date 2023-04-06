@@ -1250,6 +1250,7 @@ void slbc_get_gid_for_dma(struct dma_buf *dmabuf_2)
 
 	/* mapping producre/consumer to GID */
 	switch (producer) {
+	case BUF_ID_GPU | BUF_ID_OVL:
 	case BUF_ID_GPU:
 		if (consumer & BUF_ID_OVL)	/* GPU to OVL */
 			gid = GID_GPU_OVL;
