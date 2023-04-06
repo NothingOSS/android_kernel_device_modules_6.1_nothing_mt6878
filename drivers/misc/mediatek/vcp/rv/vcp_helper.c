@@ -770,7 +770,7 @@ unsigned int vcp_cmd(enum vcp_cmd_id id, char *user)
 		trigger_vcp_halt(VCP_A_ID, user);
 		break;
 	case VCP_SET_DISP_SYNC:
-		trigger_vcp_disp_sync(VCP_A_ID);
+		//trigger_vcp_disp_sync(VCP_A_ID);
 		break;
 	case VCP_GET_GEN:
 		return get_vcp_generation();

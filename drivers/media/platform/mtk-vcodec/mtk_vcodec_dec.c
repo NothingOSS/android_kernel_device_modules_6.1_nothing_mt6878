@@ -457,6 +457,16 @@ static void mtk_vdec_lpw_timer_handler(struct timer_list *timer)
 		v4l2_m2m_try_schedule(ctx->m2m_ctx);
 }
 
+static void mtk_vdec_lpw_init_timer(struct mtk_vcodec_ctx *ctx)
+{
+	timer_setup(&ctx->lpw_timer, mtk_vdec_lpw_timer_handler, 0);
+}
+
+static void mtk_vdec_lpw_deinit_timer(struct mtk_vcodec_ctx *ctx)
+{
+	del_timer_sync(&ctx->lpw_timer);
+}
+
 static void mtk_vdec_lpw_set_ts(struct mtk_vcodec_ctx *ctx, u64 ts)
 {
 	unsigned long flags;
@@ -537,7 +547,6 @@ static void mtk_vdec_lpw_start_timer(struct mtk_vcodec_ctx *ctx)
 
 static void mtk_vdec_lpw_stop_timer(struct mtk_vcodec_ctx *ctx, bool need_lock)
 {
-
 	unsigned long flags;
 
 	if (!ctx->low_pw_mode)
@@ -2243,6 +2252,7 @@ void mtk_vcodec_dec_empty_queues(struct file *file, struct mtk_vcodec_ctx *ctx)
 void mtk_vcodec_dec_release(struct mtk_vcodec_ctx *ctx)
 {
 	mtk_vdec_deinit_set_frame_wq(ctx);
+	mtk_vdec_lpw_deinit_timer(ctx);
 	vdec_if_deinit(ctx);
 	vdec_check_release_lock(ctx);
 }
@@ -2416,7 +2426,7 @@ void mtk_vcodec_dec_set_default_params(struct mtk_vcodec_ctx *ctx)
 		q_data->bytesperline[1] = q_data->coded_width;
 	}
 
-	timer_setup(&ctx->lpw_timer, mtk_vdec_lpw_timer_handler, 0);
+	mtk_vdec_lpw_init_timer(ctx);
 }
 
 static int mtk_vdec_set_param(struct mtk_vcodec_ctx *ctx)
