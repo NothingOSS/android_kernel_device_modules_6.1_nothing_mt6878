@@ -1428,7 +1428,7 @@ EXPORT_SYMBOL_GPL(set_util_signal);
 
 void update_adaptive_margin(struct cpufreq_policy *policy)
 {
-	int i;
+	unsigned int i;
 	int cpu = cpumask_first(policy->cpus);
 	int gearid = per_cpu(gear_id, cpu);
 	int cpu_idx;
