@@ -1541,11 +1541,11 @@ static bool get_dre_block(u32 *phist, const int block_x, const int block_y,
 static bool aal_hist_check(struct mml_comp *comp, struct mml_task *task,
 			   struct mml_comp_config *ccfg, u32 *phist)
 {
-	const struct mml_frame_config *cfg = task->config;
+	struct mml_frame_config *cfg = NULL;
 	u32 blk_x = 0, blk_y = 0;
-	u8 pipe = (ccfg) ? ccfg->pipe : 0;
-	bool dual = (task) ? task->config->dual : false;
-	struct aal_frame_data *aal_frm = aal_frm_data(ccfg);
+	u8 pipe = 0;
+	bool dual = false;
+	struct aal_frame_data *aal_frm = NULL;
 	u32 crop_width = 0;
 	u32 crop_height = 0;
 	u32 cut_pos_x = 0;
@@ -1554,7 +1554,15 @@ static bool aal_hist_check(struct mml_comp *comp, struct mml_task *task,
 	u32 blk_x_start = 0;
 	u32 dre_blk_y_num = 0, dre_blk_x_num = 0;
 
-	if (IS_ERR_OR_NULL(ccfg) || IS_ERR_OR_NULL(aal_frm))
+	if (IS_ERR_OR_NULL(task) || IS_ERR_OR_NULL(ccfg))
+		return false;
+
+	dual = task->config->dual;
+	cfg = task->config;
+	pipe = ccfg->pipe;
+	aal_frm = aal_frm_data(ccfg);
+
+	if (IS_ERR_OR_NULL(cfg) || IS_ERR_OR_NULL(aal_frm))
 		return false;
 
 	crop_width = cfg->frame_in_crop[ccfg->node->out_idx].r.width;
