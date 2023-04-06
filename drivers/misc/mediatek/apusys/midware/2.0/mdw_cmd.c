@@ -955,7 +955,7 @@ static int mdw_cmd_record(struct mdw_cmd *c)
 	/* initial: alloc subcmd histoy */
 	if (!ch_tbl->h_sc_einfo)
 		ch_tbl->h_sc_einfo =
-			 kcalloc(c->num_subcmds, sizeof(*ch_tbl->h_sc_einfo), GFP_KERNEL);
+			 kcalloc(MDW_SUBCMD_MAX, sizeof(*ch_tbl->h_sc_einfo), GFP_KERNEL);
 
 	if (!ch_tbl->h_sc_einfo) {
 		ret = -ENOMEM;
