@@ -292,8 +292,6 @@ static long memory_send(bool share, bool involve_sp,
 		FFA_DEBUG("sg addr=%llx size=%d\n", sg_phys(sg), sg->length);
 	} while ((sg = sg_next(sg)));
 
-	kfree(pages);
-
 	for (i = 0; i < number_of_vm && i < VM_NUMBER_MAX; i++) {
 		mem_region_attributes[i] = (struct ffa_mem_region_attributes) {
 			.receiver = vmids[i],
@@ -357,9 +355,12 @@ static long memory_send(bool share, bool involve_sp,
 	}
 
 	ffa_mem_list_dump();
+
+	kfree(pages);
 	return 0;
 
 free_mem_ret:
+	kfree(pages);
 	kfree(origin_mem_region);
 free_node_ret:
 	kfree(new_node);
