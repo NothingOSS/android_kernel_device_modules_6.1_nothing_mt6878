@@ -565,6 +565,12 @@ void mml_pq_task_release(struct mml_task *task)
 {
 	struct mml_pq_task *pq_task = task->pq_task;
 
+	if (IS_ERR_OR_NULL(pq_task)) {
+		mml_pq_log("%s task[%p]", __func__, task);
+		task->pq_task = NULL;
+		return;
+	}
+
 	mml_pq_put_pq_task(pq_task);
 	task->pq_task = NULL;
 }
