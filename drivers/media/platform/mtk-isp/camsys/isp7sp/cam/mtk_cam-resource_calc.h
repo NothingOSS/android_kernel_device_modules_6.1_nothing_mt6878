@@ -33,7 +33,17 @@ static inline int _bin_ratio(struct mtk_cam_res_calc *c)
 
 static inline int mtk_raw_overall_pixel_mode(struct mtk_cam_res_calc *c)
 {
-	return min(8, c->raw_num * _bin_ratio(c) * c->raw_pixel_mode);
+	int power;
+	int overall_pixel_mode =
+		c->raw_num * _bin_ratio(c) * c->raw_pixel_mode;
+
+	/* align to power of 2 */
+	/* ticky: raw_num = 3, pixel_mode = 2 => overall should be 8 */
+	power = 1;
+	while (power < overall_pixel_mode)
+		power *= 2;
+
+	return min(8, power);
 }
 
 static inline int _hor_twin_loss(struct mtk_cam_res_calc *c)
@@ -47,22 +57,11 @@ static inline int _hor_twin_loss(struct mtk_cam_res_calc *c)
 	return loss[idx];
 }
 
-static inline int _tsfs_overhead(struct mtk_cam_res_calc *c)
-{
-	int w = c->width;
-
-	return (w/40) * 14 + (w - (w/40) * 40) - ((w/3) & ~1) + 34 + 4;
-}
-
 static inline int _twin_loss(struct mtk_cam_res_calc *c)
 {
 	int loss;
 
 	loss = _hor_twin_loss(c);
-
-	if (c->raw_num == 3)
-		loss = max(loss, _tsfs_overhead(c));
-
 	return loss;
 }
 

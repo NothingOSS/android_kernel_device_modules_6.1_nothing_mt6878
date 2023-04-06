@@ -459,26 +459,8 @@ static void res_sensor_info_validate(
 
 static inline int mtk_pixelmode_val(int pxl_mode)
 {
-	int val = 0;
-
-	switch (pxl_mode) {
-	case 1:
-		val = 0;
-		break;
-	case 2:
-		val = 1;
-		break;
-	case 4:
-		val = 2;
-		break;
-	case 8:
-		val = 3;
-		break;
-	default:
-		break;
-	}
-
-	return val;
+	WARN(pxl_mode & (pxl_mode - 1), "wrong pixel mode %d\n", pxl_mode);
+	return ffs(pxl_mode) - 1;
 }
 
 /* 0: disable, 1: 2x2, 2: 3x3 3: 4x4 */
