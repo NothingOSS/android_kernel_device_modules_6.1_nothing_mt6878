@@ -30,6 +30,8 @@
 #include <uapi/linux/sched/types.h>
 
 #include <mtk_heap.h>
+#include <linux/soc/mediatek/mtk-cmdq-ext.h>
+#include <slbc_ops.h>
 
 #include "mtk_cam.h"
 #include "mtk_cam-plat.h"
@@ -1646,6 +1648,47 @@ static int mtk_cam_ctx_destroy_rgbw_caci_buf(struct mtk_cam_ctx *ctx)
 	return 0;
 }
 
+static int mtk_cam_ctx_request_slb(struct mtk_cam_ctx *ctx)
+{
+	struct device *dev = ctx->cam->dev;
+	struct slbc_data slb;
+	int ret;
+
+	slb.uid = UID_SH_P1;
+	slb.type = TP_BUFFER;
+
+	ret = slbc_request(&slb);
+	if (ret < 0) {
+		dev_info(dev, "%s: allocate slb fail\n", __func__);
+	} else {
+		dev_info(dev, "%s: slb buffer base(0x%lx), size(%ld)",
+			 __func__, (uintptr_t)slb.paddr, slb.size);
+		ctx->slb_addr = slb.paddr;
+		ctx->slb_size = slb.size;
+	}
+	mtk_cam_hsf_aid(ctx, 1, AID_VAINR);
+
+	return ret;
+}
+
+static void mtk_cam_ctx_release_slb(struct mtk_cam_ctx *ctx)
+{
+	struct device *dev = ctx->cam->dev;
+	struct slbc_data slb;
+	int ret;
+
+	if (!ctx->slb_addr)
+		return;
+
+	slb.uid = UID_SH_P1;
+	slb.type = TP_BUFFER;
+
+	ret = slbc_release(&slb);
+	if (ret < 0)
+		dev_info(dev, "failed to release slb buffer\n");
+	mtk_cam_hsf_aid(ctx, 0, AID_VAINR);
+}
+
 /* for cq working buffers */
 #define IPI_FRAME_BUF_SIZE ALIGN(sizeof(struct mtkcam_ipi_frame_param), SZ_1K)
 static int mtk_cam_ctx_alloc_pool(struct mtk_cam_ctx *ctx)
@@ -2086,6 +2129,7 @@ void mtk_cam_stop_ctx(struct mtk_cam_ctx *ctx, struct media_entity *entity)
 	mtk_cam_ctx_destroy_pool(ctx);
 	mtk_cam_ctx_destroy_img_pool(ctx);
 	mtk_cam_ctx_destroy_rgbw_caci_buf(ctx);
+	mtk_cam_ctx_release_slb(ctx);
 	mtk_cam_ctx_destroy_workers(ctx);
 	mtk_cam_ctx_pipeline_stop(ctx, entity);
 	mtk_cam_pool_destroy(&ctx->job_pool);
@@ -2131,7 +2175,8 @@ int mtk_cam_ctx_init_scenario(struct mtk_cam_ctx *ctx)
 
 	} else if (scen_is_m2m_apu(scen, &ctrl_data->apu_info)) {
 
-		/* TODO */
+		if (apu_info_is_dc(&ctrl_data->apu_info))
+			ret = mtk_cam_ctx_request_slb(ctx);
 	}
 
 	ctx->scenario_init = true;
@@ -3381,7 +3426,7 @@ static int mtk_cam_probe(struct platform_device *pdev)
 {
 	struct mtk_cam_device *cam_dev;
 	struct device *dev = &pdev->dev;
-	struct resource *res;
+	//struct resource *res;
 	int ret;
 	unsigned int i;
 	const struct camsys_platform_data *platform_data;
@@ -3418,17 +3463,23 @@ static int mtk_cam_probe(struct platform_device *pdev)
 			dev_info(dev, "Failed to set DMA segment size\n");
 	}
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		dev_info(dev, "failed to get mem\n");
-		return -ENODEV;
-	}
-
-	cam_dev->base = devm_ioremap_resource(dev, res);
+	cam_dev->base =  devm_platform_ioremap_resource_byname(pdev, "base");
 	if (IS_ERR(cam_dev->base)) {
 		dev_dbg(dev, "failed to map register base\n");
 		return PTR_ERR(cam_dev->base);
 	}
+
+	cam_dev->adl_base = devm_platform_ioremap_resource_byname(pdev,
+								  "adl");
+	if (IS_ERR(cam_dev->adl_base)) {
+		dev_dbg(dev, "failed to map adl_base\n");
+		cam_dev->adl_base = NULL;
+	}
+
+	cam_dev->cmdq_clt = cmdq_mbox_create(dev, 0);
+
+	if (!cam_dev->cmdq_clt)
+		pr_info("probe cmdq_mbox_create fail\n");
 
 	cam_dev->dev = dev;
 	dev_set_drvdata(dev, cam_dev);

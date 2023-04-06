@@ -83,6 +83,12 @@ struct mtk_cam_driver_buf_desc {
 	bool has_pool;
 };
 
+struct mtk_cam_adl_work {
+	struct work_struct work;
+	struct mtk_raw_device *raw_dev;
+	bool is_dc;
+};
+
 struct mtk_cam_buf_fmt_desc *get_fmt_desc(
 		struct mtk_cam_driver_buf_desc *buf_desc);
 int set_fmt_select(int sel,
@@ -148,8 +154,17 @@ struct mtk_cam_ctx {
 	struct mtk_cam_pool	ipi_pool;
 	struct mtk_cam_pool	img_work_pool;
 
+	/*
+	 * scenario dependent
+	 */
 	bool scenario_init;
 	struct mtk_cam_device_buf w_caci_buf;
+
+	/* slb */
+	void __iomem *slb_addr;
+	unsigned int slb_size;
+
+	struct mtk_cam_adl_work adl_work;
 
 	/* TODO:
 	 * life-cycle of work buffer during switch
@@ -225,9 +240,11 @@ struct mtk_cam_engines {
 	unsigned long occupied_engine;
 };
 
+struct cmdq_client;
 struct mtk_cam_device {
 	struct device *dev;
 	void __iomem *base;
+	void __iomem *adl_base;
 
 	struct v4l2_device v4l2_dev;
 	struct v4l2_async_notifier notifier;
@@ -243,6 +260,8 @@ struct mtk_cam_device {
 
 	phandle rproc_ccu_phandle;
 	struct rproc *rproc_ccu_handle;
+
+	struct cmdq_client *cmdq_clt;
 
 	struct mtk_cam_v4l2_pipelines	pipelines;
 	struct mtk_cam_engines		engines;
@@ -334,6 +353,15 @@ struct mtk_cam_ctx *mtk_cam_find_ctx(struct mtk_cam_device *cam,
 struct mtk_cam_ctx *mtk_cam_start_ctx(struct mtk_cam_device *cam,
 				      struct mtk_cam_video_device *node);
 void mtk_cam_stop_ctx(struct mtk_cam_ctx *ctx, struct media_entity *entity);
+
+static inline void mtk_cam_ctx_flush_adl_work(struct mtk_cam_ctx *ctx)
+{
+	struct mtk_cam_adl_work *adl_work = &ctx->adl_work;
+
+	if (adl_work->raw_dev)
+		flush_work(&adl_work->work);
+}
+
 int mtk_cam_ctx_init_scenario(struct mtk_cam_ctx *ctx);
 int mtk_cam_ctx_all_nodes_streaming(struct mtk_cam_ctx *ctx);
 int mtk_cam_ctx_all_nodes_idle(struct mtk_cam_ctx *ctx);

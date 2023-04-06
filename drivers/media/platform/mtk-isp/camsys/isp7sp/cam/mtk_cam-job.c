@@ -5,6 +5,8 @@
 #include <linux/rpmsg/mtk_ccd_rpmsg.h>
 #include <linux/pm_runtime.h>
 
+#include <linux/soc/mediatek/mtk-cmdq-ext.h>
+
 #include "mtk_cam-fmt_utils.h"
 #include "mtk_cam.h"
 #include "mtk_cam-ipi.h"
@@ -1413,6 +1415,49 @@ static int _apply_cq(struct mtk_cam_job *job)
 	return 0;
 }
 
+static void adl_cmdq_worker(struct work_struct *work)
+{
+	struct mtk_cam_adl_work *adl_work =
+		container_of(work, struct mtk_cam_adl_work, work);
+	struct mtk_cam_ctx *ctx =
+		container_of(adl_work, struct mtk_cam_ctx, adl_work);
+	struct cmdq_client *client = NULL;
+	struct cmdq_pkt *pkt;
+
+	client = ctx->cam->cmdq_clt;
+	if (WARN_ON_ONCE(!client))
+		return;
+
+	pkt = cmdq_pkt_create(client);
+
+	if (WARN_ON(!pkt))
+		return;
+
+	if (adl_work->is_dc)
+		write_pkt_trigger_apu_dc(adl_work->raw_dev, pkt);
+	else
+		write_pkt_trigger_apu_frame_mode(adl_work->raw_dev, pkt);
+
+	cmdq_pkt_flush(pkt);
+	cmdq_pkt_destroy(pkt);
+}
+
+static void trigger_adl_by_work(struct mtk_cam_ctx *ctx,
+				struct mtk_raw_device *raw_dev,
+				bool is_apu_dc)
+{
+	struct mtk_cam_adl_work *adl_work = &ctx->adl_work;
+
+	mtk_cam_ctx_flush_adl_work(ctx);
+
+	INIT_WORK(&adl_work->work, adl_cmdq_worker);
+	adl_work->raw_dev = raw_dev;
+	adl_work->is_dc = is_apu_dc;
+
+	queue_work(system_highpri_wq, &adl_work->work);
+}
+
+//#define ADL_FRAME_MODE_BY_CMDQ
 static int trigger_m2m(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
@@ -1420,22 +1465,32 @@ static int trigger_m2m(struct mtk_cam_job *job)
 	int raw_id = _get_master_raw_id(job->used_engine);
 	struct mtk_raw_device *raw_dev =
 		dev_get_drvdata(cam->engines.raw_devs[raw_id]);
-	int ret = 0;
-	bool is_apu_trig;
+	bool is_apu;
+	bool is_apu_dc;
 
-	is_apu_trig = is_m2m_apu(job);
+	is_apu = is_m2m_apu(job);
 
 	mtk_cam_event_frame_sync(&ctx->cam_ctrl, job->req_seq);
 
-	if (is_apu_trig)
-		trigger_adl(raw_dev);
-	else
+	if (is_apu) {
+		is_apu_dc = is_m2m_apu_dc(job);
+
+#ifdef ADL_FRAME_MODE_BY_CMDQ
+		trigger_adl_by_work(ctx, raw_dev, is_apu_dc);
+#else
+		if (is_apu_dc)
+			trigger_adl_by_work(ctx, raw_dev, 1);
+		else
+			trigger_adl(raw_dev);
+#endif
+	} else
 		trigger_rawi_r5(raw_dev);
 
-	dev_info(raw_dev->dev, "%s [ctx:%d] seq 0x%x is_apu=%d\n",
-		 __func__, ctx->stream_id, job->frame_seq_no, is_apu_trig);
+	dev_info(raw_dev->dev, "%s [ctx:%d] seq 0x%x%s\n",
+		 __func__, ctx->stream_id, job->frame_seq_no,
+		 is_apu ? (is_apu_dc ? " apu_dc" : " apu") : "");
 
-	return ret;
+	return 0;
 }
 
 static int job_print_warn_desc(struct mtk_cam_job *job, const char *desc,
@@ -3499,15 +3554,15 @@ static int update_adl_param(struct mtk_cam_job *job,
 			    struct mtk_raw_ctrl_data *ctrl,
 			    struct mtkcam_ipi_adl_frame_param *adl_fp)
 {
+	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_apu_info *apu_info = &ctrl->apu_info;
 
 	adl_fp->vpu_i_point = map_ipi_vpu_point(apu_info->vpu_i_point);
 	adl_fp->vpu_o_point = map_ipi_vpu_point(apu_info->vpu_o_point);
 	adl_fp->sysram_en = apu_info->sysram_en;
 	adl_fp->block_y_size = apu_info->block_y_size;
-	/* TODO: SLB */
-	adl_fp->slb_addr = 0;
-	adl_fp->slb_size = 0;
+	adl_fp->slb_addr = (__u64)ctx->slb_addr;
+	adl_fp->slb_size = ctx->slb_size;
 
 	pr_info("%s: vpu i/o %d/%d sram %d ysize %d\n",
 		__func__,
@@ -4320,6 +4375,7 @@ static int job_fetch_freq(struct mtk_cam_job *job,
 {
 	struct mtk_raw_ctrl_data *ctrl;
 	struct mtk_cam_resource_driver *res;
+	unsigned int freq;
 
 	ctrl = get_raw_ctrl_data(job);
 	if (!ctrl) {
@@ -4328,8 +4384,27 @@ static int job_fetch_freq(struct mtk_cam_job *job,
 	}
 
 	res = &ctrl->resource;
+	freq = res->clk_target;
 
-	*freq_hz = res->clk_target;
+	if (is_m2m_apu(job)) {
+		struct mtk_cam_ctx *ctx = job->src_ctx;
+		struct mtk_cam_device *cam = ctx->cam;
+		int opp_idx = ctrl->apu_info.opp_index;
+		unsigned int adj_freq;
+
+		adj_freq = mtk_cam_dvfs_query(&cam->dvfs, opp_idx);
+
+		if (adj_freq == 0)
+			adj_freq = 1;
+
+		if (CAM_DEBUG_ENABLED(JOB) && freq != adj_freq)
+			pr_info("%s: adjust by apu opp_index %d freq %u to %u\n",
+				__func__, opp_idx, freq, adj_freq);
+
+		freq = adj_freq;
+	}
+
+	*freq_hz = freq;
 	/* boost isp clk during switching */
 	*boostable = res->user_data.raw_res.hw_mode == HW_MODE_DIRECT_COUPLED;
 

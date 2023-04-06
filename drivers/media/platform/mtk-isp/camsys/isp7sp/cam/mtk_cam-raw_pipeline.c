@@ -11,6 +11,7 @@
 #include "mtk_cam.h"
 #include "mtk_cam-dvfs_qos.h"
 #include "mtk_cam-raw_pipeline.h"
+#include "mtk_cam-raw_ctrl.h"
 #include "mtk_cam-resource_calc.h"
 #include "mtk_cam-plat.h"
 #include "mtk_cam-fmt_utils.h"
@@ -334,7 +335,7 @@ static int mtk_raw_calc_raw_mask_chk_scen(struct mtk_cam_device *cam,
 					  struct mtk_cam_resource_raw_v2 *r)
 {
 	// RGBW requires a minimum of 2 raw
-	if (r->scen.scen.normal.w_chn_enabled) {
+	if (scen_is_rgbw(&r->scen)) {
 		int raws_must_cnt = max_num_conti_bits(r->raws_must);
 
 		if (r->raws_must && raws_must_cnt != 2) {

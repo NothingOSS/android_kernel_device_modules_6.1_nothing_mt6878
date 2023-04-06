@@ -53,4 +53,9 @@ static inline bool scen_is_m2m_apu(struct mtk_cam_scen *scen,
 		(apu_info->apu_path != APU_NONE);
 }
 
+static inline bool apu_info_is_dc(struct mtk_cam_apu_info *apu_info)
+{
+	return apu_info->apu_path == APU_DC_RAW;
+}
+
 #endif /*__MTK_CAM_RAW_CTRL_H*/

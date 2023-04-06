@@ -126,6 +126,14 @@ void mtk_cam_dvfs_reset_runtime_info(struct mtk_camsys_dvfs *dvfs)
 	       dvfs->max_stream_num * sizeof(*dvfs->stream_infos));
 }
 
+unsigned int mtk_cam_dvfs_query(struct mtk_camsys_dvfs *dvfs, int opp_idx)
+{
+	int idx;
+
+	idx = clamp_val(opp_idx, 0, (int)dvfs->opp_num);
+	return dvfs->opp[idx].freq_hz;
+}
+
 static int freq_to_oppidx(struct mtk_camsys_dvfs *dvfs,
 			  unsigned int freq)
 {

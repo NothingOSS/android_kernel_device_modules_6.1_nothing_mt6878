@@ -41,6 +41,8 @@ int mtk_cam_dvfs_remove(struct mtk_camsys_dvfs *dvfs);
 
 void mtk_cam_dvfs_reset_runtime_info(struct mtk_camsys_dvfs *dvfs);
 
+unsigned int mtk_cam_dvfs_query(struct mtk_camsys_dvfs *dvfs, int opp_idx);
+
 int mtk_cam_dvfs_update(struct mtk_camsys_dvfs *dvfs, int stream_id,
 			unsigned int target_freq_hz, bool boostable);
 

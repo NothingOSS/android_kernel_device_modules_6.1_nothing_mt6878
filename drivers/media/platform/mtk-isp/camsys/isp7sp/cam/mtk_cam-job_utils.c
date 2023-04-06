@@ -1232,6 +1232,18 @@ bool is_m2m_apu(struct mtk_cam_job *job)
 	return scen_is_m2m_apu(&job->job_scen, &ctrl->apu_info);
 }
 
+bool is_m2m_apu_dc(struct mtk_cam_job *job)
+{
+	struct mtk_raw_ctrl_data *ctrl;
+
+	ctrl = get_raw_ctrl_data(job);
+	if (!ctrl)
+		return 0;
+
+	return scen_is_m2m_apu(&job->job_scen, &ctrl->apu_info)
+		&& apu_info_is_dc(&ctrl->apu_info);
+}
+
 int map_ipi_vpu_point(int vpu_point)
 {
 	switch (vpu_point) {

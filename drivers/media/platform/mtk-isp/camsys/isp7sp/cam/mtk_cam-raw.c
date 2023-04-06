@@ -18,6 +18,7 @@
 
 #include <soc/mediatek/smi.h>
 #include <soc/mediatek/mmdvfs_v3.h>
+#include <linux/soc/mediatek/mtk-cmdq-ext.h>
 
 #include "mtk_cam.h"
 #include "mtk_cam-debug.h"
@@ -534,11 +535,73 @@ void trigger_rawi_r5(struct mtk_raw_device *dev)
 	trigger_rawi(dev, FBIT(CAMCTL_RAWI_R5_TRIG));
 }
 
+#define CAM_MAIN_ADLRD_CTRL 0x32c
 void trigger_adl(struct mtk_raw_device *dev)
 {
-#define CAM_MAIN_ADLRD_CTRL 0x32c
-	writel(0x2 << 1 | 0x1, dev->cam->base + CAM_MAIN_ADLRD_CTRL);
+	int adlrd_ctrl;
+
+	adlrd_ctrl =
+		(dev->id << 1) | /* ADLRD_MUX_SEL */
+		0x1; /* ADLRD_EN */
+
+	writel(adlrd_ctrl, dev->cam->base + CAM_MAIN_ADLRD_CTRL);
 	trigger_rawi(dev, FBIT(CAMCTL_APU_TRIG) | FBIT(CAMCTL_RAW_TRIG));
+}
+
+static void write_pkt_apu_raw(struct mtk_raw_device *dev,
+			      struct cmdq_pkt *pkt,
+			      bool is_apu_dc)
+{
+	int raw_id = dev->id;
+	int raw_base;
+	int adlrd_ctrl;
+	int trig;
+
+	raw_base = (raw_id == 0) ? 0x1a030000 :
+		   (raw_id == 1) ? 0x1a070000 : 0x1a0b0000;
+
+	adlrd_ctrl =
+		(raw_id << 1) | /* ADLRD_MUX_SEL */
+		0x1; /* ADLRD_EN */
+
+	trig = is_apu_dc ?
+		FBIT(CAMCTL_APU_TRIG) :
+		(FBIT(CAMCTL_APU_TRIG) | FBIT(CAMCTL_RAW_TRIG));
+
+	if (is_apu_dc)
+		cmdq_pkt_write(pkt, NULL, 0x1a003380, 0xf0000, 0xffffffff);
+	else
+		cmdq_pkt_write(pkt, NULL, 0x1a003380, 0x00001, 0xffffffff);
+
+	/* CAM_MAIN_ADLRD_CTRL */
+	cmdq_pkt_write(pkt, NULL, 0x1a00032c, adlrd_ctrl, 0xffffffff);
+
+	/* CAMCTL_RAWI_TRIG: CAMCTL_APU_TRIG */
+	cmdq_pkt_write(pkt, NULL, raw_base + REG_CAMCTL_RAWI_TRIG, trig,
+		       0xffffffff);
+
+	if (CAM_DEBUG_ENABLED(RAW_INT))
+		dev_info(dev->dev, "dc %d adlrd_ctrl 0x%x RAWI_TRIG 0x%x\n",
+			 is_apu_dc, adlrd_ctrl, trig);
+}
+
+void write_pkt_trigger_apu_dc(struct mtk_raw_device *dev,
+			      struct cmdq_pkt *pkt)
+{
+#define APU_SW_EVENT (675)
+	/* wait APU ready */
+	cmdq_pkt_wfe(pkt, APU_SW_EVENT);
+
+	write_pkt_apu_raw(dev, pkt, true /* is_apu_dc */);
+
+	/* trigger APU */
+	cmdq_pkt_write(pkt, NULL, 0x190E1600, 0x1, 0xffffffff);
+}
+
+void write_pkt_trigger_apu_frame_mode(struct mtk_raw_device *dev,
+				      struct cmdq_pkt *pkt)
+{
+	write_pkt_apu_raw(dev, pkt, false /* is_apu_dc */);
 }
 
 #define REG_DMA_SOFT_RST_STAT               0x4068

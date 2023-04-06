@@ -142,6 +142,12 @@ void immediate_stream_off(struct mtk_raw_device *dev);
 void trigger_rawi_r2(struct mtk_raw_device *dev);
 void trigger_rawi_r5(struct mtk_raw_device *dev);
 void trigger_adl(struct mtk_raw_device *dev);
+
+struct cmdq_pkt;
+void write_pkt_trigger_apu_dc(struct mtk_raw_device *dev, struct cmdq_pkt *pkt);
+void write_pkt_trigger_apu_frame_mode(struct mtk_raw_device *dev,
+				      struct cmdq_pkt *pkt);
+
 void raw_dump_debug_status(struct mtk_raw_device *dev);
 
 /* reset */

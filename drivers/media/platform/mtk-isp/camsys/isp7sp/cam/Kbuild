@@ -15,6 +15,7 @@ subdir-ccflags-y += \
     -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/ \
     -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/ \
     -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek/ \
+    -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc/ \
     -I$(srctree)/$(src)
 
 
