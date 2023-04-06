@@ -91,7 +91,7 @@ DEFINE_MUTEX(servicecall_lock);
 
 int perf_boost_cnt;
 
-struct mutex perf_boost_lock;
+DEFINE_MUTEX(perf_boost_lock);
 
 struct platform_device *tz_system_dev;
 EXPORT_SYMBOL(tz_system_dev);
@@ -1046,28 +1046,28 @@ TZ_RESULT _GzServiceCall_body(int32_t Fd, unsigned int cmd,
 
 static void kree_perf_boost(int enable)
 {
-	/* struct ppm_limit_data freq_to_set[2]; */
+	if (!tz_system_dev) {
+		KREE_ERR("%s probe not ready\n", __func__);
+		return;
+	}
 
 	mutex_lock(&perf_boost_lock);
 	/* KREE_ERR("%s %s\n", __func__, enable>0?"enable":"disable"); */
 
 	if (enable) {
-		if (perf_boost_cnt == 0) {
-			KREE_DEBUG("%s wake_lock\n", __func__);
+		if (perf_boost_cnt++ == 0) {
+			KREE_DEBUG("%s wake_lock cnt=%d\n", __func__, perf_boost_cnt);
 #if IS_ENABLED(CONFIG_PM_SLEEP)
 			__pm_stay_awake(TeeServiceCall_wake_lock); /*4.19*/
 #endif
 		}
-		perf_boost_cnt++;
 	} else {
-		if (perf_boost_cnt == 1) {
-			KREE_DEBUG("%s wake_unlock\n", __func__);
+		if ((perf_boost_cnt > 0) && (perf_boost_cnt-- == 1)) {
+			KREE_DEBUG("%s wake_unlock cnt=%d\n", __func__, perf_boost_cnt);
 #if IS_ENABLED(CONFIG_PM_SLEEP)
 			__pm_relax(TeeServiceCall_wake_lock); /*4.19*/
 #endif
 		}
-		if (perf_boost_cnt > 0)
-			perf_boost_cnt--;
 	}
 
 	mutex_unlock(&perf_boost_lock);
@@ -1296,7 +1296,6 @@ static int tz_system_probe(struct platform_device *pdev)
 	KREE_INFO("%s+\n", __func__);
 
 	perf_boost_cnt = 0;
-	mutex_init(&perf_boost_lock);
 
 #if IS_ENABLED(CONFIG_PM_SLEEP)
 	/*kernel-4.14*/
