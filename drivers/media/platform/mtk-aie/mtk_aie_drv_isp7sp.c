@@ -40,6 +40,12 @@
 
 #define AIE_ALIGN32(x) round_up(x, 32)
 
+enum AIE_BUF_TYPE {
+	SECURE_BUF,
+	CACHED_BUF,
+	UNCACHED_BUF
+};
+
 static struct cmdq_pkt *g_sec_pkt;
 static const unsigned int fd_wdma_en[fd_loop_num][output_WDMA_WRA_num] = {
 	{1, 0, 0, 0}, {1, 0, 1, 0}, {1, 0, 1, 0}, {1, 0, 0, 0}, {1, 1, 1, 1},
@@ -864,16 +870,27 @@ static void aie_free_va(struct mtk_aie_dev *fd, struct imem_buf_info *bufinfo)
 	}
 }
 
-static struct dma_buf *aie_imem_sec_alloc(struct mtk_aie_dev *fd, u32 size, bool IsSecure)
+static struct dma_buf *aie_imem_sec_alloc(struct mtk_aie_dev *fd,
+						u32 size,
+						enum AIE_BUF_TYPE buf_type)
 {
 	struct dma_heap *dma_heap;
 	struct dma_buf *my_dma_buf;
 
-	if (IsSecure)
+	switch (buf_type) {
+	case SECURE_BUF:
 		dma_heap = dma_heap_find("mtk_prot_region");
-	else
+		break;
+	case CACHED_BUF:
+		dma_heap = dma_heap_find("mtk_mm");
+		break;
+	case UNCACHED_BUF:
 		dma_heap = dma_heap_find("mtk_mm-uncached");
-
+		break;
+	default:
+		dma_heap = dma_heap_find("mtk_mm-uncached");
+		break;
+	}
 
 	if (!dma_heap) {
 		dev_info(fd->dev, "heap find fail\n");
@@ -1294,7 +1311,7 @@ static int aie_alloc_dram_buf(struct mtk_aie_dev *fd)
 	alloc_size = fd->fd_rs_cfg_size;
 	//ret = aie_imem_alloc(fd, alloc_size, &fd->rs_cfg_data);
 
-	ret_buf = aie_imem_sec_alloc(fd, alloc_size, false);
+	ret_buf = aie_imem_sec_alloc(fd, alloc_size, CACHED_BUF);
 	if (!ret_buf)
 		return -1;
 
@@ -1324,7 +1341,7 @@ static int aie_alloc_dram_buf(struct mtk_aie_dev *fd)
 	alloc_size =
 		fd->fd_fd_cfg_aligned_size + fd->attr_fd_cfg_aligned_size * MAX_ENQUE_FRAME_NUM;
 	//ret = aie_imem_alloc(fd, alloc_size, &fd->fd_cfg_data);
-	ret_buf = aie_imem_sec_alloc(fd, alloc_size, false);
+	ret_buf = aie_imem_sec_alloc(fd, alloc_size, CACHED_BUF);
 	if (!ret_buf)
 		return -1;
 
@@ -1368,7 +1385,7 @@ static int aie_alloc_dram_buf(struct mtk_aie_dev *fd)
 	alloc_size = fd->fd_yuv2rgb_cfg_aligned_size +
 		     fd->attr_yuv2rgb_cfg_aligned_size * MAX_ENQUE_FRAME_NUM;
 	//ret = aie_imem_alloc(fd, alloc_size, &fd->yuv2rgb_cfg_data);
-	ret_buf = aie_imem_sec_alloc(fd, alloc_size, false);
+	ret_buf = aie_imem_sec_alloc(fd, alloc_size, CACHED_BUF);
 	if (!ret_buf)
 		return -1;
 
@@ -1427,7 +1444,7 @@ static int aie_alloc_output_buf(struct mtk_aie_dev *fd)
 		alloc_size += fd->rs_pym_out_size[i] * 3;
 
 	if (g_user_param.is_secure) {
-		ret_buf = aie_imem_sec_alloc(fd, alloc_size, true);
+		ret_buf = aie_imem_sec_alloc(fd, alloc_size, SECURE_BUF);
 		if (!ret_buf)
 			return -1;
 		fd->rs_output_hw.size = alloc_size;
@@ -1438,7 +1455,7 @@ static int aie_alloc_output_buf(struct mtk_aie_dev *fd)
 
 		fd->rs_output_hw.pa = iova;
 	} else {
-		ret_buf = aie_imem_sec_alloc(fd, alloc_size, false);
+		ret_buf = aie_imem_sec_alloc(fd, alloc_size, CACHED_BUF);
 		if (!ret_buf)
 			return -1;
 
@@ -1507,7 +1524,7 @@ static int aie_alloc_fddma_buf(struct mtk_aie_dev *fd)
 
 	alloc_size = fd->fd_dma_max_size;
 	//ret = aie_imem_alloc(fd, alloc_size, &fd->fd_dma_hw);
-	ret_buf = aie_imem_sec_alloc(fd, alloc_size, false);
+	ret_buf = aie_imem_sec_alloc(fd, alloc_size, CACHED_BUF);
 	if (!ret_buf)
 		return -1;
 
@@ -1527,7 +1544,7 @@ static int aie_alloc_fddma_buf(struct mtk_aie_dev *fd)
 
 	alloc_size = fd->fd_fd_kernel_size + fd->fd_attr_kernel_size;
 	//ret = aie_imem_alloc(fd, alloc_size, &fd->fd_kernel_hw);
-	ret_buf = aie_imem_sec_alloc(fd, alloc_size, false);
+	ret_buf = aie_imem_sec_alloc(fd, alloc_size, CACHED_BUF);
 	if (!ret_buf)
 		return -1;
 
@@ -1547,7 +1564,7 @@ static int aie_alloc_fddma_buf(struct mtk_aie_dev *fd)
 
 	alloc_size = fd->fd_attr_dma_max_size;
 	//ret = aie_imem_alloc(fd, alloc_size, &fd->fd_attr_dma_hw);
-	ret_buf = aie_imem_sec_alloc(fd, alloc_size, false);
+	ret_buf = aie_imem_sec_alloc(fd, alloc_size, CACHED_BUF);
 	if (!ret_buf)
 		return -1;
 
@@ -1577,7 +1594,7 @@ static int aie_alloc_fld_buf(struct mtk_aie_dev *fd)
 
 	/* fld_blink_weight_forect14, blink weight start (done) */
 	alloc_size = fld_blink_weight_size;
-	ret_buf = aie_imem_sec_alloc(fd, alloc_size, false);
+	ret_buf = aie_imem_sec_alloc(fd, alloc_size, CACHED_BUF);
 	if (!ret_buf)
 		return -1;
 
@@ -1597,7 +1614,7 @@ static int aie_alloc_fld_buf(struct mtk_aie_dev *fd)
 
 	/* fld_fp_forest00_om45, FP start (done) */
 	alloc_size = fld_fp_size * FLD_MAX_INPUT;
-	ret_buf = aie_imem_sec_alloc(fd, alloc_size, false);
+	ret_buf = aie_imem_sec_alloc(fd, alloc_size, CACHED_BUF);
 	if (!ret_buf)
 		return -1;
 
@@ -1617,7 +1634,7 @@ static int aie_alloc_fld_buf(struct mtk_aie_dev *fd)
 
 	/* fld_tree_forest00_cv_weight, CV weight start (done) */
 	alloc_size = (fld_cv_size * (FLD_MAX_INPUT-1)) + fld_cv_size_00;
-	ret_buf = aie_imem_sec_alloc(fd, alloc_size, false);
+	ret_buf = aie_imem_sec_alloc(fd, alloc_size, CACHED_BUF);
 	if (!ret_buf)
 		return -1;
 
@@ -1637,7 +1654,7 @@ static int aie_alloc_fld_buf(struct mtk_aie_dev *fd)
 
 	/* fld_leafnode_forest00 start (done) */
 	alloc_size = fld_leafnode_size * FLD_MAX_INPUT;
-	ret_buf = aie_imem_sec_alloc(fd, alloc_size, false);
+	ret_buf = aie_imem_sec_alloc(fd, alloc_size, CACHED_BUF);
 	if (!ret_buf)
 		return -1;
 
@@ -1657,7 +1674,7 @@ static int aie_alloc_fld_buf(struct mtk_aie_dev *fd)
 
 	/* fld_tree_forest00_tree_node start (done) */
 	alloc_size = fld_tree_size * FLD_MAX_INPUT;
-	ret_buf = aie_imem_sec_alloc(fd, alloc_size, false);
+	ret_buf = aie_imem_sec_alloc(fd, alloc_size, CACHED_BUF);
 	if (!ret_buf)
 		return -1;
 
@@ -1677,7 +1694,7 @@ static int aie_alloc_fld_buf(struct mtk_aie_dev *fd)
 
 	/* fdvt_fld_tree_forest00_init_shape start (done) */
 	alloc_size = fld_shape_size;
-	ret_buf = aie_imem_sec_alloc(fd, alloc_size, false);
+	ret_buf = aie_imem_sec_alloc(fd, alloc_size, CACHED_BUF);
 	if (!ret_buf)
 		return -1;
 
@@ -2308,6 +2325,18 @@ static int aie_load_fw(struct mtk_aie_dev *fd)
 		       fd->base_para->attr_yuv2rgb_cfg_va[0],
 		       fd->attr_yuv2rgb_cfg_data_size);
 	}
+
+	dma_buf_end_cpu_access(fd->fd_cfg_data.dmabuf, DMA_BIDIRECTIONAL);
+	dma_buf_end_cpu_access(fd->rs_cfg_data.dmabuf, DMA_BIDIRECTIONAL);
+	dma_buf_end_cpu_access(fd->yuv2rgb_cfg_data.dmabuf, DMA_BIDIRECTIONAL);
+
+	dma_buf_begin_cpu_access(fd->fd_kernel_hw.dmabuf, DMA_BIDIRECTIONAL);
+	dma_buf_begin_cpu_access(fd->fld_blink_weight_hw.dmabuf, DMA_BIDIRECTIONAL);
+	dma_buf_begin_cpu_access(fd->fld_fp_hw.dmabuf, DMA_BIDIRECTIONAL);
+	dma_buf_begin_cpu_access(fd->fld_cv_hw.dmabuf, DMA_BIDIRECTIONAL);
+	dma_buf_begin_cpu_access(fd->fld_leafnode_hw.dmabuf, DMA_BIDIRECTIONAL);
+	dma_buf_begin_cpu_access(fd->fld_tree_02_hw.dmabuf, DMA_BIDIRECTIONAL);
+	dma_buf_begin_cpu_access(fd->fld_shape_hw.dmabuf, DMA_BIDIRECTIONAL);
 
 	/*0~10*/
 	memcpy(fd->dma_para->fd_kernel_va[0][0], &fdvt_kernel_bias_loop00_0_frame01_7sp[0],
@@ -2971,6 +3000,14 @@ static int aie_load_fw(struct mtk_aie_dev *fd)
 	memcpy(fd->dma_para->fld_tree02_va[14], &fdvt_fld_tree_forest14_tree_node_7sp,
 								fld_tree_size_non_align);
 
+	dma_buf_end_cpu_access(fd->fd_kernel_hw.dmabuf, DMA_BIDIRECTIONAL);
+	dma_buf_end_cpu_access(fd->fld_blink_weight_hw.dmabuf, DMA_BIDIRECTIONAL);
+	dma_buf_end_cpu_access(fd->fld_fp_hw.dmabuf, DMA_BIDIRECTIONAL);
+	dma_buf_end_cpu_access(fd->fld_cv_hw.dmabuf, DMA_BIDIRECTIONAL);
+	dma_buf_end_cpu_access(fd->fld_leafnode_hw.dmabuf, DMA_BIDIRECTIONAL);
+	dma_buf_end_cpu_access(fd->fld_tree_02_hw.dmabuf, DMA_BIDIRECTIONAL);
+	dma_buf_end_cpu_access(fd->fld_shape_hw.dmabuf, DMA_BIDIRECTIONAL);
+
 	/* Model related configuration */
 	writel(0x00b0c80f, fd->fd_base + FLD_NUM_CONFIG_0);
 
@@ -3110,7 +3147,8 @@ static int aie_config_y2r(struct mtk_aie_dev *fd, struct aie_enq_info *aie_cfg,
 	u16 src_crop_w = 0;
 	u16 src_crop_h = 0;
 	unsigned int msb_bit_0 = 0, msb_bit_1 = 0, msb_bit_2 = 0;
-
+	u32 flush_offset = 0;
+	u32 flush_len = 0;
 
 	if (aie_cfg->en_roi == false) {
 		img_off = 0;
@@ -3168,6 +3206,8 @@ static int aie_config_y2r(struct mtk_aie_dev *fd, struct aie_enq_info *aie_cfg,
 		src_crop_h = fd->base_para->crop_height;
 		yuv2rgb_cfg = (u32 *)fd->base_para->fd_yuv2rgb_cfg_va;
 		pym0_out_w = fd->base_para->pyramid_width;
+		flush_offset = 0;
+		flush_len = fd->fd_yuv2rgb_cfg_aligned_size;
 	} else if (mode == ATTRIBUTEMODE) {
 		src_crop_w = fd->attr_para->crop_width[fd->attr_para->w_idx];
 		src_crop_h = fd->attr_para->crop_height[fd->attr_para->w_idx];
@@ -3175,6 +3215,9 @@ static int aie_config_y2r(struct mtk_aie_dev *fd, struct aie_enq_info *aie_cfg,
 			(u32 *)fd->base_para
 				->attr_yuv2rgb_cfg_va[fd->attr_para->w_idx];
 		pym0_out_w = ATTR_MODE_PYRAMID_WIDTH;
+		flush_offset = fd->fd_yuv2rgb_cfg_aligned_size +
+			fd->attr_yuv2rgb_cfg_aligned_size * fd->attr_para->w_idx;
+		flush_len = fd->attr_yuv2rgb_cfg_aligned_size;
 	} else {
 		dev_info(fd->dev,
 				"YUV2RGB not support %d", mode);
@@ -3407,6 +3450,9 @@ static int aie_config_y2r(struct mtk_aie_dev *fd, struct aie_enq_info *aie_cfg,
 			((src_crop_h - 1) << 15) / (pym0_out_h - 1);
 	}
 
+	dma_buf_end_cpu_access_partial(fd->yuv2rgb_cfg_data.dmabuf,
+		DMA_BIDIRECTIONAL, flush_offset, flush_len);
+
 	return 0;
 }
 
@@ -3521,6 +3567,8 @@ static int aie_config_rs(struct mtk_aie_dev *fd, struct aie_enq_info *aie_cfg)
 			(xmag_0 & 0x3FFF) | ((ymag_0 << 16) & 0x3FFF0000);
 	}
 
+	dma_buf_end_cpu_access(fd->rs_cfg_data.dmabuf, DMA_BIDIRECTIONAL);
+
 	return 0;
 }
 
@@ -3547,6 +3595,8 @@ static int aie_config_network(struct mtk_aie_dev *fd,
 	u16 out_ysize_plus_1_stride2 = 0;
 	u32 src_crop_w  = 0;
 	u32 src_crop_h = 0;
+	u32 flush_offset  = 0;
+	u32 flush_len = fd->fd_fd_cfg_aligned_size;
 	struct aie_static_info *pstv = NULL;
 	int msb_bit_0 = 0, msb_bit_1 = 0, msb_bit_2 = 0, msb_bit_3 = 0;
 
@@ -3569,7 +3619,23 @@ static int aie_config_network(struct mtk_aie_dev *fd,
 
 	fd_cfg = fd->base_para->fd_fd_cfg_va;
 
-	for (i = 0; i < fd_loop_num; i++) {
+	switch (fd->base_para->number_of_pyramid) {
+	case 1:
+		i = rpn1_loop_num + 1;
+		break;
+	case 2:
+		i = rpn2_loop_num + 1;
+		break;
+	case 3:
+		i = 0;
+		break;
+	default:
+		dev_info(fd->dev, "pyramid size error: %d",
+					fd->base_para->number_of_pyramid);
+		return -1;
+	}
+
+	for (; i < fd_loop_num; i++) {
 		msb_bit_0 = 0;
 		msb_bit_1 = 0;
 		msb_bit_2 = 0;
@@ -3641,7 +3707,7 @@ static int aie_config_network(struct mtk_aie_dev *fd,
 					aie_combine_stride(
 						fd_cur_cfg
 							[FD_IN_STRIDE0_BUS_SIZE0 +
-							 2 * j],
+							2 * j],
 						fd_xsize[j] + 1);
 			}
 		}
@@ -3688,9 +3754,9 @@ static int aie_config_network(struct mtk_aie_dev *fd,
 			fd_cur_cfg[FD_IMAGE_COORD] =
 				(fd_cur_cfg[FD_IMAGE_COORD] & 0xF) |
 				(((src_crop_w * 512 /
-				   (int)fd->base_para->pyramid_width)
-				  << 4) &
-				 0x7FFF0);
+				(int)fd->base_para->pyramid_width)
+				<< 4) &
+				0x7FFF0);
 			fd_cur_cfg[FD_IMAGE_COORD_XY_OFST] = 0;
 			if (aie_cfg->en_roi) {
 				fd_cur_cfg[FD_IMAGE_COORD_XY_OFST] =
@@ -3701,9 +3767,9 @@ static int aie_config_network(struct mtk_aie_dev *fd,
 			fd_cur_cfg[FD_IMAGE_COORD] =
 				(fd_cur_cfg[FD_IMAGE_COORD] & 0xF) |
 				(((src_crop_w * 512 /
-				   (int)fd->base_para->pyramid_width * 2)
-				  << 4) &
-				 0x7FFF0);
+				(int)fd->base_para->pyramid_width * 2)
+				<< 4) &
+				0x7FFF0);
 			fd_cur_cfg[FD_IMAGE_COORD_XY_OFST] = 0;
 			if (aie_cfg->en_roi) {
 				fd_cur_cfg[FD_IMAGE_COORD_XY_OFST] =
@@ -3714,9 +3780,9 @@ static int aie_config_network(struct mtk_aie_dev *fd,
 			fd_cur_cfg[FD_IMAGE_COORD] =
 				(fd_cur_cfg[FD_IMAGE_COORD] & 0xF) |
 				(((src_crop_w * 512/
-				   (int)fd->base_para->pyramid_width * 4)
-				  << 4) &
-				 0x7FFF0);
+				(int)fd->base_para->pyramid_width * 4)
+				<< 4) &
+				0x7FFF0);
 			fd_cur_cfg[FD_IMAGE_COORD_XY_OFST] = 0;
 			if (aie_cfg->en_roi) {
 				fd_cur_cfg[FD_IMAGE_COORD_XY_OFST] =
@@ -3843,6 +3909,9 @@ static int aie_config_network(struct mtk_aie_dev *fd,
 		fd_cur_cfg[POS_FDCON_KERNEL_BA_MSB] = (u32)((msb_bit_1 << 8) | (msb_bit_0));
 	}
 
+	dma_buf_end_cpu_access_partial(fd->fd_cfg_data.dmabuf,
+		DMA_BIDIRECTIONAL, flush_offset, flush_len);
+
 	return 0;
 }
 
@@ -3861,6 +3930,12 @@ static int aie_config_attr_network(struct mtk_aie_dev *fd,
 	u16 src_crop_w;
 	u16 src_crop_h;
 	int msb_bit_0 = 0, msb_bit_1 = 0, msb_bit_2 = 0, msb_bit_3 = 0;
+	u32 flush_offset;
+	u32 flush_len;
+
+	flush_offset = fd->fd_fd_cfg_aligned_size +
+		fd->attr_fd_cfg_aligned_size * fd->attr_para->w_idx;
+	flush_len = fd->attr_fd_cfg_aligned_size;
 
 	src_crop_w = fd->attr_para->crop_width[fd->attr_para->w_idx];
 	src_crop_h = fd->attr_para->crop_height[fd->attr_para->w_idx];
@@ -4067,6 +4142,10 @@ static int aie_config_attr_network(struct mtk_aie_dev *fd,
 				(u32)(fd->dma_para->attr_kernel_pa[i][j]);
 		}
 	}
+
+	dma_buf_end_cpu_access_partial(fd->fd_cfg_data.dmabuf,
+		DMA_BIDIRECTIONAL, flush_offset, flush_len);
+
 	return 0;
 }
 
