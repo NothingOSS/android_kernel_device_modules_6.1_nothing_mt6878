@@ -1794,7 +1794,7 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 				struct drm_mtk_layering_info *disp_info = &layering_info;
 
 				/* Due to the problem of calculation accuracy use 1024 */
-				if (peak_ratio > 1000) {
+				if (peak_ratio > 1024) {
 					if (aee_trigger) {
 						print_bwm_table();
 						dump_disp_info(disp_info,
@@ -1840,7 +1840,7 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 				struct drm_mtk_layering_info *disp_info = &layering_info;
 
 				/* Due to the problem of calculation accuracy use 1024 */
-				if (peak_ratio > 1000) {
+				if (peak_ratio > 1024) {
 					if (aee_trigger) {
 						print_bwm_table();
 						dump_disp_info(disp_info,

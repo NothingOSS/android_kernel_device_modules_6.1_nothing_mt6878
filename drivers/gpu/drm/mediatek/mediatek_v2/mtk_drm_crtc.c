@@ -6324,35 +6324,35 @@ static void mtk_drm_ovl_bw_monitor_ratio_prework(struct drm_crtc *crtc,
 		struct mtk_plane_state *plane_state =
 			to_mtk_plane_state(plane->state);
 		int index = plane_index;
-		int is_active = 0;
-		int need_skip = 0;
+		bool is_active = false;
+		bool need_skip = false;
 		bool is_gpu_cached = false;
 
 		DDPDBG_BWM("BWM: layer caps:0x%08x\n", plane_state->comp_state.layer_caps);
 		if ((plane_state->comp_state.layer_caps & MTK_HWC_UNCHANGED_LAYER) ||
 			(plane_state->comp_state.layer_caps & MTK_HWC_INACTIVE_LAYER) ||
 			(plane_state->comp_state.layer_caps & MTK_HWC_UNCHANGED_FBT_LAYER)) {
-			is_active = 0;
-			need_skip = 0;
+			is_active = false;
+			need_skip = false;
 			if ((plane_state->comp_state.layer_caps & MTK_HWC_INACTIVE_LAYER) &&
 			(plane_state->comp_state.layer_caps & MTK_HWC_UNCHANGED_FBT_LAYER)) {
 				is_gpu_cached = true;
 				mtk_crtc->fbt_layer_id = index;
 			}
 		} else {
-			is_active = 1;
-			need_skip = 1;
+			is_active = true;
+			need_skip = true;
 		}
 
 		if (((plane_state->comp_state.layer_caps & MTK_DISP_UNCHANGED_RATIO_VALID) ||
 			(plane_state->comp_state.layer_caps & MTK_DISP_FBT_RATIO_VALID)) &&
-			(need_skip == 0))
-			need_skip = 1;
+			(need_skip == false))
+			need_skip = true;
 
 		DDPDBG_BWM("BWM: need skip:%d\n", need_skip);
 
 		if ((plane_index < MAX_LAYER_RATIO_NUMBER) &&
-			(plane_state->pending.enable) && (need_skip != 1) && (index >= 0)) {
+			(plane_state->pending.enable) && (!need_skip) && (index >= 0)) {
 
 			if (is_gpu_cached) {
 				display_fbt_compress_ratio_table.frame_idx = frame_idx;
@@ -6402,8 +6402,10 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 	struct mtk_crtc_state *state = mtk_crtc_state;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	unsigned int width = crtc->state->adjusted_mode.hdisplay;
+	struct total_tile_overhead to_info;
 
 	plane_mask = old_crtc_state->plane_mask;
+	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
 
 	drm_for_each_plane_mask(plane, crtc->dev, plane_mask) {
 		unsigned int plane_index = to_crtc_plane_index(plane->index);
@@ -6431,28 +6433,38 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 		unsigned int peak_inter_value = 0;
 		struct cmdq_operand lop;
 		struct cmdq_operand rop;
-		int need_skip = 0;
+		bool need_skip = false;
 		struct mtk_ddp_comp *comp_right_pipe = NULL;
+		bool cross_mid_line = false;
 
 		DDPDBG_BWM("BWM: layer caps:0x%08x\n", plane_state->comp_state.layer_caps);
 		if ((plane_state->comp_state.layer_caps & MTK_HWC_UNCHANGED_LAYER) ||
 			(plane_state->comp_state.layer_caps & MTK_HWC_INACTIVE_LAYER) ||
 			(plane_state->comp_state.layer_caps & MTK_HWC_UNCHANGED_FBT_LAYER)) {
-			need_skip = 0;
+			need_skip = false;
 		} else {
-			need_skip = 1;
+			need_skip = true;
 		}
 
 		if (((plane_state->comp_state.layer_caps & MTK_DISP_UNCHANGED_RATIO_VALID) ||
 			(plane_state->comp_state.layer_caps & MTK_DISP_FBT_RATIO_VALID)) &&
-			(need_skip == 0))
-			need_skip = 1;
+			(need_skip == false))
+			need_skip = true;
 		DDPDBG_BWM("BWM: need skip:%d\n", need_skip);
 
 		if (!comp) {
 			DDPPR_ERR("%s run next plane with NULL comp\n", __func__);
 			break;
 		}
+
+		if ((dst_x < width / 2) &&
+			(dst_x + src_w >= width / 2))
+			cross_mid_line = true;
+
+		if (mtk_crtc->is_dual_pipe && cross_mid_line &&
+			mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_TILE_OVERHEAD) && !need_skip)
+			src_w = to_info.left_in_width + to_info.right_in_width - width + src_w;
 
 		/*
 		 * Layer SRT compress ratio =
@@ -6462,12 +6474,12 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 		 * Attention: win_h = (reg_BURST_ACC_WIN_SIZE+1)*(fbdc_en?4:1)
 		 */
 		if (!bpp || !is_compress) {
-			need_skip = 1;
+			need_skip = true;
 		} else {
 			if (src_w * src_h * bpp)
 				avg_inter_value = (16 * expand)/(src_w * src_h * bpp);
 			else {
-				need_skip = 1;
+				need_skip = true;
 				DDPPR_ERR("BWM: division by zero, src_w:%u src_h:%u\n",
 						src_w, src_h);
 			}
@@ -6480,7 +6492,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 					peak_inter_value = (16 * expand) /
 						(src_w * ovl_win_size * (is_compress?4:1) * bpp);
 			} else {
-				need_skip = 1;
+				need_skip = true;
 				DDPPR_ERR("BWM: division by zero, src_w:%u ovl_win_size:%u\n",
 						src_w, ovl_win_size);
 			}
@@ -6500,8 +6512,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 
 		if (mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_PRIM_DUAL_PIPE) &&
-			(dst_x < width / 2) &&
-			(dst_x + src_w >= width / 2)) {
+			cross_mid_line) {
 			comp_right_pipe =
 				mtk_crtc_get_plane_comp_for_bwm(crtc, plane_state, true);
 			if (!comp_right_pipe)
@@ -6509,7 +6520,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 		}
 
 		if ((ext_lye_id) &&
-			(plane_state->pending.enable) && (need_skip != 1)) {
+			(plane_state->pending.enable) && (!need_skip)) {
 			cmdq_pkt_read(state->cmdq_handle, NULL,
 				comp->regs_pa + DISP_REG_OVL_ELX_BURST_ACC(ext_lye_id-1),
 				CMDQ_THR_SPR_IDX1);
@@ -6608,7 +6619,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 			cmdq_pkt_write_indriect(state->cmdq_handle, comp->cmdq_base,
 				peak_slot, CMDQ_THR_SPR_IDX1, ~0);
 
-		} else if (plane_state->pending.enable && (need_skip != 1)) {
+		} else if (plane_state->pending.enable && (!need_skip)) {
 			cmdq_pkt_read(state->cmdq_handle, NULL,
 				comp->regs_pa + DISP_REG_OVL_LX_BURST_ACC(lye_id),
 				CMDQ_THR_SPR_IDX1);
