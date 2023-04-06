@@ -122,6 +122,7 @@ static int vdec_init(struct mtk_vcodec_ctx *ctx, unsigned long *h_vdec)
 
 	inst->vsi = (struct vdec_vsi *)inst->vcu.vsi;
 	ctx->input_driven = inst->vsi->input_driven;
+	ctx->output_async = inst->vsi->output_async;
 	ctx->ipi_blocked = &inst->vsi->ipi_blocked;
 	*(ctx->ipi_blocked) = 0;
 	ctx->low_pw_mode = inst->vsi->low_pw_mode;
@@ -277,6 +278,7 @@ static int vdec_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 		goto err_free_fb_out;
 
 	inst->ctx->input_driven = inst->vsi->input_driven;
+	inst->ctx->output_async = inst->vsi->output_async;
 	inst->num_nalu++;
 	return ret;
 
@@ -483,6 +485,13 @@ static void get_input_driven(struct vdec_inst *inst, unsigned int *input_driven)
 		*input_driven = inst->vsi->input_driven;
 }
 
+static void get_output_async(struct vdec_inst *inst, bool *output_async)
+{
+	inst->vcu.ctx = inst->ctx;
+	if (inst->vsi != NULL)
+		*output_async = inst->vsi->output_async;
+}
+
 static void get_low_pw_mode(struct vdec_inst *inst, unsigned int *low_pw_mode)
 {
 	inst->vcu.ctx = inst->ctx;
@@ -587,6 +596,10 @@ static int vdec_get_param(unsigned long h_vdec,
 
 	case GET_PARAM_INPUT_DRIVEN:
 		get_input_driven(inst, out);
+		break;
+
+	case GET_PARAM_OUTPUT_ASYNC:
+		get_output_async(inst, out);
 		break;
 
 	case GET_PARAM_LOW_POWER_MODE:

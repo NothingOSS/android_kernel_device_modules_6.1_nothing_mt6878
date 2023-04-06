@@ -641,6 +641,7 @@ struct mtk_vcodec_ctx {
 	wait_queue_head_t bs_wq;
 	unsigned int *ipi_blocked;
 	enum vdec_input_driven_mode input_driven;
+	bool output_async;
 
 	/* for vdec low power mode */
 	spinlock_t lpw_lock;
