@@ -1679,9 +1679,9 @@ static int mtk_i2c_parse_dt(struct device_node *np, struct mtk_i2c *i2c)
 	if (i2c->clk_src_div == 0)
 		return -EINVAL;
 
-	of_property_read_u32(np, "clk_src_in_hz", &i2c->clk_src_in_hz);
-	of_property_read_u32(np, "ch_offset_i2c", &i2c->ch_offset_i2c);
-	of_property_read_u32(np, "ch_offset_dma", &i2c->ch_offset_dma);
+	of_property_read_u32(np, "clk-src-in-hz", &i2c->clk_src_in_hz);
+	of_property_read_u32(np, "ch-offset-i2c", &i2c->ch_offset_i2c);
+	of_property_read_u32(np, "ch-offset-dma", &i2c->ch_offset_dma);
 	dev_dbg(i2c->dev, "clk_src=%d,ch_offset_i2c=0x%x, ch_offset_dma=0x%x\n",
 			i2c->clk_src_in_hz, i2c->ch_offset_i2c, i2c->ch_offset_dma);
 	i2c->have_pmic = of_property_read_bool(np, "mediatek,have-pmic");
