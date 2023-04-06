@@ -3039,8 +3039,8 @@ static u16 imx989_custom4_setting[] = {
 static u16 imx989_custom5_setting[] = {
 /* Reg_I: DCGHDR_RATIO4_4K_4096_2304_30FPS_PD_On the fly2 (14bit) */
 	// MIPI output setting
-	0x0112, 0x0C,
-	0x0113, 0x0C,
+	0x0112, 0x0E,
+	0x0113, 0x0E,
 	0x0114, 0x02,
 	// Line Length PCK Setting
 	0x0342, 0xA5,
@@ -6639,8 +6639,8 @@ static u16 imx989_custom16_setting[] = {
 static u16 imx989_custom17_setting[] = {
 /* Reg_U: DCGHDR_RATIO4_4K_4096_3072_30FPS_PD_On the fly1 (14bit) */
 	// MIPI output setting
-	0x0112, 0x0C,
-	0x0113, 0x0C,
+	0x0112, 0x0E,
+	0x0113, 0x0E,
 	0x0114, 0x02,
 	// Line Length PCK Setting
 	0x0342, 0xA5,
