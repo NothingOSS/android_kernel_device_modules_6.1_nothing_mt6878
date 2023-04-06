@@ -222,8 +222,11 @@ struct mtk_cam_job_ops {
 				int engine_type, int engine_id,
 				int seq_no);
 	int (*apply_switch)(struct mtk_cam_job *s);
-	int (*apply_raw_switch)(struct mtk_cam_job *s);
 	int (*dump_aa_info)(struct mtk_cam_job *s, int engine_type);
+};
+
+struct initialize_params {
+	int (*master_raw_init)(struct device *dev, struct mtk_cam_job *job);
 };
 
 struct mtk_cam_job {
@@ -259,6 +262,7 @@ struct mtk_cam_job {
 
 	struct mtk_cam_job_state job_state;
 	const struct mtk_cam_job_ops *ops;
+	const struct initialize_params *init_params;
 
 	/* for cq_done handling */
 	struct apply_cq_ref cq_ref;
@@ -525,5 +529,9 @@ static inline int mtk_cam_job_manually_apply_isp_async(struct mtk_cam_job *job)
 
 int mtk_cam_job_update_clk(struct mtk_cam_job *job);
 int mtk_cam_job_update_clk_switching(struct mtk_cam_job *job, bool begin);
+
+int mtk_cam_job_initialize_engines(struct mtk_cam_ctx *ctx,
+				   struct mtk_cam_job *job,
+				   const struct initialize_params *params);
 
 #endif //__MTK_CAM_JOB_H

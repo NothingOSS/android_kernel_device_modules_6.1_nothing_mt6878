@@ -475,19 +475,16 @@ static int update_job_used_engine(struct mtk_cam_job *job)
 	return 0;
 }
 
-struct initialize_opt {
-	int (*master_raw_init)(struct device *dev, struct mtk_cam_job *job);
-};
-
 static struct engine_callback engine_cb = {
 	.isr_event = mtk_cam_ctrl_isr_event,
 	.reset_sensor = mtk_cam_ctrl_reset_sensor,
 	.dump_request = mtk_cam_ctrl_dump_request,
 };
 
-static int initialize_engines(struct mtk_cam_ctx *ctx,
-			      struct mtk_cam_job *job,
-			      struct initialize_opt *opt)
+int
+mtk_cam_job_initialize_engines(struct mtk_cam_ctx *ctx,
+			       struct mtk_cam_job *job,
+			       const struct initialize_params *opt)
 {
 	unsigned long engines;
 	int raw_master_id;
@@ -1171,17 +1168,6 @@ _apply_switch(struct mtk_cam_job *job)
 	return 0;
 }
 
-static int
-_apply_raw_switch(struct mtk_cam_job *job)
-{
-	struct mtk_cam_ctx *ctx = job->src_ctx;
-
-	initialize_engines(ctx, job, NULL);
-
-	pr_info("%s: job type:%d, seq:0x%x\n", __func__, job->job_type, job->frame_seq_no);
-	return 0;
-}
-
 static int ipi_config(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
@@ -1642,9 +1628,26 @@ int master_raw_set_subsample(struct device *dev, struct mtk_cam_job *job)
 	return 0;
 }
 
-struct initialize_opt subsample_init = {
-	.master_raw_init = master_raw_set_subsample,
-};
+static int job_related_hw_init(struct mtk_cam_job *job)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	unsigned long selected;
+
+	selected = mtk_cam_select_hw(job);
+	if (!selected)
+		return -1;
+
+	if (mtk_cam_occupy_engine(ctx->cam, selected))
+		return -1;
+
+	ctx->used_engine = selected;
+	mtk_cam_pm_runtime_engines(&ctx->cam->engines, selected, 1);
+
+	/* original initialize_engines(), only rename, no change */
+	mtk_cam_job_initialize_engines(ctx, job, job->init_params);
+
+	return 0;
+}
 
 static int
 _job_pack_subsample(struct mtk_cam_job *job,
@@ -1663,22 +1666,14 @@ _job_pack_subsample(struct mtk_cam_job *job,
 		__func__, ctx->stream_id, job->job_type, job->job_scen.id, first_frame_only_cur,
 		job->sub_ratio, subsof_fps);
 	job->stream_on_seninf = false;
+
 	if (!ctx->used_engine) {
-		unsigned long selected;
-
-		selected = mtk_cam_select_hw(job);
-		if (!selected)
+		if (job_related_hw_init(job))
 			return -1;
 
-		if (mtk_cam_occupy_engine(ctx->cam, selected))
-			return -1;
-
-		ctx->used_engine = selected;
-		mtk_cam_pm_runtime_engines(&ctx->cam->engines, selected, 1);
-
-		initialize_engines(ctx, job, &subsample_init);
 		job->stream_on_seninf = true;
 	}
+
 	/* config_flow_by_job_type */
 	update_job_used_engine(job);
 
@@ -1726,9 +1721,74 @@ int master_raw_set_stagger(struct device *dev, struct mtk_cam_job *job)
 	return 0;
 }
 
-struct initialize_opt stagger_init = {
-	.master_raw_init = master_raw_set_stagger,
-};
+static bool is_sensor_changed(struct mtk_cam_job *job)
+{
+	struct mtk_raw_ctrl_data *ctrl_data = get_raw_ctrl_data(job);
+
+	if (!ctrl_data || !ctrl_data->rc_data.sensor_update)
+		return false;
+
+	if (job->seninf_prev != job->seninf)
+		return true;
+
+	return false;
+}
+
+/**
+ * To check and update job->raw_switch.
+ * Must be called after job->stream_on_seninf is determined and
+ * before ipi config/ input change parameter is prepared
+ */
+static void update_job_raw_switch(struct mtk_cam_job *job)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+	bool raw_switch = false;
+	int r;
+
+	if (!is_sensor_changed(job))
+		goto EXIT_SET_RAW_SWITCH;
+
+	dev_info(ctx->cam->dev,
+		 "%s:ctx(%d): change sensor:(%s) --> (%s/%s)\n", __func__,
+		 ctx->stream_id, job->seninf_prev->entity.name,
+		 job->sensor->entity.name, job->seninf->entity.name);
+	/* update pipeline cached pads and v4l2 internal data here */
+	media_pipeline_stop(&job->seninf_prev->entity.pads[0]);
+	r = media_pipeline_start(&job->seninf->entity.pads[0], &ctx->pipeline);
+	if (r)
+		dev_info(ctx->cam->dev,
+			 "%s:failed in media_pipeline_start:%d\n",
+			 __func__, r);
+
+	/* The user changed the sensor in the first request */
+	if (job->stream_on_seninf) {
+		/* It is not real raw switch, just update the ctx' sensor */
+		ctx->sensor = job->sensor;
+		ctx->seninf = job->seninf;
+		goto EXIT_SET_RAW_SWITCH;
+	}
+
+	raw_switch = true;
+
+EXIT_SET_RAW_SWITCH:
+	job->raw_switch = raw_switch;
+}
+
+bool check_if_need_configure(bool ctx_has_configured,
+			     bool seamless_switch, bool raw_switch)
+{
+	if (!ctx_has_configured)
+		return true;
+
+	/**
+	 * In raw switch case, the camsv restart flow needs the config
+	 * ipi, so we return true directly.
+	 */
+	if (seamless_switch || raw_switch)
+		return true;
+
+	return false;
+}
 
 static int
 _job_pack_otf_stagger(struct mtk_cam_job *job,
@@ -1737,13 +1797,21 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_device *cam = ctx->cam;
 	struct mtk_cam_scen *prev_scen = &job->prev_scen;
+	bool sensor_change = is_sensor_changed(job);
 	int ret;
 
 	job->switch_type = get_exp_switch_type(job);
+
+	/**
+	 * If sensor_change happened, we also run the
+	 * mtk_cam_ctrl_stream_on_job() flow. (In this case,
+	 * we stop the previous stream and start a new stream of
+	 * the updated sensor.)
+	 */
 	job->first_frm_switch =
-		(!ctx->not_first_job) && do_seamless_switch(job);
+		(!ctx->not_first_job || sensor_change) && do_seamless_switch(job);
 	job->seamless_switch =
-		(ctx->not_first_job) && do_seamless_switch(job);
+		(ctx->not_first_job && !sensor_change) && do_seamless_switch(job);
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
 
 	dev_info(cam->dev, "[%s] ctx:%d, type:%d, scen exp:%d->%d, swi:%d",
@@ -1754,27 +1822,21 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 	job->scq_period = SCQ_DEADLINE_MS_STAGGER;
 
 	if (!ctx->used_engine) {
-		unsigned long selected;
-
-		selected = mtk_cam_select_hw(job);
-		if (!selected)
+		if (job_related_hw_init(job))
 			return -1;
 
-		if (mtk_cam_occupy_engine(ctx->cam, selected))
-			return -1;
-
-		ctx->used_engine = selected;
-		mtk_cam_pm_runtime_engines(&ctx->cam->engines, selected, 1);
-
-		initialize_engines(ctx, job, &stagger_init);
 		job->stream_on_seninf = true;
 	}
+
+	/* determine if it is a raw switch job */
+	update_job_raw_switch(job);
+
 	/* config_flow_by_job_type */
 	update_job_used_engine(job);
 
-	ctx->configured = (ctx->configured && !job->seamless_switch);
 	job->do_ipi_config = false;
-	if (!ctx->configured) {
+	if (check_if_need_configure(ctx->configured, job->seamless_switch,
+				    job->raw_switch)) {
 		/* handle camsv tags */
 		if (handle_sv_tag(job)) {
 			dev_info(cam->dev, "tag handle failed");
@@ -1912,48 +1974,6 @@ static int fill_1st_ipi_mstream(struct mtk_cam_job *job)
 	return update_buffer_to_ipi_mstream_1st(job, fp_1st, fp_2nd);
 }
 
-/**
- * To check and update job->raw_switch.
- * Must be called after job->stream_on_seninf is determined and
- * before ipi config/ input change parameter is prepared
- */
-static void update_job_raw_switch(struct mtk_cam_job *job)
-{
-	struct mtk_cam_ctx *ctx = job->src_ctx;
-	struct mtk_raw_ctrl_data *ctrl_data = get_raw_ctrl_data(job);
-	bool raw_switch = false;
-	int r;
-
-	if (!ctrl_data || !ctrl_data->rc_data.sensor_update)
-		goto EXIT_SET_RAW_SWITCH;
-
-	if (job->seninf_prev != job->seninf) {
-		dev_info(ctx->cam->dev,
-			 "%s:ctx(%d): change sensor:(%s) --> (%s/%s)\n", __func__,
-			 ctx->stream_id, job->seninf_prev->entity.name,
-			 job->sensor->entity.name, job->seninf->entity.name);
-		/* update pipeline cached pads and v4l2 internal data here */
-		media_pipeline_stop(&job->seninf_prev->entity.pads[0]);
-		r = media_pipeline_start(&job->seninf->entity.pads[0], &ctx->pipeline);
-		if (r)
-			dev_info(ctx->cam->dev,
-				 "%s:failed in media_pipeline_start:%d\n",
-				 __func__, r);
-
-		/* The user changed the sensor in the first request */
-		if (job->stream_on_seninf) {
-			/* It is not real raw switch, just update the ctx' sensor */
-			ctx->sensor = job->sensor;
-			ctx->seninf = job->seninf;
-			goto EXIT_SET_RAW_SWITCH;
-		}
-
-		raw_switch = true;
-	}
-
-EXIT_SET_RAW_SWITCH:
-	job->raw_switch = raw_switch;
-}
 
 /* TODO(AY): too many duplicated codes in _job_pack_xxx */
 static int
@@ -1969,20 +1989,11 @@ _job_pack_mstream(struct mtk_cam_job *job,
 	dev_info(cam->dev, "[%s] ctx/seq:%d/0x%x, type:%d",
 		__func__, ctx->stream_id, job->frame_seq_no, job->job_type);
 	job->stream_on_seninf = false;
+
 	if (!ctx->used_engine) {
-		unsigned long selected;
-
-		selected = mtk_cam_select_hw(job);
-		if (!selected)
+		if (job_related_hw_init(job))
 			return -1;
 
-		if (mtk_cam_occupy_engine(ctx->cam, selected))
-			return -1;
-
-		ctx->used_engine = selected;
-		mtk_cam_pm_runtime_engines(&ctx->cam->engines, selected, 1);
-
-		initialize_engines(ctx, job, NULL);
 		job->stream_on_seninf = true;
 	}
 
@@ -1993,7 +2004,7 @@ _job_pack_mstream(struct mtk_cam_job *job,
 	update_job_used_engine(job);
 
 	job->do_ipi_config = false;
-	if (!ctx->configured) {
+	if (check_if_need_configure(ctx->configured, false, job->raw_switch)) {
 		/* handle camsv tags */
 		if (handle_sv_tag(job)) {
 			dev_info(cam->dev, "tag handle failed");
@@ -2041,13 +2052,6 @@ static bool seamless_config_changed(struct mtk_cam_job *job)
 	struct mtk_camsv_device *sv_dev;
 	unsigned int tag_idx;
 	int i, j;
-
-	/**
-	 * In raw switch case, the camsv restart flow needs the config
-	 * ipi, so we return true directly.
-	 */
-	if (job->raw_switch)
-		return true;
 
 	if (!job->seamless_switch || !ctx)
 		return false;
@@ -2124,19 +2128,9 @@ _job_pack_normal(struct mtk_cam_job *job,
 	job->stream_on_seninf = false;
 
 	if (!ctx->used_engine) {
-		unsigned long selected;
-
-		selected = mtk_cam_select_hw(job);
-		if (!selected)
+		if (job_related_hw_init(job))
 			return -1;
 
-		if (mtk_cam_occupy_engine(ctx->cam, selected))
-			return -1;
-
-		ctx->used_engine = selected;
-		mtk_cam_pm_runtime_engines(&ctx->cam->engines, selected, 1);
-
-		initialize_engines(ctx, job, NULL);
 		job->stream_on_seninf = true;
 	}
 
@@ -2146,9 +2140,10 @@ _job_pack_normal(struct mtk_cam_job *job,
 	/* config_flow_by_job_type */
 	update_job_used_engine(job);
 
-	ctx->configured = (ctx->configured && !seamless_config_changed(job));
 	job->do_ipi_config = false;
-	if (!ctx->configured) {
+	if (check_if_need_configure(ctx->configured,
+				    seamless_config_changed(job),
+				    job->raw_switch)) {
 		/* handle camsv tags */
 		if (handle_sv_tag(job)) {
 			dev_info(cam->dev, "tag handle failed");
@@ -2197,21 +2192,11 @@ _job_pack_m2m(struct mtk_cam_job *job,
 		__func__, ctx->stream_id, job->job_type, job->job_scen.id);
 	job->stream_on_seninf = false;
 	if (!ctx->used_engine) {
-		unsigned long selected;
-
-		selected = mtk_cam_select_hw(job);
-		if (!selected)
+		if (job_related_hw_init(job))
 			return -1;
-
-		if (mtk_cam_occupy_engine(ctx->cam, selected))
-			return -1;
-
-		ctx->used_engine = selected;
-		mtk_cam_pm_runtime_engines(&ctx->cam->engines, selected, 1);
-
-		initialize_engines(ctx, job, NULL);
 		//job->stream_on_seninf = true;
 	}
+
 	/* config_flow_by_job_type */
 	update_job_used_engine(job);
 
@@ -2253,25 +2238,15 @@ _job_pack_only_sv(struct mtk_cam_job *job,
 		__func__, ctx->stream_id, job->job_type, job->job_scen.id);
 	job->stream_on_seninf = false;
 	if (!ctx->used_engine) {
-		int selected;
-
-		selected = mtk_cam_select_hw(job);
-		if (!selected)
+		if (job_related_hw_init(job))
 			return -1;
-
-		if (mtk_cam_occupy_engine(ctx->cam, selected))
-			return -1;
-
-		ctx->used_engine = selected;
-		mtk_cam_pm_runtime_engines(&ctx->cam->engines, selected, 1);
-
-		initialize_engines(ctx, job, NULL);
 
 		/* update sensor resource */
 		mtk_cam_update_sensor_resource(ctx);
 
 		job->stream_on_seninf = true;
 	}
+
 	/* config_flow_by_job_type */
 	update_job_used_engine(job);
 
@@ -2920,7 +2895,6 @@ static struct mtk_cam_job_ops otf_job_ops = {
 	.mark_afo_done = job_mark_afo_done,
 	.mark_engine_done = job_mark_engine_done,
 	.apply_switch = _apply_switch,
-	.apply_raw_switch = _apply_raw_switch,
 	.dump_aa_info = job_dump_aa_info,
 };
 
@@ -2937,7 +2911,6 @@ static struct mtk_cam_job_ops otf_stagger_job_ops = {
 	.mark_afo_done = job_mark_afo_done,
 	.mark_engine_done = job_mark_engine_done,
 	.apply_switch = _apply_switch,
-	.apply_raw_switch = NULL,
 	.dump_aa_info = job_dump_aa_info,
 };
 
@@ -2954,7 +2927,6 @@ static struct mtk_cam_job_ops m2m_job_ops = {
 	.trigger_isp = trigger_m2m,
 	.mark_afo_done = job_mark_afo_done,
 	.mark_engine_done = job_mark_engine_done,
-	.apply_raw_switch = NULL,
 	.dump_aa_info = 0,
 };
 
@@ -2970,7 +2942,6 @@ static struct mtk_cam_job_ops mstream_job_ops = {
 	.apply_isp = apply_cq_mstream,
 	.mark_afo_done = job_mark_afo_done,
 	.mark_engine_done = job_mark_engine_done_mstream,
-	.apply_raw_switch = NULL,
 	.dump_aa_info = job_dump_aa_info,
 };
 
@@ -2985,7 +2956,6 @@ static struct mtk_cam_job_ops otf_only_sv_job_ops = {
 	.apply_sensor = _apply_sensor,
 	.apply_isp = _apply_cq,
 	.mark_engine_done = job_mark_engine_done,
-	.apply_raw_switch = NULL,
 	.dump_aa_info = 0,
 };
 
@@ -3096,6 +3066,14 @@ static void update_job_sensor(struct mtk_cam_job *job)
 	job->seninf = raw->seninf;
 }
 
+struct initialize_params stagger_init = {
+	.master_raw_init = master_raw_set_stagger,
+};
+
+struct initialize_params subsample_init = {
+	.master_raw_init = master_raw_set_subsample,
+};
+
 static int job_factory(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
@@ -3123,6 +3101,7 @@ static int job_factory(struct mtk_cam_job *job)
 	init_completion(&job->cq_exe_completion);
 
 	memset(&job->hdr_ts_cache, 0, sizeof(job->hdr_ts_cache));
+	job->init_params = NULL;
 
 	switch (job->job_type) {
 	case JOB_TYPE_BASIC:
@@ -3138,6 +3117,7 @@ static int job_factory(struct mtk_cam_job *job)
 		mtk_cam_job_state_init_basic(&job->job_state, &sf_state_cb,
 					     !!job->sensor_hdl_obj);
 		job->ops = &otf_stagger_job_ops;
+		job->init_params = &stagger_init;
 		break;
 	case JOB_TYPE_M2M:
 		pack_helper = &m2m_pack_helper;
@@ -3157,6 +3137,7 @@ static int job_factory(struct mtk_cam_job *job)
 		mtk_cam_job_state_init_subsample(&job->job_state, &sf_state_cb,
 					     !!job->sensor_hdl_obj);
 		job->ops = &otf_job_ops;
+		job->init_params = &subsample_init;
 		break;
 	case JOB_TYPE_ONLY_SV:
 		pack_helper = &only_sv_pack_helper;
