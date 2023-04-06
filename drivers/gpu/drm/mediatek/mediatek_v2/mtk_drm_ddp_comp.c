@@ -438,7 +438,7 @@ static const struct mtk_ddp_comp_match mtk_ddp_matches[DDP_COMPONENT_ID_MAX] = {
 	{DDP_COMPONENT_DLI_ASYNC4, MTK_DISP_VIRTUAL, -1, NULL, 0},
 	{DDP_COMPONENT_DLI_ASYNC5, MTK_DISP_VIRTUAL, -1, NULL, 0},
 	{DDP_COMPONENT_DLI_ASYNC6, MTK_DISP_VIRTUAL, -1, NULL, 0},
-	{DDP_COMPONENT_DLI_ASYNC7, MTK_DISP_DLI_ASYNC, 7, NULL, 0},
+	{DDP_COMPONENT_DLI_ASYNC7, MTK_DISP_VIRTUAL, 7, NULL, 0},
 	{DDP_COMPONENT_DPTX, MTK_DISP_DPTX, 0, NULL, 1},
 /* 120 */	{DDP_COMPONENT_DP_INTF0, MTK_DP_INTF, 0, NULL, 1},
 	{DDP_COMPONENT_DP_INTF1, MTK_DP_INTF, 1, NULL, 1},
@@ -698,6 +698,7 @@ static const struct mtk_ddp_comp_match mtk_ddp_matches[DDP_COMPONENT_ID_MAX] = {
 	{DDP_COMPONENT_OVL1_PQ_OUT_CB4, MTK_DISP_VIRTUAL, -1, NULL, 0},
 	{DDP_COMPONENT_DSC4, MTK_DISP_DSC, 4, NULL, 0},
 	{DDP_COMPONENT_DSC5, MTK_DISP_DSC, 5, NULL, 0},
+	{DDP_COMPONENT_OVL5_2L_VIRTUAL0, MTK_DISP_VIRTUAL, -1, NULL, 0},
 };
 
 bool mtk_ddp_comp_is_output(struct mtk_ddp_comp *comp)
@@ -2723,7 +2724,6 @@ void mt6985_mtk_sodi_apsrc_config(struct drm_crtc *crtc,
 	} else if (!reset)
 		mt6985_mtk_sodi_apsrc_enable(crtc, _cmdq_handle, crtc_id, enable);
 }
-
 
 static void mt6989_mtk_sodi_apsrc_enable(struct drm_crtc *crtc,
 	struct cmdq_pkt *_cmdq_handle, unsigned int id, bool on)
