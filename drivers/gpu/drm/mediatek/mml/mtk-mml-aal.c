@@ -657,6 +657,7 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 				mml_comp_pw_enable(comp);
 				mml_comp_clk_enable(comp);
 				mml_clock_unlock(task->config->mml);
+				mml_lock_wake_lock(aal->mml, true);
 
 				cmdq_pkt_write(pkt, NULL, base_pa +
 					aal->data->reg_table[AAL_INTSTA],
@@ -1879,6 +1880,7 @@ static void aal_readback_work(struct work_struct *work_item)
 		mml_comp_pw_disable(comp);
 		mml_comp_clk_disable(comp);
 		mml_clock_unlock(aal->mml);
+		mml_lock_wake_lock(aal->mml, false);
 	}
 
 }
