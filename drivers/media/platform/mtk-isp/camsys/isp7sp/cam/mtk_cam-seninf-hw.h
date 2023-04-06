@@ -75,20 +75,20 @@ struct mtk_cam_seninf_mux_meter {
 };
 
 struct mtk_cam_seninf_vcinfo_debug {
-	__u8 seninf_mux;
-	__u8 seninf_mux_en;
-	__u8 seninf_mux_src;
-	__u16 seninf_mux_irq;
-	__u8 cam_mux;
-	__u8 cam_mux_en;
-	__u8 cam_mux_src;
-	__u16 cam_mux_irq;
-	__u16 exp_size;
-	__u16 rec_size;
-	__u32 frame_mointor_err;
-	__u32 vc_feature;
-	__u8 vc;
-	__u8 dt;
+	u32 seninf_mux;
+	u32 seninf_mux_en;
+	u32 seninf_mux_src;
+	u32 seninf_mux_irq;
+	u32 cam_mux;
+	u32 cam_mux_en;
+	u32 cam_mux_src;
+	u32 cam_mux_irq;
+	u32 exp_size;
+	u32 rec_size;
+	u32 frame_mointor_err;
+	u32 vc_feature;
+	u32 vc;
+	u32 dt;
 };
 struct mtk_cam_seninf_debug {
 	__u8 mux_result_cnt;
