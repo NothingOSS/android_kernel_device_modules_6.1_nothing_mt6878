@@ -687,14 +687,14 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 			trace_tracing_mark_write(5566, "gpu_freq", avg_freq);
 
 			trace_GPU_DVFS__Frequency(avg_freq,
-				gpufreq_get_cur_freq(TARGET_STACK) / 1000,
+				gpufreq_get_cur_freq(TARGET_DEFAULT) / 1000,
 				gpufreq_get_cur_freq(TARGET_GPU) / 1000);
 		} else {
 			trace_tracing_mark_write(5566, "gpu_freq",
 				(long long) ged_get_cur_freq() / 1000);
 
 			trace_GPU_DVFS__Frequency(ged_get_cur_freq() / 1000,
-				gpufreq_get_cur_freq(TARGET_STACK) / 1000,
+				gpufreq_get_cur_freq(TARGET_DEFAULT) / 1000,
 				gpufreq_get_cur_freq(TARGET_GPU) / 1000);
 		}
 
@@ -788,14 +788,14 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 		trace_tracing_mark_write(5566, "gpu_freq", avg_freq);
 
 		trace_GPU_DVFS__Frequency(avg_freq,
-			gpufreq_get_cur_freq(TARGET_STACK) / 1000,
+			gpufreq_get_cur_freq(TARGET_DEFAULT) / 1000,
 			gpufreq_get_cur_freq(TARGET_GPU) / 1000);
 	} else {
 		trace_tracing_mark_write(5566, "gpu_freq",
 			(long long) ged_get_cur_freq() / 1000);
 
 		trace_GPU_DVFS__Frequency(ged_get_cur_freq() / 1000,
-			gpufreq_get_cur_freq(TARGET_STACK) / 1000,
+			gpufreq_get_cur_freq(TARGET_DEFAULT) / 1000,
 			gpufreq_get_cur_freq(TARGET_GPU) / 1000);
 	}
 
