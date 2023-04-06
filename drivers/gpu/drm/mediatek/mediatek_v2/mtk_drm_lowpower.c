@@ -1450,8 +1450,6 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 	/* 3. disconnect addon module and recover config */
 	mtk_crtc_disconnect_addon_module(crtc);
 	if (crtc_state) {
-		crtc_state->lye_state.scn[crtc_id] = NONE;
-		crtc_state->lye_state.rpo_lye = 0;
 		crtc_state->lye_state.mml_ir_lye = 0;
 		crtc_state->lye_state.mml_dl_lye = 0;
 	}
