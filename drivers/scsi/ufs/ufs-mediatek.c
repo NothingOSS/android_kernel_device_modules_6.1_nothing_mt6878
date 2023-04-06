@@ -1291,6 +1291,7 @@ static void ufs_mtk_trace_vh_update_sdev(void *data, struct scsi_device *sdev)
 
 	dev_dbg(hba->dev, "lu %llu slave configured", sdev->lun);
 
+	blk_queue_flag_set(QUEUE_FLAG_SAME_FORCE, sdev->request_queue);
 	if (hba->luns_avail == 1) {
 		/* The last LUs */
 		dev_info(hba->dev, "%s: LUNs ready", __func__);
