@@ -105,6 +105,57 @@ static long handleVcoreInfo(unsigned long arg)
 	return ret;
 }
 
+static long handleFeatureEn(unsigned long arg)
+{
+	long ret = 0;
+	struct mbraink_feature_en featureEnInfo;
+
+	memset(&featureEnInfo,
+			0,
+			sizeof(struct mbraink_feature_en));
+
+	if (copy_from_user(&featureEnInfo,
+			 (char *)arg,
+			 sizeof(struct mbraink_feature_en))) {
+		pr_notice("Data get feature en from UserSpace Err!\n");
+		return -EPERM;
+	}
+
+	if (mbraink_priv.feature_en != featureEnInfo.feature_en) {
+		pr_notice("mbraink feature enable.\n");
+		if ((featureEnInfo.feature_en &
+				MBRAINK_FEATURE_GPU_EN)
+					== MBRAINK_FEATURE_GPU_EN) {
+			pr_notice("mbraink feature enable gpu.\n");
+			ret = mbraink_gpu_init();
+			if (ret)
+				pr_notice("mbraink gpu init failed.\n");
+			else
+				mbraink_priv.feature_en |=
+					MBRAINK_FEATURE_GPU_EN;
+		}
+
+		if ((featureEnInfo.feature_en &
+				MBRAINK_FEATURE_AUDIO_EN)
+					== MBRAINK_FEATURE_AUDIO_EN) {
+			pr_notice("mbraink feature enable audio.\n");
+			ret = mbraink_audio_init();
+			if (ret)
+				pr_notice("mbraink audio init failed.\n");
+			else
+				mbraink_priv.feature_en |=
+					MBRAINK_FEATURE_AUDIO_EN;
+		}
+		pr_notice("mbraink en set (%d) to (%d)\n",
+					featureEnInfo.feature_en,
+					mbraink_priv.feature_en);
+	} else {
+		pr_notice("mbraink feature enabled before.\n");
+	}
+
+	return ret;
+}
+
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
@@ -383,6 +434,11 @@ static long mbraink_ioctl(struct file *filp,
 		}
 		break;
 	}
+	case WO_FEATURE_EN:
+	{
+		ret = handleFeatureEn(arg);
+		break;
+	}
 	default:
 		pr_notice("illegal ioctl number %u.\n", cmd);
 		return -EINVAL;
@@ -563,6 +619,7 @@ static int mbraink_dev_init(void)
 	mbraink_priv.resume_power_buffer[0] = '\0';
 	mbraink_priv.resume_power_data_size = 0;
 	mbraink_priv.suspend_power_info_en[0] = '0';
+	mbraink_priv.feature_en = 0;
 
 	/*Allocating Major number*/
 	if ((alloc_chrdev_region(&mbraink_dev_no, 0, 1, CHRDEV_NAME)) < 0) {
@@ -701,17 +758,9 @@ static int mbraink_init(void)
 	if (ret)
 		pr_notice("mbraink netlink init failed.\n");
 
-	ret = mbraink_gpu_init();
-	if (ret)
-		pr_notice("mbraink gpu init failed.\n");
-
 	ret = mbraink_process_tracer_init();
 	if (ret)
 		pr_notice("mbraink tracer init failed.\n");
-
-	ret = mbraink_audio_init();
-	if (ret)
-		pr_notice("mbraink audio init failed.\n");
 
 	ret =  mbraink_cpufreq_notify_init();
 	if (ret)

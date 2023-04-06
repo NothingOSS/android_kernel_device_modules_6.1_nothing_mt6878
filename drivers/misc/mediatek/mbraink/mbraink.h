@@ -33,6 +33,7 @@
 #define CPUFREQ_NOTIFY_INFO		'c'
 #define SUSPEND_INFO			'd'
 #define BATTERY_INFO			'e'
+#define FEATURE_EN			'f'
 
 /*Mbrain Delegate IOCTL List*/
 #define RO_POWER				_IOR(IOC_MAGIC, POWER_INFO, char*)
@@ -60,6 +61,8 @@
 							struct mbraink_suspend_info_struct_data*)
 #define RO_BATTERY_INFO			_IOR(IOC_MAGIC, BATTERY_INFO, \
 							struct mbraink_battery_data*)
+#define WO_FEATURE_EN		_IOW(IOC_MAGIC, FEATURE_EN, \
+							struct mbraink_feature_en*)
 
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1
@@ -76,6 +79,7 @@ struct mbraink_data {
 	int resume_power_data_size;
 	struct sock *mbraink_sock;
 	int client_pid;
+	unsigned int feature_en;
 };
 
 int mbraink_netlink_send_msg(const char *msg);

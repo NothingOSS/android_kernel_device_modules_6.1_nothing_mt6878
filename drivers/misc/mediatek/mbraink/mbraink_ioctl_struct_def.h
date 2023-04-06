@@ -25,6 +25,9 @@
 
 #define MBRAINK_LANDING_PONSOT_CHECK 1
 
+#define MBRAINK_FEATURE_GPU_EN		(1<<0UL)
+#define MBRAINK_FEATURE_AUDIO_EN	(1<<1UL)
+
 enum MBRAINK_VCORE_IP {
 	MBRAINK_VCORE_IP_MDP,
 	MBRAINK_VCORE_IP_DISP,
@@ -33,7 +36,6 @@ enum MBRAINK_VCORE_IP {
 	MBRAINK_VCORE_IP_SCP,
 	MBRAINK_VCORE_IP_MAX,
 };
-
 
 struct mbraink_process_stat_struct {
 	unsigned short pid;
@@ -188,4 +190,9 @@ struct mbraink_battery_data {
 	int precise_soc;
 	int precise_uisoc;
 };
+
+struct mbraink_feature_en {
+	unsigned int feature_en;
+};
+
 #endif
