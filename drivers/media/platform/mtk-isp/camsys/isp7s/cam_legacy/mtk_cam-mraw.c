@@ -1322,10 +1322,7 @@ int mtk_cam_mraw_top_config(struct mtk_mraw_device *dev)
 							MRAW_INT_EN1_DMA_ERR_EN
 							);
 
-	unsigned int int_en5 = (MRAW_INT_EN5_IMGO_M1_ERR_EN |
-							MRAW_INT_EN5_IMGBO_M1_ERR_EN |
-							MRAW_INT_EN5_CPIO_M1_ERR_EN
-							);
+	unsigned int int_en5 = 0;
 
 	/* int en */
 	MRAW_WRITE_REG(dev->base + REG_MRAW_CTL_INT_EN, int_en1);
