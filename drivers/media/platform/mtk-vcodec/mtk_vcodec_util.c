@@ -806,8 +806,10 @@ static void mtk_vcodec_sync_log(struct mtk_vcodec_dev *dev,
 		if (strcmp(pram->param_key, param_key) == 0) {
 			mtk_v4l2_debug(8, "replace old key: %s, value: %s -> %s\n",
 				pram->param_key, pram->param_val, param_val);
-			memset(pram->param_val, 0x00, LOG_PARAM_INFO_SIZE);
-			strncpy(pram->param_val, param_val, LOG_PARAM_INFO_SIZE - 1);
+			SNPRINTF(pram->param_val, LOG_PARAM_INFO_SIZE, "%s", param_val);
+			// move to list head
+			list_del(&pram->list);
+			list_add(&pram->list, plist);
 			mutex_unlock(plist_mutex);
 			return;
 		}
@@ -815,8 +817,8 @@ static void mtk_vcodec_sync_log(struct mtk_vcodec_dev *dev,
 
 	// cannot find, add new
 	pram = kzalloc(sizeof(*pram), GFP_KERNEL);
-	strncpy(pram->param_key, param_key, LOG_PARAM_INFO_SIZE - 1);
-	strncpy(pram->param_val, param_val, LOG_PARAM_INFO_SIZE - 1);
+	SNPRINTF(pram->param_key, LOG_PARAM_INFO_SIZE, "%s", param_key);
+	SNPRINTF(pram->param_val, LOG_PARAM_INFO_SIZE, "%s", param_val);
 	mtk_v4l2_debug(8, "add new key: %s, value: %s\n",
 		pram->param_key, pram->param_val);
 	list_add(&pram->list, plist);
@@ -840,20 +842,24 @@ static void mtk_vcodec_build_log_string(struct mtk_vcodec_dev *dev,
 	struct mtk_vcodec_log_param *pram;
 	struct list_head *plist;
 	struct mutex *plist_mutex;
-	char *vdec_temp_str;
-	char *venc_temp_str;
-	int sl = 0, sl_temp = 0;
+	char *temp_str;
+	char temp_info[LOG_PARAM_INFO_SIZE * 2 + 2] = {0};
+	int str_len = 0, temp_info_len = 0, temp_len, ret;
 
 	if (log_index == MTK_VCODEC_LOG_INDEX_LOG) {
 		plist = &dev->log_param_list;
 		plist_mutex = &dev->log_param_mutex;
-		vdec_temp_str = mtk_vdec_tmp_log;
-		venc_temp_str = mtk_venc_tmp_log;
+		if (dev->vfd_dec)
+			temp_str = mtk_vdec_tmp_log;
+		else
+			temp_str = mtk_venc_tmp_log;
 	} else if (log_index == MTK_VCODEC_LOG_INDEX_PROP) {
 		plist = &dev->prop_param_list;
 		plist_mutex = &dev->prop_param_mutex;
-		vdec_temp_str = mtk_vdec_tmp_prop;
-		venc_temp_str = mtk_venc_tmp_prop;
+		if (dev->vfd_dec)
+			temp_str = mtk_vdec_tmp_prop;
+		else
+			temp_str = mtk_venc_tmp_prop;
 	} else {
 		mtk_v4l2_err("invalid log_index: %d", log_index);
 		return;
@@ -861,54 +867,47 @@ static void mtk_vcodec_build_log_string(struct mtk_vcodec_dev *dev,
 
 	mutex_lock(plist_mutex);
 
-	if (dev->vfd_dec) {
-		memset(vdec_temp_str, 0x00, LOG_PROPERTY_SIZE);
-		sl = 0;
-		list_for_each_entry(pram, plist, list) {
-			mtk_v4l2_debug(8, "existed log param %s: %s\n",
-					pram->param_key, pram->param_val);
-			if (sl >= 0 && sl < LOG_PROPERTY_SIZE && LOG_PROPERTY_SIZE - sl > 0) {
-				sl_temp = snprintf(vdec_temp_str + sl, LOG_PROPERTY_SIZE - sl,
-						"%s %s ", pram->param_key, pram->param_val);
-				if (sl_temp)
-					sl += sl_temp;
-				else
-					mtk_v4l2_err("venc_temp_str err usage:sl_temp: %d",
-							sl_temp);
-			}
-			else
-				mtk_v4l2_err("venc_temp_str err usage:sl: %d", sl);
+	memset(temp_str, 0x00, LOG_PROPERTY_SIZE);
+	str_len = 0;
+	list_for_each_entry(pram, plist, list) {
+		mtk_v4l2_debug(8, "existed log param: %s %s\n",
+				pram->param_key, pram->param_val);
+		ret = snprintf(temp_info, LOG_PARAM_INFO_SIZE * 2 + 2,
+			"%s %s", pram->param_key, pram->param_val);
+		if (ret <= 0) {
+			mtk_v4l2_err("temp_info err usage: snprintf ret %d", ret);
+			continue;
 		}
+		temp_info_len = strlen(temp_info);
+		if (temp_info_len > 0 && str_len + 1 + temp_info_len < LOG_PROPERTY_SIZE) {
+			if (str_len == 0)
+				temp_len = snprintf(temp_str, LOG_PROPERTY_SIZE, "%s", temp_info);
+			else
+				temp_len = snprintf(temp_str + str_len, LOG_PROPERTY_SIZE - str_len,
+					" %s", temp_info);
+			if (temp_len > 0)
+				str_len += temp_len;
+			else
+				mtk_v4l2_err("temp_str err usage: temp_len: %d", temp_len);
+		} else
+			mtk_v4l2_err("temp_str err usage: str_len: %d, temp_info_len: %d",
+				str_len, temp_info_len);
+	}
+
+	if (dev->vfd_dec) {
 		if (log_index == MTK_VCODEC_LOG_INDEX_LOG) {
-			mtk_vdec_vcp_log = vdec_temp_str;
+			mtk_vdec_vcp_log = temp_str;
 			mtk_v4l2_debug(8, "build mtk_vdec_vcp_log: %s\n", mtk_vdec_vcp_log);
 		} else if (log_index == MTK_VCODEC_LOG_INDEX_PROP) {
-			mtk_vdec_property = vdec_temp_str;
+			mtk_vdec_property = temp_str;
 			mtk_v4l2_debug(8, "build mtk_vdec_property: %s\n", mtk_vdec_property);
 		}
 	} else {
-		memset(venc_temp_str, 0x00, LOG_PROPERTY_SIZE);
-		sl = 0;
-		list_for_each_entry(pram, plist, list) {
-			mtk_v4l2_debug(8, "existed log param %s: %s\n",
-					pram->param_key, pram->param_val);
-			if (sl >= 0 && sl < LOG_PROPERTY_SIZE && LOG_PROPERTY_SIZE - sl > 0) {
-				sl_temp = snprintf(venc_temp_str + sl, LOG_PROPERTY_SIZE - sl,
-						"%s %s ", pram->param_key, pram->param_val);
-				if (sl_temp)
-					sl += sl_temp;
-				else
-					mtk_v4l2_err("venc_temp_str err usage:sl_temp: %d",
-							sl_temp);
-			}
-			else
-				mtk_v4l2_err("venc_temp_str err usage: %d", sl);
-		}
 		if (log_index == MTK_VCODEC_LOG_INDEX_LOG) {
-			mtk_venc_vcp_log = venc_temp_str;
+			mtk_venc_vcp_log = temp_str;
 			mtk_v4l2_debug(8, "build mtk_venc_vcp_log: %s\n", mtk_venc_vcp_log);
 		} else if (log_index == MTK_VCODEC_LOG_INDEX_PROP) {
-			mtk_venc_property = venc_temp_str;
+			mtk_venc_property = temp_str;
 			mtk_v4l2_debug(8, "build mtk_venc_property: %s\n", mtk_venc_property);
 		}
 	}
@@ -941,15 +940,14 @@ void mtk_vcodec_set_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 		return;
 	}
 
-	strncpy(log, val, LOG_PROPERTY_SIZE - 1);
+	SNPRINTF(log, LOG_PROPERTY_SIZE, "%s", val);
 	temp = log;
 	for (token = strsep(&temp, "\n\r ");
 	     token != NULL && argc < MAX_SUPPORTED_LOG_PARAMS_COUNT * 2;
 	     token = strsep(&temp, "\n\r ")) {
 		if (strlen(token) == 0)
 			continue;
-		strncpy(argv[argc], token, LOG_PARAM_INFO_SIZE);
-		argv[argc][LOG_PARAM_INFO_SIZE - 1] = '\0';
+		SNPRINTF(argv[argc], LOG_PARAM_INFO_SIZE, "%s", token);
 		argc++;
 	}
 
@@ -992,7 +990,7 @@ void mtk_vcodec_set_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 					return;
 				}
 				memset(vcu_log, 0x00, sizeof(vcu_log));
-				SNPRINTF(vcu_log, sizeof(vcu_log) - 1, "%s %s", argv[i], argv[i+1]);
+				SNPRINTF(vcu_log, sizeof(vcu_log), "%s %s", argv[i], argv[i+1]);
 				if (set_vcu_vpud_log != NULL)
 					set_vcu_vpud_log(ctx, vcu_log);
 			}
@@ -1026,18 +1024,18 @@ void mtk_vcodec_get_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 		|| (dev->vfd_enc && mtk_vcodec_is_vcp(MTK_INST_ENCODER))) { // uP path
 		if (dev->vfd_dec) {
 			if (log_index == MTK_VCODEC_LOG_INDEX_LOG) {
-				strncpy(val, mtk_vdec_vcp_log, LOG_PROPERTY_SIZE - 1);
+				SNPRINTF(val, LOG_PROPERTY_SIZE, "%s", mtk_vdec_vcp_log);
 			} else if (log_index == MTK_VCODEC_LOG_INDEX_PROP) {
-				strncpy(val, mtk_vdec_property, LOG_PROPERTY_SIZE - 1);
+				SNPRINTF(val, LOG_PROPERTY_SIZE, "%s", mtk_vdec_property);
 			} else {
 				mtk_v4l2_err("invalid index: %d", log_index);
 				return;
 			}
 		} else {
 			if (log_index == MTK_VCODEC_LOG_INDEX_LOG) {
-				strncpy(val, mtk_venc_vcp_log, LOG_PROPERTY_SIZE - 1);
+				SNPRINTF(val, LOG_PROPERTY_SIZE, "%s", mtk_venc_vcp_log);
 			} else if (log_index == MTK_VCODEC_LOG_INDEX_PROP) {
-				strncpy(val, mtk_venc_property, LOG_PROPERTY_SIZE - 1);
+				SNPRINTF(val, LOG_PROPERTY_SIZE, "%s", mtk_venc_property);
 			} else {
 				mtk_v4l2_err("invalid index: %d", log_index);
 				return;
@@ -1062,17 +1060,17 @@ void mtk_vcodec_get_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 	if (log_index == MTK_VCODEC_LOG_INDEX_LOG) {
 		len = strlen(val);
 		if (len < LOG_PROPERTY_SIZE)
-			SNPRINTF(val + len, LOG_PROPERTY_SIZE - 1 - len,
+			SNPRINTF(val + len, LOG_PROPERTY_SIZE - len,
 				" %s %d", "-mtk_vcodec_dbg", mtk_vcodec_dbg);
 
 		len = strlen(val);
 		if (len < LOG_PROPERTY_SIZE)
-			SNPRINTF(val + len, LOG_PROPERTY_SIZE - 1 - len,
+			SNPRINTF(val + len, LOG_PROPERTY_SIZE - len,
 				" %s %d", "-mtk_vcodec_perf", mtk_vcodec_perf);
 
 		len = strlen(val);
 		if (len < LOG_PROPERTY_SIZE)
-			SNPRINTF(val + len, LOG_PROPERTY_SIZE - 1 - len,
+			SNPRINTF(val + len, LOG_PROPERTY_SIZE - len,
 				" %s %d", "-mtk_v4l2_dbg_level", mtk_v4l2_dbg_level);
 	}
 

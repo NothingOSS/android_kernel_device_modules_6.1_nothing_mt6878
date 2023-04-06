@@ -47,12 +47,12 @@
 #define SNPRINTF(args...)							\
 	do {											\
 		if (snprintf(args) < 0)						\
-			pr_notice("snprintf error\n");			\
+			pr_notice("[ERROR] %s(),%d: snprintf error\n", __func__, __LINE__);	\
 	} while (0)
 #define SPRINTF(args...)							\
 	do {											\
 		if (sprintf(args) < 0)						\
-			pr_notice("sprintf error\n");			\
+			pr_notice("[ERROR] %s(),%d: sprintf error\n", __func__, __LINE__);	\
 	} while (0)
 
 /**

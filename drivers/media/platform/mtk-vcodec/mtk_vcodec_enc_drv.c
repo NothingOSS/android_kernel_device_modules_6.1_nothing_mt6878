@@ -30,8 +30,8 @@
 module_param(mtk_v4l2_dbg_level, int, 0644); //S_IRUGO | S_IWUSR
 module_param(mtk_vcodec_dbg, bool, 0644); //S_IRUGO | S_IWUSR
 module_param(mtk_vcodec_vcp, int, 0644); //S_IRUGO | S_IWUSR
-char mtk_venc_property_prev[1024];
-char mtk_venc_vcp_log_prev[1024];
+char mtk_venc_property_prev[LOG_PROPERTY_SIZE];
+char mtk_venc_vcp_log_prev[LOG_PROPERTY_SIZE];
 
 static struct mtk_vcodec_dev *dev_ptr;
 static int mtk_vcodec_vcp_log_write(const char *val, const struct kernel_param *kp)

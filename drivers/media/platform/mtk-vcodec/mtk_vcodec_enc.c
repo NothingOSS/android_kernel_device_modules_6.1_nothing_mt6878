@@ -80,14 +80,14 @@ static void set_venc_vcp_data(struct mtk_vcodec_ctx *ctx, enum vcp_reserve_mem_i
 
 	if (id == VENC_SET_PROP_MEM_ID) {
 
-		SPRINTF(enc_prm.set_vcp_buf, "%s", mtk_venc_property);
+		SNPRINTF(enc_prm.set_vcp_buf, LOG_PROPERTY_SIZE, "%s", mtk_venc_property);
 		mtk_v4l2_debug(3, "[%d] mtk_venc_property %s", ctx->id, enc_prm.set_vcp_buf);
 		mtk_v4l2_debug(3, "[%d] mtk_venc_property_prev %s",
 					ctx->id, mtk_venc_property_prev);
 
 		// set vcp log every time
 		if (/* strcmp(mtk_venc_property_prev, enc_prm.set_vcp_buf) != 0 && */
-			strlen(enc_prm.set_vcp_buf) != 0) {
+			strlen(enc_prm.set_vcp_buf) > 0) {
 
 			if (venc_if_set_param(ctx,
 				VENC_SET_PARAM_PROPERTY,
@@ -96,17 +96,18 @@ static void set_venc_vcp_data(struct mtk_vcodec_ctx *ctx, enum vcp_reserve_mem_i
 				kfree(enc_prm.set_vcp_buf);
 				return;
 			}
-			strcpy(mtk_venc_property_prev, enc_prm.set_vcp_buf);
+			SNPRINTF(mtk_venc_property_prev, LOG_PROPERTY_SIZE,
+				"%s", enc_prm.set_vcp_buf);
 		}
 	} else if (id == VENC_VCP_LOG_INFO_ID) {
 
-		SPRINTF(enc_prm.set_vcp_buf, "%s", mtk_venc_vcp_log);
+		SNPRINTF(enc_prm.set_vcp_buf, LOG_PROPERTY_SIZE, "%s", mtk_venc_vcp_log);
 		mtk_v4l2_debug(3, "[%d] mtk_venc_vcp_log %s", ctx->id, enc_prm.set_vcp_buf);
 		mtk_v4l2_debug(3, "[%d] mtk_venc_vcp_log_prev %s", ctx->id, mtk_venc_vcp_log_prev);
 
 		// set vcp log every time
 		if (/* strcmp(mtk_venc_vcp_log_prev, enc_prm.set_vcp_buf) != 0 && */
-			strlen(enc_prm.set_vcp_buf) != 0) {
+			strlen(enc_prm.set_vcp_buf) > 0) {
 
 			if (venc_if_set_param(ctx,
 				VENC_SET_PARAM_VCP_LOG_INFO,
@@ -115,7 +116,8 @@ static void set_venc_vcp_data(struct mtk_vcodec_ctx *ctx, enum vcp_reserve_mem_i
 				kfree(enc_prm.set_vcp_buf);
 				return;
 			}
-			strcpy(mtk_venc_vcp_log_prev, enc_prm.set_vcp_buf);
+			SNPRINTF(mtk_venc_vcp_log_prev, LOG_PROPERTY_SIZE,
+				"%s", enc_prm.set_vcp_buf);
 		}
 	}
 

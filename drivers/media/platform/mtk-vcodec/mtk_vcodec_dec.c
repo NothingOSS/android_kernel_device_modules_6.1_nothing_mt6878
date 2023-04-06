@@ -72,11 +72,11 @@ void mtk_vdec_do_gettimeofday(struct timespec64 *tv)
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 static void set_vdec_vcp_data(struct mtk_vcodec_ctx *ctx, enum vcp_reserve_mem_id_t id)
 {
-	char tmp_buf[1024] = "";
+	char tmp_buf[LOG_PROPERTY_SIZE] = "";
 
 	if (id == VDEC_SET_PROP_MEM_ID) {
 
-		SPRINTF(tmp_buf, "%s", mtk_vdec_property);
+		SNPRINTF(tmp_buf, LOG_PROPERTY_SIZE, "%s", mtk_vdec_property);
 
 		mtk_v4l2_debug(3, "[%d] mtk_vdec_property %s", ctx->id, tmp_buf);
 		mtk_v4l2_debug(3, "[%d] mtk_vdec_property_prev %s",
@@ -84,36 +84,35 @@ static void set_vdec_vcp_data(struct mtk_vcodec_ctx *ctx, enum vcp_reserve_mem_i
 
 		// set vcp property every time
 		if (/* strcmp(mtk_vdec_property_prev, tmp_buf) != 0 &&  */
-			strcmp(tmp_buf, "") != 0) {
+			strlen(tmp_buf) > 0) {
 			if (vdec_if_set_param(ctx,
 				SET_PARAM_VDEC_PROPERTY,
 				tmp_buf)  != 0) {
 				mtk_v4l2_err("Error!! Cannot set vdec property");
 				return;
 			}
-			strcpy(mtk_vdec_property_prev, tmp_buf);
+			SNPRINTF(mtk_vdec_property_prev, LOG_PROPERTY_SIZE, "%s", tmp_buf);
 		}
 	} else if (id == VDEC_VCP_LOG_INFO_ID) {
 
-		SPRINTF(tmp_buf, "%s", mtk_vdec_vcp_log);
+		SNPRINTF(tmp_buf, LOG_PROPERTY_SIZE, "%s", mtk_vdec_vcp_log);
 
 		mtk_v4l2_debug(3, "[%d] mtk_vdec_vcp_log %s", ctx->id, tmp_buf);
 		mtk_v4l2_debug(3, "[%d] mtk_vdec_vcp_log_prev %s", ctx->id, mtk_vdec_vcp_log_prev);
 
 		// set vcp log every time
 		if (/* strcmp(mtk_vdec_vcp_log_prev, tmp_buf) != 0 &&  */
-			strcmp(tmp_buf, "") != 0) {
+			strlen(tmp_buf) > 0) {
 			if (vdec_if_set_param(ctx,
 				SET_PARAM_VDEC_VCP_LOG_INFO,
 				tmp_buf)  != 0) {
 				mtk_v4l2_err("Error!! Cannot set vdec vcp log info");
 				return;
 			}
-			strcpy(mtk_vdec_vcp_log_prev, tmp_buf);
+			SNPRINTF(mtk_vdec_vcp_log_prev, LOG_PROPERTY_SIZE, "%s", tmp_buf);
 		}
-	} else {
+	} else
 		mtk_v4l2_err("[%d] id not support %d", ctx->id, id);
-	}
 }
 #endif
 
