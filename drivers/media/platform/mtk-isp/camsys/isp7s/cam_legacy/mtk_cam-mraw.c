@@ -112,20 +112,23 @@ int mtk_mraw_translation_fault_callback(int port, dma_addr_t mva, void *data)
 {
 	struct mtk_mraw_device *mraw_dev = (struct mtk_mraw_device *)data;
 
-	dev_info(mraw_dev->dev, "tg_sen_mode:0x%x tg_vf_con:0x%x tg_path_cfg:0x%x tg_grab_pxl:0x%x tg_grab_lin:0x%x\n",
+	dev_info(mraw_dev->dev, "tg_sen_mode:0x%x tg_vf_con:0x%x tg_path_cfg:0x%x tg_grab_pxl:0x%x tg_grab_lin:0x%x fram_size:0x%x_%x\n",
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_TG_SEN_MODE),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_TG_VF_CON),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_TG_PATH_CFG),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_TG_SEN_GRAB_PXL),
-		readl_relaxed(mraw_dev->base_inner + REG_MRAW_TG_SEN_GRAB_LIN));
-
-	dev_info(mraw_dev->dev, "mod_en:0x%x mod2_en:0x%x cq_thr0_addr:0x%x_%x cq_thr0_desc_size:0x%x\n",
+		readl_relaxed(mraw_dev->base_inner + REG_MRAW_TG_SEN_GRAB_LIN),
+		readl_relaxed(mraw_dev->base + REG_MRAW_TG_FRMSIZE_ST),
+		readl_relaxed(mraw_dev->base + REG_MRAW_TG_FRMSIZE_ST_R));
+	dev_info(mraw_dev->dev, "mod_en:0x%x mod2_en:0x%x sel:0x%x fmt_sel:0x%x done_sel:0x%x cq_thr0_addr:0x%x_%x cq_thr0_desc_size:0x%x\n",
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_MRAWCTL_MOD_EN),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_MRAWCTL_MOD2_EN),
+		readl_relaxed(mraw_dev->base_inner + REG_MRAW_MRAWCTL_SEL),
+		readl_relaxed(mraw_dev->base_inner + REG_MRAW_MRAWCTL_FMT_SEL),
+		readl_relaxed(mraw_dev->base_inner + REG_MRAW_MRAWCTL_DONE_SEL),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAWCQ_CQ_SUB_THR0_BASEADDR_2_MSB),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAWCQ_CQ_SUB_THR0_BASEADDR_2),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAWCQ_CQ_SUB_THR0_DESC_SIZE_2));
-
 	dev_info(mraw_dev->dev, "imgo_fbc_ctrl1:0x%x imgo_fbc_ctrl2:0x%x imgBo_fbc_ctrl1:0x%x imgBo_fbc_ctrl2:0x%x cpio_fbc_ctrl1:0x%x cpio_fbc_ctrl2:0x%x\n",
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_FBC_IMGO_CTL1),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_FBC_IMGO_CTL2),
@@ -133,7 +136,6 @@ int mtk_mraw_translation_fault_callback(int port, dma_addr_t mva, void *data)
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_FBC_IMGBO_CTL2),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_FBC_CPIO_CTL1),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_FBC_CPIO_CTL2));
-
 	dev_info(mraw_dev->dev, "imgo_xsize:0x%x imgo_ysize:0x%x imgo_stride:0x%x imgo_addr:0x%x_%x imgo_ofst_addr:0x%x_%x\n",
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_IMGO_XSIZE),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_IMGO_YSIZE),
@@ -142,7 +144,6 @@ int mtk_mraw_translation_fault_callback(int port, dma_addr_t mva, void *data)
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_IMGO_BASE_ADDR),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_IMGO_OFST_ADDR_MSB),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_IMGO_OFST_ADDR));
-
 	dev_info(mraw_dev->dev, "imgbo_xsize:0x%x imgbo_ysize:0x%x imgbo_stride:0x%x imgbo_addr:0x%x_%x imgbo_ofst_addr:0x%x_%x\n",
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_IMGBO_XSIZE),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_IMGBO_YSIZE),
@@ -151,7 +152,6 @@ int mtk_mraw_translation_fault_callback(int port, dma_addr_t mva, void *data)
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_IMGBO_BASE_ADDR),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_IMGBO_OFST_ADDR_MSB),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_IMGBO_OFST_ADDR));
-
 	dev_info(mraw_dev->dev, "cpio_xsize:0x%x cpio_ysize:0x%x cpio_stride:0x%x cpio_addr:0x%x_%x cpio_ofst_addr:0x%x_%x\n",
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_CPIO_XSIZE),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_CPIO_YSIZE),
@@ -160,6 +160,23 @@ int mtk_mraw_translation_fault_callback(int port, dma_addr_t mva, void *data)
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_CPIO_BASE_ADDR),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_CPIO_OFST_ADDR_MSB),
 		readl_relaxed(mraw_dev->base_inner + REG_MRAW_CPIO_OFST_ADDR));
+	dev_info_ratelimited(mraw_dev->dev, "sep_ctl:0x%x sep_crop:0x%x sep_vsize:0x%x\n",
+		readl_relaxed(mraw_dev->base_inner + REG_MRAW_SEP_CTL),
+		readl_relaxed(mraw_dev->base_inner + REG_MRAW_SEP_CROP),
+		readl_relaxed(mraw_dev->base_inner + REG_MRAW_SEP_VSIZE));
+	dev_info_ratelimited(mraw_dev->dev, "crop_x:0x%x crop_y:0x%x\n",
+		readl_relaxed(mraw_dev->base_inner + REG_MRAW_CROP_X_POS),
+		readl_relaxed(mraw_dev->base_inner + REG_MRAW_CROP_Y_POS));
+	dev_info_ratelimited(mraw_dev->dev, "mbn_cfg_0:0x%x mbn_cfg_1:0x%x mbn_cfg_2:0x%x\n",
+		readl_relaxed(mraw_dev->base_inner + REG_MRAW_MBN_CFG_0),
+		readl_relaxed(mraw_dev->base_inner + REG_MRAW_MBN_CFG_1),
+		readl_relaxed(mraw_dev->base_inner + REG_MRAW_MBN_CFG_2));
+	dev_info_ratelimited(mraw_dev->dev, "cpi_cfg_0:0x%x cpi_cfg_1:0x%x\n",
+		readl_relaxed(mraw_dev->base_inner + REG_MRAW_CPI_CFG_0),
+		readl_relaxed(mraw_dev->base_inner + REG_MRAW_CPI_CFG_1));
+	dev_info(mraw_dev->dev, "meta buffer setting crop width:%d crop height:%d\n",
+		mraw_dev->pipeline->res_config.stats_cfg_param.crop_width,
+		mraw_dev->pipeline->res_config.stats_cfg_param.crop_height);
 
 	return 0;
 }
@@ -839,7 +856,7 @@ static void mtk_cam_mraw_copy_user_input_param(
 		mraw_pipeline->res_config.tg_crop.s.h < param->crop_height)
 		dev_info(dev, "%s tg size smaller than crop size", __func__);
 
-	dev_dbg(dev, "%s:enable:(%d,%d,%d) crop:(%d,%d) mqe:%d mbn:0x%x_%x_%x_%x_%x_%x_%x_%x cpi:0x%x_%x_%x_%x_%x_%x_%x_%x\n",
+	dev_dbg(dev, "%s:enable:(%d,%d,%d) crop:(%d,%d) mqe:%d mbn:0x%x_%x_%x_%x_%x_%x_%x_%x cpi:0x%x_%x_%x_%x_%x_%x_%x_%x tg:0x%x_%x\n",
 		__func__,
 		param->mqe_en,
 		param->mobc_en,
@@ -862,7 +879,9 @@ static void mtk_cam_mraw_copy_user_input_param(
 		param->cpi_spar_pow,
 		param->cpi_spar_fac,
 		param->cpi_spar_con1,
-		param->cpi_spar_con0);
+		param->cpi_spar_con0,
+		mraw_pipeline->res_config.tg_crop.s.w,
+		mraw_pipeline->res_config.tg_crop.s.h);
 }
 
 static void mtk_cam_mraw_set_frame_param_dmao(
