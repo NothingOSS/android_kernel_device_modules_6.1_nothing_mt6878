@@ -10341,7 +10341,7 @@ static int mt6338_mtkaif_stress_set(struct snd_kcontrol *kcontrol,
 	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
 	struct mt6338_priv *priv = snd_soc_component_get_drvdata(cmpnt);
 	int enable = ucontrol->value.integer.value[0];
-	int value;
+	int value = 0;
 
 	dev_info(priv->dev, "%s(),  enable = %d\n",
 		 __func__, enable);
@@ -10370,7 +10370,7 @@ static int mt6338_mtkaif_stress_get(struct snd_kcontrol *kcontrol,
 {
 	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
 	struct mt6338_priv *priv = snd_soc_component_get_drvdata(cmpnt);
-	int value;
+	int value = 0;
 
 	regmap_read(priv->regmap, MT6338_AFE_MTKAIFV4_TX_CFG, &value);
 	dev_info(priv->dev, "%s(), MT6338_AFE_MTKAIFV4_TX_CFG = 0x%x\n",
@@ -10468,7 +10468,7 @@ static int mt6338_codec_init_reg(struct mt6338_priv *priv)
 #if !defined(MTKAIFV4_SUPPORT)
 	unsigned int sample_rate = MT6338_AFE_ETDM_48000HZ;
 #endif
-	unsigned int value;
+	unsigned int value = 0;
 
 	dev_info(priv->dev, "%s()", __func__);
 #if IS_ENABLED(CONFIG_MT6685_AUDCLK)
@@ -20692,8 +20692,8 @@ static ssize_t mt6338_codec_sysfs_write(struct file *filp, struct kobject *kobj,
 		goto exit;
 	}
 
-	if (count > MAX_DEBUG_WRITE_INPUT)
-		count = MAX_DEBUG_WRITE_INPUT;
+	if (count >= MAX_DEBUG_WRITE_INPUT)
+		count = MAX_DEBUG_WRITE_INPUT - 1;
 
 	memset((void *)input, 0, MAX_DEBUG_WRITE_INPUT);
 	memcpy(input, buf, count);
@@ -20785,8 +20785,8 @@ static ssize_t mt6338_debugfs_write(struct file *f, const char __user *buf,
 		goto exit;
 	}
 
-	if (count > MAX_DEBUG_WRITE_INPUT)
-		count = MAX_DEBUG_WRITE_INPUT;
+	if (count >= MAX_DEBUG_WRITE_INPUT)
+		count = MAX_DEBUG_WRITE_INPUT - 1;
 
 	memset((void *)input, 0, MAX_DEBUG_WRITE_INPUT);
 
