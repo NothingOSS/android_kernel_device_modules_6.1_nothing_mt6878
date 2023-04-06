@@ -589,6 +589,8 @@ long port_dev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			return -EFAULT;
 		sub_smem = ccci_md_get_smem_by_user_id(SMEM_USER_MD_WIFI_PROXY);
 
+		if (sub_smem == NULL)
+			return -EFAULT;
 		CCCI_NORMAL_LOG(0, TAG, "wifi smem phy =%lx\n",
 			(unsigned long)sub_smem->base_ap_view_phy);
 		ret = put_user((unsigned int)sub_smem->base_ap_view_phy,
@@ -598,6 +600,9 @@ long port_dev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		if (port->rx_ch != CCCI_WIFI_RX)
 			return -EFAULT;
 		sub_smem = ccci_md_get_smem_by_user_id(SMEM_USER_MD_WIFI_PROXY);
+
+		if (sub_smem == NULL)
+			return -EFAULT;
 		sub_smem->size &= ~(PAGE_SIZE - 1);
 		CCCI_NORMAL_LOG(0, TAG, "wifi smem size =%lx(%d)\n",
 			(unsigned long)sub_smem->size, (int)PAGE_SIZE);
@@ -652,6 +657,8 @@ int port_dev_mmap(struct file *fp, struct vm_area_struct *vma)
 		return -EFAULT;
 
 	wifi_smem = ccci_md_get_smem_by_user_id(SMEM_USER_MD_WIFI_PROXY);
+	if (wifi_smem == NULL)
+		return -EFAULT;
 	wifi_smem->size &= ~(PAGE_SIZE - 1);
 	CCCI_NORMAL_LOG(0, CHAR,
 			"remap wifi smem addr:0x%llx len:%d  map-len:%lu\n",
@@ -828,8 +835,8 @@ static void port_dump_raw_data(struct port_t *port, int dir,
 #define DUMP_RAW_DATA_SIZE 16
 	unsigned int *curr_p = (unsigned int *)msg_buf;
 	unsigned char *curr_ch_p = NULL;
-	int _16_fix_num = len / 16;
-	int tail_num = len % 16;
+	int _16_fix_num;
+	int tail_num;
 	char buf[16];
 	int i, j;
 	int dump_size;
@@ -2066,6 +2073,8 @@ int modem_dcd_state(void)
 
 	per_md_data = ccci_get_per_md_data();
 
+	if (per_md_data == NULL)
+		return -1;
 	if (ret == -CCCI_ERR_MD_NOT_READY)
 		dcd_state = 0;
 	else {
@@ -2338,6 +2347,8 @@ int exec_ccci_kern_func(unsigned int id, char *buf, unsigned int len)
 				ccci_md_get_smem_by_user_id(SMEM_USER_RAW_DBM);
 
 			CCCI_MEM_LOG_TAG(0, TAG, "Dump MD SLP registers\n");
+			if (low_pwr == NULL)
+				return -1;
 			ccci_util_cmpt_mem_dump(CCCI_DUMP_MEM_DUMP,
 				low_pwr->base_ap_view_vir, low_pwr->size);
 		}

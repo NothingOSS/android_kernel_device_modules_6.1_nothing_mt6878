@@ -46,8 +46,11 @@ static void ccci_aed_v2(struct ccci_fsm_ee *mdee, unsigned int dump_flag,
 	struct ccci_smem_region *mdss_dbg =
 		ccci_md_get_smem_by_user_id(SMEM_USER_RAW_MDSS_DBG);
 	struct ccci_per_md *per_md_data = ccci_get_per_md_data();
-	int md_dbg_dump_flag = per_md_data->md_dbg_dump_flag;
+	int md_dbg_dump_flag;
 
+	if (per_md_data == NULL || mdss_dbg == NULL)
+		return;
+	md_dbg_dump_flag = per_md_data->md_dbg_dump_flag;
 	buff = kmalloc(AED_STR_LEN, GFP_ATOMIC);
 	if (buff == NULL) {
 		CCCI_ERROR_LOG(0, FSM, "Fail alloc Mem for buff, %d!\n",
@@ -247,8 +250,11 @@ static void mdee_info_dump_v2(struct ccci_fsm_ee *mdee)
 	struct rtc_time tm_android;
 	struct ccci_per_md *per_md_data =
 		ccci_get_per_md_data();
-	int md_dbg_dump_flag = per_md_data->md_dbg_dump_flag;
+	int md_dbg_dump_flag;
 
+	if (per_md_data == NULL)
+		return;
+	md_dbg_dump_flag = per_md_data->md_dbg_dump_flag;
 	ex_info = kmalloc(EE_BUF_LEN_UMOLY, GFP_ATOMIC);
 	if (ex_info == NULL) {
 		CCCI_ERROR_LOG(0, FSM,
@@ -752,6 +758,8 @@ static void mdee_info_prepare_v2(struct ccci_fsm_ee *mdee)
 		return;
 	}
 
+	if (mdss_dbg == NULL)
+		return;
 	ex_overview = (struct ex_overview_t *) mdss_dbg->base_ap_view_vir;
 	for (core_id = 0; core_id < MD_CORE_NUM; core_id++) {
 		CCCI_DEBUG_LOG(0, FSM,
@@ -857,8 +865,11 @@ static void mdee_dumper_v2_dump_ee_info(struct ccci_fsm_ee *mdee,
 	char ex_info[EE_BUF_LEN] = {0};
 	struct ccci_per_md *per_md_data =
 		ccci_get_per_md_data();
-	int md_dbg_dump_flag = per_md_data->md_dbg_dump_flag;
+	int md_dbg_dump_flag;
 
+	if (per_md_data == NULL || mdccci_dbg == NULL || mdss_dbg == NULL)
+		return;
+	md_dbg_dump_flag = per_md_data->md_dbg_dump_flag;
 	dumper->more_info = more_info;
 	if (level == MDEE_DUMP_LEVEL_BOOT_FAIL) {
 		if (md_state == BOOT_WAITING_FOR_HS1) {

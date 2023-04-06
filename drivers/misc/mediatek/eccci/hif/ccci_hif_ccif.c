@@ -499,6 +499,8 @@ static int ccif_rx_collect(struct md_ccif_queue *queue, int budget,
 	}
 	atomic_set(&queue->rx_on_going, 1);
 
+	if (per_md_data == NULL)
+		return -1;
 	if (IS_PASS_SKB(per_md_data, qno))
 		from_pool = 0;
 	else
@@ -969,6 +971,9 @@ static int md_ccif_op_send_skb(unsigned char hif_id, int qno,
 	if (qno == 0xFF)
 		return -CCCI_ERR_INVALID_QUEUE_INDEX;
 
+	if (per_md_data == NULL)
+		return -1;
+
 	queue = &ccif_ctrl->txq[qno];
 
 	ccci_h = (struct ccci_header *)skb->data;
@@ -1126,6 +1131,8 @@ void ccci_reset_ccif_hw(int ccif_id, void __iomem *baseA,
 	 *last 12bytes for magic pattern,smem address and size
 	 */
 	region = ccci_md_get_smem_by_user_id(SMEM_USER_RAW_MDSS_DBG);
+	if (region == NULL)
+		return;
 	ccif_write32(baseA,
 		PCCIF_CHDATA + PCCIF_SRAM_SIZE - 3 * sizeof(u32),
 		0x7274626E);
@@ -1193,6 +1200,8 @@ static int md_ccif_exp_ring_buf_init(struct md_ccif_ctrl *ccif_ctrl)
 	struct ccci_smem_region *ccism;
 
 	ccism = ccci_md_get_smem_by_user_id(SMEM_USER_CCISM_MCU_EXP);
+	if (ccism == NULL)
+		return -1;
 	if (ccism->size)
 		memset_io(ccism->base_ap_view_vir, 0, ccism->size);
 
@@ -1248,6 +1257,8 @@ static int md_ccif_normal_ring_buf_init(struct md_ccif_ctrl *ccif_ctrl)
 	int i = 0;
 
 	ccism = ccci_md_get_smem_by_user_id(SMEM_USER_CCISM_MCU);
+	if (ccism == NULL)
+		return -1;
 	if (ccism->size)
 		memset_io(ccism->base_ap_view_vir, 0, ccism->size);
 	ccif_ctrl->total_smem_size = 0;

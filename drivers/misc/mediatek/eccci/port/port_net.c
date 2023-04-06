@@ -294,6 +294,8 @@ static int port_net_init(struct port_t *port)
 	struct ccci_per_md *per_md_data = ccci_get_per_md_data();
 
 	port->minor += CCCI_NET_MINOR_BASE;
+	if (per_md_data == NULL)
+		return -1;
 	if (port->rx_ch == CCCI_CCMNI1_RX) {
 		eccci_ccmni_ops.md_ability |= per_md_data->md_capability;
 		ccmni_ops.init(&eccci_ccmni_ops);
