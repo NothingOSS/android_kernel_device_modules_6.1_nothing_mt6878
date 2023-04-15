@@ -2653,7 +2653,7 @@ static struct miscdevice mml_pq_dev = {
 
 int mml_pq_core_init(void)
 {
-	s32 ret;
+	s32 ret = 0;
 	s32 buf_idx = 0;
 	s32 i = 0;
 
