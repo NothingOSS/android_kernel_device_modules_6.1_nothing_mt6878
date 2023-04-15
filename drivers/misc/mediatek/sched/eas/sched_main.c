@@ -548,6 +548,8 @@ static int __init mtk_scheduler_init(void)
 #if IS_ENABLED(CONFIG_MTK_EAS)
 	mtk_freq_limit_notifier_register();
 
+	soft_affinity_init();
+
 	ret = init_sram_info();
 	if (ret)
 		return ret;
@@ -600,8 +602,6 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register android_rvh_sched_newidle_balance failed\n");
 #endif
-
-	soft_affinity_init();
 
 	pr_debug(TAG"Start to init eas_ioctl driver\n");
 	parent = proc_mkdir("easmgr", NULL);

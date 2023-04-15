@@ -592,7 +592,7 @@ static void __sched_fork_init(struct task_struct *p)
 	struct soft_affinity_task *sa_task = &((struct mtk_task *)
 		p->android_vendor_data1)->sa_task;
 
-	sa_task->need_idle = false;
+	sa_task->latency_sensitive = false;
 	cpumask_copy(&sa_task->soft_cpumask, cpu_possible_mask);
 }
 
@@ -770,7 +770,7 @@ void set_task_ls(int pid)
 	if (p) {
 		get_task_struct(p);
 		sa_task = &((struct mtk_task *) p->android_vendor_data1)->sa_task;
-		sa_task->need_idle = true;
+		sa_task->latency_sensitive = true;
 		put_task_struct(p);
 	}
 	rcu_read_unlock();
@@ -787,7 +787,7 @@ void unset_task_ls(int pid)
 	if (p) {
 		get_task_struct(p);
 		sa_task = &((struct mtk_task *) p->android_vendor_data1)->sa_task;
-		sa_task->need_idle = false;
+		sa_task->latency_sensitive = false;
 		put_task_struct(p);
 	}
 	rcu_read_unlock();
@@ -805,13 +805,32 @@ void set_task_soft_mask(int pid, unsigned int cpumask_val)
 	if (p) {
 		get_task_struct(p);
 		sa_task = &((struct mtk_task *) p->android_vendor_data1)->sa_task;
-		sa_task->need_idle = true;
+		sa_task->latency_sensitive = true;
 		cpumask_copy(&sa_task->soft_cpumask, &soft_cpumask);
 		put_task_struct(p);
 	}
 	rcu_read_unlock();
 }
 EXPORT_SYMBOL_GPL(set_task_soft_mask);
+
+void unset_task_soft_mask(int pid)
+{
+	struct task_struct *p;
+	struct soft_affinity_task *sa_task;
+	struct cpumask soft_cpumask = bit_to_cpumask(0xff);
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (p) {
+		get_task_struct(p);
+		sa_task = &((struct mtk_task *) p->android_vendor_data1)->sa_task;
+		sa_task->latency_sensitive = false;
+		cpumask_copy(&sa_task->soft_cpumask, &soft_cpumask);
+		put_task_struct(p);
+	}
+	rcu_read_unlock();
+}
+EXPORT_SYMBOL_GPL(unset_task_soft_mask);
 /* end of soft affinity interface */
 
 #if IS_ENABLED(CONFIG_UCLAMP_TASK_GROUP)
@@ -853,7 +872,7 @@ inline bool is_task_latency_sensitive(struct task_struct *p)
 
 	sa_task = &((struct mtk_task *) p->android_vendor_data1)->sa_task;
 	rcu_read_lock();
-	latency_sensitive = sa_task->need_idle || is_task_ls_uclamp(p);
+	latency_sensitive = sa_task->latency_sensitive || is_task_ls_uclamp(p);
 	rcu_read_unlock();
 
 	return latency_sensitive;

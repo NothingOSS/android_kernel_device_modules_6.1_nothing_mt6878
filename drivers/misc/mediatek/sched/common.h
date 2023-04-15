@@ -26,7 +26,7 @@ struct vip_task_struct {
 };
 
 struct soft_affinity_task {
-	bool need_idle;
+	bool latency_sensitive;
 	struct cpumask soft_cpumask;
 };
 
