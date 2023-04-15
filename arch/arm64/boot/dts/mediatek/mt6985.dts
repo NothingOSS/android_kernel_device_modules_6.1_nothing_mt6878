@@ -3992,6 +3992,7 @@
 			offs-thermal-limit = <0x1208 0x120c 0x1210 0x1214>;
 			offs-cap = <0xfa0>;
 			share-buck = <0>;
+			adaptive-margin = <1>;
 		};
 
 		wl_info: wl-info {
