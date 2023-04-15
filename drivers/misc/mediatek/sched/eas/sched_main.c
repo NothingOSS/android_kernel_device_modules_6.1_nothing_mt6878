@@ -545,6 +545,25 @@ static int __init mtk_scheduler_init(void)
 	group_init();
 #endif
 
+	sched_asym_cpucapacity_init();
+
+	get_most_powerful_pd_and_util_Th();
+
+	mtk_sched_trace_init();
+
+#if IS_ENABLED(CONFIG_MTK_CORE_PAUSE)
+	sched_pause_init();
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	sched_irq_mon_init();
+#endif
+
+	if (is_wl_support()) {
+		/* default value for pelt8 */
+		update_pelt_data(939, 12329);
+	}
+
 #if IS_ENABLED(CONFIG_MTK_EAS)
 	mtk_freq_limit_notifier_register();
 
@@ -650,24 +669,6 @@ static int __init mtk_scheduler_init(void)
 	//ret = register_trace_android_vh_check_uninterruptible_tasks(mtk_check_d_tasks, NULL);
 	//if (ret)
 	//	pr_info("register mtk_check_d_tasks hooks failed, returned %d\n", ret);
-#endif
-	sched_asym_cpucapacity_init();
-
-	get_most_powerful_pd_and_util_Th();
-
-	mtk_sched_trace_init();
-
-#if IS_ENABLED(CONFIG_MTK_CORE_PAUSE)
-	sched_pause_init();
-#endif
-
-	if (is_wl_support()) {
-		/* default value for pelt8 */
-		update_pelt_data(939, 12329);
-	}
-
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	sched_irq_mon_init();
 #endif
 
 out_wq:
