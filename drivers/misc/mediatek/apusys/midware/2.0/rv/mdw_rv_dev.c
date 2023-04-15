@@ -42,14 +42,122 @@ static struct mdw_ipi_msg_sync *mdw_rv_dev_msg_find(struct mdw_rv_dev *mrdev,
 	return NULL;
 }
 
+static void mdw_rv_dev_power_off(struct work_struct *wk)
+{
+	struct mdw_rv_dev *mrdev =
+		container_of(wk, struct mdw_rv_dev, power_off_wk);
+	int ret = 0;
+
+	mdw_drv_info("worker call power off\n");
+	ret = mdw_rv_dev_power_onoff(mrdev, MDW_APU_POWER_OFF);  // power off
+	if (ret && ret != -EOPNOTSUPP)
+		mdw_drv_err("rpmsg_sendto(power off) fail(%d)\n", ret);
+}
+
+static void mdw_rv_dev_timer_callback(struct timer_list *timer)
+{
+	struct mdw_rv_dev *mrdev =
+		container_of(timer, struct mdw_rv_dev, power_off_timer);
+
+	mdw_drv_info("dtime timer up\n");
+	INIT_WORK(&mrdev->power_off_wk, &mdw_rv_dev_power_off);
+	schedule_work(&mrdev->power_off_wk);
+}
+
+int mdw_rv_dev_dtime_handle(struct mdw_rv_dev *mrdev, struct mdw_cmd *c)
+{
+	struct mdw_device *mdev = c->mpriv->mdev;
+	uint64_t curr_dtime_ts = 0;
+	unsigned long power_dtime = 0;
+
+	/* dtime handle */
+	curr_dtime_ts = c->end_ts + c->power_dtime;
+	if (mdev->max_dtime_ts < curr_dtime_ts)
+		mdev->max_dtime_ts = curr_dtime_ts;
+
+	power_dtime = msecs_to_jiffies(mdev->max_dtime_ts - c->end_ts);
+
+	/* if old timer exist then delete */
+	if (timer_pending(&mrdev->power_off_timer))
+		del_timer(&mrdev->power_off_timer);
+
+	/* timer power off according to power_dtime */
+	timer_setup(&mrdev->power_off_timer, mdw_rv_dev_timer_callback, 0);
+	mod_timer(&mrdev->power_off_timer, jiffies + power_dtime);
+
+	return 0;
+}
+
+/**
+ * mdw_rv_dev_power_onoff() - Use rpmsg_sendto to power on or off
+ * @mrdev: the struct mdw_rv_dev
+ * @power_onoff: true: power on , false: power off
+ *
+ * Return: Both of 0 and -EOPNOTSUPP on success.
+ */
+int mdw_rv_dev_power_onoff(struct mdw_rv_dev *mrdev, enum mdw_power_type power_onoff)
+{
+	struct mdw_device *mdev = mrdev->mdev;
+	uint32_t cnt = 100, i = 0, dst = 0;
+	int ret = 0, len = 0;
+	enum mdw_power_type power_flag = MDW_APU_POWER_OFF;
+
+	/* set param */
+	if (power_onoff == MDW_APU_POWER_ON) {
+		mdw_drv_info("fast power on\n");
+		len = 1;
+	} else {
+		dst = 1;
+		power_flag = MDW_APU_POWER_ON;
+		mdw_drv_info("fast power off\n");
+	}
+
+	/* send & retry */
+	for (i = 0; i < cnt; i++) {
+		/* power api */
+		if ((mdev->support_power_fast_on_off == true)
+			&& (mdev->power_state == power_flag)) {
+			ret = rpmsg_sendto(mrdev->ept, NULL, len, dst);
+			if (ret && ret != -EOPNOTSUPP)
+				mdw_drv_info("rpmsg_sendto(power) fail(%d)\n", ret);
+			else
+				mdev->power_state = !power_flag;
+		}
+
+		/* send busy, retry */
+		if (ret == -EBUSY) {
+			if (!(i % 10))
+				mdw_drv_info("re-send power ipi (%u/%u)\n", i, cnt);
+
+			usleep_range(10000, 11000);
+			continue;
+		}
+		break;
+	}
+
+	if (ret == -EOPNOTSUPP) {
+		mdw_drv_info("No support fast power on/off\n");
+		mdev->support_power_fast_on_off = false;
+		mdev->power_state = MDW_APU_POWER_OFF;
+	}
+
+	return ret;
+}
+
 static int mdw_rv_dev_send_msg(struct mdw_rv_dev *mrdev, struct mdw_ipi_msg_sync *s_msg)
 {
-	int ret = 0;
+	int ret = 0, power_ret = 0;
 	uint32_t cnt = 100, i = 0;
 
 	s_msg->msg.sync_id = (uint64_t)s_msg;
 	mdw_drv_debug("sync id(0x%llx) (0x%llx/%u)\n",
 		s_msg->msg.sync_id, s_msg->msg.c.iova, s_msg->msg.c.size);
+
+	ret = mdw_rv_dev_power_onoff(mrdev, MDW_APU_POWER_ON);  // power on
+	if (ret && ret != -EOPNOTSUPP) {
+		mdw_drv_err("rpmsg_sendto(power on) fail(%d)\n", ret);
+		goto out;
+	}
 
 	/* insert to msg list */
 	mutex_lock(&mrdev->msg_mtx);
@@ -81,6 +189,13 @@ static int mdw_rv_dev_send_msg(struct mdw_rv_dev *mrdev, struct mdw_ipi_msg_sync
 	if (ret) {
 		mdw_drv_err("send ipi msg(0x%llx) fail(%d)\n",
 			s_msg->msg.sync_id, ret);
+
+		power_ret = mdw_rv_dev_power_onoff(mrdev, MDW_APU_POWER_OFF);  // power off
+		if (power_ret && power_ret != -EOPNOTSUPP) {
+			mdw_drv_err("rpmsg_sendto(power off) fail(%d)\n", power_ret);
+			return power_ret;
+		}
+
 		mutex_lock(&mrdev->msg_mtx);
 		if (mdw_rv_dev_msg_find(mrdev, s_msg->msg.sync_id) == s_msg) {
 			mdw_drv_warn("remove ipi msg(0x%llx)\n",
@@ -92,7 +207,7 @@ static int mdw_rv_dev_send_msg(struct mdw_rv_dev *mrdev, struct mdw_ipi_msg_sync
 		}
 		mutex_unlock(&mrdev->msg_mtx);
 	}
-
+out:
 	return ret;
 }
 
@@ -104,7 +219,7 @@ static void mdw_rv_ipi_cmplt_sync(struct mdw_ipi_msg_sync *s_msg)
 
 static int mdw_rv_dev_send_sync(struct mdw_rv_dev *mrdev, struct mdw_ipi_msg *msg)
 {
-	int ret = 0;
+	int ret = 0, power_ret = 0;
 	struct mdw_ipi_msg_sync *s_msg = NULL;
 	unsigned long timeout = msecs_to_jiffies(MDW_CMD_IPI_TIMEOUT);
 
@@ -145,6 +260,10 @@ static int mdw_rv_dev_send_sync(struct mdw_rv_dev *mrdev, struct mdw_ipi_msg *ms
 		if (ret)
 			mdw_drv_warn("up return fail(%d)\n", ret);
 	}
+
+	power_ret = mdw_rv_dev_power_onoff(mrdev, MDW_APU_POWER_OFF);  // power off
+	if (power_ret && power_ret != -EOPNOTSUPP)
+		mdw_drv_err("rpmsg_sendto(power off) fail(%d)\n", power_ret);
 
 	goto out;
 
@@ -517,6 +636,8 @@ void mdw_rv_dev_deinit(struct mdw_device *mdev)
 
 	dma_free_coherent(dev, sizeof(struct mdw_stat), mrdev->stat, mrdev->stat_iova);
 	rpmsg_destroy_ept(mrdev->ept);
+	if (timer_pending(&mrdev->power_off_timer))
+		del_timer(&mrdev->power_off_timer);
 	kfree(mrdev);
 	mdev->dev_specific = NULL;
 }

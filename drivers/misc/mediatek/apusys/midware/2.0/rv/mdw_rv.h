@@ -50,6 +50,10 @@ struct mdw_rv_dev {
 	uint8_t meta_data[MDW_DEV_MAX][MDW_DEV_META_SIZE];
 	struct mdw_stat *stat;
 	uint64_t stat_iova;
+
+	/* dtime handle */
+	struct work_struct power_off_wk;
+	struct timer_list power_off_timer;
 };
 
 int mdw_rv_dev_init(struct mdw_device *mdev);
@@ -57,6 +61,8 @@ void mdw_rv_dev_deinit(struct mdw_device *mdev);
 int mdw_rv_dev_run_cmd(struct mdw_fpriv *mpriv, struct mdw_cmd *c);
 int mdw_rv_dev_set_param(struct mdw_rv_dev *mrdev, uint32_t idx, uint32_t val);
 int mdw_rv_dev_get_param(struct mdw_rv_dev *mrdev, uint32_t idx, uint32_t *val);
+int mdw_rv_dev_power_onoff(struct mdw_rv_dev *mrdev, enum mdw_power_type power_onoff);
+int mdw_rv_dev_dtime_handle(struct mdw_rv_dev *mrdev, struct mdw_cmd *c);
 
 /* rv cmd functions */
 extern const struct mdw_rv_cmd_func mdw_rv_cmd_func_v2;

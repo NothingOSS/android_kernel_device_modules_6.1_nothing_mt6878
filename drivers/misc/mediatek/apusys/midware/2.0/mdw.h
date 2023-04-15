@@ -50,9 +50,17 @@
 #define MDW_PERIOD_TOLERANCE_PCT (10/100)
 #define MDW_IPTIME_TOLERANCE_PCT (10/100)
 
+/* dtime */
+#define MAX_DTIME (2000) /* 2s */
+
 struct mdw_fpriv;
 struct mdw_device;
 struct mdw_mem;
+
+enum mdw_power_type {
+	MDW_APU_POWER_OFF,
+	MDW_APU_POWER_ON,
+};
 
 enum mdw_buf_type {
 	MDW_DATA_BUF,
@@ -257,6 +265,11 @@ struct mdw_device {
 	uint64_t predict_cmd_ts[MDW_NUM_PREDICT_CMD];
 	struct min_heap heap;
 	atomic_t cmd_running;
+
+	/* power fast on/off */
+	bool support_power_fast_on_off;
+	enum mdw_power_type power_state;
+	uint64_t max_dtime_ts;
 };
 
 struct mdw_fpriv {
@@ -374,6 +387,8 @@ struct mdw_cmd {
 	/* history params */
 	uint32_t inference_time;
 	uint32_t tolerance_time;
+	/* set dtime */
+	uint64_t is_dtime_set;
 };
 
 struct mdw_dev_func {
@@ -388,6 +403,8 @@ struct mdw_dev_func {
 	uint32_t (*get_info)(struct mdw_device *mdev, enum mdw_info_type type);
 	int (*register_device)(struct apusys_device *adev);
 	int (*unregister_device)(struct apusys_device *adev);
+	int (*power_onoff)(struct mdw_device *mdev, enum mdw_power_type power_onoff);
+	int (*dtime_handle)(struct mdw_cmd *c);
 };
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)

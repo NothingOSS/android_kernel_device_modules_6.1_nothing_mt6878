@@ -1153,7 +1153,32 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 			need_dtime_check = mdw_cmd_predict(c);
 	}
 
-	/* Todo: check dtime setting and implement dtime management */
+	/* check support power fast power on off */
+	if (mdev->support_power_fast_on_off == false) {
+		mdw_flw_debug("no support power fast on off\n");
+		goto out;
+	}
+
+	/* check dtime setting */
+	if (need_dtime_check) {
+		mdw_flw_debug("check user set dtime\n");
+		/* check dtime setting */
+		if (c->power_dtime > MAX_DTIME || c->is_dtime_set) {
+			mdw_flw_debug("trigger fast power off directly\n");
+			ret = mdev->dev_funcs->power_onoff(mdev, MDW_APU_POWER_OFF);
+			goto power_out;
+		}
+	}
+
+	/* dtime handle */
+	mdw_flw_debug("power off by user dtime(%u)\n", c->power_dtime);
+	ret = mdev->dev_funcs->dtime_handle(c);
+
+power_out:
+	if (ret && ret != -EOPNOTSUPP)
+		mdw_drv_err("rpmsg_sendto(power) fail(%d)\n", ret);
+
+out:
 	mutex_unlock(&c->mtx);
 
 	/* check mpriv to clean cmd */

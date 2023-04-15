@@ -277,6 +277,9 @@ static int mdw_rpmsg_probe(struct rpmsg_device *rpdev)
 
 	mdw_cmd_history_init(mdev);
 
+	mdev->support_power_fast_on_off = true;
+	mdev->power_state = MDW_APU_POWER_OFF;
+
 	pr_info("%s -\n", __func__);
 
 	goto out;
