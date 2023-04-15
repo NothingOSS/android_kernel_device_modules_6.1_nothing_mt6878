@@ -436,6 +436,12 @@
 #define HWV_CG_31_SET				0x00F8
 #define HWV_CG_31_CLR				0x00FC
 #define HWV_CG_31_DONE				0x1C7C
+#define HWV_CG_32_SET				0x0100
+#define HWV_CG_32_CLR				0x0104
+#define HWV_CG_32_DONE				0x1C80
+#define HWV_CG_33_SET				0x0108
+#define HWV_CG_33_CLR				0x010C
+#define HWV_CG_33_DONE				0x1C84
 #define HWV_PLL_SET				0x0190
 #define HWV_PLL_CLR				0x0194
 #define HWV_PLL_SET_STA				0x1464
@@ -2542,9 +2548,10 @@ static const struct mtk_mux top_muxes[] = {
 		uart_parents/* parent */, CLK_CFG_6, CLK_CFG_6_SET,
 		CLK_CFG_6_CLR/* set parent */, 0/* lsb */, 2/* width */,
 		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_UART_SHIFT/* upd shift */),
-	MUX_GATE_CLR_SET_UPD(CLK_TOP_SPI_SEL/* dts */, "spi_sel",
-		spi_parents/* parent */, CLK_CFG_6, CLK_CFG_6_SET,
-		CLK_CFG_6_CLR/* set parent */, 8/* lsb */, 3/* width */,
+	MUX_HWV(CLK_TOP_SPI_SEL/* dts */, "spi_sel", spi_parents/* parent */,
+		CLK_CFG_6, CLK_CFG_6_SET, CLK_CFG_6_CLR/* set parent */,
+		HWV_CG_33_DONE, HWV_CG_33_SET, HWV_CG_33_CLR, /* hwv */
+		8/* lsb */, 3/* width */,
 		15/* pdn */, CLK_CFG_UPDATE/* upd ofs */,
 		TOP_MUX_SPI_SHIFT/* upd shift */),
 	MUX_GATE_CLR_SET_UPD(CLK_TOP_MSDC_MACRO_SEL/* dts */, "msdc_macro_sel",
