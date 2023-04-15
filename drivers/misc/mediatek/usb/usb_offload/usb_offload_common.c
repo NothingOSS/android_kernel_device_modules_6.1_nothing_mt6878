@@ -2354,16 +2354,19 @@ static struct xhci_vendor_ops xhci_mtk_vendor_ops = {
 
 int xhci_mtk_ssusb_offload_get_mode(struct device *dev)
 {
-	bool is_sram_mode;
+	bool is_in_advanced;
 
-	is_sram_mode = mtk_offload_is_sram_mode();
-	USB_OFFLOAD_INFO("is_streaming:%d, is_sram_mode:%d\n",
-		uodev->is_streaming, is_sram_mode);
+	is_in_advanced = mtk_offload_is_advlowpwr(uodev);
+	USB_OFFLOAD_INFO("is_streaming:%d, is_in_advanced:%d\n",
+		uodev->is_streaming, is_in_advanced);
 
 	if (!uodev->is_streaming)
 		return SSUSB_OFFLOAD_MODE_NONE;
 
-	return is_sram_mode ? SSUSB_OFFLOAD_MODE_S : SSUSB_OFFLOAD_MODE_D;
+	/* we only release APSRC request in advanced mode by
+	 * notifying SSUSB_OFFLOAD_MODE_S to mtu3 driver
+	 */
+	return is_in_advanced ? SSUSB_OFFLOAD_MODE_S : SSUSB_OFFLOAD_MODE_D;
 }
 
 static int usb_offload_probe(struct platform_device *pdev)

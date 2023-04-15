@@ -39,7 +39,38 @@ static struct mtk_sram_pwr sram_pwr[MEM_TYPE_NUM];
 
 struct usb_offload_mem_info usb_offload_mem_buffer[USB_OFFLOAD_MEM_NUM];
 
+/* a list to store buffer which downgrade from sram to dram */
+LIST_HEAD(downgrade_list);
 
+static bool is_buf_downgrade(struct usb_offload_buffer *buf)
+{
+	struct usb_offload_buffer *pos;
+	bool found = false;
+
+	list_for_each_entry(pos, &downgrade_list, list) {
+		if (pos == buf) {
+			found = true;
+			break;
+		}
+	}
+
+	return found;
+}
+
+bool mtk_offload_is_advlowpwr(struct usb_offload_dev *udev)
+{
+	/* if adv_lowpwr is false, it means that either sram feature is
+	 * disabled in dts or basic sram is not supported in this platform.
+	 */
+	if (!udev->adv_lowpwr)
+		return false;
+
+	/* if list is empty, it means no structure falls to dram,
+	 * so it's in advanced mode, in an other hands, it's basic
+	 */
+	return list_empty(&downgrade_list);
+}
+EXPORT_SYMBOL_GPL(mtk_offload_is_advlowpwr);
 
 static void reset_buffer(struct usb_offload_buffer *buf)
 {
@@ -102,20 +133,6 @@ int mtk_offload_get_rsv_mem_info(enum usb_offload_mem_id mem_id,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mtk_offload_get_rsv_mem_info);
-
-bool mtk_offload_is_sram_mode(void)
-{
-#ifdef MTK_AUDIO_INTERFACE_READY
-	u32 i;
-
-	for (i = 0; i < MEM_TYPE_NUM; i++) {
-		if (atomic_read(&sram_pwr[i].cnt))
-			return true;
-	}
-#endif
-	return false;
-}
-EXPORT_SYMBOL_GPL(mtk_offload_is_sram_mode);
 
 bool is_sram(enum usb_offload_mem_id id)
 {
@@ -531,6 +548,12 @@ int mtk_offload_alloc_mem(struct usb_offload_buffer *buf,
 		goto ALLOC_FAIL;
 
 ALLOC_SUCCESS:
+	if (is_sram(mem_id) && !buf->is_sram) {
+		/* we requeset for sram, but turn out to be dram */
+		USB_OFFLOAD_INFO("buf:%p falls from sram to dram\n", buf);
+		list_add_tail(&buf->list, &downgrade_list);
+	}
+
 	USB_OFFLOAD_INFO("va:%p phy:0x%llx size:%zu is_sram:%d is_rsv:%d type:%s\n",
 		buf->dma_area, (unsigned long long)buf->dma_addr,
 		buf->dma_bytes, buf->is_sram, buf->is_rsv,
@@ -565,8 +588,13 @@ int mtk_offload_free_mem(struct usb_offload_buffer *buf)
 	type = buf->type;
 	is_sram = buf->is_sram;
 
-	if (!buf->is_sram)
+	if (!buf->is_sram) {
 		ret = mtk_usb_offload_free_rsv_mem(buf, USB_OFFLOAD_MEM_DRAM_ID);
+
+		if (is_buf_downgrade(buf))
+			list_del(&buf->list);
+
+	}
 	else if (uodev->adv_lowpwr) {
 		if (buf->is_rsv)
 			ret = mtk_usb_offload_free_rsv_mem(buf, USB_OFFLOAD_MEM_SRAM_ID);

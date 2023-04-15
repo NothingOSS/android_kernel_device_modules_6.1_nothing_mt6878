@@ -60,6 +60,7 @@ struct usb_offload_buffer {
 	bool is_sram;
 	bool is_rsv;
 	u8 type;
+	struct list_head list;
 };
 
 enum usb_offload_mem_id {
@@ -270,7 +271,7 @@ extern int mtk_usb_offload_deinit_rsv_sram(void);
 extern int mtk_offload_alloc_mem(struct usb_offload_buffer *buf, unsigned int size,
 	int align, enum usb_offload_mem_id mem_id, bool is_rsv);
 extern int mtk_offload_free_mem(struct usb_offload_buffer *buf);
-extern bool mtk_offload_is_sram_mode(void);
+extern bool mtk_offload_is_advlowpwr(struct usb_offload_dev *udev);
 extern int mtk_offload_get_rsv_mem_info(enum usb_offload_mem_id mem_id,
 	unsigned int *phys, unsigned int *size);
 extern bool is_sram(enum usb_offload_mem_id id);
