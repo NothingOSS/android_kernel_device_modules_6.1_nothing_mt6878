@@ -80,6 +80,7 @@
 #define RT9759_CHGEN_MASK	BIT(7)
 #define RT9759_CHGEN_SHFT	7
 #define RT9759_ADCEN_MASK	BIT(7)
+#define RT9759_ADCEN_SHFT	7
 #define RT9759_WDTEN_MASK	BIT(2)
 #define RT9759_WDTMR_MASK	0x03
 #define RT9759_REGRST_MASK	BIT(7)
@@ -319,7 +320,6 @@ struct rt9759_chip {
 	u32 stat;
 	u32 hm_cnt;
 	enum rt9759_type type;
-	bool wdt_en;
 	bool force_adc_en;
 	bool stop_thread;
 	wait_queue_head_t wq;
@@ -753,19 +753,50 @@ static u8 rt9759_vacovp_toreg(u32 uV)
 static int __rt9759_update_status(struct rt9759_chip *chip);
 static int __rt9759_init_chip(struct rt9759_chip *chip);
 
-/* Must be called while holding a lock */
 static int rt9759_enable_wdt(struct rt9759_chip *chip, bool en)
 {
 	int ret;
 
-	if (chip->wdt_en == en)
-		return 0;
 	ret = (en ? rt9759_clr_bits : rt9759_set_bits)
 		(chip, RT9759_REG_CHGCTRL0, RT9759_WDTEN_MASK);
+	return ret < 0 ? ret : 0;
+}
+
+static int rt9759_adc_en(struct rt9759_chip *chip)
+{
+	int ret = 0;
+	bool adc_en = false;
+
+	if (!chip->desc->wdt_dis) {
+		ret = rt9759_enable_wdt(chip, true);
+		if (ret < 0)
+			goto out;
+	}
+	ret = rt9759_i2c_test_bit(chip, RT9759_REG_ADCCTRL,
+				  RT9759_ADCEN_SHFT, &adc_en);
 	if (ret < 0)
-		return ret;
-	chip->wdt_en = en;
-	return 0;
+		goto out;
+	if (!adc_en)
+		ret = rt9759_set_bits(chip, RT9759_REG_ADCCTRL,
+				      RT9759_ADCEN_MASK);
+	if (ret < 0)
+		goto out;
+	if (!adc_en)
+		usleep_range(12000, 15000);
+out:
+	return ret;
+}
+
+static int rt9759_adc_dis(struct rt9759_chip *chip)
+{
+	int ret = 0;
+
+	ret = rt9759_clr_bits(chip, RT9759_REG_ADCCTRL, RT9759_ADCEN_MASK);
+	if (ret < 0)
+		goto out;
+	ret = rt9759_enable_wdt(chip, false);
+out:
+	return ret;
 }
 
 static int __rt9759_get_adc(struct rt9759_chip *chip,
@@ -774,13 +805,12 @@ static int __rt9759_get_adc(struct rt9759_chip *chip,
 	int ret;
 	u8 data[2];
 
-	ret = rt9759_set_bits(chip, RT9759_REG_ADCCTRL, RT9759_ADCEN_MASK);
+	ret = rt9759_adc_en(chip);
 	if (ret < 0)
 		goto out;
-	usleep_range(12000, 15000);
 	ret = rt9759_i2c_read_block(chip, rt9759_adc_reg[chan], 2, data);
 	if (ret < 0)
-		goto out_dis;
+		goto out;
 	switch (chan) {
 	case RT9759_ADC_IBUS:
 	case RT9759_ADC_VBUS:
@@ -807,11 +837,9 @@ static int __rt9759_get_adc(struct rt9759_chip *chip,
 	else
 		dev_info(chip->dev, "%s %s %d\n", __func__,
 			 rt9759_adc_name[chan], *val);
-out_dis:
-	if (!chip->force_adc_en)
-		ret = rt9759_clr_bits(chip, RT9759_REG_ADCCTRL,
-				      RT9759_ADCEN_MASK);
 out:
+	if (!chip->force_adc_en)
+		rt9759_adc_dis(chip);
 	return ret;
 }
 
@@ -822,7 +850,6 @@ static int rt9759_enable_chg(struct charger_device *chg_dev, bool en)
 	u32 err_check = BIT(RT9759_IRQIDX_VBUSOVP) |
 			BIT(RT9759_IRQIDX_VACOVP) |
 			BIT(RT9759_IRQIDX_VDROVP) |
-			BIT(RT9759_IRQIDX_VBUSOVP) |
 			BIT(RT9759_IRQIDX_TDIEOTP) |
 			BIT(RT9759_IRQIDX_VBUSLERR) |
 			BIT(RT9759_IRQIDX_VBUSHERR) |
@@ -833,26 +860,22 @@ static int rt9759_enable_chg(struct charger_device *chg_dev, bool en)
 			 BIT(RT9759_IRQIDX_VOUTINSERT);
 
 	dev_info(chip->dev, "%s %d\n", __func__, en);
-	mutex_lock(&chip->adc_lock);
-	chip->force_adc_en = en;
 	if (!en) {
 		ret = rt9759_clr_bits(chip, RT9759_REG_CHGCTRL1,
 				      RT9759_CHGEN_MASK);
 		if (ret < 0)
-			goto out_unlock;
-		ret = rt9759_clr_bits(chip, RT9759_REG_ADCCTRL,
-				      RT9759_ADCEN_MASK);
-		if (ret < 0)
-			goto out_unlock;
-		ret = rt9759_enable_wdt(chip, false);
-		goto out_unlock;
+			goto out;
+		goto out_dis;
 	}
+
+	mutex_lock(&chip->adc_lock);
 	/* Enable ADC to check status before enable charging */
-	ret = rt9759_set_bits(chip, RT9759_REG_ADCCTRL, RT9759_ADCEN_MASK);
-	if (ret < 0)
-		goto out_unlock;
+	ret = rt9759_adc_en(chip);
+	if (ret >= 0)
+		chip->force_adc_en = true;
 	mutex_unlock(&chip->adc_lock);
-	usleep_range(12000, 15000);
+	if (ret < 0)
+		goto out;
 
 	mutex_lock(&chip->stat_lock);
 	__rt9759_update_status(chip);
@@ -861,18 +884,17 @@ static int rt9759_enable_chg(struct charger_device *chg_dev, bool en)
 		dev_info(chip->dev, "%s error(0x%08X,0x%08X,0x%08X)\n", __func__,
 			chip->stat, err_check, stat_check);
 		ret = -EINVAL;
-		mutex_unlock(&chip->stat_lock);
-		goto out;
 	}
 	mutex_unlock(&chip->stat_lock);
-	if (!chip->desc->wdt_dis) {
-		ret = rt9759_enable_wdt(chip, true);
-		if (ret < 0)
-			goto out;
-	}
+	if (ret < 0)
+		goto out_dis;
 	ret = rt9759_set_bits(chip, RT9759_REG_CHGCTRL1, RT9759_CHGEN_MASK);
-	goto out;
-out_unlock:
+	if (ret >= 0)
+		goto out;
+out_dis:
+	mutex_lock(&chip->adc_lock);
+	chip->force_adc_en = false;
+	rt9759_adc_dis(chip);
 	mutex_unlock(&chip->adc_lock);
 out:
 	return ret;
@@ -1021,20 +1043,18 @@ static int rt9759_is_vbuslowerr(struct charger_device *chg_dev, bool *err)
 	struct rt9759_chip *chip = charger_get_data(chg_dev);
 
 	mutex_lock(&chip->adc_lock);
-	ret = rt9759_set_bits(chip, RT9759_REG_ADCCTRL, RT9759_ADCEN_MASK);
+	ret = rt9759_adc_en(chip);
 	if (ret < 0)
 		goto out;
-	usleep_range(12000, 15000);
 	ret = rt9759_i2c_test_bit(chip, RT9759_REG_OTHER1,
 				  RT9759_VBUSLOWERR_FLAG_SHFT, err);
 	if (ret < 0 || *err)
-		goto out_dis;
+		goto out;
 	ret = rt9759_i2c_test_bit(chip, RT9759_REG_CONVSTAT,
 				  RT9759_VBUSLOWERR_STAT_SHFT, err);
-out_dis:
-	if (!chip->force_adc_en)
-		rt9759_clr_bits(chip, RT9759_REG_ADCCTRL, RT9759_ADCEN_MASK);
 out:
+	if (!chip->force_adc_en)
+		rt9759_adc_dis(chip);
 	mutex_unlock(&chip->adc_lock);
 	return ret;
 }
@@ -1413,8 +1433,11 @@ static int __rt9759_update_status(struct rt9759_chip *chip)
 	u8 sf[RT9759_SF_MAX] = {0};
 	const struct irq_map_desc *desc;
 
-	for (i = 0; i < RT9759_SF_MAX; i++)
+	for (i = 0; i < RT9759_SF_MAX; i++) {
 		rt9759_i2c_read8(chip, rt9759_reg_sf[i], &sf[i]);
+		dev_info(chip->dev, "%s reg0x%02X = 0x%02X\n", __func__,
+				    rt9759_reg_sf[i], sf[i]);
+	}
 
 	for (i = 0; i < ARRAY_SIZE(rt9759_irq_map_tbl); i++) {
 		desc = &rt9759_irq_map_tbl[i];
@@ -1561,11 +1584,13 @@ static int rt9759_init_irq(struct rt9759_chip *chip)
 	return 0;
 }
 
-#define RT9759_DT_VALPROP(name, reg, shft, mask, func, base) \
-	{#name, offsetof(struct rt9759_desc, name), reg, shft, mask, func, base}
+#define RT9759_DT_VALPROP(name, var, reg, shft, mask, func, base) \
+	{name, #var, offsetof(struct rt9759_desc, var), \
+	 reg, shft, mask, func, base}
 
 struct rt9759_dtprop {
 	const char *name;
+	const char *legacy_name;
 	size_t offset;
 	u8 reg;
 	u8 shft;
@@ -1578,12 +1603,16 @@ static inline void rt9759_parse_dt_u32(struct device_node *np, void *desc,
 				       const struct rt9759_dtprop *props,
 				       int prop_cnt)
 {
-	int i;
+	int i, ret;
 
 	for (i = 0; i < prop_cnt; i++) {
 		if (unlikely(!props[i].name))
 			continue;
-		of_property_read_u32(np, props[i].name, desc + props[i].offset);
+		ret = of_property_read_u32(np, props[i].name,
+					   desc + props[i].offset);
+		if (ret < 0)
+			of_property_read_u32(np, props[i].legacy_name,
+					     desc + props[i].offset);
 	}
 }
 
@@ -1609,6 +1638,8 @@ static inline int rt9759_apply_dt(struct rt9759_chip *chip, void *desc,
 	u32 val;
 
 	for (i = 0; i < prop_cnt; i++) {
+		if (props[i].reg == 0xff)
+			continue;
 		val = *(u32 *)(desc + props[i].offset);
 		if (props[i].toreg)
 			val = props[i].toreg(val);
@@ -1623,62 +1654,83 @@ static inline int rt9759_apply_dt(struct rt9759_chip *chip, void *desc,
 }
 
 static const struct rt9759_dtprop rt9759_dtprops_u32[] = {
-	RT9759_DT_VALPROP(vbatovp, RT9759_REG_VBATOVP, 0, 0x3f,
-			  rt9759_vbatovp_toreg, 0),
-	RT9759_DT_VALPROP(vbatovp_alm, RT9759_REG_VBATOVP_ALM, 0, 0x3f,
-			  rt9759_vbatovp_toreg, 0),
-	RT9759_DT_VALPROP(ibatocp, RT9759_REG_IBATOCP, 0, 0x7f,
-			  rt9759_ibatocp_toreg, 0),
-	RT9759_DT_VALPROP(ibatocp_alm, RT9759_REG_IBATOCP_ALM, 0, 0x7f,
-			  rt9759_ibatocp_toreg, 0),
-	RT9759_DT_VALPROP(ibatucp_alm, RT9759_REG_IBATUCP_ALM, 0, 0x7f,
-			  rt9759_ibatucp_toreg, 0),
-	RT9759_DT_VALPROP(vbusovp, RT9759_REG_VBUSOVP, 0, 0x7f,
-			  rt9759_vbusovp_toreg, 0),
-	RT9759_DT_VALPROP(vbusovp_alm, RT9759_REG_VBUSOVP_ALM, 0, 0x7f,
-			  rt9759_vbusovp_toreg, 0),
-	RT9759_DT_VALPROP(ibusocp, RT9759_REG_IBUSOCUCP, 0, 0x0f,
-			  rt9759_ibusocp_toreg, 0),
-	RT9759_DT_VALPROP(ibusocp_alm, RT9759_REG_IBUSOCP_ALM, 0, 0x7f,
-			  rt9759_ibusocp_alm_toreg, 0),
-	RT9759_DT_VALPROP(wdt, RT9759_REG_CHGCTRL0, 0, 0x03,
-			  rt9759_wdt_toreg, 0),
-	RT9759_DT_VALPROP(vacovp, RT9759_REG_ACPROTECT, 0, 0x07,
-			  rt9759_vacovp_toreg, 0),
-	RT9759_DT_VALPROP(ibat_rsense, RT9759_REG_REGCTRL, 1, 0x02, NULL, 0),
-	RT9759_DT_VALPROP(ibusucpf_deglitch, RT9759_REG_BUSDEGLH, 3, 0x08, NULL,
-			  0),
+	RT9759_DT_VALPROP("vbatovp", vbatovp, RT9759_REG_VBATOVP,
+			  0, 0x3f, rt9759_vbatovp_toreg, 0),
+	RT9759_DT_VALPROP("vbatovp-alm", vbatovp_alm, RT9759_REG_VBATOVP_ALM,
+			  0, 0x3f, rt9759_vbatovp_toreg, 0),
+	RT9759_DT_VALPROP("ibatocp", ibatocp, RT9759_REG_IBATOCP,
+			  0, 0x7f, rt9759_ibatocp_toreg, 0),
+	RT9759_DT_VALPROP("ibatocp-alm", ibatocp_alm, RT9759_REG_IBATOCP_ALM,
+			  0, 0x7f, rt9759_ibatocp_toreg, 0),
+	RT9759_DT_VALPROP("ibatucp-alm", ibatucp_alm, RT9759_REG_IBATUCP_ALM,
+			  0, 0x7f, rt9759_ibatucp_toreg, 0),
+	RT9759_DT_VALPROP("vbusovp", vbusovp, RT9759_REG_VBUSOVP,
+			  0, 0x7f, rt9759_vbusovp_toreg, 0),
+	RT9759_DT_VALPROP("vbusovp-alm", vbusovp_alm, RT9759_REG_VBUSOVP_ALM,
+			  0, 0x7f, rt9759_vbusovp_toreg, 0),
+	RT9759_DT_VALPROP("ibusocp", ibusocp, RT9759_REG_IBUSOCUCP,
+			  0, 0x0f, rt9759_ibusocp_toreg, 0),
+	RT9759_DT_VALPROP("ibusocp-alm", ibusocp_alm, RT9759_REG_IBUSOCP_ALM,
+			  0, 0x7f, rt9759_ibusocp_alm_toreg, 0),
+	RT9759_DT_VALPROP("wdt", wdt, RT9759_REG_CHGCTRL0,
+			  0, 0x03, rt9759_wdt_toreg, 0),
+	RT9759_DT_VALPROP("vacovp", vacovp, RT9759_REG_ACPROTECT,
+			  0, 0x07, rt9759_vacovp_toreg, 0),
+	RT9759_DT_VALPROP("ibat-rsense", ibat_rsense, RT9759_REG_REGCTRL,
+			  1, 0x02, NULL, 0),
+	RT9759_DT_VALPROP("ibusucpf-deglitch", ibusucpf_deglitch,
+			  RT9759_REG_BUSDEGLH, 3, 0x08, NULL, 0),
 };
 
 static const struct rt9759_dtprop rt9759_dtprops_bool[] = {
-	RT9759_DT_VALPROP(vbatovp_dis, RT9759_REG_VBATOVP, 7, 0x80, NULL, 0),
-	RT9759_DT_VALPROP(vbatovp_alm_dis, RT9759_REG_VBATOVP_ALM, 7, 0x80,
-			  NULL, 0),
-	RT9759_DT_VALPROP(ibatocp_dis, RT9759_REG_IBATOCP, 7, 0x80, NULL, 0),
-	RT9759_DT_VALPROP(ibatocp_alm_dis, RT9759_REG_IBATOCP_ALM, 7, 0x80,
-			  NULL, 0),
-	RT9759_DT_VALPROP(ibatucp_alm_dis, RT9759_REG_IBATUCP_ALM, 7, 0x80,
-			  NULL, 0),
-	RT9759_DT_VALPROP(vbusovp_alm_dis, RT9759_REG_VBUSOVP_ALM, 7, 0x80,
-			  NULL, 0),
-	RT9759_DT_VALPROP(ibusocp_dis, RT9759_REG_IBUSOCUCP, 7, 0x80, NULL, 0),
-	RT9759_DT_VALPROP(ibusocp_alm_dis, RT9759_REG_IBUSOCP_ALM, 7, 0x80,
-			  NULL, 0),
-	RT9759_DT_VALPROP(wdt_dis, RT9759_REG_CHGCTRL0, 2, 0x04, NULL, 0),
-	RT9759_DT_VALPROP(tsbusotp_dis, RT9759_REG_CHGCTRL1, 2, 0x04, NULL, 0),
-	RT9759_DT_VALPROP(tsbatotp_dis, RT9759_REG_CHGCTRL1, 1, 0x02, NULL, 0),
-	RT9759_DT_VALPROP(tdieotp_dis, RT9759_REG_CHGCTRL1, 0, 0x01, NULL, 0),
-	RT9759_DT_VALPROP(reg_en, RT9759_REG_REGCTRL, 4, 0x10, NULL, 0),
-	RT9759_DT_VALPROP(voutovp_dis, RT9759_REG_REGCTRL, 3, 0x08, NULL, 0),
-	RT9759_DT_VALPROP(ibusadc_dis, RT9759_REG_ADCCTRL, 0, 0x01, NULL, 0),
-	RT9759_DT_VALPROP(tdieadc_dis, RT9759_REG_ADCEN, 0, 0x01, NULL, 0),
-	RT9759_DT_VALPROP(tsbatadc_dis, RT9759_REG_ADCEN, 1, 0x02, NULL, 0),
-	RT9759_DT_VALPROP(tsbusadc_dis, RT9759_REG_ADCEN, 2, 0x04, NULL, 0),
-	RT9759_DT_VALPROP(ibatadc_dis, RT9759_REG_ADCEN, 3, 0x08, NULL, 0),
-	RT9759_DT_VALPROP(vbatadc_dis, RT9759_REG_ADCEN, 4, 0x10, NULL, 0),
-	RT9759_DT_VALPROP(voutadc_dis, RT9759_REG_ADCEN, 5, 0x20, NULL, 0),
-	RT9759_DT_VALPROP(vacadc_dis, RT9759_REG_ADCEN, 6, 0x40, NULL, 0),
-	RT9759_DT_VALPROP(vbusadc_dis, RT9759_REG_ADCEN, 7, 0x80, NULL, 0),
+	RT9759_DT_VALPROP("vbatovp-dis", vbatovp_dis, RT9759_REG_VBATOVP,
+			  7, 0x80, NULL, 0),
+	RT9759_DT_VALPROP("vbatovp-alm-dis", vbatovp_alm_dis,
+			  RT9759_REG_VBATOVP_ALM, 7, 0x80, NULL, 0),
+	RT9759_DT_VALPROP("ibatocp-dis", ibatocp_dis, RT9759_REG_IBATOCP,
+			  7, 0x80, NULL, 0),
+	RT9759_DT_VALPROP("ibatocp-alm-dis", ibatocp_alm_dis,
+			  RT9759_REG_IBATOCP_ALM, 7, 0x80, NULL, 0),
+	RT9759_DT_VALPROP("ibatucp-alm-dis", ibatucp_alm_dis,
+			  RT9759_REG_IBATUCP_ALM, 7, 0x80, NULL, 0),
+	RT9759_DT_VALPROP("vbusovp-alm-dis", vbusovp_alm_dis,
+			  RT9759_REG_VBUSOVP_ALM, 7, 0x80, NULL, 0),
+	RT9759_DT_VALPROP("ibusocp-dis", ibusocp_dis, RT9759_REG_IBUSOCUCP,
+			  7, 0x80, NULL, 0),
+	RT9759_DT_VALPROP("ibusocp-alm-dis", ibusocp_alm_dis,
+			  RT9759_REG_IBUSOCP_ALM, 7, 0x80, NULL, 0),
+	RT9759_DT_VALPROP("wdt-dis", wdt_dis, RT9759_REG_CHGCTRL0,
+			  2, 0x04, NULL, 0),
+	RT9759_DT_VALPROP("tsbusotp-dis", tsbusotp_dis, RT9759_REG_CHGCTRL1,
+			  2, 0x04, NULL, 0),
+	RT9759_DT_VALPROP("tsbatotp-dis", tsbatotp_dis, RT9759_REG_CHGCTRL1,
+			  1, 0x02, NULL, 0),
+	RT9759_DT_VALPROP("tdieotp-dis", tdieotp_dis, RT9759_REG_CHGCTRL1,
+			  0, 0x01, NULL, 0),
+	RT9759_DT_VALPROP("reg-en", reg_en, RT9759_REG_REGCTRL,
+			  4, 0x10, NULL, 0),
+	RT9759_DT_VALPROP("voutovp-dis", voutovp_dis, RT9759_REG_REGCTRL,
+			  3, 0x08, NULL, 0),
+	RT9759_DT_VALPROP("ibusadc-dis", ibusadc_dis, RT9759_REG_ADCCTRL,
+			  0, 0x01, NULL, 0),
+	RT9759_DT_VALPROP("tdieadc-dis", tdieadc_dis, RT9759_REG_ADCEN,
+			  0, 0x01, NULL, 0),
+	RT9759_DT_VALPROP("tsbatadc-dis", tsbatadc_dis, RT9759_REG_ADCEN,
+			  1, 0x02, NULL, 0),
+	RT9759_DT_VALPROP("tsbusadc-dis", tsbusadc_dis, RT9759_REG_ADCEN,
+			  2, 0x04, NULL, 0),
+	RT9759_DT_VALPROP("ibatadc-dis", ibatadc_dis, RT9759_REG_ADCEN,
+			  3, 0x08, NULL, 0),
+	RT9759_DT_VALPROP("vbatadc-dis", vbatadc_dis, RT9759_REG_ADCEN,
+			  4, 0x10, NULL, 0),
+	RT9759_DT_VALPROP("voutadc-dis", voutadc_dis, RT9759_REG_ADCEN,
+			  5, 0x20, NULL, 0),
+	RT9759_DT_VALPROP("vacadc-dis", vacadc_dis, RT9759_REG_ADCEN,
+			  6, 0x40, NULL, 0),
+	RT9759_DT_VALPROP("vbusadc-dis", vbusadc_dis, RT9759_REG_ADCEN,
+			  7, 0x80, NULL, 0),
+	RT9759_DT_VALPROP("ibat-rsense-half", ibat_rsense_half, 0xff,
+			  0, 0x00, NULL, 0),
 };
 
 static int rt9759_parse_dt(struct rt9759_chip *chip)
@@ -1698,9 +1750,9 @@ static int rt9759_parse_dt(struct rt9759_chip *chip)
 	if (!desc)
 		return -ENOMEM;
 	memcpy(desc, &rt9759_desc_defval, sizeof(*desc));
-	if (of_property_read_string(np, "rm_name", &desc->rm_name) < 0)
+	if (of_property_read_string(np, "rm-name", &desc->rm_name) < 0)
 		dev_info(chip->dev, "%s no rm name\n", __func__);
-	if (of_property_read_u8(np, "rm_slave_addr", &desc->rm_slave_addr) < 0)
+	if (of_property_read_u8(np, "rm-slave-addr", &desc->rm_slave_addr) < 0)
 		dev_info(chip->dev, "%s no regmap slave addr\n", __func__);
 	child_np = of_get_child_by_name(np, rt9759_type_name[chip->type]);
 	if (!child_np) {
@@ -1708,7 +1760,7 @@ static int rt9759_parse_dt(struct rt9759_chip *chip)
 			rt9759_type_name[chip->type]);
 		return -ENODEV;
 	}
-	if (of_property_read_string(child_np, "chg_name", &desc->chg_name) < 0)
+	if (of_property_read_string(child_np, "chg-name", &desc->chg_name) < 0)
 		dev_info(chip->dev, "%s no chg name\n", __func__);
 	rt9759_parse_dt_u32(child_np, (void *)desc, rt9759_dtprops_u32,
 			    ARRAY_SIZE(rt9759_dtprops_u32));
@@ -1746,8 +1798,7 @@ static int __rt9759_init_chip(struct rt9759_chip *chip)
 			      ARRAY_SIZE(rt9759_dtprops_bool));
 	if (ret < 0)
 		return ret;
-	chip->wdt_en = !chip->desc->wdt_dis;
-	return chip->wdt_en ? rt9759_enable_wdt(chip, false) : 0;
+	return rt9759_enable_wdt(chip, false);
 }
 
 static int rt9759_check_devinfo(struct i2c_client *client, u8 *chip_rev,

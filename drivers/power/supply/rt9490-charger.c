@@ -20,7 +20,6 @@
 
 #include "charger_class.h"
 #include "mtk_charger.h"
-#include "mtk_chg_type_det.h"
 
 static bool dbg_log_en = true;
 module_param(dbg_log_en, bool, 0644);
