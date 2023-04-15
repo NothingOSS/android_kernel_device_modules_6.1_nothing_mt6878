@@ -1506,11 +1506,15 @@ bool is_pure_raw_node(struct mtk_cam_job *job,
 bool is_processed_raw_node(struct mtk_cam_job *job,
 			    struct mtk_cam_video_device *node)
 {
+#ifdef PURERAW_DEVICE
 	struct mtk_raw_ctrl_data *ctrl = get_raw_ctrl_data(job);
 
 	if (ctrl &&
 	    map_ipi_imgo_path(ctrl->raw_path) == MTKCAM_IPI_IMGO_UNPROCESSED)
 		pr_info("%s unexpected raw path", __func__);
+#else
+	(void) job;
+#endif
 
 	return node->desc.id == MTK_RAW_MAIN_STREAM_OUT;
 }

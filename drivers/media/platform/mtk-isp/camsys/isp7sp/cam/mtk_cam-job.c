@@ -1052,7 +1052,7 @@ _apply_sensor(struct mtk_cam_job *job)
 	struct mtk_cam_request *req = job->req;
 
 	if (!job->sensor_hdl_obj) {
-		dev_info(cam->dev, "[%s] warn. no sensor_hdl_obj to apply: ctx-%d job 0x%x\n",
+		dev_info(cam->dev, "[%s] warn. no sensor_hdl_obj to apply: ctx-%d seq 0x%x\n",
 			 __func__, ctx->stream_id, job->frame_seq_no);
 		return 0;
 	}
@@ -1065,7 +1065,7 @@ _apply_sensor(struct mtk_cam_job *job)
 	update_sensor_fmt(job);
 
 	v4l2_ctrl_request_setup(&req->req, job->sensor->ctrl_handler);
-	dev_info(cam->dev, "[%s] ctx:%d, job: 0x%x\n",
+	dev_info(cam->dev, "[%s] ctx:%d seq 0x%x\n",
 		 __func__, ctx->stream_id, job->frame_seq_no);
 
 	frame_sync_end(job);
@@ -1379,9 +1379,8 @@ static int apply_engines_cq(struct mtk_cam_job *job,
 
 	mtk_cam_apply_qos(job);
 
-	dev_info(ctx->cam->dev, "[%s] ctx:%d CQ-0x%x eng 0x%lx cq_addr: %pad\n",
-		 __func__, ctx->stream_id, frame_seq_no, cq_engine,
-		 &cq->daddr);
+	dev_info(ctx->cam->dev, "[%s] ctx:%d CQ-0x%x eng 0x%lx\n",
+		 __func__, ctx->stream_id, frame_seq_no, cq_engine);
 	return 0;
 }
 
@@ -2779,7 +2778,7 @@ static int apply_sensor_mstream(struct mtk_cam_job *job)
 	if (do_request_setup)
 		job_complete_sensor_ctrl_obj(job);
 
-	dev_info(cam->dev, "[%s] ctx:%d, job: seq 0x%x\n",
+	dev_info(cam->dev, "[%s] ctx:%d seq 0x%x\n",
 		 __func__, ctx->stream_id, job->frame_seq_no + cur_idx);
 	++mjob->apply_sensor_idx;
 	return 0;
@@ -4142,8 +4141,7 @@ static int get_exp_switch_type(struct mtk_cam_job *job)
 			res = EXPOSURE_CHANGE_1_to_3;
 	}
 
-	pr_info("[%s] switch_type:%d (cur:%d prev:%d)",
-			__func__, res, cur, prev);
+	//pr_info("[%s] switch_type:%d (cur:%d prev:%d)", __func__, res, cur, prev);
 
 	return res;
 }

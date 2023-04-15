@@ -891,11 +891,13 @@ static int mtk_raw_hdr_ts_get_ctrl(struct v4l2_ctrl *ctrl)
 	switch (ctrl->id) {
 	case V4L2_CID_MTK_CAM_CAMSYS_HDR_TIMESTAMP:
 		mtk_raw_hdr_tsfifo_pop(pipeline, hdr_ts_info_p);
-		dev_info(dev, "%s [le:%lld,%lld][ne:%lld,%lld][se:%lld,%lld]\n",
-			 __func__,
-			 hdr_ts_info_p->le, hdr_ts_info_p->le_mono,
-			 hdr_ts_info_p->ne, hdr_ts_info_p->ne_mono,
-			 hdr_ts_info_p->se, hdr_ts_info_p->se_mono);
+
+		if (CAM_DEBUG_ENABLED(V4L2))
+			dev_info(dev, "%s [le:%lld,%lld][ne:%lld,%lld][se:%lld,%lld]\n",
+				 __func__,
+				 hdr_ts_info_p->le, hdr_ts_info_p->le_mono,
+				 hdr_ts_info_p->ne, hdr_ts_info_p->ne_mono,
+				 hdr_ts_info_p->se, hdr_ts_info_p->se_mono);
 		break;
 	default:
 		dev_info(dev, "%s(id:0x%x,val:%d) is not handled\n",
@@ -3518,7 +3520,8 @@ static int mtk_raw_pipeline_register(const char *str, unsigned int id,
 	(void)snprintf(sd->name, sizeof(sd->name), "%s-%d", str, pipe->id);
 	v4l2_set_subdevdata(sd, pipe);
 	mtk_raw_pipeline_ctrl_setup(pipe);
-	pr_info("%s: %s\n", __func__, sd->name);
+
+	//pr_info("%s: %s\n", __func__, sd->name);
 
 	ret = v4l2_device_register_subdev(v4l2_dev, sd);
 	if (ret < 0) {

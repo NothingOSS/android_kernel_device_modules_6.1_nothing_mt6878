@@ -389,7 +389,7 @@ static int  mtk_mraw_pipeline_register(const char *str,
 	}
 	v4l2_set_subdevdata(sd, pipe);
 
-	pr_info("%s: %s\n", __func__, sd->name);
+	//pr_info("%s: %s\n", __func__, sd->name);
 
 	ret = v4l2_device_register_subdev(v4l2_dev, sd);
 	if (ret < 0) {

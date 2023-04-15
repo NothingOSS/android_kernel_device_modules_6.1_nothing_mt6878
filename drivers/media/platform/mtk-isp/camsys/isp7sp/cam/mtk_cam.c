@@ -647,7 +647,7 @@ static void mtk_cam_req_queue(struct media_request *req)
 	list_add_tail(&cam_req->list, &cam->pending_job_list);
 	spin_unlock(&cam->pending_job_lock);
 
-	if (1 || CAM_DEBUG_ENABLED(V4L2))
+	if (CAM_DEBUG_ENABLED(V4L2))
 		dev_info(cam->dev, "%s: req %s\n", __func__, req->debug_str);
 
 	mtk_cam_dev_req_try_queue(cam);
@@ -831,7 +831,7 @@ void mtk_cam_req_buffer_done(struct mtk_cam_job *job,
 		    node->desc.id == MTK_RAW_PURE_RAW_OUT && is_proc) {
 			if (CAM_DEBUG_ENABLED(JOB))
 				dev_info(dev,
-					 "%s: ctx-%d req:%s(%d) pipe_id:%d, node_id:%d bypass pure raw node\n",
+					 "%s: ctx-%d req:%s(%d) pipe_id:%d node_id:%d bypass pure raw node\n",
 					 __func__, ctx->stream_id,
 					 req->req.debug_str,  job->req_seq,
 					 pipe_id, node_id);
@@ -845,13 +845,13 @@ void mtk_cam_req_buffer_done(struct mtk_cam_job *job,
 
 	spin_unlock(&req->buf_lock);
 
-	dev_info(dev, "%s: ctx-%d req:%s(%d) pipe_id:%d, node_id:%d bufs: 0x%lx ts:%lld%s\n",
+	dev_info(dev, "%s: ctx-%d req:%s(%d) pipe_id:%d node_id:%d bufs:0x%lx ts:%lld%s\n",
 		 __func__, ctx->stream_id, req->req.debug_str, job->req_seq,
 		 pipe_id, node_id, ids, ts, is_buf_empty ? " (empty)" : "");
 
-	if (list_empty(&done_list)) {
+	if (unlikely(list_empty(&done_list))) {
 		dev_info(dev,
-			 "%s: req:%s failed to find pipe_id:%d, node_id:%d, ts:%lld%s\n",
+			 "%s: req:%s failed to find pipe_id:%d node_id:%d ts:%lld%s\n",
 			 __func__, req->req.debug_str,
 			 pipe_id, node_id, ts, is_buf_empty ? " (empty)" : "");
 		goto REQ_PUT;
@@ -2759,7 +2759,7 @@ static int _dynamic_link_seninf_pipe(struct device *dev,
 {
 	int ret;
 
-	dev_info(dev, "create pad link %s %s\n", seninf->name, pipe->name);
+	//dev_info(dev, "create pad link %s %s\n", seninf->name, pipe->name);
 	ret = media_create_pad_link(seninf, src_pad,
 				    pipe, sink_pad,
 				    MEDIA_LNK_FL_DYNAMIC);
