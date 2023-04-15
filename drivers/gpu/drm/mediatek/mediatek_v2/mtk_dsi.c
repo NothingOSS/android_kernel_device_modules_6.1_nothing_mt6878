@@ -7887,13 +7887,20 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_mode(
 	unsigned long long bw_base;
 	struct drm_display_mode *mode
 		= mtk_drm_crtc_avail_disp_mode(&mtk_crtc->base, mode_idx);
-	int vrefresh = drm_mode_vrefresh(mode);
+	int vrefresh = 0;
 	unsigned int compress_rate = mtk_dsi_get_dsc_compress_rate(dsi);
 	unsigned int data_rate = mtk_dsi_default_rate(dsi);
 	u32 bpp = mipi_dsi_pixel_format_to_bpp(dsi->format);
 	struct mtk_panel_ext *panel_ext = mtk_crtc->panel_ext;
 	u32 ps_wc = 0;
 	struct total_tile_overhead to_info;
+
+	if (mode) {
+		vrefresh = drm_mode_vrefresh(mode);
+	} else {
+		DDPPR_ERR("%s, mode is NULL\n", __func__);
+		return 0;
+	}
 
 	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
 	DDPINFO("%s:overhead is_support:%d, width L:%d R:%d\n", __func__,

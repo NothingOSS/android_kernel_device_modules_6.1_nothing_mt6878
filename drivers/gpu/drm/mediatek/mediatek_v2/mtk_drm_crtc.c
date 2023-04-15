@@ -4540,6 +4540,10 @@ void mtk_drm_crtc_mode_check(struct drm_crtc *crtc,
 	/* Update mode & adjusted_mode in CRTC */
 	mode = mtk_drm_crtc_avail_disp_mode(crtc,
 		new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
+	if (!mode) {
+		DDPPR_ERR("%s: panel mode is NULL\n", __func__);
+		return;
+	}
 
 	copy_drm_disp_mode(mode, &new_state->mode);
 	new_state->mode.hskew = mode->hskew;
@@ -9670,18 +9674,26 @@ static void mtk_crtc_all_layer_off(struct mtk_drm_crtc *mtk_crtc,
 void mtk_crtc_stop_ddp(struct mtk_drm_crtc *mtk_crtc,
 		       struct cmdq_pkt *cmdq_handle)
 {
-	int i, j;
-	struct mtk_ddp_comp *comp;
-	struct drm_crtc *crtc = mtk_crtc ? (&mtk_crtc->base) : NULL;
-	struct mtk_drm_private *priv = (crtc && crtc->dev) ?
-				crtc->dev->dev_private : NULL;
-	unsigned int crtc_idx;
+	int i = 0, j = 0;
+	struct mtk_ddp_comp *comp = NULL;
+	struct drm_crtc *crtc = NULL;
+	struct mtk_drm_private *priv = NULL;
+	unsigned int crtc_idx = 0;
 	bool only_output = false;
 
-	if (crtc) {
+	if (mtk_crtc == NULL) {
+		DDPPR_ERR("%s: mtk_crtc is null\n", __func__);
+		return;
+	}
+	crtc = &mtk_crtc->base;
+	if (crtc && crtc->dev) {
 		crtc_idx = drm_crtc_index(crtc);
+		priv = crtc->dev->dev_private;
 		if (crtc_idx < MAX_CRTC)
 			only_output = (priv && priv->usage[crtc_idx] == DISP_OPENING);
+	} else {
+		DDPPR_ERR("%s: crtc is null\n", __func__);
+		return;
 	}
 
 	/* If VDO mode, stop DSI mode first */
@@ -10328,6 +10340,10 @@ static void mtk_drm_crtc_fix_conn_mode(struct drm_crtc *crtc, struct drm_display
 	/* Update mode & adjusted_mode in CRTC */
 	mode = mtk_drm_crtc_avail_disp_mode(crtc,
 		mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
+	if (!mode) {
+		DDPPR_ERR("%s: panel mode is NULL\n", __func__);
+		return;
+	}
 
 	copy_drm_disp_mode(mode, &crtc->state->mode);
 	crtc->state->mode.hskew = mode->hskew;
@@ -10624,7 +10640,10 @@ struct drm_display_mode *mtk_drm_crtc_avail_disp_mode(struct drm_crtc *crtc,
 		idx = 0;
 	}
 
-	return &mtk_crtc->avail_modes[idx];
+	if (mtk_crtc->avail_modes)
+		return &mtk_crtc->avail_modes[idx];
+	else
+		return NULL;
 }
 
 int mtk_drm_crtc_get_panel_original_size(struct drm_crtc *crtc, unsigned int *width,

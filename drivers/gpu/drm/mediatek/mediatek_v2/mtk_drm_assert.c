@@ -320,18 +320,32 @@ int drm_show_dal(struct drm_crtc *crtc, bool enable)
 #ifdef DRM_CMDQ_DISABLE
 	return 0;
 #else
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct mtk_drm_private *priv = (crtc && crtc->dev) ? crtc->dev->dev_private : NULL;
-	struct mtk_plane_state *plane_state;
-	struct mtk_ddp_comp *ovl_comp = _handle_phy_top_plane(mtk_crtc);
-	struct cmdq_pkt *cmdq_handle;
-	int layer_id;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_drm_private *priv = NULL;
+	struct mtk_plane_state *plane_state = NULL;
+	struct mtk_ddp_comp *ovl_comp = NULL;
+	struct cmdq_pkt *cmdq_handle = NULL;
+	int layer_id = 0;
 	int ret = 0;
 
+	if ((crtc == NULL) || (crtc->dev == NULL)) {
+		DDPPR_ERR("%s: crtc is null\n", __func__);
+		return 0;
+	}
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	if (mtk_crtc == NULL) {
+		DDPPR_ERR("%s: mtk_crtc is null\n", __func__);
+		return 0;
+	}
+
+	ovl_comp = _handle_phy_top_plane(mtk_crtc);
 	if (ovl_comp == NULL) {
 		DDPPR_ERR("%s: can't find ovl comp\n", __func__);
 		return 0;
 	}
+
+	priv = crtc->dev->dev_private;
 	if (IS_ERR_OR_NULL(priv)) {
 		DDPPR_ERR("%s: can't find priv\n", __func__);
 		return 0;

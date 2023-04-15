@@ -345,8 +345,8 @@ static int mtk_plane_atomic_check(struct drm_plane *plane,
 					old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX],
 					mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
 
-			if (crtc_state->mode.hdisplay < mode->hdisplay
-				|| crtc_state->mode.vdisplay < mode->vdisplay) {
+			if (mode && (crtc_state->mode.hdisplay < mode->hdisplay
+				|| crtc_state->mode.vdisplay < mode->vdisplay)) {
 				crtc_state->mode.hdisplay = mode->hdisplay;
 				crtc_state->mode.vdisplay = mode->vdisplay;
 
