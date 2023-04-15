@@ -13,13 +13,33 @@ static inline bool scen_is_dc_mode(struct mtk_cam_resource_raw_v2 *res_raw)
 	return res_raw->hw_mode == HW_MODE_DIRECT_COUPLED;
 }
 
+static inline bool scen_is_normal(struct mtk_cam_scen *scen)
+{
+	if (scen->id == MTK_CAM_SCEN_NORMAL ||
+	    scen->id == MTK_CAM_SCEN_ODT_NORMAL ||
+	    scen->id == MTK_CAM_SCEN_M2M_NORMAL)
+		return true;
+
+	return false;
+}
+
+static inline bool scen_is_dcg_sensor_merge(struct mtk_cam_scen *scen)
+{
+	if (scen_is_normal(scen))
+		return (scen->scen.normal.stagger_type ==
+				MTK_CAM_STAGGER_DCG_SENSOR_MERGE);
+
+	return false;
+}
+
 static inline bool scen_is_vhdr(struct mtk_cam_scen *scen)
 {
 	switch (scen->id) {
 	case MTK_CAM_SCEN_NORMAL:
 	case MTK_CAM_SCEN_M2M_NORMAL:
 	case MTK_CAM_SCEN_ODT_NORMAL:
-		return scen->scen.normal.max_exp_num > 1;
+		return (scen->scen.normal.max_exp_num > 1 ||
+			scen_is_dcg_sensor_merge(scen));
 	case MTK_CAM_SCEN_MSTREAM:
 	case MTK_CAM_SCEN_ODT_MSTREAM:
 		return 1;
@@ -31,9 +51,7 @@ static inline bool scen_is_vhdr(struct mtk_cam_scen *scen)
 
 static inline bool scen_is_rgbw(struct mtk_cam_scen *scen)
 {
-	if (scen->id == MTK_CAM_SCEN_NORMAL ||
-	    scen->id == MTK_CAM_SCEN_ODT_NORMAL ||
-	    scen->id == MTK_CAM_SCEN_M2M_NORMAL)
+	if (scen_is_normal(scen))
 		return !!(scen->scen.normal.w_chn_enabled);
 
 	return false;

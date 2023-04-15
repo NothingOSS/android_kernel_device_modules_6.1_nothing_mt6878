@@ -166,6 +166,7 @@ bool is_vhdr(struct mtk_cam_job *job);
 bool is_dc_mode(struct mtk_cam_job *job);
 bool is_sv_pure_raw(struct mtk_cam_job *job);
 bool is_rgbw(struct mtk_cam_job *job);
+bool is_dcg_sensor_merge(struct mtk_cam_job *job);
 bool is_m2m(struct mtk_cam_job *job);
 bool is_m2m_apu(struct mtk_cam_job *job);
 bool is_m2m_apu_dc(struct mtk_cam_job *job);

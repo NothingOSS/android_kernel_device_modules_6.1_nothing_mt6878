@@ -239,7 +239,7 @@ int get_hw_scenario(struct mtk_cam_job *job)
 			}
 		} else if (is_w) {
 			hard_scenario = MTKCAM_IPI_HW_PATH_OFFLINE_RGBW;
-		} else if (is_vhdr(job))
+		} else if (is_vhdr(job) && !is_dcg_sensor_merge(job))
 			hard_scenario = MTKCAM_IPI_HW_PATH_OFFLINE_STAGGER;
 		else
 			hard_scenario = MTKCAM_IPI_HW_PATH_OFFLINE;
@@ -1419,6 +1419,11 @@ bool is_dc_mode(struct mtk_cam_job *job)
 bool is_rgbw(struct mtk_cam_job *job)
 {
 	return scen_is_rgbw(&job->job_scen);
+}
+
+bool is_dcg_sensor_merge(struct mtk_cam_job *job)
+{
+	return scen_is_dcg_sensor_merge(&job->job_scen);
 }
 
 bool is_m2m(struct mtk_cam_job *job)

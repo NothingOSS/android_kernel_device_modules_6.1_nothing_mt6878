@@ -20,6 +20,7 @@
 #include "mtk_cam-timesync.h"
 #include "mtk_cam-hsf.h"
 #include "mtk_cam-trace.h"
+#include "mtk_cam-raw_ctrl.h"
 
 #define SENSOR_SET_MARGIN_MS  25
 #define SENSOR_SET_MARGIN_MS_STAGGER  27
@@ -3295,15 +3296,19 @@ static int mraw_set_ipi_input_param(struct mtkcam_ipi_input_param *input,
 static int update_frame_order_to_config(struct mtk_cam_scen *scen,
 				       struct mtkcam_ipi_config_param *config)
 {
-	switch (scen->scen.normal.frame_order) {
-	case MTK_CAM_FRAME_BAYER_W:
+
+	if (scen_is_normal(scen)) {
+		switch (scen->scen.normal.frame_order) {
+		case MTK_CAM_FRAME_W_BAYER:
+			config->frame_order = MTKCAM_IPI_ORDER_W_FIRST;
+			break;
+		case MTK_CAM_FRAME_BAYER_W:
+		default:
+			config->frame_order = MTKCAM_IPI_ORDER_BAYER_FIRST;
+			break;
+		}
+	} else
 		config->frame_order = MTKCAM_IPI_ORDER_BAYER_FIRST;
-		break;
-	case MTK_CAM_FRAME_W_BAYER:
-	default:
-		config->frame_order = MTKCAM_IPI_ORDER_W_FIRST;
-		break;
-	}
 
 	if (CAM_DEBUG_ENABLED(IPI_BUF))
 		pr_info("%s: scen id %d frame order: %d\n",
@@ -3377,7 +3382,7 @@ static int mtk_cam_job_fill_ipi_config(struct mtk_cam_job *job,
 		update_frame_order_to_config(&job->job_scen, config);
 		update_vsync_order_to_config(ctx, &job->job_scen, config);
 
-		if (job->job_scen.scen.normal.w_chn_supported) {
+		if (scen_is_normal(&job->job_scen) && job->job_scen.scen.normal.w_chn_supported) {
 			config->w_cac_table.iova = ctx->w_caci_buf.daddr;
 			config->w_cac_table.size = ctx->w_caci_buf.size;
 		}
