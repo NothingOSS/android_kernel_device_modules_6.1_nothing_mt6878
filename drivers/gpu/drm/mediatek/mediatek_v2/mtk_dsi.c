@@ -9142,8 +9142,6 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		list_for_each_entry(m, &dsi->conn.modes, head) {
 			drm_mode_copy(&avail_modes[i], m);
-			if (panel_ext && panel_ext->funcs && panel_ext->funcs->ext_param_set)
-				panel_ext->funcs->ext_param_set(dsi->panel, &dsi->conn, i);
 			if (panel_ext && panel_ext->funcs && panel_ext->funcs->ext_param_get)
 				panel_ext->funcs->ext_param_get(dsi->panel, &dsi->conn,
 							&panel_params[i], i);
