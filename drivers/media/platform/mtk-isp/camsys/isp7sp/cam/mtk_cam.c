@@ -3518,14 +3518,28 @@ REGISTER_LARB_FAIL:
 	return ret;
 }
 
+static irqreturn_t mtk_irq_adlrd(int irq, void *data)
+{
+	struct mtk_cam_device *drvdata = (struct mtk_cam_device *)data;
+	struct device *dev = drvdata->dev;
+
+	unsigned int irq_status;
+
+	irq_status = readl_relaxed(drvdata->adl_base + 0x18a0);
+
+	dev_dbg(dev, "ADL-INT: INT 0x%x\n", irq_status);
+
+	return IRQ_HANDLED;
+}
+
 static int mtk_cam_probe(struct platform_device *pdev)
 {
 	struct mtk_cam_device *cam_dev;
 	struct device *dev = &pdev->dev;
-	//struct resource *res;
 	int ret;
 	unsigned int i;
 	const struct camsys_platform_data *platform_data;
+	int irq;
 
 	//dev_info(dev, "%s\n", __func__);
 	platform_data = of_device_get_match_data(dev);
@@ -3565,13 +3579,27 @@ static int mtk_cam_probe(struct platform_device *pdev)
 		return PTR_ERR(cam_dev->base);
 	}
 
-	cam_dev->adl_base = devm_platform_ioremap_resource_byname(pdev,
-								  "adl");
+	cam_dev->adl_base = devm_platform_ioremap_resource_byname(pdev, "adl");
 	if (IS_ERR(cam_dev->adl_base)) {
 		dev_dbg(dev, "failed to map adl_base\n");
 		cam_dev->adl_base = NULL;
 	}
 
+	irq = platform_get_irq(pdev, 0);
+	if (irq < 0) {
+		dev_info(dev, "failed to get adlrd irq\n");
+		goto SKIP_ADLRD_IRQ;
+	}
+
+	ret = devm_request_irq(dev, irq, mtk_irq_adlrd, IRQF_NO_AUTOEN,
+			       dev_name(dev), cam_dev);
+	if (ret) {
+		dev_info(dev, "failed to request irq=%d\n", irq);
+		return ret;
+	}
+	dev_dbg(dev, "registered adl irq=%d\n", irq);
+
+SKIP_ADLRD_IRQ:
 	cam_dev->cmdq_clt = cmdq_mbox_create(dev, 0);
 
 	if (!cam_dev->cmdq_clt)
@@ -3646,9 +3674,67 @@ static int mtk_cam_runtime_suspend(struct device *dev)
 	return 0;
 }
 
+/* note:
+ *   issue: would timeout. can't enable this now
+ */
+//#define DO_ADLWR_RESET
+
+#ifdef DO_ADLWR_RESET
+#define ADLWR_ADL_RESET 0x800
+static void adlwr_reset(struct mtk_cam_device *cam_dev)
+{
+	int sw_ctl;
+	int ret;
+
+	if (IS_ERR_OR_NULL(cam_dev->adl_base)) {
+		dev_info(cam_dev->dev, "%s: skipped\n", __func__);
+		return;
+	}
+
+	writel(0, cam_dev->adl_base + ADLWR_ADL_RESET);
+	writel(BIT(1), cam_dev->adl_base + ADLWR_ADL_RESET);
+	wmb(); /* make sure committed */
+
+	ret = readx_poll_timeout(readl, cam_dev->adl_base + ADLWR_ADL_RESET,
+				 sw_ctl,
+				 sw_ctl & BIT(0),
+				 1 /* delay, us */,
+				 5000 /* timeout, us */);
+	if (ret < 0) {
+		dev_info(cam_dev->dev, "%s: error: timeout!\n", __func__);
+		return;
+	}
+
+	/* do hw rst */
+	writel(0x3c, cam_dev->adl_base + ADLWR_ADL_RESET);
+	writel(0, cam_dev->adl_base + ADLWR_ADL_RESET);
+}
+#endif
+
+static void init_camsys_main_adl_setting(struct mtk_cam_device *cam_dev)
+{
+	/* CAM_MAIN_DRZB2N_RAW_SEL */
+	writel_relaxed(0, cam_dev->base + 0x3ac);
+
+	/* CAM_MAIN_DRZB2N_HDR_RAW_SEL */
+	writel_relaxed(0, cam_dev->base + 0x3b0);
+
+	/* CAM_MAIN_DRZB2N_SRC[1-3]_SEL */
+	writel_relaxed(0, cam_dev->base + 0x3b4);
+	writel_relaxed(0, cam_dev->base + 0x3b8);
+	writel_relaxed(0, cam_dev->base + 0x3bc);
+}
+
 static int mtk_cam_runtime_resume(struct device *dev)
 {
+	struct mtk_cam_device *cam_dev = dev_get_drvdata(dev);
+
 	dev_dbg(dev, "- %s\n", __func__);
+
+	init_camsys_main_adl_setting(cam_dev);
+#ifdef DO_ADLWR_RESET
+	adlwr_reset(cam_dev);
+#endif
 
 	mtk_cam_timesync_init(true);
 
