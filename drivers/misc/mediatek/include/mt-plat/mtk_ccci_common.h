@@ -747,10 +747,4 @@ int mtk_ccci_register_md_state_cb(
 			enum MD_STATE old_state,
 			enum MD_STATE new_state));
 
-/* RX_PAGE_POOL: disable page pool feature to undefine RX_PAGE_POOL,
- * no matter whatever CONFIG_PAGE_POOL is set
- */
-#if IS_ENABLED(CONFIG_PAGE_POOL)
-#define RX_PAGE_POOL
-#endif
 #endif

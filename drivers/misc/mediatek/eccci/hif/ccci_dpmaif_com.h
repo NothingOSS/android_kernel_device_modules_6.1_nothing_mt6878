@@ -19,6 +19,7 @@
 #include <net/ipv6.h>
 #ifdef RX_PAGE_POOL
 #include <net/page_pool.h>
+#include "ccci_dpmaif_page_pool.h"
 #endif
 #include "ccci_debug.h"
 #include "ccci_dpmaif_reg_com.h"
@@ -35,17 +36,6 @@
 
 #define DPMAIF_TRAFFIC_MONITOR_INTERVAL 10
 
-#ifdef RX_PAGE_POOL
-#define POOL_NUMBER 1
-#define MAX_POOL_SIZE 32768
-extern unsigned int g_page_pool_is_on;
-extern phys_addr_t resv_skb_mem[POOL_NUMBER];
-int ccci_dpmaif_create_page_pool(int pool_size);
-void ccci_dpmaif_destroy_page_pool(struct page_pool *g_page_pool);
-void ccci_dpmaif_put_page_pool(struct page_pool *pool, struct page *page);
-int ccci_dpmaif_page_pool_empty_index(void);
-void ccci_dpmaif_allocmem_page_pool(int pool_size, phys_addr_t physAddr, int index);
-#endif
 #define DPMAIF_REDUCE_RX_FLUSH
 
 enum error_num {

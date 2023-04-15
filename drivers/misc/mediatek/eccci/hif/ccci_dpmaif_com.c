@@ -2573,7 +2573,10 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 		g_alloc_frg_threshold = MAX_ALLOC_BAT_CNT;
 		g_alloc_skb_tbl_threshold = MAX_ALLOC_BAT_CNT;
 		g_alloc_frg_tbl_threshold = MAX_ALLOC_BAT_CNT;
-
+#ifdef RX_PAGE_POOL
+		if (g_page_pool_is_on)
+			atomic_set(&g_create_another_pp, 1);
+#endif
 		if (dpmaif_ctl->support_lro == 1)
 			ccmni_set_tcp_is_need_gro(0);
 
@@ -2585,7 +2588,10 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 		g_alloc_frg_threshold = MAX_ALLOC_BAT_CNT;
 		g_alloc_skb_tbl_threshold = MAX_ALLOC_BAT_CNT;
 		g_alloc_frg_tbl_threshold = MAX_ALLOC_BAT_CNT;
-
+#ifdef RX_PAGE_POOL
+		if (g_page_pool_is_on)
+			atomic_set(&g_create_another_pp, 1);
+#endif
 		if (dpmaif_ctl->support_lro == 1)
 			ccmni_set_tcp_is_need_gro(0);
 
@@ -2597,7 +2603,10 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 		g_alloc_frg_threshold = MAX_ALLOC_BAT_CNT;
 		g_alloc_skb_tbl_threshold = MAX_ALLOC_BAT_CNT;
 		g_alloc_frg_tbl_threshold = MAX_ALLOC_BAT_CNT;
-
+#ifdef RX_PAGE_POOL
+		if (g_page_pool_is_on)
+			atomic_set(&g_create_another_pp, 1);
+#endif
 		if (dpmaif_ctl->support_lro == 1)
 			ccmni_set_tcp_is_need_gro(0);
 
@@ -2609,7 +2618,10 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 		g_alloc_frg_threshold = MAX_ALLOC_BAT_CNT;
 		g_alloc_skb_tbl_threshold = MAX_ALLOC_BAT_CNT;
 		g_alloc_frg_tbl_threshold = MAX_ALLOC_BAT_CNT;
-
+#ifdef RX_PAGE_POOL
+		if (g_page_pool_is_on)
+			atomic_set(&g_create_another_pp, 1);
+#endif
 		if (dpmaif_ctl->support_lro == 1)
 			ccmni_set_tcp_is_need_gro(1);
 
@@ -2621,7 +2633,10 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 		g_alloc_frg_threshold = MAX_ALLOC_BAT_CNT;
 		g_alloc_skb_tbl_threshold = MAX_ALLOC_BAT_CNT;
 		g_alloc_frg_tbl_threshold = MAX_ALLOC_BAT_CNT;
-
+#ifdef RX_PAGE_POOL
+		if (g_page_pool_is_on)
+			atomic_set(&g_create_another_pp, 1);
+#endif
 		if (dpmaif_ctl->support_lro == 1)
 			ccmni_set_tcp_is_need_gro(1);
 
@@ -2638,8 +2653,10 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 			g_alloc_skb_threshold = MIN_ALLOC_SKB_CNT;
 			g_alloc_frg_threshold = MIN_ALLOC_FRG_CNT;
 #ifdef RX_PAGE_POOL
-			if (g_page_pool_is_on)
+			if (g_page_pool_is_on) {
 				g_alloc_skb_tbl_threshold = MAX_ALLOC_BAT_CNT;
+				atomic_set(&g_create_another_pp, 0);
+			}
 			else
 #endif
 				g_alloc_skb_tbl_threshold = MIN_ALLOC_SKB_TBL_CNT;
