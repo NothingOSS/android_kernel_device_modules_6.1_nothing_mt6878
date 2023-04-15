@@ -348,10 +348,17 @@ static s32 rrot_buf_map(struct mml_comp *comp, struct mml_task *task,
 
 	/* check iova, so rrot get iova first and rrot_2nd use same value */
 	if (!task->buf.src.dma[0].iova) {
+		mml_mmp(buf_map, MMPROFILE_FLAG_START,
+			((u64)task->job.jobid << 16) | comp->id, 0);
+
 		/* get iova */
 		ret = mml_buf_iova_get(rrot->dev, &task->buf.src);
 		if (ret < 0)
 			mml_err("%s iova fail %d", __func__, ret);
+
+		mml_mmp(buf_map, MMPROFILE_FLAG_END,
+			((u64)task->job.jobid << 16) | comp->id,
+			(unsigned long)task->buf.src.dma[0].iova);
 
 		mml_msg("%s comp %u dma %p iova %#11llx (%u) %#11llx (%u) %#11llx (%u)",
 			__func__, comp->id, task->buf.src.dma[0].dmabuf,
@@ -361,10 +368,6 @@ static s32 rrot_buf_map(struct mml_comp *comp, struct mml_task *task,
 			task->buf.src.size[1],
 			task->buf.src.dma[2].iova,
 			task->buf.src.size[2]);
-
-		mml_mmp(buf_map, MMPROFILE_FLAG_PULSE,
-			((u64)task->job.jobid << 16) | comp->id,
-			(unsigned long)task->buf.src.dma[0].iova);
 	}
 
 	mml_trace_ex_end();

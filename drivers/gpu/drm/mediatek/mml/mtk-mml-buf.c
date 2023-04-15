@@ -14,6 +14,7 @@
 #include "mtk-mml.h"
 #include "mtk-mml-buf.h"
 #include "mtk-mml-core.h"
+#include "mtk-mml-mmp.h"
 
 s32 mml_buf_get_fd(struct mml_file_buf *buf, int32_t *fd, u32 cnt, const char *name)
 {
@@ -112,6 +113,8 @@ int mml_buf_iova_get(struct device *dev, struct mml_file_buf *buf)
 			return ret;
 		}
 	}
+	mml_mmp(buf_map, MMPROFILE_FLAG_PULSE, 0, 0);
+
 	buf->map_time = sched_clock();
 
 	return 0;
