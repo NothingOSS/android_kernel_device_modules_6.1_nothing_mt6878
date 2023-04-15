@@ -20,6 +20,14 @@ config MTK_TINYSYS_MBOX
 	  base on ipic framework. It provide channels, controller creation
 	  and send operations.
 
+config MTK_ISE_MBOX
+	tristate "MediaTek ISE Mailbox Support"
+	help
+	  Say yes here to add support for the MediaTek ISE mailbox driver.
+	  The driver is the transport to communicate with remote secure
+	  processor. It provides init and request operations for local user
+	  to communicate with remote user.
+
 config MTK_SCMI_TIMEOUT_HOOK
 	bool "MediaTek SCMI Timeout Hook Support"
 	help
