@@ -414,6 +414,8 @@ int mtk_mminfra_dbg_hang_detect(const char *user)
 		dev_info(dev, "%s\n", buf);
 
 		mminfra_gals_dump();
+		pr_notice("%s: gce apsrc: %#x=%#x\n",
+			__func__, GCE_BASE + GCE_GCTL_VALUE, readl(dbg->gce_base + GCE_GCTL_VALUE));
 		pm_runtime_put(dbg->comm_dev[i]);
 		return 0;
 	}
