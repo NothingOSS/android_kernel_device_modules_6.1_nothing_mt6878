@@ -1106,6 +1106,41 @@ static int hf_manager_get_sensor_info(struct hf_client *client,
 	return hf_manager_device_info(client, sensor_type, info);
 }
 
+static int hf_client_destroy_disable(struct hf_client *client,
+		uint8_t sensor_type)
+{
+	struct hf_manager *manager = NULL;
+	struct hf_device *device = NULL;
+
+#ifdef HF_MANAGER_DEBUG
+	pr_notice("Client destroy disable %u\n", sensor_type);
+#endif
+
+	manager = hf_manager_find_manager(client->core, sensor_type);
+	if (!manager)
+		return -EINVAL;
+	device = manager->hf_dev;
+	if (!device || !device->dev_name)
+		return -EINVAL;
+
+	return hf_manager_device_enable(device, sensor_type);
+}
+
+static int hf_client_destroy_disable_all(struct hf_client *client)
+{
+	int i = 0;
+
+	mutex_lock(&client->core->manager_lock);
+	for (i = 0; i < SENSOR_TYPE_SENSOR_MAX; ++i) {
+		/* no need modify enable due to we list_del firstly */
+		if (client->request[i].enable)
+			hf_client_destroy_disable(client, i);
+	}
+	mutex_unlock(&client->core->manager_lock);
+
+	return 0;
+}
+
 struct hf_client *hf_client_create(void)
 {
 	unsigned long flags;
@@ -1165,6 +1200,9 @@ void hf_client_destroy(struct hf_client *client)
 	spin_lock_irqsave(&client->core->client_lock, flags);
 	list_del(&client->list);
 	spin_unlock_irqrestore(&client->core->client_lock, flags);
+
+	/* after list_del then disable all enabled sensor on this client */
+	hf_client_destroy_disable_all(client);
 
 	kfree(client->hf_fifo.buffer);
 	kfree(client);
