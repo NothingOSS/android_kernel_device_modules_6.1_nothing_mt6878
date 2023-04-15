@@ -22,8 +22,8 @@
 #include "mtk_cam-trace.h"
 #include "mtk_cam-raw_ctrl.h"
 
-#define SENSOR_SET_MARGIN_MS  25
-#define SENSOR_SET_MARGIN_MS_STAGGER  27
+#define SCQ_DEADLINE_US(fi)		((fi) / 2) // 0.5 frame interval
+#define SCQ_DEADLINE_US_STAGGER(fi)	((fi) - 3000) // fi - n us
 
 static unsigned int debug_buf_fmt_sel = -1;
 module_param(debug_buf_fmt_sel, int, 0644);
@@ -1658,14 +1658,15 @@ _job_pack_subsample(struct mtk_cam_job *job,
 	struct mtk_cam_device *cam = ctx->cam;
 	int first_frame_only_cur = job->job_scen.scen.smvr.output_first_frame_only;
 	int first_frame_only_prev = job->prev_scen.scen.smvr.output_first_frame_only;
-	int ret, subsof_fps;
+	int ret;
+	unsigned int fi;
 
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
-	subsof_fps = get_sensor_fps(job) / job->sub_ratio;
-	job->scq_period = subsof_fps > 0 ? SCQ_DEADLINE_MS / (subsof_fps / 30) : SCQ_DEADLINE_MS;
-	dev_info(cam->dev, "[%s] ctx:%d, type:%d, scen_id:%d, 1stonly:%d, ratio:%d, subsof_fps:%d",
-		__func__, ctx->stream_id, job->job_type, job->job_scen.id, first_frame_only_cur,
-		job->sub_ratio, subsof_fps);
+	fi = get_sensor_interval_us(job);
+	job->scq_period = SCQ_DEADLINE_US(fi * job->sub_ratio) / 1000;
+	dev_info(cam->dev, "[%s] ctx:%d, type:%d, scen_id:%d, 1stonly:%d, ratio:%d, fi:%u",
+		__func__, ctx->stream_id, job->job_type, job->job_scen.id,
+		first_frame_only_cur, job->sub_ratio, fi);
 	job->stream_on_seninf = false;
 
 	if (!ctx->used_engine) {
@@ -1882,7 +1883,8 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 		prev_scen->scen.normal.exp_num,
 		job->job_scen.scen.normal.exp_num, job->switch_type);
 	job->stream_on_seninf = false;
-	job->scq_period = SCQ_DEADLINE_MS_STAGGER;
+	job->scq_period =
+		SCQ_DEADLINE_US_STAGGER(get_sensor_interval_us(job)) / 1000;
 
 	if (!ctx->used_engine) {
 		if (job_related_hw_init(job))
@@ -3148,7 +3150,7 @@ static int job_factory(struct mtk_cam_job *job)
 	job->seamless_switch = false;
 	job->first_frm_switch = false;
 	job->switch_type = EXPOSURE_CHANGE_NONE;
-	job->scq_period = SCQ_DEADLINE_MS;
+	job->scq_period = SCQ_DEADLINE_US(get_sensor_interval_us(job)) / 1000;
 	init_completion(&job->compose_completion);
 	init_completion(&job->cq_exe_completion);
 

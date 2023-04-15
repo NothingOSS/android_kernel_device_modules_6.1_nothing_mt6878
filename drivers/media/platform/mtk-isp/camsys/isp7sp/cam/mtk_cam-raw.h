@@ -10,8 +10,6 @@
 #include "mtk_cam-engine.h"
 #include "mtk_cam-dvfs_qos.h"
 
-#define SCQ_DEADLINE_MS  15 // ~1/2 frame length
-#define SCQ_DEADLINE_MS_STAGGER  30 // ~1/2 frame length
 #define SCQ_DEFAULT_CLK_RATE 208 // default 208MHz
 #define USINGSCQ 1
 

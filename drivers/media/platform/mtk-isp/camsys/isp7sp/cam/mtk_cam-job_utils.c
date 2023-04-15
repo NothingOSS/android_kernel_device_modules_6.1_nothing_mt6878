@@ -133,6 +133,20 @@ u32 get_sensor_fps(struct mtk_cam_job *job)
 	return 0;
 }
 
+u32 get_sensor_interval_us(struct mtk_cam_job *job)
+{
+	struct mtk_cam_resource_sensor_v2 *sensor_res;
+
+	sensor_res = _get_job_sensor_res(job);
+	if (!sensor_res) {
+		pr_info_ratelimited("%s: warn. assume 30fps\n", __func__);
+		return 33333;
+	}
+
+	return (u32)(1000000ULL * sensor_res->interval.numerator /
+		     sensor_res->interval.denominator);
+}
+
 u8 get_sensor_data_pattern(struct mtk_cam_job *job)
 {
 	struct mtk_cam_resource_sensor_v2 *sensor_res;
