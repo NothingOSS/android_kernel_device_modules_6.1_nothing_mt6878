@@ -10,7 +10,7 @@ void scp_chre_manager_init(void);
 void scp_chre_manager_exit(void);
 
 #define SCP_CHRE_MAGIC 0x67728269
-#define SCP_CHRE_MANAGER_PAYLOAD_MAXIMUM 0x1000
+#define SCP_CHRE_MANAGER_PAYLOAD_MAXIMUM 0x8000
 
 /* ipi msg */
 struct scp_chre_ipi_msg {

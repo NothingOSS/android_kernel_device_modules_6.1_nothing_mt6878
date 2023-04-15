@@ -108,7 +108,7 @@ static ssize_t scp_chre_manager_read(struct file *filp,
 {
 	if (count <= 0 || count > SCP_CHRE_MANAGER_PAYLOAD_MAXIMUM) {
 		pr_err("[SCP] %s: wrong size(%zd)\n", __func__, count);
-		return 0;
+		return -1;
 	}
 
 	chre_buf = buf;
@@ -117,10 +117,7 @@ static ssize_t scp_chre_manager_read(struct file *filp,
 	mtk_ipi_recv_reply(&scp_ipidev, IPI_IN_SCP_HOST_CHRE,
 			&scp_chre_ack2scp, PIN_IN_SIZE_SCP_HOST_CHRE);
 
-	if (scp_chre_ack2scp[1] == -1)
-		return 0;
-	else
-		return scp_chre_ack2scp[1];
+	return scp_chre_ack2scp[1];
 }
 
 static ssize_t scp_chre_manager_write(struct file *filp,
