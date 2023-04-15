@@ -109,6 +109,14 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_DEBUG_MONITOR		0x2c
 #define PCIE_DEBUG_SEL_0		0x164
 #define PCIE_DEBUG_SEL_1		0x168
+#define PCIE_MONITOR_DEBUG_EN		0x100
+#define PCIE_DEBUG_SEL_BUS(b0, b1, b2, b3) \
+	((((b0) << 24) & GENMASK(31, 24)) | (((b1) << 16) & GENMASK(23, 16)) | \
+	(((b2) << 8) & GENMASK(15, 8)) | ((b3) & GENMASK(7, 0)))
+#define PCIE_DEBUG_SEL_PARTITION(p0, p1, p2, p3) \
+	((((p0) << 28) & GENMASK(31, 28)) | (((p1) << 24) & GENMASK(27, 24)) | \
+	(((p2) << 20) & GENMASK(23, 20)) | (((p3) << 16) & GENMASK(19, 16)) | \
+	PCIE_MONITOR_DEBUG_EN)
 
 #define PCIE_INT_ENABLE_REG		0x180
 #define PCIE_MSI_ENABLE			GENMASK(PCIE_MSI_SET_NUM + 8 - 1, 8)
@@ -135,6 +143,8 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_MSI_GRP2_SET_OFFSET	0xDC0
 #define PCIE_MSI_GRPX_PER_SET_OFFSET	4
 #define PCIE_MSI_GRP3_SET_OFFSET	0xDE0
+
+#define PCIE_RES_STATUS                 0xd28
 
 #define PCIE_AXI0_ERR_ADDR_L		0xe00
 #define PCIE_AXI0_ERR_INFO		0xe08
@@ -199,6 +209,7 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_PHY_SLP_READY_MASK(port)	BIT(13 - port)
 #define PCIE_SUM_SLP_READY(port) \
 	(PCIE_MAC_SLP_READY_MASK(port) | PCIE_PHY_SLP_READY_MASK(port))
+#define SRCLKEN_SPM_REQ_STA             0x1114
 #define SRCLKEN_RC_REQ_STA		0x1130
 
 #define MTK_PCIE_MAX_PORT		2
@@ -1366,6 +1377,61 @@ int mtk_pcie_remove_port(int port)
 }
 EXPORT_SYMBOL(mtk_pcie_remove_port);
 
+
+/* Set partition when use PCIe MAC debug probe table */
+static void mtk_pcie_mac_dbg_set_partition(struct mtk_pcie_port *port, u32 partition)
+{
+	writel_relaxed(partition, port->base + PCIE_DEBUG_SEL_1);
+}
+
+/* Read the PCIe MAC internal signal corresponding to the debug probe table bus */
+static void mtk_pcie_mac_dbg_read_bus(struct mtk_pcie_port *port, u32 bus)
+{
+	writel_relaxed(bus, port->base + PCIE_DEBUG_SEL_0);
+	pr_info("PCIe debug table: bus=%#x, partition=%#x, monitor=%#x\n",
+		readl_relaxed(port->base + PCIE_DEBUG_SEL_0),
+		readl_relaxed(port->base + PCIE_DEBUG_SEL_1),
+		readl_relaxed(port->base + PCIE_DEBUG_MONITOR));
+}
+
+/* Dump PCIe MAC signal*/
+static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
+{
+	mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x0, 0x0, 0x0, 0x0));
+	mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x0a, 0x0b, 0x15, 0x16));
+	mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x1, 0x1, 0x1, 0x1));
+	mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x04, 0x0a, 0x0b, 0x15));
+	mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x2, 0x2, 0x2, 0x2));
+	mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x04, 0x05, 0x06, 0x07));
+	mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x80, 0x81, 0x82, 0x87));
+	mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x3, 0x3, 0x3, 0x3));
+	mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x00, 0x01, 0x07, 0x16));
+	mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x5, 0x5, 0x5, 0x5));
+	mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x08, 0x09, 0x0a, 0x0b));
+	mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x0c, 0x0d, 0x0e, 0x0f));
+	mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0xc, 0xc, 0xc, 0xc));
+	mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x45, 0x47, 0x48, 0x49));
+	mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x4a, 0x4b, 0x4c, 0x4d));
+
+	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, IP basic sta:%#x, int sta:%#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x\n",
+		port->port_num,
+		readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
+		readl_relaxed(port->base + PCIE_LINK_STATUS_REG),
+		readl_relaxed(port->base + PCIE_ISTATUS_PM),
+		readl_relaxed(port->base + PCIE_BASIC_STATUS),
+		readl_relaxed(port->base + PCIE_INT_STATUS_REG),
+		readl_relaxed(port->base + PCIE_AXI0_ERR_ADDR_L),
+		readl_relaxed(port->base + PCIE_AXI0_ERR_INFO),
+		readl_relaxed(port->base + PCIE_RES_STATUS));
+	pr_info("clock gate:%#x, PCIe HW MODE BIT:%#x, Modem HW MODE BIT:%#x, slp ready:%#x, SPM ready:%#x, BBCK2:%#x\n",
+		readl_relaxed(port->pextpcfg + PCIE_PEXTP_CG_0),
+		readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_0),
+		readl_relaxed(port->pextpcfg + PEXTP_RSV_0),
+		readl_relaxed(port->vlpcfg_base + PCIE_VLP_AXI_PROTECT_STA),
+		readl_relaxed(port->vlpcfg_base + SRCLKEN_SPM_REQ_STA),
+		readl_relaxed(port->vlpcfg_base + SRCLKEN_RC_REQ_STA));
+}
+
 #if IS_ENABLED(CONFIG_ANDROID_FIX_PCIE_SLAVE_ERROR)
 static void pcie_android_rvh_do_serror(void *data, struct pt_regs *regs,
 				       unsigned int esr, int *ret)
@@ -1450,20 +1516,7 @@ u32 mtk_pcie_dump_link_info(int port)
 		return 0;
 	}
 
-	pr_info("ltssm reg:%#x, link sta:%#x, power sta:%#x, IP basic sta:%#x, int sta:%#x, axi err add:%#x, axi err info:%#x\n",
-		readl_relaxed(pcie_port->base + PCIE_LTSSM_STATUS_REG),
-		readl_relaxed(pcie_port->base + PCIE_LINK_STATUS_REG),
-		readl_relaxed(pcie_port->base + PCIE_ISTATUS_PM),
-		readl_relaxed(pcie_port->base + PCIE_BASIC_STATUS),
-		readl_relaxed(pcie_port->base + PCIE_INT_STATUS_REG),
-		readl_relaxed(pcie_port->base + PCIE_AXI0_ERR_ADDR_L),
-		readl_relaxed(pcie_port->base + PCIE_AXI0_ERR_INFO));
-	pr_info("clock gate:%#x, PCIe HW MODE BIT:%#x, Modem HW MODE BIT:%#x, slp ready:%#x\n",
-		readl_relaxed(pcie_port->pextpcfg + PCIE_PEXTP_CG_0),
-		readl_relaxed(pcie_port->pextpcfg + PEXTP_PWRCTL_0),
-		readl_relaxed(pcie_port->pextpcfg + PEXTP_RSV_0),
-		readl_relaxed(pcie_port->vlpcfg_base +
-			      PCIE_VLP_AXI_PROTECT_STA));
+	mtk_pcie_monitor_mac(pcie_port);
 
 	val = readl_relaxed(pcie_port->base + PCIE_LTSSM_STATUS_REG);
 	ret_val |= PCIE_LTSSM_STATE(val);
