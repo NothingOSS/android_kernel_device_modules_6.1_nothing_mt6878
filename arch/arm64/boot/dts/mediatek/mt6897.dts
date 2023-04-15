@@ -1415,7 +1415,6 @@
 		ifr-bus = <&ifr_bus>;
 		nemi-bus = <&nemi_bus>;
 		semi-bus = <&semi_bus>;
-		ufscfg-ao-bus = <&ufscfg_ao_clk>;
 		gpu-eb-rpc = <&gpusys>;
 		vlpcfg = <&vlpcfg_bus>;
 	};
@@ -1550,7 +1549,6 @@
 		ifr-bus = <&ifr_bus>;
 		nemi-bus = <&nemi_bus>;
 		semi-bus = <&semi_bus>;
-		ufscfg-ao-bus = <&ufscfg_ao_clk>;
 		gpu-eb-rpc = <&gpusys>;
 		vlpcfg = <&vlpcfg_bus>;
 		hw-voter-regmap = <&hwv>;
