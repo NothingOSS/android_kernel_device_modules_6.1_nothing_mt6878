@@ -699,6 +699,7 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 
 	g_mmdvfs->nb.notifier_call = mmdvfs_debug_smi_cb;
 	mtk_smi_dbg_register_notifier(&g_mmdvfs->nb);
+	mtk_mmdvfs_fmeter_register_notifier(&g_mmdvfs->nb);
 
 	g_mmdvfs->vote_step = 0xff;
 	of_property_read_u32(g_mmdvfs->dev->of_node, "vote-step", &g_mmdvfs->vote_step);

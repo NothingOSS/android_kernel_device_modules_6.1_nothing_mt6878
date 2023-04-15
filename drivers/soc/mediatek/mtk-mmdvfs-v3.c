@@ -79,6 +79,7 @@ enum {
 	log_ipi,
 	log_clk_ops,
 	log_adb,
+	log_rst_clk
 };
 static int log_level;
 static int vcp_log_level;
@@ -91,6 +92,13 @@ void mmdvfs_call_ccu_set_fp(call_ccu fp)
 	call_ccu_fp = fp;
 }
 EXPORT_SYMBOL_GPL(mmdvfs_call_ccu_set_fp);
+
+static RAW_NOTIFIER_HEAD(mmdvfs_fmeter_notifier_list);
+int mtk_mmdvfs_fmeter_register_notifier(struct notifier_block *nb)
+{
+	return raw_notifier_chain_register(&mmdvfs_fmeter_notifier_list, nb);
+}
+EXPORT_SYMBOL_GPL(mtk_mmdvfs_fmeter_register_notifier);
 
 void *mmdvfs_get_vcp_base(phys_addr_t *pa)
 {
@@ -721,6 +729,37 @@ static struct kernel_param_ops mmdvfs_vote_step_ops = {
 module_param_cb(vote_step, &mmdvfs_vote_step_ops, NULL, 0644);
 MODULE_PARM_DESC(vote_step, "vote mmdvfs to specified step");
 
+int mmdvfs_rst_clk_rate(const char *val, const struct kernel_param *kp)
+{
+	u8 idx;
+	u32 rate;
+	int ret;
+
+	ret = sscanf(val, "%hhu %u", &idx, &rate);
+	if (ret != 2 || (mmdvfs_rst_clk_num && idx >= mmdvfs_rst_clk_num)) {
+		MMDVFS_ERR("input failed:%d idx:%hhu rate:%u rst_clk_num:%hhu",
+			ret, idx, rate, mmdvfs_rst_clk_num);
+		return -EINVAL;
+	}
+
+	if (mmdvfs_rst_clk_num) {
+		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_GENPD);
+		ret = clk_set_rate(mmdvfs_rst_clk[idx], rate);
+		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_GENPD);
+	}
+
+
+	if (ret || log_level & (1 << log_adb))
+		MMDVFS_DBG("ret:%d idx:%hhu rate:%u", ret, idx, rate);
+	return ret;
+}
+
+static const struct kernel_param_ops mmdvfs_rst_clk_rate_ops = {
+	.set = mmdvfs_rst_clk_rate,
+};
+module_param_cb(rst_clk_rate, &mmdvfs_rst_clk_rate_ops, NULL, 0644);
+MODULE_PARM_DESC(rst_clk_rate, "set rst clk rate");
+
 int mmdvfs_set_ccu_ipi(const char *val, const struct kernel_param *kp)
 {
 	int freq = 0, ret = 0, retry = 0;
@@ -1068,12 +1107,20 @@ static inline void mmdvfs_reset_vcp(void)
 
 	if (mmdvfs_rst_clk_num) {
 		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_RST);
+		if (log_level & (1 << log_rst_clk)) {
+			MMDVFS_DBG("Before reset clk:");
+			raw_notifier_call_chain(&mmdvfs_fmeter_notifier_list, 0, NULL);
+		}
 		for (i = 0; i < mmdvfs_rst_clk_num; i++) {
 			if (!IS_ERR_OR_NULL(mmdvfs_rst_clk[i])) {
 				ret = clk_set_rate(mmdvfs_rst_clk[i], 0);
 				if (ret)
 					MMDVFS_ERR("reset clk:%d to 0 failed:%d", i, ret);
 			}
+		}
+		if (log_level & (1 << log_rst_clk)) {
+			MMDVFS_DBG("After reset clk:");
+			raw_notifier_call_chain(&mmdvfs_fmeter_notifier_list, 0, NULL);
 		}
 		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_RST);
 	}
