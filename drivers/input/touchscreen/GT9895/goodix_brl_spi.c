@@ -292,7 +292,6 @@ static void goodix_spi_remove(struct spi_device *spi)
 static const struct of_device_id spi_matchs[] = {
 	{.compatible = "goodix,brl-a",},
 	{.compatible = "goodix,brl-b",},
-	{.compatible = "goodix,brl-d",},
 	{.compatible = "goodix,nottingham",},
 	{},
 };
