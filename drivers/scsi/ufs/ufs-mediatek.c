@@ -1022,6 +1022,13 @@ static void ufs_mtk_init_host_caps(struct ufs_hba *hba)
 	if (of_property_read_bool(np, "mediatek,ufs-tx-skew-fix"))
 		host->caps |= UFS_MTK_CAP_TX_SKEW_FIX;
 
+	if (of_property_read_bool(np, "mediatek,ufs-disable-mcq"))
+		host->caps |= UFS_MTK_CAP_DISABLE_MCQ;
+
+#if !IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+	host->caps |= UFS_MTK_CAP_DISABLE_MCQ;
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 	if (of_property_read_bool(np, "mediatek,ufs-mphy-debug"))
 		host->mphy_base = ioremap(0x112a0000, 0x10000);
@@ -2329,6 +2336,9 @@ static void ufs_mtk_init_mcq_irq(struct ufs_hba *hba)
 	/* invalidate irq info */
 	for (i = 0; i < host->mcq_nr_intr; i++)
 		host->mcq_intr_info[i].irq = MTK_MCQ_INVALID_IRQ;
+
+	if (host->caps & UFS_MTK_CAP_DISABLE_MCQ)
+		goto failed;
 
 	for (i = 0; i < host->mcq_nr_intr; i++) {
 		/* irq index 0 is ufshcd system irq, sq, cq irq start from index 1 */
