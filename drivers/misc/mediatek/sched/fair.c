@@ -1269,7 +1269,7 @@ DEFINE_PER_CPU(cpumask_var_t, mtk_fbc_mask);
 static void mtk_find_best_candidates(struct cpumask *candidates, struct task_struct *p,
 		struct cpumask *effective_softmask, struct cpumask *allowed_cpu_mask,
 		struct energy_env *eenv, struct find_best_candidates_parameters *fbc_params,
-		int *sys_max_spare_cap_cpu, int *idle_max_spare_cap_cpu)
+		int *sys_max_spare_cap_cpu, int *idle_max_spare_cap_cpu, unsigned long *cpu_utils)
 {
 	int cluster, cpu;
 	struct cpumask *cpus = this_cpu_cpumask_var_ptr(mtk_fbc_mask);
@@ -1300,6 +1300,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 
 	/* find best candidate */
 	for (cluster = 0; cluster < num_sched_clusters; cluster++) {
+		unsigned int uint_cpu;
 		long spare_cap, pd_max_spare_cap = LONG_MIN;
 		long pd_max_spare_cap_ls_idle = LONG_MIN;
 		unsigned int pd_min_exit_lat = UINT_MAX;
@@ -1392,7 +1393,8 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 			 */
 			cpu_util = mtk_uclamp_rq_util_with(cpu_rq(cpu), cpu_util, p,
 							min_cap, max_cap);
-			eenv->pds_max_util[cpu][0] = cpu_util;
+			uint_cpu = cpu;
+			cpu_utils[uint_cpu] = cpu_util;
 			if (trace_sched_util_fits_cpu_enabled())
 				trace_sched_util_fits_cpu(cpu, cpu_util, cpu_cap,
 						min_cap, max_cap, cpu_rq(cpu));
@@ -1477,6 +1479,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	int order_index, end_index, weight;
 	cpumask_t *candidates;
 	struct find_best_candidates_parameters fbc_params;
+	unsigned long cpu_utils[MAX_NR_CPUS] = {[0 ... MAX_NR_CPUS-1] = ULONG_MAX};
 
 	cpumask_clear(&allowed_cpu_mask);
 
@@ -1545,7 +1548,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	cpumask_clear(candidates);
 
 	mtk_find_best_candidates(candidates, p, &effective_softmask, &allowed_cpu_mask,
-			&eenv, &fbc_params, &sys_max_spare_cap_cpu, &idle_max_spare_cap_cpu);
+		&eenv, &fbc_params, &sys_max_spare_cap_cpu, &idle_max_spare_cap_cpu, cpu_utils);
 
 	irq_log_store();
 
@@ -1561,11 +1564,12 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	for_each_cpu(cpu, candidates) {
 		unsigned long cur_delta, base_energy;
 		int gear_idx;
+		unsigned int uint_cpu = cpu;
 		struct perf_domain *target_pd = rcu_dereference(pd);
 
 		/* Evaluate the energy impact of using this CPU. */
 		if (unlikely(in_irq)) {
-			cur_delta = calc_pwr_eff(cpu, eenv.pds_max_util[cpu][0]);
+			cur_delta = calc_pwr_eff(cpu, cpu_utils[uint_cpu]);
 			base_energy = 0;
 		} else {
 			target_pd = find_pd(target_pd, cpu);
