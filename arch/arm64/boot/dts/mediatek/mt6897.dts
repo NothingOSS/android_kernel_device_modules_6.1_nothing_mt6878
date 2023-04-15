@@ -1973,13 +1973,13 @@
 		cm-mgr-enable = <1>;
 		cm-mgr-arch = "v1p";
 
-		cm-mgr-num-array = <6>;
-		cm-mgr,cp-down  = <100 100 100 100 100 100>;
-		cm-mgr,cp-up = <100 100 100 100 100 100>;
-		cm-mgr,dt-down = <0 0 0 0 0 0>;
-		cm-mgr,dt-up = <0 0 0 0 0 0>;
-		cm-mgr,vp-down = <100 100 100 100 100 100>;
-		cm-mgr,vp-up = <100 100 100 100 100 100>;
+		cm-mgr-num-array = <7>;
+		cm-mgr,cp-down  = <100 100 100 100 100 100 100>;
+		cm-mgr,cp-up = <100 100 100 100 100 100 100>;
+		cm-mgr,dt-down = <0 0 0 0 0 0 0>;
+		cm-mgr,dt-up = <0 0 0 0 0 0 0>;
+		cm-mgr,vp-down = <100 100 100 100 100 100 100>;
+		cm-mgr,vp-up = <100 100 100 100 100 100 100>;
 
 		use-cpu-to-dram-map = "enable";
 		use-cpu-to-dram-map-new = "enable";
