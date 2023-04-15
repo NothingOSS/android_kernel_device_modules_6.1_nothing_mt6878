@@ -961,7 +961,22 @@ void isp_composer_destroy_session(struct mtk_cam_ctx *ctx)
 	session->session_id = ctx->stream_id;
 	rpmsg_send(ctx->rpmsg_dev->rpdev.ept, &event, sizeof(event));
 
-	dev_info(cam->dev, "rpmsg_send: DESTROY_SESSION\n");
+	dev_info(cam->dev, "rpmsg_send: ctx-%d DESTROY_SESSION\n",
+		 ctx->stream_id);
+}
+
+void isp_composer_flush_session(struct mtk_cam_ctx *ctx)
+{
+	struct mtk_cam_device *cam = ctx->cam;
+	struct mtkcam_ipi_event event;
+	struct mtkcam_ipi_session_cookie *session = &event.cookie;
+
+	memset(&event, 0, sizeof(event));
+	event.cmd_id = CAM_CMD_FLUSH;
+	session->session_id = ctx->stream_id;
+	rpmsg_send(ctx->rpmsg_dev->rpdev.ept, &event, sizeof(event));
+
+	dev_info(cam->dev, "rpmsg_send: ctx-%d FLUSH\n", ctx->stream_id);
 }
 
 /* forward decl. */
@@ -1160,9 +1175,7 @@ static int isp_composer_handler(struct rpmsg_device *rpdev, void *data,
 		return -EINVAL;
 	}
 
-	if (ipi_msg->cmd_id != CAM_CMD_ACK ||
-	    (ipi_msg->ack_data.ack_cmd_id != CAM_CMD_FRAME &&
-	     ipi_msg->ack_data.ack_cmd_id != CAM_CMD_DESTROY_SESSION))
+	if (ipi_msg->cmd_id != CAM_CMD_ACK)
 		return -EINVAL;
 
 	if (ipi_msg->ack_data.ack_cmd_id == CAM_CMD_FRAME) {
@@ -1184,6 +1197,11 @@ static int isp_composer_handler(struct rpmsg_device *rpdev, void *data,
 		MTK_CAM_TRACE_END(BASIC);
 		return 0;
 
+	} else if (ipi_msg->ack_data.ack_cmd_id == CAM_CMD_FLUSH) {
+		ctx = &cam->ctxs[ipi_msg->cookie.session_id];
+		complete(&ctx->session_flush);
+		dev_info(dev, "%s:ctx(%d): session flushed",
+			 __func__, ctx->stream_id);
 	} else if (ipi_msg->ack_data.ack_cmd_id == CAM_CMD_DESTROY_SESSION) {
 		ctx = &cam->ctxs[ipi_msg->cookie.session_id];
 		complete(&ctx->session_complete);
@@ -2043,25 +2061,44 @@ static int mtk_cam_ctx_prepare_session(struct mtk_cam_ctx *ctx)
 static int mtk_cam_ctx_unprepare_session(struct mtk_cam_ctx *ctx)
 {
 	struct device *dev = ctx->cam->dev;
+	int ret;
 
-	if (ctx->session_created) {
-		int ret;
+	if (!ctx->session_created)
+		return 0;
 
-		dev_dbg(dev, "%s:ctx(%d): wait for session destroy\n",
-			__func__, ctx->stream_id);
+	dev_dbg(dev, "%s:ctx(%d): wait for session destroy\n",
+		__func__, ctx->stream_id);
 
-		isp_composer_destroy_session(ctx);
+	isp_composer_destroy_session(ctx);
 
-		ret = wait_for_completion_timeout(&ctx->session_complete,
-						  msecs_to_jiffies(1000));
-		if (ret == 0)
-			dev_info(dev, "%s:ctx(%d): wait session_complete timeout\n",
-				 __func__, ctx->stream_id);
+	ret = wait_for_completion_timeout(&ctx->session_complete,
+					  msecs_to_jiffies(500));
+	if (ret == 0)
+		dev_info(dev, "%s:ctx(%d): wait session_complete timeout\n",
+			 __func__, ctx->stream_id);
 
-		isp_composer_uninit(ctx);
+	isp_composer_uninit(ctx);
 
-		ctx->session_created = 0;
-	}
+	ctx->session_created = 0;
+	return 0;
+}
+
+int mtk_cam_ctx_flush_session(struct mtk_cam_ctx *ctx)
+{
+	struct device *dev = ctx->cam->dev;
+	int ret;
+
+	if (!ctx->session_created)
+		return 0;
+
+	init_completion(&ctx->session_flush);
+	isp_composer_flush_session(ctx);
+
+	ret = wait_for_completion_timeout(&ctx->session_flush,
+					  msecs_to_jiffies(500));
+	if (ret == 0)
+		dev_info(dev, "%s:ctx(%d): wait session_flush timeout\n",
+			 __func__, ctx->stream_id);
 	return 0;
 }
 

@@ -1311,6 +1311,9 @@ void mtk_cam_ctrl_stop(struct mtk_cam_ctrl *cam_ctrl)
 	/* disable irq first */
 	mtk_cam_ctx_engine_disable_irq(ctx);
 
+	/* flush seesion & wait */
+	mtk_cam_ctx_flush_session(ctx);
+
 	/* note: after hw disabled, stop buffer_done worker */
 	read_lock(&cam_ctrl->list_lock);
 	list_for_each_entry(job_s, &cam_ctrl->camsys_state_list, list) {

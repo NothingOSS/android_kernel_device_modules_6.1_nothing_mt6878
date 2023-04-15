@@ -309,6 +309,9 @@ enum mtkcam_ipi_cmds {
 	/* ack: mtkcam_ipi_ack_info */
 	CAM_CMD_ACK,
 
+	/* flush: to ensure previous cmds are done */
+	CAM_CMD_FLUSH,
+
 	CAM_CMD_RESERVED,
 };
 

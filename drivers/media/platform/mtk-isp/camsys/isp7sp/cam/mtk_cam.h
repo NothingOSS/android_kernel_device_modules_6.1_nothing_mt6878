@@ -134,6 +134,7 @@ struct mtk_cam_ctx {
 	int ipi_id;
 	bool session_created;
 	struct completion session_complete;
+	struct completion session_flush;
 
 	struct task_struct *sensor_worker_task;
 	struct kthread_worker sensor_worker;
@@ -390,8 +391,11 @@ void mtk_cam_ctx_destroy_img_pool(struct mtk_cam_ctx *ctx);
 void mtk_cam_ctx_update_img_pool(struct mtk_cam_ctx *ctx,
 				 struct mtk_cam_pool_wrapper *pool_wrapper);
 
+int mtk_cam_ctx_flush_session(struct mtk_cam_ctx *ctx);
+
 int isp_composer_create_session(struct mtk_cam_ctx *ctx);
 void isp_composer_destroy_session(struct mtk_cam_ctx *ctx);
+void isp_composer_flush_session(struct mtk_cam_ctx *ctx);
 
 int mtk_cam_call_seninf_set_pixelmode(struct mtk_cam_ctx *ctx,
 				      struct v4l2_subdev *sd,
