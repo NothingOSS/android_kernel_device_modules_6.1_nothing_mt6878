@@ -25,7 +25,14 @@
 #include "imgsys/mtk_imgsys-cmdq-ext.h"
 
 #define WATCHDOG_INTERVAL_MS		400
-#define WATCHDOG_MAX_HWTIME_MS		400
+/*
+ * note:
+ *   there's a kind of sensor failure would be
+ *   after receiving vsync, nothing happens for a while
+ *   (w.o. any error interrupt & done)
+ *   so, set MAX_HWTIME_MS to WATCHDOG_INTERVAL_MS * 2 for this case
+ */
+#define WATCHDOG_MAX_HWTIME_MS		(WATCHDOG_INTERVAL_MS * 2)
 #define WATCHDOG_MAX_SENSOR_RETRY_CNT	3
 
 static int set_sensor_bf_first_vsync;
