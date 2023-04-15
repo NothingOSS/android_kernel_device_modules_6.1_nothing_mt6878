@@ -602,7 +602,7 @@ int port_rpc_ecid_print(struct rpc_ecid_info *buff)
 		return -1;
 	}
 	CCCI_NORMAL_LOG(0, RPC,
-		"[USB6_RF]sub6_rf_name=%s sub6_rf_ecid_i=0X%u sub6_rf_ecid_h=0X%u vpa_info_num=0X%u\n",
+		"[USB6_RF]sub6_rf_name=%s sub6_rf_ecid_i=%u sub6_rf_ecid_h=%u vpa_info_num=%u\n",
 		buff->sub6_rf_name, buff->sub6_rf_ecid_i,
 		buff->sub6_rf_ecid_h, buff->vpa_info_num);
 	num = buff->vpa_info_num;
