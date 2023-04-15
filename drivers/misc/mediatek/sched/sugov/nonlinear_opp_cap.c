@@ -1607,6 +1607,12 @@ flt_skip_margin:
 		policy->cached_resolved_idx = pd_X2Y(cpu, *next_freq, FREQ, OPP, true);
 		sg_policy->cached_raw_freq = *next_freq;
 	}
+
+	if (trace_sugov_ext_turn_point_margin_enabled() && turn_point_util[gearid]) {
+		orig_util = (orig_util * util_scale) >> SCHED_CAPACITY_SHIFT;
+		trace_sugov_ext_turn_point_margin(per_cpu(gear_id, cpu), orig_util, util,
+			turn_point_util[gearid], target_margin[gearid]);
+	}
 }
 EXPORT_SYMBOL_GPL(mtk_map_util_freq);
 #endif
