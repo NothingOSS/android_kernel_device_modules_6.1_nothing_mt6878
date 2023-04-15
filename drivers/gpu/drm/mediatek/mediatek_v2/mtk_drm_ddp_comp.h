@@ -632,7 +632,7 @@ enum mtk_ddp_io_cmd {
 	DSI_TIMING_CHANGE,
 	GET_PANEL_NAME,
 	GET_ALL_CONNECTOR_PANEL_NAME,
-	GET_CRTC0_CONNECTOR_ID,
+	GET_CONNECTOR_ID,
 	DSI_CHANGE_MODE,
 	BACKUP_OVL_STATUS,
 	MIPI_HOPPING,
@@ -1057,8 +1057,8 @@ static inline int mtk_ddp_comp_pq_frame_config(struct mtk_ddp_comp *comp,
 
 #define IRQ_DEBUG_MAX 64
 struct irq_debug {
-	int comp_id;
-	unsigned long long clock;
+	struct mtk_ddp_comp *comp;
+	unsigned long long time;
 };
 
 static inline void mtk_ddp_comp_mutex_sof_irq(struct mtk_ddp_comp *comp,
@@ -1067,8 +1067,8 @@ static inline void mtk_ddp_comp_mutex_sof_irq(struct mtk_ddp_comp *comp,
 	if (comp && comp->funcs && comp->funcs->mutex_sof_irq) {
 		comp->funcs->mutex_sof_irq(comp);
 		if (*index < IRQ_DEBUG_MAX) {
-			irq_time[*index].comp_id = comp->id;
-			irq_time[*index].clock = sched_clock();
+			irq_time[*index].comp = comp;
+			irq_time[*index].time = sched_clock();
 			(*index)++;
 		}
 	}
@@ -1080,8 +1080,8 @@ static inline void mtk_ddp_comp_mutex_eof_irq(struct mtk_ddp_comp *comp,
 	if (comp && comp->funcs && comp->funcs->mutex_eof_irq) {
 		comp->funcs->mutex_eof_irq(comp);
 		if (*index < IRQ_DEBUG_MAX) {
-			irq_time[*index].comp_id = comp->id;
-			irq_time[*index].clock = sched_clock();
+			irq_time[*index].comp = comp;
+			irq_time[*index].time = sched_clock();
 			(*index)++;
 		}
 	}

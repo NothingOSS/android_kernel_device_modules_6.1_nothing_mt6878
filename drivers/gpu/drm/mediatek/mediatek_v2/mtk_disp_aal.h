@@ -243,17 +243,165 @@ struct mtk_disp_aal_data {
 	int bitShift;
 };
 
-void disp_aal_debug(const char *opt);
+struct dre3_node {
+	struct device *dev;
+	void __iomem *va;
+	phys_addr_t pa;
+	struct clk *clk;
+};
+
+struct _mtk_disp_aal_tile_overhead {
+	unsigned int in_width;
+	unsigned int comp_overhead;
+	unsigned int total_overhead;
+};
+
+struct mtk_aal_feature_option {
+	unsigned int mtk_aal_support;
+	unsigned int mtk_dre30_support;
+};
+
+#define DRE_FLT_NUM	(12)
+#define CABC_GAINLMT_NUM (11)
+struct aal_backup { /* structure for backup AAL register value */
+	unsigned int DRE_MAPPING;
+	unsigned int DRE_FLT_FORCE[DRE_FLT_NUM];
+	unsigned int CABC_00;
+	unsigned int CABC_02;
+	unsigned int CABC_GAINLMT[CABC_GAINLMT_NUM];
+#if defined(DRE3_IN_DISP_AAL)
+	unsigned int DRE_BLOCK_INFO_00;
+	unsigned int DRE_BLOCK_INFO_01;
+	unsigned int DRE_BLOCK_INFO_02;
+	unsigned int DRE_BLOCK_INFO_04;
+	unsigned int DRE_BLOCK_INFO_05;
+	unsigned int DRE_BLOCK_INFO_06;
+	unsigned int DRE_BLOCK_INFO_07;
+	unsigned int DRE_CHROMA_HIST_00;
+	unsigned int DRE_CHROMA_HIST_01;
+	unsigned int DRE_ALPHA_BLEND_00;
+	unsigned int SRAM_CFG;
+	unsigned int DUAL_PIPE_INFO_00;
+	unsigned int DUAL_PIPE_INFO_01;
+#endif
+	unsigned int AAL_CFG;
+	unsigned int AAL_INTEN;
+};
+
+struct work_struct_aal_data {
+	void *data;
+	struct work_struct task;
+};
+
+struct mtk_disp_aal_primary {
+	struct task_struct *sof_irq_event_task;
+	struct timespec64 start;
+	struct timespec64 end;
+	int dbg_en;
+	struct wait_queue_head hist_wq;
+	struct wait_queue_head sof_irq_wq;
+	spinlock_t clock_lock;
+	spinlock_t hist_lock;
+	spinlock_t irq_en_lock;
+	spinlock_t get_irq_lock;
+	struct DISP_AAL_HIST hist;
+	struct DISP_AAL_HIST hist_db;
+	atomic_t hist_wait_dualpipe;
+	atomic_t sof_irq_available;
+	atomic_t is_init_regs_valid;
+	atomic_t backlight_notified;
+	atomic_t initialed;
+	atomic_t allowPartial;
+	atomic_t force_enable_irq;
+	atomic_t force_relay;
+	atomic_t dre30_write;
+	atomic_t interrupt_enabled;
+	atomic_t force_delay_check_trig;
+	struct workqueue_struct *flip_wq;
+	struct workqueue_struct *refresh_wq;
+	int backlight_set;
+	spinlock_t dre3_gain_lock;
+	atomic_t dre_halt;
+	struct DISP_DRE30_INIT init_dre30;
+	struct DISP_DRE30_PARAM dre30_gain;
+	struct DISP_DRE30_PARAM dre30_gain_db;
+	struct DISP_DRE30_HIST dre30_hist;
+	struct DISP_DRE30_HIST dre30_hist_db;
+	atomic_t change_to_dre30;
+	u32 sram_method;
+	struct wait_queue_head size_wq;
+	bool get_size_available;
+	struct DISP_AAL_DISPLAY_SIZE size;
+	struct DISP_AAL_DISPLAY_SIZE dual_size;
+	atomic_t panel_type;
+	int ess_level;
+	int dre_en;
+	int ess_en;
+	int ess_level_cmd_id;
+	int dre_en_cmd_id;
+	int ess_en_cmd_id;
+	bool isDualPQ;
+	struct mutex sram_lock;
+	bool dre30_enabled;
+	bool prv_dre30_enabled;
+	unsigned int dre30_en;
+	struct DISP_CLARITY_REG *disp_clarity_regs;
+	struct mutex clarity_lock;
+	struct mtk_aal_feature_option *aal_fo;
+	struct DISP_AAL_PARAM aal_param;
+	struct DISP_AAL_ESS20_SPECT_PARAM ess20_spect_param;
+	int aal_clarity_support;
+	int tdshp_clarity_support;
+	int disp_clarity_support;
+	struct aal_backup backup;
+	struct DISP_AAL_INITREG init_regs;
+	struct work_struct_aal_data refresh_task;
+};
+
+struct mtk_disp_aal {
+	struct mtk_ddp_comp ddp_comp;
+	struct drm_crtc *crtc;
+	struct dre3_node dre3_hw;
+	atomic_t dirty_frame_retrieved;
+	atomic_t is_clock_on;
+	const struct mtk_disp_aal_data *data;
+	bool is_right_pipe;
+	int path_order;
+	struct mtk_ddp_comp *companion;
+	struct mtk_disp_aal_primary *primary_data;
+	struct _mtk_disp_aal_tile_overhead overhead;
+	atomic_t hist_available;
+	atomic_t dre20_hist_is_ready;
+	atomic_t eof_irq;
+	atomic_t first_frame;
+	atomic_t force_curve_sram_apb;
+	atomic_t force_hist_apb;
+	atomic_t dre_hw_init;
+	atomic_t dre_hw_prepare;
+	atomic_t dre_config;
+	struct mtk_ddp_comp *comp_tdshp;
+	struct mtk_ddp_comp *comp_gamma;
+	struct mtk_ddp_comp *comp_color;
+};
+
+static inline struct mtk_disp_aal *comp_to_aal(struct mtk_ddp_comp *comp)
+{
+	return container_of(comp, struct mtk_disp_aal, ddp_comp);
+}
+
+void disp_aal_debug(struct drm_crtc *crtc, const char *opt);
 
 /* Provide for LED */
-void disp_aal_notify_backlight_changed(int trans_backlight,
+void disp_aal_notify_backlight_changed(struct mtk_ddp_comp *comp, int trans_backlight,
 	int max_backlight);
 
 /* AAL Control API in Kernel */
 void disp_aal_set_lcm_type(unsigned int panel_type);
-void disp_aal_set_ess_level(int level);
-void disp_aal_set_ess_en(int enable);
-void disp_aal_set_dre_en(int enable);
+void disp_aal_set_ess_level(struct mtk_ddp_comp *comp, int level);
+void disp_aal_set_ess_en(struct mtk_ddp_comp *comp, int enable);
+void disp_aal_set_dre_en(struct mtk_ddp_comp *comp, int enable);
+void disp_aal_set_bypass(struct drm_crtc *crtc, int bypass);
+void mtk_aal_regdump(struct mtk_ddp_comp *comp);
 
 int mtk_drm_ioctl_aal_eventctl(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);

@@ -1040,8 +1040,6 @@ static void mtk_disp_spr_config_overhead(struct mtk_ddp_comp *comp,
 
 	spr_params = &comp->mtk_crtc->panel_ext->params->spr_params;
 
-	g_left_pipe_overhead[0] = cfg->tile_overhead.left_overhead;
-	g_right_pipe_overhead[0] = cfg->tile_overhead.right_overhead;
 	if (cfg->tile_overhead.is_support && spr->data && spr->data->version == MTK_SPR_V2) {
 		if (comp->id == DDP_COMPONENT_SPR0) {
 			if (spr_params->enable == 1 && spr_params->relay == 0) {
@@ -1056,7 +1054,6 @@ static void mtk_disp_spr_config_overhead(struct mtk_ddp_comp *comp,
 			cfg->tile_overhead.left_in_width += spr_tile_overhead.left_comp_overhead;
 			spr_tile_overhead.left_in_width = cfg->tile_overhead.left_in_width;
 			spr_tile_overhead.left_overhead = cfg->tile_overhead.left_overhead;
-			g_left_pipe_overhead[0] = cfg->tile_overhead.left_overhead;
 		}
 
 		if (comp->id == DDP_COMPONENT_SPR1) {
@@ -1072,7 +1069,6 @@ static void mtk_disp_spr_config_overhead(struct mtk_ddp_comp *comp,
 			cfg->tile_overhead.right_in_width += spr_tile_overhead.right_comp_overhead;
 			spr_tile_overhead.right_in_width = cfg->tile_overhead.right_in_width;
 			spr_tile_overhead.right_overhead = cfg->tile_overhead.right_overhead;
-			g_right_pipe_overhead[0] = cfg->tile_overhead.right_overhead;
 		}
 	}
 }

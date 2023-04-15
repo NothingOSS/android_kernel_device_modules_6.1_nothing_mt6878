@@ -58,6 +58,7 @@
 #include "mtk_drm_trace.h"
 #include "cmdq-util.h"
 #include "mtk_disp_ccorr.h"
+#include "mtk_disp_pq_helper.h"
 #include "mtk_debug.h"
 #include "mtk_disp_oddmr/mtk_disp_oddmr.h"
 #include "platform/mtk_drm_platform.h"
@@ -111,8 +112,6 @@ struct timespec64 rdma_sof_tval;
 bool hdr_en;
 static const char * const crtc_gce_client_str[] = {
 	DECLARE_GCE_CLIENT(DECLARE_STR)};
-
-struct drm_mtk_ccorr_caps drm_ccorr_caps;
 
 /* Overlay bw monitor define */
 struct layer_compress_ratio_data
@@ -1546,6 +1545,7 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	unsigned int panel_ext_param, unsigned int cfg_flag)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct pq_common_data *pq_data = mtk_crtc->pq_data;
 	struct cmdq_pkt *cmdq_handle;
 	struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output(mtk_crtc);
 	struct mtk_ddp_comp *oddmr_comp;
@@ -1560,7 +1560,7 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	CRTC_MMP_EVENT_START(index, backlight, (unsigned long)crtc,
 			level);
 
-	if (m_new_pq_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS])
+	if (pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS])
 		sb_backlight = level;
 
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
@@ -1594,7 +1594,7 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	is_frame_mode = mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base);
 
 	/* SILKY BRIGHTNESS control flow only support CRTC0 */
-	if (index == 0 && m_new_pq_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS] &&
+	if (index == 0 && pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS] &&
 		sb_cmdq_handle != NULL) {
 		cmdq_handle = sb_cmdq_handle;
 		sb_cmdq_handle = NULL;
@@ -2221,10 +2221,14 @@ int mtk_crtc_user_cmd(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
 		unsigned int cmd, void *params)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct pq_common_data *pq_data = mtk_crtc->pq_data;
 	struct cmdq_pkt *cmdq_handle;
 	struct mtk_cmdq_cb_data *cb_data;
 	static unsigned int user_cmd_cnt;
 	struct DRM_DISP_CCORR_COEF_T *ccorr_config;
+	struct mtk_disp_ccorr *ccorr_data = NULL;
+	struct mtk_disp_ccorr_primary *primary_data = NULL;
+	bool is_ccorr_type = false;
 
 	int index = 0;
 
@@ -2312,10 +2316,16 @@ int mtk_crtc_user_cmd(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
 	CRTC_MMP_MARK(index, user_cmd, user_cmd_cnt, 4);
 	user_cmd_cnt++;
 
-	if (m_new_pq_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]) {
-		if (((comp->id == DDP_COMPONENT_CCORR1) ||
-			((drm_ccorr_caps.ccorr_linear & 0x1) &&
-			(comp->id == DDP_COMPONENT_CCORR0))) && cmd == 0) {
+	if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CCORR) {
+		ccorr_data = comp_to_ccorr(comp);
+		primary_data = ccorr_data->primary_data;
+		is_ccorr_type = true;
+	}
+	if (pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]) {
+		if (is_ccorr_type &&
+			((ccorr_data->path_order == 1) ||
+			((primary_data->disp_ccorr_linear & 0x1) &&
+			(ccorr_data->path_order == 0))) && cmd == 0) {
 			ccorr_config = params;
 			if (ccorr_config->silky_bright_flag == 1 &&
 				ccorr_config->FinalBacklight != sb_backlight) {
@@ -6140,7 +6150,6 @@ static void mtk_crtc_dc_config_color_matrix(struct drm_crtc *crtc,
 	struct cmdq_pkt_buffer *cmdq_buf = &(mtk_crtc->gce_obj.buf);
 	struct mtk_crtc_ddp_ctx *ddp_ctx;
 	bool set = false;
-	struct mtk_ddp_comp *comp_ccorr;
 
 	/* Get color matrix data from backup slot*/
 	mode = *(int *)(cmdq_buf->va_base + DISP_SLOT_COLOR_MATRIX_PARAMS(0));
@@ -6159,28 +6168,19 @@ static void mtk_crtc_dc_config_color_matrix(struct drm_crtc *crtc,
 		DDPPR_ERR("CCORR color matrix backup param is zero matrix\n");
 	else {
 		struct mtk_ddp_comp *comp;
+		struct mtk_disp_ccorr *ccorr_data;
 
 		for_each_comp_in_crtc_target_path(comp, mtk_crtc, i, DDP_SECOND_PATH) {
-			if (comp->id == DDP_COMPONENT_CCORR0) {
+			if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CCORR) {
 				disp_ccorr_set_color_matrix(comp, cmdq_handle,
 					ccorr_matrix, mode, false, g_ccorr_linear);
+				if (mtk_crtc->is_dual_pipe) {
+					ccorr_data = comp_to_ccorr(comp);
+					disp_ccorr_set_color_matrix(ccorr_data->companion,
+					cmdq_handle, ccorr_matrix, mode, false, g_ccorr_linear);
+				}
 				set = true;
 				break;
-			}
-		}
-		if (mtk_crtc->is_dual_pipe) {
-			i = 0;
-			j = 0;
-			for_each_comp_in_dual_pipe(comp_ccorr, mtk_crtc, i, j) {
-				if (((drm_ccorr_caps.ccorr_number == 1) &&
-					(comp_ccorr->id == DDP_COMPONENT_CCORR1)) ||
-					((drm_ccorr_caps.ccorr_number == 2) &&
-					(comp_ccorr->id == DDP_COMPONENT_CCORR2))) {
-					disp_ccorr_set_color_matrix(comp_ccorr, cmdq_handle,
-						ccorr_matrix, mode, false, g_ccorr_linear);
-					set = true;
-					break;
-				}
 			}
 		}
 
@@ -13161,35 +13161,26 @@ static void mtk_crtc_dl_config_color_matrix(struct drm_crtc *crtc,
 
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	bool set =  false;
-	int i, j;
-	struct mtk_ddp_comp *comp_ccorr, *comp;
+	int i;
+	struct mtk_ddp_comp *comp;
+	struct mtk_disp_ccorr *ccorr_data;
 
 	if (!ccorr_config)
 		return;
 
 	for_each_comp_in_crtc_target_path(comp, mtk_crtc, i, DDP_FIRST_PATH) {
-		if (comp->id == DDP_COMPONENT_CCORR0) {
+		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CCORR) {
 			disp_ccorr_set_color_matrix(comp, cmdq_handle,
 					ccorr_config->color_matrix, ccorr_config->mode,
 					ccorr_config->featureFlag, g_ccorr_linear);
-			set = true;
-			break;
-		}
-	}
-	if (mtk_crtc->is_dual_pipe) {
-		i = 0;
-		j = 0;
-		for_each_comp_in_dual_pipe(comp_ccorr, mtk_crtc, i, j) {
-			if (((drm_ccorr_caps.ccorr_number == 1) &&
-				(comp_ccorr->id == DDP_COMPONENT_CCORR1)) ||
-				((drm_ccorr_caps.ccorr_number == 2) &&
-				(comp_ccorr->id == DDP_COMPONENT_CCORR2))) {
-				disp_ccorr_set_color_matrix(comp_ccorr, cmdq_handle,
+			if (mtk_crtc->is_dual_pipe) {
+				ccorr_data = comp_to_ccorr(comp);
+				disp_ccorr_set_color_matrix(ccorr_data->companion, cmdq_handle,
 						ccorr_config->color_matrix, ccorr_config->mode,
 						ccorr_config->featureFlag, g_ccorr_linear);
-				set = true;
-				break;
 			}
+			set = true;
+			break;
 		}
 	}
 
@@ -15336,6 +15327,12 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	mtk_crtc->slbc_state = SLBC_UNREGISTER;
 	mtk_crtc->mml_ir_sram.data.type = TP_BUFFER;
 	mtk_crtc->mml_ir_sram.data.uid = UID_DISP;
+	mtk_crtc->pq_data = kzalloc(sizeof(*mtk_crtc->pq_data), GFP_KERNEL);
+	if (mtk_crtc->pq_data == NULL) {
+		DDPPR_ERR("Failed to alloc pq_data\n");
+		return -ENOMEM;
+	}
+	init_waitqueue_head(&mtk_crtc->pq_data->pq_get_irq_wq);
 
 	if (priv->data->mmsys_id == MMSYS_MT6985 ||
 		priv->data->mmsys_id == MMSYS_MT6989 ||
@@ -16096,27 +16093,6 @@ int mtk_drm_crtc_get_sf_fence_ioctl(struct drm_device *dev, void *data,
 		 args->fence_fd);
 	return ret;
 }
-
-int mtk_drm_ioctl_get_pq_caps(struct drm_device *dev, void *data,
-	struct drm_file *file_priv)
-{
-	struct mtk_drm_pq_caps_info *pq_info = data;
-
-	mtk_get_ccorr_caps(&pq_info->ccorr_caps);
-	memcpy(&drm_ccorr_caps, &pq_info->ccorr_caps, sizeof(drm_ccorr_caps));
-	return 0;
-}
-
-int mtk_drm_ioctl_set_pq_caps(struct drm_device *dev, void *data,
-	struct drm_file *file_priv)
-{
-	struct mtk_drm_pq_caps_info *pq_info = data;
-
-	mtk_set_ccorr_caps(&pq_info->ccorr_caps);
-	memcpy(&drm_ccorr_caps, &pq_info->ccorr_caps, sizeof(drm_ccorr_caps));
-	return 0;
-}
-
 
 static int __crtc_need_composition_wb(struct drm_crtc *crtc)
 {

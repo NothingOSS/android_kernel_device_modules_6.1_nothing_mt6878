@@ -777,6 +777,13 @@ struct mtk_drm_sram {
 	unsigned int expiry_hrt_idx;
 };
 
+struct pq_common_data {
+	atomic_t pq_get_irq;
+	atomic_t pq_irq_trig_src;
+	wait_queue_head_t pq_get_irq_wq;
+	unsigned int old_persist_property[32];
+	unsigned int new_persist_property[32];
+};
 /**
  * struct mtk_drm_crtc - MediaTek specific crtc structure.
  * @base: crtc object.
@@ -957,6 +964,8 @@ struct mtk_drm_crtc {
 	//discrete
 	struct cmdq_pkt *pending_handle;
 
+	struct pq_common_data *pq_data;
+
 	bool skip_frame;
 	bool is_dsc_output_swap;
 
@@ -1012,9 +1021,6 @@ struct mtk_cmdq_cb_data {
 };
 #define TIGGER_INTERVAL_S(x) ((unsigned long long)x*1000*1000*1000)
 extern unsigned int disp_spr_bypass;
-extern unsigned int g_left_pipe_overhead[2];
-extern unsigned int g_right_pipe_overhead[2];
-
 
 int mtk_drm_crtc_enable_vblank(struct drm_crtc *crtc);
 void mtk_drm_crtc_disable_vblank(struct drm_crtc *crtc);
@@ -1258,10 +1264,6 @@ bool mtk_crtc_frame_buffer_existed(void);
 int mtk_drm_format_plane_cpp(uint32_t format, unsigned int plane);
 
 int mtk_drm_switch_te(struct drm_crtc *crtc, int te_num, bool need_lock);
-int mtk_drm_ioctl_get_pq_caps(struct drm_device *dev, void *data,
-	struct drm_file *file_priv);
-int mtk_drm_ioctl_set_pq_caps(struct drm_device *dev, void *data,
-	struct drm_file *file_priv);
 void mtk_crtc_prepare_instr(struct drm_crtc *crtc);
 unsigned int check_dsi_underrun_event(void);
 void clear_dsi_underrun_event(void);

@@ -721,6 +721,8 @@ void mtk_ddp_comp_get_name(struct mtk_ddp_comp *comp, char *buf, int buf_len)
 {
 	int r;
 
+	if (comp == NULL)
+		return;
 	if (comp->id < 0 || comp->id >= DDP_COMPONENT_ID_MAX) {
 		DDPPR_ERR("%s(), invalid id %d, set buf to 0\n",
 			  __func__, comp->id);

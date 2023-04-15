@@ -445,4 +445,6 @@ void mtk_crtc_v_idle_apsrc_control(struct drm_crtc *crtc,
 	struct cmdq_pkt *_cmdq_handle, bool reset, bool condition_check,
 	unsigned int crtc_id, bool enable);
 int scmi_set(void *buffer);
+int mtk_drm_get_master_info_ioctl(struct drm_device *dev,
+			void *data, struct drm_file *file_priv);
 #endif /* MTK_DRM_DRV_H */
