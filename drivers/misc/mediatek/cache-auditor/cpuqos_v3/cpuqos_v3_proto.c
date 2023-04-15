@@ -336,7 +336,7 @@ static void cpuqos_v3_kick_task(struct task_struct *p, int pd)
 }
 
 /*
- * Set group is critical task(CT)/non-critical task(NCT)
+ * Set group use which pd
  * group_id: depend on cpuqos_v3_path_pd_map list
  *           0: "/",
  *           1: "/foreground"
@@ -345,12 +345,12 @@ static void cpuqos_v3_kick_task(struct task_struct *p, int pd)
  *           4: "/rt",
  *           5: "/system",
  *           6: "/system-background"
- * set: if true, set group is CT;
- *      if false, set group is NCT.
+ * pd: if >= 0, set group is pd;
+ *         if < 0, set group is PD3.
  * Return: 0: success,
  *        -1: perf mode is disable / group_id is not exist.
  */
-int set_ct_group(int group_id, bool set)
+int set_group_pd(int group_id, int pd)
 {
 	int css_id = -1;
 	int old_pd;
@@ -366,12 +366,12 @@ int set_ct_group(int group_id, bool set)
 
 	old_pd = cpuqos_v3_css_pd_map[css_id];
 
-	if (set)
-		new_pd = PD2;
+	if (pd >= 0)
+		new_pd = pd;
 	else
 		new_pd = PD3;
 
-	trace_cpuqos_set_ct_group(group_id, css_id, set,
+	trace_cpuqos_set_group_pd(group_id, css_id, pd,
 				old_pd, new_pd,
 				cpuqos_perf_mode);
 
@@ -388,24 +388,24 @@ int set_ct_group(int group_id, bool set)
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(set_ct_group);
+EXPORT_SYMBOL_GPL(set_group_pd);
 
 /*
- * Set task is critical task(CT) or use its group pd
+ * Set task use which pd
  * pid: task pid
- * set: if true, set task is CT(ignore group setting);
- *      if false, set task use its group pd.
+ * pd: if >= 0, set task is pd(ignore group setting);
+ *         if < 0, set task use its group pd.
  * Return: 0: success,
 	   -1: perf mode is disable / p is not exist.
  */
-int set_ct_task(int pid, bool set)
+int set_task_pd(int pid, int pd)
 {
 	struct task_struct *p;
 	struct cgroup_subsys_state *css;
 	int old_pd;
 	int new_pd;
 
-	if (cpuqos_perf_mode == DISABLE || (plat_enable == 0))
+	if (cpuqos_perf_mode == DISABLE || (plat_enable == 0) || (pid <= 0))
 		return -1;
 
 	rcu_read_lock();
@@ -424,18 +424,15 @@ int set_ct_task(int pid, bool set)
 
 	old_pd = cpuqos_v3_map_task_pd(p); /* before rank change */
 
-	if (set) { /* set task is critical task */
+	if (pd >= 0) { /* set task is critical task */
 		p->android_vendor_data1[2] = TASK_RANK;
-		if (cpuqos_v3_map_task_pd(p) != PD2)
-			new_pd = PD2;
-		else
-			new_pd = old_pd;
+		new_pd = pd;
 	} else { /* reset to group setting */
 		p->android_vendor_data1[2] = GROUP_RANK;
 		new_pd = cpuqos_v3_map_task_pd(p); /* after rank change */
 	}
 
-	trace_cpuqos_set_ct_task(p->pid, css->id, set,
+	trace_cpuqos_set_task_pd(p->pid, css->id, pd,
 				old_pd, new_pd,
 				get_task_rank(p), cpuqos_perf_mode);
 
@@ -445,6 +442,55 @@ int set_ct_task(int pid, bool set)
 	put_task_struct(p);
 
 	return 0;
+}
+EXPORT_SYMBOL_GPL(set_task_pd);
+
+/*
+ * Set group is critical task(CT)/non-critical task(NCT)
+ * group_id: depend on cpuqos_v3_path_pd_map list
+ *           0: "/",
+ *           1: "/foreground"
+ *           2: "/background"
+ *	     3: "/top-app"
+ *           4: "/rt",
+ *           5: "/system",
+ *           6: "/system-background"
+ * set: if true, set group is CT;
+ *      if false, set group is NCT.
+ * Return: 0: success,
+ *        -1: perf mode is disable / group_id is not exist.
+ */
+int set_ct_group(int group_id, bool set)
+{
+	int ret = -1;
+
+	if (set)
+		ret = set_group_pd(group_id, PD2);
+	else
+		ret = set_group_pd(group_id, PD3);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(set_ct_group);
+
+/*
+ * Set task is critical task(CT) or use its group pd
+ * pid: task pid
+ * set: if true, set task is CT(ignore group setting);
+ *      if false, set task use its group pd.
+ * Return: 0: success,
+	   -1: perf mode is disable / p is not exist.
+ */
+int set_ct_task(int pid, bool set)
+{
+	int ret = -1;
+
+	if (set) /* set task is critical task */
+		ret = set_task_pd(pid, PD2);
+	else /* reset to group setting */
+		ret = set_task_pd(pid, -1);
+
+	return ret;
 }
 EXPORT_SYMBOL_GPL(set_ct_task);
 

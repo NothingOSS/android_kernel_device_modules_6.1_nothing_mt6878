@@ -58,7 +58,7 @@ TRACE_EVENT(cpuqos_cpu_pd,
 		__entry->rank, __entry->cpuqos_perf_mode)
 );
 
-TRACE_EVENT(cpuqos_set_ct_group,
+TRACE_EVENT(cpuqos_set_group_pd,
 
 	TP_PROTO(int group_id, int css_id, int set,
 		int old_pd, int new_pd,
@@ -92,7 +92,7 @@ TRACE_EVENT(cpuqos_set_ct_group,
 
 );
 
-TRACE_EVENT(cpuqos_set_ct_task,
+TRACE_EVENT(cpuqos_set_task_pd,
 
 	TP_PROTO(int pid, int css_id, int set,
 		int old_pd, int new_pd,
