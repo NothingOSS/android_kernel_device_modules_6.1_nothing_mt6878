@@ -7364,8 +7364,8 @@
 			compatible = "mediatek,mt8183-ufshci";
 			reg = <0 0x112b0000 0 0x2300>;
 			phys = <&ufsphy>;
-			interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH 0>;
-#if 0
+
+			interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 177 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 178 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 179 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -7374,7 +7374,6 @@
 				<GIC_SPI 182 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 183 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 184 IRQ_TYPE_LEVEL_HIGH 0>;
-#endif
 
 			clocks =
 				<&topckgen_clk CLK_TOP_U_SEL>,
