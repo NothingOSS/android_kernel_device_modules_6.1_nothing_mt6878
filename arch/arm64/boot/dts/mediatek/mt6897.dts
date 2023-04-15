@@ -7370,7 +7370,6 @@
 			mphy-ver = <1>;
 			ranges;
 			reg = <0 0x112a0000 0 0x10000>;
-			power-domains = <&scpsys MT6897_POWER_DOMAIN_UFS0_PHY>;
 			bootmode = <&chosen>;
 		};
 
@@ -7429,8 +7428,6 @@
 			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			/* 0.65V for clock scale up */
 			clk-scale-up-vcore-min = <650000>;
-
-			power-domains = <&scpsys MT6897_POWER_DOMAIN_UFS0>;
 
 			vcc-supply = <&mt6363_vemc>;
 			vccq-supply = <&mt6319_8_vbuck3>;
