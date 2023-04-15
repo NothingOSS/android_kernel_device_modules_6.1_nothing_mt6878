@@ -1062,8 +1062,8 @@ bool set_auto_flicker(struct subdrv_ctx *ctx, bool min_framelength_en)
 
 	if (framerate > 592 && framerate <= 607)
 		set_max_framerate(ctx, 592, min_framelength_en);
-	else if (framerate > 296 && framerate <= 305)
-		set_max_framerate(ctx, 296, min_framelength_en);
+	else if (framerate > 299 && framerate <= 305)
+		set_max_framerate(ctx, 299, min_framelength_en);
 	else if (framerate > 246 && framerate <= 253)
 		set_max_framerate(ctx, 246, min_framelength_en);
 	else if (framerate > 236 && framerate <= 243)
