@@ -480,7 +480,7 @@ initcall_debug=1";
 	gpu-frame-base-optimize = <1>;
 };
 
-#include "mediatek/cust_k6985_connfem.dtsi"
+#include "mediatek/cust_k6985v1_64_for_dx3_connfem.dtsi"
 #include "mediatek/cust_mt6985_camera_v4l2.dtsi"
 #include <k6985v1_64_for_dx3/cust.dtsi>
 /*End of this file, DO NOT ADD ANYTHING HERE*/
