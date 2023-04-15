@@ -2241,6 +2241,17 @@ static void ufs_mtk_fix_ahit(struct ufs_hba *hba)
 	ufs_mtk_setup_clk_gating(hba);
 }
 
+static void ufs_mtk_delay_eh_work_fn(struct work_struct *dwork)
+{
+	struct ufs_hba *hba;
+	struct ufs_mtk_host *host;
+
+	host = container_of(dwork, struct ufs_mtk_host, delay_eh_work.work);
+	hba = host->hba;
+
+	queue_work(hba->eh_wq, &hba->eh_work);
+}
+
 /**
  * ufs_mtk_init - find other essential mmio bases
  * @hba: host controller instance
@@ -2351,6 +2362,9 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	host->pm_qos_init = true;
 
 	init_completion(&host->luns_added);
+	INIT_DELAYED_WORK(&host->delay_eh_work, ufs_mtk_delay_eh_work_fn);
+	host->delay_eh_workq = create_singlethread_workqueue("ufs_mtk_eh_wq");
+
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
 	mtk_btag_ufs_init(host, 1, 32);
@@ -3549,6 +3563,8 @@ static void ufs_mtk_event_notify(struct ufs_hba *hba,
 	unsigned int val = *(u32 *)data;
 	unsigned long reg;
 	uint8_t bit;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	u32 set;
 
 	trace_ufs_mtk_event(evt, val);
 
@@ -3572,6 +3588,21 @@ static void ufs_mtk_event_notify(struct ufs_hba *hba,
 			ufs_mtk_mphy_record(hba, UFS_MPHY_UIC);
 #endif
 		ufs_mtk_dbg_register_dump(hba);
+
+		if ((reg & UIC_PHY_ADAPTER_LAYER_ERROR_CODE_MASK) == 0x3) {
+			dev_info(hba->dev, "force reset only 0x80000003!\n");
+			hba->force_reset = true;
+			hba->ufshcd_state = UFSHCD_STATE_EH_SCHEDULED_FATAL;
+
+			/* Disable UIC error intr to stop consecutive irq */
+			set = ufshcd_readl(hba, REG_INTERRUPT_ENABLE);
+			set &= ~UFSHCD_ERROR_MASK;
+			ufshcd_writel(hba, set, REG_INTERRUPT_ENABLE);
+
+			queue_delayed_work(host->delay_eh_workq,
+				&host->delay_eh_work,
+				msecs_to_jiffies(1000));
+		}
 	}
 
 	if (evt == UFS_EVT_DL_ERR) {

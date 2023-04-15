@@ -228,6 +228,8 @@ struct ufs_mtk_host {
 	bool boot_device;
 
 	struct completion luns_added;
+	struct delayed_work delay_eh_work;
+	struct workqueue_struct *delay_eh_workq;
 
 	struct semaphore rpmb_sem;
 	struct scsi_device *sdev_rpmb;
