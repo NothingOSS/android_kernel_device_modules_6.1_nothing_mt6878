@@ -101,3 +101,5 @@ source "$(KCONFIG_EXT_PREFIX)drivers/pci/controller/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/pinctrl/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/scsi/Kconfig"
+
+source "$(KCONFIG_EXT_PREFIX)drivers/net/network/Kconfig"
