@@ -1593,8 +1593,6 @@ signed int dpe_enque_cb(struct frame *frames, void *req)
 		LOG_INF("dpe enque star\n");
 
 	mutex_lock(&gFDMutex);
-	DPE_P4_EN = (((_req->m_pDpeConfig[ucnt].Dpe_DVSSettings.TuningBuf_ME.DVS_ME_28) &
-							0x400) >> 10);
 	DVP_ASF_CONF_EN	= (_req->m_pDpeConfig[ucnt].Dpe_DVPSettings.SubModule_EN.asf_conf_en);
 	DVP_16bitMode = (_req->m_pDpeConfig[ucnt].Dpe_is16BitMode);
 	WMF_RD_EN = (_req->m_pDpeConfig[ucnt].Dpe_DVPSettings.SubModule_EN.wmf_rd_en);
@@ -1604,6 +1602,8 @@ signed int dpe_enque_cb(struct frame *frames, void *req)
 		(_req->m_pDpeConfig[ucnt].Dpe_engineSelect == MODE_DVS_DVP_BOTH)) {
 
 		mutex_lock(&gFDMutex);
+		DPE_P4_EN = (((_req->m_pDpeConfig[ucnt].Dpe_DVSSettings.TuningBuf_ME.DVS_ME_28) &
+						0x400) >> 10);
 		if ((DVS_only_en == 0) && (DVS_Num == 0)) {
 			SrcImg_Y_L_mmu = kzalloc(sizeof(struct tee_mmu) * 4, GFP_KERNEL);
 			SrcImg_Y_R_mmu = kzalloc(sizeof(struct tee_mmu) * 4, GFP_KERNEL);
@@ -2566,6 +2566,11 @@ signed int dpe_deque_cb(struct frame *frames, void *req)
 	if ((pDpeConfig->Dpe_engineSelect == MODE_DVS_ONLY) ||
 		(pDpeConfig->Dpe_engineSelect == MODE_DVS_DVP_BOTH)) {
 		LOG_INF("dpe_deque DVS put fd\n");
+		mutex_lock(&gFDMutex);
+		DPE_P4_EN = (((_req->m_pDpeConfig[ucnt].Dpe_DVSSettings.TuningBuf_ME.DVS_ME_28) &
+							0x400) >> 10);
+		LOG_INF("dpe_deque DPE_P4_EN = %d\n", DPE_P4_EN);
+		mutex_unlock(&gFDMutex);
 
 		//mutex_lock(&gFDMutex);
 		LOG_INF("put fd DVS_only_en =%d, get_dvs_iova =%d\n",
@@ -2955,12 +2960,13 @@ void DPE_Config_DVS(struct DPE_Config_V2 *pDpeConfig,
 	pDpeConfig->Dpe_OutBuf_CONF, pDpeConfig->Dpe_OutBuf_OCC);
 	//if (DPE_debug_log_en == 1) {
 		LOG_INF(
-		"Dpe_InBuf_SrcImg_Y_L: (%llu), Dpe_InBuf_SrcImg_Y_R(%llu), Dpe_OutBuf_CONF(%llu), Dpe_OutBuf_OCC(%llu), P4 = %d,dram_out_pitch = %d\n",
+		"Dpe_InBuf_SrcImg_Y_L: (%llu), Dpe_InBuf_SrcImg_Y_R(%llu), Dpe_OutBuf_CONF(%llu), Dpe_OutBuf_OCC(%llu), P4 = %d,dram_out_pitch = %d, tile_pitch = %d\n",
 		pDpeConfig->Dpe_InBuf_SrcImg_Y_L,
 		pDpeConfig->Dpe_InBuf_SrcImg_Y_R,
 		pDpeConfig->Dpe_OutBuf_CONF, pDpeConfig->Dpe_OutBuf_OCC,
 		DPE_P4_EN,
-		pDpeConfig->Dpe_DVSSettings.dram_out_pitch);
+		pDpeConfig->Dpe_DVSSettings.dram_out_pitch,
+		tile_pitch);
 	//}
 	if ((frmWidth % 16 != 0))
 		LOG_ERR("frame width is not 16 byte align w(%d)\n", frmWidth);
@@ -3039,9 +3045,14 @@ void DPE_Config_DVS(struct DPE_Config_V2 *pDpeConfig,
 	((full_tile_width & 0x3FF) << 20); //!ISP7
 	//pConfigToKernel->DVS_DRAM_PITCH = 0x01e05816;
 
-	pConfigToKernel->DVS_DRAM_PITCH1 =
-	((tile_pitch) & 0x3FF) |
-	((pDpeConfig->Dpe_DVSSettings.dram_out_pitch_en & 0x01) << 31) ;//0x80000014;
+	if (pDpeConfig->Dpe_DVSSettings.out_adj_width !=
+		pDpeConfig->Dpe_DVSSettings.occ_width) {
+		pConfigToKernel->DVS_DRAM_PITCH1 = 0;
+	} else {
+		pConfigToKernel->DVS_DRAM_PITCH1 =
+		((tile_pitch) & 0x3FF) |
+		((pDpeConfig->Dpe_DVSSettings.dram_out_pitch_en & 0x01) << 31) ;//0x80000014;
+	}
 
 	pConfigToKernel->DVS_SRC_00 = //0x00000502;
 	((pDpeConfig->Dpe_is16BitMode & 0x1) << 0) | //!c_dv16b_mode = 1 ;ISP7 only
@@ -4593,6 +4604,7 @@ if ((pDpeConfig->DPE_MODE != 2) && (pDpeConfig->DPE_MODE != 3)) {
 	LOG_INF("star CMDQWR\n");
 	#ifdef CMdq_en
 	CMDQWR(DVS_DRAM_PITCH);
+	CMDQWR(DVS_DRAM_PITCH1);
 	CMDQWR(DVS_SRC_00);
 	CMDQWR(DVS_SRC_01);
 	CMDQWR(DVS_SRC_02);
@@ -5636,6 +5648,8 @@ static signed int DPE_DumpReg(void)
 		(unsigned int)DPE_RD32(DVS_DRAM_ULT_REG));
 	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_DRAM_PITCH_HW),
 		(unsigned int)DPE_RD32(DVS_DRAM_PITCH_REG));
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_DRAM_PITCH1_HW),
+		(unsigned int)DPE_RD32(DVS_DRAM_PITCH1_REG));
 	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_SRC_00_HW),
 		(unsigned int)DPE_RD32(DVS_SRC_00_REG));
 	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_SRC_01_HW),
