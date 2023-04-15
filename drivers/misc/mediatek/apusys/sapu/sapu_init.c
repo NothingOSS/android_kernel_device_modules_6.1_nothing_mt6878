@@ -2,34 +2,15 @@
 /*
  * Copyright (c) 2019 MediaTek Inc.
  */
-
-#include <linux/kernel.h>
-#include <linux/module.h>
-#include <linux/slab.h>
-#include <linux/cdev.h>
-#include <linux/of_device.h>
-#include <linux/types.h>
-#include <linux/dma-direct.h>
-#include <linux/miscdevice.h>
-#include <linux/platform_device.h>
-#include <linux/fs.h>
-#include <linux/uaccess.h>
-#include <mtk_heap.h>
-#include <linux/completion.h>
-#include <linux/rpmsg.h>
-#include <linux/dma-heap.h>
-
-#include <uapi/linux/dma-heap.h>
-#include <gz-trusty/smcall.h>
-#include <linux/delay.h>
-
-#if IS_ENABLED(CONFIG_COMPAT)
-#include <linux/compat.h>
-#endif
-
 #include "sapu_driver.h"
 
 #define ENABLE_DRAM_FB 0
+
+struct sapu_private *sapu;
+struct sapu_private *get_sapu_private(void)
+{
+	return sapu;
+}
 
 static void sapu_rpm_lock_exit(void);
 
@@ -69,7 +50,7 @@ static long apusys_sapu_compat_ioctl(struct file *filep, unsigned int cmd,
 
 #if ENABLE_DRAM_FB
 
-static int dram_fb_register(struct apusys_sapu_data *data)
+static int dram_fb_register(void)
 {
 	int ret;
 	struct dma_heap *dma_heap;
@@ -79,13 +60,18 @@ static int dram_fb_register(struct apusys_sapu_data *data)
 	u32 higher_32_iova;
 	u32 lower_32_iova;
 
-	pdev = data->pdev;
+	if (!sapu) {
+		pr_info("%s %d\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	pdev = sapu->pdev;
 	if (pdev == NULL) {
 		pr_info("%s %d\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
-	ret = apusys_pwr_switch(true, data);
+	ret = sapu->platdata->ops.power_ctrl(sapu, 1);
 	if (ret != 0) {
 		pr_info("%s %d: power on fail\n", __func__, __LINE__);
 		return -EAGAIN;
@@ -98,28 +84,28 @@ static int dram_fb_register(struct apusys_sapu_data *data)
 		goto err_return;
 	}
 
-	data->dram_fb_info.dram_fb_dmabuf = dma_heap_buffer_alloc(
+	sapu->dram_fb_info.dram_fb_dmabuf = dma_heap_buffer_alloc(
 		dma_heap, 0x200000,
 		DMA_HEAP_VALID_FD_FLAGS,
 		DMA_HEAP_VALID_HEAP_FLAGS);
 
 	dma_heap_put(dma_heap);
-	if (IS_ERR(data->dram_fb_info.dram_fb_dmabuf)) {
+	if (IS_ERR(sapu->dram_fb_info.dram_fb_dmabuf)) {
 		pr_info("[%s]dma_heap_buffer_alloc fail\n", __func__);
-		ret = PTR_ERR(data->dram_fb_info.dram_fb_dmabuf);
+		ret = PTR_ERR(sapu->dram_fb_info.dram_fb_dmabuf);
 		goto err_return;
 	}
 
-	data->dram_fb_info.dram_fb_attach = dma_buf_attach(
-			data->dram_fb_info.dram_fb_dmabuf,
+	sapu->dram_fb_info.dram_fb_attach = dma_buf_attach(
+			sapu->dram_fb_info.dram_fb_dmabuf,
 			&pdev->dev);
-	if (IS_ERR(data->dram_fb_info.dram_fb_attach)) {
+	if (IS_ERR(sapu->dram_fb_info.dram_fb_attach)) {
 		pr_info("[%s]dma_buf_attach fail\n", __func__);
-		ret = PTR_ERR(data->dram_fb_info.dram_fb_attach);
+		ret = PTR_ERR(sapu->dram_fb_info.dram_fb_attach);
 		goto dmabuf_free;
 	}
 
-	dmem_sgt = dma_buf_map_attachment(data->dram_fb_info.dram_fb_attach,
+	dmem_sgt = dma_buf_map_attachment(sapu->dram_fb_info.dram_fb_attach,
 					DMA_BIDIRECTIONAL);
 	if (IS_ERR(dmem_sgt)) {
 		pr_info("[%s]dma_buf_map_attachment fail\n", __func__);
@@ -127,10 +113,10 @@ static int dram_fb_register(struct apusys_sapu_data *data)
 		goto dmabuf_detach;
 	}
 
-	data->dram_fb_info.dram_dma_addr = sg_dma_address(dmem_sgt->sgl);
+	sapu->dram_fb_info.dram_dma_addr = sg_dma_address(dmem_sgt->sgl);
 
-	higher_32_iova = (data->dram_fb_info.dram_dma_addr >> 32) & 0xFFFFFFFF;
-	lower_32_iova = data->dram_fb_info.dram_dma_addr & 0xFFFFFFFF;
+	higher_32_iova = (sapu->dram_fb_info.dram_dma_addr >> 32) & 0xFFFFFFFF;
+	lower_32_iova = sapu->dram_fb_info.dram_dma_addr & 0xFFFFFFFF;
 	ret = trusty_std_call32(pdev->dev.parent,
 			MTEE_SMCNR(MT_SMCF_SC_SAPU_DRAM_FB,
 			pdev->dev.parent),
@@ -145,7 +131,7 @@ static int dram_fb_register(struct apusys_sapu_data *data)
 			__func__, ret);
 	}
 
-	ret = apusys_pwr_switch(false, data);
+	ret = sapu->platdata->ops.power_ctrl(sapu, 0);
 	if (ret != 0) {
 		pr_info("%s %d: power off fail\n", __func__, __LINE__);
 		return -EBUSY;
@@ -154,17 +140,17 @@ static int dram_fb_register(struct apusys_sapu_data *data)
 	return 0;
 
 dmabuf_detach:
-	dma_buf_detach(data->dram_fb_info.dram_fb_dmabuf,
-			data->dram_fb_info.dram_fb_attach);
+	dma_buf_detach(sapu->dram_fb_info.dram_fb_dmabuf,
+			sapu->dram_fb_info.dram_fb_attach);
 dmabuf_free:
-	dma_heap_buffer_free(data->dram_fb_info.dram_fb_dmabuf);
+	dma_heap_buffer_free(sapu->dram_fb_info.dram_fb_dmabuf);
 err_return:
-	apusys_pwr_switch(false, data);
+	sapu->platdata->ops.power_ctrl(sapu, 0);
 
 	return ret;
 }
 
-static int dram_fb_unregister(struct apusys_sapu_data *data)
+static int dram_fb_unregister(void)
 {
 	int ret;
 	struct platform_device *pdev;
@@ -172,7 +158,12 @@ static int dram_fb_unregister(struct apusys_sapu_data *data)
 	u32 higher_32_iova;
 	u32 lower_32_iova;
 
-	pdev = data->pdev;
+	if (!sapu) {
+		pr_info("%s %d\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	pdev = sapu->pdev;
 	if (pdev == NULL) {
 		pr_info("%s %d\n", __func__, __LINE__);
 		return -EINVAL;
@@ -184,8 +175,8 @@ static int dram_fb_unregister(struct apusys_sapu_data *data)
 	//	return -EAGAIN;
 	// }
 
-	higher_32_iova = (data->dram_fb_info.dram_dma_addr >> 32) & 0xFFFFFFFF;
-	lower_32_iova = data->dram_fb_info.dram_dma_addr & 0xFFFFFFFF;
+	higher_32_iova = (sapu->dram_fb_info.dram_dma_addr >> 32) & 0xFFFFFFFF;
+	lower_32_iova = sapu->dram_fb_info.dram_dma_addr & 0xFFFFFFFF;
 	ret = trusty_std_call32(pdev->dev.parent,
 			MTEE_SMCNR(MT_SMCF_SC_SAPU_DRAM_FB,
 			pdev->dev.parent),
@@ -199,13 +190,13 @@ static int dram_fb_unregister(struct apusys_sapu_data *data)
 	pr_info("[%s]dram callback unregister success(0x%x)\n",
 			__func__, ret);
 
-	dma_buf_detach(data->dram_fb_info.dram_fb_dmabuf,
-		data->dram_fb_info.dram_fb_attach);
-	dma_heap_buffer_free(data->dram_fb_info.dram_fb_dmabuf);
+	dma_buf_detach(sapu->dram_fb_info.dram_fb_dmabuf,
+		sapu->dram_fb_info.dram_fb_attach);
+	dma_heap_buffer_free(sapu->dram_fb_info.dram_fb_dmabuf);
 
-	data->dram_fb_info.dram_fb_attach = NULL;
-	data->dram_fb_info.dram_fb_dmabuf = NULL;
-	data->dram_fb_info.dram_dma_addr = 0;
+	sapu->dram_fb_info.dram_fb_attach = NULL;
+	sapu->dram_fb_info.dram_fb_dmabuf = NULL;
+	sapu->dram_fb_info.dram_dma_addr = 0;
 
 	// ret = apusys_pwr_switch(false, data);
 	// if (ret != 0) {
@@ -215,52 +206,49 @@ static int dram_fb_unregister(struct apusys_sapu_data *data)
 
 	return 0;
 }
+
 #endif // ENABLE_DRAM_FB
 
 static int apusys_sapu_open(struct inode *inode, struct file *filp)
 {
 	int ret = 0;
-	struct apusys_sapu_data *data;
 
-	data = get_apusys_sapu_data(filp);
-	if (data == NULL) {
+	if (!sapu) {
 		pr_info("%s %d\n", __func__, __LINE__);
 		return -EINVAL;
 	}
-	mutex_lock(&data->dmabuf_lock);
+	mutex_lock(&sapu->dmabuf_lock);
 #if ENABLE_DRAM_FB
-	if (data->ref_count == 0 || !data->dram_register) {
-		ret = dram_fb_register(data);
+	if (sapu->ref_count == 0 || !sapu->dram_register) {
+		ret = dram_fb_register();
 		if (!ret)
-			data->dram_register = true;
+			sapu->dram_register = true;
 	}
 #endif // ENABLE_DRAM_FB
-	data->ref_count++;
-	mutex_unlock(&data->dmabuf_lock);
-
+	sapu->ref_count++;
+	mutex_unlock(&sapu->dmabuf_lock);
 	return ret;
 }
 
 static int apusys_sapu_release(struct inode *inode, struct file *filp)
 {
 	int ret = 0;
-	struct apusys_sapu_data *data;
 
-	data = get_apusys_sapu_data(filp);
-	if (data == NULL) {
-		pr_info("%s %d\n", __func__, __LINE__);
+	if (!sapu) {
+		pr_info("error: %s - NULL sapu\n", __func__);
 		return -EINVAL;
 	}
-	mutex_lock(&data->dmabuf_lock);
+
+	mutex_lock(&sapu->dmabuf_lock);
 #if ENABLE_DRAM_FB
-	if (data->ref_count == 1 && data->dram_register) {
-		ret = dram_fb_unregister(data);
+	if (sapu->ref_count == 1 && sapu->dram_register) {
+		ret = dram_fb_unregister();
 		if (!ret)
-			data->dram_register = false;
+			sapu->dram_register = false;
 	}
-#endif
-	data->ref_count--;
-	mutex_unlock(&data->dmabuf_lock);
+#endif // ENABLE_DRAM_FB
+	sapu->ref_count--;
+	mutex_unlock(&sapu->dmabuf_lock);
 
 	return ret;
 }
@@ -280,7 +268,7 @@ apusys_sapu_read(struct file *filep, char __user *buf, size_t count,
  *	.mod = 0x0660,
  *};
  *
- *struct apusys_sapu_data {
+ *struct mtk_sapu {
  *	struct platform_device *pdev;
  *	struct miscdevice mdev;
  *};
@@ -300,49 +288,59 @@ static const struct file_operations apusys_sapu_fops = {
 static int apusys_sapu_probe(struct platform_device *pdev)
 {
 	int ret;
-	struct apusys_sapu_data *data;
 	struct device *dev = &pdev->dev;
 
-	data = devm_kzalloc(dev, sizeof(struct apusys_sapu_data), GFP_KERNEL);
-	if (!data)
+	sapu = devm_kzalloc(dev, sizeof(struct sapu_private), GFP_KERNEL);
+	if (!sapu)
 		return -ENOMEM;
 
-	platform_set_drvdata(pdev, data);
-	data->pdev = pdev;
+	platform_set_drvdata(pdev, sapu);
+	sapu->pdev = pdev;
 
-	data->mdev.minor  = MISC_DYNAMIC_MINOR;
-	data->mdev.name   = "apusys_sapu";
-	data->mdev.fops   = &apusys_sapu_fops;
-	data->mdev.parent = NULL;
-	data->mdev.mode   = 0x0660;
+	sapu->mdev.minor  = MISC_DYNAMIC_MINOR;
+	sapu->mdev.name   = "apusys_sapu";
+	sapu->mdev.fops   = &apusys_sapu_fops;
+	sapu->mdev.parent = NULL;
+	sapu->mdev.mode   = 0x0660;
 
-	kref_init(&data->lock_ref_cnt); // ref_count == 1
+	kref_init(&sapu->lock_ref_cnt); // ref_count == 1
 
 	//apusys_sapu_device.this_device = apusys_sapu_device->dev;
-	ret = misc_register(&data->mdev);
+	ret = misc_register(&sapu->mdev);
 
 	if (ret != 0) {
-		pr_info("ERR: misc register failed.");
-		devm_kfree(dev, data);
+		pr_info("error: misc register failed.");
+		devm_kfree(dev, sapu);
 	}
 
-	mutex_init(&data->dmabuf_lock);
-	memset(&data->dram_fb_info, 0, sizeof(data->dram_fb_info));
-	data->ref_count = 0;
-	data->dram_register = false;
+	mutex_init(&sapu->dmabuf_lock);
+	memset(&sapu->dram_fb_info, 0, sizeof(sapu->dram_fb_info));
+	sapu->ref_count = 0;
+	sapu->dram_register = false;
+
+	/* Get platdata from dts match */
+	sapu->platdata = (struct sapu_platdata *)
+			 of_device_get_match_data(&pdev->dev);
+	if (!sapu->platdata) {
+		pr_info("error: %s - NULL sapu platdata\n", __func__);
+		return -EINVAL;
+	}
+
+	/* runtime set platdata by dts*/
+	set_sapu_platdata_by_dts();
+
+	sapu->platdata->ops.detect();
 
 	return ret;
 }
 static int apusys_sapu_remove(struct platform_device *pdev)
 {
-	struct apusys_sapu_data *data;
 	struct device *dev = &pdev->dev;
 
-	data = platform_get_drvdata(pdev);
-	if (data != NULL) {
-		mutex_destroy(&data->dmabuf_lock);
-		misc_deregister(&data->mdev);
-		devm_kfree(dev, data);
+	if (!sapu) {
+		mutex_destroy(&sapu->dmabuf_lock);
+		misc_deregister(&sapu->mdev);
+		devm_kfree(dev, sapu);
 	}
 
 	return 0;
@@ -364,7 +362,7 @@ static int sapu_lock_rpmsg_probe(struct rpmsg_device *rpdev)
 static int sapu_lock_rpmsg_cb(struct rpmsg_device *rpdev, void *data,
 		int len, void *priv, u32 src)
 {
-	struct PWRarg *d = data;
+	struct sapu_power_ctrl *d = data;
 
 	pr_info("%s: lock = %d\n", __func__, d->lock);
 	complete(&sapu_lock_rpm_dev.ack);
@@ -379,8 +377,8 @@ static void sapu_lock_rpmsg_remove(struct rpmsg_device *rpdev)
 
 #define MODULE_NAME "apusys_sapu"
 static const struct of_device_id apusys_sapu_of_match[] = {
-	{ .compatible = "android,trusty-sapu", },
-	{},
+	{ .compatible = "mediatek,trusty-sapu", .data = &sapu_platdata},
+	{ /* end of list */},
 };
 MODULE_DEVICE_TABLE(of, apusys_sapu_of_match);
 
