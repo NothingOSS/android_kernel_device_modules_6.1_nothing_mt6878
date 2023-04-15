@@ -251,9 +251,10 @@ static int do_set_dcg_ae_ctrl(struct adaptor_ctx *ctx,
 						  struct mtk_hdr_ae *ae_ctrl)
 {
 	union feature_para para;
-	u32 len = 0, exp_count = 0, scenario_exp_cnt = 0;
+	u32 len = 0, exp_count = 0, scenario_exp_cnt = 0, dcg_gain = 0;
 	struct subdrv_mode_struct *mode_info = &ctx->subctx.s_ctx.mode[ctx->cur_mode->id];
 	enum IMGSENSOR_DCG_GAIN_MODE dcg_gain_mode = mode_info->dcg_info.dcg_gain_mode;
+	enum IMGSENSOR_DCG_GAIN_BASE dcg_gain_base = mode_info->dcg_info.dcg_gain_base;
 	// enum IMGSENSOR_DCG_MODE dcg_mode = mode_info->dcg_info.dcg_mode;
 	int ret = 0;
 	u64 fsync_exp[1] = {0}; /* needed by fsync set_shutter */
@@ -271,6 +272,26 @@ static int do_set_dcg_ae_ctrl(struct adaptor_ctx *ctx,
 	while (exp_count < IMGSENSOR_STAGGER_EXPOSURE_CNT &&
 		ae_ctrl->exposure.arr[exp_count] != 0)
 		exp_count++;
+
+	switch (dcg_gain_base) {
+	case (IMGSENSOR_DCG_GAIN_LCG_BASE):
+	{
+		if (exp_count == 2)
+			dcg_gain = ae_ctrl->gain.me_gain;
+		else if (exp_count == 3)
+			dcg_gain = ae_ctrl->gain.se_gain;
+	}
+		break;
+	case (IMGSENSOR_DCG_GAIN_MCG_BASE):
+	{
+		dcg_gain = ae_ctrl->gain.me_gain;
+	}
+		break;
+	case (IMGSENSOR_DCG_GAIN_HCG_BASE):
+	default:
+		dcg_gain = ae_ctrl->gain.le_gain;
+		break;
+	}
 
 	/* get scenario exp_cnt */
 	scenario_exp_cnt = g_scenario_exposure_cnt(ctx, ctx->cur_mode->id);
@@ -354,7 +375,7 @@ static int do_set_dcg_ae_ctrl(struct adaptor_ctx *ctx,
 		notify_fsync_mgr_set_shutter(ctx, fsync_exp, 1, ret);
 		ADAPTOR_SYSTRACE_END();
 
-		get_dispatch_gain(ctx, ae_ctrl->gain.le_gain, again_exp, dgain_exp);
+		get_dispatch_gain(ctx, dcg_gain, again_exp, dgain_exp);
 
 		// Set dig gain
 		para.u64[0] = (u64)dgain_exp;
