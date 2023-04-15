@@ -1904,10 +1904,8 @@ static int mtk_atomic_commit(struct drm_device *drm,
 		pf = (unsigned int)mtk_crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX];
 
 		if (mtk_crtc_state->prop_val[CRTC_PROP_USER_SCEN] & USER_SCEN_SAME_POWER_MODE) {
-			if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) {
-				DDPMSG("MML IR skip atomic commit with same power mode\n");
-				return 0;
-			}
+			DDPMSG("skip atomic commit with same power mode\n");
+			return 0;
 		}
 
 		if (mtk_crtc->is_mml) {
