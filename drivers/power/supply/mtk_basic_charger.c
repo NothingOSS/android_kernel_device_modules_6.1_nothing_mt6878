@@ -681,7 +681,7 @@ static int dvchg2_dev_event(struct notifier_block *nb, unsigned long event,
 			    void *data)
 {
 	struct mtk_charger *info =
-		container_of(nb, struct mtk_charger, dvchg1_nb);
+		container_of(nb, struct mtk_charger, dvchg2_nb);
 	int alg_evt = to_alg_notify_evt(event);
 
 	chr_info("%s %ld", __func__, event);

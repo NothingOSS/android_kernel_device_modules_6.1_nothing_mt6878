@@ -2748,12 +2748,8 @@ static bool mtk_is_charger_on(struct mtk_charger *info)
 			mutex_unlock(&info->cable_out_lock);
 		}
 	} else {
-		if (info->chr_type == POWER_SUPPLY_TYPE_UNKNOWN)
+		if (info->chr_type != chr_type)
 			mtk_charger_plug_in(info, chr_type);
-		else {
-			info->chr_type = chr_type;
-			info->usb_type = get_usb_type(info);
-		}
 
 		if (info->cable_out_cnt > 0) {
 			mtk_charger_plug_out(info);
@@ -3225,7 +3221,16 @@ static int psy_charger_property_is_writeable(struct power_supply *psy,
 	}
 }
 
-static enum power_supply_property charger_psy_properties[] = {
+static const enum power_supply_usb_type charger_psy_usb_types[] = {
+	POWER_SUPPLY_USB_TYPE_UNKNOWN,
+	POWER_SUPPLY_USB_TYPE_SDP,
+	POWER_SUPPLY_USB_TYPE_DCP,
+	POWER_SUPPLY_USB_TYPE_CDP,
+	POWER_SUPPLY_USB_TYPE_PD,
+	POWER_SUPPLY_USB_TYPE_PD_PPS,
+};
+
+static const enum power_supply_property charger_psy_properties[] = {
 	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_VOLTAGE_MAX,
@@ -3233,6 +3238,8 @@ static enum power_supply_property charger_psy_properties[] = {
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX,
 	POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT,
+	POWER_SUPPLY_PROP_VOLTAGE_BOOT,
+	POWER_SUPPLY_PROP_USB_TYPE,
 };
 
 static int psy_charger_get_property(struct power_supply *psy,
@@ -3240,8 +3247,7 @@ static int psy_charger_get_property(struct power_supply *psy,
 {
 	struct mtk_charger *info;
 	struct charger_device *chg;
-	struct charger_data *pdata;
-	int ret = 0;
+	int ret = 0, idx;
 	struct chg_alg_device *alg = NULL;
 
 	info = (struct mtk_charger *)power_supply_get_drvdata(psy);
@@ -3251,28 +3257,33 @@ static int psy_charger_get_property(struct power_supply *psy,
 	}
 	chr_debug("%s psp:%d\n", __func__, psp);
 
-	if (info->psy1 != NULL &&
-		info->psy1 == psy)
+	if (info->psy1 == psy) {
 		chg = info->chg1_dev;
-	else if (info->psy2 != NULL &&
-		info->psy2 == psy)
+		idx = CHG1_SETTING;
+	} else if (info->psy2 == psy) {
 		chg = info->chg2_dev;
-	else if (info->psy_dvchg1 != NULL && info->psy_dvchg1 == psy)
+		idx = CHG2_SETTING;
+	} else if (info->psy_dvchg1 == psy) {
 		chg = info->dvchg1_dev;
-	else if (info->psy_dvchg2 != NULL && info->psy_dvchg2 == psy)
+		idx = DVCHG1_SETTING;
+	} else if (info->psy_dvchg2 == psy) {
 		chg = info->dvchg2_dev;
-	else if (info->psy_hvdvchg1 != NULL && info->psy_hvdvchg1 == psy)
+		idx = DVCHG2_SETTING;
+	} else if (info->psy_hvdvchg1 == psy) {
 		chg = info->hvdvchg1_dev;
-	else if (info->psy_hvdvchg2 != NULL && info->psy_hvdvchg2 == psy)
+		idx = HVDVCHG1_SETTING;
+	} else if (info->psy_hvdvchg2 == psy) {
 		chg = info->hvdvchg2_dev;
-	else {
+		idx = HVDVCHG2_SETTING;
+	} else {
 		chr_err("%s fail\n", __func__);
 		return 0;
 	}
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
-		if (chg == info->dvchg1_dev) {
+		if (idx == DVCHG1_SETTING || idx == DVCHG2_SETTING ||
+		    idx == HVDVCHG1_SETTING || idx == HVDVCHG2_SETTING) {
 			val->intval = false;
 			alg = get_chg_alg_by_name("pe5");
 			if (alg == NULL)
@@ -3300,32 +3311,32 @@ static int psy_charger_get_property(struct power_supply *psy,
 		val->intval = get_vbus(info);
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
-		if (chg == info->chg1_dev)
-			val->intval =
-				info->chg_data[CHG1_SETTING].junction_temp_max * 10;
-		else if (chg == info->chg2_dev)
-			val->intval =
-				info->chg_data[CHG2_SETTING].junction_temp_max * 10;
-		else if (chg == info->dvchg1_dev) {
-			pdata = &info->chg_data[DVCHG1_SETTING];
-			val->intval = pdata->junction_temp_max;
-		} else if (chg == info->dvchg2_dev) {
-			pdata = &info->chg_data[DVCHG2_SETTING];
-			val->intval = pdata->junction_temp_max;
-		} else
-			val->intval = -127;
+		val->intval = info->chg_data[idx].junction_temp_max * 10;
 		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
-		val->intval = get_charger_charging_current(info, chg);
+		val->intval =
+			info->chg_data[idx].thermal_charging_current_limit;
 		break;
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT:
-		val->intval = get_charger_input_current(info, chg);
-		break;
-	case POWER_SUPPLY_PROP_USB_TYPE:
-		val->intval = info->chr_type;
+		val->intval =
+			info->chg_data[idx].thermal_input_current_limit;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_BOOT:
 		val->intval = get_charger_zcv(info, chg);
+		break;
+	case POWER_SUPPLY_PROP_USB_TYPE:
+		switch (info->pd_type) {
+		case MTK_PD_CONNECT_PE_READY_SNK_APDO:
+			val->intval = POWER_SUPPLY_USB_TYPE_PD_PPS;
+			break;
+		case MTK_PD_CONNECT_PE_READY_SNK:
+		case MTK_PD_CONNECT_PE_READY_SNK_PD30:
+			val->intval = POWER_SUPPLY_USB_TYPE_PD;
+			break;
+		default:
+			val->intval = info->usb_type;
+			break;
+		}
 		break;
 	default:
 		return -EINVAL;
@@ -3421,7 +3432,7 @@ out:
 	return ret;
 }
 
-int psy_charger_set_property(struct power_supply *psy,
+static int psy_charger_set_property(struct power_supply *psy,
 			enum power_supply_property psp,
 			const union power_supply_propval *val)
 {
@@ -3436,16 +3447,18 @@ int psy_charger_set_property(struct power_supply *psy,
 		return -EINVAL;
 	}
 
-	if (info->psy1 != NULL &&
-		info->psy1 == psy)
+	if (info->psy1 == psy)
 		idx = CHG1_SETTING;
-	else if (info->psy2 != NULL &&
-		info->psy2 == psy)
+	else if (info->psy2 == psy)
 		idx = CHG2_SETTING;
-	else if (info->psy_dvchg1 != NULL && info->psy_dvchg1 == psy)
+	else if (info->psy_dvchg1 == psy)
 		idx = DVCHG1_SETTING;
-	else if (info->psy_dvchg2 != NULL && info->psy_dvchg2 == psy)
+	else if (info->psy_dvchg2 == psy)
 		idx = DVCHG2_SETTING;
+	else if (info->psy_hvdvchg1 == psy)
+		idx = HVDVCHG1_SETTING;
+	else if (info->psy_hvdvchg2 == psy)
+		idx = HVDVCHG2_SETTING;
 	else {
 		chr_err("%s fail\n", __func__);
 		return 0;
@@ -3680,6 +3693,8 @@ static int mtk_charger_probe(struct platform_device *pdev)
 
 	info->psy_desc1.name = "mtk-master-charger";
 	info->psy_desc1.type = POWER_SUPPLY_TYPE_UNKNOWN;
+	info->psy_desc1.usb_types = charger_psy_usb_types;
+	info->psy_desc1.num_usb_types = ARRAY_SIZE(charger_psy_usb_types);
 	info->psy_desc1.properties = charger_psy_properties;
 	info->psy_desc1.num_properties = ARRAY_SIZE(charger_psy_properties);
 	info->psy_desc1.get_property = psy_charger_get_property;
@@ -3713,6 +3728,8 @@ static int mtk_charger_probe(struct platform_device *pdev)
 
 	info->psy_desc2.name = "mtk-slave-charger";
 	info->psy_desc2.type = POWER_SUPPLY_TYPE_UNKNOWN;
+	info->psy_desc2.usb_types = charger_psy_usb_types;
+	info->psy_desc2.num_usb_types = ARRAY_SIZE(charger_psy_usb_types);
 	info->psy_desc2.properties = charger_psy_properties;
 	info->psy_desc2.num_properties = ARRAY_SIZE(charger_psy_properties);
 	info->psy_desc2.get_property = psy_charger_get_property;
@@ -3729,6 +3746,8 @@ static int mtk_charger_probe(struct platform_device *pdev)
 
 	info->psy_dvchg_desc1.name = "mtk-mst-div-chg";
 	info->psy_dvchg_desc1.type = POWER_SUPPLY_TYPE_UNKNOWN;
+	info->psy_dvchg_desc1.usb_types = charger_psy_usb_types;
+	info->psy_dvchg_desc1.num_usb_types = ARRAY_SIZE(charger_psy_usb_types);
 	info->psy_dvchg_desc1.properties = charger_psy_properties;
 	info->psy_dvchg_desc1.num_properties =
 		ARRAY_SIZE(charger_psy_properties);
@@ -3746,6 +3765,8 @@ static int mtk_charger_probe(struct platform_device *pdev)
 
 	info->psy_dvchg_desc2.name = "mtk-slv-div-chg";
 	info->psy_dvchg_desc2.type = POWER_SUPPLY_TYPE_UNKNOWN;
+	info->psy_dvchg_desc2.usb_types = charger_psy_usb_types;
+	info->psy_dvchg_desc2.num_usb_types = ARRAY_SIZE(charger_psy_usb_types);
 	info->psy_dvchg_desc2.properties = charger_psy_properties;
 	info->psy_dvchg_desc2.num_properties =
 		ARRAY_SIZE(charger_psy_properties);
@@ -3763,6 +3784,8 @@ static int mtk_charger_probe(struct platform_device *pdev)
 
 	info->psy_hvdvchg_desc1.name = "mtk-mst-hvdiv-chg";
 	info->psy_hvdvchg_desc1.type = POWER_SUPPLY_TYPE_UNKNOWN;
+	info->psy_hvdvchg_desc1.usb_types = charger_psy_usb_types;
+	info->psy_hvdvchg_desc1.num_usb_types = ARRAY_SIZE(charger_psy_usb_types);
 	info->psy_hvdvchg_desc1.properties = charger_psy_properties;
 	info->psy_hvdvchg_desc1.num_properties =
 					     ARRAY_SIZE(charger_psy_properties);
@@ -3780,6 +3803,8 @@ static int mtk_charger_probe(struct platform_device *pdev)
 
 	info->psy_hvdvchg_desc2.name = "mtk-slv-hvdiv-chg";
 	info->psy_hvdvchg_desc2.type = POWER_SUPPLY_TYPE_UNKNOWN;
+	info->psy_hvdvchg_desc2.usb_types = charger_psy_usb_types;
+	info->psy_hvdvchg_desc2.num_usb_types = ARRAY_SIZE(charger_psy_usb_types);
 	info->psy_hvdvchg_desc2.properties = charger_psy_properties;
 	info->psy_hvdvchg_desc2.num_properties =
 					     ARRAY_SIZE(charger_psy_properties);

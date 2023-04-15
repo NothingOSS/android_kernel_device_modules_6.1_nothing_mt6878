@@ -458,5 +458,19 @@ extern void _wake_up_charger(struct mtk_charger *info);
 /* functions for other */
 extern int mtk_chg_enable_vbus_ovp(bool enable);
 
+enum attach_type {
+	ATTACH_TYPE_NONE,
+	ATTACH_TYPE_PWR_RDY,
+	ATTACH_TYPE_TYPEC,
+	ATTACH_TYPE_PD,
+	ATTACH_TYPE_PD_SDP,
+	ATTACH_TYPE_PD_DCP,
+	ATTACH_TYPE_PD_NONSTD,
+	ATTACH_TYPE_MAX,
+};
+
+#define ONLINE(idx, attach)		((idx & 0xf) << 4 | (attach & 0xf))
+#define ONLINE_GET_IDX(online)		((online >> 4) & 0xf)
+#define ONLINE_GET_ATTACH(online)	(online & 0xf)
 
 #endif /* __MTK_CHARGER_H */
