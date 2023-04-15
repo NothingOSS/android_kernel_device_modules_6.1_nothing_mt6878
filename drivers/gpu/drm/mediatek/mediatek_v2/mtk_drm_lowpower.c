@@ -815,7 +815,7 @@ void mtk_drm_idle_async_flush(struct drm_crtc *crtc,
 {
 	struct mtk_drm_async_cb_data *cb_data = NULL;
 	bool async = mtk_drm_idlemgr_get_async_status(crtc);
-	int len = 0;
+	int len = -ENOMEM;
 
 	if (cmdq_handle == NULL)
 		return;
@@ -835,8 +835,10 @@ void mtk_drm_idle_async_flush(struct drm_crtc *crtc,
 		cb_data->crtc = crtc;
 		cb_data->handle = cmdq_handle;
 		cb_data->master = kmalloc(50, GFP_KERNEL);
-		if (master != NULL)
-			len = snprintf(cb_data->master, 50, master);
+		if (cb_data->master != NULL)
+			len = snprintf(cb_data->master, 50, master ? master : "unknown");
+		if (len < 0)
+			DDPMSG("%s: failed to init master, len:%d\n", __func__, len);
 		mtk_drm_idlemgr_async_get(crtc, master);
 		cmdq_pkt_flush_async(cmdq_handle, mtk_drm_idle_async_cb, cb_data);
 		mtk_drm_idlemgr_async_complete(crtc, master, cb_data);
@@ -1380,7 +1382,7 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 		start = sched_clock();
 		perf_detail = atomic_read(&idlemgr->perf->detail);
 		if (perf_detail) {
-			perf_string = kmalloc(MTK_IDLE_PERF_DETAIL_LENGTH, GFP_KERNEL);
+			perf_string = kzalloc(MTK_IDLE_PERF_DETAIL_LENGTH, GFP_KERNEL);
 			if (!perf_string) {
 				DDPMSG("%s:%d, failed to allocate perf_string\n",
 					__func__, __LINE__);
@@ -1603,7 +1605,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		start = sched_clock();
 		perf_detail = atomic_read(&idlemgr->perf->detail);
 		if (perf_detail) {
-			perf_string = kmalloc(MTK_IDLE_PERF_DETAIL_LENGTH, GFP_KERNEL);
+			perf_string = kzalloc(MTK_IDLE_PERF_DETAIL_LENGTH, GFP_KERNEL);
 			if (!perf_string) {
 				DDPMSG("%s:%d, failed to allocate perf_string\n",
 					__func__, __LINE__);

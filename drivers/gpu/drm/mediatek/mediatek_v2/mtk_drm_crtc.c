@@ -10148,7 +10148,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 	cmdq_mbox_enable(client->chan);
 	CRTC_MMP_MARK((int) crtc_id, enable, 1, 1);
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_USE_M4U))
+	if (priv && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_USE_M4U))
 		mtk_crtc_prepare_instr(crtc);
 #endif
 
@@ -10611,6 +10611,11 @@ struct drm_display_mode *mtk_drm_crtc_avail_disp_mode(struct drm_crtc *crtc,
 		}
 
 		mtk_crtc = to_mtk_crtc(crtc0);
+	}
+
+	if (mtk_crtc == NULL) {
+		DDPPR_ERR("%s invalid mtk_crtc\n", __func__);
+		return NULL;
 	}
 
 	if (idx >= mtk_crtc->avail_modes_num) {
