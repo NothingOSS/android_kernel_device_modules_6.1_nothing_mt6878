@@ -137,13 +137,11 @@ static void ufs_mtk_dbg_print_info(char **buff, unsigned long *size,
 		      "quirks=0x%x, dev. quirks=0x%x\n", hba->quirks,
 		      hba->dev_quirks);
 	SPREAD_PRINTF(buff, size, m,
-		      "hba->ufs_version = 0x%x, wspecversion=0x%x, capabilities = 0x%x\n",
-		      hba->ufs_version, hba->dev_info.wspecversion, hba->capabilities);
+		      "ver. host=0x%x, dev=0x%x\n", hba->ufs_version, hba->dev_info.wspecversion);
 	SPREAD_PRINTF(buff, size, m,
 		      "last_hibern8_exit_tstamp at %lld us, hibern8_exit_cnt = %d\n",
 		      ktime_to_us(hba->ufs_stats.last_hibern8_exit_tstamp),
 		      hba->ufs_stats.hibern8_exit_cnt);
-
 	/* PWR info */
 	SPREAD_PRINTF(buff, size, m,
 		      "[RX, TX]: gear=[%d, %d], lane[%d, %d], pwr[%d, %d], rate = %d\n",
@@ -160,6 +158,12 @@ static void ufs_mtk_dbg_print_info(char **buff, unsigned long *size,
 			      hba->ufs_device_wlun->vendor,
 			      hba->ufs_device_wlun->model, hba->ufs_device_wlun->rev);
 	}
+	SPREAD_PRINTF(buff, size, m,
+		      "MCQ sup./en.: %d/%d, nr_hw_queues=%d\n",
+		      hba->mcq_sup, hba->mcq_enabled, hba->nr_hw_queues);
+	SPREAD_PRINTF(buff, size, m,
+		      "nutrs=%d, dev_info.bqueuedepth=%d\n",
+		      hba->nutrs, hba->dev_info.bqueuedepth);
 
 	/* Error history */
 	ufs_mtk_dbg_print_err_hist(buff, size, m,
