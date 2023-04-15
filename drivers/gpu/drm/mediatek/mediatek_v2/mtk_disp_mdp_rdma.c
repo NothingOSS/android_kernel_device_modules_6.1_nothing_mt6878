@@ -211,15 +211,15 @@ static unsigned int mdp_rdma_fmt_convert(unsigned int fmt)
 	switch (fmt) {
 	case DRM_FORMAT_BGR888:	//0x34324742 for meta data
 		return MEM_MODE_INPUT_FORMAT_RGB888 | SWAP | BIT_NUMBER_8BIT;
-	case DRM_FORMAT_RGB888: //0x34324752 for pattern
+	case DRM_FORMAT_RGB888:	//0x34324752 for pattern
 		return MEM_MODE_INPUT_FORMAT_RGB888 | BIT_NUMBER_8BIT;
 	case DRM_FORMAT_P010:	//0x30313050
 		/* need use NV12 10bit mode*/
 		return MEM_MODE_INPUT_FORMAT_NV12 | BIT_NUMBER_10BIT |
 			LOOSE;
-	case DRM_FORMAT_NV12:
+	case DRM_FORMAT_NV12:	//0x3231564e
 		return MEM_MODE_INPUT_FORMAT_NV12;
-	case DRM_FORMAT_NV21:
+	case DRM_FORMAT_NV21:	//0x3132564e
 		return MEM_MODE_INPUT_FORMAT_NV12 | SWAP;
 	default:
 		DDPPR_ERR("[discrete] not support fmt:0x%x\n", fmt);
