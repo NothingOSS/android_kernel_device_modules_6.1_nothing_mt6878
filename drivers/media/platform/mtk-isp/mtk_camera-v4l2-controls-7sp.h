@@ -58,7 +58,6 @@ struct mtk_cam_shutter_gain {
 
 struct mtk_cam_mstream_exposure {
 	struct mtk_cam_shutter_gain exposure[2];
-	unsigned int valid;
 	int req_id;
 };
 
@@ -154,7 +153,6 @@ struct mtk_cam_scen {
 		struct mtk_cam_scen_extisp extisp;
 		struct mtk_cam_scen_timeshare timeshare;
 	} scen;
-	char dbg_str[16];
 };
 
 enum mtk_cam_bin {
@@ -259,7 +257,6 @@ enum mtk_cam_apu_path {
 };
 
 struct mtk_cam_apu_info {
-	__u8 is_update;
 	__u8 apu_path;
 	__u8 vpu_i_point;
 	__u8 vpu_o_point;
