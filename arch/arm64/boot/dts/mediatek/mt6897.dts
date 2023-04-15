@@ -864,11 +864,9 @@
 
 	pd_adapter: pd-adapter {
 		compatible = "mediatek,pd_adapter";
-		boot-mode = <&chosen>;
-		adapter-name = "pd_adapter";
+		nr-port = <1>;
 		force-cv;
-		phys = <&u2port0 PHY_TYPE_USB2>;
-		phy-names = "usb2-phy";
+		adapter-name = "pd_adapter";
 	};
 
 	mtk_ctd: mtk-ctd {
@@ -14124,7 +14122,8 @@
 		vbat-cv = <4350>;
 		start-soc-min = <0>;
 		start-soc-max = <80>;
-		start-vbat-max = <4300>;
+		stop-soc-max = <99>;
+		vbat-max-gap = <50>;
 		idvchg-term = <500>;
 		idvchg-step = <50>;
 		ita-level = <3000 2500 2000 1500>;
@@ -14137,7 +14136,7 @@
 		idvchg-ss-step2 = <50>;
 		idvchg-ss-step1-vbat = <4000>;
 		idvchg-ss-step2-vbat = <4200>;
-		ta-blanking = <400>;
+		ta-blanking = <285>;
 		swchg-aicr = <0>;
 		swchg-ichg = <1200>;
 		swchg-aicr-ss-init = <400>;

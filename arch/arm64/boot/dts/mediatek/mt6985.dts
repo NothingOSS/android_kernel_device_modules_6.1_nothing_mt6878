@@ -14277,13 +14277,11 @@
 		// en-wd0-port0;
 	};
 
-	pd_adapter: pd_adapter {
+	pd_adapter: pd-adapter {
 		compatible = "mediatek,pd_adapter";
-		boot_mode = <&chosen>;
-		adapter_name = "pd_adapter";
-		force_cv;
-		phys = <&u2port0 PHY_TYPE_USB2>;
-		phy-names = "usb2-phy";
+		nr-port = <1>;
+		force-cv;
+		adapter-name = "pd_adapter";
 	};
 
 	flashlight_core: flashlight-core {
@@ -14504,11 +14502,11 @@
 		compatible = "mediatek,charger,pe5";
 		gauge = <&mtk_gauge>;
 		polling_interval = <10000>;
-		ta_cv_ss_repeat_tmin = <25>;
 		vbat_cv = <4350>;
 		start_soc_min = <0>;
 		start_soc_max = <80>;
-		start_vbat_max = <4300>;
+		stop-soc-max = <99>;
+		vbat-max-gap = <50>;
 		idvchg_term = <500>;
 		idvchg_step = <50>;
 		ita_level = <3000 2500 2000 1500>;
@@ -14521,7 +14519,7 @@
 		idvchg_ss_step2 = <50>;
 		idvchg_ss_step1_vbat = <4000>;
 		idvchg_ss_step2_vbat = <4200>;
-		ta_blanking = <400>;
+		ta-blanking = <285>;
 		swchg_aicr = <0>;
 		swchg_ichg = <1200>;
 		swchg_aicr_ss_init = <400>;
