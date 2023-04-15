@@ -3479,7 +3479,7 @@ static int fbt_get_next_jerk(int cur_id)
 	int ret_id;
 
 	ret_id = cur_id + 1;
-	if (ret_id >= RESCUE_TIMER_NUM)
+	if (ret_id >= RESCUE_TIMER_NUM || ret_id < 0)
 		ret_id = 0;
 
 	return ret_id;
@@ -4527,6 +4527,8 @@ static void fpsgo_update_cpufreq_to_now(unsigned long long new_ts_100us)
 		xgf_trace("[%s] idx=%d, prev_cb_ts=%llu, lastest_ts=%llu, last_obv=%u",
 			__func__, idx, prev_cb_ts[idx], lastest_ts[idx], lastest_obv[idx]);
 
+		if (idx < 0)
+			goto SKIP;
 		if (lastest_obv_cl[idx] == NULL || lastest_is_cl_isolated[idx] == NULL)
 			goto SKIP;
 
@@ -5141,9 +5143,11 @@ void fpsgo_ctrl2fbt_cpufreq_cb_cap(int cid, int cap)
 		lastest_obv[idx] = last_obv;
 		lastest_idx = idx;
 
-		xgf_trace("[%s] idx=%d, prev_cb_ts=%d, lastest_ts=%d, last_obv=%u",
+		xgf_trace("[%s] idx=%d, prev_cb_ts=%llu, lastest_ts=%llu, last_obv=%u",
 			__func__, idx, prev_cb_ts[idx], lastest_ts[idx], lastest_obv[idx]);
 
+		if (idx < 0)
+			goto SKIP;
 		if (lastest_obv_cl[idx] == NULL || lastest_is_cl_isolated[idx] == NULL)
 			goto SKIP;
 
@@ -5220,12 +5224,14 @@ void fpsgo_ctrl2fbt_cpufreq_cb_exp(int cid, unsigned long freq)
 		lastest_obv[idx] = last_obv;
 		lastest_idx = idx;
 
-		xgf_trace("[%s] idx=%d, prev_cb_ts=%d, lastest_ts=%d, last_obv=%u",
+		xgf_trace("[%s] idx=%d, prev_cb_ts=%llu, lastest_ts=%llu, last_obv=%u",
 			__func__, idx, prev_cb_ts[idx], lastest_ts[idx], lastest_obv[idx]);
 
 		if (lastest_obv_cl[idx] == NULL || lastest_is_cl_isolated[idx] == NULL)
 			goto SKIP;
 
+		if (idx < 0)
+			goto SKIP;
 		for (i = 0; i < cluster_num; i++) {
 			lastest_obv_cl[idx][i] = clus_obv[i];
 			lastest_is_cl_isolated[idx][i] = clus_status[i];
