@@ -385,7 +385,12 @@ static void fg_task_done(struct mml_comp *comp, struct mml_task *task,
 	mml_pq_trace_ex_begin("%s %d", __func__, cfg->info.mode);
 	mml_pq_msg("%s engine_id[%d] en_fg[%d]", __func__, comp->id,
 		dest->pq_config.en_fg);
+	if (!dest->pq_config.en_fg)
+		goto exit;
+
 	mml_pq_put_fg_buffer(task, ccfg->pipe, &(task->pq_task->fg_table));
+
+exit:
 	mml_pq_trace_ex_end();
 }
 
