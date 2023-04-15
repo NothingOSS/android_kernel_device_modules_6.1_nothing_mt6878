@@ -45,6 +45,28 @@ static int entry_count;
 static int busy_tick_boost_all;
 static int sbb_active_ratio = 100;
 static unsigned int wl_type_delay_update_tick = 2;
+
+int am_enable;
+void init_adaptive_margin(void)
+{
+	struct device_node *eas_node;
+
+	am_enable = 0;
+	eas_node = of_find_node_by_name(NULL, "eas_info");
+	if (eas_node == NULL)
+		pr_info("failed to find node @ %s\n", __func__);
+	else {
+		int ret;
+
+		ret = of_property_read_u32(eas_node, "adaptive-margin", &am_enable);
+
+		if (!am_enable || ret < 0)
+			pr_info("no adaptive-margin dts_ret=%d eas_flag=%d\n", ret, am_enable);
+		else
+			pr_info("adaptive-margin enable\n");
+	}
+}
+
 enum {
 	REG_FREQ_LUT_TABLE,
 	REG_FREQ_ENABLE,
@@ -1207,6 +1229,8 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 
 	init_sbb_cpu_data();
 
+	init_adaptive_margin();
+
 	return ret;
 }
 
@@ -1524,7 +1548,7 @@ void mtk_map_util_freq(void *data, unsigned long util, unsigned long freq, struc
 	gearid = per_cpu(gear_id, cpu);
 
 	pd_info = &pd_capacity_tbl[gearid];
-	if (!turn_point_util[gearid]) {
+	if (!turn_point_util[gearid] && am_enable) {
 		if (util_signal[gearid])
 			goto flt_skip_margin;
 		mtk_map_util_freq_adaptive(data, util, cpu, next_freq);
