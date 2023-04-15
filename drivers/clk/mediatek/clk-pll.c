@@ -936,12 +936,12 @@ static struct clk *mtk_clk_register_pll(const struct mtk_pll_data *data,
 		pll->en_addr = base + data->pll_setclr->en_ofs;
 		pll->en_set_addr = base + data->pll_setclr->en_set_ofs;
 		pll->en_clr_addr = base + data->pll_setclr->en_clr_ofs;
-		pll->en_msk = BIT(pll->data->en_setclr_bit);
+		pll->en_msk = BIT(data->en_setclr_bit);
 		if ((data->flags & HAVE_RST_BAR) == HAVE_RST_BAR) {
 			pll->rstb_addr = base + data->pll_setclr->rstb_ofs;
 			pll->rstb_set_addr = base + data->pll_setclr->rstb_set_ofs;
 			pll->rstb_clr_addr = base + data->pll_setclr->rstb_clr_ofs;
-			pll->rstb_msk = BIT(pll->data->rstb_setclr_bit);
+			pll->rstb_msk = BIT(data->rstb_setclr_bit);
 		}
 	} else {
 		if (data->en_reg)
