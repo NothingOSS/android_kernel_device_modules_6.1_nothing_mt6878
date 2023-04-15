@@ -30,36 +30,42 @@ struct ut_event_source {
 	struct list_head listeners;
 };
 
-static inline void init_event_source(struct ut_event_source *src)
+static inline int init_event_source(struct ut_event_source *src)
 {
-	WARN_ON(!src);
+	if (WARN_ON(!src))
+		return -1;
 
 	INIT_LIST_HEAD(&src->listeners);
+	return 0;
 };
 
-static inline void add_listener(struct ut_event_source *src,
+static inline int add_listener(struct ut_event_source *src,
 				struct ut_event_listener *listener,
 				struct ut_event event)
 {
 	struct ut_event_linstener_entry *entry;
 
-	WARN_ON(!src || !listener);
+	if (WARN_ON(!src || !listener))
+		return -1;
 
 	entry = kzalloc(sizeof(*entry), GFP_KERNEL);
-	WARN_ON(!entry);
+	if (WARN_ON(!entry))
+		return -1;
 
 	entry->listener = listener;
 	entry->filter = event;
 
 	list_add_tail(&entry->list, &src->listeners);
+	return 0;
 }
 
-static inline void remove_listener(struct ut_event_source *src,
+static inline int remove_listener(struct ut_event_source *src,
 				   struct ut_event_listener *listener)
 {
 	struct ut_event_linstener_entry *entry;
 
-	WARN_ON(!src || !listener);
+	if (WARN_ON(!src || !listener))
+		return -1;
 
 	list_for_each_entry(entry, &src->listeners, list) {
 		if (entry->listener == listener) {
@@ -68,19 +74,22 @@ static inline void remove_listener(struct ut_event_source *src,
 			break;
 		}
 	}
+	return 0;
 }
 
-static inline void send_event(struct ut_event_source *src,
+static inline int send_event(struct ut_event_source *src,
 			      struct ut_event event)
 {
 	struct ut_event_linstener_entry *entry;
 	struct ut_event masked_event;
 
-	WARN_ON(!src);
+	if (WARN_ON(!src))
+		return  -1;
 
 	list_for_each_entry(entry, &src->listeners, list) {
 
-		WARN_ON(!entry->listener);
+		if (WARN_ON(!entry->listener))
+			return -1;
 		masked_event.mask = entry->filter.mask & event.mask;
 
 		//pr_info("entry with mask 0x%x, f_notify %x\n",
@@ -89,6 +98,7 @@ static inline void send_event(struct ut_event_source *src,
 			entry->listener->on_notify(entry->listener, src,
 						   masked_event);
 	}
+	return 0;
 }
 
 /* events */

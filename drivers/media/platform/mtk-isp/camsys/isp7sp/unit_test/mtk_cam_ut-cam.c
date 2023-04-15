@@ -321,8 +321,10 @@ static int mtk_ut_raw_component_bind(struct device *dev,
 	ut->raw[raw->id] = dev;
 
 	evt.mask = EVENT_SOF | EVENT_CQ_DONE | EVENT_SW_P1_DONE | EVENT_CQ_MAIN_TRIG_DLY;
-	add_listener(&raw->event_src, &ut->listener, evt);
-
+	if (add_listener(&raw->event_src, &ut->listener, evt)) {
+		dev_info(dev, "add listener fail!\n");
+		return -1;
+	}
 	return 0;
 }
 
@@ -334,7 +336,8 @@ static void mtk_ut_raw_component_unbind(struct device *dev,
 
 	//dev_dbg(dev, "%s\n", __func__);
 	ut->raw[raw->id] = NULL;
-	remove_listener(&raw->event_src, &ut->listener);
+	if (remove_listener(&raw->event_src, &ut->listener))
+		dev_dbg(dev, "%s remove listener fail!\n", __func__);
 }
 
 static const struct component_ops mtk_ut_raw_component_ops = {
@@ -752,7 +755,8 @@ static irqreturn_t mtk_ut_raw_thread_irq(int irq, void *data)
 
 		if (event->mask) {
 			dev_dbg(raw->dev, "send event 0x%x\n", event->mask);
-			send_event(&raw->event_src, *event);
+			if (send_event(&raw->event_src, *event))
+				dev_info(raw->dev, "send event fail!");
 		}
 	}
 
@@ -896,7 +900,10 @@ static int mtk_ut_raw_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	init_event_source(&drvdata->event_src);
+	ret = init_event_source(&drvdata->event_src);
+	if (ret)
+		return ret;
+
 	ut_raw_set_ops(dev);
 #if WITH_POWER_DRIVER
 	pm_runtime_enable(dev);
