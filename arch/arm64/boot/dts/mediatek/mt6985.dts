@@ -9357,6 +9357,16 @@
 			virtual-opp-support = <0x420>;
 		};
 
+		gpu_dvfs: gpu-async-ratio {
+			compatible = "mediatek,gpu_async_ratio";
+			async-ratio-support = <0>;
+			async-virtual-table-support = <0>;
+			async-oppnum-eachmask = <2>;
+			async-ratio = <170>;
+			async-oppnum-low = <2>;
+			async-ratio-low = <130 100>;
+		};
+
 		gpueb: gpueb@13c00000 {
 			compatible = "mediatek,gpueb";
 			gpueb-support = <1>;
