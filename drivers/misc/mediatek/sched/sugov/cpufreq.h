@@ -174,6 +174,7 @@ extern int set_sched_capacity_margin_dvfs(int capacity_margin);
 extern unsigned int get_sched_capacity_margin_dvfs(void);
 #endif
 #endif
+extern void set_target_active_ratio_pct(int val);
 extern void set_sbb(int flag, int pid, bool set);
 extern void set_sbb_active_ratio(int val);
 extern int get_sbb_active_ratio(void);

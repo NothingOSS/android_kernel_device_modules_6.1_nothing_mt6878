@@ -1521,6 +1521,12 @@ int get_adaptive_ratio(int cpu, int target)
 	return active_ratio[gearid] * 100 / target;
 }
 
+void set_target_active_ratio_pct(int val)
+{
+	am_target_active_ratio = clamp(val, 1, 100);
+}
+EXPORT_SYMBOL_GPL(set_target_active_ratio_pct);
+
 int get_active_ratio(int cpu)
 {
 	return active_ratio[per_cpu(gear_id, cpu)];
