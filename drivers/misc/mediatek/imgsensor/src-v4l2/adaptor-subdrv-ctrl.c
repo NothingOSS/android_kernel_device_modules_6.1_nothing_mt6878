@@ -790,6 +790,7 @@ void set_max_framerate_by_scenario(struct subdrv_ctx *ctx,
 	if (ctx->s_ctx.reg_addr_auto_extend ||
 			(ctx->frame_length > (ctx->exposure[0] + ctx->s_ctx.exposure_margin))) {
 		if (ctx->s_ctx.aov_sensor_support &&
+			ctx->s_ctx.mode[scenario_id].aov_mode &&
 			!ctx->s_ctx.mode[scenario_id].s_dummy_support)
 			DRV_LOG_MUST(ctx, "AOV mode not support set_dummy!\n");
 		else
@@ -3117,6 +3118,7 @@ int common_feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 		break;
 	case SENSOR_FEATURE_SET_ESHUTTER:
 		if (ctx->s_ctx.aov_sensor_support &&
+			ctx->s_ctx.mode[ctx->current_scenario_id].aov_mode &&
 			!ctx->s_ctx.mode[ctx->current_scenario_id].ae_ctrl_support)
 			DRV_LOG_MUST(ctx,
 				"AOV sensing mode not support ae shutter control!\n");
@@ -3125,6 +3127,7 @@ int common_feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 		break;
 	case SENSOR_FEATURE_SET_GAIN:
 		if (ctx->s_ctx.aov_sensor_support &&
+			ctx->s_ctx.mode[ctx->current_scenario_id].aov_mode &&
 			!ctx->s_ctx.mode[ctx->current_scenario_id].ae_ctrl_support)
 			DRV_LOG_MUST(ctx,
 				"AOV sensing mode not support ae gain control!\n");
@@ -3247,6 +3250,7 @@ int common_feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 		break;
 	case SENSOR_FEATURE_SET_HDR_SHUTTER:
 		if (ctx->s_ctx.aov_sensor_support &&
+			ctx->s_ctx.mode[ctx->current_scenario_id].aov_mode &&
 			!ctx->s_ctx.mode[ctx->current_scenario_id].ae_ctrl_support)
 			DRV_LOG_MUST(ctx,
 				"AOV sensing mode not support ae shutter control!\n");
@@ -3255,6 +3259,7 @@ int common_feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 		break;
 	case SENSOR_FEATURE_SET_DUAL_GAIN:
 		if (ctx->s_ctx.aov_sensor_support &&
+			ctx->s_ctx.mode[ctx->current_scenario_id].aov_mode &&
 			!ctx->s_ctx.mode[ctx->current_scenario_id].ae_ctrl_support)
 			DRV_LOG_MUST(ctx,
 				"AOV sensing mode not support ae gain control!\n");
@@ -3263,6 +3268,7 @@ int common_feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 		break;
 	case SENSOR_FEATURE_SET_HDR_TRI_SHUTTER:
 		if (ctx->s_ctx.aov_sensor_support &&
+			ctx->s_ctx.mode[ctx->current_scenario_id].aov_mode &&
 			!ctx->s_ctx.mode[ctx->current_scenario_id].ae_ctrl_support)
 			DRV_LOG_MUST(ctx,
 				"AOV sensing mode not support ae shutter control!\n");
@@ -3271,6 +3277,7 @@ int common_feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 		break;
 	case SENSOR_FEATURE_SET_HDR_TRI_GAIN:
 		if (ctx->s_ctx.aov_sensor_support &&
+			ctx->s_ctx.mode[ctx->current_scenario_id].aov_mode &&
 			!ctx->s_ctx.mode[ctx->current_scenario_id].ae_ctrl_support)
 			DRV_LOG_MUST(ctx,
 				"AOV sensing mode not support ae gain control!\n");
@@ -3279,6 +3286,7 @@ int common_feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 		break;
 	case SENSOR_FEATURE_SET_MULTI_DIG_GAIN:
 		if (ctx->s_ctx.aov_sensor_support &&
+			ctx->s_ctx.mode[ctx->current_scenario_id].aov_mode &&
 			!ctx->s_ctx.mode[ctx->current_scenario_id].ae_ctrl_support)
 			DRV_LOG_MUST(ctx,
 				"AOV sensing mode not support ae gain control!\n");
@@ -3314,6 +3322,7 @@ int common_feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 	case SENSOR_FEATURE_SET_STREAMING_RESUME:
 		if (*feature_data) {
 			if (ctx->s_ctx.aov_sensor_support &&
+				ctx->s_ctx.mode[ctx->current_scenario_id].aov_mode &&
 				!ctx->s_ctx.mode[ctx->current_scenario_id].ae_ctrl_support)
 				DRV_LOG_MUST(ctx,
 					"AOV sensing mode not support ae shutter control!\n");
