@@ -1605,10 +1605,9 @@ static int xgff_get_start_runtime(int rpid, unsigned long long queueid,
 			xgf_trace("[XGFF] start_dep_runtime: %llu, pid: %d", runtime, deplist[i]);
 		}
 	}
-
-out:
 	xgf_trace("[XGFF][%s] ret=%d, frame_id=%lu, count_dep=%d", __func__, ret,
 		frameid, *count_dep_runtime);
+out:
 	return ret;
 }
 
@@ -1726,6 +1725,8 @@ void print_dep(unsigned int deplist_size, unsigned int *deplist)
 				GFP_KERNEL);
 	if (!dep_str)
 		return;
+
+	dep_str[0] = '\0';
 	for (i = 0; i < deplist_size; i++) {
 		if (strlen(dep_str) == 0)
 			ret = snprintf(temp, sizeof(temp), "%d", deplist[i]);
@@ -1735,7 +1736,9 @@ void print_dep(unsigned int deplist_size, unsigned int *deplist)
 		if (ret < 0 || ret >= sizeof(temp))
 			goto out;
 
-		if (strlen(dep_str) + strlen(temp) < 256)
+		if (strlen(dep_str) + strlen(temp) < 256 &&
+			strlen(dep_str) + strlen(temp) < (deplist_size + 1) *
+			7 * sizeof(char))
 			strncat(dep_str, temp, strlen(temp));
 	}
 out:
