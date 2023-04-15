@@ -122,66 +122,6 @@ int task_curr_clone(const struct task_struct *p)
 	return cpu_curr(task_cpu(p)) == p;
 }
 
-void write_cpuqos_v3_pd(int pd)
-{
-	switch (pd) {
-	case PD0:
-		asm volatile (
-			"mrs x0, s3_0_c10_c5_1\n\t"
-			"bic x0, x0, #(0xffffffffffff)\n\t"
-			"msr s3_0_c10_c5_1, x0\n\t"
-			"mrs x0, s3_0_c10_c5_0\n\t"
-			"bic x0, x0, #(0xffffffffffff)\n\t"
-			"msr s3_0_c10_c5_0, x0\n\t"
-			: : : "memory");
-		break;
-	case PD1:
-		asm volatile (
-			"mrs x0, s3_0_c10_c5_1\n\t"
-			"bic x0, x0, #(0xffffffffffff)\n\t"
-			"orr x0, x0, #(0x1<<16)\n\t"
-			"orr x0, x0, #(0x2)\n\t"
-			"msr s3_0_c10_c5_1, x0\n\t"
-			"mrs x0, s3_0_c10_c5_0\n\t"
-			"bic x0, x0, #(0xffffffffffff)\n\t"
-			"orr x0, x0, #(0x1<<16)\n\t"
-			"orr x0, x0, #(0x2)\n\t"
-			"msr s3_0_c10_c5_0, x0\n\t"
-			: : : "memory");
-		break;
-	case PD2:
-		asm volatile (
-			"mrs x0, s3_0_c10_c5_1\n\t"
-			"bic x0, x0, #(0xffffffffffff)\n\t"
-			"orr x0, x0, #(0x2<<16)\n\t"
-			"orr x0, x0, #(0x2)\n\t"
-			"msr s3_0_c10_c5_1, x0\n\t"
-			"mrs x0, s3_0_c10_c5_0\n\t"
-			"bic x0, x0, #(0xffffffffffff)\n\t"
-			"orr x0, x0, #(0x2<<16)\n\t"
-			"orr x0, x0, #(0x2)\n\t"
-			"msr s3_0_c10_c5_0, x0\n\t"
-			: : : "memory");
-		break;
-	case PD3:
-		asm volatile (
-			"mrs x0, s3_0_c10_c5_1\n\t"
-			"bic x0, x0, #(0xffffffffffff)\n\t"
-			"orr x0, x0, #(0x3<<16)\n\t"
-			"orr x0, x0, #(0x2)\n\t"
-			"msr s3_0_c10_c5_1, x0\n\t"
-			"mrs x0, s3_0_c10_c5_0\n\t"
-			"bic x0, x0, #(0xffffffffffff)\n\t"
-			"orr x0, x0, #(0x3<<16)\n\t"
-			"orr x0, x0, #(0x2)\n\t"
-			"msr s3_0_c10_c5_0, x0\n\t"
-			: : : "memory");
-		break;
-	}
-	return;
-
-}
-
 unsigned int get_task_pd(struct task_struct *p)
 {
 	unsigned int pd;
@@ -198,6 +138,49 @@ unsigned int get_task_rank(struct task_struct *p)
 	rank = (unsigned int)p->android_vendor_data1[2];
 
 	return rank;
+}
+
+void (*mtk_cpuqos_set)(int pd);
+EXPORT_SYMBOL(mtk_cpuqos_set);
+
+int (*mtk_cpuqos_css_map)(int id);
+EXPORT_SYMBOL(mtk_cpuqos_css_map);
+int css_init;
+
+int mtk_cpuqos_map(int id)
+{
+	int num = 0;
+
+	if (mtk_cpuqos_css_map)
+		num = mtk_cpuqos_css_map(id);
+	else
+		num = PD0;
+
+	return num;
+}
+
+void css_map(void)
+{
+	int i;
+
+	if (!css_init) {
+		for (i = 0; i < ARRAY_SIZE(cpuqos_v3_path_pd_map); i++) {
+			int css_id = cpuqos_v3_group_css_map[i];
+
+			if (css_id >= 0) {
+				WRITE_ONCE(cpuqos_v3_css_pd_map[css_id],
+				mtk_cpuqos_map(i));
+			}
+		}
+		css_init = 1;
+	}
+}
+
+void mtk_register_cpuqos_set(int pd)
+{
+	if (mtk_cpuqos_set) {
+		mtk_cpuqos_set(pd);
+	}
 }
 
 /* Get the css:pd mapping */
@@ -267,7 +250,7 @@ static void cpuqos_v3_write_pd(int pd)
 	this_cpu_write(cpuqos_v3_local_pd, pd);
 
 	/* Write to e.g. CPUQOS REG here */
-	write_cpuqos_v3_pd(this_cpu_read(cpuqos_v3_local_pd));
+	mtk_register_cpuqos_set(this_cpu_read(cpuqos_v3_local_pd));
 }
 
 /*
@@ -676,6 +659,7 @@ static ssize_t set_boot_complete(struct kobject *kobj,
 		if (!boot_complete && (enable == 1)) {
 			set_cpuqos_mode(BALANCE);
 			boot_complete = 1;
+			css_map();
 			pr_info("cpuqos working!\n");
 		}
 	}
@@ -747,17 +731,14 @@ static void __init __map_css_pd(struct cgroup_subsys_state *css, char *tmp, int 
 	cgroup_path(css->cgroup, tmp, pathlen);
 
 	for (i = 0; i < ARRAY_SIZE(cpuqos_v3_path_pd_map); i++) {
-		if (!strcmp(cpuqos_v3_path_pd_map[i], tmp)) {
+		if (!strcmp(cpuqos_v3_path_pd_map[i], tmp) && (css->id >= 0)) {
 			WRITE_ONCE(cpuqos_v3_group_css_map[i], css->id);
 
 			if (cpuqos_perf_mode == DISABLE)
 				WRITE_ONCE(cpuqos_v3_css_pd_map[css->id], PD0);
 
 			/* init group_pd */
-			if (!strcmp(cpuqos_v3_path_pd_map[i], "/top-app"))
-				WRITE_ONCE(cpuqos_v3_css_pd_map[css->id], PD2);
-			else
-				WRITE_ONCE(cpuqos_v3_css_pd_map[css->id], PD3);
+			WRITE_ONCE(cpuqos_v3_css_pd_map[css->id], mtk_cpuqos_map(css->id));
 
 			pr_info("group_id=%d, path=%s, cpuqos_v3_path=%s, css_id=%d, group_css=%d, pd_map=%d\n",
 				i, tmp, cpuqos_v3_path_pd_map[i], css->id,
