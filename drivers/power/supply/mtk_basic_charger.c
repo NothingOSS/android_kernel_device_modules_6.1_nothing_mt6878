@@ -540,11 +540,15 @@ static int do_algorithm(struct mtk_charger *info)
 			charger_dev_enable(info->chg1_dev, true);
 	}
 
-	if (info->chg1_dev != NULL)
+	if (info->chg1_dev != NULL) {
 		charger_dev_dump_registers(info->chg1_dev);
+		charger_dev_kick_wdt(info->chg1_dev);
+	}
 
-	if (info->chg2_dev != NULL)
+	if (info->chg2_dev != NULL) {
 		charger_dev_dump_registers(info->chg2_dev);
+		charger_dev_kick_wdt(info->chg2_dev);
+	}
 
 	if (info->bkbstchg_dev != NULL)
 		charger_dev_dump_registers(info->bkbstchg_dev);

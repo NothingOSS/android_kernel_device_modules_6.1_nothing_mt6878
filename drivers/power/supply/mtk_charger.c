@@ -2237,7 +2237,6 @@ static void mtk_chg_get_tchg(struct mtk_charger *info)
 	int ret;
 	int tchg_min = -127, tchg_max = -127;
 	struct charger_data *pdata;
-	bool en = false;
 
 	pdata = &info->chg_data[CHG1_SETTING];
 	ret = charger_dev_get_temperature(info->chg1_dev, &tchg_min, &tchg_max);
@@ -2265,65 +2264,57 @@ static void mtk_chg_get_tchg(struct mtk_charger *info)
 
 	if (info->dvchg1_dev) {
 		pdata = &info->chg_data[DVCHG1_SETTING];
-		pdata->junction_temp_min = -127;
-		pdata->junction_temp_max = -127;
-		ret = charger_dev_is_enabled(info->dvchg1_dev, &en);
-		if (ret >= 0 && en) {
-			ret = charger_dev_get_adc(info->dvchg1_dev,
-						  ADC_CHANNEL_TEMP_JC,
-						  &tchg_min, &tchg_max);
-			if (ret >= 0) {
-				pdata->junction_temp_min = tchg_min;
-				pdata->junction_temp_max = tchg_max;
-			}
+		ret = charger_dev_get_adc(info->dvchg1_dev,
+					  ADC_CHANNEL_TEMP_JC,
+					  &tchg_min, &tchg_max);
+		if (ret < 0) {
+			pdata->junction_temp_min = -127;
+			pdata->junction_temp_max = -127;
+		} else {
+			pdata->junction_temp_min = tchg_min;
+			pdata->junction_temp_max = tchg_max;
 		}
 	}
 
 	if (info->dvchg2_dev) {
 		pdata = &info->chg_data[DVCHG2_SETTING];
-		pdata->junction_temp_min = -127;
-		pdata->junction_temp_max = -127;
-		ret = charger_dev_is_enabled(info->dvchg2_dev, &en);
-		if (ret >= 0 && en) {
-			ret = charger_dev_get_adc(info->dvchg2_dev,
-						  ADC_CHANNEL_TEMP_JC,
-						  &tchg_min, &tchg_max);
-			if (ret >= 0) {
-				pdata->junction_temp_min = tchg_min;
-				pdata->junction_temp_max = tchg_max;
-			}
+		ret = charger_dev_get_adc(info->dvchg2_dev,
+					  ADC_CHANNEL_TEMP_JC,
+					  &tchg_min, &tchg_max);
+		if (ret < 0) {
+			pdata->junction_temp_min = -127;
+			pdata->junction_temp_max = -127;
+		} else {
+			pdata->junction_temp_min = tchg_min;
+			pdata->junction_temp_max = tchg_max;
 		}
 	}
 
 	if (info->hvdvchg1_dev) {
 		pdata = &info->chg_data[HVDVCHG1_SETTING];
-		pdata->junction_temp_min = -127;
-		pdata->junction_temp_max = -127;
-		ret = charger_dev_is_enabled(info->hvdvchg1_dev, &en);
-		if (ret >= 0 && en) {
-			ret = charger_dev_get_adc(info->hvdvchg1_dev,
-						  ADC_CHANNEL_TEMP_JC,
-						  &tchg_min, &tchg_max);
-			if (ret >= 0) {
-				pdata->junction_temp_min = tchg_min;
-				pdata->junction_temp_max = tchg_max;
-			}
+		ret = charger_dev_get_adc(info->hvdvchg1_dev,
+					  ADC_CHANNEL_TEMP_JC,
+					  &tchg_min, &tchg_max);
+		if (ret < 0) {
+			pdata->junction_temp_min = -127;
+			pdata->junction_temp_max = -127;
+		} else {
+			pdata->junction_temp_min = tchg_min;
+			pdata->junction_temp_max = tchg_max;
 		}
 	}
 
 	if (info->hvdvchg2_dev) {
 		pdata = &info->chg_data[HVDVCHG2_SETTING];
-		pdata->junction_temp_min = -127;
-		pdata->junction_temp_max = -127;
-		ret = charger_dev_is_enabled(info->hvdvchg2_dev, &en);
-		if (ret >= 0 && en) {
-			ret = charger_dev_get_adc(info->hvdvchg2_dev,
-						  ADC_CHANNEL_TEMP_JC,
-						  &tchg_min, &tchg_max);
-			if (ret >= 0) {
-				pdata->junction_temp_min = tchg_min;
-				pdata->junction_temp_max = tchg_max;
-			}
+		ret = charger_dev_get_adc(info->hvdvchg2_dev,
+					  ADC_CHANNEL_TEMP_JC,
+					  &tchg_min, &tchg_max);
+		if (ret < 0) {
+			pdata->junction_temp_min = -127;
+			pdata->junction_temp_max = -127;
+		} else {
+			pdata->junction_temp_min = tchg_min;
+			pdata->junction_temp_max = tchg_max;
 		}
 	}
 }
@@ -3549,14 +3540,17 @@ int notify_adapter_event(struct notifier_block *notifier,
 			unsigned long evt, void *val)
 {
 	struct mtk_charger *pinfo = NULL;
+	u32 boot_mode = 0;
+	bool report_psy = true;
 
 	chr_err("%s %lu\n", __func__, evt);
 
 	pinfo = container_of(notifier,
 		struct mtk_charger, pd_nb);
+	boot_mode = pinfo->bootmode;
 
 	switch (evt) {
-	case  MTK_PD_CONNECT_NONE:
+	case MTK_PD_CONNECT_NONE:
 		mutex_lock(&pinfo->pd_lock);
 		chr_err("PD Notify Detach\n");
 		pinfo->pd_type = MTK_PD_CONNECT_NONE;
@@ -3577,9 +3571,20 @@ int notify_adapter_event(struct notifier_block *notifier,
 		/* reset PE40 */
 		break;
 
+	case MTK_PD_CONNECT_SOFT_RESET:
+		mutex_lock(&pinfo->pd_lock);
+		chr_err("PD Notify SoftReset\n");
+		pinfo->pd_type = MTK_PD_CONNECT_SOFT_RESET;
+		pinfo->pd_reset = false;
+		mutex_unlock(&pinfo->pd_lock);
+		mtk_chg_alg_notify_call(pinfo, EVT_SOFTRESET, 0);
+		_wake_up_charger(pinfo);
+		/* reset PE50 */
+		break;
+
 	case MTK_PD_CONNECT_PE_READY_SNK:
 		mutex_lock(&pinfo->pd_lock);
-		chr_err("PD Notify fixe voltage ready\n");
+		chr_err("PD Notify fixed voltage ready\n");
 		pinfo->pd_type = MTK_PD_CONNECT_PE_READY_SNK;
 		pinfo->pd_reset = false;
 		mutex_unlock(&pinfo->pd_lock);
@@ -3620,11 +3625,19 @@ int notify_adapter_event(struct notifier_block *notifier,
 		if (pinfo->water_detected == true) {
 			pinfo->notify_code |= CHG_TYPEC_WD_STATUS;
 			pinfo->record_water_detected = true;
-		} else
+			if (boot_mode == 8 || boot_mode == 9)
+				pinfo->enable_hv_charging = false;
+		} else {
 			pinfo->notify_code &= ~CHG_TYPEC_WD_STATUS;
+			if (boot_mode == 8 || boot_mode == 9)
+				pinfo->enable_hv_charging = true;
+		}
 		mtk_chgstat_notify(pinfo);
+		report_psy = boot_mode == 8 || boot_mode == 9;
 		break;
 	}
+	if (report_psy)
+		power_supply_changed(pinfo->psy1);
 	return NOTIFY_DONE;
 }
 
