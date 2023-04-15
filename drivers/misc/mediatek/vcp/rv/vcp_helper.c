@@ -515,11 +515,8 @@ void vcp_schedule_reset_work(struct vcp_work_struct *vcp_ws)
 	if (mmup_enable_count() > 0)
 		queue_work(vcp_reset_workqueue, &vcp_ws->work);
 #if VCP_RECOVERY_SUPPORT
-	else {
-		mutex_lock(&vcp_A_notify_mutex);
+	else
 		__pm_relax(vcp_reset_lock);
-		mutex_unlock(&vcp_A_notify_mutex);
-	}
 #endif
 }
 
@@ -635,11 +632,8 @@ static void vcp_wait_ready_timeout(struct timer_list *t)
 #if VCP_RECOVERY_SUPPORT
 	if (vcp_timeout_times < 10)
 		vcp_send_reset_wq(RESET_TYPE_TIMEOUT);
-	else {
-		mutex_lock(&vcp_A_notify_mutex);
+	else
 		__pm_relax(vcp_reset_lock);
-		mutex_unlock(&vcp_A_notify_mutex);
-	}
 #endif
 	vcp_timeout_times++;
 	pr_notice("[VCP] vcp_timeout_times=%x\n", vcp_timeout_times);
@@ -2283,10 +2277,8 @@ void vcp_send_reset_wq(enum VCP_RESET_TYPE type)
 {
 	vcp_sys_reset_work.flags = (unsigned int) type;
 	vcp_sys_reset_work.id = VCP_A_ID;
-	if (vcp_reset_counts > 0) {
-		vcp_reset_counts--;
-		vcp_schedule_reset_work(&vcp_sys_reset_work);
-	}
+	vcp_reset_counts--;
+	vcp_schedule_reset_work(&vcp_sys_reset_work);
 }
 #endif
 
