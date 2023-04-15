@@ -16,6 +16,9 @@ endif
 ifdef MTK_GKI_BUILD_CONFIG
 KERNEL_MAKE_DEPENDENCIES += $(shell find kernel/$(REL_ACK_DIR)/ -name .git -prune -o -type f | sort)
 endif
+ifneq ($(wildcard kernel/build),)
+KERNEL_MAKE_DEPENDENCIES += $(shell find kernel/build -name .git -prune -o -type f | sort)
+endif
 
 $(GEN_KERNEL_BUILD_CONFIG): PRIVATE_GEN_BUILD_CONFIG := $(REL_KERNEL_DIR)/scripts/gen_build_config.py
 $(GEN_KERNEL_BUILD_CONFIG): PRIVATE_KERNEL_DEFCONFIG := $(KERNEL_DEFCONFIG)
@@ -28,6 +31,7 @@ $(GEN_KERNEL_BUILD_CONFIG): $(KERNEL_DIR)/scripts/gen_build_config.py $(wildcard
 	$(hide) cd kernel && python $(PRIVATE_GEN_BUILD_CONFIG) --kernel-defconfig $(PRIVATE_KERNEL_DEFCONFIG) --kernel-defconfig-overlays "$(PRIVATE_KERNEL_DEFCONFIG_OVERLAYS)" --kernel-build-config-overlays "$(PRIVATE_KERNEL_BUILD_CONFIG_OVERLAYS)" -m $(TARGET_BUILD_VARIANT) -o $(PRIVATE_KERNEL_BUILD_CONFIG) && cd ..
 
 ifeq (yes,$(strip $(BUILD_KERNEL)))
+ifneq ($(KERNEL_USE_BAZEL),yes)
 $(KERNEL_ZIMAGE_OUT): .KATI_IMPLICIT_OUTPUTS += $(TARGET_KERNEL_CONFIG)
 $(KERNEL_ZIMAGE_OUT): PRIVATE_DIR := $(KERNEL_DIR)
 $(KERNEL_ZIMAGE_OUT): PRIVATE_KERNEL_OUT := $(REL_KERNEL_OUT)
@@ -47,9 +51,26 @@ $(KERNEL_ZIMAGE_OUT): $(GEN_KERNEL_BUILD_CONFIG) $(KERNEL_MAKE_DEPENDENCIES) | k
 	$(hide) mkdir -p $(dir $@)
 	$(hide) cd kernel && CC_WRAPPER=$(PRIVATE_CC_WRAPPER) SKIP_MRPROPER=1 BUILD_CONFIG=$(PRIVATE_KERNEL_BUILD_CONFIG) OUT_DIR=$(PRIVATE_KERNEL_OUT) DIST_DIR=$(PRIVATE_DIST_DIR) $(PRIVATE_KERNEL_BUILD_SCRIPT) && cd ..
 	$(hide) $(call fixup-kernel-cmd-file,$(KERNEL_OUT)/arch/$(KERNEL_TARGET_ARCH)/boot/compressed/.piggy.xzkern.cmd)
+else
+$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_FLAG := $(addprefix --//build/bazel_mgk_rules:,kernel_version=$(patsubst kernel-%,%,$(LINUX_KERNEL_VERSION)) $(patsubst %.config,%_config,$(KERNEL_DEFCONFIG_OVERLAYS))) --sandbox_debug
+$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_OUT := $(KERNEL_BAZEL_BUILD_OUT)
+$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_DIST_OUT := $(KERNEL_BAZEL_DIST_OUT)
+ifneq ($(wildcard vendor/mediatek/internal),)
+$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_GOAL := //$(patsubst kernel/%,%,$(KERNEL_DIR)):mgk_internal_modules_install.$(strip $(KERNEL_BUILD_VARIANT))
+$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_DIST_GOAL := //$(patsubst kernel/%,%,$(KERNEL_DIR)):mgk_internal_dist.$(strip $(KERNEL_BUILD_VARIANT))
+else
+$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_GOAL := //$(patsubst kernel/%,%,$(KERNEL_DIR)):mgk_customer_modules_install.$(strip $(KERNEL_BUILD_VARIANT))
+$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_DIST_GOAL := //$(patsubst kernel/%,%,$(KERNEL_DIR)):mgk_customer_dist.$(strip $(KERNEL_BUILD_VARIANT))
+endif
+$(KERNEL_ZIMAGE_OUT): $(KERNEL_MAKE_DEPENDENCIES)
+	$(hide) cd kernel && export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) build $(PRIVATE_BAZEL_BUILD_FLAG) $(PRIVATE_BAZEL_BUILD_GOAL)
+	$(hide) cd kernel && export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) run $(PRIVATE_BAZEL_BUILD_FLAG) $(PRIVATE_BAZEL_DIST_GOAL) -- --dist_dir=$(abspath $(PRIVATE_BAZEL_DIST_OUT))
+endif
 
+ifneq ($(BUILT_KERNEL_TARGET),$(KERNEL_ZIMAGE_OUT))
 $(BUILT_KERNEL_TARGET): $(KERNEL_ZIMAGE_OUT) $(LOCAL_PATH)/Android.mk | $(ACP)
 	$(copy-file-to-target)
+endif
 
 $(TARGET_PREBUILT_KERNEL): $(BUILT_KERNEL_TARGET) $(LOCAL_PATH)/Android.mk | $(ACP)
 	$(copy-file-to-new-target)
@@ -77,8 +98,16 @@ menuconfig-kernel savedefconfig-kernel:
 	$(hide) mkdir -p $(KERNEL_OUT)
 	$(PREBUILT_MAKE_PREFIX)/$(MAKE) -C $(KERNEL_DIR) $(KERNEL_MAKE_OPTION) $(patsubst %config-kernel,%config,$@)
 
+ifneq ($(KERNEL_USE_BAZEL),yes)
 clean-kernel:
 	$(hide) rm -rf $(KERNEL_OUT) $(INSTALLED_KERNEL_TARGET)
+else
+clean-kernel: PRIVATE_BAZEL_BUILD_OUT := $(KERNEL_BAZEL_BUILD_OUT)
+clean-kernel: PRIVATE_BAZEL_DIST_OUT := $(KERNEL_BAZEL_DIST_OUT)
+clean-kernel:
+	$(hide) cd kernel && export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) clean
+	$(hide) rm -rf $(PRIVATE_BAZEL_BUILD_OUT) $(PRIVATE_BAZEL_DIST_OUT)
+endif
 
 .PHONY: kernel-outputmakefile
 kernel-outputmakefile: PRIVATE_DIR := kernel/$(REL_ACK_DIR)

@@ -43,6 +43,7 @@ endif
         KERNEL_ZIMAGE_OUT := $(KERNEL_OUT)/arch/$(KERNEL_TARGET_ARCH)/boot/Image.$(MTK_KERNEL_COMPRESS_FORMAT)
       endif
 
+     ifneq ($(KERNEL_USE_BAZEL),yes)
       ifdef MTK_GKI_PREBUILTS_DIR
           KERNEL_ZIMAGE_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/Image.$(MTK_KERNEL_COMPRESS_FORMAT)
       else
@@ -50,6 +51,11 @@ endif
           KERNEL_ZIMAGE_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/dist/Image.$(MTK_KERNEL_COMPRESS_FORMAT)
         endif
       endif
+     else
+          KERNEL_BAZEL_BUILD_OUT ?= $(TARGET_OUT_INTERMEDIATES)/KLEAF_OBJ
+          KERNEL_BAZEL_DIST_OUT := $(KERNEL_BAZEL_BUILD_OUT)/dist
+          KERNEL_ZIMAGE_OUT := $(KERNEL_BAZEL_DIST_OUT)/$(REL_ACK_DIR)/kernel_aarch64.$(KERNEL_BUILD_VARIANT)/Image.$(MTK_KERNEL_COMPRESS_FORMAT)
+     endif
     else
       ifeq ($(MTK_APPENDED_DTB_SUPPORT), yes)
         KERNEL_ZIMAGE_OUT := $(KERNEL_OUT)/arch/$(KERNEL_TARGET_ARCH)/boot/zImage-dtb
@@ -60,7 +66,11 @@ endif
     TARGET_KERNEL_CONFIG := $(KERNEL_OUT)/.config
     endif#BUILD_KERNEL
 
+    ifneq ($(KERNEL_USE_BAZEL),yes)
     BUILT_KERNEL_TARGET := $(KERNEL_ZIMAGE_OUT).bin
+    else
+    BUILT_KERNEL_TARGET := $(KERNEL_ZIMAGE_OUT)
+    endif
     ifneq ($(strip $(TARGET_NO_KERNEL)),true)
     INSTALLED_KERNEL_TARGET := $(PRODUCT_OUT)/kernel
     endif
