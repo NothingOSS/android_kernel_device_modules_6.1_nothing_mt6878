@@ -209,9 +209,11 @@ static void mtk_mdp_rdma_unprepare(struct mtk_ddp_comp *comp)
 static unsigned int mdp_rdma_fmt_convert(unsigned int fmt)
 {
 	switch (fmt) {
-	case DRM_FORMAT_BGR888:
+	case DRM_FORMAT_BGR888:	//0x34324742 for meta data
 		return MEM_MODE_INPUT_FORMAT_RGB888 | SWAP | BIT_NUMBER_8BIT;
-	case DRM_FORMAT_P010:
+	case DRM_FORMAT_RGB888: //0x34324752 for pattern
+		return MEM_MODE_INPUT_FORMAT_RGB888 | BIT_NUMBER_8BIT;
+	case DRM_FORMAT_P010:	//0x30313050
 		/* need use NV12 10bit mode*/
 		return MEM_MODE_INPUT_FORMAT_NV12 | BIT_NUMBER_10BIT |
 			LOOSE;
@@ -260,7 +262,7 @@ static int mtk_mdp_rdma_yuv_convert(enum mtk_drm_dataspace plane_ds)
 	return ret;
 }
 
-static void mtk_mdp_rdma_fill_config(struct mtk_ddp_comp *comp,
+static void mtk_mdp_rdma_pattern_config(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, unsigned int fill_h, unsigned int cfg_h)
 {
 	struct mtk_disp_mdp_rdma *mdp_rdma = comp_to_mdp_rdma(comp);
@@ -269,7 +271,7 @@ static void mtk_mdp_rdma_fill_config(struct mtk_ddp_comp *comp,
 	struct mtk_drm_gem_obj *mtk_gem;
 	struct drm_mode_fb_cmd2 mode = {0};
 	unsigned int width, pitch;
-	unsigned int fmt = DRM_FORMAT_BGR888;
+	unsigned int fmt = DRM_FORMAT_RGB888;
 	int Bpp;
 	struct cmdq_client *client;
 	struct cmdq_pkt *cfg_handle;
@@ -303,7 +305,6 @@ static void mtk_mdp_rdma_fill_config(struct mtk_ddp_comp *comp,
 		//no config any plane
 		cfg_handle = handle;
 	}
-	DDPINFO("[discrete] fill frame use hnd:0x%lx\n", (unsigned long)cfg_handle);
 
 	addr = mtk_gem->dma_addr;
 	con = mdp_rdma_fmt_convert(fmt);
@@ -313,10 +314,10 @@ static void mtk_mdp_rdma_fill_config(struct mtk_ddp_comp *comp,
 	if (mtk_crtc->is_dual_pipe)
 		width /= 2;
 
-	DDPINFO("[discrete] comp:%s, already_cfg_h:%d, hnd:0x%lx\n",
-		mtk_dump_comp_str_id(comp->id),	cfg_h, (unsigned long)cfg_handle);
-	DDPINFO("[discrete] addr:0x%lx, pitch:%d, WxH:%dx%d, fmt:0x%x, con:0x%x\n",
-		(unsigned long)addr, pitch, width, fill_h, DRM_FORMAT_RGB888, con);
+	DDPINFO("[discrete] comp:%s, already_cfg_h:%d, WxH:%dx%d\n",
+		mtk_dump_comp_str_id(comp->id), cfg_h, width, fill_h);
+	DDPINFO("[discrete] addr:0x%lx, pitch:%d, fmt:DRM_FORMAT_RGB888, con:0x%x, hnd:0x%lx\n",
+		(unsigned long)addr, pitch, con, (unsigned long)cfg_handle);
 
 	//1. addr
 	cmdq_pkt_write(cfg_handle, comp->cmdq_base,
@@ -354,7 +355,7 @@ static void mtk_mdp_rdma_fill_config(struct mtk_ddp_comp *comp,
 	}
 }
 
-static void mtk_mdp_rdma_fill_frame(struct mtk_ddp_comp *comp,
+static void mtk_mdp_rdma_frame_check(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle)
 {
 	struct mtk_disp_mdp_rdma *mdp_rdma = comp_to_mdp_rdma(comp);
@@ -369,23 +370,20 @@ static void mtk_mdp_rdma_fill_frame(struct mtk_ddp_comp *comp,
 	}
 	crtc = &mtk_crtc->base;
 	crtc_index = drm_crtc_index(crtc);
-	height = crtc->state->adjusted_mode.vdisplay;
+	height = crtc->state->adjusted_mode.vdisplay; //panel height
 
-	cfg_h = mdp_rdma->cfg_h;
+	cfg_h = mdp_rdma->cfg_h; //rdma config height
 	mdp_rdma->cfg_h = 0;
 
-	if (height < cfg_h) {
-		DDPPR_ERR("[discrete] out_h:%d < already_cfg_h:%d\n",
-			height, cfg_h);
-		return;
-	} else if (height == cfg_h)
-		return;
-
-	fill_h = height - cfg_h;
-	DDPINFO("[discrete] out_h:%d, already_cfg_h:%d, need_fill:%d\n",
-		height, cfg_h, fill_h);
-	CRTC_MMP_MARK(crtc_index, discrete_fill, cfg_h, fill_h);
-	mtk_mdp_rdma_fill_config(comp, handle, fill_h, cfg_h);
+	if (height > cfg_h) {
+		fill_h = height - cfg_h;
+		DDPINFO("[discrete] %s, out_h:%d, already_cfg_h:%d, need_fill:%d\n",
+			__func__, height, cfg_h, fill_h);
+		CRTC_MMP_MARK(crtc_index, discrete_fill, cfg_h, fill_h);
+		mtk_mdp_rdma_pattern_config(comp, handle, fill_h, cfg_h);
+	} else if (height < cfg_h)
+		DDPINFO("[discrete]%s, ERROR out_h:%d < already_cfg_h:%d\n",
+			__func__, height, cfg_h);
 }
 
 static void mtk_mdp_rdma_config(struct mtk_ddp_comp *comp,
@@ -395,10 +393,11 @@ static void mtk_mdp_rdma_config(struct mtk_ddp_comp *comp,
 
 	mdp_rdma->cfg_h = cfg->h;
 	DDPINFO("[discrete] %s fill_out_h:%d\n", __func__, cfg->h);
-	mtk_mdp_rdma_fill_config(comp, handle, cfg->h, 0);
+	mtk_mdp_rdma_pattern_config(comp, handle, cfg->h, 0);
+	mdp_rdma->cfg_h = 0;
 }
 
-static bool mtk_mdp_rdma_config_check(struct mtk_plane_pending_state *pending)
+static bool mtk_mdp_rdma_format_check(struct mtk_plane_pending_state *pending)
 {
 	unsigned int con = 0;
 
@@ -415,7 +414,7 @@ static bool mtk_mdp_rdma_config_check(struct mtk_plane_pending_state *pending)
 	return true;
 }
 
-static void _mtk_mdp_rdma_layer_config(struct mtk_ddp_comp *comp,
+static void mtk_mdp_rdma_layer_config_core(struct mtk_ddp_comp *comp,
 		unsigned int idx, struct mtk_plane_state *state, struct cmdq_pkt *handle)
 {
 	struct mtk_disp_mdp_rdma *mdp_rdma = comp_to_mdp_rdma(comp);
@@ -526,13 +525,13 @@ static void mtk_mdp_rdma_layer_config(struct mtk_ddp_comp *comp,
 	struct cmdq_client *client;
 	struct cmdq_pkt *pending_handle;
 
-	if (!mtk_mdp_rdma_config_check(pending))
+	if (!mtk_mdp_rdma_format_check(pending))
 		return;
 
 	if (idx == 0) {
 		//plane0 config, need clear prev atomic commit frame done event
 		mtk_crtc_clr_comp_done(mtk_crtc, handle, comp, 0);
-		_mtk_mdp_rdma_layer_config(comp, idx, state, handle);
+		mtk_mdp_rdma_layer_config_core(comp, idx, state, handle);
 		return;
 	}
 
@@ -549,7 +548,7 @@ static void mtk_mdp_rdma_layer_config(struct mtk_ddp_comp *comp,
 
 	mtk_crtc_wait_comp_done(mtk_crtc, pending_handle, comp, 0);
 
-	_mtk_mdp_rdma_layer_config(comp, idx, state, pending_handle);
+	mtk_mdp_rdma_layer_config_core(comp, idx, state, pending_handle);
 
 	mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, comp->id,
 		0, pending_handle, 1);
@@ -565,7 +564,7 @@ static int mtk_mdp_rdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 	switch (cmd) {
 	case MDP_RDMA_FILL_FRAME:
 	{
-		mtk_mdp_rdma_fill_frame(comp, handle);
+		mtk_mdp_rdma_frame_check(comp, handle);
 	}
 		break;
 	case PMQOS_SET_HRT_BW:
