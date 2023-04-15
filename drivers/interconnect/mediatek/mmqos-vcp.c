@@ -294,7 +294,7 @@ MODULE_PARM_DESC(vcp_log, "mmqos vcp log");
 
 void mmqos_start_test_id(u32 test_id)
 {
-	int ret;
+	int ret = 0;
 
 	MMQOS_DBG("start test_id:%d", test_id);
 	if (test_id < VCP_TEST_NUM) {
