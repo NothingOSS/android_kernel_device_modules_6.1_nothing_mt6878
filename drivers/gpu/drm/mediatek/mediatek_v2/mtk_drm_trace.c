@@ -20,8 +20,10 @@
 
 static noinline int tracing_mark_write(const char *buf)
 {
+#if IS_ENABLED(CONFIG_MTK_DISP_LOGGER)
 #ifdef CONFIG_TRACING
 	trace_puts(buf);
+#endif
 #endif
 
 	return 0;
