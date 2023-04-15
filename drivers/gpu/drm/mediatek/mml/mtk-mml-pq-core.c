@@ -768,6 +768,11 @@ static int set_sub_task(struct mml_task *task,
 			MML_MAX_OUTPUTS * sizeof(struct mml_pq_param));
 		memcpy(&sub_task->frame_data.frame_out, &task->config->frame_out,
 			MML_MAX_OUTPUTS * sizeof(struct mml_frame_size));
+		memcpy(&sub_task->frame_data.size_info.frame_in_crop_s[0],
+			&task->config->frame_in_crop[0],
+			MML_MAX_OUTPUTS *sizeof(struct mml_crop));
+		memcpy(&sub_task->frame_data.size_info.frame_in_s,
+			&task->config->frame_in, sizeof(struct mml_frame_size));
 		sub_task->readback_data.is_dual = task->config->dual;
 		mml_pq_msg("%s called, job_id[%d] sub_task[%p] mode[%d] format[%d]", __func__,
 			task->job.jobid, &pq_task->comp_config,
@@ -844,6 +849,8 @@ static int set_readback_sub_task(struct mml_pq_task *pq_task,
 			sizeof(struct mml_frame_info));
 		memcpy(&sub_task->frame_data.frame_out, &frame_data.frame_out,
 			MML_MAX_OUTPUTS * sizeof(struct mml_frame_size));
+		memcpy(&sub_task->frame_data.size_info, &frame_data.size_info,
+			sizeof(struct mml_pq_frame_info));
 		sub_task->readback_data.is_dual = dual;
 
 		mml_pq_msg("%s called, job_id[%d] sub_task[%p] mode[%d] format[%d]", __func__,
@@ -1641,6 +1648,13 @@ static int mml_pq_tile_init_ioctl(unsigned long data)
 		goto wake_up_tile_init_task;
 	}
 
+	ret = copy_to_user(&user_job->size_info, &new_sub_task->frame_data.size_info,
+		sizeof(struct mml_pq_frame_info));
+	if (unlikely(ret)) {
+		mml_pq_err("err: fail to copy to user frame size_info: %d\n", ret);
+		goto wake_up_tile_init_task;
+	}
+
 	ret = copy_to_user(user_job->param, new_sub_task->frame_data.pq_param,
 		MML_MAX_OUTPUTS * sizeof(struct mml_pq_param));
 	if (unlikely(ret)) {
@@ -1907,6 +1921,13 @@ static int mml_pq_comp_config_ioctl(unsigned long data)
 		goto wake_up_comp_config_task;
 	}
 
+	ret = copy_to_user(&user_job->size_info, &new_sub_task->frame_data.size_info,
+		sizeof(struct mml_pq_frame_info));
+	if (unlikely(ret)) {
+		mml_pq_err("err: fail to copy to user frame size_info: %d\n", ret);
+		goto wake_up_comp_config_task;
+	}
+
 	ret = copy_to_user(user_job->param, new_sub_task->frame_data.pq_param,
 		MML_MAX_OUTPUTS * sizeof(struct mml_pq_param));
 	if (unlikely(ret)) {
@@ -1983,6 +2004,13 @@ static int mml_pq_aal_readback_ioctl(unsigned long data)
 		sizeof(struct mml_frame_info));
 	if (unlikely(ret)) {
 		mml_pq_err("err: fail to copy to user frame info: %d\n", ret);
+		goto wake_up_aal_readback_task;
+	}
+
+	ret = copy_to_user(&user_job->size_info, &new_sub_task->frame_data.size_info,
+		sizeof(struct mml_pq_frame_info));
+	if (unlikely(ret)) {
+		mml_pq_err("err: fail to copy to user frame size_info: %d\n", ret);
 		goto wake_up_aal_readback_task;
 	}
 
@@ -2123,6 +2151,13 @@ static int mml_pq_hdr_readback_ioctl(unsigned long data)
 		goto wake_up_hdr_readback_task;
 	}
 
+	ret = copy_to_user(&user_job->size_info, &new_sub_task->frame_data.size_info,
+		sizeof(struct mml_pq_frame_info));
+	if (unlikely(ret)) {
+		mml_pq_err("err: fail to copy to user frame size_info: %d\n", ret);
+		goto wake_up_hdr_readback_task;
+	}
+
 	ret = copy_to_user(user_job->param, new_sub_task->frame_data.pq_param,
 		MML_MAX_OUTPUTS * sizeof(struct mml_pq_param));
 	if (unlikely(ret)) {
@@ -2240,6 +2275,13 @@ static int mml_pq_rsz_callback_ioctl(unsigned long data)
 		goto wake_up_rsz_callback_task;
 	}
 
+	ret = copy_to_user(&user_job->size_info, &new_sub_task->frame_data.size_info,
+		sizeof(struct mml_pq_frame_info));
+	if (unlikely(ret)) {
+		mml_pq_err("err: fail to copy to user frame size_info: %d\n", ret);
+		goto wake_up_rsz_callback_task;
+	}
+
 	ret = copy_to_user(user_job->param, new_sub_task->frame_data.pq_param,
 		MML_MAX_OUTPUTS * sizeof(struct mml_pq_param));
 	if (unlikely(ret)) {
@@ -2326,6 +2368,13 @@ static int mml_pq_clarity_readback_ioctl(unsigned long data)
 		sizeof(struct mml_frame_info));
 	if (unlikely(ret)) {
 		mml_pq_err("err: fail to copy to user frame info: %d\n", ret);
+		goto wake_up_clarity_readback_task;
+	}
+
+	ret = copy_to_user(&user_job->size_info, &new_sub_task->frame_data.size_info,
+		sizeof(struct mml_pq_frame_info));
+	if (unlikely(ret)) {
+		mml_pq_err("err: fail to copy to user frame size_info: %d\n", ret);
 		goto wake_up_clarity_readback_task;
 	}
 
@@ -2469,6 +2518,13 @@ static int mml_pq_dc_readback_ioctl(unsigned long data)
 		sizeof(struct mml_frame_info));
 	if (unlikely(ret)) {
 		mml_pq_err("err: fail to copy to user frame info: %d\n", ret);
+		goto wake_up_dc_readback_task;
+	}
+
+	ret = copy_to_user(&user_job->size_info, &new_sub_task->frame_data.size_info,
+		sizeof(struct mml_pq_frame_info));
+	if (unlikely(ret)) {
+		mml_pq_err("err: fail to copy to user frame size_info: %d\n", ret);
 		goto wake_up_dc_readback_task;
 	}
 

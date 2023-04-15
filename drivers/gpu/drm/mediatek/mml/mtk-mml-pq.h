@@ -42,6 +42,11 @@ struct mml_pq_tile_init_result {
 	bool is_set_test;
 };
 
+struct mml_pq_frame_info {
+	struct mml_crop frame_in_crop_s[MML_MAX_OUTPUTS];
+	struct mml_frame_size frame_in_s;
+};
+
 struct mml_pq_tile_init_job {
 	/* input from user-space */
 	u32 result_job_id;
@@ -51,6 +56,7 @@ struct mml_pq_tile_init_job {
 	u32 new_job_id;
 	struct mml_frame_info info;
 	struct mml_frame_size dst[MML_MAX_OUTPUTS];
+	struct mml_pq_frame_info size_info;
 	struct mml_pq_param param[MML_MAX_OUTPUTS];
 };
 
@@ -88,6 +94,7 @@ struct mml_pq_comp_config_job {
 	u32 new_job_id;
 	struct mml_frame_info info;
 	struct mml_frame_size dst[MML_MAX_OUTPUTS];
+	struct mml_pq_frame_info size_info;
 	struct mml_pq_param param[MML_MAX_OUTPUTS];
 };
 
@@ -107,6 +114,7 @@ struct mml_pq_aal_readback_job {
 	struct mml_pq_aal_readback_result *result;
 	u32 new_job_id;
 	struct mml_frame_info info;
+	struct mml_pq_frame_info size_info;
 	struct mml_pq_param param[MML_MAX_OUTPUTS];
 };
 
@@ -126,6 +134,7 @@ struct mml_pq_hdr_readback_job {
 	struct mml_pq_hdr_readback_result *result;
 	u32 new_job_id;
 	struct mml_frame_info info;
+	struct mml_pq_frame_info size_info;
 	struct mml_pq_param param[MML_MAX_OUTPUTS];
 };
 
@@ -136,6 +145,7 @@ struct mml_pq_rsz_callback_job {
 	/* output to user-space */
 	u32 new_job_id;
 	struct mml_frame_info info;
+	struct mml_pq_frame_info size_info;
 	struct mml_pq_param param[MML_MAX_OUTPUTS];
 };
 
@@ -155,6 +165,7 @@ struct mml_pq_clarity_readback_job {
 	struct mml_pq_clarity_readback_result *result;
 	u32 new_job_id;
 	struct mml_frame_info info;
+	struct mml_pq_frame_info size_info;
 	struct mml_pq_param param[MML_MAX_OUTPUTS];
 };
 
@@ -174,6 +185,7 @@ struct mml_pq_dc_readback_job {
 	struct mml_pq_dc_readback_result *result;
 	u32 new_job_id;
 	struct mml_frame_info info;
+	struct mml_pq_frame_info size_info;
 	struct mml_pq_param param[MML_MAX_OUTPUTS];
 };
 

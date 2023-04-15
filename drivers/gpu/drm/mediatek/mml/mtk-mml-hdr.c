@@ -332,8 +332,9 @@ static s32 hdr_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 {
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 	struct mml_frame_config *cfg = task->config;
-	const struct mml_frame_dest *dest =
-		&cfg->info.dest[ccfg->node->out_idx];
+	//const struct mml_frame_dest *dest =
+		//&cfg->info.dest[ccfg->node->out_idx];
+	const struct mml_crop *crop = &cfg->frame_in_crop[ccfg->node->out_idx];
 
 	if (IS_ERR_OR_NULL(task) || IS_ERR_OR_NULL(task->pq_task)) {
 		mml_err("%s task or pq_task is NULL", __func__);
@@ -360,15 +361,19 @@ static s32 hdr_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 				sizeof(struct mml_frame_info));
 			memcpy(&hdr->frame_data.frame_out, &task->config->frame_out,
 				MML_MAX_OUTPUTS * sizeof(struct mml_frame_size));
+			memcpy(&hdr->frame_data.size_info.frame_in_crop_s[0],
+				&cfg->frame_in_crop[0],	MML_MAX_OUTPUTS * sizeof(struct mml_crop));
+			memcpy(&hdr->frame_data.size_info.frame_in_s, &cfg->frame_in,
+				sizeof(struct mml_frame_size));
 			hdr->jobid = task->job.jobid;
 
 			if (task->config->dual)
 				hdr->cut_pos_x = cfg->hist_div[ccfg->tile_eng_idx];
 			else
-				hdr->cut_pos_x = dest->crop.r.left+dest->crop.r.width;
+				hdr->cut_pos_x = crop->r.left + crop->r.width;
 
-			hdr->crop_height = dest->crop.r.height;
-			hdr->crop_width = dest->crop.r.width;
+			hdr->crop_height = crop->r.height;
+			hdr->crop_width = crop->r.width;
 			hdr->pipe = ccfg->pipe;
 			hdr->out_idx = ccfg->node->out_idx;
 

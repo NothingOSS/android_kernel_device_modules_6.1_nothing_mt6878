@@ -180,6 +180,7 @@ struct mml_pq_frame_data {
 	struct mml_frame_info info;
 	struct mml_pq_param pq_param[MML_MAX_OUTPUTS];
 	struct mml_frame_size frame_out[MML_MAX_OUTPUTS];
+	struct mml_pq_frame_info size_info;
 };
 
 struct mml_pq_sub_task {
