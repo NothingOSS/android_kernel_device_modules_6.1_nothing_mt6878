@@ -163,13 +163,14 @@ static ssize_t lpm_generic_hwreq_read(char *ToUserBuf,
 						name[k] = ((name_val >> (k<<3)) & 0xFF);
 					name[k] = '\0';
 
-					lpm_hwreq_log(ToUserBuf, sz, len,
-					"%17s 0x%08lx (1: clock not gating; 0: clock gating)\n",
-					name,
-					(unsigned long)lpm_smc_spm_dbg(
-					(node->hwreq_fs)->smc_id_raw, MT_LPM_SMC_ACT_GET,
-					node->hwreq_id,
-					(i << RAW_DATA_TYPE_SHIFT) + RAW_DATA_STA + j));
+					if (name[0] != 0)
+						lpm_hwreq_log(ToUserBuf, sz, len,
+						"%17s 0x%08lx (1: clock not gating; 0: clock gating)\n",
+						name,
+						(unsigned long)lpm_smc_spm_dbg(
+						(node->hwreq_fs)->smc_id_raw, MT_LPM_SMC_ACT_GET,
+						node->hwreq_id,
+						(i << RAW_DATA_TYPE_SHIFT) + RAW_DATA_STA + j));
 						}
 					}
 				}
