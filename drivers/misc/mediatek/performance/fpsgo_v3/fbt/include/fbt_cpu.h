@@ -45,7 +45,9 @@ void fpsgo_sbe2fbt_rescue(struct render_info *thr, int start, int enhance,
 		unsigned long long frame_id);
 void eara2fbt_set_2nd_t2wnt(int pid, unsigned long long buffer_id,
 		unsigned long long t_duration);
-
+int fpsgo_ctrl2fbt_buffer_quota(unsigned long long ts, int pid, int quota,
+	unsigned long long identifier);
+void notify_rl_ko_is_ready(void);
 
 int __init fbt_cpu_init(void);
 void __exit fbt_cpu_exit(void);
@@ -112,6 +114,9 @@ static inline void eara2fbt_set_2nd_t2wnt(int pid, unsigned long long buffer_id,
 			unsigned long long t_duration) { }
 static inline void fbt_set_render_boost_attr(struct render_info *thr) { }
 static inline void fbt_set_render_last_cb(struct render_info *thr, unsigned long long ts) { }
+static inline int fpsgo_ctrl2fbt_buffer_quota(unsigned long long ts, int pid, int quota,
+			unsigned long long identifier) { return 0; }
+static inline void notify_rl_ko_is_ready(void) { }
 #endif
 
 #endif

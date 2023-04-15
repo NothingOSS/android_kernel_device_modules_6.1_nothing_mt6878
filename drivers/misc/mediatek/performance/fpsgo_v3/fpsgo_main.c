@@ -44,6 +44,7 @@ enum FPSGO_NOTIFIER_PUSH_TYPE {
 	FPSGO_NOTIFIER_SWAP_BUFFER          = 0x06,
 	FPSGO_NOTIFIER_SBE_RESCUE           = 0x07,
 	FPSGO_NOTIFIER_ACQUIRE              = 0x08,
+	FPSGO_NOTIFIER_BUFFER_QUOTA         = 0x09,
 };
 
 /* TODO: use union*/
@@ -65,6 +66,7 @@ struct FPSGO_NOTIFIER_PUSH_TAG {
 	int create;
 
 	int dfrc_fps;
+	int buffer_quota;
 
 	int enhance;
 	unsigned long long frameID;
@@ -128,6 +130,17 @@ static void fpsgo_notifier_wq_cb_sbe_rescue(int pid, int start, int enhance,
 		return;
 	fpsgo_sbe_rescue_traverse(pid, start, enhance, frameID);
 }
+
+static void fpsgo_notifier_wq_cb_buffer_quota(unsigned long long curr_ts,
+		int pid, int quota, unsigned long long id)
+{
+	FPSGO_LOGI("[FPSGO_CB] buffer_quota: ts %llu, pid %d,quota %d, id %llu\n",
+		curr_ts, pid, quota, id);
+	if (!fpsgo_is_enable())
+		return;
+	fpsgo_ctrl2fbt_buffer_quota(curr_ts, pid, quota, id);
+}
+
 
 static void fpsgo_notifier_wq_cb_dfrc_fps(int dfrc_fps)
 {
@@ -319,6 +332,12 @@ static void fpsgo_notifier_wq_cb(void)
 		fpsgo_notify_wq_cb_acquire(vpPush->consumer_pid,
 			vpPush->consumer_tid, vpPush->producer_pid,
 			vpPush->connectedAPI, vpPush->bufID);
+		break;
+	case FPSGO_NOTIFIER_BUFFER_QUOTA:
+		fpsgo_notifier_wq_cb_buffer_quota(vpPush->cur_ts,
+				vpPush->pid,
+				vpPush->buffer_quota,
+				vpPush->identifier);
 		break;
 	default:
 		FPSGO_LOGE("[FPSGO_CTRL] unhandled push type = %d\n",
@@ -652,6 +671,42 @@ void fpsgo_notify_cpufreq(int cid, unsigned long freq)
 }
 #endif  // FPSGO_DYNAMIC_WL
 
+void fpsgo_notify_buffer_quota(int pid, int quota, unsigned long long identifier)
+{
+	unsigned long long cur_ts;
+	struct FPSGO_NOTIFIER_PUSH_TAG *vpPush;
+
+	FPSGO_LOGI("[FPSGO_CTRL] buffer_quota %d, pid %d, id %llu\n",
+		quota, pid, identifier);
+
+	if (!fpsgo_is_enable())
+		return;
+
+	vpPush =
+		(struct FPSGO_NOTIFIER_PUSH_TAG *)
+		fpsgo_alloc_atomic(sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
+	if (!vpPush) {
+		FPSGO_LOGE("[FPSGO_CTRL] OOM\n");
+		return;
+	}
+
+	if (!kfpsgo_tsk) {
+		FPSGO_LOGE("[FPSGO_CTRL] NULL WorkQueue\n");
+		fpsgo_free(vpPush, sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
+		return;
+	}
+
+	cur_ts = fpsgo_get_time();
+
+	vpPush->ePushType = FPSGO_NOTIFIER_BUFFER_QUOTA;
+	vpPush->cur_ts = cur_ts;
+	vpPush->pid = pid;
+	vpPush->buffer_quota = quota;
+	vpPush->identifier = identifier;
+
+	fpsgo_queue_work(vpPush);
+}
+
 void dfrc_fps_limit_cb(unsigned int fps_limit)
 {
 	unsigned int vTmp = TARGET_UNLIMITED_FPS;
@@ -984,6 +1039,7 @@ fail_reg_cpu_frequency_entry:
 	fpsgo_get_cmd_fp = fpsgo_get_cmd;
 	fpsgo_get_fstb_active_fp = fpsgo_get_fstb_active;
 	fpsgo_wait_fstb_active_fp = fpsgo_wait_fstb_active;
+	fpsgo_notify_buffer_quota_fp = fpsgo_notify_buffer_quota;
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	drm_register_fps_chg_callback(dfrc_fps_limit_cb);

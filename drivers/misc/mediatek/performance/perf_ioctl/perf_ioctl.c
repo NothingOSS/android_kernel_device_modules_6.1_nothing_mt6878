@@ -36,6 +36,9 @@ EXPORT_SYMBOL_GPL(fpsgo_notify_acquire_fp);
 void (*fpsgo_notify_sbe_rescue_fp)(int pid, int start, int enhance, unsigned long long frameID);
 EXPORT_SYMBOL_GPL(fpsgo_notify_sbe_rescue_fp);
 
+void (*fpsgo_notify_buffer_quota_fp)(int pid, int quota, unsigned long long identifier);
+EXPORT_SYMBOL_GPL(fpsgo_notify_buffer_quota_fp);
+
 struct proc_dir_entry *perfmgr_root;
 EXPORT_SYMBOL(perfmgr_root);
 
@@ -481,6 +484,12 @@ static long device_ioctl(struct file *filp,
 			fpsgo_notify_acquire_fp(msgKM->pid1, msgKM->pid2,
 				msgKM->connectedAPI, msgKM->bufID);
 		break;
+	case FPSGO_BUFFER_QUOTA:
+		if (fpsgo_notify_buffer_quota_fp)
+			fpsgo_notify_buffer_quota_fp(msgKM->tid, msgKM->value1,
+						msgKM->identifier);
+		break;
+
 #else
 	case FPSGO_TOUCH:
 		 [[fallthrough]];
@@ -503,6 +512,8 @@ static long device_ioctl(struct file *filp,
 	case FPSGO_GET_FSTB_ACTIVE:
 		[[fallthrough]];
 	case FPSGO_WAIT_FSTB_ACTIVE:
+		[[fallthrough]];
+	case FPSGO_BUFFER_QUOTA:
 		[[fallthrough]];
 	case FPSGO_SBE_RESCUE:
 		[[fallthrough]];

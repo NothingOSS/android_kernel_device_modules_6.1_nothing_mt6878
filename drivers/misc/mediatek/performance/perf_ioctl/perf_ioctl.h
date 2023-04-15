@@ -108,6 +108,7 @@ struct _XGFFRAME_BOOST_PACKAGE {
 #define FPSGO_WAIT_FSTB_ACTIVE       _IOW('g', 21, struct _FPSGO_PACKAGE)
 #define FPSGO_SBE_RESCUE             _IOW('g', 22, struct _FPSGO_PACKAGE)
 #define FPSGO_ACQUIRE                _IOW('g', 23, struct _FPSGO_PACKAGE)
+#define FPSGO_BUFFER_QUOTA           _IOW('g', 24, struct _FPSGO_PACKAGE)
 
 #define XGFFRAME_START              _IOW('g', 1, struct _XGFFRAME_PACKAGE)
 #define XGFFRAME_END                _IOW('g', 2, struct _XGFFRAME_PACKAGE)

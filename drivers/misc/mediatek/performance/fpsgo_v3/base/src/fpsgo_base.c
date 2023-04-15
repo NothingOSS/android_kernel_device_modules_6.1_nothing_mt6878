@@ -69,6 +69,9 @@ static struct rb_root fpsgo_attr_by_pid_tree;
 static struct rb_root fpsgo_attr_by_tid_tree;
 #endif
 
+void (*fpsgo_rl_delete_render_info_fp)(int pid, unsigned long long bufID);
+EXPORT_SYMBOL(fpsgo_rl_delete_render_info_fp);
+
 static DEFINE_MUTEX(fpsgo_render_lock);
 
 long long fpsgo_task_sched_runtime(struct task_struct *p)
@@ -530,6 +533,19 @@ void fpsgo_del_linger(struct render_info *thr)
 	FPSGO_LOGI("del from linger %d(%p)\n", thr->pid, thr);
 }
 
+static int fpsgo_fbt_delete_rl_render(int pid, unsigned long long buf_id)
+{
+	int ret = 0;
+
+	if (fpsgo_rl_delete_render_info_fp) {
+		fpsgo_rl_delete_render_info_fp(pid, buf_id);
+	} else {
+		ret = -ENOENT;
+		// mtk_base_dprintk_always("%s is NULL\n", __func__);
+	}
+	return ret;
+}
+
 void fpsgo_traverse_linger(unsigned long long cur_ts)
 {
 	struct rb_node *n;
@@ -564,8 +580,10 @@ void fpsgo_traverse_linger(unsigned long long cur_ts)
 
 		fpsgo_thread_unlock(&pos->thr_mlock);
 
-		if (tofree)
+		if (tofree) {
+			fpsgo_fbt_delete_rl_render(pos->pid, pos->buffer_id);
 			kfree(pos);
+		}
 	}
 }
 
@@ -626,6 +644,9 @@ void fpsgo_reset_attr(struct fpsgo_boost_attr *boost_attr)
 		boost_attr->gcc_enq_bound_quota_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->gcc_deq_bound_quota_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->blc_boost_by_pid = BY_PID_DEFAULT_VAL;
+
+		boost_attr->check_buffer_quota_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->expected_fps_margin_by_pid = BY_PID_DEFAULT_VAL;
 	}
 }
 
@@ -778,8 +799,10 @@ void fpsgo_delete_render_info(int pid,
 	if (check_max_blc)
 		fpsgo_base2fbt_check_max_blc();
 
-	if (delete == 1)
+	if (delete == 1) {
+		fpsgo_fbt_delete_rl_render(pid, buffer_id);
 		kfree(data);
+	}
 }
 
 struct hwui_info *fpsgo_search_and_add_hwui_info(int pid, int force)
@@ -877,7 +900,9 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 			boost_attr.gcc_reserved_down_quota_pct_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.gcc_reserved_up_quota_pct_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.gcc_up_sec_pct_by_pid == BY_PID_DEFAULT_VAL &&
-			boost_attr.gcc_up_step_by_pid == BY_PID_DEFAULT_VAL) {
+			boost_attr.gcc_up_step_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.check_buffer_quota_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.expected_fps_margin_by_pid == BY_PID_DEFAULT_VAL) {
 		return 1;
 	}
 	if (boost_attr.rescue_enable_by_pid == BY_PID_DELETE_VAL ||
@@ -916,7 +941,9 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 			boost_attr.gcc_reserved_down_quota_pct_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.gcc_reserved_up_quota_pct_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.gcc_up_sec_pct_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.gcc_up_step_by_pid == BY_PID_DELETE_VAL) {
+			boost_attr.gcc_up_step_by_pid == BY_PID_DELETE_VAL ||
+			boost_attr.check_buffer_quota_by_pid == BY_PID_DELETE_VAL ||
+			boost_attr.expected_fps_margin_by_pid == BY_PID_DELETE_VAL) {
 		return 1;
 	}
 	return 0;
@@ -1468,8 +1495,10 @@ int fpsgo_check_thread_status(void)
 
 			fpsgo_delete_hwui_info(iter->pid);
 
-			if (delete == 1)
+			if (delete == 1) {
+				fpsgo_fbt_delete_rl_render(iter->pid, iter->buffer_id);
 				kfree(iter);
+			}
 
 		} else {
 
@@ -1532,8 +1561,10 @@ void fpsgo_clear(void)
 
 		fpsgo_delete_hwui_info(iter->pid);
 
-		if (delete == 1)
+		if (delete == 1) {
+			fpsgo_fbt_delete_rl_render(iter->pid, iter->buffer_id);
 			kfree(iter);
+		}
 	}
 
 #if FPSGO_MW
@@ -2043,6 +2074,9 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 				" gcc_enq_bound_thrs, gcc_enq_bound_quota, gcc_deq_bound_thrs, gcc_deq_bound_quota\n");
 	pos += length;
+	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+				" check_buffer_quota, expected_fps_margin\n");
+	pos += length;
 
 	fpsgo_render_tree_lock(__func__);
 	rcu_read_lock();
@@ -2138,6 +2172,12 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 				attr_item.gcc_deq_bound_quota_by_pid);
 			pos += length;
 
+			length = scnprintf(temp + pos,
+				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d,\n",
+				attr_item.check_buffer_quota_by_pid,
+				attr_item.expected_fps_margin_by_pid);
+			pos += length;
+
 			put_task_struct(tsk);
 		}
 	}
@@ -2203,6 +2243,9 @@ static ssize_t render_attr_params_show(struct kobject *kobj,
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 				" gcc_enq_bound_thrs, gcc_enq_bound_quota, gcc_deq_bound_thrs, gcc_deq_bound_quota\n");
+	pos += length;
+	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+				" check_buffer_quota, expected_fps_margin\n");
 	pos += length;
 
 	fpsgo_render_tree_lock(__func__);
@@ -2285,6 +2328,12 @@ static ssize_t render_attr_params_show(struct kobject *kobj,
 			attr_item.gcc_enq_bound_quota_by_pid,
 			attr_item.gcc_deq_bound_thrs_by_pid,
 			attr_item.gcc_deq_bound_quota_by_pid);
+		pos += length;
+
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d,\n",
+			attr_item.check_buffer_quota_by_pid,
+			attr_item.expected_fps_margin_by_pid);
 		pos += length;
 	}
 

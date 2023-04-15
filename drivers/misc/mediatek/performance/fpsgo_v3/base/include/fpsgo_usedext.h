@@ -24,6 +24,8 @@ extern void (*fpsgo_notify_sbe_rescue_fp)(int pid, int start, int enhance,
 		unsigned long long frameID);
 extern void (*fpsgo_notify_acquire_fp)(int c_pid, int p_pid,
 	int connectedAPI, unsigned long long buffer_id);
+extern void (*fpsgo_notify_buffer_quota_fp)(int pid, int quota,
+		unsigned long long identifier);
 
 extern void (*ged_vsync_notifier_fp)(void);
 

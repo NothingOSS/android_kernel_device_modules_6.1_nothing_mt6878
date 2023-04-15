@@ -45,6 +45,7 @@ struct fbt_jerk {
 	int id;
 	int jerking;
 	int postpone;
+	int last_check;
 	unsigned long long frame_qu_ts;
 	struct hrtimer timer;
 	struct work_struct work;
@@ -63,7 +64,6 @@ struct fbt_frame_info {
 struct fbt_loading_info {
 	int target_fps;
 	long loading;
-	int blc_wt;
 	int index;
 };
 
@@ -88,6 +88,19 @@ struct fbt_thread_blc {
 	int dep_num;
 	struct fpsgo_loading dep[MAX_DEP_NUM];
 	struct list_head entry;
+};
+
+struct fbt_ff_info {
+	struct fbt_loading_info filter_loading[FBT_FILTER_MAX_WINDOW];
+	struct fbt_loading_info filter_loading_b[FBT_FILTER_MAX_WINDOW];
+	struct fbt_loading_info filter_loading_m[FBT_FILTER_MAX_WINDOW];
+
+	int filter_index;
+	int filter_index_b;
+	int filter_index_m;
+	unsigned int filter_frames_count;
+	unsigned int filter_frames_count_b;
+	unsigned int filter_frames_count_m;
 };
 
 struct fbt_boost_info {
@@ -119,17 +132,7 @@ struct fbt_boost_info {
 	int cur_stage;
 
 	/* filter heavy frames */
-	struct fbt_loading_info filter_loading[FBT_FILTER_MAX_WINDOW];
-	struct fbt_loading_info filter_loading_b[FBT_FILTER_MAX_WINDOW];
-	struct fbt_loading_info filter_loading_m[FBT_FILTER_MAX_WINDOW];
-
-	int filter_index;
-	int filter_index_b;
-	int filter_index_m;
-	unsigned int filter_frames_count;
-	unsigned int filter_frames_count_b;
-	unsigned int filter_frames_count_m;
-	int filter_blc;
+	struct fbt_ff_info ff_obj;
 
 	/* quota */
 	long long quota_raw[QUOTA_MAX_SIZE];
@@ -156,6 +159,9 @@ struct fbt_boost_info {
 
 	/* FRS */
 	unsigned long long t_duration;
+
+	/* Closed loop */
+	unsigned long long last_target_time_ns;
 };
 
 struct fpsgo_boost_attr {
@@ -216,6 +222,10 @@ struct fpsgo_boost_attr {
 
 	/* Reset taskmask */
 	int reset_taskmask;
+
+	/* Closed Loop */
+	int check_buffer_quota_by_pid;
+	int expected_fps_margin_by_pid;
 };
 
 struct render_info {
@@ -257,6 +267,8 @@ struct render_info {
 	unsigned long long dep_loading_ts;
 	unsigned long long linger_ts;
 	int avg_freq;
+	unsigned long long buffer_quota_ts;
+	int buffer_quota;
 
 	struct mutex thr_mlock;
 
