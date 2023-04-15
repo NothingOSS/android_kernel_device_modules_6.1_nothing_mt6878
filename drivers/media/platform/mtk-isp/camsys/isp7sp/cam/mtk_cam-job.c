@@ -4407,7 +4407,7 @@ static int job_fetch_freq(struct mtk_cam_job *job,
 
 	*freq_hz = freq;
 	/* boost isp clk during switching */
-	*boostable = res->user_data.raw_res.hw_mode == HW_MODE_DIRECT_COUPLED;
+	*boostable = res_raw_is_dc_mode(&res->user_data.raw_res);
 
 	return 0;
 }

@@ -80,8 +80,7 @@ static int res_calc_fill_sensor(struct mtk_cam_res_calc *c,
 				const struct mtk_cam_resource_sensor_v2 *s,
 				const struct mtk_cam_resource_raw_v2 *r)
 {
-	u32 vb = (r->hw_mode != HW_MODE_DIRECT_COUPLED) ?
-			s->vblank : DC_MODE_VB_MARGIN;
+	u32 vb = res_raw_is_dc_mode(r) ? DC_MODE_VB_MARGIN : s->vblank;
 	u32 interval_n, interval_d;
 
 	interval_n = max(s->interval.numerator, 1U);
@@ -246,14 +245,12 @@ static void mtk_cam_get_work_buf_num(struct mtk_cam_resource_v2 *user_ctrl)
 	case MTK_CAM_SCEN_NORMAL:
 		exp_num = (scen->scen.normal.max_exp_num == 0) ?
 					1 : scen->scen.normal.max_exp_num;
-		buf_require = (r->hw_mode == HW_MODE_DIRECT_COUPLED) ?
-					exp_num : exp_num - 1;
+		buf_require = res_raw_is_dc_mode(r) ? exp_num : exp_num - 1;
 		buf_require = !!(scen->scen.normal.w_chn_supported) ?
 					buf_require * 2 : buf_require;
 		break;
 	case MTK_CAM_SCEN_MSTREAM:
-		buf_require = (r->hw_mode == HW_MODE_DIRECT_COUPLED) ?
-					2 : 1;
+		buf_require = res_raw_is_dc_mode(r) ? 2 : 1;
 		break;
 	case MTK_CAM_SCEN_EXT_ISP:
 		/* TODO */
@@ -368,21 +365,13 @@ static void mtk_raw_calc_num_raw_max_min(struct mtk_cam_resource_raw_v2 *r,
 	struct mtk_cam_scen *scen = &r->scen;
 	int scen_id = scen->id;
 
-	/* TODO: refine this. collect into utils */
-	bool is_rgbw =
-		(scen_id == MTK_CAM_SCEN_NORMAL ||
-		 scen_id == MTK_CAM_SCEN_ODT_NORMAL ||
-		 scen_id == MTK_CAM_SCEN_M2M_NORMAL)
-		&& !!(scen->scen.normal.w_chn_enabled);
-
-	if (is_rgbw) {
+	if (scen_is_rgbw(scen)) {
 		*n_min = 2;
 		*n_max = 2;
 		return;
 	}
 
-	if (scenario_disable_twin(scen_id,
-				  r->hw_mode == HW_MODE_DIRECT_COUPLED)) {
+	if (scenario_disable_twin(scen_id, res_raw_is_dc_mode(r))) {
 		*n_min = 1;
 		*n_max = 1;
 		return;

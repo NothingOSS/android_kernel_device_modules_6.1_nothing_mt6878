@@ -1427,7 +1427,7 @@ bool is_dc_mode(struct mtk_cam_job *job)
 	if (!res)
 		return false;
 
-	return scen_is_dc_mode(&res->raw_res);
+	return res_raw_is_dc_mode(&res->raw_res);
 }
 
 bool is_rgbw(struct mtk_cam_job *job)

@@ -53,59 +53,6 @@
 
 
 #define PREISP
-/* feature mask to categorize all raw functions */
-#define MTK_CAM_FEATURE_HDR_MASK		0x0000000F
-#define MTK_CAM_FEATURE_SUBSAMPLE_MASK		0x000000F0
-#define MTK_CAM_FEATURE_OFFLINE_M2M_MASK	0x00000100
-#define MTK_CAM_FEATURE_PURE_OFFLINE_M2M_MASK	0x00000200
-#define MTK_CAM_FEATURE_TIMESHARE_MASK		0x00001000
-#define MTK_CAM_FEATURE_HDR_MEMORY_SAVING_MASK		0x00002000
-#define MTK_CAM_FEATURE_EXT_ISP_MASK	0x0000C000
-/* flags common to features */
-#define MTK_CAM_FEATURE_SEAMLESS_SWITCH_MASK	BIT(31)
-
-
-enum raw_function_id {
-	/* hdr */
-	STAGGER_2_EXPOSURE_LE_SE	= (1 << 0),
-	STAGGER_2_EXPOSURE_SE_LE	= (2 << 0),
-	STAGGER_3_EXPOSURE_LE_NE_SE	= (3 << 0),
-	STAGGER_3_EXPOSURE_SE_NE_LE	= (4 << 0),
-	MSTREAM_NE_SE			= (5 << 0),
-	MSTREAM_SE_NE			= (6 << 0),
-	/* high fps (subsample) */
-	HIGHFPS_2_SUBSAMPLE		= (1 << 4),
-	HIGHFPS_4_SUBSAMPLE		= (2 << 4),
-	HIGHFPS_8_SUBSAMPLE		= (3 << 4),
-	HIGHFPS_16_SUBSAMPLE		= (4 << 4),
-	HIGHFPS_32_SUBSAMPLE		= (5 << 4),
-	OFFLINE_M2M			= (1 << 8),
-	PURE_OFFLINE_M2M		= (1 << 9),
-	TIMESHARE_1_GROUP		= (1 << 12),
-	HDR_MEMORY_SAVING		= (1 << 13),
-	EXT_ISP_CUS_1			= (1 << 14),
-	EXT_ISP_CUS_2			= (2 << 14),
-	EXT_ISP_CUS_3			= (3 << 14),
-	WITH_W_CHANNEL			= (1 << 16),
-	RAW_FUNCTION_END		= 0xF0000000,
-};
-
-enum hdr_scenario_id {
-	STAGGER_ON_THE_FLY	= (1 << 0),
-	STAGGER_OFFLINE		= (1 << 1),
-	STAGGER_DCIF		= (1 << 2),
-	STAGGER_M2M		= (1 << 3),
-	MSTREAM			= (1 << 4),
-	MSTREAM_M2M		= (1 << 5),
-};
-
-enum hardware_mode_id {
-	HW_MODE_DEFAULT			= 0,
-	HW_MODE_ON_THE_FLY		= 1,
-	HW_MODE_DIRECT_COUPLED	= 2,
-	HW_MODE_OFFLINE			= 3,
-	HW_MODE_M2M				= 4,
-};
 
 #define MTK_RAW_TOTAL_NODES (MTK_RAW_PIPELINE_PADS_NUM - MTK_RAW_SINK_NUM)
 

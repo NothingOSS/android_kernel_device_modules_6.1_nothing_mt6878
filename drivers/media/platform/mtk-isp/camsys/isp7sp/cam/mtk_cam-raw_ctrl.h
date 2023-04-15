@@ -8,12 +8,13 @@
 
 #include "mtk_camera-v4l2-controls-7sp.h"
 
-static inline bool scen_is_dc_mode(struct mtk_cam_resource_raw_v2 *res_raw)
+static inline
+bool res_raw_is_dc_mode(const struct mtk_cam_resource_raw_v2 *res_raw)
 {
-	return res_raw->hw_mode == HW_MODE_DIRECT_COUPLED;
+	return res_raw->hw_mode == MTK_CAM_HW_MODE_DIRECT_COUPLED;
 }
 
-static inline bool scen_is_normal(struct mtk_cam_scen *scen)
+static inline bool scen_is_normal(const struct mtk_cam_scen *scen)
 {
 	if (scen->id == MTK_CAM_SCEN_NORMAL ||
 	    scen->id == MTK_CAM_SCEN_ODT_NORMAL ||
@@ -23,7 +24,7 @@ static inline bool scen_is_normal(struct mtk_cam_scen *scen)
 	return false;
 }
 
-static inline bool scen_is_dcg_sensor_merge(struct mtk_cam_scen *scen)
+static inline bool scen_is_dcg_sensor_merge(const struct mtk_cam_scen *scen)
 {
 	if (scen_is_normal(scen))
 		return (scen->scen.normal.stagger_type ==
@@ -32,7 +33,7 @@ static inline bool scen_is_dcg_sensor_merge(struct mtk_cam_scen *scen)
 	return false;
 }
 
-static inline bool scen_is_vhdr(struct mtk_cam_scen *scen)
+static inline bool scen_is_vhdr(const struct mtk_cam_scen *scen)
 {
 	switch (scen->id) {
 	case MTK_CAM_SCEN_NORMAL:
@@ -49,7 +50,7 @@ static inline bool scen_is_vhdr(struct mtk_cam_scen *scen)
 	return 0;
 }
 
-static inline bool scen_is_rgbw(struct mtk_cam_scen *scen)
+static inline bool scen_is_rgbw(const struct mtk_cam_scen *scen)
 {
 	if (scen_is_normal(scen))
 		return !!(scen->scen.normal.w_chn_enabled);
@@ -57,21 +58,21 @@ static inline bool scen_is_rgbw(struct mtk_cam_scen *scen)
 	return false;
 }
 
-static inline bool scen_is_m2m(struct mtk_cam_scen *scen)
+static inline bool scen_is_m2m(const struct mtk_cam_scen *scen)
 {
 	return (scen->id == MTK_CAM_SCEN_ODT_NORMAL ||
 		scen->id == MTK_CAM_SCEN_ODT_MSTREAM ||
 		scen->id == MTK_CAM_SCEN_M2M_NORMAL);
 }
 
-static inline bool scen_is_m2m_apu(struct mtk_cam_scen *scen,
-				   struct mtk_cam_apu_info *apu_info)
+static inline bool scen_is_m2m_apu(const struct mtk_cam_scen *scen,
+				   const struct mtk_cam_apu_info *apu_info)
 {
 	return scen->id == MTK_CAM_SCEN_M2M_NORMAL &&
 		(apu_info->apu_path != APU_NONE);
 }
 
-static inline bool apu_info_is_dc(struct mtk_cam_apu_info *apu_info)
+static inline bool apu_info_is_dc(const struct mtk_cam_apu_info *apu_info)
 {
 	return apu_info->apu_path == APU_DC_RAW;
 }
