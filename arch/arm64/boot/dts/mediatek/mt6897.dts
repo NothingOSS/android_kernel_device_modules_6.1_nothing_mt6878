@@ -14409,24 +14409,28 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-3 = "MCUPM_DSU_DVFS_ACTIVE",
 					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
 
-			node-4 = "MCUPM_DSU_DVFS_STALL",
-					"ratio_0,ratio_1,ratio_2,ratio_3,\
-ratio_4,ratio_5,ratio_6,ratio_7";
-
-			node-5 = "MCUPM_DSU_DVFS_NON_WFX",
-					"non_wfx_0,non_wfx_1,non_wfx_2,non_wfx_3,\
-non_wfx_4,non_wfx_5,non_wfx_6,non_wfx_7";
-
-			node-6 = "MCUPM_DSU_DVFS_OPP",
-					"c_opp_cur_0,c_opp_cur_1,c_opp_cur_2,final_dsu_opp";
-
-			node-7 = "MCUPM_PMU_MGR_L3_STALL_RATIO",
+			node-4 = "MCUPM_DSU_DVFS_L3_STALL",
 					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
-			node-8 = "MCUPM_PMU_MGR_EMI_STALL_RATIO",
+
+			node-5 = "MCUPM_DSU_DVFS_EMI_STALL",
 					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
-			node-9 = "MCUPM_PMU_MGR_CPU_STALL_RATIO",
+
+			node-6 = "MCUPM_DSU_DVFS_NON_WFX",
 					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
-			node-10 = "MCUPM_PMU_MGR_NON_WFX",
+
+			node-7 = "MCUPM_DSU_DVFS_OPP",
+					"CPU_L_opp,CPU_M_opp,CPU_B_opp,DSU_opp";
+
+			node-8 = "MCUPM_PMU_MGR_L3_STALL_RATIO",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+
+			node-9 = "MCUPM_PMU_MGR_EMI_STALL_RATIO",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+
+			node-10 = "MCUPM_PMU_MGR_CPU_STALL_RATIO",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+
+			node-11 = "MCUPM_PMU_MGR_NON_WFX",
 					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
 		};
 
