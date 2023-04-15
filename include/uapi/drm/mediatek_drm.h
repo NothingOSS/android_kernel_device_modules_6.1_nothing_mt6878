@@ -1436,7 +1436,7 @@ struct mtk_drm_oddmr_param {
 };
 
 struct mtk_drm_pq_config_ctl {
-	__u32 disp_id;
+	__u32 crtc_id;
 	__u8 check_trigger;
 	__u8 len;
 	void *data;
@@ -1449,7 +1449,7 @@ struct mtk_drm_pq_param {
 };
 
 struct mtk_drm_pq_proxy_ctl {
-	__u32 disp_id;
+	__u32 crtc_id;
 	__u32 cmd;
 	__u32 size;
 	__u32 extra_size;
@@ -1477,7 +1477,6 @@ enum mtk_pq_frame_cfg_cmd {
 	PQ_AAL_SET_ESS20_SPECT_PARAM,
 	PQ_AAL_SET_PARAM,
 	PQ_AAL_INIT_DRE30,
-	PQ_AAL_SET_TRIGGER_STATE,
 	PQ_AAL_CLARITY_SET_REG,
 	PQ_GAMMA_SET_GAMMALUT,
 	PQ_GAMMA_SET_12BIT_GAMMALUT,
@@ -1497,6 +1496,7 @@ enum mtk_pq_frame_cfg_cmd {
 	PQ_CCORR_SUPPORT_COLOR_MATRIX,
 	PQ_CCORR_SET_CCORR,
 	PQ_CCORR_AIBLD_CV_MODE,
+	PQ_CCORR_SET_PQ_CAPS,
 	PQ_C3D_EVENTCTL,
 	PQ_C3D_BYPASS,
 	PQ_C3D_SET_LUT,
@@ -1511,14 +1511,18 @@ enum mtk_pq_frame_cfg_cmd {
 	PQ_GET_CMD_START,
 	PQ_AAL_GET_HIST,
 	PQ_AAL_GET_SIZE,
+	PQ_AAL_SET_TRIGGER_STATE,
 	PQ_CHIST_GET,
 	PQ_COLOR_READ_REG,
 	PQ_COLOR_READ_SW_REG,
 	PQ_CCORR_GET_IRQ,
+	PQ_CCORR_GET_PQ_CAPS,
 	PQ_C3D_GET_IRQ,
 	PQ_C3D_GET_IRQ_STATUS,
 	PQ_C3D_GET_BIN_NUM,
 	PQ_TDSHP_GET_SIZE,
+	PQ_VIRTUAL_GET_MASTER_INFO,
+	PQ_VIRTUAL_GET_IRQ,
 	PQ_CMD_MAX,
 };
 
