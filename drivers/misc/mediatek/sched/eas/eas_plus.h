@@ -7,6 +7,7 @@
 #define _EAS_PLUS_H
 #include <linux/ioctl.h>
 #include "eas/dsu_pwr.h"
+#include "vip.h"
 
 #define MIGR_IDLE_BALANCE               1
 #define MIGR_IDLE_PULL_MISFIT_RUNNING   2
@@ -235,5 +236,5 @@ struct share_buck_info {
 
 extern struct share_buck_info share_buck;
 extern int get_share_buck(void);
-
+extern int sched_cgroup_state(struct task_struct *p, int subsys_id);
 #endif

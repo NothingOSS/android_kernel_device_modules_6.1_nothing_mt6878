@@ -79,9 +79,11 @@ static void insert_vip_task(struct rq *rq, struct vip_task_struct *vts,
 		pid_t prev_pid = list_head_to_pid(vts->vip_list.prev);
 		pid_t next_pid = list_head_to_pid(vts->vip_list.next);
 		bool is_first_entry = (prev_pid == 0) ? true : false;
+		struct task_struct *p = vts_to_ts(vts);
 
-		trace_sched_insert_vip_task(vts_to_ts(vts)->pid, cpu_of(rq), vts->vip_prio,
-			at_front, prev_pid, next_pid, requeue, is_first_entry);
+		trace_sched_insert_vip_task(p, cpu_of(rq), vts->vip_prio,
+			at_front, prev_pid, next_pid, requeue, is_first_entry, ls_vip_threshold,
+			group_vip_threshold);
 	}
 }
 
@@ -175,6 +177,23 @@ bool is_VIP_latency_sensitive(struct task_struct *p)
 	return false;
 }
 
+void set_task_vvip(int pid)
+{
+	struct task_struct *p;
+	struct task_gear_hints *ghts;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (p) {
+		get_task_struct(p);
+		ghts = &((struct mtk_task *) p->android_vendor_data1)->gear_hints;
+		ghts->gear_start = num_sched_clusters;
+		put_task_struct(p);
+	}
+	rcu_read_unlock();
+}
+EXPORT_SYMBOL_GPL(set_task_vvip);
+
 int is_VVIP(struct task_struct *p)
 {
 	return 0;
@@ -196,6 +215,7 @@ void set_task_basic_vip(int pid)
 	}
 	rcu_read_unlock();
 }
+EXPORT_SYMBOL_GPL(set_task_basic_vip);
 
 void unset_task_basic_vip(int pid)
 {
@@ -212,6 +232,7 @@ void unset_task_basic_vip(int pid)
 	}
 	rcu_read_unlock();
 }
+EXPORT_SYMBOL_GPL(unset_task_basic_vip);
 /* end of basic vip interface */
 
 bool is_VIP_basic(struct task_struct *p)
