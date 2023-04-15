@@ -147,7 +147,7 @@ static bool soc_init_aud_intf(void)
 	u32 i;
 
 	/* init audio interface from afe soc */
-	aud_intf = mtk_audio_register_usb_offload_ops(uodev->dev);
+	aud_intf = mtk_audio_usb_offload_register_ops(uodev->dev);
 	if (!aud_intf)
 		return -EOPNOTSUPP;
 
@@ -160,12 +160,12 @@ static bool soc_init_aud_intf(void)
 	return ret;
 }
 
-static int soc_get_basic_sram(void)
+static struct mtk_audio_usb_mem *soc_get_basic_sram(void)
 {
 	if (!aud_intf || !aud_intf->ops->get_rsv_basic_sram)
-		return -EOPNOTSUPP;
+		return NULL;
 
-	return aud_intf->ops->get_rsv_basic_sram(aud_intf);
+	return aud_intf->ops->get_rsv_basic_sram();
 }
 
 static int soc_alloc_sram(struct usb_offload_buffer *buf, unsigned int size)
@@ -176,7 +176,7 @@ static int soc_alloc_sram(struct usb_offload_buffer *buf, unsigned int size)
 	if (!aud_intf || !aud_intf->ops->allocate_sram)
 		return -EOPNOTSUPP;
 
-	audio_sram = aud_intf->ops->allocate_sram(aud_intf, size);
+	audio_sram = aud_intf->ops->allocate_sram(size);
 
 	if (audio_sram && audio_sram->phys_addr) {
 		buf->dma_addr = audio_sram->phys_addr;
@@ -202,7 +202,7 @@ static int soc_free_sram(struct usb_offload_buffer *buf)
 	if (!aud_intf || !aud_intf->ops->free_sram)
 		return -EOPNOTSUPP;
 
-	ret = aud_intf->ops->free_sram(aud_intf, buf->dma_addr);
+	ret = aud_intf->ops->free_sram(buf->dma_addr);
 	if (!ret)
 		reset_buffer(buf);
 
@@ -310,6 +310,7 @@ int mtk_usb_offload_init_rsv_mem(int min_alloc_order)
 #ifdef MTK_AUDIO_INTERFACE_READY
 	dma_addr_t phy_addr;
 	unsigned int size;
+	struct mtk_audio_usb_mem *rsv_basic_sram = NULL;
 #endif
 
 	/* get reserved dram region */
@@ -330,7 +331,7 @@ int mtk_usb_offload_init_rsv_mem(int min_alloc_order)
 
 	/* get reserved sram region */
 	mem_id = USB_OFFLOAD_MEM_SRAM_ID;
-	if (!uodev->adv_lowpwr || soc_init_aud_intf() || soc_get_basic_sram()) {
+	if (!uodev->adv_lowpwr || soc_init_aud_intf()) {
 		USB_OFFLOAD_INFO("not support advanced low power, adv_lowpwr:%d->0\n"
 			, uodev->adv_lowpwr);
 		usb_offload_mem_buffer[mem_id].is_valid = false;
@@ -338,8 +339,16 @@ int mtk_usb_offload_init_rsv_mem(int min_alloc_order)
 		goto INIT_GEN_POOL;
 	}
 #ifdef MTK_AUDIO_INTERFACE_READY
-	phy_addr = aud_intf->rsv_basic_sram.phys_addr;
-	size = aud_intf->rsv_basic_sram.size;
+	rsv_basic_sram = soc_get_basic_sram();
+	if (!rsv_basic_sram) {
+		USB_OFFLOAD_INFO("fail to get basic sram region\n");
+		usb_offload_mem_buffer[mem_id].is_valid = false;
+		uodev->adv_lowpwr = false;
+		goto INIT_GEN_POOL;
+	}
+
+	phy_addr = rsv_basic_sram->phys_addr;
+	size = rsv_basic_sram->size;
 
 	usb_offload_mem_buffer[mem_id].phy_addr = (unsigned long long)phy_addr;
 	usb_offload_mem_buffer[mem_id].va_addr = (unsigned long long) ioremap_wc(
