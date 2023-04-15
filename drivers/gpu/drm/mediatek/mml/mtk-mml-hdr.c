@@ -332,8 +332,6 @@ static s32 hdr_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 {
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 	struct mml_frame_config *cfg = task->config;
-	//const struct mml_frame_dest *dest =
-		//&cfg->info.dest[ccfg->node->out_idx];
 	const struct mml_crop *crop = &cfg->frame_in_crop[ccfg->node->out_idx];
 
 	if (IS_ERR_OR_NULL(task) || IS_ERR_OR_NULL(task->pq_task)) {
@@ -827,14 +825,14 @@ static s32 hdr_config_post(struct mml_comp *comp, struct mml_task *task,
 		goto exit;
 
 	if (mode != MML_MODE_MML_DECOUPLE)
-		goto exit_hist;
+		goto comp_config_put;
 
 	if (vcp)
 		hdr_readback_vcp(comp, task, ccfg);
 	else
 		hdr_readback_cmdq(comp, task, ccfg);
 
-exit_hist:
+comp_config_put:
 	mml_pq_put_comp_config_result(task);
 exit:
 	return 0;
@@ -854,6 +852,7 @@ static s32 hdr_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	u32 *curve;
 	u32 i, j, val_idx;
 	s32 ret;
+	s8 mode = task->config->info.mode;
 
 	mml_pq_msg("%s pipe_id[%d] engine_id[%d] en_hdr[%d] config_success[%d]", __func__,
 		ccfg->pipe, comp->id, dest->pq_config.en_hdr,
@@ -881,17 +880,22 @@ static s32 hdr_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 
 	regs = result->hdr_regs;
 	curve = result->hdr_curve;
-	val_idx = 0;
-	for (i = 0; i < hdr_frm->reuse_reg.idx; i++)
-		for (j = 0; j < hdr_frm->reuse_reg.offs[i].cnt; j++, val_idx++)
-			mml_update_array(reuse, &hdr_frm->reuse_reg, i, j,
-				regs[val_idx].value);
+	if (mode == MML_MODE_MML_DECOUPLE) {
+		val_idx = 0;
+		for (i = 0; i < hdr_frm->reuse_reg.idx; i++)
+			for (j = 0; j < hdr_frm->reuse_reg.offs[i].cnt; j++, val_idx++)
+				mml_update_array(reuse, &hdr_frm->reuse_reg, i, j,
+					regs[val_idx].value);
 
-	val_idx = 0;
-	for (i = 0; i < hdr_frm->reuse_curve.idx; i++)
-		for (j = 0; j < hdr_frm->reuse_curve.offs[i].cnt; j++, val_idx++)
-			mml_update_array(reuse, &hdr_frm->reuse_curve, i, j,
-				curve[val_idx]);
+		val_idx = 0;
+		for (i = 0; i < hdr_frm->reuse_curve.idx; i++)
+			for (j = 0; j < hdr_frm->reuse_curve.offs[i].cnt; j++, val_idx++)
+				mml_update_array(reuse, &hdr_frm->reuse_curve, i, j,
+					curve[val_idx]);
+	} else if (mode == MML_MODE_DIRECT_LINK) {
+		queue_work(hdr->hdr_curve_wq, &hdr->hdr_curve_task);
+		hdr_hist_ctrl(comp, task, ccfg, result);
+	}
 
 	mml_pq_msg("%s is_hdr_need_readback[%d]",
 		__func__, result->is_hdr_need_readback);
@@ -919,9 +923,13 @@ static s32 hdr_config_repost(struct mml_comp *comp, struct mml_task *task,
 	u32 *condi_inst;
 	u8 pipe = ccfg->pipe;
 	u32 engine = CMDQ_VCP_ENG_MML_HDR0 + pipe;
+	s8 mode = task->config->info.mode;
 
 	if (!dest->pq_config.en_hdr)
 		goto exit;
+
+	if (mode != MML_MODE_MML_DECOUPLE)
+		goto comp_config_put;
 
 	if (vcp) {
 		if (!(task->pq_task->hdr_hist[pipe])) {
@@ -1277,7 +1285,6 @@ static void hdr_curve_work(struct work_struct *work_item)
 		complete_all(&hdr->curve_pq_task->hdr_curve_ready[hdr->pipe]);
 		return;
 	}
-
 
 	comp = &hdr->comp;
 	base = comp->base;
