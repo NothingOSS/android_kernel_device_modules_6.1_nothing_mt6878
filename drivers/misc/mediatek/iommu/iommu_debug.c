@@ -2370,6 +2370,18 @@ static int mt6897_tf_is_gce_videoup(u32 port_tf, u32 vld_tf)
 	       FIELD_GET(GENMASK(1, 0), vld_tf);
 }
 
+static u32 mt6897_get_valid_tf_id(int tf_id, u32 type, int id)
+{
+	u32 vld_id = 0;
+
+	if (type == APU_IOMMU)
+		vld_id = FIELD_GET(GENMASK(11, 8), tf_id);
+	else
+		vld_id = tf_id & F_MMU_INT_TF_MSK;
+
+	return vld_id;
+}
+
 static int mt6983_tf_is_gce_videoup(u32 port_tf, u32 vld_tf)
 {
 	return F_MMU_INT_TF_LARB(port_tf) ==
@@ -2488,6 +2500,7 @@ static const struct mtk_m4u_plat_data mt6897_data = {
 	.port_list[APU_IOMMU] = apu_port_mt6897,
 	.port_nr[APU_IOMMU]   = ARRAY_SIZE(apu_port_mt6897),
 	.mm_tf_is_gce_videoup = mt6897_tf_is_gce_videoup,
+	.get_valid_tf_id = mt6897_get_valid_tf_id,
 	.mau_config	= mau_config_default,
 	.mau_config_nr = ARRAY_SIZE(mau_config_default),
 };
