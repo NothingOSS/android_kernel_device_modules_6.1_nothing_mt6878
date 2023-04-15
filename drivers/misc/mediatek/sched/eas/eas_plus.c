@@ -177,10 +177,13 @@ static void update_thermal_headroom(int this_cpu)
 		for_each_cpu(cpu, cpu_possible_mask) {
 			thermal_headroom[cpu] = get_thermal_headroom(cpu);
 		}
+
+		if (trace_sched_next_update_thermal_headroom_enabled())
+			trace_sched_next_update_thermal_headroom(jiffies, next_update_thermal);
+
 		spin_unlock(&thermal_headroom_lock);
 	}
 
-	trace_sched_next_update_thermal_headroom(jiffies, next_update_thermal);
 }
 
 int sort_thermal_headroom(struct cpumask *cpus, int *cpu_order, bool in_irq)
