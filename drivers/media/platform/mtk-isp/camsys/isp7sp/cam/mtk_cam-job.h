@@ -463,7 +463,7 @@ static inline unsigned int frame_seq_ge(unsigned int a, unsigned int b)
 	 * a = 1, b = 0 => diff = 1 => true
 	 * a = 0, b = 1 => diff = -1 => false
 	 */
-	return frame_seq_diff(b, a) < (_MASK_FRAME_SEQ / 2);
+	return frame_seq_diff(a, b) < (_MASK_FRAME_SEQ / 2);
 }
 
 static inline struct mtk_cam_job_data *job_to_data(struct mtk_cam_job *job)

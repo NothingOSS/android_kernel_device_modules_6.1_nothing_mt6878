@@ -362,48 +362,69 @@ static void mtk_cam_ctrl_wake_up_on_event(struct mtk_cam_ctrl *ctrl, int event)
 
 /* note: just to support little margin for sw latency here */
 #define VALID_SWITCH_PERIOD_FROM_VSYNC_MS	3
-static bool check_inner_within_tolerance(struct mtk_cam_ctrl *ctrl, int seq)
+struct seamless_check_args {
+	int expect_inner;
+	int expect_ack;
+};
+
+static bool check_for_seamless(struct mtk_cam_ctrl *ctrl, void *arg)
 {
+	struct seamless_check_args *args = arg;
 	u64 last_sof_ts;
 	int inner_seq;
+	int ack_seq;
+	u64 ts;
 
 	spin_lock(&ctrl->info_lock);
 	inner_seq = ctrl->r_info.inner_seq_no;
 	last_sof_ts = ctrl->r_info.sof_l_ts_ns;
+	ack_seq = ctrl->r_info.ack_seq_no;
 	spin_unlock(&ctrl->info_lock);
 
-	if (inner_seq == seq) {
-		u64 ts = ktime_get_boottime_ns();
+	if (inner_seq != args->expect_inner)
+		return 0;
 
-		return ts - last_sof_ts <
-			VALID_SWITCH_PERIOD_FROM_VSYNC_MS * 1000000;
+	ts = ktime_get_boottime_ns();
+	if (ts - last_sof_ts >= VALID_SWITCH_PERIOD_FROM_VSYNC_MS * 1000000)
+		return 0;
+
+	/*
+	 * check if already got ack
+	 * if not, await another vsync for switching
+	 */
+
+	if (!frame_seq_ge(ack_seq, args->expect_ack)) {
+		pr_info("%s: not ack 0x%x yet, current=0x%x\n", __func__,
+			args->expect_ack, ack_seq);
+		return 0;
 	}
 
-	return 0;
+	return 1;
 }
 
-static bool check_done(struct mtk_cam_ctrl *ctrl, int seq)
+static bool check_done(struct mtk_cam_ctrl *ctrl, void *arg)
 {
+	int arg_seq = *(int *)arg;
 	int done_seq;
 
 	spin_lock(&ctrl->info_lock);
 	done_seq = ctrl->r_info.done_seq_no;
 	spin_unlock(&ctrl->info_lock);
 
-	return frame_seq_ge(seq, done_seq);
+	return frame_seq_ge(done_seq, arg_seq);
 }
 
 static int mtk_cam_ctrl_wait_event(struct mtk_cam_ctrl *ctrl,
-				   bool (*cond)(struct mtk_cam_ctrl *, int),
-				   int seq, int timeout_ms)
+				   bool (*cond)(struct mtk_cam_ctrl *, void *),
+				   void *arg, int timeout_ms)
 {
-	long timeout = msecs_to_jiffies(timeout_ms);
+	long timeout;
 
-	timeout = wait_event_timeout(ctrl->event_wq,
-				     cond(ctrl, seq), timeout);
+	timeout = wait_event_timeout(ctrl->event_wq, cond(ctrl, arg),
+				     msecs_to_jiffies(timeout_ms));
 	if (timeout == 0) {
-		pr_info("%s: error: wait for %ps: seq 0x%x %dms timeout\n",
-			__func__, cond, seq, timeout_ms);
+		pr_info("%s: error: wait for %ps: %dms timeout\n",
+			__func__, cond, timeout_ms);
 		return -1;
 	}
 
@@ -908,15 +929,23 @@ static void mtk_cam_ctrl_seamless_switch_flow(struct mtk_cam_job *job)
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_ctrl *ctrl = &ctx->cam_ctrl;
 	struct device *dev = ctx->cam->dev;
+	struct seamless_check_args check_args;
 	int prev_seq;
 
 	dev_info(dev, "[%s] begin waiting switch no:%d seq 0x%x\n",
 		__func__, job->req_seq, job->frame_seq_no);
 
 	prev_seq = prev_frame_seq(job->frame_seq_no);
-	if (mtk_cam_ctrl_wait_event(ctrl, check_inner_within_tolerance,
-				    prev_seq, 1000))
+	check_args.expect_inner = prev_seq;
+	check_args.expect_ack = job->frame_seq_no;
+
+	if (mtk_cam_ctrl_wait_event(ctrl, check_for_seamless, &check_args,
+				    1000)) {
+		dev_info(dev, "[%s] check_for_seamless timeout: expected in=0x%x ack=0x%x\n",
+			 __func__,
+			 check_args.expect_inner, check_args.expect_ack);
 		goto SWITCH_FAILURE;
+	}
 
 	mtk_cam_job_update_clk_switching(job, 1);
 
@@ -928,8 +957,11 @@ static void mtk_cam_ctrl_seamless_switch_flow(struct mtk_cam_job *job)
 	call_jobop(job, apply_switch);
 	vsync_set_desired(&ctrl->vsync_col, _get_master_engines(job->used_engine));
 
-	if (mtk_cam_ctrl_wait_event(ctrl, check_done, prev_seq, 999))
+	if (mtk_cam_ctrl_wait_event(ctrl, check_done, &prev_seq, 999)) {
+		dev_info(dev, "[%s] check_done timeout: prev_seq=0x%x\n",
+			 __func__, prev_seq);
 		goto SWITCH_FAILURE;
+	}
 
 	mtk_cam_job_update_clk_switching(job, 0);
 
@@ -953,7 +985,9 @@ static void mtk_cam_ctrl_raw_switch_flow(struct mtk_cam_job *job)
 	int r;
 
 	prev_seq = prev_frame_seq(job->frame_seq_no);
-	mtk_cam_ctrl_wait_event(ctrl, check_done, prev_seq, 1000);
+	if (mtk_cam_ctrl_wait_event(ctrl, check_done, &prev_seq, 1000))
+		dev_info(dev, "[%s] check_done timeout: prev_seq=0x%x\n",
+			 __func__, prev_seq);
 
 	dev_info(dev, "[%s] begin waiting raw switch no:%d\n",
 		 __func__, job->frame_seq_no);
