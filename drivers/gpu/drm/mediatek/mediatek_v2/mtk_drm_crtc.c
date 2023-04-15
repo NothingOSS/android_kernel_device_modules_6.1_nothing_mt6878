@@ -10113,6 +10113,10 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 
 	mtk_crtc = to_mtk_crtc(crtc);
 	crtc_id = drm_crtc_index(crtc);
+	if (crtc_id >= MAX_CRTC) {
+		DDPPR_ERR("%s, invalid crtc:%u\n", __func__, crtc_id);
+		return;
+	}
 
 	if (!crtc->state) {
 		DDPPR_ERR("%s, crtc->state is NULL\n", __func__);
@@ -10132,6 +10136,10 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	}
 
 	priv = mtk_crtc->base.dev->dev_private;
+	if (IS_ERR_OR_NULL(priv)) {
+		DDPPR_ERR("%s, invalid priv\n", __func__);
+		return;
+	}
 
 	if (!priv) {
 		DDPPR_ERR("%s, priv is NULL\n", __func__);
@@ -10419,6 +10427,8 @@ static void mtk_drm_crtc_update_interface(struct drm_crtc *crtc,
 
 	mtk_crtc = to_mtk_crtc(crtc);
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (!output_comp)
+		return;
 
 	for_each_new_connector_in_state(state, connector, new_conn_state, i) {
 		if (new_conn_state && new_conn_state->crtc == crtc) {
@@ -10654,6 +10664,16 @@ struct drm_display_mode *mtk_drm_crtc_avail_disp_mode(struct drm_crtc *crtc,
 	unsigned int idx)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+
+	if (IS_ERR_OR_NULL(mtk_crtc)) {
+		DDPPR_ERR("%s, invalid mtk_crtc\n", __func__);
+		return NULL;
+	}
+
+	if (IS_ERR_OR_NULL(mtk_crtc->avail_modes)) {
+		DDPPR_ERR("%s, invalid mtk_crtc->avail_modes\n", __func__);
+		return NULL;
+	}
 
 	/* For not multiple display mode's display, would use first display_mode since resume */
 	if (mtk_crtc && mtk_crtc->avail_modes_num == 0 && mtk_crtc->avail_modes)
@@ -11065,6 +11085,18 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 #endif
 	int en = 0;
 
+	if (IS_ERR_OR_NULL(priv)) {
+		DDPPR_ERR("%s, invalid priv\n", __func__);
+		return;
+	}
+	if (!crtc) {
+		DDPPR_ERR("%s, crtc is NULL\n", __func__);
+		return;
+	}
+	if (crtc_id >= MAX_CRTC) {
+		DDPPR_ERR("%s, invalid crtc:%u\n", __func__, crtc_id);
+		return;
+	}
 	CRTC_MMP_EVENT_START((int) crtc_id, disable,
 			mtk_crtc->enabled, 0);
 
@@ -11073,6 +11105,10 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	mtk_state = (aod_scp_flag && crtc) ? to_mtk_crtc_state(crtc->state) : NULL;
+	if (!output_comp) {
+		DDPPR_ERR("%s, output_comp is NULL\n", __func__);
+		return;
+	}
 
 	if ((output_comp) &&
 		!((aod_scp_flag) && crtc && crtc->state && (!crtc->state->active) && (mtk_state) &&

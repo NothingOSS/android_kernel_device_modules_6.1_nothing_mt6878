@@ -1130,10 +1130,13 @@ static void mtk_wdma_config(struct mtk_ddp_comp *comp,
 	resource_size_t mmsys_reg = priv->config_regs_pa;
 	resource_size_t larb_ctl_dummy = 0;
 
+	if (crtc_idx >= MAX_CRTC) {
+		DDPPR_ERR("%s, invalid crtc:%u\n", __func__, crtc_idx);
+		return;
+	}
 	if (!comp->fb) {
 		if (crtc_idx != 2)
-			DDPPR_ERR("%s fb is empty, CRTC%d\n",
-				__func__, crtc_idx);
+			DDPPR_ERR("%s fb is empty, CRTC%d\n", __func__, crtc_idx);
 		return;
 	}
 
