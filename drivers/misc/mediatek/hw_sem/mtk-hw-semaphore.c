@@ -56,6 +56,10 @@ static int __mtk_hw_semaphore_get(u32 sema_type, u32 master_id)
 	if (log_level & 1 << log_config)
 		dev_notice(dev, "%s:type:%d, master_id=%d, offset=%#x, set_val=%#x\n", __func__,
 						sema_type, master_id, offset, set_val);
+	if (!base) {
+		dev_notice(dev, "%s: Null base addr found\n", __func__);
+		return -EINVAL;
+	}
 
 	if ((readl_relaxed(base + offset) & set_val) == set_val) {
 		dev_notice(dev, "%s:master:%d, hw_sem was already got\n", __func__, master_id);
@@ -89,6 +93,10 @@ static int __mtk_hw_semaphore_release(u32 sema_type, u32 master_id)
 	if (log_level & 1 << log_config)
 		dev_notice(dev, "%s: type:%d, master_id=%d, offset=%#x, set_val=%#x\n", __func__,
 						sema_type, master_id, offset, set_val);
+	if (!base) {
+		dev_notice(dev, "%s: Null base addr found\n", __func__);
+		return -EINVAL;
+	}
 
 	if ((readl_relaxed(base + offset) & set_val) != set_val) {
 		dev_notice(dev, "%s:master:%d, hw_sem was already released\n", __func__, master_id);
