@@ -758,8 +758,7 @@ static int fill_fmt_mp_constrainted_by_hw(struct v4l2_pix_format_mplane *fmt,
 
 	width = clamp_val(ALIGN(width, 2),
 			  IMG_MIN_WIDTH, desc->frmsizes->stepwise.max_width);
-	height = clamp_val(ALIGN(height, 2),
-			   IMG_MIN_HEIGHT, desc->frmsizes->stepwise.max_height);
+	height = ALIGN(height, 2);
 
 	ret = _fill_image_pix_mp(fmt, pixelformat, width, height);
 
