@@ -413,6 +413,7 @@ static void chk_is_fsync_vsync_src(struct seninf_ctx *ctx, const int pad_id)
 void mtk_cam_seninf_mux_put(struct seninf_ctx *ctx, struct seninf_mux *mux)
 {
 	struct seninf_core *core = ctx->core;
+	struct seninf_mux *ent = NULL;
 	int i, j;
 
 	// disable mux and the cammux if cammux already disabled
@@ -425,6 +426,9 @@ void mtk_cam_seninf_mux_put(struct seninf_ctx *ctx, struct seninf_mux *mux)
 			if (ctx->mux_by[i][j] == mux)
 				ctx->mux_by[i][j] = NULL;
 		}
+	}
+	list_for_each_entry(ent, &core->list_mux, list) {
+		dev_info(ctx->dev, "[%s] ent = %d\n", __func__, ent->idx);
 	}
 	mutex_unlock(&core->mutex);
 }
@@ -1294,6 +1298,7 @@ static struct seninf_mux *get_mux(struct seninf_ctx *ctx, struct seninf_vc *vc,
 	}
 
 	if (!mux) {
+		dev_info(ctx->dev, "Err get NULL mux\n");
 		mtk_cam_seninf_release_mux(ctx);
 		return NULL;
 	}
