@@ -229,7 +229,7 @@ static void *mtk_cam_vb2_attach_dmabuf(
 	}
 	/* always skip cache operations, we handle it manually */
 	dba->dma_map_attrs |= DMA_ATTR_SKIP_CPU_SYNC;
-	//buf->dma_dir = dma_dir;
+	buf->dma_dir = vb->vb2_queue->dma_dir;
 	buf->size = size;
 	buf->db_attach = dba;
 	buf->vb = vb;
