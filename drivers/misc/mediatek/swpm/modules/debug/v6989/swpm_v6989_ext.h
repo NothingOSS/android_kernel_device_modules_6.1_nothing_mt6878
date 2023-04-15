@@ -21,10 +21,13 @@ enum pmsr_power_state {
 
 /* core ip (mdp, disp, venc, vdec, scp) */
 enum core_ip_state {
-	CORE_IP_MDP,
-	CORE_IP_DISP,
-	CORE_IP_VENC,
-	CORE_IP_VDEC,
+	// CORE_IP_MDP,
+	CORE_IP_DISP0,
+	CORE_IP_DISP1,
+	CORE_IP_VENC0,
+	CORE_IP_VENC1,
+	CORE_IP_VDEC0,
+	CORE_IP_VDEC1,
 	CORE_IP_SCP,
 
 	NR_CORE_IP,
@@ -46,7 +49,7 @@ enum ddr_bc_ip {
 
 /* core extension ip state */
 struct core_ip_pwr_sta {
-	unsigned int state[NR_CORE_VOLT][NR_POWER_STATE];
+	unsigned int state[NR_POWER_STATE];
 };
 
 /* core extension index structure */

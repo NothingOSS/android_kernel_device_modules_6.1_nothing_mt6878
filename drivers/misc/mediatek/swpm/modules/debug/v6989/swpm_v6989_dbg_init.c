@@ -28,6 +28,7 @@
 #include <swpm_module_ext.h>
 #include <swpm_v6989.h>
 #include <swpm_v6989_ext.h>
+#include <swpm_v6989_subsys.h>
 
 #undef swpm_dbg_log
 #define swpm_dbg_log(fmt, args...) \
@@ -40,8 +41,6 @@
 
 #define SWPM_EXT_DBG (0)
 
-static struct swpm_pmsr_data *swpm_pmsr_data_ptr;
-static struct swpm_pmsr_data default_data;
 
 static ssize_t enable_read(char *ToUser, size_t sz, void *priv)
 {
@@ -225,63 +224,11 @@ static const struct mtk_swpm_sysfs_op swpm_pmsr_log_interval_fops = {
 	.fs_write = swpm_pmsr_log_interval_write,
 };
 
-static ssize_t swpm_pmsr_sig_sel_read(char *ToUser, size_t sz, void *priv)
-{
-	char *p = ToUser;
-	size_t mSize = 0;
-	unsigned int i, val;
-
-	if (!ToUser)
-		return -EINVAL;
-
-	for (i = 0; swpm_pmsr_data_ptr && i < PMSR_MAX_SIG_SEL; i++) {
-		val = swpm_pmsr_data_ptr->sig_record[i];
-		if (default_data.sig_record[i] != val)
-			p += sprintf(p, "(*)");
-		p += scnprintf(p + mSize, sz - mSize,
-			       "SWID %d\t HWID %d\n", i, val);
-	}
-	p += sprintf(p, "(*) is modified\n");
-
-	WARN_ON(sz - mSize <= 0);
-
-	return p - ToUser;
-}
-
-static ssize_t swpm_pmsr_sig_sel_write(char *FromUser, size_t sz, void *priv)
-{
-	unsigned int type = 0, val = 0;
-	int ret;
-
-	ret = -EINVAL;
-
-	if (!FromUser)
-		goto out;
-
-	if (sz >= MTK_SWPM_SYSFS_BUF_WRITESZ)
-		goto out;
-
-	ret = -EPERM;
-	if (sscanf(FromUser, "%d %d", &type, &val) == 2) {
-		swpm_set_only_cmd(type, val,
-				PMSR_SET_SIG_SEL, PMSR_CMD_TYPE);
-		ret = sz;
-	}
-
-out:
-	return sz;
-}
-
-static const struct mtk_swpm_sysfs_op swpm_pmsr_sig_sel_fops = {
-	.fs_read = swpm_pmsr_sig_sel_read,
-	.fs_write = swpm_pmsr_sig_sel_write,
-};
-
 #if SWPM_EXT_DBG
 static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 {
 	char *p = ToUser;
-	int i, j;
+	int i;
 	int32_t core_vol_num, core_ip_num;
 
 	struct ip_stats *core_ip_stats_ptr;
@@ -298,9 +245,8 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 	core_ip_stats_ptr =
 	kmalloc_array(core_ip_num, sizeof(struct ip_stats), GFP_KERNEL);
 	for (i = 0; i < core_ip_num; i++)
-		core_ip_stats_ptr[i].vol_times =
-		kmalloc_array(core_vol_num,
-			      sizeof(struct ip_vol_times), GFP_KERNEL);
+		core_ip_stats_ptr[i].times =
+		kmalloc(sizeof(struct ip_vol_times), GFP_KERNEL);
 
 	sync_latest_data();
 
@@ -316,34 +262,19 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 	get_vcore_ip_vol_stats(core_ip_num, core_vol_num,
 			       core_ip_stats_ptr);
 
-	swpm_dbg_log("VCORE_VOL_NUM = %d\n", core_vol_num);
-	swpm_dbg_log("VCORE_IP_NUM = %d\n", core_ip_num);
-
-
-	for (i = 0; i < core_vol_num; i++) {
-		swpm_dbg_log("VCORE %d mV : %lld ms\n",
-			     core_duration_ptr[i].vol,
-			     core_duration_ptr[i].duration);
-	}
 	for (i = 0; i < core_ip_num; i++) {
-		swpm_dbg_log("VCORE IP %s\n",
+		swpm_dbg_log("%s ",
 			     core_ip_stats_ptr[i].ip_name);
-		for (j = 0; j < core_vol_num; j++) {
-			swpm_dbg_log("%d mV",
-			core_ip_stats_ptr[i].vol_times[j].vol);
-			swpm_dbg_log("\t active_time : %lld ms",
-			core_ip_stats_ptr[i].vol_times[j].active_time);
-			swpm_dbg_log("\t idle_time : %lld ms",
-			core_ip_stats_ptr[i].vol_times[j].idle_time);
-			swpm_dbg_log("\t off_time : %lld ms\n",
-			core_ip_stats_ptr[i].vol_times[j].off_time);
-		}
+		swpm_dbg_log("active/idle/off (ms) : %lld/%lld/%lld\n",
+		core_ip_stats_ptr[i].times->active_time,
+		core_ip_stats_ptr[i].times->idle_time,
+		core_ip_stats_ptr[i].times->off_time);
 	}
 End:
 	kfree(core_duration_ptr);
 
 	for (i = 0; i < core_ip_num; i++)
-		kfree(core_ip_stats_ptr[i].vol_times);
+		kfree(core_ip_stats_ptr[i].times);
 	kfree(core_ip_stats_ptr);
 
 	return p - ToUser;
@@ -444,8 +375,6 @@ static void swpm_v6989_dbg_fs_init(void)
 			, 0644, &swpm_pmsr_dbg_en_fops, NULL, NULL);
 	mtk_swpm_sysfs_entry_func_node_add("swpm_pmsr_log_interval"
 			, 0644, &swpm_pmsr_log_interval_fops, NULL, NULL);
-	mtk_swpm_sysfs_entry_func_node_add("swpm_pmsr_sig_sel"
-			, 0644, &swpm_pmsr_sig_sel_fops, NULL, NULL);
 
 #if SWPM_EXT_DBG
 	mtk_swpm_sysfs_entry_func_node_add("swpm_sp_ddr_idx"
@@ -470,8 +399,6 @@ static int __init swpm_v6989_dbg_device_initcall(void)
 
 static int __init swpm_v6989_dbg_late_initcall(void)
 {
-	unsigned int i, offset;
-
 	/*
 	 * use late init call sync to
 	 * ensure qos module is ready
@@ -480,14 +407,6 @@ static int __init swpm_v6989_dbg_late_initcall(void)
 	swpm_v6989_init();
 	swpm_v6989_ext_init();
 	swpm_v6989_dbg_fs_init();
-
-	offset = swpm_set_and_get_cmd(0, 0,
-			      PMSR_GET_SIG_SEL, PMSR_CMD_TYPE);
-	swpm_pmsr_data_ptr =
-		(struct swpm_pmsr_data *)sspm_sbuf_get(offset);
-
-	for (i = 0; swpm_pmsr_data_ptr && i < PMSR_MAX_SIG_SEL; i++)
-		default_data.sig_record[i] = swpm_pmsr_data_ptr->sig_record[i];
 
 	pr_notice("swpm init success\n");
 
