@@ -456,23 +456,6 @@ static int mtk_spi_prepare_message(struct spi_master *master,
 	spi_debug("cpha:%d cpol:%d. chip_config as below\n", cpha, cpol);
 	spi_dump_config(master, msg);
 
-	/*set tick delay*/
-	if (mdata->dev_comp->enhance_timing) {
-		if (mdata->dev_comp->ipm_design) {
-			reg_val = readl(mdata->base + SPI_CMD_REG);
-			reg_val &= ~SPI_CMD_GET_TICKDLY_MASK;
-			reg_val |= (chip_config->tick_delay & 0x7)
-				   << SPI_CMD_GET_TICKDLY_OFFSET;
-			writel(reg_val, mdata->base + SPI_CMD_REG);
-		} else {
-			reg_val = readl(mdata->base + SPI_CFG1_REG);
-			reg_val &= ~SPI_CFG1_GET_TICK_DLY_MASK;
-			reg_val |= (chip_config->tick_delay & 0x7)
-				   << SPI_CFG1_GET_TICK_DLY_OFFSET;
-			writel(reg_val, mdata->base + SPI_CFG1_REG);
-		}
-	}
-
 	reg_val = readl(mdata->base + SPI_CMD_REG);
 	if (mdata->dev_comp->ipm_design) {
 		/* SPI transfer without idle time until packet length done */
@@ -541,17 +524,27 @@ static int mtk_spi_prepare_message(struct spi_master *master,
 		       mdata->base + SPI_PAD_SEL_REG);
 
 	/* tick delay */
-	reg_val = readl(mdata->base + SPI_CFG1_REG);
 	if (mdata->dev_comp->enhance_timing) {
-		reg_val &= ~SPI_CFG1_GET_TICK_DLY_MASK;
-		reg_val |= ((chip_config->tick_delay & 0x7)
-			    << SPI_CFG1_GET_TICK_DLY_OFFSET);
+		if (mdata->dev_comp->ipm_design) {
+			reg_val = readl(mdata->base + SPI_CMD_REG);
+			reg_val &= ~SPI_CMD_GET_TICKDLY_MASK;
+			reg_val |= ((chip_config->tick_delay & 0x7)
+				    << SPI_CMD_GET_TICKDLY_OFFSET);
+			writel(reg_val, mdata->base + SPI_CMD_REG);
+		} else {
+			reg_val = readl(mdata->base + SPI_CFG1_REG);
+			reg_val &= ~SPI_CFG1_GET_TICK_DLY_MASK;
+			reg_val |= ((chip_config->tick_delay & 0x7)
+				    << SPI_CFG1_GET_TICK_DLY_OFFSET);
+			writel(reg_val, mdata->base + SPI_CFG1_REG);
+		}
 	} else {
+		reg_val = readl(mdata->base + SPI_CFG1_REG);
 		reg_val &= ~SPI_CFG1_GET_TICK_DLY_MASK_V1;
 		reg_val |= ((chip_config->tick_delay & 0x3)
 			    << SPI_CFG1_GET_TICK_DLY_OFFSET_V1);
+		writel(reg_val, mdata->base + SPI_CFG1_REG);
 	}
-	writel(reg_val, mdata->base + SPI_CFG1_REG);
 
 	/* set hw cs timing */
 	mtk_spi_set_hw_cs_timing(spi);
@@ -642,7 +635,7 @@ static void mtk_spi_prepare_transfer(struct spi_master *master,
 		writel(reg_val, mdata->base + SPI_CFG0_REG);
 	}
 	if (mdata->dev_comp->ipm_design) {
-		reg_val = readl(mdata->base + SPI_CFG3_REG);
+		reg_val = 0;
 		if (xfer->tx_buf && xfer->rx_buf)
 			reg_val &= ~SPI_CFG3_HALF_DUPLEX_EN;
 		else if (xfer->tx_buf) {
@@ -803,6 +796,8 @@ static int mtk_spi_fifo_transfer(struct spi_master *master,
 				writel(reg_val, mdata->base + SPI_TX_DATA_REG);
 			}
 		}
+		/* make sure all reg setting done before transfer */
+		mb();
 		spi_debug("spi setting Done.Dump reg before Transfer start:\n");
 		spi_dump_reg(mdata, master);
 
@@ -864,6 +859,14 @@ static int mtk_spi_dma_transfer(struct spi_master *master,
 	mtk_spi_prepare_transfer(master, xfer);
 
 	cmd = readl(mdata->base + SPI_CMD_REG);
+	//enable irq
+	if (mdata->dev_comp->sw_cs)
+		/* set finish interrupt enable */
+		cmd |= SPI_CMD_FINISH_IE;
+	else
+		/* set finish and pause interrupt always enable */
+		cmd |= SPI_CMD_FINISH_IE | SPI_CMD_PAUSE_IE;
+
 	if (xfer->tx_buf)
 		cmd |= SPI_CMD_TX_DMA;
 	if (xfer->rx_buf)
@@ -888,18 +891,10 @@ static int mtk_spi_dma_transfer(struct spi_master *master,
 	mtk_spi_setup_packet(master);
 	mtk_spi_setup_dma_addr(master, xfer);
 
+	/* make sure all reg setting done before transfer */
+	mb();
 	spi_debug("spi setting Done.Dump reg before Transfer start:\n");
 	spi_dump_reg(mdata, master);
-
-	//enable irq
-	if (mdata->dev_comp->sw_cs)
-		/* set finish interrupt enable */
-		cmd |= SPI_CMD_FINISH_IE;
-	else
-		/* set finish and pause interrupt always enable */
-		cmd |= SPI_CMD_FINISH_IE | SPI_CMD_PAUSE_IE;
-
-	writel(cmd, mdata->base + SPI_CMD_REG);
 
 	mtk_spi_enable_transfer(master);
 
@@ -951,8 +946,6 @@ static irqreturn_t mtk_spi_interrupt(int irq, void *dev_id)
 		mdata->state = MTK_SPI_PAUSED;
 	else
 		mdata->state = MTK_SPI_IDLE;
-
-
 
 	if (mdata->tx_sgl)
 		trans->tx_dma += mdata->xfer_len;
@@ -1166,13 +1159,10 @@ static int mtk_spi_probe(struct platform_device *pdev)
 			   addr_bits, ret);
 
 	ret = of_property_read_u32_index(
-				pdev->dev.of_node, "mediatek,autosuspend_delay",
+				pdev->dev.of_node, "mediatek,autosuspend-delay",
 				0, &mdata->auto_suspend_delay);
-	if (ret < 0) {
-		dev_info(&pdev->dev,
-				"get 'mediatek,autosuspend_delay' fail[%d], set 0\n", ret);
+	if (ret < 0)
 		mdata->auto_suspend_delay = 10;
-	}
 	pm_runtime_set_autosuspend_delay(&pdev->dev, mdata->auto_suspend_delay);
 	dev_info(&pdev->dev, "SPI probe, set auto_suspend delay = %dmS!\n",
 				mdata->auto_suspend_delay);
