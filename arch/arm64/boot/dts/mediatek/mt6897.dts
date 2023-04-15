@@ -5486,8 +5486,10 @@
 		spmi: spmi@1cc04000 {
 			compatible = "mediatek,mt6897-spmi";
 			reg = <0 0x1cc04000 0 0x0008ff>,
-			      <0 0x1cc01000 0 0x000100>;
-			reg-names = "pmif", "spmimst","spmi_nack_irq";
+			      <0 0x1cc01000 0 0x000100>,
+			      <0 0x1cc06000 0 0x0008ff>,
+			      <0 0x1cc00000 0 0x000100>;
+			reg-names = "pmif-m", "spmimst-m","pmif-p","spmimst-p";
 			interrupts-extended = <&pio 248 IRQ_TYPE_LEVEL_HIGH>,
 					<&gic GIC_SPI 468 IRQ_TYPE_LEVEL_HIGH 0>,
 					<&gic GIC_SPI 466 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -5495,6 +5497,7 @@
 			interrupt-controller;
 			#interrupt-cells = <1>;
 			irq-event-en = <0xc0000000 0x0 0x0 0x1f8 0x0>;
+			spmi-dev-mask = <0x03f0 0x0>;
 			#address-cells = <2>;
 			#size-cells = <0>;
 		};
