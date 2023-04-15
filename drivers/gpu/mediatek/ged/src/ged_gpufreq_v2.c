@@ -383,6 +383,9 @@ unsigned int ged_get_cur_volt(void)
 
 unsigned int ged_get_freq_by_idx(int oppidx)
 {
+	if (oppidx < 0)
+		return 0;
+
 	if (is_dcs_enable() && g_virtual_table)
 		return g_virtual_table[oppidx].freq;
 

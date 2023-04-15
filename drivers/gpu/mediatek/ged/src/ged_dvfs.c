@@ -840,10 +840,11 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 		ged_get_cur_limiter_floor());
 	trace_tracing_mark_write(5566, "commit_type", eCommitType);
 
-	policy_state = ged_get_policy_state();
-	ged_set_prev_policy_state(policy_state);
-	trace_GPU_DVFS__Policy__Common(eCommitType, policy_state);
-
+	if (ged_get_policy_state() != POLICY_STATE_INIT) {
+		policy_state = ged_get_policy_state();
+		ged_set_prev_policy_state(policy_state);
+		trace_GPU_DVFS__Policy__Common(eCommitType, policy_state);
+	}
 	return bCommited;
 }
 
