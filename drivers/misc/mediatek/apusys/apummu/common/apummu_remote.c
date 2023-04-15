@@ -93,6 +93,13 @@ int apummu_remote_send_cmd_sync(void *drvinfo, void *request, void *reply, uint3
 	AMMU_LOG_INFO("Send [%x][%x][%x][%x][%x][%x][%x][%x]\n",
 			ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5], ptr[6], ptr[7]);
 
+	/* power on */
+	ret = rpmsg_sendto(rdv->rpdev->ept, NULL, 1, 0);
+	if (ret && ret != -EOPNOTSUPP) {
+		pr_info("%s: rpmsg_sendto(power on) fail(%d)\n", __func__, ret);
+		goto out;
+	}
+
 	/* send & retry */
 	for (i = 0; i < cnt; i++) {
 		ret = rpmsg_send(rdv->rpdev->ept, request, sizeof(struct apummu_msg));
@@ -115,7 +122,12 @@ int apummu_remote_send_cmd_sync(void *drvinfo, void *request, void *reply, uint3
 
 	if (ret) {
 		AMMU_LOG_ERR("Send apummu IPI Fail %d\n", ret);
-		goto out;
+		/* power off to restore ref cnt */
+		ret = rpmsg_sendto(rdv->rpdev->ept, NULL, 0, 1);
+		if (ret && ret != -EOPNOTSUPP) {
+			pr_info("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret);
+			goto out;
+		}
 	}
 
 	AMMU_LOG_INFO("Wait for Getting cmd\n");
@@ -163,11 +175,20 @@ out:
 }
 
 
-int apummu_remote_rx_cb(void *data, int len)
+int apummu_remote_rx_cb(void *drvinfo, void *data, int len)
 {
 	unsigned long flags;
+	struct apummu_dev_info *rdv = NULL;
 	struct apummu_msg_item *item;
 	uint32_t *ptr;
+	int ret = 0;
+
+	if (drvinfo == NULL) {
+		AMMU_LOG_ERR("invalid argument\n");
+		return -EINVAL;
+	}
+
+	rdv = (struct apummu_dev_info *)drvinfo;
 
 	if (len != sizeof(struct apummu_msg)) {
 		AMMU_LOG_ERR("invalid len %d / %lu\n", len, sizeof(struct apummu_msg));
@@ -188,6 +209,11 @@ int apummu_remote_rx_cb(void *data, int len)
 	spin_unlock_irqrestore(&g_ammu_msg->lock.lock_rx, flags);
 
 	wake_up_interruptible(&g_ammu_msg->lock.wait_rx);
+
+	/* power off */
+	ret = rpmsg_sendto(rdv->rpdev->ept, NULL, 0, 1);
+	if (ret && ret != -EOPNOTSUPP)
+		pr_info("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret);
 
 	return 0;
 }

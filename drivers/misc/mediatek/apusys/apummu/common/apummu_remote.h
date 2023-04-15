@@ -32,7 +32,7 @@ bool apummu_is_remote(void);
 void apummu_remote_init(void);
 void apummu_remote_exit(void);
 int apummu_remote_send_cmd_sync(void *drvinfo, void *request, void *reply, uint32_t timeout);
-int apummu_remote_rx_cb(void *data, int len);
+int apummu_remote_rx_cb(void *drvinfo, void *data, int len);
 int apummu_remote_sync_sn(void *drvinfo, uint32_t sn);
 
 #endif

@@ -379,8 +379,20 @@ static int apummu_rpmsg_cb(struct rpmsg_device *rpdev, void *data,
 				 int len, void *priv, u32 src)
 {
 	int ret = 0;
+	void *drvinfo;
 
-	ret = apummu_remote_rx_cb(data, len);
+	if (!rpdev) {
+		AMMU_LOG_ERR("No apummu rpmsg device\n");
+		return -1;
+	}
+
+	drvinfo = dev_get_drvdata(&rpdev->dev);
+	if (!drvinfo) {
+		AMMU_LOG_ERR("No apummu dev info\n");
+		return -1;
+	}
+
+	ret = apummu_remote_rx_cb(drvinfo, data, len);
 
 	return ret;
 }
