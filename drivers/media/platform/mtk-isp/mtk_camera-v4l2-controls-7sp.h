@@ -76,6 +76,8 @@ enum mtk_cam_scen_id {
 enum mtk_cam_exp_order {
 	MTK_CAM_EXP_SE_LE,
 	MTK_CAM_EXP_LE_SE,
+	MTK_CAM_EXP_SE_ME_LE,
+	MTK_CAM_EXP_LE_ME_SE,
 };
 
 enum mtk_cam_frame_order {
