@@ -19,9 +19,11 @@ struct ch_reg {
 
 struct pmif {
 	void __iomem	*base;
+	void __iomem	*base_m;
 	void __iomem	*base_p;
 	const u32	*regs;
 	void __iomem	*spmimst_base;
+	void __iomem	*spmimst_base_m;
 	void __iomem	*spmimst_base_p;
 	const u32	*spmimst_regs;
 	const u32	*dbgregs;
@@ -32,9 +34,12 @@ struct pmif {
 	int     pmifid;
 	int		irq;
 	int		grpid;
-	raw_spinlock_t	lock;
-	struct wakeup_source *pmifThread_lock;
-	struct mutex pmif_mutex;
+	raw_spinlock_t	lock_m;
+	raw_spinlock_t	lock_p;
+	struct wakeup_source *pmif_m_Thread_lock;
+	struct wakeup_source *pmif_p_Thread_lock;
+	struct mutex pmif_m_mutex;
+	struct mutex pmif_p_mutex;
 	struct spmi_controller  *spmic;
 	struct clk	*pmif_sys_ck;
 	struct clk	*pmif_tmr_ck;
@@ -49,7 +54,8 @@ struct pmif {
 	struct irq_domain	*domain;
 	struct irq_chip		irq_chip;
 	int			rcs_irq;
-	struct mutex		rcs_irqlock;
+	struct mutex		rcs_m_irqlock;
+	struct mutex		rcs_p_irqlock;
 	bool	   *rcs_enable_hwirq;
 	struct clk *spmimst_clk26m;
 	struct clk *spmimst_clk_osc_d10;
@@ -60,6 +66,14 @@ struct pmif {
 			u16 addr, const u8 *buf, size_t len);
 	int spmi_nack_irq;
 	u32 caps;
+};
+
+struct spmi_dev {
+	int exist;
+	int slvid;
+	int mstid;
+	unsigned short hwcid_addr;
+	unsigned char hwcid_val;
 };
 
 enum spmi_regs {

@@ -49,7 +49,27 @@
 enum {
 	SPMI_MASTER_0 = 0,
 	SPMI_MASTER_1,
-	SPMI_MASTER_2,
+	SPMI_MASTER_P_1,
+	SPMI_MASTER_MAX
+};
+
+enum spmi_slave {
+	SPMI_SLAVE_0 = 0,
+	SPMI_SLAVE_1,
+	SPMI_SLAVE_2,
+	SPMI_SLAVE_3,
+	SPMI_SLAVE_4,
+	SPMI_SLAVE_5,
+	SPMI_SLAVE_6,
+	SPMI_SLAVE_7,
+	SPMI_SLAVE_8,
+	SPMI_SLAVE_9,
+	SPMI_SLAVE_10,
+	SPMI_SLAVE_11,
+	SPMI_SLAVE_12,
+	SPMI_SLAVE_13,
+	SPMI_SLAVE_14,
+	SPMI_SLAVE_15
 };
 
 struct pmif_irq_desc {
@@ -344,7 +364,45 @@ enum {
 	IRQ_PMIF_SWINF_ACC_ERR_4 = 7,
 	IRQ_PMIF_SWINF_ACC_ERR_5 = 8,
 };
+static struct spmi_dev spmidev[16];
 
+struct spmi_dev *get_spmi_device(int slaveid)
+{
+	if (!spmidev[slaveid].exist)
+		pr_notice("[SPMI] slave id %d is not existed\n", slaveid);
+
+	return &spmidev[slaveid];
+}
+
+static void spmi_dev_parse(struct platform_device *pdev)
+{
+	int i = 0, j = 0, ret = 0;
+	u32 spmi_dev_mask[2] = {0};
+
+	ret = of_property_read_u32_array(pdev->dev.of_node, "spmi-dev-mask",
+		spmi_dev_mask, ARRAY_SIZE(spmi_dev_mask));
+
+	j = spmi_dev_mask[0];
+	for (i = 0; i < 16; i++) {
+		spmidev[i].slvid = i;
+		if (j & (1 << i))
+			spmidev[i].exist = 1;
+		else
+			spmidev[i].exist = 0;
+	}
+	j = spmi_dev_mask[1];
+	for (i = 0; i < 16; i++) {
+		if (j & (1 << i))
+			spmidev[i].mstid = SPMI_MASTER_P_1;
+		else
+			spmidev[i].mstid = SPMI_MASTER_1;
+	}
+	for (i = 0; i < 16; i++) {
+		dev_notice(&pdev->dev, "slvid %d %s %s\n",
+			spmidev[i].slvid, spmidev[i].exist ? "exist":"no exist",
+			(spmidev[i].mstid == SPMI_MASTER_P_1) ? "SPMI_MASTER_P_1":"SPMI_MASTER_1");
+	}
+}
 unsigned long long get_current_time_ms(void)
 {
 	unsigned long long cur_ts;
@@ -416,6 +474,7 @@ static int pmif_spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 			      u16 addr, u8 *buf, size_t len)
 {
 	struct pmif *arb = spmi_controller_get_drvdata(ctrl);
+	struct spmi_dev *sdev = get_spmi_device(sid);
 	struct ch_reg *inf_reg = NULL;
 	int ret;
 	u32 data = 0;
@@ -440,7 +499,16 @@ static int pmif_spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 	else
 		return -EINVAL;
 
-	raw_spin_lock_irqsave(&arb->lock, flags);
+	if (sdev->mstid == SPMI_MASTER_1)
+		raw_spin_lock_irqsave(&arb->lock_m, flags);
+	else
+		raw_spin_lock_irqsave(&arb->lock_p, flags);
+
+	if (sdev->mstid == SPMI_MASTER_1)
+		arb->base = arb->base_m;
+	else
+		arb->base = arb->base_p;
+
 	/* Wait for Software Interface FSM state to be IDLE. */
 	ret = readl_poll_timeout_atomic(arb->base + arb->regs[inf_reg->ch_sta],
 					data, GET_SWINF(data) == SWINF_IDLE,
@@ -452,7 +520,12 @@ static int pmif_spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 		/* set channel ready if the data has transferred */
 		if (pmif_is_fsm_vldclr(arb))
 			pmif_writel(arb, 1, inf_reg->ch_rdy);
-		raw_spin_unlock_irqrestore(&arb->lock, flags);
+
+		if (sdev->mstid == SPMI_MASTER_1)
+			raw_spin_unlock_irqrestore(&arb->lock_m, flags);
+		else
+			raw_spin_unlock_irqrestore(&arb->lock_p, flags);
+
 		return ret;
 	}
 
@@ -472,14 +545,23 @@ static int pmif_spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 		dev_err(&ctrl->dev, "check WFVLDCLR timeout, read 0x%x, sta=0x%x, SPMI_DBG=0x%x\n",
 			addr, pmif_readl(arb, inf_reg->ch_sta),
 			readl(arb->spmimst_base + arb->spmimst_regs[SPMI_MST_DBG]));
-		raw_spin_unlock_irqrestore(&arb->lock, flags);
+
+		if (sdev->mstid == SPMI_MASTER_1)
+			raw_spin_unlock_irqrestore(&arb->lock_m, flags);
+		else
+			raw_spin_unlock_irqrestore(&arb->lock_p, flags);
+
 		return ret;
 	}
 
 	data = pmif_readl(arb, inf_reg->rdata);
 	memcpy(buf, &data, (bc & 3) + 1);
 	pmif_writel(arb, 1, inf_reg->ch_rdy);
-	raw_spin_unlock_irqrestore(&arb->lock, flags);
+
+	if (sdev->mstid == SPMI_MASTER_1)
+		raw_spin_unlock_irqrestore(&arb->lock_m, flags);
+	else
+		raw_spin_unlock_irqrestore(&arb->lock_p, flags);
 
 	return 0;
 }
@@ -488,6 +570,7 @@ static int pmif_spmi_write_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 			       u16 addr, const u8 *buf, size_t len)
 {
 	struct pmif *arb = spmi_controller_get_drvdata(ctrl);
+	struct spmi_dev *sdev = get_spmi_device(sid);
 	struct ch_reg *inf_reg = NULL;
 	int ret;
 	u32 data = 0;
@@ -515,7 +598,20 @@ static int pmif_spmi_write_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 	else
 		return -EINVAL;
 
-	raw_spin_lock_irqsave(&arb->lock, flags);
+	if (sdev->mstid == SPMI_MASTER_1)
+		raw_spin_lock_irqsave(&arb->lock_m, flags);
+	else
+		raw_spin_lock_irqsave(&arb->lock_p, flags);
+
+
+	if (sdev->mstid == SPMI_MASTER_1) {
+		arb->base = arb->base_m;
+		arb->spmimst_base = arb->spmimst_base_m;
+	} else {
+		arb->base = arb->base_p;
+		arb->spmimst_base = arb->spmimst_base_p;
+	}
+
 	/* Wait for Software Interface FSM state to be IDLE. */
 	ret = readl_poll_timeout_atomic(arb->base + arb->regs[inf_reg->ch_sta],
 					data, GET_SWINF(data) == SWINF_IDLE,
@@ -527,7 +623,12 @@ static int pmif_spmi_write_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 		/* set channel ready if the data has transferred */
 		if (pmif_is_fsm_vldclr(arb))
 			pmif_writel(arb, 1, inf_reg->ch_rdy);
-		raw_spin_unlock_irqrestore(&arb->lock, flags);
+
+		if (sdev->mstid == SPMI_MASTER_1)
+			raw_spin_unlock_irqrestore(&arb->lock_m, flags);
+		else
+			raw_spin_unlock_irqrestore(&arb->lock_p, flags);
+
 		return ret;
 	}
 
@@ -539,7 +640,11 @@ static int pmif_spmi_write_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 	pmif_writel(arb,
 		    (opc << 30) | BIT(29) | (sid << 24) | (bc << 16) | addr,
 		    inf_reg->ch_send);
-	raw_spin_unlock_irqrestore(&arb->lock, flags);
+
+	if (sdev->mstid == SPMI_MASTER_1)
+		raw_spin_unlock_irqrestore(&arb->lock_m, flags);
+	else
+		raw_spin_unlock_irqrestore(&arb->lock_p, flags);
 
 	return 0;
 }
@@ -697,12 +802,12 @@ static irqreturn_t pmif_event_0_irq_handler(int irq, void *data)
 	struct pmif *arb = data;
 	int irq_f = 0, idx = 0;
 
-	__pm_stay_awake(arb->pmifThread_lock);
-	mutex_lock(&arb->pmif_mutex);
+	__pm_stay_awake(arb->pmif_m_Thread_lock);
+	mutex_lock(&arb->pmif_m_mutex);
 	irq_f = pmif_readl(arb, PMIF_IRQ_FLAG_0);
 	if (irq_f == 0) {
-		mutex_unlock(&arb->pmif_mutex);
-		__pm_relax(arb->pmifThread_lock);
+		mutex_unlock(&arb->pmif_m_mutex);
+		__pm_relax(arb->pmif_m_Thread_lock);
 		return IRQ_NONE;
 	}
 
@@ -728,8 +833,8 @@ static irqreturn_t pmif_event_0_irq_handler(int irq, void *data)
 			break;
 		}
 	}
-	mutex_unlock(&arb->pmif_mutex);
-	__pm_relax(arb->pmifThread_lock);
+	mutex_unlock(&arb->pmif_m_mutex);
+	__pm_relax(arb->pmif_m_Thread_lock);
 
 	return IRQ_HANDLED;
 }
@@ -739,12 +844,12 @@ static irqreturn_t pmif_event_1_irq_handler(int irq, void *data)
 	struct pmif *arb = data;
 	int irq_f = 0, idx = 0;
 
-	__pm_stay_awake(arb->pmifThread_lock);
-	mutex_lock(&arb->pmif_mutex);
+	__pm_stay_awake(arb->pmif_m_Thread_lock);
+	mutex_lock(&arb->pmif_m_mutex);
 	irq_f = pmif_readl(arb, PMIF_IRQ_FLAG_1);
 	if (irq_f == 0) {
-		mutex_unlock(&arb->pmif_mutex);
-		__pm_relax(arb->pmifThread_lock);
+		mutex_unlock(&arb->pmif_m_mutex);
+		__pm_relax(arb->pmif_m_Thread_lock);
 		return IRQ_NONE;
 	}
 
@@ -761,8 +866,8 @@ static irqreturn_t pmif_event_1_irq_handler(int irq, void *data)
 			break;
 		}
 	}
-	mutex_unlock(&arb->pmif_mutex);
-	__pm_relax(arb->pmifThread_lock);
+	mutex_unlock(&arb->pmif_m_mutex);
+	__pm_relax(arb->pmif_m_Thread_lock);
 
 	return IRQ_HANDLED;
 }
@@ -772,12 +877,12 @@ static irqreturn_t pmif_event_2_irq_handler(int irq, void *data)
 	struct pmif *arb = data;
 	int irq_f = 0, idx = 0;
 
-	__pm_stay_awake(arb->pmifThread_lock);
-	mutex_lock(&arb->pmif_mutex);
+	__pm_stay_awake(arb->pmif_m_Thread_lock);
+	mutex_lock(&arb->pmif_m_mutex);
 	irq_f = pmif_readl(arb, PMIF_IRQ_FLAG_2);
 	if (irq_f == 0) {
-		mutex_unlock(&arb->pmif_mutex);
-		__pm_relax(arb->pmifThread_lock);
+		mutex_unlock(&arb->pmif_m_mutex);
+		__pm_relax(arb->pmif_m_Thread_lock);
 		return IRQ_NONE;
 	}
 
@@ -803,8 +908,8 @@ static irqreturn_t pmif_event_2_irq_handler(int irq, void *data)
 			break;
 		}
 	}
-	mutex_unlock(&arb->pmif_mutex);
-	__pm_relax(arb->pmifThread_lock);
+	mutex_unlock(&arb->pmif_m_mutex);
+	__pm_relax(arb->pmif_m_Thread_lock);
 
 	return IRQ_HANDLED;
 }
@@ -814,12 +919,12 @@ static irqreturn_t pmif_event_3_irq_handler(int irq, void *data)
 	struct pmif *arb = data;
 	int irq_f = 0, idx = 0;
 
-	__pm_stay_awake(arb->pmifThread_lock);
-	mutex_lock(&arb->pmif_mutex);
+	__pm_stay_awake(arb->pmif_m_Thread_lock);
+	mutex_lock(&arb->pmif_m_mutex);
 	irq_f = pmif_readl(arb, PMIF_IRQ_FLAG_3);
 	if (irq_f == 0) {
-		mutex_unlock(&arb->pmif_mutex);
-		__pm_relax(arb->pmifThread_lock);
+		mutex_unlock(&arb->pmif_m_mutex);
+		__pm_relax(arb->pmif_m_Thread_lock);
 		return IRQ_NONE;
 	}
 
@@ -874,8 +979,8 @@ static irqreturn_t pmif_event_3_irq_handler(int irq, void *data)
 			break;
 		}
 	}
-	mutex_unlock(&arb->pmif_mutex);
-	__pm_relax(arb->pmifThread_lock);
+	mutex_unlock(&arb->pmif_m_mutex);
+	__pm_relax(arb->pmif_m_Thread_lock);
 
 	return IRQ_HANDLED;
 }
@@ -885,12 +990,12 @@ static irqreturn_t pmif_event_4_irq_handler(int irq, void *data)
 	struct pmif *arb = data;
 	int irq_f = 0, idx = 0;
 
-	__pm_stay_awake(arb->pmifThread_lock);
-	mutex_lock(&arb->pmif_mutex);
+	__pm_stay_awake(arb->pmif_m_Thread_lock);
+	mutex_lock(&arb->pmif_m_mutex);
 	irq_f = pmif_readl(arb, PMIF_IRQ_FLAG_4);
 	if (irq_f == 0) {
-		mutex_unlock(&arb->pmif_mutex);
-		__pm_relax(arb->pmifThread_lock);
+		mutex_unlock(&arb->pmif_m_mutex);
+		__pm_relax(arb->pmif_m_Thread_lock);
 		return IRQ_NONE;
 	}
 
@@ -907,8 +1012,8 @@ static irqreturn_t pmif_event_4_irq_handler(int irq, void *data)
 			break;
 		}
 	}
-	mutex_unlock(&arb->pmif_mutex);
-	__pm_relax(arb->pmifThread_lock);
+	mutex_unlock(&arb->pmif_m_mutex);
+	__pm_relax(arb->pmif_m_Thread_lock);
 
 	return IRQ_HANDLED;
 }
@@ -964,8 +1069,8 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 	int spmi_nack = 0, spmi_nack_data = 0;
 	int spmi_rcs_nack = 0, spmi_debug_nack = 0, spmi_mst_nack = 0;
 
-	__pm_stay_awake(arb->pmifThread_lock);
-	mutex_lock(&arb->pmif_mutex);
+	__pm_stay_awake(arb->pmif_m_Thread_lock);
+	mutex_lock(&arb->pmif_m_mutex);
 
 	spmi_nack = mtk_spmi_readl(arb, SPMI_REC0);
 	spmi_nack_data = mtk_spmi_readl(arb, SPMI_REC1);
@@ -1011,8 +1116,8 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 	/* clear irq*/
 	mtk_spmi_writel(arb, 0x3, SPMI_REC_CTRL);
 
-	mutex_unlock(&arb->pmif_mutex);
-	__pm_relax(arb->pmifThread_lock);
+	mutex_unlock(&arb->pmif_m_mutex);
+	__pm_relax(arb->pmif_m_Thread_lock);
 
 	return IRQ_HANDLED;
 }
@@ -1037,14 +1142,14 @@ static void rcs_irq_lock(struct irq_data *data)
 {
 	struct pmif *arb = irq_data_get_irq_chip_data(data);
 
-	mutex_lock(&arb->rcs_irqlock);
+	mutex_lock(&arb->rcs_m_irqlock);
 }
 
 static void rcs_irq_sync_unlock(struct irq_data *data)
 {
 	struct pmif *arb = irq_data_get_irq_chip_data(data);
 
-	mutex_unlock(&arb->rcs_irqlock);
+	mutex_unlock(&arb->rcs_m_irqlock);
 }
 
 static void rcs_irq_enable(struct irq_data *data)
@@ -1120,7 +1225,8 @@ static int rcs_irq_register(struct platform_device *pdev,
 {
 	int i, ret = 0;
 
-	mutex_init(&arb->rcs_irqlock);
+	mutex_init(&arb->rcs_m_irqlock);
+	mutex_init(&arb->rcs_p_irqlock);
 	arb->rcs_enable_hwirq = devm_kcalloc(&pdev->dev, SPMI_MAX_SLAVE_ID,
 					     sizeof(*arb->rcs_enable_hwirq),
 					     GFP_KERNEL);
@@ -1188,6 +1294,30 @@ static void pmif_spmi_mrdump_register(struct platform_device *pdev, struct pmif 
 }
 #endif
 
+void spmi_test(struct spmi_controller *ctrl)
+{
+	int i = 0;
+	u8 rdata = 0;
+	unsigned short hwcidaddr = 0x9;
+	unsigned short hwcidaddr_mt6316 = 0x209;
+
+	for (i = 0; i < ARRAY_SIZE(spmidev); i++) {
+		if (spmidev[i].exist) {
+			if ((spmidev[i].slvid == 6) || (spmidev[i].slvid == 7) ||
+				(spmidev[i].slvid == 8))
+				ctrl->read_cmd(ctrl, SPMI_CMD_EXT_READL, spmidev[i].slvid,
+					hwcidaddr_mt6316, &rdata, 1);
+			else
+				ctrl->read_cmd(ctrl, SPMI_CMD_EXT_READL, spmidev[i].slvid,
+					hwcidaddr, &rdata, 1);
+
+			pr_notice("%s spmi_read_check slvid:%d rdata = 0x%x\n",
+				__func__, spmidev[i].slvid, rdata);
+		}
+	}
+}
+
+
 static int mtk_spmi_probe(struct platform_device *pdev)
 {
 	struct pmif *arb;
@@ -1211,17 +1341,17 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 	arb = spmi_controller_get_drvdata(ctrl);
 	arb->spmic = ctrl;
 
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pmif");
-	arb->base = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(arb->base)) {
-		err = PTR_ERR(arb->base);
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pmif-m");
+	arb->base = arb->base_m = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(arb->base_m)) {
+		err = PTR_ERR(arb->base_m);
 		goto err_put_ctrl;
 	}
 
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "spmimst");
-	arb->spmimst_base = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(arb->spmimst_base)) {
-		err = PTR_ERR(arb->spmimst_base);
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "spmimst-m");
+	arb->spmimst_base = arb->spmimst_base_m = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(arb->spmimst_base_m)) {
+		err = PTR_ERR(arb->spmimst_base_m);
 		goto err_put_ctrl;
 	}
 
@@ -1334,10 +1464,14 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 	arb->chan.ch_send = PMIF_SWINF_0_ACC + (PMIF_CHAN_OFFSET * arb->soc_chan);
 	arb->chan.ch_rdy = PMIF_SWINF_0_VLD_CLR + (PMIF_CHAN_OFFSET * arb->soc_chan);
 
-	raw_spin_lock_init(&arb->lock);
-	arb->pmifThread_lock =
-		wakeup_source_register(NULL, "pmif wakelock");
-	mutex_init(&arb->pmif_mutex);
+	raw_spin_lock_init(&arb->lock_m);
+	raw_spin_lock_init(&arb->lock_p);
+	arb->pmif_m_Thread_lock =
+		wakeup_source_register(NULL, "pmif_m wakelock");
+	arb->pmif_p_Thread_lock =
+		wakeup_source_register(NULL, "pmif_p wakelock");
+	mutex_init(&arb->pmif_m_mutex);
+	mutex_init(&arb->pmif_p_mutex);
 
 	/* enable debugger */
 	spmi_pmif_dbg_init(ctrl);
@@ -1374,6 +1508,7 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 						 arb->spmi_nack_irq);
 		}
 	}
+	spmi_dev_parse(pdev);
 #if defined(CONFIG_FPGA_EARLY_PORTING)
 	/* pmif/spmi initial setting */
 	pmif_writel(arb, 0xffffffff, PMIF_INF_EN);
@@ -1391,8 +1526,11 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 	val = 0x0;
 	ctrl->read_cmd(ctrl, 0x38, test_id, test_w_addr, &val, 1);
 	dev_notice(&pdev->dev, "%s check [0x%x] = 0x%x\n", __func__, test_w_addr, val);
-
 #endif
+#if !defined(CONFIG_FPGA_EARLY_PORTING)
+	spmi_test(ctrl);
+#endif
+
 
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 	/* add mrdump for reboot DB*/
