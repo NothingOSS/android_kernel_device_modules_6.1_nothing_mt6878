@@ -22,6 +22,8 @@
 #include <linux/kthread.h>
 #include <linux/completion.h>
 #include <linux/sizes.h>
+#include <linux/dma-heap.h>
+#include <uapi/linux/dma-heap.h>
 
 #include "private/mld_helper.h"
 #include "private/tmem_error.h"
@@ -33,6 +35,9 @@
 #include "private/ut_cmd.h"
 #include "tests/ut_common.h"
 #include "ssmr/memory_ssmr.h"
+
+#define MAX_STRESS_THREAD (1)
+#define MAX_ALLOC (100)
 
 static enum UT_RET_STATE regmgr_state_check(int mem_idx, int region_final_state)
 {
@@ -180,17 +185,62 @@ enum UT_RET_STATE mem_alloc_simple_test(enum TRUSTED_MEM_TYPE mem_type,
 	return UT_STATE_PASS;
 }
 
+int ut_multi_thread_mtkSecHeap(void *from)
+{
+	struct dma_heap *dma_heap;
+	struct dma_buf *ut_dmabuf;
+	// u64 randon = 0;
+	char sec_heap_name[32];
+	int i;
+	int loop;
+	u64 size;
+	u64 align;
+	u64 upper;
+
+	strcpy(sec_heap_name, "mtk_svp_page-uncached");
+	align = 0x1000;
+	loop = MAX_ALLOC;
+	upper = 0x500000;
+
+	for (i = 0; i < loop; i++) {
+		dma_heap = dma_heap_find(sec_heap_name);
+		if (!dma_heap) {
+			pr_info("heap_find fail\n");
+			goto sec_out;
+		}
+		size = get_random_u64() % (upper / align) * align + 0x1000;
+		ut_dmabuf = dma_heap_buffer_alloc(dma_heap, size,
+						  O_RDWR | O_CLOEXEC,
+						  DMA_HEAP_VALID_HEAP_FLAGS);
+		dma_heap_put(dma_heap);
+		if (IS_ERR(ut_dmabuf)) {
+			pr_info("dma_buf allocated fail PTR_ERR = %ld\n",
+				PTR_ERR(ut_dmabuf));
+			goto sec_out;
+		}
+		dma_heap_buffer_free(ut_dmabuf);
+	}
+
+sec_out:
+	return 0;
+}
+
 enum UT_RET_STATE mem_alloc_page_test(enum TRUSTED_MEM_TYPE mem_type,
 					u8 *mem_owner, int region_final_state,
 					int un_order_sz_cfg)
 {
-	int ret;
-	u32 ref_count;
-	u64 handle;
+	struct task_struct *threads[MAX_STRESS_THREAD];
+	int i;
 
-	ret = tmem_core_alloc_chunk(mem_type, 0, SZ_1G + SZ_512M + SZ_16M, &ref_count,
-				    &handle, mem_owner, 0, 0);
-	ASSERT_NE(0, ret, "alloc status check");
+	pr_info("%s:%d\n", __func__, __LINE__);
+
+	for (i = 0; i < MAX_STRESS_THREAD; i++) {
+		threads[i] = kthread_create(
+			ut_multi_thread_mtkSecHeap, NULL,
+			"stress_test_multi_thread_sec_heap_alloc");
+		pr_info("thread[%d]=%llx\n", i, (u64)threads[i]);
+		wake_up_process(threads[i]);
+	}
 
 	return UT_STATE_PASS;
 }

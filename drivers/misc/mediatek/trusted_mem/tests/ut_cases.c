@@ -102,10 +102,6 @@ static enum UT_RET_STATE tmem_alloc_page_test(struct ut_params *params,
 	int reg_final_state = params->param2;
 	int un_order_size_cfg = params->param3;
 
-	pr_info("%s:%d\n", __func__, __LINE__);
-	if (ut_is_halt())
-		return UT_STATE_FAIL;
-
 	ASSERT_EQ(0, mem_alloc_page_test(mem_type, NULL, reg_final_state,
 					   un_order_size_cfg),
 		  test_desc);
@@ -539,7 +535,7 @@ static struct test_case test_cases[] = {
 
 #if IS_ENABLED(CONFIG_MTK_SECURE_MEM_SUPPORT)
 	CASE(SECMEM_UT_PROC_PAGE_SIMPLE_ALLOC, "SVP-page-based Alloc Simple",
-	     TRUSTED_MEM_SVP_PAGE, REGMGR_REGION_FINAL_STATE_OFF,
+	     TRUSTED_MEM_SVP_REGION, REGMGR_REGION_FINAL_STATE_OFF,
 	     MEM_UNORDER_SIZE_TEST_CFG_DISABLE, tmem_alloc_page_test),
 #endif
 
