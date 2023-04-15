@@ -110,10 +110,13 @@ void mtk_dmabuf_page_pool_free(struct mtk_dmabuf_page_pool *pool, struct page *p
 
 int mtk_dmabuf_page_pool_total(struct mtk_dmabuf_page_pool *pool, bool high)
 {
-	int count = pool->count[POOL_LOWPAGE];
+	int count;
 
+	mutex_lock(&pool->mutex);
+	count = pool->count[POOL_LOWPAGE];
 	if (high)
 		count += pool->count[POOL_HIGHPAGE];
+	mutex_unlock(&pool->mutex);
 
 	return count << pool->order;
 }
