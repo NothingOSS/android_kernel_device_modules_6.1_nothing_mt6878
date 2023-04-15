@@ -227,9 +227,9 @@ static int cmd_hist_get_entry(void)
 	if (cmd_hist_ptr >= MAX_CMD_HIST_ENTRY_CNT)
 		cmd_hist_ptr = 0;
 	ptr = cmd_hist_ptr;
-	spin_unlock_irqrestore(&cmd_hist_lock, flags);
 
 	cmd_hist_cnt++;
+	spin_unlock_irqrestore(&cmd_hist_lock, flags);
 
 	/* Initialize common fields */
 	cmd_hist[ptr].cpu = smp_processor_id();
