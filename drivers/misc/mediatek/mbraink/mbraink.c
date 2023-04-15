@@ -292,8 +292,16 @@ static long mbraink_ioctl(struct file *filp,
 			pr_notice("copy mbraink_monitor_processlist from user Err!\n");
 			return -EPERM;
 		}
+
+		if (monitor_processlist_buffer.monitor_process_count > MAX_MONITOR_PROCESS_NUM) {
+			pr_notice("Invalid monitor_process_count!\n");
+			monitor_processlist_buffer.monitor_process_count =
+							MAX_MONITOR_PROCESS_NUM;
+		}
+
 		monitor_process_count =
 			monitor_processlist_buffer.monitor_process_count;
+
 		mbraink_processname_to_pid(monitor_process_count,
 					&monitor_processlist_buffer);
 		break;
@@ -311,6 +319,12 @@ static long mbraink_ioctl(struct file *filp,
 			return -EPERM;
 		}
 
+		if (thread_stat_buffer.pid_idx > PID_MAX_DEFAULT ||
+			thread_stat_buffer.tid > PID_MAX_DEFAULT) {
+			pr_notice("Invalid pid_idx %u or tid %u!\n",
+				thread_stat_buffer.pid_idx, thread_stat_buffer.tid);
+			return -EINVAL;
+		}
 		pid_idx = thread_stat_buffer.pid_idx;
 		tid = thread_stat_buffer.tid;
 
@@ -337,6 +351,11 @@ static long mbraink_ioctl(struct file *filp,
 			return -EPERM;
 		}
 
+		if (tracing_pid_buffer.tracing_idx > MAX_TRACE_NUM) {
+			pr_notice("invalid tracing_idx %u !\n",
+				tracing_pid_buffer.tracing_idx);
+			return -EINVAL;
+		}
 		tracing_idx = tracing_pid_buffer.tracing_idx;
 
 		mbraink_get_tracing_pid_info(tracing_idx, &tracing_pid_buffer);
@@ -369,6 +388,15 @@ static long mbraink_ioctl(struct file *filp,
 			pr_notice("Copy cpufreq_notify_buffer from user Err!\n");
 			vfree(pcpufreq_notify_buffer);
 			return -EPERM;
+		}
+
+		if (pcpufreq_notify_buffer->notify_cluster_idx > CPU_CLUSTER_SZ ||
+			pcpufreq_notify_buffer->notify_idx > CPUFREQ_NOTIFY_SZ) {
+			pr_notice("invalid notify_cluster_idx %u or notify_idx %u !\n",
+				pcpufreq_notify_buffer->notify_cluster_idx,
+				pcpufreq_notify_buffer->notify_idx);
+			vfree(pcpufreq_notify_buffer);
+			return -EINVAL;
 		}
 		notify_cluster_idx = pcpufreq_notify_buffer->notify_cluster_idx;
 		notify_idx = pcpufreq_notify_buffer->notify_idx;
