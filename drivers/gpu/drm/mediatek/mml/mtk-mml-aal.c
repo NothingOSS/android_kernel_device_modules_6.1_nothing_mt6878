@@ -42,6 +42,8 @@
  *	(AAL_CURVE_NUM * 7 / CMDQ_NUM_CMD(CMDQ_CMD_BUFFER_SIZE) + 1)
  */
 #define AAL_LABEL_CNT		10
+#define call_hw_op(_comp, op, ...) \
+	(_comp->hw_ops->op ? _comp->hw_ops->op(_comp, ##__VA_ARGS__) : 0)
 
 enum mml_aal_reg_index {
 	AAL_EN,
@@ -393,6 +395,7 @@ struct mml_comp_aal {
 
 	u32 sram_curve_start;
 	u32 sram_hist_start;
+	s8 force_rb_mode;
 };
 
 enum aal_label_index {
@@ -593,6 +596,18 @@ static bool aal_reg_poll(struct mml_comp *comp, u32 addr, u32 value, u32 mask)
 	return return_value;
 }
 
+static s8 aal_get_rb_mode(struct mml_comp_aal *aal)
+{
+	mml_pq_msg("%s force_rb_mode[%d] rb_mode[%d]",
+		__func__, aal->force_rb_mode, aal->data->rb_mode);
+
+	if (aal->force_rb_mode == -1) {
+		return aal->data->rb_mode;
+	} else {
+		return aal->force_rb_mode;
+	}
+}
+
 static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			    struct mml_comp_config *ccfg)
 {
@@ -626,6 +641,16 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			__func__, aal->hist_sram_idx, aal->curve_sram_idx,
 			task->pq_task->read_status.aal_comp);
 
+		/* MT6989 platform, RB_SOF_MODE will use DPC to power on.
+		 * MT6985 platform, RB_SOF_MODE use CCF to power on.
+		 */
+		if (aal_get_rb_mode(aal) == RB_SOF_MODE) {
+			mml_clock_lock(task->config->mml);
+			call_hw_op(comp, pw_enable);
+			call_hw_op(comp, clk_enable);
+			mml_clock_unlock(task->config->mml);
+		}
+
 		if (task->pq_task->read_status.aal_comp == MML_PQ_HIST_IDLE) {
 
 			aal->hist_sram_idx = (aal->hist_sram_idx) ? 0 : 1;
@@ -648,11 +673,10 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 
 			mutex_unlock(&aal->irq_wq_lock);
 
-
-			if (aal->data->rb_mode == RB_EOF_MODE) {
+			if (aal_get_rb_mode(aal) == RB_EOF_MODE) {
 				mml_clock_lock(task->config->mml);
-				mml_comp_pw_enable(comp);
-				mml_comp_clk_enable(comp);
+				call_hw_op(comp, pw_enable);
+				call_hw_op(comp, clk_enable);
 				mml_clock_unlock(task->config->mml);
 				mml_lock_wake_lock(aal->mml, true);
 
@@ -668,13 +692,19 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 				aal->data->reg_table[AAL_SRAM_CFG],
 				aal->hist_sram_idx << 6 | aal->curve_sram_idx << 5 |
 				1 << 4,	0x7 << 4);
+
+			mml_pq_msg("%s: hist_sram_idx write to [%d], curve_sram_idx change to[%d]",
+				__func__, aal->hist_sram_idx, aal->curve_sram_idx);
 		} else {
+			mml_pq_msg("%s: hist_sram_idx [%d] is reading, curve_sram_idx [%d]",
+				__func__, aal->hist_sram_idx, aal->curve_sram_idx);
+
 			if (aal->hist_sram_idx == aal->curve_sram_idx)
 				aal->hist_sram_idx = (!aal->curve_sram_idx) ? 1 : 0;
 
 			mutex_unlock(&aal->irq_wq_lock);
 
-			if (aal->data->rb_mode == RB_EOF_MODE) {
+			if (aal_get_rb_mode(aal) == RB_EOF_MODE) {
 				cmdq_pkt_write(pkt, NULL, base_pa +
 					aal->data->reg_table[AAL_INTSTA],
 					0x0, U32_MAX);
@@ -687,6 +717,9 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 				aal->data->reg_table[AAL_SRAM_CFG],
 				aal->hist_sram_idx << 6 | 1 << 4, 0x5 << 4);
 		}
+
+		mml_pq_msg("%s: hist_sram_idx write to [%d], curve_sram_idx [%d]",
+			__func__, aal->hist_sram_idx, aal->curve_sram_idx);
 	}
 
 	return 0;
@@ -1664,6 +1697,8 @@ static void aal_task_done_readback(struct mml_comp *comp, struct mml_task *task,
 	bool vcp = aal->data->vcp_readback;
 	u32 engine = MML_PQ_AAL0 + pipe;
 	u32 offset = 0;
+	s8 mode = cfg->info.mode;
+
 
 	mml_pq_trace_ex_begin("%s", __func__);
 	mml_pq_msg("%s is_aal_need_readback[%d] id[%d] en_dre[%d]", __func__,
@@ -1671,7 +1706,30 @@ static void aal_task_done_readback(struct mml_comp *comp, struct mml_task *task,
 
 	mml_pq_msg("%s job_id[%d] pkt %p size %zu", __func__, task->job.jobid,
 		pkt, pkt->cmd_buf_size);
-	if (!dest->pq_config.en_dre || !task->pq_task->aal_hist[pipe])
+
+	if (!dest->pq_config.en_dre)
+		goto exit;
+
+	if (aal_get_rb_mode(aal) == RB_SOF_MODE &&
+		mode != MML_MODE_MML_DECOUPLE &&
+		aal_frm->is_aal_need_readback) {
+
+		mutex_lock(&aal->irq_wq_lock);
+
+		mml_pq_msg("%s:aal jobid[%d] task jobid[%d]",
+			__func__, aal->jobid, task->job.jobid);
+
+		if (aal->jobid == task->job.jobid) {
+			mutex_unlock(&aal->irq_wq_lock);
+			queue_work(aal->aal_readback_wq, &aal->aal_readback_task);
+		} else {
+			mutex_unlock(&aal->irq_wq_lock);
+		}
+
+		goto exit;
+	}
+
+	if (!task->pq_task->aal_hist[pipe])
 		goto exit;
 
 	offset = vcp ? task->pq_task->aal_hist[pipe]->va_offset/4 : 0;
@@ -1866,6 +1924,8 @@ static void aal_readback_work(struct work_struct *work_item)
 	comp = &aal->comp;
 	base = comp->base;
 
+	/* MT6989 platform, RB_SOF_MODE will use DPC to power on. */
+
 	mutex_lock(&aal->irq_wq_lock);
 	if (mml_pq_aal_hist_reading(aal->pq_task, aal->out_idx, aal->pipe)) {
 		mutex_unlock(&aal->irq_wq_lock);
@@ -1880,10 +1940,14 @@ static void aal_readback_work(struct work_struct *work_item)
 
 	mml_pq_aal_flag_check(aal->dual, aal->out_idx);
 
-	if (aal->data->rb_mode == RB_EOF_MODE) {
+	/* MT6989 platform, RB_SOF_MODE will use DPC to power off.
+	 * MT6985 platform, RB_SOF_MODE use CCF to power off.
+	 */
+	if (aal_get_rb_mode(aal) == RB_EOF_MODE ||
+		aal_get_rb_mode(aal) == RB_SOF_MODE) {
 		mml_clock_lock(aal->mml);
-		mml_comp_pw_disable(comp);
-		mml_comp_clk_disable(comp);
+		call_hw_op(comp, clk_disable);
+		call_hw_op(comp, pw_disable);
 		mml_clock_unlock(aal->mml);
 		mml_lock_wake_lock(aal->mml, false);
 	}
@@ -1945,6 +2009,9 @@ static int probe(struct platform_device *pdev)
 	if (of_property_read_u32(dev->of_node, "sram-his-base", &priv->sram_hist_start))
 		dev_err(dev, "read his base fail\n");
 
+	if (of_property_read_u8(dev->of_node, "hist-read-mode", &priv->force_rb_mode))
+		priv->force_rb_mode = -1;
+
 	/* assign ops */
 	priv->comp.tile_ops = &aal_tile_ops;
 	priv->comp.config_ops = &aal_cfg_ops;
@@ -1958,7 +2025,7 @@ static int probe(struct platform_device *pdev)
 		add_ddp = false;
 	}
 
-	if (priv->data->rb_mode == RB_EOF_MODE) {
+	if (aal_get_rb_mode(priv) == RB_EOF_MODE) {
 		irq = platform_get_irq(pdev, 0);
 		if (irq < 0)
 			dev_info(dev, "Failed to get AAL irq: %d\n", irq);
