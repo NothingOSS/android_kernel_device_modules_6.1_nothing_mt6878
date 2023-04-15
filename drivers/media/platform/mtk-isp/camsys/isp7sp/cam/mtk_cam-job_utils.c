@@ -1814,3 +1814,45 @@ bool belong_to_current_ctx(struct mtk_cam_job *job, int ipi_pipe_id)
 	return ctx_used_pipe & ipi_pipe_id_to_bit(ipi_pipe_id);
 }
 
+void fill_hdr_timestamp(struct mtk_cam_job *job,
+				   struct mtk_cam_ctrl_runtime_info *info)
+{
+	int exp_order = get_exp_order(&job->job_scen);
+
+	switch (job->job_type) {
+	case JOB_TYPE_STAGGER:
+		if (exp_order == MTKCAM_IPI_ORDER_SE_NE) {
+			job->hdr_ts_cache.le = info->sof_l_ts_ns;
+			job->hdr_ts_cache.le_mono = info->sof_l_ts_mono_ns;
+			job->hdr_ts_cache.se = info->sof_ts_ns;
+			job->hdr_ts_cache.se_mono = info->sof_ts_mono_ns;
+		} else {
+			job->hdr_ts_cache.le = info->sof_ts_ns;
+			job->hdr_ts_cache.le_mono = info->sof_ts_mono_ns;
+			job->hdr_ts_cache.se = info->sof_l_ts_ns;
+			job->hdr_ts_cache.se_mono = info->sof_l_ts_mono_ns;
+		}
+		break;
+	case JOB_TYPE_MSTREAM:
+		if (exp_order == MTKCAM_IPI_ORDER_SE_NE) {
+			if (!job->hdr_ts_cache.se && !job->hdr_ts_cache.le) {
+				job->hdr_ts_cache.se = info->sof_ts_ns;
+				job->hdr_ts_cache.se_mono = info->sof_ts_mono_ns;
+			} else {
+				job->hdr_ts_cache.le = info->sof_ts_ns;
+				job->hdr_ts_cache.le_mono = info->sof_ts_mono_ns;
+			}
+		} else {
+			if (!job->hdr_ts_cache.se && !job->hdr_ts_cache.le) {
+				job->hdr_ts_cache.le = info->sof_ts_ns;
+				job->hdr_ts_cache.le_mono = info->sof_ts_mono_ns;
+			} else {
+				job->hdr_ts_cache.se = info->sof_ts_ns;
+				job->hdr_ts_cache.se_mono = info->sof_ts_mono_ns;
+			}
+		}
+		break;
+	default:
+		break;
+	}
+}

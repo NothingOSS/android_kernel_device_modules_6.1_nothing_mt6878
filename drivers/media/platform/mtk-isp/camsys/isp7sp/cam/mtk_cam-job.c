@@ -2872,11 +2872,7 @@ static void singleframe_on_transit(struct mtk_cam_job_state *s, int state_type,
 			if (old_state != S_ISP_PROCESSING) {
 				job->timestamp = info->sof_ts_ns;
 				job->timestamp_mono = ktime_get_ns(); /* FIXME */
-
-				job->hdr_ts_cache.le = info->sof_ts_ns;
-				job->hdr_ts_cache.le_mono = info->sof_ts_mono_ns;
-				job->hdr_ts_cache.se = info->sof_l_ts_ns;
-				job->hdr_ts_cache.se_mono = info->sof_l_ts_mono_ns;
+				fill_hdr_timestamp(job, info);
 			}
 			break;
 		}
@@ -2892,8 +2888,7 @@ static void mstream_on_transit(struct mtk_cam_job_state *s, int state_type,
 
 	log_transit(s, state_type, old_state, new_state, act);
 
-	if (state_type == ISP_STATE) {
-
+	if (state_type == ISP_1ST_STATE) {
 		switch (new_state) {
 
 		case S_ISP_COMPOSED:
@@ -2908,17 +2903,18 @@ static void mstream_on_transit(struct mtk_cam_job_state *s, int state_type,
 			if (old_state != S_ISP_PROCESSING) {
 				job->timestamp = info->sof_ts_ns;
 				job->timestamp_mono = ktime_get_ns(); /* FIXME */
-
-				if (job->hdr_ts_cache.le) {
-					job->hdr_ts_cache.se = info->sof_ts_ns;
-					job->hdr_ts_cache.se_mono = info->sof_ts_mono_ns;
-				} else {
-					job->hdr_ts_cache.le = info->sof_ts_ns;
-					job->hdr_ts_cache.le_mono = info->sof_ts_mono_ns;
-				}
+				fill_hdr_timestamp(job, info);
 			}
 			break;
 		}
+	}
+
+	if (state_type == ISP_2ND_STATE &&
+		  new_state == S_ISP_PROCESSING &&
+		  old_state != S_ISP_PROCESSING) {
+		job->timestamp = info->sof_ts_ns;
+		job->timestamp_mono = ktime_get_ns(); /* FIXME */
+		fill_hdr_timestamp(job, info);
 	}
 }
 

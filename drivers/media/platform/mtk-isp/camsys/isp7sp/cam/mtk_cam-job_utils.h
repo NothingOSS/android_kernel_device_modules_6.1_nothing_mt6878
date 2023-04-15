@@ -201,5 +201,7 @@ bool is_sv_img_tag_used(struct mtk_cam_job *job);
 
 bool belong_to_current_ctx(struct mtk_cam_job *job, int ipi_pipe_id);
 
+void fill_hdr_timestamp(struct mtk_cam_job *job,
+			struct mtk_cam_ctrl_runtime_info *info);
 #endif //__MTK_CAM_JOB_UTILS_H
 
