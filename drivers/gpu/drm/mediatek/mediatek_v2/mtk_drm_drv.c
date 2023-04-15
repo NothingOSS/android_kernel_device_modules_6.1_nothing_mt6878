@@ -4275,7 +4275,6 @@ static const struct mtk_crtc_path_data mt6897_mtk_main_path_data = {
 };
 
 static const struct mtk_crtc_path_data mt6897_mtk_ext_path_data = {
-	.is_fake_path = true,
 	.path[DDP_MAJOR][0] = mt6897_mtk_ddp_ext_dp,
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6897_mtk_ddp_ext_dp),
 	.path_req_hrt[DDP_MAJOR][0] = true,
