@@ -413,14 +413,14 @@ static int apummu_rpmsg_probe(struct rpmsg_device *rpdev)
 	adv->rpdev = rpdev;
 	apummu_remote_init();
 
+	dev_set_drvdata(&rpdev->dev, adv);
+
 	mem_task = kthread_run(apummu_rprmsg_memory_func, adv, "apummu");
 	if (mem_task == NULL) {
 		AMMU_LOG_ERR("create kthread(mem) fail\n");
 		ret = -ENOMEM;
 		goto out;
 	}
-
-	dev_set_drvdata(&rpdev->dev, adv);
 
 	AMMU_LOG_INFO("Done\n");
 out:
