@@ -12,8 +12,8 @@
 
 bool vip_enable = true;
 
-unsigned int ls_vip_threshold          =  DEFAULT_VIP_PRIO_THRESHOLD;
-struct VIP_task_group vtg;
+unsigned int ls_vip_threshold                   =  DEFAULT_VIP_PRIO_THRESHOLD;
+unsigned int group_vip_threshold[VIP_GROUP_NUM];
 
 DEFINE_PER_CPU(struct vip_rq, vip_rq);
 
@@ -88,15 +88,13 @@ static void insert_vip_task(struct rq *rq, struct vip_task_struct *vts,
 /* top-app interface */
 void set_top_app_vip(unsigned int prio)
 {
-	vtg.threshold[VIP_GROUP_TOPAPP] = prio;
-	vtg.enable[VIP_GROUP_TOPAPP] = 1;
+	group_vip_threshold[VIP_GROUP_TOPAPP] = prio;
 }
 EXPORT_SYMBOL_GPL(set_top_app_vip);
 
 void unset_top_app_vip(void)
 {
-	vtg.threshold[VIP_GROUP_TOPAPP] = DEFAULT_VIP_PRIO_THRESHOLD;
-	vtg.enable[VIP_GROUP_TOPAPP] = 0;
+	group_vip_threshold[VIP_GROUP_TOPAPP] = DEFAULT_VIP_PRIO_THRESHOLD;
 }
 EXPORT_SYMBOL_GPL(unset_top_app_vip);
 /* end of top-app interface */
@@ -104,15 +102,13 @@ EXPORT_SYMBOL_GPL(unset_top_app_vip);
 /* foreground interface */
 void set_foreground_vip(unsigned int prio)
 {
-	vtg.threshold[VIP_GROUP_FOREGROUND] = prio;
-	vtg.enable[VIP_GROUP_FOREGROUND] = 1;
+	group_vip_threshold[VIP_GROUP_FOREGROUND] = prio;
 }
 EXPORT_SYMBOL_GPL(set_foreground_vip);
 
 void unset_foreground_vip(void)
 {
-	vtg.threshold[VIP_GROUP_FOREGROUND] = DEFAULT_VIP_PRIO_THRESHOLD;
-	vtg.enable[VIP_GROUP_FOREGROUND] = 0;
+	group_vip_threshold[VIP_GROUP_FOREGROUND] = DEFAULT_VIP_PRIO_THRESHOLD;
 }
 EXPORT_SYMBOL_GPL(unset_foreground_vip);
 /* end of foreground interface */
@@ -120,15 +116,13 @@ EXPORT_SYMBOL_GPL(unset_foreground_vip);
 /* background interface */
 void set_background_vip(unsigned int prio)
 {
-	vtg.threshold[VIP_GROUP_BACKGROUND] = prio;
-	vtg.enable[VIP_GROUP_BACKGROUND] = 1;
+	group_vip_threshold[VIP_GROUP_BACKGROUND] = prio;
 }
 EXPORT_SYMBOL_GPL(set_background_vip);
 
 void unset_background_vip(void)
 {
-	vtg.threshold[VIP_GROUP_BACKGROUND] = DEFAULT_VIP_PRIO_THRESHOLD;
-	vtg.enable[VIP_GROUP_BACKGROUND] = 0;
+	group_vip_threshold[VIP_GROUP_BACKGROUND] = DEFAULT_VIP_PRIO_THRESHOLD;
 }
 EXPORT_SYMBOL_GPL(unset_background_vip);
 /* end of background interface */
@@ -152,8 +146,8 @@ bool is_VIP_task_group(struct task_struct *p)
 {
 	int group_id = get_group_id(p);
 
-	if (group_id >= 0 && vtg.enable[group_id] &&
-			p->prio <= vtg.threshold[group_id])
+	if (group_id >= 0 &&
+			p->prio <= group_vip_threshold[group_id])
 		return true;
 
 	return false;
@@ -567,8 +561,7 @@ void vip_init(void)
 	int i;
 
 	for (i = 0; i < VIP_GROUP_NUM; i++) {
-		vtg.enable[i] = 0;
-		vtg.threshold[i] = DEFAULT_VIP_PRIO_THRESHOLD;
+		group_vip_threshold[i] = DEFAULT_VIP_PRIO_THRESHOLD;
 	}
 
 	/* init vip related value to exist tasks */

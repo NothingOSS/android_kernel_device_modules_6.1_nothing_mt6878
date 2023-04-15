@@ -34,11 +34,6 @@ enum vip_group {
 	VIP_GROUP_NUM
 };
 
-struct VIP_task_group {
-	int enable[VIP_GROUP_NUM];
-	int threshold[VIP_GROUP_NUM];
-};
-
 extern inline int get_vip_task_prio(struct task_struct *p);
 extern bool task_is_vip(struct task_struct *p);
 extern inline unsigned int num_vip_in_cpu(int cpu);
