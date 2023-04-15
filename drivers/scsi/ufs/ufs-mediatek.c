@@ -2431,8 +2431,10 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	atomic_set(&host->clkscale_control_powerhal, 0);
 
 	hba->quirks |= UFSHCI_QUIRK_SKIP_MANUAL_WB_FLUSH_CTRL;
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 	hba->quirks |= UFSHCD_QUIRK_MCQ_BROKEN_INTR;
 	hba->quirks |= UFSHCD_QUIRK_MCQ_BROKEN_RTC;
+#endif
 
 	hba->vps->wb_flush_threshold = UFS_WB_BUF_REMAIN_PERCENT(80);
 
@@ -3333,8 +3335,10 @@ static int ufs_mtk_link_set_hpm(struct ufs_hba *hba)
 		err = ufshcd_make_hba_operational(hba);
 	} else {
 		ufs_mtk_config_mcq(hba, false);
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 		ufshcd_mcq_make_queues_operational(hba);
 		ufshcd_mcq_config_mac(hba, hba->nutrs);
+#endif
 		ufshcd_writel(hba, ufshcd_readl(hba, REG_UFS_MEM_CFG) | 0x1,
 			      REG_UFS_MEM_CFG);
 	}
@@ -3971,6 +3975,7 @@ static int ufs_mtk_mcq_config_resource(struct ufs_hba *hba)
 
 static irqreturn_t ufs_mtk_mcq_intr(int irq, void *__intr_info)
 {
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 	struct ufs_mtk_mcq_intr_info *mcq_intr_info = __intr_info;
 	struct ufs_hba *hba = mcq_intr_info->hba;
 	struct ufs_hw_queue *hwq;
@@ -3987,6 +3992,9 @@ static irqreturn_t ufs_mtk_mcq_intr(int irq, void *__intr_info)
 		ufshcd_mcq_poll_cqe_lock(hba, hwq);
 
 	return IRQ_HANDLED;
+#else
+	return IRQ_HANDLED;
+#endif
 }
 
 static int ufs_mtk_config_mcq_irq(struct ufs_hba *hba)
