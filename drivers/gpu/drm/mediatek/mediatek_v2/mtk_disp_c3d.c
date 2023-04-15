@@ -267,11 +267,24 @@ static inline bool disp_c3d_sram_read(struct mtk_ddp_comp *comp,
 	return return_value;
 }
 
+static void c3d_write_sram_cb(struct cmdq_cb_data data)
+{
+	struct drm_crtc *crtc = data.data;
+
+	if (crtc == NULL) {
+		DDPMSG("%s: invalid crtc\n", __func__);
+		return;
+	}
+	mtk_drm_idlemgr_async_put(crtc, "c3d");
+}
+
 static bool disp_c3d_write_sram(struct mtk_ddp_comp *comp, int cmd_type)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct cmdq_pkt *cmdq_handle = NULL;
 	struct cmdq_client *client = NULL;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	bool async = false;
 
 	if (comp->id == DDP_COMPONENT_C3D0)
 		cmdq_handle = c3d_sram_pkt;
@@ -289,19 +302,28 @@ static bool disp_c3d_write_sram(struct mtk_ddp_comp *comp, int cmd_type)
 		client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 
 	disp_c3d_lock_wake_lock(true);
-	cmdq_mbox_enable(client->chan);
+	async = mtk_drm_idlemgr_get_async_status(crtc);
+	if (async == false)
+		cmdq_mbox_enable(client->chan);
 
 	switch (cmd_type) {
 	case C3D_USERSPACE:
 	case C3D_FIRST_ENABLE:
 		cmdq_pkt_flush(cmdq_handle);
-		cmdq_mbox_disable(client->chan);
+		if (async == false)
+			cmdq_mbox_disable(client->chan);
 		break;
 
 	case C3D_PREPARE:
 		cmdq_pkt_refinalize(cmdq_handle);
-		cmdq_pkt_flush(cmdq_handle);
-		cmdq_mbox_disable(client->chan);
+		if (async == false) {
+			cmdq_pkt_flush(cmdq_handle);
+			cmdq_mbox_disable(client->chan);
+		} else {
+			mtk_drm_idlemgr_async_get(crtc, "c3d");
+			//no need to free cb_data of mtk_crtc and global sram cmdq pkt
+			cmdq_pkt_flush_threaded(cmdq_handle, c3d_write_sram_cb, crtc);
+		}
 		break;
 	}
 
