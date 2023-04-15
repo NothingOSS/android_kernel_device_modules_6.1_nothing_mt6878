@@ -349,6 +349,13 @@ int port_dev_close(struct inode *inode, struct file *file)
 	return 0;
 }
 
+/*
+ * add __no_kcan for !skb_queue_empty(&port->rx_skb_list)
+ * the conidition parameter in wait_event_interruptible_locked_irq.
+ * TODO: remove once design changed,
+ * when no need two spinlock for the two parameters.
+ */
+__no_kcsan
 ssize_t port_dev_read(struct file *file, char *buf, size_t count, loff_t *ppos)
 {
 	struct port_t *port = file->private_data;
