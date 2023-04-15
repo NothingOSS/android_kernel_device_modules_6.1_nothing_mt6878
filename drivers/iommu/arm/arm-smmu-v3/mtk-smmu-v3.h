@@ -377,6 +377,24 @@ enum mtk_smmu_type {
 	SMMU_TYPE_NUM
 };
 
+enum mm_smmu {
+	MM_SMMU_MDP,
+	MM_SMMU_DISP,
+	MM_SMMU_NUM
+};
+
+enum apu_smmu {
+	APU_SMMU_M0,
+	APU_SMMU_NUM
+};
+
+enum soc_smmu {
+	SOC_SMMU_M4,
+	SOC_SMMU_M6,
+	SOC_SMMU_M7,
+	SOC_SMMU_NUM
+};
+
 enum mtk_smmu_plat {
 	SMMU_MT6989,
 };
@@ -632,11 +650,13 @@ static inline void mtk_smmu_dump_io_interface_signals(struct device *dev)
 static inline void mtk_smmu_dump_dcm_en(struct device *dev)
 {
 }
-static int mtk_smmu_register_pmu_device(struct smmuv3_pmu_device *pmu_device)
+
+static inline int mtk_smmu_register_pmu_device(struct smmuv3_pmu_device *pmu_device)
 {
 	return 0;
 }
-static void mtk_smmu_unregister_pmu_device(struct smmuv3_pmu_device *pmu_device)
+
+static inline void mtk_smmu_unregister_pmu_device(struct smmuv3_pmu_device *pmu_device)
 {
 }
 #endif /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 */

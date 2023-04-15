@@ -111,6 +111,8 @@ struct mtk_m4u_plat_data {
 			       struct mtk_iommu_port port);
 	int (*mm_tf_is_gce_videoup)(u32 port_tf, u32 vld_tf);
 	char *(*peri_tf_analyse)(enum peri_iommu bus_id, u32 id);
+	int (*smmu_common_id)(u32 type, u32 tbu_id);
+	char *(*smmu_port_name)(u32 type, int id, int tf_id);
 };
 
 struct peri_iommu_data {
@@ -547,7 +549,7 @@ EXPORT_SYMBOL_GPL(mtk_iommu_debug_reset);
  * Get mtk_iommu_port list index.
  * @tf_id: Hardware reported AXI id when translation fault
  * @type: mtk_iommu_type or mtk_smmu_type
- * @id: iommu_id for iommu, smi_common_id for smmu
+ * @id: iommu_id for iommu, smmu common id for smmu
  */
 static int mtk_iommu_get_tf_port_idx(int tf_id, u32 type, int id)
 {
@@ -557,7 +559,8 @@ static int mtk_iommu_get_tf_port_idx(int tf_id, u32 type, int id)
 	int (*mm_tf_is_gce_videoup)(u32 port_tf, u32 vld_tf);
 	u32 smmu_type = type;
 
-	if (smmu_v3_enable && smmu_type >= SMMU_TYPE_NUM) {
+	/* Only support MM_SMMU and APU_SMMU */
+	if (smmu_v3_enable && smmu_type > APU_SMMU) {
 		pr_info("%s fail, invalid type %d\n", __func__, smmu_type);
 		return m4u_data->plat_data->port_nr[MM_SMMU];
 	} else if (!smmu_v3_enable && type >= TYPE_NUM) {
@@ -646,7 +649,8 @@ static void report_custom_fault(
 	u32 port_nr;
 	int idx;
 
-	if (smmu_v3_enable && smmu_type >= SMMU_TYPE_NUM) {
+	/* Only support MM_SMMU and APU_SMMU */
+	if (smmu_v3_enable && smmu_type > APU_SMMU) {
 		pr_info("%s fail, invalid type %d\n", __func__, smmu_type);
 		return;
 	} else if (!smmu_v3_enable && type >= TYPE_NUM) {
@@ -803,68 +807,53 @@ int mtk_smmu_set_ops(const struct mtk_smmu_ops *ops)
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_set_ops);
 
-static inline u32 get_smmu_smi_common_id(u32 smmu_id, u32 tbu_id)
+static int get_smmu_common_id(u32 smmu_type, u32 tbu_id)
 {
-	if (smmu_id == APU_SMMU)
-		return APU_COM;
+	int id = -1;
 
-	if (tbu_id >= SMMU_TBU_CNT_MAX) {
-		pr_info("%s fail, invalid tbu_id:%u\n", __func__, tbu_id);
-		return SMI_COM_NUM;
+	if (smmu_type >= SMMU_TYPE_NUM) {
+		pr_info("%s fail, invalid smmu_type %d\n", __func__, smmu_type);
+		return -1;
 	}
 
-	if (tbu_id <= 1)
-		return MDP_COM;
-	else
-		return DISP_COM;
+	if (tbu_id >= SMMU_TBU_CNT(smmu_type)) {
+		pr_info("%s fail, invalid tbu_id:%u\n", __func__, tbu_id);
+		return -1;
+	}
+
+	if (m4u_data->plat_data->smmu_common_id)
+		id = m4u_data->plat_data->smmu_common_id(smmu_type, tbu_id);
+
+	pr_debug("%s smmu_type:%u, tbu_id:%u, id:%d\n",
+		 __func__, smmu_type, tbu_id, id);
+
+	return id;
 }
 
 void report_custom_smmu_fault(u64 fault_iova, u64 fault_pa,
 			      u32 fault_id, u32 smmu_id)
 {
 	u32 tbu_id = SMMUWP_TF_TBU_VAL(fault_id);
-	u32 id = get_smmu_smi_common_id(smmu_id, tbu_id);
+	char *port_name = NULL;
+	int id;
+
+	id = get_smmu_common_id(smmu_id, tbu_id);
+	if (id < 0)
+		return;
+
+	if (smmu_id == SOC_SMMU) {
+		if (m4u_data->plat_data->smmu_port_name)
+			port_name = m4u_data->plat_data->smmu_port_name(SOC_SMMU, id, fault_id);
+
+		if (port_name != NULL)
+			m4u_aee_print(mmu_translation_log_format, "SMMU", port_name,
+				      port_name, fault_iova, fault_pa);
+		return;
+	}
 
 	report_custom_fault(fault_iova, fault_pa, fault_id, smmu_id, id);
 }
 EXPORT_SYMBOL_GPL(report_custom_smmu_fault);
-
-void mtk_smmu_get_fault_idx(int tf_id, u32 smmu_id,
-			    struct mtk_smmu_fault_param *mtk_fault_param)
-{
-	const struct mtk_iommu_port *port_list;
-	u32 port_nr, id;
-	int idx;
-
-	pr_info("%s smmu_id:%d, tf_id:0x%x\n", __func__, smmu_id, tf_id);
-
-	if (smmu_id > APU_SMMU) {
-		pr_info("%s fail, invalid type %d\n", __func__, smmu_id);
-		return;
-	}
-
-	port_nr = m4u_data->plat_data->port_nr[smmu_id];
-	port_list = m4u_data->plat_data->port_list[smmu_id];
-
-	id = get_smmu_smi_common_id(smmu_id, mtk_fault_param->tbu_id);
-	idx = mtk_iommu_get_tf_port_idx(tf_id, smmu_id, id);
-	if (idx >= port_nr) {
-		pr_notice("%s err, smmu(%d) tf_id:0x%x\n",
-			  __func__, smmu_id, idx);
-		return;
-	}
-
-	mtk_fault_param->port_name = port_list[idx].name;
-	mtk_fault_param->larb_id = port_list[idx].larb_id;
-	mtk_fault_param->port_id = port_list[idx].port_id;
-
-	pr_info("%s smmu_id:%d, tf_id:0x%x, idx:0x%x, port_name:%s, larb_id:0x%x, port_id:0x%x\n",
-		__func__, smmu_id, tf_id, idx,
-		mtk_fault_param->port_name,
-		mtk_fault_param->larb_id,
-		mtk_fault_param->port_id);
-}
-EXPORT_SYMBOL_GPL(mtk_smmu_get_fault_idx);
 
 static void dump_wrapper_register(struct seq_file *s,
 				  struct arm_smmu_device *smmu)
@@ -1718,8 +1707,8 @@ static void mtk_iommu_trace_init(struct mtk_m4u_data *data)
 
 	event_mgr[IOMMU_SUSPEND].dump_log = 1;
 	event_mgr[IOMMU_RESUME].dump_log = 1;
-	event_mgr[IOMMU_POWER_ON].dump_log = 1;
-	event_mgr[IOMMU_POWER_OFF].dump_log = 1;
+	event_mgr[IOMMU_POWER_ON].dump_log = 0;
+	event_mgr[IOMMU_POWER_OFF].dump_log = 0;
 
 	iommu_globals.record = vmalloc(total_size);
 	if (!iommu_globals.record) {
@@ -2441,6 +2430,53 @@ static bool mt6989_tf_id_is_match(int tf_id, u32 type, int id,
 	return false;
 }
 
+static const u32 mt6989_smmu_common_ids[SMMU_TYPE_NUM][SMMU_TBU_CNT_MAX] = {
+	[MM_SMMU] = {
+		MM_SMMU_MDP,
+		MM_SMMU_MDP,
+		MM_SMMU_DISP,
+		MM_SMMU_DISP,
+	},
+	[APU_SMMU] = {
+		APU_SMMU_M0,
+		APU_SMMU_M0,
+		APU_SMMU_M0,
+		APU_SMMU_M0,
+	},
+	[SOC_SMMU] = {
+		SOC_SMMU_M4,
+		SOC_SMMU_M6,
+		SOC_SMMU_M7,
+	},
+};
+
+static int mt6989_smmu_common_id(u32 smmu_type, u32 tbu_id)
+{
+	if (smmu_type >= SMMU_TYPE_NUM || tbu_id >= SMMU_TBU_CNT(smmu_type))
+		return -1;
+
+	return mt6989_smmu_common_ids[smmu_type][tbu_id];
+}
+
+static char *mt6989_smmu_soc_port_name(u32 type, int id, int tf_id)
+{
+	if (type != SOC_SMMU) {
+		pr_info("%s is not support type:%u\n", __func__, type);
+		return NULL;
+	}
+
+	switch (id) {
+	case SOC_SMMU_M4:
+		return mt6989_soc_m4_port_name(tf_id);
+	case SOC_SMMU_M6:
+		return mt6989_soc_m6_port_name(tf_id);
+	case SOC_SMMU_M7:
+		return mt6989_soc_m7_port_name(tf_id);
+	default:
+		return "SOC_UNKNOWN";
+	}
+}
+
 static const struct mtk_m4u_plat_data mt6855_data = {
 	.port_list[MM_IOMMU] = mm_port_mt6855,
 	.port_nr[MM_IOMMU]   = ARRAY_SIZE(mm_port_mt6855),
@@ -2523,11 +2559,11 @@ static const struct mtk_m4u_plat_data mt6989_smmu_data = {
 	.port_nr[MM_SMMU]   = ARRAY_SIZE(mm_port_mt6989),
 	.port_list[APU_SMMU] = apu_port_mt6989,
 	.port_nr[APU_SMMU]   = ARRAY_SIZE(apu_port_mt6989),
-	.port_list[SOC_SMMU] = soc_port_mt6989,
-	.port_nr[SOC_SMMU]   = ARRAY_SIZE(soc_port_mt6989),
 	.get_valid_tf_id = mt6989_get_valid_tf_id,
 	.tf_id_is_match = mt6989_tf_id_is_match,
 	.mm_tf_is_gce_videoup = mt6989_tf_is_gce_videoup,
+	.smmu_common_id = mt6989_smmu_common_id,
+	.smmu_port_name = mt6989_smmu_soc_port_name,
 };
 
 static const struct of_device_id mtk_m4u_dbg_of_ids[] = {

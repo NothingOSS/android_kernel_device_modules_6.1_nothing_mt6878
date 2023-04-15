@@ -84,9 +84,6 @@ int mtk_smmu_set_ops(const struct mtk_smmu_ops *ops);
 void report_custom_smmu_fault(u64 fault_iova, u64 fault_pa,
 			      u32 fault_id, u32 smmu_id);
 
-void mtk_smmu_get_fault_idx(int tf_id, u32 smmu_id,
-			    struct mtk_smmu_fault_param *mtk_fault_param);
-
 void mtk_smmu_wpreg_dump(struct seq_file *s, u32 smmu_type);
 void mtk_smmu_ste_cd_dump(struct seq_file *s, u32 smmu_type);
 void mtk_smmu_pgtable_dump(struct seq_file *s, u32 smmu_type);
@@ -100,11 +97,6 @@ static inline int mtk_smmu_set_ops(const struct mtk_smmu_ops *ops)
 
 static inline void report_custom_smmu_fault(u64 fault_iova, u64 fault_pa,
 					    u32 fault_id, u32 smmu_id)
-{
-}
-
-static inline void mtk_smmu_get_fault_idx(int tf_id, u32 smmu_id,
-					  struct mtk_smmu_fault_param *mtk_fault_param)
 {
 }
 
