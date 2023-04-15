@@ -45,6 +45,7 @@ void mml_mmp_init(void)
 	mml_mmp_events.submit_cb = mmprofile_register_event(mml, "submit_cb");
 	mml_mmp_events.racing_enter = mmprofile_register_event(mml, "racing_enter");
 	mml_mmp_events.racing_stop = mmprofile_register_event(mml, "racing_stop");
+	mml_mmp_events.racing_stop_sync = mmprofile_register_event(mml, "racing_stop_sync");
 	mml_mmp_events.irq_loop = mmprofile_register_event(mml, "irq_loop");
 	mml_mmp_events.irq_err = mmprofile_register_event(mml, "irq_err");
 	mml_mmp_events.irq_done = mmprofile_register_event(mml, "irq_done");

@@ -50,6 +50,7 @@ struct mml_mmp_events_t {
 	mmp_event submit_cb;
 	mmp_event racing_enter;
 	mmp_event racing_stop;
+	mmp_event racing_stop_sync;
 	mmp_event irq_loop;
 	mmp_event irq_err;
 	mmp_event irq_done;

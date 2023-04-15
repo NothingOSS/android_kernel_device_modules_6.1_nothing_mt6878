@@ -1471,10 +1471,13 @@ EXPORT_SYMBOL_GPL(mml_drm_racing_config_sync);
 s32 mml_drm_racing_stop_sync(struct mml_drm_ctx *ctx, struct cmdq_pkt *pkt)
 {
 	struct cmdq_operand lhs, rhs;
+	const struct mml_topology_path *tp_path;
+	u32 jobid = atomic_read(&ctx->job_serial);
 
 	/* debug current task idx */
-	cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX3,
-		atomic_read(&ctx->job_serial) << 16);
+	cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX3, jobid << 16);
+
+	mml_mmp(racing_stop_sync, MMPROFILE_FLAG_START, jobid, 0);
 
 	/* set NEXT bit on, to let mml know should jump next */
 	lhs.reg = true;
@@ -1488,6 +1491,15 @@ s32 mml_drm_racing_stop_sync(struct mml_drm_ctx *ctx, struct cmdq_pkt *pkt)
 	/* clear next bit since disp with new mml now */
 	rhs.value = ~(u16)MML_NEXTSPR_NEXT;
 	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_AND, MML_CMDQ_NEXT_SPR, &lhs, &rhs);
+
+	tp_path = mml_drm_query_dl_path(ctx, NULL, 0);
+	if (tp_path)
+		cmdq_check_thread_complete(tp_path->clt->chan);
+	tp_path = mml_drm_query_dl_path(ctx, NULL, 1);
+	if (tp_path)
+		cmdq_check_thread_complete(tp_path->clt->chan);
+
+	mml_mmp(racing_stop_sync, MMPROFILE_FLAG_END, 0, 0);
 
 	return 0;
 }
