@@ -3662,7 +3662,8 @@ static int update_mraw_meta_buf_to_ipi_frame(
 		}
 	}
 
-	if (param_idx < 0 || param_idx >= ARRAY_SIZE(fp->mraw_param)) {
+	if (param_idx < 0 || param_idx >= ARRAY_SIZE(fp->mraw_param) ||
+		param_idx >= ARRAY_SIZE(ctx->mraw_subdev_idx)) {
 		ret = -1;
 		pr_info("%s %s: mraw subdev idx not found(pipe_id:%d)\n",
 			__FILE__, __func__, node->uid.pipe_id);
