@@ -85,7 +85,7 @@ struct cpufreq_mtk {
 	cpumask_t related_cpus;
 };
 
-static struct dsu_state **dsu_tbl;
+static struct dsu_table dsu_tbl;
 static int *curr_freqs;
 static int nr_wl_type = 1;
 static int wl_type_curr;
@@ -183,22 +183,22 @@ struct dsu_state *dsu_get_opp_ps(int wl_type, int opp)
 	if (wl_type < 0)
 		wl_type = wl_type_curr;
 	opp = clamp_val(opp, 0, mtk_dsu_em.nr_perf_states - 1);
-	return &dsu_tbl[wl_type][opp];
+	return &dsu_tbl.tbl[wl_type][opp];
 }
 EXPORT_SYMBOL_GPL(dsu_get_opp_ps);
 
 unsigned int dsu_get_freq_opp(int wl_type, unsigned int freq)
 {
-	int i;
+	unsigned int idx;
 
 	if (wl_type < 0)
 		wl_type = wl_type_curr;
-	for (i = mtk_dsu_em.nr_perf_states - 1; i >= 0; i--) {
-		if (dsu_tbl[wl_type][i].freq >= freq)
-			break;
-	}
-	i = clamp_val(i, 0, mtk_dsu_em.nr_perf_states - 1);
-	return i;
+	freq = clamp(freq, dsu_tbl.freq_min, dsu_tbl.freq_max);
+	idx = (dsu_tbl.freq_max - freq) >> dsu_tbl.min_gap_log2;
+	idx = dsu_tbl.opp_map[idx];
+	if (dsu_tbl.tbl[wl_type][idx].freq < freq)
+		idx--;
+	return idx;
 }
 EXPORT_SYMBOL_GPL(dsu_get_freq_opp);
 
@@ -222,23 +222,61 @@ EXPORT_SYMBOL_GPL(get_em_wl);
 
 int init_dsu(void)
 {
-	int i, t;
+	unsigned int i, t, need_alloc;
+	unsigned int min_gap = UINT_MAX;
+	int k, next_k;
 
-	dsu_tbl = kcalloc(nr_wl_type, sizeof(struct dsu_state *),
+	dsu_tbl.tbl = kcalloc(nr_wl_type, sizeof(struct dsu_state *),
 			GFP_KERNEL);
 
 	for (t = 0; t < nr_wl_type; t++) {
-		dsu_tbl[t] = kcalloc(mtk_dsu_em.nr_perf_states, sizeof(struct dsu_state),
-				GFP_KERNEL);
-		if (!dsu_tbl[t])
-			return -ENOMEM;
+		need_alloc = 1;
+		for (k = t - 1; k >= 0; k--) {
+			if (mtk_mapping.cpu_to_dsu[t].dsu_type
+					== mtk_mapping.cpu_to_dsu[k].dsu_type) {
+				dsu_tbl.tbl[t] = dsu_tbl.tbl[k];
+				need_alloc = 0;
+				break;
+			}
+		}
+
+		if (need_alloc == 0)
+			continue;
+		else {
+			dsu_tbl.tbl[t] = kcalloc(mtk_dsu_em.nr_perf_states,
+				sizeof(struct dsu_state), GFP_KERNEL);
+			if (!dsu_tbl.tbl[t])
+				return -ENOMEM;
+		}
+
 		mtk_update_wl_table(0, t);
 		for (i = 0; i < mtk_dsu_em.nr_perf_states; i++) {
-			dsu_tbl[t][i].freq = mtk_dsu_em.dsu_table[i].dsu_frequency;
-			dsu_tbl[t][i].volt = mtk_dsu_em.dsu_table[i].dsu_volt;
-			dsu_tbl[t][i].dyn_pwr = mtk_dsu_em.dsu_table[i].dynamic_power;
-			dsu_tbl[t][i].BW = mtk_dsu_em.dsu_table[i].dsu_bandwidth;
-			dsu_tbl[t][i].EMI_BW = mtk_dsu_em.dsu_table[i].emi_bandwidth;
+			dsu_tbl.tbl[t][i].freq = mtk_dsu_em.dsu_table[i].dsu_frequency;
+			dsu_tbl.tbl[t][i].volt = mtk_dsu_em.dsu_table[i].dsu_volt;
+			dsu_tbl.tbl[t][i].dyn_pwr = mtk_dsu_em.dsu_table[i].dynamic_power;
+			dsu_tbl.tbl[t][i].BW = mtk_dsu_em.dsu_table[i].dsu_bandwidth;
+			dsu_tbl.tbl[t][i].EMI_BW = mtk_dsu_em.dsu_table[i].emi_bandwidth;
+			if (i > 0 && t == 0)
+				min_gap = min(min_gap, dsu_tbl.tbl[t][i - 1].freq
+					- dsu_tbl.tbl[t][i].freq);
+		}
+
+		if (t != 0) /* the O1 mapping table only need init once */
+			continue;
+		dsu_tbl.nr_opp = mtk_dsu_em.nr_perf_states;
+		dsu_tbl.freq_max = mtk_dsu_em.dsu_table[0].dsu_frequency;
+		dsu_tbl.freq_min = mtk_dsu_em.dsu_table[dsu_tbl.nr_opp - 1].dsu_frequency;
+		dsu_tbl.min_gap_log2 =
+			min_t(unsigned int, ilog2(min_gap), sizeof(unsigned int) * 8);
+		dsu_tbl.nr_opp_map = (dsu_tbl.freq_max - dsu_tbl.freq_min) >> dsu_tbl.min_gap_log2;
+		dsu_tbl.opp_map = kcalloc(dsu_tbl.nr_opp_map + 1, sizeof(unsigned int), GFP_KERNEL);
+		for (i = 0; i < dsu_tbl.nr_opp; i++) {
+			k = (dsu_tbl.freq_max - dsu_tbl.tbl[t][i].freq) >> dsu_tbl.min_gap_log2;
+			next_k = (dsu_tbl.freq_max -
+				dsu_tbl.tbl[t][min(dsu_tbl.nr_opp - 1, i + 1)].freq)
+				>> dsu_tbl.min_gap_log2;
+			for (; k <= next_k; k++)
+				dsu_tbl.opp_map[k] = i;
 		}
 	}
 	mtk_update_wl_table(0, 0);

@@ -111,6 +111,18 @@ struct dsu_state {
 	unsigned int EMI_BW;
 };
 
+struct dsu_table {
+	unsigned int nr_opp;
+	unsigned int freq_max;
+	unsigned int freq_min;
+	struct dsu_state **tbl;
+
+	/* for O1 Mapping */
+	unsigned int min_gap_log2;
+	unsigned int nr_opp_map;
+	unsigned int *opp_map;
+};
+
 extern struct dsu_state *dsu_get_opp_ps(int wl_type, int opp);
 extern unsigned int dsu_get_freq_opp(int wl_type, unsigned int freq);
 extern int init_dsu(void);
