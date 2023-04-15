@@ -540,10 +540,10 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_mode_setting_table = ov64b_slim_video_setting,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(ov64b_slim_video_setting),
 		.hdr_group = PARAM_UNDEFINED,
-		.hdr_mode = HDR_NONE,
+		.hdr_mode = HDR_RAW_STAGGER_2EXP,
 		.pclk = 115200000,
 		.linelength = 528,
-		.framelength = 3660,
+		.framelength = 3660*2,
 		.max_framerate = 300,
 		.mipi_pixel_rate = 1200000000,
 		.readout_length = 0,
@@ -582,10 +582,10 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_mode_setting_table = ov64b_custom1_setting,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(ov64b_custom1_setting),
 		.hdr_group = PARAM_UNDEFINED,
-		.hdr_mode = HDR_NONE,
+		.hdr_mode = HDR_RAW_STAGGER_2EXP,
 		.pclk = 115200000,
 		.linelength = 528,
-		.framelength = 3660,
+		.framelength = 3660*2,
 		.max_framerate = 300,
 		.mipi_pixel_rate = 1200000000,
 		.readout_length = 0,
@@ -624,10 +624,10 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_mode_setting_table = ov64b_custom2_setting,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(ov64b_custom2_setting),
 		.hdr_group = PARAM_UNDEFINED,
-		.hdr_mode = HDR_NONE,
+		.hdr_mode = HDR_RAW_STAGGER_2EXP,
 		.pclk = 115200000,
 		.linelength = 856,
-		.framelength = 2688,
+		.framelength = 2688*2,
 		.max_framerate = 250,
 		.mipi_pixel_rate = 1200000000,
 		.readout_length = 0,
@@ -666,10 +666,10 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_mode_setting_table = ov64b_custom3_setting,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(ov64b_custom3_setting),
 		.hdr_group = PARAM_UNDEFINED,
-		.hdr_mode = HDR_NONE,
+		.hdr_mode = HDR_RAW_STAGGER_2EXP,
 		.pclk = 115200000,
 		.linelength = 816,
-		.framelength = 3520,
+		.framelength = 3520*2,
 		.max_framerate = 200,
 		.mipi_pixel_rate = 1200000000,
 		.readout_length = 0,
@@ -961,15 +961,12 @@ static struct subdrv_ops ops = {
 
 static struct subdrv_pw_seq_entry pw_seq[] = {
 	{HW_ID_MCLK, 24, 0},
-	// {HW_ID_PDN, 0, 0},
 	{HW_ID_RST, 0, 1},
 	{HW_ID_AVDD, 2800000, 3},
-	// {HW_ID_AVDD1, 1800000, 3},
-	// {HW_ID_AFVDD, 3100000, 3},
+	{HW_ID_AFVDD, 3100000, 3},
 	{HW_ID_DVDD, 1100000, 4},
 	{HW_ID_DOVDD, 1800000, 1},
 	{HW_ID_MCLK_DRIVING_CURRENT, 8, 6},
-	// {HW_ID_PDN, 1, 0},
 	{HW_ID_RST, 1, 5}
 };
 
@@ -1107,7 +1104,7 @@ static u16 get_gain2reg(u32 gain)
 static int ov64b_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 {
 	enum SENSOR_SCENARIO_ID_ENUM scenario_id;
-	u32 *ae_ctrl = NULL;
+	struct mtk_hdr_ae *ae_ctrl = NULL;
 	u64 *feature_data = (u64 *)para;
 
 	if (feature_data == NULL) {
@@ -1116,7 +1113,7 @@ static int ov64b_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 	}
 	scenario_id = *feature_data;
 	if ((feature_data + 1) != NULL)
-		ae_ctrl = (u32 *)((uintptr_t)(*(feature_data + 1)));
+		ae_ctrl = (struct mtk_hdr_ae *)((uintptr_t)(*(feature_data + 1)));
 	else
 		DRV_LOGE(ctx, "no ae_ctrl input");
 
@@ -1151,14 +1148,31 @@ static int ov64b_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 		ctx->s_ctx.mode[scenario_id].seamless_switch_mode_setting_table,
 		ctx->s_ctx.mode[scenario_id].seamless_switch_mode_setting_len);
 	if (ae_ctrl) {
-		set_shutter(ctx, ae_ctrl[0]);
-		set_gain(ctx, ae_ctrl[5]);
+		switch (ctx->s_ctx.mode[scenario_id].hdr_mode) {
+		case HDR_RAW_STAGGER_2EXP:
+			set_multi_shutter_frame_length(ctx, (u64 *)&ae_ctrl->exposure, 2, 0);
+			set_multi_gain(ctx, (u32 *)&ae_ctrl->gain, 2);
+			break;
+		default:
+			set_shutter(ctx, ae_ctrl->exposure.le_exposure);
+			set_gain(ctx, ae_ctrl->gain.le_gain);
+			break;
+		}
 	}
 	i2c_table_write(ctx, addr_data_pair_seamless_switch_step2_ov64b,
 		ARRAY_SIZE(addr_data_pair_seamless_switch_step2_ov64b));
 	if (ae_ctrl) {
-		set_shutter(ctx, ae_ctrl[10]);
-		set_gain(ctx, ae_ctrl[15]);
+		switch (ctx->s_ctx.mode[scenario_id].hdr_mode) {
+		case HDR_RAW_STAGGER_2EXP:
+			set_multi_shutter_frame_length(ctx,
+				(u64 *)&(ae_ctrl + 1)->exposure, 2, 0);
+			set_multi_gain(ctx, (u32 *)&(ae_ctrl + 1)->gain, 2);
+			break;
+		default:
+			set_shutter(ctx, (ae_ctrl + 1)->exposure.le_exposure);
+			set_gain(ctx, (ae_ctrl + 1)->gain.le_gain);
+			break;
+		}
 	}
 	i2c_table_write(ctx, addr_data_pair_seamless_switch_step3_ov64b,
 		ARRAY_SIZE(addr_data_pair_seamless_switch_step3_ov64b));
