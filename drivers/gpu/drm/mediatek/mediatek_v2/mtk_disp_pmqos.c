@@ -217,10 +217,10 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 	for (i = 0; i < MAX_CRTC; ++i)
 		total += priv->req_hrt[i];
 
-	if (priv->data->mmsys_id == MMSYS_MT6897) {
-		if (mtk_disp_check_segment(mtk_crtc, priv) == false)
-			mtk_icc_set_bw(priv->hrt_bw_request, 0, MBps_to_icc(1));
-	} else
+	if ((priv->data->mmsys_id == MMSYS_MT6897) &&
+		(mtk_disp_check_segment(mtk_crtc, priv) == false))
+		mtk_icc_set_bw(priv->hrt_bw_request, 0, MBps_to_icc(1));
+	else
 		mtk_icc_set_bw(priv->hrt_bw_request, 0, MBps_to_icc(total));
 
 	DRM_MMP_MARK(hrt_bw, 0, tmp);
@@ -243,10 +243,10 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 					(bw_base / 2) : (ovl_num < 5) ? bw_base : (bw_base * 3 / 2);
 			}
 
-			if (priv->data->mmsys_id == MMSYS_MT6897) {
-				if (mtk_disp_check_segment(mtk_crtc, priv) == false)
-					mtk_icc_set_bw(priv->hrt_by_larb, 0, MBps_to_icc(1));
-			} else
+			if ((priv->data->mmsys_id == MMSYS_MT6897) &&
+				(mtk_disp_check_segment(mtk_crtc, priv) == false))
+				mtk_icc_set_bw(priv->hrt_by_larb, 0, MBps_to_icc(1));
+			else
 				mtk_icc_set_bw(priv->hrt_by_larb, 0, MBps_to_icc(tmp1));
 
 			DDPINFO("%s, CRTC%d HRT bw=%u total=%u larb bw=%u ovl_num=%d bw_base=%d\n",
