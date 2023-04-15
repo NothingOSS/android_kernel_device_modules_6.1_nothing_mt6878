@@ -152,15 +152,23 @@ inline int cpu_high_irqload(int cpu, unsigned long cpu_util)
 	return 1;
 }
 
-inline unsigned int mtk_get_idle_exit_latency(struct rq *rq)
+inline unsigned int mtk_get_idle_exit_latency(int cpu)
 {
-	struct cpuidle_state *idle = idle_get_state(rq);
+	struct cpuidle_state *idle;
 
-	if (idle)
-		return idle->exit_latency;
+	/* CPU is idle */
+	if (available_idle_cpu(cpu)) {
 
-	/* CPU is not idle or WFI */
-	return 0;
+		idle = idle_get_state(cpu_rq(cpu));
+		if (idle)
+			return idle->exit_latency;
+
+		/* CPU is in WFI */
+		return 0;
+	}
+
+	/* CPU is not idle */
+	return UINT_MAX;
 }
 
 static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
@@ -239,7 +247,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			 * conditions are same, select the least cumulative
 			 * window demand CPU.
 			 */
-			cpu_idle_exit_latency = mtk_get_idle_exit_latency(cpu_rq(cpu));
+			cpu_idle_exit_latency = mtk_get_idle_exit_latency(cpu);
 
 			if (best_idle_exit_latency < cpu_idle_exit_latency)
 				continue;

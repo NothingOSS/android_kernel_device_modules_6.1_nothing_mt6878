@@ -427,7 +427,7 @@ TRACE_EVENT(sched_cpu_util,
 		__entry->cpu_util_flt	= 0; //cpu_util_flt(cpu);
 		__entry->capacity	= capacity_of(cpu);
 		__entry->capacity_orig	= capacity_orig_of(cpu);
-		__entry->idle_exit_latency	= mtk_get_idle_exit_latency(cpu_rq(cpu));
+		__entry->idle_exit_latency	= mtk_get_idle_exit_latency(cpu);
 		__entry->irqload		= cpu_util_irq(cpu_rq(cpu));
 		__entry->online			= cpu_online(cpu);
 		__entry->paused			= cpu_paused(cpu);
