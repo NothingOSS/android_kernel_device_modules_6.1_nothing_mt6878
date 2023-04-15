@@ -1500,7 +1500,7 @@ EXPORT_SYMBOL_GPL(set_util_signal);
 
 void update_adaptive_margin(struct cpufreq_policy *policy)
 {
-	unsigned int i;
+	unsigned int i, ptr = 0;
 	int cpu = cpumask_first(policy->cpus);
 	int gearid = per_cpu(gear_id, cpu);
 	int cpu_idx;
@@ -1533,7 +1533,7 @@ void update_adaptive_margin(struct cpufreq_policy *policy)
 		last_wall_time_stamp[cpu_idx] = wall_time_stamp;
 	}
 	his_ptr[gearid]++;
-	his_ptr[gearid] %= (1 << am_wind_cnt_shift);
+	his_ptr[gearid] %= MAX_NR_CPUS;
 	active_ratio[gearid] =
 		(max_active << SCHED_CAPACITY_SHIFT) / duration_max_active;
 	adaptive_margin[gearid] =
@@ -1543,8 +1543,12 @@ void update_adaptive_margin(struct cpufreq_policy *policy)
 		clamp_val(adaptive_margin[gearid], am_floor, am_ceiling);
 	margin_his[gearid][his_ptr[gearid]] = adaptive_margin[gearid];
 	adaptive_margin[gearid] = 0;
-	for (i = 0; i < (1 << am_wind_cnt_shift); i++)
-		adaptive_margin[gearid] += margin_his[gearid][i];
+	ptr = (his_ptr[gearid] + MAX_NR_CPUS - (1 << am_wind_cnt_shift) + 1) % MAX_NR_CPUS;
+	for (i = 0; i < (1 << am_wind_cnt_shift); i++) {
+		adaptive_margin[gearid] += margin_his[gearid][ptr];
+		ptr++;
+		ptr %= MAX_NR_CPUS;
+	}
 	adaptive_margin[gearid] >>= am_wind_cnt_shift;
 	if (trace_sugov_ext_adaptive_margin_enabled())
 		trace_sugov_ext_adaptive_margin(gearid, adaptive_margin[gearid],
