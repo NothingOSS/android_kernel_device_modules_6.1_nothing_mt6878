@@ -378,9 +378,8 @@ struct mml_comp_aal {
 	bool dual;
 	u32 jobid;
 	u8 pipe;
+	u8 out_idx;
 	int irq;
-	atomic_t hist_read;
-	atomic_t hist_read_cnt;
 	u32 *phist;
 	u32 curve_sram_idx;
 	u32 hist_sram_idx;
@@ -616,17 +615,8 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 
 	if (mode != MML_MODE_MML_DECOUPLE) {
 		mutex_lock(&aal->irq_wq_lock);
-		mutex_lock(&pq_task->aal_comp_lock);
 
-		if (task->pq_task->read_status.aal_comp == MML_PQ_HIST_INIT) {
-			if (!atomic_read(&aal->hist_read) &&
-				!atomic_read(&aal->hist_read_cnt))
-				task->pq_task->read_status.aal_comp =
-					MML_PQ_HIST_IDLE;
-			else
-				task->pq_task->read_status.aal_comp =
-					MML_PQ_HIST_READING;
-		}
+		mml_pq_set_aal_status(pq_task, ccfg->node->out_idx);
 
 		mml_pq_msg("%s: engine_id[%d] comp_jobid[%d] jobid[%d] pipe[%d] ",
 			__func__, aal->comp.id, aal->jobid,
@@ -637,16 +627,13 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			task->pq_task->read_status.aal_comp);
 
 		if (task->pq_task->read_status.aal_comp == MML_PQ_HIST_IDLE) {
-			atomic_inc(&aal->hist_read_cnt);
 
 			aal->hist_sram_idx = (aal->hist_sram_idx) ? 0 : 1;
 			aal->curve_sram_idx = aal->hist_sram_idx;
 
-			mutex_unlock(&pq_task->aal_comp_lock);
-			mutex_unlock(&aal->irq_wq_lock);
-
 			aal->dual = task->config->dual;
 			aal->pipe = ccfg->pipe;
+			aal->out_idx = ccfg->node->out_idx;
 
 			aal->pq_task = task->pq_task;
 			mml_pq_get_pq_task(aal->pq_task);
@@ -658,6 +645,8 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			memcpy(&aal->frame_data.frame_out, &task->config->frame_out,
 				MML_MAX_OUTPUTS * sizeof(struct mml_frame_size));
 			aal->jobid = task->job.jobid;
+
+			mutex_unlock(&aal->irq_wq_lock);
 
 
 			if (aal->data->rb_mode == RB_EOF_MODE) {
@@ -683,7 +672,6 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			if (aal->hist_sram_idx == aal->curve_sram_idx)
 				aal->hist_sram_idx = (!aal->curve_sram_idx) ? 1 : 0;
 
-			mutex_unlock(&pq_task->aal_comp_lock);
 			mutex_unlock(&aal->irq_wq_lock);
 
 			if (aal->data->rb_mode == RB_EOF_MODE) {
@@ -788,6 +776,10 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 		cmdq_pkt_write(pkt, NULL, base_pa + 0x3b4, 0x18, U32_MAX);
 
 	if (mode == MML_MODE_MML_DECOUPLE) {
+		cmdq_pkt_write(pkt, NULL,
+			base_pa + aal->data->reg_table[AAL_INTSTA], 0x0, U32_MAX);
+		cmdq_pkt_write(pkt, NULL,
+			base_pa + aal->data->reg_table[AAL_INTEN], 0x0, U32_MAX);
 		cmdq_pkt_write(pkt, NULL,
 			base_pa + aal->data->reg_table[AAL_SRAM_RW_IF_0], addr, U32_MAX);
 		cmdq_pkt_poll(pkt, NULL, (0x1 << 16),
@@ -1875,30 +1867,18 @@ static void aal_readback_work(struct work_struct *work_item)
 	base = comp->base;
 
 	mutex_lock(&aal->irq_wq_lock);
-	mml_pq_msg("%s: engine_id[%d] jobid[%d] hist_read[%d] hist_read_cnt[%d]",
-		__func__, aal->comp.id, aal->jobid,
-		atomic_read(&aal->hist_read), atomic_read(&aal->hist_read_cnt));
-
-	if (!atomic_read(&aal->hist_read_cnt) ||
-		atomic_fetch_add_unless(&aal->hist_read, 1, 1)) {
+	if (mml_pq_aal_hist_reading(aal->pq_task, aal->out_idx, aal->pipe)) {
 		mutex_unlock(&aal->irq_wq_lock);
 		return;
 	}
-	atomic_dec_if_positive(&aal->hist_read_cnt);
+	writel(0x0, base + aal->data->reg_table[AAL_INTEN]);
 	mutex_unlock(&aal->irq_wq_lock);
 
 	aal_hist_read(aal);
 
-	complete(&aal->pq_task->aal_hist_done[aal->pipe]);
-	if (aal->dual)
-		wait_for_completion(
-			&aal->pq_task->aal_hist_done[(aal->pipe + 1) & 0x1]);
-
 	mml_pq_put_pq_task(aal->pq_task);
 
-	mutex_lock(&aal->irq_wq_lock);
-	atomic_dec_if_positive(&aal->hist_read);
-	mutex_unlock(&aal->irq_wq_lock);
+	mml_pq_aal_flag_check(aal->dual, aal->out_idx);
 
 	if (aal->data->rb_mode == RB_EOF_MODE) {
 		mml_clock_lock(aal->mml);

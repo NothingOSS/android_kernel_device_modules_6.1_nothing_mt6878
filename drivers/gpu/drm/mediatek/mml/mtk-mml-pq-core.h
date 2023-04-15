@@ -209,14 +209,12 @@ struct mml_pq_task {
 	struct mutex aal_comp_lock;
 	struct mutex hdr_comp_lock;
 	struct mutex fg_buffer_mutex;
-	struct completion aal_hist_done[MML_PIPE_CNT];
 	struct mml_pq_readback_buffer *aal_hist[MML_PIPE_CNT];
 	struct mml_pq_readback_buffer *hdr_hist[MML_PIPE_CNT];
 	struct mml_pq_readback_buffer *tdshp_hist[MML_PIPE_CNT];
 	struct mml_pq_dma_buffer *fg_table;
 	struct mml_pq_read_status read_status;
 	struct completion hdr_curve_ready[MML_PIPE_CNT];
-	struct completion hdr_hist_ready[MML_PIPE_CNT];
 	struct mutex ref_lock;
 	struct kref ref;
 	struct mml_pq_sub_task tile_init;
@@ -376,6 +374,36 @@ void mml_pq_put_comp_config_result(struct mml_task *task);
 void mml_pq_comp_config_clear(struct mml_task *task);
 
 /*
+ * mml_pq_set_aal_status - decide aal hist status by flag status
+ *
+ * @pq_task:	pq task data, include sub_task info
+ * @out_idx: MML output info
+ *
+ */
+void mml_pq_set_aal_status(struct mml_pq_task *pq_task, u8 out_idx);
+
+/*
+ * mml_pq_aal_hist_reading - return aal histogram reading status
+ *
+ * @pq_task:	pq task data, include sub_task info
+ * @out_idx: MML output info
+ * @pipe: pipe info
+ *
+ * Return:	if true, means aal histogram is reading, need to skip
+ */
+bool mml_pq_aal_hist_reading(struct mml_pq_task *pq_task, u8 out_idx, u8 pipe);
+
+/*
+ * mml_pq_aal_flag_check - check aal flag reset or not
+ *
+ * @dual:	dual pipe or single pipe info
+ * @out_idx: MML output info
+ *
+ */
+void mml_pq_aal_flag_check(bool dual, u8 out_idx);
+
+
+/*
  * mml_pq_ir_aal_readback - noify from MML core through MML PQ driver
  *	to update histogram in IR/DL
  *
@@ -405,6 +433,35 @@ int mml_pq_ir_aal_readback(struct mml_pq_task *pq_task,
  * Return:	if value < 0, means PQ update failed should debug
  */
 int mml_pq_dc_aal_readback(struct mml_task *task, u8 pipe, u32 *phist);
+
+/*
+ * mml_pq_set_aal_status - decide hdr hist status by flag status
+ *
+ * @pq_task:	pq task data, include sub_task info
+ * @out_idx: MML output info
+ *
+ */
+void mml_pq_set_hdr_status(struct mml_pq_task *pq_task, u8 out_idx);
+
+/*
+ * mml_pq_hdr_flag_check - check hdr flag reset or not
+ *
+ * @dual:	dual pipe or single pipe info
+ * @out_idx: MML output info
+ *
+ */
+void mml_pq_hdr_flag_check(bool dual, u8 out_idx);
+
+/*
+ * mml_pq_aal_hist_reading - return hdr histogram reading status
+ *
+ * @pq_task:	pq task data, include sub_task info
+ * @out_idx: MML output info
+ * @pipe: pipe info
+ *
+ * Return:	if true, means aal histogram is reading, need to skip
+ */
+bool mml_pq_hdr_hist_reading(struct mml_pq_task *pq_task, u8 out_idx, u8 pipe);
 
 /*
  * mml_pq_ir_aal_readback - noify from MML core through MML PQ driver
@@ -499,14 +556,5 @@ void mml_pq_get_pq_task(struct mml_pq_task *pq_task);
  * Return:	if value = 1, pq will be released
  */
 int mml_pq_put_pq_task(struct mml_pq_task *pq_task);
-
-/*
- * copy_sub_task_data - copy sub_task info
- *
- * @pq_param:	pq related info
- * @config:	mml config info
- * @sub_task:	sub_task info
- *
- */
 
 #endif	/* __MTK_MML_PQ_CORE_H__ */

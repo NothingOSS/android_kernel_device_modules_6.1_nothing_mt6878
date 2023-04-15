@@ -131,6 +131,7 @@ struct mml_comp_hdr {
 	const struct hdr_data *data;
 	bool ddp_bound;
 	u8 pipe;
+	u8 out_idx;
 	u32 *gain_curve;
 	u16 event_eof;
 	u16 mutex_hint;
@@ -141,10 +142,8 @@ struct mml_comp_hdr {
 	struct mml_pq_task *pq_task;
 	struct mml_pq_task *curve_pq_task;
 	bool dual;
-	atomic_t hist_done;
 	bool hist_cmd_done;
 	struct mutex hist_cmd_lock;
-	atomic_t hist_read_cnt;
 	struct mml_pq_frame_data frame_data;
 	struct mml_pq_readback_buffer *hdr_hist[MML_PIPE_CNT];
 	struct cmdq_client *clts;
@@ -341,27 +340,18 @@ static s32 hdr_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 		return 0;
 	}
 
-	mutex_lock(&task->pq_task->hdr_comp_lock);
-	mml_pq_ir_log("%s jobid[%d] pipe_id[%d] engine_id[%d] hist_done[%d] hist_read_cnt[%d]",
-		__func__, task->job.jobid, ccfg->pipe, comp->id,
-		atomic_read(&hdr->hist_done), atomic_read(&hdr->hist_read_cnt));
-	if (task->pq_task->read_status.hdr_comp == MML_PQ_HIST_INIT) {
-		if (atomic_read(&hdr->hist_done) && !atomic_read(&hdr->hist_read_cnt)) {
-			atomic_inc(&hdr->hist_read_cnt);
-			atomic_dec_if_positive(&hdr->hist_done);
-			task->pq_task->read_status.hdr_comp =
-				MML_PQ_HIST_IDLE;
-		} else
-			task->pq_task->read_status.hdr_comp =
-				MML_PQ_HIST_READING;
-	}
-	mutex_unlock(&task->pq_task->hdr_comp_lock);
+	mml_pq_ir_log("%s jobid[%d] pipe_id[%d] engine_id[%d]",
+		__func__, task->job.jobid, ccfg->pipe, comp->id);
+
+	mml_pq_set_hdr_status(task->pq_task, ccfg->node->out_idx);
 
 	if (result->is_hdr_need_readback &&
 		task->pq_task->read_status.hdr_comp == MML_PQ_HIST_IDLE) {
 		if (hdr->hist_pkts[ccfg->pipe]) {
-			hdr->pq_task = task->pq_task;
-			mml_pq_get_pq_task(hdr->pq_task);
+			if (task->pq_task) {
+				hdr->pq_task = task->pq_task;
+				mml_pq_get_pq_task(hdr->pq_task);
+			}
 
 
 			memcpy(&hdr->frame_data.pq_param, task->pq_param,
@@ -380,16 +370,16 @@ static s32 hdr_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			hdr->crop_height = dest->crop.r.height;
 			hdr->crop_width = dest->crop.r.width;
 			hdr->pipe = ccfg->pipe;
-;
+			hdr->out_idx = ccfg->node->out_idx;
+
 			if (!(hdr->hdr_hist[ccfg->pipe]))
 				mml_pq_get_readback_buffer(task,
 					ccfg->pipe, &(hdr->hdr_hist[ccfg->pipe]));
 			queue_work(hdr->hdr_hist_wq, &hdr->hdr_hist_task);
 		}
 	}
-	mml_pq_ir_log("%s end jobid[%d] pipe_id[%d] engine_id[%d] hist_done[%d] hist_read_cnt[%d]",
-		__func__, task->job.jobid, ccfg->pipe, comp->id,
-		atomic_read(&hdr->hist_done), atomic_read(&hdr->hist_read_cnt));
+	mml_pq_ir_log("%s end jobid[%d] pipe_id[%d] engine_id[%d]",
+		__func__, task->job.jobid, ccfg->pipe, comp->id);
 	return 0;
 }
 
@@ -1408,6 +1398,9 @@ static void hdr_histdone_cb(struct cmdq_cb_data data)
 	mml_pq_ir_log("%s jobid[%d] hdr->hist_pkts[0] = [%p] hdr->hist_pkts[1] = [%p]",
 		__func__, hdr->jobid, hdr->hist_pkts[0], hdr->hist_pkts[1]);
 
+	if (mml_pq_hdr_hist_reading(hdr->pq_task, hdr->out_idx, hdr->pipe))
+		return;
+
 	if (pkt == hdr->hist_pkts[0]) {
 		pipe = 0;
 	} else if (pkt == hdr->hist_pkts[1]) {
@@ -1439,6 +1432,12 @@ static void hdr_histdone_cb(struct cmdq_cb_data data)
 		hdr->hdr_hist[pipe]->va[offset/4+14],
 		sum);
 
+
+	mml_pq_ir_log("%s jobid[%d] task[%p] pq_task[%p] pq_ref[%d] pipe[%d]", __func__,
+		hdr->jobid, hdr->pq_task->task, hdr->pq_task,
+		kref_read(&hdr->pq_task->ref),
+		hdr->pipe);
+
 	mml_pq_ir_hdr_readback(hdr->pq_task, hdr->frame_data, hdr->pipe,
 			&(hdr->hdr_hist[pipe]->va[offset/4]), hdr->jobid,
 			hdr->dual);
@@ -1464,8 +1463,8 @@ static void hdr_histdone_cb(struct cmdq_cb_data data)
 		hdr_ir_histogram_check(hdr);
 
 	mml_pq_put_pq_task(hdr->pq_task);
-	atomic_fetch_add_unless(&hdr->hist_done, 1, 1);
-	atomic_dec_if_positive(&hdr->hist_read_cnt);
+
+	mml_pq_hdr_flag_check(hdr->dual, hdr->out_idx);
 
 
 	mml_pq_ir_log("%s end jobid[%d] pkt[%p] hdr[%p] pipe[%d] pa[%llx] va[%p]",
@@ -1628,11 +1627,6 @@ hdr_hist_cmd_done:
 
 	wait_for_completion(&hdr->pq_task->hdr_curve_ready[hdr->pipe]);
 
-	if (hdr->dual) {
-		complete(&hdr->pq_task->hdr_hist_ready[hdr->pipe]);
-		wait_for_completion(&hdr->pq_task->hdr_hist_ready[(pipe + 1) & 0x1]);
-	}
-
 	cmdq_pkt_refinalize(pkt);
 	cmdq_pkt_flush_threaded(pkt, hdr_histdone_cb, (void *)hdr->hist_pkts[pipe]);
 
@@ -1696,7 +1690,6 @@ static int probe(struct platform_device *pdev)
 				  GFP_KERNEL);
 
 	mutex_init(&priv->hist_cmd_lock);
-	atomic_set(&priv->hist_done, 1);
 
 	if (of_property_read_u16(dev->of_node, "event-frame-done",
 				 &priv->event_eof))
