@@ -339,8 +339,9 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 		apusys_rv_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_CE_SRAM_DUMP, 0);
 
-		apusys_rv_smc_call(dev,
-			MTK_APUSYS_KERNEL_OP_APUSYS_RV_TCMDUMP, 0);
+		if ((apu->platdata->flags & F_TCM_WA) == 0)
+			apusys_rv_smc_call(dev,
+				MTK_APUSYS_KERNEL_OP_APUSYS_RV_TCMDUMP, 0);
 
 		apusys_rv_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_RV_RAMDUMP, 0);
@@ -363,6 +364,10 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 		apusys_rv_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_RV_CACHEDUMP, 0);
 
+		if (apu->platdata->flags & F_TCM_WA)
+			apusys_rv_smc_call(dev,
+				MTK_APUSYS_KERNEL_OP_APUSYS_RV_TCMDUMP_WA, 0);
+
 		apusys_rv_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_RV_CLEAR_WDT_ISR, 0);
 	} else {
@@ -375,7 +380,8 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 		reg_dump[32] = pc;
 		reg_dump[33] = sp;
 
-		apu_do_tcmdump(apu);
+		if ((apu->platdata->flags & F_TCM_WA) == 0)
+			apu_do_tcmdump(apu);
 		apu_do_ramdump(apu);
 
 		tbuf_cur_ptr = (ioread32(apu->md32_sysctrl + MD32_STATUS) >> 16 & 0x7);
@@ -473,6 +479,12 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 		hw_ops->rv_cachedump(apu);
 
 		memcpy(apu->coredump->regdump, reg_dump, sizeof(reg_dump));
+
+		if (apu->platdata->flags & F_TCM_WA) {
+			/* reset uP before tcmdump to prevent axi slave blocked by uP */
+			iowrite32(0, apu->md32_sysctrl);
+			apu_do_tcmdump(apu);
+		}
 
 		dsb(SY); /* may take lots of time */
 	}

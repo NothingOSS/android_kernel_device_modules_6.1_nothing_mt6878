@@ -39,4 +39,7 @@
 #define APU_SEMA_DATA1 (0x940)
 #define APU_SEMA_MPU_CTRL1 (0x980)
 
+/* apu_rpc register definition */
+#define APU_RPC_STATUS_1 (0x34)
+
 #endif /* APU_HW_H_ */

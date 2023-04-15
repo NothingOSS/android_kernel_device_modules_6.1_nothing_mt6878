@@ -60,8 +60,9 @@ struct mtk_apu_hw_ops {
 #define F_BRINGUP				BIT(11)
 #define F_FPGA_EP				BIT(12)
 #define F_ACCESS_RCX_IN_ATF		BIT(13)
+#define F_TCM_WA				BIT(14)
 
-#define APUSYS_RV_FPGA_EP
+/* #define APUSYS_RV_FPGA_EP */
 
 struct mtk_apu_platdata {
 	uint32_t flags;
@@ -154,6 +155,7 @@ struct mtk_apu {
 	void *md32_sysctrl;
 	void *md32_debug_apb;
 	void *apu_mbox;
+	void *apu_rpc;
 	void *apu_sec_mem_base;
 	void *apu_aee_coredump_mem_base;
 	void *coredump_buf;

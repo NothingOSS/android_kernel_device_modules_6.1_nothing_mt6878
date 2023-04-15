@@ -14,6 +14,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/rpmsg.h>
 #include <linux/delay.h>
+#include <linux/random.h>
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 #include <linux/debugfs.h>
@@ -717,7 +718,7 @@ static int apu_ipi_ut_send(uint32_t val)
 		return -1;
 	}
 
-	mutex_lock(&apu_ipi_ut_mtx);
+	/* mutex_lock(&apu_ipi_ut_mtx); */
 
 	data.val = val;
 	pr_info("%s: data.val = %d\n", __func__, data.val);
@@ -740,18 +741,19 @@ static int apu_ipi_ut_send(uint32_t val)
 	}
 
 	/* wait for receiving ack to ensure uP clear irq status done */
-	ret = wait_for_completion_timeout(
-			&apu_ipi_ut_rpm_dev.ack, msecs_to_jiffies(100));
-	if (ret == 0) {
-		pr_info("%s: wait for completion timeout\n", __func__);
-		ret = -1;
-	} else {
-		ret = 0;
-	}
+	/* ret = wait_for_completion_timeout(
+	 *		&apu_ipi_ut_rpm_dev.ack, msecs_to_jiffies(100));
+	 * if (ret == 0) {
+	 *	pr_info("%s: wait for completion timeout\n", __func__);
+	 *	ret = -1;
+	 * } else {
+	 *	ret = 0;
+	 * }
+	 */
 
 
 out:
-	mutex_unlock(&apu_ipi_ut_mtx);
+	/* mutex_unlock(&apu_ipi_ut_mtx); */
 
 	return ret;
 }
@@ -774,9 +776,15 @@ static int apu_ipi_ut_rpmsg_cb(struct rpmsg_device *rpdev, void *data,
 {
 	int ret;
 	struct apu_ipi_ut_ipi_data *d = data;
+	uint32_t rand_num;
 
-	pr_info("%s: data = %d\n", __func__, d->val);
-	complete(&apu_ipi_ut_rpm_dev.ack);
+	get_random_bytes(&rand_num, sizeof(rand_num));
+	rand_num = rand_num % 100;
+
+	msleep(rand_num);
+
+	pr_info("%s: data = %d, rand_num = %u\n", __func__, d->val, rand_num);
+	/* complete(&apu_ipi_ut_rpm_dev.ack); */
 
 	/* power off */
 	ret = rpmsg_sendto(apu_ipi_ut_rpm_dev.ept, NULL, 0, 1);
