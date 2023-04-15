@@ -2721,7 +2721,7 @@ static void mml_addon_module_connect(struct drm_crtc *crtc, unsigned int ddp_mod
 			c->is_yuv = (c->submit.info.dest[0].data.format == MML_FMT_YUVA1010102);
 			mtk_addon_connect_embed(crtc, ddp_mode, m[i], addon_config, cmdq_handle);
 		} else if (addon_module->type == ADDON_BEFORE) {
-			c->is_yuv = false; /* use Y2R inside OVL instead */
+			c->is_yuv = (c->submit.info.dest[0].data.format == MML_FMT_YUVA1010102);
 			mtk_addon_connect_before(crtc, ddp_mode, m[i], addon_config, cmdq_handle);
 		}
 
