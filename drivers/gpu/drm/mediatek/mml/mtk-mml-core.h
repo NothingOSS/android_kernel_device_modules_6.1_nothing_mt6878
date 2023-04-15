@@ -97,7 +97,6 @@ do { \
 
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 /* mml ftrace */
 extern int mml_trace;
 
@@ -105,16 +104,16 @@ extern int mml_trace;
 #define MML_TID_IRQ		0	/* trace on <idle>-0 process */
 
 #define mml_trace_begin_tid(tid, fmt, args...) \
-	tracing_mark_write("B|%d|" fmt "\n", tid, ##args)
+	tracing_mark_write("B|%d|" fmt, tid, ##args)
 
 #define mml_trace_begin(fmt, args...) \
 	mml_trace_begin_tid(current->tgid, fmt, ##args)
 
 #define mml_trace_end() \
-	tracing_mark_write("E\n")
+	tracing_mark_write("E")
 
 #define mml_trace_c(tag, c) \
-	tracing_mark_write("C|%d|%s|%d\n", current->tgid, tag, c)
+	tracing_mark_write("C|%d|%s|%d", current->tgid, tag, c)
 
 #define mml_trace_tag_start(tag) mml_trace_c(tag, 1)
 
@@ -129,17 +128,6 @@ extern int mml_trace;
 	if (mml_trace) \
 		mml_trace_end(); \
 } while (0)
-#else
-
-#define mml_trace_begin_tid(...)
-#define mml_trace_begin(...)
-#define mml_trace_end()
-#define mml_trace_tag_start(tag)
-#define mml_trace_tag_end(tag)
-#define mml_trace_ex_begin(...)
-#define mml_trace_ex_end()
-
-#endif
 
 /* mml pq control */
 extern int mml_pq_disable;

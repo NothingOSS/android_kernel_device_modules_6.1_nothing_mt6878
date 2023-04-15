@@ -18,7 +18,9 @@
 #include "mtk-mml-pq-core.h"
 #include "mtk-mml-mmp.h"
 
-#define MML_TRACE_MSG_LEN	1024
+#define MML_TRACE_MSG_LEN 1024
+#define CREATE_TRACE_POINTS
+#include "mtk-mml-trace.h"
 
 #ifndef MML_FPGA
 int mtk_mml_msg;
@@ -2052,7 +2054,6 @@ void mml_update_array(struct mml_task_reuse *reuse,
 	*va = (*va & GENMASK_ULL(63, 32)) | value;
 }
 
-#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 noinline int tracing_mark_write(char *fmt, ...)
 {
 #ifdef CONFIG_TRACING
@@ -2069,8 +2070,7 @@ noinline int tracing_mark_write(char *fmt, ...)
 		return -1;
 	}
 
-	trace_puts(buf);
+	trace_tracing_mark_write(buf);
 #endif
 	return 0;
 }
-#endif
