@@ -47,7 +47,6 @@ static const char *aee_filter_list[AEE_FILTER_NUM] = {
 	"u:r:hwservicemanager:s0",
 	"u:r:hal_graphics_composer_default:s0",
 	"u:r:hal_graphics_allocator_default:s0",
-	"u:r:mtk_hal_audio:s0",
 	"u:r:priv_app:s0",
 };
 #ifdef NEVER
