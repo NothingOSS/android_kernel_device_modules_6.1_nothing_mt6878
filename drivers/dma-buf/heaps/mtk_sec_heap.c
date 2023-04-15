@@ -406,19 +406,19 @@ static int page_base_free_v2(struct secure_heap_page *sec_heap,
 	pmm_page = buffer->ssheap->pmm_page;
 	pmm_msg_list = &buffer->ssheap->pmm_msg_list;
 	list_for_each_entry_safe(pmm_page, tmp_page, pmm_msg_list, lru) {
-		uint32_t *pfn = page_address(pmm_page);
+		uint32_t *pmm_msg = page_address(pmm_page);
 		uint32_t idx_2m, idx, offset;
 
 		i = 0;
-		while (pfn[i]) {
-			idx_2m = (pfn[i] & 0xffffff) >> 9;
-			idx = idx_2m / 32;
-			offset = idx_2m % 32;
+		while (pmm_msg[i]) {
+			idx_2m = (pmm_msg[i] & 0xffffff) >> 9; // 2MB -> 21bit = 12bit(page) + 9bit
+			idx = idx_2m / 32; // bitmap layout: 0 ~ 31bit, one bit -> one 2MB block
+			offset = idx_2m % 32; // offset is the 2MB block which this page included.
 			bitmap[idx] |= (1 << offset);
-			// pr_info("bitmap[%#x]:%#x, offset:%#x\n", idx, bitmap[idx], offset);
+			// pr_debug("bitmap[%#x]:%#x, offset:%#x\n", idx, bitmap[idx], offset);
 			++i;
 		}
-		memset(pfn, 0, page_size(pmm_page));
+		memset(page_address(pmm_page), 0, page_size(pmm_page));
 		__free_pages(pmm_page, get_order(PAGE_SIZE));
 	}
 	kfree(buffer->ssheap);
@@ -447,13 +447,21 @@ static int page_base_free_v2(struct secure_heap_page *sec_heap,
 	/* check need infra MPU lv1 bypass */
 	if (atomic64_read(&sec_heap->total_size) == 0) {
 		struct arm_smccc_res smc_res;
+		int i;
 
+		pr_debug("%s: page merged for cpu and infra-mpu\n", __func__);
+		pr_debug("bitmap:\n");
+		for (i = 0; i < 1024; ++i) {
+			if (bitmap[i] != 0)
+				pr_debug("%#4x: %#32x ", i, bitmap[i]);
+		}
 		arm_smccc_smc(HYP_PMM_MERGED_TABLE, page_to_pfn(sec_heap->bitmap),
 				0, 0, 0, 0, 0, 0, &smc_res);
 		if (smc_res.a0 != 0) {
 			pr_err("smc_res.a0=%#lx\n", smc_res.a0);
 			return -EINVAL;
 		}
+		memset(page_address(sec_heap->bitmap), 0, PAGE_SIZE);
 	}
 
 	pr_debug("%s done, [%s] size:%#lx, total_size:%#llx\n", __func__,
