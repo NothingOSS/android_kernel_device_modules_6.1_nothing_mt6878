@@ -37,10 +37,6 @@
 #define MT6897_TOP_AXI_PROT_EN_CONNSYS0_CONN	(BIT(1))
 #define MT6897_TOP_AXI_PROT_EN_INFRASYS0_CONN_2ND	(BIT(26))
 #define MT6897_TOP_AXI_PROT_EN_CONNSYS0_CONN_2ND	(BIT(0))
-#define MT6897_VLP_AXI_PROT_EN_UFS0	(BIT(7))
-#define MT6897_TOP_AXI_PROT_EN_PERISYS0_UFS0	(BIT(4))
-#define MT6897_VLP_AXI_PROT_EN_UFS0_2ND	(BIT(8))
-#define MT6897_AXI_PROT_EN_UFS0_PHY	(BIT(0))
 #define MT6897_VLP_AXI_PROT_EN1_PEXTP_MAC0	(BIT(10))
 #define MT6897_VLP_AXI_PROT_EN1_PEXTP_PHY0	(BIT(12))
 #define MT6897_TOP_AXI_PROT_EN_PERISYS0_AUDIO	(BIT(6))
@@ -135,9 +131,8 @@ enum regmap_type {
 	GPU_EB_RPC_TYPE = 1,
 	IFR_TYPE = 2,
 	VLP_TYPE = 3,
-	UFSCFG_AO_TYPE = 4,
-	NEMI_TYPE = 5,
-	SEMI_TYPE = 6,
+	NEMI_TYPE = 4,
+	SEMI_TYPE = 5,
 	BUS_TYPE_NUM,
 };
 
@@ -145,7 +140,6 @@ static const char *bus_list[BUS_TYPE_NUM] = {
 	[GPU_EB_RPC_TYPE] = "gpu-eb-rpc",
 	[IFR_TYPE] = "ifr-bus",
 	[VLP_TYPE] = "vlpcfg",
-	[UFSCFG_AO_TYPE] = "ufscfg-ao-bus",
 	[NEMI_TYPE] = "nemi-bus",
 	[SEMI_TYPE] = "semi-bus",
 };
@@ -309,31 +303,6 @@ static const struct scp_domain_data scp_domain_mt6897_spm_data[] = {
 				MT6897_TOP_AXI_PROT_EN_CONNSYS0_CONN_2ND),
 		},
 		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON,
-	},
-	[MT6897_POWER_DOMAIN_UFS0] = {
-		.name = "ufs0",
-		.ctl_offs = 0xE10,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.bp_table = {
-			BUS_PROT_IGN(VLP_TYPE, 0x0214, 0x0218, 0x0210, 0x0220,
-				MT6897_VLP_AXI_PROT_EN_UFS0),
-			BUS_PROT_IGN(IFR_TYPE, 0x0e4, 0x0e8, 0x0e0, 0x0ec,
-				MT6897_TOP_AXI_PROT_EN_PERISYS0_UFS0),
-			BUS_PROT_IGN(VLP_TYPE, 0x0214, 0x0218, 0x0210, 0x0220,
-				MT6897_VLP_AXI_PROT_EN_UFS0_2ND),
-		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF,
-	},
-	[MT6897_POWER_DOMAIN_UFS0_PHY] = {
-		.name = "ufs0_phy",
-		.ctl_offs = 0xE14,
-		.bp_table = {
-			BUS_PROT_IGN(UFSCFG_AO_TYPE, 0x54, 0x58, 0x50, 0x5c,
-				MT6897_AXI_PROT_EN_UFS0_PHY),
-		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF |
-			MTK_SCPD_RTFF_DELAY,
 	},
 	[MT6897_POWER_DOMAIN_PEXTP_MAC0] = {
 		.name = "pextp_mac0",
