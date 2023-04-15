@@ -23,6 +23,9 @@ endif
 ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6985.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6985.o mtk-scpsys-bringup.o
 endif
+ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6989.c),)
+obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6989.o mtk-scpsys-bringup.o
+endif
 ifneq ($(wildcard $(srctree)/$(src)/mt8188-pm-domains.h),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS_PM_DOMAINS) += mtk-pm-domains.o
 endif
