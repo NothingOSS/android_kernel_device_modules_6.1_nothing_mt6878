@@ -124,7 +124,7 @@ struct dsu_table {
 };
 
 extern struct dsu_state *dsu_get_opp_ps(int wl_type, int opp);
-extern unsigned int dsu_get_freq_opp(int wl_type, unsigned int freq);
+extern unsigned int dsu_get_freq_opp(unsigned int freq);
 extern int init_dsu(void);
 extern void update_wl_tbl(int cpu);
 extern int get_curr_wl(void);

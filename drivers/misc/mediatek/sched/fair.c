@@ -325,7 +325,7 @@ static inline void eenv_init(struct energy_env *eenv,
 		}
 
 		eenv->dsu_freq_base = mtk_get_dsu_freq();
-		dsu_opp = dsu_get_freq_opp(eenv->wl_type, eenv->dsu_freq_base);
+		dsu_opp = dsu_get_freq_opp(eenv->dsu_freq_base);
 		dsu_ps = dsu_get_opp_ps(eenv->wl_type, dsu_opp);
 		eenv->dsu_volt_base = dsu_ps->volt;
 

@@ -187,16 +187,14 @@ struct dsu_state *dsu_get_opp_ps(int wl_type, int opp)
 }
 EXPORT_SYMBOL_GPL(dsu_get_opp_ps);
 
-unsigned int dsu_get_freq_opp(int wl_type, unsigned int freq)
+unsigned int dsu_get_freq_opp(unsigned int freq)
 {
 	unsigned int idx;
 
-	if (wl_type < 0)
-		wl_type = wl_type_curr;
 	freq = clamp(freq, dsu_tbl.freq_min, dsu_tbl.freq_max);
 	idx = (dsu_tbl.freq_max - freq) >> dsu_tbl.min_gap_log2;
 	idx = dsu_tbl.opp_map[idx];
-	if (dsu_tbl.tbl[wl_type][idx].freq < freq)
+	if (dsu_tbl.tbl[0][idx].freq < freq)
 		idx--;
 	return idx;
 }

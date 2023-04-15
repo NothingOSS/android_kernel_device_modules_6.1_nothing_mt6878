@@ -101,7 +101,7 @@ unsigned int dsu_lkg_pwr(int wl_type, struct dsu_info *p)
 	temperature = p->temp;
 	type = DSU_LKG;
 	/* freq to opp for calculating offset */
-	opp = dsu_get_freq_opp(wl_type, p->dsu_freq);
+	opp = dsu_get_freq_opp(p->dsu_freq);
 	/* read coef from sysram, real value = value/10000 */
 	coef_ab = ioread32(clkg_sram_base_addr + LKG_BASE_OFFSET +
 			type * LKG_TYPES_OFFSET + opp * 8);
