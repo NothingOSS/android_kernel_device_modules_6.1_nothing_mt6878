@@ -74,7 +74,10 @@ static int mnoc_rpmsg_cb(struct rpmsg_device *rpdev, void *data,
 	int ret = 0;
 
 	LOG_INF("%s len=%d, priv=%p, src=%d\n", __func__, len, priv, src);
-	//ret = reviser_remote_rx_cb(data, len);
+	/* power off */
+	ret = rpmsg_sendto(eRdev.ept, NULL, 0, 1);
+	if (ret && (ret != -EOPNOTSUPP))
+		LOG_ERR("rpmsg_sendto(power off) fail: %d\n", ret);
 
 	return ret;
 }
@@ -151,15 +154,26 @@ static ssize_t mnoc_rvlog_store(struct kobject *kobj,
 	mData.type = MNOC_IPI_SET_LOG_LV;
 	mData.data = g_mnocRV_log_lv;
 
+	/* power on */
+	ret = rpmsg_sendto(eRdev.ept, NULL, 1, 0);
+	if (ret && (ret != -EOPNOTSUPP)) {
+		LOG_ERR("rpmsg_sendto(power on) fail: %d\n", ret);
+		goto out;
+	}
+
 	ret = rpmsg_send(eRdev.ept, &mData, sizeof(mData));
-	if (ret)
+	if (ret) {
 		LOG_ERR("send msg fail\n");
+		/* power off */
+		ret = rpmsg_sendto(eRdev.ept, NULL, 0, 1);
+		if (ret && (ret != -EOPNOTSUPP))
+			LOG_ERR("rpmsg_sendto(power off) fail: %d\n", ret);
+	}
 
-
+out:
 	return count;
-
-
 }
+
 static const struct kobj_attribute mnoc_log_lv_attr =
 	__ATTR(mnoc_rv_log_lv, 0660, mnoc_rvlog_show,
 		mnoc_rvlog_store);
