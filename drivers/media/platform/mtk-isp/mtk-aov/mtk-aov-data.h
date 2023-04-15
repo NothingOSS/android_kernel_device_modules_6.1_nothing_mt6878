@@ -275,6 +275,7 @@ struct aov_user {
 	uint32_t debug_mode;
 	uint32_t debug_level[AOV_LOG_ID_MAX];
 	uint32_t trace_perf;
+	uint32_t disable_fusion;
 	uint32_t debug_drv_clk;
 	uint32_t debug_drv_spm;
 	uint32_t debug_drv_time;
@@ -331,6 +332,7 @@ struct aov_start {
 	uint32_t debug_mode;
 	uint32_t debug_level[AOV_LOG_ID_MAX];
 	uint32_t trace_perf;
+	uint32_t disable_fusion;
 	uint32_t debug_drv_clk;
 	uint32_t debug_drv_spm;
 	uint32_t debug_drv_time;
