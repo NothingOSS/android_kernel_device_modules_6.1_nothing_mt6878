@@ -772,38 +772,77 @@ TRACE_EVENT(sched_flt_get_cpu_group,
 	TP_printk("cpu[%d] gp[%d] util [%d]",
 		__entry->cpu, __entry->grp_id, __entry->util)
 );
-#endif
 
 TRACE_EVENT(sched_get_pelt_group_util,
 
-	TP_PROTO(int grp_idx, unsigned long long delta),
+	TP_PROTO(int cpu, unsigned long long delta,
+			unsigned long gp0_util, unsigned long gp1_util,
+			unsigned long gp2_util, unsigned long gp3_util),
 
-	TP_ARGS(grp_idx, delta),
+	TP_ARGS(cpu, delta, gp0_util, gp1_util, gp2_util, gp3_util),
 
 	TP_STRUCT__entry(
-		__field(int,		grp_idx)
+		__field(int,		cpu)
 		__field(unsigned long long,	delta)
+		__field(unsigned long,	gp0_util)
+		__field(unsigned long,	gp1_util)
+		__field(unsigned long,	gp2_util)
+		__field(unsigned long,	gp3_util)
 	),
 
 	TP_fast_assign(
-		__entry->grp_idx		= grp_idx;
+		__entry->cpu		= cpu;
 		__entry->delta		= delta;
+		__entry->gp0_util		= gp0_util;
+		__entry->gp1_util		= gp1_util;
+		__entry->gp2_util		= gp2_util;
+		__entry->gp3_util		= gp3_util;
 	),
 
-	TP_printk("grp_idx[%d] delta[%llu] ",
-		__entry->grp_idx, __entry->delta)
+	TP_printk("cpu[%d] delta[%llu] gp util [%lu][%lu][%lu][%lu]",
+		__entry->cpu, __entry->delta,
+		__entry->gp0_util, __entry->gp1_util,
+		__entry->gp2_util, __entry->gp3_util)
+);
+TRACE_EVENT(sched_gather_pelt_group_util,
+
+	TP_PROTO(struct task_struct *p, unsigned long tsk_util, int grp_id, int cpu),
+
+	TP_ARGS(p, tsk_util, grp_id, cpu),
+
+	TP_STRUCT__entry(
+		__array(char,		comm, TASK_COMM_LEN)
+		__field(pid_t,		pid)
+		__field(unsigned long,	tsk_util)
+		__field(int,		grp_id)
+		__field(int,		cpu)
+	),
+
+	TP_fast_assign(
+		memcpy(__entry->comm, p->comm, TASK_COMM_LEN);
+		__entry->pid	= p->pid;
+		__entry->tsk_util	= tsk_util;
+		__entry->grp_id	= grp_id;
+		__entry->cpu	= cpu;
+	),
+
+	TP_printk("comm=%s pid=%d util=%lu grp_id=%d cpu=%d",
+			__entry->comm, __entry->pid,
+			__entry->tsk_util, __entry->grp_id,
+			__entry->cpu)
+
 );
 
 TRACE_EVENT(sched_task_to_grp,
 
-	TP_PROTO(struct task_struct *p, unsigned int grp_id, int ret, int type),
+	TP_PROTO(struct task_struct *p, int grp_id, int ret, int type),
 
 	TP_ARGS(p, grp_id, ret, type),
 
 	TP_STRUCT__entry(
 		__array(char,		comm, TASK_COMM_LEN)
 		__field(pid_t,		pid)
-		__field(unsigned int,	grp_id)
+		__field(int,		grp_id)
 		__field(int,		ret)
 		__field(int,		type)
 	),
@@ -811,17 +850,19 @@ TRACE_EVENT(sched_task_to_grp,
 	TP_fast_assign(
 		memcpy(__entry->comm, p->comm, TASK_COMM_LEN);
 		__entry->pid	= p->pid;
-		__entry->grp_id = grp_id;
-		__entry->ret = ret;
-		__entry->type = type;
+		__entry->grp_id	= grp_id;
+		__entry->ret	= ret;
+		__entry->type	= type;
 	),
 
-	TP_printk("comm=%s pid=%d grp_id=%u ret=%d type=%d",
+	TP_printk("comm=%s pid=%d grp_id=%d ret=%d type=%d",
 			__entry->comm, __entry->pid,
 			__entry->grp_id, __entry->ret,
 			__entry->type)
 
 );
+#endif
+
 #endif /* _TRACE_SCHEDULER_H */
 
 #undef TRACE_INCLUDE_PATH

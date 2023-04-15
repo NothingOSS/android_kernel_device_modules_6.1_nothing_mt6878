@@ -21,6 +21,7 @@
 #include "eas_plus.h"
 #include "common.h"
 #include "flt_init.h"
+#include "flt_api.h"
 #include "group.h"
 #include "eas_trace.h"
 
@@ -30,8 +31,9 @@
 
 static struct grp *related_thread_groups[GROUP_ID_RECORD_MAX];
 static u32 GP_mode = GP_MODE_0;
+atomic64_t gp_irq_work_lastq_ws;
+static struct irq_work gp_irq_work;
 
-static LIST_HEAD(active_related_thread_groups);
 static DEFINE_RWLOCK(related_thread_group_lock);
 DEFINE_PER_CPU(struct rq_group, rq_group);
 EXPORT_PER_CPU_SYMBOL(rq_group);
@@ -130,19 +132,14 @@ unlock:
 static void remove_task_from_group(struct task_struct *p)
 {
 	struct gp_task_struct *gts = &((struct mtk_task *)p->android_vendor_data1)->gp_task;
-	struct grp *grp = NULL;
+	struct grp *grp = gts->grp;
 	int empty_group = 1;
 	struct rq *rq;
 	struct rq_flags rf;
 
-	rcu_read_lock();
-	grp = task_grp(p);
-	rcu_read_unlock();
-
 	raw_spin_lock(&grp->lock);
 
 	rq = __task_rq_lock(p, &rf);
-	list_del_init(&gts->grp_list);
 	rcu_assign_pointer(gts->grp, NULL);
 	__task_rq_unlock(rq, &rf);
 
@@ -166,7 +163,6 @@ add_task_to_group(struct task_struct *p, struct grp *grp)
 	 * reference of gts->grp in various hot-paths
 	 */
 	rq = __task_rq_lock(p, &rf);
-	list_add(&gts->grp_list, &grp->tasks);
 	rcu_assign_pointer(gts->grp, grp);
 	__task_rq_unlock(rq, &rf);
 
@@ -199,8 +195,6 @@ int __sched_set_grp_id(struct task_struct *p, int group_id)
 	}
 
 	grp = lookup_grp(group_id);
-	if (list_empty(&grp->list))
-		list_add(&grp->list, &active_related_thread_groups);
 	rc = add_task_to_group(p, grp);
 
 done:
@@ -281,7 +275,6 @@ static void group_init_new_task_load(struct task_struct *p)
 	struct gp_task_struct *gts = &((struct mtk_task *)p->android_vendor_data1)->gp_task;
 
 	rcu_assign_pointer(gts->grp, NULL);
-	INIT_LIST_HEAD(&gts->grp_list);
 }
 
 static void group_init_existing_task_load(struct task_struct *p)
@@ -345,50 +338,135 @@ static void group_android_rvh_try_to_wake_up_success(void *unused,
 
 int snapshot_pelt_group_status(void)
 {
+	int grp_idx, cpu, grp_id;
+	unsigned long flags;
 	struct task_struct *p;
-	struct mtk_task *mts;
-	struct gp_task_struct *gts;
 	struct rq *rq;
 	struct rq_group *gprq;
+	unsigned long pelt_group_util_update[GROUP_ID_RECORD_MAX] = {0};
 	struct grp *grp = NULL;
-	int grp_idx, cpu;
-	unsigned long pelt_utilest;
 	unsigned long long t1, t2;
+	unsigned int prev_state;
 
-	/* reset per cpu pelt_group_status */
+	rcu_read_lock();
 	for_each_possible_cpu(cpu) {
 		rq = cpu_rq(cpu);
 		gprq = &per_cpu(rq_group, cpu);
+		/* reset to 0 */
 		for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx)
-			WRITE_ONCE(gprq->pelt_group_util[grp_idx], 0);
-	}
+			pelt_group_util_update[grp_idx] = 0;
 
-	for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx) {
-		grp = lookup_grp(grp_idx);
-		if (!grp || list_empty(&grp->tasks))
-			continue;
+		raw_spin_rq_lock_irqsave(rq, flags);
 		t1 = sched_clock();
-		list_for_each_entry(gts, &grp->tasks, grp_list) {
-			mts = container_of(gts, struct mtk_task, gp_task);
-			p = mts_to_ts(mts);
-			if (likely(!task_has_dl_policy(p) || !p->dl.dl_throttled)) {
-				if (unlikely(task_on_rq_queued(p))) {
-					rq = task_rq(p);
-					gprq = &per_cpu(rq_group, rq->cpu);
-					pelt_utilest = READ_ONCE(gprq->pelt_group_util[grp_idx]) +
-								task_util_est(p);
-					WRITE_ONCE(gprq->pelt_group_util[grp_idx], pelt_utilest);
+		list_for_each_entry(p, &cpu_rq(cpu)->cfs_tasks, se.group_node) {
+			if (task_on_rq_queued(p)) {
+				prev_state = READ_ONCE(p->__state);
+				if (prev_state == TASK_DEAD)
+					continue;
+				grp = task_grp(p);
+				grp_id = grp ? grp->id : -1;
+				if (grp_id >= 0) {
+					pelt_group_util_update[grp_id] += task_util_est(p);
+					if (trace_sched_gather_pelt_group_util_enabled())
+						trace_sched_gather_pelt_group_util(p,
+							task_util_est(p), grp_id, cpu);
 				}
 			}
 		}
+		for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx)
+			gprq->pelt_group_util[grp_idx] = pelt_group_util_update[grp_idx];
 		t2 = sched_clock();
 		if (trace_sched_get_pelt_group_util_enabled())
-			trace_sched_get_pelt_group_util(grp_idx, t2 - t1);
+			trace_sched_get_pelt_group_util(cpu, t2 - t1,
+					pelt_group_util_update[0], pelt_group_util_update[1],
+					pelt_group_util_update[2], pelt_group_util_update[3]);
+		raw_spin_rq_unlock_irqrestore(rq, flags);
 	}
-
+	rcu_read_unlock();
 	return 0;
 }
 EXPORT_SYMBOL(snapshot_pelt_group_status);
+
+static u64 update_window_start(struct rq *rq, u64 curr_time)
+{
+	s64 delta;
+	int nr_windows;
+	struct rq_group *gprq;
+	u64 old_window_start;
+
+	gprq = &per_cpu(rq_group, rq->cpu);
+	old_window_start = gprq->window_start;
+
+	delta = curr_time - gprq->window_start;
+
+	if (delta < GRP_DEFAULT_WS)
+		return old_window_start;
+
+	nr_windows = div64_u64(delta, GRP_DEFAULT_WS);
+	gprq->window_start += (u64)nr_windows * (u64)GRP_DEFAULT_WS;
+
+	return old_window_start;
+}
+
+static inline void gp_irq_work_queue(struct irq_work *work)
+{
+	if (likely(cpu_online(raw_smp_processor_id())))
+		irq_work_queue(work);
+	else
+		irq_work_queue_on(work, cpumask_any(cpu_online_mask));
+}
+
+static inline void run_gp_irq_work(u64 old_window_start, struct rq *rq, u64 wallclock)
+{
+	u64 result, last_reported_window;
+	struct rq_group *gprq;
+	s64 delta;
+	u64 window_start_ns, nr_windows;
+
+	gprq = &per_cpu(rq_group, rq->cpu);
+	if (old_window_start == gprq->window_start)
+		return;
+
+	result = atomic64_cmpxchg(&gp_irq_work_lastq_ws, old_window_start,
+				   gprq->window_start);
+	if (result == old_window_start) {
+		gp_irq_work_queue(&gp_irq_work);
+		return;
+	}
+
+	last_reported_window = atomic64_read(&gp_irq_work_lastq_ws);
+	delta = wallclock - last_reported_window;
+	if (delta >= GRP_DEFAULT_WS) {
+		nr_windows = div64_u64(wallclock, GRP_DEFAULT_WS);
+		window_start_ns = (u64)nr_windows * (u64)GRP_DEFAULT_WS;
+		atomic64_set(&gp_irq_work_lastq_ws, window_start_ns);
+		gp_irq_work_queue(&gp_irq_work);
+	}
+}
+
+static void gp_irq_workfn(struct irq_work *irq_work)
+{
+	snapshot_pelt_group_status();
+}
+
+static u64 group_get_current_time(void)
+{
+	struct flt_pm fltpm;
+
+	flt_get_pm_status(&fltpm);
+	if (unlikely(fltpm.ktime_suspended))
+		return ktime_to_ns(fltpm.ktime_last);
+	return ktime_get_ns();
+}
+
+void group_update_ws(struct rq *rq)
+{
+	u64 old_window_start, wallclock;
+
+	wallclock = group_get_current_time();
+	old_window_start = update_window_start(rq, wallclock);
+	run_gp_irq_work(old_window_start, rq, wallclock);
+}
 
 int get_grp_id(struct task_struct *p)
 {
@@ -415,30 +493,6 @@ inline bool check_and_get_grp_id(struct task_struct *p, int *grp_id)
 }
 EXPORT_SYMBOL(check_and_get_grp_id);
 
-int get_group_count(int grp_id)
-{
-	int task_cnt = 0;
-	struct gp_task_struct *gts;
-	struct grp *grp = NULL;
-
-	if (grp_id >= GROUP_ID_RECORD_MAX || grp_id < 0)
-		return -1;
-
-	grp = lookup_grp(grp_id);
-	raw_spin_lock(&grp->lock);
-	if (list_empty(&grp->tasks)) {
-		raw_spin_unlock(&grp->lock);
-		return -1;
-	}
-
-	list_for_each_entry(gts, &grp->tasks, grp_list) {
-		++task_cnt;
-	}
-	raw_spin_unlock(&grp->lock);
-
-	return task_cnt;
-}
-
 int set_task_to_group(int pid, int grp_id)
 {
 	struct task_struct *p;
@@ -457,18 +511,23 @@ int set_task_to_group(int pid, int grp_id)
 }
 EXPORT_SYMBOL(set_task_to_group);
 
-static void group_task_dead(struct task_struct *p)
+static void group_android_rvh_flush_task(void *unused, struct task_struct *p)
 {
 	int ret = 0;
 
-	ret = __sched_set_grp_id(p, -1);
+	if (unlikely(group_get_mode() == GP_MODE_0))
+		return;
+
 	if (trace_sched_task_to_grp_enabled())
 		trace_sched_task_to_grp(p, -1, ret, GP_DEAD);
 }
 
-static void group_android_rvh_flush_task(void *unused, struct task_struct *p)
+static void group_android_scheduler_tick(void *unused, struct rq *rq)
 {
-	group_task_dead(p);
+	if (unlikely(group_get_mode() == GP_MODE_0))
+		return;
+
+	group_update_ws(rq);
 }
 
 static void group_register_hooks(void)
@@ -499,12 +558,17 @@ static void group_register_hooks(void)
 		group_android_rvh_try_to_wake_up_success, NULL);
 	if (ret)
 		pr_info("register try_to_wake_up_success hooks failed, returned %d\n", ret);
+
+	ret = register_trace_android_vh_scheduler_tick(group_android_scheduler_tick, NULL);
+	if (ret)
+		pr_info("register scheduler_tick failed\n");
 }
 
 void group_init(void)
 {
 	struct task_struct *g, *p;
 	int cpu;
+	u64 window_start_ns, nr_windows;
 
 	if (unlikely(flt_get_mode() == FLT_MODE_0))
 		return;
@@ -512,6 +576,9 @@ void group_init(void)
 	/* gp alloc fail */
 	if (alloc_related_thread_groups() != 0)
 		return;
+
+	/* default tracking mode */
+	group_set_mode(GP_MODE_1);
 
 	/* for existing thread */
 	read_lock(&tasklist_lock);
@@ -527,6 +594,12 @@ void group_init(void)
 		/* Create task members for idle thread */
 		group_init_new_task_load(rq->idle);
 	}
+	/* init irq work */
+	window_start_ns = ktime_get_ns();
+	nr_windows = div64_u64(window_start_ns, GRP_DEFAULT_WS);
+	window_start_ns = (u64)nr_windows * (u64)GRP_DEFAULT_WS;
+	atomic64_set(&gp_irq_work_lastq_ws, window_start_ns);
+	init_irq_work(&gp_irq_work, gp_irq_workfn);
 
 	group_init_tg_pointers();
 	group_register_hooks();

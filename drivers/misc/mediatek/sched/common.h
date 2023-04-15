@@ -32,7 +32,6 @@ struct soft_affinity_task {
 
 struct gp_task_struct {
 	struct grp __rcu	*grp;
-	struct list_head	grp_list;
 };
 
 struct sbb_task_struct {

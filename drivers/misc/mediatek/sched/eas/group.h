@@ -50,6 +50,7 @@ enum _wp {
 };
 
 struct rq_group {
+	u64		window_start;
 	unsigned long	pelt_group_util[GROUP_ID_RECORD_MAX];
 };
 
@@ -75,5 +76,5 @@ inline struct grp *task_grp(struct task_struct *p);
 int get_grp_id(struct task_struct *p);
 int set_task_to_group(int pid, int grp_id);
 inline bool check_and_get_grp_id(struct task_struct *p, int *grp_id);
-int get_group_count(int grp_id);
+void group_update_ws(struct rq *rq);
 #endif /* _EAS_GROUP_H*/
