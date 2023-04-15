@@ -57,9 +57,29 @@
 #define L2	20
 #define L3	30
 
-unsigned int EKV[GKEL][RT];
+#define ECG	0x1
+#define IBS	0x2d070a
+#define TSH	0x2481c6
+#define LFP	0x1f
+#define KOL	0x1dc
+
+unsigned int EKV[GKEL][RT] = {0};
 
 static u32 flt_mode = FLT_MODE_0;
+static void __iomem *flt_xrg;
+static unsigned long long flt_xrg_size;
+
+void __iomem *get_flt_xrg(void)
+{
+	return flt_xrg;
+}
+EXPORT_SYMBOL(get_flt_xrg);
+
+unsigned long long get_flt_xrg_size(void)
+{
+	return flt_xrg_size;
+}
+EXPORT_SYMBOL(get_flt_xrg_size);
 
 void  flt_set_mode(u32 mode)
 {
@@ -340,10 +360,69 @@ static void flt_fei(int wl, int ctp)
 		FLT_LOGI("EKV[%d] 0x%x", ctp, EKV[ctp][i]);
 }
 
+int flt_init_ekg(void)
+{
+	struct device_node *flt_node;
+	struct platform_device *pdev_temp;
+	struct resource *res;
+
+	flt_node = of_find_node_by_name(NULL, "flt");
+	if (!flt_node) {
+		pr_info("failed to find node @ %s\n", __func__);
+		return -ENODEV;
+	}
+
+	pdev_temp = of_find_device_by_node(flt_node);
+	if (!pdev_temp) {
+		pr_info("failed to find pdev @ %s\n", __func__);
+		return -EINVAL;
+	}
+
+	res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 0);
+
+	if (res) {
+		flt_xrg = ioremap(res->start, resource_size(res));
+	} else {
+		pr_info("%s can't get resource\n", __func__);
+		return -ENODEV;
+	}
+
+	if (!flt_xrg) {
+		pr_info("flt_xrg info failed\n");
+		return -EIO;
+	}
+	flt_xrg_size = resource_size(res);
+	FLT_LOGI("xrg %pa size %llu\n", &res->start, resource_size(res));
+	return 0;
+}
+
+void flt_mi(int ctp)
+{
+	int i = 0, offset = KOL + ((ctp * LFP) << 2);
+
+	/* sanity check */
+	if (ctp < 0 || ctp >= GKEL)
+		return;
+
+	for (i = 0 ; i < RT; ++i) {
+		iowrite32(EKV[ctp][i], flt_xrg + offset);
+		FLT_LOGI("mi reg 0x%x offset %d\n", ioread32(flt_xrg + offset), offset);
+		offset += 4;
+	}
+
+	iowrite32(ECG, flt_xrg + offset);
+	FLT_LOGI("mi xrg 0x%x offset %d\n", ioread32(flt_xrg + offset), offset);
+	offset += 4;
+	iowrite32(IBS, flt_xrg + offset);
+	FLT_LOGI("mi xrg 0x%x offset %d\n", ioread32(flt_xrg + offset), offset);
+	offset += 4;
+	iowrite32(TSH, flt_xrg + offset);
+	FLT_LOGI("mi xrg 0x%x offset %d\n", ioread32(flt_xrg + offset), offset);
+}
 
 int flt_init_res(void)
 {
-	int wl = 0, nr_wl = 0, ctp = 0, nr_cpu;
+	int wl = 0, nr_wl = 0, ctp = 0, nr_cpu, ret;
 	bool BKV[GKEL] = {false};
 
 	nr_wl = get_nr_wl_type();
@@ -360,6 +439,11 @@ int flt_init_res(void)
 				BKV[ctp] = true;
 			}
 		}
+		ret = flt_init_ekg();
+		if (ret)
+			return ret;
+		for (ctp = 0; ctp < GKEL; ctp++)
+			flt_mi(ctp);
 	}
 
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)

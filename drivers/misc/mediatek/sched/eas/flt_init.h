@@ -13,6 +13,8 @@ enum _flt_mode {
 	FLT_MODE_NUM,
 };
 
+void __iomem *get_flt_xrg(void);
+unsigned long long get_flt_xrg_size(void);
 void  flt_set_mode(u32 mode);
 u32 flt_get_mode(void);
 int flt_init_res(void);

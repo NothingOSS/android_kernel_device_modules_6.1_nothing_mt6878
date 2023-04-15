@@ -320,3 +320,29 @@ void flt_get_pm_status(struct flt_pm *fltpm)
 }
 EXPORT_SYMBOL(flt_get_pm_status);
 
+void flt_update_data(unsigned int data, unsigned int offset)
+{
+	void __iomem *flt_adr;
+	unsigned long long len;
+
+	len = get_flt_xrg_size();
+	flt_adr = get_flt_xrg();
+	if (flt_adr && offset <= len)
+		iowrite32(data, flt_adr + offset);
+}
+EXPORT_SYMBOL(flt_update_data);
+
+unsigned int flt_get_data(unsigned int offset)
+{
+	void __iomem *flt_adr;
+	unsigned int res = 0;
+	unsigned long long len;
+
+	len = get_flt_xrg_size();
+	flt_adr = get_flt_xrg();
+	if (flt_adr && offset <= len)
+		res = ioread32(flt_adr + offset);
+
+	return res;
+}
+EXPORT_SYMBOL(flt_get_data);
