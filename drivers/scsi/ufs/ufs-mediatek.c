@@ -393,13 +393,16 @@ static const u8 *mphy_str[] = {
 
 extern void mt_irq_dump_status(unsigned int irq);
 static int ufs_mtk_auto_hibern8_disable(struct ufs_hba *hba);
+static int ufs_mtk_config_mcq(struct ufs_hba *hba, bool irq);
 
 #define CREATE_TRACE_POINTS
 #include "ufs-mediatek-trace.h"
 #undef CREATE_TRACE_POINTS
 
+#define MAX_SUPP_MAC 64
+#define MCQ_QUEUE_OFFSET(c) ((((c) >> 16) & 0xFF) * 0x200)
 
-static struct ufs_dev_quirk ufs_mtk_dev_fixups[] = {
+static struct ufs_dev_quirk ufs_mtk_dev_quirks[] = {
 	{ .wmanufacturerid = UFS_ANY_VENDOR,
 	  .model = UFS_ANY_MODEL,
 	  .quirk = UFS_DEVICE_QUIRK_DELAY_BEFORE_LPM |
@@ -1097,6 +1100,46 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 	return ret;
 }
 
+static void ufs_mtk_mcq_set_irq_affinity(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	struct blk_mq_tag_set *tag_set = &hba->host->tag_set;
+	struct blk_mq_queue_map	*map = &tag_set->map[HCTX_TYPE_DEFAULT];
+	unsigned int nr = map->nr_queues;
+	unsigned int q_index, cpu, _cpu, irq;
+	int ret;
+
+	/* Set affinity, only map HCTX_TYPE_DEFAULT
+	 * If CPU count > HWQ count, only mapping HWQ count
+	 * For example, CPU count 8, HWQ count 6, only mapping 6 HWQ interrupt
+	 */
+	for (cpu = 0; cpu < nr; cpu++) {
+		q_index = map->mq_map[cpu];
+		if (q_index > (nr)) {
+			dev_err(hba->dev, "hwq index %d exceed %d\n",
+				q_index, nr);
+			return;
+		}
+
+		irq = host->mcq_intr_info[q_index].irq;
+		if (irq == MTK_MCQ_INVALID_IRQ) {
+			dev_err(hba->dev, "invalid irq. unable to bind q%d to cpu%d",
+				q_index, cpu);
+			return;
+		}
+
+		/* force migrate irq of cpu0 to cpu3 */
+		_cpu = (cpu == 0) ? 3 : cpu;
+		ret = irq_set_affinity(irq, cpumask_of(_cpu));
+		if (ret) {
+			dev_err(hba->dev, "set irq %d affinity to CPU %d failed\n",
+				irq, _cpu);
+			return;
+		}
+		dev_info(hba->dev, "set irq %d affinity to CPU: %d\n", irq, _cpu);
+	}
+}
+
 static inline bool ufs_mtk_is_data_cmd(struct scsi_cmnd *cmd)
 {
 	char cmd_op = cmd->cmnd[0];
@@ -1283,6 +1326,10 @@ static void ufs_mtk_trace_vh_update_sdev(void *data, struct scsi_device *sdev)
 		/* The last LUs */
 		dev_info(hba->dev, "%s: LUNs ready", __func__);
 		complete(&host->luns_added);
+
+		/* set affinity */
+		if (is_mcq_enabled(hba))
+			ufs_mtk_mcq_set_irq_affinity(hba);
 	}
 }
 
@@ -2239,6 +2286,37 @@ static void ufs_mtk_delay_eh_work_fn(struct work_struct *dwork)
 	queue_work(hba->eh_wq, &hba->eh_work);
 }
 
+static void ufs_mtk_init_mcq_irq(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	struct platform_device *pdev;
+	int i;
+	int irq;
+
+	host->mcq_nr_intr = UFSHCD_MAX_Q_NR;
+	pdev = container_of(hba->dev, struct platform_device, dev);
+
+	/* invalidate irq info */
+	for (i = 0; i < host->mcq_nr_intr; i++)
+		host->mcq_intr_info[i].irq = MTK_MCQ_INVALID_IRQ;
+
+	for (i = 0; i < host->mcq_nr_intr; i++) {
+		/* irq index 0 is ufshcd system irq, sq, cq irq start from index 1 */
+		irq = platform_get_irq(pdev, i + 1);
+		if (irq < 0) {
+			dev_err(hba->dev, "get platform mcq irq fail: %d\n", i);
+			goto failed;
+		}
+		host->mcq_intr_info[i].hba = hba;
+		host->mcq_intr_info[i].irq = irq;
+		dev_info(hba->dev, "get platform mcq irq: %d, %d\n", i, irq);
+	}
+
+	return;
+failed:
+	host->mcq_nr_intr = 0;
+}
+
 /**
  * ufs_mtk_init - find other essential mmio bases
  * @hba: host controller instance
@@ -2275,6 +2353,8 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 
 	/* Initialize host capability */
 	ufs_mtk_init_host_caps(hba);
+
+	ufs_mtk_init_mcq_irq(hba);
 
 	err = ufs_mtk_bind_mphy(hba);
 	if (err)
@@ -3200,7 +3280,16 @@ static int ufs_mtk_link_set_hpm(struct ufs_hba *hba)
 	else
 		return err;
 
-	err = ufshcd_make_hba_operational(hba);
+	if (!is_mcq_enabled(hba)) {
+		err = ufshcd_make_hba_operational(hba);
+	} else {
+		ufs_mtk_config_mcq(hba, false);
+		ufshcd_mcq_make_queues_operational(hba);
+		ufshcd_mcq_config_mac(hba, hba->nutrs);
+		ufshcd_writel(hba, ufshcd_readl(hba, REG_UFS_MEM_CFG) | 0x1,
+			      REG_UFS_MEM_CFG);
+	}
+
 	if (err)
 		return err;
 
@@ -3396,7 +3485,11 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 				 REG_UFS_MMIO_OPT_CTRL_0 - REG_UFS_CCAP + 4,
 				 "UFSHCI (0x100): ");
 
-		/* TODO: Add more dump */
+		ufshcd_dump_regs(hba, REG_UFS_MEM_CFG, 4,
+				 "UFSHCI (0x300): ");
+
+		ufshcd_dump_regs(hba, REG_UFS_MCQ_CFG, 4,
+				 "UFSHCI (0x380): ");
 	}
 
 	/* Dump ufshci register 0x2200 ~ 0x22AC */
@@ -3487,7 +3580,7 @@ static void ufs_mtk_fixup_dev_quirks(struct ufs_hba *hba)
 	struct ufs_dev_info *dev_info = &hba->dev_info;
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
-	ufshcd_fixup_dev_quirks(hba, ufs_mtk_dev_fixups);
+	ufshcd_fixup_dev_quirks(hba, ufs_mtk_dev_quirks);
 
 	if (STR_PRFX_EQUAL("H9HQ15AFAMBDAR", dev_info->model))
 		host->caps |= UFS_MTK_CAP_BROKEN_VCC | UFS_MTK_CAP_FORCE_VSx_LPM;
@@ -3785,6 +3878,123 @@ static int ufs_mtk_clk_scale_notify(struct ufs_hba *hba, bool scale_up,
 	return 0;
 }
 
+static int ufs_mtk_get_hba_mac(struct ufs_hba *hba)
+{
+	return MAX_SUPP_MAC;
+}
+
+static int ufs_mtk_op_runtime_config(struct ufs_hba *hba)
+{
+	struct ufshcd_mcq_opr_info_t *opr;
+	int i;
+
+	for (i = 0; i < OPR_MAX; i++) {
+		opr = &hba->mcq_opr[i];
+		opr->stride = REG_UFS_MCQ_STRIDE;
+	}
+
+	hba->mcq_opr[OPR_SQD].offset = REG_UFS_MTK_SQD;
+	hba->mcq_opr[OPR_SQIS].offset = REG_UFS_MTK_SQIS;
+	hba->mcq_opr[OPR_CQD].offset = REG_UFS_MTK_CQD;
+	hba->mcq_opr[OPR_CQIS].offset = REG_UFS_MTK_CQIS;
+
+	hba->mcq_opr[OPR_SQD].base = hba->mmio_base + REG_UFS_MTK_SQD;
+	hba->mcq_opr[OPR_SQIS].base = hba->mmio_base + REG_UFS_MTK_SQIS;
+	hba->mcq_opr[OPR_CQD].base = hba->mmio_base + REG_UFS_MTK_CQD;
+	hba->mcq_opr[OPR_CQIS].base = hba->mmio_base + REG_UFS_MTK_CQIS;
+
+	return 0;
+}
+
+static int ufs_mtk_mcq_config_resource(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	/* fail mcq initialization if interrupt is not filled properly */
+	if (!host->mcq_nr_intr) {
+		dev_info(hba->dev, "IRQs not ready. MCQ disabled.");
+		return -EINVAL;
+	}
+
+	hba->mcq_base = hba->mmio_base + MCQ_QUEUE_OFFSET(hba->mcq_capabilities);
+	return 0;
+}
+
+static irqreturn_t ufs_mtk_mcq_intr(int irq, void *__intr_info)
+{
+	struct ufs_mtk_mcq_intr_info *mcq_intr_info = __intr_info;
+	struct ufs_hba *hba = mcq_intr_info->hba;
+	struct ufs_hw_queue *hwq;
+	u32 events;
+	int i = mcq_intr_info->qid;
+
+	hwq = &hba->uhq[i];
+
+	events = ufshcd_mcq_read_cqis(hba, i);
+	if (events)
+		ufshcd_mcq_write_cqis(hba, events, i);
+
+	if (events & UFSHCD_MCQ_CQIS_TAIL_ENT_PUSH_STS)
+		ufshcd_mcq_poll_cqe_lock(hba, hwq);
+
+	return IRQ_HANDLED;
+}
+
+static int ufs_mtk_config_mcq_irq(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	u32 irq, i;
+	int ret;
+
+	for (i = 0; i < host->mcq_nr_intr; i++) {
+		irq = host->mcq_intr_info[i].irq;
+		if (irq == MTK_MCQ_INVALID_IRQ) {
+			dev_err(hba->dev, "invalid irq. %d\n", i);
+			return -ENOPARAM;
+		}
+
+		host->mcq_intr_info[i].qid = i;
+		ret = devm_request_irq(hba->dev, irq, ufs_mtk_mcq_intr, 0, UFSHCD,
+				       &host->mcq_intr_info[i]);
+
+		dev_info(hba->dev, "request irq %d intr %s\n", irq, ret ? "failed" : "");
+
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
+static int ufs_mtk_config_mcq(struct ufs_hba *hba, bool irq)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	int ret = 0;
+
+	if (!host->mcq_set_intr) {
+		/* Disable irq option register */
+		ufshcd_rmwl(hba, MCQ_INTR_EN_MSK, 0, REG_UFS_MMIO_OPT_CTRL_0);
+
+		if (irq)
+			ret = ufs_mtk_config_mcq_irq(hba);
+
+		if (ret)
+			return ret;
+
+		host->mcq_set_intr = true;
+	}
+
+	ufshcd_rmwl(hba, MCQ_AH8, MCQ_AH8, REG_UFS_MMIO_OPT_CTRL_0);
+	ufshcd_rmwl(hba, MCQ_INTR_EN_MSK, MCQ_MULTI_INTR_EN, REG_UFS_MMIO_OPT_CTRL_0);
+
+	return 0;
+}
+
+static int ufs_mtk_config_esi(struct ufs_hba *hba)
+{
+	return ufs_mtk_config_mcq(hba, true);
+}
+
 /*
  * struct ufs_hba_mtk_vops - UFS MTK specific variant operations
  *
@@ -3812,6 +4022,11 @@ static const struct ufs_hba_variant_ops ufs_hba_mtk_vops = {
 	.setup_task_mgmt     = ufs_mtk_setup_task_mgmt,
 	.config_scaling_param = ufs_mtk_config_scaling_param,
 	.clk_scale_notify    = ufs_mtk_clk_scale_notify,
+	/* mcq vops */
+	.get_hba_mac         = ufs_mtk_get_hba_mac,
+	.op_runtime_config   = ufs_mtk_op_runtime_config,
+	.mcq_config_resource = ufs_mtk_mcq_config_resource,
+	.config_esi          = ufs_mtk_config_esi,
 };
 
 /**
@@ -3873,11 +4088,10 @@ skip_reset:
 	}
 
 skip_phy:
-
 	/* perform generic probe */
 	err = ufshcd_pltfrm_init(pdev, &ufs_hba_mtk_vops);
 	if (err) {
-		dev_info(dev, "probe failed %d\n", err);
+		dev_err(dev, "probe failed %d\n", err);
 		goto out;
 	}
 
@@ -3888,10 +4102,6 @@ skip_phy:
 	/* set affinity to cpu3 */
 	if (hba->irq)
 		irq_set_affinity_hint(hba->irq, get_cpu_mask(3));
-
-#if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
-	ufs_mtk_mcq_set_irq_affinity(hba);
-#endif
 
 	if ((phy_node) && (phy_dev)) {
 		host = ufshcd_get_variant(hba);
