@@ -733,13 +733,17 @@ print_disp_info_to_log_buffer(struct drm_mtk_layering_info *disp_info)
 void mtk_rollback_layer_to_GPU(struct drm_mtk_layering_info *disp_info,
 			       int idx, int i)
 {
+	if (idx < 0 || idx >= LYE_CRTC) {
+		DDPPR_ERR("%s, idx is invalid\n", __func__);
+		return;
+	}
+
 	if (mtk_is_layer_id_valid(disp_info, idx, i) == false)
 		return;
 
 	mtk_gles_incl_layer(disp_info, idx, i);
 
-	if (idx >= 0 && idx < LYE_CRTC)
-		disp_info->input_config[idx][i].ext_sel_layer = -1;
+	disp_info->input_config[idx][i].ext_sel_layer = -1;
 }
 
 /* rollback and set NO_FBDC flag */

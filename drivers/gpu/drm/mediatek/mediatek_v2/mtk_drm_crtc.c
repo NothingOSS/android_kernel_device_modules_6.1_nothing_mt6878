@@ -3679,10 +3679,24 @@ fail:
 bool mtk_crtc_alloc_sram(struct mtk_drm_crtc *mtk_crtc, unsigned int hrt_idx)
 {
 	int ret = 0;
-	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	struct mtk_drm_private *priv = NULL;
 
-	if (!mtk_crtc)
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s mtk_crtc is NULL\n", __func__);
 		return false;
+	}
+
+	priv = mtk_crtc->base.dev->dev_private;
+
+	if (!priv) {
+		DDPPR_ERR("%s priv is NULL\n", __func__);
+		return false;
+	}
+
+	if (!priv->data) {
+		DDPPR_ERR("%s priv->data is NULL\n", __func__);
+		return false;
+	}
 
 	/*need register cb for share sram, register after SLB driver enable*/
 	if (mtk_crtc->slbc_state == SLBC_UNREGISTER &&
@@ -3698,7 +3712,7 @@ bool mtk_crtc_alloc_sram(struct mtk_drm_crtc *mtk_crtc, unsigned int hrt_idx)
 		ops.deactivate = &mtk_disp_deactivate;
 		slbc_register_activate_ops(&ops);
 		mtk_crtc->slbc_state = SLBC_CAN_ALLOC;
-		DDPMSG("slbc callback registered\n");
+		DDPMSG("%s slbc callback registered\n", __func__);
 	}
 
 	mutex_lock(&mtk_crtc->mml_ir_sram.lock);
@@ -3708,12 +3722,12 @@ bool mtk_crtc_alloc_sram(struct mtk_drm_crtc *mtk_crtc, unsigned int hrt_idx)
 
 		ret = slbc_request(sram);
 		if (ret < 0) {
-			DDPMSG("%s slbc_request fail %d", __func__, ret);
+			DDPMSG("%s slbc_request fail %d\n", __func__, ret);
 			goto done;
 		}
 		ret = slbc_power_on(sram);
 		if (ret < 0) {
-			DDPMSG("%s slbc_power_on fail %d", __func__, ret);
+			DDPMSG("%s slbc_power_on fail %d\n", __func__, ret);
 			goto done;
 		}
 
@@ -10079,18 +10093,45 @@ static void mtk_drm_crtc_path_adjust(struct mtk_drm_private *priv, struct drm_cr
 
 void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 {
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct mtk_crtc_state *mtk_state = to_mtk_crtc_state(crtc->state);
-	unsigned int crtc_id = drm_crtc_index(crtc);
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_crtc_state *mtk_state = NULL;
+	unsigned int crtc_id;
 #ifndef DRM_CMDQ_DISABLE
 	struct cmdq_client *client;
 #endif
-	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	struct mtk_drm_private *priv = NULL;
 	struct mtk_ddp_comp *comp;
 	int i, j;
 	struct mtk_ddp_comp *output_comp = NULL;
 	int en = 1;
 	bool only_output;
+
+	if (!crtc) {
+		DDPPR_ERR("%s, crtc is NULL\n", __func__);
+		return;
+	}
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	crtc_id = drm_crtc_index(crtc);
+
+	if (!crtc->state) {
+		DDPPR_ERR("%s, crtc->state is NULL\n", __func__);
+		return;
+	}
+
+	mtk_state = to_mtk_crtc_state(crtc->state);
+
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s, mtk_crtc is NULL\n", __func__);
+		return;
+	}
+
+	if (!mtk_crtc->base.dev) {
+		DDPPR_ERR("%s, mtk_crtc->base.dev is NULL\n", __func__);
+		return;
+	}
+
+	priv = mtk_crtc->base.dev->dev_private;
 
 	CRTC_MMP_EVENT_START((int) crtc_id, enable,
 			mtk_crtc->enabled, 0);

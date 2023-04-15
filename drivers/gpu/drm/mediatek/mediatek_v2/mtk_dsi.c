@@ -2329,9 +2329,15 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 	}
 
 	mtk_crtc = dsi->ddp_comp.mtk_crtc;
-	if (mtk_crtc && mtk_crtc->base.dev)
-		priv = mtk_crtc->base.dev->dev_private;
 
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s mtk_crtc is NULL\n", __func__);
+		ret = IRQ_NONE;
+		goto out;
+	}
+
+	if (mtk_crtc->base.dev)
+		priv = mtk_crtc->base.dev->dev_private;
 
 	if (status & BUFFER_UNDERRUN_INT_FLAG) {
 		if (__ratelimit(&mmp_rate))
@@ -2360,9 +2366,9 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 
 			++underrun_cnt;
 
-			if (mtk_crtc && (mtk_crtc->last_aee_trigger_ts == 0 ||
+			if (mtk_crtc->last_aee_trigger_ts == 0 ||
 				(aee_now_ts - mtk_crtc->last_aee_trigger_ts
-				> TIGGER_INTERVAL_S(10))))
+				> TIGGER_INTERVAL_S(10)))
 				trigger_aee = 1;
 
 			if ((dsi_underrun_trigger == 1 && priv &&
@@ -2382,7 +2388,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				mtk_drm_crtc_analysis(dsi->encoder.crtc);
 				mtk_drm_crtc_dump(dsi->encoder.crtc);
 				dsi_underrun_trigger = 0;
-				if (!dsi->driver_data->smi_dbg_disable ||
+				if ((dsi->driver_data && !dsi->driver_data->smi_dbg_disable) ||
 				     mtk_drm_helper_get_opt(priv->helper_opt,
 				     MTK_DRM_OPT_DSI_UNDERRUN_AEE))
 					mtk_smi_dbg_hang_detect("dsi-underrun");
@@ -2439,7 +2445,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			}
 		}
 
-		if ((status & TE_RDY_INT_FLAG) && mtk_crtc &&
+		if ((status & TE_RDY_INT_FLAG) &&
 				(atomic_read(&mtk_crtc->d_te.te_switched) != 1)) {
 
 			drm_trace_tag_mark("TE_RDY");
@@ -2451,7 +2457,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 
 			if ((dsi->ddp_comp.id == DDP_COMPONENT_DSI0 ||
 				dsi->ddp_comp.id == DDP_COMPONENT_DSI1) &&
-				mtk_dsi_is_cmd_mode(&dsi->ddp_comp) && mtk_crtc) {
+				mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
 				mtk_crtc->pf_time = ktime_get();
 				atomic_set(&mtk_crtc->signal_irq_for_pre_fence, 1);
 				wake_up_interruptible(&(mtk_crtc->signal_irq_for_pre_fence_wq));
@@ -2462,7 +2468,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				wakeup_dsi_wq(&dsi->te_rdy);
 
 			if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp) &&
-				mtk_crtc && mtk_crtc->vblank_en) {
+				mtk_crtc->vblank_en) {
 				panel_ext = dsi->ext;
 
 				if (dsi->encoder.crtc)
@@ -2499,14 +2505,14 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 
 			if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp) &&
 				dsi->ddp_comp.id == DDP_COMPONENT_DSI0 &&
-					mtk_crtc && mtk_crtc->pf_ts_type == IRQ_DSI_EOF) {
+					mtk_crtc->pf_ts_type == IRQ_DSI_EOF) {
 				mtk_crtc->pf_time = ktime_get();
 				atomic_set(&mtk_crtc->signal_irq_for_pre_fence, 1);
 				wake_up_interruptible(&(mtk_crtc->signal_irq_for_pre_fence_wq));
 			}
 
 			if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp) &&
-				mtk_crtc && mtk_crtc->vblank_en) {
+				mtk_crtc->vblank_en) {
 				panel_ext = dsi->ext;
 
 				if (panel_ext && panel_ext->params->skip_vblank) {
