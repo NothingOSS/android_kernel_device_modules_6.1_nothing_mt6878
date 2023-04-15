@@ -453,6 +453,13 @@ static bool ufs_mtk_is_tx_skew_fix(struct ufs_hba *hba)
 	return !!(host->caps & UFS_MTK_CAP_TX_SKEW_FIX);
 }
 
+static bool ufs_mtk_is_rtff_mtcmos(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	return !!(host->caps & UFS_MTK_CAP_RTFF_MTCMOS);
+}
+
 static bool ufs_mtk_is_clk_scale_ready(struct ufs_hba *hba)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
@@ -1028,6 +1035,9 @@ static void ufs_mtk_init_host_caps(struct ufs_hba *hba)
 #if !IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 	host->caps |= UFS_MTK_CAP_DISABLE_MCQ;
 #endif
+
+	if (of_property_read_bool(np, "mediatek,ufs-rtff-mtcmos"))
+		host->caps |= UFS_MTK_CAP_RTFF_MTCMOS;
 
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 	if (of_property_read_bool(np, "mediatek,ufs-mphy-debug"))
@@ -2468,6 +2478,15 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	 * Enable phy power and clocks specifically here.
 	 */
 	ufs_mtk_mphy_power_on(hba, true);
+
+	if (ufs_mtk_is_rtff_mtcmos(hba)) {
+		/* First Restore here, to avoid backup unexpected value */
+		ufs_mtk_mtcmos_ctrl(false, res);
+
+		/* Power on to init */
+		ufs_mtk_mtcmos_ctrl(true, res);
+	}
+
 	ufs_mtk_setup_clocks(hba, true, POST_CHANGE);
 
 	host->ip_ver = ufshcd_readl(hba, REG_UFS_MTK_IP_VER);
@@ -3469,7 +3488,6 @@ static int ufs_mtk_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
 	if (ufshcd_is_link_off(hba))
 		ufs_mtk_device_reset_ctrl(0, res);
 
-	/* Transfer the ufs version to tfa */
 	ufs_mtk_sram_pwr_ctrl(false, res);
 
 	return 0;
@@ -3491,7 +3509,6 @@ static int ufs_mtk_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	if (hba->ufshcd_state != UFSHCD_STATE_OPERATIONAL)
 		ufs_mtk_dev_vreg_set_lpm(hba, false);
 
-	/* Transfer the ufs version to tfa */
 	ufs_mtk_sram_pwr_ctrl(true, res);
 
 	err = ufs_mtk_mphy_power_on(hba, true);
@@ -4235,6 +4252,7 @@ int ufs_mtk_system_suspend(struct device *dev)
 	int ret = 0;
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 	struct ufs_mtk_host *host;
+	struct arm_smccc_res res;
 #if defined(CONFIG_UFSFEATURE)
 	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
 #endif
@@ -4258,6 +4276,9 @@ int ufs_mtk_system_suspend(struct device *dev)
 
 	if (!ret)
 		ufs_mtk_dev_vreg_set_lpm(hba, true);
+
+	if (!ret && ufs_mtk_is_rtff_mtcmos(hba))
+		ufs_mtk_mtcmos_ctrl(false, res);
 out:
 
 #if defined(CONFIG_UFSFEATURE)
@@ -4276,10 +4297,14 @@ int ufs_mtk_system_resume(struct device *dev)
 	int ret = 0;
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 	struct ufs_mtk_host *host;
+	struct arm_smccc_res res;
 #if defined(CONFIG_UFSFEATURE)
 	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
 	bool is_link_off = ufshcd_is_link_off(hba);
 #endif
+
+	if (ufs_mtk_is_rtff_mtcmos(hba))
+		ufs_mtk_mtcmos_ctrl(true, res);
 
 	ufs_mtk_dev_vreg_set_lpm(hba, false);
 
@@ -4301,6 +4326,7 @@ int ufs_mtk_runtime_suspend(struct device *dev)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	struct arm_smccc_res res;
 	int ret = 0;
 
 #if defined(CONFIG_UFSFEATURE)
@@ -4320,6 +4346,9 @@ int ufs_mtk_runtime_suspend(struct device *dev)
 		ufsf_resume(ufsf, true);
 #endif
 
+	if (!ret && ufs_mtk_is_rtff_mtcmos(hba))
+		ufs_mtk_mtcmos_ctrl(false, res);
+
 	if (!ret && (host->phy_dev))
 		pm_runtime_put_sync(host->phy_dev);
 
@@ -4331,11 +4360,15 @@ int ufs_mtk_runtime_resume(struct device *dev)
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 	int ret = 0;
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	struct arm_smccc_res res;
 
 #if defined(CONFIG_UFSFEATURE)
 	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
 	bool is_link_off = ufshcd_is_link_off(hba);
 #endif
+
+	if (ufs_mtk_is_rtff_mtcmos(hba))
+		ufs_mtk_mtcmos_ctrl(true, res);
 
 	if (host->phy_dev)
 		pm_runtime_get_sync(host->phy_dev);
