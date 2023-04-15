@@ -20697,6 +20697,7 @@ static ssize_t mt6338_codec_sysfs_write(struct file *filp, struct kobject *kobj,
 
 	memset((void *)input, 0, MAX_DEBUG_WRITE_INPUT);
 	memcpy(input, buf, count);
+	input[count] = '\0';
 
 	str_begin = kstrndup(input, MAX_DEBUG_WRITE_INPUT - 1,
 			     GFP_KERNEL);
@@ -20793,6 +20794,7 @@ static ssize_t mt6338_debugfs_write(struct file *f, const char __user *buf,
 	if (copy_from_user(input, buf, count))
 		dev_warn(priv->dev, "%s(), copy_from_user fail, count = %zu\n",
 			 __func__, count);
+	input[count] = '\0';
 
 	str_begin = kstrndup(input, MAX_DEBUG_WRITE_INPUT - 1,
 			     GFP_KERNEL);
