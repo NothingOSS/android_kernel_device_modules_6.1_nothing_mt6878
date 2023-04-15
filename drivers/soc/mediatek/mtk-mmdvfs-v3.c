@@ -37,6 +37,8 @@ static struct mtk_mmdvfs_clk *mtk_mmdvfs_clks;
 
 static u8 mmdvfs_pwr_opp[PWR_MMDVFS_NUM];
 static struct clk *mmdvfs_pwr_clk[PWR_MMDVFS_NUM];
+static struct clk *mmdvfs_rst_clk[MMDVFS_RST_CLK_NUM];
+static u8 mmdvfs_rst_clk_num;
 
 static phys_addr_t mmdvfs_memory_iova;
 static phys_addr_t mmdvfs_memory_pa;
@@ -1064,6 +1066,18 @@ static inline void mmdvfs_reset_vcp(void)
 	if (mmdvfs_swrgo)
 		return;
 
+	if (mmdvfs_rst_clk_num) {
+		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_RST);
+		for (i = 0; i < mmdvfs_rst_clk_num; i++) {
+			if (!IS_ERR_OR_NULL(mmdvfs_rst_clk[i])) {
+				ret = clk_set_rate(mmdvfs_rst_clk[i], 0);
+				if (ret)
+					MMDVFS_ERR("reset clk:%d to 0 failed:%d", i, ret);
+			}
+		}
+		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_RST);
+	}
+
 	mutex_lock(&mmdvfs_vcp_pwr_mutex);
 	for (i = 0; i < VCP_PWR_USR_NUM; i++) {
 		if (vcp_pwr_usage[i])
@@ -1334,6 +1348,8 @@ static int mmdvfs_v3_probe(struct platform_device *pdev)
 	struct platform_device *larbdev;
 	unsigned int dl_flags = DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS;
 	struct clk *clk;
+	struct property *prop;
+	const char *prop_name;
 	int i, ret;
 
 	ret = of_property_count_strings(node, MMDVFS_CLK_NAMES);
@@ -1426,14 +1442,24 @@ static int mmdvfs_v3_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	for (i = 0; i < ARRAY_SIZE(mmdvfs_pwr_opp); i++) {
-		mmdvfs_pwr_opp[i] = MAX_OPP;
+	i = 0;
+	of_property_for_each_string(node, "clock-names", prop, prop_name) {
+		clk = devm_clk_get(&pdev->dev, prop_name);
+		if (IS_ERR_OR_NULL(clk)) {
+			MMDVFS_ERR("clk:%s get failed:%d", prop_name, PTR_ERR_OR_ZERO(clk));
+			continue;
+		}
 
-		clk = of_clk_get(node, i);
-		if (IS_ERR_OR_NULL(clk))
-			MMDVFS_DBG("i:%d clk get failed:%d", i, PTR_ERR_OR_ZERO(clk));
-		else
-			mmdvfs_pwr_clk[i] = clk;
+		if (!strncmp("pwr", prop_name, 3)) {
+			if (i == ARRAY_SIZE(mmdvfs_pwr_opp)) {
+				MMDVFS_ERR("pwr clk num is wrong");
+				continue;
+			}
+			mmdvfs_pwr_opp[i] = MAX_OPP;
+			mmdvfs_pwr_clk[i++] = clk;
+		} else {
+			mmdvfs_rst_clk[mmdvfs_rst_clk_num++] = clk;
+		}
 	}
 
 	if (!vmm_notify_wq)
