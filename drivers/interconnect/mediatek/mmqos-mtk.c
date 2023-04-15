@@ -324,7 +324,7 @@ static u32 get_max_channel_bw(u32 comm_id, u32 freq_mode)
 		}
 	}
 
-	if (!mmdvfs_get_version()) //BY_REGULATOR
+	if (freq_mode == BY_REGULATOR)
 		return get_max_channel_bw_in_common(comm_id);
 
 	// BY_MMDVFS
@@ -351,17 +351,17 @@ static void set_freq_by_regulator(struct common_node *comm_node, unsigned long s
 	}
 }
 
+/*
 static void set_freq_by_mmdvfs(struct common_node *comm_node, unsigned long smi_clk)
 {
 	if (log_level & 1 << log_comm_freq)
 		dev_notice(comm_node->comm_dev, "set freq_rate:%lu\n", smi_clk);
 
-	if (mmdvfs_get_version()) {
-		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
-		mmdvfs_mux_set_opp("user-smi", smi_clk);
-		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
-	}
+	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
+	mmdvfs_mux_set_opp("user-smi", smi_clk);
+	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
 }
+*/
 
 static void set_comm_icc_bw(struct common_node *comm_node)
 {
@@ -386,10 +386,10 @@ static void set_comm_icc_bw(struct common_node *comm_node)
 				comm_id, max_bw, smi_clk, freq_mode);
 
 		if (comm_node->comm_dev && smi_clk != comm_node->smi_clk) {
-			if (!mmdvfs_get_version())
+			if (freq_mode == BY_REGULATOR)
 				set_freq_by_regulator(comm_node, smi_clk);
 			else
-				set_freq_by_mmdvfs(comm_node, smi_clk);
+				MMQOS_ERR("freq_mode:%d is wrong", freq_mode);
 
 			comm_node->smi_clk = smi_clk;
 		}
