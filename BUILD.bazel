@@ -265,6 +265,7 @@ mgk_64_k61_device_modules = [
     "drivers/misc/mediatek/geniezone/gz-trusty/gz_virtio_mod.ko",
     "drivers/misc/mediatek/geniezone/gz_tz_system.ko",
     "drivers/misc/mediatek/gzvm/gzvm.ko",
+    "drivers/misc/mediatek/hw_sem/mtk-hw-semaphore.ko",
     "drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko",
     "drivers/misc/mediatek/imgsensor/src-v4l2/imgsensor-glue/imgsensor-glue.ko",
     "drivers/misc/mediatek/imgsensor/src-v4l2/imgsensor.ko",
