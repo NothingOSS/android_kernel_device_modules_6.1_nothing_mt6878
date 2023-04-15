@@ -203,7 +203,7 @@ struct mtk_disp_color_data {
 #define COLOR_SEQ_SEL			BIT(13)
 
 struct DISP_PQ_PARAM *get_Color_config(int id);
-struct DISPLAY_PQ_T *get_Color_index(void);
+struct DISPLAY_PQ_T *get_Color_index(struct mtk_ddp_comp *comp);
 bool disp_color_reg_get(struct mtk_ddp_comp *comp,
 	unsigned long addr, int *value);
 void disp_color_set_window(struct mtk_ddp_comp *comp,
@@ -416,8 +416,8 @@ int mtk_drm_ioctl_write_sw_reg(struct drm_device *dev, void *data,
 
 /* ------------------------------------------------------------------------- */
 
-
-
+void disp_color_set_bypass(struct drm_crtc *crtc, int bypass);
+void mtk_color_regdump(struct mtk_ddp_comp *comp);
 
 #endif
 

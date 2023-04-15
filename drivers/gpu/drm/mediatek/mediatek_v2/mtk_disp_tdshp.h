@@ -29,9 +29,6 @@
 #define DISP_TDSHP_EN BIT(0)
 #define TDSHP_BYPASS_SHADOW BIT(0)
 
-// for Display Clarity
-extern int g_disp_clarity_support;
-
  /*******************************/
  /* field definition */
  /* ------------------------------------------------------------- */
@@ -419,11 +416,10 @@ extern int g_disp_clarity_support;
 
 int mtk_drm_ioctl_tdshp_set_reg(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
-
 int mtk_drm_ioctl_tdshp_get_size(struct drm_device *dev, void *data,
 		struct drm_file *file_priv);
-
 void disp_tdshp_set_bypass(struct drm_crtc *crtc, int bypass);
+void mtk_tdshp_regdump(struct mtk_ddp_comp *comp);
 
 #endif
 

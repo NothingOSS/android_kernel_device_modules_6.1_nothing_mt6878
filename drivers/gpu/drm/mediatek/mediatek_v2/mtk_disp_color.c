@@ -28,46 +28,13 @@
 #include "mtk_disp_pq_helper.h"
 
 #define UNUSED(expr) (void)(expr)
-#define index_of_color(module) ((module == DDP_COMPONENT_COLOR0) ? 0 : 1)
 #define PQ_MODULE_NUM 9
-static struct DISP_PQ_PARAM g_Color_Param;
 
 #define CCORR_REG(idx) (idx * 4 + 0x80)
-
-// It's a work around for no comp assigned in functions.
-static struct mtk_ddp_comp *default_comp;
-static struct mtk_ddp_comp *default_comp1;
-
-int ncs_tuning_mode;
-
-static unsigned int g_split_en;
-static unsigned int g_split_window_x_start;
-static unsigned int g_split_window_y_start;
-static unsigned int g_split_window_x_end = 0xFFFF;
-static unsigned int g_split_window_y_end = 0xFFFF;
-
-static unsigned long g_color_dst_w[DISP_COLOR_TOTAL];
-static unsigned long g_color_dst_h[DISP_COLOR_TOTAL];
-
-static atomic_t g_color_is_clock_on[DISP_COLOR_TOTAL] = { ATOMIC_INIT(0),
-	ATOMIC_INIT(0)};
-
-static DEFINE_SPINLOCK(g_color_clock_lock);
-
-static int g_color_bypass;
-
-static DEFINE_MUTEX(g_color_reg_lock);
-static struct DISPLAY_COLOR_REG g_color_reg;
-static int g_color_reg_valid;
-//for DISP_COLOR_TUNING
-static unsigned int g_width;
-
-bool g_legacy_color_cust;
 
 #define C1_OFFSET (0)
 #define color_get_offset(module) (0)
 #define is_color1_module(module) (0)
-struct drm_mtk_ccorr_caps g_ccorr_caps;
 
 enum COLOR_USER_CMD {
 	SET_PQPARAM = 0,
@@ -75,41 +42,6 @@ enum COLOR_USER_CMD {
 	WRITE_REG,
 	BYPASS_COLOR,
 	PQ_SET_WINDOW,
-};
-
-static struct MDP_COLOR_CAP mdp_color_cap;
-
-static struct DISP_PQ_DC_PARAM g_PQ_DC_Param = {
-param:
-	{
-	 1, 1, 0, 0, 0, 0, 0, 0, 0, 0x0A,
-	 0x30, 0x40, 0x06, 0x12, 40, 0x40, 0x80, 0x40, 0x40, 1,
-	 0x80, 0x60, 0x80, 0x10, 0x34, 0x40, 0x40, 1, 0x80, 0xa,
-	 0x19, 0x00, 0x20, 0, 0, 1, 2, 1, 80, 1}
-};
-
-static struct DISP_PQ_DS_PARAM g_PQ_DS_Param = {
-param:
-	{
-	 1, -4, 1024, -4, 1024,
-	 1, 400, 200, 1600, 800,
-	 128, 8, 4, 12, 16,
-	 8, 24, -8, -4, -12,
-	 0, 0, 0}
-};
-
-static int g_tdshp_flag;	/* 0: normal, 1: tuning mode */
-int ncs_tuning_mode;
-int tdshp_index_init;
-
-static struct MDP_TDSHP_REG g_tdshp_reg = {
-	TDS_GAIN_MID:0x10,
-	TDS_GAIN_HIGH:0x20,
-	TDS_COR_GAIN:0x10,
-	TDS_COR_THR:0x4,
-	TDS_COR_ZERO:0x2,
-	TDS_GAIN:0x20,
-	TDS_COR_VALUE:0x3
 };
 
 #if defined(DISP_COLOR_ON)
@@ -121,6 +53,49 @@ static struct MDP_TDSHP_REG g_tdshp_reg = {
 #else
 #define COLOR_MODE			(0)	/*color feature off */
 #endif
+
+struct mtk_disp_color_tile_overhead {
+	unsigned int left_in_width;
+	unsigned int left_overhead;
+	unsigned int left_comp_overhead;
+	unsigned int right_in_width;
+	unsigned int right_overhead;
+	unsigned int right_comp_overhead;
+};
+
+struct color_backup {
+	unsigned int COLOR_CFG_MAIN;
+};
+
+struct mtk_disp_color_primary {
+	struct DISP_PQ_PARAM color_param;
+	int ncs_tuning_mode;
+	unsigned int split_en;
+	unsigned int split_window_x_start;
+	unsigned int split_window_y_start;
+	unsigned int split_window_x_end;
+	unsigned int split_window_y_end;
+	int color_bypass;
+	struct DISPLAY_COLOR_REG color_reg;
+	int color_reg_valid;
+	unsigned int width;
+	//for DISP_COLOR_TUNING
+	bool legacy_color_cust;
+	struct MDP_COLOR_CAP mdp_color_cap;
+	struct DISP_PQ_DC_PARAM pq_dc_param;
+	struct DISP_PQ_DS_PARAM pq_ds_param;
+	int tdshp_flag;	/* 0: normal, 1: tuning mode */
+	struct MDP_TDSHP_REG tdshp_reg;
+	struct mtk_disp_color_tile_overhead tile_overhead;
+	struct DISPLAY_PQ_T color_index;
+	struct color_backup color_backup;
+	struct DISP_AAL_DRECOLOR_PARAM drecolor_sgy;
+	struct mutex reg_lock;
+	struct mtk_ddp_comp *gamma_comp;
+	struct mtk_ddp_comp *aal_comp;
+	struct mtk_ddp_comp *tdshp_comp;
+	struct mtk_ddp_comp *ccorr_comp;
+};
 
 /**
  * struct mtk_disp_color - DISP_COLOR driver structure
@@ -134,938 +109,12 @@ struct mtk_disp_color {
 	bool is_right_pipe;
 	int path_order;
 	struct mtk_ddp_comp *companion;
+	struct mtk_disp_color_primary *primary_data;
+	unsigned long color_dst_w;
+	unsigned long color_dst_h;
+	atomic_t color_is_clock_on;
+	spinlock_t clock_lock;
 };
-
-struct mtk_disp_color_tile_overhead {
-	unsigned int left_in_width;
-	unsigned int left_overhead;
-	unsigned int left_comp_overhead;
-	unsigned int right_in_width;
-	unsigned int right_overhead;
-	unsigned int right_comp_overhead;
-};
-
-struct mtk_disp_color_tile_overhead color_tile_overhead = { 0 };
-
-/* global PQ param for kernel space */
-static struct DISP_PQ_PARAM g_Color_Param = {
-u4SHPGain:2,
-u4SatGain:4,
-u4PartialY:0,
-u4HueAdj:{9, 9, 9, 9},
-u4SatAdj:{0, 0, 0, 0},
-u4Contrast:4,
-u4Brightness:4,
-u4Ccorr:0,
-u4ColorLUT:0
-};
-
-/* initialize index */
-/* (because system default is 0, need fill with 0x80) */
-
-static struct DISPLAY_PQ_T g_Color_Index = {
-GLOBAL_SAT:	/* 0~9 */
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-
-CONTRAST :	/* 0~9 */
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-
-BRIGHTNESS :	/* 0~9 */
-	{0x400, 0x400, 0x400, 0x400, 0x400, 0x400, 0x400, 0x400, 0x400, 0x400},
-
-PARTIAL_Y :
-	{
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
-		 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
-		 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
-		 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
-		 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
-		 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
-		 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
-		 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
-		 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
-		 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
-		 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-
-PURP_TONE_S :
-{			/* hue 0~10 */
-	{			/* 0 disable */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 1 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 2 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-	{			/* 3 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 4 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 5 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 6 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 7 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 8 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 9 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 10 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 11 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 12 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 13 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 14 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 15 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 16 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 17 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 18 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	}
-},
-SKIN_TONE_S :
-{
-	{			/* 0 disable */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 1 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 2 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 3 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 4 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 5 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 6 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 7 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 8 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 9 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 10 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 11 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 12 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 13 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 14 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 15 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 16 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 17 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 18 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	}
-},
-GRASS_TONE_S :
-{
-	{			/* 0 disable */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 1 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 2 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 3 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 4 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 5 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 6 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 7 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 8 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 9 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 10 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 11 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 12 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 13 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 14 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 15 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 16 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 17 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	},
-
-	{			/* 18 */
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-	}
-},
-SKY_TONE_S :
-{			/* hue 0~10 */
-	{			/* 0 disable */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 1 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 2 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-	{			/* 3 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 4 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 5 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 6 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 7 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 8 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 9 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 10 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 11 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 12 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 13 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 14 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 15 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 16 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 17 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	},
-
-	{			/* 18 */
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80},
-		{0x80, 0x80, 0x80}
-	}
-},
-
-PURP_TONE_H :
-{
-	/* hue 0~2 */
-	{0x80, 0x80, 0x80},	/* 3 */
-	{0x80, 0x80, 0x80},	/* 4 */
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},	/* 3 */
-	{0x80, 0x80, 0x80},	/* 4 */
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},	/* 4 */
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},	/* 3 */
-	{0x80, 0x80, 0x80},	/* 4 */
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80}
-},
-
-SKIN_TONE_H :
-{
-	/* hue 3~16 */
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-},
-
-GRASS_TONE_H :
-{
-/* hue 17~24 */
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
-},
-
-SKY_TONE_H :
-{
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80},
-	{0x80, 0x80, 0x80}
-},
-CCORR_COEF : /* ccorr feature */
-{
-	{
-		{0x400, 0x0, 0x0},
-		{0x0, 0x400, 0x0},
-		{0x0, 0x0, 0x400},
-	},
-	{
-		{0x400, 0x0, 0x0},
-		{0x0, 0x400, 0x0},
-		{0x0, 0x0, 0x400},
-	},
-	{
-		{0x400, 0x0, 0x0},
-		{0x0, 0x400, 0x0},
-		{0x0, 0x0, 0x400},
-	},
-	{
-		{0x400, 0x0, 0x0},
-		{0x0, 0x400, 0x0},
-		{0x0, 0x0, 0x400}
-	}
-},
-S_GAIN_BY_Y :
-{
-	{0x80, 0x80, 0x80, 0x80,
-	 0x80, 0x80, 0x80, 0x80,
-	 0x80, 0x80, 0x80, 0x80,
-	 0x80, 0x80, 0x80, 0x80,
-	 0x80, 0x80, 0x80, 0x80},
-
-	{0x80, 0x80, 0x80, 0x80,
-	 0x80, 0x80, 0x80, 0x80,
-	 0x80, 0x80, 0x80, 0x80,
-	 0x80, 0x80, 0x80, 0x80,
-	 0x80, 0x80, 0x80, 0x80},
-
-	{0x80, 0x80, 0x80, 0x80,
-	 0x80, 0x80, 0x80, 0x80,
-	 0x80, 0x80, 0x80, 0x80,
-	 0x80, 0x80, 0x80, 0x80,
-	 0x80, 0x80, 0x80, 0x80},
-
-	{0x80, 0x80, 0x80, 0x80,
-	 0x80, 0x80, 0x80, 0x80,
-	 0x80, 0x80, 0x80, 0x80,
-	 0x80, 0x80, 0x80, 0x80,
-	 0x80, 0x80, 0x80, 0x80},
-
-	{0x80, 0x80, 0x80, 0x80,
-	 0x80, 0x80, 0x80, 0x80,
-	 0x80, 0x80, 0x80, 0x80,
-	 0x80, 0x80, 0x80, 0x80,
-	 0x80, 0x80, 0x80, 0x80}
-},
-
-S_GAIN_BY_Y_EN:0,
-
-LSP_EN:0,
-
-LSP :
-{0x0, 0x0, 0x7F, 0x7F, 0x7F, 0x0, 0x7F, 0x7F},
-COLOR_3D :
-{
-	{			/* 0 */
-		/* Windows  1 */
-		{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
-		/* Windows  2 */
-		{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
-		/* Windows  3 */
-		{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
-	},
-	{			/* 1 */
-		/* Windows  1 */
-		{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
-		/* Windows  2 */
-		{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
-		/* Windows  3 */
-		{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
-	},
-	{			/* 2 */
-		/* Windows  1 */
-		{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
-		/* Windows  2 */
-		{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
-		/* Windows  3 */
-		{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
-	},
-	{			/* 3 */
-		/* Windows  1 */
-		{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
-		/* Windows  2 */
-		{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
-		/* Windows  3 */
-		{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
-		  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
-		 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
-	},
-}
-};
-
 
 static inline struct mtk_disp_color *comp_to_color(struct mtk_ddp_comp *comp)
 {
@@ -1077,54 +126,57 @@ static void ddp_color_cal_split_window(struct mtk_ddp_comp *comp,
 {
 	unsigned int split_window_x = 0xFFFF0000;
 	unsigned int split_window_y = 0xFFFF0000;
-	int id = index_of_color(comp->id);
+	struct mtk_disp_color *color = comp_to_color(comp);
+	struct mtk_disp_color_primary *primary =
+		color->primary_data;
 
 	/* save to global, can be applied on following PQ param updating. */
 	if (comp->mtk_crtc->is_dual_pipe) {
-		if (g_color_dst_w[id] == 0 || g_color_dst_h[id] == 0) {
-			DDPINFO("g_color_dst_w/h not init, return default settings\n");
-		} else if (g_split_en) {
+		if (color->color_dst_w == 0 || color->color_dst_h == 0) {
+			DDPINFO("color_dst_w/h not init, return default settings\n");
+		} else if (primary->split_en) {
 			/* TODO: CONFIG_MTK_LCM_PHYSICAL_ROTATION other case */
-			if (comp->id == DDP_COMPONENT_COLOR0) {
-				if (g_split_window_x_start > g_color_dst_w[id])
-					g_split_en = 0;
-				if (g_split_window_x_start <= g_color_dst_w[id]) {
-
-					if (g_split_window_x_end >= g_color_dst_w[id]) {
-						split_window_x =  (g_color_dst_w[id] << 16) |
-							g_split_window_x_start;
-					} else {
-						split_window_x = (g_split_window_x_end << 16) |
-							g_split_window_x_start;
-					}
-					split_window_y = (g_split_window_y_end << 16) |
-						g_split_window_y_start;
+			if (!color->is_right_pipe) {
+				if (primary->split_window_x_start > color->color_dst_w)
+					primary->split_en = 0;
+				if (primary->split_window_x_start <= color->color_dst_w) {
+					if (primary->split_window_x_end >= color->color_dst_w)
+						split_window_x = (color->color_dst_w << 16) |
+							primary->split_window_x_start;
+					else
+						split_window_x =
+							(primary->split_window_x_end << 16) |
+							primary->split_window_x_start;
+					split_window_y = (primary->split_window_y_end << 16) |
+						primary->split_window_y_start;
 				}
-			} else if (comp->id == DDP_COMPONENT_COLOR1) {
-				if (g_split_window_x_start > g_color_dst_w[id]) {
+			} else {
+				if (primary->split_window_x_start > color->color_dst_w) {
 					split_window_x =
-						((g_split_window_x_end - g_color_dst_w[id]) << 16) |
-						(g_split_window_x_start - g_color_dst_w[id]);
-				} else if (g_split_window_x_start <= g_color_dst_w[id] &&
-						g_split_window_x_end > g_color_dst_w[id]){
-					split_window_x = ((g_split_window_x_end -
-								g_color_dst_w[id]) << 16) | 0;
+					    ((primary->split_window_x_end - color->color_dst_w)
+					     << 16) |
+					    (primary->split_window_x_start - color->color_dst_w);
+				} else if (primary->split_window_x_start <= color->color_dst_w &&
+						primary->split_window_x_end > color->color_dst_w){
+					split_window_x = ((primary->split_window_x_end -
+								color->color_dst_w) << 16) | 0;
 				}
 				split_window_y =
-					(g_split_window_y_end << 16) | g_split_window_y_start;
+				    (primary->split_window_y_end << 16) |
+				    primary->split_window_y_start;
 
-				if (g_split_window_x_end <= g_color_dst_w[id])
-					g_split_en = 0;
+				if (primary->split_window_x_end <= color->color_dst_w)
+					primary->split_en = 0;
 			}
 		}
-	} else if (g_color_dst_w[id] == 0 || g_color_dst_h[id] == 0) {
+	} else if (color->color_dst_w == 0 || color->color_dst_h == 0) {
 		DDPINFO("g_color0_dst_w/h not init, return default settings\n");
-	} else if (g_split_en) {
+	} else if (primary->split_en) {
 		/* TODO: CONFIG_MTK_LCM_PHYSICAL_ROTATION other case */
 		split_window_y =
-			(g_split_window_y_end << 16) | g_split_window_y_start;
-		split_window_x = (g_split_window_x_end << 16) |
-			g_split_window_x_start;
+		    (primary->split_window_y_end << 16) | primary->split_window_y_start;
+		split_window_x = (primary->split_window_x_end << 16) |
+			primary->split_window_x_start;
 	}
 
 	*p_split_window_x = split_window_x;
@@ -1134,15 +186,16 @@ static void ddp_color_cal_split_window(struct mtk_ddp_comp *comp,
 bool disp_color_reg_get(struct mtk_ddp_comp *comp,
 	unsigned long addr, int *value)
 {
+	struct mtk_disp_color *color_data = comp_to_color(comp);
 	unsigned long flags;
 
 	DDPDBG("%s @ %d......... spin_trylock_irqsave ++ ",
 		__func__, __LINE__);
-	if (spin_trylock_irqsave(&g_color_clock_lock, flags)) {
+	if (spin_trylock_irqsave(&color_data->clock_lock, flags)) {
 		DDPDBG("%s @ %d......... spin_trylock_irqsave -- ",
 			__func__, __LINE__);
-		*value = readl(default_comp->regs + addr);
-		spin_unlock_irqrestore(&g_color_clock_lock, flags);
+		*value = readl(comp->regs + addr);
+		spin_unlock_irqrestore(&color_data->clock_lock, flags);
 	} else {
 		DDPINFO("%s @ %d......... Failed to spin_trylock_irqsave ",
 			__func__, __LINE__);
@@ -1155,24 +208,26 @@ static void ddp_color_set_window(struct mtk_ddp_comp *comp,
 	struct DISP_PQ_WIN_PARAM *win_param, struct cmdq_pkt *handle)
 {
 	unsigned int split_window_x, split_window_y;
+	struct mtk_disp_color_primary *primary_data =
+		comp_to_color(comp)->primary_data;
 
 	/* save to global, can be applied on following PQ param updating. */
 	if (win_param->split_en) {
-		g_split_en = 1;
-		g_split_window_x_start = win_param->start_x;
-		g_split_window_y_start = win_param->start_y;
-		g_split_window_x_end = win_param->end_x;
-		g_split_window_y_end = win_param->end_y;
+		primary_data->split_en = 1;
+		primary_data->split_window_x_start = win_param->start_x;
+		primary_data->split_window_y_start = win_param->start_y;
+		primary_data->split_window_x_end = win_param->end_x;
+		primary_data->split_window_y_end = win_param->end_y;
 	} else {
-		g_split_en = 0;
-		g_split_window_x_start = 0x0000;
-		g_split_window_y_start = 0x0000;
-		g_split_window_x_end = 0xFFFF;
-		g_split_window_y_end = 0xFFFF;
+		primary_data->split_en = 0;
+		primary_data->split_window_x_start = 0x0000;
+		primary_data->split_window_y_start = 0x0000;
+		primary_data->split_window_x_end = 0xFFFF;
+		primary_data->split_window_y_end = 0xFFFF;
 	}
 
 	DDPINFO("%s: input: id[%d], en[%d], x[0x%x], y[0x%x]\n",
-		__func__, comp->id, g_split_en,
+		__func__, comp->id, primary_data->split_en,
 		((win_param->end_x << 16) | win_param->start_x),
 		((win_param->end_y << 16) | win_param->start_y));
 
@@ -1189,32 +244,36 @@ static void ddp_color_set_window(struct mtk_ddp_comp *comp,
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_DBG_CFG_MAIN,
-		(g_split_en << 3), 0x00000008);
+		(primary_data->split_en << 3), 0x00000008);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_WIN_X_MAIN, split_window_x, ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_WIN_Y_MAIN, split_window_y, ~0);
 }
 
-struct DISPLAY_PQ_T *get_Color_index(void)
+struct DISPLAY_PQ_T *get_Color_index(struct mtk_ddp_comp *comp)
 {
-	g_legacy_color_cust = true;
-	return &g_Color_Index;
+	struct mtk_disp_color_primary *primary_data =
+		comp_to_color(comp)->primary_data;
+
+	primary_data->legacy_color_cust = true;
+	return &primary_data->color_index;
 }
 
 void DpEngine_COLORonInit(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	unsigned int split_window_x, split_window_y;
 	struct mtk_disp_color *color = comp_to_color(comp);
+	struct mtk_disp_color_primary *primary_data = color->primary_data;
 
 	ddp_color_cal_split_window(comp, &split_window_x, &split_window_y);
 
 	DDPINFO("%s: id[%d], en[%d], x[0x%x], y[0x%x]\n",
-		__func__, comp->id, g_split_en, split_window_x, split_window_y);
+		__func__, comp->id, primary_data->split_en, split_window_x, split_window_y);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_DBG_CFG_MAIN,
-		(g_split_en << 3), 0x00000008);
+		(primary_data->split_en << 3), 0x00000008);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_WIN_X_MAIN, split_window_x, ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base,
@@ -1237,14 +296,17 @@ void DpEngine_COLORonConfig(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	unsigned int u4SatAdjPurp, u4SatAdjSkin, u4SatAdjGrass, u4SatAdjSky;
 	unsigned char h_series[20] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 			0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	struct mtk_disp_color_primary *primary_data =
+		comp_to_color(comp)->primary_data;
 
 	struct mtk_disp_color *color = comp_to_color(comp);
-	struct DISP_PQ_PARAM *pq_param_p = &g_Color_Param;
+	struct DISP_PQ_PARAM *pq_param_p = &primary_data->color_param;
+	struct pq_common_data *pq_data = comp->mtk_crtc->pq_data;
 	int i, j, reg_index;
 	unsigned int pq_index;
 	int wide_gamut_en = 0;
 	/* mask s_gain_by_y when drecolor enable */
-	int s_gain_by_y = !(m_new_pq_persist_property[DISP_DRE_CAPABILITY] & 0x1);
+	int s_gain_by_y = !(pq_data->new_persist_property[DISP_DRE_CAPABILITY] & 0x1);
 
 	if (pq_param_p->u4Brightness >= BRIGHTNESS_SIZE ||
 		pq_param_p->u4Contrast >= CONTRAST_SIZE ||
@@ -1262,13 +324,13 @@ void DpEngine_COLORonConfig(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 		return;
 	}
 
-	if (g_color_bypass == 0) {
+	if (primary_data->color_bypass == 0) {
 		if (color->data->support_color21 == true) {
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DISP_COLOR_CFG_MAIN,
 				(1 << 21)
-				| (g_Color_Index.LSP_EN << 20)
-				| (g_Color_Index.S_GAIN_BY_Y_EN << 15)
+				| (primary_data->color_index.LSP_EN << 20)
+				| (primary_data->color_index.S_GAIN_BY_Y_EN << 15)
 				| (wide_gamut_en << 8)
 				| (0 << 7),
 				0x003001FF | s_gain_by_y << 15);
@@ -1319,19 +381,19 @@ void DpEngine_COLORonConfig(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	/* config parameter from customer color_index.h */
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_G_PIC_ADJ_MAIN_1,
-		(g_Color_Index.BRIGHTNESS[pq_param_p->u4Brightness] << 16) |
-		g_Color_Index.CONTRAST[pq_param_p->u4Contrast], 0x07FF03FF);
+		(primary_data->color_index.BRIGHTNESS[pq_param_p->u4Brightness] << 16) |
+		primary_data->color_index.CONTRAST[pq_param_p->u4Contrast], 0x07FF03FF);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_G_PIC_ADJ_MAIN_2,
-		g_Color_Index.GLOBAL_SAT[pq_param_p->u4SatGain], 0x000003FF);
+		primary_data->color_index.GLOBAL_SAT[pq_param_p->u4SatGain], 0x000003FF);
 
 	/* Partial Y Function */
 	for (index = 0; index < 8; index++) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_COLOR_Y_SLOPE_1_0_MAIN + 4 * index,
-			(g_Color_Index.PARTIAL_Y
+			(primary_data->color_index.PARTIAL_Y
 				[pq_param_p->u4PartialY][2 * index] |
-			 g_Color_Index.PARTIAL_Y
+			 primary_data->color_index.PARTIAL_Y
 				[pq_param_p->u4PartialY][2 * index + 1]
 			 << 16), 0x00FF00FF);
 	}
@@ -1353,202 +415,202 @@ void DpEngine_COLORonConfig(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_GAIN1_0,
-		(g_Color_Index.PURP_TONE_S[u4SatAdjPurp][SG1][0] |
-		g_Color_Index.PURP_TONE_S[u4SatAdjPurp][SG1][1] << 8 |
-		g_Color_Index.PURP_TONE_S[u4SatAdjPurp][SG1][2] << 16 |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG1][0] << 24), ~0);
+		(primary_data->color_index.PURP_TONE_S[u4SatAdjPurp][SG1][0] |
+		primary_data->color_index.PURP_TONE_S[u4SatAdjPurp][SG1][1] << 8 |
+		primary_data->color_index.PURP_TONE_S[u4SatAdjPurp][SG1][2] << 16 |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG1][0] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_GAIN1_1,
-		(g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG1][1] |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG1][2] << 8 |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG1][3] << 16 |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG1][4] << 24), ~0);
+		(primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG1][1] |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG1][2] << 8 |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG1][3] << 16 |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG1][4] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_GAIN1_2,
-		(g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG1][5] |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG1][6] << 8 |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG1][7] << 16 |
-		g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SG1][0] << 24), ~0);
+		(primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG1][5] |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG1][6] << 8 |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG1][7] << 16 |
+		primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SG1][0] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_GAIN1_3,
-		(g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SG1][1] |
-		g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SG1][2] << 8 |
-		g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SG1][3] << 16 |
-		g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SG1][4] << 24), ~0);
+		(primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SG1][1] |
+		primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SG1][2] << 8 |
+		primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SG1][3] << 16 |
+		primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SG1][4] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_GAIN1_4,
-		(g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SG1][5] |
-		g_Color_Index.SKY_TONE_S[u4SatAdjSky][SG1][0] << 8 |
-		g_Color_Index.SKY_TONE_S[u4SatAdjSky][SG1][1] << 16 |
-		g_Color_Index.SKY_TONE_S[u4SatAdjSky][SG1][2] << 24), ~0);
+		(primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SG1][5] |
+		primary_data->color_index.SKY_TONE_S[u4SatAdjSky][SG1][0] << 8 |
+		primary_data->color_index.SKY_TONE_S[u4SatAdjSky][SG1][1] << 16 |
+		primary_data->color_index.SKY_TONE_S[u4SatAdjSky][SG1][2] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_GAIN2_0,
-		(g_Color_Index.PURP_TONE_S[u4SatAdjPurp][SG2][0] |
-		g_Color_Index.PURP_TONE_S[u4SatAdjPurp][SG2][1] << 8 |
-		g_Color_Index.PURP_TONE_S[u4SatAdjPurp][SG2][2] << 16 |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG2][0] << 24), ~0);
+		(primary_data->color_index.PURP_TONE_S[u4SatAdjPurp][SG2][0] |
+		primary_data->color_index.PURP_TONE_S[u4SatAdjPurp][SG2][1] << 8 |
+		primary_data->color_index.PURP_TONE_S[u4SatAdjPurp][SG2][2] << 16 |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG2][0] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_GAIN2_1,
-		(g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG2][1] |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG2][2] << 8 |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG2][3] << 16 |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG2][4] << 24), ~0);
+		(primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG2][1] |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG2][2] << 8 |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG2][3] << 16 |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG2][4] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_GAIN2_2,
-		(g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG2][5] |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG2][6] << 8 |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG2][7] << 16 |
-		g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SG2][0] << 24), ~0);
+		(primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG2][5] |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG2][6] << 8 |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG2][7] << 16 |
+		primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SG2][0] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_GAIN2_3,
-		(g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SG2][1] |
-		g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SG2][2] << 8 |
-		g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SG2][3] << 16 |
-		g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SG2][4] << 24), ~0);
+		(primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SG2][1] |
+		primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SG2][2] << 8 |
+		primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SG2][3] << 16 |
+		primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SG2][4] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_GAIN2_4,
-		(g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SG2][5] |
-		g_Color_Index.SKY_TONE_S[u4SatAdjSky][SG2][0] << 8 |
-		g_Color_Index.SKY_TONE_S[u4SatAdjSky][SG2][1] << 16 |
-		g_Color_Index.SKY_TONE_S[u4SatAdjSky][SG2][2] << 24), ~0);
+		(primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SG2][5] |
+		primary_data->color_index.SKY_TONE_S[u4SatAdjSky][SG2][0] << 8 |
+		primary_data->color_index.SKY_TONE_S[u4SatAdjSky][SG2][1] << 16 |
+		primary_data->color_index.SKY_TONE_S[u4SatAdjSky][SG2][2] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_GAIN3_0,
-		(g_Color_Index.PURP_TONE_S[u4SatAdjPurp][SG3][0] |
-		g_Color_Index.PURP_TONE_S[u4SatAdjPurp][SG3][1] << 8 |
-		g_Color_Index.PURP_TONE_S[u4SatAdjPurp][SG3][2] << 16 |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG3][0] << 24), ~0);
+		(primary_data->color_index.PURP_TONE_S[u4SatAdjPurp][SG3][0] |
+		primary_data->color_index.PURP_TONE_S[u4SatAdjPurp][SG3][1] << 8 |
+		primary_data->color_index.PURP_TONE_S[u4SatAdjPurp][SG3][2] << 16 |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG3][0] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_GAIN3_1,
-		(g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG3][1] |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG3][2] << 8 |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG3][3] << 16 |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG3][4] << 24), ~0);
+		(primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG3][1] |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG3][2] << 8 |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG3][3] << 16 |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG3][4] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_GAIN3_2,
-		(g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG3][5] |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG3][6] << 8 |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SG3][7] << 16 |
-		g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SG3][0] << 24), ~0);
+		(primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG3][5] |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG3][6] << 8 |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SG3][7] << 16 |
+		primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SG3][0] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_GAIN3_3,
-		(g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SG3][1] |
-		g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SG3][2] << 8 |
-		g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SG3][3] << 16 |
-		g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SG3][4] << 24), ~0);
+		(primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SG3][1] |
+		primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SG3][2] << 8 |
+		primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SG3][3] << 16 |
+		primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SG3][4] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_GAIN3_4,
-		(g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SG3][5] |
-		g_Color_Index.SKY_TONE_S[u4SatAdjSky][SG3][0] << 8 |
-		g_Color_Index.SKY_TONE_S[u4SatAdjSky][SG3][1] << 16 |
-		g_Color_Index.SKY_TONE_S[u4SatAdjSky][SG3][2] << 24), ~0);
+		(primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SG3][5] |
+		primary_data->color_index.SKY_TONE_S[u4SatAdjSky][SG3][0] << 8 |
+		primary_data->color_index.SKY_TONE_S[u4SatAdjSky][SG3][1] << 16 |
+		primary_data->color_index.SKY_TONE_S[u4SatAdjSky][SG3][2] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_POINT1_0,
-		(g_Color_Index.PURP_TONE_S[u4SatAdjPurp][SP1][0] |
-		g_Color_Index.PURP_TONE_S[u4SatAdjPurp][SP1][1] << 8 |
-		g_Color_Index.PURP_TONE_S[u4SatAdjPurp][SP1][2] << 16 |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SP1][0] << 24), ~0);
+		(primary_data->color_index.PURP_TONE_S[u4SatAdjPurp][SP1][0] |
+		primary_data->color_index.PURP_TONE_S[u4SatAdjPurp][SP1][1] << 8 |
+		primary_data->color_index.PURP_TONE_S[u4SatAdjPurp][SP1][2] << 16 |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SP1][0] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_POINT1_1,
-		(g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SP1][1] |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SP1][2] << 8 |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SP1][3] << 16 |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SP1][4] << 24), ~0);
+		(primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SP1][1] |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SP1][2] << 8 |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SP1][3] << 16 |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SP1][4] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_POINT1_2,
-		(g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SP1][5] |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SP1][6] << 8 |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SP1][7] << 16 |
-		g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SP1][0] << 24), ~0);
+		(primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SP1][5] |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SP1][6] << 8 |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SP1][7] << 16 |
+		primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SP1][0] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_POINT1_3,
-		(g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SP1][1] |
-		g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SP1][2] << 8 |
-		g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SP1][3] << 16 |
-		g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SP1][4] << 24), ~0);
+		(primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SP1][1] |
+		primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SP1][2] << 8 |
+		primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SP1][3] << 16 |
+		primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SP1][4] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_POINT1_4,
-		(g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SP1][5] |
-		g_Color_Index.SKY_TONE_S[u4SatAdjSky][SP1][0] << 8 |
-		g_Color_Index.SKY_TONE_S[u4SatAdjSky][SP1][1] << 16 |
-		g_Color_Index.SKY_TONE_S[u4SatAdjSky][SP1][2] << 24), ~0);
+		(primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SP1][5] |
+		primary_data->color_index.SKY_TONE_S[u4SatAdjSky][SP1][0] << 8 |
+		primary_data->color_index.SKY_TONE_S[u4SatAdjSky][SP1][1] << 16 |
+		primary_data->color_index.SKY_TONE_S[u4SatAdjSky][SP1][2] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_POINT2_0,
-		(g_Color_Index.PURP_TONE_S[u4SatAdjPurp][SP2][0] |
-		g_Color_Index.PURP_TONE_S[u4SatAdjPurp][SP2][1] << 8 |
-		g_Color_Index.PURP_TONE_S[u4SatAdjPurp][SP2][2] << 16 |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SP2][0] << 24), ~0);
+		(primary_data->color_index.PURP_TONE_S[u4SatAdjPurp][SP2][0] |
+		primary_data->color_index.PURP_TONE_S[u4SatAdjPurp][SP2][1] << 8 |
+		primary_data->color_index.PURP_TONE_S[u4SatAdjPurp][SP2][2] << 16 |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SP2][0] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_POINT2_1,
-		(g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SP2][1] |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SP2][2] << 8 |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SP2][3] << 16 |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SP2][4] << 24), ~0);
+		(primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SP2][1] |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SP2][2] << 8 |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SP2][3] << 16 |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SP2][4] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_POINT2_2,
-		(g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SP2][5] |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SP2][6] << 8 |
-		g_Color_Index.SKIN_TONE_S[u4SatAdjSkin][SP2][7] << 16 |
-		g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SP2][0] << 24), ~0);
+		(primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SP2][5] |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SP2][6] << 8 |
+		primary_data->color_index.SKIN_TONE_S[u4SatAdjSkin][SP2][7] << 16 |
+		primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SP2][0] << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_POINT2_3,
-		(g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SP2][1] |
-		g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SP2][2] << 8 |
-		g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SP2][3] << 16 |
-		g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SP2][4] << 24), ~0);
+		(primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SP2][1] |
+		primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SP2][2] << 8 |
+		primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SP2][3] << 16 |
+		primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SP2][4] << 24), ~0);
 
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_PART_SAT_POINT2_4,
-		(g_Color_Index.GRASS_TONE_S[u4SatAdjGrass][SP2][5] |
-		g_Color_Index.SKY_TONE_S[u4SatAdjSky][SP2][0] << 8 |
-		g_Color_Index.SKY_TONE_S[u4SatAdjSky][SP2][1] << 16 |
-		g_Color_Index.SKY_TONE_S[u4SatAdjSky][SP2][2] << 24), ~0);
+		(primary_data->color_index.GRASS_TONE_S[u4SatAdjGrass][SP2][5] |
+		primary_data->color_index.SKY_TONE_S[u4SatAdjSky][SP2][0] << 8 |
+		primary_data->color_index.SKY_TONE_S[u4SatAdjSky][SP2][1] << 16 |
+		primary_data->color_index.SKY_TONE_S[u4SatAdjSky][SP2][2] << 24), ~0);
 
 	for (index = 0; index < 3; index++) {
 		u4Temp = pq_param_p->u4HueAdj[PURP_TONE];
 		h_series[index + PURP_TONE_START] =
-			g_Color_Index.PURP_TONE_H[u4Temp][index];
+			primary_data->color_index.PURP_TONE_H[u4Temp][index];
 	}
 
 	for (index = 0; index < 8; index++) {
 		u4Temp = pq_param_p->u4HueAdj[SKIN_TONE];
 		h_series[index + SKIN_TONE_START] =
-		    g_Color_Index.SKIN_TONE_H[u4Temp][index];
+		    primary_data->color_index.SKIN_TONE_H[u4Temp][index];
 	}
 
 	for (index = 0; index < 6; index++) {
 		u4Temp = pq_param_p->u4HueAdj[GRASS_TONE];
 		h_series[index + GRASS_TONE_START] =
-			g_Color_Index.GRASS_TONE_H[u4Temp][index];
+			primary_data->color_index.GRASS_TONE_H[u4Temp][index];
 	}
 
 	for (index = 0; index < 3; index++) {
 		u4Temp = pq_param_p->u4HueAdj[SKY_TONE];
 		h_series[index + SKY_TONE_START] =
-		    g_Color_Index.SKY_TONE_H[u4Temp][index];
+		    primary_data->color_index.SKY_TONE_H[u4Temp][index];
 	}
 
 	for (index = 0; index < 5; index++) {
@@ -1568,12 +630,12 @@ void DpEngine_COLORonConfig(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 		reg_index = 0;
 		for (i = 0; i < S_GAIN_BY_Y_CONTROL_CNT && s_gain_by_y; i++) {
 			for (j = 0; j < S_GAIN_BY_Y_HUE_PHASE_CNT; j += 4) {
-				u4Temp = (g_Color_Index.S_GAIN_BY_Y[i][j]) +
-					(g_Color_Index.S_GAIN_BY_Y[i][j + 1]
+				u4Temp = (primary_data->color_index.S_GAIN_BY_Y[i][j]) +
+					(primary_data->color_index.S_GAIN_BY_Y[i][j + 1]
 					<< 8) +
-					(g_Color_Index.S_GAIN_BY_Y[i][j + 2]
+					(primary_data->color_index.S_GAIN_BY_Y[i][j + 2]
 					<< 16) +
-					(g_Color_Index.S_GAIN_BY_Y[i][j + 3]
+					(primary_data->color_index.S_GAIN_BY_Y[i][j + 3]
 					<< 24);
 
 				cmdq_pkt_write(handle, comp->cmdq_base,
@@ -1586,16 +648,16 @@ void DpEngine_COLORonConfig(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 		/* LSP */
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_COLOR_LSP_1,
-			(g_Color_Index.LSP[3] << 0) |
-			(g_Color_Index.LSP[2] << 7) |
-			(g_Color_Index.LSP[1] << 14) |
-			(g_Color_Index.LSP[0] << 22), 0x1FFFFFFF);
+			(primary_data->color_index.LSP[3] << 0) |
+			(primary_data->color_index.LSP[2] << 7) |
+			(primary_data->color_index.LSP[1] << 14) |
+			(primary_data->color_index.LSP[0] << 22), 0x1FFFFFFF);
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_COLOR_LSP_2,
-			(g_Color_Index.LSP[7] << 0) |
-			(g_Color_Index.LSP[6] << 8) |
-			(g_Color_Index.LSP[5] << 16) |
-			(g_Color_Index.LSP[4] << 23), 0x3FFF7F7F);
+			(primary_data->color_index.LSP[7] << 0) |
+			(primary_data->color_index.LSP[6] << 8) |
+			(primary_data->color_index.LSP[5] << 16) |
+			(primary_data->color_index.LSP[4] << 23), 0x3FFF7F7F);
 	}
 
 	/* color window */
@@ -1620,51 +682,51 @@ void DpEngine_COLORonConfig(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 					comp->regs_pa +
 						DISP_COLOR_CM_W1_HUE_0 +
 						reg_index,
-					g_Color_Index.COLOR_3D[pq_index]
+					primary_data->color_index.COLOR_3D[pq_index]
 					[i][j*LUT_REG_TOTAL+REG_L] |
-					(g_Color_Index.COLOR_3D[pq_index]
+					(primary_data->color_index.COLOR_3D[pq_index]
 					[i][j*LUT_REG_TOTAL+REG_U] << 10) |
-					(g_Color_Index.COLOR_3D[pq_index]
+					(primary_data->color_index.COLOR_3D[pq_index]
 					[i][j*LUT_REG_TOTAL+REG_POINT0] << 20),
 						~0);
 				cmdq_pkt_write(handle, comp->cmdq_base,
 					comp->regs_pa + DISP_COLOR_CM_W1_HUE_1
 						+ reg_index,
-					g_Color_Index.COLOR_3D[pq_index]
+					primary_data->color_index.COLOR_3D[pq_index]
 					[i][j*LUT_REG_TOTAL+REG_POINT1] |
-					(g_Color_Index.COLOR_3D[pq_index]
+					(primary_data->color_index.COLOR_3D[pq_index]
 					[i][j*LUT_REG_TOTAL+REG_POINT2] << 10) |
-					(g_Color_Index.COLOR_3D[pq_index]
+					(primary_data->color_index.COLOR_3D[pq_index]
 					[i][j*LUT_REG_TOTAL+REG_POINT3] << 20),
 					~0);
 				cmdq_pkt_write(handle, comp->cmdq_base,
 					comp->regs_pa + DISP_COLOR_CM_W1_HUE_2
 						+ reg_index,
-					g_Color_Index.COLOR_3D[pq_index]
+					primary_data->color_index.COLOR_3D[pq_index]
 					[i][j*LUT_REG_TOTAL+REG_POINT4] |
-					(g_Color_Index.COLOR_3D[pq_index]
+					(primary_data->color_index.COLOR_3D[pq_index]
 					[i][j*LUT_REG_TOTAL+REG_SLOPE0] << 10) |
-					(g_Color_Index.COLOR_3D[pq_index]
+					(primary_data->color_index.COLOR_3D[pq_index]
 					[i][j*LUT_REG_TOTAL+REG_SLOPE1] << 20),
 					~0);
 				cmdq_pkt_write(handle, comp->cmdq_base,
 					comp->regs_pa + DISP_COLOR_CM_W1_HUE_3
 						+ reg_index,
-					g_Color_Index.COLOR_3D[pq_index]
+					primary_data->color_index.COLOR_3D[pq_index]
 					[i][j*LUT_REG_TOTAL+REG_SLOPE2] |
-					(g_Color_Index.COLOR_3D[pq_index]
+					(primary_data->color_index.COLOR_3D[pq_index]
 					[i][j*LUT_REG_TOTAL+REG_SLOPE3] << 8) |
-					(g_Color_Index.COLOR_3D[pq_index]
+					(primary_data->color_index.COLOR_3D[pq_index]
 					[i][j*LUT_REG_TOTAL+REG_SLOPE4] << 16) |
-					(g_Color_Index.COLOR_3D[pq_index]
+					(primary_data->color_index.COLOR_3D[pq_index]
 					[i][j*LUT_REG_TOTAL+REG_SLOPE5] << 24),
 					~0);
 				cmdq_pkt_write(handle, comp->cmdq_base,
 					comp->regs_pa + DISP_COLOR_CM_W1_HUE_4
 						+ reg_index,
-					g_Color_Index.COLOR_3D[pq_index]
+					primary_data->color_index.COLOR_3D[pq_index]
 					[i][j*LUT_REG_TOTAL+REG_WGT_LSLOPE] |
-					(g_Color_Index.COLOR_3D[pq_index]
+					(primary_data->color_index.COLOR_3D[pq_index]
 					[i][j*LUT_REG_TOTAL+REG_WGT_USLOPE]
 					<< 16),	~0);
 
@@ -1674,7 +736,6 @@ void DpEngine_COLORonConfig(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	}
 }
 
-struct DISP_AAL_DRECOLOR_PARAM g_drecolor_sgy;
 static void disp_color_set_sgy(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				void *sgy_gain)
 {
@@ -1702,21 +763,23 @@ static void color_write_hw_reg(struct mtk_ddp_comp *comp,
 		, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	unsigned int u4Temp = 0;
 	struct mtk_disp_color *color = comp_to_color(comp);
+	struct mtk_disp_color_primary *primary_data = color->primary_data;
 	int i, j, reg_index;
 	int wide_gamut_en = 0;
 	/* mask s_gain_by_y when drecolor enable */
-	int s_gain_by_y = !(m_new_pq_persist_property[DISP_DRE_CAPABILITY] & 0x1);
+	struct pq_common_data *pq_data = comp->mtk_crtc->pq_data;
+	int s_gain_by_y = !(pq_data->new_persist_property[DISP_DRE_CAPABILITY] & 0x1);
 
 	DDPINFO("%s,SET COLOR REG id(%d) sgy %d\n", __func__, comp->id, s_gain_by_y);
 
-	if (g_color_bypass == 0) {
+	if (primary_data->color_bypass == 0) {
 		if (color->data->support_color21 == true) {
-			if (g_legacy_color_cust)
+			if (primary_data->legacy_color_cust)
 				cmdq_pkt_write(handle, comp->cmdq_base,
 					comp->regs_pa + DISP_COLOR_CFG_MAIN,
 					(1 << 21)
-					| (g_Color_Index.LSP_EN << 20)
-					| (g_Color_Index.S_GAIN_BY_Y_EN << 15)
+					| (primary_data->color_index.LSP_EN << 20)
+					| (primary_data->color_index.S_GAIN_BY_Y_EN << 15)
 					| (wide_gamut_en << 8)
 					| (0 << 7),
 					0x003001FF | s_gain_by_y << 15);
@@ -2015,13 +1078,13 @@ static void color_write_hw_reg(struct mtk_ddp_comp *comp,
 		reg_index = 0;
 		for (i = 0; i < S_GAIN_BY_Y_CONTROL_CNT && s_gain_by_y; i++) {
 			for (j = 0; j < S_GAIN_BY_Y_HUE_PHASE_CNT; j += 4) {
-				if (g_legacy_color_cust)
-					u4Temp = (g_Color_Index.S_GAIN_BY_Y[i][j]) +
-						(g_Color_Index.S_GAIN_BY_Y[i][j + 1]
+				if (primary_data->legacy_color_cust)
+					u4Temp = (primary_data->color_index.S_GAIN_BY_Y[i][j]) +
+						(primary_data->color_index.S_GAIN_BY_Y[i][j + 1]
 						<< 8) +
-						(g_Color_Index.S_GAIN_BY_Y[i][j + 2]
+						(primary_data->color_index.S_GAIN_BY_Y[i][j + 2]
 						<< 16) +
-						(g_Color_Index.S_GAIN_BY_Y[i][j + 3]
+						(primary_data->color_index.S_GAIN_BY_Y[i][j + 3]
 						<< 24);
 				else
 					u4Temp = (color_reg->S_GAIN_BY_Y[i][j]) +
@@ -2043,16 +1106,16 @@ static void color_write_hw_reg(struct mtk_ddp_comp *comp,
 		/* LSP */
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_COLOR_LSP_1,
-			(g_Color_Index.LSP[3] << 0) |
-			(g_Color_Index.LSP[2] << 7) |
-			(g_Color_Index.LSP[1] << 14) |
-			(g_Color_Index.LSP[0] << 22), 0x1FFFFFFF);
+			(primary_data->color_index.LSP[3] << 0) |
+			(primary_data->color_index.LSP[2] << 7) |
+			(primary_data->color_index.LSP[1] << 14) |
+			(primary_data->color_index.LSP[0] << 22), 0x1FFFFFFF);
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_COLOR_LSP_2,
-			(g_Color_Index.LSP[7] << 0) |
-			(g_Color_Index.LSP[6] << 8) |
-			(g_Color_Index.LSP[5] << 16) |
-			(g_Color_Index.LSP[4] << 23), 0x3FFF7F7F);
+			(primary_data->color_index.LSP[7] << 0) |
+			(primary_data->color_index.LSP[6] << 8) |
+			(primary_data->color_index.LSP[5] << 16) |
+			(primary_data->color_index.LSP[4] << 23), 0x3FFF7F7F);
 	}
 
 	/* color window */
@@ -2132,28 +1195,36 @@ static void color_write_hw_reg(struct mtk_ddp_comp *comp,
 static void mtk_disp_color_config_overhead(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_config *cfg)
 {
-	DDPINFO("line: %d\n", __LINE__);
+	struct mtk_disp_color *color = comp_to_color(comp);
+	struct mtk_disp_color_primary *primary_data = color->primary_data;
 
+	DDPINFO("line: %d\n", __LINE__);
 	if (cfg->tile_overhead.is_support) {
-		if (comp->id == DDP_COMPONENT_COLOR0) {
-			color_tile_overhead.left_comp_overhead = 0;
+		if (!color->is_right_pipe) {
+			primary_data->tile_overhead.left_comp_overhead = 0;
 			/*add component overhead on total overhead*/
-			cfg->tile_overhead.left_overhead += color_tile_overhead.left_comp_overhead;
-			cfg->tile_overhead.left_in_width += color_tile_overhead.left_comp_overhead;
+			cfg->tile_overhead.left_overhead +=
+				primary_data->tile_overhead.left_comp_overhead;
+			cfg->tile_overhead.left_in_width +=
+				primary_data->tile_overhead.left_comp_overhead;
 			/*copy from total overhead info*/
-			color_tile_overhead.left_in_width = cfg->tile_overhead.left_in_width;
-			color_tile_overhead.left_overhead = cfg->tile_overhead.left_overhead;
+			primary_data->tile_overhead.left_in_width =
+				cfg->tile_overhead.left_in_width;
+			primary_data->tile_overhead.left_overhead =
+				cfg->tile_overhead.left_overhead;
 		} else {
 			/*set component overhead*/
-			color_tile_overhead.right_comp_overhead = 0;
+			primary_data->tile_overhead.right_comp_overhead = 0;
 			/*add component overhead on total overhead*/
 			cfg->tile_overhead.right_overhead +=
-				color_tile_overhead.right_comp_overhead;
+				primary_data->tile_overhead.right_comp_overhead;
 			cfg->tile_overhead.right_in_width +=
-				color_tile_overhead.right_comp_overhead;
+				primary_data->tile_overhead.right_comp_overhead;
 			/*copy from total overhead info*/
-			color_tile_overhead.right_in_width = cfg->tile_overhead.right_in_width;
-			color_tile_overhead.right_overhead = cfg->tile_overhead.right_overhead;
+			primary_data->tile_overhead.right_in_width =
+				cfg->tile_overhead.right_in_width;
+			primary_data->tile_overhead.right_overhead =
+				cfg->tile_overhead.right_overhead;
 		}
 	}
 }
@@ -2163,12 +1234,13 @@ static void mtk_color_config(struct mtk_ddp_comp *comp,
 			     struct cmdq_pkt *handle)
 {
 	struct mtk_disp_color *color = comp_to_color(comp);
-
-	int id = index_of_color(comp->id);
+	struct mtk_disp_color_primary *primary_data = color->primary_data;
 	unsigned int width;
+	struct DISP_AAL_DRECOLOR_PARAM *drecolor_sgy = &color->primary_data->drecolor_sgy;
+	struct pq_common_data *pq_data = comp->mtk_crtc->pq_data;
 
 	if (comp->mtk_crtc->is_dual_pipe && cfg->tile_overhead.is_support)
-		width = color_tile_overhead.left_in_width;
+		width = primary_data->tile_overhead.left_in_width;
 	else {
 		if (comp->mtk_crtc->is_dual_pipe)
 			width = cfg->w / 2;
@@ -2177,26 +1249,26 @@ static void mtk_color_config(struct mtk_ddp_comp *comp,
 	}
 
 	if (comp->mtk_crtc->is_dual_pipe) {
-		g_width = width;
+		primary_data->width = width;
 	}
 
 	if (comp->mtk_crtc->is_dual_pipe)
-		g_color_dst_w[id] = cfg->w / 2;
+		color->color_dst_w = cfg->w / 2;
 	else
-		g_color_dst_w[id] = cfg->w;
-	g_color_dst_h[id] = cfg->h;
+		color->color_dst_w = cfg->w;
+	color->color_dst_h = cfg->h;
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_COLOR_WIDTH(color), width, ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_COLOR_HEIGHT(color), cfg->h, ~0);
-	mutex_lock(&g_color_reg_lock);
-	if ((m_new_pq_persist_property[DISP_DRE_CAPABILITY] & 0x1) &&
-		g_drecolor_sgy.sgy_trans_trigger) {
+	mutex_lock(&primary_data->reg_lock);
+	if ((pq_data->new_persist_property[DISP_DRE_CAPABILITY] & 0x1) &&
+		drecolor_sgy->sgy_trans_trigger) {
 		DDPINFO("%s set sgy\n", __func__);
-		disp_color_set_sgy(comp, handle, g_drecolor_sgy.sgy_out_gain);
+		disp_color_set_sgy(comp, handle, drecolor_sgy->sgy_out_gain);
 	}
-	mutex_unlock(&g_color_reg_lock);
+	mutex_unlock(&primary_data->reg_lock);
 
 	// set color_8bit_switch register
 	if (cfg->source_bpc == 8)
@@ -2212,8 +1284,15 @@ static void mtk_color_config(struct mtk_ddp_comp *comp,
 void ddp_color_bypass_color(struct mtk_ddp_comp *comp, int bypass,
 		struct cmdq_pkt *handle)
 {
+	struct mtk_disp_color_primary *primary_data = NULL;
 
-	g_color_bypass = bypass;
+	DDPINFO("%s, bypass:%d\n", __func__, bypass);
+	if (comp == NULL) {
+		DDPPR_ERR("%s, null pointer!", __func__);
+		return;
+	}
+	primary_data = comp_to_color(comp)->primary_data;
+	primary_data->color_bypass = bypass;
 
 	if (bypass) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -2762,12 +1841,13 @@ int mtk_drm_color_cfg_set_pqparam(struct mtk_ddp_comp *comp,
 	int ret = 0;
 	struct DISP_PQ_PARAM *pq_param;
 	struct mtk_disp_color *color = comp_to_color(comp);
+	struct mtk_disp_color_primary *primary_data = color->primary_data;
 
-	pq_param = &g_Color_Param;
+	pq_param = &primary_data->color_param;
 	memcpy(pq_param, (struct DISP_PQ_PARAM *)data,
 		sizeof(struct DISP_PQ_PARAM));
 
-	if (ncs_tuning_mode == 0) {
+	if (primary_data->ncs_tuning_mode == 0) {
 		/* normal mode */
 		/* normal mode */
 		DpEngine_COLORonInit(comp, handle);
@@ -2783,31 +1863,28 @@ int mtk_drm_color_cfg_set_pqparam(struct mtk_ddp_comp *comp,
 	} else {
 		/* ncs_tuning_mode = 0; */
 		ret = -EINVAL;
-		DDPINFO
-		 ("SET_PQ_PARAM, bypassed by ncs_tuning_mode = 1\n");
+		DDPINFO("SET_PQ_PARAM, bypassed by ncs_tuning_mode = 1\n");
 	}
 
 	return ret;
 
 }
 
-int mtk_drm_ioctl_set_pqparam(struct drm_device *dev, void *data,
-		struct drm_file *file_priv)
+int mtk_drm_ioctl_set_pqparam_impl(struct mtk_ddp_comp *comp, void *data)
 {
 	int ret = 0;
-	struct mtk_drm_private *private = dev->dev_private;
-	struct mtk_ddp_comp *comp = private->ddp_comp[DDP_COMPONENT_COLOR0];
-	struct drm_crtc *crtc = private->crtc[0];
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_disp_color *color = comp_to_color(comp);
+	struct mtk_disp_color_primary *primary_data = color->primary_data;
 	struct DISP_PQ_PARAM *pq_param;
 
-	pq_param = &g_Color_Param;
+	pq_param = &primary_data->color_param;
 	memcpy(pq_param, (struct DISP_PQ_PARAM *)data,
 		sizeof(struct DISP_PQ_PARAM));
 
-	if (ncs_tuning_mode == 0) {
+	if (primary_data->ncs_tuning_mode == 0) {
 		/* normal mode */
-		ret = mtk_crtc_user_cmd(crtc, comp, SET_PQPARAM, data);
+		ret = mtk_crtc_user_cmd(&mtk_crtc->base, comp, SET_PQPARAM, data);
 		mtk_crtc_check_trigger(mtk_crtc, true, true);
 
 		DDPINFO("SET_PQ_PARAM\n");
@@ -2820,13 +1897,38 @@ int mtk_drm_ioctl_set_pqparam(struct drm_device *dev, void *data,
 	return ret;
 }
 
+int mtk_drm_ioctl_set_pqparam(struct drm_device *dev, void *data,
+		struct drm_file *file_priv)
+{
+	struct mtk_drm_private *private = dev->dev_private;
+	struct drm_crtc *crtc = private->crtc[0];
+	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
+			to_mtk_crtc(crtc), MTK_DISP_COLOR, 0);
+
+	return mtk_drm_ioctl_set_pqparam_impl(comp, data);
+}
+
 int mtk_drm_color_cfg_set_pqindex(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data, unsigned int data_size)
 {
 	int ret = 0;
 	struct DISPLAY_PQ_T *pq_index;
 
-	pq_index = get_Color_index();
+	pq_index = get_Color_index(comp);
+	memcpy(pq_index, (struct DISPLAY_PQ_T *)data,
+		sizeof(struct DISPLAY_PQ_T));
+
+	return ret;
+}
+
+int mtk_drm_ioctl_set_pqindex_impl(struct mtk_ddp_comp *comp, void *data)
+{
+	int ret = 0;
+	struct DISPLAY_PQ_T *pq_index;
+
+	DDPINFO("%s...", __func__);
+
+	pq_index = get_Color_index(comp);
 	memcpy(pq_index, (struct DISPLAY_PQ_T *)data,
 		sizeof(struct DISPLAY_PQ_T));
 
@@ -2836,16 +1938,12 @@ int mtk_drm_color_cfg_set_pqindex(struct mtk_ddp_comp *comp,
 int mtk_drm_ioctl_set_pqindex(struct drm_device *dev, void *data,
 		struct drm_file *file_priv)
 {
-	int ret = 0;
-	struct DISPLAY_PQ_T *pq_index;
+	struct mtk_drm_private *private = dev->dev_private;
+	struct drm_crtc *crtc = private->crtc[0];
+	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
+			to_mtk_crtc(crtc), MTK_DISP_COLOR, 0);
 
-	DDPINFO("%s...", __func__);
-
-	pq_index = get_Color_index();
-	memcpy(pq_index, (struct DISPLAY_PQ_T *)data,
-		sizeof(struct DISPLAY_PQ_T));
-
-	return ret;
+	return mtk_drm_ioctl_set_pqindex_impl(comp, data);
 }
 
 int mtk_color_cfg_set_color_reg(struct mtk_ddp_comp *comp,
@@ -2853,55 +1951,67 @@ int mtk_color_cfg_set_color_reg(struct mtk_ddp_comp *comp,
 {
 	int ret = 0;
 	struct mtk_disp_color *color = comp_to_color(comp);
+	struct mtk_disp_color_primary *primary_data = color->primary_data;
 
 	DDPINFO("%s,SET COLOR REG id(%d)\n", __func__, comp->id);
 
 	if (data != NULL) {
-		memcpy(&g_color_reg, (struct DISPLAY_COLOR_REG *)data,
+		memcpy(&primary_data->color_reg, (struct DISPLAY_COLOR_REG *)data,
 			sizeof(struct DISPLAY_COLOR_REG));
 
-		color_write_hw_reg(comp, &g_color_reg, handle);
+		color_write_hw_reg(comp, &primary_data->color_reg, handle);
 		if (comp->mtk_crtc->is_dual_pipe) {
 			struct mtk_ddp_comp *comp_color1 = color->companion;
 
 			DDPINFO("%s,SET COLOR REG id(%d)\n", __func__, comp_color1->id);
-			color_write_hw_reg(comp_color1, &g_color_reg, handle);
+			color_write_hw_reg(comp_color1, &primary_data->color_reg, handle);
 		}
 	} else {
 		ret = -EINVAL;
 		DDPINFO("%s: data is NULL", __func__);
 	}
-	g_color_reg_valid = 1;
+	primary_data->color_reg_valid = 1;
 
 	return ret;
 }
-int mtk_drm_ioctl_set_color_reg(struct drm_device *dev, void *data,
-		struct drm_file *file_priv)
+
+int mtk_drm_ioctl_set_color_reg_impl(struct mtk_ddp_comp *comp, void *data)
 {
-	struct mtk_drm_private *private = dev->dev_private;
-	struct mtk_ddp_comp *comp = private->ddp_comp[DDP_COMPONENT_COLOR0];
-	struct drm_crtc *crtc = private->crtc[0];
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	int ret;
 
-	ret = mtk_crtc_user_cmd(crtc, comp, SET_COLOR_REG, data);
+	ret = mtk_crtc_user_cmd(&mtk_crtc->base, comp, SET_COLOR_REG, data);
 	mtk_crtc_check_trigger(mtk_crtc, true, true);
 
 	return ret;
 }
+
+int mtk_drm_ioctl_set_color_reg(struct drm_device *dev, void *data,
+		struct drm_file *file_priv)
+{
+	struct mtk_drm_private *private = dev->dev_private;
+	struct drm_crtc *crtc = private->crtc[0];
+	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
+			to_mtk_crtc(crtc), MTK_DISP_COLOR, 0);
+
+	return mtk_drm_ioctl_set_color_reg_impl(comp, data);
+}
+
 int mtk_color_cfg_mutex_control(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data, unsigned int data_size)
 {
+	struct mtk_disp_color *color = comp_to_color(comp);
+	struct mtk_disp_color_primary *primary_data = color->primary_data;
 	int ret = 0;
 	unsigned int *value = data;
 
 	DDPINFO("%s...value:%d", __func__, *value);
 
 	if (*value == 1) {
-		ncs_tuning_mode = 1;
+		primary_data->ncs_tuning_mode = 1;
 		DDPINFO("ncs_tuning_mode = 1\n");
 	} else if (*value == 2) {
-		ncs_tuning_mode = 0;
+		primary_data->ncs_tuning_mode = 0;
 		DDPINFO("ncs_tuning_mode = 0\n");
 	} else {
 		DDPPR_ERR("DISP_IOCTL_MUTEX_CONTROL invalid control\n");
@@ -2912,26 +2022,22 @@ int mtk_color_cfg_mutex_control(struct mtk_ddp_comp *comp,
 
 }
 
-int mtk_drm_ioctl_mutex_control(struct drm_device *dev, void *data,
-		struct drm_file *file_priv)
+int mtk_drm_ioctl_mutex_control_impl(struct mtk_ddp_comp *comp, void *data)
 {
 	int ret = 0;
 	unsigned int *value = data;
-	struct mtk_drm_private *private = dev->dev_private;
-	/* primary display */
-	struct drm_crtc *crtc = private->crtc[0];
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_disp_color_primary *primary_data =
+		comp_to_color(comp)->primary_data;
 
 	DDPINFO("%s...value:%d", __func__, *value);
 
 	if (*value == 1) {
-		ncs_tuning_mode = 1;
+		primary_data->ncs_tuning_mode = 1;
 		DDPINFO("ncs_tuning_mode = 1\n");
 	} else if (*value == 2) {
-
-		ncs_tuning_mode = 0;
+		primary_data->ncs_tuning_mode = 0;
 		DDPINFO("ncs_tuning_mode = 0\n");
-
 		mtk_crtc_check_trigger(mtk_crtc, true, true);
 	} else {
 		DDPPR_ERR("DISP_IOCTL_MUTEX_CONTROL invalid control\n");
@@ -2941,42 +2047,36 @@ int mtk_drm_ioctl_mutex_control(struct drm_device *dev, void *data,
 	return ret;
 }
 
-int mtk_drm_ioctl_read_sw_reg(struct drm_device *dev, void *data,
+int mtk_drm_ioctl_mutex_control(struct drm_device *dev, void *data,
 		struct drm_file *file_priv)
+{
+	struct mtk_drm_private *private = dev->dev_private;
+	struct drm_crtc *crtc = private->crtc[0];
+	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
+			to_mtk_crtc(crtc), MTK_DISP_COLOR, 0);
+
+	return mtk_drm_ioctl_mutex_control_impl(comp, data);
+}
+
+int mtk_drm_ioctl_read_sw_reg_impl(struct mtk_ddp_comp *comp, void *data)
 {
 	struct DISP_READ_REG *rParams = data;
 	/* TODO: dual pipe */
-	struct mtk_drm_private *private = dev->dev_private;
-	struct mtk_ddp_comp *comp =
-		private->ddp_comp[DDP_COMPONENT_COLOR0];
-	struct mtk_ddp_comp *gamma_comp =
-		private->ddp_comp[DDP_COMPONENT_GAMMA0];
-	struct mtk_ddp_comp *aal_comp =
-		private->ddp_comp[DDP_COMPONENT_AAL0];
-	struct mtk_ddp_comp *disp_tdshp_comp =
-		private->ddp_comp[DDP_COMPONENT_TDSHP0];
+	struct mtk_disp_color_primary *primary_data =
+			comp_to_color(comp)->primary_data;
 	unsigned int ret = 0;
 	unsigned int reg_id = rParams->reg;
 	struct resource res;
-#if defined(CCORR_SUPPORT)
-	struct mtk_ddp_comp *ccorr_comp;
-
-	mtk_get_ccorr_caps(&g_ccorr_caps);
-	if (g_ccorr_caps.ccorr_number != 2)
-		ccorr_comp = private->ddp_comp[DDP_COMPONENT_CCORR0];
-	else
-		ccorr_comp = private->ddp_comp[DDP_COMPONENT_CCORR1];
-#endif
 
 	if (reg_id >= SWREG_PQDS_DS_EN && reg_id <= SWREG_PQDS_GAIN_0) {
-		ret = (unsigned int)g_PQ_DS_Param.param
+		ret = (unsigned int)primary_data->pq_ds_param.param
 			[reg_id - SWREG_PQDS_DS_EN];
 		DDPDBG("%s @ %d. ret = 0x%08x", __func__, __LINE__, ret);
 		return ret;
 	}
 	if (reg_id >= SWREG_PQDC_BLACK_EFFECT_ENABLE &&
 		reg_id <= SWREG_PQDC_DC_ENABLE) {
-		ret = (unsigned int)g_PQ_DC_Param.param
+		ret = (unsigned int)primary_data->pq_dc_param.param
 			[reg_id - SWREG_PQDC_BLACK_EFFECT_ENABLE];
 		DDPDBG("%s @ %d. ret = 0x%08x", __func__, __LINE__, ret);
 		return ret;
@@ -2991,26 +2091,26 @@ int mtk_drm_ioctl_read_sw_reg(struct drm_device *dev, void *data,
 
 	case SWREG_GAMMA_BASE_ADDRESS:
 		{
-			ret = gamma_comp->regs_pa;
+			ret = primary_data->gamma_comp->regs_pa;
 			break;
 		}
 
 	case SWREG_AAL_BASE_ADDRESS:
 		{
-			ret = aal_comp->regs_pa;
+			ret = primary_data->aal_comp->regs_pa;
 			break;
 		}
 
 #if defined(CCORR_SUPPORT)
 	case SWREG_CCORR_BASE_ADDRESS:
 		{
-			ret = ccorr_comp->regs_pa;
+			ret = primary_data->ccorr_comp->regs_pa;
 			break;
 		}
 #endif
 	case SWREG_DISP_TDSHP_BASE_ADDRESS:
 		{
-			ret = disp_tdshp_comp->regs_pa;
+			ret = primary_data->tdshp_comp->regs_pa;
 			break;
 		}
 	case SWREG_MML_HDR_BASE_ADDRESS:
@@ -3088,7 +2188,7 @@ int mtk_drm_ioctl_read_sw_reg(struct drm_device *dev, void *data,
 
 	case SWREG_TDSHP_TUNING_MODE:
 		{
-			ret = (unsigned int)g_tdshp_flag;
+			ret = (unsigned int)primary_data->tdshp_flag;
 			break;
 		}
 
@@ -3126,17 +2226,25 @@ int mtk_drm_ioctl_read_sw_reg(struct drm_device *dev, void *data,
 	return ret;
 }
 
-
-int mtk_drm_ioctl_write_sw_reg(struct drm_device *dev, void *data,
+int mtk_drm_ioctl_read_sw_reg(struct drm_device *dev, void *data,
 		struct drm_file *file_priv)
+{
+	struct mtk_drm_private *private = dev->dev_private;
+	struct drm_crtc *crtc = private->crtc[0];
+	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
+			to_mtk_crtc(crtc), MTK_DISP_COLOR, 0);
+
+	return mtk_drm_ioctl_read_sw_reg_impl(comp, data);
+}
+
+int mtk_drm_ioctl_write_sw_reg_impl(struct mtk_ddp_comp *comp, void *data)
 {
 	struct DISP_WRITE_REG *wParams = data;
 	//void __iomem *va = 0;
 	//unsigned int pa;
 	/* TODO: dual pipe */
-	//struct mtk_drm_private *private = dev->dev_private;
-	//struct mtk_ddp_comp *comp = private->ddp_comp[DDP_COMPONENT_COLOR0];
-
+	struct mtk_disp_color_primary *primary_data =
+		comp_to_color(comp)->primary_data;
 	int ret = 0;
 	unsigned int reg_id = wParams->reg;
 	unsigned int value = wParams->val;
@@ -3144,14 +2252,14 @@ int mtk_drm_ioctl_write_sw_reg(struct drm_device *dev, void *data,
 
 	if (reg_id >= SWREG_PQDC_BLACK_EFFECT_ENABLE &&
 		reg_id <= SWREG_PQDC_DC_ENABLE) {
-		g_PQ_DC_Param.param[reg_id - SWREG_PQDC_BLACK_EFFECT_ENABLE] =
+		primary_data->pq_dc_param.param[reg_id - SWREG_PQDC_BLACK_EFFECT_ENABLE] =
 			(int)value;
 		DDPDBG("%s @ %d. value: 0x%08x", __func__, __LINE__, value);
 		return ret;
 	}
 
 	if (reg_id >= SWREG_PQDS_DS_EN && reg_id <= SWREG_PQDS_GAIN_0) {
-		g_PQ_DS_Param.param[reg_id - SWREG_PQDS_DS_EN] = (int)value;
+		primary_data->pq_ds_param.param[reg_id - SWREG_PQDS_DS_EN] = (int)value;
 		DDPDBG("%s @ %d. value: 0x%08x", __func__, __LINE__, value);
 		return ret;
 	}
@@ -3159,57 +2267,57 @@ int mtk_drm_ioctl_write_sw_reg(struct drm_device *dev, void *data,
 	switch (reg_id) {
 	case SWREG_TDSHP_TUNING_MODE:
 		{
-			g_tdshp_flag = (int)value;
+			primary_data->tdshp_flag = (int)value;
 			break;
 		}
 	case SWREG_MDP_COLOR_CAPTURE_EN:
 		{
-			mdp_color_cap.en = value;
+			primary_data->mdp_color_cap.en = value;
 			break;
 		}
 	case SWREG_MDP_COLOR_CAPTURE_POS_X:
 		{
-			mdp_color_cap.pos_x = value;
+			primary_data->mdp_color_cap.pos_x = value;
 			break;
 		}
 	case SWREG_MDP_COLOR_CAPTURE_POS_Y:
 		{
-			mdp_color_cap.pos_y = value;
+			primary_data->mdp_color_cap.pos_y = value;
 			break;
 		}
 	case SWREG_TDSHP_GAIN_MID:
 		{
-			g_tdshp_reg.TDS_GAIN_MID = value;
+			primary_data->tdshp_reg.TDS_GAIN_MID = value;
 			break;
 		}
 	case SWREG_TDSHP_GAIN_HIGH:
 		{
-			g_tdshp_reg.TDS_GAIN_HIGH = value;
+			primary_data->tdshp_reg.TDS_GAIN_HIGH = value;
 			break;
 		}
 	case SWREG_TDSHP_COR_GAIN:
 		{
-			g_tdshp_reg.TDS_COR_GAIN = value;
+			primary_data->tdshp_reg.TDS_COR_GAIN = value;
 			break;
 		}
 	case SWREG_TDSHP_COR_THR:
 		{
-			g_tdshp_reg.TDS_COR_THR = value;
+			primary_data->tdshp_reg.TDS_COR_THR = value;
 			break;
 		}
 	case SWREG_TDSHP_COR_ZERO:
 		{
-			g_tdshp_reg.TDS_COR_ZERO = value;
+			primary_data->tdshp_reg.TDS_COR_ZERO = value;
 			break;
 		}
 	case SWREG_TDSHP_GAIN:
 		{
-			g_tdshp_reg.TDS_GAIN = value;
+			primary_data->tdshp_reg.TDS_GAIN = value;
 			break;
 		}
 	case SWREG_TDSHP_COR_VALUE:
 		{
-			g_tdshp_reg.TDS_COR_VALUE = value;
+			primary_data->tdshp_reg.TDS_COR_VALUE = value;
 			break;
 		}
 
@@ -3223,27 +2331,26 @@ int mtk_drm_ioctl_write_sw_reg(struct drm_device *dev, void *data,
 	return ret;
 }
 
-
-
-int mtk_drm_ioctl_read_reg(struct drm_device *dev, void *data,
+int mtk_drm_ioctl_write_sw_reg(struct drm_device *dev, void *data,
 		struct drm_file *file_priv)
 {
-	int ret = 0;
+	struct mtk_drm_private *private = dev->dev_private;
+	struct drm_crtc *crtc = private->crtc[0];
+	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
+			to_mtk_crtc(crtc), MTK_DISP_COLOR, 0);
 
+	return mtk_drm_ioctl_write_sw_reg_impl(comp, data);
+}
+
+int mtk_drm_ioctl_read_reg_impl(struct mtk_ddp_comp *comp, void *data)
+{
+	int ret = 0;
 	struct DISP_READ_REG *rParams = data;
 	void __iomem *va = 0;
 	unsigned int pa;
 	/* TODO: dual pipe */
-	struct mtk_drm_private *private = dev->dev_private;
-	struct mtk_ddp_comp *comp = private->ddp_comp[DDP_COMPONENT_COLOR0];
+	struct mtk_disp_color *color_data = comp_to_color(comp);
 	unsigned long flags;
-	struct mtk_ddp_comp *ccorr_comp;
-
-	mtk_get_ccorr_caps(&g_ccorr_caps);
-	if (g_ccorr_caps.ccorr_number != 2)
-		ccorr_comp = private->ddp_comp[DDP_COMPONENT_CCORR0];
-	else
-		ccorr_comp = private->ddp_comp[DDP_COMPONENT_CCORR1];
 
 	pa = (unsigned int)rParams->reg;
 
@@ -3256,18 +2363,12 @@ int mtk_drm_ioctl_read_reg(struct drm_device *dev, void *data,
 
 	DDPDBG("%s @ %d......... spin_trylock_irqsave ++ ",
 		__func__, __LINE__);
-	if (spin_trylock_irqsave(&g_color_clock_lock, flags)) {
+	if (spin_trylock_irqsave(&color_data->clock_lock, flags)) {
 		DDPDBG("%s @ %d......... spin_trylock_irqsave -- ",
 			__func__, __LINE__);
 		rParams->val = readl(va) & rParams->mask;
 
-		// For CCORR COEF, real values need to right shift one bit
-	/*	if (pa >= ccorr_comp->regs_pa + CCORR_REG(0) &&
-			pa <= ccorr_comp->regs_pa + CCORR_REG(4))
-			rParams->val = rParams->val >> 1;
-	*/
-
-		spin_unlock_irqrestore(&g_color_clock_lock, flags);
+		spin_unlock_irqrestore(&color_data->clock_lock, flags);
 	} else {
 		DDPINFO("%s @ %d......... Failed to spin_trylock_irqsave ",
 			__func__, __LINE__);
@@ -3284,21 +2385,22 @@ int mtk_drm_ioctl_read_reg(struct drm_device *dev, void *data,
 	return ret;
 }
 
-int mtk_drm_ioctl_write_reg(struct drm_device *dev, void *data,
+int mtk_drm_ioctl_read_reg(struct drm_device *dev, void *data,
 		struct drm_file *file_priv)
 {
 	struct mtk_drm_private *private = dev->dev_private;
-	struct mtk_ddp_comp *comp = private->ddp_comp[DDP_COMPONENT_COLOR0];
 	struct drm_crtc *crtc = private->crtc[0];
-	struct DISP_WRITE_REG *wParams = data;
-	struct mtk_ddp_comp *ccorr_comp;
-	unsigned int pa;
+	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
+			to_mtk_crtc(crtc), MTK_DISP_COLOR, 0);
 
-	mtk_get_ccorr_caps(&g_ccorr_caps);
-	if (g_ccorr_caps.ccorr_number != 2)
-		ccorr_comp = private->ddp_comp[DDP_COMPONENT_CCORR0];
-	else
-		ccorr_comp = private->ddp_comp[DDP_COMPONENT_CCORR1];
+	return mtk_drm_ioctl_read_reg_impl(comp, data);
+}
+
+int mtk_drm_ioctl_write_reg_impl(struct mtk_ddp_comp *comp, void *data)
+{
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct DISP_WRITE_REG *wParams = data;
+	unsigned int pa;
 
 	pa = (unsigned int)wParams->reg;
 
@@ -3307,13 +2409,18 @@ int mtk_drm_ioctl_write_reg(struct drm_device *dev, void *data,
 		return -EFAULT;
 	}
 
-/*	// For 6885 CCORR COEF, real values need to left shift one bit
-	if (pa >= ccorr_comp->regs_pa + CCORR_REG(0) &&
-		pa <= ccorr_comp->regs_pa + CCORR_REG(4))
-		wParams->val = wParams->val << 1;
-	*/
+	return mtk_crtc_user_cmd(&mtk_crtc->base, comp, WRITE_REG, data);
+}
 
-	return mtk_crtc_user_cmd(crtc, comp, WRITE_REG, data);
+int mtk_drm_ioctl_write_reg(struct drm_device *dev, void *data,
+		struct drm_file *file_priv)
+{
+	struct mtk_drm_private *private = dev->dev_private;
+	struct drm_crtc *crtc = private->crtc[0];
+	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
+			to_mtk_crtc(crtc), MTK_DISP_COLOR, 0);
+
+	return mtk_drm_ioctl_write_reg_impl(comp, data);
 }
 
 int mtk_color_cfg_bypass(struct mtk_ddp_comp *comp,
@@ -3333,19 +2440,26 @@ int mtk_color_cfg_bypass(struct mtk_ddp_comp *comp,
 	return ret;
 }
 
-int mtk_drm_ioctl_bypass_color(struct drm_device *dev, void *data,
-		struct drm_file *file_priv)
+int mtk_drm_ioctl_bypass_color_impl(struct mtk_ddp_comp *comp, void *data)
 {
 	int ret = 0;
-	struct mtk_drm_private *private = dev->dev_private;
-	struct mtk_ddp_comp *comp = private->ddp_comp[DDP_COMPONENT_COLOR0];
-	struct drm_crtc *crtc = private->crtc[0];
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 
-	ret = mtk_crtc_user_cmd(crtc, comp, BYPASS_COLOR, data);
+	ret = mtk_crtc_user_cmd(&mtk_crtc->base, comp, BYPASS_COLOR, data);
 	mtk_crtc_check_trigger(mtk_crtc, true, true);
 
 	return ret;
+}
+
+int mtk_drm_ioctl_bypass_color(struct drm_device *dev, void *data,
+		struct drm_file *file_priv)
+{
+	struct mtk_drm_private *private = dev->dev_private;
+	struct drm_crtc *crtc = private->crtc[0];
+	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
+			to_mtk_crtc(crtc), MTK_DISP_COLOR, 0);
+
+	return mtk_drm_ioctl_bypass_color_impl(comp, data);
 }
 
 int mtk_drm_color_cfg_pq_set_window(struct mtk_ddp_comp *comp,
@@ -3354,55 +2468,59 @@ int mtk_drm_color_cfg_pq_set_window(struct mtk_ddp_comp *comp,
 	int ret = 0;
 	struct DISP_PQ_WIN_PARAM *win_param = data;
 	struct mtk_disp_color *color = comp_to_color(comp);
+	struct mtk_disp_color_primary *primary_data = color->primary_data;
 
 	ddp_color_set_window(comp, win_param, handle);
 	DDPINFO("%s..., id=%d, en=%d, x=0x%x, y=0x%x\n",
-		__func__, comp->id, g_split_en,
-		((g_split_window_x_end << 16) | g_split_window_x_start),
-		((g_split_window_y_end << 16) | g_split_window_y_start));
+		__func__, comp->id, primary_data->split_en,
+		((primary_data->split_window_x_end << 16) |
+		 primary_data->split_window_x_start),
+		((primary_data->split_window_y_end << 16) |
+		 primary_data->split_window_y_start));
 
 	if (comp->mtk_crtc->is_dual_pipe) {
 		struct mtk_ddp_comp *comp_color1 = color->companion;
 
 		ddp_color_set_window(comp_color1, win_param, handle);
 		DDPINFO("%s..., id=%d, en=%d, x=0x%x, y=0x%x\n",
-			__func__, comp_color1->id, g_split_en,
-			((g_split_window_x_end << 16) | g_split_window_x_start),
-			((g_split_window_y_end << 16) | g_split_window_y_start));
+			__func__, comp_color1->id, primary_data->split_en,
+			((primary_data->split_window_x_end << 16) |
+			 primary_data->split_window_x_start),
+			((primary_data->split_window_y_end << 16) |
+			 primary_data->split_window_y_start));
 	}
 
 	return ret;
 }
 
-int mtk_drm_ioctl_pq_set_window(struct drm_device *dev, void *data,
-		struct drm_file *file_priv)
+int mtk_drm_ioctl_pq_set_window_impl(struct mtk_ddp_comp *comp, void *data)
 {
 	int ret = 0;
-	struct mtk_drm_private *private = dev->dev_private;
-	struct mtk_ddp_comp *comp = private->ddp_comp[DDP_COMPONENT_COLOR0];
-	struct drm_crtc *crtc = private->crtc[0];
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_disp_color *color = comp_to_color(comp);
+	struct mtk_disp_color_primary *primary =
+		color->primary_data;
 	struct DISP_PQ_WIN_PARAM *win_param = data;
 
 	unsigned int split_window_x, split_window_y;
 
 	/* save to global, can be applied on following PQ param updating. */
 	if (win_param->split_en) {
-		g_split_en = 1;
-		g_split_window_x_start = win_param->start_x;
-		g_split_window_y_start = win_param->start_y;
-		g_split_window_x_end = win_param->end_x;
-		g_split_window_y_end = win_param->end_y;
+		primary->split_en = 1;
+		primary->split_window_x_start = win_param->start_x;
+		primary->split_window_y_start = win_param->start_y;
+		primary->split_window_x_end = win_param->end_x;
+		primary->split_window_y_end = win_param->end_y;
 	} else {
-		g_split_en = 0;
-		g_split_window_x_start = 0x0000;
-		g_split_window_y_start = 0x0000;
-		g_split_window_x_end = 0xFFFF;
-		g_split_window_y_end = 0xFFFF;
+		primary->split_en = 0;
+		primary->split_window_x_start = 0x0000;
+		primary->split_window_y_start = 0x0000;
+		primary->split_window_x_end = 0xFFFF;
+		primary->split_window_y_end = 0xFFFF;
 	}
 
 	DDPINFO("%s: input: id[%d], en[%d], x[0x%x], y[0x%x]\n",
-		__func__, comp->id, g_split_en,
+		__func__, comp->id, primary->split_en,
 		((win_param->end_x << 16) | win_param->start_x),
 		((win_param->end_y << 16) | win_param->start_y));
 
@@ -3412,34 +2530,43 @@ int mtk_drm_ioctl_pq_set_window(struct drm_device *dev, void *data,
 		split_window_x, split_window_y);
 
 	DDPINFO("%s..., id=%d, en=%d, x=0x%x, y=0x%x\n",
-		__func__, comp->id, g_split_en,
-		((g_split_window_x_end << 16) | g_split_window_x_start),
-		((g_split_window_y_end << 16) | g_split_window_y_start));
+		__func__, comp->id, primary->split_en,
+		((primary->split_window_x_end << 16) | primary->split_window_x_start),
+		((primary->split_window_y_end << 16) | primary->split_window_y_start));
 
-	ret = mtk_crtc_user_cmd(crtc, comp, PQ_SET_WINDOW, data);
+	ret = mtk_crtc_user_cmd(&mtk_crtc->base, comp, PQ_SET_WINDOW, data);
 	if (comp->mtk_crtc->is_dual_pipe) {
-		struct mtk_ddp_comp *comp_color1 = private->ddp_comp[DDP_COMPONENT_COLOR1];
+		struct mtk_ddp_comp *comp_color1 = color->companion;
 
 		ddp_color_cal_split_window(comp_color1, &split_window_x, &split_window_y);
-		ret = mtk_crtc_user_cmd(crtc, comp_color1, PQ_SET_WINDOW, data);
+		ret = mtk_crtc_user_cmd(&mtk_crtc->base, comp_color1, PQ_SET_WINDOW, data);
 		DDPINFO("%s: output: x[0x%x], y[0x%x]", __func__,
 			split_window_x, split_window_y);
 
 		DDPINFO("%s..., id=%d, en=%d, x=0x%x, y=0x%x\n",
-			__func__, comp_color1->id, g_split_en,
-			((g_split_window_x_end << 16) | g_split_window_x_start),
-			((g_split_window_y_end << 16) | g_split_window_y_start));
+			__func__, comp_color1->id, primary->split_en,
+			((primary->split_window_x_end << 16) | primary->split_window_x_start),
+			((primary->split_window_y_end << 16) | primary->split_window_y_start));
 	}
 	mtk_crtc_check_trigger(mtk_crtc, true, true);
 
 	return ret;
 }
 
+int mtk_drm_ioctl_pq_set_window(struct drm_device *dev, void *data,
+		struct drm_file *file_priv)
+{
+	struct mtk_drm_private *private = dev->dev_private;
+	struct drm_crtc *crtc = private->crtc[0];
+	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
+			to_mtk_crtc(crtc), MTK_DISP_COLOR, 0);
+
+	return mtk_drm_ioctl_pq_set_window_impl(comp, data);
+}
 
 static int mtk_color_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 							enum mtk_ddp_io_cmd cmd, void *params)
 {
-
 	switch (cmd) {
 	case PQ_FILL_COMP_PIPE_INFO:
 	{
@@ -3472,15 +2599,17 @@ static int mtk_color_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 static void mtk_color_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	//struct mtk_disp_color *color = comp_to_color(comp);
+	struct mtk_disp_color_primary *primary_data =
+		comp_to_color(comp)->primary_data;
 
 	DpEngine_COLORonInit(comp, handle);
 
-	mutex_lock(&g_color_reg_lock);
-	if (g_color_reg_valid) {
-		color_write_hw_reg(comp, &g_color_reg, handle);
-		mutex_unlock(&g_color_reg_lock);
+	mutex_lock(&primary_data->reg_lock);
+	if (primary_data->color_reg_valid) {
+		color_write_hw_reg(comp, &primary_data->color_reg, handle);
+		mutex_unlock(&primary_data->reg_lock);
 	} else {
-		mutex_unlock(&g_color_reg_lock);
+		mutex_unlock(&primary_data->reg_lock);
 		DpEngine_COLORonConfig(comp, handle);
 	}
 	/*
@@ -3527,6 +2656,8 @@ void disp_color_write_pos_main_for_dual_pipe(struct mtk_ddp_comp *comp,
 	unsigned int pa, unsigned int pa1)
 {
 	unsigned int pos_x, pos_y, val, val1, mask;
+	struct mtk_disp_color_primary *primary_data =
+		comp_to_color(comp)->primary_data;
 
 	val = wParams->val;
 	mask = wParams->mask;
@@ -3534,12 +2665,12 @@ void disp_color_write_pos_main_for_dual_pipe(struct mtk_ddp_comp *comp,
 	pos_y = ((wParams->val & (0xffff0000)) >> 16);
 	DDPINFO("write POS_MAIN: pos_x[%d] pos_y[%d]\n",
 		pos_x, pos_y);
-	if (pos_x < g_width) {
+	if (pos_x < primary_data->width) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			pa, val, mask);
 		DDPINFO("dual pipe write pa:0x%x(va:0) = 0x%x (0x%x)\n"
 			, pa, val, mask);
-		val1 = ((pos_x + g_width) | ((pos_y << 16)));
+		val1 = ((pos_x + primary_data->width) | ((pos_y << 16)));
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			pa1, val1, mask);
 		DDPINFO("dual pipe write pa1:0x%x(va:0) = 0x%x (0x%x)\n"
@@ -3549,7 +2680,7 @@ void disp_color_write_pos_main_for_dual_pipe(struct mtk_ddp_comp *comp,
 			pa, val, mask);
 		DDPINFO("dual pipe write pa:0x%x(va:0) = 0x%x (0x%x)\n"
 			, pa, val, mask);
-		val1 = ((pos_x - g_width) | ((pos_y << 16)));
+		val1 = ((pos_x - primary_data->width) | ((pos_y << 16)));
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			pa1, val1, mask);
 		DDPINFO("dual pipe write pa1:0x%x(va:0) = 0x%x (0x%x)\n"
@@ -3561,25 +2692,27 @@ static int mtk_color_cfg_drecolor_set_sgy(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data, unsigned int data_size)
 {
 	struct mtk_disp_color *priv_data = comp_to_color(comp);
+	struct mtk_disp_color_primary *primary_data =
+			comp_to_color(comp)->primary_data;
 	struct DISP_AAL_DRECOLOR_PARAM *param = data;
-	struct DISP_AAL_DRECOLOR_PARAM *drecolor_sgy = &g_drecolor_sgy;
+	struct DISP_AAL_DRECOLOR_PARAM *drecolor_sgy = &priv_data->primary_data->drecolor_sgy;
 
 	if (sizeof(struct DISP_AAL_DRECOLOR_PARAM) < data_size) {
 		DDPPR_ERR("%s param size error %lu, %u\n", __func__, sizeof(*param), data_size);
 		return -EFAULT;
 	}
-	mutex_lock(&g_color_reg_lock);
+	mutex_lock(&primary_data->reg_lock);
 	memcpy(drecolor_sgy, param, sizeof(struct DISP_AAL_DRECOLOR_PARAM));
 	if (!drecolor_sgy->sgy_trans_trigger) {
 		DDPINFO("%s set skip\n", __func__);
-		mutex_unlock(&g_color_reg_lock);
+		mutex_unlock(&primary_data->reg_lock);
 		return 0;
 	}
 	DDPINFO("%s set now\n", __func__);
 	disp_color_set_sgy(comp, handle, drecolor_sgy->sgy_out_gain);
 	if (comp->mtk_crtc->is_dual_pipe)
 		disp_color_set_sgy(priv_data->companion, handle, drecolor_sgy->sgy_out_gain);
-	mutex_unlock(&g_color_reg_lock);
+	mutex_unlock(&primary_data->reg_lock);
 	return 0;
 }
 
@@ -3588,7 +2721,7 @@ static int mtk_color_pq_frame_config(struct mtk_ddp_comp *comp,
 {
 	int ret = -1;
 
-	DDPMSG("%s,SET COLOR REG id(%d) cmd = %d\n", __func__, comp->id, cmd);
+	DDPINFO("%s,SET COLOR REG id(%d) cmd = %d\n", __func__, comp->id, cmd);
 	/* will only call left path */
 	switch (cmd) {
 	/* TYPE1 no user cmd */
@@ -3624,6 +2757,9 @@ static int mtk_color_pq_frame_config(struct mtk_ddp_comp *comp,
 static int mtk_color_user_cmd(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, unsigned int cmd, void *data)
 {
+	struct mtk_disp_color *color = comp_to_color(comp);
+	struct mtk_disp_color_primary *primary_data = color->primary_data;
+
 	DDPINFO("%s: cmd: %d\n", __func__, cmd);
 	switch (cmd) {
 	case SET_PQPARAM:
@@ -3632,10 +2768,7 @@ static int mtk_color_user_cmd(struct mtk_ddp_comp *comp,
 		DpEngine_COLORonInit(comp, handle);
 		DpEngine_COLORonConfig(comp, handle);
 		if (comp->mtk_crtc->is_dual_pipe) {
-			struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-			struct drm_crtc *crtc = &mtk_crtc->base;
-			struct mtk_drm_private *priv = crtc->dev->dev_private;
-			struct mtk_ddp_comp *comp_color1 = priv->ddp_comp[DDP_COMPONENT_COLOR1];
+			struct mtk_ddp_comp *comp_color1 = color->companion;
 
 			DpEngine_COLORonInit(comp_color1, handle);
 			DpEngine_COLORonConfig(comp_color1, handle);
@@ -3644,28 +2777,24 @@ static int mtk_color_user_cmd(struct mtk_ddp_comp *comp,
 	break;
 	case SET_COLOR_REG:
 	{
-		mutex_lock(&g_color_reg_lock);
+		mutex_lock(&primary_data->reg_lock);
 
 		if (data != NULL) {
-			memcpy(&g_color_reg, (struct DISPLAY_COLOR_REG *)data,
+			memcpy(&primary_data->color_reg, (struct DISPLAY_COLOR_REG *)data,
 				sizeof(struct DISPLAY_COLOR_REG));
 
-			color_write_hw_reg(comp, &g_color_reg, handle);
+			color_write_hw_reg(comp, &primary_data->color_reg, handle);
 			if (comp->mtk_crtc->is_dual_pipe) {
-				struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-				struct drm_crtc *crtc = &mtk_crtc->base;
-				struct mtk_drm_private *priv = crtc->dev->dev_private;
-				struct mtk_ddp_comp *comp_color1 =
-					priv->ddp_comp[DDP_COMPONENT_COLOR1];
+				struct mtk_ddp_comp *comp_color1 = color->companion;
 
-				color_write_hw_reg(comp_color1, &g_color_reg, handle);
+				color_write_hw_reg(comp_color1, &primary_data->color_reg, handle);
 			}
 		} else {
 			DDPINFO("%s: data is NULL", __func__);
 		}
 
-		g_color_reg_valid = 1;
-		mutex_unlock(&g_color_reg_lock);
+		primary_data->color_reg_valid = 1;
+		mutex_unlock(&primary_data->reg_lock);
 	}
 	break;
 	case WRITE_REG:
@@ -3750,10 +2879,7 @@ static int mtk_color_user_cmd(struct mtk_ddp_comp *comp,
 
 		ddp_color_bypass_color(comp, *value, handle);
 		if (comp->mtk_crtc->is_dual_pipe) {
-			struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-			struct drm_crtc *crtc = &mtk_crtc->base;
-			struct mtk_drm_private *priv = crtc->dev->dev_private;
-			struct mtk_ddp_comp *comp_color1 = priv->ddp_comp[DDP_COMPONENT_COLOR1];
+			struct mtk_ddp_comp *comp_color1 = color->companion;
 
 			ddp_color_bypass_color(comp_color1, *value, handle);
 		}
@@ -3773,20 +2899,21 @@ static int mtk_color_user_cmd(struct mtk_ddp_comp *comp,
 	return 0;
 }
 
-struct color_backup {
-	unsigned int COLOR_CFG_MAIN;
-};
-static struct color_backup g_color_backup;
-
 static void ddp_color_backup(struct mtk_ddp_comp *comp)
 {
-	g_color_backup.COLOR_CFG_MAIN =
+	struct mtk_disp_color_primary *primary_data =
+		comp_to_color(comp)->primary_data;
+
+	primary_data->color_backup.COLOR_CFG_MAIN =
 		readl(comp->regs + DISP_COLOR_CFG_MAIN);
 }
 
 static void ddp_color_restore(struct mtk_ddp_comp *comp)
 {
-	writel(g_color_backup.COLOR_CFG_MAIN, comp->regs + DISP_COLOR_CFG_MAIN);
+	struct mtk_disp_color_primary *primary_data =
+		comp_to_color(comp)->primary_data;
+
+	writel(primary_data->color_backup.COLOR_CFG_MAIN, comp->regs + DISP_COLOR_CFG_MAIN);
 }
 
 static void mtk_color_prepare(struct mtk_ddp_comp *comp)
@@ -3794,7 +2921,7 @@ static void mtk_color_prepare(struct mtk_ddp_comp *comp)
 	struct mtk_disp_color *color = comp_to_color(comp);
 
 	mtk_ddp_comp_clk_prepare(comp);
-	atomic_set(&g_color_is_clock_on[index_of_color(comp->id)], 1);
+	atomic_set(&color->color_is_clock_on, 1);
 
 	/* Bypass shadow register and read shadow register */
 	if (color->data->need_bypass_shadow)
@@ -3807,23 +2934,959 @@ static void mtk_color_prepare(struct mtk_ddp_comp *comp)
 
 static void mtk_color_unprepare(struct mtk_ddp_comp *comp)
 {
+	struct mtk_disp_color *color_data = comp_to_color(comp);
 	unsigned long flags;
 
 	DDPINFO("%s @ %d......... spin_lock_irqsave ++ ", __func__, __LINE__);
-	spin_lock_irqsave(&g_color_clock_lock, flags);
+	spin_lock_irqsave(&color_data->clock_lock, flags);
 	DDPINFO("%s @ %d......... spin_lock_irqsave -- ", __func__, __LINE__);
-	atomic_set(&g_color_is_clock_on[index_of_color(comp->id)], 0);
-	spin_unlock_irqrestore(&g_color_clock_lock, flags);
+	atomic_set(&color_data->color_is_clock_on, 0);
+	spin_unlock_irqrestore(&color_data->clock_lock, flags);
 	DDPINFO("%s @ %d......... spin_unlock_irqrestore ", __func__, __LINE__);
 	// backup DISP_COLOR_CFG_MAIN register
 	ddp_color_backup(comp);
 	mtk_ddp_comp_clk_unprepare(comp);
 }
 
+static void mtk_color_data_init(struct mtk_ddp_comp *comp)
+{
+	struct mtk_disp_color *color_data = comp_to_color(comp);
+
+	spin_lock_init(&color_data->clock_lock);
+}
+
+static void mtk_color_primary_data_init(struct mtk_ddp_comp *comp)
+{
+	int i;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_disp_color *color_data = comp_to_color(comp);
+	struct mtk_disp_color *companion_data = comp_to_color(color_data->companion);
+	struct mtk_disp_color_primary *primary_data = color_data->primary_data;
+	struct DISP_PQ_DC_PARAM dc_param_init = {
+param:
+			{1, 1, 0, 0, 0, 0, 0, 0, 0, 0x0A,
+			 0x30, 0x40, 0x06, 0x12, 40, 0x40, 0x80, 0x40, 0x40, 1,
+			 0x80, 0x60, 0x80, 0x10, 0x34, 0x40, 0x40, 1, 0x80, 0xa,
+			 0x19, 0x00, 0x20, 0, 0, 1, 2, 1, 80, 1}
+		};
+	struct DISP_PQ_DS_PARAM ds_param_init = {
+param:
+			{1, -4, 1024, -4, 1024, 1, 400, 200, 1600, 800, 128, 8,
+			 4, 12, 16, 8, 24, -8, -4, -12, 0, 0, 0}
+		};
+	/* initialize index */
+	/* (because system default is 0, need fill with 0x80) */
+	struct DISPLAY_PQ_T color_index_init = {
+GLOBAL_SAT:	/* 0~9 */
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+CONTRAST :	/* 0~9 */
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+BRIGHTNESS :	/* 0~9 */
+			{0x400, 0x400, 0x400, 0x400, 0x400, 0x400, 0x400, 0x400, 0x400, 0x400},
+PARTIAL_Y :
+			{
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
+				 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
+				 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
+				 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
+				 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
+				 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
+				 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
+				 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
+				 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
+				 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
+				 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+PURP_TONE_S :
+		{			/* hue 0~10 */
+			{			/* 0 disable */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 1 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 2 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 3 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 4 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 5 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 6 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 7 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 8 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 9 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 10 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 11 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 12 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 13 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 14 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 15 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 16 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 17 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 18 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			}
+		},
+SKIN_TONE_S :
+		{
+			{			/* 0 disable */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 1 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 2 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 3 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 4 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 5 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 6 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 7 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 8 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 9 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 10 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 11 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 12 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 13 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 14 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 15 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 16 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 17 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 18 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			}
+		},
+GRASS_TONE_S :
+		{
+			{			/* 0 disable */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 1 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 2 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 3 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 4 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 5 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 6 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 7 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 8 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 9 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 10 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 11 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 12 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 13 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 14 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 15 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 16 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 17 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			},
+			{			/* 18 */
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+			}
+		},
+SKY_TONE_S :
+		{			/* hue 0~10 */
+			{			/* 0 disable */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 1 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 2 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 3 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 4 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 5 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 6 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 7 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 8 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 9 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 10 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 11 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 12 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 13 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 14 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 15 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 16 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 17 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			},
+			{			/* 18 */
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80},
+				{0x80, 0x80, 0x80}
+			}
+		},
+PURP_TONE_H :
+		{
+			/* hue 0~2 */
+			{0x80, 0x80, 0x80},	/* 3 */
+			{0x80, 0x80, 0x80},	/* 4 */
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},	/* 3 */
+			{0x80, 0x80, 0x80},	/* 4 */
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},	/* 4 */
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},	/* 3 */
+			{0x80, 0x80, 0x80},	/* 4 */
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80}
+		},
+SKIN_TONE_H :
+		{
+			/* hue 3~16 */
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+		},
+GRASS_TONE_H :
+		{
+		/* hue 17~24 */
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
+		},
+SKY_TONE_H :
+		{
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80},
+			{0x80, 0x80, 0x80}
+		},
+CCORR_COEF : /* ccorr feature */
+		{
+			{
+				{0x400, 0x0, 0x0},
+				{0x0, 0x400, 0x0},
+				{0x0, 0x0, 0x400},
+			},
+			{
+				{0x400, 0x0, 0x0},
+				{0x0, 0x400, 0x0},
+				{0x0, 0x0, 0x400},
+			},
+			{
+				{0x400, 0x0, 0x0},
+				{0x0, 0x400, 0x0},
+				{0x0, 0x0, 0x400},
+			},
+			{
+				{0x400, 0x0, 0x0},
+				{0x0, 0x400, 0x0},
+				{0x0, 0x0, 0x400}
+			}
+		},
+S_GAIN_BY_Y :
+		{
+			{0x80, 0x80, 0x80, 0x80,
+			 0x80, 0x80, 0x80, 0x80,
+			 0x80, 0x80, 0x80, 0x80,
+			 0x80, 0x80, 0x80, 0x80,
+			 0x80, 0x80, 0x80, 0x80
+			},
+			{0x80, 0x80, 0x80, 0x80,
+			 0x80, 0x80, 0x80, 0x80,
+			 0x80, 0x80, 0x80, 0x80,
+			 0x80, 0x80, 0x80, 0x80,
+			 0x80, 0x80, 0x80, 0x80
+			},
+			{0x80, 0x80, 0x80, 0x80,
+			 0x80, 0x80, 0x80, 0x80,
+			 0x80, 0x80, 0x80, 0x80,
+			 0x80, 0x80, 0x80, 0x80,
+			 0x80, 0x80, 0x80, 0x80
+			},
+			{0x80, 0x80, 0x80, 0x80,
+			 0x80, 0x80, 0x80, 0x80,
+			 0x80, 0x80, 0x80, 0x80,
+			 0x80, 0x80, 0x80, 0x80,
+			 0x80, 0x80, 0x80, 0x80
+			},
+			{0x80, 0x80, 0x80, 0x80,
+			 0x80, 0x80, 0x80, 0x80,
+			 0x80, 0x80, 0x80, 0x80,
+			 0x80, 0x80, 0x80, 0x80,
+			 0x80, 0x80, 0x80, 0x80
+			}
+		},
+S_GAIN_BY_Y_EN:0,
+LSP_EN:0,
+LSP :
+		{0x0, 0x0, 0x7F, 0x7F, 0x7F, 0x0, 0x7F, 0x7F},
+COLOR_3D :
+		{
+			{			/* 0 */
+				/* Windows  1 */
+				{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
+				/* Windows  2 */
+				{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
+				/* Windows  3 */
+				{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
+			},
+			{			/* 1 */
+				/* Windows  1 */
+				{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
+				/* Windows  2 */
+				{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
+				/* Windows  3 */
+				{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
+			},
+			{			/* 2 */
+				/* Windows  1 */
+				{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
+				/* Windows  2 */
+				{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
+				/* Windows  3 */
+				{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
+			},
+			{			/* 3 */
+				/* Windows  1 */
+				{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
+				/* Windows  2 */
+				{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
+				/* Windows  3 */
+				{ 0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF,
+				  0x80,  0x80,  0x80,  0x80,  0x80,  0x80, 0x3FF, 0x3FF,
+				 0x000, 0x050, 0x100, 0x200, 0x300, 0x350, 0x3FF},
+			},
+		}
+	};
+
+
+	if (color_data->is_right_pipe) {
+		kfree(color_data->primary_data);
+		color_data->primary_data = companion_data->primary_data;
+		return;
+	}
+	primary_data->gamma_comp = mtk_ddp_comp_sel_in_cur_crtc_path(
+			mtk_crtc, MTK_DISP_GAMMA, 0);
+	primary_data->aal_comp = mtk_ddp_comp_sel_in_cur_crtc_path(
+			mtk_crtc, MTK_DISP_AAL, 0);
+	primary_data->tdshp_comp = mtk_ddp_comp_sel_in_cur_crtc_path(
+			mtk_crtc, MTK_DISP_TDSHP, 0);
+	primary_data->ccorr_comp = mtk_ddp_comp_sel_in_cur_crtc_path(
+			mtk_crtc, MTK_DISP_CCORR, 1);
+	if (primary_data->ccorr_comp == NULL)
+		primary_data->ccorr_comp = mtk_ddp_comp_sel_in_cur_crtc_path(
+				mtk_crtc, MTK_DISP_CCORR, 0);
+	primary_data->legacy_color_cust = false;
+	primary_data->color_param.u4SHPGain = 2;
+	primary_data->color_param.u4SatGain = 4;
+	for (i = 0; i < PQ_HUE_ADJ_PHASE_CNT; i++)
+		primary_data->color_param.u4HueAdj[i] = 9;
+	primary_data->color_param.u4Contrast = 4;
+	primary_data->color_param.u4Brightness = 4;
+	primary_data->split_window_x_end = 0xFFFF;
+	primary_data->split_window_y_end = 0xFFFF;
+	memcpy(&primary_data->pq_dc_param, &dc_param_init,
+			sizeof(struct DISP_PQ_DC_PARAM));
+	memcpy(&primary_data->pq_ds_param, &ds_param_init,
+			sizeof(struct DISP_PQ_DS_PARAM));
+	primary_data->tdshp_reg.TDS_GAIN_MID = 0x10;
+	primary_data->tdshp_reg.TDS_GAIN_HIGH = 0x20;
+	primary_data->tdshp_reg.TDS_COR_GAIN = 0x10;
+	primary_data->tdshp_reg.TDS_COR_THR = 0x4;
+	primary_data->tdshp_reg.TDS_COR_ZERO = 0x2;
+	primary_data->tdshp_reg.TDS_GAIN = 0x20;
+	primary_data->tdshp_reg.TDS_COR_VALUE = 0x3;
+	memcpy(&primary_data->color_index, &color_index_init,
+			sizeof(struct DISPLAY_PQ_T));
+	mutex_init(&primary_data->reg_lock);
+}
+
 void mtk_color_first_cfg(struct mtk_ddp_comp *comp,
 	       struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
+	mtk_color_primary_data_init(comp);
 	mtk_color_config(comp, cfg, handle);
+}
+
+static int mtk_color_ioctl_transact(struct mtk_ddp_comp *comp,
+		unsigned int cmd, void *data, unsigned int data_size)
+{
+	int ret = -1;
+
+	switch (cmd) {
+	case PQ_COLOR_SET_PQPARAM:
+		ret = mtk_drm_ioctl_set_pqparam_impl(comp, data);
+		break;
+	case PQ_COLOR_SET_PQINDEX:
+		ret = mtk_drm_ioctl_set_pqindex_impl(comp, data);
+		break;
+	case PQ_COLOR_SET_COLOR_REG:
+		ret = mtk_drm_ioctl_set_color_reg_impl(comp, data);
+		break;
+	case PQ_COLOR_MUTEX_CONTROL:
+		ret = mtk_drm_ioctl_mutex_control_impl(comp, data);
+		break;
+	case PQ_COLOR_READ_REG:
+		ret = mtk_drm_ioctl_read_reg_impl(comp, data);
+		break;
+	case PQ_COLOR_WRITE_REG:
+		ret = mtk_drm_ioctl_write_reg_impl(comp, data);
+		break;
+	case PQ_COLOR_BYPASS:
+		ret = mtk_drm_ioctl_bypass_color_impl(comp, data);
+		break;
+	case PQ_COLOR_SET_WINDOW:
+		ret = mtk_drm_ioctl_pq_set_window_impl(comp, data);
+		break;
+	case PQ_COLOR_READ_SW_REG:
+		ret = mtk_drm_ioctl_read_sw_reg_impl(comp, data);
+		break;
+	case PQ_COLOR_WRITE_SW_REG:
+		ret = mtk_drm_ioctl_write_sw_reg_impl(comp, data);
+		break;
+	default:
+		break;
+	}
+	return ret;
 }
 
 static const struct mtk_ddp_comp_funcs mtk_disp_color_funcs = {
@@ -3837,7 +3900,8 @@ static const struct mtk_ddp_comp_funcs mtk_disp_color_funcs = {
 	.unprepare = mtk_color_unprepare,
 	.config_overhead = mtk_disp_color_config_overhead,
 	.io_cmd = mtk_color_io_cmd,
-	.pq_frame_config = mtk_color_pq_frame_config
+	.pq_frame_config = mtk_color_pq_frame_config,
+	.pq_ioctl_transact = mtk_color_ioctl_transact,
 };
 
 void mtk_color_dump(struct mtk_ddp_comp *comp)
@@ -3923,30 +3987,33 @@ static int mtk_disp_color_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mtk_disp_color *priv;
 	enum mtk_ddp_comp_id comp_id;
-	int ret;
+	int ret = -1;
 
 	DDPINFO("%s+\n", __func__);
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (priv == NULL)
-		return -ENOMEM;
+		goto error_dev_init;
+
+	priv->primary_data = kzalloc(sizeof(*priv->primary_data), GFP_KERNEL);
+	if (priv->primary_data == NULL) {
+		ret = -ENOMEM;
+		dev_err(dev, "Failed to alloc primary_data %d\n", ret);
+		goto error_dev_init;
+	}
 
 	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DISP_COLOR);
 	if ((int)comp_id < 0) {
 		dev_err(dev, "Failed to identify by alias: %d\n", comp_id);
-		return comp_id;
+		goto error_primary;
 	}
 
 	ret = mtk_ddp_comp_init(dev, dev->of_node, &priv->ddp_comp, comp_id,
 				&mtk_disp_color_funcs);
 	if (ret != 0) {
 		dev_err(dev, "Failed to initialize component: %d\n", ret);
-		return ret;
+		goto error_primary;
 	}
-
-	if (!default_comp && comp_id == DDP_COMPONENT_COLOR0)
-		default_comp = &priv->ddp_comp;
-	if (!default_comp1 && comp_id == DDP_COMPONENT_COLOR1)
-		default_comp1 = &priv->ddp_comp;
+	mtk_color_data_init(&priv->ddp_comp);
 
 	priv->data = of_device_get_match_data(dev);
 
@@ -3960,8 +4027,14 @@ static int mtk_disp_color_probe(struct platform_device *pdev)
 		mtk_ddp_comp_pm_disable(&priv->ddp_comp);
 	}
 
-	g_legacy_color_cust = false;
 	DDPINFO("%s-\n", __func__);
+
+error_primary:
+	if (ret < 0)
+		kfree(priv->primary_data);
+error_dev_init:
+	if (ret < 0)
+		devm_kfree(dev, priv);
 
 	return ret;
 }
@@ -4177,8 +4250,11 @@ struct platform_driver mtk_disp_color_driver = {
 void disp_color_set_bypass(struct drm_crtc *crtc, int bypass)
 {
 	int ret;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
+			mtk_crtc, MTK_DISP_COLOR, 0);
 
-	ret = mtk_crtc_user_cmd(crtc, default_comp, BYPASS_COLOR, &bypass);
+	ret = mtk_crtc_user_cmd(crtc, comp, BYPASS_COLOR, &bypass);
 
 	DDPINFO("%s : ret = %d", __func__, ret);
 }

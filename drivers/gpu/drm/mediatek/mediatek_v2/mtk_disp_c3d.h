@@ -9,13 +9,17 @@
 #include <linux/uaccess.h>
 #include <uapi/drm/mediatek_drm.h>
 
+#ifndef DRM_CMDQ_DISABLE
+#include <linux/soc/mediatek/mtk-cmdq-ext.h>
+#else
+#include "mtk-cmdq-ext.h"
+#endif
 #include <linux/clk.h>
 #include <linux/component.h>
 #include <linux/of_device.h>
 #include <linux/of_irq.h>
 #include <linux/of_address.h>
 #include <linux/platform_device.h>
-#include <linux/soc/mediatek/mtk-cmdq-ext.h>
 #include <linux/module.h>
 #include <linux/workqueue.h>
 #include <linux/delay.h>
@@ -66,6 +70,77 @@
 #define C3D_SRAM_RW_IF_3                   (0x088)
 #define C3D_SRAM_PINGPONG                  (0x08C)
 
+#define C3D_3DLUT_SIZE_17BIN (17 * 17 * 17 * 3)
+#define C3D_3DLUT_SIZE_9BIN (9 * 9 * 9 * 3)
+
+#define DISP_C3D_SRAM_SIZE_17BIN (17 * 17 * 17)
+#define DISP_C3D_SRAM_SIZE_9BIN (9 * 9 * 9)
+
+struct DISP_C3D_REG_17BIN {
+	unsigned int lut3d_reg[C3D_3DLUT_SIZE_17BIN];
+};
+
+struct DISP_C3D_REG_9BIN {
+	unsigned int lut3d_reg[C3D_3DLUT_SIZE_9BIN];
+};
+
+struct mtk_disp_c3d_data {
+	bool support_shadow;
+	bool need_bypass_shadow;
+	int bin_num;
+	int c3d_sram_start_addr;
+	int c3d_sram_end_addr;
+};
+
+struct mtk_disp_c3d_tile_overhead {
+	unsigned int left_in_width;
+	unsigned int left_overhead;
+	unsigned int left_comp_overhead;
+	unsigned int right_in_width;
+	unsigned int right_overhead;
+	unsigned int right_comp_overhead;
+};
+
+struct mtk_disp_c3d_primary {
+	struct DISP_C3D_REG_17BIN c3d_reg_17bin;
+	struct DISP_C3D_REG_9BIN c3d_reg_9bin;
+	unsigned int c3d_sram_cfg[DISP_C3D_SRAM_SIZE_17BIN];
+	unsigned int c3d_sram_cfg_9bin[DISP_C3D_SRAM_SIZE_9BIN];
+	unsigned int c3d_lut1d[DISP_C3D_1DLUT_SIZE];
+	struct DISP_C3D_LUT c3d_ioc_data;
+	atomic_t c3d_force_relay;
+	atomic_t c3d_get_irq;
+	atomic_t c3d_eventctl;
+	wait_queue_head_t c3d_get_irq_wq;
+	struct wakeup_source *c3d_wake_lock;
+	bool c3d_wake_locked;
+	bool set_lut_flag;
+	bool update_sram_ignore;
+	bool skip_update_sram;
+	struct mtk_disp_c3d_tile_overhead tile_overhead;
+	spinlock_t c3d_clock_lock;
+	struct mutex c3d_global_lock;
+	struct mutex c3d_power_lock;
+	struct mutex c3d_lut_lock;
+};
+
+struct mtk_disp_c3d {
+	struct mtk_ddp_comp ddp_comp;
+	struct drm_crtc *crtc;
+	const struct mtk_disp_c3d_data *data;
+	bool is_right_pipe;
+	int path_order;
+	struct mtk_ddp_comp *companion;
+	struct mtk_disp_c3d_primary *primary_data;
+	bool pkt_reused;
+	struct cmdq_reuse reuse_c3d[4913 * 2];
+	atomic_t c3d_is_clock_on;
+	atomic_t c3d_sram_hw_init;
+	atomic_t c3d_force_sram_apb;
+	struct cmdq_pkt *sram_pkt;
+	bool has_set_1dlut;
+};
+
 
 int mtk_drm_ioctl_c3d_get_bin_num(struct drm_device *dev, void *data,
 			struct drm_file *file_priv);
@@ -87,7 +162,8 @@ int mtk_drm_ioctl_bypass_c3d(struct drm_device *dev, void *data,
 
 void mtk_disp_c3d_debug(const char *opt);
 void disp_c3d_set_bypass(struct drm_crtc *crtc, int bypass);
-
+inline struct mtk_disp_c3d *comp_to_c3d(struct mtk_ddp_comp *comp);
+void mtk_c3d_regdump(struct mtk_ddp_comp *comp);
 
 #endif
 
