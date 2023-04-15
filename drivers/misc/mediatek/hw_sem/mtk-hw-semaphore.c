@@ -158,7 +158,8 @@ int mtk_hw_semaphore_release(u32 mtcmos_id)
 {
 	struct hw_semaphore *hw_sema = g_hw_sema;
 	struct device *dev = hw_sema->dev;
-	u32 master_id, sema_type;
+	u32 sema_type;
+	s32 master_id;
 
 	master_id = get_master_by_mtcmos_id(mtcmos_id);
 	if (master_id < 0) {
