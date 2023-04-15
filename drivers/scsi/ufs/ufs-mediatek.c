@@ -1252,16 +1252,37 @@ static void ufs_mtk_trace_vh_send_command_vend_ss(void *data, struct ufs_hba *hb
 }
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
+struct ufs_hw_queue *ufs_mtk_mcq_req_to_hwq(struct ufs_hba *hba,
+					    struct request *req)
+{
+	u32 utag = blk_mq_unique_tag(req);
+	u32 hwq = blk_mq_unique_tag_to_hwq(utag);
+
+	/* uhq[0] is used to serve device commands */
+	return &hba->uhq[hwq];
+}
+#endif
+
 static void ufs_mtk_trace_vh_send_command(void *data, struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 {
 	struct scsi_cmnd *cmd = lrbp->cmd;
+#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
+	struct ufs_hw_queue *hq;
+	__u16 qid = 0;
+#endif
 
 	if (!cmd)
 		return;
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-	if (ufs_mtk_is_data_cmd(cmd))
-		mtk_btag_ufs_send_command(lrbp->task_tag, 0, cmd);
+	if (ufs_mtk_is_data_cmd(cmd)) {
+		if (is_mcq_enabled(hba)) {
+			hq = ufs_mtk_mcq_req_to_hwq(hba, scsi_cmd_to_rq(cmd));
+			qid = hq->id;
+		}
+		mtk_btag_ufs_send_command(lrbp->task_tag, qid, cmd);
+	}
 #endif
 }
 
@@ -1277,6 +1298,10 @@ static void ufs_mtk_get_outstanding_reqs(struct ufs_hba *hba,
 static void ufs_mtk_trace_vh_compl_command(void *data, struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 {
 	struct scsi_cmnd *cmd = lrbp->cmd;
+#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
+	struct ufs_hw_queue *hq;
+	__u16 qid = 0;
+#endif
 #if defined(CONFIG_UFSFEATURE)
 	unsigned long outstanding_tasks;
 	struct ufsf_feature *ufsf;
@@ -1297,8 +1322,13 @@ static void ufs_mtk_trace_vh_compl_command(void *data, struct ufs_hba *hba, stru
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-	if (ufs_mtk_is_data_cmd(cmd))
-		mtk_btag_ufs_transfer_req_compl(lrbp->task_tag, 0);
+	if (ufs_mtk_is_data_cmd(cmd)) {
+		if (is_mcq_enabled(hba)) {
+			hq = ufs_mtk_mcq_req_to_hwq(hba, scsi_cmd_to_rq(cmd));
+			qid = hq->id;
+		}
+		mtk_btag_ufs_transfer_req_compl(lrbp->task_tag, qid);
+	}
 #endif
 
 #if defined(CONFIG_UFSFEATURE)
@@ -2317,6 +2347,22 @@ failed:
 	host->mcq_nr_intr = 0;
 }
 
+#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
+static void ufs_mtk_blocktag_add(void *data, async_cookie_t cookie)
+{
+	struct ufs_hba *hba = (struct ufs_hba *)data;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	if (!wait_for_completion_timeout(&host->luns_added, 10 * HZ)) {
+		dev_info(hba->dev, "%s: LUNs not ready before timeout. blocktag init failed",
+			 __func__);
+		return;
+	}
+
+	mtk_btag_ufs_init(host, hba->nr_hw_queues, hba->nutrs);
+}
+#endif
+
 /**
  * ufs_mtk_init - find other essential mmio bases
  * @hba: host controller instance
@@ -2423,7 +2469,7 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-	mtk_btag_ufs_init(host, 1, 32);
+	async_schedule(ufs_mtk_blocktag_add, hba);
 #endif
 
 #if IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK_DBG)
