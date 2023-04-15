@@ -55,7 +55,7 @@ static inline bool check_faster_idle_balance(struct sched_group *busiest, struct
 	int dst_cpu = cpu_of(dst_rq);
 	int cpu;
 
-	if (capacity_orig_of(dst_cpu) <= capacity_orig_of(src_cpu))
+	if (cpu_cap_ceiling(dst_cpu) <= cpu_cap_ceiling(src_cpu))
 		return false;
 
 	for_each_cpu(cpu, sched_group_span(busiest)) {

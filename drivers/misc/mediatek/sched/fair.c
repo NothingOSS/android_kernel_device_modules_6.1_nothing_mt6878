@@ -1736,7 +1736,7 @@ static struct task_struct *detach_a_hint_task(struct rq *src_rq, int dst_cpu)
 	lockdep_assert_rq_held(src_rq);
 
 	rcu_read_lock();
-	dst_capacity = capacity_orig_of(dst_cpu);
+	dst_capacity = cpu_cap_ceiling(dst_cpu);
 	list_for_each_entry_reverse(p,
 			&src_rq->cfs_tasks, se.group_node) {
 
