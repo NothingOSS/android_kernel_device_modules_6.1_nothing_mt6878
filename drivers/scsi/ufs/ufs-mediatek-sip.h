@@ -16,16 +16,10 @@
 #define UFS_MTK_SIP_DEVICE_RESET          BIT(1)
 #define UFS_MTK_SIP_CRYPTO_CTRL           BIT(2)
 #define UFS_MTK_SIP_REF_CLK_NOTIFICATION  BIT(3)
-#define UFS_MTK_SIP_HOST_PWR_CTRL         BIT(5)
+#define UFS_MTK_SIP_SRAM_PWR_CTRL         BIT(5)
 #define UFS_MTK_SIP_GET_VCC_NUM           BIT(6)
 #define UFS_MTK_SIP_DEVICE_PWR_CTRL       BIT(7)
 #define UFS_MTK_SIP_MPHY_CTRL             BIT(8)
-
-/* UFS_MTK_SIP_HOST_PWR_CTRL options */
-enum sip_host_pwr_opt {
-	HOST_PWR_HCI,
-	HOST_PWR_MPHY
-};
 
 /*
  * Multi-VCC by Numbering
@@ -81,8 +75,8 @@ static inline void _ufs_mtk_smc(struct ufs_mtk_smc_arg s)
 #define ufs_mtk_device_reset_ctrl(high, res) \
 	ufs_mtk_smc(UFS_MTK_SIP_DEVICE_RESET, &(res), high)
 
-#define ufs_mtk_host_pwr_ctrl(opt, on, res) \
-	ufs_mtk_smc(UFS_MTK_SIP_HOST_PWR_CTRL, &(res), opt, on)
+#define ufs_mtk_sram_pwr_ctrl(on, res) \
+	ufs_mtk_smc(UFS_MTK_SIP_SRAM_PWR_CTRL, &(res), on)
 
 #define ufs_mtk_get_vcc_num(res) \
 	ufs_mtk_smc(UFS_MTK_SIP_GET_VCC_NUM, &(res))

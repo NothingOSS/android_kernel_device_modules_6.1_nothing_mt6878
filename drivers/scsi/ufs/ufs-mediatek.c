@@ -3470,7 +3470,7 @@ static int ufs_mtk_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
 		ufs_mtk_device_reset_ctrl(0, res);
 
 	/* Transfer the ufs version to tfa */
-	ufs_mtk_host_pwr_ctrl(HOST_PWR_HCI, false, res);
+	ufs_mtk_sram_pwr_ctrl(false, res);
 
 	return 0;
 fail:
@@ -3492,7 +3492,7 @@ static int ufs_mtk_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 		ufs_mtk_dev_vreg_set_lpm(hba, false);
 
 	/* Transfer the ufs version to tfa */
-	ufs_mtk_host_pwr_ctrl(HOST_PWR_HCI, true, res);
+	ufs_mtk_sram_pwr_ctrl(true, res);
 
 	err = ufs_mtk_mphy_power_on(hba, true);
 	if (err)

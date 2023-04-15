@@ -186,13 +186,10 @@ static const struct phy_ops ufs_mtk_phy_ops = {
 
 static int ufs_mtk_phy_runtime_suspend(struct device *dev)
 {
-	struct arm_smccc_res res;
 	struct ufs_mtk_phy *phy = dev_get_drvdata(dev);
 
 	if (!ufs_mtk_phy_pm_allowed(phy))
 		goto out;
-
-	ufs_mtk_host_pwr_ctrl(HOST_PWR_MPHY, false, res);
 
 out:
 	return 0;
@@ -200,13 +197,10 @@ out:
 
 static int ufs_mtk_phy_runtime_resume(struct device *dev)
 {
-	struct arm_smccc_res res;
 	struct ufs_mtk_phy *phy = dev_get_drvdata(dev);
 
 	if (!ufs_mtk_phy_pm_allowed(phy))
 		goto out;
-
-	ufs_mtk_host_pwr_ctrl(HOST_PWR_MPHY, true, res);
 
 out:
 	return 0;
@@ -214,7 +208,6 @@ out:
 
 static int ufs_mtk_phy_system_suspend(struct device *dev)
 {
-	struct arm_smccc_res res;
 	struct ufs_mtk_phy *phy = dev_get_drvdata(dev);
 
 	if (pm_runtime_suspended(dev))
@@ -223,21 +216,16 @@ static int ufs_mtk_phy_system_suspend(struct device *dev)
 	if (!ufs_mtk_phy_pm_allowed(phy))
 		goto out;
 
-	ufs_mtk_host_pwr_ctrl(HOST_PWR_MPHY, false, res);
-
 out:
 	return 0;
 }
 
 static int ufs_mtk_phy_system_resume(struct device *dev)
 {
-	struct arm_smccc_res res;
 	struct ufs_mtk_phy *phy = dev_get_drvdata(dev);
 
 	if (!ufs_mtk_phy_pm_allowed(phy))
 		goto out;
-
-	ufs_mtk_host_pwr_ctrl(HOST_PWR_MPHY, true, res);
 
 out:
 	return 0;
