@@ -84,6 +84,7 @@ struct dvfs_params {
 	u32 target_bw_factor; /* target bw = base bw * target_bw_factor*/
 	struct timer_list vdec_active_checker;
 	u8 has_timer;
+	u8 mmdvfs_in_vcp; /* need send dvfs/mmqos request to vcp*/
 };
 
 struct vcodec_inst *get_inst(struct mtk_vcodec_ctx *ctx);

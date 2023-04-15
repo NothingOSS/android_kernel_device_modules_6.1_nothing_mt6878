@@ -2388,12 +2388,16 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 	}
 
 	mutex_lock(&ctx->dev->enc_dvfs_mutex);
-	if (ctx->dev->venc_reg == 0 && ctx->dev->venc_mmdvfs_clk == 0) {
+	if (ctx->dev->venc_dvfs_params.mmdvfs_in_vcp) {
 		mtk_vcodec_enc_pw_on(&ctx->dev->pm);
 		param.venc_dvfs_state = MTK_INST_START;
 		if (venc_if_set_param(ctx, VENC_SET_PARAM_MMDVFS, &param) != 0)
 			mtk_v4l2_err("[VDVFS][%d] stream on ipi fail", ctx->id);
 		mtk_venc_dvfs_sync_vsi_data(ctx);
+
+		// venc still use regulator in AP, only for SWRGO for issue workaround
+		set_venc_opp(ctx->dev, ctx->dev->venc_dvfs_params.target_freq);
+
 		mtk_vcodec_enc_pw_off(&ctx->dev->pm);
 		mtk_v4l2_debug(0, "[VDVFS][%d(%d)] start DVFS(UP):freq:%d, bw_factor:%d",
 			ctx->id, ctx->state,
@@ -2495,12 +2499,16 @@ static void vb2ops_venc_stop_streaming(struct vb2_queue *q)
 
 		ctx->enc_flush_buf->lastframe = NON_EOS;
 		mutex_lock(&ctx->dev->enc_dvfs_mutex);
-		if (ctx->dev->venc_reg == 0 && ctx->dev->venc_mmdvfs_clk == 0) {
+		if (ctx->dev->venc_dvfs_params.mmdvfs_in_vcp) {
 			mtk_vcodec_enc_pw_on(&ctx->dev->pm);
 			param.venc_dvfs_state = MTK_INST_END;
 			if (venc_if_set_param(ctx, VENC_SET_PARAM_MMDVFS, &param) != 0)
 				mtk_v4l2_err("[VDVFS][%d] stream off ipi fail", ctx->id);
 			mtk_venc_dvfs_sync_vsi_data(ctx);
+
+			// venc uses regulator in AP, only for SWRGO for issue workaround
+			set_venc_opp(ctx->dev, ctx->dev->venc_dvfs_params.target_freq);
+
 			mtk_vcodec_enc_pw_off(&ctx->dev->pm);
 			mtk_v4l2_debug(0, "[VDVFS][%d(%d)] stop DVFS(UP):freq:%d, bw_factor%d",
 				ctx->id, ctx->state, ctx->dev->venc_dvfs_params.target_freq,

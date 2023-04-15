@@ -2283,7 +2283,7 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 	caws = container_of(ws, struct vdec_check_alive_work_struct, work);
 	dev = caws->dev;
 
-	mmdvfs_in_vcp = (dev->vdec_reg == 0 && dev->vdec_mmdvfs_clk == 0);
+	mmdvfs_in_vcp = dev->vdec_dvfs_params.mmdvfs_in_vcp;
 
 	mutex_lock(&dev->dec_dvfs_mutex);
 
@@ -3993,7 +3993,7 @@ static int vb2ops_vdec_start_streaming(struct vb2_queue *q, unsigned int count)
 		}
 
 		mutex_lock(&ctx->dev->dec_dvfs_mutex);
-		if (ctx->dev->vdec_reg == 0 && ctx->dev->vdec_mmdvfs_clk == 0) {
+		if (ctx->dev->vdec_dvfs_params.mmdvfs_in_vcp) {
 			if (!mtk_vdec_dvfs_is_pw_always_on(ctx->dev))
 				mtk_vcodec_dec_pw_on(&ctx->dev->pm);
 			mtk_vdec_prepare_vcp_dvfs_data(ctx, vcp_dvfs_data);
@@ -4149,7 +4149,7 @@ static void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 	mutex_unlock(&ctx->buf_lock);
 	mutex_lock(&ctx->dev->dec_dvfs_mutex);
 	ctx->is_active = 0;
-	if (ctx->dev->vdec_reg == 0 && ctx->dev->vdec_mmdvfs_clk == 0) {
+	if (ctx->dev->vdec_dvfs_params.mmdvfs_in_vcp) {
 		if (!mtk_vdec_dvfs_is_pw_always_on(ctx->dev))
 			mtk_vcodec_dec_pw_on(&ctx->dev->pm);
 		mtk_vdec_unprepare_vcp_dvfs_data(ctx, vcp_dvfs_data);
