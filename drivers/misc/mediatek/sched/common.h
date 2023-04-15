@@ -12,9 +12,6 @@
 #define MTK_TASK_GROUP_FLAG 1
 #define MTK_TASK_FLAG 9
 
-/* Task Vendor Data Index*/
-#define T_SBB_FLG 5
-
 struct task_gear_hints {
 	int gear_start;
 	int num_gear;
@@ -37,12 +34,18 @@ struct gp_task_struct {
 	struct list_head	grp_list;
 };
 
+struct sbb_task_struct {
+	int set_task;
+	int set_group;
+};
+
 struct mtk_task {
 	u64 reserved0[MTK_TASK_FLAG];
 	struct vip_task_struct	vip_task;
 	struct soft_affinity_task sa_task;
 	struct gp_task_struct	gp_task;
 	struct task_gear_hints  gear_hints;
+	struct sbb_task_struct sbb_task;
 };
 
 struct soft_affinity_tg {
