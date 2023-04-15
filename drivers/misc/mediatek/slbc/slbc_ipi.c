@@ -537,6 +537,10 @@ static void slbc_scmi_handler(u32 r_feature_id, scmi_tinysys_report *report)
 		if (ipi_ops && ipi_ops->slbc_mem_barrier)
 			ipi_ops->slbc_mem_barrier();
 		break;
+	case IPI_SLBC_BUFFER_CB_NOTIFY:
+		if (ipi_ops && ipi_ops->slbc_buffer_cb_notify)
+			ipi_ops->slbc_buffer_cb_notify(arg, arg2, arg3);
+		break;
 	default:
 		pr_info("wrong slbc IPI command: %d\n",
 				cmd);

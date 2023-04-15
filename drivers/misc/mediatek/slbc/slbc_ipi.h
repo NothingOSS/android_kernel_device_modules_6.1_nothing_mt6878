@@ -52,6 +52,7 @@ enum {
 	IPI_SLBC_TABLE_GID_AXI_RELEASE,
 	IPI_SLBC_TABLE_GID_AXI_GET,
 	IPI_EMI_SLB_SELECT,
+	IPI_SLBC_BUFFER_CB_NOTIFY,
 	NR_IPI_SLBC,
 };
 
@@ -66,6 +67,7 @@ struct slbc_ipi_ops {
 	int (*slbc_request_acp)(void *ptr);
 	int (*slbc_release_acp)(void *ptr);
 	void (*slbc_mem_barrier)(void);
+	void (*slbc_buffer_cb_notify)(u32 arg, u32 arg2, u32 arg3);
 };
 
 extern int slbc_scmi_set(void *buffer);

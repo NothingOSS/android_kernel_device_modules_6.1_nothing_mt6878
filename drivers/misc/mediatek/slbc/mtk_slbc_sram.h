@@ -77,6 +77,7 @@
 #define SLBC_DEBUG_13                   0xB4
 #define SLBC_DEBUG_14                   0xB8
 #define SLBC_DEBUG_15                   0xBC
+#define SLBC_UID_USED2                  0xC0
 
 /* SLBC_UID_USED */
 #define SLBC_UID_USED_STA_LSB           SLBC_BIT(0)
@@ -297,5 +298,9 @@
 #define SLBC_DEBUG_15_STA_LSB           SLBC_BIT(0)
 #define SLBC_DEBUG_15_STA_SHIFT         0
 #define SLBC_DEBUG_15_STA_MASK          SLBC_BITMASK(31:0)
+/* SLBC_UID_USED2 */
+#define SLBC_UID_USED2_STA_LSB          SLBC_BIT(0)
+#define SLBC_UID_USED2_STA_SHIFT        0
+#define SLBC_UID_USED2_STA_MASK         SLBC_BITMASK(31:0)
 
 #endif

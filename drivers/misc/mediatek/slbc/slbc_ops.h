@@ -74,6 +74,8 @@ enum slbc_uid {
 	UID_APU,
 	UID_AOD,
 	UID_BIF,
+	UID_MM_VENC_SL,
+	UID_SENSOR,
 	UID_MAX,
 };
 
@@ -85,6 +87,9 @@ enum slbc_uid {
 
 #define UID_MM_BITS_3 (BIT(UID_MML) | BIT(UID_DISP))
 #define BIT_IN_MM_BITS_3(x) ((x) & UID_MM_BITS_3)
+
+#define UID_MM_BITS_4 (BIT(UID_AISR_APU) | BIT(UID_AISR_MML))
+#define BIT_IN_MM_BITS_4(x) ((x) & UID_MM_BITS_4)
 
 enum slbc_type {
 	TP_BUFFER = 0,
