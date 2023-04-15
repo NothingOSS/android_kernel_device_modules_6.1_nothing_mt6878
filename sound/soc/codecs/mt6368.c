@@ -7256,11 +7256,11 @@ static ssize_t mt6368_codec_sysfs_write(struct file *filp, struct kobject *kobj,
 	}
 
 	if (count > MAX_DEBUG_WRITE_INPUT)
-		count = MAX_DEBUG_WRITE_INPUT - 1;
+		count = MAX_DEBUG_WRITE_INPUT;
 
 	memset((void *)input, 0, MAX_DEBUG_WRITE_INPUT);
 	memcpy(input, buf, count);
-	input[(int)count] = '\0';
+	input[MAX_DEBUG_WRITE_INPUT - 1] = '\0';
 
 	str_begin = kstrndup(input, MAX_DEBUG_WRITE_INPUT - 1,
 			     GFP_KERNEL);
