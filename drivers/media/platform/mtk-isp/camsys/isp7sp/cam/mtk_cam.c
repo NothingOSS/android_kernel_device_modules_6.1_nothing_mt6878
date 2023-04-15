@@ -3753,6 +3753,9 @@ static void adlwr_reset(struct mtk_cam_device *cam_dev)
 
 static void init_camsys_main_adl_setting(struct mtk_cam_device *cam_dev)
 {
+	/* CAM_MAIN_ADLWR_CTRL set RAWA/B/C CQ to super priority */
+	writel_relaxed(0xe0, cam_dev->base + 0x328);
+
 	/* CAM_MAIN_DRZB2N_RAW_SEL */
 	writel_relaxed(0, cam_dev->base + 0x3ac);
 
