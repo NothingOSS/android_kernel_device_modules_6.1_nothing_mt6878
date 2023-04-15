@@ -3569,10 +3569,8 @@ static int uarthub_get_uartip_base_addr_mt6985(int dev_index)
 		return UARTHUB_DEV_1_BASE_ADDR(UARTHUB_BASE_ADDR);
 	else if (dev_index == 2)
 		return UARTHUB_DEV_2_BASE_ADDR(UARTHUB_BASE_ADDR);
-	else if (dev_index == 3)
-		return UARTHUB_CMM_BASE_ADDR(UARTHUB_BASE_ADDR);
 
-	return 0;
+	return UARTHUB_CMM_BASE_ADDR(UARTHUB_BASE_ADDR);
 }
 
 int uarthub_trigger_dvt_testing_mt6985(int type)
