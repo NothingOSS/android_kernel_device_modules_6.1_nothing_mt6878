@@ -848,11 +848,12 @@ static void mtk_imgsys_kva_cache(struct mtk_imgsys_dev_buffer *dev_buf)
 
 		buf_va_info = (struct buf_va_info_t *)
 			vzalloc(sizeof(vlist_type(struct buf_va_info_t)));
-		INIT_LIST_HEAD(vlist_link(buf_va_info, struct buf_va_info_t));
 		if (buf_va_info == NULL) {
 			pr_info("%s: null buf_va_info\n", __func__);
 			return;
 		}
+		INIT_LIST_HEAD(vlist_link(buf_va_info, struct buf_va_info_t));
+
 		buf_va_info->buf_fd = dev_buf->vbb.vb2_buf.planes[0].m.fd;
 		buf_va_info->kva = dev_buf->va_daddr[0];
 		buf_va_info->map = map;
@@ -1098,7 +1099,7 @@ static void mtk_imgsys_desc_set(struct mtk_imgsys_pipe *pipe,
 }
 
 static void mtk_imgsys_desc_set_skip(struct mtk_imgsys_pipe *pipe,
-				int dma,
+				unsigned int dma,
 				void *src,
 				struct header_desc *dst,
 				bool iova_need,
@@ -1292,6 +1293,10 @@ void mtk_imgsys_sd_desc_map_iova(struct mtk_imgsys_request *req)
 		dst = NULL;
 	else
 		dst = &dip_param->tuning_meta;
+
+	if ((src == NULL) || (dst == NULL))
+		return;
+
 	mtk_imgsys_desc_set_skip(pipe,
 		MTK_IMGSYS_VIDEO_NODE_TUNING_OUT, src, dst, 1, buf_sd);
 
@@ -1530,7 +1535,7 @@ static void mtk_imgsys_singledevice_fill_ipi_param(struct mtk_imgsys_pipe *pipe,
 	}
 }
 
-static void mtk_imgsys_sd_fill_dmas(struct mtk_imgsys_pipe *pipe, int dma,
+static void mtk_imgsys_sd_fill_dmas(struct mtk_imgsys_pipe *pipe, unsigned int dma,
 					void *sd_dma,
 					struct mtk_imgsys_dev_buffer *dev_buf,
 					bool isMENode)

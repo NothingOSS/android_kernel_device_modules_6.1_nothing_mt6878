@@ -680,13 +680,16 @@ static int mtk_imgsys_videoc_querycap(struct file *file, void *fh,
 				   struct v4l2_capability *cap)
 {
 	struct mtk_imgsys_pipe *pipe = video_drvdata(file);
+	int j = 0;
 
 	strscpy(cap->driver, pipe->desc->name,
 		sizeof(cap->driver));
 	strscpy(cap->card, pipe->desc->name,
 		sizeof(cap->card));
-	snprintf(cap->bus_info, sizeof(cap->bus_info),
+	j = snprintf(cap->bus_info, sizeof(cap->bus_info),
 		 "platform:%s", dev_name(pipe->imgsys_dev->mdev.dev));
+	if (j < 0)
+		return -1;
 
 	return 0;
 }
@@ -915,7 +918,7 @@ static int mtk_imgsys_vidioc_qbuf(struct file *file, void *priv,
 	struct v4l2_plane_pix_format *vfmt;
 	struct plane_pix_format *bfmt;
 #endif
-	if ((buf->index >= VB2_MAX_FRAME) || (buf->index < 0)) {
+	if (buf->index >= VB2_MAX_FRAME) {
 		dev_info(pipe->imgsys_dev->dev, "[%s] error vb2 index %d\n", __func__, buf->index);
 		return -EINVAL;
 	}
@@ -1040,9 +1043,6 @@ static bool get_user_by_file(struct file *filp, struct mtk_imgsys_user **user)
 
 	mutex_lock(&imgsys_dev->imgsys_users.user_lock);
 	list_for_each_entry((*user), &imgsys_dev->imgsys_users.list, entry) {
-		if ((*user) == NULL)
-			continue;
-
 		if ((*user)->fh == filp->private_data) {
 			found = true;
 			pr_debug("%s: user(%lx) found! id(%d)", __func__, (unsigned long)(*user),
@@ -1967,8 +1967,12 @@ static void mtk_imgsys_request_free(struct media_request *req)
 {
 	struct mtk_imgsys_request *imgsys_req =
 					mtk_imgsys_media_req_to_imgsys_req(req);
+	long leavetime = 0;
+
 	if (imgsys_req->used)
-		wait_for_completion_timeout(&imgsys_req->done, HZ);
+		leavetime = wait_for_completion_timeout(&imgsys_req->done, HZ);
+	if (!leavetime)
+		pr_info("timeout(%ld)", leavetime);
 	vfree(imgsys_req->buf_map);
 	vfree(imgsys_req);
 
@@ -2132,12 +2136,15 @@ int mtk_imgsys_dev_media_register(struct device *dev,
 			       struct media_device *media_dev)
 {
 	int ret;
+	int j = 0;
 
 	media_dev->dev = dev;
 	strscpy(media_dev->model, MTK_DIP_DEV_DIP_MEDIA_MODEL_NAME,
 		sizeof(media_dev->model));
-	snprintf(media_dev->bus_info, sizeof(media_dev->bus_info),
+	j = snprintf(media_dev->bus_info, sizeof(media_dev->bus_info),
 		 "platform:%s", dev_name(dev));
+	if (j < 0)
+		pr_info("imgsys_fw: write dev name fail(%d)\n", j);
 	media_dev->hw_revision = 0;
 	media_dev->ops = &mtk_imgsys_media_req_ops;
 	media_device_init(media_dev);
@@ -2358,7 +2365,7 @@ int mtk_imgsys_pipe_v4l2_register(struct mtk_imgsys_pipe *pipe,
 			       struct media_device *media_dev,
 			       struct v4l2_device *v4l2_dev)
 {
-	int i, ret;
+	int i, ret, j;
 
 	ret = mtk_imgsys_pipe_v4l2_ctrl_init(pipe);
 	if (ret) {
@@ -2407,8 +2414,10 @@ int mtk_imgsys_pipe_v4l2_register(struct mtk_imgsys_pipe *pipe,
 			V4L2_TYPE_IS_OUTPUT(pipe->nodes[i].desc->buf_type) ?
 			MEDIA_PAD_FL_SINK : MEDIA_PAD_FL_SOURCE;
 
-	snprintf(pipe->subdev.name, sizeof(pipe->subdev.name),
+	j = snprintf(pipe->subdev.name, sizeof(pipe->subdev.name),
 		 "%s", pipe->desc->name);
+	if (j < 0)
+		pr_info("register name fail\n");
 	v4l2_set_subdevdata(&pipe->subdev, pipe);
 
 	ret = v4l2_device_register_subdev(&pipe->imgsys_dev->v4l2_dev,
@@ -2572,7 +2581,7 @@ static int mtk_imgsys_res_init(struct platform_device *pdev,
 		dev_info(imgsys_dev->dev,
 			"%s: unable to alloc mdpcb workqueue\n", __func__);
 		ret = -ENOMEM;
-		goto destroy_mdpcb_wq;
+		return ret;
 	}
 
 	imgsys_dev->enqueue_wq =
@@ -2584,7 +2593,7 @@ static int mtk_imgsys_res_init(struct platform_device *pdev,
 		dev_info(imgsys_dev->dev,
 			"%s: unable to alloc enqueue workqueue\n", __func__);
 		ret = -ENOMEM;
-		goto destroy_enqueue_wq;
+		return ret;
 	}
 
 
@@ -2597,7 +2606,7 @@ static int mtk_imgsys_res_init(struct platform_device *pdev,
 		dev_info(imgsys_dev->dev,
 			"%s: unable to alloc composer workqueue\n", __func__);
 		ret = -ENOMEM;
-		goto destroy_dip_composer_wq;
+		return ret;
 	}
 
 	for (i = 0; i < RUNNER_WQ_NR; i++) {
@@ -2610,28 +2619,13 @@ static int mtk_imgsys_res_init(struct platform_device *pdev,
 			dev_info(imgsys_dev->dev,
 				"%s: unable to alloc imgsys_runner\n", __func__);
 			ret = -ENOMEM;
-			goto destroy_dip_runner_wq;
+			return ret;
 		}
 	}
 
 	init_waitqueue_head(&imgsys_dev->flushing_waitq);
 
 	return 0;
-
-destroy_dip_runner_wq:
-	for (i = 0; i < RUNNER_WQ_NR; i++)
-		destroy_workqueue(imgsys_dev->mdp_wq[i]);
-
-destroy_dip_composer_wq:
-	destroy_workqueue(imgsys_dev->composer_wq);
-
-destroy_mdpcb_wq:
-	destroy_workqueue(imgsys_dev->mdpcb_wq);
-
-destroy_enqueue_wq:
-	destroy_workqueue(imgsys_dev->enqueue_wq);
-
-	return ret;
 }
 
 static void mtk_imgsys_res_release(struct mtk_imgsys_dev *imgsys_dev)
@@ -3051,12 +3045,6 @@ int mtk_imgsys_runtime_resume(struct device *dev)
 
 	ret = clk_bulk_prepare_enable(imgsys_dev->num_clks,
 				      imgsys_dev->clks);
-	if (ret) {
-		dev_info(imgsys_dev->dev,
-			"%s: failed to enable dip clks(%d)\n",
-			__func__, ret);
-		return ret;
-	}
 
 	dev_dbg(dev, "%s: enabled imgsys clks\n", __func__);
 
@@ -3068,6 +3056,9 @@ int mtk_imgsys_runtime_resume(struct device *dev)
 		dev_info(dev, "%s: FW load failed(rproc:%p):%d\n",
 			__func__, imgsys_dev->rproc_handle,	ret);
 #endif
+		dev_info(imgsys_dev->dev,
+			"%s: failed to enable dip clks(%d)\n",
+			__func__, ret);
 		clk_bulk_disable_unprepare(imgsys_dev->num_clks,
 					   imgsys_dev->clks);
 
