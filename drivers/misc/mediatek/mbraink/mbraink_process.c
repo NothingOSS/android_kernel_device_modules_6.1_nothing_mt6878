@@ -88,6 +88,8 @@ void mbraink_map_vma(struct vm_area_struct *vma, unsigned long cur_pss,
 	struct mm_struct *mm = vma->vm_mm;
 	const char *name = NULL;
 
+	if (vma->vm_file)
+		return;
 	/*
 	 * Print the dentry name for named mappings, and a
 	 * special [heap] marker for the heap:
@@ -152,6 +154,7 @@ void mbraink_get_process_memory_info(pid_t current_pid,
 	unsigned short pid_count = 0;
 	unsigned long pss, uss, rss, swap, cur_pss;
 	unsigned long java_heap = 0, native_heap = 0;
+	pid_t tmp_this_pid = 0;
 	int ret = 0;
 
 	memset(process_memory_buffer, 0, sizeof(struct mbraink_process_memory_data));
@@ -164,15 +167,15 @@ void mbraink_get_process_memory_info(pid_t current_pid,
 
 		mm = t->mm;
 		if (mm) {
-			vma = find_vma(mm, 0);
-			if (!vma)
-				vma =  get_gate_vma(mm);
-
+			vma = mm->mmap;
 			if (vma) {
 				java_heap = 0;
 				native_heap = 0;
+				tmp_this_pid =  t->pid;
 
 				memset(&mss, 0, sizeof(mss));
+				read_unlock(&tasklist_lock);
+				mmap_read_lock(mm);
 				while (vma) {
 					cur_pss = (unsigned long)(mss.pss >> PSS_SHIFT);
 					smap_gather_stats(vma, &mss, 0);
@@ -183,6 +186,8 @@ void mbraink_get_process_memory_info(pid_t current_pid,
 
 					vma = vma->vm_next;
 				}
+				mmap_read_unlock(mm);
+				read_lock(&tasklist_lock);
 
 				pss = (unsigned long)(mss.pss >> PSS_SHIFT)/1024;
 				uss = (mss.private_clean+mss.private_dirty)/1024;
@@ -192,7 +197,7 @@ void mbraink_get_process_memory_info(pid_t current_pid,
 
 				if (pid_count < MAX_MEM_STRUCT_SZ) {
 					process_memory_buffer->drv_data[pid_count].pid =
-									(unsigned short)(t->pid);
+								(unsigned short)(tmp_this_pid);
 					process_memory_buffer->drv_data[pid_count].pss = pss;
 					process_memory_buffer->drv_data[pid_count].uss = uss;
 					process_memory_buffer->drv_data[pid_count].rss = rss;
@@ -205,7 +210,7 @@ void mbraink_get_process_memory_info(pid_t current_pid,
 				} else {
 					ret = -1;
 					process_memory_buffer->pid =
-						(unsigned short)(t->pid);
+						(unsigned short)(tmp_this_pid);
 					break;
 				}
 			} else {
