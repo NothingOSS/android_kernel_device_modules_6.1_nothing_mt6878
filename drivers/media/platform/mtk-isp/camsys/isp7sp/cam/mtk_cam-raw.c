@@ -442,16 +442,12 @@ void update_scq_start_period(struct mtk_raw_device *dev, int scq_ms)
 void stream_on(struct mtk_raw_device *dev, int on)
 {
 	if (on) {
-		if (!dev->is_slave) {
-			/* toggle db before stream-on */
-			enable_tg_db(dev, 0);
-			enable_tg_db(dev, 1);
-			toggle_db(dev);
+		/* toggle db before stream-on */
+		enable_tg_db(dev, 0);
+		enable_tg_db(dev, 1);
 
-			set_tg_vfdata_en(dev, 1);
-			set_topdebug_rdyreq(dev, TG_OVERRUN);
-		} else
-			toggle_db(dev);
+		set_tg_vfdata_en(dev, 1);
+		set_topdebug_rdyreq(dev, TG_OVERRUN);
 	} else {
 		set_tg_vfdata_en(dev, 0);
 		enable_tg_db(dev, 0);
@@ -472,8 +468,6 @@ void immediate_stream_off(struct mtk_raw_device *dev)
 static inline void trigger_rawi(struct mtk_raw_device *dev, u32 val)
 {
 	int cookie;
-
-	toggle_db(dev);
 
 	/* update fsm's cookie_inner since m2m flow has no sof to update it */
 	cookie = readl(dev->base_inner + REG_FRAME_SEQ_NUM);

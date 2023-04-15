@@ -823,6 +823,19 @@ static int get_tg_seninf_pad(struct mtk_cam_job *job)
 	}
 }
 
+static void toggle_raw_engines_db(struct mtk_cam_ctx *ctx)
+{
+	struct mtk_raw_device *raw_dev;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
+		if (ctx->hw_raw[i]) {
+			raw_dev = dev_get_drvdata(ctx->hw_raw[i]);
+			toggle_db(raw_dev);
+		}
+	}
+}
+
 static int
 _stream_on(struct mtk_cam_job *job, bool on)
 {
@@ -854,9 +867,14 @@ _stream_on(struct mtk_cam_job *job, bool on)
 			apply_cam_mux_switch_stagger(job);
 	}
 
+	toggle_raw_engines_db(ctx);
+
 	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
 		if (ctx->hw_raw[i]) {
 			raw_dev = dev_get_drvdata(ctx->hw_raw[i]);
+
+			if (raw_dev->is_slave)
+				continue;
 
 			if (job->enable_hsf_raw) {
 				ccu_stream_on(ctx, on);
@@ -1450,6 +1468,8 @@ static int trigger_m2m(struct mtk_cam_job *job)
 	is_apu = is_m2m_apu(job);
 
 	mtk_cam_event_frame_sync(&ctx->cam_ctrl, job->req_seq);
+
+	toggle_raw_engines_db(ctx);
 
 	if (is_apu) {
 		is_apu_dc = is_m2m_apu_dc(job);
