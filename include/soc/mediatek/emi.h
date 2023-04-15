@@ -44,6 +44,7 @@
 struct emi_addr_map {
 	int emi;
 	int channel;
+	int dram_chn;
 	int rank;
 	int bank;
 	int row;

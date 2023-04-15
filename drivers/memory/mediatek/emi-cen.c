@@ -86,6 +86,7 @@ struct emi_cen {
 		struct a2d_s6s_v1 v1;
 		struct a2d_s6s_v2 v2;
 	} a2d_s6s;
+	unsigned int *chn_swap;
 };
 
 struct mtk_emi_compatible {
@@ -430,6 +431,7 @@ static int mtk_emicen_addr2dram_v1(unsigned long addr,
 
 	map->emi = -1;
 	map->channel = -1;
+	map->dram_chn = -1;
 	map->rank = -1;
 	map->bank = -1;
 	map->row = -1;
@@ -525,6 +527,9 @@ static int mtk_emicen_addr2dram_v1(unsigned long addr,
 		} else
 			return -1;
 	}
+
+	tmp = (map->emi << 1) | map->channel;
+	map->dram_chn = global_emi_cen->chn_swap[tmp];
 
 	if (map->channel > 1)
 		ch_ab_not_cd = 0;
@@ -908,6 +913,7 @@ static int mtk_emicen_addr2dram_v2(unsigned long addr,
 
 	map->emi = -1;
 	map->channel = -1;
+	map->dram_chn = -1;
 	map->rank = -1;
 	map->bank = -1;
 	map->row = -1;
@@ -986,6 +992,9 @@ static int mtk_emicen_addr2dram_v2(unsigned long addr,
 		else
 			emi_tpos = -1;
 	}
+
+	tmp = (map->emi << 1) | map->channel;
+	map->dram_chn = global_emi_cen->chn_swap[tmp];
 
 	taddr = saddr;
 	if (!disph) {
@@ -1127,8 +1136,8 @@ static ssize_t emicen_addr2dram_show(struct device_driver *driver, char *buf)
 	ret = mtk_emicen_addr2dram(addr, &map);
 	if (!ret)
 		return snprintf(buf, PAGE_SIZE,
-		     "0x%lx\n->\nemi: %d\nchn: %d\nrank:%d\nbank:%d\nrow: %d\ncol: %d\n",
-		     addr, map.emi, map.channel, map.rank,
+		     "0x%lx\n->\nemi:%d\nchn:%d\ndram_chn:%d\nrank:%d\nbank:%d\nrow:%d\ncol:%d\n",
+		     addr, map.emi, map.channel, map.dram_chn, map.rank,
 		     map.bank, map.row, map.column);
 	else
 		return snprintf(buf, PAGE_SIZE, "0x%lx\n->failed\n", addr);
@@ -1162,6 +1171,7 @@ static int emicen_probe(struct platform_device *pdev)
 	struct emi_cen *cen;
 	struct mtk_emi_compatible *dev_comp;
 	unsigned int i;
+	unsigned int size;
 	int ret;
 
 	dev_info(&pdev->dev, "driver probed\n");
@@ -1229,6 +1239,24 @@ static int emicen_probe(struct platform_device *pdev)
 	}
 	for (i = 0; i < cen->ch_cnt; i++)
 		cen->emi_chn_base[i] = of_iomap(emichn_node, i);
+
+	size = sizeof(unsigned int) * cen->ch_cnt;
+	cen->chn_swap = devm_kzalloc(&pdev->dev, size, GFP_KERNEL);
+	if (!cen->chn_swap)
+		return -ENOMEM;
+
+	for (i = 0; i < cen->ch_cnt; i++) {
+		ret = of_property_read_u32_index(emichn_node, "chn-swap", i,
+				&(cen->chn_swap[i]));
+		if (ret) {
+			dev_info(&pdev->dev, "No chn_swap info\n");
+			cen->chn_swap[i] = i;
+		}
+	}
+
+	for (i = 0; i < cen->ch_cnt; i++)
+		dev_info(&pdev->dev, "cen->chn_swap[%d] %d\n",
+			i, cen->chn_swap[i]);
 
 	ret = of_property_read_u32(emicen_node,
 		"a2d-disph", &(cen->disph));
