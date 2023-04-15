@@ -275,7 +275,7 @@ static inline void pd_parse_pdata_src_cap_ext(
 		(u8 *)&pd_port->src_cap_ext, PD_SCEDB_SIZE);
 
 	if (ret < 0)
-		pr_err("%s get source-cap-ext fail\n", __func__);
+		pr_notice("%s get source-cap-ext fail\n", __func__);
 	else
 		pd_parse_log_src_cap_ext(&pd_port->src_cap_ext);
 
@@ -287,6 +287,23 @@ static inline void pd_parse_pdata_src_cap_ext(
 		pd_port->src_cap_ext.source_inputs |= PD_SCEDB_INPUT_INT;
 #endif	/* CONFIG_USB_PD_REV30_BAT_INFO */
 #endif	/* CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL */
+}
+
+static inline void pd_parse_pdata_snk_cap_ext(
+	struct pd_port *pd_port, struct device_node *np)
+{
+	int ret = 0;
+
+	ret = of_property_read_u8_array(np, "pd,sink-cap-ext",
+		(u8 *)&pd_port->snk_cap_ext, PD_SKEDB_SIZE);
+
+	if (ret < 0)
+		pr_notice("%s get sink-cap-ext fail\n", __func__);
+
+#if CONFIG_USB_PD_REV30_BAT_INFO
+	pd_port->snk_cap_ext.battery_info =
+		PD_SKEDB_BATTERIES(0, pd_port->bat_nr);
+#endif	/* CONFIG_USB_PD_REV30_BAT_INFO */
 }
 
 static inline void pd_parse_pdata_mfrs(
@@ -338,6 +355,8 @@ static inline void pd_parse_pdata_mfrs(
 	pd_port->src_cap_ext.vid = vid;
 	pd_port->src_cap_ext.pid = pid;
 #endif	/* CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL */
+	pd_port->snk_cap_ext.vid = vid;
+	pd_port->snk_cap_ext.pid = pid;
 
 	pd_port->id_vdos[0] &= ~PD_IDH_VID_MASK;
 	pd_port->id_vdos[0] |= PD_IDH_VID(vid);
@@ -441,6 +460,7 @@ static int pd_parse_pdata(struct pd_port *pd_port)
 #endif	/* CONFIG_USB_PD_REV30_COUNTRY_AUTHORITY */
 
 		pd_parse_pdata_src_cap_ext(pd_port, np);
+		pd_parse_pdata_snk_cap_ext(pd_port, np);
 		pd_parse_pdata_mfrs(pd_port, np);
 	}
 
@@ -454,7 +474,7 @@ static const struct {
 } supported_dpm_caps[] = {
 	{"local-dr-power", "local_dr_power", DPM_CAP_LOCAL_DR_POWER},
 	{"local-dr-data", "local_dr_data", DPM_CAP_LOCAL_DR_DATA},
-	{"local-ext-powera", "local_ext_powera", DPM_CAP_LOCAL_EXT_POWER},
+	{"local-ext-power", "local_ext_power", DPM_CAP_LOCAL_EXT_POWER},
 	{"local-usb-comm", "local_usb_comm", DPM_CAP_LOCAL_USB_COMM},
 	{"local-usb-suspend", "local_use_suspend", DPM_CAP_LOCAL_USB_SUSPEND},
 	{"local-high-cap", "local_high_cap", DPM_CAP_LOCAL_HIGH_CAP},
@@ -476,6 +496,8 @@ static const struct {
 
 	{"dr-reject-as-dfp", "dr_reject_as_dfp", DPM_CAP_DR_SWAP_REJECT_AS_DFP},
 	{"dr-reject-as-ufp", "dr_reject_as_ufp", DPM_CAP_DR_SWAP_REJECT_AS_UFP},
+
+	{"dp-prefer-mf", "dp_prefer_mf", DPM_CAP_DP_PREFER_MF},
 };
 
 static void pd_core_power_flags_init(struct pd_port *pd_port)
@@ -566,6 +588,7 @@ int pd_core_init(struct tcpc_device *tcpc)
 	int ret;
 
 	mutex_init(&pd_port->pd_lock);
+	mutex_init(&pd_port->rxbuf_lock);
 
 #if CONFIG_USB_PD_BLOCK_TCPM
 	mutex_init(&pd_port->tcpm_bk_lock);
@@ -574,7 +597,6 @@ int pd_core_init(struct tcpc_device *tcpc)
 
 	pd_port->tcpc = tcpc;
 	pd_port->pe_pd_state = PE_IDLE2;
-	pd_port->cap_miss_match = 0; /* For src_cap miss match */
 
 	pe_data_init(pe_data);
 
@@ -589,11 +611,6 @@ int pd_core_init(struct tcpc_device *tcpc)
 #if CONFIG_RECV_BAT_ABSENT_NOTIFY
 	INIT_WORK(&pd_port->fg_bat_work, fg_bat_absent_work);
 #endif /* CONFIG_RECV_BAT_ABSENT_NOTIFY */
-#if IS_ENABLED(CONFIG_WAIT_TX_RETRY_DONE)
-	init_completion(&pd_port->tx_done);
-	complete_all(&pd_port->tx_done);
-#endif /* CONFIG_WAIT_TX_RETRY_DONE */
-
 
 	PE_INFO("PE: %s\n", __func__);
 	return 0;
@@ -767,7 +784,6 @@ int pd_reset_protocol_layer(struct pd_port *pd_port, bool sop_only)
 	pe_data->explicit_contract = false;
 	pe_data->selected_cap = 0;
 	pe_data->during_swap = 0;
-	pd_port->cap_miss_match = 0;
 
 #if CONFIG_USB_PD_REV30_ALERT_REMOTE
 	pe_data->remote_alert = 0;
@@ -976,7 +992,7 @@ int pd_reset_local_hw(struct pd_port *pd_port)
 	pd_set_rx_enable(pd_port, PD_RX_CAP_PE_HARDRESET);
 
 	pd_port->pe_data.explicit_contract = false;
-	pd_port->pe_data.pd_connected  = false;
+	pd_port->pe_data.pd_connected = false;
 	pd_port->pe_data.pe_ready = false;
 
 #if CONFIG_USB_PD_VCONN_SAFE5V_ONLY
@@ -1023,6 +1039,7 @@ int pd_handle_soft_reset(struct pd_port *pd_port)
 
 	pd_reset_protocol_layer(pd_port, true);
 	pd_notify_tcp_event_buf_reset(pd_port, TCP_DPM_RET_DROP_RECV_SRESET);
+	tcpci_notify_pd_state(pd_port->tcpc, PD_CONNECT_SOFT_RESET);
 	return pd_send_sop_ctrl_msg(pd_port, PD_CTRL_ACCEPT);
 }
 
@@ -1083,19 +1100,16 @@ int pd_send_message(struct pd_port *pd_port, uint8_t sop_type,
 	else
 		msg_hdr_private = 0;
 
-#if CONFIG_USB_PD_REV30
 	if (pd_rev >= PD_REV30)
 		tcpc->pd_retry_count = PD30_RETRY_COUNT;
 	else
 		tcpc->pd_retry_count = PD_RETRY_COUNT;
-#endif	/* CONFIG_USB_PD_REV30 */
 
 	msg_id = pe_data->msg_id_tx[sop_type];
 	msg_hdr = PD_HEADER_COMMON(
 		msg, pd_rev, msg_id, count, ext, msg_hdr_private);
 
-	/* ext-cmd 15 is reserved */
-	if ((count > 0) && (msg == PD_DATA_VENDOR_DEF))
+	if (count > 0 && !ext && msg == PD_DATA_VENDOR_DEF)
 		type = PD_TX_STATE_WAIT_CRC_VDM;
 
 	pe_data->msg_id_tx[sop_type] = (msg_id+1) % PD_MSG_ID_MAX;
@@ -1187,12 +1201,15 @@ int pd_send_soft_reset(struct pd_port *pd_port)
 
 	pd_reset_protocol_layer(pd_port, true);
 	pd_notify_tcp_event_buf_reset(pd_port, TCP_DPM_RET_DROP_SENT_SRESET);
+	tcpci_notify_pd_state(pd_port->tcpc, PD_CONNECT_SOFT_RESET);
 	return pd_send_sop_ctrl_msg(pd_port, PD_CTRL_SOFT_RESET);
 }
 
 int pd_send_hard_reset(struct pd_port *pd_port)
 {
 	struct tcpc_device *tcpc = pd_port->tcpc;
+
+	PE_STATE_HRESET_IF_TX_FAILED(pd_port);
 
 	PE_DBG("Send HARD Reset\n");
 	__pm_wakeup_event(tcpc->attach_wake_lock, 6000);
@@ -1349,7 +1366,7 @@ void pd_reset_pe_timer(struct pd_port *pd_port)
 #if CONFIG_USB_PD_REV30_PPS_SINK
 	if (pd_port->request_apdo) {
 		pd_port->request_apdo = false;
-		pd_dpm_start_pps_request_thread(pd_port, false);
+		pd_dpm_start_pps_request(pd_port, false);
 	}
 #endif	/* CONFIG_USB_PD_REV30_PPS_SINK */
 }
@@ -1426,7 +1443,7 @@ void pd_sync_sop_spec_revision(struct pd_port *pd_port)
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
 	if (!pd_port->pe_data.pd_connected) {
-		pd_port->pd_revision[0] = MIN(PD_REV30, rev);
+		pd_port->pd_revision[0] = MIN(pd_port->pd_revision[0], rev);
 		pd_port->pd_revision[1] = MIN(pd_port->pd_revision[1], rev);
 
 		PE_INFO("pd_rev=%d\n", pd_port->pd_revision[0]);

@@ -32,11 +32,14 @@ static const char * const pd_ctrl_msg_name[] = {
 	"ctrlF",
 #if CONFIG_USB_PD_REV30
 	"no_support",
-	"get_src_cap_ex",
+	"get_src_cap_ext",
 	"get_status",
 	"fr_swap",
 	"get_pps",
 	"get_cc",
+	"get_snk_cap_ext",
+	"ctrl17",
+	"get_rev",
 #endif	/* CONFIG_USB_PD_REV30 */
 };
 
@@ -65,7 +68,7 @@ static const char * const pd_data_msg_name[] = {
 	"data9",
 	"dataA",
 	"dataB",
-	"dataC",
+	"rev",
 	"dataD",
 	"dataE",
 	"vdm",
@@ -81,7 +84,7 @@ static inline void print_data_msg_event(struct tcpc_device *tcpc, uint8_t msg)
 
 static const char *const pd_ext_msg_name[] = {
 	"ext0",
-	"src_cap_ex",
+	"src_cap_ext",
 	"status",
 	"get_bat_cap",
 	"get_bat_status",
@@ -95,6 +98,7 @@ static const char *const pd_ext_msg_name[] = {
 	"pps_status",
 	"ci",
 	"cc",
+	"snk_cap_ext",
 };
 
 static inline void print_ext_msg_event(struct tcpc_device *tcpc, uint8_t msg)
@@ -179,6 +183,7 @@ static const char *const tcp_dpm_evt_name[] = {
 
 #if CONFIG_USB_PD_REV30
 	"get_src_cap_ext",
+	"get_sink_cap_ext",
 	"get_status",
 	"fr_swap_snk",
 	"fr_swap_src",
@@ -190,6 +195,7 @@ static const char *const tcp_dpm_evt_name[] = {
 	"get_bat_cap",
 	"get_bat_status",
 	"get_mfrs_info",
+	"get_revision",
 #endif	/* CONFIG_USB_PD_REV30 */
 
 	/* TCP_DPM_EVT_VDM_COMMAND */
@@ -653,9 +659,6 @@ static inline bool pe_is_valid_pd_msg_role(struct pd_port *pd_port,
 	uint8_t msg_pr, msg_dr;
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
-	if (pd_msg == NULL)	/* Good-CRC */
-		return true;
-
 	if (pd_msg->frame_type != TCPC_TX_SOP)
 		return true;
 
@@ -854,6 +857,8 @@ bool pd_process_event(
 #endif
 		print_event(pd_port, pd_event);
 
+	pd_copy_msg_data_from_evt(pd_port, pd_event);
+
 	if ((pd_event->event_type < PD_EVT_PD_MSG_END) && (pd_msg != NULL)) {
 
 		if (!pe_is_valid_pd_msg_id(pd_port, pd_event, pd_msg))
@@ -864,8 +869,6 @@ bool pd_process_event(
 			return true;
 		}
 	}
-
-	pd_copy_msg_data_from_evt(pd_port, pd_event);
 
 	if (pd_curr_is_vdm_evt(pd_port))
 		return pd_process_event_vdm(pd_port, pd_event);
