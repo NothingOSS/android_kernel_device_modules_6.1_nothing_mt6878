@@ -1314,8 +1314,8 @@ static inline void set_pmm_msg_entry(uint32_t *pmm_msg, uint32_t index,
 	pa = page_to_phys(page);
 
 	pmm_msg[index] = PMM_MSG_ENTRY(pa, order);
-	//pr_debug("%s: pmm_msg[%d]=%#x (size=%d order=%d pa=%#lx)\n",
-	//	__func__, index, pmm_msg[index], size, order, pa);
+//	pr_info("%s: pmm_msg[%d]=%#x (size=%d order=%d pa=0x%llx)\n",
+//		__func__, index, pmm_msg[index], size, order, pa);
 }
 
 struct page *alloc_pmm_msg_v2(struct sg_table *table,
