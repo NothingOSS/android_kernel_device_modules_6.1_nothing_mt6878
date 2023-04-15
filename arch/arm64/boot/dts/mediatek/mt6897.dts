@@ -15862,7 +15862,8 @@ FLL0_out,FLL1_out,FLL4_out,FLL5_out,FLL6_out";
 
 &trusty {
 	trusty-sapu {
-		compatible = "android,trusty-sapu";
+		compatible = "mediatek,trusty-sapu";
+		power-version = <1>;
 		iommus = <&apu_iommu0 M4U_PORT_L44_APU_CODE>;
 		status = "okay";
 	};
