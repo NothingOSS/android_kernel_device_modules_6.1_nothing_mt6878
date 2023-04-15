@@ -13297,7 +13297,7 @@
 		resource-ctrl = <&bus26m &infra &syspll>,
 				<&dram_s0 &dram_s1 &spm_emi>,
 				<&spm_pmic &spm_vcore>;
-		constraints = <&rc_bus26m &rc_syspll &rc_vcore>;
+		constraints = <&rc_vcore &rc_bus26m &rc_syspll>;
 		spm-cond = <&spm_cond_pll>;
 		cg-shift = <0>; /* cg blocking index */
 		pll-shift = <0>; /* pll blocking index */
