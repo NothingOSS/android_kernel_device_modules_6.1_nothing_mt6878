@@ -250,6 +250,7 @@ struct cmdq {
 	spinlock_t		irq_removes_lock;
 	struct wait_queue_head	err_irq_wq;
 	unsigned long		err_irq_idx;
+	spinlock_t		irq_idx_lock;
 	struct workqueue_struct	*buf_dump_wq;
 	struct cmdq_thread	thread[CMDQ_THR_MAX_COUNT];
 	u32			prefetch;
@@ -259,6 +260,7 @@ struct cmdq {
 	atomic_t		usage;
 	struct workqueue_struct *timeout_wq;
 	spinlock_t		lock;
+	spinlock_t		event_lock;
 	u32			token_cnt;
 	u16			*tokens;
 #if IS_ENABLED(CONFIG_CMDQ_MMPROFILE_SUPPORT)
@@ -1233,7 +1235,7 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 {
 	struct cmdq *cmdq = dev;
-	unsigned long irq_status, flags = 0L;
+	unsigned long irq_status, flags = 0L, irq_idx_flag;
 	int bit, i;
 	bool secure_irq = false;
 	u32 thd_cnt = 0;
@@ -1299,7 +1301,9 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	end[end_cnt++] = sched_clock();
 #endif
+	spin_lock_irqsave(&cmdq->irq_idx_lock, irq_idx_flag);
 	set_bit(CMDQ_THR_MAX_COUNT, &cmdq->err_irq_idx);
+	spin_unlock_irqrestore(&cmdq->irq_idx_lock, irq_idx_flag);
 	wake_up_interruptible(&cmdq->err_irq_wq);
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	end[end_cnt] = sched_clock();
@@ -1341,10 +1345,12 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 static int cmdq_irq_handler_thread(void *data)
 {
 	struct cmdq *cmdq = data;
-	unsigned long irq, flags;
+	unsigned long irq, flags, irq_idx_flag;
 
 	while (!kthread_should_stop()) {
 		wait_event_interruptible(cmdq->err_irq_wq, cmdq->err_irq_idx);
+		spin_lock_irqsave(&cmdq->irq_idx_lock, irq_idx_flag);
+
 		irq = cmdq->err_irq_idx;
 
 		if (irq & BIT(CMDQ_THR_MAX_COUNT)) {
@@ -1365,6 +1371,7 @@ static int cmdq_irq_handler_thread(void *data)
 
 			clear_bit(CMDQ_THR_MAX_COUNT, &cmdq->err_irq_idx);
 		}
+		spin_unlock_irqrestore(&cmdq->irq_idx_lock, irq_idx_flag);
 	}
 
 	return 0;
@@ -2484,6 +2491,8 @@ static int cmdq_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, cmdq);
 
 	spin_lock_init(&cmdq->lock);
+	spin_lock_init(&cmdq->event_lock);
+	spin_lock_init(&cmdq->irq_idx_lock);
 
 	cmdq_mmp_init();
 
@@ -3122,8 +3131,11 @@ void cmdq_set_event(void *chan, u16 event_id)
 {
 	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
+	unsigned long flags;
 
+	spin_lock_irqsave(&cmdq->event_lock, flags);
 	writel((1L << 16) | event_id, cmdq->base + CMDQ_SYNC_TOKEN_UPD);
+	spin_unlock_irqrestore(&cmdq->event_lock, flags);
 }
 EXPORT_SYMBOL(cmdq_set_event);
 
@@ -3131,8 +3143,11 @@ void cmdq_clear_event(void *chan, u16 event_id)
 {
 	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
+	unsigned long flags;
 
+	spin_lock_irqsave(&cmdq->event_lock, flags);
 	writel(event_id, cmdq->base + CMDQ_SYNC_TOKEN_UPD);
+	spin_unlock_irqrestore(&cmdq->event_lock, flags);
 }
 EXPORT_SYMBOL(cmdq_clear_event);
 
@@ -3140,9 +3155,14 @@ u32 cmdq_get_event(void *chan, u16 event_id)
 {
 	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
+	u32 event_val = 0;
+	unsigned long flags;
 
+	spin_lock_irqsave(&cmdq->event_lock, flags);
 	writel(0x3FF & event_id, cmdq->base + CMDQ_SYNC_TOKEN_ID);
-	return readl(cmdq->base + CMDQ_SYNC_TOKEN_VAL);
+	event_val = readl(cmdq->base + CMDQ_SYNC_TOKEN_VAL);
+	spin_unlock_irqrestore(&cmdq->event_lock, flags);
+	return event_val;
 }
 EXPORT_SYMBOL(cmdq_get_event);
 
