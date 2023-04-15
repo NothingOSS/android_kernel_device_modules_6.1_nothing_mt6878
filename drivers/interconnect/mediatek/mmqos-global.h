@@ -11,6 +11,26 @@
 #define MMQOS_ERR(fmt, args...) \
 	pr_notice("error: %s:%d: "fmt"\n", __func__, __LINE__, ##args)
 
+#define FAIL(name) MMQOS_ERR("%s, fail!!", name)
+#define FAIL_DETAIL(a, b, name) MMQOS_ERR("%d != %d, %s, fail!!", a, b, name)
+#define PASS(name) MMQOS_DBG("%s, pass!!", name)
+#define _assert_eq(a, b, test_name)			\
+	do {						\
+		if (!(a == b)) {			\
+			FAIL_DETAIL(a, b, test_name);	\
+		} else {				\
+			PASS(test_name);		\
+		}					\
+	} while (0)
+#define _assert(test, test_name)		\
+	do {					\
+		if (!(test)) {			\
+			FAIL(test_name);	\
+		} else {			\
+			PASS(test_name);	\
+		}				\
+	} while (0)
+
 enum mmqos_state_level {
 	MMQOS_DISABLE = 0,
 	OSTD_ENABLE = BIT(0),
@@ -20,6 +40,7 @@ enum mmqos_state_level {
 	DISP_BY_LARB_ENABLE = BIT(4),
 	VCP_ENABLE = BIT(5),
 	VCODEC_BW_BYPASS = BIT(6),
+	DPC_ENABLE = BIT(7),
 };
 extern u32 mmqos_state;
 
@@ -29,6 +50,7 @@ enum mmqos_log_level {
 	log_v2_dbg,
 	log_vcp_pwr,
 	log_ipi,
+	log_test,
 };
 extern u32 log_level;
 

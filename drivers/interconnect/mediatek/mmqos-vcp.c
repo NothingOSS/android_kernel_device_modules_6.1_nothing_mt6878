@@ -10,6 +10,7 @@
 #include <linux/rpmsg.h>
 #include <linux/rpmsg/mtk_rpmsg.h>
 #include "mmqos-vcp.h"
+#include "mmqos-test.h"
 #include "mmqos-vcp-memory.h"
 #include "vcp.h"
 #include "vcp_status.h"
@@ -291,9 +292,13 @@ void mmqos_start_test_id(u32 test_id)
 	int ret;
 
 	MMQOS_DBG("start test_id:%d", test_id);
-	mtk_mmqos_enable_vcp(true);
-	ret = mmqos_vcp_ipi_send(FUNC_TEST, test_id, NULL);
-	mtk_mmqos_enable_vcp(false);
+	if (test_id < VCP_TEST_NUM) {
+		mtk_mmqos_enable_vcp(true);
+		ret = mmqos_vcp_ipi_send(FUNC_TEST, test_id, NULL);
+		mtk_mmqos_enable_vcp(false);
+	} else {
+		mmqos_kernel_test(test_id);
+	}
 	MMQOS_DBG("test done ret:%d", ret);
 }
 

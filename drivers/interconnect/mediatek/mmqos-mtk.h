@@ -87,6 +87,26 @@ struct common_node {
 	struct list_head comm_port_list;
 };
 
+struct common_port_node {
+	struct mmqos_base_node *base;
+	struct common_node *common;
+	struct device *larb_dev;
+	struct mutex bw_lock;
+	u32 latest_mix_bw;
+	u64 latest_peak_bw;
+	u32 latest_avg_bw;
+	u32 old_avg_w_bw;
+	u32 old_avg_r_bw;
+	u32 old_peak_w_bw;
+	u32 old_peak_r_bw;
+	struct list_head list;
+	u8 channel;
+	u8 channel_v2;
+	u8 hrt_type;
+	u32 write_peak_bw;
+	u32 write_avg_bw;
+};
+
 struct larb_node {
 	struct mmqos_base_node *base;
 	struct device *larb_dev;
@@ -157,6 +177,15 @@ enum mminfra_freq_mode {
 	BY_MMDVFS,
 	BY_VMMRC,
 };
+
+/* For Channel BW */
+void update_channel_bw(const u32 comm_id, const u32 chnn_id,
+	struct icc_node *src);
+void clear_chnn_bw(void);
+void check_disp_chnn_bw(int i, int j, const int *ans);
+void check_chnn_bw(int i, int j, int srt_r, int srt_w, int hrt_r, int hrt_w);
+struct common_port_node *create_fake_comm_port_node(int hrt_type,
+	int srt_r, int srt_w, int hrt_r, int hrt_w);
 
 /* For MET */
 bool mmqos_met_enabled(void);

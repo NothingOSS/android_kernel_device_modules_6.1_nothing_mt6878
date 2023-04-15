@@ -9,6 +9,7 @@
 #include "mmqos-global.h"
 
 #define IPI_TIMEOUT_MS	(200U)
+#define VCP_TEST_NUM	(100)
 
 #if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
 int mmqos_vcp_init_thread(void *data);
