@@ -1045,6 +1045,7 @@ err_buf_exit:
 			mml_log("dec config %p and del", cfg);
 
 			list_del_init(&cfg->entry);
+			ctx->config_cnt--;
 
 			/* revert racing ref count decrease after done */
 			if (cfg->info.mode == MML_MODE_RACING)
