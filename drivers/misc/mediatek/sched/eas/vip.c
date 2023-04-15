@@ -186,6 +186,47 @@ int is_VVIP(struct task_struct *p)
 	return 0;
 }
 
+/* basic vip interace */
+void set_task_basic_vip(int pid)
+{
+	struct task_struct *p;
+	struct vip_task_struct *vts;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (p) {
+		get_task_struct(p);
+		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+		vts->basic_vip = true;
+		put_task_struct(p);
+	}
+	rcu_read_unlock();
+}
+
+void unset_task_basic_vip(int pid)
+{
+	struct task_struct *p;
+	struct vip_task_struct *vts;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (p) {
+		get_task_struct(p);
+		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+		vts->basic_vip = false;
+		put_task_struct(p);
+	}
+	rcu_read_unlock();
+}
+/* end of basic vip interface */
+
+bool is_VIP_basic(struct task_struct *p)
+{
+	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+
+	return vts->basic_vip;
+}
+
 inline int get_vip_task_prio(struct task_struct *p)
 {
 	/* prio = 1 */
@@ -193,7 +234,7 @@ inline int get_vip_task_prio(struct task_struct *p)
 		return VVIP;
 
 	/* prio = 0 */
-	if (is_VIP_task_group(p) || is_VIP_latency_sensitive(p))
+	if (is_VIP_task_group(p) || is_VIP_latency_sensitive(p) || is_VIP_basic(p))
 		return WORKER_VIP;
 
 	return NOT_VIP;
@@ -238,6 +279,7 @@ static void deactivate_vip_task(struct task_struct *p, struct rq *rq)
 	list_del_init(&vts->vip_list);
 	vts->vip_prio = NOT_VIP;
 	vrq->num_vip_tasks -= 1;
+	vts->basic_vip = false;
 
 	if (trace_sched_deactivate_vip_task_enabled()) {
 		pid_t prev_pid = list_head_to_pid(prev);
@@ -476,6 +518,7 @@ void init_vip_task_struct(struct task_struct *p)
 	vts->sum_exec_snapshot = 0;
 	vts->total_exec = 0;
 	vts->vip_prio = NOT_VIP;
+	vts->basic_vip = false;
 }
 
 void init_task_gear_hints(struct task_struct *p)
