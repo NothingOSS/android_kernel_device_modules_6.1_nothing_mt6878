@@ -1303,10 +1303,9 @@ void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 	atomic_set(&cam_ctrl->stream_on_cnt, 1);
 
 	init_waitqueue_head(&cam_ctrl->event_wq);
-
 	init_waitqueue_head(&cam_ctrl->done_wq);
+	init_waitqueue_head(&cam_ctrl->stop_wq);
 	kthread_init_work(&cam_ctrl->done_work, mtk_cam_ctrl_done_work);
-	mtk_cam_ctx_queue_done_worker(ctx, &cam_ctrl->done_work);
 
 	spin_lock_init(&cam_ctrl->send_lock);
 	rwlock_init(&cam_ctrl->list_lock);
@@ -1315,12 +1314,12 @@ void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 	spin_lock_init(&cam_ctrl->info_lock);
 	reset_runtime_info(cam_ctrl);
 
-	init_waitqueue_head(&cam_ctrl->stop_wq);
-
 	vsync_reset(&cam_ctrl->vsync_col);
 	cam_ctrl->cur_cq_ref = 0;
 
 	mtk_cam_watchdog_init(&cam_ctrl->watchdog);
+
+	mtk_cam_ctx_queue_done_worker(ctx, &cam_ctrl->done_work);
 
 	dev_info(ctx->cam->dev, "[%s] ctx:%d\n", __func__, ctx->stream_id);
 }
