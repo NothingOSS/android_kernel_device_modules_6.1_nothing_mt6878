@@ -184,6 +184,7 @@ static struct dump_buffer *acquire_dump_buffer(struct dump_ctrl *ctrl,
 	struct dump_buffer *release = NULL;
 	struct dump_buffer *buf;
 	int cnt;
+	bool print_release = false;
 
 	spin_lock(&ctrl->lock);
 
@@ -193,6 +194,9 @@ static struct dump_buffer *acquire_dump_buffer(struct dump_ctrl *ctrl,
 		return buf;
 	}
 
+	if (ctrl->buffer_cnt < MAX_DUMP_BUFFER_NUM)
+		goto SKIP_SEARCH;
+
 	buf = find_buffer_from_locked(&ctrl->dump_list, enough_buf_size, &size);
 	if (buf) {
 		spin_unlock(&ctrl->lock);
@@ -200,22 +204,28 @@ static struct dump_buffer *acquire_dump_buffer(struct dump_ctrl *ctrl,
 		return buf;
 	}
 
-	if (ctrl->buffer_cnt == MAX_DUMP_BUFFER_NUM) {
-
-		release = find_buffer_from_locked(&ctrl->buf_pool,
+	/* failed to find buffer w. enough size, realloc */
+	release = find_buffer_from_locked(&ctrl->buf_pool,
+					  first_entry, NULL);
+	if (!release) {
+		release = find_buffer_from_locked(&ctrl->dump_list,
 						  first_entry, NULL);
-		if (!release)
-			release = find_buffer_from_locked(&ctrl->dump_list,
-							  first_entry, NULL);
-
-		if (release)
-			--ctrl->buffer_cnt;
+		print_release = true;
 	}
 
+	if (release)
+		--ctrl->buffer_cnt;
+
+SKIP_SEARCH:
 	spin_unlock(&ctrl->lock);
 
-	if (release)
+	if (release) {
+
+		if (print_release)
+			pr_info("%s: recycle seq %d and release\n", __func__,
+				release->seq);
 		vfree(release);
+	}
 
 	buf = alloc_dump_buffer(size);
 	if (WARN_ON(!buf))
