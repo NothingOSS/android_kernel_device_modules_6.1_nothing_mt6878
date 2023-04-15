@@ -75,7 +75,6 @@ static int scp_platform_ready_notifier_call(struct notifier_block *this,
 		queue_work(sensor_ready_workqueue, &sensor_ready_work);
 		spin_unlock_irqrestore(&sensor_ready_lock, flags);
 	} else if (event == SCP_EVENT_READY) {
-		notify.sequence = 0;
 		notify.sensor_type = SENSOR_TYPE_INVALID;
 		notify.command = SENS_COMM_NOTIFY_READY_CMD;
 		notify.length = 0;

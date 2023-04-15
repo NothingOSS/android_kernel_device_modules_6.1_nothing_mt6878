@@ -17,7 +17,6 @@
 #include "sap.h"
 
 static DEFINE_MUTEX(bus_user_lock);
-static atomic_t cust_cmd_sequence;
 static DECLARE_COMPLETION(cust_cmd_done);
 static DEFINE_SPINLOCK(rx_notify_lock);
 static struct sensor_comm_notify rx_notify;
@@ -72,8 +71,6 @@ static int custom_cmd_slow_seq(int sensor_type, struct share_mem_cmd *shm_cmd)
 		return ret;
 	if (!ret)
 		return -ENOMEM;
-	/* safe sequence given by atomic, round from 0 to 255 */
-	notify.sequence = atomic_inc_return(&cust_cmd_sequence);
 	notify.sensor_type = sensor_type;
 	notify.notify_cmd = SENS_COMM_NOTIFY_CUSTOM_CMD;
 	ret = share_mem_flush(&cust_cmd_shm_tx, &notify);
@@ -171,8 +168,6 @@ static int custom_cmd_fast_seq(int sensor_type, struct custom_cmd *cust_cmd)
 	 */
 	reinit_completion(&cust_cmd_fast_done);
 
-	/* safe sequence given by atomic, round from 0 to 255 */
-	notify.sequence = atomic_inc_return(&cust_cmd_sequence);
 	notify.sensor_type = sensor_type;
 	notify.command = SENS_COMM_NOTIFY_FAST_CUST_CMD;
 	notify.length = offsetof(typeof(*cust_cmd), data) + cust_cmd->tx_len;
@@ -269,8 +264,6 @@ static int custom_cmd_r_shm_cfg(struct share_mem_config *cfg,
 int custom_cmd_init(void)
 {
 	unsigned long flags = 0;
-
-	atomic_set(&cust_cmd_sequence, 0);
 
 	spin_lock_irqsave(&rx_notify_lock, flags);
 	memset(&rx_notify, 0, sizeof(rx_notify));

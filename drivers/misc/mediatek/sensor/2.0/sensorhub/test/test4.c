@@ -37,7 +37,6 @@ static void test_work_func(struct work_struct *work)
 	struct sensor_comm_notify notify;
 	unsigned int i = 0;
 
-	notify.sequence = 0;
 	notify.sensor_type = SENSOR_TYPE_ACCELEROMETER;
 	notify.command = SENS_COMM_NOTIFY_TEST_CMD;
 	notify.length = sizeof(notify.value[0]);

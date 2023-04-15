@@ -11,6 +11,7 @@
 #include <linux/atomic.h>
 #include <linux/string.h>
 #include <linux/timekeeping.h>
+#include <linux/mutex.h>
 
 #include "tiny_crc8.h"
 #include "sensor_comm.h"
@@ -22,7 +23,8 @@ struct sensor_notify_handle {
 };
 
 static bool scp_status;
-static atomic_t sensor_comm_sequence;
+static DEFINE_MUTEX(sensor_comm_lock);
+static uint8_t sensor_comm_sequence;
 static
 struct sensor_notify_handle sens_notify_handle[MAX_SENS_COMM_NOTIFY_CMD];
 
@@ -57,13 +59,13 @@ static int sensor_comm_ctrl_seq_send(struct sensor_comm_ctrl *ctrl,
 	struct sensor_comm_ack ack;
 
 	memset(&ack, 0, sizeof(ack));
-	/* safe sequence given by atomic, round from 0 to 255 */
-	ctrl->sequence = atomic_inc_return(&sensor_comm_sequence);
+	ctrl->sequence = sensor_comm_sequence;
 	ctrl->crc8 = tiny_crc8((uint8_t *)ctrl, offsetof(typeof(*ctrl), crc8));
 	ret = ipi_comm_sync(get_ctrl_id(), (unsigned char *)ctrl, size,
 		(unsigned char *)&ack, sizeof(ack));
 	if (ret < 0)
 		return ret;
+	sensor_comm_sequence++;
 	crc = tiny_crc8((uint8_t *)&ack, offsetof(typeof(ack), crc8));
 	if (ack.crc8 != crc) {
 		pr_err("unrecognized packet %u %u %u %u %u %u\n",
@@ -82,7 +84,8 @@ static int sensor_comm_ctrl_seq_send(struct sensor_comm_ctrl *ctrl,
 	return 0;
 }
 
-int sensor_comm_ctrl_send(struct sensor_comm_ctrl *ctrl, unsigned int size)
+static int sensor_comm_ctrl_send_locked(struct sensor_comm_ctrl *ctrl,
+		unsigned int size)
 {
 	int retry = 0, ret = 0;
 	const int max_retry = 10;
@@ -107,29 +110,73 @@ int sensor_comm_ctrl_send(struct sensor_comm_ctrl *ctrl, unsigned int size)
 	return ret;
 }
 
-int sensor_comm_notify(struct sensor_comm_notify *notify)
+int sensor_comm_ctrl_send(struct sensor_comm_ctrl *ctrl, unsigned int size)
 {
+	int ret = 0;
+
+	mutex_lock(&sensor_comm_lock);
+	ret = sensor_comm_ctrl_send_locked(ctrl, size);
+	mutex_unlock(&sensor_comm_lock);
+	return ret;
+}
+
+static int sensor_comm_notify_locked(struct sensor_comm_notify *notify)
+{
+	int ret = 0;
+
 	if (!READ_ONCE(scp_status)) {
 		pr_err_ratelimited("dropped comm %u %u\n",
 			notify->sensor_type, notify->command);
-		return 0;
+		return -EPERM;
 	}
 
+	notify->sequence = sensor_comm_sequence;
 	notify->crc8 =
 		tiny_crc8((uint8_t *)notify, offsetof(typeof(*notify), crc8));
-	return ipi_comm_noack(get_notify_id(), (unsigned char *)notify,
+	ret = ipi_comm_noack(get_notify_id(), (unsigned char *)notify,
 		sizeof(*notify));
+	if (ret < 0)
+		return ret;
+	sensor_comm_sequence++;
+	return ret;
+}
+
+int sensor_comm_notify(struct sensor_comm_notify *notify)
+{
+	int ret = 0;
+
+	mutex_lock(&sensor_comm_lock);
+	ret = sensor_comm_notify_locked(notify);
+	mutex_unlock(&sensor_comm_lock);
+	return ret;
 }
 
 /*
  * no need check scp_status due to send ready to scp.
  */
-int sensor_comm_notify_bypass(struct sensor_comm_notify *notify)
+static int sensor_comm_notify_bypass_locked(struct sensor_comm_notify *notify)
 {
+	int ret = 0;
+
+	notify->sequence = sensor_comm_sequence;
 	notify->crc8 =
 		tiny_crc8((uint8_t *)notify, offsetof(typeof(*notify), crc8));
-	return ipi_comm_noack(get_notify_id(), (unsigned char *)notify,
+	ret = ipi_comm_noack(get_notify_id(), (unsigned char *)notify,
 		sizeof(*notify));
+	if (ret < 0)
+		return ret;
+	sensor_comm_sequence++;
+	return ret;
+}
+
+int sensor_comm_notify_bypass(struct sensor_comm_notify *notify)
+{
+	int ret = 0;
+
+	mutex_lock(&sensor_comm_lock);
+	ret = sensor_comm_notify_bypass_locked(notify);
+	mutex_unlock(&sensor_comm_lock);
+	return ret;
 }
 
 void sensor_comm_notify_handler_register(uint8_t cmd,
@@ -166,7 +213,7 @@ static struct notifier_block sensor_comm_ready_notifier = {
 
 int sensor_comm_init(void)
 {
-	atomic_set(&sensor_comm_sequence, 0);
+	sensor_comm_sequence = 0;
 	ipi_comm_init();
 	ipi_comm_notify_handler_register(sensor_comm_notify_handler);
 	sensor_ready_notifier_chain_register(&sensor_comm_ready_notifier);

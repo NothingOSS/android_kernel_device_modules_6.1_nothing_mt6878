@@ -63,9 +63,8 @@ static int share_mem_notify(struct share_mem *shm,
 	struct sensor_comm_notify n;
 
 	if (shm->write_position == shm->last_write_position)
-		return 0;
+		return -ENOBUFS;
 
-	n.sequence = notify->sequence;
 	n.sensor_type = notify->sensor_type;
 	n.command = notify->notify_cmd;
 	n.value[0] = shm->write_position;
@@ -73,6 +72,7 @@ static int share_mem_notify(struct share_mem *shm,
 	ret = sensor_comm_notify(&n);
 	if (ret < 0)
 		return ret;
+	notify->sequence = n.sequence;
 	shm->last_write_position = shm->write_position;
 	return ret;
 }
@@ -95,7 +95,6 @@ static void share_mem_buffer_full_detect(struct share_mem *shm,
 	shm->buffer_full_written = (wp > rp) ?
 		(wp - rp) : (buffer_size - rp + wp);
 	if (shm->buffer_full_written >= shm->buffer_full_threshold) {
-		notify.sequence = 0;
 		notify.sensor_type = SENSOR_TYPE_INVALID;
 		notify.notify_cmd = shm->buffer_full_cmd;
 		ret = share_mem_notify(shm, &notify);
