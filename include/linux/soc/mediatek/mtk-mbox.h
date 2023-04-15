@@ -130,6 +130,7 @@ struct mtk_mbox_pin_recv {
 	void *prdata;
 	spinlock_t pin_lock;
 	struct mtk_mbox_recv_record recv_record;
+	atomic_t polling_lock;
 };
 
 

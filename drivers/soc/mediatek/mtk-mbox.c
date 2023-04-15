@@ -448,7 +448,7 @@ int mtk_mbox_polling(struct mtk_mbox_device *mbdev, unsigned int mbox,
 
 	spin_lock_irqsave(&mbdev->info_table[mbox].mbox_lock, flags);
 	/*check lock for */
-	if (pin_recv->lock == MBOX_PIN_BUSY) {
+	if (atomic_read(&pin_recv->polling_lock) == MBOX_PIN_BUSY) {
 		spin_unlock_irqrestore(
 			&mbdev->info_table[mbox].mbox_lock, flags);
 		minfo->record.busy_count++;
@@ -500,7 +500,7 @@ static void mtk_mbox_set_lock(struct mtk_mbox_device *mbdev, unsigned int mbox,
 		pin_recv = &(mbdev->pin_recv_table[i]);
 		if (pin_recv->mbox != mbox)
 			continue;
-		pin_recv->lock = lock;
+		atomic_set(&pin_recv->polling_lock, lock);
 	}
 }
 
