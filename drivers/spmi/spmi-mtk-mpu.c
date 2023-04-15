@@ -136,6 +136,7 @@ static int mtk_spmi_pmif_mpu_probe(struct platform_device *pdev)
 	if (!of_property_read_u32(pdev->dev.of_node, "disable", &disable_pmif_mpu)) {
 		if (disable_pmif_mpu) {
 			pmif_mpu_writel(arb, 0, PMIF_PMIC_ALL_RGN_EN);
+			pmif_mpu_writel(arb, 0, PMIF_PMIC_ALL_RGN_EN_2);
 			dev_info(&pdev->dev, "Disable PMIF MPU\n");
 			return 0;
 		}
