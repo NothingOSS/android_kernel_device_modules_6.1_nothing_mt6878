@@ -35,7 +35,8 @@
 #define SPI_CFG2_REG                      0x0028
 #define SPI_TX_SRC_REG_64                 0x002c
 #define SPI_RX_DST_REG_64                 0x0030
-#define SPI_CFG3_REG	                  0x0040
+#define SPI_CFG3_REG                      0x0040
+#define SPI_CFG5_REG                      0x0068
 
 #define SPI_CFG0_SCK_HIGH_OFFSET          0
 #define SPI_CFG0_SCK_LOW_OFFSET           8
@@ -98,6 +99,11 @@
 #define SPI_CFG3_CMD_BYTELEN_MASK		GENMASK(11, 8)
 #define SPI_CFG3_ADDR_BYTELEN_MASK		GENMASK(15, 12)
 
+#define SPI_PACKET_LENGTH_LOW_MASK		GENMASK(15, 0)
+#define SPI_PACKET_LENGTH_HIGH_MASK		GENMASK(31, 16)
+
+#define SPI_PACKET_LENGTH_HIGH_OFFSET		16
+
 #define MT8173_SPI_MAX_PAD_SEL 3
 
 #define MTK_SPI_PAUSE_INT_STATUS 0x2
@@ -111,6 +117,7 @@
 
 #define MTK_SPI_IPM_PACKET_SIZE SZ_64K
 #define MTK_SPI_IPM_PACKET_LOOP SZ_256
+#define MTK_SPI_IPM_ENHANCE_PACKET_SIZE SZ_4G
 #define DMA_ADDR_EXT_BITS (36)
 #define DMA_ADDR_DEF_BITS (32)
 
@@ -134,6 +141,8 @@ struct mtk_spi_compatible {
 	bool no_need_unprepare;
 	/* some IC need change cs by SW */
 	bool sw_cs;
+	/* some IC enhance patcket length to 4GB*/
+	bool enhance_packet_len;
 };
 
 struct mtk_spi {
@@ -161,6 +170,19 @@ static const struct mtk_spi_compatible mtk_common_compat;
 static const struct mtk_spi_compatible mt2712_compat = {
 	.must_rx = true,
 	.must_tx = true,
+};
+
+static const struct mtk_spi_compatible mt6989_compat = {
+	.need_pad_sel = true,
+	.must_rx = false,
+	.must_tx = false,
+	.enhance_timing = true,
+	.dma_ext = true,
+	.ipm_design = true,
+	.support_quad = true,
+	.no_need_unprepare = false,
+	.sw_cs = true,
+	.enhance_packet_len = true,
 };
 
 static const struct mtk_spi_compatible mt6985_compat = {
@@ -249,6 +271,9 @@ static const struct of_device_id mtk_spi_of_match[] = {
 	{ .compatible = "mediatek,mt6985-spi",
 		.data = (void *)&mt6985_compat,
 	},
+	{ .compatible = "mediatek,mt6989-spi",
+		.data = (void *)&mt6989_compat,
+	},
 	{ .compatible = "mediatek,mt7622-spi",
 		.data = (void *)&mt7622_compat,
 	},
@@ -332,6 +357,8 @@ static void spi_dump_reg(struct mtk_spi *mdata, struct spi_master *master)
 	spi_debug("cfg2:0x%.8x\n", readl(mdata->base + SPI_CFG2_REG));
 	if (mdata->dev_comp->ipm_design)
 		spi_debug("cfg3:0x%.8x\n", readl(mdata->base + SPI_CFG3_REG));
+	if (mdata->dev_comp->enhance_packet_len)
+		spi_debug("cfg5:0x%.8x\n", readl(mdata->base + SPI_CFG5_REG));
 	spi_debug("cmd :0x%.8x\n", readl(mdata->base + SPI_CMD_REG));
 	spi_debug("tx_s:0x%.8x\n", readl(mdata->base + SPI_TX_SRC_REG));
 	spi_debug("tx_s_64:0x%.8x\n", readl(mdata->base + SPI_TX_SRC_REG_64));
@@ -653,29 +680,38 @@ static void mtk_spi_prepare_transfer(struct spi_master *master,
 
 static void mtk_spi_setup_packet(struct spi_master *master)
 {
-	u32 packet_size, packet_loop, reg_val;
+	u32 packet_size, packet_loop, reg_val, packet_size_low, packet_size_high;
 	struct mtk_spi *mdata = spi_master_get_devdata(master);
 
-	if (mdata->dev_comp->ipm_design)
-		packet_size = min_t(u32,
-				    mdata->xfer_len,
-				    MTK_SPI_IPM_PACKET_SIZE);
-	else
-		packet_size = min_t(u32,
-				    mdata->xfer_len,
-				    MTK_SPI_PACKET_SIZE);
-	packet_loop = mdata->xfer_len / packet_size;
-
 	reg_val = readl(mdata->base + SPI_CFG1_REG);
+	if (!mdata->dev_comp->enhance_packet_len) {
+		if (mdata->dev_comp->ipm_design)
+			packet_size = min_t(u32,
+						mdata->xfer_len,
+						MTK_SPI_IPM_PACKET_SIZE);
+		else
+			packet_size = min_t(u32,
+						mdata->xfer_len,
+						MTK_SPI_PACKET_SIZE);
+		packet_loop = mdata->xfer_len / packet_size;
 
-	if (mdata->dev_comp->ipm_design)
+		if (mdata->dev_comp->ipm_design)
+			reg_val &= ~(SPI_CFG1_IPM_PACKET_LENGTH_MASK | SPI_CFG1_PACKET_LOOP_MASK);
+		else
+			reg_val &= ~(SPI_CFG1_PACKET_LENGTH_MASK | SPI_CFG1_PACKET_LOOP_MASK);
+
+		reg_val |= (packet_size - 1) << SPI_CFG1_PACKET_LENGTH_OFFSET;
+		reg_val |= (packet_loop - 1) << SPI_CFG1_PACKET_LOOP_OFFSET;
+		writel(reg_val, mdata->base + SPI_CFG1_REG);
+	} else {
 		reg_val &= ~(SPI_CFG1_IPM_PACKET_LENGTH_MASK | SPI_CFG1_PACKET_LOOP_MASK);
-	else
-		reg_val &= ~(SPI_CFG1_PACKET_LENGTH_MASK | SPI_CFG1_PACKET_LOOP_MASK);
-
-	reg_val |= (packet_size - 1) << SPI_CFG1_PACKET_LENGTH_OFFSET;
-	reg_val |= (packet_loop - 1) << SPI_CFG1_PACKET_LOOP_OFFSET;
-	writel(reg_val, mdata->base + SPI_CFG1_REG);
+		packet_size_low = (mdata->xfer_len - 1) & SPI_PACKET_LENGTH_LOW_MASK;
+		packet_size_high = ((mdata->xfer_len - 1) & SPI_PACKET_LENGTH_HIGH_MASK)
+			>> SPI_PACKET_LENGTH_HIGH_OFFSET;
+		reg_val |= packet_size_low << SPI_CFG1_PACKET_LENGTH_OFFSET;
+		writel(reg_val, mdata->base + SPI_CFG1_REG);
+		writel(packet_size_high, mdata->base + SPI_CFG5_REG);
+	}
 }
 
 static void mtk_spi_enable_transfer(struct spi_master *master)
@@ -695,12 +731,14 @@ static int mtk_spi_get_mult_delta(struct mtk_spi *mdata, u32 xfer_len)
 {
 	u32 mult_delta = 0;
 
-	if (mdata->dev_comp->ipm_design) {
-		if (xfer_len > MTK_SPI_IPM_PACKET_SIZE)
-			mult_delta = xfer_len % MTK_SPI_IPM_PACKET_SIZE;
-	} else {
-		if (xfer_len > MTK_SPI_PACKET_SIZE)
-			mult_delta = xfer_len % MTK_SPI_PACKET_SIZE;
+	if (!mdata->dev_comp->enhance_packet_len) {
+		if (mdata->dev_comp->ipm_design) {
+			if (xfer_len > MTK_SPI_IPM_PACKET_SIZE)
+				mult_delta = xfer_len % MTK_SPI_IPM_PACKET_SIZE;
+		} else {
+			if (xfer_len > MTK_SPI_PACKET_SIZE)
+				mult_delta = xfer_len % MTK_SPI_PACKET_SIZE;
+		}
 	}
 
 	return mult_delta;
