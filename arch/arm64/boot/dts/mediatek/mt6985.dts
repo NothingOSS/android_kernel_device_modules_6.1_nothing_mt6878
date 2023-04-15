@@ -7299,7 +7299,7 @@
 				"path_jpegenc_q_table",
 				"path_jpegenc_bsdma";
 			operating-points-v2 = <&opp_table_venc>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		};
 
 		jpgdec0@17040000 {
@@ -7310,7 +7310,7 @@
 				<GIC_SPI 475 IRQ_TYPE_LEVEL_HIGH 0>;
 			mediatek,larbs = <&smi_larb7>;
 			operating-points-v2 = <&opp_table_venc>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			clocks = <&venc_gcon_clk CLK_VEN_CKE3_JPGDEC>,
 				<&venc_gcon_clk CLK_VEN_CKE4_JPGDEC_C1>,
 				<&mmdvfs_mux MMDVFS_USER_JPEGDEC>;
@@ -7358,7 +7358,7 @@
 				"path_jpegenc_q_table",
 				"path_jpegenc_bsdma";
 			operating-points-v2 = <&opp_table_venc>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		};
 
 		mbist@17860000 {
@@ -7941,7 +7941,7 @@
 				"mdp_wrot1";
 			mdp-opp = <&opp_table_mdp>;
 			operating-points-v2 = <&opp_table_mdp>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			mdp-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			clocks = <&mmdvfs_mux MMDVFS_USER_MDP>;
 			clock-names = "mmdvfs_clk";
 			dre30-hist-sram-start = /bits/ 16 <1536>;
@@ -8321,7 +8321,7 @@
 			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_DISP_FAKE0)>;
 			sspm-aid-enable;
 			operating-points-v2 = <&opp_table_mdp>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			apu = <&apusys_rv>;
 		};
 
@@ -10355,10 +10355,9 @@
 			 <&ovlsys1_config_clk CLK_OVL1_DISP_DLO_ASYNC6>,
 			 <&mmdvfs_mux MMDVFS_USER_DISP>;
 		clock-num = <48>;
-		dvfs-clk-idx = <48>;
 		condition-num = <2>;
 		operating-points-v2 = <&opp_table_disp>;
-		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		lp-mmclk-freq = <218000000>;
 		interconnects = <&mmqos SLAVE_LARB(38) &mmqos SLAVE_COMMON(0)>,
 				<&mmqos SLAVE_LARB(41) &mmqos SLAVE_COMMON(1)>,
@@ -10734,7 +10733,7 @@
 		mediatek,smi-supply = <&disp_ssc0_smi_2x1_sub_comm &disp_ssc1_smi_2x1_sub_comm>;
 		mediatek,common-id = <0>;
 		emimpu-check;
-		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		operating-points-v2 = <&opp_table_mminfra>;
 		smi-common;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_MM_INFRA>;
@@ -10752,7 +10751,7 @@
 		mediatek,smi-supply = <&mdp_ssc4_smi_2x1_sub_comm &mdp_ssc5_smi_2x1_sub_comm>;
 		mediatek,common-id = <1>;
 		emimpu-check;
-		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		operating-points-v2 = <&opp_table_mminfra>;
 		smi-common;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_MM_INFRA>;
@@ -13184,7 +13183,6 @@
 		mediatek,mmdvfs-opp-table = <&opp_table_disp>, <&opp_table_mdp>, <&opp_table_mdp>,
 			<&opp_table_mminfra>, <&opp_table_venc>, <&opp_table_vdec>,
 			<&opp_table_img>, <&opp_table_cam>;
-		power-domains = <&scpsys MT6985_POWER_DOMAIN_DIS0_SHUTDOWN>;
 		#clock-cells = <1>;
 		mediatek,mmdvfs-user-target = <MMDVFS_MUX_DIS>, <MMDVFS_MUX_MDP>, <MMDVFS_MUX_MML>,
 			<MMDVFS_MUX_SMI>, <MMDVFS_MUX_VEN>, <MMDVFS_MUX_VEN>, <MMDVFS_MUX_VEN>,
@@ -13273,13 +13271,13 @@
 		disp-dev = <&dispsys_config>;
 		force-step0 = <1>; /* 0:opp0,  1:opp1, ... */
 		release-step0 = <1>; /* 0:disable,  1:enable */
-		use-v3-pwr = <2>; /* OR operation of (1 << PWR_MMDVFS_XXX) */
+		use-v3-pwr = <0>; /* OR operation of (1 << PWR_MMDVFS_XXX) */
 		vcore-supply = <&mt6363_vbuck6>;
 		vmm-pmic-supply = <&mt6319_6_vbuck3>;
 		fmeter-id = /bits/ 8 <5 6 7 8 9 10 11 58 57 58 69 70 71>;
 		fmeter-type = /bits/ 8 <2 2 2 2 2 2 2 2 5 5 5 5 5>;
 		mediatek,mmdvfs-clk = <&mmdvfs_clk>;
-		debug-version = <4>;
+		debug-version = <3>;
 	};
 
 	mmdvfs-v3-start {
@@ -13291,6 +13289,7 @@
 	};
 
 	mmdvfs {
+		compatible = "mediatek,mmdvfs";
 		operating-points-v2 = <&opp_table_disp>;
 		mediatek,support-mux = "disp0", "disp1", "disp2", "disp3",
 			"mminfra", "mdp0", "mdp1", "venc";
@@ -13321,7 +13320,6 @@
 		mediatek,mux-lp = "TOP_MAINPLL_D5_D2", "TOP_MAINPLL_D5_D2",
 				"TOP_MAINPLL_D5_D2", "TOP_MAINPLL_D5_D2",
 				"", "", "", "";
-		mediatek,mux-lp-vcp;
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 
 		clocks = <&topckgen_clk CLK_TOP_DISP0_SEL>,	/* 0 */
