@@ -1179,9 +1179,16 @@ void mhal_DPTx_Audio_TDM_PG_EN(struct mtk_dp *mtk_dp, BYTE Channel,
 		msWriteByteMask(mtk_dp, (REG_331C_DP_ENCODER1_P0),
 				TDM_AUDIO_RST_DP_ENCODER1_P0_FLDMASK,
 				TDM_AUDIO_RST_DP_ENCODER1_P0_FLDMASK);
+		msWrite2ByteMask(mtk_dp, (REG_3004_DP_ENCODER0_P0),
+				0x1 << SDP_RESET_SW_DP_ENCODER0_P0_FLDMASK_POS,
+				SDP_RESET_SW_DP_ENCODER0_P0_FLDMASK);
+
 		udelay(5);
 		msWriteByteMask(mtk_dp, (REG_331C_DP_ENCODER1_P0),
 				0x0, TDM_AUDIO_RST_DP_ENCODER1_P0_FLDMASK);
+		msWrite2ByteMask(mtk_dp, (REG_3004_DP_ENCODER0_P0),
+				0,
+				SDP_RESET_SW_DP_ENCODER0_P0_FLDMASK);
 	}
 	//audio channel count change reset
 	msWriteByteMask(mtk_dp, (REG_33F4_DP_ENCODER1_P0 + 1), 0, BIT(1));
