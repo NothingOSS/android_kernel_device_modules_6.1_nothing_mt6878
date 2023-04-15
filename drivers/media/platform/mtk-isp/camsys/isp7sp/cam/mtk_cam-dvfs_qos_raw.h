@@ -208,11 +208,13 @@ static struct qos_dma_desc rawi_5_dmas[] = {
 		.dma_name = "rawi_r5",
 		.domain = RAW_DOMAIN,
 		.dst_port = SMI_PORT_RAWI_R5,
+		.ufbc_type = UFBC_BITSTREAM_0,
 	},
 	{
 		.dma_name = "ufdi_r5",
 		.domain = RAW_DOMAIN,
 		.dst_port = SMI_PORT_RAWI_R5,
+		.ufbc_type = UFBC_TABLE_0,
 	},
 };
 

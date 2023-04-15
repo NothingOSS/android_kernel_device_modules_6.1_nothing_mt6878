@@ -336,8 +336,8 @@ EXIT_UNLOCK:
 struct mtk_camsys_qos_path {
 	char name[ICCPATH_NAME_SIZE];
 	struct icc_path *path;
-	u32 applied_bw;
-	u32 pending_bw;
+	s64 applied_bw;
+	s64 pending_bw;
 };
 
 int mtk_cam_qos_probe(struct device *dev,
@@ -386,6 +386,9 @@ int mtk_cam_qos_probe(struct device *dev,
 			ret = -EINVAL;
 		}
 		strscpy(cam_path->name, names[i], ICCPATH_NAME_SIZE);
+
+		cam_path->applied_bw = -1;
+		cam_path->pending_bw = -1;
 	}
 
 	return ret;
@@ -466,16 +469,6 @@ static inline bool is_bitstream(u8 ufbc_type)
 	return (ufbc_type == UFBC_BITSTREAM_0) || (ufbc_type == UFBC_BITSTREAM_1);
 }
 
-static inline int get_ipi_img_output_h(struct mtkcam_ipi_img_output *out)
-{
-	return (out->crop.s.h == 0) ? out->fmt.s.h : out->crop.s.h;
-}
-
-static inline int get_ipi_img_output_w(struct mtkcam_ipi_img_output *out)
-{
-	return (out->crop.s.w == 0) ? out->fmt.s.w : out->crop.s.w;
-}
-
 //assuming max image size 16000*12000*10/8
 #define MMQOS_SIZE_WARNING 240000000
 static int fill_raw_out_qos(struct mtk_cam_job *job,
@@ -485,7 +478,6 @@ static int fill_raw_out_qos(struct mtk_cam_job *job,
 	struct mtkcam_qos_desc *qos_desc;
 	unsigned int size, dst_port;
 	u32 peak_bw, avg_bw, active_h;
-	int img_w, img_h;
 	int i;
 
 	qos_desc = find_qos_desc_by_uid(
@@ -497,10 +489,9 @@ static int fill_raw_out_qos(struct mtk_cam_job *job,
 
 	for (i = 0; i < qos_desc->desc_size &&
 				i < ARRAY_SIZE(out->fmt.stride); i++) {
-		img_w = get_ipi_img_output_w(out);
-		img_h = get_ipi_img_output_h(out);
 		size = get_ufbc_size(out->fmt.format,
-					qos_desc->dma_desc[i].ufbc_type, img_w, img_h);
+					qos_desc->dma_desc[i].ufbc_type,
+					out->fmt.s.w, out->fmt.s.h);
 		size = (size == 0) ? out->buf[0][i].size : size;
 		if (!size)
 			break;
@@ -518,8 +509,7 @@ static int fill_raw_out_qos(struct mtk_cam_job *job,
 		avg_bw = is_bitstream(qos_desc->dma_desc[i].ufbc_type) ?
 				apply_ufo_com_ratio(avg_bw) : avg_bw;
 
-		active_h = (out->crop.p.y*2 >= img_h) ?
-				1 : img_h - out->crop.p.y*2;
+		active_h = (out->crop.s.h == 0) ? out->fmt.s.h : out->crop.s.h;
 		peak_bw = is_dc_mode(job) ?
 				0 : calc_bw(size, linet, active_h);
 
@@ -544,10 +534,10 @@ static int fill_raw_out_qos(struct mtk_cam_job *job,
 		}
 
 		if (CAM_DEBUG_ENABLED(MMQOS))
-			pr_info("%s: %s: req_seq(%d) dst_port:%d uid:%d avg_bw:%dB/s, peak_bw:%dB/s (size:%d crop_h:%d crop_top:%d vb:%d)\n",
+			pr_info("%s: %s: req_seq(%d) dst_port:%d uid:%d avg_bw:%dB/s, peak_bw:%dB/s (size:%d active_h:%d vb:%d)\n",
 				__func__, qos_desc->dma_desc[i].dma_name, job->req_seq,
 				dst_port, out->uid.id, avg_bw, peak_bw,
-				size, img_h, out->crop.p.y, sensor_vb);
+				size, active_h, sensor_vb);
 	}
 
 	return 0;
@@ -920,19 +910,19 @@ void mtk_cam_fill_qos(struct req_buffer_helper *helper)
 }
 
 static bool apply_qos_chk(
-		u32 new_avg, u32 new_peak, u32 *applied, u32 *pending)
+		u32 new_avg, u32 new_peak, s64 *applied, s64 *pending)
 {
-	u32 bw = (new_peak > 0) ? new_peak : new_avg;
+	s64 bw = (new_peak > 0) ? new_peak : new_avg;
 	bool ret = false;
 
-	if (bw > *applied) {
+	if (bw > 0 && bw > *applied) {
 		*applied = bw;
-		*pending = 0;
+		*pending = -1;
 		ret = true;
 	} else if (bw < *applied) {
-		if (*pending > 0 && bw >= *pending) {
-			*applied = bw;
-			*pending = 0;
+		if (*pending >= 0 && bw >= *pending) {
+			*applied = (bw == 0) ? -1 : bw;
+			*pending = -1;
 			ret = true;
 		} else {
 			*pending = bw;
@@ -987,7 +977,7 @@ int mtk_cam_apply_qos(struct mtk_cam_job *job)
 				mtk_icc_set_bw(raw_dev->qos.cam_path[j].path, a_bw, p_bw);
 
 			if (CAM_DEBUG_ENABLED(MMQOS))
-				pr_info("%s: req_seq:%d %s raw-%d icc_path:%s avg/peak:%u/%u(KB/s) applied/pending:%u/%u(KB/s)\n",
+				pr_info("%s: req_seq:%d %s raw-%d icc_path:%s avg/peak:%u/%u(KB/s) applied/pending:%lld/%lld(KB/s)\n",
 						__func__, job->req_seq,
 						apply ? "APPLY" : "BYPASS", i,
 						raw_dev->qos.cam_path[j].name, a_bw, p_bw,
@@ -1009,7 +999,7 @@ int mtk_cam_apply_qos(struct mtk_cam_job *job)
 				mtk_icc_set_bw(yuv_dev->qos.cam_path[j].path, a_bw, p_bw);
 
 			if (CAM_DEBUG_ENABLED(MMQOS))
-				pr_info("%s: req_seq:%d %s yuv-%d icc_path:%s avg/peak:%u/%u(KB/s) applied/pending:%u/%u(KB/s)\n",
+				pr_info("%s: req_seq:%d %s yuv-%d icc_path:%s avg/peak:%u/%u(KB/s) applied/pending:%lld/%lld(KB/s)\n",
 						__func__, job->req_seq,
 						apply ? "APPLY" : "BYPASS", i,
 						yuv_dev->qos.cam_path[j].name, a_bw, p_bw,
@@ -1035,7 +1025,7 @@ int mtk_cam_apply_qos(struct mtk_cam_job *job)
 				mtk_icc_set_bw(sv_dev->qos.cam_path[i].path, a_bw, p_bw);
 
 			if (CAM_DEBUG_ENABLED(MMQOS))
-				pr_info("%s: req_seq:%d %s sv-%d icc_path:%s avg/peak:%u/%u applied/pending:%u/%u\n",
+				pr_info("%s: req_seq:%d %s sv-%d icc_path:%s avg/peak:%u/%u applied/pending:%lld/%lld\n",
 						__func__, job->req_seq,
 						apply ? "APPLY" : "BYPASS", sv_dev->id,
 						sv_dev->qos.cam_path[i].name, a_bw, p_bw,
@@ -1057,7 +1047,7 @@ int mtk_cam_apply_qos(struct mtk_cam_job *job)
 					mtk_icc_set_bw(mraw_dev->qos.cam_path[j].path, a_bw, p_bw);
 
 				if (CAM_DEBUG_ENABLED(MMQOS))
-					pr_info("%s: req_seq:%d %s mraw-%d icc_path:%s avg/peak:%u/%u applied/pending:%u/%u\n",
+					pr_info("%s: req_seq:%d %s mraw-%d icc_path:%s avg/peak:%u/%u applied/pending:%lld/%lld\n",
 							__func__, job->req_seq,
 							apply ? "APPLY" : "BYPASS", mraw_dev->id,
 							mraw_dev->qos.cam_path[j].name, a_bw, p_bw,
@@ -1080,10 +1070,10 @@ int mtk_cam_reset_qos(struct device *dev, struct mtk_camsys_qos *qos)
 	int i;
 
 	for (i = 0, cam_path = qos->cam_path; i < qos->n_path; i++, cam_path++) {
-		if (cam_path->applied_bw > 0) {
+		if (cam_path->applied_bw >= 0) {
 			mtk_icc_set_bw(cam_path->path, 0, 0);
-			cam_path->applied_bw = 0;
-			cam_path->pending_bw = 0;
+			cam_path->applied_bw = -1;
+			cam_path->pending_bw = -1;
 		}
 	}
 
