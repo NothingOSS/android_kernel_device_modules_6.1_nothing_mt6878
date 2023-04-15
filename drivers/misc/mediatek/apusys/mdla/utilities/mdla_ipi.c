@@ -44,9 +44,11 @@ static struct mdla_rpmsg_device mdla_rx_rpm_dev;
 int mdla_ipi_send(int type_0, int type_1, u64 val)
 {
 	struct mdla_ipi_data ipi_cmd_send;
+	int ret = 0;
 
 	if (!mdla_tx_rpm_dev.ept)
 		return 0;
+
 
 	ipi_cmd_send.type0  = type_0;
 	ipi_cmd_send.type1  = type_1;
@@ -61,16 +63,30 @@ int mdla_ipi_send(int type_0, int type_1, u64 val)
 
 	mutex_lock(&mdla_ipi_mtx);
 
-	rpmsg_send(mdla_tx_rpm_dev.ept, &ipi_cmd_send, sizeof(ipi_cmd_send));
-
+	/* power on */
+	ret = rpmsg_sendto(mdla_tx_rpm_dev.ept, NULL, 1, 0);
+	if (ret && ret != -EOPNOTSUPP) {
+		pr_info("%s: rpmsg_sendto(power on) fail(%d)\n", __func__, ret);
+		goto out;
+	}
+	ret = rpmsg_send(mdla_tx_rpm_dev.ept, &ipi_cmd_send, sizeof(ipi_cmd_send));
+	if (ret) {
+		mdla_err("%s: rpmsg_send fail(%d)\n", __func__, ret);
+		/* power off to restore ref cnt */
+		ret = rpmsg_sendto(mdla_tx_rpm_dev.ept, NULL, 0, 1);
+		if (ret && ret != -EOPNOTSUPP)
+			mdla_err("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret);
+		goto out;
+	}
+out:
 	mutex_unlock(&mdla_ipi_mtx);
-
 	return 0;
 }
 
 int mdla_ipi_recv(int type_0, int type_1, u64 *val)
 {
 	struct mdla_ipi_data ipi_cmd_send;
+	int ret = 0;
 
 	ipi_cmd_send.type0  = type_0;
 	ipi_cmd_send.type1  = type_1;
@@ -79,27 +95,45 @@ int mdla_ipi_recv(int type_0, int type_1, u64 *val)
 
 	mutex_lock(&mdla_ipi_mtx);
 
-	rpmsg_send(mdla_tx_rpm_dev.ept, &ipi_cmd_send, sizeof(ipi_cmd_send));
+	/* power on */
+	ret = rpmsg_sendto(mdla_tx_rpm_dev.ept, NULL, 1, 0);
+	if (ret && ret != -EOPNOTSUPP) {
+		mdla_err("%s: rpmsg_sendto(power on) fail(%d)\n", __func__, ret);
+		goto out;
+	}
+
+	ret = rpmsg_send(mdla_tx_rpm_dev.ept, &ipi_cmd_send, sizeof(ipi_cmd_send));
+
+	if (ret) {
+		mdla_err("%s: rpmsg_send fail(%d)\n", __func__, ret);
+		/* power off to restore ref cnt */
+		ret = rpmsg_sendto(mdla_tx_rpm_dev.ept, NULL, 0, 1);
+		if (ret && ret != -EOPNOTSUPP)
+			mdla_err("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret);
+		goto out;
+	}
 
 	if (wait_for_completion_interruptible_timeout(
 			&mdla_tx_rpm_dev.ack,
 			msecs_to_jiffies(10)) == 0) {
 		mutex_unlock(&mdla_ipi_mtx);
 		mdla_err("%s: timeout\n", __func__);
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	*val  = (u64)ipi_tx_recv_buf.data;
 
+out:
 	mutex_unlock(&mdla_ipi_mtx);
-
-	return 0;
+	return ret;
 }
 
 static int mdla_rpmsg_tx_cb(struct rpmsg_device *rpdev, void *data,
 		int len, void *priv, u32 src)
 {
 	struct mdla_ipi_data *d = (struct mdla_ipi_data *)data;
+	int ret = 0;
 
 	if (d->dir != MDLA_IPI_READ)
 		return 0;
@@ -112,6 +146,10 @@ static int mdla_rpmsg_tx_cb(struct rpmsg_device *rpdev, void *data,
 		ipi_tx_recv_buf.dir    = d->dir;
 		ipi_tx_recv_buf.data   = d->data;
 		complete(&mdla_tx_rpm_dev.ack);
+		/* power off to restore ref cnt */
+		ret = rpmsg_sendto(mdla_tx_rpm_dev.ept, NULL, 0, 1);
+		if (ret && ret != -EOPNOTSUPP)
+			mdla_err("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret);
 	}
 
 	mdla_verbose("tx rpmsg cb : %d %d, %d, %llu(0x%llx)\n",
@@ -142,7 +180,7 @@ static int mdla_rpmsg_rx_cb(struct rpmsg_device *rpdev, void *data,
 		ipi_rx_send_buf.type1  = d->type1;
 		ipi_rx_send_buf.dir    = d->dir;
 		ipi_rx_send_buf.data   = d->data;
-
+		/* receive side don't need call power on, it will call by send side */
 		rpmsg_send(mdla_rx_rpm_dev.ept, &ipi_rx_send_buf, sizeof(ipi_rx_send_buf));
 
 		mdla_ipi_up_msg(d->type1, d->data);
