@@ -181,9 +181,9 @@ static void smpu_violation_callback(struct work_struct *work)
 		mpu = nsmpu;
 	else if (ssmpu && ssmpu->vio_msg && ssmpu->is_vio)
 		mpu = ssmpu;
-	else if (nkp && nkp->vio_msg && nkp->vio_msg)
+	else if (nkp && nkp->vio_msg && nkp->is_vio)
 		mpu = nkp;
-	else if (skp && skp->vio_msg && skp->vio_msg)
+	else if (skp && skp->vio_msg && skp->is_vio)
 		mpu = skp;
 	else
 		return;
@@ -215,7 +215,6 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 	violation = false;
 	mpu_base = mpu->mpu_base;
 
-	pr_info("vio stage 1\n");
 
 	if (!(strcmp(mpu->name, "nsmpu")))
 		vio_type = VIO_TYPE_NSMPU;
@@ -228,7 +227,7 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 	else
 		goto clear_violation;
 
-	pr_info("vio stage 2\n");
+	pr_info("%s:vio_type = %d\n", __func__, vio_type);
 	//record dump reg
 	for (i = 0; i < mpu->dump_cnt; i++)
 		dump_reg[i].value = readl(mpu_base + dump_reg[i].offset);
@@ -259,6 +258,7 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 
 				if (irqret == IRQ_HANDLED) {
 					violation = false;
+					mpu->is_vio = false;
 					goto clear_violation;
 				}
 			}
@@ -286,8 +286,6 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 		}
 		printk_deferred("%s: %s", __func__, mpu->vio_msg);
 
-		//kthread_queue_work(smpu_kworker, mpu->vio_msg);
-//		tsk = kthread_run(smpu_violation_callback, &mpu->vio_msg, "smpu/violation");
 	}
 
 
@@ -295,9 +293,7 @@ clear_violation:
 	clear_violation(mpu);
 	if (violation)
 		schedule_work(&smpu_work);
-//	if (violation)
-//		aee_kernel_exception("SMPU", mpu->vio_msg);
-//	pr_info("vio stage end");
+
 	if (vio_type == VIO_TYPE_NKP || vio_type == VIO_TYPE_SKP)
 		clear_kp_violation(vio_type%2);
 
