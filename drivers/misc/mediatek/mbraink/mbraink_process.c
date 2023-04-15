@@ -80,6 +80,8 @@ void mbraink_get_process_memory_info(pid_t current_pid,
 					struct mbraink_process_memory_data *process_memory_buffer)
 {
 	pr_info("%s: not support yet...", __func__);
+	memset(process_memory_buffer, 0, sizeof(struct mbraink_process_memory_data));
+	process_memory_buffer->pid = 0;
 }
 #else
 void mbraink_map_vma(struct vm_area_struct *vma, unsigned long cur_pss,
