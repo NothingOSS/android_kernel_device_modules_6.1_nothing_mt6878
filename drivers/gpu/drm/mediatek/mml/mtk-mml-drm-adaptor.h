@@ -36,6 +36,7 @@ enum mml_query_mode_reason {
 	mml_query_format,
 	mml_query_apudc,
 	mml_query_inwidth,
+	mml_query_inheight,
 	mml_query_flip,
 };
 
