@@ -1784,6 +1784,36 @@
 		ccu_emiRegion = <20>;
 	};
 
+	hw-semaphore {
+		compatible = "mediatek,hw-semaphore";
+		base = <0x1c001000		/* spm */
+			0x1ec24000>;		/* vcp */
+		/* <type offset bit> */
+		master = <0 0x69c 5>,
+			<1 0x18 1>,
+			<0 0x6a0 5>,		/* for ut */
+			<1 0x18 0>;		/* for ut */
+		mm-power-id = <MT6985_POWER_DOMAIN_MM_INFRA 0>,
+				<MT6985_POWER_DOMAIN_ISP_MAIN 1>,
+				<MT6985_POWER_DOMAIN_ISP_DIP1 1>,
+				<MT6985_POWER_DOMAIN_VDE0 1>,
+				<MT6985_POWER_DOMAIN_VDE1 1>,
+				<MT6985_POWER_DOMAIN_VEN0 1>,
+				<MT6985_POWER_DOMAIN_VEN1 1>,
+				<MT6985_POWER_DOMAIN_VEN2 1>,
+				<MT6985_POWER_DOMAIN_CAM_MAIN 1>,
+				<MT6985_POWER_DOMAIN_CAM_MRAW 1>,
+				<MT6985_POWER_DOMAIN_CAM_SUBA 1>,
+				<MT6985_POWER_DOMAIN_CAM_SUBB 1>,
+				<MT6985_POWER_DOMAIN_CAM_SUBC 1>,
+				<MT6985_POWER_DOMAIN_MDP0_SHUTDOWN 1>,
+				<MT6985_POWER_DOMAIN_MDP1_SHUTDOWN 1>,
+				<MT6985_POWER_DOMAIN_DIS0_SHUTDOWN 1>,
+				<MT6985_POWER_DOMAIN_DIS1_SHUTDOWN 1>,
+				<MT6985_POWER_DOMAIN_OVLSYS_SHUTDOWN 1>,
+				<MT6985_POWER_DOMAIN_OVLSYS1_SHUTDOWN 1>;
+	};
+
 	vmmspm: vmmspm {
 		compatible = "mediatek,vmm_spm_7s";
 		reg = <0 0x1c001000 0 0x1000>;  // sys_spm
