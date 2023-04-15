@@ -522,10 +522,11 @@ mtk_compute_energy_cpu_dsu(struct energy_env *eenv, struct perf_domain *pd,
 
 		dsu_pwr = get_dsu_pwr(eenv->wl_type, dst_cpu, eenv->task_busy_time,
 						eenv->total_util, dsu);
-		if (trace_sched_compute_energy_cpu_dsu_enabled())
-			trace_sched_compute_energy_cpu_dsu(dst_cpu, cpu_pwr, delta_share_pwr,
-						dsu_pwr, cpu_pwr + delta_share_pwr + dsu_pwr);
 	}
+
+	if (trace_sched_compute_energy_cpu_dsu_enabled())
+		trace_sched_compute_energy_cpu_dsu(dst_cpu, cpu_pwr, delta_share_pwr,
+					dsu_pwr, cpu_pwr + delta_share_pwr + dsu_pwr);
 
 	return cpu_pwr + delta_share_pwr + dsu_pwr;
 }
