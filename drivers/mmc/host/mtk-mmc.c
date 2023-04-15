@@ -330,6 +330,8 @@ static void msdc_reset_hw(struct msdc_host *host)
 	writel(val, host->base + MSDC_INT);
 }
 
+extern void gpio_dump_regs_range(int start, int end);
+
 static void msdc_cmd_next(struct msdc_host *host,
 		struct mmc_request *mrq, struct mmc_command *cmd);
 static void __msdc_enable_sdio_irq(struct msdc_host *host, int enb);
@@ -1727,9 +1729,10 @@ static void msdc_ops_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 		if (host->id == MSDC_SD) {
 			if (host->mclk == 100000) {
 				host->block_bad_card = 1;
-				pr_notice("[%s]: msdc%d power off at clk %dhz set block_bad_card = %d\n",
+				gpio_dump_regs_range(33, 33);
+				pr_notice("[%s]: msdc%d power off at clk %dhz set block_bad_card = %d, SDcard status = %d\n",
 					__func__, host->id, host->mclk,
-					host->block_bad_card);
+					host->block_bad_card, mmc_gpio_get_cd(mmc));
 			}
 		}
 		break;
