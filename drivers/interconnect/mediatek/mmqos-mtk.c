@@ -1737,7 +1737,33 @@ noinline int tracing_mark_write(char *fmt, ...)
 module_param(log_level, uint, 0644);
 MODULE_PARM_DESC(log_level, "mmqos log level");
 
-module_param(mmqos_state, uint, 0644);
+static int mmqos_set_state(const char *val, const struct kernel_param *kp)
+{
+	u32 state = 0;
+	int ret;
+
+	ret = kstrtou32(val, 0, &state);
+	if (ret) {
+		MMQOS_ERR("failed:%d state:%#x", ret, state);
+		return ret;
+	}
+
+	MMQOS_DBG("sync mmqos_state: %d", mmqos_state);
+	mmqos_state = state;
+
+	if (mmqos_state & VCP_ENABLE) {
+		mtk_mmqos_enable_vcp(true);
+		ret = mmqos_vcp_ipi_send(FUNC_SYNC_STATE, mmqos_state, NULL);
+		mtk_mmqos_enable_vcp(false);
+	}
+	return ret;
+}
+
+static const struct kernel_param_ops mmqos_state_ops = {
+	.set = mmqos_set_state,
+	.get = param_get_uint,
+};
+module_param_cb(mmqos_state, &mmqos_state_ops, &mmqos_state, 0644);
 MODULE_PARM_DESC(mmqos_state, "mmqos_state");
 
 module_param(freq_mode, uint, 0644);

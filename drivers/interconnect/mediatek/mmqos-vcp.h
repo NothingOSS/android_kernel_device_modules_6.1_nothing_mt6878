@@ -15,11 +15,14 @@
 int mmqos_vcp_init_thread(void *data);
 bool mmqos_is_init_done(void);
 int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data);
+int mtk_mmqos_enable_vcp(const bool enable);
 #else
 inline int mmqos_vcp_init_thread(void *data)
 {	return -EINVAL; }
 inline bool mmqos_is_init_done(void) { return false; }
 inline int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
+{	return -EINVAL; }
+int mtk_mmqos_enable_vcp(const bool enable)
 {	return -EINVAL; }
 #endif /* CONFIG_MTK_MMQOS_VCP*/
 
@@ -44,6 +47,7 @@ enum vcp_log_flag {
 enum ipi_func_id {
 	FUNC_MMQOS_INIT,
 	FUNC_TEST,
+	FUNC_SYNC_STATE,
 	FUNC_NUM
 };
 #endif /* MMQOS_VCP_H */

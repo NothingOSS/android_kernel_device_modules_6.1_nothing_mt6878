@@ -54,13 +54,17 @@ int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
 		return -ENODEV;
 
 	mutex_lock(&mmqos_vcp_ipi_mutex);
+	writel(vcp_log, MEM_LOG_FLAG);
+	writel(mmqos_state, MEM_MMQOS_STATE);
 	switch (func) {
 	case FUNC_MMQOS_INIT:
-		writel(vcp_log, MEM_LOG_FLAG);
+		// trigger mmqos in vcp to create topology
 		break;
 	case FUNC_TEST:
-		writel(vcp_log, MEM_LOG_FLAG);
 		writel(idx, MEM_TEST);
+		break;
+	case FUNC_SYNC_STATE:
+		// change mmqos_state by adb command, should trigger sync state
 		break;
 	}
 	val = readl(MEM_IPI_SYNC_FUNC);
@@ -176,6 +180,7 @@ enable_vcp_end:
 	mutex_unlock(&mmqos_vcp_pwr_mutex);
 	return ret;
 }
+EXPORT_SYMBOL_GPL(mtk_mmqos_enable_vcp);
 
 static int mmqos_vcp_notifier_callback(struct notifier_block *nb, unsigned long action, void *data)
 {
@@ -232,7 +237,7 @@ int mmqos_vcp_init_thread(void *data)
 		mmqos_memory_pa = iommu_iova_to_phys(domain, mmqos_memory_iova);
 	mmqos_memory_va = (void *)vcp_get_reserve_mem_virt_ex(MMQOS_MEM_ID);
 
-	writel_relaxed((mmqos_state != MMQOS_DISABLE) ? 1 : 0, MEM_FREERUN);
+	writel_relaxed(mmqos_state, MEM_MMQOS_STATE);
 
 	mmqos_vcp_init_done = true;
 
