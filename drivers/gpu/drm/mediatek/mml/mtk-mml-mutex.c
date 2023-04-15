@@ -308,6 +308,10 @@ static void mutex_addon_config_dl(struct mtk_ddp_comp *ddp_comp,
 
 	if (cfg->config_type.type == ADDON_CONNECT) {
 		path = mml_drm_query_dl_path(cfg->ctx, &cfg->submit, cfg->pipe);
+		if (!path) {
+			mml_err("%s mml_drm_query_dl_path fail", __func__);
+			return;
+		}
 		mutex_enable(mutex, pkt, path, get_mutex_sof(&cfg->mutex), MML_MODE_DIRECT_LINK);
 		mutex->connected_mode = MML_MODE_DIRECT_LINK;
 	}

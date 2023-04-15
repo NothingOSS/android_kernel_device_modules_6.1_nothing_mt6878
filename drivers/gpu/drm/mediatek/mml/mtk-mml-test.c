@@ -1386,6 +1386,10 @@ static void case_run_sram_frame(struct mml_test *test, struct mml_ut *cur)
 
 	/* create context */
 	mml_pdev = mml_get_plat_device(test->pdev);
+	if (unlikely(!mml_pdev)) {
+		mml_err("%s mml_pdev = null", __func__);
+		return;
+	}
 	mml_ctx = mml_drm_get_context(mml_pdev, &disp);
 
 	/* hold sram, for wrot out and rdma in */

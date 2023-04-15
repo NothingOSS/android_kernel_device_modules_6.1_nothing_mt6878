@@ -376,9 +376,8 @@ static void frame_config_destroy(struct mml_frame_config *cfg)
 	}
 
 	mml_core_deinit_config(cfg);
-	kfree(cfg);
-
 	mml_msg("[drm]%s frame config %p destroy done", __func__, cfg);
+	kfree(cfg);
 }
 
 static void frame_config_destroy_work(struct work_struct *work)
@@ -1700,7 +1699,7 @@ const struct mml_topology_path *mml_drm_query_dl_path(struct mml_drm_ctx *ctx,
 {
 	struct mml_topology_cache *tp = mml_topology_get_cache(ctx->mml);
 
-	if (!tp->op->get_dl_path)
+	if (!tp || !tp->op->get_dl_path)
 		return NULL;
 
 	return tp->op->get_dl_path(tp, submit, pipe);

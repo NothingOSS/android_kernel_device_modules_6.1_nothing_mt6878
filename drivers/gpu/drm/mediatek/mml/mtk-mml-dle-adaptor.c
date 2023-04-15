@@ -1001,7 +1001,7 @@ int mml_ddp_comp_register(struct drm_device *drm, struct mtk_ddp_comp *comp)
 {
 	struct mtk_drm_private *private = drm->dev_private;
 
-	if (IS_ERR_VALUE(comp->id))
+	if (comp->id < 0 || IS_ERR_VALUE(comp->id))
 		return -EINVAL;
 	if (private->ddp_comp[comp->id])
 		return -EBUSY;
@@ -1014,7 +1014,7 @@ void mml_ddp_comp_unregister(struct drm_device *drm, struct mtk_ddp_comp *comp)
 {
 	struct mtk_drm_private *private = drm->dev_private;
 
-	if (comp && !IS_ERR_VALUE(comp->id))
+	if (comp && comp->id >= 0 && !IS_ERR_VALUE(comp->id))
 		private->ddp_comp[comp->id] = NULL;
 }
 
