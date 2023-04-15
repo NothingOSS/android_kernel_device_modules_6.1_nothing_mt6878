@@ -7376,6 +7376,8 @@
 
 			clocks =
 				<&topckgen_clk CLK_TOP_U_SEL>,
+				<&topckgen_clk CLK_TOP_MAINPLL_D4_D2>,
+				<&topckgen_clk CLK_TOP_MMPLL_D6>,
 				<&topckgen_clk CLK_TOP_AES_UFSFDE_SEL>,
 				<&ufscfg_ao_clk CLK_UFSCFG_AO_UNIPRO_TX_SYMBOLCLK>,
 				<&ufscfg_ao_clk CLK_UFSCFG_AO_UNIPRO_RX_SYMBOLCLK0>,
@@ -7385,7 +7387,9 @@
 				<&ufscfg_pdn_clk CLK_UFSCFG_UFSHCI_AES>;
 
 			clock-names =
-				"ufs_top",
+				"ufs_sel",
+				"ufs_sel_min_src",
+				"ufs_sel_max_src",
 				"ufs_fde",
 				"unipro_tx_sym",
 				"unipro_rx_sym0",
@@ -7395,6 +7399,8 @@
 				"ufshci_aes";
 
 			freq-table-hz =
+				<273000000 458333313>,
+				<0 0>,
 				<0 0>,
 				<0 0>,
 				<0 0>,
@@ -7403,6 +7409,11 @@
 				<0 0>,
 				<0 0>,
 				<0 0>;
+
+			/* for clock scaling bind vcore */
+			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			/* 0.65V for clock scale up */
+			clk-scale-up-vcore-min = <650000>;
 
 			power-domains = <&scpsys MT6897_POWER_DOMAIN_UFS0>;
 
