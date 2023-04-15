@@ -49,6 +49,9 @@
 #define SMMU_TF_IOVA_DUMP_NUM		(5)
 #define SMMU_EVT_DUMP_LEN_MAX		(200)
 
+#define SMMU_FAULT_RS_INTERVAL		DEFAULT_RATELIMIT_INTERVAL
+#define SMMU_FAULT_RS_BURST		DEFAULT_RATELIMIT_BURST
+
 static const char *IOMMU_GROUP_PROP_NAME = "mtk,iommu-group";
 static const char *PMU_SMMU_PROP_NAME = "mtk,smmu";
 
@@ -1119,8 +1122,8 @@ static int mtk_smmu_irq_handler(int irq, void *dev)
 	active = gerror ^ gerrorn;
 	if (!(active & GERROR_ERR_MASK)) {
 		/* No errors pending */
-		pr_info("[%s] no errors pending: irq:0x%x, gerror:0x%x, gerrorn:0x%x, active:0x%x\n",
-			__func__, irq, gerror, gerrorn, active);
+		pr_debug("[%s] no error pending irq:0x%x, gerror:0x%x, gerrorn:0x%x, active:0x%x\n",
+			 __func__, irq, gerror, gerrorn, active);
 
 		/* try to secure interrupt process which maybe trigger by secure */
 		if (mtk_smmu_sec_irq_process(irq, dev) == IRQ_HANDLED) {
@@ -1204,11 +1207,16 @@ static void mtk_smmu_evt_dump(u64 *evt)
 
 static int mtk_smmu_evt_handler(int irq, void *dev, u64 *evt)
 {
+	static DEFINE_RATELIMIT_STATE(evtq_rs, SMMU_FAULT_RS_INTERVAL,
+				      SMMU_FAULT_RS_BURST);
 	struct arm_smmu_device *smmu = dev;
 	u8 id = FIELD_GET(EVTQ_0_ID, evt[0]);
 	bool ssid_valid = evt[0] & EVTQ_0_SSV;
 	u32 sid = FIELD_GET(EVTQ_0_SID, evt[0]);
 	u32 ssid = 0;
+
+	if (!__ratelimit(&evtq_rs))
+		return IRQ_HANDLED;
 
 	if (ssid_valid)
 		ssid = FIELD_GET(EVTQ_0_SSID, evt[0]);
@@ -1393,6 +1401,8 @@ static int mtk_report_device_fault(struct arm_smmu_master *master,
 				   u64 *evt,
 				   struct iommu_fault_event *fault_evt)
 {
+	static DEFINE_RATELIMIT_STATE(fault_rs, SMMU_FAULT_RS_INTERVAL,
+				      SMMU_FAULT_RS_BURST);
 	struct arm_smmu_domain *smmu_domain = master->domain;
 	struct mtk_iommu_fault_event mtk_fault_evt = { };
 	struct dev_iommu *param = master->dev->iommu;
@@ -1409,6 +1419,13 @@ static int mtk_report_device_fault(struct arm_smmu_master *master,
 
 	smmu = master->smmu;
 	data = to_mtk_smmu_data(smmu);
+
+	/* limit TF handle dump rate */
+	if (!__ratelimit(&fault_rs)) {
+		smmuwp_clear_tf(smmu);
+		smmu_tlb_flush_all(master);
+		return 0;
+	}
 
 	mtk_fault_evt.fault_evt.fault = fault_evt->fault;
 	mtk_fault_evt.fault_evt.list = fault_evt->list;
@@ -1467,7 +1484,12 @@ static int mtk_report_device_fault(struct arm_smmu_master *master,
 static void smmu_fault_dump(struct arm_smmu_device *smmu)
 {
 #ifdef MTK_SMMU_DEBUG
+	static DEFINE_RATELIMIT_STATE(fault_rs, SMMU_FAULT_RS_INTERVAL,
+				      SMMU_FAULT_RS_BURST);
 	struct mtk_smmu_data *data;
+
+	if (!__ratelimit(&fault_rs))
+		return;
 
 	if (!smmu) {
 		pr_info("%s, ERROR\n", __func__);
@@ -1530,9 +1552,14 @@ static const struct arm_smmu_impl mtk_smmu_impl = {
 
 void mtk_smmu_dbg_hang_detect(enum mtk_smmu_type type)
 {
+	static DEFINE_RATELIMIT_STATE(hang_rs, SMMU_FAULT_RS_INTERVAL,
+				      SMMU_FAULT_RS_BURST);
 	struct mtk_smmu_data *data = mkt_get_smmu_data(type);
 
 	if (!data)
+		return;
+
+	if (!__ratelimit(&hang_rs))
 		return;
 
 	pr_info("%s, smmu:%s\n", __func__, get_smmu_name(type));
@@ -1802,6 +1829,8 @@ static struct arm_smmu_device *mtk_smmu_create(struct arm_smmu_device *smmu,
 		return ERR_PTR(-ENOMEM);
 
 	data = devm_kzalloc(smmu->dev, sizeof(*data), GFP_KERNEL);
+	if (!data)
+		return ERR_PTR(-ENOMEM);
 
 	data->smmu.dev = smmu->dev;
 	data->smmu.base = smmu->base;
@@ -2028,11 +2057,6 @@ static struct mtk_smmu_fault_param *smmuwp_process_tf(
 			.tbu_id = i,
 		};
 
-#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
-		mtk_smmu_get_fault_idx(axiid, data->plat_data->smmu_type,
-				       &fault_evt->mtk_fault_param[SMMU_TFM_READ][i]);
-#endif
-
 		if (first_fault_param == NULL)
 			first_fault_param = &fault_evt->mtk_fault_param[SMMU_TFM_READ][i];
 
@@ -2071,11 +2095,6 @@ write:
 			.fault_secsid = secsidv,
 			.tbu_id = i,
 		};
-
-#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
-		mtk_smmu_get_fault_idx(axiid, data->plat_data->smmu_type,
-				       &fault_evt->mtk_fault_param[SMMU_TFM_WRITE][i]);
-#endif
 
 		if (first_fault_param == NULL)
 			first_fault_param = &fault_evt->mtk_fault_param[SMMU_TFM_WRITE][i];

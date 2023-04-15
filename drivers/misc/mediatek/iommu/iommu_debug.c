@@ -76,7 +76,7 @@
 }
 
 #define mmu_translation_log_format \
-	"CRDISPATCH_KEY:M4U_%s\ntranslation fault:port=%s,mva=0x%llx,pa=0x%llx\n"
+	"CRDISPATCH_KEY:%s_%s\ntranslation fault:port=%s,mva=0x%llx,pa=0x%llx\n"
 
 #define mau_assert_log_format \
 	"CRDISPATCH_KEY:IOMMU\nMAU ASRT:ASRT_ID=0x%x,FALUT_ID=0x%x(%s),ADDR=0x%x(0x%x)\n"
@@ -640,10 +640,11 @@ static void report_custom_fault(
 	u64 fault_iova, u64 fault_pa,
 	u32 fault_id, u32 type, int id)
 {
-	int idx;
-	u32 port_nr;
 	const struct mtk_iommu_port *port_list;
+	bool support_tf_fn = false;
 	u32 smmu_type = type;
+	u32 port_nr;
+	int idx;
 
 	if (smmu_v3_enable && smmu_type >= SMMU_TYPE_NUM) {
 		pr_info("%s fail, invalid type %d\n", __func__, smmu_type);
@@ -664,7 +665,8 @@ static void report_custom_fault(
 	}
 
 	/* Only MM_IOMMU support fault callback */
-	if (type == MM_IOMMU) {
+	support_tf_fn = (smmu_v3_enable ? (smmu_type == MM_SMMU) : (type == MM_IOMMU));
+	if (support_tf_fn) {
 		pr_info("error, tf report larb-port:(%u--%u), idx:%d\n",
 			port_list[idx].larb_id,
 			port_list[idx].port_id, idx);
@@ -676,6 +678,7 @@ static void report_custom_fault(
 	}
 
 	m4u_aee_print(mmu_translation_log_format,
+		(smmu_v3_enable ? "SMMU" : "M4U"),
 		port_list[idx].name,
 		port_list[idx].name, fault_iova,
 		fault_pa);

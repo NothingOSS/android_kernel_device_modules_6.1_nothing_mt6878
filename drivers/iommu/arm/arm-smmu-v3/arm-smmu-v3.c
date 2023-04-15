@@ -4050,6 +4050,9 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 		 (unsigned long long)smmu->wp_base);
 
 	smmu = arm_smmu_v3_impl_init(smmu);
+	if (IS_ERR(smmu))
+		return PTR_ERR(smmu);
+
 	mutex_init(&init_mutexs);
 
 	/* Interrupt lines */
