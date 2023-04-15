@@ -535,41 +535,11 @@ static int mmdvfs_debug_smi_cb(struct notifier_block *nb, unsigned long action, 
 	return 0;
 }
 
-static int mmdvfs_debug_probe(struct platform_device *pdev)
+static int mmdvfs_debug_parse_ver1(void)
 {
-	const char *MMDVFS_CLK_NAMES = "mediatek,mmdvfs-clock-names";
-	const char *MMDVFS_CLKS = "mediatek,mmdvfs-clocks";
-	struct device_node *mmdvfs_clk_node;
-	u8 mmdvfs_clk_num;
-	struct proc_dir_entry *dir, *proc;
-	struct task_struct *kthr;
 	struct regulator *reg;
-	int i, ret;
+	int ret;
 
-	g_mmdvfs = kzalloc(sizeof(*g_mmdvfs), GFP_KERNEL);
-	if (!g_mmdvfs) {
-		MMDVFS_DBG("kzalloc: g_mmdvfs no memory");
-		return -ENOMEM;
-	}
-	g_mmdvfs->dev = &pdev->dev;
-
-	dir = proc_mkdir("mmdvfs", NULL);
-	if (IS_ERR_OR_NULL(dir))
-		MMDVFS_DBG("proc_mkdir failed:%ld", PTR_ERR(dir));
-
-	proc = proc_create("mmdvfs_opp", 0444, dir, &mmdvfs_debug_opp_fops);
-	if (IS_ERR_OR_NULL(proc))
-		MMDVFS_DBG("proc_create failed:%ld", PTR_ERR(proc));
-	else
-		g_mmdvfs->proc = proc;
-
-	ret = of_property_read_u32(g_mmdvfs->dev->of_node,
-		"debug-version", &g_mmdvfs->debug_version);
-	if (ret)
-		MMDVFS_DBG("debug_version:%u failed:%d",
-			g_mmdvfs->debug_version, ret);
-
-	/* MMDVFS_DBG_VER1 */
 	reg = devm_regulator_get(g_mmdvfs->dev, "dvfsrc-vcore");
 	if (IS_ERR_OR_NULL(reg)) {
 		MMDVFS_DBG("devm_regulator_get failed:%ld", PTR_ERR(reg));
@@ -584,11 +554,9 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	}
 	g_mmdvfs->reg_cnt_vol = (u32)ret;
 
-	ret = of_property_read_u32(g_mmdvfs->dev->of_node,
-		"force-step0", &g_mmdvfs->force_step0);
+	ret = of_property_read_u32(g_mmdvfs->dev->of_node, "force-step0", &g_mmdvfs->force_step0);
 	if (ret) {
-		MMDVFS_DBG("force_step0:%u failed:%d",
-			g_mmdvfs->force_step0, ret);
+		MMDVFS_DBG("force_step0:%u failed:%d", g_mmdvfs->force_step0, ret);
 		return ret;
 	}
 
@@ -598,53 +566,29 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	spin_lock_init(&g_mmdvfs->lock);
-	mmdvfs_debug_record_opp_set_fp(mmdvfs_debug_record_opp);
-
-	ret = regulator_list_voltage(
-		reg, g_mmdvfs->reg_cnt_vol - 1 - g_mmdvfs->force_step0);
+	ret = regulator_list_voltage(reg, g_mmdvfs->reg_cnt_vol - 1 - g_mmdvfs->force_step0);
+	MMDVFS_DBG("reg:%p reg_cnt_vol:%u force_step0:%u ret:%d",
+		reg, g_mmdvfs->reg_cnt_vol, g_mmdvfs->force_step0, ret);
 	regulator_set_voltage(reg, ret, INT_MAX);
 
-	ret = of_property_read_u32(g_mmdvfs->dev->of_node,
-		"release-step0", &g_mmdvfs->release_step0);
+	ret = of_property_read_u32(
+		g_mmdvfs->dev->of_node, "release-step0", &g_mmdvfs->release_step0);
 	if (ret)
-		MMDVFS_DBG("release_step0:%u failed:%d",
-			g_mmdvfs->release_step0, ret);
+		MMDVFS_DBG("release_step0:%u failed:%d", g_mmdvfs->release_step0, ret);
 
-	/* MMDVFS_DBG_VER3 */
-	ret = of_property_read_u32(g_mmdvfs->dev->of_node,
-		"use-v3-pwr", &g_mmdvfs->use_v3_pwr);
+	return ret;
+}
 
-	if (g_mmdvfs->use_v3_pwr)
-		kthr = kthread_run(
-			mmdvfs_v3_debug_thread, NULL, "mmdvfs-dbg-vcp");
+static int mmdvfs_debug_parse_ver3(void)
+{
+	const char *MMDVFS_CLK_NAMES = "mediatek,mmdvfs-clock-names";
+	const char *MMDVFS_CLKS = "mediatek,mmdvfs-clocks";
+	struct device_node *mmdvfs_clk_node;
+	struct of_phandle_args spec;
+	u8 mmdvfs_clk_num;
+	int i, ret;
 
-	/* regulator */
-	reg = devm_regulator_get(g_mmdvfs->dev, "vcore");
-	if (IS_ERR_OR_NULL(reg)) {
-		MMDVFS_DBG("devm_regulator_get vcore failed:%ld", PTR_ERR(reg));
-		return PTR_ERR(reg);
-	}
-	g_mmdvfs->reg_vcore = reg;
-
-	reg = devm_regulator_get(g_mmdvfs->dev, "vmm-pmic");
-	if (IS_ERR_OR_NULL(reg)) {
-		MMDVFS_DBG("devm_regulator_get vmm-pmic failed:%ld", PTR_ERR(reg));
-		return PTR_ERR(reg);
-	}
-	g_mmdvfs->reg_vmm = reg;
-
-	g_mmdvfs->nb.notifier_call = mmdvfs_debug_smi_cb;
-	mtk_smi_dbg_register_notifier(&g_mmdvfs->nb);
-
-	g_mmdvfs->vote_step = 0xff;
-	of_property_read_u32(g_mmdvfs->dev->of_node, "vote-step", &g_mmdvfs->vote_step);
-	g_mmdvfs->force_step = 0xff;
-	of_property_read_u32(g_mmdvfs->dev->of_node, "force-step", &g_mmdvfs->force_step);
-
-	/* Below code should be in the bottom of probe function */
-
-	/* user & power id mapping*/
+	/* user & power id mapping */
 	mmdvfs_clk_node = of_parse_phandle(g_mmdvfs->dev->of_node, "mediatek,mmdvfs-clk", 0);
 	if (!mmdvfs_clk_node) {
 		MMDVFS_DBG("find mmdvfs_clk node failed");
@@ -659,18 +603,20 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	mmdvfs_clk_num = ret;
 
 	for (i = 0; i < mmdvfs_clk_num; i++) {
-		struct of_phandle_args spec;
-
 		ret = of_parse_phandle_with_args(
 			mmdvfs_clk_node, MMDVFS_CLKS, "#mmdvfs,clock-cells", i, &spec);
 		if (ret) {
-			MMDVFS_DBG("parse %s i:%d failed:%d",
-				MMDVFS_CLKS, i, ret);
+			MMDVFS_DBG("parse %s i:%d failed:%d", MMDVFS_CLKS, i, ret);
 			return ret;
 		}
-
 		g_mmdvfs->user_pwr[spec.args[2]] = spec.args[1];
 	}
+	return ret;
+}
+
+static int mmdvfs_debug_parse_fmeter(void)
+{
+	int ret;
 
 	ret = of_property_count_u8_elems(g_mmdvfs->dev->of_node, "fmeter-id");
 	if (ret < 0) {
@@ -698,10 +644,72 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 
 	ret = of_property_read_u8_array(g_mmdvfs->dev->of_node,
 		"fmeter-type", g_mmdvfs->fmeter_type, g_mmdvfs->fmeter_count);
-	if (ret) {
+	if (ret)
 		MMDVFS_DBG("read_array fmeter-type failed:%d", ret);
-		return ret;
-	}
+
+	return ret;
+}
+
+static int mmdvfs_debug_probe(struct platform_device *pdev)
+{
+	struct proc_dir_entry *dir, *proc;
+	struct task_struct *kthr;
+	struct regulator *reg;
+	int ret;
+
+	g_mmdvfs = kzalloc(sizeof(*g_mmdvfs), GFP_KERNEL);
+	if (!g_mmdvfs)
+		return -ENOMEM;
+	g_mmdvfs->dev = &pdev->dev;
+
+	dir = proc_mkdir("mmdvfs", NULL);
+	if (IS_ERR_OR_NULL(dir))
+		MMDVFS_DBG("proc_mkdir failed:%ld", PTR_ERR(dir));
+
+	proc = proc_create("mmdvfs_opp", 0444, dir, &mmdvfs_debug_opp_fops);
+	if (IS_ERR_OR_NULL(proc))
+		MMDVFS_DBG("proc_create failed:%ld", PTR_ERR(proc));
+	else
+		g_mmdvfs->proc = proc;
+
+	ret = of_property_read_u32(
+		g_mmdvfs->dev->of_node, "debug-version", &g_mmdvfs->debug_version);
+	if (ret)
+		MMDVFS_DBG("debug_version:%u failed:%d", g_mmdvfs->debug_version, ret);
+
+	/* MMDVFS_DBG_VER1 */
+	spin_lock_init(&g_mmdvfs->lock);
+	mmdvfs_debug_record_opp_set_fp(mmdvfs_debug_record_opp);
+	ret = mmdvfs_debug_parse_ver1();
+
+	/* MMDVFS_DBG_VER3 */
+	ret = mmdvfs_debug_parse_ver3();
+
+	reg = devm_regulator_get(g_mmdvfs->dev, "vcore");
+	if (IS_ERR_OR_NULL(reg))
+		MMDVFS_DBG("devm_regulator_get vcore failed:%ld", PTR_ERR(reg));
+	else
+		g_mmdvfs->reg_vcore = reg;
+
+	reg = devm_regulator_get(g_mmdvfs->dev, "vmm-pmic");
+	if (IS_ERR_OR_NULL(reg))
+		MMDVFS_DBG("devm_regulator_get vmm-pmic failed:%ld", PTR_ERR(reg));
+	else
+		g_mmdvfs->reg_vmm = reg;
+
+	g_mmdvfs->nb.notifier_call = mmdvfs_debug_smi_cb;
+	mtk_smi_dbg_register_notifier(&g_mmdvfs->nb);
+
+	g_mmdvfs->vote_step = 0xff;
+	of_property_read_u32(g_mmdvfs->dev->of_node, "vote-step", &g_mmdvfs->vote_step);
+	g_mmdvfs->force_step = 0xff;
+	of_property_read_u32(g_mmdvfs->dev->of_node, "force-step", &g_mmdvfs->force_step);
+
+	ret = mmdvfs_debug_parse_fmeter();
+
+	ret = of_property_read_u32(g_mmdvfs->dev->of_node, "use-v3-pwr", &g_mmdvfs->use_v3_pwr);
+	if (g_mmdvfs->debug_version & MMDVFS_DBG_VER3)
+		kthr = kthread_run(mmdvfs_v3_debug_thread, NULL, "mmdvfs-dbg-vcp");
 
 	return 0;
 }
