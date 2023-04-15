@@ -1733,7 +1733,7 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 
 	if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR) && frame_idx && is_gles &&
 			get_layering_opt(LYE_OPT_GPU_CACHE) && (disp_idx == HRT_PRIMARY)
-			&& (have_force_gpu_layer == 0) && layer_info->compress) {
+			&& (have_force_gpu_layer == 0)) {
 		uint64_t key_value = frame_idx - BWM_GPUC_TUNING_FRAME;
 		int i = 0;
 		struct drm_mtk_layering_info *disp_info = &layering_info;
@@ -1788,8 +1788,8 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 	}
 
 	if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR) && frame_idx &&
-		(disp_idx == HRT_PRIMARY) && (layer_info != NULL) &&
-		(layer_info->layer_caps & MTK_HWC_UNCHANGED_LAYER) && layer_info->compress) {
+		(disp_idx == HRT_PRIMARY) && layer_info && layer_info->compress &&
+		(layer_info->layer_caps & MTK_HWC_UNCHANGED_LAYER)) {
 		uint64_t key_value = frame_idx + layer_info->buffer_alloc_id -
 			BWM_GPUC_TUNING_FRAME;
 		int i = 0;
