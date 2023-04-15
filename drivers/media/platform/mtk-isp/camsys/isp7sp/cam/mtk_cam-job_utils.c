@@ -225,7 +225,7 @@ int get_hw_scenario(struct mtk_cam_job *job)
 			struct mtk_raw_ctrl_data *ctrl;
 
 			ctrl = get_raw_ctrl_data(job);
-			if (WARN_ON(!ctrl))
+			if (WARN_ON(!ctrl || !ctrl->valid_apu_info))
 				return -1;
 
 			if (ctrl->apu_info.apu_path == APU_FRAME_MODE)
@@ -1431,7 +1431,7 @@ bool is_m2m_apu(struct mtk_cam_job *job)
 	struct mtk_raw_ctrl_data *ctrl;
 
 	ctrl = get_raw_ctrl_data(job);
-	if (!ctrl)
+	if (!ctrl || !ctrl->valid_apu_info)
 		return 0;
 
 	return scen_is_m2m_apu(&job->job_scen, &ctrl->apu_info);
@@ -1442,7 +1442,7 @@ bool is_m2m_apu_dc(struct mtk_cam_job *job)
 	struct mtk_raw_ctrl_data *ctrl;
 
 	ctrl = get_raw_ctrl_data(job);
-	if (!ctrl)
+	if (!ctrl || !ctrl->valid_apu_info)
 		return 0;
 
 	return scen_is_m2m_apu(&job->job_scen, &ctrl->apu_info)

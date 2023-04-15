@@ -763,6 +763,7 @@ static int mtk_raw_set_ctrl(struct v4l2_ctrl *ctrl)
 			struct mtk_cam_apu_info *apu_info = &ctrl_data->apu_info;
 
 			*apu_info = *(struct mtk_cam_apu_info *)ctrl->p_new.p;
+			ctrl_data->valid_apu_info = 1;
 
 			if (1 || CAM_DEBUG_ENABLED(V4L2))
 				dev_info(dev, "%s: apu_info: path %d i,o=%d,%d sysram %d opp_idx=%d blk_y_size %d\n",
@@ -1088,6 +1089,9 @@ static void mtk_raw_reset_ctrls(struct mtk_raw_pipeline *pipeline)
 
 	/* mark mstream exp as invalid */
 	ctrl_data->valid_mstream_exp = 0;
+
+	/* mark apu info as invalid */
+	ctrl_data->valid_apu_info = 0;
 }
 
 static int mtk_raw_sd_s_stream(struct v4l2_subdev *sd, int enable)

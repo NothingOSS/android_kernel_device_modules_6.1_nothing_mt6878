@@ -336,6 +336,8 @@ static struct media_request *mtk_cam_req_alloc(struct media_device *mdev)
 	struct mtk_cam_request *cam_req;
 
 	cam_req = vzalloc(sizeof(*cam_req));
+	if (WARN_ON(!cam_req))
+		return NULL;
 
 	spin_lock_init(&cam_req->buf_lock);
 	frame_sync_init(&cam_req->fs);
@@ -2303,7 +2305,8 @@ int mtk_cam_ctx_init_scenario(struct mtk_cam_ctx *ctx)
 		if (!ret)
 			pr_info("%s: failed to alloc for caci buf\n", __func__);
 
-	} else if (scen_is_m2m_apu(scen, &ctrl_data->apu_info)) {
+	} else if (ctrl_data->valid_apu_info &&
+		   scen_is_m2m_apu(scen, &ctrl_data->apu_info)) {
 
 		if (apu_info_is_dc(&ctrl_data->apu_info))
 			ret = mtk_cam_ctx_request_slb(ctx);
