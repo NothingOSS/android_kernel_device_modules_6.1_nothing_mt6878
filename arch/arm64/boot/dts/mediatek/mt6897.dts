@@ -1236,6 +1236,14 @@
 		#size-cells = <0>;
 	};
 
+	clkchk {
+		compatible = "mediatek,mt6897-clkchk";
+	};
+
+	pdchk {
+		compatible = "mediatek,mt6897-pdchk";
+	};
+
 	clocks {
 		clk32k: clk32k {
 			compatible = "fixed-clock";
