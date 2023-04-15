@@ -56,7 +56,6 @@ static DEFINE_MUTEX(mmdvfs_vcp_ipi_mutex);
 static struct ipi_callbacks clkmux_cb;
 static struct notifier_block vcp_ready_notifier;
 static struct notifier_block force_on_notifier;
-static struct notifier_block disp_pd_notifier;
 
 static int ccu_power;
 static int ccu_pwr_usage[CCU_PWR_USR_NUM];
@@ -71,6 +70,7 @@ static int last_vote_step[PWR_MMDVFS_NUM];
 static int last_force_step[PWR_MMDVFS_NUM];
 static int dpsw_thr;
 static int vmm_ceil_step;
+static bool mmdvfs_mux_version;
 
 enum {
 	log_pwr,
@@ -595,6 +595,9 @@ int mtk_mmdvfs_v3_set_force_step(const u16 pwr_idx, const s16 opp)
 		return -EINVAL;
 	}
 
+	if (mmdvfs_mux_version)
+		return mmdvfs_force_step_by_vcp(pwr_idx, opp);
+
 	last = &last_force_step[pwr_idx];
 
 	if (*last == opp)
@@ -652,6 +655,9 @@ int mtk_mmdvfs_v3_set_vote_step(const u16 pwr_idx, const s16 opp)
 		MMDVFS_ERR("failed:%d pwr_idx:%hu opp:%hd", ret, pwr_idx, opp);
 		return -EINVAL;
 	}
+
+	if (mmdvfs_mux_version)
+		return mmdvfs_vote_step_by_vcp(pwr_idx, opp);
 
 	last = &last_vote_step[pwr_idx];
 
@@ -874,7 +880,6 @@ static DEFINE_SPINLOCK(mmdvfs_mux_lock);
 static rc_enable dpc_fp;
 static bool mmdvfs_lp_mode;
 static bool mmdvfs_vcp_stop;
-static bool mmdvfs_mux_version;
 static bool mmdvfs_swrgo;
 static bool mmdvfs_swrgo_init;
 
@@ -903,26 +908,6 @@ int mmdvfs_get_version(void)
 }
 EXPORT_SYMBOL_GPL(mmdvfs_get_version);
 
-static void disp_pd_swrgo_init(const bool enable)
-{
-	int ret = 0;
-
-	if (enable && !mmdvfs_swrgo_init) {
-		ret = mtk_mmdvfs_enable_vcp(enable, VCP_PWR_USR_MMDVFS_GENPD);
-		if (!ret) {
-			ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_INIT, 1, MAX_OPP, NULL);
-			if (!ret)
-				mmdvfs_swrgo_init = enable;
-		}
-	} else if (!enable && mmdvfs_swrgo_init) {
-		ret = mmdvfs_vcp_ipi_send(FUNC_SWRGO_INIT, 0, MAX_OPP, NULL);
-		if (!ret)
-			mmdvfs_swrgo_init = enable;
-		ret = mtk_mmdvfs_enable_vcp(enable, VCP_PWR_USR_MMDVFS_GENPD);
-	}
-	MMDVFS_DBG("ret:%d enable:%d swrgo:%d", ret, enable, mmdvfs_swrgo_init);
-}
-
 int mmdvfs_force_step_by_vcp(const u8 pwr_idx, const s8 opp)
 {
 	struct mmdvfs_mux *mux;
@@ -940,11 +925,6 @@ int mmdvfs_force_step_by_vcp(const u8 pwr_idx, const s8 opp)
 			opp, idx, mux->id, mux->freq_num);
 		return -EINVAL;
 	}
-
-	/* Fix problem: force step is called after display power-off */
-	if (mmdvfs_swrgo && pwr_idx == 0 && !mmdvfs_swrgo_init &&
-		opp >= 0 && (opp < mux->freq_num))
-		disp_pd_swrgo_init(true);
 
 	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_FORCE);
 	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
@@ -1124,42 +1104,6 @@ static struct notifier_block mmdvfs_pm_notifier_block = {
 	.priority = 0,
 };
 
-void disp_pd_notify_work(struct work_struct *_work)
-{
-	struct mmdvfs_vmm_notify_work *work = container_of(_work, typeof(*work), vmm_notify_work);
-
-	disp_pd_swrgo_init(work->enable);
-	kfree(work);
-}
-
-static int disp_pd_callback(struct notifier_block *nb, unsigned long pd_flags, void *data)
-{
-	struct mmdvfs_vmm_notify_work *work;
-
-	if (!mmdvfs_swrgo || !vmm_notify_wq)
-		return 0;
-
-	work = kzalloc(sizeof(*work), GFP_KERNEL);
-	if (!work)
-		return -ENOMEM;
-
-	switch (pd_flags) {
-	case GENPD_NOTIFY_PRE_ON:
-		work->enable = true;
-		break;
-	case GENPD_NOTIFY_OFF:
-		work->enable = false;
-		break;
-	default:
-		kfree(work);
-		return 0;
-	}
-
-	INIT_WORK(&work->vmm_notify_work, disp_pd_notify_work);
-	queue_work(vmm_notify_wq, &work->vmm_notify_work);
-	return 0;
-}
-
 static void mmdvfs_fmeter_dump(void)
 {
 	const u8 fmeter_id[13] = {5, 6, 7, 8, 9, 10, 11, 58, 57, 58, 69, 70, 71};
@@ -1298,12 +1242,6 @@ static int mmdvfs_vcp_init_thread(void *data)
 	force_on_notifier.notifier_call = mmdvfs_force_on_callback;
 	mtk_smi_dbg_register_force_on_notifier(&force_on_notifier);
 
-	if (mmdvfs_swrgo) {
-		disp_pd_swrgo_init(true);
-		for (i = 0; i < ARRAY_SIZE(mmdvfs_user); i++)
-			if (mmdvfs_user[i].undo_rate > 26000000UL)
-				mmdvfs_mux_set_opp(mmdvfs_user[i].name, mmdvfs_user[i].undo_rate);
-	}
 	return 0;
 }
 
@@ -1793,12 +1731,6 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 
 	if (!vmm_notify_wq)
 		vmm_notify_wq = create_singlethread_workqueue("vmm_notify_wq");
-
-	if (mmdvfs_swrgo) {
-		pm_runtime_enable(&pdev->dev);
-		disp_pd_notifier.notifier_call = disp_pd_callback;
-		ret = dev_pm_genpd_add_notifier(&pdev->dev, &disp_pd_notifier);
-	}
 
 	return ret;
 }

@@ -27,7 +27,6 @@
 
 #define MMDVFS_DBG_VER1	BIT(0)
 #define MMDVFS_DBG_VER3	BIT(1)
-#define MMDVFS_DBG_VER4	BIT(2)
 
 #define MMDVFS_DBG(fmt, args...) \
 	pr_notice("[mmdvfs_dbg][dbg]%s: "fmt"\n", __func__, ##args)
@@ -98,14 +97,13 @@ static int mmdvfs_debug_set_force_step(const char *val,
 	}
 
 	if (idx == PWR_MMDVFS_VCORE && (!g_mmdvfs->debug_version ||
-		g_mmdvfs->debug_version & MMDVFS_DBG_VER1))
+		g_mmdvfs->debug_version & MMDVFS_DBG_VER1)) {
 		mmdvfs_set_force_step(opp);
+		return 0;
+	}
 
 	if (g_mmdvfs->debug_version & MMDVFS_DBG_VER3)
 		mtk_mmdvfs_v3_set_force_step(idx, opp);
-
-	if (g_mmdvfs->debug_version & MMDVFS_DBG_VER4)
-		mmdvfs_force_step_by_vcp(idx, opp);
 
 	return 0;
 }
@@ -130,14 +128,13 @@ static int mmdvfs_debug_set_vote_step(const char *val,
 	}
 
 	if (idx == PWR_MMDVFS_VCORE && (!g_mmdvfs->debug_version ||
-		g_mmdvfs->debug_version & MMDVFS_DBG_VER1))
+		g_mmdvfs->debug_version & MMDVFS_DBG_VER1)) {
 		mmdvfs_set_vote_step(opp);
+		return 0;
+	}
 
 	if (g_mmdvfs->debug_version & MMDVFS_DBG_VER3)
 		mtk_mmdvfs_v3_set_vote_step(idx, opp);
-
-	if (g_mmdvfs->debug_version & MMDVFS_DBG_VER4)
-		mmdvfs_vote_step_by_vcp(idx, opp);
 
 	return 0;
 }
