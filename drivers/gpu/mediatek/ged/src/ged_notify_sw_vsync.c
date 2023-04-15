@@ -202,7 +202,7 @@ static void ged_notify_sw_sync_work_handle(struct work_struct *psWork)
 }
 
 #define GED_VSYNC_MISS_QUANTUM_NS 16666666
-#define GED_POWER_DURATION_NS 3000000
+#define GED_POWER_DURATION_NS 2000000
 
 #ifdef ENABLE_COMMON_DVFS
 static unsigned long long hw_vsync_ts;
