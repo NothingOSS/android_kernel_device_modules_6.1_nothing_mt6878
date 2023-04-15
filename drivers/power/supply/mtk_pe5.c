@@ -1109,8 +1109,16 @@ static int pe50_stop(struct pe50_algo_info *info, struct pe50_stop_info *sinfo)
 			return ret;
 		}
 	}
-	pe50_enable_dvchg_charging(info, PE50_DVCHG_SLAVE, false);
-	pe50_set_dvchg_charging(info, false);
+	ret = pe50_enable_dvchg_charging(info, PE50_DVCHG_SLAVE, false);
+	if (ret < 0) {
+		PE50_ERR("disable slave dvchg fail(%d)\n", ret);
+		return ret;
+	}
+	ret = pe50_set_dvchg_charging(info, false);
+	if (ret < 0) {
+		PE50_ERR("en dvchg fail\n");
+		return ret;
+	}
 	if (!(data->notify & PE50_RESET_NOTIFY)) {
 		if (sinfo->hardreset_ta)
 			pe50_hal_send_ta_hardreset(info->alg);

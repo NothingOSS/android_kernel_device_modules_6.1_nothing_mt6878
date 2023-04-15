@@ -48,7 +48,7 @@ int pe5p_get_log_level(void)
 #define PE5P_VBUS_CALI_THRESHOLD	150	/* mV */
 #define PE5P_CV_LOWER_BOUND_GAP		50	/* mV */
 #define PE5P_INIT_POLLING_INTERVAL	500	/* ms */
-#define PE5P_INIT_RETRY_MAX	0
+#define PE5P_INIT_RETRY_MAX	3
 #define PE5P_MEASURE_R_RETRY_MAX	3
 #define PE5P_MEASURE_R_AVG_TIMES	10
 #define PE5P_VSYS_UPPER_BOUND            8900    /* mV */
@@ -1108,6 +1108,7 @@ static int pe5p_stop(struct pe5p_algo_info *info, struct pe5p_stop_info *sinfo)
 	struct chg_alg_notify notify = {
 		.evt = EVT_ALGO_STOP,
 	};
+	int ret = 0;
 
 	if (data->state == PE5P_ALGO_STOP) {
 		/*
@@ -1127,8 +1128,16 @@ static int pe5p_stop(struct pe5p_algo_info *info, struct pe5p_stop_info *sinfo)
 
 	if (data->is_swchg_en)
 		pe5p_enable_swchg_charging(info, false);
-	pe5p_enable_dvchg_charging(info, PE5P_HVDVCHG_SLAVE, false);
-	pe5p_set_hvdvchg_charging(info, false);
+	ret = pe5p_enable_dvchg_charging(info, PE5P_HVDVCHG_SLAVE, false);
+	if (ret < 0) {
+		PE5P_ERR("disable slave hvdvchg fail(%d)\n", ret);
+		return ret;
+	}
+	ret = pe5p_set_hvdvchg_charging(info, false);
+	if (ret < 0) {
+		PE5P_ERR("en dvchg fail\n");
+		return ret;
+	}
 	if (!(data->notify & PE5P_RESET_NOTIFY)) {
 		if (sinfo->hardreset_ta)
 			pe5p_hal_send_ta_hardreset(info->alg);
@@ -4089,12 +4098,13 @@ static const struct pe5p_dtprop pe5p_dtprops_s32_array[] = {
 
 static int pe5p_parse_dt(struct pe5p_algo_info *info)
 {
-	unsigned int i, ret;
+	int i;
 	struct pe5p_algo_desc *desc;
 	struct pe5p_algo_data *data;
 	struct device_node *np = info->dev->of_node;
 	u32 val;
 	int nondash_flag = 0;
+	int ret = 0;
 
 	desc = devm_kzalloc(info->dev, sizeof(*desc), GFP_KERNEL);
 	if (!desc)

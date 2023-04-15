@@ -3379,7 +3379,7 @@ out_unlock:
 static int hvbp_is_algo_ready(struct chg_alg_device *alg)
 {
 	int ret;
-	u32 soc;
+	int soc;
 	struct hvbp_algo_info *info = chg_alg_dev_get_drvdata(alg);
 	struct hvbp_algo_data *data = info->data;
 	struct hvbp_algo_desc *desc = info->desc;
@@ -3417,6 +3417,7 @@ static int hvbp_is_algo_ready(struct chg_alg_device *alg)
 		ret = ALG_INIT_FAIL;
 		goto out;
 	}
+
 	if (soc < desc->start_soc_min || soc > desc->start_soc_max) {
 		if (soc > 0) {
 			HVBP_INFO("soc(%d) not in range(%d~%d)\n", soc,
