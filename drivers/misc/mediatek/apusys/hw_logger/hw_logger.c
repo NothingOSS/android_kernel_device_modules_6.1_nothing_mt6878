@@ -593,7 +593,7 @@ static int __get_r_w_sz(unsigned int *w_ofs,
 	unsigned int *r_ofs, unsigned int *t_size_32, unsigned int *st_addr_32)
 {
 	int ret = 0;
-	unsigned long long w_ptr, t_size, st_addr;
+	unsigned long long w_ptr = 0, t_size = 0, st_addr = 0;
 
 	ret = get_st_addr(&st_addr);
 	if (ret != 0)
@@ -645,7 +645,7 @@ static void __get_r_w_sz_mbox(unsigned int *w_ofs,
 
 static int apu_logtop_copy_buf(void)
 {
-	unsigned int w_ofs, r_ofs, t_size, st_addr;
+	unsigned int w_ofs = 0, r_ofs = 0, t_size = 0, st_addr = 0;
 	int ret = 0;
 	static bool lock_fail;
 
