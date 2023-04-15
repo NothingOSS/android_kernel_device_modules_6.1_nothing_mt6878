@@ -10133,6 +10133,11 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 
 	priv = mtk_crtc->base.dev->dev_private;
 
+	if (!priv) {
+		DDPPR_ERR("%s, priv is NULL\n", __func__);
+		return;
+	}
+
 	CRTC_MMP_EVENT_START((int) crtc_id, enable,
 			mtk_crtc->enabled, 0);
 
@@ -10161,7 +10166,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	if (mtk_crtc->avail_modes_num == 0 && mtk_crtc->avail_modes)
 		drm_mode_copy(mtk_crtc->avail_modes, &crtc->state->adjusted_mode);
 
-	only_output = (priv && priv->usage[crtc_id] == DISP_OPENING);
+	only_output = (priv->usage[crtc_id] == DISP_OPENING);
 	/* adjust path for ovl switch if necessary */
 	mtk_drm_crtc_path_adjust(priv, crtc, mtk_crtc->ddp_mode);
 
@@ -10201,7 +10206,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 	cmdq_mbox_enable(client->chan);
 	CRTC_MMP_MARK((int) crtc_id, enable, 1, 1);
-	if (priv && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_USE_M4U))
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_USE_M4U))
 		mtk_crtc_prepare_instr(crtc);
 #endif
 

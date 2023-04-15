@@ -2336,8 +2336,19 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 		goto out;
 	}
 
-	if (mtk_crtc->base.dev)
-		priv = mtk_crtc->base.dev->dev_private;
+	if (!mtk_crtc->base.dev) {
+		DDPPR_ERR("%s mtk_crtc->base.dev is NULL\n", __func__);
+		ret = IRQ_NONE;
+		goto out;
+	}
+
+	priv = mtk_crtc->base.dev->dev_private;
+
+	if (!priv) {
+		DDPPR_ERR("%s priv is NULL\n", __func__);
+		ret = IRQ_NONE;
+		goto out;
+	}
 
 	if (status & BUFFER_UNDERRUN_INT_FLAG) {
 		if (__ratelimit(&mmp_rate))
@@ -2371,7 +2382,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				> TIGGER_INTERVAL_S(10)))
 				trigger_aee = 1;
 
-			if ((dsi_underrun_trigger == 1 && priv &&
+			if ((dsi_underrun_trigger == 1 &&
 				mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_DSI_UNDERRUN_AEE)) && trigger_aee) {
 				DDPAEE_FATAL("[IRQ] %s:buffer underrun. TS: 0x%08x\n",
@@ -2395,7 +2406,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				mtk_crtc->last_aee_trigger_ts = aee_now_ts;
 			}
 
-			if (priv && (!atomic_read(&priv->need_recover))) {
+			if (!atomic_read(&priv->need_recover)) {
 				struct mtk_crtc_state *state;
 
 				state = to_mtk_crtc_state(mtk_crtc->base.state);
@@ -2463,7 +2474,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				wake_up_interruptible(&(mtk_crtc->signal_irq_for_pre_fence_wq));
 			}
 
-			if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
+			if (mtk_drm_helper_get_opt(priv->helper_opt,
 							   MTK_DRM_OPT_HBM))
 				wakeup_dsi_wq(&dsi->te_rdy);
 
@@ -2499,7 +2510,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 		if (status & FRAME_DONE_INT_FLAG) {
 			drm_trace_tag_mark("dsi_frame_done");
 
-			if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
+			if (mtk_drm_helper_get_opt(priv->helper_opt,
 							   MTK_DRM_OPT_HBM))
 				wakeup_dsi_wq(&dsi->frame_done);
 
