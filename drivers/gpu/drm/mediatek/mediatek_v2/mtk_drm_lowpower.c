@@ -1382,12 +1382,13 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 		start = sched_clock();
 		perf_detail = atomic_read(&idlemgr->perf->detail);
 		if (perf_detail) {
-			perf_string = kzalloc(MTK_IDLE_PERF_DETAIL_LENGTH, GFP_KERNEL);
+			perf_string = kmalloc(MTK_IDLE_PERF_DETAIL_LENGTH, GFP_KERNEL);
 			if (!perf_string) {
 				DDPMSG("%s:%d, failed to allocate perf_string\n",
 					__func__, __LINE__);
 				perf_detail = 0;
 			} else {
+				perf_string[0] = '\0';
 				mtk_drm_idlemgr_perf_detail_check(
 						"RESTART", perf_string);
 			}
@@ -1605,12 +1606,13 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		start = sched_clock();
 		perf_detail = atomic_read(&idlemgr->perf->detail);
 		if (perf_detail) {
-			perf_string = kzalloc(MTK_IDLE_PERF_DETAIL_LENGTH, GFP_KERNEL);
+			perf_string = kmalloc(MTK_IDLE_PERF_DETAIL_LENGTH, GFP_KERNEL);
 			if (!perf_string) {
 				DDPMSG("%s:%d, failed to allocate perf_string\n",
 					__func__, __LINE__);
 				perf_detail = 0;
 			} else {
+				perf_string[0] = '\0';
 				mtk_drm_idlemgr_perf_detail_check(
 						"RESTART", perf_string);
 			}
