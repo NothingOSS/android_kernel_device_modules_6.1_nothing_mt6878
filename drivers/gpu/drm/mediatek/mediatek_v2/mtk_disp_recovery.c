@@ -207,11 +207,11 @@ int _mtk_esd_check_read(struct drm_crtc *crtc)
 				   mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
 	} else { /* VDO mode */
 		if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
-			mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,
-						 DDP_SECOND_PATH, mtk_crtc->is_mml?0:1);
+			mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_SECOND_PATH,
+						 (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) ? 0 : 1);
 		else
-			mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,
-						 DDP_FIRST_PATH, mtk_crtc->is_mml?0:1);
+			mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH,
+						 (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) ? 0 : 1);
 
 		if (mtk_crtc->msync2.msync_on) {
 			u32 vfp_early_stop = 1;
