@@ -398,7 +398,7 @@ static struct mtk_adsp_task_attr adsp_task_attr[AUDIO_TASK_DAI_NUM] = {
 	[AUDIO_TASK_MDDL_ID] = {true, -1, -1, -1,
 				VOICE_CALL_SUB_FEATURE_ID, false},
 	[AUDIO_TASK_MDUL_ID] = {true, -1, -1, -1,
-				VOIP_FEATURE_ID, false},
+				VOICE_CALL_FEATURE_ID, false},
 	[AUDIO_TASK_CALLDL_ID] = {true, -1, -1, -1,
 				VOICE_CALL_SUB_FEATURE_ID, false},
 	[AUDIO_TASK_CALLUL_ID] = {true, -1, -1, -1,
