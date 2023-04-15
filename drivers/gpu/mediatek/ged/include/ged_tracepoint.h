@@ -160,21 +160,24 @@ TRACE_EVENT(GPU_DVFS__Policy__Common__Sync_Api,
 /* frame-based policy tracepoints */
 TRACE_EVENT(GPU_DVFS__Policy__Frame_based__Frequency,
 
-	TP_PROTO(int target, int floor),
+	TP_PROTO(int target, int floor, int target_opp),
 
-	TP_ARGS(target, floor),
+	TP_ARGS(target, floor, target_opp),
 
 	TP_STRUCT__entry(
 		__field(int, target)
 		__field(int, floor)
+		__field(int, target_opp)
 	),
 
 	TP_fast_assign(
 		__entry->target = target;
 		__entry->floor = floor;
+		__entry->target_opp = target_opp;
 	),
 
-	TP_printk("target=%d, floor=%d", __entry->target, __entry->floor)
+	TP_printk("target=%d, floor=%d, target_opp=%d",
+		__entry->target, __entry->floor, __entry->target_opp)
 );
 
 TRACE_EVENT(GPU_DVFS__Policy__Frame_based__Workload,
@@ -275,6 +278,98 @@ TRACE_EVENT(GPU_DVFS__Policy__Frame_based__Margin__Detail,
 	TP_printk("margin_mode=%u, target_fps_margin=%d, min_margin_inc_step=%d, min_margin=%d",
 		__entry->margin_mode, __entry->target_fps_margin,
 		__entry->min_margin_inc_step, __entry->min_margin)
+);
+
+TRACE_EVENT(GPU_DVFS__Policy__Frame_based__Async_ratio__Counter,
+
+	TP_PROTO(unsigned int gpu_active, unsigned int iter_active, unsigned int compute_active,
+		unsigned int l2_rd_stall, unsigned int irq_active, unsigned int mcu_active),
+
+	TP_ARGS(gpu_active, iter_active, compute_active, l2_rd_stall, irq_active, mcu_active),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, gpu_active)
+		__field(unsigned int, iter_active)
+		__field(unsigned int, compute_active)
+		__field(unsigned int, l2_rd_stall)
+		__field(unsigned int, irq_active)
+		__field(unsigned int, mcu_active)
+	),
+
+	TP_fast_assign(
+		__entry->gpu_active = gpu_active;
+		__entry->iter_active = iter_active;
+		__entry->compute_active = compute_active;
+		__entry->l2_rd_stall = l2_rd_stall;
+		__entry->irq_active = irq_active;
+		__entry->mcu_active = mcu_active;
+	),
+
+	TP_printk("gpu_active=%u, iter_active=%u, compute_active=%u, l2_rd_stall=%u, irq_active=%u, mcu_active=%u",
+		__entry->gpu_active, __entry->iter_active, __entry->compute_active,
+		__entry->l2_rd_stall, __entry->irq_active, __entry->mcu_active)
+);
+
+TRACE_EVENT(GPU_DVFS__Policy__Frame_based__Async_ratio__Index,
+
+	TP_PROTO(int is_decreasing, int async_ratio,
+		int perf_improve, int fb_oppidx, int fb_tar_freq, int as_tar_opp),
+
+	TP_ARGS(is_decreasing, async_ratio, perf_improve, fb_oppidx,
+			fb_tar_freq, as_tar_opp),
+
+	TP_STRUCT__entry(
+		__field(int, is_decreasing)
+		__field(int, async_ratio)
+		__field(int, perf_improve)
+		__field(int, fb_oppidx)
+		__field(int, fb_tar_freq)
+		__field(int, as_tar_opp)
+	),
+
+	TP_fast_assign(
+		__entry->is_decreasing = is_decreasing;
+		__entry->async_ratio = async_ratio;
+		__entry->perf_improve = perf_improve;
+		__entry->fb_oppidx = fb_oppidx;
+		__entry->fb_tar_freq = fb_tar_freq;
+		__entry->as_tar_opp = as_tar_opp;
+	),
+
+	TP_printk("is_decreasing=%d, async_ratio=%d, perf_improve=%d, fb_oppidx=%d, fb_tar_freq=%d, as_tar_opp=%d",
+		__entry->is_decreasing, __entry->async_ratio,
+		__entry->perf_improve, __entry->fb_oppidx,
+		__entry->fb_tar_freq, __entry->as_tar_opp)
+);
+
+TRACE_EVENT(GPU_DVFS__Policy__Frame_based__Async_ratio__Policy,
+
+	TP_PROTO(int cur_opp_id, int fb_oppidx,
+		int async_id, int apply_async, int is_decreasing),
+
+	TP_ARGS(cur_opp_id, fb_oppidx, async_id, apply_async,
+			is_decreasing),
+
+	TP_STRUCT__entry(
+		__field(int, cur_opp_id)
+		__field(int, fb_oppidx)
+		__field(int, async_id)
+		__field(int, apply_async)
+		__field(int, is_decreasing)
+	),
+
+	TP_fast_assign(
+		__entry->cur_opp_id = cur_opp_id;
+		__entry->fb_oppidx = fb_oppidx;
+		__entry->async_id = async_id;
+		__entry->apply_async = apply_async;
+		__entry->is_decreasing = is_decreasing;
+	),
+
+	TP_printk("cur_opp_id=%d, fb_oppidx=%d, async_id=%d, apply_async=%d, is_decreasing=%d",
+		__entry->cur_opp_id, __entry->fb_oppidx,
+		__entry->async_id, __entry->apply_async,
+		__entry->is_decreasing)
 );
 
 /* loading-based policy tracepoints */

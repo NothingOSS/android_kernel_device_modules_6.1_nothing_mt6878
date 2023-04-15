@@ -29,6 +29,7 @@
 #include "ged_global.h"
 #include "ged_eb.h"
 #include "ged_dcs.h"
+#include "ged_async.h"
 
 #define MTK_DEFER_DVFS_WORK_MS          10000
 #define MTK_DVFS_SWITCH_INTERVAL_MS     50
@@ -75,6 +76,24 @@ static unsigned int g_cust_boost_freq_id;
 
 #define LIMITER_FPSGO 0
 #define LIMITER_APIBOOST 1
+#define ENABLE_ASYNC_RATIO 1
+
+/**
+ * Define some global variable for async ratio.
+ * g_async_ratio_support: Enable async ratio feature by dts.
+ * g_min_async_oppnum: Additional added opp num at min stack freq
+ * g_same_stack_in_opp: There are some opp with same stack freq (but different top)
+ * in opp table. (for async ratio)
+ * g_async_id_threshold: The largest oppidx whose stack freq does not repeat
+ * g_oppnum_eachmask: opp num for each core mask, Ex: 2 opp for MC6
+ */
+static int FORCE_OPP;
+static int g_async_ratio_support;
+static int g_min_async_oppnum = 1;
+static bool g_same_stack_in_opp;
+static int g_async_id_threshold;
+static int g_oppnum_eachmask = 1;
+static struct GpuRawCounter g_counter_hs;
 
 unsigned int g_gpu_timer_based_emu;
 
@@ -251,6 +270,10 @@ static void _init_loading_ud_table(void)
 static void gpu_util_history_init(void)
 {
 	memset(&g_util_hs, 0, sizeof(struct gpu_utilization_history));
+
+#if ENABLE_ASYNC_RATIO
+	memset(&g_counter_hs, 0, sizeof(struct GpuRawCounter));
+#endif /*ENABLE_ASYNC_RATIO*/
 }
 
 static void gpu_util_history_update(struct GpuUtilization_Ex *util_ex)
@@ -297,6 +320,14 @@ static void gpu_util_history_update(struct GpuUtilization_Ex *util_ex)
 	}
 
 	g_util_hs.current_idx = current_idx;
+
+#if ENABLE_ASYNC_RATIO
+	g_counter_hs.util_iter_raw		+= util_ex->util_iter_raw;
+	g_counter_hs.util_mcu_raw		+= util_ex->util_mcu_raw;
+	g_counter_hs.util_sc_comp_raw		+= util_ex->util_sc_comp_raw;
+	g_counter_hs.util_l2ext_raw		+= util_ex->util_l2ext_raw;
+	g_counter_hs.util_irq_raw		+= util_ex->util_irq_raw;
+#endif /*ENABLE_ASYNC_RATIO*/
 }
 static unsigned int gpu_util_history_query_loading(unsigned int window_size_us)
 {
@@ -1124,6 +1155,285 @@ static void set_fb_timeout(int t_gpu_target_ori, int t_gpu_target_margin)
 	}
 }
 
+// choose the smallest oppidx (highest freq) for same stack freq
+static int get_max_oppidx_with_same_stack(int oppidx)
+{
+	if (!oppidx)
+		return oppidx;
+
+	while (oppidx > 1 &&
+		  ged_get_sc_freq_by_virt_opp(oppidx) == ged_get_sc_freq_by_virt_opp(oppidx - 1))
+		oppidx--;
+
+	return oppidx;
+}
+
+#if ENABLE_ASYNC_RATIO
+static unsigned int calculate_performance(struct async_counter *counters, unsigned int ratio)
+{
+	long perf = 0;
+
+	if (!ratio) {
+		ged_log_buf_print(ghLogBuf_DVFS, "[DVFS_ASYNC] - %s: ratio is zero", __func__);
+		return (unsigned int)perf;
+	}
+	if (ratio == 100) {
+		ged_log_buf_print(ghLogBuf_DVFS,
+			"[DVFS_ASYNC] - %s: ratio is 100, no need to calculate performance",
+			__func__);
+		return 100;
+	}
+
+	perf = (counters->iter * async_coeff[0]) / ratio * RATIO_SCAL +
+			(counters->compute * async_coeff[1] +
+			counters->l2ext * async_coeff[4] +
+			counters->irq * async_coeff[7]) / ratio / ratio * RATIO_SCAL * RATIO_SCAL +
+			(counters->compute * async_coeff[2] +
+			counters->l2ext * async_coeff[5] +
+			counters->irq * async_coeff[8]) * ratio / RATIO_SCAL +
+			(counters->compute * async_coeff[3] +
+			counters->l2ext * async_coeff[6] +
+			counters->irq * async_coeff[9]) * ratio * ratio / RATIO_SCAL / RATIO_SCAL;
+
+	perf += counters->gpuactive * async_coeff[10];
+
+	if (perf <= 0) {
+		ged_log_buf_print(ghLogBuf_DVFS,
+				"[DVFS_ASYNC] - %s: perf result(%ld) is unreasonable",
+				__func__, perf);
+		perf = 0;
+		return (unsigned int)perf;
+	}
+
+	perf = PERF_SCAL * COEFF_SCAL * counters->gpuactive / perf;
+	return (unsigned int)perf;
+}
+
+static bool checkInDCS(int oppidx)
+{
+	int min_freq_id_real = ged_get_min_oppidx_real();
+
+	if (oppidx > min_freq_id_real)
+		return true;
+	else
+		return false;
+}
+
+static void reset_async_counters(void)
+{
+	g_counter_hs.util_iter_raw		= 0;
+	g_counter_hs.util_mcu_raw		= 0;
+	g_counter_hs.util_sc_comp_raw		= 0;
+	g_counter_hs.util_l2ext_raw		= 0;
+	g_counter_hs.util_irq_raw		= 0;
+}
+
+static int get_async_counters(struct async_counter *counters)
+{
+	int memory_conter_scale = 4, shader_conter_scale = dcs_get_cur_core_num();
+
+	if (!counters) {
+		GED_LOGE("[DVFS_ASYNC] async_counter pointer is NULL");
+		return ASYNC_ERROR;
+	}
+	if (!shader_conter_scale) {
+		GED_LOGE("[DVFS_ASYNC] cannot obtain core num");
+		return ASYNC_ERROR;
+	}
+	/**
+	 * Get acumulated history counters for this frame.
+	 * Counters needed for perf model:
+	 * 004:CSHWCounters.GPU_ACTIVE
+	 * 006:CSHWCounters.GPU_ITER_ACTIVE
+	 * 022:SCCounters.COMPUTE_ACTIVE
+	 * 029:MemSysCounters.L2_EXT_READ
+	 * 054:CSHWCounters.CSHWIF1_IRQ_ACTIVE
+	 */
+	counters->gpuactive = (long)(g_counter_hs.util_iter_raw > g_Util_Ex.util_mcu_raw ?
+					g_counter_hs.util_iter_raw : g_Util_Ex.util_mcu_raw);
+	counters->iter		= (long)g_counter_hs.util_iter_raw;
+	counters->compute	= (long)(g_counter_hs.util_sc_comp_raw / shader_conter_scale);
+	counters->l2ext		= (long)g_counter_hs.util_l2ext_raw / memory_conter_scale;
+	counters->irq		= (long)g_counter_hs.util_irq_raw;
+
+	// reset counter value after get
+	reset_async_counters();
+
+	ged_log_buf_print(ghLogBuf_DVFS,
+			"[DVFS_ASYNC] - %s: Async counters [gpuactive/iter/compute/l2ext/irq]: [%ld/%ld/%ld/%ld/%ld]\n",
+			__func__, counters->gpuactive,
+			counters->iter, counters->compute, counters->l2ext, counters->irq);
+	// MET
+	trace_GPU_DVFS__Policy__Frame_based__Async_ratio__Counter(
+		counters->gpuactive, counters->iter, counters->compute,
+		counters->l2ext, counters->irq, g_Util_Ex.util_mcu_raw);
+
+	if ((counters->gpuactive < 0) || (counters->iter < 0) ||
+		(counters->compute < 0) || (counters->l2ext < 0) ||
+		(counters->irq < 0)) {
+		GED_LOGE("[DVFS_ASYNC] counters are invalid, some counters are negative");
+		return ASYNC_ERROR;
+	} else if (counters->gpuactive + counters->iter +
+		counters->compute + counters->l2ext + counters->irq == 0) {
+		GED_LOGE("[DVFS_ASYNC] counters are invalid, all counters are zero");
+		return ASYNC_ERROR;
+	} else {
+		return ASYNC_OK;
+	}
+}
+
+static int ged_async_ratio_perf_model(int oppidx, int tar_freq, bool is_decreasing)
+{
+	struct async_counter asyncCounter;
+	int adjust_ratio = 0, perf_improve = 0, tar_opp = oppidx, tmp_ratio = 0, tmp_perf = 0;
+	int min_freq_id_real = ged_get_min_oppidx_real(); // 50
+	int perf_toler = 0, perf_require = 0;
+	int cur_opp_id = ged_get_cur_oppidx();
+
+	// 0. chack validity of the data
+	if (oppidx < 0 || tar_freq < 0 || min_freq_id_real < 0 || cur_opp_id < 0)
+		return tar_opp;
+	if (oppidx > ged_get_min_oppidx())
+		return ged_get_min_oppidx();
+
+	//1. get counters from IPA
+	if (get_async_counters(&asyncCounter) == ASYNC_ERROR) {
+		ged_log_buf_print(ghLogBuf_DVFS,
+				"[DVFS_ASYNC] - %s: get counters fail\n", __func__);
+		return tar_opp;
+	}
+
+	// 2. if gpu freq tend to decrease
+	if (is_decreasing) {
+		// Make sure following calculations will not divide by zero
+		if (!ged_get_sc_freq_by_virt_opp(oppidx) || !ged_get_top_freq_by_virt_opp(oppidx))
+			return tar_opp;
+
+		perf_toler = PERF_SCAL * tar_freq / ged_get_sc_freq_by_virt_opp(oppidx);
+		adjust_ratio = RATIO_SCAL * ged_get_top_freq_by_virt_opp(oppidx + 1) /
+						ged_get_top_freq_by_virt_opp(oppidx);
+		perf_improve = calculate_performance(&asyncCounter, adjust_ratio);
+		if (perf_improve > 100 || perf_improve == 0) {
+			ged_log_buf_print(ghLogBuf_DVFS,
+				"[DVFS_ASYNC] - %s: perf_improve(%d) is unreasonable\n",
+				__func__, perf_improve);
+			goto decreaseEnd;
+		}
+
+		// check perf gain to decide if we can reduce top freq
+		if (perf_improve > perf_toler) {
+			tar_opp = oppidx + 1;
+
+			// if Not DCS & still able to consider lower freq, try opp 50
+			if ((checkInDCS(oppidx) && g_oppnum_eachmask > 2) ||
+				(!checkInDCS(oppidx) && g_min_async_oppnum > 1)) {
+				tmp_ratio = RATIO_SCAL * ged_get_top_freq_by_virt_opp(oppidx + 2) /
+							ged_get_top_freq_by_virt_opp(oppidx);
+				tmp_perf = calculate_performance(&asyncCounter, tmp_ratio);
+				if (tmp_perf > perf_toler) {
+					tar_opp = oppidx + 2;
+					adjust_ratio = tmp_ratio;
+					perf_improve = tmp_perf;
+				}
+			}
+		}
+decreaseEnd:
+		ged_log_buf_print(ghLogBuf_DVFS,
+			"[DVFS_ASYNC] - %s: isDecreasing: fb_oppidx(%d), tar_freq(%d), tar_opp(%d), adjust_ratio(%d), perf_improve(%d), perf_toler(%d)\n",
+			__func__, oppidx, tar_freq, tar_opp, adjust_ratio,
+			perf_improve, perf_toler);
+
+	// 3. if gpu freq tend to increase
+	} else {
+		// Make sure following calculations will not divide by zero
+		if (!ged_get_sc_freq_by_virt_opp(cur_opp_id) ||
+			!ged_get_top_freq_by_virt_opp(cur_opp_id))
+			return tar_opp;
+
+		perf_require = PERF_SCAL * tar_freq / ged_get_sc_freq_by_virt_opp(cur_opp_id);
+		adjust_ratio = RATIO_SCAL * ged_get_top_freq_by_virt_opp(cur_opp_id - 1) /
+						ged_get_top_freq_by_virt_opp(cur_opp_id);
+		perf_improve = calculate_performance(&asyncCounter, adjust_ratio);
+		if (perf_improve <= 100) {
+			ged_log_buf_print(ghLogBuf_DVFS,
+				"[DVFS_ASYNC] - %s: perf_improve(%d) is unreasonable\n",
+				__func__, perf_improve);
+			goto increaseEnd;
+		}
+
+		// opp - 1 is enough
+		if (perf_improve > perf_require) {
+			tar_opp = cur_opp_id - 1;
+			goto increaseEnd;
+		} else {
+			// try opp - 2
+			if (ged_get_sc_freq_by_virt_opp(cur_opp_id - 1) ==
+				ged_get_sc_freq_by_virt_opp(cur_opp_id - 2)) {
+				adjust_ratio = RATIO_SCAL *
+						ged_get_top_freq_by_virt_opp(cur_opp_id - 2) /
+						ged_get_top_freq_by_virt_opp(cur_opp_id);
+				perf_improve = calculate_performance(&asyncCounter, adjust_ratio);
+				if (perf_improve <= 100) {
+					ged_log_buf_print(ghLogBuf_DVFS,
+						"[DVFS_ASYNC] - %s: perf_improve(%d) is unreasonable\n",
+						__func__, perf_improve);
+					goto increaseEnd;
+				}
+				// opp - 2 is enough
+				if (perf_improve > perf_require) {
+					tar_opp = cur_opp_id - 2;
+					goto increaseEnd;
+				}
+			}
+			// modify tar_freq
+			tar_opp = ged_get_oppidx_by_stack_freq(tar_freq * PERF_SCAL / perf_improve);
+			tar_opp = get_max_oppidx_with_same_stack(tar_opp);
+		}
+
+increaseEnd:
+		ged_log_buf_print(ghLogBuf_DVFS,
+			"[DVFS_ASYNC] - %s: isIncreasing, fb_oppidx(%d), tar_freq(%d), tar_opp(%d), adjust_ratio(%d), perf_improve(%d), perf_require(%d)\n",
+			__func__, oppidx, tar_freq, tar_opp, adjust_ratio,
+			perf_improve, perf_require);
+	}
+	trace_tracing_mark_write(5566, "async_perf_high", perf_improve);
+	trace_tracing_mark_write(5566, "async_adj_ratio", adjust_ratio);
+	trace_GPU_DVFS__Policy__Frame_based__Async_ratio__Index(
+		is_decreasing, adjust_ratio,	perf_improve, oppidx, tar_freq / 1000, tar_opp);
+
+	return tar_opp;
+}
+
+// determine async policy: decreasing or increasing
+// return true if is decreasing
+static bool determine_async_policy(int cur_opp_id, int ui32NewFreqID)
+{
+	if (cur_opp_id <= ged_get_min_oppidx_real() && ui32NewFreqID >= g_async_id_threshold)
+		return true;
+	else if (cur_opp_id > ged_get_min_oppidx_real() &&
+			ui32NewFreqID > ged_get_min_oppidx_real())
+		return true;
+	else if (cur_opp_id == (ged_get_min_oppidx_real() + 1) &&
+			ui32NewFreqID >= g_async_id_threshold)
+		return true;
+	else
+		return false;
+}
+// determine whether async policy is needed
+// if cur_opp is at largest async ratio, use original frame-based policy
+// if only one opp for DCS, no need to consider async_ratio when new freq ID in DCS
+static bool check_async_policy_needed(int cur_opp_id, int ui32NewFreqID)
+{
+	// only one opp for DCS
+	if (g_oppnum_eachmask == 1 && ui32NewFreqID > ged_get_min_oppidx_real())
+		return false;
+
+	return !((cur_opp_id == g_async_id_threshold ||
+			 cur_opp_id == (ged_get_min_oppidx_real() + 1)) &&
+				ui32NewFreqID < g_async_id_threshold);
+}
+#endif /*ENABLE_ASYNC_RATIO*/
+
 /*
  *	input argument t_gpu, t_gpu_target unit: ns
  */
@@ -1139,7 +1449,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	int gpu_freq_pre, gpu_freq_tar, gpu_freq_floor;   // unit: KHZ
 	int gpu_freq_overdue_max;   // unit: KHZ
 	int i, ui32NewFreqID = 0;
-	int minfreq_idx;
+	int minfreq_idx = ged_get_min_oppidx();
 	static int num_pre_frames;
 	static int cur_frame_idx;
 	static int pre_frame_idx;
@@ -1150,7 +1460,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	static unsigned int force_fallback_pre;
 	static int margin_low_bound;
 	int ultra_high_step_size = (dvfs_step_mode & 0xff);
-	int ui32GPUFreq_oppidx = ged_get_cur_oppidx();
+	int cur_opp_id = ged_get_cur_oppidx();
 
 	gpu_freq_pre = ged_get_cur_freq();
 	gpu_freq_overdue_max = (ged_get_max_freq_in_opp() * 1000) / OVERDUE_FREQ_TH;
@@ -1190,6 +1500,13 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 				&frame_t_gpu);
 		ged_set_backup_timer_timeout(lb_timeout);
 		is_fb_dvfs_triggered = 0;
+
+#if ENABLE_ASYNC_RATIO
+		if (ged_get_policy_state() == POLICY_STATE_FORCE_LB)
+			// reset frame property for FB control in the next iteration
+			reset_async_counters();
+#endif /*ENABLE_ASYNC_RATIO*/
+
 		return gpu_freq_pre;
 	}
 
@@ -1372,12 +1689,10 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	if (gpu_freq_tar < gpu_freq_floor)
 		gpu_freq_tar = gpu_freq_floor;
 
-	trace_GPU_DVFS__Policy__Frame_based__Frequency(gpu_freq_tar, gpu_freq_floor);
 	pre_frame_idx = cur_frame_idx;
 	cur_frame_idx = (cur_frame_idx + 1) %
 		GED_DVFS_BUSY_CYCLE_MONITORING_WINDOW_NUM;
 
-	minfreq_idx = ged_get_min_oppidx();
 	ui32NewFreqID = minfreq_idx;
 
 	for (i = 0; i <= minfreq_idx; i++) {
@@ -1400,9 +1715,9 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	/* overdue_counter : 8~4, prevent decreasing opp if previous frame overdue too much */
 	if (overdue_counter <= 8 && overdue_counter > 4) {
 		overdue_counter--;
-		if (ui32NewFreqID > ui32GPUFreq_oppidx &&
+		if (ui32NewFreqID > cur_opp_id &&
 			gpu_freq_pre > gpu_freq_overdue_max)
-			ui32NewFreqID = ui32GPUFreq_oppidx;
+			ui32NewFreqID = cur_opp_id;
 	}
 
 
@@ -1416,12 +1731,47 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	margin_low_bound, target_fps_margin, dvfs_margin_low_bound,
 	dvfs_min_margin_inc_step);
 	g_CommitType = MTK_GPU_DVFS_TYPE_VSYNCBASED;
+
+	// choose the smallest oppidx (highest top freq) for same stack freq
+	if (g_same_stack_in_opp && ui32NewFreqID > g_async_id_threshold)
+		ui32NewFreqID = get_max_oppidx_with_same_stack(ui32NewFreqID);
+
+#if ENABLE_ASYNC_RATIO
+	//async ration trial run, g_async_id_threshold(48), ged_get_min_oppidx_real() = 50
+	if (g_async_ratio_support &&
+		(cur_opp_id >= g_async_id_threshold || ui32NewFreqID >= g_async_id_threshold)) {
+		bool isDecreasing = false;
+		int asyncID = 0;
+
+		// 48/51 => higher(>48), async_ratio not change, use original frame-based policy
+		if (check_async_policy_needed(cur_opp_id, ui32NewFreqID)) {
+			isDecreasing = determine_async_policy(cur_opp_id, ui32NewFreqID);
+			asyncID = ged_async_ratio_perf_model(
+						ui32NewFreqID, gpu_freq_tar, isDecreasing);
+			ged_log_buf_print(ghLogBuf_DVFS,
+				"[DVFS_ASYNC] GPU freq %s: cur_opp_id(%d) ui32NewFreqID(%d) asyncID(%d) applyAsyncPolicy(%d)",
+					isDecreasing ? "decreasing" : "increasing",
+					cur_opp_id, ui32NewFreqID, asyncID, 1);
+
+			if (g_async_ratio_support)
+				ui32NewFreqID = asyncID;
+		}
+
+		trace_GPU_DVFS__Policy__Frame_based__Async_ratio__Policy(
+			cur_opp_id, ui32NewFreqID, asyncID,
+			check_async_policy_needed(cur_opp_id, ui32NewFreqID), isDecreasing);
+	}
+#endif /*ENABLE_ASYNC_RATIO*/
+
+	trace_GPU_DVFS__Policy__Frame_based__Frequency(gpu_freq_tar, gpu_freq_floor, ui32NewFreqID);
+
 	if (g_async_ratio_support)
 		ged_dvfs_gpu_freq_dual_commit((unsigned long)ui32NewFreqID,
 			gpu_freq_tar, GED_DVFS_FRAME_BASE_COMMIT, (unsigned long)ui32NewFreqID);
 	else
 		ged_dvfs_gpu_freq_commit((unsigned long)ui32NewFreqID,
 			gpu_freq_tar, GED_DVFS_FRAME_BASE_COMMIT);
+
 	//t_gpu_target(unit: 100us) *10^5 =nanosecond
 	set_fb_timeout(t_gpu_target * 100000, t_gpu_target_hd * 100000);
 	ged_set_backup_timer_timeout(fb_timeout);
@@ -2511,20 +2861,20 @@ GED_ERROR ged_dvfs_probe(int pid)
 
 void ged_dvfs_enable_async_ratio(int enableAsync)
 {
-	pr_info("[DVFS] %s async ratio in ged_dvfs",
+	pr_info("[DVFS_ASYNC] %s async ratio in ged_dvfs",
 			enableAsync ? "enable" : "disable");
 	g_async_ratio_support = enableAsync;
 }
 
 void ged_dvfs_force_top_oppidx(int idx)
 {
-	pr_info("[DVFS] force top oppidx (%d) in ged_dvfs", idx);
+	pr_info("[DVFS_ASYNC] force top oppidx (%d) in ged_dvfs", idx);
 	FORCE_TOP_OPP = idx;
 }
 
 void ged_dvfs_force_stack_oppidx(int idx)
 {
-	pr_info("[DVFS] force stack oppidx (%d) in ged_dvfs", idx);
+	pr_info("[DVFS_ASYNC] force stack oppidx (%d) in ged_dvfs", idx);
 	FORCE_OPP = idx;
 }
 
@@ -2545,6 +2895,7 @@ int ged_dvfs_get_stack_oppidx(void)
 
 GED_ERROR ged_dvfs_system_init(void)
 {
+	struct device_node *async_dvfs_node = NULL;
 	mutex_init(&gsDVFSLock);
 	mutex_init(&gsPolicyLock);
 	mutex_init(&gsVSyncOffsetLock);
@@ -2633,6 +2984,20 @@ GED_ERROR ged_dvfs_system_init(void)
 	ged_get_last_commit_stack_idx_fp = ged_dvfs_get_last_commit_stack_idx;
 
 	spin_lock_init(&g_sSpinLock);
+
+	async_dvfs_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_async_ratio");
+	if (unlikely(!async_dvfs_node)) {
+		GED_LOGE("Failed to find async_dvfs_node");
+	} else {
+		of_property_read_u32(async_dvfs_node, "async-ratio-support",
+							&g_async_ratio_support);
+		of_property_read_u32(async_dvfs_node, "async-oppnum-low", &g_min_async_oppnum);
+		of_property_read_u32(async_dvfs_node, "async-oppnum-eachmask", &g_oppnum_eachmask);
+	}
+	// Find the largest oppidx whose stack freq does not repeat
+	g_async_id_threshold = get_max_oppidx_with_same_stack(ged_get_min_oppidx_real());
+	if (g_async_id_threshold != ged_get_min_oppidx_real())
+		g_same_stack_in_opp = true;
 
 	return GED_OK;
 }

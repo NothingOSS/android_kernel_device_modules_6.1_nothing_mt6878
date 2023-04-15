@@ -11,6 +11,8 @@ GED_ERROR ged_gpufreq_init(void);
 void ged_gpufreq_exit(void);
 
 unsigned int ged_get_cur_freq(void);
+unsigned int ged_get_cur_top_freq(void);
+unsigned int ged_get_cur_stack_freq(void);
 unsigned int ged_get_cur_volt(void);
 int ged_get_cur_oppidx(void);
 int ged_get_max_oppidx(void);
@@ -21,6 +23,7 @@ int ged_get_opp_num_real(void);
 unsigned int ged_get_freq_by_idx(int oppidx);
 unsigned int ged_get_power_by_idx(int oppidx);
 int ged_get_oppidx_by_freq(unsigned int freq);
+int ged_get_oppidx_by_stack_freq(unsigned int freq);
 unsigned int ged_get_leakage_power(unsigned int volt);
 unsigned int ged_get_dynamic_power(unsigned int freq, unsigned int volt);
 
@@ -41,5 +44,9 @@ void ged_gpufreq_print_tables(void);
 
 unsigned int ged_gpufreq_get_power_state(void);
 int ged_get_max_freq_in_opp(void);
+
+// for async ratio
+int ged_get_sc_freq_by_virt_opp(int oppidx);
+int ged_get_top_freq_by_virt_opp(int oppidx);
 
 #endif /* __GED_GPUFREQ_V2_H__ */

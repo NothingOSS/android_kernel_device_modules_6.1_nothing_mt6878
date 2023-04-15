@@ -100,6 +100,12 @@ struct GpuUtilization_Ex {
 	unsigned int util_iter;
 	unsigned int util_mcu;
 
+	unsigned int util_iter_raw;
+	unsigned int util_mcu_raw;
+	unsigned int util_irq_raw;
+	unsigned int util_sc_comp_raw;
+	unsigned int util_l2ext_raw;
+
 	unsigned long long delta_time;   // unit: ns
 	unsigned int freq;   // unit: kHz
 };
