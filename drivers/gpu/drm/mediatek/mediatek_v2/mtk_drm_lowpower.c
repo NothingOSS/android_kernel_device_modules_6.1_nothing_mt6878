@@ -330,7 +330,8 @@ void mtk_drm_idlemgr_perf_dump_func(struct drm_crtc *crtc, bool lock)
 	if (perf == NULL) {
 		DDPMSG("%s, crtc:%u has not started yet, try \"idle_perf:on\"\n",
 			__func__, crtc_id);
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		if (lock)
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		return;
 	}
 

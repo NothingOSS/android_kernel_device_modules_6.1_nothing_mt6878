@@ -1605,6 +1605,7 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 
 	if (!cmdq_handle) {
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		return -EINVAL;
 	}
 
@@ -1705,6 +1706,7 @@ int mtk_drm_setbacklight_grp(struct drm_crtc *crtc, unsigned int level,
 	cmdq_handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
 	if (!cmdq_handle) {
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		return -EINVAL;
 	}
 
@@ -1827,6 +1829,7 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 
 	if (!cmdq_handle) {
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		return -EINVAL;
 	}
 
@@ -2273,6 +2276,7 @@ int mtk_crtc_user_cmd(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
 
 	if (!cmdq_handle) {
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		return -EINVAL;
 	}
 
@@ -3633,6 +3637,7 @@ void mtk_crtc_cwb_path_disconnect(struct drm_crtc *crtc)
 
 	if (!handle) {
 		DDPPR_ERR("%s:%d NULL handle\n", __func__, __LINE__);
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		return;
 	}
 
@@ -6235,6 +6240,7 @@ void mtk_crtc_dc_prim_path_update(struct drm_crtc *crtc)
 
 	if (!cmdq_handle) {
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		return;
 	}
 
@@ -14911,6 +14917,7 @@ static void mtk_drm_cwb_give_buf(struct drm_crtc *crtc)
 
 	if (!handle) {
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		return;
 	}
 
@@ -16892,7 +16899,7 @@ int mtk_crtc_path_switch(struct drm_crtc *crtc, unsigned int ddp_mode,
 
 	DDPINFO("%s crtc%d path switch(%d->%d)\n", __func__, index,
 		mtk_crtc->ddp_mode, ddp_mode);
-	mtk_drm_idlemgr_kick(__func__, crtc, 0);
+	mtk_drm_idlemgr_kick(__func__, crtc, !need_lock);
 	CRTC_MMP_MARK(index, path_switch, 1, 0);
 
 	/* 0. Special NO_USE ddp mode control. In NO_USE ddp mode, the HW path
@@ -17907,6 +17914,10 @@ int mtk_drm_switch_te(struct drm_crtc *crtc, int te_num, bool need_lock)
 
 	if (!handle) {
 		DDPPR_ERR("%s:%d NULL handle\n", __func__, __LINE__);
+		if (need_lock) {
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+			DDP_MUTEX_UNLOCK(&private->commit.lock, __func__, __LINE__);
+		}
 		return -EINVAL;
 	}
 
