@@ -5502,6 +5502,7 @@
 			mediatek,pmic-all-rgn-en = <0x4000010>;
 			mediatek,pmic-all-rgn-en-2 = <0x30>;
 			mediatek,kernel-enable-time = <0x3c>;
+			disable = <0>;
 		};
 
 		apmixed@1000c000 {
