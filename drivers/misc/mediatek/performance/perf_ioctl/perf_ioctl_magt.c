@@ -13,11 +13,13 @@ static int thermal_aware_threshold = -1;
 static int fpsdrop_aware_threshold = -1;
 static int advice_bat_avg_current = -1;
 static int advice_bat_max_current = -1;
+static int targetfps_throttling_temp = -1;
 
 module_param(thermal_aware_threshold, int, 0644);
 module_param(fpsdrop_aware_threshold, int, 0644);
 module_param(advice_bat_avg_current, int, 0644);
 module_param(advice_bat_max_current, int, 0644);
+module_param(targetfps_throttling_temp, int, 0644);
 
 static unsigned long perfctl_copy_to_user(void __user *pvTo,
 		const void *pvFrom, unsigned long ulBytes)
