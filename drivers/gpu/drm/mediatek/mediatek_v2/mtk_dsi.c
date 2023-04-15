@@ -1881,6 +1881,7 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 	u32 dsi_tmp_buf_bpp;
 	u32 t_vfp, t_vbp, t_vsa;
 	u32 t_hfp, t_hbp, t_hsa;
+	u32 hfp_minimum;
 	struct mtk_panel_ext *ext = NULL;
 	struct videomode *vm = NULL;
 	struct dynamic_mipi_params *dyn = NULL;
@@ -1978,13 +1979,25 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 			2 * dsi->data_phy_cycle * dsi->lanes + 8) &&
 			(t_hfp * dsi_tmp_buf_bpp < 8 * dsi->lanes + 28 +
 			2 * dsi->data_phy_cycle * dsi->lanes +
-			2 * (32 + 1) * dsi->lanes - 6 * dsi->lanes - 12))
+			2 * (32 + 1) * dsi->lanes - 6 * dsi->lanes - 14))
 			horizontal_frontporch_byte = 2*(32 + 1)*dsi->lanes -
-				6*dsi->lanes - 12;
+				6*dsi->lanes - 14;
 		else
 			horizontal_frontporch_byte = t_hfp * dsi_tmp_buf_bpp -
 				8 * dsi->lanes - 28 -
 				2 * dsi->data_phy_cycle * dsi->lanes;
+
+		/* Check CPHY HFP minimum limitation */
+		if (dsi->mode_flags & MIPI_DSI_CLOCK_NON_CONTINUOUS) {
+			hfp_minimum = 2 * (32 + 1) *
+				dsi->lanes - 6 * dsi->lanes - 14;
+
+			if (horizontal_frontporch_byte < hfp_minimum)
+				DDPPR_ERR(
+				"%s HFP:%d < CPHY HFP minimum limitation:%d !!\n",
+					__func__, (horizontal_frontporch_byte / 2),
+					(hfp_minimum / 2));
+		}
 	} else {
 		if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO_SYNC_PULSE) {
 			horizontal_sync_active_byte =

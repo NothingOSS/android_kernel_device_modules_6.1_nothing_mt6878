@@ -824,39 +824,39 @@ static const struct drm_display_mode performance_mode = {
 };
 #else
 static const struct drm_display_mode default_mode = {
-	.clock = 443290,
+	.clock = 475956,
 	.hdisplay = 1080,
-	.hsync_start = 1080 + 76,//HFP
-	.hsync_end = 1080 + 76 + 12,//HSA
-	.htotal = 1080 + 76 + 12 + 80,//HBP
+	.hsync_start = 1080 + 216,//HFP
+	.hsync_end = 1080 + 216 + 20,//HSA
+	.htotal = 1080 + 216 + 20 + 80,//HBP
 	.vdisplay = 2400,
-	.vsync_start = 2400 + 3524,//VFP
-	.vsync_end = 2400 + 3524 + 10,//VSA
-	.vtotal = 2400 + 3524 + 10 + 10,//VBP 4948
+	.vsync_start = 2400 + 3230,//VFP
+	.vsync_end = 2400 + 3230 + 10,//VSA
+	.vtotal = 2400 + 3230 + 10 + 10,//VBP 4948
 };
 
 static const struct drm_display_mode performance_mode = {
-	.clock = 443290,
+	.clock = 479000,
 	.hdisplay = 1080,
-	.hsync_start = 1080 + 76,//HFP
-	.hsync_end = 1080 + 76 + 12,//HSA
-	.htotal = 1080 + 76 + 12 + 80,//HBP
+	.hsync_start = 1080 + 216,//HFP
+	.hsync_end = 1080 + 216 + 20,//HSA
+	.htotal = 1080 + 216 + 20 + 80,//HBP
 	.vdisplay = 2400,
-	.vsync_start = 2400 + 1542,//VFP
-	.vsync_end = 2400 + 1542 + 10,//VSA
-	.vtotal = 2400 + 1542 + 10 + 10,//VBP
+	.vsync_start = 2400 + 1375,//VFP
+	.vsync_end = 2400 + 1375 + 10,//VSA
+	.vtotal = 2400 + 1375 + 10 + 10,//VBP
 };
 #endif
 static const struct drm_display_mode performance_mode1 = {
-	.clock = 437299,
+	.clock = 478500,
 	.hdisplay = 1080,
-	.hsync_start = 1080 + 76,//HFP
-	.hsync_end = 1080 + 76 + 12,//HSA
-	.htotal = 1080 + 76 + 12 + 80,//HBP 1248
+	.hsync_start = 1080 + 216,//HFP
+	.hsync_end = 1080 + 216 + 20,//HSA
+	.htotal = 1080 + 216 + 20 + 80,//HBP 1248
 	.vdisplay = 2400,
-	.vsync_start = 2400 + 500,//VFP
-	.vsync_end = 2400 + 500 + 10,//VSA
-	.vtotal = 2400 + 500 + 10 + 10,//VBP 2920
+	.vsync_start = 2400 + 425,//VFP
+	.vsync_end = 2400 + 425 + 10,//VSA
+	.vtotal = 2400 + 425 + 10 + 10,//VBP 2920
 };
 
 
