@@ -361,6 +361,7 @@ static unsigned int attr_wdma_aligned_size[attr_loop_num][output_WDMA_WRA_num];
 #define fld_cur_landmark 11
 #define CHECK_SERVICE_IF_0 0
 
+static void aie_irqhandle(struct mtk_aie_dev *fd);
 
 #ifdef FDVT_TF_DUMP
 static int FDVT_M4U_TranslationFault_callback(int port,
@@ -4404,6 +4405,7 @@ static void AIECmdqCB(struct cmdq_cb_data data)
 {
 	struct mtk_aie_dev *fd = (struct mtk_aie_dev *)data.data;
 
+	aie_irqhandle(fd);
 	queue_work(fd->frame_done_wq, &fd->req_work.work);
 }
 

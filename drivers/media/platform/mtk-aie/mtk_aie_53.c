@@ -771,7 +771,7 @@ static void mtk_aie_job_timeout_work(struct work_struct *work)
 
 static int mtk_aie_job_wait_finish(struct mtk_aie_dev *fd)
 {
-	return wait_for_completion_timeout(&fd->fd_job_finished, msecs_to_jiffies(3000));
+	return wait_for_completion_timeout(&fd->fd_job_finished, msecs_to_jiffies(1000));
 }
 
 static void mtk_aie_vb2_stop_streaming(struct vb2_queue *vq)
@@ -1169,11 +1169,26 @@ static int mtk_vfd_release(struct file *filp)
 	return 0;
 }
 
+static __poll_t mtk_vfd_fop_poll(struct file *file, poll_table *wait)
+{
+	struct mtk_aie_ctx *ctx =
+		container_of(file->private_data, struct mtk_aie_ctx, fh);
+	int ret;
+
+	ret = mtk_aie_job_wait_finish(ctx->fd_dev);
+	if (!ret) {
+		dev_info(ctx->dev, "wait job finish timeout\n");
+		return EPOLLERR;
+	}
+
+	return v4l2_m2m_fop_poll(file, wait);
+}
+
 static const struct v4l2_file_operations fd_video_fops = {
 	.owner = THIS_MODULE,
 	.open = mtk_vfd_open,
 	.release = mtk_vfd_release,
-	.poll = v4l2_m2m_fop_poll,
+	.poll = mtk_vfd_fop_poll,
 	.unlocked_ioctl = video_ioctl2,
 	.mmap = v4l2_m2m_fop_mmap,
 #ifdef CONFIG_COMPAT
