@@ -1226,21 +1226,8 @@ static void ufs_mtk_trace_vh_send_command(void *data, struct ufs_hba *hba, struc
 static void ufs_mtk_get_outstanding_reqs(struct ufs_hba *hba,
 				unsigned long **outstanding_reqs, int *nr_tag)
 {
-#if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
-	struct ufs_hba_private *hba_priv =
-			(struct ufs_hba_private *)hba->android_vendor_data1;
-
-	if (hba_priv->is_mcq_enabled) {
-		*outstanding_reqs = hba_priv->outstanding_mcq_reqs;
-		*nr_tag = UFSHCD_MAX_TAG;
-	} else {
-		*outstanding_reqs = &hba->outstanding_reqs;
-		*nr_tag = hba->nutrs;
-	}
-#else
 	*outstanding_reqs = &hba->outstanding_reqs;
 	*nr_tag = hba->nutrs;
-#endif
 }
 #endif
 
@@ -2289,19 +2276,6 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	/* Initialize host capability */
 	ufs_mtk_init_host_caps(hba);
 
-#if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
-	/* MCQ init */
-	err = ufs_mtk_mcq_alloc_priv(hba);
-	if (err)
-		goto out;
-
-	ufs_mtk_mcq_host_dts(hba);
-	ufs_mtk_mcq_request_irq(hba);
-	err = ufs_mtk_mcq_memory_alloc(hba);
-	if (err)
-		goto out;
-
-#endif
 	err = ufs_mtk_bind_mphy(hba);
 	if (err)
 		goto out_variant_clear;
@@ -3416,28 +3390,14 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 
 	ufshcd_dump_regs(hba, REG_UFS_EXTREG, 0x4, "Ext Reg ");
 
-#if IS_ENABLED(CONFIG_CONFIG_UFS_MEDIATEK_MCQ)
-	/* Dump ufshci register 0x100 ~ 0x160 */
-	ufshcd_dump_regs(hba, REG_UFS_CCAP,
-			 REG_UFS_MMIO_OPT_CTRL_0 - REG_UFS_CCAP + 4,
-			 "UFSHCI (0x100): ");
+	if (hba->mcq_enabled) {
+		/* Dump ufshci register 0x100 ~ 0x160 */
+		ufshcd_dump_regs(hba, REG_UFS_CCAP,
+				 REG_UFS_MMIO_OPT_CTRL_0 - REG_UFS_CCAP + 4,
+				 "UFSHCI (0x100): ");
 
-	/* Dump ufshci register 0x190 ~ 0x194 */
-	ufshcd_dump_regs(hba, REG_UFS_MMIO_SQ_IS,
-			 REG_UFS_MMIO_SQ_IE - REG_UFS_MMIO_SQ_IS + 4,
-			 "UFSHCI (0x190): ");
-
-	/* Dump ufshci register 0x1A0 ~ 0x1A4 */
-	ufshcd_dump_regs(hba, REG_UFS_MMIO_CQ_IS,
-			 REG_UFS_MMIO_CQ_IE - REG_UFS_MMIO_CQ_IS + 4,
-			 "UFSHCI (0x1A0): ");
-
-	/* Dump ufshci register 0x320 ~ 0x498 */
-	ufshcd_dump_regs(hba, REG_UFS_MCQ_BASE,
-			 MCQ_ADDR(REG_UFS_CQ_TAIL, 7) - REG_UFS_MCQ_BASE + 4,
-			 "UFSHCI (0x320): ");
-
-#endif
+		/* TODO: Add more dump */
+	}
 
 	/* Dump ufshci register 0x2200 ~ 0x22AC */
 	ufshcd_dump_regs(hba, REG_UFS_MPHYCTRL,
@@ -3913,12 +3873,6 @@ skip_reset:
 	}
 
 skip_phy:
-
-#if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
-	/* Get IRQ */
-	ufs_mtk_mcq_get_irq(pdev);
-	ufs_mtk_mcq_install_tracepoints();
-#endif
 
 	/* perform generic probe */
 	err = ufshcd_pltfrm_init(pdev, &ufs_hba_mtk_vops);

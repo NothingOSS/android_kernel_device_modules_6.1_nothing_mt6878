@@ -76,16 +76,10 @@ static void ufs_mtk_dbg_print_info(char **buff, unsigned long *size,
 {
 	struct ufs_mtk_host *host;
 	struct ufs_hba *hba = ufshba;
-#if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
-	struct ufs_hba_private *hba_priv;
-	int i;
-#endif
 
 	if (!hba)
 		return;
-#if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
-	hba_priv = (struct ufs_hba_private *)hba->android_vendor_data1;
-#endif
+
 	host = ufshcd_get_variant(hba);
 
 	/* Host state */
@@ -166,21 +160,6 @@ static void ufs_mtk_dbg_print_info(char **buff, unsigned long *size,
 			      hba->ufs_device_wlun->vendor,
 			      hba->ufs_device_wlun->model, hba->ufs_device_wlun->rev);
 	}
-
-#if IS_ENABLED(CONFIG_UFS_MEDIATEK_MCQ)
-	if (hba_priv->is_mcq_enabled) {
-		SPREAD_PRINTF(buff, size, m,
-				  "MCQ enable: yes\n");
-
-		for (i = 0; i < hba_priv->mcq_q_cfg.sq_nr; i++)
-			SPREAD_PRINTF(buff, size, m,
-					  "MCQ sent packet, q_index=%d, count=%i\n",
-					  i, hba_priv->mcq_q_cfg.sent_cmd_count[i]);
-	} else {
-		SPREAD_PRINTF(buff, size, m,
-				  "MCQ enable: no\n");
-	}
-#endif
 
 	/* Error history */
 	ufs_mtk_dbg_print_err_hist(buff, size, m,

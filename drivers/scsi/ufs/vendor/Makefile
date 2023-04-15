@@ -11,7 +11,6 @@ ccflags-y += -I$(srctree)/drivers/ufs/host/
 
 obj-$(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK) += ufs-mediatek-mod.o
 ufs-mediatek-mod-y 				+= ../ufs-mediatek.o
-ufs-mediatek-mod-$(CONFIG_UFS_MEDIATEK_MCQ)	+= ../ufs-mediatek-mcq.o
 ufs-mediatek-mod-$(CONFIG_UFSFEATURE) 		+= ufsfeature.o ufsfeature-mimic.o
 ufs-mediatek-mod-$(CONFIG_UFSSHPB) 		+= ufsshpb.o
 ufs-mediatek-mod-$(CONFIG_UFSTW) 		+= ufstw.o
