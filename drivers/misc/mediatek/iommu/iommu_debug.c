@@ -43,6 +43,12 @@
 #define F_MMU_INT_TF_PORT(id)		FIELD_GET(GENMASK(6, 2), id)
 #define F_APU_MMU_INT_TF_MSK(id)	FIELD_GET(GENMASK(11, 7), id)
 
+#define F_MMU_INT_TF_SPEC_MSK(port_s_b)		GENMASK(12, port_s_b)
+#define F_MMU_INT_TF_SPEC_LARB(id, larb_s_b) \
+	FIELD_GET(GENMASK(12, larb_s_b), id)
+#define F_MMU_INT_TF_SPEC_PORT(id, larb_s_b, port_s_b) \
+	FIELD_GET(GENMASK((larb_s_b-1), port_s_b), id)
+
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE) && !IOMMU_BRING_UP
 #define m4u_aee_print(string, args...) do {\
 		char m4u_name[150];\
@@ -100,6 +106,9 @@ struct mtk_m4u_plat_data {
 	const struct mau_config_info	*mau_config;
 	u32				mau_config_nr;
 	u32				mm_tf_ccu_support;
+	u32 (*get_valid_tf_id)(int tf_id, u32 type, int id);
+	bool (*tf_id_is_match)(int tf_id, u32 type, int id,
+			       struct mtk_iommu_port port);
 	int (*mm_tf_is_gce_videoup)(u32 port_tf, u32 vld_tf);
 	char *(*peri_tf_analyse)(enum peri_iommu bus_id, u32 id);
 };
@@ -534,6 +543,12 @@ void mtk_iommu_debug_reset(void)
 }
 EXPORT_SYMBOL_GPL(mtk_iommu_debug_reset);
 
+/**
+ * Get mtk_iommu_port list index.
+ * @tf_id: Hardware reported AXI id when translation fault
+ * @type: mtk_iommu_type or mtk_smmu_type
+ * @id: iommu_id for iommu, smi_common_id for smmu
+ */
 static int mtk_iommu_get_tf_port_idx(int tf_id, u32 type, int id)
 {
 	int i;
@@ -550,28 +565,39 @@ static int mtk_iommu_get_tf_port_idx(int tf_id, u32 type, int id)
 		return m4u_data->plat_data->port_nr[MM_IOMMU];
 	}
 
-	if (type == APU_IOMMU)
-		vld_id = F_APU_MMU_INT_TF_MSK(tf_id);
-	else
-		vld_id = tf_id & F_MMU_INT_TF_MSK;
+	if (m4u_data->plat_data->get_valid_tf_id) {
+		vld_id = m4u_data->plat_data->get_valid_tf_id(tf_id, type, id);
+	} else {
+		if (type == APU_IOMMU)
+			vld_id = F_APU_MMU_INT_TF_MSK(tf_id);
+		else
+			vld_id = tf_id & F_MMU_INT_TF_MSK;
+	}
 
 	pr_info("get vld tf_id:0x%x\n", vld_id);
 	port_nr =  m4u_data->plat_data->port_nr[type];
 	port_list = m4u_data->plat_data->port_list[type];
+
 	/* check (larb | port) for smi_larb or apu_bus */
 	for (i = 0; i < port_nr; i++) {
-		if (port_list[i].port_type == NORMAL &&
-		    port_list[i].tf_id == vld_id &&
-		    port_list[i].m4u_id == id)
-			return i;
+		if (m4u_data->plat_data->tf_id_is_match) {
+			if (m4u_data->plat_data->tf_id_is_match(tf_id, type, id, port_list[i]))
+				return i;
+		} else {
+			if (port_list[i].port_type == NORMAL &&
+			    port_list[i].tf_id == vld_id &&
+			    port_list[i].id == id)
+				return i;
+		}
 	}
+
 	/* check larb for smi_common */
 	if (type == MM_IOMMU && m4u_data->plat_data->mm_tf_ccu_support) {
 		for (i = 0; i < port_nr; i++) {
 			if (port_list[i].port_type == CCU_FAKE &&
 			    (port_list[i].tf_id & F_MMU_INT_TF_CCU_MSK) ==
 			    (vld_id & F_MMU_INT_TF_CCU_MSK) &&
-			    port_list[i].m4u_id == id)
+			    port_list[i].id == id)
 				return i;
 		}
 	}
@@ -582,7 +608,7 @@ static int mtk_iommu_get_tf_port_idx(int tf_id, u32 type, int id)
 		for (i = 0; i < port_nr; i++) {
 			if (port_list[i].port_type == GCE_VIDEOUP_FAKE &&
 			    mm_tf_is_gce_videoup(port_list[i].tf_id, tf_id) &&
-			    port_list[i].m4u_id == id)
+			    port_list[i].id == id)
 				return i;
 		}
 	}
@@ -774,19 +800,38 @@ int mtk_smmu_set_ops(const struct mtk_smmu_ops *ops)
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_set_ops);
 
+static inline u32 get_smmu_smi_common_id(u32 smmu_id, u32 tbu_id)
+{
+	if (smmu_id == APU_SMMU)
+		return APU_COM;
+
+	if (tbu_id >= SMMU_TBU_CNT_MAX) {
+		pr_info("%s fail, invalid tbu_id:%u\n", __func__, tbu_id);
+		return SMI_COM_NUM;
+	}
+
+	if (tbu_id <= 1)
+		return MDP_COM;
+	else
+		return DISP_COM;
+}
+
 void report_custom_smmu_fault(u64 fault_iova, u64 fault_pa,
 			      u32 fault_id, u32 smmu_id)
 {
-	report_custom_fault(fault_iova, fault_pa, fault_id, smmu_id, 0);
+	u32 tbu_id = SMMUWP_TF_TBU_VAL(fault_id);
+	u32 id = get_smmu_smi_common_id(smmu_id, tbu_id);
+
+	report_custom_fault(fault_iova, fault_pa, fault_id, smmu_id, id);
 }
 EXPORT_SYMBOL_GPL(report_custom_smmu_fault);
 
 void mtk_smmu_get_fault_idx(int tf_id, u32 smmu_id,
 			    struct mtk_smmu_fault_param *mtk_fault_param)
 {
-	int idx;
-	u32 port_nr;
 	const struct mtk_iommu_port *port_list;
+	u32 port_nr, id;
+	int idx;
 
 	pr_info("%s smmu_id:%d, tf_id:0x%x\n", __func__, smmu_id, tf_id);
 
@@ -797,8 +842,9 @@ void mtk_smmu_get_fault_idx(int tf_id, u32 smmu_id,
 
 	port_nr = m4u_data->plat_data->port_nr[smmu_id];
 	port_list = m4u_data->plat_data->port_list[smmu_id];
-	idx = mtk_iommu_get_tf_port_idx(tf_id, smmu_id, 0);
 
+	id = get_smmu_smi_common_id(smmu_id, mtk_fault_param->tbu_id);
+	idx = mtk_iommu_get_tf_port_idx(tf_id, smmu_id, id);
 	if (idx >= port_nr) {
 		pr_notice("%s err, smmu(%d) tf_id:0x%x\n",
 			  __func__, smmu_id, idx);
@@ -2343,7 +2389,41 @@ static int mt6985_tf_is_gce_videoup(u32 port_tf, u32 vld_tf)
 
 static int mt6989_tf_is_gce_videoup(u32 port_tf, u32 vld_tf)
 {
-	return 0;
+	return F_MMU_INT_TF_LARB(port_tf) ==
+	       FIELD_GET(GENMASK(12, 8), vld_tf) &&
+	       F_MMU_INT_TF_PORT(port_tf) ==
+	       FIELD_GET(GENMASK(1, 0), vld_tf);
+}
+
+static u32 mt6989_get_valid_tf_id(int tf_id, u32 type, int id)
+{
+	u32 vld_id = 0;
+
+	if (type == APU_SMMU)
+		vld_id = tf_id & GENMASK(12, 8);
+	else
+		vld_id = tf_id & F_MMU_INT_TF_MSK;
+
+	return vld_id;
+}
+
+static bool mt6989_tf_id_is_match(int tf_id, u32 type, int id,
+				  struct mtk_iommu_port port)
+{
+	int vld_id = -1;
+
+	if (port.id != id)
+		return false;
+
+	if (port.port_type == SPECIAL)
+		vld_id = tf_id & F_MMU_INT_TF_SPEC_MSK(port.port_start);
+	else if (port.port_type == NORMAL)
+		vld_id = mt6989_get_valid_tf_id(tf_id, type, id);
+
+	if (port.tf_id == vld_id)
+		return true;
+
+	return false;
 }
 
 static const struct mtk_m4u_plat_data mt6855_data = {
@@ -2429,6 +2509,8 @@ static const struct mtk_m4u_plat_data mt6989_smmu_data = {
 	.port_nr[APU_SMMU]   = ARRAY_SIZE(apu_port_mt6989),
 	.port_list[SOC_SMMU] = soc_port_mt6989,
 	.port_nr[SOC_SMMU]   = ARRAY_SIZE(soc_port_mt6989),
+	.get_valid_tf_id = mt6989_get_valid_tf_id,
+	.tf_id_is_match = mt6989_tf_id_is_match,
 	.mm_tf_is_gce_videoup = mt6989_tf_is_gce_videoup,
 };
 

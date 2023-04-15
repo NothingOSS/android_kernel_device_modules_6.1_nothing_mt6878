@@ -1610,10 +1610,8 @@ static int mtk_smmu_config_translation(struct mtk_smmu_data *data)
 	int ret;
 
 	ret = of_property_read_u32(dev->of_node, "mtk,smmu-trans-type", &trans);
-	if (ret) {
-		dev_warn(dev, "Get mtk,smmu-trans-type fail\n");
+	if (ret)
 		trans = SMMU_TRANS_MIX;
-	}
 
 	switch (trans) {
 	case SMMU_TRANS_S1:
@@ -1972,6 +1970,13 @@ static unsigned int smmuwp_process_intr(struct arm_smmu_device *smmu)
 	return irq_sta;
 }
 
+static u32 smmuwp_fault_id(u32 axi_id, u32 tbu_id)
+{
+	u32 fault_id = (axi_id & ~SMMUWP_TF_TBU_MSK) | (SMMUWP_TF_TBU(tbu_id));
+
+	return fault_id;
+}
+
 /* Process TBU translation fault Monitor */
 static struct mtk_smmu_fault_param *smmuwp_process_tf(
 		struct arm_smmu_master *master,
@@ -1982,7 +1987,7 @@ static struct mtk_smmu_fault_param *smmuwp_process_tf(
 	struct mtk_smmu_fault_param *first_fault_param = NULL;
 	void __iomem *wp_base = smmu->wp_base;
 	unsigned int sid, ssid, secsidv, ssidv;
-	u32 i, regval, va35_32, axiid;
+	u32 i, regval, va35_32, axiid, fault_id;
 	u64 fault_iova, fault_pa;
 	bool tf_det = false;
 
@@ -1994,6 +1999,7 @@ static struct mtk_smmu_fault_param *smmuwp_process_tf(
 
 		tf_det = true;
 		axiid = FIELD_GET(RTFM0_FAULT_AXI_ID, regval);
+		fault_id = smmuwp_fault_id(axiid, i);
 
 		regval = smmu_read_reg(wp_base, SMMUWP_TBUx_RTFM1(i));
 		va35_32 = FIELD_GET(RTFM1_FAULT_VA_35_32, regval);
@@ -2011,7 +2017,7 @@ static struct mtk_smmu_fault_param *smmuwp_process_tf(
 
 		fault_evt->mtk_fault_param[SMMU_TFM_READ][i] = (struct mtk_smmu_fault_param) {
 			.tfm_type = SMMU_TFM_READ,
-			.fault_id = axiid,
+			.fault_id = fault_id,
 			.fault_det = tf_det,
 			.fault_iova = fault_iova,
 			.fault_pa = fault_pa,
@@ -2019,6 +2025,7 @@ static struct mtk_smmu_fault_param *smmuwp_process_tf(
 			.fault_ssid = ssid,
 			.fault_ssidv = ssidv,
 			.fault_secsid = secsidv,
+			.tbu_id = i,
 		};
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
@@ -2036,6 +2043,7 @@ write:
 
 		tf_det = true;
 		axiid = FIELD_GET(WTFM0_FAULT_AXI_ID, regval);
+		fault_id = smmuwp_fault_id(axiid, i);
 
 		regval = smmu_read_reg(wp_base, SMMUWP_TBUx_WTFM1(i));
 		va35_32 = FIELD_GET(WTFM1_FAULT_VA_35_32, regval);
@@ -2053,7 +2061,7 @@ write:
 
 		fault_evt->mtk_fault_param[SMMU_TFM_WRITE][i] = (struct mtk_smmu_fault_param) {
 			.tfm_type = SMMU_TFM_WRITE,
-			.fault_id = axiid,
+			.fault_id = fault_id,
 			.fault_det = tf_det,
 			.fault_iova = fault_iova,
 			.fault_pa = fault_pa,
@@ -2061,6 +2069,7 @@ write:
 			.fault_ssid = ssid,
 			.fault_ssidv = ssidv,
 			.fault_secsid = secsidv,
+			.tbu_id = i,
 		};
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)

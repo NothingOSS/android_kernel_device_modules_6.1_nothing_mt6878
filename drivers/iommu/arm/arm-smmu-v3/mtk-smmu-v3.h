@@ -363,6 +363,12 @@
 #define WTFM2_FAULT_SSIDV		F_BIT_SET(16)
 #define WTFM2_FAULT_SECSID		F_BIT_SET(17)
 
+/* SMMU translation fault TBUx */
+#define SMMUWP_TF_MSK			GENMASK(23, 0)
+#define SMMUWP_TF_TBU_MSK		GENMASK(26, 24)
+#define SMMUWP_TF_TBU(tbu)		FIELD_PREP(SMMUWP_TF_TBU_MSK, tbu)
+#define SMMUWP_TF_TBU_VAL(id)		FIELD_GET(SMMUWP_TF_TBU_MSK, id)
+
 enum mtk_smmu_type {
 	MM_SMMU,
 	APU_SMMU,
@@ -432,6 +438,7 @@ struct mtk_smmu_fault_param {
 	u32 fault_ssid;
 	u32 fault_ssidv;
 	u32 fault_secsid;
+	u32 tbu_id;
 	u32 larb_id;
 	u32 port_id;
 	const char *port_name;
