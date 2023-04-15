@@ -29,7 +29,7 @@ struct match {
 };
 struct id_map {
 	char *name;
-	int base;
+	unsigned int base;
 };
 struct hdlr_data_v1 {
 	struct pll_dts *array;
@@ -55,7 +55,7 @@ struct fhctl_ipi_data {
 	unsigned int cmd;
 	union {
 		struct freqhopping_ioctl fh_ctl;
-		unsigned int args[8];
+		int args[8];
 	} u;
 };
 enum FH_DEVCTL_CMD_ID {
@@ -76,10 +76,10 @@ enum FH_DEVCTL_CMD_ID {
 	FH_DBG_CMD_TR_END32 = 0x2008,
 };
 #define FHCTL_D_LEN (sizeof(struct fhctl_ipi_data)/\
-	sizeof(unsigned int))
+	sizeof(int))
 static unsigned int ack_data;
 
-static int id_to_vcp(struct id_map *map, char *domain, int fh_id)
+static unsigned int id_to_vcp(struct id_map *map, char *domain, unsigned int fh_id)
 {
 	if (!map)
 		return fh_id;
@@ -124,7 +124,7 @@ static void dump_hw(struct fh_pll_regs *regs,
 			readl(regs->reg_con_pcw));
 }
 
-static int vcp_hopping_v1(void *priv_data, char *domain_name, int fh_id,
+static int vcp_hopping_v1(void *priv_data, char *domain_name, unsigned int fh_id,
 		unsigned int new_dds, int postdiv)
 {
 	int ret;
@@ -224,7 +224,7 @@ static int vcp_hopping_v1(void *priv_data, char *domain_name, int fh_id,
 }
 
 static int vcp_ssc_enable_v1(void *priv_data,
-		char *domain_name, int fh_id, int rate)
+		char *domain_name, unsigned int fh_id, int rate)
 {
 	struct freqhopping_ioctl fh_ctl;
 	struct fhctl_ipi_data ipi_data;
@@ -263,7 +263,7 @@ static int vcp_ssc_enable_v1(void *priv_data,
 }
 
 static int vcp_ssc_disable_v1(void *priv_data,
-		char *domain_name, int fh_id)
+		char *domain_name, unsigned int fh_id)
 {
 	struct freqhopping_ioctl fh_ctl;
 	struct fhctl_ipi_data ipi_data;

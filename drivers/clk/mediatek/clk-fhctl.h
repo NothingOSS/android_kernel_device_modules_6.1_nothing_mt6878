@@ -8,12 +8,12 @@
 
 struct fh_operation {
 	int (*hopping)(void *data,
-			char *domain, int fh_id,
+			char *domain, unsigned int fh_id,
 			unsigned int new_dds, int postdiv);
 	int (*ssc_enable)(void *data,
-			char *domain, int fh_id, int rate);
+			char *domain, unsigned int fh_id, int rate);
 	int (*ssc_disable)(void *data,
-			char *domain, int fh_id);
+			char *domain, unsigned int fh_id);
 };
 struct fh_hdlr {
 	void *data;
@@ -25,7 +25,7 @@ struct pll_dts {
 	char *domain;
 	char *method;
 	char *pll_name;
-	int fh_id;
+	unsigned int fh_id;
 	int perms;
 	int ssc_rate;
 	void __iomem *fhctl_base;

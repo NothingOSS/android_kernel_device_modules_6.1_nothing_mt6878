@@ -48,7 +48,7 @@ static void dump_hw(struct fh_pll_regs *regs,
 
 static int __ssc_v1(struct fh_pll_regs *regs,
 		struct fh_pll_data *data,
-		int fh_id, int rate)
+		unsigned int fh_id, int rate)
 {
 	unsigned int updnlmt_val;
 
@@ -94,7 +94,7 @@ static int __ssc_v1(struct fh_pll_regs *regs,
 	return 0;
 }
 
-static int __hopping_hw_flow_v1(void *priv_data, char *domain_name, int fh_id,
+static int __hopping_hw_flow_v1(void *priv_data, char *domain_name, unsigned int fh_id,
 		unsigned int new_dds, int postdiv)
 {
 	struct fh_pll_domain *domain;
@@ -198,7 +198,7 @@ static void __set_postdiv(struct fh_pll_regs *regs,
 	writel(temp, regs->reg_con_postdiv);
 }
 
-static int ap_hopping_v1(void *priv_data, char *domain_name, int fh_id,
+static int ap_hopping_v1(void *priv_data, char *domain_name, unsigned int fh_id,
 		unsigned int new_dds, int postdiv)
 {
 	struct fh_pll_domain *domain;
@@ -251,7 +251,7 @@ static int ap_hopping_v1(void *priv_data, char *domain_name, int fh_id,
 }
 
 static int ap_ssc_enable_v1(void *priv_data,
-		char *domain_name, int fh_id, int rate)
+		char *domain_name, unsigned int fh_id, int rate)
 {
 	struct fh_pll_domain *domain;
 	struct fh_pll_regs *regs;
@@ -279,7 +279,7 @@ static int ap_ssc_enable_v1(void *priv_data,
 }
 
 static int ap_ssc_disable_v1(void *priv_data,
-		char *domain_name, int fh_id)
+		char *domain_name, unsigned int fh_id)
 {
 	struct fh_pll_domain *domain;
 	struct fh_pll_regs *regs;
@@ -312,7 +312,7 @@ static int ap_init_v1(struct pll_dts *array, struct match *match)
 	struct hdlr_data_v1 *priv_data;
 	struct fh_hdlr *hdlr;
 	struct fh_pll_domain *domain;
-	int fh_id = array->fh_id;
+	unsigned int fh_id = array->fh_id;
 	struct fh_pll_regs *regs;
 	struct fh_pll_data *data;
 

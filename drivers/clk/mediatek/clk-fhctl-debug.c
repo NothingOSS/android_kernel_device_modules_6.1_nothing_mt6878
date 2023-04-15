@@ -259,7 +259,7 @@ static int fh_dumpregs_read(struct seq_file *m, void *v)
 		struct fh_pll_domain *domain;
 		struct fh_pll_regs *regs;
 		struct fh_pll_data *data;
-		int fh_id;
+		unsigned int fh_id;
 		char *pll_name;
 		int ssc_rate;
 		unsigned int dds_max, dds_min;

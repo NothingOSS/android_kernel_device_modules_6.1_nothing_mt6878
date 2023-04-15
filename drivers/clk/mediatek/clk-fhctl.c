@@ -107,7 +107,7 @@ static struct pll_dts *parse_dt(struct platform_device *pdev)
 		num = 0;
 		FHDBG("---------------------\n");
 		for_each_child_of_node(map, of_pll) {
-			int fh_id;
+			unsigned int fh_id;
 			int perms, ssc_rate;
 
 			if (pll_idx >= num_pll) {
