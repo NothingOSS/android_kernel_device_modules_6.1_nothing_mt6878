@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2023 MediaTek Inc.
+ * Author: Benjamin Chao <benjamin.chao@mediatek.com>
+ */
+
+&clkitg {
+	status = "okay";
+};
