@@ -367,8 +367,10 @@ static int mtk_cam_vb2_buf_prepare(struct vb2_buffer *vb)
 
 	if (V4L2_TYPE_IS_OUTPUT(vb->type) &&
 	    !(mtk_buf->flags & FLAG_NO_CACHE_CLEAN)) {
-		dev_dbg(vb->vb2_queue->dev, "%s: %s\n",
-			__func__, node->desc.name);
+
+		if (CAM_DEBUG_ENABLED(V4L2))
+			dev_dbg(vb->vb2_queue->dev, "%s: %s\n",
+				__func__, node->desc.name);
 		for (plane = 0; plane < vb->num_planes; ++plane)
 			mtk_cam_vb2_sync_for_device(vb->planes[plane].mem_priv);
 	}
@@ -393,6 +395,7 @@ static int mtk_cam_vb2_buf_prepare(struct vb2_buffer *vb)
 	}
 
 	if (V4L2_TYPE_IS_OUTPUT(vb->vb2_queue->type)) {
+#ifdef CHECK_PLANE_PAYLOAD
 		if ((vb2_get_plane_payload(vb, 0) != size) && (vb->vb2_queue->streaming)) {
 			dev_dbg(vb->vb2_queue->dev, "%s: plane payload is mismatch:%lu:%u\n",
 				node->desc.name,
@@ -400,6 +403,7 @@ static int mtk_cam_vb2_buf_prepare(struct vb2_buffer *vb)
 			/* todo: user must set correct byteused */
 			/* return -EINVAL;*/
 		}
+#endif
 		return 0;
 	}
 
@@ -417,8 +421,10 @@ static void mtk_cam_vb2_buf_finish(struct vb2_buffer *vb)
 
 	if (V4L2_TYPE_IS_CAPTURE(vb->type) &&
 	    !(mtk_buf->flags & FLAG_NO_CACHE_INVALIDATE)) {
-		dev_dbg(vb->vb2_queue->dev, "%s: %s\n",
-			__func__, node->desc.name);
+
+		if (CAM_DEBUG_ENABLED(V4L2))
+			dev_dbg(vb->vb2_queue->dev, "%s: %s\n",
+				__func__, node->desc.name);
 		for (plane = 0; plane < vb->num_planes; ++plane)
 			mtk_cam_vb2_sync_for_cpu(vb->planes[plane].mem_priv);
 	}

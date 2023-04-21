@@ -430,8 +430,9 @@ static int mtk_cam_req_try_update_used_ctx(struct media_request *req)
 		used_ctx |= bit_map_bit(MAP_STREAM, ctx->stream_id);
 	}
 
-	dev_dbg(cam->dev, "%s: req %s used_ctx 0x%lx used_pipe 0x%lx\n",
-		__func__, req->debug_str, used_ctx, used_pipe);
+	if (CAM_DEBUG_ENABLED(V4L2))
+		dev_info(cam->dev, "%s: req %s used_ctx 0x%lx used_pipe 0x%lx\n",
+			 __func__, req->debug_str, used_ctx, used_pipe);
 	cam_req->used_ctx = !not_streamon_yet ? used_ctx : 0;
 	return !not_streamon_yet ? 0 : -1;
 }

@@ -16,12 +16,20 @@ bool res_raw_is_dc_mode(const struct mtk_cam_resource_raw_v2 *res_raw)
 
 static inline bool scen_is_normal(const struct mtk_cam_scen *scen)
 {
-	if (scen->id == MTK_CAM_SCEN_NORMAL ||
-	    scen->id == MTK_CAM_SCEN_ODT_NORMAL ||
-	    scen->id == MTK_CAM_SCEN_M2M_NORMAL)
-		return true;
+	return scen->id == MTK_CAM_SCEN_NORMAL ||
+		scen->id == MTK_CAM_SCEN_ODT_NORMAL ||
+		scen->id == MTK_CAM_SCEN_M2M_NORMAL;
+}
 
-	return false;
+static inline bool scen_is_mstream(const struct mtk_cam_scen *scen)
+{
+	return scen->id == MTK_CAM_SCEN_MSTREAM ||
+		scen->id == MTK_CAM_SCEN_ODT_MSTREAM;
+}
+
+static inline bool scen_is_smvr(const struct mtk_cam_scen *scen)
+{
+	return scen->id == MTK_CAM_SCEN_SMVR;
 }
 
 static inline bool scen_is_dcg_sensor_merge(const struct mtk_cam_scen *scen)
@@ -85,6 +93,54 @@ static inline bool scen_is_stagger_lbmf(const struct mtk_cam_scen *scen)
 		return true;
 
 	return false;
+}
+
+#define SCEN_MAX_LEN 40
+static inline int scen_to_str(char *buff, size_t size,
+			      const struct mtk_cam_scen *scen)
+{
+	int n = 0;
+
+	if (scen_is_normal(scen)) {
+		n = scnprintf(buff, size, "scen:id=%d n:exp=%d/%d stag=%d",
+			     scen->id,
+			     scen->scen.normal.exp_num,
+			     scen->scen.normal.max_exp_num,
+			     scen->scen.normal.stagger_type);
+
+		if (scen->scen.normal.w_chn_enabled ||
+		    scen->scen.normal.w_chn_supported)
+			n += scnprintf(buff + n, size - n, " w=%d/%d",
+				       scen->scen.normal.w_chn_enabled,
+				       scen->scen.normal.w_chn_supported);
+
+	} else if (scen_is_mstream(scen))
+		n = scnprintf(buff, size, "scen:id=%d m:type=%d",
+			     scen->id,
+			     scen->scen.mstream.type);
+	else if (scen_is_smvr(scen))
+		n = scnprintf(buff, size, "scen:id=%d smvr:sub=%d%s",
+			      scen->id,
+			      scen->scen.smvr.subsample_num,
+			      scen->scen.smvr.output_first_frame_only ? "1st-only" : "");
+
+	return n;
+}
+
+#define RES_RAW_MAX_LEN (SCEN_MAX_LEN + 100)
+static inline int raw_res_to_str(char *buff, size_t size,
+				 const struct mtk_cam_resource_raw_v2 *r)
+{
+	int n;
+
+	n = scen_to_str(buff, size, &r->scen);
+
+	n += scnprintf(buff + n, size - n,
+		       " pxlmode=%d freq=%d bin=%d hwmode=%d wbuf=%dx%d raw=(0x%x,0x%x,%d)",
+		       r->raw_pixel_mode, r->freq / 1000000, r->bin, r->hw_mode,
+		       r->img_wbuf_num, r->img_wbuf_size,
+		       r->raws, r->raws_must, r->raws_max_num);
+	return n;
 }
 
 #endif /*__MTK_CAM_RAW_CTRL_H*/

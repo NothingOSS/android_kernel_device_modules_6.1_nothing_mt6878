@@ -545,6 +545,8 @@ update_job_type_feature(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 
+	job->scen_str[0] = '\0';
+
 	if (ctx->has_raw_subdev) {
 		struct mtk_raw_ctrl_data *ctrl;
 
@@ -553,6 +555,8 @@ update_job_type_feature(struct mtk_cam_job *job)
 			return -1;
 
 		job->job_scen = ctrl->resource.user_data.raw_res.scen;
+		scen_to_str(job->scen_str, sizeof(job->scen_str), &job->job_scen);
+
 		if (ctx->ctrldata_stored)
 			job->prev_scen = ctx->ctrldata.resource.user_data.raw_res.scen;
 		else
@@ -593,7 +597,7 @@ _meta1_done(struct mtk_cam_job *job)
 	return 0;
 }
 
-#define TIMESTAMP_LOG
+//#define TIMESTAMP_LOG
 static void cpu_timestamp_to_meta(struct mtk_cam_job *job)
 {
 	(*job->timestamp_buf)[0] = job->timestamp_mono / 1000;
@@ -601,7 +605,7 @@ static void cpu_timestamp_to_meta(struct mtk_cam_job *job)
 
 #ifdef TIMESTAMP_LOG
 	dev_info(job->src_ctx->cam->dev, /*FIXME*/
-		"timestamp TS:momo %llu us boot %llu us\n",
+		"timestamp TS:mono %llu us boot %llu us\n",
 		(*job->timestamp_buf)[0],
 		(*job->timestamp_buf)[1]);
 #endif
@@ -627,11 +631,11 @@ static void convert_fho_timestamp_to_meta(struct mtk_cam_job *job)
 		(*job->timestamp_buf)[i*2 + 1] =
 			mtk_cam_timesync_to_boot(hw_timestamp) / 1000;
 #ifdef TIMESTAMP_LOG
-		dev_dbg(job->src_ctx->cam->dev,
-			"timestamp TS:momo %llu us boot %llu us, hw ts:%llu\n",
-			(*job->timestamp_buf)[i*2],
-			(*job->timestamp_buf)[i*2 + 1],
-			hw_timestamp);
+		dev_info(job->src_ctx->cam->dev,
+			 "timestamp TS:mono %llu us boot %llu us, hw ts:%llu\n",
+			 (*job->timestamp_buf)[i*2],
+			 (*job->timestamp_buf)[i*2 + 1],
+			 hw_timestamp);
 #endif
 	}
 }
@@ -1056,6 +1060,7 @@ static bool check_update_mstream_mode(struct mtk_cam_job *job)
 		bool exp_switch =
 			job_exp_num(job) != job_prev_exp_num(job);
 
+		/* FIXME: should not use 'seq == 0' */
 		return ((job->frame_seq_no == 0) || exp_switch);
 	}
 
@@ -1398,8 +1403,9 @@ static int apply_engines_cq(struct mtk_cam_job *job,
 
 	mtk_cam_apply_qos(job);
 
-	dev_info(ctx->cam->dev, "[%s] ctx:%d CQ-0x%x eng 0x%lx\n",
-		 __func__, ctx->stream_id, frame_seq_no, cq_engine);
+	dev_info(ctx->cam->dev, "[%s] ctx:%d CQ-0x%x eng 0x%lx (%s)\n",
+		 __func__, ctx->stream_id, frame_seq_no, cq_engine,
+		 job->scen_str);
 	return 0;
 }
 
@@ -1506,10 +1512,12 @@ static void trigger_error_dump(struct mtk_cam_job *job,
 			       const char *desc)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct device *dev = ctx->cam->dev;
 	char warn_desc[64];
 
 	job_print_warn_desc(job, desc, warn_desc);
-	pr_info("%s: desc=%s warn_desc=%s\n", __func__, desc, warn_desc);
+	dev_info(dev, "%s: [%s] desc=%s warn_desc=%s\n", __func__,
+		 job->scen_str, desc, warn_desc);
 
 	if (!job_debug_exception_dump(job, desc)) {
 
@@ -1675,7 +1683,6 @@ _job_pack_subsample(struct mtk_cam_job *job,
 	 struct pack_job_ops_helper *job_helper)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
-	struct mtk_cam_device *cam = ctx->cam;
 	int first_frame_only_cur = job->job_scen.scen.smvr.output_first_frame_only;
 	int first_frame_only_prev = job->prev_scen.scen.smvr.output_first_frame_only;
 	int ret;
@@ -1684,9 +1691,6 @@ _job_pack_subsample(struct mtk_cam_job *job,
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
 	fi = get_sensor_interval_us(job);
 	job->scq_period = SCQ_DEADLINE_US(fi * job->sub_ratio) / 1000;
-	dev_info(cam->dev, "[%s] ctx:%d, type:%d, scen_id:%d, 1stonly:%d, ratio:%d, fi:%u",
-		__func__, ctx->stream_id, job->job_type, job->job_scen.id,
-		first_frame_only_cur, job->sub_ratio, fi);
 	job->stream_on_seninf = false;
 
 	if (!ctx->used_engine) {
@@ -1880,7 +1884,6 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_device *cam = ctx->cam;
-	struct mtk_cam_scen *prev_scen = &job->prev_scen;
 	bool sensor_change = is_sensor_changed(job);
 	int ret;
 
@@ -1897,12 +1900,6 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 	job->seamless_switch =
 		(ctx->not_first_job && !sensor_change) && do_seamless_switch(job);
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
-
-	dev_info(cam->dev, "[%s] ctx:%d, type:%d, scen exp:%d->%d, swi:%d, stagger_type:%d",
-		__func__, ctx->stream_id, job->job_type,
-		prev_scen->scen.normal.exp_num,
-		job->job_scen.scen.normal.exp_num, job->switch_type,
-		job->job_scen.scen.normal.stagger_type);
 	job->stream_on_seninf = false;
 	job->scq_period =
 		SCQ_DEADLINE_US_STAGGER(get_sensor_interval_us(job)) / 1000;
@@ -2069,9 +2066,6 @@ _job_pack_mstream(struct mtk_cam_job *job,
 	int ret;
 
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
-
-	dev_info(cam->dev, "[%s] ctx:%d, type:%d",
-		__func__, ctx->stream_id, job->job_type);
 	job->stream_on_seninf = false;
 
 	if (!ctx->used_engine) {
@@ -2204,8 +2198,6 @@ _job_pack_normal(struct mtk_cam_job *job,
 
 	job->seamless_switch = do_seamless_switch(job);
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
-	dev_dbg(cam->dev, "[%s] ctx:%d, job_type:%d, scen:%d",
-		__func__, ctx->stream_id, job->job_type, job->job_scen.id);
 	job->stream_on_seninf = false;
 
 	if (!ctx->used_engine) {
@@ -2262,13 +2254,11 @@ _job_pack_m2m(struct mtk_cam_job *job,
 	      struct pack_job_ops_helper *job_helper)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
-	struct mtk_cam_device *cam = ctx->cam;
 	int ret;
 
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
-	dev_dbg(cam->dev, "[%s] ctx:%d, job_type:%d, scen:%d",
-		__func__, ctx->stream_id, job->job_type, job->job_scen.id);
 	job->stream_on_seninf = false;
+
 	if (!ctx->used_engine) {
 		if (job_related_hw_init(job))
 			return -1;
@@ -2313,9 +2303,8 @@ _job_pack_only_sv(struct mtk_cam_job *job,
 	int ret;
 
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
-	dev_dbg(cam->dev, "[%s] ctx:%d, job_type:%d, scen:%d",
-		__func__, ctx->stream_id, job->job_type, job->job_scen.id);
 	job->stream_on_seninf = false;
+
 	if (!ctx->used_engine) {
 		if (job_related_hw_init(job))
 			return -1;
@@ -3257,9 +3246,9 @@ static int job_factory(struct mtk_cam_job *job)
 	ret = pack_helper->pack_job(job, pack_helper);
 
 	if (CAM_DEBUG_ENABLED(JOB))
-		pr_info("[%s] ctx:%d|type:%d|scen_id:%d|exp(cur:%d,prev:%d)|sw/scene:%d/%d",
+		pr_info("[%s] ctx:%d|type:%d|%s|exp(cur:%d,prev:%d)|sw/scene:%d/%d",
 				__func__,
-				ctx->stream_id, job->job_type, job->job_scen.id,
+				ctx->stream_id, job->job_type, job->scen_str,
 				job_exp_num(job), job_prev_exp_num(job),
 				get_sw_feature(job), get_hw_scenario(job));
 

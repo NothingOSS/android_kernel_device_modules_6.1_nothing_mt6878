@@ -312,6 +312,8 @@ struct mtk_cam_job {
 
 	struct mtk_cam_scen job_scen;		/* job 's scen by res control */
 	struct mtk_cam_scen prev_scen;
+	char scen_str[40];
+
 	unsigned int sub_ratio;
 	int scq_period;
 	u64 (*timestamp_buf)[128];

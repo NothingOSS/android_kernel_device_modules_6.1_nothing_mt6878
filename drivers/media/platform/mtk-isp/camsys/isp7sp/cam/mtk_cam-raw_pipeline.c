@@ -573,16 +573,20 @@ static int mtk_raw_calc_raw_resource(struct mtk_raw_pipeline *pipeline,
 	}
 
 EXIT:
-	if (drv_data || ret == -EBUSY || CAM_DEBUG_ENABLED(V4L2_TRY))
+	if (drv_data || ret == -EBUSY || CAM_DEBUG_ENABLED(V4L2_TRY)) {
+		char str[RES_RAW_MAX_LEN];
+
+		str[0] = '\0';
+		raw_res_to_str(str, sizeof(str), r);
+
 		dev_info(cam->dev,
-			 "calc_resource: sensor fps %u/%u %dx%d blank %u/%u prate %llu linet %ld clk %d pxlmode %d num %d bin %d hw_mode %d wbuf %dx%d raw(0x%x,0x%x,%d)\n",
+			 "calc_resource: sensor fps %u/%u %dx%d blank %u/%u prate %llu linet %ld num %d %s\n",
 			 s->interval.denominator, s->interval.numerator,
 			 s->width, s->height, s->hblank, s->vblank,
 			 s->pixel_rate,
-			 c.line_time, c.clk, c.raw_pixel_mode, c.raw_num,
-			 r->bin, r->hw_mode, r->img_wbuf_num, r->img_wbuf_size,
-			 r->raws, r->raws_must, r->raws_max_num);
-
+			 c.line_time, c.raw_num,
+			 str);
+	}
 	return ret;
 }
 
