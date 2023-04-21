@@ -427,12 +427,12 @@ static int ged_get_cur_virtual_oppidx(void)
 		ged_get_cur_stack_freq() == sc_freq) {
 		return g_cur_oppidx;
 	}
-	// check cur oppidx < 48
+	// check cur oppidx < g_min_stack_oppidx
 	if (sc_freq > ged_get_sc_freq_by_virt_opp(g_min_stack_oppidx)) {
 		g_cur_oppidx = gpufreq_get_cur_oppidx(TARGET_DEFAULT);
 		return g_cur_oppidx;
 	}
-	// check opp 48-50
+	// check opp > g_min_stack_oppidx and not in DCS
 	g_cur_oppidx = g_min_stack_oppidx + g_min_async_oppnum;
 	for (int i = g_min_stack_oppidx; i < g_virtual_async_oppnum; i++) {
 		if (top_freq == gpufreq_get_freq_by_idx(TARGET_GPU, i)) {
@@ -777,12 +777,20 @@ int ged_gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx, int commit_type, i
 
 	/* convert virtual opp to working opp with corresponding core mask */
 	if (stack_oppidx > g_min_working_oppidx) {
-		mask_idx = stack_oppidx - g_virtual_oppnum + g_avail_mask_num;
-		oppidx_tar = g_min_working_oppidx;
+		mask_idx = g_avail_mask_num - 1;
+		oppidx_tar = g_min_working_oppidx - (g_min_virtual_oppidx - stack_oppidx);
 	} else {
 		mask_idx = 0;
 		oppidx_tar = stack_oppidx;
 	}
+
+	/* convert top virtual opp to working opp but neglecting core mask */
+	if (gpu_oppidx > g_min_working_oppidx)
+		gpu_oppidx = g_min_working_oppidx - (g_min_virtual_oppidx - gpu_oppidx);
+
+	/* write working opp to sysram */
+	ged_dvfs_set_sysram_last_commit_top_idx(gpu_oppidx);
+	ged_dvfs_set_sysram_last_commit_stack_idx(oppidx_tar);
 
 	/* scaling cores to max if freq. is fixed */
 	dvfs_state = gpufreq_get_dvfs_state();

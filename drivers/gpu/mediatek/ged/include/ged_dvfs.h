@@ -167,8 +167,10 @@ unsigned long ged_dvfs_write_sysram_last_commit_idx(void);
 unsigned long ged_dvfs_write_sysram_last_commit_idx_test(int commit_idx);
 unsigned long ged_dvfs_write_sysram_last_commit_top_idx(void);
 unsigned long ged_dvfs_write_sysram_last_commit_top_idx_test(int commit_idx);
+void ged_dvfs_set_sysram_last_commit_top_idx(int commit_idx);
 unsigned long ged_dvfs_write_sysram_last_commit_stack_idx(void);
 unsigned long ged_dvfs_write_sysram_last_commit_stack_idx_test(int commit_idx);
+void ged_dvfs_set_sysram_last_commit_stack_idx(int commit_idx);
 
 extern void (*ged_kpi_set_gpu_dvfs_hint_fp)(int t_gpu_target,
 	int boost_accum_gpu);
