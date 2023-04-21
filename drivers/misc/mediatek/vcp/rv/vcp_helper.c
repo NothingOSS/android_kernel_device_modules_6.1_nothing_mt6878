@@ -3193,6 +3193,9 @@ static int __init vcp_init(void)
 	register_devapc_power_callback(&devapc_power_handle);
 #endif
 
+	if (vcp_ao)
+		vcp_register_feature(RTOS_FEATURE_ID);
+
 	return ret;
 err:
 	platform_driver_unregister(&mtk_vcp_io_sec);
