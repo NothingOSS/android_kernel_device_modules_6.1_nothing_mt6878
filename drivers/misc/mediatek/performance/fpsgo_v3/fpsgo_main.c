@@ -183,7 +183,7 @@ static void fpsgo_notify_wq_cb_acquire(int consumer_pid, int consumer_tid,
 	if (!fpsgo_is_enable())
 		return;
 
-	if (!fpsgo_get_acquire_hint_enable)
+	if (!fpsgo_get_acquire_hint_is_enable())
 		return;
 
 	fpsgo_ctrl2comp_acquire(producer_pid, consumer_pid, consumer_tid,
@@ -646,6 +646,15 @@ int fpsgo_wait_fstb_active(void)
 {
 	return fpsgo_ctrl2fstb_wait_fstb_active();
 }
+
+void fpsgo_get_pid(int cmd, int *pid)
+{
+	if (!pid)
+		return;
+
+	fpsgo_ctrl2base_wait_cam(cmd, pid);
+}
+
 #if FPSGO_DYNAMIC_WL
 void fpsgo_notify_cpufreq_cap(int cid, int cap)
 {
@@ -1040,6 +1049,7 @@ fail_reg_cpu_frequency_entry:
 	fpsgo_get_fstb_active_fp = fpsgo_get_fstb_active;
 	fpsgo_wait_fstb_active_fp = fpsgo_wait_fstb_active;
 	fpsgo_notify_buffer_quota_fp = fpsgo_notify_buffer_quota;
+	fpsgo_get_pid_fp = fpsgo_get_pid;
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	drm_register_fps_chg_callback(dfrc_fps_limit_cb);

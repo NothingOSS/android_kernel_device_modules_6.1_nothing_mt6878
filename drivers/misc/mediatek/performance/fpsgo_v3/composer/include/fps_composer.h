@@ -23,6 +23,15 @@ struct connect_api_info {
 	int api;
 };
 
+struct fpsgo_com_policy_cmd {
+	int tgid;
+	int bypass_non_SF_by_pid;
+	int control_api_mask_by_pid;
+	int control_hwui_by_pid;
+	unsigned long long ts;
+	struct rb_node rb_node;
+};
+
 int fpsgo_composer_init(void);
 void fpsgo_composer_exit(void);
 

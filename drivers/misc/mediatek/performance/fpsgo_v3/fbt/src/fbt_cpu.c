@@ -2908,7 +2908,7 @@ EXIT:
 	fpsgo_thread_unlock(&(thr->thr_mlock));
 
 	if (tofree)
-		kfree(thr);
+		vfree(thr);
 
 	fpsgo_render_tree_unlock(__func__);
 }

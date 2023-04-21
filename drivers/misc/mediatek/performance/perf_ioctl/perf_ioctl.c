@@ -32,6 +32,8 @@ EXPORT_SYMBOL_GPL(fpsgo_notify_swap_buffer_fp);
 void (*fpsgo_notify_acquire_fp)(int c_pid, int p_pid,
 	int connectedAPI, unsigned long long buffer_id);
 EXPORT_SYMBOL_GPL(fpsgo_notify_acquire_fp);
+void (*fpsgo_get_pid_fp)(int cmd, int *pid);
+EXPORT_SYMBOL_GPL(fpsgo_get_pid_fp);
 
 void (*fpsgo_notify_sbe_rescue_fp)(int pid, int start, int enhance, unsigned long long frameID);
 EXPORT_SYMBOL_GPL(fpsgo_notify_sbe_rescue_fp);
@@ -489,7 +491,18 @@ static long device_ioctl(struct file *filp,
 			fpsgo_notify_buffer_quota_fp(msgKM->tid, msgKM->value1,
 						msgKM->identifier);
 		break;
-
+	case FPSGO_GET_CAM_APK_PID:
+		if (fpsgo_get_pid_fp)
+			fpsgo_get_pid_fp(0, &msgKM->pid1);
+		perfctl_copy_to_user(msgUM, msgKM,
+			sizeof(struct _FPSGO_PACKAGE));
+		break;
+	case FPSGO_GET_CAM_SERVER_PID:
+		if (fpsgo_get_pid_fp)
+			fpsgo_get_pid_fp(1, &msgKM->pid1);
+		perfctl_copy_to_user(msgUM, msgKM,
+			sizeof(struct _FPSGO_PACKAGE));
+		break;
 #else
 	case FPSGO_TOUCH:
 		 [[fallthrough]];

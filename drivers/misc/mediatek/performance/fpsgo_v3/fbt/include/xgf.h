@@ -119,7 +119,6 @@ extern int xgf_trace_enable;
 int __init init_xgf(void);
 int __exit exit_xgf(void);
 void fpsgo_ctrl2xgf_switch_xgf(int val);
-void xgf_get_runtime(pid_t tid, u64 *runtime);
 void xgf_trace(const char *fmt, ...);
 
 void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
@@ -133,6 +132,7 @@ int fpsgo_comp2xgf_get_dep_list_num(int pid, unsigned long long bufID);
 int fpsgo_comp2xgf_get_dep_list(int pid, int count,
 	int *arr, unsigned long long bufID);
 int has_xgf_dep(pid_t tid);
+int fpsgo_ktf2xgf_add_delete_render_info(int mode, int pid, unsigned long long bufID);
 struct xgf_thread_loading fbt_xgff_list_loading_add(int pid,
 	unsigned long long buffer_id, unsigned long long ts);
 long fbt_xgff_get_loading_by_cluster(struct xgf_thread_loading *ploading,

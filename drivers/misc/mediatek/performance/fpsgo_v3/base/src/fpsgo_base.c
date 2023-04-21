@@ -29,6 +29,7 @@
 #include "fbt_cpu.h"
 #include "fbt_cpu_platform.h"
 #include "fps_composer.h"
+#include "xgf.h"
 
 #include <linux/preempt.h>
 #include <linux/trace_events.h>
@@ -54,7 +55,9 @@ do { \
 } while (0)
 
 static int total_fps_control_pid_info_num;
-int fpsgo_get_acquire_hint_enable;
+static int fpsgo_get_acquire_hint_enable;
+static int cond_get_cam_apk_pid;
+static int cond_get_cam_ser_pid;
 
 static struct kobject *base_kobj;
 static struct rb_root render_pid_tree;
@@ -73,6 +76,12 @@ void (*fpsgo_rl_delete_render_info_fp)(int pid, unsigned long long bufID);
 EXPORT_SYMBOL(fpsgo_rl_delete_render_info_fp);
 
 static DEFINE_MUTEX(fpsgo_render_lock);
+static DEFINE_MUTEX(fpsgo2cam_apk_lock);
+static DEFINE_MUTEX(fpsgo2cam_ser_lock);
+static DECLARE_WAIT_QUEUE_HEAD(cam_apk_pid_queue);
+static DECLARE_WAIT_QUEUE_HEAD(cam_ser_pid_queue);
+static LIST_HEAD(cam_apk_pid_list);
+static LIST_HEAD(cam_ser_pid_list);
 
 long long fpsgo_task_sched_runtime(struct task_struct *p)
 {
@@ -320,6 +329,83 @@ void fpsgo_ctrl2base_get_pwr_cmd(int *cmd, int *value1, int *value2)
 	if (list_empty(&head))
 		condition_get_cmd = 0;
 	mutex_unlock(&fpsgo2pwr_lock);
+}
+
+static void fpsgo2cam_sentcmd(int cmd, int pid)
+{
+	struct cam_cmd_node *node = NULL;
+
+	switch (cmd) {
+	case CAMERA_APK:
+		mutex_lock(&fpsgo2cam_apk_lock);
+		node = kmalloc(sizeof(struct cam_cmd_node), GFP_KERNEL);
+		if (!node)
+			goto apk_out;
+		node->target_pid = pid;
+		list_add_tail(&node->queue_list, &cam_apk_pid_list);
+		cond_get_cam_apk_pid = 1;
+apk_out:
+		mutex_unlock(&fpsgo2cam_apk_lock);
+		wake_up_interruptible(&cam_apk_pid_queue);
+		break;
+	case CAMERA_SERVER:
+		mutex_lock(&fpsgo2cam_ser_lock);
+		node = kmalloc(sizeof(struct cam_cmd_node), GFP_KERNEL);
+		if (!node)
+			goto ser_out;
+		node->target_pid = pid;
+		list_add_tail(&node->queue_list, &cam_ser_pid_list);
+		cond_get_cam_ser_pid = 1;
+ser_out:
+		mutex_unlock(&fpsgo2cam_ser_lock);
+		wake_up_interruptible(&cam_ser_pid_queue);
+		break;
+	default:
+		break;
+	}
+}
+
+void fpsgo_ctrl2base_wait_cam(int cmd, int *pid)
+{
+	struct cam_cmd_node *node = NULL;
+
+	switch (cmd) {
+	case CAMERA_APK:
+		wait_event_interruptible(cam_apk_pid_queue, cond_get_cam_apk_pid);
+		mutex_lock(&fpsgo2cam_apk_lock);
+		if (!list_empty(&cam_apk_pid_list)) {
+			node = list_first_entry(&cam_apk_pid_list,
+				struct cam_cmd_node, queue_list);
+			*pid = node->target_pid;
+			list_del(&node->queue_list);
+			kfree(node);
+		}
+		if (list_empty(&cam_apk_pid_list))
+			cond_get_cam_apk_pid = 0;
+		mutex_unlock(&fpsgo2cam_apk_lock);
+		break;
+	case CAMERA_SERVER:
+		wait_event_interruptible(cam_ser_pid_queue, cond_get_cam_ser_pid);
+		mutex_lock(&fpsgo2cam_ser_lock);
+		if (!list_empty(&cam_ser_pid_list)) {
+			node = list_first_entry(&cam_ser_pid_list,
+				struct cam_cmd_node, queue_list);
+			*pid = node->target_pid;
+			list_del(&node->queue_list);
+			kfree(node);
+		}
+		if (list_empty(&cam_ser_pid_list))
+			cond_get_cam_ser_pid = 0;
+		mutex_unlock(&fpsgo2cam_ser_lock);
+		break;
+	default:
+		break;
+	}
+}
+
+int fpsgo_get_acquire_hint_is_enable(void)
+{
+	return fpsgo_get_acquire_hint_enable;
 }
 
 uint32_t fpsgo_systrace_mask;
@@ -582,7 +668,7 @@ void fpsgo_traverse_linger(unsigned long long cur_ts)
 
 		if (tofree) {
 			fpsgo_fbt_delete_rl_render(pos->pid, pos->buffer_id);
-			kfree(pos);
+			vfree(pos);
 		}
 	}
 }
@@ -737,7 +823,7 @@ struct render_info *fpsgo_search_and_add_render_info(int pid,
 	if (!force)
 		return NULL;
 
-	iter_thr = kzalloc(sizeof(*iter_thr), GFP_KERNEL);
+	iter_thr = vzalloc(sizeof(struct render_info));
 	if (!iter_thr)
 		return NULL;
 
@@ -749,6 +835,7 @@ struct render_info *fpsgo_search_and_add_render_info(int pid,
 	iter_thr->identifier = identifier;
 	iter_thr->tgid = tgid;
 	iter_thr->frame_type = BY_PASS_TYPE;
+	iter_thr->bq_type = ACQUIRE_UNKNOWN_TYPE;
 
 	fbt_set_render_boost_attr(iter_thr);
 
@@ -801,7 +888,7 @@ void fpsgo_delete_render_info(int pid,
 
 	if (delete == 1) {
 		fpsgo_fbt_delete_rl_render(pid, buffer_id);
-		kfree(data);
+		vfree(data);
 	}
 }
 
@@ -1438,7 +1525,7 @@ int fpsgo_check_all_tree_empty(void)
 
 	fpsgo_render_tree_unlock(__func__);
 
-	FPSGO_LOGE("[render,BQ,linger,hwui,api]=[%d,%d,%d,%d,%d]\n",
+	FPSGO_LOGI("[render,BQ,linger,hwui,api]=[%d,%d,%d,%d,%d]\n",
 		render_info_empty_flag, BQ_id_empty_flag, linger_empty_flag,
 		hwui_empty_flag, api_empty_flag);
 
@@ -1497,7 +1584,7 @@ int fpsgo_check_thread_status(void)
 
 			if (delete == 1) {
 				fpsgo_fbt_delete_rl_render(iter->pid, iter->buffer_id);
-				kfree(iter);
+				vfree(iter);
 			}
 
 		} else {
@@ -1526,7 +1613,9 @@ int fpsgo_check_thread_status(void)
 	if (rb_tree_empty)
 		fpsgo_base2fbt_no_one_render();
 
-	return fpsgo_check_all_tree_empty();
+	fpsgo_check_all_tree_empty();
+
+	return rb_tree_empty;
 }
 
 void fpsgo_clear(void)
@@ -1563,7 +1652,7 @@ void fpsgo_clear(void)
 
 		if (delete == 1) {
 			fpsgo_fbt_delete_rl_render(iter->pid, iter->buffer_id);
-			kfree(iter);
+			vfree(iter);
 		}
 	}
 
@@ -1743,6 +1832,96 @@ int fpsgo_get_BQid_pair(int pid, int tgid, long long identifier,
 	return 0;
 }
 
+int fpsgo_get_acquire_queue_pair_by_self(int tid, unsigned long long buffer_id)
+{
+	int ret = ACQUIRE_OTHER_TYPE;
+	struct acquire_info *iter = NULL;
+
+	iter = fpsgo_search_acquire_info(tid, buffer_id);
+	if (iter)
+		ret = ACQUIRE_SELF_TYPE;
+
+	return ret;
+}
+
+int fpsgo_get_acquire_queue_pair_by_group(int tid, int *dep_arr,
+	int dep_arr_num, unsigned long long buffer_id)
+{
+	int i;
+	int ret = ACQUIRE_OTHER_TYPE;
+	struct acquire_info *c_iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	if (!dep_arr || dep_arr_num <= 0) {
+		ret = ACQUIRE_CAMERA_TYPE;
+		goto out;
+	}
+
+	for (i = 0; i < dep_arr_num; i++) {
+		for (rbn = rb_first(&acquire_info_tree); rbn; rbn = rb_next(rbn)) {
+			c_iter = rb_entry(rbn, struct acquire_info, entry);
+			if (c_iter->c_tid == dep_arr[i] &&
+				c_iter->api == NATIVE_WINDOW_API_CAMERA) {
+				ret = ACQUIRE_CAMERA_TYPE;
+				break;
+			}
+		}
+		if (ret == ACQUIRE_CAMERA_TYPE)
+			break;
+	}
+
+out:
+	return ret;
+}
+
+int fpsgo_check_all_render_blc(int render_tid, unsigned long long buffer_id)
+{
+	int ret = 1;
+	int tgid = 0;
+	int count = 0;
+	struct render_info *r_iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	tgid = fpsgo_get_tgid(render_tid);
+	if (tgid < 0)
+		return ret;
+
+	for (rbn = rb_first(&render_pid_tree); rbn; rbn = rb_next(rbn)) {
+		r_iter = rb_entry(rbn, struct render_info, render_key_node);
+
+		if (r_iter->tgid != tgid)
+			continue;
+
+		if (r_iter->pid == render_tid &&
+			r_iter->buffer_id == buffer_id)
+			continue;
+
+		if (r_iter->frame_type == FRAME_HINT_TYPE ||
+			fpsgo_search_and_add_sbe_info(r_iter->pid, 0))
+			continue;
+
+		if (r_iter->bq_type == ACQUIRE_OTHER_TYPE) {
+			count++;
+			xgf_trace("[base][%d][0x%llx] | bq_type:%d",
+				render_tid, buffer_id, r_iter->bq_type);
+		}
+
+		if (r_iter->boost_info.last_blc > 0) {
+			ret = 0;
+			xgf_trace("[base][%d][0x%llx] | r:%d 0x%llx last_blc:%d",
+				render_tid, buffer_id,
+				r_iter->pid, r_iter->buffer_id, r_iter->boost_info.last_blc);
+		}
+	}
+
+	if (ret && count)
+		ret = 0;
+
+	ret = ret ? ACQUIRE_CAMERA_TYPE : ACQUIRE_OTHER_TYPE;
+
+	return ret;
+}
+
 struct acquire_info *fpsgo_search_acquire_info(int tid, unsigned long long buffer_id)
 {
 	struct acquire_info *iter = NULL;
@@ -1764,6 +1943,13 @@ struct acquire_info *fpsgo_add_acquire_info(int p_pid, int c_pid, int c_tid,
 	struct rb_node *parent = NULL;
 	struct acquire_info *iter = NULL;
 	struct fbt_render_key local_key = {.key1 = c_tid, .key2 = buffer_id};
+
+	if (api == NATIVE_WINDOW_API_CAMERA) {
+		if (wq_has_sleeper(&cam_apk_pid_queue))
+			fpsgo2cam_sentcmd(CAMERA_APK, c_pid);
+		if (wq_has_sleeper(&cam_ser_pid_queue))
+			fpsgo2cam_sentcmd(CAMERA_SERVER, p_pid);
+	}
 
 	while (*p) {
 		parent = *p;
@@ -1823,11 +2009,6 @@ int fpsgo_delete_acquire_info(int mode, int tid, unsigned long long buffer_id)
 	}
 
 	return ret;
-}
-
-int fpsgo_get_camera_server_pid(int tgid)
-{
-	return -1;
 }
 
 static ssize_t systrace_mask_show(struct kobject *kobj,
