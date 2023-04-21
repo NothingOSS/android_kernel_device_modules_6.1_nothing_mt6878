@@ -201,6 +201,7 @@ void MTKGPUQoS_mode(int seg_flag)
 	unsigned int loading, idx, min_idx, high_idx, low_idx;
 
 	mtk_get_gpu_loading(&loading);
+
 #if defined(CONFIG_MTK_GPUFREQ_V2)
 	idx = gpufreq_get_cur_oppidx(TARGET_DEFAULT);
 	min_idx = gpufreq_get_opp_num(TARGET_DEFAULT) - 1;
@@ -240,8 +241,11 @@ void MTKGPUQoS_mode(int seg_flag)
 		else {
 			if (seg_flag && idx >= low_idx)
 				gpu_info_buf->freq = GPU_BW_LP_MODE;
+			else if (idx == 0)
+				gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE;
 			else
 				gpu_info_buf->freq = 0;
+
 			if (g_value >= GPU_BW_RATIO_FLOOR && g_value <= GPU_BW_RATIO_CEIL)
 				/* apply a ratio for bw prediction */
 				gpu_info_buf->freq = g_value;

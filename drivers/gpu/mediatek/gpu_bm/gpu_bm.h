@@ -10,6 +10,7 @@
 #define GPU_BW_SPORT_MODE               (1)
 #define GPU_BW_NO_PRED_MODE             (2)
 #define GPU_BW_LP_MODE                  (3)
+#define GPU_BM_PEAK_PERF_MODE           (4)
 
 #define GPU_BW_RATIO_CEIL               (300)
 #define GPU_BW_RATIO_FLOOR              (10)
