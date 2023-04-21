@@ -149,6 +149,7 @@ mgk_64_k61_device_modules = [
     "drivers/iio/adc/mt6375-adc.ko",
     "drivers/iio/adc/mt6375-auxadc.ko",
     "drivers/iio/adc/mt6577_auxadc.ko",
+    "drivers/iio/adc/mt6681-auxadc.ko",
     "drivers/iio/adc/mtk-spmi-pmic-adc.ko",
     "drivers/iio/adc/rt9490-adc.ko",
     "drivers/input/keyboard/mtk-kpd.ko",
@@ -206,6 +207,7 @@ mgk_64_k61_device_modules = [
     "drivers/mfd/mt6375.ko",
     "drivers/mfd/mt6397.ko",
     "drivers/mfd/mt63xx-debug.ko",
+    "drivers/mfd/mt6681-core.ko",
     "drivers/mfd/mt6685-audclk.ko",
     "drivers/mfd/mt6685-core.ko",
     "drivers/mfd/mtk-spmi-pmic-debug.ko",
@@ -449,6 +451,7 @@ mgk_64_k61_device_modules = [
     "drivers/mmc/host/mtk-sd.ko",
     "drivers/nvmem/nvmem-mt6338-efuse.ko",
     "drivers/nvmem/nvmem-mt635x-efuse.ko",
+    "drivers/nvmem/nvmem-mt6681-efuse.ko",
     "drivers/nvmem/nvmem_mtk-devinfo.ko",
     "drivers/pci/controller/pcie-mediatek-gen3.ko",
     "drivers/phy/mediatek/phy-mtk-fpgaphy.ko",
@@ -550,6 +553,7 @@ mgk_64_k61_device_modules = [
     "sound/soc/codecs/richtek/snd-soc-rt5512.ko",
     "sound/soc/codecs/snd-soc-mt6338.ko",
     "sound/soc/codecs/snd-soc-mt6368.ko",
+    "sound/soc/codecs/snd-soc-mt6681.ko",
     "sound/soc/codecs/tfa98xx/snd-soc-tfa98xx.ko",
     "sound/soc/mediatek/audio_dsp/mtk-soc-offload-common.ko",
     "sound/soc/mediatek/audio_dsp/snd-soc-audiodsp-common.ko",
@@ -732,6 +736,8 @@ mgk_64_k61_platform_device_modules = {
     "sound/soc/mediatek/mt6983/snd-soc-mt6983-afe.ko": "mt6983",
     "sound/soc/mediatek/mt6985/mt6985-mt6338.ko": "mt6985",
     "sound/soc/mediatek/mt6985/snd-soc-mt6985-afe.ko": "mt6985",
+    "sound/soc/mediatek/mt6989/mt6989-mt6681.ko": "mt6989",
+    "sound/soc/mediatek/mt6989/snd-soc-mt6989-afe.ko": "mt6989",
 }
 
 
