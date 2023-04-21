@@ -1080,7 +1080,7 @@ static struct notifier_block vcp_pm_notifier_block = {
 
 void vcp_set_clk(void)
 {
-	int ret, i;
+	int ret, i = 0;
 	int clk_retry = 10;
 
 	if (!vcp_ao) {
@@ -1754,6 +1754,7 @@ static int vcp_alloc_iova(struct device *dev, __u32 size, __u64 *start_phys, __u
 		return PTR_ERR(dbuf);
 	}
 
+	memset(&map, 0, sizeof(struct iosys_map));
 	if (dma_buf_vmap(dbuf, &map)) {
 		pr_notice("[VCP] vmap fail\n");
 		return -ENOMEM;
