@@ -285,19 +285,6 @@ static void mtk_dmabuf_dump_for_hang(void)
 
 #endif
 
-#if (!IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG))
-int get_each_dmabuf(int (*callback)(const struct dma_buf *dmabuf,
-		    void *private), void *private)
-{
-	return -1;
-}
-
-int is_dma_buf_file(struct file *file)
-{
-	return 0;
-}
-#endif
-
 static inline struct dump_fd_data *
 fd_const_to_dump_fd_data(const struct fd_const *d)
 {
@@ -1006,7 +993,7 @@ static long get_dma_heap_buffer_total(struct dma_heap *heap)
 	dump_info.heap = heap;
 	dump_info.ret = 0; /* used to record total size */
 
-	get_each_dmabuf(dma_heap_total_cb, (void *)&dump_info);
+	dma_buf_get_each(dma_heap_total_cb, (void *)&dump_info);
 
 	return dump_info.ret;
 }
@@ -1183,7 +1170,7 @@ struct dump_fd_data *dmabuf_rbtree_add_all(struct dma_heap *heap,
 	spin_lock_init(&fddata->splock);
 
 	if (pid > 0) {
-		get_each_dmabuf(dmabuf_rbtree_dbg_add_cb, fddata);
+		dma_buf_get_each(dmabuf_rbtree_dbg_add_cb, fddata);
 		dmabuf_rbtree_add_all_pid(fddata, heap, s, pid, flag);
 		return fddata;
 	}
@@ -1221,7 +1208,7 @@ struct dump_fd_data *dmabuf_rbtree_add_all(struct dma_heap *heap,
 		dmabuf_dump(s, "%s: time:%llu max:%d count:%d\n", __func__,
 			    cur_ts2 - cur_ts1, pid_max, pid_count);
 
-	get_each_dmabuf(dmabuf_rbtree_dbg_add_cb, fddata);
+	dma_buf_get_each(dmabuf_rbtree_dbg_add_cb, fddata);
 	while (pid_count) {
 		dmabuf_rbtree_add_all_pid(fddata, heap, s, pids[pid_count-1], flag);
 		pid_count--;
