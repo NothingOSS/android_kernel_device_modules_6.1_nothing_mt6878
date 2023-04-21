@@ -970,6 +970,10 @@
 		compatible = "mediatek,memory-ffa-enabled";
 	};
 
+	page_based_v2: page-based-v2-enabled {
+		compatible = "mediatek,page-based-v2-enabled";
+	};
+
 	mkp {
 		compatible = "mediatek,mkp-drv";
 		memory-region = <&mkp_mem>;
