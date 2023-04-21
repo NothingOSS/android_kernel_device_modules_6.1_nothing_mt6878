@@ -234,6 +234,11 @@ enum dvfsrc_regs {
 	DVFSRC_DEFAULT_OPP_2,
 	DVFSRC_DEFAULT_OPP_1,
 	DVFSRC_HALT_CONTROL,
+	DVFSRC_DEFAULT_OPP_3,
+	DVFSRC_DEFAULT_OPP_4,
+	DVFSRC_TARGET_FORCE_H1,
+	DVFSRC_TARGET_FORCE_H2,
+	DVFSRC_CUR_TAR_GEAR,
 };
 
 static const int mt8183_regs[] = {
@@ -279,6 +284,32 @@ static const int mt6983_regs[] = {
 	[DVFSRC_DEFAULT_OPP_2] =	0x230,
 	[DVFSRC_DEFAULT_OPP_1] =	0x22C,
 	[DVFSRC_HALT_CONTROL]  =        0xC4,
+};
+
+static const int mt6989_regs[] = {
+	[DVFSRC_BASIC_CONTROL] =    0x0,
+	[DVFSRC_SW_REQ] =           0x18,
+	[DVFSRC_SW_REQ2] =          0x604,
+	[DVFSRC_LEVEL] =            0x5F0,
+	[DVFSRC_SW_PEAK_BW] =       0x1F4,
+	[DVFSRC_SW_BW] =            0x1E8,
+	[DVFSRC_SW_HRT_BW] =        0x20C,
+	[DVFSRC_TARGET_LEVEL] =     0x5F0,
+	[DVFSRC_VCORE_REQUEST] =    0x80,
+	[DVFSRC_TARGET_FORCE] =     0x774,
+	[DVFSRC_TARGET_FORCE_H] =   0x770,
+	[DVFSRC_TARGET_FORCE_H1] =  0x5E0,
+	[DVFSRC_TARGET_FORCE_H2] =  0x5DC,
+	[DVFSRC_FORCE_MASK] =       0x5EC,
+	[DVFSRC_SW_FORCE_BW] =      0x200,
+	[DVFSRC_INT] =              0xC8,
+	[DVFSRC_INT_EN] =           0xCC,
+	[DVFSRC_INT_CLR] =          0xD0,
+	[DVFSRC_CUR_TAR_GEAR] =     0x6AC,
+	[DVFSRC_DEFAULT_OPP_1] =    0x22C,
+	[DVFSRC_DEFAULT_OPP_2] =    0x230,
+	[DVFSRC_DEFAULT_OPP_3] =    0x740,
+	[DVFSRC_DEFAULT_OPP_4] =    0x744,
 };
 
 static const struct dvfsrc_opp *get_current_opp(struct mtk_dvfsrc *dvfsrc)
@@ -523,6 +554,7 @@ out:
 }
 #endif
 
+/*  MT6983 IP release */
 static int mt6983_get_target_level(struct mtk_dvfsrc *dvfsrc)
 {
 	u32 reg;
@@ -688,6 +720,120 @@ out:
 }
 #endif
 
+/*  MT6989 IP release */
+static int mt6989_get_target_level(struct mtk_dvfsrc *dvfsrc)
+{
+	u32 reg;
+
+	reg = dvfsrc_read(dvfsrc, DVFSRC_TARGET_LEVEL);
+	if (reg & (1 << 16))
+		return ((reg >> 8) & 0xFF) + 1;
+	else
+		return 0;
+}
+
+static int mt6989_get_current_level(struct mtk_dvfsrc *dvfsrc)
+{
+	u32 curr_level;
+
+	curr_level = (dvfsrc_read(dvfsrc, DVFSRC_LEVEL) & 0xFF) + 1;
+	if (curr_level > dvfsrc->curr_opps->num_opp)
+		curr_level = 0;
+	else
+		curr_level = dvfsrc->curr_opps->num_opp - curr_level;
+
+	return curr_level;
+}
+
+static int mt6989_wait_for_vcore_level(struct mtk_dvfsrc *dvfsrc, u32 level)
+{
+	int val;
+
+	return readl_poll_timeout_atomic(
+			dvfsrc->regs + dvfsrc->dvd->regs[DVFSRC_CUR_TAR_GEAR],
+			val, ((val >> 8) & 0x7) == level, STARTUP_TIME, POLL_TIMEOUT);
+}
+
+static int mt6989_wait_for_dram_level(struct mtk_dvfsrc *dvfsrc, u32 level)
+{
+	int val;
+
+	return readl_poll_timeout_atomic(
+			dvfsrc->regs + dvfsrc->dvd->regs[DVFSRC_CUR_TAR_GEAR],
+			val, (val & 0xF) == level, STARTUP_TIME, POLL_TIMEOUT);
+}
+
+#ifdef DVFSRC_FORCE_OPP_SUPPORT
+static void mt6989_set_force_opp_level(struct mtk_dvfsrc *dvfsrc, u32 level)
+{
+	unsigned long flags;
+	int val;
+	int ret = 0;
+
+	spin_lock_irqsave(&dvfsrc->force_lock, flags);
+	if (level > dvfsrc->curr_opps->num_opp - 1) {
+		if (dvfsrc->opp_forced) {
+			dvfsrc_rmw(dvfsrc, DVFSRC_HALT_CONTROL, 1, 0x1, 1);
+			udelay(STARTUP_TIME);
+			dvfsrc_wait_for_idle(dvfsrc);
+			dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_1, 1);
+			dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_2, 0);
+			dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_3, 0);
+			dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_4, 0);
+			dvfsrc_write(dvfsrc, DVFSRC_SW_REQ2, 0x0);
+			dvfsrc_rmw(dvfsrc, DVFSRC_HALT_CONTROL, 0, 0x1, 1);
+			dvfsrc->opp_forced = false;
+		}
+		goto out;
+	}
+	dvfsrc->opp_forced = true;
+	dvfsrc_rmw(dvfsrc, DVFSRC_HALT_CONTROL, 1, 0x1, 1);
+	udelay(STARTUP_TIME);
+	dvfsrc_wait_for_idle(dvfsrc);
+	dvfsrc_write(dvfsrc, DVFSRC_SW_REQ2, 0xFFFFFFFF);
+	if (level < 32) {
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_1, 1 << level);
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_2, 0);
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_3, 0);
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_4, 0);
+	} else if (level < 64) {
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_2, 1 << (level - 32));
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_1, 0);
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_3, 0);
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_4, 0);
+	} else if (level < 96) {
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_3, 1 << (level - 64));
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_1, 0);
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_2, 0);
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_4, 0);
+	} else {
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_4, 1 << (level - 96));
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_1, 0);
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_2, 0);
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_3, 0);
+	}
+
+	dvfsrc_rmw(dvfsrc, DVFSRC_HALT_CONTROL, 0, 0x1, 1);
+	ret = readl_poll_timeout_atomic(
+			dvfsrc->regs + dvfsrc->dvd->regs[DVFSRC_LEVEL],
+			val, (val & 0x7f) == level, STARTUP_TIME, POLL_TIMEOUT);
+out:
+	spin_unlock_irqrestore(&dvfsrc->force_lock, flags);
+	if (ret < 0) {
+		dev_info(dvfsrc->dev,
+			"[%s] wait idle, level: %d, last: %d -> %x\n",
+			__func__, level,
+			dvfsrc->dvd->get_current_level(dvfsrc),
+			dvfsrc->dvd->get_target_level(dvfsrc));
+#ifdef DVFSRC_DEBUG_ENHANCE
+		mtk_dvfsrc_dump_notify(dvfsrc, 0);
+		mtk_dvfsrc_aee_notify(dvfsrc, DVFSRC_AEE_FORCE_ERROR);
+#endif
+	}
+}
+#endif
+
+/* Request handler */
 void mtk_dvfsrc_send_request(const struct device *dev, u32 cmd, u64 data)
 {
 	int ret = 0;
@@ -702,7 +848,8 @@ void mtk_dvfsrc_send_request(const struct device *dev, u32 cmd, u64 data)
 			dvfsrc->dvd->set_dram_peak_bw(dvfsrc, data);
 		goto out;
 	case MTK_DVFSRC_CMD_OPP_REQUEST:
-		dvfsrc->dvd->set_opp_level(dvfsrc, data);
+		if (dvfsrc->dvd->set_opp_level)
+			dvfsrc->dvd->set_opp_level(dvfsrc, data);
 		break;
 	case MTK_DVFSRC_CMD_VCORE_REQUEST:
 		dvfsrc->dvd->set_vcore_level(dvfsrc, data);
@@ -1048,6 +1195,20 @@ err:
 	.wait_for_vcore_level = dvfsrc_wait_for_vcore_level,	\
 	.wait_for_dram_level = dvfsrc_wait_for_dram_level
 
+#define DVFSRC_MT6989_SERIES_OPS			\
+	.get_target_level = mt6989_get_target_level,	\
+	.get_current_level = mt6989_get_current_level,	\
+	.get_vcore_level = mt6873_get_vcore_level,	\
+	.get_vcp_level = mt6873_get_vcp_level,		\
+	.get_dram_level = mt6983_get_dram_level,	\
+	.set_dram_bw = mt6983_set_dram_bw,		\
+	.set_dram_peak_bw = mt6983_set_dram_peak_bw,	\
+	.set_dram_level = mt6983_set_dram_level,	\
+	.set_dram_hrtbw = mt6873_set_dram_hrtbw,	\
+	.set_vcore_level = mt6873_set_vcore_level,	\
+	.set_vscp_level = mt6873_set_vscp_level,	\
+	.wait_for_vcore_level = mt6989_wait_for_vcore_level,	\
+	.wait_for_dram_level = mt6989_wait_for_dram_level
 
 static const struct dvfsrc_opp dvfsrc_opp_mt8183_lp4[] = {
 	{0, 0}, {0, 1}, {0, 2}, {1, 2},
@@ -1362,6 +1523,23 @@ static const struct dvfsrc_soc_data mt6897_data = {
 #endif
 };
 
+static const struct dvfsrc_opp_desc dvfsrc_opp_mt6989_desc[] = {
+	{
+		.opps = NULL,
+		.num_opp = 40,
+	}
+};
+
+static const struct dvfsrc_soc_data mt6989_data = {
+	DVFSRC_MT6989_SERIES_OPS,
+	.opps_desc = dvfsrc_opp_mt6989_desc,
+	.num_opp_desc = ARRAY_SIZE(dvfsrc_opp_mt6989_desc),
+	.regs = mt6989_regs,
+#ifdef DVFSRC_FORCE_OPP_SUPPORT
+	.set_force_opp_level = mt6989_set_force_opp_level,
+#endif
+};
+
 static int mtk_dvfsrc_remove(struct platform_device *pdev)
 {
 	struct mtk_dvfsrc *dvfsrc = platform_get_drvdata(pdev);
@@ -1418,6 +1596,9 @@ static const struct of_device_id mtk_dvfsrc_of_match[] = {
 	}, {
 		.compatible = "mediatek,mt6897-dvfsrc",
 		.data = &mt6897_data,
+	}, {
+		.compatible = "mediatek,mt6989-dvfsrc",
+		.data = &mt6989_data,
 	}, {
 		/* sentinel */
 	},
