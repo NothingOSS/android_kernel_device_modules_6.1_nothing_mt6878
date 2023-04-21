@@ -372,6 +372,11 @@ static int mmdvfs_v1_dbg_ftrace_thread(void *data)
 	int ret = 0;
 	s32 i;
 
+	if (!g_mmdvfs) {
+		ftrace_v1_ena = false;
+		return 0;
+	}
+
 	while (!kthread_should_stop()) {
 
 		spin_lock_irqsave(&g_mmdvfs->lock, flags);
@@ -406,11 +411,12 @@ static int mmdvfs_v3_dbg_ftrace_thread(void *data)
 	int retry = 0;
 	s32 i;
 
-	if (!g_mmdvfs->release_step0) {
+	if (!g_mmdvfs || !g_mmdvfs->release_step0) {
 		ftrace_v3_ena = false;
 		return 0;
 	}
 
+	MMDVFS_DBG("mmdvfs_v3 init not ready");
 	while (!mmdvfs_is_init_done()) {
 		if (++retry > 20) {
 			ftrace_v3_ena = false;
@@ -425,6 +431,7 @@ static int mmdvfs_v3_dbg_ftrace_thread(void *data)
 		return 0;
 	}
 
+	MMDVFS_DBG("mmdvfs_v3 init & MEM_BASE ready");
 	while (!kthread_should_stop()) {
 		// power opp
 		for (i = 0; i <= PWR_MMDVFS_VMM; i++)
