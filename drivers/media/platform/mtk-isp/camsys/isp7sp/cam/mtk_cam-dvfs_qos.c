@@ -721,9 +721,9 @@ static int fill_sv_qos(struct mtk_cam_job *job,
 
 		if (i < SVTAG_IMG_END) {
 			avg_bw =
-				calc_bw(x_size * img_h, linet, img_h + sensor_vb);
+				calc_bw(x_size * img_h, linet, sensor_h + sensor_vb);
 			peak_bw =
-				calc_bw(x_size * img_h, linet, img_h);
+				calc_bw(x_size * img_h, linet, sensor_h);
 			if (is_raw_ufo(in->fmt.format)) {
 				/* compression ratio: 0.7x */
 				avg_bw = avg_bw * 7 / 10;
@@ -734,9 +734,9 @@ static int fill_sv_qos(struct mtk_cam_job *job,
 			}
 		} else {
 			avg_bw =
-				calc_bw(x_size * img_h, linet, sensor_h + img_h + sensor_vb);
+				calc_bw(x_size * img_h, linet, sensor_h + sensor_vb);
 			peak_bw =
-				calc_bw(x_size * img_h, linet, sensor_h + img_h);
+				calc_bw(x_size * img_h, linet, sensor_h);
 		}
 
 		/* only first two camsv devices support two smi out */
@@ -827,9 +827,9 @@ static int fill_mraw_qos(struct mtk_cam_job *job,
 					img_h = in->fmt.s.h;
 					avg_bw =
 						calc_bw(x_size * img_h, linet,
-							sensor_h + img_h + sensor_vb);
+							sensor_h + sensor_vb);
 					peak_bw =
-						calc_bw(x_size * img_h, linet, sensor_h + img_h);
+						calc_bw(x_size * img_h, linet, sensor_h);
 
 					job->mraw_mmqos[j][port_id].avg_bw +=
 						to_qos_icc_ratio(avg_bw);
@@ -868,10 +868,22 @@ static int fill_mraw_qos(struct mtk_cam_job *job,
 	return 0;
 }
 
+static void update_sensor_active_info(struct mtk_cam_job *job)
+{
+	struct mtk_cam_ctx *ctx = job->src_ctx;
+
+	/* get active line time */
+	if (ctx->act_line_info.avg_linetime_in_ns == 0 ||
+		job->seamless_switch || job->raw_switch)
+		mtk_cam_seninf_get_active_line_info(
+				job->seninf, &ctx->act_line_info);
+}
+
 void mtk_cam_fill_qos(struct req_buffer_helper *helper)
 {
 	struct mtkcam_ipi_frame_param *fp = helper->fp;
 	struct mtk_cam_job *job = helper->job;
+	struct mtk_cam_ctx *ctx = job->src_ctx;
 	u32 senser_vb, sensor_h, sensor_fps;
 	u64 avg_linet;
 	int i;
@@ -882,13 +894,13 @@ void mtk_cam_fill_qos(struct req_buffer_helper *helper)
 	memset(job->sv_mmqos, 0, sizeof(job->sv_mmqos));
 	memset(job->mraw_mmqos, 0, sizeof(job->mraw_mmqos));
 
-	avg_linet = get_line_time(job);
+	update_sensor_active_info(job);
+	avg_linet =  ctx->act_line_info.avg_linetime_in_ns;
+	sensor_h = ctx->act_line_info.active_line_num;
 	senser_vb = get_sensor_vb(job);
-	sensor_h = get_sensor_h(job);
 	sensor_fps = get_sensor_fps(job);
 
-	if (avg_linet == 0 || senser_vb == 0 ||
-		sensor_h == 0 || sensor_fps == 0) {
+	if (avg_linet == 0 || sensor_h == 0 || sensor_fps == 0) {
 		pr_info("%s: wrong sensor param h/vb/linetime/fps: %d/%d/%llu/%d",
 			__func__, sensor_h, senser_vb, avg_linet, sensor_fps);
 		return;

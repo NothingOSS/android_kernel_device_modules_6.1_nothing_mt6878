@@ -199,6 +199,9 @@ struct mtk_cam_ctx {
 	unsigned int used_tag_cnt;
 	unsigned int enabled_tags;
 	struct mtk_camsv_tag_info tag_info[CAMSV_MAX_TAGS];
+
+	/* for mmqos usage */
+	struct mtk_seninf_active_line_info act_line_info;
 };
 
 struct mtk_cam_v4l2_pipelines {
