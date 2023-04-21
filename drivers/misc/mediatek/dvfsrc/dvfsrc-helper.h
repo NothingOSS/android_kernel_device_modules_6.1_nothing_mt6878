@@ -16,13 +16,16 @@ struct mtk_dvfsrc;
 struct dvfsrc_opp {
 	u32 vcore_opp;
 	u32 dram_opp;
+	u32 emi_opp;
 	u32 vcore_uv;
 	u32 dram_kbps;
+	u32 emi_mbps;
 };
 
 struct dvfsrc_opp_desc {
 	int num_vcore_opp;
 	int num_dram_opp;
+	int num_emi_opp;
 	int num_opp;
 	struct dvfsrc_opp *opps;
 };
@@ -53,6 +56,8 @@ struct dvfsrc_config {
 	char *(*dump_md_floor_table)(struct mtk_dvfsrc *dvfsrc, char *p, u32 size);
 	int (*query_request)(struct mtk_dvfsrc *dvfsrc, u32 id);
 	u64 (*query_dvfs_time)(struct mtk_dvfsrc *dvfsrc);
+	u32 (*query_opp_count)(struct mtk_dvfsrc *dvfsrc);
+	u32 (*query_opp_gear_info)(struct mtk_dvfsrc *dvfsrc, u32 idx);
 };
 
 struct dvfsrc_debug_data {
@@ -105,5 +110,6 @@ extern const struct dvfsrc_config mt6893_dvfsrc_config;
 extern const struct dvfsrc_config mt6877_dvfsrc_config;
 extern const struct dvfsrc_config mt6983_dvfsrc_config;
 extern const struct dvfsrc_config mt6897_dvfsrc_config;
+extern const struct dvfsrc_config mt6989_dvfsrc_config;
 #endif
 

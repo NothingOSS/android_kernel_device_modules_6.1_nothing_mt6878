@@ -192,9 +192,60 @@ static int dvfsrc_query_info(u32 id)
 
 	return ret;
 }
+
+static int mtk_dvfsrc_opp_setting_v4(struct mtk_dvfsrc *dvfsrc)
+{
+	const struct dvfsrc_config *config;
+	int i;
+	u32 max_opp, info;
+
+	config = dvfsrc->dvd->config;
+	max_opp = config->query_opp_count(dvfsrc);
+	dev_info(dvfsrc->dev, "max_opp = %d\n", max_opp);
+	if (max_opp == 0)
+		return -EINVAL;
+
+	dvfsrc->opp_desc = &dvfsrc->dvd->opps_desc[0];
+	dvfsrc->opp_desc->num_opp = max_opp + 1;
+	info = config->query_opp_gear_info(dvfsrc, 0);
+	dev_info(dvfsrc->dev, "info = %x, index = %d\n", info, 0);
+	dvfsrc->opp_desc->num_vcore_opp = info & 0x7;
+	dvfsrc->opp_desc->num_emi_opp = (info >> 4) & 0xF;
+	dvfsrc->opp_desc->num_dram_opp = (info >> 12) & 0xF;
+	dev_info(dvfsrc->dev, "num_vcore_opp = %d\n", dvfsrc->opp_desc->num_vcore_opp);
+	dev_info(dvfsrc->dev, "num_emi_opp = %d\n", dvfsrc->opp_desc->num_emi_opp);
+	dev_info(dvfsrc->dev, "num_dram_opp = %d\n", dvfsrc->opp_desc->num_dram_opp);
+
+	dvfsrc->opp_desc->opps = devm_kzalloc(dvfsrc->dev,
+				dvfsrc->opp_desc->num_opp * sizeof(struct dvfsrc_opp_desc),
+				GFP_KERNEL);
+
+	for (i = 0; i < dvfsrc->opp_desc->num_opp; i++) {
+		info = config->query_opp_gear_info(dvfsrc, max_opp - i);
+		dev_info(dvfsrc->dev, "info = %x, index = %d\n", info, max_opp - i);
+		dvfsrc->opp_desc->opps[i].vcore_opp = info & 0x7;
+		dvfsrc->opp_desc->opps[i].emi_opp = (info >> 4) & 0xF;
+		dvfsrc->opp_desc->opps[i].dram_opp = (info >> 12) & 0xF;
+	}
+
+	dvfsrc->vopp_uv_tlb = devm_kzalloc(dvfsrc->dev,
+				dvfsrc->opp_desc->num_vcore_opp * sizeof(u32),
+				GFP_KERNEL);
+	if (!dvfsrc->vopp_uv_tlb)
+		return -ENOMEM;
+
+	dvfsrc_setup_opp_table(dvfsrc);
+	dvfsrc->force_opp_idx = 0xFF;
+
+	return 0;
+}
+
 static int mtk_dvfsrc_opp_setting(struct mtk_dvfsrc *dvfsrc)
 {
 	struct arm_smccc_res ares;
+
+	if (dvfsrc->dvd->num_opp_desc == 0)
+		return mtk_dvfsrc_opp_setting_v4(dvfsrc);
 
 	arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL, MTK_SIP_VCOREFS_GET_OPP_TYPE,
 		0, 0, 0, 0, 0, 0,
@@ -1125,6 +1176,16 @@ static const struct dvfsrc_debug_data mt6897_data = {
 	.num_opp_desc = ARRAY_SIZE(dvfsrc_opp_mt6897_desc),
 };
 
+static struct dvfsrc_opp_desc dvfsrc_opp_common_desc[1];
+
+static const struct dvfsrc_debug_data mt6989_data = {
+	.version = 0x6989,
+	.config = &mt6989_dvfsrc_config,
+	.opps_desc = dvfsrc_opp_common_desc,
+	.num_opp_desc = 0,
+};
+
+
 static const struct of_device_id dvfsrc_helper_of_match[] = {
 	{
 		.compatible = "mediatek,mt6789-dvfsrc",
@@ -1168,6 +1229,9 @@ static const struct of_device_id dvfsrc_helper_of_match[] = {
 	}, {
 		.compatible = "mediatek,mt6897-dvfsrc",
 		.data = &mt6897_data,
+	}, {
+		.compatible = "mediatek,mt6989-dvfsrc",
+		.data = &mt6989_data,
 	}, {
 		/* sentinel */
 	},

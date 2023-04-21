@@ -42,6 +42,8 @@ enum dvfsrc_regs {
 	DVFSRC_RSRV_4,
 	DVFSRC_MD_DDR_FLOOR_REQUEST,
 	DVFSRC_QOS_DDR_REQUEST,
+	DVFSRC_LEVEL_LABEL_L,
+	DVFSRC_LEVEL_LABEL_H,
 };
 
 static const int mt6779_regs[] = {
@@ -113,6 +115,34 @@ static const int mt6983_regs[] = {
 	[DVFSRC_RSRV_4] = 0x290,
 	[DVFSRC_MD_DDR_FLOOR_REQUEST] = 0x5E4,
 	[DVFSRC_QOS_DDR_REQUEST] = 0x5E8,
+};
+
+static const int mt6989_regs[] = {
+	[DVFSRC_BASIC_CONTROL] = 0x0,
+	[DVFSRC_SW_REQ1] = 0x10,
+	[DVFSRC_INT] = 0xC8,
+	[DVFSRC_INT_EN] = 0xCC,
+	[DVFSRC_SW_BW_0] = 0x1DC,
+	[DVFSRC_ISP_HRT] = 0x20C,
+	[DVFSRC_DEBUG_STA_0] = 0x29C,
+	[DVFSRC_VCORE_REQUEST] = 0x80,
+	[DVFSRC_CURRENT_LEVEL] = 0x5F0,
+	[DVFSRC_TARGET_LEVEL] = 0x5F0,
+	[DVFSRC_LAST] = 0x3AC,
+	[DVFSRC_RECORD_0] = 0x3B8,
+	[DVFSRC_DDR_REQUEST] = 0x2C8,
+	[DVSFRC_HRT_REQ_MD_URG] = 0x320,
+	[DVFSRC_HRT_REQ_MD_BW_0] = 0x324,
+	[DVFSRC_HRT_REQ_MD_BW_8] = 0x344,
+	[DVFSRC_MD_TURBO] = 0xE0,
+	[DVFSRC_95MD_SCEN_BW4] = 0x278,
+	[DVFSRC_95MD_SCEN_BW0] = 0x258,
+	[DVFSRC_95MD_SCEN_BW0_T] = 0x268,
+	[DVFSRC_RSRV_4] = 0x290,
+	[DVFSRC_MD_DDR_FLOOR_REQUEST] = 0x5E4,
+	[DVFSRC_QOS_DDR_REQUEST] = 0x5E8,
+	[DVFSRC_LEVEL_LABEL_L] = 0xFC,
+	[DVFSRC_LEVEL_LABEL_H] = 0x6B0,
 };
 
 enum dvfsrc_spm_regs {
@@ -257,6 +287,7 @@ static u32 dvfsrc_get_hifi_rising_ddr_gear(struct mtk_dvfsrc *dvfsrc)
 		val = (val >> 22) & 0x7;
 	break;
 	case 3:
+	case 4:
 		val = dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x20);
 		val = (val >> 4) & 0xF;
 	break;
@@ -303,6 +334,7 @@ static u32 dvfsrc_get_md_bw(struct mtk_dvfsrc *dvfsrc)
 	break;
 	case 2:
 	case 3:
+	case 4:
 		val = dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0xC) & 0x3FF;
 	break;
 	default:
@@ -329,7 +361,7 @@ static u32 dvfsrc_get_md_rising_ddr_gear(struct mtk_dvfsrc *dvfsrc)
 		val = (val >> 29) & 0x7;
 	break;
 	case 3:
-
+	case 4:
 		val = dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0);
 		val = (val >> 20) & 0xF;
 	break;
@@ -357,6 +389,7 @@ static u32 dvfsrc_get_hrt_bw_ddr_gear(struct mtk_dvfsrc *dvfsrc)
 		val = (val >> 16) & 0x7;
 	break;
 	case 3:
+	case 4:
 		val = dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x24);
 		val = (val >> 16) & 0xF;
 	break;
@@ -403,6 +436,7 @@ static u32 dvfsrc_get_md_scen_ddr_gear(struct mtk_dvfsrc *dvfsrc)
 		}
 	break;
 	case 3:
+	case 4:
 		val = dvfsrc_read(dvfsrc, DVFSRC_MD_DDR_FLOOR_REQUEST, 0x0);
 		val = val & 0xF;
 	break;
@@ -426,6 +460,7 @@ static u32 dvfsrc_get_md_imp_ddr(struct mtk_dvfsrc *dvfsrc)
 		val = (val >> 19) & 0x7;
 	break;
 	case 3:
+	case 4:
 		val = dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x10);
 		val = val & 0xF;
 	break;
@@ -758,6 +793,46 @@ static char *dvfsrc_dump_mt6873_vmode_info(struct mtk_dvfsrc *dvfsrc,
 	return p;
 }
 
+static u32 dvfsrc_get_opp_count(struct mtk_dvfsrc *dvfsrc)
+{
+	u32 val = 0;
+
+	switch (dvfsrc->dvd->config->ip_version) {
+	case 3:
+		val = (dvfsrc_read(dvfsrc, DVFSRC_BASIC_CONTROL, 0x0) >> 20) & 0x3F;
+	break;
+	case 4:
+		val = (dvfsrc_read(dvfsrc, DVFSRC_BASIC_CONTROL, 0x0) >> 20) & 0x7F;
+	break;
+	default:
+	break;
+	}
+
+	return val;
+}
+
+static u32 dvfsrc_get_opp_gear_info(struct mtk_dvfsrc *dvfsrc, u32 idx)
+{
+	u32 val = 0;
+
+	switch (dvfsrc->dvd->config->ip_version) {
+	case 3:
+	case 4:
+		if (idx < 64) {
+			val = dvfsrc_read(dvfsrc, DVFSRC_LEVEL_LABEL_L, 0x4 * (idx / 2));
+			val = (val >> (16 * (idx % 2)));
+		} else if (idx < 128) {
+			val = dvfsrc_read(dvfsrc, DVFSRC_LEVEL_LABEL_H, 0x4 * (idx / 2));
+			val = (val >> (16 * (idx % 2)));
+		}
+	break;
+	default:
+	break;
+	}
+
+	return val;
+}
+
 static int dvfsrc_query_request_status(struct mtk_dvfsrc *dvfsrc, u32 id)
 {
 	int ret = 0;
@@ -887,4 +962,21 @@ const struct dvfsrc_config mt6897_dvfsrc_config = {
 	.dump_spm_cmd = dvfsrc_dump_mt6983_spm_cmd,
 	.dump_spm_timer_latch = dvfsrc_dump_mt6983_spm_timer_latch,
 	.dump_md_floor_table = dvfsrc_dump_mt6983_md_floor_table,
+};
+
+const struct dvfsrc_config mt6989_dvfsrc_config = {
+	.ip_version = 4, /*mt6989 series*/
+	.regs = mt6989_regs,
+	.spm_regs = mt6897_spm_regs,
+	.dump_record = dvfsrc_dump_record,
+	.dump_reg = dvfsrc_dump_reg,
+	.dump_spm_info = dvfsrc_dump_mt6873_spm_info,
+	.dump_vmode_info = dvfsrc_dump_mt6873_vmode_info,
+	.query_request = dvfsrc_query_request_status,
+	.query_dvfs_time = dvfsrc_query_dvfs_time,
+	.dump_spm_cmd = dvfsrc_dump_mt6983_spm_cmd,
+	.dump_spm_timer_latch = dvfsrc_dump_mt6983_spm_timer_latch,
+	.dump_md_floor_table = dvfsrc_dump_mt6983_md_floor_table,
+	.query_opp_count = dvfsrc_get_opp_count,
+	.query_opp_gear_info = dvfsrc_get_opp_gear_info,
 };
