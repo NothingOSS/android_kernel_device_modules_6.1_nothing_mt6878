@@ -66,10 +66,6 @@ long gro_flush_timer;
 static unsigned long timeout_flush_num, clear_flush_num;
 
 static u32 g_tcp_is_need_gro = 1;
-#ifdef RX_PAGE_POOL
-static u32 g_pagepool_is_on;
-static int pp_recycle_last = -1;
-#endif
 /*
  * Register the sysctl to set tcp_pacing_shift.
  */
@@ -129,13 +125,6 @@ void ccmni_set_tcp_is_need_gro(u32 tcp_is_need_gro)
 }
 EXPORT_SYMBOL(ccmni_set_tcp_is_need_gro);
 
-#ifdef RX_PAGE_POOL
-void ccmni_set_page_pool_is_on(u32 page_pool_is_on)
-{
-	g_pagepool_is_on = page_pool_is_on;
-}
-EXPORT_SYMBOL(ccmni_set_page_pool_is_on);
-#endif
 
 static inline int is_ack_skb(struct sk_buff *skb)
 {
@@ -1242,13 +1231,6 @@ static int ccmni_rx_callback(int ccmni_idx, struct sk_buff *skb,
 #ifdef ENABLE_WQ_GRO
 		if (is_skb_gro(skb)) {
 			spin_lock_bh(ccmni->spinlock);
-#ifdef RX_PAGE_POOL
-			if (g_pagepool_is_on)
-				if (pp_recycle_last != skb->pp_recycle) {
-					napi_gro_flush(ccmni->napi, false);
-					pp_recycle_last = skb->pp_recycle;
-				}
-#endif
 			napi_gro_receive(ccmni->napi, skb);
 			ccmni_gro_flush(ccmni);
 			spin_unlock_bh(ccmni->spinlock);

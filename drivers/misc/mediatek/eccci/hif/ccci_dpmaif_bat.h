@@ -43,7 +43,6 @@ extern unsigned int g_alloc_frg_tbl_threshold;
 extern unsigned int g_max_bat_skb_cnt_for_md;
 #ifdef RX_PAGE_POOL
 extern atomic_t g_create_another_pp;
-extern void ccmni_set_page_pool_is_on(u32 page_pool_is_on);
 #endif
 #endif /* __CCCI_DPMA_BAT_H__ */
 
