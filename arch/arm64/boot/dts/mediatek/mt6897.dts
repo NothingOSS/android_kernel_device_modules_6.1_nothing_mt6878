@@ -4938,20 +4938,20 @@
 	camisp-l13-1 {
 		compatible = "mediatek,camisp-larb";
 		mediatek,larb-id = <13>;
-		iommus = <&disp_iommu M4U_L13_P0_CAMSV_CQI_E1>,
-			<&disp_iommu M4U_L13_P1_CAMSV_A0_WDMA>;
+		iommus = <&disp_iommu M4U_L13_P0_CAMSV_B_CQI_E1>,
+			<&disp_iommu M4U_L13_P1_CAMSV_B0_WDMA>;
 	};
 
 	camisp-l13-2 {
 		compatible = "mediatek,camisp-larb";
 		mediatek,larb-id = <13>;
-		iommus = <&mdp_iommu M4U_L13_P2_CAMSV_A1_WDMA>;
+		iommus = <&mdp_iommu M4U_L13_P2_CAMSV_B1_WDMA>;
 	};
 
 	camisp-l14-1 {
 		compatible = "mediatek,camisp-larb";
 		mediatek,larb-id = <14>;
-		iommus = <&disp_iommu M4U_L14_P0_CAMSV_CQI_E0>,
+		iommus = <&disp_iommu M4U_L14_P0_CAMSV_A_CQI_E1>,
 			<&disp_iommu M4U_L14_P1_CAMSV_A0_WDMA>;
 	};
 
@@ -11316,7 +11316,7 @@
 						"vlp_cksys_vlp_ck_camtg_sel",
 						"topckgen_top_camtm_sel";
 			interconnects =
-				<&mmqos MASTER_LARB_PORT(M4U_L14_P0_CAMSV_CQI_E0)
+				<&mmqos MASTER_LARB_PORT(M4U_L14_P0_CAMSV_A_CQI_E1)
 					&mmqos SLAVE_COMMON(0)>,
 				<&mmqos MASTER_LARB_PORT(M4U_L14_P1_CAMSV_A0_WDMA)
 					&mmqos SLAVE_COMMON(0)>,
@@ -11374,15 +11374,15 @@
 						"vlp_cksys_vlp_ck_camtg_sel",
 						"topckgen_top_camtm_sel";
 			interconnects =
-				<&mmqos MASTER_LARB_PORT(M4U_L13_P0_CAMSV_CQI_E1)
+				<&mmqos MASTER_LARB_PORT(M4U_L13_P0_CAMSV_B_CQI_E1)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L13_P1_CAMSV_A0_WDMA)
+				<&mmqos MASTER_LARB_PORT(M4U_L13_P1_CAMSV_B0_WDMA)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L13_P1_CAMSV_A0_WDMA)
+				<&mmqos MASTER_LARB_PORT(M4U_L13_P1_CAMSV_B0_WDMA)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L13_P2_CAMSV_A1_WDMA)
+				<&mmqos MASTER_LARB_PORT(M4U_L13_P2_CAMSV_B1_WDMA)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L13_P2_CAMSV_A1_WDMA)
+				<&mmqos MASTER_LARB_PORT(M4U_L13_P2_CAMSV_B1_WDMA)
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names =
 				"l13_cqi_b",
