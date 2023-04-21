@@ -504,10 +504,13 @@ static int pmif_spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 	else
 		raw_spin_lock_irqsave(&arb->lock_p, flags);
 
-	if (sdev->mstid == SPMI_MASTER_1)
+	if (sdev->mstid == SPMI_MASTER_1) {
 		arb->base = arb->base_m;
-	else
+		arb->spmimst_base = arb->spmimst_base_m;
+	} else {
 		arb->base = arb->base_p;
+		arb->spmimst_base = arb->spmimst_base_p;
+	}
 
 	/* Wait for Software Interface FSM state to be IDLE. */
 	ret = readl_poll_timeout_atomic(arb->base + arb->regs[inf_reg->ch_sta],
@@ -520,6 +523,9 @@ static int pmif_spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 		/* set channel ready if the data has transferred */
 		if (pmif_is_fsm_vldclr(arb))
 			pmif_writel(arb, 1, inf_reg->ch_rdy);
+
+		arb->base = arb->base_m;
+		arb->spmimst_base = arb->spmimst_base_m;
 
 		if (sdev->mstid == SPMI_MASTER_1)
 			raw_spin_unlock_irqrestore(&arb->lock_m, flags);
@@ -546,6 +552,9 @@ static int pmif_spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 			addr, pmif_readl(arb, inf_reg->ch_sta),
 			readl(arb->spmimst_base + arb->spmimst_regs[SPMI_MST_DBG]));
 
+		arb->base = arb->base_m;
+		arb->spmimst_base = arb->spmimst_base_m;
+
 		if (sdev->mstid == SPMI_MASTER_1)
 			raw_spin_unlock_irqrestore(&arb->lock_m, flags);
 		else
@@ -557,6 +566,9 @@ static int pmif_spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 	data = pmif_readl(arb, inf_reg->rdata);
 	memcpy(buf, &data, (bc & 3) + 1);
 	pmif_writel(arb, 1, inf_reg->ch_rdy);
+
+	arb->base = arb->base_m;
+	arb->spmimst_base = arb->spmimst_base_m;
 
 	if (sdev->mstid == SPMI_MASTER_1)
 		raw_spin_unlock_irqrestore(&arb->lock_m, flags);
@@ -624,6 +636,9 @@ static int pmif_spmi_write_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 		if (pmif_is_fsm_vldclr(arb))
 			pmif_writel(arb, 1, inf_reg->ch_rdy);
 
+		arb->base = arb->base_m;
+		arb->spmimst_base = arb->spmimst_base_m;
+
 		if (sdev->mstid == SPMI_MASTER_1)
 			raw_spin_unlock_irqrestore(&arb->lock_m, flags);
 		else
@@ -640,6 +655,9 @@ static int pmif_spmi_write_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 	pmif_writel(arb,
 		    (opc << 30) | BIT(29) | (sid << 24) | (bc << 16) | addr,
 		    inf_reg->ch_send);
+
+	arb->base = arb->base_m;
+	arb->spmimst_base = arb->spmimst_base_m;
 
 	if (sdev->mstid == SPMI_MASTER_1)
 		raw_spin_unlock_irqrestore(&arb->lock_m, flags);
