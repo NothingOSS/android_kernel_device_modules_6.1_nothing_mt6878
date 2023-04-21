@@ -12682,6 +12682,7 @@
 		mml_wrot0: mml-wrot0@1f80f000 {
 			compatible = "mediatek,mt6897-mml_wrot";
 			reg = <0 0x1f80f000 0 0x1000>;
+			interrupts = <GIC_SPI 822 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_WROT0>;
 			clock-names = "wrot0";
 			comp-ids = <MML_WROT0>;
@@ -12705,6 +12706,7 @@
 		mml_wrot1: mml-wrot1@1f810000 {
 			compatible = "mediatek,mt6897-mml_wrot";
 			reg = <0 0x1f810000 0 0x1000>;
+			interrupts = <GIC_SPI 822 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_WROT1>;
 			clock-names = "wrot1";
 			comp-ids = <MML_WROT1>;
@@ -12784,6 +12786,7 @@
 		mml_wrot2: mml-wrot2@1f815000 {
 			compatible = "mediatek,mt6897-mml_wrot";
 			reg = <0 0x1f815000 0 0x1000>;
+			interrupts = <GIC_SPI 822 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_WROT2>;
 			clock-names = "wrot2";
 			comp-ids = <MML_WROT2>;
@@ -12803,6 +12806,7 @@
 		mml_wrot3: mml-wrot3@1f816000 {
 			compatible = "mediatek,mt6897-mml_wrot";
 			reg = <0 0x1f816000 0 0x1000>;
+			interrupts = <GIC_SPI 822 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_WROT3>;
 			clock-names = "wrot3";
 			comp-ids = <MML_WROT3>;
