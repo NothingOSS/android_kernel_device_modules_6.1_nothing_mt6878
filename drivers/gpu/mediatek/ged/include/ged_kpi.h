@@ -58,6 +58,7 @@ int ged_kpi_is_fw_idle_policy_enable(void);
 void ged_kpi_set_fw_idle_mode(unsigned int mode);
 void ged_kpi_enable_fw_idle_policy(unsigned int mode);
 #endif /* MTK_GPU_FW_IDLE */
+int ged_kpi_get_panel_refresh_rate(void);
 
 void ged_kpi_update_t_gpu_latest_uncompleted(void);
 struct ged_risky_bq_info {

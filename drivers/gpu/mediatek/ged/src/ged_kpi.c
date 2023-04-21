@@ -2058,6 +2058,12 @@ void ged_kpi_enable_fw_idle_policy(unsigned int enable)
 EXPORT_SYMBOL(ged_kpi_enable_fw_idle_policy);
 #endif /* MTK_GPU_FW_IDLE */
 /* ------------------------------------------------------------------- */
+int ged_kpi_get_panel_refresh_rate(void)
+{
+	return g_target_fps_default;
+}
+EXPORT_SYMBOL(ged_kpi_get_panel_refresh_rate);
+/* ------------------------------------------------------------------- */
 
 static GED_BOOL ged_kpi_find_riskyBQ_func(unsigned long ulID,
 	void *pvoid, void *pvParam)
