@@ -30,3 +30,13 @@ config MT6338_EFUSE
 
 	  This driver can also be built as a module. If so, the module
 	  will be called nvmem-mt6338-efuse.
+
+config MT6681_EFUSE
+	tristate "Mediatek MT6681 PMIC EFUSE Support"
+	depends on MFD_MT6681 || COMPILE_TEST
+	help
+	  This is a simple driver to dump specified values of Mediatek
+	  MT6681 PMIC from EFUSE.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called nvmem-mt6681-efuse.
