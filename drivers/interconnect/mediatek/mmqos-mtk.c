@@ -1673,18 +1673,22 @@ void clear_chnn_bw(void)
 
 void check_disp_chnn_bw(int i, int j, const int *ans)
 {
-	_assert_eq(disp_srt_r_bw[i][j], ans[0], "disp_srt_r");
-	_assert_eq(disp_srt_w_bw[i][j], ans[1], "disp_srt_w");
-	_assert_eq(disp_hrt_r_bw[i][j], ans[2], "disp_hrt_r");
-	_assert_eq(disp_hrt_w_bw[i][j], ans[3], "disp_hrt_w");
+	if (i >= 0 && j >= 0) {
+		_assert_eq(disp_srt_r_bw[i][j], ans[0], "disp_srt_r");
+		_assert_eq(disp_srt_w_bw[i][j], ans[1], "disp_srt_w");
+		_assert_eq(disp_hrt_r_bw[i][j], ans[2], "disp_hrt_r");
+		_assert_eq(disp_hrt_w_bw[i][j], ans[3], "disp_hrt_w");
+	}
 }
 
 void check_chnn_bw(int i, int j, int srt_r, int srt_w, int hrt_r, int hrt_w)
 {
-	_assert_eq(chn_srt_r_bw[i][j], srt_r, "chn_srt_r");
-	_assert_eq(chn_srt_w_bw[i][j], srt_w, "chn_srt_w");
-	_assert_eq(chn_hrt_r_bw[i][j], hrt_r, "chn_hrt_r");
-	_assert_eq(chn_hrt_w_bw[i][j], hrt_w, "chn_hrt_w");
+	if (i >= 0 && j >= 0) {
+		_assert_eq(chn_srt_r_bw[i][j], srt_r, "chn_srt_r");
+		_assert_eq(chn_srt_w_bw[i][j], srt_w, "chn_srt_w");
+		_assert_eq(chn_hrt_r_bw[i][j], hrt_r, "chn_hrt_r");
+		_assert_eq(chn_hrt_w_bw[i][j], hrt_w, "chn_hrt_w");
+	}
 }
 
 struct common_port_node *create_fake_comm_port_node(int hrt_type,
