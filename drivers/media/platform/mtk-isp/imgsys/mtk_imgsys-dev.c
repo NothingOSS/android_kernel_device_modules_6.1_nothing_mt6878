@@ -305,7 +305,9 @@ void mtk_imgsys_pipe_job_finish(struct mtk_imgsys_request *req,
 			vb2_buffer_index, vbf_state);
 	}
 done:
+#ifdef REQ_TIMESTAMP
 	req->tstate.time_notify2vb2done = ktime_get_boottime_ns()/1000;
+#endif
 	complete(&req->done);
 		dev_dbg(pipe->imgsys_dev->dev,
 			"[KT]%s:%d:%6lld,%6lld,%6lld,%6lld,%6lld,%6lld,%6lld,%6lld,%6lld,%6lld,%6lld,%6lld,%6lld,%6lld\n",
@@ -1185,9 +1187,11 @@ void mtk_imgsys_desc_map_iova(struct mtk_imgsys_request *req)
 	struct header_desc *desc;
 	void *desc_dma = NULL;
 	bool need_iova = true;
+#ifdef REQ_TIMESTAMP
 	unsigned int s, e;
 
 	s = ktime_get_boottime_ns()/1000;
+#endif
 	for (i = 0; i < pipe->desc->total_queues; i++) {
 
 		buf_dma = req->buf_map[i];
@@ -1222,8 +1226,10 @@ void mtk_imgsys_desc_map_iova(struct mtk_imgsys_request *req)
 
 		mtk_imgsys_desc_set(pipe, desc_dma, desc, need_iova, buf_dma);
 	}
+#ifdef REQ_TIMESTAMP
 	e = ktime_get_boottime_ns()/1000;
 	pr_debug("%s takes %d ms\n", __func__, (e - s));
+#endif
 }
 
 void mtk_imgsys_sd_desc_map_iova(struct mtk_imgsys_request *req)

@@ -51,7 +51,7 @@ static struct mtk_hcp_reserve_mblock isp7s_smvr_mblock[] = {
 		.start_phys = 0x0,
 		.start_virt = 0x0,
 		.start_dma  = 0x0,
-		.size = 0x300000,
+		.size = 0x25E000, //align_4096(0x25D700)
 		.is_dma_buf = true,
 		.mmap_cnt = 0,
 		.mem_priv = NULL,
@@ -67,7 +67,7 @@ static struct mtk_hcp_reserve_mblock isp7s_smvr_mblock[] = {
 		.start_phys = 0x0,
 		.start_virt = 0x0,
 		.start_dma  = 0x0,
-		.size = 0xC00000,
+		.size = 0x8AC000, /*align_4096(0x8AC000) */
 		.is_dma_buf = true,
 		.mmap_cnt = 0,
 		.mem_priv = NULL,
@@ -83,7 +83,7 @@ static struct mtk_hcp_reserve_mblock isp7s_smvr_mblock[] = {
 		.start_phys = 0x0,
 		.start_virt = 0x0,
 		.start_dma  = 0x0,
-		.size = 0xC00000,
+		.size = 0xB99000, /*align_4096(0xB987E0) */
 		.is_dma_buf = true,
 		.mmap_cnt = 0,
 		.mem_priv = NULL,
@@ -99,7 +99,7 @@ static struct mtk_hcp_reserve_mblock isp7s_smvr_mblock[] = {
 		.start_phys = 0x0,
 		.start_virt = 0x0,
 		.start_dma  = 0x0,
-		.size = 0x3000000,
+		.size = 0x18D9000, /*align_4096(0x18D81E0) */
 		.is_dma_buf = true,
 		.mmap_cnt = 0,
 		.mem_priv = NULL,
@@ -115,7 +115,7 @@ static struct mtk_hcp_reserve_mblock isp7s_smvr_mblock[] = {
 		.start_phys = 0x0,
 		.start_virt = 0x0,
 		.start_dma  = 0x0,
-		.size = 0x1000000,
+		.size = 0xEE8000, /*align_4096(0xEE7320) */
 		.is_dma_buf = true,
 		.mmap_cnt = 0,
 		.mem_priv = NULL,
@@ -131,7 +131,7 @@ static struct mtk_hcp_reserve_mblock isp7s_smvr_mblock[] = {
 		.start_phys = 0x0,
 		.start_virt = 0x0,
 		.start_dma  = 0x0,
-		.size = 0x3000000,
+		.size = 0x1D22000, /*align_4096(0x1D22000) */
 		.is_dma_buf = true,
 		.mmap_cnt = 0,
 		.mem_priv = NULL,
@@ -147,7 +147,7 @@ static struct mtk_hcp_reserve_mblock isp7s_smvr_mblock[] = {
 		.start_phys = 0x0,
 		.start_virt = 0x0,
 		.start_dma  = 0x0,
-		.size = 0x200000,
+		.size = 0x126000, /*align_4096(0x125100) */
 		.is_dma_buf = true,
 		.mmap_cnt = 0,
 		.mem_priv = NULL,
@@ -163,7 +163,7 @@ static struct mtk_hcp_reserve_mblock isp7s_smvr_mblock[] = {
 		.start_phys = 0x0,
 		.start_virt = 0x0,
 		.start_dma  = 0x0,
-		.size = 0x300000,
+		.size = 0x1E1000, /*align_4096(0x1E0400) */
 		.is_dma_buf = true,
 		.mmap_cnt = 0,
 		.mem_priv = NULL,
@@ -207,7 +207,7 @@ static struct mtk_hcp_reserve_mblock isp7s_smvr_mblock[] = {
 		.start_phys = 0x0,
 		.start_virt = 0x0,
 		.start_dma  = 0x0,
-		.size = 0x1885E00, //0x17F5E00, //0x3400000
+		.size = 0x1F45E00, //0x1F21E00, //0x1885E00,//0x17F5E00, //0x3400000
 		.is_dma_buf = true,
 		.mmap_cnt = 0,
 		.mem_priv = NULL,
@@ -244,7 +244,7 @@ struct mtk_hcp_reserve_mblock isp7s_reserve_mblock[] = {
 		.start_phys = 0x0,
 		.start_virt = 0x0,
 		.start_dma  = 0x0,
-		.size = 0xE1000,   /*900KB*/
+		.size = 0xD5000,   /* align_4096(0xD42BC) */
 		.is_dma_buf = true,
 		.mmap_cnt = 0,
 		.mem_priv = NULL,
@@ -260,7 +260,7 @@ struct mtk_hcp_reserve_mblock isp7s_reserve_mblock[] = {
 		.start_phys = 0x0,
 		.start_virt = 0x0,
 		.start_dma  = 0x0,
-		.size = 0x400000,   /*4MB*/
+		.size = 0x30C000,   /* align_4096(0x30C000) */
 		.is_dma_buf = true,
 		.mmap_cnt = 0,
 		.mem_priv = NULL,
@@ -276,7 +276,7 @@ struct mtk_hcp_reserve_mblock isp7s_reserve_mblock[] = {
 		.start_phys = 0x0,
 		.start_virt = 0x0,
 		.start_dma  = 0x0,
-		.size = 0x596000,   /*5MB + 600KB*/
+		.size = 0x54B000,   /* align_4096(0x54A8E0) */
 		.is_dma_buf = true,
 		.mmap_cnt = 0,
 		.mem_priv = NULL,
@@ -292,7 +292,7 @@ struct mtk_hcp_reserve_mblock isp7s_reserve_mblock[] = {
 		.start_phys = 0x0,
 		.start_virt = 0x0,
 		.start_dma  = 0x0,
-		.size = 0x1E00000,   /*30MB*/
+		.size = 0x1609000,   /* align_4096(0x16081E0) */
 		.is_dma_buf = true,
 		.mmap_cnt = 0,
 		.mem_priv = NULL,
@@ -308,7 +308,7 @@ struct mtk_hcp_reserve_mblock isp7s_reserve_mblock[] = {
 		.start_phys = 0x0,
 		.start_virt = 0x0,
 		.start_dma  = 0x0,
-		.size = 0x67D000,   /*6MB + 500KB*/
+		.size = 0x627000,   /* align_4096(0x6261A0) */
 		.is_dma_buf = true,
 		.mmap_cnt = 0,
 		.mem_priv = NULL,
@@ -324,7 +324,7 @@ struct mtk_hcp_reserve_mblock isp7s_reserve_mblock[] = {
 		.start_phys = 0x0,
 		.start_virt = 0x0,
 		.start_dma  = 0x0,
-		.size = 0x207D000,   /*32MB + 500KB*/
+		.size = 0x1962000,   /* align_4096(0x1962000) */
 		.is_dma_buf = true,
 		.mmap_cnt = 0,
 		.mem_priv = NULL,
@@ -340,7 +340,7 @@ struct mtk_hcp_reserve_mblock isp7s_reserve_mblock[] = {
 		.start_phys = 0x0,
 		.start_virt = 0x0,
 		.start_dma  = 0x0,
-		.size = 0x100000,   /*1MB*/
+		.size = 0xDC000,   /* align_4096(0xDBB10) */
 		.is_dma_buf = true,
 		.mmap_cnt = 0,
 		.mem_priv = NULL,
@@ -356,7 +356,7 @@ struct mtk_hcp_reserve_mblock isp7s_reserve_mblock[] = {
 		.start_phys = 0x0,
 		.start_virt = 0x0,
 		.start_dma  = 0x0,
-		.size = 0x1C8000,   /*1MB + 800KB*/
+		.size = 0x169000,   /* align_4096(0x168400) */
 		.is_dma_buf = true,
 		.mmap_cnt = 0,
 		.mem_priv = NULL,
@@ -400,7 +400,7 @@ struct mtk_hcp_reserve_mblock isp7s_reserve_mblock[] = {
 		.start_phys = 0x0,
 		.start_virt = 0x0,
 		.start_dma  = 0x0,
-		.size = 0xF98400, //0xF68400, //0x2000000,
+		.size = 0x11D8400, //0x11CC400, //0xF98400,//0xF68400, //0x2000000,
 		.is_dma_buf = true,
 		.mmap_cnt = 0,
 		.mem_priv = NULL,
@@ -476,6 +476,72 @@ void *isp7s_get_wpe_virt(void)
 	return mb[WPE_MEM_C_ID].start_virt;
 }
 EXPORT_SYMBOL(isp7s_get_wpe_virt);
+
+int isp7s_get_wpe_cq_fd(void)
+{
+	return mb[WPE_MEM_C_ID].fd;
+}
+EXPORT_SYMBOL(isp7s_get_wpe_cq_fd);
+
+int isp7s_get_wpe_tdr_fd(void)
+{
+	return mb[WPE_MEM_T_ID].fd;
+}
+EXPORT_SYMBOL(isp7s_get_wpe_tdr_fd);
+
+void *isp7s_get_dip_virt(void)
+{
+	return mb[DIP_MEM_C_ID].start_virt;
+}
+EXPORT_SYMBOL(isp7s_get_dip_virt);
+
+int isp7s_get_dip_cq_fd(void)
+{
+	return mb[DIP_MEM_C_ID].fd;
+}
+EXPORT_SYMBOL(isp7s_get_dip_cq_fd);
+
+int isp7s_get_dip_tdr_fd(void)
+{
+	return mb[DIP_MEM_T_ID].fd;
+}
+EXPORT_SYMBOL(isp7s_get_dip_tdr_fd);
+
+void *isp7s_get_traw_virt(void)
+{
+	return mb[TRAW_MEM_C_ID].start_virt;
+}
+EXPORT_SYMBOL(isp7s_get_traw_virt);
+
+int isp7s_get_traw_cq_fd(void)
+{
+	return mb[TRAW_MEM_C_ID].fd;
+}
+EXPORT_SYMBOL(isp7s_get_traw_cq_fd);
+
+int isp7s_get_traw_tdr_fd(void)
+{
+	return mb[TRAW_MEM_T_ID].fd;
+}
+EXPORT_SYMBOL(isp7s_get_traw_tdr_fd);
+
+void *isp7s_get_pqdip_virt(void)
+{
+	return mb[PQDIP_MEM_C_ID].start_virt;
+}
+EXPORT_SYMBOL(isp7s_get_pqdip_virt);
+
+int isp7s_get_pqdip_cq_fd(void)
+{
+	return mb[PQDIP_MEM_C_ID].fd;
+}
+EXPORT_SYMBOL(isp7s_get_pqdip_cq_fd);
+
+int isp7s_get_pqdip_tdr_fd(void)
+{
+	return mb[PQDIP_MEM_T_ID].fd;
+}
+EXPORT_SYMBOL(isp7s_get_pqdip_tdr_fd);
 
 void *isp7s_get_hwid_virt(void)
 {
@@ -569,6 +635,61 @@ int isp7s_allocate_working_buffer(struct mtk_hcp *hcp_dev, unsigned int mode)
 					isp7s_get_reserve_mem_fd(id),
 					mblock[id].d_buf);
 				break;
+			case WPE_MEM_C_ID:
+			case WPE_MEM_T_ID:
+			case DIP_MEM_C_ID:
+			case DIP_MEM_T_ID:
+			case TRAW_MEM_C_ID:
+			case TRAW_MEM_T_ID:
+			case PQDIP_MEM_C_ID:
+			case PQDIP_MEM_T_ID:
+				/* all supported heap name you can find with cmd */
+				/* (ls /dev/dma_heap/) in shell */
+				pdma_heap = dma_heap_find("mtk_mm-uncached");
+				if (!pdma_heap) {
+					pr_info("pdma_heap find fail\n");
+					return -1;
+				}
+				mblock[id].d_buf = dma_heap_buffer_alloc(
+					pdma_heap,
+					mblock[id].size, O_RDWR | O_CLOEXEC,
+					DMA_HEAP_VALID_HEAP_FLAGS);
+				if (IS_ERR(mblock[id].d_buf)) {
+					pr_info("dma_heap_buffer_alloc fail :%ld\n",
+					PTR_ERR(mblock[id].d_buf));
+					return -1;
+				}
+				mtk_dma_buf_set_name(mblock[id].d_buf, mblock[id].name);
+				mblock[id].attach = dma_buf_attach(
+				mblock[id].d_buf, hcp_dev->dev);
+				attach = mblock[id].attach;
+				if (IS_ERR(attach)) {
+					pr_info("dma_buf_attach fail :%ld\n",
+					PTR_ERR(attach));
+					return -1;
+				}
+
+				mblock[id].sgt = dma_buf_map_attachment(attach, DMA_TO_DEVICE);
+				sgt = mblock[id].sgt;
+				if (IS_ERR(sgt)) {
+					dma_buf_detach(mblock[id].d_buf, attach);
+					pr_info("dma_buf_map_attachment fail sgt:%ld\n",
+					PTR_ERR(sgt));
+					return -1;
+				}
+				mblock[id].start_phys = sg_dma_address(sgt->sgl);
+				mblock[id].start_dma = mblock[id].start_phys;
+				ret = dma_buf_vmap(mblock[id].d_buf, &map);
+				if (ret) {
+					pr_info("sg_dma_address fail\n");
+					return ret;
+				}
+				mblock[id].start_virt = (void *)map.vaddr;
+				mblock[id].map = map;
+				get_dma_buf(mblock[id].d_buf);
+				mblock[id].fd =
+					dma_buf_fd(mblock[id].d_buf, O_RDWR | O_CLOEXEC);
+				break;
 			default:
 
 				/* all supported heap name you can find with cmd */
@@ -617,6 +738,7 @@ int isp7s_allocate_working_buffer(struct mtk_hcp *hcp_dev, unsigned int mode)
 				get_dma_buf(mblock[id].d_buf);
 				mblock[id].fd =
 					dma_buf_fd(mblock[id].d_buf, O_RDWR | O_CLOEXEC);
+				//dma_buf_begin_cpu_access(mblock[id].d_buf, DMA_BIDIRECTIONAL);
 				break;
 			}
 		} else {
@@ -868,6 +990,42 @@ static int isp7s_get_gce(void)
 	return 0;
 }
 
+int isp7s_partial_flush(struct mtk_hcp *hcp_dev, struct flush_buf_info *b_info)
+{
+	struct mtk_hcp_reserve_mblock *mblock = NULL;
+	unsigned int block_num = 0;
+	unsigned int id = 0;
+	unsigned int mode = 0;
+
+	if (b_info->is_tuning)
+		dma_buf_end_cpu_access_partial(b_info->dbuf,
+					       DMA_BIDIRECTIONAL,
+					       b_info->offset,
+					       b_info->len);
+	else {
+		mode = b_info->mode;
+		if (mode == imgsys_smvr)
+			mblock = hcp_dev->data->smblock;
+		else if (mode == imgsys_capture)
+			mblock = hcp_dev->data->mblock;
+		else
+			mblock = hcp_dev->data->mblock;
+
+		block_num = hcp_dev->data->block_num;
+		for (id = 0; id < block_num; id++) {
+			if (b_info->fd == mblock[id].fd) {
+				dma_buf_end_cpu_access_partial(mblock[id].d_buf,
+							       DMA_BIDIRECTIONAL,
+							       b_info->offset,
+							       b_info->len);
+				break;
+			}
+		}
+	}
+	pr_debug("imgsys_fw partial flush info(%d/0x%x/0x%x), mode(%d), is_tuning(%d)",
+		b_info->fd, b_info->len, b_info->offset, b_info->mode, b_info->is_tuning);
+	return 0;
+}
 struct mtk_hcp_data isp7s_hcp_data = {
 	.mblock = isp7s_reserve_mblock,
 	.block_num = ARRAY_SIZE(isp7s_reserve_mblock),
@@ -880,5 +1038,17 @@ struct mtk_hcp_data isp7s_hcp_data = {
 	.put_gce = isp7s_put_gce,
 	.get_hwid_virt = isp7s_get_hwid_virt,
 	.get_wpe_virt = isp7s_get_wpe_virt,
+	.get_wpe_cq_fd = isp7s_get_wpe_cq_fd,
+	.get_wpe_tdr_fd = isp7s_get_wpe_tdr_fd,
+	.get_dip_virt = isp7s_get_dip_virt,
+	.get_dip_cq_fd = isp7s_get_dip_cq_fd,
+	.get_dip_tdr_fd = isp7s_get_dip_tdr_fd,
+	.get_traw_virt = isp7s_get_traw_virt,
+	.get_traw_cq_fd = isp7s_get_traw_cq_fd,
+	.get_traw_tdr_fd = isp7s_get_traw_tdr_fd,
+	.get_pqdip_virt = isp7s_get_pqdip_virt,
+	.get_pqdip_cq_fd = isp7s_get_pqdip_cq_fd,
+	.get_pqdip_tdr_fd = isp7s_get_pqdip_tdr_fd,
+	.partial_flush = isp7s_partial_flush,
 };
 MODULE_IMPORT_NS(DMA_BUF);

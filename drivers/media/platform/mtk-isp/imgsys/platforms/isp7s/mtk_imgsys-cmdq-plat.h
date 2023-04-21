@@ -88,6 +88,8 @@
 #define IMGSYS_DVFS_RATIO_L		4
 #define IMGSYS_DVFS_RATIO_H		6
 
+#define IMGSYS_CMDQ_CBPARAM_NUM	(85*3)
+
 enum mtk_imgsys_event {
 	/* HW event */
 	IMGSYS_CMDQ_EVENT_IMG_TRAW0_CQ_THR_DONE_TRAW0_0 = 0,

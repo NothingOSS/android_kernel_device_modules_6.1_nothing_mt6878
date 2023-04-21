@@ -16,7 +16,8 @@ struct module_ops {
 	void (*init)(struct mtk_imgsys_dev *imgsys_dev);
 	void (*set)(struct mtk_imgsys_dev *imgsys_dev);
 	void (*updatecq)(struct mtk_imgsys_dev *imgsys_dev,
-			struct img_swfrm_info *user_info, int req_fd);
+			struct img_swfrm_info *user_info, int req_fd, u64 tuning_iova,
+			unsigned int mode);
 	void (*dump)(struct mtk_imgsys_dev *imgsys_dev, unsigned int engine);
 	void (*uninit)(struct mtk_imgsys_dev *imgsys_dev);
 };

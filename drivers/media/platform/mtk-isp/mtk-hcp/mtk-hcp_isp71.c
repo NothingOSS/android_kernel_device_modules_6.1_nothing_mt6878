@@ -866,6 +866,72 @@ void *isp71_get_wpe_virt(void)
 }
 EXPORT_SYMBOL(isp71_get_wpe_virt);
 
+int isp71_get_wpe_cq_fd(void)
+{
+	return mb[WPE_MEM_C_ID].fd;
+}
+EXPORT_SYMBOL(isp71_get_wpe_cq_fd);
+
+int isp71_get_wpe_tdr_fd(void)
+{
+	return mb[WPE_MEM_T_ID].fd;
+}
+EXPORT_SYMBOL(isp71_get_wpe_tdr_fd);
+
+void *isp71_get_dip_virt(void)
+{
+	return mb[DIP_MEM_C_ID].start_virt;
+}
+EXPORT_SYMBOL(isp71_get_dip_virt);
+
+int isp71_get_dip_cq_fd(void)
+{
+	return mb[DIP_MEM_C_ID].fd;
+}
+EXPORT_SYMBOL(isp71_get_dip_cq_fd);
+
+int isp71_get_dip_tdr_fd(void)
+{
+	return mb[DIP_MEM_T_ID].fd;
+}
+EXPORT_SYMBOL(isp71_get_dip_tdr_fd);
+
+void *isp71_get_traw_virt(void)
+{
+	return mb[TRAW_MEM_C_ID].start_virt;
+}
+EXPORT_SYMBOL(isp71_get_traw_virt);
+
+int isp71_get_traw_cq_fd(void)
+{
+	return mb[TRAW_MEM_C_ID].fd;
+}
+EXPORT_SYMBOL(isp71_get_traw_cq_fd);
+
+int isp71_get_traw_tdr_fd(void)
+{
+	return mb[TRAW_MEM_T_ID].fd;
+}
+EXPORT_SYMBOL(isp71_get_traw_tdr_fd);
+
+void *isp71_get_pqdip_virt(void)
+{
+	return mb[PQDIP_MEM_C_ID].start_virt;
+}
+EXPORT_SYMBOL(isp71_get_pqdip_virt);
+
+int isp71_get_pqdip_cq_fd(void)
+{
+	return mb[PQDIP_MEM_C_ID].fd;
+}
+EXPORT_SYMBOL(isp71_get_pqdip_cq_fd);
+
+int isp71_get_pqdip_tdr_fd(void)
+{
+	return mb[PQDIP_MEM_T_ID].fd;
+}
+EXPORT_SYMBOL(isp71_get_pqdip_tdr_fd);
+
 struct mtk_hcp_data isp71_hcp_data = {
 	.mblock = isp71_reserve_mblock,
 	.block_num = ARRAY_SIZE(isp71_reserve_mblock),
@@ -878,5 +944,16 @@ struct mtk_hcp_data isp71_hcp_data = {
 	.put_gce = isp71_put_gce,
 	.get_hwid_virt = isp71_get_hwid_virt,
 	.get_wpe_virt = isp71_get_wpe_virt,
+	.get_wpe_cq_fd = isp71_get_wpe_cq_fd,
+	.get_wpe_tdr_fd = isp71_get_wpe_tdr_fd,
+	.get_dip_virt = isp71_get_dip_virt,
+	.get_dip_cq_fd = isp71_get_dip_cq_fd,
+	.get_dip_tdr_fd = isp71_get_dip_tdr_fd,
+	.get_traw_virt = isp71_get_traw_virt,
+	.get_traw_cq_fd = isp71_get_traw_cq_fd,
+	.get_traw_tdr_fd = isp71_get_traw_tdr_fd,
+	.get_pqdip_virt = isp71_get_pqdip_virt,
+	.get_pqdip_cq_fd = isp71_get_pqdip_cq_fd,
+	.get_pqdip_tdr_fd = isp71_get_pqdip_tdr_fd,
+	.partial_flush = NULL,
 };
-MODULE_IMPORT_NS(DMA_BUF);

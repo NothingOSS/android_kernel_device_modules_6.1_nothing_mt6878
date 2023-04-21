@@ -76,6 +76,9 @@
 #define	TRAW_DMA_DRZS4NO_T1_ADDR	(0x5540)
 #define	TRAW_DMA_LTMSO_T1_ADDR		(0x5600)
 
+#define TRAW_CQ_DESC_NUM 136 // align with userspace
+#define TRAW_REG_SIZE  (0xE000) // align with userspace
+#define TRAW_TDR_BUF_MAXSZ 122880 // align with userspace
 /********************************************************************
  * Enum Define
  ********************************************************************/
@@ -96,6 +99,12 @@ struct TRAWDmaDebugInfo {
 	char even_odd_mode;
 };
 
+struct mtk_imgsys_traw_dtable {
+	uint32_t empty;
+	uint32_t addr;
+	uint32_t addr_msb;
+};
+
 #define EVEN_ODD_MODE(x) (x)
 #define EVEN_ODD_SEL (0x1000)
 
@@ -106,6 +115,9 @@ void imgsys_traw_set_initial_value(struct mtk_imgsys_dev *imgsys_dev);
 void imgsys_traw_set_initial_value_hw(struct mtk_imgsys_dev *imgsys_dev);
 void imgsys_traw_debug_dump(struct mtk_imgsys_dev *imgsys_dev,
 							unsigned int engine);
+void imgsys_traw_updatecq(struct mtk_imgsys_dev *imgsys_dev,
+			struct img_swfrm_info *user_info, int req_fd, u64 tuning_iova,
+			unsigned int mode);
 void imgsys_traw_uninit(struct mtk_imgsys_dev *imgsys_dev);
 
 #endif /* _MTK_IMGSYS_TRAW_H_ */

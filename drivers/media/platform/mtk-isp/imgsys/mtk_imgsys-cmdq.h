@@ -113,6 +113,7 @@ struct mtk_imgsys_cb_param {
 	bool isTaskLast;
 	struct mtk_imgsys_fence waitfence[KFENCE_MAX];
 	struct mtk_imgsys_fence notifence[KFENCE_MAX];
+	bool isOccupy;
 };
 
 enum mtk_imgsys_cmd {

@@ -8,6 +8,18 @@
 
 #ifndef _MTK_IMGSYS_ENGINE_H_
 #define _MTK_IMGSYS_ENGINE_H_
+/**
+ * enum Pseudo_Desc_Extra_Info
+ *
+ * Definition about Pseudo Descriptor special Extra Info
+ * Distinguish Desc Type (NONE/CTRL/TUNING)
+ * align with hw_definition in userspace
+ */
+enum Pseudo_Desc_Extra_Info {
+	PSEUDO_DESC_NON = 0,
+	PSEUDO_DESC_TUNING = 0x10,
+	PSEUDO_DESC_CTRL = 0x20,
+};
 
 /**
  * enum mtk_imgsys_module

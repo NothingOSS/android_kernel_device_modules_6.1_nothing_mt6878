@@ -323,6 +323,7 @@ struct mtk_imgsys_dev {
 	/* CCU control flow */
 	struct rproc *rproc_ccu_handle;
 	struct work_pool gwork_pool;
+	struct work_pool reqfd_cbinfo_pool;
 	atomic_t num_composing;	/* increase after ipi */
 	/*MDP/GCE callback workqueue */
 	struct workqueue_struct *mdpcb_wq;
@@ -720,6 +721,8 @@ void flush_fd_kva_list(struct mtk_imgsys_dev *imgsys_dev);
 struct type ## _list { \
 	struct type node; \
 	struct list_head link; \
+	struct list_head entry; \
+	struct work_pool *pool; \
 }
 
 /*
@@ -790,6 +793,8 @@ struct swfrm_info_t {
 	int chan_id;
 	uint64_t *req_stat;
 	char *hw_ts_log;
+	uint8_t is_capture;
+	uint8_t is_ndd;
 };
 #define HWTOKEN_MAX 100
 struct cleartoken_info_t {

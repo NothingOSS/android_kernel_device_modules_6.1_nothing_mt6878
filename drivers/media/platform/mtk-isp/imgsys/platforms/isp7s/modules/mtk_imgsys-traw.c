@@ -13,6 +13,7 @@
 #include <linux/of_address.h>
 #include <linux/pm_runtime.h>
 #include <linux/remoteproc.h>
+#include "mtk-hcp.h"
 #ifdef WPE_TF_DUMP_7S_1
 #include <dt-bindings/memory/mt6985-larb-port.h>
 #endif
@@ -682,6 +683,71 @@ static void imgsys_traw_reg_iommu_cb(void)
 	}
 #endif
 #endif
+}
+
+void imgsys_traw_updatecq(struct mtk_imgsys_dev *imgsys_dev,
+			struct img_swfrm_info *user_info, int req_fd, u64 tuning_iova,
+			unsigned int mode)
+{
+	u64 iova_addr = tuning_iova;
+	u64 *cq_desc = NULL;
+	struct mtk_imgsys_traw_dtable *dtable = NULL;
+	unsigned int i = 0, j = 0, tun_ofst = 0;
+	struct flush_buf_info traw_buf_info;
+	void *virt_mem_base = mtk_hcp_get_traw_mem_virt(imgsys_dev->scp_pdev);
+	size_t dtbl_sz = sizeof(struct mtk_imgsys_traw_dtable);
+
+	/* HWID defined in hw_definition.h */
+	for (i = IMGSYS_TRAW; i <= IMGSYS_LTR; i++) {
+		if (user_info->priv[i].need_update_desc) {
+			if (iova_addr) {
+				cq_desc = (u64 *)
+					((void *)(virt_mem_base + user_info->priv[i].desc_offset));
+				for (j = 0; j < TRAW_CQ_DESC_NUM; j++) {
+					dtable = (struct mtk_imgsys_traw_dtable *)cq_desc + j;
+					if ((dtable->addr_msb & PSEUDO_DESC_TUNING) ==
+						PSEUDO_DESC_TUNING) {
+						tun_ofst = dtable->addr;
+						dtable->addr = (tun_ofst + iova_addr) & 0xFFFFFFFF;
+						dtable->addr_msb =
+							((tun_ofst + iova_addr) >> 32) & 0xF;
+						pr_debug(
+							"%s: tuning_buf_iova(0x%llx) des_ofst(0x%08x) cq_kva(0x%p) dtable(0x%x/0x%x/0x%x)\n",
+							__func__, iova_addr,
+							user_info->priv[i].desc_offset,
+							cq_desc, dtable->empty, dtable->addr,
+							dtable->addr_msb);
+					}
+				}
+			}
+			//
+			traw_buf_info.fd = mtk_hcp_get_traw_mem_cq_fd(imgsys_dev->scp_pdev);
+			traw_buf_info.offset = user_info->priv[i].desc_offset;
+			traw_buf_info.len =
+				((dtbl_sz * TRAW_CQ_DESC_NUM) + TRAW_REG_SIZE);
+			traw_buf_info.mode = mode;
+			traw_buf_info.is_tuning = false;
+			pr_debug("imgsys_fw cq traw_buf_info (%d/%d/%d), mode(%d)",
+				traw_buf_info.fd, traw_buf_info.len,
+				traw_buf_info.offset, traw_buf_info.mode);
+			mtk_hcp_partial_flush(imgsys_dev->scp_pdev, &traw_buf_info);
+		}
+	}
+
+	for (i = IMGSYS_TRAW; i <= IMGSYS_LTR; i++) {
+		if (user_info->priv[i].need_flush_tdr) {
+			// tdr buffer
+			traw_buf_info.fd = mtk_hcp_get_traw_mem_tdr_fd(imgsys_dev->scp_pdev);
+			traw_buf_info.offset = user_info->priv[i].tdr_offset;
+			traw_buf_info.len = TRAW_TDR_BUF_MAXSZ;
+			traw_buf_info.mode = mode;
+			traw_buf_info.is_tuning = false;
+			pr_debug("imgsys_fw tdr traw_buf_info (%d/%d/%d), mode(%d)",
+				traw_buf_info.fd, traw_buf_info.len,
+				traw_buf_info.offset, traw_buf_info.mode);
+			mtk_hcp_partial_flush(imgsys_dev->scp_pdev, &traw_buf_info);
+		}
+	}
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

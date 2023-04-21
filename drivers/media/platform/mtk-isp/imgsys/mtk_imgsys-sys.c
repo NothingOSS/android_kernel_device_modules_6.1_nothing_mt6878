@@ -44,6 +44,9 @@ static struct reqfd_cbinfo_list_t reqfd_cbinfo_list = {
 	.mylist = LIST_HEAD_INIT(reqfd_cbinfo_list.mylist)
 };
 DECLARE_WAIT_QUEUE_HEAD(frm_info_waitq);
+
+#define	MTK_IMGSYS_VIDEO_NODE_TUNING_OUT	(nodes_num - 5)
+
 static inline bool info_list_is_empty(struct info_list_t *info_list)
 {
 	bool is_empty = true;
@@ -55,6 +58,7 @@ static inline bool info_list_is_empty(struct info_list_t *info_list)
 	mutex_unlock(&(info_list->mymutex));
 	return is_empty;
 };
+static void reqfd_cbinfo_put_work(struct reqfd_cbinfo_t *work);
 
 static int imgsys_send(struct platform_device *pdev, enum hcp_id id,
 		    void *buf, unsigned int  len, int req_fd, unsigned int wait)
@@ -507,9 +511,9 @@ static void mtk_imgsys_notify(struct mtk_imgsys_request *req, uint64_t frm_owner
 	u64 req_enq, req_done, imgenq;
 
 	IMGSYS_SYSTRACE_BEGIN("ReqFd:%d Own:%s\n", req->tstate.req_fd, ((char *)&frm_owner));
-
+#ifdef REQ_TIMESTAMP
 	req->tstate.time_notifyStart = ktime_get_boottime_ns()/1000;
-
+#endif
 	if (!pipe->streaming)
 		goto notify;
 
@@ -536,8 +540,9 @@ notify:
 	if (vbf_state == VB2_BUF_STATE_DONE)
 		mtk_imgsys_pipe_job_finish(req, vbf_state);
 	mtk_imgsys_pipe_remove_job(req);
-
+#ifdef REQ_TIMESTAMP
 	req->tstate.time_unmapiovaEnd = ktime_get_boottime_ns()/1000;
+#endif
 	dev_dbg(imgsys_dev->dev,
 			"[K]%s:%d:%s:%6lld %6lld %6lld %6lld %6lld %6lld %6lld %6lld %6lld %6lld %6lld %6lld %6lld %6lld %6lld %6lld %6lld\n",
 			__func__, req->tstate.req_fd, ((char *)(&frm_owner)),
@@ -740,9 +745,14 @@ static void cmdq_cb_done_worker(struct work_struct *work)
 	/* send to HCP after frame done & del node from list */
 	gwfrm_info = (struct swfrm_info_t *)gwork->req_sbuf_kva;
 	swbuf_data.offset = gwfrm_info->req_sbuf_goft;
-	imgsys_send(pipe->imgsys_dev->scp_pdev, HCP_IMGSYS_DEQUE_DONE_ID,
-		&swbuf_data, sizeof(struct img_sw_buffer),
-		gwork->reqfd, 0);
+	if (gwfrm_info->is_ndd)
+		imgsys_send(pipe->imgsys_dev->scp_pdev, HCP_IMGSYS_DEQUE_DUMP_ID,
+			&swbuf_data, sizeof(struct img_sw_buffer),
+			gwork->reqfd, 0);
+	else
+		imgsys_send(pipe->imgsys_dev->scp_pdev, HCP_IMGSYS_DEQUE_DONE_ID,
+			&swbuf_data, sizeof(struct img_sw_buffer),
+			gwork->reqfd, 0);
 
 	wake_up_interruptible(&frm_info_waitq);
 
@@ -802,7 +812,9 @@ static void imgsys_mdp_cb_func(struct cmdq_cb_data data,
 							((char *)&swfrminfo_cb->frm_owner));
 
 	imgsys_dev = req->imgsys_pipe->imgsys_dev;
+#ifdef REQ_TIMESTAMP
 	req->tstate.time_mdpcbStart = ktime_get_boottime_ns()/1000;
+#endif
 	dev_dbg(imgsys_dev->dev, "%s:(reqfd-%d)frame_no(%d) +", __func__,
 		req->tstate.req_fd,
 		req->img_fparam.frameparam.frame_no);
@@ -906,7 +918,11 @@ static void imgsys_mdp_cb_func(struct cmdq_cb_data data,
 			if (reqfdcb_info->cur_cnt == reqfdcb_info->exp_cnt) {
 				can_notify_imgsys = true;
 				list_del(head);
+#ifdef REQFD_CBINFO
 				vfree(reqfdcb_info);
+#else
+				reqfd_cbinfo_put_work(reqfdcb_info);
+#endif
 			}
 			reqfd_record_find = true;
 		}
@@ -1259,46 +1275,30 @@ static void dip_runner_func_batch(struct work_struct *work)
 #endif
 #endif
 
-static int gce_work_pool_init(struct mtk_imgsys_dev *dev)
+static void work_pool_init(struct work_pool *work_pool, void *cookie)
 {
-	struct gce_work *gwork = NULL;
-	struct work_pool *gwork_pool;
-	signed int i;
-	int ret = 0;
+	spin_lock_init(&work_pool->lock);
+	INIT_LIST_HEAD(&work_pool->free_list);
+	INIT_LIST_HEAD(&work_pool->used_list);
 
-	gwork_pool = &dev->gwork_pool;
-	spin_lock_init(&gwork_pool->lock);
-	INIT_LIST_HEAD(&gwork_pool->free_list);
-	INIT_LIST_HEAD(&gwork_pool->used_list);
-	gwork = vzalloc(sizeof(struct gce_work) * GCE_WORK_NR);
-	if (!gwork)
-		return -ENOMEM;
-
-	gwork_pool->_cookie = (void *)gwork;
-	for (i = 0; i < GCE_WORK_NR; i++) {
-		list_add_tail(&gwork[i].entry, &gwork_pool->free_list);
-		gwork[i].pool = gwork_pool;
-	}
-	atomic_set(&gwork_pool->num, i);
-	init_waitqueue_head(&gwork_pool->waitq);
-	kref_init(&gwork_pool->kref);
-
-	return ret;
+	work_pool->_cookie = cookie;
+	init_waitqueue_head(&work_pool->waitq);
+	kref_init(&work_pool->kref);
 }
 
 static void pool_release(struct kref *kref)
 {
-	struct gce_work *gwork, *g0;
+	struct list_head *gwork, *g0;
 	struct work_pool *pool = container_of(kref, struct work_pool, kref);
 	struct mtk_imgsys_dev *dev = container_of(pool, struct mtk_imgsys_dev, gwork_pool);
 
 	spin_lock(&pool->lock);
-	list_for_each_entry_safe(gwork, g0, &pool->free_list, entry) {
-		list_del(&gwork->entry);
+	list_for_each_safe(gwork, g0, &pool->free_list) {
+		list_del(gwork);
 		atomic_dec(&pool->num);
 	}
-	list_for_each_entry_safe(gwork, g0, &pool->used_list, entry) {
-		list_del(&gwork->entry);
+	list_for_each_safe(gwork, g0, &pool->used_list) {
+		list_del(gwork);
 		atomic_dec(&pool->num);
 	}
 	spin_unlock(&pool->lock);
@@ -1314,55 +1314,91 @@ static void pool_release(struct kref *kref)
 
 }
 
-static void gce_work_pool_uninit(struct mtk_imgsys_dev *dev)
+static void work_pool_uninit(struct work_pool *pool)
 {
-	struct work_pool *pool;
 
-	pool = &dev->gwork_pool;
+	if (!pool)
+		return;
+
 	kref_put(&pool->kref, pool_release);
-
 }
 
-static bool work_pool_avail(struct work_pool *pool)
+static struct list_head *work_pool_get(struct work_pool *pool)
 {
-	bool empty;
+	struct list_head *work = NULL;
 
 	spin_lock(&pool->lock);
-	empty = list_empty(&pool->free_list);
+	if (!list_empty(&pool->free_list)) {
+		work = pool->free_list.next;
+		list_del(work);
+		list_add_tail(work, &pool->used_list);
+		kref_get(&pool->kref);
+	}
 	spin_unlock(&pool->lock);
 
-	return !empty;
+	return work;
 }
 
-static struct gce_work *get_gce_work(struct mtk_imgsys_dev *dev)
+static struct list_head *get_work(struct work_pool *gwork_pool)
 {
-	struct gce_work *gwork = NULL;
-	struct work_pool *gwork_pool;
+	struct list_head *work = NULL;
 	int ret;
 
-	gwork_pool = &dev->gwork_pool;
-	ret = wait_event_interruptible_timeout(gwork_pool->waitq, work_pool_avail(gwork_pool),
-								msecs_to_jiffies(3000));
-
+	ret = wait_event_interruptible_timeout(gwork_pool->waitq,
+				((work = work_pool_get(gwork_pool)) != NULL),
+				msecs_to_jiffies(3000));
 	if (!ret) {
-		dev_info(dev->dev, "%s wait for gce pool timeout\n", __func__);
+		pr_info("%s wait for pool timeout\n", __func__);
 		return NULL;
 	} else if (-ERESTARTSYS == ret) {
-		dev_info(dev->dev, "%s wait for gce pool interrupted !\n", __func__);
+		pr_info("%s wait for pool interrupted !\n", __func__);
 		return NULL;
 	}
 
-	spin_lock(&gwork_pool->lock);
-	gwork = list_first_entry(&gwork_pool->free_list, struct gce_work, entry);
-	list_del(&gwork->entry);
-	list_add_tail(&gwork->entry, &gwork_pool->used_list);
-	kref_get(&gwork->pool->kref);
-	spin_unlock(&gwork_pool->lock);
+	return work;
+}
+
+static int gce_work_pool_init(struct mtk_imgsys_dev *dev)
+{
+	struct gce_work *gwork = NULL;
+	struct work_pool *gwork_pool;
+	signed int i;
+	int ret = 0;
+
+	gwork_pool = &dev->gwork_pool;
+
+	gwork = vzalloc(sizeof(struct gce_work) * GCE_WORK_NR);
+	if (!gwork)
+		return -ENOMEM;
+
+	work_pool_init(gwork_pool, (void *)gwork);
+	for (i = 0; i < GCE_WORK_NR; i++) {
+		list_add_tail(&gwork[i].entry, &gwork_pool->free_list);
+		gwork[i].pool = gwork_pool;
+	}
+	atomic_set(&gwork_pool->num, i);
+
+	return ret;
+}
+
+static struct gce_work *gce_get_work(struct mtk_imgsys_dev *dev)
+{
+	struct list_head *work = NULL;
+	struct gce_work *gwork = NULL;
+	struct work_pool *gwork_pool;
+
+	gwork_pool = &dev->gwork_pool;
+
+	work = get_work(gwork_pool);
+	if (!work)
+		return NULL;
+
+	gwork = container_of(work, struct gce_work, entry);
 
 	return gwork;
 }
 
-static void put_gce_work(struct gce_work *gwork)
+static void gce_put_work(struct gce_work *gwork)
 {
 	struct work_pool *gwork_pool;
 
@@ -1370,9 +1406,136 @@ static void put_gce_work(struct gce_work *gwork)
 	spin_lock(&gwork_pool->lock);
 	list_del(&gwork->entry);
 	list_add_tail(&gwork->entry, &gwork_pool->free_list);
-	kref_put(&gwork->pool->kref, pool_release);
 	spin_unlock(&gwork_pool->lock);
+	kref_put(&gwork_pool->kref, pool_release);
 
+}
+
+#define REQCB_WORK_NR (64)
+static int reqfd_cbinfo_work_pool_init(struct mtk_imgsys_dev *dev)
+{
+	vlist_type(struct reqfd_cbinfo_t) * work = NULL;
+	struct work_pool *work_pool;
+	signed int i;
+	int ret = 0;
+
+	work_pool = &dev->reqfd_cbinfo_pool;
+
+	work = vzalloc(sizeof(vlist_type(struct reqfd_cbinfo_t)) * REQCB_WORK_NR);
+	if (!work)
+		return -ENOMEM;
+
+	work_pool_init(work_pool, (void *)work);
+	for (i = 0; i < REQCB_WORK_NR; i++) {
+		list_add_tail(&work[i].entry, &work_pool->free_list);
+		work[i].pool = work_pool;
+	}
+	atomic_set(&work_pool->num, i);
+
+	return ret;
+}
+
+#ifndef REQFD_CBINFO
+static struct reqfd_cbinfo_t *reqfd_cbinfo_get_work(struct mtk_imgsys_dev *dev)
+{
+	vlist_type(struct reqfd_cbinfo_t) * gwork = NULL;
+	struct list_head *work = NULL;
+	struct work_pool *gwork_pool;
+
+	gwork_pool = &dev->reqfd_cbinfo_pool;
+
+	work = get_work(gwork_pool);
+	if (!work)
+		return NULL;
+
+	gwork = container_of(work, vlist_type(struct reqfd_cbinfo_t), entry);
+
+	return (struct reqfd_cbinfo_t *)gwork;
+}
+
+static void reqfd_cbinfo_put_work(struct reqfd_cbinfo_t *work)
+{
+	vlist_type(struct reqfd_cbinfo_t) * gwork;
+	struct work_pool *work_pool;
+
+	gwork = (vlist_type(struct reqfd_cbinfo_t) *)work;
+	work_pool = gwork->pool;
+
+	spin_lock(&work_pool->lock);
+	list_del(&gwork->entry);
+	list_add_tail(&gwork->entry, &work_pool->free_list);
+	spin_unlock(&work_pool->lock);
+	kref_put(&work_pool->kref, pool_release);
+
+}
+#endif
+
+static u64 transform_tuning_iova(struct mtk_imgsys_dev *imgsys_dev, struct mtk_imgsys_request *req,
+	struct tuning_meta_info *tuning_info, int frm_index)
+{
+	//struct dma_buf *dbuf = NULL;
+	struct mtk_imgsys_dev_buffer *dev_b = 0;
+	struct singlenode_desc *desc_sd = NULL;
+	struct singlenode_desc_norm *desc_sd_norm = NULL;
+	//int buf_fd;
+	//u64 iova_addr = 0;
+	//unsigned int tmax, tnum;
+	struct header_desc *input_smvr = NULL;
+	struct header_desc_norm *input_norm = NULL;
+	unsigned int j = 0;
+	//buf_fd = frm_info->user_info[frm_index]->priv[IMGSYS_DIP].buf_fd;
+
+	dev_b = req->buf_map[is_singledev_mode(req)];
+	switch (dev_b->dev_fmt->format) {
+	default:
+	case V4L2_META_FMT_MTISP_SD:
+		desc_sd = (struct singlenode_desc *)dev_b->va_daddr[0];
+		input_smvr = (struct header_desc *)(&desc_sd->tuning_meta);
+		break;
+	case V4L2_META_FMT_MTISP_SDNORM:
+		desc_sd_norm =
+			(struct singlenode_desc_norm *)dev_b->va_daddr[0];
+		input_norm = (struct header_desc_norm *)(&desc_sd_norm->tuning_meta);
+		break;
+	}
+	if (input_smvr) {
+		if (desc_sd->dmas_enable[MTK_IMGSYS_VIDEO_NODE_TUNING_OUT][frm_index]) {
+			for (j = 0; j < input_smvr->fparams[frm_index][0].bufs[0].buf.num_planes;
+				j++) {
+				tuning_info->buf_fd =
+			input_smvr->fparams[frm_index][0].bufs[0].buf.planes[j].m.dma_buf.fd;
+				tuning_info->offset =
+			input_smvr->fparams[frm_index][0].bufs[0].buf.planes[j].m.dma_buf.offset;
+				tuning_info->dbuf = dma_buf_get(tuning_info->buf_fd);
+				tuning_info->iova_addr =
+					imgsys_dev->imgsys_get_iova(
+					tuning_info->dbuf, tuning_info->buf_fd, imgsys_dev, dev_b);
+				pr_debug("imgsys_fw: smvr iova addr(0x%llx/%d/0x%x)",
+					tuning_info->iova_addr, tuning_info->buf_fd,
+					tuning_info->offset);
+			}
+		}
+	} else {
+		if (desc_sd_norm->dmas_enable[MTK_IMGSYS_VIDEO_NODE_TUNING_OUT][frm_index]) {
+			for (j = 0; j < input_norm->fparams[frm_index][0].bufs[0].buf.num_planes;
+				j++) {
+				tuning_info->buf_fd =
+			input_norm->fparams[frm_index][0].bufs[0].buf.planes[j].m.dma_buf.fd;
+				tuning_info->offset =
+			input_norm->fparams[frm_index][0].bufs[0].buf.planes[j].m.dma_buf.offset;
+				tuning_info->dbuf = dma_buf_get(tuning_info->buf_fd);
+				tuning_info->iova_addr =
+					imgsys_dev->imgsys_get_iova(
+					tuning_info->dbuf, tuning_info->buf_fd, imgsys_dev, dev_b);
+				pr_debug("imgsys_fw: normal iova addr(0x%llx/%d/0x%x)",
+					tuning_info->iova_addr, tuning_info->buf_fd,
+					tuning_info->offset);
+			}
+		}
+	}
+	pr_debug("imgsys_fw: iova addr(0x%llx/%d/0x%x)",
+		tuning_info->iova_addr, tuning_info->buf_fd, tuning_info->offset);
+	return tuning_info->iova_addr;
 }
 
 static void imgsys_runner_func(void *data)
@@ -1383,11 +1546,20 @@ static void imgsys_runner_func(void *data)
 	struct mtk_imgsys_dev *imgsys_dev = req->imgsys_pipe->imgsys_dev;
 	union request_track *req_track = NULL;
 	struct swfrm_info_t *frm_info;
-	int swfrm_cnt, stime;
-	int ret;
+	int swfrm_cnt;
+	int i, ret;
 	unsigned int subfidx;
+#ifdef MTK_IOVA_SINK2KERNEL
+	struct tuning_meta_info module_tuning_info;
+	/* mark by bj due to buffer usage need to do further discuss */
+	/* struct flush_buf_info tuning_meta_buf_info; */
+	unsigned int mode;
+	u64 iova_addr = 0;
+#endif
 
+#ifdef REQ_TIMESTAMP
 	req->tstate.time_runnerStart = ktime_get_boottime_ns()/1000;
+#endif
 	swfrm_cnt = atomic_read(&req->swfrm_cnt);
 	/* get corresponding setting, adopt is_sent to judge different frames
 	 * in same package/mtk_dip_request
@@ -1400,12 +1572,37 @@ static void imgsys_runner_func(void *data)
 	}
 
 #ifdef MTK_IOVA_SINK2KERNEL
+	mode = (frm_info->batchnum > 0 ? imgsys_smvr :
+		(frm_info->is_capture == 1 ? imgsys_capture : imgsys_streaming));
 	for (subfidx = 0 ; subfidx < frm_info->total_frmnum ; subfidx++) {
-		//for (i = 0; i < (imgsys_dev->num_mods); i++)
-		if (imgsys_dev->modules[/*i*/IMGSYS_MOD_WPE].updatecq) {
-			imgsys_dev->modules[IMGSYS_MOD_WPE].updatecq(imgsys_dev,
-				&frm_info->user_info[subfidx], frm_info->request_fd);
+		iova_addr = transform_tuning_iova(imgsys_dev, req, &module_tuning_info,
+					frm_info->user_info[subfidx].subfrm_idx);
+		pr_debug("imgsys_fw:tuning_index/frm_num/index/sub_frm(%d/%d/%d/%d)",
+		MTK_IMGSYS_VIDEO_NODE_TUNING_OUT, frm_info->total_frmnum, subfidx,
+		frm_info->user_info[subfidx].subfrm_idx);
+		pr_debug("imgsys_fw:module tuning iova addr(0x%llx/%d/0x%x), mode(%d), hw_comb(0x%x)",
+			module_tuning_info.iova_addr, module_tuning_info.buf_fd,
+			module_tuning_info.offset, mode, frm_info->user_info[subfidx].hw_comb);
+		for (i = 0; i < (imgsys_dev->num_mods); i++) {
+			if (imgsys_dev->modules[i].updatecq) {
+				imgsys_dev->modules[i].updatecq(imgsys_dev,
+					&frm_info->user_info[subfidx], frm_info->request_fd,
+					iova_addr, mode);
+			}
 		}
+		/* mark by bj due to buffer usage need to do further discuss */
+		/* if ((frm_info->user_info[subfidx].hw_comb != IMGSYS_ENG_ME) &&
+		 *	(module_tuning_info.iova_addr != 0)) {
+		 *	tuning_meta_buf_info.fd = module_tuning_info.buf_fd;
+		 *	tuning_meta_buf_info.offset = module_tuning_info.offset;
+		 *	tuning_meta_buf_info.len =
+		 *		frm_info->user_info[subfidx].tunmeta_size;//0x3e450;
+		 *	tuning_meta_buf_info.mode = mode;
+		 *	tuning_meta_buf_info.is_tuning = true;
+		 *	tuning_meta_buf_info.dbuf = module_tuning_info.dbuf;
+		 *	mtk_hcp_partial_flush(imgsys_dev->scp_pdev, &tuning_meta_buf_info);
+		 *}
+		 */
 	}
 #endif
 	/*
@@ -1413,9 +1610,11 @@ static void imgsys_runner_func(void *data)
 	 * Pass the framejob to MDP driver
 	 */
 	/*call gce communicator api*/
+#ifdef REQ_TIMESTAMP
 	if (!frm_info->user_info[0].subfrm_idx)
 		req->tstate.time_send2cmq = ktime_get_boottime_ns()/1000;
 	stime = ktime_get_boottime_ns()/1000;
+#endif
 	IMGSYS_SYSTRACE_BEGIN("MWFrame:#%d MWReq:#%d ReqFd:%d owner:%s subfrm_idx:%d\n",
 			frm_info->frame_no, frm_info->request_no, req->tstate.req_fd,
 		((char *)&frm_info->frm_owner), frm_info->user_info[0].subfrm_idx);
@@ -1424,9 +1623,11 @@ static void imgsys_runner_func(void *data)
 	ret = imgsys_cmdq_sendtask(imgsys_dev, frm_info, imgsys_mdp_cb_func,
 		imgsys_cmdq_timeout_cb_func, mtk_imgsys_get_iova, is_singledev_mode);
 	IMGSYS_SYSTRACE_END();
+#ifdef REQ_TIMESTAMP
 	req->tstate.time_cmqret = ktime_get_boottime_ns()/1000;
 	req->tstate.time_sendtask +=
 		(req->tstate.time_cmqret - stime);
+#endif
 	dev_dbg(imgsys_dev->dev,
 		"%s:(reqfd-%d) send2GCE tfnum/fidx(%d/%d)\n",
 		__func__, req->tstate.req_fd,
@@ -1440,7 +1641,7 @@ static void imgsys_runner_func(void *data)
 	if (req_track)
 		req_track->subflow_kernel++;
 
-	put_gce_work(work);
+	gce_put_work(work);
 	mtk_hcp_put_gce_buffer(imgsys_dev->scp_pdev);
 }
 
@@ -1565,7 +1766,11 @@ static void imgsys_scp_handler(void *data, unsigned int len, void *priv)
 	#endif
 
 #endif
+
+#ifdef REQ_TIMESTAMP
 	time_local_reddonescpStart = ktime_get_boottime_ns()/1000;
+#endif
+
 #ifndef MTK_IOVA_SINK2KERNEL
 	job_id = swfrm_info->handle;
 #else
@@ -1612,7 +1817,7 @@ static void imgsys_scp_handler(void *data, unsigned int len, void *priv)
 		swfrm_info->frame_no, swfrm_info->request_fd, (unsigned long)swfrm_info,
 		swfrm_info->total_frmnum, swfrm_info->user_info[0].subfrm_idx);
 
-	up(&imgsys_dev->sem);
+	/* up(&imgsys_dev->sem);*/
 	/* TODO: log only safe to remove */
 	if (!req->working_buf) {
 		dev_dbg(imgsys_dev->dev,
@@ -1620,8 +1825,9 @@ static void imgsys_scp_handler(void *data, unsigned int len, void *priv)
 			__func__, req->tstate.req_fd);
 	}
 
+#ifdef REQ_TIMESTAMP
 	req->tstate.time_doframeinfo = ktime_get_boottime_ns()/1000;
-
+#endif
 	/**/
 	swfrm_info->is_sent = false;
 	swfrm_info->req = (void *)req;
@@ -1708,7 +1914,9 @@ static void imgsys_scp_handler(void *data, unsigned int len, void *priv)
 
 	/*first group in request*/
 	if (!swfrm_info->user_info[0].subfrm_idx) {
+#ifdef REQ_TIMESTAMP
 		req->tstate.time_qw2runner = ktime_get_boottime_ns()/1000;
+#endif
 		if (swfrm_info->exp_totalcb_cnt > 0) {
 			reqfd_find = false;
 			mutex_lock(&(reqfd_cbinfo_list.mymutex));
@@ -1733,8 +1941,12 @@ static void imgsys_scp_handler(void *data, unsigned int len, void *priv)
 				}
 			}
 			if (!reqfd_find) {
+#ifdef REQFD_CBINFO
 				cb_info = vmalloc(
 					sizeof(vlist_type(struct reqfd_cbinfo_t)));
+#else
+				cb_info	= reqfd_cbinfo_get_work(imgsys_dev);
+#endif
 				if (!cb_info) {
 					mutex_unlock(&(reqfd_cbinfo_list.mymutex));
 					return;
@@ -1753,7 +1965,7 @@ static void imgsys_scp_handler(void *data, unsigned int len, void *priv)
 		}
 	}
 
-	gwork = get_gce_work(imgsys_dev);
+	gwork = gce_get_work(imgsys_dev);
 	if (!gwork) {
 		dev_info(imgsys_dev->dev,
 		"%s:own(%llx/%s)req fd/no(%d/%d) frame no(%d) group_id(%d): fidx/tfnum(%d/%d) No GceWork max(%d).\n",
@@ -1868,14 +2080,15 @@ static void imgsys_composer_workfunc(struct work_struct *work)
 
 	IMGSYS_SYSTRACE_BEGIN("ReqFd:%d\n", req->tstate.req_fd);
 
+#ifdef REQ_TIMESTAMP
 	req->tstate.time_compfuncStart = ktime_get_boottime_ns()/1000;
-
+#endif
 	dev_dbg(imgsys_dev->dev,
 		"%s:(reqfd-%d) to send frame_no(%d)\n",
 		__func__, req->tstate.req_fd,
 		req->img_fparam.frameparam.frame_no);
 	media_request_get(&req->req);
-	down(&imgsys_dev->sem);
+	/* down(&imgsys_dev->sem);*/
 #if MTK_CM4_SUPPORT == 0
 
 	#ifdef BATCH_MODE_V3
@@ -1976,7 +2189,9 @@ static void imgsys_composer_workfunc(struct work_struct *work)
 	mutex_lock(&imgsys_dev->hw_op_lock);
 	atomic_inc(&imgsys_dev->num_composing);
 
+#ifdef REQ_TIMESTAMP
 	req->tstate.time_ipisendStart = ktime_get_boottime_ns()/1000;
+#endif
 
 #ifndef MTK_IOVA_SINK2KERNEL
 	ret = imgsys_send(imgsys_dev->scp_pdev, HCP_DIP_FRAME_ID,
@@ -2271,6 +2486,13 @@ static int mtk_imgsys_hw_connect(struct mtk_imgsys_dev *imgsys_dev)
 		goto err_power_off;
 	}
 
+	ret = reqfd_cbinfo_work_pool_init(imgsys_dev);
+	if (ret) {
+		dev_info(imgsys_dev->dev, "%s: reqafd cbinfo work pool allocate failed %d\n",
+			__func__, ret);
+		goto err_power_off;
+	}
+
 	imgsys_timeout_idx = 0;
 	/* calling cmdq stream on */
 	imgsys_cmdq_streamon(imgsys_dev);
@@ -2361,7 +2583,8 @@ static void mtk_imgsys_hw_disconnect(struct mtk_imgsys_dev *imgsys_dev)
 	mtk_hcp_purge_msg(imgsys_dev->scp_pdev);
 
 	mutex_destroy(&imgsys_dev->req_fd_cache.lock);
-	gce_work_pool_uninit(imgsys_dev);
+	work_pool_uninit(&imgsys_dev->gwork_pool);
+	work_pool_uninit(&imgsys_dev->reqfd_cbinfo_pool);
 
 	if (!imgsys_quick_onoff_enable()) {
 		#if DVFS_QOS_READY
@@ -2457,19 +2680,6 @@ int mtk_imgsys_hw_streamoff(struct mtk_imgsys_pipe *pipe)
 			__func__, imgsys_dev->imgsys_stream_cnt);
 
 		flush_fd_kva_list(imgsys_dev);
-	/*
-	 *	list_for_each_entry_safe(iova_info, tmp,
-	 *				&pipe->iova_cache.list, list_entry) {
-	 *		mtk_imgsys_put_dma_buf(iova_info->dma_buf,
-	 *				iova_info->attach,
-	 *				iova_info->sgt);
-	 *		spin_lock(&pipe->iova_cache.lock);
-	 *		list_del(&iova_info->list_entry);
-	 *		hash_del(&iova_info->hnode);
-	 *		spin_unlock(&pipe->iova_cache.lock);
-	 *		vfree(iova_info);
-	 *	}
-	 */
 	}
 	dev_dbg(pipe->imgsys_dev->dev,
 		"%s:%s: stopped stream id(%d), stream cnt(%d)\n",
@@ -2490,8 +2700,10 @@ static void iova_worker(struct work_struct *work)
 	struct img_ipi_frameparam *param;
 
 	req = container_of(work, struct mtk_imgsys_request, iova_work);
-	req->tstate.time_iovaworkp = ktime_get_boottime_ns()/1000;
 
+#ifdef REQ_TIMESTAMP
+	req->tstate.time_iovaworkp = ktime_get_boottime_ns()/1000;
+#endif
 	IMGSYS_SYSTRACE_BEGIN("ReqFd:%d\n", req->tstate.req_fd);
 
 	if (is_singledev_mode(req)) {
@@ -2516,8 +2728,9 @@ static void iova_worker(struct work_struct *work)
 	req_frame->state = FRAME_STATE_INIT;
 	req_frame->frame_no =
 			atomic_inc_return(&imgsys_dev->imgsys_enqueue_cnt);
+#ifdef REQ_TIMESTAMP
 	req->tstate.time_qw2composer = ktime_get_boottime_ns()/1000;
-
+#endif
 	imgsys_composer_workfunc(&req->fw_work);
 
 	IMGSYS_SYSTRACE_END();
@@ -2531,7 +2744,9 @@ void mtk_imgsys_hw_enqueue(struct mtk_imgsys_dev *imgsys_dev,
 
 	IMGSYS_SYSTRACE_BEGIN("ReqFd:%d\n", req->tstate.req_fd);
 
+#ifdef REQ_TIMESTAMP
 	req->tstate.time_composingStart = ktime_get_boottime_ns()/1000;
+#endif
 	/* TODO: use user fd + offset */
 	buf = mtk_imgsys_hw_working_buf_alloc(req->imgsys_pipe->imgsys_dev);
 	if (!buf) {
@@ -2559,8 +2774,9 @@ void mtk_imgsys_hw_enqueue(struct mtk_imgsys_dev *imgsys_dev,
 #endif
 	}
 
+#ifdef REQ_TIMESTAMP
 	req->tstate.time_composingEnd = ktime_get_boottime_ns()/1000;
-
+#endif
 	INIT_WORK(&req->iova_work, iova_worker);
 #ifdef MTK_IOVA_SINK2KERNEL
 	iova_worker(&req->iova_work);

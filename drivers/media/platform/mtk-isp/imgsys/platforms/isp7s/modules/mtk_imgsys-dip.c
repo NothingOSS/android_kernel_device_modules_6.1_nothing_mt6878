@@ -12,6 +12,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/remoteproc.h>
 #include "mtk_imgsys-dip.h"
+#include "mtk-hcp.h"
 
 const struct mtk_imgsys_init_array mtk_imgsys_dip_init_ary[] = {
 	{0x0A8, 0x80000000},	/* DIPCTL_D1A_DIPCTL_INT2_EN */
@@ -82,6 +83,13 @@ static struct DIPDmaDebugInfo g_DMANrDbgIfo[] = {
 	{"CSMCSO", DIP_ULC_WDMA_DEBUG, 37},
 };
 
+struct mtk_imgsys_dip_dtable {
+	uint32_t empty;
+	uint32_t addr;
+	uint32_t addr_msb;
+};
+
+
 #define DIP_HW_SET 3
 
 #define	DIP_INIT_ARRAY_COUNT	1
@@ -123,6 +131,64 @@ void imgsys_dip_set_hw_initial_value(struct mtk_imgsys_dev *imgsys_dev)
 		writel(mtk_imgsys_dip_init_ary[i].val, ofset);
 	}
 
+}
+
+void imgsys_dip_updatecq(struct mtk_imgsys_dev *imgsys_dev,
+			struct img_swfrm_info *user_info, int req_fd, u64 tuning_iova,
+			unsigned int mode)
+{
+	u64 iova_addr = tuning_iova;
+	u64 *cq_desc = NULL;
+	struct mtk_imgsys_dip_dtable *dtable = NULL;
+	unsigned int i = 0, tun_ofst = 0;
+	struct flush_buf_info dip_buf_info;
+
+
+	/* HWID defined in hw_definition.h */
+	if (user_info->priv[IMGSYS_DIP].need_update_desc) {
+		if (iova_addr) {
+			cq_desc = (u64 *)((void *)(mtk_hcp_get_dip_mem_virt(imgsys_dev->scp_pdev) +
+					user_info->priv[IMGSYS_DIP].desc_offset));
+			for (i = 0; i < DIP_CQ_DESC_NUM; i++) {
+				dtable = (struct mtk_imgsys_dip_dtable *)cq_desc + i;
+				if ((dtable->addr_msb & PSEUDO_DESC_TUNING) == PSEUDO_DESC_TUNING) {
+					tun_ofst = dtable->addr;
+					dtable->addr = (tun_ofst + iova_addr) & 0xFFFFFFFF;
+					dtable->addr_msb = ((tun_ofst + iova_addr) >> 32) & 0xF;
+					pr_debug(
+						"%s: tuning_buf_iova(0x%llx) des_ofst(0x%08x) cq_kva(0x%p) dtable(0x%x/0x%x/0x%x)\n",
+						__func__, iova_addr,
+						user_info->priv[IMGSYS_DIP].desc_offset,
+						cq_desc, dtable->empty, dtable->addr,
+						dtable->addr_msb);
+				}
+			}
+		}
+		//
+		dip_buf_info.fd = mtk_hcp_get_dip_mem_cq_fd(imgsys_dev->scp_pdev);
+		dip_buf_info.offset = user_info->priv[IMGSYS_DIP].desc_offset;
+		dip_buf_info.len =
+			(sizeof(struct mtk_imgsys_dip_dtable) * DIP_CQ_DESC_NUM) + DIP_REG_SIZE;
+		dip_buf_info.mode = mode;
+		dip_buf_info.is_tuning = false;
+		pr_debug("imgsys_fw cq dip_buf_info (%d/%d/%d), mode(%d)",
+			dip_buf_info.fd, dip_buf_info.len,
+			dip_buf_info.offset, dip_buf_info.mode);
+		mtk_hcp_partial_flush(imgsys_dev->scp_pdev, &dip_buf_info);
+	}
+
+	if (user_info->priv[IMGSYS_DIP].need_flush_tdr) {
+		// tdr buffer
+		dip_buf_info.fd = mtk_hcp_get_dip_mem_tdr_fd(imgsys_dev->scp_pdev);
+		dip_buf_info.offset = user_info->priv[IMGSYS_DIP].tdr_offset;
+		dip_buf_info.len = DIP_TDR_BUF_MAXSZ;
+		dip_buf_info.mode = mode;
+		dip_buf_info.is_tuning = false;
+		pr_debug("imgsys_fw tdr dip_buf_info (%d/%d/%d), mode(%d)",
+			dip_buf_info.fd, dip_buf_info.len,
+			dip_buf_info.offset, dip_buf_info.mode);
+		mtk_hcp_partial_flush(imgsys_dev->scp_pdev, &dip_buf_info);
+	}
 }
 
 static unsigned int ExeDbgCmd(struct mtk_imgsys_dev *a_pDev,

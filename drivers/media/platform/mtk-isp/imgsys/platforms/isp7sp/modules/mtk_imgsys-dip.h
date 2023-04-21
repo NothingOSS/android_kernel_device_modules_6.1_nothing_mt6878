@@ -96,6 +96,9 @@
 #define DIP_YUVO_T1_FIFO_DEBUG_DATA_CASE1	(0x10700)
 #define DIP_YUVO_T1_FIFO_DEBUG_DATA_CASE3	(0x30700)
 
+#define DIP_CQ_DESC_NUM	178 // align with userspace
+#define DIP_REG_SIZE  (0x1A000) // align with userspace
+#define DIP_TDR_BUF_MAXSZ 163840 // align with userspace
 /********************************************************************
  * Enum Define
  ********************************************************************/
@@ -127,5 +130,7 @@ void imgsys_dip_debug_dump(struct mtk_imgsys_dev *imgsys_dev,
 							unsigned int engine);
 
 void imgsys_dip_uninit(struct mtk_imgsys_dev *imgsys_dev);
-
+void imgsys_dip_updatecq(struct mtk_imgsys_dev *imgsys_dev,
+			struct img_swfrm_info *user_info, int req_fd, u64 tuning_iova,
+			unsigned int mode);
 #endif /* _MTK_DIP_DIP_H_ */

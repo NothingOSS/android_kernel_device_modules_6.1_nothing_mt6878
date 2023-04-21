@@ -45,6 +45,24 @@ typedef int64_t s64;
 #define IMG_IPI_DEBUG   4
 
 #define IMG_MODULE_SET 5
+
+// Definition about supported hw engines, aligned with hw_definition.h
+enum IMGSYS_ENG {
+	IMGSYS_WPE_EIS = 0,
+	IMGSYS_WPE_TNR,
+	IMGSYS_WPE_LITE,
+	IMGSYS_ADL_A,
+	IMGSYS_ADL_B,
+	IMGSYS_TRAW,
+	IMGSYS_LTR,
+	IMGSYS_XTR,
+	IMGSYS_DIP,
+	IMGSYS_PQDIP_A,
+	IMGSYS_PQDIP_B,
+	IMGSYS_ME,
+	IMGSYS_MAX,
+};
+
 struct module_init_info {
 	uint64_t	c_wbuf;
 	uint64_t	c_wbuf_dma;
@@ -92,9 +110,11 @@ struct fence_event {
 
 struct private_data {
 	int8_t need_update_desc;
+	int8_t need_flush_tdr;
 	uint32_t buf_fd;
 	uint32_t buf_offset;
 	uint32_t desc_offset;
+	uint32_t tdr_offset;
 } __packed;
 
 struct img_swfrm_info {
@@ -110,11 +130,12 @@ struct img_swfrm_info {
 	void *g_swbuf;
 	void *bw_swbuf;
 	uint64_t pixel_bw;
+	int tunmeta_size;
 	int wait_fence_num;
 	struct fence_event wait_fence_list[KFENCE_MAX];
 	int notify_fence_num;
 	struct fence_event notify_fence_list[KFENCE_MAX];
-	struct private_data priv[2];
+	struct private_data priv[IMGSYS_MAX];
 } __packed;
 
 struct img_addr {

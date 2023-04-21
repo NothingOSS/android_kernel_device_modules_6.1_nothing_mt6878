@@ -15,6 +15,8 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu
 ccflags-y += -I$(DEVICE_MODULES_PATH)/include/soc/mediatek
 
+ccflags-y += -ferror-limit=0
+
 ifneq ($(wildcard $(DEVICE_MODULES_PATH)/include/dt-bindings/memory/mt6983-larb-port.h),)
   subdir-ccflags-y += -DWPE_TF_DUMP_71_1
 else ifneq ($(wildcard $(DEVICE_MODULES_PATH)/include/dt-bindings/memory/mt6879-larb-port.h),)

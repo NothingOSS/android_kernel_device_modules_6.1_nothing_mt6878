@@ -14,6 +14,7 @@
 #include <linux/platform_device.h>
 #include <linux/scatterlist.h>
 #include <uapi/linux/dma-heap.h>
+#include <linux/types.h>
 
 #include "mtk-hcp-aee.h"
 #include "mtk-img-ipi.h"
@@ -49,6 +50,7 @@ enum hcp_id {
 	HCP_IMGSYS_HW_TIMEOUT_ID = HCP_DIP_HW_TIMEOUT_ID,
 	HCP_IMGSYS_SW_TIMEOUT_ID,
 	HCP_DIP_DEQUE_DUMP_ID,
+	HCP_IMGSYS_DEQUE_DUMP_ID = HCP_DIP_DEQUE_DUMP_ID,
 	HCP_IMGSYS_DEQUE_DONE_ID,
 	HCP_IMGSYS_DEINIT_ID,
 	HCP_IMGSYS_IOVA_FDS_ADD_ID,
@@ -80,6 +82,29 @@ enum module_id {
 	MODULE_MAX_ID,
 };
 
+/**
+ * struct flush_buf_info - DMA buffer need to partial flush
+ *
+ *
+ * @id:             hcp id
+ * @len:            share buffer length
+ * @share_buf:      share buffer data
+ */
+struct flush_buf_info {
+	unsigned int fd;
+	unsigned int offset;
+	unsigned int len;
+	unsigned int mode;
+	bool is_tuning;
+	struct dma_buf *dbuf;
+};
+
+struct tuning_meta_info {
+	unsigned int buf_fd;
+	unsigned int offset;
+	struct dma_buf *dbuf;
+	u64 iova_addr;
+};
 /**
  * mtk_hcp_register - register an hcp function
  *
@@ -193,11 +218,24 @@ int mtk_hcp_release_working_buffer(struct platform_device *pdev);
 
 void *mtk_hcp_get_gce_mem_virt(struct platform_device *pdev);
 void *mtk_hcp_get_wpe_mem_virt(struct platform_device *pdev);
+int mtk_hcp_get_wpe_mem_cq_fd(struct platform_device *pdev);
+int mtk_hcp_get_wpe_mem_tdr_fd(struct platform_device *pdev);
+void *mtk_hcp_get_dip_mem_virt(struct platform_device *pdev);
+int mtk_hcp_get_dip_mem_cq_fd(struct platform_device *pdev);
+int mtk_hcp_get_dip_mem_tdr_fd(struct platform_device *pdev);
+void *mtk_hcp_get_traw_mem_virt(struct platform_device *pdev);
+int mtk_hcp_get_traw_mem_cq_fd(struct platform_device *pdev);
+int mtk_hcp_get_traw_mem_tdr_fd(struct platform_device *pdev);
+void *mtk_hcp_get_pqdip_mem_virt(struct platform_device *pdev);
+int mtk_hcp_get_pqdip_mem_cq_fd(struct platform_device *pdev);
+int mtk_hcp_get_pqdip_mem_tdr_fd(struct platform_device *pdev);
+
 void *mtk_hcp_get_hwid_mem_virt(struct platform_device *pdev);
 int mtk_hcp_get_init_info(struct platform_device *pdev, struct img_init_info *info);
 
 int mtk_hcp_get_gce_buffer(struct platform_device *pdev);
 int mtk_hcp_put_gce_buffer(struct platform_device *pdev);
+int mtk_hcp_partial_flush(struct platform_device *pdev, struct flush_buf_info *b_info);
 
 /**
  * mtk_hcp_purge_msg - purge messages
@@ -280,6 +318,11 @@ struct share_buf {
 	struct object_id info;
 };
 
+enum Mem_Mode {
+	imgsys_streaming = 0,
+	imgsys_capture,
+	imgsys_smvr
+};
 
 /**
  * struct mtk_hcp - hcp driver data
@@ -355,6 +398,18 @@ struct mtk_hcp_data {
 	int (*put_gce)(void);
 	void* (*get_hwid_virt)(void);
 	void* (*get_wpe_virt)(void);
+	int (*get_wpe_cq_fd)(void);
+	int (*get_wpe_tdr_fd)(void);
+	void* (*get_dip_virt)(void);
+	int (*get_dip_cq_fd)(void);
+	int (*get_dip_tdr_fd)(void);
+	void* (*get_traw_virt)(void);
+	int (*get_traw_cq_fd)(void);
+	int (*get_traw_tdr_fd)(void);
+	void* (*get_pqdip_virt)(void);
+	int (*get_pqdip_cq_fd)(void);
+	int (*get_pqdip_tdr_fd)(void);
+	int (*partial_flush)(struct mtk_hcp *hcp_dev, struct flush_buf_info *b_info);
 };
 
 #define HCP_RESERVED_MEM  (1)

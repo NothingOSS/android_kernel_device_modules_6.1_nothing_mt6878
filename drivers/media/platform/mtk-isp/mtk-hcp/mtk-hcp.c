@@ -790,7 +790,14 @@ static int hcp_send_internal(struct mtk_hcp *hcp_dev,
 		list_add_tail(&msg->entry, &hcp_dev->chans[module_id]);
 		spin_unlock_irqrestore(&hcp_dev->msglock, flag);
 
-		wake_up(&hcp_dev->poll_wq[module_id]);
+		if (id != HCP_IMGSYS_DEQUE_DONE_ID) {
+			dev_dbg(hcp_dev->dev, "wake up id(%d)\n",
+				id);
+			wake_up(&hcp_dev->poll_wq[module_id]);
+		} else {
+			dev_dbg(hcp_dev->dev, "no wake_up deque_done, id(%d)\n",
+				id);
+		}
 
 		dev_dbg(hcp_dev->dev,
 			"%s frame_no_%d, message(%d)size(%d) send to user space !!!\n",
@@ -993,7 +1000,7 @@ void *mtk_hcp_get_gce_mem_virt(struct platform_device *pdev)
 }
 EXPORT_SYMBOL(mtk_hcp_get_gce_mem_virt);
 
-void*mtk_hcp_get_wpe_mem_virt(struct platform_device *pdev)
+void *mtk_hcp_get_wpe_mem_virt(struct platform_device *pdev)
 {
 	struct mtk_hcp *hcp_dev = platform_get_drvdata(pdev);
 	void *buffer = NULL;
@@ -1010,6 +1017,204 @@ void*mtk_hcp_get_wpe_mem_virt(struct platform_device *pdev)
 	return buffer;
 }
 EXPORT_SYMBOL(mtk_hcp_get_wpe_mem_virt);
+
+int mtk_hcp_get_wpe_mem_cq_fd(struct platform_device *pdev)
+{
+	struct mtk_hcp *hcp_dev = platform_get_drvdata(pdev);
+	int fd = -1;
+
+	if (!hcp_dev->data->get_wpe_cq_fd) {
+		dev_info(&pdev->dev, "%s: not supported\n", __func__);
+		return -1;
+	}
+
+	fd = hcp_dev->data->get_wpe_cq_fd();
+	if (fd < 0)
+		dev_info(&pdev->dev, "%s: wpe cq fd is wrong\n", __func__);
+
+	return fd;
+}
+EXPORT_SYMBOL(mtk_hcp_get_wpe_mem_cq_fd);
+
+int mtk_hcp_get_wpe_mem_tdr_fd(struct platform_device *pdev)
+{
+	struct mtk_hcp *hcp_dev = platform_get_drvdata(pdev);
+	int fd = -1;
+
+	if (!hcp_dev->data->get_wpe_tdr_fd) {
+		dev_info(&pdev->dev, "%s: not supported\n", __func__);
+		return -1;
+	}
+
+	fd = hcp_dev->data->get_wpe_tdr_fd();
+	if (fd < 0)
+		dev_info(&pdev->dev, "%s: wpe tdr fd is wrong\n", __func__);
+
+	return fd;
+}
+EXPORT_SYMBOL(mtk_hcp_get_wpe_mem_tdr_fd);
+
+void *mtk_hcp_get_dip_mem_virt(struct platform_device *pdev)
+{
+	struct mtk_hcp *hcp_dev = platform_get_drvdata(pdev);
+	void *buffer = NULL;
+
+	if (!hcp_dev->data->get_dip_virt) {
+		dev_info(&pdev->dev, "%s: not supported\n", __func__);
+		return NULL;
+	}
+
+	buffer = hcp_dev->data->get_dip_virt();
+	if (!buffer)
+		dev_info(&pdev->dev, "%s: dip cq buffer is null\n", __func__);
+
+	return buffer;
+}
+EXPORT_SYMBOL(mtk_hcp_get_dip_mem_virt);
+
+int mtk_hcp_get_dip_mem_cq_fd(struct platform_device *pdev)
+{
+	struct mtk_hcp *hcp_dev = platform_get_drvdata(pdev);
+	int fd = -1;
+
+	if (!hcp_dev->data->get_dip_cq_fd) {
+		dev_info(&pdev->dev, "%s: not supported\n", __func__);
+		return -1;
+	}
+
+	fd = hcp_dev->data->get_dip_cq_fd();
+	if (fd < 0)
+		dev_info(&pdev->dev, "%s: dip cq fd is wrong\n", __func__);
+
+	return fd;
+}
+EXPORT_SYMBOL(mtk_hcp_get_dip_mem_cq_fd);
+
+int mtk_hcp_get_dip_mem_tdr_fd(struct platform_device *pdev)
+{
+	struct mtk_hcp *hcp_dev = platform_get_drvdata(pdev);
+	int fd = -1;
+
+	if (!hcp_dev->data->get_dip_tdr_fd) {
+		dev_info(&pdev->dev, "%s: not supported\n", __func__);
+		return -1;
+	}
+
+	fd = hcp_dev->data->get_dip_tdr_fd();
+	if (fd < 0)
+		dev_info(&pdev->dev, "%s: dip tdr fd is wrong\n", __func__);
+
+	return fd;
+}
+EXPORT_SYMBOL(mtk_hcp_get_dip_mem_tdr_fd);
+
+void *mtk_hcp_get_traw_mem_virt(struct platform_device *pdev)
+{
+	struct mtk_hcp *hcp_dev = platform_get_drvdata(pdev);
+	void *buffer = NULL;
+
+	if (!hcp_dev->data->get_traw_virt) {
+		dev_info(&pdev->dev, "%s: not supported\n", __func__);
+		return NULL;
+	}
+
+	buffer = hcp_dev->data->get_traw_virt();
+	if (!buffer)
+		dev_info(&pdev->dev, "%s: traw cq buffer is null\n", __func__);
+
+	return buffer;
+}
+EXPORT_SYMBOL(mtk_hcp_get_traw_mem_virt);
+
+int mtk_hcp_get_traw_mem_cq_fd(struct platform_device *pdev)
+{
+	struct mtk_hcp *hcp_dev = platform_get_drvdata(pdev);
+	int fd = -1;
+
+	if (!hcp_dev->data->get_traw_cq_fd) {
+		dev_info(&pdev->dev, "%s: not supported\n", __func__);
+		return -1;
+	}
+
+	fd = hcp_dev->data->get_traw_cq_fd();
+	if (fd < 0)
+		dev_info(&pdev->dev, "%s: traw cq fd is wrong\n", __func__);
+
+	return fd;
+}
+EXPORT_SYMBOL(mtk_hcp_get_traw_mem_cq_fd);
+
+int mtk_hcp_get_traw_mem_tdr_fd(struct platform_device *pdev)
+{
+	struct mtk_hcp *hcp_dev = platform_get_drvdata(pdev);
+	int fd = -1;
+
+	if (!hcp_dev->data->get_traw_tdr_fd) {
+		dev_info(&pdev->dev, "%s: not supported\n", __func__);
+		return -1;
+	}
+
+	fd = hcp_dev->data->get_traw_tdr_fd();
+	if (fd < 0)
+		dev_info(&pdev->dev, "%s: traw tdr fd is wrong\n", __func__);
+
+	return fd;
+}
+EXPORT_SYMBOL(mtk_hcp_get_traw_mem_tdr_fd);
+
+void *mtk_hcp_get_pqdip_mem_virt(struct platform_device *pdev)
+{
+	struct mtk_hcp *hcp_dev = platform_get_drvdata(pdev);
+	void *buffer = NULL;
+
+	if (!hcp_dev->data->get_pqdip_virt) {
+		dev_info(&pdev->dev, "%s: not supported\n", __func__);
+		return NULL;
+	}
+
+	buffer = hcp_dev->data->get_pqdip_virt();
+	if (!buffer)
+		dev_info(&pdev->dev, "%s: pqdip cq buffer is null\n", __func__);
+
+	return buffer;
+}
+EXPORT_SYMBOL(mtk_hcp_get_pqdip_mem_virt);
+
+int mtk_hcp_get_pqdip_mem_cq_fd(struct platform_device *pdev)
+{
+	struct mtk_hcp *hcp_dev = platform_get_drvdata(pdev);
+	int fd = -1;
+
+	if (!hcp_dev->data->get_pqdip_cq_fd) {
+		dev_info(&pdev->dev, "%s: not supported\n", __func__);
+		return -1;
+	}
+
+	fd = hcp_dev->data->get_pqdip_cq_fd();
+	if (fd < 0)
+		dev_info(&pdev->dev, "%s: pqdip cq fd is wrong\n", __func__);
+
+	return fd;
+}
+EXPORT_SYMBOL(mtk_hcp_get_pqdip_mem_cq_fd);
+
+int mtk_hcp_get_pqdip_mem_tdr_fd(struct platform_device *pdev)
+{
+	struct mtk_hcp *hcp_dev = platform_get_drvdata(pdev);
+	int fd = -1;
+
+	if (!hcp_dev->data->get_pqdip_tdr_fd) {
+		dev_info(&pdev->dev, "%s: not supported\n", __func__);
+		return -1;
+	}
+
+	fd = hcp_dev->data->get_pqdip_tdr_fd();
+	if (fd < 0)
+		dev_info(&pdev->dev, "%s: pqdip tdr fd is wrong\n", __func__);
+
+	return fd;
+}
+EXPORT_SYMBOL(mtk_hcp_get_pqdip_mem_tdr_fd);
 
 int mtk_hcp_get_gce_buffer(struct platform_device *pdev)
 {
@@ -1255,8 +1460,8 @@ static long mtk_hcp_ioctl(struct file *file, unsigned int cmd,
 				ret = copy_to_user((void *)data.buffer[index++], &msg->user_obj,
 					(unsigned long)sizeof(struct share_buf));
 
-				// dev_info(hcp_dev->dev, "copy req fd(%d), obj id(%d) to user",
-				//	req_fd, hcp_id);
+				 //dev_info(hcp_dev->dev, "copy to user, index(%d)",
+				 //	index);
 
 				spin_lock_irqsave(&hcp_dev->msglock, flag);
 				list_add_tail(&msg->entry, &hcp_dev->msg_list);
@@ -1544,6 +1749,22 @@ void mtk_hcp_purge_msg(struct platform_device *pdev)
 	spin_unlock_irqrestore(&hcp_dev->msglock, flag);
 }
 EXPORT_SYMBOL(mtk_hcp_purge_msg);
+
+int mtk_hcp_partial_flush(struct platform_device *pdev, struct flush_buf_info *b_info)
+{
+	struct mtk_hcp *hcp_dev = platform_get_drvdata(pdev);
+
+	if ((hcp_dev == NULL)
+		|| (hcp_dev->data == NULL)
+		|| (hcp_dev->data->partial_flush == NULL)
+		|| (b_info == NULL)) {
+		dev_info(&pdev->dev, "%s:not supported\n", __func__);
+		return -1;
+	}
+
+	return hcp_dev->data->partial_flush(hcp_dev, b_info);
+}
+EXPORT_SYMBOL(mtk_hcp_partial_flush);
 
 static int mtk_hcp_probe(struct platform_device *pdev)
 {

@@ -17,4 +17,6 @@
 
 #define DUMP_USING_CMDQ_TH
 
+extern unsigned int nodes_num;
+
 #endif /* _MTK_DIP_SYS_H_ */

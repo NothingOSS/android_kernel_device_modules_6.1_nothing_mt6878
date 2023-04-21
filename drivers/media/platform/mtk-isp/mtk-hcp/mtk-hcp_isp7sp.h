@@ -13,6 +13,7 @@ int isp7sp_allocate_working_buffer(struct mtk_hcp *hcp_dev, unsigned int mode);
 int isp7sp_get_init_info(struct img_init_info *info);
 void *isp7sp_get_gce_virt(void);
 void *isp7sp_get_hwid_virt(void);
+int isp7sp_partial_flush(struct mtk_hcp *hcp_dev, struct flush_buf_info *b_info);
 
 extern struct mtk_hcp_data isp7sp_hcp_data;
 
