@@ -838,7 +838,11 @@ static int imgsensor_stop_streaming(struct adaptor_ctx *ctx)
 	/* notify frame-sync streaming OFF */
 	notify_fsync_mgr_streaming(ctx, 0);
 
+	/* reset variables */
 	memset(&ctx->ae_memento, 0, sizeof(ctx->ae_memento));
+	memset(&ctx->ae_ctrl_dbg_info, 0, sizeof(ctx->ae_ctrl_dbg_info));
+	ctx->sys_ts_update_sof_cnt = 0;
+	ctx->sof_cnt = 0;
 
 	return 0;
 }

@@ -29,6 +29,7 @@
 #define TS_DIFF_TABLE_LEN (((SENSOR_MAX_NUM)*(SENSOR_MAX_NUM-1))/2)
 
 #define FS_TOLERANCE 1000
+#define FS_FL_AUTO_RESTORE_TH 1000
 
 #define ALGO_AUTO_LISTEN_VSYNC 0
 
@@ -106,6 +107,7 @@ enum fs_timestamp_src_type {
 #define FS_ATOMIC_FETCH_OR(n, p)  (atomic_fetch_or((p), (n)))
 #define FS_ATOMIC_FETCH_AND(n, p) (atomic_fetch_and((p), (n)))
 #define FS_ATOMIC_XCHG(n, p)      (atomic_exchange((p), (n)))
+#define FS_ATOMIC_CMPXCHG(n, m, p) (atomic_compare_exchange_weak((p), &(n), (m)))
 #else
 #include <linux/atomic.h>
 #define FS_Atomic_T atomic_t
@@ -115,6 +117,7 @@ enum fs_timestamp_src_type {
 #define FS_ATOMIC_FETCH_OR(n, p)  (atomic_fetch_or((n), (p)))
 #define FS_ATOMIC_FETCH_AND(n, p) (atomic_fetch_and((n), (p)))
 #define FS_ATOMIC_XCHG(n, p)      (atomic_xchg((p), (n)))
+#define FS_ATOMIC_CMPXCHG(n, m, p) (atomic_cmpxchg((p), (n), (m)) == (n))
 #endif // FS_UT
 #endif // SUPPORT_FS_NEW_METHOD
 
@@ -162,6 +165,15 @@ enum fs_timestamp_src_type {
 #define FS_CHECK_BIT(n, p)    (check_bit_atomic((n), (p)))
 #define FS_WRITE_BIT(n, i, p) (write_bit_atomic((n), (i), (p)))
 #define FS_READ_BITS(p)       (FS_ATOMIC_READ((p)))
+
+
+#define FS_RING_BACK(x, base, n)    (((x) + ((base)-((n)%(base)))) & ((base)-1))
+#define FS_RING_FORWARD(x, base, n) (((x) + ((n)%(base))) & ((base)-1))
+
+
+/*  Implement ceiling, floor functions.  */
+#define FS_CEIL(n, d)   (((n) < 0) ? (-((-(n))/(d))) : (n)/(d) + ((n)%(d) != 0))
+#define FS_FLOOR(n, d)  (((n) < 0) ? (-((-(n))/(d))) - ((n)%(d) != 0) : (n)/(d))
 
 
 /* using v4l2_ctrl_request_setup */

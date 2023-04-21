@@ -32,18 +32,43 @@ struct SensorInfo {
 	/* for using devm functions to allocate memory */
 	void *dev;                      // adaptor/i2c client dev (ctx->dev)
 };
-
-
 /******************************************************************************/
 
 
-enum FS_STATUS {
-	FS_NONE = 0,
-	FS_INITIALIZED = 1,
-	FS_WAIT_FOR_SYNCFRAME_START = 2,
-	FS_START_TO_GET_PERFRAME_CTRL = 3,
-	FS_STATUS_UNKNOWN
+/*******************************************************************************
+ * Frame-Sync basic define / enum
+ ******************************************************************************/
+/* The Method for FrameSync standalone (SA) algorithm */
+enum FS_SA_METHOD {
+	FS_SA_ADAPTIVE_MASTER = 0,
+	FS_SA_ASYNC = 2,
 };
+
+
+struct fs_sa_cfg {
+	unsigned int idx;
+	int sa_method;
+	int m_idx;
+	int valid_sync_bits;
+	int async_m_idx;
+	int async_s_bits;
+};
+/*----------------------------------------------------------------------------*/
+
+
+/* info for using callback function */
+enum fsync_ctrl_fl_cmd_id {
+	FSYNC_CTRL_FL_CMD_ID_NONE = 0,
+	FSYNC_CTRL_FL_CMD_ID_EXP_WITH_FL = 1,
+	FSYNC_CTRL_FL_CMD_ID_FL = 2,
+};
+
+
+/* call back function prototype, see adaptor-ctrl.h */
+typedef int (*callback_func_set_fl_info)(void *p_ctx, const unsigned int cmd_id,
+	const void *pf_info, const unsigned int fl_lc,
+	const unsigned int fl_lc_arr[], const unsigned int arr_len);
+/******************************************************************************/
 
 
 /*******************************************************************************
@@ -61,6 +86,7 @@ enum FS_HW_SYNC_GROUP_ID {
 
 	FS_HW_SYNC_GROUP_ID_MAX
 };
+/******************************************************************************/
 
 
 #ifdef FS_UT
@@ -93,8 +119,9 @@ enum FS_SYNC_TYPE {
 
 
 /*******************************************************************************
- * The Feature mode for FrameSync.
+ * FrameSync HDR structure & variables
  ******************************************************************************/
+/* The HDR feature mode for FrameSync */
 enum FS_HDR_FT_MODE {
 	FS_HDR_FT_MODE_NORMAL = 0,
 	FS_HDR_FT_MODE_STG_HDR = 1,
@@ -107,39 +134,9 @@ enum FS_HDR_FT_MODE {
 	FS_HDR_FT_MODE_N_1_KEEP = 1 << 4,
 	FS_HDR_FT_MODE_N_1_OFF = 1 << 5,
 };
-/******************************************************************************/
+/*----------------------------------------------------------------------------*/
 
 
-/*******************************************************************************
- * The Method for FrameSync standalone (SA) algorithm.
- ******************************************************************************/
-enum FS_SA_METHOD {
-	FS_SA_ADAPTIVE_MASTER = 0,
-	FS_SA_ASYNC = 2,
-};
-
-
-struct fs_sa_cfg {
-	unsigned int idx;
-	int sa_method;
-	int m_idx;
-	int valid_sync_bits;
-	int async_m_idx;
-	int async_s_bits;
-};
-/******************************************************************************/
-
-
-/* callback function pointer for setting framelength */
-/* see adaptor-ctrl.h */
-typedef int (*callback_func_set_fl_info)(void *p_ctx, const unsigned int cmd_id,
-	const void *pf_info, const unsigned int fl_lc,
-	const unsigned int fl_lc_arr[], const unsigned int arr_len);
-
-
-/*******************************************************************************
- * FrameSync HDR structure & variables
- ******************************************************************************/
 enum FS_HDR_EXP {
 	FS_HDR_NONE = -1,
 	FS_HDR_LE = 0,
@@ -250,6 +247,19 @@ struct fs_seamless_st {
 };
 
 
+struct fs_fl_restore_info_st {
+	/* debug variables */
+	unsigned int magic_num;
+	int req_id;
+
+	/* restore FL info */
+	unsigned int restored_fl_lc;
+	/* ==> for LB-MF sensor */
+	unsigned int restored_fl_lc_arr[FS_HDR_MAX];
+};
+/******************************************************************************/
+
+
 
 
 
@@ -290,6 +300,9 @@ struct FrameSync {
 	/* frame sync set shutter */
 	void (*fs_set_shutter)(struct fs_perframe_st *pf_ctrl);
 	void (*fs_update_shutter)(struct fs_perframe_st *pf_ctrl);
+	void (*fs_update_frame_length)(const unsigned int ident,
+		const unsigned int fl_lc,
+		const unsigned int fl_lc_arr[], const unsigned int arr_len);
 
 
 	/* for cam mux switch and sensor streaming on before setup cam mux */
@@ -372,6 +385,8 @@ struct FrameSync {
 
 	void (*fs_get_fl_record_info)(const unsigned int ident,
 		unsigned int *p_target_min_fl_us, unsigned int *p_out_fl_us);
+
+	void (*fs_clear_fl_restore_status_if_needed)(const unsigned int ident);
 };
 
 
@@ -387,6 +402,9 @@ unsigned int fs_get_reg_sensor_inf_idx(const unsigned int idx);
 
 void fs_setup_sensor_info_st_by_fs_streaming_st(
 	const struct fs_streaming_st *streaming_info, struct SensorInfo *info);
+
+void fs_setup_fl_restore_status(const unsigned int idx,
+	const struct fs_fl_restore_info_st *p_fl_restore_info);
 
 
 /******************************************************************************/

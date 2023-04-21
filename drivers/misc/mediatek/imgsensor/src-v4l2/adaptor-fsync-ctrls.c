@@ -50,13 +50,6 @@
 #define WAIT_SENSOR_SUPPORT_LBMF
 
 
-enum fsync_mgr_set_fl_cmd_type {
-	FSYNC_MGR_SET_FL_CMD_TYPE_NONE = 0,
-	FSYNC_MGR_SET_FL_CMD_TYPE_EXP_WITH_FL = 1,
-	FSYNC_MGR_SET_FL_CMD_TYPE_FL = 2,
-};
-
-
 /*******************************************************************************
  * fsync mgr variables
  ******************************************************************************/
@@ -67,9 +60,18 @@ static atomic_t long_exp_mode_bits = ATOMIC_INIT(0);
 /*******************************************************************************
  * fsync mgr static functions
  ******************************************************************************/
-static void fsync_mgr_reset_fsync_related_info(struct adaptor_ctx *ctx)
+static void fsync_mgr_clear_output_info(struct adaptor_ctx *ctx)
 {
 	ctx->fsync_out_fl = 0;
+	memset(ctx->fsync_out_fl_arr, 0,
+		(sizeof(unsigned int) * IMGSENSOR_STAGGER_EXPOSURE_CNT));
+	ctx->needs_fsync_assign_fl = 0;
+}
+
+
+static void fsync_mgr_reset_fsync_related_info(struct adaptor_ctx *ctx)
+{
+	fsync_mgr_clear_output_info(ctx);
 	atomic_fetch_and((~(1UL << ctx->idx)), &long_exp_mode_bits);
 }
 
@@ -204,9 +206,17 @@ static void fsync_mgr_chk_long_exposure(struct adaptor_ctx *ctx,
 	}
 
 	/* has_long_exp > 0 => set bits ; has_long_exp == 0 => clear bits */
-	if (has_long_exp != 0)
+	if (has_long_exp != 0) {
 		atomic_fetch_or((1UL << ctx->idx), &long_exp_mode_bits);
-	else
+
+		/* clear FL restore info if needed immediately */
+		/* due to flow will return to driver not into Frame-Sync */
+		ctx->fsync_mgr->fs_clear_fl_restore_status_if_needed(ctx->idx);
+
+		/* clear fsync output info */
+		/* due to flow will return to driver not into Frame-Sync */
+		fsync_mgr_clear_output_info(ctx);
+	} else
 		atomic_fetch_and((~(1UL << ctx->idx)), &long_exp_mode_bits);
 
 #if !defined(REDUCE_FSYNC_CTRLS_LOG)
@@ -436,8 +446,6 @@ int cb_func_fsync_mgr_set_fl_info(void *p_ctx, const unsigned int cmd_id,
 	const unsigned int fl_lc_arr[], const unsigned int arr_len)
 {
 	struct adaptor_ctx *ctx;
-	enum ACDK_SENSOR_FEATURE_ENUM cmd = 0;
-	// int cmd_type = FSYNC_MGR_SET_FL_CMD_TYPE_NONE;
 	const unsigned int cnt = min_t(u32, arr_len, FS_HDR_MAX);
 	unsigned int i;
 	int ret = 0;
@@ -500,33 +508,29 @@ int cb_func_fsync_mgr_set_fl_info(void *p_ctx, const unsigned int cmd_id,
 #endif
 
 
-	cmd = (enum ACDK_SENSOR_FEATURE_ENUM)cmd_id;
-	switch (cmd) {
-	case SENSOR_FEATURE_SET_MULTI_SHUTTER_FRAME_TIME:
+	switch (cmd_id) {
+	case FSYNC_CTRL_FL_CMD_ID_EXP_WITH_FL:
 	{
-		// cmd_type = FSYNC_MGR_SET_FL_CMD_TYPE_EXP_WITH_FL;
-
+		// cmd_type = SENSOR_FEATURE_SET_MULTI_SHUTTER_FRAME_TIME;
 		/* !!! set exp with fl & update fl at set shutter func !!! */
 	}
 		break;
-	case SENSOR_FEATURE_SET_FRAMELENGTH:
+	case FSYNC_CTRL_FL_CMD_ID_FL:
 	{
-		struct fs_perframe_st pf_ctrl;
+		// struct fs_perframe_st *p_pf_ctrl;
+
+		// cmd_type = SENSOR_FEATURE_SET_FRAMELENGTH;
+		// p_pf_ctrl = (struct fs_perframe_st *)pf_info;
 
 		/* set frame length */
-		// cmd_type = FSYNC_MGR_SET_FL_CMD_TYPE_FL;
 		fsync_mgr_s_frame_length(ctx);
 
-		/* copy for init/setup pf ctrl structure */
-		memcpy(&pf_ctrl, pf_info, sizeof(pf_ctrl));
-
 		/* update sensor current fl to Frame-Sync */
-		pf_ctrl.out_fl_lc = ctx->subctx.frame_length;
-		ctx->fsync_mgr->fs_update_shutter(&pf_ctrl);
+		ctx->fsync_mgr->fs_update_frame_length(ctx->idx,
+			ctx->fsync_out_fl, ctx->fsync_out_fl_arr, FS_HDR_MAX);
 	}
 		break;
 	default:
-		// cmd_type = FSYNC_MGR_SET_FL_CMD_TYPE_NONE;
 		FSYNC_MGR_LOGI(ctx,
 			"ERROR: sidx:%d, get unknown cmd_id:%u, do nothing\n",
 			ctx->idx, cmd_id);
@@ -645,7 +649,7 @@ void fsync_mgr_dump_fs_perframe_st(struct adaptor_ctx *ctx,
 	const struct fs_perframe_st *pf_ctrl, const unsigned int mode_id,
 	const unsigned int mode_crop_height,
 	const unsigned int mode_linetime_readout_ns,
-	const int do_set_exp_with_fl, const char *caller)
+	const char *caller)
 {
 	FSYNC_MGR_LOGD(ctx,
 		"[%s] sof_cnt:%u, ID:%#x(sidx:%u), req_id:%d, (a:%u/m:%u(%u/%u)), fl(%u, %u/%u/%u/%u/%u), exp(%u, %u/%u/%u/%u/%u), rout_l:%u, margin:%u(r:%u), min_fl_lc:%u, flk:%u, lineT:%u(ns)(pclk:%u/ll:%u), rout_T(us):%u(mode_id:%u/height:%u/linetime_readout_ns:%u), set_exp_with_fl(%u => %u/%u, %u/%u/%u/%u/%u / %u/%u/%u/%u/%u), cmd_id:%d\n",
@@ -682,7 +686,7 @@ void fsync_mgr_dump_fs_perframe_st(struct adaptor_ctx *ctx,
 		mode_id,
 		mode_crop_height,
 		mode_linetime_readout_ns,
-		do_set_exp_with_fl,
+		ctx->needs_fsync_assign_fl,
 		ctx->fsync_out_fl,
 		ctx->subctx.frame_length,
 		ctx->fsync_out_fl_arr[0],
@@ -706,7 +710,7 @@ void fsync_mgr_dump_fs_seamless_st(struct adaptor_ctx *ctx,
 	const struct fs_seamless_st *seamless_info, const unsigned int mode_id,
 	const unsigned int mode_crop_height,
 	const unsigned int mode_linetime_readout_ns,
-	const int do_set_exp_with_fl, const char *caller)
+	const char *caller)
 {
 	FSYNC_MGR_LOGI(ctx,
 		"[%s] sidx:%d, orig_readout_time_us:%u\n",
@@ -715,8 +719,7 @@ void fsync_mgr_dump_fs_seamless_st(struct adaptor_ctx *ctx,
 		seamless_info->orig_readout_time_us);
 
 	fsync_mgr_dump_fs_perframe_st(ctx, &seamless_info->seamless_pf_ctrl,
-		mode_id, mode_crop_height, mode_linetime_readout_ns,
-		do_set_exp_with_fl, caller);
+		mode_id, mode_crop_height, mode_linetime_readout_ns, caller);
 }
 
 static void fsync_mgr_setup_basic_fs_perframe_st(struct adaptor_ctx *ctx,
@@ -746,11 +749,11 @@ static void fsync_mgr_setup_basic_fs_perframe_st(struct adaptor_ctx *ctx,
 }
 
 static void fsync_mgr_setup_cb_func_cmd_id(struct adaptor_ctx *ctx,
-	struct fs_perframe_st *pf_ctrl, const unsigned int do_set_exp_with_fl)
+	struct fs_perframe_st *pf_ctrl)
 {
-	pf_ctrl->cmd_id = (do_set_exp_with_fl)
-		? (unsigned int)SENSOR_FEATURE_SET_MULTI_SHUTTER_FRAME_TIME
-		: (unsigned int)SENSOR_FEATURE_SET_FRAMELENGTH;
+	pf_ctrl->cmd_id = (ctx->needs_fsync_assign_fl)
+		? (unsigned int)FSYNC_CTRL_FL_CMD_ID_EXP_WITH_FL
+		: (unsigned int)FSYNC_CTRL_FL_CMD_ID_FL;
 }
 
 static void fsync_mgr_prepare_mode_related_info(struct adaptor_ctx *ctx,
@@ -779,21 +782,25 @@ static void fsync_mgr_prepare_mode_related_info(struct adaptor_ctx *ctx,
 	}
 }
 
-int chk_s_exp_with_fl_by_fsync_mgr(struct adaptor_ctx *ctx,
+int chk_if_need_to_use_s_multi_exp_fl_by_fsync_mgr(struct adaptor_ctx *ctx,
 	u64 *ae_exp_arr, u32 ae_exp_cnt)
 {
 	int en_fsync = 0;
-	int ret = 0;
 
 	/* not expected case */
 	if (unlikely(ctx->fsync_mgr == NULL)) {
+		ctx->needs_fsync_assign_fl = 0;
 		FSYNC_MGR_LOGI(ctx,
-			"ERROR: sidx:%d, ctx->fsync_mgr:%p is NULL, return 0\n",
-			ctx->idx, ctx->fsync_mgr);
-		return 0;
+			"ERROR: sidx:%d, ctx->fsync_mgr:%p is NULL, return:%d\n",
+			ctx->idx, ctx->fsync_mgr, ctx->needs_fsync_assign_fl);
+		return ctx->needs_fsync_assign_fl;
+	}
+	/* check situation */
+	if (unlikely(ctx->is_streaming == 0)) {
+		ctx->needs_fsync_assign_fl = 0;
+		return ctx->needs_fsync_assign_fl;
 	}
 
-	/* check situation */
 	en_fsync = (ctx->fsync_mgr->fs_is_set_sync(ctx->idx));
 	if (en_fsync) {
 		fsync_mgr_chk_long_exposure(ctx, ae_exp_arr, ae_exp_cnt);
@@ -807,9 +814,9 @@ int chk_s_exp_with_fl_by_fsync_mgr(struct adaptor_ctx *ctx,
 	}
 
 	/* get result from above situation check */
-	ret = en_fsync;
+	ctx->needs_fsync_assign_fl = en_fsync;
 
-	return ret;
+	return ctx->needs_fsync_assign_fl;
 }
 
 void notify_fsync_mgr_update_tg(struct adaptor_ctx *ctx, const u64 val)
@@ -930,6 +937,8 @@ void notify_fsync_mgr_seamless_switch(struct adaptor_ctx *ctx,
 	unsigned int ae_exp_cnt = 0;
 	unsigned int i;
 
+	fsync_mgr_clear_output_info(ctx);
+
 	/* not expected case */
 	if (unlikely(ctx->fsync_mgr == NULL)) {
 		FSYNC_MGR_LOGI(ctx,
@@ -972,7 +981,7 @@ void notify_fsync_mgr_seamless_switch(struct adaptor_ctx *ctx,
 #ifndef REDUCE_FSYNC_CTRLS_DBG_LOG
 	fsync_mgr_dump_fs_seamless_st(ctx, &seamless_info,
 		target_scenario_id, mode_crop_height, mode_linetime_readout_ns,
-		-1, __func__);
+		__func__);
 #endif
 }
 
@@ -1022,8 +1031,7 @@ void notify_fsync_mgr_subsample_tag(struct adaptor_ctx *ctx, u64 sub_tag)
 }
 
 void notify_fsync_mgr_set_shutter(struct adaptor_ctx *ctx,
-	u64 *ae_exp_arr, u32 ae_exp_cnt,
-	int do_set_exp_with_fl)
+	u64 *ae_exp_arr, u32 ae_exp_cnt)
 {
 	struct fs_perframe_st pf_ctrl;
 	const unsigned int mode_id = ctx->subctx.current_scenario_id;
@@ -1038,10 +1046,10 @@ void notify_fsync_mgr_set_shutter(struct adaptor_ctx *ctx,
 	}
 	if (unlikely(atomic_read(&long_exp_mode_bits) != 0)) {
 		FSYNC_MGR_LOGI(ctx,
-			"NOTICE: sidx:%d, detect enable sync sensor in long exp mode, long_exp_mode_bits:%#x => return [do_set_exp_with_fl:%d]\n",
+			"NOTICE: sidx:%d, detect enable sync sensor in long exp mode, long_exp_mode_bits:%#x => return [needs_fsync_assign_fl:%d]\n",
 			ctx->idx,
 			atomic_read(&long_exp_mode_bits),
-			do_set_exp_with_fl);
+			ctx->needs_fsync_assign_fl);
 		return;
 	}
 	/* prepare variable */
@@ -1057,11 +1065,11 @@ void notify_fsync_mgr_set_shutter(struct adaptor_ctx *ctx,
 
 	/* setup cmd id for call back function using */
 	/* !!! MUST call this after setup exp data !!! */
-	fsync_mgr_setup_cb_func_cmd_id(ctx, &pf_ctrl, do_set_exp_with_fl);
+	fsync_mgr_setup_cb_func_cmd_id(ctx, &pf_ctrl);
 
 	/* call frame-sync fs set shutter */
 	ctx->fsync_mgr->fs_set_shutter(&pf_ctrl);
-	if (do_set_exp_with_fl) {
+	if (ctx->needs_fsync_assign_fl) {
 		/* Enable frame-sync && using SW sync (SA algo) solution */
 		/* set exp with fl (ctx->fsync_out_fl) */
 		fsync_mgr_s_multi_shutter_frame_length(ctx,
@@ -1078,8 +1086,7 @@ void notify_fsync_mgr_set_shutter(struct adaptor_ctx *ctx,
 
 // #ifndef REDUCE_FSYNC_CTRLS_DBG_LOG
 	fsync_mgr_dump_fs_perframe_st(ctx, &pf_ctrl,
-		mode_id, mode_crop_height, mode_linetime_readout_ns,
-		do_set_exp_with_fl, __func__);
+		mode_id, mode_crop_height, mode_linetime_readout_ns, __func__);
 // #endif
 }
 
@@ -1188,6 +1195,20 @@ void notify_fsync_mgr_g_fl_record_info(struct adaptor_ctx *ctx,
 
 	ctx->fsync_mgr->fs_get_fl_record_info(ctx->idx,
 		&p_fl_info->target_min_fl_us, &p_fl_info->out_fl_us);
+}
+
+
+void notify_fsync_mgr_clear_fl_restore_info_if_needed(struct adaptor_ctx *ctx)
+{
+	/* not expected case */
+	if (unlikely(ctx->fsync_mgr == NULL)) {
+		FSYNC_MGR_LOGI(ctx,
+			"ERROR: sidx:%d, ctx->fsync_mgr:%p is NULL, return\n",
+			ctx->idx, ctx->fsync_mgr);
+		return;
+	}
+
+	ctx->fsync_mgr->fs_clear_fl_restore_status_if_needed(ctx->idx);
 }
 
 

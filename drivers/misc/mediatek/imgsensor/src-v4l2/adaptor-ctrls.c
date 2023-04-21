@@ -64,15 +64,46 @@ static int g_pd_pixel_region(struct adaptor_ctx *ctx, struct v4l2_ctrl *ctrl)
 }
 #endif
 
+static void calc_ae_ctrl_dbg_info_ts_diff(struct adaptor_ctx *ctx, const u64 curr_sys_ts,
+	u32 *p_delta_ae_ctrl_sof_cnt_ms, u32 *p_delta_curr_ae_ctrl_ms)
+{
+	const struct adaptor_ae_ctrl_dbg_info *ae_ctrl_dbg_info = &ctx->ae_ctrl_dbg_info;
+
+	*p_delta_ae_ctrl_sof_cnt_ms =
+		(ae_ctrl_dbg_info->sys_ts_update_sof_cnt_at_g_ae_ctrl != 0)
+		? ((unsigned int)(ae_ctrl_dbg_info->sys_ts_g_ae_ctrl
+				- ae_ctrl_dbg_info->sys_ts_update_sof_cnt_at_g_ae_ctrl)
+			/ 1000000)
+		: 0;
+
+	*p_delta_curr_ae_ctrl_ms =
+		(unsigned int)(curr_sys_ts - ae_ctrl_dbg_info->sys_ts_g_ae_ctrl) / 1000000;
+}
+
+static inline void setup_ae_ctrl_dbg_info(struct adaptor_ctx *ctx)
+{
+	/* record system timestamp info at get ae ctrl */
+	ctx->ae_ctrl_dbg_info.sys_ts_g_ae_ctrl = ktime_get_boottime_ns();
+	ctx->ae_ctrl_dbg_info.sys_ts_update_sof_cnt_at_g_ae_ctrl =
+		ctx->sys_ts_update_sof_cnt;
+}
+
 static void dump_perframe_info(struct adaptor_ctx *ctx, struct mtk_hdr_ae *ae_ctrl)
 {
+	const unsigned long long curr_sys_ts = ktime_get_boottime_ns();
+	unsigned int delta_ae_ctrl_sof_cnt_ms = 0, delta_curr_ae_ctrl_ms = 0;
+
+	calc_ae_ctrl_dbg_info_ts_diff(ctx, curr_sys_ts,
+		&delta_ae_ctrl_sof_cnt_ms, &delta_curr_ae_ctrl_ms);
+
 	dev_info(ctx->dev,
-		"[%s][%s] sensor_idx %d, req id %d, sof_cnt:%u, exposure[LLLE->SSSE] 64bit %llu %llu %llu %llu %llu ana_gain[LLLE->SSSE] %d %d %d %d %d, w(%llu/%llu/%llu/%llu/%llu,%d/%d/%d/%d/%d) sub_tag:%u, fl:%u, min_fl:%u, flick_en:%u, mode:(line_time:%u, margin:%u, scen:%u; STG:(readout_l:%u, read_margin:%u, ext_fl:%u, fast_mode:%u)), fl_lut:%u/%u/%u\n",
+		"[%s][%s][inf:%d] idx:%d, sof_cnt:%u, req_id:%d, [LLLE->SSSE] 64bit s(%llu/%llu/%llu/%llu/%llu) g(%d/%d/%d/%d/%d), w(%llu/%llu/%llu/%llu/%llu,%d/%d/%d/%d/%d) sub_tag:%u, ctx:(fl:(%u,lut:%u/%u/%u), min_fl:%u, flick_en:%u, fsync(%d):(%u,%u/%u/%u/%u/%u), mode:(line_time:%u, margin:%u, scen:%u; STG:(rout_l:%u, r_margin:%u, ext_fl:%u)), fast_mode:%u), sys_ts:(%llu->%llu/%llu(+%u)/%llu(+%u))\n",
 		ctx->sd.name,
 		(ctx->subdrv) ? (ctx->subdrv->name) : "null",
+		ctx->seninf_idx,
 		ctx->idx,
-		ae_ctrl->req_id,
 		ctx->sof_cnt,
+		ae_ctrl->req_id,
 		ae_ctrl->exposure.le_exposure,
 		ae_ctrl->exposure.me_exposure,
 		ae_ctrl->exposure.se_exposure,
@@ -95,8 +126,18 @@ static void dump_perframe_info(struct adaptor_ctx *ctx, struct mtk_hdr_ae *ae_ct
 		ae_ctrl->w_gain.ssse_gain,
 		ae_ctrl->subsample_tags,
 		ctx->subctx.frame_length,
+		ctx->subctx.frame_length_in_lut[0],
+		ctx->subctx.frame_length_in_lut[1],
+		ctx->subctx.frame_length_in_lut[2],
 		ctx->subctx.min_frame_length,
 		ctx->subctx.autoflicker_en,
+		ctx->needs_fsync_assign_fl,
+		ctx->fsync_out_fl,
+		ctx->fsync_out_fl_arr[0],
+		ctx->fsync_out_fl_arr[1],
+		ctx->fsync_out_fl_arr[2],
+		ctx->fsync_out_fl_arr[3],
+		ctx->fsync_out_fl_arr[4],
 		CALC_LINE_TIME_IN_NS(ctx->subctx.pclk, ctx->subctx.line_length),
 		ctx->subctx.margin,
 		ctx->subctx.current_scenario_id,
@@ -104,29 +145,30 @@ static void dump_perframe_info(struct adaptor_ctx *ctx, struct mtk_hdr_ae *ae_ct
 		ctx->subctx.read_margin,
 		ctx->subctx.extend_frame_length_en,
 		ctx->subctx.fast_mode_on,
-		ctx->subctx.frame_length_in_lut[0],
-		ctx->subctx.frame_length_in_lut[1],
-		ctx->subctx.frame_length_in_lut[2]);
+		ctx->ae_ctrl_dbg_info.sys_ts_update_sof_cnt_at_g_ae_ctrl,
+		ctx->sys_ts_update_sof_cnt,
+		ctx->ae_ctrl_dbg_info.sys_ts_g_ae_ctrl,
+		delta_ae_ctrl_sof_cnt_ms,
+		curr_sys_ts,
+		delta_curr_ae_ctrl_ms);
 }
 
 static int set_hdr_exposure_tri(struct adaptor_ctx *ctx, struct mtk_hdr_exposure *info)
 {
 	union feature_para para;
 	u32 len = 0;
-	int ret = 0;
 
 	para.u64[0] = info->le_exposure;
 	para.u64[1] = info->me_exposure;
 	para.u64[2] = info->se_exposure;
 
-	ret = chk_s_exp_with_fl_by_fsync_mgr(ctx, info->arr, 3);
-	if (!ret) {
+	if (!chk_if_need_to_use_s_multi_exp_fl_by_fsync_mgr(ctx, info->arr, 3)) {
 		/* NOT enable frame-sync || using HW sync solution */
 		subdrv_call(ctx, feature_control,
 			SENSOR_FEATURE_SET_HDR_TRI_SHUTTER,
 			para.u8, &len);
 	}
-	notify_fsync_mgr_set_shutter(ctx, info->arr, 3, ret);
+	notify_fsync_mgr_set_shutter(ctx, info->arr, 3);
 
 	return 0;
 }
@@ -201,19 +243,17 @@ static int set_hdr_exposure_dual(struct adaptor_ctx *ctx, struct mtk_hdr_exposur
 {
 	union feature_para para;
 	u32 len = 0;
-	int ret = 0;
 
 	para.u64[0] = info->le_exposure;
 	para.u64[1] = info->me_exposure; // temporailly workaround, 2 exp should be NE/SE
 
-	ret = chk_s_exp_with_fl_by_fsync_mgr(ctx, info->arr, 2);
-	if (!ret) {
+	if (!chk_if_need_to_use_s_multi_exp_fl_by_fsync_mgr(ctx, info->arr, 2)) {
 		/* NOT enable frame-sync || using HW sync solution */
 		subdrv_call(ctx, feature_control,
 			SENSOR_FEATURE_SET_HDR_SHUTTER,
 			para.u8, &len);
 	}
-	notify_fsync_mgr_set_shutter(ctx, info->arr, 2, ret);
+	notify_fsync_mgr_set_shutter(ctx, info->arr, 2);
 
 	return 0;
 }
@@ -256,7 +296,6 @@ static int do_set_dcg_ae_ctrl(struct adaptor_ctx *ctx,
 	enum IMGSENSOR_DCG_GAIN_MODE dcg_gain_mode = mode_info->dcg_info.dcg_gain_mode;
 	enum IMGSENSOR_DCG_GAIN_BASE dcg_gain_base = mode_info->dcg_info.dcg_gain_base;
 	// enum IMGSENSOR_DCG_MODE dcg_mode = mode_info->dcg_info.dcg_mode;
-	int ret = 0;
 	u64 fsync_exp[1] = {0}; /* needed by fsync set_shutter */
 	u32 again_exp[IMGSENSOR_STAGGER_EXPOSURE_CNT] = {0};
 	u32 dgain_exp[IMGSENSOR_STAGGER_EXPOSURE_CNT] = {0};
@@ -264,6 +303,8 @@ static int do_set_dcg_ae_ctrl(struct adaptor_ctx *ctx,
 #if IMGSENSOR_LOG_MORE
 	dev_info(ctx->dev, "[%s]+\n", __func__);
 #endif
+
+	setup_ae_ctrl_dbg_info(ctx);
 
 	/* update ctx req id */
 	ctx->req_id = ae_ctrl->req_id;
@@ -309,15 +350,15 @@ static int do_set_dcg_ae_ctrl(struct adaptor_ctx *ctx,
 		{
 			ADAPTOR_SYSTRACE_BEGIN("imgsensor::set_exposure");
 			fsync_exp[0] = ae_ctrl->exposure.le_exposure;
-			ret = chk_s_exp_with_fl_by_fsync_mgr(ctx, fsync_exp, 1);
-			if (!ret) {
+			if (!chk_if_need_to_use_s_multi_exp_fl_by_fsync_mgr(
+					ctx, fsync_exp, 1)) {
 				/* NOT enable frame-sync || using HW sync solution */
 				para.u64[0] = ae_ctrl->exposure.le_exposure;
 				subdrv_call(ctx, feature_control,
 							SENSOR_FEATURE_SET_ESHUTTER,
 							para.u8, &len);
 			}
-			notify_fsync_mgr_set_shutter(ctx, fsync_exp, 1, ret);
+			notify_fsync_mgr_set_shutter(ctx, fsync_exp, 1);
 			ADAPTOR_SYSTRACE_END();
 
 			ADAPTOR_SYSTRACE_BEGIN("imgsensor::set_gain_tri");
@@ -329,15 +370,15 @@ static int do_set_dcg_ae_ctrl(struct adaptor_ctx *ctx,
 		{
 			ADAPTOR_SYSTRACE_BEGIN("imgsensor::set_exposure");
 			fsync_exp[0] = ae_ctrl->exposure.le_exposure;
-			ret = chk_s_exp_with_fl_by_fsync_mgr(ctx, fsync_exp, 1);
-			if (!ret) {
+			if (!chk_if_need_to_use_s_multi_exp_fl_by_fsync_mgr(
+					ctx, fsync_exp, 1)) {
 				/* NOT enable frame-sync || using HW sync solution */
 				para.u64[0] = ae_ctrl->exposure.le_exposure;
 				subdrv_call(ctx, feature_control,
 							SENSOR_FEATURE_SET_ESHUTTER,
 							para.u8, &len);
 			}
-			notify_fsync_mgr_set_shutter(ctx, fsync_exp, 1, ret);
+			notify_fsync_mgr_set_shutter(ctx, fsync_exp, 1);
 			ADAPTOR_SYSTRACE_END();
 
 			ADAPTOR_SYSTRACE_BEGIN("imgsensor::set_gain_dual");
@@ -364,15 +405,15 @@ static int do_set_dcg_ae_ctrl(struct adaptor_ctx *ctx,
 
 		ADAPTOR_SYSTRACE_BEGIN("imgsensor::set_exposure");
 		fsync_exp[0] = ae_ctrl->exposure.le_exposure;
-		ret = chk_s_exp_with_fl_by_fsync_mgr(ctx, fsync_exp, 1);
-		if (!ret) {
+		if (!chk_if_need_to_use_s_multi_exp_fl_by_fsync_mgr(
+				ctx, fsync_exp, 1)) {
 			/* NOT enable frame-sync || using HW sync solution */
 			para.u64[0] = ae_ctrl->exposure.le_exposure;
 			subdrv_call(ctx, feature_control,
 						SENSOR_FEATURE_SET_ESHUTTER,
 						para.u8, &len);
 		}
-		notify_fsync_mgr_set_shutter(ctx, fsync_exp, 1, ret);
+		notify_fsync_mgr_set_shutter(ctx, fsync_exp, 1);
 		ADAPTOR_SYSTRACE_END();
 
 		get_dispatch_gain(ctx, dcg_gain, again_exp, dgain_exp);
@@ -430,6 +471,8 @@ static int do_set_ae_ctrl(struct adaptor_ctx *ctx,
 	dev_info(ctx->dev, "[%s]+\n", __func__);
 #endif
 
+	setup_ae_ctrl_dbg_info(ctx);
+
 	/* update ctx req id */
 	ctx->req_id = ae_ctrl->req_id;
 
@@ -472,7 +515,6 @@ static int do_set_ae_ctrl(struct adaptor_ctx *ctx,
 	default:
 	{
 		u64 fsync_exp[1] = {0}; /* needed by fsync set_shutter */
-		int ret = 0;
 		u32 again_exp[IMGSENSOR_STAGGER_EXPOSURE_CNT] = {0};
 		u32 dgain_exp[IMGSENSOR_STAGGER_EXPOSURE_CNT] = {0};
 
@@ -484,15 +526,15 @@ static int do_set_ae_ctrl(struct adaptor_ctx *ctx,
 
 		ADAPTOR_SYSTRACE_BEGIN("imgsensor::set_exposure");
 		fsync_exp[0] = ae_ctrl->exposure.le_exposure;
-		ret = chk_s_exp_with_fl_by_fsync_mgr(ctx, fsync_exp, 1);
-		if (!ret) {
+		if (!chk_if_need_to_use_s_multi_exp_fl_by_fsync_mgr(
+				ctx, fsync_exp, 1)) {
 			/* NOT enable frame-sync || using HW sync solution */
 			para.u64[0] = ae_ctrl->exposure.le_exposure;
 			subdrv_call(ctx, feature_control,
 						SENSOR_FEATURE_SET_ESHUTTER,
 						para.u8, &len);
 		}
-		notify_fsync_mgr_set_shutter(ctx, fsync_exp, 1, ret);
+		notify_fsync_mgr_set_shutter(ctx, fsync_exp, 1);
 		ADAPTOR_SYSTRACE_END();
 
 		get_dispatch_gain(ctx, ae_ctrl->gain.le_gain, again_exp, dgain_exp);
@@ -1131,6 +1173,7 @@ static int imgsensor_set_ctrl(struct v4l2_ctrl *ctrl)
 
 	switch (ctrl->id) {
 	case V4L2_CID_UPDATE_SOF_CNT:
+		ctx->sys_ts_update_sof_cnt = ktime_get_boottime_ns();
 		subdrv_call(ctx, update_sof_cnt, (u64)ctrl->val);
 		notify_fsync_mgr_update_sof_cnt(ctx, (u32)ctrl->val);
 		break;
@@ -1160,16 +1203,15 @@ static int imgsensor_set_ctrl(struct v4l2_ctrl *ctrl)
 			u64 fsync_exp[1] = {0}; /* needed by fsync set_shutter */
 
 			para.u64[0] = ctrl->val;
-
 			fsync_exp[0] = (u32)para.u64[0];
-			ret = chk_s_exp_with_fl_by_fsync_mgr(ctx, fsync_exp, 1);
-			if (!ret) {
+			if (!chk_if_need_to_use_s_multi_exp_fl_by_fsync_mgr(
+					ctx, fsync_exp, 1)) {
 				/* NOT enable frame-sync || using HW sync solution */
 				subdrv_call(ctx, feature_control,
 					SENSOR_FEATURE_SET_ESHUTTER,
 					para.u8, &len);
 			}
-			notify_fsync_mgr_set_shutter(ctx, fsync_exp, 1, ret);
+			notify_fsync_mgr_set_shutter(ctx, fsync_exp, 1);
 		}
 		break;
 	case V4L2_CID_MTK_STAGGER_AE_CTRL:
@@ -1192,14 +1234,14 @@ static int imgsensor_set_ctrl(struct v4l2_ctrl *ctrl)
 				para.u64[0] = para.u64[0] * 1000;
 
 			fsync_exp[0] = (u32)para.u64[0];
-			ret = chk_s_exp_with_fl_by_fsync_mgr(ctx, fsync_exp, 1);
-			if (!ret) {
+			if (!chk_if_need_to_use_s_multi_exp_fl_by_fsync_mgr(
+					ctx, fsync_exp, 1)) {
 				/* NOT enable frame-sync || using HW sync solution */
 				subdrv_call(ctx, feature_control,
 					SENSOR_FEATURE_SET_ESHUTTER,
 					para.u8, &len);
 			}
-			notify_fsync_mgr_set_shutter(ctx, fsync_exp, 1, ret);
+			notify_fsync_mgr_set_shutter(ctx, fsync_exp, 1);
 		}
 		break;
 	case V4L2_CID_VBLANK:
@@ -1275,16 +1317,15 @@ static int imgsensor_set_ctrl(struct v4l2_ctrl *ctrl)
 			u64 fsync_exp[1] = {0}; /* needed by fsync set_shutter */
 
 			para.u64[0] = info->shutter;
-
 			fsync_exp[0] = (u32)para.u64[0];
-			ret = chk_s_exp_with_fl_by_fsync_mgr(ctx, fsync_exp, 1);
-			if (!ret) {
+			if (!chk_if_need_to_use_s_multi_exp_fl_by_fsync_mgr(
+					ctx, fsync_exp, 1)) {
 				/* NOT enable frame-sync || using HW sync solution */
 				subdrv_call(ctx, feature_control,
 					SENSOR_FEATURE_SET_ESHUTTER,
 					para.u8, &len);
 			}
-			notify_fsync_mgr_set_shutter(ctx, fsync_exp, 1, ret);
+			notify_fsync_mgr_set_shutter(ctx, fsync_exp, 1);
 
 			para.u64[0] = info->gain;
 			subdrv_call(ctx, feature_control,
@@ -1412,6 +1453,9 @@ static int imgsensor_set_ctrl(struct v4l2_ctrl *ctrl)
 			u64 time_boot = ktime_get_boottime_ns();
 			u64 time_mono = ktime_get_ns();
 
+			/* first, notify fsync cancel FL restore proc if needed */
+			notify_fsync_mgr_clear_fl_restore_info_if_needed(ctx);
+
 			/* copy original input data for fsync using */
 			memcpy(fsync_exp, &info->ae_ctrl[0].exposure.arr, sizeof(fsync_exp));
 
@@ -1420,31 +1464,39 @@ static int imgsensor_set_ctrl(struct v4l2_ctrl *ctrl)
 			para.u64[2] = (uintptr_t)&info->ae_ctrl[1];
 
 			dev_info(dev,
-				    "seamless scen(%u => %u) s[%llu %llu %llu %llu %llu] g[%u %u %u %u %u] s1[%llu %llu %llu %llu %llu] g1[%u %u %u %u %u] %llu|%llu\n",
-					orig_scen_id,
-					info->target_scenario_id,
-					info->ae_ctrl[0].exposure.arr[0],
-					info->ae_ctrl[0].exposure.arr[1],
-					info->ae_ctrl[0].exposure.arr[2],
-					info->ae_ctrl[0].exposure.arr[3],
-					info->ae_ctrl[0].exposure.arr[4],
-					info->ae_ctrl[0].gain.arr[0],
-					info->ae_ctrl[0].gain.arr[1],
-					info->ae_ctrl[0].gain.arr[2],
-					info->ae_ctrl[0].gain.arr[3],
-					info->ae_ctrl[0].gain.arr[4],
-					info->ae_ctrl[1].exposure.arr[0],
-					info->ae_ctrl[1].exposure.arr[1],
-					info->ae_ctrl[1].exposure.arr[2],
-					info->ae_ctrl[1].exposure.arr[3],
-					info->ae_ctrl[1].exposure.arr[4],
-					info->ae_ctrl[1].gain.arr[0],
-					info->ae_ctrl[1].gain.arr[1],
-					info->ae_ctrl[1].gain.arr[2],
-					info->ae_ctrl[1].gain.arr[3],
-					info->ae_ctrl[1].gain.arr[4],
-					time_boot,
-					time_mono);
+				"[%s][%s][inf:%d] idx:%d, sof_cnt:%u, seamless scen(%u => %u), [0](req_id:%d s(%llu/%llu/%llu/%llu/%llu) g(%u/%u/%u/%u/%u)), [1](req_id:%d s(%llu/%llu/%llu/%llu/%llu) g(%u/%u/%u/%u/%u)), sys_ts:(%llu/%llu|%llu)\n",
+				ctx->sd.name,
+				(ctx->subdrv) ? (ctx->subdrv->name) : "null",
+				ctx->seninf_idx,
+				ctx->idx,
+				ctx->sof_cnt,
+				orig_scen_id,
+				info->target_scenario_id,
+				info->ae_ctrl[0].req_id,
+				info->ae_ctrl[0].exposure.arr[0],
+				info->ae_ctrl[0].exposure.arr[1],
+				info->ae_ctrl[0].exposure.arr[2],
+				info->ae_ctrl[0].exposure.arr[3],
+				info->ae_ctrl[0].exposure.arr[4],
+				info->ae_ctrl[0].gain.arr[0],
+				info->ae_ctrl[0].gain.arr[1],
+				info->ae_ctrl[0].gain.arr[2],
+				info->ae_ctrl[0].gain.arr[3],
+				info->ae_ctrl[0].gain.arr[4],
+				info->ae_ctrl[1].req_id,
+				info->ae_ctrl[1].exposure.arr[0],
+				info->ae_ctrl[1].exposure.arr[1],
+				info->ae_ctrl[1].exposure.arr[2],
+				info->ae_ctrl[1].exposure.arr[3],
+				info->ae_ctrl[1].exposure.arr[4],
+				info->ae_ctrl[1].gain.arr[0],
+				info->ae_ctrl[1].gain.arr[1],
+				info->ae_ctrl[1].gain.arr[2],
+				info->ae_ctrl[1].gain.arr[3],
+				info->ae_ctrl[1].gain.arr[4],
+				ctx->sys_ts_update_sof_cnt,
+				time_boot,
+				time_mono);
 
 			if (info->target_scenario_id == 0 &&
 				info->ae_ctrl[0].exposure.arr[0] == 0 &&

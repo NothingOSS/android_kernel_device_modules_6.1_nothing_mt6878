@@ -36,8 +36,15 @@
 
 
 /******************************************************************************/
-// Frame Sync Mgr Structure (private structure)
+// Frame Sync Mgr structure / enum
 /******************************************************************************/
+enum FS_STATUS {
+	FS_NONE = 0,
+	FS_INITIALIZED = 1,
+	FS_WAIT_FOR_SYNCFRAME_START = 2,
+	FS_START_TO_GET_PERFRAME_CTRL = 3,
+	FS_STATUS_UNKNOWN
+};
 
 //------------------------ fs preset perframe st -----------------------------//
 struct fs_preset_perframe_st {
@@ -87,6 +94,7 @@ struct FrameSyncMgr {
 	FS_Atomic_T enSync_bits;
 	FS_Atomic_T validSync_bits;
 	FS_Atomic_T pf_ctrl_bits;
+	FS_Atomic_T fl_restore_ctrl_bits;
 	FS_Atomic_T setup_complete_bits;
 	FS_Atomic_T seamless_bits;  // notify which sensor is doing seamless switch
 
@@ -124,6 +132,9 @@ struct FrameSyncMgr {
 	/* keep for supporting trigger by ext vsync */
 	struct fs_perframe_st pf_ctrl[SENSOR_MAX_NUM];
 
+	/* for FL auto restore */
+	struct fs_fl_restore_info_st *fl_restore_info[SENSOR_MAX_NUM];
+
 
 	/* for set ae ctrl before streaming on */
 	struct fs_preset_perframe_st preset_ctrl[SENSOR_MAX_NUM];
@@ -152,6 +163,12 @@ struct FrameSyncMgr {
 	unsigned int sof_cnt_arr[SENSOR_MAX_NUM];   // debug, from p1 sof cnt
 	/* for checking receive ctrl timing */
 	unsigned int notify_vsync_sof_cnt_arr[SENSOR_MAX_NUM];
+
+
+#ifndef FS_UT
+	/* Lock */
+	spinlock_t fl_restore_info_update_spinlock[SENSOR_MAX_NUM];
+#endif
 };
 static struct FrameSyncMgr fs_mgr;
 //----------------------------------------------------------------------------//
@@ -248,6 +265,35 @@ static unsigned int write_bit_atomic(const unsigned int idx,
 }
 
 
+static unsigned int chk_xchg_bit_atomic(const unsigned int idx,
+	const unsigned int en, FS_Atomic_T *p_fs_atomic_val)
+{
+	unsigned int bit_needs_to_be_changed;
+	int val_ori, val_target;
+
+	do {
+		val_ori = FS_ATOMIC_READ(p_fs_atomic_val);
+		if (en) {
+			/* !!! want to set bit !!! */
+			/* if bit status: 0, set it to 1 (need to setup data) */
+			bit_needs_to_be_changed =
+				(((val_ori >> idx) & 1UL) == 0) ? 1 : 0;
+
+			val_target = (val_ori | (1UL << idx));
+		} else {
+			/* !!! want to clr bit !!! */
+			/* if bit status: 1, set it to 1 (need to clear data) */
+			bit_needs_to_be_changed =
+				(((val_ori >> idx) & 1UL) == 1) ? 1 : 0;
+
+			val_target = (val_ori & (~(1UL << idx)));
+		}
+	} while (FS_ATOMIC_CMPXCHG(val_ori, val_target, p_fs_atomic_val) == 0);
+
+	return bit_needs_to_be_changed;
+}
+
+
 static inline void clear_all_bit_atomic(FS_Atomic_T *p_fs_atomic_val)
 {
 	FS_ATOMIC_SET(0, p_fs_atomic_val);
@@ -275,9 +321,6 @@ static inline unsigned int fs_user_sa_config(void)
 static void fs_dump_status(const int idx, const int flag, const char *caller,
 	const char *msg)
 {
-	const enum FS_STATUS status = get_fs_status();
-	const unsigned int cnt =
-		FS_POPCOUNT(FS_ATOMIC_READ(&fs_mgr.validSync_bits));
 	char *log_buf = NULL;
 	int len = 0;
 
@@ -291,10 +334,9 @@ static void fs_dump_status(const int idx, const int flag, const char *caller,
 
 	log_buf[0] = '\0';
 	FS_SNPRINTF(log_buf, len,
-		"[%s:%d/%d %s]: stat:%u, ready:%u, stream:%d, enSync:%d(%d/%d/%d/%d/%d/%d), valid:%d, hw_sync:%d(%d)(%d/%d/%d/%d/%d/%d), trigger:%u, pf_ctrl:%d(%u), complete:%d(%u)(hw:%d/%d/%d/%d/%d/%d), act(%u/%u/%u/%u/%u/%u), hdr_ft_mode(%u/%u/%u/%u/%u/%u), seamless:%#x, SA(%d/%d/%d, %d, async(%d, m_sidx:%d(%d)))",
+		"[%s:%d/%d %s]: stat:%u, stream:%#x/enSync:%#x(%#x/%#x/%#x/%#x/%#x/%#x)/valid:%#x",
 		caller, idx, flag, msg,
-		status,
-		cnt,
+		get_fs_status(),
 		FS_ATOMIC_READ(&fs_mgr.streaming_bits),
 		FS_ATOMIC_READ(&fs_mgr.enSync_bits),
 		FS_ATOMIC_READ(&fs_mgr.set_sync_idx_table[0]),
@@ -303,64 +345,54 @@ static void fs_dump_status(const int idx, const int flag, const char *caller,
 		FS_ATOMIC_READ(&fs_mgr.set_sync_idx_table[3]),
 		FS_ATOMIC_READ(&fs_mgr.set_sync_idx_table[4]),
 		FS_ATOMIC_READ(&fs_mgr.set_sync_idx_table[5]),
-		FS_ATOMIC_READ(&fs_mgr.validSync_bits),
-		FS_ATOMIC_READ(&fs_mgr.hw_sync_bits),
-		FS_ATOMIC_READ(&fs_mgr.hw_sync_non_valid_group_bits),
-		FS_ATOMIC_READ(
-			&fs_mgr.hw_sync_group_bits[FS_HW_SYNC_GROUP_ID_0]),
-		FS_ATOMIC_READ(
-			&fs_mgr.hw_sync_group_bits[FS_HW_SYNC_GROUP_ID_1]),
-		FS_ATOMIC_READ(
-			&fs_mgr.hw_sync_group_bits[FS_HW_SYNC_GROUP_ID_2]),
-		FS_ATOMIC_READ(
-			&fs_mgr.hw_sync_group_bits[FS_HW_SYNC_GROUP_ID_3]),
-		FS_ATOMIC_READ(
-			&fs_mgr.hw_sync_group_bits[FS_HW_SYNC_GROUP_ID_4]),
-		FS_ATOMIC_READ(
-			&fs_mgr.hw_sync_group_bits[FS_HW_SYNC_GROUP_ID_5]),
-		fs_mgr.trigger_ctrl_bits,
-		FS_ATOMIC_READ(&fs_mgr.pf_ctrl_bits),
-		fs_mgr.last_pf_ctrl_bits,
-		FS_ATOMIC_READ(&fs_mgr.setup_complete_bits),
-		fs_mgr.last_setup_complete_bits,
-		FS_ATOMIC_READ(
-			&fs_mgr.setup_complete_hw_group_bits[
-				FS_HW_SYNC_GROUP_ID_0]),
-		FS_ATOMIC_READ(
-			&fs_mgr.setup_complete_hw_group_bits[
-				FS_HW_SYNC_GROUP_ID_1]),
-		FS_ATOMIC_READ(
-			&fs_mgr.setup_complete_hw_group_bits[
-				FS_HW_SYNC_GROUP_ID_2]),
-		FS_ATOMIC_READ(
-			&fs_mgr.setup_complete_hw_group_bits[
-				FS_HW_SYNC_GROUP_ID_3]),
-		FS_ATOMIC_READ(
-			&fs_mgr.setup_complete_hw_group_bits[
-				FS_HW_SYNC_GROUP_ID_4]),
-		FS_ATOMIC_READ(
-			&fs_mgr.setup_complete_hw_group_bits[
-				FS_HW_SYNC_GROUP_ID_5]),
-		fs_mgr.act_cnt[FS_HW_SYNC_GROUP_ID_0],
-		fs_mgr.act_cnt[FS_HW_SYNC_GROUP_ID_1],
-		fs_mgr.act_cnt[FS_HW_SYNC_GROUP_ID_2],
-		fs_mgr.act_cnt[FS_HW_SYNC_GROUP_ID_3],
-		fs_mgr.act_cnt[FS_HW_SYNC_GROUP_ID_4],
-		fs_mgr.act_cnt[FS_HW_SYNC_GROUP_ID_5],
+		FS_ATOMIC_READ(&fs_mgr.validSync_bits));
+
+	/* has sensor in HW sync mode ==> add more info */
+	if (FS_POPCOUNT(FS_ATOMIC_READ(&fs_mgr.hw_sync_bits))) {
+		FS_SNPRINTF(log_buf, len,
+			", hw_sync:%#x(%#x)(%#x/%#x/%#x/%#x/%#x/%#x), trigger:%#x, pf_ctrl:%#x(%#x), complete:%#x(%#x)(hw:%#x/%#x/%#x/%#x/%#x/%#x), act(%u/%u/%u/%u/%u/%u)",
+			FS_ATOMIC_READ(&fs_mgr.hw_sync_bits),
+			FS_ATOMIC_READ(&fs_mgr.hw_sync_non_valid_group_bits),
+			FS_ATOMIC_READ(&fs_mgr.hw_sync_group_bits[FS_HW_SYNC_GROUP_ID_0]),
+			FS_ATOMIC_READ(&fs_mgr.hw_sync_group_bits[FS_HW_SYNC_GROUP_ID_1]),
+			FS_ATOMIC_READ(&fs_mgr.hw_sync_group_bits[FS_HW_SYNC_GROUP_ID_2]),
+			FS_ATOMIC_READ(&fs_mgr.hw_sync_group_bits[FS_HW_SYNC_GROUP_ID_3]),
+			FS_ATOMIC_READ(&fs_mgr.hw_sync_group_bits[FS_HW_SYNC_GROUP_ID_4]),
+			FS_ATOMIC_READ(&fs_mgr.hw_sync_group_bits[FS_HW_SYNC_GROUP_ID_5]),
+			fs_mgr.trigger_ctrl_bits,
+			FS_ATOMIC_READ(&fs_mgr.pf_ctrl_bits),
+			fs_mgr.last_pf_ctrl_bits,
+			FS_ATOMIC_READ(&fs_mgr.setup_complete_bits),
+			fs_mgr.last_setup_complete_bits,
+			FS_ATOMIC_READ(&fs_mgr.setup_complete_hw_group_bits[FS_HW_SYNC_GROUP_ID_0]),
+			FS_ATOMIC_READ(&fs_mgr.setup_complete_hw_group_bits[FS_HW_SYNC_GROUP_ID_1]),
+			FS_ATOMIC_READ(&fs_mgr.setup_complete_hw_group_bits[FS_HW_SYNC_GROUP_ID_2]),
+			FS_ATOMIC_READ(&fs_mgr.setup_complete_hw_group_bits[FS_HW_SYNC_GROUP_ID_3]),
+			FS_ATOMIC_READ(&fs_mgr.setup_complete_hw_group_bits[FS_HW_SYNC_GROUP_ID_4]),
+			FS_ATOMIC_READ(&fs_mgr.setup_complete_hw_group_bits[FS_HW_SYNC_GROUP_ID_5]),
+			fs_mgr.act_cnt[FS_HW_SYNC_GROUP_ID_0],
+			fs_mgr.act_cnt[FS_HW_SYNC_GROUP_ID_1],
+			fs_mgr.act_cnt[FS_HW_SYNC_GROUP_ID_2],
+			fs_mgr.act_cnt[FS_HW_SYNC_GROUP_ID_3],
+			fs_mgr.act_cnt[FS_HW_SYNC_GROUP_ID_4],
+			fs_mgr.act_cnt[FS_HW_SYNC_GROUP_ID_5]);
+	}
+
+	FS_SNPRINTF(log_buf, len,
+		", SA(%d):(%#x/m_idx:%d, async(%#x, m_idx:%d(sidx:%d))), seamless:%#x, hdr_ft_mode(%u/%u/%u/%u/%u/%u)",
+		FS_ATOMIC_READ(&fs_mgr.using_sa_ver),
+		FS_ATOMIC_READ(&fs_mgr.sa_bits),
+		FS_ATOMIC_READ(&fs_mgr.master_idx),
+		FS_ATOMIC_READ(&fs_mgr.async_mode_bits),
+		FS_ATOMIC_READ(&fs_mgr.async_master_idx),
+		FS_ATOMIC_READ(&fs_mgr.user_async_master_sidx),
+		FS_ATOMIC_READ(&fs_mgr.seamless_bits),
 		fs_mgr.hdr_ft_mode[0],
 		fs_mgr.hdr_ft_mode[1],
 		fs_mgr.hdr_ft_mode[2],
 		fs_mgr.hdr_ft_mode[3],
 		fs_mgr.hdr_ft_mode[4],
-		fs_mgr.hdr_ft_mode[5],
-		FS_ATOMIC_READ(&fs_mgr.seamless_bits),
-		FS_ATOMIC_READ(&fs_mgr.using_sa_ver),
-		fs_user_sa_config(),
-		FS_ATOMIC_READ(&fs_mgr.sa_bits),
-		FS_ATOMIC_READ(&fs_mgr.master_idx),
-		FS_ATOMIC_READ(&fs_mgr.async_mode_bits),
-		FS_ATOMIC_READ(&fs_mgr.user_async_master_sidx),
-		FS_ATOMIC_READ(&fs_mgr.async_master_idx));
+		fs_mgr.hdr_ft_mode[5]);
 
 	FS_SNPRINTF(log_buf, len,
 		", ts_src_type:%d(0:unknown/1:CCU/2:TSREC)",
@@ -553,15 +585,7 @@ static unsigned int fs_push_sensor(const struct SensorInfo *sensor_info)
 		/* boundary check and check if reach maximum capacity */
 		if (!((cnt_now >= 0) && (cnt_now < SENSOR_MAX_NUM)))
 			return 0xFFFFFFFF;
-	} while (
-#ifdef FS_UT
-		(!atomic_compare_exchange_weak(
-			p_fs_atomic_val, &cnt_now, cnt_new))
-#else
-		(atomic_cmpxchg(
-			p_fs_atomic_val, cnt_now, cnt_new) != cnt_now)
-#endif
-		);
+	} while (FS_ATOMIC_CMPXCHG(cnt_now, cnt_new, p_fs_atomic_val) == 0);
 
 	/* => cnt_now is correct and avalible */
 	pSensorTable->sensors[(unsigned int)cnt_now] = *sensor_info;
@@ -889,6 +913,7 @@ static void fs_init_members(void)
 	FS_ATOMIC_INIT(0, &fs_mgr.enSync_bits);
 	FS_ATOMIC_INIT(0, &fs_mgr.validSync_bits);
 	FS_ATOMIC_INIT(0, &fs_mgr.pf_ctrl_bits);
+	FS_ATOMIC_INIT(0, &fs_mgr.fl_restore_ctrl_bits);
 	FS_ATOMIC_INIT(0, &fs_mgr.setup_complete_bits);
 	FS_ATOMIC_INIT(0, &fs_mgr.seamless_bits);
 
@@ -916,6 +941,12 @@ static void fs_init_members(void)
 	FS_ATOMIC_INIT(0, &fs_mgr.async_mode_bits);
 	FS_ATOMIC_INIT(MASTER_IDX_NONE, &fs_mgr.user_async_master_sidx);
 	FS_ATOMIC_INIT(MASTER_IDX_NONE, &fs_mgr.async_master_idx);
+
+
+#ifndef FS_UT
+	for (i = 0; i < SENSOR_MAX_NUM; ++i)
+		spin_lock_init(&fs_mgr.fl_restore_info_update_spinlock[i]);
+#endif
 }
 #endif // SUPPORT_FS_NEW_METHOD
 
@@ -938,6 +969,190 @@ static void fs_init(void)
 		LOG_INF("Initialized. (User:%u)\n", fs_mgr.user_counter);
 
 	// else if () => for re-init.
+}
+
+
+/*----------------------------------------------------------------------------*/
+// functions --- for fl restore info struct/data
+/*----------------------------------------------------------------------------*/
+static void fs_clear_fl_restore_info(const unsigned int idx)
+{
+	struct fs_fl_restore_info_st *ptr = NULL;
+
+	FS_SPIN_LOCK(&fs_mgr.fl_restore_info_update_spinlock[idx]);
+
+	ptr = fs_mgr.fl_restore_info[idx];
+	if (ptr == NULL)
+		goto end_of_clear_fl_restore_info;
+
+	memset(ptr, 0, sizeof(*ptr));
+	FS_FREE(ptr);
+	fs_mgr.fl_restore_info[idx] = NULL;
+
+end_of_clear_fl_restore_info:
+	FS_SPIN_UNLOCK(&fs_mgr.fl_restore_info_update_spinlock[idx]);
+}
+
+
+static void fs_setup_fl_restore_info(const unsigned int idx,
+	const struct fs_fl_restore_info_st *p_fl_restore_info)
+{
+	struct fs_fl_restore_info_st *ptr = NULL;
+
+	FS_SPIN_LOCK(&fs_mgr.fl_restore_info_update_spinlock[idx]);
+
+	ptr = fs_mgr.fl_restore_info[idx];
+	/* check case */
+	if (unlikely(ptr != NULL)) {
+		LOG_MUST(
+			"WARNING: [%u] ID:%#x(sidx:%u), detect previous FL restore info before overwrite it (setup FL restore info(%#x, #%u, req_id:%d, %u, %u/%u/%u/%u/%u))\n",
+			idx,
+			fs_get_reg_sensor_id(idx),
+			fs_get_reg_sensor_idx(idx),
+			FS_ATOMIC_READ(&fs_mgr.fl_restore_ctrl_bits),
+			ptr->magic_num,
+			ptr->req_id,
+			ptr->restored_fl_lc,
+			ptr->restored_fl_lc_arr[0],
+			ptr->restored_fl_lc_arr[1],
+			ptr->restored_fl_lc_arr[2],
+			ptr->restored_fl_lc_arr[3],
+			ptr->restored_fl_lc_arr[4]);
+	} else {
+		struct fs_fl_restore_info_st *ptr_new = NULL;
+
+		/* alloc a mem */
+		ptr_new = FS_CALLOC(1, sizeof(*ptr_new));
+		if (unlikely(ptr_new == NULL)) {
+			LOG_MUST(
+				"ERROR: [%u] ID:%#x(sidx:%u), FL restore info struct allocate memory failed\n",
+				idx,
+				fs_get_reg_sensor_id(idx),
+				fs_get_reg_sensor_idx(idx));
+			goto end_of_set_fl_restore_info;
+		}
+		/* sync new mem address */
+		fs_mgr.fl_restore_info[idx] = ptr_new;
+		ptr = fs_mgr.fl_restore_info[idx];
+	}
+	memcpy(ptr, p_fl_restore_info, sizeof(*ptr));
+
+end_of_set_fl_restore_info:
+	FS_SPIN_UNLOCK(&fs_mgr.fl_restore_info_update_spinlock[idx]);
+}
+
+
+static void fs_get_fl_restore_info(const unsigned int idx,
+	struct fs_fl_restore_info_st *p_fl_restore_info)
+{
+	struct fs_fl_restore_info_st *ptr = NULL;
+
+	FS_SPIN_LOCK(&fs_mgr.fl_restore_info_update_spinlock[idx]);
+
+	ptr = fs_mgr.fl_restore_info[idx];
+	/* error handling */
+	if (unlikely(ptr == NULL)) {
+		LOG_MUST(
+			"ERROR: [%u] ID:%#x(sidx:%u), fl_restore_ctrl_bits:%#x, but FL restore info is nullptr, return\n",
+			idx,
+			fs_get_reg_sensor_id(idx),
+			fs_get_reg_sensor_idx(idx),
+			FS_ATOMIC_READ(&fs_mgr.fl_restore_ctrl_bits));
+		goto end_of_get_fl_restore_info;
+	}
+	/* copy info */
+	memcpy(p_fl_restore_info, ptr, sizeof(*p_fl_restore_info));
+
+end_of_get_fl_restore_info:
+	FS_SPIN_UNLOCK(&fs_mgr.fl_restore_info_update_spinlock[idx]);
+}
+
+
+static void fs_reset_fl_restore_status(const unsigned int idx)
+{
+	if (likely(chk_xchg_bit_atomic(idx, 0, &fs_mgr.fl_restore_ctrl_bits) == 0))
+		return;
+
+	fs_clear_fl_restore_info(idx);
+
+	LOG_INF(
+		"NOTICE: [%u] ID:%#x(sidx:%u), clear FL restore info, (%#x, info:%p)\n",
+		idx,
+		fs_get_reg_sensor_id(idx),
+		fs_get_reg_sensor_idx(idx),
+		FS_ATOMIC_READ(&fs_mgr.fl_restore_ctrl_bits),
+		fs_mgr.fl_restore_info[idx]);
+}
+
+
+void fs_setup_fl_restore_status(const unsigned int idx,
+	const struct fs_fl_restore_info_st *p_fl_restore_info)
+{
+	fs_setup_fl_restore_info(idx, p_fl_restore_info);
+	write_bit_atomic(idx, 1, &fs_mgr.fl_restore_ctrl_bits);
+
+	LOG_INF(
+		"[%u] ID:%#x(sidx:%u), setup FL restore info(%#x, #%u, req_id:%d, %u, %u/%u/%u/%u/%u)\n",
+		idx,
+		fs_get_reg_sensor_id(idx),
+		fs_get_reg_sensor_idx(idx),
+		FS_ATOMIC_READ(&fs_mgr.fl_restore_ctrl_bits),
+		fs_mgr.fl_restore_info[idx]->magic_num,
+		fs_mgr.fl_restore_info[idx]->req_id,
+		fs_mgr.fl_restore_info[idx]->restored_fl_lc,
+		fs_mgr.fl_restore_info[idx]->restored_fl_lc_arr[0],
+		fs_mgr.fl_restore_info[idx]->restored_fl_lc_arr[1],
+		fs_mgr.fl_restore_info[idx]->restored_fl_lc_arr[2],
+		fs_mgr.fl_restore_info[idx]->restored_fl_lc_arr[3],
+		fs_mgr.fl_restore_info[idx]->restored_fl_lc_arr[4]);
+}
+/*----------------------------------------------------------------------------*/
+
+
+static void fs_chk_fl_info_updated_from_drv(const unsigned int idx,
+	const struct fs_perframe_st *update_ctrl, const char *caller)
+{
+	const struct fs_perframe_st *output_ctrl = &fs_mgr.pf_ctrl[idx];
+	const unsigned int chk_diff_th = 32; // lines count
+	unsigned int chk_diff;
+	unsigned int i;
+
+	chk_diff = (update_ctrl->out_fl_lc >= output_ctrl->out_fl_lc)
+		? (update_ctrl->out_fl_lc - output_ctrl->out_fl_lc)
+		: (output_ctrl->out_fl_lc - update_ctrl->out_fl_lc);
+	if (unlikely(chk_diff >= chk_diff_th)) {
+		LOG_MUST(
+			"[%s] ERROR: [%u] ID:%#x(sidx:%u), (%d/%u), out_fl_lc(FS:%u/drv:%u), diff(%u/th:%u), FL value set by sensor drv seems to not match the value output by Frame-Sync\n",
+			caller,
+			idx,
+			output_ctrl->sensor_id,
+			output_ctrl->sensor_idx,
+			output_ctrl->req_id,
+			fs_mgr.sof_cnt_arr[idx],
+			output_ctrl->out_fl_lc,
+			update_ctrl->out_fl_lc,
+			chk_diff, chk_diff_th);
+	}
+
+	for (i = 0; i < FS_HDR_MAX; ++i) {
+		chk_diff = (update_ctrl->hdr_exp.fl_lc[i] >= output_ctrl->hdr_exp.fl_lc[i])
+			? (update_ctrl->hdr_exp.fl_lc[i] - output_ctrl->hdr_exp.fl_lc[i])
+			: (output_ctrl->hdr_exp.fl_lc[i] - update_ctrl->hdr_exp.fl_lc[i]);
+		if (unlikely(chk_diff >= chk_diff_th)) {
+			LOG_MUST(
+				"[%s] ERROR: [%u] ID:%#x(sidx:%u), (%d/%u), hdr_exp.fl_lc[%u](FS:%u/drv:%u), diff(%u/th:%u), FL value set by sensor drv seems to not match the value output by Frame-Sync\n",
+				caller,
+				idx,
+				output_ctrl->sensor_id,
+				output_ctrl->sensor_idx,
+				output_ctrl->req_id,
+				fs_mgr.sof_cnt_arr[idx],
+				i,
+				output_ctrl->hdr_exp.fl_lc[i],
+				update_ctrl->hdr_exp.fl_lc[i],
+				chk_diff, chk_diff_th);
+		}
+	}
 }
 
 
@@ -1439,7 +1654,7 @@ static void fs_sa_update_async_master_idx(const unsigned int idx,
 		FS_ATOMIC_SET(MASTER_IDX_NONE, &fs_mgr.async_master_idx);
 	}
 
-	LOG_MUST(
+	LOG_INF(
 		"[%u] ID:%#x(sidx:%u), flag:%u, async_master(user_sidx:%d/curr_idx:%d->%d) [streaming:%d/enSync:%d/validSync:%d]\n",
 		idx,
 		fs_get_reg_sensor_id(idx),
@@ -1477,15 +1692,6 @@ void fs_sa_set_user_async_master(const unsigned int sidx,
 		/* log info can be see by above function */
 		return;
 	}
-
-	LOG_MUST(
-		"[%d] sidx:%u, flag:%u, user_async_master_sidx:%d, streaming:%d, enSync:%d, validSync:%d, async_master_idx:%u\n",
-		(int)idx, sidx, flag,
-		FS_ATOMIC_READ(&fs_mgr.user_async_master_sidx),
-		FS_ATOMIC_READ(&fs_mgr.streaming_bits),
-		FS_ATOMIC_READ(&fs_mgr.enSync_bits),
-		FS_ATOMIC_READ(&fs_mgr.validSync_bits),
-		FS_ATOMIC_READ(&fs_mgr.async_master_idx));
 }
 
 
@@ -1587,11 +1793,12 @@ unsigned int fs_is_set_sync(unsigned int ident)
 }
 
 
-static void fs_call_sensor_driver_setup_fl_info(const unsigned int idx,
-	const unsigned int fl_lc)
+static void fs_cb_fsync_ctrl_to_set_fl_info(
+	const unsigned int idx, const unsigned int cmd_id,
+	const unsigned int fl_lc,
+	const unsigned int fl_lc_arr[], const unsigned int arr_len)
 {
 	const struct callback_info_st *cb_info = &fs_mgr.cb_info[idx];
-	unsigned int out_fl_lc;
 	int ret;
 
 	if (unlikely(cb_info->func_ptr == NULL)) {
@@ -1603,46 +1810,61 @@ static void fs_call_sensor_driver_setup_fl_info(const unsigned int idx,
 			cb_info->func_ptr);
 		return;
 	}
-	if (unlikely(fl_lc == 0))
-		return;
-
-	/* get fs algo output fl info */
-	fs_alg_get_out_fl_info(idx,
-		&out_fl_lc, fs_mgr.pf_ctrl[idx].hdr_exp.fl_lc, FS_HDR_MAX);
 
 	/* use callback function to call to sensor driver for setup fl info */
-	ret = cb_info->func_ptr(cb_info->p_ctx, cb_info->cmd_id,
-		&fs_mgr.pf_ctrl[idx], fl_lc,
-		fs_mgr.pf_ctrl[idx].hdr_exp.fl_lc, FS_HDR_MAX);
+	ret = cb_info->func_ptr(cb_info->p_ctx, cmd_id, &fs_mgr.pf_ctrl[idx],
+		fl_lc, fl_lc_arr, FS_HDR_MAX);
 
 	if (unlikely(ret != 0)) {
 		LOG_MUST(
-			"ERROR: [%u] ID:%#x(sidx:%u), get func ret:%d, p_ctx:%p, cmd_id:%u, &pf_info:%p, fl_lc:%u, fl_lc_arr:(%u/%u/%u/%u/%u), arr_len:%u\n",
+			"ERROR: [%u] ID:%#x(sidx:%u), ret:%d, p_ctx:%p, cmd_id:%u(NONE:%u/shutter_with_FL:%u/FL:%u), &pf_info:%p, fl_lc:%u, fl_lc_arr:(%u/%u/%u/%u/%u), arr_len:%u\n",
 			idx,
 			fs_get_reg_sensor_id(idx),
 			fs_get_reg_sensor_idx(idx),
 			ret,
-			cb_info->p_ctx, cb_info->cmd_id,
+			cb_info->p_ctx,
+			cmd_id,
+			FSYNC_CTRL_FL_CMD_ID_NONE,
+			FSYNC_CTRL_FL_CMD_ID_EXP_WITH_FL,
+			FSYNC_CTRL_FL_CMD_ID_FL,
 			&fs_mgr.pf_ctrl[idx],
 			fl_lc,
-			fs_mgr.pf_ctrl[idx].hdr_exp.fl_lc[0],
-			fs_mgr.pf_ctrl[idx].hdr_exp.fl_lc[1],
-			fs_mgr.pf_ctrl[idx].hdr_exp.fl_lc[2],
-			fs_mgr.pf_ctrl[idx].hdr_exp.fl_lc[3],
-			fs_mgr.pf_ctrl[idx].hdr_exp.fl_lc[4],
+			fl_lc_arr[0],
+			fl_lc_arr[1],
+			fl_lc_arr[2],
+			fl_lc_arr[3],
+			fl_lc_arr[4],
 			FS_HDR_MAX);
 	}
 }
 
 
 /*
- * all framelength operation must use this API
+ * set shutter w/ frame length register operation must use this API
+ * SW Frame-Sync default should be:
+ *     FSYNC_CTRL_FL_CMD_ID_EXP_WITH_FL corresponds to
+ *     SENSOR_FEATURE_SET_MULTI_SHUTTER_FRAME_TIME
  */
 static void fs_set_framelength_lc(const unsigned int idx,
 	const unsigned int fl_lc)
 {
-	/* using callback function to set framelength */
-	fs_call_sensor_driver_setup_fl_info(idx, fl_lc);
+	const unsigned int cmd_id = fs_mgr.cb_info[idx].cmd_id;
+	unsigned int out_fl_lc = 0;
+	unsigned int fl_lc_arr[FS_HDR_MAX] = {0};
+
+	if (unlikely(fl_lc == 0))
+		return;
+
+	/* get fs algo output fl info and sync results */
+	fs_alg_get_out_fl_info(idx, &out_fl_lc, fl_lc_arr, FS_HDR_MAX);
+
+	/* update to pf ctrl */
+	fs_mgr.pf_ctrl[idx].out_fl_lc = out_fl_lc;
+	memcpy(fs_mgr.pf_ctrl[idx].hdr_exp.fl_lc, fl_lc_arr,
+		(sizeof(unsigned int) * FS_HDR_MAX));
+
+	fs_cb_fsync_ctrl_to_set_fl_info(idx, cmd_id,
+		fl_lc, fl_lc_arr, FS_HDR_MAX);
 
 #ifdef FS_UT
 	fs_alg_setup_frame_monitor_fmeas_data(idx);
@@ -2379,6 +2601,7 @@ unsigned int fs_streaming(const unsigned int flag,
 		fs_streaming_chk_restore_preset_set_sync_status(
 			idx, sensor_info);
 	} else {
+		fs_reset_fl_restore_status(idx);
 		fs_reset_ft_mode_data(idx, flag);
 
 		/* reset/clear set sync sidx table value */
@@ -2494,6 +2717,8 @@ void fs_update_min_fl_lc(const unsigned int ident, const unsigned int min_fl_lc,
 
 	/* get registered idx and check if it is valid */
 	if (unlikely(fs_g_registered_idx_by_ident(ident, &idx, __func__)))
+		return;
+	if (FS_CHECK_BIT(idx, &fs_mgr.streaming_bits) == 0)
 		return;
 
 	/* update the fs_perframe_st data in fs algo */
@@ -2850,9 +3075,8 @@ void fs_set_shutter(struct fs_perframe_st (*pf_ctrl))
 	if (unlikely(fs_g_registered_idx(pf_ctrl->sensor_id, pf_ctrl->sensor_idx,
 			&idx, __func__)))
 		return;
-
 	/* check case */
-	if (!FS_CHECK_BIT(idx, &fs_mgr.validSync_bits))
+	if (FS_CHECK_BIT(idx, &fs_mgr.validSync_bits) == 0)
 		return;
 	if (unlikely(fs_chk_seamless_switch_status(idx))) {
 		LOG_MUST(
@@ -2867,6 +3091,7 @@ void fs_set_shutter(struct fs_perframe_st (*pf_ctrl))
 		return;
 	}
 
+	fs_reset_fl_restore_status(idx);
 
 	fs_mgr.pf_ctrl[idx] = *pf_ctrl;
 
@@ -2923,7 +3148,7 @@ void fs_update_shutter(struct fs_perframe_st (*pf_ctrl))
 	fs_try_setup_preset_perframe_data(idx, pf_ctrl);
 
 	/* check case */
-	if (!FS_CHECK_BIT(idx, &fs_mgr.validSync_bits))
+	if (FS_CHECK_BIT(idx, &fs_mgr.streaming_bits) == 0)
 		return;
 	if (unlikely(fs_chk_seamless_switch_status(idx))) {
 		LOG_MUST(
@@ -2938,11 +3163,30 @@ void fs_update_shutter(struct fs_perframe_st (*pf_ctrl))
 		return;
 	}
 
+	/* check fl info drv set */
+	fs_chk_fl_info_updated_from_drv(idx, pf_ctrl, __func__);
+	/* update/overwrite fl info drv set */
 	fs_mgr.pf_ctrl[idx] = *pf_ctrl;
 
 	/* update frame recorder data */
 	frec_setup_frame_rec_by_fs_perframe_st(&frame_rec, pf_ctrl);
 	frec_update_record(idx, &frame_rec);
+}
+
+
+void fs_update_frame_length(const unsigned int ident,
+	const unsigned int fl_lc,
+	const unsigned int fl_lc_arr[], const unsigned int arr_len)
+{
+	unsigned int idx;
+
+	/* get registered idx and check if it is valid */
+	if (unlikely(fs_g_registered_idx_by_ident(ident, &idx, __func__)))
+		return;
+	if (FS_CHECK_BIT(idx, &fs_mgr.streaming_bits) == 0)
+		return;
+
+	frec_update_fl_info(idx, fl_lc, fl_lc_arr, arr_len);
 }
 
 
@@ -2956,6 +3200,65 @@ void fs_get_fl_record_info(const unsigned int ident,
 		return;
 
 	fs_alg_get_fl_rec_st_info(idx, p_target_min_fl_us, p_out_fl_us);
+}
+
+
+void fs_clear_fl_restore_status_if_needed(const unsigned int ident)
+{
+	unsigned int idx;
+
+	/* get registered idx and check if it is valid */
+	if (unlikely(fs_g_registered_idx_by_ident(ident, &idx, __func__)))
+		return;
+	if (chk_xchg_bit_atomic(idx, 0, &fs_mgr.fl_restore_ctrl_bits) == 0)
+		return;
+
+	fs_clear_fl_restore_info(idx);
+
+	LOG_MUST(
+		"NOTICE: [%u] ID:%#x(sidx:%u), clear FL restore info, fl_restore_ctrl_bits:%#x\n",
+		idx,
+		fs_get_reg_sensor_id(idx),
+		fs_get_reg_sensor_idx(idx),
+		FS_ATOMIC_READ(&fs_mgr.fl_restore_ctrl_bits));
+}
+
+
+static void fs_do_fl_restore_proc_if_needed(const unsigned int idx)
+{
+	struct fs_fl_restore_info_st fl_restore_info = {0};
+	const unsigned int cmd_id = FSYNC_CTRL_FL_CMD_ID_FL;
+
+	if (chk_xchg_bit_atomic(idx, 0, &fs_mgr.fl_restore_ctrl_bits) == 0)
+		return;
+
+	fs_get_fl_restore_info(idx, &fl_restore_info);
+
+	LOG_MUST(
+		"NOTICE: [%u] ID:%#x(sidx:%u), do FL restore, cmd_id:%u(NONE:%u/shutter_with_FL:%u/FL:%u), (%#x, #%u, req_id:%d, %u, %u/%u/%u/%u/%u)\n",
+		idx,
+		fs_get_reg_sensor_id(idx),
+		fs_get_reg_sensor_idx(idx),
+		cmd_id,
+		FSYNC_CTRL_FL_CMD_ID_NONE,
+		FSYNC_CTRL_FL_CMD_ID_EXP_WITH_FL,
+		FSYNC_CTRL_FL_CMD_ID_FL,
+		FS_ATOMIC_READ(&fs_mgr.fl_restore_ctrl_bits),
+		fl_restore_info.magic_num,
+		fl_restore_info.req_id,
+		fl_restore_info.restored_fl_lc,
+		fl_restore_info.restored_fl_lc_arr[0],
+		fl_restore_info.restored_fl_lc_arr[1],
+		fl_restore_info.restored_fl_lc_arr[2],
+		fl_restore_info.restored_fl_lc_arr[3],
+		fl_restore_info.restored_fl_lc_arr[4]);
+
+	/* call back to set FL */
+	fs_cb_fsync_ctrl_to_set_fl_info(idx, cmd_id,
+		fl_restore_info.restored_fl_lc,
+		fl_restore_info.restored_fl_lc_arr, FS_HDR_MAX);
+
+	fs_clear_fl_restore_info(idx);
 }
 
 
@@ -3018,20 +3321,24 @@ void fs_notify_vsync(const unsigned int ident)
 		fs_debug_hw_sync(idx);
 		return;
 	}
-
 #if defined(SUPPORT_USING_CCU) || defined(FS_UT)
-	if (frm_get_ts_src_type() == FS_TS_SRC_CCU) {
-		fs_alg_sa_notify_setup_all_frame_info(idx);
-		frec_notify_vsync(idx);
-		fs_alg_sa_notify_vsync(idx);
-		fs_alg_sa_dump_dynamic_para(idx);
+	if (frm_get_ts_src_type() != FS_TS_SRC_CCU)
+		return;
 
-		/* update ctrl's p1 sof cnt for checking ctrl timing */
-		fs_update_notify_vsync_sof_cnt(idx);
 
-		/* check special ctrl that using p1 sof cnt (e.g., seamless switch) */
-		fs_chk_valid_for_doing_seamless_switch(ident);
-	}
+	/* !!! start here !!! */
+	fs_alg_sa_notify_setup_all_frame_info(idx);
+	frec_notify_vsync(idx);
+	fs_alg_sa_notify_vsync(idx);
+	fs_alg_sa_dump_dynamic_para(idx);
+
+	fs_do_fl_restore_proc_if_needed(idx);
+
+	/* update ctrl's p1 sof cnt for checking ctrl timing */
+	fs_update_notify_vsync_sof_cnt(idx);
+
+	/* check special ctrl that using p1 sof cnt (e.g., seamless switch) */
+	fs_chk_valid_for_doing_seamless_switch(ident);
 #endif
 }
 
@@ -3045,18 +3352,19 @@ void fs_notify_vsync_by_tsrec(const unsigned int ident)
 		return;
 	if (FS_CHECK_BIT(idx, &fs_mgr.streaming_bits) == 0)
 		return;
+	if (frm_get_ts_src_type() != FS_TS_SRC_TSREC)
+		return;
 
-	if (frm_get_ts_src_type() == FS_TS_SRC_TSREC) {
-		/* !!! warning / becareful !!! */
-		/* ==> below flow make sure TSREC will guarantee the order */
-		/* ==> of ctrl (HW pre-latch by tsrec >> notify vsync by tsrec) */
 
-		/* update ctrl's p1 sof cnt for checking ctrl timing */
-		fs_update_notify_vsync_sof_cnt(idx);
+	/* !!! start here !!! */
+	/* ==> warning / becareful */
+	/* ==> below flow make sure TSREC will guarantee the order */
+	/* ==> of ctrl (HW pre-latch by tsrec >> notify vsync by tsrec) */
+	/* update ctrl's p1 sof cnt for checking ctrl timing */
+	fs_update_notify_vsync_sof_cnt(idx);
 
-		/* check special ctrl that using p1 sof cnt (e.g., seamless switch) */
-		fs_chk_valid_for_doing_seamless_switch(ident);
-	}
+	/* check special ctrl that using p1 sof cnt (e.g., seamless switch) */
+	fs_chk_valid_for_doing_seamless_switch(ident);
 }
 
 
@@ -3069,11 +3377,16 @@ void fs_notify_sensor_hw_pre_latch_by_tsrec(const unsigned int ident)
 		return;
 	if (FS_CHECK_BIT(idx, &fs_mgr.streaming_bits) == 0)
 		return;
+	if (frm_get_ts_src_type() != FS_TS_SRC_TSREC)
+		return;
 
-	if (frm_get_ts_src_type() == FS_TS_SRC_TSREC) {
-		fs_alg_sa_notify_setup_all_frame_info(idx);
-		frec_notify_vsync(idx); // sensor recorder hw pre-latch
-	}
+
+	/* !!! start here !!! */
+	/* below function using sensor recorder for replacement */
+	// fs_alg_sa_notify_setup_all_frame_info(idx);
+	frec_notify_vsync(idx); // sensor recorder hw pre-latch
+
+	fs_do_fl_restore_proc_if_needed(idx);
 }
 
 
@@ -3093,16 +3406,19 @@ void fs_receive_tsrec_timestamp_info(const unsigned int ident,
 			ts_info);
 		return;
 	}
-	/* save tsrec timestamp info */
+	/* save tsrec timestamp info even if not using tsrec ts info */
 	frm_receive_tsrec_timestamp_info(idx, ts_info);
+	if (frm_get_ts_src_type() != FS_TS_SRC_TSREC)
+		return;
 
-	if (frm_get_ts_src_type() == FS_TS_SRC_TSREC) {
-		/* call this function after receive TSREC timestamp info */
-		fs_alg_sa_notify_vsync(idx);
 
+	/* !!! start here !!! */
+	/* call this function after receive TSREC timestamp info */
+	fs_alg_sa_notify_vsync(idx);
+
+	if (unlikely(pf_log_tracer))
 		if (FS_CHECK_BIT(idx, &fs_mgr.enSync_bits))
 			fs_alg_sa_dump_dynamic_para(idx);
-	}
 }
 
 
@@ -3124,10 +3440,6 @@ void fs_receive_tsrec_timestamp_info(const unsigned int ident,
  */
 unsigned int fs_sync_frame(unsigned int flag)
 {
-#if defined(FS_UT)
-	unsigned int pf_log_tracer = 1;
-#endif
-
 	enum FS_STATUS status = get_fs_status();
 	int valid_sync = FS_ATOMIC_READ(&fs_mgr.validSync_bits);
 
@@ -3136,7 +3448,7 @@ unsigned int fs_sync_frame(unsigned int flag)
 	/* user cmd force disable frame-sync set_sync */
 	if (fs_con_chk_force_to_ignore_set_sync())
 		return 0;
-#endif // FS_UT
+#endif
 
 #ifdef SUPPORT_FS_NEW_METHOD
 	if (FS_READ_BITS(&fs_mgr.hw_sync_bits) == 0
@@ -3145,7 +3457,7 @@ unsigned int fs_sync_frame(unsigned int flag)
 		/* Only using SW soltuion and using SA algo for Frame-Sync */
 		return 0;
 	}
-#endif // SUPPORT_FS_NEW_METHOD
+#endif
 
 
 	/* check sync frame start/end */
@@ -3211,6 +3523,7 @@ static struct FrameSync frameSync = {
 	fs_sync_frame,
 	fs_set_shutter,
 	fs_update_shutter,
+	fs_update_frame_length,
 	fs_update_tg,
 	fs_update_target_tg,
 	fs_update_auto_flicker_mode,
@@ -3230,7 +3543,8 @@ static struct FrameSync frameSync = {
 	fs_receive_tsrec_timestamp_info,
 	fs_is_set_sync,
 	fs_is_hw_sync,
-	fs_get_fl_record_info
+	fs_get_fl_record_info,
+	fs_clear_fl_restore_status_if_needed
 };
 
 

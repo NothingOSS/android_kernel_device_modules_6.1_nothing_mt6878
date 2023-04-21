@@ -1274,6 +1274,7 @@ struct ut_fs_test_list test_list[] = {
 			FS_SYNC_TYPE_ASYNC_MODE,
 			FS_SYNC_TYPE_ASYNC_MODE
 		},
+		.async_master_sidx = 1, // from 1
 		.sensor_cfg = sensor_cfg_13,
 		.env_cfg = &env_cfg_05,
 	},

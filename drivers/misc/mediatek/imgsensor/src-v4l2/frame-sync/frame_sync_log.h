@@ -38,6 +38,9 @@ extern spinlock_t fs_log_concurrency_lock;
 #define LOG_PR_WARN(format, args...) printf(PFX "[%s] " format, __func__, ##args)
 #define LOG_PR_ERR(format, args...) printf(PFX "[%s] " format, __func__, ##args)
 
+#define log_tracer 1
+#define pf_log_tracer 1
+
 #else // FS_UT
 #include <linux/printk.h>  /* for kernel log reduction */
 

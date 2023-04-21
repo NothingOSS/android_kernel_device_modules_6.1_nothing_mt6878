@@ -10,6 +10,8 @@
 /*******************************************************************************
  * Frame Sync Util functions.
  ******************************************************************************/
+long long calc_mod_64(const long long a, const long long b);
+
 
 /* sensor related APIs */
 unsigned int calcLineTimeInNs(

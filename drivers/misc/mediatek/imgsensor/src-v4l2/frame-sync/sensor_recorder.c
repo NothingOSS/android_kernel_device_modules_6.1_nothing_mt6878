@@ -3,6 +3,10 @@
  * Copyright (c) 2022 MediaTek Inc.
  */
 
+#ifndef FS_UT
+#include <linux/delay.h>        /* for get ktime */
+#endif
+
 #include "sensor_recorder.h"
 #include "frame_sync.h"
 #include "frame_sync_log.h"
@@ -79,6 +83,7 @@ struct FrameRecorder {
 
 
 	/* timestamp info */
+	unsigned int tick_factor;
 	unsigned int is_ts_info_updated;
 	SenRec_TS_T ts_exp_0[VSYNCS_MAX];
 	/* actual frame length (by timestamp diff.) */
@@ -87,6 +92,8 @@ struct FrameRecorder {
 
 	/* info for debug */
 	// unsigned int p1_sof_cnt;
+	/* recorder push/update system timestamp for debugging */
+	unsigned long long sys_ts_recs[RECORDER_DEPTH];
 };
 static struct FrameRecorder *frm_recorders[SENSOR_MAX_NUM];
 /******************************************************************************/
@@ -111,6 +118,32 @@ static struct FrameRecorder *frec_g_recorder_ctx(const unsigned int idx,
 	}
 
 	return pfrec;
+}
+
+
+/*----------------------------------------------------------------------------*/
+// tool function
+/*----------------------------------------------------------------------------*/
+static unsigned int divide_num(const unsigned int idx,
+	const unsigned int n, const unsigned int base, const char *caller)
+{
+	unsigned int val = n;
+
+	/* error handle */
+	if (unlikely(base == 0)) {
+		LOG_MUST(
+			"[%s]: ERROR: [%u] ID:%#x(sidx:%u/inf:%u), divide by zero (plz chk input params), n:%u/base:%u, return:%u\n",
+			caller, idx,
+			fs_get_reg_sensor_id(idx),
+			fs_get_reg_sensor_idx(idx),
+			fs_get_reg_sensor_inf_idx(idx),
+			n, base, n);
+		return n;
+	}
+
+	do_div(val, base);
+
+	return val;
 }
 
 
@@ -235,6 +268,7 @@ void frec_dump_frame_record_info(const struct FrameRecord *p_frame_rec,
 void frec_dump_recorder(const unsigned int idx, const char *caller)
 {
 	const struct FrameRecorder *pfrec = frec_g_recorder_ctx(idx, __func__);
+	unsigned int act_fl_arr[RECORDER_DEPTH-1] = {0};
 	unsigned int depth_idx;
 	unsigned int i;
 	char *log_buf = NULL;
@@ -271,8 +305,9 @@ void frec_dump_recorder(const unsigned int idx, const char *caller)
 		const unsigned int idx = RING_BACK(depth_idx, i);
 
 		FS_SNPRINTF(log_buf, len,
-			", ([%u](req:%d): (%u/%u), (a:%u/m:%u(%u,%u), %u/%u/%u/%u/%u, %u/%u/%u/%u/%u), margin(%u,r:%u), rout_l:%u, (%u/%u))",
+			", ([%u](%llu)(req:%d): (%u/%u), (a:%u/m:%u(%u,%u), %u/%u/%u/%u/%u, %u/%u/%u/%u/%u), margin(%u,r:%u), rout_l:%u, (%u/%u))",
 			idx,
+			pfrec->sys_ts_recs[idx],
 			pfrec->frame_recs[idx].mw_req_id,
 			pfrec->frame_recs[idx].shutter_lc,
 			pfrec->frame_recs[idx].framelength_lc,
@@ -317,6 +352,24 @@ void frec_dump_recorder(const unsigned int idx, const char *caller)
 		pfrec->act_fl_us,
 		pfrec->curr_predicted_fl_us,
 		pfrec->curr_predicted_fl_lc);
+
+	for (i = 0; i < RECORDER_DEPTH-1; ++i) {
+		SenRec_TS_T tick_a, tick_b;
+
+		/* check if this is first timestamp & get tick factor */
+		if (unlikely((!pfrec->ts_exp_0[1]) || (!pfrec->tick_factor)))
+			break;
+		/* update actual frame length by timestamp diff */
+		tick_a = pfrec->ts_exp_0[i] * pfrec->tick_factor;
+		tick_b = pfrec->ts_exp_0[i+1] * pfrec->tick_factor;
+		act_fl_arr[i] = divide_num(idx,
+			(tick_a - tick_b), pfrec->tick_factor, __func__);
+	}
+	FS_SNPRINTF(log_buf, len,
+		", act_fl(%u/%u/%u)",
+		act_fl_arr[0],
+		act_fl_arr[1],
+		act_fl_arr[2]);
 
 	FS_SNPRINTF(log_buf, len,
 #ifdef TS_TICK_64_BITS
@@ -423,29 +476,6 @@ void frec_free_mem_data(const unsigned int idx, void *dev)
 /*----------------------------------------------------------------------------*/
 // utilities functions
 /*----------------------------------------------------------------------------*/
-static unsigned int divide_num(const unsigned int idx,
-	const unsigned int n, const unsigned int base, const char *caller)
-{
-	unsigned int val = n;
-
-	/* error handle */
-	if (unlikely(base == 0)) {
-		LOG_MUST(
-			"[%s]: ERROR: [%u] ID:%#x(sidx:%u/inf:%u), divide by zero (plz chk input params), n:%u/base:%u, return:%u\n",
-			caller, idx,
-			fs_get_reg_sensor_id(idx),
-			fs_get_reg_sensor_idx(idx),
-			fs_get_reg_sensor_inf_idx(idx),
-			n, base, n);
-		return n;
-	}
-
-	do_div(val, base);
-
-	return val;
-}
-
-
 /*
  * Return:
  *      @0 => non valid
@@ -649,6 +679,17 @@ void frec_g_valid_min_fl_arr_val_for_lut(const unsigned int idx,
 		return;
 	}
 	memset(fl_lc_arr, 0, sizeof(unsigned int) * arr_len);
+	if (unlikely(curr_rec->m_exp_type != MULTI_EXP_TYPE_LBMF)) {
+		LOG_MUST(
+			"WARNING: [%u] ID:%#x(sidx:%u/inf:%u), sensor curr multi_exp_type:%u(STG:%u/LBMF:%u) is not for LBMF, return\n",
+			idx,
+			fs_get_reg_sensor_id(idx),
+			fs_get_reg_sensor_idx(idx),
+			fs_get_reg_sensor_inf_idx(idx),
+			curr_rec->m_exp_type,
+			MULTI_EXP_TYPE_STG, MULTI_EXP_TYPE_LBMF);
+		return;
+	}
 
 
 	frec_get_cascade_exp_fl_settings(
@@ -1658,6 +1699,7 @@ void frec_update_record(const unsigned int idx,
 void frec_push_record(const unsigned int idx)
 {
 	struct FrameRecorder *pfrec = frec_g_recorder_ctx(idx, __func__);
+	unsigned long long sys_ts = 0;
 	unsigned int curr_depth_idx, next_depth_idx;
 
 	/* error handle */
@@ -1674,6 +1716,9 @@ void frec_push_record(const unsigned int idx)
 
 	frec_spin_lock(&pfrec->frame_recs_update_lock);
 
+#ifndef FS_UT
+	sys_ts = ktime_get_boottime_ns();
+#endif
 	curr_depth_idx = FS_ATOMIC_READ(&pfrec->depth_idx);
 	next_depth_idx = RING_FORWARD(curr_depth_idx, 1);
 
@@ -1685,9 +1730,12 @@ void frec_push_record(const unsigned int idx)
 		&pfrec->frame_recs[curr_depth_idx],
 		sizeof(pfrec->frame_recs[next_depth_idx]));
 
+	/* update system timestamp for debugging */
+	pfrec->sys_ts_recs[next_depth_idx] = sys_ts;
+
 #if defined(TRACE_FS_FREC_LOG)
 	LOG_MUST(
-		"[%u] ID:%#x(sidx:%u/inf:%u) => curr/latest at recs[%u]=(%u/%u), recs:(depth_idx:%u(new), (0:%u/%u), (1:%u/%u), (2:%u/%u), (3:%u/%u) (fl_lc/shut_lc))\n",
+		"[%u] ID:%#x(sidx:%u/inf:%u) => curr/latest at recs[%u]=(%u/%u), sys_ts:%llu, recs:(depth_idx:%u(new), (0:%u/%u), (1:%u/%u), (2:%u/%u), (3:%u/%u) (fl_lc/shut_lc))\n",
 		idx,
 		fs_get_reg_sensor_id(idx),
 		fs_get_reg_sensor_idx(idx),
@@ -1695,6 +1743,7 @@ void frec_push_record(const unsigned int idx)
 		curr_depth_idx,
 		pfrec->frame_recs[curr_depth_idx].framelength_lc,
 		pfrec->frame_recs[curr_depth_idx].shutter_lc,
+		sys_ts,
 		next_depth_idx,
 		pfrec->frame_recs[0].framelength_lc,
 		pfrec->frame_recs[0].shutter_lc,
@@ -1724,8 +1773,11 @@ void frec_reset_records(const unsigned int idx)
 
 	frec_spin_lock(&pfrec->frame_recs_update_lock);
 
-	for (i = 0; i < RECORDER_DEPTH; ++i)
+	for (i = 0; i < RECORDER_DEPTH; ++i) {
 		memset(&pfrec->frame_recs[i], 0, sizeof(pfrec->frame_recs[i]));
+
+		pfrec->sys_ts_recs[i] = 0;
+	}
 
 	FS_ATOMIC_SET(0, &pfrec->depth_idx);
 	pfrec->is_init = 0;
@@ -1765,6 +1817,8 @@ void frec_setup_def_records(const unsigned int idx, const unsigned int def_fl_lc
 	for (i = 0; i < RECORDER_DEPTH; ++i) {
 		memcpy(&pfrec->frame_recs[i], p_frame_rec,
 			sizeof(pfrec->frame_recs[i]));
+
+		pfrec->sys_ts_recs[i] = 0;
 	}
 	pfrec->def_fl_lc = def_fl_lc;
 	frec_init_recorder_fl_related_info(idx, p_frame_rec);
@@ -1843,6 +1897,7 @@ void frec_notify_update_timestamp_data(const unsigned int idx,
 
 	/* copy/update newest timestamp data */
 	memcpy(pfrec->ts_exp_0, ts_us, sizeof(SenRec_TS_T) * arr_len);
+	pfrec->tick_factor = tick_factor;
 
 	/* check if this is first timestamp */
 	if (unlikely(pfrec->ts_exp_0[1] == 0)) {
@@ -1851,10 +1906,10 @@ void frec_notify_update_timestamp_data(const unsigned int idx,
 	}
 
 	/* update actual frame length by timestamp diff */
-	tick_a = pfrec->ts_exp_0[0] * tick_factor;
-	tick_b = pfrec->ts_exp_0[1] * tick_factor;
+	tick_a = pfrec->ts_exp_0[0] * pfrec->tick_factor;
+	tick_b = pfrec->ts_exp_0[1] * pfrec->tick_factor;
 	pfrec->act_fl_us = divide_num(idx,
-		(tick_a - tick_b), tick_factor, __func__);
+		(tick_a - tick_b), pfrec->tick_factor, __func__);
 
 	/* !!! set flag to notify ts info is updated !!! */
 	pfrec->is_ts_info_updated = 1;

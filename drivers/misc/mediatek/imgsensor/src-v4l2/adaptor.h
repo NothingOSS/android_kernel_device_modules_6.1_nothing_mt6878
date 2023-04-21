@@ -43,6 +43,12 @@
 struct adaptor_ctx;
 static unsigned int sensor_debug;
 
+struct adaptor_ae_ctrl_dbg_info {
+	/* timestamp info when get ae ctrl */
+	u64 sys_ts_g_ae_ctrl;
+	u64 sys_ts_update_sof_cnt_at_g_ae_ctrl;
+};
+
 union feature_para {
 	u64 u64[4];
 	u32 u32[8];
@@ -150,6 +156,7 @@ struct adaptor_ctx {
 	struct FrameSync *fsync_mgr;
 	unsigned int fsync_out_fl;
 	unsigned int fsync_out_fl_arr[IMGSENSOR_STAGGER_EXPOSURE_CNT];
+	int needs_fsync_assign_fl;
 
 	/* tsrec */
 	struct mtk_cam_seninf_tsrec_vsync_info vsync_info;
@@ -167,10 +174,12 @@ struct adaptor_ctx {
 	struct subdrv_pw_seq_entry *ctx_pw_seq;
 
 	/* debug var */
+	struct adaptor_ae_ctrl_dbg_info ae_ctrl_dbg_info;
 	MSDK_SENSOR_REG_INFO_STRUCT sensorReg;
 
+	unsigned long long sys_ts_update_sof_cnt;
 	unsigned int *sensor_debug_flag;
-	unsigned int sof_cnt; /* from seninf vsync notify */
+	unsigned int sof_cnt;
 	int req_id; /* from mtk hdr ae ctrl */
 	u64 shutter_for_timeout;
 	struct wakeup_source *sensor_ws;

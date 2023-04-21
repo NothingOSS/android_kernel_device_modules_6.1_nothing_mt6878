@@ -23,6 +23,15 @@
 /******************************************************************************/
 // Frame Sync Utilities function
 /******************************************************************************/
+long long calc_mod_64(const long long a, const long long b)
+{
+	/* assuming b > 0 */
+	long long r = a % b;
+
+	return (r < 0) ? (r + b) : r;
+}
+
+
 inline unsigned int calcLineTimeInNs(
 	const unsigned int pclk, const unsigned int linelength)
 {
