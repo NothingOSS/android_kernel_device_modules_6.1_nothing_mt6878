@@ -418,12 +418,12 @@ TRACE_EVENT(sched_check_temp,
 		),
 
 	TP_fast_assign(
-		memcpy(__entry->unit_name, unit_name, UNIT_NAME_LEN);
+		strncpy(__entry->unit_name, unit_name, 4);
 		__entry->id = id;
 		__entry->temp = temp;
 		),
 
-	TP_printk("%s temperature error! %s=%d temp=%d",
+	TP_printk("%s temperature error!! %s=%d temp=%d",
 		__entry->unit_name,
 		__entry->unit_name,
 		__entry->id,
