@@ -2478,7 +2478,7 @@ void get_exposure_count_by_scenario(struct subdrv_ctx *ctx,
 void get_dcg_gain_ratio_table_by_scenario(struct subdrv_ctx *ctx,
 		enum SENSOR_SCENARIO_ID_ENUM scenario_id, u64 *size, void *data)
 {
-	u32 *gain_ratio_table = ctx->s_ctx.mode[scenario_id].dcg_info.dcg_gain_table;
+	u32 *gain_ratio_table = NULL;
 
 	if (scenario_id >= ctx->s_ctx.sensor_mode_num) {
 		DRV_LOG(ctx, "invalid sid:%u, mode_num:%u\n",
@@ -2486,6 +2486,8 @@ void get_dcg_gain_ratio_table_by_scenario(struct subdrv_ctx *ctx,
 		*size = 0;
 		return;
 	}
+	gain_ratio_table = ctx->s_ctx.mode[scenario_id].dcg_info.dcg_gain_table;
+
 	if (data == NULL)
 		*size = ctx->s_ctx.mode[scenario_id].dcg_info.dcg_gain_table_size;
 	else
@@ -2509,13 +2511,14 @@ void get_dcg_type_by_scenario(struct subdrv_ctx *ctx,
 		enum SENSOR_SCENARIO_ID_ENUM scenario_id,
 		u64 *dcg_mode, u64 *dcg_gain_mode)
 {
-	enum IMGSENSOR_HDR_MODE_ENUM hdr_mode = ctx->s_ctx.mode[scenario_id].hdr_mode;
+	enum IMGSENSOR_HDR_MODE_ENUM hdr_mode = 0;
 
 	if (scenario_id >= ctx->s_ctx.sensor_mode_num) {
 		DRV_LOG(ctx, "invalid sid:%u, mode_num:%u\n",
 			scenario_id, ctx->s_ctx.sensor_mode_num);
 		scenario_id = SENSOR_SCENARIO_ID_NORMAL_PREVIEW;
 	}
+	hdr_mode = ctx->s_ctx.mode[scenario_id].hdr_mode;
 
 	if (hdr_mode != HDR_RAW_DCG_RAW && hdr_mode != HDR_RAW_DCG_COMPOSE)
 		DRV_LOG(ctx, "This mode doesn't support DCG:%u, hdr_mode:%u\n",
