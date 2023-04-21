@@ -22,6 +22,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/ \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps
 
 ifeq ($(strip $(CONFIG_MTK_PQ_COLOR_MODE)),"MDP")
 ccflags-y += -DCMDQ_MDP_COLOR

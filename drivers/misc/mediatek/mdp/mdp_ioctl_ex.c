@@ -11,6 +11,7 @@
 #include <linux/sched/clock.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
+#include <mtk_heap.h>
 
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 #include "mdp_def.h"
@@ -232,6 +233,8 @@ static bool mdp_ion_get_dma_buf(struct device *dev, int fd,
 		goto err;
 	}
 
+	mtk_dma_buf_set_name(buf, "mdp");
+
 	attach = dma_buf_attach(buf, dev);
 	if (IS_ERR(attach)) {
 		CMDQ_ERR("ion buf attach fail %ld", PTR_ERR(attach));
@@ -262,6 +265,7 @@ err:
 static void mdp_ion_free_dma_buf(struct dma_buf *buf,
 	struct dma_buf_attachment *attach, struct sg_table *sgt)
 {
+	mtk_dma_buf_set_name(buf, NULL);
 	dma_buf_unmap_attachment(attach, sgt, DMA_BIDIRECTIONAL);
 	dma_buf_detach(buf, attach);
 	dma_buf_put(buf);
