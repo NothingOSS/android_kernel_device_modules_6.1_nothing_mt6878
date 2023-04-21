@@ -2024,8 +2024,14 @@ static int seninf1_setting(struct seninf_ctx *ctx)
 
 static int csirx_mac_top_setting(struct seninf_ctx *ctx)
 {
-	void *csirx_mac_top = ctx->reg_csirx_mac_top[ctx->port];
+	void *csirx_mac_top;
 
+	if (ctx->port < 0) {
+		dev_info(ctx->dev, "[%s][Error] ctx->port (%d) is < 0\n",
+			__func__, ctx->port);
+	}
+
+	csirx_mac_top = ctx->reg_csirx_mac_top[ctx->port];
 	dev_info(ctx->dev, "[%s] ctx->port %d\n", __func__, ctx->port);
 
 	/* Select share bus option */
@@ -4722,8 +4728,10 @@ static void seninf_record_vsync_info(struct seninf_core *core,
 			SENINF_CAM_MUX_GCSR_VSYNC_IRQ_STS);
 		vsync_info->vsync_irq_st_h = SENINF_READ_REG(pcammux_gcsr,
 			SENINF_CAM_MUX_GCSR_VSYNC_IRQ_STS_H);
-	} else
-		dev_info(core->dev, "%s ctx_ is NULL", __func__);
+	} else {
+		dev_info(core->dev, "%s [ERROR] ctx_ is NULL", __func__);
+		return;
+	}
 
 	if (core->vsync_irq_en_flag)
 		seninf_record_cammux_irq(core, vsync_info);
