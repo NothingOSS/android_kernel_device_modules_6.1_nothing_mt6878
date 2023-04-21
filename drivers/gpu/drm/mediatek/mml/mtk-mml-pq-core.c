@@ -319,6 +319,7 @@ static void release_pq_task(struct kref *ref)
 	kfree(pq_task->dc_readback.readback_data.pipe0_hist);
 	kfree(pq_task->dc_readback.readback_data.pipe1_hist);
 	pq_task->task = NULL;
+	mutex_unlock(&pq_task->ref_lock);
 
 	kfree(pq_task);
 	mml_pq_trace_ex_end();
