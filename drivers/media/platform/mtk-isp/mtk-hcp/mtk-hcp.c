@@ -273,6 +273,7 @@ inline int hcp_id_to_module_id(struct mtk_hcp *hcp_dev, enum hcp_id id)
 	case HCP_IMGSYS_SW_TIMEOUT_ID:
 	case HCP_DIP_DEQUE_DUMP_ID:
 	case HCP_IMGSYS_DEQUE_DONE_ID:
+	case HCP_IMGSYS_ASYNC_DEQUE_DONE_ID:
 	case HCP_IMGSYS_DEINIT_ID:
 	case HCP_IMGSYS_IOVA_FDS_ADD_ID:
 	case HCP_IMGSYS_IOVA_FDS_DEL_ID:
