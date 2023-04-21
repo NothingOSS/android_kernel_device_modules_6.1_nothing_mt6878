@@ -124,6 +124,8 @@ enum slc_ach_uid {
 	ID_GPU,
 	ID_GPU_W,
 	ID_OVL_R,
+	ID_PD,
+	ID_CPU,
 	ID_MAX,
 };
 
