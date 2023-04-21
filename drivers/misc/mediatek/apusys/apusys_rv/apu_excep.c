@@ -336,6 +336,9 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 	}
 
 	if ((apu->platdata->flags & F_SECURE_COREDUMP)) {
+
+#ifdef tmp_patch
+
 		apusys_rv_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_CE_SRAM_DUMP, 0);
 
@@ -370,6 +373,8 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 
 		apusys_rv_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_RV_CLEAR_WDT_ISR, 0);
+#endif
+
 	} else {
 		pc = ioread32(apu->md32_sysctrl + MON_PC);
 		lr = ioread32(apu->md32_sysctrl + MON_LR);

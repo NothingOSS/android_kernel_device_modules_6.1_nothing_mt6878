@@ -22,6 +22,8 @@ enum apusys_assert_module {
 	assert_apusys_ce_TPPA_plus_BW_acc = 0,
 	assert_apusys_ce_norm2lp,
 	assert_apusys_ce_lp2norm,
+	assert_apusys_ce_acx_mdla_mtcmos_off,
+	assert_apusys_ce_rcx_mdla_mtcmos_off,
 	assert_apusys_ce_RCX_Wakeup,
 	assert_apusys_ce_RCX_Sleep,
 	assert_apusys_ce_TPPA_plus_PSC,
@@ -42,6 +44,8 @@ static const char * const apusys_ce_assert_module_name[assert_ce_module_max] = {
 	"APUSYS_CE_TPPA_PLUS_BW_ACC",
 	"APUSYS_CE_NORM2LP",
 	"APUSYS_CE_LP2NORM",
+	"APUSYS_CE_ACX_MDLA_MTCMOS_OFF",
+	"APUSYS_CE_RCX_MDLA_MTCMOS_OFF",
 	"APUSYS_CE_RCX_WAKEUP",
 	"APUSYS_CE_RCX_SLEEP",
 	"APUSYS_CE_TPPA_PLUS_PSC",
@@ -92,6 +96,10 @@ static const char *job_id_mapping(uint32_t job_id)
 		return apusys_ce_assert_module_name[assert_apusys_ce_norm2lp];
 	case 2:
 		return apusys_ce_assert_module_name[assert_apusys_ce_lp2norm];
+	case 14:
+		return apusys_ce_assert_module_name[assert_apusys_ce_acx_mdla_mtcmos_off];
+	case 15:
+		return apusys_ce_assert_module_name[assert_apusys_ce_rcx_mdla_mtcmos_off];
 	case 16:
 		return apusys_ce_assert_module_name[assert_apusys_ce_RCX_Wakeup];
 	case 17:
@@ -130,7 +138,9 @@ static void apu_ce_coredump_work_func(struct work_struct *p_work)
 
 	dev_info(dev, "%s +\n", __func__);
 
+#ifdef tmp_patch
 	apu_regdump();//dump CE reg 0x190B0400 to 0x190B09b4
+#endif
 
     //return CE job id
 	ret = apusys_rv_smc_call(dev,
