@@ -1522,7 +1522,7 @@ int _mtk_cam_seninf_set_camtg(struct v4l2_subdev *sd, int pad_id, int camtg, int
 
 	if (camtg < 0 || camtg == 0xff) {
 		/* disable all dest */
-		dev_info(ctx->dev, "[%s][ERROR] disable camtg %d by pad %d\n",
+		dev_info(ctx->dev, "[%s] disable camtg %d by pad %d\n",
 			__func__, camtg, pad_id);
 		return _mtk_cam_seninf_reset_cammux(ctx, pad_id);
 	}
