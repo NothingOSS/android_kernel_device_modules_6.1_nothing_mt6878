@@ -16,6 +16,7 @@
 #include "pmic_lvsys_notify.h"
 
 #define LBCB_MAX_NUM 16
+#define THD_VOLTS_LENGTH 20
 #define POWER_INT0_VOLT 3400
 #define POWER_INT1_VOLT 3250
 #define POWER_INT2_VOLT 3100
@@ -373,21 +374,47 @@ static int low_battery_throttling_probe(struct platform_device *pdev)
 	int ret, i;
 	struct low_bat_thl_priv *priv;
 	struct device_node *np = pdev->dev.of_node;
+	struct device_node *gauge_np = pdev->dev.parent->of_node;
 	int vol_l_size, vol_h_size, vol_t_size;
 	int lvsys_thd_enable, vbat_thd_enable;
+	char thd_volts_l[THD_VOLTS_LENGTH] = "thd-volts-l";
+	char thd_volts_h[THD_VOLTS_LENGTH] = "thd-volts-h";
+	int bat_type = 0;
 
 	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
 	dev_set_drvdata(&pdev->dev, priv);
 
-	vol_l_size = of_property_count_elems_of_size(np, "thd-volts-l", sizeof(u32));
+	gauge_np = of_find_node_by_name(gauge_np, "mtk-gauge");
+	if (!gauge_np)
+		dev_notice(&pdev->dev, "get mtk-gauge node fail\n");
+	else {
+		ret = of_property_read_u32(gauge_np, "bat_type", &bat_type);
+		if (ret)
+			dev_notice(&pdev->dev, "get bat_type fail\n");
+
+		if (bat_type == 1) {
+			strncpy(thd_volts_l, "thd-volts-l-2s", THD_VOLTS_LENGTH);
+			strncpy(thd_volts_h, "thd-volts-h-2s", THD_VOLTS_LENGTH);
+		}
+	}
+
+	vol_l_size = of_property_count_elems_of_size(np, thd_volts_l, sizeof(u32));
+	if (vol_l_size != 3) {
+		strncpy(thd_volts_l, "thd-volts-l", THD_VOLTS_LENGTH);
+		vol_l_size = of_property_count_elems_of_size(np, thd_volts_l, sizeof(u32));
+	}
 	if (vol_l_size != 3) {
 		dev_notice(&pdev->dev, "[%s] Wrong thd-volts-l\n", __func__);
 		return -ENODATA;
-
 	}
-	vol_h_size = of_property_count_elems_of_size(np, "thd-volts-h", sizeof(u32));
+
+	vol_h_size = of_property_count_elems_of_size(np, thd_volts_h, sizeof(u32));
+	if (vol_h_size != 3) {
+		strncpy(thd_volts_h, "thd-volts-h", THD_VOLTS_LENGTH);
+		vol_h_size = of_property_count_elems_of_size(np, thd_volts_h, sizeof(u32));
+	}
 	if (vol_h_size != 3) {
 		dev_notice(&pdev->dev, "[%s] Wrong thd-volts-h\n", __func__);
 		return -ENODATA;
@@ -407,6 +434,10 @@ static int low_battery_throttling_probe(struct platform_device *pdev)
 		vbat_thd_enable = 1;
 	}
 
+	dev_notice(&pdev->dev, "bat_type = %d\n", bat_type);
+	dev_notice(&pdev->dev, "lvsys_thd_enable = %d, vbat_thd_enable = %d\n",
+			lvsys_thd_enable, vbat_thd_enable);
+
 	priv->thd_volts_size = vol_l_size + vol_h_size;
 	priv->lbat_intr_info = devm_kmalloc_array(&pdev->dev, priv->thd_volts_size,
 		sizeof(struct lbat_intr_tbl), GFP_KERNEL);
@@ -417,8 +448,8 @@ static int low_battery_throttling_probe(struct platform_device *pdev)
 							sizeof(u32), GFP_KERNEL);
 	volt_h_thd = devm_kmalloc_array(&pdev->dev, priv->thd_volts_size,
 							sizeof(u32), GFP_KERNEL);
-	ret = of_property_read_u32_array(np, "thd-volts-l", volt_l_thd, vol_l_size);
-	ret |= of_property_read_u32_array(np, "thd-volts-h", volt_h_thd, vol_h_size);
+	ret = of_property_read_u32_array(np, thd_volts_l, volt_l_thd, vol_l_size);
+	ret |= of_property_read_u32_array(np, thd_volts_h, volt_h_thd, vol_h_size);
 	ret |= check_duplicate(volt_l_thd);
 	ret |= check_duplicate(volt_h_thd);
 
@@ -449,6 +480,7 @@ static int low_battery_throttling_probe(struct platform_device *pdev)
 
 		for (i = 0; i < vol_t_size; i++)
 			priv->thd_volts[i] = priv->lbat_intr_info[i].volt_thd;
+		priv->low_bat_thl_temp_volt_thd = priv->thd_volts[0];
 	}
 
 	if (vbat_thd_enable)
