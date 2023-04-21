@@ -1047,6 +1047,27 @@ static void mtk_cam_ctrl_raw_switch_flow(struct mtk_cam_job *job)
 		 __func__, job->used_engine);
 }
 
+static void mtk_cam_ctrl_update_seq(struct mtk_cam_ctrl *ctrl,
+				    struct mtk_cam_job *job)
+{
+	struct mtk_cam_ctx *ctx;
+	u32 req_seq, frame_seq;
+
+	ctx = ctrl->ctx;
+
+	frame_seq = ctrl->enqueued_frame_seq_no;
+	ctrl->enqueued_frame_seq_no =
+		add_frame_seq(ctrl->enqueued_frame_seq_no, job->frame_cnt);
+
+	req_seq = ++ctrl->enqueued_req_cnt;
+
+	mtk_cam_job_set_no(job, req_seq, frame_seq);
+
+	if (CAM_DEBUG_ENABLED(CTRL))
+		dev_info(ctx->cam->dev, "[%s] ctx:%d, req_no:%d frame_no:%d\n",
+			 __func__, ctx->stream_id, req_seq, frame_seq);
+}
+
 struct mtk_cam_flow_work {
 
 	struct kthread_work work;
@@ -1115,20 +1136,10 @@ static void mtk_cam_ctrl_queue_for_flow_control(struct mtk_cam_ctrl *ctrl,
 void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 			    struct mtk_cam_job *job)
 {
-	struct mtk_cam_ctx *ctx;
-	u32 req_seq, frame_seq;
-
 	if (mtk_cam_ctrl_get(cam_ctrl))
 		return;
 
-	ctx = cam_ctrl->ctx;
-
-	frame_seq = cam_ctrl->enqueued_frame_seq_no;
-	cam_ctrl->enqueued_frame_seq_no =
-		add_frame_seq(cam_ctrl->enqueued_frame_seq_no, job->frame_cnt);
-
-	req_seq = atomic_inc_return(&cam_ctrl->enqueued_req_cnt);
-	mtk_cam_job_set_no(job, req_seq, frame_seq);
+	mtk_cam_ctrl_update_seq(cam_ctrl, job);
 
 	if (job->seamless_switch)
 		mtk_cam_job_set_fsm(job, 0);
@@ -1136,13 +1147,10 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 	if (job->raw_switch)
 		atomic_inc(&cam_ctrl->stream_on_cnt);
 
-	/* EnQ this request's state element to state_list (STATE:READY) */
-	write_lock(&cam_ctrl->list_lock);
-	list_add_tail(&job->job_state.list, &cam_ctrl->camsys_state_list);
-	write_unlock(&cam_ctrl->list_lock);
+	/* initial request */
+	if (cam_ctrl->initial_req) {
+		cam_ctrl->initial_req = 0;
 
-	// to be removed
-	if (frame_seq == 0) {
 		vsync_set_desired(&cam_ctrl->vsync_col,
 				  _get_master_engines(job->used_engine));
 
@@ -1153,6 +1161,13 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 		}
 	}
 
+	/* add to statemachine */
+	write_lock(&cam_ctrl->list_lock);
+
+	/* note:
+	 *   fsm enabling is part of statemachine.
+	 *   should be protected by 'cam_ctrl->list_lock'
+	 */
 	if (atomic_read(&cam_ctrl->stream_on_cnt)) {
 		mtk_cam_job_set_fsm(job, 0);
 		if (CAM_DEBUG_ENABLED(CTRL))
@@ -1160,10 +1175,11 @@ void mtk_cam_ctrl_job_enque(struct mtk_cam_ctrl *cam_ctrl,
 				job->req_seq, atomic_read(&cam_ctrl->stream_on_cnt));
 	}
 
-	mtk_cam_ctrl_send_event(cam_ctrl, CAMSYS_EVENT_ENQUE);
-	dev_dbg(ctx->cam->dev, "[%s] ctx:%d, req_no:%d frame_no:%d\n",
-		__func__, ctx->stream_id, req_seq, frame_seq);
+	list_add_tail(&job->job_state.list, &cam_ctrl->camsys_state_list);
+	write_unlock(&cam_ctrl->list_lock);
 
+	/* following would trigger actions */
+	mtk_cam_ctrl_send_event(cam_ctrl, CAMSYS_EVENT_ENQUE);
 	mtk_cam_ctrl_queue_for_flow_control(cam_ctrl, job);
 
 	mtk_cam_ctrl_put(cam_ctrl);
@@ -1289,7 +1305,8 @@ void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 {
 	cam_ctrl->ctx = ctx;
 
-	atomic_set(&cam_ctrl->enqueued_req_cnt, 0);
+	cam_ctrl->initial_req = 1;
+	cam_ctrl->enqueued_req_cnt = 0;
 	cam_ctrl->enqueued_frame_seq_no = 0;
 	/* special case: if failed to find job in 1st vsync */
 	cam_ctrl->frame_sync_event_cnt = 1;
