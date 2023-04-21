@@ -455,6 +455,48 @@ static MUINT32 exposure_step_table[11] = {
 	4,	//mode 10
 };
 
+static enum IMGSENSOR_HDR_MODE_ENUM hdr_mode_table[11] = {
+	HDR_NONE,	//mode 0
+	HDR_NONE,	//mode 1
+	HDR_NONE,	//mode 2
+	HDR_NONE,	//mode 3
+	HDR_NONE,	//mode 4
+	HDR_NONE,	//mode 5
+	HDR_NONE,	//mode 6
+	HDR_RAW_STAGGER,	//mode 7
+	HDR_RAW_STAGGER,	//mode 8
+	HDR_NONE,	//mode 9
+	HDR_NONE,	//mode 10
+};
+
+static MUINT32 raw_cnt_table[11] = {
+	1,	//mode 0
+	1,	//mode 1
+	1,	//mode 2
+	1,	//mode 3
+	1,	//mode 4
+	1,	//mode 5
+	1,	//mode 6
+	2,	//mode 7
+	2,	//mode 8
+	1,	//mode 9
+	1,	//mode 10
+};
+
+static MUINT32 exp_cnt_table[11] = {
+	1,	//mode 0
+	1,	//mode 1
+	1,	//mode 2
+	1,	//mode 3
+	1,	//mode 4
+	1,	//mode 5
+	1,	//mode 6
+	2,	//mode 7
+	2,	//mode 8
+	1,	//mode 9
+	1,	//mode 10
+};
+
 #define QSC_SIZE 3072
 #define QSC_TABLE_SIZE (QSC_SIZE*2)
 #define QSC_EEPROM_ADDR 0x1E30
@@ -2070,6 +2112,9 @@ static int get_info(struct subdrv_ctx *ctx,
 		sensor_info->gain_ratio[i] = 1000;
 		sensor_info->OB_pedestals[i] = imgsensor_info.ob_pedestal;
 		sensor_info->saturation_level[i] = 1023;
+		sensor_info->hdr_cap[i] = hdr_mode_table[i];
+		sensor_info->raw_cnt[i] = raw_cnt_table[i];
+		sensor_info->exp_cnt[i] = exp_cnt_table[i];
 	}
 
 	return ERROR_NONE;
@@ -2925,53 +2970,6 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 							(UINT16) (*feature_data));
 		pvcinfo2 = (struct SENSOR_VC_INFO2_STRUCT *) (uintptr_t) (*(feature_data + 1));
 		get_vc_info_2(pvcinfo2, *feature_data_32);
-		break;
-	case SENSOR_FEATURE_GET_STAGGER_TARGET_SCENARIO:
-		switch (*feature_data) {
-		case SENSOR_SCENARIO_ID_CUSTOM2:
-			switch (*(feature_data + 1)) {
-			case HDR_RAW_STAGGER_2EXP:
-				*(feature_data + 2) = SENSOR_SCENARIO_ID_CUSTOM3;
-				break;
-			default:
-				break;
-			}
-			break;
-		case SENSOR_SCENARIO_ID_CUSTOM3:
-			switch (*(feature_data + 1)) {
-			case HDR_NONE:
-				*(feature_data + 2) = SENSOR_SCENARIO_ID_CUSTOM2;
-				break;
-			default:
-				break;
-			}
-			break;
-		case SENSOR_SCENARIO_ID_NORMAL_PREVIEW:
-		case SENSOR_SCENARIO_ID_NORMAL_VIDEO:
-			switch (*(feature_data + 1)) {
-			case HDR_RAW_STAGGER_2EXP:
-				*(feature_data + 2) = SENSOR_SCENARIO_ID_CUSTOM4;
-				break;
-			default:
-				break;
-			}
-			break;
-		case SENSOR_SCENARIO_ID_CUSTOM4:
-			switch (*(feature_data + 1)) {
-			case HDR_NONE:
-				*(feature_data + 2) = SENSOR_SCENARIO_ID_NORMAL_VIDEO;
-				break;
-			default:
-				break;
-			}
-			break;
-		default:
-			break;
-		}
-		LOG_DEBUG("SENSOR_FEATURE_GET_STAGGER_TARGET_SCENARIO %d %d %d\n",
-				(UINT16) *feature_data,
-				(UINT16) *(feature_data + 1),
-				(UINT16) *(feature_data + 2));
 		break;
 	case SENSOR_FEATURE_GET_FRAME_CTRL_INFO_BY_SCENARIO:
 		*(feature_data + 1) = 1; //always 1

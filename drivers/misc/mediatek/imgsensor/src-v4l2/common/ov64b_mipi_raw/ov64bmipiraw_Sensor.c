@@ -371,8 +371,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 1,
 		.seamless_switch_mode_setting_table = ov64b_preview_setting,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(ov64b_preview_setting),
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 115200000,
 		.linelength = 936,
 		.framelength = 4108,
@@ -413,8 +414,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_table = ov64b_capture_setting,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(ov64b_capture_setting),
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 115200000,
 		.linelength = 936,
 		.framelength = 4108,
@@ -455,8 +457,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 2,
 		.seamless_switch_mode_setting_table = ov64b_normal_video_setting,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(ov64b_normal_video_setting),
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 115200000,
 		.linelength = 936,
 		.framelength = 4108,
@@ -497,8 +500,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_table = ov64b_hs_video_setting,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(ov64b_hs_video_setting),
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 115200000,
 		.linelength = 528,
 		.framelength = 3660,
@@ -539,15 +543,16 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 2,
 		.seamless_switch_mode_setting_table = ov64b_slim_video_setting,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(ov64b_slim_video_setting),
-		.hdr_group = PARAM_UNDEFINED,
-		.hdr_mode = HDR_RAW_STAGGER_2EXP,
+		.hdr_mode = HDR_RAW_STAGGER,
+		.raw_cnt = 2,
+		.exp_cnt = 2,
 		.pclk = 115200000,
 		.linelength = 528,
 		.framelength = 3660*2,
 		.max_framerate = 300,
 		.mipi_pixel_rate = 1200000000,
-		.readout_length = 0,
-		.read_margin = 10,
+		.readout_length = 2604*2,
+		.read_margin = 10*2,
 		.imgsensor_winsize_info = {
 			.full_w = 9248,
 			.full_h = 6944,
@@ -581,15 +586,16 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 1,
 		.seamless_switch_mode_setting_table = ov64b_custom1_setting,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(ov64b_custom1_setting),
-		.hdr_group = PARAM_UNDEFINED,
-		.hdr_mode = HDR_RAW_STAGGER_2EXP,
+		.hdr_mode = HDR_RAW_STAGGER,
+		.raw_cnt = 2,
+		.exp_cnt = 2,
 		.pclk = 115200000,
 		.linelength = 528,
 		.framelength = 3660*2,
 		.max_framerate = 300,
 		.mipi_pixel_rate = 1200000000,
-		.readout_length = 0,
-		.read_margin = 10,
+		.readout_length = 3472*2,
+		.read_margin = 10*2,
 		.imgsensor_winsize_info = {
 			.full_w = 9248,
 			.full_h = 6944,
@@ -623,15 +629,16 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 2,
 		.seamless_switch_mode_setting_table = ov64b_custom2_setting,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(ov64b_custom2_setting),
-		.hdr_group = PARAM_UNDEFINED,
-		.hdr_mode = HDR_RAW_STAGGER_2EXP,
+		.hdr_mode = HDR_RAW_STAGGER,
+		.raw_cnt = 2,
+		.exp_cnt = 2,
 		.pclk = 115200000,
 		.linelength = 856,
 		.framelength = 2688*2,
 		.max_framerate = 250,
 		.mipi_pixel_rate = 1200000000,
-		.readout_length = 0,
-		.read_margin = 10,
+		.readout_length = 2604*2,
+		.read_margin = 10*2,
 		.imgsensor_winsize_info = {
 			.full_w = 9248,
 			.full_h = 6944,
@@ -665,15 +672,16 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 1,
 		.seamless_switch_mode_setting_table = ov64b_custom3_setting,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(ov64b_custom3_setting),
-		.hdr_group = PARAM_UNDEFINED,
-		.hdr_mode = HDR_RAW_STAGGER_2EXP,
+		.hdr_mode = HDR_RAW_STAGGER,
+		.raw_cnt = 2,
+		.exp_cnt = 2,
 		.pclk = 115200000,
 		.linelength = 816,
 		.framelength = 3520*2,
 		.max_framerate = 200,
 		.mipi_pixel_rate = 1200000000,
-		.readout_length = 0,
-		.read_margin = 10,
+		.readout_length = 3472*2,
+		.read_margin = 10*2,
 		.imgsensor_winsize_info = {
 			.full_w = 9248,
 			.full_h = 6944,
@@ -707,7 +715,6 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 1,
 		.seamless_switch_mode_setting_table = ov64b_custom4_setting,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(ov64b_custom4_setting),
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = PARAM_UNDEFINED,
 		.pclk = 115200000,
 		.linelength = 1008,
@@ -749,8 +756,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 1,
 		.seamless_switch_mode_setting_table = ov64b_custom5_setting,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(ov64b_custom5_setting),
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 115200000,
 		.linelength = 1008,
 		.framelength = 3808,
@@ -791,8 +799,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 1,
 		.seamless_switch_mode_setting_table = ov64b_custom6_setting,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(ov64b_custom6_setting),
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 115200000,
 		.linelength = 1008,
 		.framelength = 7616,
@@ -833,8 +842,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 1,
 		.seamless_switch_mode_setting_table = ov64b_custom7_setting,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(ov64b_custom7_setting),
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 115200000,
 		.linelength = 1008,
 		.framelength = 7616,
@@ -1106,6 +1116,7 @@ static int ov64b_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 	enum SENSOR_SCENARIO_ID_ENUM scenario_id;
 	struct mtk_hdr_ae *ae_ctrl = NULL;
 	u64 *feature_data = (u64 *)para;
+	u32 exp_cnt = 0;
 
 	if (feature_data == NULL) {
 		DRV_LOGE(ctx, "input scenario is null!");
@@ -1139,6 +1150,7 @@ static int ov64b_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 		return ERROR_NONE;
 	}
 
+	exp_cnt = ctx->s_ctx.mode[scenario_id].exp_cnt;
 	ctx->is_seamless = TRUE;
 	update_mode_info(ctx, scenario_id);
 
@@ -1149,9 +1161,9 @@ static int ov64b_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 		ctx->s_ctx.mode[scenario_id].seamless_switch_mode_setting_len);
 	if (ae_ctrl) {
 		switch (ctx->s_ctx.mode[scenario_id].hdr_mode) {
-		case HDR_RAW_STAGGER_2EXP:
-			set_multi_shutter_frame_length(ctx, (u64 *)&ae_ctrl->exposure, 2, 0);
-			set_multi_gain(ctx, (u32 *)&ae_ctrl->gain, 2);
+		case HDR_RAW_STAGGER:
+			set_multi_shutter_frame_length(ctx, (u64 *)&ae_ctrl->exposure, exp_cnt, 0);
+			set_multi_gain(ctx, (u32 *)&ae_ctrl->gain, exp_cnt);
 			break;
 		default:
 			set_shutter(ctx, ae_ctrl->exposure.le_exposure);
@@ -1163,10 +1175,10 @@ static int ov64b_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 		ARRAY_SIZE(addr_data_pair_seamless_switch_step2_ov64b));
 	if (ae_ctrl) {
 		switch (ctx->s_ctx.mode[scenario_id].hdr_mode) {
-		case HDR_RAW_STAGGER_2EXP:
+		case HDR_RAW_STAGGER:
 			set_multi_shutter_frame_length(ctx,
-				(u64 *)&(ae_ctrl + 1)->exposure, 2, 0);
-			set_multi_gain(ctx, (u32 *)&(ae_ctrl + 1)->gain, 2);
+				(u64 *)&(ae_ctrl + 1)->exposure, exp_cnt, 0);
+			set_multi_gain(ctx, (u32 *)&(ae_ctrl + 1)->gain, exp_cnt);
 			break;
 		default:
 			set_shutter(ctx, (ae_ctrl + 1)->exposure.le_exposure);

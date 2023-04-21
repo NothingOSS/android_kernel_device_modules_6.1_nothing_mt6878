@@ -240,8 +240,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 1,
 		.seamless_switch_mode_setting_table = imx758_seamless_preview,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx758_seamless_preview),
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 878400000,
 		.linelength = 7920,
 		.framelength = 3696,
@@ -287,8 +288,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 878400000,
 		.linelength = 7920,
 		.framelength = 3696,
@@ -334,8 +336,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 878400000,
 		.linelength = 5036,
 		.framelength = 2454,
@@ -381,8 +384,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 741600000,
 		.linelength = 5036,
 		.framelength = 2454,
@@ -428,8 +432,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 1,
 		.seamless_switch_mode_setting_table = imx758_seamless_slim_video,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx758_seamless_slim_video),
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 878400000,
 		.linelength = 8808,
 		.framelength = 4155,
@@ -475,8 +480,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 1,
 		.seamless_switch_mode_setting_table = imx758_seamless_custom1,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx758_seamless_custom1),
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 878400000,
 		.linelength = 8808,
 		.framelength = 4155,
@@ -522,8 +528,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 1,
 		.seamless_switch_mode_setting_table = imx758_seamless_custom2,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx758_seamless_custom2),
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 878400000,
 		.linelength = 8808,
 		.framelength = 6648,
@@ -570,8 +577,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 1,
 		.seamless_switch_mode_setting_table = imx758_seamless_custom3,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx758_seamless_custom3),
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 878400000,
 		.linelength = 8808,
 		.framelength = 6648,
@@ -817,6 +825,7 @@ static int imx758_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 	enum SENSOR_SCENARIO_ID_ENUM scenario_id;
 	struct mtk_hdr_ae *ae_ctrl = NULL;
 	u64 *feature_data = (u64 *)para;
+	u32 exp_cnt = 0;
 
 	if (feature_data == NULL) {
 		DRV_LOGE(ctx, "input scenario is null!");
@@ -850,6 +859,7 @@ static int imx758_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 		return ERROR_NONE;
 	}
 
+	exp_cnt = ctx->s_ctx.mode[scenario_id].exp_cnt;
 	ctx->is_seamless = TRUE;
 	update_mode_info(ctx, scenario_id);
 
@@ -861,13 +871,9 @@ static int imx758_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 
 	if (ae_ctrl) {
 		switch (ctx->s_ctx.mode[scenario_id].hdr_mode) {
-		case HDR_RAW_STAGGER_2EXP:
-			set_multi_shutter_frame_length(ctx, (u64 *)&ae_ctrl->exposure, 2, 0);
-			set_multi_gain(ctx, (u32 *)&ae_ctrl->gain, 2);
-			break;
-		case HDR_RAW_STAGGER_3EXP:
-			set_multi_shutter_frame_length(ctx, (u64 *)&ae_ctrl->exposure, 3, 0);
-			set_multi_gain(ctx, (u32 *)&ae_ctrl->gain, 3);
+		case HDR_RAW_STAGGER:
+			set_multi_shutter_frame_length(ctx, (u64 *)&ae_ctrl->exposure, exp_cnt, 0);
+			set_multi_gain(ctx, (u32 *)&ae_ctrl->gain, exp_cnt);
 			break;
 		default:
 			set_shutter(ctx, ae_ctrl->exposure.le_exposure);

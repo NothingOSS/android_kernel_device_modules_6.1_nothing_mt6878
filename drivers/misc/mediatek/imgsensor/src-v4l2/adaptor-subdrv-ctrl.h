@@ -132,9 +132,6 @@ void get_seamless_scenarios(struct subdrv_ctx *ctx,
 		enum SENSOR_SCENARIO_ID_ENUM scenario_id, u32 *pScenarios);
 void get_sensor_hdr_capacity(struct subdrv_ctx *ctx,
 		enum SENSOR_SCENARIO_ID_ENUM scenario_id, u32 *hdr_mode);
-void get_stagger_target_scenario(struct subdrv_ctx *ctx,
-		enum SENSOR_SCENARIO_ID_ENUM scenario_id,
-		enum IMGSENSOR_HDR_MODE_ENUM hdr_mode, u32 *pScenarios);
 void get_frame_ctrl_info_by_scenario(struct subdrv_ctx *ctx,
 		enum SENSOR_SCENARIO_ID_ENUM scenario_id, u32 *margin);
 void get_feature_get_4cell_data(struct subdrv_ctx *ctx, u16 type, char *data);

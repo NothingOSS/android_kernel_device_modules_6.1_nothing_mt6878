@@ -29,7 +29,6 @@ static u16 get_gain2reg(u32 gain);
 static int imx766dual_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len);
 static int imx766dual_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *len);
 static int imx766dual_check_sensor_id(struct subdrv_ctx *ctx, u8 *para, u32 *len);
-static int imx766dual_get_stagger_target_scenario(struct subdrv_ctx *ctx, u8 *para, u32 *len);
 static int get_imgsensor_id(struct subdrv_ctx *ctx, u32 *sensor_id);
 static int init_ctx(struct subdrv_ctx *ctx,	struct i2c_client *i2c_client, u8 i2c_write_id);
 static int vsync_notify(struct subdrv_ctx *ctx,	unsigned int sof_cnt);
@@ -40,7 +39,6 @@ static struct subdrv_feature_control feature_control_list[] = {
 	{SENSOR_FEATURE_SET_TEST_PATTERN, imx766dual_set_test_pattern},
 	{SENSOR_FEATURE_SEAMLESS_SWITCH, imx766dual_seamless_switch},
 	{SENSOR_FEATURE_CHECK_SENSOR_ID, imx766dual_check_sensor_id},
-	{SENSOR_FEATURE_GET_STAGGER_TARGET_SCENARIO, imx766dual_get_stagger_target_scenario},
 };
 
 static struct eeprom_info_struct eeprom_info[] = {
@@ -667,8 +665,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 1488000000,
 		.linelength = 15616,
 		.framelength = 3176,
@@ -715,8 +714,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 1488000000,
 		.linelength = 15616,
 		.framelength = 3176,
@@ -763,8 +763,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 1,
 		.seamless_switch_mode_setting_table = imx766dual_seamless_normal_video,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx766dual_seamless_normal_video),
-		.hdr_group = 1,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 2246400000,
 		.linelength = 15616,
 		.framelength = 4794,
@@ -811,8 +812,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 1300800000,
 		.linelength = 8816,
 		.framelength = 1228,
@@ -859,8 +861,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 1488000000,
 		.linelength = 15616,
 		.framelength = 3176,
@@ -907,8 +910,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 2380800000,
 		.linelength = 31232,
 		.framelength = 3176,
@@ -955,8 +959,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 2284800000,
 		.linelength = 15616,
 		.framelength = 2438,
@@ -1003,8 +1008,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 1752000000,
 		.linelength = 11552,
 		.framelength = 6318,
@@ -1052,8 +1058,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 1,
 		.seamless_switch_mode_setting_table = imx766dual_seamless_custom4,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx766dual_seamless_custom4),
-		.hdr_group = 1,
-		.hdr_mode = HDR_RAW_STAGGER_2EXP,
+		.hdr_mode = HDR_RAW_STAGGER,
+		.raw_cnt = 2,
+		.exp_cnt = 2,
 		.pclk = 2246400000,
 		.linelength = 15616,
 		.framelength = 4792,
@@ -1100,8 +1107,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 2716800000,
 		.linelength = 8816,
 		.framelength = 1284,
@@ -1148,8 +1156,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 2400000000,
 		.linelength = 5568,
 		.framelength = 896,
@@ -1196,8 +1205,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 3513600000,
 		.linelength = 5568,
 		.framelength = 1312,
@@ -1244,8 +1254,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 3513600000,
 		.linelength = 15616,
 		.framelength = 3748,
@@ -1292,8 +1303,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 2,
 		.seamless_switch_mode_setting_table = imx766dual_seamless_custom9,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx766dual_seamless_custom9),
-		.hdr_group = 2,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 1785600000,
 		.linelength = 15616,
 		.framelength = 3810,
@@ -1340,8 +1352,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 2,
 		.seamless_switch_mode_setting_table = imx766dual_seamless_custom10,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx766dual_seamless_custom10),
-		.hdr_group = 2,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 1785600000,
 		.linelength = 11552,
 		.framelength = 5152,
@@ -1389,8 +1402,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 2,
 		.seamless_switch_mode_setting_table = imx766dual_seamless_custom11,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx766dual_seamless_custom11),
-		.hdr_group = 2,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 1785600000,
 		.linelength = 11552,
 		.framelength = 6440,
@@ -1438,8 +1452,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 2,
 		.seamless_switch_mode_setting_table = imx766dual_seamless_custom12,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx766dual_seamless_custom12),
-		.hdr_group = 2,
-		.hdr_mode = HDR_RAW_STAGGER_2EXP,
+		.hdr_mode = HDR_RAW_STAGGER,
+		.raw_cnt = 2,
+		.exp_cnt = 2,
 		.pclk = 1785600000,
 		.linelength = 15616,
 		.framelength = 6352,
@@ -1486,8 +1501,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 3,
 		.seamless_switch_mode_setting_table = imx766dual_seamless_custom13,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx766dual_seamless_custom13),
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 1785600000,
 		.linelength = 15616,
 		.framelength = 3810,
@@ -1534,8 +1550,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 3,
 		.seamless_switch_mode_setting_table = imx766dual_seamless_custom14,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx766dual_seamless_custom14),
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 1785600000,
 		.linelength = 23104,
 		.framelength = 2576,
@@ -1584,8 +1601,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 4,
 		.seamless_switch_mode_setting_table = imx766dual_seamless_custom15,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx766dual_seamless_custom15),
-		.hdr_group = 3,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 3513600000,
 		.linelength = 15616,
 		.framelength = 7500,
@@ -1632,8 +1650,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 4,
 		.seamless_switch_mode_setting_table = imx766dual_seamless_custom16,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx766dual_seamless_custom16),
-		.hdr_group = 3,
-		.hdr_mode = HDR_RAW_STAGGER_2EXP,
+		.hdr_mode = HDR_RAW_STAGGER,
+		.raw_cnt = 2,
+		.exp_cnt = 2,
 		.pclk = 3513600000,
 		.linelength = 15616,
 		.framelength = 7496,
@@ -1680,8 +1699,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
-		.hdr_group = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 3513600000,
 		.linelength = 9216,
 		.framelength = 3176,
@@ -1727,8 +1747,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 2,
 		.seamless_switch_mode_setting_table = imx766_seamless_custom18,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx766_seamless_custom18),
-		.hdr_group = 2,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 1785600000,
 		.linelength = 11552,
 		.framelength = 5152,
@@ -1777,8 +1798,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_group = 2,
 		.seamless_switch_mode_setting_table = imx766_seamless_custom19,
 		.seamless_switch_mode_setting_len = ARRAY_SIZE(imx766_seamless_custom19),
-		.hdr_group = 2,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 1785600000,
 		.linelength = 11552,
 		.framelength = 6440,
@@ -2024,6 +2046,7 @@ static int imx766dual_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len
 	enum SENSOR_SCENARIO_ID_ENUM scenario_id;
 	struct mtk_hdr_ae *ae_ctrl = NULL;
 	u64 *feature_data = (u64 *)para;
+	u32 exp_cnt = 0;
 
 	if (feature_data == NULL) {
 		DRV_LOGE(ctx, "input scenario is null!");
@@ -2057,6 +2080,7 @@ static int imx766dual_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len
 		return ERROR_NONE;
 	}
 
+	exp_cnt = ctx->s_ctx.mode[scenario_id].exp_cnt;
 	ctx->is_seamless = TRUE;
 	update_mode_info(ctx, scenario_id);
 
@@ -2068,13 +2092,9 @@ static int imx766dual_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *len
 
 	if (ae_ctrl) {
 		switch (ctx->s_ctx.mode[scenario_id].hdr_mode) {
-		case HDR_RAW_STAGGER_2EXP:
-			set_multi_shutter_frame_length(ctx, (u64 *)&ae_ctrl->exposure, 2, 0);
-			set_multi_gain(ctx, (u32 *)&ae_ctrl->gain, 2);
-			break;
-		case HDR_RAW_STAGGER_3EXP:
-			set_multi_shutter_frame_length(ctx, (u64 *)&ae_ctrl->exposure, 3, 0);
-			set_multi_gain(ctx, (u32 *)&ae_ctrl->gain, 3);
+		case HDR_RAW_STAGGER:
+			set_multi_shutter_frame_length(ctx, (u64 *)&ae_ctrl->exposure, exp_cnt, 0);
+			set_multi_gain(ctx, (u32 *)&ae_ctrl->gain, exp_cnt);
 			break;
 		default:
 			set_shutter(ctx, ae_ctrl->exposure.le_exposure);
@@ -2153,34 +2173,6 @@ static int get_imgsensor_id(struct subdrv_ctx *ctx, u32 *sensor_id)
 		*sensor_id = 0xFFFFFFFF;
 		return ERROR_SENSOR_CONNECT_FAIL;
 	}
-	return ERROR_NONE;
-}
-
-static int imx766dual_get_stagger_target_scenario(struct subdrv_ctx *ctx, u8 *para, u32 *len)
-{
-	u64 *feature_data = (u64 *)para;
-	enum SENSOR_SCENARIO_ID_ENUM scenario_id = *feature_data;
-	enum IMGSENSOR_HDR_MODE_ENUM hdr_mode = *(feature_data + 1);
-	u32 *pScenarios = (u32 *)(feature_data + 2);
-
-	/* For AI-shutter switch */
-	if (scenario_id == SENSOR_SCENARIO_ID_NORMAL_PREVIEW) {
-		switch (hdr_mode) {
-		case HDR_NONE:
-			*pScenarios = SENSOR_SCENARIO_ID_CUSTOM15;
-			break;
-		case HDR_RAW_STAGGER_2EXP:
-			*pScenarios = SENSOR_SCENARIO_ID_CUSTOM16;
-			break;
-		default:
-			break;
-		}
-		DRV_LOG(ctx, "sid(input/output):%u/%u, hdr_mode:%u\n",
-			scenario_id, *pScenarios, hdr_mode);
-		return ERROR_NONE;
-	}
-	/* For AI-shutter switch */
-	get_stagger_target_scenario(ctx, scenario_id, hdr_mode, pScenarios);
 	return ERROR_NONE;
 }
 

@@ -153,8 +153,9 @@ struct subdrv_mode_struct {
 	u32 seamless_switch_group;
 	u16 *seamless_switch_mode_setting_table;
 	u32 seamless_switch_mode_setting_len;
-	u32 hdr_group;
 	enum IMGSENSOR_HDR_MODE_ENUM hdr_mode;
+	u32 raw_cnt;
+	u32 exp_cnt;
 
 	u32 pclk;
 	u32 linelength;

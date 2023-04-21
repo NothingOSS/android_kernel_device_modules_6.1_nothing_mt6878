@@ -590,7 +590,7 @@ static int s_ae_ctrl(struct v4l2_ctrl *ctrl)
 	enum IMGSENSOR_HDR_MODE_ENUM hdr_mode;
 
 	hdr_mode = (ctx->subctx.s_ctx.mode == NULL)
-		? 0
+		? HDR_NONE
 		: ctx->subctx.s_ctx.mode[ctx->cur_mode->id].hdr_mode;
 
 	memcpy(&ctx->ae_memento, ae_ctrl,
@@ -606,8 +606,7 @@ static int s_ae_ctrl(struct v4l2_ctrl *ctrl)
 
 	switch (hdr_mode) {
 	case HDR_RAW_DCG_RAW:
-	case HDR_RAW_DCG_COMPOSE_RAW12:
-	case HDR_RAW_DCG_COMPOSE_RAW14:
+	case HDR_RAW_DCG_COMPOSE:
 		return do_set_dcg_ae_ctrl(ctx, ae_ctrl);
 	default:
 		return do_set_ae_ctrl(ctx, ae_ctrl);
@@ -1086,13 +1085,6 @@ static int imgsensor_try_ctrl(struct v4l2_ctrl *ctrl)
 		struct mtk_stagger_max_exp_time *info = ctrl->p_new.p;
 
 		g_max_exposure(ctx, ctx->try_format_mode->id, info);
-	}
-		break;
-	case V4L2_CID_STAGGER_TARGET_SCENARIO:
-	{
-		struct mtk_stagger_target_scenario *info = ctrl->p_new.p;
-
-		g_stagger_scenario(ctx, ctx->try_format_mode->id, info);
 	}
 		break;
 	case V4L2_CID_MTK_SENSOR_STATIC_PARAM:
@@ -1996,17 +1988,6 @@ static const struct v4l2_ctrl_config cfg_stagger_info = {
 	.dims = {sizeof_u32(struct mtk_stagger_info)},
 };
 
-static const struct v4l2_ctrl_config cfg_stagger_scenario = {
-	.ops = &ctrl_ops,
-	.id = V4L2_CID_STAGGER_TARGET_SCENARIO,
-	.name = "stagger scenario",
-	.type = V4L2_CTRL_TYPE_U32,
-	.flags = V4L2_CTRL_FLAG_VOLATILE,
-	.max = 0xffff,
-	.step = 1,
-	.dims = {sizeof_u32(struct mtk_stagger_target_scenario)},
-};
-
 static const struct v4l2_ctrl_config cfg_stagger_max_exp_time = {
 	.ops = &ctrl_ops,
 	.id = V4L2_CID_MAX_EXP_TIME,
@@ -2217,7 +2198,7 @@ void restore_ae_ctrl(struct adaptor_ctx *ctx)
 	enum IMGSENSOR_HDR_MODE_ENUM hdr_mode;
 
 	hdr_mode = (ctx->subctx.s_ctx.mode == NULL)
-		? 0
+		? HDR_NONE
 		: ctx->subctx.s_ctx.mode[ctx->cur_mode->id].hdr_mode;
 
 #if IMGSENSOR_LOG_MORE
@@ -2233,8 +2214,7 @@ void restore_ae_ctrl(struct adaptor_ctx *ctx)
 
 	switch (hdr_mode) {
 	case HDR_RAW_DCG_RAW:
-	case HDR_RAW_DCG_COMPOSE_RAW12:
-	case HDR_RAW_DCG_COMPOSE_RAW14:
+	case HDR_RAW_DCG_COMPOSE:
 		do_set_dcg_ae_ctrl(ctx, &ctx->ae_memento);
 		break;
 	default:
@@ -2466,7 +2446,6 @@ int adaptor_init_ctrls(struct adaptor_ctx *ctx)
 	v4l2_ctrl_new_custom(&ctx->ctrls, &cfg_vsync_notify, NULL);
 	v4l2_ctrl_new_custom(&ctx->ctrls, &cfg_update_sof_cnt, NULL);
 	v4l2_ctrl_new_custom(&ctx->ctrls, &cfg_stagger_info, NULL);
-	v4l2_ctrl_new_custom(&ctx->ctrls, &cfg_stagger_scenario, NULL);
 	v4l2_ctrl_new_custom(&ctx->ctrls, &cfg_stagger_max_exp_time, NULL);
 	v4l2_ctrl_new_custom(&ctx->ctrls, &cfg_start_seamless_switch, NULL);
 	v4l2_ctrl_new_custom(&ctx->ctrls, &cfg_static_param, NULL);
