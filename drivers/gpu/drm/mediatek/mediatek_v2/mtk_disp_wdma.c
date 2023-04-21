@@ -1120,7 +1120,7 @@ static void mtk_wdma_config(struct mtk_ddp_comp *comp,
 	dma_addr_t addr = 0;
 	struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
 	struct mtk_wdma_cfg_info *cfg_info = &wdma->cfg_info;
-	int crtc_idx = drm_crtc_index(&comp->mtk_crtc->base);
+	unsigned int crtc_idx = drm_crtc_index(&comp->mtk_crtc->base);
 	int clip_w, clip_h;
 	struct golden_setting_context *gsc;
 	u32 sec;

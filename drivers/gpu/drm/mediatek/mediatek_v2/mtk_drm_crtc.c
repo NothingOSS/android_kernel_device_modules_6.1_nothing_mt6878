@@ -10473,6 +10473,10 @@ static void mtk_drm_crtc_update_interface(struct drm_crtc *crtc,
 			}
 		}
 	}
+
+	if (!output_comp)
+		return;
+
 	if (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI && timing == NULL) {
 		mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_TIMING, &timing);
 		if (timing == NULL) {
