@@ -857,7 +857,8 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 	dump_power_event();
 	dump_clk_event();
 
-	BUG_ON(1);
+	/* TODO wait VCP ready to restore */
+//	BUG_ON(1);
 }
 
 static enum chk_sys_id log_dump_id[] = {
