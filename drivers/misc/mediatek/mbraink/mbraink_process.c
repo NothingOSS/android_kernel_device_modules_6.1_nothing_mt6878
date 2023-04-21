@@ -50,40 +50,23 @@ static DEFINE_SPINLOCK(tracing_pidlist_lock);
 /*Please make sure that tracing pidlist is protected by spinlock*/
 struct mbraink_tracing_pidlist mbraink_tracing_pidlist_data[MAX_TRACE_NUM];
 
-#if (MBRAINK_LANDING_PONSOT_CHECK == 1)
-static int register_trace_android_vh_do_fork(void *t, void *p)
+#if IS_ENABLED(CONFIG_ANON_VMA_NAME)
+struct anon_vma_name *mbraink_anon_vma_name(struct vm_area_struct *vma)
 {
-	pr_info("%s: not support yet...", __func__);
-	return 0;
-}
+	mmap_assert_locked(vma->vm_mm);
 
-static int register_trace_android_vh_do_exit(void *t, void *p)
-{
-	pr_info("%s: not support yet...", __func__);
-	return 0;
-}
+	if (vma->vm_file)
+		return NULL;
 
-static int unregister_trace_android_vh_do_fork(void *t, void *p)
-{
-	pr_info("%s: not support yet...", __func__);
-	return 0;
+	return vma->anon_name;
 }
-static int unregister_trace_android_vh_do_exit(void *t, void *p)
+#else
+struct anon_vma_name *mbraink_anon_vma_name(struct vm_area_struct *vma)
 {
-	pr_info("%s: not support yet...", __func__);
-	return 0;
+	return NULL;
 }
 #endif
 
-#if (MBRAINK_LANDING_PONSOT_CHECK == 1)
-void mbraink_get_process_memory_info(pid_t current_pid,
-					struct mbraink_process_memory_data *process_memory_buffer)
-{
-	pr_info("%s: not support yet...", __func__);
-	memset(process_memory_buffer, 0, sizeof(struct mbraink_process_memory_data));
-	process_memory_buffer->pid = 0;
-}
-#else
 void mbraink_map_vma(struct vm_area_struct *vma, unsigned long cur_pss,
 			unsigned long *native_heap, unsigned long *java_heap)
 {
@@ -122,7 +105,7 @@ void mbraink_map_vma(struct vm_area_struct *vma, unsigned long cur_pss,
 			vma->vm_end >= vma->vm_mm->start_stack)
 			return;
 
-		anon_name = anon_vma_name(vma);
+		anon_name = mbraink_anon_vma_name(vma);
 		if (anon_name) {
 			if (strstr(anon_name->name, "scudo"))
 				(*native_heap) += cur_pss;
@@ -156,8 +139,8 @@ void mbraink_get_process_memory_info(pid_t current_pid,
 	unsigned short pid_count = 0;
 	unsigned long pss, uss, rss, swap, cur_pss;
 	unsigned long java_heap = 0, native_heap = 0;
-	pid_t tmp_this_pid = 0;
 	int ret = 0;
+	struct vma_iterator vmi;
 
 	memset(process_memory_buffer, 0, sizeof(struct mbraink_process_memory_data));
 	process_memory_buffer->pid = 0;
@@ -169,54 +152,50 @@ void mbraink_get_process_memory_info(pid_t current_pid,
 
 		mm = t->mm;
 		if (mm) {
-			vma = mm->mmap;
-			if (vma) {
-				java_heap = 0;
-				native_heap = 0;
-				tmp_this_pid =  t->pid;
+			java_heap = 0;
+			native_heap = 0;
+			pid_count = process_memory_buffer->pid_count;
 
-				memset(&mss, 0, sizeof(mss));
-				read_unlock(&tasklist_lock);
-				mmap_read_lock(mm);
-				while (vma) {
-					cur_pss = (unsigned long)(mss.pss >> PSS_SHIFT);
-					smap_gather_stats(vma, &mss, 0);
-					cur_pss =
-						((unsigned long)(mss.pss >> PSS_SHIFT)) - cur_pss;
-					cur_pss = cur_pss / 1024;
-					mbraink_map_vma(vma, cur_pss, &native_heap, &java_heap);
+			if (pid_count < MAX_MEM_STRUCT_SZ)
+				process_memory_buffer->drv_data[pid_count].pid =
+						(unsigned short)(t->pid);
+			else {
+				ret = -1;
+				process_memory_buffer->pid =
+					(unsigned short)(t->pid);
+				break;
+			}
 
-					vma = vma->vm_next;
-				}
-				mmap_read_unlock(mm);
-				read_lock(&tasklist_lock);
+			memset(&mss, 0, sizeof(mss));
+			read_unlock(&tasklist_lock);
+			mmap_read_lock(mm);
+			vma_iter_init(&vmi, mm, 0);
+			for_each_vma(vmi, vma) {
+				cur_pss = (unsigned long)(mss.pss >> PSS_SHIFT);
+				smap_gather_stats(vma, &mss, 0);
+				cur_pss =
+					((unsigned long)(mss.pss >> PSS_SHIFT)) - cur_pss;
+				cur_pss = cur_pss / 1024;
+				mbraink_map_vma(vma, cur_pss, &native_heap, &java_heap);
+			}
+			mmap_read_unlock(mm);
+			read_lock(&tasklist_lock);
 
-				pss = (unsigned long)(mss.pss >> PSS_SHIFT)/1024;
-				uss = (mss.private_clean+mss.private_dirty)/1024;
-				rss = (mss.resident) / 1024;
-				swap = (mss.swap) / 1024;
-				pid_count = process_memory_buffer->pid_count;
+			pss = (unsigned long)(mss.pss >> PSS_SHIFT)/1024;
+			uss = (mss.private_clean+mss.private_dirty)/1024;
+			rss = (mss.resident) / 1024;
+			swap = (mss.swap) / 1024;
 
-				if (pid_count < MAX_MEM_STRUCT_SZ) {
-					process_memory_buffer->drv_data[pid_count].pid =
-								(unsigned short)(tmp_this_pid);
-					process_memory_buffer->drv_data[pid_count].pss = pss;
-					process_memory_buffer->drv_data[pid_count].uss = uss;
-					process_memory_buffer->drv_data[pid_count].rss = rss;
-					process_memory_buffer->drv_data[pid_count].swap = swap;
-					process_memory_buffer->drv_data[pid_count].java_heap =
-										java_heap;
-					process_memory_buffer->drv_data[pid_count].native_heap =
-										native_heap;
-					process_memory_buffer->pid_count++;
-				} else {
-					ret = -1;
-					process_memory_buffer->pid =
-						(unsigned short)(tmp_this_pid);
-					break;
-				}
-			} else {
-				pr_notice("no vma is mapped.\n");
+			if (pid_count < MAX_MEM_STRUCT_SZ) {
+				process_memory_buffer->drv_data[pid_count].pss = pss;
+				process_memory_buffer->drv_data[pid_count].uss = uss;
+				process_memory_buffer->drv_data[pid_count].rss = rss;
+				process_memory_buffer->drv_data[pid_count].swap = swap;
+				process_memory_buffer->drv_data[pid_count].java_heap =
+									java_heap;
+				process_memory_buffer->drv_data[pid_count].native_heap =
+									native_heap;
+				process_memory_buffer->pid_count++;
 			}
 		} else {
 			/*pr_info("kthread case ...\n");*/
@@ -227,7 +206,6 @@ void mbraink_get_process_memory_info(pid_t current_pid,
 		__func__, process_memory_buffer->pid, process_memory_buffer->pid_count);
 	read_unlock(&tasklist_lock);
 }
-#endif
 
 void mbraink_get_process_stat_info(pid_t current_pid,
 		struct mbraink_process_stat_data *process_stat_buffer)
@@ -698,9 +676,11 @@ static void mbraink_trace_android_vh_do_exit(void *data, struct task_struct *t)
 					break;
 				}
 			}
-			if (i == MAX_TRACE_NUM)
-				pr_info("tracing pid list is not enough, pid=%u:%s !!!\n",
-					t->pid, t->comm);
+			if (i == MAX_TRACE_NUM) {
+				pr_info("%s pid=%u:%s.\n", __func__, t->pid, t->comm);
+				memset(mbraink_tracing_pidlist_data, 0,
+					sizeof(struct mbraink_tracing_pidlist) * MAX_TRACE_NUM);
+			}
 		}
 		spin_unlock_irqrestore(&tracing_pidlist_lock, flags);
 	}
@@ -730,10 +710,13 @@ static void mbraink_trace_android_vh_do_fork(void *data, struct task_struct *p)
 				break;
 			}
 		}
+
+		if (i == MAX_TRACE_NUM) {
+			pr_info("%s child_pid=%u:%s.\n", __func__, p->pid, p->comm);
+			memset(mbraink_tracing_pidlist_data, 0,
+				sizeof(struct mbraink_tracing_pidlist) * MAX_TRACE_NUM);
+		}
 		spin_unlock_irqrestore(&tracing_pidlist_lock, flags);
-		if (i == MAX_TRACE_NUM)
-			pr_info("tracing pid list is not enough, child_pid=%u:%s !!!\n",
-				p->pid, p->comm);
 	}
 }
 
