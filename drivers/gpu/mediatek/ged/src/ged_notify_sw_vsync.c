@@ -205,11 +205,14 @@ static unsigned long long g_ns_gpu_on_ts;
 static unsigned long long g_ns_gpu_off_ts;
 static unsigned long long g_ns_gpu_active_ts;
 static unsigned long long g_ns_gpu_idle_ts;
+static unsigned long long g_ns_gpu_predict_active_ts;
+static unsigned long long g_ns_gpu_predict_idle_ts;
 
 static bool g_timer_on;
 static unsigned long long g_timer_on_ts;
 static bool g_bGPUClock;
 static bool g_bGPUAdaptivePower;
+static bool g_bGPUPredictAdaptivePower;
 
 /*
  * void timer_switch(bool bTock)
@@ -525,6 +528,39 @@ bool ged_gpu_adaptive_power_notify(void)
 		return false;
 }
 EXPORT_SYMBOL(ged_gpu_adaptive_power_notify);
+
+void ged_get_predict_active_time(void)
+{
+	g_ns_gpu_predict_active_ts = ged_get_time();
+}
+EXPORT_SYMBOL(ged_get_predict_active_time);
+
+void ged_get_predict_idle_time(void)
+{
+	g_ns_gpu_predict_idle_ts = ged_get_time();
+}
+EXPORT_SYMBOL(ged_get_predict_idle_time);
+
+void ged_check_predict_power_duration(void)
+{
+	long long llDiff = 0;
+
+	llDiff = (long long)(g_ns_gpu_predict_active_ts - g_ns_gpu_predict_idle_ts);
+	if ((llDiff > 0) && (llDiff < GED_POWER_DURATION_NS))
+		g_bGPUPredictAdaptivePower = true;
+	else
+		g_bGPUPredictAdaptivePower = false;
+}
+EXPORT_SYMBOL(ged_check_predict_power_duration);
+
+bool ged_gpu_predict_adaptive_power_notify(void)
+{
+	if (g_ged_adaptive_power_policy_support)
+		return g_bGPUPredictAdaptivePower;
+	else
+		return false;
+}
+EXPORT_SYMBOL(ged_gpu_predict_adaptive_power_notify);
 
 void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state)
 {
