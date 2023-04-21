@@ -64,6 +64,7 @@ enum TRUSTED_MEM_REQ_TYPE trusted_mem_api_get_page_replace(
 				  enum TRUSTED_MEM_REQ_TYPE mem_type);
 int trusted_mem_ffa_query_pa(u64 *handle, uint64_t *phy_addr);
 bool trusted_mem_is_ffa_enabled(void);
+bool trusted_mem_is_page_v2_enabled(void);
 
 int trusted_mem_page_based_alloc(enum TRUSTED_MEM_REQ_TYPE req_mem_type,
 				struct sg_table *sg_tbl, u64 *handle, u32 size);

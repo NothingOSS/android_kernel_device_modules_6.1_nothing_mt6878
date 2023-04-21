@@ -46,11 +46,7 @@ int orders[2] = { 9, 4 };
 #define NUM_ORDERS ARRAY_SIZE(orders)
 struct dmabuf_page_pool *pools[NUM_ORDERS];
 
-#if IS_ENABLED(CONFIG_MTK_PROT_MEM_SSHEAP_V2)
-int tmem_api_ver = 2;
-#else
-int tmem_api_ver = 1;
-#endif
+int tmem_api_ver;
 
 enum sec_heap_region_type {
 	/* MM heap */
@@ -392,7 +388,7 @@ static int page_base_free_v2(struct secure_heap_page *sec_heap,
 	struct list_head *pmm_msg_list;
 	struct sg_table *table = NULL;
 	struct scatterlist *sg = NULL;
-	int smc_ret, i, j;
+	int smc_ret, i, j, page_count = 0;
 	uint32_t *bitmap = page_address(sec_heap->bitmap);
 
 	smc_ret = mtee_unassign_buffer_v2(buffer->ssheap, sec_heap->tmem_type);
@@ -417,6 +413,7 @@ static int page_base_free_v2(struct secure_heap_page *sec_heap,
 			bitmap[idx] |= (1 << offset);
 			// pr_debug("bitmap[%#x]:%#x, offset:%#x\n", idx, bitmap[idx], offset);
 			++i;
+			++page_count;
 		}
 		memset(page_address(pmm_page), 0, page_size(pmm_page));
 		__free_pages(pmm_page, get_order(PAGE_SIZE));
@@ -449,7 +446,8 @@ static int page_base_free_v2(struct secure_heap_page *sec_heap,
 		struct arm_smccc_res smc_res;
 		int i;
 
-		pr_debug("%s: page merged for cpu and infra-mpu\n", __func__);
+		pr_info("%s: page count:%d, merge the cpu and infra-mpu pgtbl\n",
+				__func__, page_count);
 		pr_debug("bitmap:\n");
 		for (i = 0; i < 1024; ++i) {
 			if (bitmap[i] != 0)
@@ -697,27 +695,27 @@ static int fill_sec_buffer_info(struct mtk_sec_heap_buffer *buf,
 
 static int check_map_alignment(struct sg_table *table)
 {
-#if IS_ENABLED(CONFIG_MTK_PROT_MEM_SSHEAP_V2)
-#else
-	int i;
-	struct scatterlist *sgl;
+	if (!trusted_mem_is_page_v2_enabled()) {
+		int i;
+		struct scatterlist *sgl;
 
-	for_each_sg(table->sgl, sgl, table->orig_nents, i) {
-		unsigned int len = sgl->length;
-		phys_addr_t s_phys = sg_phys(sgl);
+		for_each_sg(table->sgl, sgl, table->orig_nents, i) {
+			unsigned int len = sgl->length;
+			phys_addr_t s_phys = sg_phys(sgl);
 
-		if (!IS_ALIGNED(len, SZ_1M)) {
-			pr_err("%s err, size(0x%x) is not 1MB alignment\n",
-			       __func__, len);
-			return -EINVAL;
-		}
-		if (!IS_ALIGNED(s_phys, SZ_1M)) {
-			pr_err("%s err, s_phys(%pa) is not 1MB alignment\n",
-			       __func__, &s_phys);
-			return -EINVAL;
+			if (!IS_ALIGNED(len, SZ_1M)) {
+				pr_info("%s err, size(0x%x) is not 1MB alignment\n",
+				       __func__, len);
+				return -EINVAL;
+			}
+			if (!IS_ALIGNED(s_phys, SZ_1M)) {
+				pr_info("%s err, s_phys(%pa) is not 1MB alignment\n",
+				       __func__, &s_phys);
+				return -EINVAL;
+			}
 		}
 	}
-#endif
+
 	return 0;
 }
 
@@ -1229,8 +1227,6 @@ free_buffer:
 	return ret;
 }
 
-#if IS_ENABLED(CONFIG_MTK_PROT_MEM_SSHEAP_V2)
-
 static struct page *alloc_largest_available(unsigned long size,
 					    unsigned int max_order)
 {
@@ -1498,7 +1494,6 @@ free_pages:
 
 	return -ENOMEM;
 }
-#endif
 
 static int page_base_alloc(struct secure_heap_page *sec_heap,
 			   struct mtk_sec_heap_buffer *buffer,
@@ -2039,6 +2034,12 @@ static int __init mtk_sec_heap_init(void)
 	int i;
 
 	pr_info("%s+\n", __func__);
+
+	if (trusted_mem_is_page_v2_enabled())
+		tmem_api_ver = 2;
+	else
+		tmem_api_ver = 1;
+
 	ret = mtk_page_heap_create();
 	if (ret) {
 		pr_err("page_base_heap_create failed\n");

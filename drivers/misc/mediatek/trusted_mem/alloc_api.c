@@ -220,6 +220,12 @@ bool trusted_mem_is_ffa_enabled(void)
 }
 EXPORT_SYMBOL(trusted_mem_is_ffa_enabled);
 
+bool trusted_mem_is_page_v2_enabled(void)
+{
+	return is_page_based_v2_enabled();
+}
+EXPORT_SYMBOL(trusted_mem_is_page_v2_enabled);
+
 int trusted_mem_page_based_alloc(enum TRUSTED_MEM_REQ_TYPE req_mem_type,
 		struct sg_table *sg_tbl, u64 *handle, u32 size)
 {

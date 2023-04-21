@@ -35,6 +35,7 @@
 
 #define SSMR_FEATURES_DT_UNAME "memory-ssmr-features"
 #define FFA_ENABLED_DT_UNAME "memory-ffa-enabled"
+#define PAGE_BASED_V2_ENABLED_DT_UNAME "page-based-v2-enabled"
 #define SVP_FEATURES_DT_UNAME "SecureVideoPath"
 #define SVP_ON_MTEE_DT_UNAME "MTEE"
 #define SVP_STATIC_RESERVED_DT_UNAME "mediatek,reserve-memory-svp"
@@ -616,6 +617,17 @@ bool is_ffa_enabled(void)
 #else
 	return false;
 #endif
+}
+
+bool is_page_based_v2_enabled(void)
+{
+	struct device_node *dt_node;
+
+	dt_node = of_find_node_by_name(NULL, PAGE_BASED_V2_ENABLED_DT_UNAME);
+	if (!dt_node)
+		return false;
+
+	return true;
 }
 
 int sec_ssmr_init(struct platform_device *pdev)
