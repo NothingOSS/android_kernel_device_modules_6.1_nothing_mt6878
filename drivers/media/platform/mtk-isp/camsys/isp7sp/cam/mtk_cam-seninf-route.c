@@ -1373,17 +1373,22 @@ static struct seninf_mux *get_mux(struct seninf_ctx *ctx, struct seninf_vc *vc,
 	default:
 		break;
 	}
-
+	dev_info(ctx->dev, "[%s]Vsync_time_out_debug group_src : %d\n", __func__, group_src);
+	dev_info(ctx->dev, "[%s]Vsync_time_out_debug dest_cam_type : %d\n",
+		__func__, dest_cam_type);
 	/* alloc mux by group */
 	if (ctx->mux_by[group_src][dest_cam_type]) {
 		mux = ctx->mux_by[group_src][dest_cam_type];
 		skip_mux_ctrl = 1;
+		dev_info(ctx->dev, "[%s]Vsync_time_out_debug skip_mux_ctrl 1\n", __func__);
 	} else {
 		mux = mtk_cam_seninf_mux_get_by_type(ctx, dest_cam_type);
 		ctx->mux_by[group_src][dest_cam_type] = mux;
 		skip_mux_ctrl = 0;
+		dev_info(ctx->dev, "[%s]Vsync_time_out_debug skip_mux_ctrl 0\n", __func__);
 	}
-
+	dev_info(ctx->dev, "[%s]Vsync_time_out_debug skip_mux_ctrl : %d\n",
+		__func__, skip_mux_ctrl);
 	if (!mux) {
 		dev_info(ctx->dev, "Err get NULL mux\n");
 		mtk_cam_seninf_release_mux(ctx);
@@ -1484,6 +1489,12 @@ int _mtk_cam_seninf_set_camtg_with_dest_idx(struct v4l2_subdev *sd, int pad_id,
 				dest->tag = tag_id;
 
 				dest->cam_type = cammux2camtype(ctx, dest->cam);
+				dev_info(ctx->dev, "[%s]Vsync_time_out_debug pad_id : %d\n",
+					__func__, pad_id);
+				dev_info(ctx->dev, "[%s]Vsync_time_out_debug dest->cam : %d\n",
+					__func__, dest->cam);
+				dev_info(ctx->dev, "[%s]Vsync_time_out_debug dest->cam_type : %d\n",
+					__func__, dest->cam_type);
 				mux = get_mux(ctx, vc, dest->cam_type, ctx->seninfIdx);
 				if (!mux) {
 					dev_info(ctx->dev, "mux is null\n");
@@ -1840,7 +1851,12 @@ int mtk_cam_seninf_s_stream_mux(struct seninf_ctx *ctx)
 			dest->cam = ctx->pad2cam[vc->out_pad][j];
 
 			dest->cam_type = cammux2camtype(ctx, dest->cam);
-
+			dev_info(ctx->dev, "[%s]Vsync_time_out_debug vc[%d] pad %d\n",
+				__func__, i, vc->feature);
+			dev_info(ctx->dev, "[%s]Vsync_time_out_debug dest->cam : %d\n",
+				__func__, dest->cam);
+			dev_info(ctx->dev, "[%s]Vsync_time_out_debug dest->cam_type : %d\n",
+				__func__, dest->cam_type);
 			mux = get_mux(ctx, vc, dest->cam_type, intf);
 			if (!mux)
 				return -EBUSY;
