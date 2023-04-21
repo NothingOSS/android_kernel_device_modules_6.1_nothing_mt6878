@@ -35,7 +35,7 @@ enum SMI_YUV_MERGE_PORT_ID {
 	SMI_PORT_YUVO_R5,
 	SMI_PORT_RGBWI_R1,
 	SMI_PORT_TSYSO_R1,
-	SMI_PORT_DRZHNO_R9,
+	SMI_PORT_DRZHNO_R3,
 	SMI_PORT_YUV_NUM,
 };
 
@@ -351,7 +351,7 @@ static struct qos_dma_desc drzs4no_3_dmas[] = {
 	{
 		.dma_name = " drzs4no_r3",
 		.domain = YUV_DOMAIN,
-		.dst_port = SMI_PORT_DRZHNO_R9,
+		.dst_port = SMI_PORT_DRZHNO_R3,
 	},
 };
 
@@ -359,7 +359,7 @@ static struct qos_dma_desc rzh1n2to_3_dmas[] = {
 	{
 		.dma_name = "rzh1n2to_r3",
 		.domain = YUV_DOMAIN,
-		.dst_port = SMI_PORT_DRZHNO_R9,
+		.dst_port = SMI_PORT_DRZHNO_R3,
 	},
 	{
 		.dma_name = "rzh1n2tbo_r3",
@@ -372,7 +372,7 @@ static struct qos_dma_desc rzh1n2to_1_dmas[] = {
 	{
 		.dma_name = "rzh1n2to_r1",
 		.domain = YUV_DOMAIN,
-		.dst_port = SMI_PORT_DRZHNO_R9,
+		.dst_port = SMI_PORT_DRZHNO_R3,
 	},
 	{
 		.dma_name = "rzh1n2tbo_r1",
