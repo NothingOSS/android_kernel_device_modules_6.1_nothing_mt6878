@@ -984,10 +984,10 @@ static int ext_ctrl(struct adaptor_ctx *ctx, struct v4l2_ctrl *ctrl, struct sens
 			ctx->shutter_for_timeout,
 			mode->linetime_in_ns,
 			ctrl->val,
-			10000000 / mode->max_framerate);
+			10000000 / ctx->subctx.current_fps);
 
-		if (ctrl->val < (10000000 / mode->max_framerate))
-			ctrl->val = 10000000 / mode->max_framerate;
+		if (ctrl->val < (10000000 / ctx->subctx.current_fps))
+			ctrl->val = 10000000 / ctx->subctx.current_fps;
 		break;
 	case V4L2_CID_VBLANK:
 		ctrl->val = get_mode_vb(ctx, mode);
