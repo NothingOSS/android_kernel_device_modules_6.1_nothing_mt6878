@@ -465,7 +465,7 @@ struct tee_mmu	*DVGF_WMF_FILT_mmu;
 struct tee_mmu	*DVGF_OutBuf_OCC_Ext_mmu;
 
 struct tee_mmu	*RegDumpt_mmu;
-unsigned int DPE_P4_EN;
+//unsigned int DPE_P4_EN;
 unsigned int DVP_is16BitMode;
 unsigned int get_dvs_iova[12];
 unsigned int get_dvp_iova[13];
@@ -1569,6 +1569,7 @@ signed int dpe_enque_cb(struct frame *frames, void *req)
 	unsigned int DVP_16bitMode;
 	unsigned int WMF_RD_EN;
 	unsigned int WMF_FILT_Ofs;
+	unsigned int DPE_P4_EN;
 
 #ifdef IOVA_TO_PA
 	uint64_t iova_temp = 0x200000000;
@@ -2505,6 +2506,7 @@ signed int dpe_deque_cb(struct frame *frames, void *req)
 {
 	unsigned int f, fcnt, ucnt;
 	unsigned int pd_frame_num;
+	unsigned int DPE_P4_EN;
 	struct DPE_Request *_req;
 	struct DPE_Config_V2 *pDpeConfig;
 	int i, dvs_cnt, dvp_cnt, dvp_put, dvs_put, dvgf_cnt;
@@ -2567,7 +2569,7 @@ signed int dpe_deque_cb(struct frame *frames, void *req)
 		(pDpeConfig->Dpe_engineSelect == MODE_DVS_DVP_BOTH)) {
 		LOG_INF("dpe_deque DVS put fd\n");
 		mutex_lock(&gFDMutex);
-		DPE_P4_EN = (((_req->m_pDpeConfig[ucnt].Dpe_DVSSettings.TuningBuf_ME.DVS_ME_28) &
+		DPE_P4_EN = (((_req->m_pDpeConfig[0].Dpe_DVSSettings.TuningBuf_ME.DVS_ME_28) &
 							0x400) >> 10);
 		LOG_INF("dpe_deque DPE_P4_EN = %d\n", DPE_P4_EN);
 		mutex_unlock(&gFDMutex);
@@ -2634,6 +2636,8 @@ signed int dpe_deque_cb(struct frame *frames, void *req)
 				get_dvs_iova[5]--;
 				memcpy(&temp_dvs, &SrcImg_Y_L_Pre_mmu[i], sizeof(struct tee_mmu));
 				mmu_release(&temp_dvs, 5);
+				// if (DPE_debug_log_en == 1)
+					LOG_INF("dpe_deque SrcImg_Y_L_Pre put fd\n");
 				dvs_cnt++;
 			}
 
@@ -2940,6 +2944,7 @@ void DPE_Config_DVS(struct DPE_Config_V2 *pDpeConfig,
 	unsigned int pitch = pDpeConfig->Dpe_DVSSettings.dram_pxl_pitch>>4;
 	unsigned int full_tile_width = pDpeConfig->Dpe_DVSSettings.dram_out_pitch >> 4;
 	unsigned int tile_pitch = ((ext1_engWidth >> 1) + (ext2_engWidth >> 1) + 15) >> 4;
+	unsigned int DPE_P4_EN;
 
 	mutex_lock(&gFDMutex);
 	DPE_P4_EN = ((pDpeConfig->Dpe_DVSSettings.TuningBuf_ME.DVS_ME_28 & 0x400)>>10);
@@ -3043,7 +3048,11 @@ void DPE_Config_DVS(struct DPE_Config_V2 *pDpeConfig,
 	((pitch) & 0x3FF) | ((pitch & 0x3FF) << 10) |
 	((pDpeConfig->Dpe_DVSSettings.dram_out_pitch_en & 0x01) << 31) |
 	((full_tile_width & 0x3FF) << 20); //!ISP7
-	//pConfigToKernel->DVS_DRAM_PITCH = 0x01e05816;
+
+	if (pDpeConfig->Dpe_DVSSettings.ext_frm_mode_en == 0) {
+		tile_pitch = (((engWidth >> 1) + 15) >> 4);
+		LOG_INF("tile_pitch =%d\n", tile_pitch);
+	}
 
 	if (pDpeConfig->Dpe_DVSSettings.out_adj_width !=
 		pDpeConfig->Dpe_DVSSettings.occ_width) {
