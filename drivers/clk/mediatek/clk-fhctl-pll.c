@@ -895,7 +895,7 @@ static struct fh_pll_domain mt6989_top1 = {
 };
 ///////////////////////////////////gpu0
 static struct fh_pll_data mt6989_gpu0_data[] = {
-	DATA_6989_CONVERT("mfg_ao_mfgpll"),
+	DATA_6989_CONVERT("mfg-ao-mfgpll"),
 	{}
 };
 static struct fh_pll_offset mt6989_gpu0_offset[SIZE_6989_GPU0] = {
@@ -913,7 +913,7 @@ static struct fh_pll_domain mt6989_gpu0 = {
 ///////////////////////////////////gpu1
 
 static struct fh_pll_data mt6989_gpu1_data[] = {
-	DATA_6989_CONVERT("mfgsc0_ao_mfgscpll"),
+	DATA_6989_CONVERT("mfgsc0-ao-mfgpll-sc0"),
 	{}
 };
 static struct fh_pll_offset mt6989_gpu1_offset[SIZE_6989_GPU1] = {
@@ -931,7 +931,7 @@ static struct fh_pll_domain mt6989_gpu1 = {
 
 ///////////////////////////////////gpu2
 static struct fh_pll_data mt6989_gpu2_data[] = {
-	DATA_6989_CONVERT("mfgsc1_ao_mfgscpll"),
+	DATA_6989_CONVERT("mfgsc1-ao-mfgpll-sc1"),
 	{}
 };
 static struct fh_pll_offset mt6989_gpu2_offset[SIZE_6989_GPU2] = {
