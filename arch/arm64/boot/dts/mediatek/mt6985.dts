@@ -7189,6 +7189,7 @@
 				<&imgsys_main_clk CLK_IMG_IPE>,
 				<&imgsys_main_clk CLK_IMG_ME>,
 				<&imgsys_main_clk CLK_IMG_MMG>,
+				<&mmdvfs_clk CLK_MMDVFS_IMG>,
 				<&mmdvfs_mux MMDVFS_USER_IMG>;
 			clock-names = "IMGSYS_CG_IMG_TRAW0",
 			      "IMGSYS_CG_IMG_TRAW1",
@@ -7211,6 +7212,7 @@
 			      "IMGSYS_CG_IMG_IPE",
 			      "ME_CG",
 			      "MMG_CG",
+			      "mmdvfs_clk",
 			      "mmdvfs_mux";
 			operating-points-v2 = <&opp_table_img>;
 #if 0
@@ -11340,8 +11342,9 @@
 			<0 0x1600f000 0 0x10000>; /* VDEC_SOC_GCON */
 		clocks = <&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_CKEN>,
 			<&vdec_soc_gcon_base_clk CLK_VDE1_MINI_MDP_EN>,
+			<&mmdvfs_clk CLK_MMDVFS_VFMT>,
 			<&mmdvfs_mux MMDVFS_USER_VFMT>;
-		clock-names = "MT_CG_VDEC","MT_CG_MINI_MDP", "mmdvfs_mux";
+		clock-names = "MT_CG_VDEC","MT_CG_MINI_MDP","mmdvfs_clk", "mmdvfs_mux";
 		mediatek,fmt-gce-th-num = <2>; /* FMT GCE HW THREAD NUM */
 		mboxes = <&gce_m 6 0 CMDQ_THR_PRIO_1>,
 				<&gce_m 7 0 CMDQ_THR_PRIO_1>;
@@ -13201,9 +13204,6 @@
 			"user-jpegdec", "user-jpegenc", "user-venc", "user-vfmt", "user-img",
 			"user-cam", "user-vcore", "user-vmm", "user-vdisp", "user-vdec";
 		mediatek,mmdvfs-swrgo;
-		mediatek,mmdvfs-free-run;
-		mediatek,dpsw-thr = <1>;
-		mediatek,larb = <&smi_larb5>;
 	};
 
 	mmdvfs-user {
@@ -13214,6 +13214,7 @@
 	};
 
 	mmdvfs_clk: mmdvfs-clk {
+		compatible = "mediatek,mtk-mmdvfs-v3";
 		mmdvfs-free-run;
 		#mmdvfs,clock-cells = <6>;
 		mediatek,mmdvfs-clocks =
@@ -13278,19 +13279,17 @@
 
 	mmdvfs_debug: mmdvfs-debug {
 		compatible = "mediatek,mmdvfs-debug";
-		debug-version = <3>; /* OR operation of (1 << MMDVFS_DBG_VERx) */
-#if 0
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-		use-v3-pwr = <0>; /* OR operation of (1 << PWR_MMDVFS_XXX) */
+		disp-dev = <&dispsys_config>;
 		force-step0 = <1>; /* 0:opp0,  1:opp1, ... */
 		release-step0 = <1>; /* 0:disable,  1:enable */
-
+		use-v3-pwr = <0>; /* OR operation of (1 << PWR_MMDVFS_XXX) */
 		vcore-supply = <&mt6363_vbuck6>;
 		vmm-pmic-supply = <&mt6319_6_vbuck3>;
-		mediatek,mmdvfs-clk = <&mmdvfs_clk>;
-#endif
 		fmeter-id = /bits/ 8 <5 6 7 8 9 10 11 58 57 58 69 70 71>;
 		fmeter-type = /bits/ 8 <2 2 2 2 2 2 2 2 5 5 5 5 5>;
+		mediatek,mmdvfs-clk = <&mmdvfs_clk>;
+		debug-version = <3>;
 	};
 
 	mmdvfs-v3-start {
@@ -14806,8 +14805,8 @@
 			<GIC_SPI 511 IRQ_TYPE_LEVEL_HIGH 0>;
 		operating-points-v2 = <&opp_table_cam>;
 		mboxes = <&gce_m 24 0 CMDQ_THR_PRIO_1>;
-		clocks = <&mmdvfs_mux MMDVFS_USER_CAM>;
-		clock-names = "mmdvfs_mux";
+		clocks = <&mmdvfs_clk CLK_MMDVFS_CAM>, <&mmdvfs_mux MMDVFS_USER_CAM>;
+		clock-names = "mmdvfs_clk", "mmdvfs_mux";
 		vmm-pmic-supply = <&mt6319_6_vbuck3>;
 	};
 
