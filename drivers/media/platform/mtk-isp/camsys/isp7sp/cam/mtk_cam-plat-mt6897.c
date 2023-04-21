@@ -490,6 +490,17 @@ static int query_yuv_dma_group(int m4u_id, u32 group[4])
 	return 0;
 }
 
+static int query_caci_size(int w, int h, size_t *size)
+{
+	int blk_w, blk_h;
+
+	blk_w = (w + MTK_CAM_CAC_BLK_SIZE - 1) / MTK_CAM_CAC_BLK_SIZE;
+	blk_h = (h + MTK_CAM_CAC_BLK_SIZE - 1) / MTK_CAM_CAC_BLK_SIZE;
+	if (size)
+		*size = blk_w * blk_h * 4;
+	return 0;
+}
+
 static const struct plat_v4l2_data mt6897_v4l2_data = {
 	.raw_pipeline_num = 3,
 	.camsv_pipeline_num = 16,
@@ -526,6 +537,7 @@ static const struct plat_data_hw mt6897_hw_data = {
 
 	.query_raw_dma_group = query_raw_dma_group,
 	.query_yuv_dma_group = query_yuv_dma_group,
+	.query_caci_size = query_caci_size,
 };
 
 struct camsys_platform_data mt6897_data = {

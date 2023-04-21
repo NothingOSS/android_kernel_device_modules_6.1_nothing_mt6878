@@ -1649,24 +1649,25 @@ static void _destroy_pool(struct mtk_cam_device_buf *buf,
 	mtk_cam_device_buf_uninit(buf);
 }
 
-// TODO(Will): get offset from rgb path?
-#define MTK_CAM_CACI_TABLE_SIZE (50000)
 static int mtk_cam_ctx_alloc_rgbw_caci_buf(struct mtk_cam_ctx *ctx, int w, int h)
 {
 	struct device *dev_to_attach;
 	struct mtk_cam_device_buf *buf;
 	struct dma_buf *dbuf;
+	size_t caci_size = 0;
 	int ret;
 
 	dev_to_attach = ctx->cam->engines.raw_devs[0];
 	buf = &ctx->w_caci_buf;
 
-	dbuf = _alloc_dma_buf("CAM_W_CACI_ID", MTK_CAM_CACI_TABLE_SIZE, false);
+	if (CALL_PLAT_HW(query_caci_size, w, h, &caci_size) || caci_size == 0)
+		return -1;
+
+	dbuf = _alloc_dma_buf("CAM_W_CACI_ID", caci_size, false);
 	ret = (!dbuf) ? -1 : 0;
 
 	ret = ret
-		|| mtk_cam_device_buf_init(buf, dbuf, dev_to_attach,
-					   MTK_CAM_CACI_TABLE_SIZE)
+		|| mtk_cam_device_buf_init(buf, dbuf, dev_to_attach, caci_size)
 		|| mtk_cam_device_buf_vmap(buf);
 
 	dma_heap_buffer_free(dbuf);
@@ -2279,6 +2280,7 @@ void mtk_cam_stop_ctx(struct mtk_cam_ctx *ctx, struct media_entity *entity)
 
 int mtk_cam_ctx_init_scenario(struct mtk_cam_ctx *ctx)
 {
+	struct mtk_cam_device *cam = ctx->cam;
 	struct mtk_raw_pipeline *raw_pipe;
 	struct mtk_raw_ctrl_data *ctrl_data;
 	struct mtk_cam_scen *scen;
@@ -2302,8 +2304,9 @@ int mtk_cam_ctx_init_scenario(struct mtk_cam_ctx *ctx)
 		sink_h = raw_pipe->pad_cfg[MTK_RAW_SINK].mbus_fmt.height;
 
 		ret = mtk_cam_ctx_alloc_rgbw_caci_buf(ctx, sink_w, sink_h);
-		if (!ret)
-			pr_info("%s: failed to alloc for caci buf\n", __func__);
+		if (ret)
+			dev_info(cam->dev, "%s: failed to alloc for caci buf\n",
+				 __func__);
 
 	} else if (ctrl_data->valid_apu_info &&
 		   scen_is_m2m_apu(scen, &ctrl_data->apu_info)) {
