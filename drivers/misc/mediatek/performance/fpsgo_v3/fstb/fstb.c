@@ -2079,11 +2079,11 @@ FSTB_SYSFS_WRITE_VALUE(margin_mode, margin_mode, 0, 2);
 static KOBJ_ATTR_RW(margin_mode);
 
 FSTB_SYSFS_READ(margin_mode_dbnc_a, 1, margin_mode_dbnc_a);
-FSTB_SYSFS_WRITE_VALUE(margin_mode_dbnc_a, margin_mode_dbnc_a, 0, INT_MAX);
+FSTB_SYSFS_WRITE_VALUE(margin_mode_dbnc_a, margin_mode_dbnc_a, 0, 1000);
 static KOBJ_ATTR_RW(margin_mode_dbnc_a);
 
 FSTB_SYSFS_READ(margin_mode_dbnc_b, 1, margin_mode_dbnc_b);
-FSTB_SYSFS_WRITE_VALUE(margin_mode_dbnc_b, margin_mode_dbnc_b, 0, INT_MAX);
+FSTB_SYSFS_WRITE_VALUE(margin_mode_dbnc_b, margin_mode_dbnc_b, 0, 1000);
 static KOBJ_ATTR_RW(margin_mode_dbnc_b);
 
 FSTB_SYSFS_READ(fstb_reset_tolerence, 1, fps_reset_tolerence);
