@@ -614,7 +614,7 @@
 			alloc-ranges = <0 0x40000000 0 0x10000>;
 		};
 
-		dpmaif_cma_mem: dpmaif-page-pool {
+		dpmaif_cma_mem: dpmaif-page-pool-cma {
 			compatible = "shared-dma-pool";
 			reusable;
 			size = <0 0x4000000>;
