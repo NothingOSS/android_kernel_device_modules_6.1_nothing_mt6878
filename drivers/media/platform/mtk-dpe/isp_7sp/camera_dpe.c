@@ -2727,7 +2727,7 @@ signed int dpe_deque_cb(struct frame *frames, void *req)
 		//mutex_lock(&gFDMutex);
 		if (get_dvp_iova[4] >= 1) {
 			get_dvp_iova[4]--;
-			memcpy(&temp_dvp, &ASF_RD_mmu[i], sizeof(struct tee_mmu));
+			memcpy(&temp_dvp, &WMF_RD_mmu[i], sizeof(struct tee_mmu));
 			mmu_release(&temp_dvp, 4);
 			dvp_cnt++;
 		}
