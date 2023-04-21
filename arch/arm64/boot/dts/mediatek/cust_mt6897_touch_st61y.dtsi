@@ -117,6 +117,7 @@
 	ts_int_active: ts-int-active {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO9__FUNC_GPIO9>;
+			bias-pull-up;
 			input-enable;
 		};
 	};
