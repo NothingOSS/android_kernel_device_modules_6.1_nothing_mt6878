@@ -1300,8 +1300,6 @@ void mtk_imgsys_sd_desc_map_iova(struct mtk_imgsys_request *req)
 	else
 		dst = &dip_param->tuning_meta;
 
-	if ((src == NULL) || (dst == NULL))
-		return;
 
 	mtk_imgsys_desc_set_skip(pipe,
 		MTK_IMGSYS_VIDEO_NODE_TUNING_OUT, src, dst, 1, buf_sd);
