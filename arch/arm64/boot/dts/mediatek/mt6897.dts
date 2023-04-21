@@ -9313,7 +9313,7 @@
 					<&smi_larb18>,
 					<&smi_larb12>;
 			mediatek,imgsys-cmdq = <&imgsys_cmdq>;
-			iommus = <&disp_iommu M4U_L28_P11_IMGI_T1_B>;
+			iommus = <&disp_iommu M4U_L28_P0_IMGI_T1_A>;
 			imgsys-supply = <&gce_m_sec>;
 			mboxes = <&gce_m 0 3000 CMDQ_THR_PRIO_2>,
 					<&gce_m 1 3000 CMDQ_THR_PRIO_2>,
