@@ -2370,6 +2370,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 	if (status) {
 		writel(~status, dsi->regs + DSI_INTSTA);
 		if ((status & BUFFER_UNDERRUN_INT_FLAG)
+			&& (&mtk_crtc->force_high_step) != NULL
 			&& (atomic_read(&mtk_crtc->force_high_step) == 0)) {
 			unsigned long long aee_now_ts = sched_clock();
 			int trigger_aee = 0;
@@ -3221,6 +3222,11 @@ static int mtk_dsi_wait_cmd_frame_done(struct mtk_dsi *dsi,
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(dsi->encoder.crtc);
 	struct cmdq_pkt *handle;
 	bool new_doze_state = mtk_dsi_doze_state(dsi);
+
+	if (IS_ERR_OR_NULL(mtk_crtc)) {
+		DDPPR_ERR("%s, invalid priv\n", __func__);
+		return 1;
+	}
 
 	/* Waiting CLIENT_DSI_CFG thread done */
 	if (mtk_crtc && mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]) {
@@ -7873,7 +7879,10 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_datarate(
 
 			line_time = mtk_dsi_get_line_time(mtk_crtc, dsi, ps_wc);
 
-			bw_base = bw_base * image_time / line_time;
+			if (line_time > 0)
+				bw_base = bw_base * image_time / line_time;
+			else
+				DDPPR_ERR("invalid line_time\n");
 
 			DDPINFO("%s, image_time=%d, line_time=%d\n",
 				__func__, image_time, line_time);
@@ -7996,7 +8005,10 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_mode(
 
 			line_time = mtk_dsi_get_line_time(mtk_crtc, dsi, ps_wc);
 
-			bw_base = bw_base * image_time / line_time;
+			if (line_time > 0)
+				bw_base = bw_base * image_time / line_time;
+			else
+				DDPPR_ERR("invalid line_time\n");
 
 			DDPINFO("%s, image_time=%d, line_time=%d\n",
 				__func__, image_time, line_time);

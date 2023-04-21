@@ -172,6 +172,7 @@ int dptx_uevent_dev_register(struct notify_dev *sdev)
 	} else {
 		DPTXERR("device create fail,index:0x%x\n", sdev->index);
 		ret = -1;
+		return ret;
 	}
 
 	ret = device_create_file(sdev->dev, &dev_attr_state);
@@ -196,6 +197,7 @@ int dptx_uevent_dev_register(struct notify_dev *sdev)
 
 int notify_uevent_user(struct notify_dev *sdev, int state)
 {
+	int ret;
 	char *envp[3];
 	char name_buf[120];
 	char state_buf[120];
@@ -206,9 +208,17 @@ int notify_uevent_user(struct notify_dev *sdev, int state)
 	if (sdev->state != state)
 		sdev->state = state;
 
-	snprintf(name_buf, sizeof(name_buf), "SWITCH_NAME=%s", sdev->name);
+	ret = snprintf(name_buf, sizeof(name_buf), "SWITCH_NAME=%s", sdev->name);
+	if (ret < 0) {
+		DDPPR_ERR("%s snprintf fail\n", __func__);
+		return ret;
+	}
 	envp[0] = name_buf;
-	snprintf(state_buf, sizeof(state_buf), "SWITCH_STATE=%d", sdev->state);
+	ret = snprintf(state_buf, sizeof(state_buf), "SWITCH_STATE=%d", sdev->state);
+	if (ret < 0) {
+		DDPPR_ERR("%s snprintf fail\n", __func__);
+		return ret;
+	}
 	envp[1] = state_buf;
 	envp[2] = NULL;
 	DPTXMSG("uevent name:%s ,state:%s\n", envp[0], envp[1]);
@@ -755,7 +765,7 @@ void mdrv_DPTx_CheckSinkESI(struct mtk_dp *mtk_dp, u8 *pDPCD20x, u8 *pDPCD2002)
 bool mdrv_DPTx_CheckSSC(struct mtk_dp *mtk_dp)
 {
 #if (ENABLE_DPTX_SSC_OUTPUT == 0x1)
-	BYTE ubTempBuffer[0x2];
+	BYTE ubTempBuffer[0x2] = {0x0};
 
 	drm_dp_dpcd_read(&mtk_dp->aux,
 		DPCD_00003 + DPCD_02200*mtk_dp->training_info.bSinkEXTCAP_En,
@@ -781,8 +791,8 @@ bool mdrv_DPTx_PHY_AdjustSwingPre(struct mtk_dp *mtk_dp, BYTE ubLaneCount)
 {
 	BYTE ubSwingValue;
 	BYTE ubPreemphasis;
-	BYTE ubTempBuf1[0x2];
-	BYTE ubDPCP_Buffer1[0x4];
+	BYTE ubTempBuf1[0x2] = {0x0};
+	BYTE ubDPCP_Buffer1[0x4] = {0x0};
 	bool bReplyStatus = false;
 
 	memset(ubDPCP_Buffer1, 0x0, sizeof(ubDPCP_Buffer1));
@@ -917,9 +927,9 @@ struct DP_CTS_AUTO_REQ cts_req;
 bool mdrv_DPTx_Video_PG_AutoTest(struct mtk_dp *mtk_dp)//, BYTE ubDPCD_201)
 {
 	BYTE i;
-	BYTE dpcd22x[16];  //220~22F
-	BYTE dpcd23x[5];   //230~234
-	BYTE dpcd27x[10];	//220~22F
+	BYTE dpcd22x[16] = {0x00};  //220~22F
+	BYTE dpcd23x[5] = {0x00};   //230~234
+	BYTE dpcd27x[10] = {0x00};	//220~22F
 	BYTE ucMISC[2] = {0x00};
 
 	drm_dp_dpcd_read(&mtk_dp->aux, DPCD_00220, dpcd22x, 16);
@@ -1672,11 +1682,11 @@ void mdrv_DPTx_Print_TrainingState(u8 state)
 
 int mdrv_DPTx_TrainingFlow(struct mtk_dp *mtk_dp, u8 ubLaneRate, u8 ubLaneCount)
 {
-	u8  ubTempValue[0x6];
-	u8  ubDPCD200C[0x3];
+	u8  ubTempValue[0x6] = {0};
+	u8  ubDPCD200C[0x3] = {0};
 	u8  ubTargetLinkRate = ubLaneRate;
 	u8  ubTargetLaneCount = ubLaneCount;
-	u8  ubDPCP_Buffer1[0x4];
+	u8  ubDPCP_Buffer1[0x4] = {0};
 	u8  bPassTPS1 = false;
 	u8  bPassTPS2_3 = false;
 	u8  ubTrainRetryTimes;
@@ -1978,7 +1988,7 @@ bool mdrv_DPTx_CheckSinkCap(struct mtk_dp *mtk_dp)
 	//	return false;
 
 	if (!mtk_dp->training_info.bDPMstBranch) {
-		u8 ubDPCD_201;
+		u8 ubDPCD_201 = 0;
 
 		drm_dp_dpcd_read(&mtk_dp->aux, DPCD_00201, &ubDPCD_201, 1);
 		if (ubDPCD_201 & BIT(1)) {
@@ -2055,7 +2065,7 @@ int mdrv_DPTx_SetTrainingStart(struct mtk_dp *mtk_dp)
 		DPTXMSG("Start Training Abort!=> HPD low !\n");
 
 		ubTrainTimeLimits = 6;
-		while (ubTrainTimeLimits > 6) {
+		while (ubTrainTimeLimits > 0) {
 			if (mhal_DPTx_GetHPDPinLevel(mtk_dp))
 				break;
 
@@ -2756,7 +2766,7 @@ void mdrv_DPTx_DSC_Support(struct mtk_dp *mtk_dp)
 
 void mdrv_DPTx_FEC_Ready(struct mtk_dp *mtk_dp, u8 err_cnt_sel)
 {
-	u8 i, Data[3];
+	u8 i, Data[3] = {0};
 
 	drm_dp_dpcd_read(&mtk_dp->aux, 0x90, Data, 0x1);
 
@@ -3305,7 +3315,8 @@ void mtk_dp_get_dsc_capability(u8 *dsc_cap)
 
 void mtk_dp_dsc_pps_send(u8 *PPS_128)
 {
-	u8 dsc_cap[16];
+	u8 dsc_cap[16] = {0};
+	u8 slice_num = 0;
 	u16 chunk_size = PPS_128[14] << 8 | PPS_128[15];
 	u16 pic_width = PPS_128[8] << 8 | PPS_128[9];
 	u16 slice_width = PPS_128[12] << 8 | PPS_128[13];
@@ -3328,9 +3339,11 @@ void mtk_dp_dsc_pps_send(u8 *PPS_128)
 		PPS_128[0x4] |=  (0x1 << 5);
 	else
 		PPS_128[0x4] &= ~(0x1 << 5);
-
+	if (slice_width <= 0)
+		return;
+	slice_num = (pic_width/slice_width);
 	mdrv_DPTx_DSC_SetPPS(g_mtk_dp, PPS_128, true);
-	mdrv_DPTx_DSC_SetParam(g_mtk_dp, pic_width/slice_width, chunk_size);
+	mdrv_DPTx_DSC_SetParam(g_mtk_dp, slice_num, chunk_size);
 }
 
 struct edid *mtk_dp_handle_edid(struct mtk_dp *mtk_dp)
@@ -3539,6 +3552,8 @@ static int mtk_dp_conn_get_modes(struct drm_connector *conn)
 		else
 			mode = drm_mode_duplicate(dev, &dptx_est_modes[4]);
 
+		if (!mode)
+			return 0;
 		drm_mode_set_name(mode);
 		mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
 		drm_mode_probed_add(conn, mode);
@@ -3850,6 +3865,8 @@ int mtk_dp_hdcp_getInfo(char *buffer, int size)
 		ret = snprintf(buffer, size, "HDCP HINFO:%s, %s\n",
 			mtk_hdcp_version(), mtk_hdcp_status());
 
+	if (ret < 0)
+		DDPPR_ERR("%s snprintf fail\n", __func__);
 	return ret;
 }
 
