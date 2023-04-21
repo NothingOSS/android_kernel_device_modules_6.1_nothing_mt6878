@@ -1666,8 +1666,6 @@ static struct vb2_buffer *mtk_vdec_callback_get_frame(struct mtk_vcodec_ctx *ctx
 		v4l2_m2m_num_dst_bufs_ready(
 		ctx->m2m_ctx) > 0 ||
 		ctx->state == MTK_STATE_FLUSH);
-	if (ret)
-		mtk_v4l2_err("signaled by -ERESTARTSYS(%d)\n ", ret);
 
 	dst_vb2_v4l2 = v4l2_m2m_next_dst_buf(ctx->m2m_ctx);
 	dst_buf = &dst_vb2_v4l2->vb2_buf;
@@ -1694,11 +1692,6 @@ static void mkt_vdec_put_eos_fb(struct mtk_vcodec_ctx *ctx, bool need_put_eos, b
 
 	if (need_put_eos && (!ctx->input_driven || dst_buf != NULL)) {
 		dst_vb2_v4l2 = v4l2_m2m_dst_buf_remove(ctx->m2m_ctx);
-		if (dst_vb2_v4l2 == NULL) {
-			mtk_v4l2_err("[%s, %d] Error!! dst_vb2_v4l2 is NULL",
-				__func__, __LINE__);
-			return;
-		}
 		dst_buf = &dst_vb2_v4l2->vb2_buf;
 		dst_buf_info = container_of(dst_vb2_v4l2, struct mtk_video_dec_buf, vb);
 
@@ -1758,10 +1751,6 @@ int mtk_vdec_put_fb(struct mtk_vcodec_ctx *ctx, enum mtk_put_buffer_type type, b
 			return 0;
 	}
 
-	if (src_buf == NULL) {
-		mtk_v4l2_err("[%s, %d] Error!! src_buf is NULL", __func__, __LINE__);
-		return -1;
-	}
 	if (type == PUT_BUFFER_WORKER && (src_buf_info->lastframe == EOS_WITH_DATA ||
 		(src_buf_info->lastframe == EOS && src_buf->planes[0].bytesused != 0U)))
 		got_early_eos = true;
@@ -1940,11 +1929,6 @@ static void mtk_vdec_worker(struct work_struct *work)
 		buf->size, buf->length, buf->dmabuf, src_buf,
 		src_buf_info->lastframe, src_buf_info->vb.vb2_buf.timestamp);
 	if (!ctx->output_async) {
-		if (dst_buf_info == NULL) {
-			mtk_v4l2_err("[%s, %d] Error!! dst_buf_info is NULL",
-				__func__, __LINE__);
-			return;
-		}
 		dst_buf_info->flags &= ~CROP_CHANGED;
 		dst_buf_info->flags &= ~COLOR_ASPECT_CHANGED;
 		dst_buf_info->flags &= ~REF_FREED;
