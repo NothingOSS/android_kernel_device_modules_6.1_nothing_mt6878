@@ -88,6 +88,7 @@ EXPORT_SYMBOL(plat_vtskin_info);
 
 static struct md_info md_info_data;
 static struct pid_info pid_info_data;
+static u32 bat_type;
 
 #ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
 int scrn_nl_send_to_user(void *buf, int size)
@@ -1371,6 +1372,16 @@ static ssize_t pid_info_store(struct kobject *kobj,
 	return count;
 }
 
+static ssize_t bat_type_show(struct kobject *kobj, struct kobj_attribute *attr,
+	char *buf)
+{
+	int len = 0;
+
+	len += snprintf(buf + len, PAGE_SIZE - len, "%u\n", bat_type);
+
+	return len;
+}
+
 static struct kobj_attribute ttj_attr = __ATTR_RW(ttj);
 static struct kobj_attribute power_budget_attr = __ATTR_RW(power_budget);
 static struct kobj_attribute cpu_info_attr = __ATTR_RO(cpu_info);
@@ -1399,6 +1410,7 @@ static struct kobj_attribute vtskin_info_attr = __ATTR_RW(vtskin_info);
 static struct kobj_attribute vtskin_temp_attr = __ATTR_RW(vtskin_temp);
 static struct kobj_attribute catm_p_attr = __ATTR_RW(catm_p);
 static struct kobj_attribute pid_info_attr = __ATTR_RW(pid_info);
+static struct kobj_attribute bat_type_attr = __ATTR_RO(bat_type);
 
 
 static struct attribute *thermal_attrs[] = {
@@ -1429,6 +1441,7 @@ static struct attribute *thermal_attrs[] = {
 	&vtskin_temp_attr.attr,
 	&catm_p_attr.attr,
 	&pid_info_attr.attr,
+	&bat_type_attr.attr,
 	NULL
 };
 static struct attribute_group thermal_attr_group = {
@@ -1745,7 +1758,7 @@ static int therm_intf_probe(struct platform_device *pdev)
 {
 	struct resource *res;
 	void __iomem *addr;
-	struct device_node *cpu_np;
+	struct device_node *cpu_np, *gauge_np;
 	struct of_phandle_args args;
 	unsigned int cpu, max_perf_domain = 0;
 	int ret;
@@ -1801,6 +1814,15 @@ static int therm_intf_probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err(&pdev->dev, "failed to create thermal sysfs, ret=%d!\n", ret);
 		return ret;
+	}
+
+	gauge_np = of_find_node_by_name(NULL, "mtk-gauge");
+	if (!gauge_np)
+		dev_info(&pdev->dev, "Failed to get mtk-gauge\n");
+	else {
+		ret = of_property_read_u32(gauge_np, "bat_type", &bat_type);
+		if (ret)
+			dev_notice(&pdev->dev, "bat_type fail, ret=%d\n", ret);
 	}
 
 	therm_intf_debugfs_init();
