@@ -89,6 +89,8 @@
 /* under 14.5 Gbps, trail should be enable */
 #define SENINF_HS_TRAIL_EN_CONDITION 1450000000
 
+//#define REDUCE_KO_DEPENDANCY_FOR_SMT
+
 #define SENSOR_CLOCK_POLARITY_HIGH	0
 #define SENSOR_CLOCK_POLARITY_LOW	1
 #define NUM_PORTS			2

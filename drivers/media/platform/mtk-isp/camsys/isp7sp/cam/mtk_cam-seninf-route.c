@@ -146,6 +146,7 @@ struct seninf_mux *mtk_cam_seninf_mux_get_by_type(struct seninf_ctx *ctx,
 #define SAT_MUX_FACTOR 8
 #define SV_NORMAL_MUX_FACTOR 1
 #define RAW_MUX_FACTOR 4
+#define PDP_MUX_FACTOR 1
 
 int mux2mux_vr(struct seninf_ctx *ctx, int mux, int cammux, int vc_idx)
 {
@@ -164,6 +165,10 @@ int mux2mux_vr(struct seninf_ctx *ctx, int mux, int cammux, int vc_idx)
 	int num_raw_mux = raw_mux_second - raw_mux_first + 1;
 
 	int pdp_mux_first = core->mux_range[TYPE_PDP].first;
+	int pdp_mux_secnond = core->mux_range[TYPE_PDP].second;
+	int num_pdp_mux = pdp_mux_secnond - pdp_mux_first + 1;
+
+	int uisp_mux_first = core->mux_range[TYPE_UISP].first;
 
 	int sat_cammux_first = core->cammux_range[TYPE_CAMSV_SAT].first;
 	int sat_cammux_second = core->cammux_range[TYPE_CAMSV_SAT].second;
@@ -192,26 +197,37 @@ int mux2mux_vr(struct seninf_ctx *ctx, int mux, int cammux, int vc_idx)
 
 		if ((cammux >= raw_cammux_first) && (cammux <= raw_cammux_second))
 			mux_vr += vc_idx;
-	} else {  // PDP & uISP
+
+	} else if ((mux >= pdp_mux_first) && (mux <= pdp_mux_secnond)) {  // PDP
 		mux_vr = (mux - pdp_mux_first)
 			   + (num_sat_mux * SAT_MUX_FACTOR)
 			   + (num_raw_mux * RAW_MUX_FACTOR)
 			   + (num_sv_normal_mux * SV_NORMAL_MUX_FACTOR);
+	} else {  // uISP
+		mux_vr = (mux - uisp_mux_first)
+			   + (num_sat_mux * SAT_MUX_FACTOR)
+			   + (num_raw_mux * RAW_MUX_FACTOR)
+			   + (num_sv_normal_mux * SV_NORMAL_MUX_FACTOR)
+			   + (num_pdp_mux * PDP_MUX_FACTOR);
 	}
 
 	dev_info(ctx->dev,
-				"[%s] num_sat_mux %d num_sv_normal_mux %d num_raw_mux %d sat_based %d sv_based %d raw_based %d, raw_based %d\n",
+				"[%s] num_sat_mux %d num_sv_normal_mux %d num_raw_mux %d sat_based %d sv_based %d raw_based %d, pdp_based %d uisp_based %d\n",
 				__func__,
 				num_sat_mux,
 				num_sv_normal_mux,
 				num_raw_mux,
 				sat_mux_first,
 				(num_sat_mux * SAT_MUX_FACTOR),
-				(num_sat_mux * SAT_MUX_FACTOR) +
-					(num_sv_normal_mux * SV_NORMAL_MUX_FACTOR),
-				(num_sat_mux * SAT_MUX_FACTOR) +
-					(num_raw_mux * RAW_MUX_FACTOR) +
-					(num_sv_normal_mux * SV_NORMAL_MUX_FACTOR));
+				(num_sat_mux * SAT_MUX_FACTOR)
+					+ (num_sv_normal_mux * SV_NORMAL_MUX_FACTOR),
+				(num_sat_mux * SAT_MUX_FACTOR)
+					+ (num_raw_mux * RAW_MUX_FACTOR)
+					+ (num_sv_normal_mux * SV_NORMAL_MUX_FACTOR),
+				(num_sat_mux * SAT_MUX_FACTOR)
+					+ (num_raw_mux * RAW_MUX_FACTOR)
+					+ (num_sv_normal_mux * SV_NORMAL_MUX_FACTOR)
+					+ (num_pdp_mux * PDP_MUX_FACTOR));
 
 	dev_info(ctx->dev,
 				"[%s] Input(mux_id %d, camtg_id %d, vc_offset %d), Output(mux_vr %d)\n",
@@ -243,6 +259,12 @@ int mux_vr2mux(struct seninf_ctx *ctx, int mux_vr)
 	int raw_mux_vr_first = sv_normal_mux_vr_last + 1;
 	int raw_mux_vr_last = raw_mux_vr_first + (RAW_MUX_FACTOR * num_raw_mux) - 1;
 
+	int pdp_mux_first = core->mux_range[TYPE_PDP].first;
+	int pdp_mux_last = core->mux_range[TYPE_PDP].second;
+	int pdp_raw_mux = pdp_mux_last - pdp_mux_first + 1;
+	int pdp_mux_vr_first = raw_mux_vr_last + 1;
+	int pdp_mux_vr_last = pdp_mux_vr_first + (PDP_MUX_FACTOR * pdp_raw_mux) - 1;
+
 	if (mux_vr < sat_mux_vr_first)
 		mux = mux_vr;
 	else if ((mux_vr >= sat_mux_vr_first) && (mux_vr <= sat_mux_vr_last))
@@ -256,8 +278,10 @@ int mux_vr2mux(struct seninf_ctx *ctx, int mux_vr)
 
 		mux = raw_mux_first
 			+ ((mux_vr - sv_normal_mux_vr_last) / RAW_MUX_FACTOR);
-	} else
+	} else if ((mux_vr >= pdp_mux_vr_first) && (mux_vr <= pdp_mux_vr_last)) {
 		mux = raw_mux_last + (mux_vr - raw_mux_vr_last);
+	} else
+		mux = pdp_mux_last + (mux_vr - pdp_mux_vr_last);
 
 	return mux;
 }
