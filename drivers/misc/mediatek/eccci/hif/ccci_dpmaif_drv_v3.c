@@ -144,7 +144,7 @@ static void drv3_common_hw_init(void)
 
 	drv_md_hw_bus_remap();
 
-	if (g_plat_inf == 6985)
+	if (g_plat_inf == 6985 || g_plat_inf == 6989)
 		/* this bit24 is used to mask irq2's isr to irq1 */
 		DPMA_WRITE_AO_UL(NRL2_DPMAIF_AO_UL_AP_L1TIMR0,
 				((1<<9)|(1<<10)|(1<<15)|(1<<16)|(1<<24)));
@@ -1257,7 +1257,7 @@ static void drv3_dump_register(int buf_type)
 	ccci_util_mem_dump(buf_type,
 		dpmaif_ctl->pd_ul_base + NRL2_DPMAIF_UL_ADD_DESC, len);
 
-	if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897) {
+	if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897 || g_plat_inf == 6989) {
 		len = DPMAIF_AO_UL_CHNL3_STA_6985 - DPMAIF_AO_UL_CHNL0_STA_6985 + 4;
 		CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 			"dump AP DPMAIF Tx ao; ao_ul_base register -> (start addr: 0x%llX, len: %d):\n",
@@ -1452,7 +1452,7 @@ static void drv3_hw_reset_v1(void)
 	/* DPMAIF HW reset */
 	CCCI_DEBUG_LOG(0, TAG, "%s:rst dpmaif\n", __func__);
 	/* reset dpmaif hw: PD Domain */
-	if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897)
+	if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897 || g_plat_inf == 6989)
 		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF50, 1<<14);
 	else
 		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF50, 1<<22);
@@ -1495,7 +1495,7 @@ static void drv3_hw_reset_v1(void)
 	udelay(500);
 
 	/* reset dpmaif clr */
-	if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897)
+	if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897 || g_plat_inf == 6989)
 		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF54, 1<<14);
 	else
 		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF54, 1<<22);
@@ -1717,7 +1717,7 @@ int ccci_dpmaif_drv3_init(void)
 	else
 		ops.drv_dl_get_wridx = &drv3_dl_get_wridx;
 
-	if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897) {
+	if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897 || g_plat_inf == 6989) {
 		ops.drv_ul_get_rwidx = &drv3_ul_get_rwidx_6985;
 		ops.drv_ul_get_rdidx = &drv3_ul_get_rdidx_6985;
 	} else {

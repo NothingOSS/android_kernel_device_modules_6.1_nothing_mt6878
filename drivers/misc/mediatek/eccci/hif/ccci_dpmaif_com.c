@@ -636,13 +636,11 @@ static int dpmaif_init_clk(struct device *dev, struct dpmaif_clk_node *clk)
 		clk->clk_ref = devm_clk_get(dev, clk->clk_name);
 		if (IS_ERR(clk->clk_ref)) {
 			CCCI_ERROR_LOG(0, TAG,
-				 "[%s] error: dpmaif get %s failed.\n",
+				 "[%s] dpmaif hasn't get %s\n",
 				 __func__, clk->clk_name);
 
 			clk->clk_ref = NULL;
-			return -1;
 		}
-
 		clk += 1;
 	}
 
