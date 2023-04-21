@@ -128,6 +128,11 @@ enum gpufreq_config_value {
 	STRESS_MAX_MIN     = 6,
 };
 
+enum gpufreq_chip_type {
+	GPUIC_NORMAL      = 0,
+	GPUIC_OVERDRIVE   = 1,
+};
+
 enum gpuppm_reserved_idx {
 	GPUPPM_DEFAULT_IDX = -1,
 	GPUPPM_RESET_IDX   = -2,
@@ -354,26 +359,25 @@ struct gpufreq_platform_fp {
 	unsigned int (*get_power_state)(void);
 	unsigned int (*get_dvfs_state)(void);
 	unsigned int (*get_shader_present)(void);
-	unsigned int (*get_segment_id)(void);
 	int (*power_control)(enum gpufreq_power_state power);
 	int (*active_sleep_control)(enum gpufreq_power_state power);
 	void (*dump_infra_status)(void);
 	void (*dump_power_tracker_status)(void);
-	void (*update_debug_opp_info)(void);
 	void (*set_mfgsys_config)(enum gpufreq_config_target target, enum gpufreq_config_value val);
 	struct gpufreq_core_mask_info *(*get_core_mask_table)(void);
 	unsigned int (*get_core_num)(void);
 	void (*pdca_config)(enum gpufreq_power_state power);
+	void (*update_debug_opp_info)(void);
 	void (*set_shared_status)(struct gpufreq_shared_status *shared_status);
 	int (*mssv_commit)(unsigned int target, unsigned int val);
-	int (*generic_commit_dual)(int target_oppidx_gpu, int target_oppidx_stack,
-		enum gpufreq_dvfs_state key);
 	int (*fix_target_oppidx_dual)(int oppidx_gpu, int oppidx_stack);
 	int (*fix_custom_freq_volt_dual)(unsigned int fgpu, unsigned int vgpu,
 		unsigned int fstack, unsigned int vstack);
+	void (*update_temperature)(void);
 	/* GPU */
 	unsigned int (*get_cur_fgpu)(void);
 	unsigned int (*get_cur_vgpu)(void);
+	unsigned int (*get_cur_vsram_gpu)(void);
 	unsigned int (*get_cur_pgpu)(void);
 	unsigned int (*get_max_pgpu)(void);
 	unsigned int (*get_min_pgpu)(void);
@@ -383,17 +387,14 @@ struct gpufreq_platform_fp {
 	unsigned int (*get_fgpu_by_idx)(int oppidx);
 	unsigned int (*get_pgpu_by_idx)(int oppidx);
 	int (*get_idx_by_fgpu)(unsigned int freq);
-	unsigned int (*get_lkg_pgpu)(unsigned int volt);
+	unsigned int (*get_lkg_pgpu)(unsigned int volt, int temper);
 	unsigned int (*get_dyn_pgpu)(unsigned int freq, unsigned int volt);
-	int (*generic_commit_gpu)(int target_oppidx, enum gpufreq_dvfs_state key);
 	int (*fix_target_oppidx_gpu)(int oppidx);
 	int (*fix_custom_freq_volt_gpu)(unsigned int freq, unsigned int volt);
-	/* SRAM */
-	unsigned int (*get_cur_vsram_gpu)(void);
-	unsigned int (*get_cur_vsram_stack)(void);
 	/* STACK */
 	unsigned int (*get_cur_fstack)(void);
 	unsigned int (*get_cur_vstack)(void);
+	unsigned int (*get_cur_vsram_stack)(void);
 	unsigned int (*get_cur_pstack)(void);
 	unsigned int (*get_max_pstack)(void);
 	unsigned int (*get_min_pstack)(void);
@@ -403,9 +404,8 @@ struct gpufreq_platform_fp {
 	unsigned int (*get_fstack_by_idx)(int oppidx);
 	unsigned int (*get_pstack_by_idx)(int oppidx);
 	int (*get_idx_by_fstack)(unsigned int freq);
-	unsigned int (*get_lkg_pstack)(unsigned int volt);
+	unsigned int (*get_lkg_pstack)(unsigned int volt, int temper);
 	unsigned int (*get_dyn_pstack)(unsigned int freq, unsigned int volt);
-	int (*generic_commit_stack)(int target_oppidx, enum gpufreq_dvfs_state key);
 	int (*fix_target_oppidx_stack)(int oppidx);
 	int (*fix_custom_freq_volt_stack)(unsigned int freq, unsigned int volt);
 };
@@ -414,9 +414,9 @@ struct gpuppm_platform_fp {
 	int (*limited_commit)(enum gpufreq_target target, int oppidx);
 	int (*limited_dual_commit)(int gpu_oppidx, int stack_oppidx);
 	int (*set_limit)(enum gpufreq_target target, enum gpuppm_limiter limiter,
-		int ceiling_info, int floor_info);
+		int ceiling_info, int floor_info, unsigned int instant_dvfs);
 	int (*switch_limit)(enum gpufreq_target target, enum gpuppm_limiter limiter,
-		int c_enable, int f_enable);
+		int c_enable, int f_enable, unsigned int instant_dvfs);
 	int (*get_ceiling)(void);
 	int (*get_floor)(void);
 	unsigned int (*get_c_limiter)(void);

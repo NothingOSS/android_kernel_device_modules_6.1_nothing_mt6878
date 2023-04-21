@@ -554,9 +554,10 @@ int __gpufreq_get_idx_by_pstack(unsigned int power)
 }
 
 /* API: get leakage Power of GPU */
-unsigned int __gpufreq_get_lkg_pgpu(unsigned int volt)
+unsigned int __gpufreq_get_lkg_pgpu(unsigned int volt, int temper)
 {
 	GPUFREQ_UNREFERENCED(volt);
+	GPUFREQ_UNREFERENCED(temper);
 
 	return GPU_LKG_POWER;
 }
@@ -578,9 +579,10 @@ unsigned int __gpufreq_get_dyn_pgpu(unsigned int freq, unsigned int volt)
 }
 
 /* API: get leakage Power of STACK */
-unsigned int __gpufreq_get_lkg_pstack(unsigned int volt)
+unsigned int __gpufreq_get_lkg_pstack(unsigned int volt, int temper)
 {
 	GPUFREQ_UNREFERENCED(volt);
+	GPUFREQ_UNREFERENCED(temper);
 
 	return 0;
 }
@@ -4221,7 +4223,7 @@ static void __gpufreq_measure_power(void)
 		freq = working_gpu[i].freq;
 		volt = working_gpu[i].volt;
 
-		p_leakage = __gpufreq_get_lkg_pgpu(volt);
+		p_leakage = __gpufreq_get_lkg_pgpu(volt, 30);
 		p_dynamic = __gpufreq_get_dyn_pgpu(freq, volt);
 
 		p_total = p_dynamic + p_leakage;

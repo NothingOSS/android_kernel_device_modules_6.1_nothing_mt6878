@@ -661,6 +661,7 @@ mgk_64_k61_platform_device_modules = {
     "drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6886.ko": "mt6886",
     "drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6897.ko": "mt6897",
     "drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6985.ko": "mt6985",
+    "drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6989.ko": "mt6989",
     "drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6989_fpga.ko": "mt6989",
     "drivers/interconnect/mediatek/mmqos-mt6886.ko": "mt6886",
     "drivers/interconnect/mediatek/mmqos-mt6897.ko": "mt6897",

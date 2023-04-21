@@ -62,9 +62,9 @@ void gpuppm_set_shared_status(struct gpufreq_shared_status *shared_status);
 int gpuppm_limited_commit(enum gpufreq_target target, int oppidx);
 int gpuppm_limited_dual_commit(int gpu_oppidx, int stack_oppidx);
 int gpuppm_set_limit(enum gpufreq_target target, enum gpuppm_limiter limiter,
-	int ceiling_info, int floor_info);
+	int ceiling_info, int floor_info, unsigned int instant_dvfs);
 int gpuppm_switch_limit(enum gpufreq_target target, enum gpuppm_limiter limiter,
-	int c_enable, int f_enable);
+	int c_enable, int f_enable, unsigned int instant_dvfs);
 void gpuppm_set_stress_test(unsigned int val);
 int gpuppm_get_ceiling(void);
 int gpuppm_get_floor(void);

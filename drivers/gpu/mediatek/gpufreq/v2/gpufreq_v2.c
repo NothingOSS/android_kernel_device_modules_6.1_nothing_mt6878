@@ -634,9 +634,9 @@ unsigned int gpufreq_get_leakage_power(enum gpufreq_target target, unsigned int 
 
 	/* implement on AP */
 	if (target == TARGET_STACK && gpufreq_fp && gpufreq_fp->get_lkg_pstack)
-		p_leakage = gpufreq_fp->get_lkg_pstack(volt);
+		p_leakage = gpufreq_fp->get_lkg_pstack(volt, 30);
 	else if (target == TARGET_GPU && gpufreq_fp && gpufreq_fp->get_lkg_pgpu)
-		p_leakage = gpufreq_fp->get_lkg_pgpu(volt);
+		p_leakage = gpufreq_fp->get_lkg_pgpu(volt, 30);
 	else
 		GPUFREQ_LOGE("null gpufreq platform function pointer (ENOENT)");
 
@@ -876,6 +876,8 @@ int gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx)
 	}
 
 	/* implement on AP */
+	if (gpufreq_fp && gpufreq_fp->update_temperature)
+		gpufreq_fp->update_temperature();
 	if (gpuppm_fp && gpuppm_fp->limited_dual_commit)
 		ret = gpuppm_fp->limited_dual_commit(gpu_oppidx, stack_oppidx);
 	else {
@@ -939,7 +941,7 @@ int gpufreq_set_limit(enum gpufreq_target target,
 
 	/* implement on AP */
 	if (gpuppm_fp && gpuppm_fp->set_limit)
-		ret = gpuppm_fp->set_limit(target, limiter, ceiling_info, floor_info);
+		ret = gpuppm_fp->set_limit(target, limiter, ceiling_info, floor_info, true);
 	else {
 		ret = GPUFREQ_ENOENT;
 		GPUFREQ_LOGE("null gpuppm platform function pointer (ENOENT)");
@@ -1198,7 +1200,7 @@ int gpufreq_switch_limit(enum gpufreq_target target,
 
 	/* implement on AP */
 	if (gpuppm_fp && gpuppm_fp->switch_limit)
-		ret = gpuppm_fp->switch_limit(target, limiter, c_enable, f_enable);
+		ret = gpuppm_fp->switch_limit(target, limiter, c_enable, f_enable, true);
 	else {
 		ret = GPUFREQ_ENOENT;
 		GPUFREQ_LOGE("null gpuppm platform function pointer (ENOENT)");

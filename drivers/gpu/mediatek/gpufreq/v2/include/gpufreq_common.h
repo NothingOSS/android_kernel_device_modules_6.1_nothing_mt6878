@@ -114,6 +114,7 @@ int __gpufreq_generic_commit_dual(int target_oppidx_gpu, int target_oppidx_stack
 int __gpufreq_fix_target_oppidx_dual(int oppidx_gpu, int oppidx_stack);
 int __gpufreq_fix_custom_freq_volt_dual(unsigned int fgpu, unsigned int vgpu,
 	unsigned int fstack, unsigned int vstack);
+void __gpufreq_update_temperature(void);
 /* GPU */
 unsigned int __gpufreq_get_cur_fgpu(void);
 unsigned int __gpufreq_get_cur_vgpu(void);
@@ -128,7 +129,7 @@ unsigned int __gpufreq_get_pgpu_by_idx(int oppidx);
 int __gpufreq_get_idx_by_fgpu(unsigned int freq);
 int __gpufreq_get_idx_by_vgpu(unsigned int volt);
 int __gpufreq_get_idx_by_pgpu(unsigned int power);
-unsigned int __gpufreq_get_lkg_pgpu(unsigned int volt);
+unsigned int __gpufreq_get_lkg_pgpu(unsigned int volt, int temper);
 unsigned int __gpufreq_get_dyn_pgpu(unsigned int freq, unsigned int volt);
 int __gpufreq_generic_commit_gpu(int target_oppidx, enum gpufreq_dvfs_state key);
 int __gpufreq_fix_target_oppidx_gpu(int oppidx);
@@ -150,7 +151,7 @@ unsigned int __gpufreq_get_pstack_by_idx(int oppidx);
 int __gpufreq_get_idx_by_fstack(unsigned int freq);
 int __gpufreq_get_idx_by_vstack(unsigned int volt);
 int __gpufreq_get_idx_by_pstack(unsigned int power);
-unsigned int __gpufreq_get_lkg_pstack(unsigned int volt);
+unsigned int __gpufreq_get_lkg_pstack(unsigned int volt, int temper);
 unsigned int __gpufreq_get_dyn_pstack(unsigned int freq, unsigned int volt);
 int __gpufreq_generic_commit_stack(int target_oppidx, enum gpufreq_dvfs_state key);
 int __gpufreq_fix_target_oppidx_stack(int oppidx);
@@ -175,6 +176,11 @@ static inline void __gpufreq_footprint_power_step(unsigned int step)
 #else
 	GPUFREQ_UNREFERENCED(step);
 #endif /* CONFIG_MTK_AEE_IPANIC && CONFIG_MTK_AEE_FEATURE */
+}
+
+static inline void __gpufreq_footprint_dvfs_step(unsigned int step)
+{
+	GPUFREQ_UNREFERENCED(step);
 }
 
 static inline void __gpufreq_footprint_oppidx(int oppidx)

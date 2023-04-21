@@ -220,9 +220,9 @@ static int __gpuppm_limit_effective(enum gpufreq_target target)
 			oppidx_gpu = cur_oppidx_gpu;
 		/* STACK */
 		if (cur_oppidx_stack < cur_ceiling)
-			cur_oppidx_stack = cur_ceiling;
+			oppidx_stack = cur_ceiling;
 		else if (cur_oppidx_stack > cur_floor)
-			cur_oppidx_stack = cur_floor;
+			oppidx_stack = cur_floor;
 		else
 			oppidx_stack = cur_oppidx_stack;
 
@@ -404,7 +404,7 @@ unsigned int gpuppm_get_f_limiter(void)
 }
 
 int gpuppm_set_limit(enum gpufreq_target target, enum gpuppm_limiter limiter,
-	int ceiling_info, int floor_info)
+	int ceiling_info, int floor_info, unsigned int instant_dvfs)
 {
 	struct gpuppm_limit_info *limit_table = NULL;
 	int opp_num = 0, ceiling_idx = 0, floor_idx = 0;
@@ -450,7 +450,8 @@ int gpuppm_set_limit(enum gpufreq_target target, enum gpuppm_limiter limiter,
 		__gpuppm_update_gpuppm_info();
 
 	/* update current OPP if necessary */
-	ret = __gpuppm_limit_effective(target);
+	if (instant_dvfs)
+		ret = __gpuppm_limit_effective(target);
 
 	mutex_unlock(&gpuppm_lock);
 
@@ -461,7 +462,7 @@ done:
 }
 
 int gpuppm_switch_limit(enum gpufreq_target target, enum gpuppm_limiter limiter,
-	int c_enable, int f_enable)
+	int c_enable, int f_enable, unsigned int instant_dvfs)
 {
 	struct gpuppm_limit_info *limit_table = NULL;
 	int ret = GPUFREQ_SUCCESS;
@@ -494,7 +495,8 @@ int gpuppm_switch_limit(enum gpufreq_target target, enum gpuppm_limiter limiter,
 		__gpuppm_update_gpuppm_info();
 
 	/* update current OPP if necessary */
-	ret = __gpuppm_limit_effective(target);
+	if (instant_dvfs)
+		ret = __gpuppm_limit_effective(target);
 
 	mutex_unlock(&gpuppm_lock);
 
@@ -683,8 +685,8 @@ int gpuppm_init(enum gpufreq_target target,
 		g_ppm.opp_num = opp_num;
 
 		/* set basic limit at boot time */
-		gpuppm_set_limit(target, LIMIT_SEGMENT, max_oppidx, min_oppidx);
-		gpuppm_set_limit(target, LIMIT_SRAMRC, GPUPPM_KEEP_IDX, sramrc_vsafe);
+		gpuppm_set_limit(target, LIMIT_SEGMENT, max_oppidx, min_oppidx, false);
+		gpuppm_set_limit(target, LIMIT_SRAMRC, GPUPPM_KEEP_IDX, sramrc_vsafe, false);
 
 		gpufreq_register_gpuppm_fp(&platform_ap_fp);
 	}

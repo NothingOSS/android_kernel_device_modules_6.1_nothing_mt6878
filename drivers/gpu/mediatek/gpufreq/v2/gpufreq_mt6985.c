@@ -291,7 +291,6 @@ static struct gpufreq_platform_fp platform_ap_fp = {
 	.get_idx_by_fstack = __gpufreq_get_idx_by_fstack,
 	.get_lkg_pstack = __gpufreq_get_lkg_pstack,
 	.get_dyn_pstack = __gpufreq_get_dyn_pstack,
-	.generic_commit_stack = __gpufreq_generic_commit_stack,
 	.fix_target_oppidx_stack = __gpufreq_fix_target_oppidx_stack,
 	.fix_custom_freq_volt_stack = __gpufreq_fix_custom_freq_volt_stack,
 	.dump_infra_status = __gpufreq_dump_infra_status,
@@ -621,9 +620,10 @@ int __gpufreq_get_idx_by_pstack(unsigned int power)
 }
 
 /* API: get leakage Power of GPU */
-unsigned int __gpufreq_get_lkg_pgpu(unsigned int volt)
+unsigned int __gpufreq_get_lkg_pgpu(unsigned int volt, int temper)
 {
 	GPUFREQ_UNREFERENCED(volt);
+	GPUFREQ_UNREFERENCED(temper);
 
 	return GPU_LKG_POWER;
 }
@@ -645,9 +645,10 @@ unsigned int __gpufreq_get_dyn_pgpu(unsigned int freq, unsigned int volt)
 }
 
 /* API: get leakage Power of STACK */
-unsigned int __gpufreq_get_lkg_pstack(unsigned int volt)
+unsigned int __gpufreq_get_lkg_pstack(unsigned int volt, int temper)
 {
 	GPUFREQ_UNREFERENCED(volt);
+	GPUFREQ_UNREFERENCED(temper);
 
 	return STACK_LKG_POWER;
 }
@@ -4416,7 +4417,7 @@ static void __gpufreq_measure_power(void)
 		freq = working_gpu[i].freq;
 		volt = working_gpu[i].volt;
 
-		p_leakage = __gpufreq_get_lkg_pgpu(volt);
+		p_leakage = __gpufreq_get_lkg_pgpu(volt, 30);
 		p_dynamic = __gpufreq_get_dyn_pgpu(freq, volt);
 
 		p_total = p_dynamic + p_leakage;
@@ -4431,7 +4432,7 @@ static void __gpufreq_measure_power(void)
 		freq = working_stack[i].freq;
 		volt = working_stack[i].volt;
 
-		p_leakage = __gpufreq_get_lkg_pstack(volt);
+		p_leakage = __gpufreq_get_lkg_pstack(volt, 30);
 		p_dynamic = __gpufreq_get_dyn_pstack(freq, volt);
 
 		p_total = p_dynamic + p_leakage;
@@ -4784,7 +4785,7 @@ static unsigned int __gpufreq_get_aging_table_idx(
 	a_diff = MAX(a_diff1, a_diff2);
 	a_diff = MAX(a_diff, a_diff3);
 
-	leakage_power = __gpufreq_get_lkg_pstack(GPUFREQ_AGING_LKG_VSTACK);
+	leakage_power = __gpufreq_get_lkg_pstack(GPUFREQ_AGING_LKG_VSTACK, 30);
 
 	g_asensor_info.tj_max = tj_max;
 	g_asensor_info.a_diff1 = a_diff1;
