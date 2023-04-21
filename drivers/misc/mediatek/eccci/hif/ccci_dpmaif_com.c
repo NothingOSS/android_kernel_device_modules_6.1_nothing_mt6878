@@ -1571,6 +1571,7 @@ static int dpmaif_late_init(void)
 		mtk_ccci_spd_qos_set_task(
 			dpmaif_ctl->rxq[0].rxq_push_thread,
 			dpmaif_ctl->bat_alloc_thread,
+			dpmaif_ctl->skb_alloc_thread,
 			dpmaif_ctl->rxq[0].irq_id);
 	}
 
@@ -2239,8 +2240,7 @@ static void dpmaif_clear_traffic_data(void)
 
 static int dpmaif_start(unsigned char hif_id)
 {
-	int ret = 0, i;
-	struct cpumask imask;
+	int ret = 0;
 
 	if (dpmaif_ctl->dpmaif_state == DPMAIF_STATE_PWRON)
 		return 0;
@@ -2277,12 +2277,6 @@ static int dpmaif_start(unsigned char hif_id)
 
 	dpmaif_ctl->dpmaif_state = DPMAIF_STATE_PWRON;
 	atomic_set(&g_tx_busy_assert_on, 0);
-
-	for (i = 0; i < dpmaif_ctl->real_rxq_num; i++) {
-		cpumask_clear(&imask);
-		cpumask_set_cpu(1 + i, &imask);
-		irq_set_affinity_hint(dpmaif_ctl->rxq[i].irq_id, &imask);
-	}
 
 #if DPMAIF_TRAFFIC_MONITOR_INTERVAL
 	dpmaif_clear_traffic_data();

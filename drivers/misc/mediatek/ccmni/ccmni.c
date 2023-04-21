@@ -388,8 +388,6 @@ static u16 ccmni_select_queue(struct net_device *dev, struct sk_buff *skb,
 		return CCMNI_TXQ_NORMAL;
 }
 
-static int s_call_times;
-
 static int ccmni_open(struct net_device *dev)
 {
 	struct ccmni_instance *ccmni =
@@ -436,10 +434,6 @@ static int ccmni_open(struct net_device *dev)
 		atomic_read(&ccmni_tmp->usage),
 		ccmni_ctl_blk->ccci_ops->md_ability,
 		dev->features, gro_flush_timer, ccmni->flt_cnt);
-
-	if (s_call_times == 0)
-		set_ccmni_rps(0x70);
-	s_call_times++;
 
 	return 0;
 }
