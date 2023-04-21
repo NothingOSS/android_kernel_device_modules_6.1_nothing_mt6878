@@ -1093,11 +1093,11 @@ int mtk_cam_seninf_get_vcinfo(struct seninf_ctx *ctx)
 				switch (desc) {
 				case VC_STAGGER_ME:
 					vc->out_pad = PAD_SRC_RAW1;
-					vc->group = VC_CH_GROUP_RAW2;
+					vc->group = VC_CH_GROUP_RAW1;
 					break;
 				case VC_STAGGER_SE:
 					vc->out_pad = PAD_SRC_RAW2;
-					vc->group = VC_CH_GROUP_RAW3;
+					vc->group = VC_CH_GROUP_RAW1;
 					break;
 				case VC_STAGGER_NE:
 				default:
@@ -1405,7 +1405,7 @@ static struct seninf_mux *get_mux(struct seninf_ctx *ctx, struct seninf_vc *vc,
 		g_seninf_ops->_set_top_mux_ctrl(ctx, mux->idx, intf);
 
 		// set vc split
-		g_seninf_ops->_set_mux_vc_split_all(ctx, mux->idx);
+		g_seninf_ops->_set_mux_vc_split_all(ctx, mux->idx, dest_cam_type);
 
 		//TODO
 		//mtk_cam_seninf_set_mux_crop(ctx, mux->idx, 0, 2327, 0);

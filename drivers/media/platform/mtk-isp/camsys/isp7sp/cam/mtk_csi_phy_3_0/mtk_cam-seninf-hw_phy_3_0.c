@@ -1159,7 +1159,7 @@ static int mtk_cam_seninf_set_mux_ctrl(struct seninf_ctx *ctx, int mux,
 }
 
 static int mtk_cam_seninf_set_mux_vc_split_all(struct seninf_ctx *ctx,
-				int mux)
+				int mux, u8 cam_type)
 {
 	struct seninf_vcinfo *vcinfo = &ctx->vcinfo;
 	void *pSeninf_mux = ctx->reg_if_mux[(unsigned int)mux];
@@ -1169,37 +1169,61 @@ static int mtk_cam_seninf_set_mux_vc_split_all(struct seninf_ctx *ctx,
 	for (i = 0; i < vcinfo->cnt; i++) {
 		vc = &vcinfo->vc[i];
 
-		switch (vc->muxvr_offset) {
-		case 0:
-			SET_VC_SPLIT(pSeninf_mux, 0, 0, vc->vc, (i == 0));
-			break;
-		case 1:
-			SET_VC_SPLIT(pSeninf_mux, 0, 1, vc->vc, (i == 0));
-			break;
-		case 2:
-			SET_VC_SPLIT(pSeninf_mux, 0, 2, vc->vc, (i == 0));
-			break;
-		case 3:
-			SET_VC_SPLIT(pSeninf_mux, 0, 3, vc->vc, (i == 0));
-			break;
-		case 4:
-			SET_VC_SPLIT(pSeninf_mux, 1, 4, vc->vc, (i == 0));
-			break;
-		case 5:
-			SET_VC_SPLIT(pSeninf_mux, 1, 5, vc->vc, (i == 0));
-			break;
-		case 6:
-			SET_VC_SPLIT(pSeninf_mux, 1, 6, vc->vc, (i == 0));
-			break;
-		case 7:
-			SET_VC_SPLIT(pSeninf_mux, 1, 7, vc->vc, (i == 0));
-			break;
-		default:
-#if LOG_MORE
-			dev_info(ctx->dev,
+		if (cam_type == TYPE_CAMSV_SAT) {
+			switch (vc->muxvr_offset) {
+			case 0:
+				SET_VC_SPLIT(pSeninf_mux, 0, 0, vc->vc, (i == 0));
+				break;
+			case 1:
+				SET_VC_SPLIT(pSeninf_mux, 0, 1, vc->vc, (i == 0));
+				break;
+			case 2:
+				SET_VC_SPLIT(pSeninf_mux, 0, 2, vc->vc, (i == 0));
+				break;
+			case 3:
+				SET_VC_SPLIT(pSeninf_mux, 0, 3, vc->vc, (i == 0));
+				break;
+			case 4:
+				SET_VC_SPLIT(pSeninf_mux, 1, 4, vc->vc, (i == 0));
+				break;
+			case 5:
+				SET_VC_SPLIT(pSeninf_mux, 1, 5, vc->vc, (i == 0));
+				break;
+			case 6:
+				SET_VC_SPLIT(pSeninf_mux, 1, 6, vc->vc, (i == 0));
+				break;
+			case 7:
+				SET_VC_SPLIT(pSeninf_mux, 1, 7, vc->vc, (i == 0));
+				break;
+			default:
+				dev_info(ctx->dev,
 				 "%s: skip vc split setting for more than tag 7\n", __func__);
-#endif
-			break;
+				break;
+			}
+		} else if (cam_type == TYPE_RAW) {
+			switch (vc->muxvr_offset) {
+			case 0:
+				SET_VC_SPLIT(pSeninf_mux, 0, 0, vc->vc, (i == 0));
+				break;
+			case 1:
+				SET_VC_SPLIT(pSeninf_mux, 0, 1, vc->vc, (i == 0));
+				break;
+			case 2:
+				SET_VC_SPLIT(pSeninf_mux, 0, 2, vc->vc, (i == 0));
+				break;
+			case 3:
+				SET_VC_SPLIT(pSeninf_mux, 0, 3, vc->vc, (i == 0));
+				break;
+			default:
+				dev_info(ctx->dev,
+						"%s: skip vc split setting (%d) for more than tag 3\n",
+						__func__, vc->muxvr_offset);
+				break;
+			}
+		} else {
+			dev_info(ctx->dev,
+						"%s: skip vc split setting, due to cam_type is %d\n",
+						__func__, cam_type);
 		}
 	}
 
