@@ -451,7 +451,6 @@ static int mtk_cam_ctrl_send_event(struct mtk_cam_ctrl *ctrl, int event)
 	p.info = &local_info;
 	p.event = event;
 	p.event_ts = ktime_get_boottime_ns();
-	p.s_params = &ctrl->s_params;
 
 	if (0 && CAM_DEBUG_ENABLED(STATE))
 		dump_runtime_info(p.info);
@@ -868,14 +867,12 @@ static int mtk_cam_ctrl_stream_on_job(struct mtk_cam_job *job)
 	if (mtk_cam_job_manually_apply_isp_sync(job))
 		goto STREAM_ON_FAIL;
 
-	ctrl->s_params.i2c_thres_ns =
-		infer_i2c_deadline_ns(&job->job_scen,
-				      query_interval_from_sensor(ctx->sensor));
-	dev_info(dev, "%s: i2c thres %llu\n",
-		 __func__, ctrl->s_params.i2c_thres_ns);
+	ctrl->frame_interval_ns =
+			query_interval_from_sensor(ctx->sensor);
 
 	/* should set ts for second job's apply_sensor */
 	ctrl->r_info.sof_ts_ns = ktime_get_boottime_ns();
+	ctrl->r_info.sof_l_ts_ns = ktime_get_boottime_ns();
 
 	call_jobop(job, stream_on, true);
 
@@ -1298,6 +1295,8 @@ void mtk_cam_ctrl_start(struct mtk_cam_ctrl *cam_ctrl, struct mtk_cam_ctx *ctx)
 	cam_ctrl->frame_sync_event_cnt = 1;
 	cam_ctrl->fs_event_subframe_cnt = 0;
 	cam_ctrl->fs_event_subframe_idx = 0;
+	cam_ctrl->frame_interval_ns =
+			query_interval_from_sensor(ctx->sensor);
 
 	atomic_set(&cam_ctrl->stopped, 0);
 	atomic_set(&cam_ctrl->stream_on_cnt, 1);

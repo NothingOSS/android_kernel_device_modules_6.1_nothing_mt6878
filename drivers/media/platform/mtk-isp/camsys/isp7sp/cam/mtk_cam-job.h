@@ -97,8 +97,14 @@ struct mtk_cam_ctrl_runtime_info {
 	u64 sof_l_ts_mono_ns;
 };
 
+enum mtk_cam_sensor_latch {
+	SENSOR_LATCHED_F_SOF,
+	SENSOR_LATCHED_L_SOF,
+};
+
 struct sensor_apply_params {
 	u64 i2c_thres_ns; /* valid period from vsync */
+	int latched_timing;
 };
 
 struct transition_param {
@@ -146,7 +152,6 @@ struct mtk_cam_job_state {
 	struct list_head list;
 
 	const struct mtk_cam_job_state_ops *ops;
-
 	int seq_no;
 
 	atomic_t state[NR_STATE_TYPE];
@@ -160,6 +165,10 @@ struct mtk_cam_job_state {
 	 * action
 	 */
 	bool apply_by_fsm;
+
+	/* for different sensor latched timing */
+	struct sensor_apply_params s_params;
+	struct state_table *sensor_tbl;
 };
 
 #define ops_call(s, func, ...) \

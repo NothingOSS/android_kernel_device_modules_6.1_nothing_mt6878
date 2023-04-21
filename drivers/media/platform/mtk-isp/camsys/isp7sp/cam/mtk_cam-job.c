@@ -1898,10 +1898,11 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 		(ctx->not_first_job && !sensor_change) && do_seamless_switch(job);
 	job->sub_ratio = get_subsample_ratio(&job->job_scen);
 
-	dev_info(cam->dev, "[%s] ctx:%d, type:%d, scen exp:%d->%d, swi:%d",
+	dev_info(cam->dev, "[%s] ctx:%d, type:%d, scen exp:%d->%d, swi:%d, stagger_type:%d",
 		__func__, ctx->stream_id, job->job_type,
 		prev_scen->scen.normal.exp_num,
-		job->job_scen.scen.normal.exp_num, job->switch_type);
+		job->job_scen.scen.normal.exp_num, job->switch_type,
+		job->job_scen.scen.normal.stagger_type);
 	job->stream_on_seninf = false;
 	job->scq_period =
 		SCQ_DEADLINE_US_STAGGER(get_sensor_interval_us(job)) / 1000;
@@ -3140,6 +3141,23 @@ static void update_job_sensor(struct mtk_cam_job *job)
 	job->seninf = raw->seninf;
 }
 
+static void update_job_state_init_sensor_param(struct mtk_cam_job *job)
+{
+	struct mtk_cam_ctrl *ctrl = &job->src_ctx->cam_ctrl;
+
+	job->job_state.s_params.i2c_thres_ns =
+		infer_i2c_deadline_ns(&job->job_scen, ctrl->frame_interval_ns);
+
+	job->job_state.s_params.latched_timing =
+		is_stagger_lbmf(job) ? SENSOR_LATCHED_L_SOF : SENSOR_LATCHED_F_SOF;
+
+	if (CAM_DEBUG_ENABLED(JOB))
+		pr_info("%s: job i2c_thres_ns %llu, latched_timing:%d\n",
+			__func__,
+			job->job_state.s_params.i2c_thres_ns,
+			job->job_state.s_params.latched_timing);
+}
+
 struct initialize_params stagger_init = {
 	.master_raw_init = master_raw_set_stagger,
 };
@@ -3163,6 +3181,8 @@ static int job_factory(struct mtk_cam_job *job)
 	 */
 	update_job_sensor(job);
 
+	update_job_state_init_sensor_param(job);
+
 	job->sensor_hdl_obj = job->sensor ?
 		mtk_cam_req_find_ctrl_obj(job->req, job->sensor->ctrl_handler) :
 		NULL;
@@ -3171,6 +3191,7 @@ static int job_factory(struct mtk_cam_job *job)
 	job->first_frm_switch = false;
 	job->switch_type = EXPOSURE_CHANGE_NONE;
 	job->scq_period = SCQ_DEADLINE_US(get_sensor_interval_us(job)) / 1000;
+
 	init_completion(&job->compose_completion);
 	init_completion(&job->cq_exe_completion);
 

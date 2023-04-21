@@ -26,6 +26,28 @@ static struct state_transition STATE_TRANS(basic_sensor, S_SENSOR_APPLIED)[] = {
 	},
 };
 
+static struct state_transition STATE_TRANS(basic_sensor_l, S_SENSOR_NOT_SET)[] = {
+	{
+		S_SENSOR_APPLYING, CAMSYS_EVENT_ENQUE,
+		guard_apply_sensor_l, ACTION_APPLY_SENSOR
+	},
+	{
+		S_SENSOR_APPLYING, CAMSYS_EVENT_IRQ_L_CQ_DONE,
+		guard_apply_sensor_l, ACTION_APPLY_SENSOR
+	},
+	{
+		S_SENSOR_APPLYING, CAMSYS_EVENT_IRQ_L_SOF,
+		guard_apply_sensor_l, ACTION_APPLY_SENSOR
+	},
+};
+
+static struct state_transition STATE_TRANS(basic_sensor_l, S_SENSOR_APPLIED)[] = {
+	{
+		S_SENSOR_LATCHED, CAMSYS_EVENT_IRQ_L_SOF,
+		NULL, 0
+	},
+};
+
 static struct state_transition STATE_TRANS(basic, S_ISP_NOT_SET)[] = {
 	{
 		S_ISP_COMPOSING, CAMSYS_EVENT_ENQUE,
@@ -113,9 +135,20 @@ static struct transitions_entry basic_sensor_entries[NR_S_SENSOR_STATE] = {
 	ADD_TRANS_ENTRY(basic_sensor, S_SENSOR_NOT_SET),
 	ADD_TRANS_ENTRY(basic_sensor, S_SENSOR_APPLIED),
 };
+
 struct state_table basic_sensor_tbl = {
 	.entries = basic_sensor_entries,
 	.size = ARRAY_SIZE(basic_sensor_entries),
+};
+
+static struct transitions_entry sensor_l_entries[NR_S_SENSOR_STATE] = {
+	ADD_TRANS_ENTRY(basic_sensor_l, S_SENSOR_NOT_SET),
+	ADD_TRANS_ENTRY(basic_sensor_l, S_SENSOR_APPLIED),
+};
+
+struct state_table basic_sensor_l_tbl = {
+	.entries = sensor_l_entries,
+	.size = ARRAY_SIZE(sensor_l_entries),
 };
 
 static struct transitions_entry basic_isp_entries[NR_S_ISP_STATE] = {
@@ -129,6 +162,7 @@ static struct transitions_entry basic_isp_entries[NR_S_ISP_STATE] = {
 	//ADD_TRANS_ENTRY(basic, S_ISP_DONE),
 	//ADD_TRANS_ENTRY(basic, S_ISP_DONE_MISMATCHED),
 };
+
 struct state_table basic_isp_tbl = {
 	.entries = basic_isp_entries,
 	.size = ARRAY_SIZE(basic_isp_entries),
@@ -151,13 +185,9 @@ static int basic_send_event(struct mtk_cam_job_state *s,
 	s_acc.s = s;
 	s_acc.seq_no = s->seq_no;
 	s_acc.ops = &_acc_ops;
+	p->s_params = &s->s_params;
 
-	loop_each_transition(&basic_sensor_tbl, &s_acc, SENSOR_STATE, p);
-
-	/* note: beware of '!ret' here
-	 * for current scenarios, we won't update sensor & isp state at same event
-	 * use '!ret' to skip isp transition if sensor already did.
-	 */
+	loop_each_transition(s->sensor_tbl, &s_acc, SENSOR_STATE, p);
 	loop_each_transition(&basic_isp_tbl, &s_acc, ISP_STATE, p);
 
 	return 0;
@@ -198,6 +228,11 @@ int mtk_cam_job_state_init_basic(struct mtk_cam_job_state *s,
 
 	s->cb = cb;
 	s->apply_by_fsm = 1;
+
+	if (s->s_params.latched_timing == SENSOR_LATCHED_L_SOF)
+		s->sensor_tbl = &basic_sensor_l_tbl;
+	else
+		s->sensor_tbl = &basic_sensor_tbl;
 
 	return 0;
 }

@@ -389,11 +389,14 @@ static u64 reserved_i2c_time(u64 frame_interval_ns)
 
 u64 infer_i2c_deadline_ns(struct mtk_cam_scen *scen, u64 frame_interval_ns)
 {
-	if (scen->id != MTK_CAM_SCEN_SMVR)
-		return frame_interval_ns - reserved_i2c_time(frame_interval_ns);
-
 	/* consider vsync is subsampled */
-	return frame_interval_ns * (scen->scen.smvr.subsample_num - 1);
+	if (scen->id == MTK_CAM_SCEN_SMVR)
+		return frame_interval_ns * (scen->scen.smvr.subsample_num - 1);
+	/* temp to frame/2 */
+	else if (scen_is_stagger_lbmf(scen))
+		return frame_interval_ns / 2 - reserved_i2c_time(frame_interval_ns);
+	else
+		return frame_interval_ns - reserved_i2c_time(frame_interval_ns);
 }
 
 unsigned int _get_master_engines(unsigned int used_engine)
@@ -1466,6 +1469,11 @@ bool is_m2m_apu_dc(struct mtk_cam_job *job)
 
 	return scen_is_m2m_apu(&job->job_scen, &ctrl->apu_info)
 		&& apu_info_is_dc(&ctrl->apu_info);
+}
+
+bool is_stagger_lbmf(struct mtk_cam_job *job)
+{
+	return scen_is_stagger_lbmf(&job->job_scen);
 }
 
 int map_ipi_vpu_point(int vpu_point)

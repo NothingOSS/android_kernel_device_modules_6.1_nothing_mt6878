@@ -77,4 +77,14 @@ static inline bool apu_info_is_dc(const struct mtk_cam_apu_info *apu_info)
 	return apu_info->apu_path == APU_DC_RAW;
 }
 
+static inline bool scen_is_stagger_lbmf(const struct mtk_cam_scen *scen)
+{
+	if (scen_is_normal(scen) &&
+		scen->scen.normal.max_exp_num > 1 &&
+		scen->scen.normal.stagger_type == MTK_CAM_STAGGER_LBMF)
+		return true;
+
+	return false;
+}
+
 #endif /*__MTK_CAM_RAW_CTRL_H*/

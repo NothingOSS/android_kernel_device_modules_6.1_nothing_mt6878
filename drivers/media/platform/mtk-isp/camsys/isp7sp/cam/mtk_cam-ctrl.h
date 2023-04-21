@@ -74,7 +74,7 @@ void mtk_cam_watchdog_stop(struct mtk_cam_watchdog *wd);
 struct mtk_cam_ctrl {
 	struct mtk_cam_ctx *ctx;
 
-	struct sensor_apply_params s_params;
+	u64 frame_interval_ns;
 
 	atomic_t enqueued_req_cnt;
 	unsigned int enqueued_frame_seq_no;	/* enque job counter - ctrl maintain */

@@ -153,6 +153,14 @@ static inline bool valid_i2c_period(struct transition_param *p)
 	return (p->event_ts - p->info->sof_ts_ns) < p->s_params->i2c_thres_ns;
 }
 
+static inline bool valid_i2c_period_l(struct transition_param *p)
+{
+	if (unlikely(!p->s_params))
+		return false;
+
+	return (p->event_ts - p->info->sof_l_ts_ns) < p->s_params->i2c_thres_ns;
+}
+
 static inline int guard_apply_sensor_subsample(struct state_accessor *s_acc,
 					       struct transition_param *p)
 {
@@ -167,6 +175,14 @@ static inline int guard_apply_sensor(struct state_accessor *s_acc,
 	return allow_applying_hw(s_acc) &&
 		ops_call(s_acc, prev_allow_apply_sensor) &&
 		valid_i2c_period(p);
+}
+
+static inline int guard_apply_sensor_l(struct state_accessor *s_acc,
+				     struct transition_param *p)
+{
+	return allow_applying_hw(s_acc) &&
+		ops_call(s_acc, prev_allow_apply_sensor) &&
+		valid_i2c_period_l(p);
 }
 
 static inline bool is_sensor_set(int sensor_state)
