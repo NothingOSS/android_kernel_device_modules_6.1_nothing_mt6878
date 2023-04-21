@@ -382,12 +382,22 @@ void mtk_disp_pq_on_start_of_frame(struct mtk_drm_crtc *mtk_crtc)
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
 	struct mtk_ddp_comp *ccorr_comp = mtk_ddp_comp_sel_in_cur_crtc_path(
 			mtk_crtc, MTK_DISP_CCORR, 0);
-	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(ccorr_comp);
-	struct mtk_disp_ccorr_primary *ccorr_primary = ccorr_data->primary_data;
 	struct mtk_ddp_comp *c3d_comp = mtk_ddp_comp_sel_in_cur_crtc_path(
 			mtk_crtc, MTK_DISP_C3D, 0);
-	struct mtk_disp_c3d *c3d_data = comp_to_c3d(c3d_comp);
-	struct mtk_disp_c3d_primary *c3d_primary = c3d_data->primary_data;
+	struct mtk_disp_ccorr *ccorr_data;
+	struct mtk_disp_ccorr_primary *ccorr_primary;
+	struct mtk_disp_c3d *c3d_data;
+	struct mtk_disp_c3d_primary *c3d_primary;
+
+	if (!ccorr_comp || !c3d_comp) {
+		DDPINFO("%s, no ccorr or c3d in crtc %d\n",
+				__func__, drm_crtc_index(&mtk_crtc->base));
+		return;
+	}
+	ccorr_data = comp_to_ccorr(ccorr_comp);
+	ccorr_primary = ccorr_data->primary_data;
+	c3d_data = comp_to_c3d(c3d_comp);
+	c3d_primary = c3d_data->primary_data;
 
 	if ((atomic_read(&ccorr_primary->ccorr_irq_en) == 1) ||
 			(atomic_read(&c3d_primary->c3d_eventctl) == 1)) {
