@@ -388,7 +388,7 @@ static void dump_enabled_clks(struct provider_clk *pvdck)
 	p_name = clk_hw_get_name(c_hw);
 	comp_name = clk_hw_get_name(p_hw);
 	while (strcmp(comp_name, "clk26m")) {
-		p_name = p_hw ? clk_hw_get_name(p_hw) : NULL;
+		p_name = clk_hw_get_name(p_hw);
 		p_hw = clk_hw_get_parent(p_hw);
 		if (IS_ERR_OR_NULL(p_hw))
 			return;

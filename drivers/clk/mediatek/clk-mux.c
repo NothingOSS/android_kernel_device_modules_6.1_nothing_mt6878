@@ -130,7 +130,7 @@ static int mtk_clk_hwv_mux_is_done(struct clk_hw *hw)
 static int mtk_clk_hwv_mux_enable(struct clk_hw *hw)
 {
 	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
-	u32 val, val2;
+	u32 val = 0, val2 = 0;
 	bool is_done = false;
 	int i = 0;
 
@@ -302,6 +302,7 @@ static int __mtk_clk_mux_set_parent_lock(struct clk_hw *hw, u8 index, bool setcl
 	u32 val = 0, orig = 0;
 	unsigned long flags = 0;
 	bool qs_pll_need_off = false;
+	int ret = 0;
 
 	if (mux->lock)
 		spin_lock_irqsave(mux->lock, flags);
@@ -317,7 +318,20 @@ static int __mtk_clk_mux_set_parent_lock(struct clk_hw *hw, u8 index, bool setcl
 		if (val != orig) {
 			if ((mux->flags & CLK_ENABLE_QUICK_SWITCH) == CLK_ENABLE_QUICK_SWITCH) {
 				val = mux->data->qs_shift;
-				qs_hw = clk_hw_get_parent(clk_hw_get_parent_by_index(hw, val));
+
+				qs_hw = clk_hw_get_parent_by_index(hw, val);
+				if (!qs_hw) {
+					pr_err("qs_hw is null, index = %d\n", val);
+					ret = -EFAULT;
+					goto null_pointer_error;
+				}
+				qs_hw = clk_hw_get_parent(qs_hw);
+				if (!qs_hw) {
+					pr_err("qs_hw is null\n");
+					ret = -EFAULT;
+					goto null_pointer_error;
+				}
+
 				if (!mtk_hwv_pll_is_on(qs_hw)) {
 					/* mainpll2 enable for quick switch */
 					mtk_hwv_pll_on(qs_hw);
@@ -345,12 +359,13 @@ static int __mtk_clk_mux_set_parent_lock(struct clk_hw *hw, u8 index, bool setcl
 			mask << mux->data->mux_shift,
 			index << mux->data->mux_shift);
 
+null_pointer_error:
 	if (mux->lock)
 		spin_unlock_irqrestore(mux->lock, flags);
 	else
 		__release(mux->lock);
 
-	return 0;
+	return ret;
 }
 
 static int mtk_clk_mux_set_parent_lock(struct clk_hw *hw, u8 index)
