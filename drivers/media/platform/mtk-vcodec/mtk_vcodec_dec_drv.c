@@ -26,6 +26,7 @@
 #include "mtk_vcodec_intr.h"
 #include "mtk_vcodec_util.h"
 #include "mtk_vcu.h"
+#include "mtk_vcodec_dec_slc.h"
 
 module_param(mtk_v4l2_dbg_level, int, 0644);
 module_param(mtk_vdec_lpw_level, int, 0644);
@@ -646,6 +647,16 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	register_pm_notifier(&dev->pm_notifier);
 	dev->is_codec_suspending = 0;
 	dev->dec_cnt = 0;
+
+	ret = of_property_read_u32(pdev->dev.of_node, "mediatek,slc", &dev->dec_slc_ver);
+	if (ret != 0 || dev->dec_slc_ver >= VDEC_SLC_VER_MAX) {
+		mtk_v4l2_debug(0, "vdec default not support SLC");
+		dev->dec_slc_ver = VDEC_SLC_NOT_SUPPORT;
+	}
+	mtk_v4l2_debug(0, "vdec slc ver: %d", dev->dec_slc_ver);
+	dev->queued_frame = false;
+	mtk_vdec_init_slc(&dev->dec_slc_frame, ID_VDEC_FRAME);
+	mtk_vdec_init_slc(&dev->dec_slc_ube, ID_VDEC_UBE);
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	vdec_vcp_probe(dev);

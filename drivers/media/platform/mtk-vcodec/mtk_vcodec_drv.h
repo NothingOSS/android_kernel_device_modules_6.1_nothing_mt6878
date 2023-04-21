@@ -29,6 +29,7 @@
 #include "mtk_dma_contig.h"
 #include "slbc_ops.h"
 #include "mtk-v4l2-vcodec.h"
+#include "mtk_vcodec_dec_slc.h"
 
 #define ENABLE_FENCE 0
 #define ENABLE_META_BUF 0
@@ -252,6 +253,12 @@ enum vdec_power_type {
 	VDEC_POWER_ALWAYS,
 	VDEC_POWER_ALWAYS_OP,
 	VDEC_POWER_ALWAYS_FREQ,
+};
+
+enum vdec_slc_version {
+	VDEC_SLC_NOT_SUPPORT = 0,
+	VDEC_SLC_V1 = 1,
+	VDEC_SLC_VER_MAX,
 };
 
 /**
@@ -870,6 +877,11 @@ struct mtk_vcodec_dev {
 	struct vcodec_port_bw *venc_port_bw;
 	struct vcodec_larb_bw *vdec_larb_bw;
 	struct vcodec_larb_bw *venc_larb_bw;
+
+	enum vdec_slc_version dec_slc_ver;
+	bool queued_frame;
+	struct slc_param dec_slc_frame;
+	struct slc_param dec_slc_ube;
 /**
  *	struct ion_client *ion_vdec_client;
  *	struct ion_client *ion_venc_client;

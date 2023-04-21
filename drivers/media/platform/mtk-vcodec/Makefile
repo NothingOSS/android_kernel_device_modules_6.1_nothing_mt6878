@@ -14,7 +14,8 @@ mtk-vcodec-enc-$(CONFIG_MTK_TINYSYS_VCP_SUPPORT) += venc/venc_vcp_if.o
 mtk-vcodec-dec-$(CONFIG_DEVICE_MODULES_VIDEO_MEDIATEK_VCODEC) += mtk_vcodec_dec_drv.o \
 		vdec_drv_if.o \
 		mtk_vcodec_dec.o \
-		mtk_vcodec_dec_pm.o
+		mtk_vcodec_dec_pm.o \
+		mtk_vcodec_dec_slc.o
 
 mtk-vcodec-enc-$(CONFIG_DEVICE_MODULES_VIDEO_MEDIATEK_VCODEC) += mtk_vcodec_enc_drv.o \
 		venc_drv_if.o \
@@ -70,5 +71,6 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/staging/android/ion
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/rv
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps
 
 #endif

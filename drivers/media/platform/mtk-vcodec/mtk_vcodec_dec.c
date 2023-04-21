@@ -21,6 +21,7 @@
 #include "mtk_vcodec_dec_pm.h"
 #include "mtk_vcodec_dec_pm_plat.h"
 #include "vdec_drv_if.h"
+#include "mtk_vcodec_dec_slc.h"
 
 #define MTK_VDEC_MIN_W  64U
 #define MTK_VDEC_MIN_H  64U
@@ -3630,6 +3631,12 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 					i, (unsigned long)new_dma_addr, vb->planes[i].dbuf);
 			}
 		}
+
+		if (ctx->dev->dec_slc_ver == VDEC_SLC_V1 &&
+			ctx->state == MTK_STATE_HEADER) {
+			mtk_vdec_slc_get_gid_from_dma(ctx, vb->planes[0].dbuf);
+		}
+
 		// only allow legacy buffers in this slot still referenced put to driver
 		if (ctx->input_driven == INPUT_DRIVEN_PUT_FRM &&
 			!new_dma && buf->used == true) {
@@ -4030,6 +4037,11 @@ static int vb2ops_vdec_start_streaming(struct vb2_queue *q, unsigned int count)
 		mtk_vdec_pmqos_begin_inst(ctx);
 		mutex_unlock(&ctx->dev->dec_dvfs_mutex);
 
+		if (ctx->dev->dec_slc_ver == VDEC_SLC_V1) {
+			mtk_vdec_slc_gid_request(ctx, &ctx->dev->dec_slc_frame);
+			mtk_vdec_slc_gid_request(ctx, &ctx->dev->dec_slc_ube);
+		}
+
 	} else if (q->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		if (!mtk_vcodec_is_vcp(MTK_INST_DECODER)) {
 			// set SET_PARAM_TOTAL_BITSTREAM_BUFQ_COUNT for
@@ -4186,6 +4198,10 @@ static void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 	mtk_vdec_pmqos_end_inst(ctx);
 	mutex_unlock(&ctx->dev->dec_dvfs_mutex);
 
+	if (ctx->dev->dec_slc_ver == VDEC_SLC_V1) {
+		mtk_vdec_slc_gid_release(ctx, &ctx->dev->dec_slc_frame);
+		mtk_vdec_slc_gid_release(ctx, &ctx->dev->dec_slc_ube);
+	}
 }
 
 static void m2mops_vdec_device_run(void *priv)
