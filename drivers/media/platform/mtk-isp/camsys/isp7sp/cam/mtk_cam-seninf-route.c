@@ -648,6 +648,69 @@ int mtk_cam_seninf_get_pad_data_info(struct v4l2_subdev *sd,
 	return -1;
 }
 
+int mtk_cam_seninf_get_active_line_info(struct v4l2_subdev *sd,
+				struct mtk_seninf_active_line_info *result)
+{
+	struct seninf_ctx *ctx = container_of(sd, struct seninf_ctx, subdev);
+	struct v4l2_subdev *sensor_sd = NULL;
+	struct mtk_sensor_mode_config_info info;
+	struct mtk_sensor_mode_info *p_mode;
+	struct mtk_seninf_pad_data_info pad_info;
+	int i;
+
+	if (!result)
+		return -1;
+
+	memset(result, 0, sizeof(*result));
+
+	if (ctx)
+		sensor_sd = ctx->sensor_sd;
+
+	if (sensor_sd &&
+	    sensor_sd->ops &&
+	    sensor_sd->ops->core &&
+	    sensor_sd->ops->core->command) {
+
+		sensor_sd->ops->core->command(sensor_sd,
+			V4L2_CMD_GET_SENSOR_MODE_CONFIG_INFO, &info);
+
+		dev_info(ctx->dev, "info.cur_mode = %u, info.count = %u\n",
+			 info.current_scenario_id, info.count);
+
+		for (i = 0; i < info.count; i++) {
+			p_mode = &info.seamless_scenario_infos[i];
+
+			if (info.current_scenario_id == p_mode->scenario_id) {
+				result->active_line_num = p_mode->active_line_num;
+				result->avg_linetime_in_ns = p_mode->avg_linetime_in_ns;
+
+				// Fallback to raw0 or raw_ext0 vsize
+				if (!result->active_line_num) {
+					if (mtk_cam_seninf_get_pad_data_info(sd,
+						PAD_SRC_RAW0, &pad_info) != -1) {
+						result->active_line_num = pad_info.exp_vsize;
+					} else if (mtk_cam_seninf_get_pad_data_info(sd,
+						PAD_SRC_RAW_EXT0, &pad_info) != -1) {
+						result->active_line_num = pad_info.exp_vsize;
+					}
+				}
+
+				seninf_logi(ctx,
+					"modeid=%u, active_line=%u/%u, avg_tline_ns=%llu\n",
+					p_mode->scenario_id,
+					p_mode->active_line_num,
+					result->active_line_num,
+					p_mode->avg_linetime_in_ns);
+
+				return 0;
+			}
+
+		}
+	}
+
+	return -1;
+}
+
 static int get_mbus_format_by_dt(int dt)
 {
 	switch (dt) {

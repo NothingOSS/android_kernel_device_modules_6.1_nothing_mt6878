@@ -155,6 +155,30 @@ static void get_outfmt_code(struct adaptor_ctx *ctx)
 	}
 }
 
+static u32 get_active_line_num(struct adaptor_ctx *ctx, u32 scenario_id)
+{
+	int ret, j;
+	struct mtk_mbus_frame_desc fd_tmp;
+	u32 result = 0;
+
+	ret = subdrv_call(ctx, get_frame_desc, scenario_id, &fd_tmp);
+	if (!ret) {
+		for (j = 0; j < fd_tmp.num_entries; j++) {
+			if (fd_tmp.entry[j].bus.csi2.is_active_line &&
+			    (fd_tmp.entry[j].bus.csi2.user_data_desc != VC_STAGGER_ME) &&
+			    (fd_tmp.entry[j].bus.csi2.user_data_desc != VC_STAGGER_SE) &&
+			    (fd_tmp.entry[j].bus.csi2.user_data_desc != VC_PDAF_STATS_ME_PIX_1) &&
+			    (fd_tmp.entry[j].bus.csi2.user_data_desc != VC_PDAF_STATS_ME_PIX_2) &&
+			    (fd_tmp.entry[j].bus.csi2.user_data_desc != VC_PDAF_STATS_SE_PIX_1) &&
+			    (fd_tmp.entry[j].bus.csi2.user_data_desc != VC_PDAF_STATS_SE_PIX_2)) {
+				result += fd_tmp.entry[j].bus.csi2.vsize;
+			}
+		}
+	}
+
+	return result;
+}
+
 static void add_sensor_mode(struct adaptor_ctx *ctx,
 		int id, int width, int height)
 {
@@ -252,6 +276,10 @@ static void add_sensor_mode(struct adaptor_ctx *ctx,
 	mode->linetime_in_ns_readout = (u64)llp_readout * 1000000 +
 		(mode->pclk / 1000 - 1);
 	do_div(mode->linetime_in_ns_readout, mode->pclk / 1000);
+
+
+	/* Update active line */
+	mode->active_line_num = get_active_line_num(ctx, mode->id);
 
 
 	dev_dbg(ctx->dev, "%s [%d] id %d %dx%d %dx%d px %d fps %d tLine %lld|%lld fintl %llu\n",
@@ -1438,8 +1466,12 @@ static int imgsensor_probe(struct i2c_client *client)
 	}
 
 	/* init subdev name */
-	snprintf(ctx->sd.name, V4L2_SUBDEV_NAME_SIZE, "%s%d",
+	ret = snprintf(ctx->sd.name, V4L2_SUBDEV_NAME_SIZE, "%s%d",
 		OF_SENSOR_NAME_PREFIX, ctx->idx);
+	if (ret <= 0) {
+		dev_err(dev, "failed to snprintf subdev name\n");
+		return ret;
+	}
 
 
 	/* init controls */

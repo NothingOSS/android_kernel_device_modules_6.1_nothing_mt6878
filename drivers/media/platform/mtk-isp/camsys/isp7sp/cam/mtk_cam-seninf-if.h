@@ -112,6 +112,24 @@ int mtk_cam_seninf_get_pad_data_info(struct v4l2_subdev *sd,
 				unsigned int pad,
 				struct mtk_seninf_pad_data_info *result);
 
+/**
+ * struct mtk_seninf_active_line_info - active line information
+ */
+struct mtk_seninf_active_line_info {
+	u32 active_line_num;
+	u64 avg_linetime_in_ns;
+};
+
+/**
+ * Get active line info
+ *
+ * @param sd v4l2_subdev
+ * @param result The result
+ * @return 0 if success, and negative number if error occur
+ */
+int mtk_cam_seninf_get_active_line_info(struct v4l2_subdev *sd,
+				struct mtk_seninf_active_line_info *result);
+
 void
 mtk_cam_seninf_set_secure(struct v4l2_subdev *sd, int enable, u64 SecInfo_addr);
 

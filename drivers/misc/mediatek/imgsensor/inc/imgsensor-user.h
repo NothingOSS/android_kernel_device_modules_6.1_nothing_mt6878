@@ -364,6 +364,7 @@ struct mtk_mbus_frame_desc_entry_csi2 {
 	u8 is_sensor_hw_pre_latch_exp;
 	enum mtk_cam_seninf_tsrec_exp_id cust_assign_to_tsrec_exp_id;
 	u16 valid_bit;
+	u8 is_active_line;
 };
 
 struct mtk_mbus_frame_desc_entry {
@@ -449,6 +450,8 @@ struct mtk_fine_integ_line {
 struct mtk_sensor_mode_info {
 	__u32 scenario_id;
 	__u32 mode_exposure_num;
+	__u32 active_line_num;
+	__u64 avg_linetime_in_ns;
 };
 
 struct mtk_sensor_mode_config_info {

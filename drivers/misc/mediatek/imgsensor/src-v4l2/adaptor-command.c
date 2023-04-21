@@ -41,6 +41,8 @@ static int get_sensor_mode_info(struct adaptor_ctx *ctx, u32 mode_id,
 
 	info->scenario_id = mode_id;
 	info->mode_exposure_num = g_scenario_exposure_cnt(ctx, mode_id);
+	info->active_line_num = ctx->mode[mode_id].active_line_num;
+	info->avg_linetime_in_ns = ctx->mode[mode_id].linetime_in_ns_readout;
 
 	return 0;
 }
@@ -98,7 +100,7 @@ static int g_cmd_sensor_in_reset(struct adaptor_ctx *ctx, void *arg)
 	if (unlikely(arg == NULL)) {
 		ret = -ENOIOCTLCMD;
 		adaptor_logi(ctx,
-			"ERROR: V4L2_CMD_GET_SENSOR_MODE_CONFIG_INFO, idx:%d, input arg is nullptr, return:%d\n",
+			"ERROR: V4L2_CMD_SENSOR_IN_RESET, idx:%d, input arg is nullptr, return:%d\n",
 			ctx->idx, ret);
 		return ret;
 	}

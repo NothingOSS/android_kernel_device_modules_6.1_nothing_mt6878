@@ -65,6 +65,7 @@ struct sensor_mode {
 	u64 fine_intg_line;
 	struct mtk_csi_param csi_param;
 	u8 esd_reset_by_user;
+	u32 active_line_num;
 };
 
 struct adaptor_hw_ops {
