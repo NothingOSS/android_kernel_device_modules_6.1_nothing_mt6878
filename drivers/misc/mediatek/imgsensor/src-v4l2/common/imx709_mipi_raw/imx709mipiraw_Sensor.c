@@ -1299,14 +1299,13 @@ static struct subdrv_pw_seq_entry pw_seq[] = {
 	{HW_ID_SCL, 0, 0},	/* default i2c bus scl 4 on apmcu side */
 	{HW_ID_SDA, 0, 0},	/* default i2c bus sda 4 on apmcu side */
 	{HW_ID_MCLK1, 26, 0},
-	// {HW_ID_PDN, 0, 0},
 	{HW_ID_PONV, 0, 1},
 	{HW_ID_RST1, 0, 1},
-	{HW_ID_AVDD2, 1800000, 3},
-	{HW_ID_DVDD1, 855000, 4},
-	{HW_ID_DOVDD, 1800000, 1},
-	{HW_ID_MCLK1_DRIVING_CURRENT, 6, 6},
-	// {HW_ID_PDN, 1, 1},
+	{HW_ID_AVDD, 2900000, 1}, // pmic_ldo for avdd
+	{HW_ID_AVDD2, 1800000, 1}, // pmic_gpo(2.8V ldo) for avdd
+	{HW_ID_DVDD1, 855000, 1}, // pmic_ldo for dvdd
+	{HW_ID_DOVDD, 1800000, 1}, // pmic_ldo/gpio(1.8V ldo) for dovdd
+	{HW_ID_MCLK1_DRIVING_CURRENT, 6, 1},
 	{HW_ID_PONV, 1, 1},
 	{HW_ID_RST1, 1, 4}
 };

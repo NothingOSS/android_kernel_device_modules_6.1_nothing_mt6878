@@ -439,7 +439,9 @@ int do_hw_power_off(struct adaptor_ctx *ctx)
 
 	/* the pins of mipi switch are shared. free it for another users */
 	if (ctx->state[STATE_MIPI_SWITCH_ON] ||
-		ctx->state[STATE_MIPI_SWITCH_OFF]) {
+		ctx->state[STATE_MIPI_SWITCH_OFF] ||
+		ctx->state[STATE_DOVDD_ON] ||
+		ctx->state[STATE_DOVDD_OFF]) {
 		devm_pinctrl_put(ctx->pinctrl);
 		ctx->pinctrl = NULL;
 	}

@@ -217,7 +217,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.imgsensor_pd_info = &imgsensor_pd_info,
 		.ae_binning_ratio = 1000,
 		.fine_integ_line = 634,
-		.delay_frame = 3,//frame length¥Í®Äªºframe
+		.delay_frame = 3,
 		.csi_param = {
 			.dphy_data_settle = 59,
 			.dphy_clk_settle = 59,
@@ -668,18 +668,15 @@ static struct subdrv_ops ops = {
 
 static struct subdrv_pw_seq_entry pw_seq[] = {
 	{HW_ID_MCLK, 24, 0},
-	{HW_ID_PDN, 0, 0},
 	{HW_ID_RST, 0, 1},
-	{HW_ID_AVDD2, 1800000, 0}, // power 1.8V to enable 2.8V ldo
-	{HW_ID_AVDD, 2800000, 3},
-	{HW_ID_AVDD4, 1800000, 0}, // power 1.8V to enable 2.8V ldo
-//	{HW_ID_AVDD1, 1800000, 3},
-	{HW_ID_AFVDD1, 1800000, 0}, // power 1.8V to enable 2.8V ldo
-	{HW_ID_AFVDD, 2800000, 3},
-	{HW_ID_DVDD, 1100000, 4},
-	{HW_ID_DOVDD, 1800000, 1},
-	{HW_ID_MCLK_DRIVING_CURRENT, 4, 6},
-	{HW_ID_PDN, 1, 0},
+	{HW_ID_AVDD2, 1800000, 1}, // pmic_gpo(2.8V ldo) for avdd
+	{HW_ID_AVDD, 2800000, 1}, // pmic_ldo for avdd
+	{HW_ID_AVDD4, 1800000, 1}, // pmic_ldo/pmic_gpo(1.8V ldo) for avdd1
+	{HW_ID_AFVDD1, 1800000, 1}, // pmic_gpo(2.8V ldo) for afvdd
+	{HW_ID_AFVDD, 2800000, 1}, // pmic_ldo for afvdd
+	{HW_ID_DVDD, 1100000, 1}, // pmic_ldo for dvdd
+	{HW_ID_DOVDD, 1800000, 1}, // pmic_ldo/gpio(1.8V ldo) for dovdd
+	{HW_ID_MCLK_DRIVING_CURRENT, 4, 1},
 	{HW_ID_RST, 1, 5}
 };
 
