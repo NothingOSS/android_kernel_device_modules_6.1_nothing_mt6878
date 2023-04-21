@@ -53,8 +53,6 @@ struct mbraink_tracing_pidlist mbraink_tracing_pidlist_data[MAX_TRACE_NUM];
 #if IS_ENABLED(CONFIG_ANON_VMA_NAME)
 struct anon_vma_name *mbraink_anon_vma_name(struct vm_area_struct *vma)
 {
-	mmap_assert_locked(vma->vm_mm);
-
 	if (vma->vm_file)
 		return NULL;
 
