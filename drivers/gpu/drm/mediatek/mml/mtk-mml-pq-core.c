@@ -52,7 +52,7 @@ struct mml_pq_mbox {
 	struct mml_pq_chan comp_config_chan;
 	struct mml_pq_chan aal_readback_chan;
 	struct mml_pq_chan hdr_readback_chan;
-	struct mml_pq_chan rsz_callback_chan;
+	struct mml_pq_chan wrot_callback_chan;
 	struct mml_pq_chan clarity_readback_chan;
 	struct mml_pq_chan dc_readback_chan;
 };
@@ -238,7 +238,7 @@ s32 mml_pq_task_create(struct mml_task *task)
 	init_sub_task(&pq_task->hdr_readback);
 	init_sub_task(&pq_task->clarity_readback);
 	init_sub_task(&pq_task->dc_readback);
-	init_sub_task(&pq_task->rsz_callback);
+	init_sub_task(&pq_task->wrot_callback);
 
 	pq_task->aal_readback.readback_data.pipe0_hist =
 		kzalloc(sizeof(u32)*(AAL_HIST_NUM + AAL_DUAL_INFO_NUM),
@@ -594,10 +594,10 @@ static struct mml_pq_task *from_hdr_readback(struct mml_pq_sub_task *sub_task)
 		struct mml_pq_task, hdr_readback);
 }
 
-static struct mml_pq_task *from_rsz_callback(struct mml_pq_sub_task *sub_task)
+static struct mml_pq_task *from_wrot_callback(struct mml_pq_sub_task *sub_task)
 {
 	return container_of(sub_task,
-		struct mml_pq_task, rsz_callback);
+		struct mml_pq_task, wrot_callback);
 }
 
 static struct mml_pq_task *from_clarity_readback(struct mml_pq_sub_task *sub_task)
@@ -737,6 +737,7 @@ static int set_sub_task(struct mml_task *task,
 	}
 
 	mutex_lock(&sub_task->lock);
+
 	if (sub_task->mml_task_jobid != task->job.jobid || sub_task->first_job) {
 		sub_task->mml_task_jobid = task->job.jobid;
 		sub_task->first_job = false;
@@ -1376,13 +1377,15 @@ int mml_pq_dc_readback(struct mml_task *task, u8 pipe, u32 *phist)
 	return ret;
 }
 
-int mml_pq_rsz_callback(struct mml_task *task)
+int mml_pq_wrot_callback(struct mml_task *task)
 {
 	struct mml_pq_task *pq_task = task->pq_task;
-	struct mml_pq_sub_task *sub_task = &pq_task->rsz_callback;
-	struct mml_pq_chan *chan = &pq_mbox->rsz_callback_chan;
+	struct mml_pq_sub_task *sub_task = &pq_task->wrot_callback;
+	struct mml_pq_chan *chan = &pq_mbox->wrot_callback_chan;
 	int ret = 0;
 
+	if (unlikely(!pq_task))
+		return -EINVAL;
 
 	mml_pq_msg("%s second outoput done.\n", __func__);
 	ret = set_sub_task(task, sub_task, chan, &task->pq_param[1], true);
@@ -2229,18 +2232,18 @@ wake_up_hdr_readback_task:
 	return ret;
 }
 
-static int mml_pq_rsz_callback_ioctl(unsigned long data)
+static int mml_pq_wrot_callback_ioctl(unsigned long data)
 {
-	struct mml_pq_chan *chan = &pq_mbox->rsz_callback_chan;
+	struct mml_pq_chan *chan = &pq_mbox->wrot_callback_chan;
 	struct mml_pq_sub_task *new_sub_task = NULL;
 	struct mml_pq_task *new_pq_task = NULL;
-	struct mml_pq_rsz_callback_job *job;
-	struct mml_pq_rsz_callback_job *user_job;
+	struct mml_pq_wrot_callback_job *job;
+	struct mml_pq_wrot_callback_job *user_job;
 	u32 new_job_id;
 	s32 ret = 0;
 
 	mml_pq_msg("%s called chan[%08lx]", __func__, (unsigned long)chan);
-	user_job = (struct mml_pq_rsz_callback_job *)data;
+	user_job = (struct mml_pq_wrot_callback_job *)data;
 	if (unlikely(!user_job))
 		return -EINVAL;
 
@@ -2263,7 +2266,7 @@ static int mml_pq_rsz_callback_ioctl(unsigned long data)
 		return -ERESTARTSYS;
 	}
 
-	new_pq_task = from_rsz_callback(new_sub_task);
+	new_pq_task = from_wrot_callback(new_sub_task);
 	new_job_id = new_sub_task->job_id;
 
 	ret = copy_to_user(&user_job->new_job_id, &new_job_id, sizeof(u32));
@@ -2273,14 +2276,14 @@ static int mml_pq_rsz_callback_ioctl(unsigned long data)
 	if (unlikely(ret)) {
 		mml_pq_err("%s err: fail to copy to user frame info: %d\n",
 			__func__, ret);
-		goto wake_up_rsz_callback_task;
+		goto wake_up_wrot_callback_task;
 	}
 
 	ret = copy_to_user(&user_job->size_info, &new_sub_task->frame_data.size_info,
 		sizeof(struct mml_pq_frame_info));
 	if (unlikely(ret)) {
 		mml_pq_err("err: fail to copy to user frame size_info: %d\n", ret);
-		goto wake_up_rsz_callback_task;
+		goto wake_up_wrot_callback_task;
 	}
 
 	ret = copy_to_user(user_job->param, new_sub_task->frame_data.pq_param,
@@ -2288,7 +2291,7 @@ static int mml_pq_rsz_callback_ioctl(unsigned long data)
 	if (unlikely(ret)) {
 		mml_pq_err("%s err: fail to copy to user pq param: %d\n",
 			__func__, ret);
-		goto wake_up_rsz_callback_task;
+		goto wake_up_wrot_callback_task;
 	}
 
 	remove_sub_task(chan, new_sub_task);
@@ -2299,7 +2302,7 @@ static int mml_pq_rsz_callback_ioctl(unsigned long data)
 	kfree(job);
 	return 0;
 
-wake_up_rsz_callback_task:
+wake_up_wrot_callback_task:
 	remove_sub_task(chan, new_sub_task);
 	atomic_dec_if_positive(&new_sub_task->queued);
 	mml_pq_put_pq_task(new_pq_task);
@@ -2621,8 +2624,8 @@ static long mml_pq_ioctl(struct file *file, unsigned int cmd,
 		return mml_pq_aal_readback_ioctl(arg);
 	case MML_PQ_IOC_HDR_READBACK:
 		return mml_pq_hdr_readback_ioctl(arg);
-	case MML_PQ_IOC_RSZ_CALLBACK:
-		return mml_pq_rsz_callback_ioctl(arg);
+	case MML_PQ_IOC_WROT_CALLBACK:
+		return mml_pq_wrot_callback_ioctl(arg);
 	case MML_PQ_IOC_CLARITY_READBACK:
 		return mml_pq_clarity_readback_ioctl(arg);
 	case MML_PQ_IOC_DC_READBACK:
@@ -2672,7 +2675,7 @@ int mml_pq_core_init(void)
 	init_pq_chan(&pq_mbox->comp_config_chan);
 	init_pq_chan(&pq_mbox->aal_readback_chan);
 	init_pq_chan(&pq_mbox->hdr_readback_chan);
-	init_pq_chan(&pq_mbox->rsz_callback_chan);
+	init_pq_chan(&pq_mbox->wrot_callback_chan);
 	init_pq_chan(&pq_mbox->clarity_readback_chan);
 	init_pq_chan(&pq_mbox->dc_readback_chan);
 	buffer_num = 0;

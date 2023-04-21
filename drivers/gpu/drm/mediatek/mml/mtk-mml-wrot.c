@@ -12,6 +12,7 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/math64.h>
+#include <linux/delay.h>
 #include <soc/mediatek/smi.h>
 
 #include "mtk-mml-buf.h"
@@ -19,6 +20,7 @@
 #include "mtk-mml-core.h"
 #include "mtk-mml-driver.h"
 #include "mtk-mml-dle-adaptor.h"
+#include "mtk-mml-pq-core.h"
 
 #include "tile_driver.h"
 #include "mtk-mml-tile.h"
@@ -95,6 +97,7 @@
 
 /* register mask */
 #define VIDO_INT_MASK			0x00000007
+#define VIDO_INT_EN_MASK		0x00000007
 
 /* Inline rot offsets */
 #define DISPSYS_SHADOW_CTRL		0x010
@@ -107,6 +110,9 @@
 #define SMI_LARB_NON_SEC_CON		0x380
 
 #define MML_WROT_RACING_MAX		64
+
+#define WROT_POLL_SLEEP_TIME_US		(10)
+#define WROT_MAX_POLL_TIME_US		(1000)
 
 /* debug option to change sram write height */
 int mml_racing_h = MML_WROT_RACING_MAX;
@@ -141,6 +147,11 @@ static u32 floor_m(u64 n, u64 d)
 	do_div(n, d);
 	return n;
 }
+
+enum mml_pq_read_mode {
+	MML_PQ_EOF_MODE = 0,
+	MML_PQ_SOF_MODE,
+};
 
 enum wrot_label {
 	WROT_LABEL_ADDR = 0,
@@ -194,6 +205,7 @@ struct wrot_data {
 	u32 tile_width;
 	u32 sram_size;
 	u8 rb_swap;	/* version for rb channel swap behavior */
+	u8 read_mode;
 };
 
 static const struct wrot_data mt6983_wrot_data = {
@@ -207,6 +219,15 @@ static const struct wrot_data mt6985_wrot_data = {
 	.fifo = 256,
 	.tile_width = 512,
 	.sram_size = 512 * 1024,
+	.read_mode = MML_PQ_EOF_MODE,
+	/* .rb_swap = 2 */
+};
+
+static const struct wrot_data mt6989_wrot_data = {
+	.fifo = 256,
+	.tile_width = 512,
+	.sram_size = 512 * 1024,
+	.read_mode = MML_PQ_SOF_MODE,
 	/* .rb_swap = 2 */
 };
 
@@ -233,6 +254,12 @@ struct mml_comp_wrot {
 	u32 sram_cnt;
 	u64 sram_pa;
 	struct mutex sram_mutex;
+	int irq;
+	struct mml_pq_task *pq_task;
+	struct mml_task *task;
+	struct mml_comp_config *ccfg;
+	struct workqueue_struct *wrot_ai_callback_wq;
+	struct work_struct wrot_ai_callback_task;
 };
 
 /* meta data for each different frame config */
@@ -1086,6 +1113,17 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	mml_msg("use config %p wrot %p", cfg, wrot);
 
+	if (cfg->info.mode == MML_MODE_DDP_ADDON &&
+		task->pq_param[0].src_hdr_video_mode == MML_PQ_AIREGION) {
+		wrot->task = task;
+		wrot->pq_task = task->pq_task;
+		wrot->ccfg = ccfg;
+		/* Enable Frame Done IRQ */
+		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_INT_EN, 0x1, VIDO_INT_EN_MASK);
+	} else
+		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_INT_EN, 0x0, VIDO_INT_EN_MASK);
+
+
 	/* Enable engine */
 	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_ROT_EN, 0x01, 0x00000001);
 
@@ -1784,11 +1822,9 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 		       (buf_line_num << 8) |
 		       (wrot_frm->filt_v << 4), U32_MAX);
 
-	/* Set wrot interrupt bit for debug,
-	 * this bit will clear to 0 after wrot done.
-	 *
-	 * cmdq_pkt_write(pkt, NULL, base_pa + VIDO_INT, 0x1, U32_MAX);
-	 */
+	// Set wrot interrupt bit for debug,
+	// this bit will clear to 0 after wrot done.
+	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_INT, 0x1, U32_MAX);
 
 	/* qos accumulate tile pixel */
 	wrot_frm->pixel_acc += wrot_tar_xsize * wrot_tar_ysize;
@@ -2070,6 +2106,16 @@ u32 wrot_format_get(struct mml_task *task, struct mml_comp_config *ccfg)
 static void wrot_task_done(struct mml_comp *comp, struct mml_task *task,
 			   struct mml_comp_config *ccfg)
 {
+	struct mml_frame_config *cfg = task->config;
+	const uint8_t dest_cnt = cfg->info.dest_cnt;
+
+	if (dest_cnt == MML_MAX_OUTPUTS &&
+	    ccfg->node->out_idx == MML_MAX_OUTPUTS - 1) {
+		mml_msg("%s out_idx[%d] id[%d]", __func__,
+			ccfg->node->out_idx, comp->id);
+		mml_pq_wrot_callback(task);
+	}
+
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	if (mml_wrot_crc && wrot_crc_va[ccfg->pipe]) {
 		task->dest_crc[ccfg->pipe] = readl(wrot_crc_va[ccfg->pipe]);
@@ -2318,12 +2364,71 @@ static const struct mtk_ddp_comp_funcs ddp_comp_funcs = {
 static struct mml_comp_wrot *dbg_probed_components[4];
 static int dbg_probed_count;
 
+static bool wrot_reg_poll(struct mml_comp *comp, u32 addr, u32 value, u32 mask)
+{
+	bool return_value = false;
+	u32 reg_value = 0;
+	u32 polling_time = 0;
+	void __iomem *base = comp->base;
+
+	do {
+		reg_value = readl(base + addr);
+
+		if ((reg_value & mask) == value) {
+			return_value = true;
+			break;
+		}
+
+		udelay(WROT_POLL_SLEEP_TIME_US);
+		polling_time += WROT_POLL_SLEEP_TIME_US;
+	} while (polling_time < WROT_MAX_POLL_TIME_US);
+
+	return return_value;
+}
+
+static void wrot_callback_work(struct work_struct *work_item)
+{
+	struct mml_comp_wrot *wrot = NULL;
+
+	wrot = container_of(work_item, struct mml_comp_wrot, wrot_ai_callback_task);
+	mml_pq_wrot_callback(wrot->task);
+}
+
+static irqreturn_t mml_wrot_irq_handler(int irq, void *dev_id)
+{
+	struct mml_comp_wrot *priv = dev_id;
+	struct mml_comp *comp = &priv->comp;
+	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
+	struct mml_comp_config *ccfg = wrot->ccfg;
+	struct mml_frame_config *cfg = NULL;
+	uint8_t dest_cnt = 0;
+	irqreturn_t ret = IRQ_HANDLED;
+	u8 out_idx = 0;
+
+	if (wrot_reg_poll(comp, VIDO_INT, 0, (0x1))) {
+		writel(1, comp->base + VIDO_INT);
+		if (!IS_ERR_OR_NULL(ccfg) && !IS_ERR_OR_NULL(ccfg->node) &&
+			!IS_ERR_OR_NULL(wrot->task) && !IS_ERR_OR_NULL(wrot->task->config)) {
+			out_idx = ccfg->node->out_idx;
+			cfg = wrot->task->config;
+			dest_cnt = cfg->info.dest_cnt;
+		}
+		if (dest_cnt == MML_MAX_OUTPUTS && out_idx == MML_MAX_OUTPUTS - 1) {
+			if (!IS_ERR_OR_NULL(wrot->task))
+				queue_work(priv->wrot_ai_callback_wq, &priv->wrot_ai_callback_task);
+			return ret;
+		}
+	}
+	return ret;
+}
+
 static int probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct mml_comp_wrot *priv;
 	s32 ret;
 	bool add_ddp = true;
+	int irq = -1;
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -2386,6 +2491,24 @@ static int probe(struct platform_device *pdev)
 		add_ddp = false;
 	}
 
+	if (priv->data->read_mode == MML_PQ_EOF_MODE) {
+		priv->wrot_ai_callback_wq = create_workqueue("wrot_ai_callback");
+		INIT_WORK(&priv->wrot_ai_callback_task, wrot_callback_work);
+
+		irq = platform_get_irq(pdev, 0);
+		if (irq < 0)
+			dev_info(dev, "Failed to get wrot irq for AI Callback: %d\n", irq);
+		else {
+			priv->irq = irq;
+			ret = devm_request_irq(dev, irq, mml_wrot_irq_handler,
+				IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(dev), priv);
+			if (ret)
+				dev_info(dev, "register irq fail: %d irg:%d\n", ret, irq);
+			else
+				dev_info(dev, "register irq success: %d irg:%d\n", ret, irq);
+		}
+	}
+
 	dbg_probed_components[dbg_probed_count++] = priv;
 
 	ret = component_add(dev, &mml_comp_ops);
@@ -2446,7 +2569,7 @@ const struct of_device_id mml_wrot_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6989-mml_wrot",
-		.data = &mt6985_wrot_data,
+		.data = &mt6989_wrot_data,
 	},
 	{},
 };

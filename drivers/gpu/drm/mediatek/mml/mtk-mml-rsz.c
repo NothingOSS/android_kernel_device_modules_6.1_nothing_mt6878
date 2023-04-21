@@ -593,17 +593,7 @@ static const struct mml_comp_config_ops rsz_cfg_ops = {
 static void rsz_task_done_callback(struct mml_comp *comp, struct mml_task *task,
 					 struct mml_comp_config *ccfg)
 {
-	struct mml_frame_config *cfg = task->config;
-	const uint8_t dest_cnt = cfg->info.dest_cnt;
-
-	if (dest_cnt == MML_MAX_OUTPUTS &&
-	    ccfg->node->out_idx == MML_MAX_OUTPUTS - 1) {
-		mml_pq_trace_ex_begin("%s", __func__);
-		mml_msg("%s out_idx[%d] id[%d]", __func__,
-			ccfg->node->out_idx, comp->id);
-		mml_pq_rsz_callback(task);
-		mml_pq_trace_ex_end();
-	}
+	return;
 }
 
 static const struct mml_comp_hw_ops rsz_hw_ops = {

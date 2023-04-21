@@ -222,7 +222,7 @@ struct mml_pq_task {
 	struct mml_pq_sub_task comp_config;
 	struct mml_pq_sub_task aal_readback;
 	struct mml_pq_sub_task hdr_readback;
-	struct mml_pq_sub_task rsz_callback;
+	struct mml_pq_sub_task wrot_callback;
 	struct mml_pq_sub_task clarity_readback;
 	struct mml_pq_sub_task dc_readback;
 };
@@ -497,7 +497,7 @@ int mml_pq_dc_hdr_readback(struct mml_task *task, u8 pipe, u32 *phist);
 
 
 /*
- * mml_pq_rsz_callback - noify from MML core through MML PQ driver
+ * mml_pq_wrot_callback - noify from MML core through MML PQ driver
  *   that second output finished
  *
  * @task:	task data, include pq parameters and frame info
@@ -505,7 +505,7 @@ int mml_pq_dc_hdr_readback(struct mml_task *task, u8 pipe, u32 *phist);
  * Return:	if value < 0, means PQ update failed should debug
  */
 
-int mml_pq_rsz_callback(struct mml_task *task);
+int mml_pq_wrot_callback(struct mml_task *task);
 
 /*
  * mml_pq_dc_readback - noify from MML core through MML PQ driver
