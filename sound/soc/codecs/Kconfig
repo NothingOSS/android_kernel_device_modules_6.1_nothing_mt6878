@@ -90,15 +90,6 @@ config DEVICE_MODULES_SND_SOC_MT6359_ACCDET
 	  for ASoC codec soc-jack detection mechanism.
 	  Select N if you don't have jack on board.
 
-config SND_SOC_MT6368_ACCDET
-	tristate "MediaTek MT6368 ACCDET driver"
-	depends on MFD_MTK_SPMI_PMIC
-	help
-	  ACCDET means Accessory Detection technology,
-	  MediaTek develop it for ASoC codec soc-jack
-	  detection mechanism. Select N if you don't
-	  have jack on board.
-
 config SND_SOC_MT6359P
 	tristate "MediaTek MT6359P Codec driver"
 	help
@@ -122,5 +113,32 @@ config SND_SOC_MT6368
 	  three ADC for uplink path(MICs), and
 	  three DAC for downlink path(handset,
 	  headset, lineout).
+
+config SND_SOC_MT6368_ACCDET
+	tristate "MediaTek MT6368 ACCDET driver"
+	depends on MFD_MTK_SPMI_PMIC
+	help
+	  ACCDET means Accessory Detection technology,
+	  MediaTek develop it for ASoC codec soc-jack
+	  detection mechanism. Select N if you don't
+	  have jack on board.
+
+config SND_SOC_MT6681
+	tristate "MediaTek MT6681 Codec driver"
+	depends on MFD_MT6681
+	help
+	  MediaTek MT6681 is a audio codec which contain
+	  three ADC for uplink path(MICs), and
+	  three DAC for downlink path(handset,
+	  headset, lineout).
+
+config SND_SOC_MT6681_ACCDET
+	tristate "MediaTek MT6681 ACCDET driver"
+	depends on MFD_MT6681
+	help
+	  ACCDET means Accessory Detection technology,
+	  MediaTek develop it for ASoC codec soc-jack
+	  detection mechanism. Select N if you don't
+	  have jack on board.
 
 endmenu
