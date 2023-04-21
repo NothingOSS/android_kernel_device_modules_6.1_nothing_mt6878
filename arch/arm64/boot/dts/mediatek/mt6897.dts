@@ -10941,7 +10941,7 @@
 				<&disp_iommu M4U_L17_P3_YUVO_R5_U0>,
 				<&disp_iommu M4U_L17_P4_RGBWI_R1_U0>,
 				<&disp_iommu M4U_L17_P5_TCYSO_R1_U0>,
-				<&disp_iommu M4U_L17_P6_DRZHNO_R9_U0>;
+				<&disp_iommu M4U_L17_P6_DRZHNO_R3_U0>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L17_P0_YUVO_R1_U0)
 					&mmqos SLAVE_COMMON(1)>,
@@ -10955,7 +10955,7 @@
 					&mmqos SLAVE_COMMON(1)>,
 				<&mmqos MASTER_LARB_PORT(M4U_L17_P5_TCYSO_R1_U0)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L17_P6_DRZHNO_R9_U0)
+				<&mmqos MASTER_LARB_PORT(M4U_L17_P6_DRZHNO_R3_U0)
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names =
 				"yuvo_r1",
@@ -10964,7 +10964,7 @@
 				"yuvo_r5",
 				"rgbwi_r1",
 				"tcyso_r1",
-				"drzhno_r9";
+				"drzhno_r3";
 		};
 
 		cam-raw-b@1a070000 {
@@ -11095,7 +11095,7 @@
 				<&disp_iommu M4U_L34_P3_YUVO_R5_U0>,
 				<&disp_iommu M4U_L34_P4_RGBWI_R1_U0>,
 				<&disp_iommu M4U_L34_P5_TCYSO_R1_U0>,
-				<&disp_iommu M4U_L34_P6_DRZHNO_R9_U0>;
+				<&disp_iommu M4U_L34_P6_DRZHNO_R3_U0>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L34_P0_YUVO_R1_U0)
 					&mmqos SLAVE_COMMON(0)>,
@@ -11109,7 +11109,7 @@
 					&mmqos SLAVE_COMMON(0)>,
 				<&mmqos MASTER_LARB_PORT(M4U_L34_P5_TCYSO_R1_U0)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L34_P6_DRZHNO_R9_U0)
+				<&mmqos MASTER_LARB_PORT(M4U_L34_P6_DRZHNO_R3_U0)
 					&mmqos SLAVE_COMMON(0)>;
 			interconnect-names =
 				"yuvo_r1",
@@ -11118,7 +11118,7 @@
 				"yuvo_r5",
 				"rgbwi_r1",
 				"tcyso_r1",
-				"drzhno_r9";
+				"drzhno_r3";
 		};
 
 		cam-raw-c@1a0b0000 {
@@ -11249,7 +11249,7 @@
 				<&mdp_iommu M4U_L35_P3_YUVO_R5_U0>,
 				<&mdp_iommu M4U_L35_P4_RGBWI_R1_U0>,
 				<&mdp_iommu M4U_L35_P5_TCYSO_R1_U0>,
-				<&mdp_iommu M4U_L35_P6_DRZHNO_R9_U0>;
+				<&mdp_iommu M4U_L35_P6_DRZHNO_R3_U0>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L35_P0_YUVO_R1_U0)
 					&mmqos SLAVE_COMMON(1)>,
@@ -11263,7 +11263,7 @@
 					&mmqos SLAVE_COMMON(1)>,
 				<&mmqos MASTER_LARB_PORT(M4U_L35_P5_TCYSO_R1_U0)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L35_P6_DRZHNO_R9_U0)
+				<&mmqos MASTER_LARB_PORT(M4U_L35_P6_DRZHNO_R3_U0)
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names =
 				"yuvo_r1",
@@ -11272,7 +11272,7 @@
 				"yuvo_r5",
 				"rgbwi_r1",
 				"tcyso_r1",
-				"drzhno_r9";
+				"drzhno_r3";
 		};
 
 		camsv1@1a100000 {
