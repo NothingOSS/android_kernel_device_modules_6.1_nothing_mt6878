@@ -13437,6 +13437,7 @@
 		compatible = "mediatek,mt6985-vcodec-dec";
 		mediatek,platform = "platform:mt6985";
 		mediatek,ipm = <2>;
+		mediatek,slc = <1>;
 		reg = <0 0x16000000 0 0x1000>,	/* VDEC_BASE */
 			<0 0x1602f000 0 0x1000>,	/* VDEC_SYS */
 			<0 0x16020000 0 0x1000>,	/* VDEC_VLD */
