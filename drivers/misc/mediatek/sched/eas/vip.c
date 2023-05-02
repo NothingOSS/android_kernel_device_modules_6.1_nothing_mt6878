@@ -499,6 +499,7 @@ void vip_replace_next_task_fair(void *unused, struct rq *rq, struct task_struct 
 	}
 }
 
+__no_kcsan
 void vip_dequeue_task(void *unused, struct rq *rq, struct task_struct *p, int flags)
 {
 	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
@@ -516,7 +517,7 @@ void vip_dequeue_task(void *unused, struct rq *rq, struct task_struct *p, int fl
 	 * runqueue.
 	 */
 
-	if (p->__state != TASK_RUNNING)
+	if (READ_ONCE(p->__state) != TASK_RUNNING)
 		vts->total_exec = 0;
 }
 
