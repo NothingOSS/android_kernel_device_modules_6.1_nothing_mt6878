@@ -16,7 +16,7 @@
 #define CH_IPIR_C_MET   5
 #define CH_IPIS_C_MET   6
 #define CH_S_EEMSN      7
-#define CH_S_8          8
+#define CH_S_WLC        8
 #define CH_S_9          9
 #define CH_S_10         10
 #define CH_S_11         11

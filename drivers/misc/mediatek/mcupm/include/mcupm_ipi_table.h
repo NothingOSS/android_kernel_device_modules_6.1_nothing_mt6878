@@ -27,7 +27,7 @@
 #define PIN_S_OFFSET_SMET               0
 #define PIN_S_OFFSET_RMET               0
 #define PIN_S_OFFSET_EEMSN              0
-#define PIN_S_OFFSET_8                  0
+#define PIN_S_OFFSET_WLC                0
 #define PIN_S_OFFSET_9                  0
 #define PIN_S_OFFSET_10                 0
 #define PIN_S_OFFSET_11                 0
@@ -44,7 +44,7 @@
 #define PIN_S_MSG_SIZE_SMET             4       //unit 4 bytes
 #define PIN_S_MSG_SIZE_RMET             1       //unit 4 bytes
 #define PIN_S_MSG_SIZE_EEMSN            4       //unit 4 bytes
-#define PIN_S_MSG_SIZE_8                4       //unit 4 bytes
+#define PIN_S_MSG_SIZE_WLC              4       //unit 4 bytes
 #define PIN_S_MSG_SIZE_9                4       //unit 4 bytes
 #define PIN_S_MSG_SIZE_10               4       //unit 4 bytes
 #define PIN_S_MSG_SIZE_11               4       //unit 4 bytes
@@ -62,7 +62,7 @@
 #define PIN_S_SIZE_SMET         PIN_S_SIZE
 #define PIN_S_SIZE_RMET         PIN_S_SIZE
 #define PIN_S_SIZE_EEMSN        PIN_S_SIZE
-#define PIN_S_SIZE_8            PIN_S_SIZE
+#define PIN_S_SIZE_WLC          PIN_S_SIZE
 #define PIN_S_SIZE_9            PIN_S_SIZE
 #define PIN_S_SIZE_10           PIN_S_SIZE
 #define PIN_S_SIZE_11           PIN_S_SIZE
@@ -79,7 +79,7 @@
 #define PIN_R_MSG_SIZE_SMET     1       //uint 4 bytes
 #define PIN_R_MSG_SIZE_RMET     4       //uint 4 bytes
 #define PIN_R_MSG_SIZE_EEMSN    1       //unit 4 bytes
-#define PIN_R_MSG_SIZE_8        1       //unit 4 bytes
+#define PIN_R_MSG_SIZE_WLC      1       //unit 4 bytes
 #define PIN_R_MSG_SIZE_9        1       //unit 4 bytes
 #define PIN_R_MSG_SIZE_10       1       //unit 4 bytes
 #define PIN_R_MSG_SIZE_11       1       //unit 4 bytes
@@ -97,7 +97,7 @@
 #define PIN_R_SIZE_SMET         PIN_R_SIZE
 #define PIN_R_SIZE_RMET         PIN_R_SIZE
 #define PIN_R_SIZE_EEMSN        PIN_R_SIZE
-#define PIN_R_SIZE_8            PIN_R_SIZE
+#define PIN_R_SIZE_WLC          PIN_R_SIZE
 #define PIN_R_SIZE_9            PIN_R_SIZE
 #define PIN_R_SIZE_10           PIN_R_SIZE
 #define PIN_R_SIZE_11           PIN_R_SIZE
@@ -115,7 +115,7 @@
 #define PIN_R_OFFSET_SMET       (PIN_S_OFFSET_SMET + PIN_S_SIZE_SMET)
 #define PIN_R_OFFSET_RMET       (PIN_S_OFFSET_RMET + PIN_S_SIZE_RMET)
 #define PIN_R_OFFSET_EEMSN      (PIN_S_OFFSET_EEMSN + PIN_S_SIZE_EEMSN)
-#define PIN_R_OFFSET_8          (PIN_S_OFFSET_8 + PIN_S_SIZE_8)
+#define PIN_R_OFFSET_WLC        (PIN_S_OFFSET_WLC + PIN_S_SIZE_WLC)
 #define PIN_R_OFFSET_9          (PIN_S_OFFSET_9 + PIN_S_SIZE_9)
 #define PIN_R_OFFSET_10         (PIN_S_OFFSET_10 + PIN_S_SIZE_10)
 #define PIN_R_OFFSET_11         (PIN_S_OFFSET_11 + PIN_S_SIZE_11)
@@ -216,9 +216,9 @@ struct mtk_mbox_pin_send mcupm_mbox_pin_send[] = {
 	{7, PIN_S_OFFSET_EEMSN, 1, 0, PIN_S_MSG_SIZE_EEMSN,
 		7, CH_S_EEMSN,
 		{ { 0 } }, { 0 }, { { { __ARCH_SPIN_LOCK_UNLOCKED } } } },
-	{8, PIN_S_OFFSET_8, 1, 0, PIN_S_MSG_SIZE_8,
-                8, CH_S_8,
-                { { 0 } }, { 0 }, { { { __ARCH_SPIN_LOCK_UNLOCKED } } } },
+	{8, PIN_S_OFFSET_WLC, 1, 0, PIN_S_MSG_SIZE_WLC,
+		8, CH_S_WLC,
+		{ { 0 } }, { 0 }, { { { __ARCH_SPIN_LOCK_UNLOCKED } } } },
 	{9, PIN_S_OFFSET_9, 1, 0, PIN_S_MSG_SIZE_9,
                 9, CH_S_9,
                 { { 0 } }, { 0 }, { { { __ARCH_SPIN_LOCK_UNLOCKED } } } },
@@ -301,11 +301,11 @@ struct mtk_mbox_pin_recv mcupm_mbox_pin_recv[] = {
 		CH_S_EEMSN, { 0 }, 0, 0, 0,
 		{ { { __ARCH_SPIN_LOCK_UNLOCKED } } },
 		{0, 0, 0, 0, 0, 0} },
-	{8, PIN_R_OFFSET_8, 0, 0, 1, 0,
-                PIN_R_MSG_SIZE_8, 8,
-                CH_S_8, { 0 }, 0, 0, 0,
-                { { { __ARCH_SPIN_LOCK_UNLOCKED } } },
-                {0, 0, 0, 0, 0, 0} },
+	{8, PIN_R_OFFSET_WLC, 0, 0, 1, 0,
+		PIN_R_MSG_SIZE_WLC, 8,
+		CH_S_WLC, { 0 }, 0, 0, 0,
+		{ { { __ARCH_SPIN_LOCK_UNLOCKED } } },
+		{0, 0, 0, 0, 0, 0} },
 	{9, PIN_R_OFFSET_9, 0, 0, 1, 0,
                 PIN_R_MSG_SIZE_9, 9,
                 CH_S_9, { 0 }, 0, 0, 0,
