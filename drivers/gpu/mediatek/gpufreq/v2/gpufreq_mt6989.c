@@ -867,22 +867,27 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 		g_shared_status->buck_count = g_stack.buck_count;
 		g_shared_status->mtcmos_count = g_stack.mtcmos_count;
 		g_shared_status->cg_count = g_stack.cg_count;
+		g_shared_status->cur_fgpu = g_gpu.cur_freq;
+		g_shared_status->cur_fstack = g_stack.cur_freq;
 		g_shared_status->power_time_h = (power_time >> 32) & GENMASK(31, 0);
 		g_shared_status->power_time_l = power_time & GENMASK(31, 0);
 	}
 
-	if (power == GPU_PWR_ON && g_stack.power_count == 1) {
-#if !GPUFREQ_ACTIVE_SLEEP_CTRL_ENABLE
-		__gpufreq_restore_last_oppidx();
-#endif /* GPUFREQ_ACTIVE_SLEEP_CTRL_ENABLE */
+	if (power == GPU_PWR_ON && g_stack.power_count == 1)
 		__gpufreq_footprint_power_step(0x1B);
-	} else if (power == GPU_PWR_OFF && g_stack.power_count == 0)
+	else if (power == GPU_PWR_OFF && g_stack.power_count == 0)
 		__gpufreq_footprint_power_step(0x1C);
 
 done_unlock:
 	GPUFREQ_LOGD("- PWR_STATUS: 0x%08lx", MFG_0_22_37_PWR_STATUS);
 
 	mutex_unlock(&gpufreq_lock);
+
+#if !GPUFREQ_ACTIVE_SLEEP_CTRL_ENABLE
+	/* do DVFS after successful power-on and outside mutex lock */
+	if (power == GPU_PWR_ON && ret == 1)
+		__gpufreq_restore_last_oppidx();
+#endif /* GPUFREQ_ACTIVE_SLEEP_CTRL_ENABLE */
 
 	GPUFREQ_TRACE_END();
 
@@ -902,7 +907,7 @@ int __gpufreq_active_sleep_control(enum gpufreq_power_state power)
 
 	mutex_lock(&gpufreq_lock);
 
-	GPUFREQ_LOGD("+ PWR_STATUS: 0x%x", MFG_0_22_37_PWR_STATUS);
+	GPUFREQ_LOGD("+ PWR_STATUS: 0x%08lx", MFG_0_22_37_PWR_STATUS);
 	GPUFREQ_LOGD("switch runtime state: %s (Active: %d, Buck: %d)",
 		power ? "Active" : "Idle", g_stack.active_count, g_stack.buck_count);
 
@@ -951,15 +956,21 @@ int __gpufreq_active_sleep_control(enum gpufreq_power_state power)
 		g_shared_status->dvfs_state = g_dvfs_state;
 		g_shared_status->active_count = g_stack.active_count;
 		g_shared_status->buck_count = g_stack.buck_count;
+		g_shared_status->cur_fgpu = g_gpu.cur_freq;
+		g_shared_status->cur_fstack = g_stack.cur_freq;
 	}
 
 done:
 	GPUFREQ_LOGD("state %s, Fgpu: %d, Fstack: %d, Vstack: %d",
 		power ? "Active" : "Idle", __gpufreq_get_fmeter_freq(TARGET_GPU),
 		__gpufreq_get_fmeter_freq(TARGET_STACK), __gpufreq_get_pmic_vstack());
-	GPUFREQ_LOGD("- PWR_STATUS: 0x%x", MFG_0_22_37_PWR_STATUS);
+	GPUFREQ_LOGD("- PWR_STATUS: 0x%08lx", MFG_0_22_37_PWR_STATUS);
 
 	mutex_unlock(&gpufreq_lock);
+
+	/* do DVFS after successful active and outside mutex lock */
+	if (power == GPU_PWR_ON && g_stack.active_count == 1)
+		__gpufreq_restore_last_oppidx();
 
 	GPUFREQ_TRACE_END();
 
@@ -3020,7 +3031,7 @@ static unsigned int __gpufreq_get_fmeter_fgpu(void)
 	DRV_WriteReg32(MFG_PLL_FQMTR_CON0, (val & GENMASK(23, 0)));
 	/* Enable fmeter & select measure clock PLL_TST_CK */
 	/* MFG_PLL_FQMTR_CON0 0x13FA0040 [1:0] = 2'b10, select brisket_out_ck */
-	DRV_WriteReg32(MFG_PLL_FQMTR_CON0, (BIT(1) | BIT(12) | BIT(15)));
+	DRV_WriteReg32(MFG_PLL_FQMTR_CON0, (BIT(1) & ~BIT(0) | BIT(12) | BIT(15)));
 
 	ckgen_load_cnt = DRV_Reg32(MFG_PLL_FQMTR_CON1) >> 16;
 	ckgen_k1 = DRV_Reg32(MFG_PLL_FQMTR_CON0) >> 24;

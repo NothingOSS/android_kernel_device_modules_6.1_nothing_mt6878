@@ -171,16 +171,16 @@ static inline void __gpufreq_reset_footprint(void)
 
 static inline void __gpufreq_footprint_power_step(unsigned int step)
 {
+	GPUFREQ_LOGD("0x%x", step);
+
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC) && IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 	aee_rr_rec_gpu_dvfs_vgpu(step & GENMASK(7, 0));
-#else
-	GPUFREQ_UNREFERENCED(step);
 #endif /* CONFIG_MTK_AEE_IPANIC && CONFIG_MTK_AEE_FEATURE */
 }
 
 static inline void __gpufreq_footprint_dvfs_step(unsigned int step)
 {
-	GPUFREQ_UNREFERENCED(step);
+	GPUFREQ_LOGD("0x%x", step);
 }
 
 static inline void __gpufreq_footprint_oppidx(int oppidx)
