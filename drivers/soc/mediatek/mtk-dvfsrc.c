@@ -310,6 +310,7 @@ static const int mt6989_regs[] = {
 	[DVFSRC_DEFAULT_OPP_2] =    0x230,
 	[DVFSRC_DEFAULT_OPP_3] =    0x740,
 	[DVFSRC_DEFAULT_OPP_4] =    0x744,
+	[DVFSRC_HALT_CONTROL]  =    0xC4,
 };
 
 static const struct dvfsrc_opp *get_current_opp(struct mtk_dvfsrc *dvfsrc)
@@ -776,10 +777,10 @@ static void mt6989_set_force_opp_level(struct mtk_dvfsrc *dvfsrc, u32 level)
 			dvfsrc_rmw(dvfsrc, DVFSRC_HALT_CONTROL, 1, 0x1, 1);
 			udelay(STARTUP_TIME);
 			dvfsrc_wait_for_idle(dvfsrc);
-			dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_1, 1);
-			dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_2, 0);
+			dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_4, 1);
 			dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_3, 0);
-			dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_4, 0);
+			dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_2, 0);
+			dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_1, 0);
 			dvfsrc_write(dvfsrc, DVFSRC_SW_REQ2, 0x0);
 			dvfsrc_rmw(dvfsrc, DVFSRC_HALT_CONTROL, 0, 0x1, 1);
 			dvfsrc->opp_forced = false;
@@ -792,25 +793,25 @@ static void mt6989_set_force_opp_level(struct mtk_dvfsrc *dvfsrc, u32 level)
 	dvfsrc_wait_for_idle(dvfsrc);
 	dvfsrc_write(dvfsrc, DVFSRC_SW_REQ2, 0xFFFFFFFF);
 	if (level < 32) {
-		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_1, 1 << level);
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_4, 1 << level);
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_1, 0);
 		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_2, 0);
 		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_3, 0);
-		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_4, 0);
 	} else if (level < 64) {
-		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_2, 1 << (level - 32));
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_3, 1 << (level - 32));
 		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_1, 0);
-		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_3, 0);
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_2, 0);
 		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_4, 0);
 	} else if (level < 96) {
-		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_3, 1 << (level - 64));
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_2, 1 << (level - 64));
 		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_1, 0);
-		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_2, 0);
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_3, 0);
 		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_4, 0);
 	} else {
-		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_4, 1 << (level - 96));
-		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_1, 0);
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_1, 1 << (level - 96));
 		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_2, 0);
 		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_3, 0);
+		dvfsrc_write(dvfsrc, DVFSRC_DEFAULT_OPP_4, 0);
 	}
 
 	dvfsrc_rmw(dvfsrc, DVFSRC_HALT_CONTROL, 0, 0x1, 1);
