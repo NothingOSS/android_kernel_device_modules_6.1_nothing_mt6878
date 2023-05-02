@@ -844,6 +844,9 @@ static void drv3_infra_ao_com_set(void)
 		CCCI_ERROR_LOG(0, TAG,
 		"[%s]-%d error: read infra_ao_base ret=%d\n",
 		__func__, __LINE__, ret);
+	else
+		CCCI_BOOTUP_LOG(0, TAG, "%s, read (infra_ao_base+0x0208) value=%u\n",
+		__func__, value);
 }
 
 /* =======================================================
@@ -1447,6 +1450,10 @@ static void drv3_hw_reset_v1(void)
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG, "[%s]-%d read infra_ao_base ret=%d\n",
 			__func__, __LINE__, ret);
+	else
+		CCCI_NORMAL_LOG(0, TAG, "%s, read (infra_ao_base+0x0208) value=%u\n",
+			__func__, value);
+
 	udelay(500);
 
 	/* DPMAIF HW reset */
