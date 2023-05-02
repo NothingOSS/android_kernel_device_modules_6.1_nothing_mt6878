@@ -2722,6 +2722,16 @@
 			interrupts = <GIC_SPI 536 IRQ_TYPE_EDGE_RISING 0>;
 			interrupt-names = "combined";
 			#iommu-cells = <1>;
+
+			iommu-groups {
+				mm_iommu_group_0: mm-iommu-group-common {
+					label = "mm_common";
+					#address-cells = <2>;
+					#size-cells = <2>;
+					mtk,iommu-dma-range = <0x0 0x0 0x4 0x0>;
+					mtk,smmu-mode = "dma";
+				};
+			};
 		};
 
 		mm_smmu_tbu_0_pmu: smmu-pmu@1ee42000 {
@@ -7987,6 +7997,7 @@
 		label = "mm_smmu_hrt_normal";
 		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&mm_smmu 30>;
+		mtk,iommu-group = <&mm_iommu_group_0>;
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_srt_normal: mm-smmu-srt-normal {
@@ -7994,6 +8005,7 @@
 		label = "mm_smmu_srt_normal";
 		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&mm_smmu 31>;
+		mtk,iommu-group = <&mm_iommu_group_0>;
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_mmup_normal: mm-smmu-mmup-normal {
@@ -8017,6 +8029,7 @@
 		label = "mm_smmu_hrt_protected";
 		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&mm_smmu 40>;
+		mtk,iommu-group = <&mm_iommu_group_0>;
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_srt_protected: mm-smmu-srt-protected {
@@ -8024,6 +8037,7 @@
 		label = "mm_smmu_srt_protected";
 		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&mm_smmu 41>;
+		mtk,iommu-group = <&mm_iommu_group_0>;
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_mmup_protected: mm-smmu-mmup-protected {
