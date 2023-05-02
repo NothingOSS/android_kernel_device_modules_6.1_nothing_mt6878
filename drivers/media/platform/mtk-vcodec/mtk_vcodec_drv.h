@@ -73,14 +73,6 @@ enum mtk_vcodec_ipm {
 };
 
 /**
- * enum mtk_instance_type - The type of an MTK Vcodec instance.
- */
-enum mtk_instance_type {
-	MTK_INST_DECODER                = 0,
-	MTK_INST_ENCODER                = 1,
-};
-
-/**
  * enum mtk_mmdvfs_type - The type of an MTK Vcodec MMDVFS.
  */
 enum mtk_mmdvfs_type {

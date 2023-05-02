@@ -12,6 +12,7 @@
 #include <linux/dma-heap.h>
 #include <linux/dma-direction.h>
 #include <uapi/linux/dma-heap.h>
+#include <mtk_heap.h>
 
 #include "mtk_vcodec_fence.h"
 #include "mtk_vcodec_drv.h"
@@ -763,7 +764,7 @@ EXPORT_SYMBOL_GPL(v4l_fill_mtk_fmtdesc);
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 #define VCP_CACHE_LINE 128
 int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
-	struct dma_buf_attachment **attach, struct sg_table **sgt)
+	struct dma_buf_attachment **attach, struct sg_table **sgt, enum mtk_instance_type fmt)
 {
 	struct dma_heap *dma_heap;
 	struct dma_buf *dbuf;
@@ -823,6 +824,11 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 		mtk_v4l2_err("buffer alloc fail\n");
 		return PTR_ERR(dbuf);
 	}
+
+	if (fmt == MTK_INST_DECODER)
+		mtk_dma_buf_set_name(dbuf, "vdec_working");
+	else
+		mtk_dma_buf_set_name(dbuf, "venc_working");
 
 	*attach = dma_buf_attach(dbuf, dev);
 	if (IS_ERR_OR_NULL(*attach)) {

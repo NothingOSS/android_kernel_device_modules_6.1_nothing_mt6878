@@ -67,6 +67,14 @@ enum eos_types {
 	EOS
 };
 
+/**
+ * enum mtk_instance_type - The type of an MTK Vcodec instance.
+ */
+enum mtk_instance_type {
+	MTK_INST_DECODER                = 0,
+	MTK_INST_ENCODER                = 1,
+};
+
 struct mtk_vcodec_mem {
 	size_t length;
 	size_t size;
@@ -354,7 +362,7 @@ void v4l_fill_mtk_fmtdesc(struct v4l2_fmtdesc *fmt);
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
-	struct dma_buf_attachment **attach, struct sg_table **sgt);
+	struct dma_buf_attachment **attach, struct sg_table **sgt, enum mtk_instance_type fmt);
 int mtk_vcodec_free_mem(struct vcodec_mem_obj *mem, struct device *dev,
 	struct dma_buf_attachment *attach, struct sg_table *sgt);
 #endif

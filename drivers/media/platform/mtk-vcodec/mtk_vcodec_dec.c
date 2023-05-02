@@ -13,6 +13,7 @@
 #include <linux/module.h>
 #include <linux/timer.h>
 #include <linux/jiffies.h>
+#include <mtk_heap.h>
 
 #include "mtk_vcodec_drv.h"
 #include "mtk_vcodec_dec.h"
@@ -4990,6 +4991,8 @@ static void *mtk_vdec_dc_attach_dmabuf(struct vb2_buffer *vb, struct device *dev
 
 	buf->dev = dev;
 	buf->vb = vb;
+
+	mtk_dma_buf_set_name(dbuf, "vdec_bs_frame");
 
 	/* create attachment for the dmabuf with the user device */
 	dba = dma_buf_attach(dbuf, buf->dev);

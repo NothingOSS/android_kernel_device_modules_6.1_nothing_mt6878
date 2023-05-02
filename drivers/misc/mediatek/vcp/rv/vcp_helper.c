@@ -59,6 +59,7 @@
 #include <linux/dma-heap.h>
 #include <uapi/linux/dma-heap.h>
 #include <linux/dma-buf.h>
+#include <mtk_heap.h>
 #include "vcp_reservedmem_define.h"
 #endif
 
@@ -1753,6 +1754,8 @@ static int vcp_alloc_iova(struct device *dev, __u32 size, __u64 *start_phys, __u
 		pr_notice("[VCP] buffer alloc fail\n");
 		return PTR_ERR(dbuf);
 	}
+
+	mtk_dma_buf_set_name(dbuf, "vcp_uncache");
 
 	memset(&map, 0, sizeof(struct iosys_map));
 	if (dma_buf_vmap(dbuf, &map)) {
