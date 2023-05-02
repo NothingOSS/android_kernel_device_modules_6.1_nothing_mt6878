@@ -169,14 +169,14 @@ static int rt5133_of_parse_cb(struct device_node *node,
 		unsigned int addr_offset;
 		unsigned int mask;
 	} base_props[] = {
-		{ "oc_shutdown_all", 0, 1, 0,
+		{ "oc-shutdown-all", 0, 1, 0,
 			RT5133_REG_LDO_SHDN, RT5133_OCSHDN_ALL_MASK },
-		{ "pgb_shutdown_all", 0, 1, 0,
+		{ "pgb-shutdown-all", 0, 1, 0,
 			RT5133_REG_LDO_SHDN, RT5133_PGBSHDN_ALL_MASK }
 	}, ldo_props[] = {
-		{ "oc_ptsel", 0, 1, 0, 0, RT5133_OCPTSEL_MASK },
-		{ "pgb_ptsel", 0, 1, 0, 0, RT5133_PGBPTSEL_MASK },
-		{ "soft_start_time_sel", 0, 3, 1, 0, RT5133_STBTDSEL_MASK }
+		{ "oc-ptsel", 0, 1, 0, 0, RT5133_OCPTSEL_MASK },
+		{ "pgb-ptsel", 0, 1, 0, 0, RT5133_PGBPTSEL_MASK },
+		{ "soft-start-time-sel", 0, 3, 1, 0, RT5133_STBTDSEL_MASK }
 	}, *props;
 	int i, props_size;
 
