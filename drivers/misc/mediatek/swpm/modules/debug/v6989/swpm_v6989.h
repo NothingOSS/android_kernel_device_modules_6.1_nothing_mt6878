@@ -23,6 +23,7 @@ struct share_wrap {
 	unsigned int share_index_ext_addr;
 	unsigned int share_index_sub_ext_addr;
 	unsigned int share_ctrl_ext_addr;
+	unsigned int share_swpm_pmsr_spm_addr;
 
 	/* static data */
 	unsigned int subsys_swpm_data_addr;

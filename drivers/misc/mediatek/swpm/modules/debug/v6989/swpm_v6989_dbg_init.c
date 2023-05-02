@@ -39,7 +39,7 @@
 	} while (0)
 
 
-#define SWPM_EXT_DBG (0)
+#define SWPM_EXT_DBG (1)
 
 
 static ssize_t enable_read(char *ToUser, size_t sz, void *priv)
@@ -233,6 +233,7 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 
 	struct ip_stats *core_ip_stats_ptr;
 	struct vol_duration *core_duration_ptr;
+	struct res_sig_stats *spm_res_sig_stats_ptr;
 
 	if (!ToUser)
 		return -EINVAL;
@@ -248,6 +249,9 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 		core_ip_stats_ptr[i].times =
 		kmalloc(sizeof(struct ip_vol_times), GFP_KERNEL);
 
+	spm_res_sig_stats_ptr =
+	kmalloc(sizeof(struct res_sig_stats), GFP_KERNEL);
+
 	sync_latest_data();
 
 	if (!core_duration_ptr) {
@@ -261,6 +265,13 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 	get_vcore_vol_duration(core_vol_num, core_duration_ptr);
 	get_vcore_ip_vol_stats(core_ip_num, core_vol_num,
 			       core_ip_stats_ptr);
+
+	get_res_sig_stats(spm_res_sig_stats_ptr);
+
+	swpm_dbg_log("suspend_time (ms) : %llu\n",
+		     spm_res_sig_stats_ptr->suspend_time);
+	swpm_dbg_log("duration_time (ms) : %llu\n",
+		     spm_res_sig_stats_ptr->duration_time);
 
 	for (i = 0; i < core_ip_num; i++) {
 		swpm_dbg_log("%s ",
@@ -276,6 +287,8 @@ End:
 	for (i = 0; i < core_ip_num; i++)
 		kfree(core_ip_stats_ptr[i].times);
 	kfree(core_ip_stats_ptr);
+
+	kfree(spm_res_sig_stats_ptr);
 
 	return p - ToUser;
 }
@@ -361,6 +374,49 @@ End:
 static const struct mtk_swpm_sysfs_op swpm_sp_ddr_idx_fops = {
 	.fs_read = swpm_sp_ddr_idx_read,
 };
+
+static ssize_t swpm_sp_spm_sig_read(char *ToUser, size_t sz, void *priv)
+{
+	char *p = ToUser;
+	int i, grp_id;
+
+	struct res_sig_stats *spm_res_sig_stats_ptr;
+	struct res_sig *spm_res_sig_ptr;
+
+	if (!ToUser)
+		return -EINVAL;
+
+	spm_res_sig_stats_ptr =
+	kmalloc(sizeof(struct res_sig_stats), GFP_KERNEL);
+	get_res_sig_stats(spm_res_sig_stats_ptr);
+
+	spm_res_sig_stats_ptr->res_sig_tbl =
+	kmalloc_array(spm_res_sig_stats_ptr->res_sig_num, sizeof(struct res_sig), GFP_KERNEL);
+	spm_res_sig_ptr = spm_res_sig_stats_ptr->res_sig_tbl;
+
+	sync_latest_data();
+
+	get_res_sig_stats(spm_res_sig_stats_ptr);
+
+	swpm_dbg_log("spm resource signal time: (ms)\n");
+	swpm_dbg_log("resource signal number: %u\n", spm_res_sig_stats_ptr->res_sig_num);
+	for (i = 0; i < spm_res_sig_stats_ptr->res_sig_num; i++) {
+		grp_id = spm_res_sig_stats_ptr->res_sig_tbl[i].grp_id;
+
+		swpm_dbg_log("group %d\n", grp_id);
+		swpm_dbg_log("(%d)signal id %x: %llu\n", i,
+			spm_res_sig_ptr[i].sig_id,
+			spm_res_sig_ptr[i].time);
+	}
+
+	kfree(spm_res_sig_stats_ptr->res_sig_tbl);
+	kfree(spm_res_sig_stats_ptr);
+	return p - ToUser;
+}
+
+static const struct mtk_swpm_sysfs_op swpm_sp_spm_sig_fops = {
+	.fs_read = swpm_sp_spm_sig_read,
+};
 #endif
 
 static void swpm_v6989_dbg_fs_init(void)
@@ -381,6 +437,8 @@ static void swpm_v6989_dbg_fs_init(void)
 			, 0444, &swpm_sp_ddr_idx_fops, NULL, NULL);
 	mtk_swpm_sysfs_entry_func_node_add("swpm_sp_test"
 			, 0444, &swpm_sp_test_fops, NULL, NULL);
+	mtk_swpm_sysfs_entry_func_node_add("swpm_sp_spm_sig"
+			, 0444, &swpm_sp_spm_sig_fops, NULL, NULL);
 #endif
 }
 

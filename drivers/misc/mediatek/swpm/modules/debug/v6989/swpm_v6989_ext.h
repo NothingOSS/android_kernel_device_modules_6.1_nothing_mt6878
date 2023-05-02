@@ -47,6 +47,19 @@ enum ddr_bc_ip {
 };
 /* #define NR_DDR_BC_IP (6) */
 
+enum spm_group {
+	DDREN_REQ,
+	APSRC_REQ,
+	EMI_REQ,
+	INFRA_REQ,
+	F26M_REQ,
+	VCORE_REQ,
+	PWR_ACT,
+	SYS_STA,
+
+	NR_SPM_GRP,
+};
+
 /* core extension ip state */
 struct core_ip_pwr_sta {
 	unsigned int state[NR_POWER_STATE];
@@ -88,10 +101,23 @@ struct suspend_time {
 	unsigned int time_H;
 };
 
+struct duration_time {
+	/* total duration time H/L*/
+	unsigned int time_L;
+	unsigned int time_H;
+};
+
+struct share_spm_sig {
+	unsigned int spm_sig_addr;
+	unsigned int spm_sig_num[NR_SPM_GRP];
+	unsigned int win_len;
+};
+
 struct share_index_ext {
 	struct core_index_ext core_idx_ext;
 	struct mem_index_ext mem_idx_ext;
 	struct suspend_time suspend;
+	struct duration_time duration;
 
 	/* last core volt index */
 	unsigned int last_volt_idx;
