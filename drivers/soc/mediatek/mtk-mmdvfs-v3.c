@@ -672,6 +672,10 @@ int mtk_mmdvfs_v3_set_vote_step(const u16 pwr_idx, const s16 opp)
 
 	if (mmdvfs_mux_version)
 		return mmdvfs_vote_step_by_vcp(pwr_idx, opp);
+	else if (pwr_idx == PWR_MMDVFS_NUM) {
+		MMDVFS_ERR("failed:%d pwr_idx:%hu opp:%hd", ret, pwr_idx, opp);
+		return -EINVAL;
+	}
 
 	last = &last_vote_step[pwr_idx];
 
