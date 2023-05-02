@@ -209,9 +209,9 @@ static int mtk_dvfsrc_opp_setting_v4(struct mtk_dvfsrc *dvfsrc)
 	dvfsrc->opp_desc->num_opp = max_opp + 1;
 	info = config->query_opp_gear_info(dvfsrc, 0);
 	dev_info(dvfsrc->dev, "info = %x, index = %d\n", info, 0);
-	dvfsrc->opp_desc->num_vcore_opp = info & 0x7;
-	dvfsrc->opp_desc->num_emi_opp = (info >> 4) & 0xF;
-	dvfsrc->opp_desc->num_dram_opp = (info >> 12) & 0xF;
+	dvfsrc->opp_desc->num_vcore_opp = (info & 0x7) + 1;
+	dvfsrc->opp_desc->num_emi_opp = ((info >> 4) & 0xF) + 1;
+	dvfsrc->opp_desc->num_dram_opp = ((info >> 12) & 0xF) + 1;
 	dev_info(dvfsrc->dev, "num_vcore_opp = %d\n", dvfsrc->opp_desc->num_vcore_opp);
 	dev_info(dvfsrc->dev, "num_emi_opp = %d\n", dvfsrc->opp_desc->num_emi_opp);
 	dev_info(dvfsrc->dev, "num_dram_opp = %d\n", dvfsrc->opp_desc->num_dram_opp);
