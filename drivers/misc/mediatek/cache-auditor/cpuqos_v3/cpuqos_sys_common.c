@@ -26,8 +26,6 @@
 #define CREATE_TRACE_POINTS
 
 static struct attribute *cpuqos_attrs[] = {
-	&show_cpuqos_status_attr.attr,
-	&set_cache_size_attr.attr,
 	&trace_enable_attr.attr,
 	&boot_complete_attr.attr,
 	&show_L3m_status_attr.attr,

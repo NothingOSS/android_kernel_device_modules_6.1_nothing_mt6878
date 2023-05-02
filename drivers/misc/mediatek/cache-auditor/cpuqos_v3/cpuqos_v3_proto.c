@@ -571,97 +571,6 @@ static void cpu_qos_handler(struct work_struct *work)
 	}
 }
 
-static ssize_t show_cpuqos_status(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		char *buf)
-{
-	unsigned int len = 0;
-	unsigned int max_len = 4096;
-	unsigned int csize = 0, ctnct = 0;
-
-#if IS_ENABLED(CONFIG_MTK_SLBC)
-	csize = slbc_sram_read(SLC_CPU_DEBUG1_R_OFS);
-	ctnct = slbc_sram_read(SLC_CPU_DEBUG0_R_OFS);
-#else
-	sram_base_addr = ioremap(SLC_SYSRAM_BASE, SLC_SRAM_SIZE);
-
-	if (!sram_base_addr) {
-		pr_info("Remap SLC SYSRAM failed\n");
-		return -EIO;
-	}
-
-	csize = ioread32(sram_base_addr + SLC_CPU_DEBUG1_R_OFS);
-	ctnct = ioread32(sram_base_addr + SLC_CPU_DEBUG0_R_OFS);
-#endif
-	csize &= 0xf;
-	ctnct &= 0xfff;
-
-	len += snprintf(buf+len, max_len-len,
-			"CPUQoS CPPD setting = %d/%d, L3CC total/ct/nct = %d/%d/%d\n",
-			(csize & 0xC)>>2, csize & 0x3, (ctnct & 0xf00)>>8,
-			(ctnct & 0xf0)>>4, (ctnct & 0xf));
-
-	return len;
-}
-
-static ssize_t set_cache_size(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		const char *ubuf,
-		size_t cnt)
-{
-	unsigned int data = 0, mode = 0, slice = 0, portion = 0;
-
-#if !IS_ENABLED(CONFIG_MTK_SLBC)
-	sram_base_addr = ioremap(SLC_SYSRAM_BASE, SLC_SRAM_SIZE);
-
-	if (!sram_base_addr) {
-		pr_info("Remap SLC SYSRAM failed\n");
-		return -EIO;
-	}
-#endif
-
-	if (sscanf(ubuf, "%d:%d:%d", &mode, &slice, &portion) == 3) {
-		data = (mode << 4) | (slice << 2) | (portion);
-#if IS_ENABLED(CONFIG_MTK_SLBC)
-		slbc_sram_write(CPUQOS_L3CTL_M_OFS, data);
-#else
-		iowrite32(data, (sram_base_addr + CPUQOS_L3CTL_M_OFS));
-#endif
-	}
-
-	return cnt;
-}
-
-static ssize_t show_cache_size(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		char *buf)
-{
-	unsigned int len = 0;
-	unsigned int max_len = 4096;
-	unsigned int data = 0, mode = 0, slice = 0, portion = 0;
-
-#if IS_ENABLED(CONFIG_MTK_SLBC)
-	data = slbc_sram_read(CPUQOS_L3CTL_M_OFS);
-#else
-	sram_base_addr = ioremap(SLC_SYSRAM_BASE, SLC_SRAM_SIZE);
-
-	if (!sram_base_addr) {
-		pr_info("Remap SLC SYSRAM failed\n");
-		return -EIO;
-	}
-	data = ioread32(sram_base_addr + CPUQOS_L3CTL_M_OFS);
-#endif
-	mode = (data & 0x10) >> 4;
-	slice = (data & 0xc) >> 2;
-	portion = data & 0x3;
-
-	len += snprintf(buf+len, max_len-len,
-			"raw = %x, mode = %d, slice = %d, portion = %d\n",
-			data, mode, slice, portion);
-
-	return len;
-}
-
 static ssize_t set_trace_enable(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		const char *ubuf,
@@ -712,12 +621,6 @@ static ssize_t set_boot_complete(struct kobject *kobj,
 
 	return cnt;
 }
-
-struct kobj_attribute show_cpuqos_status_attr =
-__ATTR(cpuqos_status_info, 0400, show_cpuqos_status, NULL);
-
-struct kobj_attribute set_cache_size_attr =
-__ATTR(cpuqos_set_cache_size, 0600, show_cache_size, set_cache_size);
 
 struct kobj_attribute trace_enable_attr =
 __ATTR(cpuqos_trace_enable, 0600, show_trace_enable, set_trace_enable);
