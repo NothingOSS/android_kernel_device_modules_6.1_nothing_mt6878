@@ -2473,6 +2473,7 @@ static bool vcp_ipi_table_init(struct mtk_mbox_device *vcp_mboxdev, struct platf
 static int vcp_io_device_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
+	struct device *smmu_dev = NULL;
 	int ret;
 
 	pr_debug("[VCP_IO] %s", __func__);
@@ -2483,23 +2484,34 @@ static int vcp_io_device_probe(struct platform_device *pdev)
 		pr_info("Bypass the VCP driver probe\n");
 		return -1;
 	}
-	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
-	if (ret) {
-		dev_info(&pdev->dev, "64-bit DMA enable failed\n");
-		return ret;
-	}
-	if (!pdev->dev.dma_parms) {
-		pdev->dev.dma_parms =
-			devm_kzalloc(&pdev->dev, sizeof(*pdev->dev.dma_parms), GFP_KERNEL);
-	}
-	if (pdev->dev.dma_parms) {
-		ret = dma_set_max_seg_size(&pdev->dev, (unsigned int)DMA_BIT_MASK(64));
-		if (ret)
-			dev_info(&pdev->dev, "Failed to set DMA segment size\n");
-	}
 
 	// VCP iommu devices
-	vcp_io_devs[vcp_support-1] = dev;
+	if (smmu_v3_enabled()) {
+		dev_info(dev, "[VCP] smmu enable\n");
+		smmu_dev = mtk_smmu_get_shared_device(dev);
+		if (smmu_dev)
+			vcp_io_devs[vcp_support-1] = smmu_dev;
+		else
+			dev_info(dev, "[VCP] cannot get smmu shared dev\n");
+	} else
+		vcp_io_devs[vcp_support-1] = dev;
+
+	ret = dma_set_mask_and_coherent(vcp_io_devs[vcp_support-1], DMA_BIT_MASK(64));
+	if (ret) {
+		dev_info(vcp_io_devs[vcp_support-1], "64-bit DMA enable failed\n");
+		return ret;
+	}
+	if (!vcp_io_devs[vcp_support-1]->dma_parms) {
+		vcp_io_devs[vcp_support-1]->dma_parms =
+			devm_kzalloc(vcp_io_devs[vcp_support-1],
+			sizeof(*vcp_io_devs[vcp_support-1]->dma_parms), GFP_KERNEL);
+	}
+	if (vcp_io_devs[vcp_support-1]->dma_parms) {
+		ret = dma_set_max_seg_size(vcp_io_devs[vcp_support-1],
+			(unsigned int)DMA_BIT_MASK(64));
+		if (ret)
+			dev_info(vcp_io_devs[vcp_support-1], "Failed to set DMA segment size\n");
+	}
 
 	return 0;
 }
@@ -2585,12 +2597,12 @@ static int vcp_device_probe(struct platform_device *pdev)
 	}
 	// VCP iommu devices
 	if (smmu_v3_enabled()) {
-		pr_info("[VCP] smmu enable\n");
+		dev_info(dev, "[VCP] smmu enable\n");
 		smmu_dev = mtk_smmu_get_shared_device(dev);
 		if (smmu_dev)
 			vcp_io_devs[vcp_support-1] = smmu_dev;
 		else
-			pr_info("[VCP] cannot get smmu shared dev\n");
+			dev_info(dev, "[VCP] cannot get smmu shared dev\n");
 	} else
 		vcp_io_devs[vcp_support-1] = dev;
 
