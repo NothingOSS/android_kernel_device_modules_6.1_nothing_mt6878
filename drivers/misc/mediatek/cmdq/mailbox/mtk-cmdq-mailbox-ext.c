@@ -2384,7 +2384,7 @@ static int cmdq_probe(struct platform_device *pdev)
 	if (of_property_read_bool(dev->of_node, "cpr-not-support-cookie"))
 		cpr_not_support_cookie = true;
 
-	if (of_property_read_bool(dev->of_node, "append-by-event"))
+	if (!of_property_read_bool(dev->of_node, "no-append-by-event"))
 		append_by_event = true;
 
 	of_property_read_u32(dev->of_node, "cmdq-dump-buf-size", &cmdq_dump_buf_size);
