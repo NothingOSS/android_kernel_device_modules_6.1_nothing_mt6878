@@ -41,6 +41,7 @@ enum mmqos_state_level {
 	VCP_ENABLE = BIT(5),
 	VCODEC_BW_BYPASS = BIT(6),
 	DPC_ENABLE = BIT(7),
+	VMMRC_ENABLE = BIT(8),
 };
 extern u32 mmqos_state;
 

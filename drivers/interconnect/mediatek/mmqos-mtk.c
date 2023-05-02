@@ -49,6 +49,7 @@
 #define MAX_REG_VALUE_NUM	(8)
 #define MAX_BW_UNIT		(1024)
 
+#define APMCU_MASK_OFFSET	(gmmqos->apmcu_mask_offset)
 #define APMCU_ON_BW_OFFSET(i)	(gmmqos->apmcu_on_bw_offset + 4 * i)
 #define APMCU_OFF_BW_OFFSET(i)	(gmmqos->apmcu_off_bw_offset + 4 * i)
 
@@ -393,7 +394,8 @@ static void store_bw_value(const u32 comm_id, const u32 chnn_id,
 		off_bw_value[bw_value_idx] = bw;
 
 	if (log_level & 1 << log_comm_freq)
-		MMQOS_DBG("bw_value_idx:%d, bw:%d", bw_value_idx, bw);
+		if (bw != 0)
+			MMQOS_DBG("bw_value_idx:%d, bw:%d", bw_value_idx, bw);
 }
 
 bool is_bw_value_changed(bool is_on)
@@ -421,29 +423,35 @@ bool is_bw_value_changed(bool is_on)
 
 void write_register(u32 offset, u32 value)
 {
-	//u32 addr;
-
 	if (log_level & (1U << log_test))
-		MMQOS_DBG("offset:0x%x, value:0x%x", offset, value);
+		if (value != 0)
+			MMQOS_DBG("offset:0x%x, value:0x%x", offset, value);
 
-	//addr = ap_to_vcp(VMM_DVFSRC_BASE + offset);
-	//writel(addr, value);
+	if (mmqos_state & VMMRC_ENABLE)
+		writel_relaxed(value, gmmqos->vmmrc_base + offset);
+}
+
+u32 read_register(u32 offset)
+{
+	if (mmqos_state & VMMRC_ENABLE)
+		return readl_relaxed(gmmqos->vmmrc_base + offset);
+	return 0;
 }
 
 static void start_write_bw(void)
 {
 	u32 orig = 0;
 
-	// TODO: orig = readl(gmmqos->vmmrc_base + gmmqos->apmcu_mask_offset);
-	write_register(gmmqos->apmcu_mask_offset, orig & ~BIT(gmmqos->apmcu_mask_bit));
+	orig = read_register(APMCU_MASK_OFFSET);
+	write_register(APMCU_MASK_OFFSET, orig & ~BIT(gmmqos->apmcu_mask_bit));
 }
 
 static void stop_write_bw(void)
 {
 	u32 orig = 0;
 
-	// TODO: orig = readl(gmmqos->vmmrc_base + gmmqos->apmcu_mask_offset);
-	write_register(gmmqos->apmcu_mask_offset, orig | BIT(gmmqos->apmcu_mask_bit));
+	orig = read_register(APMCU_MASK_OFFSET);
+	write_register(APMCU_MASK_OFFSET, orig | BIT(gmmqos->apmcu_mask_bit));
 }
 
 void set_channel_bw_reg_value(bool is_on)
@@ -1324,6 +1332,7 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	struct platform_device *comm_pdev, *larb_pdev;
 	struct proc_dir_entry *dir, *proc;
 	struct task_struct *kthr_vcp;
+	u32 base_tmp;
 
 	mmqos = devm_kzalloc(&pdev->dev, sizeof(*mmqos), GFP_KERNEL);
 	if (!mmqos)
@@ -1382,6 +1391,10 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 		ret = -EINVAL;
 		goto err;
 	}
+
+	freq_mode = mmqos_desc->freq_mode ? mmqos_desc->freq_mode : freq_mode;
+	MMQOS_DBG("freq_mode:%d", freq_mode);
+
 	data = devm_kzalloc(&pdev->dev,
 		sizeof(*data) + mmqos_desc->num_nodes * sizeof(node),
 		GFP_KERNEL);
@@ -1472,9 +1485,10 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 			comm_node->comm_reg =
 				devm_regulator_get_optional(comm_node->comm_dev,
 						   "mmdvfs-dvfsrc-vcore");
-			if (IS_ERR_OR_NULL(comm_node->comm_reg))
-				pr_notice("get common(%d) reg fail\n",
-				  MASK_8(node->id));
+			if (freq_mode == BY_REGULATOR)
+				if (IS_ERR_OR_NULL(comm_node->comm_reg))
+					pr_notice("get common(%d) reg fail\n",
+					  MASK_8(node->id));
 
 			dev_pm_opp_of_add_table(comm_node->comm_dev);
 			comm_node->base = base_node;
@@ -1568,9 +1582,6 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	of_property_read_u32(pdev->dev.of_node, "mmqos-log-level", &log_level);
 	pr_notice("[mmqos] mmqos log level: %#x\n", log_level);
 
-	freq_mode = mmqos_desc->freq_mode ? mmqos_desc->freq_mode : freq_mode;
-	MMQOS_DBG("freq_mode:%d", freq_mode);
-
 	for (i = 0 ; i < MMQOS_MAX_DISP_VIRT_LARB_NUM ; i++)
 		mmqos->disp_virt_larbs[i] = mmqos_desc->disp_virt_larbs[i];
 
@@ -1618,10 +1629,24 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	else
 		mmqos->proc = proc;
 
-	if (mmqos_state & VCP_ENABLE) {
-		// TODO: get vmmrc_base and apcu_mask_offset from dts
-		kthr_vcp = kthread_run(mmqos_vcp_init_thread, NULL, "mmqos-vcp");
+	if (mmqos_state & VMMRC_ENABLE) {
+		of_property_read_u32(pdev->dev.of_node, "vmmrc-base", &base_tmp);
+		mmqos->vmmrc_base = ioremap(base_tmp, 0x1000);
+		of_property_read_u32(pdev->dev.of_node, "vmmrc-mask", &mmqos->apmcu_mask_offset);
+		of_property_read_u32(pdev->dev.of_node, "vmmrc-mask-bit", &mmqos->apmcu_mask_bit);
+		of_property_read_u32(pdev->dev.of_node,
+			"vmmrc-on-table", &mmqos->apmcu_on_bw_offset);
+		of_property_read_u32(pdev->dev.of_node,
+			"vmmrc-off-table", &mmqos->apmcu_off_bw_offset);
+
+		MMQOS_DBG("vmmrc base=%#x, mask=%#x, bit=%#x, on table=%#x, off table=%#x",
+			base_tmp, mmqos->apmcu_mask_offset, mmqos->apmcu_mask_bit,
+			mmqos->apmcu_on_bw_offset, mmqos->apmcu_off_bw_offset);
 	}
+
+	if (mmqos_state & VCP_ENABLE)
+		kthr_vcp = kthread_run(mmqos_vcp_init_thread, NULL, "mmqos-vcp");
+
 	return 0;
 err:
 	list_for_each_entry_safe(node, temp, &mmqos->prov.nodes, node_list) {
@@ -1696,13 +1721,14 @@ struct common_port_node *create_fake_comm_port_node(int hrt_type,
 {
 	struct common_port_node *cpn;
 
-	cpn = devm_kzalloc(gmmqos->dev,
-		sizeof(*cpn), GFP_KERNEL);
-	cpn->hrt_type = hrt_type;
-	cpn->old_avg_r_bw = srt_r;
-	cpn->old_avg_w_bw = srt_w;
-	cpn->old_peak_r_bw = hrt_r;
-	cpn->old_peak_w_bw = hrt_w;
+	cpn = devm_kzalloc(gmmqos->dev, sizeof(*cpn), GFP_KERNEL);
+	if (cpn != NULL) {
+		cpn->hrt_type = hrt_type;
+		cpn->old_avg_r_bw = srt_r;
+		cpn->old_avg_w_bw = srt_w;
+		cpn->old_peak_r_bw = hrt_r;
+		cpn->old_peak_w_bw = hrt_w;
+	}
 
 	return cpn;
 }
