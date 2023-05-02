@@ -2035,7 +2035,8 @@ bool mtk_crtc_is_dual_pipe(struct drm_crtc *crtc)
 	}
 
 	if (drm_crtc_index(crtc) == 3 &&
-		mtk_crtc && mtk_crtc->path_data->is_discrete_path)
+		(mtk_crtc && mtk_crtc->path_data->is_discrete_path) &&
+		(mtk_crtc->crtc_caps.crtc_ability & ABILITY_DUAL_DISCRETE))
 		return true;
 
 	if (((drm_crtc_index(crtc) == 0) || (drm_crtc_index(crtc) == 3)) &&
