@@ -34,6 +34,7 @@
 #define DBG_ERR_FLAG_STATUS1 0x8c
 
 #define BUS_TRACER_COMPATIBLE "mediatek,bus_tracer-v1"
+#define DBG_ERR_FLAG_COMPATIBLE "mediatek, soc-dbg-error-flag"
 
 /*
  * The base address of dbgao is placed in bus_tracer node
@@ -575,12 +576,19 @@ static int bus_parity_probe(struct platform_device *pdev)
 	/* find the bus_tracer node from dts */
 	err_flag_node = of_find_compatible_node(NULL, NULL, BUS_TRACER_COMPATIBLE);
 	if (err_flag_node == NULL) {
-		dev_notice(dev, "can't find node '%s' from dts.\n", BUS_TRACER_COMPATIBLE);
-		return -EINVAL;
+		dev_info(dev, "can't find node '%s' from dts.\n", BUS_TRACER_COMPATIBLE);
+		err_flag_node = of_find_compatible_node(NULL, NULL, DBG_ERR_FLAG_COMPATIBLE);
+		if (err_flag_node == NULL) {
+			dev_info(dev, "can't find node '%s' from dts.\n", DBG_ERR_FLAG_COMPATIBLE);
+			return -EINVAL;
+		}
+		dev_info(dev, "find node '%s' from dts.\n", DBG_ERR_FLAG_COMPATIBLE);
+		/* get the base address for error flag from bus_tracer node. */
+		infra_bp.dbgao_base = of_iomap(err_flag_node, 0);
+	} else {
+		/* get the base address for error flag from bus_tracer node. */
+		infra_bp.dbgao_base = of_iomap(err_flag_node, 1);
 	}
-
-	/* get the base address for error flag from bus_tracer node. */
-	infra_bp.dbgao_base = of_iomap(err_flag_node, 1);
 
 	mcu_bp.dump = devm_kzalloc(dev, PAGE_SIZE, GFP_KERNEL);
 	if (!mcu_bp.dump)
