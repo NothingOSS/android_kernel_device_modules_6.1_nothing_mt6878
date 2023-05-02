@@ -155,6 +155,10 @@ static unsigned int do_2a_gain_ov64b(struct EEPROM_DRV_FD_DATA *pdata,
 			CalR  = CalGain & 0xFFFF;
 			CalB  = (CalGain >> 16) & 0xFFFF;
 			CalG  = (CalGain >> 32) & 0xFFFF;
+			/* Byte Swap */
+			CalR  = ((CalR << 8) & 0xFF00) | ((CalR >> 8) & 0x00FF);
+			CalB  = ((CalB << 8) & 0xFF00) | ((CalB >> 8) & 0x00FF);
+			CalG  = ((CalG << 8) & 0xFF00) | ((CalG >> 8) & 0x00FF);
 			if (CalR > CalG)
 				/* R > G */
 				if (CalR > CalB)
@@ -176,11 +180,7 @@ static unsigned int do_2a_gain_ov64b(struct EEPROM_DRV_FD_DATA *pdata,
 			error_log("Read CalGain Failed\n");
 			show_cmd_error_log(pCamCalData->Command);
 		}
-		if (CalGain != 0x0000000000000000 &&
-			CalGain != 0xFFFFFFFFFFFFFFFF &&
-			CalR    != 0x00000000 &&
-			CalG    != 0x00000000 &&
-			CalB    != 0x00000000) {
+		if (CalGain && CalR && CalG && CalB) {
 			pCamCalData->Single2A.S2aAwb.rGainSetNum++;
 			pCamCalData->Single2A.S2aAwb.rUnitGainu4R =
 					(unsigned int)((tempMax * 512 + (CalR >> 1)) / CalR);
@@ -189,8 +189,7 @@ static unsigned int do_2a_gain_ov64b(struct EEPROM_DRV_FD_DATA *pdata,
 			pCamCalData->Single2A.S2aAwb.rUnitGainu4B =
 					(unsigned int)((tempMax * 512 + (CalB >> 1)) / CalB);
 		} else
-			error_log(
-			"There are something wrong on EEPROM, plz contact module vendor!!\n");
+			error_log("Something wrong on EEPROM, plz contact module vendor\n");
 		/* AWB Golden Gain (5100K) */
 		awb_offset = 0x93;
 		read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
@@ -200,6 +199,10 @@ static unsigned int do_2a_gain_ov64b(struct EEPROM_DRV_FD_DATA *pdata,
 			FacR  = FacGain & 0xFFFF;
 			FacB  = (FacGain >> 16) & 0xFFFF;
 			FacG  = (FacGain >> 32) & 0xFFFF;
+			/* Byte Swap */
+			FacR  = ((FacR << 8) & 0xFF00) | ((FacR >> 8) & 0x00FF);
+			FacB  = ((FacB << 8) & 0xFF00) | ((FacB >> 8) & 0x00FF);
+			FacG  = ((FacG << 8) & 0xFF00) | ((FacG >> 8) & 0x00FF);
 			if (FacR > FacG)
 				if (FacR > FacB)
 					tempMax = FacR;
@@ -219,11 +222,7 @@ static unsigned int do_2a_gain_ov64b(struct EEPROM_DRV_FD_DATA *pdata,
 			error_log("Read FacGain Failed\n");
 			show_cmd_error_log(pCamCalData->Command);
 		}
-		if (FacGain != 0x0000000000000000 &&
-			FacGain != 0xFFFFFFFFFFFFFFFF &&
-			FacR    != 0x00000000 &&
-			FacG    != 0x00000000 &&
-			FacB    != 0x00000000)	{
+		if (FacGain && FacR && FacG && FacB) {
 			pCamCalData->Single2A.S2aAwb.rGoldGainu4R =
 					(unsigned int)((tempMax * 512 + (FacR >> 1)) / FacR);
 			pCamCalData->Single2A.S2aAwb.rGoldGainu4G =
@@ -231,8 +230,7 @@ static unsigned int do_2a_gain_ov64b(struct EEPROM_DRV_FD_DATA *pdata,
 			pCamCalData->Single2A.S2aAwb.rGoldGainu4B =
 					(unsigned int)((tempMax * 512 + (FacB >> 1)) / FacB);
 		} else
-			error_log(
-			"There are something wrong on EEPROM, plz contact module vendor!!\n");
+			error_log("Something wrong on EEPROM, plz contact module vendor\n");
 		/* Set AWB to 3A Layer */
 		pCamCalData->Single2A.S2aAwb.rValueR   = CalR;
 		pCamCalData->Single2A.S2aAwb.rValueGr  = CalGr;
@@ -266,6 +264,10 @@ static unsigned int do_2a_gain_ov64b(struct EEPROM_DRV_FD_DATA *pdata,
 			CalR  = CalGain & 0xFFFF;
 			CalB  = (CalGain >> 16) & 0xFFFF;
 			CalG  = (CalGain >> 32) & 0xFFFF;
+			/* Byte Swap */
+			CalR  = ((CalR << 8) & 0xFF00) | ((CalR >> 8) & 0x00FF);
+			CalB  = ((CalB << 8) & 0xFF00) | ((CalB >> 8) & 0x00FF);
+			CalG  = ((CalG << 8) & 0xFF00) | ((CalG >> 8) & 0x00FF);
 			if (CalR > CalG)
 				/* R > G */
 				if (CalR > CalB)
@@ -287,11 +289,7 @@ static unsigned int do_2a_gain_ov64b(struct EEPROM_DRV_FD_DATA *pdata,
 			error_log("Read CalGain Failed\n");
 			show_cmd_error_log(pCamCalData->Command);
 		}
-		if (CalGain != 0x0000000000000000 &&
-			CalGain != 0xFFFFFFFFFFFFFFFF &&
-			CalR    != 0x00000000 &&
-			CalG    != 0x00000000 &&
-			CalB    != 0x00000000) {
+		if (CalGain && CalR && CalG && CalB) {
 			pCamCalData->Single2A.S2aAwb.rGainSetNum++;
 			pCamCalData->Single2A.S2aAwb.rUnitGainu4R_mid =
 				(unsigned int)((tempMax * 512 + (CalR >> 1)) / CalR);
@@ -300,8 +298,7 @@ static unsigned int do_2a_gain_ov64b(struct EEPROM_DRV_FD_DATA *pdata,
 			pCamCalData->Single2A.S2aAwb.rUnitGainu4B_mid =
 				(unsigned int)((tempMax * 512 + (CalB >> 1)) / CalB);
 		} else
-			error_log(
-			"There are something wrong on EEPROM, plz contact module vendor!!\n");
+			error_log("Something wrong on EEPROM, plz contact module vendor\n");
 		/* AWB Golden Gain (4000K) */
 		FacR = FacGr = FacGb = FacG = FacB = 0;
 		tempMax = 0;
@@ -313,6 +310,10 @@ static unsigned int do_2a_gain_ov64b(struct EEPROM_DRV_FD_DATA *pdata,
 			FacR  = FacGain & 0xFFFF;
 			FacB  = (FacGain >> 16) & 0xFFFF;
 			FacG  = (FacGain >> 32) & 0xFFFF;
+			/* Byte Swap */
+			FacR  = ((FacR << 8) & 0xFF00) | ((FacR >> 8) & 0x00FF);
+			FacB  = ((FacB << 8) & 0xFF00) | ((FacB >> 8) & 0x00FF);
+			FacG  = ((FacG << 8) & 0xFF00) | ((FacG >> 8) & 0x00FF);
 			if (FacR > FacG)
 				if (FacR > FacB)
 					tempMax = FacR;
@@ -332,11 +333,7 @@ static unsigned int do_2a_gain_ov64b(struct EEPROM_DRV_FD_DATA *pdata,
 			error_log("Read FacGain Failed\n");
 			show_cmd_error_log(pCamCalData->Command);
 		}
-		if (FacGain != 0x0000000000000000 &&
-			FacGain != 0xFFFFFFFFFFFFFFFF &&
-			FacR    != 0x00000000 &&
-			FacG    != 0x00000000 &&
-			FacB    != 0x00000000)	{
+		if (FacGain && FacR && FacG && FacB) {
 			pCamCalData->Single2A.S2aAwb.rGoldGainu4R_mid =
 				(unsigned int)((tempMax * 512 + (FacR >> 1)) / FacR);
 			pCamCalData->Single2A.S2aAwb.rGoldGainu4G_mid =
@@ -344,8 +341,7 @@ static unsigned int do_2a_gain_ov64b(struct EEPROM_DRV_FD_DATA *pdata,
 			pCamCalData->Single2A.S2aAwb.rGoldGainu4B_mid =
 				(unsigned int)((tempMax * 512 + (FacB >> 1)) / FacB);
 		} else
-			error_log(
-			"There are something wrong on EEPROM, plz contact module vendor!!\n");
+			error_log("Something wrong on EEPROM, plz contact module vendor\n");
 
 		debug_log("AWB Calibration @4000K\n");
 		debug_log("[CalGain] = 0x%llx\n", CalGain);
@@ -369,6 +365,10 @@ static unsigned int do_2a_gain_ov64b(struct EEPROM_DRV_FD_DATA *pdata,
 			CalR  = CalGain & 0xFFFF;
 			CalB  = (CalGain >> 16) & 0xFFFF;
 			CalG  = (CalGain >> 32) & 0xFFFF;
+			/* Byte Swap */
+			CalR  = ((CalR << 8) & 0xFF00) | ((CalR >> 8) & 0x00FF);
+			CalB  = ((CalB << 8) & 0xFF00) | ((CalB >> 8) & 0x00FF);
+			CalG  = ((CalG << 8) & 0xFF00) | ((CalG >> 8) & 0x00FF);
 			if (CalR > CalG)
 				/* R > G */
 				if (CalR > CalB)
@@ -390,11 +390,7 @@ static unsigned int do_2a_gain_ov64b(struct EEPROM_DRV_FD_DATA *pdata,
 			error_log("Read CalGain Failed\n");
 			show_cmd_error_log(pCamCalData->Command);
 		}
-		if (CalGain != 0x0000000000000000 &&
-			CalGain != 0xFFFFFFFFFFFFFFFF &&
-			CalR    != 0x00000000 &&
-			CalG    != 0x00000000 &&
-			CalB    != 0x00000000) {
+		if (CalGain && CalR && CalG && CalB) {
 			pCamCalData->Single2A.S2aAwb.rGainSetNum++;
 			pCamCalData->Single2A.S2aAwb.rUnitGainu4R_low =
 				(unsigned int)((tempMax * 512 + (CalR >> 1)) / CalR);
@@ -403,8 +399,7 @@ static unsigned int do_2a_gain_ov64b(struct EEPROM_DRV_FD_DATA *pdata,
 			pCamCalData->Single2A.S2aAwb.rUnitGainu4B_low =
 				(unsigned int)((tempMax * 512 + (CalB >> 1)) / CalB);
 		} else
-			error_log(
-			"There are something wrong on EEPROM, plz contact module vendor!!\n");
+			error_log("Something wrong on EEPROM, plz contact module vendor\n");
 		/* AWB Golden Gain (3100K) */
 		FacR = FacGr = FacGb = FacG = FacB = 0;
 		tempMax = 0;
@@ -416,6 +411,10 @@ static unsigned int do_2a_gain_ov64b(struct EEPROM_DRV_FD_DATA *pdata,
 			FacR  = FacGain & 0xFFFF;
 			FacB  = (FacGain >> 16) & 0xFFFF;
 			FacG  = (FacGain >> 32) & 0xFFFF;
+			/* Byte Swap */
+			FacR  = ((FacR << 8) & 0xFF00) | ((FacR >> 8) & 0x00FF);
+			FacB  = ((FacB << 8) & 0xFF00) | ((FacB >> 8) & 0x00FF);
+			FacG  = ((FacG << 8) & 0xFF00) | ((FacG >> 8) & 0x00FF);
 			if (FacR > FacG)
 				if (FacR > FacB)
 					tempMax = FacR;
@@ -435,11 +434,7 @@ static unsigned int do_2a_gain_ov64b(struct EEPROM_DRV_FD_DATA *pdata,
 			error_log("Read FacGain Failed\n");
 			show_cmd_error_log(pCamCalData->Command);
 		}
-		if (FacGain != 0x0000000000000000 &&
-			FacGain != 0xFFFFFFFFFFFFFFFF &&
-			FacR    != 0x00000000 &&
-			FacG    != 0x00000000 &&
-			FacB    != 0x00000000)	{
+		if (FacGain && FacR && FacG && FacB) {
 			pCamCalData->Single2A.S2aAwb.rGoldGainu4R_low =
 				(unsigned int)((tempMax * 512 + (FacR >> 1)) / FacR);
 			pCamCalData->Single2A.S2aAwb.rGoldGainu4G_low =
@@ -447,8 +442,7 @@ static unsigned int do_2a_gain_ov64b(struct EEPROM_DRV_FD_DATA *pdata,
 			pCamCalData->Single2A.S2aAwb.rGoldGainu4B_low =
 				(unsigned int)((tempMax * 512 + (FacB >> 1)) / FacB);
 		} else
-			error_log(
-			"There are something wrong on EEPROM, plz contact module vendor!!\n");
+			error_log("Something wrong on EEPROM, plz contact module vendor\n");
 
 		debug_log("AWB Calibration @3100K\n");
 		debug_log("[CalGain] = 0x%llx\n", CalGain);
@@ -483,8 +477,9 @@ static unsigned int do_2a_gain_ov64b(struct EEPROM_DRV_FD_DATA *pdata,
 			show_cmd_error_log(pCamCalData->Command);
 		}
 
-		AFInf = AFInf >> 2;
-		AFMacro = AFMacro >> 2;
+		/* Byte Swap */
+		AFInf  = ((AFInf << 8) & 0xFF00) | ((AFInf >> 8) & 0x00FF);
+		AFMacro  = ((AFMacro << 8) & 0xFF00) | ((AFMacro >> 8) & 0x00FF);
 
 		pCamCalData->Single2A.S2aAf[0] = AFInf;
 		pCamCalData->Single2A.S2aAf[1] = AFMacro;
