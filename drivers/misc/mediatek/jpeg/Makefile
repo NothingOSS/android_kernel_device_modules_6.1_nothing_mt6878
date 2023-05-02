@@ -11,6 +11,8 @@
 # GNU General Public License for more details.
 #
 
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps
+
 obj-$(CONFIG_MTK_JPEG) += jpeg-driver.o
 
 jpeg-driver-$(CONFIG_MTK_JPEG) += jpeg_drv.o \

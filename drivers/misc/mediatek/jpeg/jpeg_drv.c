@@ -22,6 +22,7 @@
 #include <linux/of_device.h>
 #include <linux/pm_qos.h>
 #include <linux/pm_runtime.h>
+#include <mtk_heap.h>
 
 #include "jpeg_drv.h"
 #include "jpeg_drv_reg.h"
@@ -87,10 +88,14 @@ static int jpeg_drv_hybrid_dec_start(unsigned int data[],
 	bufInfo[id].o_dbuf = jpg_dmabuf_alloc(data[20], 128, 0);
 	bufInfo[id].o_attach = NULL;
 	bufInfo[id].o_sgt = NULL;
+	if (bufInfo[id].o_dbuf)
+		mtk_dma_buf_set_name(bufInfo[id].o_dbuf, "jpg_dec_o_buf");
 
 	bufInfo[id].i_dbuf = jpg_dmabuf_get(data[7]);
 	bufInfo[id].i_attach = NULL;
 	bufInfo[id].i_sgt = NULL;
+	if (bufInfo[id].i_dbuf)
+		mtk_dma_buf_set_name(bufInfo[id].i_dbuf, "jpg_dec_i_buf");
 
 	if (!bufInfo[id].o_dbuf) {
 		mutex_unlock(&jpeg_hybrid_dec_lock);
