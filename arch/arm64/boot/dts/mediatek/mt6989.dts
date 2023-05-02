@@ -1173,6 +1173,8 @@
 
 	i2c6: i2c@11f01000 {
 		compatible = "mediatek,mt6897-i2c";
+		#address-cells = <1>;
+		#size-cells = <0>;
 		reg = <0 0x11f01000 0 0x1000>,
 			<0 0x11300600 0 0x80>;
 		interrupts = <GIC_SPI 305 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -13785,6 +13787,14 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 		compatible = "parade,ps5170";
 		reg = <0x28>;
 		/* mediatek,vs-voter = <&pmic 0x189a 0x20 1>; */
+		status = "okay";
+	};
+
+	gate_ic: gate-ic@11 {
+		compatible = "mediatek,gate-ic-i2c";
+		gate-power-gpios = <&pio 215 0>;
+		reg = <0x11>;
+		id = <6>;
 		status = "okay";
 	};
 };
