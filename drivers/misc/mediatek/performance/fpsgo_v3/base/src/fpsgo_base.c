@@ -30,6 +30,7 @@
 #include "fbt_cpu_platform.h"
 #include "fps_composer.h"
 #include "xgf.h"
+#include "fbt_cpu_ux.h"
 
 #include <linux/preempt.h>
 #include <linux/trace_events.h>
@@ -828,6 +829,7 @@ struct render_info *fpsgo_search_and_add_render_info(int pid,
 		return NULL;
 
 	mutex_init(&iter_thr->thr_mlock);
+	mutex_init(&iter_thr->ux_mlock);
 	INIT_LIST_HEAD(&(iter_thr->bufferid_list));
 	iter_thr->pid = pid;
 	iter_thr->render_key.key1 = pid;
@@ -836,6 +838,9 @@ struct render_info *fpsgo_search_and_add_render_info(int pid,
 	iter_thr->tgid = tgid;
 	iter_thr->frame_type = BY_PASS_TYPE;
 	iter_thr->bq_type = ACQUIRE_UNKNOWN_TYPE;
+	iter_thr->ux_frame_info_tree = RB_ROOT;
+	iter_thr->sbe_enhance = 0;
+	iter_thr->t_last_start = 0;
 
 	fbt_set_render_boost_attr(iter_thr);
 
@@ -1398,6 +1403,25 @@ int fpsgo_get_all_fps_control_pid_info(struct fps_control_pid_info *arr)
 	return index;
 }
 
+int fpsgo_get_all_sbe_info(struct sbe_info *arr)
+{
+	int index = 0;
+	struct sbe_info *iter = NULL;
+	struct rb_root *rbr = NULL;
+	struct rb_node *rbn = NULL;
+
+	rbr = &sbe_info_tree;
+	for (rbn = rb_first(rbr); rbn; rbn = rb_next(rbn)) {
+		iter = rb_entry(rbn, struct sbe_info, entry);
+		arr[index].pid = iter->pid;
+		index++;
+		if (index >= FPSGO_MAX_TREE_SIZE)
+			break;
+	}
+
+	return index;
+}
+
 static void fpsgo_check_BQid_status(void)
 {
 	struct rb_node *rbn = NULL;
@@ -1570,6 +1594,7 @@ int fpsgo_check_thread_status(void)
 			iter->p_blc = NULL;
 			iter->dep_arr = NULL;
 			n = rb_first(&render_pid_tree);
+			fpsgo_ux_reset(iter);
 
 			if (fpsgo_base_is_finished(iter))
 				delete = 1;
@@ -1690,7 +1715,7 @@ int fpsgo_sbe_rescue_traverse(int pid, int start, int enhance, unsigned long lon
 	for (n = rb_first(&render_pid_tree); n != NULL; n = rb_next(n)) {
 		iter = rb_entry(n, struct render_info, render_key_node);
 		fpsgo_thread_lock(&iter->thr_mlock);
-		if (iter->pid == pid)
+		if (iter->pid == pid && iter->buffer_id == 5566)
 			fpsgo_sbe2fbt_rescue(iter, start, enhance, frame_id);
 		fpsgo_thread_unlock(&iter->thr_mlock);
 	}
@@ -2018,6 +2043,51 @@ int fpsgo_delete_acquire_info(int mode, int tid, unsigned long long buffer_id)
 	}
 
 	return ret;
+}
+
+int fpsgo_get_render_tid_by_render_name(int tgid, char *name,
+	int *out_tid_arr, int *out_tid_num, int out_tid_max_num)
+{
+	int find_flag = 0;
+	int local_index = 0;
+	struct render_info *render_iter = NULL;
+	struct rb_node *rbn = NULL;
+	struct task_struct *tsk = NULL;
+
+	if (tgid <= 0 || !name || !out_tid_arr || !out_tid_num ||
+		out_tid_max_num <= 0)
+		return -EINVAL;
+
+	fpsgo_render_tree_lock(__func__);
+	for (rbn = rb_first(&render_pid_tree); rbn; rbn = rb_next(rbn)) {
+		render_iter = rb_entry(rbn, struct render_info, render_key_node);
+		if (render_iter->tgid != tgid)
+			continue;
+
+		rcu_read_lock();
+		tsk = find_task_by_vpid(render_iter->pid);
+		if (tsk) {
+			get_task_struct(tsk);
+			if (!strncmp(tsk->comm, name, 16))
+				find_flag = 1;
+			put_task_struct(tsk);
+		}
+		rcu_read_unlock();
+
+		if (!find_flag)
+			continue;
+
+		if (local_index < out_tid_max_num) {
+			out_tid_arr[local_index] = render_iter->pid;
+			local_index++;
+		}
+		find_flag = 0;
+	}
+	fpsgo_render_tree_unlock(__func__);
+
+	*out_tid_num = local_index;
+
+	return 0;
 }
 
 static ssize_t systrace_mask_show(struct kobject *kobj,
@@ -2423,10 +2493,10 @@ static ssize_t render_attr_params_show(struct kobject *kobj,
 	pos += length;
 
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-				" qr_enable, qr_t2wnt_x, qr_t2wnt_y_p, qr_t2wnt_y_n\n");
+				" qr_enable, qr_enable_tid, qr_t2wnt_x, qr_t2wnt_y_p, qr_t2wnt_y_n\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-				" gcc_enable, gcc_fps_margin, gcc_up_sec_pct, gcc_up_step gcc_reserved_up_quota_pct\n");
+				" gcc_enable, gcc_enable_tid, gcc_fps_margin, gcc_up_sec_pct, gcc_up_step gcc_reserved_up_quota_pct\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 				" gcc_down_sec_pct, gcc_down_step, gcc_reserved_down_quota_pct\n");

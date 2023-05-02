@@ -9,6 +9,8 @@
 extern void (*cpufreq_notifier_fp)(int cid, unsigned long freq);
 extern void (*fpsgo_notify_qudeq_fp)(int qudeq, unsigned int startend,
 		int pid, unsigned long long identifier);
+extern void (*fpsgo_notify_frame_hint_fp)(int qudeq,
+		int pid, int frameID, unsigned long long id);
 extern void (*fpsgo_notify_connect_fp)(int pid, int connectedAPI,
 		unsigned long long identifier);
 extern void (*fpsgo_notify_bqid_fp)(int pid, unsigned long long bufID,
@@ -27,6 +29,8 @@ extern void (*fpsgo_notify_acquire_fp)(int c_pid, int p_pid,
 extern void (*fpsgo_notify_buffer_quota_fp)(int pid, int quota,
 		unsigned long long identifier);
 extern void (*fpsgo_get_pid_fp)(int cmd, int *pid);
+extern void (*fpsgo_notify_sbe_policy_fp)(int pid,  char *name,
+	unsigned long mask, int start, int *ret);
 
 extern void (*ged_vsync_notifier_fp)(void);
 

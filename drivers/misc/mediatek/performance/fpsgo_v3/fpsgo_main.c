@@ -45,6 +45,7 @@ enum FPSGO_NOTIFIER_PUSH_TYPE {
 	FPSGO_NOTIFIER_SBE_RESCUE           = 0x07,
 	FPSGO_NOTIFIER_ACQUIRE              = 0x08,
 	FPSGO_NOTIFIER_BUFFER_QUOTA         = 0x09,
+	FPSGO_NOTIFIER_FRAME_HINT			= 0x10,
 };
 
 /* TODO: use union*/
@@ -264,6 +265,37 @@ static void fpsgo_notifier_wq_cb_enable(int enable)
 	mutex_unlock(&notify_lock);
 }
 
+static void fpsgo_notifier_wq_cb_hint_frame(int qudeq,
+		int cur_pid, unsigned long long frameID,
+		unsigned long long curr_ts, unsigned long long id)
+{
+	FPSGO_LOGI("[FPSGO_CB] uxframe: %d, pid %d, ts %llu, id %llu\n",
+		qudeq, cur_pid, curr_ts, id);
+
+	if (!fpsgo_is_enable())
+		return;
+
+	switch (qudeq) {
+	case -1:
+		FPSGO_LOGI("[FPSGO_CB] uxframe UX err (no queue): pid %d\n",
+				cur_pid);
+		fpsgo_ctrl2comp_hint_frame_err(cur_pid, frameID, curr_ts, id);
+		break;
+	case 0:
+		FPSGO_LOGI("[FPSGO_CB] uxframe UX Start: pid %d\n",
+				cur_pid);
+		fpsgo_ctrl2comp_hint_frame_start(cur_pid, frameID, curr_ts, id);
+		break;
+	case 1:
+		FPSGO_LOGI("[FPSGO_CB] uxframe UX End: pid %d\n",
+				cur_pid);
+		fpsgo_ctrl2comp_hint_frame_end(cur_pid, frameID, curr_ts, id);
+		break;
+	default:
+		break;
+	}
+}
+
 static LIST_HEAD(head);
 static int condition_notifier_wq;
 static DEFINE_MUTEX(notifier_wq_lock);
@@ -338,6 +370,11 @@ static void fpsgo_notifier_wq_cb(void)
 				vpPush->pid,
 				vpPush->buffer_quota,
 				vpPush->identifier);
+		break;
+	case FPSGO_NOTIFIER_FRAME_HINT:
+		fpsgo_notifier_wq_cb_hint_frame(vpPush->qudeq_cmd,
+				vpPush->pid, vpPush->frameID,
+				vpPush->cur_ts, vpPush->identifier);
 		break;
 	default:
 		FPSGO_LOGE("[FPSGO_CTRL] unhandled push type = %d\n",
@@ -716,6 +753,54 @@ void fpsgo_notify_buffer_quota(int pid, int quota, unsigned long long identifier
 	fpsgo_queue_work(vpPush);
 }
 
+void fpsgo_notify_frame_hint(int qudeq,
+		int pid, int frameID, unsigned long long id)
+{
+	unsigned long long cur_ts;
+	struct FPSGO_NOTIFIER_PUSH_TAG *vpPush;
+
+	FPSGO_LOGI("[FPSGO_CTRL] ux_qudeq %d, id %llu pid %d\n",
+		qudeq, id, pid);
+
+	if (!fpsgo_is_enable())
+		return;
+
+	vpPush =
+		(struct FPSGO_NOTIFIER_PUSH_TAG *)
+		fpsgo_alloc_atomic(sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
+	if (!vpPush) {
+		FPSGO_LOGE("[FPSGO_CTRL] OOM\n");
+		return;
+	}
+
+	if (!kfpsgo_tsk) {
+		FPSGO_LOGE("[FPSGO_CTRL] NULL WorkQueue\n");
+		fpsgo_free(vpPush, sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
+		return;
+	}
+
+	cur_ts = fpsgo_get_time();
+
+	vpPush->ePushType = FPSGO_NOTIFIER_FRAME_HINT;
+	vpPush->pid = pid;
+	vpPush->cur_ts = cur_ts;
+	vpPush->qudeq_cmd = qudeq;
+	vpPush->frameID = frameID;
+	// FPSGO UX: bufid magic number.
+	vpPush->identifier = 5566;
+	fpsgo_queue_work(vpPush);
+}
+
+void fpsgo_notify_sbe_policy(int pid, char *name, unsigned long mask, int start, int *ret)
+{
+	/* *ret = 0;
+	 * *ret = fpsgo_ctrl2comp_set_sbe_policy(pid, name, mask, start);
+	 */
+
+	xgf_trace("[chi_debug] %s pid:%d name:%s mask:%ld, start:%d ret:%d",
+		__func__, pid, name, mask, start, *ret);
+}
+
 void dfrc_fps_limit_cb(unsigned int fps_limit)
 {
 	unsigned int vTmp = TARGET_UNLIMITED_FPS;
@@ -1043,6 +1128,8 @@ fail_reg_cpu_frequency_entry:
 
 	fpsgo_notify_swap_buffer_fp = fpsgo_notify_swap_buffer;
 	fpsgo_notify_sbe_rescue_fp = fpsgo_notify_sbe_rescue;
+	fpsgo_notify_frame_hint_fp = fpsgo_notify_frame_hint;
+	fpsgo_notify_sbe_policy_fp = fpsgo_notify_sbe_policy;
 
 	fpsgo_get_fps_fp = fpsgo_get_fps;
 	fpsgo_get_cmd_fp = fpsgo_get_cmd;

@@ -48,6 +48,7 @@ void eara2fbt_set_2nd_t2wnt(int pid, unsigned long long buffer_id,
 int fpsgo_ctrl2fbt_buffer_quota(unsigned long long ts, int pid, int quota,
 	unsigned long long identifier);
 void notify_rl_ko_is_ready(void);
+int fbt_get_rl_ko_is_ready(void);
 
 int __init fbt_cpu_init(void);
 void __exit fbt_cpu_exit(void);
@@ -55,6 +56,11 @@ void __exit fbt_cpu_exit(void);
 int fpsgo_ctrl2fbt_switch_fbt(int enable);
 int fbt_switch_ceiling(int value);
 
+void fbt_set_down_throttle_locked(int nsec);
+long fbt_get_loading(struct render_info *thr,
+	unsigned long long start_ts,
+	unsigned long long end_ts);
+void fbt_reset_boost(struct render_info *thr);
 void fbt_set_limit(int cur_pid, unsigned int blc_wt,
 	int pid, unsigned long long buffer_id,
 	int dep_num, struct fpsgo_loading dep[],
@@ -75,6 +81,26 @@ int fbt_xgff_dep_thread_notify(int pid, int op);
 
 void fbt_set_render_boost_attr(struct render_info *thr);
 void fbt_set_render_last_cb(struct render_info *thr, unsigned long long ts);
+int fbt_get_dep_list(struct render_info *thr);
+int fbt_determine_final_dep_list(struct render_info *thr, struct fpsgo_loading *final_dep_arr);
+unsigned int fbt_cal_blc(long aa, unsigned long long target_time,
+	unsigned int last_blc_wt, unsigned long long t_q2q, int is_retarget,
+	unsigned int *blc_wt);
+int fbt_cal_aa(long loading, unsigned long long t_cpu, unsigned long long t_q2q, long *aa);
+int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
+	int rl_is_ready, int rl_active, unsigned int target_fps,
+	int cooler_on, unsigned int eara_target_fpks, unsigned long long target_t,
+	unsigned long long last_target_t_ns, unsigned long long t_q2q_ns,
+	unsigned long long t_queue_end, unsigned long long next_vsync,
+	int expected_fps_margin, int learning_rate_p, int learning_rate_n, int quota_clamp_max,
+	int separate_aa_active, long aa_n, long aa_b,
+	long aa_m, int limit_cap, int limit_cap_b, int limit_cap_m,
+	unsigned long long *out_target_t_ns);
+void fbt_check_max_blc_locked(int pid);
+void fpsgo_get_fbt_mlock(const char *tag);
+void fpsgo_put_fbt_mlock(const char *tag);
+void fpsgo_get_blc_mlock(const char *tag);
+void fpsgo_put_blc_mlock(const char *tag);
 void fbt_set_fbt_is_boosting(int is_boosting);
 int fbt_get_fbt_is_boosting(void);
 

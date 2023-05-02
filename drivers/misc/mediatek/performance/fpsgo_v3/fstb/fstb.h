@@ -37,6 +37,7 @@ int fpsgo_other2fstb_get_fps(int pid, unsigned long long bufID,
 	int *tfps_arr, int *tfps_num, int max_tfps_num);
 int fpsgo_ktf2fstb_add_delete_render_info(int mode, int pid, unsigned long long bufID,
 	int target_fps, int queue_fps);
+int switch_thread_max_fps(int pid, int set_max);
 
 #if IS_ENABLED(CONFIG_MTK_FPSGO) || IS_ENABLED(CONFIG_MTK_FPSGO_V3)
 int is_fstb_enable(void);
@@ -63,6 +64,7 @@ void fpsgo_fbt2fstb_query_fps(int pid, unsigned long long bufID,
 		int *quantile_cpu_time, int *quantile_gpu_time,
 		int *target_fpks, int *cooler_on);
 void fpsgo_ctrl2fstb_dfrc_fps(int dfrc_fps);
+void fpsgo_fbt_ux2fstb_query_dfrc(int *fps, int *time);
 
 /* EARA */
 void eara2fstb_get_tfps(int max_cnt, int *is_camera, int *pid, unsigned long long *buf_id,
@@ -90,6 +92,7 @@ static inline void fpsgo_fbt2fstb_query_fps(int pid,
 		int *quantile_cpu_time, int *quantile_gpu_time,
 		int *target_fpks, int *cooler_on) { }
 static void fpsgo_ctrl2fstb_dfrc_fps(int dfrc_fps) { }
+static inline void fpsgo_fbt_ux2fstb_query_dfrc(int *fps, int *time) { }
 
 /* EARA */
 static inline void eara2fstb_get_tfps(int max_cnt, int *pid,

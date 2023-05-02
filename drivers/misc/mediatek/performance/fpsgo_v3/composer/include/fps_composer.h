@@ -13,6 +13,15 @@ enum FPSGO_COM_ERROR {
 	FPSGO_COM_IS_SF,
 };
 
+enum FPSGO_SBE_MASK {
+	FPSGO_CONTROL,
+	FPSGO_MAX_TARGET_FPS,
+	FPSGO_RESCUE_ENABLE,
+	FPSGO_RL_ENABLE,
+	FPSGO_GCC_DISABLE,
+	FPSGO_QUOTA_DISABLE,
+};
+
 struct connect_api_info {
 	struct rb_node rb_node;
 	struct list_head render_list;
@@ -50,6 +59,18 @@ void fpsgo_ctrl2comp_enqueue_start(int pid,
 void fpsgo_ctrl2comp_bqid(int pid, unsigned long long buffer_id,
 			int queue_SF, unsigned long long identifier,
 			int create);
+void fpsgo_ctrl2comp_hint_frame_start(int pid,
+			unsigned long long frameID,
+			unsigned long long enqueue_start_time,
+			unsigned long long identifier);
+void fpsgo_ctrl2comp_hint_frame_end(int pid,
+			unsigned long long frameID,
+			unsigned long long enqueue_start_time,
+			unsigned long long identifier);
+void fpsgo_ctrl2comp_hint_frame_err(int pid,
+			unsigned long long frameID,
+			unsigned long long time,
+			unsigned long long identifier);
 
 void fpsgo_ctrl2comp_connect_api(int pid, int api,
 	unsigned long long identifier);
@@ -57,8 +78,11 @@ void fpsgo_ctrl2comp_disconnect_api(int pid, int api,
 			unsigned long long identifier);
 void fpsgo_ctrl2comp_acquire(int p_pid, int c_pid, int c_tid,
 	int api, unsigned long long buffer_id);
+int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name,
+	unsigned long mask, int start);
 void fpsgo_base2comp_check_connect_api(void);
 int fpsgo_base2comp_check_connect_api_tree_empty(void);
+int switch_ui_ctrl(int pid, int set_ctrl);
 
 #endif
 

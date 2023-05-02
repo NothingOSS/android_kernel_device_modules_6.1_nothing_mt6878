@@ -51,6 +51,7 @@
 #include "fps_composer.h"
 #include "fpsgo_cpu_policy.h"
 #include "fbt_cpu_ctrl.h"
+#include "fbt_cpu_ux.h"
 
 #define GED_VSYNC_MISS_QUANTUM_NS 16666666
 #define TIME_3MS  3000000
@@ -65,7 +66,6 @@
 #define DEF_RESCUE_PERCENT 33
 #define DEF_RESCUE_NS_TH 0
 #define INVALID_NUM -1
-#define SBE_RESCUE_MODE_UNTIL_QUEUE_END 2
 #define DEFAULT_RESCUE_ENABLE 0
 #define DEFAULT_QR_T2WNT_X 0
 #define DEFAULT_QR_T2WNT_Y_P 100
@@ -203,7 +203,6 @@ static int isolation_limit_cap;
 static int rescue_enable;
 static int rescue_opp_f;
 static int rescue_enhance_f;
-static int sbe_enhance_f;
 static int rescue_opp_c;
 static int rescue_percent;
 static int min_rescue_percent;
@@ -258,7 +257,6 @@ static int gcc_deq_bound_quota;
 static int gcc_positive_clamp;
 static int boost_LR;
 static int aa_retarget;
-static int sbe_rescue_enable;
 static int loading_ignore_enable;
 static int loading_enable;
 static int filter_frame_enable;
@@ -277,7 +275,6 @@ module_param(bhr_opp_l, int, 0644);
 module_param(isolation_limit_cap, int, 0644);
 module_param(rescue_opp_f, int, 0644);
 module_param(rescue_enhance_f, int, 0644);
-module_param(sbe_enhance_f, int, 0644);
 module_param(rescue_opp_c, int, 0644);
 module_param(rescue_percent, int, 0644);
 module_param(min_rescue_percent, int, 0644);
@@ -418,7 +415,25 @@ static unsigned int *lastest_is_cl_isolated[LOADING_CNT];
 static unsigned int lastest_idx;
 static unsigned long long last_cb_ts;
 
-static unsigned long long sbe_rescuing_frame_id;
+void fpsgo_get_fbt_mlock(const char *tag)
+{
+	mutex_lock(&fbt_mlock);
+}
+
+void fpsgo_put_fbt_mlock(const char *tag)
+{
+	mutex_unlock(&fbt_mlock);
+}
+
+void fpsgo_get_blc_mlock(const char *tag)
+{
+	mutex_lock(&blc_mlock);
+}
+
+void fpsgo_put_blc_mlock(const char *tag)
+{
+	mutex_unlock(&blc_mlock);
+}
 
 int (*fbt_cal_target_time_fp)(int pid, unsigned long long bufID, int cooler_on, int target_fpks,
 		unsigned long long t_queue_end, unsigned long long t_Q2Q,
@@ -764,7 +779,7 @@ static void fbt_set_idleprefer_locked(int enable)
 	set_idleprefer = enable;
 }
 
-static void fbt_set_down_throttle_locked(int nsec)
+void fbt_set_down_throttle_locked(int nsec)
 {
 	if (!fbt_down_throttle_enable)
 		return;
@@ -1232,7 +1247,7 @@ static void fbt_query_dep_list_loading(struct render_info *thr)
 	fpsgo_fbt2minitop_start(thr->dep_valid_size, thr->dep_arr);
 }
 
-static int fbt_get_dep_list(struct render_info *thr)
+int fbt_get_dep_list(struct render_info *thr)
 {
 	int pid;
 	int count = 0;
@@ -1750,6 +1765,35 @@ static void fbt_cal_min_max_cap(struct render_info *thr,
 	*final_max_cap_m = max_cap_m;
 }
 
+int fbt_determine_final_dep_list(struct render_info *thr,
+	struct fpsgo_loading *final_dep_arr)
+{
+	int final_size = 0;
+
+	if (!thr || !final_dep_arr)
+		return 0;
+
+	if (thr->pid == max_blc_pid && thr->buffer_id == max_blc_buffer_id) {
+		final_size = thr->dep_valid_size;
+		memcpy(final_dep_arr, thr->dep_arr,
+			final_size * sizeof(struct fpsgo_loading));
+	} else {
+		dep_a_except_b(
+			&(thr->dep_arr[0]), thr->dep_valid_size,
+			&max_blc_dep[0], max_blc_dep_num,
+			&final_dep_arr[0], &final_size,
+			0);
+		print_dep(__func__, "dep",
+			thr->pid, thr->buffer_id,
+			&(thr->dep_arr[0]), thr->dep_valid_size);
+		print_dep(__func__, "dep_need_set",
+			thr->pid, thr->buffer_id,
+			&final_dep_arr[0], final_size);
+	}
+
+	return final_size;
+}
+
 static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 			int min_cap_b, int min_cap_m, int max_cap, int max_cap_b,
 			int max_cap_m, int jerk)
@@ -2064,6 +2108,7 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 	render_attr->check_buffer_quota_by_pid = check_buffer_quota;
 	render_attr->expected_fps_margin_by_pid = rl_expect_fps_margin;
 
+
 #if FPSGO_MW
 	fpsgo_attr = fpsgo_find_attr_by_pid(thr->tgid, 0);
 	if (!fpsgo_attr)
@@ -2197,6 +2242,10 @@ by_tid:
 	if (pid_attr.rescue_enable_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->rescue_enable_by_pid =
 			pid_attr.rescue_enable_by_pid;
+	if (pid_attr.gcc_enable_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->gcc_enable_by_pid = pid_attr.gcc_enable_by_pid;
+	if (pid_attr.qr_enable_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->qr_enable_by_pid = pid_attr.qr_enable_by_pid;
 #endif  // FPSGO_MW
 }
 
@@ -3823,7 +3872,7 @@ done:
 
 extern bool mtk_get_gpu_loading(unsigned int *pLoading);
 
-static int fbt_cal_aa(long loading, unsigned long long t_cpu, unsigned long long t_q2q,
+int fbt_cal_aa(long loading, unsigned long long t_cpu, unsigned long long t_q2q,
 					long *aa)
 {
 	int ret = 0;
@@ -3908,7 +3957,7 @@ static int fbt_get_filter_frame_aa(int ff_active, int separate_cap_active,
 	return filter_ret;
 }
 
-static unsigned int fbt_cal_blc(long aa, unsigned long long target_time,
+unsigned int fbt_cal_blc(long aa, unsigned long long target_time,
 	unsigned int last_blc_wt, unsigned long long t_q2q, int is_retarget,
 	unsigned int *blc_wt)
 {
@@ -4008,6 +4057,11 @@ void notify_rl_ko_is_ready(void)
 	mutex_unlock(&fbt_mlock);
 }
 EXPORT_SYMBOL(notify_rl_ko_is_ready);
+
+int fbt_get_rl_ko_is_ready(void)
+{
+	return rl_ko_is_ready;
+}
 
 int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 	int rl_is_ready, int rl_active, unsigned int target_fps,
@@ -4435,7 +4489,7 @@ static unsigned long long fbt_est_loading(unsigned long long cur_ts,
  */
 }
 
-static void fbt_check_max_blc_locked(int pid)
+void fbt_check_max_blc_locked(int pid)
 {
 	unsigned int temp_blc = 0;
 	int temp_blc_pid = 0;
@@ -4825,10 +4879,10 @@ out:
 }
 
 static unsigned long long fbt_adjust_loading_exp(struct render_info *thr,
-	unsigned long long ts, int adjust)
+	unsigned long long start_ts, unsigned long long end_ts, int adjust)
 {
 	int ret = 0, i;
-	unsigned long long new_ts_100us;
+	unsigned long long start_ts_100us, end_ts_100us;
 	unsigned long long loading = 0L;
 	unsigned long long *loading_cl;
 	unsigned long long loading_result = 0U;
@@ -4842,10 +4896,16 @@ static unsigned long long fbt_adjust_loading_exp(struct render_info *thr,
 		goto out;
 	}
 
-	new_ts_100us = nsec_to_100usec_ull(ts);
-	ret = fbt_get_loading_exp(thr->pid, thr->buffer_id, thr->render_last_cb_ts,
-		&loading, new_ts_100us, prev_cb_ts, lastest_ts, lastest_obv, &last_cb_ts,
-		&last_obv);
+	// -1: q2q
+	if (start_ts == -1)
+		start_ts_100us = thr->render_last_cb_ts;
+	else
+		start_ts_100us = nsec_to_100usec_ull(start_ts);
+	end_ts_100us = nsec_to_100usec_ull(end_ts);
+
+	ret = fbt_get_loading_exp(thr->pid, thr->buffer_id, start_ts_100us,
+			&loading, end_ts_100us, prev_cb_ts, lastest_ts, lastest_obv, &last_cb_ts,
+			&last_obv);
 	fpsgo_systrace_c_fbt_debug(thr->pid, thr->buffer_id, loading, "q2q_loading");
 	xgf_trace("[FBT][%s] fbt_get_loading_exp ret=%d", __func__, ret);
 
@@ -4857,7 +4917,7 @@ static unsigned long long fbt_adjust_loading_exp(struct render_info *thr,
 
 	for (i = 0; i < cluster_num; i++) {
 		ret = fbt_get_cl_loading_exp(thr->pid, thr->buffer_id, thr->render_last_cb_ts,
-			&loading_result, new_ts_100us, i);
+			&loading_result, end_ts_100us, i);
 		fpsgo_systrace_c_fbt_debug(thr->pid, thr->buffer_id, loading_result,
 			"q2q_loading_cl[%d]", i);
 		if (ret)
@@ -4867,8 +4927,10 @@ static unsigned long long fbt_adjust_loading_exp(struct render_info *thr,
 	}
 
 SKIP:
-	thr->render_last_cb_ts = new_ts_100us;
-	xgf_trace("[FBT][%s] render_last_cb_ts=%llu", __func__, thr->render_last_cb_ts);
+	if (start_ts == -1) {
+		thr->render_last_cb_ts = end_ts_100us;
+		xgf_trace("[FBT][%s] render_last_cb_ts=%llu", __func__, thr->render_last_cb_ts);
+	}
 
 	if (adjust != FPSGO_ADJ_NONE) {
 		loading_result = 0;
@@ -4938,7 +5000,9 @@ static int fbt_adjust_loading_weight(struct fbt_frame_info *frame_info,
 	return new_weight;
 }
 
-static long fbt_get_loading(struct render_info *thr, unsigned long long ts)
+long fbt_get_loading(struct render_info *thr,
+	unsigned long long start_ts,
+	unsigned long long end_ts)
 {
 	long loading = 0L;
 	int adjust = FPSGO_ADJ_NONE;
@@ -5008,12 +5072,12 @@ static long fbt_get_loading(struct render_info *thr, unsigned long long ts)
 		boost->hit_cluster, "hit_cluster");
 
 SKIP:
-	loading = fbt_adjust_loading_exp(thr, ts, adjust);
+	loading = fbt_adjust_loading_exp(thr, start_ts, end_ts, adjust);
 
 	return loading;
 }
 
-static void fbt_reset_boost(struct render_info *thr)
+void fbt_reset_boost(struct render_info *thr)
 {
 	struct fbt_boost_info *boost = NULL;
 	int cur_pid = 0;
@@ -5084,7 +5148,7 @@ static void fbt_frame_start(struct render_info *thr, unsigned long long ts)
 
 	fbt_set_render_boost_attr(thr);
 
-	loading = fbt_get_loading(thr, ts);
+	loading = fbt_get_loading(thr, -1, ts);
 	fpsgo_systrace_c_fbt_debug(thr->pid, thr->buffer_id,
 		loading, "compute_loading");
 
@@ -5552,146 +5616,6 @@ void fpsgo_base2fbt_cancel_jerk(struct render_info *thr)
 		if (thr->boost_info.proc.jerks[i].jerking)
 			hrtimer_cancel(&(thr->boost_info.proc.jerks[i].timer));
 	}
-}
-
-void fpsgo_sbe2fbt_rescue(struct render_info *thr, int start, int enhance,
-		unsigned long long frame_id)
-{
-	int floor, blc_wt = 0, blc_wt_b = 0, blc_wt_m = 0;
-	int max_cap = 100, max_cap_b = 100, max_cap_m = 100;
-	struct cpu_ctrl_data *pld;
-	int headroom;
-	int new_enhance;
-	unsigned int temp_blc = 0;
-	int temp_blc_pid = 0;
-	unsigned long long temp_blc_buffer_id = 0;
-	int temp_blc_dep_num = 0;
-	struct fpsgo_loading temp_blc_dep[MAX_DEP_NUM];
-	int separate_aa_final = separate_aa;
-
-	if (!thr || !sbe_rescue_enable)
-		return;
-
-	separate_aa_final = thr->attr.separate_aa_by_pid;
-
-	pld = kcalloc(cluster_num, sizeof(struct cpu_ctrl_data), GFP_KERNEL);
-	if (!pld)
-		return;
-
-	mutex_lock(&fbt_mlock);
-
-	if (start) {
-		if (frame_id)
-			sbe_rescuing_frame_id = frame_id;
-		if (thr->boost_info.sbe_rescue != 0)
-			goto leave;
-		floor = thr->boost_info.last_blc;
-		if (!floor)
-			goto leave;
-
-		rescue_opp_c = clamp(rescue_opp_c, 0, nr_freq_cpu - 1);
-		headroom = rescue_opp_c;
-		new_enhance = enhance < 0 ?  rescue_enhance_f : sbe_enhance_f;
-
-		if (thr->boost_info.cur_stage == FPSGO_JERK_SECOND)
-			headroom = rescue_second_copp;
-
-		rescue_opp_f = clamp(rescue_opp_f, 0, nr_freq_cpu - 1);
-		blc_wt = fbt_get_new_base_blc(pld, floor, new_enhance, rescue_opp_f, headroom);
-		if (separate_aa_final) {
-			blc_wt_b = fbt_get_new_base_blc(pld, floor, new_enhance,
-						rescue_opp_f, headroom);
-			blc_wt_m = fbt_get_new_base_blc(pld, floor, new_enhance,
-						rescue_opp_f, headroom);
-		}
-
-		if (!blc_wt)
-			goto leave;
-		thr->boost_info.sbe_rescue = 1;
-
-		if (thr->boost_info.cur_stage != FPSGO_JERK_SECOND) {
-			blc_wt = fbt_limit_capacity(blc_wt, 1);
-			if (separate_aa_final) {
-				blc_wt_b = fbt_limit_capacity(blc_wt_b, 1);
-				blc_wt_m = fbt_limit_capacity(blc_wt_m, 1);
-			}
-			fbt_set_hard_limit_locked(FPSGO_HARD_CEILING, pld);
-
-			thr->boost_info.cur_stage = FPSGO_JERK_SBE;
-
-			if (thr->pid == max_blc_pid && thr->buffer_id == max_blc_buffer_id) {
-				max_blc_stage = FPSGO_JERK_SBE;
-				fpsgo_systrace_c_fbt(-100, 0, max_blc_stage, "max_blc_stage");
-			}
-		}
-		fbt_set_ceiling(pld, thr->pid, thr->buffer_id);
-
-		if (boost_ta) {
-			fbt_set_boost_value(blc_wt);
-			max_blc_cur = blc_wt;
-		} else {
-			fbt_cal_min_max_cap(thr, blc_wt, blc_wt_b, blc_wt_m, FPSGO_JERK_FIRST,
-				thr->pid, thr->buffer_id, &blc_wt, &blc_wt_b, &blc_wt_m,
-				&max_cap, &max_cap_b, &max_cap_m);
-			fbt_set_min_cap_locked(thr, blc_wt, blc_wt_b, blc_wt_m, max_cap,
-				max_cap_b, max_cap_m, FPSGO_JERK_FIRST);
-		}
-
-		thr->boost_info.last_blc = blc_wt;
-
-		if (separate_aa_final) {
-			thr->boost_info.last_blc_b = blc_wt_b;
-			thr->boost_info.last_blc_m = blc_wt_m;
-		}
-
-		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, new_enhance, "sbe rescue");
-
-
-		/* support mode: sbe rescue until queue end */
-		if (start == SBE_RESCUE_MODE_UNTIL_QUEUE_END) {
-			thr->boost_info.sbe_rescue = 0;
-			sbe_rescuing_frame_id = -1;
-			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 0, "sbe rescue");
-		}
-
-	} else {
-		if (thr->boost_info.sbe_rescue == 0)
-			goto leave;
-		if (frame_id < sbe_rescuing_frame_id)
-			goto leave;
-		sbe_rescuing_frame_id = -1;
-		thr->boost_info.sbe_rescue = 0;
-		blc_wt = thr->boost_info.last_normal_blc;
-		if (separate_aa_final) {
-			blc_wt_b = thr->boost_info.last_normal_blc_b;
-			blc_wt_m = thr->boost_info.last_normal_blc_m;
-		}
-		if (!blc_wt || (separate_aa_final && !(blc_wt_b && blc_wt_m)))
-			goto leave;
-
-		/* find max perf index */
-		fbt_find_max_blc(&temp_blc, &temp_blc_pid, &temp_blc_buffer_id,
-				&temp_blc_dep_num, temp_blc_dep);
-		rescue_opp_f = clamp(rescue_opp_f, 0, nr_freq_cpu - 1);
-		fbt_get_new_base_blc(pld, temp_blc, 0, rescue_opp_f, bhr_opp);
-		fbt_set_ceiling(pld, thr->pid, thr->buffer_id);
-		if (boost_ta) {
-			fbt_set_boost_value(blc_wt);
-			max_blc_cur = blc_wt;
-		} else {
-			fbt_cal_min_max_cap(thr, blc_wt, blc_wt_b, blc_wt_m, FPSGO_JERK_FIRST,
-				thr->pid, thr->buffer_id, &blc_wt, &blc_wt_b, &blc_wt_m,
-				&max_cap, &max_cap_b, &max_cap_m);
-			fbt_set_min_cap_locked(thr, blc_wt, blc_wt_b, blc_wt_m, max_cap,
-				max_cap_b, max_cap_m, FPSGO_JERK_FIRST);
-		}
-		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 0, "sbe rescue");
-	}
-	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, blc_wt, "perf idx");
-
-leave:
-	mutex_unlock(&fbt_mlock);
-	kfree(pld);
 }
 
 int fpsgo_ctrl2fbt_buffer_quota(unsigned long long ts, int pid, int quota,
@@ -8345,6 +8269,7 @@ void __exit fbt_cpu_exit(void)
 	fbt_cpu_ctrl_exit();
 	exit_fbt_platform();
 	exit_xgf();
+	fbt_cpu_ux_exit();
 }
 
 int __init fbt_cpu_init(void)
@@ -8371,7 +8296,6 @@ int __init fbt_cpu_init(void)
 	loading_th = 0;
 	sampling_period_MS = 256;
 	rescue_enhance_f = 25;
-	sbe_enhance_f = 50;
 	rescue_second_enhance_f = 100;
 	loading_adj_cnt = fbt_get_default_adj_count();
 	loading_debnc_cnt = 30;
@@ -8398,16 +8322,16 @@ int __init fbt_cpu_init(void)
 
 	/* t2wnt = target_time * (1+x) + quota * y_p, if quota > 0 */
 	/* t2wnt = target_time * (1+x) + quota * y_n, if quota < 0 */
-	qr_enable = fbt_get_default_qr_enable();
+	//qr_enable = fbt_get_default_qr_enable();
 	qr_t2wnt_x = DEFAULT_QR_T2WNT_X;
 	qr_t2wnt_y_p = DEFAULT_QR_T2WNT_Y_P;
 	qr_t2wnt_y_n = DEFAULT_QR_T2WNT_Y_N;
-	qr_hwui_hint = DEFAULT_QR_HWUI_HINT;
+	//qr_hwui_hint = DEFAULT_QR_HWUI_HINT;
 	qr_filter_outlier = 0;
 	qr_mod_frame = 0;
 	qr_debug = 0;
 
-	gcc_enable = fbt_get_default_gcc_enable();
+	//gcc_enable = fbt_get_default_gcc_enable();
 	gcc_reserved_up_quota_pct = DEFAULT_GCC_RESERVED_UP_QUOTA_PCT;
 	gcc_reserved_down_quota_pct = DEFAULT_GCC_RESERVED_DOWN_QUOTA_PCT;
 	gcc_window_size = DEFAULT_GCC_WINDOW_SIZE;
@@ -8441,8 +8365,6 @@ int __init fbt_cpu_init(void)
 	check_buffer_quota = 0;
 	no_buffer_rescue = 1;
 	rl_expect_fps_margin = -1;
-
-	sbe_rescue_enable = fbt_get_default_sbe_rescue_enable();
 
 	if (cluster_num <= 0)
 		FPSGO_LOGE("cpufreq policy not found");
@@ -8559,6 +8481,7 @@ int __init fbt_cpu_init(void)
 
 	/* sub-module initialization */
 	init_xgf();
+	fbt_cpu_ux_init();
 	minitop_init();
 
 	fbt_cpu_ctrl_init();

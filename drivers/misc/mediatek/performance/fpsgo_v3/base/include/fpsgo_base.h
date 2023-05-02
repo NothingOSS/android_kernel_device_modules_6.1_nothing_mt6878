@@ -244,6 +244,7 @@ struct render_info {
 	int frame_type;
 	int bq_type;
 	int hwui;
+	int frame_hint; /*frame start/end provided by user*/
 	int sbe_control_flag;
 	int control_pid_flag;
 	unsigned long long render_last_cb_ts;
@@ -258,6 +259,14 @@ struct render_info {
 	unsigned long long dequeue_length;
 	unsigned long long Q2Q_time;
 	unsigned long long running_time;
+
+	/*ux*/
+	unsigned long long t_last_start;
+	struct mutex ux_mlock;
+	struct rb_root ux_frame_info_tree;
+	int ux_blc_next;
+	int ux_blc_cur;
+	int sbe_enhance;
 
 	/*fbt*/
 	int linger;
@@ -381,6 +390,7 @@ void fpsgo_delete_sbe_info(int pid);
 struct fps_control_pid_info *fpsgo_search_and_add_fps_control_pid(int pid, int force);
 void fpsgo_delete_fpsgo_control_pid(int pid);
 int fpsgo_get_all_fps_control_pid_info(struct fps_control_pid_info *arr);
+int fpsgo_get_all_sbe_info(struct sbe_info *arr);
 int fpsgo_check_thread_status(void);
 void fpsgo_clear(void);
 struct BQ_id *fpsgo_find_BQ_id(int pid, int tgid, long long identifier,
@@ -407,6 +417,8 @@ void fpsgo_ctrl2base_wait_cam(int cmd, int *pid);
 int fpsgo_sbe_rescue_traverse(int pid, int start, int enhance, unsigned long long frame_id);
 void fpsgo_stop_boost_by_pid(int pid);
 void fpsgo_stop_boost_by_render(struct render_info *r);
+int fpsgo_get_render_tid_by_render_name(int tgid, char *name,
+	int *out_tid_arr, int *out_tid_num, int out_tid_max_num);
 
 int init_fpsgo_common(void);
 

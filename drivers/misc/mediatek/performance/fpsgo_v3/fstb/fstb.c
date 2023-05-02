@@ -1621,6 +1621,16 @@ static int cal_target_fps(struct FSTB_FRAME_INFO *iter)
 	return target_limit;
 }
 
+void fpsgo_fbt_ux2fstb_query_dfrc(int *fps, int *time)
+{
+	unsigned long long local_time = 1000000000ULL;
+
+	mutex_lock(&fstb_lock);
+	*fps = dfps_ceiling;
+	*time = div64_u64(local_time, dfps_ceiling);
+	mutex_unlock(&fstb_lock);
+}
+
 void fpsgo_fbt2fstb_query_fps(int pid, unsigned long long bufID,
 		int *target_fps, int *target_cpu_time, int *fps_margin,
 		int *quantile_cpu_time, int *quantile_gpu_time,
