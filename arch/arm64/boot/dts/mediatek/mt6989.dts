@@ -1338,6 +1338,7 @@
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
+		dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 
 		topckgen@10000000 {
 			compatible = "mediatek,topckgen";
