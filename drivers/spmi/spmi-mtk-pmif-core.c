@@ -368,6 +368,11 @@ static struct spmi_dev spmidev[16];
 
 struct spmi_dev *get_spmi_device(int slaveid)
 {
+	if ((slaveid < SPMI_SLAVE_0) || (slaveid > SPMI_SLAVE_15)) {
+		pr_notice("[SPMI] get_spmi_device invalid slave id %d\n", slaveid);
+		return NULL;
+	}
+
 	if (!spmidev[slaveid].exist)
 		pr_notice("[SPMI] slave id %d is not existed\n", slaveid);
 
