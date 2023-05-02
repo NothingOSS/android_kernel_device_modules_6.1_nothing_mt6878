@@ -1147,6 +1147,7 @@
 			<&pericfg_ao_clk CLK_PERAOP_DMA_B>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		ch-offset-i2c = <0x100>;
 	};
 
 	i2c8: i2c@11d23000 {
