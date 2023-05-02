@@ -197,10 +197,10 @@ static void cm_mgr_perf_platform_set_status_mt6897(int enable)
 		perf_now = ktime_get();
 
 		if (cm_mgr_get_dram_opp_base() == -1) {
-			cm_mgr_dram_opp = 1;
+			cm_mgr_dram_opp = 0;
 			cm_mgr_set_dram_opp_base(cm_mgr_get_num_perf());
 		} else {
-			if (cm_mgr_dram_opp > 1)
+			if (cm_mgr_dram_opp > 0)
 				cm_mgr_dram_opp--;
 		}
 
