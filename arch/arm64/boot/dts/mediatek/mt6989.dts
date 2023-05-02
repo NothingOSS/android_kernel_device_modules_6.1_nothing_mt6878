@@ -7168,7 +7168,7 @@
 		seninf_top: seninf-top@1a00e000 {
 			compatible = "mediatek,seninf-core";
 			reg = <0 0x1a00e000 0 0x18000>,
-				<0 0x11c80000 0 0x20000>;
+				<0 0x11c00000 0 0x20000>;
 			reg-names = "base", "ana-rx";
 			interrupts = <GIC_SPI 576 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 573 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -7213,8 +7213,8 @@
 				 <&topckgen_clk CLK_TOP_SENINF4_SEL>,
 				 <&topckgen_clk CLK_TOP_SENINF5_SEL>,
 				 <&topckgen_clk CLK_TOP_CAMTM_SEL>,
+				 <&topckgen_clk CLK_TOP_OSC_D4>,
 				 <&topckgen_clk CLK_TOP_UNIVPLL_D4_D2>,
-				 <&topckgen_clk CLK_VLP_CK_CAMTG0_SEL>,
 				 <&topckgen_clk CLK_TOP_OSC_D20>,
 				 <&topckgen_clk CLK_TOP_TCK_26M_MX9>;
 #if 0
@@ -7224,15 +7224,15 @@
 			clock-names = "clk_cam_seninf",
 				 "clk_cam_cam",
 				 "clk_cam_camtg",
-				 "clk_top_seninf0",
+				 "clk_top_seninf",
 				 "clk_top_seninf1",
 				 "clk_top_seninf2",
 				 "clk_top_seninf3",
 				 "clk_top_seninf4",
 				 "clk_top_seninf5",
 				 "clk_top_camtm",
-				 "clk_top_mainpll2_d9",
-				 "clk_vlp_ck_camtg0",
+				 "clk_top_osc_d4",
+				 "clk_top_univpll_d4_d2",
 				 "clk_top_osc_d20",
 				 "clk_top_tck_26m_mx9";
 #if 0
