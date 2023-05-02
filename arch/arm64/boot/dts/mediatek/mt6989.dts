@@ -7321,6 +7321,7 @@
 				<&topckgen_clk CLK_TOP_USB_XHCI_SEL>,
 				<&pericfg_ao_clk CLK_PERAOP_SSUSB0_FRMCNT>;
 			clock-names = "sys_ck", "host_ck", "frmcnt_ck";
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_PERI_USB0>;
 			#address-cells = <2>;
 			#size-cells = <2>;
 			ranges;
@@ -7329,9 +7330,9 @@
 			mediatek,force-vbus;
 			mediatek,clk-mgr;
 			mediatek,usb3-drd;
-			mediatek,hw-req-ctrl;
 			mediatek,noise-still-tr;
 			mediatek,gen1-txdeemph;
+			mediatek,hwrscs-vers = <1>;
 			usb-role-switch;
 			cdp-block;
 			port {
@@ -7373,7 +7374,6 @@
 			mediatek,clk-mgr;
 			mediatek,noise-still-tr;
 			mediatek,hwrscs-vers = <1>;
-			mediatek,vs-voter = <&pmic 0x149a 0x1 1>;
 			usb-role-switch;
 			port {
 				mtu3_drd_switch1: endpoint {
@@ -8671,6 +8671,11 @@
 				remote-endpoint = <&mtu3_drd_switch1>;
 			};
 		};
+	};
+
+	usb_meta: usb-meta {
+		compatible = "mediatek,usb-meta";
+		udc = <&ssusb>;
 	};
 
 	/* ATF logger */
