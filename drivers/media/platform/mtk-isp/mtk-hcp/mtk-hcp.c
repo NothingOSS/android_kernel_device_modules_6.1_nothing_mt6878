@@ -1759,7 +1759,7 @@ int mtk_hcp_partial_flush(struct platform_device *pdev, struct flush_buf_info *b
 		|| (hcp_dev->data == NULL)
 		|| (hcp_dev->data->partial_flush == NULL)
 		|| (b_info == NULL)) {
-		dev_info(&pdev->dev, "%s:not supported\n", __func__);
+		dev_dbg(&pdev->dev, "%s:not supported\n", __func__);
 		return -1;
 	}
 

@@ -1050,6 +1050,6 @@ struct mtk_hcp_data isp7sp_hcp_data = {
 	.get_pqdip_virt = isp7sp_get_pqdip_virt,
 	.get_pqdip_cq_fd = isp7sp_get_pqdip_cq_fd,
 	.get_pqdip_tdr_fd = isp7sp_get_pqdip_tdr_fd,
-	.partial_flush = isp7sp_partial_flush,
+	.partial_flush = NULL,
 };
 MODULE_IMPORT_NS(DMA_BUF);
