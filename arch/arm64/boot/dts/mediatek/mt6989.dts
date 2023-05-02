@@ -4746,7 +4746,7 @@
 				"user-smi", "user-jpegdec", "user-jpegenc", "user-venc",
 				"user-vfmt", "user-img", "user-cam",
 				"user-vcore", "user-vmm", "user-vdisp", "user-vdec";
-			mediatek,free-run;
+			// mediatek,free-run;
 			mediatek,dpsw-thres = <1>;
 			mediatek,vdec-larb = <&smi_larb5>;
 		};
