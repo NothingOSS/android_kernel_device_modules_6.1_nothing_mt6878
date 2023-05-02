@@ -64,6 +64,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-vcodec
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-videobuf
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu
 ccflags-y += -I$(DEVICE_MODULES_PATH)/arch/arm

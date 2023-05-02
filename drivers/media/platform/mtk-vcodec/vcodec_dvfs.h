@@ -78,6 +78,7 @@ struct dvfs_params {
 	u32 min_freq;		/* min freq */
 	u32 normal_max_freq;	/* normal max freq (no oc) */
 	u32 freq_sum;		/* summation of all instances */
+	u32 oprate_sum;		/* summation of operation rate of all instances */
 	u32 target_freq;	/* target freq */
 	u8 lock_cnt[MTK_VDEC_HW_NUM]; /* lock cnt */
 	u8 frame_need_update;	/* this frame begin / end needs update */

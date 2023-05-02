@@ -635,6 +635,7 @@ void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 			dev->venc_dvfs_params.per_frame_adjust = 0;
 
 		dev->venc_dvfs_params.freq_sum = (u32)freq_sum;
+		dev->venc_dvfs_params.oprate_sum  = (u32)op_rate_sum;
 		freq_sum = match_avail_freq(dev, codec_type, freq_sum);
 
 		dev->venc_dvfs_params.target_freq = (u32)freq_sum;

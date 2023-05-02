@@ -2408,6 +2408,7 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		mtk_v4l2_debug(0, "[%d][VDVFS][VENC] start ctrl DVFS in AP", ctx->id);
 	}
 	mtk_venc_pmqos_begin_inst(ctx);
+	mtk_venc_pmqos_monitor_reset(ctx->dev);
 	mutex_unlock(&ctx->dev->enc_dvfs_mutex);
 
 	return 0;

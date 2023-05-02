@@ -50,6 +50,7 @@
 #define V4L2_BUF_FLAG_OUTPUT_NOT_GENERATED 0x02000000
 #define MTK_INVALID_TIMESTAMP   ((u64)-1)
 #define MTK_VDEC_ALWAYS_ON_OP_RATE 135
+#define MTK_VENC_MONI_FRM_CNT 8 // Monitor 8 frames
 #define MTK_VCODEC_IPI_THREAD_PRIORITY 1
 #define MTK_VCODEC_MAX_MQ_NODE_CNT  4
 
@@ -873,6 +874,7 @@ struct mtk_vcodec_dev {
 	struct list_head venc_dvfs_inst;
 	struct dvfs_params vdec_dvfs_params;
 	struct dvfs_params venc_dvfs_params;
+	struct vcodec_dev_qos venc_qos;
 	struct vcodec_port_bw *vdec_port_bw;
 	struct vcodec_port_bw *venc_port_bw;
 	struct vcodec_larb_bw *vdec_larb_bw;
