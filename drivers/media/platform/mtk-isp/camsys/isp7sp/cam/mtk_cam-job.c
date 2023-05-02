@@ -497,6 +497,8 @@ mtk_cam_job_initialize_engines(struct mtk_cam_ctx *ctx,
 	/* raw */
 	raw_master_id = _get_master_raw_id(engines);
 	if (raw_master_id >= 0) {
+		int is_srt = is_dc_mode(job) || is_m2m(job);
+
 		for (i = 0 ; i < ARRAY_SIZE(ctx->hw_raw); i++) {
 			struct mtk_raw_device *raw;
 			int is_master;
@@ -507,8 +509,7 @@ mtk_cam_job_initialize_engines(struct mtk_cam_ctx *ctx,
 			raw = dev_get_drvdata(ctx->hw_raw[i]);
 			is_master = !!(raw_master_id == raw->id);
 
-			initialize(raw, !is_master,
-				is_dc_mode(job) ? 1 : 0, &engine_cb);
+			initialize(raw, !is_master, is_srt, &engine_cb);
 
 			if (is_master && opt && opt->master_raw_init)
 				opt->master_raw_init(ctx->hw_raw[i], job);

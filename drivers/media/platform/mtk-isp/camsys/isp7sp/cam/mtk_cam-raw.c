@@ -85,7 +85,7 @@ static struct mtk_raw_device *get_raw_dev(struct mtk_yuv_device *yuv_dev)
 	return dev_get_drvdata(dev);
 }
 
-static void init_camsys_settings(struct mtk_raw_device *dev, bool is_dc)
+static void init_camsys_settings(struct mtk_raw_device *dev, bool is_srt)
 {
 	struct mtk_cam_device *cam_dev = dev->cam;
 	struct mtk_yuv_device *yuv_dev = get_yuv_dev(dev);
@@ -137,7 +137,7 @@ static void init_camsys_settings(struct mtk_raw_device *dev, bool is_dc)
 		return;
 	}
 
-	if (is_dc) {
+	if (is_srt) {
 		writel_relaxed(0x0, cam_dev->base + reg_raw_urgent);
 		writel_relaxed(0x0, cam_dev->base + reg_yuv_urgent);
 		mtk_smi_larb_ultra_dis(&dev->larb_pdev->dev, true);
@@ -150,7 +150,7 @@ static void init_camsys_settings(struct mtk_raw_device *dev, bool is_dc)
 	}
 
 	wmb(); /* TBC */
-	dev_info(dev->dev, "%s: is dc:%d\n", __func__, is_dc);
+	dev_info(dev->dev, "%s: is srt:%d\n", __func__, is_srt);
 }
 
 static void init_ADLWR_settings(struct mtk_cam_device *cam)
@@ -214,7 +214,7 @@ static void reset_error_handling(struct mtk_raw_device *dev)
 }
 
 #define CAMCQ_CQ_EN_DEFAULT	0x14
-void initialize(struct mtk_raw_device *dev, int is_slave, int is_dc,
+void initialize(struct mtk_raw_device *dev, int is_slave, int is_srt,
 		struct engine_callback *cb)
 {
 	u32 val;
@@ -246,7 +246,7 @@ void initialize(struct mtk_raw_device *dev, int is_slave, int is_dc,
 	atomic_set(&dev->vf_en, 0);
 	reset_msgfifo(dev);
 
-	init_camsys_settings(dev, is_dc);
+	init_camsys_settings(dev, is_srt);
 	init_ADLWR_settings(dev->cam);
 
 	dev->engine_cb = cb;
