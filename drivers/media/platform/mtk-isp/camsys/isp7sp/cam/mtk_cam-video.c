@@ -114,11 +114,15 @@ static int mtk_cam_vb2_queue_setup(struct vb2_queue *vq,
 
 		*num_planes = 1;
 		sizes[0] = size;
+		alloc_devs[0] = cam->smmu_dev;
+
 		/* workaround */
 		if (fmt->fmt.pix_mp.num_planes > 1) {
 			*num_planes = fmt->fmt.pix_mp.num_planes;
-			for (i = 0; i < *num_planes; i++)
+			for (i = 0; i < *num_planes; i++) {
 				sizes[i] = size;
+				alloc_devs[i] = cam->smmu_dev;
+			}
 		}
 		for (i = 0; i < *num_planes; i++)
 			dev_dbg(cam->dev, "[%s] id:%d, name:%s, np:%d, i:%d, size:%d\n",
@@ -363,7 +367,6 @@ static int mtk_cam_vb2_buf_prepare(struct vb2_buffer *vb)
 	struct mtk_cam_buffer *mtk_buf = mtk_cam_vb2_buf_to_dev_buf(vb);
 	const struct v4l2_format *fmt = &node->active_fmt;
 	unsigned int size;
-	unsigned int plane;
 
 	if (V4L2_TYPE_IS_OUTPUT(vb->type) &&
 	    !(mtk_buf->flags & FLAG_NO_CACHE_CLEAN)) {
@@ -371,8 +374,7 @@ static int mtk_cam_vb2_buf_prepare(struct vb2_buffer *vb)
 		if (CAM_DEBUG_ENABLED(V4L2))
 			dev_dbg(vb->vb2_queue->dev, "%s: %s\n",
 				__func__, node->desc.name);
-		for (plane = 0; plane < vb->num_planes; ++plane)
-			mtk_cam_vb2_sync_for_device(vb->planes[plane].mem_priv);
+		mtk_cam_vb2_sync_for_device(vb);
 	}
 
 	if (vb->vb2_queue->type == V4L2_BUF_TYPE_META_OUTPUT ||
@@ -417,7 +419,6 @@ static void mtk_cam_vb2_buf_finish(struct vb2_buffer *vb)
 {
 	struct mtk_cam_video_device *node = mtk_cam_vbq_to_vdev(vb->vb2_queue);
 	struct mtk_cam_buffer *mtk_buf = mtk_cam_vb2_buf_to_dev_buf(vb);
-	unsigned int plane;
 
 	if (V4L2_TYPE_IS_CAPTURE(vb->type) &&
 	    !(mtk_buf->flags & FLAG_NO_CACHE_INVALIDATE)) {
@@ -425,8 +426,7 @@ static void mtk_cam_vb2_buf_finish(struct vb2_buffer *vb)
 		if (CAM_DEBUG_ENABLED(V4L2))
 			dev_dbg(vb->vb2_queue->dev, "%s: %s\n",
 				__func__, node->desc.name);
-		for (plane = 0; plane < vb->num_planes; ++plane)
-			mtk_cam_vb2_sync_for_cpu(vb->planes[plane].mem_priv);
+		mtk_cam_vb2_sync_for_cpu(vb);
 	}
 }
 

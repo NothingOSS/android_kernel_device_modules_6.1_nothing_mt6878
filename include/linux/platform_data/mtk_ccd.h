@@ -57,6 +57,7 @@ struct rp_scp_ipi_desc {
 
 struct mtk_ccd {
 	struct device *dev;
+	struct device *smmu_dev;
 	struct rproc *rproc;
 
 	dev_t ccd_devno;

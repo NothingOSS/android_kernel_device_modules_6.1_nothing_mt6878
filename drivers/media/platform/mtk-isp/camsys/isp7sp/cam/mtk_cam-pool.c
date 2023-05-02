@@ -85,21 +85,21 @@ int mtk_cam_device_buf_init(struct mtk_cam_device_buf *buf,
 	buf->dbuf = dbuf;
 	buf->db_attach = dma_buf_attach(dbuf, dev);
 	if (IS_ERR(buf->db_attach)) {
-		dev_info(dev, "failed to attach dbuf: %s\n", dev_name(dev));
+		pr_info("failed to attach dbuf: %s\n", dev_name(dev));
 		return -1;
 	}
 
 	buf->dma_sgt = dma_buf_map_attachment(buf->db_attach,
 					      DMA_BIDIRECTIONAL);
 	if (IS_ERR(buf->dma_sgt)) {
-		dev_info(dev, "failed to map attachment\n");
+		pr_info("failed to map attachment\n");
 		goto fail_detach;
 	}
 
 	/* check size */
 	size = _get_contiguous_size(buf->dma_sgt);
 	if (expected_size > size) {
-		dev_info(dev,
+		pr_info(
 			 "%s: dma_sgt size(%zu) smaller than expected(%zu)\n",
 			 __func__, size, expected_size);
 		goto fail_attach_unmap;

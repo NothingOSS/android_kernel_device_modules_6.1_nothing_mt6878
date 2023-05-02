@@ -281,32 +281,54 @@ const struct vb2_mem_ops mtk_cam_dma_contig_memops = {
 	.num_users	= mtk_cam_vb2_num_users,
 };
 
-void mtk_cam_vb2_sync_for_device(void *buf_priv)
+void mtk_cam_vb2_sync_for_device(struct vb2_buffer *vb)
 {
-	struct mtk_cam_vb2_buf *buf = buf_priv;
-	struct sg_table *sgt = buf->dma_sgt;
-	struct mtk_cam_video_device *node = mtk_cam_vbq_to_vdev(buf->vb->vb2_queue);
+	struct mtk_cam_video_device *node = mtk_cam_vbq_to_vdev(vb->vb2_queue);
+	struct mtk_cam_vb2_buf *buf;
+	struct sg_table *sgt;
+	unsigned int plane;
 
-	if (!sgt)
-		return;
 	if (CAM_DEBUG_ENABLED(V4L2))
 		pr_info("%s: %s\n", __func__, node->desc.name);
-	if (buf->sync)
-		dma_sync_sgtable_for_device(buf->dev, sgt, buf->dma_dir);
+
+	for (plane = 0; plane < vb->num_planes; ++plane) {
+		buf = vb->planes[plane].mem_priv;
+		sgt = buf->dma_sgt;
+
+		if (!sgt)
+			continue;
+
+		if (buf->sync) {
+			dma_sync_sgtable_for_device(
+				vb->vb2_queue->alloc_devs[plane] ? : vb->vb2_queue->dev,
+				sgt, buf->dma_dir);
+		}
+	}
 }
 
-void mtk_cam_vb2_sync_for_cpu(void *buf_priv)
+void mtk_cam_vb2_sync_for_cpu(struct vb2_buffer *vb)
 {
-	struct mtk_cam_vb2_buf *buf = buf_priv;
-	struct sg_table *sgt = buf->dma_sgt;
-	struct mtk_cam_video_device *node = mtk_cam_vbq_to_vdev(buf->vb->vb2_queue);
+	struct mtk_cam_video_device *node = mtk_cam_vbq_to_vdev(vb->vb2_queue);
+	struct mtk_cam_vb2_buf *buf;
+	struct sg_table *sgt;
+	unsigned int plane;
 
-	if (!sgt)
-		return;
 	if (CAM_DEBUG_ENABLED(V4L2))
 		pr_info("%s: %s\n", __func__, node->desc.name);
-	if (buf->sync)
-		dma_sync_sgtable_for_cpu(buf->dev, sgt, buf->dma_dir);
+
+	for (plane = 0; plane < vb->num_planes; ++plane) {
+		buf = vb->planes[plane].mem_priv;
+		sgt = buf->dma_sgt;
+
+		if (!sgt)
+			continue;
+
+		if (buf->sync) {
+			dma_sync_sgtable_for_cpu(
+				vb->vb2_queue->alloc_devs[plane] ? : vb->vb2_queue->dev,
+				sgt, buf->dma_dir);
+		}
+	}
 }
 
 MODULE_DESCRIPTION("DMA-contig memory handling routines for mtk-cam videobuf2");

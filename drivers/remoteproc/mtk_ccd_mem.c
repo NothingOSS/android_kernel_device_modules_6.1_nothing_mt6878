@@ -174,6 +174,7 @@ void *mtk_ccd_get_buffer(struct mtk_ccd *ccd,
 	void *va;
 	dma_addr_t da;
 	unsigned int buffers;
+	struct device *attach_dev;
 	struct mtk_ccd_buf *buf;
 	struct mtk_ccd_mem *ccd_buffer;
 	struct mtk_ccd_memory *ccd_memory = ccd->ccd_memory;
@@ -193,7 +194,8 @@ void *mtk_ccd_get_buffer(struct mtk_ccd *ccd,
 	}
 
 	ccd_buffer = &ccd_memory->bufs[buffers];
-	buf = mtk_ccd_buf_alloc(ccd_memory->dev, mem_buff_data->len);
+	attach_dev = ccd->smmu_dev ? : ccd_memory->dev;
+	buf = mtk_ccd_buf_alloc(attach_dev, mem_buff_data->len);
 	ccd_buffer->mem_priv = buf;
 	ccd_buffer->size = mem_buff_data->len;
 	if (IS_ERR(ccd_buffer->mem_priv)) {

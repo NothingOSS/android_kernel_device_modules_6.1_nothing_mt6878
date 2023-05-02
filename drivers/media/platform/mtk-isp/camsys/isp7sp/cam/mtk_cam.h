@@ -248,6 +248,7 @@ struct mtk_cam_engines {
 struct cmdq_client;
 struct mtk_cam_device {
 	struct device *dev;
+	struct device *smmu_dev;
 	void __iomem *base;
 	void __iomem *adl_base;
 

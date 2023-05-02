@@ -13,6 +13,7 @@
 #include <uapi/linux/mtk_ccd_controls.h>
 
 #include "remoteproc_internal.h"
+#include "iommu_debug.h"
 
 #define CCD_DEV_NAME	"mtk_ccd"
 #define MAX_CODE_SIZE 0x500000
@@ -367,6 +368,7 @@ static void ccd_unregcdev(struct mtk_ccd *ccd)
 static int ccd_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
+	struct device *alloc_dev;
 	struct device_node *np = dev->of_node;
 	struct mtk_ccd *ccd;
 	struct resource *res;
@@ -385,25 +387,37 @@ static int ccd_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	if (dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34)))
+	ccd = (struct mtk_ccd *)rproc->priv;
+	ccd->rproc = rproc;
+	ccd->dev = dev;
+	ccd->smmu_dev = NULL;
+
+	if (smmu_v3_enabled()) {
+		ccd->smmu_dev = mtk_smmu_get_shared_device(&pdev->dev);
+		if (ccd->smmu_dev) {
+			dev_info(dev, "failed to get smmu device\n");
+			return -ENODEV;
+		}
+	}
+
+	alloc_dev = ccd->smmu_dev ? : dev;
+	if (dma_set_mask_and_coherent(alloc_dev, DMA_BIT_MASK(34)))
 		dev_info(dev, "No suitable DMA available\n");
 
-	if (!dev->dma_parms) {
-		dev->dma_parms =
-			devm_kzalloc(dev, sizeof(*dev->dma_parms), GFP_KERNEL);
-		if (!dev->dma_parms)
+	if (!alloc_dev->dma_parms) {
+		alloc_dev->dma_parms =
+			devm_kzalloc(alloc_dev,
+				sizeof(*alloc_dev->dma_parms), GFP_KERNEL);
+		if (!alloc_dev->dma_parms)
 			return -ENOMEM;
 	}
 
-	if (dev->dma_parms) {
-		ret = dma_set_max_seg_size(dev, UINT_MAX);
+	if (alloc_dev->dma_parms) {
+		ret = dma_set_max_seg_size(alloc_dev, UINT_MAX);
 		if (ret)
 			dev_info(dev, "Failed to set DMA segment size\n");
 	}
 
-	ccd = (struct mtk_ccd *)rproc->priv;
-	ccd->rproc = rproc;
-	ccd->dev = dev;
 	platform_set_drvdata(pdev, ccd);
 	ccd_regcdev(ccd);
 	dev_info(ccd->dev, "ccd is created: %p\n", ccd);

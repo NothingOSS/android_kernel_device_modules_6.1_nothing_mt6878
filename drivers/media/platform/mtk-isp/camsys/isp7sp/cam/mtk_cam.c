@@ -43,6 +43,7 @@
 #include "mtk_cam-job_utils.h"
 #include "mtk_cam-raw_ctrl.h"
 #include "mtk_cam-hsf.h"
+#include "iommu_debug.h"
 
 #ifdef CONFIG_VIDEO_MTK_ISP_CAMSYS_DUBUG
 static unsigned int debug_ae = 1;
@@ -1601,6 +1602,11 @@ static struct dma_buf *_alloc_dma_buf(const char *name,
 	return dbuf;
 }
 
+static struct device *get_dev_to_attach(struct mtk_cam_ctx *ctx)
+{
+	return ctx->cam->smmu_dev ? : ctx->cam->engines.raw_devs[0];
+}
+
 static int _alloc_pool_by_dbuf(struct mtk_cam_device_buf *buf,
 			       struct mtk_cam_pool *pool,
 			       struct device *dev,
@@ -1661,7 +1667,7 @@ static int mtk_cam_ctx_alloc_rgbw_caci_buf(struct mtk_cam_ctx *ctx, int w, int h
 	size_t caci_size = 0;
 	int ret;
 
-	dev_to_attach = ctx->cam->engines.raw_devs[0];
+	dev_to_attach = get_dev_to_attach(ctx);
 	buf = &ctx->w_caci_buf;
 
 	if (CALL_PLAT_HW(query_caci_size, w, h, &caci_size) || caci_size == 0)
@@ -1738,7 +1744,7 @@ static int mtk_cam_ctx_alloc_pool(struct mtk_cam_ctx *ctx)
 	struct device *dev_to_attach;
 	int ret;
 
-	dev_to_attach = ctx->cam->engines.raw_devs[0];
+	dev_to_attach = get_dev_to_attach(ctx);
 
 	ret = _alloc_pool("CAM_MEM_CQ_ID", &ctx->cq_buffer, &ctx->cq_pool,
 			  dev_to_attach, CQ_BUF_SIZE, CAM_CQ_BUF_NUM,
@@ -3587,6 +3593,7 @@ static int mtk_cam_probe(struct platform_device *pdev)
 {
 	struct mtk_cam_device *cam_dev;
 	struct device *dev = &pdev->dev;
+	struct device *alloc_dev;
 	int ret;
 	unsigned int i;
 	const struct camsys_platform_data *platform_data;
@@ -3608,17 +3615,26 @@ static int mtk_cam_probe(struct platform_device *pdev)
 	if (!cam_dev)
 		return -ENOMEM;
 
-	if (dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34)))
+	if (smmu_v3_enabled()) {
+		cam_dev->smmu_dev = mtk_smmu_get_shared_device(&pdev->dev);
+		if (cam_dev->smmu_dev) {
+			dev_info(dev, "failed to get smmu device\n");
+			return -ENODEV;
+		}
+	}
+
+	alloc_dev = cam_dev->smmu_dev ? : dev;
+	if (dma_set_mask_and_coherent(alloc_dev, DMA_BIT_MASK(34)))
 		dev_info(dev, "%s: No suitable DMA available\n", __func__);
 
-	if (!dev->dma_parms) {
-		dev->dma_parms =
-			devm_kzalloc(dev, sizeof(*dev->dma_parms), GFP_KERNEL);
+	if (!alloc_dev->dma_parms) {
+		alloc_dev->dma_parms =
+			devm_kzalloc(alloc_dev, sizeof(*alloc_dev->dma_parms), GFP_KERNEL);
 		if (!dev->dma_parms)
 			return -ENOMEM;
 	}
 
-	if (dev->dma_parms) {
+	if (alloc_dev->dma_parms) {
 		ret = dma_set_max_seg_size(dev, UINT_MAX);
 		if (ret)
 			dev_info(dev, "Failed to set DMA segment size\n");
