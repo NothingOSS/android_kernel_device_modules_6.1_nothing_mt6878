@@ -7636,7 +7636,8 @@
 			mediatek,power-flow-config = <0x4>;
 			/* srclken_o1 set value |= 1<<14 */
 			mediatek,srclken-o1 = <0>;
-			reg = <0 0x0d124000 0 0x2000>; /* l2sram base address */
+			reg = <0 0x0d124000 0 0x2000>, /* l2sram base address */
+				  <0 0x1cc03000 0 0x1000>; /* sequencer base address */
 			/* DTS/GIC_ID: MDWDT 388/420; CCIF0 257/289; CCIF0 258/290 */
 			interrupts = <GIC_SPI 388 IRQ_TYPE_LEVEL_HIGH  0>,
 					 <GIC_SPI 257 IRQ_TYPE_LEVEL_HIGH  0>,
