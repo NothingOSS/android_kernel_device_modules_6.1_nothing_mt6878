@@ -54,6 +54,9 @@ const struct mtk_imgsys_init_array
 	{0x00D8, 0xFFFFFFFF}, /* WPE_TOP_CQ_IRQ_STX, w-clr */
 	{0x00E0, 0xFFFFFFFF}, /* WPE_TOP_CQ_IRQ_STX2, w-clr */
 	{0x00E8, 0xFFFFFFFF}, /* WPE_TOP_CQ_IRQ_STX3, w-clr */
+	{0x0118, 0x080A0A83}, /* WPE_TOP_STG_CTL */
+	{0x011C, 0x00010010}, /* WPE_TOP_STG_CTL_RANGE_UD */
+	{0x0124, 0x000C0002}, /* WPE_TOP_STG_CTL_RANGE_LR */
 	{0x0660, 0x10000040}, /* VECI_CON, fifo size 0x40 */
 	{0x0664, 0x10400040}, /* VECI_CON2, set pre-ultra */
 	{0x0668, 0x00400040}, /* VECI_CON3, disable ultra */
@@ -75,6 +78,7 @@ const struct mtk_imgsys_init_array
 	{0x0960, 0x10000040}, /* MSKO_CON, fifo size 0x40 */
 	{0x0964, 0x10400040}, /* MSKO_CON2, set pre-ultra */
 	{0x0968, 0x00400040}, /* MSKO_CON3, disable ultra */
+	{0x0A80, 0x000000FF}, /* WPE_STG_EN_CTRL */
 	{0x0E60, 0x80000000}, /* WPE_DMA_DMA_ERR_CTRL */
 	{0x0C08, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR0_CTL */
 	{0x0C18, CQ_THRX_CTL}, /*DIPCQ_W1A_DIPCQ_CQ_THR1_CTL */
