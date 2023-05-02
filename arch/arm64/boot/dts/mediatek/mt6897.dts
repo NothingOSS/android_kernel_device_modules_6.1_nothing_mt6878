@@ -930,7 +930,8 @@
 				monitor-name = "debug_ctrl_ao_INFRA_AO1";
 				base = <0x1002b000>;
 				num-ports = <62>;
-				idle-masks = <0x20 0x80>;
+				idle-masks = <0x14 0x02000000>,
+					<0x20 0x80>;
 				bus-status-offset = <0x24>;
 				bus-status-num = <8>;
 				bus-freq-mhz = <78>;
