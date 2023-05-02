@@ -37,6 +37,7 @@ const char * const *get_mt6989_all_clk_names(void)
 		"ap2conn_host_sel",
 		"atb_sel",
 		"cirq_sel",
+		"efuse_sel",
 		"mcu_l3gic_sel",
 		"mcu_infra_sel",
 		"dsp_sel",
@@ -562,6 +563,7 @@ const char * const *get_mt6989_all_clk_names(void)
 		/* dip_nr2_dip1 */
 		"dip_nr2_dip1_larb15",
 		"dip_nr2_dip1_dip_nr",
+		"dip_nr2_dip1_larb39",
 
 		/* wpe1_dip1 */
 		"wpe1_dip1_larb11",

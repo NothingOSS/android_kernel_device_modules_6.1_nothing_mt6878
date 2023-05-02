@@ -170,7 +170,6 @@
 #define FM_SYSTIMER_26M_CK			14
 #define FM_SSPM_CK				15
 #define FM_SRCK_CK				16
-#define FM_SRAMRC_CK				17
 #define FM_CAMTG0_CK				18
 #define FM_IPS_CK				19
 #define FM_SSPM_26M_CK				20

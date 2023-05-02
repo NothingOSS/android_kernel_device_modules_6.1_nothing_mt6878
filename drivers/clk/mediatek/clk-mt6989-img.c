@@ -67,6 +67,8 @@ static const struct mtk_gate dip_nr2_dip1_clks[] = {
 			"img1_ck"/* parent */, 0),
 	GATE_DIP_NR2_DIP1(CLK_DIP_NR2_DIP1_DIP_NR, "dip_nr2_dip1_dip_nr",
 			"img1_ck"/* parent */, 1),
+	GATE_DIP_NR2_DIP1(CLK_DIP_NR2_DIP1_LARB39, "dip_nr2_dip1_larb39",
+			"img1_ck"/* parent */, 2),
 };
 
 static const struct mtk_clk_desc dip_nr2_dip1_mcd = {

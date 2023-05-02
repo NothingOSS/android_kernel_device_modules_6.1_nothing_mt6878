@@ -22,8 +22,8 @@
 
 /* bringup config */
 #define MT_CCF_BRINGUP		1
-#define MT_CCF_PLL_DISABLE	1
-#define MT_CCF_MUX_DISABLE	1
+#define MT_CCF_PLL_DISABLE	0
+#define MT_CCF_MUX_DISABLE	0
 
 /* Regular Number Definition */
 #define INV_OFS	-1
@@ -153,6 +153,7 @@
 #define TOP_MUX_AP2CONN_HOST_SHIFT		13
 #define TOP_MUX_ATB_SHIFT			14
 #define TOP_MUX_CIRQ_SHIFT			15
+#define TOP_MUX_EFUSE_SHIFT			16
 #define TOP_MUX_MCU_L3GIC_SHIFT			17
 #define TOP_MUX_MCU_INFRA_SHIFT			18
 #define TOP_MUX_DSP_SHIFT			20
@@ -258,6 +259,12 @@
 #define TOP_MUX_IPS_SHIFT			18
 #define TOP_MUX_SSPM_26M_SHIFT			19
 #define TOP_MUX_ULPOSC_SSPM_SHIFT		20
+
+/* TOPCK CKSTA REG */
+#define CKSTA_REG				0x0230
+#define CKSTA_REG1				0x0234
+#define CKSTA_REG2				0x0238
+#define CKSYS2_CKSTA_REG			0x0A30
 
 /* TOPCK DIVIDER REG */
 #define CLK_AUDDIV_2				0x0328
@@ -1198,6 +1205,11 @@ static const char * const cirq_parents[] = {
 	"tck_26m_mx9_ck",
 	"osc_d20",
 	"mainpll_d7_d4"
+};
+
+static const char * const efuse_parents[] = {
+	"tck_26m_mx9_ck",
+	"osc_d20"
 };
 
 static const char * const mcu_l3gic_parents[] = {
@@ -2198,6 +2210,11 @@ static const struct mtk_mux top_muxes[] = {
 		cirq_parents/* parent */, CLK_CFG_3, CLK_CFG_3_SET,
 		CLK_CFG_3_CLR/* set parent */, 24/* lsb */, 2/* width */,
 		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_CIRQ_SHIFT/* upd shift */),
+	/* CLK_CFG_4 */
+	MUX_CLR_SET_UPD(CLK_TOP_EFUSE_SEL/* dts */, "efuse_sel",
+		efuse_parents/* parent */, CLK_CFG_4, CLK_CFG_4_SET,
+		CLK_CFG_4_CLR/* set parent */, 0/* lsb */, 1/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_EFUSE_SHIFT/* upd shift */),
 	MUX_CLR_SET_UPD(CLK_TOP_MCU_L3GIC_SEL/* dts */, "mcu_l3gic_sel",
 		mcu_l3gic_parents/* parent */, CLK_CFG_4, CLK_CFG_4_SET,
 		CLK_CFG_4_CLR/* set parent */, 8/* lsb */, 2/* width */,
@@ -2629,6 +2646,12 @@ static const struct mtk_mux top_muxes[] = {
 		cirq_parents/* parent */, CLK_CFG_3, CLK_CFG_3_SET,
 		CLK_CFG_3_CLR/* set parent */, 24/* lsb */, 2/* width */,
 		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_CIRQ_SHIFT/* upd shift */),
+	/* CLK_CFG_4 */
+	MUX_GATE_CLR_SET_UPD(CLK_TOP_EFUSE_SEL/* dts */, "efuse_sel",
+		efuse_parents/* parent */, CLK_CFG_4, CLK_CFG_4_SET,
+		CLK_CFG_4_CLR/* set parent */, 0/* lsb */, 1/* width */,
+		7/* pdn */, CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_EFUSE_SHIFT/* upd shift */),
 	MUX_CLR_SET_UPD(CLK_TOP_MCU_L3GIC_SEL/* dts */, "mcu_l3gic_sel",
 		mcu_l3gic_parents/* parent */, CLK_CFG_4, CLK_CFG_4_SET,
 		CLK_CFG_4_CLR/* set parent */, 8/* lsb */, 2/* width */,

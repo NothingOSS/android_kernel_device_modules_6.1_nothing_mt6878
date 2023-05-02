@@ -311,7 +311,6 @@ static const struct fmeter_clk fclks[] = {
 	FMCLK2(VLPCK, FM_SYSTIMER_26M_CK, "fm_systimer_26m_ck", 0x0040, 15, 1),
 	FMCLK2(VLPCK, FM_SSPM_CK, "fm_sspm_ck", 0x0040, 23, 1),
 	FMCLK2(VLPCK, FM_SRCK_CK, "fm_srck_ck", 0x0040, 31, 1),
-	FMCLK2(VLPCK, FM_SRAMRC_CK, "fm_sramrc_ck", 0x0050, 7, 1),
 	FMCLK2(VLPCK, FM_CAMTG0_CK, "fm_camtg0_ck", 0x0050, 15, 1),
 	FMCLK2(VLPCK, FM_IPS_CK, "fm_ips_ck", 0x0050, 23, 1),
 	FMCLK2(VLPCK, FM_SSPM_26M_CK, "fm_sspm_26m_ck", 0x0050, 31, 1),

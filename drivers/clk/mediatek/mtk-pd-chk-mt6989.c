@@ -364,6 +364,7 @@ struct pd_check_swcg dip_nr1_dip1_swcgs[] = {
 struct pd_check_swcg dip_nr2_dip1_swcgs[] = {
 	SWCG("dip_nr2_dip1_larb15"),
 	SWCG("dip_nr2_dip1_dip_nr"),
+	SWCG("dip_nr2_dip1_larb39"),
 	SWCG(NULL),
 };
 /* wpe1_dip1 */
@@ -827,6 +828,7 @@ unsigned int pd_list[] = {
 	MT6989_CHK_PD_MM_INFRA,
 	MT6989_CHK_PD_DP_TX,
 	MT6989_CHK_PD_CSI_RX,
+	MT6989_CHK_PD_SSRSYS,
 	MT6989_CHK_PD_MFG0,
 };
 
@@ -963,6 +965,7 @@ static struct pd_sta pd_pwr_sta[] = {
 	{MT6989_CHK_PD_MM_INFRA, spm, 0x0EA8, GENMASK(31, 30)},
 	{MT6989_CHK_PD_DP_TX, spm, 0x0EB0, GENMASK(31, 30)},
 	{MT6989_CHK_PD_CSI_RX, spm, 0x0EF4, GENMASK(31, 30)},
+	{MT6989_CHK_PD_SSRSYS, spm, 0x0EF8, GENMASK(31, 30)},
 	{MT6989_CHK_PD_MFG0, spm, 0x0F04, GENMASK(31, 30)},
 };
 
@@ -1025,6 +1028,7 @@ static int off_mtcmos_id[] = {
 	MT6989_CHK_PD_MM_INFRA,
 	MT6989_CHK_PD_DP_TX,
 	MT6989_CHK_PD_CSI_RX,
+	MT6989_CHK_PD_SSRSYS,
 	MT6989_CHK_PD_MFG0,
 	PD_NULL,
 };
