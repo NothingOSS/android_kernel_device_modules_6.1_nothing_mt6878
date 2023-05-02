@@ -28,6 +28,8 @@ static struct audio_gpio_attr aud_gpios[MT6989_AFE_GPIO_GPIO_NUM] = {
 	[MT6989_AFE_GPIO_DAT_MOSI_ON] = {"aud-dat-mosi-on", false, NULL},
 	[MT6989_AFE_GPIO_I2SOUT4_OFF] = {"aud-gpio-i2sout4-off", false, NULL},
 	[MT6989_AFE_GPIO_I2SOUT4_ON] = {"aud-gpio-i2sout4-on", false, NULL},
+	[MT6989_AFE_GPIO_I2SIN4_OFF] = {"aud-gpio-i2sin4-off", false, NULL},
+	[MT6989_AFE_GPIO_I2SIN4_ON] = {"aud-gpio-i2sin4-on", false, NULL},
 	[MT6989_AFE_GPIO_DAT_MOSI_CH34_OFF] = {"aud-dat-mosi-ch34-off",
 		false, NULL
 	},
