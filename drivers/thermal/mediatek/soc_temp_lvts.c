@@ -1008,15 +1008,16 @@ static int soc_temp_lvts_set_trip_temp(struct thermal_zone_device *tz,
 	struct device *dev = lvts_data->dev;
 	int ret;
 
-	if (temp <= MIN_THERMAL_HW_REBOOT_POINT && temp != THERMAL_TEMP_INVALID) {
-		dev_info(dev, "input temperature is lower than %d\n",
-			MIN_THERMAL_HW_REBOOT_POINT);
-		return -EINVAL;
-	}
-
 	trip_points = of_thermal_get_trip_points(lvts_data->tz_dev);
 	if (!trip_points)
 		return -EINVAL;
+
+	if (temp <= MIN_THERMAL_HW_REBOOT_POINT && temp != THERMAL_TEMP_INVALID &&
+		trip_points[trip].type == THERMAL_TRIP_CRITICAL && lvts_tz->id == 0) {
+		dev_info(dev, "%s, input temperature is lower than %d\n", __func__,
+			MIN_THERMAL_HW_REBOOT_POINT);
+		return -EINVAL;
+	}
 
 	if (trip_points[trip].type != THERMAL_TRIP_CRITICAL || lvts_tz->id != 0)
 		return 0;
@@ -1557,7 +1558,7 @@ static void tc_irq_handler(struct lvts_data *lvts_data, int tc_id, char thermint
 
 	if (IS_ENABLE(FEATURE_SCP_OC)) {
 		if (tc_id == SCP_APPOINTED_CONTROLLER) {
-			enum interrupt_type ignore_dump_log = OTHER;
+			enum interrupt_type ignore_dump_log;
 
 			base = GET_BASE_ADDR(tc_id);
 			ret = readl(LVTSMONINTSTS_0 + base);
