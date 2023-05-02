@@ -71,6 +71,7 @@ static int scp_ultra_pcm_dev_probe(struct platform_device *pdev)
 	}
 	/*  register dsp dai driver*/
 	scp_ultra->mtk_scp_hardware = &scp_ultra_hardware;
+	pr_debug("%s: dev name %s\n", __func__, dev_name(&pdev->dev));
 	scp_ultra->dev = &pdev->dev;
 	scp_ultra->ultra_mem.ultra_ul_memif_id = -1;
 	scp_ultra->ultra_mem.ultra_dl_memif_id = -1;
@@ -79,14 +80,6 @@ static int scp_ultra_pcm_dev_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, scp_ultra);
 	pm_runtime_enable(&pdev->dev);
-
-	if (pdev->dev.of_node) {
-		dev_set_name(&pdev->dev, "%s", "snd-scp-ultra");
-		pdev->name = pdev->dev.kobj.name;
-	} else {
-		pr_debug("%s(), pdev->dev.of_node NULL!!!\n", __func__);
-	}
-
 	ret = snd_soc_register_component(&pdev->dev,
 			&mtk_scp_ultra_pcm_platform, NULL, 0);
 	if (ret) {
