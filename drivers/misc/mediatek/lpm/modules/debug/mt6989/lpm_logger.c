@@ -457,6 +457,37 @@ static struct lpm_log_helper log_help = {
 	.prev = 0,
 };
 
+static int lpm_get_common_status(void)
+{
+	struct lpm_log_helper *help = &log_help;
+
+	if (!help->wakesrc || !lpm_spm_base)
+		return -EINVAL;
+
+	help->wakesrc->debug_flag2 = plat_mmio_read(SPM_SW_RSV_2);
+	help->wakesrc->common_cnt = plat_mmio_read(SPM_SW_RSV_0);
+
+	return 0;
+}
+
+static int lpm_log_common_info(void)
+{
+	struct lpm_spm_wake_status *wakesrc = log_help.wakesrc;
+#define LOG_BUF_SIZE	256
+	char log_buf[LOG_BUF_SIZE] = { 0 };
+	int log_size = 0;
+
+	lpm_get_common_status();
+	log_size += scnprintf(log_buf + log_size,
+			LOG_BUF_SIZE - log_size,
+			"Common: debug = %x, cnt = %x\n",
+			wakesrc->debug_flag2, wakesrc->common_cnt);
+
+	pr_info("[name:spm&][SPM] %s", log_buf);
+
+	return 0;
+}
+
 static int lpm_get_wakeup_status(void)
 {
 	struct lpm_log_helper *help = &log_help;
@@ -811,6 +842,7 @@ static struct lpm_dbg_plat_ops dbg_ops = {
 	.lpm_save_sleep_info = lpm_save_sleep_info,
 	.lpm_get_spm_wakesrc_irq = NULL,
 	.lpm_get_wakeup_status = lpm_get_wakeup_status,
+	.lpm_log_common_status = lpm_log_common_info,
 };
 
 static struct lpm_dbg_plat_info dbg_info = {

@@ -406,6 +406,7 @@ int lpm_dbg_plat_ops_register(struct lpm_dbg_plat_ops *lpm_dbg_plat_ops)
 	_lpm_dbg_plat_ops.lpm_save_sleep_info = lpm_dbg_plat_ops->lpm_save_sleep_info;
 	_lpm_dbg_plat_ops.lpm_get_spm_wakesrc_irq = lpm_dbg_plat_ops->lpm_get_spm_wakesrc_irq;
 	_lpm_dbg_plat_ops.lpm_get_wakeup_status = lpm_dbg_plat_ops->lpm_get_wakeup_status;
+	_lpm_dbg_plat_ops.lpm_log_common_status = lpm_dbg_plat_ops->lpm_log_common_status;
 	return 0;
 }
 EXPORT_SYMBOL(lpm_dbg_plat_ops_register);
@@ -512,6 +513,9 @@ static int lpm_log_timer_func(unsigned long long dur, void *priv)
 	} else {
 		pr_info("[name:spm&][SPM] mcusys was not off\n");
 	}
+
+	if (_lpm_dbg_plat_ops.lpm_log_common_status)
+		_lpm_dbg_plat_ops.lpm_log_common_status();
 
 	pm_get_active_wakeup_sources(wakeup_sources, MAX_SUSPEND_ABORT_LEN);
 	pr_info("[name:spm&] %s\n", wakeup_sources);

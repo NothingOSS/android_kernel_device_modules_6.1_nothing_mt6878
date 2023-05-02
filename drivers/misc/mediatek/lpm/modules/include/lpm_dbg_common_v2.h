@@ -109,6 +109,7 @@ struct lpm_dbg_plat_ops {
 	void (*lpm_save_sleep_info)(void);
 	void (*lpm_get_spm_wakesrc_irq)(void);
 	int (*lpm_get_wakeup_status)(void);
+	int (*lpm_log_common_status)(void);
 };
 
 struct spm_condition {
