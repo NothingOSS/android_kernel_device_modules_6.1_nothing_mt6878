@@ -14983,10 +14983,10 @@ static int get_hp_current_calibrate_val(struct mt6681_priv *priv)
 	int value, sign;
 
 	/* set eFuse register index */
-	/* HPDET_COMP[6:0] @ efuse bit 464 ~ 470 */
-	/* HPDET_COMP_SIGN @ efuse bit 471 */
-	/* 464 / 8 = 58(0x3a) bytes */
-	ret = nvmem_device_read(priv->hp_efuse, 0x3a, 1, &efuse_val);
+	/* HPDET_COMP[6:0] @ efuse bit 408 ~ 414 */
+	/* HPDET_COMP_SIGN @ efuse bit 415 */
+	/* 408 / 8 = 51(0x33) bytes */
+	ret = nvmem_device_read(priv->hp_efuse, 0x33, 1, &efuse_val);
 	if (ret < 0) {
 		dev_info(priv->dev, "%s(), efuse read fail: %d\n", __func__,
 			 ret);
