@@ -86,11 +86,11 @@ static void trusty_dump_logs(struct trusty_log_state *s)
 		 * have been corrupted by the producer.
 		 */
 		if (alloc - get > log->sz) {
-			pr_err("trusty: log overflow.");
+			pr_err("ise_log: log overflow.");
 			get = alloc - log->sz;
 			continue;
 		}
-		pr_info("trusty: %s", s->line_buffer);
+		pr_info("ise_log: %s", s->line_buffer);
 		get += read_chars;
 	}
 	s->get = get;
@@ -157,6 +157,11 @@ static int trusty_log_probe(struct platform_device *pdev)
 	struct trusty_log_state *s;
 	int result;
 	phys_addr_t pa;
+
+	if (!is_trusty_real_driver()) {
+		dev_info(&pdev->dev, "%s: ise trusty log dummy driver\n", __func__);
+		return 0;
+	}
 
 	dev_dbg(&pdev->dev, "%s\n", __func__);
 	if (!trusty_supports_logging(pdev->dev.parent)) {
@@ -265,3 +270,5 @@ static struct platform_driver trusty_log_driver = {
 };
 
 module_platform_driver(trusty_log_driver);
+
+MODULE_LICENSE("GPL v2");
