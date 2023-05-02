@@ -90,5 +90,7 @@ void get_md_sleep_time(struct md_sleep_status *md_data);
 int mbraink_get_power_info(char *buffer, unsigned int size, int datatype);
 int mbraink_power_getVcoreInfo(struct mbraink_power_vcoreInfo *pmbrainkPowerVcoreInfo);
 
+void mbraink_get_power_wakeup_info(struct mbraink_power_wakeup_data *wakeup_info_buffer);
+
 
 #endif /*end of MBRAINK_POWER_H*/

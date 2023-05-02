@@ -33,7 +33,9 @@
 #define CPUFREQ_NOTIFY_INFO		'c'
 #define SUSPEND_INFO			'd'
 #define BATTERY_INFO			'e'
-#define FEATURE_EN			'f'
+#define FEATURE_EN				'f'
+#define WAKEUP_INFO				'g'
+
 
 /*Mbrain Delegate IOCTL List*/
 #define RO_POWER				_IOR(IOC_MAGIC, POWER_INFO, char*)
@@ -63,6 +65,9 @@
 							struct mbraink_battery_data*)
 #define WO_FEATURE_EN		_IOW(IOC_MAGIC, FEATURE_EN, \
 							struct mbraink_feature_en*)
+#define RO_WAKEUP_INFO			_IOR(IOC_MAGIC, WAKEUP_INFO, \
+							struct mbraink_power_wakeup_data*)
+
 
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1

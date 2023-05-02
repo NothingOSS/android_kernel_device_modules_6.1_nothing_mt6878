@@ -18,6 +18,8 @@
 #define MAX_NOTIFY_CPUFREQ_NUM			8
 #define MAX_SUSPEND_INFO_SZ			128
 #define MAX_FREQ_SZ				64
+#define MAX_WAKEUP_SOURCE_NUM			12
+#define MAX_NAME_SZ						64
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -194,5 +196,25 @@ struct mbraink_battery_data {
 struct mbraink_feature_en {
 	unsigned int feature_en;
 };
+
+struct mbraink_power_wakeup_struct {
+	char name[MAX_NAME_SZ];
+	unsigned long  active_count;
+	unsigned long event_count;
+	unsigned long wakeup_count;
+	unsigned long expire_count;
+	s64 active_time;
+	s64 total_time;
+	s64 max_time;
+	s64 last_time;
+	s64 prevent_sleep_time;
+};
+
+struct mbraink_power_wakeup_data {
+	uint8_t is_has_data;
+	unsigned short next_pos;
+	struct mbraink_power_wakeup_struct drv_data[MAX_WAKEUP_SOURCE_NUM];
+};
+
 
 #endif

@@ -223,4 +223,80 @@ int mbraink_power_getVcoreInfo(struct mbraink_audio_idleRatioInfo *pmbrainkAudio
 }
 #endif //#if IS_ENABLED(CONFIG_MTK_SWPM_MODULE)
 
+void mbraink_get_power_wakeup_info(struct mbraink_power_wakeup_data *wakeup_info_buffer)
+{
+	struct wakeup_source *ws = NULL;
+	ktime_t total_time;
+	ktime_t max_time;
+	unsigned long active_count;
+	ktime_t active_time;
+	ktime_t prevent_sleep_time;
+	int lockid = 0;
+	unsigned short i = 0;
+	unsigned short pos = 0;
+	unsigned short count = 5000;
+
+	if (wakeup_info_buffer == NULL)
+		return;
+
+	lockid = wakeup_sources_read_lock();
+
+	ws = wakeup_sources_walk_start();
+	pos = wakeup_info_buffer->next_pos;
+	while (ws && (pos > i) && (count > 0)) {
+		ws = wakeup_sources_walk_next(ws);
+		i++;
+		count--;
+	}
+
+	for (i = 0; i < MAX_WAKEUP_SOURCE_NUM; i++) {
+		if (ws != NULL) {
+			wakeup_info_buffer->next_pos++;
+
+			total_time = ws->total_time;
+			max_time = ws->max_time;
+			prevent_sleep_time = ws->prevent_sleep_time;
+			active_count = ws->active_count;
+			if (ws->active) {
+				ktime_t now = ktime_get();
+
+				active_time = ktime_sub(now, ws->last_time);
+				total_time = ktime_add(total_time, active_time);
+				if (active_time > max_time)
+					max_time = active_time;
+
+				if (ws->autosleep_enabled) {
+					prevent_sleep_time = ktime_add(prevent_sleep_time,
+						ktime_sub(now, ws->start_prevent_time));
+				}
+			} else {
+				active_time = 0;
+			}
+
+			if (strlen(ws->name) < MAX_NAME_SZ) {
+				memcpy(wakeup_info_buffer->drv_data[i].name,
+					ws->name, strlen(ws->name));
+			}
+
+			wakeup_info_buffer->drv_data[i].active_count = active_count;
+			wakeup_info_buffer->drv_data[i].event_count = ws->event_count;
+			wakeup_info_buffer->drv_data[i].wakeup_count = ws->wakeup_count;
+			wakeup_info_buffer->drv_data[i].expire_count = ws->expire_count;
+			wakeup_info_buffer->drv_data[i].active_time = ktime_to_ms(active_time);
+			wakeup_info_buffer->drv_data[i].total_time = ktime_to_ms(total_time);
+			wakeup_info_buffer->drv_data[i].max_time = ktime_to_ms(max_time);
+			wakeup_info_buffer->drv_data[i].last_time = ktime_to_ms(ws->last_time);
+			wakeup_info_buffer->drv_data[i].prevent_sleep_time = ktime_to_ms(
+				prevent_sleep_time);
+
+			ws = wakeup_sources_walk_next(ws);
+		}
+	}
+	wakeup_sources_read_unlock(lockid);
+
+	if (ws != NULL)
+		wakeup_info_buffer->is_has_data = 1;
+	else
+		wakeup_info_buffer->is_has_data = 0;
+}
 

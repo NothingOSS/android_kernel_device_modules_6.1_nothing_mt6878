@@ -470,6 +470,25 @@ static long mbraink_ioctl(struct file *filp,
 		ret = handleFeatureEn(arg);
 		break;
 	}
+	case RO_WAKEUP_INFO:
+	{
+		struct mbraink_power_wakeup_data power_wakeup_data;
+
+		if (copy_from_user(&power_wakeup_data,
+					(struct mbraink_power_wakeup_data *) arg,
+					sizeof(power_wakeup_data))) {
+			pr_notice("Data write power_wakeup_data from UserSpace Err!\n");
+			return -EPERM;
+		}
+		mbraink_get_power_wakeup_info(&power_wakeup_data);
+		if (copy_to_user((struct mbraink_power_wakeup_data *) arg,
+					&power_wakeup_data,
+					sizeof(power_wakeup_data))) {
+			pr_notice("Copy power_wakeup_data to UserSpace error!\n");
+			return -EPERM;
+		}
+		break;
+	}
 	default:
 		pr_notice("illegal ioctl number %u.\n", cmd);
 		return -EINVAL;
