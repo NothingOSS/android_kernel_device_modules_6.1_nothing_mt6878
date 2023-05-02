@@ -763,7 +763,9 @@ static void cmdq_cb_done_worker(struct work_struct *work)
 		imgsys_send(pipe->imgsys_dev->scp_pdev, HCP_IMGSYS_DEQUE_DUMP_ID,
 			&swbuf_data, sizeof(struct img_sw_buffer),
 			gwork->reqfd, 0);
-	else if (gwfrm_info->batchnum > 1)
+	else if (gwfrm_info->batchnum > 1 ||
+		gwfrm_info->is_capture ||
+		gwfrm_info->user_info[0].is_time_shared)
 		imgsys_send(pipe->imgsys_dev->scp_pdev, HCP_IMGSYS_ASYNC_DEQUE_DONE_ID,
 			&swbuf_data, sizeof(struct img_sw_buffer),
 			gwork->reqfd, 0);
