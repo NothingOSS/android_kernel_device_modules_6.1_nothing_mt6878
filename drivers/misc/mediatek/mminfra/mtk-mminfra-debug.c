@@ -34,6 +34,7 @@
 struct mminfra_dbg {
 	void __iomem *ctrl_base;
 	void __iomem *mminfra_base;
+	void __iomem *mminfra_ao_base;
 	void __iomem *gce_base;
 	ssize_t ctrl_size;
 	struct device *comm_dev[MAX_SMI_COMM_NUM];
@@ -49,9 +50,10 @@ static struct device *dev;
 static struct mminfra_dbg *dbg;
 static u32 mminfra_bkrs;
 static u32 bkrs_reg_pa;
-
+static bool mminfra_ao_base;
 
 #define MMINFRA_BASE		0x1e800000
+#define MMINFRA_AO_BASE		0x1e8ff000
 #define GCE_BASE		0x1e980000
 
 #define MMINFRA_CG_CON0		0x100
@@ -146,7 +148,10 @@ static bool is_gce_cg_on(u32 hw_id)
 {
 	u32 con0_val;
 
-	con0_val = readl_relaxed(dbg->mminfra_base + MMINFRA_CG_CON0);
+	if (mminfra_ao_base)
+		con0_val = readl_relaxed(dbg->mminfra_ao_base + MMINFRA_CG_CON0);
+	else
+		con0_val = readl_relaxed(dbg->mminfra_base + MMINFRA_CG_CON0);
 
 	if (con0_val & (hw_id == GCED ? GCED_CG_BIT : GCEM_CG_BIT))
 		return false;
@@ -157,33 +162,41 @@ static bool is_gce_cg_on(u32 hw_id)
 static void mminfra_cg_check(bool on)
 {
 	u32 con0_val;
-	u32 con1_val;
+	u32 con0_val_gce;
+	u32 con1_val_gce;
 
 	con0_val = readl_relaxed(dbg->mminfra_base + MMINFRA_CG_CON0);
-	con1_val = readl_relaxed(dbg->mminfra_base + MMINFRA_CG_CON1);
+
+	if (mminfra_ao_base) {
+		con0_val_gce = readl_relaxed(dbg->mminfra_ao_base + MMINFRA_CG_CON0);
+		con1_val_gce = readl_relaxed(dbg->mminfra_ao_base + MMINFRA_CG_CON1);
+	} else {
+		con0_val_gce = readl_relaxed(dbg->mminfra_base + MMINFRA_CG_CON0);
+		con1_val_gce = readl_relaxed(dbg->mminfra_base + MMINFRA_CG_CON1);
+	}
 
 	if (on) {
 		/* SMI CG still off */
-		if ((con0_val & (SMI_CG_BIT)) || (con0_val & GCEM_CG_BIT) ||
-			(con0_val & GCED_CG_BIT) || (con1_val & GCE26M_CG_BIT)) {
-			pr_notice("%s cg still off, CG_CON0:0x%x CG_CON1:0x%x\n",
-						__func__, con0_val, con1_val);
+		if ((con0_val & (SMI_CG_BIT)) || (con0_val_gce & GCEM_CG_BIT) ||
+			(con0_val_gce & GCED_CG_BIT) || (con1_val_gce & GCE26M_CG_BIT)) {
+			pr_notice("%s cg still off, CG_CON0:0x%x CG_CON0:0x%x CG_CON1:0x%x\n",
+						__func__, con0_val, con0_val_gce, con1_val_gce);
 			if (con0_val & (SMI_CG_BIT))
 				mtk_smi_dbg_cg_status();
-			if ((con0_val & GCEM_CG_BIT) || (con0_val & GCED_CG_BIT)
-				|| (con1_val & GCE26M_CG_BIT))
+			if ((con0_val_gce & GCEM_CG_BIT) || (con0_val_gce & GCED_CG_BIT)
+				|| (con1_val_gce & GCE26M_CG_BIT))
 				cmdq_dump_usage();
 		}
 	} else {
 		/* SMI CG still on */
-		if (!(con0_val & (SMI_CG_BIT)) || !(con0_val & GCEM_CG_BIT)
-			|| !(con0_val & GCED_CG_BIT) || !(con1_val & GCE26M_CG_BIT)) {
-			pr_notice("%s Scg still on, CG_CON0:0x%x CG_CON1:0x%x\n",
-						__func__, con0_val, con1_val);
+		if (!(con0_val & (SMI_CG_BIT)) || !(con0_val_gce & GCEM_CG_BIT)
+			|| !(con0_val_gce & GCED_CG_BIT) || !(con1_val_gce & GCE26M_CG_BIT)) {
+			pr_notice("%s Scg still on, CG_CON0:0x%x CG_CON0:0x%x CG_CON1:0x%x\n",
+						__func__, con0_val, con0_val_gce, con1_val_gce);
 			if (!(con0_val & (SMI_CG_BIT)))
 				mtk_smi_dbg_cg_status();
-			if (!(con0_val & GCEM_CG_BIT) || !(con0_val & GCED_CG_BIT)
-				|| !(con1_val & GCE26M_CG_BIT))
+			if (!(con0_val_gce & GCEM_CG_BIT) || !(con0_val_gce & GCED_CG_BIT)
+				|| !(con1_val_gce & GCE26M_CG_BIT))
 				cmdq_dump_usage();
 		}
 	}
@@ -538,6 +551,10 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 		cmdq_util_mminfra_cmd(0);
 		cmdq_util_mminfra_cmd(3); //mminfra rfifo init
 	}
+
+	mminfra_ao_base = of_property_read_bool(node, "mminfra-ao-base");
+	if (mminfra_ao_base)
+		dbg->mminfra_ao_base = ioremap(MMINFRA_AO_BASE, 0xf18);
 
 	dbg->mminfra_base = ioremap(MMINFRA_BASE, 0x8f4);
 	dbg->gce_base = ioremap(GCE_BASE, 0x1000);
