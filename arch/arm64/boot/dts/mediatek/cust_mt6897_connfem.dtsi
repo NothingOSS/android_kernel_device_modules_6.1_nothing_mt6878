@@ -66,7 +66,7 @@
 	wlan7207c_wf0: wlan7207c-wf0 {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO177__FUNC_ANT_SEL4>,
-				<PINMUX_GPIO130__FUNC_ANT_SEL20>,
+				<PINMUX_GPIO25__FUNC_ANT_SEL20>,
 				<PINMUX_GPIO179__FUNC_ANT_SEL6>,
 				<PINMUX_GPIO180__FUNC_ANT_SEL7>;
 			mapping = <4 0x4a 0>,	/* ANTSEL  4 <-> PIN #10: C0 */
@@ -116,7 +116,7 @@
 	qm45197_wf0: qm45197-wf0 {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO177__FUNC_ANT_SEL4>,
-				<PINMUX_GPIO130__FUNC_ANT_SEL20>,
+				<PINMUX_GPIO25__FUNC_ANT_SEL20>,
 				<PINMUX_GPIO179__FUNC_ANT_SEL6>;
 			mapping = <4 0x4a 0>,	/* ANTSEL  4 <-> PIN #10: PAEN */
 				<20 0x4b 0>,	/* ANTSEL 20 <-> PIN #11: LNAEN */
