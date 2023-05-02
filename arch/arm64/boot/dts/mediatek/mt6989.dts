@@ -4821,7 +4821,7 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
-	//		iommus = <&disp_iommu M4U_PORT_L0_DISP_OVL1_2L_RDMA1>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 	//		mediatek,larb = <&smi_larb0>;
 	//		fake-engine = <&smi_larb0 M4U_PORT_L0_DISP_FAKE0>,
 	//				<&smi_larb1 M4U_PORT_L1_DISP_FAKE1>;
@@ -5077,7 +5077,7 @@
 
 			helper-value = <1>, /*MTK_DRM_OPT_STAGE*/
 				<1>, /*MTK_DRM_OPT_USE_CMDQ*/
-				<0>, /*MTK_DRM_OPT_USE_M4U*/
+				<1>, /*MTK_DRM_OPT_USE_M4U*/
 				<0>, /*MTK_DRM_OPT_MMQOS_SUPPORT*/
 				<0>, /*MTK_DRM_OPT_MMDVFS_SUPPORT*/
 				<0>, /*MTK_DRM_OPT_SODI_SUPPORT*/
@@ -5615,6 +5615,10 @@
 				"mediatek,mt6989-disp-ovl";
 			reg = <0 0x14402000 0 0x1000>;
 			interrupts = <GIC_SPI 469 IRQ_TYPE_LEVEL_HIGH 0>;
+			//mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+			iommus = <&mm_smmu 35>;
+			mtk,iommu-dma-range=<0x0 0x0 0x0 0xfe000000 0x0 0xfffff000 0x3 0x00001000>;
+			mtk,smmu-dma-mode = "bypass";
 		};
 
 		disp_ovl1_2l: disp-ovl1-2l@14403000 {
@@ -5622,6 +5626,7 @@
 				"mediatek,mt6989-disp-ovl";
 			reg = <0 0x14403000 0 0x1000>;
 			interrupts = <GIC_SPI 470 IRQ_TYPE_LEVEL_HIGH 0>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 		};
 
 		disp_ovl2_2l: disp-ovl2-2l@14404000 {
@@ -5629,6 +5634,7 @@
 				"mediatek,mt6989-disp-ovl";
 			reg = <0 0x14404000 0 0x1000>;
 			interrupts = <GIC_SPI 471 IRQ_TYPE_LEVEL_HIGH 0>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 		};
 
 		disp-ovl3-2l@14405000 {
