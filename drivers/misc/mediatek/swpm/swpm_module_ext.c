@@ -140,6 +140,15 @@ int32_t get_vcore_vol_duration(int32_t vol_num,
 }
 EXPORT_SYMBOL(get_vcore_vol_duration);
 
+int32_t get_res_sig_stats(struct res_sig_stats *stats)
+{
+	if (swpm_ext_m.func_ready && stats != NULL)
+		return SWPM_EXT_OPS->res_sig_stats_get(stats);
+
+	return 0;
+}
+EXPORT_SYMBOL(get_res_sig_stats);
+
 int mtk_register_swpm_ops(struct swpm_internal_ops *ops)
 {
 	if (!swpm_ext_m.plat_ops && ops) {

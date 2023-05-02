@@ -243,6 +243,8 @@ static int32_t swpm_plat_nums(enum swpm_num_type type)
 		return NR_CORE_IP;
 	case CORE_VOL:
 		return NR_CORE_VOLT;
+	default:
+		return 0;
 	}
 	return 0;
 }

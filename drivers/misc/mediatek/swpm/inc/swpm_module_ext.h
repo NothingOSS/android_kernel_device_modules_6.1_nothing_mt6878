@@ -57,6 +57,18 @@ struct ddr_ip_bc_stats {
 	struct ddr_bc_stats *bc_stats;
 };
 
+struct res_sig {
+	uint64_t time;
+	uint32_t sig_id;
+	uint32_t grp_id;
+};
+struct res_sig_stats {
+	struct res_sig *res_sig_tbl;
+	uint32_t res_sig_num;
+	uint64_t duration_time;
+	uint64_t suspend_time;
+};
+
 /* swpm extension internal ops structure */
 struct swpm_internal_ops {
 	void (*const cmd)(unsigned int type,
@@ -77,6 +89,8 @@ struct swpm_internal_ops {
 	int32_t (*const vcore_vol_duration_get)
 		(int32_t vol_num,
 		 struct vol_duration *duration);
+	int32_t (*const res_sig_stats_get)
+		(struct res_sig_stats *stats);
 	int32_t (*const num_get)
 		(enum swpm_num_type type);
 };
@@ -97,6 +111,7 @@ extern int32_t get_vcore_ip_vol_stats(int32_t ip_num,
 				       void *stats);
 extern int32_t get_vcore_vol_duration(int32_t vol_num,
 				      struct vol_duration *duration);
+extern int32_t get_res_sig_stats(struct res_sig_stats *stats);
 extern int mtk_register_swpm_ops(struct swpm_internal_ops *ops);
 
 #endif /* __SWPM_MODULE_EXT_H__ */
