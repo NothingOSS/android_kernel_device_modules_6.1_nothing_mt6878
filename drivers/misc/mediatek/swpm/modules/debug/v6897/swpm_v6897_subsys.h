@@ -22,6 +22,8 @@
 
 #define for_each_pwr_mtr(i)    for (i = 0; i < NR_SWPM_TYPE; i++)
 
+#include <swpm_audio_v6897.h>
+
 enum swpm_type {
 	CPU_SWPM_TYPE,
 	GPU_SWPM_TYPE,
@@ -30,6 +32,7 @@ enum swpm_type {
 	ISP_SWPM_TYPE,
 	ME_SWPM_TYPE,
 	DUMMY_SWPM_TYPE,
+	AUDIO_SWPM_TYPE,
 
 	NR_SWPM_TYPE,
 };
@@ -58,6 +61,7 @@ struct subsys_swpm_data {
 };
 
 struct share_sub_index_ext {
+	struct audio_index_ext audio_idx_ext;
 };
 
 extern struct power_rail_data swpm_power_rail[NR_POWER_RAIL];

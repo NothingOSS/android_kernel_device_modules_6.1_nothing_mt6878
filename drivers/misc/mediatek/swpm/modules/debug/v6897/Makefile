@@ -55,3 +55,8 @@ BUILD_SWPM_CORE_DBG_MODUDLE_NAME=mtk-swpm-core-dbg-v6897
 obj-$(CONFIG_MTK_SWPM_MODULE) += ${BUILD_SWPM_CORE_DBG_MODUDLE_NAME}.o
 ${BUILD_SWPM_CORE_DBG_MODUDLE_NAME}-objs += subsys/swpm_core_v6897.o
 ${BUILD_SWPM_CORE_DBG_MODUDLE_NAME}-objs += subsys/swpm_core_v6897_dbg_init.o
+
+BUILD_SWPM_AUDIO_DBG_MODUDLE_NAME=mtk-swpm-audio-dbg-v6897
+obj-$(CONFIG_MTK_SWPM_MODULE) += ${BUILD_SWPM_AUDIO_DBG_MODUDLE_NAME}.o
+${BUILD_SWPM_AUDIO_DBG_MODUDLE_NAME}-objs += subsys/swpm_audio_v6897.o
+${BUILD_SWPM_AUDIO_DBG_MODUDLE_NAME}-objs += subsys/swpm_audio_v6897_dbg_init.o

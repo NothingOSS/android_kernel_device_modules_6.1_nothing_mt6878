@@ -24,6 +24,7 @@
 #include <swpm_module.h>
 #include <swpm_v6897.h>
 #include <swpm_v6897_subsys.h>
+#include <swpm_audio_v6897.h>
 
 /****************************************************************************
  *  Global Variables
@@ -45,7 +46,7 @@ static unsigned int swpm_log_mask = DEFAULT_LOG_MASK;
 static char pwr_buf[POWER_CHAR_SIZE] = { 0 };
 
 /* TODO: subsys index pointer */
-/* static struct share_sub_index_ext *share_sub_idx_ref_ext; */
+static struct share_sub_index_ext *share_sub_idx_ref_ext;
 
 /****************************************************************************
  *  Static Function
@@ -62,19 +63,22 @@ static unsigned int swpm_get_avg_power(enum power_rail type)
 void swpm_v6897_sub_ext_update(void)
 {
 /* TODO: do something from share_sub_idx_ref_ext */
+	if (share_sub_idx_ref_ext)
+		audio_subsys_index_update(&share_sub_idx_ref_ext->audio_idx_ext);
 }
 
 void swpm_v6897_sub_ext_init(void)
 {
 /* TODO: instance init of subsys index */
-/*	if (wrap_d) {
- *		share_sub_idx_ref_ext =
- *		(struct share_sub_index_ext *)
- *		sspm_sbuf_get(wrap_d->share_index_sub_ext_addr);
- *	} else {
- *		share_sub_idx_ref_ext = NULL;
- *	}
- */
+	if (wrap_d) {
+		share_sub_idx_ref_ext =
+			(struct share_sub_index_ext *)
+			sspm_sbuf_get(wrap_d->share_index_sub_ext_addr);
+
+		audio_subsys_index_init();
+	} else {
+		share_sub_idx_ref_ext = NULL;
+	}
 }
 
 void swpm_v6897_power_log(void)
