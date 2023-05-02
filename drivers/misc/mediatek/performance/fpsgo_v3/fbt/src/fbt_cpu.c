@@ -1878,8 +1878,9 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 
 		light_thread = fbt_is_light_loading(fl->loading, loading_th_final);
 
-		if (light_thread &&
-			bhr_opp != (nr_freq_cpu - 1) && fl->action == 0) {
+		if ((light_thread &&
+			bhr_opp != (nr_freq_cpu - 1) && fl->action == 0) ||
+			(fl->action == 2)) {
 			fbt_set_per_task_cap(fl->pid,
 				(!loading_policy_final) ? 0
 				: min_cap * loading_policy_final / 100, max_cap);
@@ -2850,6 +2851,7 @@ static void fbt_do_jerk(struct work_struct *work)
 	struct render_info *thr;
 	int tofree = 0;
 
+	fpsgo_render_tree_lock(__func__);
 	jerk = container_of(work, struct fbt_jerk, work);
 	if (!jerk || jerk->id < 0 || jerk->id > RESCUE_TIMER_NUM - 1) {
 		FPSGO_LOGE("ERROR %d\n", __LINE__);
@@ -2875,7 +2877,6 @@ static void fbt_do_jerk(struct work_struct *work)
 		return;
 	}
 
-	fpsgo_render_tree_lock(__func__);
 	fpsgo_thread_lock(&(thr->thr_mlock));
 
 	if (jerk->id != proc->active_jerk_id ||
@@ -4153,6 +4154,9 @@ static int fbt_boost_policy(
 
 	get_aa_ret = fbt_get_aa(loading, boost_info->cl_loading, cluster_num, t1, t_Q2Q,
 		separate_aa_final, max_cap_cluster, sec_cap_cluster, &aa_n, &aa_b, &aa_m);
+
+	if (aa_b < aa_m)
+		aa_b = aa_m;
 
 	filter_ret = fbt_get_filter_frame_aa(is_filter_frame_active, separate_aa_final,
 		ff_obj, pid, buffer_id, target_fps, ff_window_size, ff_kmin, aa_n, aa_b, aa_m,
