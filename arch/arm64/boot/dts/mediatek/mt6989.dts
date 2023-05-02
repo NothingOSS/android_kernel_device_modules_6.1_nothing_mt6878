@@ -6048,6 +6048,32 @@
 			};
 		};
 
+		mmc1: mmc@11240000 {
+			compatible = "mediatek,mt6989-mmc";
+			reg = <0 0x11240000 0 0x1000>,
+				<0 0x11f80000 0 0x1000>;
+			interrupts = <GIC_SPI 279 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&topckgen_clk CLK_TOP_MSDC30_1_SEL>,
+					<&pericfg_ao_clk CLK_PERAOP_MSDC1_F>,
+					<&pericfg_ao_clk CLK_PERAOP_MSDC1_H>,
+					<&pericfg_ao_clk CLK_PERAOP_MSDC1>;
+			clock-names = "source", "axi_cg", "hclk", "source_cg";
+			status = "disabled";
+		};
+
+		mmc2: mmc@11242000 {
+			compatible = "mediatek,mt6989-mmc";
+			reg = <0 0x11242000 0 0x1000>,
+				<0 0x11b80000 0 0x1000>;
+			interrupts = <GIC_SPI 280 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&topckgen_clk CLK_TOP_MSDC30_2_SEL>,
+					<&pericfg_ao_clk CLK_PERAOP_MSDC2_F>,
+					<&pericfg_ao_clk CLK_PERAOP_MSDC2_H>,
+					<&pericfg_ao_clk CLK_PERAOP_MSDC2>;
+			clock-names = "source", "axi_cg", "hclk", "source_cg";
+			status = "disabled";
+		};
+
 		u3phy: usb-phy0@11e40000 {
 			compatible = "mediatek,xsphy";
 			reg = <0 0x11e43000 0 0x200>;
@@ -10914,6 +10940,7 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 
 #include "mediatek/bat_setting/mt6989_battery_prop.dtsi"
 
+#include "mediatek/cust_mt6989_msdc.dtsi"
 #include "mediatek/mt6363.dtsi"
 #include "mediatek/mt6373.dtsi"
 #include "mediatek/mt6989-clkitg.dtsi"
@@ -11025,6 +11052,8 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 /delete-node/ &mt6363_vbuck1_sshub;
 /delete-node/ &mt6363_vbuck2_sshub;
 /delete-node/ &mt6363_vbuck4_sshub;
+/delete-node/ &mt6373_vmch_eint_low;
+/delete-node/ &mt6373_vmch;
 
 &mddriver {
 	/* for md pmic voltage setting*/
