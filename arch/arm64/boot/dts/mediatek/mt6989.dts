@@ -2814,33 +2814,34 @@
 		gpufreq: gpufreq@13fbf000 {
 			compatible = "mediatek,gpufreq";
 			reg =
-				<0 0x13fbf000 0 0x1000>,  /* MFG_TOP_CONFIG */
-				<0 0x13e90000 0 0x1000>,  /* MFG_CG_CONFIG */
-				<0 0x13fa0000 0 0x400>,   /* MFG_PLL */
-				<0 0x13fa0400 0 0x400>,   /* MFG_PLL_SC0 */
-				<0 0x13fa0800 0 0x400>,   /* MFG_PLL_SC1 */
-				<0 0x13f90000 0 0x10000>, /* MFG_RPC */
-				<0 0x13fc0000 0 0x1000>,  /* MFG_AXUSER */
-				<0 0x13fb1000 0 0x1000>,  /* MFG_BRCAST */
-				<0 0x13fa2000 0 0x1000>,  /* MFG_VGPU_DEVAPC */
-				<0 0x1c001000 0 0x1000>,  /* SLEEP */
-				<0 0x10000000 0 0x1000>,  /* TOPCKGEN */
-				<0 0x1002c000 0 0x1000>,  /* IFRBUS_AO */
-				<0 0x1021c000 0 0x1000>,  /* NTH_EMICFG */
-				<0 0x1021e000 0 0x1000>,  /* STH_EMICFG */
-				<0 0x10270000 0 0x1000>,  /* NTH_EMICFG_AO_MEM */
-				<0 0x1030e000 0 0x1000>,  /* STH_EMICFG_AO_MEM */
-				<0 0x10023000 0 0x1000>,  /* INFRA_AO_DEBUG_CTRL */
-				<0 0x1002b000 0 0x1000>,  /* INFRA_AO1_DEBUG_CTRL */
-				<0 0x10042000 0 0x1000>,  /* NTH_EMI_AO_DEBUG_CTRL */
-				<0 0x10028000 0 0x1000>,  /* STH_EMI_AO_DEBUG_CTRL */
-				<0 0x11f10000 0 0x1000>,  /* EFUSE */
-				<0 0x13fbc000 0 0x1000>,  /* MFG_SECURE */
-				<0 0x1000d000 0 0x1000>,  /* DRM_DEBUG */
-				<0 0x1025e000 0 0x1000>,  /* NEMI_MI32_MI33_SMI */
-				<0 0x10309000 0 0x1000>,  /* SEMI_MI32_MI33_SMI */
-				<0 0x13c00000 0 0x50000>, /* GPUEB_SRAM */
-				<0 0x13c60000 0 0x2000>;  /* GPUEB_CFGREG */
+				<0 0x13fbf000 0 0x1000>,   /* MFG_TOP_CONFIG */
+				<0 0x13e90000 0 0x1000>,   /* MFG_CG_CONFIG */
+				<0 0x13fa0000 0 0x400>,    /* MFG_PLL */
+				<0 0x13fa0400 0 0x400>,    /* MFG_PLL_SC0 */
+				<0 0x13fa0800 0 0x400>,    /* MFG_PLL_SC1 */
+				<0 0x13f90000 0 0x10000>,  /* MFG_RPC */
+				<0 0x13fc0000 0 0x1000>,   /* MFG_AXUSER */
+				<0 0x13fb1000 0 0x1000>,   /* MFG_BRCAST */
+				<0 0x13fa2000 0 0x1000>,   /* MFG_VGPU_DEVAPC */
+				<0 0x13a00000 0 0x200000>, /* MFG_SMMU */
+				<0 0x1c001000 0 0x1000>,   /* SLEEP */
+				<0 0x10000000 0 0x1000>,   /* TOPCKGEN */
+				<0 0x1002c000 0 0x1000>,   /* IFRBUS_AO */
+				<0 0x1021c000 0 0x1000>,   /* NTH_EMICFG */
+				<0 0x1021e000 0 0x1000>,   /* STH_EMICFG */
+				<0 0x10270000 0 0x1000>,   /* NTH_EMICFG_AO_MEM */
+				<0 0x1030e000 0 0x1000>,   /* STH_EMICFG_AO_MEM */
+				<0 0x10023000 0 0x1000>,   /* INFRA_AO_DEBUG_CTRL */
+				<0 0x1002b000 0 0x1000>,   /* INFRA_AO1_DEBUG_CTRL */
+				<0 0x10042000 0 0x1000>,   /* NTH_EMI_AO_DEBUG_CTRL */
+				<0 0x10028000 0 0x1000>,   /* STH_EMI_AO_DEBUG_CTRL */
+				<0 0x11f10000 0 0x1000>,   /* EFUSE */
+				<0 0x13fbc000 0 0x1000>,   /* MFG_SECURE */
+				<0 0x1000d000 0 0x1000>,   /* DRM_DEBUG */
+				<0 0x1025e000 0 0x1000>,   /* NEMI_MI32_MI33_SMI */
+				<0 0x10309000 0 0x1000>,   /* SEMI_MI32_MI33_SMI */
+				<0 0x13c00000 0 0x50000>,  /* GPUEB_SRAM */
+				<0 0x13c60000 0 0x2000>;   /* GPUEB_CFGREG */
 			reg-names =
 				"mfg_top_config",
 				"mfg_cg_config",
@@ -2851,6 +2852,7 @@
 				"mfg_axuser",
 				"mfg_brcast",
 				"mfg_vgpu_devapc",
+				"mfg_smmu",
 				"sleep",
 				"topckgen",
 				"ifrbus_ao",
