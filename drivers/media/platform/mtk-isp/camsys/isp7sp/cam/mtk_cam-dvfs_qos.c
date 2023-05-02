@@ -872,6 +872,9 @@ static void update_sensor_active_info(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 
+	if (!job->seninf)
+		return;
+
 	/* get active line time */
 	if (ctx->act_line_info.avg_linetime_in_ns == 0 ||
 		job->seamless_switch || job->raw_switch)
@@ -895,8 +898,8 @@ void mtk_cam_fill_qos(struct req_buffer_helper *helper)
 	memset(job->mraw_mmqos, 0, sizeof(job->mraw_mmqos));
 
 	update_sensor_active_info(job);
-	avg_linet =  ctx->act_line_info.avg_linetime_in_ns;
-	sensor_h = ctx->act_line_info.active_line_num;
+	avg_linet =  ctx->act_line_info.avg_linetime_in_ns ? : get_line_time(job);
+	sensor_h = ctx->act_line_info.active_line_num ? : get_sensor_h(job);
 	senser_vb = get_sensor_vb(job);
 	sensor_fps = get_sensor_fps(job);
 
