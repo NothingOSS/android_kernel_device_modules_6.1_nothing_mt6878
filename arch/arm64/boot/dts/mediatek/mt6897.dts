@@ -7454,7 +7454,7 @@
 			 * Instead of scpsys by PM flow.
 			 */
 			mediatek,ufs-rtff-mtcmos;
-
+			mediatek,ufs-disable-mcq;
 		};
 
 		gpu_protected_memory_allocator: protected-memory-allocator@13c2f000 {
