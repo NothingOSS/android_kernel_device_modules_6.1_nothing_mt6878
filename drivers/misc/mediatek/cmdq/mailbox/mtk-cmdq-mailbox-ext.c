@@ -1350,7 +1350,11 @@ static int cmdq_irq_handler_thread(void *data)
 	unsigned long irq, flags, irq_idx_flag;
 
 	while (!kthread_should_stop()) {
-		wait_event_interruptible(cmdq->err_irq_wq, cmdq->err_irq_idx);
+		/*
+		 * read cmdq->err_irq_idx maybe encounter data race.
+		 * use data_race to bypass
+		 */
+		wait_event_interruptible(cmdq->err_irq_wq, data_race(cmdq->err_irq_idx));
 		spin_lock_irqsave(&cmdq->irq_idx_lock, irq_idx_flag);
 
 		irq = cmdq->err_irq_idx;
