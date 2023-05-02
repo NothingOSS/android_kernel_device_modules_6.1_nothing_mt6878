@@ -452,8 +452,8 @@ TRACE_EVENT(sched_cpu_util,
 TRACE_EVENT(sched_select_task_rq_rt,
 	TP_PROTO(struct task_struct *tsk, int policy,
 		int target_cpu, unsigned int idle_cpus, unsigned int cfs_cpus,
-		int sd_flag, bool sync),
-	TP_ARGS(tsk, policy, target_cpu, idle_cpus, cfs_cpus,
+		struct cpumask *lowest_mask, int sd_flag, bool sync),
+	TP_ARGS(tsk, policy, target_cpu, idle_cpus, cfs_cpus, lowest_mask,
 		sd_flag, sync),
 	TP_STRUCT__entry(
 		__field(pid_t, pid)
@@ -461,6 +461,7 @@ TRACE_EVENT(sched_select_task_rq_rt,
 		__field(int, target_cpu)
 		__field(unsigned int,  idle_cpus)
 		__field(unsigned int,  cfs_cpus)
+		__field(long, lowest_mask)
 		__field(unsigned long, uclamp_min)
 		__field(unsigned long, uclamp_max)
 		__field(int, sd_flag)
@@ -476,6 +477,7 @@ TRACE_EVENT(sched_select_task_rq_rt,
 		__entry->target_cpu = target_cpu;
 		__entry->idle_cpus  = idle_cpus;
 		__entry->cfs_cpus   = cfs_cpus;
+		__entry->lowest_mask = lowest_mask->bits[0];
 		__entry->uclamp_min = uclamp_eff_value(tsk, UCLAMP_MIN);
 		__entry->uclamp_max = uclamp_eff_value(tsk, UCLAMP_MAX);
 		__entry->sd_flag = sd_flag;
@@ -486,12 +488,13 @@ TRACE_EVENT(sched_select_task_rq_rt,
 		__entry->act_mask = cpu_active_mask->bits[0];
 	),
 	TP_printk(
-		"pid=%4d policy=0x%08x target=%d idle_cpus=0x%x cfs_cpus=0x%x uclamp_min=%lu uclamp_max=%lu sd_flag=%d sync=%d mask=0x%lx cpuctl=%d cpuset=%d act_mask=0x%lx",
+		"pid=%4d policy=0x%08x target=%d idle_cpus=0x%x cfs_cpus=0x%x lowest_mask=0x%lx uclamp_min=%lu uclamp_max=%lu sd_flag=%d sync=%d mask=0x%lx cpuctl=%d cpuset=%d act_mask=0x%lx",
 		__entry->pid,
 		__entry->policy,
 		__entry->target_cpu,
 		__entry->idle_cpus,
 		__entry->cfs_cpus,
+		__entry->lowest_mask,
 		__entry->uclamp_min,
 		__entry->uclamp_max,
 		__entry->sd_flag,

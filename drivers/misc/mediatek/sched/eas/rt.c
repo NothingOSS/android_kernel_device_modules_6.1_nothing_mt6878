@@ -271,7 +271,7 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 	bool may_not_preempt;
 	bool sync = !!(flags & WF_SYNC);
 	int ret, target = -1, this_cpu, select_reason = -1;
-	struct cpumask *lowest_mask;
+	struct cpumask *lowest_mask = this_cpu_cpumask_var_ptr(mtk_select_rq_rt_mask);
 	/* remove in next update */
 	unsigned int cfs_cpus = 0;
 	unsigned int idle_cpus = 0;
@@ -304,8 +304,6 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 
 	irq_log_store();
 
-	/* previous CPU as backup */
-	*target_cpu = source_cpu;
 	rq = cpu_rq(source_cpu);
 
 	rcu_read_lock();
@@ -314,8 +312,6 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 
 	/* check source_cpu status */
 	may_not_preempt = task_may_not_preempt(curr, source_cpu);
-
-	lowest_mask = this_cpu_cpumask_var_ptr(mtk_select_rq_rt_mask);
 
 	ret = cpupri_find_fitness(&task_rq(p)->rd->cpupri, p,
 				lowest_mask, rt_task_fits_capacity);
@@ -327,6 +323,10 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 		(may_not_preempt || p->prio < cpu_rq(target)->rt.highest_prio.curr)) {
 		*target_cpu = target;
 		select_reason = LB_RT_IDLE;
+	} else {
+		/* previous CPU as backup */
+		*target_cpu = source_cpu;
+		select_reason = LB_RT_SOURCE_CPU;
 	}
 
 	rcu_read_unlock();
@@ -334,7 +334,7 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 out:
 	if (trace_sched_select_task_rq_rt_enabled())
 		trace_sched_select_task_rq_rt(p, select_reason, *target_cpu, idle_cpus, cfs_cpus,
-					sd_flag, sync);
+					lowest_mask, sd_flag, sync);
 	irq_log_store();
 }
 
