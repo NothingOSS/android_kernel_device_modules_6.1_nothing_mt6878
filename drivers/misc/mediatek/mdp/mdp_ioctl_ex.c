@@ -1550,11 +1550,10 @@ static int mdpsys_con_probe(struct platform_device *pdev)
 	mdpsys_con_ctx.dev = dev;
 
 	if (smmu_v3_enabled()) {
-		CMDQ_ERR("smmu on\n");
+		CMDQ_LOG("smmu on\n");
 		mdpsys_con_ctx.mmu_dev = mdp_smmu_get_shared_device(dev, "mtk,smmu-shared");
 		mdpsys_con_ctx.mmu_dev_sec = mdp_smmu_get_shared_device(dev, "mtk,smmu-shared-sec");
 	} else {
-		CMDQ_ERR("smmu off\n");
 		mdpsys_con_ctx.mmu_dev = dev;
 		ret = of_property_read_u32(dev->of_node, "dma_mask_bit",
 			&dma_mask_bit);
