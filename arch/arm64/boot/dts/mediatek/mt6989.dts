@@ -4010,14 +4010,14 @@
 			reg = <0 0x10341000 0 0x1000>;
 		};
 
-		nemi-slb-apb@10342000 {
-			compatible = "mediatek,nemi_slb_apb";
-			reg = <0 0x10342000 0 0x1000>;
-		};
-
-		semi-slb-apb@10343000 {
-			compatible = "mediatek,semi_slb_apb";
-			reg = <0 0x10343000 0 0x1000>;
+		emislb: emislb@10342000 {
+			compatible = "mediatek,common-emislb";
+			reg = <0 0x10342000 0 0x1000>,
+				  <0 0x10343000 0 0x1000>;
+			interrupts = <GIC_SPI 378 IRQ_TYPE_LEVEL_HIGH 0>;
+			dump = <0xd14 0xd18 0xd1c 0xd20 0xd24 0xd60 0xd64 0xd68 0xd6c>;
+			clear = <0x540 0x1 1>,
+				<0x540 0x0 1>;
 		};
 
 		nemi-hre-emi-apb@10344000 {
