@@ -4,7 +4,8 @@
  */
 &connfem {
 	epa-elna-mtk {
-		parts = <&qm42639 &qm45639>;
+		parts = <&qm42639 &qm45639>,	/* [0] Qorvo eFEM, Phone */
+			<&qm42639 &qm45639>;	/* [1] Qorvo eFEM, EVB */
 
 		hwid {
 			gpio = <&pio 210 0x0>;
