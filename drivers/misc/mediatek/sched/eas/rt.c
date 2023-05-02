@@ -68,26 +68,6 @@ static inline bool should_honor_rt_sync(struct rq *rq, struct task_struct *p,
  * Note that uclamp_min will be clamped to uclamp_max if uclamp_min
  * > uclamp_max.
  */
-static inline bool mtk_rt_task_fits_capacity(struct task_struct *p, int cpu,
-					unsigned long min_cap, unsigned long max_cap)
-{
-	unsigned int cpu_cap;
-	unsigned long util;
-	struct rq *rq;
-
-	/* Only heterogeneous systems can benefit from this check */
-	if (!likely(mtk_sched_asym_cpucapacity))
-		return true;
-
-	rq = cpu_rq(cpu);
-	/* refer code from sched.h: effective_cpu_util -> cpu_util_rt */
-	util = cpu_util_rt(rq);
-	util = mtk_uclamp_rq_util_with(rq, util, p, min_cap, max_cap);
-	cpu_cap = capacity_orig_of(cpu);
-
-	return cpu_cap >= clamp_val(util, min_cap, max_cap);
-}
-
 static inline bool rt_task_fits_capacity(struct task_struct *p, int cpu)
 {
 	unsigned int min_cap;
@@ -106,11 +86,6 @@ static inline bool rt_task_fits_capacity(struct task_struct *p, int cpu)
 	return cpu_cap >= min(min_cap, max_cap);
 }
 #else
-static inline bool mtk_rt_task_fits_capacity(struct task_struct *p, int cpu,
-					unsigned long min_cap, unsigned long max_cap)
-{
-	return true;
-}
 static inline bool rt_task_fits_capacity(struct task_struct *p, int cpu)
 {
 	return true;
@@ -170,7 +145,6 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 	int cpu, best_idle_cpu_cluster;
 	unsigned long util_cum[NR_CPUS] = {[0 ... NR_CPUS-1] = ULONG_MAX};
 	unsigned long cpu_util_cum, best_cpu_util_cum = ULONG_MAX;
-	// unsigned long tutil = task_util(p);
 	unsigned long min_cap = uclamp_eff_value(p, UCLAMP_MIN);
 	unsigned long max_cap = uclamp_eff_value(p, UCLAMP_MAX);
 	unsigned long best_idle_exit_latency = UINT_MAX;
@@ -212,11 +186,6 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			if (cpu_high_irqload(cpu, cpu_util_cum))
 				continue;
 
-			// if (__cpu_overutilized(cpu, tutil))
-			//	continue;
-
-			// util = cpu_util(cpu);
-
 			/* RT task skips cpu that runs latency_sensitive or vip tasks */
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 			cpu_has_lt = is_task_latency_sensitive(cpu_rq(cpu)->curr)
@@ -231,12 +200,6 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			 */
 			if (cpu_has_lt && !best_cpu_has_lt)
 				continue;
-
-			// if (!(best_cpu_has_lt ^ cpu_has_lt) && (util > best_cpu_util))
-			//	continue;
-
-			// if (best_cpu_util == util && *best_cpu == task_cpu(p))
-			//	continue;
 
 			/*
 			 * If candidate CPU is the previous CPU, select it.
