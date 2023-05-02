@@ -204,6 +204,8 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_CONF_EXP_LNKCTL2_REG	0x10b0
 
 /* AER status */
+#define PCIE_AER_UNC_STATUS		0x1204
+#define PCIE_AER_UNC_MTLP		BIT(18)
 #define PCIE_AER_CO_STATUS		0x1210
 #define AER_CO_RE			BIT(0)
 #define AER_CO_BTLP			BIT(6)
@@ -1550,6 +1552,7 @@ static void pcie_android_rvh_do_serror(void *data, struct pt_regs *regs,
  *           bit[6]: Completion timeout status (PCIe MAC offset 0x184 bit[18])
  *                   AXI fetch error (PCIe MAC offset 0x184 bit[17])
  *           bit[7]: RxErr
+ *           bit[8]: MalfTLP
  */
 u32 mtk_pcie_dump_link_info(int port)
 {
@@ -1596,6 +1599,9 @@ u32 mtk_pcie_dump_link_info(int port)
 	val = readl_relaxed(pcie_port->base + PCIE_AER_CO_STATUS);
 	if (val & (AER_CO_RE | AER_CO_BTLP))
 		ret_val |= BIT(7);
+	val = readl_relaxed(pcie_port->base + PCIE_AER_UNC_STATUS);
+	if (val & PCIE_AER_UNC_MTLP)
+		ret_val |= BIT(8);
 
 	return ret_val;
 }
