@@ -3917,9 +3917,8 @@ static int mtk_hp_impedance_disable(struct mt6681_priv *priv)
 			   0x3 << RG_HPLOUTPUTSTBENH_VAUDP18_SFT);
 
 #if IS_ENABLED(CONFIG_SND_SOC_MT6681_ACCDET)
-/* Commented by Patrick */
-/* from accdet request */
-// mt6681_accdet_modify_vref_volt();
+	/* from accdet request */
+	mt6681_accdet_modify_vref_volt();
 #endif
 #endif
 	return 0;
@@ -14642,8 +14641,8 @@ static int dc_trim_thread(void *arg)
 	get_hp_trim_offset(priv, true);
 
 #if IS_ENABLED(CONFIG_SND_SOC_MT6681_ACCDET)
-/* Commented by Patrick */
-// mt6681_accdet_late_init(0);
+	/* Commented by Patrick */
+	mt6681_accdet_late_init(0);
 #endif
 
 	// do_exit(0);
