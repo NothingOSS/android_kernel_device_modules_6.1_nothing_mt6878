@@ -146,7 +146,7 @@ extern u32 *rdma_crc_va[MML_PIPE_CNT];
 extern dma_addr_t rdma_crc_pa[MML_PIPE_CNT];
 #endif
 
-#define MML_MAX_PATH_NODES	19 /* must align MAX_TILE_FUNC_NO in tile_driver.h */
+#define MML_MAX_PATH_NODES	22 /* must align MAX_TILE_FUNC_NO in tile_driver.h */
 #define MML_MAX_PATH_CACHES	22 /* must >= PATH_MML_MAX in all mtk-mml-mtxxxx.c */
 #define MML_MAX_CMDQ_CLTS	4
 #define MML_MAX_OPPS		5

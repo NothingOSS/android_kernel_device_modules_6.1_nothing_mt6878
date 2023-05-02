@@ -82,6 +82,8 @@ enum topology_scenario {
 	PATH_MML_RR,
 	PATH_MML_RR_DL,
 	PATH_MML_2IN_2OUT,
+	PATH_MML_RR_2IN_2OUT,
+	PATH_MML_RR_DL_2IN_2OUT,
 	PATH_MML_MAX
 };
 
@@ -211,6 +213,52 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_RSZ2, MML_WROT2,},
 		{MML_WROT2,},
 	},
+	[PATH_MML_RR_2IN_2OUT] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RROT0, MML_MERGE0,},
+		{MML_RROT0_2ND, MML_MERGE0,},
+		{MML_MERGE0, MML_DMA0_SEL,},
+		{MML_DMA0_SEL, MML_DLI0_SEL,},
+		{MML_DLI0_SEL, MML_FG0,},
+		{MML_FG0, MML_HDR0,},
+		{MML_HDR0, MML_AAL0,},
+		{MML_AAL0, MML_C3D0,},
+		{MML_C3D0, MML_PQ_AAL0_SEL,},
+		{MML_PQ_AAL0_SEL, MML_RSZ0,},
+		{MML_RSZ0, MML_TDSHP0,},
+		{MML_RDMA2, MML_BIRSZ0,},
+		{MML_BIRSZ0, MML_TDSHP0,},
+		{MML_TDSHP0, MML_COLOR0,},
+		{MML_COLOR0, MML_WROT0_SEL,},
+		{MML_WROT0_SEL, MML_WROT0,},
+		{MML_DMA0_SEL, MML_RSZ2,},
+		{MML_RSZ2, MML_WROT2,},
+		{MML_WROT2,},
+	},
+	[PATH_MML_RR_DL_2IN_2OUT] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RROT0, MML_MERGE0,},
+		{MML_RROT0_2ND, MML_MERGE0,},
+		{MML_MERGE0, MML_DMA0_SEL,},
+		{MML_DMA0_SEL, MML_DLI0_SEL,},
+		{MML_DLI0_SEL, MML_FG0,},
+		{MML_FG0, MML_HDR0,},
+		{MML_HDR0, MML_AAL0,},
+		{MML_AAL0, MML_C3D0,},
+		{MML_C3D0, MML_PQ_AAL0_SEL,},
+		{MML_PQ_AAL0_SEL, MML_RSZ0,},
+		{MML_RSZ0, MML_TDSHP0,},
+		{MML_RDMA2, MML_BIRSZ0,},
+		{MML_BIRSZ0, MML_TDSHP0,},
+		{MML_TDSHP0, MML_COLOR0,},
+		{MML_COLOR0, MML_WROT0_SEL,},
+		{MML_WROT0_SEL, MML_DLO0,},
+		{MML_DMA0_SEL, MML_RSZ2,},
+		{MML_RSZ2, MML_WROT2,},
+		{MML_WROT2,},
+	},
 };
 
 /* reset bit to each engine,
@@ -278,9 +326,13 @@ static const u8 clt_dispatch[PATH_MML_MAX] = {
 	[PATH_MML_NOPQ] = MML_CLT_PIPE0,
 	[PATH_MML_PQ] = MML_CLT_PIPE0,
 	[PATH_MML_PQ_DL] = MML_CLT_PIPE0,
+	[PATH_MML_PQ_DD] = MML_CLT_PIPE0,
+	[PATH_MML_RR_NOPQ] = MML_CLT_PIPE0,
 	[PATH_MML_RR] = MML_CLT_PIPE0,
 	[PATH_MML_RR_DL] = MML_CLT_PIPE0,
 	[PATH_MML_2IN_2OUT] = MML_CLT_PIPE0,
+	[PATH_MML_RR_2IN_2OUT] = MML_CLT_PIPE0,
+	[PATH_MML_RR_DL_2IN_2OUT] = MML_CLT_PIPE0,
 };
 
 /* mux sof group of mmlsys mout/sel */
@@ -299,9 +351,13 @@ static const u8 grp_dispatch[PATH_MML_MAX] = {
 	[PATH_MML_NOPQ] = MUX_SOF_GRP1,
 	[PATH_MML_PQ] = MUX_SOF_GRP1,
 	[PATH_MML_PQ_DL] = MUX_SOF_GRP1,
+	[PATH_MML_PQ_DD] = MUX_SOF_GRP1,
+	[PATH_MML_RR_NOPQ] = MUX_SOF_GRP1,
 	[PATH_MML_RR] = MUX_SOF_GRP1,
 	[PATH_MML_RR_DL] = MUX_SOF_GRP1,
 	[PATH_MML_2IN_2OUT] = MUX_SOF_GRP1,
+	[PATH_MML_RR_2IN_2OUT] = MUX_SOF_GRP1,
+	[PATH_MML_RR_DL_2IN_2OUT] = MUX_SOF_GRP1,
 };
 
 /* 6.6 ms as dc mode active time threshold by:
@@ -552,10 +608,10 @@ static void tp_select_path(struct mml_topology_cache *cache,
 	if (cfg->info.mode == MML_MODE_RACING) {
 		/* always rdma to wrot for racing case */
 		scene = PATH_MML_NOPQ;
-		goto done;
+		goto check_rr;
 	} else if (cfg->info.mode == MML_MODE_APUDC) {
 		scene = PATH_MML_NOPQ;
-		goto done;
+		goto check_rr;
 	}
 
 	en_rsz = tp_need_resize(&cfg->info, &can_binning);
@@ -596,7 +652,7 @@ static void tp_select_path(struct mml_topology_cache *cache,
 		}
 	}
 
-done:
+check_rr:
 	if (mml_rrot == 1) {
 		/* force change to rrot path */
 		use_rrot = true;
@@ -607,15 +663,22 @@ done:
 			use_rrot = true;
 	}
 
-	if (use_rrot) {
-		if (scene == PATH_MML_PQ)
-			scene = PATH_MML_RR;
-		else if (scene == PATH_MML_PQ_DL)
-			scene = PATH_MML_RR_DL;
-		else if (scene == PATH_MML_NOPQ)
-			scene = PATH_MML_RR_NOPQ;
-	}
+	if (!use_rrot)
+		goto done;
 
+	if (scene == PATH_MML_PQ)
+		scene = PATH_MML_RR;
+	else if (scene == PATH_MML_PQ_DL) {
+		if (cfg->info.dest_cnt == 2 && cfg->info.dest[0].pq_config.en_region_pq)
+			scene = PATH_MML_RR_DL_2IN_2OUT;
+		else
+			scene = PATH_MML_RR_DL;
+	} else if (scene == PATH_MML_NOPQ)
+		scene = PATH_MML_RR_NOPQ;
+	else if (scene == PATH_MML_2IN_2OUT)
+		scene = PATH_MML_RR_2IN_2OUT;
+
+done:
 	*path = &cache->paths[scene];
 }
 
