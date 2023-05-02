@@ -2744,6 +2744,96 @@
 			ged-supply = <&ged>;
 		};
 
+		gpueb: gpueb@13c00000 {
+			compatible = "mediatek,gpueb";
+			gpueb-support = <0>;
+			gpueb-logger-support = <0>;
+			mbox-count = <1>;
+			mbox-size = <160>; /* 160 slot * 4 = 640 byte */
+			slot-size = <4>;   /* 1 slot = 4 bytes */
+			ts-mbox = <0>; /* mbox for timersync */
+
+			/* id, mbox, send_size */
+			send-table =
+				<0 0 4>,
+				<1 0 6>,
+				<2 0 3>,
+				<3 0 6>,
+				<4 0 9>,
+				<5 0 4>,
+				<6 0 6>,
+				<7 0 6>,
+				<8 0 1>,
+				<9 0 4>,
+				<10 0 3>;
+			send-name-table =
+				"IPI_ID_FAST_DVFS_EVENT",
+				"IPI_ID_GPUFREQ",
+				"IPI_ID_SLEEP",
+				"IPI_ID_TIMER",
+				"IPI_ID_FHCTL",
+				"IPI_ID_CCF",
+				"IPI_ID_GPUMPU",
+				"IPI_ID_FAST_DVFS",
+				"CH_IPIR_C_MET", /* = IPIS_C_MET on gpueb side */
+				"CH_IPIS_C_MET", /* = IPIR_C_MET on gpueb side */
+				"IPI_ID_BRISKET";
+
+			/* id, mbox, recv_size, recv_opt, cb_ctx_opt */
+			recv-table =
+				<0 0 4 0 0>,
+				<1 0 6 1 1>,
+				<2 0 1 0 1>,
+				<3 0 1 0 1>,
+				<4 0 1 1 1>,
+				<5 0 4 1 1>,
+				<6 0 1 1 1>,
+				<7 0 6 1 1>,
+				<8 0 4 0 1>,
+				<9 0 1 1 1>,
+				<10 0 3 1 1>;
+			recv-name-table =
+				"IPI_ID_FAST_DVFS_EVENT",
+				"IPI_ID_GPUFREQ",
+				"IPI_ID_SLEEP",
+				"IPI_ID_TIMER",
+				"IPI_ID_FHCTL",
+				"IPI_ID_CCF",
+				"IPI_ID_GPUMPU",
+				"IPI_ID_FAST_DVFS",
+				"CH_IPIR_C_MET", /* = IPIS_C_MET on gpueb side */
+				"CH_IPIS_C_MET", /* = IPIR_C_MET on gpueb side */
+				"IPI_ID_BRISKET";
+
+			reg = <0 0x13c00000 0 0x50000>,
+				<0 0x13c4fd1c 0 0x64>,
+				<0 0x13c60000 0 0x2000>,
+				<0 0x13c4fd80 0 0x280>,
+				<0 0x13c62004 0 0x4>,
+				<0 0x13c62074 0 0x4>,
+				<0 0x13c62000 0 0x4>,
+				<0 0x13c62078 0 0x4>;
+			reg-names = "gpueb_base",
+						"gpueb_gpr_base",
+						"gpueb_reg_base",
+						"mbox0_base",
+						"mbox0_set",
+						"mbox0_clr",
+						"mbox0_send",
+						"mbox0_recv";
+
+			interrupts = <GIC_SPI 669 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupt-names = "mbox0";
+
+			gpueb-mem-table =
+				<0 0x4000>,   /* 16KB */
+				<1 0x180000>; /* 1.5MB */
+
+			gpueb-mem-name-table =
+				"MEM_ID_GPUFREQ", /* GPUFREQ */
+				"MEM_ID_LOG";     /* LOGGER */
+		};
+
 		gpufreq: gpufreq@13fbf000 {
 			compatible = "mediatek,gpufreq";
 			reg =
