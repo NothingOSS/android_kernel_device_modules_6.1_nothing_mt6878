@@ -2842,6 +2842,15 @@
 		iommus = <&apu_smmu 0xa>;
 	};
 
+	apusys-apummu {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		compatible = "mediatek,rv-apummu-mt6989";
+		// dma-ranges = <0x0 0x0 0x0 0x0 0x1 0x0>;
+		mtk,iommu-group = <&apu_iommu_group_0>;
+		iommus = <&apu_smmu 0xd>;
+	};
+
 	soc {
 		compatible = "simple-bus";
 		#address-cells = <2>;
