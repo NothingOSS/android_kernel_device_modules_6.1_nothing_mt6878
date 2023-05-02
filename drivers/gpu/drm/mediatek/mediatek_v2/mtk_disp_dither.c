@@ -346,10 +346,7 @@ static void mtk_dither_config(struct mtk_ddp_comp *comp,
 	unsigned int width;
 
 	if (comp->mtk_crtc->is_dual_pipe && cfg->tile_overhead.is_support) {
-		if (!dither_data->is_right_pipe)
-			width = dither_data->tile_overhead.in_width;
-		else
-			width = dither_data->tile_overhead.in_width;
+		width = dither_data->tile_overhead.in_width;
 	} else {
 		if (comp->mtk_crtc->is_dual_pipe)
 			width = cfg->w / 2;
