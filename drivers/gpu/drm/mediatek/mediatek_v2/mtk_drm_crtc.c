@@ -10671,11 +10671,6 @@ struct drm_display_mode *mtk_drm_crtc_avail_disp_mode(struct drm_crtc *crtc,
 		return NULL;
 	}
 
-	if (IS_ERR_OR_NULL(mtk_crtc->avail_modes)) {
-		DDPPR_ERR("%s, invalid mtk_crtc->avail_modes\n", __func__);
-		return NULL;
-	}
-
 	/* For not multiple display mode's display, would use first display_mode since resume */
 	if (mtk_crtc && mtk_crtc->avail_modes_num == 0 && mtk_crtc->avail_modes)
 		return mtk_crtc->avail_modes;

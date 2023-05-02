@@ -167,7 +167,6 @@ int _mtk_esd_check_read(struct drm_crtc *crtc)
 
 	DDPINFO("[ESD%u]ESD read panel\n", drm_crtc_index(crtc));
 
-
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (unlikely(!output_comp)) {
 		DDPPR_ERR("%s:invalid output comp\n", __func__);
@@ -715,6 +714,11 @@ static void mtk_disp_esd_chk_init(struct drm_crtc *crtc)
 		return;
 
 	output_comp = (mtk_crtc) ? mtk_ddp_comp_request_output(mtk_crtc) : NULL;
+	if (unlikely(!output_comp)) {
+		DDPMSG("%s:invalid output comp\n", __func__);
+		return;
+	}
+
 	panel_ext = mtk_crtc->panel_ext;
 	if (!(panel_ext && panel_ext->params)) {
 		DDPMSG("can't find panel_ext handle\n");
