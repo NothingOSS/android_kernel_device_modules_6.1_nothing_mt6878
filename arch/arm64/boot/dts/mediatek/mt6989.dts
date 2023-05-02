@@ -474,18 +474,6 @@
 		#clock-cells = <1>;
 	};
 
-	gpusys: power-controller@13f91000 {
-		compatible = "mediatek,mt6989-gpusys", "syscon";
-		reg = <0 0x13f91000 0 0x1000>;
-		#power-domain-cells = <1>;
-		ifr-bus = <&ifr_bus>;
-		bcrm-ssr-bus = <&bcrm_ssr_bus>;
-		bcrm-peri-par-bus = <&bcrm_peri_par_bus_clk>;
-		bcrm-pextp-bus = <&bcrm_pextp_bus_clk>;
-		gpu-eb-rpc = <&gpusys>;
-		vlpcfg = <&vlpcfg_bus>;
-	};
-
 	mfgpll_pll_ctrl_clk: syscon@13fa0000 {
 		compatible = "mediatek,mt6989-mfgpll_pll_ctrl", "syscon";
 		reg = <0 0x13fa0000 0 0x0400>;
@@ -501,12 +489,6 @@
 	mfgpll_sc1_pll_ctrl_clk: syscon@13fa0800 {
 		compatible = "mediatek,mt6989-mfgpll_sc1_pll_ctrl", "syscon";
 		reg = <0 0x13fa0800 0 0x1000>;
-		#clock-cells = <1>;
-	};
-
-	mfg_top_config_clk: syscon@13fbf000 {
-		compatible = "mediatek,mt6989-mfg", "syscon";
-		reg = <0 0x13fbf000 0 0x1000>;
 		#clock-cells = <1>;
 	};
 
@@ -632,7 +614,6 @@
 		bcrm-ssr-bus = <&bcrm_ssr_bus>;
 		bcrm-peri-par-bus = <&bcrm_peri_par_bus_clk>;
 		bcrm-pextp-bus = <&bcrm_pextp_bus_clk>;
-		gpu-eb-rpc = <&gpusys>;
 		vlpcfg = <&vlpcfg_bus>;
 	};
 

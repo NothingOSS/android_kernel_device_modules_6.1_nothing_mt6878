@@ -124,8 +124,7 @@
 		compatible = "mediatek,clk-disable-unused";
 		reg = <0x67>;
 		clocks =
-			<&mminfra_config_clk CLK_MMINFRA_SMI>,
-			<&mminfra_config_clk CLK_MMINFRA_GCE_26M>;
+			<&mminfra_config_clk CLK_MMINFRA_SMI>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
 	};
 
@@ -193,9 +192,7 @@
 		clocks =
 			<&camsys_rawc_clk CLK_CAM_RC_LARBX>,
 			<&camsys_rawc_clk CLK_CAM_RC_CAM>,
-			<&camsys_rawc_clk CLK_CAM_RC_CAMTG>,
-			<&camsys_rawc_clk CLK_CAM_RC_RAW2MM_GALS>,
-			<&camsys_rawc_clk CLK_CAM_RC_YUV2RAW2MM_GALS>;
+			<&camsys_rawc_clk CLK_CAM_RC_CAMTG>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBC>;
 	};
 
@@ -225,9 +222,7 @@
 		clocks =
 			<&camsys_rawb_clk CLK_CAM_RB_LARBX>,
 			<&camsys_rawb_clk CLK_CAM_RB_CAM>,
-			<&camsys_rawb_clk CLK_CAM_RB_CAMTG>,
-			<&camsys_rawb_clk CLK_CAM_RB_RAW2MM_GALS>,
-			<&camsys_rawb_clk CLK_CAM_RB_YUV2RAW2MM_GALS>;
+			<&camsys_rawb_clk CLK_CAM_RB_CAMTG>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBB>;
 	};
 
@@ -257,9 +252,7 @@
 		clocks =
 			<&camsys_rawa_clk CLK_CAM_RA_LARBX>,
 			<&camsys_rawa_clk CLK_CAM_RA_CAM>,
-			<&camsys_rawa_clk CLK_CAM_RA_CAMTG>,
-			<&camsys_rawa_clk CLK_CAM_RA_RAW2MM_GALS>,
-			<&camsys_rawa_clk CLK_CAM_RA_YUV2RAW2MM_GALS>;
+			<&camsys_rawa_clk CLK_CAM_RA_CAMTG>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBA>;
 	};
 
@@ -292,13 +285,11 @@
 			<&camsys_main_clk CLK_CAM_MAIN_ADLRD>,
 			<&camsys_main_clk CLK_CAM_MAIN_ADLWR>,
 			<&camsys_main_clk CLK_CAM_MAIN_UISP>,
-			<&camsys_main_clk CLK_CAM_MAIN_FAKE_ENG>,
 			<&camsys_main_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
 			<&camsys_main_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
 			<&camsys_main_clk CLK_CAM_MAIN_CAM2SYS_GALS>,
 			<&camsys_main_clk CLK_CAM_MAIN_CAM2MM2_GALS>,
 			<&camsys_main_clk CLK_CAM_MAIN_CCUSYS>,
-			<&camsys_main_clk CLK_CAM_MAIN_IPS>,
 			<&camsys_main_clk CLK_CAM_MAIN_CAM_DPE>,
 			<&camsys_main_clk CLK_CAM_MAIN_CAM_ASG>,
 			<&camsys_main_clk CLK_CAM_MAIN_CAMSV_A_CON_1>,
@@ -348,8 +339,6 @@
 			<&venc_gcon_core2_clk CLK_VEN_C2_CKE0_LARB>,
 			<&venc_gcon_core2_clk CLK_VEN_C2_CKE1_VENC>,
 			<&venc_gcon_core2_clk CLK_VEN_C2_CKE2_JPGENC>,
-			<&venc_gcon_core2_clk CLK_VEN_C2_CKE3_JPGDEC>,
-			<&venc_gcon_core2_clk CLK_VEN_C2_CKE4_JPGDEC_C1>,
 			<&venc_gcon_core2_clk CLK_VEN_C2_CKE5_GALS>,
 			<&venc_gcon_core2_clk CLK_VEN_C2_CKE6_GALS_SRAM>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN2>;
@@ -363,7 +352,6 @@
 			<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC>,
 			<&venc_gcon_core1_clk CLK_VEN2_CKE2_JPGENC>,
 			<&venc_gcon_core1_clk CLK_VEN2_CKE3_JPGDEC>,
-			<&venc_gcon_core1_clk CLK_VEN2_CKE4_JPGDEC_C1>,
 			<&venc_gcon_core1_clk CLK_VEN2_CKE5_GALS>,
 			<&venc_gcon_core1_clk CLK_VEN2_CKE6_GALS_SRAM>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN1>;
@@ -408,7 +396,6 @@
 			<&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_CKEN_ENG>,
 			<&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_SOC_APTV_EN>,
 			<&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_SOC_APTV_TOP_EN>,
-			<&vdec_soc_gcon_base_clk CLK_VDE1_DPSW_VDEC_EN>,
 			<&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_SOC_IPS_EN>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE0>;
 	};
@@ -716,27 +703,18 @@
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_DIS0_SHUTDOWN>;
 	};
 
-	disable-unused-clk-mfg@8c {
+	disable-unused-clk-imp-iic-wrap-n@8c {
 		compatible = "mediatek,clk-disable-unused";
 		reg = <0x8c>;
-		clocks =
-			<&mfg_top_config_clk CLK_MFGCFG_BG3D>,
-			<&mfg_top_config_clk CLK_MFGCFG_BATB>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_MFG0_DORMANT>;
-	};
-
-	disable-unused-clk-imp-iic-wrap-n@8d {
-		compatible = "mediatek,clk-disable-unused";
-		reg = <0x8d>;
 		clocks =
 			<&imp_iic_wrap_n_clk CLK_IMPN_I2C0>,
 			<&imp_iic_wrap_n_clk CLK_IMPN_I2C6>,
 			<&imp_iic_wrap_n_clk CLK_IMPN_SEC_EN>;
 	};
 
-	disable-unused-clk-imp-iic-wrap-es@8e {
+	disable-unused-clk-imp-iic-wrap-es@8d {
 		compatible = "mediatek,clk-disable-unused";
-		reg = <0x8e>;
+		reg = <0x8d>;
 		clocks =
 			<&imp_iic_wrap_es_clk CLK_IMPES_I2C2>,
 			<&imp_iic_wrap_es_clk CLK_IMPES_I2C4>,
@@ -745,9 +723,9 @@
 			<&imp_iic_wrap_es_clk CLK_IMPES_SEC_EN>;
 	};
 
-	disable-unused-clk-imp-iic-wrap-s@8f {
+	disable-unused-clk-imp-iic-wrap-s@8e {
 		compatible = "mediatek,clk-disable-unused";
-		reg = <0x8f>;
+		reg = <0x8e>;
 		clocks =
 			<&imp_iic_wrap_s_clk CLK_IMPS_I2C1>,
 			<&imp_iic_wrap_s_clk CLK_IMPS_I2C3>,
@@ -756,9 +734,9 @@
 			<&imp_iic_wrap_s_clk CLK_IMPS_SEC_EN>;
 	};
 
-	disable-unused-clk-pextpcfg-ao@90 {
+	disable-unused-clk-pextpcfg-ao@8f {
 		compatible = "mediatek,clk-disable-unused";
-		reg = <0x90>;
+		reg = <0x8f>;
 		clocks =
 			<&pextpcfg_ao_clk CLK_PEXTP_P0_MAC_REF>,
 			<&pextpcfg_ao_clk CLK_PEXTP_P0_MAC_PL_P>,
@@ -776,9 +754,9 @@
 			<&pextpcfg_ao_clk CLK_PEXTP_P1_PHY_MCU_BUS>;
 	};
 
-	disable-unused-clk-ufscfg-pdn@91 {
+	disable-unused-clk-ufscfg-pdn@90 {
 		compatible = "mediatek,clk-disable-unused";
-		reg = <0x91>;
+		reg = <0x90>;
 		clocks =
 			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_UFS>,
 			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_AES>,
@@ -786,9 +764,9 @@
 			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_U_AXI>;
 	};
 
-	disable-unused-clk-ufscfg-ao@92 {
+	disable-unused-clk-ufscfg-ao@91 {
 		compatible = "mediatek,clk-disable-unused";
-		reg = <0x92>;
+		reg = <0x91>;
 		clocks =
 			<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_TX_SYM>,
 			<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_RX_SYM0>,
@@ -798,9 +776,9 @@
 			<&ufscfg_ao_clk CLK_UFSAO_PERI2UFS_BRIDGE_H>;
 	};
 
-	disable-unused-clk-imp-iic-wrap-c@93 {
+	disable-unused-clk-imp-iic-wrap-c@92 {
 		compatible = "mediatek,clk-disable-unused";
-		reg = <0x93>;
+		reg = <0x92>;
 		clocks =
 			<&imp_iic_wrap_c_clk CLK_IMPC_I2C10>,
 			<&imp_iic_wrap_c_clk CLK_IMPC_I2C11>,
@@ -809,9 +787,9 @@
 			<&imp_iic_wrap_c_clk CLK_IMPC_SEC_EN>;
 	};
 
-	disable-unused-clk-audiosys@94 {
+	disable-unused-clk-audiosys@93 {
 		compatible = "mediatek,clk-disable-unused";
-		reg = <0x94>;
+		reg = <0x93>;
 		clocks =
 			<&afe_clk CLK_AFE_MEMIF_INTBUS_CLK>,
 			<&afe_clk CLK_AFE_MEMIF_HOP_CLK>,
@@ -890,9 +868,9 @@
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_AUDIO>;
 	};
 
-	disable-unused-clk-pericfg-ao@95 {
+	disable-unused-clk-pericfg-ao@94 {
 		compatible = "mediatek,clk-disable-unused";
-		reg = <0x95>;
+		reg = <0x94>;
 		clocks =
 			<&pericfg_ao_clk CLK_PERAOP_UART0>,
 			<&pericfg_ao_clk CLK_PERAOP_UART1>,
@@ -914,35 +892,13 @@
 			<&pericfg_ao_clk CLK_PERAOP_SPI5_B>,
 			<&pericfg_ao_clk CLK_PERAOP_SPI6_B>,
 			<&pericfg_ao_clk CLK_PERAOP_SPI7_B>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI0_H>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI1_H>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI2_H>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI3_H>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI4_H>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI5_H>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI6_H>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI7_H>,
 			<&pericfg_ao_clk CLK_PERAOP_SFLASH>,
 			<&pericfg_ao_clk CLK_PERAOP_SFLASH_F>,
 			<&pericfg_ao_clk CLK_PERAOP_SFLASH_H>,
 			<&pericfg_ao_clk CLK_PERAOP_SFLASH_P>,
-			<&pericfg_ao_clk CLK_PERAOP_I2C>,
 			<&pericfg_ao_clk CLK_PERAOP_DMA_B>,
-			<&pericfg_ao_clk CLK_PERAOP_SSUSB0_PIPE>,
-			<&pericfg_ao_clk CLK_PERAOP_SSUSB0_REF>,
 			<&pericfg_ao_clk CLK_PERAOP_SSUSB0_FRMCNT>,
-			<&pericfg_ao_clk CLK_PERAOP_SSUSB0_UTMI>,
-			<&pericfg_ao_clk CLK_PERAOP_SSUSB0_SYS>,
-			<&pericfg_ao_clk CLK_PERAOP_SSUSB0_XHCI>,
-			<&pericfg_ao_clk CLK_PERAOP_SSUSB0_F>,
-			<&pericfg_ao_clk CLK_PERAOP_SSUSB0_H>,
-			<&pericfg_ao_clk CLK_PERAOP_SSUSB1_REF>,
 			<&pericfg_ao_clk CLK_PERAOP_SSUSB1_FRMCNT>,
-			<&pericfg_ao_clk CLK_PERAOP_SSUSB1_UTMI>,
-			<&pericfg_ao_clk CLK_PERAOP_SSUSB1_SYS>,
-			<&pericfg_ao_clk CLK_PERAOP_SSUSB1_XHCI>,
-			<&pericfg_ao_clk CLK_PERAOP_SSUSB1_F>,
-			<&pericfg_ao_clk CLK_PERAOP_SSUSB1_H>,
 			<&pericfg_ao_clk CLK_PERAOP_MSDC1>,
 			<&pericfg_ao_clk CLK_PERAOP_MSDC1_F>,
 			<&pericfg_ao_clk CLK_PERAOP_MSDC1_H>,
@@ -952,7 +908,6 @@
 			<&pericfg_ao_clk CLK_PERAOP_UARTHUB>,
 			<&pericfg_ao_clk CLK_PERAOP_UARTHUB_H>,
 			<&pericfg_ao_clk CLK_PERAOP_UARTHUB_P>,
-			<&pericfg_ao_clk CLK_PERAOP_PERI_FMEM_SUB>,
 			<&pericfg_ao_clk CLK_PERAOP_AUDIO_SLV>,
 			<&pericfg_ao_clk CLK_PERAOP_AUDIO_MST>,
 			<&pericfg_ao_clk CLK_PERAOP_AUDIO_INTBUS>,
@@ -962,21 +917,19 @@
 			<&pericfg_ao_clk CLK_PERAOP_AUDIO_H_AUD>;
 	};
 
-	disable-unused-clk-infracfg-ao@96 {
+	disable-unused-clk-infracfg-ao@95 {
 		compatible = "mediatek,clk-disable-unused";
-		reg = <0x96>;
+		reg = <0x95>;
 		clocks =
-			<&infracfg_ao_clk CLK_IFRAO_THERM>,
 			<&infracfg_ao_clk CLK_IFRAO_DPMAIF_MAIN>,
 			<&infracfg_ao_clk CLK_IFRAO_RG_MMW_DPMAIF26M>,
-			<&infracfg_ao_clk CLK_IFRAO_RG_DEBUGTOP_AO_26M>,
 			<&infracfg_ao_clk CLK_IFRAO_RG_SOCSYS_FATB>,
 			<&infracfg_ao_clk CLK_IFRAO_RG_SOCSYS_SDF>;
 	};
 
-	disable-unused-clk-vlp-cksys@97 {
+	disable-unused-clk-vlp-cksys@96 {
 		compatible = "mediatek,clk-disable-unused";
-		reg = <0x97>;
+		reg = <0x96>;
 		clocks =
 			<&vlp_cksys_clk CLK_VLP_CK_SCP_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_SCP_SPI_SEL>,
@@ -987,9 +940,9 @@
 			<&vlp_cksys_clk CLK_VLP_CK_IPS_SEL>;
 	};
 
-	disable-unused-clk-topckgen@98 {
+	disable-unused-clk-topckgen@97 {
 		compatible = "mediatek,clk-disable-unused";
-		reg = <0x98>;
+		reg = <0x97>;
 		clocks =
 			<&topckgen_clk CLK_TOP_APLL12_CK_DIV0>,
 			<&topckgen_clk CLK_TOP_APLL12_CK_DIV1>,
@@ -1099,9 +1052,9 @@
 			<&topckgen_clk CLK_TOP_MMINFRA_SEL>;
 	};
 
-	disable-unused-clk-apmixedsys@99 {
+	disable-unused-clk-apmixedsys@98 {
 		compatible = "mediatek,clk-disable-unused";
-		reg = <0x99>;
+		reg = <0x98>;
 		clocks =
 			<&apmixedsys_clk CLK_APMIXED_MAINPLL>,
 			<&apmixedsys_clk CLK_APMIXED_UNIVPLL>,
@@ -1119,272 +1072,272 @@
 			<&apmixedsys_clk CLK_APMIXED_IMGPLL>;
 	};
 
-	disable-unused-clk-ccipll-pll-ctrl@9a {
+	disable-unused-clk-ccipll-pll-ctrl@99 {
 		compatible = "mediatek,clk-disable-unused";
-		reg = <0x9a>;
+		reg = <0x99>;
 		clocks =
 			<&ccipll_pll_ctrl_clk CLK_CCIPLL>;
 	};
 
-	disable-unused-clk-armpll-ll-pll-ctrl@9b {
+	disable-unused-clk-armpll-ll-pll-ctrl@9a {
 		compatible = "mediatek,clk-disable-unused";
-		reg = <0x9b>;
+		reg = <0x9a>;
 		clocks =
 			<&armpll_ll_pll_ctrl_clk CLK_CPU_LL_ARMPLL_LL>;
 	};
 
-	disable-unused-clk-armpll-bl-pll-ctrl@9c {
+	disable-unused-clk-armpll-bl-pll-ctrl@9b {
 		compatible = "mediatek,clk-disable-unused";
-		reg = <0x9c>;
+		reg = <0x9b>;
 		clocks =
 			<&armpll_bl_pll_ctrl_clk CLK_CPU_BL_ARMPLL_BL>;
 	};
 
-	disable-unused-clk-armpll-b-pll-ctrl@9d {
+	disable-unused-clk-armpll-b-pll-ctrl@9c {
 		compatible = "mediatek,clk-disable-unused";
-		reg = <0x9d>;
+		reg = <0x9c>;
 		clocks =
 			<&armpll_b_pll_ctrl_clk CLK_CPU_B_ARMPLL_B>;
 	};
 
-	disable-unused-clk-ptppll-pll-ctrl@9e {
+	disable-unused-clk-ptppll-pll-ctrl@9d {
 		compatible = "mediatek,clk-disable-unused";
-		reg = <0x9e>;
+		reg = <0x9d>;
 		clocks =
 			<&ptppll_pll_ctrl_clk CLK_PTPPLL>;
 	};
 
-	disable-unused-pd-peri-usb0@9f {
+	disable-unused-pd-peri-usb0@9e {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0x9f>;
+		reg = <0x9e>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_PERI_USB0>;
 	};
 
-	disable-unused-pd-ufs0@a0 {
+	disable-unused-pd-ufs0@9f {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xa0>;
+		reg = <0x9f>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_UFS0>;
 	};
 
-	disable-unused-pd-ufs0-phy@a1 {
+	disable-unused-pd-ufs0-phy@a0 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xa1>;
+		reg = <0xa0>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_UFS0_PHY>;
 	};
 
-	disable-unused-pd-pextp-mac0@a2 {
+	disable-unused-pd-pextp-mac0@a1 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xa2>;
+		reg = <0xa1>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_MAC0>;
 	};
 
-	disable-unused-pd-pextp-mac1@a3 {
+	disable-unused-pd-pextp-mac1@a2 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xa3>;
+		reg = <0xa2>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_MAC1>;
 	};
 
-	disable-unused-pd-pextp-phy0@a4 {
+	disable-unused-pd-pextp-phy0@a3 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xa4>;
+		reg = <0xa3>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_PHY0>;
 	};
 
-	disable-unused-pd-pextp-phy1@a5 {
+	disable-unused-pd-pextp-phy1@a4 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xa5>;
+		reg = <0xa4>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_PHY1>;
 	};
 
-	disable-unused-pd-audio@a6 {
+	disable-unused-pd-audio@a5 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xa6>;
+		reg = <0xa5>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_AUDIO>;
 	};
 
-	disable-unused-pd-adsp-top-shutdown@a7 {
+	disable-unused-pd-adsp-top-dormant@a6 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xa7>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_ADSP_TOP_SHUTDOWN>;
+		reg = <0xa6>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_ADSP_TOP_DORMANT>;
 	};
 
-	disable-unused-pd-adsp-ao@a8 {
+	disable-unused-pd-adsp-ao@a7 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xa8>;
+		reg = <0xa7>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ADSP_AO>;
 	};
 
-	disable-unused-pd-isp-traw@a9 {
+	disable-unused-pd-isp-traw@a8 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xa9>;
+		reg = <0xa8>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_TRAW>;
 	};
 
-	disable-unused-pd-isp-dip1@aa {
+	disable-unused-pd-isp-dip1@a9 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xaa>;
+		reg = <0xa9>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_DIP1>;
 	};
 
-	disable-unused-pd-isp-main@ab {
+	disable-unused-pd-isp-main@aa {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xab>;
+		reg = <0xaa>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_MAIN>;
 	};
 
-	disable-unused-pd-isp-vcore@ac {
+	disable-unused-pd-isp-vcore@ab {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xac>;
+		reg = <0xab>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_VCORE>;
 	};
 
-	disable-unused-pd-vde0@ad {
+	disable-unused-pd-vde0@ac {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xad>;
+		reg = <0xac>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE0>;
 	};
 
-	disable-unused-pd-vde1@ae {
+	disable-unused-pd-vde1@ad {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xae>;
+		reg = <0xad>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE1>;
 	};
 
-	disable-unused-pd-vde-vcore0@af {
+	disable-unused-pd-vde-vcore0@ae {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xaf>;
+		reg = <0xae>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE_VCORE0>;
 	};
 
-	disable-unused-pd-vde-vcore1@b0 {
+	disable-unused-pd-vde-vcore1@af {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xb0>;
+		reg = <0xaf>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE_VCORE1>;
 	};
 
-	disable-unused-pd-ven0@b1 {
+	disable-unused-pd-ven0@b0 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xb1>;
+		reg = <0xb0>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN0>;
 	};
 
-	disable-unused-pd-ven1@b2 {
+	disable-unused-pd-ven1@b1 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xb2>;
+		reg = <0xb1>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN1>;
 	};
 
-	disable-unused-pd-ven2@b3 {
+	disable-unused-pd-ven2@b2 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xb3>;
+		reg = <0xb2>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN2>;
 	};
 
-	disable-unused-pd-cam-mraw@b4 {
+	disable-unused-pd-cam-mraw@b3 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xb4>;
+		reg = <0xb3>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MRAW>;
 	};
 
-	disable-unused-pd-cam-suba@b5 {
+	disable-unused-pd-cam-suba@b4 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xb5>;
+		reg = <0xb4>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBA>;
 	};
 
-	disable-unused-pd-cam-subb@b6 {
+	disable-unused-pd-cam-subb@b5 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xb6>;
+		reg = <0xb5>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBB>;
 	};
 
-	disable-unused-pd-cam-subc@b7 {
+	disable-unused-pd-cam-subc@b6 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xb7>;
+		reg = <0xb6>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBC>;
 	};
 
-	disable-unused-pd-cam-main@b8 {
+	disable-unused-pd-cam-main@b7 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xb8>;
+		reg = <0xb7>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MAIN>;
 	};
 
-	disable-unused-pd-cam-vcore@b9 {
+	disable-unused-pd-cam-vcore@b8 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xb9>;
+		reg = <0xb8>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_VCORE>;
 	};
 
-	disable-unused-pd-cam-ccu@ba {
+	disable-unused-pd-cam-ccu@b9 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xba>;
+		reg = <0xb9>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_CCU>;
 	};
 
-	disable-unused-pd-cam-ccu-ao@bb {
+	disable-unused-pd-cam-ccu-ao@ba {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xbb>;
+		reg = <0xba>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_CCU_AO>;
 	};
 
-	disable-unused-pd-disp-vcore@bc {
+	disable-unused-pd-disp-vcore@bb {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xbc>;
+		reg = <0xbb>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_DISP_VCORE>;
 	};
 
-	disable-unused-pd-mml0-shutdown@bd {
+	disable-unused-pd-mml0-shutdown@bc {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xbd>;
+		reg = <0xbc>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_MML0_SHUTDOWN>;
 	};
 
-	disable-unused-pd-mml1-shutdown@be {
+	disable-unused-pd-mml1-shutdown@bd {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xbe>;
+		reg = <0xbd>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_MML1_SHUTDOWN>;
 	};
 
-	disable-unused-pd-dis0-shutdown@bf {
+	disable-unused-pd-dis0-shutdown@be {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xbf>;
+		reg = <0xbe>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_DIS0_SHUTDOWN>;
 	};
 
-	disable-unused-pd-dis1-shutdown@c0 {
+	disable-unused-pd-dis1-shutdown@bf {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xc0>;
+		reg = <0xbf>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_DIS1_SHUTDOWN>;
 	};
 
-	disable-unused-pd-ovl0-shutdown@c1 {
+	disable-unused-pd-ovl0-shutdown@c0 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xc1>;
+		reg = <0xc0>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_OVL0_SHUTDOWN>;
 	};
 
-	disable-unused-pd-ovl1-shutdown@c2 {
+	disable-unused-pd-ovl1-shutdown@c1 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xc2>;
+		reg = <0xc1>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_OVL1_SHUTDOWN>;
 	};
 
-	disable-unused-pd-mm-infra@c3 {
+	disable-unused-pd-mm-infra@c2 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xc3>;
+		reg = <0xc2>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
 	};
 
-	disable-unused-pd-dp-tx@c4 {
+	disable-unused-pd-dp-tx@c3 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xc4>;
+		reg = <0xc3>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_DP_TX>;
 	};
 
-	disable-unused-pd-csi-rx@c5 {
+	disable-unused-pd-csi-rx@c4 {
 		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xc5>;
+		reg = <0xc4>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CSI_RX>;
 	};
 };
