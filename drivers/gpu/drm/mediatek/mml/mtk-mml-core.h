@@ -148,6 +148,7 @@ extern dma_addr_t rdma_crc_pa[MML_PIPE_CNT];
 
 #define MML_MAX_PATH_NODES	22 /* must align MAX_TILE_FUNC_NO in tile_driver.h */
 #define MML_MAX_PATH_CACHES	32 /* must >= PATH_MML_MAX in all mtk-mml-mtxxxx.c */
+#define MML_MAX_AID_COMPS	10
 #define MML_MAX_CMDQ_CLTS	4
 #define MML_MAX_OPPS		5
 #define MML_MAX_TPUT		800
@@ -237,6 +238,9 @@ struct mml_topology_path {
 
 	/* Describe which engine is out0 and which is out1 */
 	u32 out_engine_ids[MML_MAX_OUTPUTS];
+
+	u8 aid_engine_ids[MML_MAX_AID_COMPS];
+	u8 aid_eng_cnt;
 
 	/* cmdq client to compose command */
 	u8 clt_id;

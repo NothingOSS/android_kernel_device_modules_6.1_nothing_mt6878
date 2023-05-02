@@ -314,6 +314,13 @@ static inline bool engine_region_pq(u32 id)
 	return id == MML_RDMA2 || id == MML_BIRSZ0;
 }
 
+/* check if engine is dma engine */
+static inline bool engine_dma(u32 id)
+{
+	return id == MML_RDMA0 || id == MML_RROT0 || id == MML_RROT0_2ND || id == MML_RDMA2 ||
+		id == MML_FG0 || id == MML_WROT0 || id == MML_WROT2;
+}
+
 enum cmdq_clt_usage {
 	MML_CLT_PIPE0,
 	MML_CLT_PIPE1,
@@ -454,6 +461,10 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 
 		/* find and connect previous engine to current node */
 		tp_parse_connect_prev(route, path->nodes, i);
+
+		/* for svp aid binding */
+		if (engine_dma(eng) && path->aid_eng_cnt < MML_MAX_AID_COMPS)
+			path->aid_engine_ids[path->aid_eng_cnt++] = eng;
 	}
 	path->node_cnt = i;
 

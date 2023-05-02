@@ -32,7 +32,6 @@
 #define MML_MAX_SYS_MUX_PINS	88
 #define MML_MAX_SYS_DL_RELAYS	7
 #define MML_MAX_SYS_DBG_REGS	100
-#define MML_MAX_AID_COMPS	10
 
 #define APU_CTRL		0x2d0
 #define APU_HANDLE		0x200
@@ -63,6 +62,12 @@ enum mml_comp_type {
 	MML_COMP_TYPE_TOTAL
 };
 
+enum mml_aidsel_mode {
+	MML_AIDSEL_REG = 0,
+	MML_AIDSEL_ENGINE,
+	MML_AIDSEL_ENGINEBITS,
+};
+
 struct mml_sys;
 
 struct mml_data {
@@ -72,7 +77,7 @@ struct mml_data {
 	void (*aid_sel)(struct mml_comp *comp, struct mml_task *task,
 		struct mml_comp_config *ccfg);
 	u8 gpr[MML_PIPE_CNT];
-	bool use_aidsel_engine;
+	enum mml_aidsel_mode aidsel_mode;
 };
 
 enum mml_mux_type {
@@ -145,6 +150,8 @@ struct mml_sys {
 
 	/* store the bit to enable aid_sel for specific component */
 	u16 aid_sel_regs[MML_MAX_AID_COMPS];
+	u16 aid_sel_reg_bit[MML_MAX_AID_COMPS];
+	u16 aid_sel_reg_mask[MML_MAX_AID_COMPS];
 	u8 aid_sel[MML_MAX_COMPONENTS];
 
 	/* register for racing mode select ready signal */
@@ -416,6 +423,24 @@ static void sys_config_aid_sel_engine(struct mml_comp *comp, struct mml_task *ta
 		 */
 		cmdq_pkt_write(pkt, NULL, comp->base_pa + sys->aid_sel_regs[ca_idx],
 			cfg->info.dest[i].data.secure, U32_MAX);
+	}
+}
+
+static void sys_config_aid_sel_bits(struct mml_comp *comp, struct mml_task *task,
+				    struct mml_comp_config *ccfg)
+{
+	struct mml_sys *sys = comp_to_sys(comp);
+	struct mml_frame_config *cfg = task->config;
+	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	const struct mml_topology_path *path = cfg->path[ccfg->pipe];
+	u32 i;
+
+	for (i = 0; i < path->aid_eng_cnt; i++) {
+		u8 aid_idx = sys->aid_sel[path->aid_engine_ids[i]];
+		u16 aid_bit = cfg->info.src.secure ? sys->aid_sel_reg_bit[aid_idx] : 0;
+
+		cmdq_pkt_write(pkt, NULL, comp->base_pa + sys->aid_sel_regs[aid_idx],
+			aid_bit, sys->aid_sel_reg_mask[aid_idx]);
 	}
 }
 
@@ -909,7 +934,7 @@ static int sys_comp_init(struct device *dev, struct mml_sys *sys,
 	struct property *prop;
 	const char *name;
 	const __be32 *p;
-	u32 value, comp_id;
+	u32 value, comp_id, selbit, selmask;
 
 	/* Initialize mux-pins */
 	cnt = of_property_count_elems_of_size(node, "mux-pins",
@@ -961,7 +986,29 @@ static int sys_comp_init(struct device *dev, struct mml_sys *sys,
 		i++;
 	}
 
-	if (sys->data->use_aidsel_engine) {
+	if (sys->data->aidsel_mode == MML_AIDSEL_ENGINEBITS) {
+		cnt = of_property_count_u32_elems(node, "aid-sel-engine");
+		if (cnt / 4 > MML_MAX_AID_COMPS) {
+			mml_err("count of aid-sel-engine %u more max aid comps",
+				cnt);
+			cnt = MML_MAX_AID_COMPS * 4;
+		}
+		for (i = 0; i + 3 < cnt; i += 4) {
+			of_property_read_u32_index(node, "aid-sel-engine", i, &comp_id);
+			of_property_read_u32_index(node, "aid-sel-engine", i + 1, &value);
+			of_property_read_u32_index(node, "aid-sel-engine", i + 2, &selbit);
+			of_property_read_u32_index(node, "aid-sel-engine", i + 3, &selmask);
+			if (comp_id >= MML_MAX_COMPONENTS) {
+				dev_err(dev, "component id %u is larger than max:%d\n",
+					comp_id, MML_MAX_COMPONENTS);
+				return -EINVAL;
+			}
+			sys->aid_sel[comp_id] = (u8)i / 4;
+			sys->aid_sel_regs[i / 4] = (u16)value;
+			sys->aid_sel_reg_bit[i / 4] = (u16)selbit;
+			sys->aid_sel_reg_bit[i / 4] = (u16)selmask;
+		}
+	} else if (sys->data->aidsel_mode == MML_AIDSEL_ENGINE) {
 		cnt = of_property_count_u32_elems(node, "aid-sel-engine");
 		if (cnt / 2 > MML_MAX_AID_COMPS) {
 			mml_err("count of aid-sel-engine %u more max aid comps",
@@ -2066,7 +2113,23 @@ static const struct mml_data mt6985_mml_data = {
 	},
 	.aid_sel = sys_config_aid_sel_engine,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
-	.use_aidsel_engine = true,
+	.aidsel_mode = MML_AIDSEL_ENGINE,
+};
+
+static const struct mml_data mt6989_mml_data = {
+	.comp_inits = {
+		[MML_CT_SYS] = &sys_comp_init,
+		[MML_CT_DL_IN] = &dli_comp_init,
+		[MML_CT_DL_OUT] = &dlo_comp_init,
+	},
+	.ddp_comp_funcs = {
+		[MML_CT_SYS] = &sys_ddp_funcs,
+		[MML_CT_DL_IN] = &dl_ddp_funcs,
+		[MML_CT_DL_OUT] = &dl_ddp_funcs,
+	},
+	.aid_sel = sys_config_aid_sel_bits,
+	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.aidsel_mode = MML_AIDSEL_ENGINEBITS,
 };
 
 const struct of_device_id mtk_mml_of_ids[] = {
@@ -2100,7 +2163,7 @@ const struct of_device_id mtk_mml_of_ids[] = {
 	},
 	{
 		.compatible = "mediatek,mt6989-mml",
-		.data = &mt6985_mml_data,
+		.data = &mt6989_mml_data,
 	},
 	{},
 };
