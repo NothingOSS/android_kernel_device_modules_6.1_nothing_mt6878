@@ -1518,6 +1518,10 @@
 			mediatek,eint = <&eint>;
 		};
 
+		mtkfb: mtkfb@0 {
+			compatible = "mediatek,mtkfb";
+		};
+
 		dcm: dcm@c000010 {
 			compatible = "mediatek,mt6989-dcm";
 			reg = <0 0xc000010 0 0x1f0210>,
