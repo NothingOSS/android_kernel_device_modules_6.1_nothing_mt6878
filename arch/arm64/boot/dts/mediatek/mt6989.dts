@@ -93,6 +93,13 @@
 		op-mode = <1>;
 	};
 
+	clkbuf_ctrl: clkbuf-ctrl {
+		compatible = "mediatek,mt6989-clkbuf";
+		pmic = <&mt6685_clkbuf>;
+		srclken-rc = <&srclken_rc>;
+		pmif = <&spmi 0 2>;
+	};
+
 	/* chosen */
 	chosen: chosen {
 		bootargs = "console=tty0 root=/dev/ram \
@@ -6161,6 +6168,64 @@
 		scp_clk_ctrl: scp-clk-ctrl@1cb21000 {
 			compatible = "mediatek,scp-clk-ctrl", "syscon";
 			reg = <0 0x1cb21000 0 0x1000>;
+		};
+
+		srclken_rc: srclken-rc@1c00d000 {
+			compatible = "mediatek,srclken-rc";
+			 reg = <0 0x1c00d000 0 0x100>,
+			       <0 0x1c00d100 0 0x700>;
+
+			suspend {
+				xo-buf = "BBCK1";
+				perms = <0x0>;
+				sub-id = <0>;
+			};
+			md1 {
+				xo-buf = "RF1A/RF2A";
+				sub-id = <1>;
+			};
+			md2 {
+				sub-id = <2>;
+			};
+			md3 {
+				sub-id = <3>;
+			};
+			mdrf {
+				sub-id = <4>;
+			};
+			mmw {
+				sub-id = <5>;
+			};
+			gps {
+				xo-buf = "BB2/RF2B";
+				sub-id = <6>;
+			};
+			pcie {
+				xo-buf = "BB2";
+				sub-id = <7>;
+			};
+			vcore {
+				perms = <0x0>;
+				sub-id = <8>;
+			};
+			mcu {
+				xo-buf = "BB2/RF2B";
+				sub-id = <9>;
+			};
+			co-ant {
+				sub-id = <10>;
+			};
+			nfc {
+				xo-buf = "BBCK4";
+				sub-id = <11>;
+			};
+			suspend-rsv {
+				sub-id = <12>;
+			};
+			ufs {
+				xo-buf = "RFCK1B";
+				sub-id = <13>;
+			};
 		};
 
 		mdpsys_config: mdpsys-config@1f000000 {
