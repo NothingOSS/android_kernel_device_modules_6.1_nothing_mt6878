@@ -1223,6 +1223,12 @@ static enum mml_mode tp_query_mode_racing(struct mml_dev *mml, struct mml_frame_
 		goto decouple;
 	}
 
+	/* no hdr support for racing mode */
+	if (info->dest[0].pq_config.en_hdr) {
+		*reason = mml_query_pqen;
+		goto decouple;
+	}
+
 	/* get mid opp frequency */
 	tp = mml_topology_get_cache(mml);
 	if (!tp || !tp->opp_cnt) {
