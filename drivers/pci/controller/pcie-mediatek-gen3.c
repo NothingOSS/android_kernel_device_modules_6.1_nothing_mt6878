@@ -145,6 +145,7 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_INT_STATUS_REG		0x184
 #define PCIE_AXIERR_COMPL_TIMEOUT	BIT(18)
 #define PCIE_AXI_READ_ERR		GENMASK(18, 16)
+#define PCIE_AER_EVT			BIT(29)
 #define PCIE_MSI_SET_ENABLE_REG		0x190
 #define PCIE_MSI_SET_ENABLE		GENMASK(PCIE_MSI_SET_NUM - 1, 0)
 
@@ -1458,23 +1459,29 @@ static void mtk_pcie_mac_dbg_read_bus(struct mtk_pcie_port *port, u32 bus)
 /* Dump PCIe MAC signal*/
 static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 {
-	mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x0, 0x0, 0x0, 0x0));
-	mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x0a, 0x0b, 0x15, 0x16));
-	mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x1, 0x1, 0x1, 0x1));
-	mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x04, 0x0a, 0x0b, 0x15));
-	mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x2, 0x2, 0x2, 0x2));
-	mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x04, 0x05, 0x06, 0x07));
-	mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x80, 0x81, 0x82, 0x87));
-	mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x3, 0x3, 0x3, 0x3));
-	mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x00, 0x01, 0x07, 0x16));
-	mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x4, 0x4, 0x4, 0x4));
-	mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0xc9, 0xca, 0xcb, 0xcd));
-	mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x5, 0x5, 0x5, 0x5));
-	mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x08, 0x09, 0x0a, 0x0b));
-	mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x0c, 0x0d, 0x0e, 0x0f));
-	mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0xc, 0xc, 0xc, 0xc));
-	mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x45, 0x47, 0x48, 0x49));
-	mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x4a, 0x4b, 0x4c, 0x4d));
+	u32 val;
+
+	/* Dump the debug table probe when AER event occurs */
+	val = readl_relaxed(port->base + PCIE_INT_STATUS_REG);
+	if (val & PCIE_AER_EVT) {
+		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x0, 0x0, 0x0, 0x0));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x0a, 0x0b, 0x15, 0x16));
+		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x1, 0x1, 0x1, 0x1));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x04, 0x0a, 0x0b, 0x15));
+		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x2, 0x2, 0x2, 0x2));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x04, 0x05, 0x06, 0x07));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x80, 0x81, 0x82, 0x87));
+		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x3, 0x3, 0x3, 0x3));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x00, 0x01, 0x07, 0x16));
+		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x4, 0x4, 0x4, 0x4));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0xc9, 0xca, 0xcb, 0xcd));
+		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x5, 0x5, 0x5, 0x5));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x08, 0x09, 0x0a, 0x0b));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x0c, 0x0d, 0x0e, 0x0f));
+		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0xc, 0xc, 0xc, 0xc));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x45, 0x47, 0x48, 0x49));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x4a, 0x4b, 0x4c, 0x4d));
+	}
 
 	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, IP basic sta:%#x, int sta:%#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x\n",
 		port->port_num,
