@@ -550,6 +550,7 @@ mgk_64_k61_device_modules = [
     "sound/soc/codecs/mt6338-accdet.ko",
     "sound/soc/codecs/mt6359p-accdet.ko",
     "sound/soc/codecs/mt6368-accdet.ko",
+    "sound/soc/codecs/mt6681-accdet.ko",
     "sound/soc/codecs/richtek/richtek_spm_cls.ko",
     "sound/soc/codecs/richtek/snd-soc-rt5512.ko",
     "sound/soc/codecs/snd-soc-mt6338.ko",
