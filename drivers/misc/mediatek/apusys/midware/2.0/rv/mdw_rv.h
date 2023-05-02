@@ -67,5 +67,6 @@ int mdw_rv_dev_dtime_handle(struct mdw_rv_dev *mrdev, struct mdw_cmd *c);
 /* rv cmd functions */
 extern const struct mdw_rv_cmd_func mdw_rv_cmd_func_v2;
 extern const struct mdw_rv_cmd_func mdw_rv_cmd_func_v3;
+extern const struct mdw_rv_cmd_func mdw_rv_cmd_func_v4;
 
 #endif

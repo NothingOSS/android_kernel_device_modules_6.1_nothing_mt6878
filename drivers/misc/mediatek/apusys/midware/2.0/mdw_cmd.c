@@ -18,12 +18,12 @@
 
 #define mdw_cmd_show(c, f) \
 	f("cmd(0x%llx/0x%llx/0x%llx/0x%llx/%d/%u)param(%u/%u/%u/%u/"\
-	"%u/%u/%u)subcmds(%u/%p/%u/%u)pid(%d/%d)(%d)\n", \
+	"%u/%u/%u/%u/%u/%llu)subcmds(%u/%p/%u/%u)pid(%d/%d)(%d)\n", \
 	(uint64_t) c->mpriv, c->uid, c->kid, c->rvid, c->id, kref_read(&c->ref), \
 	c->priority, c->hardlimit, c->softlimit, \
 	c->power_save, c->power_plcy, c->power_dtime, \
-	c->app_type, c->num_subcmds, c->cmdbufs, \
-	c->num_cmdbufs, c->size_cmdbufs, \
+	c->app_type, c->inference_ms, c->tolerance_ms, c->is_dtime_set, \
+	c->num_subcmds, c->cmdbufs, c->num_cmdbufs, c->size_cmdbufs, \
 	c->pid, c->tgid, task_pid_nr(current))
 
 static void mdw_cmd_cmdbuf_out(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
@@ -1257,6 +1257,9 @@ static struct mdw_cmd *mdw_cmd_create(struct mdw_fpriv *mpriv,
 	c->app_type = in->exec.app_type;
 	c->num_subcmds = in->exec.num_subcmds;
 	c->num_links = in->exec.num_links;
+	c->inference_ms = in->exec.inference_ms;
+	c->tolerance_ms = in->exec.tolerance_ms;
+	c->is_dtime_set = in->exec.is_dtime_set;
 	c->exec_infos = mdw_mem_get(mpriv, in->exec.exec_infos);
 	if (!c->exec_infos) {
 		mdw_drv_err("get exec info fail\n");

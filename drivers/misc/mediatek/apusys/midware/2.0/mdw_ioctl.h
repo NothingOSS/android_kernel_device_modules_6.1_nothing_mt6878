@@ -213,6 +213,7 @@ struct mdw_subcmd_info {
 	uint32_t ip_time;
 	uint32_t bw;
 	uint32_t affinity;
+	uint32_t trigger_type;
 
 	/* cmdbufs */
 	uint32_t num_cmdbufs;
@@ -251,6 +252,9 @@ struct mdw_cmd_in {
 			uint64_t exec_infos;
 			uint32_t num_links;
 			uint64_t links;
+			uint32_t inference_ms;
+			uint32_t tolerance_ms;
+			uint64_t is_dtime_set;
 		} exec;
 	};
 };

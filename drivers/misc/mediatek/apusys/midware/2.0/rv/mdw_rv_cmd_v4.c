@@ -30,10 +30,14 @@ struct mdw_rv_msg_cmd {
 	uint32_t subcmds_offset;
 	uint32_t num_cmdbufs;
 	uint32_t cmdbuf_infos_offset;
+	uint32_t apummu_tbl_infos_offset;
 	uint32_t adj_matrix_offset;
 	uint32_t exec_infos_offset;
 	uint32_t num_links;
 	uint32_t link_offset;
+	/* history params */
+	uint32_t inference_ms;
+	uint32_t tolerance_ms;
 } __packed;
 
 struct mdw_rv_msg_sc {
@@ -53,14 +57,23 @@ struct mdw_rv_msg_sc {
 	uint32_t bw;
 	uint32_t pack_id;
 	uint32_t affinity;
+	uint32_t trigger_type;
 	/* cmdbufs info */
 	uint32_t cmdbuf_start_idx;
 	uint32_t num_cmdbufs;
+	/* history info */
+	uint32_t avg_ip_time;
 } __packed;
 
 struct mdw_rv_msg_cb {
 	uint64_t device_va;
 	uint32_t size;
+} __packed;
+
+struct mdw_rv_msg_ammu {
+	uint32_t cb_head_device_va;
+	uint32_t table_head_device_va;
+	uint32_t table_size;
 } __packed;
 
 struct mdw_rv_sc_link {
@@ -88,10 +101,13 @@ static void mdw_rv_cmd_print(struct mdw_rv_msg_cmd *rc)
 	mdw_cmd_debug(" subcmds_offset = 0x%x\n", rc->subcmds_offset);
 	mdw_cmd_debug(" num_cmdbufs = %u\n", rc->num_cmdbufs);
 	mdw_cmd_debug(" cmdbuf_infos_offset = 0x%x\n", rc->cmdbuf_infos_offset);
+	mdw_cmd_debug(" apummu_tbl_infos_offset = 0x%x\n", rc->apummu_tbl_infos_offset);
 	mdw_cmd_debug(" adj_matrix_offset = 0x%x\n", rc->adj_matrix_offset);
 	mdw_cmd_debug(" exec_infos_offset = 0x%x\n", rc->exec_infos_offset);
 	mdw_cmd_debug(" num_links = %u\n", rc->num_links);
 	mdw_cmd_debug(" link_offset = 0x%x\n", rc->link_offset);
+	mdw_cmd_debug(" inference_time = %u\n", rc->inference_ms);
+	mdw_cmd_debug(" tolerance_time = %u\n", rc->tolerance_ms);
 	mdw_cmd_debug("-------------------------\n");
 }
 
@@ -128,8 +144,10 @@ static void mdw_rv_sc_print(struct mdw_rv_msg_sc *rsc,
 	mdw_cmd_debug(" ip_time = %u\n", rsc->ip_time);
 	mdw_cmd_debug(" pack_id = %u\n", rsc->pack_id);
 	mdw_cmd_debug(" affinity = 0x%x\n", rsc->affinity);
+	mdw_cmd_debug(" trigger_type = %u\n", rsc->trigger_type);
 	mdw_cmd_debug(" cmdbuf_start_idx = %u\n", rsc->cmdbuf_start_idx);
 	mdw_cmd_debug(" num_cmdbufs = %u\n", rsc->num_cmdbufs);
+	mdw_cmd_debug(" avg_ip_time = %u\n", rsc->avg_ip_time);
 	mdw_cmd_debug("-------------------------\n");
 }
 
@@ -158,13 +176,14 @@ static struct mdw_rv_cmd *mdw_rv_cmd_create(struct mdw_fpriv *mpriv,
 	uint32_t cb_size = 0, acc_cb = 0, i = 0, j = 0;
 	uint32_t subcmds_ofs = 0, cmdbuf_infos_ofs = 0, adj_matrix_ofs = 0;
 	uint32_t exec_infos_ofs = 0, link_ofs = 0;
+	uint32_t apummu_tbl_infos_ofs = 0;
 	struct mdw_rv_msg_cmd *rmc = NULL;
 	struct mdw_rv_msg_sc *rmsc = NULL;
 	struct mdw_rv_msg_cb *rmcb = NULL;
+	struct mdw_rv_msg_ammu *rmammu = NULL;
 	struct mdw_rv_sc_link *rl = NULL;
 
 	mdw_trace_begin("apumdw:rv_cmd_create");
-
 	/* reuse internal cmd if exist */
 	if (c->internal_cmd) {
 		mdw_cmd_debug("reuse internal cmd\n");
@@ -205,6 +224,10 @@ static struct mdw_rv_cmd *mdw_rv_cmd_create(struct mdw_fpriv *mpriv,
 			cb_size, c->num_cmdbufs, sizeof(struct mdw_rv_msg_cb));
 		goto free_rc;
 	}
+	apummu_tbl_infos_ofs = cb_size;       /* APUMMU add tail of cmd buf */
+	cb_size += sizeof(struct mdw_rv_msg_ammu);
+	exec_infos_ofs = cb_size;
+	cb_size += c->exec_infos->size;
 	if (cb_size < c->exec_infos->size) {
 		mdw_drv_err("cb_size overflow(%u) exec_infos size(%u)\n",
 			cb_size, c->exec_infos->size);
@@ -246,10 +269,13 @@ static struct mdw_rv_cmd *mdw_rv_cmd_create(struct mdw_fpriv *mpriv,
 	rmc->num_cmdbufs = c->num_cmdbufs;
 	rmc->subcmds_offset = subcmds_ofs;
 	rmc->cmdbuf_infos_offset = cmdbuf_infos_ofs;
+	rmc->apummu_tbl_infos_offset = apummu_tbl_infos_ofs; /* APUMMU Table offest */
 	rmc->adj_matrix_offset = adj_matrix_ofs;
 	rmc->exec_infos_offset = exec_infos_ofs;
 	rmc->num_links = c->num_links;
 	rmc->link_offset = link_ofs;
+	rmc->inference_ms = c->inference_ms;
+	rmc->tolerance_ms = c->tolerance_ms;
 	mdw_rv_cmd_print(rmc);
 
 	/* copy links */
@@ -284,6 +310,8 @@ static struct mdw_rv_cmd *mdw_rv_cmd_create(struct mdw_fpriv *mpriv,
 		rmsc[i].affinity = c->subcmds[i].affinity;
 		rmsc[i].num_cmdbufs = c->subcmds[i].num_cmdbufs;
 		rmsc[i].cmdbuf_start_idx = acc_cb;
+		rmsc[i].trigger_type = c->subcmds[i].trigger_type;
+		rmsc[i].avg_ip_time = 0;
 		mdw_rv_sc_print(&rmsc[i], rmc->cmd_id, i);
 
 		for (j = 0; j < rmsc[i].num_cmdbufs; j++) {
@@ -299,6 +327,12 @@ static struct mdw_rv_cmd *mdw_rv_cmd_create(struct mdw_fpriv *mpriv,
 		acc_cb += c->subcmds[i].num_cmdbufs;
 	}
 
+	/* assign apummu info */
+	rmammu = (void *)rmc + rmc->apummu_tbl_infos_offset;
+	rmammu->cb_head_device_va =  (uint32_t)mpriv->cb_head_device_va;
+	rmammu->table_head_device_va =  c->cmdbufs->tbl_daddr;
+	rmammu->table_size =  (uint32_t)c->size_apummutable;
+
 	/* setup internal cmd */
 	c->del_internal = mdw_rv_cmd_delete;
 	c->internal_cmd = rc;
@@ -310,6 +344,9 @@ reuse:
 	/* copy adj matrix */
 	memcpy((void *)rmc + rmc->adj_matrix_offset, c->adj_matrix,
 		c->num_subcmds * c->num_subcmds * sizeof(uint8_t));
+
+	/* clear einfos */
+	memset(c->einfos, 0, c->exec_infos->size);
 
 	/* clear exec ret */
 	c->einfos->c.ret = 0;
@@ -362,8 +399,8 @@ static void mdw_rv_cmd_done(struct mdw_rv_cmd *rc, int ret)
 	c->complete(c, ret);
 }
 
-/* kernel-tinysys version v3 */
-const struct mdw_rv_cmd_func mdw_rv_cmd_func_v3 = {
+/* kernel-tinysys version v4 */
+const struct mdw_rv_cmd_func mdw_rv_cmd_func_v4 = {
 	.create = mdw_rv_cmd_create,
 	.delete = mdw_rv_cmd_delete,
 	.done = mdw_rv_cmd_done,

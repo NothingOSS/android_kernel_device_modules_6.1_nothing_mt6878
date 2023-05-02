@@ -554,10 +554,16 @@ static void mdw_rv_dev_init_func(struct work_struct *wk)
 		return;
 	}
 
-	if (mrdev->rv_version < 2)
+	if (mrdev->rv_version < 2) {
 		mrdev->cmd_funcs = &mdw_rv_cmd_func_v2;
-	else
+		mdw_drv_info("use cmd_v2\n");
+	} else if (mrdev->rv_version == 3) {
 		mrdev->cmd_funcs = &mdw_rv_cmd_func_v3;
+		mdw_drv_info("use cmd_v3\n");
+	} else {
+		mrdev->cmd_funcs = &mdw_rv_cmd_func_v4;
+		mdw_drv_info("use cmd_v4\n");
+	}
 
 	memcpy(mdev->dev_mask, mrdev->dev_mask, sizeof(mrdev->dev_mask));
 	mdev->inited = true;

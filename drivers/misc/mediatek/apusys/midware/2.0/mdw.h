@@ -385,8 +385,8 @@ struct mdw_cmd {
 
 	void *tbl_kva;
 	/* history params */
-	uint32_t inference_time;
-	uint32_t tolerance_time;
+	uint32_t inference_ms;
+	uint32_t tolerance_ms;
 	/* set dtime */
 	uint64_t is_dtime_set;
 };
