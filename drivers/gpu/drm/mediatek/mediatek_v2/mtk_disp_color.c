@@ -2359,7 +2359,7 @@ int mtk_drm_ioctl_read_reg_impl(struct mtk_ddp_comp *comp, void *data)
 		return -EFAULT;
 	}
 
-	va = ioremap(pa, sizeof(va));
+	va = ioremap(pa, sizeof(rParams->val));
 
 	DDPDBG("%s @ %d......... spin_trylock_irqsave ++ ",
 		__func__, __LINE__);

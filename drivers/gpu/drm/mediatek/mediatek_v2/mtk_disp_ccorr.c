@@ -526,12 +526,10 @@ static int disp_pq_copy_backlight_to_user(struct mtk_ddp_comp *comp, int *backli
 	return ret;
 }
 
-void disp_pq_notify_backlight_changed(struct drm_crtc *crtc, int bl_1024)
+void disp_pq_notify_backlight_changed(struct mtk_ddp_comp *comp, int bl_1024)
 {
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
-	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
-			mtk_crtc, MTK_DISP_CCORR, 0);
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
 	unsigned long flags;
@@ -547,26 +545,19 @@ void disp_pq_notify_backlight_changed(struct drm_crtc *crtc, int bl_1024)
 	DDPINFO("%s: %d\n", __func__, bl_1024);
 
 	if (pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]) {
-		if (comp != NULL &&
-			primary_data->ccorr_relay_value != 1) {
+		if (primary_data->ccorr_relay_value != 1) {
 			atomic_set(&primary_data->irq_backlight_change, 1);
 			disp_ccorr_set_interrupt(comp, 1);
 
-			if (comp != NULL && mtk_crtc != NULL)
-				mtk_crtc_check_trigger(mtk_crtc, true,
-					true);
-
+			mtk_crtc_check_trigger(mtk_crtc, true, true);
 			DDPINFO("%s: trigger refresh when backlight changed", __func__);
 		}
 	} else {
-		if (comp != NULL && (primary_data->old_pq_backlight == 0 || bl_1024 == 0)) {
+		if (primary_data->old_pq_backlight == 0 || bl_1024 == 0) {
 			atomic_set(&primary_data->irq_backlight_change, 1);
 			disp_ccorr_set_interrupt(comp, 1);
 
-			if (comp != NULL && mtk_crtc != NULL)
-				mtk_crtc_check_trigger(mtk_crtc, true,
-					true);
-
+			mtk_crtc_check_trigger(mtk_crtc, true, true);
 			DDPINFO("%s: trigger refresh when backlight ON/Off", __func__);
 		}
 	}
@@ -989,14 +980,22 @@ int led_brightness_changed_event_to_pq(struct notifier_block *nb, unsigned long 
 	struct led_conf_info *led_conf;
 	struct drm_crtc *crtc = NULL;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_ddp_comp *comp = NULL;
 
 	led_conf = (struct led_conf_info *)v;
 	crtc = get_crtc_from_connector(led_conf->connector_id);
 	if (crtc == NULL) {
+		led_conf->aal_enable = 0;
 		DDPPR_ERR("%s: failed to get crtc!\n", __func__);
 		return -1;
 	}
 	mtk_crtc = to_mtk_crtc(crtc);
+	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_CCORR, 0);
+	if (!comp) {
+		led_conf->aal_enable = 0;
+		DDPPR_ERR("%s, comp is null!\n", __func__);
+		return -1;
+	}
 
 	switch (event) {
 	case LED_BRIGHTNESS_CHANGED:
@@ -1008,12 +1007,12 @@ int led_brightness_changed_event_to_pq(struct notifier_block *nb, unsigned long 
 			break;
 		}
 
-		disp_pq_notify_backlight_changed(crtc, trans_level);
+		disp_pq_notify_backlight_changed(comp, trans_level);
 		DDPINFO("%s: brightness changed: %d(%d)\n",
 			__func__, trans_level, led_conf->cdev.brightness);
 		break;
 	case LED_STATUS_SHUTDOWN:
-		disp_pq_notify_backlight_changed(crtc, 0);
+		disp_pq_notify_backlight_changed(comp, 0);
 		break;
 	default:
 		break;
@@ -1063,6 +1062,10 @@ int mtk_drm_ioctl_ccorr_eventctl_impl(struct mtk_ddp_comp *comp, void *data)
 	if (enabled || primary_data->old_pq_backlight != primary_data->pq_backlight)
 		mtk_crtc_check_trigger(comp->mtk_crtc, true, true);
 
+	if (enabled == NULL) {
+		DDPPR_ERR("%s, null pointer!\n", __func__);
+		return -1;
+	}
 	//mtk_crtc_user_cmd(crtc, comp, EVENTCTL, data);
 	DDPINFO("ccorr_eventctl, enabled = %d\n", *enabled);
 

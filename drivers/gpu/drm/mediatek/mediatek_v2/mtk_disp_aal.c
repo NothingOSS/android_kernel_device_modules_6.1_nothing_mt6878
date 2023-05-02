@@ -379,6 +379,7 @@ int led_brightness_changed_event_to_aal(struct notifier_block *nb, unsigned long
 	led_conf = (struct led_conf_info *)v;
 	crtc = get_crtc_from_connector(led_conf->connector_id);
 	if (crtc == NULL) {
+		led_conf->aal_enable = 0;
 		DDPPR_ERR("%s: failed to get crtc!\n", __func__);
 		return -1;
 	}
@@ -387,6 +388,7 @@ int led_brightness_changed_event_to_aal(struct notifier_block *nb, unsigned long
 
 	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_AAL, 0);
 	if (!comp) {
+		led_conf->aal_enable = 0;
 		DDPPR_ERR("%s, comp is null!\n", __func__);
 		return -1;
 	}

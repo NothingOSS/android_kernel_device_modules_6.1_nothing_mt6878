@@ -83,7 +83,7 @@ inline struct mtk_disp_ccorr *comp_to_ccorr(struct mtk_ddp_comp *comp);
 void ccorr_test(const char *cmd, char *debug_output);
 int ccorr_interface_for_color(unsigned int ccorr_idx,
 	unsigned int ccorr_coef[3][3], void *handle);
-void disp_pq_notify_backlight_changed(struct drm_crtc *crtc, int bl_1024);
+void disp_pq_notify_backlight_changed(struct mtk_ddp_comp *comp, int bl_1024);
 int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	int32_t matrix[16], int32_t hint, bool fte_flag, bool linear);
 int disp_ccorr_set_RGB_Gain(struct mtk_ddp_comp *comp,
