@@ -461,6 +461,49 @@ const char *get_last_cmd(void)
 	return last_cmd;
 }
 
+static void proc_fclk_freq(fn_fclk_freq_proc proc, void *data)
+{
+	void *fmeter_data;
+	const struct fmeter_clk *fclk;
+	char cmd[sizeof(last_cmd)];
+	char *c = cmd;
+	char *ign;
+	char *name;
+
+	strncpy(cmd, last_cmd, sizeof(cmd));
+	cmd[sizeof(cmd) - 1UL] = '\0';
+
+	ign = strsep(&c, " ");
+	name = strsep(&c, " ");
+	pr_notice("fmeter name: %s\n", name);
+
+	fclk = get_all_fmeter_clks();
+
+	if (fclk == NULL || proc == NULL)
+		return;
+
+	fmeter_data = prepare_fmeter();
+
+	for (; fclk->type != FT_NULL; fclk++) {
+		u32 freq;
+
+		if (!strcmp(fclk->name, name)) {
+			freq = fmeter_freq(fclk);
+			proc(fclk, freq, data);
+			break;
+		}
+	}
+
+	unprepare_fmeter(fmeter_data);
+}
+
+static int seq_print_fmeter_single(struct seq_file *s, void *v)
+{
+	proc_fclk_freq(seq_print_fclk_freq, s);
+
+	return 0;
+}
+
 static int clkop_int_ckname(int (*clkop)(struct clk *clk),
 			const char *clkop_name, const char *clk_name,
 			struct clk *ck, struct seq_file *s)
@@ -2114,6 +2157,7 @@ static const struct cmd_fn common_cmds[] = {
 	CMDFN("dump_clks", clkdbg_dump_provider_clks),
 	CMDFN("dump_muxes", clkdbg_dump_muxes),
 	CMDFN("fmeter", seq_print_fmeter_all),
+	CMDFN("fmeter_single", seq_print_fmeter_single),
 	CMDFN("pwr_status", clkdbg_pwr_status),
 	CMDFN("prepare", clkdbg_prepare),
 	CMDFN("unprepare", clkdbg_unprepare),
