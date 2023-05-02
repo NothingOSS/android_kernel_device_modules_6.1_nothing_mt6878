@@ -12,6 +12,8 @@
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
 #include <linux/ratelimit.h>
+#include <linux/iommu.h>
+#include <arm/arm-smmu-v3/arm-smmu-v3.h>
 #ifndef DRM_CMDQ_DISABLE
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
 #else
@@ -3522,18 +3524,34 @@ static int mtk_ovl_replace_bootup_mva(struct mtk_ddp_comp *comp,
 {
 	unsigned int src_on = readl(comp->regs + DISP_REG_OVL_SRC_CON);
 	dma_addr_t layer_addr, layer_mva;
+	struct iommu_domain *domain;
+	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 
 	if (src_on & 0x1) {
 		layer_addr = read_phy_layer_addr(comp, 0);
-		layer_mva = layer_addr - fb_info->fb_pa + fb_info->fb_gem->dma_addr;
-		write_phy_layer_addr_cmdq(comp, handle, 0, layer_mva);
+		if (priv->data->mmsys_id == MMSYS_MT6989 &&
+			comp->id == DDP_COMPONENT_OVL0_2L) {
+			DDPMSG("%s, replace mva same as pa %pad\n", __func__, &layer_addr);
+			domain = iommu_get_domain_for_dev(comp->dev);
+			iommu_map(domain, layer_addr, layer_addr, fb_info->size,
+				IOMMU_READ | IOMMU_WRITE);
+			write_phy_layer_addr_cmdq(comp, handle, 0, layer_addr);
+		} else {
+			layer_mva = layer_addr - fb_info->fb_pa + fb_info->fb_gem->dma_addr;
+			write_phy_layer_addr_cmdq(comp, handle, 0, layer_mva);
+		}
 	}
 
 	if (src_on & 0x2) {
 		layer_addr = read_phy_layer_addr(comp, 1);
-		layer_mva = layer_addr - fb_info->fb_pa + fb_info->fb_gem->dma_addr;
-		write_phy_layer_addr_cmdq(comp, handle, 1, layer_mva);
-
+		if (priv->data->mmsys_id == MMSYS_MT6989 &&
+			comp->id == DDP_COMPONENT_OVL0_2L) {
+			DDPMSG("%s, replace mva same as pa %pad\n", __func__, &layer_addr);
+			write_phy_layer_addr_cmdq(comp, handle, 1, layer_addr);
+		} else {
+			layer_mva = layer_addr - fb_info->fb_pa + fb_info->fb_gem->dma_addr;
+			write_phy_layer_addr_cmdq(comp, handle, 1, layer_mva);
+		}
 	}
 
 	if (src_on & 0x4) {
@@ -3762,6 +3780,8 @@ other:
 			(struct mtk_ddp_fb_info *)params;
 
 		mtk_ovl_replace_bootup_mva(comp, handle, params, fb_info);
+		if (priv->data->mmsys_id == MMSYS_MT6989)
+			iommu_dev_disable_feature(comp->dev, IOMMU_DEV_FEAT_BYPASS_S1);
 		break;
 	}
 	case BACKUP_INFO_CMP: {

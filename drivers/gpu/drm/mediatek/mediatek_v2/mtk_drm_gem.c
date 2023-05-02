@@ -21,6 +21,7 @@
 #include "mtk_fence.h"
 #include "mtk_drm_session.h"
 #include "mtk_drm_mmp.h"
+#include "iommu_debug.h"
 #include <soc/mediatek/smi.h>
 #ifdef IF_ZERO
 #include "mt_iommu.h"
@@ -114,7 +115,7 @@ static struct sg_table *mtk_gem_vmap_pa(struct mtk_drm_gem_obj *mtk_gem,
 		return NULL;
 	}
 	attrs = DMA_ATTR_SKIP_CPU_SYNC;
-	dma_map_sg_attrs(dev, sgt->sgl, sgt->nents, 0, attrs);
+	dma_map_sg_attrs(mtk_smmu_get_shared_device(dev), sgt->sgl, sgt->nents, 0, attrs);
 	*fb_pa = sg_dma_address(sgt->sgl);
 
 	mtk_gem->cookie = va_align;
@@ -134,7 +135,7 @@ static inline void *mtk_gem_dma_alloc(struct device *dev, size_t size,
 	DDPINFO("D_ALLOC:%s[%d], dma:0x%p, size:%ld\n", name, line,
 			dma_handle, size);
 	DRM_MMP_EVENT_START(dma_alloc, line, 0);
-	va = dma_alloc_attrs(dev, size, dma_handle,
+	va = dma_alloc_attrs(mtk_smmu_get_shared_device(dev), size, dma_handle,
 					flag, attrs);
 
 	DRM_MMP_EVENT_END(dma_alloc, (unsigned long)dma_handle,
@@ -151,7 +152,7 @@ static inline void mtk_gem_dma_free(struct device *dev, size_t size,
 			dma_handle, size);
 	DRM_MMP_EVENT_START(dma_free, (unsigned long)dma_handle,
 			(unsigned long)size);
-	dma_free_attrs(dev, size, cpu_addr, dma_handle,
+	dma_free_attrs(mtk_smmu_get_shared_device(dev), size, cpu_addr, dma_handle,
 					attrs);
 
 	DRM_MMP_EVENT_END(dma_free, line, 0);
@@ -205,7 +206,7 @@ void mtk_drm_fb_gem_release(struct drm_device *dev)
 	struct mtk_drm_gem_obj *mtk_gem = priv->fb_info.fb_gem;
 	struct sg_table *sg = mtk_gem->sg;
 
-	dma_unmap_sg_attrs(dev->dev, sg->sgl, sg->nents,
+	dma_unmap_sg_attrs(mtk_smmu_get_shared_device(dev->dev), sg->sgl, sg->nents,
 			DMA_BIDIRECTIONAL, DMA_ATTR_SKIP_CPU_SYNC);
 	sg_free_table(sg);
 	vunmap(mtk_gem->kvaddr);
@@ -423,8 +424,8 @@ static int mtk_drm_gem_object_mmap(struct drm_gem_object *obj,
 	vma->vm_flags &= ~VM_PFNMAP;
 	vma->vm_pgoff = 0;
 
-	ret = dma_mmap_attrs(priv->dma_dev, vma, mtk_gem->cookie,
-			     mtk_gem->dma_addr, obj->size, mtk_gem->dma_attrs);
+	ret = dma_mmap_attrs(mtk_smmu_get_shared_device(priv->dma_dev), vma,
+			mtk_gem->cookie, mtk_gem->dma_addr, obj->size, mtk_gem->dma_attrs);
 	if (ret)
 		drm_gem_vm_close(vma);
 
@@ -517,8 +518,8 @@ struct sg_table *mtk_gem_prime_get_sg_table(struct drm_gem_object *obj)
 		return ERR_PTR(-ENOMEM);
 	}
 
-	ret = dma_get_sgtable_attrs(priv->dma_dev, sgt, mtk_gem->cookie,
-				    mtk_gem->dma_addr, obj->size,
+	ret = dma_get_sgtable_attrs(mtk_smmu_get_shared_device(priv->dma_dev), sgt,
+					mtk_gem->cookie, mtk_gem->dma_addr, obj->size,
 				    mtk_gem->dma_attrs);
 	if (ret) {
 		DDPPR_ERR("failed to allocate sgt, %d\n", ret);
