@@ -15,7 +15,7 @@
 #include "mt6989-afe-common.h"
 #include "mt6989-afe-clk.h"
 
-#if (defined(CONFIG_FPGA_EARLY_PORTING) || defined(SKIP_SB))
+#if defined(CONFIG_FPGA_EARLY_PORTING)
 int mt6989_init_clock(struct mtk_base_afe *afe) { return 0; }
 int mt6989_afe_enable_clock(struct mtk_base_afe *afe) { return 0; }
 void mt6989_afe_disable_clock(struct mtk_base_afe *afe) {}
@@ -339,7 +339,7 @@ int mt6989_afe_enable_clock(struct mtk_base_afe *afe)
 #endif
 	/* IPM2.0: Clear AUDIO_TOP_CON4 for enabling AP side module clk */
 	/* Please remove this after bringup */
-	regmap_write(afe->regmap, AUDIO_TOP_CON4, 0x0);
+	//regmap_write(afe->regmap, AUDIO_TOP_CON4, 0x0);
 
 	return 0;
 
@@ -823,6 +823,8 @@ int mt6989_init_clock(struct mtk_base_afe *afe)
 			afe_priv->clk[i] = NULL;
 		}
 	}
+	if (true)
+		return 0;
 
 	afe_priv->apmixed = syscon_regmap_lookup_by_phandle(afe->dev->of_node,
 			    "apmixedsys");
