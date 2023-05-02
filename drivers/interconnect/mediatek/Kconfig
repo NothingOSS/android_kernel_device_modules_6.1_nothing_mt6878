@@ -89,3 +89,15 @@ config MTK_MMQOS_VCP
 	  for Mediatek multimedia hardwares, such as display, camera, mdp and
 	  video codec. And VCP support is for video codec set bw in tinysys vcp.
 	  Say no if your device does not need to MMQoS support in VCP.
+
+config INTERCONNECT_MTK_MMQOS_MT6989
+	tristate "Mediatek MT6989 MMQoS interconnect driver"
+	depends on INTERCONNECT_MTK
+	depends on DEVICE_MODULES_MTK_SMI
+	select INTERCONNECT_MTK_MMQOS_COMMON
+	help
+	  Support MT6989 for multimedia QoS in Mediatek's SoCs.
+	  The Mediatek MMQoS(Multimedia Quality of Service) Interconnect
+	  driver will collect BW requests from MM users, such as display,
+	  camera, mdp and video codec, and configure SMI settings dynamically
+	  according to the aggregated BW.
