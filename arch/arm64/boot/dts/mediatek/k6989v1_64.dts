@@ -129,7 +129,7 @@ arm64.nopauth arm64.nosme arm64.nosve arm64.nomte";
 	#address-cells = <1>;
 	#size-cells = <0>;
 	panel1@0 {
-		compatible = "jdi,nt36672e,vdo,60hz";
+		compatible = "jdi,nt36672e,vdo,120hz";
 		reg = <0>;
 		pm-enable-gpios = <&pio 215 0>;
 		reset-gpios = <&pio 230 0>;
