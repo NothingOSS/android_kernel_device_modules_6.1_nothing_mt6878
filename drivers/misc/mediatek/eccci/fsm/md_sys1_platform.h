@@ -92,6 +92,7 @@ struct md_hw_info {
 	/*HW info - plat*/
 	struct ccci_plat_ops *plat_ptr;
 	struct ccci_plat_val *plat_val;
+	void __iomem *sequencer_base;
 };
 
 enum {

@@ -447,10 +447,11 @@ int md1_revert_sequencer_setting(struct ccci_modem *md)
 		return 0;
 	}
 
-	reg = ioremap_wc(0x1C803000, 0x1000);
+	reg = md->hw_info->sequencer_base;
 	if (reg == NULL) {
 		CCCI_ERROR_LOG(0, TAG,
-			"[POWER OFF] ioremap 0x100 bytes from 0x1C803000 fail\n");
+			"[POWER OFF] ioremap 0x100 bytes from %p fail\n",
+			md->hw_info->sequencer_base);
 		return -1;
 	}
 
@@ -468,10 +469,9 @@ int md1_revert_sequencer_setting(struct ccci_modem *md)
 		udelay(1000);
 		if (count == 1000) {
 			CCCI_ERROR_LOG(0, TAG,
-				"[POWER OFF] wait sequencer fail,0x1C803200=0x%x,0x1C803204=0x%x,0x1C803208=0x%x,0x1C803310=0x%x\n",
+				"[POWER OFF] wait sequencer fail,+0x200=0x%x,+0x204=0x%x,+0x208=0x%x,+0x310=0x%x\n",
 				ccci_read32(reg, 0x200), ccci_read32(reg, 0x204),
 				ccci_read32(reg, 0x208), ccci_read32(reg, 0x310));
-			iounmap(reg);
 			return -2;
 		}
 	}
@@ -482,8 +482,6 @@ int md1_revert_sequencer_setting(struct ccci_modem *md)
 	ccci_write32(reg, 0x208, 0x5000D);
 
 	CCCI_NORMAL_LOG(0, TAG, "[POWER OFF] %s end\n", __func__);
-
-	iounmap(reg);
 
 	return 0;
 }
@@ -502,11 +500,11 @@ static int md1_enable_sequencer_setting(struct ccci_modem *md)
 
 	CCCI_NORMAL_LOG(0, TAG, "[POWER OFF] %s start\n", __func__);
 
-	reg = ioremap_wc(0x1C803000, 0x1000);
+	reg = md->hw_info->sequencer_base;
 	if (reg == NULL) {
 		CCCI_ERROR_LOG(0, TAG,
-			"[POWER OFF] %s:ioremap 0x100 bytes from 0x1C803000 fail\n",
-			__func__);
+			"[POWER OFF] %s:ioremap 0x100 bytes from %p fail\n",
+			__func__, md->hw_info->sequencer_base);
 		return -1;
 	}
 
@@ -529,17 +527,15 @@ static int md1_enable_sequencer_setting(struct ccci_modem *md)
 		udelay(1000);
 		if (count == 1000) {
 			CCCI_ERROR_LOG(0, TAG,
-				"[POWER OFF] wait sequencer fail,0x1C803200=0x%x,0x1C803204=0x%x,0x1C803208=0x%x,0x1C803310=0x%x\n",
+				"[POWER OFF] wait sequencer fail,+0x200=0x%x,+0x204=0x%x,+0x208=0x%x,+0x310=0x%x\n",
 				ccci_read32(reg, 0x200),
 				ccci_read32(reg, 0x204),
 				ccci_read32(reg, 0x208),
 				ccci_read32(reg, 0x310));
-			iounmap(reg);
 			return -2;
 		}
 	}
 
-	iounmap(reg);
 	CCCI_NORMAL_LOG(0, TAG, "[POWER OFF] %s end\n", __func__);
 
 	return 0;
@@ -558,11 +554,11 @@ static int md1_disable_sequencer_setting(struct ccci_modem *md)
 
 	CCCI_NORMAL_LOG(0, TAG, "[POWER ON] %s start\n", __func__);
 
-	reg = ioremap_wc(0x1C803000, 0x1000);
+	reg = md->hw_info->sequencer_base;
 	if (reg == NULL) {
 		CCCI_ERROR_LOG(0, TAG,
-			"[POWER ON] %s:ioremap 0x100 bytes from 0x1C803000 fail\n",
-			__func__);
+			"[POWER ON] %s:ioremap 0x100 bytes from %p fail\n",
+			__func__, md->hw_info->sequencer_base);
 		return -1;
 	}
 
@@ -580,17 +576,15 @@ static int md1_disable_sequencer_setting(struct ccci_modem *md)
 		udelay(1000);
 		if (count == 1000) {
 			CCCI_ERROR_LOG(0, TAG,
-				"[POWER OFF] wait sequencer fail,0x1C803200=0x%x,0x1C803204=0x%x,0x1C803208=0x%x,0x1C803310=0x%x\n",
+				"[POWER OFF] wait sequencer fail,+0x200=0x%x,+0x204=0x%x,+0x208=0x%x,+0x310=0x%x\n",
 				ccci_read32(reg, 0x200),
 				ccci_read32(reg, 0x204),
 				ccci_read32(reg, 0x208),
 				ccci_read32(reg, 0x310));
-			iounmap(reg);
 			return -2;
 		}
 	}
 
-	iounmap(reg);
 	CCCI_NORMAL_LOG(0, TAG, "[POWER ON] %s end\n", __func__);
 
 	return 0;
@@ -1201,6 +1195,13 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 		else
 			hw_info->md_l2sram_size = retval;
 	}
+	hw_info->sequencer_base = of_iomap(dev_ptr->dev.of_node, 1);
+	if (hw_info->sequencer_base == NULL) {
+		hw_info->sequencer_base = ioremap_wc(0x1C803000, 0x1000);
+		CCCI_ERROR_LOG(0, TAG, "%s:get DTS:sequencer_base fail\n",
+			__func__);
+	}
+
 	CCCI_NORMAL_LOG(0, TAG, "%s, val: %s, 0x%x, l2sram_size: %d\n",
 			__func__, hw_info->md_l2sram_base?"l2sram":"mddbgss",
 			hw_info->md_epon_offset, hw_info->md_l2sram_size);
