@@ -7,6 +7,8 @@
 #ifndef __APUSYS_APUMMU_REMOTE_CMD_H__
 #define __APUSYS_APUMMU_REMOTE_CMD_H__
 
+#define SET_HW_DEFAULT_IOVA_EN (0)
+
 #define AMMU_RPMSG_RAED(var, data, size, idx) do {\
 			memcpy(var, data + idx, size); \
 			idx = idx + size/sizeof(uint32_t); \
@@ -28,7 +30,9 @@ int apummu_remote_set_op(void *drvinfo, uint32_t *argv, uint32_t argc);
 
 int apummu_remote_handshake(void *drvinfo, void *remote);
 int apummu_remote_set_hw_default_iova(void *drvinfo, uint32_t ctx, uint64_t iova);
+#if SET_HW_DEFAULT_IOVA_EN
 int apummu_remote_set_hw_default_iova_one_shot(void *drvinfo);
+#endif
 
 /* General SLB add/remove pool APIs */
 int apummu_remote_mem_add_pool(void *drvinfo);

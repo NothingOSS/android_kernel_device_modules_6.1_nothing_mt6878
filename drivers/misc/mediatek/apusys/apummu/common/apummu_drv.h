@@ -52,7 +52,7 @@ struct apummu_resource {
 };
 
 struct apummu_resource_mgt {
-	struct apummu_resource vlm_dram;
+	struct apummu_resource *vlm_dram;
 	struct apummu_resource internal_SLB;
 	struct apummu_resource external_SLB;
 	struct apummu_resource genernal_SLB;

@@ -214,6 +214,7 @@ out:
 	return ret;
 }
 
+#if SET_HW_DEFAULT_IOVA_EN
 int apummu_remote_set_hw_default_iova_one_shot(void *drvinfo)
 {
 	struct apummu_dev_info *adv = NULL;
@@ -255,6 +256,7 @@ int apummu_remote_set_hw_default_iova_one_shot(void *drvinfo)
 out:
 	return ret;
 }
+#endif
 
 int apummu_remote_mem_add_pool(void *drvinfo)
 {

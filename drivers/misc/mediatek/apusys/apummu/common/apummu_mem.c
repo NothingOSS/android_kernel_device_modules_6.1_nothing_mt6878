@@ -10,7 +10,7 @@
 #include "apummu_import.h"
 
 
-static struct apummu_mem g_mem_sys;
+static struct apummu_mem *g_mem_sys;
 
 void apummu_mem_free(struct device *dev, struct apummu_mem *mem)
 {
@@ -97,7 +97,8 @@ int apummu_dram_remap_free(void *drvinfo)
 int apummu_dram_remap_runtime_alloc(void *drvinfo)
 {
 	struct apummu_dev_info *adv = NULL;
-	int ret = 0;
+	int i, j, ret = 0;
+	void *vlm_dram_base = NULL;
 
 	if (drvinfo == NULL) {
 		AMMU_LOG_ERR("invalid argument\n");
@@ -112,25 +113,58 @@ int apummu_dram_remap_runtime_alloc(void *drvinfo)
 		goto out;
 	}
 
-	g_mem_sys.size = (uint64_t) adv->remote.vlm_size * adv->remote.dram_max;
-	ret = apummu_mem_alloc(adv->dev, &g_mem_sys);
-	if (ret) {
-		AMMU_LOG_ERR("DRAM FB mem alloc fail\n");
+	vlm_dram_base = kvzalloc(
+		sizeof(struct apummu_resource) * adv->remote.dram_max,
+		GFP_KERNEL);
+	if (!vlm_dram_base) {
+		AMMU_LOG_ERR("vlm_dram_base alloc fail\n");
+		ret = -ENOMEM;
 		goto out;
 	}
 
-	adv->rsc.vlm_dram.base = (void *) g_mem_sys.kva;
-	adv->rsc.vlm_dram.size = g_mem_sys.size;
-	adv->rsc.vlm_dram.iova = g_mem_sys.iova;
+	g_mem_sys = kvzalloc(
+		sizeof(struct apummu_mem) * adv->remote.dram_max,
+		GFP_KERNEL);
+	if (!g_mem_sys) {
+		AMMU_LOG_ERR("g_mem_sys alloc fail\n");
+		ret = -ENOMEM;
+		goto free_vlm;
+	}
+
+	adv->rsc.vlm_dram = vlm_dram_base;
+
+	// g_mem_sys.size = (uint64_t) adv->remote.vlm_size * adv->remote.dram_max;
+	for (i = 0; i < adv->remote.dram_max; i++) {
+		g_mem_sys[i].size = adv->remote.vlm_size;
+		ret = apummu_mem_alloc(adv->dev, &g_mem_sys[i]);
+
+		if (ret) {
+			for (j = 0; j <= i; j++)
+				apummu_mem_free(adv->dev, &g_mem_sys[j]);
+
+			AMMU_LOG_ERR("DRAM FB mem alloc fail\n");
+			goto free_mem;
+		} else {
+			adv->rsc.vlm_dram[i].base = (void *) g_mem_sys[i].kva;
+			adv->rsc.vlm_dram[i].size = g_mem_sys[i].size;
+			adv->rsc.vlm_dram[i].iova = g_mem_sys[i].iova;
+		}
+	}
+
 	adv->remote.is_dram_IOVA_alloc = true;
 
 out:
+	return ret;
+free_mem:
+	kvfree(g_mem_sys);
+free_vlm:
+	kvfree(vlm_dram_base);
 	return ret;
 }
 
 int apummu_dram_remap_runtime_free(void *drvinfo)
 {
-	int ret = 0;
+	int i, ret = 0;
 
 	struct apummu_dev_info *adv = NULL;
 
@@ -141,9 +175,9 @@ int apummu_dram_remap_runtime_free(void *drvinfo)
 	}
 	adv = (struct apummu_dev_info *)drvinfo;
 
-	apummu_mem_free(adv->dev, &g_mem_sys);
-	adv->rsc.vlm_dram.base = NULL;
-	adv->rsc.vlm_dram.iova = 0;
+	for (i = 0; i < adv->remote.dram_max; i++)
+		apummu_mem_free(adv->dev, &g_mem_sys[i]);
+	kvfree(adv->rsc.vlm_dram);
 	adv->remote.is_dram_IOVA_alloc = false;
 
 out:

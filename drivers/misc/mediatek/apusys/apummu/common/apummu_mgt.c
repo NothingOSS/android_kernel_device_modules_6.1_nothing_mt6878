@@ -155,7 +155,7 @@ static void free_memory(struct kref *kref)
  */
 static int session_table_alloc(void)
 {
-	int ret = 0;
+	int i, ret = 0;
 	struct apummu_session_tbl *sTable_ptr = NULL;
 
 	sTable_ptr = kvmalloc(sizeof(struct apummu_session_tbl), GFP_KERNEL);
@@ -174,9 +174,17 @@ static int session_table_alloc(void)
 		if (ret)
 			goto out;
 
-		ret = apummu_remote_set_hw_default_iova_one_shot(g_adv);
-		if (ret)
-			goto free_DRAM;
+		/* TODO: merge multi DRAM fallback in a single IPI */
+		// ret = apummu_remote_set_hw_default_iova_one_shot(g_adv);
+		for (i = 0; i < g_adv->remote.dram_max; i++) {
+			ret = apummu_remote_set_hw_default_iova(g_adv,
+				i, g_adv->rsc.vlm_dram[i].iova);
+
+			if (ret) {
+				AMMU_LOG_ERR("Remote set hw IOVA fail!!\n");
+				goto free_DRAM;
+			}
+		}
 	#endif
 		if (!(apummu_alloc_general_SLB(g_adv)))
 			if (apummu_remote_mem_add_pool(g_adv))
