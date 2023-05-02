@@ -77,9 +77,9 @@
 //			mdp_rdma0 = &disp_mdp_rdma0;
 //			chist0 = &disp_chist0;
 //			chist1 = &disp_chist1;
-//			dsc0 = &disp_dsc_wrap0;
-//			dsc1 = &disp_dsc_wrap1;
-//			dsc2 = &disp_dsc_wrap2;
+			dsc0 = &disp_dsc_wrap0;
+			dsc1 = &disp_dsc_wrap1;
+			dsc2 = &disp_dsc_wrap2;
 //			vdcm0 = &disp1_vdcm0;
 //			merge0 = &disp_merge0;
 			dsi0 = &dsi0;
@@ -5429,22 +5429,22 @@
 		};
 
 		disp_dsc_wrap0: disp1-dsc-wrap0@14206000 {
-			compatible = "mediatek,disp1_dsc_wrap0";
-				//"mediatek,mt6989-disp-dsc";
+			compatible = "mediatek,disp1_dsc_wrap0",
+				"mediatek,mt6989-disp-dsc";
 			reg = <0 0x14206000 0 0x1000>;
 			interrupts = <GIC_SPI 493 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		disp_dsc_wrap1: disp1-dsc-wrap1@14207000 {
-			compatible = "mediatek,disp1_dsc_wrap1";
-				//"mediatek,mt6989-disp-dsc";
+			compatible = "mediatek,disp1_dsc_wrap1",
+				"mediatek,mt6989-disp-dsc";
 			reg = <0 0x14207000 0 0x1000>;
 			interrupts = <GIC_SPI 495 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		disp_dsc_wrap2: disp1-dsc-wrap2@14208000 {
-			compatible = "mediatek,disp1_dsc_wrap2";
-				//"mediatek,mt6989-disp-dsc";
+			compatible = "mediatek,disp1_dsc_wrap2",
+				"mediatek,mt6989-disp-dsc";
 			reg = <0 0x14208000 0 0x1000>;
 			interrupts = <GIC_SPI 497 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
