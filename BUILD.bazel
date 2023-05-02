@@ -62,13 +62,14 @@ mgk_64_k61_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/sched_cus:sched_cus",
     "//vendor/mediatek/kernel_modules/sched_int:sched_int",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:camsys",
-    "//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie",
-	"//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-v4l2:mtk_imgsensor",
+    "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-v4l2:mtk_imgsensor",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys:imgsys",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp:mtk-hcp",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-ipesys-me:mtk-ipesys-me",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-dpe:mtk-dpe",
+    "//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase",
+    "//vendor/mediatek/tests/ktf/kernel:ktf",
 ]
 
 
