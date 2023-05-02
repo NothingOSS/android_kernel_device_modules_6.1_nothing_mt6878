@@ -1598,7 +1598,7 @@ int mmdvfs_mux_set_opp(const char *name, unsigned long rate)
 		return 0;
 
 	if (mmdvfs_swrgo) {
-		const u8 vcp_mux_id[MMDVFS_MUX_NUM] = {0, 4, 5, 6, 7, 9, 10, 12};
+		const u8 vcp_mux_id[MMDVFS_MUX_NUM] = {0, 4, 5, 6, 7, 8, 10, 12};
 
 		if (mux->id >= ARRAY_SIZE(vcp_mux_id)) {
 			MMDVFS_ERR("invalid mux_id:%hhu user_id:%hhu", mux->id, user->id);
