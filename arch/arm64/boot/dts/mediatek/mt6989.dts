@@ -11070,7 +11070,7 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 		};
 		mt6316_6_regulator: mt6316-6-regulator {
 			compatible = "mediatek,mt6316-6-regulator";
-			buck-size = <2>;
+			buck-size = <3>;
 
 			mt6316_6_vbuck1: 6-vbuck1 {
 				regulator-compatible = "vbuck1";
@@ -11125,7 +11125,7 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 		};
 		mt6316_8_regulator: mt6316-8-regulator {
 			compatible = "mediatek,mt6316-8-regulator";
-			buck-size = <2>;
+			buck-size = <3>;
 
 			mt6316_8_vbuck1: 8-vbuck1 {
 				regulator-compatible = "vbuck1";
