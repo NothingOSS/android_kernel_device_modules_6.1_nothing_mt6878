@@ -13639,6 +13639,28 @@ static void mtk_drm_crtc_enable_fake_layer(struct drm_crtc *crtc,
 			dual_pipe_ovl_2l_comp_id = DDP_COMPONENT_OVL1_2L;
 	}
 
+	/* disable ext layers which we want to enable originally in this atomic commit */
+	for (int i = 0 ; i < PRIMARY_OVL_PHY_LAYER_NR + PRIMARY_OVL_EXT_LAYER_NR; i++) {
+		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_EXT_LAYER))
+			break;
+		plane = &mtk_crtc->planes[i].base;
+		plane_state = to_mtk_plane_state(plane->state);
+		pending = &plane_state->pending;
+
+		if (pending->enable && plane_state->comp_state.ext_lye_id) {
+			pending->enable = false;
+			comp = priv->ddp_comp[plane_state->comp_state.comp_id];
+
+			if (mtk_crtc->is_dual_pipe)
+				mtk_crtc_dual_layer_config(mtk_crtc, comp,
+							plane_state->comp_state.lye_id,
+							plane_state, state->cmdq_handle);
+			else
+				mtk_ddp_comp_layer_config(comp, plane_state->comp_state.lye_id,
+							plane_state, state->cmdq_handle);
+		}
+	}
+
 	for (i = 0 ; i < PRIMARY_OVL_PHY_LAYER_NR ; i++) {
 		plane = &mtk_crtc->planes[i].base;
 		plane_state = to_mtk_plane_state(plane->state);
@@ -13706,36 +13728,6 @@ static void mtk_drm_crtc_enable_fake_layer(struct drm_crtc *crtc,
 		plane_state->comp_state.comp_id = comp->id;
 		plane_state->comp_state.lye_id = idx;
 		plane_state->comp_state.ext_lye_id = 0;
-
-		if (mtk_crtc->is_dual_pipe)
-			mtk_crtc_dual_layer_config(mtk_crtc, comp, plane_state->comp_state.lye_id,
-						plane_state, state->cmdq_handle);
-		else
-			mtk_ddp_comp_layer_config(comp, plane_state->comp_state.lye_id,
-						plane_state, state->cmdq_handle);
-	}
-
-	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_EXT_LAYER))
-		return;
-
-	for (i = 0 ; i < PRIMARY_OVL_EXT_LAYER_NR ; i++) {
-		plane = &mtk_crtc->planes[i + PRIMARY_OVL_PHY_LAYER_NR].base;
-		plane_state = to_mtk_plane_state(plane->state);
-		pending = &plane_state->pending;
-
-		pending->dirty = 1;
-		pending->enable = false;
-
-		if (i < (PRIMARY_OVL_EXT_LAYER_NR / 2)) {
-			comp = priv->ddp_comp[ovl_2l_comp_id];
-			idx = i + 1;
-		} else {
-			comp = priv->ddp_comp[ovl_comp_id];
-			idx = i + 1 - (PRIMARY_OVL_EXT_LAYER_NR / 2);
-		}
-		plane_state->comp_state.comp_id = comp->id;
-		plane_state->comp_state.lye_id = 0;
-		plane_state->comp_state.ext_lye_id = idx;
 
 		if (mtk_crtc->is_dual_pipe)
 			mtk_crtc_dual_layer_config(mtk_crtc, comp, plane_state->comp_state.lye_id,
