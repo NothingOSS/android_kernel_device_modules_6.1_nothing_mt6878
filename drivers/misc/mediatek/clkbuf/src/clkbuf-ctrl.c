@@ -54,6 +54,7 @@ static int (*sub_init[])(struct clkbuf_dts *array, struct device *dev) = {
 static const struct of_device_id clkbuf_of_match[] = {
 	{ .compatible = "mediatek,mt6897-clkbuf" },
 	{ .compatible = "mediatek,mt6985-clkbuf" },
+	{ .compatible = "mediatek,mt6989-clkbuf" },
 	{}
 };
 
@@ -297,6 +298,7 @@ static int dump_all(struct device *dev)
 			rc_dump = DUMP_DONE;
 			break;
 		case PMIF_M:
+		case PMIF_P:
 			if ((pmif_dump == DUMP_DONE) | !(hdlr->ops->spmi_dump_pmif_record))
 				break;
 			hdlr->ops->spmi_dump_pmif_record();

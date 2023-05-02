@@ -60,7 +60,7 @@ static ssize_t dump_pmic_show(struct kobject *kobj, struct kobj_attribute *attr,
 			break;
 		}
 	}
-	if ((!array) || !IS_PMIC_HW(hw.hw_type))
+	if (!IS_PMIC_HW(hw.hw_type))
 		return sprintf(buf, "failed\n");
 
 	return len;
@@ -96,7 +96,7 @@ static ssize_t dump_srclken_show(struct kobject *kobj,
 			break;
 		}
 	}
-	if ((!array) || !IS_RC_HW(hw.hw_type))
+	if (!IS_RC_HW(hw.hw_type))
 		return sprintf(buf, "array is invalid for support srclken\n");
 
 	return len;
@@ -133,7 +133,7 @@ static ssize_t dump_srclken_trace_show(struct kobject *kobj,
 			break;
 		}
 	}
-	if ((!array) || !IS_RC_HW(hw.hw_type))
+	if (!IS_RC_HW(hw.hw_type))
 		return sprintf(buf, "array is invalid for support srclken\n");
 
 	return len;
@@ -158,7 +158,7 @@ static ssize_t subsys_req_show(struct kobject *kobj,
 			"echo \"[CMD(hex)] [sub_id(dec)]\" > subsys_req\n");
 	len += snprintf(
 		buf + len, PAGE_SIZE - len,
-		"ex. echo \"0x0002 6\" >  sys/kernel/clkbuf/subsys_req\n");
+		"ex. echo \"0x0002 6\" >  /sys/kernel/clkbuf/subsys_req\n");
 	len += snprintf(
 		buf + len, PAGE_SIZE - len,
 		"===================================================\n");
@@ -273,7 +273,7 @@ static ssize_t xo_status_show(struct kobject *kobj, struct kobj_attribute *attr,
 		"echo \"[CMD(hex)] [xo_id(dec)] [val(hex)]\" > xo_status\n");
 	len += snprintf(
 		buf + len, PAGE_SIZE - len,
-		"ex. echo \"0x0002 3 1\" > sys/kernel/clkbuf/xo_status\n");
+		"ex. echo \"0x0002 3 1\" > /sys/kernel/clkbuf/xo_status\n");
 	len += snprintf(
 		buf + len, PAGE_SIZE - len,
 		"===================================================\n");
@@ -372,28 +372,11 @@ static ssize_t pmif_status_show(struct kobject *kobj,
 
 	nums = array->nums;
 
-	len += snprintf(buf + len, PAGE_SIZE - len,
-			"/***PMIF CMD usage:***/\n");
-	len += snprintf(buf + len, PAGE_SIZE - len,
-			"SET_PMIF_CONN_INF = 0x0001\n");
-	len += snprintf(buf + len, PAGE_SIZE - len,
-			"SET_PMIF_NFC_INF = 0x0002\n");
-	len += snprintf(buf + len, PAGE_SIZE - len,
-			"SET_PMIF_RC_INF = 0x0004\n");
-	len += snprintf(buf + len, PAGE_SIZE - len,
-			"echo \"[CMD(hex)] [val(hex)]\" > pmif_status\n");
-	len += snprintf(
-		buf + len, PAGE_SIZE - len,
-		"ex. echo \"0x0001 0\" > sys/kernel/clkbuf/pmif_status\n");
-	len += snprintf(
-		buf + len, PAGE_SIZE - len,
-		"===================================================\n");
-
 	for (i = 0; i < nums; i++, array++) {
 		hdlr = array->hdlr;
 
 		hw = array->hw;
-		/*only need one RC obj, no need loop all obj*/
+		/*only need one PMIF obj, no need loop all obj*/
 		if (IS_PMIF_HW(hw.hw_type)) {
 			if (!hdlr->ops->dump_pmif_status)
 				return sprintf(
@@ -405,7 +388,7 @@ static ssize_t pmif_status_show(struct kobject *kobj,
 			break;
 		}
 	}
-	if ((!array) || !IS_PMIF_HW(hw.hw_type))
+	if (!IS_PMIF_HW(hw.hw_type))
 		return sprintf(buf, "array is invalid for support pmif\n");
 
 	return len;
@@ -421,20 +404,21 @@ static ssize_t pmif_status_store(struct kobject *kobj,
 	struct clkbuf_hw hw;
 	unsigned int cmd;
 	int ret = 0, nums = 0, i;
-	u32 input = 0;
+	u32 input = 0, pmif_id = 0;
 
 	if (!array)
 		return -ENODEV;
 
 	nums = array->nums;
 
-	if (sscanf(buf, "%x %x", &cmd, &input) == 2) {
-		CLKBUF_DBG("user input cmd: %x, val(hex): %x\n", cmd, input);
+	if (sscanf(buf, "%x %x %x", &cmd, &input, &pmif_id) == 3) {
+		CLKBUF_DBG("user input cmd: %x, val(hex): %x, pmif_id(hex): %x\n",
+			cmd, input, pmif_id);
 		/*loop all object---step1*/
 		for (i = 0; i < nums; i++, array++) {
 			hw = array->hw;
 			/*filter PMIF object---step2*/
-			if ((IS_PMIF_HW(hw.hw_type)) && (array->pmif_id == PMIMF_M_ID)) {
+			if ((IS_PMIF_HW(hw.hw_type)) && (array->pmif_id == pmif_id)) {
 				hdlr = array->hdlr;
 				if (!hdlr->ops->set_pmif_inf)
 					return -EINVAL;
@@ -442,7 +426,7 @@ static ssize_t pmif_status_store(struct kobject *kobj,
 				pd = (struct plat_pmifdata *)hdlr
 					     ->data; //need (hw.hw_type == PMIF) b4
 				ret = hdlr->ops->set_pmif_inf(
-					pd, cmd, PMIMF_M_ID, input);
+					pd, cmd, pmif_id, input);
 				if (ret)
 					CLKBUF_DBG("Error code: %x\n", ret);
 				break;
@@ -468,8 +452,8 @@ static ssize_t dump_clkbuf_dts_show(struct kobject *kobj,
 
 	len += snprintf(
 		buf + len, PAGE_SIZE - len,
-		"%5s, %6s, %8s\n",
-		"xo_id", "sub_id", "perms");
+		"%5s, %6s, %7s, %8s\n",
+		"xo_id", "sub_id", "pmif_id", "perms");
 
 	for (i = 0; i < nums; i++, array++) {
 		len += snprintf(
@@ -479,8 +463,8 @@ static ssize_t dump_clkbuf_dts_show(struct kobject *kobj,
 			array->xo_name, array->subsys_name, array->hw.hw_type);
 		len += snprintf(
 			buf + len, PAGE_SIZE - len,
-			"%5d, %6d, %8x\n",
-			array->xo_id, array->sub_id, array->perms);
+			"%5d, %6d, %7d, %8x\n",
+			array->xo_id, array->sub_id, array->pmif_id, array->perms);
 
 	}
 	return len;

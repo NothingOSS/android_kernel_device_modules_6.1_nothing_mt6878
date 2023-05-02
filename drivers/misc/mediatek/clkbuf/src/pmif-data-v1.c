@@ -129,10 +129,31 @@ struct pmif_m pmif_m_v2 = {
 	SET_REG_BY_NAME(slp_ctrl, SLP_PROTECT_V2)
 };
 
+struct pmif_p pmif_p_v2 = {
+	SET_REG_BY_NAME(conn_inf_en, CONN_INF_EN_V2)
+	SET_REG_BY_NAME(nfc_inf_en, NFC_INF_EN_V2)
+	SET_REG_BY_NAME(rc_inf_en, RC_INF_EN_V2)
+	SET_REG_BY_NAME(conn_clr_addr, CONN_CLR_CMD_DEST_V2)
+	SET_REG_BY_NAME(conn_set_addr, CONN_SET_CMD_DEST_V2)
+	SET_REG_BY_NAME(conn_clr_cmd, CONN_CLR_CMD_V2)
+	SET_REG_BY_NAME(conn_set_cmd, CONN_SET_CMD_V2)
+	SET_REG_BY_NAME(nfc_clr_addr, NFC_CLR_CMD_DEST_V2)
+	SET_REG_BY_NAME(nfc_set_addr, NFC_SET_CMD_DEST_V2)
+	SET_REG_BY_NAME(nfc_clr_cmd, NFC_CLR_CMD_V2)
+	SET_REG_BY_NAME(nfc_set_cmd, NFC_SET_CMD_V2)
+	SET_REG_BY_NAME(mode_ctrl, MODE_CTRL_V2)
+	SET_REG_BY_NAME(slp_ctrl, SLP_PROTECT_V2)
+};
+
 struct plat_pmifdata pmif_data_v1 = {
 	.pmif_m = &pmif_m_v1,
 };
 
 struct plat_pmifdata pmif_data_v2 = {
 	.pmif_m = &pmif_m_v2,
+};
+
+struct plat_pmifdata pmif_data_v3 = {
+	.pmif_m = &pmif_m_v2,
+	.pmif_p = &pmif_p_v2,
 };

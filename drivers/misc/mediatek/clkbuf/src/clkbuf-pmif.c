@@ -19,6 +19,8 @@ struct match_pmif {
 	char *name;
 	struct clkbuf_hdlr *hdlr;
 	int (*init)(struct clkbuf_dts *array, struct match_pmif *match);
+	struct clkbuf_dts *(*parse_dts)(struct clkbuf_dts *array,
+			struct device_node *clkbuf_node, int nums);
 };
 
 static int read_with_ofs(struct clkbuf_hw *hw, struct reg_t *reg, u32 *val,
@@ -173,7 +175,90 @@ WRITE_FAIL:
 	return cmd;
 }
 
-ssize_t __dump_pmif_status(void *data, char *buf)
+static int __set_pmif_inf_v2(void *data, int cmd, int pmif_id, int onoff)
+{
+	struct plat_pmifdata *pd = (struct plat_pmifdata *)data;
+	struct clkbuf_hw hw = pd->hw;
+	struct pmif_m *pmif_m = pd->pmif_m;
+	struct pmif_p *pmif_p = pd->pmif_p;
+	struct reg_t reg;
+	unsigned long flags = 0;
+	int ret = 0;
+	spinlock_t *lock = pd->lock;
+
+	spin_lock_irqsave(lock, flags);
+	CLKBUF_DBG("cmd: %x\n", cmd);
+
+	if (pmif_id == PMIF_M_ID) {
+		if (pmif_m) {
+			/*switch to PMIF_M*/
+			hw.hw_type = PMIF_M;
+			switch (cmd) {
+			case SET_PMIF_CONN_INF: // = 0x0001,
+				reg = pmif_m->_conn_inf_en;
+				ret = pmif_write(&hw, &reg, (onoff == 1) ? 1 : 0);
+				if (ret)
+					goto V2_WRITE_FAIL;
+				break;
+			case SET_PMIF_NFC_INF: // = 0x0002,
+				reg = pmif_m->_nfc_inf_en;
+				ret = pmif_write(&hw, &reg, (onoff == 1) ? 1 : 0);
+				if (ret)
+					goto V2_WRITE_FAIL;
+				break;
+			case SET_PMIF_RC_INF: // = 0x0004,
+				reg = pmif_m->_rc_inf_en;
+				ret = pmif_write(&hw, &reg, (onoff == 1) ? 1 : 0);
+				if (ret)
+					goto V2_WRITE_FAIL;
+				break;
+			default:
+				goto V2_WRITE_FAIL;
+			}
+		} else {
+			CLKBUF_DBG("pmif_m is null");
+			goto V2_WRITE_FAIL;
+		}
+	} else if (pmif_id == PMIF_P_ID) {
+		if (pmif_p) {
+			/*switch to PMIF_P*/
+			hw.hw_type = PMIF_P;
+			switch (cmd) {
+			case SET_PMIF_CONN_INF: // = 0x0001,
+				reg = pmif_p->_conn_inf_en;
+				ret = pmif_write(&hw, &reg, (onoff == 1) ? 1 : 0);
+				if (ret)
+					goto V2_WRITE_FAIL;
+				break;
+			case SET_PMIF_NFC_INF: // = 0x0002,
+				reg = pmif_p->_nfc_inf_en;
+				ret = pmif_write(&hw, &reg, (onoff == 1) ? 1 : 0);
+				if (ret)
+					goto V2_WRITE_FAIL;
+				break;
+			case SET_PMIF_RC_INF: // = 0x0004,
+				reg = pmif_p->_rc_inf_en;
+				ret = pmif_write(&hw, &reg, (onoff == 1) ? 1 : 0);
+				if (ret)
+					goto V2_WRITE_FAIL;
+				break;
+			default:
+				goto V2_WRITE_FAIL;
+			}
+		} else {
+			CLKBUF_DBG("pmif_p is null");
+			goto V2_WRITE_FAIL;
+		}
+	}
+
+	spin_unlock_irqrestore(lock, flags);
+	return ret;
+V2_WRITE_FAIL:
+	spin_unlock_irqrestore(lock, flags);
+	return cmd;
+}
+
+static ssize_t __dump_pmif_status(void *data, char *buf)
 {
 	struct plat_pmifdata *pd = (struct plat_pmifdata *)data;
 	struct clkbuf_hw hw;
@@ -184,6 +269,25 @@ ssize_t __dump_pmif_status(void *data, char *buf)
 
 	if (!IS_PMIF_HW((pd->hw).hw_type))
 		goto DUMP_FAIL;
+
+	if (buf) {
+		len += snprintf(buf + len, PAGE_SIZE - len,
+				"/***PMIF CMD usage:***/\n");
+		len += snprintf(buf + len, PAGE_SIZE - len,
+				"SET_PMIF_CONN_INF = 0x0001\n");
+		len += snprintf(buf + len, PAGE_SIZE - len,
+				"SET_PMIF_NFC_INF = 0x0002\n");
+		len += snprintf(buf + len, PAGE_SIZE - len,
+				"SET_PMIF_RC_INF = 0x0004\n");
+		len += snprintf(buf + len, PAGE_SIZE - len,
+				"echo \"[CMD(hex)] [val(hex)] [pmif_id(hex)]\" > pmif_status\n");
+		len += snprintf(
+			buf + len, PAGE_SIZE - len,
+			"ex. echo \"0x0001 0 0\" > /sys/kernel/clkbuf/pmif_status\n");
+		len += snprintf(
+			buf + len, PAGE_SIZE - len,
+			"===================================================\n");
+	}
 
 	hw = pd->hw;
 	/*switch to PMIF_M*/
@@ -213,57 +317,104 @@ ssize_t __dump_pmif_status(void *data, char *buf)
 				"PMIF_M reg: %s Addr: 0x%08x Val: 0x%08x\n",
 				reg_p->name, reg_p->ofs, out);
 	}
-
 	return len;
-
 DUMP_FAIL:
 	CLKBUF_DBG("HW_TYPE is not PMIF HW or READ FAIL\n");
 	return len;
 }
 
-void __spmi_dump_pmif_record(void)
+static ssize_t __dump_pmif_status_v2(void *data, char *buf)
 {
-	spmi_dump_pmif_record_reg();
+	struct plat_pmifdata *pd = (struct plat_pmifdata *)data;
+	struct clkbuf_hw hw = pd->hw;
+	struct pmif_m *pmif_m = pd->pmif_m;
+	struct pmif_p *pmif_p = pd->pmif_p;
+	struct reg_t *reg_p;
+	int len = 0, i;
+	u32 out;
+
+	if (!IS_PMIF_HW((pd->hw).hw_type))
+		goto V2_DUMP_FAIL;
+
+	if (buf) {
+		len += snprintf(buf + len, PAGE_SIZE - len,
+				"/***PMIF CMD usage:***/\n");
+		len += snprintf(buf + len, PAGE_SIZE - len,
+				"SET_PMIF_CONN_INF = 0x0001\n");
+		len += snprintf(buf + len, PAGE_SIZE - len,
+				"SET_PMIF_NFC_INF = 0x0002\n");
+		len += snprintf(buf + len, PAGE_SIZE - len,
+				"SET_PMIF_RC_INF = 0x0004\n");
+		len += snprintf(buf + len, PAGE_SIZE - len,
+				"echo \"[CMD(hex)] [val(hex)] [pmif_id(hex)]\" > pmif_status\n");
+		len += snprintf(
+			buf + len, PAGE_SIZE - len,
+			"ex. echo \"0x0001 0 0\" > /sys/kernel/clkbuf/pmif_status\n");
+		len += snprintf(
+			buf + len, PAGE_SIZE - len,
+			"===================================================\n");
+	}
+
+	if (pmif_m && hw.base.pmif_m) {
+		/*switch to PMIF_M*/
+		hw.hw_type = PMIF_M;
+		for (i = 0; i < sizeof(struct pmif_m) / sizeof(struct reg_t); ++i) {
+			if (!((((struct reg_t *)pmif_m) + i)->mask))
+				continue;
+
+			reg_p = ((struct reg_t *)pmif_m) + i;
+
+			if (pmif_read(&hw, reg_p, &out))
+				goto V2_DUMP_FAIL;
+
+			if (!buf)
+				CLKBUF_DBG(
+					"PMIF_M reg: %s Addr: 0x%08x Val: 0x%08x\n",
+					reg_p->name, reg_p->ofs, out);
+			else
+				len += snprintf(
+					buf + len, PAGE_SIZE - len,
+					"PMIF_M reg: %s Addr: 0x%08x Val: 0x%08x\n",
+					reg_p->name, reg_p->ofs, out);
+		}
+	} else {
+		CLKBUF_DBG("pmif_m is null");
+	}
+
+	if (pmif_p && hw.base.pmif_p) {
+		/*switch to PMIF_P*/
+		hw.hw_type = PMIF_P;
+		for (i = 0; i < sizeof(struct pmif_p) / sizeof(struct reg_t); ++i) {
+			if (!((((struct reg_t *)pmif_p) + i)->mask))
+				continue;
+
+			reg_p = ((struct reg_t *)pmif_p) + i;
+
+			if (pmif_read(&hw, reg_p, &out))
+				goto V2_DUMP_FAIL;
+
+			if (!buf)
+				CLKBUF_DBG(
+					"PMIF_P reg: %s Addr: 0x%08x Val: 0x%08x\n",
+					reg_p->name, reg_p->ofs, out);
+			else
+				len += snprintf(
+					buf + len, PAGE_SIZE - len,
+					"PMIF_P reg: %s Addr: 0x%08x Val: 0x%08x\n",
+					reg_p->name, reg_p->ofs, out);
+		}
+	} else {
+		CLKBUF_DBG("pmif_p is null");
+	}
+
+	return len;
+
+V2_DUMP_FAIL:
+	CLKBUF_DBG("HW_TYPE is not PMIF HW or READ FAIL\n");
+	return len;
 }
 
-static struct clkbuf_operation clkbuf_ops_v1 = {
-	.dump_pmif_status = __dump_pmif_status,
-	.set_pmif_inf = __set_pmif_inf,
-#ifdef LOG_6985_SPMI_CMD
-	.spmi_dump_pmif_record = __spmi_dump_pmif_record,
-#endif
-};
-
-static struct clkbuf_hdlr pmif_hdlr_v2 = {
-	.ops = &clkbuf_ops_v1,
-	.data = &pmif_data_v2,
-};
-
-static struct match_pmif mt6897_match_pmif = {
-	.name = "mediatek,mt6897-spmi",
-	.hdlr = &pmif_hdlr_v2,
-	.init = &pmif_init_v1,
-};
-
-static struct match_pmif mt6985_match_pmif = {
-	.name = "mediatek,mt6985-spmi",
-	.hdlr = &pmif_hdlr_v2,
-	.init = &pmif_init_v1,
-};
-
-static struct match_pmif *matches_pmif[] = {
-	&mt6897_match_pmif,
-	&mt6985_match_pmif,
-	NULL,
-};
-
-int count_pmif_node(struct device_node *clkbuf_node)
-{
-	/*add logic if not only PMIF_M*/
-	return 1;
-}
-
-struct clkbuf_dts *parse_pmif_dts(struct clkbuf_dts *array,
+static struct clkbuf_dts *pmif_parse_dts_v1(struct clkbuf_dts *array,
 				  struct device_node *clkbuf_node, int nums)
 {
 	struct device_node *pmif_node;
@@ -297,11 +448,206 @@ struct clkbuf_dts *parse_pmif_dts(struct clkbuf_dts *array,
 	array->pmif_name = "PMIF_M";
 	array->hw.hw_type = PMIF_M;
 
-	array->pmif_id = 0;
 	array->perms = perms;
+	array->pmif_id = PMIF_M_ID;
 	array->hw.base.pmif_m = pmif_m_base;
 	array++;
 
+	return array;
+}
+
+static int count_pmif_elements(struct device_node *clkbuf_node)
+{
+	int num_pmif = 0;
+
+	if (of_parse_phandle(clkbuf_node, "pmif", 0)) {
+		// -1 to exclude pmif-phandle itself
+		num_pmif = of_property_count_elems_of_size(clkbuf_node, "pmif", sizeof(u32)) - 1;
+		// Only pmif phandler -> PMIF_M only
+		return num_pmif ? num_pmif : 1;
+	} else {
+		return 0;
+	}
+}
+
+static struct clkbuf_dts *pmif_parse_dts_v2(struct clkbuf_dts *array,
+				  struct device_node *clkbuf_node, int nums)
+{
+	struct device_node *pmif_node;
+	unsigned int pmif_reg_idx = 0, phandle_idx = 1;
+	const char *comp = NULL;//, *pmif_name = NULL;
+	void __iomem *pmif_m_base = NULL, *pmif_p_base = NULL;
+	int perms = 0xffff, num_pmif;
+	const char *pmif_reg_name;
+	struct clkbuf_dts *pmif_m_array = NULL, *pmif_p_array = NULL;
+
+	pmif_node = of_parse_phandle(clkbuf_node, "pmif", 0);
+
+	num_pmif = count_pmif_elements(clkbuf_node);
+
+	/* Check if >0 pmif_reg_idx specified */
+	if (num_pmif > 0) {
+		for (phandle_idx = 1; phandle_idx <= num_pmif; ++phandle_idx) {
+			/* Check if pmif_reg_idx exists */
+			if (of_property_read_u32_index(clkbuf_node, "pmif",
+					phandle_idx, &pmif_reg_idx)) {
+				CLKBUF_DBG("ERROR: Get PMIF attribute[%u] failed\n", phandle_idx);
+				break;
+			}
+
+			/* Check reg-names[pmif_reg_idx] exists */
+			if (of_property_read_string_index(pmif_node, "reg-names",
+					pmif_reg_idx, &pmif_reg_name)) {
+				CLKBUF_DBG("ERROR: Get PMIF reg-names[%u] failed\n", pmif_reg_idx);
+				break;
+			}
+
+			/* Parse PMIF REG by reg-names */
+			if (!strcmp(pmif_reg_name, "pmif-m")) {
+				CLKBUF_DBG("PMIF_M dts found!");
+				pmif_m_array = array;
+				pmif_m_base = of_iomap(pmif_node, pmif_reg_idx);
+				of_property_read_string(pmif_node, "compatible", &comp);
+				array->hw.hw_type = PMIF_M;
+				array->comp = (char *)comp;
+				array->pmif_id = PMIF_M_ID;
+				array->perms = perms;
+				array->pmif_name = "PMIF_M";
+				array->nums = nums;
+				array->num_pmif = num_pmif;
+				array++;
+			} else if (!strcmp(pmif_reg_name, "pmif-p")) {
+				CLKBUF_DBG("PMIF_P dts found!");
+				pmif_p_array = array;
+				pmif_p_base = of_iomap(pmif_node, pmif_reg_idx);
+				of_property_read_string(pmif_node, "compatible", &comp);
+				array->hw.hw_type = PMIF_P;
+				array->comp = (char *)comp;
+				array->pmif_id = PMIF_P_ID;
+				array->perms = perms;
+				array->pmif_name = "PMIF_P";
+				array->nums = nums;
+				array->num_pmif = num_pmif;
+				array++;
+			}
+		}
+
+		if (pmif_m_array != NULL) {
+			pmif_m_array->hw.base.pmif_m = pmif_m_base;
+			pmif_m_array->hw.base.pmif_p = pmif_p_base;
+		}
+
+		if (pmif_p_array != NULL) {
+			pmif_p_array->hw.base.pmif_m = pmif_m_base;
+			pmif_p_array->hw.base.pmif_p = pmif_p_base;
+		}
+	}
+
+	return array;
+}
+
+void __spmi_dump_pmif_record(void)
+{
+	spmi_dump_pmif_record_reg();
+}
+
+static struct clkbuf_operation clkbuf_ops_v1 = {
+	.dump_pmif_status = __dump_pmif_status,
+	.set_pmif_inf = __set_pmif_inf,
+#ifdef LOG_6985_SPMI_CMD
+	.spmi_dump_pmif_record = __spmi_dump_pmif_record,
+#endif
+};
+
+static struct clkbuf_operation clkbuf_ops_v2 = {
+	.dump_pmif_status = __dump_pmif_status_v2,
+	.set_pmif_inf = __set_pmif_inf_v2,
+#ifdef LOG_6989_SPMI_CMD
+	.spmi_dump_pmif_record = __spmi_dump_pmif_record,
+#endif
+};
+
+static struct clkbuf_hdlr pmif_hdlr_v2 = {
+	.ops = &clkbuf_ops_v1,
+	.data = &pmif_data_v2,
+};
+
+static struct clkbuf_hdlr pmif_hdlr_v3 = {
+	.ops = &clkbuf_ops_v2,
+	.data = &pmif_data_v3,
+};
+
+static struct match_pmif mt6897_match_pmif = {
+	.name = "mediatek,mt6897-spmi",
+	.hdlr = &pmif_hdlr_v2,
+	.init = &pmif_init_v1,
+	.parse_dts = &pmif_parse_dts_v1,
+};
+
+static struct match_pmif mt6985_match_pmif = {
+	.name = "mediatek,mt6985-spmi",
+	.hdlr = &pmif_hdlr_v2,
+	.init = &pmif_init_v1,
+	.parse_dts = &pmif_parse_dts_v1,
+};
+
+static struct match_pmif mt6989_match_pmif = {
+	.name = "mediatek,mt6989-spmi",
+	.hdlr = &pmif_hdlr_v3,
+	.init = &pmif_init_v1,
+	.parse_dts = &pmif_parse_dts_v2,
+};
+
+static struct match_pmif *matches_pmif[] = {
+	&mt6897_match_pmif,
+	&mt6985_match_pmif,
+	&mt6989_match_pmif,
+	NULL,
+};
+
+/*use single pmif manager to manage pmif-m/pmif-p/pmif-q....*/
+int count_pmif_node(struct device_node *clkbuf_node)
+{
+	return count_pmif_elements(clkbuf_node);
+}
+
+struct clkbuf_dts *parse_pmif_dts(struct clkbuf_dts *array,
+				  struct device_node *clkbuf_node, int nums)
+{
+	struct match_pmif **match_pmif = matches_pmif;
+	struct device_node *pmif_node;
+	const char *comp = NULL;
+
+	pmif_node = of_parse_phandle(clkbuf_node, "pmif", 0);
+
+	if (!pmif_node) {
+		CLKBUF_DBG("find \"pmif\" node failed, not support any PMIF\n");
+	} else {
+		if (of_property_read_string(pmif_node, "compatible", &comp)) {
+			CLKBUF_DBG("find PMIF \"compatible\" property failed\n");
+			goto PARSE_DTS_FAIL;
+		}
+
+		/* find match by compatible */
+		for (; (*match_pmif) != NULL; match_pmif++)
+			if (strcmp((*match_pmif)->name, comp) == 0)
+				break;
+
+		if (*match_pmif == NULL) {
+			CLKBUF_DBG("no match pmif compatible!\n");
+			goto PARSE_DTS_FAIL;
+		}
+
+		/* Parse dts with platform function */
+		if ((*match_pmif)->parse_dts == NULL) {
+			CLKBUF_DBG("parse_dts function not defined!\n");
+			goto PARSE_DTS_FAIL;
+		} else {
+			return (*match_pmif)->parse_dts(array, clkbuf_node, nums);
+		}
+	}
+
+PARSE_DTS_FAIL:
 	return array;
 }
 
