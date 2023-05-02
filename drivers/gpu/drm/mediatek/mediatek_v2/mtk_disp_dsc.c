@@ -457,7 +457,8 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 			(slice_height - 1),
 			DISP_REG_DSC_SLICE_H, handle);
 
-		mtk_ddp_write_relaxed(comp, chrunk_size,
+		mtk_ddp_write_relaxed(comp, (((((chrunk_size *
+			(1 + dsc_params->slice_mode)) + 2) / 3) & 0xFFFF) << 16) +  chrunk_size,
 			DISP_REG_DSC_CHUNK_SIZE, handle);
 
 		mtk_ddp_write_relaxed(comp,	pad_num,
@@ -886,6 +887,14 @@ static const struct mtk_disp_dsc_data mt6985_dsc_driver_data = {
 	.shadow_ctrl_reg = 0x0228,
 };
 
+static const struct mtk_disp_dsc_data mt6989_dsc_driver_data = {
+	.support_shadow     = false,
+	.need_bypass_shadow = false,
+	.need_obuf_sw = true,
+	.dsi_buffer = true,
+	.shadow_ctrl_reg = 0x0228,
+};
+
 static const struct mtk_disp_dsc_data mt6897_dsc_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = false,
@@ -946,6 +955,8 @@ static const struct of_device_id mtk_disp_dsc_driver_dt_match[] = {
 	  .data = &mt6983_dsc_driver_data},
 	{ .compatible = "mediatek,mt6985-disp-dsc",
 	  .data = &mt6985_dsc_driver_data},
+	{ .compatible = "mediatek,mt6989-disp-dsc",
+	  .data = &mt6989_dsc_driver_data},
 	{ .compatible = "mediatek,mt6897-disp-dsc",
 	  .data = &mt6897_dsc_driver_data},
 	{ .compatible = "mediatek,mt6895-disp-dsc",

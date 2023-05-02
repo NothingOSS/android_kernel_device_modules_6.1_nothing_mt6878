@@ -8697,6 +8697,9 @@ static void mtk_crtc_addon_connector_disconnect(struct drm_crtc *crtc,
 			else
 				mtk_ddp_remove_dsc_prim_MT6985(mtk_crtc, handle);
 			break;
+		case MMSYS_MT6989:
+			mtk_ddp_remove_dsc_prim_MT6989(mtk_crtc, handle);
+			break;
 		case MMSYS_MT6897:
 			mtk_ddp_remove_dsc_prim_mt6897(mtk_crtc, handle);
 			break;
@@ -8838,6 +8841,9 @@ void mtk_crtc_addon_connector_connect(struct drm_crtc *crtc,
 			break;
 		case MMSYS_MT6983:
 			mtk_ddp_insert_dsc_prim_MT6983(mtk_crtc, handle);
+			break;
+		case MMSYS_MT6989:
+			mtk_ddp_insert_dsc_prim_MT6989(mtk_crtc, handle);
 			break;
 		case MMSYS_MT6985:
 			if (drm_crtc_index(crtc) == 3)

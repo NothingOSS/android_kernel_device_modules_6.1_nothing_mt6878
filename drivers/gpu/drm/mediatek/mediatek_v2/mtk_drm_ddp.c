@@ -20197,6 +20197,48 @@ void mtk_ddp_remove_dsc_prim_MT6985(struct mtk_drm_crtc *mtk_crtc,
 
 }
 
+void mtk_ddp_insert_dsc_prim_MT6989(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *handle)
+{
+	unsigned int addr, value;
+
+	/* COMP_IN_CROSSBAR4 to  DISP_DSC_WRAP0 */
+	addr = MT6989_COMP_IN_CROSSBAR4_MOUT_EN;
+	value = MT6989_DISP_SPLITTER_IN_CROSSBAR2_TO_DSC0_0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		       mtk_crtc->config_regs_pa + addr, value, ~0);
+
+	addr =  MT6989_COMP_OUT_CROSSBAR1_MOUT_EN;
+	value = MT6989_DISP_DSC0_TO_MERGE_OUT_CROSSBAR0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		       mtk_crtc->config_regs_pa + addr, value, ~0);
+
+	/* clear COMP_OUT_CROSSBAR5 */
+	addr =  MT6989_COMP_OUT_CROSSBAR5_MOUT_EN;
+	value = 0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		       mtk_crtc->config_regs_pa + addr, value, ~0);
+}
+
+void mtk_ddp_remove_dsc_prim_MT6989(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *handle)
+{
+	unsigned int addr, value;
+
+	/* clear COMP_IN_CROSSBAR4 */
+	addr = MT6989_COMP_IN_CROSSBAR4_MOUT_EN;
+	value = 0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		       mtk_crtc->config_regs_pa + addr, value, ~0);
+
+	/* clear COMP_OUT_CROSSBAR1 */
+	addr =  MT6989_COMP_OUT_CROSSBAR1_MOUT_EN;
+	value = 0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		       mtk_crtc->config_regs_pa + addr, value, ~0);
+
+}
+
 void mtk_ddp_insert_dsc_prim_mt6897(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle)
 {
