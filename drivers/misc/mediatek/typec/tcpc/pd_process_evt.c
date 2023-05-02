@@ -123,6 +123,9 @@ static const char *const pd_hw_msg_name[] = {
 #if CONFIG_USB_PD_REV30_COLLISION_AVOID
 	"sink_tx_change",
 #endif	/* CONFIG_USB_PD_REV30_COLLISION_AVOID */
+#if CONFIG_USB_PD_RETRY_CRC_DISCARD
+	"tx_retransmit",
+#endif	/* CONFIG_USB_PD_RETRY_CRC_DISCARD */
 };
 
 static inline void print_hw_msg_event(struct tcpc_device *tcpc, uint8_t msg)
