@@ -64,14 +64,31 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PEXTP_SW_MAC1_PHY1_BIT \
 	(PEXTP_SW_RST_MAC1_BIT | PEXTP_SW_RST_PHY1_BIT)
 
+#define PCIE_BASE_CONF_REG              0x14
+#define PCIE_SUPPORT_SPEED_MASK         GENMASK(15, 8)
+#define PCIE_SUPPORT_SPEED_SHIFT        8
+#define PCIE_SUPPORT_SPEED_2_5GT        BIT(8)
+#define PCIE_SUPPORT_SPEED_5_0GT        BIT(9)
+#define PCIE_SUPPORT_SPEED_8_0GT        BIT(10)
+#define PCIE_SUPPORT_SPEED_16_0GT       BIT(11)
+
 #define PCIE_BASIC_STATUS		0x18
 
-#define PCIE_SETTING_REG		0x80
+#define PCIE_SETTING_REG                0x80
+#define PCIE_RC_MODE                    BIT(0)
+#define PCIE_GEN_SUPPORT_MASK           GENMASK(14, 12)
+#define PCIE_GEN_SUPPORT_SHIFT          12
+#define PCIE_GEN2_SUPPORT               BIT(12)
+#define PCIE_GEN3_SUPPORT               BIT(13)
+#define PCIE_GEN4_SUPPORT               BIT(14)
+#define PCIE_GEN_SUPPORT(max_lspd) \
+	GENMASK((max_lspd) - 2 + PCIE_GEN_SUPPORT_SHIFT, PCIE_GEN_SUPPORT_SHIFT)
+#define PCIE_TARGET_SPEED_MASK          GENMASK(3, 0)
+
 #define PCIE_CFGCTRL			0x84
 #define PCIE_DISABLE_LTSSM		BIT(2)
 #define PCIE_PCI_IDS_1			0x9c
 #define PCI_CLASS(class)		(class << 8)
-#define PCIE_RC_MODE			BIT(0)
 
 #define PCIE_CFGNUM_REG			0x140
 #define PCIE_CFG_DEVFN(devfn)		((devfn) & GENMASK(7, 0))
@@ -184,6 +201,8 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_DCR2_CPL_TO		GENMASK(3, 0)
 #define PCIE_CPL_TIMEOUT_4MS		0x2
 
+#define PCIE_CONF_EXP_LNKCTL2_REG	0x10b0
+
 /* AER status */
 #define PCIE_AER_CO_STATUS		0x1210
 #define AER_CO_RE			BIT(0)
@@ -275,6 +294,7 @@ struct mtk_pcie_port {
 	struct phy *phy;
 	struct clk_bulk_data *clks;
 	int num_clks;
+	int max_link_speed;
 
 	int port_num;
 	u32 suspend_mode;
@@ -502,6 +522,36 @@ static void mtk_pcie_clkbuf_control(struct device *dev, bool enable)
 		dev_info(dev, "PCIe fail to request BBCK2\n");
 }
 
+static int mtk_pcie_set_link_speed(struct mtk_pcie_port *port)
+{
+	u32 val;
+
+	if ((port->max_link_speed < 1) || (port->port_num < 0))
+		return -EINVAL;
+
+	val = readl_relaxed(port->base + PCIE_BASE_CONF_REG);
+	val = (val & PCIE_SUPPORT_SPEED_MASK) >> PCIE_SUPPORT_SPEED_SHIFT;
+	if (val & BIT(port->max_link_speed - 1)) {
+		val = readl_relaxed(port->base + PCIE_SETTING_REG);
+		val &= ~PCIE_GEN_SUPPORT_MASK;
+
+		if (port->max_link_speed > 1)
+			val |= PCIE_GEN_SUPPORT(port->max_link_speed);
+
+		writel_relaxed(val, port->base + PCIE_SETTING_REG);
+
+		/* Set target speed */
+		val = readl_relaxed(port->base + PCIE_CONF_EXP_LNKCTL2_REG);
+		val &= ~PCIE_TARGET_SPEED_MASK;
+		writel(val | port->max_link_speed,
+		       port->base + PCIE_CONF_EXP_LNKCTL2_REG);
+
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
 static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 {
 	struct resource_entry *entry;
@@ -564,6 +614,12 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 		val |= PCIE_DVFS_REQ_FORCE_OFF;
 	}
 	writel_relaxed(val, port->base + PCIE_MISC_CTRL_REG);
+
+	/* Set max link speed */
+	err = mtk_pcie_set_link_speed(port);
+	if (err)
+		dev_info(port->dev, "unsupported speed: GEN%d\n",
+			 port->max_link_speed);
 
 	dev_info(port->dev, "PCIe link start ...\n");
 
@@ -1100,6 +1156,10 @@ static int mtk_pcie_parse_port(struct mtk_pcie_port *port)
 		dev_err(dev, "failed to get clocks\n");
 		return port->num_clks;
 	}
+
+	port->max_link_speed = of_pci_get_max_link_speed(dev->of_node);
+	if (port->max_link_speed > 0)
+		dev_info(dev, "max speed to GEN%d\n", port->max_link_speed);
 
 	return 0;
 }
