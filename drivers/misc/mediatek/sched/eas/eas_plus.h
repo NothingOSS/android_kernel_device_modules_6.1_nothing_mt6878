@@ -143,9 +143,9 @@ extern void soft_affinity_init(void);
 extern void set_top_app_cpumask(unsigned int cpumask_val);
 extern void set_foreground_cpumask(unsigned int cpumask_val);
 extern void set_background_cpumask(unsigned int cpumask_val);
-extern struct cpumask get_top_app_cpumask(void);
-extern struct cpumask get_foreground_cpumask(void);
-extern struct cpumask get_background_cpumask(void);
+extern struct cpumask *get_top_app_cpumask(void);
+extern struct cpumask *get_foreground_cpumask(void);
+extern struct cpumask *get_background_cpumask(void);
 extern void set_task_ls(int pid);
 extern void unset_task_ls(int pid);
 
