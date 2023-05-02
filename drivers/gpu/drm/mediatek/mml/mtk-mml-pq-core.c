@@ -722,6 +722,7 @@ static int set_sub_task(struct mml_task *task,
 {
 	struct mml_pq_task *pq_task = task->pq_task;
 	u64 random_num = 0;
+	u32 i = 0;
 
 	mml_pq_msg("%s called queued[%d] result_ref[%d] job_id[%llu, %d] first_job[%d]",
 		__func__, atomic_read(&sub_task->queued),
@@ -766,6 +767,9 @@ static int set_sub_task(struct mml_task *task,
 		atomic_set(&sub_task->result_ref, 0);
 		mml_pq_get_pq_task(pq_task);
 		sub_task->frame_data.info = task->config->info;
+		for (i = 0; i < MML_MAX_OUTPUTS; i++)
+			sub_task->frame_data.size_info.out_rotate[i] =
+				task->config->out_rotate[i];
 		memcpy(&sub_task->frame_data.pq_param, task->pq_param,
 			MML_MAX_OUTPUTS * sizeof(struct mml_pq_param));
 		memcpy(&sub_task->frame_data.frame_out, &task->config->frame_out,
@@ -776,6 +780,10 @@ static int set_sub_task(struct mml_task *task,
 		memcpy(&sub_task->frame_data.size_info.frame_in_s,
 			&task->config->frame_in, sizeof(struct mml_frame_size));
 		sub_task->readback_data.is_dual = task->config->dual;
+
+		mml_pq_msg("%s out_rotate[%d %d]", __func__,
+			sub_task->frame_data.size_info.out_rotate[0],
+			sub_task->frame_data.size_info.out_rotate[1]);
 		mml_pq_msg("%s called, job_id[%d] sub_task[%p] mode[%d] format[%d]", __func__,
 			task->job.jobid, &pq_task->comp_config,
 			task->config->info.mode, task->config->info.src.format);

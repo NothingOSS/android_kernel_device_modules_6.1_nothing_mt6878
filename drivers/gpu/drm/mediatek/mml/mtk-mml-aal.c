@@ -688,6 +688,8 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 		mml_pq_get_pq_task(aal->pq_task);
 		aal->out_idx = ccfg->node->out_idx;
 
+		aal->frame_data.size_info.out_rotate[ccfg->node->out_idx] =
+			cfg->out_rotate[ccfg->node->out_idx];
 		memcpy(&aal->frame_data.pq_param, task->pq_param,
 			MML_MAX_OUTPUTS * sizeof(struct mml_pq_param));
 		memcpy(&aal->frame_data.info, &task->config->info,

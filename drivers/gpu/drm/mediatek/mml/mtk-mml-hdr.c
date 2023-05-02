@@ -351,6 +351,8 @@ static s32 hdr_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			hdr->pq_task = task->pq_task;
 			mml_pq_get_pq_task(hdr->pq_task);
 
+			hdr->frame_data.size_info.out_rotate[ccfg->node->out_idx] =
+				cfg->out_rotate[ccfg->node->out_idx];
 			memcpy(&hdr->frame_data.pq_param, task->pq_param,
 				MML_MAX_OUTPUTS * sizeof(struct mml_pq_param));
 			memcpy(&hdr->frame_data.info, &task->config->info,

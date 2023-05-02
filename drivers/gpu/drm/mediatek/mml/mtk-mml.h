@@ -91,6 +91,7 @@ struct mml_pq_video_param {
 	int32_t buffer_fd;
 	int32_t qpsum;
 	struct mml_pq_film_grain_params fg_meta;
+	uint16_t rotate;
 };
 
 struct mml_pq_config {
