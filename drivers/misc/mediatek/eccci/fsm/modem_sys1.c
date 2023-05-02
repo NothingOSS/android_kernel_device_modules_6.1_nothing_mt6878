@@ -1247,6 +1247,8 @@ int ccci_md_register(struct ccci_modem *md)
 	ccci_sysfs_add_md((void *)&md->kobj);
 	ccci_fsm_init();
 	ccci_port_init();
+
+	port_kernel_user_interface_init(md->plat_dev->dev.of_node);
 	return 0;
 }
 

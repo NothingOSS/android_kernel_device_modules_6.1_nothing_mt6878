@@ -76,9 +76,6 @@ static void port_char_md_state_notify(struct port_t *port, unsigned int state)
 		/* when MD is stopped, the skb list of ccci_fs should be clean */
 		if (port->rx_ch == CCCI_FS_RX)
 			CCCI_NORMAL_LOG(0, FSM, "[%s]cccifs + GATED\n", __func__);
-		else
-			CCCI_NORMAL_LOG(0, FSM, "[%s]%d + GATED\n", __func__,
-					port->rx_ch);
 
 		if (port->flags & PORT_F_CLEAN) {
 			spin_lock_irqsave(&port->rx_skb_list.lock, flags);
@@ -117,13 +114,6 @@ static int port_char_init(struct port_t *port)
 		ret = ccci_register_dev_node(port->name, port->major,
 				port->minor_base + port->minor);
 		port->flags |= PORT_F_ADJUST_HEADER;
-	}
-
-	if (port->rx_ch == CCCI_FS_RX) {
-		/* if more port need, move to common place. */
-		CCCI_NORMAL_LOG(0, CHAR,
-			"ccci_fs add modem state receiver\n");
-		port->ops->md_state_notify = port_char_md_state_notify;
 	}
 
 	return ret;
@@ -232,5 +222,6 @@ struct port_ops char_port_ops = {
 	.init = &port_char_init,
 	.recv_skb = &port_char_recv_skb,
 	.dump_info = &port_char_dump_info,
+	.md_state_notify = port_char_md_state_notify,
 };
 

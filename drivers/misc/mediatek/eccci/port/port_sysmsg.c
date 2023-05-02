@@ -237,6 +237,8 @@ static void sys_msg_handler(struct port_t *port, struct sk_buff *skb)
 	case MD_NR_BAND_ACTIVATE_INFO:
 		fallthrough;
 	case LWA_CONTROL_MSG:
+		fallthrough;
+	case MD_DRAM_SLC:
 		exec_ccci_sys_call_back(ccci_h->data[1], ccci_h->reserved);
 		break;
 	case MD_GET_BATTERY_INFO:

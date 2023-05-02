@@ -1895,7 +1895,6 @@ int ccci_port_init(void)
 		CCCI_ERROR_LOG(0, TAG, "alloc port_proxy fail\n");
 		return -1;
 	}
-
 	return 0;
 }
 

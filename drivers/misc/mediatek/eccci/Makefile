@@ -31,6 +31,7 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/hif/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdpm/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pbm/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc/
 
 ifeq ($(CCCI_OBJ), m)
 ccflags-y += -DCCCI_KMODULE_ENABLE
@@ -63,7 +64,8 @@ ccci_md_all-$(CCCI_OBJ) += port/port_cfg.o \
 		port/port_rpc.o \
 		port/port_smem.o \
 		port/port_sysmsg.o \
-		port/ccci_swtp.o
+		port/ccci_swtp.o \
+		port/port_kernel_interface.o
 # port end
 # fsm start
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/fsm/

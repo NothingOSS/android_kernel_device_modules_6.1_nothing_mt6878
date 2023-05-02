@@ -391,6 +391,7 @@ enum {
 	MD_RF_HOPPING_NOTIFY = 0x121,
 	CCMSG_ID_SYSMSGSVC_LOWPWR_APSTS_NOTIFY = 0x128,
 	MD_NR_BAND_ACTIVATE_INFO = 0x12A,
+	MD_DRAM_SLC = 0x12B,
 
 	/*c2k ctrl msg start from 0x200*/
 	C2K_STATUS_IND_MSG = 0x201, /* for usb bypass */
@@ -586,6 +587,7 @@ enum KERNEL_MD_STATE_RECEIVER {
 	KERN_MD_STAT_RCV_SCP = 1,
 	/*/vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/mgmt/*/
 	KERN_MD_STAT_RCV_MDDP,
+	KERN_MD_KERN_INTF,
 	KERN_MD_STAT_RCV_MAX, /* <32 for static unsigned int kern_reg_cb_bitmap */
 };
 

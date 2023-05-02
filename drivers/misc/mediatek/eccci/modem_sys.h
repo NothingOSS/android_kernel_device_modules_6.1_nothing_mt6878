@@ -198,6 +198,7 @@ extern void mt_irq_dump_status(unsigned int irq);
 extern atomic_t en_flight_timeout;
 extern atomic_t md_dapc_ke_occurred;
 #endif
+extern void port_kernel_user_interface_init(struct device_node *mddriver_node);
 
 int ccci_md_start(void);
 int ccci_md_soft_start(unsigned int sim_mode);
