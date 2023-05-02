@@ -68,6 +68,9 @@ static const struct INFRAAXI_ID_INFO infra_mi_id_to_master[] = {
 	{"SSR_M",             { 0, 1, 0, 0, 1, 0, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0 } },
 	{"DPMAIF_M",          { 0, 1, 0, 0, 0, 1, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0 } },
 	{"MM2SLB1_M",         { 0, 1, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 } },
+	{"HFRP2INFRA_M",      { 0, 1, 0, 1, 0, 0, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 1, 0 } },
+	{"GCE_D_M",           { 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 } },
+	{"GCE_M_M",           { 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 } },
 	{"MCU_AP_M",          { 0, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0 } },
 };
 
@@ -262,7 +265,7 @@ static const char *mt6989_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 			else if ((bus_id & 0x7) == 0x3)
 				return "MMINFRA_HRE";
 			else if ((bus_id & 0x7) == 0x5)
-				return "MMUP";
+				return "HFRP";
 			else if ((bus_id & 0x7) == 0x7)
 				return "GCED";
 			else
@@ -271,7 +274,7 @@ static const char *mt6989_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 		/* VENC/VDEC slave*/
 		} else if ((vio_addr >= CODEC_START_ADDR) && (vio_addr <= CODEC_END_ADDR)) {
 			if ((bus_id & 0x1) == 0x0)
-				return "MMUP";
+				return "HFRP";
 			else if ((bus_id & 0xf) == 0x1)
 				return infra_mi_trans(bus_id >> 4);
 			else if ((bus_id & 0xf) == 0x3)
@@ -294,7 +297,7 @@ static const char *mt6989_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 			else if ((bus_id & 0xf) == 0x3)
 				return "MMINFRA_HRE";
 			else if ((bus_id & 0xf) == 0x5)
-				return "MMUP";
+				return "HFRP";
 			else if ((bus_id & 0xf) == 0x9)
 				return "GCEM";
 			else
@@ -307,7 +310,7 @@ static const char *mt6989_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 			else if ((bus_id & 0x7) == 0x1)
 				return "MMINFRA_HRE";
 			else if ((bus_id & 0x7) == 0x2)
-				return "MMUP";
+				return "HFRP";
 			else if ((bus_id & 0x7) == 0x3)
 				return "GCED";
 			else if ((bus_id & 0xf) == 0x4)
