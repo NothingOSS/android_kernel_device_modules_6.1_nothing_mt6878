@@ -290,7 +290,8 @@ ssize_t ise_dbg_write(struct file *file, const char __user *buffer,
 	char *parm_str, *cmd_str, *pinput;
 	char input[32] = {0};
 	long param;
-	int err, len;
+	uint32_t len;
+	int err;
 
 	len = (count < (sizeof(input) - 1)) ? count : (sizeof(input) - 1);
 	if (copy_from_user(input, buffer, len)) {
