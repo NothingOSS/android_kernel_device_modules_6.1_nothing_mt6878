@@ -7521,7 +7521,7 @@
 					<&dvfsrc_freq_opp1>;
 		};
 
-		wifi_page_pool: wifi_page_pool {
+		wifi_page_pool: wifi-page-pool {
 			compatible = "mediatek,wifi_page_pool";
 			emi-size = <0x5400000>;
 			mpu-protect = <0>;
