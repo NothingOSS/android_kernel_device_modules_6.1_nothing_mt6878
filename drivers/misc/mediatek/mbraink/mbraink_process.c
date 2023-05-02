@@ -137,7 +137,6 @@ void mbraink_get_process_memory_info(pid_t current_pid,
 	unsigned short pid_count = 0;
 	unsigned long pss, uss, rss, swap, cur_pss;
 	unsigned long java_heap = 0, native_heap = 0;
-	int ret = 0;
 	struct vma_iterator vmi;
 
 	memset(process_memory_buffer, 0, sizeof(struct mbraink_process_memory_data));
@@ -145,7 +144,7 @@ void mbraink_get_process_memory_info(pid_t current_pid,
 
 	read_lock(&tasklist_lock);
 	for_each_process(t) {
-		if (t->pid < current_pid)
+		if (t->pid <= current_pid)
 			continue;
 
 		mm = t->mm;
@@ -154,15 +153,10 @@ void mbraink_get_process_memory_info(pid_t current_pid,
 			native_heap = 0;
 			pid_count = process_memory_buffer->pid_count;
 
-			if (pid_count < MAX_MEM_STRUCT_SZ)
-				process_memory_buffer->drv_data[pid_count].pid =
-						(unsigned short)(t->pid);
-			else {
-				ret = -1;
-				process_memory_buffer->pid =
-					(unsigned short)(t->pid);
-				break;
-			}
+			process_memory_buffer->drv_data[pid_count].pid =
+				(unsigned short)(t->pid);
+			process_memory_buffer->pid =
+				(unsigned short)(t->pid);
 
 			memset(&mss, 0, sizeof(mss));
 			get_task_struct(t);
@@ -181,24 +175,24 @@ void mbraink_get_process_memory_info(pid_t current_pid,
 			mmap_read_unlock(mm);
 			read_lock(&tasklist_lock);
 			mmdrop(mm);
-			put_task_struct(t);
 
 			pss = (unsigned long)(mss.pss >> PSS_SHIFT)/1024;
 			uss = (mss.private_clean+mss.private_dirty)/1024;
 			rss = (mss.resident) / 1024;
 			swap = (mss.swap) / 1024;
 
-			if (pid_count < MAX_MEM_STRUCT_SZ) {
-				process_memory_buffer->drv_data[pid_count].pss = pss;
-				process_memory_buffer->drv_data[pid_count].uss = uss;
-				process_memory_buffer->drv_data[pid_count].rss = rss;
-				process_memory_buffer->drv_data[pid_count].swap = swap;
-				process_memory_buffer->drv_data[pid_count].java_heap =
+			process_memory_buffer->drv_data[pid_count].pss = pss;
+			process_memory_buffer->drv_data[pid_count].uss = uss;
+			process_memory_buffer->drv_data[pid_count].rss = rss;
+			process_memory_buffer->drv_data[pid_count].swap = swap;
+			process_memory_buffer->drv_data[pid_count].java_heap =
 									java_heap;
-				process_memory_buffer->drv_data[pid_count].native_heap =
+			process_memory_buffer->drv_data[pid_count].native_heap =
 									native_heap;
-				process_memory_buffer->pid_count++;
-			}
+			process_memory_buffer->pid_count++;
+
+			put_task_struct(t);
+			break;
 		} else {
 			/*pr_info("kthread case ...\n");*/
 		}
