@@ -1861,9 +1861,39 @@
 			reg = <0 0x10216000 0 0x1000>;
 		};
 
-		emi@10219000 {
-			compatible = "mediatek,emi";
-			reg = <0 0x10219000 0 0x1000>;
+		emicen: emicen@10219000 {
+			compatible = "mediatek,common-emicen";
+			reg = <0 0x10219000 0 0x1000>,
+				<0 0x1021d000 0 0x1000>;
+			mediatek,emi-reg = <&emichn>;
+			a2d-hash = <0xb>;
+			a2d-disph = <0xe>;
+		};
+
+		emichn: emichn@10235000 {
+			compatible = "mediatek,common-emichn";
+			reg = <0 0x10235000 0 0x1000>,
+				<0 0x10245000 0 0x1000>,
+				<0 0x10255000 0 0x1000>,
+				<0 0x10265000 0 0x1000>;
+		};
+
+		emimpu: emimpu@10226000 {
+			compatible = "mediatek,common-emimpu";
+			reg = <0 0x10226000 0 0x1000>,
+				  <0 0x10225000 0 0x1000>;
+			mediatek,emi-reg = <&emicen>;
+			interrupts = <GIC_SPI 374 IRQ_TYPE_LEVEL_HIGH 0>;
+			dump = <0x1f0 0x1f8 0x1fc>;
+			clear = <0x1f0 0x80000000 1>,
+				<0x160 0xffffffff 16>,
+				<0x200 0x00000003 16>;
+			clear-md = <0x1fc 0x80000000 1>;
+		};
+
+		emiisu {
+			compatible = "mediatek,common-emiisu";
+			ctrl-intf = <1>;
 		};
 
 		infra-device-mpu@1021a000 {
@@ -2118,11 +2148,6 @@
 		infra-device-mpu@10225000 {
 			compatible = "mediatek,infra_device_mpu";
 			reg = <0 0x10225000 0 0x1000>;
-		};
-
-		emi-mpu@10226000 {
-			compatible = "mediatek,emi_mpu";
-			reg = <0 0x10226000 0 0x1000>;
 		};
 
 		infra-dpmaif@1022c000 {
