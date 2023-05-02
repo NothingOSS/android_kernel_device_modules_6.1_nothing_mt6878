@@ -11119,3 +11119,5 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 		};
 	};
 };
+
+#include "mediatek/trusty.dtsi"
