@@ -1683,6 +1683,12 @@ static void mml_drm_split_info_racing(struct mml_submit *submit, struct mml_subm
 	submit_pq->buffer.src.cnt = 0;
 	submit_pq->buffer.dest[0].cnt = 0;
 
+	submit->buffer.seg_map.cnt = 0;
+	submit->buffer.dest_cnt = 1;
+	submit->buffer.dest[1].cnt = 0;
+	info->dest_cnt = 1;
+	info_pq->dest[1].crop = info_pq->dest[0].crop;
+
 	if (MML_FMT_PLANE(dest->data.format) > 1)
 		mml_err("%s dest plane should be 1 but format %#010x",
 			__func__, dest->data.format);

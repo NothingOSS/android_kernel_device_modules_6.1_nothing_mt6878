@@ -785,12 +785,6 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 		goto decouple;
 	}
 
-	/* dl only support 1 out */
-	if (info->dest_cnt > 1) {
-		*reason = mml_query_2out;
-		goto decouple;
-	}
-
 	if (info->dest[0].flip) {
 		*reason = mml_query_flip;
 		goto decouple;
@@ -863,12 +857,6 @@ static enum mml_mode tp_query_mode_racing(struct mml_dev *mml, struct mml_frame_
 		info->dest[0].pq_config.en_region_pq ||
 		info->dest[0].pq_config.en_fg) {
 		*reason = mml_query_pqen;
-		goto decouple;
-	}
-
-	/* racing only support 1 out */
-	if (info->dest_cnt > 1) {
-		*reason = mml_query_2out;
 		goto decouple;
 	}
 
@@ -998,7 +986,18 @@ static struct cmdq_client *get_racing_clt(struct mml_topology_cache *cache, u32 
 static const struct mml_topology_path *tp_get_dl_path(struct mml_topology_cache *cache,
 	struct mml_submit *submit, u32 pipe)
 {
-	return &cache->paths[PATH_MML_PQ_DL + pipe];
+	if (!submit)
+		return &cache->paths[PATH_MML_PQ_DL + pipe];
+
+	if (submit->info.dest_cnt == 2)
+		if (submit->info.dest[0].pq_config.en_region_pq)
+			return &cache->paths[PATH_MML_RR_DL_2IN_2OUT + pipe];
+		else
+			return &cache->paths[PATH_MML_PQ_DL + pipe];
+	else if (submit->info.dest[0].pq_config.en_region_pq)
+		return &cache->paths[PATH_MML_PQ_DL + pipe];
+	else
+		return &cache->paths[PATH_MML_PQ_DL + pipe];
 }
 
 static const struct mml_topology_ops tp_ops_mt6989 = {

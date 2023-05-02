@@ -1327,7 +1327,7 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	struct drm_crtc *crtc = NULL;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_crtc_state *crtc_state = NULL;
-	int i = 0, j = 0;
+	int i = 0;
 	int ret = 0;
 	unsigned int fps = 0;
 	unsigned int vtotal = 0;
@@ -1363,12 +1363,11 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	if (submit_kernel->info.mode == MML_MODE_RACING && (!kref_read(&mtk_crtc->mml_ir_sram.ref)))
 		mtk_crtc_alloc_sram(mtk_crtc, crtc_state->prop_val[CRTC_PROP_LYE_IDX]);
 
-	for (i = 0; i < MML_MAX_OUTPUTS; ++i) {
-		for (j = 0; j < MML_MAX_PLANES; ++j) {
-			submit_kernel->buffer.dest[i].fd[j] = -1;
-			submit_kernel->buffer.dest[i].size[j] = 0;
-		}
+	for (i = 0; i < MML_MAX_PLANES; ++i) {
+		submit_kernel->buffer.dest[0].fd[i] = -1;
+		submit_kernel->buffer.dest[0].size[i] = 0;
 	}
+
 	for (i = 0; i < MML_MAX_PLANES && i < submit_kernel->buffer.src.cnt; ++i) {
 		int32_t fd = submit_kernel->buffer.src.fd[i];
 

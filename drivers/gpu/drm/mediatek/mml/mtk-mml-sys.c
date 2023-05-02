@@ -157,6 +157,7 @@ struct mml_sys {
 	struct mml_dle_param dle_param;
 	/* addon status */
 	const struct mml_topology_path *ddp_path[MML_PIPE_CNT];
+	const struct mml_topology_path *pre_ddp_path[MML_PIPE_CNT];
 
 	/* racing mode pipe sync event */
 	u16 event_racing_pipe0;
@@ -1067,9 +1068,8 @@ static void ddp_command_make(struct mml_task *task, u32 pipe,
 	task->pkts[pipe] = NULL;
 }
 
-static void sys_ddp_disable_locked(struct mml_sys *sys, u32 pipe)
+static void sys_ddp_disable_locked(const struct mml_topology_path *path, u32 pipe)
 {
-	const struct mml_topology_path *path = sys->ddp_path[pipe];
 	struct mml_comp *comp;
 	u32 i;
 
@@ -1110,10 +1110,15 @@ static void sys_ddp_disable(struct mml_sys *sys, struct mml_task *task, u32 pipe
 			__func__, path, sys->ddp_path[pipe]);
 
 	if (task->pipe[pipe].en.clk) {
-		sys_ddp_disable_locked(sys, pipe);
+		/* disable and pop ddp paths */
+		sys_ddp_disable_locked(sys->ddp_path[pipe], pipe);
+		if (sys->pre_ddp_path[pipe] &&
+		    sys->pre_ddp_path[pipe] != sys->ddp_path[pipe])
+			sys_ddp_disable_locked(sys->pre_ddp_path[pipe], pipe);
 		task->pipe[pipe].en.clk = false;
 	}
 	sys->ddp_path[pipe] = NULL;
+	sys->pre_ddp_path[pipe] = NULL;
 
 disabled:
 	mml_clock_unlock(task->config->mml);
@@ -1156,16 +1161,20 @@ static void sys_ddp_enable(struct mml_sys *sys, struct mml_task *task, u32 pipe)
 	}
 	mml_trace_ex_end();
 
-	/* disable old path */
-	if (sys->ddp_path[pipe])
-		sys_ddp_disable_locked(sys, pipe);
-	sys->ddp_path[pipe] = path;
-
 #ifndef MML_FPGA
 	cmdq_util_prebuilt_init(CMDQ_PREBUILT_MML);
 #endif
 
 enabled:
+	/* disable pre_ddp_path if path diff */
+	if (sys->pre_ddp_path[pipe] &&
+	    sys->pre_ddp_path[pipe] != sys->ddp_path[pipe])
+		sys_ddp_disable_locked(sys->pre_ddp_path[pipe], pipe);
+
+	/* pop previous path and push paths */
+	sys->pre_ddp_path[pipe] = sys->ddp_path[pipe];
+	sys->ddp_path[pipe] = path;
+
 	task->pipe[pipe].en.clk = true;
 	mml_clock_unlock(task->config->mml);
 }

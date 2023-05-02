@@ -75,18 +75,30 @@ enum topology_scenario {
 	PATH_MML_PQ_P1,
 	PATH_MML_PQ_DD0,
 	PATH_MML_PQ_DD1,
+	PATH_MML_PQ_DL0,
+	PATH_MML_PQ_DL1,
 	PATH_MML_PQ_P2,
 	PATH_MML_PQ_P3,
 	PATH_MML_2OUT_P0,
 	PATH_MML_2OUT_P1,
+	PATH_MML_2OUT_DD0,
+	PATH_MML_2OUT_DD1,
+	PATH_MML_2OUT_DL0,
+	PATH_MML_2OUT_DL1,
 	PATH_MML_2IN_2OUT_P0,
 	PATH_MML_2IN_2OUT_P1,
+	PATH_MML_2IN_2OUT_DD0,
+	PATH_MML_2IN_2OUT_DD1,
+	PATH_MML_2IN_2OUT_DL0,
+	PATH_MML_2IN_2OUT_DL1,
 	PATH_MML_2IN_1OUT_P0,
 	PATH_MML_2IN_1OUT_P1,
+	PATH_MML_2IN_1OUT_DD0,
+	PATH_MML_2IN_1OUT_DD1,
+	PATH_MML_2IN_1OUT_DL0,
+	PATH_MML_2IN_1OUT_DL1,
 	PATH_MML_APU_P0,
 	PATH_MML_APU_P1,
-	PATH_MML_PQ_DL0,
-	PATH_MML_PQ_DL1,
 	PATH_MML_MAX
 };
 
@@ -213,6 +225,34 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_DLO1_SOUT, MML_DLO1,},
 		{MML_DLO1,},
 	},
+	[PATH_MML_PQ_DL0] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RDMA0, MML_DLI0_SEL,},
+		{MML_DLI0_SEL, MML_HDR0,},
+		{MML_HDR0, MML_AAL0,},
+		{MML_AAL0, MML_RSZ0,},
+		{MML_RSZ0, MML_TDSHP0,},
+		{MML_TDSHP0, MML_COLOR0,},
+		{MML_COLOR0, MML_PQ0_SOUT,},
+		{MML_PQ0_SOUT, MML_DLO0_SOUT,},
+		{MML_DLO0_SOUT, MML_DLO0,},
+		{MML_DLO0,},
+	},
+	[PATH_MML_PQ_DL1] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RDMA1, MML_DLI1_SEL,},
+		{MML_DLI1_SEL, MML_HDR1,},
+		{MML_HDR1, MML_AAL1,},
+		{MML_AAL1, MML_RSZ1,},
+		{MML_RSZ1, MML_TDSHP1,},
+		{MML_TDSHP1, MML_COLOR1,},
+		{MML_COLOR1, MML_PQ1_SOUT,},
+		{MML_PQ1_SOUT, MML_DLO1_SOUT,},
+		{MML_DLO1_SOUT, MML_DLO1,},
+		{MML_DLO1,},
+	},
 	[PATH_MML_PQ_P2] = {
 		{MML_MMLSYS,},
 		{MML_MUTEX,},
@@ -261,6 +301,70 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_WROT1,},
 		{MML_WROT3,},
 	},
+	[PATH_MML_2OUT_DD0] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_DLI0, MML_DLI0_SEL,},
+		{MML_DLI0_SEL, MML_HDR0, MML_RSZ2},
+		{MML_HDR0, MML_AAL0,},
+		{MML_AAL0, MML_RSZ0,},
+		{MML_RSZ0, MML_TDSHP0,},
+		{MML_TDSHP0, MML_COLOR0,},
+		{MML_COLOR0, MML_PQ0_SOUT,},
+		{MML_PQ0_SOUT, MML_DLO0_SOUT,},
+		{MML_DLO0_SOUT, MML_DLO0,},
+		{MML_RSZ2, MML_WROT2,},
+		{MML_DLO0,},
+		{MML_WROT2,},
+	},
+	[PATH_MML_2OUT_DD1] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_DLI1, MML_DLI1_SEL,},
+		{MML_DLI1_SEL, MML_HDR1, MML_RSZ3},
+		{MML_HDR1, MML_AAL1,},
+		{MML_AAL1, MML_RSZ1,},
+		{MML_RSZ1, MML_TDSHP1,},
+		{MML_TDSHP1, MML_COLOR1,},
+		{MML_COLOR1, MML_PQ1_SOUT,},
+		{MML_PQ1_SOUT, MML_DLO1_SOUT,},
+		{MML_DLO1_SOUT, MML_DLO1,},
+		{MML_RSZ3, MML_WROT3,},
+		{MML_DLO1,},
+		{MML_WROT3,},
+	},
+	[PATH_MML_2OUT_DL0] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RDMA0, MML_DLI0_SEL,},
+		{MML_DLI0_SEL, MML_HDR0, MML_RSZ2},
+		{MML_HDR0, MML_AAL0,},
+		{MML_AAL0, MML_RSZ0,},
+		{MML_RSZ0, MML_TDSHP0,},
+		{MML_TDSHP0, MML_COLOR0,},
+		{MML_COLOR0, MML_PQ0_SOUT,},
+		{MML_PQ0_SOUT, MML_DLO0_SOUT,},
+		{MML_DLO0_SOUT, MML_DLO0,},
+		{MML_RSZ2, MML_WROT2,},
+		{MML_DLO0,},
+		{MML_WROT2,},
+	},
+	[PATH_MML_2OUT_DL1] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RDMA1, MML_DLI1_SEL,},
+		{MML_DLI1_SEL, MML_HDR1, MML_RSZ3},
+		{MML_HDR1, MML_AAL1,},
+		{MML_AAL1, MML_RSZ1,},
+		{MML_RSZ1, MML_TDSHP1,},
+		{MML_TDSHP1, MML_COLOR1,},
+		{MML_COLOR1, MML_PQ1_SOUT,},
+		{MML_PQ1_SOUT, MML_DLO1_SOUT,},
+		{MML_DLO1_SOUT, MML_DLO1,},
+		{MML_RSZ3, MML_WROT3,},
+		{MML_DLO1,},
+		{MML_WROT3,},
+	},
 	[PATH_MML_2IN_2OUT_P0] = {
 		{MML_MMLSYS,},
 		{MML_MUTEX,},
@@ -297,6 +401,78 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_WROT1,},
 		{MML_WROT3,},
 	},
+	[PATH_MML_2IN_2OUT_DD0] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RDMA2,},
+		{MML_BIRSZ0,},
+		{MML_DLI0, MML_DLI0_SEL,},
+		{MML_DLI0_SEL, MML_HDR0, MML_RSZ2},
+		{MML_HDR0, MML_AAL0,},
+		{MML_AAL0, MML_RSZ0,},
+		{MML_RSZ0, MML_TDSHP0,},
+		{MML_TDSHP0, MML_COLOR0,},
+		{MML_COLOR0, MML_PQ0_SOUT,},
+		{MML_PQ0_SOUT, MML_DLO0_SOUT,},
+		{MML_DLO0_SOUT, MML_DLO0,},
+		{MML_RSZ2, MML_WROT2,},
+		{MML_DLO0,},
+		{MML_WROT2,},
+	},
+	[PATH_MML_2IN_2OUT_DD1] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RDMA3,},
+		{MML_BIRSZ1,},
+		{MML_DLI1, MML_DLI1_SEL,},
+		{MML_DLI1_SEL, MML_HDR1, MML_RSZ3},
+		{MML_HDR1, MML_AAL1,},
+		{MML_AAL1, MML_RSZ1,},
+		{MML_RSZ1, MML_TDSHP1,},
+		{MML_TDSHP1, MML_COLOR1,},
+		{MML_COLOR1, MML_PQ1_SOUT,},
+		{MML_PQ1_SOUT, MML_DLO1_SOUT,},
+		{MML_DLO1_SOUT, MML_DLO1,},
+		{MML_RSZ3, MML_WROT3,},
+		{MML_DLO1,},
+		{MML_WROT3,},
+	},
+	[PATH_MML_2IN_2OUT_DL0] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RDMA2,},
+		{MML_BIRSZ0,},
+		{MML_RDMA0, MML_DLI0_SEL,},
+		{MML_DLI0_SEL, MML_HDR0, MML_RSZ2},
+		{MML_HDR0, MML_AAL0,},
+		{MML_AAL0, MML_RSZ0,},
+		{MML_RSZ0, MML_TDSHP0,},
+		{MML_TDSHP0, MML_COLOR0,},
+		{MML_COLOR0, MML_PQ0_SOUT,},
+		{MML_PQ0_SOUT, MML_DLO0_SOUT,},
+		{MML_DLO0_SOUT, MML_DLO0,},
+		{MML_RSZ2, MML_WROT2,},
+		{MML_DLO0,},
+		{MML_WROT2,},
+	},
+	[PATH_MML_2IN_2OUT_DL1] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RDMA3,},
+		{MML_BIRSZ1,},
+		{MML_RDMA1, MML_DLI1_SEL,},
+		{MML_DLI1_SEL, MML_HDR1, MML_RSZ3},
+		{MML_HDR1, MML_AAL1,},
+		{MML_AAL1, MML_RSZ1,},
+		{MML_RSZ1, MML_TDSHP1,},
+		{MML_TDSHP1, MML_COLOR1,},
+		{MML_COLOR1, MML_PQ1_SOUT,},
+		{MML_PQ1_SOUT, MML_DLO1_SOUT,},
+		{MML_DLO1_SOUT, MML_DLO1,},
+		{MML_RSZ3, MML_WROT3,},
+		{MML_DLO1,},
+		{MML_WROT3,},
+	},
 	[PATH_MML_2IN_1OUT_P0] = {
 		{MML_MMLSYS,},
 		{MML_MUTEX,},
@@ -329,21 +505,43 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_DLO1_SOUT, MML_WROT1,},
 		{MML_WROT1,},
 	},
-	[PATH_MML_APU_P0] = {
+	[PATH_MML_2IN_1OUT_DD0] = {
 		{MML_MMLSYS,},
 		{MML_MUTEX,},
-		{MML_RDMA0, MML_WROT0,},
-		{MML_WROT0,},
+		{MML_RDMA2,},
+		{MML_BIRSZ0,},
+		{MML_DLI0, MML_DLI0_SEL,},
+		{MML_DLI0_SEL, MML_HDR0,},
+		{MML_HDR0, MML_AAL0,},
+		{MML_AAL0, MML_RSZ0,},
+		{MML_RSZ0, MML_TDSHP0,},
+		{MML_TDSHP0, MML_COLOR0,},
+		{MML_COLOR0, MML_PQ0_SOUT,},
+		{MML_PQ0_SOUT, MML_DLO0_SOUT,},
+		{MML_DLO0_SOUT, MML_DLO0,},
+		{MML_DLO0,},
 	},
-	[PATH_MML_APU_P1] = {
+	[PATH_MML_2IN_1OUT_DD1] = {
 		{MML_MMLSYS,},
 		{MML_MUTEX,},
-		{MML_RDMA1, MML_WROT1,},
-		{MML_WROT1,},
+		{MML_RDMA3,},
+		{MML_BIRSZ1,},
+		{MML_DLI1, MML_DLI1_SEL,},
+		{MML_DLI1_SEL, MML_HDR1,},
+		{MML_HDR1, MML_AAL1,},
+		{MML_AAL1, MML_RSZ1,},
+		{MML_RSZ1, MML_TDSHP1,},
+		{MML_TDSHP1, MML_COLOR1,},
+		{MML_COLOR1, MML_PQ1_SOUT,},
+		{MML_PQ1_SOUT, MML_DLO1_SOUT,},
+		{MML_DLO1_SOUT, MML_DLO1,},
+		{MML_DLO1,},
 	},
-	[PATH_MML_PQ_DL0] = {
+	[PATH_MML_2IN_1OUT_DL0] = {
 		{MML_MMLSYS,},
 		{MML_MUTEX,},
+		{MML_RDMA2,},
+		{MML_BIRSZ0,},
 		{MML_RDMA0, MML_DLI0_SEL,},
 		{MML_DLI0_SEL, MML_HDR0,},
 		{MML_HDR0, MML_AAL0,},
@@ -355,9 +553,11 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_DLO0_SOUT, MML_DLO0,},
 		{MML_DLO0,},
 	},
-	[PATH_MML_PQ_DL1] = {
+	[PATH_MML_2IN_1OUT_DL1] = {
 		{MML_MMLSYS,},
 		{MML_MUTEX,},
+		{MML_RDMA3,},
+		{MML_BIRSZ1,},
 		{MML_RDMA1, MML_DLI1_SEL,},
 		{MML_DLI1_SEL, MML_HDR1,},
 		{MML_HDR1, MML_AAL1,},
@@ -368,6 +568,18 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_PQ1_SOUT, MML_DLO1_SOUT,},
 		{MML_DLO1_SOUT, MML_DLO1,},
 		{MML_DLO1,},
+	},
+	[PATH_MML_APU_P0] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RDMA0, MML_WROT0,},
+		{MML_WROT0,},
+	},
+	[PATH_MML_APU_P1] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RDMA1, MML_WROT1,},
+		{MML_WROT1,},
 	},
 };
 
@@ -386,18 +598,30 @@ static const u8 clt_dispatch[PATH_MML_MAX] = {
 	[PATH_MML_PQ_P1] = MML_CLT_PIPE1,
 	[PATH_MML_PQ_DD0] = MML_CLT_PIPE0,
 	[PATH_MML_PQ_DD1] = MML_CLT_PIPE1,
+	[PATH_MML_PQ_DL0] = MML_CLT_PIPE0,
+	[PATH_MML_PQ_DL1] = MML_CLT_PIPE1,
 	[PATH_MML_PQ_P2] = MML_CLT_PIPE0,
 	[PATH_MML_PQ_P3] = MML_CLT_PIPE1,
 	[PATH_MML_2OUT_P0] = MML_CLT_PIPE0,
 	[PATH_MML_2OUT_P1] = MML_CLT_PIPE1,
+	[PATH_MML_2OUT_DD0] = MML_CLT_PIPE0,
+	[PATH_MML_2OUT_DD1] = MML_CLT_PIPE1,
+	[PATH_MML_2OUT_DL0] = MML_CLT_PIPE0,
+	[PATH_MML_2OUT_DL1] = MML_CLT_PIPE1,
 	[PATH_MML_2IN_2OUT_P0] = MML_CLT_PIPE0,
 	[PATH_MML_2IN_2OUT_P1] = MML_CLT_PIPE1,
+	[PATH_MML_2IN_2OUT_DD0] = MML_CLT_PIPE0,
+	[PATH_MML_2IN_2OUT_DD1] = MML_CLT_PIPE1,
+	[PATH_MML_2IN_2OUT_DL0] = MML_CLT_PIPE0,
+	[PATH_MML_2IN_2OUT_DL1] = MML_CLT_PIPE1,
 	[PATH_MML_2IN_1OUT_P0] = MML_CLT_PIPE0,
 	[PATH_MML_2IN_1OUT_P1] = MML_CLT_PIPE1,
+	[PATH_MML_2IN_1OUT_DD0] = MML_CLT_PIPE0,
+	[PATH_MML_2IN_1OUT_DD1] = MML_CLT_PIPE1,
+	[PATH_MML_2IN_1OUT_DL0] = MML_CLT_PIPE0,
+	[PATH_MML_2IN_1OUT_DL1] = MML_CLT_PIPE1,
 	[PATH_MML_APU_P0] = MML_CLT_PIPE0,
 	[PATH_MML_APU_P1] = MML_CLT_PIPE1,
-	[PATH_MML_PQ_DL0] = MML_CLT_PIPE0,
-	[PATH_MML_PQ_DL1] = MML_CLT_PIPE1,
 };
 
 /* mux sof group of mmlsys mout/sel */
@@ -421,18 +645,30 @@ static const u8 grp_dispatch[PATH_MML_MAX] = {
 	[PATH_MML_PQ_P1] = MUX_SOF_GRP2,
 	[PATH_MML_PQ_DD0] = MUX_SOF_GRP3,
 	[PATH_MML_PQ_DD1] = MUX_SOF_GRP4,
+	[PATH_MML_PQ_DL0] = MUX_SOF_GRP1,
+	[PATH_MML_PQ_DL1] = MUX_SOF_GRP2,
 	[PATH_MML_PQ_P2] = MUX_SOF_GRP1,
 	[PATH_MML_PQ_P3] = MUX_SOF_GRP2,
 	[PATH_MML_2OUT_P0] = MUX_SOF_GRP1,
 	[PATH_MML_2OUT_P1] = MUX_SOF_GRP2,
+	[PATH_MML_2OUT_DD0] = MUX_SOF_GRP3,
+	[PATH_MML_2OUT_DD1] = MUX_SOF_GRP4,
+	[PATH_MML_2OUT_DL0] = MUX_SOF_GRP1,
+	[PATH_MML_2OUT_DL1] = MUX_SOF_GRP2,
 	[PATH_MML_2IN_2OUT_P0] = MUX_SOF_GRP1,
 	[PATH_MML_2IN_2OUT_P1] = MUX_SOF_GRP2,
+	[PATH_MML_2IN_2OUT_DD0] = MUX_SOF_GRP3,
+	[PATH_MML_2IN_2OUT_DD1] = MUX_SOF_GRP4,
+	[PATH_MML_2IN_2OUT_DL0] = MUX_SOF_GRP1,
+	[PATH_MML_2IN_2OUT_DL1] = MUX_SOF_GRP2,
 	[PATH_MML_2IN_1OUT_P0] = MUX_SOF_GRP1,
 	[PATH_MML_2IN_1OUT_P1] = MUX_SOF_GRP2,
+	[PATH_MML_2IN_1OUT_DD0] = MUX_SOF_GRP3,
+	[PATH_MML_2IN_1OUT_DD1] = MUX_SOF_GRP4,
+	[PATH_MML_2IN_1OUT_DL0] = MUX_SOF_GRP1,
+	[PATH_MML_2IN_1OUT_DL1] = MUX_SOF_GRP2,
 	[PATH_MML_APU_P0] = MUX_SOF_GRP1,
 	[PATH_MML_APU_P1] = MUX_SOF_GRP2,
-	[PATH_MML_PQ_DL0] = MUX_SOF_GRP1,
-	[PATH_MML_PQ_DL1] = MUX_SOF_GRP2,
 };
 
 /* reset bit to each engine,
@@ -753,17 +989,36 @@ static void tp_select_path(struct mml_topology_cache *cache,
 	if (cfg->info.mode == MML_MODE_DDP_ADDON) {
 		/* direct-link in/out for addon case */
 		if (cfg->info.dest_cnt == 2) {
-			/* TODO: ddp addon 2out */
-			scene[0] = PATH_MML_PQ_DD0; /* PATH_MML_2OUT_DD0 */
-			scene[1] = PATH_MML_PQ_DD1; /* PATH_MML_2OUT_DD1 */
+			if (cfg->info.dest[0].pq_config.en_region_pq) {
+				scene[0] = PATH_MML_2IN_2OUT_DD0;
+				scene[1] = PATH_MML_2IN_2OUT_DD1;
+			} else {
+				scene[0] = PATH_MML_2OUT_DD0;
+				scene[1] = PATH_MML_2OUT_DD1;
+			}
+		} else if (cfg->info.dest[0].pq_config.en_region_pq) {
+			scene[0] = PATH_MML_2IN_1OUT_DD0;
+			scene[1] = PATH_MML_2IN_1OUT_DD1;
 		} else {
 			scene[0] = PATH_MML_PQ_DD0;
 			scene[1] = PATH_MML_PQ_DD1;
 		}
 	} else if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
-		/* TODO: pq or not pq in direct link mode */
-		scene[0] = PATH_MML_PQ_DL0;
-		scene[1] = PATH_MML_PQ_DL1;
+		if (cfg->info.dest_cnt == 2) {
+			if (cfg->info.dest[0].pq_config.en_region_pq) {
+				scene[0] = PATH_MML_2IN_2OUT_DL0;
+				scene[1] = PATH_MML_2IN_2OUT_DL1;
+			} else {
+				scene[0] = PATH_MML_2OUT_DL0;
+				scene[1] = PATH_MML_2OUT_DL1;
+			}
+		} else if (cfg->info.dest[0].pq_config.en_region_pq) {
+			scene[0] = PATH_MML_2IN_1OUT_DL0;
+			scene[1] = PATH_MML_2IN_1OUT_DL1;
+		} else {
+			scene[0] = PATH_MML_PQ_DL0;
+			scene[1] = PATH_MML_PQ_DL1;
+		}
 	} else if (!en_pq) {
 		/* dual pipe, rdma to wrot */
 		scene[0] = PATH_MML_NOPQ_P0;
@@ -888,23 +1143,6 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 			goto decouple;
 	}
 
-	/* no pq support for dl mode */
-	if (info->dest[0].pq_config.en_dc ||
-		info->dest[0].pq_config.en_color ||
-		info->dest[0].pq_config.en_hdr ||
-		info->dest[0].pq_config.en_ccorr ||
-		info->dest[0].pq_config.en_dre ||
-		info->dest[0].pq_config.en_region_pq) {
-		*reason = mml_query_pqen;
-		goto decouple;
-	}
-
-	/* dl only support 1 out */
-	if (info->dest_cnt > 1) {
-		*reason = mml_query_2out;
-		goto decouple;
-	}
-
 	if (info->dest[0].flip) {
 		*reason = mml_query_flip;
 		goto decouple;
@@ -982,19 +1220,6 @@ static enum mml_mode tp_query_mode_racing(struct mml_dev *mml, struct mml_frame_
 	/* secure content cannot output to sram */
 	if (info->src.secure || info->dest[0].data.secure) {
 		*reason = mml_query_sec;
-		goto decouple;
-	}
-
-	/* no pq support for racing mode */
-
-	if (info->dest[0].pq_config.en_region_pq) {
-		*reason = mml_query_pqen;
-		goto decouple;
-	}
-
-	/* racing only support 1 out */
-	if (info->dest_cnt > 1) {
-		*reason = mml_query_2out;
 		goto decouple;
 	}
 
@@ -1124,7 +1349,18 @@ static struct cmdq_client *get_racing_clt(struct mml_topology_cache *cache, u32 
 static const struct mml_topology_path *tp_get_dl_path(struct mml_topology_cache *cache,
 	struct mml_submit *submit, u32 pipe)
 {
-	return &cache->paths[PATH_MML_PQ_DL0 + pipe];
+	if (!submit)
+		return &cache->paths[PATH_MML_PQ_DL0 + pipe];
+
+	if (submit->info.dest_cnt == 2)
+		if (submit->info.dest[0].pq_config.en_region_pq)
+			return &cache->paths[PATH_MML_2IN_2OUT_DL0 + pipe];
+		else
+			return &cache->paths[PATH_MML_2OUT_DL0 + pipe];
+	else if (submit->info.dest[0].pq_config.en_region_pq)
+		return &cache->paths[PATH_MML_2IN_1OUT_DL0 + pipe];
+	else
+		return &cache->paths[PATH_MML_PQ_DL0 + pipe];
 }
 
 static const struct mml_topology_ops tp_ops_mt6985 = {

@@ -350,6 +350,11 @@ static void task_buf_put(struct mml_task *task)
 	mml_msg("[dle]release src iova %#011llx",
 		task->buf.src.dma[0].iova);
 	mml_buf_put(&task->buf.src);
+	if (task->config->info.dest[0].pq_config.en_region_pq) {
+		mml_msg("[dle]release seg_map iova %#011llx",
+			task->buf.seg_map.dma[0].iova);
+		mml_buf_put(&task->buf.seg_map);
+	}
 	mml_trace_ex_end();
 }
 
@@ -631,6 +636,16 @@ s32 mml_dle_config(struct mml_dle_ctx *ctx, struct mml_submit *submit,
 	if (result) {
 		mml_err("[dle]%s get dma buf fail", __func__);
 		goto err_buf_exit;
+	}
+
+	if (submit->info.dest[0].pq_config.en_region_pq) {
+		result = frame_buf_to_task_buf(&task->buf.seg_map,
+					       &submit->buffer.seg_map,
+					       "mml_rdma");
+		if (result) {
+			mml_err("[dle]%s get dma buf fail", __func__);
+			goto err_buf_exit;
+		}
 	}
 
 	task->buf.dest_cnt = submit->buffer.dest_cnt;

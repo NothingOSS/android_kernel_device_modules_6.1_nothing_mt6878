@@ -130,6 +130,9 @@
 #define RDMA_SRC_OFFSET_2_MSB		0xf4c
 #define RDMA_AFBC_PAYLOAD_OST		0xf50
 
+/* RDMA debug monitor register count */
+#define RDMA_MON_COUNT 29
+
 enum cpr_reg_idx {
 	/* CMDQ_CPR_PREBUILT_REG_CNT = 20 */
 	CPR_RDMA_SRC_OFFSET_0 = 0,
@@ -313,8 +316,13 @@ static s32 rdma_write(struct cmdq_pkt *pkt, phys_addr_t base_pa, u8 hw_pipe,
 static s32 rdma_write_ofst(struct cmdq_pkt *pkt, phys_addr_t base_pa, u8 hw_pipe,
 			   enum cpr_reg_idx lsb_idx, u64 value, bool write_sec)
 {
-	enum cpr_reg_idx msb_idx = lsb_to_msb[lsb_idx];
+	enum cpr_reg_idx msb_idx;
 	s32 ret;
+
+	if (unlikely(lsb_idx >= CPR_RDMA_COUNT))
+		return -EFAULT;
+
+	msb_idx = lsb_to_msb[lsb_idx];
 
 	ret = rdma_write(pkt, base_pa, hw_pipe,
 			 lsb_idx, value & GENMASK_ULL(31, 0), write_sec);
@@ -348,8 +356,13 @@ static s32 rdma_write_addr(struct cmdq_pkt *pkt, phys_addr_t base_pa, u8 hw_pipe
 			   struct mml_pipe_cache *cache,
 			   u16 *label_idx, bool write_sec)
 {
-	enum cpr_reg_idx msb_idx = lsb_to_msb[lsb_idx];
+	enum cpr_reg_idx msb_idx;
 	s32 ret;
+
+	if (unlikely(lsb_idx >= CPR_RDMA_COUNT))
+		return -EFAULT;
+
+	msb_idx = lsb_to_msb[lsb_idx];
 
 	ret = rdma_write_reuse(pkt, base_pa, hw_pipe,
 			       lsb_idx, value & GENMASK_ULL(31, 0),
@@ -373,6 +386,9 @@ enum rdma_golden_fmt {
 	GOLDEN_FMT_ARGB,
 	GOLDEN_FMT_RGB,
 	GOLDEN_FMT_YUV420,
+	GOLDEN_FMT_YV12,
+	GOLDEN_FMT_HYFBC,
+	GOLDEN_FMT_AFBC,
 	GOLDEN_FMT_TOTAL
 };
 
@@ -449,6 +465,10 @@ struct rdma_frame_data {
 	u32 ver_shift_uv;
 	u32 pixel_acc;		/* pixel accumulation */
 	u32 datasize;		/* qos data size in bytes */
+	u16 crop_off_l;		/* crop offset left */
+	u16 crop_off_t;		/* crop offset top */
+	u32 gmcif_con;
+	bool ultra_off;
 
 	/* array of indices to one of entry in cache entry list,
 	 * use in reuse command
@@ -478,64 +498,41 @@ static s32 rdma_buf_map(struct mml_comp *comp, struct mml_task *task,
 
 	mml_trace_ex_begin("%s sram or iova", __func__);
 
-	if (unlikely(task->config->info.mode == MML_MODE_SRAM_READ)) {
-		mml_mmp(buf_map, MMPROFILE_FLAG_START,
-			((u64)task->job.jobid << 16) | comp->id, 0);
+	mml_mmp(buf_map, MMPROFILE_FLAG_START,
+		((u64)task->job.jobid << 16) | comp->id, 0);
 
-		mutex_lock(&rdma->sram_mutex);
-		if (!rdma->sram_cnt)
-			rdma->sram_pa = (u64)mml_sram_get(task->config->mml, mml_sram_apudc);
-		rdma->sram_cnt++;
-		mutex_unlock(&rdma->sram_mutex);
+	/* get iova */
+	ret = mml_buf_iova_get(rdma->dev, &task->buf.seg_map);
+	if (ret < 0)
+		mml_err("%s iova fail %d", __func__, ret);
 
-		mml_mmp(buf_map, MMPROFILE_FLAG_END,
-			((u64)task->job.jobid << 16) | comp->id,
-			rdma->sram_pa);
+	mml_mmp(buf_map, MMPROFILE_FLAG_END,
+		((u64)task->job.jobid << 16) | comp->id,
+		(unsigned long)task->buf.seg_map.dma[0].iova);
 
-		mml_msg("%s comp %u sram pa %#llx",
-			__func__, comp->id, rdma->sram_pa);
-	} else {
-		mml_mmp(buf_map, MMPROFILE_FLAG_START,
-			((u64)task->job.jobid << 16) | comp->id, 0);
-
-		/* get iova */
-		ret = mml_buf_iova_get(rdma->dev, &task->buf.seg_map);
-		if (ret < 0)
-			mml_err("%s iova fail %d", __func__, ret);
-
-		mml_mmp(buf_map, MMPROFILE_FLAG_END,
-			((u64)task->job.jobid << 16) | comp->id,
-			(unsigned long)task->buf.seg_map.dma[0].iova);
-
-		mml_msg("%s comp %u iova %#11llx (%u) %#11llx (%u) %#11llx (%u)",
-			__func__, comp->id,
-			task->buf.seg_map.dma[0].iova,
-			task->buf.seg_map.size[0],
-			task->buf.seg_map.dma[1].iova,
-			task->buf.seg_map.size[1],
-			task->buf.seg_map.dma[2].iova,
-			task->buf.seg_map.size[2]);
-	}
+	mml_msg("%s comp %u iova %#11llx (%u) %#11llx (%u) %#11llx (%u)",
+		__func__, comp->id,
+		task->buf.seg_map.dma[0].iova,
+		task->buf.seg_map.size[0],
+		task->buf.seg_map.dma[1].iova,
+		task->buf.seg_map.size[1],
+		task->buf.seg_map.dma[2].iova,
+		task->buf.seg_map.size[2]);
 
 	mml_trace_ex_end();
 
 	return ret;
 }
 
-static void rdma_buf_unmap(struct mml_comp *comp, struct mml_task *task,
-			   const struct mml_path_node *node)
+static s32 rdma_buf_prepare(struct mml_comp *comp, struct mml_task *task,
+			    struct mml_comp_config *ccfg)
 {
-	struct mml_comp_rdma *rdma;
-
-	if (unlikely(task->config->info.mode == MML_MODE_SRAM_READ)) {
-		rdma = comp_to_rdma(comp);
-
-		mutex_lock(&rdma->sram_mutex);
-		rdma->sram_cnt--;
-		if (rdma->sram_cnt == 0)
-			mml_sram_put(task->config->mml, mml_sram_apudc);
-		mutex_unlock(&rdma->sram_mutex);
+	if (!task->buf.seg_map.dma[0].iova) {
+		/* sram read case must have allocated iova */
+		return -EINVAL;
 	}
+
+	return 0;
 }
 
 static u32 rdma_get_label_count(struct mml_comp *comp, struct mml_task *task,
@@ -619,7 +616,7 @@ static void rdma_select_threshold_hrt(struct mml_comp_rdma *rdma,
 		else
 			golden = &rdma->data->golden[GOLDEN_FMT_RGB];
 	} else {
-		golden = &rdma->data->golden[GOLDEN_FMT_YUV420];
+		golden = &rdma->data->golden[GOLDEN_FMT_ARGB];
 	}
 
 	for (idx = 0; idx < golden->cnt - 1; idx++)
@@ -695,16 +692,24 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_DITHER_CON, 0x0, write_sec);
 
 	gmcif_con = BIT(0) |		/* COMMAND_DIV */
-		    GENMASK(6, 4) |	/* READ_REQUEST_TYPE */
+		    GENMASK(7, 4) |	/* READ_REQUEST_TYPE */
 		    GENMASK(9, 8) |	/* WRITE_REQUEST_TYPE */
 		    BIT(16);		/* PRE_ULTRA_EN */
 	/* racing case also enable urgent/ultra to not blocking disp */
 	if (unlikely(mml_rdma_urgent)) {
-		gmcif_con ^= BIT(16) | BIT(15);	/* URGENT_EN: always */
-		rdma_reset_threshold(rdma, pkt, base_pa, hw_pipe, write_sec);
-	} else if (cfg->info.mode == MML_MODE_RACING) {
-		gmcif_con |= BIT(12) |	/* ULTRA_EN */
-			     BIT(14);	/* URGENT_EN */
+		if (mml_rdma_urgent == 1)
+			gmcif_con ^= BIT(16) | BIT(15);	/* URGENT_EN: always */
+		else if (mml_rdma_urgent == 2)
+			gmcif_con ^= BIT(13) | BIT(16);	/* ULTRA_EN: always */
+		else
+			gmcif_con |= BIT(14) | BIT(12);	/* URGENT_EN */
+		if (cfg->info.mode == MML_MODE_DIRECT_LINK)
+			rdma_select_threshold_hrt(rdma, pkt, base_pa, hw_pipe,
+				write_sec, src->format, src->width, src->height);
+		else
+			rdma_reset_threshold(rdma, pkt, base_pa, hw_pipe, write_sec);
+	} else if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
+		gmcif_con |= BIT(14) | BIT(12);	/* URGENT_EN and ULTRA_EN */
 		rdma_select_threshold_hrt(rdma, pkt, base_pa, hw_pipe,
 			write_sec, src->format, src->width, src->height);
 	} else {
@@ -713,6 +718,7 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_GMCIF_CON,
 		   gmcif_con, write_sec);
+	rdma_frm->gmcif_con = gmcif_con;
 
 	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_SRC_CON,
 		   (rdma_frm->hw_fmt << 0) +
@@ -727,19 +733,9 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		   0, write_sec);
 
 	/* Write frame base address */
-	if (unlikely(cfg->info.mode == MML_MODE_SRAM_READ)) {
-		iova[0] = rdma->sram_pa + src->plane_offset[0];
-		iova[1] = rdma->sram_pa + src->plane_offset[1];
-		iova[2] = rdma->sram_pa + src->plane_offset[2];
-
-		cmdq_pkt_write(pkt, NULL, rdma->smi_larb_con,
-			GENMASK(19, 16), GENMASK(19, 16));
-
-	} else {
-		iova[0] = src_buf->dma[0].iova + src->plane_offset[0];
-		iova[1] = src_buf->dma[1].iova + src->plane_offset[1];
-		iova[2] = src_buf->dma[2].iova + src->plane_offset[2];
-	}
+	iova[0] = src_buf->dma[0].iova + src->plane_offset[0];
+	iova[1] = src_buf->dma[1].iova + src->plane_offset[1];
+	iova[2] = src_buf->dma[2].iova + src->plane_offset[2];
 
 	mml_msg("%s src %#011llx %#011llx %#011llx",
 		__func__, iova[0], iova[1], iova[2]);
@@ -802,6 +798,7 @@ static s32 rdma_config_tile(struct mml_comp *comp, struct mml_task *task,
 	u32 mf_clip_h;
 	u32 mf_offset_w_1;
 	u32 mf_offset_h_1;
+	u32 gmcif_con = rdma_frm->gmcif_con;
 
 	/* Following data retrieve from tile calc result */
 	u64 in_xs = tile->in.xs;
@@ -814,6 +811,16 @@ static s32 rdma_config_tile(struct mml_comp *comp, struct mml_task *task,
 	const u32 out_ye = tile->out.ye;
 	const u32 crop_ofst_x = tile->luma.x;
 	const u32 crop_ofst_y = tile->luma.y;
+
+	if (unlikely(mml_rdma_urgent)) {
+		if (mml_rdma_urgent == 1)
+			gmcif_con |= BIT(15);	/* URGENT_EN: always */
+		else if (mml_rdma_urgent == 2)
+			gmcif_con |= BIT(13);	/* ULTRA_EN: always */
+		rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_GMCIF_CON,
+			gmcif_con, write_sec);
+		rdma_frm->ultra_off = false;
+	}
 
 	mml_msg("%s in.xe %d, in.xs %llu, in.ye %d, in.ys %llu",
 		__func__, in_xe, in_xs, in_ye, in_ys);
@@ -886,18 +893,17 @@ static s32 rdma_config_tile(struct mml_comp *comp, struct mml_task *task,
 static s32 rdma_wait(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg, u32 idx)
 {
-	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
-	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	if (unlikely(mml_wrot_bkgd_en))
+		return 0;
 
 	/* wait rdma frame done */
-	cmdq_pkt_wfe(pkt, rdma->event_eof);
+	cmdq_pkt_wfe(task->pkts[ccfg->pipe], comp_to_rdma(comp)->event_eof);
 	return 0;
 }
 
 static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg)
 {
-	struct mml_frame_config *cfg = task->config;
 	struct rdma_frame_data *rdma_frm = rdma_frm_data(ccfg);
 	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
 
@@ -909,14 +915,6 @@ static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 
 	mml_msg("%s task %p pipe %hhu data %u pixel %u",
 		__func__, task, ccfg->pipe, rdma_frm->datasize, rdma_frm->pixel_acc);
-
-	/* for sram test rollback smi config */
-	if (unlikely(cfg->info.mode == MML_MODE_SRAM_READ)) {
-		struct mml_comp_rdma *rdma = comp_to_rdma(comp);
-
-		cmdq_pkt_write(task->pkts[ccfg->pipe], NULL, rdma->smi_larb_con,
-			0, GENMASK(19, 16));
-	}
 
 	return 0;
 }
@@ -931,11 +929,6 @@ static s32 rdma_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 
 	u64 iova[3];
-
-	if (unlikely(cfg->info.mode == MML_MODE_SRAM_READ)) {
-		/* no need update addr for sram case */
-		return 0;
-	}
 
 	/* Write frame base address */
 	iova[0] = src_buf->dma[0].iova + src->plane_offset[0];
@@ -962,7 +955,7 @@ static s32 rdma_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 static const struct mml_comp_config_ops rdma_cfg_ops = {
 	.prepare = rdma_config_read,
 	.buf_map = rdma_buf_map,
-	.buf_unmap = rdma_buf_unmap,
+	.buf_prepare = rdma_buf_prepare,
 	.get_label_count = rdma_get_label_count,
 	.frame = rdma_config_frame,
 	.tile = rdma_config_tile,
@@ -1028,26 +1021,34 @@ static void rdma_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
 	void __iomem *base = comp->base;
-	u32 value[30];
-	u32 mon[29];
+	u32 value[33];
 	u32 state, greq;
-	u32 shadow_ctrl;
 	u32 i;
 
 	mml_err("rdma component %u dump:", comp->id);
 
-	/* Enable shadow read working */
-	shadow_ctrl = readl(base + RDMA_SHADOW_CTRL);
-	shadow_ctrl |= 0x4;
-	writel(shadow_ctrl, base + RDMA_SHADOW_CTRL);
-
 	if (rdma->data->write_sec_reg)
 		cmdq_util_prebuilt_dump(0, CMDQ_TOKEN_PREBUILT_MML_WAIT);
+	else {
+		u32 shadow_ctrl;
+
+		/* Enable shadow read working */
+		shadow_ctrl = readl(base + RDMA_SHADOW_CTRL);
+		shadow_ctrl |= 0x4;
+		writel(shadow_ctrl, base + RDMA_SHADOW_CTRL);
+	}
 
 	value[0] = readl(base + RDMA_EN);
 	value[1] = readl(base + RDMA_RESET);
 	value[2] = readl(base + RDMA_SRC_CON);
 	value[3] = readl(base + RDMA_COMP_CON);
+	/* for afbc case enable more debug info */
+	if (value[3] & BIT(22)) {
+		u32 debug_con = readl(base + RDMA_DEBUG_CON);
+
+		debug_con |= 0xe000;
+		writel(debug_con, base + RDMA_DEBUG_CON);
+	}
 
 	value[4] = readl(base + RDMA_MF_BKGD_SIZE_IN_BYTE);
 	value[5] = readl(base + RDMA_MF_BKGD_SIZE_IN_PXL);
@@ -1077,10 +1078,7 @@ static void rdma_debug_dump(struct mml_comp *comp)
 		value[28] = readl(base + RDMA_UFO_DEC_LENGTH_BASE_C);
 		value[29] = readl(base + RDMA_AFBC_PAYLOAD_OST);
 	}
-
-	/* mon sta from 0 ~ 28 */
-	for (i = 0; i < ARRAY_SIZE(mon); i++)
-		mon[i] = readl(base + RDMA_MON_STA_0 + i * 8);
+	value[30] = readl(base + RDMA_GMCIF_CON);
 
 	mml_err("RDMA_EN %#010x RDMA_RESET %#010x RDMA_SRC_CON %#010x RDMA_COMP_CON %#010x",
 		value[0], value[1], value[2], value[3]);
@@ -1109,28 +1107,32 @@ static void rdma_debug_dump(struct mml_comp *comp)
 			value[25], value[26]);
 		mml_err("RDMA_UFO_DEC_LENGTH BASE_C_MSB %#010x BASE_C %#010x",
 			value[27], value[28]);
-		mml_err("RDMA_AFBC_PAYLOAD_OST %#010x",
-			value[29]);
+		mml_err("RDMA_AFBC_PAYLOAD_OST %#010x RDMA_GMCIF_CON %#010x",
+			value[29], value[30]);
 	}
 
-	for (i = 0; i < ARRAY_SIZE(mon) / 3; i++) {
+	/* mon sta from 0 ~ 28 */
+	for (i = 0; i < RDMA_MON_COUNT; i++)
+		value[i] = readl(base + RDMA_MON_STA_0 + i * 8);
+
+	for (i = 0; i < RDMA_MON_COUNT / 3; i++) {
 		mml_err("RDMA_MON_STA_%-2u %#010x RDMA_MON_STA_%-2u %#010x RDMA_MON_STA_%-2u %#010x",
-			i * 3, mon[i * 3],
-			i * 3 + 1, mon[i * 3 + 1],
-			i * 3 + 2, mon[i * 3 + 2]);
+			i * 3, value[i * 3],
+			i * 3 + 1, value[i * 3 + 1],
+			i * 3 + 2, value[i * 3 + 2]);
 	}
 	mml_err("RDMA_MON_STA_27 %#010x RDMA_MON_STA_28 %#010x",
-		mon[27], mon[28]);
+		value[27], value[28]);
 
 	/* parse state */
 	mml_err("RDMA ack:%u req:%d ufo:%u",
-		(mon[0] >> 11) & 0x1, (mon[0] >> 10) & 0x1,
-		(mon[0] >> 25) & 0x1);
-	state = (mon[1] >> 8) & 0x7ff;
-	greq = (mon[0] >> 21) & 0x1;
+		(value[0] >> 11) & 0x1, (value[0] >> 10) & 0x1,
+		(value[0] >> 25) & 0x1);
+	state = (value[1] >> 8) & 0x7ff;
+	greq = (value[0] >> 21) & 0x1;
 	mml_err("RDMA state: %#x (%s)", state, rdma_state(state));
 	mml_err("RDMA horz_cnt %u vert_cnt %u",
-		mon[26] & 0xffff, (mon[26] >> 16) & 0xffff);
+		value[26] & 0xffff, (value[26] >> 16) & 0xffff);
 	mml_err("RDMA greq:%u => suggest to ask SMI help:%u", greq, greq);
 }
 
