@@ -579,6 +579,7 @@ void mtk_gamma_data_init(struct mtk_ddp_comp *comp)
 	struct mtk_disp_gamma *companion_data = comp_to_gamma(data->companion);
 	char thread_name[20] = {0};
 	struct sched_param param = {.sched_priority = 84 };
+	int len = 0;
 
 	if (data->is_right_pipe) {
 		kfree(data->primary_data);
@@ -608,7 +609,9 @@ void mtk_gamma_data_init(struct mtk_ddp_comp *comp)
 	atomic_set(&(data->primary_data->sof_irq_available), 0);
 	atomic_set(&(data->primary_data->force_delay_check_trig), 0);
 
-	sprintf(thread_name, "gamma_sof_%d", comp->id);
+	len = sprintf(thread_name, "gamma_sof_%d", comp->id);
+	if (len < 0)
+		strcpy(thread_name, "gamma_sof_0");
 	data->primary_data->sof_irq_event_task =
 		kthread_create(mtk_gamma_sof_irq_trigger,
 			comp, thread_name);

@@ -1064,6 +1064,7 @@ void mtk_chist_data_init(struct mtk_ddp_comp *comp)
 	struct mtk_disp_chist *chist_data = comp_to_chist(comp);
 	struct mtk_disp_chist *companion_data = comp_to_chist(chist_data->companion);
 	char thread_name[20] = {0};
+	int len = 0;
 
 	if (chist_data->is_right_pipe) {
 		kfree(chist_data->primary_data);
@@ -1094,7 +1095,9 @@ void mtk_chist_data_init(struct mtk_ddp_comp *comp)
 	chist_data->primary_data->frame_height = 0;
 
 	// start thread for hist read
-	sprintf(thread_name, "mtk_chist_read_%d", comp->id);
+	len = sprintf(thread_name, "mtk_chist_read_%d", comp->id);
+	if (len < 0)
+		strcpy(thread_name, "mtk_chist_read_0");
 	kthread_run(mtk_chist_read_kthread,
 		comp, thread_name);
 }

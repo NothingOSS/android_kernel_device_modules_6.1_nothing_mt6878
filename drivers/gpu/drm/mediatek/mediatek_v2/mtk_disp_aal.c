@@ -3659,6 +3659,7 @@ static void mtk_aal_primary_data_init(struct mtk_ddp_comp *comp)
 	char thread_name[20] = {0};
 	struct sched_param param = {.sched_priority = 85 };
 	struct cpumask mask;
+	int len = 0;
 
 	aal_data->crtc = &comp->mtk_crtc->base;
 
@@ -3736,7 +3737,6 @@ static void mtk_aal_primary_data_init(struct mtk_ddp_comp *comp)
 	aal_data->primary_data->refresh_wq = NULL;
 	aal_data->primary_data->disp_clarity_regs = NULL;
 
-//	aal_data->primary_data->dbg_en = 0;
 	aal_data->primary_data->backlight_set = 0;
 	aal_data->primary_data->sram_method = AAL_SRAM_SOF;
 	aal_data->primary_data->get_size_available = 0;
@@ -3747,9 +3747,6 @@ static void mtk_aal_primary_data_init(struct mtk_ddp_comp *comp)
 	aal_data->primary_data->dre_en_cmd_id = 0;
 	aal_data->primary_data->ess_en_cmd_id = 0;
 	aal_data->primary_data->isDualPQ = 0;
-//	aal_data->primary_data->dre30_enabled = 0;
-//	aal_data->primary_data->prv_dre30_enabled = 0;
-//	aal_data->primary_data->dre30_en = 0;
 
 #ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
 	mtk_leds_register_notifier(&leds_init_notifier);
@@ -3759,7 +3756,9 @@ static void mtk_aal_primary_data_init(struct mtk_ddp_comp *comp)
 	INIT_WORK(&aal_data->primary_data->refresh_task.task, mtk_disp_aal_refresh_trigger);
 
 	// start thread for aal sof
-	sprintf(thread_name, "aal_sof_%d", comp->id);
+	len = sprintf(thread_name, "aal_sof_%d", comp->id);
+	if (len < 0)
+		strcpy(thread_name, "aal_sof_0");
 	aal_data->primary_data->sof_irq_event_task = kthread_create(mtk_aal_sof_irq_trigger,
 						comp, thread_name);
 
