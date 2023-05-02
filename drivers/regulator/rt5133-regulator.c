@@ -15,6 +15,13 @@
 #include <linux/regulator/driver.h>
 #include <linux/extdev_io_class.h>
 
+static bool dbg_log_en;
+module_param(dbg_log_en, bool, 0644);
+#define rt_dbg(dev, fmt, ...)	\
+	do { \
+		if (dbg_log_en) \
+			dev_info(dev, "%s " fmt, __func__, ##__VA_ARGS__); \
+	} while (0)
 #define RT5133_DRV_VERSION		"1.0.2_MTK"
 
 #define RT5133_REG_CHIP_INFO		0x00
@@ -451,6 +458,7 @@ static int rt5133_regmap_hw_read(void *context, const void *reg_buf,
 	}
 
 	memcpy(val_buf, buf + RT5133_PREDATA_LEN, val_size);
+	rt_dbg(priv->dev, "reg = 0x%02x, data = 0x%02x\n", reg, *(u8 *)val_buf);
 
 out_read_err:
 	kfree(buf);
@@ -484,6 +492,8 @@ static int rt5133_regmap_hw_write(void *context, const void *data, size_t count)
 	ret = i2c_smbus_write_i2c_block_data(client, reg, write_len,
 					     buf + RT5133_PREDATA_LEN);
 
+	rt_dbg(priv->dev, "reg = 0x%02x, data = 0x%02x\n", reg,
+	       *(u8 *)(buf + RT5133_PREDATA_LEN));
 	kfree(buf);
 	return ret;
 }
