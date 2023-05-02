@@ -3107,6 +3107,7 @@
 				<&opp_table_disp>, <&opp_table_disp>, <&opp_table_disp>,
 				<&opp_table_mminfra>, <&opp_table_venc>, <&opp_table_vdec>,
 				<&opp_table_img>, <&opp_table_cam>;
+			mediatek,mmdvfs-vcp-mux-id = <7>, <8>, <8>, <0>, <1>, <6>, <3>, <2>;
 			#clock-cells = <1>;
 			mediatek,mmdvfs-user-target =
 				<MMDVFS_MUX_DIS>, <MMDVFS_MUX_MDP>, <MMDVFS_MUX_MML>,
