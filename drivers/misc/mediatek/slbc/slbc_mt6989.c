@@ -174,21 +174,16 @@ void user_cb_register(void)
 static struct slbc_config p_config[] = {
 	/* SLBC_ENTRY(id, sid, max, fix, p, extra, res, cache) */
 	SLBC_ENTRY(UID_AOV_DC, 0, 0, 0, 0, 0x0, 0x07c, 0),
-	SLBC_ENTRY(UID_AOD, 1, 0, 0, 0, 0x0, 0x380, 0),
-	SLBC_ENTRY(UID_SH_P1, 2, 0, 0, 0, 0x0, 0x007, 0),
-	SLBC_ENTRY(UID_SH_APU, 3, 0, 0, 0, 0x0, 0x007, 0),
-	SLBC_ENTRY(UID_MML, 4, 0, 0, 1, 0x0, 0x040, 0),
-	SLBC_ENTRY(UID_DISP, 5, 0, 0, 1, 0x0, 0x040, 0),
-	SLBC_ENTRY(UID_AISR_APU, 6, 0, 0, 0, 0x0, 0x040, 0),
-	SLBC_ENTRY(UID_AISR_MML, 7, 0, 0, 0, 0x0, 0x040, 0),
-	SLBC_ENTRY(UID_MM_VENC, 8, 0, 0, 0, 0x0, 0x180, 0),
-	SLBC_ENTRY(UID_MM_VENC_SL, 9, 0, 0, 0, 0x0, 0x380, 0),
-	SLBC_ENTRY(UID_BIF, 10, 0, 0, 0, 0x0, 0x200, 0),
-	SLBC_ENTRY(UID_HIFI3, 11, 0, 0, 0, 0x0, 0x200, 0),
-	SLBC_ENTRY(UID_SENSOR, 12, 0, 0, 0, 0x0, 0x03f, 0),
-	SLBC_ENTRY(UID_AOV_APU, 13, 0, 0, 0, 0x0, 0x003, 0),
-	SLBC_ENTRY(UID_AINR, 14, 0, 0, 0, 0x0, 0x040, 0),
-	SLBC_ENTRY(UID_APU, 15, 0, 0, 0, 0x0, 0x038, 0),
+	SLBC_ENTRY(UID_SH_P1, 1, 0, 0, 0, 0x0, 0x007, 0),
+	SLBC_ENTRY(UID_SH_APU, 2, 0, 0, 0, 0x0, 0x007, 0),
+	SLBC_ENTRY(UID_MML, 3, 0, 0, 1, 0x0, 0x040, 0),
+	SLBC_ENTRY(UID_DISP, 4, 0, 0, 1, 0x0, 0x040, 0),
+	SLBC_ENTRY(UID_MM_VENC, 5, 0, 0, 0, 0x0, 0x180, 0),
+	SLBC_ENTRY(UID_MM_VENC_SL, 6, 0, 0, 0, 0x0, 0x380, 0),
+	SLBC_ENTRY(UID_SENSOR, 7, 0, 0, 0, 0x0, 0x03f, 0),
+	SLBC_ENTRY(UID_AOV_APU, 8, 0, 0, 0, 0x0, 0x003, 0),
+	SLBC_ENTRY(UID_AINR, 9, 0, 0, 0, 0x0, 0x040, 0),
+	SLBC_ENTRY(UID_APU, 10, 0, 0, 0, 0x0, 0x038, 0),
 };
 
 #ifdef SLBC_CB
