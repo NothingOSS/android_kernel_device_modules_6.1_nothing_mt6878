@@ -298,7 +298,6 @@ struct mtk_pcie_port {
 
 	int port_num;
 	u32 suspend_mode;
-	bool bringup_mode;
 	bool dvfs_req_en;
 	bool peri_reset_en;
 	bool soft_off;
@@ -560,7 +559,6 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 	unsigned int table_index = 0;
 	int err;
 	u32 val;
-	void __iomem *pextp_cfg;
 
 	/* Set as RC mode */
 	val = readl_relaxed(port->base + PCIE_SETTING_REG);
@@ -623,18 +621,11 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 		dev_info(port->dev, "unsupported speed: GEN%d\n",
 			 port->max_link_speed);
 
-	/* Clear SW reset bit for bringup */
-	if (port->bringup_mode) {
-		pextp_cfg = ioremap(0x112e0000, 0x1000);
-		writel_relaxed(0x0, pextp_cfg + 0x4);
-		iounmap(pextp_cfg);
-	}
-
 	dev_info(port->dev, "PCIe link start ...\n");
 
 	/* Assert all reset signals */
 	val = readl_relaxed(port->base + PCIE_RST_CTRL_REG);
-	val |= PCIE_MAC_RSTB | PCIE_BRG_RSTB | PCIE_PE_RSTB;
+	val |= PCIE_MAC_RSTB | PCIE_PHY_RSTB | PCIE_BRG_RSTB | PCIE_PE_RSTB;
 	writel_relaxed(val, port->base + PCIE_RST_CTRL_REG);
 
 	/*
@@ -646,7 +637,7 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 	msleep(100);
 
 	/* De-assert reset signals */
-	val &= ~(PCIE_MAC_RSTB | PCIE_BRG_RSTB | PCIE_PE_RSTB);
+	val &= ~(PCIE_MAC_RSTB | PCIE_PHY_RSTB | PCIE_BRG_RSTB | PCIE_PE_RSTB);
 	writel_relaxed(val, port->base + PCIE_RST_CTRL_REG);
 
 	/* Check if the link is up or not */
@@ -1170,9 +1161,6 @@ static int mtk_pcie_parse_port(struct mtk_pcie_port *port)
 	if (port->max_link_speed > 0)
 		dev_info(dev, "max speed to GEN%d\n", port->max_link_speed);
 
-	port->bringup_mode = of_property_read_bool(dev->of_node,
-						   "mediatek,bringup-mode");
-
 	return 0;
 }
 
@@ -1555,9 +1543,6 @@ u32 mtk_pcie_dump_link_info(int port)
 		pr_info("PCIe port not found!\n");
 		return 0;
 	}
-
-	if (pcie_port->bringup_mode)
-		return 0;
 
 	/* Check the sleep protect ready */
 	val = readl_relaxed(pcie_port->vlpcfg_base + PCIE_VLP_AXI_PROTECT_STA);
