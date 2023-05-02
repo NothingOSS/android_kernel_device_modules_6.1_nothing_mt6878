@@ -331,6 +331,7 @@ struct cmdq_client *cmdq_mbox_create(struct device *dev, int index)
 	struct client_priv *priv;
 	struct device_node *iommu;
 	struct device *mbox_dev;
+	struct device *device;
 
 	client = kzalloc(sizeof(*client), GFP_KERNEL);
 	if (!client)
@@ -349,7 +350,8 @@ struct cmdq_client *cmdq_mbox_create(struct device *dev, int index)
 	}
 
 	mbox_dev = client->chan->mbox->dev;
-	iommu = of_parse_phandle(mbox_dev->of_node, "iommus", 0);
+	device = mtk_smmu_get_shared_device(mbox_dev);
+	iommu = of_parse_phandle(device->of_node, "iommus", 0);
 	client->use_iommu = iommu ? true : false;
 
 	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
@@ -597,7 +599,7 @@ void cmdq_mbox_pool_create(struct cmdq_client *cl)
 		return;
 	}
 
-	priv->buf_pool = dma_pool_create("cmdq", cl->chan->mbox->dev,
+	priv->buf_pool = dma_pool_create("cmdq", mtk_smmu_get_shared_device(cl->chan->mbox->dev),
 		CMDQ_BUF_ALLOC_SIZE, 0, 0);
 }
 EXPORT_SYMBOL(cmdq_mbox_pool_create);
@@ -713,7 +715,7 @@ void *cmdq_mbox_buf_alloc(struct cmdq_client *cl, dma_addr_t *pa_out)
 	}
 	mbox_dev = cl->chan->mbox->dev;
 
-	va = cmdq_mbox_buf_alloc_dev(mbox_dev, &pa);
+	va = cmdq_mbox_buf_alloc_dev(mtk_smmu_get_shared_device(mbox_dev), &pa);
 	if (!va) {
 		cmdq_err("alloc dma buffer fail dev:0x%p", mbox_dev);
 		return NULL;
@@ -801,6 +803,7 @@ struct cmdq_pkt_buffer *cmdq_pkt_alloc_buf(struct cmdq_pkt *pkt)
 #ifdef CMDQ_DCACHE_INVAL
 	void *va;
 #endif
+	struct device *device = mtk_smmu_get_shared_device(pkt->dev);
 
 	buf = kzalloc(sizeof(*buf), GFP_KERNEL);
 	if (!buf)
@@ -808,11 +811,11 @@ struct cmdq_pkt_buffer *cmdq_pkt_alloc_buf(struct cmdq_pkt *pkt)
 
 	if (cl)
 		use_iommu = cl->use_iommu;
-	else if (pkt->dev && pkt->dev->of_node) {
+	else if (device && device->of_node) {
 		struct device_node *iommu;
 
 		cmdq_log("%s cl is NULL, use pkt->dev", __func__);
-		iommu = of_parse_phandle(pkt->dev->of_node, "iommus", 0);
+		iommu = of_parse_phandle(device->of_node, "iommus", 0);
 		use_iommu = iommu?true:false;
 	} else {
 		cmdq_err("pkt->dev is NULL");
@@ -843,7 +846,7 @@ struct cmdq_pkt_buffer *cmdq_pkt_alloc_buf(struct cmdq_pkt *pkt)
 	if (buf->va_base)
 		buf->use_pool = true;
 	else	/* allocate directly */
-		buf->va_base = cmdq_mbox_buf_alloc_dev(pkt->dev,
+		buf->va_base = cmdq_mbox_buf_alloc_dev(device,
 			use_iommu ? &buf->iova_base : &buf->pa_base);
 
 
@@ -855,12 +858,12 @@ struct cmdq_pkt_buffer *cmdq_pkt_alloc_buf(struct cmdq_pkt *pkt)
 	if (use_iommu) {
 		struct iommu_domain *domain;
 
-		domain = iommu_get_domain_for_dev(pkt->dev);
+		domain = iommu_get_domain_for_dev(mtk_smmu_get_shared_device(pkt->dev));
 		if (domain)
 			buf->pa_base =
 				iommu_iova_to_phys(domain, buf->iova_base);
 		else
-			cmdq_err("cannot get dev:%p domain", pkt->dev);
+			cmdq_err("cannot get dev:%p domain", mtk_smmu_get_shared_device(pkt->dev));
 	}
 #ifdef CMDQ_DCACHE_INVAL
 	va = phys_to_virt((unsigned long)buf->pa_base);
@@ -901,7 +904,8 @@ void cmdq_pkt_free_buf(struct cmdq_pkt *pkt)
 		set_memory_valid((unsigned long)va, 1, true);
 #endif
 		if (buf->iova_base) {
-			struct iommu_domain *domain = iommu_get_domain_for_dev(pkt->dev);
+			struct iommu_domain *domain = iommu_get_domain_for_dev(
+						mtk_smmu_get_shared_device(pkt->dev));
 
 			if (domain) {
 				dma_addr_t pa_base =

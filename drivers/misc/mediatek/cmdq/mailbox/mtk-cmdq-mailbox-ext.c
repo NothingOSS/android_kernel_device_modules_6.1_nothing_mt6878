@@ -1110,7 +1110,7 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 		cmdq_util_prebuilt_dump(
 			cmdq->hwid, CMDQ_TOKEN_PREBUILT_DISP_WAIT); // set iova
 
-		domain = iommu_get_domain_for_dev(cmdq->mbox.dev);
+		domain = iommu_get_domain_for_dev(mtk_smmu_get_shared_device(cmdq->mbox.dev));
 		if (domain) {
 			pa = iommu_iova_to_phys(domain, curr_pa);
 			cmdq_err("iova:%pa iommu pa:%pa", &curr_pa, &pa);
@@ -2301,7 +2301,8 @@ static void cmdq_config_init_buf(struct device *dev, struct cmdq *cmdq)
 int cmdq_iommu_fault_callback(int port, dma_addr_t mva, void *cb_data)
 {
 	struct cmdq *cmdq = (struct cmdq *)cb_data;
-	struct iommu_domain *domain = iommu_get_domain_for_dev(cmdq->mbox.dev);
+	struct iommu_domain *domain = iommu_get_domain_for_dev(
+				mtk_smmu_get_shared_device(cmdq->mbox.dev));
 	phys_addr_t pa = domain ? iommu_iova_to_phys(domain, mva) : 0;
 	s32 i;
 
@@ -2333,6 +2334,7 @@ static int cmdq_probe(struct platform_device *pdev)
 	int err, i, smi_cnt;
 	struct gce_plat *plat_data;
 	static u8 hwid;
+	int port;
 
 	plat_data = (struct gce_plat *)of_device_get_match_data(dev);
 	if (!plat_data) {
@@ -2518,6 +2520,10 @@ static int cmdq_probe(struct platform_device *pdev)
 		dev->of_node, "iommus", "#iommu-cells", 0, &args)) {
 		mtk_iommu_register_fault_callback(
 			args.args[0], cmdq_iommu_fault_callback, cmdq, false);
+	} else if (!of_property_read_u32(
+		dev->of_node, "mtk,iommu-dma-axid", &port)) {
+		mtk_iommu_register_fault_callback(
+			port, cmdq_iommu_fault_callback, cmdq, false);
 	}
 	return 0;
 }
