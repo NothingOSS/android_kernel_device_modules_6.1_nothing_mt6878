@@ -457,6 +457,7 @@ mgk_64_k61_device_modules = [
     "drivers/nvmem/nvmem_mtk-devinfo.ko",
     "drivers/pci/controller/pcie-mediatek-gen3.ko",
     "drivers/phy/mediatek/phy-mtk-fpgaphy.ko",
+    "drivers/phy/mediatek/phy-mtk-pcie.ko",
     "drivers/phy/mediatek/phy-mtk-tphy.ko",
     "drivers/phy/mediatek/phy-mtk-ufs.ko",
     "drivers/phy/mediatek/phy-mtk-xsphy.ko",
