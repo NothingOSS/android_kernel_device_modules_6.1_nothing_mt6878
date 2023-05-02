@@ -115,10 +115,12 @@ enum gpufreq_config_target {
 	CONFIG_FAKE_MTCMOS_CTRL = 15,
 	CONFIG_MCUETM_CLK       = 16,
 	CONFIG_PTP3             = 17,
+	CONFIG_DEVAPC_HANDLE    = 18,
 };
 
 enum gpufreq_config_value {
-	CONFIG_VAL_INVALID = -1,
+	CONFIG_VAL_INVALID = -2,
+	CONFIG_VAL_IGNORE  = -1,
 	FEAT_DISABLE       = 0,
 	FEAT_ENABLE        = 1,
 	DFD_FORCE_DUMP     = 2,

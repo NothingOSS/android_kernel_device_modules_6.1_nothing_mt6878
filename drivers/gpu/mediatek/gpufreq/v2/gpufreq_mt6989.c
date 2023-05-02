@@ -58,6 +58,7 @@ static void __gpufreq_set_dvfs_state(unsigned int set, unsigned int state);
 static void __gpufreq_set_margin_mode(unsigned int mode);
 static void __gpufreq_set_gpm_mode(unsigned int version, unsigned int mode);
 static void __gpufreq_set_mcu_etm_clock(unsigned int mode);
+static void __gpufreq_devapc_vio_handler(void);
 static void __gpufreq_apply_restore_margin(enum gpufreq_target target, unsigned int mode);
 static void __gpufreq_set_temper_compensation(void);
 static void __gpufreq_set_gpm3_0_limit(void);
@@ -134,8 +135,8 @@ static void __gpufreq_clksrc_ctrl(enum gpufreq_target target, enum gpufreq_clk_s
 static void __gpufreq_bus_clk_div2_config(void);
 static void __gpufreq_top_hw_delsel_config(void);
 static void __gpufreq_pdca_irq_config(void);
-static void __gpufreq_top_hwdcm_config(enum gpufreq_power_state power);
-static void __gpufreq_stack_hwdcm_config(enum gpufreq_power_state power);
+static void __gpufreq_top_hwdcm_config(void);
+static void __gpufreq_stack_hwdcm_config(void);
 static void __gpufreq_acp_config(void);
 static void __gpufreq_axi_2to1_config(void);
 static void __gpufreq_axi_merger_config(void);
@@ -770,12 +771,12 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 		__gpufreq_footprint_power_step(0x08);
 
 		/* config TOP HWDCM */
-		__gpufreq_top_hwdcm_config(GPU_PWR_ON);
+		__gpufreq_top_hwdcm_config();
 		__gpufreq_footprint_power_step(0x09);
 
 #if !GPUFREQ_ACTIVE_SLEEP_CTRL_ENABLE
 		/* config STACK HWDCM */
-		__gpufreq_stack_hwdcm_config(GPU_PWR_ON);
+		__gpufreq_stack_hwdcm_config();
 #endif /* GPUFREQ_ACTIVE_SLEEP_CTRL_ENABLE */
 		__gpufreq_footprint_power_step(0x0A);
 
@@ -1543,6 +1544,9 @@ void __gpufreq_set_mfgsys_config(enum gpufreq_config_target target, enum gpufreq
 	case CONFIG_MCUETM_CLK:
 		__gpufreq_set_mcu_etm_clock(val);
 		break;
+	case CONFIG_DEVAPC_HANDLE:
+		__gpufreq_devapc_vio_handler();
+		break;
 	default:
 		GPUFREQ_LOGE("invalid config target: %d", target);
 		break;
@@ -2139,6 +2143,18 @@ static void __gpufreq_set_mcu_etm_clock(unsigned int mode)
 		else if (mode == FEAT_DISABLE)
 			g_mcuetm_clk_enable = false;
 	}
+}
+
+/* API: handle DEVAPC violation */
+static void __gpufreq_devapc_vio_handler(void)
+{
+#if GPUFREQ_HWDCM_ENABLE
+	/* disable HWDCM */
+	/* MFG_GLOBAL_CON 0x13FBF0B0 [8] GPU_SOCIF_MST_FREE_RUN = 1'b1 */
+	DRV_WriteReg32(MFG_GLOBAL_CON, DRV_Reg32(MFG_GLOBAL_CON) | BIT(8));
+	/* MFG_RPC_AO_CLK_CFG 0x13F91034 [0] CG_FAXI_CK_SOC_IN_FREE_RUN = 1'b1 */
+	DRV_WriteReg32(MFG_RPC_AO_CLK_CFG, DRV_Reg32(MFG_RPC_AO_CLK_CFG) | BIT(0));
+#endif /* GPUFREQ_HWDCM_ENABLE */
 }
 
 /* API: apply (enable) / restore (disable) margin */
@@ -3424,85 +3440,67 @@ static void __gpufreq_pdca_irq_config(void)
 }
 
 /* HWDCM: mask clock when GPU idle (dynamic clock mask) */
-static void __gpufreq_top_hwdcm_config(enum gpufreq_power_state power)
+static void __gpufreq_top_hwdcm_config(void)
 {
 #if GPUFREQ_HWDCM_ENABLE
-	if (power == GPU_PWR_ON) {
-		/* (A) pclk DCM */
-		/* MFG_GLOBAL_CON 0x13FBF0B0 [8] GPU_SOCIF_MST_FREE_RUN = 1'b0 */
-		DRV_WriteReg32(MFG_GLOBAL_CON, (DRV_Reg32(MFG_GLOBAL_CON) & ~BIT(8)));
+	/* (A) pclk DCM */
+	/* MFG_GLOBAL_CON 0x13FBF0B0 [8] GPU_SOCIF_MST_FREE_RUN = 1'b0 */
+	DRV_WriteReg32(MFG_GLOBAL_CON, (DRV_Reg32(MFG_GLOBAL_CON) & ~BIT(8)));
 
-		/* (B) fmem GALS DCM */
-		/* MFG_ASYNC_CON 0x13FBF020 [23] MEM0_SLV_CG_ENABLE = 1'b1 */
-		/* MFG_ASYNC_CON 0x13FBF020 [25] MEM1_SLV_CG_ENABLE = 1'b1 */
-		DRV_WriteReg32(MFG_ASYNC_CON, (DRV_Reg32(MFG_ASYNC_CON) | BIT(23) | BIT(25)));
-		/* MFG_ASYNC_CON3 0x13FBF02C [13] chip_mfg_axi0_1_out_idle_enable = 1'b1 */
-		/* MFG_ASYNC_CON3 0x13FBF02C [15] chip_mfg_axi1_1_out_idle_enable = 1'b1 */
-		DRV_WriteReg32(MFG_ASYNC_CON3, (DRV_Reg32(MFG_ASYNC_CON3) | BIT(13) | BIT(15)));
-		/* MFG_ASYNC_CON4 0x13FBF1B0 [11] mfg_acp_axi_in_idle_enable = 1'b1 */
-		/* MFG_ASYNC_CON4 0x13FBF1B0 [22] mfg_tcu_acp_GALS_slpprot_idle_sel = 1'b1 */
-		DRV_WriteReg32(MFG_ASYNC_CON4, (DRV_Reg32(MFG_ASYNC_CON4) | BIT(11) | BIT(22)));
+	/* (B) fmem GALS DCM */
+	/* MFG_ASYNC_CON 0x13FBF020 [23] MEM0_SLV_CG_ENABLE = 1'b1 */
+	/* MFG_ASYNC_CON 0x13FBF020 [25] MEM1_SLV_CG_ENABLE = 1'b1 */
+	DRV_WriteReg32(MFG_ASYNC_CON, (DRV_Reg32(MFG_ASYNC_CON) | BIT(23) | BIT(25)));
+	/* MFG_ASYNC_CON3 0x13FBF02C [13] chip_mfg_axi0_1_out_idle_enable = 1'b1 */
+	/* MFG_ASYNC_CON3 0x13FBF02C [15] chip_mfg_axi1_1_out_idle_enable = 1'b1 */
+	DRV_WriteReg32(MFG_ASYNC_CON3, (DRV_Reg32(MFG_ASYNC_CON3) | BIT(13) | BIT(15)));
+	/* MFG_ASYNC_CON4 0x13FBF1B0 [11] mfg_acp_axi_in_idle_enable = 1'b1 */
+	/* MFG_ASYNC_CON4 0x13FBF1B0 [22] mfg_tcu_acp_GALS_slpprot_idle_sel = 1'b1 */
+	DRV_WriteReg32(MFG_ASYNC_CON4, (DRV_Reg32(MFG_ASYNC_CON4) | BIT(11) | BIT(22)));
 
-		/* (C) faxi DCM */
-		/* MFG_RPC_AO_CLK_CFG 0x13F91034 [0] CG_FAXI_CK_SOC_IN_FREE_RUN = 1'b0 */
-		DRV_WriteReg32(MFG_RPC_AO_CLK_CFG, (DRV_Reg32(MFG_RPC_AO_CLK_CFG) & ~BIT(0)));
+	/* (C) faxi DCM */
+	/* MFG_RPC_AO_CLK_CFG 0x13F91034 [0] CG_FAXI_CK_SOC_IN_FREE_RUN = 1'b0 */
+	DRV_WriteReg32(MFG_RPC_AO_CLK_CFG, (DRV_Reg32(MFG_RPC_AO_CLK_CFG) & ~BIT(0)));
 
-		/* (D) core slow down DCM */
-		/* MFG_DCM_CON_0 0x13FBF010 [15]  BG3D_DCM_EN = 1'b1 */
-		/* MFG_DCM_CON_0 0x13FBF010 [6:0] BG3D_DBC_CNT = 7'b0111111 */
-		DRV_WriteReg32(MFG_DCM_CON_0,
-			(DRV_Reg32(MFG_DCM_CON_0) & ~BIT(6)) | GENMASK(5, 0) | BIT(15));
+	/* (D) core slow down DCM */
+	/* MFG_DCM_CON_0 0x13FBF010 [15]  BG3D_DCM_EN = 1'b1 */
+	/* MFG_DCM_CON_0 0x13FBF010 [6:0] BG3D_DBC_CNT = 7'b0111111 */
+	DRV_WriteReg32(MFG_DCM_CON_0,
+		(DRV_Reg32(MFG_DCM_CON_0) & ~BIT(6)) | GENMASK(5, 0) | BIT(15));
 
-		/* (E) dvfs hint DCM */
-		/* MFG_GLOBAL_CON 0x13FBF0B0 [21] dvfs_hint_cg_en = 1'b0 */
-		DRV_WriteReg32(MFG_GLOBAL_CON, (DRV_Reg32(MFG_GLOBAL_CON) & ~BIT(21)));
+	/* (E) dvfs hint DCM */
+	/* MFG_GLOBAL_CON 0x13FBF0B0 [21] dvfs_hint_cg_en = 1'b0 */
+	DRV_WriteReg32(MFG_GLOBAL_CON, (DRV_Reg32(MFG_GLOBAL_CON) & ~BIT(21)));
 
-		/* (F) core Qchannel DCM */
-		/* MFG_GLOBAL_CON 0x13FBF0B0 [10] GPU_CLK_FREE_RUN = 1'b0 */
-		DRV_WriteReg32(MFG_GLOBAL_CON, (DRV_Reg32(MFG_GLOBAL_CON) & ~BIT(10)));
+	/* (F) core Qchannel DCM */
+	/* MFG_GLOBAL_CON 0x13FBF0B0 [10] GPU_CLK_FREE_RUN = 1'b0 */
+	DRV_WriteReg32(MFG_GLOBAL_CON, (DRV_Reg32(MFG_GLOBAL_CON) & ~BIT(10)));
 
-		/* (G) freq bridge DCM */
-		/* MFG_ASYNC_CON 0x13FBF020 [22] MEM0_MST_CG_ENABLE = 1'b1 */
-		/* MFG_ASYNC_CON 0x13FBF020 [24] MEM1_MST_CG_ENABLE = 1'b1 */
-		DRV_WriteReg32(MFG_ASYNC_CON, (DRV_Reg32(MFG_ASYNC_CON) | BIT(22) | BIT(24)));
-		/* MFG_ASYNC_CON3 0x13FBF02C [12] chip_mfg_axi0_1_in_idle_enable = 1'b1 */
-		/* MFG_ASYNC_CON3 0x13FBF02C [14] chip_mfg_axi1_1_in_idle_enable = 1'b1 */
-		DRV_WriteReg32(MFG_ASYNC_CON3, (DRV_Reg32(MFG_ASYNC_CON3) | BIT(12) | BIT(14)));
-		/* MFG_ASYNC_CON4 0x13FBF1B0 [12] mfg_acp_GALS_slpprot_idle_sel = 1'b1 */
-		/* MFG_ASYNC_CON4 0x13FBF1B0 [23] mfg_tcu_acp_mem_gals_mst_sync_sel = 1'b1 */
-		DRV_WriteReg32(MFG_ASYNC_CON4, (DRV_Reg32(MFG_ASYNC_CON4) | BIT(12) | BIT(23)));
+	/* (G) freq bridge DCM */
+	/* MFG_ASYNC_CON 0x13FBF020 [22] MEM0_MST_CG_ENABLE = 1'b1 */
+	/* MFG_ASYNC_CON 0x13FBF020 [24] MEM1_MST_CG_ENABLE = 1'b1 */
+	DRV_WriteReg32(MFG_ASYNC_CON, (DRV_Reg32(MFG_ASYNC_CON) | BIT(22) | BIT(24)));
+	/* MFG_ASYNC_CON3 0x13FBF02C [12] chip_mfg_axi0_1_in_idle_enable = 1'b1 */
+	/* MFG_ASYNC_CON3 0x13FBF02C [14] chip_mfg_axi1_1_in_idle_enable = 1'b1 */
+	DRV_WriteReg32(MFG_ASYNC_CON3, (DRV_Reg32(MFG_ASYNC_CON3) | BIT(12) | BIT(14)));
+	/* MFG_ASYNC_CON4 0x13FBF1B0 [12] mfg_acp_GALS_slpprot_idle_sel = 1'b1 */
+	/* MFG_ASYNC_CON4 0x13FBF1B0 [23] mfg_tcu_acp_mem_gals_mst_sync_sel = 1'b1 */
+	DRV_WriteReg32(MFG_ASYNC_CON4, (DRV_Reg32(MFG_ASYNC_CON4) | BIT(12) | BIT(23)));
 
-		if (g_mcuetm_clk_enable)
-			/* MFG_CG_CLR 0x13FBF008 [1] = 1'b1 */
-			DRV_WriteReg32(MFG_CG_CLR, BIT(1));
-	} else if (power == GPU_PWR_OFF) {
-		/* disable HWDCM */
-		/* MFG_GLOBAL_CON 0x13FBF0B0 [8] GPU_SOCIF_MST_FREE_RUN = 1'b1 */
-		DRV_WriteReg32(MFG_GLOBAL_CON, DRV_Reg32(MFG_GLOBAL_CON) | BIT(8));
-		/* MFG_RPC_AO_CLK_CFG 0x13F91034 [0] CG_FAXI_CK_SOC_IN_FREE_RUN = 1'b1 */
-		DRV_WriteReg32(MFG_RPC_AO_CLK_CFG, (DRV_Reg32(MFG_RPC_AO_CLK_CFG) | BIT(0)));
-	}
-#else
-	GPUFREQ_UNREFERENCED(power);
+	if (g_mcuetm_clk_enable)
+		/* MFG_CG_CLR 0x13FBF008 [1] = 1'b1 */
+		DRV_WriteReg32(MFG_CG_CLR, BIT(1));
 #endif /* GPUFREQ_HWDCM_ENABLE */
 }
 
 /* HWDCM: mask clock when STACK idle (dynamic clock mask) */
-static void __gpufreq_stack_hwdcm_config(enum gpufreq_power_state power)
+static void __gpufreq_stack_hwdcm_config(void)
 {
 #if GPUFREQ_HWDCM_ENABLE
-	if (power == GPU_PWR_ON)
-		/* (G) (H) CKgen DCM */
-		/* MFG_GLOBAL_CON 0x13FBF0B0 [24] stack_hd_bg3d_cg_free_run = 1'b0 */
-		/* MFG_GLOBAL_CON 0x13FBF0B0 [25] stack_hd_bg3d_gpu_cg_free_run = 1'b0 */
-		DRV_WriteReg32(MFG_GLOBAL_CON, (DRV_Reg32(MFG_GLOBAL_CON) & ~BIT(24 & ~BIT(25))));
-	else if (power == GPU_PWR_OFF)
-		/* (G) (H) CKgen DCM */
-		/* MFG_GLOBAL_CON 0x13FBF0B0 [24] stack_hd_bg3d_cg_free_run = 1'b1 */
-		/* MFG_GLOBAL_CON 0x13FBF0B0 [25] stack_hd_bg3d_gpu_cg_free_run = 1'b1 */
-		DRV_WriteReg32(MFG_GLOBAL_CON, (DRV_Reg32(MFG_GLOBAL_CON) | BIT(24) | BIT(25)));
-#else
-	GPUFREQ_UNREFERENCED(power);
+	/* (G) (H) CKgen DCM */
+	/* MFG_GLOBAL_CON 0x13FBF0B0 [24] stack_hd_bg3d_cg_free_run = 1'b0 */
+	/* MFG_GLOBAL_CON 0x13FBF0B0 [25] stack_hd_bg3d_gpu_cg_free_run = 1'b0 */
+	DRV_WriteReg32(MFG_GLOBAL_CON, (DRV_Reg32(MFG_GLOBAL_CON) & ~BIT(24 & ~BIT(25))));
 #endif /* GPUFREQ_HWDCM_ENABLE */
 }
 
@@ -3737,7 +3735,7 @@ static void __gpufreq_check_devapc_vio(void)
 	val1 = DRV_Reg32(MFG_VGPU_DEVAPC_D0_VIO_STA_1);
 	if (val0 || val1) {
 		GPUFREQ_LOGE("MFG DEVAPC STA0=0x%08x, STA1=0x%08x", val0, val1);
-		__gpufreq_top_hwdcm_config(GPU_PWR_OFF);
+		__gpufreq_devapc_vio_handler();
 		/* wait forever */
 		while (1)
 			udelay(1);
