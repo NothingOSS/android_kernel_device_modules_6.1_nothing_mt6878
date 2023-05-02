@@ -7,6 +7,8 @@
 
 #define DEFAULT_SCHED_RAVG_WINDOW 4000000
 #define GROUP_RAVG_HIST_SIZE_MAX (5)
+#define FLT_GROUP_START_IDX 6
+#define TA_GRPID 3
 
 #define mts_to_ts(mts) ({ \
 		void *__mptr = (void *)(mts); \
@@ -65,6 +67,14 @@ struct grp {
 	int			wc;
 };
 
+#define GRP_DEFAULT_WS DEFAULT_SCHED_RAVG_WINDOW
+#define GRP_DEFAULT_WC GROUP_RAVG_HIST_SIZE_MAX
+#define GRP_DEFAULT_WP WP_MODE_4
+
+/* pd setting related API*/
+extern int set_task_pd(int pid, int pd);
+extern int set_group_pd(int group_id, int pd);
+
 void group_init(void);
 void group_exit(void);
 void  group_set_mode(u32 mode);
@@ -77,4 +87,5 @@ int get_grp_id(struct task_struct *p);
 int set_task_to_group(int pid, int grp_id);
 inline bool check_and_get_grp_id(struct task_struct *p, int *grp_id);
 void group_update_ws(struct rq *rq);
+inline int cgrp_to_grpid(struct task_struct *p);
 #endif /* _EAS_GROUP_H*/

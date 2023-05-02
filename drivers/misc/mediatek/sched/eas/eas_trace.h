@@ -762,7 +762,7 @@ TRACE_EVENT(sched_flt_get_cpu,
 		__entry->util		= util;
 	),
 
-	TP_printk("cpu[%d] gp_util [%d]",
+	TP_printk("cpu=%d util=%d",
 		__entry->cpu, __entry->util)
 );
 
@@ -784,7 +784,7 @@ TRACE_EVENT(sched_flt_get_cpu_group,
 		__entry->util		= util;
 	),
 
-	TP_printk("cpu[%d] gp[%d] util [%d]",
+	TP_printk("cpu=%d gp=%d util=%d",
 		__entry->cpu, __entry->grp_id, __entry->util)
 );
 
@@ -814,7 +814,7 @@ TRACE_EVENT(sched_get_pelt_group_util,
 		__entry->gp3_util		= gp3_util;
 	),
 
-	TP_printk("cpu[%d] delta[%llu] gp util [%lu][%lu][%lu][%lu]",
+	TP_printk("cpu=%d= delta=%llu= gp_util[0]=%lu gp_util[1]=%lu gp_util[2] =%lu gp_util[3]=%lu",
 		__entry->cpu, __entry->delta,
 		__entry->gp0_util, __entry->gp1_util,
 		__entry->gp2_util, __entry->gp3_util)

@@ -24,6 +24,8 @@
 #include "common.h"
 #include "flt_init.h"
 #include "flt_api.h"
+#include "group.h"
+#include "flt_utility.h"
 #include <sugov/cpufreq.h>
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 #include "mtk_energy_model/v2/energy_model.h"
@@ -68,6 +70,7 @@ unsigned int EKV[GKEL][RT] = {0};
 static u32 flt_mode = FLT_MODE_0;
 static void __iomem *flt_xrg;
 static unsigned long long flt_xrg_size;
+static bool is_flt_io_enable;
 
 void __iomem *get_flt_xrg(void)
 {
@@ -84,6 +87,8 @@ EXPORT_SYMBOL(get_flt_xrg_size);
 void  flt_set_mode(u32 mode)
 {
 	flt_mode = mode;
+	if (is_flt_io_enable)
+		flt_update_data(AP_FLT_CTL, mode);
 }
 EXPORT_SYMBOL(flt_set_mode);
 
@@ -393,6 +398,7 @@ int flt_init_ekg(void)
 	}
 	flt_xrg_size = resource_size(res);
 	FLT_LOGI("xrg %pa size %llu\n", &res->start, resource_size(res));
+	is_flt_io_enable = true;
 	return 0;
 }
 
@@ -444,6 +450,8 @@ int flt_init_res(void)
 			return ret;
 		for (ctp = 0; ctp < GKEL; ctp++)
 			flt_mi(ctp);
+		flt_mode2_register_api_hooks();
+		flt_mode2_init_res();
 	}
 
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)

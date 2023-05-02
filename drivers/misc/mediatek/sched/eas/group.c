@@ -25,10 +25,6 @@
 #include "group.h"
 #include "eas_trace.h"
 
-#define GRP_DEFAULT_WS DEFAULT_SCHED_RAVG_WINDOW
-#define GRP_DEFAULT_WC GROUP_RAVG_HIST_SIZE_MAX
-#define GRP_DEFAULT_WP WP_MODE_4
-
 static struct grp *related_thread_groups[GROUP_ID_RECORD_MAX];
 static u32 GP_mode = GP_MODE_0;
 atomic64_t gp_irq_work_lastq_ws;
@@ -107,7 +103,7 @@ static void free_related_thread_groups(void)
 	}
 }
 
-static inline int cgrp_to_grpid(struct task_struct *p)
+inline int cgrp_to_grpid(struct task_struct *p)
 {
 	struct cgroup_subsys_state *css;
 	struct task_group *tg;
@@ -212,6 +208,7 @@ static void init_topapp_tg(struct task_group *tg)
 
 	cgrptg->colocate = true;
 	cgrptg->groupid = GROUP_ID_1;
+	set_group_pd(TA_GRPID, cgrptg->groupid + FLT_GROUP_START_IDX);
 }
 
 static void init_foreground_tg(struct task_group *tg)
@@ -324,6 +321,11 @@ static void group_android_rvh_cpu_cgroup_attach(void *unused,
 		ret = __sched_set_grp_id(task, grp_id);
 		if (trace_sched_task_to_grp_enabled())
 			trace_sched_task_to_grp(task, grp_id, ret, GP_CGROUP);
+	}
+
+	if (cgrptg->colocate) {
+		if ((!strcmp(css->cgroup->kn->name, "top-app")))
+			set_group_pd(TA_GRPID, grp_id + FLT_GROUP_START_IDX);
 	}
 }
 
@@ -507,6 +509,12 @@ int set_task_to_group(int pid, int grp_id)
 	if (trace_sched_task_to_grp_enabled())
 		trace_sched_task_to_grp(p, grp_id, ret, GP_API);
 	put_task_struct(p);
+
+	if (grp_id < 0)
+		ret = set_task_pd(pid, -1);
+	else
+		ret = set_task_pd(pid, grp_id + FLT_GROUP_START_IDX);
+
 	return ret;
 }
 EXPORT_SYMBOL(set_task_to_group);
