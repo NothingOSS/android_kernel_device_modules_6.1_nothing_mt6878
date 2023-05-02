@@ -83,7 +83,6 @@ struct sapu_ops {
 };
 
 struct sapu_platdata {
-	const char *plat_name;
 	struct sapu_ops ops;
 };
 

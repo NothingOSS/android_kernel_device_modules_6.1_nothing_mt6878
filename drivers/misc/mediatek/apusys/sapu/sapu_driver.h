@@ -13,7 +13,7 @@
 #define APUSYS_POWER_CONTROL	_IOWR(APUSYS_SAPU_IOC_MAGIC, 2, u32)
 
 struct sapu_ha_tranfer {
-	uint32_t handle;
+	uint64_t handle;
 	dma_addr_t dma_addr;
 	uint64_t model_hd_ha;
 };

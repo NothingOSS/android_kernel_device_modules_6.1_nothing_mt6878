@@ -76,7 +76,6 @@ long apusys_sapu_internal_ioctl(struct file *filep, unsigned int cmd, void __use
 	switch (cmd) {
 	case APUSYS_SAPU_DATAMEM:
 		pr_info("%s APUSYS_SAPU_DATAMEM 0x%x\n", __func__, cmd);
-		pr_info("plat_name=%s\n", sapu->platdata->plat_name);
 		ret = copy_from_user(&datamem_info, arg, sizeof(datamem_info));
 		if (ret) {
 			pr_info("[%s]copy_from_user fail(0x%x)\n",
