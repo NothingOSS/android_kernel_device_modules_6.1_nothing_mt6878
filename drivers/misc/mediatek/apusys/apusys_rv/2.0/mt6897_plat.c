@@ -159,7 +159,8 @@ static void mt6897_rv_boot_non_secure(struct mtk_apu *apu)
 		__func__, (unsigned long long)apu->apummu_hwlog_buf_da);
 	tcm_addr = 0x1d000000;
 	tcm_addr = (u32)(tcm_addr >> 12);
-	rv_boot(apu->code_da >> 12, hw_logger_addr, tcm_addr, 0);
+	rv_boot(apu->code_da >> 12, 0, hw_logger_addr, eAPUMMU_PAGE_LEN_1MB,
+		tcm_addr, eAPUMMU_PAGE_LEN_256KB);
 
 }
 

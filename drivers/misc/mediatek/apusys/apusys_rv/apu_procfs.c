@@ -274,6 +274,14 @@ static void apu_mrdump_register(struct mtk_apu *apu)
 
 	ce_fw_sram_len = (size_t) size;
 	ce_fw_sram_base = (void *) base_va;
+
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+	ret = mrdump_mini_add_extra_file((unsigned long)apu, __pa_nodebug(apu),
+		sizeof(struct mtk_apu), "APUSYS_RV_INFO");
+	if (ret)
+		dev_info(dev, "%s: APUSYS_RV_DEBUG_INFO_DUMP add fail(%d)\n",
+			__func__, ret);
+#endif
 }
 #else
 static void apu_mrdump_register(struct mtk_apu *apu)

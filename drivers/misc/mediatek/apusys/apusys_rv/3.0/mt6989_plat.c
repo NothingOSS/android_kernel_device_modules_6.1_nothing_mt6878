@@ -138,8 +138,8 @@ static void apu_setup_apummu(struct mtk_apu *apu, int boundary, int ns, int doma
 		apusys_rv_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_RV_SETUP_APUMMU, 0);
 	} else {
-		/* TODO:TCM size customization for rv_boot */
-		rv_boot(0x0, hw_logger_addr, tcm_addr, 0);
+		rv_boot(apu->code_da >> 12, 0, hw_logger_addr, eAPUMMU_PAGE_LEN_1MB,
+		tcm_addr, eAPUMMU_PAGE_LEN_512KB);
 	}
 }
 
@@ -926,7 +926,7 @@ static int mt6989_rproc_exit(struct mtk_apu *apu)
 const struct mtk_apu_platdata mt6989_platdata = {
 	.flags		= F_AUTO_BOOT | F_FAST_ON_OFF | F_APU_IPI_UT_SUPPORT |
 					F_TCM_WA | F_SMMU_SUPPORT | F_DEBUG_LOG_ON |
-					F_BRINGUP | F_FPGA_EP,
+					F_BRINGUP | F_PRELOAD_FIRMWARE,
 	.ops		= {
 		.init	= mt6989_rproc_init,
 		.exit	= mt6989_rproc_exit,
