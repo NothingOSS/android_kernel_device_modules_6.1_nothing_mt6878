@@ -504,11 +504,6 @@
 		reg = <0 0x1070e000 0 0x1000>;
 	};
 
-	bcrm_peri_par_bus_clk: syscon@11035000 {
-		compatible = "mediatek,mt6989-bcrm_peri_par_bus", "syscon";
-		reg = <0 0x11035000 0 0x1000>;
-	};
-
 	pericfg_ao_clk: syscon@11036000 {
 		compatible = "mediatek,mt6989-pericfg_ao", "syscon";
 		reg = <0 0x11036000 0 0x1000>;
@@ -525,11 +520,6 @@
 		compatible = "mediatek,mt6989-imp_iic_wrap_c", "syscon";
 		reg = <0 0x11284000 0 0x1000>;
 		#clock-cells = <1>;
-	};
-
-	bcrm_pextp_bus_clk: syscon@112e2000 {
-		compatible = "mediatek,mt6989-bcrm_pextp_bus", "syscon";
-		reg = <0 0x112e2000 0 0x1000>;
 	};
 
 	ufscfg_ao_clk: syscon@112b8000 {
@@ -741,9 +731,6 @@
 		reg = <0 0x1c001000 0 0x1000>;
 		#power-domain-cells = <1>;
 		ifr-bus = <&ifr_bus>;
-		bcrm-ssr-bus = <&bcrm_ssr_bus>;
-		bcrm-peri-par-bus = <&bcrm_peri_par_bus_clk>;
-		bcrm-pextp-bus = <&bcrm_pextp_bus_clk>;
 		vlpcfg = <&vlpcfg_bus>;
 	};
 

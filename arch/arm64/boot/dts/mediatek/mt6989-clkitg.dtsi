@@ -42,7 +42,7 @@
 			<&topckgen_clk CLK_TOP_AUD_2_SEL>,
 			<&topckgen_clk CLK_TOP_AUDIO_H_SEL>,
 			<&topckgen_clk CLK_TOP_ADSP_SEL>,
-			<&topckgen_clk CLK_TOP_ADPS_UARTHUB_BCLK_SEL>,
+			<&topckgen_clk CLK_TOP_ADSP_UARTHUB_BCLK_SEL>,
 			<&topckgen_clk CLK_TOP_DPMAIF_MAIN_SEL>,
 			<&topckgen_clk CLK_TOP_PWM_SEL>,
 			<&topckgen_clk CLK_TOP_MCUPM_SEL>,
@@ -626,225 +626,231 @@
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_PERI_USB0>;
 	};
 
-	bring-up-pd-ufs0@2 {
+	bring-up-pd-pextp-mac0@2 {
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x2>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_UFS0>;
-	};
-
-	bring-up-pd-ufs0-phy@3 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x3>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_UFS0_PHY>;
-	};
-
-	bring-up-pd-pextp-mac0@4 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x4>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_MAC0>;
 	};
 
-	bring-up-pd-pextp-mac1@5 {
+	bring-up-pd-pextp-mac1@3 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x5>;
+		reg = <0x3>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_MAC1>;
 	};
 
-	bring-up-pd-pextp-phy0@6 {
+	bring-up-pd-pextp-phy0@4 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x6>;
+		reg = <0x4>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_PHY0>;
 	};
 
-	bring-up-pd-pextp-phy1@7 {
+	bring-up-pd-pextp-phy1@5 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x7>;
+		reg = <0x5>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_PHY1>;
 	};
 
-	bring-up-pd-audio@8 {
+	bring-up-pd-audio@6 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x8>;
+		reg = <0x6>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_AUDIO>;
 	};
 
-	bring-up-pd-adsp-top-dormant@9 {
+	bring-up-pd-adsp-top-dormant@7 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x9>;
+		reg = <0x7>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ADSP_TOP_DORMANT>;
 	};
 
-	bring-up-pd-adsp-ao@a {
+	bring-up-pd-adsp-ao@8 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0xa>;
+		reg = <0x8>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ADSP_AO>;
 	};
 
-	bring-up-pd-isp-traw@b {
+	bring-up-pd-isp-traw@9 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0xb>;
+		reg = <0x9>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_TRAW>;
 	};
 
-	bring-up-pd-isp-dip1@c {
+	bring-up-pd-isp-dip1@a {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0xc>;
+		reg = <0xa>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_DIP1>;
 	};
 
-	bring-up-pd-isp-main@d {
+	bring-up-pd-isp-main@b {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0xd>;
+		reg = <0xb>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_MAIN>;
 	};
 
-	bring-up-pd-isp-vcore@e {
+	bring-up-pd-isp-vcore@c {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0xe>;
+		reg = <0xc>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_VCORE>;
 	};
 
-	bring-up-pd-vde0@f {
+	bring-up-pd-vde0@d {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0xf>;
+		reg = <0xd>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE0>;
 	};
 
-	bring-up-pd-vde1@10 {
+	bring-up-pd-vde1@e {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x10>;
+		reg = <0xe>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE1>;
 	};
 
-	bring-up-pd-vde-vcore0@11 {
+	bring-up-pd-vde-vcore0@f {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x11>;
+		reg = <0xf>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE_VCORE0>;
 	};
 
-	bring-up-pd-vde-vcore1@12 {
+	bring-up-pd-vde-vcore1@10 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x12>;
+		reg = <0x10>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE_VCORE1>;
 	};
 
-	bring-up-pd-ven0@13 {
+	bring-up-pd-ven0@11 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x13>;
+		reg = <0x11>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN0>;
 	};
 
-	bring-up-pd-ven1@14 {
+	bring-up-pd-ven1@12 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x14>;
+		reg = <0x12>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN1>;
 	};
 
-	bring-up-pd-ven2@15 {
+	bring-up-pd-ven2@13 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x15>;
+		reg = <0x13>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN2>;
 	};
 
-	bring-up-pd-cam-mraw@16 {
+	bring-up-pd-cam-mraw@14 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x16>;
+		reg = <0x14>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MRAW>;
 	};
 
-	bring-up-pd-cam-suba@17 {
+	bring-up-pd-cam-suba@15 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x17>;
+		reg = <0x15>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBA>;
 	};
 
-	bring-up-pd-cam-subb@18 {
+	bring-up-pd-cam-subb@16 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x18>;
+		reg = <0x16>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBB>;
 	};
 
-	bring-up-pd-cam-subc@19 {
+	bring-up-pd-cam-subc@17 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x19>;
+		reg = <0x17>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBC>;
 	};
 
-	bring-up-pd-cam-main@1a {
+	bring-up-pd-cam-main@18 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x1a>;
+		reg = <0x18>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MAIN>;
 	};
 
-	bring-up-pd-cam-vcore@1b {
+	bring-up-pd-cam-vcore@19 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x1b>;
+		reg = <0x19>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_VCORE>;
 	};
 
-	bring-up-pd-cam-ccu@1c {
+	bring-up-pd-cam-ccu@1a {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x1c>;
+		reg = <0x1a>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_CCU>;
 	};
 
-	bring-up-pd-cam-ccu-ao@1d {
+	bring-up-pd-cam-ccu-ao@1b {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x1d>;
+		reg = <0x1b>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_CCU_AO>;
 	};
 
-	bring-up-pd-disp-vcore@1e {
+	bring-up-pd-disp-vcore@1c {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x1e>;
+		reg = <0x1c>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_DISP_VCORE>;
 	};
 
-	bring-up-pd-dis0-shutdown@21 {
+	bring-up-pd-mml0-shutdown@1d {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x21>;
+		reg = <0x1d>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_MML0_SHUTDOWN>;
+	};
+
+	bring-up-pd-mml1-shutdown@1e {
+		compatible = "mediatek,scpsys-bring-up";
+		reg = <0x1e>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_MML1_SHUTDOWN>;
+	};
+
+	bring-up-pd-dis0-shutdown@1f {
+		compatible = "mediatek,scpsys-bring-up";
+		reg = <0x1f>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_DIS0_SHUTDOWN>;
 	};
 
-	bring-up-pd-dis1-shutdown@22 {
+	bring-up-pd-dis1-shutdown@20 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x22>;
+		reg = <0x20>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_DIS1_SHUTDOWN>;
 	};
 
-	bring-up-pd-ovl0-shutdown@23 {
+	bring-up-pd-ovl0-shutdown@21 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x23>;
+		reg = <0x21>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_OVL0_SHUTDOWN>;
 	};
 
-	bring-up-pd-ovl1-shutdown@24 {
+	bring-up-pd-ovl1-shutdown@22 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x24>;
+		reg = <0x22>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_OVL1_SHUTDOWN>;
 	};
 
-	bring-up-pd-mm-infra@25 {
+	bring-up-pd-mm-infra@23 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x25>;
+		reg = <0x23>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
 	};
 
-	bring-up-pd-dp-tx@26 {
+	bring-up-pd-dp-tx@24 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x26>;
+		reg = <0x24>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_DP_TX>;
 	};
 
-	bring-up-pd-csi-rx@27 {
+	bring-up-pd-csi-rx@25 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x27>;
+		reg = <0x25>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CSI_RX>;
 	};
 
-	bring-up-pd-mfg0-dormant@28 {
+	bring-up-pd-ssrsys@26 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x28>;
+		reg = <0x26>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_SSR>;
+	};
+
+	bring-up-pd-mfg0-dormant@27 {
+		compatible = "mediatek,scpsys-bring-up";
+		reg = <0x27>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_MFG0_DORMANT>;
 	};
 
