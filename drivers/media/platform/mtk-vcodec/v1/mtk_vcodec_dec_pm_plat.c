@@ -408,7 +408,7 @@ void mtk_vdec_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)
 	struct mtk_vcodec_dev *dev = ctx->dev;
 	struct vdec_inst *inst = (struct vdec_inst *) ctx->drv_handle;
 
-	if (ctx->state == MTK_STATE_ABORT)
+	if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT))
 		return;
 
 	dev->vdec_dvfs_params.target_freq = inst->vsi->target_freq;

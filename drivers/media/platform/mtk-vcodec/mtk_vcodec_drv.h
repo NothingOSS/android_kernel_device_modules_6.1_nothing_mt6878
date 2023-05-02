@@ -93,6 +93,7 @@ enum mtk_mmdvfs_type {
 
 /**
  * enum mtk_instance_state - The state of an MTK Vcodec instance.
+ * @MTK_STATE_NULL - just for mean null
  * @MTK_STATE_FREE - default state when instance is created
  * @MTK_STATE_INIT - vcodec instance is initialized
  * @MTK_STATE_HEADER - vdec had sps/pps header parsed or venc
@@ -101,6 +102,7 @@ enum mtk_mmdvfs_type {
  * @MTK_STATE_ABORT - vcodec should be aborted
  */
 enum mtk_instance_state {
+	MTK_STATE_NULL = -1,
 	MTK_STATE_FREE = 0,
 	MTK_STATE_INIT,
 	MTK_STATE_HEADER,
@@ -608,6 +610,8 @@ struct mtk_vcodec_ctx {
 	struct mtk_q_data q_data[2];
 	int id;
 	enum mtk_instance_state state;
+	bool is_unsupport;
+	spinlock_t state_lock;
 	enum mtk_dec_param dec_param_change;
 	struct mtk_dec_params dec_params;
 	enum mtk_encode_param param_change;

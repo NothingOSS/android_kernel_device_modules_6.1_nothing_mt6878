@@ -878,7 +878,7 @@ void mtk_vdec_uP_TF_dump_handler(struct work_struct *ws)
 	mutex_lock(&dev->ctx_mutex);
 	list_for_each_safe(list_ptr, tmp, &dev->ctx_list) {
 		ctx = list_entry(list_ptr, struct mtk_vcodec_ctx, list);
-		if (ctx != NULL && ctx->state >= MTK_STATE_INIT && ctx->state < MTK_STATE_ABORT)
+		if (ctx != NULL && mtk_vcodec_state_in_range(ctx, MTK_STATE_INIT, MTK_STATE_STOP))
 			vdec_dump_mem_buf(ctx->drv_handle);
 	}
 	mutex_unlock(&dev->ctx_mutex);

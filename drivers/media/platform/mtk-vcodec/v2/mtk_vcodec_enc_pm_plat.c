@@ -442,7 +442,7 @@ void mtk_venc_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)
 	struct mtk_vcodec_dev *dev = ctx->dev;
 	struct venc_inst *inst = (struct venc_inst *) ctx->drv_handle;
 
-	if (ctx->state == MTK_STATE_ABORT)
+	if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT))
 		return;
 	mtk_v4l2_debug(0, "[VDVFS][%d] sync vsi: (%d, %d)",
 		ctx->id, dev->venc_dvfs_params.target_freq, inst->vsi->config.target_freq);
@@ -692,7 +692,7 @@ void mtk_venc_pmqos_frame_req(struct mtk_vcodec_ctx *ctx)
 	u32 i;
 
 	if (!qos->need_smi_monitor) {
-		if (ctx->state == MTK_STATE_ABORT)
+		if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT))
 			return;
 
 		if (!inst->vsi->config.monitor_bw.apply_monitor_bw)

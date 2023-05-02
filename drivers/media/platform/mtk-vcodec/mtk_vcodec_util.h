@@ -320,6 +320,13 @@ extern phys_addr_t vcp_get_reserve_mem_size(enum vcp_reserve_mem_id_t id);
 #endif
 
 bool mtk_vcodec_is_vcp(int type);
+bool mtk_vcodec_is_state(struct mtk_vcodec_ctx *ctx, int state);
+bool mtk_vcodec_state_in_range(struct mtk_vcodec_ctx *ctx, int state_a, int state_b);
+int mtk_vcodec_get_state(struct mtk_vcodec_ctx *ctx);
+int mtk_vcodec_set_state_from(struct mtk_vcodec_ctx *ctx, int target, int from);
+int mtk_vcodec_set_state(struct mtk_vcodec_ctx *ctx, int target);
+int mtk_vcodec_set_state_except(struct mtk_vcodec_ctx *ctx, int target, int except_state);
+
 void __iomem *mtk_vcodec_get_dec_reg_addr(struct mtk_vcodec_ctx *data,
 	unsigned int reg_idx);
 void __iomem *mtk_vcodec_get_enc_reg_addr(struct mtk_vcodec_ctx *data,

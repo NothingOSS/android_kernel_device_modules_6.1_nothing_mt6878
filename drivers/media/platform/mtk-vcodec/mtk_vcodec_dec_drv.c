@@ -118,6 +118,7 @@ static int fops_vcodec_open(struct file *file)
 	mutex_init(&ctx->q_mutex);
 	mutex_init(&ctx->gen_buf_va_lock);
 	mutex_init(&ctx->detect_ts_param.lock);
+	spin_lock_init(&ctx->state_lock);
 	spin_lock_init(&ctx->lpw_lock);
 
 	ctx->type = MTK_INST_DECODER;

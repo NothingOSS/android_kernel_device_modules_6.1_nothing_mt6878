@@ -1357,6 +1357,12 @@ void mtk_venc_queue_error_event(struct mtk_vcodec_ctx *ctx)
 	v4l2_event_queue_fh(&ctx->fh, &ev_error);
 }
 
+static void mtk_venc_error_handle(struct mtk_vcodec_ctx *ctx)
+{
+	mtk_vcodec_set_state(ctx, MTK_STATE_ABORT);
+	mtk_venc_queue_error_event(ctx);
+}
+
 static int vidioc_venc_s_fmt_cap(struct file *file, void *priv,
 				 struct v4l2_format *f)
 {
@@ -1417,19 +1423,18 @@ static int vidioc_venc_s_fmt_cap(struct file *file, void *priv,
 		q_data->sizeimage[i] = plane_fmt->sizeimage;
 	}
 
-	if (ctx->state == MTK_STATE_FREE) {
+	if (mtk_vcodec_is_state(ctx, MTK_STATE_FREE)) {
 		ret = venc_if_init(ctx, q_data->fmt->fourcc);
 		if (ret) {
 			mtk_v4l2_err("venc_if_init failed=%d, codec type=%x",
 				     ret, q_data->fmt->fourcc);
-			ctx->state = MTK_STATE_ABORT;
-			mtk_venc_queue_error_event(ctx);
+			mtk_venc_error_handle(ctx);
 			return -EBUSY;
 		}
-		ctx->state = MTK_STATE_INIT;
+		mtk_vcodec_set_state_from(ctx, MTK_STATE_INIT, MTK_STATE_FREE);
 	}
-	if (ctx->state == MTK_STATE_ABORT)
-		ctx->state = MTK_STATE_INIT; // format change, trigger encode header
+	// format change, trigger encode header
+	mtk_vcodec_set_state_from(ctx, MTK_STATE_INIT, MTK_STATE_STOP);
 
 	return 0;
 }
@@ -1664,7 +1669,7 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 	struct mtk_video_enc_buf *mtkbuf;
 	struct vb2_v4l2_buffer *vb2_v4l2;
 
-	if (ctx->state == MTK_STATE_ABORT) {
+	if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT)) {
 		mtk_v4l2_err("[%d] Call on QBUF after unrecoverable error",
 			     ctx->id);
 		return -EIO;
@@ -1967,7 +1972,7 @@ static int vidioc_venc_dqbuf(struct file *file, void *priv,
 {
 	struct mtk_vcodec_ctx *ctx = fh_to_ctx(priv);
 
-	if (ctx->state == MTK_STATE_ABORT) {
+	if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT)) {
 		mtk_v4l2_err("[%d] Call on QBUF after unrecoverable error",
 			     ctx->id);
 		return -EIO;
@@ -2117,11 +2122,10 @@ static int vb2ops_venc_queue_setup(struct vb2_queue *vq,
 		       q_data->sizeimage[0],
 		       q_data->sizeimage[1],
 		       q_data->sizeimage[2],
-			   ctx->state);
+		       mtk_vcodec_get_state(ctx));
 
-	if (ctx->state == MTK_STATE_ABORT) { // previously stream off with task not empty
-		ctx->state = MTK_STATE_FLUSH;
-	}
+	// previously stream off with task not empty
+	mtk_vcodec_set_state_from(ctx, MTK_STATE_FLUSH, MTK_STATE_STOP);
 
 	return 0;
 }
@@ -2307,11 +2311,11 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 	int ret;
 	int i;
 
-	mtk_v4l2_debug(4, "[%d] (%d) state=(%x)", ctx->id, q->type, ctx->state);
+	mtk_v4l2_debug(4, "[%d] (%d) state=(%x)", ctx->id, q->type, mtk_vcodec_get_state(ctx));
 	/* Once state turn into MTK_STATE_ABORT, we need stop_streaming
 	  * to clear it
 	  */
-	if (ctx->state == MTK_STATE_ABORT || ctx->state == MTK_STATE_FREE) {
+	if (!mtk_vcodec_state_in_range(ctx, MTK_STATE_INIT, MTK_STATE_STOP)) { // ABORT || FREE
 		ret = -EIO;
 		goto err_set_param;
 	}
@@ -2358,8 +2362,7 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 
 	if (ret) {
 		mtk_v4l2_err("venc_if_set_param failed=%d", ret);
-		ctx->state = MTK_STATE_ABORT;
-		mtk_venc_queue_error_event(ctx);
+		mtk_venc_error_handle(ctx);
 		goto err_set_param;
 	}
 	ctx->param_change = MTK_ENCODE_PARAM_NONE;
@@ -2375,17 +2378,15 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 					NULL);
 		if (ret) {
 			mtk_v4l2_err("venc_if_set_param failed=%d", ret);
-			ctx->state = MTK_STATE_ABORT;
-			mtk_venc_queue_error_event(ctx);
+			mtk_venc_error_handle(ctx);
 			goto err_set_param;
 		}
-		ctx->state = MTK_STATE_HEADER;
-	} else if (ctx->state == MTK_STATE_FLUSH) {
+		mtk_vcodec_set_state(ctx, MTK_STATE_HEADER);
+	} else if (mtk_vcodec_set_state_from(ctx, MTK_STATE_HEADER, MTK_STATE_FLUSH)
+			== MTK_STATE_FLUSH) // flush and reset
 		mtk_v4l2_debug(1, "recover from flush");
-		ctx->state = MTK_STATE_HEADER; // flush and reset
-	} else {
-		ctx->state = MTK_STATE_INIT;
-	}
+	else
+		mtk_vcodec_set_state_except(ctx, MTK_STATE_INIT, MTK_STATE_FLUSH);
 
 	mutex_lock(&ctx->dev->enc_dvfs_mutex);
 	if (ctx->dev->venc_dvfs_params.mmdvfs_in_vcp) {
@@ -2400,7 +2401,7 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 
 		mtk_vcodec_enc_pw_off(&ctx->dev->pm);
 		mtk_v4l2_debug(0, "[VDVFS][%d(%d)] start DVFS(UP):freq:%d, bw_factor:%d",
-			ctx->id, ctx->state,
+			ctx->id, mtk_vcodec_get_state(ctx),
 			ctx->dev->venc_dvfs_params.target_freq,
 			ctx->dev->venc_dvfs_params.target_bw_factor);
 	} else {
@@ -2512,7 +2513,8 @@ static void vb2ops_venc_stop_streaming(struct vb2_queue *q)
 
 			mtk_vcodec_enc_pw_off(&ctx->dev->pm);
 			mtk_v4l2_debug(0, "[VDVFS][%d(%d)] stop DVFS(UP):freq:%d, bw_factor%d",
-				ctx->id, ctx->state, ctx->dev->venc_dvfs_params.target_freq,
+				ctx->id, mtk_vcodec_get_state(ctx),
+				ctx->dev->venc_dvfs_params.target_freq,
 				ctx->dev->venc_dvfs_params.target_bw_factor);
 		} else {
 			mtk_v4l2_debug(0, "[%d][VDVFS][VENC] stop ctrl DVFS in AP", ctx->id);
@@ -2594,8 +2596,7 @@ static int mtk_venc_encode_header(void *priv)
 			mtk_v4l2_err("dst buf already put (ret %d)", ret);
 		} else {
 			dst_buf->planes[0].bytesused = 0;
-			ctx->state = MTK_STATE_ABORT;
-			mtk_venc_queue_error_event(ctx);
+			mtk_venc_error_handle(ctx);
 			v4l2_m2m_buf_done(dst_vb2_v4l2,
 					  VB2_BUF_STATE_ERROR);
 			mtk_v4l2_err("venc_if_encode failed=%d", ret);
@@ -2612,7 +2613,7 @@ static int mtk_venc_encode_header(void *priv)
 	} else
 		mtk_v4l2_err("No timestamp for the header buffer.");
 
-	ctx->state = MTK_STATE_HEADER;
+	mtk_vcodec_set_state(ctx, MTK_STATE_HEADER);
 	if (!already_put) {
 		dst_buf->planes[0].bytesused = enc_result.bs_size;
 		v4l2_m2m_buf_done(dst_vb2_v4l2, VB2_BUF_STATE_DONE);
@@ -2937,8 +2938,7 @@ static int mtk_venc_param_change(struct mtk_vcodec_ctx *ctx)
 	mtk_buf->param_change = MTK_ENCODE_PARAM_NONE;
 
 	if (ret) {
-		ctx->state = MTK_STATE_ABORT;
-		mtk_venc_queue_error_event(ctx);
+		mtk_venc_error_handle(ctx);
 		mtk_v4l2_err("venc_if_set_param %d failed=%d",
 			     mtk_buf->param_change, ret);
 		return -1;
@@ -2993,9 +2993,9 @@ static void mtk_venc_worker(struct work_struct *work)
 
 	mutex_lock(&ctx->worker_lock);
 	memset(&enc_result, 0, sizeof(enc_result));
-	if (ctx->state == MTK_STATE_ABORT) {
+	if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT)) {
 		v4l2_m2m_job_finish(ctx->dev->m2m_dev_enc, ctx->m2m_ctx);
-		mtk_v4l2_debug(1, " %d", ctx->state);
+		mtk_v4l2_debug(1, " %d", mtk_vcodec_get_state(ctx));
 		mutex_unlock(&ctx->worker_lock);
 		return;
 	}
@@ -3061,8 +3061,7 @@ static void mtk_venc_worker(struct work_struct *work)
 				mtk_v4l2_err("last venc_if_encode failed=%d",
 									ret);
 				if (ret == -EIO) {
-					ctx->state = MTK_STATE_ABORT;
-					mtk_venc_queue_error_event(ctx);
+					mtk_venc_error_handle(ctx);
 					venc_check_release_lock(ctx);
 				}
 			} else {
@@ -3089,8 +3088,7 @@ static void mtk_venc_worker(struct work_struct *work)
 				mtk_v4l2_err("last venc_if_encode failed=%d",
 									ret);
 				if (ret == -EIO) {
-					ctx->state = MTK_STATE_ABORT;
-					mtk_venc_queue_error_event(ctx);
+					mtk_venc_error_handle(ctx);
 					venc_check_release_lock(ctx);
 				}
 			} else if (!ctx->async_mode)
@@ -3182,8 +3180,7 @@ static void mtk_venc_worker(struct work_struct *work)
 		v4l2_m2m_buf_done(dst_vb2_v4l2, VB2_BUF_STATE_ERROR);
 		mtk_v4l2_err("venc_if_encode failed=%d", ret);
 		if (ret == -EIO) {
-			ctx->state = MTK_STATE_ABORT;
-			mtk_venc_queue_error_event(ctx);
+			mtk_venc_error_handle(ctx);
 			venc_check_release_lock(ctx);
 		}
 	} else if (!ctx->async_mode)
@@ -3209,7 +3206,7 @@ static void m2mops_venc_device_run(void *priv)
 	     ctx->q_data[MTK_Q_DATA_DST].fmt->fourcc == V4L2_PIX_FMT_HEIF ||
 	     ctx->q_data[MTK_Q_DATA_DST].fmt->fourcc == V4L2_PIX_FMT_MPEG4 ||
 	     ctx->q_data[MTK_Q_DATA_DST].fmt->fourcc == V4L2_PIX_FMT_H263) &&
-	    (ctx->state == MTK_STATE_INIT)) {
+	    mtk_vcodec_is_state(ctx, MTK_STATE_INIT)) {
 		/* encode h264 sps/pps header */
 		mtk_venc_encode_header(ctx);
 		queue_work(ctx->dev->encode_workqueue, &ctx->encode_work);
@@ -3223,9 +3220,10 @@ static int m2mops_venc_job_ready(void *m2m_priv)
 {
 	struct mtk_vcodec_ctx *ctx = m2m_priv;
 
-	if (ctx->state == MTK_STATE_ABORT || ctx->state == MTK_STATE_FREE) {
-		mtk_v4l2_debug(4, "[%d]Not ready: state=0x%x.",
-			       ctx->id, ctx->state);
+	// FREE || STOP || ABORT
+	if (!mtk_vcodec_state_in_range(ctx, MTK_STATE_INIT, MTK_STATE_FLUSH)) {
+		mtk_v4l2_debug(4, "[%d] Not ready: state=0x%x.",
+			ctx->id, mtk_vcodec_get_state(ctx));
 		return 0;
 	}
 
@@ -3236,8 +3234,8 @@ static void m2mops_venc_job_abort(void *priv)
 {
 	struct mtk_vcodec_ctx *ctx = priv;
 
-	mtk_v4l2_debug(4, "[%d]", ctx->id);
-	ctx->state = MTK_STATE_ABORT;
+	mtk_vcodec_set_state_except(ctx, MTK_STATE_STOP, MTK_STATE_FREE);
+	mtk_v4l2_debug(4, "[%d] state %d", ctx->id, mtk_vcodec_get_state(ctx));
 }
 
 const struct v4l2_m2m_ops mtk_venc_m2m_ops = {
@@ -4050,7 +4048,7 @@ void mtk_vcodec_enc_empty_queues(struct file *file, struct mtk_vcodec_ctx *ctx)
 			v4l2_m2m_buf_done(dst_vb2_v4l2, VB2_BUF_STATE_ERROR);
 	}
 
-	ctx->state = MTK_STATE_FREE;
+	mtk_vcodec_set_state(ctx, MTK_STATE_FREE);
 }
 
 void mtk_vcodec_enc_release(struct mtk_vcodec_ctx *ctx)

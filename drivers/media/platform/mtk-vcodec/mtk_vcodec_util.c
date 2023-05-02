@@ -158,6 +158,12 @@ EXPORT_SYMBOL_GPL(mtk_vdec_lpw_timeout);
 struct vcu_v4l2_func vcu_func = { NULL };
 EXPORT_SYMBOL_GPL(vcu_func);
 
+int support_svp_region;
+EXPORT_SYMBOL_GPL(support_svp_region);
+
+int support_wfd_region;
+EXPORT_SYMBOL_GPL(support_wfd_region);
+
 bool mtk_vcodec_is_vcp(int type)
 {
 	if (type > MTK_INST_ENCODER || type < MTK_INST_DECODER)
@@ -166,11 +172,108 @@ bool mtk_vcodec_is_vcp(int type)
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_is_vcp);
 
-int support_svp_region;
-EXPORT_SYMBOL_GPL(support_svp_region);
+/* for check if ctx state is in specific state range, params means:
+ * state_a & state_b != MTK_STATE_NULL: check if state_a <= ctx state = state_b,
+ * state_a == MTK_STATE_NULL: check if ctx state <= state_b,
+ * state_b == MTK_STATE_NULL: check if state_a <= ctx state,
+ * state_a == state_b: check if ctx state == state_a/b
+ */
+bool mtk_vcodec_state_in_range(struct mtk_vcodec_ctx *ctx, int state_a, int state_b)
+{
+	unsigned long flags;
 
-int support_wfd_region;
-EXPORT_SYMBOL_GPL(support_wfd_region);
+	if (!ctx)
+		return false;
+
+	spin_lock_irqsave(&ctx->state_lock, flags);
+	if ((state_a == MTK_STATE_NULL || state_a <= ctx->state) &&
+	    (state_b == MTK_STATE_NULL || ctx->state <= state_b)) {
+		spin_unlock_irqrestore(&ctx->state_lock, flags);
+		return true;
+	}
+	spin_unlock_irqrestore(&ctx->state_lock, flags);
+	return false;
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_state_in_range);
+
+/* check if ctx state is specific state */
+bool mtk_vcodec_is_state(struct mtk_vcodec_ctx *ctx, int state)
+{
+	return mtk_vcodec_state_in_range(ctx, state, state);
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_is_state);
+
+int mtk_vcodec_get_state(struct mtk_vcodec_ctx *ctx)
+{
+	int state;
+	unsigned long flags;
+
+	if (!ctx)
+		return MTK_STATE_FREE;
+
+	spin_lock_irqsave(&ctx->state_lock, flags);
+	state = ctx->state;
+	spin_unlock_irqrestore(&ctx->state_lock, flags);
+	return state;
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_get_state);
+
+/* if ctx state is specific state, then set state to target state */
+int mtk_vcodec_set_state_from(struct mtk_vcodec_ctx *ctx, int target, int from)
+{
+	int state;
+	unsigned long flags;
+
+	if (!ctx)
+		return MTK_STATE_FREE;
+
+	spin_lock_irqsave(&ctx->state_lock, flags);
+	state = ctx->state;
+	if (ctx->state == from) {
+		ctx->state = target;
+		mtk_v4l2_debug(4, "[%d] set state %d from %d to %d",
+			ctx->id, state, from, target);
+	} else
+		mtk_v4l2_debug(1, "[%d] set state %d from %d to %d fail",
+			ctx->id, state, from, target);
+	spin_unlock_irqrestore(&ctx->state_lock, flags);
+	return state;
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_set_state_from);
+
+/* If ctx state is not except state, then set state to target state,
+ * with checking for ABORT state only can be set to FREE state.
+ * If except state is MTK_STATE_NULL, then will not check except state,
+ * which means will only check if is ABORT state, otherwise just set to target state.
+ */
+int mtk_vcodec_set_state_except(struct mtk_vcodec_ctx *ctx, int target, int except_state)
+{
+	int state;
+	unsigned long flags;
+
+	if (!ctx)
+		return MTK_STATE_FREE;
+
+	spin_lock_irqsave(&ctx->state_lock, flags);
+	state = ctx->state;
+	if ((except_state == MTK_STATE_NULL || ctx->state != except_state) &&
+	   (ctx->state != MTK_STATE_ABORT || target == MTK_STATE_FREE)) {
+		ctx->state = target;
+		mtk_v4l2_debug(4, "[%d] set state %d to %d (except %d)",
+			ctx->id, state, target, except_state);
+	} else
+		mtk_v4l2_debug(1, "[%d] set state %d to %d fail (except %d)",
+			ctx->id, state, target, except_state);
+	spin_unlock_irqrestore(&ctx->state_lock, flags);
+	return state;
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_set_state_except);
+
+int mtk_vcodec_set_state(struct mtk_vcodec_ctx *ctx, int target)
+{
+	return mtk_vcodec_set_state_except(ctx, target, MTK_STATE_NULL);
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_set_state);
 
 /* VCODEC FTRACE */
 #if VCODEC_TRACE
