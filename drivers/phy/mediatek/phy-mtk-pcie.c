@@ -1,136 +1,281 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2020 MediaTek Inc.
+ * Copyright (c) 2022 MediaTek Inc.
  * Author: Jianjun Wang <jianjun.wang@mediatek.com>
  */
 
-#include <dt-bindings/phy/phy.h>
-#include <linux/clk.h>
-#include <linux/delay.h>
-#include <linux/io.h>
-#include <linux/iopoll.h>
+#include <linux/bitfield.h>
 #include <linux/module.h>
-#include <linux/of_address.h>
+#include <linux/nvmem-consumer.h>
 #include <linux/of_device.h>
 #include <linux/phy/phy.h>
-#include <linux/pm_domain.h>
 #include <linux/platform_device.h>
-#include <linux/sysfs.h>
+#include <linux/slab.h>
 
-#define PCIE_PHY_CKM_REG04		0x04
-#define CKM_PT0_CKTX_SLEW_MASK		GENMASK(9, 8)
-#define CKM_PT0_CKTX_SLEW(val)		((val << 8) & GENMASK(9, 8))
-#define CKM_PT0_CKTX_OFFSET_MASK	GENMASK(11, 10)
-#define CKM_PT0_CKTX_OFFSET(val)	((val << 10) & GENMASK(11, 10))
-#define CKM_PT0_CKTX_AMP_MASK		GENMASK(15, 12)
-#define CKM_PT0_CKTX_AMP(val)		((val << 12) & GENMASK(15, 12))
+#include "phy-mtk-io.h"
 
+#define PEXTP_ANA_GLB_00_REG		0x9000
+/* Internal Resistor Selection of TX Bias Current */
+#define EFUSE_GLB_INTR_SEL		GENMASK(28, 24)
+
+#define PEXTP_ANA_LN0_TRX_REG		0xa000
+
+#define PEXTP_ANA_TX_REG		0x04
+/* TX PMOS impedance selection */
+#define EFUSE_LN_TX_PMOS_SEL		GENMASK(5, 2)
+/* TX NMOS impedance selection */
+#define EFUSE_LN_TX_NMOS_SEL		GENMASK(11, 8)
+
+#define PEXTP_ANA_RX_REG		0x3c
+/* RX impedance selection */
+#define EFUSE_LN_RX_SEL			GENMASK(3, 0)
+
+#define PEXTP_ANA_LANE_OFFSET		0x100
+
+/**
+ * struct mtk_pcie_lane_efuse - eFuse data for each lane
+ * @tx_pmos: TX PMOS impedance selection data
+ * @tx_nmos: TX NMOS impedance selection data
+ * @rx_data: RX impedance selection data
+ * @lane_efuse_supported: software eFuse data is supported for this lane
+ */
+struct mtk_pcie_lane_efuse {
+	u32 tx_pmos;
+	u32 tx_nmos;
+	u32 rx_data;
+	bool lane_efuse_supported;
+};
+
+/**
+ * struct mtk_pcie_phy_data - phy data for each SoC
+ * @num_lanes: supported lane numbers
+ * @sw_efuse_supported: support software to load eFuse data
+ */
+struct mtk_pcie_phy_data {
+	int num_lanes;
+	bool sw_efuse_supported;
+};
+
+/**
+ * struct mtk_pcie_phy - PCIe phy driver main structure
+ * @dev: pointer to device
+ * @phy: pointer to generic phy
+ * @sif_base: IO mapped register base address of system interface
+ * @data: pointer to SoC dependent data
+ * @sw_efuse_en: software eFuse enable status
+ * @efuse_glb_intr: internal resistor selection of TX bias current data
+ * @efuse: pointer to eFuse data for each lane
+ */
 struct mtk_pcie_phy {
 	struct device *dev;
 	struct phy *phy;
 	void __iomem *sif_base;
-	void __iomem *ckm_base;
-	struct clk *pipe_clk;
+	const struct mtk_pcie_phy_data *data;
+
+	bool sw_efuse_en;
+	u32 efuse_glb_intr;
+	struct mtk_pcie_lane_efuse *efuse;
 };
 
-static int mtk_pcie_phy_power_on(struct phy *phy)
+static void mtk_pcie_efuse_set_lane(struct mtk_pcie_phy *pcie_phy,
+				    unsigned int lane)
 {
-	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
-	int ret;
-	u32 val;
+	struct mtk_pcie_lane_efuse *data = &pcie_phy->efuse[lane];
+	void __iomem *addr;
 
-	pm_runtime_enable(pcie_phy->dev);
-	pm_runtime_get_sync(pcie_phy->dev);
+	if (!data->lane_efuse_supported)
+		return;
 
-	val = readl(pcie_phy->ckm_base + PCIE_PHY_CKM_REG04);
-	val &= ~GENMASK(11, 10);
-	val |= CKM_PT0_CKTX_OFFSET(0x2) | CKM_PT0_CKTX_AMP(0xf);
-	writel(val, pcie_phy->ckm_base + PCIE_PHY_CKM_REG04);
+	addr = pcie_phy->sif_base + PEXTP_ANA_LN0_TRX_REG +
+	       lane * PEXTP_ANA_LANE_OFFSET;
 
-	if (pcie_phy->pipe_clk) {
-		ret = clk_prepare_enable(pcie_phy->pipe_clk);
-		if (ret) {
-			dev_info(pcie_phy->dev, "failed to enable pipe_clk\n");
-			return ret;
-		}
-	}
+	mtk_phy_update_field(addr + PEXTP_ANA_TX_REG, EFUSE_LN_TX_PMOS_SEL,
+			     data->tx_pmos);
 
-	return 0;
+	mtk_phy_update_field(addr + PEXTP_ANA_TX_REG, EFUSE_LN_TX_NMOS_SEL,
+			     data->tx_nmos);
+
+	mtk_phy_update_field(addr + PEXTP_ANA_RX_REG, EFUSE_LN_RX_SEL,
+			     data->rx_data);
 }
 
-static int mtk_pcie_phy_power_off(struct phy *phy)
+/**
+ * mtk_pcie_phy_init() - Initialize the phy
+ * @phy: the phy to be initialized
+ *
+ * Initialize the phy by setting the efuse data.
+ * The hardware settings will be reset during suspend, it should be
+ * reinitialized when the consumer calls phy_init() again on resume.
+ */
+static int mtk_pcie_phy_init(struct phy *phy)
 {
 	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
+	int i;
 
-	if (pcie_phy->pipe_clk)
-		clk_disable_unprepare(pcie_phy->pipe_clk);
+	if (!pcie_phy->sw_efuse_en)
+		return 0;
 
-	pm_runtime_put_sync(pcie_phy->dev);
-	pm_runtime_disable(pcie_phy->dev);
+	/* Set global data */
+	mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_GLB_00_REG,
+			     EFUSE_GLB_INTR_SEL, pcie_phy->efuse_glb_intr);
+
+	for (i = 0; i < pcie_phy->data->num_lanes; i++)
+		mtk_pcie_efuse_set_lane(pcie_phy, i);
 
 	return 0;
 }
 
 static const struct phy_ops mtk_pcie_phy_ops = {
-	.power_on	= mtk_pcie_phy_power_on,
-	.power_off	= mtk_pcie_phy_power_off,
-	.owner		= THIS_MODULE,
+	.init	= mtk_pcie_phy_init,
+	.owner	= THIS_MODULE,
 };
+
+static int mtk_pcie_efuse_read_for_lane(struct mtk_pcie_phy *pcie_phy,
+					unsigned int lane)
+{
+	struct mtk_pcie_lane_efuse *efuse = &pcie_phy->efuse[lane];
+	struct device *dev = pcie_phy->dev;
+	char efuse_id[16];
+	int ret;
+
+	snprintf(efuse_id, sizeof(efuse_id), "tx_ln%d_pmos", lane);
+	ret = nvmem_cell_read_variable_le_u32(dev, efuse_id, &efuse->tx_pmos);
+	if (ret) {
+		dev_info(dev, "Failed to read %s\n", efuse_id);
+		return ret;
+	}
+
+	snprintf(efuse_id, sizeof(efuse_id), "tx_ln%d_nmos", lane);
+	ret = nvmem_cell_read_variable_le_u32(dev, efuse_id, &efuse->tx_nmos);
+	if (ret) {
+		dev_info(dev, "Failed to read %s\n", efuse_id);
+		return ret;
+	}
+
+	snprintf(efuse_id, sizeof(efuse_id), "rx_ln%d", lane);
+	ret = nvmem_cell_read_variable_le_u32(dev, efuse_id, &efuse->rx_data);
+	if (ret) {
+		dev_info(dev, "Failed to read %s\n", efuse_id);
+		return ret;
+	}
+
+	if (!(efuse->tx_pmos || efuse->tx_nmos || efuse->rx_data)) {
+		dev_info(dev,
+			 "No eFuse data found for lane%d, but dts enable it\n",
+			 lane);
+		return -EINVAL;
+	}
+
+	efuse->lane_efuse_supported = true;
+
+	return 0;
+}
+
+static int mtk_pcie_read_efuse(struct mtk_pcie_phy *pcie_phy)
+{
+	struct device *dev = pcie_phy->dev;
+	bool nvmem_enabled;
+	int ret, i;
+
+	/* nvmem data is optional */
+	nvmem_enabled = device_property_present(dev, "nvmem-cells");
+	if (!nvmem_enabled)
+		return 0;
+
+	ret = nvmem_cell_read_variable_le_u32(dev, "glb_intr",
+					      &pcie_phy->efuse_glb_intr);
+	if (ret) {
+		dev_info(dev, "Failed to read glb_intr\n");
+		return ret;
+	}
+
+	pcie_phy->sw_efuse_en = true;
+
+	pcie_phy->efuse = devm_kzalloc(dev, pcie_phy->data->num_lanes *
+				       sizeof(*pcie_phy->efuse), GFP_KERNEL);
+	if (!pcie_phy->efuse)
+		return -ENOMEM;
+
+	for (i = 0; i < pcie_phy->data->num_lanes; i++) {
+		ret = mtk_pcie_efuse_read_for_lane(pcie_phy, i);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
 
 static int mtk_pcie_phy_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct phy_provider *provider;
-	struct resource *reg_res;
 	struct mtk_pcie_phy *pcie_phy;
+	int ret;
 
 	pcie_phy = devm_kzalloc(dev, sizeof(*pcie_phy), GFP_KERNEL);
 	if (!pcie_phy)
 		return -ENOMEM;
 
-	pcie_phy->dev = dev;
-
-	pcie_phy->pipe_clk = devm_clk_get_optional(pcie_phy->dev, "pipe_clk");
-	if (IS_ERR(pcie_phy->pipe_clk)) {
-		dev_info(dev, "failed to get pipe_clk\n");
-		return PTR_ERR(pcie_phy->pipe_clk);
+	pcie_phy->sif_base = devm_platform_ioremap_resource_byname(pdev, "sif");
+	if (IS_ERR(pcie_phy->sif_base)) {
+		dev_info(dev, "Failed to map phy-sif base\n");
+		return PTR_ERR(pcie_phy->sif_base);
 	}
-
-	reg_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "phy-ckm");
-	pcie_phy->ckm_base = devm_ioremap_resource(dev, reg_res);
-	if (IS_ERR(pcie_phy->ckm_base)) {
-		dev_info(dev, "failed to map pcie phy base\n");
-		return PTR_ERR(pcie_phy->ckm_base);
-	}
-
-	platform_set_drvdata(pdev, pcie_phy);
 
 	pcie_phy->phy = devm_phy_create(dev, dev->of_node, &mtk_pcie_phy_ops);
 	if (IS_ERR(pcie_phy->phy)) {
-		dev_info(dev, "failed to create pcie phy\n");
+		dev_info(dev, "Failed to create PCIe phy\n");
 		return PTR_ERR(pcie_phy->phy);
+	}
+
+	pcie_phy->dev = dev;
+	pcie_phy->data = of_device_get_match_data(dev);
+	if (!pcie_phy->data) {
+		dev_info(dev, "Failed to get phy data\n");
+		return -EINVAL;
+	}
+
+	if (pcie_phy->data->sw_efuse_supported) {
+		/*
+		 * Failed to read the efuse data is not a fatal problem,
+		 * ignore the failure and keep going.
+		 */
+		ret = mtk_pcie_read_efuse(pcie_phy);
+		if (ret == -EPROBE_DEFER || ret == -ENOMEM)
+			return ret;
 	}
 
 	phy_set_drvdata(pcie_phy->phy, pcie_phy);
 
 	provider = devm_of_phy_provider_register(dev, of_phy_simple_xlate);
+	if (IS_ERR(provider)) {
+		dev_info(dev, "PCIe phy probe failed\n");
+		return PTR_ERR(provider);
+	}
 
-	return PTR_ERR_OR_ZERO(provider);
+	return 0;
 }
 
-static const struct of_device_id mtk_pcie_phy_id_table[] = {
-	{ .compatible = "mediatek,mt8192-pcie-phy" },
-	{ .compatible = "mediatek,mt8195-pcie-phy" },
+static const struct mtk_pcie_phy_data mt8195_data = {
+	.num_lanes = 2,
+	.sw_efuse_supported = true,
+};
+
+static const struct of_device_id mtk_pcie_phy_of_match[] = {
+	{ .compatible = "mediatek,mt8195-pcie-phy", .data = &mt8195_data },
 	{ },
 };
+MODULE_DEVICE_TABLE(of, mtk_pcie_phy_of_match);
 
 static struct platform_driver mtk_pcie_phy_driver = {
 	.probe	= mtk_pcie_phy_probe,
 	.driver	= {
-		.name	= "mtk-pcie-phy",
-		.of_match_table = mtk_pcie_phy_id_table,
+		.name = "mtk-pcie-phy",
+		.of_match_table = mtk_pcie_phy_of_match,
 	},
 };
-
 module_platform_driver(mtk_pcie_phy_driver);
+
+MODULE_DESCRIPTION("MediaTek PCIe PHY driver");
+MODULE_AUTHOR("Jianjun Wang <jianjun.wang@mediatek.com>");
 MODULE_LICENSE("GPL");
