@@ -2773,6 +2773,22 @@
 					&smi_ccu_sub_comm0>;
 	};
 
+	mminfra-debug@1e827000 {
+		compatible = "mediatek,mminfra-debug";
+		reg = <0 0x1e827000 0 0x90>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
+		interrupts = <GIC_SPI 538 IRQ_TYPE_LEVEL_HIGH 0>;
+		mminfra-bkrs = <0>;
+		bkrs-reg = <0x1e800250>;
+		mminfra-ao-base;
+		init-clk-on;
+		clocks = <&mminfra_ao_config_clk CLK_MMINFRA_AO_GCE_D>,
+				<&mminfra_ao_config_clk CLK_MMINFRA_AO_GCE_M>,
+				<&mminfra_config_clk CLK_MMINFRA_SMI>,
+				<&mminfra_ao_config_clk CLK_MMINFRA_AO_GCE_26M>;
+		clock-names = "clk0", "clk1", "clk2", "clk3";
+	};
+
 	soc {
 		compatible = "simple-bus";
 		#address-cells = <2>;
