@@ -157,7 +157,7 @@ static void mtk_pool_recycle_page(struct mtk_dmabuf_page_pool **pools)
 	}
 }
 
-static inline
+__no_kcsan static inline
 void mtk_pool_set_refilling(struct mtk_dmabuf_page_pool **pools,
 					       bool refilling)
 {

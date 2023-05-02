@@ -216,7 +216,6 @@ struct proc_dir_entry *dma_heaps_monitor;
 
 int oom_nb_status; /* 0 means register pass */
 unsigned long long last_oom_time;/* ms */
-unsigned long debug_alloc_sz;
 
 static unsigned long long egl_last_time;
 static unsigned long long egl_dmabuf_total_size;
@@ -435,8 +434,6 @@ dmabuf_rbtree_vmres_add_return(struct dump_fd_data *fd_data,
 	if (!vm_res)
 		return ERR_PTR(-ENOMEM);
 
-	debug_alloc_sz += sizeof(*vm_res);
-
 	vm_res->vm_start = vma->vm_start;
 	vm_res->vm_size = vma->vm_end - vma->vm_start;
 	vm_res->p = node;
@@ -486,8 +483,6 @@ dmabuf_rbtree_fdres_add_return(struct dump_fd_data *fd_data,
 	if (!fd_res_entry)
 		return ERR_PTR(-ENOMEM);
 
-	debug_alloc_sz += sizeof(*fd_res_entry);
-
 	fd_res_entry->fd_val = fd;
 	fd_res_entry->p = node;
 
@@ -526,8 +521,6 @@ dmabuf_rbtree_pidres_add_return(struct dump_fd_data *fd_data,
 	pid_entry = kzalloc(sizeof(*pid_entry), DMA_HEAP_DUMP_ALLOC_GFP);
 	if (!pid_entry)
 		return ERR_PTR(-ENOMEM);
-
-	debug_alloc_sz += sizeof(*pid_entry);
 
 	pid_entry->pid = p->pid;
 	pid_entry->p = dbg_node;
@@ -604,8 +597,6 @@ dmabuf_rbtree_dbg_add_return(struct dump_fd_data *fd_data, const struct dma_buf 
 		dma_buf_put((struct dma_buf *)dmabuf);
 		return ERR_PTR(-ENOMEM);
 	}
-
-	debug_alloc_sz += sizeof(*dbg_node);
 
 	dbg_node->dmabuf = dmabuf;
 	dbg_node->inode = ino;
@@ -1162,8 +1153,6 @@ struct dump_fd_data *dmabuf_rbtree_add_all(struct dma_heap *heap,
 	if (!fddata)
 		return ERR_PTR(-ENOMEM);
 
-	debug_alloc_sz += sizeof(*fddata);
-
 	fddata->constd.s = s;
 	fddata->constd.heap = heap;
 	fddata->dmabuf_root = RB_ROOT;
@@ -1415,7 +1404,6 @@ void dmabuf_rbtree_dump_all(struct dma_heap *heap, unsigned long flag,
 	unsigned int pid_cnt = 0;
 	bool dump_egl = ((flag & HEAP_DUMP_EGL) && egl_pid_map);
 
-	debug_alloc_sz = 0;
 	time1 = get_current_time_ms();
 
 	if (dump_egl && (time1 - egl_last_time < EGL_DUMP_INTERVAL)) {
@@ -1464,8 +1452,7 @@ void dmabuf_rbtree_dump_all(struct dma_heap *heap, unsigned long flag,
 	free_size = dmabuf_dbg_rbtree_clear(fddata);
 
 	if (!(flag & HEAP_DUMP_STATS)) {
-		dmabuf_dump(s, "allocated for debug dump: %lu KB\n", debug_alloc_sz / 1024);
-		dmabuf_dump(s, "freed     for debug dump: %lu KB\n", free_size / 1024);
+		dmabuf_dump(s, "freed for debug dump: %lu KB\n", free_size / 1024);
 		dmabuf_dump(s, "start:%llums add_done:%llums dump_done:%llums end:%llums\n",
 			    time1, time2, time3, get_current_time_ms());
 	}
