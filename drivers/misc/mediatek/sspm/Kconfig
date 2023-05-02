@@ -36,3 +36,11 @@ config MTK_TINYSYS_SSPM_V3
 
 config MTK_MET_MEM_ALLOC
 	bool "Using dynamic allocate memory for MET"
+
+config MTK_TINYSYS_SSPM_LOGGER_SUPPORT
+	bool "SSPM Debug support"
+	help
+	  This is a debug interface for SSPM
+	  Set Y to enable this feature.
+	  Set N to disable this feature.
+	  If unsure, Set N to disable it.

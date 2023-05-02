@@ -34,7 +34,7 @@
 #include "sspm_helper.h"
 #include "sspm_reservedmem.h"
 #include "sspm_reservedmem_define.h"
-#if SSPM_LOGGER_SUPPORT
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_LOGGER_SUPPORT)
 #include "sspm_logger.h"
 #endif
 #include "sspm_sysfs.h"
@@ -49,7 +49,7 @@ struct plt_ctrl_s {
 	unsigned int magic;
 	unsigned int size;
 	unsigned int mem_sz;
-#if SSPM_LOGGER_SUPPORT
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_LOGGER_SUPPORT)
 	unsigned int logger_ofs;
 #endif
 };
@@ -78,7 +78,7 @@ int __init sspm_plt_init(void)
 	struct scmi_tinysys_info_st *tinfo = get_scmi_tinysys_info();
 	int ret;
 	unsigned int last_ofs;
-#if SSPM_LOGGER_SUPPORT
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_LOGGER_SUPPORT)
 	unsigned int last_sz;
 #endif
 	unsigned int *mark;
@@ -126,7 +126,7 @@ int __init sspm_plt_init(void)
 
 	pr_debug("SSPM: %s(): after plt, ofs=%u\n", __func__, last_ofs);
 
-#if SSPM_LOGGER_SUPPORT
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_LOGGER_SUPPORT)
 	plt_ctl->logger_ofs = last_ofs;
 	last_sz = sspm_logger_init(virt_addr + last_ofs, mem_sz - last_ofs);
 
@@ -154,7 +154,7 @@ int __init sspm_plt_init(void)
 		goto error;
 	}
 
-#if SSPM_LOGGER_SUPPORT
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_LOGGER_SUPPORT)
 	sspm_logger_init_done();
 #endif
 

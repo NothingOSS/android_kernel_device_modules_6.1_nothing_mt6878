@@ -8,7 +8,6 @@
 #define SSPM_SHARE_BUFFER_SUPPORT
 
 #define SSPM_PLT_SERV_SUPPORT       (1)
-#define SSPM_LOGGER_SUPPORT         (1)
 #define SSPM_MBOX_SHARE_SUPPORT     (1)
 
 #define PLT_INIT		0x504C5401
