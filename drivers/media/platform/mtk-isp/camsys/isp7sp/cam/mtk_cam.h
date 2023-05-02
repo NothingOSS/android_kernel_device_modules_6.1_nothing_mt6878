@@ -166,6 +166,9 @@ struct mtk_cam_ctx {
 	void __iomem *slb_addr;
 	unsigned int slb_size;
 
+	/* cmdq */
+	bool cmdq_enabled;
+
 	struct mtk_cam_adl_work adl_work;
 
 	/* TODO:

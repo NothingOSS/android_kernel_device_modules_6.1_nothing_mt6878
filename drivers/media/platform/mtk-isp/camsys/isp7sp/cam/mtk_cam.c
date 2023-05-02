@@ -2307,6 +2307,10 @@ void mtk_cam_stop_ctx(struct mtk_cam_ctx *ctx, struct media_entity *entity)
 	mtk_cam_ctx_destroy_img_pool(ctx);
 	mtk_cam_ctx_destroy_rgbw_caci_buf(ctx);
 	mtk_cam_ctx_release_slb(ctx);
+
+	if (ctx->cmdq_enabled)
+		cmdq_mbox_disable(cam->cmdq_clt->chan);
+
 	mtk_cam_ctx_destroy_workers(ctx);
 	mtk_cam_ctx_pipeline_stop(ctx, entity);
 	mtk_cam_pool_destroy(&ctx->job_pool);
@@ -2357,6 +2361,9 @@ int mtk_cam_ctx_init_scenario(struct mtk_cam_ctx *ctx)
 
 		if (apu_info_is_dc(&ctrl_data->apu_info))
 			ret = mtk_cam_ctx_request_slb(ctx);
+
+		cmdq_mbox_enable(cam->cmdq_clt->chan);
+		ctx->cmdq_enabled = 1;
 	}
 
 	ctx->scenario_init = true;

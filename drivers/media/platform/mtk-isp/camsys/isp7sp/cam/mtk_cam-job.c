@@ -1474,6 +1474,8 @@ static int trigger_m2m(struct mtk_cam_job *job)
 
 	toggle_raw_engines_db(ctx);
 
+	m2m_update_sof_state(raw_dev);
+
 	if (is_apu) {
 		is_apu_dc = is_m2m_apu_dc(job);
 

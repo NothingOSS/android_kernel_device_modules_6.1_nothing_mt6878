@@ -465,7 +465,7 @@ void immediate_stream_off(struct mtk_raw_device *dev)
 		dev_info(dev->dev, "not ready\n");
 }
 
-static inline void trigger_rawi(struct mtk_raw_device *dev, u32 val)
+void m2m_update_sof_state(struct mtk_raw_device *dev)
 {
 	int cookie;
 
@@ -476,8 +476,11 @@ static inline void trigger_rawi(struct mtk_raw_device *dev, u32 val)
 	engine_handle_sof(&dev->cq_ref,
 			  bit_map_bit(MAP_HW_RAW, dev->id),
 			  cookie);
+}
 
-	dev_info(dev->dev, "%s: 0x%x\n", __func__, val);
+static inline void trigger_rawi(struct mtk_raw_device *dev, u32 val)
+{
+	//dev_info(dev->dev, "%s: 0x%x\n", __func__, val);
 	writel(val, dev->base + REG_CAMCTL_RAWI_TRIG);
 }
 
