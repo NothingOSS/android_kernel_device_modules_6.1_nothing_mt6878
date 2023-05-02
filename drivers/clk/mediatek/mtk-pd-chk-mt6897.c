@@ -857,16 +857,12 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 	dump_power_event();
 	dump_clk_event();
 
-	/* TODO wait VCP ready to restore */
-//	BUG_ON(1);
+	BUG_ON(1);
 }
 
 static enum chk_sys_id log_dump_id[] = {
 	ifrbus_ao_reg_bus,
-	ufscfg_ao_bus,
-	gpu_eb_rpc,
 	spm,
-	vlpcfg,
 	chk_sys_num,
 };
 
