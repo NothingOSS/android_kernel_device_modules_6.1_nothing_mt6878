@@ -3021,7 +3021,8 @@
 				<0 0x1025e000 0 0x1000>,   /* NEMI_MI32_MI33_SMI */
 				<0 0x10309000 0 0x1000>,   /* SEMI_MI32_MI33_SMI */
 				<0 0x13c00000 0 0x50000>,  /* GPUEB_SRAM */
-				<0 0x13c60000 0 0x2000>;   /* GPUEB_CFGREG */
+				<0 0x13c60000 0 0x2000>,   /* GPUEB_CFGREG */
+				<0 0x0c0df7e0 0 0x100>;    /* MCDI_MBOX */
 			reg-names =
 				"mfg_top_config",
 				"mfg_cg_config",
@@ -3050,7 +3051,8 @@
 				"nemi_mi32_mi33_smi",
 				"semi_mi32_mi33_smi",
 				"gpueb_sram",
-				"gpueb_cfgreg";
+				"gpueb_cfgreg",
+				"mcdi_mbox";
 			clocks =
 				<&mfgpll_pll_ctrl_clk CLK_MFG_AO_MFGPLL>,
 				<&mfgpll_sc0_pll_ctrl_clk CLK_MFGSC0_AO_MFGPLL_SC0>,
