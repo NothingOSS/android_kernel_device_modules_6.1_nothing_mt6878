@@ -681,13 +681,6 @@ static void report_custom_fault(
 			fault_iova, m4u_data->m4u_cb[idx].fault_data);
 	}
 
-	/* For SMMU bring up phase, not trigger AEE */
-	if (smmu_v3_enable) {
-		pr_info("error, tf report fault_id:0x%x, port_name:%s\n",
-			fault_id, port_list[idx].name);
-		return;
-	}
-
 	m4u_aee_print(mmu_translation_log_format,
 		(smmu_v3_enable ? "SMMU" : "M4U"),
 		port_list[idx].name,
@@ -852,17 +845,9 @@ void report_custom_smmu_fault(u64 fault_iova, u64 fault_pa,
 		if (m4u_data->plat_data->smmu_port_name)
 			port_name = m4u_data->plat_data->smmu_port_name(SOC_SMMU, id, fault_id);
 
-		if (port_name != NULL) {
-			/* For SMMU bring up phase, not trigger AEE */
-			if (smmu_v3_enable) {
-				pr_info("error, tf report fault_id:0x%x, port_name:%s\n",
-					fault_id, port_name);
-				return;
-			}
-
+		if (port_name != NULL)
 			m4u_aee_print(mmu_translation_log_format, "SMMU", port_name,
 				      port_name, fault_iova, fault_pa);
-		}
 		return;
 	}
 
