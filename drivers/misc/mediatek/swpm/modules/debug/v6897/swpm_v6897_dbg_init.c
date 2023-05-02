@@ -231,9 +231,9 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 	int i;
 	int32_t core_vol_num, core_ip_num;
 
-	struct ip_stats *core_ip_stats_ptr;
-	struct vol_duration *core_duration_ptr;
-	struct res_sig_stats *spm_res_sig_stats_ptr;
+	struct ip_stats *core_ip_stats_ptr = NULL;
+	struct vol_duration *core_duration_ptr = NULL;
+	struct res_sig_stats *spm_res_sig_stats_ptr = NULL;
 
 	if (!ToUser)
 		return -EINVAL;
@@ -242,25 +242,29 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 	core_ip_num = get_vcore_ip_num();
 
 	core_duration_ptr =
-	kmalloc_array(core_vol_num, sizeof(struct vol_duration), GFP_KERNEL);
+	kcalloc(core_vol_num, sizeof(struct vol_duration), GFP_KERNEL);
 	core_ip_stats_ptr =
-	kmalloc_array(core_ip_num, sizeof(struct ip_stats), GFP_KERNEL);
-	for (i = 0; i < core_ip_num; i++)
-		core_ip_stats_ptr[i].times =
-		kmalloc(sizeof(struct ip_vol_times), GFP_KERNEL);
-
+	kcalloc(core_ip_num, sizeof(struct ip_stats), GFP_KERNEL);
 	spm_res_sig_stats_ptr =
-	kmalloc(sizeof(struct res_sig_stats), GFP_KERNEL);
-
-	sync_latest_data();
+	kzalloc(sizeof(struct res_sig_stats), GFP_KERNEL);
 
 	if (!core_duration_ptr) {
 		swpm_dbg_log("core_duration_idx failure\n");
 		goto End;
-	} else if (!core_ip_stats_ptr) {
+	}
+	if (!core_ip_stats_ptr) {
 		swpm_dbg_log("core_ip_stats_idx failure\n");
 		goto End;
 	}
+
+	for (i = 0; i < core_ip_num; i++) {
+		core_ip_stats_ptr[i].times =
+		kzalloc(sizeof(struct ip_vol_times), GFP_KERNEL);
+		if (!core_ip_stats_ptr[i].times)
+			goto End;
+	}
+
+	sync_latest_data();
 
 	get_vcore_vol_duration(core_vol_num, core_duration_ptr);
 	get_vcore_ip_vol_stats(core_ip_num, core_vol_num,
@@ -284,9 +288,11 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 End:
 	kfree(core_duration_ptr);
 
-	for (i = 0; i < core_ip_num; i++)
-		kfree(core_ip_stats_ptr[i].times);
-	kfree(core_ip_stats_ptr);
+	if (core_ip_stats_ptr) {
+		for (i = 0; i < core_ip_num; i++)
+			kfree(core_ip_stats_ptr[i].times);
+		kfree(core_ip_stats_ptr);
+	}
 
 	kfree(spm_res_sig_stats_ptr);
 
@@ -303,9 +309,9 @@ static ssize_t swpm_sp_ddr_idx_read(char *ToUser, size_t sz, void *priv)
 	int i, j;
 	int32_t ddr_freq_num, ddr_bc_ip_num;
 
-	struct ddr_act_times *ddr_act_times_ptr;
-	struct ddr_sr_pd_times *ddr_sr_pd_times_ptr;
-	struct ddr_ip_bc_stats *ddr_ip_stats_ptr;
+	struct ddr_act_times *ddr_act_times_ptr = NULL;
+	struct ddr_sr_pd_times *ddr_sr_pd_times_ptr = NULL;
+	struct ddr_ip_bc_stats *ddr_ip_stats_ptr = NULL;
 
 	if (!ToUser)
 		return -EINVAL;
@@ -314,29 +320,28 @@ static ssize_t swpm_sp_ddr_idx_read(char *ToUser, size_t sz, void *priv)
 	ddr_bc_ip_num = get_ddr_data_ip_num();
 
 	ddr_act_times_ptr =
-	kmalloc_array(ddr_freq_num, sizeof(struct ddr_act_times), GFP_KERNEL);
+	kcalloc(ddr_freq_num, sizeof(struct ddr_act_times), GFP_KERNEL);
 	ddr_sr_pd_times_ptr =
-	kmalloc(sizeof(struct ddr_sr_pd_times), GFP_KERNEL);
+	kzalloc(sizeof(struct ddr_sr_pd_times), GFP_KERNEL);
 	ddr_ip_stats_ptr =
-	kmalloc_array(ddr_bc_ip_num,
+	kcalloc(ddr_bc_ip_num,
 		sizeof(struct ddr_ip_bc_stats), GFP_KERNEL);
-	for (i = 0; i < ddr_bc_ip_num; i++)
+
+	if (!ddr_act_times_ptr)
+		goto End;
+	if (!ddr_sr_pd_times_ptr)
+		goto End;
+	if (!ddr_ip_stats_ptr)
+		goto End;
+
+	for (i = 0; i < ddr_bc_ip_num; i++) {
 		ddr_ip_stats_ptr[i].bc_stats =
-		kmalloc_array(ddr_freq_num,
-			      sizeof(struct ddr_bc_stats), GFP_KERNEL);
+		kcalloc(ddr_freq_num, sizeof(struct ddr_bc_stats), GFP_KERNEL);
+		if (!ddr_ip_stats_ptr[i].bc_stats)
+			goto End;
+	}
 
 	sync_latest_data();
-
-	if (!ddr_act_times_ptr) {
-		swpm_dbg_log("ddr_act_times_idx failure\n");
-		goto End;
-	} else if (!ddr_sr_pd_times_ptr) {
-		swpm_dbg_log("ddr_sr_pd_times_idx failure\n");
-		goto End;
-	} else if (!ddr_ip_stats_ptr) {
-		swpm_dbg_log("ddr_ip_idx failure\n");
-		goto End;
-	}
 
 	get_ddr_act_times(ddr_freq_num, ddr_act_times_ptr);
 	get_ddr_sr_pd_times(ddr_sr_pd_times_ptr);
@@ -364,9 +369,11 @@ End:
 	kfree(ddr_act_times_ptr);
 	kfree(ddr_sr_pd_times_ptr);
 
-	for (i = 0; i < ddr_bc_ip_num; i++)
-		kfree(ddr_ip_stats_ptr[i].bc_stats);
-	kfree(ddr_ip_stats_ptr);
+	if (ddr_ip_stats_ptr) {
+		for (i = 0; i < ddr_bc_ip_num; i++)
+			kfree(ddr_ip_stats_ptr[i].bc_stats);
+		kfree(ddr_ip_stats_ptr);
+	}
 
 	return p - ToUser;
 }
@@ -387,11 +394,18 @@ static ssize_t swpm_sp_spm_sig_read(char *ToUser, size_t sz, void *priv)
 		return -EINVAL;
 
 	spm_res_sig_stats_ptr =
-	kmalloc(sizeof(struct res_sig_stats), GFP_KERNEL);
+	kzalloc(sizeof(struct res_sig_stats), GFP_KERNEL);
+
+	if (!spm_res_sig_stats_ptr)
+		goto END;
+
 	get_res_sig_stats(spm_res_sig_stats_ptr);
 
 	spm_res_sig_stats_ptr->res_sig_tbl =
-	kmalloc_array(spm_res_sig_stats_ptr->res_sig_num, sizeof(struct res_sig), GFP_KERNEL);
+	kcalloc(spm_res_sig_stats_ptr->res_sig_num,
+			sizeof(struct res_sig), GFP_KERNEL);
+	if (!spm_res_sig_stats_ptr->res_sig_tbl)
+		goto END;
 	spm_res_sig_ptr = spm_res_sig_stats_ptr->res_sig_tbl;
 
 	sync_latest_data();
@@ -409,8 +423,11 @@ static ssize_t swpm_sp_spm_sig_read(char *ToUser, size_t sz, void *priv)
 			spm_res_sig_ptr[i].time);
 	}
 
-	kfree(spm_res_sig_stats_ptr->res_sig_tbl);
-	kfree(spm_res_sig_stats_ptr);
+END:
+	if (spm_res_sig_stats_ptr) {
+		kfree(spm_res_sig_stats_ptr->res_sig_tbl);
+		kfree(spm_res_sig_stats_ptr);
+	}
 	return p - ToUser;
 }
 
