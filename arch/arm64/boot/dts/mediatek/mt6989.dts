@@ -9348,7 +9348,7 @@
 		};
 
 		gce: gce@1e980000 {
-			compatible = "mediatek,mt6897-gce";
+			compatible = "mediatek,mt6989-gce";
 			reg = <0 0x1e980000 0 0x4000>;
 			interrupts = <GIC_SPI 542 IRQ_TYPE_LEVEL_HIGH 0>;
 			#mbox-cells = <3>;
@@ -9373,14 +9373,14 @@
 			clock-names = "gce","gce-timer";
 			dma-mask-bit = <35>;
 			ddr-urgent;
-#if 0
-			mediatek,smi = <&smi_mdp_common>;
+			mtk,smmu-shared = <&mm_smmu_srt_normal>;
+			mtk,iommu-dma-axid = <SMMU_L48_GCE_DM>;
+			mediatek,smi = <&smi_mdp_common &mmsram_smi_2x1_sub_comm4>;
 			prebuilt-enable;
-#endif
 		};
 
 		gce_m: gce@1e990000 {
-			compatible = "mediatek,mt6897-gce";
+			compatible = "mediatek,mt6989-gce";
 			reg = <0 0x1e990000 0 0x4000>;
 			interrupts = <GIC_SPI 541 IRQ_TYPE_LEVEL_HIGH 0>;
 			#mbox-cells = <3>;
@@ -9404,10 +9404,10 @@
 			clock-names = "gce","gce-timer";
 			dma-mask-bit = <35>;
 			ddr-urgent;
-#if 0
-			mediatek,smi = <&smi_mdp_common>;
+			mtk,smmu-shared = <&mm_smmu_srt_normal>;
+			mtk,iommu-dma-axid = <SMMU_L48_GCE_MM>;
+			mediatek,smi = <&smi_mdp_common &mmsram_smi_2x1_sub_comm4>;
 			prebuilt-enable;
-#endif
 		};
 
 		cmdq-test {
