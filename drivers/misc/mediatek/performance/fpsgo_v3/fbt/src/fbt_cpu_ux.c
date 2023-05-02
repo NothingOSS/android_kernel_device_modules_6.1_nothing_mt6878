@@ -193,9 +193,6 @@ static void fbt_ux_set_cap_with_sbe(struct render_info *thr)
 			thr->dep_valid_size, thr->dep_arr, thr, 0);
 	fpsgo_put_fbt_mlock(__func__);
 
-	// overhead?
-	fbt_set_down_throttle_locked(0);
-
 	fbt_ux_set_cap(thr, local_min_cap, local_max_cap);
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, set_blc_wt, "[ux]perf_idx");
 }
@@ -364,7 +361,6 @@ void fpsgo_ux_reset(struct render_info *thr)
 		cur = next;
 	}
 
-	fbt_set_down_throttle_locked(-1);
 }
 
 void fpsgo_sbe2fbt_rescue(struct render_info *thr, int start, int enhance,
