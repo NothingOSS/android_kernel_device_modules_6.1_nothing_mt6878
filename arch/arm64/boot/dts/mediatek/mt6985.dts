@@ -12893,7 +12893,7 @@
 		scp-dram-region = "enable";   /* enable scp dram region manage */
 		scp-protect = "enable";   /* enable scp protections */
 		secure-dump = "enable";   /* enable dump via secure world*/
-		secure-dump-size = <0x480000>;
+		secure-dump-size = <0x580000>;
 		scp-pm-notify = "enable";
 
 		//scp_aovmem_key = "mediatek,scp_aov_reserved";
