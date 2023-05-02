@@ -64,6 +64,7 @@ mgk_64_k61_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:camsys",
     "//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie",
+	"//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-v4l2:mtk_imgsensor",
 ]
 
 
@@ -260,8 +261,6 @@ mgk_64_k61_device_modules = [
     "drivers/misc/mediatek/gzvm/gzvm.ko",
     "drivers/misc/mediatek/hw_sem/mtk-hw-semaphore.ko",
     "drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko",
-    "drivers/misc/mediatek/imgsensor/src-v4l2/imgsensor-glue/imgsensor-glue.ko",
-    "drivers/misc/mediatek/imgsensor/src-v4l2/imgsensor.ko",
     "drivers/misc/mediatek/iommu/iommu_debug.ko",
     "drivers/misc/mediatek/iommu/iommu_engine.ko",
     "drivers/misc/mediatek/iommu/iommu_secure.ko",
