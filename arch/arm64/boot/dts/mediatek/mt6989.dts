@@ -6842,6 +6842,7 @@
 			aov-log-buf-sz = <0x100000>;
 			enable-interrupt = <0x1>;
 			access-rcx-in-atf = <0x1>;
+			interrupt-lbc-sz = <0x80000>;
 		};
 
 		remoteproc_ccd: remoteproc-ccd {
