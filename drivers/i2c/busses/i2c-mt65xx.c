@@ -26,6 +26,7 @@
 #include <linux/scatterlist.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
+#include <linux/spinlock.h>
 
 #define I2C_CONFERR			(1 << 9)
 #define I2C_RS_TRANSFER			(1 << 4)
@@ -102,6 +103,7 @@
 #define I2C_MCU_INTR_EN         0x1
 #define I2C_FIFO_DATA_LEN_MASK	0x001f
 #define MAX_POLLING_CNT		10
+#define SCP_WAKE_TIMEOUT	30
 
 #define I2C_DRV_NAME		"i2c-mt65xx"
 
@@ -274,6 +276,17 @@ struct mtk_i2c_ac_timing {
 	u16 sda_timing;
 };
 
+struct scp_wake_info {
+	unsigned int phyaddr;
+	unsigned int wakeup_mask;
+	unsigned int notsleep_mask;
+	unsigned int sleep_reg;
+	unsigned int sleep_stat;
+	unsigned int awake;
+	int count;
+	spinlock_t lock;
+};
+
 struct mtk_i2c {
 	struct i2c_adapter adap;	/* i2c host adapter */
 	struct device *dev;
@@ -306,6 +319,7 @@ struct mtk_i2c {
 	bool master_code_sended;
 	struct mtk_i2c_ac_timing ac_timing;
 	const struct mtk_i2c_compatible *dev_comp;
+	struct scp_wake_info scp_wake;
 };
 
 /**
@@ -1094,6 +1108,116 @@ static void mtk_i2c_dump_reg(struct mtk_i2c *i2c)
 			(readl(i2c->pdmabase + OFFSET_RX_4G_MODE)));
 }
 
+int scp_wake_request(struct i2c_adapter *adap)
+{
+	unsigned long flags;
+	int ret = -1;
+	u32 reg = 0;
+	unsigned int delay = 0;
+	void __iomem *scp_remap_addr = NULL;
+	struct mtk_i2c *i2c = i2c_get_adapdata(adap);
+
+	if (!i2c->scp_wake.wakeup_mask || !i2c->scp_wake.notsleep_mask ||
+			!i2c->scp_wake.phyaddr) {
+		dev_info(i2c->dev, "scp_wake init fail.\n");
+		return ret;
+	}
+
+	spin_lock_irqsave(&i2c->scp_wake.lock, flags);
+
+	scp_remap_addr = ioremap(i2c->scp_wake.phyaddr, 0x100);
+	if (!scp_remap_addr) {
+		dev_info(i2c->dev, "%s: scp_remap_addr(0x%x) ioremap fail.\n",
+				__func__, i2c->scp_wake.phyaddr);
+		goto err;
+	}
+
+	if (i2c->scp_wake.count == 0) {
+		writel((readl(scp_remap_addr + i2c->scp_wake.sleep_reg)
+			| i2c->scp_wake.wakeup_mask), scp_remap_addr + i2c->scp_wake.sleep_reg);
+
+		delay = SCP_WAKE_TIMEOUT;
+		do {
+			delay--;
+			reg = readl(scp_remap_addr + i2c->scp_wake.sleep_stat);
+			if ((reg & i2c->scp_wake.notsleep_mask) == i2c->scp_wake.awake)
+				break;
+			udelay(20);
+		} while (delay);
+
+		if ((reg & i2c->scp_wake.notsleep_mask) != i2c->scp_wake.awake) {
+			dev_info(i2c->dev, "wait scp wakeup timeout, sleep_stat=0x%x\n", reg);
+			iounmap(scp_remap_addr);
+			goto err;
+		} else {
+			i2c->scp_wake.count++;
+			dev_dbg(i2c->dev, "scp wakeup success, sleep_stat=0x%x, count=%d\n",
+				reg, i2c->scp_wake.count);
+			ret = 0;
+		}
+	} else if (i2c->scp_wake.count > 0) {
+		i2c->scp_wake.count++;
+		dev_dbg(i2c->dev, "scp is awake, count=%d\n", i2c->scp_wake.count);
+		ret = 0;
+	} else {
+		dev_info(i2c->dev, "scp wake count value invalid\n");
+	}
+
+	iounmap(scp_remap_addr);
+
+err:
+	spin_unlock_irqrestore(&i2c->scp_wake.lock, flags);
+	return ret;
+}
+EXPORT_SYMBOL(scp_wake_request);
+
+int scp_wake_release(struct i2c_adapter *adap)
+{
+	unsigned long flags;
+	int ret = -1;
+	void __iomem *scp_remap_addr = NULL;
+	struct mtk_i2c *i2c = i2c_get_adapdata(adap);
+
+	if (!i2c->scp_wake.wakeup_mask || !i2c->scp_wake.notsleep_mask ||
+			!i2c->scp_wake.phyaddr) {
+		dev_info(i2c->dev, "scp_release init fail.\n");
+		return ret;
+	}
+
+	spin_lock_irqsave(&i2c->scp_wake.lock, flags);
+
+	scp_remap_addr = ioremap(i2c->scp_wake.phyaddr, 0x100);
+	if (!scp_remap_addr) {
+		dev_info(i2c->dev, "%s: scp_remap_addr(0x%x) ioremap fail.\n",
+				__func__, i2c->scp_wake.phyaddr);
+		goto err;
+	}
+
+	if (i2c->scp_wake.count == 0) {
+		dev_info(i2c->dev, "please request scp first!\n");
+		iounmap(scp_remap_addr);
+		goto err;
+	} else if (i2c->scp_wake.count > 0) {
+		i2c->scp_wake.count--;
+		dev_dbg(i2c->dev, "scp release count=%d\n", i2c->scp_wake.count);
+		if (!i2c->scp_wake.count) {
+			writel((readl(scp_remap_addr + i2c->scp_wake.sleep_reg)
+			& ~(i2c->scp_wake.wakeup_mask)), scp_remap_addr + i2c->scp_wake.sleep_reg);
+			dev_dbg(i2c->dev, "scp release success.\n");
+		}
+		ret = 0;
+	} else {
+		dev_info(i2c->dev, "scp wake count value invalid\n");
+	}
+
+	iounmap(scp_remap_addr);
+
+err:
+	spin_unlock_irqrestore(&i2c->scp_wake.lock, flags);
+	return ret;
+}
+EXPORT_SYMBOL(scp_wake_release);
+
 static int mtk_i2c_do_transfer(struct mtk_i2c *i2c, struct i2c_msg *msgs,
 			       int num, int left_num)
 {
@@ -1678,6 +1802,50 @@ static int mtk_i2c_parse_dt(struct device_node *np, struct mtk_i2c *i2c)
 	of_property_read_u32(np, "scl-gpio-id", &i2c->scl_gpio_id);
 	of_property_read_u32(np, "sda-gpio-id", &i2c->sda_gpio_id);
 
+	if (i2c->ch_offset_i2c == I2C_OFFSET_SCP) {
+		ret = of_property_read_u32_index(np, "scp-wake", 0, &i2c->scp_wake.phyaddr);
+		if (ret < 0) {
+			dev_info(i2c->dev, "read scp_wake base address fail, ret = %d\n", ret);
+			i2c->scp_wake.phyaddr = 0;
+			return ret;
+		}
+
+		ret = of_property_read_u32_index(np, "scp-wake", 1, &i2c->scp_wake.wakeup_mask);
+		if (ret < 0) {
+			dev_info(i2c->dev, "read scp_wake wakeup_mask fail, ret = %d\n", ret);
+			i2c->scp_wake.wakeup_mask = 0;
+			return ret;
+		}
+
+		ret = of_property_read_u32_index(np, "scp-wake", 2, &i2c->scp_wake.notsleep_mask);
+		if (ret < 0) {
+			dev_info(i2c->dev, "read scp_wake notsleep_mask fail, ret = %d\n", ret);
+			i2c->scp_wake.notsleep_mask = 0;
+			return ret;
+		}
+
+		ret = of_property_read_u32(np, "sleep-reg-offset", &i2c->scp_wake.sleep_reg);
+		if (ret < 0) {
+			dev_info(i2c->dev, "read sleep-reg-offset fail, ret = %d\n", ret);
+			i2c->scp_wake.sleep_reg = 0;
+			return ret;
+		}
+
+		ret = of_property_read_u32(np, "sleep-stat-offset", &i2c->scp_wake.sleep_stat);
+		if (ret < 0) {
+			dev_info(i2c->dev, "read sleep-stat-offset fail, ret = %d\n", ret);
+			i2c->scp_wake.sleep_stat = 0;
+			return ret;
+		}
+
+		ret = of_property_read_u32(np, "scp-awake", &i2c->scp_wake.awake);
+		if (ret < 0) {
+			dev_info(i2c->dev, "read scp-awake fail, ret = %d\n", ret);
+			i2c->scp_wake.awake = 0;
+			return ret;
+		}
+	}
+
 	return 0;
 }
 
@@ -1718,6 +1886,7 @@ static int mtk_i2c_probe(struct platform_device *pdev)
 	i2c->adap.quirks = i2c->dev_comp->quirks;
 	i2c->adap.timeout = 2 * HZ;
 	i2c->adap.retries = 1;
+	i2c->scp_wake.count = 0;
 	i2c->adap.bus_regulator = devm_regulator_get_optional(&pdev->dev, "vbus");
 	if (IS_ERR(i2c->adap.bus_regulator)) {
 		if (PTR_ERR(i2c->adap.bus_regulator) == -ENODEV)
