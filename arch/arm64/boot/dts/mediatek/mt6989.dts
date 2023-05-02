@@ -8711,6 +8711,8 @@
 			comp-names = "rdma0";
 			event-frame-done = /bits/ 16
 				<CMDQ_EVENT_MMLSYS1_MDP_RDMA0_FRAME_DONE>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
 		};
 
 		mml_hdr0: mml-hdr0@1f805000 {
@@ -8783,6 +8785,8 @@
 			event-bufb = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_BUFB>;
 			event-buf-next = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_BUF_NEXT>;
 			inlinerot = <&inlinerot0>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
 		};
 
 		mml_rdma2: mml-rdma2@1f811000 {
@@ -8795,6 +8799,8 @@
 			comp-names = "rdma2";
 			event-frame-done = /bits/ 16
 				<CMDQ_EVENT_MMLSYS1_MDP_RDMA2_FRAME_DONE>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
 		};
 
 		mml_rsz2: mml-rsz2@1f813000 {
@@ -8816,6 +8822,8 @@
 			comp-names = "wrot2";
 			event-frame-done = /bits/ 16
 				<CMDQ_EVENT_MMLSYS1_MDP_WROT2_FRAME_DONE>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
 		};
 
 		hre-top-mdpsys@1f817000 {
@@ -8843,6 +8851,8 @@
 			pipe = /bits/ 8 <0>;
 			event-frame-done = /bits/ 16
 				<CMDQ_EVENT_MMLSYS1_MDP_RROT0_FRAME_DONE>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
 		};
 
 		mml_rrot0_2nd: mml-rrot0-2nd-bbse@1f81b000 {
@@ -8856,6 +8866,8 @@
 			pipe = /bits/ 8 <1>;
 			event-frame-done = /bits/ 16
 				<CMDQ_EVENT_MMLSYS1_MDP_RROT0_2ND_FRAME_DONE>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
 		};
 
 		mml_merge0: mml-merge0-bcse@1f81c000 {
@@ -8883,6 +8895,8 @@
 			clock-names = "fg0";
 			comp-ids = <MML_FG0>;
 			comp-names = "fg0";
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
 		};
 
 		uarthub: uarthub@11005000 {
