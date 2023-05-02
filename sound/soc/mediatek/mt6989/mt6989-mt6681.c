@@ -221,7 +221,7 @@ static int mt6989_mt6681_mtkaif_calibration(struct snd_soc_pcm_runtime *rtd)
 	int phase;
 	unsigned int monitor = 0;
 	int test_done_1, test_done_2, test_done_3;
-	int miso0_need_calib, miso1_need_calib, miso2_need_calib;
+	int miso0_need_calib, miso1_need_calib, miso2_need_calib = 0;
 	int cycle_1, cycle_2, cycle_3;
 	int prev_cycle_1, prev_cycle_2, prev_cycle_3;
 	int counter;
@@ -233,7 +233,6 @@ static int mt6989_mt6681_mtkaif_calibration(struct snd_soc_pcm_runtime *rtd)
 
 	miso0_need_calib = mt6989_afe_gpio_is_prepared(MT6989_AFE_GPIO_DAT_MISO0_ON);
 	miso1_need_calib = mt6989_afe_gpio_is_prepared(MT6989_AFE_GPIO_DAT_MISO1_ON);
-	miso2_need_calib = mt6989_afe_gpio_is_prepared(MT6989_AFE_GPIO_DAT_MISO2_ON);
 
 	mt6989_afe_gpio_request(afe, true, MT6989_DAI_ADDA, 1);
 	mt6989_afe_gpio_request(afe, true, MT6989_DAI_ADDA, 0);

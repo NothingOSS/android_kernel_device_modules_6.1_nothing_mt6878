@@ -24,18 +24,10 @@ static struct audio_gpio_attr aud_gpios[MT6989_AFE_GPIO_GPIO_NUM] = {
 	[MT6989_AFE_GPIO_DAT_MISO0_ON] = {"aud-dat-miso0-on", false, NULL},
 	[MT6989_AFE_GPIO_DAT_MISO1_OFF] = {"aud-dat-miso1-off", false, NULL},
 	[MT6989_AFE_GPIO_DAT_MISO1_ON] = {"aud-dat-miso1-on", false, NULL},
-	[MT6989_AFE_GPIO_DAT_MISO2_OFF] = {"aud-dat-miso2-off", false, NULL},
-	[MT6989_AFE_GPIO_DAT_MISO2_ON] = {"aud-dat-miso2-on", false, NULL},
 	[MT6989_AFE_GPIO_DAT_MOSI_OFF] = {"aud-dat-mosi-off", false, NULL},
 	[MT6989_AFE_GPIO_DAT_MOSI_ON] = {"aud-dat-mosi-on", false, NULL},
-	[MT6989_AFE_GPIO_I2SIN0_OFF] = {"aud-gpio-i2sin0-off", false, NULL},
-	[MT6989_AFE_GPIO_I2SIN0_ON] = {"aud-gpio-i2sin0-on", false, NULL},
-	[MT6989_AFE_GPIO_I2SOUT0_OFF] = {"aud-gpio-i2sout0-off", false, NULL},
-	[MT6989_AFE_GPIO_I2SOUT0_ON] = {"aud-gpio-i2sout0-on", false, NULL},
-	[MT6989_AFE_GPIO_VOW_DAT_OFF] = {"vow-dat-miso-off", false, NULL},
-	[MT6989_AFE_GPIO_VOW_DAT_ON] = {"vow-dat-miso-on", false, NULL},
-	[MT6989_AFE_GPIO_VOW_CLK_OFF] = {"vow-clk-miso-off", false, NULL},
-	[MT6989_AFE_GPIO_VOW_CLK_ON] = {"vow-clk-miso-on", false, NULL},
+	[MT6989_AFE_GPIO_I2SOUT4_OFF] = {"aud-gpio-i2sout4-off", false, NULL},
+	[MT6989_AFE_GPIO_I2SOUT4_ON] = {"aud-gpio-i2sout4-on", false, NULL},
 	[MT6989_AFE_GPIO_DAT_MOSI_CH34_OFF] = {"aud-dat-mosi-ch34-off",
 		false, NULL
 	},
@@ -115,23 +107,12 @@ static int mt6989_afe_gpio_adda_dl(struct mtk_base_afe *afe, bool enable)
 
 static int mt6989_afe_gpio_adda_ul(struct mtk_base_afe *afe, bool enable)
 {
-	int ret = 0;
-
-	if (mt6989_afe_gpio_is_prepared(MT6989_AFE_GPIO_DAT_MISO0_ON)) {
-		ret = mt6989_afe_gpio_select(afe, enable ?
-					     MT6989_AFE_GPIO_DAT_MISO0_ON :
-					     MT6989_AFE_GPIO_DAT_MISO0_OFF);
-		/* if error happened, skip miso1 select */
-		if (ret)
-			return ret;
-	}
-
-	if (mt6989_afe_gpio_is_prepared(MT6989_AFE_GPIO_DAT_MISO1_ON))
-		ret = mt6989_afe_gpio_select(afe, enable ?
-					     MT6989_AFE_GPIO_DAT_MISO1_ON :
-					     MT6989_AFE_GPIO_DAT_MISO1_OFF);
-
-	return ret;
+	if (enable)
+		return mt6989_afe_gpio_select(afe,
+					      MT6989_AFE_GPIO_DAT_MISO0_ON);
+	else
+		return mt6989_afe_gpio_select(afe,
+					      MT6989_AFE_GPIO_DAT_MISO0_OFF);
 }
 
 static int mt6989_afe_gpio_adda_ch34_dl(struct mtk_base_afe *afe, bool enable)
@@ -148,10 +129,10 @@ static int mt6989_afe_gpio_adda_ch34_ul(struct mtk_base_afe *afe, bool enable)
 {
 	if (enable)
 		return mt6989_afe_gpio_select(afe,
-					      MT6989_AFE_GPIO_DAT_MISO2_ON);
+					      MT6989_AFE_GPIO_DAT_MISO0_ON);
 	else
 		return mt6989_afe_gpio_select(afe,
-					      MT6989_AFE_GPIO_DAT_MISO2_OFF);
+					      MT6989_AFE_GPIO_DAT_MISO0_OFF);
 }
 
 int mt6989_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
@@ -172,30 +153,23 @@ int mt6989_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
 			mt6989_afe_gpio_adda_ch34_dl(afe, enable);
 		break;
 	case MT6989_DAI_I2S_IN0:
-		if (enable)
-			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SIN0_ON);
-		else
-			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SIN0_OFF);
 		break;
 	case MT6989_DAI_I2S_OUT0:
+		break;
+	case MT6989_DAI_I2S_IN4:
+		if (enable)
+			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SIN4_ON);
+		else
+			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SIN4_OFF);
+		break;
+	case MT6989_DAI_I2S_OUT4:
 		if (enable) {
-			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SIN0_ON);
-			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SOUT0_ON);
+			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SIN4_ON);
+			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SOUT4_ON);
 		} else
-			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SOUT0_OFF);
+			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SOUT4_OFF);
 		break;
 	case MT6989_DAI_VOW:
-		if (enable) {
-			mt6989_afe_gpio_select(afe,
-					       MT6989_AFE_GPIO_VOW_CLK_ON);
-			mt6989_afe_gpio_select(afe,
-					       MT6989_AFE_GPIO_VOW_DAT_ON);
-		} else {
-			mt6989_afe_gpio_select(afe,
-					       MT6989_AFE_GPIO_VOW_CLK_OFF);
-			mt6989_afe_gpio_select(afe,
-					       MT6989_AFE_GPIO_VOW_DAT_OFF);
-		}
 		break;
 	default:
 		mutex_unlock(&gpio_request_mutex);
