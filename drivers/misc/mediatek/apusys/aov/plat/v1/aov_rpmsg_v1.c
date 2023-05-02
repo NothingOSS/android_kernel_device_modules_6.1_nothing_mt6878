@@ -18,11 +18,26 @@
 
 #include "mdw_rv_msg.h"
 #include "apu_ipi.h"
+#include "npu_scp_ipi.h"
 
-#include "aov_rpmsg.h"
-#include "aov_recovery.h"
+#include "aov_rpmsg_v1.h"
+#include "aov_recovery_v1.h"
 
 #define MDW_TIMEOUT_MS (100)
+
+#define MDW_SCP_IPI_BUSY (16)
+
+enum npu_scp_np_mdw_action {
+	NPU_SCP_NP_MDW_ACK,
+	NPU_SCP_NP_MDW_TO_APMCU,
+	NPU_SCP_NP_MDW_TO_SCP,
+};
+
+enum aov_apu_recovery_status {
+	AOV_APU_INIT = 0,
+	AOV_APU_RECOVERING,
+	AOV_APU_RECOVER_DONE,
+};
 
 struct aov_rpmsg_ctx {
 	struct rpmsg_endpoint *ept;
@@ -41,7 +56,7 @@ struct aov_rpmsg_ctx {
 
 static struct aov_rpmsg_ctx *rpmsg_ctx;
 
-int aov_rpmsg_send(uint32_t param)
+static int aov_rpmsg_send(uint32_t param)
 {
 	if (!rpmsg_ctx)
 		return -ENODEV;
@@ -52,7 +67,7 @@ int aov_rpmsg_send(uint32_t param)
 	return 0;
 }
 
-int scp_mdw_handler(struct npu_scp_ipi_param *recv_msg)
+static int scp_mdw_handler(struct npu_scp_ipi_param *recv_msg)
 {
 	int ret = 0;
 
@@ -217,7 +232,7 @@ static int aov_rpmsg_probe(struct rpmsg_device *rpdev)
 	sched_set_fifo(rpmsg_ctx->scp_tx_worker);
 	wake_up_process(rpmsg_ctx->scp_tx_worker);
 
-	pr_info("%s ---\n", __func__);
+	npu_scp_ipi_register_handler(NPU_SCP_NP_MDW, scp_mdw_handler, NULL);
 
 	return 0;
 
@@ -252,12 +267,12 @@ static int aov_rpmsg_callback(struct rpmsg_device *rpdev, void *data, int len, v
 
 static void aov_rpmsg_remove(struct rpmsg_device *rpdev)
 {
-	pr_info("%s +++\n", __func__);
-
 	if (!rpmsg_ctx) {
 		pr_info("%s aov rpmsg context is not available\n", __func__);
 		return;
 	}
+
+	npu_scp_ipi_unregister_handler(NPU_SCP_NP_MDW);
 
 	complete_all(&rpmsg_ctx->notify_tx_apu);
 	kthread_stop(rpmsg_ctx->apu_tx_worker);
@@ -269,7 +284,7 @@ static void aov_rpmsg_remove(struct rpmsg_device *rpdev)
 
 	rpmsg_ctx = NULL;
 
-	pr_info("%s ---\n", __func__);
+	pr_info("%s removed\n", __func__);
 }
 
 static const struct of_device_id apu_aov_rpmsg_of_match[] = {
@@ -288,20 +303,18 @@ static struct rpmsg_driver aov_rpmsg_driver = {
 	.remove = aov_rpmsg_remove,
 };
 
-int aov_rpmsg_init(void)
+int aov_rpmsg_v1_init(void)
 {
 	int ret = 0;
 
-	pr_info("%s +++\n", __func__);
 	ret = register_rpmsg_driver(&aov_rpmsg_driver);
 	if (ret)
 		pr_info("%s Failed to register aov rpmsg driver, ret %d\n", __func__, ret);
-	pr_info("%s ---\n", __func__);
 
 	return ret;
 }
 
-void aov_rpmsg_exit(void)
+void aov_rpmsg_v1_exit(void)
 {
 	unregister_rpmsg_driver(&aov_rpmsg_driver);
 }

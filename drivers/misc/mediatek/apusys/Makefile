@@ -303,11 +303,15 @@ obj-$(CONFIG_MTK_APUSYS_SUPPORT) += sapu/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/power/3.0/inc/
 
 # aov
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/aov
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc
 AOV_SRC := aov/aov_init.o
-AOV_SRC += aov/aov_rpmsg.o
-AOV_SRC += aov/aov_recovery.o
+AOV_SRC += aov/plat/v1/aov_rpmsg_v1.o
+AOV_SRC += aov/plat/v1/aov_recovery_v1.o
+AOV_SRC += aov/plat/v2/aov_mem_service_v2.o
+AOV_SRC += aov/plat/v2/aov_recovery_v2.o
+AOV_SRC += aov/plat/aov_plat.o
 
 obj-$(CONFIG_MTK_APUSYS_SUPPORT) += apu_aov.o
 apu_aov-objs = $(AOV_SRC)

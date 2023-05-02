@@ -3,6 +3,7 @@
  * Copyright (c) 2020 MediaTek Inc.
  */
 
+#include <asm-generic/errno-base.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -16,17 +17,17 @@
 #include <scp.h>
 #include "slbc_ops.h"
 
+#include "plat/aov_plat.h"
 #include "npu_scp_ipi.h"
-#include "aov_rpmsg.h"
-#include "aov_recovery.h"
 
 #define MAX_DEBUG_CMD_SIZE (1024)
 
-#define APUSYS_AOV_KVERSION "v1.1.0.1-ko"
+#define APUSYS_AOV_KVERSION "v2.0.0.0-ko"
 
 #define STATE_TIMEOUT_MS (20)
 
 struct apusys_aov_ctx {
+	const unsigned int *version;
 	atomic_t aov_enabled;
 	struct device *dev;
 	struct completion comp;
@@ -35,10 +36,14 @@ struct apusys_aov_ctx {
 	atomic_t response_arrived;
 	struct dentry *dbg_dir;
 	struct dentry *dbg_node;
+	npu_scp_ipi_handler top_halves[NPU_SCP_IPI_CMD_END];
 };
 
 static struct apusys_aov_ctx *aov_ctx;
 static struct dentry *apusys_dbg_root;
+
+static const unsigned int version_number_1 = 1;
+static const unsigned int version_number_2 = 2;
 
 static int apusys_aov_test_show(struct seq_file *s, void *unused)
 {
@@ -133,7 +138,7 @@ static int apusys_aov_start_testcase(struct seq_file *s, struct apusys_aov_ctx *
 }
 
 static int apusys_aov_stop_testcase(struct seq_file *s, struct apusys_aov_ctx *ctx,
-				     unsigned int testcase)
+				    unsigned int testcase)
 {
 	struct npu_scp_ipi_param send_msg = { 0, 0, 0, 0 };
 	struct npu_scp_ipi_param recv_msg = { 0, 0, 0, 0 };
@@ -282,8 +287,16 @@ static const struct file_operations apusys_aov_test_fops = {
 	.release	= single_release,
 };
 
-static int npu_system_handler(struct apusys_aov_ctx *ctx, struct npu_scp_ipi_param *param)
+static int npu_system_handler(struct npu_scp_ipi_param *param)
 {
+	struct apusys_aov_ctx *ctx = NULL;
+
+	ctx = aov_ctx;
+	if (!ctx) {
+		pr_info("%s apusys aov context is not available\n", __func__);
+		return -ENODEV;
+	}
+
 	switch (param->act) {
 	case NPU_SCP_SYSTEM_FUNCTION_ENABLE:
 		atomic_set(&ctx->aov_enabled, 1);
@@ -301,12 +314,29 @@ static int npu_system_handler(struct apusys_aov_ctx *ctx, struct npu_scp_ipi_par
 	return 0;
 }
 
+static int npu_response_arrived(struct npu_scp_ipi_param *param)
+{
+	struct apusys_aov_ctx *ctx = NULL;
+
+	ctx = aov_ctx;
+	if (!ctx) {
+		pr_info("%s apusys aov context is not available\n", __func__);
+		return -ENODEV;
+	}
+
+	atomic_set(&ctx->response_arrived, 1);
+	complete(&ctx->comp);
+
+	return 0;
+}
+
 int npu_scp_ipi_send(struct npu_scp_ipi_param *send_msg, struct npu_scp_ipi_param *ret_msg,
 		     uint32_t timeout_ms)
 {
-	struct apusys_aov_ctx *ctx = aov_ctx;
+	struct apusys_aov_ctx *ctx = NULL;
 	int ret = 0;
 
+	ctx = aov_ctx;
 	if (!ctx) {
 		pr_info("%s apusys aov context is not available\n", __func__);
 		return -ENODEV;
@@ -371,31 +401,21 @@ static int npu_scp_ipi_callback(unsigned int id, void *prdata, void *data, unsig
 		return -EINVAL;
 	}
 
+	if (recv_msg->cmd <= NPU_SCP_IPI_CMD_START || recv_msg->cmd >= NPU_SCP_IPI_CMD_END) {
+		pr_info("%s unknown cmd %d\n", __func__, recv_msg->cmd);
+		return -EINVAL;
+	}
+
 	ctx->npu_scp_msg.cmd = recv_msg->cmd;
 	ctx->npu_scp_msg.act = recv_msg->act;
 	ctx->npu_scp_msg.arg = recv_msg->arg;
 	ctx->npu_scp_msg.ret = recv_msg->ret;
 
-	switch (recv_msg->cmd) {
-	case NPU_SCP_RESPONSE:
-		atomic_set(&ctx->response_arrived, 1);
-		complete(&ctx->comp);
-		ret = 0;
-		break;
-	case NPU_SCP_SYSTEM:
-		ret = npu_system_handler(ctx, recv_msg);
-		break;
-	case NPU_SCP_NP_MDW:
-		ret = scp_mdw_handler(recv_msg);
-		break;
-	case NPU_SCP_RECOVERY:
-		ret = aov_recovery_handler(recv_msg);
-		break;
-	default:
-		dev_info(ctx->dev, "%s get undefined cmd %d\n", __func__, recv_msg->cmd);
-		ret = -EINVAL;
-		break;
-	}
+	if (ctx->top_halves[recv_msg->cmd])
+		ret = ctx->top_halves[recv_msg->cmd](recv_msg);
+	else
+		dev_info(ctx->dev, "%s No callback available for cmd %d\n",
+			 __func__, recv_msg->cmd);
 
 	if (ret)
 		dev_info(ctx->dev, "%s ERROR, cmd %d ret %d\n", __func__, recv_msg->cmd, ret);
@@ -403,10 +423,62 @@ static int npu_scp_ipi_callback(unsigned int id, void *prdata, void *data, unsig
 	return 0;
 }
 
+int npu_scp_ipi_register_handler(enum npu_scp_ipi_cmd id, const npu_scp_ipi_handler top_half,
+				 const npu_scp_ipi_handler buttom_half)
+{
+	struct apusys_aov_ctx *ctx = NULL;
+	(void)buttom_half;
+
+	ctx = aov_ctx;
+	if (!ctx) {
+		pr_info("%s apusys aov context is not available\n", __func__);
+		return -ENODEV;
+	}
+
+	if (id <= NPU_SCP_IPI_CMD_START || id >= NPU_SCP_IPI_CMD_END)
+		return -EINVAL;
+
+	mutex_lock(&ctx->scp_ipi_lock);
+
+	if (top_half != NULL) {
+		if (ctx->top_halves[id] != NULL)
+			dev_info(ctx->dev, "%s already registered a top half for cmd %d\n",
+				 __func__, id);
+
+		ctx->top_halves[id] = top_half;
+	}
+
+	mutex_unlock(&ctx->scp_ipi_lock);
+
+	return 0;
+}
+
+int npu_scp_ipi_unregister_handler(enum npu_scp_ipi_cmd id)
+{
+	struct apusys_aov_ctx *ctx = NULL;
+
+	ctx = aov_ctx;
+	if (!ctx) {
+		pr_info("%s apusys aov context is not available\n", __func__);
+		return -ENODEV;
+	}
+
+	if (id <= NPU_SCP_IPI_CMD_START || id >= NPU_SCP_IPI_CMD_END)
+		return -EINVAL;
+
+	mutex_lock(&ctx->scp_ipi_lock);
+
+	ctx->top_halves[id] = NULL;
+
+	mutex_unlock(&ctx->scp_ipi_lock);
+
+	return 0;
+}
+
 static int apusys_aov_probe(struct platform_device *pdev)
 {
-	struct apusys_aov_ctx *ctx;
-	int ret;
+	struct apusys_aov_ctx *ctx = NULL;
+	int ret = 0;
 
 	dev_info(&pdev->dev, "%s version %s\n", __func__, APUSYS_AOV_KVERSION);
 
@@ -414,7 +486,7 @@ static int apusys_aov_probe(struct platform_device *pdev)
 	if (!ctx)
 		return -ENOMEM;
 
-	atomic_set(&ctx->aov_enabled, 0);
+	atomic_set(&ctx->aov_enabled, 1); // 1 for DEBUG! default is 0
 	atomic_set(&ctx->response_arrived, 0);
 	mutex_init(&ctx->scp_ipi_lock);
 
@@ -436,58 +508,93 @@ static int apusys_aov_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, ctx);
 	aov_ctx = ctx;
 
-	dev_info(&pdev->dev, "%s Successfully\n", __func__);
+	npu_scp_ipi_register_handler(NPU_SCP_SYSTEM, npu_system_handler, NULL);
 
-	return ret;
-}
+	npu_scp_ipi_register_handler(NPU_SCP_RESPONSE, npu_response_arrived, NULL);
 
-static int apusys_aov_suspend_late(struct device *dev)
-{
-	struct platform_device *pdev = to_platform_device(dev);
-	struct apusys_aov_ctx *ctx = platform_get_drvdata(pdev);
-	struct npu_scp_ipi_param send_msg = { 0, 0, 0, 0 };
-	int ret, retry_cnt = 10;
-
-	if (!atomic_read(&ctx->aov_enabled)) {
-		dev_dbg(ctx->dev, "%s aov is disabled\n", __func__);
-		return 0;
+	ctx->version = (const unsigned int *)of_device_get_match_data(&pdev->dev);
+	if (!ctx->version) {
+		dev_info(&pdev->dev, "%s Fail to get apusys_aov version\n", __func__);
+		return -EFAULT;
 	}
 
-	do {
-		send_msg.cmd = NPU_SCP_STATE_CHANGE;
-		send_msg.act = NPU_SCP_STATE_CHANGE_TO_SUSPEND;
-		ret = npu_scp_ipi_send(&send_msg, NULL, STATE_TIMEOUT_MS);
-		if (ret)
-			dev_info(ctx->dev, "%s failed to send scp ipi, ret %d\n", __func__, ret);
-	} while (ret != 0 && retry_cnt-- > 0);
+	ret = aov_plat_init(*ctx->version);
+	if (ret) {
+		dev_info(&pdev->dev, "%s Failed to init apusys aov platform, ret %d\n",
+			__func__, ret);
+		return ret;
+	}
 
-	dev_info(ctx->dev, "%s send suspend done\n", __func__);
+	dev_info(&pdev->dev, "%s Successfully\n", __func__);
 
 	return 0;
 }
 
-static int apusys_aov_resume_early(struct device *dev)
+static int apusys_aov_remove(struct platform_device *pdev)
+{
+	struct apusys_aov_ctx *ctx = platform_get_drvdata(pdev);
+
+	if (ctx->version)
+		aov_plat_exit(*ctx->version);
+
+	npu_scp_ipi_unregister_handler(NPU_SCP_RESPONSE);
+	npu_scp_ipi_unregister_handler(NPU_SCP_SYSTEM);
+
+	complete_all(&ctx->comp);
+
+	debugfs_remove_recursive(ctx->dbg_dir);
+
+	aov_ctx = NULL;
+
+	return 0;
+}
+
+static int apusys_aov_state_change(enum npu_scp_state_change_action state)
+{
+	struct npu_scp_ipi_param send_msg = { 0, 0, 0, 0 };
+	int ret;
+
+	send_msg.cmd = NPU_SCP_STATE_CHANGE;
+	send_msg.act = state;
+	ret = npu_scp_ipi_send(&send_msg, NULL, STATE_TIMEOUT_MS);
+	if (ret)
+		pr_info("%s failed to send scp ipi, ret %d\n", __func__, ret);
+
+	return ret;
+}
+
+static int apusys_aov_prepare(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct apusys_aov_ctx *ctx = platform_get_drvdata(pdev);
-	struct npu_scp_ipi_param send_msg = { 0, 0, 0, 0 };
-	int ret, retry_cnt = 10;
 
-	if (!atomic_read(&ctx->aov_enabled)) {
-		dev_dbg(ctx->dev, "%s aov is disabled\n", __func__);
+	if (!ctx)
 		return 0;
-	}
 
-	do {
-		send_msg.cmd = NPU_SCP_STATE_CHANGE;
-		send_msg.act = NPU_SCP_STATE_CHANGE_TO_RESUME;
-		ret = npu_scp_ipi_send(&send_msg, NULL, STATE_TIMEOUT_MS);
-		if (ret)
-			dev_info(ctx->dev, "%s failed to send scp ipi, ret %d\n", __func__, ret);
-	} while (ret != 0 && retry_cnt-- > 0);
+	if (!atomic_read(&ctx->aov_enabled))
+		return 0;
 
-	if (ret) {
-		// If SCP is not responding, then release SLB anyway.
+	if (apusys_aov_state_change(NPU_SCP_STATE_CHANGE_TO_TRANSITION))
+		dev_info(ctx->dev, "%s failed to change to transition\n", __func__);
+
+	dev_dbg(ctx->dev, "%s prepare done\n", __func__);
+
+	return 0;
+}
+
+static void apusys_aov_complete(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct apusys_aov_ctx *ctx = platform_get_drvdata(pdev);
+
+	if (!ctx)
+		return;
+
+	if (!atomic_read(&ctx->aov_enabled))
+		return;
+
+	if (apusys_aov_state_change(NPU_SCP_STATE_CHANGE_TO_RESUME)) {
+		// If SCP is not responding, release SLB anyway.
 		int slb_ref = 0;
 		struct slbc_data slb_data = {
 			.uid = UID_AOV_APU,
@@ -495,8 +602,12 @@ static int apusys_aov_resume_early(struct device *dev)
 			.timeout = 10,
 		};
 
+		dev_info(ctx->dev, "%s failed to change to screen on\n", __func__);
+
 		slb_ref = slbc_status(&slb_data);
 		if (slb_ref > 0) {
+			int ret;
+
 			dev_info(ctx->dev, "%s forcibly release AOV_APU slb\n", __func__);
 			ret = slbc_release(&slb_data);
 			if (ret) {
@@ -507,35 +618,60 @@ static int apusys_aov_resume_early(struct device *dev)
 		}
 	}
 
-	dev_info(ctx->dev, "%s send resume done\n", __func__);
+	dev_dbg(ctx->dev, "%s complete done\n", __func__);
+}
+
+static int apusys_aov_suspend_late(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct apusys_aov_ctx *ctx = platform_get_drvdata(pdev);
+
+	if (!ctx)
+		return 0;
+
+	if (!atomic_read(&ctx->aov_enabled))
+		return 0;
+
+	if (apusys_aov_state_change(NPU_SCP_STATE_CHANGE_TO_SUSPEND))
+		dev_info(ctx->dev, "%s failed to change to screen off\n", __func__);
+
+	dev_dbg(ctx->dev, "%s suspend late done\n", __func__);
 
 	return 0;
 }
 
-static int apusys_aov_remove(struct platform_device *pdev)
+static int apusys_aov_resume_early(struct device *dev)
 {
+	struct platform_device *pdev = to_platform_device(dev);
 	struct apusys_aov_ctx *ctx = platform_get_drvdata(pdev);
 
-	dev_info(ctx->dev, "%s +++\n", __func__);
+	if (!ctx)
+		return 0;
 
-	complete_all(&ctx->comp);
+	//dev_info(ctx->dev, "%s +++\n", __func__);
 
-	debugfs_remove_recursive(ctx->dbg_dir);
+	if (!atomic_read(&ctx->aov_enabled))
+		return 0;
 
-	aov_ctx = NULL;
+	if (apusys_aov_state_change(NPU_SCP_STATE_CHANGE_TO_TRANSITION))
+		dev_info(ctx->dev, "%s failed to change to transition\n", __func__);
 
-	dev_info(ctx->dev, "%s ---\n", __func__);
+	dev_dbg(ctx->dev, "%s resume early done\n", __func__);
 
 	return 0;
 }
 
 static const struct dev_pm_ops apusys_aov_pm_cb = {
+	.prepare = apusys_aov_prepare,
+	.complete = apusys_aov_complete,
 	.suspend_late = apusys_aov_suspend_late,
 	.resume_early = apusys_aov_resume_early,
 };
 
 static const struct of_device_id apusys_aov_of_match[] = {
-	{ .compatible = "mediatek,apusys_aov", },
+	{ .compatible = "mediatek,apusys_aov-v1", .data = &version_number_1},
+	{ .compatible = "mediatek,apusys_aov", .data = &version_number_2},
+	{ .compatible = "mediatek,apusys_aov-v2", .data = &version_number_2},
 	{},
 };
 MODULE_DEVICE_TABLE(of, apusys_aov_of_match);
@@ -559,19 +695,11 @@ static int __init aov_init(void)
 	if (ret)
 		pr_info("%s driver register fail\n", __func__);
 
-	aov_recovery_init();
-
-	aov_rpmsg_init();
-
 	return ret;
 }
 
 void aov_exit(void)
 {
-	aov_rpmsg_exit();
-
-	aov_recovery_exit();
-
 	platform_driver_unregister(&apusys_aov_driver);
 }
 

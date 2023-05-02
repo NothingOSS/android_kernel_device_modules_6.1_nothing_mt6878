@@ -19,10 +19,23 @@
 #include "scp.h"
 #include "apu_ipi.h"
 #include "apu_hw_sema.h"
+#include "npu_scp_ipi.h"
 
-#include "aov_recovery.h"
+#include "aov_recovery_v1.h"
 
 #define RECOVERY_TIMEOUT_MS (100)
+
+enum npu_scp_recovery_action {
+	NPU_SCP_RECOVERY_ACK,
+	NPU_SCP_RECOVERY_TO_APMCU,
+	NPU_SCP_RECOVERY_TO_SCP,
+};
+
+enum aov_apu_recovery_status {
+	AOV_APU_INIT = 0,
+	AOV_APU_RECOVERING,
+	AOV_APU_RECOVER_DONE,
+};
 
 struct aov_recovery_ctx {
 	struct rpmsg_endpoint *ept;
@@ -51,7 +64,7 @@ enum aov_apu_recovery_status get_aov_recovery_state(void)
 	return AOV_APU_INIT;
 }
 
-int aov_recovery_handler(struct npu_scp_ipi_param *recv_msg)
+static int aov_recovery_handler(struct npu_scp_ipi_param *recv_msg)
 {
 	int ret = 0;
 
@@ -253,7 +266,7 @@ static int aov_recovery_probe(struct rpmsg_device *rpdev)
 
 	scp_A_register_notify(&aov_recovery_scp_notifier);
 
-	pr_info("%s ---\n", __func__);
+	npu_scp_ipi_register_handler(NPU_SCP_RECOVERY, aov_recovery_handler, NULL);
 
 	return 0;
 
@@ -267,12 +280,12 @@ apu_kthread_error:
 
 static void aov_recovery_remove(struct rpmsg_device *rpdev)
 {
-	pr_info("%s +++\n", __func__);
-
 	if (!recovery_ctx) {
 		pr_info("%s aov rpmsg context is not available\n", __func__);
 		return;
 	}
+
+	npu_scp_ipi_unregister_handler(NPU_SCP_RECOVERY);
 
 	scp_A_unregister_notify(&aov_recovery_scp_notifier);
 
@@ -286,7 +299,7 @@ static void aov_recovery_remove(struct rpmsg_device *rpdev)
 
 	recovery_ctx = NULL;
 
-	pr_info("%s ---\n", __func__);
+	pr_info("%s removed\n", __func__);
 }
 
 static const struct of_device_id apu_aov_recovery_of_match[] = {
@@ -305,7 +318,7 @@ static struct rpmsg_driver aov_recovery_driver = {
 	.remove = aov_recovery_remove,
 };
 
-int aov_recovery_init(void)
+int aov_recovery_v1_init(void)
 {
 	int ret = 0;
 
@@ -318,7 +331,7 @@ int aov_recovery_init(void)
 	return ret;
 }
 
-void aov_recovery_exit(void)
+void aov_recovery_v1_exit(void)
 {
 	unregister_rpmsg_driver(&aov_recovery_driver);
 }

@@ -8,21 +8,25 @@
 
 #include <linux/types.h>
 
-enum NPU_SCP_IPI_CMD {
-	NPU_SCP_RESPONSE = 1,
+enum npu_scp_ipi_cmd {
+	NPU_SCP_IPI_CMD_START,
+	NPU_SCP_RESPONSE,
 	NPU_SCP_STATE_CHANGE,
 	NPU_SCP_TEST,
 	NPU_SCP_SYSTEM,
 	NPU_SCP_NP_MDW,
 	NPU_SCP_RECOVERY,
+	NPU_SCP_MEM_SERVICE,
+	NPU_SCP_IPI_CMD_END,
 };
 
-enum NPU_SCP_STATE_CHANGE_ACT {
+enum npu_scp_state_change_action {
 	NPU_SCP_STATE_CHANGE_TO_SUSPEND = 1,
 	NPU_SCP_STATE_CHANGE_TO_RESUME,
+	NPU_SCP_STATE_CHANGE_TO_TRANSITION,
 };
 
-enum NPU_SCP_SYSTEM_ACT {
+enum npu_scp_system_action {
 	NPU_SCP_SYSTEM_GET_VERSION = 1,
 	NPU_SCP_SYSTEM_FUNCTION_ENABLE,
 	NPU_SCP_SYSTEM_FUNCTION_DISABLE,
@@ -30,21 +34,9 @@ enum NPU_SCP_SYSTEM_ACT {
 	NPU_SCP_SYSTEM_FORCE_TO_RESUME,
 };
 
-enum NPU_SCP_TEST_ACT {
+enum npu_scp_test_action {
 	NPU_SCP_TEST_START = 1,
 	NPU_SCP_TEST_STOP,
-};
-
-enum NPU_SCP_NP_MDW_ACT {
-	NPU_SCP_NP_MDW_ACK,
-	NPU_SCP_NP_MDW_TO_APMCU,
-	NPU_SCP_NP_MDW_TO_SCP,
-};
-
-enum NPU_SCP_RECOVERY_ACT {
-	NPU_SCP_RECOVERY_ACK,
-	NPU_SCP_RECOVERY_TO_APMCU,
-	NPU_SCP_RECOVERY_TO_SCP,
 };
 
 #define SCP_IPI_TIMEOUT_MS (10)
@@ -66,5 +58,12 @@ struct npu_scp_ipi_param {
 
 int npu_scp_ipi_send(struct npu_scp_ipi_param *send_msg, struct npu_scp_ipi_param *recv_msg,
 		     uint32_t timeout_ms);
+
+typedef int (*npu_scp_ipi_handler)(struct npu_scp_ipi_param *recv_param);
+
+int npu_scp_ipi_register_handler(enum npu_scp_ipi_cmd id, const npu_scp_ipi_handler top_half,
+				 const npu_scp_ipi_handler buttom_half);
+
+int npu_scp_ipi_unregister_handler(enum npu_scp_ipi_cmd id);
 
 #endif // __NPU_SCP_IPI_H__
