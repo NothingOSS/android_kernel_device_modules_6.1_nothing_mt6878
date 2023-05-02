@@ -2023,6 +2023,12 @@ int mvpu_load_img(struct device *dev)
 	}
 
 	mvpu_algo = of_reserved_mem_lookup(mvpu_sec_mem_node);
+	if (!mvpu_algo) {
+		pr_info("%s, mvpu_algo cannot lookup reserved memory\n", __func__);
+		ret = -EINVAL;
+		goto END;
+	}
+
 	pa = mvpu_algo->base;
 	size = mvpu_algo->size;
 
