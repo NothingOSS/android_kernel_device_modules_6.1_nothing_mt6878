@@ -11192,6 +11192,43 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-86 = "WLA_STH_IDLE_CNT",
 				"wla0,wla1,wla2,wla3,wla4,wla5,wla6,wla7,wla8,wla9,wla10,",
 				"wla11,wla12,wla13,wla14,wla15";
+
+			/* MDLA */
+			node-87 = "SSPM_SWPM_APU__MDLA_AVG_PDX",
+				"mdla0,mdla1,mdla2,mdla3";
+			node-88 = "SSPM_SWPM_APU__MDLA_CORE_ON_RATIO",
+				"mdla0,mdla1,mdla2,mdla3";
+			node-89 = "SSPM_SWPM_APU__MDLA_FREQ",
+				"mdla0,mdla1,mdla2,mdla3";
+			/* MVPU */
+			node-90 = "SSPM_SWPM_APU__MVPU_AVG_PDX",
+				"mvpu0,mvpu1";
+			node-91 = "SSPM_SWPM_APU__MVPU_CORE_ON_RATIO",
+				"mvpu0,mvpu1";
+			node-92 = "SSPM_SWPM_APU__MVPU_FREQ",
+				"mvpu0,mvpu1";
+			/* TOP on ratio */
+			node-93 = "SSPM_SWPM_APU__TOP_FREQ",
+				"freq";
+			node-94 = "SSPM_SWPM_APU__TOP_CORE_ON_RATIO",
+				"top_on_ratio";
+			node-95 = "SSPM_SWPM_APU__TOP_UP_WFI_RATIO",
+				"wfi_ratio";
+			node-96 = "SSPM_SWPM_APU__TOP_ARDCM_IDLE_RATIO",
+				"ardcm_idle_ra";
+			/* TOP BW */
+			node-97 = "SSPM_SWPM_APU__TOP_BW_EDMA",
+				"eDPAbw";
+			node-98 = "SSPM_SWPM_APU__TOP_BW_APUTCM",
+				"tcmbw";
+			node-99 = "SSPM_SWPM_APU__TOP_BW_NOC_RCX",
+				"rcxbw";
+			node-100 = "SSPM_SWPM_APU__TOP_BW_NOC_ACX0",
+				"acx0bw";
+			node-101 = "SSPM_SWPM_APU__TOP_BW_NOC_ACX1",
+				"acx1bw";
+			node-102 = "SSPM_SWPM_APU__TOP_BW_NOC_ACX2",
+				"acx2bw";
 		};
 
 		gpueb_rts_header:gpueb-rts-header {
