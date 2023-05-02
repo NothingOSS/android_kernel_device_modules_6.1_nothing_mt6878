@@ -165,6 +165,8 @@ void mbraink_get_process_memory_info(pid_t current_pid,
 			}
 
 			memset(&mss, 0, sizeof(mss));
+			get_task_struct(t);
+			mmgrab(mm);
 			read_unlock(&tasklist_lock);
 			mmap_read_lock(mm);
 			vma_iter_init(&vmi, mm, 0);
@@ -178,6 +180,8 @@ void mbraink_get_process_memory_info(pid_t current_pid,
 			}
 			mmap_read_unlock(mm);
 			read_lock(&tasklist_lock);
+			mmdrop(mm);
+			put_task_struct(t);
 
 			pss = (unsigned long)(mss.pss >> PSS_SHIFT)/1024;
 			uss = (mss.private_clean+mss.private_dirty)/1024;
@@ -429,10 +433,12 @@ void mbraink_processname_to_pid(unsigned short monitor_process_count,
 			if (count >= MAX_MONITOR_PROCESS_NUM)
 				break;
 
+			get_task_struct(t);
 			read_unlock(&tasklist_lock);
 			/*This function might sleep*/
 			cmdline = kstrdup_quotable_cmdline(t, GFP_KERNEL);
 			read_lock(&tasklist_lock);
+			put_task_struct(t);
 
 			if (!cmdline) {
 				pr_info("cmdline is NULL\n");
@@ -483,10 +489,12 @@ void mbraink_show_process_info(void)
 		mm = t->mm;
 		counter++;
 		if (mm) {
+			get_task_struct(t);
 			read_unlock(&tasklist_lock);
 			/*This function might sleep, cannot be called during atomic context*/
 			cmdline = kstrdup_quotable_cmdline(t, GFP_KERNEL);
 			read_lock(&tasklist_lock);
+			put_task_struct(t);
 
 			cutime = t->signal->cutime;
 			cstime = t->signal->cstime;
