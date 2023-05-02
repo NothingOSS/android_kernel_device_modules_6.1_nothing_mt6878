@@ -8768,10 +8768,10 @@
 				 <&pextpcfg_ao_clk CLK_PEXTP_P0_MAC_AHB_APB>,
 				 <&pextpcfg_ao_clk CLK_PEXTP_P0_PHY_REF>,
 				 <&pextpcfg_ao_clk CLK_PEXTP_P0_PHY_MCU_BUS>;
-			power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_MAC0>;
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_MAC0>,
+					<&scpsys MT6989_POWER_DOMAIN_PEXTP_PHY0>;
+			power-domain-names = "pd_mac", "pd_phy";
 
-			phys = <&pciephy0>;
-			phy-names = "pcie-phy";
 			pinctrl-names = "default";
 			pinctrl-0 = <&pcie0_pins_default>;
 
@@ -8813,10 +8813,10 @@
 				 <&pextpcfg_ao_clk CLK_PEXTP_P1_MAC_AHB_APB>,
 				 <&pextpcfg_ao_clk CLK_PEXTP_P1_PHY_REF>,
 				 <&pextpcfg_ao_clk CLK_PEXTP_P1_PHY_MCU_BUS>;
-			power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_MAC1>;
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_MAC1>,
+					<&scpsys MT6989_POWER_DOMAIN_PEXTP_PHY1>;
+			power-domain-names = "pd_mac", "pd_phy";
 
-			phys = <&pciephy1>;
-			phy-names = "pcie-phy";
 			pinctrl-names = "default";
 			pinctrl-0 = <&pcie1_pins_default>;
 
@@ -8831,28 +8831,6 @@
 				#address-cells = <0>;
 				#interrupt-cells = <1>;
 			};
-		};
-
-		pciephy0: phy@11100000 {
-			compatible = "mediatek,mt8195-pcie-phy",
-				     "mediatek,mt6989-pcie-phy";
-			#phy-cells = <0>;
-			reg = <0 0x11100000 0 0x10000>;
-			reg-names = "sif";
-			status = "okay";
-
-			power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_PHY0>;
-		};
-
-		pciephy1: phy@11120000 {
-			compatible = "mediatek,mt8195-pcie-phy",
-				     "mediatek,mt6989-pcie-phy";
-			#phy-cells = <0>;
-			reg = <0 0x11120000 0 0x10000>;
-			reg-names = "sif";
-			status = "okay";
-
-			power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_PHY1>;
 		};
 
 		dpmaif:dpmaif@10014000 {
