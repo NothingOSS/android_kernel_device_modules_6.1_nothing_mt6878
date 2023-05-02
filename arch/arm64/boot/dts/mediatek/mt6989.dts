@@ -1634,11 +1634,6 @@
 				<0 0x0c0de474 0 0x4>;
 		};
 
-		pwrap@1000d000 {
-			compatible = "mediatek,pwrap";
-			reg = <0 0x1000d000 0 0x1000>;
-		};
-
 		pmsr-apb@1000f000 {
 			compatible = "mediatek,pmsr_apb";
 			reg = <0 0x1000f000 0 0x800>;
@@ -1728,6 +1723,11 @@
 					bus-freq-mhz = <156>;
 				};
 			};
+		};
+
+		drm: drm@1000d000 {
+			compatible = "mediatek,dbgtop-drm";
+			reg = <0 0x1000d000 0 0x1000>;
 		};
 
 		bcrm-infra-ao1-apb@1002a000 {
