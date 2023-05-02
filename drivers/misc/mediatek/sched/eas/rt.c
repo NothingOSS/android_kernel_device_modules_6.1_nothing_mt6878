@@ -12,6 +12,19 @@
 #include "vip.h"
 #include <mt-plat/mtk_irq_mon.h>
 
+static inline void rt_energy_aware_output_init(struct rt_energy_aware_output *rt_ea_output,
+			struct task_struct *p)
+{
+	rt_ea_output->cfs_cpus = 0;
+	rt_ea_output->idle_cpus = 0;
+	rt_ea_output->cfs_lowest_cpu = -1;
+	rt_ea_output->cfs_lowest_prio = 0;
+	rt_ea_output->cfs_lowest_pid = -1;
+	rt_ea_output->rt_lowest_cpu = -1;
+	rt_ea_output->rt_lowest_prio = p->prio;
+	rt_ea_output->rt_lowest_pid = -1;
+}
+
 #if IS_ENABLED(CONFIG_RT_SOFTINT_OPTIMIZATION)
 /*
  * Return whether the task on the given cpu is currently non-preemptible
@@ -120,12 +133,16 @@ inline int cpu_high_irqload(int cpu, unsigned long cpu_util)
 	return 1;
 }
 
-inline unsigned int mtk_get_idle_exit_latency(int cpu)
+inline unsigned int mtk_get_idle_exit_latency(int cpu,
+			struct rt_energy_aware_output *rt_ea_output)
 {
 	struct cpuidle_state *idle;
+	struct task_struct *curr;
 
 	/* CPU is idle */
 	if (available_idle_cpu(cpu)) {
+		if (rt_ea_output)
+			rt_ea_output->idle_cpus = (rt_ea_output->idle_cpus | (1 << cpu));
 
 		idle = idle_get_state(cpu_rq(cpu));
 		if (idle)
@@ -135,12 +152,32 @@ inline unsigned int mtk_get_idle_exit_latency(int cpu)
 		return 0;
 	}
 
+	if (rt_ea_output) {
+		curr = cpu_rq(cpu)->curr;
+		if (curr && (curr->policy == SCHED_NORMAL)
+				&& (curr->prio > rt_ea_output->cfs_lowest_prio)
+				&& (!task_may_not_preempt(curr, cpu))) {
+			rt_ea_output->cfs_lowest_prio = curr->prio;
+			rt_ea_output->cfs_lowest_cpu = cpu;
+			rt_ea_output->cfs_cpus = (rt_ea_output->cfs_cpus | (1 << cpu));
+			rt_ea_output->cfs_lowest_pid = curr->pid;
+		}
+
+		if (curr && rt_task(curr)
+			&& (curr->prio > rt_ea_output->rt_lowest_prio)) {
+			rt_ea_output->rt_lowest_prio = curr->prio;
+			rt_ea_output->rt_lowest_cpu = cpu;
+			rt_ea_output->rt_lowest_pid = curr->pid;
+		}
+	}
+
 	/* CPU is not idle */
 	return UINT_MAX;
 }
 
 static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
-			struct cpumask *lowest_mask, int ret, int *best_cpu, bool energy_eval)
+			struct cpumask *lowest_mask, int ret, int *best_cpu, bool energy_eval,
+			struct rt_energy_aware_output *rt_ea_output)
 {
 	int cpu, best_idle_cpu_cluster;
 	unsigned long util_cum[NR_CPUS] = {[0 ... NR_CPUS-1] = ULONG_MAX};
@@ -208,7 +245,10 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			 * conditions are same, select the least cumulative
 			 * window demand CPU.
 			 */
-			cpu_idle_exit_latency = mtk_get_idle_exit_latency(cpu);
+			cpu_idle_exit_latency = mtk_get_idle_exit_latency(cpu, rt_ea_output);
+
+			if (cpu_idle_exit_latency == UINT_MAX)
+				continue;
 
 			if (best_idle_exit_latency < cpu_idle_exit_latency)
 				continue;
@@ -272,9 +312,9 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 	bool sync = !!(flags & WF_SYNC);
 	int ret, target = -1, this_cpu, select_reason = -1;
 	struct cpumask *lowest_mask = this_cpu_cpumask_var_ptr(mtk_select_rq_rt_mask);
-	/* remove in next update */
-	unsigned int cfs_cpus = 0;
-	unsigned int idle_cpus = 0;
+	struct rt_energy_aware_output rt_ea_output;
+
+	rt_energy_aware_output_init(&rt_ea_output, p);
 
 	irq_log_store();
 
@@ -317,12 +357,18 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 				lowest_mask, rt_task_fits_capacity);
 
 	cpumask_andnot(lowest_mask, lowest_mask, cpu_pause_mask);
-	mtk_rt_energy_aware_wake_cpu(p, lowest_mask, ret, &target, true);
+	mtk_rt_energy_aware_wake_cpu(p, lowest_mask, ret, &target, true, &rt_ea_output);
 
 	if (target != -1 &&
 		(may_not_preempt || p->prio < cpu_rq(target)->rt.highest_prio.curr)) {
 		*target_cpu = target;
 		select_reason = LB_RT_IDLE;
+	} else if (rt_ea_output.cfs_lowest_cpu != -1) {
+		*target_cpu = rt_ea_output.cfs_lowest_cpu;
+		select_reason = LB_RT_LOWEST_PRIO_NORMAL;
+	} else if (rt_ea_output.rt_lowest_cpu != -1) {
+		*target_cpu = rt_ea_output.rt_lowest_cpu;
+		select_reason = LB_RT_LOWEST_PRIO_RT;
 	} else {
 		/* previous CPU as backup */
 		*target_cpu = source_cpu;
@@ -333,8 +379,8 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 	irq_log_store();
 out:
 	if (trace_sched_select_task_rq_rt_enabled())
-		trace_sched_select_task_rq_rt(p, select_reason, *target_cpu, idle_cpus, cfs_cpus,
-					lowest_mask, sd_flag, sync);
+		trace_sched_select_task_rq_rt(p, select_reason, *target_cpu, &rt_ea_output,
+					 lowest_mask, sd_flag, sync);
 	irq_log_store();
 }
 
@@ -365,7 +411,7 @@ void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowes
 	if (!cpumask_test_cpu(this_cpu, &avail_lowest_mask))
 		this_cpu = -1;
 
-	mtk_rt_energy_aware_wake_cpu(p, &avail_lowest_mask, ret, &target, false);
+	mtk_rt_energy_aware_wake_cpu(p, &avail_lowest_mask, ret, &target, false, NULL);
 
 	irq_log_store();
 

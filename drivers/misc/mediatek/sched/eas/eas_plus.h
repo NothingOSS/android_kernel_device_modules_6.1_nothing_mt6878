@@ -82,6 +82,17 @@ struct energy_env {
 	unsigned int dsu_volt_new;
 };
 
+struct rt_energy_aware_output {
+	unsigned int cfs_cpus;
+	unsigned int idle_cpus;
+	int cfs_lowest_cpu;
+	int cfs_lowest_prio;
+	int cfs_lowest_pid;
+	int rt_lowest_cpu;
+	int rt_lowest_prio;
+	int rt_lowest_pid;
+};
+
 #ifdef CONFIG_SMP
 /*
  * The margin used when comparing utilization with CPU capacity.
@@ -215,7 +226,7 @@ extern void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask
 				int ret, int *lowest_cpu);
 
 extern int cpu_high_irqload(int cpu, unsigned long cpu_util);
-extern unsigned int mtk_get_idle_exit_latency(int cpu);
+extern unsigned int mtk_get_idle_exit_latency(int cpu, struct rt_energy_aware_output *rt_ea_output);
 
 extern struct cpumask __cpu_pause_mask;
 #define cpu_pause_mask ((struct cpumask *)&__cpu_pause_mask)
