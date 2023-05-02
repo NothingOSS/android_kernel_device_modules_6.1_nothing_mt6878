@@ -10308,6 +10308,8 @@
 		reg = <0 0x00113e00 0 0x200>;
 		slbc-enable = <1>;
 		slbc-all-cache-enable = <1>;
+		trace-dram-base = <0x0>;
+		trace-dram-size  = <0x0>;
 	};
 
 	extcon_usb: extcon-usb {
@@ -11127,15 +11129,17 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"S_GPU_0_W,S_APU_1_R,S_APU_1_W,",
 				"S_GPU_1_R,S_GPU_1_W";
 			node-61 = "SSPM_SLBC_SLOT",
-				 "enable,force,done,buffer_used,f_buffer,cached_used,force_size";
+				"enable,force,done,buffer_used,f_buffer,cached_used,force_size";
 			node-62 = "SSPM_SLBC_REF",
-				 "venc,mml,ainr,disp,hifi3,aod";
+				"aov_dc,sh_p1,sh_apu,mml,disp,venc,venc_sl,sensor,aov_apu,ainr,",
+				"apu";
 			node-63 = "SSPM_SLBC_BW",
-				 "mm,apu,mm_est";
+				"mm,apu,mm_est";
 			node-64 = "SSPM_SLBC_PMU",
 				"hit,miss,apu_r,apu_w,mm_r,mm_w";
 			node-65 = "SSPM_SLBC_WAY",
-				 "venc,mml,ainr,disp,hifi3,aod,slb,cpu,gpu,slc,left";
+				"aov_dc,sh_p1,sh_apu,mml,disp,venc,venc_sl,sensor,aov_apu,ainr,",
+				"apu,slb,cpu,gpu,slc,left";
 			node-66 = "SSPM_SWPM_CPU__DSU_PMU",
 				 "dsu_cycles";
 			node-67 = "SSPM_SWPM_CPU__CORE_TEMP",
