@@ -150,15 +150,27 @@ enum {
 #define LOCAL_LOG_SIZE         (1024 * 1024)
 
 #define IPI_DEBUG_LEVEL 4
+#define MAX_SMC_OP_NUM  0x3
 
 enum {
-	SMC_OP_APU_LOG_BUF_ST_ADDR,
+	SMC_OP_APU_LOG_BUF_NULL = 0,
 	SMC_OP_APU_LOG_BUF_T_SIZE,
 	SMC_OP_APU_LOG_BUF_W_PTR,
+	SMC_OP_APU_LOG_BUF_R_PTR,
+	SMC_OP_APU_LOG_BUF_CON,
 	SMC_OP_APU_LOG_BUF_NUM
 };
 
-/* #define hw_logger_DEBUG */
+/* temp define in header */
+#define APU_RPC_PHYS_BASE     0x190F0000
+#define APU_RPC_PHYS_SIZE     0x1000
+#define APU_RPC_BASE          (apu_rpc)
+#define APU_RPC_PWR_STATUS    (APU_RPC_BASE + 0x44)
+
+#define APU_RPC_PWR_STATUS_ADDR   (APU_RPC_PWR_STATUS)
+#define APU_RPC_PWR_STATUS_SHIFT  (0)
+#define APU_RPC_PWR_STATUS_MASK   (0x1 << \
+	APU_RPC_PWR_STATUS_SHIFT)
 
 int hw_logger_config_init(struct mtk_apu *apu);
 int hw_logger_ipi_init(struct mtk_apu *apu);

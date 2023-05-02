@@ -770,7 +770,7 @@ static void mt6897_rv_cachedump(struct mtk_apu *apu)
 const struct mtk_apu_platdata mt6897_platdata = {
 	.flags		= F_PRELOAD_FIRMWARE | F_AUTO_BOOT |
 				F_SECURE_BOOT | F_SECURE_COREDUMP | F_DEBUG_LOG_ON |
-				F_ACCESS_RCX_IN_ATF | F_APUSYS_RV_TAG_SUPPORT,
+				F_APUSYS_RV_TAG_SUPPORT,
 	.ops		= {
 		.init	= mt6897_rproc_init,
 		.exit	= mt6897_rproc_exit,
