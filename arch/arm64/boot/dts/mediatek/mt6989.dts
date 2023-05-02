@@ -9432,7 +9432,7 @@
 		seninf_top: seninf-top@1a00e000 {
 			compatible = "mediatek,seninf-core";
 			reg = <0 0x1a00e000 0 0x18000>,
-				<0 0x11c00000 0 0x20000>;
+				<0 0x11c00000 0 0x30000>;
 			reg-names = "base", "ana-rx";
 			interrupts = <GIC_SPI 576 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 573 IRQ_TYPE_LEVEL_HIGH 0>;
