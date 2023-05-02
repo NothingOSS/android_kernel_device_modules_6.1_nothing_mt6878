@@ -142,7 +142,6 @@ struct mtk_cam_ctx {
 	struct kthread_worker flow_worker;
 	struct task_struct *done_task;
 	struct kthread_worker done_worker;
-	struct workqueue_struct *composer_wq; /* TODO(AY): may remove */
 	struct workqueue_struct *aa_dump_wq;
 
 	struct mtk_cam_device_buf cq_buffer;

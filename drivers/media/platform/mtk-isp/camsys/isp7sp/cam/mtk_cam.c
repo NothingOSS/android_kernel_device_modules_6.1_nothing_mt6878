@@ -1572,25 +1572,16 @@ static int mtk_cam_ctx_alloc_workers(struct mtk_cam_ctx *ctx)
 	if (!ctx->done_task)
 		goto fail_uninit_flow_worker_task;
 
-	ctx->composer_wq = alloc_ordered_workqueue(dev_name(dev),
-						   WQ_HIGHPRI | WQ_FREEZABLE);
-	if (!ctx->composer_wq) {
-		dev_info(dev, "failed to alloc composer workqueue\n");
-		goto fail_uninit_done_worker_task;
-	}
-
 	ctx->aa_dump_wq =
 			alloc_ordered_workqueue(dev_name(dev),
 						WQ_HIGHPRI | WQ_FREEZABLE);
 	if (!ctx->aa_dump_wq) {
 		dev_info(dev, "failed to alloc aa_dump workqueue\n");
-		goto fail_uninit_composer_wq;
+		goto fail_uninit_done_worker_task;
 	}
 
 	return 0;
 
-fail_uninit_composer_wq:
-	destroy_workqueue(ctx->composer_wq);
 fail_uninit_done_worker_task:
 	kthread_stop(ctx->done_task);
 	ctx->done_task = NULL;
@@ -1613,7 +1604,6 @@ static void mtk_cam_ctx_destroy_workers(struct mtk_cam_ctx *ctx)
 	kthread_stop(ctx->done_task);
 	ctx->done_task = NULL;
 
-	destroy_workqueue(ctx->composer_wq);
 	destroy_workqueue(ctx->aa_dump_wq);
 }
 
