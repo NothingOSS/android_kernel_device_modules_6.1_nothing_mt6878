@@ -320,6 +320,7 @@ mgk_64_k61_device_modules = [
     "drivers/misc/mediatek/performance/frs/frs.ko",
     "drivers/misc/mediatek/performance/load_track/load_track.ko",
     "drivers/misc/mediatek/performance/mtk_ioctl_touch_boost.ko",
+    "drivers/misc/mediatek/performance/mtk_ioctl_powerhal.ko",
     "drivers/misc/mediatek/performance/mtk_perf_ioctl.ko",
     "drivers/misc/mediatek/performance/mtk_perf_ioctl_magt.ko",
     "drivers/misc/mediatek/performance/powerhal_cpu_ctrl/powerhal_cpu_ctrl.ko",

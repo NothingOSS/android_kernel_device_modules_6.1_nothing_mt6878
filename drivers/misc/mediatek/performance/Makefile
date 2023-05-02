@@ -8,7 +8,8 @@ MTK_PM_BUILD_FOLDER=$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance
 
 subdir-ccflags-y += \
 	-I$(MTK_PM_BUILD_FOLDER)/perf_ioctl/ \
-	-I$(MTK_PM_BUILD_FOLDER)/include/
+	-I$(MTK_PM_BUILD_FOLDER)/include/	\
+	-I$(MTK_PM_BUILD_FOLDER)/powerhal_cpu_ctrl/
 
 # mtk_perf_ioctl
 include $(MTK_PM_BUILD_FOLDER)/perf_ioctl/build.mk
@@ -22,6 +23,12 @@ MTK_IOCTL_TOUCH_BOOST = $(mtk_ioctl_touch_boost_objs:%.o=perf_ioctl/%.o)
 MTK_IOCTL_TOUCH_BOOST_SRC = $(MTK_IOCTL_TOUCH_BOOST)
 obj-$(CONFIG_MTK_PERFORMANCE_MODULE) += mtk_ioctl_touch_boost.o
 mtk_ioctl_touch_boost-objs += $(MTK_IOCTL_TOUCH_BOOST_SRC)
+
+# mtk_ioctl_powerhal
+MTK_IOCTL_POWERHAL = $(mtk_ioctl_powerhal_objs:%.o=perf_ioctl/%.o)
+MTK_IOCTL_POWERHAL_SRC = $(MTK_IOCTL_POWERHAL)
+obj-$(CONFIG_MTK_PERFORMANCE_MODULE) += mtk_ioctl_powerhal.o
+mtk_ioctl_powerhal-objs += $(MTK_IOCTL_POWERHAL_SRC)
 
 # mtk_perf_ioctl_magt
 MTK_PERF_IOCTL_MAGT = $(mtk_perf_ioctl_magt_objs:%.o=perf_ioctl/%.o)

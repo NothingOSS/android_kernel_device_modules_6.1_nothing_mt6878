@@ -30,6 +30,26 @@ TRACE_EVENT(powerhal_cpu_freq_user_setting,
 	__get_str(buf)
 	)
 );
+
+TRACE_EVENT(powerhal_adpf,
+	TP_PROTO(
+	const char *buf
+	),
+
+	TP_ARGS(buf),
+
+	TP_STRUCT__entry(
+	__string(buf, buf)
+	),
+
+	TP_fast_assign(
+	__assign_str(buf, buf);
+	),
+
+	TP_printk("%s",
+	__get_str(buf)
+	)
+);
 #endif /* _MTK_POWERHAL_TRACE_EVENT_H__ */
 
 /* This part must be outside protection */

@@ -21,11 +21,13 @@
 #include <linux/cpufreq.h>
 #include <linux/pm_qos.h>
 #include <linux/sort.h>
+#include <linux/mutex.h>
 
 #ifndef CREATE_TRACE_POINTS
 #define CREATE_TRACE_POINTS
 #endif
 #include "powerhal_trace_event.h"
+#include "powerhal_cpu_ctrl.h"
 //#include "mtk_perfmgr_internal.h"
 /* PROCFS */
 #define PROC_FOPS_RW(name) \
@@ -68,6 +70,39 @@ static DEFINE_MUTEX(cpu_ctrl_lock);
 static struct _cpufreq freq_to_set[CLUSTER_MAX];
 struct freq_qos_request *freq_min_request;
 struct freq_qos_request *freq_max_request;
+
+// ADPF
+#define ADPF_MAX_SESSION 64
+#define ADPF_MAX_CALLBACK 64
+static struct _SESSION *sessionList[ADPF_MAX_SESSION];
+static adpfCallback adpfCallbackList[ADPF_MAX_CALLBACK];
+static DEFINE_MUTEX(adpf_mutex);
+
+static void _adpf_systrace(int val, const char *fmt, ...)
+{
+	char log[256];
+	va_list args;
+	int len;
+	char buf[256];
+
+	memset(log, ' ', sizeof(log));
+	va_start(args, fmt);
+	len = vsnprintf(log, sizeof(log), fmt, args);
+	va_end(args);
+
+	if (unlikely(len < 0))
+		return;
+	else if (unlikely(len == 256))
+		log[255] = '\0';
+
+	len = snprintf(buf, sizeof(buf), "C|%d|%s|%d\n", current->pid, log, val);
+	if (unlikely(len < 0))
+		return;
+	else if (unlikely(len == 256))
+		buf[255] = '\0';
+
+	trace_powerhal_adpf(buf);
+}
 
 static void _cpu_ctrl_systrace(int val, const char *fmt, ...)
 {
@@ -326,12 +361,337 @@ out:
 
 PROC_FOPS_RW(perfserv_freq);
 
+int adpf_register_callback(adpfCallback callback)
+{
+	int i = 0;
+
+	mutex_lock(&adpf_mutex);
+	while (i < ADPF_MAX_CALLBACK) {
+		if (adpfCallbackList[i] == NULL) {
+			adpfCallbackList[i] = callback;
+			break;
+		}
+		i++;
+	}
+	mutex_unlock(&adpf_mutex);
+
+	if (i > ADPF_MAX_CALLBACK) {
+		pr_debug("%s error: %d", __func__, i);
+		return -1;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(adpf_register_callback);
+
+int adpf_unregister_callback(int idx)
+{
+	mutex_lock(&adpf_mutex);
+	if (idx < 0 || idx >= ADPF_MAX_CALLBACK) {
+		pr_debug("%s error: %d", __func__, idx);
+		return -1;
+	}
+
+	adpfCallbackList[idx] = NULL;
+	mutex_unlock(&adpf_mutex);
+
+	return idx;
+}
+EXPORT_SYMBOL(adpf_unregister_callback);
+
+int adpf_notify_callback(unsigned int cmd, unsigned int sid)
+{
+	int i = 0;
+	struct _SESSION session;
+
+	mutex_lock(&adpf_mutex);
+	if (sid >= ADPF_MAX_SESSION || sessionList[sid] == NULL) {
+		pr_debug("[%s] error",  __func__);
+		return -1;
+	}
+
+	memcpy(&session, sessionList[sid], sizeof(struct _SESSION));
+	for (i = 0; i < session.work_duration_size; i++) {
+		session.workDuration[i]->timeStampNanos =
+				sessionList[sid]->workDuration[i]->timeStampNanos;
+		session.workDuration[i]->durationNanos =
+				sessionList[sid]->workDuration[i]->durationNanos;
+	}
+	session.cmd = cmd;
+
+	pr_debug("[%s] callback start, cmd: %d, sid: %d, tgid: %d, uid: %d",  __func__,
+			session.cmd, session.sid, session.tgid, session.uid);
+	for (i = 0; i < ADPF_MAX_CALLBACK; i++) {
+		if (adpfCallbackList[i])
+			adpfCallbackList[i](&session);
+	}
+	mutex_unlock(&adpf_mutex);
+
+	return 0;
+}
+
+int adpf_create_session_hint(unsigned int sid, unsigned int tgid,
+							unsigned int uid, int *threadIds,
+							int threadIds_size, long durationNanos)
+{
+	char log[256];
+
+	mutex_lock(&adpf_mutex);
+	if (sid >= ADPF_MAX_SESSION || sessionList[sid]->used == SESSION_USED) {
+		pr_debug("[%s] sid error: %d",  __func__, sid);
+		return -1;
+	}
+
+	pr_debug("[%s] sid: %d, tgid: %d, uid: %d, threadIds_size: %d",
+			__func__, sid, tgid, uid, threadIds_size);
+
+	sessionList[sid]->sid = sid;
+	sessionList[sid]->tgid = tgid;
+	sessionList[sid]->uid = uid;
+	sessionList[sid]->threadIds_size = threadIds_size;
+	sessionList[sid]->durationNanos = durationNanos;
+	memcpy(sessionList[sid]->threadIds, threadIds, threadIds_size*sizeof(int));
+	sessionList[sid]->used = SESSION_USED;
+
+	mutex_unlock(&adpf_mutex);
+
+	adpf_notify_callback(ADPF_CREATE_HINT_SESSION, sid);
+
+	if (sprintf(log, "adpf sid: %d, tgid: %d, uid: %d", sid, tgid, uid) < 0) {
+		pr_debug("[%s] sprintf failed!",  __func__);
+		return -1;
+	}
+
+	_adpf_systrace(ADPF_CREATE_HINT_SESSION, log);
+
+	return 0;
+}
+
+int adpf_get_hint_session_preferred_rate(long long *preferredRate)
+{
+	// Implement in the native layer
+
+	return 0;
+}
+
+int adpf_update_work_duaration(unsigned int sid, long targetDurationNanos)
+{
+	char log[256];
+
+	mutex_lock(&adpf_mutex);
+	if (sid >= ADPF_MAX_SESSION || sessionList[sid]->used == SESSION_UNUSED) {
+		pr_debug("[%s] sid error: %d", __func__, sid);
+		return -1;
+	}
+
+	pr_debug("[%s], sid: %d, targetDurationNanos: %ld", __func__, sid, targetDurationNanos);
+
+	sessionList[sid]->targetDurationNanos = targetDurationNanos;
+	mutex_unlock(&adpf_mutex);
+
+	adpf_notify_callback(ADPF_UPDATE_TARGET_WORK_DURATION, sid);
+
+	if (sprintf(log, "adpf sid: %d, targetDurationNanos: %ld", sid, targetDurationNanos) < 0) {
+		pr_debug("[%s] sprintf failed!",  __func__);
+		return -1;
+	}
+
+	_adpf_systrace(ADPF_UPDATE_TARGET_WORK_DURATION, log);
+
+	return 0;
+}
+
+int adpf_report_actual_work_duaration(unsigned int sid,
+		struct _ADPF_WORK_DURATION *workDuration, int work_duration_size)
+{
+	int i = 0;
+	char log[256];
+
+	if (sid >= ADPF_MAX_SESSION || sessionList[sid]->used == SESSION_UNUSED) {
+		pr_debug("[%s] sid error: %d", __func__, sid);
+		return -1;
+	}
+
+	if (sprintf(log, "sid: %d, ", sid) < 0) {
+		pr_debug("[%s] sprintf failed!", __func__);
+		return -1;
+	}
+
+	pr_debug("[%s], sid: %d", __func__, sid);
+
+	mutex_lock(&adpf_mutex);
+	for (i = 0; i < work_duration_size; i++) {
+		sessionList[sid]->workDuration[i]->timeStampNanos = workDuration[i].timeStampNanos;
+		sessionList[sid]->workDuration[i]->durationNanos = workDuration[i].durationNanos;
+		pr_debug("[%s], idx: %d, timeStampNanos: %ld, durationNanos: %ld",
+				__func__, i,
+				workDuration[i].timeStampNanos, workDuration[i].durationNanos);
+		if (sprintf(log, "timeStampNanos[%d]: %ld, durationNanos[%d]: %ld, ",
+				i, workDuration[i].timeStampNanos,
+				i, workDuration[i].durationNanos) < 0) {
+			pr_debug("[%s] sprintf failed!", __func__);
+			return -1;
+		}
+	}
+
+	sessionList[sid]->sid = sid;
+	sessionList[sid]->work_duration_size = work_duration_size;
+
+	mutex_unlock(&adpf_mutex);
+
+	adpf_notify_callback(ADPF_REPORT_ACTUAL_WORK_DURATION, sid);
+
+	return 0;
+}
+
+int adpf_pause(unsigned int sid)
+{
+	char log[256];
+
+	if (sid >= ADPF_MAX_SESSION || sessionList[sid]->used == SESSION_UNUSED) {
+		pr_debug("[%s] sid error: %d", __func__, sid);
+		return -1;
+	}
+
+	pr_debug("[%s], sid: %d", __func__, sid);
+
+	adpf_notify_callback(ADPF_PAUSE, sid);
+
+	if (sprintf(log, "adpf sid: %d", sid) < 0) {
+		pr_debug("[%s] sprintf failed!",  __func__);
+		return -1;
+	}
+
+	_adpf_systrace(ADPF_PAUSE, log);
+
+	return 0;
+}
+
+int adpf_resume(unsigned int sid)
+{
+	char log[256];
+
+	if (sid >= ADPF_MAX_SESSION || sessionList[sid]->used == SESSION_UNUSED) {
+		pr_debug("[%s] sid error: %d", __func__, sid);
+		return -1;
+	}
+
+	pr_debug("[%s], sid: %d", __func__, sid);
+
+	adpf_notify_callback(ADPF_RESUME, sid);
+
+	if (sprintf(log, "adpf sid: %d", sid) < 0) {
+		pr_debug("[%s] sprintf failed!",  __func__);
+		return -1;
+	}
+
+	_adpf_systrace(ADPF_RESUME, log);
+
+	return 0;
+}
+
+int adpf_close(unsigned int sid)
+{
+	char log[256];
+
+	if (sid >= ADPF_MAX_SESSION || sessionList[sid]->used == SESSION_UNUSED) {
+		pr_debug("[%s] sid error: %d", __func__, sid);
+		return -1;
+	}
+
+	pr_debug("[%s], sid: %d", __func__, sid);
+
+	mutex_lock(&adpf_mutex);
+	sessionList[sid]->used = SESSION_UNUSED;
+	mutex_unlock(&adpf_mutex);
+
+	adpf_notify_callback(ADPF_CLOSE, sid);
+
+	if (sprintf(log, "adpf sid: %d", sid) < 0) {
+		pr_debug("[%s] sprintf failed!",  __func__);
+		return -1;
+	}
+
+	_adpf_systrace(ADPF_CLOSE, log);
+
+	return 0;
+}
+
+int adpf_sent_hint(unsigned int sid, int hint)
+{
+	char log[256];
+
+	if (sid >= ADPF_MAX_SESSION || sessionList[sid]->used == SESSION_UNUSED) {
+		pr_debug("[%s] sid error: %d", __func__, sid);
+		return -1;
+	}
+
+	pr_debug("[%s], sid: %d, hint: %d", __func__, sid, hint);
+
+	mutex_lock(&adpf_mutex);
+	sessionList[sid]->hint = hint;
+	mutex_unlock(&adpf_mutex);
+
+	adpf_notify_callback(ADPF_SENT_HINT, sid);
+
+	if (sprintf(log, "adpf sid: %d hint: %d", sid, hint) < 0) {
+		pr_debug("[%s] sprintf failed!",  __func__);
+		return -1;
+	}
+
+	_adpf_systrace(ADPF_SENT_HINT, log);
+
+	return 0;
+}
+
+int adpf_set_threads(unsigned int sid, int *threadIds, int threadIds_size)
+{
+	char log[256];
+
+	if (sid >= ADPF_MAX_SESSION || sessionList[sid]->used == SESSION_UNUSED) {
+		pr_debug("[%s] sid error: %d", __func__, sid);
+		return -1;
+	}
+
+	if (sid >= ADPF_MAX_SESSION) {
+		pr_debug("[%s] sid error: %d", __func__, sid);
+		return -1;
+	}
+
+	pr_debug("[%s] sid: %d, threads_size: %d", __func__, sid, threadIds_size);
+
+	mutex_lock(&adpf_mutex);
+	if (sessionList[sid] != NULL) {
+		memset(sessionList[sid]->threadIds, 0,
+			sessionList[sid]->threadIds_size*sizeof(int));
+		memcpy(sessionList[sid]->threadIds,
+			threadIds, threadIds_size*sizeof(int));
+		sessionList[sid]->threadIds_size = threadIds_size;
+
+		pr_debug("[%s] sid: %d, tgid: %d, uid: %d, threadIds_size: %d",
+			__func__, sessionList[sid]->sid, sessionList[sid]->tgid,
+			sessionList[sid]->uid, sessionList[sid]->threadIds_size);
+	}
+	mutex_unlock(&adpf_mutex);
+
+	adpf_notify_callback(ADPF_SET_THREADS, sid);
+
+	if (sprintf(log, "adpf sid: %d", sid) < 0) {
+		pr_debug("[%s] sprintf failed!",  __func__);
+		return -1;
+	}
+
+	_adpf_systrace(ADPF_SET_THREADS, log);
+
+	return 0;
+}
+
 static int __init powerhal_cpu_ctrl_init(void)
 {
 	int cpu_num = 0;
 	int num = 0;
 	int cpu;
-	int i, ret = 0;
+	int i, j, ret = 0;
 	struct proc_dir_entry *lt_dir = NULL;
 	struct proc_dir_entry *parent = NULL;
 	struct cpufreq_policy *policy;
@@ -412,6 +772,25 @@ static int __init powerhal_cpu_ctrl_init(void)
 		cpu = cpumask_last(policy->related_cpus);
 		cpufreq_cpu_put(policy);
 	}
+
+	// ADPF
+	for (i = 0; i < ADPF_MAX_SESSION; i++) {
+		sessionList[i] = kcalloc(1, sizeof(struct _SESSION), GFP_KERNEL);
+		for (j = 0; j < ADPF_MAX_THREAD; j++) {
+			sessionList[i]->workDuration[j] =
+				kcalloc(1, sizeof(struct _SESSION_WORK_DURATION), GFP_KERNEL);
+		}
+	}
+
+	powerhal_adpf_create_session_hint_fp = adpf_create_session_hint;
+	powerhal_adpf_get_hint_session_preferred_rate_fp = adpf_get_hint_session_preferred_rate;
+	powerhal_adpf_update_work_duration_fp = adpf_update_work_duaration;
+	powerhal_adpf_report_actual_work_duration_fp = adpf_report_actual_work_duaration;
+	powerhal_adpf_pause_fp = adpf_pause;
+	powerhal_adpf_resume_fp = adpf_resume;
+	powerhal_adpf_close_fp = adpf_close;
+	powerhal_adpf_sent_hint_fp = adpf_sent_hint;
+	powerhal_adpf_set_threads_fp = adpf_set_threads;
 
 	return 0;
 }
