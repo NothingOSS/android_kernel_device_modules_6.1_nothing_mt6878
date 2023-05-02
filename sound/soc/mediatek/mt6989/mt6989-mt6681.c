@@ -415,7 +415,7 @@ static int mt6989_mt6681_init(struct snd_soc_pcm_runtime *rtd)
 	/* disable ext amp connection */
 	snd_soc_dapm_disable_pin(dapm, EXT_SPK_AMP_W_NAME);
 #if IS_ENABLED(CONFIG_SND_SOC_MT6681_ACCDET) && defined(BYPASS_FOR_61_BRINGUP)
-	mt6681_accdet_init(codec_component, rtd->card);
+	//mt6681_accdet_init(codec_component, rtd->card);
 #endif
 	return 0;
 }
