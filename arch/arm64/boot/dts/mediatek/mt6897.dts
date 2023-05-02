@@ -15636,6 +15636,10 @@ FLL0_out,FLL1_out,FLL4_out,FLL5_out,FLL6_out";
 	regulator-always-on;
 };
 
+&mt6363_vufs18 {
+	regulator-always-on;
+};
+
 &mt6363_vrf12 {
 	regulator-always-on;
 };
