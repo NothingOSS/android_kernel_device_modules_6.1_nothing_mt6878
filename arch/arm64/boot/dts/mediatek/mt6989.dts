@@ -5411,6 +5411,8 @@
 			//iommus = <&apu_smmu 0x9>;
 
 			aov-log-buf-sz = <0x100000>;
+			enable-interrupt = <0x1>;
+			access-rcx-in-atf = <0x1>;
 		};
 
 		consys: consys@18000000 {
