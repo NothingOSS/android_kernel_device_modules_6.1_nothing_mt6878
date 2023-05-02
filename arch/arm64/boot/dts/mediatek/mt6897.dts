@@ -10562,6 +10562,10 @@
 				<8 0 335>,
 				<44 1 193>,
 				<45 1 193>;
+			need-smi-monitor = <1>; /* enable smi bw monitor in kernel */
+			commlarb-id = <6 6>; /* Monitor port of <comm0 comm1> */
+			common-id = <0 1>; /* <DISP_COMM MDP_COMM> */
+			monitor-id = <3 3>; /* Monitor id of <comm_0 comm_1> */
 		};
 
 		jpgenc@17030000 {
