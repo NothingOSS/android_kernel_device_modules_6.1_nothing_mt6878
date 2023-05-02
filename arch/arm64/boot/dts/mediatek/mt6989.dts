@@ -1019,6 +1019,32 @@
 		#size-cells = <0>;
 	};
 
+	firmware: firmware {
+		scmi: scmi {
+			compatible = "arm,scmi";
+			mboxes = <&tinysys_mbox 0>, <&tinysys_mbox 1>;
+			shmem = <&scmi_tx_shmem>, <&scmi_rx_shmem>;
+			mbox-names = "tx", "rx";
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			scmi_tinysys: protocol@80 {
+				reg = <0x80>;
+				scmi-qos = <1>;
+				scmi-dispplatdbg = <2>;
+				scmi-met = <3>;
+				scmi-apmcupm = <4>;
+				scmi-mminfra = <5>;
+				scmi-gpupm = <6>;
+				scmi-plt = <7>;
+				scmi-smi = <8>;
+				scmi-cm = <9>;
+				scmi-slbc = <10>;
+				scmi-ssc = <11>;
+			};
+		};
+	};
+
 	sspm: sspm@1c300000 {
 		compatible = "mediatek,sspm";
 		reg = <0 0x1c300000 0 0x3c000>,
@@ -1034,7 +1060,6 @@
 		interrupt-names = "ipc";
 		sspm-res-ram-start = <0x0>;
 		sspm-res-ram-size = <0x110000>; /* 1M + 64K */
-		mediatek,fake-sspm = <1>;
 		sspm-share-region-base = <0x38000>; /* 224K */
 		sspm-share-region-size = <0x8000>; /* 32K */
 	};
