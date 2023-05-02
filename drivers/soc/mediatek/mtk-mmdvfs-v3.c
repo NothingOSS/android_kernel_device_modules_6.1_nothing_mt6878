@@ -974,11 +974,11 @@ int mmdvfs_force_step_by_vcp(const u8 pwr_idx, const s8 opp)
 
 	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_FORCE);
 	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
-		mux->opp < dpsw_thr && mux->last >= dpsw_thr)
+		opp < dpsw_thr && mux->last >= dpsw_thr)
 		mtk_mmdvfs_enable_vmm(true);
 	ret = mmdvfs_vcp_ipi_send(FUNC_FORCE_OPP, pwr_idx, opp, NULL);
 	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
-		mux->opp >= dpsw_thr && mux->last < dpsw_thr)
+		opp >= dpsw_thr && mux->last < dpsw_thr)
 		mtk_mmdvfs_enable_vmm(false);
 	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_FORCE);
 
@@ -1099,11 +1099,11 @@ int mmdvfs_vote_step_by_vcp(const u8 pwr_idx, const s8 opp)
 
 	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_VOTE);
 	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
-		mux->opp < dpsw_thr && mux->last >= dpsw_thr)
+		opp < dpsw_thr && mux->last >= dpsw_thr)
 		mtk_mmdvfs_enable_vmm(true);
 	ret = clk_set_rate(mmdvfs_user_clk[idx], mux->freq[level]);
 	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
-		mux->opp >= dpsw_thr && mux->last < dpsw_thr)
+		opp >= dpsw_thr && mux->last < dpsw_thr)
 		mtk_mmdvfs_enable_vmm(false);
 	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_VOTE);
 
