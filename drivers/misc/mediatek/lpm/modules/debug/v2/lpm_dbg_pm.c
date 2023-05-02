@@ -95,6 +95,8 @@ int lpm_dbg_pm_init(void)
 			common_sodi_enable = 0;
 
 		of_node_put(lpm_node);
+	} else {
+		common_sodi_enable = 0;
 	}
 
 	pr_info("[name:mtk_lpm][P] - common sodi5 = %d (%s:%d)\n",
