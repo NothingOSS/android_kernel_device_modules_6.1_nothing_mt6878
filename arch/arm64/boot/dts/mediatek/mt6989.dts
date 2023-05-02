@@ -10425,6 +10425,9 @@
 
 		/* enable check vsys voltage */
 		enable-check-vsys;
+
+		/* enable LK boot volt*/
+		enable-boot-volt = <1>;
 	};
 
 	pe: pe {
@@ -10756,6 +10759,9 @@
 
 		/* fast charging algo support indicator */
 		enable-fast-charging-indicator;
+
+		/* enable LK boot volt*/
+		enable-boot-volt = <1>;
 	};
 
 	met {
@@ -13938,10 +13944,6 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 		id = <6>;
 		status = "okay";
 	};
-};
-
-&mtk_gauge {
-	disable-mtkbattery = <(1)>;
 };
 
 #include "mediatek/bat_setting/mt6989_battery_prop.dtsi"

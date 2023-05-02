@@ -68,6 +68,10 @@
 	multi-temp-gauge0 = <(1)>;
 	/* Multi gauge0 enable */
 	rbat-pull-up-volt = <(1840)>;
+	/* detect-bat-type only for internal*/
+	detect-bat-type = <(1)>;
+	/* disable battery temp compensate*/
+	no-bat-temp-compensate = <(1)>;
 #include "mt6989_battery_table.dtsi"
 #include "mt6989_battery_prop_dim2_ext.dtsi"
 };
