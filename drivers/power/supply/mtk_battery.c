@@ -1610,6 +1610,9 @@ void fg_custom_init_from_header(struct mtk_battery *gm)
 
 	gm->no_prop_timeout_control = NO_PROP_TIMEOUT_CONTROL;
 
+	gm->bat_voltage_low_bound = BAT_VOLTAGE_LOW_BOUND;
+	gm->low_tmp_bat_voltage_low_bound = LOW_TMP_BAT_VOLTAGE_LOW_BOUND;
+
 	fg_cust_data->dc_ratio_sel = DC_RATIO_SEL;
 	fg_cust_data->dc_r_cnt = DC_R_CNT;
 
@@ -2479,7 +2482,11 @@ void fg_custom_init_from_dts(struct platform_device *dev,
 
 	bm_err("fg active table:%d\n",
 		fg_table_cust_data->active_table_number);
-
+	/* low bat bound*/
+	fg_read_dts_val(np, "BAT_VOLTAGE_LOW_BOUND",
+		&(gm->bat_voltage_low_bound), 1);
+	fg_read_dts_val(np, "LOW_TMP_BAT_VOLTAGE_LOW_BOUND",
+		&(gm->low_tmp_bat_voltage_low_bound), 1);
 	/* battery temperature  related*/
 	fg_read_dts_val(np, "RBAT_PULL_UP_R", &(gm->rbat.rbat_pull_up_r), 1);
 	fg_read_dts_val(np, "RBAT_PULL_UP_VOLT",
@@ -3696,11 +3703,11 @@ int set_shutdown_cond(struct mtk_battery *gm, int shutdown_cond)
 				sds->is_under_shutdown_voltage = true;
 				for (i = 0; i < AVGVBAT_ARRAY_SIZE; i++)
 					sdc->batdata[i] =
-						VBAT2_DET_VOLTAGE1 / 10;
+						gm->fg_cust_data.vbat2_det_voltage1 / 10;
 				sdc->batidx = 0;
 			}
 			bm_debug("LOW_BAT_VOLT:vbat %d %d",
-				vbat, VBAT2_DET_VOLTAGE1 / 10);
+				vbat, gm->fg_cust_data.vbat2_det_voltage1 / 10);
 			mutex_unlock(&sdc->lock);
 		}
 		break;
@@ -3839,12 +3846,12 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 			sdd->vbat_lt,
 			sdd->vbat_lt_lv1,
 			tmp,
-			BAT_VOLTAGE_LOW_BOUND,
+			gm->bat_voltage_low_bound,
 			LOW_TEMP_THRESHOLD,
-			LOW_TMP_BAT_VOLTAGE_LOW_BOUND,
+			gm->low_tmp_bat_voltage_low_bound,
 			LOW_TEMP_DISABLE_LOW_BAT_SHUTDOWN);
 
-		if (sdd->avgvbat < BAT_VOLTAGE_LOW_BOUND) {
+		if (sdd->avgvbat < gm->bat_voltage_low_bound) {
 			/* avg vbat less than 3.4v */
 			sdd->lowbatteryshutdown = true;
 			polling++;
@@ -3858,7 +3865,7 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 						wakeup_fg_algo(gm,
 							FG_INTR_SHUTDOWN);
 					} else if (sdd->avgvbat <=
-						LOW_TMP_BAT_VOLTAGE_LOW_BOUND) {
+						gm->low_tmp_bat_voltage_low_bound) {
 						down_to_low_bat = 1;
 						bm_debug("cold tmp, battery voltage is low shutdown\n");
 						wakeup_fg_algo(gm,

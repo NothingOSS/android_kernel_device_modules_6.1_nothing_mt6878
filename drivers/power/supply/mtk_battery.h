@@ -1149,6 +1149,9 @@ struct mtk_battery {
 	int (*resume)(struct mtk_battery *gm);
 
 	int log_level;
+	/* low bat bound */
+	int bat_voltage_low_bound;
+	int low_tmp_bat_voltage_low_bound;
 };
 
 struct mtk_battery_sysfs_field_info {
