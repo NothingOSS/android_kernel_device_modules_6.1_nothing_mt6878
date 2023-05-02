@@ -904,6 +904,10 @@
 		compatible = "mediatek,mtk_composite_v4l2_1";
 	};
 
+	mtk_composite_v4l2_2: mtk-composite-v4l2-2 {
+		compatible = "mediatek,mtk_composite_v4l2_2";
+	};
+
 	ccipll_pll_ctrl_clk: syscon@c030000 {
 		compatible = "mediatek,mt6989-ccipll_pll_ctrl", "syscon";
 		reg = <0 0xc030000 0 0x0400>;
