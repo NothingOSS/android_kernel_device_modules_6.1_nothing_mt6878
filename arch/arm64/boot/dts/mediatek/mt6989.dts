@@ -8523,15 +8523,8 @@
 			#clock-cells = <1>;
 			clocks = <&mdpsys_config_clk CLK_MDP_APB_BUS>;
 			clock-names = "MDP_APB_BUS";
-			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
-			#address-cells = <2>;
-			#size-cells = <2>;
-#if 0
-			iommus = <&disp_iommu M4U_PORT_L2_MDP_RDMA0>,
-					<&disp_iommu M4U_PORT_L2_MDP_RDMA2>,
-					<&disp_iommu M4U_PORT_L2_MDP_WROT0>;
-#endif
-			dma-mask-bit = <34>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
 		};
 
 		mdp_mutex0: mdp-mutex0@1f001000 {
@@ -9639,7 +9632,7 @@
 		mdp-aal0   = <&mdp_aal0>;
 		mdp-color0 = <&mdp_color0>;
 		mdp-hdr0   = <&mdp_hdr0>;
-		// mediatek,larb = <&smi_larb2>;
+		mediatek,larb = <&smi_larb2>;
 		mdp-rdma0-sof = <CMDQ_EVENT_MMLSYS0_MDP_RDMA0_SOF>;
 		mdp-wrot0-sof = <CMDQ_EVENT_MMLSYS0_MDP_WROT0_SOF>;
 		mdp-rdma2-sof = <CMDQ_EVENT_MMLSYS0_MDP_RDMA2_SOF>;
@@ -9657,21 +9650,23 @@
 		mdp-rdma0-rst-done = <CMDQ_EVENT_MMLSYS0_MDP_RDMA0_SW_RST_DONE_ENG_EVENT>;
 #if 0
 		interconnects =
-			<&mmqos MASTER_LARB_PORT(M4U_PORT_L2_MDP_RDMA0)
+			<&mmqos MASTER_LARB_PORT(SMMU_L2_P0_MDP_RDMA0)
 				&mmqos SLAVE_COMMON(0)>,
-			<&mmqos MASTER_LARB_PORT(M4U_PORT_L2_MDP_RDMA2)
+			<&mmqos MASTER_LARB_PORT(SMMU_L2_P4_MDP_RDMA2)
 				&mmqos SLAVE_COMMON(0)>,
-			<&mmqos MASTER_LARB_PORT(M4U_PORT_L2_MDP_WROT0)
+			<&mmqos MASTER_LARB_PORT(SMMU_L2_P1_MDP_WROT0)
 				&mmqos SLAVE_COMMON(0)>;
 		interconnect-names =
 			"mdp_rdma0",
 			"mdp_rdma2",
 			"mdp_wrot0";
-		mdp-opp = <&opp_table_mdp>;
-		operating-points-v2 = <&opp_table_mdp>;
-		mdp-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-		dre30-hist-sram-start = /bits/ 16 <1536>;
 #endif
+		mdp-opp = <&opp_table_disp>;
+		operating-points-v2 = <&opp_table_disp>;
+		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+		clocks = <&mmdvfs_mux MMDVFS_USER_MDP>;
+		clock-names = "mmdvfs_clk";
+		dre30-hist-sram-start = /bits/ 16 <1536>;
 	};
 
 	mml-test {
