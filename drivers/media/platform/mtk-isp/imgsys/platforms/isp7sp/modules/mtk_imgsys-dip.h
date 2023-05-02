@@ -79,6 +79,8 @@
 #define DRZH2N_D2_CTL_SZ	0x54
 #define BOK_D1_CTL_OFT		0x7B70
 #define BOK_D1_CTL_SZ		0x78
+#define TCY_D2_CTL_OFT		0x7D00
+#define TCY_D2_CTL_SZ		0xD0
 
 #define DIP_DMA_NAME_MAX_SIZE	20
 
@@ -96,9 +98,9 @@
 #define DIP_YUVO_T1_FIFO_DEBUG_DATA_CASE1	(0x10700)
 #define DIP_YUVO_T1_FIFO_DEBUG_DATA_CASE3	(0x30700)
 
-#define DIP_CQ_DESC_NUM	178 // align with userspace
-#define DIP_REG_SIZE  (0x1A000) // align with userspace
-#define DIP_TDR_BUF_MAXSZ 163840 // align with userspace
+#define DIP_CQ_DESC_NUM		204 // align with userspace
+#define DIP_REG_SIZE		(0x1B000) // align with userspace
+#define DIP_TDR_BUF_MAXSZ	163840 // align with userspace
 /********************************************************************
  * Enum Define
  ********************************************************************/
