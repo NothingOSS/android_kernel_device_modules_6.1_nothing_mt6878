@@ -397,6 +397,7 @@ static struct mtk_drm_property mtk_connector_property[CONNECTOR_PROP_MAX] = {
 struct mtk_panel_ext *mtk_dsi_get_panel_ext(struct mtk_ddp_comp *comp);
 static void mtk_dsi_set_targetline(struct mtk_ddp_comp *comp,
 				struct cmdq_pkt *handle, unsigned int hacive);
+static void DSI_MIPI_deskew(struct mtk_dsi *dsi);
 
 static inline struct mtk_dsi *encoder_to_dsi(struct drm_encoder *e)
 {
@@ -2440,9 +2441,14 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 								(EXT_TE_EN | HSTX_CKLP_EN));
 				mtk_dsi_set_mode(dsi);
 				mtk_dsi_clk_hs_mode(dsi, 1);
+
+				/* data rate > 1.5Gbsp, skew calibration(polling<=33us)*/
+				if (mtk_dsi_default_rate(dsi) > 1500)
+					DSI_MIPI_deskew(dsi);
+
 				atomic_set(&dsi->ulps_async, 0);
 				crtc = dsi->encoder.crtc;
-				mtk_drm_idlemgr_async_put(crtc, "dsi_ulps");
+				mtk_drm_idlemgr_async_put(crtc, dsi->ddp_comp.id);
 			}
 		}
 
@@ -2453,7 +2459,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				mtk_dsi_ulps_enter_end(dsi);
 				atomic_set(&dsi->ulps_async, 0);
 				crtc = dsi->encoder.crtc;
-				mtk_drm_idlemgr_async_put(crtc, "dsi_ulps");
+				mtk_drm_idlemgr_async_put(crtc, dsi->ddp_comp.id);
 			}
 		}
 
@@ -2607,7 +2613,7 @@ static void mtk_dsi_wait_ulps_event_async(struct mtk_dsi *dsi)
 	struct drm_crtc *crtc = dsi->encoder.crtc;
 
 	atomic_set(&dsi->ulps_async, 1);
-	mtk_drm_idlemgr_async_get(crtc, "dsi_ulps");
+	mtk_drm_idlemgr_async_get(crtc, dsi->ddp_comp.id);
 	DDPINFO("%s, trig async ulps ops\n", __func__);
 }
 
@@ -2700,7 +2706,6 @@ static void mtk_dsi_exit_ulps(struct mtk_dsi *dsi, bool async)
 				DDPAEE("%s fail\n", __func__);
 			}
 		}
-
 		mtk_dsi_ulps_exit_end(dsi);
 	}
 }

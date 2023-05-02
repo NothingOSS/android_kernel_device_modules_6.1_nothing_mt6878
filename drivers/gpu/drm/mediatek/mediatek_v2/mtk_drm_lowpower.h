@@ -71,12 +71,26 @@ struct mtk_drm_idlemgr {
 struct mtk_drm_async_cb_data {
 	struct drm_crtc *crtc;
 	struct cmdq_pkt *handle;
-	char *master;
+	bool free_handle;
+	unsigned int user_id;
 };
 
 struct mtk_drm_async_cb {
 	struct mtk_drm_async_cb_data *data;
 	struct list_head link;
+};
+
+enum mtk_drm_async_user_id {
+	USER_TRIG_LOOP = 0xf001,
+	USER_HW_BLOCK,
+	USER_ADDON_CONNECT_MODULE,
+	USER_ADDON_DISCONNECT_MODULE,
+	USER_ADDON_CONNECT_CONNECTOR, //0xf005
+	USER_RESTORE_PLANE,
+	USER_CONFIG_PATH,
+	USER_STOP_CRTC,
+	USER_ATF_INSTR,
+	USER_VBLANK_OFF, //0xf00a
 };
 
 //check if async is enabled
@@ -85,16 +99,29 @@ bool mtk_drm_idlemgr_get_async_status(struct drm_crtc *crtc);
 bool mtk_drm_idlemgr_get_sram_status(struct drm_crtc *crtc);
 
 /* flush cmdq pkt with async wait,
- * this is required if user wants to free cmdq pkt by async task,
+ * this can be applied when user wants to free cmdq pkt by async task.
  */
 void mtk_drm_idle_async_flush(struct drm_crtc *crtc,
-	char *master, struct cmdq_pkt *cmdq_handle);
+	unsigned int user_id, struct cmdq_pkt *cmdq_handle);
+
+/* flush cmdq pkt with async wait,
+ * this can be applied when user customization of:
+ *    1. free cmdq pkt or not after async job done.
+ *    2. use private callback or default callback.
+ */
+int mtk_drm_idle_async_flush_cust(struct drm_crtc *crtc,
+	unsigned int user_id, struct cmdq_pkt *cmdq_handle,
+	bool free_handle, cmdq_async_flush_cb cb);
 
 /* maintain async event reference count,
  * only when reference count is 0, async wait can be finished.
  */
-void mtk_drm_idlemgr_async_get(struct drm_crtc *crtc, char *master);
-void mtk_drm_idlemgr_async_put(struct drm_crtc *_crtc, char *master);
+void mtk_drm_idlemgr_async_get(struct drm_crtc *crtc, unsigned int user_id);
+void mtk_drm_idlemgr_async_put(struct drm_crtc *_crtc, unsigned int user_id);
+
+/* async wait of gce job done */
+void mtk_drm_idlemgr_async_complete(struct drm_crtc *crtc, unsigned int user_id,
+	struct mtk_drm_async_cb_data *cb_data);
 
 void mtk_drm_idlemgr_kick(const char *source, struct drm_crtc *crtc,
 			  int need_lock);
@@ -110,13 +137,20 @@ unsigned long long
 mtk_drm_get_idle_check_interval(struct drm_crtc *crtc);
 
 void mtk_drm_idlemgr_kick_async(struct drm_crtc *crtc);
+
+/* enable cmd panel performance monitor tool */
 void mtk_drm_idlemgr_monitor(bool enable, struct drm_crtc *crtc);
+/* dump cmd panel performance */
 void mtk_drm_idlemgr_perf_dump(struct drm_crtc *crtc);
+/* enable cmd panel performance detail flow trace */
 void mtk_drm_idlemgr_async_perf_detail_control(bool enable,
 				struct drm_crtc *crtc);
+/* adjust cmd panel idle thread cpu settings */
 void mtk_drm_idlemgr_cpu_control(struct drm_crtc *crtc,
 				bool freq, unsigned int data);
+/* enable cmd panel idle async function */
 void mtk_drm_idlemgr_async_control(struct drm_crtc *crtc, bool enable);
+/* enable cmd panel sram sleep function */
 void mtk_drm_idlemgr_sram_control(struct drm_crtc *crtc, bool sleep);
 
 #endif

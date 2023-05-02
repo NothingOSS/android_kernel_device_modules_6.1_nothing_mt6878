@@ -166,17 +166,6 @@ static inline bool disp_c3d_sram_read(struct mtk_ddp_comp *comp,
 	return return_value;
 }
 
-static void c3d_write_sram_cb(struct cmdq_cb_data data)
-{
-	struct drm_crtc *crtc = data.data;
-
-	if (crtc == NULL) {
-		DDPMSG("%s: invalid crtc\n", __func__);
-		return;
-	}
-	mtk_drm_idlemgr_async_put(crtc, "c3d");
-}
-
 static bool disp_c3d_write_sram(struct mtk_ddp_comp *comp, int cmd_type)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
@@ -217,9 +206,14 @@ static bool disp_c3d_write_sram(struct mtk_ddp_comp *comp, int cmd_type)
 			cmdq_pkt_flush(cmdq_handle);
 			cmdq_mbox_disable(client->chan);
 		} else {
-			mtk_drm_idlemgr_async_get(crtc, "c3d");
-			//no need to free cb_data of mtk_crtc and global sram cmdq pkt
-			cmdq_pkt_flush_threaded(cmdq_handle, c3d_write_sram_cb, crtc);
+			int ret = 0;
+
+			ret = mtk_drm_idle_async_flush_cust(crtc, comp->id,
+						cmdq_handle, false, NULL);
+			if (ret < 0) {
+				cmdq_pkt_flush(cmdq_handle);
+				DDPMSG("%s, failed of async flush, %d\n", __func__, ret);
+			}
 		}
 		break;
 	}

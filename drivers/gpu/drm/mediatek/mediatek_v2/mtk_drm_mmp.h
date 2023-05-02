@@ -94,6 +94,8 @@ struct CRTC_MMP_Events {
 	mmp_event esd_recovery;
 	mmp_event leave_idle;
 	mmp_event enter_idle;
+	mmp_event idle_async;
+	mmp_event idle_async_cb;
 	mmp_event frame_cfg;
 	mmp_event suspend;
 	mmp_event resume;

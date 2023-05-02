@@ -7584,7 +7584,7 @@ void mtk_crtc_clear_wait_event(struct drm_crtc *crtc)
 		priv = mtk_crtc->base.dev->dev_private;
 		if (mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_IDLEMGR_ASYNC)) {
-			mtk_drm_idle_async_flush(crtc, "trig_loop", cmdq_handle);
+			mtk_drm_idle_async_flush(crtc, USER_TRIG_LOOP, cmdq_handle);
 		} else {
 			cmdq_pkt_flush(cmdq_handle);
 			cmdq_pkt_destroy(cmdq_handle);
@@ -8520,7 +8520,7 @@ void mtk_crtc_hw_block_ready(struct drm_crtc *crtc)
 	priv = mtk_crtc->base.dev->dev_private;
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_IDLEMGR_ASYNC)) {
-		mtk_drm_idle_async_flush(crtc, "bw_block", cmdq_handle);
+		mtk_drm_idle_async_flush(crtc, USER_HW_BLOCK, cmdq_handle);
 	} else {
 		cmdq_pkt_flush(cmdq_handle);
 		cmdq_pkt_destroy(cmdq_handle);
@@ -8743,7 +8743,7 @@ void mtk_crtc_disconnect_addon_module(struct drm_crtc *crtc)
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_IDLEMGR_ASYNC)) {
-		mtk_drm_idle_async_flush(crtc, "addon_connect", handle);
+		mtk_drm_idle_async_flush(crtc, USER_ADDON_DISCONNECT_MODULE, handle);
 	} else {
 		cmdq_pkt_flush(handle);
 		cmdq_pkt_destroy(handle);
@@ -8872,7 +8872,8 @@ void mtk_crtc_addon_connector_connect(struct drm_crtc *crtc,
 		if (flush) {
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
 					MTK_DRM_OPT_IDLEMGR_ASYNC)) {
-				mtk_drm_idle_async_flush(crtc, "addon_connect", handle);
+				mtk_drm_idle_async_flush(crtc,
+						USER_ADDON_CONNECT_CONNECTOR, handle);
 			} else {
 				cmdq_pkt_flush(handle);
 				cmdq_pkt_destroy(handle);
@@ -8904,7 +8905,7 @@ void mtk_crtc_connect_addon_module(struct drm_crtc *crtc)
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_IDLEMGR_ASYNC)) {
-		mtk_drm_idle_async_flush(crtc, "addon_module", handle);
+		mtk_drm_idle_async_flush(crtc, USER_ADDON_CONNECT_MODULE, handle);
 	} else {
 		cmdq_pkt_flush(handle);
 		cmdq_pkt_destroy(handle);
@@ -9156,7 +9157,7 @@ void mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc)
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_IDLEMGR_ASYNC)) {
-		mtk_drm_idle_async_flush(crtc, "restore_plane", cmdq_handle);
+		mtk_drm_idle_async_flush(crtc, USER_RESTORE_PLANE, cmdq_handle);
 	} else {
 		cmdq_pkt_flush(cmdq_handle);
 		cmdq_pkt_destroy(cmdq_handle);
@@ -9660,7 +9661,7 @@ void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_IDLEMGR_ASYNC)) {
-		mtk_drm_idle_async_flush(crtc, "config_path", cmdq_handle);
+		mtk_drm_idle_async_flush(crtc, USER_CONFIG_PATH, cmdq_handle);
 	} else {
 		cmdq_pkt_flush(cmdq_handle);
 		cmdq_pkt_destroy(cmdq_handle);
@@ -9824,7 +9825,7 @@ skip:
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_IDLEMGR_ASYNC)) {
-		mtk_drm_idle_async_flush(crtc, "stop_crtc", cmdq_handle);
+		mtk_drm_idle_async_flush(crtc, USER_STOP_CRTC, cmdq_handle);
 	} else {
 		cmdq_pkt_flush(cmdq_handle);
 		cmdq_pkt_destroy(cmdq_handle);
@@ -9943,7 +9944,7 @@ void mtk_crtc_prepare_instr(struct drm_crtc *crtc)
 		mtk_crtc_exec_atf_prebuilt_instr(mtk_crtc, handle);
 		if (mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_IDLEMGR_ASYNC)) {
-			mtk_drm_idle_async_flush(crtc, "prepare instr", handle);
+			mtk_drm_idle_async_flush(crtc, USER_ATF_INSTR, handle);
 		} else {
 			cmdq_pkt_flush(handle);
 			cmdq_pkt_destroy(handle);
