@@ -194,7 +194,6 @@
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-						&system_mem &system_pll &system_bus
 						&system_vcore &s2idle>;
 			capacity-dmips-mhz = <248>;
 		};
@@ -206,7 +205,6 @@
 			reg = <0x0100>;
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-						&system_mem &system_pll &system_bus
 						&system_vcore &s2idle>;
 			capacity-dmips-mhz = <248>;
 		};
@@ -218,7 +216,6 @@
 			reg = <0x0200>;
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-						&system_mem &system_pll &system_bus
 						&system_vcore &s2idle>;
 			capacity-dmips-mhz = <248>;
 		};
@@ -230,7 +227,6 @@
 			reg = <0x0300>;
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-						&system_mem &system_pll &system_bus
 						&system_vcore &s2idle>;
 			capacity-dmips-mhz = <248>;
 		};
@@ -242,7 +238,6 @@
 			reg = <0x0400>;
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
-						&system_mem &system_pll &system_bus
 						&system_vcore &s2idle>;
 			capacity-dmips-mhz = <753>;
 		};
@@ -254,7 +249,6 @@
 			reg = <0x0500>;
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
-						&system_mem &system_pll &system_bus
 						&system_vcore &s2idle>;
 			capacity-dmips-mhz = <753>;
 		};
@@ -266,7 +260,6 @@
 			reg = <0x0600>;
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
-						&system_mem &system_pll &system_bus
 						&system_vcore &s2idle>;
 			capacity-dmips-mhz = <753>;
 		};
@@ -278,7 +271,6 @@
 			reg = <0x0700>;
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
-						&system_mem &system_pll &system_bus
 						&system_vcore &s2idle>;
 			capacity-dmips-mhz = <1024>;
 		};
@@ -13102,8 +13094,7 @@
 		lpm-kernel-suspend = <0>;
 		suspend-method = "enable";
 
-		logger-enable-states = "mcusysoff_l", "mcusysoff_m", "mcusysoff_b", "system_mem",
-					"system_pll", "system_bus", "system_vcore";
+		logger-enable-states = "mcusysoff_l", "mcusysoff_m", "mcusysoff_b", "system_vcore";
 
 		irq-remain =	<&edge_keypad>,
 				<&level_apdma>,
