@@ -246,8 +246,8 @@ static int mt6989_mt6681_mtkaif_calibration(struct snd_soc_pcm_runtime *rtd)
 	regmap_update_bits(afe->regmap, AFE_AUD_PAD_TOP_CFG0, 0xff, 0xb9);
 
 	/* set test type to synchronizer pulse */
-	regmap_update_bits(afe_priv->topckgen,
-			   CKSYS_AUD_TOP_CFG, 0xffff, 0x4);
+	//regmap_update_bits(afe_priv->topckgen,
+	//		   CKSYS_AUD_TOP_CFG, 0xffff, 0x4);
 
 	mtkaif_calib_ok = true;
 	afe_priv->mtkaif_calibration_num_phase = 42;	/* mt6359: 0 ~ 42 */
@@ -262,8 +262,8 @@ static int mt6989_mt6681_mtkaif_calibration(struct snd_soc_pcm_runtime *rtd)
 		mt6681_set_mtkaif_calibration_phase(codec_component,
 						    phase, phase, phase);
 
-		regmap_update_bits(afe_priv->topckgen,
-				   CKSYS_AUD_TOP_CFG, 0x1, 0x1);
+		//regmap_update_bits(afe_priv->topckgen,
+		//		   CKSYS_AUD_TOP_CFG, 0x1, 0x1);
 
 		test_done_1 = miso0_need_calib ? 0 : -1;
 		test_done_2 = miso1_need_calib ? 0 : -1;
@@ -275,8 +275,8 @@ static int mt6989_mt6681_mtkaif_calibration(struct snd_soc_pcm_runtime *rtd)
 		while (test_done_1 == 0 ||
 		       test_done_2 == 0 ||
 		       test_done_3 == 0) {
-			regmap_read(afe_priv->topckgen,
-				    CKSYS_AUD_TOP_MON, &monitor);
+			//regmap_read(afe_priv->topckgen,
+			//	    CKSYS_AUD_TOP_MON, &monitor);
 
 			/* get test status */
 			if (test_done_1 == 0)
@@ -331,8 +331,8 @@ static int mt6989_mt6681_mtkaif_calibration(struct snd_soc_pcm_runtime *rtd)
 			afe_priv->mtkaif_phase_cycle[2] = prev_cycle_3;
 		}
 
-		regmap_update_bits(afe_priv->topckgen,
-				   CKSYS_AUD_TOP_CFG, 0x1, 0x0);
+		//regmap_update_bits(afe_priv->topckgen,
+		//		   CKSYS_AUD_TOP_CFG, 0x1, 0x0);
 	}
 
 	mt6681_set_mtkaif_calibration_phase(codec_component,
