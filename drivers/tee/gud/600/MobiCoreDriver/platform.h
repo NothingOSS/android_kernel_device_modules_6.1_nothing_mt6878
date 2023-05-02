@@ -24,7 +24,7 @@
  * arch/arm64/boot/dts/hisilicon/hi6220.dtsi
  */
 
-#define MC_TEE_HOTPLUG
+//#define MC_TEE_HOTPLUG
 
 /* Enable Paravirtualization support */
 // #define MC_FEBE
