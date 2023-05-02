@@ -526,6 +526,21 @@ void mtk_venc_pmqos_end_inst(struct mtk_vcodec_ctx *ctx)
 	}
 }
 
+void mtk_venc_pmqos_lock_unlock(struct mtk_vcodec_dev *dev, bool is_lock)
+{
+	if (is_lock) {
+		if (dev->venc_dvfs_params.mmdvfs_in_vcp)
+			mutex_lock(&dev->enc_qos_mutex);
+		else
+			mutex_lock(&dev->enc_dvfs_mutex);
+	} else {
+		if (dev->venc_dvfs_params.mmdvfs_in_vcp)
+			mutex_unlock(&dev->enc_qos_mutex);
+		else
+			mutex_unlock(&dev->enc_dvfs_mutex);
+	}
+}
+
 void mtk_venc_pmqos_monitor(struct mtk_vcodec_dev *dev, u32 state)
 {
 	struct vcodec_dev_qos *qos = &dev->venc_qos;

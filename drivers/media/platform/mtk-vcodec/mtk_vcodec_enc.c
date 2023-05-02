@@ -2404,13 +2404,19 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 			ctx->id, mtk_vcodec_get_state(ctx),
 			ctx->dev->venc_dvfs_params.target_freq,
 			ctx->dev->venc_dvfs_params.target_bw_factor);
+		mutex_unlock(&ctx->dev->enc_dvfs_mutex);
+
+		mutex_lock(&ctx->dev->enc_qos_mutex);
+		mtk_venc_pmqos_begin_inst(ctx);
+		mtk_venc_pmqos_monitor_reset(ctx->dev);
+		mutex_unlock(&ctx->dev->enc_qos_mutex);
 	} else {
-		mtk_venc_dvfs_begin_inst(ctx);
 		mtk_v4l2_debug(0, "[%d][VDVFS][VENC] start ctrl DVFS in AP", ctx->id);
+		mtk_venc_dvfs_begin_inst(ctx);
+		mtk_venc_pmqos_begin_inst(ctx);
+		mtk_venc_pmqos_monitor_reset(ctx->dev);
+		mutex_unlock(&ctx->dev->enc_dvfs_mutex);
 	}
-	mtk_venc_pmqos_begin_inst(ctx);
-	mtk_venc_pmqos_monitor_reset(ctx->dev);
-	mutex_unlock(&ctx->dev->enc_dvfs_mutex);
 
 	return 0;
 
@@ -2516,12 +2522,19 @@ static void vb2ops_venc_stop_streaming(struct vb2_queue *q)
 				ctx->id, mtk_vcodec_get_state(ctx),
 				ctx->dev->venc_dvfs_params.target_freq,
 				ctx->dev->venc_dvfs_params.target_bw_factor);
+			mutex_unlock(&ctx->dev->enc_dvfs_mutex);
+
+			mutex_lock(&ctx->dev->enc_qos_mutex);
+			mtk_venc_pmqos_end_inst(ctx);
+			mtk_venc_pmqos_monitor_reset(ctx->dev);
+			mutex_unlock(&ctx->dev->enc_qos_mutex);
 		} else {
 			mtk_v4l2_debug(0, "[%d][VDVFS][VENC] stop ctrl DVFS in AP", ctx->id);
 			mtk_venc_dvfs_end_inst(ctx);
+			mtk_venc_pmqos_end_inst(ctx);
+			mtk_venc_pmqos_monitor_reset(ctx->dev);
+			mutex_unlock(&ctx->dev->enc_dvfs_mutex);
 		}
-		mtk_venc_pmqos_end_inst(ctx);
-		mutex_unlock(&ctx->dev->enc_dvfs_mutex);
 	}
 
 	if ((q->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE &&

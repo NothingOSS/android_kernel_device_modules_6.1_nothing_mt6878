@@ -156,10 +156,16 @@ void venc_encode_prepare(void *ctx_prepare,
 	if (!mtk_vcodec_is_vcp(MTK_INST_ENCODER))
 		enable_irq(ctx->dev->enc_irq[core_id]);
 	if (core_id == MTK_VENC_CORE_0) {
-		mutex_lock(&ctx->dev->enc_dvfs_mutex);
+		/*
+		 *	In SWRGO, BW needs to request in both VCP and kernel
+		 *	In mp, BW only request in vcp, modify the following pmqos code segment
+		 *	by using if (!qos->need_smi_monitor) in mp branch
+		 */
+		mtk_venc_pmqos_lock_unlock(ctx->dev, true);
 		mtk_venc_pmqos_monitor(ctx->dev, VCODEC_SMI_MONITOR_START);
-		mtk_venc_pmqos_frame_req(ctx); /* only for SWRGO, remove it in mp branch */
-		mutex_unlock(&ctx->dev->enc_dvfs_mutex);
+		mtk_venc_pmqos_frame_req(ctx);
+		mtk_venc_pmqos_lock_unlock(ctx->dev, false);
+
 		vcodec_trace_count("VENC_HW_CORE_0", 1);
 	} else
 		vcodec_trace_count("VENC_HW_CORE_1", 1);
@@ -182,9 +188,9 @@ void venc_encode_unprepare(void *ctx_unprepare,
 		return;
 	}
 	if (core_id == MTK_VENC_CORE_0) {
-		mutex_lock(&ctx->dev->enc_dvfs_mutex);
+		mtk_venc_pmqos_lock_unlock(ctx->dev, true);
 		mtk_venc_pmqos_monitor(ctx->dev, VCODEC_SMI_MONITOR_STOP);
-		mutex_unlock(&ctx->dev->enc_dvfs_mutex);
+		mtk_venc_pmqos_lock_unlock(ctx->dev, false);
 		vcodec_trace_count("VENC_HW_CORE_0", 0);
 	} else
 		vcodec_trace_count("VENC_HW_CORE_1", 0);

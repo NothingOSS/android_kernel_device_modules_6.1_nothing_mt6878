@@ -25,6 +25,8 @@ void mtk_venc_pmqos_end_inst(struct mtk_vcodec_ctx *ctx);
 
 /* only for SWRGO, remove it in mp branch */
 void set_venc_opp(struct mtk_vcodec_dev *dev, u32 freq);
+void mtk_venc_pmqos_lock_unlock(struct mtk_vcodec_dev *dev, bool is_lock);
+
 void mtk_venc_pmqos_monitor(struct mtk_vcodec_dev *dev, u32 state);
 void mtk_venc_pmqos_monitor_init(struct mtk_vcodec_dev *dev);
 void mtk_venc_pmqos_monitor_deinit(struct mtk_vcodec_dev *dev);
