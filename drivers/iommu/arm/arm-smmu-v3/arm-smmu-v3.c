@@ -2678,7 +2678,7 @@ static bool arm_smmu_sid_in_range(struct arm_smmu_device *smmu, u32 sid)
 	return sid < limit;
 }
 
-static int arm_smmu_init_sid_strtab(struct arm_smmu_device *smmu, u32 sid)
+int arm_smmu_init_sid_strtab(struct arm_smmu_device *smmu, u32 sid)
 {
 	/* Check the SIDs are in range of the SMMU and our stream table */
 	if (!arm_smmu_sid_in_range(smmu, sid))
@@ -2805,12 +2805,6 @@ static struct iommu_device *arm_smmu_probe_device(struct device *dev)
 			if (ret)
 				goto out_runtime_put;
 
-			if (smmu->impl->smmu_hw_init) {
-				ret = smmu->impl->smmu_hw_init(smmu);
-				if (ret)
-					goto out_runtime_put;
-			}
-
 			/* Probe the h/w */
 			ret = arm_smmu_device_hw_probe(smmu);
 			if (ret)
@@ -2820,6 +2814,12 @@ static struct iommu_device *arm_smmu_probe_device(struct device *dev)
 			ret = arm_smmu_init_structures(smmu);
 			if (ret)
 				goto out_runtime_put;
+
+			if (smmu->impl->smmu_hw_init) {
+				ret = smmu->impl->smmu_hw_init(smmu);
+				if (ret)
+					goto out_runtime_put;
+			}
 
 			/* Check for RMRs and install bypass STEs if any */
 			arm_smmu_rmr_install_bypass_ste(smmu);
@@ -4085,11 +4085,6 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 	dev_info(smmu->dev, "[%s] delay_hw_init:%d\n", __func__, delay_hw_init);
 
 	if (!delay_hw_init) {
-		if (smmu->impl && smmu->impl->smmu_hw_init)
-			ret = smmu->impl->smmu_hw_init(smmu);
-		if (ret)
-			goto out_runtime_put;
-
 		/* Probe the h/w */
 		ret = arm_smmu_device_hw_probe(smmu);
 		if (ret)
@@ -4099,6 +4094,12 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 		ret = arm_smmu_init_structures(smmu);
 		if (ret)
 			goto out_runtime_put;
+
+		if (smmu->impl && smmu->impl->smmu_hw_init) {
+			ret = smmu->impl->smmu_hw_init(smmu);
+			if (ret)
+				goto out_runtime_put;
+		}
 	}
 
 	/* Record our private device structure */

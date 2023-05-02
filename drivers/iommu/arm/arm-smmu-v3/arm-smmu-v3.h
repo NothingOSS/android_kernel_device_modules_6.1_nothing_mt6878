@@ -805,6 +805,7 @@ int arm_smmu_atc_inv_domain(struct arm_smmu_domain *smmu_domain, int ssid,
 void arm_smmu_sync_ste_for_sid(struct arm_smmu_device *smmu, u32 sid);
 int arm_smmu_cmdq_issue_cmd(struct arm_smmu_device *smmu,
 			    struct arm_smmu_cmdq_ent *ent);
+int arm_smmu_init_sid_strtab(struct arm_smmu_device *smmu, u32 sid);
 
 #ifdef CONFIG_ARM_SMMU_V3_SVA
 bool arm_smmu_sva_supported(struct arm_smmu_device *smmu);

@@ -431,6 +431,9 @@ static int mtk_smmu_hw_init(struct arm_smmu_device *smmu)
 		 __func__, plat_data->smmu_plat, plat_data->flags,
 		 get_smmu_name(plat_data->smmu_type));
 
+	/* Make sure ste entries installed before smmu enable */
+	arm_smmu_init_sid_strtab(smmu, 0);
+
 	ret = smmu_init_wpcfg(smmu);
 
 	return ret;
