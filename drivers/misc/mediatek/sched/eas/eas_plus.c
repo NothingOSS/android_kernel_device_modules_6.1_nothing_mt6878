@@ -684,7 +684,7 @@ void check_for_migration(struct task_struct *p)
 
 		raw_spin_unlock(&p->pi_lock);
 
-		if ((new_cpu < 0) ||
+		if ((new_cpu < 0) || new_cpu >= MAX_NR_CPUS ||
 			(cpu_cap_ceiling(new_cpu) <= cpu_cap_ceiling(cpu)))
 			better_idle_cpu = select_bigger_idle_cpu(p);
 
@@ -699,7 +699,8 @@ void check_for_migration(struct task_struct *p)
 
 		irq_log_store();
 		if ((better_idle_cpu >= 0) ||
-			(cpu_cap_ceiling(new_cpu) > cpu_cap_ceiling(cpu))) {
+			(new_cpu < MAX_NR_CPUS && new_cpu >= 0 &&
+			(cpu_cap_ceiling(new_cpu) > cpu_cap_ceiling(cpu)))) {
 			raw_spin_unlock(&migration_lock);
 
 			migrate_running_task(new_cpu, p, rq, MIGR_TICK_PULL_MISFIT_RUNNING);
