@@ -2222,7 +2222,7 @@ int mtk_crtc_user_cmd(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
 		unsigned int cmd, void *params)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct pq_common_data *pq_data = mtk_crtc->pq_data;
+	struct pq_common_data *pq_data = NULL;
 	struct cmdq_pkt *cmdq_handle;
 	struct mtk_cmdq_cb_data *cb_data;
 	static unsigned int user_cmd_cnt;
@@ -2230,7 +2230,6 @@ int mtk_crtc_user_cmd(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
 	struct mtk_disp_ccorr *ccorr_data = NULL;
 	struct mtk_disp_ccorr_primary *primary_data = NULL;
 	bool is_ccorr_type = false;
-
 	int index = 0;
 
 	if (!mtk_crtc) {
@@ -2238,6 +2237,8 @@ int mtk_crtc_user_cmd(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
 				__func__, __LINE__, crtc);
 		return -1;
 	}
+
+	pq_data = mtk_crtc->pq_data;
 
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 
