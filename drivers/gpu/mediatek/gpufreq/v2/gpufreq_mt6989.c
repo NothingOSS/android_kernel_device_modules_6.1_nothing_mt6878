@@ -2497,6 +2497,8 @@ static void __gpufreq_clksrc_ctrl(enum gpufreq_target target, enum gpufreq_clk_s
 		}
 	}
 
+	GPUFREQ_LOGD("MFG_RPC_MFG_CK_FAST_REF_SEL: 0x%08x", DRV_Reg32(MFG_RPC_MFG_CK_FAST_REF_SEL));
+
 	GPUFREQ_TRACE_END();
 }
 
@@ -3475,6 +3477,10 @@ static void __gpufreq_top_hwdcm_config(void)
 	/* (F) core Qchannel DCM */
 	/* MFG_GLOBAL_CON 0x13FBF0B0 [10] GPU_CLK_FREE_RUN = 1'b0 */
 	DRV_WriteReg32(MFG_GLOBAL_CON, (DRV_Reg32(MFG_GLOBAL_CON) & ~BIT(10)));
+
+	/* Qchannel enable */
+	/* MFG_QCHANNEL_CON 0x13FBF0B4 [4] QCHANNEL_ENABLE = 1'b1 */
+	DRV_WriteReg32(MFG_QCHANNEL_CON, (DRV_Reg32(MFG_QCHANNEL_CON) | BIT(4)));
 
 	/* (G) freq bridge DCM */
 	/* MFG_ASYNC_CON 0x13FBF020 [22] MEM0_MST_CG_ENABLE = 1'b1 */
@@ -5060,7 +5066,7 @@ static void __gpufreq_init_shader_present(void)
 	default:
 		g_shader_present = GPU_SHADER_PRESENT_12;
 	}
-	GPUFREQ_LOGD("segment_id: %d, shader_present: %d", segment_id, g_shader_present);
+	GPUFREQ_LOGD("segment_id: %d, shader_present: 0x%08x", segment_id, g_shader_present);
 }
 
 static void __gpufreq_init_segment_id(void)
