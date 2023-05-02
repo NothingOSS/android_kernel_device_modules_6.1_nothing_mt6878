@@ -4715,7 +4715,7 @@
 		};
 
 		mmdvfs_mux: mmdvfs-mux {
-			// compatible = "mediatek,mtk-mmdvfs-mux";
+			compatible = "mediatek,mtk-mmdvfs-mux";
 			clocks = <&topckgen_clk CLK_TOP_DISP_SEL>, <&topckgen_clk CLK_TOP_MDP_SEL>,
 			<&topckgen_clk CLK_TOP_DISP_SEL>, <&topckgen_clk CLK_TOP_MMINFRA_SEL>,
 			<&topckgen_clk CLK_TOP_VENC_SEL>, <&topckgen_clk CLK_TOP_VDEC_SEL>,
@@ -4739,20 +4739,27 @@
 				"user-smi", "user-jpegdec", "user-jpegenc", "user-venc",
 				"user-vfmt", "user-img", "user-cam",
 				"user-vcore", "user-vmm", "user-vdisp", "user-vdec";
+			mediatek,free-run;
+			mediatek,dpsw-thres = <1>;
+			mediatek,vdec-larb = <&smi_larb5>;
 		};
 
 		mmdvfs-user {
-			// compatible = "mediatek,mtk-mmdvfs-user";
+			compatible = "mediatek,mtk-mmdvfs-user";
 			clocks = <&mmdvfs_mux MMDVFS_USER_VCORE>, <&mmdvfs_mux MMDVFS_USER_VMM>,
 				 <&mmdvfs_mux MMDVFS_USER_VDISP>, <&mmdvfs_mux MMDVFS_USER_VDEC>;
 			clock-names = "user-vcore", "user-vmm", "user-vdisp", "user-vdec";
 		};
 
 		mmdvfs_debug: mmdvfs-debug {
-			// compatible = "mediatek,mmdvfs-debug";
+			compatible = "mediatek,mmdvfs-debug";
 			debug-version = <2>; /* OR operation of (1 << MMDVFS_DBG_VERx) */
 			fmeter-id =	/bits/ 8 <15 16 17 19 20 23 26 27 28>;
 			fmeter-type =	/bits/ 8 < 5  5  5  5  5  5  5  5  5>;
+		};
+
+		mmdvfs-v3-start {
+			compatible = "mediatek,mmdvfs-v3-start";
 		};
 
 		dispsys_config: dispsys-config@14000000 {

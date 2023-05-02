@@ -14697,9 +14697,9 @@
 			"user-jpegdec", "user-jpegenc", "user-venc", "user-vfmt", "user-img",
 			"user-cam", "user-vcore", "user-vmm", "user-vdisp", "user-vdec";
 		mediatek,mmdvfs-swrgo;
-		mediatek,mmdvfs-free-run;
-		mediatek,dpsw-thr = <1>;
-		mediatek,larb = <&smi_larb5>;
+		mediatek,free-run;
+		mediatek,dpsw-thres = <1>;
+		mediatek,vdec-larb = <&smi_larb5>;
 	};
 
 	mmdvfs-user {
