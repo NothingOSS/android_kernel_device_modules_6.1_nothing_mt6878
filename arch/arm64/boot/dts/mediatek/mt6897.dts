@@ -10743,6 +10743,7 @@
 			aov-log-buf-sz = <0x100000>;
 			enable-interrupt = <0x0>;
 			access-rcx-in-atf = <0x1>;
+			interrupt-lbc-sz = <0x80000>;
 		};
 
 		jpgenc@17830000 {
