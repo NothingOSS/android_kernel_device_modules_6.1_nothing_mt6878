@@ -25,16 +25,6 @@ arm64.nopauth arm64.nosme arm64.nosve arm64.nomte";
 	};
 };
 
-&lk_charger {
-	disable-charger;
-	status = "disabled";
-};
-
-&charger {
-	disable-charger;
-	status = "disabled";
-};
-
 &pdc {
 	pd-vbus-upper-bound = <12000000>;
 };
