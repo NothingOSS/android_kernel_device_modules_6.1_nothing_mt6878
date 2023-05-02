@@ -30,15 +30,6 @@
 #define default_cap			(0)
 #endif
 
-#define MT6989_GPU_EB_PROT_EN_MFGSYS_SET_0_MFG1	(BIT(0) | BIT(1) |  \
-			BIT(2) | BIT(3) |  \
-			BIT(5) | BIT(6))
-#define MT6989_GPU_EB_PROT_EN_MFGSYS_SET_0_MFG1_2ND	(BIT(16) | BIT(17) |  \
-			BIT(18) | BIT(19) |  \
-			BIT(21) | BIT(22) |  \
-			BIT(23))
-#define MT6989_TOP_AXI_PROT_EN_EMISYS0_MFG1	(BIT(19) | BIT(20))
-#define MT6989_TOP_AXI_PROT_EN_EMISYS1_MFG1	(BIT(19) | BIT(20))
 #define MT6989_TOP_AXI_PROT_EN_INFRASYS1_MD	(BIT(12))
 #define MT6989_TOP_AXI_PROT_EN_INFRASYS0_MD	(BIT(11))
 #define MT6989_TOP_AXI_PROT_EN_EMISYS0_MD	(BIT(17) | BIT(18))
@@ -197,14 +188,12 @@
 
 enum regmap_type {
 	INVALID_TYPE = 0,
-	GPU_EB_RPC_TYPE = 1,
-	IFR_TYPE = 2,
-	VLP_TYPE = 3,
+	IFR_TYPE = 1,
+	VLP_TYPE = 2,
 	BUS_TYPE_NUM,
 };
 
 static const char *bus_list[BUS_TYPE_NUM] = {
-	[GPU_EB_RPC_TYPE] = "gpu-eb-rpc",
 	[IFR_TYPE] = "ifr-bus",
 	[VLP_TYPE] = "vlpcfg",
 };
@@ -212,296 +201,6 @@ static const char *bus_list[BUS_TYPE_NUM] = {
 /*
  * MT6989 power domain support
  */
-
-static const struct scp_domain_data scp_domain_mt6989_gpu_eb_rpc_data[] = {
-	[MT6989_POWER_DOMAIN_MFG1] = {
-		.name = "mfg1",
-		.ctl_offs = 0x70,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.bp_table = {
-			BUS_PROT_IGN(GPU_EB_RPC_TYPE, 0x40, 0x44, 0x40, 0x48,
-				MT6989_GPU_EB_PROT_EN_MFGSYS_SET_0_MFG1),
-			BUS_PROT_IGN(GPU_EB_RPC_TYPE, 0x40, 0x44, 0x40, 0x48,
-				MT6989_GPU_EB_PROT_EN_MFGSYS_SET_0_MFG1_2ND),
-			BUS_PROT_IGN(IFR_TYPE, 0x124, 0x128, 0x120, 0x12c,
-				MT6989_TOP_AXI_PROT_EN_EMISYS0_MFG1),
-			BUS_PROT_IGN(IFR_TYPE, 0x104, 0x108, 0x100, 0x10c,
-				MT6989_TOP_AXI_PROT_EN_EMISYS1_MFG1),
-		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG37] = {
-		.name = "mfg37",
-		.ctl_offs = 0x62C,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG2] = {
-		.name = "mfg2",
-		.ctl_offs = 0xA0,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG3] = {
-		.name = "mfg3",
-		.ctl_offs = 0xA4,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG4] = {
-		.name = "mfg4",
-		.ctl_offs = 0xA8,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG22] = {
-		.name = "mfg22",
-		.ctl_offs = 0xF0,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG6] = {
-		.name = "mfg6",
-		.ctl_offs = 0xB0,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG7] = {
-		.name = "mfg7",
-		.ctl_offs = 0xB4,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG8] = {
-		.name = "mfg8",
-		.ctl_offs = 0xB8,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG9] = {
-		.name = "mfg9",
-		.ctl_offs = 0xBC,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG10] = {
-		.name = "mfg10",
-		.ctl_offs = 0xC0,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG11] = {
-		.name = "mfg11",
-		.ctl_offs = 0xC4,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG12] = {
-		.name = "mfg12",
-		.ctl_offs = 0xC8,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG13] = {
-		.name = "mfg13",
-		.ctl_offs = 0xCC,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG14] = {
-		.name = "mfg14",
-		.ctl_offs = 0xD0,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG15] = {
-		.name = "mfg15",
-		.ctl_offs = 0xD4,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG16] = {
-		.name = "mfg16",
-		.ctl_offs = 0xD8,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG17] = {
-		.name = "mfg17",
-		.ctl_offs = 0xDC,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG18] = {
-		.name = "mfg18",
-		.ctl_offs = 0xE0,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG19] = {
-		.name = "mfg19",
-		.ctl_offs = 0xE4,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG20] = {
-		.name = "mfg20",
-		.ctl_offs = 0xE8,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG25] = {
-		.name = "mfg25",
-		.ctl_offs = 0xFC,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG26] = {
-		.name = "mfg26",
-		.ctl_offs = 0x600,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG27] = {
-		.name = "mfg27",
-		.ctl_offs = 0x604,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG28] = {
-		.name = "mfg28",
-		.ctl_offs = 0x608,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG29] = {
-		.name = "mfg29",
-		.ctl_offs = 0x60C,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG30] = {
-		.name = "mfg30",
-		.ctl_offs = 0x610,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG31] = {
-		.name = "mfg31",
-		.ctl_offs = 0x614,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG32] = {
-		.name = "mfg32",
-		.ctl_offs = 0x618,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG33] = {
-		.name = "mfg33",
-		.ctl_offs = 0x61C,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG34] = {
-		.name = "mfg34",
-		.ctl_offs = 0x620,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG35] = {
-		.name = "mfg35",
-		.ctl_offs = 0x624,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG36] = {
-		.name = "mfg36",
-		.ctl_offs = 0x628,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
-	},
-};
-
-static const struct scp_subdomain scp_subdomain_mt6989_gpu_eb_rpc[] = {
-	{MT6989_POWER_DOMAIN_MFG1, MT6989_POWER_DOMAIN_MFG37},
-	{MT6989_POWER_DOMAIN_MFG37, MT6989_POWER_DOMAIN_MFG2},
-	{MT6989_POWER_DOMAIN_MFG2, MT6989_POWER_DOMAIN_MFG3},
-	{MT6989_POWER_DOMAIN_MFG2, MT6989_POWER_DOMAIN_MFG4},
-	{MT6989_POWER_DOMAIN_MFG2, MT6989_POWER_DOMAIN_MFG22},
-	{MT6989_POWER_DOMAIN_MFG2, MT6989_POWER_DOMAIN_MFG6},
-	{MT6989_POWER_DOMAIN_MFG2, MT6989_POWER_DOMAIN_MFG7},
-	{MT6989_POWER_DOMAIN_MFG2, MT6989_POWER_DOMAIN_MFG8},
-	{MT6989_POWER_DOMAIN_MFG3, MT6989_POWER_DOMAIN_MFG9},
-	{MT6989_POWER_DOMAIN_MFG4, MT6989_POWER_DOMAIN_MFG10},
-	{MT6989_POWER_DOMAIN_MFG22, MT6989_POWER_DOMAIN_MFG11},
-	{MT6989_POWER_DOMAIN_MFG3, MT6989_POWER_DOMAIN_MFG12},
-	{MT6989_POWER_DOMAIN_MFG4, MT6989_POWER_DOMAIN_MFG13},
-	{MT6989_POWER_DOMAIN_MFG22, MT6989_POWER_DOMAIN_MFG14},
-	{MT6989_POWER_DOMAIN_MFG6, MT6989_POWER_DOMAIN_MFG15},
-	{MT6989_POWER_DOMAIN_MFG7, MT6989_POWER_DOMAIN_MFG16},
-	{MT6989_POWER_DOMAIN_MFG8, MT6989_POWER_DOMAIN_MFG17},
-	{MT6989_POWER_DOMAIN_MFG6, MT6989_POWER_DOMAIN_MFG18},
-	{MT6989_POWER_DOMAIN_MFG7, MT6989_POWER_DOMAIN_MFG19},
-	{MT6989_POWER_DOMAIN_MFG8, MT6989_POWER_DOMAIN_MFG20},
-	{MT6989_POWER_DOMAIN_MFG9, MT6989_POWER_DOMAIN_MFG25},
-	{MT6989_POWER_DOMAIN_MFG10, MT6989_POWER_DOMAIN_MFG26},
-	{MT6989_POWER_DOMAIN_MFG11, MT6989_POWER_DOMAIN_MFG27},
-	{MT6989_POWER_DOMAIN_MFG12, MT6989_POWER_DOMAIN_MFG28},
-	{MT6989_POWER_DOMAIN_MFG13, MT6989_POWER_DOMAIN_MFG29},
-	{MT6989_POWER_DOMAIN_MFG14, MT6989_POWER_DOMAIN_MFG30},
-	{MT6989_POWER_DOMAIN_MFG15, MT6989_POWER_DOMAIN_MFG31},
-	{MT6989_POWER_DOMAIN_MFG16, MT6989_POWER_DOMAIN_MFG32},
-	{MT6989_POWER_DOMAIN_MFG17, MT6989_POWER_DOMAIN_MFG33},
-	{MT6989_POWER_DOMAIN_MFG18, MT6989_POWER_DOMAIN_MFG34},
-	{MT6989_POWER_DOMAIN_MFG19, MT6989_POWER_DOMAIN_MFG35},
-	{MT6989_POWER_DOMAIN_MFG20, MT6989_POWER_DOMAIN_MFG36},
-};
-
-static const struct scp_soc_data mt6989_gpu_eb_rpc_data = {
-	.domains = scp_domain_mt6989_gpu_eb_rpc_data,
-	.num_domains = MT6989_GPU_EB_RPC_POWER_DOMAIN_NR,
-	.subdomains = scp_subdomain_mt6989_gpu_eb_rpc,
-	.num_subdomains = ARRAY_SIZE(scp_subdomain_mt6989_gpu_eb_rpc),
-	.regs = {
-		.pwr_sta_offs = 0x208,
-		.pwr_sta2nd_offs = 0x20C,
-	}
-};
 
 static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 	[MT6989_POWER_DOMAIN_MD] = {
@@ -519,8 +218,7 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x104, 0x108, 0x100, 0x10c,
 				MT6989_TOP_AXI_PROT_EN_EMISYS1_MD),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_MD_OPS | MTK_SCPD_BYPASS_INIT_ON
-				| default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_MD_OPS | MTK_SCPD_BYPASS_INIT_ON,
 	},
 	[MT6989_POWER_DOMAIN_CONN] = {
 		.name = "conn",
@@ -535,7 +233,7 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x1c4, 0x1c8, 0x1c0, 0x1cc,
 				MT6989_TOP_AXI_PROT_EN_CONNSYS0_CONN_2ND),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON,
 	},
 	[MT6989_POWER_DOMAIN_PERI_USB0] = {
 		.name = "peri-usb0",
@@ -618,11 +316,11 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 		.sram_pdn_ack_bits = GENMASK(12, 12),
 		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
-	[MT6989_POWER_DOMAIN_ADSP_TOP_SHUTDOWN] = {
-		.name = "adsp-top-shutdown",
+	[MT6989_POWER_DOMAIN_ADSP_TOP_DORMANT] = {
+		.name = "adsp-top-dormant",
 		.ctl_offs = 0xE34,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.sram_slp_bits = GENMASK(9, 9),
+		.sram_slp_ack_bits = GENMASK(13, 13),
 		.bp_table = {
 			BUS_PROT_IGN(VLP_TYPE, 0x0214, 0x0218, 0x0210, 0x0220,
 				MT6989_VLP_AXI_PROT_EN_ADSP_TOP),
@@ -1067,7 +765,7 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 };
 
 static const struct scp_subdomain scp_subdomain_mt6989_spm[] = {
-	{MT6989_POWER_DOMAIN_ADSP_AO, MT6989_POWER_DOMAIN_ADSP_TOP_SHUTDOWN},
+	{MT6989_POWER_DOMAIN_ADSP_AO, MT6989_POWER_DOMAIN_ADSP_TOP_DORMANT},
 	{MT6989_POWER_DOMAIN_ISP_MAIN, MT6989_POWER_DOMAIN_ISP_TRAW},
 	{MT6989_POWER_DOMAIN_ISP_MAIN, MT6989_POWER_DOMAIN_ISP_DIP1},
 	{MT6989_POWER_DOMAIN_ISP_VCORE, MT6989_POWER_DOMAIN_ISP_MAIN},
@@ -1115,9 +813,6 @@ static const struct scp_soc_data mt6989_spm_data = {
 
 static const struct of_device_id of_scpsys_match_tbl[] = {
 	{
-		.compatible = "mediatek,mt6989-gpusys",
-		.data = &mt6989_gpu_eb_rpc_data,
-	}, {
 		.compatible = "mediatek,mt6989-scpsys",
 		.data = &mt6989_spm_data,
 	}, {
