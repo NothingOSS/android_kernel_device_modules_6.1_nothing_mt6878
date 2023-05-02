@@ -625,7 +625,7 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 
 	/* Assert all reset signals */
 	val = readl_relaxed(port->base + PCIE_RST_CTRL_REG);
-	val |= PCIE_MAC_RSTB | PCIE_PHY_RSTB | PCIE_BRG_RSTB | PCIE_PE_RSTB;
+	val |= PCIE_MAC_RSTB | PCIE_BRG_RSTB | PCIE_PE_RSTB;
 	writel_relaxed(val, port->base + PCIE_RST_CTRL_REG);
 
 	/*
@@ -637,7 +637,7 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 	msleep(100);
 
 	/* De-assert reset signals */
-	val &= ~(PCIE_MAC_RSTB | PCIE_PHY_RSTB | PCIE_BRG_RSTB | PCIE_PE_RSTB);
+	val &= ~(PCIE_MAC_RSTB | PCIE_BRG_RSTB | PCIE_PE_RSTB);
 	writel_relaxed(val, port->base + PCIE_RST_CTRL_REG);
 
 	/* Check if the link is up or not */
@@ -1110,8 +1110,7 @@ static int mtk_pcie_parse_port(struct mtk_pcie_port *port)
 	if (ret)
 		port->peri_reset_en = false;
 
-	pextp_node = of_find_compatible_node(NULL, NULL,
-					     "mediatek,mt6985-pextpcfg_ao");
+	pextp_node = of_parse_phandle(dev->of_node, "pextpcfg", 0);
 	if (pextp_node) {
 		port->pextpcfg = of_iomap(pextp_node, 0);
 		of_node_put(pextp_node);
