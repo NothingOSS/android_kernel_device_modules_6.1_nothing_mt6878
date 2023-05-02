@@ -2820,6 +2820,28 @@
 		vmmrc-off-table = <0x2e7a8>;
 	};
 
+	mtk_apu_mem_code: mtk-apu-mem-code {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		compatible = "mediatek, apu_mem_code";
+		status = "okay";
+		type = <1>;
+		mask = /bits/ 64 <0x00000003ffffffff>;
+		mtk,iommu-group = <&apu_iommu_group_0>;
+		iommus = <&apu_smmu 0xb>;
+	};
+
+	mtk_apu_mem_data: mtk-apu-mem-data {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		compatible = "mediatek, apu_mem_data";
+		status = "okay";
+		type = <2>;
+		mask = /bits/ 64 <0x00000003ffffffff>;
+		mtk,iommu-group = <&apu_iommu_group_1>;
+		iommus = <&apu_smmu 0xa>;
+	};
+
 	soc {
 		compatible = "simple-bus";
 		#address-cells = <2>;
