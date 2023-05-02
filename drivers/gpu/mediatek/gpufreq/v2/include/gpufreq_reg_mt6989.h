@@ -211,6 +211,10 @@
 #define MFG_VGPU_DEVAPC_D0_VIO_STA_0           (g_mfg_vgpu_devapc_base + 0x400)    /* 0x13FA2400 */
 #define MFG_VGPU_DEVAPC_D0_VIO_STA_1           (g_mfg_vgpu_devapc_base + 0x404)    /* 0x13FA2404 */
 
+#define MFG_SMMU_BASE                          (0x13A00000)
+#define MFG_SMMU_CR0                           (g_mfg_smmu_base + 0x0020)          /* 0x13A00000 */
+#define MFG_SMMU_GBPA                          (g_mfg_smmu_base + 0x0044)          /* 0x13A00000 */
+
 #define SPM_BASE                               (0x1C001000)
 #define SPM_SPM2GPUPM_CON                      (g_sleep + 0x410)                   /* 0x1C001410 */
 #define SPM_MFG0_PWR_CON                       (g_sleep + 0xF04)                   /* 0x1C001F04 */

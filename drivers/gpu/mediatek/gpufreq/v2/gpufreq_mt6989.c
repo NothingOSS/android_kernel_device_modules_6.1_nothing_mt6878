@@ -199,6 +199,7 @@ static void __iomem *g_mfg_rpc_base;
 static void __iomem *g_mfg_axuser_base;
 static void __iomem *g_mfg_brcast_base;
 static void __iomem *g_mfg_vgpu_devapc_base;
+static void __iomem *g_mfg_smmu_base;
 static void __iomem *g_sleep;
 static void __iomem *g_topckgen_base;
 static void __iomem *g_nth_emicfg_base;
@@ -1926,6 +1927,17 @@ static void __gpufreq_dump_bringup_status(struct platform_device *pdev)
 		GPUFREQ_LOGE("fail to ioremap MFG_RPC: 0x%llx", res->start);
 		return;
 	}
+	/* 0x13A00000 */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mfg_smmu");
+	if (unlikely(!res)) {
+		GPUFREQ_LOGE("fail to get resource MFG_SMMU");
+		return;
+	}
+	g_mfg_smmu_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
+	if (unlikely(!g_mfg_smmu_base)) {
+		GPUFREQ_LOGE("fail to ioremap MFG_SMMU: 0x%llx", res->start);
+		return;
+	}
 	/* 0x1C001000 */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "sleep");
 	if (!res) {
@@ -1952,10 +1964,13 @@ static void __gpufreq_dump_bringup_status(struct platform_device *pdev)
 	GPUFREQ_LOGI("[SPM] %s=0x%08x, %s=0x%08x",
 		"SPM2GPUPM_CON", DRV_Reg32(SPM_SPM2GPUPM_CON),
 		"MFG0_PWR_CON", DRV_Reg32(SPM_MFG0_PWR_CON));
-	GPUFREQ_LOGI("[MFG] %s=0x%08lx, %s=0x%08x, %s=0x%08x",
+	GPUFREQ_LOGI("[MFG] %s=0x%08lx, %s=0x%08x",
 		"MFG_0_22_37_PWR_STATUS", MFG_0_22_37_PWR_STATUS,
-		"MFG1_PWR_CON", DRV_Reg32(MFG_RPC_MFG1_PWR_CON),
-		"GTOP_DREQ", DRV_Reg32(MFG_RPC_GTOP_DREQ_CFG));
+		"MFG1_PWR_CON", DRV_Reg32(MFG_RPC_MFG1_PWR_CON));
+	GPUFREQ_LOGI("[MFG] %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"GTOP_DREQ", DRV_Reg32(MFG_RPC_GTOP_DREQ_CFG),
+		"SMMU_CR0", DRV_Reg32(MFG_SMMU_CR0),
+		"SMMU_GBPA", DRV_Reg32(MFG_SMMU_GBPA));
 	GPUFREQ_LOGI("[MFG] %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
 		"BRISKET_TOP", DRV_Reg32(MFG_RPC_BRISKET_TOP_AO_CFG_0),
 		"BRISKET_ST0", DRV_Reg32(MFG_RPC_BRISKET_ST0_AO_CFG_0),
@@ -5277,6 +5292,18 @@ static int __gpufreq_init_platform_info(struct platform_device *pdev)
 	g_mfg_vgpu_devapc_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
 	if (unlikely(!g_mfg_vgpu_devapc_base)) {
 		GPUFREQ_LOGE("fail to ioremap MFG_VGPU_DEVAPC: 0x%llx", res->start);
+		goto done;
+	}
+
+	/* 0x13A00000 */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mfg_smmu");
+	if (unlikely(!res)) {
+		GPUFREQ_LOGE("fail to get resource MFG_SMMU");
+		goto done;
+	}
+	g_mfg_smmu_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
+	if (unlikely(!g_mfg_smmu_base)) {
+		GPUFREQ_LOGE("fail to ioremap MFG_SMMU: 0x%llx", res->start);
 		goto done;
 	}
 
