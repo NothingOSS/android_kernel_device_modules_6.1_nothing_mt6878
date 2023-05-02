@@ -10523,7 +10523,7 @@
 	swpm: swpm {
 		compatible = "mediatek,mtk-swpm";
 		pmu-boundary-num = <0>;
-		pmu-dsu-support = <0>;
+		pmu-dsu-support = <1>;
 		pmu-dsu-type = <10>;
 	};
 
@@ -11390,6 +11390,24 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"acx1bw";
 			node-102 = "SSPM_SWPM_APU__TOP_BW_NOC_ACX2",
 				"acx2bw";
+			node-103 = "SSPM_SWPM_CPU__CORE_PMU_3",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-104 = "SSPM_SWPM_CPU__CORE_PMU_4",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-105 = "SSPM_SWPM_CPU__CORE_PMU_5",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-106 = "SSPM_SWPM_CPU__CORE_PMU_6",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-107 = "SSPM_SWPM_CPU__CORE_PMU_7",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-108 = "SSPM_SWPM_CPU__CORE_PMU_8",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-109 = "SSPM_SWPM_CPU__CORE_PMU_9",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-110 = "SSPM_SWPM_CPU__CORE_PMU_10",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-111 = "SSPM_SWPM_CPU__CORE_PMU_11",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
 		};
 
 		gpueb_rts_header:gpueb-rts-header {
