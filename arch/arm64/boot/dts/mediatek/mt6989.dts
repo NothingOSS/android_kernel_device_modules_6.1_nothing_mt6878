@@ -7003,12 +7003,12 @@
 			dynamic-alloc = <1>;
 		};
 
-		apusys_rv: apusys-rv@19001000 {
+		apusys_rv: apusys-rv@190e1000 {
 			compatible = "mediatek,mt6989-apusys_rv";
-			status = "disabled";
+			status = "okay";
 
-			reg = <0 0x19001000 0 0x1000>,
-				  <0 0x190e1000 0 0x2000>,
+			reg = <0 0x190e1000 0 0x2000>,
+			      <0 0x19001000 0 0x1000>,
 			      <0 0x19002000 0 0x10>,
 			      <0 0x1903c000 0 0x8000>,
 			      <0 0x19050000 0 0x10000>,
@@ -7017,8 +7017,8 @@
 			      <0 0x0d2a0000 0 0x10000>,
 			      <0 0x190f0000 0 0x1000>;
 
-			reg-names = "md32_sysctrl",
-						"apu_mbox",
+			reg-names = "apu_mbox",
+					"md32_sysctrl",
 				    "apu_wdt",
 				    "apu_sctrl_reviser",
 				    "md32_cache_dump",
@@ -7027,8 +7027,8 @@
 				    "md32_debug_apb",
 				    "apu_rpc";
 
-			//mtk,iommu-group = <&apu_iommu_group_0>;
-			//iommus = <&apu_smmu 0x8>;
+			mtk,iommu-group = <&apu_iommu_group_0>;
+			iommus = <&apu_smmu 9>;
 
 			interrupts = <GIC_SPI 690 IRQ_TYPE_LEVEL_HIGH 0>,
 					<GIC_SPI 710 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -7128,7 +7128,7 @@
 
 		apusys-hw-logger@19024000 {
 			compatible = "mediatek,apusys_hw_logger";
-			status = "disabled";
+			status = "okay";
 
 			reg = <0 0x19024000 0 0x1000>,
 				<0 0x190e1000 0 0x2000>;
@@ -7137,8 +7137,8 @@
 			interrupts = <GIC_SPI 699 IRQ_TYPE_LEVEL_HIGH 0>;
 			interrupt-names = "apu_logtop";
 
-			//mtk,iommu-group = <&apu_iommu_group_0>;
-			//iommus = <&apu_smmu 0x9>;
+			mtk,iommu-group = <&apu_iommu_group_0>;
+			iommus = <&apu_smmu 12>;
 
 			aov-log-buf-sz = <0x100000>;
 			enable-interrupt = <0x1>;
