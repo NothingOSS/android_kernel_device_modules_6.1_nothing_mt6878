@@ -1505,7 +1505,6 @@ static void msdc_init_hw(struct msdc_host *host)
 {
 	u32 val;
 	u32 tune_reg = host->dev_comp->pad_tune_reg;
-	struct mmc_host *mmc = mmc_from_priv(host);
 
 	if (host->reset) {
 		reset_control_assert(host->reset);
@@ -1556,8 +1555,15 @@ static void msdc_init_hw(struct msdc_host *host)
 	writel(0x403c0046, host->base + MSDC_PATCH_BIT);
 	sdr_set_field(host->base + MSDC_PATCH_BIT, MSDC_CKGEN_MSDC_DLY_SEL, 1);
 	writel(0xfffe4089, host->base + MSDC_PATCH_BIT1);
-	if (!(mmc->caps2 & MMC_CAP2_NO_SDIO))
+	/*
+	 * high speed bus -> EMMC50_CFG2_AXI_SET_LEN = 0xf -> MSDC_PB1_ENABLE_SINGLE_BURST = 0
+	 * low speed bus -> EMMC50_CFG2_AXI_SET_LEN = 0 -> MSDC_PB1_ENABLE_SINGLE_BURST = 1
+	 */
+	sdr_get_field(host->base + EMMC50_CFG2, EMMC50_CFG2_AXI_SET_LEN, &val);
+	if (val == 0)
 		sdr_set_bits(host->base + MSDC_PATCH_BIT1, MSDC_PB1_ENABLE_SINGLE_BURST);
+	else
+		sdr_clr_bits(host->base + MSDC_PATCH_BIT1, MSDC_PB1_ENABLE_SINGLE_BURST);
 	sdr_set_bits(host->base + EMMC50_CFG0, EMMC50_CFG_CFCSTS_SEL);
 
 	if (host->dev_comp->stop_clk_set.enable) {

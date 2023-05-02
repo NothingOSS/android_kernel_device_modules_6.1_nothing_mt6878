@@ -73,6 +73,7 @@
 #define SDC_RESP2        0x48
 #define SDC_RESP3        0x4c
 #define SDC_BLK_NUM      0x50
+#define SDC_DATCRC_STS	 0x60
 #define SDC_ADV_CFG0     0x64
 #define MSDC_NEW_RX_CFG  0x68
 #define EMMC_IOCON       0x7c
@@ -101,6 +102,7 @@
 #define EMMC51_CFG0      0x204
 #define EMMC50_CFG0      0x208
 #define EMMC50_CFG1      0x20c
+#define EMMC50_CFG2	 0x21c
 #define EMMC50_CFG3      0x220
 #define EMMC50_CFG4      0x224
 #define SDC_FIFO_CFG     0x228
@@ -122,6 +124,7 @@
 #define EMMC50_PAD_DAT6_TUNE	0x28
 #define EMMC50_PAD_DAT7_TUNE	0x2c
 #define LOOP_TEST_CONTROL	0x30
+#define MSDC_TOP_STATUS		0x3c
 #define MSDC_TOP_NEW_RX_CFG	0x38
 
 /*--------------------------------------------------------------------------*/
@@ -314,6 +317,8 @@
 
 /* EMMC50_CFG1 mask */
 #define EMMC50_CFG1_DS_CFG        (0x1 << 28)  /* RW */
+
+#define EMMC50_CFG2_AXI_SET_LEN	(0xF << 24)	/* RW */
 
 #define EMMC50_CFG3_OUTS_WR       (0x1f << 0)  /* RW */
 
