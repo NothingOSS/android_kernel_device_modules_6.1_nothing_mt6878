@@ -3457,6 +3457,8 @@ static void mtk_dsi_encoder_disable(struct drm_encoder *encoder)
 	DDPINFO("%s\n", __func__);
 	mtk_drm_idlemgr_kick(__func__, crtc, 0);
 
+	CRTC_MMP_MARK(index, dsi_suspend, 1, 0);
+
 	/* TODO: assume DSI0 would use for primary display so far */
 	if (comp->id == DDP_COMPONENT_DSI0)
 		mtk_disp_notifier_call_chain(MTK_DISP_EARLY_EVENT_BLANK,
@@ -3465,7 +3467,11 @@ static void mtk_dsi_encoder_disable(struct drm_encoder *encoder)
 		mtk_disp_sub_notifier_call_chain(MTK_DISP_EARLY_EVENT_BLANK,
 					&data);
 
+	CRTC_MMP_MARK(index, dsi_suspend, 2, 0);
+
 	mtk_output_dsi_disable(dsi, NULL, false);
+
+	CRTC_MMP_MARK(index, dsi_suspend, 3, 0);
 
 	if (comp->id == DDP_COMPONENT_DSI0)
 		mtk_disp_notifier_call_chain(MTK_DISP_EVENT_BLANK,
@@ -3504,7 +3510,12 @@ static void mtk_dsi_encoder_enable(struct drm_encoder *encoder)
 		DDP_PROFILE("[PROFILE] %s before notify end\n", __func__);
 	}
 
+	CRTC_MMP_MARK(index, dsi_resume, 1, 0);
+
 	mtk_output_dsi_enable(dsi, false);
+
+	CRTC_MMP_MARK(index, dsi_resume, 2, 0);
+
 	if (comp->id == DDP_COMPONENT_DSI0) {
 		DDP_PROFILE("[PROFILE] %s after notify start\n", __func__);
 		mtk_disp_notifier_call_chain(MTK_DISP_EVENT_BLANK,
@@ -8132,6 +8143,8 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 		drm_display_mode_to_videomode(mode, &dsi->vm);
 	}
 
+	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 1);
+
 	/*  send lcm cmd before DSI power down if needed */
 	if (dsi->ext && dsi->ext->funcs && dsi->ext->funcs->mode_switch_hs) {
 		dsi->ext->funcs->mode_switch_hs(dsi->panel,
@@ -8159,7 +8172,7 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 		}
 	}
 
-	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 1);
+	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 2);
 
 	if (need_mipi_change == 0) {
 		DDPINFO("skip mipi chg\n");
@@ -8179,7 +8192,7 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 		mtk_dsi_ddp_unprepare(&dsi->ddp_comp);
 	mtk_dsi_enter_idle(dsi, 1, false);
 
-	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 2);
+	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 3);
 
 	if (dsi->mipi_hopping_sta && dsi->ext->params->dyn.switch_en)
 		mtk_mipi_tx_pll_rate_set_adpt(dsi->phy,
@@ -8187,7 +8200,7 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 	else
 		mtk_mipi_tx_pll_rate_set_adpt(dsi->phy, 0);
 
-	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 3);
+	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 4);
 
 	/* Power on DSI */
 	mtk_dsi_leave_idle(dsi, 1, false);
@@ -8196,13 +8209,13 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 
 	mtk_dsi_set_mode(dsi);
 	mtk_dsi_clk_hs_mode(dsi, 1);
-	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 4);
+	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 5);
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_MMDVFS_SUPPORT)) {
 		if (dsi->driver_data && dsi->driver_data->mmclk_by_datarate)
 			dsi->driver_data->mmclk_by_datarate(dsi, mtk_crtc, 1);
 	}
-	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 5);
+	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 6);
 skip_change_mipi:
 	/*  send lcm cmd after DSI power on if needed */
 	if (dsi->ext && dsi->ext->funcs && dsi->ext->funcs->mode_switch_hs) {
@@ -8212,7 +8225,7 @@ skip_change_mipi:
 		dsi->ext->funcs->mode_switch) {
 		check_ms_work = dsi->ext->funcs->mode_switch(dsi->panel, &dsi->conn,
 			src_mode, dst_mode, AFTER_DSI_POWERON);
-		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 6);
+		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 7);
 		if (!check_ms_work) {
 			check_panel_cmd = dsi->ext->params->mode_switch_cmd.num_cmd;
 			if (check_panel_cmd) {
@@ -8237,11 +8250,11 @@ skip_change_mipi:
 				cmdq_pkt_flush(cmdq_handle);
 				cmdq_pkt_destroy(cmdq_handle);
 
-				CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 7);
+				CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 8);
 				return;
 			}
 		}
-
+		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 9);
 	}
 	if (!(mtk_crtc->mode_change_index & MODE_DSI_RES)) {
 		/* set frame done */
@@ -8257,7 +8270,7 @@ skip_change_mipi:
 		cmdq_pkt_flush(cmdq_handle2);
 		cmdq_pkt_destroy(cmdq_handle2);
 	}
-	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 8);
+	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 10);
 }
 
 static void mtk_dsi_dy_fps_cmdq_cb(struct cmdq_cb_data data)
