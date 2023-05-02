@@ -260,10 +260,17 @@ static void mictx_evaluate_queue(struct mtk_btag_mictx *mictx,
 	/* get and clear mictx queue data */
 	for (qid = 0; qid < mictx->queue_nr; qid++) {
 		struct mtk_btag_mictx_queue tmp, *q = &mictx->q[qid];
+		int io_type;
 
 		spin_lock_irqsave(&q->lock, flags);
-		memcpy(&tmp, q, sizeof(struct mtk_btag_mictx_queue));
-		memset(q, 0, sizeof(struct mtk_btag_mictx_queue));
+		tmp = *q;
+		for (io_type = 0; io_type < BTAG_IO_TYPE_NR; io_type++) {
+			q->rq_size[io_type] = 0;
+			q->rq_cnt[io_type] = 0;
+			q->tp_size[io_type] = 0;
+			q->tp_time[io_type] = 0;
+		}
+		q->top_len = 0;
 		spin_unlock_irqrestore(&q->lock, flags);
 
 		iostat->reqsize_r += tmp.rq_size[BTAG_IO_READ];
