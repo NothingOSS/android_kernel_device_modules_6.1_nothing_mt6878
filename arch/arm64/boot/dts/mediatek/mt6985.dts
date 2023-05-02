@@ -606,14 +606,6 @@
 			alloc-ranges = <0 0x40000000 0 0x10000>;
 		};
 
-		dpmaif_cma_mem: dpmaif-page-pool-cma {
-			compatible = "shared-dma-pool";
-			reusable;
-			size = <0 0x4000000>;
-			alignment = <0 0x1000>;
-		};
-
-
 		dpmaif_resv_cache_mem: ccci-dpmaif-cache-memory {
 			compatible = "mediatek,dpmaif-resv-cache-mem";
 			size = <0 0x0210000>; /* 2162688 Bytes for 2rxq */
@@ -4454,7 +4446,6 @@
 			net-spd-ver = <8>;
 			hw-reset-ver = <1>;
 			dpmaif-infracfg = <&infracfg_ao_clk>;
-			memory-region = <&dpmaif_cma_mem>;
 		};
 
 		ccifdriver:ccifdriver@10209000 {
