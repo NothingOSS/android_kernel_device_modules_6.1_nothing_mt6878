@@ -5384,6 +5384,507 @@
 			access-rcx-in-atf = <0x1>;
 		};
 
+		remoteproc_ccd: remoteproc-ccd {
+			compatible = "mediatek,ccd";
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+			msg-dev {
+				mtk,rpmsg-name = "mtk_ccd_msgdev";
+			};
+		};
+
+		camisp: camisp@1a000000 {
+			compatible = "mediatek,mt6897-camisp";
+			reg = <0 0x1a000000 0 0x1000>,
+				<0 0x1a0f0000 0 0x18c4>;
+			reg-names = "base", "adl";
+			mediatek,ccd = <&remoteproc_ccd>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+#if 0
+			power-domains = <&scpsys MT6897_POWER_DOMAIN_CAM_MAIN>;
+			interrupts =
+				<GIC_SPI 510 IRQ_TYPE_LEVEL_HIGH 0>, // adlrd_ipui_rdone
+				<GIC_SPI 511 IRQ_TYPE_LEVEL_HIGH 0>; // adlrd
+			operating-points-v2 = <&opp_table_cam>;
+			clocks = <&mmdvfs_clk CLK_MMDVFS_CAM>;
+			clock-names = "mmdvfs_clk";
+			mboxes = <&gce_m 24 0 CMDQ_THR_PRIO_1>;
+#endif
+		};
+
+		cam_raw_a: cam-raw-a@1a030000 {
+			compatible = "mediatek,cam-raw";
+			reg = <0 0x1a030000 0 0x8000>,
+				  <0 0x1a038000 0 0x8000>;
+			reg-names = "base", "inner_base";
+			mediatek,cam-id = <0>;
+#if 0
+			mediatek,larbs = <&smi_larb16>;
+#endif
+			interrupts = <GIC_SPI 560 IRQ_TYPE_LEVEL_HIGH 0>;
+#if 0
+			power-domains = <&scpsys MT6897_POWER_DOMAIN_CAM_SUBA>;
+			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_CAMTG_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_ADLRD_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_ADLWR_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_CAM2MM0_GALS_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_CAM2MM1_GALS_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_CAM2SYS_GALS_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_CAM2MM2_GALS_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_CAM_SUBA_CON_0>,
+				<&camsys_rawa_clk CLK_CAM_RA_LARBX>,
+				<&camsys_rawa_clk CLK_CAM_RA_CAM>,
+				<&camsys_rawa_clk CLK_CAM_RA_CAMTG>,
+				<&topckgen_clk CLK_TOP_CAM_SEL>,
+				<&vlp_cksys_clk CLK_VLP_CK_CAMTG_SEL>,
+				<&topckgen_clk CLK_TOP_CAMTM_SEL>;
+			clock-names = "camsys_cam_cgpdn",
+				"camsys_camtg_cgpdn",
+				"camsys_adlrd_cgpdn",
+				"camsys_adlwr_cgpdn",
+				"camsys_cam2mm0_gals_cgpdn",
+				"camsys_cam2mm1_gals_cgpdn",
+				"camsys_cam2sys_gals_cgpdn",
+				"camsys_cam2mm2_gals_cgpdn",
+				"camsys_cam_suba_cgpdn",
+				"camsys_rawa_larbx_cgpdn",
+				"camsys_rawa_cam_cgpdn",
+				"camsys_rawa_camtg_cgpdn",
+				"topckgen_top_cam_sel",
+				"vlpckgen_vlp_camtg_sel",
+				"topckgen_top_camtm_sel";
+			iommus = <&disp_iommu M4U_L16_P0_CQI_R1_U0>,
+				<&disp_iommu M4U_L16_P1_RAWI_R2_U0>,
+				<&disp_iommu M4U_L16_P2_RAWI_R3_U0>,
+				<&disp_iommu M4U_L16_P4_RAWI_R5_U0>,
+				<&disp_iommu M4U_L16_P5_IMGO_R1_U0>,
+				<&disp_iommu M4U_L16_P7_FPRI_R1_U0>,
+				<&disp_iommu M4U_L16_P8_BPCI_R1_U0>,
+				<&disp_iommu M4U_L16_P10_LSCI_R1_U0>,
+				<&disp_iommu M4U_L16_P11_UFEO_R1_U0>,
+				<&disp_iommu M4U_L16_P12_LTMSO_R1_U0>,
+				<&disp_iommu M4U_L16_P13_DRZB2NO_R1_U0>,
+				<&disp_iommu M4U_L16_P14_AFO_R1_U0>,
+				<&disp_iommu M4U_L16_P15_AAO_R1_U0>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(M4U_L16_P0_CQI_R1_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L16_P1_RAWI_R2_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L16_P2_RAWI_R3_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L16_P4_RAWI_R5_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L16_P5_IMGO_R1_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L16_P7_FPRI_R1_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L16_P8_BPCI_R1_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L16_P10_LSCI_R1_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L16_P11_UFEO_R1_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L16_P12_LTMSO_R1_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L16_P13_DRZB2NO_R1_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L16_P14_AFO_R1_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L16_P15_AAO_R1_U0)
+					&mmqos SLAVE_COMMON(0)>;
+			interconnect-names =
+				"cqi_r1",
+				"rawi_r2",
+				"rawi_r3",
+				"rawi_r5",
+				"imgo_r1",
+				"fpri_r1",
+				"bpci_r1",
+				"lsci_r1",
+				"ufeo_r1",
+				"ltmso_r1",
+				"drzb2no_r1",
+				"afo_r1",
+				"aao_r1";
+#endif
+		};
+
+		cam-rms-a@1a040000 {
+			compatible = "mediatek,cam-rms";
+			reg = <0 0x1a040000 0 0x8000>,
+				<0 0x1a048000 0 0x6000>;
+			reg-names = "base", "inner_base";
+			mediatek,cam-id = <0>;
+		};
+
+		cam-yuv-a@1a050000 {
+			compatible = "mediatek,cam-yuv";
+			reg = <0 0x1a050000 0 0x8000>,
+				  <0 0x1a058000 0 0x8000>;
+			reg-names = "base", "inner_base";
+			mediatek,cam-id = <0>;
+#if 0
+			mediatek,larbs = <&smi_larb17>;
+#endif
+			interrupts = <GIC_SPI 561 IRQ_TYPE_LEVEL_HIGH 0>;
+#if 0
+			power-domains = <&scpsys MT6897_POWER_DOMAIN_CAM_SUBA>;
+			clocks = <&camsys_yuva_clk CLK_CAM_YA_LARBX>,
+				<&camsys_yuva_clk CLK_CAM_YA_CAM>,
+				<&camsys_yuva_clk CLK_CAM_YA_CAMTG>;
+			clock-names = "camsys_yuva_larbx_cgpdn",
+				"camsys_yuva_cam_cgpdn",
+				"camsys_yuva_camtg_cgpdn";
+			iommus = <&disp_iommu M4U_L17_P0_YUVO_R1_U0>,
+				<&disp_iommu M4U_L17_P1_YUVO_R3_U0>,
+				<&disp_iommu M4U_L17_P2_YUVO_R2_U0>,
+				<&disp_iommu M4U_L17_P3_YUVO_R5_U0>,
+				<&disp_iommu M4U_L17_P4_RGBWI_R1_U0>,
+				<&disp_iommu M4U_L17_P5_TCYSO_R1_U0>,
+				<&disp_iommu M4U_L17_P6_DRZHNO_R3_U0>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(M4U_L17_P0_YUVO_R1_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L17_P1_YUVO_R3_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L17_P2_YUVO_R2_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L17_P3_YUVO_R5_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L17_P4_RGBWI_R1_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L17_P5_TCYSO_R1_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L17_P6_DRZHNO_R3_U0)
+					&mmqos SLAVE_COMMON(1)>;
+			interconnect-names =
+				"yuvo_r1",
+				"yuvo_r3",
+				"yuvo_r2",
+				"yuvo_r5",
+				"rgbwi_r1",
+				"tcyso_r1",
+				"drzhno_r3";
+#endif
+		};
+
+		cam-raw-b@1a070000 {
+			compatible = "mediatek,cam-raw";
+			reg = <0 0x1a070000 0 0x8000>,
+				  <0 0x1a078000 0 0x8000>;
+			reg-names = "base", "inner_base";
+			mediatek,cam-id = <1>;
+#if 0
+			mediatek,larbs = <&smi_larb36>;
+#endif
+			interrupts = <GIC_SPI 562 IRQ_TYPE_LEVEL_HIGH 0>;
+#if 0
+			power-domains = <&scpsys MT6897_POWER_DOMAIN_CAM_SUBB>;
+			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_CAMTG_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_ADLRD_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_ADLWR_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_CAM2MM0_GALS_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_CAM2MM1_GALS_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_CAM2SYS_GALS_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_CAM2MM2_GALS_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_CAM_SUBB_CON_0>,
+				<&camsys_rawb_clk CLK_CAM_RB_LARBX>,
+				<&camsys_rawb_clk CLK_CAM_RB_CAM>,
+				<&camsys_rawb_clk CLK_CAM_RB_CAMTG>,
+				<&topckgen_clk CLK_TOP_CAM_SEL>,
+				<&vlp_cksys_clk CLK_VLP_CK_CAMTG_SEL>,
+				<&topckgen_clk CLK_TOP_CAMTM_SEL>;
+			clock-names = "camsys_cam_cgpdn",
+				"camsys_camtg_cgpdn",
+				"camsys_adlrd_cgpdn",
+				"camsys_adlwr_cgpdn",
+				"camsys_cam2mm0_gals_cgpdn",
+				"camsys_cam2mm1_gals_cgpdn",
+				"camsys_cam2sys_gals_cgpdn",
+				"camsys_cam2mm2_gals_cgpdn",
+				"camsys_cam_subb_cgpdn",
+				"camsys_rawb_larbx_cgpdn",
+				"camsys_rawb_cam_cgpdn",
+				"camsys_rawb_camtg_cgpdn",
+				"topckgen_top_cam_sel",
+				"vlpckgen_vlp_camtg_sel",
+				"topckgen_top_camtm_sel";
+			iommus = <&mdp_iommu M4U_L36_P0_CQI_R1_U0>,
+				<&mdp_iommu M4U_L36_P1_RAWI_R2_U0>,
+				<&mdp_iommu M4U_L36_P2_RAWI_R3_U0>,
+				<&mdp_iommu M4U_L36_P4_RAWI_R5_U0>,
+				<&mdp_iommu M4U_L36_P5_IMGO_R1_U0>,
+				<&mdp_iommu M4U_L36_P7_FPRI_R1_U0>,
+				<&mdp_iommu M4U_L36_P8_BPCI_R1_U0>,
+				<&mdp_iommu M4U_L36_P10_LSCI_R1_U0>,
+				<&mdp_iommu M4U_L36_P11_UFEO_R1_U0>,
+				<&mdp_iommu M4U_L36_P12_LTMSO_R1_U0>,
+				<&mdp_iommu M4U_L36_P13_DRZB2NO_R1_U0>,
+				<&mdp_iommu M4U_L36_P14_AFO_R1_U0>,
+				<&mdp_iommu M4U_L36_P15_AAO_R1_U0>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(M4U_L36_P0_CQI_R1_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L36_P1_RAWI_R2_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L36_P2_RAWI_R3_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L36_P4_RAWI_R5_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L36_P5_IMGO_R1_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L36_P7_FPRI_R1_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L36_P8_BPCI_R1_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L36_P10_LSCI_R1_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L36_P11_UFEO_R1_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L36_P12_LTMSO_R1_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L36_P13_DRZB2NO_R1_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L36_P14_AFO_R1_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L36_P15_AAO_R1_U0)
+					&mmqos SLAVE_COMMON(1)>;
+			interconnect-names =
+				"cqi_r1",
+				"rawi_r2",
+				"rawi_r3",
+				"rawi_r5",
+				"imgo_r1",
+				"fpri_r1",
+				"bpci_r1",
+				"lsci_r1",
+				"ufeo_r1",
+				"ltmso_r1",
+				"drzb2no_r1",
+				"afo_r1",
+				"aao_r1";
+#endif
+		};
+
+		cam-rms-b@1a080000 {
+			compatible = "mediatek,cam-rms";
+			reg = <0 0x1a080000 0 0x8000>,
+				<0 0x1a088000 0 0x6000>;
+			reg-names = "base", "inner_base";
+			mediatek,cam-id = <1>;
+		};
+
+		cam-yuv-b@1a090000 {
+			compatible = "mediatek,cam-yuv";
+			reg = <0 0x1a090000 0 0x8000>,
+				  <0 0x1a098000 0 0x8000>;
+			reg-names = "base", "inner_base";
+			mediatek,cam-id = <1>;
+#if 0
+			mediatek,larbs = <&smi_larb34>;
+#endif
+			interrupts = <GIC_SPI 563 IRQ_TYPE_LEVEL_HIGH 0>;
+#if 0
+			power-domains = <&scpsys MT6897_POWER_DOMAIN_CAM_SUBB>;
+			clocks = <&camsys_yuvb_clk CLK_CAM_YB_LARBX>,
+				<&camsys_yuvb_clk CLK_CAM_YB_CAM>,
+				<&camsys_yuvb_clk CLK_CAM_YB_CAMTG>;
+			clock-names = "camsys_yuvb_larbx_cgpdn",
+				"camsys_yuvb_cam_cgpdn",
+				"camsys_yuvb_camtg_cgpdn";
+			iommus = <&disp_iommu M4U_L34_P0_YUVO_R1_U0>,
+				<&disp_iommu M4U_L34_P1_YUVO_R3_U0>,
+				<&disp_iommu M4U_L34_P2_YUVO_R2_U0>,
+				<&disp_iommu M4U_L34_P3_YUVO_R5_U0>,
+				<&disp_iommu M4U_L34_P4_RGBWI_R1_U0>,
+				<&disp_iommu M4U_L34_P5_TCYSO_R1_U0>,
+				<&disp_iommu M4U_L34_P6_DRZHNO_R3_U0>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(M4U_L34_P0_YUVO_R1_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L34_P1_YUVO_R3_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L34_P2_YUVO_R2_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L34_P3_YUVO_R5_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L34_P4_RGBWI_R1_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L34_P5_TCYSO_R1_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L34_P6_DRZHNO_R3_U0)
+					&mmqos SLAVE_COMMON(0)>;
+			interconnect-names =
+				"yuvo_r1",
+				"yuvo_r3",
+				"yuvo_r2",
+				"yuvo_r5",
+				"rgbwi_r1",
+				"tcyso_r1",
+				"drzhno_r3";
+#endif
+		};
+
+		cam-raw-c@1a0b0000 {
+			compatible = "mediatek,cam-raw";
+			reg = <0 0x1a0b0000 0 0x8000>,
+				  <0 0x1a0b8000 0 0x8000>;
+			reg-names = "base", "inner_base";
+			mediatek,cam-id = <2>;
+#if 0
+			mediatek,larbs = <&smi_larb37>;
+#endif
+			interrupts = <GIC_SPI 564 IRQ_TYPE_LEVEL_HIGH 0>;
+#if 0
+			power-domains = <&scpsys MT6897_POWER_DOMAIN_CAM_SUBC>;
+			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_CAMTG_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_ADLRD_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_ADLWR_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_CAM2MM0_GALS_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_CAM2MM1_GALS_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_CAM2SYS_GALS_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_CAM2MM2_GALS_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_CAM_SUBC_CON_0>,
+				<&camsys_rawc_clk CLK_CAM_RC_LARBX>,
+				<&camsys_rawc_clk CLK_CAM_RC_CAM>,
+				<&camsys_rawc_clk CLK_CAM_RC_CAMTG>,
+				<&topckgen_clk CLK_TOP_CAM_SEL>,
+				<&vlp_cksys_clk CLK_VLP_CK_CAMTG_SEL>,
+				<&topckgen_clk CLK_TOP_CAMTM_SEL>;
+			clock-names = "camsys_cam_cgpdn",
+				"camsys_camtg_cgpdn",
+				"camsys_adlrd_cgpdn",
+				"camsys_adlwr_cgpdn",
+				"camsys_cam2mm0_gals_cgpdn",
+				"camsys_cam2mm1_gals_cgpdn",
+				"camsys_cam2sys_gals_cgpdn",
+				"camsys_cam2mm2_gals_cgpdn",
+				"camsys_cam_subc_cgpdn",
+				"camsys_rawc_larbx_cgpdn",
+				"camsys_rawc_cam_cgpdn",
+				"camsys_rawc_camtg_cgpdn",
+				"topckgen_top_cam_sel",
+				"vlpckgen_vlp_camtg_sel",
+				"topckgen_top_camtm_sel";
+			iommus = <&disp_iommu M4U_L37_P0_CQI_R1_U0>,
+				<&disp_iommu M4U_L37_P1_RAWI_R2_U0>,
+				<&disp_iommu M4U_L37_P2_RAWI_R3_U0>,
+				<&disp_iommu M4U_L37_P4_RAWI_R5_U0>,
+				<&disp_iommu M4U_L37_P5_IMGO_R1_U0>,
+				<&disp_iommu M4U_L37_P7_FPRI_R1_U0>,
+				<&disp_iommu M4U_L37_P8_BPCI_R1_U0>,
+				<&disp_iommu M4U_L37_P10_LSCI_R1_U0>,
+				<&disp_iommu M4U_L37_P11_UFEO_R1_U0>,
+				<&disp_iommu M4U_L37_P12_LTMSO_R1_U0>,
+				<&disp_iommu M4U_L37_P13_DRZB2NO_R1_U0>,
+				<&disp_iommu M4U_L37_P14_AFO_R1_U0>,
+				<&disp_iommu M4U_L37_P15_AAO_R1_U0>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(M4U_L37_P0_CQI_R1_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L37_P1_RAWI_R2_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L37_P2_RAWI_R3_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L37_P4_RAWI_R5_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L37_P5_IMGO_R1_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L37_P7_FPRI_R1_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L37_P8_BPCI_R1_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L37_P10_LSCI_R1_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L37_P11_UFEO_R1_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L37_P12_LTMSO_R1_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L37_P13_DRZB2NO_R1_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L37_P14_AFO_R1_U0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L37_P15_AAO_R1_U0)
+					&mmqos SLAVE_COMMON(0)>;
+			interconnect-names =
+				"cqi_r1",
+				"rawi_r2",
+				"rawi_r3",
+				"rawi_r5",
+				"imgo_r1",
+				"fpri_r1",
+				"bpci_r1",
+				"lsci_r1",
+				"ufeo_r1",
+				"ltmso_r1",
+				"drzb2no_r1",
+				"afo_r1",
+				"aao_r1";
+#endif
+		};
+
+		cam-rms-c@1a0c0000 {
+			compatible = "mediatek,cam-rms";
+			reg = <0 0x1a0c0000 0 0x8000>,
+				<0 0x1a0c8000 0 0x6000>;
+			reg-names = "base", "inner_base";
+			mediatek,cam-id = <2>;
+		};
+
+		cam-yuv-c@1a0d0000 {
+			compatible = "mediatek,cam-yuv";
+			reg = <0 0x1a0d0000 0 0x8000>,
+				  <0 0x1a0d8000 0 0x8000>;
+			reg-names = "base", "inner_base";
+			mediatek,cam-id = <2>;
+#if 0
+			mediatek,larbs = <&smi_larb35>;
+#endif
+			interrupts = <GIC_SPI 565 IRQ_TYPE_LEVEL_HIGH 0>;
+#if 0
+			power-domains = <&scpsys MT6897_POWER_DOMAIN_CAM_SUBC>;
+			clocks = <&camsys_yuvc_clk CLK_CAM_YC_LARBX>,
+				<&camsys_yuvc_clk CLK_CAM_YC_CAM>,
+				<&camsys_yuvc_clk CLK_CAM_YC_CAMTG>;
+			clock-names = "camsys_yuvc_larbx_cgpdn",
+				"camsys_yuvc_cam_cgpdn",
+				"camsys_yuvc_camtg_cgpdn";
+			iommus = <&mdp_iommu M4U_L35_P0_YUVO_R1_U0>,
+				<&mdp_iommu M4U_L35_P1_YUVO_R3_U0>,
+				<&mdp_iommu M4U_L35_P2_YUVO_R2_U0>,
+				<&mdp_iommu M4U_L35_P3_YUVO_R5_U0>,
+				<&mdp_iommu M4U_L35_P4_RGBWI_R1_U0>,
+				<&mdp_iommu M4U_L35_P5_TCYSO_R1_U0>,
+				<&mdp_iommu M4U_L35_P6_DRZHNO_R3_U0>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(M4U_L35_P0_YUVO_R1_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L35_P1_YUVO_R3_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L35_P2_YUVO_R2_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L35_P3_YUVO_R5_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L35_P4_RGBWI_R1_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L35_P5_TCYSO_R1_U0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L35_P6_DRZHNO_R3_U0)
+					&mmqos SLAVE_COMMON(1)>;
+			interconnect-names =
+				"yuvo_r1",
+				"yuvo_r3",
+				"yuvo_r2",
+				"yuvo_r5",
+				"rgbwi_r1",
+				"tcyso_r1",
+				"drzhno_r3";
+#endif
+		};
+
 		consys: consys@18000000 {
 			compatible = "mediatek,mt6989-consys";
 			reg = <0 0x18000000 0 0x480>, /* 0 conn_infra_rgu_on */
