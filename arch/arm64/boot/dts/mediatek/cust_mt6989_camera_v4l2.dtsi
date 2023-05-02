@@ -340,6 +340,13 @@
 			output-high;
 		};
 	};
+	camera_pins_cam2_eint: cam2@12 {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO109__FUNC_GPIO109>;
+			bias-pull-up;
+			input-enable;
+		};
+	};
 	camera_pins_cam3_mclk_off: camera-pins-cam3-mclk-off {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO107__FUNC_GPIO107>;
@@ -837,6 +844,7 @@
 		pinctrl-19 = <&camera_pins_cam2_sda_scp>;
 		pinctrl-20 = <&camera_pins_cam2_dovdd_0>;
 		pinctrl-21 = <&camera_pins_cam2_dovdd_1>;
+		pinctrl-22 = <&camera_pins_cam2_eint>;
 
 		avdd-supply = <&rt5133_ldo6>; // AVDD for imx598/imx709
 		avdd4-supply = <&rt5133_gpio2>; // AVDD2 for imx598
