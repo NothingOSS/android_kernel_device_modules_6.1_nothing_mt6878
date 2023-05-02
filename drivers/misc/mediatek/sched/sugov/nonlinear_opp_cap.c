@@ -46,6 +46,8 @@ static int busy_tick_boost_all;
 static int sbb_active_ratio = 100;
 static unsigned int wl_type_delay_update_tick = 2;
 
+static int fpsgo_boosting = 1; //0 : enable, 1 : disable
+
 int am_enable;
 void init_adaptive_margin(void)
 {
@@ -780,6 +782,23 @@ unsigned int pd_get_opp_leakage(unsigned int cpu, unsigned int opp, unsigned int
 }
 EXPORT_SYMBOL_GPL(pd_get_opp_leakage);
 
+void Adaptive_module_bypass(int fpsgo_flag)
+{
+	fpsgo_boosting = fpsgo_flag;
+}
+EXPORT_SYMBOL_GPL(Adaptive_module_bypass);
+
+int get_fpsgo_bypass_flag(void)
+{
+	return fpsgo_boosting;
+}
+EXPORT_SYMBOL_GPL(get_fpsgo_bypass_flag);
+
+static void register_fpsgo_sugov_hooks(void)
+{
+	fpsgo_notify_fbt_is_boost_fp = Adaptive_module_bypass;
+}
+
 static inline int cmpulong_dec(const void *a, const void *b)
 {
 	return -(*(unsigned long *)a - *(unsigned long *)b);
@@ -1299,6 +1318,8 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 	init_sbb_cpu_data();
 
 	init_adaptive_margin();
+
+	register_fpsgo_sugov_hooks();
 
 	return ret;
 }

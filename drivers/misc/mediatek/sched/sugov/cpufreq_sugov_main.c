@@ -70,6 +70,9 @@ bool sysctl_util_est = true;
 EXPORT_SYMBOL(sysctl_util_est);
 #endif
 
+void (*fpsgo_notify_fbt_is_boost_fp)(int fpsgo_is_boost);
+EXPORT_SYMBOL(fpsgo_notify_fbt_is_boost_fp);
+
 /************************ Governor internals ***********************/
 
 static bool sugov_should_update_freq(struct sugov_policy *sg_policy, u64 time)
