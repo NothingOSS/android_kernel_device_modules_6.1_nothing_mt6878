@@ -2254,8 +2254,9 @@
 			<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_GALS3>,
 			<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB39>,
 			<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_DIP_NR>,
-			<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_LARB15>;
-		clock-names = "apb", "smi", "gals0", "gals1", "gals2";
+			<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_LARB15>,
+			<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_LARB39>;
+		clock-names = "apb", "smi", "gals0", "gals1", "gals2", "gals3";
 	};
 
 	smi_larb40: smi-larb40@15730000 {
