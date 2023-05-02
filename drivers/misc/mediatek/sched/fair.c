@@ -1813,7 +1813,7 @@ int migrate_running_task(int this_cpu, struct task_struct *p, struct rq *target,
 	compute_effective_softmask(p, &latency_sensitive, &effective_softmask);
 	raw_spin_rq_lock_irqsave(target, flags);
 	if (!target->active_balance &&
-		(task_rq(p) == target) && p->__state != TASK_DEAD &&
+		(task_rq(p) == target) && READ_ONCE((p)->__state) != TASK_DEAD &&
 		 !(latency_sensitive && !cpumask_test_cpu(this_cpu, &effective_softmask))) {
 		target->active_balance = 1;
 		target->push_cpu = this_cpu;
