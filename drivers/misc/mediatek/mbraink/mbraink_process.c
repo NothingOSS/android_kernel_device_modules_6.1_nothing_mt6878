@@ -50,6 +50,7 @@ static DEFINE_SPINLOCK(tracing_pidlist_lock);
 /*Please make sure that tracing pidlist is protected by spinlock*/
 struct mbraink_tracing_pidlist mbraink_tracing_pidlist_data[MAX_TRACE_NUM];
 
+#if IS_ENABLED(CONFIG_MTK_MBRAINK_EXPORT_DEPENDED)
 #if IS_ENABLED(CONFIG_ANON_VMA_NAME)
 struct anon_vma_name *mbraink_anon_vma_name(struct vm_area_struct *vma)
 {
@@ -199,6 +200,38 @@ void mbraink_get_process_memory_info(pid_t current_pid,
 	}
 	read_unlock(&tasklist_lock);
 }
+#else
+void mbraink_get_process_memory_info(pid_t current_pid,
+					struct mbraink_process_memory_data *process_memory_buffer)
+{
+	pr_info("%s: not support yet...", __func__);
+	memset(process_memory_buffer, 0, sizeof(struct mbraink_process_memory_data));
+	process_memory_buffer->pid = 0;
+}
+
+static int register_trace_android_vh_do_fork(void *t, void *p)
+{
+	pr_info("%s: not support yet...", __func__);
+	return 0;
+}
+
+static int register_trace_android_vh_do_exit(void *t, void *p)
+{
+	pr_info("%s: not support yet...", __func__);
+	return 0;
+}
+
+static int unregister_trace_android_vh_do_fork(void *t, void *p)
+{
+	pr_info("%s: not support yet...", __func__);
+	return 0;
+}
+static int unregister_trace_android_vh_do_exit(void *t, void *p)
+{
+	pr_info("%s: not support yet...", __func__);
+	return 0;
+}
+#endif
 
 void mbraink_get_process_stat_info(pid_t current_pid,
 		struct mbraink_process_stat_data *process_stat_buffer)

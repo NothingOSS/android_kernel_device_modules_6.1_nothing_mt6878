@@ -14,6 +14,16 @@ static DEFINE_SPINLOCK(suspend_info_list_lock);
 struct mbraink_suspend_info_list mbraink_suspend_info_list_data[SUSPEND_INFO_SZ];
 struct mbraink_suspend_info_list_p mbraink_suspend_info_list_p_data;
 
+#if !IS_ENABLED(CONFIG_MTK_MBRAINK_EXPORT_DEPENDED)
+ssize_t last_resume_reason_show(struct kobject *kobj,
+				struct kobj_attribute *attr, char *buf)
+{
+	pr_info("%s is not support\n", __func__);
+	snprintf(buf, 6, "%s", "Abort:");
+	return 0;
+}
+#endif
+
 void mbraink_set_suspend_info_list_record(unsigned short datatype)
 {
 	struct timespec64 tv = { 0 };
