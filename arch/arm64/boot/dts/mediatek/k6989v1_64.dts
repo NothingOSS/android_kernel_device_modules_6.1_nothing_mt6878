@@ -75,38 +75,38 @@ arm64.nopauth arm64.nosme arm64.nosve arm64.nomte";
 		pwm_config = <0 1 0 0 0>;
 	};
 };
-
+#endif
 &connfem {
 	/* Support Wifi & BT ePA/eLNA FEM on customer load */
-	epa_elna {
+	epa-elna {
 		parts = <&qm42639 &qm45639>;
 
 		common {
 			flags-0 {
-				rx-mode = [81];
+				rx-mode = [35];
 				fe-ant-cnt = [82];
-				fe-main-bt-share-lp2g = [81];
-				fe-conn-spdt = [8F];
-				fe-reserved = [82];
+				fe-main-bt-share-lp2g = [80];
+				fe-conn-spdt = [83];
+				fe-reserved = [86];
 			};
 		};
 
 		wifi {
 			flags-0 {
-				epa-option = [AA];
+				epa-option = [aa];
 				/* open-loop; */
 			};
 		};
 
 		bt {
 			flags-0 {
-				/* choose one of: epa_elna/epa/elna/bypass */
-				epa_elna;
+				/* choose one of: epa-elna/epa/elna/bypass */
+				epa-elna;
 			};
 		};
 	};
 };
-
+#if 0
 &pio {
 	mtkfb_pins_lcd_bias_enp1: lcd_bias_enp1_gpio {
 		pins_cmd_dat {
@@ -487,6 +487,7 @@ arm64.nopauth arm64.nosme arm64.nosve arm64.nomte";
 };
 #endif
 
+#include "mediatek/cust_k6989_connfem.dtsi"
 #include "mediatek/cust_mt6989_touch_1080x2400.dtsi"
 #include "mediatek/cust_mt6989_camera_v4l2.dtsi"
 /*End of this file, DO NOT ADD ANYTHING HERE*/

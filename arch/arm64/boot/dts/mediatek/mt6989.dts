@@ -1317,6 +1317,10 @@
 		pinctrl-7 = <&bt_find_my_phone_low>;
 	};
 
+	connfem: connfem {
+		compatible = "mediatek,mt6989-connfem";
+	};
+
 	ise_trusty: ise-trusty {
 		#size-cells = <0x02>;
 		#address-cells = <0x02>;
@@ -11416,6 +11420,7 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 #include "mediatek/mt6989-disable-unused.dtsi"
 #include "mediatek/rt6160.dtsi"
 #include "mediatek/rt5133.dtsi"
+#include "mediatek/cust_mt6989_connfem.dtsi"
 
 &rt5133 {
 	interrupts-extended = <&pio 91 IRQ_TYPE_EDGE_FALLING>;
