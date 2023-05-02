@@ -7919,7 +7919,7 @@
 				 <&topckgen_clk CLK_TOP_SENINF5_SEL>,
 				 <&topckgen_clk CLK_TOP_CAMTM_SEL>,
 				 <&topckgen_clk CLK_TOP_OSC_D4>,
-				 <&topckgen_clk CLK_TOP_UNIVPLL_D4_D2>,
+				 <&topckgen_clk CLK_TOP_UNIVPLL2_D4_D2>,
 				 <&topckgen_clk CLK_TOP_OSC_D20>,
 				 <&topckgen_clk CLK_TOP_TCK_26M_MX9>;
 #if 0
@@ -7937,7 +7937,7 @@
 				 "clk_top_seninf5",
 				 "clk_top_camtm",
 				 "clk_top_osc_d4",
-				 "clk_top_univpll_d4_d2",
+				 "clk_top_univpll2_d4_d2",
 				 "clk_top_osc_d20",
 				 "clk_top_tck_26m_mx9";
 #if 0
