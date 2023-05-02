@@ -616,12 +616,12 @@ static int slbc_request_buffer(struct slbc_data *d)
 
 	/* slbc_debug_log("%s: TP_BUFFER", __func__); */
 
-	SLBC_TRACE_REC(LVL_QOS, TYPE_B, uid, 0,
-			"%s req TP_BUFFER", SLBC_UID_STR(uid));
-
 	if (uid <= UID_ZERO || uid > UID_MAX)
 		d->config = NULL;
 	else {
+		SLBC_TRACE_REC(LVL_QOS, TYPE_B, uid, 0,
+				"%s req TP_BUFFER", SLBC_UID_STR(uid));
+
 		sid = slbc_get_sid_by_uid((enum slbc_uid)uid);
 		if (sid != SID_NOT_FOUND) {
 			d->sid = sid;
