@@ -26,10 +26,11 @@
 #define MTK_SCPD_HWV_OPS		BIT(11)
 #define MTK_SCPD_NON_CPU_RTFF		BIT(12)
 #define MTK_SCPD_PEXTP_PHY_RTFF		BIT(13)
-#define MTK_SCPD_UFS0_PHY_RTFF		BIT(14)
+#define MTK_SCPD_UFS_RTFF		BIT(14)
 #define MTK_SCPD_BYPASS_OFF		BIT(15)
 #define MTK_SCPD_RTFF_DELAY		BIT(16)
 #define MTK_SCPD_REMOVE_MD_RSTB		BIT(17)
+#define MTK_SCPD_MMINFRA_HWV_OPS	BIT(18)
 
 #define MAX_CLKS	5
 #define MAX_SUBSYS_CLKS 20
@@ -72,6 +73,7 @@ struct sram_ctl {
  */
 struct scp_domain_data {
 	const char *name;
+	const char *hwv_comp;
 	u32 sta_mask;
 	int ctl_offs;
 	u32 hwv_done_ofs;
@@ -109,6 +111,7 @@ struct scp_domain {
 	struct clk *subsys_lp_clk[MAX_SUBSYS_CLKS];
 	const struct scp_domain_data *data;
 	struct regulator *supply;
+	struct regmap *hwv_regmap;
 	bool rtff_flag;
 };
 
@@ -170,4 +173,7 @@ struct scp *init_scp(struct platform_device *pdev,
 
 int mtk_register_power_domains(struct platform_device *pdev,
 				struct scp *scp, int num);
+
+int __mminfra_hwv_power_ctrl(struct scp_domain *scpd, struct regmap *regmap,
+			 struct device *dev, const char *name, bool onoff);
 #endif /* __MTK_SCPSYS_H__ */

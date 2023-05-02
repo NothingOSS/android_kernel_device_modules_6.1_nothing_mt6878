@@ -514,6 +514,7 @@ mgk_64_k61_device_modules = [
     "drivers/soc/mediatek/mtk-pmic-wrap.ko",
     "drivers/soc/mediatek/mtk-scpsys.ko",
     "drivers/soc/mediatek/mtk-scpsys-bringup.ko",
+    "drivers/soc/mediatek/scpsys-dummy.ko",
     "drivers/soc/mediatek/mtk-socinfo.ko",
     "drivers/soc/mediatek/mtk_tinysys_ipi.ko",
     "drivers/spi/spi-mt65xx.ko",

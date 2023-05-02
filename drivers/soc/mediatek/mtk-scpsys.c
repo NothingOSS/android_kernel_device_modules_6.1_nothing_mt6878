@@ -69,11 +69,25 @@
 #define PWR_CLK_DIS_BIT			BIT(4)
 #define PWR_SRAM_CLKISO_BIT		BIT(5)
 #define PWR_SRAM_ISOINT_B_BIT		BIT(6)
+#define SSYS_SEL_SPM_OR_SUB_PM		BIT(16)
+#define SSYS_PWR_ON_OFF			BIT(17)
+#define SSYS_RTFF_GRP_EN_0		BIT(18)
+#define SSYS_RTFF_GRP_EN_1		BIT(19)
+#define SSYS_SRAM_DORMANT_PD_0		BIT(20)
+#define SSYS_SRAM_DORMANT_PD_1		BIT(21)
+#define SSYS_SRAM_DORMANT_PD_2		BIT(22)
+#define SSYS_SRAM_DORMANT_PD_3		BIT(23)
 #define PWR_RTFF_SAVE			BIT(24)
 #define PWR_RTFF_NRESTORE		BIT(25)
-#define PWR_RTFF_CLK_DIS		BIT(28)
+#define PWR_RTFF_CLK_DIS		BIT(26)
+#define PWR_RTFF_SAVE_FLAG		BIT(27)
+#define PWR_RTFF_UFS_CLK_DIS		BIT(28)
+#define SYSS_PWR_ACK			BIT(29)
 #define PWR_ACK				BIT(30)
 #define PWR_ACK_2ND			BIT(31)
+
+#define MMINFRA_ON_STA			BIT(0)
+#define MMINFRA_OFF_STA			BIT(1)
 
 #define PWR_STATUS_CONN			BIT(1)
 #define PWR_STATUS_DISP			BIT(3)
@@ -618,8 +632,35 @@ static int scpsys_power_on(struct generic_pm_domain *genpd)
 	val |= PWR_RST_B_BIT;
 	writel(val, ctl_addr);
 
-	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_NON_CPU_RTFF) && scpd->rtff_flag) {
-		val |= PWR_RTFF_CLK_DIS;
+	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_NON_CPU_RTFF)) {
+		val = readl(ctl_addr);
+		if (val & PWR_RTFF_SAVE_FLAG) {
+			val |= PWR_RTFF_CLK_DIS;
+			writel(val, ctl_addr);
+
+			val &= ~PWR_RTFF_NRESTORE;
+			writel(val, ctl_addr);
+
+			val |= PWR_RTFF_NRESTORE;
+			writel(val, ctl_addr);
+
+			val &= ~PWR_RTFF_CLK_DIS;
+			writel(val, ctl_addr);
+		}
+	} else if (MTK_SCPD_CAPS(scpd, MTK_SCPD_PEXTP_PHY_RTFF)) {
+		val = readl(ctl_addr);
+		if (val & PWR_RTFF_SAVE_FLAG) {
+			val &= ~PWR_RTFF_NRESTORE;
+			writel(val, ctl_addr);
+
+			val |= PWR_RTFF_NRESTORE;
+			writel(val, ctl_addr);
+
+			val &= ~PWR_RTFF_CLK_DIS;
+			writel(val, ctl_addr);
+		}
+	} else if (MTK_SCPD_CAPS(scpd, MTK_SCPD_UFS_RTFF) && scpd->rtff_flag) {
+		val |= PWR_RTFF_UFS_CLK_DIS;
 		writel(val, ctl_addr);
 
 		val &= ~PWR_RTFF_NRESTORE;
@@ -628,17 +669,10 @@ static int scpsys_power_on(struct generic_pm_domain *genpd)
 		val |= PWR_RTFF_NRESTORE;
 		writel(val, ctl_addr);
 
-		val &= ~PWR_RTFF_CLK_DIS;
-		writel(val, ctl_addr);
-	} else if (MTK_SCPD_CAPS(scpd, MTK_SCPD_PEXTP_PHY_RTFF) && scpd->rtff_flag) {
-		val |= PWR_RTFF_SAVE;
+		val &= ~PWR_RTFF_UFS_CLK_DIS;
 		writel(val, ctl_addr);
 
-		val &= ~PWR_RTFF_SAVE;
-		writel(val, ctl_addr);
-
-		val &= ~PWR_RTFF_CLK_DIS;
-		writel(val, ctl_addr);
+		scpd->rtff_flag = false;
 	}
 
 	if (!MTK_SCPD_CAPS(scpd, MTK_SCPD_BYPASS_CLK) || scpsys_init_flag) {
@@ -668,11 +702,6 @@ static int scpsys_power_on(struct generic_pm_domain *genpd)
 	scpsys_clk_disable(scpd->subsys_lp_clk, MAX_SUBSYS_CLKS);
 
 	scpsys_clk_disable(scpd->lp_clk, MAX_CLKS);
-
-	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_NON_CPU_RTFF) ||
-			MTK_SCPD_CAPS(scpd, MTK_SCPD_PEXTP_PHY_RTFF)) {
-		scpd->rtff_flag = false;
-	}
 
 	return 0;
 
@@ -733,7 +762,8 @@ static int scpsys_power_off(struct generic_pm_domain *genpd)
 
 	val = readl(ctl_addr);
 
-	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_NON_CPU_RTFF)) {
+	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_NON_CPU_RTFF) ||
+			MTK_SCPD_CAPS(scpd, MTK_SCPD_PEXTP_PHY_RTFF)) {
 		val |= PWR_RTFF_CLK_DIS;
 		writel(val, ctl_addr);
 
@@ -745,6 +775,23 @@ static int scpsys_power_off(struct generic_pm_domain *genpd)
 
 		val &= ~PWR_RTFF_CLK_DIS;
 		writel(val, ctl_addr);
+
+		val |= PWR_RTFF_SAVE_FLAG;
+		writel(val, ctl_addr);
+	} else if (MTK_SCPD_CAPS(scpd, MTK_SCPD_UFS_RTFF)) {
+		val |= PWR_RTFF_UFS_CLK_DIS;
+		writel(val, ctl_addr);
+
+		val |= PWR_RTFF_SAVE;
+		writel(val, ctl_addr);
+
+		val &= ~PWR_RTFF_SAVE;
+		writel(val, ctl_addr);
+
+		val &= ~PWR_RTFF_UFS_CLK_DIS;
+		writel(val, ctl_addr);
+		if (MTK_SCPD_CAPS(scpd, MTK_SCPD_UFS_RTFF))
+			scpd->rtff_flag = true;
 	}
 
 	/* subsys power off */
@@ -794,11 +841,6 @@ static int scpsys_power_off(struct generic_pm_domain *genpd)
 	ret = scpsys_regulator_disable(scpd);
 	if (ret < 0)
 		goto out;
-
-	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_NON_CPU_RTFF) ||
-			MTK_SCPD_CAPS(scpd, MTK_SCPD_PEXTP_PHY_RTFF)) {
-		scpd->rtff_flag = true;
-	}
 
 	return 0;
 
@@ -970,7 +1012,10 @@ static int mtk_hwv_is_done(struct scp_domain *scpd)
 	struct scp *scp = scpd->scp;
 	u32 val = 0;
 
-	regmap_read(scp->hwv_regmap, scpd->data->hwv_done_ofs, &val);
+	if (scpd->hwv_regmap)
+		regmap_read(scpd->hwv_regmap, scpd->data->hwv_done_ofs, &val);
+	else
+		regmap_read(scp->hwv_regmap, scpd->data->hwv_done_ofs, &val);
 
 	return (val & BIT(scpd->data->hwv_shift));
 }
@@ -978,11 +1023,17 @@ static int mtk_hwv_is_done(struct scp_domain *scpd)
 static int mtk_hwv_is_enable_done(struct scp_domain *scpd)
 {
 	struct scp *scp = scpd->scp;
+	struct regmap *hwv_regmap;
 	u32 val = 0, val2 = 0, val3 = 0;
 
-	regmap_read(scp->hwv_regmap, scpd->data->hwv_done_ofs, &val);
-	regmap_read(scp->hwv_regmap, scpd->data->hwv_en_ofs, &val2);
-	regmap_read(scp->hwv_regmap, scpd->data->hwv_set_sta_ofs, &val3);
+	if (scpd->hwv_regmap)
+		hwv_regmap = scpd->hwv_regmap;
+	else
+		hwv_regmap = scp->hwv_regmap;
+
+	regmap_read(hwv_regmap, scpd->data->hwv_done_ofs, &val);
+	regmap_read(hwv_regmap, scpd->data->hwv_en_ofs, &val2);
+	regmap_read(hwv_regmap, scpd->data->hwv_set_sta_ofs, &val3);
 
 	if ((val & BIT(scpd->data->hwv_shift)) && (val2 & BIT(scpd->data->hwv_shift))
 			&& ((val3 & BIT(scpd->data->hwv_shift)) == 0x0))
@@ -994,10 +1045,16 @@ static int mtk_hwv_is_enable_done(struct scp_domain *scpd)
 static int mtk_hwv_is_disable_done(struct scp_domain *scpd)
 {
 	struct scp *scp = scpd->scp;
+	struct regmap *hwv_regmap;
 	u32 val = 0, val2 = 0;
 
-	regmap_read(scp->hwv_regmap, scpd->data->hwv_done_ofs, &val);
-	regmap_read(scp->hwv_regmap, scpd->data->hwv_clr_sta_ofs, &val2);
+	if (scpd->hwv_regmap)
+		hwv_regmap = scpd->hwv_regmap;
+	else
+		hwv_regmap = scp->hwv_regmap;
+
+	regmap_read(hwv_regmap, scpd->data->hwv_done_ofs, &val);
+	regmap_read(hwv_regmap, scpd->data->hwv_clr_sta_ofs, &val2);
 
 	if ((val & BIT(scpd->data->hwv_shift)) && ((val2 & BIT(scpd->data->hwv_shift)) == 0x0))
 		return 1;
@@ -1009,10 +1066,16 @@ static int scpsys_hwv_power_on(struct generic_pm_domain *genpd)
 {
 	struct scp_domain *scpd = container_of(genpd, struct scp_domain, genpd);
 	struct scp *scp = scpd->scp;
+	struct regmap *hwv_regmap;
 	u32 val = 0;
 	int ret = 0;
 	int tmp;
 	int i = 0;
+
+	if (scpd->hwv_regmap)
+		hwv_regmap = scpd->hwv_regmap;
+	else
+		hwv_regmap = scp->hwv_regmap;
 
 	ret = scpsys_regulator_enable(scpd);
 	if (ret < 0)
@@ -1033,9 +1096,9 @@ static int scpsys_hwv_power_on(struct generic_pm_domain *genpd)
 		goto err_hwv_prepare;
 
 	val = BIT(scpd->data->hwv_shift);
-	regmap_write(scp->hwv_regmap, scpd->data->hwv_set_ofs, val);
+	regmap_write(hwv_regmap, scpd->data->hwv_set_ofs, val);
 	do {
-		regmap_read(scp->hwv_regmap, scpd->data->hwv_set_ofs, &val);
+		regmap_read(hwv_regmap, scpd->data->hwv_set_ofs, &val);
 		if ((val & BIT(scpd->data->hwv_shift)) != 0)
 			break;
 
@@ -1061,7 +1124,7 @@ err_hwv_done:
 err_hwv_vote:
 	dev_err(scp->dev, "Failed to hwv vote timeout %s(%d %x)\n", genpd->name, ret, val);
 err_hwv_prepare:
-	regmap_read(scp->hwv_regmap, scpd->data->hwv_done_ofs, &val);
+	regmap_read(hwv_regmap, scpd->data->hwv_done_ofs, &val);
 	dev_err(scp->dev, "Failed to hwv prepare timeout %s(%d %x)\n", genpd->name, ret, val);
 err_lp_clk:
 	dev_err(scp->dev, "Failed to enable lp clk %s(%d)\n", genpd->name, ret);
@@ -1077,10 +1140,16 @@ static int scpsys_hwv_power_off(struct generic_pm_domain *genpd)
 {
 	struct scp_domain *scpd = container_of(genpd, struct scp_domain, genpd);
 	struct scp *scp = scpd->scp;
+	struct regmap *hwv_regmap;
 	u32 val = 0;
 	int ret = 0;
 	int tmp;
 	int i = 0;
+
+	if (scpd->hwv_regmap)
+		hwv_regmap = scpd->hwv_regmap;
+	else
+		hwv_regmap = scp->hwv_regmap;
 
 	ret = scpsys_clk_enable(scpd->lp_clk, MAX_CLKS);
 	if (ret)
@@ -1093,9 +1162,9 @@ static int scpsys_hwv_power_off(struct generic_pm_domain *genpd)
 		goto err_hwv_prepare;
 
 	val = BIT(scpd->data->hwv_shift);
-	regmap_write(scp->hwv_regmap, scpd->data->hwv_clr_ofs, val);
+	regmap_write(hwv_regmap, scpd->data->hwv_clr_ofs, val);
 	do {
-		regmap_read(scp->hwv_regmap, scpd->data->hwv_clr_ofs, &val);
+		regmap_read(hwv_regmap, scpd->data->hwv_clr_ofs, &val);
 		if ((val & BIT(scpd->data->hwv_shift)) == 0)
 			break;
 
@@ -1131,13 +1200,143 @@ err_hwv_done:
 err_hwv_vote:
 	dev_err(scp->dev, "Failed to hwv vote timeout %s(%d %x)\n", genpd->name, ret, val);
 err_hwv_prepare:
-	regmap_read(scp->hwv_regmap, scpd->data->hwv_done_ofs, &val);
+	regmap_read(hwv_regmap, scpd->data->hwv_done_ofs, &val);
 	dev_err(scp->dev, "Failed to hwv prepare timeout %s(%d %x)\n", genpd->name, ret, val);
 	scpsys_clk_disable(scpd->lp_clk, MAX_CLKS);
 err_lp_clk:
 	dev_err(scp->dev, "Failed to power off domain %s(%d)\n", genpd->name, ret);
 
 	return ret;
+}
+
+static int mtk_mminfra_hwv_is_done(struct scp_domain *scpd)
+{
+	u32 val = 0;
+
+	regmap_read(scpd->hwv_regmap, scpd->data->hwv_en_ofs, &val);
+
+	if ((val & (MMINFRA_ON_STA | MMINFRA_OFF_STA)) == 0)
+		return 1;
+
+	return 0;
+}
+
+static int mtk_mminfra_hwv_is_enable_done(struct scp_domain *scpd)
+{
+	struct regmap *hwv_regmap;
+	u32 val = 0, val2 = 0;
+
+	hwv_regmap = scpd->hwv_regmap;
+
+	regmap_read(hwv_regmap, scpd->data->hwv_done_ofs, &val);
+	regmap_read(hwv_regmap, scpd->data->hwv_en_ofs, &val2);
+
+	if ((val & BIT(scpd->data->hwv_shift)) && ((val2 & MMINFRA_ON_STA) == 0))
+		return 1;
+
+	return 0;
+}
+
+static int mtk_mminfra_hwv_is_disable_done(struct scp_domain *scpd)
+{
+	struct regmap *hwv_regmap;
+	u32 val = 0, val2 = 0;
+
+	hwv_regmap = scpd->hwv_regmap;
+
+	regmap_read(hwv_regmap, scpd->data->hwv_done_ofs, &val);
+	regmap_read(hwv_regmap, scpd->data->hwv_en_ofs, &val2);
+
+	if ((val2 & MMINFRA_OFF_STA) == 0)
+		return 1;
+
+	return 0;
+}
+
+int __mminfra_hwv_power_ctrl(struct scp_domain *scpd, struct regmap *regmap,
+			 struct device *dev, const char *name, bool onoff)
+{
+	u32 vote_ofs;
+	u32 vote_msk;
+	u32 vote_ack;
+	u32 val = 0;
+	int ret = 0;
+	int tmp;
+	int i = 0;
+
+	/* wait for irq status idle */
+	ret = readx_poll_timeout_atomic(mtk_mminfra_hwv_is_done, scpd, tmp, tmp > 0,
+			MTK_POLL_DELAY_US, MTK_POLL_IRQ_TIMEOUT);
+	if (ret < 0)
+		goto err_hwv_prepare;
+
+	val = BIT(scpd->data->hwv_shift);
+	vote_msk = BIT(scpd->data->hwv_shift);
+	if (onoff) {
+		vote_ofs = scpd->data->hwv_set_ofs;
+		vote_ack = BIT(scpd->data->hwv_shift);
+	} else {
+		vote_ofs = scpd->data->hwv_clr_ofs;
+		vote_ack = 0x0;
+	}
+	regmap_write(regmap, vote_ofs, val);
+	do {
+		regmap_read(regmap, vote_ofs, &val);
+		if ((val & vote_msk) == vote_ack)
+			break;
+
+		if (i > MTK_POLL_HWV_PREPARE_CNT)
+			goto err_hwv_vote;
+
+		udelay(MTK_POLL_HWV_PREPARE_US);
+		i++;
+	} while (1);
+
+	if (onoff) {
+		/* wait until VOTER_ACK = 1 */
+		ret = readx_poll_timeout_atomic(mtk_mminfra_hwv_is_enable_done, scpd, tmp, tmp > 0,
+				MTK_POLL_DELAY_US, MTK_POLL_100MS_TIMEOUT);
+		if (ret < 0)
+			goto err_hwv_done;
+	} else {
+		/* wait until VOTER_ACK = 0 */
+		ret = readx_poll_timeout_atomic(mtk_mminfra_hwv_is_disable_done, scpd, tmp, tmp > 0,
+				MTK_POLL_DELAY_US, MTK_POLL_100MS_TIMEOUT);
+		if (ret < 0)
+			goto err_hwv_done;
+	}
+
+	return 0;
+
+err_hwv_done:
+	dev_err(dev, "Failed to hwv done timeout %s(%d)\n", name, ret);
+err_hwv_vote:
+	dev_err(dev, "Failed to hwv vote timeout %s(%d %x)\n", name, ret, val);
+err_hwv_prepare:
+	regmap_read(regmap, scpd->data->hwv_done_ofs, &val);
+	dev_err(dev, "Failed to hwv %s timeout %s(%d %x)\n",
+			onoff ? "prepare" : "unprepare", name, ret, val);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(__mminfra_hwv_power_ctrl);
+
+static int scpsys_mminfra_hwv_power_on(struct generic_pm_domain *genpd)
+{
+	struct scp_domain *scpd = container_of(genpd, struct scp_domain, genpd);
+	struct scp *scp = scpd->scp;
+
+	return __mminfra_hwv_power_ctrl(scpd, scpd->hwv_regmap,
+			scp->dev, genpd->name, true);
+}
+
+static int scpsys_mminfra_hwv_power_off(struct generic_pm_domain *genpd)
+{
+	struct scp_domain *scpd = container_of(genpd, struct scp_domain, genpd);
+	struct scp *scp = scpd->scp;
+
+	return __mminfra_hwv_power_ctrl(scpd, scpd->hwv_regmap,
+			 scp->dev, genpd->name, false);
 }
 
 static int init_subsys_clks(struct platform_device *pdev,
@@ -1314,6 +1513,18 @@ struct scp *init_scp(struct platform_device *pdev,
 		struct scp_domain *scpd = &scp->domains[i];
 		const struct scp_domain_data *data = &scp_domain_data[i];
 
+		if (!data->hwv_comp)
+			continue;
+
+		ret = mtk_pd_get_regmap(pdev, &scpd->hwv_regmap, data->hwv_comp);
+		if (ret)
+			return ERR_PTR(ret);
+	}
+
+	for (i = 0; i < num; i++) {
+		struct scp_domain *scpd = &scp->domains[i];
+		const struct scp_domain_data *data = &scp_domain_data[i];
+
 		scpd->supply = devm_regulator_get_optional(&pdev->dev, data->name);
 		if (IS_ERR(scpd->supply)) {
 			if (PTR_ERR(scpd->supply) == -ENODEV)
@@ -1376,6 +1587,9 @@ struct scp *init_scp(struct platform_device *pdev,
 		} else if (MTK_SCPD_CAPS(scpd, MTK_SCPD_HWV_OPS)) {
 			genpd->power_on = scpsys_hwv_power_on;
 			genpd->power_off = scpsys_hwv_power_off;
+		} else if (MTK_SCPD_CAPS(scpd, MTK_SCPD_MMINFRA_HWV_OPS)) {
+			genpd->power_on = scpsys_mminfra_hwv_power_on;
+			genpd->power_off = scpsys_mminfra_hwv_power_off;
 		} else {
 			genpd->power_off = scpsys_power_off;
 			genpd->power_on = scpsys_power_on;
@@ -1397,7 +1611,7 @@ struct scp *init_scp(struct platform_device *pdev,
 
 	return scp;
 }
-EXPORT_SYMBOL(init_scp);
+EXPORT_SYMBOL_GPL(init_scp);
 
 int mtk_register_power_domains(struct platform_device *pdev,
 				struct scp *scp, int num)
