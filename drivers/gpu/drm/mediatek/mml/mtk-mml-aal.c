@@ -694,6 +694,10 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			sizeof(struct mml_frame_info));
 		memcpy(&aal->frame_data.frame_out, &task->config->frame_out,
 			MML_MAX_OUTPUTS * sizeof(struct mml_frame_size));
+		memcpy(&aal->frame_data.size_info.frame_in_crop_s[0],
+			&cfg->frame_in_crop[0],	MML_MAX_OUTPUTS * sizeof(struct mml_crop));
+		memcpy(&aal->frame_data.size_info.frame_in_s, &cfg->frame_in,
+			sizeof(struct mml_frame_size));
 		aal->jobid = task->job.jobid;
 
 		if (task->config->dual)
