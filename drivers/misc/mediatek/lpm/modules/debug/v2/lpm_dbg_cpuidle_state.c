@@ -78,6 +78,7 @@ static long lpm_per_cpuidle_drv_param(void *pData)
 	int i = 0;
 	size_t sz = *(info->sz);
 	char *p = info->p;
+	char name[20] = {0};
 
 	if (!drv)
 		return -ENODEV;
@@ -85,16 +86,43 @@ static long lpm_per_cpuidle_drv_param(void *pData)
 		if (info->cpu == 0) {
 			mtk_dbg_cpuidle_log("%-12s:", "state_index");
 			for (i = 0; i < drv->state_count; i++)
-				mtk_dbg_cpuidle_log("%12d ", i);
+				if (i == 0)
+					mtk_dbg_cpuidle_log("  %-8d", i);
+				else
+					mtk_dbg_cpuidle_log("%-15d", i);
+			mtk_dbg_cpuidle_log("\n");
+
+			mtk_dbg_cpuidle_log("%-12s:", "state_name");
+			for (i = 0; i < drv->state_count; i++) {
+				if (i == 0)
+					mtk_dbg_cpuidle_log("  %-8s", (drv->states[i]).name);
+				else {
+					if (!strncmp((drv->states[i]).name + 3, "off_", 4) ||
+						!strncmp((drv->states[i]).name + 6, "off_", 4) ||
+						!strncmp((drv->states[i]).name + 7, "off_", 4)) {
+						memset(name, 0, sizeof(name));
+						strncpy(name, (drv->states[i]).name,
+							strlen((drv->states[i]).name)-2);
+						mtk_dbg_cpuidle_log("%-15s", name);
+					} else
+						mtk_dbg_cpuidle_log("%-15s",
+								(drv->states[i]).name);
+				}
+			}
 			mtk_dbg_cpuidle_log("\n");
 		}
+
 		mtk_dbg_cpuidle_log("%11s%d:", "cpu", info->cpu);
 		if (cpu_is_offline(info->cpu))
 			mtk_dbg_cpuidle_log("%18s ", "Offline");
 		else {
 			for (i = 0; i < drv->state_count; i++) {
-				mtk_dbg_cpuidle_log("%12ld ",
-					mtk_cpuidle_get_param(drv, i, info->param));
+				if (i == 0)
+					mtk_dbg_cpuidle_log("  %-8ld",
+						mtk_cpuidle_get_param(drv, i, info->param));
+				else
+					mtk_dbg_cpuidle_log("%-15ld",
+						mtk_cpuidle_get_param(drv, i, info->param));
 			}
 		}
 
