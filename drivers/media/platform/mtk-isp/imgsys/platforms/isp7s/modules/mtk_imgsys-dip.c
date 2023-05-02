@@ -643,6 +643,7 @@ static void imgsys_dip_dump_yufdd1(struct mtk_imgsys_dev *a_pDev,
 	unsigned int DbgData = 0;
 	unsigned int Idx = 0;
 	unsigned int CmdOft = 0x10000;
+	unsigned int yufdCmdOft = 0x1;
 
 	pr_info("dump yufd_d1 debug\n");
 
@@ -651,6 +652,13 @@ static void imgsys_dip_dump_yufdd1(struct mtk_imgsys_dev *a_pDev,
 	for (Idx = 0; Idx < 0xF; Idx++) {
 		DbgData = ExeDbgCmd(a_pDev, a_pRegBA, a_DdbSel, a_DbgOut, DbgCmd);
 		DbgCmd += CmdOft;
+	}
+	/* yufd_d1_dbg_sel debug */
+	a_DdbSel = DIP_YUFD_DBG_SEL;
+	DbgCmd = 0x0;
+	for (Idx = 0; Idx < 0x12; Idx++) {
+		DbgData = ExeDbgCmd(a_pDev, a_pRegBA, a_DdbSel, a_DbgOut, DbgCmd);
+		DbgCmd += yufdCmdOft;
 	}
 
 }
