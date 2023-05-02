@@ -198,47 +198,24 @@ EXPORT_SYMBOL(xgf_get_process_id);
 
 int xgf_check_main_sf_pid(int pid, int process_id)
 {
-	int ret = 0;
-	int tmp_process_id;
-	char tmp_process_name[16];
+	int ret = 1;
 	char tmp_thread_name[16];
-	struct task_struct *gtsk, *tsk;
-
-	tmp_process_id = xgf_get_process_id(pid);
-	if (tmp_process_id < 0)
-		return ret;
+	struct task_struct *tsk = NULL;
 
 	rcu_read_lock();
-	gtsk = find_task_by_vpid(tmp_process_id);
-	if (gtsk) {
-		get_task_struct(gtsk);
-		strncpy(tmp_process_name, gtsk->comm, 16);
-		tmp_process_name[15] = '\0';
-		put_task_struct(gtsk);
+	tsk = find_task_by_vpid(pid);
+	if (tsk) {
+		get_task_struct(tsk);
+		strncpy(tmp_thread_name, tsk->comm, 16);
+		tmp_thread_name[15] = '\0';
+		put_task_struct(tsk);
 	} else
-		tmp_process_name[0] = '\0';
+		tmp_thread_name[0] = '\0';
 	rcu_read_unlock();
 
-	if ((tmp_process_id == process_id) ||
-		strstr(tmp_process_name, "surfaceflinger"))
-		ret = 1;
-
-	if (ret) {
-		rcu_read_lock();
-		tsk = find_task_by_vpid(pid);
-		if (tsk) {
-			get_task_struct(tsk);
-			strncpy(tmp_thread_name, tsk->comm, 16);
-			tmp_thread_name[15] = '\0';
-			put_task_struct(tsk);
-		} else
-			tmp_thread_name[0] = '\0';
-		rcu_read_unlock();
-
-		if (strstr(tmp_thread_name, "RTHeartBeat") ||
-			strstr(tmp_thread_name, "mali-"))
-			ret = 0;
-	}
+	if (strstr(tmp_thread_name, "RTHeartBeat") ||
+		strstr(tmp_thread_name, "mali-"))
+		ret = 0;
 
 	return ret;
 }
