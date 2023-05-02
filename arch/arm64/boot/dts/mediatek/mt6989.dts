@@ -22,6 +22,7 @@
 #include <dt-bindings/power/mtk-charger.h>
 #include <dt-bindings/soc/mediatek,boot-mode.h>
 #include <dt-bindings/interconnect/mtk,mt6873-emi.h>
+#include <dt-bindings/memory/mt6989-larb-port.h>
 
 / {
 	model = "MT6989";
@@ -6136,6 +6137,17 @@
 		mmlsys_config: mmlsys-config@1f800000 {
 			compatible = "mediatek,mt6989-mml";
 			reg = <0 0x1f800000 0 0x1000>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_APB_BUS>,
+				<&mdpsys1_config_clk CLK_MDP1_MDP_DLI_ASYNC0>,
+				<&mdpsys1_config_clk CLK_MDP1_MDP_DLI_ASYNC2>,
+				<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC0>,
+				<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC2>;
+			clock-names = "apb_bus", "dli0", "dli2", "dlo0", "dlo2";
+			mmlsys-clock-names = "apb_bus";
+			dli0-clock-names = "dli0";
+			dli2-clock-names = "dli2";
+			dlo0-clock-names = "dlo0";
+			dlo2-clock-names = "dlo2";
 			/* as mml device */
 			comp-count = <MML_ENGINE_TOTAL>;
 			topology = "mt6989";
@@ -6212,14 +6224,12 @@
 				"DMA0_SEL_IN", "RDMA0_SOUT_SEL",
 				"DLOUT0_SEL_IN",
 				"MOUT_MASK0", "MOUT_MASK1", "MOUT_MASK2",
-				"DL_IN_RELAY0_SIZE", "DL_IN_RELAY1_SIZE",
-				"DL_OUT_RELAY0_SIZE", "DL_OUT_RELAY1_SIZE",
+				"DL_IN_RELAY0_SIZE", "DL_IN_RELAY2_SIZE",
+				"DL_OUT_RELAY0_SIZE", "DL_OUT_RELAY2_SIZE",
 				"DLI_ASYNC0_STATUS0", "DLI_ASYNC0_STATUS1",
-				"DLI_ASYNC1_STATUS0", "DLI_ASYNC1_STATUS1",
+				"DLI_ASYNC2_STATUS0", "DLI_ASYNC2_STATUS1",
 				"DLO_ASYNC0_STATUS0", "DLO_ASYNC0_STATUS1",
-				"DLO_ASYNC1_STATUS0", "DLO_ASYNC1_STATUS1",
-				"DLI_ASYNC3_STATUS0", "DLI_ASYNC3_STATUS1",
-				"DLO_ASYNC3_STATUS0", "DLO_ASYNC3_STATUS1",
+				"DLO_ASYNC2_STATUS0", "DLO_ASYNC2_STATUS1",
 				"DL_VALID0", "DL_VALID1", "DL_VALID2", "DL_VALID3",
 				"DL_READY0", "DL_READY1", "DL_READY2", "DL_READY3",
 				"RDMA0_AIDSEL", "WROT0_AIDSEL";
@@ -6242,14 +6252,12 @@
 				<MML_DMA0_SEL_IN>, <MML_RDMA0_SOUT_SEL>,
 				<MML_DLOUT0_SEL_IN>,
 				<MML_MOUT_MASK0>, <MML_MOUT_MASK1>, <MML_MOUT_MASK2>,
-				<MML_DL_IN_RELAY0_SIZE>, <MML_DL_IN_RELAY1_SIZE>,
-				<MML_DL_OUT_RELAY0_SIZE>, <MML_DL_OUT_RELAY1_SIZE>,
+				<MML_DL_IN_RELAY0_SIZE>, <MML_DL_IN_RELAY2_SIZE>,
+				<MML_DL_OUT_RELAY0_SIZE>, <MML_DL_OUT_RELAY2_SIZE>,
 				<MML_DLI_ASYNC0_STATUS0>, <MML_DLI_ASYNC0_STATUS1>,
-				<MML_DLI_ASYNC1_STATUS0>, <MML_DLI_ASYNC1_STATUS1>,
+				<MML_DLI_ASYNC2_STATUS0>, <MML_DLI_ASYNC2_STATUS1>,
 				<MML_DLO_ASYNC0_STATUS0>, <MML_DLO_ASYNC0_STATUS1>,
-				<MML_DLO_ASYNC1_STATUS0>, <MML_DLO_ASYNC1_STATUS1>,
-				<MML_DLI_ASYNC3_STATUS0>, <MML_DLI_ASYNC3_STATUS1>,
-				<MML_DLO_ASYNC3_STATUS0>, <MML_DLO_ASYNC3_STATUS1>,
+				<MML_DLO_ASYNC2_STATUS0>, <MML_DLO_ASYNC2_STATUS1>,
 				<MML_DL_VALID0>, <MML_DL_VALID1>, <MML_DL_VALID2>, <MML_DL_VALID3>,
 				<MML_DL_READY0>, <MML_DL_READY1>, <MML_DL_READY2>, <MML_DL_READY3>,
 				<MML_RDMA0_AIDSEL>, <MML_WROT0_AIDSEL>;
@@ -6271,14 +6279,16 @@
 			ready-sel = /bits/ 16 <MML_IN_LINE_READY_SEL>;
 			/* as dl component */
 			dli0-dl-relay = /bits/ 16 <MML_DL_IN_RELAY0_SIZE>;
-			dli1-dl-relay = /bits/ 16 <MML_DL_IN_RELAY1_SIZE>;
+			dli2-dl-relay = /bits/ 16 <MML_DL_IN_RELAY2_SIZE>;
 			dlo0-dl-relay = /bits/ 16 <MML_DL_OUT_RELAY0_SIZE>;
-			dlo1-dl-relay = /bits/ 16 <MML_DL_OUT_RELAY1_SIZE>;
+			dlo2-dl-relay = /bits/ 16 <MML_DL_OUT_RELAY2_SIZE>;
 		};
 
 		mml_mutex0: mml-mutex0@1f801000 {
 			compatible = "mediatek,mt6989-mml_mutex";
 			reg = <0 0x1f801000 0 0x1000>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_MUTEX0>;
+			clock-names = "mutex0";
 			comp-ids = <MML_MUTEX>;
 			comp-names = "mutex0";
 
@@ -6319,6 +6329,9 @@
 		mml_rdma0: mml-rdma0@1f803000 {
 			compatible = "mediatek,mt6989-mml_rdma";
 			reg = <0 0x1f803000 0 0x1000>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_RDMA0>;
+			clock-names = "rdma0";
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P0_MDP_RDMA0)>;
 			comp-ids = <MML_RDMA0>;
 			comp-names = "rdma0";
 			event-frame-done = /bits/ 16
@@ -6329,6 +6342,10 @@
 			compatible = "mediatek,mt6989-mml_hdr",
 				"mediatek,mml-tuning-mml_hdr0";
 			reg = <0 0x1f805000 0 0x1000>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_HDR0>;
+			clock-names = "hdr0";
+			mediatek,larb = <&smi_larb3
+				MTK_M4U_TO_PORT(SMMU_L3_P7_MDP_FAKE_ENG0)>;
 			comp-ids = <MML_HDR0>;
 			comp-names = "hdr0";
 		};
@@ -6337,6 +6354,10 @@
 			compatible = "mediatek,mt6989-mml_aal",
 				"mediatek,mml-tuning-mml_aal0";
 			reg = <0 0x1f807000 0 0x1000>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_AAL0>;
+			clock-names = "aal0";
+			mediatek,larb = <&smi_larb3
+				MTK_M4U_TO_PORT(SMMU_L3_P7_MDP_FAKE_ENG0)>;
 			comp-ids = <MML_AAL0>;
 			comp-names = "aal0";
 			sram-curve-base = /bits/ 32 <4608>;
@@ -6346,6 +6367,8 @@
 		mml_rsz0: mml-rsz0@1f809000 {
 			compatible = "mediatek,mt6989-mml_rsz";
 			reg = <0 0x1f809000 0 0x1000>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_RSZ0>;
+			clock-names = "rsz0";
 			comp-ids = <MML_RSZ0>;
 			comp-names = "rsz0";
 		};
@@ -6354,6 +6377,8 @@
 			compatible = "mediatek,mt6989-mml_tdshp",
 				"mediatek,mml-tuning-mml_tdshp0";
 			reg = <0 0x1f80b000 0 0x1000>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_TDSHP0>;
+			clock-names = "tdshp0";
 			comp-ids = <MML_TDSHP0>;
 			comp-names = "tdshp0";
 		};
@@ -6363,6 +6388,8 @@
 			compatible = "mediatek,mt6989-mml_color",
 				"mediatek,mml-tuning-mml_color0";
 			reg = <0 0x1f80d000 0 0x1000>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_COLOR0>;
+			clock-names = "color0";
 			comp-ids = <MML_COLOR0>;
 			comp-names = "color0";
 		};
@@ -6370,6 +6397,9 @@
 		mml_wrot0: mml-wrot0@1f80f000 {
 			compatible = "mediatek,mt6989-mml_wrot";
 			reg = <0 0x1f80f000 0 0x1000>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_WROT0>;
+			clock-names = "wrot0";
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P1_MDP_WROT0)>;
 			comp-ids = <MML_WROT0>;
 			comp-names = "wrot0";
 			event-frame-done = /bits/ 16
@@ -6383,6 +6413,9 @@
 		mml_rdma2: mml-rdma2@1f811000 {
 			compatible = "mediatek,mt6989-mml_pq_rdma";
 			reg = <0 0x1f811000 0 0x1000>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_RDMA2>;
+			clock-names = "rdma2";
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P4_MDP_RDMA2)>;
 			comp-ids = <MML_RDMA2>;
 			comp-names = "rdma2";
 			event-frame-done = /bits/ 16
@@ -6392,6 +6425,8 @@
 		mml_rsz2: mml-rsz2@1f813000 {
 			compatible = "mediatek,mt6989-mml_rsz2";
 			reg = <0 0x1f813000 0 0x1000>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_RSZ2>;
+			clock-names = "rsz2";
 			comp-ids = <MML_RSZ2>;
 			comp-names = "rsz2";
 		};
@@ -6399,6 +6434,9 @@
 		mml_wrot2: mml-wrot2@1f815000 {
 			compatible = "mediatek,mt6989-mml_wrot";
 			reg = <0 0x1f815000 0 0x1000>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_WROT2>;
+			clock-names = "wrot2";
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P5_MDP_WROT2)>;
 			comp-ids = <MML_WROT2>;
 			comp-names = "wrot2";
 			event-frame-done = /bits/ 16
@@ -6413,6 +6451,8 @@
 		mml_birsz0: mml-birsz0@1f818000 {
 			compatible = "mediatek,mt6989-mml_birsz";
 			reg = <0 0x1f818000 0 0x1000>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_BIRSZ0>;
+			clock-names = "birsz0";
 			comp-ids = <MML_BIRSZ0>;
 			comp-names = "birsz0";
 		};
@@ -6420,6 +6460,9 @@
 		mml_rrot0: mml-rrot0@1f81a000 {
 			compatible = "mediatek,mt6989-mml_rrot";
 			reg = <0 0x1f81a000 0 0x1000>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_RROT0>;
+			clock-names = "rrot0";
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P2_MDP_RROT0)>;
 			comp-ids = <MML_RROT0>;
 			comp-names = "rrot0";
 			pipe = /bits/ 8 <0>;
@@ -6430,6 +6473,9 @@
 		mml_rrot0_2nd: mml-rrot0-2nd-bbse@1f81b000 {
 			compatible = "mediatek,mt6989-mml_rrot";
 			reg = <0 0x1f81b000 0 0x1000>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_RROT0_2ND>;
+			clock-names = "rrot0_2nd";
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P3_MDP_RROT0_2ND)>;
 			comp-ids = <MML_RROT0_2ND>;
 			comp-names = "rrot0_2nd";
 			pipe = /bits/ 8 <1>;
@@ -6440,6 +6486,8 @@
 		mml_merge0: mml-merge0-bcse@1f81c000 {
 			compatible = "mediatek,mt6989-mml_merge";
 			reg = <0 0x1f81c000 0 0x1000>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_MERGE0>;
+			clock-names = "merge0";
 			comp-ids = <MML_MERGE0>;
 			comp-names = "merge0";
 		};
@@ -6447,6 +6495,8 @@
 		mml_c3d0: mml-c3d0@1f81d000 {
 			compatible = "mediatek,mt6989-mml_c3d";
 			reg = <0 0x1f81d000 0 0x1000>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_C3D0>;
+			clock-names = "c3d0";
 			comp-ids = <MML_C3D0>;
 			comp-names = "c3d0";
 		};
@@ -6454,6 +6504,8 @@
 		mml_fg0: mml-fg0@1f81e000 {
 			compatible = "mediatek,mt6989-mml_fg";
 			reg = <0 0x1f81e000 0 0x1000>;
+			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_FG0>;
+			clock-names = "fg0";
 			comp-ids = <MML_FG0>;
 			comp-names = "fg0";
 		};
