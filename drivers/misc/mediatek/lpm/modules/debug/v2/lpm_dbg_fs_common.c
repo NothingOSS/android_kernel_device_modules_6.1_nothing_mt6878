@@ -4,6 +4,8 @@
  */
 
 #include <linux/console.h>
+#include <linux/cpuidle.h>
+#include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
@@ -190,6 +192,51 @@ static const struct mtk_lp_sysfs_op lpm_dbg_spm_spmfw_ver_fops = {
 	.fs_read = get_spmfw_version,
 };
 
+static ssize_t common_sodi_read(char *ToUser, size_t sz, void *priv)
+{
+	char *p = ToUser;
+
+	if (!ToUser)
+		return -EINVAL;
+
+	lpm_dbg_log("%lu\n", lpm_smc_spm_dbg(MT_SPM_DBG_SMC_COMMON_SODI5_CTRL,
+				MT_LPM_SMC_ACT_GET, 0, 0));
+
+	return p - ToUser;
+}
+
+static ssize_t common_sodi_write(char *FromUser, size_t sz, void *priv)
+{
+	unsigned int param;
+
+	if (!FromUser)
+		return -EINVAL;
+
+	if (!kstrtouint(FromUser, 10, &param)) {
+		cpuidle_pause_and_lock();
+		/* To avoid racing of spmfw swflag,
+		 * add delay to wait spm resume back to common.
+		 */
+		udelay(1500);
+		lpm_smc_spm_dbg(MT_SPM_DBG_SMC_COMMON_SODI5_CTRL,
+					MT_LPM_SMC_ACT_SET,
+					param, 0);
+		/* To make sure spmfw swflag update done,
+		 * add delay to wait spm re-enter common
+		 */
+		udelay(1500);
+		cpuidle_resume_and_unlock();
+		return sz;
+	}
+
+	return -EINVAL;
+}
+
+static const struct mtk_lp_sysfs_op lpm_dbg_common_sodi_fops = {
+	.fs_read = common_sodi_read,
+	.fs_write = common_sodi_write,
+};
+
 static void spm_dbg_fs_init(void)
 {
 	mtk_spm_sysfs_root_entry_create();
@@ -200,6 +247,8 @@ static void spm_dbg_fs_init(void)
 			, &lpm_dbg_spm_last_debugflag_fops, NULL);
 	mtk_spm_sysfs_entry_node_add("spmfw_version", 0444
 			, &lpm_dbg_spm_spmfw_ver_fops, NULL);
+	mtk_spm_sysfs_entry_node_add("common_sodi", 0444
+			, &lpm_dbg_common_sodi_fops, NULL);
 }
 
 static bool lpm_system_console_suspend;
