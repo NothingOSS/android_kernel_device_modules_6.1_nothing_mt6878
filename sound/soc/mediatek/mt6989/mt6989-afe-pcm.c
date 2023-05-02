@@ -4663,8 +4663,6 @@ static irqreturn_t mt6989_afe_irq_handler(int irq_id, void *dev)
 
 		goto err_irq;
 	}
-	dev_info(afe->dev, "%s(), [Patrick] irq status debug, ret %d, status 0x%x, mcu_en 0x%x\n",
-		__func__, ret, status, mcu_en);
 
 	ktime_get_ts64(&ts64);
 	t1 = timespec64_to_ns(&ts64);
