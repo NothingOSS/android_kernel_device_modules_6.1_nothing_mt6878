@@ -199,9 +199,6 @@ void mbraink_get_process_memory_info(pid_t current_pid,
 			/*pr_info("kthread case ...\n");*/
 		}
 	}
-
-	pr_info("%s: current_pid = %u, count = %u\n",
-		__func__, process_memory_buffer->pid, process_memory_buffer->pid_count);
 	read_unlock(&tasklist_lock);
 }
 
