@@ -18,5 +18,6 @@ scp-$(CONFIG_MTK_TINYSYS_SAP_SUPPORT) += sap.o
 ccflags-y += -D DEBUG_DO -fno-pic -mcmodel=large
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/aed/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/common
