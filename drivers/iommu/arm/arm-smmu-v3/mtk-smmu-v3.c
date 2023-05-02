@@ -1861,19 +1861,19 @@ struct arm_smmu_device *mtk_smmu_v3_impl_init(struct arm_smmu_device *smmu)
 static const struct mtk_smmu_plat_data mt6989_data_mm = {
 	.smmu_plat		= SMMU_MT6989,
 	.smmu_type		= MM_SMMU,
-	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT,
+	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT | SMMU_SEC_EN,
 };
 
 static const struct mtk_smmu_plat_data mt6989_data_apu = {
 	.smmu_plat		= SMMU_MT6989,
 	.smmu_type		= APU_SMMU,
-	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT,
+	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT | SMMU_SEC_EN,
 };
 
 static const struct mtk_smmu_plat_data mt6989_data_soc = {
 	.smmu_plat		= SMMU_MT6989,
 	.smmu_type		= SOC_SMMU,
-	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT,
+	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT | SMMU_SEC_EN,
 };
 
 static const struct mtk_smmu_plat_data *of_device_get_plat_data(struct device *dev)
