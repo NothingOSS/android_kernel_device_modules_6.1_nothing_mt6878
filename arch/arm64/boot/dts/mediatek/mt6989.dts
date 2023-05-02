@@ -6666,6 +6666,52 @@
 			reg = <0 0x14614000 0 0x1ec000>;
 		};
 
+		aie: aie@15310000 {
+			compatible = "mediatek,aie-isp7sp-1";
+			reg = <0 0x15310000 0 0x1000>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			mboxes = <&gce_m 20 0 CMDQ_THR_PRIO_1>;
+					//<&gce_m_sec 11 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
+			//mediatek,larb = <&smi_larb12>;
+			mediatek,aov = <&aov>;
+			fdvt-frame-done = <CMDQ_EVENT_IMG_IMGSYS_IPE_FDVT0_DONE>;
+			sw-sync-token-tzmp-aie-wait = <CMDQ_SYNC_TOKEN_TZMP_AIE_WAIT>;
+			sw-sync-token-tzmp-aie-set = <CMDQ_SYNC_TOKEN_TZMP_AIE_SET>;
+
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+#if 0
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_MAIN>;
+			clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1>,
+				<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0>,
+				<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN>,
+				<&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP>,
+				<&imgsys_main_clk CLK_IMG_IPE>,
+				<&imgsys_main_clk CLK_IMG_SUB_COMMON2>,
+				<&imgsys_main_clk CLK_IMG_SUB_COMMON3>,
+				<&imgsys_main_clk CLK_IMG_GALS_RX_IPE0>,
+				<&imgsys_main_clk CLK_IMG_GALS_TX_IPE0>,
+				<&imgsys_main_clk CLK_IMG_GALS_RX_IPE1>,
+				<&imgsys_main_clk CLK_IMG_GALS_TX_IPE1>,
+				<&imgsys_main_clk CLK_IMG_GALS>,
+				<&imgsys_main_clk CLK_IMG_FDVT>,
+				<&imgsys_main_clk CLK_IMG_LARB12>;
+			clock-names = "VCORE_SUB1",
+				"VCORE_SUB0",
+				"VCORE_MAIN",
+				"VCORE_GALS_DISP",
+				"IPE",
+				"SUB_COMMON2",
+				"SUB_COMMON3",
+				"GALS_RX_IPE0",
+				"GALS_TX_IPE0",
+				"GALS_RX_IPE1",
+				"GALS_TX_IPE1",
+				"GALS",
+				"FDVT",
+				"LARB12";
+#endif
+		};
+
 		vdec-gcon@16000000 {
 			compatible = "mediatek,vdec_gcon";
 			reg = <0 0x16000000 0 0x9000>;
