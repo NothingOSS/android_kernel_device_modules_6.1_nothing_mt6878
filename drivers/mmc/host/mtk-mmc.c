@@ -51,7 +51,9 @@ static const struct mtk_mmc_compatible mt8135_compat = {
 	.async_fifo = false,
 	.data_tune = false,
 	.busy_check = false,
-	.stop_clk_fix = false,
+	.stop_clk_set = {
+		.enable = 0,
+	},
 	.enhance_rx = false,
 	.support_64g = false,
 	.need_gate_cg = true,
@@ -67,7 +69,9 @@ static const struct mtk_mmc_compatible mt8173_compat = {
 	.async_fifo = false,
 	.data_tune = false,
 	.busy_check = false,
-	.stop_clk_fix = false,
+	.stop_clk_set = {
+		.enable = 0,
+	},
 	.enhance_rx = false,
 	.support_64g = false,
 	.need_gate_cg = true,
@@ -83,7 +87,11 @@ static const struct mtk_mmc_compatible mt8183_compat = {
 	.async_fifo = true,
 	.data_tune = true,
 	.busy_check = true,
-	.stop_clk_fix = true,
+	.stop_clk_set = {
+		.enable = 1,
+		.stop_cnt = 3,
+		.pop_cnt = 8,
+	},
 	.enhance_rx = true,
 	.support_64g = true,
 	.need_gate_cg = true,
@@ -99,7 +107,11 @@ static const struct mtk_mmc_compatible mt8195_compat = {
 	.async_fifo = true,
 	.data_tune = true,
 	.busy_check = true,
-	.stop_clk_fix = true,
+	.stop_clk_set = {
+		.enable = 1,
+		.stop_cnt = 3,
+		.pop_cnt = 8,
+	},
 	.enhance_rx = true,
 	.support_64g = true,
 	.new_tx_ver = 0,
@@ -114,7 +126,9 @@ static const struct mtk_mmc_compatible mt2701_compat = {
 	.async_fifo = true,
 	.data_tune = true,
 	.busy_check = false,
-	.stop_clk_fix = false,
+	.stop_clk_set = {
+		.enable = 0,
+	},
 	.enhance_rx = false,
 	.support_64g = false,
 	.need_gate_cg = true,
@@ -130,7 +144,11 @@ static const struct mtk_mmc_compatible mt2712_compat = {
 	.async_fifo = true,
 	.data_tune = true,
 	.busy_check = true,
-	.stop_clk_fix = true,
+	.stop_clk_set = {
+		.enable = 1,
+		.stop_cnt = 3,
+		.pop_cnt = 8,
+	},
 	.enhance_rx = true,
 	.support_64g = true,
 	.need_gate_cg = true,
@@ -146,7 +164,11 @@ static const struct mtk_mmc_compatible mt7622_compat = {
 	.async_fifo = true,
 	.data_tune = true,
 	.busy_check = true,
-	.stop_clk_fix = true,
+	.stop_clk_set = {
+		.enable = 1,
+		.stop_cnt = 3,
+		.pop_cnt = 8,
+	},
 	.enhance_rx = true,
 	.support_64g = false,
 	.need_gate_cg = true,
@@ -162,7 +184,11 @@ static const struct mtk_mmc_compatible mt8516_compat = {
 	.async_fifo = true,
 	.data_tune = true,
 	.busy_check = true,
-	.stop_clk_fix = true,
+	.stop_clk_set = {
+		.enable = 1,
+		.stop_cnt = 3,
+		.pop_cnt = 8,
+	},
 	.need_gate_cg = true,
 	.new_tx_ver = 0,
 	.new_rx_ver = 0,
@@ -176,7 +202,9 @@ static const struct mtk_mmc_compatible mt7620_compat = {
 	.async_fifo = false,
 	.data_tune = false,
 	.busy_check = false,
-	.stop_clk_fix = false,
+	.stop_clk_set = {
+		.enable = 0,
+	},
 	.enhance_rx = false,
 	.use_internal_cd = true,
 	.need_gate_cg = true,
@@ -192,7 +220,11 @@ static const struct mtk_mmc_compatible mt6779_compat = {
 	.async_fifo = true,
 	.data_tune = true,
 	.busy_check = true,
-	.stop_clk_fix = true,
+	.stop_clk_set = {
+		.enable = 1,
+		.stop_cnt = 3,
+		.pop_cnt = 8,
+	},
 	.enhance_rx = true,
 	.support_64g = true,
 	.need_gate_cg = true,
@@ -208,7 +240,11 @@ static const struct mtk_mmc_compatible common_v2_compat = {
 	.async_fifo = true,
 	.data_tune = true,
 	.busy_check = true,
-	.stop_clk_fix = true,
+	.stop_clk_set = {
+		.enable = 1,
+		.stop_cnt = 3,
+		.pop_cnt = 8,
+	},
 	.enhance_rx = true,
 	.support_64g = true,
 	.need_gate_cg = false,
@@ -224,7 +260,11 @@ static const struct mtk_mmc_compatible mt6985_compat = {
 	.async_fifo = true,
 	.data_tune = true,
 	.busy_check = true,
-	.stop_clk_fix = true,
+	.stop_clk_set = {
+		.enable = 1,
+		.stop_cnt = 1,
+		.pop_cnt = 2,
+	},
 	.enhance_rx = true,
 	.support_64g = true,
 	.need_gate_cg = false,
@@ -240,7 +280,11 @@ static const struct mtk_mmc_compatible mt6886_compat = {
 	.async_fifo = true,
 	.data_tune = true,
 	.busy_check = true,
-	.stop_clk_fix = true,
+	.stop_clk_set = {
+		.enable = 1,
+		.stop_cnt = 1,
+		.pop_cnt = 2,
+	},
 	.enhance_rx = true,
 	.support_64g = true,
 	.need_gate_cg = false,
@@ -256,7 +300,31 @@ static const struct mtk_mmc_compatible mt6897_compat = {
 	.async_fifo = true,
 	.data_tune = true,
 	.busy_check = true,
-	.stop_clk_fix = true,
+	.stop_clk_set = {
+		.enable = 1,
+		.stop_cnt = 3,
+		.pop_cnt = 8,
+	},
+	.enhance_rx = true,
+	.support_64g = true,
+	.need_gate_cg = false,
+	.new_tx_ver = MSDC_NEW_TX_V1,
+	.new_rx_ver = MSDC_NEW_RX_V1,
+};
+
+static const struct mtk_mmc_compatible mt6989_compat = {
+	.clk_div_bits = 12,
+	.recheck_sdio_irq = false,
+	.hs400_tune = false,
+	.pad_tune_reg = MSDC_PAD_TUNE0,
+	.async_fifo = true,
+	.data_tune = true,
+	.busy_check = true,
+	.stop_clk_set = {
+		.enable = 1,
+		.stop_cnt = 3,
+		.pop_cnt = 8,
+	},
 	.enhance_rx = true,
 	.support_64g = true,
 	.need_gate_cg = false,
@@ -279,6 +347,7 @@ static const struct of_device_id msdc_of_ids[] = {
 	{ .compatible = "mediatek,mt6985-mmc", .data = &mt6985_compat},
 	{ .compatible = "mediatek,mt6886-mmc", .data = &mt6886_compat},
 	{ .compatible = "mediatek,mt6897-mmc", .data = &mt6897_compat},
+	{ .compatible = "mediatek,mt6989-mmc", .data = &mt6989_compat},
 	{}
 };
 MODULE_DEVICE_TABLE(of, msdc_of_ids);
@@ -1491,13 +1560,11 @@ static void msdc_init_hw(struct msdc_host *host)
 		sdr_set_bits(host->base + MSDC_PATCH_BIT1, MSDC_PB1_ENABLE_SINGLE_BURST);
 	sdr_set_bits(host->base + EMMC50_CFG0, EMMC50_CFG_CFCSTS_SEL);
 
-	if (host->dev_comp->stop_clk_fix) {
-		if (support_new_tx(host->dev_comp->new_tx_ver) &&
-			!support_new_rx(host->dev_comp->new_rx_ver)) {
-			sdr_set_field(host->base + MSDC_PATCH_BIT1, MSDC_PATCH_BIT1_STOP_DLY, 1);
-			sdr_set_field(host->base + MSDC_PATCH_BIT2, MSDC_PB2_POP_EN_CNT, 2);
-		} else
-			sdr_set_field(host->base + MSDC_PATCH_BIT1, MSDC_PATCH_BIT1_STOP_DLY, 3);
+	if (host->dev_comp->stop_clk_set.enable) {
+		sdr_set_field(host->base + MSDC_PATCH_BIT1, MSDC_PATCH_BIT1_STOP_DLY,
+			host->dev_comp->stop_clk_set.stop_cnt & 0xF);
+		sdr_set_field(host->base + MSDC_PATCH_BIT2, MSDC_PB2_POP_EN_CNT,
+			host->dev_comp->stop_clk_set.pop_cnt & 0xF);
 		sdr_clr_bits(host->base + SDC_FIFO_CFG,
 			     SDC_FIFO_CFG_WRVALIDSEL);
 		sdr_clr_bits(host->base + SDC_FIFO_CFG,

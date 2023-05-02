@@ -436,6 +436,11 @@ struct msdc_save_para {
 	u32 top_new_rx_cfg;
 };
 
+struct stop_clock_type {
+	u8 enable;
+	u8 stop_cnt;
+	u8 pop_cnt;
+};
 struct mtk_mmc_compatible {
 	u8 clk_div_bits;
 	bool recheck_sdio_irq;
@@ -444,7 +449,7 @@ struct mtk_mmc_compatible {
 	bool async_fifo;
 	bool data_tune;
 	bool busy_check;
-	bool stop_clk_fix;
+	struct stop_clock_type stop_clk_set;
 	bool enhance_rx;
 	bool support_64g;
 	bool use_internal_cd;
