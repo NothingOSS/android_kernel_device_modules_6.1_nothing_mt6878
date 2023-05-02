@@ -58,6 +58,7 @@ struct cmdq_util_controller_fp *cmdq_util_controller;
 #define CMDQ_TPR_TIMEOUT_EN		0xDC
 #define CMDQ_ULTRA_EN			BIT(0)
 #define CMDQ_PREULTRA_EN		BIT(1)
+#define CMDQ_DDR_URGENT			BIT(19)
 
 #define CMDQ_THR_BASE			0x100
 #define CMDQ_THR_SIZE			0x80
@@ -269,6 +270,7 @@ struct cmdq {
 	void			*init_cmds_base;
 	dma_addr_t		init_cmds;
 	bool			sw_ddr_en;
+	bool			sw_ddr_urgent;
 	bool			outpin_en;
 	bool			prebuilt_enable;
 	struct cmdq_client	*prebuilt_clt;
@@ -2444,6 +2446,8 @@ static int cmdq_probe(struct platform_device *pdev)
 	cmdq->hwid = hwid++;
 	cmdq->prebuilt_enable =
 		of_property_read_bool(dev->of_node, "prebuilt-enable");
+	cmdq->sw_ddr_urgent =
+		of_property_read_bool(dev->of_node, "ddr-urgent");
 
 	cmdq->mbox.dev = dev;
 	cmdq->mbox.chans = devm_kcalloc(dev, CMDQ_THR_MAX_COUNT,
@@ -2653,6 +2657,9 @@ void cmdq_mbox_enable(void *chan)
 		spin_lock_irqsave(&cmdq->lock, flags);
 		writel(readl(cmdq->base + GCE_BUS_GCTL) | CMDQ_ULTRA_EN,
 			cmdq->base + GCE_BUS_GCTL);
+		if (cmdq->sw_ddr_urgent)
+			writel(readl(cmdq->base + GCE_GCTL_VALUE) | CMDQ_DDR_URGENT,
+				cmdq->base + GCE_GCTL_VALUE);
 		if (cmdq->sw_ddr_en) {
 			writel((0x7 << 16) + 0x7, cmdq->base + GCE_GCTL_VALUE);
 			writel(0, cmdq->base + GCE_DEBUG_START_ADDR);
