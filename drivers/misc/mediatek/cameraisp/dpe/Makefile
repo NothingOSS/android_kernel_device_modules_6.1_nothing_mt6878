@@ -25,14 +25,14 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/
 ccflags-$(CONFIG_MTK_IOMMU_V2) += -I$(DEVICE_MODULES_PATH)/drivers/iommu
 ccflags-$(CONFIG_MTK_IOMMU_V2) += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/
 
-#ifeq ($(CONFIG_MTK_CAMERA_DPE_ISP7S),m)
+ifeq ($(CONFIG_MTK_CAMERA_DPE_ISP7S),m)
 
-#obj-$(CONFIG_MTK_CAMERA_DPE_ISP7S) += camera_dpe_isp7s.o
-#camera_dpe_isp7s-objs += isp_7s/engine_request.o
-#camera_dpe_isp7s-objs  += isp_7s/camera_dpe.o
-#camera_dpe_isp7s-objs += isp_7s/videobuf2-dma-contig.o
+obj-$(CONFIG_MTK_CAMERA_DPE_ISP7S) += camera_dpe_isp7s.o
+camera_dpe_isp7s-objs += isp_7s/engine_request.o
+camera_dpe_isp7s-objs  += isp_7s/camera_dpe.o
+camera_dpe_isp7s-objs += isp_7s/videobuf2-dma-contig.o
 
-#endif
+endif
 
 ifeq ($(CONFIG_MTK_CAMERA_DPE_ISP7),m)
 obj-$(CONFIG_MTK_CAMERA_DPE_ISP7) += camera_dpe_isp70.o

@@ -13,32 +13,32 @@
 #
 
 
-#$(warning "Bryan test111")
-#$(warning $(DEVICE_MODULES_PATH))
+$(warning "Bryan test111")
+$(warning $(DEVICE_MODULES_PATH))
 
-#$(info $(DEVICE_MODULES_PATH))
-#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/m4u/$(MTK_PLATFORM)/
-#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/
-#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/v3/
-#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/v3/$(MTK_PLATFORM)/
-#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/staging/android/ion \
+$(info $(DEVICE_MODULES_PATH))
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/m4u/$(MTK_PLATFORM)/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/v3/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/v3/$(MTK_PLATFORM)/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/staging/android/ion \
              -I$(DEVICE_MODULES_PATH)/drivers/staging/android/ion/mtk
-#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/
-#ccflags-$(CONFIG_MTK_IOMMU_V2) += -I$(DEVICE_MODULES_PATH)/drivers/iommu
-#ccflags-$(CONFIG_MTK_IOMMU_V2) += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/
+ccflags-$(CONFIG_MTK_IOMMU_V2) += -I$(DEVICE_MODULES_PATH)/drivers/iommu
+ccflags-$(CONFIG_MTK_IOMMU_V2) += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/
 
 
-#$(warning "Bryan test")
+$(warning "Bryan test")
 
 
-#ifeq ($(CONFIG_MTK_CAMERA_DPE_ISP7SP),m)
+ifeq ($(CONFIG_MTK_CAMERA_DPE_ISP7SP),m)
 
-#obj-$(CONFIG_MTK_CAMERA_DPE_ISP7SP) += camera_dpe_isp7sp.o
-#camera_dpe_isp7sp-objs += isp_7sp/engine_request.o
-#camera_dpe_isp7sp-objs  += isp_7sp/camera_dpe.o
-#camera_dpe_isp7sp-objs += isp_7sp/videobuf2-dma-contig.o
+obj-$(CONFIG_MTK_CAMERA_DPE_ISP7SP) += camera_dpe_isp7sp.o
+camera_dpe_isp7sp-objs += isp_7sp/engine_request.o
+camera_dpe_isp7sp-objs  += isp_7sp/camera_dpe.o
+camera_dpe_isp7sp-objs += isp_7sp/videobuf2-dma-contig.o
 
-#endif
+endif
 
 #ifeq ($(CONFIG_MTK_CAMERA_DPE_ISP7S),m)
 
