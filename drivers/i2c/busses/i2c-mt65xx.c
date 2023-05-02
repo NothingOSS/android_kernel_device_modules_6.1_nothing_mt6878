@@ -633,6 +633,44 @@ static void mtk_i2c_clock_disable(struct mtk_i2c *i2c)
 	clk_disable_unprepare(i2c->clk_dma);
 }
 
+int mtk_i2c_clock_enable_ex(struct i2c_adapter *adap)
+{
+	int ret = 0;
+	struct mtk_i2c *i2c = i2c_get_adapdata(adap);
+
+	if (!i2c) {
+		ret = -EINVAL;
+		goto err;
+	}
+
+	ret = mtk_i2c_clock_enable(i2c);
+	if (ret) {
+		dev_info(i2c->dev, "[clk_enable]:i2c clock enable failed.\n");
+		goto err;
+	}
+
+err:
+	return ret;
+}
+EXPORT_SYMBOL(mtk_i2c_clock_enable_ex);
+
+int mtk_i2c_clock_disable_ex(struct i2c_adapter *adap)
+{
+	int ret = 0;
+	struct mtk_i2c *i2c = i2c_get_adapdata(adap);
+
+	if (!i2c) {
+		ret = -EINVAL;
+		goto err;
+	}
+
+	mtk_i2c_clock_disable(i2c);
+
+err:
+	return ret;
+}
+EXPORT_SYMBOL(mtk_i2c_clock_disable_ex);
+
 static void mtk_i2c_init_hw(struct mtk_i2c *i2c)
 {
 	u16 control_reg;
