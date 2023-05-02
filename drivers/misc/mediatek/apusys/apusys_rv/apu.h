@@ -44,6 +44,10 @@ struct mtk_apu_hw_ops {
 	int (*irq_affin_set)(struct mtk_apu *apu);
 	int (*irq_affin_unset)(struct mtk_apu *apu);
 	int (*irq_affin_clear)(struct mtk_apu *apu);
+
+	/* check apu exception irq */
+	int (*check_apu_exp_irq)(struct mtk_apu *apu, char *ce_module);
+
 };
 
 #define F_PRELOAD_FIRMWARE		BIT(0)

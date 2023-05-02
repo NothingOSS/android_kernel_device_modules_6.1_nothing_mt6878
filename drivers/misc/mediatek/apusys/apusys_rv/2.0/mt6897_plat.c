@@ -50,6 +50,44 @@ static struct delayed_work timeout_work;
  */
 #define IPI_PWROFF_TIMEOUT_MS (60 * 1000)
 
+#define CHECK_BIT(var, pos) ((var) & (1<<(pos)))
+
+enum APU_EXCEPTION_ID {
+	rcx_ao_infra_apb_timeout = 0,
+	rcx_ao_infra_apb_secure_vio_irq,
+	rcx_infra_apb_timeout,
+	rcx_infra_apb_secure_vio_irq,
+	apu_idle2max_arb_to_irq,
+	mbox_err_irq_0,
+	mbox_err_irq_1,
+	mbox_err_irq_2,
+	mbox_err_irq_3,
+	mbox_err_irq_4,
+	mbox_err_irq_5,
+	mbox_err_irq_6,
+	mbox_err_irq_7,
+	mbox_err_irq_8,
+	mbox_err_irq_9,
+	mbox_err_irq_10,
+	mbox_err_irq_11,
+	mbox_err_irq_12,
+	mbox_err_irq_13,
+	mbox_err_irq_14,
+	mbox_err_irq_15,
+	are_abnormal_irq,
+	north_mmu_m0_hit_set,
+	north_mmu_m1_hit_set,
+	south_mmu_m0_hit_set,
+	south_mmu_m1_hit_set,
+	acx0_infra_apb_timeout,
+	acx0_infra_apb_secure_vio_irq,
+	reserved_0,
+	reserved_1,
+	reserved_2,
+	reserved_3,
+	apu_mmu_cmu_irq
+};
+
 static void apu_timeout_work(struct work_struct *work)
 {
 	struct mtk_apu *apu = g_apu;
@@ -627,6 +665,34 @@ static int mt6897_irq_affin_unset(struct mtk_apu *apu)
 	return 0;
 }
 
+static int mt6897_check_apu_exp_irq(struct mtk_apu *apu, char *ce_module)
+{
+	struct device *dev = apu->dev;
+	int ret = 0;
+
+	ret = apusys_rv_smc_call(dev,
+			MTK_APUSYS_KERNEL_OP_APUSYS_RV_OP_DECODE_APU_EXP_IRQ, 0);
+
+	dev_info(dev, "%s: apu_exp_id: %x\n", __func__, ret);
+
+	for (uint32_t i = 0; i < 32; i++) {
+		if (CHECK_BIT(ret, i) != 0) {
+			switch (i) {
+			case are_abnormal_irq:
+				if (strcmp("are_abnormal_irq", ce_module) == 0)
+					return 1;
+				else
+					return 0;
+				break;
+			default:
+				break;
+			}
+		}
+	}
+	return 0;
+}
+
+
 static int mt6897_apu_memmap_init(struct mtk_apu *apu)
 {
 	struct platform_device *pdev = apu->pdev;
@@ -770,7 +836,7 @@ static void mt6897_rv_cachedump(struct mtk_apu *apu)
 const struct mtk_apu_platdata mt6897_platdata = {
 	.flags		= F_PRELOAD_FIRMWARE | F_AUTO_BOOT |
 				F_SECURE_BOOT | F_SECURE_COREDUMP | F_DEBUG_LOG_ON |
-				F_APUSYS_RV_TAG_SUPPORT,
+				F_APUSYS_RV_TAG_SUPPORT | F_CE_EXCEPTION_ON,
 	.ops		= {
 		.init	= mt6897_rproc_init,
 		.exit	= mt6897_rproc_exit,
@@ -788,5 +854,6 @@ const struct mtk_apu_platdata mt6897_platdata = {
 		.irq_affin_init = mt6897_irq_affin_init,
 		.irq_affin_set = mt6897_irq_affin_set,
 		.irq_affin_unset = mt6897_irq_affin_unset,
+		.check_apu_exp_irq = mt6897_check_apu_exp_irq,
 	},
 };

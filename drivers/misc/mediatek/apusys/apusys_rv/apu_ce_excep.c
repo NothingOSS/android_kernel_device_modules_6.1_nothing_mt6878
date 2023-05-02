@@ -138,35 +138,41 @@ static void apu_ce_coredump_work_func(struct work_struct *p_work)
 
 	dev_info(dev, "%s +\n", __func__);
 
-	apu_regdump();//dump CE reg 0x190B0400 to 0x190B09b4
-
-    //return CE job id
 	ret = apusys_rv_smc_call(dev,
 				MTK_APUSYS_KERNEL_OP_APUSYS_CE_RESET, 0);
 
-	apusys_ce_exception_aee_warn(job_id_mapping(ret));
-
-	apusys_rv_smc_call(dev,
-				MTK_APUSYS_KERNEL_OP_APUSYS_CE_MASK_INIT, 0);
-
+	if (ret == -1) {
+		dev_info(dev, "%s not ce exception\n", __func__);
+	} else {
+		apu_regdump();
+		apusys_ce_exception_aee_warn(job_id_mapping(ret));
+	}
 }
 
 static irqreturn_t apu_ce_isr(int irq, void *private_data)
 {
 	struct mtk_apu *apu = (struct mtk_apu *) private_data;
 	struct device *dev = apu->dev;
+	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
 
-    uint32_t ret =0;
+	uint32_t ret = 0;
 
-    //add smc call to mask on CE exception
-	ret = apusys_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_MASKON_EXP, 0);
+	if (!hw_ops->check_apu_exp_irq) {
+		dev_info(dev, "%s ,not support handle apu exception\n", __func__);
+		return -EINVAL;
+	}
 
-	dev_info(dev, "%s +\n", __func__);
+	if (hw_ops->check_apu_exp_irq(apu, "are_abnormal_irq")) {
 
-	schedule_work(&(apu_ce_coredump_work.work));
+		dev_info(dev, "%s ,are_abnormal_irq\n", __func__);
 
-	disable_irq_nosync(apu->ce_exp_irq_number);
+		//add smc call to mask on CE exception
+		ret = apusys_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_MASKON_EXP, 0);
 
+		schedule_work(&(apu_ce_coredump_work.work));
+
+		disable_irq_nosync(apu->ce_exp_irq_number);
+	}
 	return IRQ_HANDLED;
 }
 
@@ -194,6 +200,7 @@ int apu_ce_excep_init(struct platform_device *pdev, struct mtk_apu *apu)
 	int ret = 0;
 
 	struct device *dev = apu->dev;
+
 	apusys_rv_smc_call(dev,
 				MTK_APUSYS_KERNEL_OP_APUSYS_CE_MASK_INIT, 0);
 
