@@ -8160,6 +8160,12 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"md,scp,conn,adsp";
 			node-84 = "SSPM_SPM_RES__PMIC_REQ",
 				"md,scp,conn,adsp";
+			node-85 = "WLA_NTH_IDLE_CNT",
+				"wla0,wla1,wla2,wla3,wla4,wla5,wla6,wla7,wla8,wla9,wla10,",
+				"wla11,wla12,wla13,wla14,wla15";
+			node-86 = "WLA_STH_IDLE_CNT",
+				"wla0,wla1,wla2,wla3,wla4,wla5,wla6,wla7,wla8,wla9,wla10,",
+				"wla11,wla12,wla13,wla14,wla15";
 		};
 
 		gpueb_rts_header:gpueb-rts-header {
