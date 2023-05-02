@@ -1355,6 +1355,10 @@
 		ranges;
 		compatible = "android,ise-trusty-smc-v1";
 
+		ise-log {
+			compatible = "android,ise-trusty-log-v1";
+		};
+
 		ise-virtio {
 			compatible = "android,ise-trusty-virtio-v1";
 			interrupts = <GIC_SPI 938 IRQ_TYPE_LEVEL_HIGH 0>;
