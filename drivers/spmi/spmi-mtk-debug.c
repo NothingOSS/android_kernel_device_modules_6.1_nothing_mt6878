@@ -2280,6 +2280,10 @@ int spmi_pmif_dbg_init(struct spmi_controller *ctrl)
 				    "mediatek,mt6985-spmi")) {
 		arb->dbgregs = mt6833_pmif_dbg_regs;
 		arb->dbgver = 3;
+	} else if (of_device_is_compatible(ctrl->dev.parent->of_node,
+				    "mediatek,mt6989-spmi")) {
+		arb->dbgregs = mt6833_pmif_dbg_regs;
+		arb->dbgver = 3;
 	} else {
 		arb->dbgregs = mt6xxx_pmif_dbg_regs;
 		arb->dbgver = 1;
