@@ -6,6 +6,10 @@
 	epa-elna-mtk {
 		parts = <&qm42639 &qm45639>;
 
+		hwid {
+			gpio = <&pio 210 0x0>;
+		};
+
 		common {
 			flags-0 {
 				rx-mode = [35];
@@ -14,6 +18,14 @@
 				fe-conn-spdt = [83];
 				fe-reserved = [86];
 			};
+			flags-1 {
+				rx-mode = [35];
+				fe-ant-cnt = [82];
+				fe-main-bt-share-lp2g = [80];
+				fe-conn-spdt = [83];
+				fe-reserved = [86];
+				bd-type = [01];
+			};
 		};
 
 		wifi {
@@ -21,10 +33,18 @@
 				epa-option = [aa];
 				/* open-loop; */
 			};
+			flags-1 {
+				epa-option = [aa];
+				/* open-loop; */
+			};
 		};
 
 		bt {
 			flags-0 {
+				/* choose one of: epa-elna / epa / elna / bypass */
+				epa-elna;
+			};
+			flags-1 {
 				/* choose one of: epa-elna / epa / elna / bypass */
 				epa-elna;
 			};
